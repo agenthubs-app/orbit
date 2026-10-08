@@ -219,6 +219,294 @@
   .kv { display: grid; grid-template-columns: 74px 1fr; gap: 10px; padding: 8px 0; font-size: 12.5px; line-height: 1.6; }
   .kv + .kv { border-top: 1px solid var(--line); }
   .kv .lbl { padding-top: 1px; }
+  /* ===== V22X-FLOW BEGIN（2026-10-08 计划 v2.2 推广）：从 b10-plan-example.html 照抄的对话流 / 背景確認 / 5問 / 前提 / 初版 / 修正 私有类，全部挂在 .v22x 下，避免与本文件私有类重名 ===== */
+  .v22x .h1 { font-size: 22px; font-weight: 900; line-height: 1.35; letter-spacing: -.01em; }
+  .v22x .center { text-align: center; }
+  .v22x .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .phone .foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; padding: 22px 18px 30px; background: linear-gradient(to bottom, transparent, var(--bg) 26%); display: grid; gap: 8px; }
+  .v22x .btn.xl { height: 50px; font-size: 14.5px; }
+  .v22x .fld { margin-top: 12px; }
+  .v22x .fld label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
+  .v22x .fld .in { min-height: 46px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; gap: 8px; padding: 0 14px; font-size: 14px; color: var(--ink); border: 1.5px solid transparent; }
+  .v22x .fld .in > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .fld.focus .in { border-color: var(--plum-500); background: var(--surface); }
+  .v22x .caret { display: inline-block; width: 2px; height: 1.1em; background: var(--plum-700); vertical-align: -3px; margin-left: 1px; animation: v22xblink 1s steps(1) infinite; }
+  @keyframes v22xblink { 50% { opacity: 0; } }
+  .v22x .slot { padding: 8px 6px; border-radius: 12px; background: var(--surface-2); font-size: 11.5px; font-weight: 700; text-align: center; border: 1.5px solid transparent; line-height: 1.35; }
+  .v22x .slot.on { border-color: var(--plum-500); background: var(--accent-soft); }
+  .v22x .slot small { display: block; font-size: 10.5px; color: var(--ink-3); font-weight: 600; }
+  .v22x .card.flat .slot { background: var(--surface); }
+  .v22x .card.flat .slot.on { background: var(--accent-soft); }
+  .v22x .kv { display: grid; grid-template-columns: 78px 1fr; gap: 10px; padding: 9px 0; font-size: 12.5px; line-height: 1.6; }
+  .v22x .kv + .kv { border-top: 1px solid var(--line); }
+  .v22x .kv .lbl { padding-top: 1px; }
+  .v22x .evr { display: flex; gap: 10px; align-items: center; padding: 11px 0; }
+  .v22x .evw + .evw { border-top: 1px solid var(--line); }
+  .v22x .evr .meta { flex: 1; min-width: 0; }
+  .v22x .evr .meta b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .stk { position: sticky; top: 0; z-index: 20; margin: 0 -18px; padding: 0 18px; background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  .v22x .tk { font-size: 10.5px; font-weight: 800; color: var(--ink-3); letter-spacing: .04em; }
+  .v22x .tname { display: block; font-size: 13.5px; font-weight: 800; line-height: 1.5; }
+  .v22x .tname.lg { font-size: 16.5px; line-height: 1.5; }
+  .v22x .tcard { background: var(--surface-2); border-radius: 18px; padding: 12px 14px; min-width: 0; display: flex; flex-direction: column; }
+  .v22x .tcard + .tcard { margin-top: 8px; }
+  .v22x .tgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .v22x .tgrid .tcard + .tcard { margin-top: 0; }
+  .v22x .m3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+  .v22x .m3 > div { background: var(--surface); border-radius: 12px; padding: 6px 8px; min-width: 0; }
+  .v22x .m3 b { font-family: var(--font-num); font-size: 17px; font-weight: 800; display: block; line-height: 1.2; }
+  .v22x .m3 b small { font-size: 10.5px; color: var(--ink-3); font-weight: 700; margin-left: 1px; }
+  .v22x .m3 span { display: block; font-size: 10.5px; color: var(--ink-3); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .m3 > div.z b { color: var(--ink-4); }
+  .v22x .card > .m3 > div, .v22x .web .m3.on2 > div { background: var(--surface-2); }
+  .v22x .tfoot { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .v22x .tfoot .lbl { white-space: nowrap; }
+  .v22x .tfoot .v2mb { flex: 1; margin-top: 0; }
+  .v22x .mey { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; padding: 9px 11px; border-radius: 14px; background: var(--surface-2); font-size: 12.5px; line-height: 1.55; }
+  .v22x .mey svg.i { color: var(--plum-700); margin-top: 1px; }
+  .v22x .mey .mt { flex: 1; min-width: 0; }
+  .v22x .mey .mt small { display: block; font-size: 10.5px; color: var(--ink-3); font-weight: 700; }
+  .v22x .mey .chip { flex: none; }
+  .v22x .v2step .chips { margin-top: 8px; }
+  .v22x .qn { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; font-size: 13px; line-height: 1.6; }
+  .v22x .qn + .qn { border-top: 1px solid var(--line); }
+  .v22x .qn .n { width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--plum-700); display: grid; place-items: center; font-family: var(--font-num); font-weight: 800; font-size: 11.5px; flex: none; margin-top: 1px; }
+  .v22x .sig { display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 7px 0; align-items: start; }
+  .v22x .sig + .sig { border-top: 1px solid var(--line); }
+  .v22x .sig .chips { gap: 4px; }
+  .v22x .rule { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); font-size: 12px; line-height: 1.5; }
+  .v22x .rule + .rule { margin-top: 6px; }
+  .v22x .rule b.pt { font-family: var(--font-num); font-weight: 900; font-size: 14px; color: var(--plum-700); margin-left: auto; white-space: nowrap; }
+  .v22x .cand { display: flex; gap: 10px; align-items: center; padding: 11px 0 4px; }
+  .v22x [data-why-box] + [data-why-box] > .cand { border-top: 1px solid var(--line); }
+  .v22x .cand .meta { flex: 1; min-width: 0; }
+  .v22x .cand .meta b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .cand .meta .sub2 { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .rec { text-align: right; flex: none; line-height: 1.1; }
+  .v22x .rec b { font-family: var(--font-num); font-weight: 800; font-size: 18px; display: block; }
+  .v22x .rec span { font-size: 9.5px; color: var(--ink-3); font-weight: 700; }
+  .v22x .cdet { padding: 0 0 10px 64px; font-size: 12px; line-height: 1.55; color: var(--ink-2); }
+  .v22x .cdet .op { margin-top: 5px; display: flex; gap: 6px; align-items: flex-start; }
+  .v22x .cdet .op b { color: var(--ink); }
+  .v22x .route { display: flex; gap: 10px; align-items: center; padding: 12px; border-radius: 16px; background: var(--surface-2); }
+  .v22x .route + .route { margin-top: 8px; }
+  .v22x .route .rm { flex: 1; min-width: 0; font-size: 12px; line-height: 1.55; color: var(--ink-2); }
+  .v22x .route .rm b { color: var(--ink); font-size: 13px; }
+  .v22x .route .arr { color: var(--ink-4); flex: none; }
+  .v22x .ghav { width: 26px; height: 26px; border-radius: 50%; border: 1.5px dashed var(--plum-300); color: var(--plum-500); display: grid; place-items: center; font-size: 11px; font-weight: 800; flex: none; background: var(--surface); }
+  .v22x .ghavs { display: flex; } .v22x .ghavs .ghav + .ghav { margin-left: -6px; }
+  .v22x .quote { font-size: 15px; font-weight: 800; line-height: 1.6; padding: 4px 0 4px 12px; border-left: 3px solid var(--plum-300); }
+  .v22x .draftbox { background: var(--surface-2); border-radius: 14px; padding: 12px 14px; font-size: 12.5px; line-height: 1.75; color: var(--ink); }
+  .v22x .card.flat .draftbox { background: var(--surface); }
+  .v22x .draftbox .subj { font-weight: 800; display: block; margin-bottom: 4px; }
+  .v22x .sumrow { display: flex; gap: 10px; align-items: center; padding: 8px 0; }
+  .v22x .sumrow + .sumrow { border-top: 1px solid var(--line); }
+  .v22x .sumrow .smm { flex: 1; min-width: 0; }
+  .v22x .sumrow .smm b { display: block; font-size: 13px; }
+  .v22x .sumrow .smm .lbl { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .sumrow .n { font-family: var(--font-num); font-weight: 800; font-size: 18px; flex: none; }
+  .v22x .sumrow .n small { font-size: 11px; color: var(--ink-3); margin-left: 1px; }
+  .v22x .flow { display: grid; grid-template-columns: 1fr 22px 1fr 22px 1fr; align-items: center; gap: 4px; margin-top: 10px; }
+  .v22x .flow > div:not(.ar) { background: var(--surface-2); border-radius: 14px; padding: 8px 6px; text-align: center; min-width: 0; }
+  .v22x .card.flat .flow > div:not(.ar), .v22x .jsec.ketsu .flow > div:not(.ar) { background: var(--surface); }
+  .v22x .flow .e { font-size: 17px; display: block; }
+  .v22x .flow b { display: block; font-size: 12px; }
+  .v22x .flow span.lbl { display: block; font-size: 10.5px; line-height: 1.4; }
+  .v22x .flow .ar { color: var(--ink-4); display: grid; place-items: center; }
+  .v22x .flow .ar svg.i { width: 16px; height: 16px; }
+  .v22x .flow .pay { background: var(--accent-soft) !important; }
+  .v22x .gsw { display: inline-flex; align-items: center; gap: 3px; }
+  .v22x .gsw svg.i { width: 13px; height: 13px; color: var(--ink-3); }
+  .v22x .chat { display: grid; gap: 10px; padding-bottom: 96px; }
+  .v22x .chat > .bubble.me { max-width: 88%; }
+  .v22x .chat > .card { margin: 0; }
+  .v22x .qb { padding: 10px 0; }
+  .v22x .qb + .qb { border-top: 1px solid var(--line); }
+  .v22x .qno { width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-family: var(--font-num); font-weight: 800; font-size: 11.5px; flex: none; }
+  .v22x .qid { font-size: 10px; font-weight: 800; color: var(--ink-3); background: var(--surface-2); border-radius: 6px; padding: 1px 6px; white-space: nowrap; flex: none; }
+  .v22x .qb .fopt { padding: 4px 9px; font-size: 11.5px; }
+  .v22x .qin { margin-top: 8px; height: 38px; border-radius: 12px; background: var(--surface-2); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 12.5px; color: var(--ink); }
+  .v22x .qin span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .qin.ph { color: var(--ink-4); }
+  .v22x .jsec { margin-top: 10px; font-size: 12.5px; line-height: 1.75; color: var(--ink-2); }
+  .v22x .jsec > .lbl { display: block; font-weight: 700; }
+  .v22x .clamp4 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .v22x .jsec.ketsu { background: var(--accent-soft); border-radius: 16px; padding: 10px 12px; color: var(--ink); }
+  .v22x .jsec.ketsu > b { display: block; font-size: 13.5px; line-height: 1.6; }
+  .v22x .dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; padding: 9px 0; font-size: 12.5px; line-height: 1.55; }
+  .v22x .dl + .dl { border-top: 1px solid var(--line); }
+  .v22x .dl .lbl { grid-column: 2; }
+  .v22x .dl s { color: var(--ink-3); grid-column: 2; }
+  .v22x .dl .nw { grid-column: 2; font-weight: 800; background: var(--mac-lav); color: var(--ink); border-radius: 8px; padding: 2px 6px; justify-self: start; }
+  .v22x .chgtag { grid-row: span 3; align-self: start; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: var(--mac-lav); color: var(--mac-lav-ink); white-space: nowrap; }
+  .v22x .same-line { margin-top: 8px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); font-size: 12px; color: var(--ink-2); line-height: 1.6; }
+  .v22x .chint { position: absolute; left: 12px; right: 12px; bottom: 96px; z-index: 30; background: var(--surface); border-radius: 18px; padding: 10px 12px; font-size: 11.5px; line-height: 1.55; color: var(--ink-2); box-shadow: var(--shadow-float); }
+  .v22x .chint b { display: flex; align-items: center; gap: 6px; color: var(--ink); font-size: 12px; }
+  .v22x .chint b { align-items: flex-start; }
+  .v22x .chint .chip { margin-left: auto; flex: none; }
+  .v22x .chint span.ex { display: block; margin-top: 3px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .composer.off { opacity: .55; }
+  .v22x .wchat { max-width: 860px; margin: 0 auto; display: grid; gap: 12px; }
+  .v22x .wchat .chint { position: static; box-shadow: none; border: 1px solid var(--line); }
+  .v22x .wq3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .v22x .wq3 .qb { padding: 0; border: 0; }
+  .v22x .wq3 .qb + .qb { border-top: 0; }
+  .v22x .pst { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; font-size: 12.5px; }
+  .v22x .pst + .pst { border-top: 1px solid var(--line); }
+  .v22x .pst .v2snum { width: 22px; height: 22px; font-size: 11px; }
+  .v22x .pst .lbl { display: block; line-height: 1.5; }
+  .v22x .pst .nw { background: var(--mac-lav); border-radius: 6px; padding: 0 4px; color: var(--ink); }
+  .v22x .e5 { display: grid; gap: 2px; }
+  .v22x .e5r { display: grid; grid-template-columns: 98px 1fr 48px; gap: 4px 8px; align-items: center; padding: 5px 8px; border-radius: 10px; font-size: 12px; }
+  .v22x .e5r .e5l { font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+  .v22x .e5r .e5b { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+  .v22x .e5r .e5b i { display: block; height: 100%; border-radius: 3px; background: var(--plum-700); }
+  .v22x .e5r > b { font-family: var(--font-num); font-weight: 800; text-align: right; white-space: nowrap; }
+  .v22x .e5r > b small { font-size: 10px; color: var(--ink-3); font-weight: 700; }
+  .v22x .e5r .e5f { grid-column: 1 / -1; font-size: 11px; color: var(--ink-3); line-height: 1.5; }
+  .v22x .e5r.hi { background: var(--accent-soft); }
+  .v22x .e5r.hi .e5f::before { content: "目標で変わる項目 · "; color: var(--plum-700); font-weight: 800; }
+  .v22x .e5r.dim { opacity: .62; }
+  .v22x .evx { margin: 0 0 10px 54px; padding: 8px; border-radius: 14px; background: var(--surface-2); }
+  .v22x .evx .e5r .e5b { background: var(--surface); }
+  .v22x .evtg { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; font-weight: 700; color: var(--ink-2); }
+  .v22x .evtg svg.i { width: 14px; height: 14px; }
+  .v22x .wtab td { vertical-align: top; }
+  .v22x .wtab .why-body { margin-top: 6px; }
+  .v22x .chat { grid-template-columns: minmax(0, 1fr); }
+  .v22x .chat.tall { padding-bottom: 190px; }
+  .v22x .fm { display: flex; gap: 4px; margin: 2px 0 2px; }
+  .v22x .fm span { flex: 1; min-width: 0; text-align: center; font-size: 10px; font-weight: 800; color: var(--ink-4); padding-top: 7px; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .fm span::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; border-radius: 2px; background: var(--surface-3); }
+  .v22x .fm span.done { color: var(--ink-3); } .v22x .fm span.done::before { background: var(--plum-300); }
+  .v22x .fm span.on { color: var(--ink); } .v22x .fm span.on::before { background: var(--plum-700); }
+  .v22x .bgi { padding: 10px 0; }
+  .v22x .bgi + .bgi { border-top: 1px solid var(--line); }
+  .v22x .bgh { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .v22x .bgh .lbl { font-weight: 800; color: var(--ink-2); flex: 1; min-width: 0; }
+  .v22x .bgh .lbtn { width: 28px; height: 28px; }
+  .v22x .bgh .lbtn svg.i { width: 14px; height: 14px; }
+  .v22x .bgv { font-size: 14px; font-weight: 800; line-height: 1.5; }
+  .v22x .seg.full { display: flex; } .v22x .seg.full button { flex: 1; }
+  .v22x .mem { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; }
+  .v22x .mem + .mem { border-top: 1px solid var(--line); }
+  .v22x .mem .mm { flex: 1; min-width: 0; }
+  .v22x .mem .mm b { font-size: 13px; }
+  .v22x .mem .chips { margin-top: 5px; gap: 4px; }
+  .v22x .gapc { display: inline-flex; align-items: center; gap: 3px; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1.5px dashed var(--rose-300); color: var(--rose-700); background: transparent; white-space: nowrap; }
+  .v22x .gapbox { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
+  .v22x .card.flat .gapbox { background: var(--surface); }
+  .v22x .gapbox .chips { margin-top: 6px; gap: 5px; }
+  .v22x .stair { display: grid; gap: 6px; margin-top: 4px; }
+  .v22x .str { display: flex; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 14px; background: var(--surface-2); border: 1.5px solid transparent; }
+  .v22x .str .lv { width: 24px; height: 24px; border-radius: 8px; background: var(--surface); display: grid; place-items: center; font-family: var(--font-num); font-weight: 900; font-size: 12px; color: var(--ink-2); flex: none; }
+  .v22x .str .stx { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; line-height: 1.45; }
+  .v22x .str .stx small { display: block; font-size: 10.5px; color: var(--ink-3); font-weight: 700; margin-top: 1px; }
+  .v22x .str.on { border-color: var(--plum-500); background: var(--accent-soft); }
+  .v22x .str.on .lv { background: var(--plum-700); color: var(--on-accent); }
+  .v22x .str .ckr { width: 20px; height: 20px; }
+  .v22x .str .tg { flex: none; }
+  .v22x .str:nth-child(1) { margin-right: 0; } .v22x .str:nth-child(2) { margin-right: 10px; } .v22x .str:nth-child(3) { margin-right: 20px; } .v22x .str:nth-child(4) { margin-right: 30px; }
+  .v22x .aisay { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--ink-2); }
+  .v22x .aisay .emo { flex: none; }
+  .v22x .aisay .why { margin-top: 1px; }
+  .v22x .bstack { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); } .v22x .bsec, .v22x .bsb { min-width: 0; }
+  .v22x .bsec { background: var(--surface); border-radius: 20px; padding: 12px 16px; }
+  .v22x .bsec.draft { background: transparent; border: 1.5px dashed var(--surface-3); padding: 10px 16px; }
+  .v22x .bsh { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .v22x .bsh b { font-size: 14px; flex: none; }
+  .v22x .bss { flex: 1; min-width: 0; font-size: 11.5px; color: var(--ink-3); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .bsh .chip { margin-left: auto; }
+  .v22x .bsh .lbtn { width: 28px; height: 28px; } .v22x .bsh .lbtn svg.i { width: 14px; height: 14px; }
+  .v22x .bsn { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-num); font-weight: 900; font-size: 11px; background: var(--surface-2); color: var(--ink-3); flex: none; }
+  .v22x .bsn svg.i { width: 12px; height: 12px; stroke-width: 2.6; }
+  .v22x .bsec.open .bsn { background: var(--plum-700); color: var(--on-accent); }
+  .v22x .bsec.done .bsn { background: var(--plum-300); color: var(--on-accent); }
+  .v22x .bsb { margin-top: 12px; }
+  .v22x .bsk { display: flex; align-items: center; gap: 10px; padding: 9px 0; } .v22x .bsk + .bsk { border-top: 1px solid var(--line); } .v22x .bsk b { font-size: 13px; width: 48px; }
+  .v22x .mem .chip { flex: none; align-self: center; }
+  .v22x .capm { display: grid; }
+  .v22x .caprow { display: flex; align-items: center; gap: 8px; padding: 6px 0; } .v22x .caprow + .caprow { border-top: 1px solid var(--line); }
+  .v22x .capn { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; }
+  .v22x .capa { display: flex; gap: 6px; }
+  .v22x .avt { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; font-weight: 800; border: 1.5px dashed var(--surface-3); color: var(--ink-4); }
+  .v22x .avt.on { border: 0; color: var(--ink); }
+  .v22x .caps { width: 34px; text-align: right; font-size: 11px; font-weight: 800; color: var(--ink-3); }
+  .v22x .caprow.gap .capn { color: var(--rose-700); } .v22x .caprow.gap .caps { color: var(--rose-700); }
+  .v22x .av.xs { width: 22px; height: 22px; font-size: 9.5px; }
+  .v22x .captab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .v22x .captab th { text-align: left; font-size: 11.5px; color: var(--ink-3); font-weight: 700; padding: 6px 8px; vertical-align: bottom; } .v22x .captab th .chip { display: inline-flex; width: auto; }
+  .v22x .captab td { padding: 7px 8px; border-top: 1px solid var(--line); }
+  .v22x .captab tr.gap td:first-child b { color: var(--rose-700); }
+  .v22x .known { display: grid; gap: 2px; }
+  .v22x .known > div { display: grid; grid-template-columns: 74px 1fr; gap: 8px; padding: 7px 0; font-size: 12px; line-height: 1.5; }
+  .v22x .known > div + div { border-top: 1px solid var(--line); }
+  .v22x .known .lbl { padding-top: 1px; }
+  .v22x .known b.nw2 { background: var(--mac-lav); border-radius: 6px; padding: 0 4px; }
+  .v22x .known .pending { color: var(--ink-4); }
+  .v22x .wq5 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 18px; margin-top: 12px; }
+  .v22x .wq5 .qb { padding: 0; border: 0; min-width: 0; }
+  .v22x .wq5 .qb + .qb { border-top: 0; }
+  .v22x .prem { display: grid; grid-template-columns: 84px 1fr auto; gap: 8px; padding: 8px 0; font-size: 12.5px; line-height: 1.55; align-items: start; }
+  .v22x .prem + .prem { border-top: 1px solid var(--line); }
+  .v22x .prem .psrc { font-size: 10px; font-weight: 800; color: var(--ink-3); background: var(--surface-2); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+  .v22x .card.flat .prem .psrc { background: var(--surface); }
+  .v22x .premc { display: flex; gap: 6px; flex-wrap: wrap; }
+  .v22x .revbar { position: absolute; left: 12px; right: 12px; bottom: 92px; z-index: 30; background: var(--surface); border-radius: 20px; padding: 10px 12px; display: flex; gap: 12px; align-items: center; box-shadow: var(--shadow-float); }
+  .v22x .revbar .rvn { flex: none; text-align: center; padding: 4px 10px; border-radius: 14px; background: var(--accent-soft); }
+  .v22x .revbar .rvn small { display: block; font-size: 9.5px; font-weight: 800; color: var(--plum-700); }
+  .v22x .revbar .rvn b { font-size: 12px; white-space: nowrap; }
+  .v22x .revbar .rvn em { font-style: normal; font-family: var(--font-num); font-size: 22px; font-weight: 900; }
+  .v22x .revbar .rvt { flex: 1; min-width: 0; font-size: 11.5px; font-weight: 700; line-height: 1.5; color: var(--ink); }
+  .v22x .revbar .rvt .ex { display: block; font-weight: 600; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .v22x .revbar.zero .rvn { background: var(--surface-2); }
+  .v22x .revbar.zero .rvn small { color: var(--ink-3); }
+  .v22x .revbar.stat { position: static; box-shadow: none; border: 1px solid var(--line); }
+  .v22x .revbig { display: flex; align-items: baseline; gap: 6px; }
+  .v22x .revbig em { font-style: normal; font-family: var(--font-num); font-size: 44px; font-weight: 900; line-height: 1; }
+  .v22x .dots3 { display: flex; gap: 5px; margin-top: 8px; }
+  .v22x .dots3 i { flex: 1; height: 6px; border-radius: 3px; background: var(--plum-700); }
+  .v22x .dots3 i.used { background: var(--surface-3); }
+  .v22x .fsec { margin-top: 12px; }
+  .v22x .fsec > .lbl { display: block; font-weight: 800; margin-bottom: 4px; }
+  .v22x .trow { display: flex; gap: 8px; align-items: center; padding: 7px 0; font-size: 12.5px; }
+  .v22x .trow + .trow { border-top: 1px solid var(--line); }
+  .v22x .trow .tm { flex: 1; min-width: 0; }
+  .v22x .trow .tm b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+  .v22x .trow .tm .lbl { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .trow .pt { font-family: var(--font-num); font-weight: 800; font-size: 15px; flex: none; white-space: nowrap; }
+  .v22x .trow .pt small { font-size: 10.5px; color: var(--ink-3); }
+  .v22x .acc-h { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
+  .v22x .acc-h b { flex: 1; min-width: 0; font-size: 12.5px; }
+  .v22x .acc-h .chev { color: var(--ink-3); display: grid; }
+  .v22x .acc-b .libl { padding: 4px 2px 0; }
+  .v22x .lib { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; font-size: 12px; line-height: 1.55; }
+  .v22x .lib + .lib { border-top: 1px solid var(--line); }
+  .v22x .lib .ln { width: 20px; height: 20px; border-radius: 50%; background: var(--accent-soft); color: var(--plum-700); display: grid; place-items: center; font-weight: 900; font-size: 10.5px; flex: none; font-family: var(--font-num); margin-top: 1px; }
+  .v22x .lib .lm { flex: 1; min-width: 0; }
+  .v22x .lib .lm b { display: block; font-size: 12.5px; }
+  .v22x .lib .meta3 { display: flex; flex-wrap: nowrap; gap: 4px; margin-top: 5px; min-width: 0; }
+  .v22x .lib .meta3 span:last-child { flex: 0 1 auto; min-width: 0; }
+  .v22x .lib .meta3 span:not(:last-child) { flex: none; }
+  .v22x .lib .meta3 span { font-size: 10px; font-weight: 700; color: var(--ink-3); background: var(--surface-2); border-radius: 6px; padding: 1px 6px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .v22x .card.flat .lib .meta3 span, .v22x .acc-b .lib .meta3 span { background: var(--surface-2); }
+  .v22x .fact { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 11px; color: var(--ink-3); line-height: 1.5; }
+  .v22x .lock { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); font-size: 11.5px; line-height: 1.55; color: var(--ink-2); }
+  .v22x .lock svg.i { width: 15px; height: 15px; flex: none; margin-top: 1px; color: var(--plum-700); }
+  .v22x .card.flat .lock { background: var(--surface); }
+  .v22x .chgl { display: grid; gap: 6px; }
+  .v22x .chgl > div { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; line-height: 1.5; padding: 8px 10px; border-radius: 12px; background: var(--surface); }
+  .v22x .chgl .chgtag { grid-row: auto; flex: none; }
+  .v22x .prem.flag { background: color-mix(in srgb, var(--mac-apricot) 60%, transparent); border-radius: 12px; padding: 8px 8px; margin: 2px -8px; }
+  .v22x .prem.flag + .prem, .v22x .prem + .prem.flag { border-top-color: transparent; }
+  .v22x .pflag { display: flex; width: fit-content; align-items: center; gap: 4px; margin-top: 4px; font-size: 10.5px; font-weight: 800; color: var(--mac-apricot-ink); background: var(--surface); border-radius: 6px; padding: 1px 6px; }
+  .v22x .pflag svg.i { width: 11px; height: 11px; }
+  .v22x .pedit { display: flex; align-items: center; min-height: 30px; border-radius: 10px; border: 1.5px solid var(--plum-500); background: var(--surface); padding: 0 8px; font-weight: 700; }
+  .v22x .pold { color: var(--ink-4); }
+  .v22x .pnew { background: var(--mac-lav); border-radius: 6px; padding: 0 4px; }
+  .v22x .rvq { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); font-size: 11.5px; line-height: 1.55; color: var(--ink-2); }
+  .v22x .rvq svg.i { width: 15px; height: 15px; flex: none; margin-top: 1px; color: var(--plum-700); }
+  /* ===== V22X-FLOW END ===== */
 </style>
 </head>
 <body>
@@ -227,7 +515,7 @@
     <div>
       <div class="doc-kicker">Orbit Redesign · 2026-10 · 批次 ④ · App 390×844 + Web 1440</div>
       <h1>④ プラン長期運用 + iOrbit</h1>
-      <p>计划 v2 的长期使用（2026-10-07 起，原 ⑨ B3–B5 已并入本页；方案生成在 ①，プラン主页在 App / Web）：A1 记录与加分（面谈记录 / 自报 / 超目标半分）、A2 人物类型详情（三种去向 + 面談を提案 + 跳过）、A3 按需「方案を見直す」、A4 「作り直す」配额与付费、A5 达成与下一目标、A6 目标切换与编辑。没有周次、期限与达成度 %：满分 100 不封顶，实色 = 聊出来的分，斜纹 = 习熟跳过。iOrbit：空对话起始屏、历史抽屉、@ 选择器、语音、执行反馈、流式生成与依据、页面上下文开关。粉色编号为交互标注。</p>
+      <p>计划 v2 的长期使用（2026-10-07 起，原 ⑨ B3–B5 已并入本页；方案生成在 ①，プラン主页在 App / Web）：A1 记录与加分（面谈记录 / 自报 / 超目标半分）、A2 人物类型详情（三种去向 + 面談を提案 + 跳过）、A3 按需「方案を見直す」（v2.2：iOrbit 对话 → 確定した前提（AI 预标）→ 修正差分 → 手動編集 1 回）、A4 「作り直す」配额与付费、A5 达成与下一目标、A6 目标切换与编辑。没有周次、期限与达成度 %：满分 100 不封顶，实色 = 聊出来的分，斜纹 = 习熟跳过。iOrbit：空对话起始屏、历史抽屉、@ 选择器、语音、执行反馈、流式生成与依据、页面上下文开关。粉色编号为交互标注。</p>
     </div>
     <div class="doc-tools">
       <div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div>
@@ -246,13 +534,14 @@ const HV3 = (() => {
 /* ===== プラン v2 口径（2026-10-07）：数据与计分与 b9-import-plan-v2.html 相同（满点 100 · 不封顶 · 跳过=满额斜纹 · 超目标半分）===== */
 const V2 = (() => {
   const PER = {
-    cfo: { n: 'CFO 経験者', s: 'CFO', emo: '📊', c: 'teal', w: 10, tgt: 1, unit: 10, step: 1, cand: 1 },
-    ent: { n: '調達経験のある起業家', s: '起業家', emo: '🚀', c: 'apricot', w: 15, tgt: 5, unit: 3, step: 2, cand: 2 },
-    ang: { n: 'エンジェル投資家', s: 'エンジェル', emo: '🪽', c: 'pink', w: 10, tgt: 2, unit: 5, step: 2, cand: 1 },
-    vc: { n: 'VC パートナー', s: 'VC', emo: '💼', c: 'lav', w: 30, tgt: 3, unit: 10, step: 3, cand: 4 },
-    cvc: { n: 'CVC 担当者', s: 'CVC', emo: '🏢', c: 'blue', w: 15, tgt: 3, unit: 5, step: 3, cand: 0 },
-    law: { n: '弁護士（投資契約）', s: '弁護士', emo: '⚖️', c: 'teal', w: 10, tgt: 1, unit: 10, step: 4, cand: 1 },
-    ev: { n: 'イベント', s: 'イベント', emo: '🎟️', c: 'apricot', w: 10, tgt: 2, unit: 5, step: 0, cand: 3, ev: true },
+    /* v2.2：n = 「役割 × 状況」一文 · s = 固定短名 · slot = テンプレート枠（💰 資金調達）· evn = 会える活動 · route = 紹介ルート */
+    cfo: { n: 'シリーズA 前後の調達を、CFO として回した経験者', s: 'CFO', slot: 'CFO 経験者', emo: '📊', c: 'teal', w: 10, tgt: 1, unit: 10, step: 1, cand: 1, evn: 1, route: 1 },
+    ent: { n: 'この 3年以内にシリーズA を調達した、B2B SaaS の起業家', s: '起業家', slot: '調達経験のある起業家', emo: '🚀', c: 'apricot', w: 15, tgt: 5, unit: 3, step: 2, cand: 2, evn: 2, route: 1 },
+    ang: { n: 'SaaS を創業した経験があり、シード〜A に個人で出資しているエンジェル', s: 'エンジェル', slot: 'エンジェル投資家', emo: '🪽', c: 'pink', w: 10, tgt: 2, unit: 5, step: 2, cand: 1, evn: 1, route: 2 },
+    vc: { n: 'シリーズA のリードを取れる VC のパートナー', s: 'VC', slot: 'VC パートナー', emo: '💼', c: 'lav', w: 30, tgt: 3, unit: 10, step: 3, cand: 4, evn: 2, route: 1 },
+    cvc: { n: '製造業 DX に出資している、事業会社 CVC の投資担当', s: 'CVC', slot: 'CVC 担当者', emo: '🏢', c: 'blue', w: 15, tgt: 3, unit: 5, step: 3, cand: 0, evn: 1, route: 1 },
+    law: { n: 'シリーズA の投資契約・種類株式の交渉に立ち会える弁護士', s: '弁護士', slot: '弁護士（投資契約）', emo: '⚖️', c: 'teal', w: 10, tgt: 1, unit: 10, step: 4, cand: 1, evn: 0, route: 1 },
+    ev: { n: 'VC と起業家が集まる場へ行く', s: 'イベント', slot: 'イベント', emo: '🎟️', c: 'apricot', w: 10, tgt: 2, unit: 5, step: 0, cand: 3, evn: 3, ev: true },
   };
   const ORDER = ['cfo', 'ent', 'ang', 'vc', 'cvc', 'law', 'ev'];
   const ST = {
@@ -309,7 +598,66 @@ const V2 = (() => {
     const L = P[P.length - 1];
     return `<svg class="v2spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path class="ar" d="${d} L${w} ${h} L0 ${h} Z"/><path class="ln" d="${d}"/><circle class="pt" cx="${L[0]}" cy="${L[1]}" r="3.2"/></svg>`;
   };
-  return { PER, ORDER, ST, STEPS, pts, total, bonusOf, skipOf, talkOf, fmt, sbar, legend, mbar, pchips, prow, stepBlock, evBlock, TODAY, avs, spark };
+  /* ===== v2.2 呈现（2026-10-08，画法同 b10-plan-example.html；分数・类型集合・配点・ST 不变）===== */
+  const GOAL = { t: 'シリーズA 資金調達（3億円）', kind: '💰 資金調達' };
+  const KETSU = '先に CFO 経験者と数字を固め、同じ規模を調達した先輩の紹介で VC 3社に並行で当たる。CVC は条件の選択肢として後から足す。';
+  const KETSU_WHY = '根拠：確定した前提 6件（ラウンド シリーズA · 3億円 · ARR 8,000万円 · 既存株主 エンジェル 2名 · 締切 2027年3月 · 週 15時間）· 業界の現状 3件（L-101 国内シリーズA の調達額 · L-104 リードと条件 · L-117 CVC の出資方針）· AI 修正 1回';
+  /* Step：完了の目安（数えられる状態）· 人物类型 chip（イベント枠は Step 2・3 で会える） */
+  const MEY = {
+    1: 'ピッチ資料と 3年の事業計画ができ、CFO 経験者 1人に数字を見てもらう',
+    2: '同じ規模を調達した先輩から、VC の候補と紹介を 2件もらう',
+    3: 'リード候補 3社と 1回目の面談を終え、1社が DD に進む',
+    4: '投資契約の主要条項（優先清算・希薄化防止）を、署名前に弁護士と確認する',
+    5: '着金と登記が終わる',
+  };
+  const SEV = { 2: 1, 3: 1 };
+  const chipsOf = n => { const st = STEPS.find(x => x[0] === n); return st[3].concat(SEV[n] ? ['ev'] : []); };
+  const stepsOf = k => STEPS.filter(st => chipsOf(st[0]).includes(k)).map(st => st[0]);
+  const STAT = { s46: { 1: ['CFO 0 / 1人', ''], 2: ['紹介 2件', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] } };
+  const tchip = (k, cls = '') => { const p = PER[k]; return `<span class="chip ${p.ev ? '' : p.c} ${cls}">${p.emo} ${p.s}</span>`; };
+  const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
+    return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
+      <div class="v22mey ${o.mcls || ''}">${ic('flag', 'sm')}<div class="mt"><small>完了の目安</small>${MEY[n]}</div>${S ? `<span class="chip ${S[1]}">${S[0]}</span>` : ''}</div>
+      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">高橋 美咲さん（青葉ベンチャーズ）とは、DD に進みましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
+      ${ch.length ? `<div class="chips">${ch.map(k => tchip(k)).join('')}</div>` : '<div class="lbl" style="margin-top:8px">新しく会う人はいません · Step 3・4 の相手と着地させます</div>'}</div>`; };
+  /* 人物タイプ卡：上 = 短名 · Step，名称 = 「役割 × 状況」一句（不截断），三格 = 人脈の候補 / 会える活動 / 紹介ルート */
+  const tcard = (k, s, o = {}) => { const p = PER[k], r = pts(k, ST[s][k]);
+    const m3 = `<div class="${p.cand ? '' : 'z'}"><b>${p.cand}<small>人</small></b><span>${p.cand ? '人脈の候補' : '人脈にいない'}</span></div><div class="${p.evn ? '' : 'z'}"><b>${p.evn}</b><span>会える活動</span></div><div class="${p.route ? '' : 'z'}"><b>${p.route}</b><span>紹介ルート</span></div>`;
+    return `<div class="v22tc ${o.cls || ''}"><div class="row" style="gap:10px;align-items:flex-start"><span class="emo sm ${p.c}">${p.emo}</span><div style="flex:1;min-width:0"><div class="v22tk">${p.s} · Step ${stepsOf(k).join('・')}</div><b class="v22tn">${p.n}</b></div><div class="v2pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></div></div>
+      <div class="v22m3">${m3}</div>
+      <div class="v22tf"><span class="lbl">${r.skip ? '習熟済み · スキップ（満額）' : `${r.n} / ${p.tgt}人 · 1人 ${p.unit}点`}</span>${mbar(k, s)}</div></div>`; };
+  /* イベント：人物タイプと分けて 1ブロック（おすすめ = 固定 5項目スコア順） */
+  const EVREC = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 'VC 約5名 · 起業家 約12名'], ['CFO Night Tokyo vol.18', '今夜 19:00 · 渋谷ストリーム', 74, 'VC 2名 · CFO 約10名'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 'CVC 約3名']];
+  const evRing = sc => ring(42, 5, [{ v: sc, c: sc >= 70 ? 'var(--plum-700)' : sc >= 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:12px">${sc}</span>`);
+  const evRow = ([n, d, sc, m]) => `<div class="v22ev">${evRing(sc)}<div class="meta"><b>${n}</b><div class="lbl">${d}</div><span class="chip lav" style="margin-top:4px">${m}</span></div></div>`;
+  const evCard22 = (s, o = {}) => { const p = PER.ev, r = pts('ev', ST[s].ev);
+    return `<div class="card ${o.cls || ''}"><div class="card-h" style="margin-bottom:2px"><h3><span class="emo sm apricot" style="vertical-align:-6px;margin-right:6px">🎟️</span>イベント</h3><div class="v2pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></div></div>
+      <div class="lbl">${p.n} · 参加 1回 +${p.unit} · ${p.tgt}回まで満額、以降は半分 · ${r.n} / ${p.tgt}回</div>${mbar('ev', s)}
+      <div class="${o.grid ? 'v22evg' : ''}">${(o.n ? EVREC.slice(0, o.n) : EVREC).map(evRow).join('')}</div></div>`; };
+  /* 確定した方案（見立て / 結論 一文）+ 统一按钮组：前提を見る · 方案を見直す（AI · 月3回）· 手動で編集 · 目標を達成した */
+  const ACTS = [['layers', '前提を見る', 'k-prem'], ['refresh', '方案を見直す', 'k-revise', 'AI · 月3回'], ['edit', '手動で編集', 'k-manual'], ['flag', '目標を達成した', 'k-achieve']];
+  const acts = (o = {}) => ACTS.map(([i, t, k, q]) => `<button class="btn ${o.sm ? 'sm' : ''} ${(o.pre || '') + k}">${ic(i, 'sm')}${t}${q ? `<span class="v22q">${q}</span>` : ''}</button>`).join('');
+  const diag22 = (s, o = {}) => `<div class="card ${o.cls || ''}" data-why-box><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><b style="font-size:13px;flex:1">確定した方案</b><span class="chip">${s === 's46' ? '手動編集済み' : '今日確定'}</span><span class="why">?</span></div>
+    <div style="font-size:13.5px;font-weight:700;line-height:1.6;margin-top:8px">${KETSU}</div>
+    <div class="why-body" hidden>${KETSU_WHY}${s === 's46' ? ' · 手動編集 1回（9/14）' : ''}</div>
+    ${o.acts ? `<div class="v22acts">${acts({ sm: false })}</div><div class="lbl" style="margin-top:8px">見直しは AI · 月 3回（あと ${s === 's46' ? 2 : 3}回）· 見直すたびに手動編集 1回</div>` : ''}
+    <div class="v2go">iOrbit の会話を見る${ic('right', 'sm')}</div></div>`;
+  /* 人物タイプ詳細（VC · 人脈にいる）：字段同 b10 ⑦ —— 役割×状況 一文 · なぜ · 聞くこと 3問 · 話せたの判定 · 見分け方 · 候補 · 紹介ルート · 会える活動 */
+  const TDVC = {
+    why: 'シリーズA では、リード投資家が評価額と金額を決め、ほかの投資家はその条件に乗ります。3億円の 1/3〜1/2 を出せる VC のパートナーと並行で話すと、条件を比べられ、締切（2027年3月）にも間に合います。',
+    whyb: '根拠：確定した前提（シリーズA · 3億円 · 製造業向け SaaS · 締切 2027年3月）· 業界の現状 L-104（リードが条件を決める慣行）· テンプレート枠「VC パートナー」配点 30',
+    q: ['いまのファンドで、シリーズA のリードを取る条件（ARR・成長率）は？', '製造業向け SaaS で、最近検討した案件・見送った案件の理由は？', 'リードを取るとき、一緒に入ることが多い投資家はどこですか？'],
+    sig: [['役職', ['パートナー', 'GP', '代表パートナー']], ['ファンド', ['直近 30億円以上', 'A のリード実績']], ['領域', ['B2B SaaS', '製造業 DX']], ['イベント', ['「投資家」タグ', 'ピッチ審査員']]],
+  };
+  const VCAND = [
+    { n: '高橋 美咲', i: '高', c: 'c2', co: '青葉ベンチャーズ', role: 'パートナー', sc: 91, on: 1, w: 'SaaS のシリーズA でリード 6件。前回「ARR 1億円が見えたら、また」と言われている', op: '「ARR 1億円の見込み」の報告＋リードの条件を聞く', last: '最終接点 2日前', why: '名刺「パートナー」· SaaS 領域に年 8社出資（公開情報）· 面談メモ 2件（9/30 · 10/5）' },
+    { n: '森 恭平', i: '森', c: 'c1', co: '東雲キャピタル', role: 'プリンシパル', sc: 78, on: 1, w: '製造業 DX に絞った新ファンド（1号 50億円）の担当。パートナーにつなぐ役', op: '「製造業向け SaaS のシリーズA」として 15分の紹介を', last: '2024年3月に LinkedIn でつながる', why: 'LinkedIn「プリンシパル」· ファンドの投資方針「製造業 DX」（公開情報）· 共通のつながり 3名' },
+    { n: '山本 彩', i: '山', c: 'c4', co: '東都キャピタル', role: 'シニアアソシエイト', sc: 64, on: 0, w: 'パートナーではないが、社内で案件を上げられる。前回、資料の再送を頼まれたまま', op: '資料の再送＋直近の数字を一言', last: '最終接点 24日前', why: '名刺「シニアアソシエイト」· 面談メモ 1件（9/13）· 未対応の依頼 1件' },
+    { n: '佐々木 遼', i: '佐', c: 'c3', co: '湾岸グロース・パートナーズ', role: 'パートナー', sc: 58, on: 0, orbit: 1, w: 'シード中心で、A はフォローで入る方針。リード候補の紹介役として', op: '9/18 の名刺交換のお礼＋リードを取りそうな VC を聞く', last: '9/18 名刺交換', why: '名刺「パートナー」· 投資実績 シード 80%（公開情報）· Orbit ユーザー' },
+  ];
+  const judgeVC = () => [['3問のうち 2つ以上を聞けた面談メモがある', '+' + PER.vc.unit], [`${PER.vc.tgt}人目を超えた分は半分ずつ、上限なし`, '+' + PER.vc.unit / 2], [`名前なしの自己申告は、目標の ${PER.vc.tgt}人まで`, '+' + PER.vc.unit]];
+  return { PER, ORDER, ST, STEPS, pts, total, bonusOf, skipOf, talkOf, fmt, sbar, legend, mbar, pchips, prow, stepBlock, evBlock, TODAY, avs, spark,
+    GOAL, KETSU, KETSU_WHY, MEY, STAT, chipsOf, stepsOf, tchip, step22, tcard, EVREC, evRing, evRow, evCard22, ACTS, acts, diag22, TDVC, VCAND, judgeVC };
 })();
 /* V2KIT-JS-END */
 /* HOME-V3-JS-BEGIN */
@@ -537,27 +885,55 @@ function events(s) {
       <div class="list">${(many ? E : E.slice(0, 2)).map(e => `<div class="li">${ring(44, 5, [{ v: e.score, c: e.score > 70 ? 'var(--plum-700)' : e.score > 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span class="score" style="font-size:12px">${e.score}</span>`)}<div class="meta"><b>${e.n}</b><span>${e.d} · ${e.fee}</span></div><span class="chip ${vchip(e)}">${e.v}</span></div>`).join('')}</div></div>`;
 }
 
-/* ============ プラン（⑨ B2 计划主页同款；many 用首页同一口径 s46 · few = 刚生成 s0） ============ */
-function plan(s) {
+/* ============ プラン v2.2（2026-10-08：画法同 b10 ① 目標入力 / ⑦ プラン概要 / ⑧ 人物タイプ詳細；many = 首页同口径 s46 · few = 刚确定 s0） ============ */
+const KINDS = [['💰', '資金調達'], ['🚀', '上市・収益化'], ['🤝', '新規開拓'], ['🧑‍💼', '採用'], ['🔗', '事業提携'], ['🧭', 'キャリア']];
+const kindChips = (on = 0) => KINDS.map(([e, t], k) => `<span class="fopt ${k === on ? 'on' : ''}">${e} ${t}</span>`).join('');
+const FLOW5 = [['背景の確認', 'わたし · チーム · 目的を AI がまとめて下書き → 順に確認'], ['質問 5つまで', '背景でわからないことだけ、一度に聞きます'], ['AI の初版', 'ステップ · 話すべき人のタイプ · 業界の現状'], ['AI 修正 3回まで', '変更点だけを表示 · 変更なしも 1回'], ['手動編集 1回', '名前 · 順番 · 人数と配点（合計 100）']];
+function plan(s, sc) {
+  const V = V2, mk = k => sc === k ? '<i class="scrollto" data-off="12"></i>' : '';
   if (s === 'empty') return topbar('プラン', '目標を決めると、話すべき人が見えます', meBtn, iorbitBtn) + `
-    <div class="guide rise k-pempty"><div style="font-size:19px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 14px">目標から、ステップごとに「誰と話すとよいか」を分析します。</div>
-      <div class="input" style="background:var(--surface-2)">${ic('pen', 'sm')}例：シリーズA で 3億円を調達</div>
-      <button class="btn primary block" style="margin-top:12px;height:50px">${ic('sparkle', 'sm')}分析する</button></div>
-    <div class="row" style="gap:8px;margin-top:12px">${[['💰', 'pink', '資金調達'], ['🤝', 'blue', '新規開拓'], ['🧑‍💼', 'teal', '採用']].map(([e, c, t]) => `<div class="mac ${c} row" style="flex:1;gap:6px;padding:10px"><span style="font-size:18px">${e}</span><b style="font-size:12px">${t}</b></div>`).join('')}</div>
-    <div class="card" style="margin-top:14px"><div class="card-h"><h3>プランはこう見えます <span class="sample-tag">サンプル</span></h3></div>
-      <div class="faded"><div class="lbl">スコア</div><div class="big">46</div>${V2.sbar('s46')}${V2.prow('vc', 's46')}${V2.prow('law', 's46')}</div>
-      <div class="lbl" style="margin-top:8px;line-height:1.6">話した人のタイプに応じて点が入ります。満点 100、上限はありません。</div></div>`;
-  const few = s === 'few', S = few ? 's0' : 's46', T = V2.TODAY[S];
-  return topbar('プラン', `<span class="gsw k-gsw" style="display:inline-flex;align-items:center;gap:2px">シリーズA 資金調達（3億円）${ic('down', 'sm').replace('class="i sm"', 'class="i sm" style="width:13px;height:13px"')}</span>`, meBtn, iorbitBtn) + `
-    <div class="card rise k-hero"><div class="row between" style="align-items:flex-start"><div><div class="lbl">スコア</div><div class="big" style="font-size:52px">${num(V2.total(S))}</div><div class="lbl">満点 100 · 上限なし</div></div>
-      ${few ? '<span class="chip lav">今日つくったプラン</span>' : `<div style="text-align:right"><span class="chip lav">あと ${100 - V2.total(S)} で満点</span><div class="lbl" style="margin-top:6px">話して ${V2.talkOf(S)} · スキップ ${V2.skipOf(S)}</div></div>`}</div>
-      ${V2.sbar(S, { cls: 'k-sbar' })}${V2.legend(false, 'k-legend')}</div>
+    <div class="guide rise k-pempty"><div style="font-size:19px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 12px">うまく言葉にならなくても大丈夫。iOrbit が、あなたとチームのことを確認しながら具体的にします。</div>
+      <div class="v22fld k-gin"><div class="in"><span>シリーズA で 3億円を調達したい<i class="v22caret"></i></span></div></div>
+      <div class="row k-gkind" style="gap:6px;margin-top:10px;flex-wrap:wrap">${kindChips(0)}</div>
+      <button class="btn primary block k-gnext" style="margin-top:14px;height:50px">${ic('sparkle', 'sm')}iOrbit と具体化する</button>
+      <div class="lbl k-gsteps" style="margin-top:8px;line-height:1.6;text-align:center">背景の確認 → 質問 5つまで → AI の初版<br>→ AI 修正 3回まで → 手動編集 1回</div></div>
+    <div class="card k-gsample" style="margin-top:14px"><div class="card-h"><h3>人物タイプは、こう具体的になります <span class="sample-tag">サンプル</span></h3></div>
+      <div class="faded">${V.tcard('vc', 's0')}</div>
+      <div class="lbl" style="margin-top:8px;line-height:1.6">肩書きではなく「どんな役割で、どんな状況にいる人か」で示します。話した人のタイプで加点 · 満点 100 · 上限なし。</div></div>`;
+  const few = s === 'few', S = few ? 's0' : 's46', T = V.TODAY[S], tt = V.total(S);
+  return topbar('プラン', `<span class="gsw k-gsw" style="display:inline-flex;align-items:center;gap:2px">${V.GOAL.t}${ic('down', 'sm').replace('class="i sm"', 'class="i sm" style="width:13px;height:13px"')}</span>`, meBtn, iorbitBtn) + `
+    <div class="card rise k-hero"><div class="row between" style="align-items:flex-start"><div><div class="lbl">スコア</div><div class="big" style="font-size:52px">${num(tt)}</div><div class="lbl">満点 100 · 上限なし</div></div>
+      ${few ? '<span class="chip lav">今日つくったプラン</span>' : `<div style="text-align:right"><span class="chip lav">あと ${100 - tt} で満点</span><div class="lbl" style="margin-top:6px">話して ${V.talkOf(S)} · スキップ ${V.skipOf(S)}</div></div>`}</div>
+      ${V.sbar(S, { cls: 'k-sbar' })}${V.legend(false, 'k-legend')}</div>
+    ${V.diag22(S, { cls: 'k-diag', acts: true })}
     <div class="card k-today" data-why-box style="background:linear-gradient(135deg,var(--mac-lav),var(--surface) 70%)"><div class="row" style="gap:8px;margin-bottom:6px"><span class="emo sm lav">✨</span><b style="font-size:13px">今日 +${T.plus} のチャンス</b><span class="why" style="margin-left:auto">?</span></div>
       <div style="font-size:14.5px;font-weight:700;line-height:1.55">${few ? '伊藤 直子さん（ハルモニア CFO）に、事業計画の壁打ちを提案してみましょう。' : '今夜の CFO Night Tokyo に VC パートナーが 2人来ます。1人と話せば +10。'}</div>
       <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm primary">${T.btn}</button><span class="chip" style="margin-left:auto">${T.tag}</span></div><div class="why-body" hidden>${T.why}</div></div>
-    <div class="card k-steplist"><div class="card-h"><h3>話すべき人</h3><span class="more">${few ? '候補を見る' : 'ステップ順'}${ic('right', 'sm')}</span></div>
-      ${(few ? ['cfo', 'ent', 'ang', 'vc', 'cvc', 'law'] : ['vc', 'cvc', 'ent', 'law', 'cfo', 'ang']).map((k, i) => V2.prow(k, S, i === (few ? 4 : 1) ? 'k-prowx' : '')).join('')}${V2.prow('ev', S)}</div>
-    <div class="grid2" style="margin-top:14px"><button class="btn k-revise">${ic('refresh', 'sm')}方案を見直す</button><button class="btn k-achieve">${ic('flag', 'sm')}目標を達成した</button></div>`;
+    ${mk('steps')}<div class="card k-steps"><div class="card-h"><h3>ステップ</h3><span class="lbl">順番は目安 · 期限なし</span></div>${V.STEPS.map((st, i) => V.step22(st, S, { short: true, mcls: i === 0 ? 'k-mey1' : '', okcls: 'k-stepok' })).join('')}</div>
+    ${mk('types')}<div class="card k-types" data-why-box><div class="card-h" style="margin-bottom:4px"><h3>話すべき人のタイプ</h3><span class="why k-tplwhy">?</span></div><div class="lbl" style="margin-bottom:10px">役割 × 状況 · 「資金調達」テンプレートのまま</div><div class="why-body" hidden style="margin:0 0 10px">根拠：「💰 資金調達」テンプレートの既定（CFO 経験者 10 / 調達経験のある起業家 15 / エンジェル投資家 10 / VC パートナー 30 / CVC 担当者 15 / 弁護士（投資契約）10 / イベント 10）。前提が既定と合っていたので、AI は配点を調整していません</div>
+      ${V.ORDER.filter(k => k !== 'ev').map(k => V.tcard(k, S, { cls: 'k-tc-' + k })).join('')}</div>
+    ${V.evCard22(S, { cls: 'k-evs' })}`;
+}
+/* 人物タイプ詳細（VC · 人脈にいる）：概要の人物タイプ卡をタップ → ここ。part 1 = 上 · part 2 = スクロール後 */
+const vcHero = (cls = '') => { const V = V2, p = V.PER.vc; return `<div class="card rise ${cls}"><div class="row" style="gap:12px;align-items:flex-start"><span class="emo ${p.c}">${p.emo}</span><div style="flex:1;min-width:0"><div class="v22tk">${p.s} · Step ${V.stepsOf('vc').join('・')} · 配点 ${p.w}</div><b class="v22tn lg">${p.n}</b></div></div>
+  <div class="row" style="gap:10px;margin-top:12px;align-items:baseline"><span class="mid">0</span><span class="lbl">/ ${p.w}点 · 0 / ${p.tgt}人 · 1人 ${p.unit}点</span><span class="chip lav" style="margin-left:auto">人脈に ${p.cand}人</span></div>${V.mbar('vc', 's0')}
+  <div class="v22m3"><div><b>${p.cand}<small>人</small></b><span>人脈の候補</span></div><div><b>${p.evn}</b><span>会える活動</span></div><div><b>${p.route}</b><span>紹介ルート</span></div></div></div>`; };
+const vcCand = (p, k) => `<div data-why-box class="k-vcc${k}"><div class="v22cand"><span class="cbx ${p.on ? 'on' : ''}">${ic('check')}</span><div class="av sm ${p.c}">${p.i}</div><div class="meta"><b>${p.n}${p.orbit ? ' <span class="chip teal" style="vertical-align:1px">Orbit</span>' : ''}</b><div class="sub2">${p.co} · ${p.role}</div></div><div class="v22rec"><b>${p.sc}</b><span>推薦度</span></div><span class="why">?</span></div>
+  <div class="v22cdet"><div>${p.w}</div><div class="op">💬<span>切り出し方：<b>「${p.op}」</b><span class="lbl"> · ${p.last}</span></span></div></div><div class="why-body" hidden style="margin:0 0 10px 64px">根拠：${p.why}</div></div>`;
+const vcWhy = (cls = '') => `<div class="card ${cls}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><b style="font-size:13.5px;flex:1">なぜこの人か</b><span class="why">?</span></div><div style="font-size:12.5px;line-height:1.7;margin-top:6px;color:var(--ink-2)">${V2.TDVC.why}</div><div class="why-body" hidden>${V2.TDVC.whyb}</div></div>`;
+const vcQ = (cls = '') => `<div class="card ${cls}" style="padding:12px 16px"><div class="row between" style="margin:2px 0 2px"><b style="font-size:13.5px">聞くこと</b><button class="btn sm ghost" style="height:28px"><span class="lic i-copy sm"></span>コピー</button></div>${V2.TDVC.q.map((q, i) => `<div class="v22qn"><span class="n">${i + 1}</span><span>${q}</span></div>`).join('')}</div>`;
+const vcJudge = (cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">話せたの判定</b><div class="lbl" style="margin:2px 0 10px">面談メモ（または自己申告）から判定 · 同じ人は同じタイプで 1回だけ</div>${V2.judgeVC().map(([t, p], i) => `<div class="v22rule">${ic(i === 0 ? 'check' : i === 1 ? 'plus' : 'user', 'sm')}<span>${t}</span><b class="pt">${p}</b></div>`).join('')}</div>`;
+const vcSig = (cls = '') => `<div class="card ${cls}" style="padding:12px 16px"><b style="font-size:13.5px">見分け方</b><div class="lbl" style="margin:2px 0 4px">名刺・LinkedIn・イベントのタグで、この信号がある人</div>${V2.TDVC.sig.map(([a, v]) => `<div class="v22sig"><span class="lbl">${a}</span><div class="chips">${v.map(x => `<span class="chip">${x}</span>`).join('')}</div></div>`).join('')}</div>`;
+const vcRoute = (cls = '') => { const I = C.find(c => c.n === '伊藤 直子') || C[2]; return `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">紹介ルート</b><div class="lbl" style="margin:2px 0 10px">面識・共通のつながりから推定</div>
+  <div class="v22route"><div class="av sm ${I.c}">${I.i}</div><span class="arr">${ic('right', 'sm')}</span><div class="v22ghavs"><span class="v22ghav">?</span><span class="v22ghav">?</span><span class="v22ghav">3</span></div><div class="rm"><b>伊藤さん経由で 3名</b><br>面識のある VC 4社のうち、A のリード実績がある 3社のパートナー</div></div>
+  <button class="btn sm block" style="margin-top:10px">${ic('mail', 'sm')}紹介の依頼文を下書き</button></div>`; };
+const vcEvents = (cls = '') => `<div class="card ${cls}" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 2px"><h3>会える活動</h3><span class="lbl">固定の 5項目で採点</span></div>${V2.EVREC.slice(0, 2).map(V2.evRow).join('')}<div class="lbl" style="padding:8px 0">参加するとイベント枠にも +${V2.PER.ev.unit}</div></div>`;
+const vcFoot = `<div class="v22foot"><div class="row" style="gap:8px"><span class="lbl" style="flex:1"><b style="color:var(--ink)">2人</b>を選択中</span><button class="btn">すでに話した</button><button class="btn primary k-vcpropose">面談を提案</button></div></div>`;
+function planType(part = 1) {
+  const head = topbar(V2.PER.vc.s, `Step ${V2.stepsOf('vc').join('・')} · 配点 ${V2.PER.vc.w}`, `<button class="rbtn">${ic('left')}</button>`, `<button class="rbtn">${ic('more')}</button>`);
+  const cands = `<div class="card k-vccands" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 0"><h3>あなたの人脈の候補</h3><span class="lbl">推薦度順 · ${V2.VCAND.length}人</span></div>${V2.VCAND.map((p, k) => vcCand(p, k)).join('')}</div>`;
+  const two = part === 2;
+  return `<div class="v22stk">${head}</div>` + vcHero(two ? '' : 'k-vchero') + cands + vcWhy(two ? '' : 'k-vcwhy') + vcQ(two ? '' : 'k-vcq') + (two ? '<i class="scrollto" data-off="10"></i>' : '') + vcJudge(two ? 'k-vcjudge' : '') + vcSig(two ? 'k-vcsig' : '') + vcRoute(two ? 'k-vcroute' : '') + vcEvents(two ? 'k-vcevs' : '') + '<div style="height:80px"></div>';
 }
 
 /* ============ 詳細・フロー ============ */
@@ -645,7 +1021,7 @@ function scanReview() {
 }
 
   const body = h => h.replace(/^\s*<div class="topbar">[\s\S]*?<div class="t">[\s\S]*?<\/div>[\s\S]*?<\/div>/, "");
-  return { home, network, plan, events, contact, orbCard, weekCard, scoreCard, pendCard, nrow, addSheet, swipeRow, evCard, meBtn, iorbitBtn, homeBody: s => body(home(s)), netBody: s => body(network(s)), planBody: s => body(plan(s)) };
+  return { home, network, plan, events, contact, orbCard, weekCard, scoreCard, pendCard, nrow, addSheet, swipeRow, evCard, meBtn, iorbitBtn, homeBody: s => body(home(s)), netBody: s => body(network(s)), planBody: s => body(plan(s)), planType, vcFoot };
 })();
 const W = (() => {
 let OW = { W: 494, H: 410, cx: 300, cy: 205, R: 190, od: 22, me: 52 };
@@ -763,33 +1139,55 @@ function events(s) {
     ${list.map((e, k) => `<div class="evc span3 ${k === 0 ? 'sel' : ''}"><div class="row between"><span class="emo ${e.vc}">${e.emo}</span>${ring(54, 6, [{ v: e.score, c: e.score > 70 ? 'var(--plum-700)' : e.score > 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span class="score" style="font-size:14px">${e.score}</span>`)}</div><b style="display:block;margin-top:12px">${e.n}</b><div class="lbl">${e.d} · ${e.place} · ${e.fee}</div><div class="row" style="margin-top:10px;gap:6px"><span class="chip ${vchip(e)}">${e.v}</span><span class="chip">会いたい人 ${e.meet}名</span></div></div>`).join('')}</div>`;
 }
 
-/* ---- プラン（⑨ B2 Web 同款；many = 首页同口径 s46 · few = 刚生成 s0） ---- */
+/* ---- プラン v2.2（2026-10-08：画法同 b10 ① 目標入力 / ⑦ プラン概要 / ⑧ 人物タイプ詳細；many = 首页同口径 s46 · few = 刚确定 s0） ---- */
+const KINDS = [['💰', '資金調達'], ['🚀', '上市・収益化'], ['🤝', '新規開拓'], ['🧑‍💼', '採用'], ['🔗', '事業提携'], ['🧭', 'キャリア']];
+const kindChips = (on = 0) => KINDS.map(([e, t], k) => `<span class="fopt ${k === on ? 'on' : ''}">${e} ${t}</span>`).join('');
+const FLOW5 = [['背景の確認', 'わたし · チーム · 目的を AI がまとめて下書き → 順に確認'], ['質問 5つまで', '背景でわからないことだけ、一度に聞きます'], ['AI の初版', 'ステップ · 話すべき人のタイプ · 業界の現状'], ['AI 修正 3回まで', '変更点だけを表示 · 変更なしも 1回'], ['手動編集 1回', '名前 · 順番 · 人数と配点（合計 100）']];
 function plan(s) {
-  const head = mainhead('プラン', s === 'empty' ? '目標を決めると、話すべき人が見えます' : 'シリーズA 資金調達（3億円）', s === 'empty' ? '' : `<button class="btn k-wgoal">💰 シリーズA 資金調達 ${ic('down', 'sm')}</button>`, s === 'empty' ? '' : `<button class="btn k-wrevise">${ic('refresh', 'sm')}方案を見直す</button><button class="btn">${ic('flag', 'sm')}目標を達成した</button>`);
-  if (s === 'empty') return head + `<div class="wgrid">
-    <div class="card span7 guide k-wpempty" style="padding:26px"><div style="font-size:22px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 16px">目標から、ステップごとに「誰と話すとよいか」を分析します。期限ごとの予定表は作りません。</div>
-      <div class="input" style="background:var(--surface-2);height:50px">${ic('pen', 'sm')}例：シリーズA で 3億円を調達</div>
-      <div class="row" style="gap:6px;margin-top:12px"><span class="fopt">💰 資金調達</span><span class="fopt">🤝 新規顧客開拓</span><span class="fopt">🧑‍💼 採用</span><span class="fopt">🔗 事業提携</span></div>
-      <button class="btn primary push" style="margin-top:18px;height:46px">${ic('sparkle', 'sm')}分析する</button></div>
-    <div class="card span5"><div class="card-h"><h3>スコアのしくみ</h3></div>${[['🗣️', 'lav', '話した人で加点', '面談の記録か「オフラインで話した」の自己申告'], ['🎯', 'pink', 'タイプごとに目標人数', '超えた分は半分ずつ、上限なしで加算'], ['🧠', 'teal', '詳しい分野はスキップ', '満点として斜線で表示。いつでも取り消せます']].map(([e, c, t, d]) => `<div class="row" style="gap:12px;padding:10px 0"><span class="emo sm ${c}">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div>
-    <div class="card span12 k-wpsample"><div class="card-h"><h3>プランはこう見えます <span class="sample-tag">サンプル</span></h3></div><div class="faded"><div class="row" style="gap:20px"><div class="big">46</div><div style="flex:1">${V2.sbar('s46', { labels: true })}</div></div></div></div></div>`;
-  const few = s === 'few', S = few ? 's0' : 's46', T = V2.TODAY[S];
-  return head + `<div class="wgrid">
-    <div class="card span12 rise k-whero"><div class="row" style="gap:28px;align-items:flex-end"><div style="flex:none"><div class="lbl">スコア</div><div class="big" style="font-size:64px">${num(V2.total(S))}</div><div class="lbl">満点 100 · 上限なし</div></div>
-      <div style="flex:1;min-width:0;padding-bottom:6px">${V2.sbar(S, { labels: true })}${V2.legend(false)}</div>
-      ${few ? '' : `<div style="flex:none;text-align:right;padding-bottom:6px"><span class="chip lav">あと ${100 - V2.total(S)} で満点</span><div class="lbl" style="margin-top:6px">話して ${V2.talkOf(S)} · スキップ ${V2.skipOf(S)}</div></div>`}</div></div>
-    <div class="card span8"><div class="card-h"><h3>ステップと話すべき人</h3><span class="lbl">順番は目安</span></div>
-      <table class="table k-wptable"><thead><tr><th>ステップ</th><th>タイプ</th><th>状況</th><th style="text-align:right">点 / 配点</th></tr></thead><tbody>
-      ${V2.STEPS.filter(st => st[3].length).flatMap(st => st[3].map((k, i) => { const p = V2.PER[k], r = V2.pts(k, V2.ST[S][k]); return `<tr><td>${i === 0 ? `<b>${st[0]}</b> <span class="sub">${st[1]}</span>` : ''}</td><td><div class="row"><span class="emo sm ${p.c}">${p.emo}</span><b style="white-space:nowrap">${p.n}</b></div></td><td><div class="row" style="gap:6px">${V2.pchips(k, S)}</div></td><td style="text-align:right;width:120px"><span class="v2pp">${V2.fmt(r.base + r.bonus)}<small> / ${p.w}</small></span>${V2.mbar(k, S)}</td></tr>`; })).join('')}
-      <tr><td><span class="sub">—</span></td><td><div class="row"><span class="emo sm apricot">🎟️</span><b>イベント</b></div></td><td><div class="row" style="gap:6px">${V2.pchips('ev', S)}</div></td><td style="text-align:right"><span class="v2pp">${V2.fmt(V2.pts('ev', V2.ST[S].ev).base + V2.pts('ev', V2.ST[S].ev).bonus)}<small> / 10</small></span>${V2.mbar('ev', S)}</td></tr></tbody></table></div>
-    <div class="card span4 k-wtoday" data-why-box style="background:linear-gradient(135deg,var(--mac-lav),var(--surface) 70%)"><div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px">今日 +${T.plus} のチャンス</b><span class="why" style="margin-left:auto">?</span></div>
-      <div style="font-size:15px;font-weight:700;line-height:1.6;margin-top:8px">${few ? '伊藤 直子さん（ハルモニア CFO）に、事業計画の壁打ちを提案してみましょう。' : '今夜の CFO Night Tokyo に VC パートナーが 2人来ます。1人と話せば +10。'}</div>
-      <div class="why-body" hidden>${T.why}</div><button class="btn primary push" style="margin-top:14px">${T.btn}</button>
-      <div class="lbl" style="margin-top:12px">最近の加点</div>${few ? '<div class="ghost-row" style="margin-top:6px">まだありません</div>' : [['VC パートナー', '+10', '高橋 美咲さん · 10/6'], ['イベント', '+5', 'SaaS Summit · 10/3'], ['起業家', '+3', '渡辺 翔さん · 9/29'], ['弁護士', 'スキップ', '習熟済み · 9/20']].map(([a, b, c]) => `<div class="row between" style="font-size:12px;padding:6px 0;border-top:1px solid var(--line)"><span><b>${a}</b> <span class="lbl">${c}</span></span><b style="font-family:var(--font-num);color:var(--plum-700)">${b}</b></div>`).join('')}</div></div>`;
+  const V = V2;
+  if (s === 'empty') return mainhead('プラン', '目標を決めると、話すべき人が見えます') + `<div class="wgrid">
+    <div class="card span7 guide k-wpempty" style="padding:26px"><div style="font-size:22px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 16px">うまく言葉にならなくても大丈夫。iOrbit が、あなたとチームのことを確認しながら具体的にします。</div>
+      <div class="v22fld k-wgin"><div class="in" style="height:50px"><span>シリーズA で 3億円を調達したい<i class="v22caret"></i></span></div></div>
+      <div class="row k-wgkind" style="gap:6px;margin-top:12px;flex-wrap:wrap">${kindChips(0)}</div>
+      <div class="row push" style="gap:12px;margin-top:18px"><button class="btn primary k-wgnext" style="height:46px">${ic('sparkle', 'sm')}iOrbit と具体化する</button><span class="lbl">目標タイプは文から推測 · 変えられます</span></div></div>
+    <div class="card span5 k-wgflow"><div class="card-h"><h3>このあとの流れ</h3><span class="lbl">回数の上限つき</span></div><div class="v22flow">${FLOW5.map(([t, d], k) => `<div><span class="n">${k + 1}</span><div><b>${t}</b><span class="lbl">${d}</span></div></div>`).join('')}</div></div>
+    <div class="card span12 k-wpsample"><div class="card-h"><h3>人物タイプは、こう具体的になります <span class="sample-tag">サンプル</span></h3><span class="lbl">肩書きではなく「役割 × 状況」で示します · 話した人のタイプで加点 · 満点 100 · 上限なし</span></div>
+      <div class="faded v22tgrid" style="grid-template-columns:repeat(3,1fr)">${['vc', 'ent', 'cvc'].map(k => V.tcard(k, 's0')).join('')}</div></div></div>`;
+  const few = s === 'few', S = few ? 's0' : 's46', tt = V.total(S);
+  return mainhead('プラン', '', `<button class="btn k-wgoal">💰 シリーズA 資金調達 ${ic('down', 'sm')}</button>`, `<div class="row k-wacts" style="gap:8px">${V.acts({ pre: 'w' })}</div>`) + `<div class="wgrid">
+    <div class="card span12 rise k-whero"><div class="row" style="gap:28px;align-items:flex-end"><div style="flex:none"><div class="lbl">スコア</div><div class="big" style="font-size:64px">${num(tt)}</div><div class="lbl">満点 100 · 上限なし</div></div>
+      <div style="flex:1;min-width:0;padding-bottom:4px">${V.sbar(S, { labels: true, cls: 'k-wsbar' })}${V.legend(false)}</div>
+      <div style="flex:none;text-align:right;padding-bottom:6px;width:190px">${few ? '<span class="chip lav">今日つくったプラン</span><div class="lbl" style="margin-top:6px">話した人のタイプで加点</div>' : `<span class="chip lav">あと ${100 - tt} で満点</span><div class="lbl" style="margin-top:6px">話して ${V.talkOf(S)} · スキップ ${V.skipOf(S)}</div>`}</div></div></div>
+    <div class="card span4 k-wsteps"><div class="card-h"><h3>ステップ</h3><span class="lbl">順番は目安</span></div>${V.STEPS.map((st, i) => V.step22(st, S, { short: true, mcls: i === 0 ? 'k-wmey1' : '', okcls: 'k-wstepok' })).join('')}</div>
+    <div class="card span8 k-wtypes" data-why-box><div class="card-h" style="margin-bottom:4px"><h3>話すべき人のタイプ</h3><div class="row" style="gap:8px"><span class="lbl">「資金調達」テンプレートのまま</span><span class="why k-wtplwhy">?</span></div></div><div class="why-body" hidden style="margin:0 0 10px">根拠：「💰 資金調達」テンプレートの既定（CFO 経験者 10 / 調達経験のある起業家 15 / エンジェル投資家 10 / VC パートナー 30 / CVC 担当者 15 / 弁護士（投資契約）10 / イベント 10）。前提が既定と合っていたので、AI は配点を調整していません</div><div class="lbl" style="margin-bottom:10px">役割 × 状況 · 点はタイプごと · 同じ人は同じタイプで 1回</div>
+      <div class="v22tgrid">${V.ORDER.filter(k => k !== 'ev').map(k => V.tcard(k, S, { cls: 'k-wtc-' + k })).join('')}</div></div>
+    ${V.evCard22(S, { cls: 'span12 k-wevs', grid: true })}</div>`;
 }
 const planRail = s => `<h4>${ic('sparkle', 'sm')}iOrbit</h4><div class="assist-in">${ic('sparkle', 'sm')}このプランについて質問</div>
-  <h4>次の一手</h4><div class="card" style="padding:16px"><b style="font-size:13px">${s === 'many' ? 'CVC 担当者は人脈にいません。製造業DXカンファレンス 大阪に約 9人来ます' : 'VC パートナーの候補が人脈に 4人います'}</b><button class="btn sm" style="margin-top:10px">${s === 'many' ? 'イベントを見る' : '候補を見る'}</button></div>
-  <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">Orbit は目標の達成を保証しません。このタイプの目標が一般にどう進むかと、各ステップで話すとよい人を示します。</div>`;
+  <h4>次の一手</h4>${(() => { const S = s === 'many' ? 's46' : 's0', T = V2.TODAY[S]; return `<div class="card k-wtoday" data-why-box style="background:linear-gradient(135deg,var(--mac-lav),var(--surface) 70%)"><div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px">今日 +${T.plus} のチャンス</b><span class="why" style="margin-left:auto">?</span></div>
+    <div style="font-size:14px;font-weight:700;line-height:1.6;margin-top:8px">${s === 'many' ? '今夜の CFO Night Tokyo に VC パートナーが 2人来ます。1人と話せば +10。' : '伊藤 直子さん（ハルモニア CFO）に、事業計画の壁打ちを提案してみましょう。'}</div>
+    <div class="why-body" hidden>${T.why}</div><div class="row" style="gap:8px;margin-top:12px"><button class="btn sm primary">${T.btn}</button><span class="chip" style="margin-left:auto">${T.tag}</span></div></div>`; })()}
+  ${V2.diag22(s === 'many' ? 's46' : 's0', { cls: 'k-wdiag' })}
+  <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">Orbit は目標の達成を保証しません。この種の目標が一般にどう進むかと、各ステップで話すとよい人を示します。</div>`;
+/* 人物タイプ詳細 · Web（VC · 人脈にいる）：概要の人物タイプ卡 → ここ */
+function planType() {
+  const V = V2, p = V.PER.vc, I = C.find(c => c.n === '伊藤 直子') || C[2];
+  return mainhead(p.s, `Step ${V.stepsOf('vc').join('・')} · 配点 ${p.w} · 人脈に ${p.cand}人`, `<button class="rbtn">${ic('left')}</button>`, `<button class="btn ghost">この分野はもう詳しい</button><button class="btn">${ic('plus', 'sm')}オフラインで話した</button>`) + `<div class="wgrid">
+    <div class="card span12 k-wvhero"><div class="row" style="gap:16px;align-items:center"><span class="emo ${p.c}">${p.emo}</span><div style="flex:1;min-width:0"><div class="v22tk">${p.s} · 役割 × 状況</div><b class="v22tn" style="font-size:19px">${p.n}</b></div>
+      <div class="v22m3 on2" style="width:330px;margin:0;flex:none"><div><b>${p.cand}<small>人</small></b><span>人脈の候補</span></div><div><b>${p.evn}</b><span>会える活動</span></div><div><b>${p.route}</b><span>紹介ルート</span></div></div>
+      <div style="width:170px;flex:none"><div class="row" style="gap:6px;align-items:baseline"><span class="mid">0</span><span class="lbl">/ ${p.w}点 · 0 / ${p.tgt}人</span></div>${V.mbar('vc', 's0')}</div></div></div>
+    <div class="card span5 k-wvabout" data-why-box><div class="row" style="gap:8px"><b style="font-size:14px;flex:1">なぜこの人か</b><span class="why">?</span></div><div style="font-size:13px;line-height:1.7;margin-top:4px;color:var(--ink-2)">${V.TDVC.why}</div><div class="why-body" hidden>${V.TDVC.whyb}</div>
+      <div class="row between k-wvq" style="margin-top:14px"><b style="font-size:14px">聞くこと</b><button class="btn sm ghost"><span class="lic i-copy sm"></span>コピー</button></div>${V.TDVC.q.map((q, k) => `<div class="v22qn"><span class="n">${k + 1}</span><span>${q}</span></div>`).join('')}
+      <b style="font-size:14px;display:block;margin:12px 0 8px">話せたの判定</b><div class="k-wvjudge">${V.judgeVC().map(([t, pt], k) => `<div class="v22rule">${ic(k === 0 ? 'check' : k === 1 ? 'plus' : 'user', 'sm')}<span>${t}</span><b class="pt">${pt}</b></div>`).join('')}</div>
+      <b style="font-size:14px;display:block;margin:12px 0 2px">見分け方</b><div class="k-wvsig">${V.TDVC.sig.map(([k, v]) => `<div class="v22sig"><span class="lbl">${k}</span><div class="chips">${v.map(x => `<span class="chip">${x}</span>`).join('')}</div></div>`).join('')}</div></div>
+    <div class="card span7 k-wvcands"><div class="card-h"><h3>あなたの人脈の候補 · 推薦度順</h3><div class="row" style="gap:8px"><span class="lbl"><b style="color:var(--ink)">2人</b>を選択中</span><button class="btn sm">すでに話した</button><button class="btn sm primary">面談を提案</button></div></div>
+      <table class="table"><thead><tr><th></th><th>推薦度</th><th>名前</th><th>理由 · 切り出し方</th></tr></thead><tbody>${V.VCAND.map((c, k) => `<tr ${c.on ? 'style="background:var(--surface-2)"' : ''}><td><span class="cbx ${c.on ? 'on' : ''}">${ic('check')}</span></td><td><b style="font-family:var(--font-num);font-size:18px">${c.sc}</b></td><td style="width:200px;min-width:200px"><div class="row"><div class="av sm ${c.c}">${c.i}</div><div style="min-width:0"><b style="white-space:nowrap">${c.n}</b>${c.orbit ? ' <span class="chip teal">Orbit</span>' : ''}<div class="lbl">${c.co} · ${c.role}</div></div></div></td><td data-why-box style="font-size:12.5px;line-height:1.6"><div class="row" style="gap:6px;align-items:flex-start"><span style="flex:1">${c.w}</span><span class="why ${k === 0 ? 'k-wvwhy' : ''}">?</span></div><div style="margin-top:4px">💬 <b>「${c.op}」</b> <span class="lbl">· ${c.last}</span></div><div class="why-body" ${k === 0 ? '' : 'hidden'}>根拠：${c.why}</div></td></tr>`).join('')}</tbody></table>
+      <div class="v22route push k-wvroute" style="margin-top:14px"><div class="av sm ${I.c}">${I.i}</div><span class="arr">${ic('right', 'sm')}</span><div class="v22ghavs"><span class="v22ghav">?</span><span class="v22ghav">?</span><span class="v22ghav">3</span></div><div class="rm"><b>紹介ルート：伊藤さん経由で VC パートナー 3名</b><br>面識のある VC 4社のうち、A のリード実績がある 3社</div><button class="btn sm">${ic('mail', 'sm')}依頼文を下書き</button></div></div></div>`;
+}
+const typeRail = () => `<h4>${ic('sparkle', 'sm')}iOrbit</h4><div class="assist-in">${ic('sparkle', 'sm')}このタイプについて質問</div>
+  <div class="chips"><span class="prompt">高橋さんへの切り出し方を直して</span><span class="prompt">リードを取りそうな VC はほかに？</span></div>
+  <h4>このタイプに会えるイベント</h4><div class="card k-wvevs" style="padding:6px 14px">${V2.EVREC.slice(0, 2).map(V2.evRow).join('')}</div>
+  <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">メール・メッセージは下書きまで。送信はあなたが行います。</div>`;
 /* ---- iOrbit 対話 ---- */
 function chatPage() {
   return mainhead('iOrbit', '人脈・イベント・予定を知っている秘書', `<button class="rbtn">${ic('clock')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`) + `<div style="max-width:760px;margin:0 auto;display:grid;gap:12px">
@@ -822,11 +1220,130 @@ function hostPage() {
   /* 1024：轨道缩小（直径约 320）；人脈表格去掉「最終接点」列（⑧ 断点规范） */
   const home1024 = s => at(SMALL, () => home(s));
   const net1024 = (s, o) => network(s, o).replace(/<th>最終接点<\/th>/g, "").replace(/<td class="muted" style="font-size:12px">[^<]*<\/td>/g, "").replace(/<td><i style="width:50px"><\/i><\/td>/g, "");
-  return { home, home1024, network, net1024, plan, events, assistRail, netRail, planRail, evalRail, contactDrawer, wOrbCard, wScoreCard, wWeekCard, wPendCard, wNetHead, wrow, searchBtn, headR };
+  return { home, home1024, network, net1024, plan, planType, typeRail, events, assistRail, netRail, planRail, evalRail, contactDrawer, wOrbCard, wScoreCard, wWeekCard, wPendCard, wNetHead, wrow, searchBtn, headR };
 })();
 return { V2, A, W, orbitView, orbLegend, wk7, WEEK, TODAY_TL, nstack, NEXT, dn, src, NP, NET_MANY, NET_FEW, DOORS, doorTile, doorRow, densLegend, ORB_R };
 })();
 /* HV3-SHARED-END */
+</script>
+<script>
+/* V22F-SHARED-BEGIN（2026-10-08 计划 v2.2 推广）：① b1 A5「方案生成」与 ④ b4「方案を見直す」共用的 iOrbit 对话流画法（同 b10-plan-example.html），数据 = App / Web 的「シリーズA 資金調達（3億円）」；
+   类名用 .v22x 作用域下的 b10 私有类（见 <style> 里 V22X-FLOW 段），画板外层必须包 <div class="v22x">。两个文件内容相同，改一处要同步另一处。 */
+const V22F = (() => {
+  const V = HV3.V2, PER = V.PER;
+  const GOAL = 'シリーズA で 3億円を調達したい';
+  const PNAME = V.GOAL.t;
+  const PURPOSE = 'シリーズA で 3億円を調達する';
+  /* ---- 共通パーツ ---- */
+  const me = (t, cls = '') => `<div class="bubble me ${cls}">${t}</div>`;
+  const ai = (t, cls = '') => `<div class="bubble ai ${cls}">${t}</div>`;
+  const fmBar = (labels, a, cls = '') => `<div class="fm ${cls}">${labels.map((t, k) => `<span class="${k < a ? 'done' : k === a ? 'on' : ''}">${t}</span>`).join('')}</div>`;
+  const FM = ['背景', '質問', '初版', 'AI 修正', '手動編集'];
+  const FMR = ['前提', 'AI 修正', '手動編集'];
+  const chatTop = sub => topbar('iOrbit', sub, `<button class="rbtn">${ic('clock')}</button>`, `<button class="rbtn">${ic('x')}</button>`);
+  const wTop = sub => mainhead('iOrbit', sub, `<button class="rbtn">${ic('clock')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`);
+  const composer = (ph = '修正したいことを入力', off = false) => `<div class="composer ${off ? 'off' : ''}"><button class="lbtn">${ic('plus', 'sm')}</button><span class="in">${ph}</span><button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
+  const leftChip = (t, on = true, cls = '') => `<span class="chip ${on ? 'lav' : ''} ${cls}">${t}</span>`;
+  /* revBar：o.top = 小字 · o.unit = 回 · o.t = 说明 · o.ex = 例 */
+  const revBar = (n, o = {}) => `<div class="revbar ${n ? '' : 'zero'} ${o.cls || ''}"><div class="rvn k-rvn"><small>${o.top || 'AI 修正'}</small><b>あと <em>${n}</em> 回</b></div><div class="rvt">${o.t || '現状と考えを、できるだけ一度にまとめて書いてください'}<span class="ex">${o.ex || '例：「CFO 経験者は伊藤さんに頼めそう。CVC は後回しでいい。」'}</span></div></div>`;
+  const okLine = (t, r = '') => `<div class="ok-card" style="padding:10px 14px"><div class="row" style="gap:8px"><span class="okmark">${ic('check')}</span><b style="font-size:12.5px;flex:1">${t}</b>${r}</div></div>`;
+
+  /* ---- 背景確認（💰 資金調達 · 必要な力 8 項目は固定） ---- */
+  const MEMS = [
+    { n: '佐藤 健一', i: '佐', c: 'c1', r: 'あなた · 代表取締役CEO', src: 'プロフィール', sc: '' },
+    { n: '中川 亮', i: '中', c: 'c3', r: 'CTO · 共同創業者', src: '取り込んだ名刺', sc: 'lav' },
+  ];
+  const CAPS = [['事業計画・数字', [1, 0]], ['ピッチ', [1, 1]], ['財務・CFO', [0, 0]], ['投資家とのつながり', [1, 0]], ['資本政策', [1, 0]], ['投資契約・法務', [0, 0]], ['プロダクトの実績', [1, 1]], ['業界の知見', [1, 1]]];
+  const GAPS = CAPS.filter(c => !c[1].some(Boolean)).map(c => c[0]);
+  const STAIR = [[4, '製造業 DX の SaaS として上場する', '', ''], [3, '2年で ARR 5億円の事業にする', '', ''], [2, PURPOSE, '最初に書いた目標 · いちばん近い？', 'lav'], [1, 'リード VC を 1社決める', '', '']];
+  const BTTL = { 1: 'わたし', 2: 'チーム', 3: '目的' };
+  const BSUM = { 1: '佐藤 健一 · 代表 · 3億円を調達', 2: `チーム 2名 · 空き ${GAPS.length}（${GAPS.join('・')}）`, 3: `2段目「${PURPOSE}」` };
+  const bsec = (n, st, inner = '', cls = '') => `<div class="bsec ${st} ${cls}"><div class="bsh"><span class="bsn">${st === 'done' ? ic('check') : n}</span><b>${BTTL[n]}</b>${st === 'open' ? '<span class="chip lav">確認中</span>' : st === 'done' ? `<span class="bss">${BSUM[n]}</span><button class="lbtn">${ic('pen', 'sm')}</button>` : `<span class="bss">下書き：${BSUM[n]}</span>`}</div>${st === 'open' ? `<div class="bsb">${inner}</div>` : ''}</div>`;
+  const meInner = () => `<div class="row k-bgme" style="gap:10px"><div class="av sm c1">佐</div><div style="min-width:0;flex:1"><b style="font-size:14px">佐藤 健一</b><div class="lbl">代表取締役CEO · 株式会社ミナトリンク</div></div><span class="chip">プロフィールから</span></div>
+    <div class="lbl" style="margin:12px 0 6px;font-weight:800;color:var(--ink-2)">この目標での、あなたの立場</div>
+    <div class="row k-bgrole" style="gap:6px;flex-wrap:wrap"><span class="fopt on">代表・オーナー</span><span class="fopt">共同創業者</span><span class="fopt">社内の担当者</span><span class="fopt">個人として</span></div>
+    <div class="lbl" style="margin:12px 0 6px;font-weight:800;color:var(--ink-2)">やりたいこと <span class="chip lav" style="margin-left:4px">目標文から</span></div>
+    <div class="fld k-bgwant" style="margin-top:0"><div class="in" style="background:var(--surface-2)"><span>シリーズA で 3億円を調達する</span>${ic('pen', 'sm')}</div></div>`;
+  const avt = (m, on) => `<span class="avt ${on ? 'on av ' + m.c : ''}">${m.i}</span>`;
+  const capRows = (cls = '') => `<div class="capm ${cls}">${CAPS.map(([c, v], k) => { const gap = !v.some(Boolean); return `<div class="caprow ${gap ? 'gap' : ''} ${k === 2 ? 'k-capgap' : ''} ${k === 3 ? 'k-capone' : ''}"><span class="capn">${c}</span><span class="capa">${MEMS.map((m, j) => avt(m, v[j])).join('')}</span><span class="caps">${gap ? '空き' : v.filter(Boolean).length + '人'}</span></div>`; }).join('')}</div>`;
+  const teamInner = () => `<div class="seg full k-bgsolo"><button>一人</button><button class="on">チーム</button></div>
+    <div style="margin-top:8px">${MEMS.map((m, k) => `<div class="mem ${k === 1 ? 'k-mem2' : ''}"><div class="av sm ${m.c}">${m.i}</div><div class="mm"><b>${m.n}</b><div class="lbl">${m.r}</div></div><span class="chip ${m.sc}">${m.src}</span></div>`).join('')}</div>
+    <div class="ghost-row k-addmem" style="height:40px;margin-top:4px">${ic('plus', 'sm')}メンバーを追加（人脈から / 自分で書く）</div>
+    <i class="scrollto" data-off="420"></i><div data-why-box class="k-capbox" style="margin-top:12px"><div class="row" style="gap:6px"><b style="font-size:12.5px;flex:1">資金調達に必要な力 · 誰ができる？</b><span class="why k-capwhy">?</span></div>
+      <div class="why-body" hidden>8項目は目標タイプ「資金調達」で固定です（AI が毎回考えるものではありません）。佐藤さんの印はプロフィールと「提供できること」、中川さんの印は取り込んだ名刺の役職から付けた下書き。顔をタップで付け外し、「空き」はその場で計算し直します。</div>
+      <div class="lbl" style="margin:3px 0 4px">顔をタップして付け外し · 誰もいない力が「空き」になります</div>${capRows()}</div>`;
+  const stairInner = () => `<div class="lbl" style="margin-bottom:8px">上ほど大きい目的です。小さすぎ・大きすぎと感じたら 1段ずらしてください</div>
+    <div class="stair k-stair">${STAIR.map(([lv, t, tg, c]) => `<div class="str ${lv === 2 ? 'on k-st2' : ''} ${lv === 3 ? 'k-st3' : ''}"><span class="lv">${lv}</span><div class="stx">${t}${lv === 4 ? '<small>大きめ · 数年単位</small>' : lv === 1 ? '<small>小さめ · 数か月</small>' : lv === 3 ? '<small>調達のあと · 2年</small>' : `<span class="chip ${c} tg" style="display:flex;width:fit-content;margin-top:5px">${tg}</span>`}</div><span class="ckr ${lv === 2 ? 'on' : ''}">${ic('check')}</span></div>`).join('')}</div>
+    <div class="aisay k-staisay" data-why-box><span class="emo sm teal">🧭</span><span style="flex:1">最初の目標（2）が、いちばん近いと思います。締切と金額がはっきりしているためです。</span><span class="why">?</span></div>
+    <div class="why-body" hidden>根拠：目標文に金額（3億円）がある · 立場は代表 · 空きは財務と法務で、目的を上げる理由が見当たらない。3段目を選ぶと、採用や販路の問いが増えます。</div>`;
+  const bgIntro = (cls = '') => me(`目標：${GOAL}`, cls) + ai('プロフィール・目標・いま取り込んだ名刺 12枚から、あなた · チーム · 目的の 3つをまとめて下書きしました。上から順に、違うところだけ直してください。');
+  const CANDS = [['中川 亮', '中', 'c3', 'ミナトリンク · CTO', '同じ会社', 1], ['伊藤 直子', '伊', 'c4', 'ハルモニア · CFO', '空き：財務・CFO', 0], ['中村 由紀', '中', 'c1', '光が丘法律事務所 · 弁護士', '空き：投資契約・法務', 0]];
+  const capPick = (on, cls = '') => `<div class="row ${cls}" style="gap:6px;flex-wrap:wrap">${CAPS.map(([c]) => `<span class="fopt ${on.includes(c) ? 'on' : ''}">${c}</span>`).join('')}<span class="fopt" style="border:1.5px dashed var(--surface-3);background:transparent">＋ その他</span></div>`;
+  const addSheet = `<div class="sheet-scrim"></div><div class="sheet k-addsheet">
+    <div class="grab"></div><div class="row" style="gap:10px;margin-bottom:12px"><b style="font-size:16px;flex:1">メンバーを追加</b><span class="lbl">Orbit に登録していなくても OK</span></div>
+    <div class="seg full k-addtab"><button class="on">人脈から選ぶ</button><button>自分で書く</button></div>
+    <div class="lbl k-addsrc" style="margin:12px 2px 4px">いま取り込んだ名刺 12枚から · 同じ会社の人を上に</div>
+    ${CANDS.map(([n, i, c, r, t, on], k) => `<div class="mem ${k === 0 ? 'k-addc1' : ''}"><div class="av sm ${c}">${i}</div><div class="mm"><b>${n}</b><div class="lbl">${r}</div></div><span class="chip ${k ? 'pink' : 'lav'}">${t}</span><span class="ckr ${on ? 'on' : ''}">${ic('check')}</span></div>`).join('')}
+    <div class="card flat k-addprev" style="padding:10px 12px;margin-top:8px"><div class="row" style="gap:6px"><b style="font-size:12px;flex:1">中川 亮さんの「できること」</b><span class="chip">名刺の役職から</span></div>${capPick(['ピッチ', 'プロダクトの実績', '業界の知見'], 'k-addcap')}<div class="lbl" style="margin-top:8px">関わり方：<b>共同創業者</b> · 変更は ✎</div></div>
+    <button class="btn primary block xl" style="margin-top:12px">1名を追加</button></div>`;
+  const capTable = (cls = '') => `<table class="captab ${cls}"><thead><tr><th>必要な力 <span class="lbl">8 · 固定</span></th>${MEMS.map(m => `<th><div class="row" style="gap:6px;white-space:nowrap"><span class="av xs ${m.c}">${m.i}</span>${m.n.split(' ')[0]}</div><span class="chip ${m.sc}" style="font-size:10px;margin-top:3px">${m.src}</span></th>`).join('')}<th><span class="btn sm ghost" style="white-space:nowrap">${ic('plus', 'sm')}追加</span></th><th></th></tr></thead><tbody>${CAPS.map(([c, v]) => { const gap = !v.some(Boolean); return `<tr class="${gap ? 'gap' : ''}"><td><b>${c}</b></td>${v.map(on => `<td><span class="ckr ${on ? 'on' : ''}">${ic('check')}</span></td>`).join('')}<td></td><td>${gap ? '<span class="gapc">空き</span>' : `<span class="lbl">${v.filter(Boolean).length}人</span>`}</td></tr>`; }).join('')}</tbody></table>`;
+
+  /* ---- ≤5 問（題庫「資金調達」F）→ 確定した前提 ---- */
+  const QS = [
+    ['F2', '直近の数字', 'いまの ARR と、前年からの伸びは？', [['5,000万円未満', 0], ['5,000万〜1億円', 1], ['1億円以上', 0]], 'ARR 8,000万円 · 前年比 2.4倍'],
+    ['F3', '既存株主・リード候補', '既存の株主と、リードを頼めそうな投資家は？', [['エンジェルのみ', 1], ['VC がいる', 0], ['リード候補がいる', 0], ['まだいない', 1]], 'エンジェル 2名 · リード候補はまだ'],
+    ['F5', '使い道と締切', '調達したお金の使い道と、着金の締切は？', [['営業の採用', 1], ['開発', 0], ['マーケ', 0]], '2027年3月までに着金 · 営業 5名を採用'],
+    ['F7', '使える時間', '調達に使える時間は、1週間に？', [['10時間未満', 0], ['10〜20時間', 1], ['ほぼ専任', 0]], '週 15時間 · 本業と並行'],
+  ];
+  const qBlock = (q, k) => `<div class="qb ${k === 1 ? 'k-q2' : ''}"><div class="row" style="gap:8px"><span class="qno">${k + 1}</span><b style="flex:1;font-size:13.5px;line-height:1.45">${q[2]}</b><span class="qid">${q[0]} ${q[1]}</span></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${q[3].map(([t, on]) => `<span class="fopt ${on ? 'on' : ''}">${t}</span>`).join('')}</div><div class="qin ${q[4] ? '' : 'ph'}">${ic('pen', 'sm')}<span>${q[4] || '自由に書く（任意）'}</span></div></div>`;
+  const qCard = (wide, cls = '') => `<div class="card k-qcard ${cls}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><b style="font-size:14px;flex:1">あと 4つだけ、確認させてください</b><span class="chip">題庫「資金調達」</span><span class="why k-qwhy">?</span></div>
+    <div class="why-body" hidden>選んだ理由：題庫 7問のうち、背景・プロフィール・取り込んだ名刺からわからず、プランの分かれ道を一番変える 4問です（5問まで · 足りていれば少なく）。F1 ラウンドと金額は目標文から、F4 調達の経験はプロフィール（エンジェルから調達済み）からわかり、F6 CVC は初版で選択肢として示すので今は聞きません。</div>
+    ${wide ? `<div class="wq5">${QS.map(qBlock).join('')}<div style="display:flex;flex-direction:column;justify-content:flex-end;gap:6px;grid-column:span 2"><button class="btn primary k-qsend" style="align-self:flex-start">まとめて回答する（4問）</button><div class="lbl">わからない質問は空欄で大丈夫です · 推測で進め、依拠に「推測」と書きます</div></div></div>` : QS.map(qBlock).join('') + `<button class="btn primary block k-qsend" style="margin-top:12px">まとめて回答する（4問）</button><div class="lbl center" style="margin-top:6px">空欄は推測で進め、依拠に「推測」と書きます</div>`}</div>`;
+  /* 確定した前提 6件（App の KETSU_WHY と同じ）· [項目, 内容, 出どころ] */
+  const PREM = [['目的', PURPOSE, '背景'], ['チーム', `2名（佐藤 · 中川）· 空き：${GAPS.join(' / ')}`, '背景'], ['直近の数字', 'ARR 8,000万円 · 前年比 2.4倍', 'Q1'], ['既存株主', 'エンジェル 2名 · リード候補なし', 'Q2'], ['締切と使い道', '2027年3月 · 営業 5名の採用', 'Q3'], ['使える時間', '週 15時間 · 本業と並行', 'Q4']];
+  const ANS = '① ARR 8,000万円（前年比 2.4倍）② エンジェル 2名 · リード候補なし ③ 2027年3月 · 営業 5名 ④ 週 15時間';
+  /* premCard：o.rows 差し替え · o.flag = {行番号: 理由}（AI が「変わったかもしれない」と予標）· o.edit = 行番号（編集中）· o.act = 初版ボタン */
+  const premCard = (o = {}) => { const rows = o.rows || PREM; return `<div class="card ${o.cls || ''}" style="padding:12px 16px"><div class="row" style="gap:8px;margin:2px 0 4px"><span class="emo sm teal">📌</span><b style="font-size:14px;flex:1">確定した前提</b>${o.mini ? '' : `<span class="lbl">${o.sub || '行をタップで直せます'}</span>`}</div>
+    ${o.mini ? `<div class="premc" style="margin-top:6px">${rows.map(([a, b]) => `<span class="chip" style="max-width:100%">${a}：${b.split('（')[0].split(' · ')[0]}</span>`).join('')}<span class="v2go" style="margin:0">すべて見る${ic('down', 'sm')}</span></div>`
+      : rows.map(([a, b, s, x], k) => { const fl = o.flag && o.flag[k], ed = o.edit === k; return `<div class="prem ${fl ? 'flag' : ''} ${o.kcls && o.kcls[k] ? o.kcls[k] : ''}"><span class="lbl">${a}</span><span>${ed ? `<span class="pedit"><span>${b}</span><i class="caret"></i></span>` : x ? `<s class="pold">${x}</s> <b class="pnew">${b}</b>` : b}${fl ? `<span class="pflag">${ic('refresh', 'sm')}${fl}</span>` : ''}</span><span class="psrc">${s}</span></div>`; }).join('')}
+    ${o.act ? `<button class="btn primary block k-premgo" style="margin-top:10px">${ic('sparkle', 'sm')}この前提で初版をつくる</button><div class="lbl center" style="margin-top:6px">初版は回数に含みません · この後 AI 修正 3回 + 手動編集 1回</div>` : ''}${o.tail || ''}</div>`; };
+
+  /* ---- AI 初版（高度プロンプト + 業界の現状） ---- */
+  const LIB = [
+    ['L-101', '国内シリーズA の調達額', 'シリーズA の中央値は 3〜5億円。ARR 1億円前後での調達が多い', 'v4', '2026-08', '公開登記・各社リリースの集計'],
+    ['L-104', 'リードと条件', 'リード投資家が評価額と金額を決め、ほかの投資家はその条件に乗るのが一般的', 'v3', '2026-09', 'VC 各社の公開資料・業界団体の手引き'],
+    ['L-117', 'CVC の出資方針', '事業会社の CVC は本業とのシナジーを重視し、PoC から入る例が多い', 'v2', '2026-07', 'CVC 120社の公開情報'],
+  ];
+  const MITATE = '<b>数字は、シリーズA の水準に届いています</b>（ARR 8,000万円 · 前年比 2.4倍 ①）。足りないのは、<b>リードを取れる VC との接点</b>と、<b>財務・契約を見られる人</b>（チームの空き）。シリーズA はリードが条件を決め、ほかが乗る形が一般的なので ②、紹介経由で VC 3社に並行で当たり、条件を比べられる状態をつくります。製造業向け SaaS は CVC とも相性がよく、条件の選択肢になります ③。';
+  const libList = () => `<div class="libl">${LIB.map(([id, t, d, v, dt, src], k) => `<div class="lib"><span class="ln">${k + 1}</span><div class="lm"><b>${t}</b>${d}<div class="meta3"><span>${id}</span><span>${v} · ${dt}</span><span>出典：${src}</span></div></div></div>`).join('')}<div class="fact">${ic('book', 'sm')}AI は Orbit が管理するこのライブラリの資料だけを引用します</div></div>`;
+  const libAcc = (open, cls = '') => `<div class="acc ${open ? 'open' : ''} ${cls}" style="margin-top:12px"><div class="acc-h" data-acc>${ic('book', 'sm')}<b>この案で参考にした業界の現状</b><span class="chip">${LIB.length}件</span><span class="chev">${ic('down', 'sm')}</span></div><div class="acc-b"><div>${libList()}</div></div></div>`;
+  const tmini = k => k === 'ev' ? '🎟️ イベント' : PER[k].emo + ' ' + PER[k].s;
+  const stepsMini = (o = {}) => V.STEPS.map(([n, t]) => { const ks = V.chipsOf(n), g = (o.mey || {})[n] || V.MEY[n], hl = o.hl && o.hl.includes(n); return `<div class="pst"><span class="v2snum">${n}</span><div style="flex:1;min-width:0"><b>${t}</b><span class="lbl">目安：${hl ? `<span class="nw">${g}</span>` : g}</span>${ks.length ? `<div class="chips" style="margin-top:4px;gap:4px">${ks.map(k => `<span class="chip">${tmini(k)}</span>`).join('')}</div>` : ''}</div></div>`; }).join('');
+  const typesMini = (o = {}) => V.ORDER.map(k => { const p = PER[k], w = (o.w || {})[k], t = (o.t || {})[k]; return `<div class="trow"><span class="emo sm ${p.c || 'apricot'}">${p.emo}</span><div class="tm"><b>${p.s}</b><span class="lbl">${p.n}</span></div><span class="pt">${w ? `<s style="color:var(--ink-4);font-size:12px">${p.w}</s> ${w}` : p.w}<small> 点 · ${t || p.tgt}${p.ev ? '回' : '人'}</small></span></div>`; }).join('');
+  const TPLWHY = '「💰 資金調達」テンプレートの既定（CFO 経験者 10 / 調達経験のある起業家 15 / エンジェル投資家 10 / VC パートナー 30 / CVC 担当者 15 / 弁護士（投資契約）10 / イベント 10）。前提が既定と合っていたので、AI は配点を調整していません';
+  const flowDia = () => `<div class="flow"><div class="pay"><span class="e">📊</span><b>数字を固める</b><span class="lbl">CFO 経験者<br>Step 1</span></div><div class="ar">${ic('right')}</div><div><span class="e">🚀</span><b>紹介をもらう</b><span class="lbl">先輩起業家<br>Step 2</span></div><div class="ar">${ic('right')}</div><div><span class="e">💼</span><b>VC 3社並行</b><span class="lbl">リード候補<br>Step 3</span></div></div>`;
+  const firstCard = (o = {}) => `<div class="card ${o.cls || ''}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><div style="flex:1;min-width:0"><div class="lbl">AI の初版 · 方案</div><b style="font-size:14.5px">${PNAME}</b></div><span class="why k-fwhy">?</span></div>
+    <div class="jsec k-mitate"><span class="lbl">見立て</span>${o.clamp ? `<span class="clamp4">${MITATE}</span><span class="v2go" style="margin-top:2px">全文を読む${ic('down', 'sm')}</span>` : MITATE}</div>
+    <div class="why-body" hidden>根拠：確定した前提 6件（目的 2段目 · 空き 2つ · ARR 8,000万円 ほか）· 業界の現状 ①②③（下の折りたたみ）· 目標タイプ「資金調達」の高度プロンプト v3</div>
+    <div class="jsec ketsu k-ketsu"><span class="lbl">進め方の結論</span><b>${V.KETSU}</b>${flowDia()}</div>
+    ${o.top ? '' : `${o.anchor ? `<i class="scrollto" data-off="${o.anchor}"></i>` : ''}<div class="fsec k-fsteps"><span class="lbl">ステップ · 完了の目安</span>${stepsMini()}</div>
+    <div class="fsec k-ftypes" data-why-box><div class="row" style="gap:6px"><span class="lbl" style="flex:1;font-weight:800">話すべき人のタイプ · 配点</span><span class="why">?</span></div><div class="why-body" hidden>根拠：${TPLWHY}</div>${typesMini()}</div>
+    ${o.anchor2 ? `<i class="scrollto" data-off="${o.anchor2}"></i>` : ''}${libAcc(o.libOpen, 'k-lib')}`}
+    ${o.act ? o.act : ''}</div>`;
+  const firstWebCard = (cls = 'k-wfirst') => `<div class="card ${cls}" data-why-box style="padding:18px 20px"><div class="row" style="gap:10px"><span class="emo sm teal">🧭</span><div style="flex:1;min-width:0"><div class="lbl">AI の初版 · 方案</div><b style="font-size:16px">${PNAME}</b></div><span class="why">?</span></div>
+    <div class="why-body" hidden>根拠：確定した前提 6件 · 業界の現状 ①②③ · 目標タイプ「資金調達」の高度プロンプト v3</div>
+    <div class="grid2" style="gap:18px;margin-top:6px;align-items:start"><div><div class="jsec"><span class="lbl">見立て</span>${MITATE}</div><div class="jsec ketsu"><span class="lbl">進め方の結論</span><b>${V.KETSU}</b>${flowDia()}</div>${libAcc(true, 'k-wlib')}</div>
+    <div><div class="fsec" style="margin-top:10px"><span class="lbl">ステップ · 完了の目安</span>${stepsMini()}</div><div class="fsec k-wtypes0"><span class="lbl">話すべき人のタイプ · 配点（テンプレートのまま）</span>${typesMini()}</div></div></div></div>`;
+  const knownRail = stage => {
+    const rows = [['わたし', '代表取締役CEO · ミナトリンク'], ['やりたいこと', 'シリーズA で 3億円を調達する'], ['体制', 'チーム 2名（佐藤 · 中川＝取り込んだ名刺から）'], ['空き', GAPS.join(' · ')], ['目的', `<b class="nw2">${PURPOSE}</b>`]];
+    const q = stage === 'q' ? [['直近の数字', 'ARR 8,000万円 · 2.4倍'], ['既存株主', 'エンジェル 2名'], ['締切', '2027年3月 · 営業採用'], ['時間', '週 15時間 · 並行']] : [];
+    return `<h4>${ic('layers', 'sm')}わかったこと</h4><div class="card k-known" style="padding:8px 16px"><div class="known">${rows.map(([a, b]) => `<div><span class="lbl">${a}</span><span>${b}</span></div>`).join('')}${stage === 'q' ? q.map(([a, b]) => `<div><span class="lbl">${a}</span><span><b class="nw2">${b}</b></span></div>`).join('') : `<div><span class="lbl">前提</span><span class="pending">質問のあとに、ここへまとまります</span></div>`}</div></div>
+      <h4>このあと</h4><div class="card flat" style="padding:12px 14px"><div class="known">${[['② 質問', '5つまで · まとめて回答'], ['③ 初版', '方案 + 業界の現状'], ['④ AI 修正', '3回まで'], ['⑤ 手動編集', '1回 · 合計 100 を保つ']].map(([a, b]) => `<div><span class="lbl">${a}</span><span>${b}</span></div>`).join('')}</div></div>`;
+  };
+  return { V, PER, GOAL, PNAME, PURPOSE, me, ai, fmBar, FM, FMR, chatTop, wTop, composer, leftChip, revBar, okLine, MEMS, CAPS, GAPS, bsec, meInner, teamInner, stairInner, bgIntro, addSheet, capTable, QS, qCard, PREM, ANS, premCard, LIB, MITATE, libAcc, stepsMini, typesMini, TPLWHY, firstCard, firstWebCard, knownRail };
+})();
+/* V22F-SHARED-END */
 </script>
 <script>
 const C = D.contacts, E = D.events, G = D.goals;
@@ -870,6 +1387,8 @@ const PER = {
   law: { n: '弁護士（投資契約）', s: '弁護士', emo: '⚖️', c: 'teal', w: 10, tgt: 1, unit: 10, step: 4, cand: 1 },
   ev: { n: 'イベント', s: 'イベント', emo: '🎟️', c: 'apricot', w: 10, tgt: 2, unit: 5, step: 0, cand: 3, ev: true },
 };
+/* v2.2：人物タイプ名 = 「役割×状況」一句（n），短名 s 不变；与 app.html / web.html 同源（HV3.V2.PER） */
+Object.keys(PER).forEach(k => { const q = HV3.V2.PER[k]; Object.assign(PER[k], { n: q.n, slot: q.slot, evn: q.evn, route: q.route }); });
 const ORDER = ['cfo', 'ent', 'ang', 'vc', 'cvc', 'law', 'ev'];
 const ST = {
   s0: { cfo: 0, ent: 0, ang: 0, vc: 0, cvc: 0, law: 0, ev: 0 },
@@ -907,7 +1426,7 @@ const pchips = (k, s) => {
   if (r.n < p.tgt) a.push(p.cand ? `<span class="chip lav">${p.ev ? `おすすめ ${p.cand}件` : `候補 ${p.cand}人`}</span>` : '<span class="chip">人脈にいません</span>');
   return a.join('');
 };
-const prow = (k, s, cls = '') => { const p = PER[k], r = pts(k, ST[s][k]); return `<div class="prow ${cls}"><span class="emo sm ${p.c}">${p.emo}</span><div class="pm"><b>${p.n}</b><div class="chips">${pchips(k, s)}</div></div><div class="pe"><div class="pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></div>${mbar(k, s)}</div></div>`; };
+const prow = (k, s, cls = '') => { const p = PER[k], r = pts(k, ST[s][k]); return `<div class="prow ${cls}"><span class="emo sm ${p.c}">${p.emo}</span><div class="pm"><span class="lbl" style="font-weight:800">${p.s}${p.ev ? '' : ' · Step ' + p.step}</span><b style="white-space:normal;line-height:1.45">${p.n}</b><div class="chips">${pchips(k, s)}</div></div><div class="pe"><div class="pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></div>${mbar(k, s)}</div></div>`; };
 function planApp(s, o = {}) {
   if (s === 'empty') return topbar('プラン', '目標を決めると、話すべき人が見えます', meBtn, iorbitBtn) + `
     <div class="guide rise k-pempty"><div style="font-size:19px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 14px">目標から、ステップごとに「誰と話すとよいか」を分析します。</div>
@@ -927,10 +1446,10 @@ function planApp(s, o = {}) {
       <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm primary">${few ? '面談を提案' : '会う準備をする'}</button><span class="chip" style="margin-left:auto">${few ? 'CFO 経験者 · Step 1' : 'CVC 担当者 · 1 / 3人'}</span></div><div class="why-body" hidden>${few ? '根拠：伊藤さんは名刺で「CFO」· 面談メモ 2件（関係が近い）· CFO 経験者は 1人で満額 10点' : '根拠：CFO Night Tokyo vol.18 の参加者タグ「CVC」3名 · CVC 担当者は 1 / 3人で未達'}</div></div>
     <div class="card k-steplist"><div class="card-h"><h3>話すべき人</h3><span class="more">${few ? '候補を見る' : 'ステップ順'}${ic('right', 'sm')}</span></div>
       ${(few ? ['cfo', 'ent', 'ang', 'vc', 'cvc', 'law'] : ['vc', 'cvc', 'ent', 'law', 'cfo', 'ang']).map((k, i) => prow(k, S, i === (few ? 4 : 1) ? 'k-prowx' : '')).join('')}${prow('ev', S)}</div>
-    <div class="grid2" style="margin-top:14px"><button class="btn k-revise">${ic('refresh', 'sm')}方案を見直す</button><button class="btn k-achieve">${ic('flag', 'sm')}目標を達成した</button></div>`;
+    <div class="v22acts k-acts" style="margin-top:14px">${HV3.V2.acts()}</div><div class="lbl" style="margin-top:8px">見直しは AI · 月 3回（あと 2回）· 見直すたびに手動編集 1回</div>`;
 }
 function planWeb(s, o = {}) {
-  const head = mainhead('プラン', s === 'empty' ? '目標を決めると、話すべき人が見えます' : 'シリーズA 資金調達（3億円）', s === 'empty' ? '' : (o.seg || wGoalSeg), s === 'empty' ? '' : `${o.q !== undefined ? quota(o.q) : ''}<button class="btn k-wrevise">${ic('refresh', 'sm')}方案を見直す</button><button class="btn">${ic('flag', 'sm')}目標を達成した</button>`);
+  const head = mainhead('プラン', s === 'empty' ? '目標を決めると、話すべき人が見えます' : '', /* v2.2：目标名在左侧下拉里，标题栏右侧放统一按钮组（同 web.html） */ s === 'empty' ? '' : (o.seg || wGoalSeg), s === 'empty' ? '' : `${o.q !== undefined ? quota(o.q) : ''}<div class="row k-wacts" style="gap:8px">${o.q !== undefined ? HV3.V2.acts({ pre: 'w', sm: true }).replace(/<span class="v22q">[^<]*<\/span>/, '') : HV3.V2.acts({ pre: 'w' })}</div>`); /* 配额 chip 显示时，「AI · 月3回」小签由 chip 代替 */
   if (s === 'empty') return head + `<div class="wgrid">
     <div class="card span7 guide k-wpempty" style="padding:26px"><div style="font-size:22px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 16px">目標から、ステップごとに「誰と話すとよいか」を分析します。期限ごとの予定表は作りません。</div>
       <div class="input" style="background:var(--surface-2);height:50px">${ic('pen', 'sm')}例：シリーズA で 3億円を調達</div>
@@ -945,7 +1464,7 @@ function planWeb(s, o = {}) {
       ${few ? '' : `<div style="flex:none;text-align:right;padding-bottom:6px"><span class="chip teal">満点を超えました</span><div class="lbl" style="margin-top:6px">話して 80 · スキップ 10 · 上乗せ +38</div></div>`}</div></div>
     <div class="card span8"><div class="card-h"><h3>ステップと話すべき人</h3><span class="lbl">順番は目安</span></div>
       <table class="table k-wptable"><thead><tr><th>ステップ</th><th>タイプ</th><th>状況</th><th style="text-align:right">点 / 配点</th></tr></thead><tbody>
-      ${STEPS.filter(st => st[3].length).flatMap(st => st[3].map((k, i) => { const p = PER[k], r = pts(k, ST[S][k]); return `<tr><td>${i === 0 ? `<b>${st[0]}</b> <span class="sub">${st[1]}</span>` : ''}</td><td><div class="row"><span class="emo sm ${p.c}">${p.emo}</span><b>${p.n}</b></div></td><td><div class="row" style="gap:6px">${pchips(k, S)}</div></td><td style="text-align:right;width:120px"><span class="pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></span>${mbar(k, S)}</td></tr>`; })).join('')}
+      ${STEPS.filter(st => st[3].length).flatMap(st => st[3].map((k, i) => { const p = PER[k], r = pts(k, ST[S][k]); return `<tr><td>${i === 0 ? `<b>${st[0]}</b> <span class="sub">${st[1]}</span>` : ''}</td><td><div class="row"><span class="emo sm ${p.c}">${p.emo}</span><div style="min-width:0"><b>${p.s}</b><div class="lbl">${p.n}</div></div></div></td><td><div class="row" style="gap:6px">${pchips(k, S)}</div></td><td style="text-align:right;width:120px"><span class="pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></span>${mbar(k, S)}</td></tr>`; })).join('')}
       <tr><td><span class="sub">—</span></td><td><div class="row"><span class="emo sm apricot">🎟️</span><b>イベント</b></div></td><td><div class="row" style="gap:6px">${pchips('ev', S)}</div></td><td style="text-align:right"><span class="pp">${fmt(pts('ev', ST[S].ev).base + pts('ev', ST[S].ev).bonus)}<small> / 10</small></span>${mbar('ev', S)}</td></tr></tbody></table></div>
     <div class="card span4 k-wtoday" data-why-box style="background:linear-gradient(135deg,var(--mac-lav),var(--surface) 70%)"><div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px">今日 ${few ? '+10' : '+5'} のチャンス</b><span class="why" style="margin-left:auto">?</span></div>
       <div style="font-size:15px;font-weight:700;line-height:1.6;margin-top:8px">${few ? '伊藤 直子さん（ハルモニア CFO）に、事業計画の壁打ちを提案してみましょう。' : '今夜の CFO Night Tokyo に CVC 担当者が約 3人来ます。1人と話せば +5。'}</div>
@@ -956,22 +1475,44 @@ const planRail = s => `<h4>${ic('sparkle', 'sm')}iOrbit</h4><div class="assist-i
   <h4>次の一手</h4><div class="card" style="padding:16px"><b style="font-size:13px">${s === 'many' ? 'CVC 担当者が 1 / 3人。製造業DXカンファレンス 大阪に約 9人来ます' : 'VC パートナーの候補が人脈に 4人います'}</b><button class="btn sm" style="margin-top:10px">${s === 'many' ? 'イベントを見る' : '候補を見る'}</button></div>
   <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">Orbit は目標の達成を保証しません。このタイプの目標が一般にどう進むかと、各ステップで話すとよい人を示します。</div>`;
 
-/* ---- 人物タイプ詳細 ---- */
+/* ---- 人物タイプ詳細（v2.2：画法与字段同 ⑩ b10 ⑧ / App「人物タイプ詳細 · VC」—— 役割×状況 一文 · なぜ · 聞くこと 3問 · 話せたの判定 · 見分け方 · 候補 · 紹介ルート · 会える活動） ---- */
+const V22 = HV3.V2;
+/* VC の候補（本页叙事：高橋 美咲・長谷川 亮 とは話済み，3 人目 = 山口 大樹） */
 const VCC = [
-  { n: '山口 大樹', i: '山', c: 'c1', co: 'Kibo Ventures', role: 'パートナー', d: 2, s: 'meishi', w: 'シリーズA のリード実績 4件 · SaaS に年6社出資', why: '名刺（10/7 CFO Night）· 公開ポートフォリオ SaaS 14社', on: 1, orbit: 1 },
-  { n: '森 恭平', i: '森', c: 'c1', co: '東雲キャピタル', role: 'プリンシパル', d: 1, s: 'li', w: '投資判断に関与する立場 · 製造業 DX に注力', why: 'LinkedIn の役職 · 東雲キャピタルの投資方針（公開情報）', on: 1, orbit: 0 },
-  { n: '井上 拓海', i: '井', c: 'c5', co: 'シードキャピタル東京', role: 'アソシエイト', d: 2, s: 'meishi', w: 'パートナーへの社内推薦ルート', why: '名刺の役職。パートナーではないため「紹介ルート」として 3位', on: 0, orbit: 0 },
-  { n: '岡田 紗希', i: '岡', c: 'c2', co: 'Sakura Growth Partners', role: 'ヴァイスプレジデント', d: 1, s: 'li', w: 'グロース寄り。次のラウンドで有力', why: 'LinkedIn の役職 · 投資ステージがシリーズB 以降中心', on: 0, orbit: 0 },
+  { n: '山口 大樹', i: '山', c: 'c1', co: 'Kibo Ventures', role: 'パートナー', sc: 88, d: 2, s: 'meishi', w: 'シリーズA のリード実績 4件 · SaaS に年6社出資', op: '「製造業向け SaaS のシリーズA」でリードの条件を 30分だけ聞きたい', last: '10/7 CFO Night で名刺交換', why: '名刺（10/7 CFO Night）· 公開ポートフォリオ SaaS 14社', on: 1, orbit: 1 },
+  { n: '森 恭平', i: '森', c: 'c1', co: '東雲キャピタル', role: 'プリンシパル', sc: 78, d: 1, s: 'li', w: '製造業 DX に絞った新ファンドの担当。パートナーにつなぐ役', op: '「製造業向け SaaS のシリーズA」として 15分の紹介を', last: '2024年3月に LinkedIn でつながる', why: 'LinkedIn の役職 · 東雲キャピタルの投資方針（公開情報）', on: 1, orbit: 0 },
+  { n: '井上 拓海', i: '井', c: 'c5', co: 'シードキャピタル東京', role: 'アソシエイト', sc: 61, d: 2, s: 'meishi', w: 'パートナーではないが、社内で案件を上げられる', op: 'パートナーへの社内推薦をお願いできるか相談', last: '最終接点 2週間前', why: '名刺の役職。パートナーではないため「紹介ルート」として 3位', on: 0, orbit: 0 },
+  { n: '岡田 紗希', i: '岡', c: 'c2', co: 'Sakura Growth Partners', role: 'ヴァイスプレジデント', sc: 52, d: 1, s: 'li', w: 'グロース寄り。次のラウンドで有力', op: '近況報告＋次のラウンドの相談', last: 'LinkedIn でつながる', why: 'LinkedIn の役職 · 投資ステージがシリーズB 以降中心', on: 0, orbit: 0 },
 ];
-const candRow = (p, k, o = {}) => `<div data-why-box><div class="cand ${k === 0 ? 'k-cand1' : ''}"><span class="cbx ${p.on ? 'on' : ''} ${k === 0 ? 'k-cbx' : ''}">${ic('check')}</span><span class="rk">${k + 1}</span><div class="av sm ${p.c}">${p.i}</div><div class="meta"><b>${p.n}</b><div class="sub2"><span class="ell">${p.co} · ${p.role}</span></div><div class="lbl ell" style="color:var(--ink-2);margin-top:2px">${p.w}</div></div><div class="rend">${dn(p.d)}<span class="why ${k === 0 ? 'k-cwhy' : ''}">?</span></div></div><div class="why-body" hidden style="margin:0 0 10px 34px">根拠：${p.why}</div></div>`;
+const cand22 = (p, k, o = {}) => `<div data-why-box class="${o.cls || ''}"><div class="v22cand"><span class="cbx ${p.on ? 'on' : ''} ${k === 0 && !o.noK ? 'k-cbx' : ''}">${ic('check')}</span><div class="av sm ${p.c}">${p.i}</div><div class="meta"><b>${p.n}${p.orbit ? ' <span class="chip teal" style="vertical-align:1px">Orbit</span>' : ''}</b><div class="sub2">${p.co} · ${p.role}</div></div><div class="v22rec"><b>${p.sc}</b><span>推薦度</span></div><span class="why ${k === 0 && !o.noK ? 'k-cwhy' : ''}">?</span></div>
+  <div class="v22cdet"><div>${p.w}</div>${p.op ? `<div class="op">💬<span>切り出し方：<b>「${p.op}」</b><span class="lbl"> · ${p.last}</span></span></div>` : ''}</div><div class="why-body" hidden style="margin:0 0 10px 64px">根拠：${p.why}</div></div>`;
+const tHero22 = (k, S, o = {}) => { const p = PER[k], r = pts(k, ST[S][k]); return `<div class="card rise ${o.cls || ''}"><div class="row" style="gap:12px;align-items:flex-start"><span class="emo ${p.c}">${p.emo}</span><div style="flex:1;min-width:0"><div class="v22tk">${p.s} · Step ${V22.stepsOf(k).join('・')} · 配点 ${p.w}</div><b class="v22tn lg">${p.n}</b></div>${r.skip ? '<span class="chip">習熟済み</span>' : ''}</div>
+  <div class="row" style="gap:10px;margin-top:12px;align-items:baseline"><span class="scorewrap"><span class="mid ${o.bump ? 'bump' : ''}">${fmt(r.base + r.bonus)}</span>${o.bump ? '<span class="plusfx half">+5</span>' : ''}</span><span class="lbl">/ ${p.w}点 · ${r.skip ? '習熟済み' : `${r.n} / ${p.tgt}人`} · 1人 ${p.unit}点</span><span class="chip ${p.cand ? 'lav' : ''}" style="margin-left:auto">${p.cand ? `人脈に ${p.cand}人` : '人脈にまだいません'}</span></div>${mbar(k, S)}
+  <div class="v22m3"><div class="${p.cand ? '' : 'z'}"><b>${p.cand}<small>人</small></b><span>${p.cand ? '人脈の候補' : '人脈にいない'}</span></div><div class="${p.evn ? '' : 'z'}"><b>${p.evn}</b><span>会える活動</span></div><div class="${p.route ? '' : 'z'}"><b>${p.route}</b><span>紹介ルート</span></div></div>${o.extra || ''}</div>`; };
+const TD22 = {
+  vc: { why: V22.TDVC.why, whyb: V22.TDVC.whyb, q: V22.TDVC.q, sig: V22.TDVC.sig, judge: V22.judgeVC() },
+  cvc: { why: '製造業向け SaaS は、工場を持つ事業会社と相性がよく、CVC は VC と違う条件（事業提携つき）を出せます。リード VC の条件と比べる選択肢になります。', whyb: '根拠：確定した前提（製造業向け SaaS · シリーズA 3億円）· 業界の現状 L-117（CVC は本業とのシナジー重視 · PoC から入る例が多い）· テンプレート枠「CVC 担当者」配点 15',
+    open: '御社の工場で 3か月の PoC から始めるなら、出資の検討はどんな流れになりますか？', judgeT: 'PoC と出資の流れ · 本業とのシナジー · 社内の決裁 のうち 2つを聞けたら' },
+  law: { why: '優先清算・希薄化防止などの条項は、署名後に変えにくいためです。リードが出すタームシートを、署名前に一緒に読める人が 1人いれば足ります。', whyb: '根拠：Step 4「DD・条件交渉」· 業界の現状 L-104（リードが条件を決める）· テンプレート枠「弁護士（投資契約）」配点 10',
+    q: ['優先清算・希薄化防止で、シリーズA の相場から外れた条項はどれですか？', '種類株式の設計で、次のラウンドに響くところは？', 'タームシートの段階で、こちらから入れておくべき条項は？'] },
+};
+const whyCard = (k, cls = '') => `<div class="card ${cls}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><b style="font-size:13.5px;flex:1">なぜこの人か</b><span class="why">?</span></div><div style="font-size:12.5px;line-height:1.7;margin-top:6px;color:var(--ink-2)">${TD22[k].why}</div><div class="why-body" hidden>${TD22[k].whyb}</div></div>`;
+const askCard = (k, cls = '') => `<div class="card ${cls}" style="padding:12px 16px"><div class="row between" style="margin:2px 0 2px"><b style="font-size:13.5px">聞くこと</b><button class="btn sm ghost" style="height:28px"><span class="lic i-copy sm"></span>コピー</button></div>${TD22[k].q.map((q, i) => `<div class="v22qn"><span class="n">${i + 1}</span><span>${q}</span></div>`).join('')}</div>`;
+const judgeCard = (k, cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">話せたの判定</b><div class="lbl" style="margin:2px 0 10px">面談メモ（または自己申告）から判定 · 同じ人は同じタイプで 1回だけ</div>${TD22[k].judge.map(([t, p], i) => `<div class="v22rule ${i === 0 ? 'k-rule0' : ''}">${ic(i === 0 ? 'check' : i === 1 ? 'plus' : 'user', 'sm')}<span>${t}</span><b class="pt">${p}</b></div>`).join('')}</div>`;
+const sigCard = (k, cls = '') => `<div class="card ${cls}" style="padding:12px 16px"><b style="font-size:13.5px">見分け方</b><div class="lbl" style="margin:2px 0 4px">名刺・LinkedIn・イベントのタグで、この信号がある人</div>${TD22[k].sig.map(([a, v]) => `<div class="v22sig"><span class="lbl">${a}</span><div class="chips">${v.map(x => `<span class="chip">${x}</span>`).join('')}</div></div>`).join('')}</div>`;
+const ITO = C.find(c => c.n === '伊藤 直子') || C[2];
+const vcRouteCard = (cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">紹介ルート</b><div class="lbl" style="margin:2px 0 10px">面識・共通のつながりから推定</div>
+  <div class="v22route"><div class="av sm ${ITO.c}">${ITO.i}</div><span class="arr">${ic('right', 'sm')}</span><div class="v22ghavs"><span class="v22ghav">?</span><span class="v22ghav">?</span><span class="v22ghav">3</span></div><div class="rm"><b>伊藤さん経由で 3名</b><br>面識のある VC 4社のうち、A のリード実績がある 3社のパートナー</div></div>
+  <button class="btn sm block" style="margin-top:10px">${ic('mail', 'sm')}紹介の依頼文を下書き</button></div>`;
+const vcEvCard = (cls = '') => `<div class="card ${cls}" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 2px"><h3>会える活動</h3><span class="lbl">固定の 5項目で採点</span></div>${V22.EVREC.slice(0, 2).map(V22.evRow).join('')}<div class="lbl" style="padding:8px 0">参加するとイベント枠にも +5</div></div>`;
+const talkedRow = n => `<div class="row" style="gap:8px;padding:10px 0;border-top:1px solid var(--line)"><span class="okmark">${ic('check')}</span><span style="font-size:12.5px;flex:1">話した人 ${n}人 · 高橋 美咲 ほか</span>${ic('down', 'sm')}</div>`;
+/* ① 人脈にいる · VC（part 2 = スクロール後：なぜ・聞くこと・判定・見分け方・紹介ルート・活動） */
 function typeHave(o = {}) {
-  const S = o.s || 's46', r = pts('vc', ST[S].vc), half = r.n >= 3;
-  return topbar('VC パートナー', 'Step 3 · VC と接点を持つ', backBtn, moreBtn) + `
-    <div class="card rise k-thead"><div class="row" style="gap:12px"><span class="emo lav">💼</span><div style="flex:1"><div class="lbl">配点 30 · 1人 10点 · 目標 3人</div><div class="row" style="gap:8px;align-items:baseline"><span class="scorewrap"><span class="mid ${o.bump ? 'bump' : ''}">${fmt(r.base + r.bonus)}</span>${o.bump ? '<span class="plusfx half">+5</span>' : ''}</span><span class="lbl">/ 30点 · ${r.n} / 3人</span></div></div></div>${mbar('vc', S)}
-      ${half ? `<div class="mac lav k-half" style="margin-top:12px;font-size:12px;line-height:1.6"><b>目標の 3人に達しました。</b>4人目からは半分（+5）ずつ、上限なしで加算されます。</div>` : ''}</div>
-    <div class="card k-tabout" style="padding:6px 16px">${[['なぜ話す', 'リード投資家が決まると、ほかの投資家も動きやすくなります'], ['何を話す', '投資テーマとの相性 · 判断の流れ · 過去のリード案件'], ['話せたとみなす', '30分以上の面談、またはイベントで事業の話をした']].map(([k, v]) => `<div class="kv"><span class="lbl">${k}</span><span>${v}</span></div>`).join('')}</div>
-    <div class="card k-cands" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 2px"><h3>人脈の候補</h3><span class="lbl">推薦順 · 4人</span></div>${VCC.map((p, k) => candRow(p, k)).join('')}
-      <div class="row" style="gap:8px;padding:10px 0;border-top:1px solid var(--line)"><span class="okmark">${ic('check')}</span><span style="font-size:12.5px;flex:1">話した人 ${r.n}人 · 高橋 美咲 ほか</span>${ic('down', 'sm')}</div></div>` +
+  const S = o.s || 's46', r = pts('vc', ST[S].vc), half = r.n >= 3, two = o.part === 2;
+  const head = topbar(PER.vc.s, `Step ${V22.stepsOf('vc').join('・')} · 配点 ${PER.vc.w}`, backBtn, moreBtn);
+  const extra = half ? `<div class="mac lav k-half" style="margin-top:12px;font-size:12px;line-height:1.6"><b>目標の 3人に達しました。</b>4人目からは半分（+5）ずつ、上限なしで加算されます。</div>` : '';
+  const cands = `<div class="card ${two ? '' : 'k-cands'}" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 0"><h3>あなたの人脈の候補</h3><span class="lbl">推薦度順 · ${VCC.length}人</span></div>${VCC.map((p, k) => cand22(p, k, { noK: two })).join('')}${talkedRow(r.n)}</div>`;
+  return head + tHero22('vc', S, { cls: two ? '' : 'k-thead', bump: o.bump, extra }) + cands + whyCard('vc', two ? 'k-twhy' : '') + (two ? '<i class="scrollto" data-off="10"></i>' : '') + askCard('vc', two ? 'k-tq' : '') + judgeCard('vc', two ? 'k-tjudge' : '') + sigCard('vc', two ? 'k-tsig' : '') + vcRouteCard(two ? 'k-troute' : '') + vcEvCard() + '<div style="height:90px"></div>' +
     (o.foot === false ? '' : foot(`<div class="row" style="gap:8px"><span class="lbl" style="flex:1"><b style="color:var(--ink)">2人</b>を選択中</span><button class="btn k-talked">すでに話した</button><button class="btn primary k-propose">面談を提案</button></div>`));
 }
 const proposeSheet = `<div class="sheet-scrim"></div><div class="sheet k-psheet" style="top:120px"><div class="grab"></div>
@@ -983,25 +1524,32 @@ const proposeSheet = `<div class="sheet-scrim"></div><div class="sheet k-psheet"
   <div class="card flat" style="padding:12px 14px;margin-top:10px"><div class="row" style="gap:10px"><div class="av sm c1">森</div><div style="flex:1;min-width:0"><b style="font-size:13px">森 恭平</b><div class="lbl">Orbit 未利用 · メールアドレス未登録</div></div></div>
     <button class="btn block k-draft" style="margin-top:10px">${ic('mail', 'sm')}依頼文の下書きを作成</button><div class="lbl center" style="margin-top:6px">LinkedIn のメッセージにコピーして使えます</div></div>
   ${draftNote}</div>`;
-function typeNone() {
-  return topbar('CVC 担当者', 'Step 3 · 配点 15（1人 5点 · 目標 3人）', backBtn, moreBtn) + `
-    <div class="card flat k-tnone" style="padding:14px 16px"><div class="row" style="gap:10px"><span class="emo sm blue">🏢</span><div style="flex:1"><b style="font-size:13.5px">人脈にまだいません</b><div class="lbl">どんな人か・どこで会えるかをまとめました</div></div></div></div>
-    <div class="card k-persona" style="padding:8px 16px" data-why-box><div class="card-h" style="margin:8px 0 2px"><h3>人物像</h3><span class="why">?</span></div><div class="why-body" hidden style="margin:0 0 8px">根拠：国内 CVC 約 120社の公開情報の傾向 · あなたの業種（製造業向け SaaS）</div>
-      ${[['肩書き', '事業会社の CVC 投資担当 · 新規事業室 室長'], ['いる会社', '製造業・商社・通信の大手（CVC を持つ会社）'], ['関心ごと', '本業とのシナジー · PoC から始められるか'], ['切り出し方', '「御社の工場で 3か月の PoC」から入ると話が早い']].map(([k, v]) => `<div class="kv"><span class="lbl">${k}</span><span>${v}</span></div>`).join('')}</div>
-    <div class="card k-evlist" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 2px"><h3>このタイプに会えるイベント</h3><span class="lbl">参加者タグから</span></div>
-      ${[['CVC Meetup Tokyo #12', '10月22日（木）· 大手町', 79, 14], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 9], ['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 4]].map(([n, d, sc, m], k) => `<div class="evr ${k === 0 ? 'k-ev1' : ''}">${ring(44, 5, [{ v: sc, c: sc > 70 ? 'var(--plum-700)' : 'var(--plum-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:12px">${sc}</span>`)}<div class="meta"><b>${n}</b><div class="lbl ell">${d}</div><div class="row" style="gap:6px;margin-top:4px"><span class="chip lav ${k === 0 ? 'k-evcnt' : ''}">このタイプが約 ${m}人参加</span></div></div>${ic('right', 'sm')}</div>`).join('')}
+/* ② 人脈にいない · CVC（人物像 · 開口一番 · 会える活動 · 紹介ルート） */
+const CVC_PER = [['いまの立場', '製造業・商社・通信の大手で、CVC の投資担当か新規事業室の室長'], ['関心ごと', '本業とのシナジー · PoC から始められるか · 事業提携つきの出資'], ['判断の流れ', '現場の PoC → 事業部の評価 → 投資委員会（3〜6か月）']];
+const CVC_EV = [['CVC Meetup Tokyo #12', '10月22日（木）· 大手町', 79, 14, '¥3,000'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 9, '無料'], ['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 4, '¥15,000']];
+const evRing22 = (sc, sz = 44) => ring(sz, 5, [{ v: sc, c: sc >= 70 ? 'var(--plum-700)' : sc >= 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:12px">${sc}</span>`);
+const KOB = C.find(c => c.n === '小林 誠') || C[5];
+function typeNone(o = {}) {
+  return topbar(PER.cvc.s, `Step ${V22.stepsOf('cvc').join('・')} · 配点 ${PER.cvc.w}`, backBtn, moreBtn) + `
+    <div class="card flat k-tnone" style="padding:12px 16px"><div class="row" style="gap:10px"><span class="emo sm blue">🔭</span><div style="flex:1"><b style="font-size:13.5px">人脈にまだいません</b><div class="lbl">どんな人か · 何から話すか · どこで会えるかをまとめました</div></div></div></div>
+    ${tHero22('cvc', 's46', { cls: 'k-chero' })}
+    <div class="card k-persona" style="padding:8px 16px" data-why-box><div class="card-h" style="margin:8px 0 2px"><h3>人物像</h3><span class="why">?</span></div><div class="why-body" hidden style="margin:0 0 8px">${TD22.cvc.whyb}</div>
+      ${CVC_PER.map(([k, v]) => `<div class="kv"><span class="lbl">${k}</span><span>${v}</span></div>`).join('')}</div>
+    <div class="card k-copen" style="padding:14px 16px"><div class="row between"><b style="font-size:13.5px">開口一番</b><button class="btn sm ghost" style="height:28px"><span class="lic i-copy sm"></span>コピー</button></div><div class="quote" style="margin-top:8px">「${TD22.cvc.open}」</div><div class="lbl" style="margin-top:8px">判定：${TD22.cvc.judgeT} +${PER.cvc.unit}</div></div>
+    ${o.part === 2 ? '<i class="scrollto" data-off="10"></i>' : ''}<div class="card k-evlist" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 2px"><h3>会える活動</h3><span class="lbl">固定の 5項目で採点</span></div>
+      ${CVC_EV.map(([n, d, sc, m], k) => `<div class="v22ev ${k === 0 ? 'k-ev1' : ''}">${evRing22(sc)}<div class="meta"><b>${n}</b><div class="lbl">${d}</div><span class="chip lav ${k === 0 ? 'k-evcnt' : ''}" style="margin-top:4px">このタイプが約 ${m}人参加</span></div>${ic('right', 'sm')}</div>`).join('')}
       <div class="lbl" style="padding:8px 0">参加するとイベント枠にも +5</div></div>
-    <div class="card k-intro" style="padding:14px 16px"><div class="lbl">紹介を頼めそうな人</div><div class="row" style="gap:10px;margin-top:8px"><div class="av sm c2">小</div><div style="flex:1;min-width:0"><b style="font-size:13px">小林 誠</b><div class="lbl ell">大企業の新規事業担当 300名のコミュニティ主宰</div></div><button class="btn sm">依頼文</button></div></div>
+    <div class="card k-intro" style="padding:14px 16px"><b style="font-size:13.5px">紹介ルート</b><div class="lbl" style="margin:2px 0 10px">事業会社の新規事業担当とつながっている人</div>
+      <div class="v22route"><div class="av sm ${KOB.c}">${KOB.i}</div><div class="rm"><b>${KOB.n}</b> <span class="lbl">${KOB.co}</span><br>大企業の新規事業担当 300名のコミュニティを主宰</div><button class="btn sm">依頼文</button></div></div>
     <button class="btn ghost block k-skipbtn" style="margin-top:6px">この分野はもう詳しい</button>`;
 }
+/* ③ スキップ · 弁護士 */
 function typeLaw(o = {}) {
-  const skipped = o.skipped;
-  return topbar('弁護士（投資契約）', 'Step 4 · DD・条件交渉', backBtn, moreBtn) + `
-    <div class="card rise k-lawhead"><div class="row" style="gap:12px"><span class="emo teal">⚖️</span><div style="flex:1"><div class="lbl">配点 10 · 1人 10点 · 目標 1人</div><div class="row" style="gap:8px;align-items:baseline"><span class="mid">${skipped ? 10 : 0}</span><span class="lbl">/ 10点</span></div></div>${skipped ? '<span class="chip">習熟済み</span>' : ''}</div>
-      <div class="mb ${skipped ? 'sk' : ''}" style="height:8px;margin-top:10px"></div>
-      ${skipped ? `<div class="row k-skipped" style="gap:10px;margin-top:12px;padding:10px 12px;border-radius:14px;background:var(--surface-2)"><i class="sw hatch" style="width:22px;height:14px"></i><div style="flex:1;font-size:12.5px"><b>習熟済みとしてスキップ</b><div class="lbl">10月7日 · 話した人の点とは分けて表示します</div></div><button class="btn sm k-unskip">取り消す</button></div>` : ''}</div>
-    <div class="card" style="padding:6px 16px">${[['なぜ話す', '優先清算・希薄化防止などの条項は、署名後に変えにくいため'], ['何を話す', 'タームシートの論点 · 種類株式の設計 · 相場感'], ['話せたとみなす', 'タームシートを一緒に読んだ、または 30分以上の相談']].map(([k, v]) => `<div class="kv"><span class="lbl">${k}</span><span>${v}</span></div>`).join('')}</div>
-    <div class="card ${skipped ? 'faded' : ''}" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 2px"><h3>人脈の候補</h3><span class="lbl">1人</span></div>${candRow({ n: '中村 由紀', i: '中', c: 'c1', co: '光が丘法律事務所', role: '弁護士', d: 2, s: 'meishi', w: '投資契約・種類株式に強い', why: '名刺 · 事務所サイトの取扱分野', on: 0 }, 1)}</div>
+  const skipped = o.skipped, S = skipped ? 's46' : 's0';
+  const extra = skipped ? `<div class="row k-skipped" style="gap:10px;margin-top:12px;padding:10px 12px;border-radius:14px;background:var(--surface-2)"><i class="sw hatch" style="width:22px;height:14px"></i><div style="flex:1;font-size:12.5px"><b>習熟済みとしてスキップ</b><div class="lbl">10月7日 · 話した人の点とは分けて表示します</div></div><button class="btn sm k-unskip">取り消す</button></div>` : '';
+  const NAK = { n: '中村 由紀', i: '中', c: 'c1', co: '光が丘法律事務所', role: '弁護士', sc: 83, w: '投資契約・種類株式に強い。シリーズA のタームシート 20件以上', op: 'リードのタームシートを、署名前に 1時間だけ一緒に読んでほしい', last: '最終接点 3週間前', why: '名刺 · 事務所サイトの取扱分野', on: 0 };
+  return topbar(PER.law.s, `Step ${V22.stepsOf('law').join('・')} · 配点 ${PER.law.w}`, backBtn, moreBtn) + tHero22('law', S, { cls: 'k-lawhead', extra }) + whyCard('law') + askCard('law') +
+    `<div class="card ${skipped ? 'faded' : ''}" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 0"><h3>あなたの人脈の候補</h3><span class="lbl">1人</span></div>${cand22(NAK, 1)}</div>
     ${skipped ? '' : '<button class="btn ghost block k-skipbtn" style="margin-top:6px">この分野はもう詳しい</button>'}`;
 }
 const skipDialog = `<div class="scrim"></div><div class="dialog k-skipdlg"><div class="dic emo">🧠</div><b class="dt">この分野はもう詳しいですか？</b>
@@ -1041,44 +1589,72 @@ function achieved() {
     foot(`<button class="btn primary block xl">次の目標を決める</button><button class="btn ghost block">あとで</button>`);
 }
 
-/* ---- 方案を見直す ---- */
-const DIFF2 = [['add', 'Step 3 に「事業会社の新規事業責任者」を追加', '配点 10 · 1人 5点 · 目標 2人'], ['chg', 'CVC 担当者 配点 15 → 20 · 目標 3 → 4人', 'CVC 中心に切り替えるため'], ['chg', 'VC パートナー 配点 30 → 25', '獲得済みの 20点 はそのまま'], ['del', 'エンジェル投資家 を外す', '配点 10 → 上の 3件に再配分']];
-const diffRow = ([k, t, d], st = '') => `<div class="diff ${st}"><span class="sg ${k}">${k === 'add' ? '＋' : k === 'del' ? '−' : '↔'}</span><div style="min-width:0"><b>${t}</b><span class="lbl">${d}</span></div>
-  ${st === 'no' ? '<button class="btn sm ghost">元に戻す</button>' : `<div class="row" style="gap:6px"><button class="lbtn">${ic('x', 'sm')}</button><button class="lbtn ${st === 'ok' ? 'on' : ''}">${ic('check', 'sm')}</button></div>`}</div>`;
-function revise1() {
-  return topbar('方案を見直す', 'シリーズA 資金調達（3億円）', xBtn, `<span class="qchip k-quota"><i></i>あと 3回</span>`) + `
-    <div class="h1" style="font-size:21px">何が変わりましたか？</div><div class="sub" style="margin:4px 0 14px">必要なときにだけ。獲得済みの点は失われません。</div>
-    <div class="row k-reasons" style="gap:6px;flex-wrap:wrap"><span class="fopt on">投資家の狙いを変えたい</span><span class="fopt">目標額が変わった</span><span class="fopt">状況が進んだ</span><span class="fopt">配点が合わない</span></div>
-    <div class="fld"><label>ひとこと（任意）</label><div class="in" style="min-height:80px;align-items:flex-start;padding-top:12px"><span style="white-space:normal">VC より、製造業の事業会社（CVC）を中心にしたい<i class="caret"></i></span></div></div>
-    <div class="card flat" style="margin-top:14px;padding:14px"><div class="lbl">いまのプラン</div><div class="row" style="gap:12px;margin-top:6px"><div class="mid">46</div><div style="flex:1">${sbar('s46')}</div></div></div>` +
-    foot(`<button class="btn primary block xl k-revgo">${ic('sparkle', 'sm')}変更案を作る（1回使います）</button><div class="lbl center">今月 あと 3回 · 毎月1日に戻ります</div>`);
+/* ---- 方案を見直す（v2.2）：iOrbit 対話 →「確定した前提」（AI が変わったかもしれない行に印）→ 前提を直して送る → AI 修正の差分（月3回の枠を 1回 · 変更なしでも 1回）→ 手動編集 1回（見直すたびに 1回） ---- */
+const F = V22F;
+const RPREM = F.PREM.concat([['進み具合', 'Step 2 紹介 2件 · Step 3 VC 2 / 3人と面談', '記録']]);
+const RFLAG = { 2: '面談メモ 10/5「ARR 1億円の見込み」', 3: 'VC 2人と面談済み · 高橋さんがリード候補に', 6: 'プランの記録から自動' };
+const RPREM2 = RPREM.map(r => r.slice());
+RPREM2[2] = ['直近の数字', 'ARR 1億円の見込み（年内）· 前年比 2.4倍', 'Q1', 'ARR 8,000万円'];
+RPREM2[3] = ['既存株主', 'エンジェル 2名 · リード候補 1社（青葉ベンチャーズ）', 'Q2', 'リード候補なし'];
+const RSAY = 'ARR は年内に 1億円が見えました。リード候補は青葉ベンチャーズ（高橋さん）。条件を比べたいので、事業会社の CVC にも並行で当たりたいです。';
+const RDIFF = [['Step 3 の目安', 'リード候補 3社と 1回目の面談を終え、1社が DD に進む', '青葉ベンチャーズを含む VC 3社と CVC 1社に並行で会い、1社が DD に進む'], ['配点', 'VC パートナー 30 · CVC 担当者 15', 'VC パートナー 25 · CVC 担当者 20（5点刻み · 合計 100）']];
+const rTop = () => F.chatTop('方案を見直す · ' + V22.GOAL.t);
+const rQuota = (n, cls = '') => F.revBar(n, { cls, top: '見直し · 今月', t: n ? '前提を直して送ると、AI が修正案を出します' : '今月の見直しは使い切りました。手動で直すか、来月 1日を待ちます', ex: n ? '送ると 1回使います（変更がなくても 1回）· 月3回 · 毎月1日に戻ります' : '面談の記録・加点・スキップはこれまでどおり使えます' });
+const rOpen = (cls = '') => F.ai('前回の確定（9/14）から 3週間です。記録と面談メモから、変わったかもしれない前提に印を付けました。違うところを直して送ってください。', cls);
+const diffCard = (o = {}) => `<div class="card ${o.cls || ''}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><div style="flex:1;min-width:0"><div class="lbl">見直し · AI 修正を反映（今月 2 / 3 回目）</div><b style="font-size:14.5px">方案を更新しました</b></div><span class="why">?</span></div>
+  <div class="k-rdiff" style="margin-top:6px">${RDIFF.map(([l, a, b]) => `<div class="dl"><span class="chgtag">変更</span><span class="lbl">${l}</span><s>${a}</s><span class="nw">${b}</span></div>`).join('')}</div>
+  <div class="same-line k-rsame">変わらない点：進め方の結論 · Step の順番 · 獲得済みの 46点（変わるのは「まだの点」の配分だけ）</div>
+  <div class="why-body" hidden>根拠：直した前提 2行（ARR 1億円見込み · リード候補 1社）· あなたの修正（CVC も並行）· 業界の現状 L-104（条件を比べるには並行が一般的）· L-117（CVC は PoC から）</div>
+  ${o.act === false ? '' : `<div class="row" style="gap:8px;margin-top:12px">${F.leftChip('見直し 今月あと 1 回', true, 'k-rleft')}<span class="lbl" style="margin-left:auto">獲得済み 46 → 46</span></div>
+  <div class="grid2" style="margin-top:8px"><button class="btn sm k-rmanual">${ic('edit', 'sm')}手動で編集（1回）</button><button class="btn sm primary k-rok">この内容で確定</button></div>
+  <div class="lbl" style="margin-top:8px;line-height:1.6">手動編集は見直すたびに 1回つきます（合計 100 · 5点刻み · 画面は ⑩ b10）。確定までは、もう一度送って直せます（あと 1回）</div>`}</div>`;
+function revApp(stage) {
+  if (stage === 1) return { body: rTop() + `<div class="chat">${F.fmBar(F.FMR, 0, 'k-rfm')}${F.me('プランの「方案を見直す」から', 'k-rfrom')}${rOpen()}${F.premCard({ rows: RPREM, flag: RFLAG, cls: 'k-rprem', sub: '印 = 変わったかもしれない', kcls: { 2: 'k-rflag' } })}</div>`, overlay: rQuota(2, 'k-rquota') + F.composer('ほかに変わったこと（任意）') };
+  if (stage === 2) return { body: rTop() + `<div class="chat">${F.fmBar(F.FMR, 0)}${rOpen()}<i class="scrollto" data-off="10"></i>${F.premCard({ rows: RPREM2, edit: 2, cls: 'k-rprem2', sub: '2行を直しました', kcls: { 3: 'k-rchg' } })}${F.me(RSAY, 'k-rsay')}</div>`, overlay: foot(`<button class="btn primary block xl k-rsend">${ic('sparkle', 'sm')}前提を送って修正案をつくる</button><div class="lbl center">見直し 今月あと 2 → 1回 · 変更がなくても 1回</div>`) };
+  if (stage === 3) return { body: rTop() + `<div class="chat tall">${F.fmBar(F.FMR, 1)}${F.premCard({ rows: RPREM2, mini: true })}${F.me(RSAY)}<i class="scrollto" data-off="64"></i>${diffCard({ cls: 'k-rupd' })}</div>`, overlay: rQuota(1) + F.composer('もう一度直す（あと 1回）') };
+  /* 変更なしでも 1回（今月 3回目） */
+  return { body: rTop() + `<div class="chat tall">${F.fmBar(F.FMR, 1)}<i class="scrollto" data-off="8"></i>${F.me('リードが決まりそうなので、VC の目標人数を 3 → 1人に減らしたい', 'k-rsay3')}
+    <div class="card k-rnochg" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><div style="flex:1;min-width:0"><div class="lbl">見直し · 今月 3 / 3 回目</div><b style="font-size:14.5px">今回は変更しません</b></div><span class="why">?</span></div>
+      <div class="same-line" style="margin-top:10px">リードが決まっても、条件を比べるために、ほかの VC とも並行で話すのが一般的です。目標 3人のままにします。どうしても変えたいときは、手動編集で人数を変えられます。</div>
+      <div class="why-body" hidden>根拠：業界の現状 L-104（リードの条件はほかの投資家と比べて決まる）· 確定した前提「リード候補 1社」</div>
+      <div class="row" style="gap:8px;margin-top:12px">${F.leftChip('見直し 今月あと 0 回', false, 'k-r0')}<span class="lbl" style="margin-left:auto">変更なしでも 1回</span></div>
+      <div class="grid2" style="margin-top:8px"><button class="btn sm k-rmanual3">${ic('edit', 'sm')}手動で編集（1回）</button><button class="btn sm primary">このままにする</button></div></div></div>`, overlay: rQuota(0, 'k-rq0') + F.composer('見直しは今月使い切りました', true) };
 }
-function revise2() {
-  return topbar('変更案', '4件 · 選んだものだけ反映', backBtn) + `
-    <div class="card k-diffs" style="padding:8px 16px">${DIFF2.map((d, i) => diffRow(d, i < 2 ? 'ok' : i === 3 ? 'no' : '')).join('')}</div>
-    <div class="card k-impact" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><b style="font-size:13px;flex:1">スコアへの影響</b><span class="why">?</span></div><div class="row" style="gap:10px;margin-top:6px;align-items:baseline"><span class="mid">46</span><span class="lbl">→</span><span class="mid">46</span><span class="lbl">獲得済みの点は変わりません</span></div>
-      <div class="why-body" hidden>変わるのは「まだの点」の配分だけです。外したタイプで獲得済みの点がある場合は、「以前のタイプ」として残ります。</div></div>` +
-    foot(`<button class="btn primary block xl k-apply">✓ の 2件を反映</button><button class="btn ghost block">すべて見送る</button>`);
+function revWeb() {
+  return F.wTop('方案を見直す · ' + V22.GOAL.t) + `<div class="wchat" style="max-width:none">${F.fmBar(F.FMR, 1)}${rOpen()}
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:14px;align-items:start">${F.premCard({ rows: RPREM2, flag: { 6: RFLAG[6] }, cls: 'k-wrprem', sub: '印 = AI の予標 · 直した行は新旧を表示' })}<div style="display:grid;gap:12px">${F.me(RSAY)}${diffCard({ cls: 'k-wrupd', act: false })}</div></div></div>`;
 }
-const reviseModal = `<div class="overlay"></div><div class="wmodal w560 k-wrevmodal" style="width:640px"><div class="row between"><div><b style="font-size:18px">変更案 · 4件</b><div class="lbl">「VC より、製造業の事業会社（CVC）を中心にしたい」から</div></div><span class="qchip"><i></i>今月 あと 2回</span></div>
-  <div style="margin-top:12px">${DIFF2.map((d, i) => diffRow(d, i < 2 ? 'ok' : i === 3 ? 'no' : '')).join('')}</div>
-  <div class="card flat" style="padding:12px 14px;margin-top:12px;font-size:12.5px"><b>スコア 46 → 46</b> <span class="lbl">獲得済みの点は変わりません · 変わるのは「まだの点」の配分だけ</span></div>
-  <div class="macts"><span class="keys hint"><span><span class="kbd">Y</span>採用</span><span><span class="kbd">N</span>見送り</span></span><button class="btn">すべて見送る</button><button class="btn primary">✓ の 2件を反映</button></div></div>`;
+const revRail = `<h4>${ic('refresh', 'sm')}見直し · 今月</h4><div class="card k-wrq" style="padding:16px"><div class="revbig"><span class="lbl">あと</span><em>1</em><span class="lbl">回 / 3回</span></div><div class="dots3"><i class="used"></i><i class="used"></i><i></i></div>
+    <div class="lbl" style="margin-top:10px;line-height:1.6">送るたびに 1回（変更がなくても 1回）· 毎月1日に戻ります · 初めてのプラン作成は含みません</div>
+    <div class="assist-in" style="margin-top:10px;background:var(--surface-2)">${ic('pen', 'sm')}もう一度直す<button class="lbtn" style="margin-left:auto;background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div></div>
+  <div class="grid2"><button class="btn k-wrmanual">${ic('edit', 'sm')}手動で編集（1回）</button><button class="btn primary">この内容で確定</button></div>
+  <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">手動編集は見直すたびに 1回。保存したあとは AI が自動で書き換えません。獲得済みの点は変わりません。</div>`;
 
-/* ---- Web 人物タイプ ---- */
+/* ---- Web 人物タイプ（画法同 b10 typeAWeb / typeBWeb） ---- */
 function typeWeb(kind) {
-  if (kind === 'have') return mainhead('VC パートナー', 'Step 3 · VC と接点を持つ · 配点 30', `<button class="rbtn">${ic('left')}</button>`, `<button class="btn ghost">この分野はもう詳しい</button>`) + `<div class="wgrid">
-    <div class="card span4"><div class="row" style="gap:12px"><span class="emo lav">💼</span><div><div class="lbl">1人 10点 · 目標 3人</div><div class="mid">20<small class="lbl"> / 30点 · 2 / 3人</small></div></div></div>${mbar('vc', 's46')}
-      ${[['なぜ話す', 'リード投資家が決まると、ほかの投資家も動きやすくなります'], ['何を話す', '投資テーマとの相性 · 判断の流れ · 過去のリード案件'], ['話せたとみなす', '30分以上の面談、またはイベントで事業の話をした']].map(([k, v]) => `<div class="kv"><span class="lbl">${k}</span><span>${v}</span></div>`).join('')}</div>
-    <div class="card span8 k-wcands"><div class="card-h"><h3>人脈の候補 · 推薦順</h3><div class="row" style="gap:8px"><span class="lbl"><b style="color:var(--ink)">2人</b>を選択中</span><button class="btn sm">すでに話した</button><button class="btn sm primary k-wpropose">面談を提案</button></div></div>
-      <table class="table"><thead><tr><th></th><th>#</th><th>名前</th><th>理由</th><th>濃さ</th><th>出どころ</th><th></th></tr></thead><tbody>${VCC.map((p, k) => `<tr ${p.on ? 'style="background:var(--surface-2)"' : ''}><td><span class="cbx ${p.on ? 'on' : ''}">${ic('check')}</span></td><td class="muted">${k + 1}</td><td><div class="row"><div class="av sm ${p.c}">${p.i}</div><div><b>${p.n}</b><div class="lbl">${p.co} · ${p.role}</div></div></div></td><td style="max-width:260px;font-size:12.5px" data-why-box><div class="row" style="gap:6px"><span>${p.w}</span><span class="why ${k === 0 ? 'k-wwhy' : ''}">?</span></div><div class="why-body" ${k === 0 ? '' : 'hidden'}>根拠：${p.why}</div></td><td>${dn(p.d)}</td><td>${src(p.s)}</td><td>${p.orbit ? '<span class="chip teal">Orbit</span>' : ''}</td></tr>`).join('')}</tbody></table>
-      <div class="row push" style="gap:8px;margin-top:12px"><span class="okmark">${ic('check')}</span><span style="font-size:12.5px">話した人 2人：高橋 美咲（10/6 面談）· 長谷川 亮（9/18 自己申告）</span></div></div></div>`;
-  return mainhead('CVC 担当者', 'Step 3 · VC と接点を持つ · 配点 15', `<button class="rbtn">${ic('left')}</button>`, `<button class="btn ghost">この分野はもう詳しい</button><button class="btn">${ic('plus', 'sm')}オフラインで話した</button>`) + `<div class="wgrid">
-    <div class="card span5 k-wpersona" data-why-box><div class="card-h"><h3>人物像 <span class="chip">人脈にまだいません</span></h3><span class="why">?</span></div><div class="why-body" hidden style="margin:0 0 8px">根拠：国内 CVC 約 120社の公開情報の傾向 · あなたの業種（製造業向け SaaS）</div>
-      ${[['肩書き', '事業会社の CVC 投資担当 · 新規事業室 室長'], ['いる会社', '製造業・商社・通信の大手（CVC を持つ会社）'], ['関心ごと', '本業とのシナジー · PoC から始められるか'], ['切り出し方', '「御社の工場で 3か月の PoC」から入ると話が早い']].map(([k, v]) => `<div class="kv"><span class="lbl">${k}</span><span>${v}</span></div>`).join('')}
-      <div class="row push" style="gap:10px;margin-top:12px;padding:12px;border-radius:16px;background:var(--surface-2)"><div class="av sm c2">小</div><div style="flex:1"><div class="lbl">紹介を頼めそうな人</div><b style="font-size:13px">小林 誠 · 丸の内イノベーションラボ</b></div><button class="btn sm">依頼文</button></div></div>
-    <div class="card span7 k-wevs"><div class="card-h"><h3>このタイプに会えるイベント</h3><span class="lbl">参加者タグ「CVC」「事業会社」から · 参加でイベント枠 +5</span></div>
-      <table class="table"><thead><tr><th>スコア</th><th>イベント</th><th>このタイプ</th><th>参加費</th><th></th></tr></thead><tbody>${[['CVC Meetup Tokyo #12', '10月22日（木）· 大手町', 79, 14, '¥3,000'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 9, '無料'], ['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 4, '¥15,000']].map(([n, d, sc, m, f], k) => `<tr><td>${ring(42, 5, [{ v: sc, c: sc > 70 ? 'var(--plum-700)' : 'var(--plum-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:11.5px">${sc}</span>`)}</td><td><b>${n}</b><div class="lbl">${d}</div></td><td><span class="chip lav ${k === 0 ? 'k-wevcnt' : ''}">約 ${m}人参加</span></td><td class="muted">${f}</td><td><button class="btn sm">詳細</button></td></tr>`).join('')}</tbody></table></div></div>`;
+  if (kind === 'have') { const p = PER.vc, r = pts('vc', ST.s46.vc);
+    return mainhead(p.s, `Step ${V22.stepsOf('vc').join('・')} · 配点 ${p.w}`, `<button class="rbtn">${ic('left')}</button>`, `<button class="btn ghost">この分野はもう詳しい</button><button class="btn">${ic('plus', 'sm')}オフラインで話した</button>`) + `<div class="wgrid">
+    <div class="card span12 k-wvhead"><div class="row" style="gap:16px;align-items:center"><span class="emo ${p.c}">${p.emo}</span><div style="flex:1;min-width:0"><div class="v22tk">${p.s} · 役割 × 状況</div><b class="v22tn" style="font-size:19px">${p.n}</b></div>
+      <div class="v22m3 on2" style="width:330px;margin:0;flex:none"><div><b>${p.cand}<small>人</small></b><span>人脈の候補</span></div><div><b>${p.evn}</b><span>会える活動</span></div><div><b>${p.route}</b><span>紹介ルート</span></div></div>
+      <div style="width:170px;flex:none"><div class="row" style="gap:6px;align-items:baseline"><span class="mid">${fmt(r.base)}</span><span class="lbl">/ ${p.w}点 · ${r.n} / ${p.tgt}人</span></div>${mbar('vc', 's46')}</div></div></div>
+    <div class="card span5 k-wvabout" data-why-box><div class="row" style="gap:8px"><b style="font-size:14px;flex:1">なぜこの人か</b><span class="why">?</span></div><div style="font-size:13px;line-height:1.7;margin-top:4px;color:var(--ink-2)">${TD22.vc.why}</div><div class="why-body" hidden>${TD22.vc.whyb}</div>
+      <div class="row between" style="margin-top:14px"><b style="font-size:14px">聞くこと</b><button class="btn sm ghost"><span class="lic i-copy sm"></span>コピー</button></div>${TD22.vc.q.map((q, k) => `<div class="v22qn"><span class="n">${k + 1}</span><span>${q}</span></div>`).join('')}
+      <b style="font-size:14px;display:block;margin:12px 0 8px">話せたの判定</b><div class="k-wvjudge">${TD22.vc.judge.map(([t, pp], k) => `<div class="v22rule">${ic(k === 0 ? 'check' : k === 1 ? 'plus' : 'user', 'sm')}<span>${t}</span><b class="pt">${pp}</b></div>`).join('')}</div>
+      <b style="font-size:14px;display:block;margin:12px 0 2px">見分け方</b>${TD22.vc.sig.map(([k, v]) => `<div class="v22sig"><span class="lbl">${k}</span><div class="chips">${v.map(x => `<span class="chip">${x}</span>`).join('')}</div></div>`).join('')}</div>
+    <div class="card span7 k-wcands"><div class="card-h"><h3>あなたの人脈の候補 · 推薦度順</h3><div class="row" style="gap:8px"><span class="lbl"><b style="color:var(--ink)">2人</b>を選択中</span><button class="btn sm">すでに話した</button><button class="btn sm primary k-wpropose">面談を提案</button></div></div>
+      <table class="table"><thead><tr><th></th><th style="white-space:nowrap">推薦度</th><th>名前</th><th>理由 · 切り出し方</th></tr></thead><tbody>${VCC.map((q, k) => `<tr ${q.on ? 'style="background:var(--surface-2)"' : ''}><td><span class="cbx ${q.on ? 'on' : ''}">${ic('check')}</span></td><td><b style="font-family:var(--font-num);font-size:18px">${q.sc}</b></td><td style="width:180px"><div class="row"><div class="av sm ${q.c}">${q.i}</div><div style="min-width:0"><b>${q.n}</b>${q.orbit ? ' <span class="chip teal">Orbit</span>' : ''}<div class="lbl">${q.co} · ${q.role}</div></div></div></td><td data-why-box style="font-size:12.5px;line-height:1.6"><div class="row" style="gap:6px;align-items:flex-start"><span style="flex:1">${q.w}</span><span class="why ${k === 0 ? 'k-wwhy' : ''}">?</span></div><div style="margin-top:4px">💬 <b>「${q.op}」</b> <span class="lbl">· ${q.last}</span></div><div class="why-body" ${k === 0 ? '' : 'hidden'}>根拠：${q.why}</div></td></tr>`).join('')}</tbody></table>
+      <div class="row push" style="gap:8px;margin-top:12px"><span class="okmark">${ic('check')}</span><span style="font-size:12.5px;flex:1">話した人 2人：高橋 美咲（10/6 面談）· 長谷川 亮（9/18 自己申告）</span></div>
+      <div class="v22route k-wvroute" style="margin-top:12px"><div class="av sm ${ITO.c}">${ITO.i}</div><span class="arr">${ic('right', 'sm')}</span><div class="v22ghavs"><span class="v22ghav">?</span><span class="v22ghav">?</span><span class="v22ghav">3</span></div><div class="rm"><b>紹介ルート：伊藤さん経由で VC パートナー 3名</b><br>面識のある VC 4社のうち、A のリード実績がある 3社</div><button class="btn sm">${ic('mail', 'sm')}依頼文を下書き</button></div></div></div>`; }
+  const p = PER.cvc;
+  return mainhead(p.s, `Step ${V22.stepsOf('cvc').join('・')} · 配点 ${p.w} · 人脈にまだいません`, `<button class="rbtn">${ic('left')}</button>`, `<button class="btn ghost">この分野はもう詳しい</button><button class="btn">${ic('plus', 'sm')}オフラインで話した</button>`) + `<div class="wgrid">
+    <div class="card span12 k-wchead"><div class="row" style="gap:16px;align-items:center"><span class="emo ${p.c}">${p.emo}</span><div style="flex:1;min-width:0"><div class="v22tk">${p.s} · 役割 × 状況</div><b class="v22tn" style="font-size:19px">${p.n}</b></div>
+      <div class="v22m3 on2" style="width:330px;margin:0;flex:none"><div class="z"><b>0<small>人</small></b><span>人脈にいない</span></div><div><b>${CVC_EV.length}</b><span>会える活動</span></div><div><b>${p.route}</b><span>紹介ルート</span></div></div>
+      <div style="width:170px;flex:none"><div class="row" style="gap:6px;align-items:baseline"><span class="mid">0</span><span class="lbl">/ ${p.w}点 · 0 / ${p.tgt}人</span></div>${mbar('cvc', 's46')}</div></div></div>
+    <div class="card span5 k-wpersona" data-why-box><div class="card-h" style="margin-bottom:2px"><h3>人物像</h3><span class="why">?</span></div><div class="why-body" hidden style="margin:0 0 8px">${TD22.cvc.whyb}</div>${CVC_PER.map(([k, v]) => `<div class="kv"><span class="lbl">${k}</span><span>${v}</span></div>`).join('')}
+      <div class="row between" style="margin-top:14px"><b style="font-size:14px">開口一番</b><button class="btn sm ghost"><span class="lic i-copy sm"></span>コピー</button></div><div class="quote k-wcopen" style="margin-top:8px">「${TD22.cvc.open}」</div>
+      <div class="push" style="margin-top:16px"><b style="font-size:14px">紹介ルート</b><div class="lbl" style="margin:2px 0 8px">事業会社の新規事業担当とつながっている人</div><div class="v22route"><div class="av sm ${KOB.c}">${KOB.i}</div><div class="rm"><b>${KOB.n}</b><br>${KOB.co} · 新規事業担当 300名のコミュニティ</div><button class="btn sm">${ic('mail', 'sm')}依頼文の下書き</button></div></div></div>
+    <div class="card span7 k-wevs"><div class="card-h"><h3>会える活動</h3><span class="lbl">固定の 5項目で採点 · 参加者タグ「CVC」「事業会社」から · 参加でイベント枠 +5</span></div>
+      <table class="table"><thead><tr><th>スコア</th><th>イベント</th><th>このタイプ（推定）</th><th>参加費</th><th></th></tr></thead><tbody>${CVC_EV.map(([n, d, sc, m, f], k) => `<tr><td>${evRing22(sc, 42)}</td><td><b>${n}</b><div class="lbl">${d}</div></td><td><span class="chip lav ${k === 0 ? 'k-wevcnt' : ''}">約 ${m}人参加</span></td><td class="muted">${f}</td><td><button class="btn sm">詳細</button></td></tr>`).join('')}</tbody></table></div></div>`;
 }
 const wProposeDrawer = `<div class="overlay"></div><div class="drawer k-wpdrawer" style="width:520px"><div class="row between"><b style="font-size:18px">2人に面談を提案</b><button class="rbtn">${ic('x')}</button></div>
   <div class="card" style="margin-top:14px"><div class="row" style="gap:10px"><div class="av sm c1">山</div><div style="flex:1"><b>山口 大樹</b><div class="lbl">Orbit 利用中 · 日時の候補を送れます</div></div><span class="chip teal">Orbit</span></div>
@@ -1091,10 +1667,10 @@ const wProposeDrawer = `<div class="overlay"></div><div class="drawer k-wpdrawer
 
 /* ---- A4 配額（v2：「方案を作り直す」回数） ---- */
 const quotaSheet = (left) => `<div class="sheet-scrim"></div><div class="sheet"><div class="grab"></div>
-  ${left ? `<b style="font-size:16px">方案を作り直しますか？</b><div class="sub" style="margin:4px 0 14px">いまの状況から、ステップ・人物タイプ・配点の変更案を作ります。獲得済みの点は失われません。</div>
-    <div class="card flat" style="padding:14px"><div class="row between"><b style="font-size:13px">今月の作り直し</b>${quota(left)}</div><div class="qdots" style="margin-top:10px">${[0, 1, 2].map(i => `<i class="${i < 3 - left ? 'u' : ''}"></i>`).join('')}</div><div class="lbl" style="margin-top:8px">毎月1日に 3回へ戻ります · 最初のプラン作成は回数に含みません</div></div>
+  ${left ? `<b style="font-size:16px">方案を見直しますか？</b><div class="sub" style="margin:4px 0 14px">iOrbit で前提を確かめ、AI がステップ・人物タイプ・配点の修正案を出します。獲得済みの点は失われません。</div>
+    <div class="card flat" style="padding:14px"><div class="row between"><b style="font-size:13px">今月の作り直し</b>${quota(left)}</div><div class="qdots" style="margin-top:10px">${[0, 1, 2].map(i => `<i class="${i < 3 - left ? 'u' : ''}"></i>`).join('')}</div><div class="lbl" style="margin-top:8px;line-height:1.6">前提を送るたびに 1回（変更がなくても 1回）· 見直すたびに手動編集 1回 · 毎月1日に 3回へ戻ります · 最初のプラン作成は回数に含みません</div></div>
     <div class="lbl" style="margin:14px 0 6px">分析に使うデータ</div><div class="chips"><span class="chip">面談の記録 12件</span><span class="chip">自己申告 3件</span><span class="chip">イベント 6回</span><span class="chip">人脈 128名</span></div>
-    <button class="btn primary block" style="margin-top:16px;height:46px">${ic('sparkle', 'sm')}変更案を作る（1回使います）</button><button class="btn ghost block" style="margin-top:4px">やめる</button>`
+    <button class="btn primary block" style="margin-top:16px;height:46px">${ic('sparkle', 'sm')}iOrbit で見直す</button><button class="btn ghost block" style="margin-top:4px">やめる</button>`
   : `<div class="row" style="gap:10px"><span class="emo apricot">⏳</span><div><b style="font-size:16px">今月の作り直しは使い切りました</b><div class="lbl">3 / 3 回 · 11月1日に戻ります（あと 25日）</div></div></div>
     <div class="qdots" style="margin:14px 0 4px">${[0, 1, 2].map(() => '<i class="u"></i>').join('')}</div>
     <div class="card flat" style="padding:14px;margin-top:12px;font-size:12.5px;color:var(--ink-2);line-height:1.7">面談の記録・加点・スキップ・iOrbit への質問は、これまでどおり使えます。<br>獲得済みの点も、そのまま増え続けます。</div>
@@ -1139,8 +1715,8 @@ function aNext() {
     ${NEXTG.map(([e, c, t, d, w], k) => `<div class="opt ${k ? '' : 'on rise'}" data-why-box><span class="radio"></span><div style="flex:1"><div class="row" style="gap:8px"><span class="emo sm ${c}">${e}</span><b style="font-size:14px;flex:1">${t}</b><span class="why">?</span></div><div class="sub" style="margin-top:6px">${d}</div><div class="why-body" ${k ? 'hidden' : ''}>${w}</div></div></div>`).join('')}
     <div class="opt"><span class="radio"></span><div style="flex:1"><div class="row" style="gap:8px"><span class="emo sm apricot">✏️</span><b style="font-size:14px">自分で決める</b></div><div class="sub" style="margin-top:6px">目標を一言で入力</div></div></div>
     <div class="card flat" style="margin-top:14px;padding:12px 14px;font-size:12px;color:var(--ink-2);line-height:1.6">期限は決めません。このタイプの目標が一般にどう進むかと、各ステップで話すとよい人を分析します。</div>
-    <button class="btn primary block" style="margin-top:14px;height:48px">${ic('sparkle', 'sm')}この目標で分析する</button>
-    <div class="lbl" style="text-align:center;margin-top:8px">分析後、プラン案を確認してから始められます</div>`;
+    <button class="btn primary block" style="margin-top:14px;height:48px">${ic('sparkle', 'sm')}この目標で具体化する</button>
+    <div class="lbl" style="text-align:center;margin-top:8px">背景の確認 → 質問 → AI の初版を見てから始められます</div>`;
 }
 function wDone() {
   return mainhead('目標を達成しました', 'シリーズA 資金調達（3億円）· 7月11日 開始 · 10月7日 達成', backBtn, '') + `<div class="wgrid">
@@ -1151,7 +1727,7 @@ function wDone() {
     <div class="span5" style="display:flex;flex-direction:column;gap:12px"><div class="row between"><b style="font-size:15px">次の目標</b><span class="lbl">選ぶまで作成されません</span></div>
       ${NEXTG.map(([e, c, t, d, w], k) => `<div class="opt ${k ? '' : 'on'}" style="margin:0" data-why-box><span class="radio"></span><div style="flex:1"><div class="row" style="gap:8px"><span class="emo sm ${c}">${e}</span><b style="flex:1">${t}</b><span class="why">?</span></div><div class="sub" style="margin-top:4px">${d}</div><div class="why-body" ${k ? 'hidden' : ''}>${w}</div></div></div>`).join('')}
       <div class="opt" style="margin:0"><span class="radio"></span><div class="row" style="gap:8px"><span class="emo sm apricot">✏️</span><b>自分で決める</b></div></div>
-      <div class="row" style="gap:10px;margin-top:auto"><span class="lbl">期限は決めません · 分析後にプラン案を確認</span><button class="btn primary" style="margin-left:auto">${ic('sparkle', 'sm')}この目標で分析する</button></div></div>
+      <div class="row" style="gap:10px;margin-top:auto"><span class="lbl">期限は決めません · 初版を確認してから開始</span><button class="btn primary" style="margin-left:auto">${ic('sparkle', 'sm')}この目標で具体化する</button></div></div>
   </div>`;
 }
 
@@ -1173,7 +1749,7 @@ const goalEditSheet = `<div class="sheet-scrim"></div><div class="sheet"><div cl
   <div class="lbl" style="margin-top:10px">期限は設定しません · 話すべき人とスコアで進み具合を見ます</div>
   <button class="btn primary block" style="margin-top:14px;height:46px">保存</button></div>`;
 const goalConfirm = `<div class="sheet-scrim"></div><div class="sheet actsheet"><div class="grab"></div><div class="row" style="gap:12px;align-items:flex-start"><span class="emo lav">🔄</span><div style="flex:1;min-width:0"><b style="font-size:16px;line-height:1.4;display:block">方案を作り直しますか？</b><div class="lbl" style="line-height:1.6">金額が 3億円 → 5億円 に変わるため、話すべき人のタイプと配点が変わる可能性があります。</div></div></div>
-  <div style="margin:12px 0 14px"><div class="eff">${ic('check', 'sm')}獲得済みの点・面談の記録・スキップはそのまま残ります</div><div class="eff">${ic('check', 'sm')}変更案を 1件ずつ ✓ してから反映</div><div class="eff">${ic('refresh', 'sm')}作り直しを 1回使います（あと 3 → 2 回）</div></div>
+  <div style="margin:12px 0 14px"><div class="eff">${ic('check', 'sm')}獲得済みの点・面談の記録・スキップはそのまま残ります</div><div class="eff">${ic('check', 'sm')}iOrbit で前提を確かめ、差分を見てから確定</div><div class="eff">${ic('refresh', 'sm')}作り直しを 1回使います（あと 3 → 2 回）</div></div>
   <button class="btn primary">作り直す</button><button class="btn">目標だけ保存</button><button class="btn ghost">キャンセル</button></div>`;
 const wGoalSeg = `<button class="btn k-wgoal">💰 シリーズA 資金調達 ${ic('down', 'sm')}</button>`; /* 审计：与 web.html / ⑧ 1024 同为目标下拉 */
 const wGoalModal = `<div class="overlay"></div><div class="wdlg wmodal" style="width:600px">
@@ -1182,7 +1758,7 @@ const wGoalModal = `<div class="overlay"></div><div class="wdlg wmodal" style="w
   <div class="grid2" style="gap:18px"><div class="gfld chg"><span class="lbl">金額</span><div class="v"><span class="muted" style="text-decoration:line-through;font-weight:600">3億円</span>→ 5億円</div></div><div class="gfld"><span class="lbl">背景（任意）</span><div class="v" style="font-weight:600;font-size:13px">製造業向け SaaS · ARR 1.2億円</div></div></div>
   <div class="gfld"><span class="lbl">ひとこと（重点）</span><div class="v" style="font-weight:600;font-size:13px">リードは SaaS に強い VC。CVC も 1社入れたい</div></div>
   <div class="card flat" style="margin-top:16px;padding:16px"><div class="row" style="gap:10px"><span class="emo sm lav">🔄</span><b style="flex:1">金額の変更で、方案の作り直しをおすすめします</b>${quota(3)}</div>
-    <div style="margin-top:8px"><div class="eff">${ic('check', 'sm')}獲得済みの点・面談の記録・スキップはそのまま残ります</div><div class="eff">${ic('check', 'sm')}変更案を 1件ずつ ✓ してから反映</div><div class="eff">${ic('refresh', 'sm')}作り直しを 1回使います（あと 3 → 2 回）</div></div></div>
+    <div style="margin-top:8px"><div class="eff">${ic('check', 'sm')}獲得済みの点・面談の記録・スキップはそのまま残ります</div><div class="eff">${ic('check', 'sm')}iOrbit で前提を確かめ、差分を見てから確定</div><div class="eff">${ic('refresh', 'sm')}作り直しを 1回使います（あと 3 → 2 回）</div></div></div>
   <div class="row" style="justify-content:flex-end;gap:8px;margin-top:18px"><button class="btn ghost">キャンセル</button><button class="btn">目標だけ保存</button><button class="btn primary">保存して作り直す</button></div></div>`;
 
 /* =================================================================
@@ -1365,72 +1941,101 @@ h += boards([
 ]);
 
 /* ---- A2 人物タイプ詳細 ---- */
-h += sec('A2 · 人物タイプ詳細（三种去向）', '从プラン的「話すべき人」行点入。① 人脉里有 → 推荐度名单 + 面談を提案 / すでに話した　② 人脉里没有 → 人物画像 + 按参会者 tag 的活动　③ 跳过 → 记满分（斜纹）可撤回');
-h += boards([
-  AP2('① 人脈にいる · VC パートナー', '', { body: typeHave() }, [
-    ['.k-thead', 0, '头部：配点 30 · 1 人 10 点 · 目标 3 人；当前 20 / 30 点 · 2 / 3 人'],
-    ['.k-tabout', 0, '为什么聊 / 聊什么 / 怎样算聊到了 三行，标准明确，避免刷分'],
-    ['.k-cwhy', 0, '每人「?」展开推荐依据（名刺、公开投资组合、LinkedIn 职位）'],
-    ['.k-cbx', 0, '方形多选框（批量多选 = 方）；已聊过的人折叠在底部「話した人 2人」，同一人不重复计分'],
-    ['.k-propose', 0, '「面談を提案」→ 底部弹层（右图）；「すでに話した」→ 自报弹层（A1 ③）'],
+h += sec('A2 · 人物タイプ詳細（三种去向 · v2.2）', '从プラン的人物类型卡 / 行点入。名称 = 「役割×状況」一句（标题栏用固定短名），字段同 ⑩ b10：なぜこの人か · 聞くこと 3 問 · 話せたの判定 · 見分け方 · 候補（推薦度 · 切り出し方）· 紹介ルート · 会える活動。① 人脉里有 → 候补 + 面談を提案 / すでに話した　② 人脉里没有 → 人物像 + 開口一番 + 活动 + 介绍路线　③ 跳过 → 记满分（斜纹）可撤回');
+h += '<div class="v22x">' + boards([
+  AP2('① 人脈にいる · VC', '', { body: typeHave() }, [
+    ['.k-thead .v22tn', 0, '头卡：完整的「役割×状況」一句「シリーズA のリードを取れる VC のパートナー」；上方小字 = 固定短名 · Step · 配点；标题栏用短名「VC」'],
+    ['.k-thead .v22m3', 0, '20 / 30 点 · 2 / 3 人 · 1 人 10 点 + 三格（人脈の候補 4 / 会える活動 2 / 紹介ルート 1）'],
+    ['.k-cwhy', 0, '候补按推薦度数字降序；每人「?」展开推荐依据（名刺、公开投资组合、LinkedIn 职位）；下方一行「切り出し方」'],
+    ['.k-cbx', 0, '方形多选框（批量多选 = 方）；已聊过的人折叠在候补底部「話した人 2人」，同一人同一类型不重复计分'],
+    ['.k-propose', 0, '「面談を提案」→ 底部弹层；「すでに話した」→ 自报弹层（A1 ③）'],
+  ]),
+  AP2('① VC（スクロール後）', '', { body: typeHave({ part: 2 }) }, [
+    ['.k-tq', 0, '聞くこと 3 问（リードを取る条件 / 製造業 SaaS の検討例 / 一緒に入る投資家）+ コピー'],
+    ['.k-tjudge .k-rule0', 0, '話せたの判定：3 问中 2 问以上有面谈记录 = +10；超过 3 人后半分 +5、上限なし；无名字自报只算到 3 人'],
+    ['.k-tsig', 0, '見分け方：役職 / ファンド規模 / 領域 / イベント tag 的信号，用于从名刺・LinkedIn 自动找候补'],
+    ['.k-troute', 0, '紹介ルート：伊藤 直子さん → A 轮 lead 实绩的 VC 3 名（虚线头像 = 不在人脉里）；依頼文 = 草稿'],
   ]),
   AP2('① 面談を提案（弹层）', '', { body: typeHave({ foot: false }), overlay: proposeSheet }, [
     ['.k-slots', 0, 'Orbit 用户：结构化请求，3 个候补时段（日历空闲），不附自由文本（定稿口径）'],
     ['.k-propgo', 0, '用户点「提案する」才发出；可撤回'],
     ['.k-draft', 0, '非 Orbit 用户：只生成依赖文草稿（复制到 LinkedIn 消息），底部常驻「送信はしません」'],
   ]),
-  AP2('② 人脈にいない · CVC 担当者', '', { body: typeNone() }, [
-    ['.k-persona', 0, '人物画像：典型职位 / 在哪类公司 / 关心什么 / 怎么开口，带依据'],
-    ['.k-ev1', 0, '活动按「这类人预计出现数」排序，每个带评估分数环'],
-    ['.k-evcnt', 0, '「このタイプが約 14人参加」来自参会者 tag；参加活动本身也给活动枠 +5'],
-    ['.k-intro', 0, '次要路径：能介绍的人（依赖文 = 草稿）'],
-    ['.k-skipbtn', 0, '最底部 ghost 按钮「この分野はもう詳しい」→ 跳过（③）'],
+  AP2('② 人脈にいない · CVC', '', { body: typeNone() }, [
+    ['.k-tnone', 0, '顶部浅灰条直说「人脈にまだいません」，并告诉用户这页给了什么'],
+    ['.k-chero .v22tn', 0, '头卡：「製造業 DX に出資している、事業会社 CVC の投資担当」· 配点 15 · 1 人 5 点；三格第一格灰「人脈にいない」'],
+    ['.k-persona', 0, '人物像：いまの立場 / 関心ごと / 判断の流れ，「?」展开依据（前提 + 业界现状 L-117 + 模板枠）'],
+    ['.k-copen', 0, '開口一番 + コピー；下方写明「話せた」判定（3 点中聞けた 2 つ = +5）'],
+  ]),
+  AP2('② CVC（スクロール後）', '', { body: typeNone({ part: 2 }) }, [
+    ['.k-evcnt', 0, '会える活動：固定 5 项基准的分数环 +「このタイプが約 14人参加」（参会者 tag）；参加本身给イベント枠 +5'],
+    ['.k-intro', 0, '紹介ルート：小林 誠さん（新規事業担当 300 名的社群主宰）；依頼文 = 草稿'],
+    ['.k-skipbtn', 0, '页底 ghost 按钮「この分野はもう詳しい」→ 跳过（③）'],
   ]),
   AP2('③ スキップ ① 確認', '', { body: typeLaw(), overlay: skipDialog }, [
-    ['.k-skipdlg', 0, '居中确认（非破坏，主按钮默认焦点）：说明记满分、斜纹区分、可撤回'],
+    ['.k-skipdlg', 0, '居中确认（非破坏，主按钮默认焦点）：说明记满分、斜纹区分、可撤回；背后是「弁護士」详情（役割×状況 一句 + なぜ + 聞くこと）'],
   ]),
   AP2('③ スキップ ② 記録後', '', { body: typeLaw({ skipped: true }), overlay: toast('10点を加算しました', '弁護士（投資契約）· 習熟済みとしてスキップ') }, [
     ['.k-lawhead .mb', 0, '进度条整条斜纹 = 跳过得的分'],
     ['.k-skipped', 0, '常驻说明行 +「取り消す」：随时撤回，分数退回 0'],
     ['.toast', 0, 'Toast 5 秒「元に戻す」；候补名单淡化但保留（撤回后恢复）'],
   ]),
-]);
-h += WB2('① 人脈にいる · Web', '', { nav: 4, body: typeWeb('have'), rail: planRail('few') }, [
-  ['.k-wcands', 0, 'Web 用表格多选，推荐顺序 #；选中行浅底'],
+]) + '</div>';
+h += '<div class="v22x">' + WB2('① 人脈にいる · Web', '', { nav: 4, body: typeWeb('have'), rail: HV3.W.typeRail() }, [
+  ['.k-wvhead', 0, '横向头卡：「役割×状況」一句 + 三格 + 分数进度（与 web.html「人物タイプ詳細 · VC」同构）'],
+  ['.k-wvjudge', 0, '左 5 列：なぜ / 聞くこと / 話せたの判定 / 見分け方'],
+  ['.k-wcands', 0, '右 7 列候补表：推薦度 · 名前 · 理由 + 切り出し方；选中行浅底'],
   ['.k-wwhy', 0, '理由列旁「?」展开依据（示例展开第 1 行）'],
-  ['.k-wpropose', 0, '「面談を提案」→ 右侧抽屉（下图）'],
-]);
-h += WB2('① 面談を提案 · Web 抽屉', '', { nav: 4, body: typeWeb('have'), rail: planRail('few'), ov: wProposeDrawer }, [
+  ['.k-wpropose', 0, '「面談を提案」→ 右侧抽屉（下图）；紹介ルート贴在表格下方'],
+]) + WB2('① 面談を提案 · Web 抽屉', '', { nav: 4, body: typeWeb('have'), rail: HV3.W.typeRail(), ov: wProposeDrawer }, [
   ['.k-wpdrawer', 0, '抽屉 520：Orbit 用户 = 候补时段结构化请求；非 Orbit 用户 = 依赖文草稿 + コピー，「送信はあなたが行います」'],
-]);
-h += WB2('② 人脈にいない · Web', '', { nav: 4, body: typeWeb('none'), rail: planRail('many') }, [
-  ['.k-wpersona', 0, '左：人物画像 + 可介绍的人'],
-  ['.k-wevcnt', 0, '右：活动表，按这类人预计人数排序，带分数环与参加费'],
-]);
+]) + WB2('② 人脈にいない · Web', '', { nav: 4, body: typeWeb('none'), rail: planRail('many') }, [
+  ['.k-wchead', 0, '横向头卡：「役割×状況」一句 + 三格（人脈にいない 灰）'],
+  ['.k-wcopen', 0, '左 5 列：人物像 + 開口一番 + 紹介ルート（依頼文 = 草稿）'],
+  ['.k-wevcnt', 0, '右 7 列：活动表，固定基准分数环 + 这类人预计人数 + 参加费'],
+]) + '</div>';
 
 /* ---- A3 方案を見直す ---- */
-h += sec('A3 · 方案を見直す', '按需（没有月次自动见直し）；消耗「作り直す」次数（Free 月 3 回，见 A4）；变更以确认卡逐条 ✓/✕，只反映 ✓ 的；已得分不变');
-h += boards([
-  AP2('見直し ① 理由', '', { body: revise1() }, [
-    ['.k-quota', 0, '标题栏配额 chip「あと 3回」（01-system ⑪）；用尽时见 A4 ②'],
-    ['.k-reasons', 0, '选原因 + 一句话；明确「獲得済みの点は失われません」'],
-    ['.k-revgo', 0, '按钮写明「1回使います」→ 分步清单生成 → ②'],
+h += sec('A3 · 方案を見直す（v2.2）', '按需（没有月次自动见直し）。プラン概要「方案を見直す（AI · 月3回）」→ iOrbit 对话：先给「確定した前提」卡，AI 预标「変わったかもしれない」的行（ARR、リード候補、Step 进展）→ 用户改前提并发送 → AI 修正差分（发送即消耗月 3 回配额 1 次；AI 判断不改也扣）→ 可再「手動で編集」1 回（每次見直し后重新给 1 次）。已得分不变，只重分「まだの点」。配额页文案仍为「方案の作り直し 月3回」（A4）');
+const rv1 = revApp(1), rv2 = revApp(2), rv3 = revApp(3), rv4 = revApp(4);
+h += '<div class="v22x">' + boards([
+  AP2('見直し ① 前提を確かめる', '', { body: rv1.body, overlay: rv1.overlay }, [
+    ['.k-rfm', 0, '对话顶部 3 段进度：前提 / AI 修正 / 手動編集'],
+    ['.k-rfrom', 0, '从プラン概要的「方案を見直す」进入；若在 iOrbit 里说「プランを見直したい」也进同一流程'],
+    ['.k-rflag', 0, 'AI 只预标、不改写：豆沙底行 =「変わったかもしれない」+ 依据（面谈记录 10/5「ARR 1億円の見込み」）；VC 已见 2 人、Step 进展同理'],
+    ['.k-rprem', 0, '其余行照旧显示出处（背景 / Q1–Q4 / 記録）；点任一行就地改'],
+    ['.k-rquota', 0, '输入框上方：「見直し · 今月 あと 2 回」+「送ると 1回使います（変更がなくても 1回）」，在发送前就说清配额'],
   ]),
-  AP2('見直し ② 変更案', '', { body: revise2() }, [
-    ['.k-diffs .diff', 0, '每条变更 ＋ 追加 / ↔ 変更 / − 削除，逐条 ✓/✕；✓ = 薄荷底'],
-    ['.k-diffs .diff', 3, '✕ 的条目删除线 +「元に戻す」'],
-    ['.k-impact', 0, '影响说明：已得分不变，只重新分配「まだの点」'],
-    ['.k-apply', 0, '主按钮写出数量「✓ の 2件を反映」→ Toast「プランを更新しました · 元に戻す」'],
+  AP2('見直し ② 前提を直して送る', '', { body: rv2.body, overlay: rv2.overlay }, [
+    ['.k-rprem2 .pedit', 0, '正在改的行变输入框（深紫描边 + 光标）：ARR 8,000万円 → 1億円の見込み'],
+    ['.k-rchg', 0, '已改的行显示旧值删除线 + 新值浅紫（リード候補なし → 青葉ベンチャーズ）'],
+    ['.k-rsay', 0, '补充想法一次写完（CVC も並行で）；不写也可以只改前提'],
+    ['.k-rsend', 0, '「前提を送って修正案をつくる」→ 这时才扣 1 次：按钮下写明「今月あと 2 → 1回」'],
   ]),
-]);
-h += WB2('見直し · Web 模态', '', { nav: 4, body: planWeb('few'), rail: planRail('few'), ov: reviseModal }, [
-  ['.k-wrevmodal', 0, 'Web 居中模态 640，键盘 Y / N 逐条决定；标题栏「方案を見直す」打开'],
-]);
+  AP2('見直し ③ AI 修正（差分）', '', { body: rv3.body, overlay: rv3.overlay }, [
+    ['.k-rdiff', 0, '只列差分：「変更」小签 + 旧文删除线 + 新文浅紫（Step 3 的完了の目安、配点 VC 30→25 / CVC 15→20，5 点刻み、合计 100）'],
+    ['.k-rsame', 0, '「変わらない点」：結論 · Step 顺序 · 获得的 46 分不变（只重分「まだの点」）'],
+    ['.k-rleft', 0, '「見直し 今月あと 1 回」：本次是本月第 2 次；确定前还可以再发一次（再扣 1 次）'],
+    ['.k-rmanual', 0, '「手動で編集（1回）」：每次見直し后重新给 1 次手动编辑（画面同 ⑩ b10 ⑥，合计 100 · 5 点刻み）；「この内容で確定」→ 回プラン + Toast（元に戻す）'],
+  ]),
+  AP2('見直し ④ 変更なしでも 1回', '', { body: rv4.body, overlay: rv4.overlay }, [
+    ['.k-rsay3', 0, '本月第 3 次：用户想把 VC 目标人数 3 → 1'],
+    ['.k-rnochg', 0, 'AI 判断「今回は変更しません」并说明理由（业界现状 L-104）——不改也扣 1 次（定稿口径）'],
+    ['.k-r0', 0, '配额归零「見直し 今月あと 0 回」；仍可「手動で編集（1回）」自己改人数'],
+    ['.k-rq0', 0, '输入栏变灰：「今月の見直しは使い切りました」+ 记录・加分・跳过照常可用；下月 1 日恢复（A4 ②）'],
+  ]),
+]) + '</div>';
+h += '<div class="v22x">' + WB2('見直し · Web（前提 + 差分 · 右栏配额）', '', { nav: 1, body: revWeb(), rail: revRail }, [
+  ['.k-wrprem', 0, '左：「確定した前提」——改过的行显示新旧（删除线 + 浅紫），AI 预标行豆沙底'],
+  ['.k-wrupd', 0, '右：用户的话 + AI 修正差分卡（与 App 同一张）'],
+  ['.k-wrq', 0, '右栏：「見直し · 今月 あと 1 回 / 3 回」大数字 + 3 段进度；送るたびに 1 回（変更なしも 1 回）'],
+  ['.k-wrmanual', 0, '「手動で編集（1回）」/「この内容で確定」与 App 同语义；标题栏「方案を見直す」打开本对话'],
+]) + '</div>';
 
 /* ---- A4 AI 配額・料金 ---- */
 h += sec('A4 · AI 配額と料金プラン', '配额对象 =「方案を作り直す」次数（Free 月 3 回 / Pro 月 30 回，价格不变）；克制、不推销：先告诉用户还能做什么，再给入口；对标 Money Forward ME 会员页（现状用量 → 对照表 → 价格 → 解约说明）');
 h += boards([
-  AP('① 作り直しの確認（残り 2 回）', '', { body: planApp('many'), tab: 3, fab: false, overlay: quotaSheet(2) }, ann([['.sheet .qdots', 0, '3 格配额条：已用为灰，剩余为紫；下方写明重置日与「最初のプラン作成は回数に含みません」'], ['.sheet .chips', 0, '告知本次会用哪些数据（面谈记录 / 自报 / 活动 / 人脉，处处有据）'], ['.sheet .btn.primary', 0, '按钮文案直说「1回使います」，避免意外消耗；→ A3 ② 変更案']])),
+  AP('① 作り直しの確認（残り 2 回）', '', { body: planApp('many'), tab: 3, fab: false, overlay: quotaSheet(2) }, ann([['.sheet .qdots', 0, '3 格配额条：已用为灰，剩余为紫；下方写明重置日与「最初のプラン作成は回数に含みません」'], ['.sheet .chips', 0, '告知本次会用哪些数据（面谈记录 / 自报 / 活动 / 人脉，处处有据）'], ['.sheet .btn.primary', 0, '「iOrbit で見直す」→ A3 ① 前提カード；这里只是入口，发送前提时才扣 1 次（变更なしも 1 次），避免意外消耗']])),
   AP('② 使い切った状態', '', { body: planApp('many'), tab: 3, fab: false, overlay: quotaSheet(0) }, ann([['.sheet .card.flat', 0, '用尽时先说明「哪些照常可用」：记录、加分、跳过都不受限，分数照常累加'], ['.sheet .btn.ghost', 0, '「ご利用プランを見る」只是次要文字按钮，主按钮是「わかりました」']])),
   AP('③ ご利用プラン（比較）', '', { body: aPricing(), tab: -1 }, ann([['.card .bar', 0, '先看本月用量（达上限的条用珊瑚色）'], ['.cmp', 0, 'フリー / Pro 两列对照，Pro 列浅紫底；不用「おすすめ」「人気 No.1」之类徽章'], ['.lbl[style*="text-align:center"]', 0, '决済渠道、可随时解约、回到フリー数据保留——写在按钮正下方']])),
 ]);
@@ -1449,7 +2054,7 @@ h += boards([
     ['.hatchbg', 0, '跳过的领域单独一行（斜纹），与聊出来的分区分'],
     ['.foot .btn.primary', 0, '「次の目標を決める」→ ③；「あとで」回プラン，该目标进入「完了した目標」'],
   ]),
-  AP('③ 次の目標の提案', '', { body: aNext(), tab: -1 }, ann([['.opt.on', 0, 'AI 给 2 个基于面谈记录的候选 + 「自分で決める」，单选卡（灰紫描边为选中）'], ['.opt.on .why-body', 0, '选中卡默认展开依据，其余收起'], ['.card.flat', 0, '不再选期间：写明「期限は決めません」'], ['.btn.primary.block', 0, '「この目標で分析する」→ 与首次相同的 診断中 → プラン案 流程（① A5），确认后才开始']])),
+  AP('③ 次の目標の提案', '', { body: aNext(), tab: -1 }, ann([['.opt.on', 0, 'AI 给 2 个基于面谈记录的候选 + 「自分で決める」，单选卡（灰紫描边为选中）'], ['.opt.on .why-body', 0, '选中卡默认展开依据，其余收起'], ['.card.flat', 0, '不再选期间：写明「期限は決めません」'], ['.btn.primary.block', 0, '「この目標で具体化する」→ 与首次相同的 v2.2 流程（背景確認 → ≤5 問 → AI 初版，① A5），确认后才开始']])),
 ]);
 h += WB('Web 達成 → 次の目標', '', { nav: 4, body: wDone(), rail: '' }, '', ann([['.stat3', 0, '左：回顾三数字（スコア 128 / 話した人 / イベント）count-up；右：下一目标候选并排，主从同屏'], ['.hatchbg', 0, '跳过的领域单独标出'], ['.opt.on', 0, '候选单选，选中项展开依据；无期间选择']]));
 
@@ -1514,19 +2119,22 @@ h += sec('B6 · このページを文脈に含める', 'Web 任意页右栏召�
 h += WB('Web 人脈ページ + 右栏 iOrbit', '', { nav: 2, body: wCtxPage(), rail: wCtxRail }, '', ann([['.rail .tgl', 0, '开关默认开；下方一行写明带入的是什么（页面 · 筛选 · 人数）。关掉后回答只用全局数据'], ['.table tr[style*=background]', 0, '回答引用到的行在主区同步浅紫高亮，看得见 AI 用了哪几行'], ['.rail .card.confirm-card', 0, '「会う準備」生成仍是确认卡'], ['.rail .lbtn', 0, '↗ 展开为全屏 iOrbit（保留本会话与上下文）']]));
 
 /* ---- ダーク ---- */
-h += sec('ダークモード', '加点 +10、人物类型详情（人脈にいる）、変更案、iOrbit 空对话起始、历史抽屉；Web 人物类型与 iOrbit 生成中');
+h += sec('ダークモード', '加点 +10、人物类型详情（人脈にいる）、見直し差分、iOrbit 空对话起始、历史抽屉；Web 人物类型与 iOrbit 生成中');
 h += boards([
   AP('加点 ② +10', '', { body: planScored(), tab: 3, overlay: toast('VC パートナー +10', '山口 大樹さんとの面談 · 3 / 3人', { notab: false }), theme: 'dark' }),
-  AP('① 人脈にいる · VC パートナー', '', { body: typeHave(), tab: -1, theme: 'dark' }),
-  AP('見直し ② 変更案', '', { body: revise2(), tab: -1, theme: 'dark' }),
   AP('iOrbit 起始', 'many', { body: aStart('many'), tab: -1, overlay: aComposer(), theme: 'dark' }),
   AP('履歴ドロワー', '', { body: aStart('many'), tab: -1, overlay: aDrawer('press'), theme: 'dark' }),
 ]);
-h += WB('① 人脈にいる · Web', '', { nav: 4, body: typeWeb('have'), rail: planRail('few'), theme: 'dark' });
+h += '<div class="v22x">' + boards([AP('① 人脈にいる · VC', '', { body: typeHave(), tab: -1, theme: 'dark' }), AP('見直し ③ AI 修正（差分）', '', { body: rv3.body, overlay: rv3.overlay, tab: -1, theme: 'dark' })]) + WB('① 人脈にいる · Web', '', { nav: 4, body: typeWeb('have'), rail: HV3.W.typeRail(), theme: 'dark' }) + '</div>';
 h += WB('Web iOrbit 履歴 + 生成中', '', { nav: 1, body: wStream(), rail: wChatRail(), theme: 'dark' });
 
 
 document.getElementById('out').innerHTML = h;
+/* 带锚点的画板（v2.2 推广，同 b10）：把滚动容器滚到锚点（在放针之前；针按内容坐标定位） */
+document.querySelectorAll('.scrollto').forEach(m => {
+  const sc = m.closest('.phone .scroll, .web .main'); if (!sc) return;
+  sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - (+m.dataset.off || 70);
+});
 docNav('b4-plan-iorbit'); orbitChrome();
 </script>
 </body>

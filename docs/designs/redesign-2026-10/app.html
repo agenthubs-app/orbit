@@ -223,13 +223,14 @@
 /* ===== プラン v2 口径（2026-10-07）：数据与计分与 b9-import-plan-v2.html 相同（满点 100 · 不封顶 · 跳过=满额斜纹 · 超目标半分）===== */
 const V2 = (() => {
   const PER = {
-    cfo: { n: 'CFO 経験者', s: 'CFO', emo: '📊', c: 'teal', w: 10, tgt: 1, unit: 10, step: 1, cand: 1 },
-    ent: { n: '調達経験のある起業家', s: '起業家', emo: '🚀', c: 'apricot', w: 15, tgt: 5, unit: 3, step: 2, cand: 2 },
-    ang: { n: 'エンジェル投資家', s: 'エンジェル', emo: '🪽', c: 'pink', w: 10, tgt: 2, unit: 5, step: 2, cand: 1 },
-    vc: { n: 'VC パートナー', s: 'VC', emo: '💼', c: 'lav', w: 30, tgt: 3, unit: 10, step: 3, cand: 4 },
-    cvc: { n: 'CVC 担当者', s: 'CVC', emo: '🏢', c: 'blue', w: 15, tgt: 3, unit: 5, step: 3, cand: 0 },
-    law: { n: '弁護士（投資契約）', s: '弁護士', emo: '⚖️', c: 'teal', w: 10, tgt: 1, unit: 10, step: 4, cand: 1 },
-    ev: { n: 'イベント', s: 'イベント', emo: '🎟️', c: 'apricot', w: 10, tgt: 2, unit: 5, step: 0, cand: 3, ev: true },
+    /* v2.2：n = 「役割 × 状況」一文 · s = 固定短名 · slot = テンプレート枠（💰 資金調達）· evn = 会える活動 · route = 紹介ルート */
+    cfo: { n: 'シリーズA 前後の調達を、CFO として回した経験者', s: 'CFO', slot: 'CFO 経験者', emo: '📊', c: 'teal', w: 10, tgt: 1, unit: 10, step: 1, cand: 1, evn: 1, route: 1 },
+    ent: { n: 'この 3年以内にシリーズA を調達した、B2B SaaS の起業家', s: '起業家', slot: '調達経験のある起業家', emo: '🚀', c: 'apricot', w: 15, tgt: 5, unit: 3, step: 2, cand: 2, evn: 2, route: 1 },
+    ang: { n: 'SaaS を創業した経験があり、シード〜A に個人で出資しているエンジェル', s: 'エンジェル', slot: 'エンジェル投資家', emo: '🪽', c: 'pink', w: 10, tgt: 2, unit: 5, step: 2, cand: 1, evn: 1, route: 2 },
+    vc: { n: 'シリーズA のリードを取れる VC のパートナー', s: 'VC', slot: 'VC パートナー', emo: '💼', c: 'lav', w: 30, tgt: 3, unit: 10, step: 3, cand: 4, evn: 2, route: 1 },
+    cvc: { n: '製造業 DX に出資している、事業会社 CVC の投資担当', s: 'CVC', slot: 'CVC 担当者', emo: '🏢', c: 'blue', w: 15, tgt: 3, unit: 5, step: 3, cand: 0, evn: 1, route: 1 },
+    law: { n: 'シリーズA の投資契約・種類株式の交渉に立ち会える弁護士', s: '弁護士', slot: '弁護士（投資契約）', emo: '⚖️', c: 'teal', w: 10, tgt: 1, unit: 10, step: 4, cand: 1, evn: 0, route: 1 },
+    ev: { n: 'VC と起業家が集まる場へ行く', s: 'イベント', slot: 'イベント', emo: '🎟️', c: 'apricot', w: 10, tgt: 2, unit: 5, step: 0, cand: 3, evn: 3, ev: true },
   };
   const ORDER = ['cfo', 'ent', 'ang', 'vc', 'cvc', 'law', 'ev'];
   const ST = {
@@ -286,7 +287,66 @@ const V2 = (() => {
     const L = P[P.length - 1];
     return `<svg class="v2spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path class="ar" d="${d} L${w} ${h} L0 ${h} Z"/><path class="ln" d="${d}"/><circle class="pt" cx="${L[0]}" cy="${L[1]}" r="3.2"/></svg>`;
   };
-  return { PER, ORDER, ST, STEPS, pts, total, bonusOf, skipOf, talkOf, fmt, sbar, legend, mbar, pchips, prow, stepBlock, evBlock, TODAY, avs, spark };
+  /* ===== v2.2 呈现（2026-10-08，画法同 b10-plan-example.html；分数・类型集合・配点・ST 不变）===== */
+  const GOAL = { t: 'シリーズA 資金調達（3億円）', kind: '💰 資金調達' };
+  const KETSU = '先に CFO 経験者と数字を固め、同じ規模を調達した先輩の紹介で VC 3社に並行で当たる。CVC は条件の選択肢として後から足す。';
+  const KETSU_WHY = '根拠：確定した前提 6件（ラウンド シリーズA · 3億円 · ARR 8,000万円 · 既存株主 エンジェル 2名 · 締切 2027年3月 · 週 15時間）· 業界の現状 3件（L-101 国内シリーズA の調達額 · L-104 リードと条件 · L-117 CVC の出資方針）· AI 修正 1回';
+  /* Step：完了の目安（数えられる状態）· 人物类型 chip（イベント枠は Step 2・3 で会える） */
+  const MEY = {
+    1: 'ピッチ資料と 3年の事業計画ができ、CFO 経験者 1人に数字を見てもらう',
+    2: '同じ規模を調達した先輩から、VC の候補と紹介を 2件もらう',
+    3: 'リード候補 3社と 1回目の面談を終え、1社が DD に進む',
+    4: '投資契約の主要条項（優先清算・希薄化防止）を、署名前に弁護士と確認する',
+    5: '着金と登記が終わる',
+  };
+  const SEV = { 2: 1, 3: 1 };
+  const chipsOf = n => { const st = STEPS.find(x => x[0] === n); return st[3].concat(SEV[n] ? ['ev'] : []); };
+  const stepsOf = k => STEPS.filter(st => chipsOf(st[0]).includes(k)).map(st => st[0]);
+  const STAT = { s46: { 1: ['CFO 0 / 1人', ''], 2: ['紹介 2件', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] } };
+  const tchip = (k, cls = '') => { const p = PER[k]; return `<span class="chip ${p.ev ? '' : p.c} ${cls}">${p.emo} ${p.s}</span>`; };
+  const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
+    return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
+      <div class="v22mey ${o.mcls || ''}">${ic('flag', 'sm')}<div class="mt"><small>完了の目安</small>${MEY[n]}</div>${S ? `<span class="chip ${S[1]}">${S[0]}</span>` : ''}</div>
+      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">高橋 美咲さん（青葉ベンチャーズ）とは、DD に進みましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
+      ${ch.length ? `<div class="chips">${ch.map(k => tchip(k)).join('')}</div>` : '<div class="lbl" style="margin-top:8px">新しく会う人はいません · Step 3・4 の相手と着地させます</div>'}</div>`; };
+  /* 人物タイプ卡：上 = 短名 · Step，名称 = 「役割 × 状況」一句（不截断），三格 = 人脈の候補 / 会える活動 / 紹介ルート */
+  const tcard = (k, s, o = {}) => { const p = PER[k], r = pts(k, ST[s][k]);
+    const m3 = `<div class="${p.cand ? '' : 'z'}"><b>${p.cand}<small>人</small></b><span>${p.cand ? '人脈の候補' : '人脈にいない'}</span></div><div class="${p.evn ? '' : 'z'}"><b>${p.evn}</b><span>会える活動</span></div><div class="${p.route ? '' : 'z'}"><b>${p.route}</b><span>紹介ルート</span></div>`;
+    return `<div class="v22tc ${o.cls || ''}"><div class="row" style="gap:10px;align-items:flex-start"><span class="emo sm ${p.c}">${p.emo}</span><div style="flex:1;min-width:0"><div class="v22tk">${p.s} · Step ${stepsOf(k).join('・')}</div><b class="v22tn">${p.n}</b></div><div class="v2pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></div></div>
+      <div class="v22m3">${m3}</div>
+      <div class="v22tf"><span class="lbl">${r.skip ? '習熟済み · スキップ（満額）' : `${r.n} / ${p.tgt}人 · 1人 ${p.unit}点`}</span>${mbar(k, s)}</div></div>`; };
+  /* イベント：人物タイプと分けて 1ブロック（おすすめ = 固定 5項目スコア順） */
+  const EVREC = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 'VC 約5名 · 起業家 約12名'], ['CFO Night Tokyo vol.18', '今夜 19:00 · 渋谷ストリーム', 74, 'VC 2名 · CFO 約10名'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 'CVC 約3名']];
+  const evRing = sc => ring(42, 5, [{ v: sc, c: sc >= 70 ? 'var(--plum-700)' : sc >= 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:12px">${sc}</span>`);
+  const evRow = ([n, d, sc, m]) => `<div class="v22ev">${evRing(sc)}<div class="meta"><b>${n}</b><div class="lbl">${d}</div><span class="chip lav" style="margin-top:4px">${m}</span></div></div>`;
+  const evCard22 = (s, o = {}) => { const p = PER.ev, r = pts('ev', ST[s].ev);
+    return `<div class="card ${o.cls || ''}"><div class="card-h" style="margin-bottom:2px"><h3><span class="emo sm apricot" style="vertical-align:-6px;margin-right:6px">🎟️</span>イベント</h3><div class="v2pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></div></div>
+      <div class="lbl">${p.n} · 参加 1回 +${p.unit} · ${p.tgt}回まで満額、以降は半分 · ${r.n} / ${p.tgt}回</div>${mbar('ev', s)}
+      <div class="${o.grid ? 'v22evg' : ''}">${(o.n ? EVREC.slice(0, o.n) : EVREC).map(evRow).join('')}</div></div>`; };
+  /* 確定した方案（見立て / 結論 一文）+ 统一按钮组：前提を見る · 方案を見直す（AI · 月3回）· 手動で編集 · 目標を達成した */
+  const ACTS = [['layers', '前提を見る', 'k-prem'], ['refresh', '方案を見直す', 'k-revise', 'AI · 月3回'], ['edit', '手動で編集', 'k-manual'], ['flag', '目標を達成した', 'k-achieve']];
+  const acts = (o = {}) => ACTS.map(([i, t, k, q]) => `<button class="btn ${o.sm ? 'sm' : ''} ${(o.pre || '') + k}">${ic(i, 'sm')}${t}${q ? `<span class="v22q">${q}</span>` : ''}</button>`).join('');
+  const diag22 = (s, o = {}) => `<div class="card ${o.cls || ''}" data-why-box><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><b style="font-size:13px;flex:1">確定した方案</b><span class="chip">${s === 's46' ? '手動編集済み' : '今日確定'}</span><span class="why">?</span></div>
+    <div style="font-size:13.5px;font-weight:700;line-height:1.6;margin-top:8px">${KETSU}</div>
+    <div class="why-body" hidden>${KETSU_WHY}${s === 's46' ? ' · 手動編集 1回（9/14）' : ''}</div>
+    ${o.acts ? `<div class="v22acts">${acts({ sm: false })}</div><div class="lbl" style="margin-top:8px">見直しは AI · 月 3回（あと ${s === 's46' ? 2 : 3}回）· 見直すたびに手動編集 1回</div>` : ''}
+    <div class="v2go">iOrbit の会話を見る${ic('right', 'sm')}</div></div>`;
+  /* 人物タイプ詳細（VC · 人脈にいる）：字段同 b10 ⑦ —— 役割×状況 一文 · なぜ · 聞くこと 3問 · 話せたの判定 · 見分け方 · 候補 · 紹介ルート · 会える活動 */
+  const TDVC = {
+    why: 'シリーズA では、リード投資家が評価額と金額を決め、ほかの投資家はその条件に乗ります。3億円の 1/3〜1/2 を出せる VC のパートナーと並行で話すと、条件を比べられ、締切（2027年3月）にも間に合います。',
+    whyb: '根拠：確定した前提（シリーズA · 3億円 · 製造業向け SaaS · 締切 2027年3月）· 業界の現状 L-104（リードが条件を決める慣行）· テンプレート枠「VC パートナー」配点 30',
+    q: ['いまのファンドで、シリーズA のリードを取る条件（ARR・成長率）は？', '製造業向け SaaS で、最近検討した案件・見送った案件の理由は？', 'リードを取るとき、一緒に入ることが多い投資家はどこですか？'],
+    sig: [['役職', ['パートナー', 'GP', '代表パートナー']], ['ファンド', ['直近 30億円以上', 'A のリード実績']], ['領域', ['B2B SaaS', '製造業 DX']], ['イベント', ['「投資家」タグ', 'ピッチ審査員']]],
+  };
+  const VCAND = [
+    { n: '高橋 美咲', i: '高', c: 'c2', co: '青葉ベンチャーズ', role: 'パートナー', sc: 91, on: 1, w: 'SaaS のシリーズA でリード 6件。前回「ARR 1億円が見えたら、また」と言われている', op: '「ARR 1億円の見込み」の報告＋リードの条件を聞く', last: '最終接点 2日前', why: '名刺「パートナー」· SaaS 領域に年 8社出資（公開情報）· 面談メモ 2件（9/30 · 10/5）' },
+    { n: '森 恭平', i: '森', c: 'c1', co: '東雲キャピタル', role: 'プリンシパル', sc: 78, on: 1, w: '製造業 DX に絞った新ファンド（1号 50億円）の担当。パートナーにつなぐ役', op: '「製造業向け SaaS のシリーズA」として 15分の紹介を', last: '2024年3月に LinkedIn でつながる', why: 'LinkedIn「プリンシパル」· ファンドの投資方針「製造業 DX」（公開情報）· 共通のつながり 3名' },
+    { n: '山本 彩', i: '山', c: 'c4', co: '東都キャピタル', role: 'シニアアソシエイト', sc: 64, on: 0, w: 'パートナーではないが、社内で案件を上げられる。前回、資料の再送を頼まれたまま', op: '資料の再送＋直近の数字を一言', last: '最終接点 24日前', why: '名刺「シニアアソシエイト」· 面談メモ 1件（9/13）· 未対応の依頼 1件' },
+    { n: '佐々木 遼', i: '佐', c: 'c3', co: '湾岸グロース・パートナーズ', role: 'パートナー', sc: 58, on: 0, orbit: 1, w: 'シード中心で、A はフォローで入る方針。リード候補の紹介役として', op: '9/18 の名刺交換のお礼＋リードを取りそうな VC を聞く', last: '9/18 名刺交換', why: '名刺「パートナー」· 投資実績 シード 80%（公開情報）· Orbit ユーザー' },
+  ];
+  const judgeVC = () => [['3問のうち 2つ以上を聞けた面談メモがある', '+' + PER.vc.unit], [`${PER.vc.tgt}人目を超えた分は半分ずつ、上限なし`, '+' + PER.vc.unit / 2], [`名前なしの自己申告は、目標の ${PER.vc.tgt}人まで`, '+' + PER.vc.unit]];
+  return { PER, ORDER, ST, STEPS, pts, total, bonusOf, skipOf, talkOf, fmt, sbar, legend, mbar, pchips, prow, stepBlock, evBlock, TODAY, avs, spark,
+    GOAL, KETSU, KETSU_WHY, MEY, STAT, chipsOf, stepsOf, tchip, step22, tcard, EVREC, evRing, evRow, evCard22, ACTS, acts, diag22, TDVC, VCAND, judgeVC };
 })();
 /* V2KIT-JS-END */
 /* HOME-V3-JS-BEGIN */
@@ -513,27 +573,55 @@ function events(s) {
       <div class="list">${(many ? E : E.slice(0, 2)).map(e => `<div class="li">${ring(44, 5, [{ v: e.score, c: e.score > 70 ? 'var(--plum-700)' : e.score > 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span class="score" style="font-size:12px">${e.score}</span>`)}<div class="meta"><b>${e.n}</b><span>${e.d} · ${e.fee}</span></div><span class="chip ${vchip(e)}">${e.v}</span></div>`).join('')}</div></div>`;
 }
 
-/* ============ プラン（⑨ B2 计划主页同款；many 用首页同一口径 s46 · few = 刚生成 s0） ============ */
-function plan(s) {
+/* ============ プラン v2.2（2026-10-08：画法同 b10 ① 目標入力 / ⑦ プラン概要 / ⑧ 人物タイプ詳細；many = 首页同口径 s46 · few = 刚确定 s0） ============ */
+const KINDS = [['💰', '資金調達'], ['🚀', '上市・収益化'], ['🤝', '新規開拓'], ['🧑‍💼', '採用'], ['🔗', '事業提携'], ['🧭', 'キャリア']];
+const kindChips = (on = 0) => KINDS.map(([e, t], k) => `<span class="fopt ${k === on ? 'on' : ''}">${e} ${t}</span>`).join('');
+const FLOW5 = [['背景の確認', 'わたし · チーム · 目的を AI がまとめて下書き → 順に確認'], ['質問 5つまで', '背景でわからないことだけ、一度に聞きます'], ['AI の初版', 'ステップ · 話すべき人のタイプ · 業界の現状'], ['AI 修正 3回まで', '変更点だけを表示 · 変更なしも 1回'], ['手動編集 1回', '名前 · 順番 · 人数と配点（合計 100）']];
+function plan(s, sc) {
+  const V = V2, mk = k => sc === k ? '<i class="scrollto" data-off="12"></i>' : '';
   if (s === 'empty') return topbar('プラン', '目標を決めると、話すべき人が見えます', meBtn, iorbitBtn) + `
-    <div class="guide rise k-pempty"><div style="font-size:19px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 14px">目標から、ステップごとに「誰と話すとよいか」を分析します。</div>
-      <div class="input" style="background:var(--surface-2)">${ic('pen', 'sm')}例：シリーズA で 3億円を調達</div>
-      <button class="btn primary block" style="margin-top:12px;height:50px">${ic('sparkle', 'sm')}分析する</button></div>
-    <div class="row" style="gap:8px;margin-top:12px">${[['💰', 'pink', '資金調達'], ['🤝', 'blue', '新規開拓'], ['🧑‍💼', 'teal', '採用']].map(([e, c, t]) => `<div class="mac ${c} row" style="flex:1;gap:6px;padding:10px"><span style="font-size:18px">${e}</span><b style="font-size:12px">${t}</b></div>`).join('')}</div>
-    <div class="card" style="margin-top:14px"><div class="card-h"><h3>プランはこう見えます <span class="sample-tag">サンプル</span></h3></div>
-      <div class="faded"><div class="lbl">スコア</div><div class="big">46</div>${V2.sbar('s46')}${V2.prow('vc', 's46')}${V2.prow('law', 's46')}</div>
-      <div class="lbl" style="margin-top:8px;line-height:1.6">話した人のタイプに応じて点が入ります。満点 100、上限はありません。</div></div>`;
-  const few = s === 'few', S = few ? 's0' : 's46', T = V2.TODAY[S];
-  return topbar('プラン', `<span class="gsw k-gsw" style="display:inline-flex;align-items:center;gap:2px">シリーズA 資金調達（3億円）${ic('down', 'sm').replace('class="i sm"', 'class="i sm" style="width:13px;height:13px"')}</span>`, meBtn, iorbitBtn) + `
-    <div class="card rise k-hero"><div class="row between" style="align-items:flex-start"><div><div class="lbl">スコア</div><div class="big" style="font-size:52px">${num(V2.total(S))}</div><div class="lbl">満点 100 · 上限なし</div></div>
-      ${few ? '<span class="chip lav">今日つくったプラン</span>' : `<div style="text-align:right"><span class="chip lav">あと ${100 - V2.total(S)} で満点</span><div class="lbl" style="margin-top:6px">話して ${V2.talkOf(S)} · スキップ ${V2.skipOf(S)}</div></div>`}</div>
-      ${V2.sbar(S, { cls: 'k-sbar' })}${V2.legend(false, 'k-legend')}</div>
+    <div class="guide rise k-pempty"><div style="font-size:19px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 12px">うまく言葉にならなくても大丈夫。iOrbit が、あなたとチームのことを確認しながら具体的にします。</div>
+      <div class="v22fld k-gin"><div class="in"><span>シリーズA で 3億円を調達したい<i class="v22caret"></i></span></div></div>
+      <div class="row k-gkind" style="gap:6px;margin-top:10px;flex-wrap:wrap">${kindChips(0)}</div>
+      <button class="btn primary block k-gnext" style="margin-top:14px;height:50px">${ic('sparkle', 'sm')}iOrbit と具体化する</button>
+      <div class="lbl k-gsteps" style="margin-top:8px;line-height:1.6;text-align:center">背景の確認 → 質問 5つまで → AI の初版<br>→ AI 修正 3回まで → 手動編集 1回</div></div>
+    <div class="card k-gsample" style="margin-top:14px"><div class="card-h"><h3>人物タイプは、こう具体的になります <span class="sample-tag">サンプル</span></h3></div>
+      <div class="faded">${V.tcard('vc', 's0')}</div>
+      <div class="lbl" style="margin-top:8px;line-height:1.6">肩書きではなく「どんな役割で、どんな状況にいる人か」で示します。話した人のタイプで加点 · 満点 100 · 上限なし。</div></div>`;
+  const few = s === 'few', S = few ? 's0' : 's46', T = V.TODAY[S], tt = V.total(S);
+  return topbar('プラン', `<span class="gsw k-gsw" style="display:inline-flex;align-items:center;gap:2px">${V.GOAL.t}${ic('down', 'sm').replace('class="i sm"', 'class="i sm" style="width:13px;height:13px"')}</span>`, meBtn, iorbitBtn) + `
+    <div class="card rise k-hero"><div class="row between" style="align-items:flex-start"><div><div class="lbl">スコア</div><div class="big" style="font-size:52px">${num(tt)}</div><div class="lbl">満点 100 · 上限なし</div></div>
+      ${few ? '<span class="chip lav">今日つくったプラン</span>' : `<div style="text-align:right"><span class="chip lav">あと ${100 - tt} で満点</span><div class="lbl" style="margin-top:6px">話して ${V.talkOf(S)} · スキップ ${V.skipOf(S)}</div></div>`}</div>
+      ${V.sbar(S, { cls: 'k-sbar' })}${V.legend(false, 'k-legend')}</div>
+    ${V.diag22(S, { cls: 'k-diag', acts: true })}
     <div class="card k-today" data-why-box style="background:linear-gradient(135deg,var(--mac-lav),var(--surface) 70%)"><div class="row" style="gap:8px;margin-bottom:6px"><span class="emo sm lav">✨</span><b style="font-size:13px">今日 +${T.plus} のチャンス</b><span class="why" style="margin-left:auto">?</span></div>
       <div style="font-size:14.5px;font-weight:700;line-height:1.55">${few ? '伊藤 直子さん（ハルモニア CFO）に、事業計画の壁打ちを提案してみましょう。' : '今夜の CFO Night Tokyo に VC パートナーが 2人来ます。1人と話せば +10。'}</div>
       <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm primary">${T.btn}</button><span class="chip" style="margin-left:auto">${T.tag}</span></div><div class="why-body" hidden>${T.why}</div></div>
-    <div class="card k-steplist"><div class="card-h"><h3>話すべき人</h3><span class="more">${few ? '候補を見る' : 'ステップ順'}${ic('right', 'sm')}</span></div>
-      ${(few ? ['cfo', 'ent', 'ang', 'vc', 'cvc', 'law'] : ['vc', 'cvc', 'ent', 'law', 'cfo', 'ang']).map((k, i) => V2.prow(k, S, i === (few ? 4 : 1) ? 'k-prowx' : '')).join('')}${V2.prow('ev', S)}</div>
-    <div class="grid2" style="margin-top:14px"><button class="btn k-revise">${ic('refresh', 'sm')}方案を見直す</button><button class="btn k-achieve">${ic('flag', 'sm')}目標を達成した</button></div>`;
+    ${mk('steps')}<div class="card k-steps"><div class="card-h"><h3>ステップ</h3><span class="lbl">順番は目安 · 期限なし</span></div>${V.STEPS.map((st, i) => V.step22(st, S, { short: true, mcls: i === 0 ? 'k-mey1' : '', okcls: 'k-stepok' })).join('')}</div>
+    ${mk('types')}<div class="card k-types" data-why-box><div class="card-h" style="margin-bottom:4px"><h3>話すべき人のタイプ</h3><span class="why k-tplwhy">?</span></div><div class="lbl" style="margin-bottom:10px">役割 × 状況 · 「資金調達」テンプレートのまま</div><div class="why-body" hidden style="margin:0 0 10px">根拠：「💰 資金調達」テンプレートの既定（CFO 経験者 10 / 調達経験のある起業家 15 / エンジェル投資家 10 / VC パートナー 30 / CVC 担当者 15 / 弁護士（投資契約）10 / イベント 10）。前提が既定と合っていたので、AI は配点を調整していません</div>
+      ${V.ORDER.filter(k => k !== 'ev').map(k => V.tcard(k, S, { cls: 'k-tc-' + k })).join('')}</div>
+    ${V.evCard22(S, { cls: 'k-evs' })}`;
+}
+/* 人物タイプ詳細（VC · 人脈にいる）：概要の人物タイプ卡をタップ → ここ。part 1 = 上 · part 2 = スクロール後 */
+const vcHero = (cls = '') => { const V = V2, p = V.PER.vc; return `<div class="card rise ${cls}"><div class="row" style="gap:12px;align-items:flex-start"><span class="emo ${p.c}">${p.emo}</span><div style="flex:1;min-width:0"><div class="v22tk">${p.s} · Step ${V.stepsOf('vc').join('・')} · 配点 ${p.w}</div><b class="v22tn lg">${p.n}</b></div></div>
+  <div class="row" style="gap:10px;margin-top:12px;align-items:baseline"><span class="mid">0</span><span class="lbl">/ ${p.w}点 · 0 / ${p.tgt}人 · 1人 ${p.unit}点</span><span class="chip lav" style="margin-left:auto">人脈に ${p.cand}人</span></div>${V.mbar('vc', 's0')}
+  <div class="v22m3"><div><b>${p.cand}<small>人</small></b><span>人脈の候補</span></div><div><b>${p.evn}</b><span>会える活動</span></div><div><b>${p.route}</b><span>紹介ルート</span></div></div></div>`; };
+const vcCand = (p, k) => `<div data-why-box class="k-vcc${k}"><div class="v22cand"><span class="cbx ${p.on ? 'on' : ''}">${ic('check')}</span><div class="av sm ${p.c}">${p.i}</div><div class="meta"><b>${p.n}${p.orbit ? ' <span class="chip teal" style="vertical-align:1px">Orbit</span>' : ''}</b><div class="sub2">${p.co} · ${p.role}</div></div><div class="v22rec"><b>${p.sc}</b><span>推薦度</span></div><span class="why">?</span></div>
+  <div class="v22cdet"><div>${p.w}</div><div class="op">💬<span>切り出し方：<b>「${p.op}」</b><span class="lbl"> · ${p.last}</span></span></div></div><div class="why-body" hidden style="margin:0 0 10px 64px">根拠：${p.why}</div></div>`;
+const vcWhy = (cls = '') => `<div class="card ${cls}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><b style="font-size:13.5px;flex:1">なぜこの人か</b><span class="why">?</span></div><div style="font-size:12.5px;line-height:1.7;margin-top:6px;color:var(--ink-2)">${V2.TDVC.why}</div><div class="why-body" hidden>${V2.TDVC.whyb}</div></div>`;
+const vcQ = (cls = '') => `<div class="card ${cls}" style="padding:12px 16px"><div class="row between" style="margin:2px 0 2px"><b style="font-size:13.5px">聞くこと</b><button class="btn sm ghost" style="height:28px"><span class="lic i-copy sm"></span>コピー</button></div>${V2.TDVC.q.map((q, i) => `<div class="v22qn"><span class="n">${i + 1}</span><span>${q}</span></div>`).join('')}</div>`;
+const vcJudge = (cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">話せたの判定</b><div class="lbl" style="margin:2px 0 10px">面談メモ（または自己申告）から判定 · 同じ人は同じタイプで 1回だけ</div>${V2.judgeVC().map(([t, p], i) => `<div class="v22rule">${ic(i === 0 ? 'check' : i === 1 ? 'plus' : 'user', 'sm')}<span>${t}</span><b class="pt">${p}</b></div>`).join('')}</div>`;
+const vcSig = (cls = '') => `<div class="card ${cls}" style="padding:12px 16px"><b style="font-size:13.5px">見分け方</b><div class="lbl" style="margin:2px 0 4px">名刺・LinkedIn・イベントのタグで、この信号がある人</div>${V2.TDVC.sig.map(([a, v]) => `<div class="v22sig"><span class="lbl">${a}</span><div class="chips">${v.map(x => `<span class="chip">${x}</span>`).join('')}</div></div>`).join('')}</div>`;
+const vcRoute = (cls = '') => { const I = C.find(c => c.n === '伊藤 直子') || C[2]; return `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">紹介ルート</b><div class="lbl" style="margin:2px 0 10px">面識・共通のつながりから推定</div>
+  <div class="v22route"><div class="av sm ${I.c}">${I.i}</div><span class="arr">${ic('right', 'sm')}</span><div class="v22ghavs"><span class="v22ghav">?</span><span class="v22ghav">?</span><span class="v22ghav">3</span></div><div class="rm"><b>伊藤さん経由で 3名</b><br>面識のある VC 4社のうち、A のリード実績がある 3社のパートナー</div></div>
+  <button class="btn sm block" style="margin-top:10px">${ic('mail', 'sm')}紹介の依頼文を下書き</button></div>`; };
+const vcEvents = (cls = '') => `<div class="card ${cls}" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 2px"><h3>会える活動</h3><span class="lbl">固定の 5項目で採点</span></div>${V2.EVREC.slice(0, 2).map(V2.evRow).join('')}<div class="lbl" style="padding:8px 0">参加するとイベント枠にも +${V2.PER.ev.unit}</div></div>`;
+const vcFoot = `<div class="v22foot"><div class="row" style="gap:8px"><span class="lbl" style="flex:1"><b style="color:var(--ink)">2人</b>を選択中</span><button class="btn">すでに話した</button><button class="btn primary k-vcpropose">面談を提案</button></div></div>`;
+function planType(part = 1) {
+  const head = topbar(V2.PER.vc.s, `Step ${V2.stepsOf('vc').join('・')} · 配点 ${V2.PER.vc.w}`, `<button class="rbtn">${ic('left')}</button>`, `<button class="rbtn">${ic('more')}</button>`);
+  const cands = `<div class="card k-vccands" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 0"><h3>あなたの人脈の候補</h3><span class="lbl">推薦度順 · ${V2.VCAND.length}人</span></div>${V2.VCAND.map((p, k) => vcCand(p, k)).join('')}</div>`;
+  const two = part === 2;
+  return `<div class="v22stk">${head}</div>` + vcHero(two ? '' : 'k-vchero') + cands + vcWhy(two ? '' : 'k-vcwhy') + vcQ(two ? '' : 'k-vcq') + (two ? '<i class="scrollto" data-off="10"></i>' : '') + vcJudge(two ? 'k-vcjudge' : '') + vcSig(two ? 'k-vcsig' : '') + vcRoute(two ? 'k-vcroute' : '') + vcEvents(two ? 'k-vcevs' : '') + '<div style="height:80px"></div>';
 }
 
 /* ============ 詳細・フロー ============ */
@@ -624,6 +712,8 @@ function scanReview() {
 const boards = (items) => `<div class="boards">${items.map(([label, tag, html, notes]) => `<div class="board"><div class="board-label">${label}${tag ? `<span class="tag ${tag}">${{ empty: '新用户空状态', few: '少量数据', many: '大量数据' }[tag] || tag}</span>` : ''}</div>${html}${notes ? `<ul class="note-list">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : ''}</div>`).join('')}</div>`;
 const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
 
+const ann = arr => ({ pins: arr.map(([sel, n], k) => pin(k + 1, sel, n)).join(''), notes: arr.map(a => a[2]) });
+const AP = (label, tag, o, notes) => { const a = ann(notes); return [label, tag, phone({ ...o, pins: a.pins }), a.notes]; };
 let html = '';
 html += sec('ホーム', '首页 v3「軌道ビュー」（2026-10-07）：首卡 = 关系轨道（人脈 286）；今週ストリップ替代「今日の予定」；今日の一手 改为可滑的卡片堆叠；プラン スコア 构成条与 ⑨ 同口径；判断待ち 默认 2 条');
 html += boards([
@@ -654,11 +744,61 @@ html += boards([
   ['イベント', 'few', phone({ pins: pin(2, '.k-evseg') + pin(1, '.ev-card'), body: events('few'), tab: 2 }), ['只有 1 个参加予定时卡片占满宽度，不做轮播', '页签同 empty；右上 📅 → カレンダー（③ 7）；左上 🔍 → 检索']],
   ['イベント', 'many', phone({ body: events('many'), tab: 2, pins: pin(3, '.k-evseg') + pin(1, '.carousel') + pin(2, '.list .ring') }), ['参加予定横滑卡；「今夜」用杏色标时效（杏 = 时间临近；珊瑚只给逾期/失败）', '分数环 >70 深紫 / 50–70 中紫 / <50 豆沙玫瑰', '页签 評価 / 参加予定 3 / 探す；点参加予定卡「会う準備をする」→ 会う準備（② ⑤）；点评估行 → イベント詳細（② ③）']],
 ]);
-html += sec('プラン', '⑨ B2 プラン主页：大分数「スコア」不封顶 + 分数构成条（实色 = 话出来的分 / 斜纹 = 跳过 / 豆沙 = 超额半分）+ 今天能加分的一件事 + 话すべき人；many 与首页同口径 46');
+html += sec('プラン', 'v2.2（2026-10-08，画法同 ⑩ b10）：空状态 = 目標入力（一言 + 目標タイプ 6 類 →「iOrbit と具体化する」）；概要 = 大分数 + 构成条 + 確定した方案（結論一文）+ Step 竖排「完了の目安」+ 人物タイプ卡（役割 × 状況）+ イベント单独一块；按钮组 前提を見る · 方案を見直す（AI · 月3回）· 手動で編集 · 目標を達成した 与 Web 相同；many 与首页同口径 46');
 html += boards([
-  ['プラン', 'empty', phone({ body: plan('empty'), tab: 3, pins: pin(1, '.k-pempty') + pin(2, '.faded') }), ['未设目标：一个主动作「分析する」（→ ⑨ B1 目标 → 分析中 → プラン案）+ 目标类型马卡龙；不再选「期間」', '淡化「サンプル」：分数 46 + 构成条 + 两个类型行，预告「斜纹 = 跳过」，绝不写库']],
-  ['プラン', 'few', phone({ body: plan('few'), tab: 3, pins: pin(4, '.k-gsw') + pin(1, '.k-hero') + pin(2, '.k-today') + pin(3, '.k-prowx') }), ['刚生成 0 分：大数字 0，「満点 100 · 上限なし」常驻，没有百分号与周次', '「今日 +10 のチャンス」：从人脉里挑最容易加分的一件事（伊藤 = CFO 経験者），「面談を提案」只生成站内结构化请求 / 草稿，送信はあなたが行います；「?」展开依据', '「人脈にいません」的类型点进去 → 人物画像 + 活动推荐（⑨ B3 ②）', '标题下目标名「▾」→ 目标切替下拉（④ A6，含「目標を追加」与 編集）']],
-  ['プラン', 'many', phone({ body: plan('many'), tab: 3, pins: pin(6, '.k-gsw') + pin(1, '.k-hero .big') + pin(2, '.k-sbar') + pin(3, '.k-legend') + pin(4, '.k-revise') + pin(5, '.k-achieve') }), ['スコア 46 count-up（与首页、小组件同一口径）；右侧拆成「話して 36 · スキップ 10」+「あと 54 で満点」。不封顶：超过 100 继续累加（128 的样子见 ⑨ B2 many）', '构成条按类型配分分段、从左生长；斜纹 = 弁護士「習熟済みとしてスキップ」满额 10 分但与聊出来的分区分；超过 100 时豆沙段接在「満点 100」刻度之后', '图例：話して得た点（实色）/ 習熟済み（斜纹）/ まだの点；出现上乗せ时加第四项「目標超えの加点」', '「方案を見直す」按需（取代月次見直し，Free 月 3 回）→ ⑨ B5', '「目標を達成した」只由用户手动 → 确认框（⑨ B4）；不按就一直累加', '标题下目标名「▾」→ 目标切替下拉（④ A6）；点「話すべき人」任一行 → 人物タイプ詳細（④ A2）；左上头像 → マイページ，右上 ✨ → iOrbit']],
+  AP('プラン（目標入力）', 'empty', { body: plan('empty'), tab: 3 }, [
+    ['.k-gin', 0, '一句话目标，原样保留用户的说法；不选「期間」。目标类型 chip 6 類（资金调达 / 上市・収益化 / 新規開拓 / 採用 / 事業提携 / キャリア）= 选哪本题库与配点模板，默认按文字推测（此处 💰 資金調達），可改'],
+    ['.k-gnext', 0, '「iOrbit と具体化する」→ 全屏 iOrbit 对话（⑩ ②）：AI 只调 1 次，把 わたし / チーム / 目的 三块一起下书，用户按顺序逐块确认'],
+    ['.k-gsteps', 0, '按钮下预告全流程与次数上限：背景の確認 → 質問 5つまで → AI の初版 → AI 修正 3回まで → 手動編集 1回'],
+    ['.k-gsample .v22tn', 0, '淡化「サンプル」人物类型卡：预告「役割 × 状況」一文（VC = シリーズA のリードを取れる VC のパートナー）+ 三格迷你信息，绝不写库'],
+  ]),
+  AP('プラン 概要（上）', 'few', { body: plan('few'), tab: 3 }, [
+    ['.k-gsw', 0, '标题下目标名「▾」→ 目标切替下拉（④ A6，含「目標を追加」与 編集）'],
+    ['.k-hero .big', 0, '刚确定 0 分：大数字 0，「満点 100 · 上限なし」常驻；构成条按 7 段（6 类型 + イベント）配点分段'],
+    ['.k-diag .why', 0, '「確定した方案」卡：見立て / 結論一文（先 CFO 固数字 → 先辈介绍 → VC 3 社并行 → CVC 后补）；「?」展开依据（確定した前提 6 件 · 業界の現状 3 件 · AI 修正 1 回）'],
+    ['.k-diag .k-prem', 0, '按钮组（与 Web 标题栏同一组）：前提を見る →「確定した前提」卡（可逐行改）/ 方案を見直す（AI · 月 3 回，不改也扣 1 次）/ 手動で編集（每次見直し后 1 回）/ 目標を達成した → 确认框'],
+    ['.k-today', 0, '今日 +10 のチャンス：伊藤 直子（CFO 経験者，1 人满额 10）；「面談を提案」只生成站内请求 / 草稿，送信はあなたが行います'],
+  ]),
+  AP('プラン 概要（ステップ · スクロール後）', 'few', { body: plan('few', 'steps'), tab: 3 }, [
+    ['.k-mey1', 0, '每个 Step 的「完了の目安」写成可数的状态（Step 1：ピッチ資料と事業計画 + CFO 経験者 1 人に見てもらう）；顺序是目安、不排期'],
+    ['.k-steps .v22step .chips', 0, '目安下方是人物类型 chip（emoji + 固定短名）；イベント 在 Step 2・3 出现；点 chip → 该类型詳細'],
+    ['.k-steps .v22step', 4, 'Step 5 クロージング 不新增要见的人：「新しく会う人はいません」'],
+  ]),
+  AP('プラン 概要（人物タイプ · スクロール後）', 'few', { body: plan('few', 'types'), tab: 3 }, [
+    ['.k-tplwhy', 0, '配点来源一行：「資金調達」テンプレートのまま（CFO 10 / 起業家 15 / エンジェル 10 / VC 30 / CVC 15 / 弁護士 10 / イベント 10，与 ⑩ 规范板一致）；「?」展开'],
+    ['.k-tc-vc .v22tn', 0, '名称 = 「役割 × 状況」一句话（不截断），上方小字「VC · Step 3」；点卡 → 人物タイプ詳細（见右侧画板）'],
+    ['.k-tc-cvc .v22m3', 0, '三格迷你信息：人脈の候補 / 会える活動 / 紹介ルート；人脉里没有时第一格变灰「人脈にいない」，但活动与介绍路线仍给出下一步'],
+  ]),
+  AP('プラン 概要（進行中 46）', 'many', { body: plan('many'), tab: 3 }, [
+    ['.k-hero .big', 0, 'スコア 46 count-up（与首页、小组件同一口径）；右侧「話して 36 · スキップ 10」+「あと 54 で満点」。不封顶：超过 100 继续累加'],
+    ['.k-sbar', 0, '构成条：实色 = 话出来的分 / 斜纹 = 弁護士「習熟済み」满额 10 / 超过 100 时豆沙段接在「満点 100」刻度之后'],
+    ['.k-diag .chip', 0, '确定后手动编集过 →「手動編集済み」；見直し剩余「あと 2回」写在按钮下方'],
+    ['.k-diag .k-revise', 0, '「方案を見直す」→ iOrbit 对话：先给「確定した前提」卡，AI 预标可能已变的行 → 修正差分（扣月 3 回配额 1 次，不改也扣）→ 可再手動編集 1 回（④ b4）'],
+    ['.k-diag .k-achieve', 0, '「目標を達成した」只由用户手动 → 确认框；不按就一直累加'],
+  ]),
+  AP('プラン 概要（進行中 46 · ステップ）', 'many', { body: plan('many', 'steps'), tab: 3 }, [
+    ['.k-mey1 .chip', 0, '目安右侧显示进度 chip（CFO 0 / 1人 · 紹介 2件 · VC 2 / 3人 · 習熟済み · まだ）'],
+    ['.k-stepok', 0, 'Step 3 目安可能已达成 → 虚线确认卡「高橋 美咲さんとは、DD に進みましたか？」；只有用户点「完了にする」才算完成'],
+  ]),
+  AP('プラン 概要（進行中 46 · イベント）', 'many', { body: plan('many', 'types'), tab: 3 }, [
+    ['.k-tc-law .v22tf', 0, '弁護士 = 习熟跳过：卡底「習熟済み · スキップ（満額）」+ 斜纹迷你条，可撤回'],
+    ['.k-evs h3', 0, 'イベント 不与人物类型混排，单独一块：参加 1 回 +5、2 回满额以后半分；下列按固定 5 项分数排的推荐活动（环 ≥70 深紫）'],
+  ]),
+]);
+html += sec('人物タイプ詳細', 'v2.2：从概要点人物类型卡进入（本例 VC · 人脈にいる）。字段同 ⑩ b10 ⑧：役割 × 状況 一文 · なぜこの人か · 聞くこと 3 問 · 話せたの判定 · 見分け方 · 候補（推薦度 · 理由 · 切り出し方 · 依据）· 紹介ルート · 会える活動；所有信件 = 草稿');
+html += boards([
+  AP('人物タイプ詳細 · VC（上）', 'few', { body: planType(1), tab: -1, overlay: vcFoot }, [
+    ['.k-vchero .v22tn', 0, '头卡：完整的「役割 × 状況」一句话「シリーズA のリードを取れる VC のパートナー」+ 0 / 30 点 · 0 / 3 人 · 1 人 10 点 + 三格迷你信息；标题栏用固定短名「VC」'],
+    ['.k-vcc0 .v22rec', 0, '候补 4 人按推薦度降序（高橋 91 / 森 78 / 山本 64 / 佐々木 58），每人：理由 + 切り出し方 + 最终接点；「?」展开推荐依据'],
+    ['.k-vcc3 .chip', 0, '佐々木 遼是 Orbit 用户（薄荷 chip），提案时可发结构化请求（3 个时段，不附自由文本）；其余只生成草稿'],
+    ['.k-vcpropose', 0, '底部固定栏「2人を選択中 · すでに話した · 面談を提案」；送信はあなたが行います'],
+  ]),
+  AP('人物タイプ詳細 · VC（スクロール後）', 'few', { body: planType(2), tab: -1, overlay: vcFoot }, [
+    ['.k-vcjudge .v22rule', 0, '話せたの判定：3 问中 2 问以上的面谈记录 = +10；超出 3 人后半分 +5、不封顶；无名字自报只算到 3 人（既定口径，无成果加分）'],
+    ['.k-vcsig', 0, '見分け方：役職（パートナー / GP）· ファンド（直近 30 億円以上 · A のリード実績）· 領域 · イベント tag'],
+    ['.k-vcroute .v22route', 0, '紹介ルート：伊藤 直子さん（面識のある VC 4 社）→ リード実績のある 3 社のパートナー；依頼文 = 草稿'],
+    ['.k-vcevs .v22ev', 0, '会える活動：固定 5 项打分（Japan SaaS Summit 82 · CFO Night 74），参加也给イベント枠 +5'],
+  ]),
 ]);
 html += sec('详情 · 流程', '联系人详情、活动评估两步、iOrbit 对话、＋追加 面板、名片确认');
 html += boards([
@@ -677,6 +817,8 @@ html += boards([
   ['プラン', 'many', phone({ body: plan('many'), tab: 3, theme: 'dark' })],
 ]);
 document.getElementById('out').innerHTML = html;
+/* 带锚点的画板：把滚动容器滚到锚点（在放针之前；针按内容坐标定位） */
+document.querySelectorAll('.scrollto').forEach(m => { const sc = m.closest('.phone .scroll, .web .main'); if (!sc) return; sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - (+m.dataset.off || 70); });
 docNav('app'); orbitChrome();
 </script>
 </body>

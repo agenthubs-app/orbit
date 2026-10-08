@@ -34,6 +34,11 @@
   .batches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .batches .card { display: flex; flex-direction: column; gap: 6px; }
   .batches ul { padding-left: 16px; font-size: 12.5px; color: var(--ink-2); display: grid; gap: 3px; }
+  details.hist > summary { cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 4px; padding: 16px 20px; border-radius: 20px; background: var(--surface); }
+  details.hist > summary::-webkit-details-marker { display: none; }
+  details.hist > summary b::before { content: "▸ "; color: var(--ink-3); }
+  details.hist[open] > summary b::before { content: "▾ "; }
+  details.hist[open] > summary { margin-bottom: 8px; }
 </style>
 </head>
 <body>
@@ -42,21 +47,30 @@
     <p>对照「现状图谱」里两端全部能力，和已画的 App 22 屏 / Web 17 屏逐项比对。上半部分按<b>端到端流转</b>看每一步画了没有；下半部分按<b>页面</b>列清单并排优先级。P0 = 核心闭环断在这里；P1 = 高频二级页；P2 = 低频或设置类。</p></div>
     <div class="doc-tools"><div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div></div></div>
   <nav class="doc-nav" id="docnav"></nav>
-  <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,var(--mac-teal),var(--surface) 70%)"><div class="row" style="gap:12px"><span class="emo teal">✅</span><div style="flex:1"><b style="font-size:15px">2026-10-07 全部补齐（①–⑨），缺口已清零</b><div class="sub">下面保留「补画前」的缺口记录作为对照；每条流转右侧的链接指向补在哪一批。补画共 340 个画板（①55 ②50 ③54 ④60 ⑤72 ⑥49）。</div><div class="sub" style="margin-top:6px;color:var(--ink)"><b>2026-10-07 起计划为 v2</b>：计划 v2 已并入 ① / ④ / App / Web，⑨ 只保留导入新增页。</div></div></div></div>
-  <div class="card" style="margin-bottom:16px"><b>最终状态（2026-10-07）</b>
+  <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,var(--mac-teal),var(--surface) 70%)"><div class="row" style="gap:12px"><span class="emo teal">✅</span><div style="flex:1"><b style="font-size:15px">2026-10-07 全部补齐（①–⑨），缺口已清零</b><div class="sub">下面保留「补画前」的缺口记录作为对照；每条流转右侧的链接指向补在哪一批。补画共 340 个画板（①55 ②50 ③54 ④60 ⑤72 ⑥49）。</div><div class="sub" style="margin-top:6px;color:var(--ink)"><b>2026-10-08 计划升级为 v2.2</b>（背景確認 → ≤5 問 → AI 初版 → AI 修正 ≤3 → 手動編集 1）：⑩ 为权威画法，已推广到 App / Web / ① / ④；见下方「当前流转与进展」。</div></div></div></div>
+  <div class="card" style="margin-bottom:16px"><b>最终状态（2026-10-08 更新）</b>
     <ul style="padding-left:18px;margin-top:8px;font-size:12.5px;color:var(--ink-2);display:grid;gap:4px">
       <li>补画：①–⑥ 六批；⑦ 账号与补遗（订阅/解约/退会/导出/主办公开页/面谈详情/资料建议/兜底页/灵动岛/NFC 网页互换）；⑧ Web 自适应；⑨ 人脉导入 v2。</li>
       <li>计划 v2（人脉方案 + 100 分制积分，不排期）已并入 App / Web / ① / ④，旧时间线画板已删除；⑨ 只保留导入新增页。</li>
       <li>首页 v3「軌道ビュー」：App / Web / 小组件 / ⑥ 自适应与大字号 / 各批首页背景全部同源。</li>
       <li>组件不一致 19 条已统一（见 <a href="01-system.html" style="text-decoration:underline">设计系统</a> 不一致清单）；全局一致性审计：同屏按钮/页签一致，44 条子页面入口全部可达、二级页均有返回（见设计系统末节）。</li>
-      <li>下方「补画前」表格保留为历史对照。</li>
+      <li><b>2026-10-08 计划 v2.2</b>：⑩ 画全流程（例：Orbit 收益化）；背景確認改为「AI 一次下书 わたし / チーム / 目的 → 逐块确认」，团队 =「必要な力 × メンバー」勾选表，成员从人脉选或自己写、不需注册，空き由规则即时计算。</li>
+      <li><b>v2.2 已推广</b>：App / Web プラン（空状态 = 目標入力 · 概要 · 人物タイプ詳細，人物类型改「役割×状況」全名，分数 46 不变）；① A5 改为 v2.2 引导版（シリーズA 数据）；④ 見直し 改为「前提卡 → AI 修正差分（月 3 回，不改也扣）→ 手動編集 1 回」，人物类型画板改 v2.2 字段。</li>
+      <li>同屏按钮再统一：プラン概要在 App / Web / ④ / ⑩ 都是「前提を見る · 方案を見直す · 手動で編集 · 目標を達成した」；HV3 共享块已同步到 ① ③ ④ ⑤ ⑥ ⑦ ⑧ ⑨ 全部 8 个文件。</li>
+      <li>全量检测（2026-10-08）：13 页 581 画板 / 1295 注释，注释数 = 说明数，无横向溢出、同行等高、无 console 错误。</li>
+      <li>页面最下方折叠区保留「补画前」的缺口记录，作为历史对照。</li>
     </ul></div>
   <div class="stat" id="stat"></div>
 
-  <div class="section-title"><h2>一、端到端流转</h2><span class="legend"><span class="st ok">已画</span><span class="st part">只画了一端 / 一部分</span><span class="st no">未画</span></span></div>
+  <div class="section-title"><h2>当前流转与进展（2026-10-08）</h2><span>现行设计下的端到端流转；每步标出画在哪一页</span></div>
+  <div class="batches" id="nowflows"></div>
+  <table class="g" style="margin-top:14px"><thead><tr><th style="width:150px">日期</th><th style="width:260px">进展</th><th>内容</th><th style="width:160px">位置</th></tr></thead><tbody id="progress"></tbody></table>
+
+  <details class="hist" style="margin-top:28px"><summary><b>补画前的缺口记录（2026-10-07 盘点时的状态，已全部补齐）</b><span class="lbl">点开查看对照：8 条流转 · 系统状态 · 逐页清单 · 分批计划。红色「未画」是当时的状态，不是现在</span></summary>
+  <div class="section-title"><h2>一、端到端流转（补画前记录）</h2><span class="legend"><span class="st ok">已画</span><span class="st part">只画了一端 / 一部分</span><span class="st no">未画</span></span></div>
   <div id="flows"></div>
 
-  <div class="section-title"><h2>二、跨页面的系统状态</h2><span>每页都会遇到，但目前一张都没画</span></div>
+  <div class="section-title"><h2>二、跨页面的系统状态</h2><span>盘点时一张都没画（现已补齐，见 ①–⑥ 与设计系统）</span></div>
   <div id="sys" class="grid3"></div>
 
   <div class="section-title"><h2>三、逐页清单</h2><span>端：<span class="pf"><i class="y">A✓</i><i class="h">A½</i><i class="n">A✗</i></span> App　<span class="pf"><i class="y">W✓</i><i class="n">W✗</i></span> Web</span></div>
@@ -64,6 +78,7 @@
 
   <div class="section-title"><h2>四、建议分批</h2><span>按「流转先通、再补二级页、最后设置」的顺序；每批都含明暗与三种数据状态</span></div>
   <div class="batches" id="batches"></div>
+  </details>
 </div>
 <script>
 const S = (t, s, sub = '') => `<span class="st ${s}">${t}${sub ? ` <small>${sub}</small>` : ''}</span>`;
@@ -77,6 +92,24 @@ const FLOWS = [
   ['✨', 'iOrbit 对话', 'P1', [['入口（圆钮 / 右栏）', 'ok'], ['空对话起始屏', 'no'], ['回答 + 确认卡', 'ok'], ['执行后结果反馈', 'no'], ['历史抽屉', 'no'], ['@ 提及选择器', 'no'], ['语音输入中', 'no']]],
   ['🎤', '主办方运营', 'P2', [['运营中心列表', 'no'], ['概要', 'part', '仅 Web'], ['匹配与分组', 'no'], ['参会者审核', 'no'], ['签到 kiosk', 'no'], ['报名表编辑 + 发布', 'no'], ['数据报告', 'no'], ['协作者抽屉', 'no']]],
 ];
+const NOW = [
+  ['🧭', '计划生成（v2.2）', [['目標入力', 'App · Web · ⑩'], ['背景の下書き（AI 1回）', '⑩ · ①'], ['わたし', '⑩ · ①'], ['チーム：必要な力 × メンバー', '⑩ · ①'], ['メンバー追加：人脈から / 自分で書く', '⑩ · ①'], ['目的の階段', '⑩ · ①'], ['≤5 問', '⑩ · ①'], ['確定した前提', '⑩ · ①'], ['AI 初版', '⑩ · ①'], ['AI 修正 ≤3', '⑩'], ['手動編集 1', '⑩'], ['プラン概要', 'App · Web · ⑩'], ['人物タイプ詳細', 'App · Web · ④ · ⑩']]],
+  ['🗺️', '计划长期使用（v2.2）', [['プラン概要（4 按钮）', 'App · Web · ④ · ⑩'], ['前提を見る', '④'], ['方案を見直す：前提卡 + AI 预标', '④'], ['AI 修正差分（月 3 回）', '④'], ['手動編集 1 回', '④ · ⑩'], ['記録・加点・スキップ', '④'], ['目標達成 → 次の目標', '④']]],
+  ['📇', '人脉导入 v2', [['＋追加（5 渠道）', 'App · Web · ⑨'], ['批量全部进人脉', '⑨'], ['濃さ 三点 + 出どころ', 'App · Web · ⑨'], ['招待コード 双向添加', '⑨']]],
+  ['🎟️', '活动（固定评分标准）', [['评估输入', 'App · Web · ②'], ['5 项固定评分 45/15/20/10/10', '② · ⑩'], ['会える活動（计划内）', '⑩ · App · Web']]],
+];
+document.getElementById('nowflows').innerHTML = NOW.map(([e, t, steps]) => `<div class="flow"><div class="flow-h"><span class="emo sm lav">${e}</span><b>${t}</b><span class="lbl" style="margin-left:auto;white-space:nowrap">${steps.length} / ${steps.length} 步已画</span><div style="width:120px">${bar(100, '')}</div></div>
+  <div class="chain">${steps.map(([n, w], k) => (k ? '<span class="arr">→</span>' : '') + S(n, 'ok', w)).join('')}</div></div>`).join('');
+const PROG = [
+  ['2026-10-07', '①–⑥ 补画 · 缺口清零', '340 画板；8 条流转、系统状态、逐页清单全部补齐', '① – ⑥'],
+  ['2026-10-07', '⑦ 账号补遗 · ⑧ 自适应 · ⑨ 导入 v2', '订阅/退会/导出/兜底页/NFC 网页互换；Web 1024–1440；5 渠道导入', '⑦ ⑧ ⑨'],
+  ['2026-10-07', '计划 v2 · 首页 v3 合并', '100 分制、跳过=满额、超额半分；軌道ビュー；全局一致性审计', 'App · Web · ① ④'],
+  ['2026-10-08', '计划 v2.1 → v2.2（⑩）', '役割×状況 人物类型；背景確認 → ≤5 問 → 初版 → 修正 ≤3 → 手動編集 1；活动固定评分；无成果加分', '⑩'],
+  ['2026-10-08', '背景確認改版', 'AI 一次下书三块、逐块确认；团队勾选表；成员从人脉选或自己写', '⑩'],
+  ['2026-10-08', 'v2.2 推广', 'App / Web プラン、① A5 引导版、④ 見直し 与人物类型；プラン概要 4 按钮统一；HV3 同步 8 个文件', 'App · Web · ① ④ ⑩'],
+  ['未开始', '落地实现', '按 Web Sprint 规程立计划；背景下书 / 选题 / 初版 / 修正 / 活动评估均为付费 AI 调用，需授权', '—'],
+];
+document.getElementById('progress').innerHTML = PROG.map(([d, a, b, c]) => `<tr><td class="${d === '未开始' ? '' : 'num'}">${d === '未开始' ? '<span class="st no">未开始</span>' : d}</td><td><b>${a}</b></td><td>${b}</td><td class="lbl">${c}</td></tr>`).join('');
 const FB = {"新用户冷启动": "b1-onboarding-cards", "名片 → 人脉 → 计划匹配": "b1-onboarding-cards", "活动：评估 → 报名 → 现场 → 会后": "b2-events-flow", "今日の一手 → 草稿 → 完成": "b3-daily-actions", "跟进与日程": "b3-daily-actions", "计划长期使用": "b4-plan-iorbit", "iOrbit 对话": "b4-plan-iorbit", "主办方运营": "b6-host-polish"};
 document.getElementById('flows').innerHTML = FLOWS.map(([e, t, p, steps]) => {
   const ok = steps.filter(s => s[1] === 'ok').length;
@@ -155,11 +188,11 @@ const items = R.filter(r => r.length > 1);
 const cnt = p => items.filter(r => r[0] === p).length;
 const steps = FLOWS.flatMap(f => f[3]), stepsOk = steps.filter(s => s[1] === 'ok').length;
 document.getElementById('stat').innerHTML = [
-  ['已画屏幕', '22 + 17', 'App 22 屏 · Web 17 屏', ''],
-  ['流转步骤已画', `${stepsOk} / ${steps.length}`, '8 条端到端流转', 'var(--coral)'],
-  ['P0 缺口', cnt('P0'), '核心闭环断点', 'var(--coral)'],
-  ['P1 缺口', cnt('P1'), '高频二级页', ''],
-  ['P2 + 系统状态', `${cnt('P2')} + ${SYS.length}`, '低频页 / 跨页状态', ''],
+  ['剩余缺口', '0', `盘点时 P0 ${cnt('P0')} · P1 ${cnt('P1')} · P2 ${cnt('P2')} · 系统 ${SYS.length}，已全部补齐`, 'var(--teal-700, var(--ink))'],
+  ['已画画板', '581', '13 页 · 1,295 个交互注释', ''],
+  ['现行流转', '4 / 4', '计划生成 v2.2 · 长期使用 · 导入 · 活动，全部画完', ''],
+  ['盘点时的流转步骤', `${steps.length} / ${steps.length}`, `补画前只有 ${stepsOk} 步，10-07 补齐`, ''],
+  ['待办（非设计）', '1', '落地实现：需立计划 + 付费 AI 授权', ''],
 ].map(([l, v, d, c]) => `<div class="card" style="margin:0"><div class="lbl">${l}</div><div class="big" style="font-size:30px;${c ? 'color:' + c : ''}">${v}</div><div class="lbl">${d}</div></div>`).join('');
 
 document.getElementById('batches').innerHTML = [

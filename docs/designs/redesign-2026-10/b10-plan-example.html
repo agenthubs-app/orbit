@@ -778,9 +778,13 @@ const todayCard = (many, cls = '') => `<div class="card ${cls}" data-why-box sty
   <div style="font-size:14px;font-weight:700;line-height:1.6">${many ? '10/23 のブランドづくり勉強会 Tokyo #14 に、B タイプが約 8名来ます。参加でイベント +5、話せたら B +10。' : '小林 誠さん（丸の内イノベーションラボ 主宰）に「近況報告＋会のあとの相談」を。話せたら A +4。'}</div>
   <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm primary">${many ? 'イベントを見る' : '面談を提案'}</button><span class="chip" style="margin-left:auto">${many ? 'イベント · 1 / 3回' : 'A 交流会の主催者 · Step 1'}</span></div>
   <div class="why-body" hidden>${many ? '根拠：イベントスコア 82（会える人の適合 36 / 45 · B タイプ約 8名、残り 1人）· イベント枠は 1 / 3回' : '根拠：小林さんは推薦度 92（名刺「主宰」· 月1回の主催履歴）· 最終接点 1か月前 · A は 1人 4点'}</div></div>`;
-const diagMini = (cls = '') => `<div class="card ${cls}" data-why-box><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><b style="font-size:13px;flex:1">確定した方案</b><span class="chip">手動編集済み</span><span class="why">?</span></div>
+/* プラン概要の统一按钮组（与 app.html / web.html 同一组）：前提を見る · 方案を見直す（AI · 月3回）· 手動で編集 · 目標を達成した */
+const ACTS = [['layers', '前提を見る', 'k-prem'], ['refresh', '方案を見直す', 'k-revise', 'AI · 月3回'], ['edit', '手動で編集', 'k-manual'], ['flag', '目標を達成した', 'k-achieve']];
+const acts = (o = {}) => ACTS.map(([i, t, k, q]) => `<button class="btn ${(o.pre || '') + k}">${ic(i, 'sm')}${t}${q ? `<span class="v22q">${q}</span>` : ''}</button>`).join('');
+const diagMini = (cls = '', o = {}) => `<div class="card ${cls}" data-why-box><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><b style="font-size:13px;flex:1">確定した方案</b><span class="chip">手動編集済み</span><span class="why">?</span></div>
   <div style="font-size:13.5px;font-weight:700;line-height:1.6;margin-top:8px">${KETSU}</div>
   <div class="why-body" hidden>根拠：確定した前提 7件 · 業界の現状 4件（L-012 · L-031 · L-047 · L-058）· AI 修正 3回 · 手動編集 1回（10/8）</div>
+  ${o.acts ? `<div class="v22acts">${acts()}</div><div class="lbl" style="margin-top:8px">見直しは AI · 月 3回（あと 3回）· 見直すたびに手動編集 1回</div>` : ''}
   <div class="v2go">iOrbit の会話を見る${ic('right', 'sm')}</div></div>`;
 function planApp(s, scrolled) {
   const many = s === 'many', S = many ? 's38' : 's0', tt = total(S);
@@ -788,15 +792,15 @@ function planApp(s, scrolled) {
     <div class="card rise k-hero"><div class="row between" style="align-items:flex-start"><div><div class="lbl">スコア</div><div class="big" style="font-size:52px">${num(tt)}</div><div class="lbl">満点 100 · 上限なし</div></div>
       ${many ? `<div style="text-align:right"><span class="chip lav">あと ${Math.round(100 - tt)} で満点</span><div class="lbl" style="margin-top:6px">話して ${Math.round(tt)} · スキップ 0</div></div>` : '<span class="chip lav">今日つくったプラン</span>'}</div>
       ${sbar(S, { cls: 'k-sbar' })}${legend('k-legend')}</div>
-    ${diagMini('k-diag')}
+    ${diagMini('k-diag', { acts: true })}
     ${todayCard(many, 'k-today')}
     ${scrolled === 'steps' ? '<i class="scrollto" data-off="-90"></i>' : ''}<div class="card k-steps"><div class="card-h"><h3>ステップ</h3><span class="lbl">順番は目安 · 期限なし</span></div>${STEPS.map((st, i) => stepBlock(st, S, { short: true, cls: i === 0 ? 'k-step1' : '', mcls: i === 0 ? 'k-mey1' : '' })).join('')}</div>
     ${scrolled === true ? SCR : ''}<div class="card k-types" data-why-box><div class="card-h" style="margin-bottom:4px"><h3>話すべき人のタイプ</h3><span class="why k-tplwhy">?</span></div><div class="lbl" style="margin-bottom:10px">役割 × 状況 · ${TPLNOTE}</div><div class="why-body" hidden style="margin:0 0 10px">${TPLWHY}</div>${ORD.map(k => tcard(k, S, { cls: 'k-tc' + k })).join('')}</div>
-    <div class="grid2" style="margin-top:14px"><button class="btn k-revise">${ic('refresh', 'sm')}方案を見直す</button><button class="btn">${ic('flag', 'sm')}目標を達成した</button></div>`;
+`;
 }
 function planWeb(s) {
   const many = s === 'many', S = many ? 's38' : 's0', tt = total(S);
-  return mainhead('プラン', PURPOSE, `<button class="btn k-wgsw">🚀 ${PNAME} ${ic('down', 'sm')}</button>`, `<button class="btn">${ic('refresh', 'sm')}方案を見直す</button><button class="btn">${ic('flag', 'sm')}目標を達成した</button>`) + `<div class="wgrid">
+  return mainhead('プラン', '', `<button class="btn k-wgsw">🚀 ${PNAME} ${ic('down', 'sm')}</button>`, `<div class="row k-wacts" style="gap:8px">${acts({ pre: 'w' })}</div>`) + `<div class="wgrid">
     <div class="card span12 rise k-whero"><div class="row" style="gap:28px;align-items:flex-end"><div style="flex:none"><div class="lbl">スコア</div><div class="big" style="font-size:64px">${num(tt)}</div><div class="lbl">満点 100 · 上限なし</div></div>
       <div style="flex:1;min-width:0;padding-bottom:4px">${sbar(S, { labels: true, cls: 'k-wsbar' })}${legend()}</div>
       <div style="flex:none;text-align:right;padding-bottom:6px;width:190px">${many ? `<span class="chip lav">あと ${Math.round(100 - tt)} で満点</span><div class="lbl" style="margin-top:6px">話して ${Math.round(tt)} · スキップ 0</div>` : '<span class="chip lav">今日つくったプラン</span><div class="lbl" style="margin-top:6px">話した人のタイプで加点</div>'}</div></div></div>
@@ -940,7 +944,7 @@ function specPrompt() {
 }
 const TPL6 = [
   ['🚀 上市・収益化', [['最初に払う人', 25], ['ブランド・PR', 15], ['先行プロダクト経験', 15], ['同じ道を通った創業者', 15], ['足りない専門', 10], ['ヘビーユーザー', 5], ['イベント', 15]], 1],
-  ['💰 資金調達', [['リード投資家候補', 25], ['調達経験のある創業者', 20], ['CFO・財務', 15], ['紹介者（士業・VC 周辺）', 15], ['事業会社（CVC）', 10], ['イベント', 15]]],
+  ['💰 資金調達', [['CFO 経験者', 10], ['調達経験のある起業家', 15], ['エンジェル投資家', 10], ['VC パートナー', 30], ['CVC 担当者', 15], ['弁護士（投資契約）', 10], ['イベント', 10]]], /* 2026-10-08：与 App / Web の「シリーズA 資金調達（3億円）」プランと同じ既定 */
   ['🤝 新規顧客開拓', [['決裁者', 30], ['現場責任者', 20], ['紹介者・代理店', 15], ['同業の先輩営業', 10], ['業界団体', 10], ['イベント', 15]]],
   ['🧑‍💼 採用', [['候補者本人', 30], ['候補者を紹介できる人', 20], ['同職種の先輩', 15], ['採用担当の経験者', 10], ['コミュニティ運営者', 10], ['イベント', 15]]],
   ['🔗 事業提携', [['提携先の事業責任者', 30], ['提携先の現場', 15], ['提携の経験者', 15], ['紹介者', 15], ['法務・知財', 10], ['イベント', 15]]],
@@ -950,7 +954,7 @@ const TPLX = [['最初に払う人', 25, 25, 20, 'A 交流会の主催者', '手
 function specTpl() {
   const cell = (a, b) => `<td class="num ${b > a ? 'chg-up' : b < a ? 'chg-dn' : ''}">${b}${b !== a ? ` (${b > a ? '+' : ''}${b - a})` : ''}</td>`;
   return `<div class="spec">
-  <div class="card s12"><h3>人物タイプ配点テンプレート（6類 · 各合計 100）</h3><div class="lbl">目標の種類ごとに既定の枠と配点。AI は枠を「役割 × 状況」に具体化し、配点は 1枠 ±5 まで · 最多 2処 · 合計 100 固定で調整（理由は「?」で必ず表示）。短名 = テンプレートの枠 × 業界の固定短名辞書（例：「最初に払う人」× イベント業界 =「交流会の主催者」）から取り、AI は短名をつくらない。配点は 5点刻み。手動編集で 1つ変えると、差分を 5点ずつ配点の高いタイプから順に（同点はテンプレートの順）引く／足して合計 100 を保つ。1人あたりの点は整数（配点 ÷ 人数の切り捨て）で、端数は最後の1人で調整する（人数 × 単価の合計 = 配点）</div>
+  <div class="card s12"><h3>人物タイプ配点テンプレート（6類 · 各合計 100）</h3><div class="lbl">目標の種類ごとに既定の枠と配点。AI は枠を「役割 × 状況」に具体化し、配点は 1枠 ±5 まで · 最多 2処 · 合計 100 固定で調整（理由は「?」で必ず表示）。短名 = テンプレートの枠 × 業界の固定短名辞書（例：「最初に払う人」× イベント業界 =「交流会の主催者」）から取り、AI は短名をつくらない。配点は 5点刻み。手動編集で 1つ変えると、差分を 5点ずつ配点の高いタイプから順に（同点はテンプレートの順）引く／足して合計 100 を保つ。1人あたりの点は整数（配点 ÷ 人数の切り捨て）で、端数は最後の1人で調整する（人数 × 単価の合計 = 配点）。💰 資金調達 の既定は App / Web の「シリーズA 資金調達（3億円）」プランと同じ（CFO 経験者 10 / 調達経験のある起業家 15 / エンジェル投資家 10 / VC パートナー 30 / CVC 担当者 15 / 弁護士（投資契約）10 / イベント 10）</div>
     <div class="tplg">${TPL6.map(([t, sl, pk]) => `<div class="${pk ? 'pickt' : ''}"><b class="bt">${t}</b>${sl.map(([a, b]) => `<div class="sl"><span>${a}</span><b>${b}</b></div>`).join('')}</div>`).join('')}</div></div>
   <div class="card s12"><h3>本例の調整（上市・収益化）</h3><div class="lbl">v2.1 の「個人サブスクのグロース責任者」は、空白の優先度が高い「デザイン」に「足りない専門」枠を譲り、価格の検証は C と Step 5 に寄せた。「ヘビー参加者」はヘビーユーザー枠ごと 0 に</div>
     <table class="stab"><thead><tr><th>テンプレートの枠</th><th>既定</th><th>AI 初版</th><th>手動編集後</th><th>このプランでの具体化（固定短名）</th><th>理由</th></tr></thead><tbody>${TPLX.map(([t, a, b, c, d, r]) => `<tr><td><b>${t}</b></td><td class="num">${a}</td>${cell(a, b)}${cell(b, c)}<td>${d}</td><td class="lbl">${r || '—'}</td></tr>`).join('')}<tr><td><b>合計</b></td><td class="num">100</td><td class="num">100</td><td class="num">100</td><td></td><td></td></tr></tbody></table></div></div>`;
@@ -1184,6 +1188,7 @@ h += boards([
   AP('⑦ プラン概要（上）', 'few', { body: planApp('few'), tab: 3 }, [
     ['.k-hero .big', 0, 'スコア 0 起步（count-up），构成条按 6 段（5 类型 + イベント）配点分段'],
     ['.k-diag', 0, '「確定した方案」卡 + 「手動編集済み」chip；「?」展开依据（前提 · 业界现状 4 件 · 修正 3 回 · 手动编辑 1 回）'],
+    ['.k-diag .k-prem', 0, '统一按钮组（与 App / Web プラン概要同一组）：前提を見る →「確定した前提」卡 / 方案を見直す（AI · 月 3 回，不改也扣 1 次）/ 手動で編集（每次見直し后 1 回）/ 目標を達成した → 确认框'],
     ['.k-today', 0, '今日のチャンス：小林さん（推薦度 92），A 1 人 4 点（配点 20 ÷ 5 人）'],
     ['.k-mey1', 0, '每个 Step 的「完了の目安」写成可数的状态，已反映修正与手动编辑（Step 3 改名、Step 4/5 互换）；目安下方是人物类型 chip（字母 + 固定短名），点 chip → ⑧ 该类型详情'],
   ]),
@@ -1205,6 +1210,7 @@ h += boards([
 ]);
 h += WB('⑦ プラン概要 · Web', 'few', { nav: 4, body: planWeb('few'), rail: planRail('few') }, [
   ['.k-whero', 0, '顶部横向：大分数 + 带类型短名的构成条 + 图例'],
+  ['.k-wacts .wk-prem', 0, '标题栏按钮组与 App「確定した方案」卡同一组：前提を見る / 方案を見直す（AI · 月 3 回）/ 手動で編集 / 目標を達成した'],
   ['.k-wmey1', 0, 'Step 列（4 列宽）：每步完了の目安 + 人物类型 chip；顺序是目安、不排期'],
   ['.k-wtplwhy', 0, '人物类型 2 列网格（8 列宽，3 行等高）；标题右侧写配点来源，「?」展开理由'],
   ['.k-wdiag', 0, '右栏：今日のチャンス + 確定した方案（手動編集済み）+ 不保证达成的说明'],
