@@ -244,6 +244,35 @@
   .aisay { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--ink-2); }
   .aisay .emo { flex: none; }
   .aisay .why { margin-top: 1px; }
+  /* v2.3 背景確認：3ブロック */
+  .bstack { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); } .bsec, .bsb { min-width: 0; }
+  .bsec { background: var(--surface); border-radius: 20px; padding: 12px 16px; }
+  .bsec.draft { background: transparent; border: 1.5px dashed var(--surface-3); padding: 10px 16px; }
+  .bsh { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .bsh b { font-size: 14px; flex: none; }
+  .bss { flex: 1; min-width: 0; font-size: 11.5px; color: var(--ink-3); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bsh .chip { margin-left: auto; }
+  .bsh .lbtn { width: 28px; height: 28px; } .bsh .lbtn svg.i { width: 14px; height: 14px; }
+  .bsn { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-num); font-weight: 900; font-size: 11px; background: var(--surface-2); color: var(--ink-3); flex: none; }
+  .bsn svg.i { width: 12px; height: 12px; stroke-width: 2.6; }
+  .bsec.open .bsn { background: var(--plum-700); color: var(--on-accent); }
+  .bsec.done .bsn { background: var(--plum-300); color: var(--on-accent); }
+  .bsb { margin-top: 12px; }
+  .bsk { display: flex; align-items: center; gap: 10px; padding: 9px 0; } .bsk + .bsk { border-top: 1px solid var(--line); } .bsk b { font-size: 13px; width: 48px; }
+  .mem .chip { flex: none; align-self: center; }
+  .capm { display: grid; }
+  .caprow { display: flex; align-items: center; gap: 8px; padding: 6px 0; } .caprow + .caprow { border-top: 1px solid var(--line); }
+  .capn { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; }
+  .capa { display: flex; gap: 6px; }
+  .avt { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; font-weight: 800; border: 1.5px dashed var(--surface-3); color: var(--ink-4); }
+  .avt.on { border: 0; color: var(--ink); }
+  .caps { width: 34px; text-align: right; font-size: 11px; font-weight: 800; color: var(--ink-3); }
+  .caprow.gap .capn { color: var(--rose-700); } .caprow.gap .caps { color: var(--rose-700); }
+  .av.xs { width: 22px; height: 22px; font-size: 9.5px; }
+  .captab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .captab th { text-align: left; font-size: 11.5px; color: var(--ink-3); font-weight: 700; padding: 6px 8px; vertical-align: bottom; } .captab th .chip { display: inline-flex; width: auto; }
+  .captab td { padding: 7px 8px; border-top: 1px solid var(--line); }
+  .captab tr.gap td:first-child b { color: var(--rose-700); }
   /* わかったこと（Web rail） */
   .known { display: grid; gap: 2px; }
   .known > div { display: grid; grid-template-columns: 74px 1fr; gap: 8px; padding: 7px 0; font-size: 12px; line-height: 1.5; }
@@ -384,7 +413,7 @@
     <div>
       <div class="doc-kicker">Orbit Redesign · 2026-10 · プラン v2.2「背景から具体化」 · App 390 + Web 1440</div>
       <h1>⑩ プランの具体化 v2.2（例：Orbit をブランドとして事業化）</h1>
-      <p><b>计划 v2.2 的通用流程</b>（全部在 iOrbit 对话中，App / Web 同构）：<b>① 背景確認</b>（わたし＝登录资料预填 · やりたいこと · 一人かチームか · チームのできること＋AI 标出的空白 · 目的の階段 4 级）→ <b>② ≤5 問</b>（从 6 类题库按背景缺口挑，可一次全答）→「確定した前提」→ <b>③ AI 初版</b>（高度プロンプト＋后台维护的「業界の現状」资料库，只能引用库内资料，可展开看引用了哪几条）→ <b>④ AI 修正 ≤3 回</b> → <b>⑤ 手動編集 1 回</b>（新画面，总分自动保持 100，编辑后 AI 不再自动改写）→ <b>⑥ 推荐人与活动</b>。本页用用户的真实例子演示：佐藤 健一（AI エンジニア · Orbit 共同創業者，和同为 AI 工程师的高木 悠两人用 vibe coding 做出 Orbit）写下「Orbit を落地して黒字化したい」，经目的の階段确认后，真实目的是「Orbit をブランドとして確立し、事業にする」。计分口径不变（满分 100 · 上限なし · 同人同类型一次 · 超额半分 · 无成果加分）。<br><b>v2.1 遗留的 6 个待确认项已按推荐定稿</b>：题库 6 类（採用・事業提携分开，新增キャリア）· AI「不改」也扣一次修正 · 人物类型短名取模板固定名 · 默认配点模板与 ±5 / 最多 2 处 · 活动分随该类型见得越多而递减 · Step 完成由用户确认。粉色编号为交互标注。</p>
+      <p><b>计划 v2.2 的通用流程</b>（全部在 iOrbit 对话中，App / Web 同构）：<b>① 背景確認</b>（提交目标后 AI 只调 1 次，把 わたし / チーム / 目的 三块一起下书，用户按顺序逐块选・填；团队 =「必要な力 × メンバー」勾选表，成员从人脉选或自己写、不需注册，空き由规则即时算）→ <b>② ≤5 問</b>（从 6 类题库按背景缺口挑，可一次全答）→「確定した前提」→ <b>③ AI 初版</b>（高度プロンプト＋后台维护的「業界の現状」资料库，只能引用库内资料，可展开看引用了哪几条）→ <b>④ AI 修正 ≤3 回</b> → <b>⑤ 手動編集 1 回</b>（新画面，总分自动保持 100，编辑后 AI 不再自动改写）→ <b>⑥ 推荐人与活动</b>。本页用用户的真实例子演示：佐藤 健一（AI エンジニア · Orbit 共同創業者，和同为 AI 工程师的高木 悠两人用 vibe coding 做出 Orbit）写下「Orbit を落地して黒字化したい」，经目的の階段确认后，真实目的是「Orbit をブランドとして確立し、事業にする」。计分口径不变（满分 100 · 上限なし · 同人同类型一次 · 超额半分 · 无成果加分）。<br><b>v2.1 遗留的 6 个待确认项已按推荐定稿</b>：题库 6 类（採用・事業提携分开，新增キャリア）· AI「不改」也扣一次修正 · 人物类型短名取模板固定名 · 默认配点模板与 ±5 / 最多 2 处 · 活动分随该类型见得越多而递减 · Step 完成由用户确认。粉色编号为交互标注。</p>
     </div>
     <div class="doc-tools">
       <div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div>
@@ -526,41 +555,79 @@ function goalApp() {
       <div class="lbl" style="margin-top:8px;line-height:1.6">肩書きではなく「どんな役割で、どんな状況にいる人か」で示します。</div></div>`;
 }
 
-/* ===================== ② 背景確認 ===================== */
+/* ===================== ② 背景確認（v2.3：一括下書き → 3ブロックを順に確認） ===================== */
 const MEMS = [
-  { n: '佐藤 健一', i: '佐', c: 'c1', r: 'あなた · 共同創業者', sk: ['AI・LLM', 'バックエンド', 'バイブコーディング'] },
-  { n: '高木 悠', i: '高', c: 'c3', r: 'パートナー · 共同創業者', sk: ['AI エンジニア', 'モデル評価', 'インフラ'] },
+  { n: '佐藤 健一', i: '佐', c: 'c1', r: 'あなた · 共同創業者', src: 'プロフィール', sc: '' },
+  { n: '高木 悠', i: '高', c: 'c3', r: '共同創業者 · 週末中心', src: '人脈から', sc: 'lav' },
 ];
-const GAPS = ['デザイン', 'ブランド', '営業', 'マーケ', '価格設計'];
+/* 上市・収益化の必要な力（目標タイプごとに固定 8項目）。値 = [佐藤, 高木] がカバーしているか */
+const CAPS = [['プロダクト開発', [1, 1]], ['AI・データ', [1, 1]], ['運用・インフラ', [0, 1]], ['デザイン', [0, 0]], ['ブランド', [0, 0]], ['営業', [0, 0]], ['マーケ', [0, 0]], ['価格設計', [0, 0]]];
+const GAPS = CAPS.filter(c => !c[1].some(Boolean)).map(c => c[0]);
 const STAIR = [[4, '人脈 AI の分野で、代表的なブランドになる', '大きめ', ''], [3, PURPOSE, 'いちばん近い？', 'lav'], [2, 'Orbit を利益が出る事業にする', '最初に書いた目標', 'blue'], [1, 'β 版を有料にする', '小さめ', '']];
-const bgBasic = (cls = '') => `<div class="card ${cls}" style="padding:6px 16px">
-  <div class="bgi k-bgme"><div class="bgh"><span class="lbl">わたし</span><span class="chip">プロフィールから</span><button class="lbtn">${ic('pen', 'sm')}</button></div><div class="row" style="gap:10px"><div class="av sm c1">佐</div><div style="min-width:0"><b style="font-size:14px">佐藤 健一</b><div class="lbl">AI エンジニア · Orbit 共同創業者</div></div></div></div>
-  <div class="bgi k-bgwant"><div class="bgh"><span class="lbl">やりたいこと</span><span class="chip lav">目標文から</span><button class="lbtn">${ic('pen', 'sm')}</button></div><div class="bgv">Orbit を世に出す</div></div>
-  <div class="bgi k-bgteam1"><div class="bgh"><span class="lbl">一人か、チームか</span></div><div class="seg full"><button>一人</button><button class="on">チーム（2名）</button></div></div></div>`;
-const bgTeam = (cls = '') => `<div class="card ${cls}" data-why-box style="padding:12px 16px"><div class="card-h" style="margin:2px 0 2px"><h3>チームの顔ぶれと、できること</h3><span class="why k-gapwhy">?</span></div>
-  ${MEMS.map((m, k) => `<div class="mem ${k === 1 ? 'k-mem2' : ''}"><div class="av sm ${m.c}">${m.i}</div><div class="mm"><b>${m.n}</b> <span class="lbl">${m.r}</span><div class="chips">${m.sk.map(s => `<span class="chip">${s}</span>`).join('')}<span class="chip" style="background:transparent;border:1.5px dashed var(--surface-3)">＋</span></div></div></div>`).join('')}
-  <div class="ghost-row k-addmem" style="height:40px;margin-top:4px">${ic('plus', 'sm')}メンバーを追加（業務委託・アドバイザーも）</div>
-  <div class="gapbox k-gaps"><div class="row" style="gap:6px"><span style="font-size:12px;font-weight:800;flex:1">この目的に必要で、チームにまだない力</span><span class="lbl">AI が検出</span></div><div class="chips">${GAPS.map(g => `<span class="gapc">${g}</span>`).join('')}</div></div>
-  <div class="why-body" hidden>根拠：目標タイプ「上市・収益化」の必要能力リスト（プロダクト · デザイン · ブランド · 営業 · マーケ · 価格設計 · 資金）と、2人のできることの差。違っていれば chip を外せます。</div></div>`;
-const bgStair = (cls = '') => `<div class="card ${cls}" data-why-box style="padding:12px 16px"><div class="card-h" style="margin:2px 0 2px"><h3>最終的な目的は、どれがいちばん近い？</h3><span class="why k-stwhy">?</span></div><div class="lbl" style="margin-bottom:8px">上ほど大きい目的です。小さすぎ・大きすぎと感じたら 1段ずらしてください</div>
+const BSUM = { 1: '佐藤 健一 · 共同創業者 · Orbit を世に出す', 2: `チーム 2名 · 空き ${GAPS.length}（${GAPS.slice(0, 2).join('・')} ほか）`, 3: `3段目「${PURPOSE}」` };
+const BTTL = { 1: 'わたし', 2: 'チーム', 3: '目的' };
+/* state: 'done' | 'open' | 'draft' */
+const bsec = (n, st, inner = '', cls = '') => `<div class="bsec ${st} ${cls}"><div class="bsh"><span class="bsn">${st === 'done' ? ic('check') : n}</span><b>${BTTL[n]}</b>${st === 'open' ? '<span class="chip lav">確認中</span>' : st === 'done' ? `<span class="bss">${BSUM[n]}</span><button class="lbtn">${ic('pen', 'sm')}</button>` : `<span class="bss">下書き：${BSUM[n]}</span>`}</div>${st === 'open' ? `<div class="bsb">${inner}</div>` : ''}</div>`;
+const meInner = () => `<div class="row k-bgme" style="gap:10px"><div class="av sm c1">佐</div><div style="min-width:0;flex:1"><b style="font-size:14px">佐藤 健一</b><div class="lbl">AI エンジニア · Orbit</div></div><span class="chip">プロフィールから</span></div>
+  <div class="lbl" style="margin:12px 0 6px;font-weight:800;color:var(--ink-2)">この目標での、あなたの立場</div>
+  <div class="row k-bgrole" style="gap:6px;flex-wrap:wrap"><span class="fopt">代表・オーナー</span><span class="fopt on">共同創業者</span><span class="fopt">社内の担当者</span><span class="fopt">個人として</span></div>
+  <div class="lbl" style="margin:12px 0 6px;font-weight:800;color:var(--ink-2)">やりたいこと <span class="chip lav" style="margin-left:4px">目標文から</span></div>
+  <div class="fld k-bgwant" style="margin-top:0"><div class="in" style="background:var(--surface-2)"><span>Orbit を世に出す</span>${ic('pen', 'sm')}</div></div>`;
+const avt = (m, on) => `<span class="avt ${on ? 'on av ' + m.c : ''}">${m.i}</span>`;
+const capRows = (cls = '') => `<div class="capm ${cls}">${CAPS.map(([c, v], k) => { const gap = !v.some(Boolean); return `<div class="caprow ${gap ? 'gap' : ''} ${k === 3 ? 'k-capgap' : ''} ${k === 2 ? 'k-capone' : ''}"><span class="capn">${c}</span><span class="capa">${MEMS.map((m, j) => avt(m, v[j])).join('')}</span><span class="caps">${gap ? '空き' : v.filter(Boolean).length + '人'}</span></div>`; }).join('')}</div>`;
+const teamInner = () => `<div class="seg full k-bgsolo"><button>一人</button><button class="on">チーム</button></div>
+  <div style="margin-top:8px">${MEMS.map((m, k) => `<div class="mem ${k === 1 ? 'k-mem2' : ''}"><div class="av sm ${m.c}">${m.i}</div><div class="mm"><b>${m.n}</b><div class="lbl">${m.r}</div></div><span class="chip ${m.sc}">${m.src}</span></div>`).join('')}</div>
+  <div class="ghost-row k-addmem" style="height:40px;margin-top:4px">${ic('plus', 'sm')}メンバーを追加（人脈から / 自分で書く）</div>
+  <i class="scrollto" data-off="250"></i><div data-why-box class="k-capbox" style="margin-top:12px"><div class="row" style="gap:6px"><b style="font-size:12.5px;flex:1">上市・収益化に必要な力 · 誰ができる？</b><span class="why k-capwhy">?</span></div>
+    <div class="why-body" hidden>8項目は目標タイプ「上市・収益化」で固定です（AI が毎回考えるものではありません）。最初の印は、佐藤さんはプロフィール、高木さんは人脈の名刺と面談メモから付けた下書き。顔をタップすると付け外しでき、「空き」はその場で計算し直します。</div>
+    <div class="lbl" style="margin:3px 0 4px">顔をタップして付け外し · 誰もいない力が「空き」になります</div>${capRows()}</div>`;
+const stairInner = () => `<div class="lbl" style="margin-bottom:8px">上ほど大きい目的です。小さすぎ・大きすぎと感じたら 1段ずらしてください</div>
   <div class="stair k-stair">${STAIR.map(([lv, t, tg, c]) => `<div class="str ${lv === 3 ? 'on k-st3' : ''} ${lv === 2 ? 'k-st2' : ''}"><span class="lv">${lv}</span><div class="stx">${t}${lv === 4 ? '<small>大きめ · 10年単位</small>' : lv === 1 ? '<small>小さめ · 数か月</small>' : `<span class="chip ${c} tg" style="display:flex;width:fit-content;margin-top:5px">${tg}</span>`}</div><span class="ckr ${lv === 3 ? 'on' : ''}">${ic('check')}</span></div>`).join('')}</div>
-  <div class="aisay k-staisay"><span class="emo sm teal">🧭</span><span style="flex:1">最初の目標は「2」でしたが、チームの状況と話しぶりから「3」に近いかもしれません。</span></div>
-  <div class="why-body" hidden>根拠：目標文の「落地」= まず世に出したい · やりたいこと「Orbit を世に出す」· 2人で続ける前提（短期の黒字だけなら「2」）· 空白に「ブランド」がある。階段は最初の文を 2段目に置き、下に 1段・上に 2段を出します。</div></div>`;
+  <div class="aisay k-staisay" data-why-box><span class="emo sm teal">🧭</span><span style="flex:1">最初の目標は「2」でしたが、チームの状況から「3」に近いかもしれません。</span><span class="why">?</span></div>
+  <div class="why-body" hidden>根拠：目標文の「落地」= まず世に出したい · やりたいこと「Orbit を世に出す」· 2人で続ける前提 · 空きに「ブランド」がある。階段は最初の文を 2段目に置き、下に 1段・上に 2段を出します。</div>`;
+const bgIntro = (cls = '') => me(`目標：${GOAL}`, cls) + ai('プロフィール・目標・人脈から、あなた · チーム · 目的の 3つをまとめて下書きしました。上から順に、違うところだけ直してください。');
 function bgApp(part) {
   const head = chatTop('プランを作る · 背景の確認');
-  const intro = me(`目標：${GOAL}`, 'k-goalmsg') + ai('はじめに、あなたとチームのことを確認させてください。プロフィールと目標から下書きしました。違うところだけ直してください。');
-  const ft = foot(`<button class="btn primary block xl k-bgnext">この背景で質問へ（5問まで）</button>`);
-  if (part === 2) return { body: head + `<div class="chat">${fmBar(0)}${intro}${bgBasic()}${bgTeam('k-team')}<i class="scrollto" data-off="200"></i>${bgStair('k-stairc')}</div>`, overlay: ft };
-  return { body: head + `<div class="chat">${fmBar(0, 'k-fm')}${intro}${bgBasic('k-bg1')}${bgTeam()}</div>`, overlay: ft };
+  if (part === 0) return { body: head + `<div class="chat">${fmBar(0, 'k-fm')}${me(`目標：${GOAL}`, 'k-goalmsg')}${ai('目標を受け取りました。あなた · チーム · 目的の 3つを、まとめて下書きしています。')}
+    <div class="card k-draft" style="padding:12px 16px">${[1, 2, 3].map(n => `<div class="bsk"><span class="bsn">${n}</span><b>${BTTL[n]}</b><div style="flex:1;display:grid;gap:5px"><i class="shimmer" style="height:9px;width:${[80, 62, 70][n - 1]}%"></i><i class="shimmer" style="height:9px;width:${[46, 54, 38][n - 1]}%"></i></div></div>`).join('')}</div>
+    <div class="card flat k-reads" style="padding:12px 16px"><div style="font-size:12px;font-weight:800;margin-bottom:6px">読んでいるもの</div><div class="known">${[['プロフィール', '佐藤 健一 · AI エンジニア · Orbit'], ['目標文', GOAL], ['人脈', '「共同創業者」の 1名（高木 悠）の名刺・面談メモ'], ['必要な力', '目標タイプ「上市・収益化」の固定リスト 8項目']].map(([a, b]) => `<div><span class="lbl">${a}</span><span>${b}</span></div>`).join('')}</div></div></div>`, overlay: foot(`<button class="btn block xl" disabled style="opacity:.5">下書き中…（5秒ほど）</button>`) };
+  if (part === 1) return { body: head + `<div class="chat">${fmBar(0)}${bgIntro()}<div class="bstack">${bsec(1, 'open', meInner(), 'k-sec1')}${bsec(2, 'draft', '', 'k-sec2d')}${bsec(3, 'draft')}</div></div>`, overlay: foot(`<button class="btn primary block xl k-bgnext">わたしを確定 → チームへ</button>`) };
+  if (part === 2) return { body: head + `<div class="chat">${fmBar(0)}${bgIntro()}<div class="bstack">${bsec(1, 'done', '', 'k-sec1done')}${bsec(2, 'open', teamInner(), 'k-team')}${bsec(3, 'draft')}</div></div>`, overlay: foot(`<button class="btn primary block xl">チームを確定 → 目的へ</button>`) };
+  return { body: head + `<div class="chat">${fmBar(0)}${bgIntro()}<div class="bstack">${bsec(1, 'done')}${bsec(2, 'done', '', 'k-sec2done')}${bsec(3, 'open', stairInner(), 'k-stairc')}</div></div>`, overlay: foot(`<button class="btn primary block xl k-bgq">この背景で質問へ（5問まで）</button>`) };
 }
+/* メンバー追加シート：人脈から選ぶ / 自分で書く */
+const CONTACTS = [['高木 悠', '高', 'c3', 'AI エンジニア · フリーランス', '共同創業者', 1, 1], ['森 美咲', '森', 'c2', 'UI デザイナー · 副業可', 'デザイン', 0, 0], ['小林 翔', '小', 'c4', '元 SaaS 営業 · アドバイザー', '営業', 0, 0]];
+const capPick = (on, cls = '') => `<div class="row ${cls}" style="gap:6px;flex-wrap:wrap">${CAPS.map(([c]) => `<span class="fopt ${on.includes(c) ? 'on' : ''}">${c}</span>`).join('')}<span class="fopt" style="border:1.5px dashed var(--surface-3);background:transparent">＋ その他</span></div>`;
+const addTop = (tab) => `<div class="row" style="gap:10px;margin-bottom:12px"><b style="font-size:16px;flex:1">メンバーを追加</b><span class="lbl">Orbit に登録していなくても OK</span></div>
+  <div class="seg full k-addtab"><button class="${tab === 0 ? 'on' : ''}">人脈から選ぶ</button><button class="${tab === 1 ? 'on' : ''}">自分で書く</button></div>`;
+const addSheetPick = `<div class="sheet-scrim"></div><div class="sheet k-addsheet">
+  <div class="grab"></div>${addTop(0)}
+  <div class="input k-addsearch" style="margin-top:12px">${ic('search', 'sm')}名前・会社・タグで探す</div>
+  <div class="lbl" style="margin:10px 2px 4px">候補（タグ「共同創業者」· 空きの力を持つ人を上に）</div>
+  ${CONTACTS.map(([n, i, c, r, t, on], k) => `<div class="mem ${k === 1 ? 'k-addc2' : ''}"><div class="av sm ${c}">${i}</div><div class="mm"><b>${n}</b><div class="lbl">${r}</div></div><span class="chip ${k ? 'pink' : 'lav'}">${k ? '空き：' + t : 'メンバー'}</span><span class="ckr ${k === 1 ? 'on' : ''}">${ic('check')}</span></div>`).join('')}
+  <div class="card flat k-addprev" style="padding:10px 12px;margin-top:8px"><div class="row" style="gap:6px"><b style="font-size:12px;flex:1">森 美咲さんの「できること」</b><span class="chip">名刺・面談メモから</span></div>${capPick(['デザイン'], 'k-addcap')}<div class="lbl" style="margin-top:8px">関わり方：<b>業務委託</b> · 変更は ✎</div></div>
+  <button class="btn primary block xl" style="margin-top:12px">1名を追加</button></div>`;
+const addSheetWrite = `<div class="sheet-scrim"></div><div class="sheet k-addsheet2">
+  <div class="grab"></div>${addTop(1)}
+  <div class="fld k-wname"><label>名前か呼び名</label><div class="in focus" style="background:var(--surface-2)"><span>田中さん（友人のマーケター）</span><i class="caret"></i></div></div>
+  <div class="lbl" style="margin:12px 2px 6px;font-weight:800;color:var(--ink-2)">関わり方</div>
+  <div class="row k-wrel" style="gap:6px;flex-wrap:wrap"><span class="fopt">共同創業者</span><span class="fopt">社員</span><span class="fopt">業務委託</span><span class="fopt on">アドバイザー</span></div>
+  <div class="lbl" style="margin:12px 2px 6px;font-weight:800;color:var(--ink-2)">できること（必要な力から選ぶ）</div>${capPick(['マーケ'], 'k-wcap')}
+  <div class="row k-wsave" style="gap:10px;margin-top:14px;align-items:center"><span class="tgl"></span><span style="font-size:12.5px;flex:1">人脈にも登録する<span class="lbl" style="display:block">オフならこのプランの中だけ</span></span></div>
+  <button class="btn primary block xl" style="margin-top:12px">追加する</button></div>`;
 const wTop = (sub) => mainhead('iOrbit', sub, `<button class="rbtn">${ic('clock')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`);
+const capTable = (cls = '') => `<table class="captab ${cls}"><thead><tr><th>必要な力 <span class="lbl">8 · 固定</span></th>${MEMS.map(m => `<th><div class="row" style="gap:6px;white-space:nowrap"><span class="av xs ${m.c}">${m.i}</span>${m.n.split(' ')[0]}</div><span class="chip ${m.sc}" style="font-size:10px;margin-top:3px">${m.src}</span></th>`).join('')}<th><span class="btn sm ghost" style="white-space:nowrap">${ic('plus', 'sm')}追加</span></th><th></th></tr></thead><tbody>${CAPS.map(([c, v]) => { const gap = !v.some(Boolean); return `<tr class="${gap ? 'gap' : ''}"><td><b>${c}</b></td>${v.map((on, j) => `<td><span class="ckr ${on ? 'on' : ''}">${ic('check')}</span></td>`).join('')}<td></td><td>${gap ? '<span class="gapc">空き</span>' : `<span class="lbl">${v.filter(Boolean).length}人</span>`}</td></tr>`; }).join('')}</tbody></table>`;
 function bgWeb() {
-  return wTop('プランを作る · 背景の確認') + `<div class="wchat" style="max-width:none">${fmBar(0)}${me(`目標：${GOAL}`)}${ai('はじめに、あなたとチームのことを確認させてください。プロフィールと目標から下書きしました。違うところだけ直してください。')}
-    <div class="grid2" style="gap:14px;align-items:stretch"><div style="display:grid;gap:14px;align-content:start">${bgBasic('k-wbg1')}${bgTeam('k-wteam')}</div><div style="display:grid">${bgStair('k-wstair')}</div></div>
+  return wTop('プランを作る · 背景の確認') + `<div class="wchat" style="max-width:none">${fmBar(0)}${bgIntro()}
+    <div style="display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:stretch">
+      <div style="display:grid;gap:14px;align-content:start"><div class="bstack k-wsec1">${bsec(1, 'done')}</div>
+        <div class="card k-wteam" style="padding:14px 18px"><div class="card-h" style="margin:0 0 8px"><h3><span class="bsn" style="display:inline-grid;margin-right:6px">2</span>チーム</h3><div class="seg"><button>一人</button><button class="on">チーム</button></div></div>${capTable('k-wcap')}
+          <div class="lbl" style="margin-top:8px">チェックはクリックで付け外し · 空きはその場で計算 · 列ヘッダの「＋ 追加」で人脈から / 自分で書く</div></div></div>
+      <div class="card k-wstair" style="padding:14px 18px"><div class="card-h" style="margin:0 0 6px"><h3><span class="bsn" style="display:inline-grid;margin-right:6px">3</span>最終的な目的は、どれがいちばん近い？</h3><span class="chip lav">確認中</span></div>${stairInner()}</div></div>
     <div class="row" style="gap:10px;justify-content:flex-end"><span class="lbl">直したところは右の「わかったこと」に反映されます</span><button class="btn primary k-wbgnext">この背景で質問へ（5問まで）${ic('right', 'sm')}</button></div></div>`;
 }
 const knownRail = (stage) => {
-  const rows = [['わたし', 'AI エンジニア · Orbit 共同創業者'], ['やりたいこと', 'Orbit を世に出す'], ['体制', 'チーム 2名（佐藤・高木）'], ['空白', 'デザイン · ブランド · 営業 · マーケ · 価格設計'], ['目的', `<b class="nw2">${PURPOSE}</b>`]];
+  const rows = [['わたし', 'AI エンジニア · Orbit 共同創業者'], ['やりたいこと', 'Orbit を世に出す'], ['体制', 'チーム 2名（佐藤 · 高木＝人脈から）'], ['空白', 'デザイン · ブランド · 営業 · マーケ · 価格設計'], ['目的', `<b class="nw2">${PURPOSE}</b>`]];
   const q = stage === 'q' ? [['現在地', 'β 48名 · 有料 0'], ['払い手', 'イベント主催者'], ['一言', 'イベントの後を変える AI'], ['足りない力', 'デザインは仲間に'], ['時間', '週 10〜20時間 · 並行']] : [];
   return `<h4>${ic('layers', 'sm')}わかったこと</h4><div class="card k-known" style="padding:8px 16px"><div class="known">${rows.map(([a, b]) => `<div><span class="lbl">${a}</span><span>${b}</span></div>`).join('')}${stage === 'q' ? q.map(([a, b]) => `<div><span class="lbl">${a}</span><span><b class="nw2">${b}</b></span></div>`).join('') : `<div><span class="lbl">前提</span><span class="pending">質問のあとに、ここへまとまります</span></div>`}</div></div>
     <h4>このあと</h4><div class="card flat" style="padding:12px 14px"><div class="known">${[['② 質問', '5つまで · まとめて回答'], ['③ 初版', '方案 + 業界の現状'], ['④ AI 修正', '3回まで'], ['⑤ 手動編集', '1回 · 合計 100 を保つ']].map(([a, b]) => `<div><span class="lbl">${a}</span><span>${b}</span></div>`).join('')}</div></div>`;
@@ -834,14 +901,16 @@ function typeBWeb() {
 }
 
 /* ===================== ⑨ 规范板（非画框） ===================== */
-const BGI = [['わたし', 'ログイン資料（氏名 · 職種 · 会社 · 役割）', '予填 · 鉛筆で直す'], ['やりたいこと', '目標文から抽出（対象 + 動詞）', '直す'], ['一人か、チームか', 'プロフィール · 招待済みメンバー', '切り替え'], ['チームのできること', 'メンバーごとのスキル（プロフィール · LinkedIn）+ AI が空白を検出', 'メンバー・スキルを追加 / 空白 chip を外す'], ['最終的な目的', '目的の階段 4段', '1つ選ぶ（必須）']];
+const BGI = [['わたし', 'ログイン資料（氏名 · 職種 · 会社）+ 目標文', '立場を 1つ選ぶ · やりたいことを直す'], ['チーム', '一人 / チーム · メンバー（人脈から選ぶ / 自分で書く · 登録不要）', '必要な力 × メンバーの表で付け外し'], ['目的', '目的の階段 4段', '1つ選ぶ（必須）']];
+const TIMING = [['目標を送信', 'AI 1回', '3ブロックをまとめて下書き'], ['わたし・チームを直す', 'なし', '空きはルールで即時計算'], ['人脈からメンバー追加', '軽い AI 1回', '名刺・面談メモから「できること」を推定'], ['自分で書いて追加', 'なし', '必要な力から選ぶだけ'], ['やりたいことを書き換え', '軽い AI 1回', '目的の階段だけ作り直す（回数に数えない）'], ['「質問へ」', 'AI 1回', '≤5問を選ぶ']];
 function specBg() {
   return `<div class="spec">
-  <div class="card s5"><h3>背景確認の項目（5項目 · 固定）</h3><div class="lbl">毎回同じ 5項目を同じ順で出す。AI は下書きするだけで、決めるのはユーザー</div>
-    <table class="stab"><thead><tr><th>項目</th><th>出どころ</th><th>ユーザーの操作</th></tr></thead><tbody>${BGI.map(([a, b, c]) => `<tr><td><b>${a}</b></td><td>${b}</td><td class="lbl">${c}</td></tr>`).join('')}</tbody></table></div>
+  <div class="card s5"><h3>背景確認の 3ブロック（固定 · この順）</h3><div class="lbl">目標送信時に AI が 3ブロックをまとめて下書き → ユーザーが上から順に確認。決めるのはユーザー</div>
+    <table class="stab"><thead><tr><th>項目</th><th>出どころ</th><th>ユーザーの操作</th></tr></thead><tbody>${BGI.map(([a, b, c]) => `<tr><td><b>${a}</b></td><td>${b}</td><td class="lbl">${c}</td></tr>`).join('')}</tbody></table>
+    <h3 style="margin-top:16px">AI を呼ぶタイミング</h3><table class="stab"><thead><tr><th>操作</th><th>AI</th><th>中身</th></tr></thead><tbody>${TIMING.map(([a, b, c]) => `<tr><td><b>${a}</b></td><td>${b}</td><td class="lbl">${c}</td></tr>`).join('')}</tbody></table></div>
   <div class="card s4"><h3>目的の階段のルール</h3><div class="rules">${['最初に書いた文を 2段目に置く', '下に 1段：もっと小さく具体的（数か月で届く）', '上に 2段：「やりたいこと」と「チーム」から推定した 1段 + その先の 1段', 'AI は「いちばん近い？」を 1つだけ提案し、理由は「?」に置く（強制しない）', '選んだ段が「目的」になり、題庫の選び方と配点テンプレートの調整に使われる', '1段ずらすと問いが変わる（例：4段目なら資金調達の問いが入る）'].map((r, k) => `<div><b>${k + 1}</b><span>${r}</span></div>`).join('')}</div></div>
-  <div class="card s3"><h3>空白の検出</h3><div class="lbl" style="line-height:1.6">目標タイプの必要能力リスト × チームのできること = 空白</div>
-    <div class="gapbox" style="margin-top:12px"><div style="font-size:12px;font-weight:800">上市・収益化の必要能力</div><div class="chips"><span class="chip">プロダクト ✓</span>${GAPS.map(g => `<span class="gapc">${g}</span>`).join('')}<span class="chip">資金（任意）</span></div></div>
+  <div class="card s3"><h3>空きの判定（AI ではなくルール）</h3><div class="lbl" style="line-height:1.6">目標タイプごとの「必要な力」固定リスト × メンバーの印 = 誰も印がない力が空き</div>
+    <div class="gapbox" style="margin-top:12px"><div style="font-size:12px;font-weight:800">上市・収益化の必要能力</div><div class="chips">${CAPS.map(([c, v]) => v.some(Boolean) ? `<span class="chip">${c} ✓</span>` : `<span class="gapc">${c}</span>`).join('')}</div></div>
     <div class="lbl" style="margin-top:10px;line-height:1.6">空白は破線の豆沙 chip。① 題庫の選び方（空白に関わる問いを優先）② 配点テンプレートの調整理由 ③「足りない専門」枠の具体化 に使う</div></div></div>`;
 }
 const BANK6 = [
@@ -861,7 +930,7 @@ function specBank() {
     <table class="stab"><thead><tr><th>ID</th><th>項目</th><th>背景でわかっていること</th><th>分かれ道への影響</th></tr></thead><tbody>${PICK.map(([id, t, k, i, p]) => `<tr class="${p ? 'pick' : ''}"><td class="num">${id}</td><td><b>${t}</b></td><td>${k}</td><td>${i}</td></tr>`).join('')}</tbody></table></div>
   <div class="card s5"><h3>選び方のルール（≤5問）</h3><div class="rules">${['背景確認 · プロフィール · 人脈 · 面談メモでわかる項目は聞かない（わかった内容は依拠に書く）', '背景の空白に関わる問いを優先する', '「不確かさ × 分かれ道への影響」で並べ、上位 5問まで（足りていれば 3問でもよい）', '同じ種類 · 同じ背景なら、同じ問いを同じ順で出す（再現性）', '一度にまとめて聞く。空欄は推測で進め、依拠に「推測」と書く', '回答は「確定した前提」にまとめ、行ごとに直せる。前提を直すと初版はつくり直し（回数に含まない）'].map((r, k) => `<div><b>${k + 1}</b><span>${r}</span></div>`).join('')}</div></div></div>`;
 }
-const LAYERS = [['システム方針', '全目標共通 · v4', 'この種の目標の一般的な進め方を先に示す · 達成を保証しない · 主張には依拠を残す · メール・メッセージは下書きまで'], ['目標タイプ別テンプレート', '6類 · 各 v2〜v4', 'Step の型 · 人物タイプ枠と既定の配点 · 完了の目安の書き方（数えられる状態で）· 固定短名の辞書'], ['業界の現状ライブラリ', 'Orbit が後台で編集', 'エントリごとに ID · 版 · 更新日 · 出典 · 対象の業界と目標タイプ。AI はここからだけ引用し、方案に引用 ID を保存'], ['ユーザー前提', 'この会話', '背景確認 5項目 · ≤5問の回答（確定した前提）· AI 修正の履歴 · 手動編集']];
+const LAYERS = [['システム方針', '全目標共通 · v4', 'この種の目標の一般的な進め方を先に示す · 達成を保証しない · 主張には依拠を残す · メール・メッセージは下書きまで'], ['目標タイプ別テンプレート', '6類 · 各 v2〜v4', 'Step の型 · 人物タイプ枠と既定の配点 · 完了の目安の書き方（数えられる状態で）· 固定短名の辞書'], ['業界の現状ライブラリ', 'Orbit が後台で編集', 'エントリごとに ID · 版 · 更新日 · 出典 · 対象の業界と目標タイプ。AI はここからだけ引用し、方案に引用 ID を保存'], ['ユーザー前提', 'この会話', '背景確認 3ブロック · ≤5問の回答（確定した前提）· AI 修正の履歴 · 手動編集']];
 function specPrompt() {
   return `<div class="spec">
   <div class="card s7"><h3>高度プロンプトと業界の現状ライブラリの構造</h3><div class="lbl">上から順に重ねて AI に渡す。ユーザーに見えるのは「業界の現状」の引用（折りたたみ）と、各結論の「?」</div>
@@ -898,7 +967,7 @@ function specEvent() {
 
 /* ===================== ⑩ v2.1 → v2.2 ===================== */
 const VSROWS = [
-  ['入口', '目標 + 題庫から 3問', '<b>背景確認</b>（5項目 · チームの空白 · 目的の階段）→ 題庫から <b>≤5問</b>'],
+  ['入口', '目標 + 題庫から 3問', '<b>背景確認</b>（わたし · チーム（必要な力 × メンバー）· 目的の階段）→ 題庫から <b>≤5問</b>'],
   ['目的', '書いた目標をそのまま使う', '<b>目的の階段</b>で 1段上げられる（本例：利益が出る事業 → ブランドとして確立し、事業にする）'],
   ['題庫', '5類（採用 / 提携は同じ）', '<b>6類</b>（採用と事業提携を分け、キャリアを追加）· 背景の空白に関わる問いを優先'],
   ['前提', '回答 = 1件のメッセージ', '<b>「確定した前提」カード</b>（行ごとに出どころ Q1… / 背景、タップで直せる）'],
@@ -935,41 +1004,72 @@ const WB = (label, tag, o, notes) => {
   if (o.ov) s = s.replace(/<\/div>\s*$/, o.ov + '</div>');
   return `<div class="board" style="margin-bottom:34px"><div class="board-label">${label}${tag ? `<span class="tag ${tag}">${tags[tag] || tag}</span>` : ''}</div>${s}${a ? `<ul class="note-list" style="max-width:1440px;grid-template-columns:repeat(3,1fr);display:grid">${a.notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : ''}</div>`;
 };
-const FS = [['①', '目標入力', '一言でよい · 目標タイプ chip'], ['②', '背景確認', 'わたし · やりたいこと · 体制 · チームの空白 · 目的の階段'], ['③', '≤5問 → 前提', '題庫 6類から選ぶ · 一度に回答 · 確定した前提'], ['④', 'AI 初版', '見立て · 結論 · Step · 人物タイプ · 業界の現状'], ['⑤', 'AI 修正 ≤3 → 手動編集 1', '差分表示 · 合計 100 を保つ · 以後 AI は自動で書き換えない'], ['⑥', '推薦', 'プラン概要 · 人物タイプ詳細 · 会える活動']];
+const FS = [['①', '目標入力', '一言でよい · 目標タイプ chip'], ['②', '背景確認', '一括下書き → わたし · チーム（必要な力 × メンバー）· 目的'], ['③', '≤5問 → 前提', '題庫 6類から選ぶ · 一度に回答 · 確定した前提'], ['④', 'AI 初版', '見立て · 結論 · Step · 人物タイプ · 業界の現状'], ['⑤', 'AI 修正 ≤3 → 手動編集 1', '差分表示 · 合計 100 を保つ · 以後 AI は自動で書き換えない'], ['⑥', '推薦', 'プラン概要 · 人物タイプ詳細 · 会える活動']];
 
 let h = `<div class="flowstrip">${FS.map(([n, t, d]) => `<div><span class="no">${n}</span><b>${t}</b><span class="lbl">${d}</span></div>`).join('')}</div>`;
 /* ---- 1 ---- */
-h += sec('1 · 目標入力 → 背景確認', '① 用户写「Orbit を落地して黒字化したい」→ ② iOrbit 先把背景摆出来：わたし（登录资料预填）/ やりたいこと / 一人かチームか / チームのできること + AI 标出的空白 / 目的の階段（4 级，选中 3）。App 拆 2 屏，Web 一屏 + 右栏「わかったこと」实时摘要');
-const bg1 = bgApp(1), bg2 = bgApp(2);
+h += sec('1 · 目標入力 → 背景確認', '① 用户写「Orbit を落地して黒字化したい」→ ② AI 只调 1 次，把 わたし / チーム / 目的 三块一起下书 → 用户按顺序逐块确认（选 / 填 / 改）。团队 = 「必要な力 × メンバー」勾选表，成员可从人脉选或自己写，不需要对方注册 Orbit；空き是规则即时计算。App 逐块，Web 一屏 + 右栏「わかったこと」')
+const bg0 = bgApp(0), bg1 = bgApp(1), bg2 = bgApp(2), bg3 = bgApp(3);
+const bgA = bgApp(2), bgB = bgApp(2);
 h += boards([
   AP('① 目標を入力（プラン空状態）', 'empty', { body: goalApp(), tab: 3 }, [
     ['.k-gin .fld', 0, '一句话目标，原样保留用户的说法（「落地」这种不准确的词也不纠正，交给 ② 的目的の階段来对齐）'],
-    ['.k-gkind', 0, '目标类型 chip = 选哪本题库与配点模板（6 类，新增キャリア）；默认按文字推测「上市・収益化」，可改'],
+    ['.k-gkind', 0, '目标类型 chip = 选哪本题库、哪张「必要な力」清单与配点模板（6 类）；默认按文字推测「上市・収益化」，可改'],
     ['.k-gnext', 0, '「iOrbit と具体化する」→ ② 全屏 iOrbit 对话（从下推入），目标作为第一条消息带入'],
     ['.k-gsteps', 0, '按钮下预告全流程与次数上限（背景 → 5 问 → 初版 → AI 修正 3 → 手动编辑 1），用户知道要花多久'],
     ['.k-gsample', 0, '淡化「サンプル」人物类型卡：预告「役割×状況」一文 + 三格迷你信息，绝不写库'],
   ]),
-  AP('② 背景確認（1/2 · わたし・やりたいこと・体制）', '', { body: bg1.body, overlay: bg1.overlay }, [
+  AP('② 背景の下書き（AI 1回 · 3ブロック一括）', '', { body: bg0.body, overlay: bg0.overlay }, [
     ['.k-fm', 0, '对话顶部 5 段进度（背景 / 質問 / 初版 / AI 修正 / 手動編集），当前段深紫'],
-    ['.k-bgme', 0, '「わたし」来自登录资料（chip「プロフィールから」），佐藤＝AI エンジニア · Orbit 共同創業者；铅笔 → 就地编辑'],
-    ['.k-bgwant', 0, '「やりたいこと」由 AI 从目标文抽出（落地 → 世に出す），可改'],
-    ['.k-bgteam1 .seg', 0, '一人 / チーム 分段；选チーム后下方展开团队卡（本屏下半）'],
-    ['.k-mem2', 0, '团队卡：每人一行 + 能力 chip（虚线「＋」可加）；高木 悠 = 同为 AI エンジニア 的伙伴'],
-    ['.k-bgnext', 0, '底部固定栏「この背景で質問へ（5問まで）」常驻；滚动内容有 130px 留白，不遮挡'],
+    ['.k-draft', 0, '提交目标后只调 1 次 AI，把「わたし / チーム / 目的」三块一起下书（骨架屏约 5 秒），不是用户每选一项就实时生成'],
+    ['.k-reads', 0, '「読んでいるもの」明示 AI 看了什么：登录资料、目标文、人脉里标「共同創業者」的人的名片与面谈记录、该目标类型的固定「必要な力」清单'],
   ]),
-  AP('② 背景確認（2/2 · チームの空白・目的の階段）', '', { body: bg2.body, overlay: bg2.overlay }, [
-    ['.k-gaps', 0, 'AI 标出的空白：デザイン · ブランド · 営業 · マーケ · 価格設計（豆沙虚线 chip = 「还没有」，不是错误色）；点 chip 可移除；团队卡「?」展开检测依据（必要能力清单 × 两人的能力）'],
-    ['.k-stair .str', 0, '目的の階段：上大下小 4 级、逐级缩进成阶梯；4 级「大きめ · 10年単位」/ 1 级「小さめ · 数か月」'],
-    ['.k-st2', 0, '2 级标「最初に書いた目標」，让用户看见自己原话在哪一级'],
-    ['.k-st3', 0, '3 级标「いちばん近い？」并已选中（深紫编号 + 浅紫底）；用户点任一级即改选，单选'],
-    ['.k-staisay', 0, 'AI 一句话说明为什么建议 3 级；「?」展开依据（目标文「落地」/ やりたいこと / 两人长期做 / 空白里有ブランド）'],
-    ['.k-addmem', 0, '虚线幽灵行「メンバーを追加」：业务委托・顾问也算，加了人空白会重算'],
+  AP('② 背景確認 1/3 · わたし', '', { body: bg1.body, overlay: bg1.overlay }, [
+    ['.k-sec1', 0, '三块按顺序确认，当前块展开（深紫编号 +「確認中」），其余显示下书摘要'],
+    ['.k-bgme', 0, '姓名・职种来自登录资料，不再问；要改去マイ'],
+    ['.k-bgrole', 0, '本目标里的立场单选（代表 / 共同創業者 / 社内担当 / 個人），AI 已预选'],
+    ['.k-bgwant', 0, '「やりたいこと」由 AI 从目标文抽出（落地 → 世に出す），可改；改了这里才会重算目的の階段（轻量 AI，不计次）'],
+    ['.k-sec2d', 0, '未到的块是虚线框 +「下書き：…」摘要，可提前看到 AI 的判断，但要按顺序确认'],
+    ['.k-bgnext', 0, '底部主按钮跟着块走：「わたしを確定 → チームへ」'],
+  ]),
+  AP('② 背景確認 2/3 · チーム', '', { body: bg2.body, overlay: bg2.overlay }, [
+    ['.k-sec1done', 0, '已确认块折叠成一行摘要 + ✎，可随时回改'],
+    ['.k-bgsolo', 0, '一人 / チーム；选「一人」则下方只剩自己一列，空き照样计算'],
+    ['.k-mem2', 0, '高木 悠 不是 Orbit 用户也没关系：他在人脈里（chip「人脈から」），能力从他的名片与面谈记录推定'],
+    ['.k-addmem', 0, '「メンバーを追加」→ 底部弹层，两种方式：人脈から選ぶ / 自分で書く；都不需要对方注册'],
+    ['.k-capbox .why', 0, '「?」说明：8 项必要能力按目标类型固定，不是 AI 现想；初始勾选是下书，点头像即可改'],
+    ['.k-capone', 0, '能力 × 成员勾选表就是「团队能做什么」的输入方式：亮头像 = 这个人能做；运用・インフラ只有高木'],
+    ['.k-capgap', 0, '没人能做的行自动变「空き」（豆沙色），是规则即时计算，不再调 AI；空き用于选题、配点调整、「足りない専門」枠'],
   ]),
 ]);
-h += WB('② 背景確認 · Web（一屏 + 右栏「わかったこと」）', '', { nav: 1, body: bgWeb(), rail: knownRail('bg') }, [
-  ['.k-wbg1', 0, '左列：わたし / やりたいこと / 体制 + 团队卡（与 App 同组件）'],
-  ['.k-wstair', 0, '右列：目的の階段 4 级（上大下小，缩进成阶梯），选中 3 级'],
-  ['.k-known', 0, '右栏「わかったこと」实时摘要：用户每改一项这里同步，目的一行用浅紫底标出「刚确认」'],
+h += boards([
+  AP('② メンバー追加 · 人脈から選ぶ', '', { body: bgA.body, overlay: addSheetPick }, [
+    ['.k-addtab', 0, '两个页签：人脈から選ぶ / 自分で書く；顶部写明「Orbit に登録していなくても OK」'],
+    ['.k-addsearch', 0, '按名字・公司・标签搜索人脉'],
+    ['.k-addc2', 0, '候选排序：已标「共同創業者」的人在前，其次是能补「空き」的人（chip 写明补哪项，如「空き：デザイン」）；可多选'],
+    ['.k-addcap', 0, '选中后展开「できること」：从名片・面谈记录预勾（用的就是同一张必要能力清单），可改；关わり方可改'],
+  ]),
+  AP('② メンバー追加 · 自分で書く', '', { body: bgB.body, overlay: addSheetWrite }, [
+    ['.k-wname', 0, '只要一个名字或称呼即可（「田中さん（友人のマーケター）」），不要求邮箱・公司'],
+    ['.k-wrel', 0, '关わり方：共同創業者 / 社員 / 業務委託 / アドバイザー，单选'],
+    ['.k-wcap', 0, '「できること」直接从必要能力清单点选，＋その他 可写清单外的能力；不调 AI'],
+    ['.k-wsave', 0, '「人脈にも登録する」默认关 = 只存在这份计划里；打开则同时建一张人脉卡（来源「プラン」）'],
+  ]),
+  AP('② 背景確認 3/3 · 目的', '', { body: bg3.body, overlay: bg3.overlay }, [
+    ['.k-sec2done', 0, 'チーム 确认后折叠：「チーム 2名 · 空き 5」'],
+    ['.k-stair .str', 0, '目的の階段：上大下小 4 级、逐级缩进；4 级「10年単位」/ 1 级「数か月」'],
+    ['.k-st2', 0, '2 级标「最初に書いた目標」，让用户看见自己原话在哪一级'],
+    ['.k-st3', 0, '3 级标「いちばん近い？」并预选；单选，点任一级即改'],
+    ['.k-staisay', 0, 'AI 一句话说明为什么建议 3 级；「?」展开依据（目标文 / やりたいこと / 两人长期做 / 空きにブランド）'],
+    ['.k-bgq', 0, '三块都确认后才出现「この背景で質問へ（5問まで）」→ 这时才调下一次 AI（挑 ≤5 问）'],
+  ]),
+]);
+h += WB('② 背景確認 · Web（3ブロック一屏 + 右栏「わかったこと」）', '', { nav: 1, body: bgWeb(), rail: knownRail('bg') }, [
+  ['.k-wsec1', 0, '「わたし」已确认，折成一行摘要 + ✎'],
+  ['.k-wcap', 0, 'Web 的团队输入是一张表：行 = 必要能力（固定 8 项），列 = 成员（来源 chip：プロフィール / 人脈から / 手入力），勾选即录入'],
+  ['.k-wcap th:nth-child(4)', 0, '「＋追加」加一列：弹窗同 App 两页签（人脈から選ぶ / 自分で書く）'],
+  ['.k-wstair', 0, '右列：目的の階段，选中 3 级'],
+  ['.k-known', 0, '右栏「わかったこと」实时摘要：勾选・改选立即同步（本地计算，不调 AI）'],
   ['.k-wbgnext', 0, '「この背景で質問へ」→ ③ 5 問（同一对话内往下追加）'],
 ]);
 
@@ -1181,7 +1281,7 @@ h += vsBoard();
 /* ---- dark ---- */
 h += sec('ダークモード', '背景確認（App）· AI 初版（App）· 手動編集（App）· プラン概要 many（Web）');
 h += boards([
-  ['② 背景確認（2/2）', '', phone({ body: bg2.body, tab: -1, theme: 'dark', overlay: bg2.overlay })],
+  ['② 背景確認 2/3 · チーム', '', phone({ body: bg2.body, tab: -1, theme: 'dark', overlay: bg2.overlay })],
   ['④ AI 初版', '', phone({ body: f3.body, tab: -1, theme: 'dark', overlay: f3.overlay })],
   ['⑥ 手動編集（配点）', '', phone({ body: e2.body, tab: -1, theme: 'dark', overlay: e2.overlay })],
 ]);
