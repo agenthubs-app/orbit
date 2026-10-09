@@ -32,7 +32,7 @@
 
 | SC | 结论 | 证据 |
 | --- | --- | --- |
-| 01 先调研再定术语 | ✅ | `glossary-review.md` 第 4 轮「通过」在提交 `7c42c3b60`；翻译提交都在其后。术语表每条有调研依据（产品或指南）和选择理由，未存证的依据已注明 |
+| 01 先调研再定术语 | ✅（复核后补齐） | `glossary-review.md` 第 4 轮「通过」在提交 `7c42c3b60`；翻译提交都在其后。复核 M4 指出 24 条依据栏为「—」或「无先例」，术语表 4.1 已补上风格指南或已存证的产品依据（只引用 research.md 里记录过的出处），含义和写法不变 |
 | 02 标准用词同源 | ✅ | Web `tests/copy-qa/shared-copy.test.ts`（三语同键、零 import、copy-qa 0 问题、设计稿原文逐字）；App `tests/copy-sync.test.ts`（副本逐字一致、`useStandardCopy` 随语言切换）；Web `tests/ui/t-requires-ja.test.ts`（Web 读同一份）。底栏、返回栏、根错误页两端共用 `shared/copy` |
 | 03 字典拆分无损 | ✅ | `tests/i18n-domain-split.test.ts`（三语内容哈希 = 拆分前；每键只在一个文件；文件名 = 前缀；无空值）；快照全文在证据目录 |
 | 04 写死文字只减不增 | ✅ | 两端门禁测试 + 注入：App 3 种（新组件、清单外文件、清单内文件加一条）全部被拦（`app-no-hardcoded-copy-injection.txt`）；Web `t({ zh, en })` 缺 `ja` 计入门禁；Web 新文案表缺 `ja` → `@ts-expect-error` 守住的类型错误 |
@@ -98,9 +98,13 @@
   - `npm run copy:qa -- --shared` / `--web` / `--app tasks,notes`：单独查某一类；`--json` 输出机器可读结果；有问题时退出码 1。
   - **达标条件**（功能 Sprint 的新文案同样适用）：自动检查 0；独立审校无严重 / 中等；四维平均 ≥4.5；轻微问题改掉或写理由；放回界面截图（App 320pt + 2 倍字号，Web 375 / 1440）无截断。
 - **写死文字门禁**：允许清单 App `repos/orbit-app/tests/fixtures/hardcoded-copy-legacy-allowlist.json`、Web `repos/orbits/tests/fixtures/hardcoded-copy-legacy-allowlist.json`。规则：清单外 0；清单内条数只减；条数下降必须同步改小；归零删行；不能超过开工快照。重写旧屏的功能 Sprint 把新屏目录加进测试里的 `ZERO`。合回 `chat-agent` 前总验收要求两份清单为空（RD-24）。
+- **App 文案的组件类型**：App 字典的键要在 `repos/orbit-app/src/i18n/copy-kinds.ts` 登记组件类型（模式匹配，`*` = 一段键名），否则 `copy-qa` 报 `kind` 问题，长度和语气检查不会执行（R03 复核 M1）。
+- **拆分哈希测试**（`tests/i18n-domain-split.test.ts`）：它证明的是 R03 拆分那一刻的无损。之后新增域要加进 `ADDED_SINCE_SPLIT`；改旧键的值（重写旧屏时会发生）要同时更新该测试的哈希，或把这条测试改成「只比对未改动的键」——功能 Sprint 第一次改旧键时决定（R03 复核 m6）。
 - **语言回退**：App 设备语言 → 中日英之一，否则日语；账号手动选择优先。Web `?lang` → cookie → `Accept-Language` → 日语；URL 只有中英带 `lang`。legacy 测试语言（自定决定 9）随最后一个旧测试删除。
 
 ## 已知例外
+
+- **Web 导航壳（R03 复核 M2）**：Web 旧导航壳（顶栏、全局 iOrbit 悬浮球）和落地页顶栏没有在 R03 处理。理由：RD-19 规定 R07 一次删除旧顶栏和悬浮球、换成新左栏，新壳从一开始就读 `shared/copy`（Web `standardCopyFor`）；在 R03 给即将删除的壳补三语是浪费。骨架期间法语或日语浏览器打开这些页面，顶栏仍显示英文或中文，**由 R07 关闭**；落地页归属未分配（`screen-ownership.md`「未分配：落地页」），随其负责 Sprint 处理。
 
 - **App 模拟器截图（SC-05 / SC-07）未做**：模拟器面板未授权给会话，且 App 的 `.env.local` 指向正式环境（见 R02 复核 m6）。App 截图用 react-native-web 渲染真实组件（与 App 渲染测试同一路径）；R04 处理模拟器后补。
 - 截图里返回栏左侧的「‹」是测试替身的图标占位（真实 App 是 Ionicons 的返回箭头，R05 换）。
