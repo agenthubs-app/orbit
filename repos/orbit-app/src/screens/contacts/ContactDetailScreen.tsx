@@ -285,7 +285,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
         <RefreshControl
           onRefresh={refreshAll}
           refreshing={refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={currentEdit ? locale.t("contacts.editTitle") : locale.t("contacts.detailTitle")}
@@ -491,7 +491,7 @@ function ContactIdentityHeader({
               style={styles.heroAvatarImage}
             />
           ) : (
-            <><Svg accessible={false} width="100%" height="100%" viewBox="0 0 72 72" style={StyleSheet.absoluteFill}><Defs><LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor="#7FB3FF" /><Stop offset="1" stopColor="#3B82F6" /></LinearGradient></Defs><Rect width="72" height="72" fill={`url(#${gradientId})`} /></Svg><Text style={styles.heroAvatarText}>
+            <><Svg accessible={false} width="100%" height="100%" viewBox="0 0 72 72" style={StyleSheet.absoluteFill}><Defs><LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor={toneStyle.backgroundColor} /><Stop offset="1" stopColor={toneStyle.backgroundColor} /></LinearGradient></Defs><Rect width="72" height="72" fill={`url(#${gradientId})`} /></Svg><Text style={[styles.heroAvatarText, { color: toneStyle.color }]}>
               {hero.avatar.initial}
             </Text></>
           )}
@@ -607,7 +607,7 @@ function LatestActivityPreview({
     <DetailSection detail={meta} title={locale.t("contacts.latestActivity")}>
       <View style={styles.activityRow}>
         <View style={styles.activityIcon}>
-          <Ionicons color={colors.text3} name="time-outline" size={24} />
+          <Ionicons color={colors.ink3Text} name="time-outline" size={24} />
         </View>
         <Text numberOfLines={2} style={latest ? styles.activityText : styles.emptyText}>
           {latest ? locale.t.literal(latest) : locale.t("contacts.noInteractions")}
@@ -649,7 +649,7 @@ function DisclosureSection({
           </Text>
         </View>
         <Ionicons
-          color={colors.text3}
+          color={colors.ink3Text}
           name={expanded ? "chevron-up" : "chevron-down"}
           size={19}
         />
@@ -747,7 +747,7 @@ function UpdateContactPanel({
       <View style={styles.editIdentity}>
         <View testID="contact-edit-avatar" style={[styles.heroAvatar, styles.editAvatar]}>
           {avatar.imageUrl ? <Image accessibilityLabel={locale.t("contacts.avatarFor", { name: locale.t.literal(contact.displayName) })} source={{ uri: assetUrl(baseUrl, avatar.imageUrl) }} style={styles.heroAvatarImage} />
-            : <><Svg accessible={false} width="100%" height="100%" viewBox="0 0 76 76" style={StyleSheet.absoluteFill}><Defs><LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor="#7FB3FF" /><Stop offset="1" stopColor="#3B82F6" /></LinearGradient></Defs><Rect width="76" height="76" fill={`url(#${gradientId})`} /></Svg><Text style={styles.heroAvatarText}>{avatar.initial}</Text></>}
+            : <><Svg accessible={false} width="100%" height="100%" viewBox="0 0 76 76" style={StyleSheet.absoluteFill}><Defs><LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor={avatarToneStyles(colors)[avatar.tone].backgroundColor} /><Stop offset="1" stopColor={avatarToneStyles(colors)[avatar.tone].backgroundColor} /></LinearGradient></Defs><Rect width="76" height="76" fill={`url(#${gradientId})`} /></Svg><Text style={[styles.heroAvatarText, { color: avatarToneStyles(colors)[avatar.tone].color }]}>{avatar.initial}</Text></>}
         </View>
         <Text style={styles.editReadOnlyHint}>{locale.t("contacts.readOnlyIdentity")}</Text>
       </View>
@@ -759,12 +759,12 @@ function UpdateContactPanel({
         <EditReadOnlyField label={locale.t("profile.email")} value={contact.primaryEmail ?? ""} />
         {original.statusOptions.length ? <View><Text style={styles.editLabel}>{locale.t("contacts.followUpStatus")}</Text><View style={styles.editChips}>{original.statusOptions.map(status => <Pressable key={status} accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? `跟进状态：${statusLabels[status]}` : `${locale.t("contacts.followUpStatus")}: ${statusLabels[status]}`} accessibilityState={{ selected: draft.status === status }} aria-selected={draft.status === status} disabled={pending} onPress={() => onChange({ status })} style={[styles.editChip, draft.status === status && styles.editChipSelected]}><Text style={[styles.editChipText, draft.status === status && styles.editChipSelectedText]}>{statusLabels[status]}</Text></Pressable>)}</View></View> : <Text style={styles.editReadOnlyHint}>{locale.language === "zh" ? "关系阶段由关系生命周期管理；此处仅编辑私有资料。" : locale.language === "ja" ? "関係段階はライフサイクルで管理します。ここでは個人用情報のみ編集できます。" : "Relationship stage is managed by its lifecycle; edit private details here."}</Text>}
         <View><Text style={styles.editLabel}>{locale.t("contacts.tags")}</Text><View style={styles.editChips}>{draft.tags.map(tag => <Pressable key={tag} accessibilityRole="button" accessibilityLabel={locale.t("contacts.removeTag", { tag: locale.t.literal(tag) })} disabled={pending} onPress={() => onChange({ tags: draft.tags.filter(value => value !== tag) })} style={[styles.editChip, styles.editChipSelected]}><Text style={[styles.editChipText, styles.editChipSelectedText]}>{locale.t.literal(tag)}</Text><Ionicons color={colors.onAccent} name="close" size={14} /></Pressable>)}</View>
-          <View style={styles.editTagEntry}><TextInput accessibilityLabel={locale.t("contacts.addTag")} editable={!pending} value={tagInput} onChangeText={onChangeTagInput} placeholder={locale.t("contacts.inputNewTag")} placeholderTextColor={colors.text3} style={[styles.editInput, styles.editTagInput]} /><Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.addThisTag")} disabled={pending || !tagInput.trim()} onPress={() => { if (pending || !tagInput.trim()) return; onChange({ tags: [...new Set([...draft.tags, tagInput.trim()])] }); onChangeTagInput(""); }} style={[styles.editChip, styles.editTagAdd]}><Ionicons color={colors.text3} name="add" size={16} /><Text style={styles.editChipText}>{locale.t("contacts.add")}</Text></Pressable></View>
+          <View style={styles.editTagEntry}><TextInput accessibilityLabel={locale.t("contacts.addTag")} editable={!pending} value={tagInput} onChangeText={onChangeTagInput} placeholder={locale.t("contacts.inputNewTag")} placeholderTextColor={colors.ink3Text} style={[styles.editInput, styles.editTagInput]} /><Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.addThisTag")} disabled={pending || !tagInput.trim()} onPress={() => { if (pending || !tagInput.trim()) return; onChange({ tags: [...new Set([...draft.tags, tagInput.trim()])] }); onChangeTagInput(""); }} style={[styles.editChip, styles.editTagAdd]}><Ionicons color={colors.ink3Text} name="add" size={16} /><Text style={styles.editChipText}>{locale.t("contacts.add")}</Text></Pressable></View>
         </View>
         <View style={styles.editInteraction}><Text style={styles.sectionTitle}>{locale.t("contacts.interactionHistory")}</Text><Text style={styles.editReadOnlyHint}>{locale.t("contacts.interactionOnlyUpdatesLatest")}</Text>
-          <Text style={styles.editLabel}>{locale.t("contacts.time")}</Text><TextInput accessibilityLabel={locale.language === "zh" ? "互动时间" : locale.t("contacts.time")} editable={!pending} value={draft.lastInteraction.occurredAt} onChangeText={occurredAt => onChange({ lastInteraction: { ...draft.lastInteraction, occurredAt } })} placeholder={locale.t("contacts.interactionTimePlaceholder")} placeholderTextColor={colors.text3} style={styles.editInput} />
+          <Text style={styles.editLabel}>{locale.t("contacts.time")}</Text><TextInput accessibilityLabel={locale.language === "zh" ? "互动时间" : locale.t("contacts.time")} editable={!pending} value={draft.lastInteraction.occurredAt} onChangeText={occurredAt => onChange({ lastInteraction: { ...draft.lastInteraction, occurredAt } })} placeholder={locale.t("contacts.interactionTimePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.editInput} />
           <Text style={styles.editLabel}>{locale.t("contacts.channel")}</Text><View style={styles.editChips}>{channels.map(channel => <Pressable key={channel.id} accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? `互动渠道：${channel.label}` : `${locale.t("contacts.channel")}: ${channel.label}`} accessibilityState={{ selected: draft.lastInteraction.channel === channel.id }} aria-selected={draft.lastInteraction.channel === channel.id} disabled={pending} onPress={() => onChange({ lastInteraction: { ...draft.lastInteraction, channel: channel.id } })} style={[styles.editChip, draft.lastInteraction.channel === channel.id && styles.editChipSelected]}><Text style={[styles.editChipText, draft.lastInteraction.channel === channel.id && styles.editChipSelectedText]}>{channel.label}</Text></Pressable>)}</View>
-          <Text style={styles.editLabel}>{locale.t("contacts.summary")}</Text><TextInput accessibilityLabel={locale.language === "zh" ? "互动摘要" : locale.t("contacts.summary")} editable={!pending} multiline value={draft.lastInteraction.summary} onChangeText={summary => onChange({ lastInteraction: { ...draft.lastInteraction, summary } })} placeholder={locale.t("contacts.interactionSummaryPlaceholder")} placeholderTextColor={colors.text3} style={[styles.editInput, styles.editSummary]} textAlignVertical="top" />
+          <Text style={styles.editLabel}>{locale.t("contacts.summary")}</Text><TextInput accessibilityLabel={locale.language === "zh" ? "互动摘要" : locale.t("contacts.summary")} editable={!pending} multiline value={draft.lastInteraction.summary} onChangeText={summary => onChange({ lastInteraction: { ...draft.lastInteraction, summary } })} placeholder={locale.t("contacts.interactionSummaryPlaceholder")} placeholderTextColor={colors.ink3Text} style={[styles.editInput, styles.editSummary]} textAlignVertical="top" />
         </View>
       </View>
     </View>
@@ -783,13 +783,13 @@ function SecondaryIndustryPicker({ primaryIndustryId, selectedId, pending, onSel
   pending: boolean;
   onSelect: (value: SecondaryIndustryIdCode) => void;
 }) {
-  const { styles } = useStyles();
+  const { colors, styles } = useStyles();
   const locale = useOrbitLocale();
   const [expanded, setExpanded] = useState(false);
   return <View style={styles.industryPicker}>
     <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.selectSecondaryIndustry")} accessibilityState={{ expanded }} disabled={pending || !primaryIndustryId} onPress={() => setExpanded(value => !value)} style={[styles.editIndustryButton, (pending || !primaryIndustryId) && styles.disabled]}>
       <Text style={styles.editValueText}>{selectedId ? secondaryIndustryLabel(selectedId, locale.language) : locale.t("contacts.secondaryIndustryMissing")}</Text>
-      <Ionicons color="#C4C9D4" name={expanded ? "caret-up" : "caret-down"} size={12} />
+      <Ionicons color={colors.ink4} name={expanded ? "caret-up" : "caret-down"} size={12} />
     </Pressable>
     {expanded && primaryIndustryId ? <View style={styles.industryOptions}>
       {listSecondaryIndustries(primaryIndustryId).map(industry => <Pressable key={industry.id} accessibilityRole="button" accessibilityLabel={locale.t("contacts.setSecondaryIndustry", { name: industry.labels[locale.language] })} accessibilityState={{ selected: selectedId === industry.id }} disabled={pending} onPress={() => { onSelect(industry.id); setExpanded(false); }} style={[styles.industryOption, selectedId === industry.id && styles.industryOptionSelected]}>
@@ -834,7 +834,7 @@ function IndustryPicker({
           </Text>
         </View>
         <Ionicons
-          color="#C4C9D4"
+          color={colors.ink4}
           name={expanded ? "caret-up" : "caret-down"}
           size={12}
         />
@@ -871,7 +871,7 @@ function IndustryPicker({
                   {industry.labels[locale.language]}
                 </Text>
                 {selected ? (
-                  <Ionicons color={colors.accent} name="checkmark" size={18} />
+                  <Ionicons color={colors.accentText} name="checkmark" size={18} />
                 ) : null}
               </Pressable>
             );
@@ -967,11 +967,11 @@ const avatarToneStyles = (colors: OrbitColors): Record<
   ContactAvatarTone,
   { backgroundColor: string; color: string }
 > => ({
-  amber: { backgroundColor: colors.amberSoft, color: colors.amber },
-  emerald: { backgroundColor: colors.liveSoft, color: colors.live },
-  rose: { backgroundColor: colors.roseSoft, color: colors.rose },
-  sky: { backgroundColor: colors.skySoft, color: colors.sky },
-  violet: { backgroundColor: colors.accentSofter, color: colors.accent }
+  amber: { backgroundColor: colors.macApricot, color: colors.macApricotText },
+  emerald: { backgroundColor: colors.macTeal, color: colors.macTealText },
+  rose: { backgroundColor: colors.macPink, color: colors.macPinkText },
+  sky: { backgroundColor: colors.macBlue, color: colors.macBlueText },
+  violet: { backgroundColor: colors.macLav, color: colors.macLavText }
 });
 
 function TagList({ items }: { items: string[] }) {
@@ -1108,7 +1108,7 @@ function RelationshipRecomputeButton({
         pressed ? styles.pressed : null
       ]}
     >
-      <Ionicons color={colors.accent} name="refresh-outline" size={16} />
+      <Ionicons color={colors.accentText} name="refresh-outline" size={16} />
       <Text style={styles.relationshipRecomputeButtonText}>
         {offline ? locale.t("sync.needsNetwork") : pending ? locale.t("contacts.calculating") : locale.t("contacts.recalculate")}
       </Text>
@@ -1119,43 +1119,43 @@ function RelationshipRecomputeButton({
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   hidden: { display: "none" },
   cancelHeaderButton: { minHeight: 44, minWidth: 82, justifyContent: "center", alignItems: "flex-start" },
-  cancelHeaderText: { color: colors.text3, fontFamily: detailFont, fontSize: 15, lineHeight: 22, fontWeight: "600" },
+  cancelHeaderText: { color: colors.ink3Text, fontFamily: detailFont, fontSize: 15, lineHeight: 22, fontWeight: "600" },
   editIdentity: { alignItems: "center", gap: 8, paddingTop: 4 },
   editAvatar: { width: 76, height: 76 },
-  editReadOnlyHint: { color: colors.text3, fontFamily: detailFont, fontSize: 13, lineHeight: 20 },
+  editReadOnlyHint: { color: colors.ink3Text, fontFamily: detailFont, fontSize: 13, lineHeight: 20 },
   editForm: { gap: 18, paddingTop: 16 },
   editField: { flexGrow: 1, flexShrink: 1, flexBasis: "auto", minWidth: 0 },
   editColumn: { flexBasis: 0 },
   editColumns: { flexDirection: "row", gap: 16 },
-  editLabel: { color: colors.text3, fontFamily: detailFont, fontSize: 12, lineHeight: 18, fontWeight: "700", letterSpacing: 0.48 },
-  editReadOnlyValue: { minHeight: 44, justifyContent: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  editLabel: { color: colors.ink3Text, fontFamily: detailFont, fontSize: 12, lineHeight: 18, fontWeight: "700", letterSpacing: 0.48 },
+  editReadOnlyValue: { minHeight: 44, justifyContent: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.line },
   editValueText: { color: colors.ink, fontFamily: detailFont, fontSize: 15, lineHeight: 22 },
   editNameLine: { borderBottomColor: colors.ink, borderBottomWidth: 1.5 },
   editNameText: { fontSize: 16, fontWeight: "600" },
-  editIndustryButton: { minHeight: 44, paddingVertical: 10, borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", alignItems: "center", gap: 12 },
+  editIndustryButton: { minHeight: 44, paddingVertical: 10, borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", alignItems: "center", gap: 12 },
   editChips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
-  editChip: { minHeight: 44, minWidth: 44, maxWidth: "100%", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 4 },
+  editChip: { minHeight: 44, minWidth: 44, maxWidth: "100%", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 4 },
   editChipSelected: { backgroundColor: colors.ink, borderColor: colors.ink },
   editChipText: { color: colors.ink, fontFamily: detailFont, fontSize: 13, lineHeight: 20, flexShrink: 1 },
   editChipSelectedText: { color: colors.onAccent, fontWeight: "600" },
   editTagEntry: { flexDirection: "row", gap: 8, marginTop: 10 },
   editTagAdd: { borderStyle: "dashed" },
   editTagInput: { flex: 1, minWidth: 0 },
-  editInput: { color: colors.ink, fontFamily: detailFont, fontSize: 15, lineHeight: 22, minHeight: 44, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  editInput: { color: colors.ink, fontFamily: detailFont, fontSize: 15, lineHeight: 22, minHeight: 44, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.line },
   editSummary: { minHeight: 92 },
-  editInteraction: { gap: 8, paddingTop: 18, borderTopWidth: 1, borderTopColor: colors.border2 },
+  editInteraction: { gap: 8, paddingTop: 18, borderTopWidth: 1, borderTopColor: colors.line },
   editHeaderButton: { minHeight: 44, minWidth: 64, justifyContent: "center", alignItems: "flex-end" },
-  editHeaderText: { color: colors.accent, fontFamily: detailFont, fontSize: 15, lineHeight: 22, fontWeight: "600" },
-  heroLocation: { color: colors.text3, fontFamily: detailFont, fontSize: 12, lineHeight: 18, marginTop: 2 },
-  sourcePill: { color: colors.accent, fontSize: 11, lineHeight: 16, fontWeight: "700", borderColor: colors.accent, borderWidth: 1, borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8 },
-  basicRow: { flexDirection: "row", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border2 },
-  basicLabel: { width: 72, color: colors.text3, fontFamily: detailFont, fontSize: 14, lineHeight: 20 },
+  editHeaderText: { color: colors.accentText, fontFamily: detailFont, fontSize: 15, lineHeight: 22, fontWeight: "600" },
+  heroLocation: { color: colors.ink3Text, fontFamily: detailFont, fontSize: 12, lineHeight: 18, marginTop: 2 },
+  sourcePill: { color: colors.accentText, fontSize: 11, lineHeight: 16, fontWeight: "700", borderColor: colors.accentText, borderWidth: 1, borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8 },
+  basicRow: { flexDirection: "row", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.line },
+  basicLabel: { width: 72, color: colors.ink3Text, fontFamily: detailFont, fontSize: 14, lineHeight: 20 },
   basicValue: { flex: 1, minWidth: 0, color: colors.ink, fontFamily: detailFont, fontSize: 14, lineHeight: 20, fontWeight: "500" },
   actionStack: { flexDirection: "column" },
   secondaryActionButton: { minHeight: 44, paddingHorizontal: 8, paddingVertical: 10, flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, borderRadius: 10, borderWidth: 1, borderColor: colors.ink, justifyContent: "center", alignItems: "center" },
   secondaryActionText: { color: colors.ink, fontFamily: detailFont, fontSize: 13, lineHeight: 20, fontWeight: "600", textAlign: "center" },
   bodyText: {
-    color: colors.text,
+    color: colors.ink,
     fontFamily: detailFont,
     fontSize: 14,
     lineHeight: 23
@@ -1163,7 +1163,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   archiveButton: {
     ...createControlStyles(colors).secondaryButton,
     alignSelf: "flex-start",
-    borderColor: colors.rose,
+    borderColor: colors.coralText,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.xs,
@@ -1171,11 +1171,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   archiveButtonText: {
     ...createControlStyles(colors).secondaryButtonText,
-    color: colors.rose
+    color: colors.coralText
   },
   contactHero: { marginBottom: 16 },
   contactHeroDetail: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontFamily: detailFont,
     fontSize: 13,
     lineHeight: 19
@@ -1194,7 +1194,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   contactHeroRelationship: {
     ...textStyles.small,
-    color: colors.text
+    color: colors.ink
   },
   contactHeroTitleBlock: {
     flex: 1,
@@ -1204,11 +1204,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   disabled: { opacity: 0.54 },
   errorText: {
     ...textStyles.small,
-    color: colors.rose
+    color: colors.coralText
   },
   feedbackText: {
     ...textStyles.small,
-    color: colors.live,
+    color: colors.okText,
     fontWeight: "600"
   },
   heroAvatar: {
@@ -1225,7 +1225,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: "100%"
   },
   heroAvatarText: {
-    color: "#FFFFFF",
     fontFamily: detailFont,
     fontSize: 26,
     fontWeight: "800",
@@ -1239,7 +1238,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   inputLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   industryOption: {
@@ -1250,22 +1249,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.md
   },
   industryOptionSelected: {
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderColor: colors.accentSoft
   },
   industryOptionText: {
     ...textStyles.small,
-    color: colors.text2,
+    color: colors.ink2,
     fontWeight: "600"
   },
-  industryOptionTextSelected: { color: colors.accent },
+  industryOptionTextSelected: { color: colors.accentText },
   industryOptions: { gap: spacing.xs },
   industryPicker: { gap: spacing.sm },
   industryPickerButton: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -1279,7 +1278,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   industryPickerLabel: {
     ...textStyles.caption,
-    color: colors.text4,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   industryPickerValue: {
@@ -1322,9 +1321,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   promptStack: { gap: 8 },
   promptText: {
     ...textStyles.caption,
-    backgroundColor: colors.liveSoft,
+    backgroundColor: colors.okSoft,
     borderRadius: 10,
-    color: colors.live,
+    color: colors.okText,
     fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
@@ -1332,14 +1331,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   factorPoint: {
     ...textStyles.caption,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   relationshipFactorRow: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
@@ -1355,7 +1354,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   relationshipPriority: {
     ...textStyles.caption,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   relationshipRecomputeButton: {
@@ -1366,11 +1365,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   relationshipRecomputeButtonText: {
     ...createControlStyles(colors).secondaryButtonText,
-    color: colors.accent
+    color: colors.accentText
   },
   relationshipSafety: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     flexShrink: 1,
     textAlign: "right"
   },
@@ -1382,7 +1381,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   relationshipScoreBlock: { gap: 2 },
   relationshipSectionTitle: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   tagsRow: {
@@ -1398,15 +1397,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   statusButtonText: {
     ...createControlStyles(colors).secondaryButtonText,
-    color: colors.accent
+    color: colors.accentText
   },
   scorePill: {
     ...textStyles.caption,
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
     borderRadius: radius.pill,
     borderWidth: 1,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
@@ -1427,11 +1426,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   tagText: {
     ...textStyles.caption,
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
     borderRadius: 999,
     borderWidth: 1,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
@@ -1450,13 +1449,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   activityText: {
     ...textStyles.small,
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
     minWidth: 0
   },
   detailSection: { gap: 4 },
   disclosureContent: {
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: spacing.lg,
     paddingVertical: 20
@@ -1468,7 +1467,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   disclosureDetail: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   disclosureHeader: {
     alignItems: "center",
@@ -1478,7 +1477,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 14
   },
   disclosureSurface: {
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   disclosureTitle: {
@@ -1487,12 +1486,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   emptyText: {
     ...textStyles.small,
-    color: colors.text3,
+    color: colors.ink3Text,
     flex: 1,
     minWidth: 0
   },
   exchangeLabel: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 13,
     fontFamily: detailFont,
     lineHeight: 22,
@@ -1505,7 +1504,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   exchangeRows: { gap: 4 },
   exchangeValue: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
     fontSize: 13,
     fontFamily: detailFont,
@@ -1528,7 +1527,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   nextStepEyebrow: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 14,
     fontWeight: "600",
     lineHeight: 20
@@ -1551,17 +1550,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   primaryActionButton: {
     minHeight: 44, paddingHorizontal: 8, paddingVertical: 10, flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0,
-    borderRadius: 10, backgroundColor: colors.accent, justifyContent: "center", alignItems: "center"
+    borderRadius: 10, backgroundColor: colors.accentText, justifyContent: "center", alignItems: "center"
   },
   primaryActionButtonText: { fontFamily: detailFont, fontSize: 13, lineHeight: 20, fontWeight: "700", color: colors.onAccent, textAlign: "center" },
   relationshipValueContent: { gap: spacing.md },
   sectionBody: { gap: spacing.sm },
   sectionDetail: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   sectionDivider: {
-    backgroundColor: colors.border,
+    backgroundColor: colors.line,
     height: StyleSheet.hairlineWidth,
     width: "100%"
   },

@@ -20,13 +20,13 @@
 | 骨架 R01–R09 | **全部**（RD-04） | 验收（看截图、试用） |
 | 功能 | 计划 v2.2（R22–R25）、加人与邀请（R12、R15、R16）、活动（R26、R27）、主办（R17） | iOrbit（R21）、首页（R10）、Task（R20）、收件箱 · 秘书 · 推送（R13、R14）、人脈（R11）、账户（R18）、iOS 小组件（R19） |
 
-功能 Sprint 的文档在骨架验收后另写。分工流程图：https://claude.ai/artifact/7qGcsrWQj2EeLbkdC5hXas
+功能 Sprint 的文档在骨架验收后另写。两端每个现有页面由哪个功能 Sprint 重写（按屏替换、旧屏删除），见 [旧屏归属表](screen-ownership.md)；表里补出两个新功能 Sprint：R28 引导、R29 运营后台换新（负责人待定）。分工流程图：https://claude.ai/artifact/7qGcsrWQj2EeLbkdC5hXas
 
 ## 骨架登记表
 
 | Sprint | 目标 | 依赖 | 档位 | 状态 |
 | --- | --- | --- | --- | --- |
-| [R01](R01-design-tokens/GOAL.md) | 设计源：一份 token 源生成两端，新值覆盖旧值，统一改用设计稿命名 | — | H | planned |
+| [R01](R01-design-tokens/GOAL.md) | 设计源：一份 token 源生成两端，新值覆盖旧值，统一改用设计稿命名 | — | H | done，待复核（[REPORT](R01-design-tokens/REPORT.md)） |
 | [R02](R02-icons/GOAL.md) | 图标源 + App 图标全量替换，移除 Ionicons | R01 | H | planned |
 | [R03](R03-copy-and-ja/GOAL.md) | 文案源 + 字典按功能拆分 + 两端写死文字全部抽出并补齐日语（含翻译质量循环） | R01 | H | planned |
 | [R04](R04-app-components/GOAL.md) | App 组件库（5 类）+ 替换旧弹窗、弹层、分段和旧公用组件 | R01、R02、R03 | H | planned |

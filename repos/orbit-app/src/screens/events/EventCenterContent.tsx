@@ -64,13 +64,13 @@ function EventCenterRow({
 
       <View style={styles.metadata}>
         <View style={styles.metaLine}>
-          <Ionicons color={colors.text3} name="location-outline" size={16} />
+          <Ionicons color={colors.ink3Text} name="location-outline" size={16} />
           <Text style={styles.metaText}>
             {event.venueLabel}
           </Text>
         </View>
         <View style={styles.metaLine}>
-          <Ionicons color={colors.text3} name="time-outline" size={16} />
+          <Ionicons color={colors.ink3Text} name="time-outline" size={16} />
           <Text style={styles.metaText}>
             {event.scheduleLabel}
           </Text>
@@ -80,14 +80,14 @@ function EventCenterRow({
 
       {event.restriction ? (
         <View style={styles.restriction}>
-          <Ionicons color={colors.amber} name="alert-circle-outline" size={17} />
+          <Ionicons color={colors.macApricotText} name="alert-circle-outline" size={17} />
           <Text style={styles.restrictionText}>{event.restriction}</Text>
         </View>
       ) : null}
 
       <View style={styles.nextTask}>
         <View style={styles.nextTaskIcon}>
-          <Ionicons color={colors.accent} name="arrow-forward" size={17} />
+          <Ionicons color={colors.accentText} name="arrow-forward" size={17} />
         </View>
         <View style={styles.nextTaskCopy}>
           <Text style={styles.nextTaskEyebrow}>下一步</Text>
@@ -144,7 +144,7 @@ function EventCenterRow({
               onPress={onOpenRoles}
               style={({ pressed }) => [styles.iconAction, pressed ? styles.pressed : null]}
             >
-              <Ionicons color={colors.accent} name="person-add-outline" size={19} />
+              <Ionicons color={colors.accentText} name="person-add-outline" size={19} />
             </Pressable>
           ) : null}
           {event.availableActionKeys.includes("operations") ? (
@@ -154,7 +154,7 @@ function EventCenterRow({
               onPress={onOpenOperations}
               style={({ pressed }) => [styles.iconAction, pressed ? styles.pressed : null]}
             >
-              <Ionicons color={colors.accent} name="construct-outline" size={19} />
+              <Ionicons color={colors.accentText} name="construct-outline" size={19} />
             </Pressable>
           ) : null}
           <Pressable
@@ -237,7 +237,7 @@ export function EventCenterContent({
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionRow: {
     alignItems: "center",
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -266,7 +266,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...textStyles.title
   },
   lifecycle: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 11,
     fontWeight: "800",
     lineHeight: 15
@@ -276,8 +276,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   iconAction: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
     height: 44,
     justifyContent: "center",
     width: 44
@@ -289,17 +289,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   metaText: {
-    color: colors.text2,
+    color: colors.ink2,
     flex: 1,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     lineHeight: 19,
     minWidth: 0
   },
   nextTask: {
     alignItems: "flex-start",
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderColor: colors.accentSoft,
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -311,12 +311,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   nextTaskDetail: {
-    color: colors.text2,
-    fontSize: typography.caption,
+    color: colors.ink2,
+    fontSize: typography.label,
     lineHeight: 17
   },
   nextTaskEyebrow: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 10,
     fontWeight: "900",
     lineHeight: 14
@@ -359,20 +359,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   restriction: {
     alignItems: "flex-start",
-    backgroundColor: colors.amberSoft,
-    borderRadius: radius.control,
+    backgroundColor: colors.macApricot,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
   },
   restrictionText: {
-    color: colors.text2,
+    color: colors.ink2,
     flex: 1,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     lineHeight: 18
   },
   roleBadge: {
-    backgroundColor: colors.liveSoft,
+    backgroundColor: colors.okSoft,
     borderRadius: radius.pill,
     flexShrink: 0,
     maxWidth: 112,
@@ -380,24 +380,24 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.xs
   },
   roleBadgeWarning: {
-    backgroundColor: colors.amberSoft
+    backgroundColor: colors.macApricot
   },
   roleDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 18
   },
   roleLabel: {
-    color: colors.live,
+    color: colors.okText,
     fontSize: 11,
     fontWeight: "800",
     lineHeight: 15
   },
   roleLabelWarning: {
-    color: colors.amber
+    color: colors.macApricotText
   },
   stateText: {
-    color: colors.text2,
+    color: colors.ink2,
     ...textStyles.body
   }
 }));

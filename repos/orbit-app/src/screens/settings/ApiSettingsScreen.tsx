@@ -93,7 +93,7 @@ export function ApiSettingsScreen() {
             keyboardType="url"
             onChangeText={setDraftBaseUrl}
             placeholder="http://localhost:3000"
-            placeholderTextColor={colors.text4}
+            placeholderTextColor={colors.ink3Text}
             style={styles.input}
             value={draftBaseUrl}
           />
@@ -160,7 +160,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   message: {
     ...textStyles.small,
-    color: colors.text2,
+    color: colors.ink2,
   },
   pressed: {
     opacity: 0.72

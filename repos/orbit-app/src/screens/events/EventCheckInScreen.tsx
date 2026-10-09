@@ -81,7 +81,7 @@ export function EventCheckInScreen() {
         <RefreshControl
           onRefresh={state.refresh}
           refreshing={state.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title="活动签到台"
@@ -104,7 +104,7 @@ export function EventCheckInScreen() {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   intro: {
-    color: colors.text2,
+    color: colors.ink2,
     marginTop: -spacing.sm,
     ...textStyles.body
   }

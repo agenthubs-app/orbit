@@ -216,7 +216,7 @@ function CompactEventRow({
         </View>
         {expandedText ? <Text style={styles.eventRowStatus}>{status}</Text> : null}
       </View>
-      {!expandedText ? <View style={styles.eventRowFooter}><Text style={styles.eventRowStatus}>{status}</Text><Ionicons color={colors.text4} name="chevron-forward" size={14} /></View> : null}
+      {!expandedText ? <View style={styles.eventRowFooter}><Text style={styles.eventRowStatus}>{status}</Text><Ionicons color={colors.ink3Text} name="chevron-forward" size={14} /></View> : null}
     </Pressable>
   );
 }
@@ -336,13 +336,13 @@ function EventDiscoveryControls({
   return (
     <View style={styles.discoveryControls}>
       <View style={styles.discoverySearchRow}>
-        <Ionicons color={colors.text3} name="search-outline" size={18} />
+        <Ionicons color={colors.ink3Text} name="search-outline" size={18} />
         <TextInput
           autoCapitalize="none"
           autoCorrect={false}
           onChangeText={onQueryChange}
           placeholder={locale.t("events.searchPlaceholder")}
-          placeholderTextColor={colors.text4}
+          placeholderTextColor={colors.ink3Text}
           returnKeyType="search"
           style={styles.discoverySearchInput}
           value={query}
@@ -354,7 +354,7 @@ function EventDiscoveryControls({
             onPress={() => onQueryChange("")}
             style={styles.discoveryIconButton}
           >
-            <Ionicons color={colors.text3} name="close-circle" size={19} />
+            <Ionicons color={colors.ink3Text} name="close-circle" size={19} />
           </Pressable>
         ) : null}
       </View>
@@ -362,7 +362,7 @@ function EventDiscoveryControls({
         {([{ id: "recommended", label: locale.t("events.tabRecommended") }, { id: "all", label: locale.t("events.tabAll") }] as const).map(item => <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{ selected: tab === item.id }} aria-selected={tab === item.id} onPress={() => onTabChange(item.id)} style={styles.catalogueTab}><View style={[styles.catalogueTabLabel, tab === item.id && styles.catalogueTabSelected]}><Text style={[styles.catalogueTabText, tab === item.id && styles.catalogueTabTextSelected]}>{item.label}</Text></View></Pressable>)}
       </View>
       <View style={styles.filterButtons}>
-        {([{ id: "time", label: locale.t("events.filterTime"), value: statusFilter === "upcoming" ? locale.t("events.upcomingSoon") : statusFilter === "all" ? locale.t("events.allTime") : eventDiscoveryStatusLabels[statusFilter] }, { id: "location", label: locale.t("events.filterLocation"), value: locationFilter || locale.t("events.allLocations") }, { id: "topic", label: locale.t("events.filterTopic"), value: topicFilter || locale.t("events.allTopics") }] as const).map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ expanded: filterMenu === item.id }} aria-expanded={filterMenu === item.id} onPress={() => setFilterMenu(current => current === item.id ? null : item.id)} style={styles.filterButton}><Text style={styles.filterButtonText}>{item.value}</Text><Ionicons color={colors.text2} name="caret-down" size={10} /></Pressable>)}
+        {([{ id: "time", label: locale.t("events.filterTime"), value: statusFilter === "upcoming" ? locale.t("events.upcomingSoon") : statusFilter === "all" ? locale.t("events.allTime") : eventDiscoveryStatusLabels[statusFilter] }, { id: "location", label: locale.t("events.filterLocation"), value: locationFilter || locale.t("events.allLocations") }, { id: "topic", label: locale.t("events.filterTopic"), value: topicFilter || locale.t("events.allTopics") }] as const).map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ expanded: filterMenu === item.id }} aria-expanded={filterMenu === item.id} onPress={() => setFilterMenu(current => current === item.id ? null : item.id)} style={styles.filterButton}><Text style={styles.filterButtonText}>{item.value}</Text><Ionicons color={colors.ink2} name="caret-down" size={10} /></Pressable>)}
       </View>
       {filterMenu ? (
         <View style={styles.expandedFilters}>
@@ -415,7 +415,7 @@ function SectionHeader({
           ]}
         >
           <Text style={styles.sectionActionText}>{action}</Text>
-          <Ionicons color={colors.accent} name="chevron-forward" size={15} />
+          <Ionicons color={colors.accentText} name="chevron-forward" size={15} />
         </Pressable>
       ) : null}
     </View>
@@ -467,7 +467,7 @@ function EventCenterEntry({ onPress }: { onPress: () => void }) {
       ]}
     >
       <Text style={styles.eventCenterEntryTitle}>我负责的活动</Text>
-      <Ionicons color={colors.accent} name="chevron-forward" size={13} />
+      <Ionicons color={colors.accentText} name="chevron-forward" size={13} />
     </Pressable>
   );
 }
@@ -590,7 +590,7 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
         <RefreshControl
           onRefresh={refreshAll}
           refreshing={refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
     >
@@ -665,7 +665,7 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
             {allFilteredEventsVisible ? "收起活动" : "查看更多活动"}
           </Text>
           <Ionicons
-            color={colors.accent}
+            color={colors.accentText}
             name={allFilteredEventsVisible ? "chevron-up" : "chevron-down"}
             size={18}
           />
@@ -1048,21 +1048,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   pageContent: { alignSelf: "center", width: "100%", maxWidth: layout.contentMax, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 140 },
   pageHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14 },
   pageTitle: { color: colors.ink, fontFamily: eventFont, fontSize: 30, fontWeight: "900", letterSpacing: -0.6, lineHeight: 38, flexShrink: 1 },
-  catalogueTabs: { flexDirection: "row", gap: 6, borderBottomWidth: 1, borderBottomColor: colors.border, marginTop: 12 },
+  catalogueTabs: { flexDirection: "row", gap: 6, borderBottomWidth: 1, borderBottomColor: colors.line, marginTop: 12 },
   catalogueTab: { minHeight: 44, minWidth: 44, alignItems: "flex-start", justifyContent: "flex-end", marginBottom: -1 },
   catalogueTabLabel: { paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: "transparent" },
   catalogueTabSelected: { borderBottomColor: colors.ink },
-  catalogueTabText: { color: colors.text3, fontFamily: eventFont, fontSize: 14, lineHeight: 20 },
+  catalogueTabText: { color: colors.ink3Text, fontFamily: eventFont, fontSize: 14, lineHeight: 20 },
   catalogueTabTextSelected: { color: colors.ink, fontWeight: "800" },
   filterButtons: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
-  filterButton: { minHeight: 44, minWidth: 44, maxWidth: "100%", flexShrink: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: colors.border, borderRadius: 8 },
+  filterButton: { minHeight: 44, minWidth: 44, maxWidth: "100%", flexShrink: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: colors.line, borderRadius: 8 },
   filterButtonText: { color: colors.ink, fontFamily: eventFont, fontSize: 12, lineHeight: 17, flexShrink: 1 },
   resultsHeader: { marginTop: 18, marginBottom: 4, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
-  resultCount: { color: colors.accent, fontFamily: eventFont, fontSize: 12, lineHeight: 17, fontWeight: "700" },
+  resultCount: { color: colors.accentText, fontFamily: eventFont, fontSize: 12, lineHeight: 17, fontWeight: "700" },
   acceptedCard: {
-    backgroundColor: colors.liveSoft,
-    borderColor: colors.border,
-    borderRadius: radius.control,
+    backgroundColor: colors.okSoft,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -1097,7 +1097,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 44
   },
   discoverySearchInput: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
     fontFamily: eventFont,
     fontSize: 14,
@@ -1114,7 +1114,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: 12
   },
   expandedFilters: {
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: 1,
     gap: spacing.md,
     marginTop: 12,
@@ -1128,8 +1128,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   filterRailLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 17
   },
@@ -1138,8 +1138,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   eventDetail: {
-    color: colors.text3,
-    fontSize: typography.small,
+    color: colors.ink3Text,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   eventCenterEntry: {
@@ -1153,7 +1153,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 4
   },
   eventCenterEntryTitle: {
-    color: colors.accent,
+    color: colors.accentText,
     flexShrink: 1,
     fontFamily: eventFont,
     fontSize: 13,
@@ -1170,7 +1170,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.lg
   },
   showMoreEventsText: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: typography.body,
     fontWeight: "700"
   },
@@ -1179,7 +1179,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 0
   },
   eventRow: {
-    borderBottomColor: colors.border2,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: 14,
@@ -1212,7 +1212,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderRadius: 8
   },
   eventRowLocation: {
-    color: colors.text3,
+    color: colors.ink3Text,
     flex: 1,
     minWidth: 0,
     fontFamily: eventFont,
@@ -1226,7 +1226,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   eventRowStatus: {
-    color: colors.accent,
+    color: colors.accentText,
     fontFamily: eventFont,
     fontSize: 12,
     lineHeight: 17,
@@ -1247,15 +1247,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   recommendationBand: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16,
     textAlign: "right"
   },
   recommendationBody: {
-    color: colors.text,
-    fontSize: typography.small,
+    color: colors.ink,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   recommendationCard: {
@@ -1269,7 +1269,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     padding: spacing.md
   },
   recommendationCoverBandText: {
-    color: colors.text2,
+    color: colors.ink2,
     fontSize: 10,
     fontWeight: "800",
     lineHeight: 13
@@ -1284,20 +1284,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     overflow: "hidden",
     width: "100%",
     minHeight: 132,
-    borderRadius: radius.card
+    borderRadius: radius.xl
   },
   recommendationCoverImage: {
-    borderRadius: radius.control
+    borderRadius: radius.md
   },
   recommendationCoverOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(8,8,12,0.38)"
+    backgroundColor: colors.scrim
   },
   recommendationCoverScore: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderColor: "rgba(255,255,255,0.88)",
-    borderRadius: radius.control,
+    backgroundColor: colors.onImage,
+    borderColor: colors.onImage,
+    borderRadius: radius.md,
     borderWidth: 1,
     gap: 1,
     minWidth: 66,
@@ -1305,8 +1305,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.xs
   },
   recommendationCoverScoreText: {
-    color: colors.imageBadgeText,
-    fontSize: typography.caption,
+    color: colors.onImageBadge,
+    fontSize: typography.label,
     fontWeight: "900",
     lineHeight: 16
   },
@@ -1315,14 +1315,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...textStyles.section
   },
   recommendationError: {
-    color: colors.rose,
-    fontSize: typography.caption,
+    color: colors.coralText,
+    fontSize: typography.label,
     lineHeight: 17
   },
   recommendationNotice: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md
@@ -1342,7 +1342,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   recommendationScore: {
     color: colors.ink,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     fontWeight: "800",
     lineHeight: 18,
     textAlign: "right"
@@ -1372,9 +1372,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...createControlStyles(colors).primaryButtonText
   },
   safetyText: {
-    color: colors.text3,
+    color: colors.ink3Text,
     flex: 1,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     lineHeight: 16,
     textAlign: "right"
   },
@@ -1394,13 +1394,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingLeft: spacing.md
   },
   sectionActionText: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "800"
   },
   sectionDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 17
   },
   sectionHeader: {

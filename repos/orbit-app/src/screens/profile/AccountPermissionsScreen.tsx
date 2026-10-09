@@ -31,28 +31,28 @@ import {
 function toneColor(tone: PermissionCardTone, colors: OrbitColors): string {
   switch (tone) {
     case "blocked":
-      return colors.amber;
+      return colors.macApricotText;
     case "denied":
-      return colors.rose;
+      return colors.coralText;
     case "pending":
-      return colors.sky;
+      return colors.macBlueText;
     case "ready":
-      return colors.live;
+      return colors.okText;
     default:
-      return colors.text3;
+      return colors.ink3Text;
   }
 }
 
 function toneBackground(tone: PermissionCardTone, colors: OrbitColors): string {
   switch (tone) {
     case "blocked":
-      return colors.amberSoft;
+      return colors.macApricot;
     case "denied":
-      return colors.roseSoft;
+      return colors.coralSoft;
     case "pending":
-      return colors.skySoft;
+      return colors.macBlue;
     case "ready":
-      return colors.liveSoft;
+      return colors.okSoft;
     default:
       return colors.surface2;
   }
@@ -119,7 +119,7 @@ export function AccountPermissionsScreen() {
         <RefreshControl
           onRefresh={refresh}
           refreshing={state.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={locale.t("permissions.title")}
@@ -284,28 +284,28 @@ function PermissionCard({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionText: {
-    color: colors.accent,
-    fontSize: typography.small,
+    color: colors.accentText,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 19
   },
   bodyText: {
     ...textStyles.body,
-    color: colors.text,
+    color: colors.ink,
   },
   errorText: {
-    backgroundColor: colors.roseSoft,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    backgroundColor: colors.coralSoft,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
-    color: colors.rose,
-    fontSize: typography.small,
+    color: colors.coralText,
+    fontSize: typography.bodySm,
     lineHeight: 19,
     padding: spacing.md
   },
   evidenceText: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 17
   },
   permissionHeader: {
@@ -334,18 +334,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...createControlStyles(colors).primaryButtonText
   },
   safetyText: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.small,
+    color: colors.ink,
+    fontSize: typography.bodySm,
     lineHeight: 19,
     padding: spacing.md
   },
   stageText: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 16
   },
   statusPill: {
@@ -357,7 +357,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   statusText: {
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16
   }

@@ -25,7 +25,7 @@ export function AiContactArtifactPanel({ artifact, onOpenHref }: { artifact: Con
             {item.body ? <Text style={{ ...textStyles.small, color: colors.ink }}>{item.body}</Text> : null}
             {item.metadata.map((entry, index) => <Text key={index} style={{ ...textStyles.small, color: colors.ink }}>{entry.label}：{entry.value}</Text>)}
             {item.evidenceIds.length ? <Text style={{ ...textStyles.small, color: colors.ink }}>{locale.t("aiContactArtifact.evidence", { count: item.evidenceIds.length })}</Text> : null}
-            {item.contactHref ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("common.openNamed", { name: item.title })} onPress={() => onOpenHref(item.contactHref!)} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ ...textStyles.body, color: colors.accent }}>{locale.t("aiContactArtifact.open")}</Text></Pressable> : null}
+            {item.contactHref ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("common.openNamed", { name: item.title })} onPress={() => onOpenHref(item.contactHref!)} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ ...textStyles.body, color: colors.accentText }}>{locale.t("aiContactArtifact.open")}</Text></Pressable> : null}
           </View>)}
         </View>)}
       </>}

@@ -83,14 +83,14 @@ function ToggleRow({
     <label
       style={{
         alignItems: "center",
-        borderBottom: "1px solid var(--border)",
+        borderBottom: "1px solid var(--line)",
         cursor: "pointer",
         display: "flex",
         gap: 12,
         padding: "14px 0",
       }}
     >
-      <span style={{ color: "var(--text)", flex: 1, fontSize: 14 }}>{label}</span>
+      <span style={{ color: "var(--ink)", flex: 1, fontSize: 14 }}>{label}</span>
       {/* globals.css 给裸 input 设了 width:100% + min-height，checkbox 必须显式覆盖。 */}
       <input
         checked={checked}
@@ -276,7 +276,7 @@ export function OrbitAgentExecutionSettings() {
       >
         安全执行与外部连接
       </h2>
-      <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 8px" }}>
+      <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: "0 0 8px" }}>
         读取与草稿自动完成；系统内写入逐次确认；对外消息永不自动发送。
       </p>
 
@@ -329,7 +329,7 @@ export function OrbitAgentExecutionSettings() {
           padding: "14px 0",
         }}
       >
-        <span style={{ color: "var(--text)", flex: 1, fontSize: 14 }}>安静时段</span>
+        <span style={{ color: "var(--ink)", flex: 1, fontSize: 14 }}>安静时段</span>
         <input
           aria-label="安静时段开始"
           className="field"
@@ -369,13 +369,13 @@ export function OrbitAgentExecutionSettings() {
       <label
         style={{
           alignItems: "center",
-          borderTop: "1px solid var(--border)",
+          borderTop: "1px solid var(--line)",
           display: "flex",
           gap: 12,
           padding: "14px 0",
         }}
       >
-        <span style={{ color: "var(--text)", flex: 1, fontSize: 14 }}>
+        <span style={{ color: "var(--ink)", flex: 1, fontSize: 14 }}>
           通知时区
         </span>
         <input
@@ -395,7 +395,7 @@ export function OrbitAgentExecutionSettings() {
       </label>
       <div style={{ alignItems: "center", display: "flex", gap: 8, justifyContent: "flex-end" }}>
         {message ? (
-          <span aria-live="polite" style={{ color: "var(--text-3)", fontSize: 13 }}>
+          <span aria-live="polite" style={{ color: "var(--ink-3-text)", fontSize: 13 }}>
             {message}
           </span>
         ) : null}
@@ -416,7 +416,7 @@ export function OrbitAgentExecutionSettings() {
       >
         运行状态
       </div>
-      <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 10px" }}>
+      <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: "0 0 10px" }}>
         这里不展示密钥或 Token，只确认 AI、持久化存储与后台执行器是否真的可用。
       </p>
       <div
@@ -428,7 +428,7 @@ export function OrbitAgentExecutionSettings() {
       >
         <div className="card" style={{ padding: 12 }}>
           <strong style={{ display: "block", fontSize: 13 }}>AI 服务</strong>
-          <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+          <span style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
             {operationsHealth
               ? `${operationsHealth.ai.provider} · ${
                   operationsHealth.ai.configured ? "已配置" : "缺少密钥"
@@ -438,7 +438,7 @@ export function OrbitAgentExecutionSettings() {
         </div>
         <div className="card" style={{ padding: 12 }}>
           <strong style={{ display: "block", fontSize: 13 }}>关系数据</strong>
-          <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+          <span style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
             {operationsHealth
               ? operationsHealth.database.durable
                 ? "持久化数据库"
@@ -448,7 +448,7 @@ export function OrbitAgentExecutionSettings() {
         </div>
         <div className="card" style={{ padding: 12 }}>
           <strong style={{ display: "block", fontSize: 13 }}>后台执行器</strong>
-          <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+          <span style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
             {operationsHealth
               ? operationsHealth.worker.state === "healthy"
                 ? "运行正常"
@@ -458,7 +458,7 @@ export function OrbitAgentExecutionSettings() {
               : "正在检查…"}
           </span>
           {operationsHealth?.worker.lastHeartbeat ? (
-            <span style={{ color: "var(--text-4)", display: "block", fontSize: 11, marginTop: 3 }}>
+            <span style={{ color: "var(--ink-3-text)", display: "block", fontSize: 11, marginTop: 3 }}>
               {new Date(
                 operationsHealth.worker.lastHeartbeat.recordedAt,
               ).toLocaleString("zh-CN")}
@@ -480,7 +480,7 @@ export function OrbitAgentExecutionSettings() {
       <div className="eyebrow" style={{ marginBottom: 4, marginTop: 28 }}>
         外部数据连接
       </div>
-      <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 8px" }}>
+      <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: "0 0 8px" }}>
         登录与数据授权分离。健康检查只发起只读请求；外部日历写入逐次确认并记录回执，Orbit 永不自动发信。
       </p>
       {integrations.map((integration) => {
@@ -507,17 +507,17 @@ export function OrbitAgentExecutionSettings() {
             key={integration.provider}
             style={{
               alignItems: "center",
-              borderBottom: "1px solid var(--border)",
+              borderBottom: "1px solid var(--line)",
               display: "flex",
               gap: 12,
               padding: "14px 0",
             }}
           >
             <span style={{ flex: 1 }}>
-              <span style={{ color: "var(--text)", display: "block", fontSize: 14 }}>
+              <span style={{ color: "var(--ink)", display: "block", fontSize: 14 }}>
                 {label}
               </span>
-              <span style={{ color: "var(--text-4)", display: "block", fontSize: 12, marginTop: 2 }}>
+              <span style={{ color: "var(--ink-3-text)", display: "block", fontSize: 12, marginTop: 2 }}>
                 {connected
                   ? `${healthLabel} · ${
                       capabilityLabels.length > 0
@@ -531,7 +531,7 @@ export function OrbitAgentExecutionSettings() {
                       : "未连接"}
               </span>
               {connected ? (
-                <span style={{ color: "var(--text-4)", display: "block", fontSize: 11, marginTop: 3 }}>
+                <span style={{ color: "var(--ink-3-text)", display: "block", fontSize: 11, marginTop: 3 }}>
                   {integration.healthMessage}
                   {integration.lastCheckedAt
                     ? ` · ${new Date(integration.lastCheckedAt).toLocaleString("zh-CN")}`

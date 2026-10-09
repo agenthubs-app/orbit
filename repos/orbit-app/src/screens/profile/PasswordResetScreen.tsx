@@ -162,14 +162,14 @@ export function PasswordResetScreen() {
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   form: { gap: spacing.md },
-  label: { color: colors.text, fontSize: typography.small, fontWeight: "700", lineHeight: 20 },
-  input: { minHeight: 48, borderWidth: 1, borderColor: colors.border2, borderRadius: radius.input, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.ink, backgroundColor: colors.surface2, fontSize: typography.body },
-  primary: { minHeight: 48, padding: spacing.md, borderRadius: radius.control, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: spacing.sm },
+  label: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "700", lineHeight: 20 },
+  input: { minHeight: 48, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.ink, backgroundColor: colors.surface2, fontSize: typography.body },
+  primary: { minHeight: 48, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.accentText, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: spacing.sm },
   primaryText: { color: colors.onAccent, fontSize: typography.body, fontWeight: "700", lineHeight: 20, flexShrink: 1 },
-  error: { color: colors.rose, fontSize: typography.small, lineHeight: 20 },
-  notice: { color: colors.live, fontSize: typography.small, lineHeight: 20 },
+  error: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
+  notice: { color: colors.okText, fontSize: typography.bodySm, lineHeight: 20 },
   link: { minHeight: 44, padding: spacing.sm, justifyContent: "center", alignItems: "center" },
-  linkText: { color: colors.accent, fontSize: typography.small, fontWeight: "700", lineHeight: 20 },
+  linkText: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "700", lineHeight: 20 },
   disabled: { opacity: 0.6 },
   pressed: { opacity: 0.84 }
 }));

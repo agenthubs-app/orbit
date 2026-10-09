@@ -18,7 +18,7 @@ export function ErrorState({
       <Text
         style={{
           ...textStyles.small,
-          color: colors.rose
+          color: colors.coralText
         }}
       >
         {message}

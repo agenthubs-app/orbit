@@ -106,10 +106,10 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
       return ''+
       '<div class="sk-cardx'+(gold?' gold':'')+'" style="position:relative;width:'+w+'px;border-radius:16px;padding:16px 17px;background:linear-gradient(158deg,rgba(24,22,45,0.99),rgba(14,13,27,1));border:1px solid '+(gold?'rgba(216,176,106,0.4)':'rgba(150,145,200,0.16)')+';box-shadow:0 22px 60px -28px rgba(0,0,0,0.9),0 0 50px -24px '+(gold?'rgba(216,176,106,0.5)':'rgba(123,108,232,0.4)')+';display:flex;flex-direction:column;gap:11px;">'+
         '<div style="position:absolute;inset:0;border-radius:16px;padding:1px;background:conic-gradient(from var(--skAng,0deg),transparent 0deg,'+(gold?GBEAM:VBEAM)+' 60deg,transparent 130deg,transparent 360deg);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:skFlow '+(gold?5:6.5)+'s linear infinite;pointer-events:none;"></div>'+
-        (gold?'<div style="position:absolute;top:-11px;left:14px;z-index:3;display:flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;background:linear-gradient(180deg,#f0cf94,#d8b06a);box-shadow:0 5px 16px -4px rgba(216,176,106,0.85);"><span style="font-size:9px;color:#3a2c11;">★</span><span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;font-weight:600;letter-spacing:.04em;color:#3a2c11;">'+T().badge+'</span></div>':'')+
+        (gold?'<div style="position:absolute;top:-11px;left:14px;z-index:3;display:flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;background:linear-gradient(180deg,#f0cf94,#d8b06a);box-shadow:0 5px 16px -4px rgba(216,176,106,0.85);"><span style="font-size:9px;color:#3a2c11;">★</span><span style="font-family:var(--font-num);font-size:9px;font-weight:600;letter-spacing:.04em;color:#3a2c11;">'+T().badge+'</span></div>':'')+
         '<div style="position:relative;display:flex;align-items:center;gap:11px;"><img src="'+d.av+'" alt="" onerror="'+AVAFALL+'" style="width:42px;height:42px;border-radius:50%;flex:0 0 auto;object-fit:cover;border:1px solid '+(gold?'rgba(216,176,106,0.5)':'rgba(150,145,200,0.3)')+';background:#1a1830;"/><div style="min-width:0;flex:1;"><div style="font-size:16.5px;font-weight:600;color:#F5F6FF;line-height:1.2;">'+d.name+'</div><div style="font-size:12.5px;color:rgba(186,190,214,0.7);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+d.company+T().sep+d.role+'</div></div></div>'+
         '<div style="position:relative;font-size:14.5px;font-weight:500;line-height:1.5;color:#F3F5FF;">'+d.help+'</div>'+
-        '<div style="position:relative;display:flex;align-items:center;gap:6px;"><span style="width:5px;height:5px;border-radius:50%;background:'+ac+';box-shadow:0 0 6px '+ac+';"></span><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;letter-spacing:.04em;color:'+rc+';">'+T().cardRsn+'</span></div>'+
+        '<div style="position:relative;display:flex;align-items:center;gap:6px;"><span style="width:5px;height:5px;border-radius:50%;background:'+ac+';box-shadow:0 0 6px '+ac+';"></span><span style="font-family:var(--font-num);font-size:11px;letter-spacing:.04em;color:'+rc+';">'+T().cardRsn+'</span></div>'+
         '<div class="sk-more" style="position:relative;font-size:12px;line-height:1.5;color:rgba(170,176,204,0.8);border-top:1px solid rgba(150,145,200,0.12);padding-top:9px;">'+T().couldWork+d.deal+'</div>'+
       '</div>';
     };
@@ -147,7 +147,7 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
     const resetDemoTimer=()=>{if(self._demoIv)clearInterval(self._demoIv);self._demoIv=setInterval(()=>{if(stopIdx===1&&!animating)advanceDemo(1);},3600);};
 
     // step stars (woven into the map)
-    const stepHTML=(d,i)=>'<div style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;border-radius:13px;background:rgba(18,16,34,0.4);border:1px solid rgba(150,145,200,0.1);"><span style="flex:0 0 auto;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 35% 30%,#fff,#8b7bf0 70%);box-shadow:0 0 12px -3px #8b7bf0;font-family:\'Newsreader\',serif;font-style:italic;font-size:12px;color:#241c3a;font-weight:600;">0'+(i+1)+'</span><div style="text-align:left;min-width:0;"><div style="font-size:15px;font-weight:500;color:#F5F6FF;line-height:1.25;">'+d[0]+'</div><div style="font-size:12.5px;line-height:1.5;color:rgba(176,180,206,0.68);margin-top:2px;">'+d[1]+'</div></div></div>';
+    const stepHTML=(d,i)=>'<div style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;border-radius:13px;background:rgba(18,16,34,0.4);border:1px solid rgba(150,145,200,0.1);"><span style="flex:0 0 auto;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 35% 30%,#fff,#8b7bf0 70%);box-shadow:0 0 12px -3px #8b7bf0;font-family:var(--font);font-size:12px;color:#241c3a;font-weight:600;">0'+(i+1)+'</span><div style="text-align:left;min-width:0;"><div style="font-size:15px;font-weight:500;color:#F5F6FF;line-height:1.25;">'+d[0]+'</div><div style="font-size:12.5px;line-height:1.5;color:rgba(176,180,206,0.68);margin-top:2px;">'+d[1]+'</div></div></div>';
     stepsWrap.innerHTML=''; const stepEls=T().steps.map((d,i)=>{const e=document.createElement('div');e.style.cssText='position:absolute;left:0;top:0;width:210px;opacity:0;will-change:transform,opacity;text-align:center;';e.innerHTML=stepHTML(d,i);stepsWrap.appendChild(e);return e;});
     const rebuildSteps=()=>{T().steps.forEach((d,i)=>{if(stepEls[i])stepEls[i].innerHTML=stepHTML(d,i);});};
 
@@ -277,7 +277,7 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
         if((s.bridge||hot)&&conv<0.06){nebBlobAdd(tx,ty,minDim*0.05*(hot?1.3:1),0.05*(1-dim)*(hot?1.5:1));}
         drawDot(tx,ty,(s.sz+(hot?1.6:0))*(0.9+0.4*s.depth),s.col,(0.7+0.3*s.v)*tw,4.2+s.v*2.5);
       }
-      if(cat>0.02){ctx.globalAlpha=cat;ctx.font='500 12px "JetBrains Mono",monospace';ctx.textAlign='center';const nm=T().clusters;for(let c=0;c<3;c++){ctx.fillStyle='rgba(205,201,230,0.92)';ctx.fillText(nm[c],cx+(c-1)*clGap,clusterY-minDim*0.105);}ctx.globalAlpha=1;ctx.textAlign='left';}
+      if(cat>0.02){ctx.globalAlpha=cat;ctx.font='500 12px "SF Pro Rounded",-apple-system,system-ui,sans-serif';ctx.textAlign='center';const nm=T().clusters;for(let c=0;c<3;c++){ctx.fillStyle='rgba(205,201,230,0.92)';ctx.fillText(nm[c],cx+(c-1)*clGap,clusterY-minDim*0.105);}ctx.globalAlpha=1;ctx.textAlign='left';}
     };
 
     // ===== RENDER C =====
@@ -325,7 +325,7 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
       for(let j=0;j<C.rel.length;j++){const s=C.rel[j];if(!s._cv||s._cv<0.06)continue;ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=(s.gold?'rgba(216,176,106,':'rgba(170,156,240,')+(s._cv*0.5).toFixed(3)+')';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(s.px,s.py);ctx.lineTo(s._lx,s._ly);ctx.stroke();ctx.restore();}
 
       const yB=reveal*Math.max(youLight,focus*0.55);
-      if(yB>0.02){const r=5.6*(1+0.08*Math.sin(t*0.003));ctx.save();ctx.globalCompositeOperation='lighter';drawDot(cx,cyc,r,'#cfc6ff',yB,7.5);ctx.restore();drawDot(cx,cyc,r,'#efeaff',yB,3.0);ctx.globalAlpha=Math.min(1,yB*0.95);ctx.font=(LANG==='en'?'600 13px "Newsreader",Georgia,serif':'600 13px "Noto Serif SC",serif');ctx.textAlign='center';ctx.fillStyle='#d6d0ff';ctx.fillText(T().you,cx,cyc+r+18);ctx.textAlign='left';ctx.globalAlpha=1;}
+      if(yB>0.02){const r=5.6*(1+0.08*Math.sin(t*0.003));ctx.save();ctx.globalCompositeOperation='lighter';drawDot(cx,cyc,r,'#cfc6ff',yB,7.5);ctx.restore();drawDot(cx,cyc,r,'#efeaff',yB,3.0);ctx.globalAlpha=Math.min(1,yB*0.95);ctx.font=(LANG==='en'?'600 13px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif':'600 13px "PingFang SC","Noto Sans SC","Hiragino Sans",system-ui,sans-serif');ctx.textAlign='center';ctx.fillStyle='#d6d0ff';ctx.fillText(T().you,cx,cyc+r+18);ctx.textAlign='left';ctx.globalAlpha=1;}
       C.you.px=cx;C.you.py=cyc;
     };
 
@@ -471,10 +471,9 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
 
     // ===== i18n: live language switch (中 / EN) =====
     const langStyle=document.createElement('style');
-    // Scoped to host (data-lang lives on #skRoot here, not <html>); !important beats
-    // the reference's inline font-family on [data-serif] elements so EN actually
-    // renders Newsreader as designed.
-    langStyle.textContent='#skRoot[data-lang="en"] [data-serif]{font-family:\'Newsreader\',Georgia,serif !important;}';
+    // R01 (RD-09): no serif display face any more; the language-specific
+    // sans stack comes from --font, so the EN override is empty.
+    langStyle.textContent='';
     document.head.appendChild(langStyle);self._langStyle=langStyle;
     const applyDOM=()=>{
       host.querySelectorAll('[data-i18n]').forEach(el=>{const v=T()[el.getAttribute('data-i18n')];if(v!=null)el.textContent=v;});

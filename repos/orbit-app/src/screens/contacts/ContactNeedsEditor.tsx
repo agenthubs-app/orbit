@@ -40,7 +40,7 @@ export function ContactNeedsHomeCard({
   const { colors } = useOrbitTheme();
   const saved = goal.trim().length > 0;
   return (
-    <View style={[styles.homeRoot, { borderBottomColor: colors.hairline }]}>
+    <View style={[styles.homeRoot, { borderBottomColor: colors.line }]}>
       <Pressable
         accessibilityLabel={saved ? locale.t("contacts.needEdit") : locale.t("contacts.needFill")}
         accessibilityRole="button"
@@ -48,8 +48,8 @@ export function ContactNeedsHomeCard({
         onPress={onEdit}
         style={styles.homeCopy}
       >
-        <Text style={[styles.label, { color: colors.text3 }]}>{locale.t("contacts.myNeed")}</Text>
-        <Text numberOfLines={2} style={[styles.goal, { color: saved ? colors.ink : colors.text3 }]}>
+        <Text style={[styles.label, { color: colors.ink3Text }]}>{locale.t("contacts.myNeed")}</Text>
+        <Text numberOfLines={2} style={[styles.goal, { color: saved ? colors.ink : colors.ink3Text }]}>
           {loading ? locale.t("common.loading") : unavailable ? (offline ? locale.t("sync.needsNetwork") : locale.t("contacts.needUnavailable")) : saved ? goal : locale.t("contacts.needEmpty")}
         </Text>
       </Pressable>
@@ -60,10 +60,10 @@ export function ContactNeedsHomeCard({
         onPress={unavailable ? onRetry : saved ? onOpenMatches : onEdit}
         style={styles.action}
       >
-        <Text style={[styles.actionText, { color: colors.accent }]}>
+        <Text style={[styles.actionText, { color: colors.accentText }]}>
           {unavailable ? locale.t("common.retry") : saved ? locale.t("contacts.needSort") : locale.t("contacts.needFill")}
         </Text>
-        <Ionicons color={colors.accent} name="chevron-forward" size={14} />
+        <Ionicons color={colors.accentText} name="chevron-forward" size={14} />
       </Pressable>
     </View>
   );
@@ -95,24 +95,24 @@ export function ContactNeedsEditor({
       <View style={[styles.editorRoot, { backgroundColor: colors.bg }]}>
         <View style={styles.editorHeader}>
           <Pressable accessibilityLabel={locale.t("common.cancel")} accessibilityRole="button" onPress={onCancel} style={styles.headerActionControl}>
-            <Text style={[styles.headerAction, { color: colors.accent }]}>{locale.t("common.cancel")}</Text>
+            <Text style={[styles.headerAction, { color: colors.accentText }]}>{locale.t("common.cancel")}</Text>
           </Pressable>
           <Text accessibilityRole="header" style={[styles.editorTitle, { color: colors.ink }]}>{locale.t("contacts.myNeed")}</Text>
           <View style={styles.headerSpacer} />
         </View>
-        <Text style={[styles.editorHint, { color: colors.text2 }]}>{locale.t("contacts.needEditorHint")}</Text>
+        <Text style={[styles.editorHint, { color: colors.ink2 }]}>{locale.t("contacts.needEditorHint")}</Text>
         <TextInput
           accessibilityLabel={locale.t("contacts.needInput")}
           autoFocus
           multiline
           onChangeText={onChange}
           placeholder={locale.t("contacts.needPlaceholder")}
-          placeholderTextColor={colors.text4}
-          style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.ink }]}
+          placeholderTextColor={colors.ink3Text}
+          style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.line, color: colors.ink }]}
           value={draft}
         />
-        {error ? <Text style={[styles.feedback, { color: colors.rose }]}>{error}</Text> : null}
-        {message ? <Text style={[styles.feedback, { color: colors.live }]}>{message}</Text> : null}
+        {error ? <Text style={[styles.feedback, { color: colors.coralText }]}>{error}</Text> : null}
+        {message ? <Text style={[styles.feedback, { color: colors.okText }]}>{message}</Text> : null}
         <Pressable
           accessibilityLabel={locale.t("contacts.needSave")}
           accessibilityRole="button"

@@ -92,19 +92,19 @@ export function EventCheckInContent({
       </View>
 
       <View style={styles.searchBox}>
-        <Ionicons color={colors.text3} name="search" size={18} />
+        <Ionicons color={colors.ink3Text} name="search" size={18} />
         <TextInput
           accessibilityLabel="按姓名搜索参会者"
           autoCapitalize="none"
           onChangeText={onQueryChange}
           placeholder="搜索姓名或编号"
-          placeholderTextColor={colors.text4}
+          placeholderTextColor={colors.ink3Text}
           style={styles.searchInput}
           value={query}
         />
         {query ? (
           <Pressable accessibilityLabel="清空搜索" accessibilityRole="button" onPress={() => onQueryChange("")} style={styles.clearButton}>
-            <Ionicons color={colors.text3} name="close-circle" size={20} />
+            <Ionicons color={colors.ink3Text} name="close-circle" size={20} />
           </Pressable>
         ) : null}
       </View>
@@ -142,7 +142,7 @@ export function EventCheckInContent({
                     busy ? styles.disabled : null
                   ]}
                 >
-                  <Ionicons color={participant.checkedIn ? colors.live : colors.onAccent} name={participant.checkedIn ? "checkmark-circle" : "checkmark"} size={17} />
+                  <Ionicons color={participant.checkedIn ? colors.okText : colors.onAccent} name={participant.checkedIn ? "checkmark-circle" : "checkmark"} size={17} />
                   <Text style={[styles.checkInButtonText, participant.checkedIn ? styles.checkInButtonTextDone : null]}>
                     {participant.checkedIn ? "已签到" : busy ? "记录中" : "标记已到场"}
                   </Text>
@@ -163,19 +163,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm,
     maxWidth: "100%"
   },
-  checkInButtonDone: { backgroundColor: colors.liveSoft },
+  checkInButtonDone: { backgroundColor: colors.okSoft },
   checkInButtonText: {
     ...createControlStyles(colors).primaryButtonText
   },
-  checkInButtonTextDone: { color: colors.live },
+  checkInButtonTextDone: { color: colors.okText },
   clearButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   content: { gap: spacing.md },
   disabled: { opacity: 0.55 },
-  noResults: { color: colors.text3, fontSize: typography.small, paddingVertical: spacing.xl, textAlign: "center" },
-  notice: { backgroundColor: colors.liveSoft, borderRadius: radius.control, color: colors.live, fontSize: typography.small, lineHeight: 20, padding: spacing.md },
+  noResults: { color: colors.ink3Text, fontSize: typography.bodySm, paddingVertical: spacing.xl, textAlign: "center" },
+  notice: { backgroundColor: colors.okSoft, borderRadius: radius.md, color: colors.okText, fontSize: typography.bodySm, lineHeight: 20, padding: spacing.md },
   participant: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -190,19 +190,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs,
     minWidth: 140
   },
-  participantMeta: { color: colors.text3, fontSize: typography.caption },
+  participantMeta: { color: colors.ink3Text, fontSize: typography.label },
   participantName: {
     color: colors.ink,
     ...textStyles.listTitle
   },
   pressed: { opacity: 0.68 },
   progressTrack: { backgroundColor: colors.surface3, borderRadius: radius.pill, height: 6, overflow: "hidden" },
-  progressValue: { backgroundColor: colors.live, borderRadius: radius.pill, height: 6 },
+  progressValue: { backgroundColor: colors.okText, borderRadius: radius.pill, height: 6 },
   roster: {
     backgroundColor: "transparent",
     paddingVertical: spacing.md
   },
-  searchBox: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, flexDirection: "row", minHeight: 48, paddingLeft: spacing.md },
+  searchBox: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", minHeight: 48, paddingLeft: spacing.md },
   searchInput: { color: colors.ink, flex: 1, fontSize: typography.body, minHeight: 46, paddingHorizontal: spacing.sm },
   segment: {
     ...createControlStyles(colors).chip,
@@ -220,24 +220,24 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   segments: {
     backgroundColor: colors.surface3,
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.xs,
     padding: spacing.xs,
     flexWrap: "wrap"
   },
   stateText: {
-    color: colors.text2,
+    color: colors.ink2,
     ...textStyles.body
   },
-  statusDot: { backgroundColor: colors.amber, borderRadius: radius.pill, height: 9, width: 9 },
-  statusDotDone: { backgroundColor: colors.live },
+  statusDot: { backgroundColor: colors.macApricotText, borderRadius: radius.pill, height: 9, width: 9 },
+  statusDotDone: { backgroundColor: colors.okText },
   summary: {
     gap: spacing.md,
     backgroundColor: "transparent",
     paddingVertical: spacing.md
   },
-  summaryEyebrow: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
+  summaryEyebrow: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "700" },
   summaryValue: {
     color: colors.ink,
     marginTop: spacing.xs,

@@ -48,7 +48,11 @@ test("generated Orbit reference stylesheet contains the extracted prototype CSS"
   assert.equal(existsSync(generatedPath), true);
   const css = readFileSync(generatedPath, "utf8");
 
-  assert.match(css, /:root\s*\{/);
+  // R01: the prototype's own :root token block is dropped in favour of the
+  // generated design tokens, and the rules speak the design's names.
+  assert.doesNotMatch(css, /:root\s*\{/);
+  assert.match(css, /:root tokens come from orbit-2026\/tokens\.css/);
+  assert.match(css, /var\(--ink-3-text\)/);
   assert.match(css, /orbit-home-hero/);
   assert.match(css, /orbit-top-nav/);
   assert.ok(

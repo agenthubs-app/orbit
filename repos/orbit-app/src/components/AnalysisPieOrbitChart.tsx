@@ -183,7 +183,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 5
   },
   labelMeta: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 12,
     lineHeight: 17
   },

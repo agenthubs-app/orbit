@@ -15,7 +15,7 @@ export function EmptyState({ message, title }: EmptyStateProps) {
       <Text
         style={{
           ...textStyles.small,
-          color: colors.muted
+          color: colors.ink2
         }}
       >
         {message}

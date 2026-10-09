@@ -24,7 +24,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   detail: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   title: {
     ...textStyles.section,

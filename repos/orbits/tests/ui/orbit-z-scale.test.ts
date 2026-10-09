@@ -35,30 +35,27 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-// ---- (a) radius tokens are defined in source, not just the prototype asset ----
+// ---- (a) radius tokens come from the generated design tokens (R01) ----
 
-test("orbit-reference-styles.tsx defines all 6 radius tokens", () => {
-  const styles = source("app/(app)/app/orbit-reference-styles.tsx");
-  for (const name of ["r-xs", "r-sm", "r-md", "r-lg", "r-xl", "r-pill"]) {
-    const re = new RegExp(`--${name}:\\s*[0-9]+px\\s*;`);
-    assert.ok(re.test(styles), `--${name} not defined in orbit-reference-styles.tsx`);
-  }
-});
-
-test("radius tokens match the values extracted from the prototype asset", () => {
-  const styles = source("app/(app)/app/orbit-reference-styles.tsx");
+test("the design token stylesheet defines the design radius scale", () => {
+  const tokens = source("app/(app)/app/orbit-2026/tokens.css");
   const expected: Record<string, string> = {
-    "r-xs": "7px",
-    "r-sm": "10px",
-    "r-md": "14px",
-    "r-lg": "18px",
     "r-xl": "24px",
+    "r-lg": "20px",
+    "r-md": "14px",
+    "r-sm": "10px",
+    "r-sheet": "34px",
+    "r-dialog": "28px",
+    "r-card-web": "22px",
+    "r-bubble": "18px",
     "r-pill": "999px",
   };
   for (const [name, value] of Object.entries(expected)) {
     const re = new RegExp(`--${name}:\\s*${value}\\s*;`);
-    assert.ok(re.test(styles), `--${name} expected ${value}`);
+    assert.ok(re.test(tokens), `--${name} expected ${value}`);
   }
+  const styles = source("app/(app)/app/orbit-reference-styles.tsx");
+  assert.ok(!/--r-[a-z-]+:\s*[0-9]+px/.test(styles), "radius is no longer redeclared in orbit-reference-styles.tsx");
 });
 
 // ---- (b) semantic z-index scale caps inline literals ----

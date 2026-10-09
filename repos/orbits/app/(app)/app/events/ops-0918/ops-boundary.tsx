@@ -26,7 +26,7 @@ export function OpsBoundary({
       <main data-orbit-real-page={page} style={{ margin: "0 auto", maxWidth: 760, padding: 40 }}>
         <div className="eyebrow">{eyebrow}</div>
         <h1 className="h-display">{title}</h1>
-        <p style={{ color: "var(--text-2)" }}>{description}</p>
+        <p style={{ color: "var(--ink-2)" }}>{description}</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
           <a className="btn btn-primary" href={retryHref}>重试</a>
           <a className="btn btn-ghost" href="/app/events/center">返回运营活动中心</a>

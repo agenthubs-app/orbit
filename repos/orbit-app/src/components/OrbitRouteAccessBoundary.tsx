@@ -66,7 +66,7 @@ function OrbitAuthLoading() {
       accessibilityRole="progressbar"
       style={styles.loading}
     >
-      <ActivityIndicator color={colors.accent} size="small" />
+      <ActivityIndicator color={colors.accentText} size="small" />
       <Text style={styles.loadingText}>正在确认登录状态…</Text>
     </View>
   );
@@ -75,13 +75,13 @@ function OrbitAuthLoading() {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   loading: {
     alignItems: "center",
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.bg,
     flex: 1,
     gap: spacing.sm,
     justifyContent: "center"
   },
   loadingText: {
-    color: colors.text2,
+    color: colors.ink2,
     fontSize: typography.body
   }
 }));

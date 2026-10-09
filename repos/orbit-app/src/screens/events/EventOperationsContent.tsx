@@ -114,7 +114,7 @@ export function EventOperationsContent({ busy, notice, onGenerationAction, onOpe
 
       <View style={styles.cardSection}>
         <View style={styles.sectionHeading}><View style={styles.flexCopy}><Text style={styles.sectionTitle}>两轮分桌</Text><Text style={styles.sectionDetail}>{view.publishedLabel ?? "尚无已发布结果"}</Text></View></View>
-        {view.rounds.length === 0 ? <Text style={styles.emptyText}>完成生成并确认发布后，分桌结果会显示在这里。</Text> : view.rounds.map((round) => <View key={round.key} style={styles.round}><Text style={styles.roundTitle}>{round.title}</Text>{round.tables.length === 0 ? <Text style={styles.emptyText}>本轮暂无分桌。</Text> : round.tables.map((table) => <View key={table.title} style={styles.tableRow}><Ionicons color={colors.live} name="people-circle-outline" size={20} /><View style={styles.flexCopy}><Text style={styles.rowTitle}>{table.title}</Text><Text style={styles.rowDetail}>{table.detail}</Text></View></View>)}</View>)}
+        {view.rounds.length === 0 ? <Text style={styles.emptyText}>完成生成并确认发布后，分桌结果会显示在这里。</Text> : view.rounds.map((round) => <View key={round.key} style={styles.round}><Text style={styles.roundTitle}>{round.title}</Text>{round.tables.length === 0 ? <Text style={styles.emptyText}>本轮暂无分桌。</Text> : round.tables.map((table) => <View key={table.title} style={styles.tableRow}><Ionicons color={colors.okText} name="people-circle-outline" size={20} /><View style={styles.flexCopy}><Text style={styles.rowTitle}>{table.title}</Text><Text style={styles.rowDetail}>{table.detail}</Text></View></View>)}</View>)}
       </View>
 
       <View style={styles.cardSection}>
@@ -132,19 +132,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     backgroundColor: "transparent",
     paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: colors.border2
+    borderTopColor: colors.line
   },
   content: { gap: 16 },
   disabled: { opacity: 0.45 },
-  emptyText: { color: colors.text3, fontSize: typography.small, lineHeight: 20 },
-  errorText: { color: colors.rose, fontSize: typography.caption, lineHeight: 17 },
+  emptyText: { color: colors.ink3Text, fontSize: typography.bodySm, lineHeight: 20 },
+  errorText: { color: colors.coralText, fontSize: typography.label, lineHeight: 17 },
   flexCopy: { flexShrink: 1, flexGrow: 1, gap: spacing.xs, minWidth: 0 },
-  gate: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 58, paddingVertical: spacing.sm },
+  gate: { alignItems: "center", borderTopColor: colors.line, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 58, paddingVertical: spacing.sm },
   gates: { gap: spacing.xs },
-  gateState: { backgroundColor: colors.surface3, borderRadius: radius.pill, color: colors.text3, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  gateStateActive: { backgroundColor: colors.liveSoft, color: colors.live },
-  generationRow: { borderTopColor: colors.border, borderTopWidth: 1, gap: spacing.sm, paddingTop: spacing.md },
-  iconButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, height: 44, justifyContent: "center", width: 44 },
+  gateState: { backgroundColor: colors.surface3, borderRadius: radius.pill, color: colors.ink3Text, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  gateStateActive: { backgroundColor: colors.okSoft, color: colors.okText },
+  generationRow: { borderTopColor: colors.line, borderTopWidth: 1, gap: spacing.sm, paddingTop: spacing.md },
+  iconButton: { alignItems: "center", backgroundColor: colors.accentText, borderRadius: radius.md, height: 44, justifyContent: "center", width: 44 },
   metric: {
     gap: 6,
     backgroundColor: "transparent",
@@ -152,7 +152,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: 12,
     width: "25%",
     borderRightWidth: 1,
-    borderRightColor: colors.border,
+    borderRightColor: colors.line,
     minWidth: 0
   },
   metricFirst: { paddingLeft: 0 },
@@ -160,11 +160,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   metricDouble: { width: "50%", paddingLeft: 12 },
   metricSingle: { width: "100%", borderRightWidth: 0, paddingLeft: 0 },
   metricLabel: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 11,
     lineHeight: 16
   },
-  metrics: { flexDirection: "row", flexWrap: "wrap", borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
+  metrics: { flexDirection: "row", flexWrap: "wrap", borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line },
   metricValue: {
     color: colors.ink,
     fontSize: 24,
@@ -177,11 +177,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   permissionLarge: { paddingTop: 40 },
   permissionIcon: { alignItems: "center", justifyContent: "center", width: 64, height: 64, borderRadius: 32, borderWidth: 1.5, borderColor: colors.ink },
   permissionTitle: { color: colors.ink, fontSize: 22, lineHeight: 30, fontWeight: "900", letterSpacing: -0.44, textAlign: "center", marginTop: 20, marginBottom: 8 },
-  permissionDetail: { color: colors.text3, fontSize: 14, lineHeight: 22, textAlign: "center" },
+  permissionDetail: { color: colors.ink3Text, fontSize: 14, lineHeight: 22, textAlign: "center" },
   permissionActions: { width: "100%", gap: 8, marginTop: 28 },
   permissionPrimary: { ...createControlStyles(colors).primaryButton, minHeight: 50, width: "100%" },
   permissionSecondary: { ...createControlStyles(colors).secondaryButton, minHeight: 46, width: "100%" },
-  notice: { backgroundColor: colors.surface2, borderRadius: radius.control, color: colors.text2, fontSize: typography.small, lineHeight: 20, padding: spacing.md },
+  notice: { backgroundColor: colors.surface2, borderRadius: radius.md, color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20, padding: spacing.md },
   pressed: { opacity: 0.68 },
   primaryButton: {
     ...createControlStyles(colors).primaryButton,
@@ -193,11 +193,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...createControlStyles(colors).primaryButtonText
   },
   progressTrack: { backgroundColor: colors.surface3, borderRadius: radius.pill, height: 6, overflow: "hidden" },
-  progressValue: { backgroundColor: colors.accent, borderRadius: radius.pill, height: 6 },
+  progressValue: { backgroundColor: colors.accentText, borderRadius: radius.pill, height: 6 },
   round: { gap: spacing.sm },
-  roundTitle: { color: colors.text2, fontSize: typography.caption, fontWeight: "800" },
+  roundTitle: { color: colors.ink2, fontSize: typography.label, fontWeight: "800" },
   rowDetail: {
-    color: colors.text3,
+    color: colors.ink3Text,
     ...textStyles.small
   },
   rowHeading: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md },
@@ -216,7 +216,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...createControlStyles(colors).secondaryButtonText
   },
   section: { gap: spacing.md },
-  sectionDetail: { color: colors.text3, fontSize: typography.caption, lineHeight: 18 },
+  sectionDetail: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 18 },
   sectionHeading: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md },
   sectionTitle: {
     color: colors.ink,
@@ -229,7 +229,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     maxWidth: "100%"
   },
   shortcutLabel: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "600"
@@ -239,10 +239,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     columnGap: 22,
     flexWrap: "wrap",
     borderBottomWidth: 1,
-    borderBottomColor: colors.border
+    borderBottomColor: colors.line
   },
-  status: { backgroundColor: colors.surface3, borderRadius: radius.pill, color: colors.text2, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  statusDanger: { backgroundColor: colors.roseSoft, color: colors.rose },
-  statusLive: { backgroundColor: colors.liveSoft, color: colors.live },
-  tableRow: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 58, paddingTop: spacing.sm }
+  status: { backgroundColor: colors.surface3, borderRadius: radius.pill, color: colors.ink2, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  statusDanger: { backgroundColor: colors.coralSoft, color: colors.coralText },
+  statusLive: { backgroundColor: colors.okSoft, color: colors.okText },
+  tableRow: { alignItems: "center", borderTopColor: colors.line, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 58, paddingTop: spacing.sm }
 }));

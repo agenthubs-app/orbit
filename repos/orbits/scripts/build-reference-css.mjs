@@ -22,6 +22,8 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 
+import { adoptDesignTokens } from "./design-tokens/legacy-rename.mjs";
+
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const prototypeHtmlPath = path.join(
   repoRoot,
@@ -96,7 +98,7 @@ export function readPrototypeStyleText() {
 }
 
 const raw = readPrototypeStyleText();
-const stripped = stripUnusedFontFaces(raw);
+const stripped = adoptDesignTokens(stripUnusedFontFaces(raw));
 
 fs.writeFileSync(outputPath, stripped, "utf8");
 

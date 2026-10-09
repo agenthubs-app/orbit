@@ -99,7 +99,7 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
   return (
     <AppScreen
       eyebrow="关系对话"
-      refreshControl={<RefreshControl onRefresh={refreshAll} refreshing={state.refreshing} tintColor={colors.accent} />}
+      refreshControl={<RefreshControl onRefresh={refreshAll} refreshing={state.refreshing} tintColor={colors.accentText} />}
       title="对话详情"
     >
       {offline ? outbox.enabled ? <MessagesOfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
@@ -257,7 +257,7 @@ function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey, o
     <>
       <DataCard detail={view.participant} title={view.title}>
         <View style={styles.callout}>
-          <Ionicons color={colors.live} name="shield-checkmark-outline" size={18} />
+          <Ionicons color={colors.okText} name="shield-checkmark-outline" size={18} />
           <Text style={styles.calloutText}>{view.sendBoundary}</Text>
         </View>
         {view.contactId ? (
@@ -282,7 +282,7 @@ function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey, o
           multiline
           onChangeText={changeDraft}
           placeholder="写给已验证联系人"
-          placeholderTextColor={colors.text3}
+          placeholderTextColor={colors.ink3Text}
           style={styles.textArea}
           value={draftBody}
         />
@@ -315,23 +315,23 @@ function MessageRow({ message }: { message: RelationshipCommunicationMessageView
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  bodyText: { ...textStyles.body, color: colors.text },
-  callout: { alignItems: "center", backgroundColor: colors.liveSoft, borderRadius: radius.card, flexDirection: "row", gap: spacing.sm, padding: spacing.md },
-  calloutText: { ...textStyles.small, color: colors.text, flex: 1 },
+  bodyText: { ...textStyles.body, color: colors.ink },
+  callout: { alignItems: "center", backgroundColor: colors.okSoft, borderRadius: radius.xl, flexDirection: "row", gap: spacing.sm, padding: spacing.md },
+  calloutText: { ...textStyles.small, color: colors.ink, flex: 1 },
   disabled: { opacity: 0.45 },
-  errorText: { color: colors.rose, fontSize: typography.small, lineHeight: 20 },
+  errorText: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
   linkButton: { alignSelf: "flex-start", paddingVertical: spacing.xs },
-  linkButtonText: { color: colors.accent, fontSize: typography.small, fontWeight: "700" },
+  linkButtonText: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "700" },
   messageHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   messageList: { gap: spacing.md },
-  messageMeta: { color: colors.text3, fontSize: typography.caption },
+  messageMeta: { color: colors.ink3Text, fontSize: typography.label },
   messageMine: { backgroundColor: colors.accentSoft },
-  messageRow: { backgroundColor: colors.surface2, borderRadius: radius.card, gap: spacing.xs, padding: spacing.md },
-  messageSender: { color: colors.ink, fontSize: typography.small, fontWeight: "700" },
+  messageRow: { backgroundColor: colors.surface2, borderRadius: radius.xl, gap: spacing.xs, padding: spacing.md },
+  messageSender: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "700" },
   pressed: { opacity: 0.72 },
   pageButton: { minHeight: 44, justifyContent: "center", paddingVertical: spacing.sm },
   primaryButton: { ...createControlStyles(colors).primaryButton, alignSelf: "flex-start" },
   primaryButtonText: { ...createControlStyles(colors).primaryButtonText },
-  successText: { color: colors.live, fontSize: typography.small, lineHeight: 20 },
-  textArea: { ...textStyles.body, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.card, borderWidth: 1, color: colors.text, minHeight: 120, padding: spacing.md, textAlignVertical: "top" }
+  successText: { color: colors.okText, fontSize: typography.bodySm, lineHeight: 20 },
+  textArea: { ...textStyles.body, backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.xl, borderWidth: 1, color: colors.ink, minHeight: 120, padding: spacing.md, textAlignVertical: "top" }
 }));

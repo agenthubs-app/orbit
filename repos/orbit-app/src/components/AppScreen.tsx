@@ -68,7 +68,7 @@ export function AppScreen({
           <Pressable accessibilityLabel={backAccessibilityLabel ?? (canGoBack ? "返回" : "返回" + parent.label)} accessibilityRole="button"
             onPress={onBack ?? (() => canGoBack ? router.back() : router.replace(parent.href as Href))}
             style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}>
-            <Ionicons color={colors.accent} name="chevron-back" size={20} />
+            <Ionicons color={colors.accentText} name="chevron-back" size={20} />
             <Text style={styles.backLabel}>{backLabel ?? (canGoBack ? "返回" : parent.label)}</Text>
           </Pressable>
           <Text accessibilityRole="header" style={styles.navigationTitle}>{title}</Text>
@@ -109,8 +109,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "center",
     minWidth: layout.toolbar
   },
-  backLabel: { color: colors.accent, fontSize: 14, lineHeight: 20, flexShrink: 1 },
-  navigation: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, paddingHorizontal: 16, paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: colors.border },
+  backLabel: { color: colors.accentText, fontSize: 14, lineHeight: 20, flexShrink: 1 },
+  navigation: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, paddingHorizontal: 16, paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: colors.line },
   navigationTitle: { flex: 1, color: colors.ink, fontSize: 16, lineHeight: 22, fontWeight: "800", textAlign: "center" },
   navigationActions: { minWidth: 44, maxWidth: "30%", flexShrink: 1 },
   backButtonPressed: {
@@ -131,7 +131,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   tabContent: { paddingBottom: 140 },
   eyebrow: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   header: {

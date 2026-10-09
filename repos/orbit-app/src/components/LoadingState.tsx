@@ -6,7 +6,7 @@ export function LoadingState({ accessibilityLabel = "正在加载" }: { accessib
   const { colors, styles } = useStyles();
   return (
     <View style={styles.container}>
-      <ActivityIndicator accessibilityLabel={accessibilityLabel} color={colors.accent} />
+      <ActivityIndicator accessibilityLabel={accessibilityLabel} color={colors.accentText} />
     </View>
   );
 }

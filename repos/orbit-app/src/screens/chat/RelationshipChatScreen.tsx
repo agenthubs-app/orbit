@@ -63,7 +63,7 @@ function ScopedChatList({ actorId, scopeKey }: { actorId: string; scopeKey: stri
         <RefreshControl
           onRefresh={refresh}
           refreshing={state.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title="关系对话"
@@ -105,7 +105,7 @@ function ChatListContent({ actorId, data }: { actorId: string; data: Relationshi
       <DataCard detail={view.summary} title={view.title}>
         <MetricGrid metrics={view.metrics} />
         <View style={styles.callout}>
-          <Ionicons color={colors.accent} name="chatbubbles-outline" size={18} />
+          <Ionicons color={colors.accentText} name="chatbubbles-outline" size={18} />
           <Text style={styles.calloutText}>
             这里显示真实的 Orbit 站内消息；发送前仍会重新验证聊天资格。
           </Text>
@@ -145,7 +145,7 @@ function RelationshipAgentEntry({ onPress }: { onPress: () => void }) {
           {"让 Orbit AI 先帮我判断该联系谁、怎么写、下一步放在哪里。"}
         </Text>
       </View>
-      <Ionicons color={colors.text3} name="chevron-forward" size={17} />
+      <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
     </Pressable>
   );
 }
@@ -215,7 +215,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   agentEntryIcon: {
     alignItems: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentText,
     borderRadius: radius.pill,
     height: 42,
     justifyContent: "center",
@@ -223,31 +223,31 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   agentEntryTitle: {
     ...textStyles.listTitle,
-    color: colors.text
+    color: colors.ink
   },
   agentPrompt: {
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     lineHeight: 20,
-    color: colors.text2
+    color: colors.ink2
   },
   bodyText: {
     ...textStyles.body,
-    color: colors.text
+    color: colors.ink
   },
   callout: {
     alignItems: "center",
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
     backgroundColor: colors.surface2,
-    borderRadius: radius.card
+    borderRadius: radius.xl
   },
   calloutText: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   itemTitle: {
@@ -260,10 +260,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   metaText: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   metricCell: {
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderTopWidth: 1,
     flexBasis: "30%",
     flexGrow: 1,
@@ -277,8 +277,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   metricLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "600"
   },
   metricValue: {
@@ -291,7 +291,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     opacity: 0.72
   },
   row: {
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderTopWidth: 1,
     gap: spacing.sm,
     paddingTop: spacing.md
@@ -307,20 +307,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   sourceTag: {
-    backgroundColor: colors.skySoft,
+    backgroundColor: colors.macBlue,
     borderRadius: radius.pill,
-    color: colors.sky,
-    fontSize: typography.caption,
+    color: colors.macBlueText,
+    fontSize: typography.label,
     fontWeight: "700",
     overflow: "hidden",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   },
   stageTag: {
-    backgroundColor: colors.liveSoft,
+    backgroundColor: colors.okSoft,
     borderRadius: radius.pill,
-    color: colors.live,
-    fontSize: typography.caption,
+    color: colors.okText,
+    fontSize: typography.label,
     fontWeight: "700",
     overflow: "hidden",
     paddingHorizontal: spacing.sm,
@@ -333,8 +333,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   timeText: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 17
   }
 }));

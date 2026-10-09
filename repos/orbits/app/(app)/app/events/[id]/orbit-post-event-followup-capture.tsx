@@ -373,7 +373,7 @@ export function OrbitPostEventFollowupCapture({
           <h3 className="h-section" style={{ margin: "5px 0 3px" }}>
             把一次见面转成可完成的跟进
           </h3>
-          <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>
+          <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: 0 }}>
             先确认笔记，再分别决定是否建立任务和提醒。消息只保存为草稿。
           </p>
         </div>
@@ -400,7 +400,7 @@ export function OrbitPostEventFollowupCapture({
           <h2 className="h-title" style={{ margin: "4px 0 6px" }}>
             记录这次交流
           </h2>
-          <p style={{ color: "var(--text-2)", fontSize: 14, margin: "0 0 18px" }}>
+          <p style={{ color: "var(--ink-2)", fontSize: 14, margin: "0 0 18px" }}>
             原始录音只用于本次转写，不会保存；转写文本可编辑，只有点击确认后才成为证据。
           </p>
 
@@ -492,7 +492,7 @@ export function OrbitPostEventFollowupCapture({
               style={{
                 background: "var(--accent-soft)",
                 borderRadius: "var(--r-sm)",
-                color: "var(--text-2)",
+                color: "var(--ink-2)",
                 fontSize: 13,
                 lineHeight: 1.55,
                 margin: "10px 0 0",
@@ -515,7 +515,7 @@ export function OrbitPostEventFollowupCapture({
                 <strong>选择本次跟进对应的联系人</strong>
                 <p
                   style={{
-                    color: "var(--text-3)",
+                    color: "var(--ink-3-text)",
                     fontSize: 13,
                     lineHeight: 1.55,
                     margin: "4px 0 0",
@@ -546,7 +546,7 @@ export function OrbitPostEventFollowupCapture({
                       <strong>{contact.displayName}</strong>
                       <span
                         style={{
-                          color: "var(--text-3)",
+                          color: "var(--ink-3-text)",
                           display: "block",
                           fontSize: 12,
                         }}
@@ -619,7 +619,7 @@ export function OrbitPostEventFollowupCapture({
           {error ? (
             <p
               role="alert"
-              style={{ color: "var(--danger, #b4413c)", fontSize: 13, margin: "12px 0 0" }}
+              style={{ color: "var(--coral-text, #b4413c)", fontSize: 13, margin: "12px 0 0" }}
             >
               {error}
             </p>

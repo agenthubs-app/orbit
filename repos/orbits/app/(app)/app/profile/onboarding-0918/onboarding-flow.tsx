@@ -414,11 +414,6 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
   return (
     <>
-      {/* 与顶栏同源的 Noto Serif SC / Noto Sans SC；本页不挂 OrbitTopNav，自己带上（React 会去重）。 */}
-      <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap"
-        rel="stylesheet"
-      />
       <style>{ONBOARDING_STYLES}</style>
       <header className={`ob-header${scrolled ? " ob-header-scrolled" : ""}`}>
         <div className="ob-header-inner">

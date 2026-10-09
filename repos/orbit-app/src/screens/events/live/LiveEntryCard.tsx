@@ -29,12 +29,12 @@ export function LiveEntryCard({ language, pinned, inProgress, startTime, onEnter
 const useStyles = createThemedStyles(colors => {
   const controls = createControlStyles(colors);
   return StyleSheet.create({
-    pinned: { gap: 12, padding: 16, borderRadius: radius.card, backgroundColor: colors.liveSoft },
+    pinned: { gap: 12, padding: 16, borderRadius: radius.xl, backgroundColor: colors.okSoft },
     plain: { gap: 10 },
     statusRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-    dot: { width: 8, height: 8, borderRadius: radius.pill, backgroundColor: colors.live },
-    status: { color: colors.live, fontFamily: liveFont, fontSize: 14, fontWeight: "700" },
-    body: { color: colors.text2, fontFamily: liveFont, fontSize: 13, lineHeight: 20 },
+    dot: { width: 8, height: 8, borderRadius: radius.pill, backgroundColor: colors.okText },
+    status: { color: colors.okText, fontFamily: liveFont, fontSize: 14, fontWeight: "700" },
+    body: { color: colors.ink2, fontFamily: liveFont, fontSize: 13, lineHeight: 20 },
     primary: { ...controls.primaryButton }, primaryText: { ...controls.primaryButtonText, fontFamily: liveFont },
     secondary: { ...controls.secondaryButton }, secondaryText: { ...controls.secondaryButtonText, fontFamily: liveFont }
   });

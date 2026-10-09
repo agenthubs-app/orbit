@@ -111,7 +111,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   ...createControlStyles(colors),
   body: {
     ...textStyles.body,
-    color: colors.text2
+    color: colors.ink2
   },
   content: {
     alignSelf: "center",
@@ -125,18 +125,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   detailBox: {
     backgroundColor: colors.surface2,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     gap: spacing.xs,
     padding: spacing.md
   },
   detailLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   detailText: {
     ...textStyles.caption,
-    color: colors.text2
+    color: colors.ink2
   },
   pressed: {
     opacity: 0.72

@@ -138,11 +138,11 @@ export function TasksScreen() {
         <RefreshControl
           onRefresh={() => { refreshTasks(); contactsState.refresh(); }}
           refreshing={source.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       headerActions={<Pressable accessibilityLabel={locale.t("tasks.addAtToday")} accessibilityRole="button" onPress={() => router.push("/today" as Href)} style={styles.addButton}>
-        <Ionicons color={colors.accent} name="add" size={26} />
+        <Ionicons color={colors.accentText} name="add" size={26} />
       </Pressable>}
       title={locale.t("tasks.title")}
     >
@@ -205,7 +205,7 @@ export function TasksScreen() {
                 </Text>
                 {item.localMutationState ? <Text style={styles.rowDetail}>{locale.t(item.localMutationState === "conflict" ? "tasks.outboxConflict" : item.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}
               </Pressable>
-              <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
             </View>
             {contact ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.viewContact", { name: contact.name })} onPress={() => router.push(`/contacts/${encodeURIComponent(contact.id)}` as Href)} style={styles.contactLink}><Text style={styles.contactText}>{[contact.name, contact.organization].filter(Boolean).join(" · ")}</Text></Pressable> : contactId ? <Text style={styles.rowDetail}>{locale.t("tasks.contactUnavailable")}</Text> : null}
             </View>;
@@ -279,29 +279,29 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   addButton: { alignItems: "center", justifyContent: "center", minWidth: layout.control, minHeight: layout.control },
   checkButton: { alignItems: "flex-start", justifyContent: "center", width: layout.control, minHeight: layout.control },
   contactLink: { minHeight: layout.control, justifyContent: "center", paddingLeft: layout.control },
-  contactText: { color: colors.accent, fontSize: 13, lineHeight: 20 },
+  contactText: { color: colors.accentText, fontSize: 13, lineHeight: 20 },
   checkbox: { alignItems: "center", justifyContent: "center", borderColor: colors.ink, borderWidth: 1.5, borderRadius: 6, width: 22, height: 22 },
-  checkboxCompleted: { backgroundColor: colors.accent, borderColor: colors.accent },
-  completedTitle: { color: colors.text3, textDecorationLine: "line-through" },
-  danger: { color: colors.rose },
-  errorText: { color: colors.rose, fontSize: 13 },
-  groupCount: { color: colors.text3, fontSize: 22, lineHeight: 28, fontWeight: "800", letterSpacing: -0.44 },
+  checkboxCompleted: { backgroundColor: colors.accentText, borderColor: colors.accentText },
+  completedTitle: { color: colors.ink3Text, textDecorationLine: "line-through" },
+  danger: { color: colors.coralText },
+  errorText: { color: colors.coralText, fontSize: 13 },
+  groupCount: { color: colors.ink3Text, fontSize: 22, lineHeight: 28, fontWeight: "800", letterSpacing: -0.44 },
   groupHeading: { alignItems: "baseline", flexDirection: "row", gap: 10, paddingBottom: 4 },
   groupTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
-  syncStatus: { color: colors.text3, fontSize: 12, lineHeight: 18, marginBottom: 8 },
+  syncStatus: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, marginBottom: 8 },
   groups: { gap: 22 },
   list: { backgroundColor: colors.surface },
-  muted: { color: colors.text3 },
+  muted: { color: colors.ink3Text },
   pressed: { opacity: 0.65 },
-  row: { alignItems: "center", flexDirection: "row", minHeight: 66, paddingVertical: 9, borderBottomColor: colors.border2, borderBottomWidth: 1 },
+  row: { alignItems: "center", flexDirection: "row", minHeight: 66, paddingVertical: 9, borderBottomColor: colors.line, borderBottomWidth: 1 },
   rowBody: { flex: 1, gap: 2, justifyContent: "center", minHeight: 46, minWidth: 0, paddingRight: 8 },
-  rowDetail: { color: colors.text3, fontSize: 12, lineHeight: 18 },
+  rowDetail: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
   rowTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "600" },
   tab: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 44, paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: "transparent", marginBottom: -1, flexShrink: 1 },
   tabSelected: { borderBottomColor: colors.ink },
-  tabs: { flexDirection: "row", gap: 22, borderBottomColor: colors.border, borderBottomWidth: 1 },
-  tabText: { color: colors.text3, fontSize: 14, lineHeight: 20, flexShrink: 1 },
+  tabs: { flexDirection: "row", gap: 22, borderBottomColor: colors.line, borderBottomWidth: 1 },
+  tabText: { color: colors.ink3Text, fontSize: 14, lineHeight: 20, flexShrink: 1 },
   tabTextSelected: { color: colors.ink, fontWeight: "800" },
-  tabCountSelected: { color: colors.accent, fontWeight: "800" },
-  todayCount: { color: colors.accent },
+  tabCountSelected: { color: colors.accentText, fontWeight: "800" },
+  todayCount: { color: colors.accentText },
 }));

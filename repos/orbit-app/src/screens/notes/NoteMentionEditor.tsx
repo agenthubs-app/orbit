@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { NoteMentionContract } from "../../api/contract/notes";
 import type { ContactSummary } from "../../view-models/contacts";
 import { createThemedStyles } from "../../design/theme";
-import { radius, spacing, typography } from "../../design/tokens";
+import { floatShadow, radius, spacing, typography } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { NoteContactSearchPage } from "./NoteContactPicker";
 
@@ -83,9 +83,9 @@ export function NoteMentionEditor({ body, disabled = false, mentions, onChange, 
   }
 
   return <View style={styles.editor}>
-    <TextInput accessibilityLabel={locale.t("notes.body")} editable={!disabled} multiline onChangeText={updateBody} placeholder={locale.t("notes.bodyPlaceholder")} placeholderTextColor={colors.text4} style={styles.input} textAlignVertical="top" value={body} />
+    <TextInput accessibilityLabel={locale.t("notes.body")} editable={!disabled} multiline onChangeText={updateBody} placeholder={locale.t("notes.bodyPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} textAlignVertical="top" value={body} />
     {active ? <View accessibilityLabel={locale.t("notes.mentionCandidates")} style={styles.suggestions}>
-      <View style={styles.suggestionHeader}><Ionicons color={colors.accent} name="at" size={16} /><Text style={styles.suggestionTitle}>{locale.t(searching ? "notes.mentionSearching" : results.length ? "notes.mentionChoose" : "notes.mentionNone")}</Text></View>
+      <View style={styles.suggestionHeader}><Ionicons color={colors.accentText} name="at" size={16} /><Text style={styles.suggestionTitle}>{locale.t(searching ? "notes.mentionSearching" : results.length ? "notes.mentionChoose" : "notes.mentionNone")}</Text></View>
       {results.map((contact) => <Pressable key={contact.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.mentionNamed", { name: contact.name })} onPress={() => {
         const inserted = insertMention(body, active, contact);
         onChange(inserted.body, [...mentions, inserted.mention]);
@@ -101,13 +101,13 @@ export function NoteMentionEditor({ body, disabled = false, mentions, onChange, 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   editor: { position: "relative" },
   input: { color: colors.ink, fontSize: typography.body, lineHeight: 26, minHeight: 260, paddingVertical: spacing.lg },
-  suggestions: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, borderWidth: 1, boxShadow: "0 10px 28px rgba(11,18,32,0.10)", marginBottom: spacing.md, overflow: "hidden" },
-  suggestionHeader: { alignItems: "center", backgroundColor: colors.accentSofter, flexDirection: "row", gap: 6, minHeight: 38, paddingHorizontal: spacing.md },
-  suggestionTitle: { color: colors.text2, fontSize: typography.caption, fontWeight: "700" },
-  result: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.sm, minHeight: 56, paddingHorizontal: spacing.md },
+  suggestions: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.lg, borderWidth: 1, ...floatShadow(colors), marginBottom: spacing.md, overflow: "hidden" },
+  suggestionHeader: { alignItems: "center", backgroundColor: colors.accentSoft, flexDirection: "row", gap: 6, minHeight: 38, paddingHorizontal: spacing.md },
+  suggestionTitle: { color: colors.ink2, fontSize: typography.label, fontWeight: "700" },
+  result: { alignItems: "center", borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.sm, minHeight: 56, paddingHorizontal: spacing.md },
   avatar: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.pill, height: 34, justifyContent: "center", width: 34 },
-  avatarText: { color: colors.accent, fontSize: typography.small, fontWeight: "800" },
+  avatarText: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "800" },
   copy: { flex: 1 },
-  name: { color: colors.ink, fontSize: typography.small, fontWeight: "700" },
-  meta: { color: colors.text3, fontSize: typography.caption, marginTop: 2 },
+  name: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "700" },
+  meta: { color: colors.ink3Text, fontSize: typography.label, marginTop: 2 },
 }));

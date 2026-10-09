@@ -121,21 +121,21 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
         <Text style={[styles.title, preview && styles.previewTitle]}>{locale.t("notes.contactSection")}</Text>
         <Text style={styles.caption}>{locale.t("notes.contactCaption")}{linkedState === "ready" ? ` · ${locale.t("notes.linkedCount", { count: linkedTotal })}` : ""}</Text>
       </View>
-      <Ionicons color={colors.text3} name={expanded ? "chevron-up" : "chevron-down"} size={18} />
+      <Ionicons color={colors.ink3Text} name={expanded ? "chevron-up" : "chevron-down"} size={18} />
     </Pressable>
     {preview && !expanded ? <View style={styles.previewList}>
       {view.state === "unavailable" ? <Text accessibilityRole="alert" style={styles.error}>{locale.t("notes.legacyReadFailed")}</Text> : null}
       {view.state === "ready" && notes.length === 0 ? <Text style={styles.caption}>{locale.t("notes.noContactNotes")}</Text> : null}
       {notes.slice(0, 3).map((note) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.viewLegacy")} onPress={() => setExpanded(true)} style={styles.previewRow}>
         <View style={styles.previewIcon}><Ionicons color={colors.ink} name="document-text-outline" size={16} /></View>
-        <Text style={styles.previewBody}>{note.body}</Text><Ionicons color={colors.text3} name="chevron-forward" size={15} />
+        <Text style={styles.previewBody}>{note.body}</Text><Ionicons color={colors.ink3Text} name="chevron-forward" size={15} />
       </Pressable>)}
     </View> : null}
     {expanded ? <View style={styles.content}>
       <View style={styles.searchBox}>
-        <Ionicons color={colors.text3} name="search" size={18} />
-        <TextInput accessibilityLabel={locale.t("notes.searchLinked")} autoCorrect={false} onChangeText={setQuery} placeholder={locale.t("notes.searchLinkedPlaceholder")} placeholderTextColor={colors.text3} style={styles.searchInput} value={query} />
-        {query ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.clearLinkedSearch")} onPress={() => setQuery("")}><Ionicons color={colors.text3} name="close-circle" size={18} /></Pressable> : null}
+        <Ionicons color={colors.ink3Text} name="search" size={18} />
+        <TextInput accessibilityLabel={locale.t("notes.searchLinked")} autoCorrect={false} onChangeText={setQuery} placeholder={locale.t("notes.searchLinkedPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.searchInput} value={query} />
+        {query ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.clearLinkedSearch")} onPress={() => setQuery("")}><Ionicons color={colors.ink3Text} name="close-circle" size={18} /></Pressable> : null}
       </View>
       {linkedState === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.caption}>{locale.t("notes.readingLinked")}</Text> : null}
       {linkedState === "failure" ? <Text accessibilityRole="alert" style={styles.error}>{linkedError}</Text> : null}
@@ -175,30 +175,30 @@ function createNotesStyles(colors: OrbitColors) {
     previewHeader: { minHeight: 56, paddingTop: 14, paddingBottom: 8 },
     previewTitle: { fontSize: 15, lineHeight: 22, fontWeight: "800" },
     previewList: { paddingBottom: 12 },
-    previewRow: { minHeight: 56, paddingVertical: 11, borderBottomColor: colors.border2, borderBottomWidth: 1, flexDirection: "row", alignItems: "center", gap: 12 },
+    previewRow: { minHeight: 56, paddingVertical: 11, borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", alignItems: "center", gap: 12 },
     previewIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
     previewBody: { flex: 1, minWidth: 0, fontFamily: Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif', ios: "System", default: "sans-serif" }), fontSize: 14, lineHeight: 22, color: colors.ink },
-    section: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+    section: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth },
     header: { minHeight: 68, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: spacing.md },
     heading: { flex: 1, minWidth: 0, gap: spacing.xs },
     title: { fontSize: 17, lineHeight: 24, fontWeight: "600", color: colors.ink },
-    caption: { fontSize: typography.caption, lineHeight: 18, color: colors.text3 },
+    caption: { fontSize: typography.label, lineHeight: 18, color: colors.ink3Text },
     content: { paddingBottom: spacing.xl, gap: spacing.lg },
-    searchBox: { alignItems: "center", backgroundColor: colors.surface2, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 44, paddingHorizontal: spacing.md },
-    searchInput: { color: colors.ink, flex: 1, fontSize: typography.small, minHeight: 44, paddingVertical: 0 },
-    linkedNote: { borderBottomColor: colors.border2, borderBottomWidth: StyleSheet.hairlineWidth, gap: 5, minHeight: 92, paddingVertical: spacing.md },
+    searchBox: { alignItems: "center", backgroundColor: colors.surface2, borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 44, paddingHorizontal: spacing.md },
+    searchInput: { color: colors.ink, flex: 1, fontSize: typography.bodySm, minHeight: 44, paddingVertical: 0 },
+    linkedNote: { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, gap: 5, minHeight: 92, paddingVertical: spacing.md },
     linkedHeading: { alignItems: "baseline", flexDirection: "row", gap: spacing.sm },
     linkedTitle: { color: colors.ink, flex: 1, fontSize: typography.body, fontWeight: "800" },
-    linkedBody: { color: colors.text2, fontSize: typography.small, lineHeight: 20 },
+    linkedBody: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
     loadMore: { alignItems: "center", justifyContent: "center", minHeight: 44 },
-    note: { gap: spacing.sm, paddingBottom: spacing.lg, borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-    body: { fontSize: typography.body, lineHeight: 23, color: colors.text, flexShrink: 1 },
+    note: { gap: spacing.sm, paddingBottom: spacing.lg, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth },
+    body: { fontSize: typography.body, lineHeight: 23, color: colors.ink, flexShrink: 1 },
     actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-    secondary: { minHeight: 48, borderColor: colors.border, borderRadius: radius.sm, borderWidth: 1, justifyContent: "center", paddingHorizontal: spacing.lg },
+    secondary: { minHeight: 48, borderColor: colors.line, borderRadius: radius.sm, borderWidth: 1, justifyContent: "center", paddingHorizontal: spacing.lg },
     secondaryText: { color: colors.ink, fontSize: typography.body, fontWeight: "600" },
-    primary: { alignItems: "center", flexDirection: "row", gap: 6, minHeight: 48, backgroundColor: colors.accent, borderRadius: radius.sm, justifyContent: "center", paddingHorizontal: spacing.lg },
+    primary: { alignItems: "center", flexDirection: "row", gap: 6, minHeight: 48, backgroundColor: colors.accentText, borderRadius: radius.sm, justifyContent: "center", paddingHorizontal: spacing.lg },
     primaryText: { color: colors.onAccent, fontSize: typography.body, fontWeight: "700" },
-    error: { fontSize: typography.small, lineHeight: 20, color: colors.rose },
-    subheading: { color: colors.ink, fontSize: typography.small, fontWeight: "800", marginTop: spacing.sm },
+    error: { fontSize: typography.bodySm, lineHeight: 20, color: colors.coralText },
+    subheading: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "800", marginTop: spacing.sm },
   });
 }

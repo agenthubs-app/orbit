@@ -220,7 +220,7 @@ export function DashboardScreen() {
             distributionsState.refreshing ||
             auditState.refreshing
           }
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title="关系仪表盘"
@@ -550,7 +550,7 @@ function DashboardAuditCard({
       <Text style={styles.bodyText}>{audit.summary}</Text>
       {asOf ? <Text style={styles.metaText}>上次审计：{new Date(asOf).toLocaleString(locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</Text> : null}
       <View style={styles.callout}>
-        <Ionicons color={colors.accent} name="shield-checkmark-outline" size={18} />
+        <Ionicons color={colors.accentText} name="shield-checkmark-outline" size={18} />
         <Text style={styles.calloutText}>{audit.nextAction}</Text>
       </View>
       {collections.length > 0 ? (
@@ -664,7 +664,7 @@ function PriorityCard({
         </View>
       </View>
       <View style={styles.callout}>
-        <Ionicons color={colors.accent} name="checkmark-circle-outline" size={18} />
+        <Ionicons color={colors.accentText} name="checkmark-circle-outline" size={18} />
         <Text style={styles.calloutText}>{priority.action}</Text>
       </View>
       {priority.contactId ? (
@@ -680,7 +680,7 @@ function PriorityCard({
             <Text style={styles.itemTitle}>{priority.contactName}</Text>
             <Text style={styles.metaText}>查看联系人背景</Text>
           </View>
-          <Ionicons color={colors.text3} name="chevron-forward" size={18} />
+          <Ionicons color={colors.ink3Text} name="chevron-forward" size={18} />
         </Pressable>
       ) : null}
     </DataCard>
@@ -814,20 +814,20 @@ function ActivityCard({ activities }: { activities: DashboardActivityView[] }) {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   barFill: {
-    backgroundColor: colors.sky,
+    backgroundColor: colors.macBlueText,
     borderRadius: radius.pill,
     height: "100%"
   },
   barRow: { gap: spacing.sm },
   barTrack: {
-    backgroundColor: colors.skySoft,
+    backgroundColor: colors.macBlue,
     borderRadius: radius.pill,
     height: 8,
     overflow: "hidden"
   },
   bodyText: {
     ...textStyles.body,
-    color: colors.text
+    color: colors.ink
   },
   coverageState: {
     alignItems: "flex-start",
@@ -835,26 +835,26 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   auditResult: {
     backgroundColor: colors.surface2,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     gap: spacing.xs,
     padding: spacing.md
   },
   callout: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
   },
   calloutText: {
     ...textStyles.small,
-    color: colors.text,
+    color: colors.ink,
     flex: 1
   },
   chip: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderRadius: radius.pill,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
@@ -862,7 +862,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   chipText: {
     ...textStyles.small,
-    color: colors.text2,
+    color: colors.ink2,
     fontWeight: "600"
   },
   chipWrap: {
@@ -872,7 +872,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   contactAction: {
     alignItems: "center",
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderTopWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -882,7 +882,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   disabled: { opacity: 0.58 },
   errorText: {
     ...textStyles.small,
-    color: colors.rose
+    color: colors.coralText
   },
   inlineSection: { gap: spacing.sm },
   itemTitle: {
@@ -891,7 +891,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flex: 1
   },
   listRow: {
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderTopWidth: 1,
     gap: spacing.xs,
     paddingTop: spacing.md
@@ -899,10 +899,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   listStack: { gap: spacing.md },
   metaText: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   metricCell: {
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderTopWidth: 1,
     flexBasis: "48%",
     flexGrow: 1,
@@ -917,7 +917,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   metricLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   metricValue: {
@@ -926,9 +926,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   okBadge: {
     ...textStyles.caption,
-    backgroundColor: colors.liveSoft,
+    backgroundColor: colors.okSoft,
     borderRadius: radius.pill,
-    color: colors.live,
+    color: colors.okText,
     fontWeight: "600",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
@@ -957,18 +957,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   recomputeButtonText: { ...createControlStyles(colors).primaryButtonText },
   recomputeStatus: {
     ...textStyles.small,
-    color: colors.live,
+    color: colors.okText,
     fontWeight: "600"
   },
   scoreBadge: {
-    backgroundColor: colors.amberSoft,
+    backgroundColor: colors.macApricot,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
   scoreBadgeText: {
     ...textStyles.small,
-    color: colors.amber,
+    color: colors.macApricotText,
     fontWeight: "600"
   },
   scoreCopy: {
@@ -978,7 +978,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   scoreDial: {
     alignItems: "baseline",
     backgroundColor: colors.surface2,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     flexDirection: "row",
     minWidth: 94,
     paddingHorizontal: spacing.md,
@@ -986,7 +986,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   scoreNumber: {
     ...textStyles.pageTitle,
-    color: colors.accent
+    color: colors.accentText
   },
   scoreRow: {
     alignItems: "center",
@@ -995,18 +995,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   scoreSuffix: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   sectionLabel: {
     ...textStyles.small,
-    color: colors.text2,
+    color: colors.ink2,
     fontWeight: "600"
   },
   severityBadge: {
     ...textStyles.caption,
-    backgroundColor: colors.roseSoft,
+    backgroundColor: colors.coralSoft,
     borderRadius: radius.pill,
-    color: colors.rose,
+    color: colors.coralText,
     fontWeight: "600",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs

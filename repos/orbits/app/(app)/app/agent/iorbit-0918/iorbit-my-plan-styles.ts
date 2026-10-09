@@ -9,7 +9,7 @@
  * （`tests/ui/orbit-0918-anchor-colour.test.ts` 的门禁）。同一选择器只声明一次。
  */
 const S = '[data-orbit-real-page="iorbit-0918"]';
-const SERIF = "'Noto Serif SC', 'Songti SC', serif";
+const SERIF = "var(--font)";
 
 // 新增 .btn 类的基类中和（与 IORBIT_HOME_STYLES 的 NEW_BUTTONS 同一口径）。
 const NEW_BUTTONS = [

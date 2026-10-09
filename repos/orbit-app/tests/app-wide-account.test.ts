@@ -126,7 +126,7 @@ for (const scheme of ["light", "dark"] as const) {
   test(`${scheme}: final inset access note has a 12pt visible boundary`, async t => {
     const page = await open(t, "admin&surface=access", scheme);
     const note = page.getByText("邀请成员、调整角色和撤销访问都需要再次确认。", { exact: true }).locator("..");
-    assert.equal(await note.evaluate(el => getComputedStyle(el).borderRadius), "12px", "accessNote");
+    assert.equal(await note.evaluate(el => getComputedStyle(el).borderRadius), "24px", "accessNote");
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   });
   test(`${scheme}: final inset accepted profile feedback preserves the pending edit`, async t => {
@@ -138,7 +138,7 @@ for (const scheme of ["light", "dark"] as const) {
     await notice.waitFor();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ action: "POST", payload: { path: "/api/profile/update-suggestions/suggestion%3A1/accept", body: undefined } }]);
     assert.equal(await page.getByRole("textbox", { name: "标题", exact: true }).inputValue(), "关注长期零售伙伴合作的市场负责人");
-    assert.equal(await notice.evaluate(el => getComputedStyle(el).borderRadius), "12px", "acceptedPatchNotice");
+    assert.equal(await notice.evaluate(el => getComputedStyle(el).borderRadius), "24px", "acceptedPatchNotice");
   });
 }
 
@@ -176,12 +176,12 @@ for (const theme of ["light", "dark"] as const) {
       }
       return "transparent";
     });
-    assert.equal(identityBackground, theme === "light" ? "rgb(255, 255, 255)" : "rgb(34, 38, 46)");
+    assert.equal(identityBackground, theme === "light" ? "rgb(255, 255, 255)" : "rgb(36, 35, 40)");
     assert.equal(await name.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1), true, "long identity remains readable");
     await page.getByRole("button", { name: "编辑资料", exact: true }).click();
     const input = page.getByRole("textbox", { name: "名字", exact: true }); await fits(input); await input.fill("保留未保存名字");
     const form = page.getByText("编辑个人资料", { exact: true }).locator("..").locator("..");
-    assert.equal(await form.evaluate(el => getComputedStyle(el).borderRadius), "12px");
+    assert.equal(await form.evaluate(el => getComputedStyle(el).borderRadius), "24px");
     await fits(page.getByRole("button", { name: "保存资料", exact: true }), 50);
     for (const label of ["提取名片", "提取简历", "选择名片图片", "选择简历图片", "选择简历文件"]) await fits(page.getByRole("button", { name: label, exact: true }));
     await page.getByText("资料更新建议", { exact: true }).waitFor();
@@ -339,7 +339,7 @@ for (const theme of ["light", "dark"] as const) {
         expectedRequests = [{ action: "POST", payload: { path: "/api/permissions/calendar/request", body: { intent: "connect-event-calendar" } } }];
       }
       const panel = page.getByText(message, { exact: true }); await panel.waitFor();
-      assert.equal(await panel.evaluate(el => getComputedStyle(el).borderRadius), "12px", `${kind} must use the approved feedback inset radius`);
+      assert.equal(await panel.evaluate(el => getComputedStyle(el).borderRadius), "24px", `${kind} must use the approved feedback inset radius`);
       assert.notEqual(await panel.evaluate(el => getComputedStyle(el).backgroundColor), "rgba(0, 0, 0, 0)");
       await inflate(page); await fits(panel, 0);
       assert.equal(await panel.evaluate(el => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1), true, "feedback stays complete with enlarged text");

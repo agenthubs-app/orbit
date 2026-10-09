@@ -132,7 +132,7 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
     {source.missing && source.offline ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} /> : source.missing ? <ErrorState message={locale.t("notes.missing")} /> : null}
     {note ? <>
       <View style={styles.heading}>
-        <View style={styles.privatePill}><Ionicons color={colors.text3} name="lock-closed-outline" size={13} /><Text style={styles.private}>{locale.t("notes.private")}</Text></View>
+        <View style={styles.privatePill}><Ionicons color={colors.ink3Text} name="lock-closed-outline" size={13} /><Text style={styles.private}>{locale.t("notes.private")}</Text></View>
         <Text style={styles.title}>{note.title}</Text>
         <Text style={styles.date}>{new Date(note.updatedAt).toLocaleString(dateLocale, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} · v{note.version}</Text>
       {note.localMutationState ? <Text accessibilityLiveRegion="polite" style={styles.mutationStatus}>{locale.t(`notes.outbox${note.localMutationState === "queued" ? "Queued" : note.localMutationState === "conflict" ? "Conflict" : "Failed"}` as "notes.outboxQueued" | "notes.outboxConflict" | "notes.outboxFailed")}</Text> : null}
@@ -162,7 +162,7 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
           <View style={styles.avatar}><Text style={styles.avatarText}>{(contactNames.get(contactId) ?? contactId.replace(/^contact:/, "")).slice(0, 1).toLocaleUpperCase()}</Text></View><Text numberOfLines={1} style={styles.chipText}>{contactNames.get(contactId) ?? contactId.replace(/^contact:/, "")}</Text>
         </Pressable>)}</View>
       </View> : null}
-      {note.eventIds.length ? <View style={styles.section}><Text style={styles.sectionTitle}>{locale.t("notes.relatedEvents")}</Text>{note.eventIds.map((eventId) => <Pressable key={eventId} accessibilityRole="button" accessibilityLabel={locale.t("notes.openRelatedEvent", { name: eventNames.get(eventId) ?? eventId })} onPress={() => router.push(`/events/${encodeURIComponent(eventId)}` as Href)} style={styles.linkRow}><Ionicons color={colors.accent} name="calendar-outline" size={19} /><Text style={styles.linkText}>{eventNames.get(eventId) ?? eventId.replace(/^event:/, "")}</Text><Ionicons color={colors.text4} name="chevron-forward" size={18} /></Pressable>)}</View> : null}
+      {note.eventIds.length ? <View style={styles.section}><Text style={styles.sectionTitle}>{locale.t("notes.relatedEvents")}</Text>{note.eventIds.map((eventId) => <Pressable key={eventId} accessibilityRole="button" accessibilityLabel={locale.t("notes.openRelatedEvent", { name: eventNames.get(eventId) ?? eventId })} onPress={() => router.push(`/events/${encodeURIComponent(eventId)}` as Href)} style={styles.linkRow}><Ionicons color={colors.accentText} name="calendar-outline" size={19} /><Text style={styles.linkText}>{eventNames.get(eventId) ?? eventId.replace(/^event:/, "")}</Text><Ionicons color={colors.ink3Text} name="chevron-forward" size={18} /></Pressable>)}</View> : null}
       <NoteSourceTasks key={JSON.stringify([scopeKey, actorId, noteId, taskRefresh])} actorId={actorId} noteId={noteId} scopeKey={scopeKey} />
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" accessibilityLabel={source.offline && Platform.OS === "web" ? `${locale.t("notes.edit")}，${locale.t("sync.needsNetwork")}` : locale.t("notes.edit")} accessibilityState={{ disabled: source.offline && Platform.OS === "web" }} disabled={source.offline && Platform.OS === "web"} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href)} style={[styles.editLarge, source.offline && Platform.OS === "web" && styles.disabled]}><Text style={styles.editText}>{locale.t(source.offline && Platform.OS === "web" ? "sync.needsNetwork" : "notes.edit")}</Text></Pressable>
@@ -175,32 +175,32 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   heading: { gap: spacing.sm, paddingTop: spacing.sm },
   privatePill: { alignItems: "center", alignSelf: "flex-start", backgroundColor: colors.surface3, borderRadius: radius.pill, flexDirection: "row", gap: 5, paddingHorizontal: 9, paddingVertical: 5 },
-  private: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
+  private: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "700" },
   title: { color: colors.ink, fontSize: 28, fontWeight: "900", letterSpacing: -0.5, lineHeight: 37 },
-  date: { color: colors.text3, fontSize: typography.caption, lineHeight: 18 },
-  mutationStatus: { color: colors.accent, fontSize: typography.caption, fontWeight: "800" },
-  conflictPanel: { backgroundColor: colors.surface2, borderColor: colors.rose, borderRadius: radius.lg, borderWidth: 1, gap: spacing.sm, padding: spacing.md },
-  conflictTitle: { color: colors.rose, fontSize: typography.body, fontWeight: "900" },
-  conflictLabel: { color: colors.text3, fontSize: typography.caption, fontWeight: "800" },
-  conflictBody: { color: colors.ink, fontSize: typography.small, lineHeight: 21 },
+  date: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 18 },
+  mutationStatus: { color: colors.accentText, fontSize: typography.label, fontWeight: "800" },
+  conflictPanel: { backgroundColor: colors.surface2, borderColor: colors.coralText, borderRadius: radius.lg, borderWidth: 1, gap: spacing.sm, padding: spacing.md },
+  conflictTitle: { color: colors.coralText, fontSize: typography.body, fontWeight: "900" },
+  conflictLabel: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "800" },
+  conflictBody: { color: colors.ink, fontSize: typography.bodySm, lineHeight: 21 },
   conflictActions: { gap: spacing.sm, paddingTop: spacing.xs },
   conflictPrimary: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.md, justifyContent: "center", minHeight: 46, paddingHorizontal: spacing.md },
-  conflictPrimaryText: { color: colors.bg, fontSize: typography.small, fontWeight: "800" },
-  conflictSecondary: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: spacing.md },
-  conflictSecondaryText: { color: colors.text, fontSize: typography.small, fontWeight: "700" },
-  conflictError: { color: colors.rose, fontSize: typography.small, lineHeight: 20 },
-  paper: { borderBottomColor: colors.border, borderBottomWidth: 1, minHeight: 230, paddingBottom: spacing.xl, paddingTop: spacing.md },
+  conflictPrimaryText: { color: colors.bg, fontSize: typography.bodySm, fontWeight: "800" },
+  conflictSecondary: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: spacing.md },
+  conflictSecondaryText: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "700" },
+  conflictError: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
+  paper: { borderBottomColor: colors.line, borderBottomWidth: 1, minHeight: 230, paddingBottom: spacing.xl, paddingTop: spacing.md },
   body: { color: colors.ink, fontSize: 17, lineHeight: 29 },
-  mention: { backgroundColor: colors.accentSoft, color: colors.accent, fontWeight: "800" },
+  mention: { backgroundColor: colors.accentSoft, color: colors.accentText, fontWeight: "800" },
   section: { gap: spacing.sm },
-  sectionTitle: { color: colors.ink, fontSize: typography.small, fontWeight: "800", letterSpacing: 0.3 },
+  sectionTitle: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "800", letterSpacing: 0.3 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  chip: { alignItems: "center", backgroundColor: colors.surface2, borderColor: colors.border, borderRadius: radius.pill, borderWidth: 1, flexDirection: "row", gap: 7, maxWidth: 180, minHeight: 42, paddingHorizontal: 8, paddingRight: 13 },
+  chip: { alignItems: "center", backgroundColor: colors.surface2, borderColor: colors.line, borderRadius: radius.pill, borderWidth: 1, flexDirection: "row", gap: 7, maxWidth: 180, minHeight: 42, paddingHorizontal: 8, paddingRight: 13 },
   avatar: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.pill, height: 28, justifyContent: "center", width: 28 },
-  avatarText: { color: colors.accent, fontSize: typography.small, fontWeight: "900" },
-  chipText: { color: colors.text, flexShrink: 1, fontSize: typography.small, fontWeight: "700" },
-  linkRow: { alignItems: "center", backgroundColor: colors.surface2, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 52, paddingHorizontal: spacing.md },
-  linkText: { color: colors.text, flex: 1, fontSize: typography.small, fontWeight: "700" },
+  avatarText: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "900" },
+  chipText: { color: colors.ink, flexShrink: 1, fontSize: typography.bodySm, fontWeight: "700" },
+  linkRow: { alignItems: "center", backgroundColor: colors.surface2, borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 52, paddingHorizontal: spacing.md },
+  linkText: { color: colors.ink, flex: 1, fontSize: typography.bodySm, fontWeight: "700" },
   actions: { flexDirection: "row", gap: spacing.sm, paddingTop: spacing.lg },
   disabled: { opacity: 0.4 },
   editLarge: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.lg, flex: 1, justifyContent: "center", minHeight: 58 },

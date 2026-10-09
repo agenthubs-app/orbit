@@ -555,7 +555,7 @@ test("OpsBoundary renders the shared gate page: eyebrow, title, description, 重
     <OpsBoundary description="只有当前活动负责人或被授予审核角色的成员可以查看报名画像并作出决定。" eyebrow="EVENT ADMISSION · REVIEW" page="event-admission-review-boundary" retryHref="/app/events/e%3A1/operations/admission" title="没有报名审核权限" />,
   );
   assert.match(html, /<main data-orbit-real-page="event-admission-review-boundary" style="margin:0 auto;max-width:760px;padding:40px">/u);
-  assert.match(html, /<div class="eyebrow">EVENT ADMISSION · REVIEW<\/div><h1 class="h-display">没有报名审核权限<\/h1><p style="color:var\(--text-2\)">只有当前活动负责人或被授予审核角色的成员可以查看报名画像并作出决定。<\/p>/u);
+  assert.match(html, /<div class="eyebrow">EVENT ADMISSION · REVIEW<\/div><h1 class="h-display">没有报名审核权限<\/h1><p style="color:var\(--ink-2\)">只有当前活动负责人或被授予审核角色的成员可以查看报名画像并作出决定。<\/p>/u);
   assert.match(html, /<a class="btn btn-primary" href="\/app\/events\/e%3A1\/operations\/admission">重试<\/a><a class="btn btn-ghost" href="\/app\/events\/center">返回运营活动中心<\/a>/u);
 });
 

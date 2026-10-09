@@ -265,7 +265,7 @@ export default async function AppContactDetailPage({
         </div>
       ) : null}
       {invalidAppointmentRequest ? (
-        <p role="alert" style={{ color: "var(--danger)", margin: 16 }}>约谈链接无效：需要唯一的 appointmentId 和 eventId。</p>
+        <p role="alert" style={{ color: "var(--coral-text)", margin: 16 }}>约谈链接无效：需要唯一的 appointmentId 和 eventId。</p>
       ) : null}
     </>
   );

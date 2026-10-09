@@ -528,7 +528,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
             state.refreshing || deliveryState.kind === "loading" ||
             typedInbox.busy
           }
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={locale.t(contentReady && composing ? "inbox.compose" : contentReady && createdThread ? "inbox.draftPreview" : "inbox.title")}
@@ -706,7 +706,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
         <RefreshControl
           onRefresh={state.refresh}
           refreshing={state.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={locale.t("inbox.messageTitle")}
@@ -780,7 +780,7 @@ function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllRe
                 : router.replace("/home" as Href))}
               style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
             >
-              <Ionicons color={colors.accent} name="chevron-back" size={18} />
+              <Ionicons color={colors.accentText} name="chevron-back" size={18} />
               <Text style={styles.toolbarText}>{locale.t(onMarkAllRead ? "inbox.home" : onBack || canGoBack ? "inbox.back" : "inbox.home")}</Text>
             </Pressable>
           ) : null}
@@ -1126,7 +1126,7 @@ function ConversationList({
             >
               <View style={styles.unreadGutter}>
                 {conversation.unreadCount > 0 ? (
-                  <Ionicons color={colors.accent} name="ellipse" size={8} />
+                  <Ionicons color={colors.accentText} name="ellipse" size={8} />
                 ) : null}
               </View>
               <View style={[styles.listRowBody, fontScale > 1.3 && styles.listRowBodyLarge]}>
@@ -1142,7 +1142,7 @@ function ConversationList({
           ))
         ) : (
           <View style={styles.emptyInboxSection}>
-            <Ionicons color={colors.text3} name="search-outline" size={22} />
+            <Ionicons color={colors.ink3Text} name="search-outline" size={22} />
             <Text style={styles.emptyInboxTitle}>{locale.t(query.trim() ? "inbox.noSearchResults" : "inbox.noMessages")}</Text>
             <Text style={styles.threadPreview}>{locale.t(query.trim() ? "inbox.searchHint" : "inbox.messagesHint")}</Text>
           </View>
@@ -1405,7 +1405,7 @@ function ReplyComposer({
           setBody(value);
         }}
         placeholder={locale.t("inbox.replyPlaceholder")}
-        placeholderTextColor={colors.text4}
+        placeholderTextColor={colors.ink3Text}
         style={styles.input}
         value={body}
       />
@@ -1561,7 +1561,7 @@ function NewThreadComposer({
           multiline
           onChangeText={setBody}
           placeholder={locale.t("inbox.firstMessagePlaceholder")}
-          placeholderTextColor={colors.text4}
+          placeholderTextColor={colors.ink3Text}
           style={styles.input}
           value={body}
         />
@@ -1611,7 +1611,7 @@ function LabeledInput({
         editable={editable}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.text4}
+        placeholderTextColor={colors.ink3Text}
         style={styles.singleInput}
         value={value}
       />
@@ -1648,7 +1648,7 @@ function ActionButton({
       ]}
     >
       <Ionicons
-        color={secondary ? colors.text2 : colors.onAccent}
+        color={secondary ? colors.ink2 : colors.onAccent}
         name={icon}
         size={16}
       />
@@ -1699,12 +1699,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "center"
   },
   toolbarText: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 16,
     lineHeight: 22,
     flexShrink: 1
   },
-  toolbarComposeText: { color: colors.accent, fontSize: 16, fontWeight: "600", lineHeight: 22, flexShrink: 1 },
+  toolbarComposeText: { color: colors.accentText, fontSize: 16, fontWeight: "600", lineHeight: 22, flexShrink: 1 },
   mailTitle: {
     color: colors.ink,
     flex: 1,
@@ -1717,10 +1717,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   mailList: { gap: 0 },
   readingPane: { gap: 20 },
   remindersPane: { gap: 12, paddingTop: 16 },
-  resourceStatus: { color: colors.text3, fontSize: 14, lineHeight: 21, paddingTop: 16 },
+  resourceStatus: { color: colors.ink3Text, fontSize: 14, lineHeight: 21, paddingTop: 16 },
   readingSubject: { ...textStyles.title, color: colors.ink },
   mailMessage: {
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 14,
     paddingBottom: 24
@@ -1733,7 +1733,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionButtonSecondary: {
     backgroundColor: colors.surface,
-    borderColor: colors.border2,
+    borderColor: colors.line,
     borderWidth: 1,
     minHeight: layout.control
   },
@@ -1743,10 +1743,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexShrink: 1
   },
   actionButtonTextSecondary: {
-    color: colors.text2
+    color: colors.ink2
   },
   alertRow: {
-    borderBottomColor: colors.border2,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     gap: 3,
     paddingVertical: 14
@@ -1754,14 +1754,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   alertRowTop: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
   alertRowTopLarge: { flexDirection: "column", gap: 3 },
   alertTitle: { color: colors.ink, flex: 1, minWidth: 0, fontSize: 15, fontWeight: "700", lineHeight: 21 },
-  alertDetail: { color: colors.text3, fontSize: 12, lineHeight: 18 },
-  alertTime: { color: colors.text3, fontSize: 12, lineHeight: 18, maxWidth: 116 },
+  alertDetail: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
+  alertTime: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, maxWidth: 116 },
   alertTimeLarge: { maxWidth: "100%" },
   alertDismissButton: {
     alignItems: "center",
     backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.control,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: 4,
@@ -1769,13 +1769,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: 9
   },
   alertDismissText: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "700"
   },
   bodyText: {
-    color: colors.text,
-    fontSize: typography.small,
+    color: colors.ink,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   buttonRow: {
@@ -1790,42 +1790,42 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     opacity: 0.54
   },
   errorText: {
-    color: colors.rose,
-    fontSize: typography.small,
+    color: colors.coralText,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   emptyInboxSection: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.lg
   },
   emptyInboxTitle: {
     color: colors.ink,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     fontWeight: "700"
   },
   fieldGroup: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.md
   },
   fieldLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "700"
   },
   input: {
     backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.input,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
-    color: colors.text,
+    color: colors.ink,
     fontSize: typography.body,
     minHeight: 128,
     paddingHorizontal: 14,
@@ -1837,7 +1837,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   messageBody: {
-    color: colors.text,
+    color: colors.ink,
     fontSize: 16,
     lineHeight: 26
   },
@@ -1848,7 +1848,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   messageSender: {
-    color: colors.text2,
+    color: colors.ink2,
     fontSize: 16,
     fontWeight: "600"
   },
@@ -1856,8 +1856,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   messageTime: {
-    color: colors.text3,
-    fontSize: typography.caption
+    color: colors.ink3Text,
+    fontSize: typography.label
   },
   metaRow: {
     alignItems: "center",
@@ -1869,19 +1869,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     opacity: 0.78
   },
   proactiveTag: {
-    backgroundColor: colors.skySoft,
+    backgroundColor: colors.macBlue,
     borderRadius: radius.pill,
-    color: colors.sky,
-    fontSize: typography.caption,
+    color: colors.macBlueText,
+    fontSize: typography.label,
     fontWeight: "700",
     overflow: "hidden",
     paddingHorizontal: 8,
     paddingVertical: 4
   },
   rewriteBox: {
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderColor: colors.accentSoft,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -1889,13 +1889,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   safetyText: {
     backgroundColor: colors.surface2,
     borderRadius: radius.sm,
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 18,
     padding: spacing.md
   },
   feedCoverage: {
-    color: colors.text4,
+    color: colors.ink3Text,
     fontSize: 12,
     lineHeight: 18,
     paddingTop: 28,
@@ -1907,12 +1907,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   feedList: {
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: 1
   },
   feedRow: {
     alignItems: "stretch",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     flexDirection: "row",
     minHeight: 68,
@@ -1930,7 +1930,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: 4
   },
   feedSubtitle: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 12,
     lineHeight: 18
   },
@@ -1949,13 +1949,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderBottomColor: colors.ink
   },
   feedTabCount: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 15,
     fontWeight: "800",
     lineHeight: 21
   },
   feedTabText: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 15,
     fontWeight: "400",
     lineHeight: 21
@@ -1965,7 +1965,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "800"
   },
   feedTabs: {
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     marginTop: 12
   },
@@ -1973,7 +1973,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: 22
   },
   feedTime: {
-    color: colors.text4,
+    color: colors.ink3Text,
     flexShrink: 0,
     fontSize: 12,
     lineHeight: 18,
@@ -1993,7 +1993,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "700"
   },
   feedUnreadDot: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentText,
     borderRadius: 4,
     height: 8,
     width: 8
@@ -2005,7 +2005,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 20
   },
   unifiedError: {
-    color: colors.rose,
+    color: colors.coralText,
     fontSize: 12,
     lineHeight: 18,
     paddingVertical: 8
@@ -2021,11 +2021,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm,
     minHeight: 44,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.input,
+    borderRadius: radius.md,
     marginTop: 12
   },
   searchInput: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
@@ -2047,7 +2047,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderBottomColor: colors.ink
   },
   segmentButtonText: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "400"
@@ -2057,13 +2057,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "800"
   },
   segmentCount: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "800"
   },
   segmentedControl: {
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     flexDirection: "row",
     marginTop: 8,
@@ -2071,7 +2071,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   singleInput: {
     backgroundColor: colors.surface,
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
     fontSize: typography.body,
     minWidth: 0,
@@ -2079,26 +2079,26 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   sourceTag: {
-    backgroundColor: colors.liveSoft,
+    backgroundColor: colors.okSoft,
     borderRadius: radius.pill,
-    color: colors.live,
-    fontSize: typography.caption,
+    color: colors.okText,
+    fontSize: typography.label,
     fontWeight: "700",
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 5
   },
   stagedBox: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
     gap: spacing.md,
     padding: spacing.md
   },
   stagedTitle: {
-    color: colors.accent,
-    fontSize: typography.small,
+    color: colors.accentText,
+    fontSize: typography.bodySm,
     fontWeight: "700"
   },
   tagsRow: {
@@ -2112,13 +2112,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flex: 1
   },
   threadPreview: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 14,
     lineHeight: 21
   },
   threadRow: {
     alignItems: "flex-start",
-    borderBottomColor: colors.border2,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: 12,
@@ -2132,8 +2132,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   listCopyLarge: { flex: 0, width: "100%" },
   listHeadline: { color: colors.ink, fontSize: 15, fontWeight: "400", lineHeight: 21 },
   listHeadlineUnread: { fontWeight: "700" },
-  listPreview: { color: colors.text3, fontSize: 12, lineHeight: 18 },
-  listDate: { color: colors.text3, fontSize: 12, lineHeight: 18, maxWidth: 90 },
+  listPreview: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
+  listDate: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, maxWidth: 90 },
   listDateLarge: { maxWidth: "100%" },
   threadRowTop: {
     alignItems: "center",
@@ -2142,17 +2142,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   threadSubject: {
     ...textStyles.body,
-    color: colors.text
+    color: colors.ink
   },
   threadTime: {
-    color: colors.text3,
-    fontSize: typography.caption
+    color: colors.ink3Text,
+    fontSize: typography.label
   },
   unreadTag: {
-    backgroundColor: colors.amberSoft,
+    backgroundColor: colors.macApricot,
     borderRadius: radius.pill,
-    color: colors.amber,
-    fontSize: typography.caption,
+    color: colors.macApricotText,
+    fontSize: typography.label,
     fontWeight: "700",
     overflow: "hidden",
     paddingHorizontal: 8,

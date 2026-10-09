@@ -92,7 +92,7 @@ export function EventLiveScreen() {
     <View style={styles.header}>
       <View style={styles.headerRow}>
         <Pressable accessibilityRole="link" accessibilityLabel={c.back} onPress={goBack} style={styles.back}>
-          <Ionicons name="chevron-back" size={20} color={colors.accent} /><Text style={styles.backText}>{c.back}</Text>
+          <Ionicons name="chevron-back" size={20} color={colors.accentText} /><Text style={styles.backText}>{c.back}</Text>
         </Pressable>
         {!denied ? <View style={styles.liveMark}><View style={styles.liveDot} /><Text style={styles.liveMarkText}>{c.live}</Text></View> : null}
       </View>
@@ -106,7 +106,7 @@ export function EventLiveScreen() {
       </> : null}
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"
-      refreshControl={denied ? undefined : <RefreshControl refreshing={false} onRefresh={() => { if (current()) { void controller.load(); detail.refresh(); } }} tintColor={colors.accent} />}>
+      refreshControl={denied ? undefined : <RefreshControl refreshing={false} onRefresh={() => { if (current()) { void controller.load(); detail.refresh(); } }} tintColor={colors.accentText} />}>
       {needsNetwork ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : offline ? <Text accessibilityRole="alert" style={styles.offline}>{c.offline}</Text> : null}
       {denied ? <LiveDeniedView c={c} message={state.error} onEvent={() => { if (current()) router.replace(`/events/${encodeURIComponent(eventId)}` as Href); }} /> : null}
       {!denied && state.error && !offline && !fromDevice ? <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text> : null}
@@ -176,7 +176,7 @@ function HomeTab({ c, state, w, now, timeZone, needsNetwork, onCheckIn, onOpen, 
         : w.resultsState === "ready" ? <Text style={styles.muted}>{c.noTable}</Text> : <ResultsNotice c={c} w={w} />}
       {needsNetwork ? <View accessibilityRole="button" accessibilityState={{ disabled: true }} accessibilityLabel={`${c.checkIn} · ${c.needsNetwork}`} style={[styles.disabledButton, styles.top6]}><Text style={styles.disabledButtonText}>{`${c.checkIn} · ${c.needsNetwork}`}</Text></View>
         : w.checkIn ? <View style={styles.checked} accessibilityRole="summary">
-        <Ionicons name="checkmark" size={18} color={colors.live} /><Text style={styles.checkedText}>{c.checkedIn}</Text>
+        <Ionicons name="checkmark" size={18} color={colors.okText} /><Text style={styles.checkedText}>{c.checkedIn}</Text>
         <Text style={styles.muted}>{c.checkedInAt(formatClock(w.checkIn.checkedInAt, timeZone))}</Text>
       </View> : w.checkInAvailable
         ? <Pressable accessibilityRole="button" accessibilityLabel={c.checkIn} disabled={state.busy || state.loading} onPress={onCheckIn} style={[styles.primary, styles.top6, (state.busy || state.loading) && styles.disabled]}><Text style={styles.primaryText}>{state.busy ? c.checkingIn : c.checkIn}</Text></Pressable>
@@ -189,7 +189,7 @@ function HomeTab({ c, state, w, now, timeZone, needsNetwork, onCheckIn, onOpen, 
     </View>
     <Pressable accessibilityRole="button" accessibilityLabel={c.graphRow} onPress={() => go("agenda")} style={styles.navRow}>
       <View style={styles.gap2}><Text style={styles.personName}>{c.graphRow}</Text><Text style={styles.personRole}>{c.graphSummary(ring.knownCount, ring.recommendedCount)}</Text></View>
-      <Ionicons name="chevron-forward" size={18} color={colors.text4} />
+      <Ionicons name="chevron-forward" size={18} color={colors.ink3Text} />
     </Pressable>
   </View>;
 }
@@ -219,8 +219,8 @@ function AllTab({ c, w, onOpen }: { c: LiveCopy; w: AttendeeWorkspace; onOpen: (
   const people = otherAttendees(w, query);
   const total = otherAttendees(w, "").length;
   return <View style={styles.gap12}>
-    <View style={styles.search}><Ionicons name="search" size={18} color={colors.text3} />
-      <TextInput accessibilityLabel={c.searchLabel} placeholder={c.search} placeholderTextColor={colors.text3} value={query} onChangeText={setQuery} style={styles.searchInput} />
+    <View style={styles.search}><Ionicons name="search" size={18} color={colors.ink3Text} />
+      <TextInput accessibilityLabel={c.searchLabel} placeholder={c.search} placeholderTextColor={colors.ink3Text} value={query} onChangeText={setQuery} style={styles.searchInput} />
     </View>
     <View style={styles.countRow}><Text style={styles.groupHeading}>{c.allAttendees}</Text><Text style={styles.count}>{people.length}</Text></View>
     <View style={styles.topRule}>
@@ -294,7 +294,7 @@ function AgendaTab({ c, w, now, timeZone, published, onOpen }: { c: LiveCopy; w:
       <View style={styles.listHeadPlain}><Text style={styles.sectionTitle}>{c.graphTitle}</Text><Text style={styles.caption}>{c.graphHint}</Text></View>
       {ring.nodes.length ? <View style={styles.graph} accessibilityLabel={c.graphTitle} onLayout={event => { const next = Math.round(event.nativeEvent.layout.width); if (next > 0 && next !== width) setWidth(next); }}>
         <Svg width={ring.center.x * 2} height={ring.center.y * 2} style={StyleSheet.absoluteFill}>
-          {ring.nodes.map(node => <Line key={node.participantId} x1={ring.center.x} y1={ring.center.y} x2={node.x} y2={node.y} stroke={node.kind === "known" ? colors.ink : colors.border} strokeWidth={node.kind === "known" ? 2 : 1.5} />)}
+          {ring.nodes.map(node => <Line key={node.participantId} x1={ring.center.x} y1={ring.center.y} x2={node.x} y2={node.y} stroke={node.kind === "known" ? colors.ink : colors.line} strokeWidth={node.kind === "known" ? 2 : 1.5} />)}
         </Svg>
         <View style={[styles.graphMe, { left: ring.center.x - 24, top: ring.center.y - 24 }]}><Text style={styles.graphMeText}>{c.me}</Text></View>
         {ring.nodes.map(node => <Pressable key={node.participantId} accessibilityRole="button" accessibilityLabel={node.name} onPress={() => onOpen(node.participantId)}
@@ -317,80 +317,80 @@ export const useStyles = createThemedStyles(colors => {
     header: { paddingHorizontal: layout.pageInset, gap: 6 },
     headerRow: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     back: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 2 },
-    backText: { color: colors.accent, fontFamily: liveFont, fontSize: 16 },
+    backText: { color: colors.accentText, fontFamily: liveFont, fontSize: 16 },
     liveMark: { flexDirection: "row", alignItems: "center", gap: 6 },
-    liveDot: { width: 7, height: 7, borderRadius: radius.pill, backgroundColor: colors.live },
-    liveMarkText: { ...rowRoleStyles.groupHeading, color: colors.live, fontFamily: liveFont },
+    liveDot: { width: 7, height: 7, borderRadius: radius.pill, backgroundColor: colors.okText },
+    liveMarkText: { ...rowRoleStyles.groupHeading, color: colors.okText, fontFamily: liveFont },
     title: { color: colors.ink, fontFamily: liveFont, fontSize: 22, lineHeight: 30, fontWeight: "800" },
-    tabs: { flexDirection: "row", gap: 6, borderBottomWidth: 1, borderBottomColor: colors.border, marginTop: 6 },
+    tabs: { flexDirection: "row", gap: 6, borderBottomWidth: 1, borderBottomColor: colors.line, marginTop: 6 },
     tab: { minHeight: 44, minWidth: 44, alignItems: "center", justifyContent: "flex-end", marginBottom: -1 },
     tabLabel: { paddingVertical: 10, paddingHorizontal: 6, borderBottomWidth: 2, borderBottomColor: "transparent" },
     tabSelected: { borderBottomColor: colors.ink },
-    tabText: { color: colors.text3, fontFamily: liveFont, fontSize: 14, lineHeight: 20 },
+    tabText: { color: colors.ink3Text, fontFamily: liveFont, fontSize: 14, lineHeight: 20 },
     tabTextSelected: { color: colors.ink, fontWeight: "800" },
     content: { paddingHorizontal: layout.pageInset, paddingTop: 20, paddingBottom: layout.contentBottom, gap: spacing.md },
     section20: { gap: 20 }, section24: { gap: 24 }, gap2: { gap: 2, flex: 1 }, gap4: { gap: 4 }, gap6: { gap: 6 }, gap12: { gap: 12 },
     top6: { marginTop: 6 }, bottom6: { marginBottom: 6 }, padV: { paddingVertical: 14 }, flex1: { flex: 1 }, stretch: { alignSelf: "stretch" },
-    groupHeading: { ...rowRoleStyles.groupHeading, color: colors.text3, fontFamily: liveFont },
+    groupHeading: { ...rowRoleStyles.groupHeading, color: colors.ink3Text, fontFamily: liveFont },
     sectionTitle: { color: colors.ink, fontFamily: liveFont, fontSize: 15, lineHeight: 22, fontWeight: "800" },
-    body: { color: colors.text2, fontFamily: liveFont, fontSize: 14, lineHeight: 21 },
-    muted: { color: colors.text3, fontFamily: liveFont, fontSize: 13, lineHeight: 20 },
-    caption: { color: colors.text3, fontFamily: liveFont, fontSize: 12, lineHeight: 18 },
-    link: { color: colors.accent, fontFamily: liveFont, fontSize: 14, fontWeight: "600" },
+    body: { color: colors.ink2, fontFamily: liveFont, fontSize: 14, lineHeight: 21 },
+    muted: { color: colors.ink3Text, fontFamily: liveFont, fontSize: 13, lineHeight: 20 },
+    caption: { color: colors.ink3Text, fontFamily: liveFont, fontSize: 12, lineHeight: 18 },
+    link: { color: colors.accentText, fontFamily: liveFont, fontSize: 14, fontWeight: "600" },
     linkButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 4 },
-    error: { color: colors.rose, backgroundColor: colors.roseSoft, borderRadius: radius.control, padding: 12, fontFamily: liveFont, fontSize: 14, lineHeight: 21 },
-    offline: { color: colors.amber, backgroundColor: colors.amberSoft, borderRadius: radius.control, paddingVertical: 12, paddingHorizontal: 14, fontFamily: liveFont, fontSize: 14, lineHeight: 21 },
+    error: { color: colors.coralText, backgroundColor: colors.coralSoft, borderRadius: radius.md, padding: 12, fontFamily: liveFont, fontSize: 14, lineHeight: 21 },
+    offline: { color: colors.macApricotText, backgroundColor: colors.macApricot, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 14, fontFamily: liveFont, fontSize: 14, lineHeight: 21 },
     bigRow: { flexDirection: "row", alignItems: "baseline", gap: 12, flexWrap: "wrap" },
     big: { color: colors.ink, fontFamily: liveFont, fontSize: 64, lineHeight: 70, fontWeight: "900", letterSpacing: -2 },
-    bigDetail: { color: colors.text3, fontFamily: liveFont, fontSize: 15 },
+    bigDetail: { color: colors.ink3Text, fontFamily: liveFont, fontSize: 15 },
     checked: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" },
-    checkedText: { color: colors.live, fontFamily: liveFont, fontSize: 15, fontWeight: "600" },
+    checkedText: { color: colors.okText, fontFamily: liveFont, fontSize: 15, fontWeight: "600" },
     primary: { ...controls.primaryButton }, primaryText: { ...controls.primaryButtonText, fontFamily: liveFont },
     secondary: { ...controls.secondaryButton }, secondaryText: { ...controls.secondaryButtonText, fontFamily: liveFont },
-    pending: { ...controls.secondaryButton, borderWidth: 0, backgroundColor: colors.surface2 }, pendingText: { ...controls.secondaryButtonText, color: colors.text3, fontFamily: liveFont },
+    pending: { ...controls.secondaryButton, borderWidth: 0, backgroundColor: colors.surface2 }, pendingText: { ...controls.secondaryButtonText, color: colors.ink3Text, fontFamily: liveFont },
     disabled: { opacity: 0.5 },
-    disabledButton: { ...controls.primaryButton, backgroundColor: colors.bgSunken }, disabledButtonText: { ...controls.primaryButtonText, color: colors.text3, fontFamily: liveFont },
-    listHead: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.hairline },
+    disabledButton: { ...controls.primaryButton, backgroundColor: colors.surface2 }, disabledButtonText: { ...controls.primaryButtonText, color: colors.ink3Text, fontFamily: liveFont },
+    listHead: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.line },
     listHeadPlain: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 22 },
-    personRow: { flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: colors.hairline },
+    personRow: { flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: colors.line },
     noDivider: { borderBottomWidth: 0 },
     personCopy: { flex: 1, gap: 2 },
     personName: { color: colors.ink, fontFamily: liveFont, fontSize: 15, lineHeight: 20, fontWeight: "700" },
-    personRole: { color: colors.text3, fontFamily: liveFont, fontSize: 13, lineHeight: 18 },
-    avatar: { borderRadius: radius.pill, backgroundColor: colors.bgSunken, alignItems: "center", justifyContent: "center" },
-    avatarText: { color: colors.text2, fontFamily: liveFont, fontWeight: "800" },
+    personRole: { color: colors.ink3Text, fontFamily: liveFont, fontSize: 13, lineHeight: 18 },
+    avatar: { borderRadius: radius.pill, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
+    avatarText: { color: colors.ink2, fontFamily: liveFont, fontWeight: "800" },
     matchSmall: { color: colors.ink, fontFamily: liveFont, fontSize: 13, fontWeight: "800", fontVariant: ["tabular-nums"] },
     matchBig: { color: colors.ink, fontFamily: liveFont, fontSize: 20, fontWeight: "900", letterSpacing: -0.4, fontVariant: ["tabular-nums"] },
-    navRow: { minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: colors.hairline },
-    recCard: { gap: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.hairline },
-    search: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44, backgroundColor: colors.surface2, borderRadius: radius.control, paddingHorizontal: 14 },
+    navRow: { minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: colors.line },
+    recCard: { gap: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.line },
+    search: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44, backgroundColor: colors.surface2, borderRadius: radius.md, paddingHorizontal: 14 },
     searchInput: { flex: 1, color: colors.ink, fontFamily: liveFont, fontSize: 15, minHeight: 44, padding: 0 },
     countRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-    count: { color: colors.accent, fontFamily: liveFont, fontSize: 12, fontWeight: "700", fontVariant: ["tabular-nums"] },
-    topRule: { borderTopWidth: 1, borderTopColor: colors.hairline },
-    knownTag: { color: colors.live, fontFamily: liveFont, fontSize: 12, fontWeight: "600" },
-    infoBlock: { gap: 4, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.hairline },
+    count: { color: colors.accentText, fontFamily: liveFont, fontSize: 12, fontWeight: "700", fontVariant: ["tabular-nums"] },
+    topRule: { borderTopWidth: 1, borderTopColor: colors.line },
+    knownTag: { color: colors.okText, fontFamily: liveFont, fontSize: 12, fontWeight: "600" },
+    infoBlock: { gap: 4, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.line },
     notice: { gap: 4, paddingVertical: 12 },
     noticeTitle: { color: colors.ink, fontFamily: liveFont, fontSize: 15, lineHeight: 22, fontWeight: "800" },
     denied: { alignItems: "center", gap: 10, paddingTop: 24, paddingBottom: 22 },
-    emptyState: { alignItems: "center", gap: 10, paddingVertical: 28, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: colors.hairline },
+    emptyState: { alignItems: "center", gap: 10, paddingVertical: 28, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: colors.line },
     iconRing: { width: 56, height: 56, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.ink, alignItems: "center", justifyContent: "center" },
     stateTitle: { color: colors.ink, fontFamily: liveFont, fontSize: 20, lineHeight: 28, fontWeight: "900", letterSpacing: -0.4, textAlign: "center" },
-    stateBody: { color: colors.text3, fontFamily: liveFont, fontSize: 14, lineHeight: 21, textAlign: "center" },
-    agendaRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48, borderBottomWidth: 1, borderBottomColor: colors.hairline },
-    agendaNow: { backgroundColor: colors.liveSoft, paddingHorizontal: 8, borderRadius: radius.sm },
-    agendaTime: { color: colors.text2, fontFamily: liveFont, fontSize: 14, fontWeight: "700", fontVariant: ["tabular-nums"], minWidth: 48 },
-    graph: { height: 240, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.hairline },
+    stateBody: { color: colors.ink3Text, fontFamily: liveFont, fontSize: 14, lineHeight: 21, textAlign: "center" },
+    agendaRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48, borderBottomWidth: 1, borderBottomColor: colors.line },
+    agendaNow: { backgroundColor: colors.okSoft, paddingHorizontal: 8, borderRadius: radius.sm },
+    agendaTime: { color: colors.ink2, fontFamily: liveFont, fontSize: 14, fontWeight: "700", fontVariant: ["tabular-nums"], minWidth: 48 },
+    graph: { height: 240, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line },
     graphMe: { position: "absolute", width: 48, height: 48, borderRadius: radius.pill, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
     graphMeText: { color: colors.onAccent, fontFamily: liveFont, fontSize: 14, fontWeight: "800" },
     graphNode: { position: "absolute", width: 36, height: 36, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
     graphKnown: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.ink },
-    graphRecommended: { backgroundColor: colors.bgSunken },
-    graphNodeText: { color: colors.text2, fontFamily: liveFont, fontSize: 14, fontWeight: "800" },
+    graphRecommended: { backgroundColor: colors.surface2 },
+    graphNodeText: { color: colors.ink2, fontFamily: liveFont, fontSize: 14, fontWeight: "800" },
     legend: { flexDirection: "row", gap: 18 },
     legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
     legendKnown: { width: 12, height: 12, borderRadius: radius.pill, borderWidth: 2, borderColor: colors.ink },
-    legendRecommended: { width: 12, height: 12, borderRadius: radius.pill, backgroundColor: colors.bgSunken },
-    legendText: { color: colors.text2, fontFamily: liveFont, fontSize: 13 }
+    legendRecommended: { width: 12, height: 12, borderRadius: radius.pill, backgroundColor: colors.surface2 },
+    legendText: { color: colors.ink2, fontFamily: liveFont, fontSize: 13 }
   });
 });

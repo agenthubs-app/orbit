@@ -176,7 +176,7 @@ export function ManualContactAddScreen() {
         <Text style={styles.disclosureTitle}>{locale.t("contactAdd.moreInfo")}</Text>
         <Text style={styles.disclosureDetail}>{filled && !expanded ? locale.t("contactAdd.moreInfoFilled", { count: filled }) : locale.t("contactAdd.moreInfoDetail")}</Text>
       </View>
-      <Ionicons color={colors.text3} name={expanded ? "chevron-up" : "chevron-down"} size={22} />
+      <Ionicons color={colors.ink3Text} name={expanded ? "chevron-up" : "chevron-down"} size={22} />
     </Pressable>
     {expanded ? <View>
       {errorKey === "contactAdd.noteRequired" ? error : null}
@@ -211,7 +211,7 @@ function Field({ emphasis, label, multiline, onChangeText, placeholder, required
       multiline={multiline}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={colors.text4}
+      placeholderTextColor={colors.ink3Text}
       style={[styles.input, emphasis && styles.inputEmphasis, multiline && styles.inputMultiline]}
       textAlignVertical={multiline ? "top" : "center"}
       value={value}
@@ -222,35 +222,35 @@ function Field({ emphasis, label, multiline, onChangeText, placeholder, required
 const useStyles = createThemedStyles(colors => {
   const controls = createControlStyles(colors);
   return StyleSheet.create({
-    hint: { color: colors.text3, fontSize: 14, marginBottom: spacing.sm, marginTop: spacing.md, textAlign: "center" },
-    field: { borderBottomColor: colors.hairline, borderBottomWidth: StyleSheet.hairlineWidth, gap: spacing.xs, paddingTop: spacing.xl },
+    hint: { color: colors.ink3Text, fontSize: 14, marginBottom: spacing.sm, marginTop: spacing.md, textAlign: "center" },
+    field: { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, gap: spacing.xs, paddingTop: spacing.xl },
     label: { color: colors.ink, fontSize: 16, fontWeight: "700" },
     labelEmphasis: { fontSize: 20, fontWeight: "800" },
-    required: { color: colors.text3, fontSize: 14, fontWeight: "600" },
+    required: { color: colors.ink3Text, fontSize: 14, fontWeight: "600" },
     input: { color: colors.ink, fontSize: 17, minHeight: layout.control, paddingVertical: spacing.sm },
     // iOS clips a large single-line input with vertical padding; use a fixed height instead.
     inputEmphasis: { fontSize: 22, height: 56, minHeight: 56, paddingVertical: 0 },
     inputMultiline: { minHeight: 88 },
-    disclosure: { alignItems: "center", borderBottomColor: colors.hairline, borderBottomWidth: StyleSheet.hairlineWidth, borderTopColor: colors.hairline, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.md, marginTop: spacing.xl, minHeight: 72, paddingVertical: spacing.md },
+    disclosure: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.md, marginTop: spacing.xl, minHeight: 72, paddingVertical: spacing.md },
     disclosureText: { flex: 1, gap: spacing.xxs },
     disclosureTitle: { color: colors.ink, fontSize: 17, fontWeight: "800" },
-    disclosureDetail: { color: colors.text3, fontSize: 14 },
-    error: { color: colors.rose, fontSize: 15, marginTop: spacing.lg },
+    disclosureDetail: { color: colors.ink3Text, fontSize: 14 },
+    error: { color: colors.coralText, fontSize: 15, marginTop: spacing.lg },
     primaryButton: { ...controls.primaryButton, marginTop: spacing.xl },
     primaryTop: { marginTop: spacing.xxl },
     primaryButtonText: controls.primaryButtonText,
     secondaryButton: controls.secondaryButton,
     secondaryButtonText: controls.secondaryButtonText,
     stackGap: { marginTop: spacing.md },
-    footer: { color: colors.text3, fontSize: 14, marginTop: spacing.md, textAlign: "center" },
-    reviewList: { borderTopColor: colors.hairline, borderTopWidth: StyleSheet.hairlineWidth, marginTop: spacing.md },
-    reviewRow: { borderBottomColor: colors.hairline, borderBottomWidth: StyleSheet.hairlineWidth, gap: spacing.xxs, paddingVertical: spacing.md },
-    fieldLabel: { ...rowRoleStyles.fieldLabel, color: colors.text3 },
+    footer: { color: colors.ink3Text, fontSize: 14, marginTop: spacing.md, textAlign: "center" },
+    reviewList: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, marginTop: spacing.md },
+    reviewRow: { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, gap: spacing.xxs, paddingVertical: spacing.md },
+    fieldLabel: { ...rowRoleStyles.fieldLabel, color: colors.ink3Text },
     reviewValue: { ...rowRoleStyles.fieldValue, color: colors.ink },
-    reviewEmpty: { color: colors.text4 },
+    reviewEmpty: { color: colors.ink3Text },
     savedBlock: { alignItems: "center", gap: spacing.sm, marginTop: spacing.xxl },
     savedTitle: { color: colors.ink, fontSize: 24, fontWeight: "900", textAlign: "center" },
-    savedName: { color: colors.text2, fontSize: 16, textAlign: "center" },
+    savedName: { color: colors.ink2, fontSize: 16, textAlign: "center" },
     disabled: { opacity: 0.5 },
     pressed: { opacity: 0.72 }
   });

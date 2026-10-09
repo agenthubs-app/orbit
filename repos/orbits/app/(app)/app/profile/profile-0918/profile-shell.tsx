@@ -162,7 +162,7 @@ export function ProfileShell({
 // 每条规则 = 设计稿一个 style="" 原样搬入；顺序与值不得改动。前缀 [data-orbit-real-page="profile-0918"]。
 export const PROFILE_STYLES = `
 @keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-[data-orbit-real-page="profile-0918"] { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif; -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip; }
+[data-orbit-real-page="profile-0918"] { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: var(--font); -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip; }
 [data-orbit-real-page="profile-0918"] a { color: #3B3F7A; text-decoration: none; }
 [data-orbit-real-page="profile-0918"] a:hover { color: #0E1225; }
 [data-orbit-real-page="profile-0918"] input, [data-orbit-real-page="profile-0918"] textarea, [data-orbit-real-page="profile-0918"] button, [data-orbit-real-page="profile-0918"] select { font-family: inherit; }
@@ -176,7 +176,7 @@ export const PROFILE_STYLES = `
 [data-orbit-real-page="profile-0918"] .pc-crumb-link:hover { color: #6B6F99; }
 [data-orbit-real-page="profile-0918"] .pc-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 20px; }
 [data-orbit-real-page="profile-0918"] .pc-head-copy { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-[data-orbit-real-page="profile-0918"] .pc-h1 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: clamp(30px, 3.6vw, 42px); letter-spacing: -0.03em; }
+[data-orbit-real-page="profile-0918"] .pc-h1 { margin: 0; font-family: var(--font); font-weight: 900; font-size: clamp(30px, 3.6vw, 42px); letter-spacing: -0.03em; }
 [data-orbit-real-page="profile-0918"] .pc-sub { margin: 0; font-size: 15px; color: #3B3F7A; }
 [data-orbit-real-page="profile-0918"] .pc-save-bar { display: flex; gap: 12px; }
 [data-orbit-real-page="profile-0918"] .btn.pc-btn-cancel { padding: 13px 22px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #3B3F7A; font-size: 14px; cursor: pointer;
@@ -220,9 +220,9 @@ export const PROFILE_STYLES = `
 [data-orbit-real-page="profile-0918"] .pc-overview { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 20px; align-items: start; animation: orbit-fade .3s ease; }
 [data-orbit-real-page="profile-0918"] .pc-col { display: flex; flex-direction: column; gap: 20px; }
 [data-orbit-real-page="profile-0918"] .pc-hero { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; }
-[data-orbit-real-page="profile-0918"] .pc-avatar { width: 92px; height: 92px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 34px; }
+[data-orbit-real-page="profile-0918"] .pc-avatar { width: 92px; height: 92px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: var(--font); font-weight: 900; font-size: 34px; }
 [data-orbit-real-page="profile-0918"] .pc-hero-copy { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
-[data-orbit-real-page="profile-0918"] .pc-name { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; letter-spacing: -0.02em; }
+[data-orbit-real-page="profile-0918"] .pc-name { font-family: var(--font); font-weight: 900; font-size: 26px; letter-spacing: -0.02em; }
 [data-orbit-real-page="profile-0918"] .pc-role { font-size: 14px; color: #3B3F7A; }
 [data-orbit-real-page="profile-0918"] .pc-hero-side { display: flex; flex-direction: column; gap: 14px; min-width: 240px; }
 [data-orbit-real-page="profile-0918"] .pc-progress { display: flex; flex-direction: column; gap: 8px; }
@@ -233,7 +233,7 @@ export const PROFILE_STYLES = `
 [data-orbit-real-page="profile-0918"] .pc-hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 [data-orbit-real-page="profile-0918"] .pc-stack { display: flex; flex-direction: column; gap: 18px; }
 [data-orbit-real-page="profile-0918"] .pc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-[data-orbit-real-page="profile-0918"] .pc-h2 { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 20px; letter-spacing: -0.02em; }
+[data-orbit-real-page="profile-0918"] .pc-h2 { font-family: var(--font); font-weight: 900; font-size: 20px; letter-spacing: -0.02em; }
 [data-orbit-real-page="profile-0918"] .btn.pc-btn-small { padding: 9px 16px; border: 1px solid #DDDEFA; border-radius: 9px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; cursor: pointer;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; font-weight: 400; transition: none; }
@@ -274,7 +274,7 @@ export const PROFILE_STYLES = `
 [data-orbit-real-page="profile-0918"] .pc-preview-card { display: flex; flex-direction: column; gap: 16px; }
 /* ── 编辑商务画像屏（设计稿 154–207 行）── */
 [data-orbit-real-page="profile-0918"] .pc-editor { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 20px; align-items: start; animation: orbit-fade .3s ease; }
-[data-orbit-real-page="profile-0918"] .pc-h2-lg { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 21px; letter-spacing: -0.02em; }
+[data-orbit-real-page="profile-0918"] .pc-h2-lg { font-family: var(--font); font-weight: 900; font-size: 21px; letter-spacing: -0.02em; }
 [data-orbit-real-page="profile-0918"] .pc-group { padding: 20px; border-radius: 14px; background: #F7F7FD; display: flex; flex-direction: column; gap: 14px; }
 [data-orbit-real-page="profile-0918"] .pc-group-head { display: flex; gap: 12px; align-items: flex-start; }
 [data-orbit-real-page="profile-0918"] .pc-group-icon { width: 32px; height: 32px; flex: none; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
@@ -310,7 +310,7 @@ export const PROFILE_STYLES = `
 [data-orbit-real-page="profile-0918"] .pc-side-desc { font-size: 13px; color: #6B6F99; }
 [data-orbit-real-page="profile-0918"] .pc-preview-box { padding: 20px; border-radius: 14px; background: #F7F7FD; display: flex; flex-direction: column; gap: 16px; }
 [data-orbit-real-page="profile-0918"] .pc-preview-head { display: flex; gap: 14px; align-items: center; }
-[data-orbit-real-page="profile-0918"] .pc-preview-avatar { width: 52px; height: 52px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 20px; }
+[data-orbit-real-page="profile-0918"] .pc-preview-avatar { width: 52px; height: 52px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: var(--font); font-weight: 900; font-size: 20px; }
 [data-orbit-real-page="profile-0918"] .pc-preview-copy { display: flex; flex-direction: column; gap: 4px; }
 [data-orbit-real-page="profile-0918"] .pc-preview-name { font-size: 16px; }
 [data-orbit-real-page="profile-0918"] .pc-preview-role { font-size: 12px; color: #6B6F99; }
@@ -383,7 +383,7 @@ export const PROFILE_STYLES = `
 [data-orbit-real-page="profile-0918"] .pc-int-state { padding: 6px 14px; border-radius: 999px; font-size: 12px; }
 [data-orbit-real-page="profile-0918"] .pc-int-state-off { background: #F1F1FA; color: #6B6F99; }
 [data-orbit-real-page="profile-0918"] .pc-int-copy { display: flex; flex-direction: column; gap: 8px; }
-[data-orbit-real-page="profile-0918"] .pc-int-name { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 19px; letter-spacing: -0.02em; }
+[data-orbit-real-page="profile-0918"] .pc-int-name { font-family: var(--font); font-weight: 900; font-size: 19px; letter-spacing: -0.02em; }
 [data-orbit-real-page="profile-0918"] .pc-int-desc { font-size: 13px; line-height: 1.8; color: #6B6F99; }
 [data-orbit-real-page="profile-0918"] .pc-int-scopes { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid #F1F1FA; }
 [data-orbit-real-page="profile-0918"] .pc-int-scope { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #3B3F7A; }
@@ -398,7 +398,7 @@ export const PROFILE_STYLES = `
 [data-orbit-real-page="profile-0918"] .pc-conn-cell-next { border-left: 1px solid #F1F1FA; }
 [data-orbit-real-page="profile-0918"] .pc-conn-icon-on { width: 30px; height: 30px; border-radius: 50%; background: #E6F1EC; color: #2F6B4F; display: flex; align-items: center; justify-content: center; font-size: 12px; }
 [data-orbit-real-page="profile-0918"] .pc-conn-icon-off { width: 30px; height: 30px; border-radius: 50%; background: #F1F1FA; color: #9FA3C4; display: flex; align-items: center; justify-content: center; font-size: 12px; }
-[data-orbit-real-page="profile-0918"] .pc-conn-count { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 30px; }
+[data-orbit-real-page="profile-0918"] .pc-conn-count { font-family: var(--font); font-weight: 900; font-size: 30px; }
 [data-orbit-real-page="profile-0918"] .pc-conn-label { font-size: 13px; color: #6B6F99; }
 [data-orbit-real-page="profile-0918"] .pc-note-card { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 [data-orbit-real-page="profile-0918"] .pc-note-row { display: flex; gap: 14px; align-items: flex-start; }

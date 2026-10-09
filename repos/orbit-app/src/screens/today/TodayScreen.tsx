@@ -175,7 +175,7 @@ export function TodayScreen() {
         <RefreshControl
           onRefresh={todayState.state.refresh}
           refreshing={todayState.state.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={locale.t("today.title")}
@@ -268,7 +268,7 @@ function TodayWorkspace({
         <Text style={styles.summary}>{view.summary}</Text>
       </View>
       <View style={styles.quickAdd}>
-        <Ionicons color={colors.text3} name="add-circle-outline" size={21} />
+        <Ionicons color={colors.ink3Text} name="add-circle-outline" size={21} />
         <TextInput
           accessibilityLabel={locale.t("today.addTask")}
           editable={!offline || offlineWritesAllowed}
@@ -276,7 +276,7 @@ function TodayWorkspace({
           onChangeText={onChangeDraft}
           onSubmitEditing={onCreateTask}
           placeholder={offline && !offlineWritesAllowed ? `${locale.t("today.addTask")} · ${locale.t("sync.needsNetwork")}` : locale.t("today.addTask")}
-          placeholderTextColor={colors.text4}
+          placeholderTextColor={colors.ink3Text}
           returnKeyType="done"
           style={styles.quickAddInput}
           value={draft}
@@ -315,9 +315,9 @@ function TodayWorkspace({
           onPress={onOpenCompleted}
           style={({ pressed }) => [styles.completedRow, pressed ? styles.pressed : null]}
         >
-          <Ionicons color={colors.live} name="checkmark-done" size={19} />
+          <Ionicons color={colors.okText} name="checkmark-done" size={19} />
           <Text style={styles.completedText}>{view.completedLabel}</Text>
-          <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+          <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
         </Pressable>
       </View>
 
@@ -331,7 +331,7 @@ function TodayWorkspace({
                 style={[styles.suggestionRow, index > 0 ? styles.divider : null]}
               >
                 <View style={styles.suggestionIcon}>
-                  <Ionicons color={colors.accent} name="sparkles" size={17} />
+                  <Ionicons color={colors.accentText} name="sparkles" size={17} />
                 </View>
                 <View style={styles.rowCopy}>
                   <Text numberOfLines={1} style={styles.rowTitle}>{item.title}</Text>
@@ -404,7 +404,7 @@ function SectionHeader({
       {action && onPress ? (
         <Pressable accessibilityRole="button" onPress={onPress} style={styles.headerAction}>
           <Text style={styles.headerActionText}>{action}</Text>
-          <Ionicons color={colors.text3} name="chevron-forward" size={15} />
+          <Ionicons color={colors.ink3Text} name="chevron-forward" size={15} />
         </Pressable>
       ) : null}
     </View>
@@ -471,44 +471,44 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   addSuggestionButton: {
     ...createControlStyles(colors).chip
   },
-  addSuggestionText: { color: colors.accent, fontSize: typography.small, fontWeight: "700" },
+  addSuggestionText: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "700" },
   checkButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
-  checkCircle: { borderColor: colors.borderStrong, borderRadius: 10, borderWidth: 1.5, height: 20, width: 20 },
-  checkHigh: { borderColor: colors.rose },
-  completedRow: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 48, paddingHorizontal: spacing.md },
-  completedText: { color: colors.text2, flex: 1, fontSize: typography.body, fontWeight: "600" },
+  checkCircle: { borderColor: colors.ink4, borderRadius: 10, borderWidth: 1.5, height: 20, width: 20 },
+  checkHigh: { borderColor: colors.coralText },
+  completedRow: { alignItems: "center", borderTopColor: colors.line, borderTopWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 48, paddingHorizontal: spacing.md },
+  completedText: { color: colors.ink2, flex: 1, fontSize: typography.body, fontWeight: "600" },
   dateBlock: { gap: spacing.xs, paddingHorizontal: spacing.xs },
   dateLabel: { ...textStyles.section, color: colors.ink },
-  divider: { borderTopColor: colors.border, borderTopWidth: 1 },
-  dueDanger: { color: colors.rose },
-  dueLabel: { color: colors.text3, fontSize: typography.caption, fontWeight: "600", paddingRight: spacing.md },
-  emptyText: { color: colors.text3, fontSize: typography.body, padding: spacing.lg },
-  errorText: { color: colors.rose, fontSize: typography.small },
-  group: { borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 0 },
+  divider: { borderTopColor: colors.line, borderTopWidth: 1 },
+  dueDanger: { color: colors.coralText },
+  dueLabel: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "600", paddingRight: spacing.md },
+  emptyText: { color: colors.ink3Text, fontSize: typography.body, padding: spacing.lg },
+  errorText: { color: colors.coralText, fontSize: typography.bodySm },
+  group: { borderColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: 0 },
   headerAction: { alignItems: "center", flexDirection: "row", minHeight: 44, paddingLeft: spacing.md },
-  headerActionText: { color: colors.text3, fontSize: typography.small },
-  loadingDot: { backgroundColor: colors.accent, borderRadius: 3, height: 6, margin: 5, width: 6 },
+  headerActionText: { color: colors.ink3Text, fontSize: typography.bodySm },
+  loadingDot: { backgroundColor: colors.accentText, borderRadius: 3, height: 6, margin: 5, width: 6 },
   pressed: { opacity: 0.68 },
-  quickAdd: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border2, borderWidth: 1, flexDirection: "row", minHeight: 50, paddingHorizontal: spacing.md, borderRadius: radius.input },
-  quickAddInput: { color: colors.text, flex: 1, fontSize: typography.body, minHeight: 48, paddingHorizontal: spacing.sm, paddingVertical: 0 },
-  rowBorder: { borderBottomColor: colors.border, borderBottomWidth: 1 },
+  quickAdd: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.line, borderWidth: 1, flexDirection: "row", minHeight: 50, paddingHorizontal: spacing.md, borderRadius: radius.md },
+  quickAddInput: { color: colors.ink, flex: 1, fontSize: typography.body, minHeight: 48, paddingHorizontal: spacing.sm, paddingVertical: 0 },
+  rowBorder: { borderBottomColor: colors.line, borderBottomWidth: 1 },
   rowCopy: { flex: 1, gap: 3, minWidth: 0 },
-  rowDetail: { ...textStyles.caption, color: colors.text3 },
-  rowMeta: { color: colors.text3, fontSize: typography.caption },
-  rowMutationState: { color: colors.text2, fontSize: typography.caption, marginTop: spacing.xs },
-  rowTitle: { ...textStyles.listTitle, color: colors.text },
-  savingText: { color: colors.text3, fontSize: typography.caption },
+  rowDetail: { ...textStyles.caption, color: colors.ink3Text },
+  rowMeta: { color: colors.ink3Text, fontSize: typography.label },
+  rowMutationState: { color: colors.ink2, fontSize: typography.label, marginTop: spacing.xs },
+  rowTitle: { ...textStyles.listTitle, color: colors.ink },
+  savingText: { color: colors.ink3Text, fontSize: typography.label },
   scheduleRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, minHeight: 60, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  scheduleRule: { backgroundColor: colors.amber, borderRadius: 2, height: 34, width: 3 },
-  scheduleTime: { color: colors.text2, fontSize: typography.small, fontVariant: ["tabular-nums"], width: 48 },
+  scheduleRule: { backgroundColor: colors.macApricotText, borderRadius: 2, height: 34, width: 3 },
+  scheduleTime: { color: colors.ink2, fontSize: typography.bodySm, fontVariant: ["tabular-nums"], width: 48 },
   sectionHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 44, paddingHorizontal: spacing.xs },
   sectionTitle: { ...textStyles.section, color: colors.ink },
-  suggestionIcon: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: radius.control, height: 36, justifyContent: "center", width: 36 },
+  suggestionIcon: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.md, height: 36, justifyContent: "center", width: 36 },
   suggestionRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, minHeight: 70, padding: spacing.md },
-  summary: { color: colors.text3, fontSize: typography.small },
+  summary: { color: colors.ink3Text, fontSize: typography.bodySm },
   taskBody: { flex: 1, gap: 3, justifyContent: "center", minHeight: 52, minWidth: 0 },
   taskRow: { alignItems: "center", flexDirection: "row", minHeight: 54, paddingLeft: spacing.xs },
-  moreTasks: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, gap: spacing.xs, minHeight: 44, paddingHorizontal: spacing.md, paddingTop: spacing.xs },
+  moreTasks: { alignItems: "center", borderTopColor: colors.line, borderTopWidth: 1, gap: spacing.xs, minHeight: 44, paddingHorizontal: spacing.md, paddingTop: spacing.xs },
   moreTasksButton: { alignItems: "center", minHeight: 40, justifyContent: "center", minWidth: 120 },
   workspace: { gap: spacing.sm },
 }));

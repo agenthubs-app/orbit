@@ -487,9 +487,9 @@ export function TaskDetailScreen() {
     <AppScreen
       backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("tasks.title") })}
       backLabel={locale.t("tasks.title")}
-      refreshControl={<RefreshControl onRefresh={refresh} refreshing={detailState.refreshing || activitiesState.refreshing || remindersState.refreshing} tintColor={colors.accent} />}
+      refreshControl={<RefreshControl onRefresh={refresh} refreshing={detailState.refreshing || activitiesState.refreshing || remindersState.refreshing} tintColor={colors.accentText} />}
       headerActions={detail ? <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={() => titleInputRef.current?.focus()} style={styles.iconButton}>
-        {largeText ? <Ionicons color={colors.accent} name="create-outline" size={22} /> : <Text style={styles.editLink}>{locale.t("taskDetail.edit")}</Text>}
+        {largeText ? <Ionicons color={colors.accentText} name="create-outline" size={22} /> : <Text style={styles.editLink}>{locale.t("taskDetail.edit")}</Text>}
       </Pressable> : null}
       title={locale.t("taskDetail.title")}
     >
@@ -548,23 +548,23 @@ export function TaskDetailScreen() {
             <Pressable accessibilityLabel={locale.t("taskDetail.editDateTime")} accessibilityRole="button" disabled={offline && !isOfflineTaskCategory(detail.category)} onPress={() => setMoreOpen(true)} style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>{locale.t((latest ?? detail).dueAt ? "taskDetail.due" : "taskDetail.scheduled")}</Text>
               <Text style={styles.metadataValue}>{taskDateLabel(displayedDate, timeZone, locale.language, locale.t)}</Text>
-              <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
             </Pressable>
             {detail.relatedContactId ? <Pressable accessibilityLabel={locale.t("taskDetail.viewContact")} accessibilityRole="button" onPress={() => router.push(`/contacts/${encodeURIComponent(detail.relatedContactId!)}` as Href)} style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>{locale.t("taskDetail.relatedContact")}</Text>
               <Text style={[styles.metadataValue, styles.linkValue]}>{locale.t("taskDetail.viewContact")}</Text>
-              <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
             </Pressable> : null}
             {detail.relatedEventId ? <Pressable accessibilityLabel={locale.t("taskDetail.viewEvent")} accessibilityRole="button" onPress={() => router.push(`/events/${encodeURIComponent(detail.relatedEventId!)}` as Href)} style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>{locale.t("taskDetail.relatedEvent")}</Text>
               <Text style={[styles.metadataValue, styles.linkValue]}>{locale.t("taskDetail.viewEvent")}</Text>
-              <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
             </Pressable> : null}
             {(latest ?? detail).location ? <View style={styles.metadataRow}><Text style={metadataLabelStyle}>{locale.t("taskDetail.location")}</Text><Text style={styles.metadataValue}>{(latest ?? detail).location}</Text></View> : null}
             {detail.sourceNoteId && detail.sourceNoteVersion ? <Pressable accessibilityLabel={locale.t("taskDetail.viewSourceNote")} accessibilityRole="button" onPress={() => router.push(`/notes/${encodeURIComponent(detail.sourceNoteId!)}` as Href)} style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>{locale.t("taskDetail.sourceNote")}</Text>
               <Text style={[styles.metadataValue, styles.linkValue]}>{locale.t("taskDetail.viewSourceNoteVersion", { version: detail.sourceNoteVersion })}</Text>
-              <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
             </Pressable> : null}
             {detail.sourceLabel ? <View style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>{locale.t("taskDetail.source")}</Text>
@@ -581,7 +581,7 @@ export function TaskDetailScreen() {
             <Pressable accessibilityLabel={locale.t("taskDetail.moreActions")} accessibilityRole="button" disabled={offline && !isOfflineTaskCategory(detail.category)} onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.metadataRow, pressed ? styles.pressed : null]}>
               <Text style={metadataLabelStyle}>{locale.t("taskDetail.reminder")}</Text>
               <Text style={styles.metadataValue}>{reminders[0]?.label ?? locale.t("taskDetail.reminderUnset")}</Text>
-              <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
             </Pressable>
           </View>
 
@@ -589,7 +589,7 @@ export function TaskDetailScreen() {
             <Text accessibilityRole="header" style={styles.contentHeading}>{locale.t("taskDetail.content")}</Text>
             <TextInput accessibilityLabel={locale.t("taskDetail.notes")} editable={!saving && (!offline || isOfflineTaskCategory(detail.category))} multiline scrollEnabled={false} onBlur={save} onChangeText={setNotes}
               onContentSizeChange={event => setNotesHeight(event.nativeEvent.contentSize.height)}
-              placeholder={locale.t("taskDetail.notePlaceholder")} placeholderTextColor={colors.text4}
+              placeholder={locale.t("taskDetail.notePlaceholder")} placeholderTextColor={colors.ink3Text}
               style={[styles.notesInput, { height: Math.max(72, notesHeight, 24 * fontScale) }]} value={notes} />
           </View>
 
@@ -603,7 +603,7 @@ export function TaskDetailScreen() {
                 <View style={styles.sheetHeader}>
                   <Text style={styles.sheetTitle}>{locale.t("taskDetail.settings")}</Text>
                   <Pressable accessibilityLabel={locale.t("taskDetail.closeSettings")} accessibilityRole="button" onPress={() => setMoreOpen(false)} style={styles.iconButton}>
-                    <Ionicons color={colors.text2} name="close" size={21} />
+                    <Ionicons color={colors.ink2} name="close" size={21} />
                   </Pressable>
                 </View>
                 <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetBody}>
@@ -626,7 +626,7 @@ export function TaskDetailScreen() {
                     <Text style={styles.dateFieldLabel}>{label}</Text>
                     <TextInput accessibilityLabel={label} autoCapitalize="none" autoCorrect={false} editable={!saving && detail.status !== "cancelled"}
                       onChangeText={value => changeDate(field, value)}
-                      placeholder={placeholder} placeholderTextColor={colors.text4} style={styles.dateInput} value={dateDraft[field] ?? ""} />
+                      placeholder={placeholder} placeholderTextColor={colors.ink3Text} style={styles.dateInput} value={dateDraft[field] ?? ""} />
                   </View>)}
                   <Text style={styles.dateHint}>{locale.t("taskDetail.reminderUnaffected")}</Text>
                   {detail.status === "cancelled" ? <Text style={styles.dateHint}>{locale.t("taskDetail.cancelledNoDate")}</Text> : null}
@@ -663,7 +663,7 @@ export function TaskDetailScreen() {
                     <Text style={styles.sheetRowAction}>{locale.t("taskDetail.cancelTask")}</Text>
                   </Pressable> : null}
                   <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={deleteTask} style={styles.deleteButton}>
-                    <Ionicons color={colors.rose} name="trash-outline" size={18} />
+                    <Ionicons color={colors.coralText} name="trash-outline" size={18} />
                     <Text style={styles.deleteText}>{locale.t("taskDetail.deleteTask")}</Text>
                   </Pressable>
                 </ScrollView>
@@ -704,63 +704,63 @@ function createdDateLabel(value: string, timeZone: string, language: OrbitLangua
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionContent: { alignSelf: "center", gap: 8, maxWidth: layout.contentMax - 2 * layout.pageInset, width: "100%" },
-  actionDock: { backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: 1, paddingTop: 12, paddingHorizontal: 16 },
+  actionDock: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: 1, paddingTop: 12, paddingHorizontal: 16 },
   badges: { alignItems: "flex-start", flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   checkbox: { alignItems: "center", justifyContent: "center", width: 26, height: 26, borderWidth: 1.5, borderColor: colors.ink, borderRadius: 7 },
-  checkboxCompleted: { backgroundColor: colors.accent, borderColor: colors.accent },
+  checkboxCompleted: { backgroundColor: colors.accentText, borderColor: colors.accentText },
   completeButton: { ...createControlStyles(colors).primaryButton, minHeight: 50 },
   completeButtonText: { ...createControlStyles(colors).primaryButtonText, fontSize: 15, lineHeight: 22 },
-  conflictPanel: { backgroundColor: colors.surface2, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md, gap: spacing.sm, marginVertical: spacing.md, padding: spacing.md },
-  conflictText: { color: colors.ink, fontSize: typography.small, lineHeight: 21 },
-  conflictServerText: { color: colors.text2, fontSize: typography.caption, lineHeight: 19 },
+  conflictPanel: { backgroundColor: colors.surface2, borderColor: colors.line, borderWidth: 1, borderRadius: radius.md, gap: spacing.sm, marginVertical: spacing.md, padding: spacing.md },
+  conflictText: { color: colors.ink, fontSize: typography.bodySm, lineHeight: 21 },
+  conflictServerText: { color: colors.ink2, fontSize: typography.label, lineHeight: 19 },
   conflictActions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   conflictAction: { ...createControlStyles(colors).secondaryButton, flexGrow: 1, minHeight: 42, paddingHorizontal: spacing.sm },
-  conflictActionText: { ...createControlStyles(colors).secondaryButtonText, fontSize: typography.caption, textAlign: "center" },
+  conflictActionText: { ...createControlStyles(colors).secondaryButtonText, fontSize: typography.label, textAlign: "center" },
   contentHeading: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
   contentSection: { gap: 6 },
   dateBadge: { color: colors.surface, backgroundColor: colors.ink, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 9, fontSize: 11, lineHeight: 16, fontWeight: "700" },
   dateField: { gap: 6, marginTop: spacing.sm },
-  dateFieldLabel: { color: colors.text2, fontSize: 14, lineHeight: 20, fontWeight: "600" },
-  dateHint: { color: colors.text3, fontSize: 13, lineHeight: 20 },
-  dateInput: { color: colors.ink, fontSize: 16, lineHeight: 24, minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: radius.control, paddingHorizontal: 12, paddingVertical: 10 },
+  dateFieldLabel: { color: colors.ink2, fontSize: 14, lineHeight: 20, fontWeight: "600" },
+  dateHint: { color: colors.ink3Text, fontSize: 13, lineHeight: 20 },
+  dateInput: { color: colors.ink, fontSize: 16, lineHeight: 24, minHeight: 48, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10 },
   dateSaveButton: { ...createControlStyles(colors).primaryButton, minHeight: 48, marginTop: spacing.sm },
   deleteButton: { alignItems: "center", flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 50, marginTop: spacing.lg },
-  deleteText: { color: colors.rose, fontSize: typography.body, fontWeight: "700" },
+  deleteText: { color: colors.coralText, fontSize: typography.body, fontWeight: "700" },
   editButton: { ...createControlStyles(colors).secondaryButton, minHeight: 46 },
   editButtonText: { ...createControlStyles(colors).secondaryButtonText, fontSize: 14, lineHeight: 20 },
-  editLink: { color: colors.accent, fontSize: 14, lineHeight: 20, fontWeight: "600" },
-  errorText: { color: colors.rose, fontSize: typography.small },
-  iconButton: { alignItems: "center", justifyContent: "center", minHeight: layout.control, width: layout.control, borderRadius: radius.control },
+  editLink: { color: colors.accentText, fontSize: 14, lineHeight: 20, fontWeight: "600" },
+  errorText: { color: colors.coralText, fontSize: typography.bodySm },
+  iconButton: { alignItems: "center", justifyContent: "center", minHeight: layout.control, width: layout.control, borderRadius: radius.md },
   hero: { alignItems: "flex-start", flexDirection: "row", gap: 0, paddingTop: 4 },
   heroBody: { flex: 1, minWidth: 0 },
   heroCheckButton: { width: 44, minHeight: 44, justifyContent: "flex-start", paddingTop: 4 },
-  linkValue: { color: colors.accent },
-  localMutationLabel: { color: colors.text2, fontSize: typography.caption, marginVertical: spacing.xs },
-  metadataGroup: { borderTopColor: colors.border, borderTopWidth: 1, backgroundColor: colors.surface },
-  metadataLabel: { color: colors.text3, fontSize: 14, lineHeight: 20, width: 72, flexShrink: 0 },
+  linkValue: { color: colors.accentText },
+  localMutationLabel: { color: colors.ink2, fontSize: typography.label, marginVertical: spacing.xs },
+  metadataGroup: { borderTopColor: colors.line, borderTopWidth: 1, backgroundColor: colors.surface },
+  metadataLabel: { color: colors.ink3Text, fontSize: 14, lineHeight: 20, width: 72, flexShrink: 0 },
   metadataLabelLarge: { width: "100%", marginBottom: 6 },
-  metadataRow: { alignItems: "center", borderBottomColor: colors.border2, borderBottomWidth: 1, flexDirection: "row", flexWrap: "wrap", gap: 0, minHeight: 48, paddingVertical: 13 },
+  metadataRow: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", flexWrap: "wrap", gap: 0, minHeight: 48, paddingVertical: 13 },
   metadataValue: { color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: "600", flex: 1, minWidth: 120 },
   modalRoot: { flex: 1, justifyContent: "flex-end" },
-  modalScrim: { backgroundColor: "rgba(16, 24, 40, 0.28)", ...StyleSheet.absoluteFill },
-  notesInput: { color: colors.text2, fontSize: 15, lineHeight: 24, padding: 0, textAlignVertical: "top" },
+  modalScrim: { backgroundColor: colors.scrim, ...StyleSheet.absoluteFill },
+  notesInput: { color: colors.ink2, fontSize: 15, lineHeight: 24, padding: 0, textAlignVertical: "top" },
   pressed: { opacity: 0.68 },
   reminderOption: { ...createControlStyles(colors).chip, flex: 1 },
   reminderOptions: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
-  reminderOptionText: { ...textStyles.caption, color: colors.accent, textAlign: "center", flexShrink: 1 },
-  reopenButton: { backgroundColor: colors.surface, borderColor: colors.accent, borderWidth: 1 },
-  reopenButtonText: { ...createControlStyles(colors).secondaryButtonText, color: colors.accent },
+  reminderOptionText: { ...textStyles.caption, color: colors.accentText, textAlign: "center", flexShrink: 1 },
+  reopenButton: { backgroundColor: colors.surface, borderColor: colors.accentText, borderWidth: 1 },
+  reopenButtonText: { ...createControlStyles(colors).secondaryButtonText, color: colors.accentText },
   screen: { flex: 1, backgroundColor: colors.surface },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: "78%", overflow: "hidden" },
   sheetBody: { gap: spacing.sm, padding: spacing.lg, paddingTop: spacing.sm },
-  sheetHeader: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", minHeight: 58, paddingHorizontal: spacing.lg },
-  sheetRow: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 46 },
-  sheetRowAction: { color: colors.rose, fontSize: typography.small, fontWeight: "700" },
-  sheetRowMeta: { color: colors.text3, fontSize: typography.caption },
-  sheetRowText: { color: colors.text, flex: 1, fontSize: typography.small, fontWeight: "600" },
-  sheetSection: { color: colors.text3, fontSize: typography.caption, fontWeight: "800", marginTop: spacing.md },
+  sheetHeader: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", minHeight: 58, paddingHorizontal: spacing.lg },
+  sheetRow: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 46 },
+  sheetRowAction: { color: colors.coralText, fontSize: typography.bodySm, fontWeight: "700" },
+  sheetRowMeta: { color: colors.ink3Text, fontSize: typography.label },
+  sheetRowText: { color: colors.ink, flex: 1, fontSize: typography.bodySm, fontWeight: "600" },
+  sheetSection: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "800", marginTop: spacing.md },
   sheetTitle: { ...textStyles.section, color: colors.ink },
-  statusText: { color: colors.text3, fontSize: 11, lineHeight: 16, borderColor: colors.border, borderWidth: 1, borderRadius: 6, paddingHorizontal: 9, paddingVertical: 3 },
-  successText: { color: colors.accent, fontSize: typography.small },
+  statusText: { color: colors.ink3Text, fontSize: 11, lineHeight: 16, borderColor: colors.line, borderWidth: 1, borderRadius: 6, paddingHorizontal: 9, paddingVertical: 3 },
+  successText: { color: colors.accentText, fontSize: typography.bodySm },
   titleInput: { color: colors.ink, fontSize: 24, lineHeight: 32, fontWeight: "900", letterSpacing: -0.48, padding: 0, textAlignVertical: "top" },
 }));

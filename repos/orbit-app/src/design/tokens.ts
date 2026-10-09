@@ -1,97 +1,20 @@
-export const colors = {
-  accent: "#0A5CFF",
-  accentHover: "#084FDE",
-  accentPress: "#0642BC",
-  accentRing: "rgba(10,92,255,0.32)",
-  accentSoft: "#EEF3FF",
-  accentSofter: "#F5F8FF",
-  amber: "#876020",
-  amberSoft: "#F5EEDF",
-  bg: "#FFFFFF",
-  bgSoft: "#F5F7FA",
-  bgSunken: "#EEF0F4",
-  border: "#E6E8EE",
-  border2: "#EEF0F4",
-  borderStrong: "#B9BDC4",
-  canvas: "#FFFFFF",
-  caution: "#876020",
-  hairline: "#EEF0F4",
-  ink: "#0B1220",
-  live: "#437563",
-  liveSoft: "#E9F1EC",
-  muted: "#6B7280",
-  onAccent: "#FFFFFF",
-  onImage: "#FFFFFF",
-  imageBadgeText: "#0B1220",
-  rose: "#B42318",
-  roseSoft: "#F7E9EC",
-  sky: "#476B92",
-  skySoft: "#E9EFF5",
-  surface: "#FFFFFF",
-  surface2: "#F5F7FA",
-  surface3: "#EEF0F4",
-  text: "#0B1220",
-  text2: "#3C4658",
-  // Necessary small copy uses the source's readable ink-2; ink-3 is decorative.
-  text3: "#6B7280",
-  text4: "#8B93A5",
-  tint: "#EEF3FF"
-} as const;
+import { designColors, designFont, designMotion, designRadius, designShadow } from "../api/design/tokens";
 
-export type OrbitColors = { readonly [Key in keyof typeof colors]: string };
+// R01: every value below comes from the generated, synced copy of
+// orbits/shared/design/tokens.json (src/api/design/tokens.ts — never edit it by
+// hand; change tokens.json, run `npm run design:tokens` there and
+// `npm run sync:contract` here). Names are the design kit's, camelCased:
+// ink-3-text → ink3Text. Text uses ink / ink2 / ink3Text / *Text / on* only;
+// the raw design values (ink3, ink4, accent, mac*Ink, coral, ok) are for
+// icons, decoration and ≥18px bold type (see orbits/shared/design/README.md).
+export const colors = designColors.light;
+
+export type OrbitColors = { readonly [Key in keyof typeof designColors.light]: string };
 export type OrbitColorScheme = "light" | "dark";
 
-export const darkColors: OrbitColors = {
-  accent: "#A2AFD3",
-  accentHover: "#B1BDDB",
-  accentPress: "#8F9DBE",
-  accentRing: "rgba(162,175,211,0.36)",
-  accentSoft: "#394156",
-  accentSofter: "#2D3446",
-  amber: "#C7A16D",
-  amberSoft: "#352E25",
-  bg: "#191C22",
-  bgSoft: "#191C22",
-  bgSunken: "#15181D",
-  border: "#343943",
-  border2: "#424955",
-  borderStrong: "#626D7D",
-  canvas: "#191C22",
-  caution: "#C7A16D",
-  hairline: "rgba(240,240,236,0.10)",
-  ink: "#F0F0EC",
-  live: "#89B5A0",
-  liveSoft: "#25352F",
-  muted: "#B2B7C1",
-  onAccent: "#171C2A",
-  onImage: "#FFFFFF",
-  imageBadgeText: "#20242C",
-  rose: "#D28D98",
-  roseSoft: "#3A2930",
-  sky: "#96B6D5",
-  skySoft: "#273443",
-  surface: "#22262E",
-  surface2: "#272C35",
-  surface3: "#303743",
-  text: "#F0F0EC",
-  text2: "#B2B7C1",
-  text3: "#A4A9B4",
-  text4: "#969EAB",
-  tint: "#2D3446"
-};
+export const darkColors: OrbitColors = designColors.dark;
 
-export const radius = {
-  card: 12,
-  control: 12,
-  input: 12,
-  lg: 18,
-  md: 14,
-  pill: 999,
-  sheet: 24,
-  sm: 10,
-  xl: 24,
-  xs: 7
-} as const;
+export const radius = designRadius;
 
 export const spacing = {
   xxs: 2,
@@ -103,14 +26,11 @@ export const spacing = {
   xxl: 32
 } as const;
 
-export const typography = {
-  body: 15,
-  caption: 12,
-  display: 30,
-  section: 15,
-  small: 13,
-  title: 22
-} as const;
+export const typography = designFont.size;
+
+export const fontWeight = designFont.weight;
+
+export const motion = designMotion;
 
 export const layout = {
   pageInset: 16,
@@ -122,13 +42,13 @@ export const layout = {
 } as const;
 
 export const textStyles = {
-  pageTitle: { fontSize: typography.display, lineHeight: 38, fontWeight: "900" },
-  title: { fontSize: typography.title, lineHeight: 30, fontWeight: "600" },
-  section: { fontSize: typography.section, lineHeight: 22, fontWeight: "800" },
-  listTitle: { fontSize: 15, lineHeight: 22, fontWeight: "700" },
-  body: { fontSize: typography.body, lineHeight: 23 },
-  small: { fontSize: typography.small, lineHeight: 20 },
-  caption: { fontSize: typography.caption, lineHeight: 18 }
+  pageTitle: { fontSize: typography.title, lineHeight: 32, fontWeight: "900" },
+  title: { fontSize: typography.titleSm, lineHeight: 28, fontWeight: "800" },
+  section: { fontSize: typography.cardTitle, lineHeight: 21, fontWeight: "800" },
+  listTitle: { fontSize: typography.cardTitle, lineHeight: 21, fontWeight: "700" },
+  body: { fontSize: typography.body, lineHeight: 22 },
+  small: { fontSize: typography.bodySm, lineHeight: 20 },
+  caption: { fontSize: typography.label, lineHeight: 17 }
 } as const;
 
 /**
@@ -167,5 +87,20 @@ export const shadows = {
   },
   webSubtle: {
     boxShadow: "none"
+  },
+  // The design's only shadow, for floating layers (sheets, popovers).
+  float: {
+    elevation: 0,
+    boxShadow: designShadow.float.light
+  },
+  floatDark: {
+    elevation: 0,
+    boxShadow: designShadow.float.dark
   }
 } as const;
+
+// Themed styles are built once per palette (theme.ts), so the palette tells
+// which of the two floating shadows applies.
+export function floatShadow(palette: OrbitColors) {
+  return palette === darkColors ? shadows.floatDark : shadows.float;
+}

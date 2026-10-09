@@ -102,7 +102,7 @@ export type IngestSession = ReturnType<typeof useIngestScope>;
 export function IngestButton({ label, icon, disabled = false, onPress }: { label: string; icon: keyof typeof Ionicons.glyphMap; disabled?: boolean; onPress: () => void }) {
   const { styles, colors } = useIngestStyles();
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[styles.button, disabled && styles.disabled]}>
-    <Ionicons name={icon} size={20} color={colors.accent} /><Text style={styles.buttonText}>{label}</Text>
+    <Ionicons name={icon} size={20} color={colors.accentText} /><Text style={styles.buttonText}>{label}</Text>
   </Pressable>;
 }
 
@@ -263,12 +263,12 @@ export function batchStatusLabel(status: string): string {
 }
 export const useIngestStyles = createThemedStyles(colors => StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10 },
-  fileRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 12 },
+  fileRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10, borderBottomWidth: 1, borderBottomColor: colors.line, paddingVertical: 12 },
   grow: { flexGrow: 1, flexShrink: 1, minWidth: 100 },
-  button: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 44, maxWidth: "100%", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.border },
-  buttonText: { color: colors.accent, fontSize: 14, flexShrink: 1, letterSpacing: 0 },
+  button: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 44, maxWidth: "100%", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.line },
+  buttonText: { color: colors.accentText, fontSize: 14, flexShrink: 1, letterSpacing: 0 },
   disabled: { opacity: 0.45 }, text: { color: colors.ink, fontSize: 15, letterSpacing: 0 },
-  muted: { color: colors.text3, fontSize: 13, letterSpacing: 0 },
+  muted: { color: colors.ink3Text, fontSize: 13, letterSpacing: 0 },
   heading: { color: colors.ink, fontSize: 18, fontWeight: "700", flexGrow: 1, letterSpacing: 0 },
-  error: { color: colors.rose, fontSize: 14, letterSpacing: 0 },
+  error: { color: colors.coralText, fontSize: 14, letterSpacing: 0 },
 }));

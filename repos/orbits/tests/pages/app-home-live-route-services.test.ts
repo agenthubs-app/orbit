@@ -196,7 +196,7 @@ test("app home hub entry cards link to live app routes", () => {
   assert.match(homeUiSource, /title: t\(\{ en: "Universal profile", zh: "通用画像" \}\)/);
   assert.match(homeUiSource, /sub: t\(\{ en: "Meetings and interaction log", zh: "约见与交往记录" \}\)/);
   assert.match(homeUiSource, /<h3 className="h-section"[^>]*>\{item\.title\}<\/h3>/);
-  assert.match(homeUiSource, /<span style=\{\{ color: "var\(--text-3\)".*>\{item\.sub\}<\/span>/);
+  assert.match(homeUiSource, /<span style=\{\{ color: "var\(--ink-3-text\)".*>\{item\.sub\}<\/span>/);
   assert.doesNotMatch(homeUiSource, /mobileTitle:/);
   assert.doesNotMatch(homeUiSource, /mobileSub:/);
   assert.doesNotMatch(homeUiSource, /href: "\/home\/(?:profile|cards|schedule)"/);

@@ -6,7 +6,7 @@ export function createControlStyles(colors: OrbitColors) {
     primaryButton: {
       alignItems: "center",
       backgroundColor: colors.ink,
-      borderRadius: radius.control,
+      borderRadius: radius.md,
       justifyContent: "center",
       minHeight: layout.primaryControl,
       paddingHorizontal: spacing.lg,
@@ -22,7 +22,7 @@ export function createControlStyles(colors: OrbitColors) {
     secondaryButton: {
       alignItems: "center",
       backgroundColor: colors.surface,
-      borderRadius: radius.control,
+      borderRadius: radius.md,
       borderWidth: 1,
       borderColor: colors.ink,
       justifyContent: "center",
@@ -32,7 +32,7 @@ export function createControlStyles(colors: OrbitColors) {
     },
     secondaryButtonText: {
       ...textStyles.body,
-      color: colors.text,
+      color: colors.ink,
       flexShrink: 1,
       fontWeight: "600",
       textAlign: "center"
@@ -40,10 +40,10 @@ export function createControlStyles(colors: OrbitColors) {
     input: {
       ...textStyles.body,
       backgroundColor: colors.surface,
-      borderColor: colors.borderStrong,
-      borderRadius: radius.input,
+      borderColor: colors.ink4,
+      borderRadius: radius.md,
       borderWidth: 1,
-      color: colors.text,
+      color: colors.ink,
       minHeight: layout.control,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm
@@ -51,7 +51,7 @@ export function createControlStyles(colors: OrbitColors) {
     chip: {
       alignItems: "center",
       backgroundColor: colors.surface2,
-      borderRadius: radius.control,
+      borderRadius: radius.md,
       justifyContent: "center",
       minHeight: layout.control,
       paddingHorizontal: spacing.md,
@@ -59,7 +59,7 @@ export function createControlStyles(colors: OrbitColors) {
     },
     chipText: {
       ...textStyles.small,
-      color: colors.text2,
+      color: colors.ink2,
       flexShrink: 1,
       fontWeight: "600",
       textAlign: "center"

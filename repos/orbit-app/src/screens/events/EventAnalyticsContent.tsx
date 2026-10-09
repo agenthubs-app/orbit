@@ -58,7 +58,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between",
     flexWrap: "wrap"
   },
-  aiStatus: { backgroundColor: colors.accentSofter, borderRadius: radius.pill, color: colors.accent, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  aiStatus: { backgroundColor: colors.accentSoft, borderRadius: radius.pill, color: colors.accentText, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   artifact: {
     color: colors.ink,
     ...textStyles.body
@@ -69,9 +69,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.md
   },
   content: { gap: spacing.lg },
-  detail: { color: colors.text3, fontSize: typography.caption, lineHeight: 18 },
-  draft: { backgroundColor: colors.surface2, borderRadius: radius.control, gap: spacing.sm, padding: spacing.md },
-  draftLabel: { color: colors.text2, fontSize: typography.caption, fontWeight: "800" },
+  detail: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 18 },
+  draft: { backgroundColor: colors.surface2, borderRadius: radius.md, gap: spacing.sm, padding: spacing.md },
+  draftLabel: { color: colors.ink2, fontSize: typography.label, fontWeight: "800" },
   metric: {
     gap: spacing.xs,
     minHeight: 70,
@@ -82,7 +82,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 100
   },
   metricLabel: {
-    color: colors.text3,
+    color: colors.ink3Text,
     ...textStyles.small
   },
   metrics: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
@@ -90,9 +90,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink,
     ...textStyles.title
   },
-  privacy: { backgroundColor: colors.liveSoft, borderRadius: radius.control, gap: spacing.xs, padding: spacing.md },
-  privacyDetail: { color: colors.text2, fontSize: typography.caption, lineHeight: 18 },
-  privacyTitle: { color: colors.live, fontSize: typography.small, fontWeight: "800" },
+  privacy: { backgroundColor: colors.okSoft, borderRadius: radius.md, gap: spacing.xs, padding: spacing.md },
+  privacyDetail: { color: colors.ink2, fontSize: typography.label, lineHeight: 18 },
+  privacyTitle: { color: colors.okText, fontSize: typography.bodySm, fontWeight: "800" },
   rate: {
     gap: spacing.xxs,
     minHeight: 86,
@@ -101,13 +101,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: "100%"
   },
   rateDetail: {
-    color: colors.text4,
+    color: colors.ink3Text,
     ...textStyles.small
   },
   rates: {
     gap: spacing.sm
   },
-  rateValue: { color: colors.accent, fontSize: typography.section, fontWeight: "800" },
+  rateValue: { color: colors.accentText, fontSize: typography.cardTitle, fontWeight: "800" },
   section: { gap: spacing.md },
   sectionTitle: {
     color: colors.ink,
@@ -120,15 +120,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   segmentActive: {
     ...createControlStyles(colors).selectedChip
   },
-  segmented: { backgroundColor: colors.surface3, borderRadius: radius.control, flexDirection: "row", gap: spacing.xs, padding: spacing.xs },
+  segmented: { backgroundColor: colors.surface3, borderRadius: radius.md, flexDirection: "row", gap: spacing.xs, padding: spacing.xs },
   segmentText: {
     ...createControlStyles(colors).chipText
   },
   segmentTextActive: {
     ...createControlStyles(colors).selectedChipText
   },
-  statusDetail: { color: colors.text2, flex: 1, fontSize: typography.caption, lineHeight: 18, textAlign: "right" },
-  statusLabel: { color: colors.ink, fontSize: typography.caption, fontWeight: "800" },
-  statusRow: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 44, paddingVertical: spacing.sm },
+  statusDetail: { color: colors.ink2, flex: 1, fontSize: typography.label, lineHeight: 18, textAlign: "right" },
+  statusLabel: { color: colors.ink, fontSize: typography.label, fontWeight: "800" },
+  statusRow: { alignItems: "center", borderTopColor: colors.line, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 44, paddingVertical: spacing.sm },
   statusRows: { gap: spacing.xs }
 }));

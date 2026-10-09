@@ -171,7 +171,7 @@ ${R} { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 ${R} .ge-box { display: flex; flex-direction: column; border: 1px solid #DDDEFA; border-radius: 14px; background: #F4F5FC; padding: 12px 16px 10px; cursor: text; transition: border-color .15s, box-shadow .15s, background .15s; }
 ${R} .ge-box:focus-within { border-color: #4B4FC7; background: #FFFFFF; box-shadow: 0 0 0 4px rgba(75,79,199,.1); }
 ${R} .ge-box-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; letter-spacing: .04em; color: #6B6F99; }
-${R} .ge-input { width: 100%; border: 0; background: transparent; resize: none; outline: none; padding: 6px 0 4px; font-family: "Noto Serif SC", "Songti SC", "STSong", serif; font-weight: 600; font-size: 20px; line-height: 1.55; color: #0E1225; min-height: 3.2em; }
+${R} .ge-input { width: 100%; border: 0; background: transparent; resize: none; outline: none; padding: 6px 0 4px; font-family: var(--font); font-weight: 600; font-size: 20px; line-height: 1.55; color: #0E1225; min-height: 3.2em; }
 ${R} .ge-input::placeholder { color: #9FA3C4; font-weight: 600; }
 ${R} .ge-input:disabled { opacity: .6; }
 ${R} .ge-box-foot { display: flex; justify-content: space-between; gap: 12px; padding-top: 6px; border-top: 1px dashed #DDDEFA; font-size: 12.5px; color: #6B6F99; }
@@ -192,8 +192,8 @@ ${R} .btn.ge-horizon:active { transform: none; }
 ${R} .btn.ge-horizon:hover:not(:disabled) { border-color: #B9BCEB; }
 ${R} .btn.ge-horizon[aria-pressed="true"] { border-color: #4B4FC7; background: #F4F5FC; box-shadow: inset 0 0 0 1px #4B4FC7; }
 ${R} .btn.ge-horizon:disabled { cursor: default; opacity: .6; }
-${R} .ge-horizon-num { font-family: "Noto Serif SC", "Songti SC", "STSong", serif; font-weight: 900; font-size: 22px; line-height: 1.1; color: #0E1225; }
-${R} .ge-horizon-num small { margin-left: 3px; font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-weight: 500; font-size: 13px; color: #3B3F7A; }
+${R} .ge-horizon-num { font-family: var(--font); font-weight: 900; font-size: 22px; line-height: 1.1; color: #0E1225; }
+${R} .ge-horizon-num small { margin-left: 3px; font-family: var(--font); font-weight: 500; font-size: 13px; color: #3B3F7A; }
 ${R} .btn.ge-horizon[aria-pressed="true"] .ge-horizon-num, ${R} .btn.ge-horizon[aria-pressed="true"] .ge-horizon-num small { color: #2E3270; }
 ${R} .ge-horizon-sub { font-size: 12px; color: #6B6F99; }
 @media (max-width: 560px) {

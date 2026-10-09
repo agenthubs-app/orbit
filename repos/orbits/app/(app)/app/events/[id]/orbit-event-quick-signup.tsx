@@ -105,7 +105,7 @@ export function OrbitEventQuickSignup({
 
   const inputStyle = {
     background: "var(--surface)",
-    border: "1px solid var(--border-strong)",
+    border: "1px solid var(--ink-4)",
     borderRadius: 10,
     color: "var(--ink)",
     fontSize: 14,
@@ -120,7 +120,7 @@ export function OrbitEventQuickSignup({
     <>
       {preview && preview.total >= 5 ? (
         <div data-quick-signup-preview style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "var(--text-3)", fontSize: 13 }}>
+          <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>
             {t({ en: `${preview.total} people have registered`, zh: `已有 ${preview.total} 人报名` })}
           </span>
           {preview.buckets.length ? (
@@ -133,8 +133,8 @@ export function OrbitEventQuickSignup({
         </div>
       ) : null}
       {showAudienceHint ? (
-        <div data-quick-signup-audience style={{ color: "var(--text-3)", fontSize: 13 }}>
-          <span style={{ color: "var(--text-2)", fontWeight: 600 }}>{t({ en: "Who this is for: ", zh: "这场适合：" })}</span>
+        <div data-quick-signup-audience style={{ color: "var(--ink-3-text)", fontSize: 13 }}>
+          <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>{t({ en: "Who this is for: ", zh: "这场适合：" })}</span>
           {audienceHint}
         </div>
       ) : null}
@@ -145,7 +145,7 @@ export function OrbitEventQuickSignup({
   // 任何回答，只保留聚合预览和入口，避免许下不会兑现的承诺。
   if (preview?.admissionControlled) {
     return (
-      <section className="card" data-event-quick-signup data-quick-signup-admission style={{ borderLeft: "3px solid var(--accent)", display: "grid", gap: 12, padding: 16 }}>
+      <section className="card" data-event-quick-signup data-quick-signup-admission style={{ borderLeft: "3px solid var(--accent-text)", display: "grid", gap: 12, padding: 16 }}>
         <span className="eyebrow">ORBIT MATCH</span>
         <strong style={{ color: "var(--ink)", fontSize: 15 }}>
           {t({ en: "This event reviews every application", zh: "这场活动由主办方审核报名" })}
@@ -165,13 +165,13 @@ export function OrbitEventQuickSignup({
   }
 
   return (
-    <section className="card" data-event-quick-signup style={{ borderLeft: "3px solid var(--accent)", display: "grid", gap: 12, padding: 16 }}>
+    <section className="card" data-event-quick-signup style={{ borderLeft: "3px solid var(--accent-text)", display: "grid", gap: 12, padding: 16 }}>
       <span className="eyebrow">ORBIT MATCH</span>
       <strong style={{ color: "var(--ink)", fontSize: 15 }}>
         {t({ en: "Two quick answers before you register", zh: "先花 20 秒说说这场想要什么" })}
       </strong>
       <label style={{ display: "grid", gap: 6 }}>
-        <span style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600 }}>{t({ en: "Who do you want to meet here?", zh: "这场你想认识谁？" })}</span>
+        <span style={{ color: "var(--ink-2)", fontSize: 13, fontWeight: 600 }}>{t({ en: "Who do you want to meet here?", zh: "这场你想认识谁？" })}</span>
         <input
           data-quick-signup-target
           onChange={(changeEvent) => {
@@ -184,7 +184,7 @@ export function OrbitEventQuickSignup({
         />
       </label>
       <label style={{ display: "grid", gap: 6 }}>
-        <span style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600 }}>{t({ en: "What can you offer?", zh: "你能为别人提供什么？" })}</span>
+        <span style={{ color: "var(--ink-2)", fontSize: 13, fontWeight: 600 }}>{t({ en: "What can you offer?", zh: "你能为别人提供什么？" })}</span>
         <input
           data-quick-signup-offer
           onChange={(changeEvent) => {
@@ -206,7 +206,7 @@ export function OrbitEventQuickSignup({
         {t({ en: "Save answers and register", zh: "带着回答去报名" })}
         <Icon name="arrowUR" size={16} />
       </a>
-      <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+      <span style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
         {t({ en: "Answers stay on this device until you register.", zh: "回答先存在本机，报名时自动带入，无需重复填写。" })}
       </span>
     </section>

@@ -5,7 +5,7 @@
  * .gen-line / .skel。正文最小 13px，主文 15–16px。
  */
 const S = '[data-orbit-real-page="iorbit-0918"]';
-const SERIF = "'Noto Serif SC', 'Songti SC', serif";
+const SERIF = "var(--font)";
 
 // 折叠头是 .btn：同一条规则里整段中和 .btn 基类（与 IORBIT_HOME_STYLES 的 NEW_BUTTONS 同一口径），
 // 同一选择器只声明一次（iorbit-screens 的去重门禁）。
@@ -27,7 +27,7 @@ ${S} .ir-pc-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr
 ${S} .ir-pc-fig { padding: 16px 18px; border-left: 1px solid #E8E9F6; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 ${S} .ir-pc-fig:first-child { border-left: 0; padding-left: 0; }
 ${S} .ir-pc-fig b { font-family: ${SERIF}; font-weight: 900; font-size: 38px; line-height: 1.05; color: #0E1225; font-variant-numeric: tabular-nums; }
-${S} .ir-pc-fig b small { font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-size: 15px; font-weight: 500; margin-left: 4px; color: #3B3F7A; }
+${S} .ir-pc-fig b small { font-family: var(--font); font-size: 15px; font-weight: 500; margin-left: 4px; color: #3B3F7A; }
 ${S} .ir-pc-fig span { font-size: 14px; color: #6B6F99; }
 ${S} .ir-pc-blk { display: flex; flex-direction: column; gap: 14px; }
 ${S} .ir-pc-blk-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }

@@ -46,7 +46,7 @@ const signalOptions = [
 
 const controlStyle = {
   background: "var(--bg)",
-  border: "1px solid var(--border)",
+  border: "1px solid var(--line)",
   borderRadius: 10,
   color: "var(--ink)",
   font: "inherit",
@@ -535,7 +535,7 @@ export function OrbitAgentAutomationSettings() {
             alignItems: "center",
             background: "var(--accent-soft)",
             borderRadius: 12,
-            color: "var(--accent)",
+            color: "var(--accent-text)",
             display: "inline-flex",
             flex: "0 0 auto",
             height: 42,
@@ -549,7 +549,7 @@ export function OrbitAgentAutomationSettings() {
           <h2 id="orbit-agent-automation-title" style={{ color: "var(--ink)", fontSize: 18, margin: 0 }}>
             {t({ en: "Agent Playbooks", zh: "Agent Playbook" })}
           </h2>
-          <p style={{ color: "var(--text-3)", fontSize: 14, lineHeight: 1.6, margin: "6px 0 18px" }}>
+          <p style={{ color: "var(--ink-3-text)", fontSize: 14, lineHeight: 1.6, margin: "6px 0 18px" }}>
             {t({
               en: "Describe a recurring relationship review, inspect the compiled trigger, and trial it before enabling. Playbooks stay read-only.",
               zh: "用自然语言描述关系工作，复核生成的触发条件，并可先试运行再启用。Playbook 始终只读。",
@@ -559,8 +559,8 @@ export function OrbitAgentAutomationSettings() {
           <div
             data-agent-playbook-natural-language
             style={{
-              background: "var(--bg-soft)",
-              border: "1px solid var(--border)",
+              background: "var(--bg)",
+              border: "1px solid var(--line)",
               borderRadius: 12,
               display: "grid",
               gap: 8,
@@ -596,7 +596,7 @@ export function OrbitAgentAutomationSettings() {
               </button>
             </div>
             {draft ? (
-              <div data-agent-playbook-draft style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.55 }}>
+              <div data-agent-playbook-draft style={{ color: "var(--ink)", fontSize: 13, lineHeight: 1.55 }}>
                 <strong>{t({ en: "Why this draft", zh: "草案说明" })}: </strong>
                 {draft.explanation}
                 {draft.assumptions.length > 0 ? (
@@ -685,7 +685,7 @@ export function OrbitAgentAutomationSettings() {
             )}
 
             <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
-              <span style={{ color: "var(--text-3)", fontSize: 12 }}>{timeZone}</span>
+              <span style={{ color: "var(--ink-3-text)", fontSize: 12 }}>{timeZone}</span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {editingId ? (
                   <button className="btn btn-sm btn-quiet" onClick={resetEditor} type="button">
@@ -708,32 +708,32 @@ export function OrbitAgentAutomationSettings() {
           </div>
 
           {trial ? (
-            <div data-agent-playbook-trial style={{ background: "var(--bg-soft)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 13, lineHeight: 1.6, marginTop: 14, padding: 14 }}>
+            <div data-agent-playbook-trial style={{ background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 12, fontSize: 13, lineHeight: 1.6, marginTop: 14, padding: 14 }}>
               <strong>{t({ en: "Trial result — no side effects", zh: "试运行结果 · 无副作用" })}</strong>
               <p style={{ margin: "7px 0" }}>{trial.summary}</p>
-              <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+              <span style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
                 {trial.sourceModules.join(" · ") || "orbit-ai"} · {trial.evidenceIds.length} {t({ en: "evidence records", zh: "条依据" })}
               </span>
             </div>
           ) : null}
-          {error ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13 }}>{error}</p> : null}
-          {notice ? <p role="status" style={{ color: "var(--accent)", fontSize: 13 }}>{notice}</p> : null}
+          {error ? <p role="alert" style={{ color: "var(--coral-text)", fontSize: 13 }}>{error}</p> : null}
+          {notice ? <p role="status" style={{ color: "var(--accent-text)", fontSize: 13 }}>{notice}</p> : null}
 
-          <div style={{ borderTop: "1px solid var(--border)", display: "grid", gap: 8, marginTop: 20, paddingTop: 18 }}>
+          <div style={{ borderTop: "1px solid var(--line)", display: "grid", gap: 8, marginTop: 20, paddingTop: 18 }}>
             <strong style={{ fontSize: 14 }}>{t({ en: "Your Playbooks", zh: "你的 Playbook" })}</strong>
             {loading ? (
-              <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>{t({ en: "Loading…", zh: "正在加载…" })}</p>
+              <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: 0 }}>{t({ en: "Loading…", zh: "正在加载…" })}</p>
             ) : automations.length === 0 ? (
-              <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>{t({ en: "No Playbooks yet.", zh: "还没有 Playbook。" })}</p>
+              <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: 0 }}>{t({ en: "No Playbooks yet.", zh: "还没有 Playbook。" })}</p>
             ) : (
               automations.map((automation) => {
                 const pending = pendingId === automation.automationId;
                 return (
-                  <article data-agent-automation-id={automation.automationId} key={automation.automationId} style={{ background: "var(--bg-soft)", border: "1px solid var(--border)", borderRadius: 12, display: "grid", gap: 8, padding: 14 }}>
+                  <article data-agent-automation-id={automation.automationId} key={automation.automationId} style={{ background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 12, display: "grid", gap: 8, padding: 14 }}>
                     <div style={{ alignItems: "flex-start", display: "flex", gap: 8, justifyContent: "space-between" }}>
                       <div>
                         <div style={{ color: "var(--ink)", fontWeight: 600 }}>{automation.title}</div>
-                        <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 3 }}>
+                        <div style={{ color: "var(--ink-3-text)", fontSize: 12, marginTop: 3 }}>
                           {capabilityLabel[automation.capabilityId] ?? automation.capabilityId} · v{automation.version}
                         </div>
                       </div>
@@ -749,24 +749,24 @@ export function OrbitAgentAutomationSettings() {
                                 : t({ en: "Failed", zh: "失败" })}
                       </span>
                     </div>
-                    <p style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.55, margin: 0 }}>{automation.instruction}</p>
-                    <div style={{ color: "var(--text-3)", fontSize: 12 }}>
+                    <p style={{ color: "var(--ink)", fontSize: 13, lineHeight: 1.55, margin: 0 }}>{automation.instruction}</p>
+                    <div style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
                       {formatTrigger(automation.trigger, displayLanguage)} · {formatNextRun(automation.nextRunAt, displayLanguage, automation.trigger)} · {t({ en: `${automation.runCount} runs`, zh: `已运行 ${automation.runCount} 次` })}
                     </div>
                     {automation.lastRun ? (
-                      <div data-agent-automation-last-result style={{ background: "var(--bg)", borderRadius: 9, color: "var(--text)", fontSize: 13, lineHeight: 1.55, padding: "9px 10px" }}>
+                      <div data-agent-automation-last-result style={{ background: "var(--bg)", borderRadius: 9, color: "var(--ink)", fontSize: 13, lineHeight: 1.55, padding: "9px 10px" }}>
                         <strong>{t({ en: "Latest result", zh: "最近结果" })}: </strong>
                         {automation.lastRun.summary}
-                        <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 5 }}>
+                        <div style={{ color: "var(--ink-3-text)", fontSize: 12, marginTop: 5 }}>
                           {(automation.lastRun.sourceModules ?? []).join(" · ") || "orbit-ai"} · {(automation.lastRun.evidenceIds ?? []).length} {t({ en: "evidence records", zh: "条依据" })}
                         </div>
                       </div>
                     ) : null}
                     <details>
-                      <summary style={{ color: "var(--text-3)", cursor: "pointer", fontSize: 12 }}>
+                      <summary style={{ color: "var(--ink-3-text)", cursor: "pointer", fontSize: 12 }}>
                         {t({ en: "Version history", zh: "版本记录" })} ({automation.revisions.length})
                       </summary>
-                      <ol style={{ color: "var(--text-3)", fontSize: 12, margin: "7px 0 0", paddingLeft: 18 }}>
+                      <ol style={{ color: "var(--ink-3-text)", fontSize: 12, margin: "7px 0 0", paddingLeft: 18 }}>
                         {[...automation.revisions].reverse().map((revision) => (
                           <li key={`${revision.version}:${revision.createdAt}`}>
                             v{revision.version} · {revision.changeNote}

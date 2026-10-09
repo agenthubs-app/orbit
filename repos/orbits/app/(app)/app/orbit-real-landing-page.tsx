@@ -278,7 +278,7 @@ function ActivityOverview({
                 <strong>{item.title}</strong>
                 <span>{item.description}</span>
               </span>
-              <Icon color="var(--text-4)" name="chevR" size={17} />
+              <Icon color="var(--ink-3-text)" name="chevR" size={17} />
             </a>
           );
         })}

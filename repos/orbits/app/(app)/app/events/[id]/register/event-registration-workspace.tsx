@@ -937,10 +937,10 @@ export function EventRegistrationWorkspace({
       data-registration-stage={stage}
       style={{
         background: [
-          "radial-gradient(46rem 30rem at 110% -8%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 60%)",
-          "radial-gradient(38rem 26rem at -12% 108%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 55%)",
+          "radial-gradient(46rem 30rem at 110% -8%, color-mix(in srgb, var(--accent-text) 13%, transparent), transparent 60%)",
+          "radial-gradient(38rem 26rem at -12% 108%, color-mix(in srgb, var(--accent-text) 9%, transparent), transparent 55%)",
           "radial-gradient(color-mix(in srgb, var(--ink) 5.5%, transparent) 1px, transparent 1px)",
-          "var(--bg-sunken)",
+          "var(--surface-2)",
         ].join(", "),
         backgroundSize: "auto, auto, 26px 26px, auto",
         minHeight: "100dvh",
@@ -953,13 +953,12 @@ export function EventRegistrationWorkspace({
            逻辑、data-* 钩子、签名问答与 readback 语义零改动。 */
         [data-orbit-registration-profile-guide=register]{
           color-scheme:light;
-          --ink:#0E1225;--text:#0E1225;--text-2:#3B3F7A;--text-3:#6B6F99;--text-4:#9FA3C4;
-          --bg:#FBFBFE;--bg-soft:#F7F7FD;--bg-sunken:#F1F1FA;
+          --ink:#0E1225;--ink-2:#3B3F7A;--ink-3-text:#6B6F99;
+          --bg:#FBFBFE;
           --surface:#FFFFFF;--surface-2:#F7F7FD;--surface-3:#ECEEFB;
-          --border:#E8E9F6;--border-2:#DDDEFA;--border-strong:#B9BCEB;--hairline:#F1F1FA;
-          --accent:#4B4FC7;--accent-hover:#2E3270;--accent-soft:#ECEEFB;--accent-ring:#B9BCEB;
-          --on-accent:#FFFFFF;--on-dark:#FFFFFF;
-          --ff-display:'Noto Serif SC','Songti SC','SimSun',serif;
+          --line:#E8E9F6;--ink-4:#B9BCEB;
+          --accent-text:#4B4FC7;--plum-900:#2E3270;--accent-soft:#ECEEFB;--plum-300:#B9BCEB;
+          --on-accent:#FFFFFF;--on-image:#FFFFFF;
         }
         [data-orbit-registration-profile-guide=register] .btn-primary{background:#0E1225;border-color:#0E1225;box-shadow:none;color:#FFFFFF}
         [data-orbit-registration-profile-guide=register] .btn-primary:hover:not(:disabled){background:#2E3270;border-color:#2E3270}
@@ -973,7 +972,7 @@ export function EventRegistrationWorkspace({
         @keyframes regPulse { 0%, 100% { opacity: .3; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.08); } }
         @keyframes regOrbitSpin { to { transform: rotate(360deg); } }
         @keyframes regShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-        @keyframes regBreath { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 26%, transparent); } 55% { box-shadow: 0 0 0 12px transparent; } }
+        @keyframes regBreath { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-text) 26%, transparent); } 55% { box-shadow: 0 0 0 12px transparent; } }
         [data-reg-anim="question"] { animation: regFadeUp .38s cubic-bezier(.22,1,.36,1) both; }
         [data-reg-anim="persona"] { animation: regReveal .55s cubic-bezier(.22,1,.36,1) both; }
         .reg-stagger > * { animation: regFadeUp .42s cubic-bezier(.22,1,.36,1) both; }
@@ -983,12 +982,12 @@ export function EventRegistrationWorkspace({
         .reg-stagger > *:nth-child(4) { animation-delay: .22s; }
         .reg-stagger > *:nth-child(5) { animation-delay: .28s; }
         .reg-chip { transition: transform .16s cubic-bezier(.22,1,.36,1), border-color .16s ease, background .16s ease, box-shadow .16s ease; }
-        .reg-chip:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--accent) 45%, transparent); }
-        .reg-chip:hover .reg-key { background: var(--accent); border-color: var(--accent); color: var(--on-dark); }
+        .reg-chip:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent-text) 55%, var(--line)); box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--accent-text) 45%, transparent); }
+        .reg-chip:hover .reg-key { background: var(--accent-text); border-color: var(--accent-text); color: var(--on-image); }
         .reg-chip:active { transform: translateY(0) scale(.99); }
         .reg-ghost-btn { transition: color .15s ease, background .15s ease; border-radius: 9px; padding: 7px 12px; }
         .reg-ghost-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
-        .reg-chip:focus-visible, .reg-ghost-btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 38%, transparent); outline-offset: 3px; }
+        .reg-chip:focus-visible, .reg-ghost-btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent-text) 38%, transparent); outline-offset: 3px; }
         @media (max-width: 600px) {
           [data-orbit-registration-profile-guide="register"] { padding: 20px 12px 40px !important; }
           .reg-page-header { align-items: flex-start !important; margin: 14px 4px 18px !important; }
@@ -1005,7 +1004,7 @@ export function EventRegistrationWorkspace({
         <a
           className="reg-ghost-btn"
           href={eventHref}
-          style={{ alignItems: "center", color: "var(--text-3)", display: "inline-flex", fontSize: 14, fontWeight: 600, gap: 6, marginLeft: -12, textDecoration: "none" }}
+          style={{ alignItems: "center", color: "var(--ink-3-text)", display: "inline-flex", fontSize: 14, fontWeight: 600, gap: 6, marginLeft: -12, textDecoration: "none" }}
         >
           <Icon name="chevR" size={14} style={{ transform: "rotate(180deg)" }} />
           {copy(language, { en: "Back to event", zh: "返回活动页" })}
@@ -1013,35 +1012,35 @@ export function EventRegistrationWorkspace({
 
         <header className="reg-page-header" style={{ alignItems: "flex-end", display: "flex", gap: 18, justifyContent: "space-between", margin: "20px 0 24px" }}>
           <div style={{ minWidth: 0 }}>
-            <span style={{ alignItems: "center", color: "var(--accent)", display: "inline-flex", fontSize: 12, fontWeight: 750, gap: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+            <span style={{ alignItems: "center", color: "var(--accent-text)", display: "inline-flex", fontSize: 12, fontWeight: 750, gap: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
               <Icon name="sparkle" size={13} />
               {copy(language, { en: "Event persona", zh: "活动个人画像" })}
             </span>
-            <h1 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: "clamp(1.4rem, 3.2vw, 2rem)", fontWeight: 680, lineHeight: 1.22, margin: "8px 0 0", overflowWrap: "anywhere" }}>
+            <h1 style={{ color: "var(--ink)", fontFamily: "var(--font)", fontSize: "clamp(1.4rem, 3.2vw, 2rem)", fontWeight: 680, lineHeight: 1.22, margin: "8px 0 0", overflowWrap: "anywhere" }}>
               {event.title}
             </h1>
-            <p style={{ alignItems: "center", color: "var(--text-3)", display: "flex", flexWrap: "wrap", fontSize: 13, gap: "4px 10px", margin: "7px 0 0" }}>
+            <p style={{ alignItems: "center", color: "var(--ink-3-text)", display: "flex", flexWrap: "wrap", fontSize: 13, gap: "4px 10px", margin: "7px 0 0" }}>
               <span style={{ alignItems: "center", display: "inline-flex", gap: 4 }}>
                 <Icon name="pin" size={12} />
                 {event.venue}
               </span>
-              <span style={{ color: "var(--text-4)" }}>·</span>
+              <span style={{ color: "var(--ink-3-text)" }}>·</span>
               {profile.displayName}
             </p>
           </div>
           {status === "rsvped" || status === "admitted" ? (
-            <span style={{ alignItems: "center", background: "var(--live-soft, var(--accent-soft))", borderRadius: "var(--r-pill)", color: "var(--live, var(--accent))", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
+            <span style={{ alignItems: "center", background: "var(--ok-soft, var(--accent-soft))", borderRadius: "var(--r-pill)", color: "var(--ok-text, var(--accent-text))", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
               <span style={{ background: "currentcolor", borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
               {copy(language, { en: "Registered", zh: "已报名" })}
             </span>
           ) : status === "cancelled" || status === "withdrawn" ? (
-            <span style={{ alignItems: "center", background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", color: "var(--text-3)", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
+            <span style={{ alignItems: "center", background: "var(--surface-3)", border: "1px solid var(--line)", borderRadius: "var(--r-pill)", color: "var(--ink-3-text)", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
               {status === "withdrawn"
                 ? copy(language, { en: "Application withdrawn", zh: "申请已撤回" })
                 : copy(language, { en: "Registration cancelled", zh: "报名已取消" })}
             </span>
           ) : status === "pending_review" || status === "waitlisted" || status === "rejected" ? (
-            <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
+            <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent-text)", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
               {status === "pending_review"
                 ? copy(language, { en: "Pending review", zh: "待审核" })
                 : status === "waitlisted"
@@ -1051,24 +1050,24 @@ export function EventRegistrationWorkspace({
           ) : null}
         </header>
 
-        <p style={{ color: "var(--text-2)", lineHeight: 1.6 }}>
+        <p style={{ color: "var(--ink-2)", lineHeight: 1.6 }}>
           {copy(language, { en: "A few more answers can clarify your role at this event. Once the core information is complete, generate your persona or keep answering.", zh: "多回答几题，能让你在这场活动中的定位更清楚。核心信息填完后，可以先生成画像，也可以继续补充。" })}
         </p>
         <p data-registration-progress-label={`${progress.answeredCount}/8`}>
           {copy(language, { en: `Core information ${progress.coreAnsweredCount}/2 · Information coverage ${progress.answeredCount}/8`, zh: `核心信息 ${progress.coreAnsweredCount}/2 · 信息覆盖 ${progress.answeredCount}/8` })}
         </p>
         <div role="progressbar" aria-label={copy(language, { en: "Information coverage", zh: "信息覆盖" })} aria-valuemin={0} aria-valuemax={8} aria-valuenow={progress.answeredCount} style={{ height: 4, background: "var(--surface-3)", marginBottom: 12 }}>
-          <span style={{ display: "block", height: 4, width: `${progress.answeredCount / 8 * 100}%`, background: "var(--accent)" }} />
+          <span style={{ display: "block", height: 4, width: `${progress.answeredCount / 8 * 100}%`, background: "var(--accent-text)" }} />
         </div>
-        <p style={{ color: "var(--text-3)", fontSize: 13 }}>
+        <p style={{ color: "var(--ink-3-text)", fontSize: 13 }}>
           {copy(language, { en: "This is completion progress, not accuracy. Unsubmitted answers are not saved; a persona preview is not proof that registration was saved.", zh: "这是填写进度，不是准确率；未提交的回答尚未保存，画像预览不代表报名已保存。" })}
         </p>
         {progress.canSuggestStop ? <p role="status">{interviewDone || progress.answeredCount === 8
           ? copy(language, { en: "Your answers are complete. You can generate your persona.", zh: "问卷已填写完成，可以生成画像。" })
           : copy(language, { en: "You can generate your persona now or keep answering.", zh: "可以先生成画像，也可以继续补充。" })}</p> : null}
         {stage === "interview" ? transcript.slice(transcript.length - questionHistory.length).filter(() => questionHistory.length > 0).map((turn, index) => (
-          <section key={responses[index]?.questionToken ?? `${index}:${turn.field}`} data-registration-history={true} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, marginBottom: 12, padding: "16px 20px" }}>
-            <p style={{ color: "var(--text-3)", fontSize: 12 }}>{copy(language, { en: "Answered · read only", zh: "已回答 · 只读" })}</p>
+          <section key={responses[index]?.questionToken ?? `${index}:${turn.field}`} data-registration-history={true} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, marginBottom: 12, padding: "16px 20px" }}>
+            <p style={{ color: "var(--ink-3-text)", fontSize: 12 }}>{copy(language, { en: "Answered · read only", zh: "已回答 · 只读" })}</p>
             <h2 style={{ fontSize: 18, margin: "6px 0" }}>{turn.prompt}</h2>
             <p style={{ lineHeight: 1.6, margin: 0 }}>{turn.answer}</p>
           </section>
@@ -1095,9 +1094,9 @@ export function EventRegistrationWorkspace({
             data-reg-anim="question"
             style={{
               background: "var(--surface)",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--line)",
               borderRadius: 24,
-              boxShadow: "var(--sh-lg)",
+              boxShadow: "var(--shadow-float)",
               overflow: "hidden",
               position: "relative",
             }}
@@ -1110,7 +1109,7 @@ export function EventRegistrationWorkspace({
             >
               <span
                 style={{
-                  background: "linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, var(--surface)), var(--accent))",
+                  background: "linear-gradient(90deg, color-mix(in srgb, var(--accent-text) 70%, var(--surface)), var(--accent-text))",
                   borderRadius: "0 99px 99px 0",
                   transition: "width .45s cubic-bezier(.22,1,.36,1)",
                   width: `${progress.answeredCount / 8 * 100}%`,
@@ -1123,8 +1122,8 @@ export function EventRegistrationWorkspace({
               <span
                 aria-hidden="true"
                 style={{
-                  color: "color-mix(in srgb, var(--accent) 8%, transparent)",
-                  fontFamily: "var(--ff-display)",
+                  color: "color-mix(in srgb, var(--accent-text) 8%, transparent)",
+                  fontFamily: "var(--font)",
                   fontSize: "clamp(5rem, 12vw, 7.5rem)",
                   fontWeight: 800,
                   lineHeight: 1,
@@ -1139,25 +1138,25 @@ export function EventRegistrationWorkspace({
               </span>
 
               <div style={{ alignItems: "center", display: "flex", gap: 10, marginBottom: 20 }}>
-                <span className="chip" style={{ background: "var(--accent-soft)", border: 0, color: "var(--accent)", fontSize: 12, fontWeight: 700 }}>
+                <span className="chip" style={{ background: "var(--accent-soft)", border: 0, color: "var(--accent-text)", fontSize: 12, fontWeight: 700 }}>
                   {fieldLabel(language, question.field)}
                 </span>
                 <span
                   className="mono"
-                  style={{ color: "var(--text-4)", fontSize: 12 }}
+                  style={{ color: "var(--ink-3-text)", fontSize: 12 }}
                 >
                   {currentQuestionNumber} / {TOTAL_REQUIRED_QUESTIONS}
                 </span>
               </div>
 
               {positioningSeeded && transcript.some((turn) => turn.field === "positioning") ? (
-                <div data-registration-prefilled-positioning style={{ alignItems: "center", background: "var(--surface-2)", border: "1px dashed var(--border-2)", borderRadius: 12, color: "var(--text-2)", display: "flex", fontSize: 13, gap: 8, marginBottom: 16, padding: "9px 13px" }}>
-                  <Icon color="var(--accent)" name="user" size={14} />
+                <div data-registration-prefilled-positioning style={{ alignItems: "center", background: "var(--surface-2)", border: "1px dashed var(--line)", borderRadius: 12, color: "var(--ink-2)", display: "flex", fontSize: 13, gap: 8, marginBottom: 16, padding: "9px 13px" }}>
+                  <Icon color="var(--accent-text)" name="user" size={14} />
                   <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {copy(language, { en: "Positioning from your profile: ", zh: "定位已从通用画像带入：" })}
                     <strong style={{ color: "var(--ink)" }}>{transcript.find((turn) => turn.field === "positioning")?.answer}</strong>
                   </span>
-                  <a href="/app/profile" style={{ color: "var(--accent)", flexShrink: 0, fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
+                  <a href="/app/profile" style={{ color: "var(--accent-text)", flexShrink: 0, fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
                     {copy(language, { en: "Edit profile", zh: "改通用画像" })}
                   </a>
                 </div>
@@ -1167,7 +1166,7 @@ export function EventRegistrationWorkspace({
                 <p
                   style={{
                     alignItems: "flex-start",
-                    color: "var(--accent)",
+                    color: "var(--accent-text)",
                     display: "flex",
                     fontSize: 14,
                     fontWeight: 600,
@@ -1181,7 +1180,7 @@ export function EventRegistrationWorkspace({
                 </p>
               ) : null}
 
-              <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: "clamp(1.3rem, 2.8vw, 1.7rem)", fontWeight: 660, lineHeight: 1.38, margin: "0 0 24px", maxWidth: "88%" }}>
+              <h2 style={{ color: "var(--ink)", fontFamily: "var(--font)", fontSize: "clamp(1.3rem, 2.8vw, 1.7rem)", fontWeight: 660, lineHeight: 1.38, margin: "0 0 24px", maxWidth: "88%" }}>
                 {question.prompt}
               </h2>
 
@@ -1190,12 +1189,12 @@ export function EventRegistrationWorkspace({
                   <div
                     style={{
                       alignItems: "center",
-                      background: "linear-gradient(90deg, var(--surface-2) 25%, color-mix(in srgb, var(--accent) 8%, var(--surface-2)) 50%, var(--surface-2) 75%)",
+                      background: "linear-gradient(90deg, var(--surface-2) 25%, color-mix(in srgb, var(--accent-text) 8%, var(--surface-2)) 50%, var(--surface-2) 75%)",
                       backgroundSize: "200% 100%",
                       animation: "regShimmer 1.6s linear infinite",
-                      border: "1px solid var(--border)",
+                      border: "1px solid var(--line)",
                       borderRadius: 14,
-                      color: "var(--text-2)",
+                      color: "var(--ink-2)",
                       display: "flex",
                       fontSize: 14,
                       fontWeight: 600,
@@ -1203,7 +1202,7 @@ export function EventRegistrationWorkspace({
                       padding: "16px 18px",
                     }}
                   >
-                    <span style={{ animation: "regPulse 1.1s ease-in-out infinite", color: "var(--accent)", display: "inline-flex" }}>
+                    <span style={{ animation: "regPulse 1.1s ease-in-out infinite", color: "var(--accent-text)", display: "inline-flex" }}>
                       <Icon name="sparkle" size={16} />
                     </span>
                     {copy(language, { en: "Thinking about what to ask next…", zh: "正在根据你的回答想下一个问题…" })}
@@ -1223,12 +1222,12 @@ export function EventRegistrationWorkspace({
                         style={{
                           alignItems: "center",
                           background: selectedOption === option ? "var(--accent-soft)" : "var(--surface)",
-                          border: `1.5px solid ${selectedOption === option ? "var(--accent)" : "var(--border)"}`,
+                          border: `1.5px solid ${selectedOption === option ? "var(--accent-text)" : "var(--line)"}`,
                           borderRadius: 14,
                           color: "var(--ink)",
                           cursor: "pointer",
                           display: "flex",
-                          fontFamily: "var(--ff)",
+                          fontFamily: "var(--font)",
                           fontSize: 15,
                           fontWeight: 600,
                           gap: 13,
@@ -1240,10 +1239,10 @@ export function EventRegistrationWorkspace({
                           className="reg-key mono"
                           style={{
                             alignItems: "center",
-                            background: selectedOption === option ? "var(--accent)" : "var(--surface-2)",
-                            border: "1px solid var(--border)",
+                            background: selectedOption === option ? "var(--accent-text)" : "var(--surface-2)",
+                            border: "1px solid var(--line)",
                             borderRadius: 7,
-                            color: selectedOption === option ? "var(--on-dark)" : "var(--text-3)",
+                            color: selectedOption === option ? "var(--on-image)" : "var(--ink-3-text)",
                             display: "inline-flex",
                             flexShrink: 0,
                             fontSize: 12,
@@ -1259,7 +1258,7 @@ export function EventRegistrationWorkspace({
                         {option}
                       </button>
                     ))}
-                    {question.options.length > 0 ? <button className="reg-chip" type="button" aria-pressed={freeTextOpen} onClick={() => { editRevision.current++; setFreeTextOpen(true); setSelectedOption(null); }} style={{ border: "1.5px solid var(--border)", borderRadius: 14, padding: "13px 16px", textAlign: "left", background: freeTextOpen ? "var(--accent-soft)" : "var(--surface)", color: "var(--ink)" }}>
+                    {question.options.length > 0 ? <button className="reg-chip" type="button" aria-pressed={freeTextOpen} onClick={() => { editRevision.current++; setFreeTextOpen(true); setSelectedOption(null); }} style={{ border: "1.5px solid var(--line)", borderRadius: 14, padding: "13px 16px", textAlign: "left", background: freeTextOpen ? "var(--accent-soft)" : "var(--surface)", color: "var(--ink)" }}>
                       {copy(language, { en: "Other", zh: "其他" })}
                     </button> : null}
                   </div>
@@ -1291,7 +1290,7 @@ export function EventRegistrationWorkspace({
                       disabled={!selectedOption?.trim()}
                       onClick={() => submitAnswer(selectedOption ?? "")}
                       type="button"
-                      style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 6, marginLeft: -12, marginTop: 14 }}
+                      style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--ink-3-text)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--font)", fontSize: 14, fontWeight: 600, gap: 6, marginLeft: -12, marginTop: 14 }}
                     >
                       {copy(language, { en: "Next", zh: "继续" })}
                     </button>
@@ -1306,9 +1305,9 @@ export function EventRegistrationWorkspace({
               ) : null}
             </div>
 
-            <footer className="reg-question-footer" style={{ alignItems: "center", background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))", borderTop: "1px solid var(--border)", display: "flex", gap: 14, justifyContent: "space-between", padding: "13px 22px" }}>
+            <footer className="reg-question-footer" style={{ alignItems: "center", background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))", borderTop: "1px solid var(--line)", display: "flex", gap: 14, justifyContent: "space-between", padding: "13px 22px" }}>
               <span>{copy(language, { en: "Your earlier answers stay above.", zh: "已答问题保留在上方。" })}</span>
-              <span style={{ color: "var(--text-4)", fontSize: 13 }}>
+              <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>
                 {copy(language, {
                   en: `${missingCoreFields.length} question(s) left before registration. Answers stay scoped to this event.`,
                   zh: `还需完成 ${missingCoreFields.length} 个问题即可报名；回答只用于本次活动。`,
@@ -1323,24 +1322,24 @@ export function EventRegistrationWorkspace({
             data-reg-saved-registration
             style={{
               background: "var(--surface)",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--line)",
               borderRadius: 24,
-              boxShadow: "var(--sh-lg)",
+              boxShadow: "var(--shadow-float)",
               overflow: "hidden",
             }}
           >
             <div style={{ display: "grid", gap: 12, padding: "30px 34px 24px" }}>
-              <span style={{ alignItems: "center", color: "var(--live, var(--accent))", display: "inline-flex", fontSize: 12, fontWeight: 750, gap: 7, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <span style={{ alignItems: "center", color: "var(--ok-text, var(--accent-text))", display: "inline-flex", fontSize: 12, fontWeight: 750, gap: 7, letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 <Icon name="check" size={15} />
                 {copy(language, { en: "Registration saved", zh: "报名已保存" })}
               </span>
-              <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: "clamp(1.35rem, 3vw, 1.8rem)", margin: 0 }}>
+              <h2 style={{ color: "var(--ink)", fontFamily: "var(--font)", fontSize: "clamp(1.35rem, 3vw, 1.8rem)", margin: 0 }}>
                 {copy(language, {
                   en: "Your event-scoped answers are stored.",
                   zh: "你的本场回答已可靠保存",
                 })}
               </h2>
-              <p style={{ color: "var(--text-2)", fontSize: 15, lineHeight: 1.65, margin: 0 }}>
+              <p style={{ color: "var(--ink-2)", fontSize: 15, lineHeight: 1.65, margin: 0 }}>
                 {copy(language, {
                   en: "These exact answers remain after refresh or sign-in. The AI persona is a derived preview and is regenerated only when you request it.",
                   zh: "下列原始回答在刷新或重新登录后仍会保留。AI 活动画像属于派生预览，只会在你主动要求时重新生成。",
@@ -1352,14 +1351,14 @@ export function EventRegistrationWorkspace({
                     key={turn.field}
                     style={{
                       background: "var(--surface-2)",
-                      border: "1px solid var(--border)",
+                      border: "1px solid var(--line)",
                       borderRadius: 14,
                       display: "grid",
                       gap: 5,
                       padding: "13px 15px",
                     }}
                   >
-                    <dt style={{ color: "var(--text-3)", fontSize: 12, fontWeight: 700 }}>
+                    <dt style={{ color: "var(--ink-3-text)", fontSize: 12, fontWeight: 700 }}>
                       {fieldLabel(language, turn.field)}
                     </dt>
                     <dd style={{ color: "var(--ink)", fontSize: 15, lineHeight: 1.55, margin: 0 }}>
@@ -1374,7 +1373,7 @@ export function EventRegistrationWorkspace({
                 </div>
               ) : null}
             </div>
-            <footer style={{ alignItems: "center", background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))", borderTop: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", padding: "14px 22px" }}>
+            <footer style={{ alignItems: "center", background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))", borderTop: "1px solid var(--line)", display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", padding: "14px 22px" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 <button
                   className="btn btn-primary"
@@ -1389,7 +1388,7 @@ export function EventRegistrationWorkspace({
                     className="reg-ghost-btn"
                     onClick={restartInterview}
                     type="button"
-                    style={{ background: "transparent", border: 0, color: "var(--text-2)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600 }}
+                    style={{ background: "transparent", border: 0, color: "var(--ink-2)", cursor: "pointer", fontFamily: "var(--font)", fontSize: 13, fontWeight: 600 }}
                   >
                     {copy(language, { en: "Edit answers", zh: "修改回答" })}
                   </button>
@@ -1401,14 +1400,14 @@ export function EventRegistrationWorkspace({
                     confirmCancellation();
                   }}
                   type="button"
-                  style={{ background: "transparent", border: 0, color: "var(--danger, #C2410C)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600 }}
+                  style={{ background: "transparent", border: 0, color: "var(--coral-text, #C2410C)", cursor: "pointer", fontFamily: "var(--font)", fontSize: 13, fontWeight: 600 }}
                 >
                   {admissionControlled
                     ? copy(language, { en: "Withdraw from event", zh: "撤回参会资格" })
                     : copy(language, { en: "Cancel registration", zh: "取消报名" })}
                 </button>
               </div>
-              <a className="reg-ghost-btn" href={eventHref} style={{ color: "var(--text-3)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+              <a className="reg-ghost-btn" href={eventHref} style={{ color: "var(--ink-3-text)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
                 {copy(language, { en: "Back to event", zh: "返回活动页" })}
               </a>
             </footer>
@@ -1420,24 +1419,24 @@ export function EventRegistrationWorkspace({
             data-reg-cancelled-registration
             style={{
               background: "var(--surface)",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--line)",
               borderRadius: 24,
-              boxShadow: "var(--sh-lg)",
+              boxShadow: "var(--shadow-float)",
               display: "grid",
               gap: 14,
               padding: "30px 34px",
             }}
           >
-            <span style={{ color: "var(--text-3)", fontSize: 12, fontWeight: 750, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            <span style={{ color: "var(--ink-3-text)", fontSize: 12, fontWeight: 750, letterSpacing: "0.08em", textTransform: "uppercase" }}>
               {copy(language, { en: "Registration cancelled", zh: "报名已取消" })}
             </span>
-            <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: "clamp(1.35rem, 3vw, 1.8rem)", margin: 0 }}>
+            <h2 style={{ color: "var(--ink)", fontFamily: "var(--font)", fontSize: "clamp(1.35rem, 3vw, 1.8rem)", margin: 0 }}>
               {copy(language, {
                 en: "You are no longer registered for this event.",
                 zh: "你已不再参加这场活动",
               })}
             </h2>
-            <p role="status" style={{ color: "var(--text-2)", fontSize: 15, lineHeight: 1.65, margin: 0 }}>
+            <p role="status" style={{ color: "var(--ink-2)", fontSize: 15, lineHeight: 1.65, margin: 0 }}>
               {copy(language, {
                 en: "No email, organizer message, calendar update, or refund was triggered. You can reactivate the same registration record by answering again.",
                 zh: "本次取消不会发送邮件、联系主办方、修改日历或发起退款。再次回答时会重新激活同一条报名记录，不会创建重复记录。",
@@ -1445,13 +1444,13 @@ export function EventRegistrationWorkspace({
             </p>
             {transcript.length > 0 ? (
               <details>
-                <summary style={{ color: "var(--text-2)", cursor: "pointer", fontSize: 14, fontWeight: 650 }}>
+                <summary style={{ color: "var(--ink-2)", cursor: "pointer", fontSize: 14, fontWeight: 650 }}>
                   {copy(language, { en: "Review previously saved answers", zh: "查看此前保存的回答" })}
                 </summary>
                 <dl style={{ display: "grid", gap: 8, margin: "12px 0 0" }}>
                   {transcript.map((turn) => (
                     <div key={turn.field}>
-                      <dt style={{ color: "var(--text-3)", fontSize: 12 }}>
+                      <dt style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
                         {fieldLabel(language, turn.field)}
                       </dt>
                       <dd style={{ color: "var(--ink)", fontSize: 14, margin: "3px 0 0" }}>
@@ -1472,7 +1471,7 @@ export function EventRegistrationWorkspace({
               <button className="btn btn-primary" disabled={Boolean(eligibility && !eligibility.allowedActions.includes("reactivate"))} onClick={restartInterview} type="button">
                 {copy(language, { en: "Register again", zh: "重新报名" })}
               </button>
-              <a className="reg-ghost-btn" href={eventHref} style={{ color: "var(--text-3)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+              <a className="reg-ghost-btn" href={eventHref} style={{ color: "var(--ink-3-text)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
                 {copy(language, { en: "Back to event", zh: "返回活动页" })}
               </a>
             </div>
@@ -1484,9 +1483,9 @@ export function EventRegistrationWorkspace({
             style={{
               alignItems: "center",
               background: "var(--surface)",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--line)",
               borderRadius: 24,
-              boxShadow: "var(--sh-lg)",
+              boxShadow: "var(--shadow-float)",
               display: "flex",
               flexDirection: "column",
               padding: "62px 30px 56px",
@@ -1494,15 +1493,15 @@ export function EventRegistrationWorkspace({
           >
             {/* 品牌契合的"轨道"动画:双环 + 环上运行的星点 */}
             <span aria-hidden="true" style={{ display: "grid", height: 84, placeItems: "center", position: "relative", width: 84 }}>
-              <span style={{ border: "1.5px solid color-mix(in srgb, var(--accent) 26%, transparent)", borderRadius: "50%", height: 84, position: "absolute", width: 84 }} />
-              <span style={{ border: "1.5px dashed color-mix(in srgb, var(--accent) 18%, transparent)", borderRadius: "50%", height: 56, position: "absolute", width: 56 }} />
+              <span style={{ border: "1.5px solid color-mix(in srgb, var(--accent-text) 26%, transparent)", borderRadius: "50%", height: 84, position: "absolute", width: 84 }} />
+              <span style={{ border: "1.5px dashed color-mix(in srgb, var(--accent-text) 18%, transparent)", borderRadius: "50%", height: 56, position: "absolute", width: 56 }} />
               <span style={{ animation: "regOrbitSpin 1.7s linear infinite", height: 84, position: "absolute", width: 84 }}>
-                <span style={{ animation: "regBreath 1.7s ease-out infinite", background: "var(--accent)", borderRadius: "50%", height: 10, left: "50%", marginLeft: -5, position: "absolute", top: -5, width: 10 }} />
+                <span style={{ animation: "regBreath 1.7s ease-out infinite", background: "var(--accent-text)", borderRadius: "50%", height: 10, left: "50%", marginLeft: -5, position: "absolute", top: -5, width: 10 }} />
               </span>
               <span style={{ animation: "regOrbitSpin 2.9s linear infinite reverse", height: 56, position: "absolute", width: 56 }}>
-                <span style={{ background: "color-mix(in srgb, var(--accent) 55%, var(--surface))", borderRadius: "50%", height: 7, left: "50%", marginLeft: -3.5, position: "absolute", top: -3.5, width: 7 }} />
+                <span style={{ background: "color-mix(in srgb, var(--accent-text) 55%, var(--surface))", borderRadius: "50%", height: 7, left: "50%", marginLeft: -3.5, position: "absolute", top: -3.5, width: 7 }} />
               </span>
-              <span style={{ animation: "regPulse 1.7s ease-in-out infinite", color: "var(--accent)", display: "inline-flex" }}>
+              <span style={{ animation: "regPulse 1.7s ease-in-out infinite", color: "var(--accent-text)", display: "inline-flex" }}>
                 <Icon name="sparkle" size={20} />
               </span>
             </span>
@@ -1523,9 +1522,9 @@ export function EventRegistrationWorkspace({
                   <span
                     style={{
                       alignItems: "center",
-                      background: index < generatingStep ? "var(--accent)" : index === generatingStep ? "var(--accent-soft)" : "var(--surface-3)",
+                      background: index < generatingStep ? "var(--accent-text)" : index === generatingStep ? "var(--accent-soft)" : "var(--surface-3)",
                       borderRadius: "50%",
-                      color: index < generatingStep ? "var(--on-dark)" : "var(--accent)",
+                      color: index < generatingStep ? "var(--on-image)" : "var(--accent-text)",
                       display: "inline-flex",
                       flexShrink: 0,
                       height: 22,
@@ -1537,12 +1536,12 @@ export function EventRegistrationWorkspace({
                     {index < generatingStep ? (
                       <Icon name="check" size={12} />
                     ) : index === generatingStep ? (
-                      <span style={{ animation: "regPulse 1s ease-in-out infinite", background: "var(--accent)", borderRadius: "50%", height: 7, width: 7 }} />
+                      <span style={{ animation: "regPulse 1s ease-in-out infinite", background: "var(--accent-text)", borderRadius: "50%", height: 7, width: 7 }} />
                     ) : null}
                   </span>
                   <span
                     style={{
-                      color: index === generatingStep ? "var(--ink)" : "var(--text-3)",
+                      color: index === generatingStep ? "var(--ink)" : "var(--ink-3-text)",
                       fontSize: index === generatingStep ? 15 : 14,
                       fontWeight: index === generatingStep ? 650 : 500,
                       transition: "all .3s ease",
@@ -1563,34 +1562,34 @@ export function EventRegistrationWorkspace({
             data-reg-persona
             style={{
               background: "var(--surface)",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--line)",
               borderRadius: 24,
-              boxShadow: "var(--sh-pop)",
+              boxShadow: "var(--shadow-float)",
               overflow: "hidden",
             }}
           >
             <div
               style={{
                 background: [
-                  "radial-gradient(30rem 14rem at 92% -30%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%)",
-                  "radial-gradient(color-mix(in srgb, var(--accent) 9%, transparent) 1px, transparent 1px)",
-                  "linear-gradient(150deg, color-mix(in srgb, var(--accent) 10%, var(--surface)), var(--surface) 70%)",
+                  "radial-gradient(30rem 14rem at 92% -30%, color-mix(in srgb, var(--accent-text) 22%, transparent), transparent 70%)",
+                  "radial-gradient(color-mix(in srgb, var(--accent-text) 9%, transparent) 1px, transparent 1px)",
+                  "linear-gradient(150deg, color-mix(in srgb, var(--accent-text) 10%, var(--surface)), var(--surface) 70%)",
                 ].join(", "),
                 backgroundSize: "auto, 20px 20px, auto",
-                borderBottom: "1px solid var(--border)",
+                borderBottom: "1px solid var(--line)",
                 padding: "32px 34px 26px",
                 position: "relative",
               }}
             >
-              <span aria-hidden="true" style={{ color: "color-mix(in srgb, var(--accent) 14%, transparent)", position: "absolute", right: 24, top: 20 }}>
+              <span aria-hidden="true" style={{ color: "color-mix(in srgb, var(--accent-text) 14%, transparent)", position: "absolute", right: 24, top: 20 }}>
                 <Icon name="sparkle" size={44} />
               </span>
-              <span style={{ alignItems: "center", color: "var(--accent)", display: "inline-flex", fontSize: 12, fontWeight: 750, gap: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+              <span style={{ alignItems: "center", color: "var(--accent-text)", display: "inline-flex", fontSize: 12, fontWeight: 750, gap: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
                 <Icon name="sparkle" size={13} />
                 {copy(language, { en: "Your persona for this event", zh: "你的本场活动画像" })}
               </span>
               {admissionApplication ? (
-                <p data-persona-admission-status={admissionApplication.status} style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 650, margin: "10px 0 0" }}>
+                <p data-persona-admission-status={admissionApplication.status} style={{ color: "var(--ink-2)", fontSize: 13, fontWeight: 650, margin: "10px 0 0" }}>
                   {admissionApplication.status === "admitted"
                     ? copy(language, { en: "Admission confirmed", zh: "参会资格已确认" })
                     : admissionApplication.status === "pending_review"
@@ -1600,7 +1599,7 @@ export function EventRegistrationWorkspace({
                         : copy(language, { en: "Application state updated", zh: "申请状态已更新" })}
                 </p>
               ) : null}
-              <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: "clamp(1.4rem, 3.2vw, 1.9rem)", fontWeight: 720, lineHeight: 1.3, margin: "12px 0 16px", maxWidth: "86%" }}>
+              <h2 style={{ color: "var(--ink)", fontFamily: "var(--font)", fontSize: "clamp(1.4rem, 3.2vw, 1.9rem)", fontWeight: 720, lineHeight: 1.3, margin: "12px 0 16px", maxWidth: "86%" }}>
                 {persona.tagline}
               </h2>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -1608,9 +1607,9 @@ export function EventRegistrationWorkspace({
                   <span
                     key={`industry-${tag}`}
                     style={{
-                      background: "var(--accent)",
+                      background: "var(--accent-text)",
                       borderRadius: "var(--r-pill)",
-                      color: "var(--on-dark)",
+                      color: "var(--on-image)",
                       fontSize: 13,
                       fontWeight: 700,
                       padding: "5px 13px",
@@ -1625,9 +1624,9 @@ export function EventRegistrationWorkspace({
                     style={{
                       background: "color-mix(in srgb, var(--surface) 65%, transparent)",
                       backdropFilter: "blur(4px)",
-                      border: "1px solid color-mix(in srgb, var(--accent) 34%, var(--border))",
+                      border: "1px solid color-mix(in srgb, var(--accent-text) 34%, var(--line))",
                       borderRadius: "var(--r-pill)",
-                      color: "var(--accent)",
+                      color: "var(--accent-text)",
                       fontSize: 13,
                       fontWeight: 700,
                       padding: "5px 13px",
@@ -1659,28 +1658,28 @@ export function EventRegistrationWorkspace({
               ].map((section) => (
                 <div
                   key={section.label}
-                  style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, padding: "16px 18px" }}
+                  style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 16, padding: "16px 18px" }}
                 >
-                  <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 12, fontWeight: 750, gap: 7, letterSpacing: "0.06em", marginBottom: 8, textTransform: "uppercase" }}>
+                  <div style={{ alignItems: "center", color: "var(--accent-text)", display: "flex", fontSize: 12, fontWeight: 750, gap: 7, letterSpacing: "0.06em", marginBottom: 8, textTransform: "uppercase" }}>
                     <Icon name={section.icon} size={14} />
                     {section.label}
                   </div>
-                  <p style={{ color: "var(--text)", fontSize: 15, lineHeight: 1.65, margin: 0 }}>{section.body}</p>
+                  <p style={{ color: "var(--ink)", fontSize: 15, lineHeight: 1.65, margin: 0 }}>{section.body}</p>
                 </div>
               ))}
 
-              <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, gridColumn: "1 / -1", padding: "16px 18px" }}>
-                <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 12, fontWeight: 750, gap: 7, letterSpacing: "0.06em", marginBottom: 10, textTransform: "uppercase" }}>
+              <div style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 16, gridColumn: "1 / -1", padding: "16px 18px" }}>
+                <div style={{ alignItems: "center", color: "var(--accent-text)", display: "flex", fontSize: 12, fontWeight: 750, gap: 7, letterSpacing: "0.06em", marginBottom: 10, textTransform: "uppercase" }}>
                   <Icon name="message" size={14} />
                   {copy(language, { en: "Conversation openers", zh: "开场话题" })}
                 </div>
                 <div style={{ display: "grid", gap: 8 }}>
                   {persona.openers.map((opener, openerIndex) => (
                     <div key={opener} style={{ alignItems: "baseline", display: "flex", gap: 10 }}>
-                      <span className="mono" style={{ color: "var(--text-4)", flexShrink: 0, fontSize: 12, fontWeight: 700 }}>
+                      <span className="mono" style={{ color: "var(--ink-3-text)", flexShrink: 0, fontSize: 12, fontWeight: 700 }}>
                         {String(openerIndex + 1).padStart(2, "0")}
                       </span>
-                      <span style={{ color: "var(--text)", fontSize: 15, lineHeight: 1.6 }}>{opener}</span>
+                      <span style={{ color: "var(--ink)", fontSize: 15, lineHeight: 1.6 }}>{opener}</span>
                     </div>
                   ))}
                 </div>
@@ -1692,20 +1691,20 @@ export function EventRegistrationWorkspace({
                     ? copy(language, { en: "Composed by Orbit AI", zh: "由 Orbit AI 生成" })
                     : copy(language, { en: "Composed from your answers", zh: "由你的回答直接生成" })}
                 </span>
-                <span style={{ color: "var(--text-4)", fontSize: 12 }}>
+                <span style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
                   {copy(language, { en: "Scoped to this event only.", zh: "仅用于本次活动。" })}
                 </span>
               </div>
             </div>
 
-            <footer style={{ alignItems: "center", background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))", borderTop: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", padding: "14px 22px" }}>
+            <footer style={{ alignItems: "center", background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))", borderTop: "1px solid var(--line)", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", padding: "14px 22px" }}>
               <div style={{ display: "flex", gap: 6 }}>
                 {!admissionControlled ? (
                   <button
                     className="reg-ghost-btn"
                     onClick={restartInterview}
                     type="button"
-                    style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 5 }}
+                    style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--ink-3-text)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--font)", fontSize: 13, fontWeight: 600, gap: 5 }}
                   >
                     <Icon name="edit" size={13} />
                     {copy(language, { en: "Redo the interview", zh: "重新回答" })}
@@ -1719,7 +1718,7 @@ export function EventRegistrationWorkspace({
                       confirmCancellation();
                     }}
                     type="button"
-                    style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--danger, #C2410C)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 5 }}
+                    style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--coral-text, #C2410C)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--font)", fontSize: 13, fontWeight: 600, gap: 5 }}
                   >
                     {admissionControlled
                       ? copy(language, { en: "Withdraw from event", zh: "撤回参会资格" })
@@ -1760,9 +1759,9 @@ export function EventRegistrationWorkspace({
               role="alertdialog"
               style={{
                 background: "var(--surface)",
-                border: "1px solid var(--border)",
+                border: "1px solid var(--line)",
                 borderRadius: 18,
-                boxShadow: "var(--sh-pop)",
+                boxShadow: "var(--shadow-float)",
                 display: "grid",
                 gap: 14,
                 maxWidth: 460,
@@ -1784,7 +1783,7 @@ export function EventRegistrationWorkspace({
                       zh: "确认取消这次活动报名？",
                     })}
               </h2>
-              <p style={{ color: "var(--text-2)", fontSize: 15, lineHeight: 1.6, margin: 0 }}>
+              <p style={{ color: "var(--ink-2)", fontSize: 15, lineHeight: 1.6, margin: 0 }}>
                 {admissionControlled
                   ? copy(language, {
                       en: "The application becomes final and you will leave attendee matching. If already admitted, your attendee membership is cancelled atomically and the next waitlisted person may be promoted.",
@@ -1820,7 +1819,7 @@ export function EventRegistrationWorkspace({
                   disabled={pendingCancel}
                   onClick={cancelRegistration}
                   type="button"
-                  style={{ background: "var(--danger, #C2410C)", color: "white" }}
+                  style={{ background: "var(--coral-text, #C2410C)", color: "white" }}
                 >
                   {pendingCancel
                     ? copy(language, { en: "Cancelling…", zh: "取消中…" })
@@ -1844,19 +1843,19 @@ export function EventRegistrationWorkspace({
             aria-busy={thinking}
             style={{
               background: "var(--surface)",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--line)",
               borderRadius: 24,
-              boxShadow: "var(--sh-lg)",
+              boxShadow: "var(--shadow-float)",
               display: "grid",
               gap: 16,
               padding: "30px 34px",
             }}
           >
-            <span style={{ color: "var(--accent)", display: "inline-flex" }}>
+            <span style={{ color: "var(--accent-text)", display: "inline-flex" }}>
               <Icon name="sparkle" size={20} />
             </span>
             <div>
-              <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 22, margin: 0 }}>
+              <h2 style={{ color: "var(--ink)", fontFamily: "var(--font)", fontSize: 22, margin: 0 }}>
                 {registrationAnswersComplete
                   ? copy(language, {
                       en: "Registration has not been submitted yet",
@@ -1872,7 +1871,7 @@ export function EventRegistrationWorkspace({
                       zh: "AI 访谈暂时未生成",
                     })}
               </h2>
-              <p style={{ color: "var(--text-2)", lineHeight: 1.65, margin: "8px 0 0" }}>
+              <p style={{ color: "var(--ink-2)", lineHeight: 1.65, margin: "8px 0 0" }}>
                 {registrationAnswersComplete
                   ? copy(language, {
                       en: "Your core answers are kept. Save registration and generate your persona now, or continue answering optional questions.",

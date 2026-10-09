@@ -10,10 +10,10 @@ export default function AgentMarkdown({ text }: { text: string }) {
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ children, href }) => (
-            <a href={href} rel="noreferrer" style={{ color: "var(--accent)" }} target="_blank">{children}</a>
+            <a href={href} rel="noreferrer" style={{ color: "var(--accent-text)" }} target="_blank">{children}</a>
           ),
           code: ({ children }) => (
-            <code className="mono" style={{ background: "var(--surface-2)", borderRadius: "var(--r-xs)", fontSize: 13, padding: "1px 5px" }}>{children}</code>
+            <code className="mono" style={{ background: "var(--surface-2)", borderRadius: "var(--r-sm)", fontSize: 13, padding: "1px 5px" }}>{children}</code>
           ),
           li: ({ children }) => <li style={{ margin: "3px 0" }}>{children}</li>,
           ol: ({ children }) => <ol style={{ margin: "6px 0", paddingLeft: 20 }}>{children}</ol>,

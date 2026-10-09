@@ -452,7 +452,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
             setRefreshKey(value => value + 1);
           }}
           refreshing={state.refreshing || suggestionsState.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
         }
       >
@@ -882,7 +882,7 @@ function ProfileExtractionButton({
         pressed ? styles.pressed : null
       ]}
     >
-      <Ionicons color={colors.text} name={icon} size={16} />
+      <Ionicons color={colors.ink} name={icon} size={16} />
       <Text style={styles.profileExtractionButtonText}>{label}</Text>
     </Pressable>
   );
@@ -967,7 +967,7 @@ function ProfileDocumentExtractionResult({
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.accent} name="create-outline" size={16} />
+          <Ionicons color={colors.accentText} name="create-outline" size={16} />
           <Text style={styles.profileExtractionApplyButtonText}>
             {locale.t("profile.applyExtraction")}
           </Text>
@@ -1278,7 +1278,7 @@ function ProfileTextInput({
         multiline={multiline}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.text4}
+        placeholderTextColor={colors.ink3Text}
         style={[styles.profileInput, multiline ? styles.profileInputMultiline : null]}
         textAlignVertical={multiline ? "top" : "center"}
         value={value}
@@ -1339,7 +1339,7 @@ function OrbitBusinessCard({ profile, onEdit }: { profile: ProfileSummary; onEdi
         </View>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.edit")} onPress={onEdit} style={({ pressed }) => [styles.profileEditLink, pressed && styles.pressed]}>
-        <Text style={styles.profileEditText}>{locale.t("profile.edit")}</Text><Ionicons name="chevron-forward" size={14} color={colors.accent} />
+        <Text style={styles.profileEditText}>{locale.t("profile.edit")}</Text><Ionicons name="chevron-forward" size={14} color={colors.accentText} />
       </Pressable>
     </View>
   );
@@ -1549,7 +1549,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   pageContent: { alignSelf: "center", width: "100%", maxWidth: 820, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 140 },
   pageHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 44 },
   pageTitle: { color: colors.ink, fontSize: 30, lineHeight: 38, fontWeight: "900", letterSpacing: -0.6, flexShrink: 1 },
-  settingsButton: { width: 44, height: 44, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  settingsButton: { width: 44, height: 44, borderRadius: 10, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" },
   profileIdentity: { marginTop: 20, flexDirection: "row", alignItems: "center", gap: 8 },
   profileIdentityNarrow: { flexDirection: "column", alignItems: "stretch" },
   profileIdentityMain: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 16 },
@@ -1557,58 +1557,58 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   profileAvatar: { width: 72, height: 72, borderRadius: 36, flexShrink: 0, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   profileInitial: { color: colors.onAccent, fontSize: 26, lineHeight: 32, fontWeight: "800" },
   profileName: { color: colors.ink, fontSize: 24, lineHeight: 31, fontWeight: "900", letterSpacing: -0.48 },
-  profileMeta: { color: colors.text3, fontSize: 13, lineHeight: 19, marginTop: 2 },
-  profileLocation: { color: colors.text4, fontSize: 12, lineHeight: 18, marginTop: 2 },
+  profileMeta: { color: colors.ink3Text, fontSize: 13, lineHeight: 19, marginTop: 2 },
+  profileLocation: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, marginTop: 2 },
   profileEditLink: { minHeight: 44, minWidth: 44, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", flexShrink: 0 },
-  profileEditText: { color: colors.accent, fontSize: 13, lineHeight: 19, fontWeight: "700", flexShrink: 1 },
-  statistics: { marginTop: 20, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border, flexDirection: "row" },
+  profileEditText: { color: colors.accentText, fontSize: 13, lineHeight: 19, fontWeight: "700", flexShrink: 1 },
+  statistics: { marginTop: 20, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line, flexDirection: "row" },
   statisticsNarrow: { flexDirection: "column" },
   statistic: { width: "33.333333%", minWidth: 0, minHeight: 76, paddingVertical: 14, paddingHorizontal: 0, justifyContent: "center" },
   statisticNarrow: { width: "100%" },
-  statisticNext: { borderLeftWidth: 1, borderLeftColor: colors.border, paddingHorizontal: 16 },
-  statisticNextNarrow: { borderTopWidth: 1, borderTopColor: colors.border },
+  statisticNext: { borderLeftWidth: 1, borderLeftColor: colors.line, paddingHorizontal: 16 },
+  statisticNextNarrow: { borderTopWidth: 1, borderTopColor: colors.line },
   statisticValue: { color: colors.ink, fontSize: 26, lineHeight: 26, fontWeight: "800", letterSpacing: -0.78 },
-  statisticLabel: { color: colors.text3, fontSize: 11, lineHeight: 16, marginTop: 6 },
-  statisticState: { color: colors.text3, fontSize: 12, lineHeight: 18 },
+  statisticLabel: { color: colors.ink3Text, fontSize: 11, lineHeight: 16, marginTop: 6 },
+  statisticState: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
   statisticRetry: { minHeight: 44, minWidth: 44, alignItems: "flex-start", justifyContent: "center" },
   basicSection: { marginTop: 20 },
   sectionTitle: { color: colors.ink, fontSize: 15, lineHeight: 21, fontWeight: "800" },
   basicRows: { marginTop: 4 },
-  basicRow: { flexDirection: "row", paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.border2 },
-  basicLabel: { color: colors.text4, fontSize: 14, lineHeight: 20, width: 72, flexShrink: 0 },
+  basicRow: { flexDirection: "row", paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.line },
+  basicLabel: { color: colors.ink3Text, fontSize: 14, lineHeight: 20, width: 72, flexShrink: 0 },
   basicValue: { color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: "500", flex: 1, minWidth: 0 },
   bioRow: { borderBottomWidth: 0 },
   bioValue: { lineHeight: 22, fontWeight: "400" },
   previewTags: { marginTop: 14 },
   previewTagGroups: { marginTop: 10, flexDirection: "row", flexWrap: "wrap", gap: 8 },
   previewTagGroup: { flexDirection: "row", flexWrap: "wrap", gap: 8, maxWidth: "100%", minWidth: 0 },
-  previewTag: { color: colors.ink, fontSize: 12, lineHeight: 18, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, maxWidth: "100%", overflow: "hidden" },
+  previewTag: { color: colors.ink, fontSize: 12, lineHeight: 18, borderWidth: 1, borderColor: colors.line, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, maxWidth: "100%", overflow: "hidden" },
   offeringTag: { backgroundColor: colors.ink, borderColor: colors.ink, color: colors.onAccent, fontWeight: "600" },
-  accountRow: { marginTop: 20, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border, paddingVertical: 14, minHeight: 49, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  accountRow: { marginTop: 20, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line, paddingVertical: 14, minHeight: 49, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   accountTitle: { color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: "600", flexShrink: 1 },
   extraSection: { marginTop: 20, gap: 8 },
-  pageNotice: { marginTop: 20, color: colors.text3, fontSize: 14, lineHeight: 22, gap: 12 },
+  pageNotice: { marginTop: 20, color: colors.ink3Text, fontSize: 14, lineHeight: 22, gap: 12 },
   editorSections: { marginTop: 20, gap: 20 },
   previewBack: { marginTop: 16, minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
   hidden: { display: "none" },
   bodyText: {
     ...textStyles.body,
-    color: colors.text,
+    color: colors.ink,
   },
   acceptedPatchHeader: {
     gap: 3
   },
   acceptedPatchLabel: {
-    color: colors.text4,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 16,
     width: 72
   },
   acceptedPatchNotice: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -1618,26 +1618,26 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   acceptedPatchSummary: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 17
   },
   acceptedPatchTitle: {
     color: colors.ink,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     fontWeight: "800",
     lineHeight: 19
   },
   acceptedPatchValue: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 19
   },
   businessCard: {
     backgroundColor: colors.surface,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.lg,
     paddingVertical: spacing.lg
@@ -1658,36 +1658,36 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   businessCardHeadline: {
     ...textStyles.body,
-    color: colors.text
+    color: colors.ink
   },
   businessCardIdentity: {
     gap: spacing.xs
   },
   businessCardInitial: {
     ...textStyles.listTitle,
-    color: colors.accent
+    color: colors.accentText
   },
   businessCardMark: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   businessCardMeta: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   businessCardName: {
     ...textStyles.title,
-    color: colors.text
+    color: colors.ink
   },
   businessCardOverflow: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   businessCardTag: {
     ...textStyles.small,
     backgroundColor: colors.surface2,
-    borderRadius: radius.control,
-    color: colors.text2,
+    borderRadius: radius.md,
+    color: colors.ink2,
     flexShrink: 1,
     maxWidth: "100%",
     paddingHorizontal: spacing.sm,
@@ -1695,7 +1695,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   businessCardTagLabel: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   businessCardTagRow: {
     alignItems: "flex-start",
@@ -1710,14 +1710,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   businessCardTagStack: {
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
     paddingTop: spacing.md
   },
   evidenceText: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 17
   },
   manualEditStack: {
@@ -1728,14 +1728,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   profileActionError: {
-    color: colors.rose,
-    fontSize: typography.small,
+    color: colors.coralText,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 20
   },
   profileActionMessage: {
-    color: colors.live,
-    fontSize: typography.small,
+    color: colors.okText,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 20
   },
@@ -1771,14 +1771,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   profileExtractionEvidence: {
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: spacing.xs,
     paddingTop: spacing.sm
   },
   profileExtractionLabel: {
-    color: colors.text4,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 16,
     width: 76
@@ -1787,8 +1787,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs
   },
   profileExtractionMeta: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 17
   },
   profileExtractionName: {
@@ -1799,8 +1799,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   profileExtractionResult: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -1820,21 +1820,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   profileExtractionStatus: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16
   },
   profileExtractionTitle: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 16
   },
   profileExtractionValue: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 19
   },
@@ -1846,7 +1846,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   profileInputLabel: {
     ...textStyles.small,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   profileInputMultiline: {
@@ -1883,21 +1883,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...createControlStyles(colors).primaryButtonText
   },
   suggestionActionError: {
-    color: colors.rose,
-    fontSize: typography.small,
+    color: colors.coralText,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 20
   },
   suggestionActionMessage: {
-    color: colors.live,
-    fontSize: typography.small,
+    color: colors.okText,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 20
   },
   suggestionCard: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -1919,14 +1919,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   suggestionLabel: {
-    color: colors.text4,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16
   },
   suggestionSource: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 16
   },
@@ -1934,19 +1934,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   suggestionStatus: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16
   },
   suggestionValue: {
-    color: colors.text2,
-    fontSize: typography.small,
+    color: colors.ink2,
+    fontSize: typography.bodySm,
     lineHeight: 19
   },
   suggestionValueStrong: {
-    color: colors.text,
-    fontSize: typography.small,
+    color: colors.ink,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 19
   },
@@ -1958,10 +1958,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingTop: spacing.sm
   },
   tagText: {
-    backgroundColor: colors.liveSoft,
+    backgroundColor: colors.okSoft,
     borderRadius: 999,
-    color: colors.live,
-    fontSize: typography.small,
+    color: colors.okText,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 18,
     overflow: "hidden",

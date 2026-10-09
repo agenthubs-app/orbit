@@ -55,7 +55,7 @@ export function ContactPage({
               : router.replace((backHref ?? (detail ? "/contacts/list" : "/contacts")) as Href)}
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
-            <Ionicons color={colors.accent} name="chevron-back" size={23} />
+            <Ionicons color={colors.accentText} name="chevron-back" size={23} />
             <Text style={styles.backText}>{resolvedBackLabel}</Text>
           </Pressable>}
           {detail ? <Text accessibilityRole="header" style={styles.detailTitle}>{title}</Text> : null}
@@ -96,7 +96,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     marginLeft: -6
   },
   backText: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 16,
     lineHeight: 22
   },

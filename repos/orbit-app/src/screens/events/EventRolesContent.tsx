@@ -57,7 +57,7 @@ export function EventRolesContent({
         {roles.members.map((member) => (
           <View key={member.subjectActorId} style={styles.member}>
             <View style={[styles.roleIcon, member.role === "owner" ? styles.ownerIcon : null]}>
-              <Ionicons color={member.role === "owner" ? colors.live : colors.accent} name={member.role === "owner" ? "key-outline" : "person-outline"} size={19} />
+              <Ionicons color={member.role === "owner" ? colors.okText : colors.accentText} name={member.role === "owner" ? "key-outline" : "person-outline"} size={19} />
             </View>
             <View style={styles.memberCopy}>
               <View style={styles.memberTopline}>
@@ -104,10 +104,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   manageButton: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 54 },
-  manageButtonText: { color: colors.accent, fontSize: typography.caption, fontWeight: "800" },
+  manageButtonText: { color: colors.accentText, fontSize: typography.label, fontWeight: "800" },
   member: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -121,7 +121,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs,
     minWidth: 150
   },
-  memberCount: { color: colors.text3, fontSize: typography.caption },
+  memberCount: { color: colors.ink3Text, fontSize: typography.label },
   members: {
     backgroundColor: "transparent",
     paddingVertical: spacing.md
@@ -132,22 +132,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm,
     flexWrap: "wrap"
   },
-  notice: { backgroundColor: colors.liveSoft, borderRadius: radius.control, color: colors.live, fontSize: typography.small, lineHeight: 20, padding: spacing.md },
-  ownerIcon: { backgroundColor: colors.liveSoft },
-  ownerLabel: { backgroundColor: colors.liveSoft, color: colors.live },
+  notice: { backgroundColor: colors.okSoft, borderRadius: radius.md, color: colors.okText, fontSize: typography.bodySm, lineHeight: 20, padding: spacing.md },
+  ownerIcon: { backgroundColor: colors.okSoft },
+  ownerLabel: { backgroundColor: colors.okSoft, color: colors.okText },
   pressed: { opacity: 0.68 },
   reason: {
-    color: colors.text2,
+    color: colors.ink2,
     ...textStyles.small
   },
   revision: {
-    color: colors.text4,
+    color: colors.ink3Text,
     ...textStyles.caption
   },
-  roleIcon: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: radius.pill, height: 40, justifyContent: "center", width: 40 },
-  roleLabel: { backgroundColor: colors.accentSofter, borderRadius: radius.pill, color: colors.accent, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  roleIcon: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.pill, height: 40, justifyContent: "center", width: 40 },
+  roleLabel: { backgroundColor: colors.accentSoft, borderRadius: radius.pill, color: colors.accentText, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   stateText: {
-    color: colors.text2,
+    color: colors.ink2,
     ...textStyles.body
   }
 }));

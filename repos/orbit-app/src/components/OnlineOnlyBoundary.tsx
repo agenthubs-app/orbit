@@ -128,6 +128,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   probeNotice: { paddingHorizontal: layout.pageInset, paddingTop: spacing.sm },
   content: { paddingHorizontal: layout.pageInset, paddingTop: spacing.lg, paddingBottom: spacing.xl, gap: spacing.md },
   back: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
-  backText: { ...textStyles.body, color: colors.accent },
+  backText: { ...textStyles.body, color: colors.accentText },
   title: { ...textStyles.pageTitle, color: colors.ink },
 }));

@@ -77,7 +77,7 @@ export function AdminScreen({ surface = "dashboard" }: { surface?: AdminSurface 
             profileState.refreshing ||
             dashboardState.refreshing
           }
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={title}
@@ -288,13 +288,13 @@ function EventsCard({
               </View>
               <View style={styles.eventMetaStack}>
                 <View style={styles.eventMetaLine}>
-                  <Ionicons color={colors.text3} name="time-outline" size={14} />
+                  <Ionicons color={colors.ink3Text} name="time-outline" size={14} />
                   <Text style={styles.metaText}>
                     {event.startsAt}
                   </Text>
                 </View>
                 <View style={styles.eventMetaLine}>
-                  <Ionicons color={colors.text3} name="location-outline" size={14} />
+                  <Ionicons color={colors.ink3Text} name="location-outline" size={14} />
                   <Text style={styles.metaText}>
                     {event.location}
                   </Text>
@@ -331,7 +331,7 @@ function AccessCard({
     <DataCard detail={boundary} title="访问成员">
       <MemberList members={members} />
       <View style={styles.accessNote}>
-        <Ionicons color={colors.accent} name="lock-closed" size={18} />
+        <Ionicons color={colors.accentText} name="lock-closed" size={18} />
         <Text style={styles.bodyText}>
           邀请成员、调整角色和撤销访问都需要再次确认。
         </Text>
@@ -377,20 +377,20 @@ function MemberList({ members }: { members: AdminMemberView[] }) {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   accessNote: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.card,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.xl,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
   },
   bodyText: {
     ...textStyles.body,
-    color: colors.text2,
+    color: colors.ink2,
     flex: 1,
   },
   detailText: {
     ...textStyles.small,
-    color: colors.text2,
+    color: colors.ink2,
   },
   eventCopy: {
     flex: 1,
@@ -398,8 +398,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   eventFallbackText: {
-    color: colors.accent,
-    fontSize: typography.section,
+    color: colors.accentText,
+    fontSize: typography.cardTitle,
     fontWeight: "700"
   },
   eventIcon: {
@@ -422,7 +422,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventRow: {
     alignItems: "flex-start",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.md,
@@ -441,7 +441,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventThumbOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(10,10,16,0.08)"
+    backgroundColor: colors.line
   },
   eventTitleRow: {
     alignItems: "flex-start",
@@ -463,7 +463,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   memberIcon: {
     alignItems: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentText,
     borderRadius: radius.md,
     height: 44,
     justifyContent: "center",
@@ -471,12 +471,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   memberIconText: {
     color: colors.onAccent,
-    fontSize: typography.section,
+    fontSize: typography.cardTitle,
     fontWeight: "700"
   },
   memberRow: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     flexWrap: "wrap",
@@ -485,7 +485,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   metaText: {
     ...textStyles.small,
-    color: colors.text3,
+    color: colors.ink3Text,
     flexShrink: 1
   },
   navPill: {
@@ -512,7 +512,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   roleBadge: {
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.pill,
     flexShrink: 0,
     maxWidth: 110,
@@ -520,8 +520,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.xs
   },
   roleText: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "700"
   },
   statCell: {
@@ -543,7 +543,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   statNote: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
   },
   statValue: {
     ...textStyles.pageTitle,
@@ -557,8 +557,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.xs
   },
   statusText: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "700"
   }
 }));

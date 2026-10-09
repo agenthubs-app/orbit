@@ -88,13 +88,13 @@ export function ContactTagEditor({ contactId, initialTags, language, onClose, on
             <span style={{ overflowWrap: "anywhere", minWidth: 0 }}>{labels.get(tag) ?? tag}</span>
             <button type="button" className="btn btn-quiet btn-sm" aria-label={`${copy.remove}${labels.get(tag) ?? tag}`} disabled={status === "saving"} onClick={() => { if (!pending.current) { setTags(tags.filter((value) => value !== tag)); setError(null); setStatus("idle"); } }}>×</button>
           </span>)}
-          {!tags.length ? <p style={{ color: "var(--text-3)" }}>{copy.empty}</p> : null}
+          {!tags.length ? <p style={{ color: "var(--ink-3-text)" }}>{copy.empty}</p> : null}
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-          <input aria-label={copy.add} value={input} disabled={status === "saving"} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); add(); } }} style={{ flex: 1, minWidth: 0, minHeight: 44, padding: "8px 10px", color: "var(--text)", background: "var(--surface)", border: "1px solid var(--hairline)", borderRadius: "var(--r-md)" }} />
+          <input aria-label={copy.add} value={input} disabled={status === "saving"} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); add(); } }} style={{ flex: 1, minWidth: 0, minHeight: 44, padding: "8px 10px", color: "var(--ink)", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r-md)" }} />
           <button type="button" className="btn btn-quiet" data-tag-add disabled={status === "saving" || !input.trim()} onClick={add}>{copy.add}</button>
         </div>
-        {error ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13 }}>{error}</p> : null}
+        {error ? <p role="alert" style={{ color: "var(--coral-text)", fontSize: 13 }}>{error}</p> : null}
         {status === "saved" ? <p role="status">{copy.saved}</p> : null}
         <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: 10, marginTop: 20 }}>
           <button type="button" className="btn btn-quiet" disabled={status === "saving"} onClick={onClose}>{copy.close}</button>

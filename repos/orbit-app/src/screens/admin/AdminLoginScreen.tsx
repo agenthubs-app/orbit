@@ -56,7 +56,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   bodyText: {
     ...textStyles.body,
-    color: colors.text2,
+    color: colors.ink2,
   },
   pressed: {
     opacity: 0.82,

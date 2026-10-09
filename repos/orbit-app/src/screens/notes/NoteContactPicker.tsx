@@ -90,7 +90,7 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
         <Text style={styles.hint}>{locale.t("notes.relatedPeopleHint")}</Text>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.addRelatedPeople")} disabled={disabled} onPress={() => setOpen((value) => !value)} style={styles.addButton}>
-        <Ionicons color={colors.accent} name={open ? "close" : "add"} size={23} />
+        <Ionicons color={colors.accentText} name={open ? "close" : "add"} size={23} />
       </Pressable>
     </View>
     {selectedIds.length ? <View style={styles.selectedRow}>{selectedIds.map((id) => {
@@ -98,14 +98,14 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
       return <View key={id} style={styles.chip}>
         <Text numberOfLines={1} style={styles.chipText}>{contact?.name ?? id}</Text>
         <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.removeRelatedPerson", { name: contact?.name ?? id })} disabled={disabled} onPress={() => onToggle(id, contact)} hitSlop={8}>
-          <Ionicons color={colors.text3} name="close-circle" size={18} />
+          <Ionicons color={colors.ink3Text} name="close-circle" size={18} />
         </Pressable>
       </View>;
     })}</View> : null}
     {open ? <View style={styles.searchPanel}>
       <View style={styles.searchBox}>
-        <Ionicons color={colors.text3} name="search" size={19} />
-        <TextInput accessibilityLabel={locale.t("notes.searchRelatedPeople")} autoCapitalize="none" autoCorrect={false} editable={!disabled} onChangeText={setQuery} placeholder={locale.t("notes.searchPeoplePlaceholder")} placeholderTextColor={colors.text4} style={styles.searchInput} value={query} />
+        <Ionicons color={colors.ink3Text} name="search" size={19} />
+        <TextInput accessibilityLabel={locale.t("notes.searchRelatedPeople")} autoCapitalize="none" autoCorrect={false} editable={!disabled} onChangeText={setQuery} placeholder={locale.t("notes.searchPeoplePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.searchInput} value={query} />
       </View>
       {!query.trim() ? <Text style={styles.emptyHint}>{locale.t("notes.searchPeopleStart")}</Text> : null}
       {searching && results.length === 0 ? <Text accessibilityLiveRegion="polite" style={styles.emptyHint}>{locale.t("notes.searching")}</Text> : null}
@@ -119,7 +119,7 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
             <Text style={styles.resultName}>{contact.name}</Text>
             <Text numberOfLines={1} style={styles.resultMeta}>{[contact.role, contact.organization].filter(Boolean).join(" · ") || locale.t("notes.personProfile")}</Text>
           </View>
-          <Ionicons color={checked ? colors.accent : colors.borderStrong} name={checked ? "checkmark-circle" : "ellipse-outline"} size={23} />
+          <Ionicons color={checked ? colors.accentText : colors.ink4} name={checked ? "checkmark-circle" : "ellipse-outline"} size={23} />
         </Pressable>;
       })}
       {nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.loadMorePeople")} disabled={searching} onPress={() => { void loadMore(); }} style={styles.more}><Text style={styles.moreText}>{locale.t(searching ? "notes.loadingMore" : "notes.loadMore")}</Text></Pressable> : null}
@@ -131,22 +131,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   group: { gap: spacing.md },
   labelRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   label: { color: colors.ink, fontSize: typography.body, fontWeight: "700", lineHeight: 23 },
-  hint: { color: colors.text3, fontSize: typography.caption, lineHeight: 18, marginTop: 2 },
+  hint: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 18, marginTop: 2 },
   addButton: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.pill, height: 38, justifyContent: "center", width: 38 },
   selectedRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: { alignItems: "center", backgroundColor: colors.surface3, borderRadius: radius.pill, flexDirection: "row", gap: 6, maxWidth: 190, minHeight: 36, paddingHorizontal: spacing.md },
-  chipText: { color: colors.text, flexShrink: 1, fontSize: typography.small, fontWeight: "600" },
-  searchPanel: { backgroundColor: colors.surface2, borderColor: colors.border, borderRadius: radius.lg, borderWidth: 1, overflow: "hidden", padding: spacing.md },
+  chipText: { color: colors.ink, flexShrink: 1, fontSize: typography.bodySm, fontWeight: "600" },
+  searchPanel: { backgroundColor: colors.surface2, borderColor: colors.line, borderRadius: radius.lg, borderWidth: 1, overflow: "hidden", padding: spacing.md },
   searchBox: { alignItems: "center", backgroundColor: colors.surface3, borderRadius: radius.md, flexDirection: "row", gap: spacing.sm, minHeight: 44, paddingHorizontal: spacing.md },
   searchInput: { color: colors.ink, flex: 1, fontSize: typography.body, minHeight: 44, paddingVertical: 0 },
-  emptyHint: { color: colors.text3, fontSize: typography.small, lineHeight: 20, paddingHorizontal: spacing.sm, paddingVertical: spacing.lg, textAlign: "center" },
-  error: { color: colors.rose, fontSize: typography.small, lineHeight: 20, padding: spacing.sm },
-  resultRow: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.md, minHeight: 64, paddingVertical: spacing.sm },
+  emptyHint: { color: colors.ink3Text, fontSize: typography.bodySm, lineHeight: 20, paddingHorizontal: spacing.sm, paddingVertical: spacing.lg, textAlign: "center" },
+  error: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20, padding: spacing.sm },
+  resultRow: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.md, minHeight: 64, paddingVertical: spacing.sm },
   avatar: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.pill, height: 40, justifyContent: "center", width: 40 },
-  avatarText: { color: colors.accent, fontSize: typography.body, fontWeight: "800" },
+  avatarText: { color: colors.accentText, fontSize: typography.body, fontWeight: "800" },
   resultCopy: { flex: 1, minWidth: 0 },
   resultName: { color: colors.ink, fontSize: typography.body, fontWeight: "700" },
-  resultMeta: { color: colors.text3, fontSize: typography.caption, lineHeight: 18, marginTop: 2 },
+  resultMeta: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 18, marginTop: 2 },
   more: { alignItems: "center", minHeight: 44, justifyContent: "center" },
-  moreText: { color: colors.accent, fontSize: typography.small, fontWeight: "700" },
+  moreText: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "700" },
 }));

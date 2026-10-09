@@ -73,7 +73,7 @@ export const ORBIT_ASK_STYLES = `
 .oga-root .oga-ball > svg { position: relative; }
 .oga-root .oga-ball:hover { background: var(--ai-grad-hover); transform: translateY(-2px); }
 .oga-root .oga-ball:active { transform: scale(.94); }
-.oga-root .oga-ball:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.oga-root .oga-ball:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 
 /* ═══ 展开态 ═══ */
 .oga-root .oga-dock {
@@ -118,35 +118,35 @@ export const ORBIT_ASK_STYLES = `
 .oga-root .oga-chip {
   display: inline-flex; align-items: center; height: 28px; padding: 0 11px;
   border-radius: var(--r-pill, 999px); font: inherit; font-size: 12.5px; font-weight: 500;
-  background: color-mix(in srgb, var(--surface) 86%, transparent); color: var(--text-2);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 86%, transparent); color: var(--ink-2);
+  border: 1px solid var(--line);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 3px 12px rgba(23,33,31,.10);
   white-space: nowrap; cursor: pointer;
   transition: background .14s, color .14s, border-color .14s;
 }
-.oga-root .oga-chip:hover { background: var(--surface); border-color: var(--accent); color: var(--accent-press); }
+.oga-root .oga-chip:hover { background: var(--surface); border-color: var(--accent-text); color: var(--plum-900); }
 
 /* 会随问题一起带走的页面上下文。做成可划掉的 chip 而不是隐式附加：
    用户该看得见我们要带走什么，也该能拒绝。 */
 .oga-root .oga-context {
   display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 5px 0 10px;
   border-radius: var(--r-pill, 999px); font-size: 12.5px; font-weight: 500;
-  background: color-mix(in srgb, var(--surface) 78%, transparent); color: var(--text-3);
-  border: 1px dashed var(--border-2);
+  background: color-mix(in srgb, var(--surface) 78%, transparent); color: var(--ink-3-text);
+  border: 1px dashed var(--line);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   white-space: nowrap;
 }
 .oga-root .oga-context-x {
   display: grid; place-items: center; width: 18px; height: 18px; padding: 0;
-  border: 0; border-radius: 50%; background: none; color: var(--text-4); cursor: pointer;
+  border: 0; border-radius: 50%; background: none; color: var(--ink-3-text); cursor: pointer;
 }
 .oga-root .oga-context-x:hover { background: var(--surface-3); color: var(--ink); }
 
 .oga-root .oga-close {
   margin-left: auto; width: 28px; height: 28px; padding: 0; border-radius: 50%;
-  background: color-mix(in srgb, var(--surface) 86%, transparent); border: 1px solid var(--border);
-  color: var(--text-3); display: grid; place-items: center; flex: 0 0 auto;
+  background: color-mix(in srgb, var(--surface) 86%, transparent); border: 1px solid var(--line);
+  color: var(--ink-3-text); display: grid; place-items: center; flex: 0 0 auto;
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 3px 12px rgba(23,33,31,.10); cursor: pointer;
 }
@@ -156,7 +156,7 @@ export const ORBIT_ASK_STYLES = `
   display: flex; align-items: center; gap: 11px;
   background: color-mix(in srgb, var(--surface) 66%, transparent);
   border: 1px solid color-mix(in srgb, var(--surface) 82%, transparent);
-  outline: 1px solid var(--border);
+  outline: 1px solid var(--line);
   border-radius: var(--r-pill, 999px);
   padding: 6px 6px 6px 18px;
   backdrop-filter: blur(20px) saturate(175%); -webkit-backdrop-filter: blur(20px) saturate(175%);
@@ -164,13 +164,13 @@ export const ORBIT_ASK_STYLES = `
   transition: outline-color .15s, box-shadow .15s;
 }
 .oga-root .oga-row:focus-within { outline-color: var(--ai-ring); box-shadow: 0 10px 30px rgba(23,33,31,.15), 0 0 0 3px var(--ai-ring); }
-.oga-root .oga-lead { color: var(--text-3); display: inline-flex; flex: 0 0 auto; }
+.oga-root .oga-lead { color: var(--ink-3-text); display: inline-flex; flex: 0 0 auto; }
 .oga-root .oga-row input {
   flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: 14.5px;
-  color: var(--text); min-height: 38px; outline: none;
+  color: var(--ink); min-height: 38px; outline: none;
 }
 .oga-root .oga-row input:focus, .oga-root .oga-row input:focus-visible { outline: none; }
-.oga-root .oga-row input::placeholder { color: var(--text-3); transition: opacity .2s; }
+.oga-root .oga-row input::placeholder { color: var(--ink-3-text); transition: opacity .2s; }
 
 .oga-root .oga-send {
   width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%;
@@ -180,9 +180,9 @@ export const ORBIT_ASK_STYLES = `
 .oga-root .oga-send:hover:not(:disabled) { background: var(--ai-grad-hover); }
 .oga-root .oga-send:active:not(:disabled) { transform: scale(.94); }
 .oga-root .oga-send:disabled { opacity: .45; cursor: default; }
-.oga-root .oga-send:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.oga-root .oga-send:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 
-.oga-root .oga-note { font-size: 11px; color: var(--text-2); margin: 9px 0 0; text-align: center; }
+.oga-root .oga-note { font-size: 11px; color: var(--ink-2); margin: 9px 0 0; text-align: center; }
 
 /* ═══ 给页面底部让位 ═══
    垫在页面根节点末尾。agent 页的根是 height:100dvh 的 flex 列，垫片会变成 flex

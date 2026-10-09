@@ -35,7 +35,7 @@ export function ProfilePageFrame({
   const { colors, styles } = useStyles();
   const largeText = useWindowDimensions().fontScale > 1.3;
   const backAction = <Pressable accessibilityLabel={backLabel} accessibilityRole="button" onPress={onBack} style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}>
-    <Ionicons color={colors.accent} name="chevron-back" size={20} />
+    <Ionicons color={colors.accentText} name="chevron-back" size={20} />
     <Text style={styles.backText}>{backLabel}</Text>
   </Pressable>;
   const action = <View style={styles.navAction}>{rightAction}</View>;
@@ -73,7 +73,7 @@ export function ProfileTextField({ containerStyle, label, helper, ...props }: Te
       <Text style={styles.fieldLabel}>{label}</Text>
       {helper ? <Text style={styles.fieldHelper}>{helper}</Text> : null}
     </View>
-    <TextInput accessibilityLabel={label} placeholderTextColor={colors.text4} style={[styles.input, props.multiline ? styles.multiline : null]} {...props} />
+    <TextInput accessibilityLabel={label} placeholderTextColor={colors.ink3Text} style={[styles.input, props.multiline ? styles.multiline : null]} {...props} />
   </View>;
 }
 
@@ -88,13 +88,13 @@ export function ProfileNavRow({ detail, disabled = false, icon, label, onPress, 
   const { colors, styles } = useStyles();
   const largeText = useWindowDimensions().fontScale > 1.3;
   const content = <>
-    {icon ? <Ionicons color={colors.text3} name={icon} size={19} /> : null}
+    {icon ? <Ionicons color={colors.ink3Text} name={icon} size={19} /> : null}
     <View style={styles.rowCopy}>
       <Text style={styles.rowLabel}>{label}</Text>
       {detail ? <Text style={styles.rowDetail}>{detail}</Text> : null}
     </View>
     {value ? <Text style={[styles.rowValue, largeText && styles.rowValueLarge]}>{value}</Text> : null}
-    {onPress && !disabled ? <Ionicons color={colors.accent} name="chevron-forward" size={16} /> : null}
+    {onPress && !disabled ? <Ionicons color={colors.accentText} name="chevron-forward" size={16} /> : null}
   </>;
   return onPress ? <Pressable accessibilityLabel={label} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.row, largeText && styles.rowLarge, disabled && styles.disabled, pressed && styles.rowPressed]}>{content}</Pressable>
     : <View style={[styles.row, largeText && styles.rowLarge]}>{content}</View>;
@@ -121,48 +121,48 @@ export function ProfileNotice({ children, error = false }: { children: ReactNode
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   safeArea: { backgroundColor: colors.surface, flex: 1 },
-  navigation: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", minHeight: 48, paddingHorizontal: 8 },
+  navigation: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", minHeight: 48, paddingHorizontal: 8 },
   navigationLarge: { alignItems: "stretch", flexDirection: "column", paddingBottom: 10 },
   navigationActions: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 44 },
   navButton: { alignItems: "center", flexDirection: "row", minHeight: 44, minWidth: 72, paddingHorizontal: 4 },
-  backText: { color: colors.accent, fontSize: 14 },
+  backText: { color: colors.accentText, fontSize: 14 },
   navigationTitle: { color: colors.ink, flex: 1, fontSize: 17, fontWeight: "800", textAlign: "center" },
   navigationTitleLarge: { flex: 0, paddingHorizontal: 8, textAlign: "left" },
   navAction: { alignItems: "flex-end", minWidth: 72 },
   content: { alignSelf: "center", gap: 24, maxWidth: 820, paddingBottom: 48, paddingHorizontal: 16, paddingTop: 20, width: "100%" },
   contentWithFooter: { paddingBottom: 104 },
-  footer: { backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12 },
+  footer: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12 },
   section: { alignSelf: "stretch", gap: 8 },
   sectionHeading: { alignItems: "baseline", flexDirection: "row", gap: 8, justifyContent: "space-between" },
   sectionHeadingLarge: { alignItems: "flex-start", flexDirection: "column" },
-  sectionTitle: { ...rowRoleStyles.groupHeading, color: colors.text3, flexShrink: 1 },
+  sectionTitle: { ...rowRoleStyles.groupHeading, color: colors.ink3Text, flexShrink: 1 },
   sectionTitleLarge: { alignSelf: "stretch", flexShrink: 0 },
-  sectionDetail: { color: colors.text4, flexShrink: 1, fontSize: 12 },
+  sectionDetail: { color: colors.ink3Text, flexShrink: 1, fontSize: 12 },
   sectionDetailLarge: { alignSelf: "stretch", flexShrink: 0 },
-  sectionBody: { alignSelf: "stretch", borderTopColor: colors.border, borderTopWidth: 1 },
-  field: { borderBottomColor: colors.border, borderBottomWidth: 1, gap: 7, paddingVertical: 12 },
+  sectionBody: { alignSelf: "stretch", borderTopColor: colors.line, borderTopWidth: 1 },
+  field: { borderBottomColor: colors.line, borderBottomWidth: 1, gap: 7, paddingVertical: 12 },
   fieldHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  fieldLabel: { ...rowRoleStyles.fieldLabel, color: colors.text3 },
-  fieldHelper: { color: colors.text4, fontSize: 12 },
+  fieldLabel: { ...rowRoleStyles.fieldLabel, color: colors.ink3Text },
+  fieldHelper: { color: colors.ink3Text, fontSize: 12 },
   input: { ...rowRoleStyles.fieldValue, backgroundColor: colors.surface, borderWidth: 0, color: colors.ink, minHeight: 48, paddingHorizontal: 0, paddingVertical: 11 },
   multiline: { minHeight: 96, textAlignVertical: "top" },
-  row: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", gap: 10, minHeight: 52, paddingVertical: 10 },
+  row: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", gap: 10, minHeight: 52, paddingVertical: 10 },
   rowLarge: { alignItems: "flex-start", flexWrap: "wrap" },
   rowCopy: { flex: 1, minWidth: 0 },
   rowLabel: { ...rowRoleStyles.navLabel, color: colors.ink },
-  rowDetail: { color: colors.text4, fontSize: 12, marginTop: 2 },
-  rowValue: { color: colors.text3, flexShrink: 1, fontSize: 13, maxWidth: "45%", textAlign: "right" },
+  rowDetail: { color: colors.ink3Text, fontSize: 12, marginTop: 2 },
+  rowValue: { color: colors.ink3Text, flexShrink: 1, fontSize: 13, maxWidth: "45%", textAlign: "right" },
   rowValueLarge: { maxWidth: "100%", textAlign: "left", width: "100%" },
-  primaryButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 12, justifyContent: "center", minHeight: 50, paddingHorizontal: 18, paddingVertical: 12 },
+  primaryButton: { alignItems: "center", backgroundColor: colors.accentText, borderRadius: 12, justifyContent: "center", minHeight: 50, paddingHorizontal: 18, paddingVertical: 12 },
   primaryButtonText: { color: colors.onAccent, flexShrink: 1, fontSize: 15, fontWeight: "800", textAlign: "center", width: "100%" },
-  secondaryButton: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+  secondaryButton: { backgroundColor: colors.surface, borderColor: colors.line, borderWidth: 1 },
   secondaryButtonText: { color: colors.ink },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingVertical: 12 },
-  tag: { borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, flexShrink: 1, fontSize: 13, maxWidth: "100%", paddingHorizontal: 11, paddingVertical: 7 },
+  tag: { borderColor: colors.line, borderRadius: 8, borderWidth: 1, color: colors.ink, flexShrink: 1, fontSize: 13, maxWidth: "100%", paddingHorizontal: 11, paddingVertical: 7 },
   tagLarge: { alignSelf: "stretch", flexShrink: 0, width: "100%" },
-  notice: { alignSelf: "stretch", color: colors.text3, flexShrink: 1, flexWrap: "wrap", fontSize: 13 },
-  noticeError: { color: colors.rose },
+  notice: { alignSelf: "stretch", color: colors.ink3Text, flexShrink: 1, flexWrap: "wrap", fontSize: 13 },
+  noticeError: { color: colors.coralText },
   disabled: { opacity: 0.48 },
   pressed: { opacity: 0.68 },
-  rowPressed: { backgroundColor: colors.accentSofter, opacity: 0.68 },
+  rowPressed: { backgroundColor: colors.accentSoft, opacity: 0.68 },
 }));

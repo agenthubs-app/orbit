@@ -72,7 +72,7 @@ export function OrbitAllActionsControls({
   return (
     <span style={{ alignItems: "center", display: "inline-flex", gap: 8 }}>
       {error ? (
-        <span role="alert" style={{ color: "var(--danger, #b4413c)", fontSize: 12 }}>
+        <span role="alert" style={{ color: "var(--coral-text, #b4413c)", fontSize: 12 }}>
           {error}
         </span>
       ) : null}

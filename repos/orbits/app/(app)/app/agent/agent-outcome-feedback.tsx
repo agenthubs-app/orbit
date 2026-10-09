@@ -112,9 +112,9 @@ export function AgentOutcomeFeedback({
 
   const buttonStyle = (selected: boolean) => ({
     background: selected ? "var(--accent-soft)" : "transparent",
-    border: "1px solid var(--border)",
+    border: "1px solid var(--line)",
     borderRadius: "var(--r-pill)",
-    color: selected ? "var(--accent)" : "var(--text-3)",
+    color: selected ? "var(--accent-text)" : "var(--ink-3-text)",
     cursor: "pointer",
     fontSize: 11,
     padding: "5px 9px",
@@ -125,7 +125,7 @@ export function AgentOutcomeFeedback({
       aria-label={language === "zh" ? "Agent 结果反馈" : "Agent result feedback"}
       data-agent-outcome-feedback
       style={{
-        borderTop: "1px solid var(--border)",
+        borderTop: "1px solid var(--line)",
         display: "grid",
         gap: 7,
         marginTop: 10,
@@ -133,7 +133,7 @@ export function AgentOutcomeFeedback({
       }}
     >
       <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 6 }}>
-        <span style={{ color: "var(--text-3)", fontSize: 11 }}>
+        <span style={{ color: "var(--ink-3-text)", fontSize: 11 }}>
           {language === "zh" ? "这个结果：" : "This result:"}
         </span>
         {(
@@ -156,7 +156,7 @@ export function AgentOutcomeFeedback({
       </div>
       {sourceModules.length > 0 ? (
         <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 6 }}>
-          <span style={{ color: "var(--text-3)", fontSize: 11 }}>
+          <span style={{ color: "var(--ink-3-text)", fontSize: 11 }}>
             {language === "zh" ? "后续结果：" : "Later outcome:"}
           </span>
           {(
@@ -180,7 +180,7 @@ export function AgentOutcomeFeedback({
         </div>
       ) : null}
       {error ? (
-        <span role="alert" style={{ color: "var(--danger)", fontSize: 11 }}>
+        <span role="alert" style={{ color: "var(--coral-text)", fontSize: 11 }}>
           {error}
         </span>
       ) : null}

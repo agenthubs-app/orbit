@@ -41,7 +41,7 @@ export function AccountScreen() {
         <RefreshControl
           onRefresh={state.refresh}
           refreshing={state.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={fontScale > 1.3 && locale.language === "zh" ? locale.t("account.title").replace("与", "与\n") : locale.t("account.title")}
@@ -172,7 +172,7 @@ function AccountContent({
             <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.editProfile")}
               onPress={() => router.push("/profile/edit" as Href)} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
               <Text style={styles.editText}>{locale.t("account.editProfile")}</Text>
-              <Ionicons color={colors.accent} name="chevron-forward" size={14} />
+              <Ionicons color={colors.accentText} name="chevron-forward" size={14} />
             </Pressable>
           </View>
 
@@ -206,7 +206,7 @@ function AccountContent({
           <View style={styles.statusRow}>
             <View style={[styles.statusBadge, styles.statusBadgeMuted]}>
               <Ionicons
-                color={colors.text3}
+                color={colors.ink3Text}
                 name="person-circle-outline"
                 size={18}
               />
@@ -229,7 +229,7 @@ function AccountContent({
           style={({ pressed }) => [styles.accessRow, pressed && styles.pressed]}
         >
           <Text style={styles.accessText}>{locale.t("account.serverSettings")}</Text>
-          <Ionicons color={colors.text3} name="chevron-forward" size={16} />
+          <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />
         </Pressable>
         {signedIn ? (
           <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.permissions")}
@@ -237,7 +237,7 @@ function AccountContent({
             onPress={() => router.push("/account/permissions" as Href)}
             style={({ pressed }) => [styles.accessRow, pressed && styles.pressed]}>
             <Text style={styles.accessText}>{locale.t("account.permissions")}</Text>
-            <Ionicons color={colors.text3} name="chevron-forward" size={16} />
+            <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />
           </Pressable>
         ) : null}
       </View>
@@ -257,7 +257,7 @@ function AccountContent({
                 ]}
               >
                 <Text style={index === 0 ? styles.actionButtonText : styles.secondaryActionText}>{action.label}</Text>
-                <Ionicons color={index === 0 ? colors.onAccent : colors.text} name="arrow-forward" size={16} />
+                <Ionicons color={index === 0 ? colors.onAccent : colors.ink} name="arrow-forward" size={16} />
               </Pressable>
             ))}
           </View>
@@ -328,37 +328,37 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   avatarText: { color: colors.onAccent, fontSize: 22, lineHeight: 28, fontWeight: "800" },
   identityCopy: { flex: 1, minWidth: 0, gap: 2 },
   identityName: { color: colors.ink, fontSize: 18, lineHeight: 24, fontWeight: "900", letterSpacing: -0.18 },
-  identityEmail: { color: colors.muted, fontSize: 13, lineHeight: 20 },
+  identityEmail: { color: colors.ink2, fontSize: 13, lineHeight: 20 },
   editButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
-  editText: { color: colors.accent, fontSize: 13, lineHeight: 20, fontWeight: "700" },
+  editText: { color: colors.accentText, fontSize: 13, lineHeight: 20, fontWeight: "700" },
   section: { gap: 6 },
-  sectionTitle: { ...rowRoleStyles.groupHeading, color: colors.text3 },
-  workspace: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, borderTopColor: colors.border, borderTopWidth: 1, borderBottomColor: colors.border, borderBottomWidth: 1, paddingVertical: 14 },
+  sectionTitle: { ...rowRoleStyles.groupHeading, color: colors.ink3Text },
+  workspace: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, borderTopColor: colors.line, borderTopWidth: 1, borderBottomColor: colors.line, borderBottomWidth: 1, paddingVertical: 14 },
   workspaceIcon: { width: 36, minHeight: 36, borderRadius: 10, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   workspaceInitial: { color: colors.onAccent, fontSize: 14, lineHeight: 20, fontWeight: "800" },
   workspaceCopy: { flex: 1, minWidth: 110, gap: 1 },
   workspaceName: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "700" },
-  workspaceDetail: { color: colors.text3, fontSize: 12, lineHeight: 18 },
-  currentBadge: { backgroundColor: colors.accent, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  workspaceDetail: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
+  currentBadge: { backgroundColor: colors.accentText, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   currentText: { color: colors.onAccent, fontSize: 11, lineHeight: 16, fontWeight: "700" },
-  goalContent: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 14, gap: 8 },
-  accessRows: { borderTopColor: colors.border, borderTopWidth: 1 },
-  accessRow: { alignItems: "center", flexDirection: "row", gap: 12, minHeight: 50, paddingVertical: 13.5, borderBottomColor: colors.border, borderBottomWidth: 1 },
+  goalContent: { borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 14, gap: 8 },
+  accessRows: { borderTopColor: colors.line, borderTopWidth: 1 },
+  accessRow: { alignItems: "center", flexDirection: "row", gap: 12, minHeight: 50, paddingVertical: 13.5, borderBottomColor: colors.line, borderBottomWidth: 1 },
   accessText: { ...rowRoleStyles.navLabel, flex: 1, color: colors.ink },
   signOutSection: { gap: 8, paddingTop: 12 },
-  signOutButton: { ...createControlStyles(colors).secondaryButton, borderColor: colors.border },
-  signOutText: { ...rowRoleStyles.navLabel, color: colors.rose },
+  signOutButton: { ...createControlStyles(colors).secondaryButton, borderColor: colors.line },
+  signOutText: { ...rowRoleStyles.navLabel, color: colors.coralText },
   bodyText: {
     ...textStyles.body,
-    color: colors.text,
+    color: colors.ink,
   },
   feedbackText: {
-    backgroundColor: colors.roseSoft,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    backgroundColor: colors.coralSoft,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
-    color: colors.rose,
-    fontSize: typography.small,
+    color: colors.coralText,
+    fontSize: typography.bodySm,
     lineHeight: 19,
     padding: spacing.md
   },
@@ -389,8 +389,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   infoGridLarge: { flexDirection: "column", flexWrap: "nowrap" },
   infoLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 16
   },
   infoValue: {
@@ -405,8 +405,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   statusBadge: {
     alignItems: "center",
-    backgroundColor: colors.liveSoft,
-    borderRadius: radius.control,
+    backgroundColor: colors.okSoft,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
@@ -423,13 +423,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   statusText: {
-    color: colors.live,
-    fontSize: typography.caption,
+    color: colors.okText,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16
   },
   statusTextMuted: {
-    color: colors.text3
+    color: colors.ink3Text
   },
   secondaryActionButton: {
     ...createControlStyles(colors).secondaryButton

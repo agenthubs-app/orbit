@@ -146,7 +146,7 @@ function policyPayload(
 function ReadOnlyPolicy({ policy }: { policy: EventAdmissionPolicy | null }) {
   if (!policy) {
     return (
-      <p data-admission-policy-empty style={{ color: "var(--text-3)", margin: 0 }}>
+      <p data-admission-policy-empty style={{ color: "var(--ink-3-text)", margin: 0 }}>
         当前活动尚未配置报名政策。
       </p>
     );
@@ -255,9 +255,9 @@ export function EventAdmissionPolicyPanel({
         </span>
       </header>
 
-      {loading ? <p style={{ color: "var(--text-3)", margin: 0 }}>正在读取 canonical 报名政策…</p> : null}
+      {loading ? <p style={{ color: "var(--ink-3-text)", margin: 0 }}>正在读取 canonical 报名政策…</p> : null}
       {error ? (
-        <div data-admission-policy-status={saveState} role="alert" style={{ color: "var(--danger, #b3261e)" }}>
+        <div data-admission-policy-status={saveState} role="alert" style={{ color: "var(--coral-text, #b3261e)" }}>
           <p style={{ margin: 0 }}>{error}</p>
           {saveState === "unavailable" ? (
             <button className="btn btn-ghost btn-sm" onClick={() => void loadPolicy()} type="button">重试读取</button>
@@ -270,7 +270,7 @@ export function EventAdmissionPolicyPanel({
         <div style={{ display: "grid", gap: 10 }}>
           <p
             data-admission-policy-owner-only
-            style={{ color: "var(--text-3)", fontSize: 12, margin: 0 }}
+            style={{ color: "var(--ink-3-text)", fontSize: 12, margin: 0 }}
           >
             当前政策为只读；只有 Event Core 中的当前活动负责人可以修改报名政策。
           </p>

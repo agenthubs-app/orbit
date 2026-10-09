@@ -58,7 +58,7 @@ export function OrganizerPublicScreen() {
         <RefreshControl
           onRefresh={state.refresh}
           refreshing={state.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title="公开主页"
@@ -197,7 +197,7 @@ function OrganizerHero({
                 {action.label}
               </Text>
               <Ionicons
-                color={action.href === "/events" ? colors.accent : colors.onAccent}
+                color={action.href === "/events" ? colors.accentText : colors.onAccent}
                 name="chevron-forward"
                 size={17}
               />
@@ -293,12 +293,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   avatarText: {
     color: colors.onAccent,
-    fontSize: typography.display,
+    fontSize: typography.title,
     fontWeight: "700",
     lineHeight: 29
   },
   bodyText: {
-    color: colors.text2,
+    color: colors.ink2,
     ...textStyles.body
   },
   eventCard: {
@@ -316,13 +316,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventImageCta: {
     color: colors.onImage,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 17
   },
   eventImageFooter: {
     alignItems: "center",
-    borderTopColor: "rgba(255,255,255,0.18)",
+    borderTopColor: colors.glassLine,
     borderTopWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -336,19 +336,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     padding: spacing.lg,
     minHeight: 250,
     gap: spacing.xl,
-    borderRadius: radius.card
+    borderRadius: radius.xl
   },
   eventImageMeta: {
-    color: "rgba(255,255,255,0.84)",
+    color: colors.onImage,
     flex: 1,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     fontWeight: "600",
     lineHeight: 19,
     minWidth: 0
   },
   eventImageScrim: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(10,10,16,0.40)"
+    backgroundColor: colors.scrim
   },
   eventImageTitle: {
     color: colors.onImage,
@@ -362,8 +362,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   heroHandle: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: typography.small,
+    color: colors.onImage,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 19
   },
@@ -391,7 +391,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     padding: spacing.lg,
     minHeight: 190,
     gap: spacing.xl,
-    borderRadius: radius.card
+    borderRadius: radius.xl
   },
   organizerHeroImage: {
     borderTopLeftRadius: radius.lg,
@@ -399,7 +399,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   organizerHeroScrim: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(10,10,16,0.38)"
+    backgroundColor: colors.scrim
   },
   organizerHeroTop: {
     alignItems: "flex-start"
@@ -427,8 +427,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     padding: spacing.md
   },
   statLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 16
   },
   statRow: {
@@ -441,10 +441,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...textStyles.title
   },
   statePill: {
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
-    color: colors.accent,
-    fontSize: typography.caption,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16,
     paddingHorizontal: spacing.md,
@@ -452,10 +452,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   verifiedBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: colors.onImage,
     borderRadius: radius.pill,
-    color: colors.imageBadgeText,
-    fontSize: typography.caption,
+    color: colors.onImageBadge,
+    fontSize: typography.label,
     fontWeight: "800",
     overflow: "hidden",
     paddingHorizontal: spacing.md,

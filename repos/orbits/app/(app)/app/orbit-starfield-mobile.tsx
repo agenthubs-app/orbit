@@ -46,9 +46,8 @@ export function OrbitStarfieldMobile({
 
   return (
     <div className="sk-home-mobile">
-      <link rel="stylesheet" href="/iorbit-starfield/fonts/mobile.css" />
       <style>{mobileCss}</style>
-      <div ref={hostRef} id="skRoot" style={{"fontFamily":"'Noto Sans SC',system-ui,-apple-system,sans-serif","color":"#eceaf6","background":"#06050d","position":"fixed","inset":"0","overflow":"hidden"}} data-screen-label="iOrbit 移动端">
+      <div ref={hostRef} id="skRoot" style={{"fontFamily":"var(--font)","color":"#eceaf6","background":"#06050d","position":"fixed","inset":"0","overflow":"hidden"}} data-screen-label="iOrbit 移动端">
         {' '}
         {' '}
         {/* FIXED CANVAS SCENE */}
@@ -76,11 +75,11 @@ export function OrbitStarfieldMobile({
           {' '}
           <div id="skHero" style={{"position":"absolute","top":"15.5%","left":"50%","transform":"translateX(-50%)","width":"90%","textAlign":"center"}}>
             {' '}
-            <div id="skKicker" data-i18n-html="kickerHtml" style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"9.5px","letterSpacing":".2em","textTransform":"uppercase","color":"#c6a06a","marginBottom":"22px","opacity":"0","whiteSpace":"nowrap"}}>
+            <div id="skKicker" data-i18n-html="kickerHtml" style={{"fontFamily":"var(--font-num)","fontSize":"9.5px","letterSpacing":".2em","textTransform":"uppercase","color":"#c6a06a","marginBottom":"22px","opacity":"0","whiteSpace":"nowrap"}}>
               {"Relationship Starfield  ·  人脉星空"}
             </div>
             {' '}
-            <h1 id="skH1" data-serif="" data-i18n-html="h1Html" style={{"fontFamily":"'Noto Serif SC',Georgia,serif","fontWeight":"300","fontSize":"26px","lineHeight":"1.28","letterSpacing":".005em","color":"#f1eff9","margin":"0","textWrap":"balance"}}>
+            <h1 id="skH1" data-serif="" data-i18n-html="h1Html" style={{"fontFamily":"var(--font)","fontWeight":"300","fontSize":"26px","lineHeight":"1.28","letterSpacing":".005em","color":"#f1eff9","margin":"0","textWrap":"balance"}}>
               {' '}
               <span className="sk-word" style={{"display":"inline-block","opacity":"0"}}>
                 {"从你认识的人里，"}
@@ -100,7 +99,7 @@ export function OrbitStarfieldMobile({
             {' '}
             <div id="skSub" style={{"margin":"18px auto 0","maxWidth":"600px","opacity":"0"}}>
               {' '}
-              <div style={{"fontFamily":"'Newsreader',Georgia,serif","fontStyle":"italic","fontSize":"16px","color":"#c8c4dd","letterSpacing":".01em"}}>
+              <div style={{"fontFamily":"var(--font)","fontStyle":"italic","fontSize":"16px","color":"#c8c4dd","letterSpacing":".01em"}}>
                 {"Your network, in orbit."}
               </div>
               {' '}
@@ -189,7 +188,7 @@ export function OrbitStarfieldMobile({
             <span style={{"width":"6px","height":"6px","borderRadius":"50%","background":"#8b7bf0","boxShadow":"0 0 8px #8b7bf0","flex":"0 0 auto"}}>
             </span>
             {' '}
-            <span id="skProcTxt" style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"11.5px","letterSpacing":".05em","color":"#cdc8ec"}}>
+            <span id="skProcTxt" style={{"fontFamily":"var(--font-num)","fontSize":"11.5px","letterSpacing":".05em","color":"#cdc8ec"}}>
             </span>
             {' '}
           </div>
@@ -238,7 +237,7 @@ export function OrbitStarfieldMobile({
               <span style={{"fontSize":"9px","color":"#3a2c11"}}>
                 {"★"}
               </span>
-              <span style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"9px","fontWeight":"600","letterSpacing":".04em","color":"#3a2c11"}} data-i18n="badge">
+              <span style={{"fontFamily":"var(--font-num)","fontSize":"9px","fontWeight":"600","letterSpacing":".04em","color":"#3a2c11"}} data-i18n="badge">
                 {"今日最值得认识"}
               </span>
               {' '}
@@ -265,7 +264,7 @@ export function OrbitStarfieldMobile({
               <div style={{"display":"flex","alignItems":"center","gap":"6px"}}>
                 <span id="skCardRsnDot" style={{"width":"5px","height":"5px","borderRadius":"50%","background":"#8b7bf0","boxShadow":"0 0 6px #8b7bf0"}}>
                 </span>
-                <span id="skCardRsn" data-i18n="cardRsn" style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"10px","letterSpacing":".04em","color":"#a99fe8"}}>
+                <span id="skCardRsn" data-i18n="cardRsn" style={{"fontFamily":"var(--font-num)","fontSize":"10px","letterSpacing":".04em","color":"#a99fe8"}}>
                   {"Orbit 为你匹配"}
                 </span>
               </div>
@@ -284,7 +283,7 @@ export function OrbitStarfieldMobile({
             <span style={{"width":"7px","height":"7px","borderRadius":"50%","background":"#c6a06a","boxShadow":"0 0 8px #c6a06a"}}>
             </span>
             {' '}
-            <span style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"11px","letterSpacing":".06em","color":"#cdcae3"}} data-i18n="corner">
+            <span style={{"fontFamily":"var(--font-num)","fontSize":"11px","letterSpacing":".06em","color":"#cdcae3"}} data-i18n="corner">
               {"示例预览 · 导入后换成真实数据"}
             </span>
             {' '}
@@ -292,7 +291,7 @@ export function OrbitStarfieldMobile({
           {' '}
           {/* SCREEN-2 SLOGAN (typed) */}
           {' '}
-          <div id="skPain" data-serif="" style={{"position":"absolute","top":"20%","left":"50%","transform":"translateX(-50%)","width":"86%","textAlign":"center","whiteSpace":"pre-line","fontFamily":"'Noto Serif SC',serif","fontWeight":"300","fontSize":"19px","lineHeight":"1.55","color":"#f1eff9","opacity":"0"}}>
+          <div id="skPain" data-serif="" style={{"position":"absolute","top":"20%","left":"50%","transform":"translateX(-50%)","width":"86%","textAlign":"center","whiteSpace":"pre-line","fontFamily":"var(--font)","fontWeight":"300","fontSize":"19px","lineHeight":"1.55","color":"#f1eff9","opacity":"0"}}>
             <span id="skPainTxt">
             </span>
             <span id="skPainCaret" style={{"display":"none","color":"#9b8bff","fontWeight":"300","animation":"skCaret 1.05s steps(1) infinite"}}>
@@ -308,7 +307,7 @@ export function OrbitStarfieldMobile({
             {' '}
             <div style={{"flex":"1","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center","textAlign":"center","padding":"0 22px","gap":"14px"}}>
               {' '}
-              <div data-i18n="forYou" style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"11px","letterSpacing":".26em","textTransform":"uppercase","color":"#a7a1d6"}}>
+              <div data-i18n="forYou" style={{"fontFamily":"var(--font-num)","fontSize":"11px","letterSpacing":".26em","textTransform":"uppercase","color":"#a7a1d6"}}>
                 {"For You · 个人用户"}
               </div>
               {' '}
@@ -351,7 +350,7 @@ export function OrbitStarfieldMobile({
                     <div style={{"minWidth":"0","flex":"1","textAlign":"left"}}>
                       <div id="skMiniName" style={{"fontSize":"12.5px","fontWeight":"600","color":"#F5F6FF","lineHeight":"1.15"}}>
                       </div>
-                      <div style={{"fontSize":"9px","fontFamily":"'JetBrains Mono',monospace","color":"#a99fe8","letterSpacing":".03em","marginTop":"2px"}} data-i18n="cardRsn">
+                      <div style={{"fontSize":"9px","fontFamily":"var(--font-num)","color":"#a99fe8","letterSpacing":".03em","marginTop":"2px"}} data-i18n="cardRsn">
                         {"Orbit 为你匹配"}
                       </div>
                     </div>
@@ -364,7 +363,7 @@ export function OrbitStarfieldMobile({
                 {' '}
               </div>
               {' '}
-              <p data-serif="" data-i18n-html="leftParaHtml" style={{"margin":"0","maxWidth":"520px","fontFamily":"'Noto Serif SC',serif","fontWeight":"300","fontSize":"15px","lineHeight":"1.72","color":"#eceaf6"}}>
+              <p data-serif="" data-i18n-html="leftParaHtml" style={{"margin":"0","maxWidth":"520px","fontFamily":"var(--font)","fontWeight":"300","fontSize":"15px","lineHeight":"1.72","color":"#eceaf6"}}>
                 {' '}
                 <span style={{"display":"block","whiteSpace":"nowrap"}}>
                   {"那些躺在名片夹里的人，"}
@@ -408,7 +407,7 @@ export function OrbitStarfieldMobile({
             {' '}
             <div style={{"flex":"1","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center","textAlign":"center","padding":"0 22px","gap":"14px"}}>
               {' '}
-              <div data-i18n="forOrg" style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"11px","letterSpacing":".26em","textTransform":"uppercase","color":"#c8a978"}}>
+              <div data-i18n="forOrg" style={{"fontFamily":"var(--font-num)","fontSize":"11px","letterSpacing":".26em","textTransform":"uppercase","color":"#c8a978"}}>
                 {"For Organizers · 活动方"}
               </div>
               {' '}
@@ -435,7 +434,7 @@ export function OrbitStarfieldMobile({
                 {' '}
               </div>
               {' '}
-              <p data-serif="" data-i18n-html="rightParaHtml" style={{"margin":"0","maxWidth":"520px","fontFamily":"'Noto Serif SC',serif","fontWeight":"300","fontSize":"15px","lineHeight":"1.72","color":"#eceaf6"}}>
+              <p data-serif="" data-i18n-html="rightParaHtml" style={{"margin":"0","maxWidth":"520px","fontFamily":"var(--font)","fontWeight":"300","fontSize":"15px","lineHeight":"1.72","color":"#eceaf6"}}>
                 {' '}
                 <span style={{"display":"block","whiteSpace":"nowrap"}}>
                   {"让一场活动，"}
@@ -478,7 +477,7 @@ export function OrbitStarfieldMobile({
           {' '}
           <div id="skCue" style={{"position":"absolute","bottom":"calc(18px + env(safe-area-inset-bottom))","left":"50%","transform":"translateX(-50%)","display":"flex","flexDirection":"column","alignItems":"center","gap":"8px","pointerEvents":"auto","cursor":"pointer","zIndex":"12","opacity":"0","transition":"opacity .5s ease"}}>
             {' '}
-            <span id="skCueTxt" style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"11px","letterSpacing":".16em","textTransform":"uppercase","color":"#9f9cb8"}}>
+            <span id="skCueTxt" style={{"fontFamily":"var(--font-num)","fontSize":"11px","letterSpacing":".16em","textTransform":"uppercase","color":"#9f9cb8"}}>
               {"滚动 / 空格 · 翻到下一幕"}
             </span>
             {' '}

@@ -33,7 +33,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider refetchOnWindowFocus={false} session={session}>
       <OrbitLanguageProvider initialLanguage={language}>
-        <link href="/iorbit-starfield/fonts/desktop.css" rel="stylesheet" />
         <OrbitResponsiveA11y />
         <OrbitThemeStyles />
         <OrbitThemeRuntime />

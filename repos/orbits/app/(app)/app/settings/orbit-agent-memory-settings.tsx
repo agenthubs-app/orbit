@@ -24,7 +24,7 @@ const defaultSettings: AgentMemorySettings = {
 
 const controlStyle = {
   background: "var(--bg)",
-  border: "1px solid var(--border)",
+  border: "1px solid var(--line)",
   borderRadius: 10,
   color: "var(--ink)",
   font: "inherit",
@@ -348,7 +348,7 @@ export function OrbitAgentMemorySettings() {
             alignItems: "center",
             background: "var(--accent-soft)",
             borderRadius: 12,
-            color: "var(--accent)",
+            color: "var(--accent-text)",
             display: "inline-flex",
             flex: "0 0 auto",
             height: 42,
@@ -367,7 +367,7 @@ export function OrbitAgentMemorySettings() {
           </h2>
           <p
             style={{
-              color: "var(--text-3)",
+              color: "var(--ink-3-text)",
               fontSize: 13.5,
               lineHeight: 1.6,
               margin: "6px 0 16px",
@@ -430,7 +430,7 @@ export function OrbitAgentMemorySettings() {
 
           <div
             style={{
-              borderTop: "1px solid var(--border)",
+              borderTop: "1px solid var(--line)",
               display: "grid",
               gap: 10,
               marginTop: 18,
@@ -500,19 +500,19 @@ export function OrbitAgentMemorySettings() {
           </div>
 
           {error ? (
-            <p role="alert" style={{ color: "var(--danger)", fontSize: 13 }}>
+            <p role="alert" style={{ color: "var(--coral-text)", fontSize: 13 }}>
               {error}
             </p>
           ) : null}
           {notice ? (
-            <p role="status" style={{ color: "var(--accent)", fontSize: 13 }}>
+            <p role="status" style={{ color: "var(--accent-text)", fontSize: 13 }}>
               {notice}
             </p>
           ) : null}
 
           <div
             style={{
-              borderTop: "1px solid var(--border)",
+              borderTop: "1px solid var(--line)",
               display: "grid",
               gap: 10,
               marginTop: 18,
@@ -523,11 +523,11 @@ export function OrbitAgentMemorySettings() {
               {t({ en: "Saved memories", zh: "已保存的记忆" })}
             </strong>
             {loading ? (
-              <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>
+              <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: 0 }}>
                 {t({ en: "Loading…", zh: "正在加载…" })}
               </p>
             ) : memories.length === 0 ? (
-              <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>
+              <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: 0 }}>
                 {t({
                   en: "No saved memories. Orbit will not infer one silently.",
                   zh: "还没有记忆，Orbit 不会静默推断并保存。",
@@ -542,8 +542,8 @@ export function OrbitAgentMemorySettings() {
                     data-agent-memory-id={memory.memoryId}
                     key={memory.memoryId}
                     style={{
-                      background: "var(--bg-soft)",
-                      border: "1px solid var(--border)",
+                      background: "var(--bg)",
+                      border: "1px solid var(--line)",
                       borderRadius: 12,
                       display: "grid",
                       gap: 9,
@@ -623,7 +623,7 @@ export function OrbitAgentMemorySettings() {
                             {categoryLabel(memory.category)}
                           </span>
                           <span
-                            style={{ color: "var(--text-3)", fontSize: 12 }}
+                            style={{ color: "var(--ink-3-text)", fontSize: 12 }}
                           >
                             {memory.source === "manual"
                               ? t({ en: "Added by you", zh: "由你添加" })
@@ -635,7 +635,7 @@ export function OrbitAgentMemorySettings() {
                         </div>
                         <p
                           style={{
-                            color: "var(--text)",
+                            color: "var(--ink)",
                             fontSize: 13,
                             lineHeight: 1.55,
                             margin: 0,

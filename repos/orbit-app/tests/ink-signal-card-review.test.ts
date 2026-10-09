@@ -139,7 +139,7 @@ test("single scan presents its own image and labelled open review, and recogniti
   assert.ok((await image.boundingBox())!.y < (await name.boundingBox())!.y);
   const primary = page.getByRole("button", { name: "保存到人脉", exact: true });
   assert.ok((await primary.boundingBox())!.height >= 50);
-  assert.equal(await primary.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)");
+  assert.equal(await primary.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)");
   assert.equal(await page.getByText(/生成待确认候选|写入联系人|候选/u).count(), 0, "no internal candidate wording on the review");
   const requests = await writes(page);
   assert.equal(requests.length, 1, "recognition alone never writes a contact");
@@ -262,7 +262,7 @@ for (const screen of ["legacy", "ingest"]) test(`${screen} review puts the actua
   const label = page.getByText("姓名", { exact: true });
   assert.equal((await name.boundingBox())!.x - (await label.boundingBox())!.x, 72);
   const action = page.getByRole("button", { name: "确认收录", exact: true });
-  assert.equal(await action.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)");
+  assert.equal(await action.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)");
   assert.ok((await action.boundingBox())!.height >= 50);
   const batchAction = page.getByRole("button", { name: screen === "legacy" ? "选择名片 1" : "复核名片 1", exact: true });
   assert.ok((await batchAction.boundingBox())!.y > (await name.boundingBox())!.y, "secondary batch controls follow the selected review");

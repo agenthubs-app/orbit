@@ -170,7 +170,7 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
           <Pressable accessibilityRole="button" accessibilityLabel={canGoBack ? "返回" : "返回活动"}
             onPress={() => { if (isCurrent()) canGoBack ? router.back() : router.replace("/events"); }}
             style={({ pressed }) => [styles.backButton, pressed && styles.actionButtonPressed]}>
-            <Ionicons name="chevron-back" color={colors.accent} size={18} />
+            <Ionicons name="chevron-back" color={colors.accentText} size={18} />
             <Text style={styles.backLabel}>{canGoBack ? "返回" : "活动"}</Text>
           </Pressable>
         </View>
@@ -184,7 +184,7 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
       </View>
       <ScrollView testID="event-detail-scroll" automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl onRefresh={refreshAll} refreshing={state.refreshing} tintColor={colors.accent} />}>
+        refreshControl={<RefreshControl onRefresh={refreshAll} refreshing={state.refreshing} tintColor={colors.accentText} />}>
         {state.kind === "loading" && !fromDevice ? <LoadingState /> : null}
         {fromDevice && unreachable ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} reason={unavailable ? "unavailable" : "unreachable"} /> : null}
         {unreachable && !fromDevice ? (gone || (localStatusKey && localStatusKey !== "events.localStatusRsvped") ? <View style={styles.stack}>
@@ -910,7 +910,7 @@ function EventReadinessModule({
     <DataCard detail={`${view.stateLabel} · ${view.scoreLabel}`} title="会前准备度">
       {notice}
       <View style={styles.readinessGoal}>
-        <Ionicons color={colors.accent} name="flag-outline" size={17} />
+        <Ionicons color={colors.accentText} name="flag-outline" size={17} />
         <View style={styles.readinessGoalBody}>
           <Text style={styles.bodyText}>{view.goal}</Text>
           {view.suggestedGoals.length > 0 ? (
@@ -985,7 +985,7 @@ function EventReadinessModule({
                 setSelectedSuggestionId(null);
               }}
               placeholder="写清楚这场活动想换到什么关系结果"
-              placeholderTextColor={colors.text4}
+              placeholderTextColor={colors.ink3Text}
               style={styles.goalInput}
               textAlignVertical="top"
               value={goalDraft}
@@ -1005,7 +1005,7 @@ function EventReadinessModule({
               ]}
             >
               <Ionicons
-                color={colors.accent}
+                color={colors.accentText}
                 name="checkmark-outline"
                 size={14}
               />
@@ -1121,7 +1121,7 @@ function EventRecommendationsModule({
             </View>
             <Text style={styles.checklistDetail}>{person.reason}</Text>
             <View style={styles.openingLineBox}>
-              <Ionicons color={colors.accent} name="chatbubble-ellipses-outline" size={16} />
+              <Ionicons color={colors.accentText} name="chatbubble-ellipses-outline" size={16} />
               <View style={styles.openingLineBody}>
                 <Text style={styles.openingLineText}>
                   {openersByPersonId[person.id] ?? person.opener}
@@ -1149,7 +1149,7 @@ function EventRecommendationsModule({
                     ]}
                   >
                     <Ionicons
-                      color={colors.accent}
+                      color={colors.accentText}
                       name="refresh-outline"
                       size={14}
                     />
@@ -1280,7 +1280,7 @@ function EventPostEventReviewModule({
             </View>
             <View style={styles.postEventDraftBox}>
               <Ionicons
-                color={colors.accent}
+                color={colors.accentText}
                 name="mail-outline"
                 size={15}
               />
@@ -1302,7 +1302,7 @@ function EventPostEventReviewModule({
             confirmPending ? styles.inlineButtonDisabled : null
           ]}
         >
-          <Ionicons color={colors.accent} name="checkmark-done-outline" size={14} />
+          <Ionicons color={colors.accentText} name="checkmark-done-outline" size={14} />
           <Text style={styles.inlineButtonText}>
             {confirmPending ? "确认中" : "确认这些候选"}
           </Text>
@@ -1324,7 +1324,7 @@ function EventPostEventReviewModule({
               pressed ? styles.actionButtonPressed : null
             ]}
           >
-            <Ionicons color={colors.accent} name="people-outline" size={14} />
+            <Ionicons color={colors.accentText} name="people-outline" size={14} />
             <Text style={styles.inlineButtonText}>
               {confirmResult.reviewQueueLabel}
             </Text>
@@ -1344,32 +1344,32 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   navigationRight: { alignItems: "flex-end" },
   navigationTitle: { flex: 1, minWidth: 0, textAlign: "center", color: colors.ink, fontFamily: detailFont, fontSize: 15, fontWeight: "800", lineHeight: 20 },
   backButton: { flexDirection: "row", alignItems: "center", minHeight: 44, minWidth: 44, alignSelf: "flex-start", maxWidth: "100%" },
-  backLabel: { color: colors.accent, fontFamily: detailFont, fontSize: 15, fontWeight: "600", lineHeight: 21, flexShrink: 1 },
+  backLabel: { color: colors.accentText, fontFamily: detailFont, fontSize: 15, fontWeight: "600", lineHeight: 21, flexShrink: 1 },
   shareButton: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
   content: { alignSelf: "center", width: "100%", maxWidth: layout.contentMax, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24 },
   publicSection: { marginTop: 14, gap: 4 },
   sectionTitle: { color: colors.ink, fontFamily: detailFont, fontSize: 15, fontWeight: "800", lineHeight: 20 },
-  publicBody: { color: colors.text2, fontFamily: detailFont, fontSize: 14, lineHeight: 22 },
+  publicBody: { color: colors.ink2, fontFamily: detailFont, fontSize: 14, lineHeight: 22 },
   infoGridRow: { flexDirection: "row" },
   infoGridRowNarrow: { flexDirection: "column" },
-  infoGridSecondRow: { borderTopColor: colors.border2, borderTopWidth: 1 },
-  infoTileFirst: { borderRightColor: colors.border, borderRightWidth: 1, paddingRight: 12 },
+  infoGridSecondRow: { borderTopColor: colors.line, borderTopWidth: 1 },
+  infoTileFirst: { borderRightColor: colors.line, borderRightWidth: 1, paddingRight: 12 },
   infoTileSecond: { paddingLeft: 16 },
-  infoTileNext: { borderTopColor: colors.border2, borderTopWidth: 1 },
+  infoTileNext: { borderTopColor: colors.line, borderTopWidth: 1 },
   infoTileNarrow: { width: "100%" },
   infoTileTime: { color: colors.ink, fontFamily: detailFont, fontSize: 16, fontWeight: "800", lineHeight: 22, letterSpacing: -0.16 },
   agendaTitle: { color: colors.ink, fontFamily: detailFont, fontSize: 14, fontWeight: "700", lineHeight: 20 },
-  agendaDescription: { color: colors.text3, fontFamily: detailFont, fontSize: 12, lineHeight: 18, marginTop: 1 },
+  agendaDescription: { color: colors.ink3Text, fontFamily: detailFont, fontSize: 12, lineHeight: 18, marginTop: 1 },
   agendaRailSecondary: { opacity: 0.3 },
-  attendeesSection: { marginTop: 8, borderTopColor: colors.border, borderTopWidth: 1 },
+  attendeesSection: { marginTop: 8, borderTopColor: colors.line, borderTopWidth: 1 },
   attendeesLink: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, minHeight: 44, paddingVertical: 11 },
   attendeesTitle: { color: colors.ink, fontFamily: detailFont, fontSize: 14, fontWeight: "600", lineHeight: 20 },
   attendeesCount: { flexDirection: "row", alignItems: "center", gap: 5, flexShrink: 1 },
-  attendeesCountText: { color: colors.text3, fontFamily: detailFont, fontSize: 14, lineHeight: 20, flexShrink: 1 },
+  attendeesCountText: { color: colors.ink3Text, fontFamily: detailFont, fontSize: 14, lineHeight: 20, flexShrink: 1 },
   additionalDetails: { gap: 16, marginTop: 12 },
   feeRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 12 },
-  registrationFooter: { backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: 1, flexShrink: 0 },
-  registrationFooterHint: { color: colors.text4, fontFamily: detailFont, fontSize: 11, lineHeight: 16, textAlign: "center" },
+  registrationFooter: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: 1, flexShrink: 0 },
+  registrationFooterHint: { color: colors.ink3Text, fontFamily: detailFont, fontSize: 11, lineHeight: 16, textAlign: "center" },
   actionButton: {
     ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
@@ -1382,7 +1382,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   actionDetail: {
-    color: colors.text3,
+    color: colors.ink3Text,
     textAlign: "center",
     ...textStyles.small
   },
@@ -1392,7 +1392,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionIcon: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.pill,
     height: 38,
     justifyContent: "center",
@@ -1410,7 +1410,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   aboutSectionIcon: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.pill,
     height: 34,
     justifyContent: "center",
@@ -1430,15 +1430,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   agendaDot: {
     backgroundColor: colors.surface,
-    borderColor: colors.borderStrong,
+    borderColor: colors.ink4,
     borderRadius: radius.pill,
     borderWidth: 2,
     height: 11,
     width: 11
   },
   agendaDotActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+    backgroundColor: colors.accentText,
+    borderColor: colors.accentText
   },
   agendaHeader: {
     alignItems: "baseline",
@@ -1447,7 +1447,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   agendaLine: {
-    backgroundColor: colors.border2,
+    backgroundColor: colors.line,
     flex: 1,
     marginTop: spacing.xs,
     width: 2
@@ -1455,7 +1455,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   agendaRail: {
     alignSelf: "stretch",
     width: 2,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentText,
     borderRadius: 1
   },
   agendaRow: {
@@ -1487,7 +1487,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   attendeePreviewAvatarText: {
     color: colors.onAccent,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 15
   },
@@ -1497,14 +1497,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   attendeePreviewName: {
     color: colors.ink,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 16
   },
   attendeePreviewPill: {
     alignItems: "center",
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderRadius: radius.pill,
     borderWidth: 1,
     flexDirection: "row",
@@ -1514,8 +1514,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.xs
   },
   attendeePreviewRole: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 15
   },
   attendeePreviewRow: {
@@ -1524,7 +1524,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   bodyText: {
-    color: colors.text,
+    color: colors.ink,
     ...textStyles.body
   },
   checklistBody: {
@@ -1533,13 +1533,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   checklistDetail: {
-    color: colors.text2,
-    fontSize: typography.small,
+    color: colors.ink2,
+    fontSize: typography.bodySm,
     lineHeight: 19
   },
   checklistOwner: {
-    color: colors.text4,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "600",
     lineHeight: 16
   },
@@ -1551,14 +1551,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.md
   },
   checklistStatus: {
-    backgroundColor: colors.liveSoft,
+    backgroundColor: colors.okSoft,
     borderRadius: radius.pill,
     paddingHorizontal: 9,
     paddingVertical: 5
   },
   checklistStatusText: {
-    color: colors.live,
-    fontSize: typography.caption,
+    color: colors.okText,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 14
   },
@@ -1573,7 +1573,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.md
   },
   eventHeroDetail: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontFamily: detailFont,
     fontSize: 13,
     lineHeight: 19,
@@ -1592,7 +1592,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventHeroScrim: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.28)"
+    backgroundColor: colors.scrim
   },
   eventHeroText: {
     gap: spacing.sm
@@ -1612,9 +1612,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "flex-start"
   },
   eventStatusBadge: {
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: colors.onImage,
     borderRadius: 6,
-    color: colors.imageBadgeText,
+    color: colors.onImageBadge,
     fontFamily: detailFont,
     fontSize: 11,
     fontWeight: "700",
@@ -1623,13 +1623,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 4
   },
   errorText: {
-    color: colors.rose,
-    fontSize: typography.caption,
+    color: colors.coralText,
+    fontSize: typography.label,
     lineHeight: 16
   },
   feedbackText: {
-    color: colors.live,
-    fontSize: typography.caption,
+    color: colors.okText,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16
   },
@@ -1645,14 +1645,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minHeight: 84
   },
   goalInputLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16
   },
   goalSuggestionActionText: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 16
   },
@@ -1661,27 +1661,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   goalSuggestionCard: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md
   },
   goalSuggestionCardSelected: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+    backgroundColor: colors.accentText,
+    borderColor: colors.accentText
   },
   goalSuggestionDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 17
   },
   goalSuggestionDetailSelected: {
     color: colors.onAccent
   },
   goalSuggestionGoal: {
-    color: colors.text,
-    fontSize: typography.small,
+    color: colors.ink,
+    fontSize: typography.bodySm,
     lineHeight: 19
   },
   goalSuggestionGoalSelected: {
@@ -1699,7 +1699,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   goalSuggestionTitle: {
     color: colors.ink,
     flex: 1,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     fontWeight: "800",
     lineHeight: 18
   },
@@ -1720,8 +1720,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   infoGrid: {
     marginTop: 12,
-    borderTopColor: colors.border,
-    borderBottomColor: colors.border,
+    borderTopColor: colors.line,
+    borderBottomColor: colors.line,
     borderTopWidth: 1,
     borderBottomWidth: 1
   },
@@ -1739,7 +1739,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   infoTileDetail: {
-    color: colors.text4,
+    color: colors.ink3Text,
     fontFamily: detailFont,
     fontSize: 11,
     lineHeight: 16
@@ -1752,14 +1752,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 20
   },
   nextHint: {
-    color: colors.text3,
-    fontSize: typography.small,
+    color: colors.ink3Text,
+    fontSize: typography.bodySm,
     lineHeight: 19
   },
   openingLineBox: {
     alignItems: "flex-start",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.card,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.xl,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
@@ -1777,20 +1777,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexWrap: "wrap"
   },
   openingLineStatus: {
-    color: colors.text3,
+    color: colors.ink3Text,
     flex: 1,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "600",
     lineHeight: 16
   },
   openingLineText: {
-    color: colors.text,
-    fontSize: typography.small,
+    color: colors.ink,
+    fontSize: typography.bodySm,
     lineHeight: 19
   },
   organizerAvatar: {
     alignItems: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentText,
     borderRadius: radius.pill,
     height: 44,
     justifyContent: "center",
@@ -1798,7 +1798,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   organizerAvatarText: {
     color: colors.onAccent,
-    fontSize: typography.section,
+    fontSize: typography.cardTitle,
     fontWeight: "800",
     lineHeight: 21
   },
@@ -1818,8 +1818,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   postEventDraftBox: {
     alignItems: "flex-start",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.card,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.xl,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
@@ -1838,11 +1838,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   postEventTag: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderRadius: radius.pill,
     borderWidth: 1,
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 14,
     overflow: "hidden",
@@ -1855,15 +1855,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs
   },
   rankLabel: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 16
   },
   readinessGoal: {
     alignItems: "flex-start",
-    backgroundColor: colors.tint,
-    borderRadius: radius.card,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.xl,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
@@ -1903,8 +1903,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignSelf: "center"
   },
   registrationEyebrow: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 16
   },
   registrationFee: {
@@ -1918,8 +1918,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   registrationHint: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 17
   },
   registrationTitleBlock: {
@@ -1936,7 +1936,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   recommendationAvatar: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderColor: colors.accentSoft,
     borderRadius: radius.pill,
     borderWidth: 1,
@@ -1945,7 +1945,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 42
   },
   recommendationAvatarRank: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 10,
     fontWeight: "800",
     lineHeight: 12,
@@ -1953,7 +1953,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     textAlign: "center"
   },
   recommendationAvatarText: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 17,
     fontWeight: "800",
     lineHeight: 21
@@ -1964,8 +1964,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 48
   },
   recommendationMeta: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 16
   },
   recommendationName: {
@@ -1990,8 +1990,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   scoreLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16
   },

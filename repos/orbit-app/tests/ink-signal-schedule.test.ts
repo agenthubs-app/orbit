@@ -82,10 +82,10 @@ test("day view shows compact source date, Monday strip and distinct ink selectio
   const page = await open(t); await page.getByRole("heading", { name: "9.11", exact: true }).waitFor();
   const tab = page.getByRole("tab", { name: "日", exact: true });
   assert.equal(await tab.getAttribute("aria-selected"), "true");
-  assert.equal(await tab.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)");
+  assert.equal(await tab.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)");
   assert.equal(await page.getByTestId("schedule-week-strip").getByRole("button").first().getAttribute("aria-label"), "周一7日，1项安排");
   const selected = page.getByRole("button", { name: "周五11日，3项安排", exact: true });
-  assert.equal(await selected.evaluate(el => getComputedStyle(el).borderBottomColor), "rgb(10, 92, 255)");
+  assert.equal(await selected.evaluate(el => getComputedStyle(el).borderBottomColor), "rgb(108, 96, 135)");
   assert.equal(await page.getByRole("button", { name: /与陈雨辰聊合作/ }).evaluate(el => getComputedStyle(el).top), "308px");
   assert.equal(await page.getByRole("button", { name: /与陈雨辰聊合作/ }).evaluate(el => getComputedStyle(el).height), "44px");
   await shot(page, "day");
@@ -116,7 +116,7 @@ test("month is Monday-first with real month length, circle selection and retaine
   const selected = page.getByRole("button", { name: "11日，3项安排", exact: true });
   assert.equal(await selected.getAttribute("aria-selected"), "true");
   assert.equal(await selected.getByText("11", { exact: true }).evaluate(el => getComputedStyle(el).borderRadius), "16px");
-  assert.equal(await selected.getByText("11", { exact: true }).evaluate(el => getComputedStyle(el).backgroundColor), "rgb(10, 92, 255)");
+  assert.equal(await selected.getByText("11", { exact: true }).evaluate(el => getComputedStyle(el).backgroundColor), "rgb(108, 96, 135)");
   await shot(page, "month");
   await page.getByRole("button", { name: "21日，敬老日，0项安排", exact: true }).click(); await page.getByText("敬老日", { exact: true }).waitFor();
   await mode(page, "日"); await page.getByRole("heading", { name: "9.21", exact: true }).waitFor();
@@ -151,7 +151,7 @@ test("current time and next-up emphasis update without shifting the event's time
   await page.getByText("14:20", { exact: true }).waitFor();
   const initialTop = await current.evaluate(el => parseFloat(getComputedStyle(el).top));
   const meeting = page.getByRole("button", { name: /与陈雨辰聊合作/ });
-  assert.equal(await meeting.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)");
+  assert.equal(await meeting.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)");
   const position = await meeting.evaluate(el => getComputedStyle(el).top);
   await page.clock.fastForward(60_000); await page.getByText("14:21", { exact: true }).waitFor();
   assert.ok(await current.evaluate(el => parseFloat(getComputedStyle(el).top)) > initialTop);

@@ -31,7 +31,7 @@ function ExperienceButton({ label, icon, disabled = false, selected = false, pri
 }) {
   const { colors, styles } = useStyles();
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled, selected }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, primary && styles.primary, selected && styles.selected, iconOnly && styles.iconButton, disabled && styles.disabled, pressed && styles.pressed]}>
-    {icon ? <Ionicons name={icon} size={20} color={primary ? colors.onAccent : colors.accent} /> : null}
+    {icon ? <Ionicons name={icon} size={20} color={primary ? colors.onAccent : colors.accentText} /> : null}
     {!iconOnly ? <Text style={[styles.buttonText, primary && styles.primaryText]}>{label}</Text> : null}
   </Pressable>;
 }
@@ -93,10 +93,10 @@ export function EventExperienceContent({ configuration, snapshot, preview, autho
         <TextInput accessibilityLabel="活动简介" editable={!editingDisabled} multiline maxLength={1000} value={configuration.introduction ?? ""} onChangeText={introduction => onChange({ ...configuration, introduction: introduction || null })} style={[styles.input, styles.introduction]} textAlignVertical="top" />
         <Text style={styles.heading}>强调色</Text>
         <View style={styles.row}>
-          {["#128877", "#2563EB", "#C43B58", "#6E56CF"].map(color => <Pressable key={color} accessibilityRole="button" accessibilityLabel={`强调色 ${color}`} accessibilityState={{ selected: configuration.accentColor === color, disabled: editingDisabled }} disabled={editingDisabled} onPress={() => onChange({ ...configuration, accentColor: color })} style={[styles.swatch, { backgroundColor: color, borderColor: configuration.accentColor === color ? colors.ink : colors.border }, editingDisabled && styles.disabled]} />)}
+          {["#128877", "#2563EB", "#C43B58", "#6E56CF"].map(color => <Pressable key={color} accessibilityRole="button" accessibilityLabel={`强调色 ${color}`} accessibilityState={{ selected: configuration.accentColor === color, disabled: editingDisabled }} disabled={editingDisabled} onPress={() => onChange({ ...configuration, accentColor: color })} style={[styles.swatch, { backgroundColor: color, borderColor: configuration.accentColor === color ? colors.ink : colors.line }, editingDisabled && styles.disabled]} />)}
           <ExperienceButton label="恢复默认强调色" icon="refresh-outline" iconOnly disabled={editingDisabled} onPress={() => onChange({ ...configuration, accentColor: null })} />
         </View>
-        <TextInput accessibilityLabel="强调色" autoCapitalize="none" autoCorrect={false} maxLength={7} editable={!editingDisabled} value={configuration.accentColor ?? ""} onChangeText={accentColor => onChange({ ...configuration, accentColor: accentColor || null })} placeholder="#RRGGBB" placeholderTextColor={colors.text3} style={styles.input} />
+        <TextInput accessibilityLabel="强调色" autoCapitalize="none" autoCorrect={false} maxLength={7} editable={!editingDisabled} value={configuration.accentColor ?? ""} onChangeText={accentColor => onChange({ ...configuration, accentColor: accentColor || null })} placeholder="#RRGGBB" placeholderTextColor={colors.ink3Text} style={styles.input} />
       </View>
       <View style={styles.section}>
         <Text style={styles.heading}>报名问题</Text>
@@ -141,7 +141,7 @@ export function EventExperienceContent({ configuration, snapshot, preview, autho
         <ExperienceButton label="预览" icon="eye-outline" iconOnly disabled={busy !== null || freeze.blocked} onPress={onPreview} />
         <ExperienceButton label="发布题集" disabled={busy !== null || dirty || !snapshot?.draft || freeze.blocked} onPress={onPublish} />
       </View>
-      {preview ? <View style={[styles.preview, { borderLeftColor: preview.configuration.accentColor ?? colors.border }]}>
+      {preview ? <View style={[styles.preview, { borderLeftColor: preview.configuration.accentColor ?? colors.line }]}>
         <Text style={styles.heading}>报名预览</Text>
         <Text style={styles.body}>{preview.configuration.introduction ?? "暂无活动简介"}</Text>
         {preview.configuration.questionSet.questions.map(question => <View key={question.intent} style={styles.section}>
@@ -160,20 +160,20 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   row: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.sm },
   flex: { flex: 1, minWidth: 0 },
   heading: { fontSize: typography.body, lineHeight: 23, fontWeight: "700", color: colors.ink },
-  body: { fontSize: typography.body, lineHeight: 23, color: colors.text, flexShrink: 1 },
-  caption: { fontSize: typography.small, lineHeight: 20, color: colors.text3 },
-  error: { fontSize: typography.small, lineHeight: 20, color: colors.rose },
-  notice: { fontSize: typography.small, lineHeight: 20, color: colors.live },
-  warning: { fontSize: typography.small, lineHeight: 20, color: colors.text2 },
-  input: { minHeight: 48, minWidth: 0, borderWidth: 1, borderColor: colors.border2, borderRadius: 6, padding: spacing.sm, fontSize: typography.body, lineHeight: 23, color: colors.ink, backgroundColor: colors.surface },
+  body: { fontSize: typography.body, lineHeight: 23, color: colors.ink, flexShrink: 1 },
+  caption: { fontSize: typography.bodySm, lineHeight: 20, color: colors.ink3Text },
+  error: { fontSize: typography.bodySm, lineHeight: 20, color: colors.coralText },
+  notice: { fontSize: typography.bodySm, lineHeight: 20, color: colors.okText },
+  warning: { fontSize: typography.bodySm, lineHeight: 20, color: colors.ink2 },
+  input: { minHeight: 48, minWidth: 0, borderWidth: 1, borderColor: colors.line, borderRadius: 6, padding: spacing.sm, fontSize: typography.body, lineHeight: 23, color: colors.ink, backgroundColor: colors.surface },
   introduction: { minHeight: 112 },
-  question: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.md, gap: spacing.sm },
-  button: { minHeight: 44, maxWidth: "100%", borderRadius: 6, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
-  buttonText: { fontSize: typography.small, lineHeight: 20, fontWeight: "700", color: colors.ink, flexShrink: 1 },
+  question: { borderWidth: 1, borderColor: colors.line, borderRadius: 8, padding: spacing.md, gap: spacing.sm },
+  button: { minHeight: 44, maxWidth: "100%", borderRadius: 6, borderWidth: 1, borderColor: colors.line, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
+  buttonText: { fontSize: typography.bodySm, lineHeight: 20, fontWeight: "700", color: colors.ink, flexShrink: 1 },
   iconButton: { width: 44, height: 44, paddingHorizontal: 0, paddingVertical: 0 },
-  primary: { backgroundColor: colors.accent, borderColor: colors.accent },
+  primary: { backgroundColor: colors.accentText, borderColor: colors.accentText },
   primaryText: { color: colors.onAccent },
-  selected: { borderColor: colors.accent, backgroundColor: colors.surface2 },
+  selected: { borderColor: colors.accentText, backgroundColor: colors.surface2 },
   swatch: { width: 44, height: 44, borderWidth: 3, borderRadius: 6 },
   preview: { borderLeftWidth: 4, paddingLeft: spacing.md, gap: spacing.md },
   disabled: { opacity: 0.45 },

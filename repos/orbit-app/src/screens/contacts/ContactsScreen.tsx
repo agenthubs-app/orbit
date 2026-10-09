@@ -308,11 +308,11 @@ const avatarToneStyles = (colors: OrbitColors): Record<
   ContactAvatarTone,
   { backgroundColor: string; color: string }
 > => ({
-  amber: { backgroundColor: colors.amberSoft, color: colors.amber },
-  emerald: { backgroundColor: colors.liveSoft, color: colors.live },
-  rose: { backgroundColor: colors.roseSoft, color: colors.rose },
-  sky: { backgroundColor: colors.skySoft, color: colors.sky },
-  violet: { backgroundColor: colors.accentSofter, color: colors.accent }
+  amber: { backgroundColor: colors.macApricot, color: colors.macApricotText },
+  emerald: { backgroundColor: colors.macTeal, color: colors.macTealText },
+  rose: { backgroundColor: colors.macPink, color: colors.macPinkText },
+  sky: { backgroundColor: colors.macBlue, color: colors.macBlueText },
+  violet: { backgroundColor: colors.macLav, color: colors.macLavText }
 });
 
 function hasContactData(
@@ -520,7 +520,7 @@ function ContactFilterToolbar({
                 <Text style={styles.filterToolbarCount}>{item.count}</Text>
               ) : null}
               <Ionicons
-                color={active || selected ? colors.accent : colors.text4}
+                color={active || selected ? colors.accentText : colors.ink3Text}
                 name={active ? "chevron-up" : "chevron-down"}
                 size={primary ? 9 : 13}
               />
@@ -721,7 +721,6 @@ function ContactCard({
   const locale = useOrbitLocale();
   const avatar = contactAvatarFor(contact);
   const avatarId = useId().replace(/:/gu, "");
-  const tones = { sky: ["#7FB3FF", "#3B82F6"], emerald: ["#5EEAD4", "#0EA5E9"], amber: ["#FCD34D", "#F59E0B"], violet: ["#A78BFA", "#6366F1"], rose: ["#FDA4AF", "#F472B6"] } as const;
   const toneStyle = avatarToneStyles(colors)[avatar.tone];
   const detail = contactDetail(contact);
   const identityDetail = (primary ? [contact.role, contact.organization] : [contact.organization, contact.role])
@@ -761,7 +760,7 @@ function ContactCard({
             <>
               {primary ? <Svg accessible={false} style={StyleSheet.absoluteFill} width={40} height={40} viewBox="0 0 40 40">
                 <Defs><LinearGradient id={avatarId} x1="0%" y1="0%" x2="100%" y2="100%">
-                  <Stop offset="0%" stopColor={tones[avatar.tone][0]} /><Stop offset="100%" stopColor={tones[avatar.tone][1]} />
+                  <Stop offset="0%" stopColor={toneStyle.backgroundColor} /><Stop offset="100%" stopColor={toneStyle.backgroundColor} />
                 </LinearGradient></Defs><Circle cx={20} cy={20} r={20} fill={"url(#" + avatarId + ")"} />
               </Svg> : null}
               <Text style={[styles.avatarText, { color: toneStyle.color }, primary && styles.mainAvatarText]}>{avatar.initial}</Text>
@@ -787,7 +786,7 @@ function ContactCard({
             {contact.valueLabels.join(" · ")}
           </Text>
         )}
-        <Ionicons color={primary ? "#C4C9D4" : colors.text4} name="chevron-forward" size={primary ? 12 : 16} />
+        <Ionicons color={primary ? colors.ink4 : colors.ink3Text} name="chevron-forward" size={primary ? 12 : 16} />
       </View>
     </Pressable>
   );
@@ -1092,7 +1091,7 @@ function RecentRelationshipSearchesRow({
               pressed ? styles.filterChipPressed : null
             ]}
           >
-            <Ionicons color={colors.accent} name="time-outline" size={15} />
+            <Ionicons color={colors.accentText} name="time-outline" size={15} />
             <View style={styles.recentRelationshipSearchText}>
               <Text
                 numberOfLines={1}
@@ -1122,28 +1121,28 @@ function OverviewToolGrid({ children }: { children: ReactNode }) {
 function overviewToolTone(tone: OverviewToolTone, colors: OrbitColors) {
   if (tone === "amber") {
     return {
-      backgroundColor: colors.amberSoft,
-      color: colors.amber
+      backgroundColor: colors.macApricot,
+      color: colors.macApricotText
     };
   }
 
   if (tone === "live") {
     return {
-      backgroundColor: colors.liveSoft,
-      color: colors.live
+      backgroundColor: colors.okSoft,
+      color: colors.okText
     };
   }
 
   if (tone === "sky") {
     return {
-      backgroundColor: colors.skySoft,
-      color: colors.sky
+      backgroundColor: colors.macBlue,
+      color: colors.macBlueText
     };
   }
 
   return {
-    backgroundColor: colors.accentSofter,
-    color: colors.accent
+    backgroundColor: colors.accentSoft,
+    color: colors.accentText
   };
 }
 
@@ -1192,7 +1191,7 @@ function OverviewToolCard({
       </View>
       <View style={styles.overviewToolActionRow}>
         <Text style={styles.overviewToolActionText}>{action}</Text>
-        <Ionicons color={colors.text3} name="chevron-forward" size={16} />
+        <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />
       </View>
     </Pressable>
   );
@@ -1217,7 +1216,7 @@ function ContactsLibraryEntry({
       ]}
     >
       <View style={styles.contactsLibraryIcon}>
-        <Ionicons color={colors.accent} name="people-outline" size={24} />
+        <Ionicons color={colors.accentText} name="people-outline" size={24} />
       </View>
       <View style={styles.contactsLibraryText}>
         <Text style={styles.contactsLibraryTitle}>{locale.t("contacts.library")}</Text>
@@ -1227,7 +1226,7 @@ function ContactsLibraryEntry({
       </View>
       <View style={styles.contactsLibraryAction}>
         <Text style={styles.contactsLibraryActionText}>{locale.t("contacts.enter")}</Text>
-        <Ionicons color={colors.text3} name="chevron-forward" size={15} />
+        <Ionicons color={colors.ink3Text} name="chevron-forward" size={15} />
       </View>
     </Pressable>
   );
@@ -1259,7 +1258,7 @@ function NetworkPriorityCard({
       ]}
     >
       <View style={styles.contactsLibraryIcon}>
-        <Ionicons color={colors.accent} name={iconName} size={24} />
+        <Ionicons color={colors.accentText} name={iconName} size={24} />
       </View>
       <View style={styles.contactsLibraryText}>
         <Text style={styles.contactsLibraryTitle}>
@@ -1271,7 +1270,7 @@ function NetworkPriorityCard({
       </View>
       <View style={styles.contactsLibraryAction}>
         <Text style={styles.contactsLibraryActionText}>{action}</Text>
-        <Ionicons color={colors.text3} name="chevron-forward" size={15} />
+        <Ionicons color={colors.ink3Text} name="chevron-forward" size={15} />
       </View>
     </Pressable>
   );
@@ -1439,7 +1438,7 @@ function ContactsListContent({
       {offline ? <OfflineNotice lastSyncedAt={lastSyncedAt} /> : null}
       <View style={[styles.searchPanel, primary && styles.mainSearchPanel]}>
         <View style={[styles.searchRow, primary && styles.mainSearchRow]}>
-          <Ionicons color={colors.text3} name="search-outline" size={18} />
+          <Ionicons color={colors.ink3Text} name="search-outline" size={18} />
           <TextInput
             accessibilityLabel={locale.t("contacts.searchPlaceholder")}
             autoCapitalize="none"
@@ -1448,7 +1447,7 @@ function ContactsListContent({
             onFocus={onSearchIntent}
             onSubmitEditing={onRunDeepSearch}
             placeholder={locale.t("contacts.searchPlaceholder")}
-            placeholderTextColor={colors.text4}
+            placeholderTextColor={colors.ink3Text}
             returnKeyType="search"
             style={[styles.searchInput, primary && styles.mainSearchInput]}
             value={query}
@@ -1460,12 +1459,12 @@ function ContactsListContent({
               onPress={onClearQuery}
               style={styles.clearButton}
             >
-              <Ionicons color={colors.text3} name="close-circle" size={19} />
+              <Ionicons color={colors.ink3Text} name="close-circle" size={19} />
             </Pressable>
           ) : null}
           {primary ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.searchOptions")} accessibilityState={{ expanded: searchOptionsOpen }} aria-expanded={searchOptionsOpen}
             onPress={() => { onSearchIntent?.(); setSearchOptionsOpen(open => !open); }} style={styles.mainSearchOptionsButton}>
-            <Ionicons name="options-outline" size={18} color={colors.text3} />
+            <Ionicons name="options-outline" size={18} color={colors.ink3Text} />
           </Pressable> : null}
         </View>
         {showSearchOptions ? <View style={styles.searchActionRow}>
@@ -1480,7 +1479,7 @@ function ContactsListContent({
             ]}
           >
             <Ionicons
-              color={colors.accent}
+              color={colors.accentText}
               name="sparkles-outline"
               size={17}
             />
@@ -1498,7 +1497,7 @@ function ContactsListContent({
               pressed ? styles.deepSearchButtonPressed : null
             ]}
           >
-            <Ionicons color={colors.accent} name="git-network-outline" size={17} />
+            <Ionicons color={colors.accentText} name="git-network-outline" size={17} />
             <Text style={styles.relationshipSearchButtonText}>
               {relationshipSearching ? locale.t("contacts.relationshipSearching") : offline ? `${locale.t("contacts.relationshipSearch")} · ${locale.t("sync.needsNetwork")}` : locale.t("contacts.relationshipSearch")}
             </Text>
@@ -1512,10 +1511,10 @@ function ContactsListContent({
         </View> : null}
         {primary && showSearchOptions ? <View style={styles.mainTools}>
           <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.progress")} onPress={() => navigate("/contacts/pipeline")} style={styles.mainTool}>
-            <Text style={styles.mainLink}>{locale.t("contacts.progress")}</Text><Ionicons name="chevron-forward" size={12} color={colors.accent} />
+            <Text style={styles.mainLink}>{locale.t("contacts.progress")}</Text><Ionicons name="chevron-forward" size={12} color={colors.accentText} />
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.library")} onPress={() => navigate("/contacts/list")} style={styles.mainTool}>
-            <Text style={styles.mainLink}>{locale.t("contacts.library")}</Text><Ionicons name="chevron-forward" size={12} color={colors.accent} />
+            <Text style={styles.mainLink}>{locale.t("contacts.library")}</Text><Ionicons name="chevron-forward" size={12} color={colors.accentText} />
           </Pressable>
         </View> : null}
         {showSearchOptions ? <RecentRelationshipSearchesRow
@@ -1992,7 +1991,7 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
             relationshipSuggestionsState.refresh();
           }}
           refreshing={state.refreshing || relationshipSuggestionsState.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />;
   const content = <><ContactsListContent
         actionStateOptions={dimensionFilterOptions.actionState}
@@ -2112,45 +2111,45 @@ export function ContactsScreen({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   pageControls: { paddingVertical: 12, gap: 4 },
-  pageCount: { color: colors.text3, fontSize: 13, lineHeight: 20 },
+  pageCount: { color: colors.ink3Text, fontSize: 13, lineHeight: 20 },
   mainHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginTop: -4, minHeight: 44 },
   mainHeading: { flexDirection: "row", alignItems: "baseline", flexWrap: "wrap", gap: 10 },
   mainTitle: { fontFamily: mainContactFont, fontSize: 30, lineHeight: 38, fontWeight: "900", letterSpacing: -0.6, color: colors.ink },
-  mainCount: { fontFamily: mainContactFont, fontSize: 30, lineHeight: 38, fontWeight: "800", letterSpacing: -0.9, color: colors.accent },
-  mainCountEmpty: { color: colors.text3 },
+  mainCount: { fontFamily: mainContactFont, fontSize: 30, lineHeight: 38, fontWeight: "800", letterSpacing: -0.9, color: colors.accentText },
+  mainCountEmpty: { color: colors.ink3Text },
   mainHeaderActions: { flexDirection: "row", gap: 4 },
   mainHeaderButton: { width: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
-  mainScanSurface: { position: "absolute", zIndex: -1, top: 2, bottom: 2, left: 2, right: 2, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  mainScanSurface: { position: "absolute", zIndex: -1, top: 2, bottom: 2, left: 2, right: 2, borderRadius: 10, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface },
   mainAddSurface: { position: "absolute", zIndex: -1, top: 2, bottom: 2, left: 2, right: 2, borderRadius: 10, backgroundColor: colors.ink },
   mainBody: { gap: 0 },
   mainSearchPanel: { gap: 12, paddingBottom: 0 },
   mainSearchRow: { borderRadius: 10, paddingHorizontal: 12, gap: 8, minHeight: 44 },
   mainSearchInput: { fontFamily: mainContactFont, fontSize: 14, lineHeight: 20, padding: 0, color: colors.ink },
   mainSearchOptionsButton: { width: 44, minHeight: 44, marginRight: -12, alignItems: "center", justifyContent: "center" },
-  mainFilterRow: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  mainFilterRow: { borderBottomWidth: 1, borderBottomColor: colors.line },
   mainFilterScroll: { flexGrow: 0 },
   mainAll: { width: 44, minHeight: 44, justifyContent: "center", borderBottomWidth: 2, borderBottomColor: "transparent", marginBottom: -1 },
   mainAllUnderline: { position: "absolute", bottom: -2, left: 0, height: 2, backgroundColor: colors.ink },
   mainSelected: { borderBottomColor: colors.ink },
   mainActiveText: { color: colors.ink, fontWeight: "700" },
   mainFilterButton: { minHeight: 44, gap: 3, borderRadius: 0, paddingHorizontal: 0, borderBottomWidth: 2, borderBottomColor: "transparent", marginBottom: -1 },
-  mainFilterText: { fontFamily: mainContactFont, fontSize: 13, lineHeight: 18, fontWeight: "400", color: colors.text3 },
+  mainFilterText: { fontFamily: mainContactFont, fontSize: 13, lineHeight: 18, fontWeight: "400", color: colors.ink3Text },
   mainAnalysis: { minWidth: 60, minHeight: 44, justifyContent: "center", alignItems: "flex-end", paddingLeft: 8 },
-  mainLink: { fontFamily: mainContactFont, fontSize: 13, lineHeight: 20, fontWeight: "700", color: colors.accent },
+  mainLink: { fontFamily: mainContactFont, fontSize: 13, lineHeight: 20, fontWeight: "700", color: colors.accentText },
   mainTools: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
   mainTool: { minHeight: 44, minWidth: 44, flexDirection: "row", alignItems: "center", gap: 4 },
   mainList: { borderTopWidth: 0 },
-  mainContactRow: { minHeight: 65, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border2 },
+  mainContactRow: { minHeight: 65, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line },
   mainContactHeader: { gap: 12 },
   mainAvatar: { width: 40, height: 40, borderRadius: 20, flexShrink: 0 },
-  mainAvatarText: { fontFamily: mainContactFont, fontSize: 15, lineHeight: 20, fontWeight: "700", color: "#FFFFFF" },
+  mainAvatarText: { fontFamily: mainContactFont, fontSize: 15, lineHeight: 20, fontWeight: "700" },
   mainContactName: { fontFamily: mainContactFont, fontSize: 15, lineHeight: 20, fontWeight: "700", letterSpacing: -0.15 },
-  mainContactDetail: { fontFamily: mainContactFont, fontSize: 12, lineHeight: 17, color: colors.text3 },
+  mainContactDetail: { fontFamily: mainContactFont, fontSize: 12, lineHeight: 17, color: colors.ink3Text },
   mainRetry: { alignSelf: "flex-start", minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
   mainEmpty: { marginTop: 90, paddingHorizontal: 24, alignItems: "center" },
   mainEmptyIcon: { width: 64, height: 64, borderRadius: 32, borderWidth: 1.5, borderColor: colors.ink, alignItems: "center", justifyContent: "center" },
   mainEmptyTitle: { marginTop: 20, fontFamily: mainContactFont, fontSize: 22, lineHeight: 30, fontWeight: "900", letterSpacing: -0.44, color: colors.ink, textAlign: "center" },
-  mainEmptyCopy: { marginTop: 8, fontFamily: mainContactFont, fontSize: 14, lineHeight: 22, color: colors.text3, textAlign: "center" },
+  mainEmptyCopy: { marginTop: 8, fontFamily: mainContactFont, fontSize: 14, lineHeight: 22, color: colors.ink3Text, textAlign: "center" },
   mainEmptyActions: { marginTop: 28, gap: 8, width: "100%" },
   mainEmptyScan: { ...createControlStyles(colors).primaryButton },
   mainEmptyScanText: { ...createControlStyles(colors).primaryButtonText, fontFamily: mainContactFont },
@@ -2182,7 +2181,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   filterToolbar: { gap: spacing.sm },
   filterToolbarButton: {
     alignItems: "center",
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     flex: 1,
     flexDirection: "row",
     gap: 6,
@@ -2193,20 +2192,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   filterToolbarButtonActive: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accent
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accentText
   },
   filterToolbarButtonPressed: { opacity: 0.8 },
   filterToolbarButtonText: {
-    color: colors.text2,
+    color: colors.ink2,
     flexShrink: 1,
     fontSize: 14,
     fontWeight: "500",
     lineHeight: 20
   },
-  filterToolbarButtonTextActive: { color: colors.accent },
+  filterToolbarButtonTextActive: { color: colors.accentText },
   filterToolbarCount: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 11,
     fontWeight: "800",
     lineHeight: 15
@@ -2215,13 +2214,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   filterToolbarMoreSections: { gap: spacing.md },
   filterToolbarPanel: {
     backgroundColor: colors.surface2,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     gap: spacing.sm,
     padding: spacing.md
   },
   filterToolbarPanelTitle: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   filterToolbarRow: {
@@ -2229,14 +2228,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: 0
   },
   filterToolbarDivider: {
-    backgroundColor: colors.border,
+    backgroundColor: colors.line,
     height: 16,
     position: "absolute",
     right: 0,
     width: StyleSheet.hairlineWidth
   },
   contactCard: {
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     justifyContent: "center",
     minHeight: 70,
@@ -2246,7 +2245,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   contactCardPressed: { backgroundColor: colors.surface2 },
   contactDetail: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   contactHeader: {
     alignItems: "center",
@@ -2254,11 +2253,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: 16
   },
   contactList: {
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   contactMatchScore: {
-    color: colors.text3,
+    color: colors.ink3Text,
     flexShrink: 1,
     fontSize: 13,
     maxWidth: "40%",
@@ -2284,16 +2283,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   contactsLibraryActionText: {
     ...textStyles.caption,
-    color: colors.accent,
+    color: colors.accentText,
     flexShrink: 1
   },
   contactsLibraryDetail: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   contactsLibraryEntry: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.md,
@@ -2319,7 +2318,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   deepSearchButton: {
     alignItems: "center",
     backgroundColor: colors.accentSoft,
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     flex: 1,
     flexDirection: "row",
     gap: 7,
@@ -2334,7 +2333,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   deepSearchButtonText: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 15,
     fontWeight: "600",
     lineHeight: 21
@@ -2347,7 +2346,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   filterChipCount: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   filterChipPressed: {
@@ -2355,8 +2354,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   filterChipSelected: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+    backgroundColor: colors.accentText,
+    borderColor: colors.accentText
   },
   filterChipText: { ...createControlStyles(colors).chipText },
   filterChipTextSelected: { color: colors.onAccent },
@@ -2366,7 +2365,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   nextActionText: {
     ...textStyles.small,
-    color: colors.text2
+    color: colors.ink2
   },
   overviewToolActionRow: {
     alignItems: "center",
@@ -2376,12 +2375,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   overviewToolActionText: {
     ...textStyles.caption,
-    color: colors.accent,
+    color: colors.accentText,
     flexShrink: 1
   },
   overviewToolCard: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.md,
@@ -2392,7 +2391,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   overviewToolCardPrimary: { minHeight: 84 },
   overviewToolDetail: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   overviewToolGrid: { gap: 0 },
   overviewToolIcon: {
@@ -2414,8 +2413,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   recentRelationshipSearchChip: {
     alignItems: "center",
     backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     flexGrow: 1,
@@ -2428,11 +2427,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   recentRelationshipSearchDetail: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   recentRelationshipSearchLabel: {
     ...textStyles.caption,
-    color: colors.text,
+    color: colors.ink,
     fontWeight: "600"
   },
   recentRelationshipSearchList: {
@@ -2449,11 +2448,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   recentRelationshipSearchesMeta: {
     ...textStyles.caption,
-    color: colors.text4
+    color: colors.ink3Text
   },
   recentRelationshipSearchesTitle: {
     ...textStyles.caption,
-    color: colors.text2,
+    color: colors.ink2,
     fontWeight: "600"
   },
   recentRelationshipSearchText: {
@@ -2463,13 +2462,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   relationshipText: {
     ...textStyles.small,
-    color: colors.text
+    color: colors.ink
   },
   relationshipSearchButton: {
     alignItems: "center",
     backgroundColor: colors.surface,
-    borderColor: colors.accent,
-    borderRadius: radius.control,
+    borderColor: colors.accentText,
+    borderRadius: radius.md,
     borderWidth: 1,
     flex: 1,
     flexDirection: "row",
@@ -2480,30 +2479,30 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 10
   },
   relationshipSearchButtonText: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 15,
     fontWeight: "600",
     lineHeight: 21
   },
   relationshipSearchEvidence: {
     ...textStyles.caption,
-    color: colors.text2
+    color: colors.ink2
   },
   relationshipSearchScore: {
     ...textStyles.small,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   relationshipSearchScoreLabel: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 10,
     fontWeight: "800",
     lineHeight: 13
   },
   relationshipSearchScorePill: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
     borderRadius: radius.md,
     borderWidth: 1,
     minWidth: 52,
@@ -2512,7 +2511,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   relationshipSuggestionChip: {
     backgroundColor: colors.surface2,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     flexBasis: "100%",
     flexGrow: 1,
     gap: spacing.xs,
@@ -2521,12 +2520,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   relationshipSuggestionDetail: {
     ...textStyles.caption,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   relationshipSuggestionHint: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   relationshipSuggestionList: {
     flexDirection: "row",
@@ -2548,11 +2547,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   relationshipSuggestionsMeta: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   relationshipSuggestionsNext: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   relationshipSuggestionsTitle: {
     ...textStyles.small,
@@ -2561,7 +2560,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   searchInput: {
     ...textStyles.body,
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
     minWidth: 0,
     minHeight: 44,
@@ -2575,18 +2574,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   searchEmptyText: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   searchErrorText: {
     ...textStyles.caption,
-    color: colors.rose,
+    color: colors.coralText,
     flexBasis: "100%",
     flexShrink: 1,
     fontWeight: "600"
   },
   searchFilterText: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   searchPanel: {
     gap: 8,
@@ -2595,7 +2594,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   searchRow: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderRadius: radius.input,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.sm,
     minHeight: layout.control,
@@ -2620,7 +2619,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   searchResultDetail: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   searchResultHeader: {
     alignItems: "flex-start",
@@ -2628,7 +2627,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   searchResultItem: {
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
     paddingVertical: spacing.md
@@ -2639,7 +2638,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   searchResultLead: {
     ...textStyles.small,
-    color: colors.text
+    color: colors.ink
   },
   searchResultName: {
     ...textStyles.listTitle,
@@ -2658,11 +2657,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   tagText: {
     ...textStyles.caption,
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
     borderRadius: 999,
     borderWidth: 1,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
@@ -2670,13 +2669,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   valueText: {
     ...textStyles.caption,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   valuePill: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
     borderRadius: radius.pill,
     borderWidth: 1,
     justifyContent: "center",

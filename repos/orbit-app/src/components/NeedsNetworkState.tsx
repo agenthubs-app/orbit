@@ -28,7 +28,7 @@ export function NeedsNetworkState({ onRetry, retrying = false, message }: { onRe
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   group: { gap: spacing.md, paddingVertical: spacing.sm },
-  body: { ...textStyles.small, color: colors.muted },
+  body: { ...textStyles.small, color: colors.ink2 },
   button: { ...createControlStyles(colors).secondaryButton, alignSelf: "flex-start" },
   buttonText: { ...createControlStyles(colors).secondaryButtonText },
 }));

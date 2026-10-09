@@ -74,7 +74,7 @@ export function ContactInteractionEditor({ contactId, initialInteraction, langua
     } finally { pending.current = false; }
   }
 
-  const fieldStyle = { width: "100%", minHeight: 44, padding: "8px 10px", color: "var(--text)", background: "var(--surface)", border: "1px solid var(--hairline)", borderRadius: "var(--r-md)", boxSizing: "border-box" as const };
+  const fieldStyle = { width: "100%", minHeight: 44, padding: "8px 10px", color: "var(--ink)", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", boxSizing: "border-box" as const };
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: ORBIT_Z.modal, background: "rgba(0,0,0,.35)", display: "grid", placeItems: "center", padding: 18 }}>
       <div ref={modalRef} role="dialog" aria-modal="true" aria-label={copy.title} tabIndex={-1} className="card" style={{ width: "100%", maxWidth: 460, maxHeight: "90dvh", overflowY: "auto", padding: 22 }}>
@@ -86,8 +86,8 @@ export function ContactInteractionEditor({ contactId, initialInteraction, langua
           <label>{copy.time}<input aria-label={copy.time} type="datetime-local" step="1" value={time} disabled={status === "saving"} onChange={(event) => { setTime(event.target.value); setStatus("idle"); }} style={fieldStyle} /></label>
           <label>{copy.summary}<textarea aria-label={copy.summary} rows={3} value={summary} disabled={status === "saving"} onChange={(event) => { setSummary(event.target.value); setStatus("idle"); }} style={{ ...fieldStyle, resize: "vertical" }} /></label>
         </div>
-        <p style={{ color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.5 }}>{copy.hint}</p>
-        {status === "error" || status === "invalid" ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13 }}>{status === "invalid" ? copy.invalid : copy.error}</p> : null}
+        <p style={{ color: "var(--ink-3-text)", fontSize: 12.5, lineHeight: 1.5 }}>{copy.hint}</p>
+        {status === "error" || status === "invalid" ? <p role="alert" style={{ color: "var(--coral-text)", fontSize: 13 }}>{status === "invalid" ? copy.invalid : copy.error}</p> : null}
         <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: 10, marginTop: 20 }}>
           <button type="button" className="btn btn-quiet" disabled={status === "saving"} onClick={onClose}>{copy.close}</button>
           <button type="button" className="btn btn-primary" data-interaction-save disabled={status === "saving" || !changed} onClick={save}>{status === "saving" ? copy.saving : copy.save}</button>

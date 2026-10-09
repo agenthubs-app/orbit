@@ -107,11 +107,6 @@ export function EventRegisterModal({
 
   return (
     <div className="ev-reg-overlay" data-events-modal="register">
-      {/* 本路由无顶栏（字体 link 挂在 OrbitTopNav 上），弹窗自带同源字体 link；React 会去重。 */}
-      <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap"
-        rel="stylesheet"
-      />
       <style>{EVENTS_STYLES}</style>
       <div aria-labelledby="ev-reg-title" aria-modal="true" className="ev-reg-panel" ref={panelRef} role="dialog">
         <div className="ev-reg-head">

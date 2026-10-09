@@ -161,7 +161,7 @@ for (const scheme of ["light", "dark"] as const) {
     const radii = []; for (const panel of panels) { await panel.waitFor(); radii.push(await panel.evaluate(el => getComputedStyle(el).borderRadius)); }
     await page.getByRole("button", { name: /先了解采购需求/ }).click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-    assert.deepEqual(radii, ["12px", "12px", "12px", "12px"], "readinessGoal, goalSuggestionCard, openingLineBox, postEventDraftBox");
+    assert.deepEqual(radii, ["24px", "24px", "24px", "24px"], "readinessGoal, goalSuggestionCard, openingLineBox, postEventDraftBox");
   });
   test(`${scheme}: canonical attendee search and identity render without preview encounter writes`, async t => {
     const page = await open(t, "attendees&insets=true", scheme);
@@ -342,7 +342,7 @@ test("role grant and edit screens keep inset inputs, read-only identity and fail
   const actor = page.getByRole("textbox", { name: "账号 ID", exact: true }); const reason = page.getByRole("textbox", { name: "授权、变更或撤销原因", exact: true });
   await fits(actor); await fits(reason); await actor.fill("actor:guest"); await reason.fill("负责合作伙伴接待");
   const save = page.getByRole("button", { name: "授予角色", exact: true }); await fits(save, 50);
-  assert.equal(await actor.locator("..").locator("..").evaluate(el => getComputedStyle(el).borderRadius), "12px");
+  assert.equal(await actor.locator("..").locator("..").evaluate(el => getComputedStyle(el).borderRadius), "24px");
   for (const action of await page.getByRole("button").all()) await fits(action);
   await save.click(); await page.getByText("暂时无法保存，请重试", { exact: true }).waitFor(); assert.equal(await actor.inputValue(), "actor:guest"); assert.equal(await reason.inputValue(), "负责合作伙伴接待");
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "GET", path: "/api/events/event%3Astyle/access/assignments/actor%3Aguest", body: undefined }]);
@@ -371,7 +371,7 @@ test("analytics keeps real fractions readable and exposes view switching only wh
   const page = await open(t, "analytics"); const personal = page.getByRole("button", { name: "我的报告", exact: true }); await fits(personal); await personal.click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["attendee_report"]);
   for (const heading of ["活动证据", "可解释比率", "联系证据", "约谈进展"]) {
-    const text = page.getByText(heading, { exact: true }); assert.deepEqual(await text.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["15px", "22px", "800"]);
+    const text = page.getByText(heading, { exact: true }); assert.deepEqual(await text.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["14.5px", "21px", "800"]);
   }
   const report = page.getByText("可解释比率", { exact: true }).locator("..");
   assert.match(await report.innerText(), /2.*4/s);

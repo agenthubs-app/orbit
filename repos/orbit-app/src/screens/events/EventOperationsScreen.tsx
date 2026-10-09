@@ -86,7 +86,7 @@ export function EventOperationsScreen() {
   }
 
   return (
-    <AppScreen refreshControl={<RefreshControl onRefresh={state.refresh} refreshing={state.refreshing} tintColor={colors.accent} />} title={fontScale > 1.3 ? "活动\n运营" : "活动运营"}>
+    <AppScreen refreshControl={<RefreshControl onRefresh={state.refresh} refreshing={state.refreshing} tintColor={colors.accentText} />} title={fontScale > 1.3 ? "活动\n运营" : "活动运营"}>
       <EventOperationsContent busy={busy} notice={notice} onGenerationAction={confirmGenerationAction} onOpenAnalytics={() => router.push(`/events/${encodeURIComponent(eventId)}/analytics` as Href)} onOpenCheckIn={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/check-in` as Href)} onOpenEvent={() => router.push(`/events/${encodeURIComponent(eventId)}` as Href)} onOpenExperience={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/experience` as Href)} onOpenRoles={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/roles` as Href)} onRefresh={state.refresh} onStartGeneration={confirmStart} state={contentState} view={view} />
     </AppScreen>
   );

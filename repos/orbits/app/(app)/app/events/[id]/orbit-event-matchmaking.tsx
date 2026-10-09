@@ -348,7 +348,7 @@ function ParticipantDetailPanel({
       style={{
         alignItems: "center",
         backdropFilter: "blur(2px)",
-        background: "var(--scrim)",
+        background: "var(--scrim-web)",
         display: "flex",
         inset: 0,
         justifyContent: "center",
@@ -383,7 +383,7 @@ function ParticipantDetailPanel({
             <h3 className="h-section" style={{ margin: "4px 0 0" }}>
               {detail.displayName}
             </h3>
-            <p style={{ color: "var(--text-3)", fontSize: 13, margin: "4px 0 0" }}>
+            <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: "4px 0 0" }}>
               {[detail.role, detail.company, detail.industry].filter(Boolean).join(" · ")}
             </p>
           </div>
@@ -398,11 +398,11 @@ function ParticipantDetailPanel({
               <strong>{t({ en: "Why Orbit recommends this person", zh: "Orbit 为什么推荐 TA" })}</strong>
               <span className="chip">{detail.recommendation.score}</span>
             </div>
-            <ul style={{ color: "var(--text-2)", fontSize: 13, margin: 0, paddingLeft: 18 }}>
+            <ul style={{ color: "var(--ink-2)", fontSize: 13, margin: 0, paddingLeft: 18 }}>
               {detail.recommendation.reasons.map((reason) => <li key={reason}>{reason}</li>)}
             </ul>
             {detail.recommendation.icebreakers.length ? (
-              <p style={{ color: "var(--text-2)", fontSize: 13, margin: 0 }}>
+              <p style={{ color: "var(--ink-2)", fontSize: 13, margin: 0 }}>
                 <strong>{t({ en: "Opening", zh: "开场建议" })}：</strong>{detail.recommendation.icebreakers.join(" · ")}
               </p>
             ) : null}
@@ -420,8 +420,8 @@ function ParticipantDetailPanel({
                   <span className="chip">{t({ en: `Seat ${placement.seat}`, zh: `座位 ${placement.seat}` })}</span>
                 </div>
                 <strong style={{ fontSize: 14 }}>{placement.theme}</strong>
-                {placement.groupingRationale ? <p style={{ color: "var(--text-2)", fontSize: 13, margin: 0 }}>{placement.groupingRationale}</p> : null}
-                {placement.icebreakers.length ? <p style={{ color: "var(--text-3)", fontSize: 12, margin: 0 }}>{placement.icebreakers.join(" · ")}</p> : null}
+                {placement.groupingRationale ? <p style={{ color: "var(--ink-2)", fontSize: 13, margin: 0 }}>{placement.groupingRationale}</p> : null}
+                {placement.icebreakers.length ? <p style={{ color: "var(--ink-3-text)", fontSize: 12, margin: 0 }}>{placement.icebreakers.join(" · ")}</p> : null}
               </div>
             ))}
           </section>
@@ -430,12 +430,12 @@ function ParticipantDetailPanel({
         <section style={{ display: "grid", gap: 8 }}>
           <strong>{t({ en: "Registration profile", zh: "报名画像" })}</strong>
           {detail.responses.length ? detail.responses.map((response) => (
-            <div key={response.fieldKey} style={{ borderTop: "1px solid var(--border)", paddingTop: 9 }}>
-              <div style={{ color: "var(--text-3)", fontSize: 12 }}>{response.label[language]}</div>
-              {response.prompt ? <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 2 }}>{response.prompt}</div> : null}
-              <p style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.55, margin: "5px 0 0" }}>{response.answer}</p>
+            <div key={response.fieldKey} style={{ borderTop: "1px solid var(--line)", paddingTop: 9 }}>
+              <div style={{ color: "var(--ink-3-text)", fontSize: 12 }}>{response.label[language]}</div>
+              {response.prompt ? <div style={{ color: "var(--ink-3-text)", fontSize: 12, marginTop: 2 }}>{response.prompt}</div> : null}
+              <p style={{ color: "var(--ink-2)", fontSize: 14, lineHeight: 1.55, margin: "5px 0 0" }}>{response.answer}</p>
             </div>
-          )) : <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>{t({ en: "No shareable profile answers.", zh: "暂无可展示的画像回答。" })}</p>}
+          )) : <p style={{ color: "var(--ink-3-text)", fontSize: 13, margin: 0 }}>{t({ en: "No shareable profile answers.", zh: "暂无可展示的画像回答。" })}</p>}
         </section>
 
         <footer style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -456,11 +456,11 @@ function ParticipantDetailPanel({
               </button>
             </>
           ) : null}
-          {contact.status === "awaiting_target_consent" && contact.direction === "outgoing" ? <span style={{ color: "var(--text-2)", fontSize: 13 }}>{t({ en: "Waiting for consent. Contact details remain hidden.", zh: "等待对方同意，联系方式仍保持隐藏。" })}</span> : null}
+          {contact.status === "awaiting_target_consent" && contact.direction === "outgoing" ? <span style={{ color: "var(--ink-2)", fontSize: 13 }}>{t({ en: "Waiting for consent. Contact details remain hidden.", zh: "等待对方同意，联系方式仍保持隐藏。" })}</span> : null}
           {contact.status === "awaiting_target_consent" && contact.direction === "outgoing" && contact.requestId && contact.revision ? <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void onWithdraw(contact.requestId!, contact.revision!)} type="button">{t({ en: "Withdraw request", zh: "撤回申请" })}</button> : null}
           {contact.status === "accepted" ? <a className="btn btn-primary btn-sm" href={contact.contactId ? `/app/contacts/${encodeURIComponent(contact.contactId)}` : "/app/contacts"}>{t({ en: "Open contact", zh: "打开联系人" })}</a> : null}
-          {contact.status === "declined" ? <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "This request was declined.", zh: "这次名片申请已被婉拒。" })}</span> : null}
-          {contact.status === "withdrawn" ? <><span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "This request was withdrawn.", zh: "这次名片申请已撤回。" })}</span>{contact.direction === "outgoing" && contact.revision ? <button className={contactRequestsOpen ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"} disabled={busy || !contactRequestsOpen} onClick={() => void onRequest(detail.participantId, contact.revision)} type="button">{contactRequestsOpen ? t({ en: "Request again", zh: "再次申请" }) : t({ en: "Contact requests open when the event starts", zh: "活动开始后可再次申请" })}</button> : null}</> : null}
+          {contact.status === "declined" ? <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ en: "This request was declined.", zh: "这次名片申请已被婉拒。" })}</span> : null}
+          {contact.status === "withdrawn" ? <><span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ en: "This request was withdrawn.", zh: "这次名片申请已撤回。" })}</span>{contact.direction === "outgoing" && contact.revision ? <button className={contactRequestsOpen ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"} disabled={busy || !contactRequestsOpen} onClick={() => void onRequest(detail.participantId, contact.revision)} type="button">{contactRequestsOpen ? t({ en: "Request again", zh: "再次申请" }) : t({ en: "Contact requests open when the event starts", zh: "活动开始后可再次申请" })}</button> : null}</> : null}
         </footer>
         {contact.status === "accepted" && contact.contactId && contact.requestId ? (
           <>
@@ -530,7 +530,7 @@ export function OrbitEventMatchmaking({
   const sectionRef = useRef<HTMLElement>(null);
   // The detail dialog is fixed and full-screen, but it is authored inside this
   // section — which on the event journey sits inside the `.cardB` nite panel.
-  // cardB re-binds --ink/--surface/--text for a small glass card on a dark
+  // cardB re-binds --ink/--surface/--ink for a small glass card on a dark
   // gradient, so the dialog inherited a white scrim, a 5.5%-alpha "surface"
   // and near-white body text: the whole page showed straight through it.
   // Re-parenting to the page root escapes those overrides. It has to be the
@@ -743,21 +743,21 @@ export function OrbitEventMatchmaking({
       <div style={{ display: "grid", gap: 4 }}>
         <span className="eyebrow">ORBIT MATCH</span>
         <h3 className="h-section" id="event-matchmaking-title" style={{ margin: 0 }}>{t({ en: "People worth meeting", zh: "值得认识的人" })}</h3>
-        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{t({ en: "Matched from both sides' registration profiles, with the evidence behind every suggestion.", zh: "根据双方报名画像匹配，每条推荐都能查看依据。" })}</p>
+        <p style={{ color: "var(--ink-2)", fontSize: 14, margin: 0 }}>{t({ en: "Matched from both sides' registration profiles, with the evidence behind every suggestion.", zh: "根据双方报名画像匹配，每条推荐都能查看依据。" })}</p>
       </div>
 
-      {loading ? <p style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>{t({ en: "Loading the published result…", zh: "正在读取已发布结果…" })}</p> : null}
+      {loading ? <p style={{ color: "var(--ink-3-text)", fontSize: 14, margin: 0 }}>{t({ en: "Loading the published result…", zh: "正在读取已发布结果…" })}</p> : null}
       {unauthorized ? (
         <div className="card-flat" style={{ display: "grid", gap: 9, padding: 14 }}>
-          <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{t({ en: "Only confirmed participants can see event matching.", zh: "只有已确认报名的参与者可以查看活动匹配。" })}</p>
+          <p style={{ color: "var(--ink-2)", fontSize: 14, margin: 0 }}>{t({ en: "Only confirmed participants can see event matching.", zh: "只有已确认报名的参与者可以查看活动匹配。" })}</p>
           {authenticated && !authenticationRequired && registrationOpen ? <a className="btn btn-primary btn-sm" href={`/app/events/${encodeURIComponent(eventId)}/register`} style={{ justifySelf: "start" }}>{t({ en: "Complete registration", zh: "完成报名" })}</a> : authenticationRequired ? <a className="btn btn-primary btn-sm" href={`/app/account/login?next=${encodeURIComponent(`/app/events/${eventId}`)}`} style={{ justifySelf: "start" }}>{t({ en: "Sign in", zh: "登录" })}</a> : null}
         </div>
       ) : null}
 
-      {workspace?.resultsState === "locked" ? <div className="card-flat" data-operations-state="locked" style={{ padding: 14 }}><strong>{t({ en: "Results are not open yet", zh: "匹配结果尚未开放" })}</strong><p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: `Available at ${formatGate(workspace.configuration.resultsAvailableAt)}.`, zh: `将在 ${formatGate(workspace.configuration.resultsAvailableAt)} 开放。` })}</p></div> : null}
-      {workspace?.resultsState === "processing" ? <div className="card-flat" data-operations-state="processing" style={{ padding: 14 }}><strong>{t({ en: "AI matching is being generated", zh: "AI 匹配正在生成" })}</strong><p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: "The organizer has not published a result. No fallback list is shown.", zh: "主办方尚未发布结果，因此不会展示备用名单。" })}</p></div> : null}
-      {workspace?.resultsState === "failed" ? <div className="card-flat" data-operations-state="failed" style={{ padding: 14 }}><strong>{t({ en: "Generation failed", zh: "匹配生成失败" })}</strong><p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: "The organizer can retry. Orbit will not synthesize a replacement.", zh: "主办方可以重试；Orbit 不会合成替代结果。" })}</p></div> : null}
-      {workspace?.resultsState === "not_generated" ? <div className="card-flat" data-operations-state="not_generated" style={{ padding: 14 }}><strong>{t({ en: "Matching has not been generated", zh: "尚未生成匹配" })}</strong><p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: "Wait for the organizer to run and publish the AI result.", zh: "请等待主办方运行并发布 AI 结果。" })}</p></div> : null}
+      {workspace?.resultsState === "locked" ? <div className="card-flat" data-operations-state="locked" style={{ padding: 14 }}><strong>{t({ en: "Results are not open yet", zh: "匹配结果尚未开放" })}</strong><p style={{ color: "var(--ink-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: `Available at ${formatGate(workspace.configuration.resultsAvailableAt)}.`, zh: `将在 ${formatGate(workspace.configuration.resultsAvailableAt)} 开放。` })}</p></div> : null}
+      {workspace?.resultsState === "processing" ? <div className="card-flat" data-operations-state="processing" style={{ padding: 14 }}><strong>{t({ en: "AI matching is being generated", zh: "AI 匹配正在生成" })}</strong><p style={{ color: "var(--ink-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: "The organizer has not published a result. No fallback list is shown.", zh: "主办方尚未发布结果，因此不会展示备用名单。" })}</p></div> : null}
+      {workspace?.resultsState === "failed" ? <div className="card-flat" data-operations-state="failed" style={{ padding: 14 }}><strong>{t({ en: "Generation failed", zh: "匹配生成失败" })}</strong><p style={{ color: "var(--ink-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: "The organizer can retry. Orbit will not synthesize a replacement.", zh: "主办方可以重试；Orbit 不会合成替代结果。" })}</p></div> : null}
+      {workspace?.resultsState === "not_generated" ? <div className="card-flat" data-operations-state="not_generated" style={{ padding: 14 }}><strong>{t({ en: "Matching has not been generated", zh: "尚未生成匹配" })}</strong><p style={{ color: "var(--ink-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: "Wait for the organizer to run and publish the AI result.", zh: "请等待主办方运行并发布 AI 结果。" })}</p></div> : null}
 
       {workspace?.resultsState === "ready" ? (
         <>
@@ -771,14 +771,14 @@ export function OrbitEventMatchmaking({
             <article className="card-flat" data-matchmaking-candidate={participant.participantId} key={participant.participantId} style={{ display: "grid", gap: 9, minWidth: 0, overflowWrap: "anywhere", padding: 14 }}>
               <button aria-label={t({ en: `Open ${participant.displayName}'s profile`, zh: `打开 ${participant.displayName} 的画像` })} onClick={() => void openParticipant(participant.participantId)} style={{ background: "transparent", border: 0, color: "inherit", cursor: "pointer", padding: 0, textAlign: "left" }} type="button">
                 <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
-                  <div><strong style={{ color: "var(--ink)", fontSize: 15 }}>{participant.displayName}</strong><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>{[participant.role, participant.company].filter(Boolean).join(" · ")}</div></div>
+                  <div><strong style={{ color: "var(--ink)", fontSize: 15 }}>{participant.displayName}</strong><div style={{ color: "var(--ink-3-text)", fontSize: 13, marginTop: 2 }}>{[participant.role, participant.company].filter(Boolean).join(" · ")}</div></div>
                   <span className="chip">{t({ en: `Match ${recommendation.score}`, zh: `匹配 ${recommendation.score}` })}</span>
                 </div>
-                <ul style={{ color: "var(--text-2)", fontSize: 13, margin: "9px 0 0", paddingLeft: 18 }}>{recommendation.reasons.slice(0, 2).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                <ul style={{ color: "var(--ink-2)", fontSize: 13, margin: "9px 0 0", paddingLeft: 18 }}>{recommendation.reasons.slice(0, 2).map((reason) => <li key={reason}>{reason}</li>)}</ul>
                 {recommendation.reasons.length > 2 ? (
-                  <p style={{ color: "var(--text-3)", fontSize: 12, margin: "6px 0 0" }}>{t({ en: `+ ${recommendation.reasons.length - 2} more reasons — open the profile for full evidence`, zh: `还有 ${recommendation.reasons.length - 2} 条匹配依据，点击查看完整画像` })}</p>
+                  <p style={{ color: "var(--ink-3-text)", fontSize: 12, margin: "6px 0 0" }}>{t({ en: `+ ${recommendation.reasons.length - 2} more reasons — open the profile for full evidence`, zh: `还有 ${recommendation.reasons.length - 2} 条匹配依据，点击查看完整画像` })}</p>
                 ) : null}
-                <p style={{ color: "var(--text-3)", fontSize: 12, margin: "8px 0 0" }}>{recommendation.memberHint}</p>
+                <p style={{ color: "var(--ink-3-text)", fontSize: 12, margin: "8px 0 0" }}>{recommendation.memberHint}</p>
               </button>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 <button className="btn btn-ghost btn-sm" disabled={working === `detail:${participant.participantId}`} onClick={() => void openParticipant(participant.participantId)} type="button">{t({ en: "View evidence and profile", zh: "查看依据与画像" })}</button>
@@ -795,7 +795,7 @@ export function OrbitEventMatchmaking({
             </article>
             );
           })() : null)}
-          {!participants.length ? <p data-operations-state="ready-empty" style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>{workspace.recommendations?.noMatchReason ?? t({ en: "The published result contains no recommendation for you.", zh: "已发布结果中没有适合你的推荐。" })}</p> : null}
+          {!participants.length ? <p data-operations-state="ready-empty" style={{ color: "var(--ink-3-text)", fontSize: 14, margin: 0 }}>{workspace.recommendations?.noMatchReason ?? t({ en: "The published result contains no recommendation for you.", zh: "已发布结果中没有适合你的推荐。" })}</p> : null}
         </>
       ) : null}
 
@@ -808,7 +808,7 @@ export function OrbitEventMatchmaking({
           <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between" }}>
             <div>
               <strong>{t({ en: `All participants · ${workspace.directory.length}`, zh: `全部参会者 · ${workspace.directory.length}` })}</strong>
-              <p style={{ color: "var(--text-3)", fontSize: 12, margin: "4px 0 0" }}>
+              <p style={{ color: "var(--ink-3-text)", fontSize: 12, margin: "4px 0 0" }}>
                 {t({
                   en: "Everyone who has confirmed their registration. Open a card to read what they wrote about themselves.",
                   zh: "所有已确认报名的人都在这里。点开卡片可以看到 TA 自己填写的介绍。",
@@ -828,7 +828,7 @@ export function OrbitEventMatchmaking({
           </div>
           {directoryOpen && workspace.directory.length ? (
             <div className="orbit-attendee-search">
-              <Icon color="var(--text-3)" name="search" size={17} />
+              <Icon color="var(--ink-3-text)" name="search" size={17} />
               <input
                 aria-label={t({ en: "Search participants", zh: "搜索参会者" })}
                 onChange={(event) => setDirectoryQuery(event.target.value)}
@@ -919,7 +919,7 @@ export function OrbitEventMatchmaking({
         </section>
       ) : null}
 
-      {visibleError ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>{visibleError}</p> : null}
+      {visibleError ? <p role="alert" style={{ color: "var(--coral-text)", fontSize: 13, margin: 0 }}>{visibleError}</p> : null}
       {detail && dialogHost ? createPortal(
         <ParticipantDetailPanel busy={working !== null} contactRequestsOpen={contactRequestsOpen} detail={detail} eventId={eventId} onClose={() => setDetail(null)} onRequest={requestContact} onRespond={respondContact} onWithdraw={withdrawContact} />,
         dialogHost,

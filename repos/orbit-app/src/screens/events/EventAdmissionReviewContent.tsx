@@ -69,7 +69,7 @@ function ApplicationDetail({
         onPress={onBack}
         style={({ pressed }) => [styles.backToList, pressed ? styles.pressed : null]}
       >
-        <Ionicons color={colors.text2} name="arrow-back" size={18} />
+        <Ionicons color={colors.ink2} name="arrow-back" size={18} />
         <Text style={styles.backToListText}>返回队列</Text>
       </Pressable>
 
@@ -144,7 +144,7 @@ function ApplicationDetail({
         </View>
       ) : (
         <View style={styles.readonlyDecision}>
-          <Ionicons color={colors.live} name="checkmark-circle-outline" size={18} />
+          <Ionicons color={colors.okText} name="checkmark-circle-outline" size={18} />
           <Text style={styles.readonlyDecisionText}>
             此申请已处理{application.decidedLabel ? ` · ${application.decidedLabel}` : ""}
           </Text>
@@ -248,7 +248,7 @@ export function EventAdmissionReviewContent({
                 <Text style={styles.applicantMeta}>{item.statusLabel} · {item.submittedLabel}</Text>
               </View>
               <Text style={styles.openLabel}>查看申请</Text>
-              <Ionicons color={colors.text3} name="chevron-forward" size={18} />
+              <Ionicons color={colors.ink3Text} name="chevron-forward" size={18} />
             </Pressable>
           ))}
           {list.nextCursor ? (
@@ -276,10 +276,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     backgroundColor: "transparent",
     paddingVertical: spacing.md
   },
-  applicantAvatar: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: radius.pill, height: 42, justifyContent: "center", width: 42 },
-  applicantAvatarText: { color: colors.accent, fontSize: typography.section, fontWeight: "800" },
+  applicantAvatar: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.pill, height: 42, justifyContent: "center", width: 42 },
+  applicantAvatarText: { color: colors.accentText, fontSize: typography.cardTitle, fontWeight: "800" },
   applicantCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
-  applicantMeta: { color: colors.text3, fontSize: typography.caption, lineHeight: 17 },
+  applicantMeta: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 17 },
   applicantName: {
     color: colors.ink,
     ...textStyles.listTitle
@@ -290,10 +290,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   approveButtonText: {
     ...createControlStyles(colors).primaryButtonText
   },
-  avatar: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: radius.control, height: 52, justifyContent: "center", width: 52 },
-  avatarText: { color: colors.accent, fontSize: typography.title, fontWeight: "800" },
+  avatar: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.md, height: 52, justifyContent: "center", width: 52 },
+  avatarText: { color: colors.accentText, fontSize: typography.titleSm, fontWeight: "800" },
   backToList: { alignItems: "center", alignSelf: "flex-start", flexDirection: "row", gap: spacing.sm, minHeight: 44 },
-  backToListText: { color: colors.text2, fontSize: typography.small, fontWeight: "700" },
+  backToListText: { color: colors.ink2, fontSize: typography.bodySm, fontWeight: "700" },
   decisionButton: {
     ...createControlStyles(colors).secondaryButton,
     flex: 1,
@@ -309,48 +309,48 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   detail: { gap: spacing.xl },
   detailHeader: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   detailHeading: { flex: 1, gap: spacing.xs, minWidth: 0 },
-  detailMeta: { color: colors.text3, fontSize: typography.caption },
+  detailMeta: { color: colors.ink3Text, fontSize: typography.label },
   detailName: {
     color: colors.ink,
     ...textStyles.title
   },
   disabled: { opacity: 0.5 },
   interviewAnswer: {
-    color: colors.text2,
+    color: colors.ink2,
     ...textStyles.body
   },
-  interviewPrompt: { color: colors.ink, fontSize: typography.small, fontWeight: "700", lineHeight: 19 },
-  interviewRow: { borderBottomColor: colors.border, borderBottomWidth: 1, gap: spacing.sm, paddingVertical: spacing.md },
+  interviewPrompt: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "700", lineHeight: 19 },
+  interviewRow: { borderBottomColor: colors.line, borderBottomWidth: 1, gap: spacing.sm, paddingVertical: spacing.md },
   loadMore: { alignItems: "center", justifyContent: "center", minHeight: 44 },
-  loadMoreText: { color: colors.accent, fontSize: typography.small, fontWeight: "800" },
-  notice: { backgroundColor: colors.liveSoft, borderRadius: radius.control, color: colors.live, fontSize: typography.small, lineHeight: 20, padding: spacing.md },
-  openLabel: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
+  loadMoreText: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "800" },
+  notice: { backgroundColor: colors.okSoft, borderRadius: radius.md, color: colors.okText, fontSize: typography.bodySm, lineHeight: 20, padding: spacing.md },
+  openLabel: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "700" },
   pressed: { opacity: 0.68 },
-  profileLabel: { color: colors.text3, fontSize: typography.caption, fontWeight: "700", lineHeight: 17, width: 78 },
-  profileList: { borderTopColor: colors.border, borderTopWidth: 1 },
+  profileLabel: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "700", lineHeight: 17, width: 78 },
+  profileList: { borderTopColor: colors.line, borderTopWidth: 1 },
   profileRow: {
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     paddingVertical: spacing.md,
     gap: spacing.sm
   },
-  profileValue: { color: colors.text, flex: 1, fontSize: typography.small, lineHeight: 20 },
+  profileValue: { color: colors.ink, flex: 1, fontSize: typography.bodySm, lineHeight: 20 },
   queue: { gap: spacing.md },
-  queueCount: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
+  queueCount: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "700" },
   queueSummary: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between", paddingHorizontal: spacing.xs },
   queueTitle: {
     color: colors.ink,
     ...textStyles.section
   },
-  readonlyDecision: { alignItems: "center", backgroundColor: colors.liveSoft, borderRadius: radius.control, flexDirection: "row", gap: spacing.sm, minHeight: 48, padding: spacing.md },
-  readonlyDecisionText: { color: colors.live, flex: 1, fontSize: typography.small, fontWeight: "700" },
+  readonlyDecision: { alignItems: "center", backgroundColor: colors.okSoft, borderRadius: radius.md, flexDirection: "row", gap: spacing.sm, minHeight: 48, padding: spacing.md },
+  readonlyDecisionText: { color: colors.okText, flex: 1, fontSize: typography.bodySm, fontWeight: "700" },
   rejectButton: {
     ...createControlStyles(colors).secondaryButton,
-    backgroundColor: colors.roseSoft
+    backgroundColor: colors.coralSoft
   },
   rejectButtonText: {
     ...createControlStyles(colors).secondaryButtonText,
-    color: colors.rose
+    color: colors.coralText
   },
   section: { gap: spacing.md },
   sectionTitle: {
@@ -370,11 +370,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   segmentTextActive: {
     ...createControlStyles(colors).selectedChipText
   },
-  segments: { backgroundColor: colors.surface3, borderRadius: radius.control, flexDirection: "row", gap: spacing.xs, padding: spacing.xs },
+  segments: { backgroundColor: colors.surface3, borderRadius: radius.md, flexDirection: "row", gap: spacing.xs, padding: spacing.xs },
   stateText: {
-    color: colors.text2,
+    color: colors.ink2,
     ...textStyles.body
   },
-  statusBadge: { backgroundColor: colors.amberSoft, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  statusBadgeText: { color: colors.amber, fontSize: 11, fontWeight: "800" }
+  statusBadge: { backgroundColor: colors.macApricot, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  statusBadgeText: { color: colors.macApricotText, fontSize: 11, fontWeight: "800" }
 }));

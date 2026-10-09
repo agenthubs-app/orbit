@@ -89,7 +89,7 @@ test("only a real forbidden response shows the permission view with real return 
   const page = await open(t, { kind: "failure", status: 403 });
   const heading = page.getByRole("heading", { name: "需要运营权限", exact: true }); await heading.waitFor();
   assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "22px");
-  assert.equal(await page.getByRole("alert").evaluate(el => getComputedStyle(el).color), "rgb(107, 114, 128)");
+  assert.equal(await page.getByRole("alert").evaluate(el => getComputedStyle(el).color), "rgb(111, 103, 120)");
   const icon = page.locator('[data-icon="lock-closed-outline"]').locator("..");
   assert.equal((await icon.boundingBox())!.width, 64); assert.equal((await icon.boundingBox())!.height, 64);
   assert.equal(await page.getByText("已报名", { exact: true }).count(), 0);
@@ -140,7 +140,7 @@ for (const action of ["publish", "retry"] as const) test(`generation ${action} r
   await page.getByRole("button", { name: label, exact: true }).click(); assert.deepEqual(await posts(page), []);
   await confirm(page, action === "publish" ? "确认发布" : "开始重试");
   await page.getByText("操作未完成，请重试。", { exact: true }).waitFor();
-  assert.equal(await page.getByRole("alert").evaluate(el => getComputedStyle(el).backgroundColor), "rgb(245, 247, 250)", "generic notices must not paint failed mutations as success");
+  assert.equal(await page.getByRole("alert").evaluate(el => getComputedStyle(el).backgroundColor), "rgb(242, 239, 243)", "generic notices must not paint failed mutations as success");
   assert.deepEqual(await posts(page), [{ path: `/api/events/event%3Aops/operations/admin/generations/generation%3A01/${action}` }]);
   assert.equal(await page.evaluate(() => (window as any).fixture.refreshes), 1);
   await shot(page, action + "-failure");

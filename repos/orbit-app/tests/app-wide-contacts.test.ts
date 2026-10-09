@@ -182,7 +182,7 @@ for (const scheme of ["light", "dark"] as const) {
     for (const row of rows) await touchFits(row, 64);
     assert.equal(await page.getByRole("button").filter({ hasText: /QR|导入|引荐|批量|手动/u }).count(), 0, "no other import methods on the scan page");
     const titleColor = await page.getByText("拍一张名片", { exact: true }).evaluate(el => getComputedStyle(el).color);
-    assert.equal(titleColor, scheme === "dark" ? "rgb(240, 240, 236)" : "rgb(11, 18, 32)", "row titles use ink, not the blue accent");
+    assert.equal(titleColor, scheme === "dark" ? "rgb(243, 240, 246)" : "rgb(30, 26, 36)", "row titles use ink, not the blue accent");
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.nativeCalls), [], "no permission is requested on open");
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   });
@@ -206,7 +206,7 @@ test("analysis uses open 15/22 sections and keeps structure, opportunity and rep
   const page = await openScreen(t, "analysis");
   const title = page.getByText("结构摘要", { exact: true });
   await title.waitFor();
-  assert.deepEqual(await title.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["15px", "22px", "800"]);
+  assert.deepEqual(await title.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["14.5px", "21px", "800"]);
   if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-contacts-analysis.png", fullPage: true });
   const section = title.locator("..").locator("..").locator("..");
   assert.equal(await section.evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
@@ -306,7 +306,7 @@ test("structure detail renders real success content and opens its contact at 320
   await page.getByText("科技合作伙伴", { exact: true }).waitFor();
   for (const name of ["关系质量", "常见标签", "相关联系人"]) {
     const heading = page.getByText(name, { exact: true });
-    assert.deepEqual(await heading.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["15px", "22px", "800"]);
+    assert.deepEqual(await heading.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["14.5px", "21px", "800"]);
     assert.equal(await heading.locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
   }
   const contact = page.getByRole("button", { name: "查看林悦", exact: true });
@@ -385,9 +385,9 @@ test("analysis opened in dark appearance keeps its real modal readable and bound
   const action = page.getByRole("button", { name: "开始联系", exact: true });
   await action.click({ trial: true });
   await touchFits(action, 50);
-  assert.equal(await action.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(240, 240, 236)");
+  assert.equal(await action.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(243, 240, 246)");
   const labelColor = await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).color);
-  assert.equal(labelColor, "rgb(23, 28, 42)");
+  assert.equal(labelColor, "rgb(30, 26, 36)");
   if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-contacts-analysis-brief-dark.png", fullPage: true, animations: "disabled" });
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
 });

@@ -1,6 +1,6 @@
 # Sprint R01 — 设计源：一份 token 源生成两端，新配色覆盖旧配色
 
-**Plan revision:** 1。**模式:** existing-codebase / single-generator（执行人：小雨）。
+**Plan revision:** 3（2026-10-09：修订 2 纳入 0918 写死颜色，已按用户决定撤回，范围回到修订 1）。**模式:** existing-codebase / single-generator（执行人：小雨）。
 **单一目标:** 建立 `repos/orbits/shared/design/tokens.json`（含补齐项与文字加深版），生成两端 token 文件；两端所有颜色引用改用设计稿命名并取新值；字体按语言切换；默认主题跟随系统。
 **易读目标:** [GOAL.md](GOAL.md)。
 **基线:** `redesign` HEAD（编制时 `9d404c1c8`），开工时按符号重新定位行号。
@@ -55,7 +55,7 @@
 - 新建：`repos/orbits/shared/design/{tokens.json,tokens.ts,README.md}`、`scripts/design-tokens/generate.mjs`、`app/(app)/app/orbit-2026/tokens.css`、`R01-design-tokens/color-mapping.md`；App `src/api/design/tokens.ts`（同步副本）。
 - 修改：App `src/design/{tokens,theme,controls}.ts`、所有引用旧颜色名的文件、`scripts/sync-contract.mjs`、`AGENTS.md`、设置页（主题选项）；Web `orbit-reference-styles.tsx` 变量层、`orbit-theme.tsx`、`orbit-0918-tokens.ts`、`app/layout.tsx`、`app/(app)/app/layout.tsx`、字体加载点、设置页、`scripts/build-reference-css.mjs`（如需改名映射）。
 - 测试：更新 App `design-tokens`、`theme-render`、`compute-sync`、`domain-sync`；新增 `design-sync.test.ts`；Web 更新 `orbit-contrast-tokens`、`orbit-z-scale`、`orbit-p2-gates`、`orbit-a11y-runtime-mounted`、`orbit-settings-theme`；新增 `design-tokens-generated.test.ts`。
-- **不做**：图标（R02）、文案（R03）、组件（R04 / R06）、导航（R05 / R07）。**0918 各域样式表里写死的 hex 不在本 Sprint 范围**：它们不是 token，覆盖不到，这些页面在功能 Sprint 重做前保持旧颜色，是已知结果。
+- **不做**：图标（R02）、文案（R03）、组件（R04 / R06）、导航（R05 / R07）。**0918 各域样式表里写死的 hex 不在本 Sprint 范围**：改版是按屏替换（`IMPLEMENTATION-PLAN.md` §0.1「边界 B」），这些页面会在功能 Sprint 里整屏重写并删除，现在逐处改色是白做。骨架期间它们挂在新壳里保持旧颜色，是已知结果；每个旧屏由哪个功能 Sprint 重写见 [`../screen-ownership.md`](../screen-ownership.md)。（修订 2 曾纳入，修订 3 按用户决定撤回。）
 
 ## 验收契约
 
@@ -65,7 +65,7 @@
 | SC-R01-02 一份源生成两端 | 改 `tokens.json` 一个颜色 → 跑 `npm run design:tokens` 和 `sync:contract` → 两端同时变；手改任一生成文件 → 测试失败 | `design-tokens-generated.test.ts`、App `design-sync.test.ts` |
 | SC-R01-03 对比度全部达标 | 两端测试覆盖所有「文字 × 底色」组合（ink / ink-2 / 加深版 ink-3 在 bg / surface / surface-2 上；马卡龙文字在对应马卡龙底上；coral 文字在 coral-soft 上；on-accent 在 accent 上；成功文字在 ok 相关底上），浅色和深色都 ≥4.5:1 | App `design-tokens.test.ts`、Web `orbit-contrast-tokens.test.ts` |
 | SC-R01-04 命名统一 | 两端代码里没有旧颜色名（测试夹具和本 Sprint 的对照表除外） | 静态扫描测试（旧名清单来自对照表） |
-| SC-R01-05 现有页面不坏 | App 首页、人脉、活动、待办、AI；Web 首页（iOrbit）、人脉、活动、设置、待办；各截浅色 / 深色，前后并排 | 证据目录截图对照页；REPORT 列出已知例外（0918 写死颜色） |
+| SC-R01-05 现有页面不坏 | App 首页、人脉、活动、待办、AI；Web 首页（iOrbit）、人脉、活动、设置、待办；各截浅色 / 深色，前后并排 | 证据目录截图对照页；REPORT 列出已知例外（0918 写死颜色，按 screen-ownership.md 归属功能 Sprint） |
 | SC-R01-06 字体与主题 | 日 / 中 / 英三种界面字体正确；Web 首次访问跟随系统明暗、无闪烁；两端设置可切 自动 / 浅色 / 深色并记住 | 页面测试 + 截图 |
 
 ### 必需证据子表

@@ -32,7 +32,7 @@ export function AiEntityCard({
   const body = (
     <>
       <View style={styles.glyph}>
-        <Ionicons color={colors.accent} name={KIND_GLYPH[view.kind]} size={17} />
+        <Ionicons color={colors.accentText} name={KIND_GLYPH[view.kind]} size={17} />
       </View>
       <View style={styles.copy}>
         <Text style={styles.kind}>{view.kindLabel}</Text>
@@ -40,7 +40,7 @@ export function AiEntityCard({
         {view.meta ? <Text numberOfLines={1} style={styles.meta}>{view.meta}</Text> : null}
         {view.reason ? <Text numberOfLines={1} style={styles.reason}>{view.reason}</Text> : null}
       </View>
-      {view.href ? <Ionicons color={colors.accent} name="chevron-forward" size={16} /> : null}
+      {view.href ? <Ionicons color={colors.accentText} name="chevron-forward" size={16} /> : null}
     </>
   );
 
@@ -80,7 +80,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   list: { gap: spacing.xs, marginTop: spacing.sm },
   card: {
     alignItems: "center",
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: "row",
@@ -91,16 +91,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   glyph: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.md,
     height: 36,
     justifyContent: "center",
     width: 36,
   },
   copy: { flex: 1, minWidth: 0 },
-  kind: { ...rowRoleStyles.groupHeading, color: colors.text3 },
+  kind: { ...rowRoleStyles.groupHeading, color: colors.ink3Text },
   title: { ...textStyles.listTitle, color: colors.ink },
-  meta: { ...textStyles.small, color: colors.text2 },
-  reason: { ...textStyles.caption, color: colors.text3 },
-  pressed: { backgroundColor: colors.accentSofter, opacity: 0.85 },
+  meta: { ...textStyles.small, color: colors.ink2 },
+  reason: { ...textStyles.caption, color: colors.ink3Text },
+  pressed: { backgroundColor: colors.accentSoft, opacity: 0.85 },
 }));

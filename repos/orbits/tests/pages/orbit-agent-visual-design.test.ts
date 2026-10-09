@@ -75,12 +75,14 @@ test("Orbit agent styles ship the scoped console-green skin", () => {
   assert.doesNotMatch(styles, /\.orbit-agent-composer\b/);
 });
 
-test("Orbit agent light presentation keeps the readable token layer", () => {
+test("Orbit agent presentation keeps its readable token layer on the design tokens (R01)", () => {
   assert.match(styles, /\[data-orbit-real-page="agent"\]\s*\{/);
-  assert.match(styles, /--agent-canvas:\s*#FFFFFF/i);
+  assert.match(styles, /--agent-canvas:\s*var\(--bg\)/);
+  assert.match(styles, /--agent-ink:\s*var\(--ink\)/);
   assert.match(styles, /--agent-body-size:\s*15px/);
   assert.match(styles, /--agent-meta-size:\s*12px/);
-  assert.match(styles, /body:has\(\[data-orbit-real-page="agent"\]\)/);
+  // The page canvas is the shared token background for every product page.
+  assert.match(styles, /body:has\(\[data-orbit-real-page\]\),\s*html:has\(\[data-orbit-real-page\]\)\s*\{\s*background:\s*var\(--bg\);/);
 });
 
 // iOrbit 任务 6a：旧 `orbit-agent-today-workspace.tsx` 的「建议与行动」是绿色控制台

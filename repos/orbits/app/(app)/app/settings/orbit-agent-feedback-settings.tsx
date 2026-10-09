@@ -138,7 +138,7 @@ export function OrbitAgentFeedbackSettings() {
             alignItems: "center",
             background: "var(--accent-soft)",
             borderRadius: 12,
-            color: "var(--accent)",
+            color: "var(--accent-text)",
             display: "inline-flex",
             height: 42,
             justifyContent: "center",
@@ -151,23 +151,23 @@ export function OrbitAgentFeedbackSettings() {
           <h2 id="orbit-agent-feedback-title" style={{ fontSize: 18, margin: 0 }}>
             {t({ en: "Result learning", zh: "结果学习" })}
           </h2>
-          <p style={{ color: "var(--text-3)", fontSize: 13.5, lineHeight: 1.6 }}>
+          <p style={{ color: "var(--ink-3-text)", fontSize: 13.5, lineHeight: 1.6 }}>
             {t({
               en: "Only feedback and outcomes you explicitly record may influence later recommendations. Delete any record to stop using it.",
               zh: "只有你主动记录的评价和业务结果会影响后续推荐；删除后将不再使用。",
             })}
           </p>
           {error ? (
-            <p role="alert" style={{ color: "var(--danger)", fontSize: 13 }}>
+            <p role="alert" style={{ color: "var(--coral-text)", fontSize: 13 }}>
               {error}
             </p>
           ) : null}
           {loading ? (
-            <p style={{ color: "var(--text-3)", fontSize: 13 }}>
+            <p style={{ color: "var(--ink-3-text)", fontSize: 13 }}>
               {t({ en: "Loading…", zh: "正在加载…" })}
             </p>
           ) : feedback.length === 0 ? (
-            <p style={{ color: "var(--text-3)", fontSize: 13 }}>
+            <p style={{ color: "var(--ink-3-text)", fontSize: 13 }}>
               {t({
                 en: "No result learning records yet.",
                 zh: "还没有结果学习记录。",
@@ -180,8 +180,8 @@ export function OrbitAgentFeedbackSettings() {
                   data-agent-feedback-run-id={item.runId}
                   key={item.feedbackId}
                   style={{
-                    background: "var(--bg-soft)",
-                    border: "1px solid var(--border)",
+                    background: "var(--bg)",
+                    border: "1px solid var(--line)",
                     borderRadius: 12,
                     display: "grid",
                     gap: 7,
@@ -195,7 +195,7 @@ export function OrbitAgentFeedbackSettings() {
                       <span className="chip" key={source}>{source}</span>
                     ))}
                   </div>
-                  <span className="mono" style={{ color: "var(--text-3)", fontSize: 11, overflowWrap: "anywhere" }}>
+                  <span className="mono" style={{ color: "var(--ink-3-text)", fontSize: 11, overflowWrap: "anywhere" }}>
                     {item.runId}
                   </span>
                   <div>

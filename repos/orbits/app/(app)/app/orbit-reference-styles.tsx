@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 
+import { adoptDesignTokens } from "../../../scripts/design-tokens/legacy-rename.mjs";
+
 const prototypeHtmlPath = path.join(
   process.cwd(),
   "public/orbit-reference/orbit-reference.html",
@@ -113,8 +115,8 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page].orbit-party-page .orbit-party-top-tabs {
   align-items: center;
-  background: var(--glass-bar);
-  border-bottom: 1px solid var(--border);
+  background: var(--glass);
+  border-bottom: 1px solid var(--line);
   display: flex;
   flex-shrink: 0;
   gap: 10px;
@@ -128,9 +130,9 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page].orbit-party-page .orbit-party-return-icon {
   align-items: center;
   background: var(--surface);
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  box-shadow: var(--sh-xs);
+  box-shadow: none;
   color: var(--ink);
   cursor: pointer;
   display: inline-flex;
@@ -142,7 +144,7 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page].orbit-party-page .orbit-party-return-icon:hover {
   background: var(--surface-2);
-  border-color: var(--border-strong);
+  border-color: var(--ink-4);
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-top-tab-list {
@@ -160,7 +162,7 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-top-tab {
-  border-color: var(--border-2);
+  border-color: var(--line);
   cursor: pointer;
   flex: 0 0 auto;
   height: 36px;
@@ -168,14 +170,14 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-top-tab.is-active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-text);
+  border-color: var(--accent-text);
   color: var(--on-accent);
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-desktop-chrome {
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
   flex-shrink: 0;
 }
 
@@ -194,7 +196,7 @@ const reactReferenceIsolationStyles = `
   background: var(--surface-2);
   border: 1px solid transparent;
   border-radius: 10px;
-  color: var(--text);
+  color: var(--ink);
   cursor: pointer;
   display: inline-flex;
   flex-shrink: 0;
@@ -211,7 +213,7 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page].orbit-party-page .orbit-party-event-mark {
   align-items: center;
-  background: var(--accent);
+  background: var(--accent-text);
   border-radius: 10px;
   color: var(--on-accent);
   display: flex;
@@ -237,14 +239,14 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-event-title span {
-  color: var(--text-3);
+  color: var(--ink-3-text);
   font-size: 13px;
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-ended-pill {
   background: var(--surface-2);
   border-radius: 999px;
-  color: var(--text-3);
+  color: var(--ink-3-text);
   font-size: 12px;
   font-weight: 600;
   margin-left: auto;
@@ -266,7 +268,7 @@ const reactReferenceIsolationStyles = `
   background: transparent;
   border: 0;
   border-bottom: 2px solid transparent;
-  color: var(--text-2);
+  color: var(--ink-2);
   cursor: pointer;
   display: inline-flex;
   font-size: 15px;
@@ -278,11 +280,11 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page].orbit-party-page .orbit-party-desktop-tab:hover,
 [data-orbit-real-page].orbit-party-page .orbit-party-desktop-tab.is-active {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-desktop-tab.is-active {
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--accent-text);
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-attendee-grid {
@@ -320,7 +322,7 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page].orbit-party-page .orbit-party-attendee-meta,
 [data-orbit-real-page].orbit-party-page .orbit-party-attendee-summary {
-  color: var(--text-3);
+  color: var(--ink-3-text);
   font-size: 13px;
   line-height: 1.45;
   margin-top: 4px;
@@ -356,8 +358,8 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-agenda-time {
-  color: var(--accent);
-  font-family: var(--ff-mono);
+  color: var(--accent-text);
+  font-family: var(--font-num);
   font-size: 14px;
   font-weight: 600;
   padding-top: 2px;
@@ -371,14 +373,14 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-agenda-line span {
-  background: var(--live);
+  background: var(--ok-text);
   border-radius: 999px;
   height: 14px;
   width: 14px;
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-agenda-line i {
-  background: var(--live);
+  background: var(--ok-text);
   display: block;
   flex: 1;
   margin: 5px 0;
@@ -394,13 +396,13 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-agenda-main p {
-  color: var(--text-3);
+  color: var(--ink-3-text);
   font-size: 13px;
   margin: 5px 0 0;
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-agenda-status {
-  color: var(--live-text);
+  color: var(--ok-text);
   font-size: 13px;
   font-weight: 600;
   padding-top: 2px;
@@ -470,7 +472,7 @@ const reactReferenceIsolationStyles = `
 .orbit-host-admin-page .orbit-host-nav-item {
   background: transparent;
   border-radius: 10px;
-  color: var(--text-2);
+  color: var(--ink-2);
   display: flex;
   font-size: 14px;
   font-weight: 600;
@@ -482,7 +484,7 @@ const reactReferenceIsolationStyles = `
 
 .orbit-host-admin-page .orbit-host-nav-item.is-active {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
@@ -490,10 +492,10 @@ const reactReferenceIsolationStyles = `
   background: transparent;
   border: 0;
   border-radius: 10px;
-  color: var(--text-3);
+  color: var(--ink-3-text);
   cursor: pointer;
   display: flex;
-  font-family: var(--ff);
+  font-family: var(--font);
   font-size: 14px;
   gap: 10px;
   padding: 10px 12px;
@@ -567,7 +569,7 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page] .mono {
-  font-family: var(--ff-mono);
+  font-family: var(--font-num);
 }
 
 [data-orbit-real-page].orbit-shell {
@@ -615,18 +617,18 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page] .btn:focus-visible {
-  outline: 2px solid var(--accent-ring);
+  outline: 2px solid var(--plum-300);
   outline-offset: 2px;
 }
 
 [data-orbit-real-page] .btn-primary {
-  background: var(--accent);
-  box-shadow: var(--sh-xs);
+  background: var(--accent-text);
+  box-shadow: none;
   color: var(--on-accent);
 }
 
 [data-orbit-real-page] .btn-primary:hover {
-  background: var(--accent-hover);
+  background: var(--plum-900);
 }
 
 [data-orbit-real-page] .btn-dark {
@@ -640,7 +642,7 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page] .btn-soft {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 [data-orbit-real-page] .btn-soft:hover {
@@ -649,14 +651,14 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page] .btn-ghost {
   background: var(--surface);
-  border-color: var(--border-2);
-  box-shadow: var(--sh-xs);
-  color: var(--text);
+  border-color: var(--line);
+  box-shadow: none;
+  color: var(--ink);
 }
 
 [data-orbit-real-page] .btn-ghost:hover {
   background: var(--surface-2);
-  border-color: var(--border-strong);
+  border-color: var(--ink-4);
 }
 
 /* UI-audit fix P1-a. btn-quiet had a fully transparent resting state with no
@@ -667,18 +669,18 @@ const reactReferenceIsolationStyles = `
    silhouette without promoting it to the weight of btn-ghost. */
 [data-orbit-real-page] .btn-quiet {
   background: transparent;
-  border-color: var(--border);
-  color: var(--text-2);
+  border-color: var(--line);
+  color: var(--ink-2);
 }
 
 [data-orbit-real-page] .btn-quiet:hover {
   background: var(--surface-3);
-  border-color: var(--border-strong);
-  color: var(--text);
+  border-color: var(--ink-4);
+  color: var(--ink);
 }
 
 [data-orbit-real-page] .btn-sm {
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
   font-size: 14px;
   height: 36px;
   padding: 0 14px;
@@ -714,7 +716,7 @@ const reactReferenceIsolationStyles = `
   background: var(--surface-3);
   border-color: transparent;
   box-shadow: none;
-  color: var(--text-4);
+  color: var(--ink-3-text);
   cursor: not-allowed;
   opacity: 0.45;
 }
@@ -722,12 +724,12 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page] .orbit-agent-btn {
   align-items: center;
   background: var(--surface);
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   display: inline-flex;
-  font-family: var(--ff);
+  font-family: var(--font);
   font-size: 14px;
   font-weight: 600;
   gap: 6px;
@@ -756,10 +758,10 @@ const reactReferenceIsolationStyles = `
   background: var(--accent-soft);
   border: 1px solid transparent;
   border-radius: 10px;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   display: inline-flex;
-  font-family: var(--ff);
+  font-family: var(--font);
   font-size: 14px;
   font-weight: 600;
   height: 38px;
@@ -776,9 +778,9 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page] .orbit-top-icon-btn {
   align-items: center;
   background: var(--surface);
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--line);
   border-radius: 10px;
-  box-shadow: var(--sh-xs);
+  box-shadow: none;
   color: var(--ink);
   cursor: pointer;
   display: inline-flex;
@@ -791,7 +793,7 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page] .orbit-top-icon-btn:hover {
   background: var(--surface-2);
-  border-color: var(--border-strong);
+  border-color: var(--ink-4);
 }
 
 /* Orbit_0918 浮岛药丸导航：品牌与链接使用设计稿固定浅色配色（不随主题变量），
@@ -911,10 +913,10 @@ const reactReferenceIsolationStyles = `
   flex-direction: column;
   line-height: 1;
 }
-/* Orbit_0918：衬线品牌字（Noto Serif SC 900），设计稿无副标语。 */
+/* Orbit_0918：品牌字（900，按语言的无衬线字体），设计稿无副标语。 */
 [data-orbit-real-page] .orbit-brand-name {
   color: #0E1225;
-  font-family: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  font-family: var(--font);
   font-size: 26px;
   font-weight: 900;
   letter-spacing: -0.03em;
@@ -1000,27 +1002,23 @@ const reactReferenceIsolationStyles = `
    prefix intentionally outranks the product light-theme token remap so the
    starfield remains a dark scene even when the rest of the product is light. */
 html[data-theme] [data-orbit-real-page="starfield-home"] {
+  /* The starfield scene stays dark until R21 rebuilds the iOrbit home
+     (screen-ownership.md); it overrides the design tokens locally. */
   color-scheme: dark;
-  --accent: #8B7BF0;
-  --accent-hover: #9C8EF5;
-  --accent-press: #7A69E6;
+  --accent-text: #8B7BF0;
+  --plum-900: #9C8EF5;
   --accent-soft: rgba(139, 123, 240, 0.16);
-  --accent-softer: rgba(139, 123, 240, 0.09);
-  --accent-ring: rgba(139, 123, 240, 0.42);
+  --plum-300: rgba(139, 123, 240, 0.42);
   --on-accent: #0B0A15;
   --ink: #F2F0FB;
-  --text: #ECEAF6;
-  --text-2: #A6A3BD;
-  --text-3: #9793B8;
-  --text-4: #6E6A8F;
+  --ink-2: #A6A3BD;
+  --ink-3-text: #9793B8;
+  --ink-4: rgba(150, 145, 200, 0.34);
   --bg: #06050D;
   --surface: #12101F;
   --surface-2: #171430;
   --surface-3: #1D1936;
-  --border: rgba(150, 145, 200, 0.14);
-  --border-2: rgba(150, 145, 200, 0.22);
-  --border-strong: rgba(150, 145, 200, 0.34);
-  --hairline: rgba(150, 145, 200, 0.10);
+  --line: rgba(150, 145, 200, 0.14);
 }
 
 html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starfield {
@@ -1039,7 +1037,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
   background: var(--surface-2);
   border: 1px solid transparent;
   border-radius: var(--r-pill);
-  color: var(--text-2);
+  color: var(--ink-2);
   cursor: pointer;
   display: inline-flex;
   font-size: 13px;
@@ -1064,12 +1062,12 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page] .chip-accent {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 [data-orbit-real-page] .chip.badge-live {
-  background: var(--live-soft);
-  color: var(--live-text);
+  background: var(--ok-soft);
+  color: var(--ok-text);
 }
 
 [data-orbit-real-page="explore"] .orbit-map-rail button,
@@ -1129,7 +1127,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 }
 
 [data-orbit-real-page="explore"] .orbit-event-module-copy span {
-  color: var(--text-3);
+  color: var(--ink-3-text);
   display: block;
   font-size: 12px;
   font-weight: 700;
@@ -1138,7 +1136,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page="explore"] .orbit-event-module-copy h2 {
   color: var(--ink);
-  font-family: var(--ff-display);
+  font-family: var(--font);
   font-size: 23px;
   font-weight: 600;
   line-height: 1.18;
@@ -1154,16 +1152,16 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page="explore"] .orbit-event-module-topic-row span {
   background: var(--surface-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--r-pill);
-  color: var(--text-2);
+  color: var(--ink-2);
   font-size: 12px;
   font-weight: 700;
   padding: 5px 9px;
 }
 
 [data-orbit-real-page="explore"] .orbit-event-module-meta {
-  color: var(--text-2);
+  color: var(--ink-2);
   display: grid;
   gap: 7px;
   font-size: 13px;
@@ -1178,8 +1176,8 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page="explore"] .orbit-event-module-foot {
   align-items: center;
-  border-top: 1px solid var(--border);
-  color: var(--text-3);
+  border-top: 1px solid var(--line);
+  color: var(--ink-3-text);
   display: flex;
   font-size: 13px;
   gap: 12px;
@@ -1190,7 +1188,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page="explore"] .orbit-event-module-foot strong {
   align-items: center;
-  color: var(--accent);
+  color: var(--accent-text);
   display: inline-flex;
   font-size: 13px;
   gap: 4px;
@@ -1251,7 +1249,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 }
 
 [data-orbit-real-page="home-events"] .orbit-account-event-module-copy span {
-  color: var(--text-3);
+  color: var(--ink-3-text);
   display: block;
   font-size: 12px;
   font-weight: 700;
@@ -1261,7 +1259,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 [data-orbit-real-page="home-events"] .orbit-account-event-module-copy strong {
   color: var(--ink);
   display: block;
-  font-family: var(--ff-display);
+  font-family: var(--font);
   font-size: 23px;
   font-weight: 600;
   line-height: 1.18;
@@ -1276,16 +1274,16 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page="home-events"] .orbit-account-event-module-topic-row span {
   background: var(--surface-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--r-pill);
-  color: var(--text-2);
+  color: var(--ink-2);
   font-size: 12px;
   font-weight: 700;
   padding: 5px 9px;
 }
 
 [data-orbit-real-page="home-events"] .orbit-account-event-module-meta {
-  color: var(--text-2);
+  color: var(--ink-2);
   display: grid;
   gap: 7px;
   font-size: 13px;
@@ -1299,8 +1297,8 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page="home-events"] .orbit-account-event-module-foot {
   align-items: center;
-  border-top: 1px solid var(--border);
-  color: var(--text-3);
+  border-top: 1px solid var(--line);
+  color: var(--ink-3-text);
   display: flex;
   font-size: 13px;
   gap: 12px;
@@ -1311,7 +1309,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page="home-events"] .orbit-account-event-module-foot strong {
   align-items: center;
-  color: var(--accent);
+  color: var(--accent-text);
   display: inline-flex;
   gap: 4px;
   white-space: nowrap;
@@ -1395,7 +1393,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 [data-orbit-real-page="home-events"] .orbit-account-event-poster-copy strong {
   color: #fff;
   display: block;
-  font-family: var(--ff-display);
+  font-family: var(--font);
   font-size: clamp(27px, 3.5vw, 42px);
   font-weight: 600;
   line-height: 1.08;
@@ -1492,9 +1490,9 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page] .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  box-shadow: var(--sh-sm);
+  box-shadow: none;
 }
 
 [data-orbit-real-page] .card-hover {
@@ -1503,8 +1501,8 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 }
 
 [data-orbit-real-page] .card-hover:hover {
-  border-color: var(--border-2);
-  box-shadow: var(--sh-md);
+  border-color: var(--line);
+  box-shadow: none;
   transform: translateY(-2px);
 }
 
@@ -1560,7 +1558,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 }
 
 [data-orbit-real-page="explore"] .orbit-event-poster-date div {
-  color: var(--rose-text);
+  color: var(--coral-text);
   font-size: 11px;
   font-weight: 700;
 }
@@ -1568,7 +1566,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 [data-orbit-real-page="explore"] .orbit-event-poster-date strong {
   color: #fff;
   display: block;
-  font-family: var(--ff-display);
+  font-family: var(--font);
   font-size: 22px;
   font-weight: 600;
   line-height: 1;
@@ -1592,7 +1590,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page="explore"] .orbit-event-poster-copy h2 {
   color: #fff;
-  font-family: var(--ff-display);
+  font-family: var(--font);
   font-size: clamp(27px, 3.5vw, 42px);
   font-weight: 600;
   line-height: 1.08;
@@ -1691,11 +1689,11 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page].orbit-party-page .orbit-party-network-seat.chip {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-network-search input {
-  color: var(--text);
+  color: var(--ink);
   font-size: 14px;
   padding: 1px 2px;
 }
@@ -1711,8 +1709,8 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page] .orbit-graph-canvas {
   background:
-    radial-gradient(circle at 50% 45%, var(--surface), var(--bg-sunken) 62%),
-    var(--bg-sunken);
+    radial-gradient(circle at 50% 45%, var(--surface), var(--surface-2) 62%),
+    var(--surface-2);
   min-height: 560px;
   overflow: hidden;
   position: relative;
@@ -1732,9 +1730,9 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 [data-orbit-real-page] .field {
   background: var(--surface);
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--line);
   border-radius: var(--r-sm);
-  color: var(--text);
+  color: var(--ink);
   font-size: 15px;
   height: 48px;
   outline: none;
@@ -1758,12 +1756,12 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 }
 
 [data-orbit-real-page] .field::placeholder {
-  color: var(--text-4);
+  color: var(--ink-3-text);
 }
 
 [data-orbit-real-page] .field:focus {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 4px var(--accent-ring);
+  border-color: var(--accent-text) !important;
+  box-shadow: 0 0 0 4px var(--plum-300);
 }
 
 /* ===================================================================
@@ -1785,7 +1783,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
                        a line is touched for another reason — no dedicated
                        ratchet)
    gap (px):           0, 4, 8, 12, 16, 20, 24, 32, 48
-   borderRadius:       use var(--r-xs|sm|md|lg|xl|pill) wherever the style
+   borderRadius:       use var(--r-sm|sm|md|lg|xl|pill) wherever the style
                        prop accepts a string. Numeric-only contexts (e.g.
                        canvas/SVG props) snap to the token VALUES:
                        7, 10, 14, 18, 24, 999.
@@ -1793,29 +1791,21 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 
 /* Centralized tokens that were previously hardcoded across pages. */
 [data-orbit-real-page] {
-  --scrim: rgba(20, 20, 28, 0.42);
-  --accent-grad: linear-gradient(180deg, #8170F1, #614CE2);
-  --accent-grad-bar: linear-gradient(90deg, #8B7BF0, #6359E9);
-  --on-dark: #FFFFFF;
   --admin-nav-ink: #AAA8C8;
   --admin-nav-ink-strong: #FFFFFF;
-
-  /* WCAG AA: tertiary text was #8A8A93 (3.42:1 on white — fails 4.5:1).
-     Nudged to a neutral that clears AA for the meta/caption copy it carries. */
-  --text-3: #73737B;
 }
 
 /* S1 — global keyboard focus ring. The reset above strips native outlines;
    nothing restored them, so keyboard users had no focus indicator anywhere. */
 [data-orbit-real-page] :is(a, button, input, textarea, select, summary, [tabindex], [role="button"], [role="tab"], [role="link"]):focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
 }
 [data-orbit-real-page] .card:focus-visible,
 [data-orbit-real-page] .card-hover:focus-visible,
 [data-orbit-real-page] .orbit-card-link:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 [data-orbit-real-page] .field:focus-visible {
@@ -1883,7 +1873,7 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
   background: transparent;
   border-color: transparent;
   box-shadow: none;
-  color: var(--text-2);
+  color: var(--ink-2);
   /* Borderless icon: tighten the footprint so it sits evenly between the
      language toggle and the "Me" pill (the 44px box left it floating). */
   min-width: 36px;
@@ -1896,103 +1886,12 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
 }
 
 /* ===================================================================
-   Starfield theme layer — aligns every product screen with the cosmic
-   homepage identity (deep-space canvas, violet primary, warm-gold
-   support, Noto Serif SC display, JetBrains Mono metadata).
-   Token remap only; declared last so it wins over the extracted
-   prototype tokens and the audit layer above.
-   Contrast (WCAG): text 15.8:1, text-2 7.7:1, text-3 6.4:1 on surface;
-   accent 5.5:1; on-accent (dark ink on violet, the homepage pill
-   pattern) 5.8:1; live 8.8:1, amber 9.8:1, rose 6.7:1, sky 7.7:1.
+   R01 (2026-10): colours, radius, type and shadows come from the generated
+   design tokens (orbit-2026/tokens.css, from shared/design/tokens.json),
+   declared on :root for light and dark. This layer keeps only the
+   theme-independent scales that are not design tokens.
    =================================================================== */
 [data-orbit-real-page] {
-  color-scheme: dark;
-  --accent: #8B7BF0;
-  --accent-hover: #9C8EF5;
-  --accent-press: #7A69E6;
-  --accent-soft: rgba(139, 123, 240, 0.16);
-  --accent-softer: rgba(139, 123, 240, 0.09);
-  --accent-ring: rgba(139, 123, 240, 0.42);
-  --on-accent: #0B0A15;
-  --accent-grad: linear-gradient(180deg, #9C8EF5, #7A69E6);
-  --accent-grad-bar: linear-gradient(90deg, #8B7BF0, #6359E9);
-  --ink: #F2F0FB;
-  --text: #ECEAF6;
-  --text-2: #A6A3BD;
-  --text-3: #9793B8;
-  --text-4: #6E6A8F;
-  --bg: #06050D;
-  --bg-soft: #0D0B1E;
-  --bg-sunken: #08070F;
-  --surface: #12101F;
-  --surface-2: #171430;
-  --surface-3: #1D1936;
-  --border: rgba(150, 145, 200, 0.14);
-  --border-2: rgba(150, 145, 200, 0.22);
-  --border-strong: rgba(150, 145, 200, 0.34);
-  --hairline: rgba(150, 145, 200, 0.10);
-  --live: #34C98E;
-  --live-soft: rgba(52, 201, 142, 0.14);
-  --live-text: #7FE0B4;
-  --amber: #E0B472;
-  --amber-soft: rgba(216, 176, 106, 0.15);
-  --amber-text: #F0C374;
-  --rose: #F0718B;
-  --rose-soft: rgba(224, 65, 95, 0.17);
-  --rose-text: #F09AA4;
-  --sky: #6FA8F8;
-  --sky-soft: rgba(45, 127, 240, 0.17);
-  --signal: #C8323B;
-  --sh-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
-  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45);
-  --sh-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.55);
-  --sh-lg: 0 8px 16px rgba(0, 0, 0, 0.45), 0 24px 56px -12px rgba(123, 108, 232, 0.25);
-  --sh-pop: 0 12px 32px rgba(0, 0, 0, 0.6), 0 40px 80px -20px rgba(123, 108, 232, 0.35);
-  /* Radius scale — migrated from public/orbit-reference/orbit-reference.html
-     (the prototype asset previously the ONLY source of these values, extracted
-     at runtime by 152 call sites). This block is now the single source of
-     truth; radius is theme-independent so it is defined once here. */
-  --r-xs: 7px;
-  --r-sm: 10px;
-  --r-md: 14px;
-  --r-lg: 18px;
-  --r-xl: 24px;
-  --r-pill: 999px;
-
-  /* ---------------------------------------------------------------
-     Scales added by UI audit 2026-07-26 §8. Purely additive: nothing
-     consumes them yet, so this block cannot change a single rendered
-     pixel. They exist so the migrations that follow (and any new code)
-     have one place to reference instead of inventing another value.
-
-     The audit measured, inside app/(app)/app alone: 26 distinct font
-     sizes (25 inline + 3 CSS-only), 20 distinct radii, 229 distinct
-     hardcoded hex colours across 484 occurrences, and z-indexes ranging
-     over 35 / 50 / 60 / 70 / 90 / 100 / 3900 / 3950 / 4000 while
-     orbit-z.ts declared a 10/100/200/300/400/500 scale that CSS had no
-     way to reach. Tokens are the only thing that makes those numbers
-     reviewable.
-     --------------------------------------------------------------- */
-
-  /* Type scale. These are NOT new values — they are the scale already
-     enforced by tests/ui/orbit-scale-ratchet.test.ts (FONT_SIZE_SCALE),
-     given names so CSS can reference them the way TSX already references
-     the numbers. Inventing a second, "nicer" scale here would have
-     produced exactly the fragmentation this work is removing.
-     11px is the floor for user-facing text; the audit found 9px brand
-     copy and 10px date tiles still in the wild. */
-  --fs-11: 11px;
-  --fs-12: 12px;
-  --fs-13: 13px;
-  --fs-14: 14px;
-  --fs-15: 15px;
-  --fs-16: 16px;
-  --fs-18: 18px;
-  --fs-22: 22px;
-  --fs-28: 28px;
-  --lh-tight: 1.25;
-  --lh-body: 1.55;
-
   /* Spacing — mirrors GAP_SCALE in the same ratchet test. */
   --sp-4: 4px;
   --sp-8: 8px;
@@ -2022,61 +1921,21 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
   --z-overlay: 300;
   --z-modal: 400;
   --z-toast: 500;
-
-  /* Destructive semantic colour. The audit found no danger token at all —
-     delete/sign-out actions were reaching for a literal #C2410C. */
-  --danger: #F0718B;
-  --danger-soft: rgba(224, 65, 95, 0.17);
-  --on-danger: #0B0A15;
-  --ff: 'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  /* --ff-serif: serif for in-content body headings. --ff-display: serif for
-     hero/display headlines and large numerals (the landing block below
-     overrides only this one, to Newsreader). --ff-tight is the pre-split
-     name, kept as a deprecated alias so any consumer we missed keeps
-     resolving instead of silently falling back to the system font. */
-  --ff-serif: 'Noto Serif SC', 'Songti SC', Georgia, serif;
-  --ff-display: 'Noto Serif SC', 'Songti SC', Georgia, serif;
-  --ff-tight: var(--ff-serif);
-  --ff-mono: 'JetBrains Mono', 'Geist Mono', ui-monospace, monospace;
-  --scrim: rgba(4, 3, 10, 0.62);
-  /* Dark-glass surfaces for bars/chips that previously used white glass. */
-  --glass-bar: rgba(10, 8, 18, 0.78);
-  --glass-chip: rgba(16, 13, 32, 0.86);
 }
 
-/* Re-declare font-family INSIDE the token scope. The prototype sets
-   font-family: var(--ff) on the body element, which sits outside
-   [data-orbit-real-page] — so the var resolved to the prototype's Inter
-   stack and every inherited text node rendered in the system CJK font
-   (PingFang/YaHei) instead of the bundled Noto Sans SC. This one rule is
-   what actually activates the starfield sans across product pages. */
+/* Re-declare font-family INSIDE the token scope: the prototype body rule
+   sits outside [data-orbit-real-page]. --font follows <html lang>
+   (orbit-2026/tokens.css: ja / zh / en stacks, no serif). */
 [data-orbit-real-page] {
-  font-family: var(--ff);
+  font-family: var(--font);
 }
 
-/* EN display serif follows the homepage: Newsreader replaces Noto Serif SC
-   when the document language is English. */
-html[lang="en"] [data-orbit-real-page] {
-  --ff-display: 'Newsreader', Georgia, serif;
-}
-
-/* Cosmic page canvas behind every product screen — the homepage scene
-   gradient, verbatim values. */
-body:has([data-orbit-real-page]) {
-  background: radial-gradient(130% 100% at 50% 14%, #14122A 0%, #0D0B1E 42%, #08070F 72%, #06050D 100%) fixed #06050D;
-}
-
-/* UI-audit fix P0-5. The canvas above only paints the body element, but the
-   root element keeps app/layout.tsx's light globalStyles defaults — so html
-   stayed #ffffff with color-scheme: light. Anywhere the root element shows
-   through (overscroll, a route transition where the new body is shorter than
-   the viewport, the native scrollbar and form-control rendering) a dark
-   product page flashed white. Painting the root too removes the flash; the
-   matching color-scheme also makes scrollbars and native controls render
-   dark. */
+/* Page canvas behind every product screen. Painting the root element too
+   (UI-audit fix P0-5) keeps overscroll, route transitions and native
+   scrollbars on the same ground; color-scheme comes from :root. */
+body:has([data-orbit-real-page]),
 html:has([data-orbit-real-page]) {
-  background-color: #06050D;
-  color-scheme: dark;
+  background: var(--bg);
 }
 
 /* UI-audit fix L3. Filtering a list from 4 rows to 1 removed the vertical
@@ -2092,7 +1951,7 @@ html:has([data-orbit-real-page]) {
    these is token colored, so only the surfaces need the remap. */
 [data-orbit-real-page] .orbit-organizer-topnav {
   background: rgba(10, 8, 18, 0.66);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
 }
 /* Orbit_0918 浮岛导航：外层 header 退化为透明吸附条（视觉全在内部 pill 上），
    滚动超过 40px 时获得 14px 24px 内边距，padding 过渡 0.35s（设计稿 scrolled 态）。
@@ -2117,13 +1976,13 @@ html:has([data-orbit-real-page]) {
 [data-orbit-real-page] .orbit-host-mobile-next-bar,
 [data-orbit-real-page] .orbit-host-mobile-create-bar {
   background: rgba(10, 8, 18, 0.78);
-  border-color: var(--border);
+  border-color: var(--line);
 }
 [data-orbit-real-page] .orbit-graph-legend,
 [data-orbit-real-page] .orbit-party-icon-button,
 [data-orbit-real-page] .orbit-organizer-back {
   background: rgba(16, 13, 32, 0.84);
-  border-color: var(--border-2);
+  border-color: var(--line);
 }
 [data-orbit-real-page] .orbit-card-date,
 [data-orbit-real-page] .orbit-landing-event-date,
@@ -2140,15 +1999,15 @@ html:has([data-orbit-real-page]) {
 [data-orbit-real-page] .orbit-landing-loading,
 [data-orbit-real-page] .orbit-landing-mobile-event-card {
   background: linear-gradient(158deg, rgba(20, 18, 38, 0.97), rgba(11, 10, 22, 0.985));
-  border-color: var(--border);
+  border-color: var(--line);
 }
 [data-orbit-real-page] .orbit-landing-brand-explainer {
-  background: var(--bg-soft);
+  background: var(--bg);
 }
 [data-orbit-real-page] .orbit-person-node.is-placeholder {
   background:
     linear-gradient(var(--surface-2), var(--surface-2)) padding-box,
-    var(--node-gradient, var(--accent-grad)) border-box;
+    var(--node-gradient, var(--accent-text)) border-box;
 }
 
 /* Inverted-contrast controls: the prototype pairs an ink background with
@@ -2185,7 +2044,7 @@ html:has([data-orbit-real-page]) {
 [data-orbit-real-page] .orbit-party-picker-overlay,
 [data-orbit-real-page] .orbit-host-auth-backdrop,
 [data-orbit-real-page] .orbit-account-auth-backdrop {
-  background: var(--scrim);
+  background: var(--scrim-web);
 }
 
 /* Badges overlaid on cover art sit on saturated gradients where the tinted
@@ -2194,12 +2053,12 @@ html:has([data-orbit-real-page]) {
 [data-orbit-real-page] .cover .badge {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  background: var(--glass-chip);
+  background: var(--glass);
   border: 1px solid rgba(255, 255, 255, 0.16);
 }
 [data-orbit-real-page] .cover .badge-live { color: #7FE8BE; }
 [data-orbit-real-page] .cover .badge-soon { color: #CFC6F8; }
-[data-orbit-real-page] .cover .badge-ended { color: var(--text-2); }
+[data-orbit-real-page] .cover .badge-ended { color: var(--ink-2); }
 
 /* Platform mobile nav items must not wrap mid-label ("活动/审核"). */
 [data-orbit-real-page] .orbit-platform-nav-item {
@@ -2256,7 +2115,7 @@ html:has([data-orbit-real-page]) {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
-  color: var(--text-3);
+  color: var(--ink-3-text);
   position: absolute;
   right: 2px;
 }
@@ -2264,7 +2123,7 @@ html:has([data-orbit-real-page]) {
 [data-orbit-real-page] .orbit-field-affordance[aria-pressed="true"] {
   background: transparent;
   border-color: transparent;
-  color: var(--text);
+  color: var(--ink);
 }
 
 [data-orbit-real-page] .orbit-platform-organizer-mini > .avatar,
@@ -2285,7 +2144,7 @@ html:has([data-orbit-real-page]) {
    homepage's warm gold — the same accent as its "RELATIONSHIP STARFIELD"
    label — tying every section header back to the hero. */
 [data-orbit-real-page] .eyebrow {
-  color: var(--amber-text);
+  color: var(--mac-apricot-text);
 }
 
 /* Avatars share the coordinated cosmic palette (muted, violet-leaning, with
@@ -2315,7 +2174,7 @@ html:has([data-orbit-real-page]) {
   align-items: center;
   display: inline-flex;
   flex-shrink: 0;
-  font-family: var(--ff-mono);
+  font-family: var(--font-num);
   font-size: 12px;
   gap: 2px;
   letter-spacing: 0.05em;
@@ -2374,16 +2233,16 @@ html:has([data-orbit-real-page]) {
 
 /* Destructive button variant (danger actions were previously unmarked). */
 [data-orbit-real-page] .btn-danger {
-  background: var(--rose);
-  box-shadow: var(--sh-xs);
+  background: var(--coral-text);
+  box-shadow: none;
   color: #16060B;
 }
 [data-orbit-real-page] .btn-danger:hover {
   background: #F2839A;
 }
 [data-orbit-real-page] .btn-danger-soft {
-  background: var(--rose-soft);
-  color: var(--rose-text);
+  background: var(--coral-soft);
+  color: var(--coral-text);
 }
 [data-orbit-real-page] .btn-danger-soft:hover {
   background: rgba(224, 65, 95, 0.26);
@@ -2429,7 +2288,7 @@ html:has([data-orbit-real-page]) {
   [data-orbit-real-page] .orbit-nav-menu .orbit-nav-page-title {
     color: #0E1225;
     display: block;
-    font-family: var(--ff-display);
+    font-family: var(--font);
     font-size: 17px;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -2514,9 +2373,9 @@ html:has([data-orbit-real-page]) {
   [data-orbit-real-page] .orbit-nav-menu-panel {
     animation: pop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1px solid var(--line);
     border-radius: 16px;
-    box-shadow: var(--sh-pop);
+    box-shadow: var(--shadow-float);
     left: auto;
     max-width: calc(100vw - 28px);
     min-width: 176px;
@@ -2529,7 +2388,7 @@ html:has([data-orbit-real-page]) {
   [data-orbit-real-page] .orbit-nav-menu-item {
     align-items: center;
     border-radius: var(--r-sm);
-    color: var(--text-2);
+    color: var(--ink-2);
     display: flex;
     font-size: 14.5px;
     font-weight: 500;
@@ -2538,20 +2397,20 @@ html:has([data-orbit-real-page]) {
     text-decoration: none;
   }
   [data-orbit-real-page] .orbit-nav-menu-item.is-active {
-    background: var(--accent-softer);
-    color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-text);
   }
   [data-orbit-real-page] .orbit-nav-menu-item.is-accent {
-    color: var(--accent);
+    color: var(--accent-text);
   }
   [data-orbit-real-page] .orbit-nav-menu-divider {
-    background: var(--border);
+    background: var(--line);
     display: block;
     height: 1px;
     margin: 5px 8px;
   }
   [data-orbit-real-page] .orbit-nav-menu-status {
-    color: var(--text-3);
+    color: var(--ink-3-text);
     display: block;
     font-size: 13px;
     min-height: 44px;
@@ -2561,14 +2420,14 @@ html:has([data-orbit-real-page]) {
 
 /* Field-level validation: message sits under the field, in the danger hue. */
 [data-orbit-real-page] .field.is-invalid {
-  border-color: var(--rose) !important;
+  border-color: var(--coral-text) !important;
 }
 [data-orbit-real-page] .field.is-invalid:focus {
   box-shadow: 0 0 0 4px rgba(224, 65, 95, 0.24);
 }
 [data-orbit-real-page] .field-error-text {
   align-items: center;
-  color: var(--rose-text);
+  color: var(--coral-text);
   display: flex;
   font-size: 13px;
   gap: 6px;
@@ -2596,62 +2455,22 @@ html:has([data-orbit-real-page]) {
    Orbit AI chat — Conversation+ presentation layer.
 
    The agent keeps its existing three-column behavior and data flow. These
-   hooks only establish a quieter, readable chat hierarchy. Light mode gets
-   the approved continuous-white canvas; dark mode keeps the existing token
-   palette while sharing the same flattened composition.
+   hooks only establish a quieter, readable chat hierarchy on the shared
+   design tokens in both themes.
    =================================================================== */
 [data-orbit-real-page="agent"] {
-  --agent-canvas: #FFFFFF;
-  --agent-ink: #171A1C;
-  --agent-muted: #687078;
-  --agent-hairline: #E6E9EB;
-  --agent-signal: #176A73;
-  --agent-signal-soft: #EEF7F6;
+  /* R01: the agent page no longer carries its own palette; its local names
+     point at the design tokens so the existing rules keep working. */
+  --agent-canvas: var(--bg);
+  --agent-ink: var(--ink);
+  --agent-muted: var(--ink-2);
+  --agent-hairline: var(--line);
+  --agent-signal: var(--accent-text);
+  --agent-signal-soft: var(--accent-soft);
   --agent-body-size: 15px;
   --agent-meta-size: 12px;
-  font-family: var(--ff);
+  font-family: var(--font);
   font-size: var(--agent-body-size);
-}
-
-html[data-theme="light"] [data-orbit-real-page="agent"] {
-  color-scheme: light;
-  --accent: var(--agent-signal);
-  --accent-hover: #125B63;
-  --accent-press: #0E4B52;
-  --accent-soft: var(--agent-signal-soft);
-  --accent-softer: #F4F8F7;
-  --accent-ring: rgba(23, 106, 115, 0.28);
-  --accent-grad: var(--agent-signal);
-  --accent-grad-bar: var(--agent-signal);
-  --on-accent: #FFFFFF;
-  --on-dark: #FFFFFF;
-  --ink: var(--agent-ink);
-  --text: #2B3034;
-  --text-2: var(--agent-muted);
-  --text-3: #7B838A;
-  --text-4: #969DA3;
-  --bg: var(--agent-canvas);
-  --bg-soft: var(--agent-canvas);
-  --bg-sunken: #FAFBFB;
-  --surface: var(--agent-canvas);
-  --surface-2: #F7F8F8;
-  --surface-3: #F1F3F3;
-  --border: var(--agent-hairline);
-  --border-2: #D9DEE1;
-  --border-strong: #C7CDD1;
-  --hairline: var(--agent-hairline);
-  --ff-display: var(--ff);
-  --sh-xs: none;
-  --sh-sm: none;
-  --sh-md: none;
-  --sh-lg: none;
-  --sh-pop: none;
-  --glass-bar: #FFFFFF;
-  --glass-chip: #FFFFFF;
-}
-
-html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
-  background: #FFFFFF;
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-workspace {
@@ -2659,7 +2478,7 @@ html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-history {
-  border-color: var(--border) !important;
+  border-color: var(--line) !important;
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-history-actions {
@@ -2668,7 +2487,7 @@ html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
 
 [data-orbit-real-page="agent"] .btn.orbit-agent-new-chat {
   align-items: center;
-  background: var(--accent-softer);
+  background: var(--accent-soft);
   border: 1px solid transparent;
   border-radius: 9px;
   color: var(--ink);
@@ -2683,12 +2502,12 @@ html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
 
 [data-orbit-real-page="agent"] .btn.orbit-agent-new-chat:hover {
   background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent-text) 20%, transparent);
 }
 
 [data-orbit-real-page="agent"] .btn.orbit-agent-new-chat:focus-visible {
-  border-color: var(--accent);
-  outline: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: var(--accent-text);
+  outline: 2px solid color-mix(in srgb, var(--accent-text) 22%, transparent);
   outline-offset: 2px;
 }
 
@@ -2713,7 +2532,7 @@ html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-history-list .eyebrow {
-  color: var(--text-3);
+  color: var(--ink-3-text);
   font-size: var(--agent-meta-size);
   font-weight: 650;
   letter-spacing: 0.06em;
@@ -2743,12 +2562,12 @@ html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-history-row.is-active {
-  background: var(--accent-softer) !important;
+  background: var(--accent-soft) !important;
   border-color: transparent;
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-history-row.is-active::before {
-  background: var(--accent);
+  background: var(--accent-text);
 }
 
 [data-orbit-real-page="agent"] .btn.orbit-agent-history-entry {
@@ -2762,7 +2581,7 @@ html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
 }
 
 [data-orbit-real-page="agent"] .btn.orbit-agent-history-entry:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent-text);
   outline: none;
 }
 
@@ -2786,7 +2605,7 @@ html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
 [data-orbit-real-page="agent"] .orbit-agent-history-more:focus-visible,
 [data-orbit-real-page="agent"] .orbit-agent-history-more[aria-expanded="true"] {
   background: var(--surface-2);
-  color: var(--text-2) !important;
+  color: var(--ink-2) !important;
   opacity: 1 !important;
 }
 
@@ -2803,7 +2622,7 @@ html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-history-resize {
-  border-right-color: var(--border) !important;
+  border-right-color: var(--line) !important;
   position: relative;
   width: 7px !important;
 }
@@ -2830,7 +2649,7 @@ html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
    现在由 orbit-real-agent.tsx 的 CONSOLE_STYLES 提供）。下面仅保留仍在使用的
    markdown 与消息复制按钮的静默化规则。 */
 [data-orbit-real-page="agent"] .orbit-agent-message-copy:focus-visible {
-  outline: 3px solid var(--accent-ring);
+  outline: 3px solid var(--plum-300);
   outline-offset: 2px;
 }
 
@@ -2844,7 +2663,7 @@ html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
 
 [data-orbit-real-page="agent"] .orbit-agent-markdown code {
   background: var(--surface-2) !important;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 5px !important;
   font-size: 13px !important;
 }
@@ -2853,7 +2672,7 @@ html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
   background: transparent !important;
   border-color: transparent !important;
   border-radius: 7px !important;
-  color: var(--text-3) !important;
+  color: var(--ink-3-text) !important;
   height: 32px !important;
   width: 32px !important;
 }
@@ -2924,10 +2743,9 @@ function unpackTemplate(srcDoc: string) {
  * that asset is missing, so a fresh checkout that has not run the build script
  * still renders instead of shipping an unstyled page.
  *
- * Mirrors the stripping the build script does: the Inter / Inter Tight / Geist
- * Mono `@font-face` blocks (4.8 MB of base64) never win a font-family lookup
- * because the token layer below remaps every `--ff*` to Noto Sans SC / Noto
- * Serif SC / JetBrains Mono.
+ * Mirrors what the build script does: the Inter / Inter Tight / Geist Mono
+ * `@font-face` blocks (4.8 MB of base64) never win a font-family lookup, and
+ * the prototype's own tokens give way to the design tokens (R01).
  */
 function readReferenceStyles() {
   if (cachedStyleText) return cachedStyleText;
@@ -2940,13 +2758,13 @@ function readReferenceStyles() {
   }
 
   const template = unpackTemplate(decodeHtmlAttribute(srcDoc));
-  cachedStyleText = [...template.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
+  cachedStyleText = adoptDesignTokens([...template.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
     .map((match) => match[1])
     .join("\n")
     .replace(/@font-face\s*\{[^}]*\}\s*/g, (block) => {
       const family = block.match(/font-family:\s*['"]([^'"]+)['"]/)?.[1];
       return family && UNUSED_PROTOTYPE_FONT_FAMILIES.includes(family) ? "" : block;
-    });
+    }));
 
   return cachedStyleText;
 }
@@ -3003,81 +2821,81 @@ export function OrbitReferenceThreeRuntime() {
 const orbitNamecardStyles = `
 [data-orbit-real-page] .nc-src { display:inline-flex; align-items:center; gap:5px; height:22px; padding:0 9px; border-radius:var(--r-pill); font-size:11.5px; font-weight:600; white-space:nowrap; }
 [data-orbit-real-page] .nc-src svg { width:12px; height:12px; }
-[data-orbit-real-page] .nc-src-scan { background:var(--accent-soft); color:var(--accent); }
-[data-orbit-real-page] .nc-src-qr { background:var(--sky-soft); color:var(--sky); }
-[data-orbit-real-page] .nc-src-event { background:var(--amber-soft); color:var(--amber-text); }
-[data-orbit-real-page] .nc-src-contact { background:var(--surface-3); color:var(--text-2); }
-[data-orbit-real-page] .nc-src-referral { background:var(--rose-soft); color:var(--rose-text); }
+[data-orbit-real-page] .nc-src-scan { background:var(--accent-soft); color:var(--accent-text); }
+[data-orbit-real-page] .nc-src-qr { background:var(--mac-blue); color:var(--mac-blue-text); }
+[data-orbit-real-page] .nc-src-event { background:var(--mac-apricot); color:var(--mac-apricot-text); }
+[data-orbit-real-page] .nc-src-contact { background:var(--surface-3); color:var(--ink-2); }
+[data-orbit-real-page] .nc-src-referral { background:var(--coral-soft); color:var(--coral-text); }
 
-[data-orbit-real-page] .nc-tag { display:inline-flex; align-items:center; height:24px; padding:0 10px; border-radius:var(--r-pill); font-size:12px; font-weight:500; background:var(--surface-2); color:var(--text-2); border:1px solid var(--hairline); }
-[data-orbit-real-page] .nc-tag-value { background:var(--accent-softer); color:var(--accent); border-color:transparent; }
+[data-orbit-real-page] .nc-tag { display:inline-flex; align-items:center; height:24px; padding:0 10px; border-radius:var(--r-pill); font-size:12px; font-weight:500; background:var(--surface-2); color:var(--ink-2); border:1px solid var(--line); }
+[data-orbit-real-page] .nc-tag-value { background:var(--accent-soft); color:var(--accent-text); border-color:transparent; }
 
 [data-orbit-real-page] .nc-strength { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; white-space:nowrap; }
 [data-orbit-real-page] .nc-strength .nc-dot { width:8px; height:8px; border-radius:50%; }
-[data-orbit-real-page] .nc-st-strong { color:var(--live-text); } [data-orbit-real-page] .nc-st-strong .nc-dot { background:var(--live); }
-[data-orbit-real-page] .nc-st-medium { color:var(--sky); } [data-orbit-real-page] .nc-st-medium .nc-dot { background:var(--sky); }
-[data-orbit-real-page] .nc-st-weak { color:var(--amber-text); } [data-orbit-real-page] .nc-st-weak .nc-dot { background:var(--amber); }
-[data-orbit-real-page] .nc-st-dormant { color:var(--text-3); } [data-orbit-real-page] .nc-st-dormant .nc-dot { background:var(--text-3); }
-[data-orbit-real-page] .nc-st-unscored { color:var(--text-3); } [data-orbit-real-page] .nc-st-unscored .nc-dot { background:var(--hairline-strong); }
+[data-orbit-real-page] .nc-st-strong { color:var(--ok-text); } [data-orbit-real-page] .nc-st-strong .nc-dot { background:var(--ok-text); }
+[data-orbit-real-page] .nc-st-medium { color:var(--mac-blue-text); } [data-orbit-real-page] .nc-st-medium .nc-dot { background:var(--mac-blue-text); }
+[data-orbit-real-page] .nc-st-weak { color:var(--mac-apricot-text); } [data-orbit-real-page] .nc-st-weak .nc-dot { background:var(--mac-apricot-text); }
+[data-orbit-real-page] .nc-st-dormant { color:var(--ink-3-text); } [data-orbit-real-page] .nc-st-dormant .nc-dot { background:var(--ink-3-text); }
+[data-orbit-real-page] .nc-st-unscored { color:var(--ink-3-text); } [data-orbit-real-page] .nc-st-unscored .nc-dot { background:var(--hairline-strong); }
 
 [data-orbit-real-page] .nc-status { display:inline-flex; align-items:center; gap:6px; height:26px; padding:0 11px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; white-space:nowrap; }
 [data-orbit-real-page] .nc-status .nc-dot { width:7px; height:7px; border-radius:50%; }
-[data-orbit-real-page] .nc-ps-to_contact { background:var(--amber-soft); color:var(--amber-text); } [data-orbit-real-page] .nc-ps-to_contact .nc-dot { background:var(--amber); }
-[data-orbit-real-page] .nc-ps-in_progress { background:var(--sky-soft); color:var(--sky); } [data-orbit-real-page] .nc-ps-in_progress .nc-dot { background:var(--sky); }
-[data-orbit-real-page] .nc-ps-partnered { background:var(--live-soft); color:var(--live-text); } [data-orbit-real-page] .nc-ps-partnered .nc-dot { background:var(--live); }
+[data-orbit-real-page] .nc-ps-to_contact { background:var(--mac-apricot); color:var(--mac-apricot-text); } [data-orbit-real-page] .nc-ps-to_contact .nc-dot { background:var(--mac-apricot-text); }
+[data-orbit-real-page] .nc-ps-in_progress { background:var(--mac-blue); color:var(--mac-blue-text); } [data-orbit-real-page] .nc-ps-in_progress .nc-dot { background:var(--mac-blue-text); }
+[data-orbit-real-page] .nc-ps-partnered { background:var(--ok-soft); color:var(--ok-text); } [data-orbit-real-page] .nc-ps-partnered .nc-dot { background:var(--ok-text); }
 
-[data-orbit-real-page] .nc-basis { position:relative; display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0; border:0; background:transparent; border-radius:50%; color:var(--text-4); cursor:pointer; vertical-align:middle; }
+[data-orbit-real-page] .nc-basis { position:relative; display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0; border:0; background:transparent; border-radius:50%; color:var(--ink-3-text); cursor:pointer; vertical-align:middle; }
 [data-orbit-real-page] .nc-basis svg { width:13px; height:13px; }
-[data-orbit-real-page] .nc-basis-ai { color:rgba(52,201,142,.75); } [data-orbit-real-page] .nc-basis-ai:hover, [data-orbit-real-page] .nc-basis-ai.is-open { color:var(--live); }
-[data-orbit-real-page] .nc-basis-rule { color:rgba(139,123,240,.72); } [data-orbit-real-page] .nc-basis-rule:hover, [data-orbit-real-page] .nc-basis-rule.is-open { color:var(--accent); }
-[data-orbit-real-page] .nc-basis-evidence { color:rgba(111,168,248,.72); } [data-orbit-real-page] .nc-basis-evidence:hover, [data-orbit-real-page] .nc-basis-evidence.is-open { color:var(--sky); }
-[data-orbit-real-page] .nc-basis-you { color:var(--text-4); } [data-orbit-real-page] .nc-basis-you:hover, [data-orbit-real-page] .nc-basis-you.is-open { color:var(--text-2); }
-[data-orbit-real-page] .nc-basis-pop { display:none; position:absolute; bottom:calc(100% + 8px); left:0; z-index:var(--z-dropdown); width:264px; padding:12px 13px; border-radius:var(--r-md); background:var(--surface-3); border:1px solid var(--border-2); box-shadow:var(--sh-pop); color:var(--text-2); font-size:12px; font-weight:400; line-height:1.55; text-align:left; cursor:default; white-space:normal; }
+[data-orbit-real-page] .nc-basis-ai { color:rgba(52,201,142,.75); } [data-orbit-real-page] .nc-basis-ai:hover, [data-orbit-real-page] .nc-basis-ai.is-open { color:var(--ok-text); }
+[data-orbit-real-page] .nc-basis-rule { color:rgba(139,123,240,.72); } [data-orbit-real-page] .nc-basis-rule:hover, [data-orbit-real-page] .nc-basis-rule.is-open { color:var(--accent-text); }
+[data-orbit-real-page] .nc-basis-evidence { color:rgba(111,168,248,.72); } [data-orbit-real-page] .nc-basis-evidence:hover, [data-orbit-real-page] .nc-basis-evidence.is-open { color:var(--mac-blue-text); }
+[data-orbit-real-page] .nc-basis-you { color:var(--ink-3-text); } [data-orbit-real-page] .nc-basis-you:hover, [data-orbit-real-page] .nc-basis-you.is-open { color:var(--ink-2); }
+[data-orbit-real-page] .nc-basis-pop { display:none; position:absolute; bottom:calc(100% + 8px); left:0; z-index:var(--z-dropdown); width:264px; padding:12px 13px; border-radius:var(--r-md); background:var(--surface-3); border:1px solid var(--line); box-shadow:var(--shadow-float); color:var(--ink-2); font-size:12px; font-weight:400; line-height:1.55; text-align:left; cursor:default; white-space:normal; }
 [data-orbit-real-page] .nc-basis-pop.below { bottom:auto; top:calc(100% + 8px); }
 [data-orbit-real-page] .nc-basis-pop.right { left:auto; right:0; }
-[data-orbit-real-page] .nc-basis-pop .mm { display:inline-block; margin-bottom:6px; padding:1px 8px; border-radius:var(--r-pill); font-size:var(--fs-11); font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
-[data-orbit-real-page] .nc-basis-pop b { color:var(--text); font-weight:600; }
-[data-orbit-real-page] .nc-basis-pop .ev { display:inline-flex; align-items:center; gap:5px; margin-top:8px; color:var(--sky); font-family:var(--ff-mono); font-size:11px; }
+[data-orbit-real-page] .nc-basis-pop .mm { display:inline-block; margin-bottom:6px; padding:1px 8px; border-radius:var(--r-pill); font-size:var(--fs-caption); font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+[data-orbit-real-page] .nc-basis-pop b { color:var(--ink); font-weight:600; }
+[data-orbit-real-page] .nc-basis-pop .ev { display:inline-flex; align-items:center; gap:5px; margin-top:8px; color:var(--mac-blue-text); font-family:var(--font-num); font-size:11px; }
 [data-orbit-real-page] .nc-basis-pop .ev svg { width:12px; height:12px; }
 [data-orbit-real-page] .nc-basis:hover .nc-basis-pop, [data-orbit-real-page] .nc-basis:focus-within .nc-basis-pop, [data-orbit-real-page] .nc-basis.is-open .nc-basis-pop { display:block; }
 
 [data-orbit-real-page] .nc-nlsearch { position:relative; }
 [data-orbit-real-page] .nc-nlsearch .field { height:54px; padding-left:46px; background:var(--surface-2); }
-[data-orbit-real-page] .nc-nlsearch .nc-lead { position:absolute; left:15px; top:50%; transform:translateY(-50%); color:var(--accent); pointer-events:none; }
+[data-orbit-real-page] .nc-nlsearch .nc-lead { position:absolute; left:15px; top:50%; transform:translateY(-50%); color:var(--accent-text); pointer-events:none; }
 [data-orbit-real-page] .nc-pcard { display:grid; grid-template-columns:56px 1fr auto; gap:14px; padding:15px 16px; align-items:start; text-decoration:none; }
-[data-orbit-real-page] .nc-pcard .nc-foot { grid-column:2 / -1; margin-top:11px; padding-top:11px; border-top:1px solid var(--hairline); display:flex; align-items:center; gap:10px; }
-[data-orbit-real-page] .nc-pcard .nc-act { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--text); }
-[data-orbit-real-page] .nc-pcard .nc-act svg { color:var(--accent); }
+[data-orbit-real-page] .nc-pcard .nc-foot { grid-column:2 / -1; margin-top:11px; padding-top:11px; border-top:1px solid var(--line); display:flex; align-items:center; gap:10px; }
+[data-orbit-real-page] .nc-pcard .nc-act { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink); }
+[data-orbit-real-page] .nc-pcard .nc-act svg { color:var(--accent-text); }
 
 /* toast + email compose sheet (shared interaction feedback) */
 .nc-toast-host { position:fixed; left:0; right:0; bottom:26px; display:flex; flex-direction:column; align-items:center; gap:8px; z-index:var(--z-toast); pointer-events:none; }
-.nc-toast { display:inline-flex; align-items:center; gap:9px; max-width:80%; padding:11px 16px; border-radius:var(--r-pill); background:var(--surface-3); border:1px solid var(--border-2); box-shadow:var(--sh-pop); color:var(--text); font-size:13px; font-weight:500; opacity:0; transform:translateY(8px); transition:opacity .18s, transform .18s; }
+.nc-toast { display:inline-flex; align-items:center; gap:9px; max-width:80%; padding:11px 16px; border-radius:var(--r-pill); background:var(--surface-3); border:1px solid var(--line); box-shadow:var(--shadow-float); color:var(--ink); font-size:13px; font-weight:500; opacity:0; transform:translateY(8px); transition:opacity .18s, transform .18s; }
 .nc-toast.show { opacity:1; transform:translateY(0); }
-.nc-toast svg { width:15px; height:15px; color:var(--accent); flex-shrink:0; }
-.nc-scrim { position:fixed; inset:0; background:var(--scrim); backdrop-filter:blur(2px); opacity:0; transition:opacity .2s; z-index:var(--z-overlay); }
+.nc-toast svg { width:15px; height:15px; color:var(--accent-text); flex-shrink:0; }
+.nc-scrim { position:fixed; inset:0; background:var(--scrim-web); backdrop-filter:blur(2px); opacity:0; transition:opacity .2s; z-index:var(--z-overlay); }
 .nc-scrim.show { opacity:1; }
-.nc-sheet { position:fixed; top:0; right:0; bottom:0; width:min(460px, 94%); background:var(--surface); border-left:1px solid var(--border-2); box-shadow:var(--sh-pop); z-index:calc(var(--z-overlay) + 1); transform:translateX(100%); transition:transform .24s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
+.nc-sheet { position:fixed; top:0; right:0; bottom:0; width:min(460px, 94%); background:var(--surface); border-left:1px solid var(--line); box-shadow:var(--shadow-float); z-index:calc(var(--z-overlay) + 1); transform:translateX(100%); transition:transform .24s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
 .nc-sheet.show { transform:translateX(0); }
-.nc-sheet-head { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid var(--hairline); }
+.nc-sheet-head { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid var(--line); }
 .nc-sheet-head h3 { margin:0; font-size:16px; color:var(--ink); }
 .nc-sheet-body { padding:16px 18px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:12px; }
-.nc-sheet-body .field { background:var(--surface); border:1px solid var(--border-2); border-radius:var(--r-sm); color:var(--text); font: inherit; font-size:15px; padding:0 14px; height:48px; width:100%; }
+.nc-sheet-body .field { background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); color:var(--ink); font: inherit; font-size:15px; padding:0 14px; height:48px; width:100%; }
 .nc-sheet-body textarea.field { height:auto; min-height:150px; padding:12px 14px; line-height:1.5; resize:vertical; }
-.nc-sheet-foot { padding:14px 18px; border-top:1px solid var(--hairline); display:flex; gap:10px; }
-.nc-sheet-close { width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--r-sm); background:var(--surface-2); border:1px solid var(--border-2); color:var(--text-2); cursor:pointer; }
-.nc-flabel { display:block; font-size:13px; font-weight:600; color:var(--text-2); margin:0 0 6px; }
+.nc-sheet-foot { padding:14px 18px; border-top:1px solid var(--line); display:flex; gap:10px; }
+.nc-sheet-close { width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--r-sm); background:var(--surface-2); border:1px solid var(--line); color:var(--ink-2); cursor:pointer; }
+.nc-flabel { display:block; font-size:13px; font-weight:600; color:var(--ink-2); margin:0 0 6px; }
 `;
 
 /**
  * Event attendee cards — the participant directory and the recommendation list
  * inside the event journey's matchmaking panel.
  *
- * Authored purely in tokens (--ink / --text-* / --border / --surface-* /
- * --accent), never in literal colours, because the same markup renders on two
+ * Authored purely in tokens (--ink / --text-* / --line / --surface-* /
+ * --accent-text), never in literal colours, because the same markup renders on two
  * very different grounds: the light app surfaces, and the journey's `.cardB`
  * nite panel, which re-binds exactly those tokens to its dark glass values
- * (public/event-journey-green.css). `--accent-softer` and the semantic soft
- * fills (--live-soft, --amber-soft) are deliberately avoided — cardB does not
+ * (public/event-journey-green.css). `--accent-soft` and the semantic soft
+ * fills (--ok-soft, --mac-apricot) are deliberately avoided — cardB does not
  * re-bind them, so they would punch a near-white block into the dark card.
  */
 const orbitAttendeeCardStyles = `
@@ -3108,7 +2926,7 @@ const orbitAttendeeCardStyles = `
 [data-orbit-real-page] .orbit-attendee-search {
   align-items: center;
   background: var(--surface-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--r-sm);
   display: flex;
   gap: 8px;
@@ -3123,15 +2941,15 @@ const orbitAttendeeCardStyles = `
    the user reads as "the field". Beating that rule needs :focus-visible here
    too; a plain descendant selector loses to it on specificity. */
 [data-orbit-real-page] .orbit-attendee-search:focus-within {
-  border-color: var(--accent);
-  outline: 2px solid color-mix(in srgb, var(--accent) 34%, transparent);
+  border-color: var(--accent-text);
+  outline: 2px solid color-mix(in srgb, var(--accent-text) 34%, transparent);
   outline-offset: 1px;
 }
 
 [data-orbit-real-page] .orbit-attendee-search input {
   background: transparent;
   border: 0;
-  color: var(--text);
+  color: var(--ink);
   flex: 1;
   font: inherit;
   font-size: 14px;
@@ -3141,7 +2959,7 @@ const orbitAttendeeCardStyles = `
 
 [data-orbit-real-page] .orbit-attendee-search input:focus-visible { outline: none; }
 
-[data-orbit-real-page] .orbit-attendee-search input::placeholder { color: var(--text-3); }
+[data-orbit-real-page] .orbit-attendee-search input::placeholder { color: var(--ink-3-text); }
 
 /* Chrome draws the native clear glyph from the document's colour-scheme, which
    is light — a blue cross on the journey's dark panel. Masking it re-cuts the
@@ -3167,13 +2985,13 @@ const orbitAttendeeCardStyles = `
 }
 
 [data-orbit-real-page] .orbit-attendee-count {
-  color: var(--text-3);
+  color: var(--ink-3-text);
   flex-shrink: 0;
   font-size: 12px;
 }
 
 [data-orbit-real-page] .orbit-attendee-empty {
-  color: var(--text-3);
+  color: var(--ink-3-text);
   font-size: 13px;
   margin: 0;
   padding: 4px 0 2px;
@@ -3181,7 +2999,7 @@ const orbitAttendeeCardStyles = `
 
 [data-orbit-real-page] .orbit-attendee-card {
   background: var(--surface-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--r-md);
   display: grid;
   gap: 12px;
@@ -3196,7 +3014,7 @@ const orbitAttendeeCardStyles = `
 
 [data-orbit-real-page] .orbit-attendee-card:hover {
   background: var(--surface-3);
-  border-color: var(--border-strong);
+  border-color: var(--ink-4);
 }
 
 /* The whole card opens the profile. A stretched transparent button carries the
@@ -3214,7 +3032,7 @@ const orbitAttendeeCardStyles = `
 }
 
 [data-orbit-real-page] .orbit-attendee-open:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -3254,7 +3072,7 @@ const orbitAttendeeCardStyles = `
 [data-orbit-real-page] .orbit-attendee-role {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  color: var(--text-3);
+  color: var(--ink-3-text);
   display: -webkit-box;
   font-size: 12px;
   line-height: 1.4;
@@ -3264,9 +3082,9 @@ const orbitAttendeeCardStyles = `
 [data-orbit-real-page] .orbit-attendee-self {
   align-items: center;
   background: var(--surface-3);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--r-pill);
-  color: var(--text-2);
+  color: var(--ink-2);
   display: inline-flex;
   flex-shrink: 0;
   font-size: 11px;
@@ -3286,7 +3104,7 @@ const orbitAttendeeCardStyles = `
 [data-orbit-real-page] .orbit-attendee-domain {
   background: var(--accent-soft);
   border-radius: var(--r-pill);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 12px;
   font-weight: 600;
   justify-self: start;
@@ -3301,7 +3119,7 @@ const orbitAttendeeCardStyles = `
 [data-orbit-real-page] .orbit-attendee-intent {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  color: var(--text-2);
+  color: var(--ink-2);
   display: -webkit-box;
   font-size: 13px;
   line-height: 1.5;
@@ -3311,7 +3129,7 @@ const orbitAttendeeCardStyles = `
 
 [data-orbit-real-page] .orbit-attendee-act {
   align-items: center;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line);
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -3325,7 +3143,7 @@ const orbitAttendeeCardStyles = `
    instead of parking a full-width disabled sentence in every card. */
 [data-orbit-real-page] .orbit-attendee-wait {
   align-items: center;
-  color: var(--text-3);
+  color: var(--ink-3-text);
   display: inline-flex;
   font-size: 12px;
   gap: 6px;

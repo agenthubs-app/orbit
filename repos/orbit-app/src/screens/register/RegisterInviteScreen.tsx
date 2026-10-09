@@ -63,7 +63,7 @@ function RegisterInviteCodeRequired() {
         ]}
       >
         <Text style={styles.actionText}>查看活动</Text>
-        <Ionicons color={colors.text3} name="chevron-forward" size={18} />
+        <Ionicons color={colors.ink3Text} name="chevron-forward" size={18} />
       </Pressable>
     </AppScreen>
   );
@@ -153,7 +153,7 @@ function RegisterInviteResourceScreen({
         <RefreshControl
           onRefresh={refreshAll}
           refreshing={eventState.refreshing || Boolean(profileState?.refreshing)}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title="报名资料准备"
@@ -209,7 +209,7 @@ function RegisterInviteContent({
       <ProfilePreview profile={view.profile} />
       <DataCard variant="inset" detail={view.guardrail} title="操作边界">
         <View style={styles.guardrailRow}>
-          <Ionicons color={colors.amber} name="lock-closed-outline" size={18} />
+          <Ionicons color={colors.macApricotText} name="lock-closed-outline" size={18} />
           <Text style={styles.bodyText}>
             继续报名会进入活动问题页；这一步只检查资料。
           </Text>
@@ -238,18 +238,18 @@ function readinessIconName(status: RegisterInviteReadinessStatus) {
 
 function readinessColor(status: RegisterInviteReadinessStatus, colors: OrbitColors) {
   if (status === "complete") {
-    return colors.live;
+    return colors.okText;
   }
 
   if (status === "next") {
-    return colors.accent;
+    return colors.accentText;
   }
 
   if (status === "blocked") {
-    return colors.text3;
+    return colors.ink3Text;
   }
 
-  return colors.amber;
+  return colors.macApricotText;
 }
 
 function RegistrationReadinessCard({
@@ -374,7 +374,7 @@ function ActionList({ actions }: { actions: RegisterInviteAction[] }) {
           ]}
         >
           <Text style={styles.actionText}>{action.label}</Text>
-          <Ionicons color={colors.text3} name="chevron-forward" size={18} />
+          <Ionicons color={colors.ink3Text} name="chevron-forward" size={18} />
         </Pressable>
       ))}
     </View>
@@ -394,7 +394,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...createControlStyles(colors).secondaryButtonText
   },
   bodyText: {
-    color: colors.text,
+    color: colors.ink,
     ...textStyles.body
   },
   eventCopy: {
@@ -409,7 +409,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexWrap: "wrap"
   },
   headlineText: {
-    color: colors.text,
+    color: colors.ink,
     fontSize: typography.body,
     fontWeight: "600",
     lineHeight: 22
@@ -424,8 +424,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs
   },
   metaText: {
-    color: colors.text3,
-    fontSize: typography.small,
+    color: colors.ink3Text,
+    fontSize: typography.bodySm,
     lineHeight: 19
   },
   passCode: {
@@ -443,7 +443,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   passLabel: {
     color: colors.onAccent,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "700",
     marginTop: spacing.xs
   },
@@ -451,7 +451,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     opacity: 0.72
   },
   readinessConnector: {
-    backgroundColor: colors.border,
+    backgroundColor: colors.line,
     flex: 1,
     marginVertical: 4,
     width: 2
@@ -462,14 +462,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingBottom: spacing.sm
   },
   readinessDetail: {
-    color: colors.text3,
-    fontSize: typography.small,
+    color: colors.ink3Text,
+    fontSize: typography.bodySm,
     lineHeight: 19
   },
   readinessIcon: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderRadius: radius.pill,
     borderWidth: 1,
     height: 34,
@@ -477,12 +477,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 34
   },
   readinessIconComplete: {
-    backgroundColor: colors.liveSoft,
-    borderColor: colors.liveSoft
+    backgroundColor: colors.okSoft,
+    borderColor: colors.okSoft
   },
   readinessIconNext: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accentSofter
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accentSoft
   },
   readinessRail: {
     alignItems: "center",
@@ -500,28 +500,28 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   readinessTitle: {
     color: colors.ink,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     fontWeight: "800",
     lineHeight: 19
   },
   statusBadge: {
     alignSelf: "flex-start",
-    backgroundColor: colors.amberSoft,
+    backgroundColor: colors.macApricot,
     borderRadius: radius.pill,
-    color: colors.amber,
-    fontSize: typography.caption,
+    color: colors.macApricotText,
+    fontSize: typography.label,
     fontWeight: "700",
     overflow: "hidden",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   },
   tagText: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
     borderRadius: radius.pill,
     borderWidth: 1,
-    color: colors.accent,
-    fontSize: typography.small,
+    color: colors.accentText,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     overflow: "hidden",
     paddingHorizontal: spacing.md,

@@ -172,9 +172,9 @@ function CanonicalResourceFailure({ state }: { state: ApiResourceState<unknown> 
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   body: { ...textStyles.body, color: colors.ink },
-  detail: { ...textStyles.small, color: colors.text3 },
+  detail: { ...textStyles.small, color: colors.ink3Text },
   name: { ...textStyles.listTitle, color: colors.ink },
   person: { gap: spacing.xs, paddingVertical: spacing.sm },
   retry: { minHeight: 44, justifyContent: "center" },
-  retryText: { ...textStyles.body, color: colors.accent }
+  retryText: { ...textStyles.body, color: colors.accentText }
 }));

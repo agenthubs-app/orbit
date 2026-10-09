@@ -54,10 +54,10 @@ export function AppointmentMemoCapture({
     return () => { active = false; };
   }, [appointmentId, contactId, eventId, invalidRequest]);
 
-  if (invalidRequest) return <p role="alert" style={{ color: "var(--danger)" }}>纪要链接无效：需要唯一的 capture=meeting-memo、appointmentId 和 eventId。</p>;
+  if (invalidRequest) return <p role="alert" style={{ color: "var(--coral-text)" }}>纪要链接无效：需要唯一的 capture=meeting-memo、appointmentId 和 eventId。</p>;
   if (!appointmentId && !eventId) return null;
   if (loading) return <section aria-busy="true" className="card-flat" style={{ margin: "16px", padding: 16 }}>正在核验约谈与联系人…</section>;
-  if (error || !entry) return <p role="alert" style={{ color: "var(--danger)", margin: 16 }}>{error || "无法核验这次约谈。"}</p>;
+  if (error || !entry) return <p role="alert" style={{ color: "var(--coral-text)", margin: 16 }}>{error || "无法核验这次约谈。"}</p>;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -91,7 +91,7 @@ export function AppointmentMemoCapture({
     <section className="card-flat" data-appointment-memo-capture style={{ display: "grid", gap: 12, margin: 16, padding: 16 }}>
       <div>
         <strong>会后纪要</strong>
-        <p style={{ color: "var(--text-3)", fontSize: 12, margin: "4px 0 0" }}>
+        <p style={{ color: "var(--ink-3-text)", fontSize: 12, margin: "4px 0 0" }}>
           已核验约谈完成记录：{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.completedAt))}
         </p>
       </div>
@@ -110,7 +110,7 @@ export function AppointmentMemoCapture({
             <textarea className="field" onChange={(event) => setCommitments(event.target.value)} rows={3} value={commitments} />
           </label>
           <button className="btn btn-primary btn-sm" disabled={saving || !noteText.trim()} style={{ justifySelf: "start" }} type="submit">{saving ? "保存中…" : "保存纪要"}</button>
-          {error ? <p role="alert" style={{ color: "var(--danger)", margin: 0 }}>{error}</p> : null}
+          {error ? <p role="alert" style={{ color: "var(--coral-text)", margin: 0 }}>{error}</p> : null}
         </form>
       )}
     </section>

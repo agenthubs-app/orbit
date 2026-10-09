@@ -10,23 +10,23 @@ export function MessageInboxList({ conversations, onOpen }: {
   const { colors } = useOrbitTheme();
   const { t } = useOrbitLocale();
   if (!conversations.length) return <View style={styles.empty}>
-    <Text style={{ color: colors.text }}>{t('inbox.noMessages')}</Text>
-    <Text style={{ color: colors.text3 }}>{t('inbox.messagesHint')}</Text>
+    <Text style={{ color: colors.ink }}>{t('inbox.noMessages')}</Text>
+    <Text style={{ color: colors.ink3Text }}>{t('inbox.messagesHint')}</Text>
   </View>;
   return <View>{conversations.map(conversation => <Pressable key={conversation.id}
     accessibilityRole="button"
     accessibilityLabel={`${conversation.name}, ${conversation.preview}${conversation.unreadCount ? `, ${t('inboxVm.newMessages', { count: conversation.unreadCount })}` : ''}`}
     onPress={() => onOpen(conversation.id)}
-    style={[styles.row, { borderBottomColor: colors.border }]}>
+    style={[styles.row, { borderBottomColor: colors.line }]}>
     <View accessibilityElementsHidden style={[styles.avatar, { backgroundColor: colors.surface2 }]}>
-      <Text style={{ color: colors.text }}>{Array.from(conversation.name)[0] || '?'}</Text>
+      <Text style={{ color: colors.ink }}>{Array.from(conversation.name)[0] || '?'}</Text>
     </View>
     <View style={styles.copy}>
-      <Text style={[styles.name, { color: colors.text }]}>{conversation.name}</Text>
-      <Text numberOfLines={2} style={{ color: colors.text3 }}>{conversation.preview}</Text>
-      <Text style={[styles.time, { color: colors.text3 }]}>{conversation.lastAt}</Text>
+      <Text style={[styles.name, { color: colors.ink }]}>{conversation.name}</Text>
+      <Text numberOfLines={2} style={{ color: colors.ink3Text }}>{conversation.preview}</Text>
+      <Text style={[styles.time, { color: colors.ink3Text }]}>{conversation.lastAt}</Text>
     </View>
-    {conversation.unreadCount > 0 ? <Text style={[styles.count, { color: colors.onAccent, backgroundColor: colors.accent }]}>{conversation.unreadCount}</Text> : null}
+    {conversation.unreadCount > 0 ? <Text style={[styles.count, { color: colors.onAccent, backgroundColor: colors.accentText }]}>{conversation.unreadCount}</Text> : null}
   </Pressable>)}</View>;
 }
 const styles = StyleSheet.create({

@@ -81,9 +81,9 @@ export function AgentMessageCopyButton({ text }: { text: string }) {
       style={{
         alignItems: "center",
         background: copied ? "var(--accent-soft)" : "var(--surface)",
-        border: "1px solid var(--border)",
+        border: "1px solid var(--line)",
         borderRadius: "var(--r-sm)",
-        color: copied ? "var(--accent)" : "var(--text-3)",
+        color: copied ? "var(--accent-text)" : "var(--ink-3-text)",
         cursor: "pointer",
         display: "inline-flex",
         flexShrink: 0,
@@ -125,7 +125,7 @@ export function AgentHistoryDeleteDialog({
       role="presentation"
       style={{
         alignItems: "center",
-        background: "var(--scrim)",
+        background: "var(--scrim-web)",
         display: "flex",
         inset: 0,
         justifyContent: "center",
@@ -142,9 +142,9 @@ export function AgentHistoryDeleteDialog({
         role="alertdialog"
         style={{
           background: "var(--surface)",
-          border: "1px solid var(--border)",
+          border: "1px solid var(--line)",
           borderRadius: "var(--r-lg)",
-          boxShadow: "var(--sh-pop)",
+          boxShadow: "var(--shadow-float)",
           display: "grid",
           gap: 16,
           maxWidth: 440,
@@ -161,7 +161,7 @@ export function AgentHistoryDeleteDialog({
         </h2>
         <p
           id="orbit-agent-history-delete-description"
-          style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.6, margin: 0 }}
+          style={{ color: "var(--ink-2)", fontSize: 14, lineHeight: 1.6, margin: 0 }}
         >
           {t({
             en: `“${history.title}” and its messages will be permanently removed from your chat history. This cannot be undone.`,
@@ -169,7 +169,7 @@ export function AgentHistoryDeleteDialog({
           })}
         </p>
         {error ? (
-          <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>
+          <p role="alert" style={{ color: "var(--coral-text)", fontSize: 13, margin: 0 }}>
             {error}
           </p>
         ) : null}
@@ -659,7 +659,7 @@ export function PanelCards({ language, navigate, panel, t }: { language: "en" | 
   return (
     <div className="panel">
       <div className="panel-head">
-        <Icon color="var(--accent)" name={panel.kind === "people" ? "users" : "calendar"} size={14} />
+        <Icon color="var(--accent-text)" name={panel.kind === "people" ? "users" : "calendar"} size={14} />
         <b>{panel.panelTitle}</b>
         <span className="meta">{meta}</span>
       </div>
@@ -717,7 +717,7 @@ export function ThinkingIndicator({ t }: { t: Translate }) {
   return (
     <span aria-live="polite" className="thinking orbit-agent-thinking-indicator" style={{ display: "inline-grid", gap: 4 }}>
       <span><span className="sp" />{t(THINKING_PHASES[phase])}</span>
-      <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+      <span style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
         {t({ en: "Usually under a minute · no external action is being taken", zh: "通常不到一分钟 · 当前不会执行任何外部动作" })}
       </span>
     </span>

@@ -9,6 +9,9 @@
 // 网络、时钟；规则见 orbits/tests/support/shared-compute-audit.ts，两端测试都跑）。
 // 它整目录逐字拷到 src/api/compute；其他 shared 目录仍然不进 App，domain 仍只放行两个字典。
 //
+// 改版 R01（RD-08）：shared/design 只放行生成好的 tokens.ts（零 import 常量），
+// 拷到 src/api/design；tokens.json 源文件和 README 不进 App。
+//
 // 用法：npm run sync:contract
 
 import { copyFileSync, mkdirSync, readdirSync, rmSync } from "node:fs";
@@ -37,6 +40,12 @@ const syncTargets = [
     label: "共用计算",
     sourceDir: join(appRoot, "..", "orbits", "shared", "compute"),
     targetDir: join(appRoot, "src", "api", "compute"),
+  },
+  {
+    label: "设计 token",
+    sourceDir: join(appRoot, "..", "orbits", "shared", "design"),
+    targetDir: join(appRoot, "src", "api", "design"),
+    fileNames: ["tokens.ts"],
   },
 ];
 

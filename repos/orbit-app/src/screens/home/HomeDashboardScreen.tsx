@@ -273,18 +273,18 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => navigate(href)} style={styles.sectionHeading}>
       <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
       <View style={styles.sectionAction}>{pending ? <View aria-hidden importantForAccessibility="no-hide-descendants" style={styles.skeletonCount} /> : <>
-        {count !== undefined ? <Text style={styles.count}>{count}</Text> : null}<Ionicons name="chevron-forward" size={9} color={colors.accent} />
+        {count !== undefined ? <Text style={styles.count}>{count}</Text> : null}<Ionicons name="chevron-forward" size={9} color={colors.accentText} />
       </>}
       </View>
     </Pressable>;
   }
-  return <AppScreen title={locale.t("home.title")} refreshControl={<RefreshControl onRefresh={refresh} refreshing={sections.some(section => resources[section].kind === "loading")} tintColor={colors.accent} />}
+  return <AppScreen title={locale.t("home.title")} refreshControl={<RefreshControl onRefresh={refresh} refreshing={sections.some(section => resources[section].kind === "loading")} tintColor={colors.accentText} />}
     header={<View style={[styles.header, singleColumn && styles.headerWrap]}>
       <Text style={styles.brand}>Orbit<Text style={styles.signal}>.</Text></Text>
       <View style={[styles.search, singleColumn && styles.largeHeaderControl]}>
         <View pointerEvents="none" style={styles.searchSurface} />
-        <HomeIcon name="search" color={colors.text3} size={16} />
-        <TextInput accessibilityLabel={locale.t("home.searchPeople")} placeholder={locale.t("home.searchPeople")} placeholderTextColor={colors.text3}
+        <HomeIcon name="search" color={colors.ink3Text} size={16} />
+        <TextInput accessibilityLabel={locale.t("home.searchPeople")} placeholder={locale.t("home.searchPeople")} placeholderTextColor={colors.ink3Text}
           value={query} onChangeText={setQuery} onSubmitEditing={() => { const value = query.trim(); if (value) navigate("/contacts/list?q=" + encodeURIComponent(value)); }}
           returnKeyType="search" style={styles.searchInput} />
       </View>
@@ -334,7 +334,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
           <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.completeTask", { name: task.title }) + (tasksFromDevice && offline ? " · " + locale.t("sync.needsNetwork") : "")}
             accessibilityState={{ disabled: updatingId !== null || tasksFromDevice }} disabled={updatingId !== null || tasksFromDevice}
             onPress={() => { void complete(task.id); }} style={styles.checkTarget}>
-            {updatingId === task.id ? <ActivityIndicator size="small" color={colors.accent} /> : <View style={[styles.checkbox, tasksFromDevice && styles.checkboxDisabled]} />}
+            {updatingId === task.id ? <ActivityIndicator size="small" color={colors.accentText} /> : <View style={[styles.checkbox, tasksFromDevice && styles.checkboxDisabled]} />}
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.openTask", { name: task.title })} onPress={() => navigate("/tasks/" + encodeURIComponent(task.id))} style={styles.taskContent}>
             <Text style={styles.rowTitle}>{task.title}</Text>
@@ -353,13 +353,13 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
             onPress={() => navigate("/events/" + encodeURIComponent(event.id))} style={styles.eventRow}>
             <View style={styles.eventThumbnail}>
               {uri ? <Image accessible={false} resizeMode="cover" source={{ uri }} style={styles.eventImage} />
-                : <Ionicons name="calendar-outline" size={22} color={colors.accent} />}
+                : <Ionicons name="calendar-outline" size={22} color={colors.accentText} />}
             </View>
             <View style={styles.rowContent}>
               <Text style={styles.eventTitle}>{event.title}</Text>
               <Text style={styles.eventMeta}>{event.dateLabel + " · " + event.locationLabel}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={12} color={colors.text4} />
+            <Ionicons name="chevron-forward" size={12} color={colors.ink3Text} />
           </Pressable>;
         })}
       </View> : <Text style={styles.empty}>{locale.t("home.noRecommendedEvents")}</Text>)}
@@ -391,26 +391,26 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: -9 },
   headerWrap: { flexWrap: "wrap" },
   brand: { color: colors.ink, fontFamily: homeFont, fontSize: 19, fontWeight: "900", letterSpacing: -0.38 },
-  signal: { color: colors.accent },
+  signal: { color: colors.accentText },
   search: { flex: 1, minWidth: 110, minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12 },
   searchSurface: { position: "absolute", zIndex: -1, top: 3, bottom: 3, left: 0, right: 0, borderRadius: 10, backgroundColor: colors.surface2 },
   searchInput: { flex: 1, minWidth: 0, minHeight: 44, padding: 0, color: colors.ink, fontFamily: homeFont, fontSize: 14, lineHeight: 20 },
   largeHeaderControl: { minHeight: 50 },
   inbox: { width: 44, minHeight: 44, marginHorizontal: -3, alignItems: "center", justifyContent: "center" },
-  inboxSurface: { position: "absolute", zIndex: -1, top: 3, bottom: 3, left: 3, right: 3, borderRadius: 10, borderWidth: 1, borderColor: colors.border },
-  badge: { position: "absolute", top: 0, right: 0, minWidth: 16, minHeight: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
+  inboxSurface: { position: "absolute", zIndex: -1, top: 3, bottom: 3, left: 3, right: 3, borderRadius: 10, borderWidth: 1, borderColor: colors.line },
+  badge: { position: "absolute", top: 0, right: 0, minWidth: 16, minHeight: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: colors.accentText, alignItems: "center", justifyContent: "center" },
   badgeText: { color: colors.onAccent, fontFamily: homeFont, fontSize: 10, fontWeight: "700" },
   dateRow: { flexDirection: "row", alignItems: "baseline", flexWrap: "wrap", columnGap: 10, rowGap: 4 },
   date: { fontFamily: homeFont, fontSize: 34, lineHeight: 34, fontWeight: "800", letterSpacing: -1.02, color: colors.ink },
-  dateSummary: { flexShrink: 1, fontFamily: homeFont, fontSize: 14, lineHeight: 22, color: colors.text3 },
+  dateSummary: { flexShrink: 1, fontFamily: homeFont, fontSize: 14, lineHeight: 22, color: colors.ink3Text },
   summarySkeleton: { width: 140, height: 12, borderRadius: 4, backgroundColor: colors.surface2, alignSelf: "flex-end", marginBottom: 4 },
   weekScroll: { marginTop: -6 },
   week: { flexGrow: 1 },
-  day: { flex: 1, minWidth: 44, minHeight: 48, alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 6, borderBottomWidth: 2, borderBottomColor: colors.border },
-  selectedDay: { borderBottomColor: colors.accent },
-  weekday: { fontFamily: homeFont, fontSize: 11, color: colors.text3 },
+  day: { flex: 1, minWidth: 44, minHeight: 48, alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 6, borderBottomWidth: 2, borderBottomColor: colors.line },
+  selectedDay: { borderBottomColor: colors.accentText },
+  weekday: { fontFamily: homeFont, fontSize: 11, color: colors.ink3Text },
   dayNumber: { fontFamily: homeFont, fontSize: 15, fontWeight: "700", color: colors.ink },
-  quickActions: { flexDirection: "row", marginTop: -2, paddingVertical: 12, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
+  quickActions: { flexDirection: "row", marginTop: -2, paddingVertical: 12, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line },
   quickActionsWrap: { flexWrap: "wrap", rowGap: 12 },
   quickAction: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", gap: 6 },
   quickActionWide: { flexBasis: "50%", flexGrow: 0, flexShrink: 0 },
@@ -418,45 +418,45 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   daySections: { flexDirection: "row" },
   singleColumn: { flexDirection: "column", gap: 16 },
   largeSections: { marginTop: 8 },
-  scheduleColumn: { flex: 1, minWidth: 0, paddingRight: 14, borderRightWidth: 1, borderRightColor: colors.border },
+  scheduleColumn: { flex: 1, minWidth: 0, paddingRight: 14, borderRightWidth: 1, borderRightColor: colors.line },
   taskColumn: { flex: 1, minWidth: 0, paddingLeft: 14 },
   fullSchedule: { flexGrow: 0, flexShrink: 0, flexBasis: "auto", paddingRight: 0, borderRightWidth: 0 },
-  fullTasks: { flexGrow: 0, flexShrink: 0, flexBasis: "auto", paddingLeft: 0, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
+  fullTasks: { flexGrow: 0, flexShrink: 0, flexBasis: "auto", paddingLeft: 0, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.line },
   sectionHeading: { minHeight: 44, marginTop: -16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   sectionTitle: { flexShrink: 1, color: colors.ink, fontFamily: homeFont, fontSize: 15, lineHeight: 22, fontWeight: "800" },
   sectionAction: { flexDirection: "row", alignItems: "center", gap: 2 },
-  count: { color: colors.accent, fontFamily: homeFont, fontSize: 12, fontWeight: "700" },
+  count: { color: colors.accentText, fontFamily: homeFont, fontSize: 12, fontWeight: "700" },
   scheduleRow: { minHeight: 44, paddingTop: 6, paddingBottom: 10, flexDirection: "row", gap: 10 },
-  largeScheduleRow: { paddingTop: 10, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border2 },
-  scheduleMarker: { width: 3, borderRadius: 2, backgroundColor: colors.accent },
+  largeScheduleRow: { paddingTop: 10, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.line },
+  scheduleMarker: { width: 3, borderRadius: 2, backgroundColor: colors.accentText },
   endedMarker: { opacity: 0.4 },
   rowContent: { flex: 1, minWidth: 0, gap: 2 },
   time: { color: colors.ink, fontFamily: homeFont, fontSize: 15, fontWeight: "800", letterSpacing: -0.15 },
   rowTitle: { color: colors.ink, fontFamily: homeFont, fontSize: 13, lineHeight: 18, fontWeight: "500" },
   scheduleTitle: { fontWeight: "400" },
-  detail: { color: colors.text3, fontFamily: homeFont, fontSize: 11, lineHeight: 16 },
-  taskRow: { flexDirection: "row", alignItems: "flex-start", minHeight: 44, borderBottomWidth: 1, borderBottomColor: colors.border2 },
+  detail: { color: colors.ink3Text, fontFamily: homeFont, fontSize: 11, lineHeight: 16 },
+  taskRow: { flexDirection: "row", alignItems: "flex-start", minHeight: 44, borderBottomWidth: 1, borderBottomColor: colors.line },
   checkTarget: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center", marginLeft: -10 },
   checkbox: { width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, borderColor: colors.ink },
   checkboxDisabled: { opacity: 0.4 },
   taskContent: { flex: 1, minWidth: 44, minHeight: 44, justifyContent: "center", paddingVertical: 7 },
-  events: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 },
+  events: { borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 8 },
   eventList: { gap: 0 },
-  eventRow: { minHeight: 52, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: 1, borderBottomColor: colors.border2 },
+  eventRow: { minHeight: 52, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: 1, borderBottomColor: colors.line },
   eventThumbnail: { width: 60, height: 44, borderRadius: 8, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 },
   eventImage: { width: "100%", height: "100%" },
   eventTitle: { color: colors.ink, fontFamily: homeFont, fontSize: 14, lineHeight: 19, fontWeight: "700" },
-  eventMeta: { color: colors.text3, fontFamily: homeFont, fontSize: 11, lineHeight: 16 },
-  empty: { color: colors.text3, fontFamily: homeFont, fontSize: 13, lineHeight: 20, paddingVertical: 12 },
+  eventMeta: { color: colors.ink3Text, fontFamily: homeFont, fontSize: 11, lineHeight: 16 },
+  empty: { color: colors.ink3Text, fontFamily: homeFont, fontSize: 13, lineHeight: 20, paddingVertical: 12 },
   errorGroup: { gap: 4 },
-  error: { color: colors.rose, fontFamily: homeFont, fontSize: 12, lineHeight: 18 },
+  error: { color: colors.coralText, fontFamily: homeFont, fontSize: 12, lineHeight: 18 },
   retry: { minHeight: 44, alignSelf: "flex-start", justifyContent: "center", paddingRight: 12 },
-  link: { color: colors.accent, fontFamily: homeFont, fontSize: 13, fontWeight: "600" },
+  link: { color: colors.accentText, fontFamily: homeFont, fontSize: 13, fontWeight: "600" },
   skeleton: { gap: 14, paddingVertical: 8 },
   skeletonRow: { flexDirection: "row", gap: 10 },
   skeletonContent: { flex: 1, gap: 6 },
-  skeletonMarker: { width: 3, borderRadius: 2, backgroundColor: colors.border },
-  skeletonCheckbox: { width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, borderColor: colors.border },
+  skeletonMarker: { width: 3, borderRadius: 2, backgroundColor: colors.line },
+  skeletonCheckbox: { width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, borderColor: colors.line },
   skeletonAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface2 },
   skeletonCount: { width: 20, height: 10, borderRadius: 3, backgroundColor: colors.surface2 },
   skeletonShort: { width: 50, height: 12, borderRadius: 3, backgroundColor: colors.surface2 },

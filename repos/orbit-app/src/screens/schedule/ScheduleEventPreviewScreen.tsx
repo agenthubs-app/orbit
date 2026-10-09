@@ -53,7 +53,7 @@ export function ScheduleEventPreviewScreen() {
         <RefreshControl
           onRefresh={state.refresh}
           refreshing={state.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={locale.t("schedule.previewTitle")}
@@ -81,7 +81,7 @@ function PreviewContent({ data }: { data: unknown }) {
       </DataCard>
       <DataCard detail={view.guardrail} title={locale.t("schedule.operationBoundary")}>
         <View style={styles.guardrailRow}>
-          <Ionicons color={colors.amber} name="lock-closed-outline" size={18} />
+          <Ionicons color={colors.macApricotText} name="lock-closed-outline" size={18} />
           <Text style={styles.bodyText}>
             {locale.t("schedule.operationBoundaryBody")}
           </Text>
@@ -114,7 +114,7 @@ function EventPreview({ event }: { event: ScheduleEventPreviewEventView }) {
     <View style={styles.previewStack}>
       <View style={styles.eventHeader}>
         <View style={styles.eventIcon}>
-          <Ionicons color={colors.amber} name="calendar-outline" size={20} />
+          <Ionicons color={colors.macApricotText} name="calendar-outline" size={20} />
         </View>
         <View style={styles.eventTitle}>
           <Text style={styles.itemTitle}>{event.title}</Text>
@@ -148,7 +148,7 @@ function ActionList({ actions }: { actions: ScheduleEventPreviewAction[] }) {
           ]}
         >
           <Text style={styles.actionText}>{action.label}</Text>
-          <Ionicons color={colors.text3} name="chevron-forward" size={18} />
+          <Ionicons color={colors.ink3Text} name="chevron-forward" size={18} />
         </Pressable>
       ))}
     </View>
@@ -158,7 +158,7 @@ function ActionList({ actions }: { actions: ScheduleEventPreviewAction[] }) {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
     ...createControlStyles(colors).secondaryButton,
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderWidth: 1,
     flexDirection: "row"
   },
@@ -167,12 +167,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionText: {
     ...textStyles.body,
-    color: colors.text,
+    color: colors.ink,
     flexShrink: 1
   },
   bodyText: {
     ...textStyles.body,
-    color: colors.text,
+    color: colors.ink,
     flexShrink: 1
   },
   eventHeader: {
@@ -183,7 +183,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventIcon: {
     alignItems: "center",
-    backgroundColor: colors.amberSoft,
+    backgroundColor: colors.macApricot,
     borderRadius: radius.md,
     height: 42,
     justifyContent: "center",
@@ -207,8 +207,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs
   },
   metaText: {
-    color: colors.text3,
-    fontSize: typography.small,
+    color: colors.ink3Text,
+    fontSize: typography.bodySm,
     lineHeight: 19
   },
   pressed: {
@@ -218,11 +218,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   statusBadge: {
-    backgroundColor: colors.amberSoft,
+    backgroundColor: colors.macApricot,
     borderRadius: radius.pill,
-    color: colors.amber,
+    color: colors.macApricotText,
     flexShrink: 0,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "700",
     overflow: "hidden",
     paddingHorizontal: spacing.sm,

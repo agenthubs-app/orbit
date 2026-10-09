@@ -479,8 +479,8 @@ export function AgentActionStatusCard({
       aria-label={language === "zh" ? "本次 Agent 操作" : "Agent actions from this turn"}
       data-agent-run-id={runId}
       style={{
-        background: "var(--bg-soft)",
-        border: "1px solid var(--border)",
+        background: "var(--bg)",
+        border: "1px solid var(--line)",
         borderRadius: "var(--r-md)",
         display: "grid",
         gap: 10,
@@ -494,7 +494,7 @@ export function AgentActionStatusCard({
             ? language === "zh" ? "本次 Agent 过程" : "Agent run"
             : language === "zh" ? "本次安排" : "Actions from this reply"}
         </strong>
-        <span style={{ color: "var(--text-3)", fontSize: 11 }}>
+        <span style={{ color: "var(--ink-3-text)", fontSize: 11 }}>
           {!showRunDetails && !loading
             ? language === "zh" ? `${visibleActions.length} 项` : `${visibleActions.length} actions`
             : showRunDetails && runView
@@ -527,8 +527,8 @@ export function AgentActionStatusCard({
               style={{
                 background:
                   runView.progress.failedSteps > 0
-                    ? "var(--danger, #b4413c)"
-                    : "var(--accent)",
+                    ? "var(--coral-text, #b4413c)"
+                    : "var(--accent-text)",
                 display: "block",
                 height: "100%",
                 transition: "width .2s ease",
@@ -545,8 +545,8 @@ export function AgentActionStatusCard({
                   alignItems: "center",
                   color:
                     step.status === "failed"
-                      ? "var(--danger, #b4413c)"
-                      : "var(--text-2)",
+                      ? "var(--coral-text, #b4413c)"
+                      : "var(--ink-2)",
                   display: "flex",
                   fontSize: 11,
                   gap: 7,
@@ -614,7 +614,7 @@ export function AgentActionStatusCard({
           <article
             data-agent-action-id={action.actionId}
             key={action.actionId}
-            style={{ borderTop: "1px solid var(--border)", display: "grid", gap: 8, paddingTop: 10 }}
+            style={{ borderTop: "1px solid var(--line)", display: "grid", gap: 8, paddingTop: 10 }}
           >
             <div style={{ alignItems: "flex-start", display: "flex", gap: 10, justifyContent: "space-between" }}>
               <div style={{ minWidth: 0 }}>
@@ -623,7 +623,7 @@ export function AgentActionStatusCard({
                     ? language === "zh" ? "操作详情" : "Action details"
                     : action.title}
                 </div>
-                <div style={{ color: "var(--text-3)", fontSize: 11, marginTop: 3 }}>
+                <div style={{ color: "var(--ink-3-text)", fontSize: 11, marginTop: 3 }}>
                   {actionRiskLabel(action.riskLevel, language)}
                 </div>
               </div>
@@ -639,7 +639,7 @@ export function AgentActionStatusCard({
             {action.preview ? (
               <p
                 style={{
-                  color: "var(--text-2)",
+                  color: "var(--ink-2)",
                   fontSize: 12,
                   lineHeight: 1.55,
                   margin: 0,
@@ -691,7 +691,7 @@ export function AgentActionStatusCard({
                 </button>
               ) : null}
               {editable && action.riskLevel === "external" ? (
-                <span style={{ color: "var(--text-3)", flexBasis: "100%", fontSize: 11 }}>
+                <span style={{ color: "var(--ink-3-text)", flexBasis: "100%", fontSize: 11 }}>
                   {language === "zh"
                     ? "外部操作请在「全部安排」查看详情后确认"
                     : "Review external action details in All arrangements before confirming"}
@@ -723,7 +723,7 @@ export function AgentActionStatusCard({
       })}
 
       {error ? (
-        <p role="alert" style={{ color: "var(--danger, #b4413c)", fontSize: 12, margin: 0 }}>
+        <p role="alert" style={{ color: "var(--coral-text, #b4413c)", fontSize: 12, margin: 0 }}>
           {error}
         </p>
       ) : null}
