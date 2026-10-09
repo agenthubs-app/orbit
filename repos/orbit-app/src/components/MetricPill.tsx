@@ -24,7 +24,7 @@ export function MetricPill({ label, value }: MetricPillProps) {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   label: {
     ...textStyles.caption,
-    color: colors.text2
+    color: colors.ink2
   },
   pill: {
     flexShrink: 1,

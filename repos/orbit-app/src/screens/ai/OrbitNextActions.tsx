@@ -46,7 +46,7 @@ export function OrbitNextActions({
           onPress={onRefresh}
           style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null]}
         >
-          <Ionicons color={colors.text3} name="refresh" size={17} />
+          <Ionicons color={colors.ink3Text} name="refresh" size={17} />
         </Pressable>
       </View>
 
@@ -81,7 +81,7 @@ export function OrbitNextActions({
             >
               <View style={[styles.index, item.kind === "schedule" ? styles.scheduleIndex : null]}>
                 {item.kind === "schedule" ? (
-                  <Ionicons color={colors.sky} name="calendar-outline" size={16} />
+                  <Ionicons color={colors.macBlueText} name="calendar-outline" size={16} />
                 ) : (
                   <Text style={styles.indexText}>{item.index}</Text>
                 )}
@@ -90,7 +90,7 @@ export function OrbitNextActions({
                 <Text numberOfLines={1} style={styles.title}>{item.title}</Text>
                 <Text numberOfLines={1} style={styles.context}>{item.context}</Text>
               </View>
-              <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
             </Pressable>
           ))}
         </View>
@@ -102,9 +102,9 @@ export function OrbitNextActions({
           onPress={onOpenSuggestions}
           style={({ pressed }) => [styles.suggestionLink, pressed ? styles.pressed : null]}
         >
-          <Ionicons color={colors.accent} name="sparkles-outline" size={15} />
+          <Ionicons color={colors.accentText} name="sparkles-outline" size={15} />
           <Text style={styles.suggestionText}>{locale.t("todayActions.suggestions", { count: summary.suggestionCount })}</Text>
-          <Ionicons color={colors.text4} name="chevron-forward" size={15} />
+          <Ionicons color={colors.ink3Text} name="chevron-forward" size={15} />
         </Pressable>
       ) : null}
     </View>
@@ -112,27 +112,27 @@ export function OrbitNextActions({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  context: { ...textStyles.caption, color: colors.text3, marginTop: spacing.xxs },
+  context: { ...textStyles.caption, color: colors.ink3Text, marginTop: spacing.xxs },
   copy: { flex: 1, minWidth: 0 },
-  count: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
+  count: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "700" },
   errorRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  errorText: { color: colors.rose, flex: 1, fontSize: typography.small, lineHeight: 19 },
+  errorText: { color: colors.coralText, flex: 1, fontSize: typography.bodySm, lineHeight: 19 },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.md, paddingHorizontal: 0 },
   headerTitleRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
   heading: { ...textStyles.section, color: colors.ink },
   iconButton: { alignItems: "center", borderRadius: radius.pill, height: 44, justifyContent: "center", width: 44 },
-  index: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.control, height: 32, justifyContent: "center", width: 32 },
-  indexText: { color: colors.accent, fontSize: typography.small, fontWeight: "800" },
-  list: { borderTopColor: colors.hairline, borderTopWidth: 1 },
-  mark: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, height: 28, justifyContent: "center", width: 28 },
+  index: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.md, height: 32, justifyContent: "center", width: 32 },
+  indexText: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "800" },
+  list: { borderTopColor: colors.line, borderTopWidth: 1 },
+  mark: { alignItems: "center", backgroundColor: colors.accentText, borderRadius: radius.md, height: 28, justifyContent: "center", width: 28 },
   pressed: { opacity: 0.72 },
-  retryButton: { alignItems: "center", borderColor: colors.border2, borderRadius: radius.control, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: spacing.md },
-  retryText: { color: colors.ink, fontSize: typography.small, fontWeight: "700" },
-  row: { alignItems: "center", borderBottomColor: colors.hairline, borderBottomWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 64, paddingVertical: spacing.sm, paddingHorizontal: 0 },
-  scheduleIndex: { backgroundColor: colors.skySoft },
-  section: { borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 0 },
-  stateText: { color: colors.text3, fontSize: typography.small, lineHeight: 19, paddingBottom: spacing.lg, paddingHorizontal: 0 },
+  retryButton: { alignItems: "center", borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: spacing.md },
+  retryText: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "700" },
+  row: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 64, paddingVertical: spacing.sm, paddingHorizontal: 0 },
+  scheduleIndex: { backgroundColor: colors.macBlue },
+  section: { borderColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: 0 },
+  stateText: { color: colors.ink3Text, fontSize: typography.bodySm, lineHeight: 19, paddingBottom: spacing.lg, paddingHorizontal: 0 },
   suggestionLink: { alignItems: "center", flexDirection: "row", gap: spacing.sm, minHeight: 44, paddingHorizontal: 0 },
-  suggestionText: { color: colors.text2, flex: 1, fontSize: typography.caption, fontWeight: "600" },
+  suggestionText: { color: colors.ink2, flex: 1, fontSize: typography.label, fontWeight: "600" },
   title: { ...textStyles.listTitle, color: colors.ink },
 }));

@@ -41,7 +41,7 @@ export function EventAnalyticsScreen() {
   }
 
   return (
-    <AppScreen eyebrow="活动分析" refreshControl={<RefreshControl onRefresh={refresh} refreshing={aggregateState.refreshing || attendeeState.refreshing} tintColor={colors.accent} />} title="活动数据报告">
+    <AppScreen eyebrow="活动分析" refreshControl={<RefreshControl onRefresh={refresh} refreshing={aggregateState.refreshing || attendeeState.refreshing} tintColor={colors.accentText} />} title="活动数据报告">
       <EventAnalyticsContent activeKind={activeKind} attendeeAvailable={attendeeAvailable} onChangeKind={setSelectedKind} organizerAvailable={organizerAvailable} state={contentState} view={view} />
     </AppScreen>
   );

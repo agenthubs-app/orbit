@@ -62,11 +62,11 @@ export function ContactMentionPicker({ onSelect, selectedIds, scopeKey }: {
 }
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
-  panel: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.card, borderWidth: 1, gap: spacing.xs, padding: spacing.sm },
+  panel: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.xl, borderWidth: 1, gap: spacing.xs, padding: spacing.sm },
   title: { color: colors.ink, fontSize: 14, fontWeight: "700" },
-  input: { backgroundColor: colors.bg, borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, color: colors.ink, minHeight: 44, paddingHorizontal: spacing.sm },
-  row: { borderTopColor: colors.border, borderTopWidth: 1, minHeight: 52, paddingVertical: spacing.xs },
+  input: { backgroundColor: colors.bg, borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, color: colors.ink, minHeight: 44, paddingHorizontal: spacing.sm },
+  row: { borderTopColor: colors.line, borderTopWidth: 1, minHeight: 52, paddingVertical: spacing.xs },
   name: { color: colors.ink, fontSize: 14, fontWeight: "700" },
-  detail: { color: colors.text3, fontSize: 12, marginTop: 2 },
-  empty: { color: colors.text3, fontSize: 12, paddingVertical: spacing.xs },
+  detail: { color: colors.ink3Text, fontSize: 12, marginTop: 2 },
+  empty: { color: colors.ink3Text, fontSize: 12, paddingVertical: spacing.xs },
 }));

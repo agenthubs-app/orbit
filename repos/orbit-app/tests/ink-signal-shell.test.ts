@@ -312,11 +312,11 @@ test("ink actions, outlined secondary and selected chips retain drafts and real 
   const page = await open(t, "/home");
   const primary = page.getByRole("button", { name: "保存", exact: true });
   const secondary = page.getByRole("button", { name: "预览", exact: true });
-  assert.equal(await primary.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)");
-  assert.deepEqual(await secondary.evaluate(el => { const s = getComputedStyle(el); return [s.backgroundColor, s.borderTopWidth, s.borderTopColor]; }), ["rgb(255, 255, 255)", "1px", "rgb(11, 18, 32)"]);
+  assert.equal(await primary.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)");
+  assert.deepEqual(await secondary.evaluate(el => { const s = getComputedStyle(el); return [s.backgroundColor, s.borderTopWidth, s.borderTopColor]; }), ["rgb(255, 255, 255)", "1px", "rgb(30, 26, 36)"]);
   const chip = page.getByRole("button", { name: "只看待办", exact: true });
   await chip.click();
-  assert.equal(await chip.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)");
+  assert.equal(await chip.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)");
   await page.getByRole("textbox", { name: "备注草稿" }).fill("保留备注");
   await page.emulateMedia({ colorScheme: "dark" });
   assert.equal(await page.getByRole("textbox", { name: "备注草稿" }).inputValue(), "保留备注");

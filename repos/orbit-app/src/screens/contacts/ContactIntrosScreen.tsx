@@ -59,7 +59,7 @@ export function ContactIntrosScreen() {
         <RefreshControl
           onRefresh={refresh}
           refreshing={refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title="引荐准备"
@@ -205,7 +205,7 @@ function IntrosContent({ summary }: { summary: ContactIntrosSummaryContract }) {
           ]}
         />
         <View style={styles.callout}>
-          <Ionicons color={colors.live} name="git-compare-outline" size={18} />
+          <Ionicons color={colors.okText} name="git-compare-outline" size={18} />
           <Text style={styles.calloutText}>
             这里先找适合牵线的人。创建邀请链接不会自动联系对方。
           </Text>
@@ -391,7 +391,7 @@ function InvitationDraftCard({
     >
       <View style={styles.invitationHeader}>
         <View style={styles.invitationMark}>
-          <Ionicons color={colors.accent} name="mail-outline" size={18} />
+          <Ionicons color={colors.accentText} name="mail-outline" size={18} />
         </View>
         <View style={styles.invitationTitleBlock}>
           <Text style={styles.itemTitle}>{candidate.name}</Text>
@@ -462,7 +462,7 @@ function LabeledInput({
         multiline={multiline}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.text3}
+        placeholderTextColor={colors.ink3Text}
         style={[styles.textInput, multiline ? styles.textArea : null]}
         value={value}
       />
@@ -516,35 +516,35 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButtonText: { ...createControlStyles(colors).primaryButtonText },
   bodyText: {
     ...textStyles.body,
-    color: colors.text
+    color: colors.ink
   },
   boundaryText: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   callout: {
     alignItems: "center",
-    backgroundColor: colors.liveSoft,
-    borderRadius: radius.card,
+    backgroundColor: colors.okSoft,
+    borderRadius: radius.xl,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
   },
   calloutText: {
     ...textStyles.small,
-    color: colors.text,
+    color: colors.ink,
     flex: 1
   },
   disabled: { opacity: 0.52 },
   errorText: {
     ...textStyles.small,
-    color: colors.rose,
+    color: colors.coralText,
     fontWeight: "600"
   },
   fieldGroup: { gap: spacing.xs },
   fieldLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   invitationHeader: {
@@ -554,9 +554,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   invitationMark: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderColor: colors.accentSoft,
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     borderWidth: 1,
     height: 38,
     justifyContent: "center",
@@ -575,10 +575,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   listStack: { gap: spacing.md },
   metaText: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   metricCell: {
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderTopWidth: 1,
     flexBasis: "46%",
     flexGrow: 1,
@@ -593,7 +593,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   metricLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   metricValue: {
@@ -602,13 +602,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   pressed: { opacity: 0.72 },
   recordRow: {
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
     paddingVertical: spacing.md
   },
   row: {
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderTopWidth: 1,
     gap: spacing.sm,
     paddingTop: spacing.md
@@ -630,21 +630,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   scorePill: {
-    backgroundColor: colors.amberSoft,
+    backgroundColor: colors.macApricot,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
   scoreText: {
     ...textStyles.small,
-    color: colors.amber,
+    color: colors.macApricotText,
     fontWeight: "600"
   },
   sourceTag: {
     ...textStyles.caption,
-    backgroundColor: colors.skySoft,
+    backgroundColor: colors.macBlue,
     borderRadius: radius.pill,
-    color: colors.sky,
+    color: colors.macBlueText,
     fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: spacing.sm,
@@ -652,9 +652,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   stageTag: {
     ...textStyles.caption,
-    backgroundColor: colors.liveSoft,
+    backgroundColor: colors.okSoft,
     borderRadius: radius.pill,
-    color: colors.live,
+    color: colors.okText,
     fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: spacing.sm,

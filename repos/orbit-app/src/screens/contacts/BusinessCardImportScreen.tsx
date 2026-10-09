@@ -165,7 +165,7 @@ function ImportProgress({ scope, current }: { scope: Scope; current: () => boole
   return <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
     <View style={styles.navigation}>
       <Pressable accessibilityRole="button" accessibilityLabel="返回导入中心" onPress={() => router.replace("/contacts/new" as Href)} style={styles.back}>
-        <Ionicons name="chevron-back" size={19} color={colors.accent} /><Text style={styles.backLabel}>导入中心</Text>
+        <Ionicons name="chevron-back" size={19} color={colors.accentText} /><Text style={styles.backLabel}>导入中心</Text>
       </Pressable>
       <Text style={styles.navTitle}>名片导入</Text><View style={styles.navBalance} />
     </View>
@@ -174,7 +174,7 @@ function ImportProgress({ scope, current }: { scope: Scope; current: () => boole
       <Text style={styles.copy}>文件会在后台准备。你可以离开此页，稍后回来查看进度。</Text>
       {!validId ? <Text accessibilityRole="alert" style={styles.error}>导入地址无效，请返回导入中心重新选择。</Text> :
         !job && !error ? <View accessibilityLabel="正在读取导入进度" accessibilityRole="progressbar" style={styles.loading}>
-          <ActivityIndicator color={colors.accent} /><Text style={styles.copy}>正在读取导入进度…</Text>
+          <ActivityIndicator color={colors.accentText} /><Text style={styles.copy}>正在读取导入进度…</Text>
         </View> : null}
       {job && active ? <>
         <View style={styles.summary}>
@@ -221,27 +221,27 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface },
   navigation: { flexDirection: "row", alignItems: "center", minHeight: 48, paddingHorizontal: 16 },
   back: { flex: 1, flexDirection: "row", alignItems: "center", minHeight: 44 },
-  backLabel: { color: colors.accent, fontSize: 15, fontWeight: "600", flexShrink: 1 },
+  backLabel: { color: colors.accentText, fontSize: 15, fontWeight: "600", flexShrink: 1 },
   navTitle: { color: colors.ink, fontSize: 16, fontWeight: "800", textAlign: "center", flex: 1 },
   navBalance: { flex: 1 },
   content: { alignSelf: "center", width: "100%", maxWidth: 540, padding: 16, paddingBottom: 40, gap: 16 },
   title: { color: colors.ink, fontSize: 22, lineHeight: 30, fontWeight: "800" },
-  copy: { color: colors.text2, fontSize: 14, lineHeight: 22 },
+  copy: { color: colors.ink2, fontSize: 14, lineHeight: 22 },
   loading: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 24 },
   summary: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, justifyContent: "space-between", paddingTop: 16 },
   sectionTitle: { color: colors.ink, fontSize: 15, fontWeight: "800" },
-  status: { color: colors.accent, fontSize: 13, fontWeight: "700" },
+  status: { color: colors.accentText, fontSize: 13, fontWeight: "700" },
   track: { height: 4, backgroundColor: colors.surface2, overflow: "hidden", borderRadius: 2 },
-  progress: { height: 4, backgroundColor: colors.accent },
-  row: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: colors.border, minHeight: 48, paddingVertical: 12 },
-  label: { color: colors.text3, fontSize: 14 },
+  progress: { height: 4, backgroundColor: colors.accentText },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: colors.line, minHeight: 48, paddingVertical: 12 },
+  label: { color: colors.ink3Text, fontSize: 14 },
   value: { color: colors.ink, fontSize: 15, fontWeight: "600" },
-  notice: { color: colors.text2, fontSize: 14, lineHeight: 22, backgroundColor: colors.surface2, padding: 16, borderRadius: 12 },
+  notice: { color: colors.ink2, fontSize: 14, lineHeight: 22, backgroundColor: colors.surface2, padding: 16, borderRadius: 12 },
   primary: { minHeight: 50, justifyContent: "center", alignItems: "center", padding: 12, backgroundColor: colors.ink, borderRadius: 12 },
   primaryText: { color: colors.surface, fontWeight: "700", fontSize: 16, textAlign: "center" },
   secondary: { minHeight: 48, justifyContent: "center", alignItems: "center", padding: 12, borderWidth: 1, borderColor: colors.ink, borderRadius: 12 },
   secondaryText: { color: colors.ink, fontSize: 15, fontWeight: "700", textAlign: "center" },
   disabled: { opacity: 0.5 },
-  error: { color: colors.rose, fontSize: 14, lineHeight: 22 },
+  error: { color: colors.coralText, fontSize: 14, lineHeight: 22 },
   errorGroup: { gap: 16 },
 }));

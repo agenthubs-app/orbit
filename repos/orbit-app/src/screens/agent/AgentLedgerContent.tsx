@@ -322,47 +322,47 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     backgroundColor: colors.surface2,
     gap: spacing.xxs,
     padding: spacing.md,
-    borderRadius: radius.card
+    borderRadius: radius.xl
   },
   auditText: {
     ...textStyles.caption,
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 17
   },
   body: {
-    color: colors.text2,
+    color: colors.ink2,
     flexShrink: 1,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   contactLine: {
-    color: colors.text3,
-    fontSize: typography.small,
+    color: colors.ink3Text,
+    fontSize: typography.bodySm,
     fontWeight: "700"
   },
   disabled: {
     opacity: 0.48
   },
   error: {
-    color: colors.rose,
-    fontSize: typography.small,
+    color: colors.coralText,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   linkedEntry: {
     alignSelf: "flex-start",
     backgroundColor: colors.accentSoft,
     borderRadius: radius.sm,
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "600",
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   },
   evidence: {
-    color: colors.text2,
-    fontSize: typography.caption,
+    color: colors.ink2,
+    fontSize: typography.label,
     lineHeight: 18
   },
   evidenceList: {
@@ -370,7 +370,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   loadMore: {
     alignItems: "center",
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
     justifyContent: "center",
@@ -378,24 +378,24 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.md
   },
   loadMoreText: {
-    color: colors.accent,
-    fontSize: typography.small,
+    color: colors.accentText,
+    fontSize: typography.bodySm,
     fontWeight: "700"
   },
   feedback: {
-    color: colors.live,
-    fontSize: typography.small,
+    color: colors.okText,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 20
   },
   label: {
     color: colors.ink,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "800"
   },
   metric: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
     borderRadius: radius.pill,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
@@ -407,23 +407,23 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   metricText: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "700"
   },
   nextAction: {
-    color: colors.text2,
-    fontSize: typography.small,
+    color: colors.ink2,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   operation: {
     alignItems: "flex-start",
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     minHeight: layout.control
   },
   operationBody: {
@@ -441,7 +441,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   operationMarker: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: typography.body,
     fontWeight: "800",
     lineHeight: 20,
@@ -449,16 +449,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 18
   },
   operationMarkerSelected: {
-    color: colors.accent
+    color: colors.accentText
   },
   operationSelected: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accent
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accentText
   },
   operationStatus: {
-    color: colors.text3,
+    color: colors.ink3Text,
     flexShrink: 0,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "700"
   },
   operationTitle: {
@@ -470,8 +470,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     opacity: 0.76
   },
   preview: {
-    color: colors.text,
-    fontSize: typography.small,
+    color: colors.ink,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   primaryButton: {
@@ -485,21 +485,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   secondaryButton: {
     ...createControlStyles(colors).secondaryButton,
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderWidth: 1,
     minWidth: 88
   },
   secondaryButtonText: {
     ...createControlStyles(colors).secondaryButtonText,
-    color: colors.accent,
+    color: colors.accentText,
     flexShrink: 1
   },
   section: {
     gap: spacing.sm
   },
   sectionCount: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "700"
   },
   sectionHeader: {
@@ -514,9 +514,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink
   },
   whyBox: {
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     gap: spacing.xs,
     padding: spacing.md,
-    borderRadius: radius.card
+    borderRadius: radius.xl
   }
 }));

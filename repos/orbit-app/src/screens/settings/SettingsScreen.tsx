@@ -17,6 +17,7 @@ import {
   setPushNotificationsOptIn
 } from "../../notifications/push-device-session";
 import { useOrbitLocale, type OrbitLanguageChoice } from "../../i18n/OrbitLocaleContext";
+import { AppearanceOptions } from "./AppearanceOptions";
 import type { MessageKey } from "../../i18n/messages";
 import { clearProfileEditSession } from "../../data/profile-edit-session";
 
@@ -168,6 +169,7 @@ export function SettingsScreen() {
                     </Pressable>
                   ) : null}
                 </View>
+                <AppearanceOptions />
                 <Pressable
                   accessibilityLabel={pushOptInBusy
                     ? locale.t("settings.remindersPreparing")
@@ -231,7 +233,7 @@ export function SettingsScreen() {
                     style={({ pressed }) => [styles.destination, webScrollMargin, pressed ? styles.rowPressed : null]}
                   >
                     <Text style={styles.destinationText}>{locale.t(destination.titleKey)}</Text>
-                    <Ionicons color={colors.accent} name="chevron-forward" size={16} />
+                    <Ionicons color={colors.accentText} name="chevron-forward" size={16} />
                   </Pressable>
                 ))}
               {section === "account" && auth.signedIn ? <Pressable accessibilityLabel={locale.t("account.signOut")} accessibilityRole="button" disabled={signOutBusy} onPress={() => void signOut()} style={({ pressed }) => [styles.destination, signOutBusy && styles.actionDisabled, pressed && styles.pressed]}>
@@ -250,19 +252,19 @@ export function SettingsScreen() {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sections: { gap: 22, paddingBottom: 1, paddingTop: 8 },
   section: { gap: 6 },
-  sectionTitle: { ...rowRoleStyles.groupHeading, color: colors.text3 },
-  sectionRows: { borderTopColor: colors.border, borderTopWidth: 1 },
-  languageBlock: { borderBottomColor: colors.border, borderBottomWidth: 1, gap: 8, paddingVertical: 13.5 },
+  sectionTitle: { ...rowRoleStyles.groupHeading, color: colors.ink3Text },
+  sectionRows: { borderTopColor: colors.line, borderTopWidth: 1 },
+  languageBlock: { borderBottomColor: colors.line, borderBottomWidth: 1, gap: 8, paddingVertical: 13.5 },
   languageOptions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  languageOption: { borderColor: colors.border, borderRadius: 999, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: 14, paddingVertical: 8 },
-  languageOptionSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
-  languageOptionText: { color: colors.text, fontSize: 13, fontWeight: "600", lineHeight: 18 },
+  languageOption: { borderColor: colors.line, borderRadius: 999, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: 14, paddingVertical: 8 },
+  languageOptionSelected: { backgroundColor: colors.accentText, borderColor: colors.accentText },
+  languageOptionText: { color: colors.ink, fontSize: 13, fontWeight: "600", lineHeight: 18 },
   languageOptionSelectedText: { color: colors.onAccent, fontSize: 13, fontWeight: "700", lineHeight: 18 },
   retryLanguage: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 8, minHeight: 44 },
-  retryLanguageText: { color: colors.accent, fontSize: 13, fontWeight: "700", lineHeight: 20 },
+  retryLanguageText: { color: colors.accentText, fontSize: 13, fontWeight: "700", lineHeight: 20 },
   destination: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: 12,
@@ -272,11 +274,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   destinationText: {
     ...rowRoleStyles.navLabel,
-    color: colors.text,
+    color: colors.ink,
     flex: 1
   },
   notificationBody: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 12,
     lineHeight: 18,
     paddingVertical: 8
@@ -284,9 +286,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionDisabled: {
     opacity: 0.55
   },
-  valueText: { color: colors.muted, flexShrink: 1, fontSize: 14, lineHeight: 20, textAlign: "right" },
-  errorText: { color: colors.rose, fontSize: 13, lineHeight: 20, paddingVertical: 8 },
-  signOutText: { ...rowRoleStyles.navLabel, color: colors.rose, flex: 1 },
+  valueText: { color: colors.ink2, flexShrink: 1, fontSize: 14, lineHeight: 20, textAlign: "right" },
+  errorText: { color: colors.coralText, fontSize: 13, lineHeight: 20, paddingVertical: 8 },
+  signOutText: { ...rowRoleStyles.navLabel, color: colors.coralText, flex: 1 },
   pressed: {
     opacity: 0.82
   },
@@ -294,7 +296,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   // openable without relying on the chevron alone. The dim stays: existing tests
   // treat it as the proof that a press was registered at once.
   rowPressed: {
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     opacity: 0.82
   }
 }));

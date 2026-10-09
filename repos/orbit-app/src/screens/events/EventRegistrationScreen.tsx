@@ -695,7 +695,7 @@ export function EventRegistrationScreen() {
     pending={pendingAction !== null} portraitPending={adaptivePending !== null} readConfirmed={loadedRegistrationView !== null}
     portraitReadConfirmed={portraitReadConfirmed} readFailure={registrationState.kind === "failure" || registrationState.kind === "offline" || eventState.kind === "failure" || eventState.kind === "offline" || portraitReadError !== null} onRetryRead={refresh}
     questionsChanged={questionsChanged} error={submitError ?? adaptiveError ?? portraitReadError ?? (registrationState.kind === "failure" || registrationState.kind === "offline" ? registrationState.error.message : eventState.kind === "failure" || eventState.kind === "offline" ? eventState.error.message : null)} feedback={feedback}
-    refreshControl={<RefreshControl onRefresh={refresh} refreshing={eventState.refreshing || registrationState.refreshing} tintColor="#0A5CFF" />}
+    refreshControl={<RefreshControl onRefresh={refresh} refreshing={eventState.refreshing || registrationState.refreshing} tintColor={colors.accentText} />}
     onBack={() => router.push({ params: { id: eventId }, pathname: "/events/[id]" })} onView={showPortraitView} onSetAnswer={setAnswer} onAnswer={changeAdaptiveAnswer}
     onNext={requestAdaptiveQuestion} onGenerate={generateAdaptivePersona} onSave={savePortrait} onSubmit={submitRegistration} onCancel={confirmCancellation} onLoadNew={loadNewQuestions} onEdit={editPortraitAnswer}
   />;
@@ -707,7 +707,7 @@ export function EventRegistrationScreen() {
         <RefreshControl
           onRefresh={refresh}
           refreshing={eventState.refreshing || registrationState.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={locale.t("registration.title")}
@@ -850,7 +850,7 @@ function RegistrationForm({
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.accent} name="arrow-back-outline" size={17} />
+          <Ionicons color={colors.accentText} name="arrow-back-outline" size={17} />
           <Text style={styles.secondaryButtonText}>{locale.t("registration.backEvent")}</Text>
         </Pressable>
       </DataCard>
@@ -905,7 +905,7 @@ function RegistrationForm({
               pressed ? styles.pressed : null
             ]}
           >
-            <Ionicons color={colors.rose} name="close-outline" size={18} />
+            <Ionicons color={colors.coralText} name="close-outline" size={18} />
             <Text style={styles.cancelButtonText}>
               {pendingAction === "cancel" ? "取消中" : registration.cancelLabel ?? "取消报名"}
             </Text>
@@ -974,8 +974,8 @@ function AdaptiveRegistrationCard({
     <DataCard variant="inset" detail={statusText} title={locale.t("registration.questionnaireTitle")}>
       <Text style={styles.bodyText}>{locale.t("registration.questionnaireHint")}</Text>
       <Text style={styles.bodyText}>{locale.t("registration.questionnaireProgress", { core: progress.coreAnsweredCount, count: progress.answeredCount })}</Text>
-      <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 8, now: progress.answeredCount }} style={{ height: 4, backgroundColor: colors.border }}>
-        <View style={{ height: 4, width: `${progress.answeredCount / 8 * 100}%`, backgroundColor: colors.accent }} />
+      <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 8, now: progress.answeredCount }} style={{ height: 4, backgroundColor: colors.line }}>
+        <View style={{ height: 4, width: `${progress.answeredCount / 8 * 100}%`, backgroundColor: colors.accentText }} />
       </View>
       {done || progress.answeredCount === 8 ? <Text style={styles.feedbackText}>{locale.t("registration.questionnaireComplete")}</Text> : progress.canSuggestStop ? <Text style={styles.feedbackText}>{locale.t("registration.questionnaireStop")}</Text> : null}
       <Text style={styles.evidenceText}>{locale.t("registration.questionnaireUnsaved")}</Text>
@@ -1020,7 +1020,7 @@ function AdaptiveRegistrationCard({
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.accent} name="chatbubble-outline" size={17} />
+          <Ionicons color={colors.accentText} name="chatbubble-outline" size={17} />
           <Text style={styles.secondaryButtonText}>
             {pending === "interview" ? "生成中" : "下一题"}
           </Text>
@@ -1149,7 +1149,7 @@ function RegistrationQuestion({
         multiline
         onChangeText={(customText) => changeDraft({ mode: "other", option: null, customText })}
         placeholder={locale.t("registration.answerPlaceholder")}
-        placeholderTextColor={colors.text4}
+        placeholderTextColor={colors.ink3Text}
         style={styles.answerInput}
         textAlignVertical="top"
         value={draft.customText}
@@ -1174,40 +1174,40 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     textAlignVertical: "top"
   },
   bodyText: {
-    color: colors.text,
+    color: colors.ink,
     ...textStyles.body
   },
   cancelButton: {
     ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
     gap: spacing.sm,
-    backgroundColor: colors.roseSoft
+    backgroundColor: colors.coralSoft
   },
   cancelButtonText: {
     ...createControlStyles(colors).secondaryButtonText,
-    color: colors.rose
+    color: colors.coralText
   },
   disabled: {
     opacity: 0.55
   },
   errorText: {
-    color: colors.rose,
-    fontSize: typography.small,
+    color: colors.coralText,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   eventMetaText: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "600"
   },
   evidenceText: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 17
   },
   feedbackText: {
-    color: colors.live,
-    fontSize: typography.small,
+    color: colors.okText,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 20
   },
@@ -1234,17 +1234,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   personaPreview: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
   },
   personaTag: {
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.pill,
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "700",
     overflow: "hidden",
     paddingHorizontal: 9,
@@ -1278,7 +1278,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   questionText: {
-    color: colors.text,
+    color: colors.ink,
     fontSize: typography.body,
     fontWeight: "700",
     lineHeight: 22
@@ -1293,10 +1293,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...createControlStyles(colors).secondaryButtonText
   },
   statusPill: {
-    backgroundColor: colors.liveSoft,
+    backgroundColor: colors.okSoft,
     borderRadius: radius.pill,
-    color: colors.live,
-    fontSize: typography.caption,
+    color: colors.okText,
+    fontSize: typography.label,
     fontWeight: "700",
     overflow: "hidden",
     paddingHorizontal: 10,

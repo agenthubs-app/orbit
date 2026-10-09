@@ -24,7 +24,7 @@ export function NoteSourceTasks({ actorId, noteId, scopeKey }: { actorId: string
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   section: { gap: spacing.sm },
-  heading: { color: colors.ink, fontSize: typography.small, fontWeight: "800" },
-  text: { color: colors.text, fontSize: typography.small },
-  button: { minHeight: 52, justifyContent: "center", backgroundColor: colors.surface2, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing.md },
+  heading: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "800" },
+  text: { color: colors.ink, fontSize: typography.bodySm },
+  button: { minHeight: 52, justifyContent: "center", backgroundColor: colors.surface2, borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing.md },
 }));

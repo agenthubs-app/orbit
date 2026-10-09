@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { createThemedStyles } from "../design/theme";
+import { floatShadow } from "../design/tokens";
 import type { MainTab } from "../view-models/app-navigation";
 import { OrbitNavigationIcon } from "./OrbitNavigationIcon";
 import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
@@ -30,7 +31,7 @@ export function OrbitTabBar({ active }: { active: MainTab }) {
           const label = locale.t(tab.labelKey as MessageKey);
           const selected = active === tab.id;
           const central = tab.id === "ai";
-          const color = central ? colors.onAccent : selected ? colors.accent : colors.text3;
+          const color = central ? colors.onAccent : selected ? colors.accentText : colors.ink3Text;
           return (
             <Pressable key={tab.id} accessibilityRole="tab" accessibilityLabel={label}
               accessibilityState={{ selected }} aria-selected={selected}
@@ -53,8 +54,8 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   bar: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-around",
     minHeight: 72, borderRadius: 36, paddingHorizontal: 8, paddingVertical: 4,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    boxShadow: "0 10px 28px rgba(11,18,32,0.10)", maxWidth: 508, width: "100%"
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    ...floatShadow(colors), maxWidth: 508, width: "100%"
   },
   tab: { alignItems: "center", justifyContent: "center", gap: 3, flex: 1, maxWidth: 60, minWidth: 44, minHeight: 56, borderRadius: 18, paddingVertical: 4 },
   centralTab: { gap: 4, flexBasis: "auto", flexGrow: 0, flexShrink: 0, maxWidth: "100%", paddingVertical: 0 },

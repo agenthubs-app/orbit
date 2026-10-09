@@ -179,7 +179,7 @@ export function EventAdmissionReviewScreen() {
           <RefreshControl
             onRefresh={state.refresh}
             refreshing={state.refreshing}
-            tintColor={colors.accent}
+            tintColor={colors.accentText}
           />
             )
           }
@@ -208,7 +208,7 @@ export function EventAdmissionReviewScreen() {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   intro: {
-    color: colors.text2,
+    color: colors.ink2,
     marginTop: -spacing.sm,
     ...textStyles.body
   }

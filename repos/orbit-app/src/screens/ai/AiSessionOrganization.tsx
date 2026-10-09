@@ -68,7 +68,7 @@ export function AiSessionOrganizationPanel({
           <View style={styles.header}>
             <Text accessibilityRole="header" style={styles.title}>{item ? locale.t("aiOrganization.organizeSession") : locale.t("aiOrganization.manageGroups")}</Text>
             <Pressable accessibilityLabel={locale.t("aiOrganization.close")} accessibilityRole="button" onPress={onClose} style={styles.iconButton}>
-              <Ionicons color={colors.text2} name="close" size={20} />
+              <Ionicons color={colors.ink2} name="close" size={20} />
             </Pressable>
           </View>
           {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
@@ -79,11 +79,11 @@ export function AiSessionOrganizationPanel({
               <Pressable accessibilityLabel={locale.t("aiOrganization.saveSessionName")} accessibilityRole="button" disabled={busy || !sessionTitle.trim()} onPress={() => onRenameSession(item, sessionTitle)} style={styles.action}><Text style={styles.actionText}>{locale.t("common.save")}</Text></Pressable>
             </View>
             <Pressable accessibilityLabel={item.pinned ? locale.t("aiOrganization.unpinSession") : locale.t("aiOrganization.pinSession")} accessibilityRole="button" disabled={busy} onPress={() => onTogglePin(item)} style={styles.row}>
-              <Ionicons color={colors.accent} name="pin-outline" size={18} /><Text style={styles.rowText}>{item.pinned ? locale.t("aiOrganization.unpin") : locale.t("aiOrganization.pin")}</Text>
+              <Ionicons color={colors.accentText} name="pin-outline" size={18} /><Text style={styles.rowText}>{item.pinned ? locale.t("aiOrganization.unpin") : locale.t("aiOrganization.pin")}</Text>
             </Pressable>
             <Text style={styles.label}>{locale.t("aiOrganization.moveTo")}</Text>
             <Pressable accessibilityLabel={locale.t("aiOrganization.removeFromGroup")} accessibilityRole="button" disabled={busy || item.groupId === null} onPress={() => onMoveSession(item, null)} style={styles.row}><Text style={styles.rowText}>{locale.t("aiOrganization.ungrouped")}</Text></Pressable>
-            {groups.map(group => <Pressable accessibilityLabel={locale.t("aiOrganization.moveToGroup", { name: locale.t.literal(group.name) })} accessibilityRole="button" disabled={busy || item.groupId === group.id} key={group.id} onPress={() => onMoveSession(item, group.id)} style={styles.row}><Text style={styles.rowText}>{group.name}</Text>{item.groupId === group.id ? <Ionicons color={colors.accent} name="checkmark" size={18} /> : null}</Pressable>)}
+            {groups.map(group => <Pressable accessibilityLabel={locale.t("aiOrganization.moveToGroup", { name: locale.t.literal(group.name) })} accessibilityRole="button" disabled={busy || item.groupId === group.id} key={group.id} onPress={() => onMoveSession(item, group.id)} style={styles.row}><Text style={styles.rowText}>{group.name}</Text>{item.groupId === group.id ? <Ionicons color={colors.accentText} name="checkmark" size={18} /> : null}</Pressable>)}
             <Pressable accessibilityLabel={locale.t("aiOrganization.deleteSession")} accessibilityRole="button" disabled={busy} onPress={() => onDeleteSession(item)} style={styles.dangerRow}><Text style={styles.dangerText}>{locale.t("aiOrganization.deleteSession")}</Text></Pressable>
           </View> : null}
           <ScrollView contentContainerStyle={styles.section}>
@@ -112,23 +112,23 @@ export function AiSessionOrganizationPanel({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  action: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: 8, justifyContent: "center", minHeight: 44, paddingHorizontal: 12 },
-  actionText: { color: colors.accent, fontSize: 13, fontWeight: "700" },
+  action: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: 8, justifyContent: "center", minHeight: 44, paddingHorizontal: 12 },
+  actionText: { color: colors.accentText, fontSize: 13, fontWeight: "700" },
   dangerAction: { alignItems: "center", justifyContent: "center", minHeight: 44, paddingHorizontal: 10 },
-  dangerRow: { borderTopColor: colors.border, borderTopWidth: 1, minHeight: 48, justifyContent: "center", marginTop: 8 },
-  dangerText: { color: colors.rose, fontSize: 13, fontWeight: "700" },
-  error: { color: colors.rose, paddingHorizontal: 18, paddingTop: 10 },
-  groupBox: { borderColor: colors.border, borderRadius: 10, borderWidth: 1, gap: 8, padding: 10 },
-  header: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", minHeight: 56, paddingHorizontal: 18 },
+  dangerRow: { borderTopColor: colors.line, borderTopWidth: 1, minHeight: 48, justifyContent: "center", marginTop: 8 },
+  dangerText: { color: colors.coralText, fontSize: 13, fontWeight: "700" },
+  error: { color: colors.coralText, paddingHorizontal: 18, paddingTop: 10 },
+  groupBox: { borderColor: colors.line, borderRadius: 10, borderWidth: 1, gap: 8, padding: 10 },
+  header: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", minHeight: 56, paddingHorizontal: 18 },
   iconButton: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
   inline: { alignItems: "center", flexDirection: "row", gap: 8 },
-  input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, flex: 1, minHeight: 44, paddingHorizontal: 12 },
-  label: { color: colors.text3, fontSize: 12, fontWeight: "700", marginTop: 4 },
+  input: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 8, borderWidth: 1, color: colors.ink, flex: 1, minHeight: 44, paddingHorizontal: 12 },
+  label: { color: colors.ink3Text, fontSize: 12, fontWeight: "700", marginTop: 4 },
   panel: { backgroundColor: colors.surface, borderTopLeftRadius: 18, borderTopRightRadius: 18, bottom: 0, left: 0, maxHeight: "88%", position: "absolute", right: 0 },
   root: { flex: 1 },
-  row: { alignItems: "center", borderBottomColor: colors.hairline, borderBottomWidth: 1, flexDirection: "row", gap: 10, justifyContent: "space-between", minHeight: 48 },
+  row: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", gap: 10, justifyContent: "space-between", minHeight: 48 },
   rowText: { color: colors.ink, flex: 1, fontSize: 14 },
-  scrim: { backgroundColor: "rgba(22,22,26,0.34)", flex: 1 },
+  scrim: { backgroundColor: colors.scrim, flex: 1 },
   section: { gap: 10, padding: 18 },
   title: { color: colors.ink, fontSize: 17, fontWeight: "800" },
 }));

@@ -174,7 +174,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
       backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("schedule.title") })}
       backLabel={locale.t("schedule.title")}
       eyebrow={locale.t("meetingDetails.eyebrow")}
-      refreshControl={<RefreshControl onRefresh={() => setRevision(value => value + 1)} refreshing={loading} tintColor={colors.accent} />}
+      refreshControl={<RefreshControl onRefresh={() => setRevision(value => value + 1)} refreshing={loading} tintColor={colors.accentText} />}
       title={locale.t("meetingDetails.title")}
     >
       {offline ? <OfflineNotice lastSyncedAt={copy?.lastSyncedAt ?? null} reason={copy?.reason ?? null} /> : null}
@@ -182,8 +182,8 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
       {baseline && view ? (
         <>
           <DataCard detail={view.statusLabel} title={view.title}>
-            <View style={styles.infoRow}><Ionicons color={colors.accent} name="time-outline" size={19} /><Text style={styles.body}>{view.timeLabel}</Text></View>
-            <View style={styles.infoRow}><Ionicons color={colors.text3} name="location-outline" size={19} /><Text style={styles.body}>{view.mediumLabel}</Text></View>
+            <View style={styles.infoRow}><Ionicons color={colors.accentText} name="time-outline" size={19} /><Text style={styles.body}>{view.timeLabel}</Text></View>
+            <View style={styles.infoRow}><Ionicons color={colors.ink3Text} name="location-outline" size={19} /><Text style={styles.body}>{view.mediumLabel}</Text></View>
           </DataCard>
 
           {view.proposalNote ? <DataCard title={locale.t("meetingDetails.proposal")}><Text style={styles.body}>{view.proposalNote}</Text></DataCard> : null}
@@ -198,7 +198,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
                   multiline
                   onChangeText={setDraft}
                   placeholder={locale.t("meetingDetails.placeholder")}
-                  placeholderTextColor={colors.text4}
+                  placeholderTextColor={colors.ink3Text}
                   style={styles.input}
                   textAlignVertical="top"
                   value={draft}
@@ -242,25 +242,25 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
 
 function DetailLink({ label, onPress }: { label: string; onPress: () => void }) {
   const { colors, styles } = useStyles();
-  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.link, pressed ? styles.pressed : null]}><Text style={styles.linkText}>{label}</Text><Ionicons color={colors.text3} name="chevron-forward" size={18} /></Pressable>;
+  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.link, pressed ? styles.pressed : null]}><Text style={styles.linkText}>{label}</Text><Ionicons color={colors.ink3Text} name="chevron-forward" size={18} /></Pressable>;
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  body: { ...textStyles.body, color: colors.text, flexShrink: 1 },
+  body: { ...textStyles.body, color: colors.ink, flexShrink: 1 },
   disabled: { opacity: 0.45 },
-  empty: { color: colors.text3 },
-  error: { ...textStyles.small, color: colors.rose },
+  empty: { color: colors.ink3Text },
+  error: { ...textStyles.small, color: colors.coralText },
   infoRow: { alignItems: "flex-start", flexDirection: "row", gap: spacing.sm },
-  input: { ...textStyles.body, borderColor: colors.borderStrong, borderRadius: radius.input, borderWidth: 1, color: colors.text, minHeight: 132, padding: spacing.md },
-  link: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", justifyContent: "space-between", minHeight: 52, paddingVertical: spacing.sm },
+  input: { ...textStyles.body, borderColor: colors.ink4, borderRadius: radius.md, borderWidth: 1, color: colors.ink, minHeight: 132, padding: spacing.md },
+  link: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", justifyContent: "space-between", minHeight: 52, paddingVertical: spacing.sm },
   links: { gap: spacing.xs },
-  linkText: { ...textStyles.body, color: colors.text },
-  meta: { ...textStyles.caption, color: colors.text3 },
-  notice: { backgroundColor: colors.roseSoft, borderRadius: radius.md, gap: spacing.sm, padding: spacing.md },
+  linkText: { ...textStyles.body, color: colors.ink },
+  meta: { ...textStyles.caption, color: colors.ink3Text },
+  notice: { backgroundColor: colors.coralSoft, borderRadius: radius.md, gap: spacing.sm, padding: spacing.md },
   pressed: { opacity: 0.72 },
   primaryButton: { ...createControlStyles(colors).primaryButton, minHeight: 48 },
   primaryText: { color: colors.onAccent, fontWeight: "700" },
   secondaryButton: { ...createControlStyles(colors).secondaryButton, minHeight: 44 },
-  secondaryText: { color: colors.text, fontWeight: "600" },
-  success: { ...textStyles.small, color: colors.live },
+  secondaryText: { color: colors.ink, fontWeight: "600" },
+  success: { ...textStyles.small, color: colors.okText },
 }));

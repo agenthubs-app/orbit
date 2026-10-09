@@ -37,7 +37,7 @@ import { aiSessionSummaryPageSchema } from "../../api/schema/ai-session-page";
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { registerAiSendIntent } from "../../data/ai-send-intent";
-import { layout, textStyles, radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { floatShadow, layout, textStyles, radius, spacing, typography, type OrbitColors } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import {
@@ -113,10 +113,10 @@ const capabilityEntries: {
 ];
 
 const toneStyles = (colors: OrbitColors): Record<CapabilityTone, { icon: string; surface: string }> => ({
-  accent: { icon: colors.accent, surface: colors.accentSofter },
-  amber: { icon: colors.amber, surface: colors.amberSoft },
-  live: { icon: colors.live, surface: colors.liveSoft },
-  sky: { icon: colors.sky, surface: colors.skySoft }
+  accent: { icon: colors.accentText, surface: colors.accentSoft },
+  amber: { icon: colors.macApricotText, surface: colors.macApricot },
+  live: { icon: colors.okText, surface: colors.okSoft },
+  sky: { icon: colors.macBlueText, surface: colors.macBlue }
 });
 
 type AiDrawerHistoryItem = {
@@ -742,7 +742,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
                   style={({ pressed }) => [styles.suggestionRow, pressed ? styles.pressed : null]}>
                   <Ionicons color={colors.ink} name={prompt.kind === "discovery" || prompt.kind === "preparation" ? "calendar-outline" : prompt.kind === "discussion" || prompt.kind === "followup" ? "people-outline" : "checkbox-outline"} size={20} />
                   <Text style={styles.suggestionText}>{prompt.label}</Text>
-                  <Ionicons color={colors.accent} name="arrow-forward" size={20} />
+                  <Ionicons color={colors.accentText} name="arrow-forward" size={20} />
                 </Pressable>
               ))}
             </View>
@@ -750,14 +750,14 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
               <View style={styles.recentHeader}>
                 <Text style={styles.sectionLabel}>{locale.t("ai.recentChats")}</Text>
                 <Pressable accessibilityLabel={locale.t("ai.allChats")} accessibilityRole="button" onPress={() => setHistoryOpen(true)} style={styles.allHistoryButton}>
-                  <Text style={styles.allHistoryText}>{locale.t("ai.all")}</Text><Ionicons name="chevron-forward" color={colors.accent} size={14} />
+                  <Text style={styles.allHistoryText}>{locale.t("ai.all")}</Text><Ionicons name="chevron-forward" color={colors.accentText} size={14} />
                 </Pressable>
               </View>
               {aiOffline ? <OfflineNotice lastSyncedAt={localSessions.freshness.lastSyncedAt} /> : null}
               {historyItems.slice(0, 3).map(item => (
                 <Pressable accessibilityLabel={locale.t("ai.continueChat", { title: item.title })} accessibilityRole="button" key={`${item.source}:${item.id}`} onPress={() => openHistoryItem(item)} style={({ pressed }) => [styles.recentRow, pressed ? styles.pressed : null]}>
                   <View style={styles.recentCopy}><Text numberOfLines={2} style={styles.recentTitle}>{item.title}</Text><Text numberOfLines={1} style={styles.recentPreview}>{item.preview}</Text></View>
-                  <Text style={styles.recentWhen}>{item.when}</Text><Ionicons name="chevron-forward" color={colors.text4} size={14} />
+                  <Text style={styles.recentWhen}>{item.when}</Text><Ionicons name="chevron-forward" color={colors.ink3Text} size={14} />
                 </Pressable>
               ))}
               {recentLoading && !recentOverdue ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.loadingRecent")}</Text> : null}
@@ -891,7 +891,7 @@ function ChatTopBar({
           pressed ? styles.pressed : null
         ]}
       >
-        <Ionicons color={colors.accent} name="chevron-back" size={19} /><Text style={styles.homeButtonText}>{locale.t("ai.home")}</Text>
+        <Ionicons color={colors.accentText} name="chevron-back" size={19} /><Text style={styles.homeButtonText}>{locale.t("ai.home")}</Text>
       </Pressable>
       <View style={styles.brand}><Image accessible={false} testID="iorbit-brand-mark" source={iorbitBrandMark} style={{ width: 18, height: 18 }} /><Text style={styles.topBarTitle}>IORBIT</Text></View>
       <Pressable
@@ -949,7 +949,7 @@ function ChatTranscript({
         <RefreshControl
           onRefresh={onRefresh}
           refreshing={refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       style={styles.transcript}
@@ -984,7 +984,7 @@ function ChatTranscript({
         <View style={styles.intentList}>
           {chat.proposedToolIntents.slice(0, 2).map((intent) => (
             <View key={intent.id} style={styles.intentPill}>
-              <Ionicons color={colors.accent} name="sparkles-outline" size={14} />
+              <Ionicons color={colors.accentText} name="sparkles-outline" size={14} />
               <Text numberOfLines={2} style={styles.intentText}>
                 {intent.label}
               </Text>
@@ -1023,7 +1023,7 @@ function ChatComposer({
         onChangeText={value => { if (!value) setInputHeight(minimumInputHeight); onDraftMessageChange(value); }}
         onContentSizeChange={event => setInputHeight(Math.min(120, Math.max(minimumInputHeight, event.nativeEvent.contentSize.height)))}
         placeholder={locale.t("ai.askPlaceholder")}
-        placeholderTextColor={colors.text4}
+        placeholderTextColor={colors.ink3Text}
         style={[styles.composerInput, { height: Math.max(minimumInputHeight, inputHeight) }]}
         value={draftMessage}
       />
@@ -1051,7 +1051,7 @@ function ChatComposer({
         ]}
       >
         <Ionicons
-          color={canSend ? colors.onAccent : colors.text4}
+          color={canSend ? colors.onAccent : colors.ink3Text}
           name="paper-plane-outline"
           size={19}
         />
@@ -1181,7 +1181,7 @@ function OrbitAiDrawer({
                 onPress={() => onOpenCapability("/inbox" as Href)}
                 style={({ pressed }) => [styles.drawerIconButton, pressed ? styles.pressed : null]}
               >
-                <Ionicons color={colors.text2} name="file-tray-full-outline" size={19} />
+                <Ionicons color={colors.ink2} name="file-tray-full-outline" size={19} />
                 {inboxBadge ? <View style={styles.drawerInboxDot} /> : null}
               </Pressable>
               <Pressable
@@ -1190,7 +1190,7 @@ function OrbitAiDrawer({
                 onPress={onClose}
                 style={({ pressed }) => [styles.drawerIconButton, pressed ? styles.pressed : null]}
               >
-                <Ionicons color={colors.text2} name="close" size={20} />
+                <Ionicons color={colors.ink2} name="close" size={20} />
               </Pressable>
             </View>
           </View>
@@ -1209,11 +1209,11 @@ function OrbitAiDrawer({
               <Text style={styles.drawerNewChatText}>{locale.t("ai.newChat")}</Text>
             </Pressable>
             <View style={styles.drawerSearchBox}>
-              <Ionicons color={colors.text3} name="search-outline" size={17} />
+              <Ionicons color={colors.ink3Text} name="search-outline" size={17} />
               <TextInput
                 onChangeText={onHistoryQueryChange}
                 placeholder={locale.t("ai.searchConversations")}
-                placeholderTextColor={colors.text4}
+                placeholderTextColor={colors.ink3Text}
                 style={styles.drawerSearchInput}
                 value={historyQuery}
               />
@@ -1245,7 +1245,7 @@ function OrbitAiDrawer({
                   onPress={() => onOpenHistoryItem(item)}
                   style={({ pressed }) => [styles.drawerRecentRow, pressed ? styles.pressed : null]}
                 >
-                  <Ionicons color={colors.text3} name="chatbubble-outline" size={17} />
+                  <Ionicons color={colors.ink3Text} name="chatbubble-outline" size={17} />
                   <View style={styles.drawerRecentCopy}>
                     <Text numberOfLines={1} style={styles.drawerRecentTitle}>{item.title}</Text>
                     <Text numberOfLines={1} style={styles.drawerRecentPreview}>{item.preview}</Text>
@@ -1268,7 +1268,7 @@ function OrbitAiDrawer({
               ]}
             >
               <View style={styles.drawerAvatar}>
-                <Ionicons color={colors.amber} name="person-outline" size={21} />
+                <Ionicons color={colors.macApricotText} name="person-outline" size={21} />
               </View>
               <Text numberOfLines={1} style={styles.drawerAccountName}>
                 {accountName}
@@ -1283,7 +1283,7 @@ function OrbitAiDrawer({
                 pressed ? styles.pressed : null
               ]}
             >
-              <Ionicons color={colors.text3} name="settings-outline" size={22} />
+              <Ionicons color={colors.ink3Text} name="settings-outline" size={22} />
             </Pressable>
           </View>
         </View>
@@ -1342,7 +1342,7 @@ function CapabilityRow({
           <Text style={styles.capabilityBadgeText}>{badge}</Text>
         </View>
       ) : null}
-      <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+      <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
     </Pressable>
   );
 }
@@ -1433,7 +1433,7 @@ function OrbitAiHistoryPanel({
           <View style={styles.drawerHeader}>
             <Text style={styles.drawerTitle}>{groupFilterName ? locale.t("ai.historyNamed", { name: groupFilterName }) : locale.t("ai.historyTitle")}</Text>
             <View style={styles.drawerHeaderActions}>
-            <Pressable accessibilityLabel={locale.t("ai.manageGroups")} accessibilityRole="button" onPress={onManageGroups} style={styles.drawerIconButton}><Ionicons color={colors.text2} name="folder-open-outline" size={19} /></Pressable>
+            <Pressable accessibilityLabel={locale.t("ai.manageGroups")} accessibilityRole="button" onPress={onManageGroups} style={styles.drawerIconButton}><Ionicons color={colors.ink2} name="folder-open-outline" size={19} /></Pressable>
             <Pressable
               accessibilityLabel={locale.t("ai.closeHistory")}
               accessibilityRole="button"
@@ -1443,7 +1443,7 @@ function OrbitAiHistoryPanel({
                 pressed ? styles.pressed : null
               ]}
             >
-              <Ionicons color={colors.text2} name="close" size={20} />
+              <Ionicons color={colors.ink2} name="close" size={20} />
             </Pressable>
             </View>
           </View>
@@ -1466,11 +1466,11 @@ function OrbitAiHistoryPanel({
             </View>
           </View> : null}
           <View style={styles.drawerSearchBox}>
-            <Ionicons color={colors.text3} name="search-outline" size={15} />
+            <Ionicons color={colors.ink3Text} name="search-outline" size={15} />
             <TextInput
               onChangeText={onHistoryQueryChange}
               placeholder={locale.t("ai.searchHistory")}
-              placeholderTextColor={colors.text4}
+              placeholderTextColor={colors.ink3Text}
               style={styles.drawerSearchInput}
               value={historyQuery}
             />
@@ -1598,7 +1598,7 @@ function DrawerHistoryRow({
               {item.when}
             </Text>
             {item.pinned ? (
-              <Ionicons color={colors.amber} name="pin-outline" size={12} />
+              <Ionicons color={colors.macApricotText} name="pin-outline" size={12} />
             ) : null}
           </View>
           <Text numberOfLines={1} style={styles.drawerHistoryTitle}>
@@ -1611,7 +1611,7 @@ function DrawerHistoryRow({
       </Pressable>
       {canDelete ? (
         <Pressable accessibilityLabel={locale.t("ai.manageConversation")} accessibilityRole="button" disabled={deleting} onPress={onManage} style={({ pressed }) => [styles.historyDeleteButton, pressed ? styles.pressed : null]}>
-          <Ionicons color={colors.text3} name="ellipsis-horizontal" size={15} />
+          <Ionicons color={colors.ink3Text} name="ellipsis-horizontal" size={15} />
         </Pressable>
       ) : null}
       {canDelete ? (
@@ -1626,7 +1626,7 @@ function DrawerHistoryRow({
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.rose} name="trash-outline" size={14} />
+          <Ionicons color={colors.coralText} name="trash-outline" size={14} />
           {deleting ? (
             <Text style={styles.historyDeleteText}>{locale.t("ai.deleting")}</Text>
           ) : (
@@ -1640,30 +1640,30 @@ function DrawerHistoryRow({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   heroTitle: { color: colors.ink, fontSize: 30, fontWeight: "900", lineHeight: 36, letterSpacing: -0.6 },
-  heroSubtitle: { color: colors.text3, fontSize: 13, lineHeight: 20, marginTop: 6 },
-  sectionLabel: { color: colors.text3, fontSize: 12, fontWeight: "700", lineHeight: 18, letterSpacing: 0.48 },
+  heroSubtitle: { color: colors.ink3Text, fontSize: 13, lineHeight: 20, marginTop: 6 },
+  sectionLabel: { color: colors.ink3Text, fontSize: 12, fontWeight: "700", lineHeight: 18, letterSpacing: 0.48 },
   recentSection: { marginTop: 0, marginBottom: 10 },
-  recentHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", borderBottomColor: colors.border, borderBottomWidth: 1, minHeight: 44 },
+  recentHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", borderBottomColor: colors.line, borderBottomWidth: 1, minHeight: 44 },
   allHistoryButton: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", minWidth: 44, minHeight: 44, gap: 2 },
-  allHistoryText: { color: colors.accent, fontSize: 12, fontWeight: "700", lineHeight: 18 },
-  recentRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, minHeight: 64, borderBottomColor: colors.hairline, borderBottomWidth: 1 },
+  allHistoryText: { color: colors.accentText, fontSize: 12, fontWeight: "700", lineHeight: 18 },
+  recentRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, minHeight: 64, borderBottomColor: colors.line, borderBottomWidth: 1 },
   recentCopy: { flex: 1, minWidth: 0, gap: 2 },
   recentTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 21 },
-  recentPreview: { color: colors.text3, fontSize: 12, lineHeight: 18 },
-  recentWhen: { color: colors.text3, fontSize: 12, lineHeight: 18, maxWidth: "25%" },
-  recentState: { color: colors.text3, fontSize: 13, lineHeight: 20, paddingVertical: 16 },
+  recentPreview: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
+  recentWhen: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, maxWidth: "25%" },
+  recentState: { color: colors.ink3Text, fontSize: 13, lineHeight: 20, paddingVertical: 16 },
   recentFailure: { gap: 8, alignItems: "flex-start", paddingVertical: 12 },
-  retryButton: { justifyContent: "center", alignItems: "center", minHeight: 44, minWidth: 44, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border },
-  deleteConfirmation: { gap: 8, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 12 },
+  retryButton: { justifyContent: "center", alignItems: "center", minHeight: 44, minWidth: 44, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.line },
+  deleteConfirmation: { gap: 8, padding: 12, borderWidth: 1, borderColor: colors.line, borderRadius: 12 },
   deleteActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   confirmButton: { justifyContent: "center", alignItems: "center", minHeight: 44, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.ink },
   confirmButtonText: { color: colors.surface, fontSize: 13, fontWeight: "700", lineHeight: 20 },
   brand: { flexDirection: "row", gap: 6, alignItems: "center", flexShrink: 1 },
   homeButton: { minWidth: 58, minHeight: 44, flexDirection: "row", alignItems: "center", marginLeft: -5 },
-  homeButtonText: { color: colors.accent, fontWeight: "600", fontSize: 15, lineHeight: 22 },
+  homeButtonText: { color: colors.accentText, fontWeight: "600", fontSize: 15, lineHeight: 22 },
   capabilityBadge: {
     alignItems: "center",
-    backgroundColor: colors.rose,
+    backgroundColor: colors.coralText,
     borderRadius: radius.pill,
     justifyContent: "center",
     minWidth: 22,
@@ -1671,7 +1671,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 2
   },
   capabilityBadgeAccent: {
-    backgroundColor: colors.accent
+    backgroundColor: colors.accentText
   },
   capabilityBadgeText: {
     color: colors.onAccent,
@@ -1680,8 +1680,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 14
   },
   capabilityDetail: {
-    color: colors.text3,
-    fontSize: typography.small,
+    color: colors.ink3Text,
+    fontSize: typography.bodySm,
     lineHeight: 18
   },
   capabilityIcon: {
@@ -1693,7 +1693,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   capabilityRow: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -1738,13 +1738,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   composerActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   composerError: {
-    color: colors.rose,
-    fontSize: typography.caption,
+    color: colors.coralText,
+    fontSize: typography.label,
     marginBottom: spacing.xs,
     marginHorizontal: spacing.xl
   },
   composerInput: {
-    color: colors.text,
+    color: colors.ink,
     fontSize: 15,
     lineHeight: 22,
     maxHeight: 120,
@@ -1762,7 +1762,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   composerSendButton: {
     alignItems: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentText,
     borderRadius: 10,
     height: 44,
     justifyContent: "center",
@@ -1792,7 +1792,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   drawerAvatar: {
     alignItems: "center",
-    backgroundColor: colors.amberSoft,
+    backgroundColor: colors.macApricot,
     borderRadius: radius.pill,
     height: 44,
     justifyContent: "center",
@@ -1800,26 +1800,26 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   drawerEmptyBox: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md
   },
   drawerEmptyText: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 17
   },
   drawerEmptyTitle: {
-    color: colors.text,
-    fontSize: typography.small,
+    color: colors.ink,
+    fontSize: typography.bodySm,
     fontWeight: "800",
     lineHeight: 18
   },
   drawerFooter: {
     alignItems: "center",
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
@@ -1834,7 +1834,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   drawerHeaderActions: { flexDirection: "row", gap: spacing.xs },
   drawerInboxDot: {
-    backgroundColor: colors.rose,
+    backgroundColor: colors.coralText,
     borderColor: colors.surface,
     borderRadius: radius.pill,
     borderWidth: 2,
@@ -1854,7 +1854,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs
   },
   drawerHistoryOpenButton: {
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     flex: 1,
     minHeight: 48,
     minWidth: 0,
@@ -1863,11 +1863,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   drawerHistoryPreview: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   drawerHistoryRow: {
     alignItems: "center",
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.sm,
     minHeight: 64,
@@ -1888,7 +1888,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink
   },
   drawerHistoryWhen: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 11,
     fontWeight: "700",
     lineHeight: 14
@@ -1896,7 +1896,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   drawerIconButton: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     height: 44,
     justifyContent: "center",
     width: 44
@@ -1913,9 +1913,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   drawerPanel: {
     backgroundColor: colors.surface,
-    borderBottomRightRadius: radius.card,
-    borderTopRightRadius: radius.card,
-    boxShadow: "4px 0 16px rgba(18,18,28,0.10)",
+    borderBottomRightRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    ...floatShadow(colors),
     elevation: 4,
     gap: spacing.lg,
     height: "100%",
@@ -1930,12 +1930,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   drawerRecentCopy: { flex: 1, gap: 2, minWidth: 0 },
   drawerRecentList: { gap: spacing.xs },
-  drawerRecentPreview: { color: colors.text3, fontSize: typography.caption },
-  drawerRecentRow: { alignItems: "center", borderRadius: radius.control, flexDirection: "row", gap: spacing.sm, minHeight: 50, paddingHorizontal: spacing.sm },
-  drawerRecentTitle: { ...textStyles.body, color: colors.text },
+  drawerRecentPreview: { color: colors.ink3Text, fontSize: typography.label },
+  drawerRecentRow: { alignItems: "center", borderRadius: radius.md, flexDirection: "row", gap: spacing.sm, minHeight: 50, paddingHorizontal: spacing.sm },
+  drawerRecentTitle: { ...textStyles.body, color: colors.ink },
   drawerScrim: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(22,22,26,0.34)"
+    backgroundColor: colors.scrim
   },
   drawerScroll: {
     flex: 1,
@@ -1944,8 +1944,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   drawerSearchBox: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.input,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
@@ -1954,7 +1954,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.md
   },
   drawerSearchInput: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
     minWidth: 0,
     paddingVertical: 0,
@@ -1963,8 +1963,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 23
   },
   drawerSectionTitle: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "700",
     letterSpacing: 0.4,
     marginTop: spacing.md,
@@ -1975,8 +1975,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink
   },
   errorText: {
-    color: colors.rose,
-    fontSize: typography.small,
+    color: colors.coralText,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   drawerSettingsButton: {
@@ -1988,8 +1988,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   historyDeleteButton: {
     alignItems: "center",
-    backgroundColor: colors.roseSoft,
-    borderRadius: radius.control,
+    backgroundColor: colors.coralSoft,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: 4,
     justifyContent: "center",
@@ -1999,7 +1999,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 5
   },
   historyDeleteText: {
-    color: colors.rose,
+    color: colors.coralText,
     fontSize: 11,
     fontWeight: "800",
     lineHeight: 14
@@ -2010,7 +2010,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   historyPanel: {
     backgroundColor: colors.surface,
-    boxShadow: "-8px 0 22px rgba(18,18,28,0.16)",
+    ...floatShadow(colors),
     elevation: 10,
     gap: spacing.md,
     height: "100%",
@@ -2018,8 +2018,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingBottom: spacing.xl,
     paddingHorizontal: spacing.lg,
     paddingTop: 76,
-    borderBottomLeftRadius: radius.card,
-    borderTopLeftRadius: radius.card,
+    borderBottomLeftRadius: radius.xl,
+    borderTopLeftRadius: radius.xl,
     width: "90%"
   },
   intentList: {
@@ -2030,7 +2030,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   intentPill: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.pill,
     flexDirection: "row",
     gap: 6,
@@ -2038,9 +2038,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 7
   },
   intentText: {
-    color: colors.accent,
+    color: colors.accentText,
     flexShrink: 1,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "700"
   },
   messageBubbleUser: {
@@ -2061,7 +2061,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "flex-end"
   },
   messageText: {
-    color: colors.text,
+    color: colors.ink,
     fontSize: 16,
     lineHeight: 24
   },
@@ -2069,7 +2069,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink
   },
   messageTime: {
-    color: colors.text4,
+    color: colors.ink3Text,
     fontSize: 11,
     marginTop: spacing.xs
   },
@@ -2082,13 +2082,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   sheetPanel: {
     backgroundColor: colors.surface,
-    boxShadow: "0 8px 26px rgba(18,18,28,0.18)",
+    ...floatShadow(colors),
     elevation: 10,
     gap: spacing.xxs,
     marginBottom: 72,
     padding: spacing.sm,
     width: 216,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     marginLeft: layout.pageInset
   },
   sheetRoot: {
@@ -2098,7 +2098,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   sheetRow: {
     alignItems: "center",
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.md,
     minHeight: 48,
@@ -2120,19 +2120,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   sheetScrim: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(22,22,26,0.12)"
+    backgroundColor: colors.scrim
   },
   suggestionList: {
     marginTop: 22
   },
   suggestionHeading: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.48,
     lineHeight: 18,
     paddingBottom: 6,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1
   },
   suggestionRow: {
@@ -2141,11 +2141,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: 12,
     minHeight: 50,
     paddingVertical: 14,
-    borderBottomColor: colors.hairline,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1
   },
   suggestionText: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
     fontSize: 15,
     fontWeight: "600",
@@ -2161,7 +2161,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   topBarButton: {
     alignItems: "center",
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     height: 44,
     justifyContent: "center",
     width: 44,

@@ -71,7 +71,7 @@ export function ContactPipelineScreen() {
         <RefreshControl
           onRefresh={refresh}
           refreshing={pipeline.state.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title="关系进展"
@@ -250,7 +250,7 @@ function ActionPanel({ deviceCopy, onContactPress, onViewAll, tasks, offline }: 
         style={({ pressed }) => [styles.viewAllButton, pressed ? styles.pressed : null]}
       >
         <Text style={styles.viewAllText}>查看全部待办</Text>
-        <Ionicons color={colors.accent} name="chevron-forward" size={17} />
+        <Ionicons color={colors.accentText} name="chevron-forward" size={17} />
       </Pressable>
     </View>
   );
@@ -498,11 +498,11 @@ const avatarToneStyles = (colors: OrbitColors): Record<
   ContactAvatarTone,
   { backgroundColor: string; color: string }
 > => ({
-  amber: { backgroundColor: colors.amberSoft, color: colors.amber },
-  emerald: { backgroundColor: colors.liveSoft, color: colors.live },
-  rose: { backgroundColor: colors.roseSoft, color: colors.rose },
-  sky: { backgroundColor: colors.skySoft, color: colors.sky },
-  violet: { backgroundColor: colors.accentSoft, color: colors.accent }
+  amber: { backgroundColor: colors.macApricot, color: colors.macApricotText },
+  emerald: { backgroundColor: colors.macTeal, color: colors.macTealText },
+  rose: { backgroundColor: colors.macPink, color: colors.macPinkText },
+  sky: { backgroundColor: colors.macBlue, color: colors.macBlueText },
+  violet: { backgroundColor: colors.macLav, color: colors.macLavText }
 });
 
 function ContactAvatar({ id, name }: {
@@ -525,7 +525,7 @@ function ContactAvatar({ id, name }: {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionRow: {
     alignItems: "center",
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -540,7 +540,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionTitle: {
     ...textStyles.body,
-    color: colors.text,
+    color: colors.ink,
     fontWeight: "600"
   },
   avatar: {
@@ -561,7 +561,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   contactDetail: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   contactName: {
     ...textStyles.listTitle,
@@ -579,7 +579,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   countBadgeText: {
     ...textStyles.small,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   disabled: { opacity: 0.45 },
@@ -588,7 +588,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 3
   },
-  dueBadgeOverdue: { backgroundColor: colors.roseSoft },
+  dueBadgeOverdue: { backgroundColor: colors.coralSoft },
   dueBadgeToday: { backgroundColor: colors.accentSoft },
   dueBadgeUpcoming: { backgroundColor: colors.surface3 },
   dueBadgeText: {
@@ -596,22 +596,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "700",
     lineHeight: 15
   },
-  dueTextOverdue: { color: colors.rose },
-  dueTextToday: { color: colors.accent },
-  dueTextUpcoming: { color: colors.text2 },
+  dueTextOverdue: { color: colors.coralText },
+  dueTextToday: { color: colors.accentText },
+  dueTextUpcoming: { color: colors.ink2 },
   emptyText: {
     ...textStyles.small,
-    color: colors.text3,
+    color: colors.ink3Text,
     paddingVertical: spacing.xl,
     textAlign: "center"
   },
   errorText: {
     ...textStyles.small,
-    color: colors.rose
+    color: colors.coralText
   },
   feedbackText: {
     ...textStyles.small,
-    color: colors.live,
+    color: colors.okText,
     fontWeight: "600"
   },
   modeButton: {
@@ -624,7 +624,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   modeButtonTextActive: { ...createControlStyles(colors).selectedChipText },
   modeControl: {
     backgroundColor: colors.surface2,
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.xs,
     padding: spacing.xs
@@ -643,7 +643,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   pressed: { opacity: 0.68 },
   sectionDetail: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     marginTop: 3
   },
   sectionHeader: {
@@ -666,13 +666,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   snapshotCellBorder: {
-    borderLeftColor: colors.border,
+    borderLeftColor: colors.line,
     borderLeftWidth: 1
   },
   snapshotGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   snapshotHeader: {
@@ -682,7 +682,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   snapshotLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     textAlign: "center"
   },
   snapshotSection: { gap: spacing.sm },
@@ -704,7 +704,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   stageContactRow: {
     alignItems: "center",
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: 1,
     flexDirection: "row",
     minHeight: 68,
@@ -725,29 +725,29 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   stageTabCount: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
-  stageTabCountSelected: { color: colors.accent },
+  stageTabCountSelected: { color: colors.accentText },
   stageTabLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     textAlign: "center"
   },
   stageTabLabelSelected: {
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "700"
   },
-  stageTabSelected: { borderBottomColor: colors.accent },
+  stageTabSelected: { borderBottomColor: colors.accentText },
   stageTabs: {
     flexDirection: "row",
     flexWrap: "wrap",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   surface: { gap: spacing.xs },
   viewAllButton: {
     alignItems: "center",
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: 1,
     flexDirection: "row",
     justifyContent: "center",
@@ -755,7 +755,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   viewAllText: {
     ...textStyles.small,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   }
 }));

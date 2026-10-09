@@ -144,7 +144,7 @@ test("contact rows keep only identity and one compact value signal visible", () 
   assert.doesNotMatch(cardSource, /contact\.nextAction/u);
   assert.match(screenSource, /contactMatchScore:[\s\S]*maxWidth: "40%"/u, "and cannot crowd out the name");
   assert.match(screenSource, /styles\.contactList/u);
-  assert.match(screenSource, /contactList:[\s\S]*borderRadius: radius\.card/u);
+  assert.match(screenSource, /contactList:[\s\S]*borderRadius: radius\.xl/u);
 });
 
 test("contacts search results keep the same avatar identity treatment as contact cards", () => {

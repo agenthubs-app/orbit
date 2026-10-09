@@ -104,7 +104,7 @@ export function AgentActionsScreen() {
         <RefreshControl
           onRefresh={refreshAll}
           refreshing={actionsState.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={locale.t("agentActions.title")}
@@ -163,7 +163,7 @@ function AgentActionsContent({
           ))}
         </View>
         <View style={styles.nextStep}>
-          <Ionicons color={colors.accent} name="shield-checkmark-outline" size={18} />
+          <Ionicons color={colors.accentText} name="shield-checkmark-outline" size={18} />
           <Text style={styles.nextStepText}>{view.nextAction}</Text>
         </View>
       </DataCard>
@@ -176,7 +176,7 @@ function AgentActionsContent({
         <View style={styles.ruleList}>
           {view.settings.rules.map((rule) => (
             <View key={rule} style={styles.ruleItem}>
-              <Ionicons color={colors.live} name="checkmark-circle-outline" size={17} />
+              <Ionicons color={colors.okText} name="checkmark-circle-outline" size={17} />
               <Text style={styles.ruleText}>{rule}</Text>
             </View>
           ))}
@@ -278,7 +278,7 @@ function AgentActionCard({
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.accent} name="close-outline" size={17} />
+          <Ionicons color={colors.accentText} name="close-outline" size={17} />
           <Text style={styles.secondaryButtonText}>
             {dismissPending ? locale.t("agentActions.processing") : action.dismissLabel + needsNetwork}
           </Text>
@@ -299,34 +299,34 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink
   },
   bodyText: {
-    color: colors.text,
-    fontSize: typography.small,
+    color: colors.ink,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   disabled: {
     opacity: 0.54
   },
   errorText: {
-    color: colors.rose,
-    fontSize: typography.small,
+    color: colors.coralText,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   feedbackText: {
-    color: colors.live,
-    fontSize: typography.small,
+    color: colors.okText,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 20
   },
   metaBox: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
+    borderColor: colors.line,
     gap: spacing.sm,
     padding: spacing.md,
-    borderRadius: radius.card
+    borderRadius: radius.xl
   },
   metaLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     width: 38
   },
   metaRow: {
@@ -335,15 +335,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   metaValue: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     lineHeight: 19
   },
   metricChip: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.control,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
@@ -354,34 +354,34 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   metricText: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16
   },
   nextStep: {
     alignItems: "flex-start",
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
-    borderRadius: radius.card
+    borderRadius: radius.xl
   },
   nextStepText: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   priorityTag: {
-    backgroundColor: colors.amberSoft,
-    borderColor: colors.amberSoft
+    backgroundColor: colors.macApricot,
+    borderColor: colors.macApricot
   },
   priorityText: {
-    color: colors.amber,
-    fontSize: typography.caption,
+    color: colors.macApricotText,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16
   },
@@ -410,9 +410,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   ruleText: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   secondaryButton: {
@@ -424,13 +424,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   secondaryButtonText: {
     ...createControlStyles(colors).secondaryButtonText,
-    color: colors.accent,
+    color: colors.accentText,
     flexShrink: 1
   },
   tag: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
@@ -441,8 +441,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   tagText: {
-    color: colors.text2,
-    fontSize: typography.caption,
+    color: colors.ink2,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 16
   }

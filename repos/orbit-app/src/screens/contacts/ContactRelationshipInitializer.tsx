@@ -62,7 +62,7 @@ export function ContactInitializationForm({ state, ready, language, timeZone, ca
   const fields: ["goal" | "title" | "date" | "time", string, string][] = state.draft.stage === "active" ? [["goal", text("关系目标", "Relationship goal", "関係の目標"), ""]]
     : dated ? [["title", text("跟进内容", "Next step", "次の内容"), ""], ["date", text("下次日期", "Next date", "次の日付"), "YYYY-MM-DD"], ["time", text("下次时间", "Next time", "次の時刻"), "HH:mm"]] : [];
   return <DataCard title={text("我的关系设置", "My relationship settings", "自分の関係設定")}>
-    <Text style={{ color: colors.text3 }}>{text("交换仅确认已认识。此处只设置你自己的关系下一步，不代表对方，也不会发送消息。", "An exchange confirms you know each other. Set your own next step; this does not represent the other person or send a message.", "交換は知り合ったことの確認です。自分の次のステップのみを設定し、相手には送信しません。")}</Text>
+    <Text style={{ color: colors.ink3Text }}>{text("交换仅确认已认识。此处只设置你自己的关系下一步，不代表对方，也不会发送消息。", "An exchange confirms you know each other. Set your own next step; this does not represent the other person or send a message.", "交換は知り合ったことの確認です。自分の次のステップのみを設定し、相手には送信しません。")}</Text>
     {!ready ? <Text accessibilityRole="alert">{text("请先确认登录及服务连接。", "Confirm sign-in and service connection.", "ログインと接続を確認してください。")}</Text> : null}
     {state.view.kind === "loading" ? <Text>{contactInitializationStageText("loading", language)}</Text> : null}
     {state.error ? <Text accessibilityRole="alert" style={{ color: colors.ink }}>{state.error}</Text> : null}
@@ -70,13 +70,13 @@ export function ContactInitializationForm({ state, ready, language, timeZone, ca
     {state.view.kind === "pending" ? <View style={{ gap: 12 }}>
       <Text style={{ color: colors.ink }}>{contactInitializationStageText("pending", language)}</Text>
       {(["active", "needs_follow_up", "nurture", "archived"] as const).map(stage => <Pressable key={stage} accessibilityRole="radio" accessibilityLabel={contactInitializationStageText(stage, language)} accessibilityState={{ checked: state.draft.stage === stage, disabled }} disabled={disabled} onPress={() => onChange({ stage })} style={{ paddingVertical: 12 }}>
-        <Text style={{ color: state.draft.stage === stage ? colors.accent : colors.ink }}>{state.draft.stage === stage ? "● " : "○ "}{contactInitializationStageText(stage, language)}</Text>
+        <Text style={{ color: state.draft.stage === stage ? colors.accentText : colors.ink }}>{state.draft.stage === stage ? "● " : "○ "}{contactInitializationStageText(stage, language)}</Text>
       </Pressable>)}
-      {fields.map(([key, label, placeholder]) => <View key={key} style={{ gap: 6 }}><Text style={{ color: colors.text2 }}>{label}</Text><TextInput accessibilityLabel={label} value={state.draft[key]} editable={!disabled} onChangeText={value => onChange({ [key]: value })} placeholder={placeholder} placeholderTextColor={colors.text3} maxLength={key === "goal" ? 2000 : key === "title" ? 500 : 16} autoCapitalize="none" style={{ color: colors.ink, borderColor: colors.border, borderWidth: 1, borderRadius: 10, padding: 12 }} /></View>)}
-      {dated ? <Text style={{ color: colors.text3 }}>{text("当前设备时区：", "Device time zone: ", "端末のタイムゾーン：")}{timeZone}{!canSave ? text("（无法确认，不能提交日期）", " (unconfirmed; dated steps cannot be saved)", "（未確認のため日時を保存できません）") : ""}</Text> : null}
+      {fields.map(([key, label, placeholder]) => <View key={key} style={{ gap: 6 }}><Text style={{ color: colors.ink2 }}>{label}</Text><TextInput accessibilityLabel={label} value={state.draft[key]} editable={!disabled} onChangeText={value => onChange({ [key]: value })} placeholder={placeholder} placeholderTextColor={colors.ink3Text} maxLength={key === "goal" ? 2000 : key === "title" ? 500 : 16} autoCapitalize="none" style={{ color: colors.ink, borderColor: colors.line, borderWidth: 1, borderRadius: 10, padding: 12 }} /></View>)}
+      {dated ? <Text style={{ color: colors.ink3Text }}>{text("当前设备时区：", "Device time zone: ", "端末のタイムゾーン：")}{timeZone}{!canSave ? text("（无法确认，不能提交日期）", " (unconfirmed; dated steps cannot be saved)", "（未確認のため日時を保存できません）") : ""}</Text> : null}
       {state.draft.stage === "archived" ? <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: state.draft.archiveConfirmed, disabled }} disabled={disabled} onPress={() => onChange({ archiveConfirmed: !state.draft.archiveConfirmed })}><Text style={{ color: colors.ink, paddingVertical: 12 }}>{state.draft.archiveConfirmed ? "☑ " : "☐ "}{text("确认归档我的关系", "Confirm archiving my relationship", "自分の関係をアーカイブすることを確認")}</Text></Pressable> : null}
-      {state.locked ? <Text style={{ color: colors.text3 }}>{text("结果尚待确认；重试使用原提交。也可刷新读取最新状态。", "Awaiting confirmation; retry reuses the original request. You can also refresh.", "確認待ちです。再試行では同じリクエストを使用します。更新も可能です。")}</Text> : null}
-      <Pressable accessibilityRole="button" disabled={!ready || state.busy || !state.draft.stage || (!state.locked && dated && !canSave)} onPress={() => void onSave()} style={{ padding: 14, borderRadius: 10, backgroundColor: colors.accent, opacity: !ready || state.busy || !state.draft.stage ? 0.5 : 1 }}>
+      {state.locked ? <Text style={{ color: colors.ink3Text }}>{text("结果尚待确认；重试使用原提交。也可刷新读取最新状态。", "Awaiting confirmation; retry reuses the original request. You can also refresh.", "確認待ちです。再試行では同じリクエストを使用します。更新も可能です。")}</Text> : null}
+      <Pressable accessibilityRole="button" disabled={!ready || state.busy || !state.draft.stage || (!state.locked && dated && !canSave)} onPress={() => void onSave()} style={{ padding: 14, borderRadius: 10, backgroundColor: colors.accentText, opacity: !ready || state.busy || !state.draft.stage ? 0.5 : 1 }}>
         <Text style={{ color: colors.onAccent }}>{state.busy ? text("保存中…", "Saving…", "保存中…") : state.locked ? text("重试原提交", "Retry original submission", "同じ送信を再試行") : text("确认我的选择", "Confirm my choice", "自分の選択を確定")}</Text>
       </Pressable>
     </View> : null}
@@ -84,8 +84,8 @@ export function ContactInitializationForm({ state, ready, language, timeZone, ca
       <Text style={{ color: colors.ink }}>{text("当前阶段：", "Current stage: ", "現在の段階：")}{contactInitializationStageText(state.view.stage, language)}</Text>
       {state.view.goal ? <Text style={{ color: colors.ink }}>{text("关系目标：", "Goal: ", "目標：")}{state.view.goal}</Text> : null}
       {state.view.tasks.map(task => <Text key={task.id} style={{ color: colors.ink }}>{task.title} · {new Date(task.dueAt).toLocaleString(language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US", { timeZone })}</Text>)}
-      {state.view.tasks.length ? <Pressable accessibilityRole="button" onPress={() => { if (state.view.kind === "initialized") onOpenTask(state.view.connectionId); }}><Text style={{ color: colors.accent, paddingVertical: 12 }}>{text("处理关系跟进", "Manage follow-up", "フォローアップを管理")}</Text></Pressable> : null}
+      {state.view.tasks.length ? <Pressable accessibilityRole="button" onPress={() => { if (state.view.kind === "initialized") onOpenTask(state.view.connectionId); }}><Text style={{ color: colors.accentText, paddingVertical: 12 }}>{text("处理关系跟进", "Manage follow-up", "フォローアップを管理")}</Text></Pressable> : null}
     </View> : null}
-    <Pressable accessibilityRole="button" disabled={state.busy || !ready} onPress={() => void onRefresh()}><Text style={{ color: colors.accent, paddingVertical: 12 }}>{text("刷新关系状态", "Refresh relationship state", "関係状態を更新")}</Text></Pressable>
+    <Pressable accessibilityRole="button" disabled={state.busy || !ready} onPress={() => void onRefresh()}><Text style={{ color: colors.accentText, paddingVertical: 12 }}>{text("刷新关系状态", "Refresh relationship state", "関係状態を更新")}</Text></Pressable>
   </DataCard>;
 }

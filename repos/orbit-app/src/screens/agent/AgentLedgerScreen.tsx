@@ -186,7 +186,7 @@ export function AgentLedgerScreen({
         <RefreshControl
           onRefresh={refresh}
           refreshing={ledgerState.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={mode === "today" ? "Today" : "All Actions"}

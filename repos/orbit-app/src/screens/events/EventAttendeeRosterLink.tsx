@@ -49,6 +49,6 @@ function AuthenticatedRosterLink({ eventId, countLabel, onNavigate, scopeKey, is
 const useStyles = createThemedStyles(colors => ({
   link: { minHeight: 44, paddingVertical: 11, flexDirection: "row" as const, justifyContent: "space-between" as const, alignItems: "center" as const, gap: spacing.sm },
   title: { color: colors.ink, ...textStyles.body },
-  detail: { color: colors.text3, ...textStyles.small },
+  detail: { color: colors.ink3Text, ...textStyles.small },
   notice: { gap: spacing.xs },
 }));

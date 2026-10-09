@@ -116,7 +116,7 @@ test("a new account walks welcome → profile, saves with a receipt and a readba
   await page.getByRole("heading", { name: /先让 iOrbit/u }).waitFor();
   for (const title of ["告诉我们你是谁", "你最近想推进什么", "你能提供什么、在找什么", "iOrbit 帮你写自我介绍", "带入已有人脉"]) await page.getByText(title, { exact: true }).waitFor();
   const start = page.getByRole("button", { name: "开始设置" });
-  assert.equal(await start.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)", "black primary button");
+  assert.equal(await start.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)", "black primary button");
   assert.equal(Math.round((await start.boundingBox())!.height), 50);
   await shot(page, "01-welcome");
   await start.click();
@@ -146,7 +146,7 @@ test("goals: up to three, horizon defaults to this quarter, saved in the web for
   for (const goal of ["获取客户", "开拓新市场", "寻找投资"]) await page.getByRole("button", { name: goal, exact: true }).click();
   assert.equal(await page.getByRole("button", { name: "招聘人才", exact: true }).isDisabled(), true, "a fourth goal is blocked");
   await page.getByText("3 / 3", { exact: true }).waitFor();
-  assert.equal(await page.getByRole("button", { name: "获取客户", exact: true }).evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)", "selected chip is black");
+  assert.equal(await page.getByRole("button", { name: "获取客户", exact: true }).evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)", "selected chip is black");
   await page.getByRole("textbox", { name: "具体想做成什么" }).fill("先找到 5 家试用企业");
   await shot(page, "03-goals");
   await page.getByRole("button", { name: "继续" }).click();
@@ -164,9 +164,9 @@ test("a failed save keeps every value and retries from the banner", async t => {
   await page.getByRole("button", { name: "继续", exact: true }).click();
   const banner = page.getByText("没有保存成功，已填内容都还在。");
   await banner.waitFor();
-  assert.equal(await banner.evaluate(el => getComputedStyle(el).color), "rgb(180, 35, 24)", "rose failure text");
+  assert.equal(await banner.evaluate(el => getComputedStyle(el).color), "rgb(184, 62, 35)", "rose failure text");
   await shot(page, "07-save-failed");
-  assert.equal(await page.getByRole("button", { name: "客户引荐", exact: true }).evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)", "selection survives the failure");
+  assert.equal(await page.getByRole("button", { name: "客户引荐", exact: true }).evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)", "selection survives the failure");
   await set(page, { put: "ok" });
   await page.getByRole("button", { name: "重试" }).click();
   await page.getByRole("heading", { name: /iOrbit 帮你/u }).waitFor();
@@ -182,7 +182,7 @@ test("no network shows the amber notice and keeps the typed values", async t => 
   await page.getByRole("button", { name: "继续" }).click();
   const notice = page.getByText("现在没有网络。可以继续填写，联网后点「继续」保存。");
   await notice.waitFor();
-  assert.equal(await notice.evaluate(el => getComputedStyle(el).color), "rgb(135, 96, 32)", "amber offline text");
+  assert.equal(await notice.evaluate(el => getComputedStyle(el).color), "rgb(139, 96, 46)", "amber offline text");
   assert.equal(await page.getByRole("textbox", { name: "姓名" }).inputValue(), "林晓");
   assert.equal(await page.getByRole("textbox", { name: "生日" }).inputValue(), "1990-05-20");
   await shot(page, "08-offline");
@@ -277,7 +277,7 @@ test("step 3 groups show 8 options plus selected extras, expand to all, and togg
   // Collapsed: the first 8 per group; the saved 20th topic stays visible; the 9th offer is hidden.
   assert.equal(await page.getByRole("button", { name: "AI 落地经验", exact: true }).count(), 0, "9th+ options are hidden");
   assert.equal(await page.getByRole("button", { name: "中国市场资源", exact: true }).count(), 1, "8th option visible");
-  assert.equal(await page.getByRole("button", { name: "文旅与餐饮", exact: true }).evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)", "selected option beyond 8 stays visible");
+  assert.equal(await page.getByRole("button", { name: "文旅与餐饮", exact: true }).evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)", "selected option beyond 8 stays visible");
   assert.equal(await page.getByRole("button", { name: "教育", exact: true }).count(), 0, "unselected 19th topic hidden");
   assert.equal(await page.getByRole("button", { name: "展开更多" }).count(), 3, "one control per group");
   await shot(page, "11-persona-collapsed");

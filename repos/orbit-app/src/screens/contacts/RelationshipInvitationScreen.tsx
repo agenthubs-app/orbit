@@ -93,11 +93,11 @@ export function RelationshipInvitationScreen() {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actions: { gap: spacing.md },
-  bodyText: { ...textStyles.body, color: colors.text },
+  bodyText: { ...textStyles.body, color: colors.ink },
   disabled: { opacity: 0.45 },
-  errorText: { color: colors.rose, fontSize: typography.small, lineHeight: 20 },
-  helperText: { color: colors.text2, fontSize: typography.small, lineHeight: 20 },
+  errorText: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
+  helperText: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
   primaryButton: { ...createControlStyles(colors).primaryButton, alignSelf: "flex-start" },
   primaryButtonText: { ...createControlStyles(colors).primaryButtonText },
-  successText: { color: colors.live, fontSize: typography.small, lineHeight: 20 }
+  successText: { color: colors.okText, fontSize: typography.bodySm, lineHeight: 20 }
 }));

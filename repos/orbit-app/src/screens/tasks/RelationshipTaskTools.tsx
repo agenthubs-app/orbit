@@ -131,14 +131,14 @@ function RelationshipTaskToolsView({ tasks, contacts }: RelationshipTaskToolsPro
 }
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
-  section: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingVertical: spacing.lg, gap: spacing.md },
+  section: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, paddingVertical: spacing.lg, gap: spacing.md },
   heading: { ...textStyles.listTitle, color: colors.ink },
-  body: { ...textStyles.body, color: colors.text },
-  detail: { ...textStyles.small, color: colors.text3 },
-  error: { ...textStyles.small, color: colors.rose },
+  body: { ...textStyles.body, color: colors.ink },
+  detail: { ...textStyles.small, color: colors.ink3Text },
+  error: { ...textStyles.small, color: colors.coralText },
   disabled: { opacity: 0.5 },
   button: { ...createControlStyles(colors).secondaryButton },
   buttonText: { ...createControlStyles(colors).secondaryButtonText },
   options: { gap: spacing.sm },
-  option: { minHeight: 44, justifyContent: "center", paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  option: { minHeight: 44, justifyContent: "center", paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
 }));

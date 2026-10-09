@@ -206,7 +206,7 @@ export function ContactsDashboardScreen() {
         <RefreshControl
           onRefresh={refreshAll}
           refreshing={localMode ? local.freshness.refreshing || overviewState.refreshing : dashboardState.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title="人脉分析"
@@ -618,7 +618,7 @@ function OpportunityActionBriefSheet({
                     pressed ? styles.pressed : null
                   ]}
                 >
-                  <Ionicons color={colors.text2} name="close" size={21} />
+                  <Ionicons color={colors.ink2} name="close" size={21} />
                 </Pressable>
               </View>
 
@@ -640,7 +640,7 @@ function OpportunityActionBriefSheet({
                     ).map((item) => (
                       <View key={item} style={styles.actionBriefEvidenceRow}>
                         <Ionicons
-                          color={colors.live}
+                          color={colors.okText}
                           name="checkmark-circle-outline"
                           size={18}
                         />
@@ -792,7 +792,7 @@ function AnalysisDiagnosisCard({
   return (
     <View style={styles.analysisDiagnosisCard}>
       <View style={styles.analysisDiagnosisIcon}>
-        <Ionicons color={colors.accent} name="sparkles-outline" size={20} />
+        <Ionicons color={colors.accentText} name="sparkles-outline" size={20} />
       </View>
       <Text style={styles.analysisDiagnosisText}>{diagnosis.detail}</Text>
       <View style={styles.analysisDiagnosisScore}>
@@ -902,7 +902,7 @@ function StructureDimensionControl({
             ]}
           >
             <Ionicons
-              color={isSelected ? colors.accent : colors.text3}
+              color={isSelected ? colors.accentText : colors.ink3Text}
               name={structureDimensionIcon(dimension.id)}
               size={16}
             />
@@ -979,13 +979,13 @@ function StructureBreakdownCard({
             <Text style={styles.structureDetailButtonText}>
               查看{selectedItem.label}分组
             </Text>
-            <Ionicons color={colors.accent} name="arrow-forward" size={17} />
+            <Ionicons color={colors.accentText} name="arrow-forward" size={17} />
           </Pressable>
         </>
       ) : (
         <View style={styles.analysisEmptyBlock}>
           <Ionicons
-            color={colors.text4}
+            color={colors.ink3Text}
             name={structureDimensionIcon(dimension.id)}
             size={20}
           />
@@ -997,7 +997,7 @@ function StructureBreakdownCard({
 
       <View style={styles.structureInsight}>
         <View style={styles.structureInsightIcon}>
-          <Ionicons color={colors.amber} name="bulb-outline" size={18} />
+          <Ionicons color={colors.macApricotText} name="bulb-outline" size={18} />
         </View>
         <View style={styles.structureInsightCopy}>
           <Text style={styles.structureInsightLabel}>结构洞察</Text>
@@ -1241,31 +1241,32 @@ function structureDimensionIcon(
 }
 
 function structurePieColor(index: number, colors: OrbitColors): string {
+  // Data visualisation uses only the plum and rose ramps (01-system: no third hue).
   return [
-    colors.accent,
-    colors.live,
-    colors.sky,
-    colors.amber,
-    colors.rose,
-    "#7B6E5B",
-    "#3E8C94",
-    "#8B6BB1",
-    colors.muted
-  ][index % 9] ?? colors.text3;
+    colors.plum700,
+    colors.rose500,
+    colors.plum500,
+    colors.rose700,
+    colors.plum300,
+    colors.rose300,
+    colors.plum900,
+    colors.rose100,
+    colors.ink4
+  ][index % 9] ?? colors.ink4;
 }
 
 function analysisToneVisual(
   tone: ContactsAnalysisActivityView["tone"] | ContactsAnalysisDimensionView["tone"], colors: OrbitColors
 ): { backgroundColor: string; color: string } {
   if (tone === "live") {
-    return { backgroundColor: colors.liveSoft, color: colors.live };
+    return { backgroundColor: colors.okSoft, color: colors.okText };
   }
 
   if (tone === "sky") {
-    return { backgroundColor: colors.skySoft, color: colors.sky };
+    return { backgroundColor: colors.macBlue, color: colors.macBlueText };
   }
 
-  return { backgroundColor: colors.amberSoft, color: colors.amber };
+  return { backgroundColor: colors.macApricot, color: colors.macApricotText };
 }
 
 function dimensionIcon(
@@ -1335,7 +1336,7 @@ function GoalCoverageCard({
           ]}
         >
           <Ionicons
-            color={colors.text3}
+            color={colors.ink3Text}
             name="refresh-outline"
             size={18}
           />
@@ -1432,7 +1433,7 @@ function CoverageSignal({
       <Text style={[styles.coverageSignalValue, { color: visual.color }]}>
         {signal.value}
       </Text>
-      <Ionicons color={colors.text4} name="chevron-forward" size={15} />
+      <Ionicons color={colors.ink3Text} name="chevron-forward" size={15} />
     </Pressable>
   );
 }
@@ -1442,23 +1443,23 @@ function coverageSignalVisual(
 ): { backgroundColor: string; color: string; icon: keyof typeof Ionicons.glyphMap } {
   if (id === "strong") {
     return {
-      backgroundColor: colors.skySoft,
-      color: colors.sky,
+      backgroundColor: colors.macBlue,
+      color: colors.macBlueText,
       icon: "people-outline"
     };
   }
 
   if (id === "referral") {
     return {
-      backgroundColor: colors.amberSoft,
-      color: colors.amber,
+      backgroundColor: colors.macApricot,
+      color: colors.macApricotText,
       icon: "git-branch-outline"
     };
   }
 
   return {
-    backgroundColor: colors.liveSoft,
-    color: colors.live,
+    backgroundColor: colors.okSoft,
+    color: colors.okText,
     icon: "diamond-outline"
   };
 }
@@ -1522,7 +1523,7 @@ function RecommendedActionsCard({
                 {action.detail}
               </Text>
             </View>
-            <Ionicons color={colors.text4} name="chevron-forward" size={18} />
+            <Ionicons color={colors.ink3Text} name="chevron-forward" size={18} />
           </Pressable>
         ))}
       </View>
@@ -1594,14 +1595,14 @@ function actionVisual(tone: ContactsAnalysisActionView["tone"], colors: OrbitCol
   color: string;
 } {
   if (tone === "amber") {
-    return { backgroundColor: colors.amberSoft, color: colors.amber };
+    return { backgroundColor: colors.macApricot, color: colors.macApricotText };
   }
 
   if (tone === "sky") {
-    return { backgroundColor: colors.skySoft, color: colors.sky };
+    return { backgroundColor: colors.macBlue, color: colors.macBlueText };
   }
 
-  return { backgroundColor: colors.accentSofter, color: colors.accent };
+  return { backgroundColor: colors.accentSoft, color: colors.accentText };
 }
 
 function contactAvatarVisual(tone: ContactAvatarTone, colors: OrbitColors): {
@@ -1612,11 +1613,11 @@ function contactAvatarVisual(tone: ContactAvatarTone, colors: OrbitColors): {
     ContactAvatarTone,
     { backgroundColor: string; color: string }
   > = {
-    amber: { backgroundColor: colors.amberSoft, color: colors.amber },
-    emerald: { backgroundColor: colors.liveSoft, color: colors.live },
-    rose: { backgroundColor: colors.roseSoft, color: colors.rose },
-    sky: { backgroundColor: colors.skySoft, color: colors.sky },
-    violet: { backgroundColor: colors.accentSofter, color: colors.accent }
+    amber: { backgroundColor: colors.macApricot, color: colors.macApricotText },
+    emerald: { backgroundColor: colors.macTeal, color: colors.macTealText },
+    rose: { backgroundColor: colors.macPink, color: colors.macPinkText },
+    sky: { backgroundColor: colors.macBlue, color: colors.macBlueText },
+    violet: { backgroundColor: colors.macLav, color: colors.macLavText }
   };
 
   return visuals[tone];
@@ -1657,7 +1658,7 @@ function RelationshipHealthCard({
           ) : null}
         </View>
         <Ionicons
-          color={colors.text3}
+          color={colors.ink3Text}
           name={expanded ? "chevron-up" : "chevron-down"}
           size={18}
         />
@@ -1715,14 +1716,14 @@ function healthVisual(tone: ContactsAnalysisHealthView["tone"], colors: OrbitCol
   color: string;
 } {
   if (tone === "live") {
-    return { backgroundColor: colors.liveSoft, color: colors.live };
+    return { backgroundColor: colors.okSoft, color: colors.okText };
   }
 
   if (tone === "sky") {
-    return { backgroundColor: colors.skySoft, color: colors.sky };
+    return { backgroundColor: colors.macBlue, color: colors.macBlueText };
   }
 
-  return { backgroundColor: colors.amberSoft, color: colors.amber };
+  return { backgroundColor: colors.macApricot, color: colors.macApricotText };
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
@@ -1733,7 +1734,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionDetail: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   actionList: { gap: 0 },
   actionAvatar: {
@@ -1761,7 +1762,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionRankBadge: {
     alignItems: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentText,
     borderColor: colors.surface,
     borderRadius: radius.pill,
     borderWidth: 2,
@@ -1781,7 +1782,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionRowPressed: { backgroundColor: colors.surface2 },
   actionStatus: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   actionTitle: {
@@ -1796,7 +1797,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   analysisCount: {
     ...textStyles.small,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   analysisDiagnosisCard: {
@@ -1815,7 +1816,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   analysisDiagnosisLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600",
     textAlign: "right"
   },
@@ -1826,26 +1827,26 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   analysisDiagnosisText: {
     ...textStyles.small,
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
     minWidth: 0
   },
   analysisDiagnosisValue: {
     ...textStyles.title,
-    color: colors.accent,
+    color: colors.accentText,
     textAlign: "right"
   },
   analysisDimensionDetail: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     textAlign: "center"
   },
   analysisDimensionDivider: {
-    borderLeftColor: colors.border,
+    borderLeftColor: colors.line,
     borderLeftWidth: StyleSheet.hairlineWidth
   },
   analysisDimensionGrid: {
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     paddingTop: spacing.md
@@ -1874,7 +1875,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   analysisDimensionLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     flexShrink: 1,
     fontWeight: "600"
   },
@@ -1887,7 +1888,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   analysisEmptyBlock: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.sm,
     minHeight: 64,
@@ -1895,7 +1896,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   analysisEmptyText: {
     ...textStyles.small,
-    color: colors.text3,
+    color: colors.ink3Text,
     flex: 1
   },
   analysisInlineAction: {
@@ -1908,7 +1909,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   analysisInlineActionText: {
     ...textStyles.small,
-    color: colors.text3,
+    color: colors.ink3Text,
     flexShrink: 1
   },
   analysisPrimaryButton: {
@@ -1919,7 +1920,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   analysisPrimaryButtonText: { ...createControlStyles(colors).primaryButtonText },
   analysisSectionDetail: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   analysisSectionHeader: {
     alignItems: "flex-start",
@@ -1943,7 +1944,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   analysisSegmentedControl: {
     backgroundColor: colors.surface2,
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.xs,
     padding: spacing.xs
@@ -1954,7 +1955,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   analysisSurface: { gap: spacing.lg },
   structureBreakdownHint: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     maxWidth: 126,
     textAlign: "right"
   },
@@ -1968,7 +1969,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   structureDetailButtonText: {
     ...textStyles.small,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   structureDimensionButton: {
@@ -1986,7 +1987,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs
   },
   structureDimensionText: { ...createControlStyles(colors).chipText },
-  structureDimensionTextSelected: { color: colors.accent },
+  structureDimensionTextSelected: { color: colors.accentText },
   activityDetail: {
     ...textStyles.caption,
     fontWeight: "600",
@@ -2008,12 +2009,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.sm
   },
   activityItemDivider: {
-    borderLeftColor: colors.border,
+    borderLeftColor: colors.line,
     borderLeftWidth: StyleSheet.hairlineWidth
   },
   activityLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     textAlign: "center"
   },
   activityTitleRow: {
@@ -2033,7 +2034,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   coverageCenter: {
     alignItems: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentText,
     borderColor: colors.surface,
     borderRadius: radius.pill,
     borderWidth: 3,
@@ -2043,7 +2044,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   coverageDiagnosis: {
     ...textStyles.small,
-    color: colors.text2
+    color: colors.ink2
   },
   coverageDot: {
     borderColor: colors.surface,
@@ -2054,17 +2055,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 12
   },
   coverageDotAmber: {
-    backgroundColor: colors.amber,
+    backgroundColor: colors.macApricotText,
     bottom: 18,
     left: 16
   },
   coverageDotLive: {
-    backgroundColor: colors.live,
+    backgroundColor: colors.okText,
     right: 20,
     top: 12
   },
   coverageDotSky: {
-    backgroundColor: colors.sky,
+    backgroundColor: colors.macBlueText,
     left: 8,
     top: 38
   },
@@ -2078,7 +2079,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     position: "relative"
   },
   coverageRing: {
-    borderColor: colors.border2,
+    borderColor: colors.line,
     borderRadius: radius.pill,
     borderWidth: 1,
     position: "absolute"
@@ -2112,13 +2113,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   coverageSignalLabel: {
     ...textStyles.small,
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
     fontWeight: "600"
   },
   coverageSignalRow: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.sm,
@@ -2160,7 +2161,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.sm
   },
   healthItemDivider: {
-    borderLeftColor: colors.border2,
+    borderLeftColor: colors.line,
     borderLeftWidth: StyleSheet.hairlineWidth
   },
   healthStatus: {
@@ -2176,7 +2177,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   recommendedActionRow: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.md,
@@ -2187,7 +2188,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   structureInsight: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.sm,
     minHeight: 66,
@@ -2201,7 +2202,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   structureInsightIcon: {
     alignItems: "center",
-    backgroundColor: colors.amberSoft,
+    backgroundColor: colors.macApricot,
     borderRadius: radius.pill,
     height: 34,
     justifyContent: "center",
@@ -2209,18 +2210,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   structureInsightLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   structureInsightText: {
     ...textStyles.caption,
-    color: colors.text
+    color: colors.ink
   },
   refreshAnalysisButton: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.xs,
@@ -2230,21 +2231,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   refreshAnalysisButtonText: {
     ...textStyles.small,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "700"
   },
   bodyText: {
     ...textStyles.body,
-    color: colors.text
+    color: colors.ink
   },
   disabled: { opacity: 0.58 },
   errorText: {
     ...textStyles.small,
-    color: colors.rose
+    color: colors.coralText
   },
   pressed: { opacity: 0.72 },
   actionBriefActions: {
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
     paddingBottom: spacing.xxl,
@@ -2254,7 +2255,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionBriefClose: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     minHeight: layout.control,
     justifyContent: "center",
     width: layout.control
@@ -2272,7 +2273,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionBriefHandle: {
     alignSelf: "center",
-    backgroundColor: colors.borderStrong,
+    backgroundColor: colors.ink4,
     borderRadius: radius.pill,
     height: 4,
     marginTop: spacing.sm,
@@ -2299,7 +2300,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionBriefList: { gap: spacing.md },
   actionBriefListText: {
     ...textStyles.small,
-    color: colors.text2,
+    color: colors.ink2,
     flex: 1,
     minWidth: 0
   },
@@ -2315,21 +2316,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionBriefScrim: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(22,22,26,0.28)"
+    backgroundColor: colors.scrim
   },
   actionBriefSecondaryButton: { ...createControlStyles(colors).secondaryButton },
   actionBriefSecondaryText: { ...createControlStyles(colors).secondaryButtonText },
   actionBriefSection: { gap: spacing.sm },
   actionBriefSectionLabel: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   actionBriefSheet: {
     alignSelf: "center",
     backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.card,
-    borderTopRightRadius: radius.card,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
     maxHeight: "88%",
     maxWidth: layout.contentMax,
     overflow: "hidden",
@@ -2337,14 +2338,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionBriefStepIndex: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.pill,
     height: 22,
     justifyContent: "center",
     width: 22
   },
   actionBriefStepIndexText: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 11,
     fontWeight: "800",
     lineHeight: 14
@@ -2361,7 +2362,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionBriefType: {
     ...textStyles.caption,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   saveGoalButton: {
@@ -2378,13 +2379,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   recomputeButtonText: { ...createControlStyles(colors).primaryButtonText },
   recomputeStatus: {
     ...textStyles.small,
-    color: colors.live,
+    color: colors.okText,
     fontWeight: "600"
   },
   scoreBadge: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
     borderRadius: radius.pill,
     borderWidth: 1,
     flexDirection: "row",
@@ -2395,12 +2396,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   scoreRow: { gap: spacing.md },
   scoreText: {
     ...textStyles.small,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   successText: {
     ...textStyles.small,
-    color: colors.live,
+    color: colors.okText,
     fontWeight: "600"
   }
 }));

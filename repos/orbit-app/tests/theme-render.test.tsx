@@ -126,8 +126,9 @@ test("recovery actions use readable ink in both appearances", (t) => {
   t.mock.method(Appearance, "getColorScheme", () => scheme);
   const screen = <AppErrorScreen error={new Error("连接中断")} onRetry={() => undefined} />;
   for (const [appearance, expected] of [
-    ["light", [11, 18, 32]],
-    ["dark", [240, 240, 236]]
+    // R01: the design's ink, light #1E1A24 / dark #F3F0F6.
+    ["light", [30, 26, 36]],
+    ["dark", [243, 240, 246]]
   ] as const) {
     scheme = appearance;
     const nodes = styledNodes(renderToHtml(screen));
@@ -166,9 +167,9 @@ test("the relationship chart preserves selected group, counts and controls in bo
     const palette = scheme === "dark" ? darkColors : colors;
     return renderToHtml(<AnalysisPieOrbitChart
       items={[
-        { color: palette.accent, countLabel: "29 人", id: "strong", label: "强关系", percentage: 37 },
-        { color: palette.live, countLabel: "30 人", id: "warm", label: "保持联系", percentage: 39 },
-        { color: palette.sky, countLabel: "19 人", id: "weak", label: "待重新联系", percentage: 24 }
+        { color: palette.accentText, countLabel: "29 人", id: "strong", label: "强关系", percentage: 37 },
+        { color: palette.okText, countLabel: "30 人", id: "warm", label: "保持联系", percentage: 39 },
+        { color: palette.macBlueText, countLabel: "19 人", id: "weak", label: "待重新联系", percentage: 24 }
       ]}
       onSelect={() => undefined}
       selectedId="warm"

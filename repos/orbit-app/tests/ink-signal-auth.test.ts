@@ -70,7 +70,7 @@ test("login presents open underlined credentials and password-adjacent recovery"
   assert.equal(await shell.evaluate(el => getComputedStyle(el).borderBottomWidth), "1px");
   const heading = page.getByRole("heading", { name: "欢迎回来", exact: true });
   assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "34px");
-  assert.equal(await page.getByText("登录你的账号，继续高效连接。", { exact: true }).evaluate(el => getComputedStyle(el).color), "rgb(107, 114, 128)");
+  assert.equal(await page.getByText("登录你的账号，继续高效连接。", { exact: true }).evaluate(el => getComputedStyle(el).color), "rgb(94, 88, 102)");
   const primary = page.getByRole("button", { name: "登录", exact: true });
   const forgot = page.getByRole("link", { name: "忘记密码", exact: true });
   assert.ok((await forgot.boundingBox())!.y < (await primary.boundingBox())!.y, "recovery stays next to the password before submit");
@@ -83,7 +83,7 @@ test("login presents open underlined credentials and password-adjacent recovery"
   await email.focus();
   assert.equal(await email.evaluate(el => getComputedStyle(el).outlineWidth), "0px", "underline is the focus indicator, not a second box");
   assert.notEqual(await email.evaluate(el => getComputedStyle(el).outlineStyle), "auto", "browser auto focus rings can ignore a zero outline width");
-  assert.equal(await shell.evaluate(el => getComputedStyle(el).borderBottomColor), "rgb(11, 18, 32)");
+  assert.equal(await shell.evaluate(el => getComputedStyle(el).borderBottomColor), "rgb(30, 26, 36)");
   assert.deepEqual(await requests(page), []); await shot(page, "login");
 });
 

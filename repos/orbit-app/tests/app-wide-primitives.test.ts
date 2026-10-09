@@ -70,7 +70,7 @@ function Fixture() {
   if (location.search.includes("recovery")) return <AppErrorScreen error={new Error("连接中断，请检查后重试")} onRetry={() => record("retry")} />;
   if (location.search.includes("settings")) return <SettingsScreen />;
   return <AppScreen title=${JSON.stringify(title)} eyebrow={location.search.includes("context") ? "活动运营" : "Orbit"} headerVariant={location.search.includes("compact") ? "compact" : "large"}>
-    <DataCard title="打开活动详情" detail="保留完整活动资料与报名安排" onPress={() => record("open")}><Text style={{ color: colors.text }}>现有内容仍可阅读</Text></DataCard>
+    <DataCard title="打开活动详情" detail="保留完整活动资料与报名安排" onPress={() => record("open")}><Text style={{ color: colors.ink }}>现有内容仍可阅读</Text></DataCard>
     <DataCard title="报名信息" variant="inset"><TextInput accessibilityLabel="报名备注" value={draft} onChangeText={setDraft} style={controls.input} />
       <Pressable accessibilityRole="button" onPress={() => record("save")} style={controls.primaryButton}><Text style={controls.primaryButtonText}>保存报名资料并继续查看接下来的活动安排</Text></Pressable>
       <Pressable accessibilityRole="button" onPress={() => record("preview")} style={controls.secondaryButton}><Text style={controls.secondaryButtonText}>先预览完整资料再决定下一步</Text></Pressable>
@@ -163,7 +163,7 @@ for (const appearance of ["light", "dark"] as const) {
     const section = page.getByText("打开活动详情", { exact: true }).locator("..").locator("..");
     assert.equal(await section.evaluate(node => getComputedStyle(node).borderLeftWidth), "0px", "ordinary sections must not keep an outer card frame");
     const inset = page.getByText("报名信息", { exact: true }).locator("..").locator("..");
-    assert.equal(await inset.evaluate(node => getComputedStyle(node).borderRadius), "12px");
+    assert.equal(await inset.evaluate(node => getComputedStyle(node).borderRadius), "24px");
     const error = page.getByText("活动资料暂时未能读取", { exact: true });
     const errorSurface = error.locator("..").locator("..");
     const surface = await errorSurface.evaluate(node => getComputedStyle(node).backgroundColor);
@@ -175,7 +175,7 @@ for (const appearance of ["light", "dark"] as const) {
     const metric = page.getByText("近期仍待确认的活动报名人数", { exact: true });
     await fits(metric);
     assert.equal(await metric.locator("..").evaluate(node => getComputedStyle(node).borderWidth), "0px", "secondary statistics must not create another bordered card");
-    assert.equal(await page.getByText("128 人", { exact: true }).evaluate(node => getComputedStyle(node).color), appearance === "light" ? "rgb(11, 18, 32)" : "rgb(240, 240, 236)");
+    assert.equal(await page.getByText("128 人", { exact: true }).evaluate(node => getComputedStyle(node).color), appearance === "light" ? "rgb(30, 26, 36)" : "rgb(243, 240, 246)");
     await fits(page.getByText("接下来要处理的事项", { exact: true }));
     await page.getByRole("progressbar", { name: "正在加载" }).waitFor();
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-primitives-${appearance}.png`, fullPage: true });

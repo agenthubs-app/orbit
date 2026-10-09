@@ -49,7 +49,7 @@ export function PlatformScreen() {
         <RefreshControl
           onRefresh={refreshEvents}
           refreshing={eventsState.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title="平台总览"
@@ -167,13 +167,13 @@ function ReviewQueueCard({
               </View>
               <View style={styles.eventMetaStack}>
                 <View style={styles.eventMetaLine}>
-                  <Ionicons color={colors.text3} name="time-outline" size={14} />
+                  <Ionicons color={colors.ink3Text} name="time-outline" size={14} />
                   <Text style={styles.metaText}>
                     {item.submitted}
                   </Text>
                 </View>
                 <View style={styles.eventMetaLine}>
-                  <Ionicons color={colors.text3} name="location-outline" size={14} />
+                  <Ionicons color={colors.ink3Text} name="location-outline" size={14} />
                   <Text style={styles.metaText}>
                     {item.location}
                   </Text>
@@ -193,11 +193,11 @@ function ReviewQueueCard({
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     ...textStyles.body,
-    color: colors.text2,
+    color: colors.ink2,
   },
   detailText: {
     ...textStyles.small,
-    color: colors.text2,
+    color: colors.ink2,
   },
   eventCopy: {
     flex: 1,
@@ -205,13 +205,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   eventFallbackText: {
-    color: colors.accent,
-    fontSize: typography.section,
+    color: colors.accentText,
+    fontSize: typography.cardTitle,
     fontWeight: "700"
   },
   eventIcon: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.md,
     height: 48,
     justifyContent: "center",
@@ -229,7 +229,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventRow: {
     alignItems: "flex-start",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.md,
@@ -248,7 +248,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventThumbOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(10,10,16,0.08)"
+    backgroundColor: colors.line
   },
   eventTitleRow: {
     alignItems: "flex-start",
@@ -265,7 +265,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   metaText: {
     ...textStyles.small,
-    color: colors.text3,
+    color: colors.ink3Text,
     flexShrink: 1
   },
   statCell: {
@@ -287,7 +287,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   statNote: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
   },
   statValue: {
     ...textStyles.pageTitle,
@@ -301,21 +301,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.xs
   },
   stateText: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "700"
   },
   tone_accent: {
-    backgroundColor: colors.accent
+    backgroundColor: colors.accentText
   },
   tone_amber: {
-    backgroundColor: colors.amber
+    backgroundColor: colors.macApricotText
   },
   tone_blue: {
-    backgroundColor: colors.sky
+    backgroundColor: colors.macBlueText
   },
   tone_green: {
-    backgroundColor: colors.live
+    backgroundColor: colors.okText
   },
   toneDot: {
     borderRadius: radius.pill,

@@ -42,21 +42,21 @@ function NotificationDetail({actorId,id,scopeKey}:{actorId:string;id:string;scop
  }
  const stateKeys={open:'openState',handled:'handledState',dismissed:'dismissedState',accepted:'acceptedState',expired:'expiredState',archived:'archivedState'} as const;
  return <AppScreen title={t('typedInbox.detail')} backLabel={t('inbox.back')}>
-  {error?<View><Text accessibilityRole="alert" style={{color:colors.text}}>{error}</Text><Pressable accessibilityRole="button" onPress={()=>pending.current?void act(pending.current.action):setAttempt(n=>n+1)} style={{padding:16,minHeight:44}}><Text style={{color:colors.accent}}>{t(pending.current?'typedInbox.retry':'common.retry')}</Text></Pressable></View>:null}
+  {error?<View><Text accessibilityRole="alert" style={{color:colors.ink}}>{error}</Text><Pressable accessibilityRole="button" onPress={()=>pending.current?void act(pending.current.action):setAttempt(n=>n+1)} style={{padding:16,minHeight:44}}><Text style={{color:colors.accentText}}>{t(pending.current?'typedInbox.retry':'common.retry')}</Text></Pressable></View>:null}
   {offline?<OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt}/>:null}
-  {deviceMissing&&!error?<Text style={{color:colors.text3}}>{t('typedInbox.unavailable')}</Text>:null}
-  {!record&&!error&&!deviceMissing?<Text style={{color:colors.text3}}>{local.available&&local.freshness.failure?t('typedInbox.error'):t('common.loading')}</Text>:null}
+  {deviceMissing&&!error?<Text style={{color:colors.ink3Text}}>{t('typedInbox.unavailable')}</Text>:null}
+  {!record&&!error&&!deviceMissing?<Text style={{color:colors.ink3Text}}>{local.available&&local.freshness.failure?t('typedInbox.error'):t('common.loading')}</Text>:null}
   {record?<View style={{gap:18}}>
-    <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Ionicons name={notificationKindIcons[record.kind]} color={colors.accent} size={24}/><Text style={{color:colors.accent}}>{t(`typedInbox.${record.kind}`)}</Text></View>
-    <Text accessibilityRole="header" style={{color:colors.text,fontSize:23,lineHeight:32,fontWeight:'700'}}>{record.title}</Text><Text style={{color:colors.text,lineHeight:24,fontSize:16}}>{record.reason}</Text>
-    <Text style={{color:colors.text3}}>{t(`typedInbox.${stateKeys[record.disposition]}`)} · {t(record.readAt?'typedInbox.readState':'typedInbox.unreadState')}</Text>
-    {record.dueAt?<Text style={{color:colors.text3}}>{t('typedInbox.due')} · {new Date(record.dueAt).toLocaleString(language)}</Text>:null}
-    {record.scheduledFor?<Text style={{color:colors.text3}}>{t('typedInbox.scheduled')} · {new Date(record.scheduledFor).toLocaleString(language)}</Text>:null}
-    <Text style={{color:colors.text3}}>{t('typedInbox.occurred')} · {new Date(record.occurredAt).toLocaleString(language)}</Text>
-    <View style={{backgroundColor:colors.surface2,padding:16,borderRadius:14,gap:10}}><Text style={{color:colors.text,fontWeight:'600'}}>{t('typedInbox.source')}</Text>{record.sources.map((s,i)=><View key={i} style={{gap:6}}>{s.excerpt?<Text style={{color:colors.text,lineHeight:23}}>{s.excerpt}</Text>:null}<Text style={{color:colors.text3}}>{new Date(s.occurredAt).toLocaleString(language)}</Text></View>)}</View>
-    {record.target.href&&record.target.status==='available'?<Pressable accessibilityRole="button" onPress={()=>router.push(record.target.href as Href)} style={{padding:16,borderRadius:12,backgroundColor:colors.accent}}><Text style={{color:colors.onAccent,textAlign:'center'}}>{t('typedInbox.open')}</Text></Pressable>:null}
-    <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{record.actions.filter(a=>a!=='read'||!record.readAt).map(action=><Pressable key={action} accessibilityRole="button" accessibilityState={{disabled:offline||busy||!!pending.current}} disabled={offline||busy||!!pending.current} onPress={()=>void act(action)} style={{padding:14,borderRadius:12,backgroundColor:colors.surface2,minHeight:44}}><Text style={{color:offline?colors.text3:colors.text}}>{offline?`${t(`typedInbox.${action}`)} · ${t('sync.needsNetwork')}`:t(`typedInbox.${action}`)}</Text></Pressable>)}</View>
-    {busy?<Text style={{color:colors.text3}}>{t('typedInbox.pending')}</Text>:null}
+    <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Ionicons name={notificationKindIcons[record.kind]} color={colors.accentText} size={24}/><Text style={{color:colors.accentText}}>{t(`typedInbox.${record.kind}`)}</Text></View>
+    <Text accessibilityRole="header" style={{color:colors.ink,fontSize:23,lineHeight:32,fontWeight:'700'}}>{record.title}</Text><Text style={{color:colors.ink,lineHeight:24,fontSize:16}}>{record.reason}</Text>
+    <Text style={{color:colors.ink3Text}}>{t(`typedInbox.${stateKeys[record.disposition]}`)} · {t(record.readAt?'typedInbox.readState':'typedInbox.unreadState')}</Text>
+    {record.dueAt?<Text style={{color:colors.ink3Text}}>{t('typedInbox.due')} · {new Date(record.dueAt).toLocaleString(language)}</Text>:null}
+    {record.scheduledFor?<Text style={{color:colors.ink3Text}}>{t('typedInbox.scheduled')} · {new Date(record.scheduledFor).toLocaleString(language)}</Text>:null}
+    <Text style={{color:colors.ink3Text}}>{t('typedInbox.occurred')} · {new Date(record.occurredAt).toLocaleString(language)}</Text>
+    <View style={{backgroundColor:colors.surface2,padding:16,borderRadius:14,gap:10}}><Text style={{color:colors.ink,fontWeight:'600'}}>{t('typedInbox.source')}</Text>{record.sources.map((s,i)=><View key={i} style={{gap:6}}>{s.excerpt?<Text style={{color:colors.ink,lineHeight:23}}>{s.excerpt}</Text>:null}<Text style={{color:colors.ink3Text}}>{new Date(s.occurredAt).toLocaleString(language)}</Text></View>)}</View>
+    {record.target.href&&record.target.status==='available'?<Pressable accessibilityRole="button" onPress={()=>router.push(record.target.href as Href)} style={{padding:16,borderRadius:12,backgroundColor:colors.accentText}}><Text style={{color:colors.onAccent,textAlign:'center'}}>{t('typedInbox.open')}</Text></Pressable>:null}
+    <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{record.actions.filter(a=>a!=='read'||!record.readAt).map(action=><Pressable key={action} accessibilityRole="button" accessibilityState={{disabled:offline||busy||!!pending.current}} disabled={offline||busy||!!pending.current} onPress={()=>void act(action)} style={{padding:14,borderRadius:12,backgroundColor:colors.surface2,minHeight:44}}><Text style={{color:offline?colors.ink3Text:colors.ink}}>{offline?`${t(`typedInbox.${action}`)} · ${t('sync.needsNetwork')}`:t(`typedInbox.${action}`)}</Text></Pressable>)}</View>
+    {busy?<Text style={{color:colors.ink3Text}}>{t('typedInbox.pending')}</Text>:null}
   </View>:null}
  </AppScreen>;
 }

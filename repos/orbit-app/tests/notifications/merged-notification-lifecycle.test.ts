@@ -138,6 +138,9 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
       if (id.endsWith("/DataCard")) return { DataCard: "DataCard" };
       if (id === "./NotificationDiscoverySettings") return { NotificationDiscoverySettings: "NotificationDiscoverySettings" };
       if (id.endsWith("/design/theme")) return load("src/design/theme.ts");
+      // R01: src/design/tokens.ts builds on the synced design copy.
+      if (id.endsWith("/api/design/tokens")) return load("src/api/design/tokens.ts");
+      if (id === "./AppearanceOptions") return { AppearanceOptions: "AppearanceOptions" };
       if (id.endsWith("/design/tokens") || id === "./tokens") return load("src/design/tokens.ts");
       return require(id);
     };

@@ -267,7 +267,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           onPress={() => router.canGoBack() ? router.back() : router.replace("/account")}
           style={({ pressed }) => [styles.closeButton, pressed ? styles.pressed : null]}
         >
-          <Ionicons color={colors.accent} name="chevron-back" size={18} />
+          <Ionicons color={colors.accentText} name="chevron-back" size={18} />
           <Text style={styles.closeText}>{locale.t("auth.close")}</Text>
         </Pressable>
       </View>
@@ -459,7 +459,7 @@ function AuthField({
           onBlur={() => setFocused(false)}
           onFocus={() => setFocused(true)}
           placeholder={field.placeholder}
-          placeholderTextColor={colors.text4}
+          placeholderTextColor={colors.ink3Text}
           secureTextEntry={field.secure && !passwordVisible}
           style={styles.input}
           value={value}
@@ -476,7 +476,7 @@ function AuthField({
             ]}
           >
             <Ionicons
-              color={colors.text3}
+              color={colors.ink3Text}
               name={passwordVisible ? "eye-off-outline" : "eye-outline"}
               size={19}
             />
@@ -491,7 +491,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface },
   header: { width: "100%", maxWidth: layout.contentMax, alignSelf: "center", minHeight: 48, paddingHorizontal: 16, justifyContent: "center", alignItems: "flex-start" },
   closeButton: { minHeight: 44, minWidth: 44, flexDirection: "row", alignItems: "center", paddingVertical: 8 },
-  closeText: { color: colors.accent, fontSize: 15, lineHeight: 20, fontWeight: "600", flexShrink: 1 },
+  closeText: { color: colors.accentText, fontSize: 15, lineHeight: 20, fontWeight: "600", flexShrink: 1 },
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1, width: "100%", maxWidth: layout.contentMax, alignSelf: "center", paddingHorizontal: 24 },
   hero: { paddingTop: 40 },
@@ -502,14 +502,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 31,
     letterSpacing: -0.52
   },
-  brandDot: { color: colors.accent },
+  brandDot: { color: colors.accentText },
   title: { color: colors.ink, fontSize: 34, lineHeight: 40, fontWeight: "900", letterSpacing: -1.02, marginTop: 28 },
-  description: { color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 8 },
+  description: { color: colors.ink2, fontSize: 14, lineHeight: 20, marginTop: 8 },
   disabledButton: {
     opacity: 0.72
   },
   dividerLine: {
-    backgroundColor: colors.border,
+    backgroundColor: colors.line,
     flex: 1,
     height: 1
   },
@@ -519,27 +519,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: 12
   },
   dividerText: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 16
   },
   errorText: {
-    backgroundColor: colors.roseSoft,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    backgroundColor: colors.coralSoft,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
-    color: colors.rose,
-    fontSize: typography.small,
+    color: colors.coralText,
+    fontSize: typography.bodySm,
     lineHeight: 19,
     padding: spacing.md
   },
   fieldHelper: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     flexShrink: 1
   },
   fieldLabel: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 12,
     lineHeight: 18,
     fontWeight: "700",
@@ -556,7 +556,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionsAfterHelper: { marginTop: 14 },
   helperLink: {
     alignItems: "center",
-    borderRadius: radius.control,
+    borderRadius: radius.md,
     justifyContent: "center",
     minHeight: layout.control,
     maxWidth: "100%",
@@ -570,7 +570,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "flex-end"
   },
   helperLinkText: {
-    color: colors.accent,
+    color: colors.accentText,
     fontSize: 13,
     fontWeight: "700",
     lineHeight: 18
@@ -589,7 +589,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   inputShell: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1.5,
     minHeight: 46,
     flexDirection: "row"
@@ -603,12 +603,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   noticeText: {
-    backgroundColor: colors.liveSoft,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    backgroundColor: colors.okSoft,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
-    color: colors.live,
-    fontSize: typography.small,
+    color: colors.okText,
+    fontSize: typography.bodySm,
     lineHeight: 19,
     padding: spacing.md
   },
@@ -647,6 +647,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   footer: { marginTop: "auto", paddingTop: 36, paddingBottom: 4 },
   switchButton: { minHeight: 44, alignItems: "center", justifyContent: "center", paddingVertical: 8 },
-  switchText: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: "center" },
-  switchAction: { color: colors.accent, fontWeight: "700" }
+  switchText: { color: colors.ink2, fontSize: 14, lineHeight: 20, textAlign: "center" },
+  switchAction: { color: colors.accentText, fontWeight: "700" }
 }));

@@ -114,7 +114,7 @@ test("task list has truthful counts and due-date groups without completed histor
   const page = await open(t);
   const pending = page.getByRole("tab", { name: "未完成 5", exact: true }); await pending.waitFor();
   assert.equal(await pending.getAttribute("aria-selected"), "true");
-  assert.equal(await pending.evaluate(el => getComputedStyle(el).borderBottomColor), "rgb(11, 18, 32)");
+  assert.equal(await pending.evaluate(el => getComputedStyle(el).borderBottomColor), "rgb(30, 26, 36)");
   for (const label of ["今天 3", "之后 2"]) await page.getByRole("heading", { name: label, exact: true }).waitFor();
   assert.equal(await page.getByRole("checkbox").count(), 5);
   assert.equal(await page.getByRole("heading", { name: "已完成 1", exact: true }).count(), 0);

@@ -35,7 +35,7 @@ const statusLabels: Record<Item["status"], string> = { pending: "等待识别", 
 function BatchButton({ label, icon, disabled = false, selected = false, iconOnly = false, onPress }: { label: string; icon: keyof typeof Ionicons.glyphMap; disabled?: boolean; selected?: boolean; iconOnly?: boolean; onPress: () => void }) {
   const { colors, styles } = useStyles();
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled, selected }} disabled={disabled} onPress={onPress} style={[styles.button, selected && styles.selected, iconOnly && styles.iconButton, disabled && styles.disabled]}>
-    <Ionicons name={icon} size={20} color={colors.accent} />{!iconOnly ? <Text style={styles.buttonText}>{label}</Text> : null}
+    <Ionicons name={icon} size={20} color={colors.accentText} />{!iconOnly ? <Text style={styles.buttonText}>{label}</Text> : null}
   </Pressable>;
 }
 
@@ -303,13 +303,13 @@ export function BusinessCardBatchScreen() {
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   row: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.sm },
   list: { gap: spacing.sm },
-  item: { borderBottomWidth: 1, borderColor: colors.border, paddingBottom: spacing.sm, gap: spacing.xs },
+  item: { borderBottomWidth: 1, borderColor: colors.line, paddingBottom: spacing.sm, gap: spacing.xs },
   heading: { color: colors.ink, fontSize: typography.body, fontWeight: "700" },
-  caption: { color: colors.text3, fontSize: typography.small, lineHeight: 20 },
-  error: { color: colors.rose, fontSize: typography.small, lineHeight: 20 },
-  button: { minHeight: 44, maxWidth: "100%", borderRadius: 6, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
-  buttonText: { color: colors.ink, fontSize: typography.small, lineHeight: 20, fontWeight: "700", flexShrink: 1 },
+  caption: { color: colors.ink3Text, fontSize: typography.bodySm, lineHeight: 20 },
+  error: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
+  button: { minHeight: 44, maxWidth: "100%", borderRadius: 6, borderWidth: 1, borderColor: colors.line, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
+  buttonText: { color: colors.ink, fontSize: typography.bodySm, lineHeight: 20, fontWeight: "700", flexShrink: 1 },
   iconButton: { width: 44, height: 44, paddingHorizontal: 0, paddingVertical: 0 },
-  selected: { borderColor: colors.accent, backgroundColor: colors.surface2 },
+  selected: { borderColor: colors.accentText, backgroundColor: colors.surface2 },
   disabled: { opacity: 0.45 },
 }));

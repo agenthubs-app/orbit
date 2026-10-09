@@ -54,11 +54,11 @@ const missingFieldMessageKeys = {
 
 function avatarColors(tone: ContactAvatarTone, colors: OrbitColors): { backgroundColor: string; color: string } {
   return {
-    amber: { backgroundColor: colors.amberSoft, color: colors.amber },
-    emerald: { backgroundColor: colors.liveSoft, color: colors.live },
-    rose: { backgroundColor: colors.roseSoft, color: colors.rose },
-    sky: { backgroundColor: colors.skySoft, color: colors.sky },
-    violet: { backgroundColor: colors.accentSofter, color: colors.accent },
+    amber: { backgroundColor: colors.macApricot, color: colors.macApricotText },
+    emerald: { backgroundColor: colors.macTeal, color: colors.macTealText },
+    rose: { backgroundColor: colors.macPink, color: colors.macPinkText },
+    sky: { backgroundColor: colors.macBlue, color: colors.macBlueText },
+    violet: { backgroundColor: colors.macLav, color: colors.macLavText },
   }[tone];
 }
 
@@ -109,7 +109,7 @@ export function ContactNeedsMatchesContent({ error, onEdit, onOpenContact, onRet
     const needsGoal = view.state === "unconfigured";
     return (
       <View style={styles.empty}>
-        <Text style={[styles.emptyText, { color: colors.text2 }]}>{locale.t(needsGoal ? "contacts.needEmpty" : "contacts.needClarify")}</Text>
+        <Text style={[styles.emptyText, { color: colors.ink2 }]}>{locale.t(needsGoal ? "contacts.needEmpty" : "contacts.needClarify")}</Text>
         <Pressable accessibilityLabel={locale.t(needsGoal ? "contacts.needFill" : "contacts.needEdit")} accessibilityRole="button" onPress={onEdit} style={[styles.primaryButton, { backgroundColor: colors.ink }]}>
           <Text style={[styles.primaryButtonText, { color: colors.bg }]}>{locale.t(needsGoal ? "contacts.needFill" : "contacts.needEdit")}</Text>
         </Pressable>
@@ -120,37 +120,37 @@ export function ContactNeedsMatchesContent({ error, onEdit, onOpenContact, onRet
   const row = (item: ContactNeedMatchView) => {
     const avatar = contactAvatarFor({ id: item.contactId, name: item.displayName });
     const avatarStyle = avatarColors(avatar.tone, colors);
-    return <View key={item.contactId} style={[styles.row, { borderBottomColor: colors.hairline }]}>
+    return <View key={item.contactId} style={[styles.row, { borderBottomColor: colors.line }]}>
       <Pressable accessibilityLabel={locale.t("contacts.needOpenContact", { name: item.displayName })} accessibilityRole="button" onPress={() => onOpenContact(item.contactId)} style={[styles.rowMain, largeText && styles.rowMainLarge]}>
         <View style={[styles.identity, largeText && styles.identityLarge]}>
           <View style={[styles.avatar, { backgroundColor: avatarStyle.backgroundColor }]}><Text allowFontScaling={false} style={[styles.avatarText, { color: avatarStyle.color }]}>{avatar.initial}</Text></View>
           <View style={styles.rowCopy}>
             <Text style={[styles.name, { color: colors.ink }]}>{item.displayName}</Text>
-            <Text style={[styles.detail, { color: colors.text3 }]}>{[item.role, item.organization].filter(Boolean).join(" · ") || locale.t("contacts.needMissingProfile")}</Text>
-            <Text style={[styles.reason, { color: colors.text2 }]}>{matchReason(item)}</Text>
+            <Text style={[styles.detail, { color: colors.ink3Text }]}>{[item.role, item.organization].filter(Boolean).join(" · ") || locale.t("contacts.needMissingProfile")}</Text>
+            <Text style={[styles.reason, { color: colors.ink2 }]}>{matchReason(item)}</Text>
           </View>
         </View>
-        <View style={[styles.score, largeText && styles.scoreLarge]}><Text style={[styles.scoreLabel, { color: colors.text3 }]}>{locale.t("contacts.needScore")}</Text><Text style={[styles.scoreValue, { color: item.score === null ? colors.text3 : colors.accent }]}>{item.score === null ? locale.t("contacts.needPendingScore") : locale.t("contacts.needScoreValue", { score: item.score })}</Text></View>
-        {largeText ? null : <Ionicons color={colors.text4} name="chevron-forward" size={16} />}
+        <View style={[styles.score, largeText && styles.scoreLarge]}><Text style={[styles.scoreLabel, { color: colors.ink3Text }]}>{locale.t("contacts.needScore")}</Text><Text style={[styles.scoreValue, { color: item.score === null ? colors.ink3Text : colors.accentText }]}>{item.score === null ? locale.t("contacts.needPendingScore") : locale.t("contacts.needScoreValue", { score: item.score })}</Text></View>
+        {largeText ? null : <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />}
       </Pressable>
       <Pressable accessibilityLabel={locale.t("contacts.needEvidenceFor", { name: item.displayName })} accessibilityRole="button" onPress={() => setExpanded((current) => current === item.contactId ? null : item.contactId)} style={styles.evidenceButton}>
-        <Text style={[styles.evidenceButtonText, { color: colors.accent }]}>{locale.t("contacts.needEvidence")}</Text>
+        <Text style={[styles.evidenceButtonText, { color: colors.accentText }]}>{locale.t("contacts.needEvidence")}</Text>
       </Pressable>
       {expanded === item.contactId ? (
         <View style={[styles.evidence, { backgroundColor: colors.surface2 }]}>
           {view.scoringVersion === "needs-evidence-v2" ? item.components?.map(component => (
-            <Text key={component.dimension} style={[styles.evidenceText, { color: colors.text2 }]}>
+            <Text key={component.dimension} style={[styles.evidenceText, { color: colors.ink2 }]}>
               {locale.t("contacts.needComponentLine", { dimension: locale.t(dimensionMessageKeys[component.dimension]), points: Number(component.points.toFixed(2)), weight: Number(component.weight.toFixed(2)) })}
             </Text>
           )) : null}
           {item.evidence.length ? item.evidence.map((evidence) => (
-            <Text key={evidence.id} style={[styles.evidenceText, { color: colors.text2 }]}>
+            <Text key={evidence.id} style={[styles.evidenceText, { color: colors.ink2 }]}>
               {evidence.field ? `${locale.t(evidenceFieldMessageKeys[evidence.field as keyof typeof evidenceFieldMessageKeys] ?? "contacts.needSourceRecord")} · ` : ""}
               {locale.t("contacts.needEvidenceLine", { label: criterionLabel(evidence), excerpt: evidence.excerpt })}
             </Text>
-          )) : <Text style={[styles.evidenceText, { color: colors.text2 }]}>{matchReason(item)}</Text>}
+          )) : <Text style={[styles.evidenceText, { color: colors.ink2 }]}>{matchReason(item)}</Text>}
           {item.unmatchedCriteria.length > 0 ? (
-            <Text style={[styles.evidenceText, { color: colors.text2 }]}>
+            <Text style={[styles.evidenceText, { color: colors.ink2 }]}>
               {locale.t("contacts.needUnmatchedCriteria", {
                 labels: item.unmatchedCriteria.map(criterionLabel).join(locale.t("contacts.needCriterionSeparator")),
               })}
@@ -166,24 +166,24 @@ export function ContactNeedsMatchesContent({ error, onEdit, onOpenContact, onRet
   return (
     <>
       <View style={[styles.goalCard, { backgroundColor: colors.surface2 }]}>
-        <View style={styles.goalCopy}><Text style={[styles.caption, { color: colors.text3 }]}>{locale.t("contacts.currentNeed")}</Text><Text style={[styles.goal, { color: colors.ink }]}>{view.goal}</Text></View>
-        <Pressable accessibilityLabel={locale.t("contacts.needEdit")} accessibilityRole="button" onPress={onEdit} style={styles.editAction}><Text style={[styles.edit, { color: colors.accent }]}>{locale.t("contacts.needEdit")}</Text></Pressable>
+        <View style={styles.goalCopy}><Text style={[styles.caption, { color: colors.ink3Text }]}>{locale.t("contacts.currentNeed")}</Text><Text style={[styles.goal, { color: colors.ink }]}>{view.goal}</Text></View>
+        <Pressable accessibilityLabel={locale.t("contacts.needEdit")} accessibilityRole="button" onPress={onEdit} style={styles.editAction}><Text style={[styles.edit, { color: colors.accentText }]}>{locale.t("contacts.needEdit")}</Text></Pressable>
       </View>
-      <Text style={[styles.explanation, { color: colors.text3 }]}>{locale.t("contacts.needRankingExplanation")}</Text>
+      <Text style={[styles.explanation, { color: colors.ink3Text }]}>{locale.t("contacts.needRankingExplanation")}</Text>
       {error ? <ErrorState message={error} title={locale.t("contacts.needLoadFailed")} /> : null}
-      {refreshing ? <Text style={[styles.caption, { color: colors.text3 }]}>{locale.t("common.loading")}</Text> : null}
+      {refreshing ? <Text style={[styles.caption, { color: colors.ink3Text }]}>{locale.t("common.loading")}</Text> : null}
       {hasNoContacts ? (
         <View style={styles.empty}>
-          <Text style={[styles.emptyText, { color: colors.text2 }]}>{locale.t("contacts.needNoContacts")}</Text>
+          <Text style={[styles.emptyText, { color: colors.ink2 }]}>{locale.t("contacts.needNoContacts")}</Text>
         </View>
       ) : null}
       <View>{view.scored.map(row)}</View>
       {view.insufficient.length > 0 ? (
-        <><Text accessibilityRole="header" style={[styles.sectionLabel, { backgroundColor: colors.surface2, color: colors.text3 }]}>{locale.t("contacts.needInsufficient")}</Text><View>{view.insufficient.map(row)}</View></>
+        <><Text accessibilityRole="header" style={[styles.sectionLabel, { backgroundColor: colors.surface2, color: colors.ink3Text }]}>{locale.t("contacts.needInsufficient")}</Text><View>{view.insufficient.map(row)}</View></>
       ) : null}
-      {error ? <Pressable accessibilityLabel={locale.t("common.retry")} accessibilityRole="button" onPress={onRetry} style={styles.editAction}><Text style={[styles.edit, { color: colors.accent }]}>{locale.t("common.retry")}</Text></Pressable> : null}
-      <Text style={[styles.footnote, { color: colors.text3 }]}>{locale.t(view.scoringVersion === "needs-evidence-v2" ? "contacts.needEvidenceScoreFootnote" : "contacts.needScoreFootnote")}</Text>
-      {view.scoringVersion === "needs-lexical-v1" ? <Text style={[styles.footnote, { color: colors.text3 }]}>{locale.t("contacts.needLegacyScore")}</Text> : null}
+      {error ? <Pressable accessibilityLabel={locale.t("common.retry")} accessibilityRole="button" onPress={onRetry} style={styles.editAction}><Text style={[styles.edit, { color: colors.accentText }]}>{locale.t("common.retry")}</Text></Pressable> : null}
+      <Text style={[styles.footnote, { color: colors.ink3Text }]}>{locale.t(view.scoringVersion === "needs-evidence-v2" ? "contacts.needEvidenceScoreFootnote" : "contacts.needScoreFootnote")}</Text>
+      {view.scoringVersion === "needs-lexical-v1" ? <Text style={[styles.footnote, { color: colors.ink3Text }]}>{locale.t("contacts.needLegacyScore")}</Text> : null}
     </>
   );
 }
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   scoreValue: { ...textStyles.section, marginTop: 1 },
   evidenceButton: { minHeight: layout.control, justifyContent: "center", marginLeft: 52 },
   evidenceButtonText: { ...textStyles.small, fontWeight: "700" },
-  evidence: { borderRadius: radius.control, marginLeft: 52, padding: spacing.md },
+  evidence: { borderRadius: radius.md, marginLeft: 52, padding: spacing.md },
   evidenceText: { ...textStyles.small, marginVertical: 1 },
   sectionLabel: { ...textStyles.small, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, marginTop: spacing.xl },
   footnote: { ...textStyles.caption, marginTop: spacing.xl },

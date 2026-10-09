@@ -8,9 +8,18 @@ This directory is the iOS-first Orbit mobile app.
   `src/api/contract/` copies pure response types from `shared/contract/`,
   `src/api/schema/` copies runtime validation from `shared/api-schema/`, and
   `src/api/domain/` copies only the approved `industries.ts` and `language.ts`
-  dictionaries from `shared/domain/`. Do not broaden that whitelist to other domain
-  or feature code. The contract, API Schema, and domain sync tests verify these
-  copies. Never edit copies by hand or import the source repository at build time.
+  dictionaries from `shared/domain/`, `src/api/compute/` copies `shared/compute/`, and
+  `src/api/design/` copies only the generated `tokens.ts` from `shared/design/`
+  (redesign R01, RD-08; `shared/copy` joins in R03). Do not broaden that whitelist to
+  other domain or feature code. The contract, API Schema, domain, compute and design
+  sync tests verify these copies. Never edit copies by hand or import the source
+  repository at build time.
+- Design tokens: `src/design/tokens.ts` builds the React Native structures on top of
+  `src/api/design/tokens.ts`. Change colours, radius, type or motion only in
+  `repos/orbits/shared/design/tokens.json`, run `npm run design:tokens` there and
+  `npm run sync:contract` here. Use the design names (`colors.ink3Text`,
+  `radius.xl`, `typography.cardTitle`); `tests/design-legacy-names.test.ts` rejects the
+  old names and colour literals.
 - View-models should type their field access against the contract (see `contactField`
   in `src/view-models/contacts.ts`) so a server-side rename fails `npm run typecheck`
   instead of silently yielding empty values at runtime.

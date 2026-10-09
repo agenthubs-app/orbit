@@ -53,18 +53,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   section: {
     backgroundColor: colors.surface,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     paddingVertical: spacing.lg
   },
   inset: {
     backgroundColor: colors.surface2,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     padding: spacing.lg
   },
   detail: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   header: {
     gap: spacing.xs

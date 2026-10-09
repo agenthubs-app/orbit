@@ -4,7 +4,7 @@ import { type Href, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { prepareBatchImage, readPreparedBatchImage } from "../../api/batch-images";
-import { layout, radius, rowRoleStyles, spacing } from "../../design/tokens";
+import { floatShadow, layout, radius, rowRoleStyles, spacing } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -211,7 +211,7 @@ export function BusinessCardScanScreen() {
               editable={!saving}
               onChangeText={value => setFields(current => current ? { ...current, [field.field]: value } : current)}
               placeholder={label}
-              placeholderTextColor={colors.text4}
+              placeholderTextColor={colors.ink3Text}
               style={styles.fieldInput}
               value={fields[field.field]}
             />
@@ -298,7 +298,7 @@ function MethodRow({ detail, disabled, icon, onPress, title }: {
       <Text style={styles.methodTitle}>{title}</Text>
       <Text style={styles.methodDetail}>{detail}</Text>
     </View>
-    <Ionicons color={colors.text3} name="chevron-forward" size={20} />
+    <Ionicons color={colors.ink3Text} name="chevron-forward" size={20} />
   </Pressable>;
 }
 
@@ -321,31 +321,31 @@ const useStyles = createThemedStyles(colors => {
   const controls = createControlStyles(colors);
   return StyleSheet.create({
     heading: { color: colors.ink, fontSize: 26, fontWeight: "900", letterSpacing: -0.4, marginTop: spacing.xl, textAlign: "center" },
-    illustration: { alignSelf: "center", aspectRatio: 1.42, backgroundColor: colors.bgSunken, borderRadius: radius.card, justifyContent: "center", marginTop: spacing.xl, maxWidth: 300, padding: "9%", width: "72%" },
-    illustrationCard: { aspectRatio: 1.75, backgroundColor: colors.surface, borderRadius: 3, gap: 7, justifyContent: "center", paddingHorizontal: "12%", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, width: "100%" },
-    illustrationLine: { backgroundColor: colors.text3, borderRadius: 2, height: 4, opacity: 0.55 },
+    illustration: { alignSelf: "center", aspectRatio: 1.42, backgroundColor: colors.surface2, borderRadius: radius.xl, justifyContent: "center", marginTop: spacing.xl, maxWidth: 300, padding: "9%", width: "72%" },
+    illustrationCard: { aspectRatio: 1.75, backgroundColor: colors.surface, borderRadius: 3, gap: 7, justifyContent: "center", paddingHorizontal: "12%", ...floatShadow(colors), width: "100%" },
+    illustrationLine: { backgroundColor: colors.ink3Text, borderRadius: 2, height: 4, opacity: 0.55 },
     illustrationName: { backgroundColor: colors.ink, height: 7, opacity: 0.8, width: "34%" },
     illustrationShort: { width: "44%" },
     illustrationRule: { height: 2, width: "8%" },
     illustrationMid: { width: "40%" },
     illustrationLong: { width: "62%" },
-    methods: { borderTopColor: colors.hairline, borderTopWidth: StyleSheet.hairlineWidth, marginTop: spacing.xxl },
-    methodRow: { alignItems: "center", borderBottomColor: colors.hairline, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.lg, minHeight: 84, paddingHorizontal: spacing.sm, paddingVertical: spacing.lg },
+    methods: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, marginTop: spacing.xxl },
+    methodRow: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.lg, minHeight: 84, paddingHorizontal: spacing.sm, paddingVertical: spacing.lg },
     methodText: { flex: 1, gap: spacing.xs },
     methodTitle: { color: colors.ink, fontSize: 18, fontWeight: "800" },
-    methodDetail: { color: colors.text3, fontSize: 15 },
-    footer: { color: colors.text3, fontSize: 14, marginTop: spacing.xl, textAlign: "center" },
+    methodDetail: { color: colors.ink3Text, fontSize: 15 },
+    footer: { color: colors.ink3Text, fontSize: 14, marginTop: spacing.xl, textAlign: "center" },
     working: { alignItems: "center", flexDirection: "row", gap: spacing.sm, justifyContent: "center", marginTop: spacing.lg },
-    workingText: { color: colors.text2, fontSize: 15 },
-    error: { color: colors.rose, fontSize: 15, marginTop: spacing.lg },
-    hint: { color: colors.text3, fontSize: 14, marginTop: spacing.md },
-    imageFrame: { alignItems: "center", aspectRatio: 1.6, backgroundColor: colors.bgSunken, borderRadius: radius.card, justifyContent: "center", overflow: "hidden", width: "100%" },
+    workingText: { color: colors.ink2, fontSize: 15 },
+    error: { color: colors.coralText, fontSize: 15, marginTop: spacing.lg },
+    hint: { color: colors.ink3Text, fontSize: 14, marginTop: spacing.md },
+    imageFrame: { alignItems: "center", aspectRatio: 1.6, backgroundColor: colors.surface2, borderRadius: radius.xl, justifyContent: "center", overflow: "hidden", width: "100%" },
     image: { height: "100%", width: "100%" },
-    fieldList: { borderTopColor: colors.hairline, borderTopWidth: StyleSheet.hairlineWidth, marginTop: spacing.md },
-    fieldRow: { borderBottomColor: colors.hairline, borderBottomWidth: StyleSheet.hairlineWidth, gap: spacing.xxs, paddingVertical: spacing.sm },
-    fieldLabel: { ...rowRoleStyles.fieldLabel, color: colors.text3 },
+    fieldList: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, marginTop: spacing.md },
+    fieldRow: { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, gap: spacing.xxs, paddingVertical: spacing.sm },
+    fieldLabel: { ...rowRoleStyles.fieldLabel, color: colors.ink3Text },
     fieldInput: { ...rowRoleStyles.fieldValue, color: colors.ink, minHeight: layout.control, paddingVertical: spacing.xs },
-    groupHeading: { ...rowRoleStyles.groupHeading, color: colors.text3, marginBottom: spacing.xs },
+    groupHeading: { ...rowRoleStyles.groupHeading, color: colors.ink3Text, marginBottom: spacing.xs },
     issues: { marginTop: spacing.xl },
     issueRow: { alignItems: "flex-start", flexDirection: "row", gap: spacing.sm, minHeight: layout.control, paddingVertical: spacing.sm },
     issueText: { color: colors.ink, flex: 1, fontSize: 15 },

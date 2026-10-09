@@ -195,7 +195,7 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await page.getByText("资料里的林悦", { exact: true }).count(), 0, "profile collection is not read into the conversation");
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [], "no reply fetches a run record or collection on its own");
     assert.equal(await reply.inputValue(), "仍需核对的草稿");
-    assert.deepEqual(radii, ["12px", "12px"], "intentBlock, taskInteractionCard");
+    assert.deepEqual(radii, ["24px", "24px"], "intentBlock, taskInteractionCard");
   });
   test(`${scheme}: final inset chat detail and delivered message keep the exact request boundary`, async t => {
     const page = await open(t, "thread&insets=true", scheme);
@@ -286,7 +286,7 @@ for (const scheme of ["light", "dark"] as const) {
       const tab = page.getByRole("tab", { name, exact: true }); await fits(tab); await tab.click();
       await (name === "周" ? page.getByRole("heading", { name: "9.7 – 9.13", exact: true }) : name === "月" ? page.getByRole("button", { name: "上个月", exact: true }) : page.getByText("09:00", { exact: true })).waitFor();
       await page.getByText("合作交流会", { exact: true }).first().waitFor();
-      assert.equal(await tab.evaluate(el => getComputedStyle(el).backgroundColor), scheme === "light" ? "rgb(11, 18, 32)" : "rgb(240, 240, 236)");
+      assert.equal(await tab.evaluate(el => getComputedStyle(el).backgroundColor), scheme === "light" ? "rgb(30, 26, 36)" : "rgb(243, 240, 246)");
     }
     await page.getByRole("button", { name: /周三9日/ }).click();
     await page.getByRole("tab", { name: "月", exact: true }).click();
@@ -311,7 +311,7 @@ test("reading canvas keeps its draft when opening shortcuts and uses the shared 
 });
 test("chat list and detail retain navigation, messages and a failed real delivery", async t => {
   const page = await open(t, "chat", "dark"); const row = page.getByRole("button", { name: /林悦/ }); await fits(row); await row.click(); await noWrites(page);
-  assert.equal(await page.getByText("林悦", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "15px");
+  assert.equal(await page.getByText("林悦", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "14.5px");
   const detail = await open(t, "thread"); const draft = detail.getByPlaceholder("写给已验证联系人"); await draft.fill("周四可以");
   await fits(detail.getByRole("button", { name: "发送消息", exact: true }), 50);
   await detail.getByRole("button", { name: "发送消息", exact: true }).click(); await detail.getByText("尚未确认消息送达，输入已保留。请刷新资格后重试。", { exact: true }).waitFor();
@@ -321,7 +321,7 @@ test("chat list and detail retain navigation, messages and a failed real deliver
 test("AI next actions uses open sections and clear section hierarchy", async t => {
   const page = await open(t, "ai"); const heading = page.getByText("下一步", { exact: true });
   await heading.waitFor();
-  assert.deepEqual(await heading.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["15px", "22px", "800"]);
+  assert.deepEqual(await heading.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["14.5px", "21px", "800"]);
   assert.equal(await heading.locator("..").locator("..").locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
 });
 for (const [screen, label] of [["actions", "确认建议"], ["today", "加入待办：确认参会伙伴"], ["followups", "生成候选"], ["ledger", "确认执行"]]) {

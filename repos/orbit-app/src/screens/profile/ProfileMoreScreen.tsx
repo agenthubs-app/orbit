@@ -23,7 +23,7 @@ function ProfileInlineField({ label, ...props }: TextInputProps & { label: strin
     <Text style={[styles.inlineLabel, largeText && styles.inlineLabelLarge]}>{label}</Text>
     <TextInput
       accessibilityLabel={label}
-      placeholderTextColor={colors.text4}
+      placeholderTextColor={colors.ink3Text}
       style={[styles.inlineInput, largeText && styles.inlineInputLarge]}
       {...props}
     />
@@ -150,16 +150,16 @@ export function ProfileMoreScreen() {
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   done: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 60 },
-  doneText: { color: colors.accent, fontSize: 14, fontWeight: "800" },
+  doneText: { color: colors.accentText, fontSize: 14, fontWeight: "800" },
   pressed: { opacity: 0.68 },
   extractionActions: { gap: 8, paddingVertical: 12 },
-  extractionResult: { borderColor: colors.border, borderRadius: 8, borderWidth: 1, gap: 6, marginVertical: 12, padding: 12 },
+  extractionResult: { borderColor: colors.line, borderRadius: 8, borderWidth: 1, gap: 6, marginVertical: 12, padding: 12 },
   extractionName: { color: colors.ink, fontSize: 16, fontWeight: "800" },
-  extractionDetail: { color: colors.text3, fontSize: 13 },
-  inlineField: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", gap: 12, minHeight: 52 },
+  extractionDetail: { color: colors.ink3Text, fontSize: 13 },
+  inlineField: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", gap: 12, minHeight: 52 },
   inlineFieldLarge: { alignItems: "stretch", flexDirection: "column", gap: 0, paddingVertical: 10 },
   inlineLabel: { color: colors.ink, flexShrink: 0, fontSize: 15, fontWeight: "600", maxWidth: "42%" },
   inlineLabelLarge: { maxWidth: "100%" },
-  inlineInput: { color: colors.text3, flex: 1, fontSize: 14, minHeight: 48, paddingHorizontal: 0, paddingVertical: 10, textAlign: "right" },
+  inlineInput: { color: colors.ink3Text, flex: 1, fontSize: 14, minHeight: 48, paddingHorizontal: 0, paddingVertical: 10, textAlign: "right" },
   inlineInputLarge: { textAlign: "left" },
 }));

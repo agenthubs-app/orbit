@@ -70,7 +70,7 @@ export function ContactStructureDetailScreen() {
         <RefreshControl
           onRefresh={localMode ? local.refresh : state.refresh}
           refreshing={localMode ? local.freshness.refreshing : state.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title="分组详情"
@@ -125,7 +125,7 @@ function ContactStructureDetailContent({
     <>
       <View style={styles.hero}>
         <View style={styles.heroIcon}>
-          <Ionicons color={colors.accent} name="pie-chart-outline" size={22} />
+          <Ionicons color={colors.accentText} name="pie-chart-outline" size={22} />
         </View>
         <View style={styles.heroCopy}>
           <Text style={styles.eyebrow}>{view.dimensionLabel}</Text>
@@ -159,7 +159,7 @@ function ContactStructureDetailContent({
 
       {view.insight ? (
         <View style={styles.insight}>
-          <Ionicons color={colors.amber} name="bulb-outline" size={19} />
+          <Ionicons color={colors.macApricotText} name="bulb-outline" size={19} />
           <Text style={styles.insightText}>{view.insight}</Text>
         </View>
       ) : null}
@@ -227,23 +227,23 @@ function ContactRow({
         </Text>
       </View>
       <Text style={styles.relationship}>{contact.relationshipLabel}</Text>
-      <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+      <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
     </Pressable>
   );
 }
 
 function qualityColor(tone: "amber" | "live" | "sky", colors: OrbitColors): string {
-  if (tone === "live") return colors.live;
-  if (tone === "sky") return colors.sky;
-  return colors.amber;
+  if (tone === "live") return colors.okText;
+  if (tone === "sky") return colors.macBlueText;
+  return colors.macApricotText;
 }
 
 function avatarToneStyle(tone: ContactAvatarTone, colors: OrbitColors) {
-  if (tone === "emerald") return { backgroundColor: colors.liveSoft };
-  if (tone === "sky") return { backgroundColor: colors.skySoft };
-  if (tone === "amber") return { backgroundColor: colors.amberSoft };
-  if (tone === "rose") return { backgroundColor: colors.roseSoft };
-  return { backgroundColor: colors.accentSoft };
+  if (tone === "emerald") return { backgroundColor: colors.macTeal };
+  if (tone === "sky") return { backgroundColor: colors.macBlue };
+  if (tone === "amber") return { backgroundColor: colors.macApricot };
+  if (tone === "rose") return { backgroundColor: colors.macPink };
+  return { backgroundColor: colors.macLav };
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
@@ -266,7 +266,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   contactList: { gap: spacing.xs },
   contactMeta: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   contactName: {
     ...textStyles.listTitle,
@@ -274,7 +274,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   contactRow: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.md,
@@ -283,7 +283,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eyebrow: {
     ...textStyles.caption,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   hero: {
@@ -298,29 +298,29 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   heroIcon: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
     height: 44,
     justifyContent: "center",
     width: 44
   },
   insight: {
     alignItems: "flex-start",
-    backgroundColor: colors.amberSoft,
-    borderRadius: radius.card,
+    backgroundColor: colors.macApricot,
+    borderRadius: radius.xl,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
   },
   insightText: {
     ...textStyles.small,
-    color: colors.text2,
+    color: colors.ink2,
     flex: 1
   },
   pressed: { opacity: 0.72 },
   qualityCount: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     minWidth: 38,
     textAlign: "right"
   },
@@ -330,7 +330,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   qualityLabel: {
     ...textStyles.small,
-    color: colors.text2,
+    color: colors.ink2,
     minWidth: 58
   },
   qualityList: { gap: spacing.md },
@@ -348,7 +348,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   relationship: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     flexShrink: 1,
     maxWidth: 70,
     textAlign: "right"
@@ -356,7 +356,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   section: { gap: spacing.lg },
   sectionCount: {
     ...textStyles.caption,
-    color: colors.text4
+    color: colors.ink3Text
   },
   sectionHeading: {
     alignItems: "baseline",
@@ -369,12 +369,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   share: {
     ...textStyles.small,
-    color: colors.text3
+    color: colors.ink3Text
   },
   tag: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderRadius: radius.pill,
     borderWidth: 1,
     flexDirection: "row",
@@ -384,11 +384,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   tagCount: {
     ...textStyles.caption,
-    color: colors.text4,
+    color: colors.ink3Text,
   },
   tagLabel: {
     ...textStyles.caption,
-    color: colors.text2,
+    color: colors.ink2,
     fontWeight: "600"
   },
   tags: {

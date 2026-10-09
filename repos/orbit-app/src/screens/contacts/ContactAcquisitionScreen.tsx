@@ -788,7 +788,7 @@ export function ContactAcquisitionScreen() {
             draftQueueState.refreshing ||
             mergeReviewState.refreshing
           }
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title={locale.t("contactAdd.moreWays")}
@@ -990,7 +990,7 @@ function QrFields({
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.accent} name="scan-outline" size={18} />
+          <Ionicons color={colors.accentText} name="scan-outline" size={18} />
           <Text style={styles.secondaryButtonText}>
             {qrPermissionPending ? "等待相机权限" : "扫 QR"}
           </Text>
@@ -1038,7 +1038,7 @@ function EntryRow({
         <Text style={styles.entryTitle}>{title}</Text>
         <Text style={styles.entryDetail}>{detail}</Text>
       </View>
-      <Ionicons color={colors.text3} name="chevron-forward" size={18} />
+      <Ionicons color={colors.ink3Text} name="chevron-forward" size={18} />
     </Pressable>
   );
 }
@@ -1064,7 +1064,7 @@ function Input({
         multiline={multiline}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.text4}
+        placeholderTextColor={colors.ink3Text}
         style={[styles.input, multiline ? styles.textArea : null]}
         textAlignVertical={multiline ? "top" : "center"}
         value={value}
@@ -1100,7 +1100,7 @@ function EventContextDraftImportCard({
           pressed ? styles.pressed : null
         ]}
       >
-        <Ionicons color={colors.accent} name="person-add-outline" size={18} />
+        <Ionicons color={colors.accentText} name="person-add-outline" size={18} />
         <Text style={styles.secondaryButtonText}>
           {importing ? "导入中" : "导入为待确认候选"}
         </Text>
@@ -1237,7 +1237,7 @@ function AcquisitionResultCard({
               onPress={() => onIssueAcknowledged(issue.code)}
               style={[styles.secondaryButton, cardStyles.risk]}
             >
-              <Ionicons color={colors.accent} name={acknowledgedIssueCodes.includes(issue.code) ? "checkbox-outline" : "square-outline"} size={18} />
+              <Ionicons color={colors.accentText} name={acknowledgedIssueCodes.includes(issue.code) ? "checkbox-outline" : "square-outline"} size={18} />
               <Text style={[styles.bodyText, cardStyles.riskText]}>{issue.message}</Text>
             </Pressable>
           ))}
@@ -1248,7 +1248,7 @@ function AcquisitionResultCard({
             onPress={onFieldsReviewed}
             style={[styles.secondaryButton, cardStyles.risk]}
           >
-            <Ionicons color={colors.accent} name={allFieldsReviewed ? "checkbox-outline" : "square-outline"} size={18} />
+            <Ionicons color={colors.accentText} name={allFieldsReviewed ? "checkbox-outline" : "square-outline"} size={18} />
             <Text style={[styles.bodyText, cardStyles.riskText]}>我已核对所有字段，并决定将其收录进人脉。</Text>
           </Pressable>
         </View>
@@ -1303,7 +1303,7 @@ function AcquisitionResultCard({
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.accent} name="person-outline" size={18} />
+          <Ionicons color={colors.accentText} name="person-outline" size={18} />
           <Text style={styles.secondaryButtonText}>打开联系人</Text>
         </Pressable>
       ) : null}
@@ -1315,7 +1315,7 @@ function AcquisitionResultCard({
           pressed ? styles.pressed : null
         ]}
       >
-        <Ionicons color={colors.accent} name="people-outline" size={18} />
+        <Ionicons color={colors.accentText} name="people-outline" size={18} />
         <Text style={styles.secondaryButtonText}>回到人脉</Text>
       </Pressable>
     </>
@@ -1360,7 +1360,7 @@ function ContactBusinessCardWriteResultCard({
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.accent} name="person-circle-outline" size={18} />
+          <Ionicons color={colors.accentText} name="person-circle-outline" size={18} />
           <Text style={styles.secondaryButtonText}>
             {view.openContactLabel}
           </Text>
@@ -1411,7 +1411,7 @@ function BusinessCardReviewFields({
             accessibilityLabel={label}
             onChangeText={(value) => onChange(field.field, value)}
             placeholder={field.value || label}
-            placeholderTextColor={colors.text4}
+            placeholderTextColor={colors.ink3Text}
             multiline={large}
             numberOfLines={1}
             submitBehavior="blurAndSubmit"
@@ -1439,7 +1439,7 @@ function BusinessCardReviewFields({
           pressed ? styles.pressed : null
         ]}
       >
-        <Ionicons color={colors.accent} name="save-outline" size={18} />
+        <Ionicons color={colors.accentText} name="save-outline" size={18} />
         <Text style={styles.secondaryButtonText}>
           {reviewing ? "保存中" : saveLabel}
         </Text>
@@ -1449,20 +1449,20 @@ function BusinessCardReviewFields({
 }
 
 const useCardReviewStyles = createThemedStyles(colors => StyleSheet.create({
-  result: { gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 16 },
-  imageFrame: { height: 104, width: "100%", borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: "hidden", backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
+  result: { gap: 12, borderBottomWidth: 1, borderBottomColor: colors.line, paddingBottom: 16 },
+  imageFrame: { height: 104, width: "100%", borderWidth: 1, borderColor: colors.line, borderRadius: 12, overflow: "hidden", backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
   image: { width: "100%", height: "100%" },
   review: { gap: 12, marginTop: 4 },
   heading: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
-  fields: { borderTopWidth: 1, borderTopColor: colors.border },
-  field: { flexDirection: "row", alignItems: "center", paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: colors.border2 },
+  fields: { borderTopWidth: 1, borderTopColor: colors.line },
+  field: { flexDirection: "row", alignItems: "center", paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: colors.line },
   fieldStack: { flexDirection: "column", alignItems: "stretch", gap: 4 },
-  label: { width: 72, color: colors.text4, fontSize: 14, lineHeight: 20 },
+  label: { width: 72, color: colors.ink3Text, fontSize: 14, lineHeight: 20 },
   labelLarge: { width: "100%", paddingTop: 10 },
   fieldValue: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
   input: { minHeight: 44, width: "100%", minWidth: 0, borderWidth: 0, color: colors.ink, backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 0, fontSize: 14, lineHeight: 20, fontWeight: "600" },
-  meta: { fontSize: 11, lineHeight: 16, color: colors.text3, paddingBottom: 8 },
-  summary: { gap: 4, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 14 },
+  meta: { fontSize: 11, lineHeight: 16, color: colors.ink3Text, paddingBottom: 8 },
+  summary: { gap: 4, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 14 },
   risks: { gap: 8 },
   risk: { alignSelf: "stretch", width: "100%", borderWidth: 0, borderRadius: 10, backgroundColor: colors.surface2, paddingVertical: 12, paddingHorizontal: 14 },
   riskText: { flexShrink: 1, fontSize: 13, lineHeight: 20 },
@@ -1667,7 +1667,7 @@ function ContactExternalImportResultCard({
                   ]}
                 >
                   <Ionicons
-                    color={colors.accent}
+                    color={colors.accentText}
                     name="checkmark-circle-outline"
                     size={18}
                   />
@@ -1808,7 +1808,7 @@ function ReferralRecommendationsCard({
                   ]}
                 >
                   <Ionicons
-                    color={colors.accent}
+                    color={colors.accentText}
                     name="checkmark-circle-outline"
                     size={18}
                   />
@@ -1889,7 +1889,7 @@ function ReferralRecommendationItem({
           pressed ? styles.pressed : null
         ]}
       >
-        <Ionicons color={colors.accent} name="checkmark-outline" size={18} />
+        <Ionicons color={colors.accentText} name="checkmark-outline" size={18} />
         <Text style={styles.secondaryButtonText}>
           {recommendation.confirmed
             ? "已确认推荐"
@@ -1995,7 +1995,7 @@ function ContactDraftQueueCard({
                   ]}
                 >
                   <Ionicons
-                    color={colors.accent}
+                    color={colors.accentText}
                     name="checkmark-circle-outline"
                     size={18}
                   />
@@ -2028,7 +2028,7 @@ function DismissDraftButton({ onPress }: { onPress: () => void }) {
         pressed ? styles.pressed : null
       ]}
     >
-      <Ionicons color={colors.text3} name="archive-outline" size={18} />
+      <Ionicons color={colors.ink3Text} name="archive-outline" size={18} />
       <Text style={styles.dismissButtonText}>暂不处理</Text>
     </Pressable>
   );
@@ -2091,7 +2091,7 @@ function ContactMergeReviewCard({
                 ]}
               >
                 <Ionicons
-                  color={colors.accent}
+                  color={colors.accentText}
                   name="git-merge-outline"
                   size={18}
                 />
@@ -2135,21 +2135,21 @@ function ContactMergeApplyResultCard({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  entryList: { borderTopColor: colors.hairline, borderTopWidth: StyleSheet.hairlineWidth },
-  entryRow: { alignItems: "center", borderBottomColor: colors.hairline, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.md, minHeight: 64, paddingVertical: spacing.md },
+  entryList: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth },
+  entryRow: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.md, minHeight: 64, paddingVertical: spacing.md },
   entryText: { flex: 1, gap: spacing.xxs },
   entryTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
-  entryDetail: { color: colors.text3, fontSize: 13 },
+  entryDetail: { color: colors.ink3Text, fontSize: 13 },
   bodyText: {
     ...textStyles.body,
-    color: colors.text
+    color: colors.ink
   },
   confirmedText: {
     ...textStyles.caption,
     alignSelf: "flex-start",
-    backgroundColor: colors.liveSoft,
+    backgroundColor: colors.okSoft,
     borderRadius: radius.pill,
-    color: colors.live,
+    color: colors.okText,
     fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
@@ -2162,16 +2162,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   contactWriteResult: {
-    backgroundColor: colors.liveSoft,
-    borderColor: colors.border,
-    borderRadius: radius.control,
+    backgroundColor: colors.okSoft,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md
   },
   contactWriteStatus: {
     ...textStyles.caption,
-    color: colors.live,
+    color: colors.okText,
     fontWeight: "600"
   },
   contactWriteTitle: {
@@ -2183,7 +2183,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   disabled: { opacity: 0.55 },
   dismissButtonText: {
     ...textStyles.body,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   draftQueueHeader: {
@@ -2193,14 +2193,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   draftQueueItem: {
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
     paddingVertical: spacing.lg
   },
   draftQueueMeta: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   draftQueueStack: { gap: spacing.sm },
   draftQueueTitle: {
@@ -2214,19 +2214,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   errorText: {
     ...textStyles.small,
-    color: colors.rose
+    color: colors.coralText
   },
   evidenceStack: { gap: spacing.sm },
   evidenceText: {
     ...textStyles.small,
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
-    color: colors.text,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    color: colors.ink,
     overflow: "hidden",
     padding: spacing.md
   },
   externalCandidateItem: {
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
     paddingVertical: spacing.lg
@@ -2244,21 +2244,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   helperText: {
     ...textStyles.caption,
-    color: colors.text3
+    color: colors.ink3Text
   },
   input: { ...createControlStyles(colors).input },
   inputGroup: { gap: spacing.xs },
   inputLabel: {
     ...textStyles.small,
-    color: colors.text2,
+    color: colors.ink2,
     fontWeight: "600"
   },
   mergeFieldStack: { gap: spacing.xs },
   mergeReviewBadge: {
     ...textStyles.caption,
-    backgroundColor: colors.amberSoft,
+    backgroundColor: colors.macApricot,
     borderRadius: radius.pill,
-    color: colors.amber,
+    color: colors.macApricotText,
     fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
@@ -2266,7 +2266,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   mergeReviewDecision: {
     ...textStyles.caption,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600"
   },
   mergeReviewHeader: {
@@ -2277,7 +2277,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   mergeReviewItem: {
     backgroundColor: colors.surface2,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     gap: spacing.sm,
     padding: spacing.md
   },
@@ -2297,9 +2297,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   primaryButtonText: { ...createControlStyles(colors).primaryButtonText },
   queueStateText: {
     ...textStyles.caption,
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.pill,
-    color: colors.accent,
+    color: colors.accentText,
     fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
@@ -2335,8 +2335,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   qrScanFrame: {
     alignSelf: "center",
     aspectRatio: 1,
-    borderColor: "rgba(255, 255, 255, 0.28)",
-    borderRadius: radius.control,
+    borderColor: colors.glassLine,
+    borderRadius: radius.md,
     borderWidth: 1,
     height: "58%",
     pointerEvents: "none",
@@ -2346,7 +2346,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   qrScannerPanel: {
     aspectRatio: 0.82,
     backgroundColor: colors.ink,
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderRadius: radius.lg,
     borderWidth: 1,
     overflow: "hidden",
@@ -2362,12 +2362,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   reviewHeader: { gap: spacing.xs },
   reviewMetaText: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   reviewPanel: {
     backgroundColor: colors.surface2,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     gap: spacing.md,
     padding: spacing.md
   },
@@ -2384,13 +2384,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   secondaryButtonText: {
     ...createControlStyles(colors).secondaryButtonText,
-    color: colors.accent
+    color: colors.accentText
   },
   scannerCloseButton: {
     alignItems: "center",
     alignSelf: "center",
-    backgroundColor: "rgba(15, 23, 42, 0.82)",
-    borderColor: "rgba(255, 255, 255, 0.25)",
+    backgroundColor: colors.scrim,
+    borderColor: colors.glassLine,
     borderRadius: radius.pill,
     borderWidth: 1,
     bottom: spacing.md,
@@ -2413,27 +2413,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     maxWidth: "100%"
   },
   sourceChipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+    backgroundColor: colors.accentText,
+    borderColor: colors.accentText
   },
   sourceChipMeta: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     fontWeight: "600"
   },
   sourceChipMetaActive: { color: colors.onAccent },
   sourceChipTitle: {
     ...textStyles.small,
-    color: colors.text,
+    color: colors.ink,
     fontWeight: "600"
   },
   sourceChipTitleActive: { color: colors.onAccent },
   sourceText: {
     ...textStyles.caption,
     alignSelf: "flex-start",
-    backgroundColor: colors.liveSoft,
+    backgroundColor: colors.okSoft,
     borderRadius: radius.pill,
-    color: colors.live,
+    color: colors.okText,
     fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,

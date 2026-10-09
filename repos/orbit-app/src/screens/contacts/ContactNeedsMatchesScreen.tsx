@@ -39,14 +39,14 @@ export function ContactNeedsMatchesScreen() {
       backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("contacts.back") })}
       backLabel={locale.t("contacts.back")}
       title={locale.t("contacts.needMatchesTitle")}
-      refreshControl={<RefreshControl onRefresh={matchesState.refresh} refreshing={matchesState.refreshing} tintColor={colors.accent} />}
+      refreshControl={<RefreshControl onRefresh={matchesState.refresh} refreshing={matchesState.refreshing} tintColor={colors.accentText} />}
     >
       {matchesState.kind === "loading" ? <LoadingState /> : null}
       {matchesState.kind === "offline" || matchesState.kind === "failure" ? (
         <View style={styles.failure}>
           <ErrorState message={locale.t("contacts.needReadFailed")} title={locale.t("contacts.needLoadFailed")} />
           <Pressable accessibilityLabel={locale.t("common.retry")} accessibilityRole="button" onPress={matchesState.refresh} style={styles.retryAction}>
-            <Text style={[styles.retry, { color: colors.accent }]}>{locale.t("common.retry")}</Text>
+            <Text style={[styles.retry, { color: colors.accentText }]}>{locale.t("common.retry")}</Text>
           </Pressable>
         </View>
       ) : null}

@@ -199,6 +199,8 @@ test("RootLayout records first commit and auth restoration after assigning the a
     export function OrbitNotificationLifecycle() { return null; }
     export function StatusBar() { return null; }
     export function useOrbitTheme() { return { scheme: "light" }; }
+    export default { getItem: async () => null, setItem: async () => undefined };
+    export async function loadAppearancePreference() {}
     export function useOrbitAuthSession() { return { actorId: "actor:one", ready: true }; }
     export function useOrbitApiBaseUrl() { return { baseUrl: "https://api.example.test" }; }
     export function appPerformanceInput(metric, scenario) { return { commit: "baseline-sha", environment: "app-release-simulator", metric, run: 1, scenario, unit: "milliseconds" }; }

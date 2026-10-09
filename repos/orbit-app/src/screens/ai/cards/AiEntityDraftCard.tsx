@@ -56,7 +56,7 @@ export function AiEntityDraftCard({
     >
       <View style={[styles.header, created && styles.headerCreated]}>
         <Ionicons
-          color={created ? colors.live : colors.accent}
+          color={created ? colors.okText : colors.accentText}
           name={KIND_GLYPH[view.kind]}
           size={16}
         />
@@ -140,36 +140,36 @@ export function AiEntityDraftCard({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   card: {
-    borderColor: colors.accent,
+    borderColor: colors.accentText,
     borderRadius: radius.lg,
     borderWidth: 1,
     marginTop: spacing.sm,
     overflow: "hidden",
   },
-  cardCreated: { borderColor: colors.border },
-  cardSettled: { borderColor: colors.border, opacity: 0.7 },
+  cardCreated: { borderColor: colors.line },
+  cardSettled: { borderColor: colors.line, opacity: 0.7 },
   header: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
+    backgroundColor: colors.accentSoft,
     flexDirection: "row",
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
-  headerCreated: { backgroundColor: colors.liveSoft },
-  headerText: { ...rowRoleStyles.groupHeading, color: colors.accent },
-  headerTextCreated: { color: colors.live },
+  headerCreated: { backgroundColor: colors.okSoft },
+  headerText: { ...rowRoleStyles.groupHeading, color: colors.accentText },
+  headerTextCreated: { color: colors.okText },
   body: { gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   title: { ...textStyles.listTitle, color: colors.ink },
   row: {
     alignItems: "center",
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     borderTopWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
     minHeight: 44,
   },
-  rowLabel: { ...rowRoleStyles.fieldLabel, color: colors.text3, minWidth: 48 },
+  rowLabel: { ...rowRoleStyles.fieldLabel, color: colors.ink3Text, minWidth: 48 },
   rowValue: { ...rowRoleStyles.fieldValue, color: colors.ink, flex: 1, textAlign: "right" },
   rowInput: {
     ...rowRoleStyles.fieldValue,
@@ -179,11 +179,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 0,
     textAlign: "right",
   },
-  failure: { ...textStyles.small, color: colors.rose },
+  failure: { ...textStyles.small, color: colors.coralText },
   actions: { flexDirection: "row", gap: spacing.sm, paddingBottom: spacing.sm, paddingHorizontal: spacing.md },
   primary: {
     alignItems: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentText,
     borderRadius: radius.md,
     flex: 1,
     justifyContent: "center",
@@ -193,17 +193,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   primaryText: { ...textStyles.body, color: colors.onAccent, fontWeight: "600" },
   secondary: {
     alignItems: "center",
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderRadius: radius.md,
     borderWidth: 1,
     justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: spacing.md,
   },
-  secondaryText: { ...textStyles.body, color: colors.text3 },
+  secondaryText: { ...textStyles.body, color: colors.ink3Text },
   footnote: {
     ...textStyles.caption,
-    color: colors.text3,
+    color: colors.ink3Text,
     paddingBottom: spacing.sm,
     paddingHorizontal: spacing.md,
   },

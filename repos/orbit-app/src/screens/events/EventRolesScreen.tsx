@@ -187,13 +187,13 @@ export function EventRolesScreen() {
   return (
     <AppScreen
       eyebrow="活动权限"
-      refreshControl={<RefreshControl onRefresh={state.refresh} refreshing={state.refreshing} tintColor={colors.accent} />}
+      refreshControl={<RefreshControl onRefresh={state.refresh} refreshing={state.refreshing} tintColor={colors.accentText} />}
       title={editorMode ? (editorMode === "grant" ? "授予活动角色" : "管理活动角色") : "活动角色"}
     >
       {editorMode ? (
         <View style={styles.editor}>
           <Pressable accessibilityRole="button" onPress={() => setEditorMode(null)} style={styles.backButton}>
-            <Ionicons color={colors.text2} name="arrow-back" size={18} />
+            <Ionicons color={colors.ink2} name="arrow-back" size={18} />
             <Text style={styles.backButtonText}>返回角色列表</Text>
           </Pressable>
           {notice ? <Text accessibilityRole="alert" style={styles.notice}>{notice}</Text> : null}
@@ -205,7 +205,7 @@ export function EventRolesScreen() {
               editable={editorMode === "grant" && !busy}
               onChangeText={setSubjectActorId}
               placeholder="actor:operations-01"
-              placeholderTextColor={colors.text4}
+              placeholderTextColor={colors.ink3Text}
               style={[styles.input, editorMode === "edit" ? styles.inputReadonly : null]}
               value={subjectActorId}
             />
@@ -235,7 +235,7 @@ export function EventRolesScreen() {
               multiline
               onChangeText={setReason}
               placeholder="例如：负责现场签到和嘉宾接待"
-              placeholderTextColor={colors.text4}
+              placeholderTextColor={colors.ink3Text}
               style={[styles.input, styles.reasonInput]}
               value={reason}
             />
@@ -258,47 +258,47 @@ export function EventRolesScreen() {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   backButton: { alignItems: "center", alignSelf: "flex-start", flexDirection: "row", gap: spacing.sm, minHeight: 44 },
-  backButtonText: { color: colors.text2, fontSize: typography.small, fontWeight: "700" },
+  backButtonText: { color: colors.ink2, fontSize: typography.bodySm, fontWeight: "700" },
   disabled: { opacity: 0.55 },
   editor: {
     gap: spacing.lg,
     backgroundColor: colors.surface2,
-    borderRadius: radius.card,
+    borderRadius: radius.xl,
     padding: spacing.md
   },
   fieldGroup: { gap: spacing.sm },
   input: {
     ...createControlStyles(colors).input
   },
-  inputReadonly: { backgroundColor: colors.surface3, color: colors.text2 },
-  label: { color: colors.text2, fontSize: typography.caption, fontWeight: "800" },
-  notice: { backgroundColor: colors.amberSoft, borderRadius: radius.control, color: colors.caution, fontSize: typography.small, lineHeight: 20, padding: spacing.md },
+  inputReadonly: { backgroundColor: colors.surface3, color: colors.ink2 },
+  label: { color: colors.ink2, fontSize: typography.label, fontWeight: "800" },
+  notice: { backgroundColor: colors.macApricot, borderRadius: radius.md, color: colors.macApricotText, fontSize: typography.bodySm, lineHeight: 20, padding: spacing.md },
   pressed: { opacity: 0.68 },
   reasonInput: { minHeight: 88, paddingTop: spacing.md, textAlignVertical: "top" },
   revokeButton: {
     ...createControlStyles(colors).secondaryButton,
-    backgroundColor: colors.roseSoft
+    backgroundColor: colors.coralSoft
   },
   revokeButtonText: {
     ...createControlStyles(colors).secondaryButtonText,
-    color: colors.rose
+    color: colors.coralText
   },
   roleOption: {
-    borderColor: colors.border,
-    borderRadius: radius.control,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     gap: spacing.xs,
     minHeight: 64,
     padding: spacing.md,
     width: "100%"
   },
-  roleOptionActive: { backgroundColor: colors.accentSofter, borderColor: colors.accent },
+  roleOptionActive: { backgroundColor: colors.accentSoft, borderColor: colors.accentText },
   roleOptionDetail: {
-    color: colors.text3,
+    color: colors.ink3Text,
     ...textStyles.small
   },
-  roleOptionLabel: { color: colors.ink, fontSize: typography.small, fontWeight: "800" },
-  roleOptionLabelActive: { color: colors.accent },
+  roleOptionLabel: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "800" },
+  roleOptionLabelActive: { color: colors.accentText },
   roleOptions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   saveButton: {
     ...createControlStyles(colors).primaryButton

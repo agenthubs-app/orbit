@@ -1,9 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { eventDetailRecommendationsSchema } from "../../api/event-detail-contract";
 import type { ApiResourceState } from "../../hooks/useApiResource";
+import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 export function Registration7aRecommendationsView({ eventId, state, onContact }: { eventId: string; state: ApiResourceState<unknown>; onContact: (id: string) => void }) {
+  const { colors, styles } = useStyles();
   const locale = useOrbitLocale();
   const parsed = state.kind === "success" || state.kind === "empty" ? eventDetailRecommendationsSchema(eventId).safeParse(state.data) : null;
   const failed = state.kind === "failure" || state.kind === "offline" || parsed?.success === false;
@@ -28,11 +30,11 @@ export function Registration7aRecommendationsView({ eventId, state, onContact }:
   </View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => StyleSheet.create({
   section: { marginTop: 18, gap: 8 },
-  title: { color: "#0B1220", fontSize: 15, fontWeight: "800", lineHeight: 22 },
-  person: { paddingVertical: 10, borderBottomColor: "#EEF0F4", borderBottomWidth: 1, gap: 4 },
-  name: { color: "#0B1220", fontSize: 14, fontWeight: "600", lineHeight: 20 },
-  muted: { color: "#6B7280", fontSize: 12, lineHeight: 19 },
-  link: { color: "#0A5CFF", fontSize: 13, fontWeight: "600", paddingVertical: 8 }
-});
+  title: { color: colors.ink, fontSize: 15, fontWeight: "800", lineHeight: 22 },
+  person: { paddingVertical: 10, borderBottomColor: colors.line, borderBottomWidth: 1, gap: 4 },
+  name: { color: colors.ink, fontSize: 14, fontWeight: "600", lineHeight: 20 },
+  muted: { color: colors.ink3Text, fontSize: 12, lineHeight: 19 },
+  link: { color: colors.accentText, fontSize: 13, fontWeight: "600", paddingVertical: 8 }
+}));

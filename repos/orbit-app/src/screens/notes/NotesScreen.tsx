@@ -70,9 +70,9 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
     {contactId ? <View><Text style={styles.sort}>{locale.t("notes.contactScope")}</Text><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.allNotes")} onPress={() => router.push("/notes")} style={styles.more}><Text style={styles.moreText}>{locale.t("notes.allNotes")}</Text></Pressable></View> : null}
     {notes ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t("notes.loadedCount", { loaded: notes.length, total: source.total ?? notes.length })}</Text> : null}
     <View style={styles.searchBox}>
-      <Ionicons color={colors.text3} name="search" size={19} />
-      <TextInput accessibilityLabel={locale.t("notes.search")} autoCorrect={false} maxFontSizeMultiplier={2} onChangeText={setQuery} placeholder={locale.t("notes.searchPlaceholder")} placeholderTextColor={colors.text4} style={styles.searchInput} value={query} />
-      {query ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.clearSearch")} onPress={() => setQuery("")}><Ionicons color={colors.text3} name="close-circle" size={19} /></Pressable> : null}
+      <Ionicons color={colors.ink3Text} name="search" size={19} />
+      <TextInput accessibilityLabel={locale.t("notes.search")} autoCorrect={false} maxFontSizeMultiplier={2} onChangeText={setQuery} placeholder={locale.t("notes.searchPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.searchInput} value={query} />
+      {query ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.clearSearch")} onPress={() => setQuery("")}><Ionicons color={colors.ink3Text} name="close-circle" size={19} /></Pressable> : null}
     </View>
     {!contactId ? <><View accessibilityRole="tablist" style={styles.filters}>{filters.map((item) => <Pressable key={item.value} accessibilityRole="tab" accessibilityState={{ selected: filter === item.value }} onPress={() => setFilter(item.value)} style={[styles.filter, filter === item.value && styles.filterSelected]}>
       <Text maxFontSizeMultiplier={2} style={[styles.filterText, filter === item.value && styles.filterTextSelected]}>{locale.t(item.labelKey)}</Text>
@@ -86,8 +86,8 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
       <View style={styles.rowTop}><Text maxFontSizeMultiplier={2} numberOfLines={2} style={styles.title}>{note.title}</Text><Text maxFontSizeMultiplier={2} style={styles.time}>{noteTime(note.updatedAt, locale.language)}</Text></View>
       <Text maxFontSizeMultiplier={2} numberOfLines={2} style={styles.summary}>{note.body.replace(/\s+/g, " ")}</Text>
       <View style={styles.metaRow}>
-        {note.contactIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accent} name="people-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.peopleCount", { count: note.contactIds.length })}</Text></View> : null}
-        {note.eventIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accent} name="calendar-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.eventsCount", { count: note.eventIds.length })}</Text></View> : null}
+        {note.contactIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accentText} name="people-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.peopleCount", { count: note.contactIds.length })}</Text></View> : null}
+        {note.eventIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accentText} name="calendar-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.eventsCount", { count: note.eventIds.length })}</Text></View> : null}
         {!note.contactIds.length && !note.eventIds.length ? <Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.unlinked")}</Text> : null}
         {note.localMutationState ? <Text accessibilityLiveRegion="polite" maxFontSizeMultiplier={2} style={styles.mutationStatus}>{locale.t(`notes.outbox${note.localMutationState === "queued" ? "Queued" : note.localMutationState === "conflict" ? "Conflict" : "Failed"}` as MessageKey)}</Text> : null}
       </View>
@@ -98,30 +98,30 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  add: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.pill, height: 40, justifyContent: "center", width: 40 },
-  addDisabled: { backgroundColor: colors.text4 },
+  add: { alignItems: "center", backgroundColor: colors.accentText, borderRadius: radius.pill, height: 40, justifyContent: "center", width: 40 },
+  addDisabled: { backgroundColor: colors.ink3Text },
   hero: { alignItems: "baseline", flexDirection: "row", gap: spacing.sm, paddingTop: spacing.sm },
   heroTitle: { color: colors.ink, fontSize: 34, fontWeight: "900", letterSpacing: -0.8 },
-  heroCount: { color: colors.accent, fontSize: 34, fontWeight: "900" },
-  searchBox: { alignItems: "center", backgroundColor: colors.surface2, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 64, paddingHorizontal: spacing.md },
+  heroCount: { color: colors.accentText, fontSize: 34, fontWeight: "900" },
+  searchBox: { alignItems: "center", backgroundColor: colors.surface2, borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 64, paddingHorizontal: spacing.md },
   searchInput: { color: colors.ink, flex: 1, fontSize: typography.body, minHeight: 64, paddingVertical: 0 },
-  filters: { borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+  filters: { borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
   filter: { alignItems: "center", borderBottomColor: "transparent", borderBottomWidth: 3, minHeight: 44, justifyContent: "center", paddingHorizontal: 1 },
   filterSelected: { borderBottomColor: colors.ink },
-  filterText: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
+  filterText: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "700" },
   filterTextSelected: { color: colors.ink },
-  sort: { color: colors.text3, fontSize: typography.caption, textAlign: "right" },
+  sort: { color: colors.ink3Text, fontSize: typography.label, textAlign: "right" },
   list: { gap: spacing.sm },
-  groupTitle: { color: colors.text3, fontSize: typography.body, fontWeight: "700", paddingTop: spacing.sm },
-  row: { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, gap: 7, minHeight: 112, paddingVertical: spacing.lg },
+  groupTitle: { color: colors.ink3Text, fontSize: typography.body, fontWeight: "700", paddingTop: spacing.sm },
+  row: { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, gap: 7, minHeight: 112, paddingVertical: spacing.lg },
   rowTop: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   title: { color: colors.ink, flex: 1, fontSize: 17, fontWeight: "800" },
-  time: { color: colors.text3, fontSize: typography.caption },
-  summary: { color: colors.text2, fontSize: typography.small },
+  time: { color: colors.ink3Text, fontSize: typography.label },
+  summary: { color: colors.ink2, fontSize: typography.bodySm },
   metaRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm, marginTop: 2 },
   metaPill: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.pill, flexDirection: "row", gap: 4, paddingHorizontal: 8, paddingVertical: 4 },
-  meta: { color: colors.text3, fontSize: typography.caption, fontWeight: "600" },
-  mutationStatus: { color: colors.accent, fontSize: typography.caption, fontWeight: "800" },
+  meta: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "600" },
+  mutationStatus: { color: colors.accentText, fontSize: typography.label, fontWeight: "800" },
   more: { alignItems: "center", minHeight: 48, justifyContent: "center" },
-  moreText: { color: colors.accent, fontSize: typography.small, fontWeight: "700" },
+  moreText: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "700" },
 }));

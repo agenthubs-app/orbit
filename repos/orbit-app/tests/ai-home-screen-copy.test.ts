@@ -292,7 +292,8 @@ test("Orbit AI drawer avoids deprecated React Native shadow props", () => {
 
   assert.notEqual(drawerPanelStart, -1);
   assert.notEqual(drawerScrimStart, -1);
-  assert.match(drawerPanelSource, /boxShadow:/u);
+  // R01: the drawer uses the design's single floating shadow helper (boxShadow).
+  assert.match(drawerPanelSource, /\.\.\.floatShadow\(colors\)/u);
   assert.doesNotMatch(
     drawerPanelSource,
     /shadowColor|shadowOffset|shadowOpacity|shadowRadius/u

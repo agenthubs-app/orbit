@@ -942,7 +942,7 @@ function ConversationThread({
           settlingAnchor.current = null;
           if (followNewMessages.current) historyScroll.current?.scrollToEnd({ animated: true });
         }}
-        refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.accent} />}
+        refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.accentText} />}
         style={styles.readingHistory}
       >
       <View style={styles.messagePanel}>
@@ -1031,7 +1031,7 @@ function ConversationThread({
       {sendError ? <View accessibilityLiveRegion="polite" style={styles.failureStack}>
         <Text style={[styles.messageLabel, styles.assistantLabel]}>IORBIT</Text>
         <View style={styles.failureCard}>
-        <View style={styles.failureHeading}><Ionicons color={colors.rose} name="alert-circle-outline" size={28} /><Text style={styles.failureTitle}>{locale.t("aiConversation.answerFailed")}</Text></View>
+        <View style={styles.failureHeading}><Ionicons color={colors.coralText} name="alert-circle-outline" size={28} /><Text style={styles.failureTitle}>{locale.t("aiConversation.answerFailed")}</Text></View>
         <Text style={styles.failureBody}>{sendError}</Text>
         <View style={styles.failureActions}>
           <Pressable accessibilityRole="button" onPress={onRetrySend} disabled={sending || writingBlocked} style={styles.failurePrimary}><Text style={styles.failurePrimaryText}>{retrySendLabel}</Text></Pressable>
@@ -1065,7 +1065,7 @@ function ConversationThread({
           onChangeText={(value) => { if (!value) setInputHeight(minimumInputHeight); onChangeDraft(value); }}
           onContentSizeChange={(event) => setInputHeight(Math.min(120, Math.max(minimumInputHeight, event.nativeEvent.contentSize.height)))}
           placeholder={locale.t("aiConversation.continuePlaceholder")}
-          placeholderTextColor={colors.text4}
+          placeholderTextColor={colors.ink3Text}
           style={[styles.input, { height: Math.max(minimumInputHeight, inputHeight) }]}
           textAlignVertical="top"
           value={draftMessage}
@@ -1122,7 +1122,7 @@ function TaskInteractionCard({
       <View style={styles.taskInteractionHeader}>
         <View style={styles.taskInteractionIcon}>
           <Ionicons
-            color={failed ? colors.rose : completed ? colors.live : colors.accent}
+            color={failed ? colors.coralText : completed ? colors.okText : colors.accentText}
             name={failed ? "alert-circle-outline" : completed ? "checkmark" : "sparkles-outline"}
             size={18}
           />
@@ -1175,12 +1175,12 @@ function TaskInteractionCard({
       ) : null}
       {interaction.sourceNoteId ? (
         <Pressable accessibilityRole="button" accessibilityLabel={locale.t("aiConversation.returnSourceNote")} onPress={() => onOpenHref(`/notes/${encodeURIComponent(interaction.sourceNoteId!)}`)} style={styles.recordLink}>
-          <Text style={styles.recordLinkText}>{locale.t("aiConversation.viewSourceNote")}</Text><Ionicons color={colors.accent} name="arrow-up-right-box-outline" size={18} />
+          <Text style={styles.recordLinkText}>{locale.t("aiConversation.viewSourceNote")}</Text><Ionicons color={colors.accentText} name="arrow-up-right-box-outline" size={18} />
         </Pressable>
       ) : null}
       {completed && conversationTaskDetailHref(interaction.taskId) ? (
         <Pressable accessibilityRole="button" accessibilityLabel={locale.t("aiConversation.openTaskNamed", { title: interaction.title })} onPress={() => onOpenHref(conversationTaskDetailHref(interaction.taskId)!)} style={styles.recordLink}>
-          <Text style={styles.recordLinkText}>{locale.t("aiConversation.viewTask")}</Text><Ionicons color={colors.accent} name="arrow-up-right-box-outline" size={18} />
+          <Text style={styles.recordLinkText}>{locale.t("aiConversation.viewTask")}</Text><Ionicons color={colors.accentText} name="arrow-up-right-box-outline" size={18} />
         </Pressable>
       ) : null}
     </View>
@@ -1221,7 +1221,7 @@ function QuickRouteDock({
             ]}
           >
             <Ionicons
-              color={colors.accent}
+              color={colors.accentText}
               name={iconForRoute(route.href)}
               size={17}
             />
@@ -1259,9 +1259,9 @@ function MessageBubble({ baseUrl, message, onOpenHref }: { baseUrl: string; mess
           }}
           style={styles.recordLink}
         >
-          <Ionicons color={colors.accent} name={link.kind === "人脉" ? "person-outline" : link.kind === "待办" ? "checkbox-outline" : link.kind === "行动" ? "flash-outline" : "calendar-outline"} size={20} />
+          <Ionicons color={colors.accentText} name={link.kind === "人脉" ? "person-outline" : link.kind === "待办" ? "checkbox-outline" : link.kind === "行动" ? "flash-outline" : "calendar-outline"} size={20} />
           <Text style={styles.recordLinkText}>{locale.t("aiConversation.recordDetail", { kind: link.kind, id: link.id, web: link.external ? locale.t("aiConversation.web") : "" })}</Text>
-          <Ionicons color={colors.accent} name="arrow-up-right-box-outline" size={18} />
+          <Ionicons color={colors.accentText} name="arrow-up-right-box-outline" size={18} />
         </Pressable>
       ))}
       {/(?:https?:\/\/|orbit:\/\/|\]\()/iu.test(message.content) ? <Text style={styles.linkBoundary}>{locale.t("aiConversation.linkBoundary")}</Text> : null}
@@ -1394,15 +1394,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   brandMark: { width: 18, height: 18 },
   composerPlusButton: { width: 44, height: 44, borderRadius: 8, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
   numberedRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
-  numberedMarker: { color: colors.accent, fontSize: 22, fontWeight: "800", lineHeight: 24, minWidth: 22 },
+  numberedMarker: { color: colors.accentText, fontSize: 22, fontWeight: "800", lineHeight: 24, minWidth: 22 },
   numberedCopy: { flex: 1, minWidth: 0, gap: 4 },
-  numberedDetail: { color: colors.text2, fontSize: 14, lineHeight: 23 },
-  failureCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, gap: 12 },
+  numberedDetail: { color: colors.ink2, fontSize: 14, lineHeight: 23 },
+  failureCard: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 16, gap: 12 },
   failureStack: { gap: 12 },
   failureHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
   failureTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800", flexShrink: 1 },
-  failureBody: { color: colors.text2, fontSize: 14, lineHeight: 22 },
-  failureCode: { color: colors.text3, fontSize: 12, lineHeight: 18 },
+  failureBody: { color: colors.ink2, fontSize: 14, lineHeight: 22 },
+  failureCode: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
   failureActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   failurePrimary: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   failurePrimaryText: { color: colors.surface, fontSize: 14, lineHeight: 22, fontWeight: "700" },
@@ -1410,22 +1410,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   failureSecondaryText: { color: colors.ink, fontSize: 14, lineHeight: 22, fontWeight: "600" },
   // Sprint 0112: the top-of-history row follows the ledger's load-more row (hairline border, link text).
   earlierRow: { minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.md },
-  earlierButton: { borderColor: colors.border, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth },
+  earlierButton: { borderColor: colors.line, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth },
   earlierFailure: { flexDirection: "row", gap: spacing.sm },
   earlierInline: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
-  earlierLink: { color: colors.accent, fontSize: typography.small, fontWeight: "700" },
-  earlierMuted: { color: colors.text2, fontSize: typography.small, lineHeight: 20 },
-  earlierError: { color: colors.rose, fontSize: typography.small, lineHeight: 20 },
-  routesPanel: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
+  earlierLink: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "700" },
+  earlierMuted: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
+  earlierError: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
+  routesPanel: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.line },
   composerActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  pendingNoteChanges: { color: colors.muted, fontSize: typography.small, lineHeight: 18 },
+  pendingNoteChanges: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 18 },
   mentionButtonText: { color: colors.ink, fontSize: 20, fontWeight: "800" },
   referenceRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, paddingTop: spacing.xs },
   referenceChip: { backgroundColor: colors.surface2, borderRadius: radius.pill, minHeight: 36, justifyContent: "center", paddingHorizontal: spacing.sm },
   referenceChipText: { color: colors.ink, fontSize: 12, fontWeight: "700" },
-  recordLink: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 48, borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: spacing.sm },
-  recordLinkText: { flex: 1, color: colors.accent, fontSize: typography.small, fontWeight: "600", lineHeight: 20 },
-  linkBoundary: { color: colors.muted, fontSize: typography.small, lineHeight: 20 },
+  recordLink: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 48, borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: spacing.sm },
+  recordLinkText: { flex: 1, color: colors.accentText, fontSize: typography.bodySm, fontWeight: "600", lineHeight: 20 },
+  linkBoundary: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
   backButton: {
     alignItems: "center",
     borderRadius: radius.pill,
@@ -1434,16 +1434,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 44
   },
   bodyText: {
-    color: colors.text,
-    fontSize: typography.small,
+    color: colors.ink,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   disabled: {
     opacity: 0.54
   },
   errorText: {
-    color: colors.rose,
-    fontSize: typography.small,
+    color: colors.coralText,
+    fontSize: typography.bodySm,
     lineHeight: 20
   },
   composerPanel: {
@@ -1461,7 +1461,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   input: {
     backgroundColor: colors.surface,
-    color: colors.text,
+    color: colors.ink,
     fontSize: 15,
     lineHeight: 22,
     minHeight: 44,
@@ -1481,19 +1481,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   taskInteractionCard: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
     gap: spacing.md,
     padding: spacing.md
   },
   taskInteractionCopy: { flex: 1, gap: 4, minWidth: 0 },
   taskInteractionEyebrow: {
-    color: colors.accent,
-    fontSize: typography.caption,
+    color: colors.accentText,
+    fontSize: typography.label,
     fontWeight: "800"
   },
-  taskInteractionFailed: { borderColor: colors.rose },
+  taskInteractionFailed: { borderColor: colors.coralText },
   taskInteractionHeader: {
     alignItems: "flex-start",
     flexDirection: "row",
@@ -1515,8 +1515,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.onAccent
   },
   taskInteractionReason: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     lineHeight: 18
   },
   taskInteractionSecondary: {
@@ -1524,30 +1524,30 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   taskInteractionSecondaryText: {
     ...createControlStyles(colors).secondaryButtonText,
-    color: colors.text2
+    color: colors.ink2
   },
   taskInteractionTitle: {
-    color: colors.text,
+    color: colors.ink,
     fontSize: typography.body,
     fontWeight: "800",
     lineHeight: 22
   },
   intentBlock: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md
   },
   intentTitle: {
-    color: colors.accent,
-    fontSize: typography.small,
+    color: colors.accentText,
+    fontSize: typography.bodySm,
     fontWeight: "700"
   },
   listBullet: {
-    color: colors.text,
-    fontSize: typography.small,
+    color: colors.ink,
+    fontSize: typography.bodySm,
     lineHeight: 20,
     width: 14
   },
@@ -1557,21 +1557,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   markdownCode: {
     backgroundColor: colors.surface3,
-    borderRadius: radius.xs,
+    borderRadius: radius.sm,
     color: colors.ink,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     overflow: "hidden"
   },
   markdownStack: {
     gap: 14
   },
   markdownQuoteBlock: {
-    borderLeftColor: colors.border,
+    borderLeftColor: colors.line,
     borderLeftWidth: 3,
     paddingLeft: spacing.sm
   },
   markdownQuoteText: {
-    color: colors.text2
+    color: colors.ink2
   },
   markdownStrong: {
     color: colors.ink,
@@ -1582,12 +1582,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   messageLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "600",
     lineHeight: 18
   },
-  assistantLabel: { color: colors.accent },
+  assistantLabel: { color: colors.accentText },
   messageStack: {
     gap: 14
   },
@@ -1595,7 +1595,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   messageText: {
-    color: colors.text,
+    color: colors.ink,
     fontSize: 15,
     lineHeight: 24,
     fontWeight: "400"
@@ -1617,8 +1617,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   quickRouteButton: {
     alignItems: "center",
     backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.control,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexBasis: "18%",
     flexGrow: 1,
@@ -1638,20 +1638,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   quickRouteLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 16
   },
   quickRouteTitle: {
-    color: colors.text2,
+    color: colors.ink2,
     fontSize: 11,
     fontWeight: "800",
     lineHeight: 14
   },
   sendButton: {
     alignItems: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentText,
     borderRadius: 10,
     height: 44,
     width: 44,
@@ -1666,7 +1666,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   threadHeader: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: spacing.xs,
@@ -1675,8 +1675,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 3.5
   },
   threadNextAction: {
-    color: colors.text3,
-    fontSize: typography.small,
+    color: colors.ink3Text,
+    fontSize: typography.bodySm,
     lineHeight: 19
   },
   threadSurface: {
@@ -1684,7 +1684,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flex: 1
   },
   threadTitle: {
-    color: colors.text3,
+    color: colors.ink3Text,
     fontSize: 11,
     fontWeight: "400",
     lineHeight: 16
@@ -1697,7 +1697,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   userBubble: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
     paddingBottom: 16
   }
 }));

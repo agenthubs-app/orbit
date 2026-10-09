@@ -16,6 +16,8 @@ import {
 import { OrbitRouteAccessBoundary } from "../src/components/OrbitRouteAccessBoundary";
 import { OrbitNotificationsCoordinator } from "../src/components/OrbitNotificationsCoordinator";
 import { OrbitNotificationLifecycle } from "../src/notifications/NotificationLifecycle";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { loadAppearancePreference } from "../src/design/appearance";
 import { useOrbitTheme } from "../src/design/theme";
 import { OrbitLocaleProvider } from "../src/i18n/OrbitLocaleProvider";
 import { useEffect, useRef } from "react";
@@ -77,6 +79,10 @@ export function ErrorBoundary({
 
 export default function RootLayout() {
   const { scheme } = useOrbitTheme();
+  // R01: restore the Settings appearance choice (automatic / light / dark).
+  useEffect(() => {
+    void loadAppearancePreference(AsyncStorage);
+  }, []);
   return (
     <SafeAreaProvider>
       {/* 类组件边界兜住 router 之外的渲染异常，比如两个 Provider 自身出错。

@@ -96,7 +96,7 @@ export function HomeScreen() {
         <RefreshControl
           onRefresh={eventsState.refresh}
           refreshing={eventsState.refreshing}
-          tintColor={colors.accent}
+          tintColor={colors.accentText}
         />
       }
       title="我的活动"
@@ -220,13 +220,13 @@ function HomeEventDiscoveryControls({
   return (
     <View style={styles.homeEventDiscoveryPanel}>
       <View style={styles.homeEventSearchRow}>
-        <Ionicons color={colors.text3} name="search-outline" size={18} />
+        <Ionicons color={colors.ink3Text} name="search-outline" size={18} />
         <TextInput
           autoCapitalize="none"
           autoCorrect={false}
           onChangeText={onQueryChange}
           placeholder="搜索活动、地点或主题"
-          placeholderTextColor={colors.text4}
+          placeholderTextColor={colors.ink3Text}
           returnKeyType="search"
           style={styles.homeEventSearchInput}
           value={query}
@@ -238,7 +238,7 @@ function HomeEventDiscoveryControls({
             onPress={() => onQueryChange("")}
             style={styles.homeEventClearButton}
           >
-            <Ionicons color={colors.text3} name="close-circle" size={19} />
+            <Ionicons color={colors.ink3Text} name="close-circle" size={19} />
           </Pressable>
         ) : null}
       </View>
@@ -440,7 +440,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     overflow: "hidden",
     width: "100%",
     minHeight: 300,
-    borderRadius: radius.card
+    borderRadius: radius.xl
   },
   homeEventImage: {
     borderRadius: radius.lg
@@ -452,19 +452,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   homeEventImageOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(8,8,12,0.34)"
+    backgroundColor: colors.scrim
   },
   homeEventImageCta: {
     color: colors.onImage,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 17
   },
   homeEventImageDateChip: {
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderColor: "rgba(255,255,255,0.88)",
-    borderRadius: radius.control,
+    backgroundColor: colors.onImage,
+    borderColor: colors.onImage,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexShrink: 0,
     minWidth: 74,
@@ -472,14 +472,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.xs
   },
   homeEventImageDateDetail: {
-    color: colors.imageBadgeText,
+    color: colors.onImageBadge,
     fontSize: 10,
     fontWeight: "700",
     lineHeight: 13
   },
   homeEventImageDateValue: {
-    color: colors.imageBadgeText,
-    fontSize: typography.caption,
+    color: colors.onImageBadge,
+    fontSize: typography.label,
     fontWeight: "900",
     lineHeight: 17
   },
@@ -488,16 +488,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   homeEventImageDetail: {
-    color: "rgba(255,255,255,0.86)",
+    color: colors.onImage,
     flexShrink: 1,
-    fontSize: typography.small,
+    fontSize: typography.bodySm,
     fontWeight: "700",
     lineHeight: 19,
     minWidth: 0
   },
   homeEventImageFooter: {
     alignItems: "center",
-    borderTopColor: "rgba(255,255,255,0.24)",
+    borderTopColor: colors.glassLine,
     borderTopWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -514,8 +514,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   homeEventFilterLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
+    color: colors.ink3Text,
+    fontSize: typography.label,
     fontWeight: "700",
     lineHeight: 17
   },
@@ -531,7 +531,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.md
   },
   homeEventSearchInput: {
-    color: colors.text,
+    color: colors.ink,
     flex: 1,
     fontSize: typography.body,
     minWidth: 0,
@@ -540,8 +540,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   homeEventSearchRow: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
@@ -571,11 +571,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   homeEventImageStatusPill: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.onImage,
+    borderColor: colors.onImage,
     borderRadius: radius.pill,
     borderWidth: 1,
-    color: colors.imageBadgeText,
+    color: colors.onImageBadge,
     fontSize: 11,
     fontWeight: "800",
     lineHeight: 14,
@@ -584,8 +584,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 5
   },
   homeEventImageSubtitle: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: typography.caption,
+    color: colors.onImage,
+    fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 16
   },

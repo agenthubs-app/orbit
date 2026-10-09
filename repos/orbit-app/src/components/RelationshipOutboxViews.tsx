@@ -71,13 +71,13 @@ export function UnsentEndedNotice({ messages, onDiscard }: { messages: readonly 
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  notice: { color: colors.amber, backgroundColor: colors.amberSoft, borderRadius: radius.control, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14, lineHeight: 21 },
-  bubble: { gap: 4, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  sender: { color: colors.text, fontSize: 14, fontWeight: "700" },
-  body: { color: colors.text, fontSize: 15, lineHeight: 22 },
-  pending: { color: colors.amber, fontSize: 13 },
+  notice: { color: colors.macApricotText, backgroundColor: colors.macApricot, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14, lineHeight: 21 },
+  bubble: { gap: 4, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
+  sender: { color: colors.ink, fontSize: 14, fontWeight: "700" },
+  body: { color: colors.ink, fontSize: 15, lineHeight: 22 },
+  pending: { color: colors.macApricotText, fontSize: 13 },
   row: { flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
-  endedRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  failed: { color: colors.rose, fontSize: 13 },
-  link: { color: colors.accent, fontSize: 13, fontWeight: "600" },
+  endedRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
+  failed: { color: colors.coralText, fontSize: 13 },
+  link: { color: colors.accentText, fontSize: 13, fontWeight: "600" },
 }));

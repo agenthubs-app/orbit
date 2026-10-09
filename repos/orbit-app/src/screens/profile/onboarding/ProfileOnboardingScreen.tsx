@@ -390,7 +390,7 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
       <Pressable accessibilityLabel={`${label}：${value ?? placeholder}`} accessibilityRole="button" accessibilityState={{ disabled: !enabled, expanded: picker === which }} disabled={!enabled}
         onPress={() => setPicker(current => (current === which ? null : which))} style={[styles.selectButton, !enabled && styles.disabled]}>
         <Text numberOfLines={1} style={[styles.selectText, !value && styles.selectPlaceholder]}>{value ?? placeholder}</Text>
-        <Ionicons color={colors.text3} name={picker === which ? "chevron-up" : "chevron-down"} size={14} />
+        <Ionicons color={colors.ink3Text} name={picker === which ? "chevron-up" : "chevron-down"} size={14} />
       </Pressable>
     </Field>
   );
@@ -401,7 +401,7 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
       {message ? <Text accessibilityLiveRegion="polite" style={message === t("onboarding.scanFilled") ? styles.toast : styles.warning}>{message}</Text> : null}
       <View style={styles.fields}>
         <Field label={t("onboarding.name")}>
-          <TextInput accessibilityLabel={t("onboarding.name")} editable={!disabled} maxLength={60} onChangeText={set("name")} placeholder={t("onboarding.namePlaceholder")} placeholderTextColor={colors.text4} style={styles.input} value={basic.name} />
+          <TextInput accessibilityLabel={t("onboarding.name")} editable={!disabled} maxLength={60} onChangeText={set("name")} placeholder={t("onboarding.namePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.name} />
         </Field>
         <View style={styles.fieldRow}>
           {selectButton("primary", t("onboarding.primaryIndustry"), primaryLabel, t("onboarding.select"), !disabled)}
@@ -422,15 +422,15 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
         ) : null}
         <View style={styles.fieldRow}>
           <Field half label={t("onboarding.role")} optional>
-            <TextInput accessibilityLabel={t("onboarding.role")} editable={!disabled} maxLength={80} onChangeText={set("title")} placeholder={t("onboarding.rolePlaceholder")} placeholderTextColor={colors.text4} style={styles.input} value={basic.title} />
+            <TextInput accessibilityLabel={t("onboarding.role")} editable={!disabled} maxLength={80} onChangeText={set("title")} placeholder={t("onboarding.rolePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.title} />
           </Field>
           <Field half label={t("onboarding.company")} optional>
-            <TextInput accessibilityLabel={t("onboarding.company")} editable={!disabled} maxLength={80} onChangeText={set("company")} placeholder={t("onboarding.companyPlaceholder")} placeholderTextColor={colors.text4} style={styles.input} value={basic.company} />
+            <TextInput accessibilityLabel={t("onboarding.company")} editable={!disabled} maxLength={80} onChangeText={set("company")} placeholder={t("onboarding.companyPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.company} />
           </Field>
         </View>
         <Field helper={t("onboarding.birthDateHelp")} label={t("onboarding.birthDate")}>
           <TextInput accessibilityLabel={t("onboarding.birthDate")} autoCorrect={false} editable={!disabled} keyboardType="numbers-and-punctuation" maxLength={10} onChangeText={set("birthDate")}
-            placeholder={t("onboarding.birthDatePlaceholder")} placeholderTextColor={colors.text4} style={styles.input} value={basic.birthDate} />
+            placeholder={t("onboarding.birthDatePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.birthDate} />
         </Field>
         {showBirthError ? <Text accessibilityRole="alert" style={styles.warning}>{t("onboarding.birthDateInvalid")}</Text> : null}
       </View>
@@ -513,7 +513,7 @@ function GoalsStep({ focus, goals, horizon, setFocus, setGoals, setHorizon }: {
         </View>
       </View>
       <Field label={t("onboarding.focus")} optional>
-        <TextInput accessibilityLabel={t("onboarding.focus")} maxLength={FOCUS_LIMIT} multiline onChangeText={setFocus} placeholder={t("onboarding.focusPlaceholder")} placeholderTextColor={colors.text4} style={styles.multiline} value={focus} />
+        <TextInput accessibilityLabel={t("onboarding.focus")} maxLength={FOCUS_LIMIT} multiline onChangeText={setFocus} placeholder={t("onboarding.focusPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.multiline} value={focus} />
       </Field>
     </>
   );
@@ -582,14 +582,14 @@ function IntroStep({ bio, bioCount, headline, message, onRegenerate, regeneratio
           </View>
           <Pressable accessibilityLabel={regenerationsLeft > 0 ? t("onboarding.regenerate", { count: regenerationsLeft }) : t("onboarding.regenerateUsed")} accessibilityRole="button"
             accessibilityState={{ disabled: !canRegenerate }} disabled={!canRegenerate} onPress={onRegenerate} style={styles.linkButton}>
-            <Ionicons color={canRegenerate ? colors.accent : colors.text4} name="refresh" size={16} />
+            <Ionicons color={canRegenerate ? colors.accentText : colors.ink3Text} name="refresh" size={16} />
             <Text style={[styles.linkText, !canRegenerate && styles.mutedLink]}>{regenerationsLeft > 0 ? t("onboarding.regenerate", { count: regenerationsLeft }) : t("onboarding.regenerateUsed")}</Text>
           </Pressable>
         </View>
       )}
       {message ? <Text accessibilityLiveRegion="polite" style={styles.warning}>{message}</Text> : null}
       <Field label={t("onboarding.headline")}>
-        <TextInput accessibilityLabel={t("onboarding.headline")} editable={!generating} maxLength={HEADLINE_LIMIT} onChangeText={setHeadline} placeholder={t("onboarding.headlinePlaceholder")} placeholderTextColor={colors.text4} style={styles.headlineInput} value={headline} />
+        <TextInput accessibilityLabel={t("onboarding.headline")} editable={!generating} maxLength={HEADLINE_LIMIT} onChangeText={setHeadline} placeholder={t("onboarding.headlinePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.headlineInput} value={headline} />
       </Field>
       <Field label={t("onboarding.bio")}>
         <TextInput accessibilityLabel={t("onboarding.bio")} editable={!generating} multiline onChangeText={setBio} style={styles.bioInput} value={bio} />

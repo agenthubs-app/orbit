@@ -54,8 +54,8 @@ export function PendingTaskSuggestions() {
 const useStyles=createThemedStyles(colors=>StyleSheet.create({
   section:{gap:spacing.md},
   heading:{...textStyles.listTitle,color:colors.ink},
-  body:{...textStyles.body,color:colors.text},
-  item:{gap:spacing.xs,paddingVertical:spacing.sm,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
+  body:{...textStyles.body,color:colors.ink},
+  item:{gap:spacing.xs,paddingVertical:spacing.sm,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.line},
   button:{...createControlStyles(colors).secondaryButton},
   buttonText:{...createControlStyles(colors).secondaryButtonText},
 }));

@@ -67,7 +67,7 @@ export function LivePersonSheet({ eventId, participantId, workspace, venue, now,
           <View style={styles.head}>
             <View style={styles.avatar}><Text style={styles.avatarText}>{initialFor(person.displayName)}</Text></View>
             <View style={styles.headCopy}><Text accessibilityRole="header" style={styles.name}>{person.displayName}</Text>{personRole(person) ? <Text style={styles.role}>{personRole(person)}</Text> : null}</View>
-            <Pressable accessibilityRole="button" accessibilityLabel={c.close} onPress={close} style={styles.close}><Ionicons name="close" size={20} color={colors.text3} /></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={c.close} onPress={close} style={styles.close}><Ionicons name="close" size={20} color={colors.ink3Text} /></Pressable>
           </View>
           {state.error ? <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text> : null}
           {mode === "detail" ? <>
@@ -145,7 +145,7 @@ function NoteForm({ c, eventId, contactId, client, onDone }: { c: LiveCopy; even
   if (saved) return <View style={styles.form}><Text accessibilityRole="summary" style={styles.success}>{c.noteSaved}</Text><Pressable accessibilityRole="button" accessibilityLabel={c.close} onPress={onDone} style={styles.secondary}><Text style={styles.secondaryText}>{c.close}</Text></Pressable></View>;
   const field = (label: string, value: string, set: (v: string) => void, lines: number) => <View style={styles.field}>
     <Text style={styles.fieldLabel}>{label}</Text>
-    <TextInput accessibilityLabel={label} value={value} onChangeText={set} multiline maxLength={500} style={[styles.input, { minHeight: 22 * lines + 22 }]} placeholderTextColor={colors.text3} />
+    <TextInput accessibilityLabel={label} value={value} onChangeText={set} multiline maxLength={500} style={[styles.input, { minHeight: 22 * lines + 22 }]} placeholderTextColor={colors.ink3Text} />
   </View>;
   return <View style={styles.form}>
     <Text style={styles.formTitle}>{c.noteTitle}</Text>
@@ -218,34 +218,34 @@ const useStyles = createThemedStyles(colors => {
   const controls = createControlStyles(colors);
   return StyleSheet.create({
     root: { flex: 1, justifyContent: "flex-end" },
-    scrim: { ...StyleSheet.absoluteFill as object, backgroundColor: "rgba(11,18,32,0.4)" },
+    scrim: { ...StyleSheet.absoluteFill as object, backgroundColor: colors.scrim },
     sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, paddingTop: 10, maxHeight: "88%" },
-    handle: { alignSelf: "center", width: 36, height: 5, borderRadius: radius.pill, backgroundColor: colors.border },
+    handle: { alignSelf: "center", width: 36, height: 5, borderRadius: radius.pill, backgroundColor: colors.line },
     body: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 34, gap: 18 },
     head: { flexDirection: "row", alignItems: "center", gap: 14 },
-    avatar: { width: 56, height: 56, borderRadius: radius.pill, backgroundColor: colors.bgSunken, alignItems: "center", justifyContent: "center" },
-    avatarText: { color: colors.text2, fontFamily: liveFont, fontSize: 20, fontWeight: "800" },
+    avatar: { width: 56, height: 56, borderRadius: radius.pill, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
+    avatarText: { color: colors.ink2, fontFamily: liveFont, fontSize: 20, fontWeight: "800" },
     headCopy: { flex: 1, gap: 2 },
     name: { color: colors.ink, fontFamily: liveFont, fontSize: 22, lineHeight: 30, fontWeight: "800" },
-    role: { color: colors.text3, fontFamily: liveFont, fontSize: 13, lineHeight: 18 },
+    role: { color: colors.ink3Text, fontFamily: liveFont, fontSize: 13, lineHeight: 18 },
     close: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-    rows: { borderTopWidth: 1, borderTopColor: colors.hairline },
-    row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, minHeight: 48, borderBottomWidth: 1, borderBottomColor: colors.hairline },
-    rowLabel: { color: colors.text2, fontFamily: liveFont, fontSize: 15 },
+    rows: { borderTopWidth: 1, borderTopColor: colors.line },
+    row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, minHeight: 48, borderBottomWidth: 1, borderBottomColor: colors.line },
+    rowLabel: { color: colors.ink2, fontFamily: liveFont, fontSize: 15 },
     rowValue: { color: colors.ink, fontFamily: liveFont, fontSize: 15, flexShrink: 1, textAlign: "right" },
-    rowMuted: { color: colors.text3 },
+    rowMuted: { color: colors.ink3Text },
     primary: { ...controls.primaryButton }, primaryText: { ...controls.primaryButtonText, fontFamily: liveFont },
     secondary: { ...controls.secondaryButton }, secondaryText: { ...controls.secondaryButtonText, fontFamily: liveFont },
-    inert: { ...controls.primaryButton, backgroundColor: colors.bgSunken }, inertText: { ...controls.primaryButtonText, color: colors.text3, fontFamily: liveFont },
+    inert: { ...controls.primaryButton, backgroundColor: colors.surface2 }, inertText: { ...controls.primaryButtonText, color: colors.ink3Text, fontFamily: liveFont },
     pair: { flexDirection: "row", gap: 10 }, half: { flex: 1 },
     disabled: { opacity: 0.45 },
-    caption: { color: colors.text3, fontFamily: liveFont, fontSize: 12, lineHeight: 18 },
-    error: { color: colors.rose, backgroundColor: colors.roseSoft, borderRadius: radius.control, padding: 12, fontFamily: liveFont, fontSize: 14, lineHeight: 21 },
-    success: { color: colors.live, backgroundColor: colors.liveSoft, borderRadius: radius.control, padding: 12, fontFamily: liveFont, fontSize: 15, fontWeight: "600" },
+    caption: { color: colors.ink3Text, fontFamily: liveFont, fontSize: 12, lineHeight: 18 },
+    error: { color: colors.coralText, backgroundColor: colors.coralSoft, borderRadius: radius.md, padding: 12, fontFamily: liveFont, fontSize: 14, lineHeight: 21 },
+    success: { color: colors.okText, backgroundColor: colors.okSoft, borderRadius: radius.md, padding: 12, fontFamily: liveFont, fontSize: 15, fontWeight: "600" },
     form: { gap: 12 },
     formTitle: { color: colors.ink, fontFamily: liveFont, fontSize: 15, lineHeight: 22, fontWeight: "800" },
     field: { gap: 6 },
-    fieldLabel: { color: colors.text2, fontFamily: liveFont, fontSize: 13, fontWeight: "500" },
+    fieldLabel: { color: colors.ink2, fontFamily: liveFont, fontSize: 13, fontWeight: "500" },
     input: { ...controls.input, fontFamily: liveFont, textAlignVertical: "top" },
     chips: { gap: 8 },
     chip: { ...controls.chip }, chipOn: { ...controls.selectedChip },
