@@ -1,27 +1,70 @@
 # R01 对照表：旧颜色 → 新颜色
 
-**状态：待产品负责人确认（RD-07）。确认前不改任何代码里的名字。**
-编制：小雨（执行会话），2026-10-09，分支 `redesign-R01-design-tokens`。
-新值来源：`repos/orbits/shared/design/tokens.json`（设计稿 `kit/tokens.css` 原值 + 文字加深版 + 补齐项）。色块对照页：同目录 [`color-mapping.html`](color-mapping.html)，截图在 `~/orbit-sprint-evidence/redesign/R01/run-01/`。
+**状态：待产品负责人确认（RD-07）。确认前不改任何代码。**
+编制：小雨（执行会话），2026-10-09，分支 `redesign-R01-design-tokens`。修订 2：按用户「UI 换新」原则重写。
+新值来源：`repos/orbits/shared/design/tokens.json`。色块对照页：同目录 [`color-mapping.html`](color-mapping.html)。全部写死颜色值的逐条清单：[`color-mapping-values.md`](color-mapping-values.md)。
 
-「用到」= 当前代码里的引用次数（App 按 `colors.X` 统计，Web 按 `var(--x)` 统计）。改名一次完成，不保留旧名字（RD-06）。
+## 原则
 
-## 需要确认的 12 个要点
+**这是 UI 换新，不是新旧合并。** 旧颜色、旧样式在新设计里有对应的，就用新的；没有对应的，按新设计的风格补一个。旧颜色、旧名字、旧特例一个不留（RD-05、RD-06）。
 
-| # | 要点 | 推荐做法（已写进下面的表） | 对标 |
-| --- | --- | --- | --- |
-| 1 | 强调色：App 旧蓝 `#0A5CFF`、Web 旧紫 `#8B7BF0` / 浅色青绿 `#176a73` 全部变成设计稿灰紫 | 旧代码里 `accent` 大多用作文字和按钮底，所以接到**文字版** `accent-text`（浅色 `#6C6087`，比设计原值 `#6E628A` 深一点点，才能在 `accent-soft` 上过 4.5:1）；设计原值 `accent` 留给新组件画图形 | Material 3 / Apple HIG：同一色相分「容器色」和「上面的文字色」两档 |
-| 2 | 描边变淡：App `border` / `border2` / `hairline`、Web `--border` 系全部 → `line`（6% 透明） | 按设计原则「层次靠浅色块，不靠描边」；卡片靠白卡 + 浅灰粉页面底区分 | 设计稿 01-system 分层原则 |
-| 3 | 旧「最弱文字」`text4` / `--text-4` 本身不达标（约 3.2:1） | 升到 `ink-3-text`（变深、可读）；设计稿 `ink-4` 只做装饰，不再给文字用 | WCAG 2.2 AA 1.4.3 |
-| 4 | 成功绿 `live` → `ok-text` / `ok-soft` | 绿色只表示完成（RD-17）。旧代码里少数把绿色当分类色的地方（人脉「emerald」分类、日程「个人」图例）暂时也会是完成绿，到 R11 / 功能 Sprint 重做时再换马卡龙 | — |
-| 5 | 错误红 `rose` / `--rose` / `--danger` → `coral-text` | 设计稿的 `rose` 是数据图用的豆沙色，不是红色，旧 `rose` 不能直接沿用名字；文字用 `coral-text`（浅色 `#B83E23` 砖红，深色 `#F29C88`） | — |
-| 6 | 文字加深版的取值（见「新 token」表 ★ 行） | 只把亮度往下调到刚好 ≥4.5:1（留 0.1 余量），色相不变 | — |
-| 7 | 步骤圆点里的数字：设计稿是 `ok` 绿底白字，浅色只有 3.1:1 | 新增 `on-ok`：浅色用深色字 `#1E1A24`（5.5:1），深色用 `#19181C`；勾号图标仍可用白色（图形只需 3:1） | — |
-| 8 | 字号：App 页面大标题 30 → 24、正文 15 → 14、标签 12 → 11.5 | 按 01-system 层级（Title 22–26 / Body 13–14 / Label 11.5）；字号整体略小一号 | — |
-| 9 | Web 现在默认是「星空深色」 | 改成跟随系统；浅色 = 设计稿浅色。**星空首页（iOrbit 首页 starfield 场景）固定用新深色**，到 R21 重做 | — |
-| 10 | Web 登录页和 Agent 页各有一套独立配色 | 删除独立配色，跟随新 token | — |
-| 11 | Web 0918 各域（人脉、活动、iOrbit、个人、引导）样式表里写死的 2,802 处十六进制颜色 | **不在本 Sprint**（PLANNER「不做」）：它们不是 token，这些页面在功能 Sprint 重做前保持旧颜色，只有外层壳换新色。文件清单见文末 | — |
-| 12 | 内部开发页 `/dev/**`（`app/globals.css` 的 `--orbit-color-*`、`shared/ui/theme.ts`） | 不是产品页面，不改，静态扫描排除 | AGENTS.md「Dev Capability Surfaces」 |
+- 范围：App 和 Web 的**所有产品页面**，包括 Web 0918 各域（人脉、活动、iOrbit、个人、引导、主办）样式表里写死的颜色、星空首页、登录页、Agent 页。
+- 唯一排除：`/dev/**` 内部调试页（`app/globals.css` 的 `--orbit-color-*`、`shared/ui/theme.ts`），它们不是产品页面。
+- 两端改完后，代码里不再出现写死的颜色（照片、品牌图、二维码等必须固定的颜色除外，逐个写进 REPORT）。
+
+## 按用途换色
+
+旧代码里的每个颜色（无论是变量名还是写死的值），先看它**在干什么**，再按这张表换：
+
+| 用途 | 新 token | 备注 |
+| --- | --- | --- |
+| 页面底 | `bg` | |
+| 卡片、弹层面 | `surface` | |
+| 卡内浅色块、输入框底、凹陷区、浅面板 | `surface-2` | |
+| 轨道、进度条底、骨架 | `surface-3` | |
+| 分隔线、描边 | `line` | 新设计层次靠浅色块，不靠描边，线很淡 |
+| 正文、标题 | `ink` | |
+| 次级文字 | `ink-2` | |
+| 说明、时间、标签、占位等小字 | `ink-3-text` | 旧的「最浅文字」一律升到这里，保证看得清 |
+| 箭头、虚线、装饰图形 | `ink-4` | 不用于文字 |
+| 强调文字、链接、强调按钮底 | `accent-text` | 上面的字用 `on-accent` |
+| 强调图形（图标、圆点、环） | `accent` | |
+| 选中态、强调浅底 | `accent-soft` | |
+| 深色主按钮 | 底 `ink` + 字 `on-accent` | |
+| 焦点环 | `plum-300` | |
+| 悬停 / 按下的强调 | `plum-900` | |
+| 完成、成功 | `ok-text` / `ok-soft` / 图形 `ok` | 绿色只表示完成 |
+| 注意、提醒 | `mac-apricot-text` / `mac-apricot` | |
+| 错误、删除、危险 | `coral-text` / `coral-soft` / 图形 `coral` | |
+| 信息 | `mac-blue-text` / `mac-blue` | |
+| 分类、标签色（行业、人脉分组、日程图例等） | 五色马卡龙 `mac-*` 底 + `mac-*-text` 字 | 不再用状态色当分类色 |
+| 数据图（环形、柱、进度） | `plum-*` / `rose-*` 深浅 | 不引入第三色相；超标用 `coral` |
+| 照片上的字 / 角标字 | `on-image` / `on-image-badge` | |
+| 遮罩 | App `scrim`，Web `scrim-web` | |
+| 毛玻璃底栏、浮层 | `glass` + `glass-line` | |
+
+## 新设计里没有的，按新风格补
+
+| 旧做法 | 新做法 |
+| --- | --- |
+| 渐变按钮、渐变进度条 | 纯色（`accent-text` / `accent`） |
+| 多层阴影、彩色发光 | 去掉；只有浮起的弹层用唯一的 `shadow-float` |
+| 星空首页的宇宙深色场景 | 改成新设计的雾面背景（`bg` + `fog-a/b/c`），星点用 `plum-300` / `rose-300`；深浅跟随主题，不再固定深色 |
+| 登录页、Agent 页、0918 各域各自的一套配色 | 全部删除，统一用新 token |
+| 写死的深色区块（深色侧栏、深色 chip、深色提示） | 跟随主题；需要「反色」的提示用 `ink` 底 + `on-accent` 字（深色模式下自动变成浅底深字） |
+| 设计原值做文字对比度不够（`ink-3`、马卡龙字、`coral`、`ok`、`accent`） | 补「文字加深版」`*-text`，只调亮度、色相不变 |
+| 步骤圆点里的数字（设计稿 `ok` 绿底白字，浅色只有 3.1:1） | 补 `on-ok`：浅色用深色字；勾号图标仍可用白色 |
+| 照片上的白字、白角标 | 补 `on-image`、`on-image-badge`，两套主题相同 |
+| 衬线体、等宽字体 | 按语言的无衬线字体；数字用 `font-num` |
+| 旧字号、旧圆角 | 换成设计稿的层级和圆角（见下表），App 页面大标题 30 → 24、正文 15 → 14 |
+
+## 请产品负责人看什么
+
+不需要逐项做选择。请在色块对照页里看：
+
+1. 「新 token」里补齐的 ★ 颜色（文字加深版等）是否像同一套设计。
+2. 「写死的颜色值」一节里，旧主色换成新色后的对应关系有没有明显不对（比如原本表示错误的颜色被换成了别的含义）。
+3. 有不满意的直接指出那一行，其余按表执行。
 
 ## 新 token（tokens.json）
 
@@ -96,7 +139,7 @@ TS 命名规则：去掉连字符改驼峰，数字接在后面（`ink-3-text` �
 | `accentRing` | `rgba(10,92,255,0.32)` / `rgba(162,175,211,0.36)` | **删除** | — | 0 | 没有使用，删除 |
 | `accentSoft` | `#EEF3FF` / `#394156` | `accentSoft` | `#E9E4F2` / `#35303F` | 25 |  |
 | `accentSofter` | `#F5F8FF` / `#2D3446` | `accentSoft` | `#E9E4F2` / `#35303F` | 61 | 设计稿只有一档强调浅底，与 accentSoft 合并 |
-| `amber` | `#876020` / `#C7A16D` | `macApricotText` | `#8B602E` / `#E6C595` | 45 | 「注意」在设计稿里是杏色马卡龙 |
+| `amber` | `#876020` / `#C7A16D` | `macApricotText` | `#8B602E` / `#E6C595` | 45 | 表示注意时用它；当分类色用的地方同样用杏色马卡龙 |
 | `amberSoft` | `#F5EEDF` / `#352E25` | `macApricot` | `#F7ECDD` / `#3A3229` | 35 |  |
 | `bg` | `#FFFFFF` / `#191C22` | `bg` | `#F7F5F7` / `#19181C` | 11 | 页面底从纯白变成浅灰粉，卡片（surface 白）因此能浮起来 |
 | `bgSoft` | `#F5F7FA` / `#191C22` | **删除** | — | 0 | 没有使用，删除 |
@@ -108,7 +151,7 @@ TS 命名规则：去掉连字符改驼峰，数字接在后面（`ink-3-text` �
 | `caution` | `#876020` / `#C7A16D` | `macApricotText` | `#8B602E` / `#E6C595` | 1 | 与 amber 相同 |
 | `hairline` | `#EEF0F4` / `rgba(240,240,236,0.10)` | `line` | `rgba(40, 30, 50, 0.06)` / `rgba(255, 255, 255, 0.06)` | 39 |  |
 | `ink` | `#0B1220` / `#F0F0EC` | `ink` | `#1E1A24` / `#F3F0F6` | 429 | 主按钮底也用它（深色按钮 + 白字） |
-| `live` | `#437563` / `#89B5A0` | `okText` | `#447361` / `#8CC7AF` | 83 | 成功 / 完成文字；绿色只表示完成（RD-17） |
+| `live` | `#437563` / `#89B5A0` | `okText` | `#447361` / `#8CC7AF` | 83 | 表示完成 / 成功时用 ok-text；当分类色用的地方（人脉 emerald 分类、日程图例）改用 mac-teal-text / mac-teal |
 | `liveSoft` | `#E9F1EC` / `#25352F` | `okSoft` | `#E3F1EA` / `#24352D` | 46 |  |
 | `muted` | `#6B7280` / `#B2B7C1` | `ink2` | `#5E5866` / `#BDB6C4` | 9 |  |
 | `onAccent` | `#FFFFFF` / `#171C2A` | `onAccent` | `#FFFFFF` / `#1E1A24` | 98 |  |
@@ -116,7 +159,7 @@ TS 命名规则：去掉连字符改驼峰，数字接在后面（`ink-3-text` �
 | `imageBadgeText` | `#0B1220` / `#20242C` | `onImageBadge` | `#1E1A24` / `#1E1A24` | 6 | 照片上白色角标里的字（补齐项） |
 | `rose` | `#B42318` / `#D28D98` | `coralText` | `#B83E23` / `#F29C88` | 98 | 错误 / 删除。设计稿的 rose 是数据图用的豆沙色，不是红色，所以接到 coral |
 | `roseSoft` | `#F7E9EC` / `#3A2930` | `coralSoft` | `#FBE7E1` / `#42302C` | 22 |  |
-| `sky` | `#476B92` / `#96B6D5` | `macBlueText` | `#4A6B93` / `#A9C4E6` | 25 | 信息蓝 → 蓝色马卡龙文字 |
+| `sky` | `#476B92` / `#96B6D5` | `macBlueText` | `#4A6B93` / `#A9C4E6` | 25 | 信息蓝 → 蓝色马卡龙文字；分类色同 |
 | `skySoft` | `#E9EFF5` / `#273443` | `macBlue` | `#E2ECF8` / `#2B3340` | 19 |  |
 | `surface` | `#FFFFFF` / `#22262E` | `surface` | `#FFFFFF` / `#242328` | 100 |  |
 | `surface2` | `#F5F7FA` / `#272C35` | `surface2` | `#F2EFF3` / `#2E2D33` | 100 |  |
@@ -265,49 +308,156 @@ TS 命名规则：去掉连字符改驼峰，数字接在后面（`ink-3-text` �
 
 Web 删除 Noto Serif SC、Newsreader、JetBrains Mono 的使用；Noto Sans JP 用 Google Fonts，只加载 400 / 500 / 700 / 800，只在根 layout 加载一次（删掉现在 4 处重复插入）。App 用 iOS 系统字体，不打包字体。
 
-## 已知例外：0918 写死颜色（不在本 Sprint）
 
-`app/(app)/app/` 下共 2,802 处十六进制颜色，分布在 75 个文件。下列文件在功能 Sprint 重做前保持旧颜色：
 
-| 文件 | 写死颜色数 |
+## 写死的颜色值
+
+Web `app/(app)/app/` 共 551 种、4832 处；App `src/` 共 57 种、119 处（不含 `design/tokens.ts`）。全部按「按用途换色」替换成新 token（Web 写成 `var(--x)`，App 用 `colors.x`）。
+
+每个值先按色相和明度给一个默认去向，实施时按所在位置的用途确认（例如 `#FFFFFF` 作底色是 `surface`，写在强调色按钮上就是 `on-accent`）。逐条清单见 [`color-mapping-values.md`](color-mapping-values.md)。
+
+**按新 token 汇总（Web）：**
+
+| 新 token | 处数 |
 | --- | --- |
-| `app/(app)/app/contacts/network-0918/network-shell.tsx` | 380 |
-| `app/(app)/app/events/events-0918/events-shell.tsx` | 311 |
-| `app/(app)/app/agent/iorbit-0918/iorbit-styles.ts` | 246 |
-| `app/(app)/app/events/ops-0918/ops-shell.tsx` | 225 |
-| `app/(app)/app/contacts/card-batch-0918/card-batch-styles.ts` | 177 |
-| `app/(app)/app/profile/onboarding-0918/onboarding-styles.ts` | 152 |
-| `app/(app)/app/orbit-reference-styles.tsx` | 130 |
-| `app/(app)/app/agent/iorbit-0918/iorbit-home-styles.ts` | 121 |
-| `app/(app)/app/profile/profile-0918/profile-shell.tsx` | 112 |
-| `app/(app)/app/agent/iorbit-0918/iorbit-my-plan-styles.ts` | 106 |
-| `app/(app)/app/orbit-theme.tsx` | 66 |
-| `app/(app)/app/orbit-starfield-mobile.tsx` | 64 |
-| `app/(app)/app/orbit-starfield-desktop.tsx` | 63 |
-| `app/(app)/app/start/start-guide-styles.ts` | 62 |
-| `app/(app)/app/events/ops-0918/ops-model.ts` | 56 |
-| `app/(app)/app/agent/iorbit-0918/iorbit-plan-card-styles.ts` | 52 |
-| `app/(app)/app/contacts/network-0918/network-import-styles.ts` | 42 |
-| `app/(app)/app/account/auth-0918/auth-modal.tsx` | 33 |
-| `app/(app)/app/agent/iorbit-0918/console-styles.ts` | 29 |
-| `app/(app)/app/orbit-landing-0918.tsx` | 27 |
-| `app/(app)/app/agent/iorbit-0918/plan-match-sheet.tsx` | 26 |
-| `app/(app)/app/events/events-0918/events-model.ts` | 25 |
-| `app/(app)/app/profile/goal-editor/goal-editor.tsx` | 23 |
-| `app/(app)/app/orbit-starfield-mobile-logic.ts` | 19 |
-| `app/(app)/app/o/orbit-real-organizer-public.tsx` | 19 |
-| `app/(app)/app/orbit-starfield-desktop-logic.ts` | 18 |
-| `app/(app)/app/events/events-0918/community-card.tsx` | 18 |
-| `app/(app)/app/contacts/network-0918/network-import.tsx` | 18 |
-| `app/(app)/app/events/[id]/register/event-registration-workspace.tsx` | 16 |
-| `app/(app)/app/profile/profile-0918/profile-legacy-settings.tsx` | 15 |
-| `app/(app)/app/orbit-global-ask/orbit-global-ask-styles.ts` | 11 |
-| `app/(app)/app/orbit-0918-tokens.ts` | 11 |
-| `app/(app)/app/contacts/network-0918/network-model.ts` | 11 |
-| `app/(app)/app/contacts/network-0918/contact-value-line.tsx` | 11 |
-| 其余 41 个文件 | 各 <10 |
+| `surface` | 576 |
+| `line` | 550 |
+| `ink-3-text` | 535 |
+| `accent-soft` | 424 |
+| `ink` | 414 |
+| `accent-text` | 358 |
+| `plum-900` | 322 |
+| `ink-2` | 301 |
+| `surface-2` | 244 |
+| `plum-300` | 238 |
+| `coral-text` | 91 |
+| `（去掉阴影）/ shadow-float` | 83 |
+| `scrim / scrim-web` | 80 |
+| `mac-apricot-ink` | 75 |
+| `ok-text` | 68 |
+| `mac-apricot-text` | 68 |
+| `mac-apricot` | 54 |
+| `ink-4` | 50 |
+| `ok-soft` | 46 |
+| `mac-teal-text` | 39 |
+| `accent` | 37 |
+| `coral-soft` | 37 |
+| `（看用途）` | 36 |
+| `glass` | 31 |
+| `bg` | 30 |
+| `mac-teal` | 15 |
+| `mac-blue-text` | 12 |
+| `mac-pink-text` | 8 |
+| `coral` | 7 |
+| `mac-blue` | 3 |
 
-其中 `orbit-reference-styles.tsx`、`orbit-theme.tsx` 的十六进制属于本 Sprint 要删的变量层，第 4 步后会大幅减少；星空首页场景（`orbit-starfield-*`）的星空画面颜色属于场景插画，保留。
+**出现最多的 40 个值（Web）：**
+
+| 旧值 | 处数 / 文件数 | → 新 token | 说明 |
+| --- | --- | --- | --- |
+| `#FFFFFF` | 572 / 40 | `surface` | 作底色时；在深色 / 强调底上作文字时用 on-accent，照片上用 on-image |
+| `#6B6F99` | 368 / 33 | `ink-3-text` | 0918 说明文字 |
+| `#0E1225` | 349 / 29 | `ink` | 0918 主文字 |
+| `#4B4FC7` | 332 / 34 | `accent-text` | 0918 强调；纯图形处用 accent |
+| `#2E3270` | 313 / 33 | `plum-900` | 0918 深强调（结论文字、深色 chip） |
+| `#3B3F7A` | 288 / 29 | `ink-2` | 0918 次级文字 |
+| `#ECEEFB` | 235 / 33 | `accent-soft` | 0918 面板 / 选中浅底；无强调含义的大块用 surface-2 |
+| `#E8E9F6` | 224 / 24 | `line` | 0918 卡片边框 |
+| `#DDDEFA` | 222 / 30 | `line` | 0918 控件边框（新设计输入框靠 surface-2 底，不靠描边） |
+| `#9FA3C4` | 151 / 23 | `ink-3-text` | 0918 弱提示文字（原本不达标） |
+| `#F7F7FD` | 142 / 21 | `surface-2` | 0918 浅面板 |
+| `#B9BCEB` | 138 / 24 | `plum-300` | 0918 焦点环 / 强调描边 |
+| `#F1F1FA` | 43 / 14 | `surface-2` |  |
+| `#2F6B4F` | 41 / 13 | `ok-text` | 完成 / 成功文字 |
+| `#8B7BF0` | 37 / 5 | `accent` | 星空紫：图形用 accent，文字用 accent-text |
+| `#B5473A` | 35 / 10 | `coral-text` | 错误 / 删除 |
+| `#8A6420` | 31 / 11 | `mac-apricot-text` | 注意 / 提醒文字 |
+| `#E6F1EC` | 27 / 10 | `ok-soft` |  |
+| `#FBFBFE` | 20 / 14 | `bg` | 0918 页面底 |
+| `#FBF1DC` | 19 / 10 | `mac-apricot` | 黄 / 橙浅底 |
+| `#C9CBEA` | 16 / 5 | `line` | 分隔 / 描边 |
+| `#EEEFF8` | 16 / 5 | `surface-2` | 浅灰面 |
+| `#D8B06A` | 16 / 4 | `mac-apricot-ink` | 金黄图形；文字用 mac-apricot-text |
+| `#000000` | 15 / 3 | `ink` | 作文字时；阴影改 none 或 shadow-float |
+| `#C4461B` | 13 / 4 | `coral-text` | 错误 / 删除 |
+| `#9A6B22` | 13 / 2 | `mac-apricot-text` | 注意 / 提醒文字 |
+| `#F4F5FC` | 12 / 6 | `accent-soft` | 紫浅底 |
+| `#CFC6FF` | 12 / 4 | `accent-soft` | 紫浅底 |
+| `#FBECEA` | 11 / 4 | `coral-soft` | 红 / 橙红浅底 |
+| `#6359E9` | 10 / 6 | `accent-text` | 星空紫深 |
+| `#06050D` | 10 / 3 | `bg` | 星空底 → 跟随主题的页面底 |
+| `#C6A06A` | 10 / 2 | `mac-apricot-ink` | 金黄图形；文字用 mac-apricot-text |
+| `rgba(255,255,255,0.10)` | 10 / 3 | `line` | 白色低透明：深色面上的分隔 |
+| `#AEB2DD` | 10 / 2 | `ink-4` | 装饰灰；作文字时用 ink-3-text |
+| `#F0F1F8` | 9 / 5 | `surface-2` | 浅灰面 |
+| `rgba(14,18,37,0.25)` | 9 / 6 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `#ECEAF6` | 8 / 3 | `surface-2` | 浅灰面 |
+| `#A99FE8` | 8 / 4 | `plum-300` | 浅紫装饰 / 焦点 |
+| `rgba(216,176,106,0.5)` | 8 / 2 | `mac-apricot-ink` | 金黄图形；文字用 mac-apricot-text |
+| `#3A2C11` | 8 / 4 | `ink` | 近黑 |
+
+**App 写死颜色（全部 57 种）：**
+
+| 旧值 | 处数 | → 新 token | 说明 |
+| --- | --- | --- | --- |
+| `#0B1220` | 17 | `ink` | App 旧主文字 |
+| `#FFFFFF` | 8 | `surface` | 作底色时；在深色 / 强调底上作文字时用 on-accent，照片上用 on-image |
+| `#0A5CFF` | 8 | `accent-text` | App 旧强调蓝；图形用 accent |
+| `#E6E8EE` | 6 | `line` | App 旧描边 |
+| `rgba(255,255,255,0.92)` | 5 | `glass` | 白色半透明：毛玻璃 |
+| `#6B7280` | 5 | `ink-3-text` | 灰色说明文字 |
+| `#8B93A5` | 4 | `ink-3-text` | 灰色说明文字 |
+| `#7FB3FF` | 3 | `mac-blue-text` | 信息蓝；图形用 mac-blue-ink |
+| `#3B82F6` | 3 | `mac-blue-text` | 信息蓝；图形用 mac-blue-ink |
+| `#C4C9D4` | 3 | `ink-4` | 装饰灰；作文字时用 ink-3-text |
+| `rgba(255,255,255,0.88)` | 3 | `glass` | 白色半透明：毛玻璃 |
+| `#EEF0F4` | 3 | `surface-2` | App 旧浅面 |
+| `rgba(11,18,32,0.10)` | 2 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `rgba(10,10,16,0.08)` | 2 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `rgba(22,22,26,0.34)` | 2 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `#475569` | 2 | `ink-2` | 深灰次级文字 |
+| `rgba(255,255,255,0.78)` | 2 | `glass` | 白色半透明：毛玻璃 |
+| `rgba(0,0,0,0.35)` | 2 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `rgba(18,18,28,0.10)` | 1 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `rgba(18,18,28,0.16)` | 1 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `rgba(18,18,28,0.18)` | 1 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `rgba(22,22,26,0.12)` | 1 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `#000000` | 1 | `ink` | 作文字时；阴影改 none 或 shadow-float |
+| `rgba(255,255,255,0.28)` | 1 | `line` | 白色低透明：深色面上的分隔 |
+| `rgba(15,23,42,0.82)` | 1 | `scrim / scrim-web` | 黑色半透明：遮罩 |
+| `rgba(255,255,255,0.25)` | 1 | `line` | 白色低透明：深色面上的分隔 |
+| `#7B6E5B` | 1 | `mac-apricot-text` | 注意 / 提醒文字 |
+| `#3E8C94` | 1 | `mac-teal-text` | 青色文字；图形用 mac-teal-ink |
+| `#8B6BB1` | 1 | `accent-text` | 紫色强调；图形用 accent |
+| `rgba(22,22,26,0.28)` | 1 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `#5EEAD4` | 1 | `mac-teal-text` | 青色文字；图形用 mac-teal-ink |
+| `#0EA5E9` | 1 | `mac-blue-text` | 信息蓝；图形用 mac-blue-ink |
+| `#FCD34D` | 1 | `mac-apricot-ink` | 金黄图形；文字用 mac-apricot-text |
+| `#F59E0B` | 1 | `mac-apricot-text` | 注意 / 提醒文字 |
+| `#A78BFA` | 1 | `plum-300` | 浅紫装饰 / 焦点 |
+| `#6366F1` | 1 | `plum-300` | 浅紫装饰 / 焦点 |
+| `#FDA4AF` | 1 | `coral` | 红色图形；文字用 coral-text |
+| `#F472B6` | 1 | `mac-pink-text` | 粉色文字；图形用 mac-pink-ink |
+| `rgba(0,0,0,0.28)` | 1 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `#128877` | 1 | `mac-teal-text` | 青色文字；图形用 mac-teal-ink |
+| `#2563EB` | 1 | `mac-blue-text` | 信息蓝；图形用 mac-blue-ink |
+| `#C43B58` | 1 | `coral-text` | 错误 / 删除 |
+| `#6E56CF` | 1 | `accent-text` | 紫色强调；图形用 accent |
+| `rgba(8,8,12,0.38)` | 1 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `#F5F7FA` | 1 | `surface-2` |  |
+| `#B42318` | 1 | `coral-text` | 错误 / 删除 |
+| `#EEF3FF` | 1 | `mac-blue` | 蓝浅底 |
+| `rgba(11,18,32,0.4)` | 1 | `scrim / scrim-web` | 黑色半透明：遮罩 |
+| `rgba(8,8,12,0.34)` | 1 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `rgba(255,255,255,0.86)` | 1 | `glass` | 白色半透明：毛玻璃 |
+| `rgba(255,255,255,0.24)` | 1 | `line` | 白色低透明：深色面上的分隔 |
+| `rgba(255,255,255,0.18)` | 1 | `line` | 白色低透明：深色面上的分隔 |
+| `rgba(255,255,255,0.84)` | 1 | `glass` | 白色半透明：毛玻璃 |
+| `rgba(10,10,16,0.40)` | 1 | `scrim / scrim-web` | 黑色半透明：遮罩 |
+| `rgba(10,10,16,0.38)` | 1 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `rgba(11,18,32,0.35)` | 1 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+| `rgba(16,24,40,0.28)` | 1 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
+
 
 ## 确认记录
 
