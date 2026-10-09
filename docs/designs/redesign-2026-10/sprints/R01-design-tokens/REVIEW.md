@@ -103,3 +103,28 @@ SC-R01-01～06 的主体都已实现，门禁是真的能拦住问题，两端�
 - 注入验证全部在当前工作区临时修改、跑完单个测试后立即 `git checkout` 还原；注入是在两端全量测试结束之后做的，没有污染全量结果。浏览器里切过的主题已恢复为「跟随系统」。
 - 没有连 Neon、没有部署、没有调用付费 AI；用户未提交的文件（`bridge/*`、`docs/designs/Orbit_0918/`、`repos/orbits/docs/development/web-2026-09-17/*`、`repos/orbits/docs/operations/2026-09-25-neon-egress-audit.md`）未动。
 - 复核日志在复核会话 scratchpad（`app-test.log`、`orbits-test.log`、`orbits-tc*.log`、`orbits-lint.log`），未入库。
+
+## 处理记录（执行人，2026-10-09）
+
+全部修在 `redesign` 上（RD-25），代码提交 `19fe37b59`。证据和日志在 `~/orbit-sprint-evidence/redesign/R01/run-01/review-fixes/`。
+
+| 问题 | 修法 | 提交 |
+| --- | --- | --- |
+| **M1** `surface-3` 对比度 | 采用建议 (b)：`surface-3` 只做轨道 / 分隔 / 骨架，不承载正文，写进 `shared/design/README.md`「颜色规则」和 `tokens.json` 的用途说明。`color.contrast` 加 `ink × surface-3`（浅 13.86 / 深 10.26）、`ink-2 × surface-3`（浅 5.56 / 深 5.87），`surface-3` 上只允许这两种文字（测试锁定）。新门禁两端各一条：Web `tests/ui/design-surface-3-text.test.ts`（同一条 CSS 规则或同一个内联样式对象里 `--surface-3` 底配了清单外的文字色即失败；禁用状态按钮按 WCAG 1.4.3 豁免），App `tests/design-surface-3-text.test.ts`（同一个样式对象里 `colors.surface3` 底配了清单外的文字色即失败）；两条都带注入样例自测，App 一条在改代码前确认 RED。扫描看不到层叠（父元素底色 + 子元素文字色），这一点写进 README 作为复核规则。使用点改成 `ink-2`：复核点名的 App `EventOperationsContent.tsx:144`、Web `relationship-inbox-panel.tsx:1305`，以及门禁新扫出的两处 —— Web `event-registration-workspace.tsx:1037`（报名页状态胶囊）、原型样式 `.badge-ended`（「已结束」徽标；原型 CSS 由脚本重建，所以在 `orbit-reference-styles.tsx` 加 `[data-orbit-real-page] .badge-ended { color: var(--ink-2) }` 覆盖，门禁里登记为唯一已知项，要求覆盖规则存在，修掉后必须移出）。 | `19fe37b59` |
+| **M2** 门禁误拦设计稿名字 | `legacy-rename.mjs` 拆成两份：`LEGACY_CSS_VAR_RENAMES`（改名表，保留给历史 codemod 和 `build-reference-css.mjs`）和 `LEGACY_BANNED_CSS_VAR_NAMES` / `LEGACY_BANNED_NAME_PATTERN`（扫描用，去掉被设计稿复用的 `accent`、`scrim`）。新增测试：`tokens.css` 声明的任何变量都不得命中禁用名单；`var(--accent)`、`var(--scrim)` 通过，`--accent-hover`、`--text-2` 仍被拦。 | `19fe37b59` |
+| **m1** 重复声明 | 删掉 `console-styles.ts` 第二行 `--ink-3-text`。 | `19fe37b59` |
+| **m2** typecheck 不干净 | 删除 `repos/orbits/.next/types` 后重跑：`npm run typecheck` **EXIT 0**、`npm run typecheck:app` **EXIT 0**（日志 `orbits-typecheck-m2.log`、`orbits-typecheck-app-m2.log`）。全量里原基线失败 `orbit-typecheck-ratchet` 随之转绿。**新基线见下表**。 | 环境清理，无提交 |
+| **m3** App 冷启动闪主题 | **未改，留给 R05。** 成熟做法是「偏好恢复完再隐藏启动画面」，需要 `SplashScreen.preventAutoHideAsync()` / `hideAsync()`；App 目前没有安装 `expo-splash-screen`，加它是新的原生依赖，要重编原生包、改启动流程。R04 本来就要加一批原生依赖、R05 改导航壳和根布局，放在 R05 一起做。 | — |
+| **m4** Web 深色边缘 | 不处理，R07 换壳时一起解决（按复核建议）。 | — |
+| **m5** 索引早于 R01 | 已跑 `node .gitnexus/run.cjs analyze --index-only`（R02 开工前）。 | 无提交 |
+| **m6** 对比度清单三份 | 只留 `tokens.json` 的 `color.contrast` 一份：生成脚本把它写进 `tokens.ts` 的 `designContrast`（同步到 App）；Web `orbit-contrast-tokens`、`design-tokens-generated` 和 App `design-tokens` 都读它。两端原来多查的 `on-accent × ink`、App 的 `on-image × #171C2A` 并入源清单。 | `19fe37b59` |
+
+### 修复后的新基线（`19fe37b59`）
+
+| 项目 | 复核时 | 修复后 | 说明 |
+| --- | --- | --- | --- |
+| App `npm test` | 4074 条，1 失败 | **4077 条，4076 通过，1 失败** | 唯一失败仍是已知 `route-parity`（`/start`）；新增 3 条 |
+| App `tsc --noEmit` | EXIT 0 | **EXIT 0** | |
+| orbits `npm test` | 6825 条，7 失败，872 跳过 | **6832 条，5954 通过，6 失败，872 跳过** | 6 条全在基线里：DEP0205 ×5、`app-plan-match-sheet` 偶发 ×1；`orbit-typecheck-ratchet` 因 `.next/types` 清理转绿。零新增 |
+| orbits `typecheck` / `typecheck:app` | EXIT 2（8 个 `.next/types` 残留） | **EXIT 0 / EXIT 0** | 之后各 Sprint 以此为基线；`.next/types` 再出现残留时先删再跑 |
+| orbits `lint` | EXIT 0 | **EXIT 0** | |
