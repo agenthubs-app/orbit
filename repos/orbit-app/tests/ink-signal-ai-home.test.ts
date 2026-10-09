@@ -338,8 +338,8 @@ test("AI foreground badge refresh leaves the unsent composer intact and does not
   assert.deepEqual(await writes(p), []); assert.deepEqual(await navigation(p), []);
 });
 test("AI home more menu retains scanning and the existing capability drawer", async t => {
-  const p = await open(t); await press(p, "更多操作"); await press(p, "扫名片"); assert.deepEqual(await navigation(p), ["/contacts/new"]);
-  await press(p, "更多操作"); await press(p, "常用入口"); await press(p, "打开个人档案"); assert.deepEqual(await navigation(p), ["/contacts/new", "/profile"]);
+  const p = await open(t); await press(p, "更多操作"); await press(p, "扫名片"); assert.deepEqual(await navigation(p), ["/contacts/new/scan"]);
+  await press(p, "更多操作"); await press(p, "常用入口"); await press(p, "打开个人档案"); assert.deepEqual(await navigation(p), ["/contacts/new/scan", "/profile"]);
 });
 for (const [actor, name, expected] of [
   ["user_mry5y200_58jpi8", "Alex Chen", "Alex Chen"],

@@ -6,6 +6,8 @@ export interface NoteRepository {
   get(actorId: string, noteId: string): Promise<NoteRecordPayload | null>;
   list(actorId: string): Promise<readonly NoteRecordPayload[]>;
   save(payload: NoteRecordPayload): Promise<NoteRecordPayload>;
+  saveIfAbsent(payload: NoteRecordPayload): Promise<NoteRecordPayload | null>;
+  saveIfVersion(payload: NoteRecordPayload, expected: { version: number; updatedAt: string }): Promise<NoteRecordPayload | null>;
 }
 
 export function createNoteRepository(input: {
@@ -46,6 +48,36 @@ export function createNoteRepository(input: {
         workspaceId: input.workspaceId,
         payload,
       }));
+      const decoded = noteRecordFromLiveRecord(saved, payload.note.ownerUserId);
+      if (!decoded) throw new Error("Saved note record failed validation");
+      return decoded;
+    },
+    async saveIfAbsent(payload) {
+      if (!input.store.insertRecordIfAbsent) {
+        throw new Error("Note storage requires atomic insert support");
+      }
+      const inserted = await input.store.insertRecordIfAbsent(noteLiveRecordFromPayload({
+        workspaceId: input.workspaceId,
+        payload,
+      }));
+      if (!inserted) return null;
+      const decoded = noteRecordFromLiveRecord(inserted, payload.note.ownerUserId);
+      if (!decoded) throw new Error("Inserted note record failed validation");
+      return decoded;
+    },
+    async saveIfVersion(payload, expected) {
+      if (!input.store.updateRecordIfCurrent) {
+        throw new Error("Note storage requires database compare-and-swap support");
+      }
+      const saved = await input.store.updateRecordIfCurrent(
+        noteLiveRecordFromPayload({ workspaceId: input.workspaceId, payload }),
+        {
+          userId: payload.note.ownerUserId,
+          updatedAt: expected.updatedAt,
+          expectedPayloadVersion: { path: ["note", "version"], value: expected.version },
+        },
+      );
+      if (!saved) return null;
       const decoded = noteRecordFromLiveRecord(saved, payload.note.ownerUserId);
       if (!decoded) throw new Error("Saved note record failed validation");
       return decoded;

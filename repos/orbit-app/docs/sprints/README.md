@@ -49,13 +49,16 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0128](0128-registration-question-cache/GOAL.md) | 报名问题只生成一次：无已发布问题集时按活动与语言持久缓存，并发只调用一次模型 | 0126 发现，协调者升级为 P1（生产付费放大）。执行顺序 0127 → 0128 → 0129 → 0125 → 0109 基线 1ad360ebf run-01 · 报告 [REPORT](0128-registration-question-cache/REPORT.md) | completed |
 | [0127](0127-regression-p1-decisions/GOAL.md) | 0126 待决 P1：英文自我介绍单独 200 字符；离线冷启动信任上次验证身份最长 30 天；本地回归启动 worker | 用户 2026-09-27 决定。执行顺序 0126 → 0127 → 0125 → 0109。基线 b131a5d31 run-01 · 报告 [REPORT](0127-regression-p1-decisions/REPORT.md)；通知进收件箱转 0129 | completed |
 | [0126](0126-simulator-global-regression/GOAL.md) | Simulator 全局回归：全部 App 路由 + 十条核心流程，修掉 P0/P1，P2 登记去向 | 用户 2026-09-27 要求：完成 0123 后先做，再继续。执行顺序 0123 → 0126 → 0125 → 0109。基线 b3ca6c601 run-01 · 报告 [REPORT](0126-simulator-global-regression/REPORT.md)；修 6 个 P1，2 个待决 P1 转 0127 | completed |
-| [0137](0137-offline-wrapup/GOAL.md) | 离线收口：关系推进看板在手机上计算；联系人详情断网提示；别人内容的空状态；模拟器补测 | 0131 复核发现。执行顺序 0137 → 0124 | planned |
-| [0124](0124-offline-write-foundation/GOAL.md) | 断网写地基：待上传队列、上传执行器、临时编号替换、保险箱、账号状态接口（不开放任何类别） | 0120 设计案。依赖 0137 | planned |
-| [0132](0132-offline-notes/GOAL.md) | 笔记断网新建与编辑；笔记版本比较落到数据库 | 0120 设计案。依赖 0124 | planned |
-| [0133](0133-offline-tasks/GOAL.md) | 个人待办断网操作；删除带版本 | 依赖 0132 | planned |
-| [0134](0134-offline-personal-schedule/GOAL.md) | 不重复个人日程断网新建、编辑、删除 | 依赖 0133 | planned |
-| [0135](0135-offline-message-send/GOAL.md) | 消息断网发送（M4）；重传先查重复 | 依赖 0134 | planned |
-| [0136](0136-offline-write-acceptance/GOAL.md) | 断网写全链验收；回写 0034–0036 状态 | 依赖 0135 | planned |
+| [0137](0137-offline-wrapup/GOAL.md) | 离线收口：关系推进看板在手机上计算；联系人详情断网提示；别人内容的空状态；模拟器补测 | Codex A 线起，Claude 2026-10-03 接手收尾。合并提交 `c4c4b3cf4`；协调者复核两端全量 0 失败（orbits 5369、App 3967）。报告 [REPORT](0137-offline-wrapup/REPORT.md) | completed |
+| [0139](0139-discovery-enqueue-contention/GOAL.md) | 通知发现入队不再因整表谓词锁和无关写入冲突（生产风险） | 0137 发现，协调者立项。执行顺序 0139 → 0133 基线 e8b892ad7 run-01 · 报告 [REPORT](0139-discovery-enqueue-contention/REPORT.md)；含 claim/updatePreferences | completed |
+| [0140](0140-contact-add-entry/GOAL.md) | 大图名片上传前压缩；扫描与手动添加分开进入、核对后明确保存 | 合并提交 `b15b39c9d`；协调者复核 orbits 5399/0、App 4062/0；手动添加备注改为可选（协调者决定）；实体 iPhone 验收 pending。报告 [REPORT](0140-contact-add-entry/REPORT.md) | completed |
+| [0124](0124-offline-write-foundation/GOAL.md) | 断网写地基：待上传队列、上传执行器、临时编号替换、保险箱、账号状态接口（不开放任何类别） | 2026-09-29 run-01，唯一 Generator B 线 `/root/line_b_0124`，GPT-6 Luna / high；基线 `8b25eb4ccfec95254226306da3b16d5d1924e0af`，Planner SHA256 `628ed00ae45abcc5e7d5ad4a201049d05ba36dce63c75bdb4f56f22924b0fc49`。原 SC-01–05 已验收；本地合并 `00652e229`、B fixture 修复祖先合并 `a09fa8d80`；验证树 `412ceae1f04948a329c0f70ad63d9d2d9363dcea`：主线 App 3908/3908，服务端同源隔离全量 4867 pass / 487 skip / 0 fail，主线两端最终 typecheck exit 0。保留环境失败历史及已知 PG 基线限制，不冒称主线物理 cwd 服务端全量通过；未 push/部署。见 [REPORT](0124-offline-write-foundation/REPORT.md) | completed |
+| [0132](0132-offline-notes/GOAL.md) | 笔记断网新建与编辑；笔记版本比较落到数据库 | 2026-09-30，原 run-01，唯一 Generator B `/root/line_b_0124`，GPT-6 Luna / high；基线 `968cb52b8`，功能 SHA `b60b54e07`，报告 SHA `6ba26168b`，本地 `chat-agent` 合并 SHA `3c9aaa691`。真实 PostgreSQL 9/9、静态审计 11/11、原生/phoneweb 同账号双向回读和冲突/冷启证据见 [REPORT](0132-offline-notes/REPORT.md)；合并树受影响 App 完整文件 116/116、两端 typecheck 与 Web 生产构建 exit 0，产品源码与已实际验收的组合树一致。原 App 全量 3945 项中 12 失败、服务端全量 2 失败明确保留，不能冒称全绿；未 push/部署/写生产。0133 可从合并 SHA 开工。 | completed |
+| [0133](0133-offline-tasks/GOAL.md) | 个人待办断网操作；删除带版本 | Codex B 线起，Claude 2026-10-03 接手收尾。合并提交 `e569b1793`；协调者复核两端全量 0 失败（orbits 5383、App 3992）；范围按共享契约为 personal/work/other（协调者决定）。报告 [REPORT](0133-offline-tasks/REPORT.md) | completed |
+| [0134](0134-offline-personal-schedule/GOAL.md) | 不重复个人日程断网新建、编辑、删除 | 与 0135 并行；已合入含 0135 的 chat-agent 并解决共享上传队列冲突（`292ed2be5`）。合并提交 `103db9b58`；协调者复核 orbits 5392/0、App 4024/0。报告 [REPORT](0134-offline-personal-schedule/REPORT.md) | completed |
+| [0135](0135-offline-message-send/GOAL.md) | 消息断网发送（M4）；重传先查重复 | 与 0133/0134 并行。合并提交 `ef016166a`；协调者复核 orbits 5389/0 失败，App 4003（1 条负载偶发，所在文件单独 3 次通过）。报告 [REPORT](0135-offline-message-send/REPORT.md) | completed |
+| [0136](0136-offline-write-acceptance/GOAL.md) | 断网写全链验收；回写 0034–0036 状态 | 合并提交 `08c54cda7`；协调者复核 orbits 5394/0、App 4045/0；修复「每轮只确认一条写入」（同一连接嵌套事务）。报告 [REPORT](0136-offline-write-acceptance/REPORT.md) | completed |
+| [0138](0138-home-notes-entry/GOAL.md) | 首页「记笔记」「所有笔记」合并为一个「笔记」入口，列表内新建 | 用户 2026-09-30 批准并行执行；原 run-01，功能 SHA `a6910a10b`，SC-04 补证 SHA `00bc4d0b6`，本地 `chat-agent` 合并 SHA `51aa23eff`。首页唯一入口、列表新建、同账号原生↔phoneweb 回读及大字号实点见 [REPORT](0138-home-notes-entry/REPORT.md)；精确合并树 App 完整定向文件 84/84，A 线同源码 typecheck exit 0，产品源码与已验收组合树一致。中／日／英和 320px/1.6 字号交互已补证；未 push/部署。 | completed |
 | [0131](0131-remaining-pages-offline/GOAL.md) | 其余常用页面断网也能看：首页、个人资料、Agent 账本、关系待办、待办建议、今日、跟进、约谈详情、活动列表和推荐；输出全 App 页面离线清单，没有归属的页面不放行 | 用户 2026-09-28「我需要这些离线也能看」。执行顺序 0119 → 0131 → 0120 基线 b08cb8dc9 run-01 · 报告 [REPORT](0131-remaining-pages-offline/REPORT.md)；91 个路由都有离线归属 | completed |
 | [0130](0130-session-restore-keeps-mirror/GOAL.md) | 恢复登录时不再清掉本地副本：同一身份保留，只在换账号、换服务器或服务端拒绝时清空；查清所有触发恢复的情况 | 0125 发现，协调者核实原生同样受影响，评为 P1。执行顺序 0125 → 0130 → 0109 基线 2532eb4c3 run-01 · 报告 [REPORT](0130-session-restore-keeps-mirror/REPORT.md) | completed |
 | [0125](0125-web-notes-mirror/GOAL.md) | 浏览器版 App 断网也能看笔记：`notes` 加入浏览器本地镜像白名单，笔记页本地优先，更新 0077 威胁模型 | 用户 2026-09-27 决定（回复 0108 待定项）。执行顺序 0123 → 0126 → 0127 → 0125 → 0109 基线 7d0f88720 run-01 · 报告 [REPORT](0125-web-notes-mirror/REPORT.md)；恢复会话清副本转 0130 | completed |
@@ -116,6 +119,10 @@ Phone44文件消费e2a＋六文件必要修复 `8d87be6ff`／TREE `d09c602bb` �
 ### 2026-09-18 新增 TODO 收口 Sprint（0081–0085）
 
 用户在 `TODO.md` 记录了 5 个问题，拆成 5 个 Sprint，基线 `chat-agent` = `12a9f9653`，全部 planned、run_count = 0，未领取。建议顺序：0081（小修复）→ 0086（收件箱三类通知默认启用 + 旧记录迁移隔离 + 读取 fail closed）→ 0082 → 0083（等用户答一个边界问题）→ 0084（截图审核 + 设计案批准门）→ 0085（设计案批准门，改 agent 行动方式）。0084／0085 按"先出设计案再实现"规则，设计案未批准不进实现步。编号跳过为 Phase E 保留的 0079／0080。
+
+### 2026-09-30 首页笔记入口更新
+
+用户要求首页只保留「笔记」，先进入全部笔记列表，再在笔记页内新建。此决定更新下文历史「记笔记直接进入新建」及保留双入口的安排；历史 Planner／报告不改写。新增 0138 后用户明确批准并行执行，原A在独立 checkout 实现，主线程继续当前组合树验证；不因此放宽后续 Sprint 的真实接口依赖或共享设备锁。
 
 ## 目录契约
 
@@ -187,9 +194,9 @@ build/harness-logs/
 | [0031](0031-cross-platform-performance/GOAL.md) | 以同环境真实性能基线优化 App 与 Web 的最慢关键路径，不改变功能与数据边界 | 用户批准基线驱动方案并指定 B 线执行 | run-01 failed；固定 B SHA `d71e40839`，安全测量与 Agent 拆包由 `7a48c3bc6` 合并；App 30% 与跨页 p95 门槛未通过，见 [REPORT](0031-cross-platform-performance/REPORT.md) | failed |
 | [0032](0032-hybrid-sync-foundation/GOAL.md) | 建立云端权威、加密且按账号隔离的 App 本地实体镜像 | 用户批准“云端权威＋本地持久镜像＋增量同步”方案 | run-01 最终 HEAD `1e40ee915`，merge `00b81ab18`；App 主集 94/94、消费者 49/49、全量 2934/2934，Web 19/19、两端 typecheck、production build 48/48、3108 live/ok，重建 SQLCipher 与 native 8＋5＋48 项通过，见 [REPORT](0032-hybrid-sync-foundation/REPORT.md) | completed |
 | [0033](0033-incremental-read-sync/GOAL.md) | 所有已授权、用户可见的结构化账号数据在同步后均可离线读取，并明确部分／未下载／撤权状态 | 0032 已 completed/merged；全域规范与实施计划已批准、合并 | 0075 收口：lease/manifest/domains 与 epoch 已在主线（本机真实双账号与 PG 拓扑证据）；全域覆盖与屏幕 mirror-first 未做，REPORT 逐 SC 写明 | blocked |
-| [0034](0034-offline-personal-mutations/GOAL.md) | 在全域离线只读基础上，对低风险个人域提供显式、幂等、可冲突处理的离线写入 | 0033 共享接口固定后才能接线；独立 policy 规则可先执行 | 0075 收口：只有策略守卫与仓库保留 pending 的证据；离线写入/回执/冲突未做，REPORT 逐 SC 写明 | blocked |
-| [0035](0035-sync-invalidation-recovery/GOAL.md) | 以 registry 驱动的水位、轮询和恢复队列修复所有授权域的漏提示、断网、重启与撤权变化 | A/B 真实恢复绑定串行等待；portable 调度核心可先执行 | 0075 收口：manifest 水位 + 0072 的 304 覆盖 SC-01/02 部分；生命周期恢复矩阵未做，REPORT 逐 SC 写明 | blocked |
-| [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 按当前授权查询笔记、任务、跟进、联系人、消息、会议、通知与历史 AI 对话等用户可见数据，并完成全域验收 | App pending 与总验收等待 0033～0035；服务端权限/分页可先执行 | 0075 收口：无新证据，维持 blocked；REPORT 记录现状 | blocked |
+| [0034](0034-offline-personal-mutations/GOAL.md) | 在全域离线只读基础上，对低风险个人域提供显式、幂等、可冲突处理的离线写入 | 0033 共享接口固定后才能接线；独立 policy 规则可先执行 | 0075 收口：只有策略守卫与仓库保留 pending 的证据；离线写入/回执/冲突未做，REPORT 逐 SC 写明。**2026-10-03 回写（0136）**：离线写入、回执、冲突两边保留、清空路径保险箱由 0124（地基）、0132 笔记、0133 个人待办、0134 不重复个人日程、0135 消息发送实现，0136 四类组合矩阵（真库 + App + Simulator）验收；本目录原 run 的失败事实保留，不改写 | 由 0124、0132–0136 承接完成 |
+| [0035](0035-sync-invalidation-recovery/GOAL.md) | 以 registry 驱动的水位、轮询和恢复队列修复所有授权域的漏提示、断网、重启与撤权变化 | A/B 真实恢复绑定串行等待；portable 调度核心可先执行 | 0075 收口：manifest 水位 + 0072 的 304 覆盖 SC-01/02 部分；生命周期恢复矩阵未做，REPORT 逐 SC 写明。**2026-10-03 回写（0136）**：SC-03（启动、回前台、网络恢复、通知点击四个入口先确认在线再上传再拉取）由 0124 上传时机与 0136 入口测试承接（`outbox-upload-triggers`、SC-0136-02），恢复后一轮传完由 0136 修复；原 run 失败事实保留 | 由 0072/0075、0124、0136 承接完成 |
+| [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 按当前授权查询笔记、任务、跟进、联系人、消息、会议、通知与历史 AI 对话等用户可见数据，并完成全域验收 | App pending 与总验收等待 0033～0035；服务端权限/分页可先执行 | 0075 收口：无新证据，维持 blocked；REPORT 记录现状。**2026-10-03 回写（0136）**：SC-03 里与断网写相关的部分（AI 页按类别显示待上传数量、清空后消失、换账号不残留）由 0132 起步、0136 收口（含待发送消息）。AI 全域查询与 Data Atlas 总验收不属于断网写，本次没有新证据，仍按原事实保留 | SC-03 由 0132–0136 承接完成；其余 blocked |
 | [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线 a591494b0；共同环境双账号通信/原生回读已验收，见 [REPORT](0037-contact-message-inbox/REPORT.md) | completed |
 | [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线e045651b3；同账号三类通知与双向动作验收，[REPORT](0038-typed-notification-inbox/REPORT.md)保留失败历史 | completed |
 | [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 功能4aa21961a/合并131723ddb；云端既有来源的真实 AI provider/费用仍缺；外部 Calendar/Gmail/Microsoft OAuth 来源转后续 TODO，见[REPORT](0039-evidence-based-notification-discovery/REPORT.md) | blocked |

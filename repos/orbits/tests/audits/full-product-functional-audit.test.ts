@@ -572,9 +572,8 @@ test("route UI inventory follows imported exports instead of sibling components"
 const SCANNER_CROSS_COMPONENT =
   "scanner false positive: behavior is proven across a component boundary it cannot follow; recovery: the scanner resolves it (then delete the entry)";
 export const KNOWN_MISSING_STATIC_BEHAVIOR: ReadonlyMap<string, string> = new Map<string, string>([
+  ['repos/orbit-app/src/screens/contacts/ContactDetailScreen.tsx#{locale.t("sync.needsNetwork")}', "intentional disabled control: device-copy contact detail is read-only offline; the explicit disabled/accessibilityState prevents writes"],
   ["repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx#{label}", `${SCANNER_CROSS_COMPONENT} (type=submit button rendered inside the parent's <form onSubmit>)`],
-  ['repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx#t({ en: "Previous month", zh: "上个月" })', "product finding: inert aria-disabled month navigation, no cross-month data source (design deviation noted in source); recovery: wire month paging or render it as a non-button"],
-  ['repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx#t({ en: "Next month", zh: "下个月" })', "product finding: same as Previous month"],
   ...["{t(item.cta)}", "填好画像后匹配 / Match after setup", "扫描名片 / Scan business cards", "报名 / Register", "看看可能值得认识的人 → / See people worth meeting →", "继续设置 → / Continue setup →"]
     .map((name) => [`repos/orbits/app/(app)/app/profile/onboarding-0918/onboarding-previews.tsx#${name}`, `${SCANNER_CROSS_COMPONENT} (click delegated to PreviewFrame onClick via data-ob-goto)`] as const),
 ]);
@@ -1387,8 +1386,6 @@ test("generated documents and machine inventory share the same denominators", ()
 // - 修好一条 → 也跑红，提示把它从名单里删掉（只能下降）。
 // 源文件已被删除的键由门禁自行归类（retired source），不进这张名单。
 const KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS: ReadonlySet<string> = new Set([
-  "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1770",
-  "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:2094",
   "repos/orbit-app/src/screens/profile/AccountPermissionsScreen.tsx:131",
   "repos/orbit-app/src/screens/profile/AccountPermissionsScreen.tsx:187",
   "repos/orbit-app/src/screens/profile/AccountScreen.tsx:210",

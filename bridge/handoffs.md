@@ -273,3 +273,16 @@ source_ready / consumer_ready / verification blocked；功能eacd7a227、合并0
 0063最新Main26f74a55远端已独立一致，新Web36058与原生37204/主8082实跑，精确分钟Web37→原生15→Web15同账号正式保存/GET闭环通过。119/119、71/71及types0；唯一I保留Web59/206/PW4与App旧视觉1fail。Phone consumer6d1c771仅15白名单路径保私有政策，privatebuild/export与preview健康；真实两browser/公网/正式REPORT待终验，由Phone父任务与ROOT集成负责，不另开产品run。详见交接追加，历史47版本结论保留而非当前运行时。
 
 Phone终验现已实际通过：private两browser真实保存/独立GET/重开及仅自建QA清理；公共两browser只读控件操作与entry05b/health核对，PUBLIC43205/6/7零重启，原ngrok保持。原helperngrok依赖失败与两次真实0060回退不抹；finalrepair2 exact18静态GET闭包/原业务与budgetguard不变，公共业务0/私有2创建2删除分列。preview37928/37/38已正常停，旧回退完整；ROOT接收receipt83204c49/2c47d04a并目检，正式63中文报告/文档提交正在收口。
+
+## BR-030 — 0132 离线笔记写入与跨端回读
+
+- web_status：本地 `chat-agent` 合并 `3c9aaa691`，服务端笔记写入支持幂等回执、预期版本与 409 冲突；未开放批量或删除接口。既有 phoneweb 写入仍要求联网。
+- app_status：断网新建/编辑进入本机 outbox，冷启动保留、联网后正式编号替换与重试；冲突显示两边正文及三个选择；AI 只提示待同步笔记数量，不读取未上传正文。
+- verification_status：本地共同环境已验证。原生与 phoneweb 对同一测试记录双向回读、冷启动、冲突及 AI 提示有 [0132 报告](../repos/orbit-app/docs/sprints/0132-offline-notes/REPORT.md)和原始证据；合并树定向 116/116、两端 typecheck、Web 生产构建通过。历史 App 全量 12 失败、服务端全量 2 失败及 skip 如实保留，不能解释为全量通过。
+- 交接：0133 从 `3c9aaa691` 起步，复用 0132 outbox/alias/409 机制；不得把笔记未上传内容暴露给 AI、修改 phoneweb 离线写边界，或清除既有队列。远程部署、生产数据库与实体设备不在本次本地验证范围。
+
+## BR-031 — 0138 首页笔记入口
+
+- app_status：本地 `chat-agent` 合并 `51aa23eff`，首页只保留一个「笔记」入口并进入无筛选列表；在列表内新建。原有历史和笔记读写边界不变；phoneweb 与原生共享同一首页源码。
+- verification_status：原生↔phoneweb 同账号双向写读与大字号原生点击已验证；中／日／英及 320px/1.6 字号入口测试通过，合并树定向 84/84。见 [0138 报告](../repos/orbit-app/docs/sprints/0138-home-notes-entry/REPORT.md)。本次未更新 Web API，远程发布未验证。
+- 交接：后续首页改动不得恢复双入口或绕开笔记列表；0133 待办写入不依赖本入口。

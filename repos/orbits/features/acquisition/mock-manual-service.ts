@@ -310,7 +310,9 @@ export function createMockManualContactCreationService(): MockManualContactCreat
           break;
       }
 
-      if (input.note !== undefined && !input.note?.trim()) {
+      // Sprint 0140: same rule as live — a name alone is enough; a blank note
+      // is refused only when there is no name to stage either.
+      if (input.note !== undefined && !input.note?.trim() && !input.displayName?.trim()) {
         return failure("MANUAL_CONTACT_NOTE_REQUIRED");
       }
 

@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
   ORBIT_API_ENDPOINTS,
   aiConversationPath,
@@ -36,6 +37,7 @@ import {
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { OfflineNotice } from "../../components/OfflineNotice";
 import { useLocalAiConversation, useLocalAiSessions } from "../../hooks/useLocalAiSessions";
 import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
@@ -46,6 +48,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { OrbitTranslator } from "../../i18n/messages";
+import { useNotesWriteStatus } from "../notes/notes-source";
 import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches, aiReplyPayload, aiReliableSendReceipt, aiReliableSendRecovery, aiTaskReceipt, type AiConversationPayload, type AiSession } from "../../api/ai-history-contract";
 import type { AiSessionOriginInputContract, AiSessionReferenceContract } from "../../api/contract/ai-sessions";
 import { updateAiSessionOrganization } from "../../api/ai-session-management";
@@ -71,6 +74,7 @@ import {
   type TaskInteractionView
 } from "../../view-models/conversations";
 import { noteSourceFromParams } from "../../view-models/note-suggestions";
+import { pendingWriteItems, usePendingWriteCounts } from "../../hooks/usePendingWriteCounts";
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -174,6 +178,14 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   scopeKey?: string; isScopeCurrent?: () => boolean; claimInitialPrompt?: () => boolean; allowInitialPrompt?: boolean; initialDraft?: string; initialReferences?: readonly AiSessionReferenceContract[]; journal?: AiConversationJournal; sessionOrigin?: AiSessionOriginInputContract;
 } = {}) {
   const locale = useOrbitLocale();
+  const auth = useOrbitAuthSession();
+  const noteWriteStatus = useNotesWriteStatus(auth.actorId ?? "");
+  // Sprint 0136: every kind still on the device (notes, tasks, schedule, unsent messages), by kind, counts only.
+  const pendingCounts = usePendingWriteCounts(Boolean(auth.signedIn && auth.actorId));
+  const pendingNoteChanges = auth.signedIn && auth.actorId && !noteWriteStatus.offline
+    && (noteWriteStatus.syncLabelKey === null || noteWriteStatus.syncLabelKey === "sync.fresh")
+    ? pendingWriteItems(pendingCounts, locale.t)
+    : "";
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
   const viewport = useMobileViewport();
@@ -274,6 +286,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       } as AiSession
     : null;
   const conversationOffline = Boolean(localSession) && serverUnreachable;
+  const missingLocalSessionOffline = isStoredAgentSession && !localSession
+    && localConversation.freshness.readable && localConversation.freshness.offline && serverUnreachable;
   const saveLocalCards = localConversation.saveCards;
   // Keyed on the read itself (a new object only when the server answered again), not on the parsed
   // session, which is a new object on every render.
@@ -679,10 +693,10 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       </Pressable> : null}
       {!isDraftConversation && state.kind === "loading" && !localSession ? <LoadingState /> : null}
       {conversationOffline ? <OfflineNotice lastSyncedAt={localConversation.freshness.lastSyncedAt} /> : null}
-      {!isDraftConversation && !conversationOffline && state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title={locale.t("aiConversation.serverUnavailable")} />
+      {!isDraftConversation && !conversationOffline && (state.kind === "offline" || missingLocalSessionOffline) ? (
+        <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={refresh} />
       ) : null}
-      {!isDraftConversation && !conversationOffline && state.kind === "failure" ? (
+      {!isDraftConversation && !conversationOffline && !missingLocalSessionOffline && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
       {readInvalid ? <ErrorState title={locale.t("aiConversation.readUnreadable")} message={locale.t("aiConversation.readInvalid")} /> : null}
@@ -715,6 +729,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           saving={saving}
           writingBlocked={!!pendingSave || saving || taskInteractionBusy || conversationOffline}
           sendLabelSuffix={conversationOffline ? locale.t("sync.needsNetwork") : undefined}
+          pendingNoteChanges={conversationOffline ? "" : pendingNoteChanges}
           retrySendLabel={locale.t(failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "aiConversation.checkResult" : "aiConversation.regenerate")}
           onRetrySend={() => { if (failedRequest) void recoverRequest(failedRequest); }}
           onEditQuestion={() => { if (failedRequest && owns()) { changeDraft(failedRequest.message); setSendError(null); setSendCode(null); } }}
@@ -760,6 +775,7 @@ function ConversationThread({
   saving,
   writingBlocked,
   sendLabelSuffix,
+  pendingNoteChanges,
   onRetrySend,
   retrySendLabel,
   onEditQuestion,
@@ -798,6 +814,8 @@ function ConversationThread({
   writingBlocked: boolean;
   /** Sprint 0118: "needs a connection" while the conversation shows its offline device copy. */
   sendLabelSuffix?: string | undefined;
+  /** Sprint 0136: the pending items phrase (empty when nothing waits). */
+  pendingNoteChanges: string;
   onRetrySend: () => void;
   retrySendLabel: string;
   onEditQuestion: () => void;
@@ -1032,6 +1050,7 @@ function ConversationThread({
       {saveNotice ? <Text accessibilityLiveRegion="polite" style={[styles.errorText, { marginHorizontal: layout.pageInset }]}>{saveNotice}</Text> : null}
       <View testID="conversation-composer" style={styles.composerPanel}>
         {sendLabelSuffix ? <Text style={styles.threadNextAction}>{`${locale.t("aiConversation.sendMessage")} · ${sendLabelSuffix}`}</Text> : null}
+        {pendingNoteChanges ? <Text style={styles.pendingNoteChanges}>{locale.t("aiConversation.pendingChanges", { items: pendingNoteChanges })}</Text> : null}
         {selectedReferences.length > 0 ? <View style={styles.referenceRow}>{selectedReferences.map(reference => (
           <ContactReferenceChip key={`${reference.type}:${reference.id}`} id={reference.id} knownName={referenceNames[reference.id]} scopeKey={scopeKey}
             onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />
@@ -1399,6 +1418,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   earlierError: { color: colors.rose, fontSize: typography.small, lineHeight: 20 },
   routesPanel: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
   composerActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  pendingNoteChanges: { color: colors.muted, fontSize: typography.small, lineHeight: 18 },
   mentionButtonText: { color: colors.ink, fontSize: 20, fontWeight: "800" },
   referenceRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, paddingTop: spacing.xs },
   referenceChip: { backgroundColor: colors.surface2, borderRadius: radius.pill, minHeight: 36, justifyContent: "center", paddingHorizontal: spacing.sm },

@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import type { SyncChangeKind } from "../api/contract/sync";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
@@ -14,6 +14,7 @@ import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
 import { serverReachability } from "../api/server-reachability";
 import { createSyncClient } from "../data/sync/sync-client";
+import { uploadAllOutboxes } from "../data/sync/upload-outboxes";
 import {
   createSyncCoordinator,
   type SyncCoordinatorSession,
@@ -28,6 +29,8 @@ const appSyncCoordinator = createSyncCoordinator({
   lifecycle: syncLifecycle,
   hashPayload: (serialized) => Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, serialized),
   onManifestUnavailable: (error) => console.warn("SYNC_MANIFEST_UNAVAILABLE", error instanceof Error ? error.message : ""),
+  // Sprint 0136: the composed upload step (notes → tasks → schedules → messages) lives in one module.
+  uploadOutbox: (scope) => Platform.OS === "web" ? Promise.resolve() : uploadAllOutboxes(scope),
 });
 const authSessionGenerations = new WeakMap<object, number>();
 let nextAuthSessionGeneration = 0;
@@ -193,6 +196,8 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       actorId: auth.actorId,
       baseUrl,
       client: createSyncClient(apiClient),
+      writeClient: apiClient,
+      offlineMode: auth.offline,
       scopeKey,
     });
     sessionRef.current = session;
@@ -209,6 +214,21 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       }
       setSnapshot(mirror);
       void startSync("mount");
+    });
+    // Sprint 0136: a sync started elsewhere (the 15-second outbox poll, another screen) and
+    // each upload acknowledgement reach this screen at once: an ACK re-reads this kind's rows
+    // (the 未同步 marks go with them); a completed sync replaces the snapshot as if this
+    // screen had asked for it, so an offline banner clears without a manual refresh.
+    const unsubscribeChanges = session.subscribe?.((change) => {
+      if (!active || !mounted.current || viewGeneration.current !== effectGeneration || !session.isCurrent()) return;
+      if (change.type === "outbox" && change.kind !== null && change.kind !== input.kind) return;
+      const read = change.type === "synced" && session.readSyncedSnapshot
+        ? session.readSyncedSnapshot<TPayload>(input.kind, { records: withRecords })
+        : session.readCollection<TPayload>(input.kind, { records: withRecords });
+      void read.then((next) => {
+        if (!next || !active || !mounted.current || viewGeneration.current !== effectGeneration || !session.isCurrent()) return;
+        setSnapshot((current) => change.type === "synced" ? next : { ...current, records: next.records });
+      }, () => undefined);
     });
     // Sprint 0131: the moment the server answers again after being unreachable, sync
     // (a lease, the conditional manifest and any moved domain) instead of waiting for
@@ -232,6 +252,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       }
       if (sessionRef.current === session) sessionRef.current = null;
       session.deactivate();
+      unsubscribeChanges?.();
       unsubscribeAppState();
       unsubscribeReachability();
       stopReconnectWatch();
@@ -242,6 +263,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
     auth.ready,
     auth.signedIn,
     auth.actorId,
+    auth.offline,
     apiClient,
     baseUrl,
     baseUrlReady,
@@ -297,12 +319,12 @@ export function useSyncCoordinatorSession(enabled = true): SyncCoordinatorSessio
       setSession(null);
       return;
     }
-    const opened = appSyncCoordinator.openScope({ actorId: auth.actorId, baseUrl, client: createSyncClient(apiClient), scopeKey });
+    const opened = appSyncCoordinator.openScope({ actorId: auth.actorId, baseUrl, client: createSyncClient(apiClient), writeClient: apiClient, offlineMode: auth.offline, scopeKey });
     setSession(opened);
     return () => {
       opened.deactivate();
       setSession((current) => (current === opened ? null : current));
     };
-  }, [enabled, auth.ready, auth.signedIn, auth.actorId, apiClient, baseUrl, baseUrlReady, scopeKey]);
+  }, [enabled, auth.ready, auth.signedIn, auth.actorId, auth.offline, apiClient, baseUrl, baseUrlReady, scopeKey]);
   return session;
 }

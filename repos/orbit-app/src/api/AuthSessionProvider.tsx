@@ -1,7 +1,7 @@
 import * as Crypto from "expo-crypto";
 import { router, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { AppState, Platform } from "react-native";
+import { Alert, AppState, Platform } from "react-native";
 import {
   createContext,
   useCallback,
@@ -18,10 +18,12 @@ import {
 } from "./auth-session";
 import { useOrbitApiBaseUrl } from "./ApiBaseUrlProvider";
 import { onSessionExpired } from "./session-expiry";
+import { createLocalSyncRepository } from "../data/sync/local-sync-repository";
 import { syncLifecycle } from "../data/sync/sync-lifecycle";
 import {
   createGoogleOAuthAttempt,
   exchangeGoogleOAuthCode,
+  fetchMobileAccountStatus,
   fetchMobileAuthProviders,
   parseGoogleOAuthBrowserResult,
   signInWithMobileCredentials,
@@ -34,6 +36,7 @@ import { offlineIdentityStorage } from "./offline-identity-storage";
 import {
   OFFLINE_IDENTITY_MAX_AGE_MS,
   classifyAccountCheck,
+  accountStatusConfirmsRejection,
   classifySessionCheck,
   purgeSyncScope,
   trustedOfflineIdentity,
@@ -78,6 +81,10 @@ interface AuthSessionContextValue {
   offline: boolean;
   providers: readonly "google"[];
   ready: boolean;
+  readPendingWritesOnDevice: () => Promise<number | null>;
+  enqueueDebugPendingWrite: () => Promise<number | null>;
+  listDebugPendingWriteIds: () => Promise<readonly string[]>;
+  deleteDebugPendingWrite: (mutationId: string) => Promise<number | null>;
   register: (input: RegisterInput) => Promise<AuthActionResult>;
   signIn: (input: SignInInput) => Promise<AuthActionResult>;
   signInWithGoogle: (next?: string) => Promise<AuthActionResult>;
@@ -89,6 +96,7 @@ interface AuthSessionContextValue {
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
 const usesBrowserManagedSession = Platform.OS === "web";
+const DEBUG_PENDING_WRITE_PREFIX = "debug-offline-write-0124-";
 // While offline, re-check the session this often; also on every return to the foreground.
 const OFFLINE_REVALIDATE_INTERVAL_MS = 10_000;
 // While online, refresh the 30-day offline window on foreground at most this often.
@@ -96,6 +104,35 @@ const ONLINE_REVALIDATE_AFTER_MS = 12 * 60 * 60 * 1000;
 
 function obsoleteAuthActionResult(): AuthActionResult {
   return { message: "登录服务器已切换，请重新登录。", success: false };
+}
+
+function confirmPendingWriteSignOut(): Promise<"keep" | "discard" | "cancel"> {
+  return new Promise(resolve => {
+    Alert.alert(
+      "还有修改等待同步",
+      "注销前可以把这些修改加密保存在本机，之后用同一账号登录可继续；也可以明确放弃。",
+      [
+        { text: "取消", style: "cancel", onPress: () => resolve("cancel") },
+        { text: "加密保存并注销", onPress: () => resolve("keep") },
+        { text: "放弃修改并注销", style: "destructive", onPress: () => resolve("discard") },
+      ],
+      { cancelable: true, onDismiss: () => resolve("cancel") },
+    );
+  });
+}
+
+function confirmPendingOtherAccountWrites(count: number): Promise<boolean> {
+  return new Promise(resolve => {
+    Alert.alert(
+      "这台设备还保存着其他账号的修改",
+      `有 ${count} 项修改已加密保存在本机。继续登录不会删除它们；之后用原账号登录可继续同步。`,
+      [
+        { text: "返回登录", style: "cancel", onPress: () => resolve(false) },
+        { text: "继续此账号", onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) },
+    );
+  });
 }
 
 async function sha256(value: Uint8Array): Promise<Uint8Array> {
@@ -146,16 +183,13 @@ async function rememberValidatedIdentity(record: OfflineIdentityRecord): Promise
  */
 async function eraseRejectedIdentity(baseUrl: string): Promise<void> {
   const cached = await offlineIdentityStorage.read(baseUrl).catch(() => null);
-  try {
-    await offlineIdentityStorage.clear(baseUrl);
-  } catch {
-    console.warn("OFFLINE_IDENTITY_CLEAR_FAILED");
-  }
   // Without a record, whatever the restore left suspended is erased the same way.
   const cleared = cached
     ? await purgeSyncScope(syncLifecycle, { baseUrl, actorId: cached.accountId })
     : await syncLifecycle.setScope(null);
-  if (cleared && !usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
+  if (!cleared) return;
+  await offlineIdentityStorage.clear(baseUrl).catch(() => console.warn("OFFLINE_IDENTITY_CLEAR_FAILED"));
+  if (!usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
 }
 
 export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
@@ -238,6 +272,15 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
           if (account.identity) {
             const identity = account.identity;
+            if (!usesBrowserManagedSession) {
+              const pending = await syncLifecycle.pendingWriteSummary({ baseUrl, actorId: identity.accountId });
+              if (!current()) return;
+              if (!pending) return;
+              if (pending.otherAccounts > 0 && !(await confirmPendingOtherAccountWrites(pending.otherAccounts))) {
+                if (!usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl).catch(() => undefined);
+                return;
+              }
+            }
             if (!(await syncLifecycle.setScope({ baseUrl, actorId: identity.accountId }))) return;
             if (!current()) return;
             const validatedAt = Date.now();
@@ -252,6 +295,11 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
             return;
           }
           check = account.check === "rejected" ? "rejected" : "unreachable";
+        }
+
+        if (check === "rejected") {
+          const accountStatus = await fetchMobileAccountStatus({ baseUrl, cookieHeader: storedValue });
+          check = accountStatusConfirmsRejection(accountStatus) ? "rejected" : "unreachable";
         }
 
         if (check === "rejected") {
@@ -388,6 +436,19 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
       if (!usesBrowserManagedSession) {
         try {
+          const pending = await syncLifecycle.pendingWriteSummary({ baseUrl, actorId: identity.accountId });
+          if (!pending) {
+            await discardUnacceptedSession(session);
+            return { message: "无法确认本机是否还有其他账号的待同步修改，请稍后重试。", success: false };
+          }
+          if (pending.otherAccounts > 0 && !(await confirmPendingOtherAccountWrites(pending.otherAccounts))) {
+            await discardUnacceptedSession(session);
+            return { message: "已取消切换账号，原有待同步修改仍保留在本机。", success: false };
+          }
+          if (authEnvironment.current.revision !== requestRevision) {
+            await discardUnacceptedSession(session);
+            return obsoleteAuthActionResult();
+          }
           if (!(await syncLifecycle.setScope({ baseUrl, actorId: identity.accountId }))) {
             return { message: "无法安全清除上个账号的本地数据，请稍后再试。", success: false };
           }
@@ -548,6 +609,19 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
   const signOut = useCallback(async (): Promise<AuthActionResult> => {
     const requestRevision = ++authEnvironment.current.revision;
+    let discardPendingWrites = false;
+    if (Platform.OS !== "web" && accountId) {
+      const count = await syncLifecycle.withDatabase({ baseUrl, actorId: accountId }, async database =>
+        (await database.get<{ count: number }>("SELECT COUNT(*) AS count FROM sync_outbox"))?.count ?? 0,
+      );
+      if (count === null) return { message: "无法确认待同步修改，请稍后重试注销。", success: false };
+      if (count > 0) {
+        const choice = await confirmPendingWriteSignOut();
+        if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
+        if (choice === "cancel") return { message: "已取消注销。", success: false };
+        discardPendingWrites = choice === "discard";
+      }
+    }
     if (user !== null) {
       if (!(await clearNotificationSession())) {
         console.warn("Orbit 通知清理未完全确认，继续注销；服务端可能仍保留设备注册");
@@ -563,21 +637,21 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     }
 
     try {
-      // Before anything else: a signed-out account must never come back offline.
-      await offlineIdentityStorage.clear(baseUrl);
-    } catch {
-      return {
-        message: "无法清除这台设备上的登录状态，请稍后再试。",
-        success: false
-      };
-    }
-
-    try {
+      if (discardPendingWrites && accountId) {
+        const discarded = await syncLifecycle.withDatabase({ baseUrl, actorId: accountId }, async database =>
+          database.transaction(async () => {
+            await database.run("DELETE FROM sync_outbox");
+            await database.run("DELETE FROM sync_aliases");
+          }),
+        );
+        if (discarded === null) return { message: "无法安全放弃待同步修改，请稍后重试。", success: false };
+      }
       // The browser mirror is erased on sign-out too (0130); before, only native purged here.
       if (!(await syncLifecycle.setScope(null))) {
         return { message: "无法安全清除这台设备上的本地数据，请稍后再试。", success: false };
       }
       if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
+      await offlineIdentityStorage.clear(baseUrl);
       if (!usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
     } catch {
       return {
@@ -592,28 +666,110 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     setOffline(false);
     setUser(null);
     return { success: true };
-  }, [baseUrl, clearNotificationSession, cookieHeader, user]);
+  }, [accountId, baseUrl, clearNotificationSession, cookieHeader, user]);
+
+  const readPendingWritesOnDevice = useCallback(async (): Promise<number | null> => {
+    const summary = await syncLifecycle.pendingWriteSummary();
+    return summary === null ? null : summary.currentAccount + summary.otherAccounts;
+  }, []);
+
+  const enqueueDebugPendingWrite = useCallback(async (): Promise<number | null> => {
+    if (!__DEV__ || usesBrowserManagedSession || !accountId || user === null) return null;
+    const randomBytes = await Crypto.getRandomBytesAsync(16);
+    const suffix = Array.from(randomBytes, value => value.toString(16).padStart(2, "0")).join("");
+    const mutationId = `${DEBUG_PENDING_WRITE_PREFIX}${suffix}`;
+    return syncLifecycle.withDatabase({ baseUrl, actorId: accountId }, async database => {
+      const repository = createLocalSyncRepository({
+        actorId: accountId,
+        database,
+        testOnlyOutboxDomains: ["test-offline-write"],
+      });
+      await repository.enqueueOutboxMutation({
+        actorId: accountId,
+        workspaceId: "debug-test-workspace",
+        domainId: "test-offline-write",
+        mutationId,
+        kind: "contact",
+        id: `local:${mutationId}`,
+        operation: "create",
+        patch: { label: "0124 Debug offline-write fixture" },
+        requestJson: JSON.stringify({
+          endpoint: "debug://test-only/offline-write",
+          mutationId,
+          body: { label: "0124 Debug offline-write fixture" },
+        }),
+        baseRevision: null,
+        createdAt: new Date().toISOString(),
+        retryCount: 0,
+        nextRetryAt: null,
+        lastErrorCode: null,
+      });
+      return (await database.get<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM sync_outbox WHERE domain_id = ?",
+        ["test-offline-write"],
+      ))?.count ?? 0;
+    });
+  }, [accountId, baseUrl, user]);
+
+  const listDebugPendingWriteIds = useCallback(async (): Promise<readonly string[]> => {
+    if (!__DEV__ || usesBrowserManagedSession || !accountId || user === null) return [];
+    return (await syncLifecycle.withDatabase({ baseUrl, actorId: accountId }, async database => {
+      const rows = await database.all<{ mutation_id: string }>(
+        `SELECT mutation_id FROM sync_outbox
+         WHERE workspace_id = ? AND domain_id = ? AND mutation_id LIKE ?
+         ORDER BY created_at ASC, mutation_id ASC`,
+        ["debug-test-workspace", "test-offline-write", `${DEBUG_PENDING_WRITE_PREFIX}%`],
+      );
+      return rows.map(row => row.mutation_id);
+    })) ?? [];
+  }, [accountId, baseUrl, user]);
+
+  const deleteDebugPendingWrite = useCallback(async (mutationId: string): Promise<number | null> => {
+    if (!__DEV__ || usesBrowserManagedSession || !accountId || user === null ||
+      !new RegExp(`^${DEBUG_PENDING_WRITE_PREFIX}[a-f0-9]{32}$`, "u").test(mutationId)) return null;
+    return syncLifecycle.withDatabase({ baseUrl, actorId: accountId }, async database =>
+      database.transaction(async () => {
+        const row = await database.get<{ mutation_id: string }>(
+          `SELECT mutation_id FROM sync_outbox
+           WHERE mutation_id = ? AND domain_id = ? AND workspace_id = ?`,
+          [mutationId, "test-offline-write", "debug-test-workspace"],
+        );
+        if (!row) return 0;
+        await database.run(
+          "DELETE FROM sync_outbox WHERE mutation_id = ? AND domain_id = ? AND workspace_id = ?",
+          [mutationId, "test-offline-write", "debug-test-workspace"],
+        );
+        return 1;
+      }),
+    );
+  }, [accountId, baseUrl, user]);
 
   // The server has rejected this device's session (a 401 on any request, or an explicit
   // rejection when re-checking): forget the cached identity, purge the open mirror and
   // key, then the cookie, and go to login.
-  const endRejectedSession = useCallback(() => {
-    authEnvironment.current.revision += 1;
-    // Keep the old auth storage if key deletion fails: restoring that scope
-    // must retry its cleanup before another account can be accepted.
-    void offlineIdentityStorage.clear(baseUrl)
-      .catch(() => console.warn("OFFLINE_IDENTITY_CLEAR_FAILED"))
-      .then(() => syncLifecycle.setScope(null))
-      .then(async cleared => {
-        if (cleared && !usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
-      })
-      .catch(() => console.warn("SYNC_SESSION_CLEANUP_FAILED"));
-    setAccountId(null);
-    setCookieHeader("");
-    setOffline(false);
-    setUser(null);
-    router.replace("/account/login" as Href);
-  }, [baseUrl]);
+  const endRejectedSession = useCallback((alreadyConfirmed = false) => {
+    const requestRevision = ++authEnvironment.current.revision;
+    void (async () => {
+      const accountStatus = alreadyConfirmed
+        ? null
+        : await fetchMobileAccountStatus({ baseUrl, cookieHeader });
+      if (accountStatus && !accountStatusConfirmsRejection(accountStatus)) {
+        setOffline(true);
+        return;
+      }
+      // Keep the old auth storage if key deletion fails: restoring that scope
+      // must retry its cleanup before another account can be accepted.
+      const cleared = await syncLifecycle.setScope(null);
+      if (!cleared || authEnvironment.current.revision !== requestRevision) return;
+      await offlineIdentityStorage.clear(baseUrl).catch(() => console.warn("OFFLINE_IDENTITY_CLEAR_FAILED"));
+      if (!usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
+      setAccountId(null);
+      setCookieHeader("");
+      setOffline(false);
+      setUser(null);
+      router.replace("/account/login" as Href);
+    })().catch(() => console.warn("SYNC_SESSION_CLEANUP_FAILED"));
+  }, [baseUrl, cookieHeader]);
 
   // 任何一次请求收到 401，都说明这台设备上保存的会话已经失效。
   //
@@ -651,6 +807,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         const result = await validateAuthSession({ baseUrl, cookieHeader });
         if (!current()) return;
         let check = classifySessionCheck(result);
+        let statusProbeRequired = !result.success && check === "rejected";
         if (result.success) {
           if (result.data.user.id !== signedInUserId) {
             check = "rejected";
@@ -666,11 +823,16 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
               return;
             }
             check = account.identity || account.check === "rejected" ? "rejected" : "unreachable";
+            statusProbeRequired = !account.identity && account.check === "rejected";
           }
+        }
+        if (statusProbeRequired && check === "rejected") {
+          const accountStatus = await fetchMobileAccountStatus({ baseUrl, cookieHeader });
+          check = accountStatusConfirmsRejection(accountStatus) ? "rejected" : "unreachable";
         }
         if (check === "rejected") {
           active = false;
-          endRejectedSession();
+          endRejectedSession(true);
           return;
         }
         if (offline && Date.now() - lastValidatedAt.current > OFFLINE_IDENTITY_MAX_AGE_MS) {
@@ -712,6 +874,10 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       offline,
       providers,
       ready,
+      readPendingWritesOnDevice,
+      enqueueDebugPendingWrite,
+      listDebugPendingWriteIds,
+      deleteDebugPendingWrite,
       register,
       signIn,
       signInWithGoogle,
@@ -728,6 +894,10 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       offline,
       providers,
       ready,
+      enqueueDebugPendingWrite,
+      listDebugPendingWriteIds,
+      deleteDebugPendingWrite,
+      readPendingWritesOnDevice,
       register,
       signIn,
       signInWithGoogle,

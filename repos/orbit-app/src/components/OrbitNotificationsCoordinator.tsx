@@ -4,7 +4,11 @@ import { useCallback, useEffect } from "react";
 import { AppState, Platform } from "react-native";
 
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
+import { serverReachability } from "../api/server-reachability";
 import { useOrbitApiClient } from "../hooks/useOrbitApiClient";
+import { useSyncCoordinatorSession } from "../hooks/useSyncedCollection";
+import { startOutboxUploadTriggers, syncThenNavigate } from "../data/sync/outbox-upload-triggers";
 import {
   createNotificationResponseGuard,
   notificationHrefFromDeepLink,
@@ -33,23 +37,38 @@ if (Platform.OS !== "web") {
   });
 }
 
-function openNotification(response: Notifications.NotificationResponse): void {
+function openNotification(
+  response: Notifications.NotificationResponse,
+  session: ReturnType<typeof useSyncCoordinatorSession>,
+): void {
   const data = response.notification.request.content.data;
   const deliveryId = typeof data?.deliveryId === "string" ? data.deliveryId.trim() : "";
   const href = notificationHrefFromDeepLink(data?.deepLink);
   if (!deliveryId && !href) return;
   const notificationId = response.notification.request.identifier;
   if (!responseGuard.shouldHandle(notificationId, response.actionIdentifier)) return;
-  if (deliveryId) {
-    router.push({ pathname: "/inbox", params: { deliveryId } } as Href);
-  } else if (href) {
-    router.push(href as Href);
-  }
+  if (!session) return;
+  void syncThenNavigate(session, () => {
+    if (deliveryId) router.push({ pathname: "/inbox", params: { deliveryId } } as Href);
+    else if (href) router.push(href as Href);
+  });
 }
 
 export function OrbitNotificationsCoordinator() {
   const { notificationSessionRevision, ready, signedIn } = useOrbitAuthSession();
   const client = useOrbitApiClient();
+  const { baseUrl, ready: baseUrlReady } = useOrbitApiBaseUrl();
+  const syncSession = useSyncCoordinatorSession(ready && signedIn);
+  const syncOutbox = useCallback(() => {
+    if (!syncSession?.isCurrent()) return;
+    void syncSession.synchronize("note", { reason: "explicit" }).promise.catch(() => undefined);
+  }, [syncSession]);
+
+  useEffect(() => {
+    if (!ready || !signedIn || !baseUrlReady || !syncSession || Platform.OS === "web") return;
+    // Sprint 0136: cold start, foreground, network restored and the 15-second poll in one place.
+    return startOutboxUploadTriggers({ syncOutbox, appState: AppState, reachability: serverReachability, baseUrl });
+  }, [baseUrl, baseUrlReady, client, ready, signedIn, syncOutbox, syncSession]);
 
   const synchronize = useCallback(async (generation: number) => {
     if (!ready || !signedIn || Platform.OS !== "ios") return;
@@ -59,13 +78,13 @@ export function OrbitNotificationsCoordinator() {
   }, [client, ready, signedIn]);
 
   useEffect(() => {
-    if (!ready || !signedIn || Platform.OS === "web") return;
+    if (!ready || !signedIn || !syncSession || Platform.OS === "web") return;
     let active = true;
     const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      if (active) openNotification(response);
+      if (active) openNotification(response, syncSession);
     });
     void Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (active && response) openNotification(response);
+      if (active && response) openNotification(response, syncSession);
     }).catch(() => {
       console.warn("Orbit 无法读取最近的通知入口");
     });
@@ -73,7 +92,7 @@ export function OrbitNotificationsCoordinator() {
       active = false;
       responseSubscription.remove();
     };
-  }, [notificationSessionRevision, ready, signedIn]);
+  }, [notificationSessionRevision, ready, signedIn, syncSession]);
 
   useEffect(() => {
     if (ready && !signedIn && Platform.OS === "ios") {

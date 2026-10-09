@@ -1004,7 +1004,7 @@ function distributionPayloadFromReadModel(
       dimension,
       structureDistributionFromReadModel(model, dimension),
     ]),
-  ) as Record<NetworkStructureDimensionId, ReturnType<typeof structureDistributionFromReadModel>>;
+  ) as Record<StructureDimension, ReturnType<typeof structureDistributionFromReadModel>>;
   const industryDistribution = structures.industry.map((group) => {
     const inBucket = (key: string | null) => group.rawKeys.includes(key);
     return {

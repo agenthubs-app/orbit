@@ -7,7 +7,25 @@ import { renderToHtml } from "./helpers/render";
 import { aiConversationPayload } from "./helpers/ai-fixtures";
 
 let conversation: Record<string, unknown> = {};
+let apiState: Record<string, unknown> | null = null;
+let routeParams: Record<string, string> = { id: "reading-test" };
+let localConversationState = {
+  messages: [] as readonly unknown[],
+  freshness: { readable: false, offline: false, lastSyncedAt: null },
+  cards: null,
+  saveCards() {},
+  refresh() {}
+};
 const resetConversation = () => {
+  apiState = null;
+  routeParams = { id: "reading-test" };
+  localConversationState = {
+    messages: [],
+    freshness: { readable: false, offline: false, lastSyncedAt: null },
+    cards: null,
+    saveCards() {},
+    refresh() {}
+  };
   conversation = {
     ...aiConversationPayload,
     activeConversationId: "reading-test",
@@ -28,7 +46,7 @@ const originalLoad = moduleLoader._load;
 moduleLoader._load = (name, ...args) => {
   if (name === "expo-crypto") return { randomUUID: () => "reading-test-request-id" };
   if (name === "expo-router") return {
-    useLocalSearchParams: () => ({ id: "reading-test" }),
+    useLocalSearchParams: () => routeParams,
     useRouter: () => ({ push() {}, replace() {}, canGoBack: () => true }),
     usePathname: () => "/ai/reading-test"
   };
@@ -37,7 +55,11 @@ moduleLoader._load = (name, ...args) => {
   if (name.endsWith("/api/AuthSessionProvider")) return { useOrbitAuthSession: () => ({ ready: true, signedIn: true, accountId: "actor:reading", actorId: "actor:reading", user: { id: "actor:reading" }, cookieHeader: "" }) };
   if (name.endsWith("/hooks/useOrbitApiClient")) return { useOrbitApiClient: () => ({}) };
   if (name.endsWith("/hooks/useApiResource")) return {
-    useApiResource: (path: string) => ({ kind: "success", data: path === "/api/ai/conversations/reading-test" ? conversation : {}, refreshing: false, refresh() {} })
+    useApiResource: (path: string) => apiState ?? ({ kind: "success", data: path === "/api/ai/conversations/reading-test" ? conversation : {}, refreshing: false, refresh() {} })
+  };
+  if (name.endsWith("/hooks/useLocalAiSessions")) return {
+    useLocalAiConversation: () => localConversationState,
+    useLocalAiSessions: () => ({ rows: [], freshness: localConversationState.freshness, refresh() {} })
   };
   return originalLoad(name, ...args);
 };
@@ -84,6 +106,54 @@ test("assistant record references render actionable detail entries", () => {
   const html = renderToHtml(<AiConversationScreen />);
   assert.match(html, /aria-label="打开活动详情：event-one"/u);
   assert.match(html, /aria-label="打开人脉详情：person-one"/u);
+});
+
+test("a persisted foreign session uses not-on-device when the readable mirror is offline and the server read fails", () => {
+  routeParams = { id: "session:foreign", source: "session" };
+  apiState = { kind: "failure", error: { message: "Orbit service unavailable" }, refreshing: false, refresh() {} };
+  localConversationState = {
+    messages: [],
+    freshness: { readable: true, offline: true, lastSyncedAt: "2026-09-30T00:00:00Z" },
+    cards: null,
+    saveCards() {},
+    refresh() {}
+  };
+
+  const html = renderToHtml(<AiConversationScreen />);
+  assert.match(html, /还没保存在这台设备上/u);
+  assert.doesNotMatch(html, /Orbit service unavailable/u);
+});
+
+test("an opened session with cached messages still renders its local copy after a server failure", () => {
+  routeParams = { id: "session:cached", source: "session" };
+  apiState = { kind: "failure", error: { message: "Orbit service unavailable" }, refreshing: false, refresh() {} };
+  localConversationState = {
+    messages: [{ id: "cached-reply", role: "assistant", text: "Cached session reply", index: 0 }],
+    freshness: { readable: true, offline: true, lastSyncedAt: "2026-09-30T00:00:00Z" },
+    cards: null,
+    saveCards() {},
+    refresh() {}
+  };
+
+  const html = renderToHtml(<AiConversationScreen />);
+  assert.match(html, /Cached session reply/u);
+  assert.doesNotMatch(html, /还没保存在这台设备上|Orbit service unavailable/u);
+});
+
+test("an unrelated server failure remains visible when the mirror is not offline", () => {
+  routeParams = { id: "session:foreign", source: "session" };
+  apiState = { kind: "failure", error: { message: "Orbit service unavailable" }, refreshing: false, refresh() {} };
+  localConversationState = {
+    messages: [],
+    freshness: { readable: true, offline: false, lastSyncedAt: "2026-09-30T00:00:00Z" },
+    cards: null,
+    saveCards() {},
+    refresh() {}
+  };
+
+  const html = renderToHtml(<AiConversationScreen />);
+  assert.match(html, /Orbit service unavailable/u);
+  assert.doesNotMatch(html, /还没保存在这台设备上/u);
 });
 
 test("same-kind record links are visibly distinct and unsupported links explain the boundary", () => {

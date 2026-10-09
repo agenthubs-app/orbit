@@ -45,6 +45,8 @@ import {
   type ApiResourceState
 } from "../../hooks/useApiResource";
 import { usePageCopyResource } from "../../hooks/usePageCopyResource";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { useOfflineTaskOutbox } from "../../data/sync/useOfflineTaskOutbox";
 import { useLoadingDeadline } from "../../hooks/useLoadingDeadline";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
@@ -58,7 +60,8 @@ import {
   type OrbitAiHomeChatWindow
 } from "../../view-models/conversations";
 import type { TodayHomeActionView } from "../../view-models/today-tasks";
-import { todaySummaryPath, todaySummaryQuestions, todaySummaryToHomeView } from "../../view-models/today-task-pages";
+import { deviceTodayTaskSummaryView, overlayTodayTaskSummaryView, todaySummaryPath, todaySummaryQuestions, todaySummaryToHomeView } from "../../view-models/today-task-pages";
+import type { TaskItemContract } from "../../api/contract/tasks";
 import { OrbitNextActions } from "./OrbitNextActions";
 import { homeQuestionSnapshot, type HomeQuestionSnapshot } from "../../view-models/home-question-snapshot";
 import { AiSessionOrganizationPanel } from "./AiSessionOrganization";
@@ -292,6 +295,8 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     () => false,
     { scopeKey: JSON.stringify([readScope, todayAttempt, todayDate]), copy: { id: "today-summary" }, accept: (data) => todaySchema.safeParse(data).success }
   );
+  const taskMirror = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
+  const taskOutbox = useOfflineTaskOutbox(taskMirror, Platform.OS !== "web");
   const todayState = validateApiResourceState(todayCopied, todaySchema);
   // Sprint 0092: neither region may say "still reading" without end. A retry
   // bumps the attempt counter, which restarts the clock for that region.
@@ -442,10 +447,20 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     todayState.kind === "success" || todayState.kind === "empty"
       ? todayState.data
       : null;
-  const todaySummary = todayPayload
+  const serverTodaySummary = todayPayload
     ? todaySummaryToHomeView(todayPayload, todayDate, "Asia/Tokyo", todayNow, locale.language)
     : null;
-  const todaySummaryView = todaySummary ?? { items: [], openTaskCount: 0, suggestionCount: 0 };
+  const todaySummary = overlayTodayTaskSummaryView(serverTodaySummary,
+    taskMirror.records.flatMap(record => record.deletedAt === null && record.payload && typeof record.payload === "object"
+      ? [record.payload as unknown as TaskItemContract] : []),
+    taskOutbox.queuedMutations, auth.actorId ?? "", todayDate, todayNow, "Asia/Tokyo", locale.language);
+  // Sprint 0136: offline with no copy of today's summary, count from the device task mirror instead of showing 0.
+  const todayUnreachable = todayState.kind === "offline" || todayState.kind === "failure";
+  const deviceTodaySummary = !todaySummary && todayUnreachable && Platform.OS !== "web" && taskMirror.status !== "unsynced"
+    ? deviceTodayTaskSummaryView(taskMirror.records.flatMap(record => record.deletedAt === null && record.payload && typeof record.payload === "object"
+      ? [record.payload as unknown as TaskItemContract] : []), taskOutbox.queuedMutations, auth.actorId ?? "", todayDate, todayNow, "Asia/Tokyo", locale.language)
+    : null;
+  const todaySummaryView = todaySummary ?? deviceTodaySummary ?? { items: [], openTaskCount: 0, suggestionCount: 0 };
   const summaryQuestions = todayPayload ? todaySummaryQuestions(todayPayload, locale.language) : null;
   const [questionSnapshot, setQuestionSnapshot] = useState<HomeQuestionSnapshot | null>(null);
   const nextQuestionSnapshot = homeQuestionSnapshot(questionSnapshot, {
@@ -849,7 +864,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         onClose={() => setComposerMenuOpen(false)}
         onNewChat={startNewChat}
         onOpenDrawer={() => { setComposerMenuOpen(false); setDrawerOpen(true); }}
-        onScanCard={() => openCapability("/contacts/new" as Href)}
+        onScanCard={() => openCapability("/contacts/new/scan" as Href)}
         visible={composerMenuOpen}
       />
     </SafeAreaView>

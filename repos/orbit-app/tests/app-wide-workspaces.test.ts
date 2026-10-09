@@ -357,7 +357,7 @@ test("workspace actions grow with doubled text while keeping labels inside the p
 for (const screen of ["tasks", "task", "chat", "thread", "schedule", "today", "followups", "ledger", "actions", "conversation"]) {
   test(`${screen}: resource failure remains visible without write effects`, async t => {
     // Sprint 0131: offline pages with no device copy yet say so calmly (the read is not an error); the others still show the read failure.
-    const offlineCopyPage = ["task", "today", "ledger", "actions"].includes(screen);
+    const offlineCopyPage = ["task", "today", "ledger", "actions", "conversation"].includes(screen);
     const page = await open(t, screen); await page.evaluate(() => (window as any).fixture.update({ kind: "offline" })); await page.getByText(offlineCopyPage ? "这项内容还没保存在这台设备上，联网打开一次后断网也能看。" : "连接暂时失败", { exact: true }).first().waitFor(); await noWrites(page);
   });
 }

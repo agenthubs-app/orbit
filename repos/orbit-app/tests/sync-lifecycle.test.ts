@@ -5,6 +5,10 @@ import test from "node:test";
 import config from "../app.config";
 import { readSnapshot, writeSnapshot, clearSnapshots } from "../src/data/snapshot-store";
 import { syncLifecycle } from "../src/data/sync/sync-lifecycle";
+import { buildOfflineTaskMutation } from "../src/data/sync/task-outbox-mutation";
+import { buildOfflineNoteMutation } from "../src/data/sync/note-outbox-mutation";
+import { buildOfflineScheduleMutation } from "../src/data/sync/schedule-outbox-mutation";
+import { createSyncCoordinator } from "../src/data/sync/sync-coordinator";
 
 const scope = { baseUrl: "https://first.example", actorId: "account-private-fixture" };
 
@@ -14,7 +18,7 @@ function fixture() {
   const files = new Map<string, DatabaseSync>();
   const logs: unknown[][] = [];
   const options: unknown[] = [];
-  const state = { keyDeleteFails: false, fileDeleteFails: false, corrupt: false, cipher: true, keyWriteFails: false, closeFails: false };
+  const state = { keyDeleteFails: false, fileDeleteFails: false, corrupt: false, cipher: true, keyWriteFails: false, closeFails: false, vaultWriteFails: false };
   const native = {
     crypto: {
       CryptoDigestAlgorithm: { SHA256: "SHA-256" },
@@ -65,7 +69,10 @@ function fixture() {
             return database.prepare(sql).get(...params) ?? null;
           },
           async getAllAsync(sql: string, params: any[] = []) { return database.prepare(sql).all(...params); },
-          async runAsync(sql: string, params: any[] = []) { return database.prepare(sql).run(...params); },
+          async runAsync(sql: string, params: any[] = []) {
+            if (state.vaultWriteFails && sql.includes("INSERT INTO pending_write_vault")) throw Error("injected pending vault failure");
+            return database.prepare(sql).run(...params);
+          },
           async closeAsync() { events.push("close"); if (state.closeFails) throw Error("injected close failure"); },
         };
       },
@@ -134,6 +141,303 @@ test("logout closes the handle and purges all mirror, outbox, cursor, snapshot d
   assert.equal(await f.coordinator.withDatabase(scope, () => Promise.resolve("private")), null);
 });
 
+test("logout archives only pending writes and a same-account reopen restores them", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,state,request_json,patch_json,created_at
+  ) VALUES('m-vault','workspace','notes','note','local:note','create','queued','{"mutationId":"m-vault"}','{"title":"draft"}','2026-09-16T00:00:00.000Z')`));
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_records(
+    workspace_id,domain_id,authorization_epoch,kind,record_id,revision,updated_at,payload_json,sync_state,ai_visibility
+  ) VALUES('workspace','notes','epoch','note','server-only','r1','2026-09-16T00:00:00.000Z','{"title":"mirror"}','synced','available_when_synced')`));
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(scope), { currentAccount: 1, otherAccounts: 0 });
+  assert.equal(await f.coordinator.setScope(null), true);
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(scope), { currentAccount: 1, otherAccounts: 0 });
+  assert.deepEqual(await f.coordinator.pendingWriteSummary({ ...scope, actorId: "other-private-fixture" }), { currentAccount: 0, otherAccounts: 1 });
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(), { currentAccount: 0, otherAccounts: 1 });
+  assert.ok(f.keys.has(`orbit.pending-vault.key.${createHash("sha256").update(JSON.stringify([scope.baseUrl, scope.actorId])).digest("hex")}`));
+  assert.ok([...f.files.keys()].some(name => name.startsWith("orbit-pending-vault-")));
+  assert.equal(await f.coordinator.setScope(scope), true);
+  const rows = await f.coordinator.withDatabase(scope, db => db.all<{ mutation_id: string }>("SELECT mutation_id FROM sync_outbox"));
+  assert.deepEqual(rows?.map(row => row.mutation_id), ["m-vault"]);
+  const mirror = await f.coordinator.withDatabase(scope, db => db.get("SELECT record_id FROM sync_records"));
+  assert.equal(mirror, null, "vault must never contain or restore the server mirror");
+  assert.equal([...f.files.keys()].some(name => name.startsWith("orbit-pending-vault-")), false);
+});
+
+test("logout archives a queued task edit and a same-account reopen restores its frozen request", async t => {
+  const f = await lifecycle(t);
+  const now = Date.parse("2026-09-20T00:00:00.000Z");
+  const epoch = "tasks-e1";
+  const taskId = "task:pending-edit";
+  const updatedAt = "2026-09-20T00:00:00.000Z";
+  const taskRecord = {
+    id: taskId,
+    accountId: scope.actorId,
+    ownerUserId: scope.actorId,
+    title: "Original title",
+    status: "open",
+    category: "personal",
+    priority: "normal",
+    source: "manual",
+    createdAt: updatedAt,
+    updatedAt,
+  };
+  const mutationId = "123e4567-e89b-42d3-a456-426614174091";
+  const requestBody = {
+    action: "update",
+    expectedUpdatedAt: updatedAt,
+    idempotencyKey: mutationId,
+    patch: { title: "Edited while offline" },
+  };
+  const mutation = buildOfflineTaskMutation({
+    mutationId,
+    entityId: taskId,
+    operation: "update",
+    baseRevision: "tasks-e1:17",
+    requestBody,
+    createdAt: "2026-09-20T00:00:01.000Z",
+  });
+  const coordinator = createSyncCoordinator({
+    lifecycle: f.coordinator,
+    now: () => now,
+    hashPayload: async value => createHash("sha256").update(value).digest("hex"),
+  });
+  const session = coordinator.openScope({
+    actorId: scope.actorId,
+    baseUrl: scope.baseUrl,
+    scopeKey: "task-vault-restore",
+    client: {
+      async getLease() {
+        return {
+          version: 2,
+          baseUrl: scope.baseUrl,
+          actorId: scope.actorId,
+          subject: "synthetic-task-vault-user",
+          sessionExpiresAt: now + 30 * 24 * 60 * 60 * 1000,
+          offlineReadExpiresAt: now + 7 * 24 * 60 * 60 * 1000,
+          lastVerifiedAt: now,
+          grants: [{ workspaceId: "workspace-task-vault", domainId: "tasks", authorizationEpoch: epoch }],
+          databaseKeyRef: "synthetic-task-vault-key-ref",
+        };
+      },
+      async getManifest() {
+        return {
+          registryVersion: 1,
+          domains: [{
+            domainId: "tasks",
+            schemaVersion: 1,
+            workspaceId: "workspace-task-vault",
+            authorizationEpoch: epoch,
+            generation: "tasks-e1-generation",
+            watermark: "1",
+            history: "complete",
+            membershipCursor: null,
+          }],
+        };
+      },
+      async getDomainPage(input) {
+        assert.equal(input.domainId, "tasks");
+        return {
+          domainId: "tasks",
+          schemaVersion: 1,
+          registryVersion: 1,
+          authorizationEpoch: epoch,
+          changes: [{ id: taskId, revision: "tasks-e1:17", operation: "upsert", payload: taskRecord }],
+          nextCursor: "tasks-e1:17",
+          highWatermark: "1",
+          hasMore: false,
+          generation: "tasks-e1-generation",
+          serverTime: updatedAt,
+        };
+      },
+      async getPage() {
+        throw new Error("legacy sync endpoint must not be used");
+      },
+    },
+  });
+
+  const syncRequest = session.synchronize("task", { reason: "explicit" });
+  assert.equal(await syncRequest.started, true);
+  assert.equal((await syncRequest.promise)?.error, null);
+  await session.enqueueOfflineTaskMutation(mutation);
+  const queuedBeforeLogout = await session.readOutboxOverlay("task");
+  assert.deepEqual(queuedBeforeLogout?.queuedMutations.map(row => ({
+    mutationId: row.mutationId,
+    kind: row.kind,
+    id: row.id,
+    operation: row.operation,
+    patch: row.patch,
+    requestJson: row.requestJson,
+    baseRevision: row.baseRevision,
+  })), [{
+    mutationId,
+    kind: "task",
+    id: taskId,
+    operation: "update",
+    patch: { title: "Edited while offline" },
+    requestJson: JSON.stringify(requestBody),
+    baseRevision: "tasks-e1:17",
+  }]);
+
+  session.deactivate();
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(await f.coordinator.setScope(null), true);
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(scope), { currentAccount: 1, otherAccounts: 0 });
+  assert.equal(await f.coordinator.setScope(scope), true);
+
+  const restored = await f.coordinator.withDatabase(scope, db => db.get<{
+    mutation_id: string;
+    workspace_id: string;
+    domain_id: string;
+    kind: string;
+    record_id: string;
+    operation: string;
+    state: string;
+    request_json: string;
+    patch_json: string;
+    base_revision: string;
+  }>(`SELECT mutation_id,workspace_id,domain_id,kind,record_id,operation,state,request_json,patch_json,base_revision
+     FROM sync_outbox`));
+  assert.deepEqual({ ...restored }, {
+    mutation_id: mutationId,
+    workspace_id: "workspace-task-vault",
+    domain_id: "tasks",
+    kind: "task",
+    record_id: taskId,
+    operation: "update",
+    state: "queued",
+    request_json: JSON.stringify(requestBody),
+    patch_json: JSON.stringify({ title: "Edited while offline" }),
+    base_revision: "tasks-e1:17",
+  });
+  const restoredSummary = await f.coordinator.pendingWriteSummary(scope);
+  assert.deepEqual(restoredSummary, { currentAccount: 1, otherAccounts: 0 });
+});
+
+test("vault write failure refuses logout purge and leaves the only queue copy in place", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,created_at
+  ) VALUES('m-protected','workspace','notes','note','local:note','create','2026-09-16T00:00:00.000Z')`));
+  const identityFile = [...f.files.keys()][0]!;
+  const digest = createHash("sha256").update(JSON.stringify([scope.baseUrl, scope.actorId])).digest("hex");
+  const identityKey = f.keys.get(`orbit.sync.key.${digest}`);
+  f.state.vaultWriteFails = true;
+  assert.equal(await f.coordinator.setScope(null), false);
+  assert.ok(f.files.has(identityFile));
+  assert.equal(f.keys.get(`orbit.sync.key.${digest}`), identityKey);
+  const queued = await f.coordinator.withDatabase(scope, db => db.get<{ mutation_id: string }>("SELECT mutation_id FROM sync_outbox"));
+  assert.equal(queued?.mutation_id, "m-protected");
+});
+
+test("logout archives a queued offline schedule linked to an offline note, and a same-account reopen restores both (0134)", async t => {
+  const f = await lifecycle(t);
+  const now = Date.parse("2026-10-03T00:00:00.000Z");
+  const workspaceId = "workspace-schedule-vault";
+  const domains = ["notes", "personal-schedule"];
+  const localNote = "local:7f3a0000-0000-4000-8000-000000000001";
+  const localSchedule = "local:b21c0000-0000-4000-8000-000000000002";
+  const coordinator = createSyncCoordinator({ lifecycle: f.coordinator, now: () => now, hashPayload: async value => createHash("sha256").update(value).digest("hex") });
+  const session = coordinator.openScope({
+    actorId: scope.actorId, baseUrl: scope.baseUrl, scopeKey: "schedule-vault-restore",
+    client: {
+      async getLease() {
+        return { version: 2, baseUrl: scope.baseUrl, actorId: scope.actorId, subject: "synthetic-schedule-vault-user", sessionExpiresAt: now + 30 * 86_400_000,
+          offlineReadExpiresAt: now + 7 * 86_400_000, lastVerifiedAt: now, grants: domains.map(domainId => ({ workspaceId, domainId, authorizationEpoch: `${domainId}-e1` })), databaseKeyRef: "synthetic-schedule-vault-key" };
+      },
+      async getManifest() {
+        return { registryVersion: 1, domains: domains.map(domainId => ({ domainId, schemaVersion: 1, workspaceId, authorizationEpoch: `${domainId}-e1`, generation: `${domainId}-g`, watermark: "0", history: "complete" as const, membershipCursor: null })) };
+      },
+      async getDomainPage(input) {
+        return { domainId: input.domainId, schemaVersion: 1, registryVersion: 1, authorizationEpoch: `${input.domainId}-e1`, changes: [], nextCursor: `${input.domainId}:0`,
+          highWatermark: "0", hasMore: false, generation: `${input.domainId}-g`, serverTime: new Date(now).toISOString() };
+      },
+      async getPage() { throw new Error("legacy sync endpoint must not be used"); },
+    },
+  });
+  const request = session.synchronize("personal_schedule", { reason: "explicit" });
+  assert.equal(await request.started, true);
+  assert.equal((await request.promise)?.error, null);
+  await session.enqueueOfflineNoteMutation(buildOfflineNoteMutation({ mutationId: "note-m1", entityId: localNote, operation: "create", baseRevision: null,
+    requestBody: { title: "三件事", body: "报价、介绍、年底再约", idempotencyKey: "note-m1" }, createdAt: new Date(now).toISOString() }));
+  const scheduleBody = { title: "和陈总复盘", startsAt: "2026-10-05T01:00:00.000Z", noteIds: [localNote], idempotencyKey: "schedule-m1" };
+  await session.enqueueOfflineScheduleMutation(buildOfflineScheduleMutation({ mutationId: "schedule-m1", entityId: localSchedule, operation: "create", baseRevision: null,
+    requestBody: scheduleBody, createdAt: new Date(now + 1).toISOString() }));
+
+  session.deactivate();
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(await f.coordinator.setScope(null), true);
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(scope), { currentAccount: 2, otherAccounts: 0 }, "the logout path keeps both pending writes");
+  assert.equal(await f.coordinator.setScope(scope), true);
+  const restored = await f.coordinator.withDatabase(scope, db => db.all<{ mutation_id: string; domain_id: string; record_id: string; state: string; request_json: string }>(
+    "SELECT mutation_id, domain_id, record_id, state, request_json FROM sync_outbox ORDER BY created_at"));
+  assert.deepEqual((restored ?? []).map(row => ({ ...row })), [
+    { mutation_id: "note-m1", domain_id: "notes", record_id: localNote, state: "queued", request_json: JSON.stringify({ title: "三件事", body: "报价、介绍、年底再约", idempotencyKey: "note-m1" }) },
+    { mutation_id: "schedule-m1", domain_id: "personal-schedule", record_id: localSchedule, state: "queued", request_json: JSON.stringify(scheduleBody) },
+  ]);
+});
+
+test("vault write failure keeps a serialized personal-task edit before logout purge", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  const requestBody = {
+    action: "update",
+    expectedUpdatedAt: "2026-09-20T00:00:00.000Z",
+    idempotencyKey: "task-update-protected",
+    patch: { title: "Renew passport this week" },
+  };
+  const mutation = buildOfflineTaskMutation({
+    mutationId: "task-update-protected",
+    entityId: "task:pending-edit",
+    operation: "update",
+    baseRevision: "tasks-e1:17",
+    requestBody,
+    createdAt: "2026-09-20T00:00:01.000Z",
+  });
+  assert.equal(mutation.domainId, "tasks");
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,state,request_json,patch_json,base_revision,created_at
+  ) VALUES(?, 'workspace', ?, ?, ?, ?, 'queued', ?, ?, ?, ?)`, [
+    mutation.mutationId, mutation.domainId ?? null, mutation.kind, mutation.id, mutation.operation,
+    mutation.requestJson!, JSON.stringify(mutation.patch), mutation.baseRevision, mutation.createdAt,
+  ]));
+  const identityFile = [...f.files.keys()][0]!;
+  const digest = createHash("sha256").update(JSON.stringify([scope.baseUrl, scope.actorId])).digest("hex");
+  const identityKey = f.keys.get(`orbit.sync.key.${digest}`);
+  const identityFileDeleteCount = f.events.filter(event => event === `delete:${identityFile}`).length;
+  f.state.vaultWriteFails = true;
+
+  assert.equal(await f.coordinator.setScope(null), false);
+  assert.ok(f.files.has(identityFile));
+  assert.equal(f.keys.get(`orbit.sync.key.${digest}`), identityKey);
+  assert.equal(f.events.filter(event => event === `delete:${identityFile}`).length, identityFileDeleteCount);
+  const queued = await f.coordinator.withDatabase(scope, db => db.get<{
+    mutation_id: string;
+    domain_id: string;
+    kind: string;
+    record_id: string;
+    operation: string;
+    state: string;
+    request_json: string;
+    patch_json: string;
+    base_revision: string;
+  }>(`SELECT mutation_id,domain_id,kind,record_id,operation,state,request_json,patch_json,base_revision
+     FROM sync_outbox`));
+  assert.deepEqual({ ...queued }, {
+    mutation_id: "task-update-protected",
+    domain_id: "tasks",
+    kind: "task",
+    record_id: "task:pending-edit",
+    operation: "update",
+    state: "queued",
+    request_json: JSON.stringify(requestBody),
+    patch_json: JSON.stringify({ title: "Renew passport this week" }),
+    base_revision: "tasks-e1:17",
+  });
+});
+
 test("key deletion failure blocks switching even after the old handle was closed", async t => {
   const f = await lifecycle(t);
   await f.coordinator.setScope(scope);
@@ -181,6 +485,26 @@ test("unavailable cleanup storage cannot bypass a pending key after restart", as
     platform: "ios", loadNative: async () => { throw Error("secret-shaped-key-and-payload"); }, report: (...args) => f.logs.push(args),
   });
   assert.equal(await restarted.setScope({ ...scope, actorId: "other-private-fixture" }), false);
+  assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
+});
+
+test("SecureStore cleanup-marker read failure keeps native scope transitions fail-closed", async t => {
+  const f = await lifecycle(t);
+  f.native.secureStore.getItemAsync = async () => { throw Error("secret-shaped-marker-and-payload"); };
+
+  assert.equal(await f.coordinator.pendingWriteSummary(scope), null);
+  assert.equal(await f.coordinator.setScope(scope), false);
+  assert.equal(await f.coordinator.suspendScope(scope.baseUrl), false);
+
+  assert.deepEqual(f.events, [], "marker-read failure must not open/list/delete the SQLite store or persist key data");
+  assert.equal(f.files.size, 0);
+  assert.equal(f.keys.size, 0);
+  const readFailure = { stage: "read-pending-cleanup", name: "Error", code: null, message: "[redacted]" };
+  assert.deepEqual(f.logs, [
+    ["SYNC_CLEANUP_STATE_FAILED", undefined, readFailure],
+    ["SYNC_CLEANUP_STATE_FAILED", undefined, readFailure],
+    ["SYNC_CLEANUP_STATE_FAILED", undefined, readFailure],
+  ]);
   assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
 });
 
@@ -557,4 +881,142 @@ test("the native loader lists the SQLite directory's file names, and nothing whe
   assert.deepEqual(await listSyncDatabaseNames({ defaultDatabaseDirectory: "/db" }, Present), ["orbit-sync-a.db", "orbit-sync-a.db-wal"]);
   assert.deepEqual(seen, ["/db"]);
   assert.deepEqual(await listSyncDatabaseNames({ defaultDatabaseDirectory: "/db" }, Absent), []);
+});
+
+// Sprint 0137: SYNC_CLEANUP_STATE_FAILED blocked a Simulator login with no cause recorded.
+// Every refusal now carries which step failed plus a secret-free error description.
+test("a native-module load failure reports its stage, error name and code, never the raw message", async t => {
+  const f = fixture();
+  t.after(() => { for (const database of f.files.values()) database.close(); });
+  const { createSyncLifecycle } = await import("../src/data/sync/sync-lifecycle");
+  const failure = Object.assign(new TypeError("secret-shaped-key-and-payload"), { code: "ERR_MODULE_NOT_FOUND" });
+  const coordinator = createSyncLifecycle({ platform: "ios", loadNative: async () => { throw failure; }, report: (...args: unknown[]) => f.logs.push(args) });
+  assert.equal(await coordinator.setScope(scope), false);
+  assert.deepEqual(f.logs, [["SYNC_CLEANUP_STATE_FAILED", undefined, { stage: "load-native", name: "TypeError", code: "ERR_MODULE_NOT_FOUND", message: "[redacted]" }]]);
+});
+
+test("a missing native module keeps the module name, which identifies an outdated binary", async t => {
+  const f = fixture();
+  t.after(() => { for (const database of f.files.values()) database.close(); });
+  const { createSyncLifecycle } = await import("../src/data/sync/sync-lifecycle");
+  const coordinator = createSyncLifecycle({
+    platform: "ios",
+    loadNative: async () => { throw new Error("Cannot find native module 'ExpoSecureStore'"); },
+    report: (...args: unknown[]) => f.logs.push(args),
+  });
+  assert.equal(await coordinator.setScope(scope), false);
+  assert.deepEqual(f.logs[0]?.[2], { stage: "load-native", name: "Error", code: null, message: "Cannot find native module 'ExpoSecureStore'" });
+});
+
+test("an unreadable pending-cleanup marker reports the read stage and a keychain status without the key name", async t => {
+  const f = await lifecycle(t);
+  f.native.secureStore.getItemAsync = async (key: string) => {
+    if (key === "orbit.sync.pending-cleanup") throw Object.assign(new Error("Calling the 'getValueWithKeyAsync' function has failed\n→ Caused by: orbit.sync.pending-cleanup secret-shaped"), { code: "ERR_KEY_CHAIN" });
+    return f.keys.get(key) ?? null;
+  };
+  assert.equal(await f.coordinator.setScope(scope), false);
+  assert.deepEqual(f.logs, [["SYNC_CLEANUP_STATE_FAILED", undefined, { stage: "read-pending-cleanup", name: "Error", code: "ERR_KEY_CHAIN", message: "[redacted]" }]]);
+  assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
+});
+
+// A stuck cleanup marker must not lock the user out forever (0137).
+test("a malformed pending-cleanup marker does not lock sign-in: other identities are erased, then the marker is cleared", async t => {
+  const f = await lifecycle(t);
+  assert.equal(await f.coordinator.setScope(otherScope), true);
+  const otherFile = [...f.files.keys()].find(name => name.startsWith("orbit-sync-"))!;
+  f.keys.set("orbit.sync.pending-cleanup", "not-a-digest");
+  const next = await restartedLifecycle(f);
+  assert.equal(await next.setScope(scope), true);
+  assert.equal(f.files.has(otherFile), false, "the other identity's file is erased");
+  assert.equal([...f.keys.keys()].filter(key => key.startsWith("orbit.sync.key.")).length, 1, "only the open identity's key remains");
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+  assert.equal(next.isScopeReadable(scope), true);
+  assert.deepEqual(f.logs.find(entry => entry[0] === "SYNC_CLEANUP_STATE_INVALID"), ["SYNC_CLEANUP_STATE_INVALID", undefined, { stage: "read-pending-cleanup", name: "Error", code: null, message: "SYNC_CLEANUP_STATE_INVALID" }]);
+  assert.ok(!JSON.stringify(f.logs).includes("not-a-digest"));
+});
+
+test("a malformed marker with no other identity on the device is cleared on the next sign-in", async t => {
+  const f = await lifecycle(t);
+  f.keys.set("orbit.sync.pending-cleanup", "not-a-digest");
+  assert.equal(await f.coordinator.setScope(scope), true);
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+});
+
+test("a malformed marker keeps the signing-in identity's own rows and pending writes", async t => {
+  const f = await lifecycle(t);
+  assert.equal(await f.coordinator.setScope(scope), true);
+  await f.coordinator.withDatabase(scope, db => db.execute("CREATE TABLE kept_probe (v TEXT); INSERT INTO kept_probe VALUES ('mine')"));
+  f.keys.set("orbit.sync.pending-cleanup", "not-a-digest");
+  const next = await restartedLifecycle(f);
+  assert.equal(await next.setScope(scope), true);
+  assert.deepEqual((await next.withDatabase(scope, db => db.all<{ v: string }>("SELECT v FROM kept_probe")))?.map(row => row.v), ["mine"]);
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+});
+
+test("a malformed marker stays when the device files cannot be listed, and clears once they can", async t => {
+  const f = await lifecycle(t);
+  f.keys.set("orbit.sync.pending-cleanup", "not-a-digest");
+  const list = f.native.sqlite.listDatabaseNames;
+  f.native.sqlite.listDatabaseNames = async () => { throw Error("secret-shaped-key-and-payload"); };
+  // 0124: an unverifiable pending-write vault check refuses sign-in, so nothing is lost.
+  assert.equal(await f.coordinator.setScope(scope), false);
+  assert.equal(f.keys.get("orbit.sync.pending-cleanup"), "not-a-digest");
+  f.native.sqlite.listDatabaseNames = list;
+  assert.equal(await f.coordinator.setScope(scope), true, "a retry after the device answers signs in");
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+  assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
+});
+
+test("an old marker for an identity whose key and file are already gone is finished, not a lock", async t => {
+  const f = await lifecycle(t);
+  f.keys.set("orbit.sync.pending-cleanup", "a".repeat(64));
+  assert.equal(await f.coordinator.setScope(scope), true);
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+});
+
+test("transient native-load and marker-read failures recover on the next attempt", async t => {
+  const f = fixture();
+  t.after(() => { for (const database of f.files.values()) database.close(); });
+  const { createSyncLifecycle } = await import("../src/data/sync/sync-lifecycle");
+  let loads = 0;
+  const coordinator = createSyncLifecycle({
+    platform: "ios",
+    loadNative: async () => { if (loads++ === 0) throw Error("METRO_SERVER_ERROR"); return f.native as any; },
+    report: (...args: unknown[]) => f.logs.push(args),
+  });
+  assert.equal(await coordinator.setScope(scope), false);
+  const read = f.native.secureStore.getItemAsync;
+  let reads = 0;
+  f.native.secureStore.getItemAsync = async (key: string, option: unknown) => {
+    if (key === "orbit.sync.pending-cleanup" && reads++ === 0) throw Error("User interaction is not allowed.");
+    return read(key, option);
+  };
+  assert.equal(await coordinator.setScope(scope), false);
+  assert.equal(await coordinator.setScope(scope), true, "a retry signs in once the device answers");
+});
+
+// Merge of 0124 into 0137: the pending-vault refusals that block cleanup carry the same safe detail.
+test("a pending-vault archive failure that refuses sign-out reports its stage and a redacted cause", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,created_at
+  ) VALUES('m-detail','workspace','notes','note','local:note','create','2026-09-16T00:00:00.000Z')`));
+  f.state.vaultWriteFails = true;
+  assert.equal(await f.coordinator.setScope(null), false);
+  const entry = f.logs.find(log => log[0] === "PENDING_VAULT_WRITE_FAILED");
+  assert.deepEqual(entry?.[2], { stage: "archive-pending-writes", name: "Error", code: null, message: "[redacted]" });
+});
+
+test("a pending-vault archive failure while erasing another identity reports its stage", async t => {
+  const f = await lifecycle(t);
+  assert.equal(await f.coordinator.setScope(otherScope), true);
+  await f.coordinator.withDatabase(otherScope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,created_at
+  ) VALUES('m-other','workspace','notes','note','local:note','create','2026-09-16T00:00:00.000Z')`));
+  f.state.vaultWriteFails = true;
+  const next = await restartedLifecycle(f);
+  assert.equal(await next.setScope(scope), false);
+  const entry = f.logs.find(log => log[0] === "PENDING_VAULT_WRITE_FAILED");
+  assert.equal((entry?.[2] as { stage?: string } | undefined)?.stage, "archive-pending-writes");
 });

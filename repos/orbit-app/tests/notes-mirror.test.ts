@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { mirrorFreshness } from "../src/data/sync/mirror-freshness";
-import { mirrorNote, notesFromMirror, selectMirrorNotes } from "../src/view-models/notes-mirror";
+import { mirrorNote, notesFromMirror, overlayQueuedNotes, selectMirrorNotes } from "../src/view-models/notes-mirror";
+import type { LocalSyncQueuedMutation } from "../src/data/sync/local-sync-repository";
 
 // Sprint 0108: the local rules the notes page now applies to its mirror.
 const note = (id: string, patch: Record<string, unknown> = {}) => ({
@@ -34,6 +35,47 @@ test("local selection matches the server's filters, search and newest-first orde
   assert.deepEqual(ids({ association: "all", q: "林玫" }), ["mention"], "a mention name is searchable offline");
   assert.equal(mirrorNote(notes, "event")?.id, "event");
   assert.equal(mirrorNote(notes, "missing"), null);
+});
+
+test("pending note creates and edits overlay the server mirror without mutating it", () => {
+  const server = notesFromMirror([note("n1", { body: "Server body", version: 4 })], "a", "en")!;
+  const queued = (overrides: Partial<LocalSyncQueuedMutation>): LocalSyncQueuedMutation => ({
+    actorId: "a", workspaceId: "w", domainId: "notes", mutationId: "m1", kind: "note",
+    id: "n1", operation: "update", patch: { body: "Pending edit" }, requestJson: "{}", baseRevision: "r4",
+    dependsOn: null, createdAt: "2026-09-28T00:00:00.000Z", retryCount: 0, nextRetryAt: null,
+    lastErrorCode: null, state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, ...overrides,
+  });
+  const overlay = overlayQueuedNotes(server, [
+    queued({ mutationId: "create", id: "local:123e4567-e89b-42d3-a456-426614174000", operation: "create", baseRevision: null,
+      patch: { title: "Local title", body: "Local body", manualContactIds: [], mentions: [], eventIds: [] } }),
+    queued({ mutationId: "edit", createdAt: "2026-09-28T00:00:01.000Z", patch: { body: "Pending edit", title: "Edited" } }),
+  ], "a", "en");
+
+  assert.deepEqual(overlay?.map(({ id, title, body, version }) => ({ id, title, body, version })).sort((a, b) => a.id.localeCompare(b.id)), [
+    { id: "local:123e4567-e89b-42d3-a456-426614174000", title: "Local title", body: "Local body", version: 1 },
+    { id: "n1", title: "Edited", body: "Pending edit", version: 5 },
+  ]);
+  assert.equal(server[0]?.body, "Server body");
+});
+
+test("failed note creates and edits stay visible with their local content", () => {
+  const server = notesFromMirror([note("n1", { body: "Server body", version: 4 })], "a", "en")!;
+  const failed = (overrides: Partial<LocalSyncQueuedMutation>): LocalSyncQueuedMutation => ({
+    actorId: "a", workspaceId: "w", domainId: "notes", mutationId: "m-failed", kind: "note",
+    id: "n1", operation: "update", patch: { body: "Local failed body" }, requestJson: "{}", baseRevision: "r4",
+    dependsOn: null, createdAt: "2026-09-28T00:00:00.000Z", retryCount: 0, nextRetryAt: null,
+    lastErrorCode: "INVALID_REQUEST", state: "failed", attemptCount: 1, firstAttemptAt: "2026-09-28T00:00:01.000Z", serverSnapshot: null, ...overrides,
+  });
+  const overlay = overlayQueuedNotes(server, [
+    failed({ id: "local:123e4567-e89b-42d3-a456-426614174000", operation: "create", baseRevision: null,
+      patch: { title: "Failed create", body: "Create body stays here", manualContactIds: [], mentions: [], eventIds: [] } }),
+    failed({}),
+  ], "a", "en");
+
+  assert.deepEqual(overlay?.map(({ id, title, body, localMutationState }) => ({ id, title, body, localMutationState })).sort((left, right) => left.id.localeCompare(right.id)), [
+    { id: "local:123e4567-e89b-42d3-a456-426614174000", title: "Failed create", body: "Create body stays here", localMutationState: "failed" },
+    { id: "n1", title: "n1", body: "Local failed body", localMutationState: "failed" },
+  ]);
 });
 
 test("freshness: never synced is loading; a failed attempt after a sync is offline with its time", () => {

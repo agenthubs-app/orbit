@@ -189,6 +189,8 @@ export interface IngestItemContract {
   confirmedContactId: string | null;
   /** Null for unconfirmed and legacy confirmed items; present after card-aware confirmation. */
   confirmedFieldSources?: IngestCardFieldSourcesContract | null | undefined;
+  /** False for migrated rows and requests using the legacy manifest shape. */
+  cardIdentityExplicit?: boolean | undefined;
   attemptCount: number;
   nextRetryAt: string | null;
   leaseExpiresAt: string | null;

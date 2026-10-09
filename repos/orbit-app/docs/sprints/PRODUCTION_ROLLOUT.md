@@ -41,6 +41,10 @@
 | 0118 通知与 AI 会话放进手机 | ① 部署 orbits（web 和 worker）；② `npm run db:migrate:sync-revision` 加 `--check`（纳入 4 个新集合，替换守卫触发器，CONCURRENTLY 建两个部分索引）；③ 冒烟：问 AI 一次，置顶一个会话，看收件箱列表和 summary，触发一次约谈或名片交换，一个账号连续两次 manifest，第二次应为 304；④ 发布 App 和 phoneweb | **顺序不能反**：先迁移后部署，旧代码写收件箱或 AI 会话会报 `SYNC_WRITE_LOCK_REQUIRED`。回滚：先 `--rollback=relax`。manifest 改用流水号水位后，每个设备会多拿一次 200，只发生一次 |
 | 0119 消息放进手机 | ⓪ 前提：0109 的三张消息表已在生产（`select to_regclass('relationship_conversation_members')`）；① 部署 orbits（web 和 worker）；② `npm run db:migrate:live`（建两个同步索引，装三个守卫触发器；不是 CONCURRENTLY，消息表不大时是毫秒级），只读确认 `select tgname from pg_trigger where tgname like 'relationship%sync_owner_guard%'` 有 3 行；③ 冒烟：互发、标已读、撤销，同一账号连续两次 manifest，第二次应为 304；④ 发布 App 和 phoneweb | 每个活跃账号会多一行 `inboxSourceCheckMarks`。小账号每次 manifest 304 从约 4.7KB 升到 8.2KB，大账号有上限约 24KB。回滚：重新部署旧代码，索引和触发器可以保留 |
 | 0131 其余页面离线 | 无迁移；① 部署 orbits；② 冒烟：网页看板点一个非 ASCII 的地区分组能打开明细，`/api/health` 返回 200；③ 发布 phoneweb 和 App | 顺序不限 |
+| 0133 待办断网写 | 无迁移；部署 orbits（删除接口多接受可选字段 `expectedUpdatedAt`），再发布 App | 旧 App 不受影响 |
+| 0135 消息断网发送 | 无迁移；① 先部署 orbits（消息发送多接受可选字段 `retireDraftThrough`）；② 冒烟：同一 requestId 发两次返回同一条，撤销后用原 requestId 重放返回原消息，用新 requestId 返回 409；③ 发布 App | 回滚：重新部署旧代码；手机上已排队的消息会等到能上传时再发 |
+| 0139 通知入队整表锁 | 无数据库步骤，部署即可；观察 discovery worker 日志不再出现 40001 | — |
+| 0140 添加联系人入口 | 无迁移；① 部署 orbits（手动添加的关系备注改为可选，带备注的请求行为不变）；② **发布新原生包**（新增 `expo-image-manipulator`，需 pod install 后重新构建）；③ 实体 iPhone 补验：大图拍摄、正反面回读、OCR 复核 | 旧服务端上，App 只填姓名时会提示补写备注（兜底）。已知问题：没填公司时联系人公司写成「Unknown organization」（原有默认值） |
 
 ## 后续 Sprint 预告（合并后在上表补充具体命令）
 
@@ -50,9 +54,10 @@
 
 ## 待用户决定的本机清理
 
-- 本机数据盘在 0117 时只剩 0.7GB。协调者删除了可以重新生成的 Xcode 编译缓存（11GB）。数据库 `orbit_scale_test`（12GB）不是协调者建的，是否删除由用户决定。
+- 本机数据盘在 0117 时只剩 0.7GB。协调者删除了可以重新生成的 Xcode 编译缓存（11GB）。2026-09-30 用户确认后，删除了数据库 `orbit_scale_test`（12GB）、4 个旧 Sprint 的测试模拟器，以及可重建的缓存，磁盘空闲回到 26GB。九月初的旧验证库和误建的连接串同名库，用户选择保留。
 
 ## 已知线上风险（2026-09-28，0120 设计时发现）
 
 - 笔记的版本比较只在单个服务器进程内，线上多台实例同时处理两次编辑时，后写的会覆盖先写的。由 0132 修复。
 - 待办删除不比较版本，可能抹掉别处刚做的修改。由 0133 修复。
+- 通知发现的入队、领取、偏好切换在共享表上，会因谓词锁升级成整表锁而频繁 40001（0137 发现）。**0139 已修复，无数据库步骤**，部署代码即可；部署后观察 discovery worker 日志不再出现 40001。

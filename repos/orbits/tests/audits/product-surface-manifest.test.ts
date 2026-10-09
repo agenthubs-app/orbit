@@ -428,8 +428,6 @@ const SCANNER_CROSS_COMPONENT =
 const ONBOARDING_PREVIEWS = "repos/orbits/app/(app)/app/profile/onboarding-0918/onboarding-previews.tsx";
 const KNOWN_P0_CANDIDATES: ReadonlyMap<string, string> = new Map<string, string>([
   ["repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx#button {label}", `${SCANNER_CROSS_COMPONENT}: submit button inside the parent's <form onSubmit>`],
-  ['repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx#button t({ en: "Previous month", zh: "上个月" })', "product finding: inert aria-disabled month navigation; recovery: wire month paging or render it as a non-button"],
-  ['repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx#button t({ en: "Next month", zh: "下个月" })', "product finding: same as Previous month"],
   ...["button {t(item.cta)}", "button Scan business cards", "button Register", "button See people worth meeting →", "button Match after setup", "button Continue setup →"]
     .map((trigger) => [`${ONBOARDING_PREVIEWS}#${trigger}`, `${SCANNER_CROSS_COMPONENT}: click delegated to PreviewFrame onClick via data-ob-goto`] as const),
 ]);

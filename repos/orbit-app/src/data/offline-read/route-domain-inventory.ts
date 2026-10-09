@@ -5,7 +5,7 @@ type SurfaceKey = readonly [consumerFile: string, method: string, endpointTempla
 function domainFor(path: string): string {
   if (path.startsWith('/device/note-drafts')) return 'notes';
   if (path.startsWith('/api/auth/') || path === '/api/account/session/sign-out') return 'account';
-  if (path === '/api/account/me') return 'account';
+  if (path === '/api/account/me' || path === '/api/account/status') return 'account';
   if (path.startsWith('/api/account/language-preference') || path.startsWith('/api/notification-preferences')) return 'preferences';
   if (path.startsWith('/api/profile/update-suggestions')) return 'profile';
   if (path.startsWith('/api/profile')) return 'profile';
@@ -72,8 +72,13 @@ function domainFor(path: string): string {
 
 function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): ReadSurface {
   const domainId = domainFor(endpointTemplate);
+  const taskOutboxWrite = (consumerFile === 'src/data/sync/task-outbox-upload.ts' && domainId === 'tasks'
+    || consumerFile === 'src/data/sync/schedule-outbox-upload.ts' && domainId === 'personal-schedule')
+    && ['POST', 'PATCH', 'DELETE'].includes(method);
+  // Sprint 0135: the queued relationship message send (message plan M4).
+  const messageOutboxWrite = consumerFile === 'src/data/sync/message-outbox-upload.ts' && domainId === 'messages' && method === 'POST';
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
-  const secret = providerTodo || endpointTemplate.startsWith('/api/account/session/')
+  const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
     // Private portraits remain network-only until trusted grant/epoch invalidation is available.
     || endpointTemplate === '/api/events/:id/registration/portrait'
@@ -97,7 +102,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     selector: providerTodo ? 'todo:external-provider-oauth' : `${domainId}:${method}:${endpointTemplate}`,
     schemaVersion: 1,
     readPersistence: secret ? 'online_only_secret' : 'durable_normalized',
-    mutationPolicy: 'online_only',
+    mutationPolicy: taskOutboxWrite || messageOutboxWrite ? 'offline_queue' : 'online_only',
     binaryPolicy: secret ? 'never_local' : binary ? 'on_demand_encrypted' : 'metadata_only',
   };
 }
@@ -112,12 +117,22 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/data/sync/sync-client.ts","GET","/api/sync/lease"],
   ["src/data/sync/sync-client.ts","GET","/api/sync/manifest"],
   ["src/data/sync/sync-client.ts","GET","/api/sync/domains/:domainId"],
+  ["src/data/sync/note-outbox-upload.ts","POST","/api/notes"],
+  ["src/data/sync/note-outbox-upload.ts","PATCH","/api/notes/:id"],
+  ["src/data/sync/task-outbox-upload.ts","POST","/api/tasks"],
+  ["src/data/sync/task-outbox-upload.ts","PATCH","/api/tasks/:id"],
+  ["src/data/sync/task-outbox-upload.ts","DELETE","/api/tasks/:id"],
+  ["src/data/sync/schedule-outbox-upload.ts","POST","/api/schedule-items"],
+  ["src/data/sync/schedule-outbox-upload.ts","PATCH","/api/schedule-items/:id"],
+  ["src/data/sync/schedule-outbox-upload.ts","DELETE","/api/schedule-items/:id"],
+  ["src/data/sync/message-outbox-upload.ts","POST","/api/relationship-communication/conversations/:id/messages"],
   ["src/api/browser-auth.ts","GET","/api/auth/csrf"],
   ["src/api/browser-auth.ts","POST","/api/auth/callback/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/register"],
   ["src/api/auth-session.ts","POST","/api/auth/mobile/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/mobile/google/exchange"],
   ["src/api/AuthSessionProvider.tsx","GET","/api/account/me"],
+  ["src/api/mobile-auth.ts","GET","/api/account/status"],
   ["src/api/AuthSessionProvider.tsx","POST","/api/auth/mobile/credentials"],
   ["src/api/AuthSessionProvider.tsx","POST","/api/auth/mobile/google/exchange"],
   ["src/api/business-card-import.ts","GET","/api/contact-drafts/business-card/imports/:id"],
@@ -213,14 +228,14 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/contacts/BusinessCardIngestStartScreen.tsx","GET","/api/contact-drafts/business-card/batches"],
   ["src/screens/contacts/BusinessCardIngestStartScreen.tsx","GET","/api/contact-drafts/business-card/batches/v2"],
   ["src/screens/contacts/BusinessCardIngestStartScreen.tsx","POST","/api/contact-drafts/business-card/batches/v2"],
+  ["src/screens/contacts/BusinessCardScanScreen.tsx","POST","/api/contact-drafts/business-card/scan"],
+  ["src/screens/contacts/BusinessCardScanScreen.tsx","POST","/api/contacts/business-card/confirm"],
   ["src/screens/contacts/ContactAcquisitionScreen.tsx","GET","/api/contact-drafts"],
   ["src/screens/contacts/ContactAcquisitionScreen.tsx","PATCH","/api/contact-drafts/:id"],
   ["src/screens/contacts/ContactAcquisitionScreen.tsx","POST","/api/contact-drafts/:id/confirm"],
-  ["src/screens/contacts/ContactAcquisitionScreen.tsx","POST","/api/contact-drafts/business-card/scan"],
   ["src/screens/contacts/ContactAcquisitionScreen.tsx","POST","/api/contact-drafts/event-attendees/import"],
   ["src/screens/contacts/ContactAcquisitionScreen.tsx","GET","/api/contact-drafts/external/candidates"],
   ["src/screens/contacts/ContactAcquisitionScreen.tsx","POST","/api/contact-drafts/external/import"],
-  ["src/screens/contacts/ContactAcquisitionScreen.tsx","POST","/api/contact-drafts/manual"],
   ["src/screens/contacts/ContactAcquisitionScreen.tsx","GET","/api/contact-drafts/merge-suggestions"],
   ["src/screens/contacts/ContactAcquisitionScreen.tsx","POST","/api/contact-drafts/merge-suggestions/:id/apply"],
   ["src/screens/contacts/ContactAcquisitionScreen.tsx","POST","/api/contact-drafts/qr/scan"],
@@ -243,6 +258,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/contacts/ContactsScreen.tsx","POST","/api/search/relationships"],
   ["src/screens/contacts/ContactsScreen.tsx","GET","/api/search/suggestions"],
   ["src/screens/contacts/ContactStructureDetailScreen.tsx","GET","/api/dashboard/structure/:id/:id"],
+  ["src/screens/contacts/ManualContactAddScreen.tsx","POST","/api/contact-drafts/:id/confirm"],
+  ["src/screens/contacts/ManualContactAddScreen.tsx","POST","/api/contact-drafts/manual"],
   ["src/screens/contacts/RelationshipInvitationScreen.tsx","GET","/api/relationship-communication/invitations/:id"],
   ["src/screens/contacts/RelationshipInvitationScreen.tsx","POST","/api/relationship-communication/invitations/:id/accept"],
   ["src/screens/dashboard/DashboardScreen.tsx","GET","/api/audit/provenance"],

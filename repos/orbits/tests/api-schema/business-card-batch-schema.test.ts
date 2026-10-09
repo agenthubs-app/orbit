@@ -19,6 +19,36 @@ import { runOrbitRecordsMigration } from "../../shared/storage/migrations";
 
 const now = "2026-09-10T00:00:00.000Z";
 const digest = `sha256:${"a".repeat(64)}`;
+const APPROVED_BATCH_SCHEMA_TEST_URL = "postgresql://xzhao@127.0.0.1:5432/orbit_0137_event_v2_test";
+
+function isApprovedBatchSchemaTestUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "postgresql:"
+      && url.hostname === "127.0.0.1"
+      && url.port === "5432"
+      && url.username === "xzhao"
+      && url.password === ""
+      // The dedicated local event test databases (0137 ×2, 0133, 0135, 0134); the test works in its own random schema.
+      && ["/orbit_0137_event_v2_test", "/orbit_0137_event_main_test", "/orbit_0133_event_test", "/orbit_0135_test", "/orbit_0134_event_test", "/orbit_0136_event_test"].includes(url.pathname)
+      && url.search === ""
+      && url.hash === "";
+  } catch {
+    return false;
+  }
+}
+
+test("business-card batch PG profile is limited to the verified local event test database", () => {
+  assert.equal(isApprovedBatchSchemaTestUrl(APPROVED_BATCH_SCHEMA_TEST_URL), true);
+  for (const value of [
+    "postgresql://xzhao@127.0.0.1:5432/orbit_merge_verify_20260907_c45a",
+    "postgresql://xzhao@127.0.0.1:5432/orbit_0137_event_v2_test?options=-c%20search_path=public",
+    "postgresql://xzhao:secret@127.0.0.1:5432/orbit_0137_event_v2_test",
+    "postgresql://xzhao@localhost:5432/orbit_0137_event_v2_test",
+    "postgresql://xzhao@127.0.0.1:5433/orbit_0137_event_v2_test",
+    "postgresql://xzhao@remote.invalid:5432/orbit_0137_event_v2_test",
+  ]) assert.equal(isApprovedBatchSchemaTestUrl(value), false, value.replace(/\/\/[^@/]+@/u, "//[redacted]@"));
+});
 const resolveActor = async () => ({ id: "actor:batch-schema" });
 const extraction: BusinessCardStructuredExtraction = {
   fullName: "  Aki Example  ", nativeFullName: "Native name", romanizedFullName: "Aki Example",
@@ -175,6 +205,16 @@ test("nullable extraction fields, labels, leases and usage retain null and full 
   assert.equal((await schema("businessCardBatchReviewInputSchema")).safeParse({ ...reviewInput, allowDuplicate: undefined }).success, true);
 });
 
+test("ingest item schema preserves optional card identity provenance without defaulting legacy items", async () => {
+  const validator = await schema("ingestItemSchema");
+  assert.deepEqual(validator.parse(item), item);
+  for (const cardIdentityExplicit of [false, true]) {
+    const expected = { ...item, cardIdentityExplicit };
+    assert.deepEqual(validator.parse(expected), expected);
+  }
+  assert.equal(validator.safeParse({ ...item, cardIdentityExplicit: "false" }).success, false);
+});
+
 test("all source enum members remain accepted without a second state machine", async () => {
   for (const [name, fixture, field, values] of [
     ["businessCardBatchSchema", legacyBatch, "status", ["processing", "ready_for_review", "completed", "cancelled"]],
@@ -328,11 +368,17 @@ test("unchanged current handlers emit exact wrappers with injected local reposit
   skip: process.env.ORBIT_EVENT_DATABASE_URL ? false : "ORBIT_EVENT_DATABASE_URL is not configured",
 }, async () => {
   const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
-  assert.equal(databaseUrl, "postgresql://xzhao@127.0.0.1:5432/orbit_merge_verify_20260907_c45a", "Only the owned scratch database is allowed");
+  assert.ok(isApprovedBatchSchemaTestUrl(databaseUrl ?? ""), "Only the dedicated local event test database is allowed");
   const schemaName = `bc_schema_${randomUUID().replaceAll("-", "")}`;
   const admin = new Pool({ connectionString: databaseUrl, max: 1 });
   let pool: Pool | undefined;
   try {
+    const identity = await admin.query(
+      "SELECT current_database() AS db,current_user AS actor,host(inet_server_addr()) AS host,inet_server_port() AS port,(SELECT pg_catalog.pg_get_userbyid(datdba)=current_user FROM pg_catalog.pg_database WHERE datname=current_database()) AS owner",
+    );
+    assert.deepEqual(identity.rows[0], {
+      db: new URL(databaseUrl ?? "").pathname.slice(1), actor: "xzhao", host: "127.0.0.1", port: 5432, owner: true,
+    });
     await admin.query(`create schema ${schemaName}`);
     pool = new Pool({ connectionString: databaseUrl, max: 2, options: `-c search_path=${schemaName}` });
     const client = await pool.connect();

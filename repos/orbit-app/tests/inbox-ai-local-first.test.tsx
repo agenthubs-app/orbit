@@ -53,12 +53,16 @@ const messages = () => [
   { id: "s1:m0", payload: { sessionId: "s1", id: "user:0", role: "user", text: "帮我列东京投资人", index: 0, createdAt: "2026-09-27T01:00:00.000Z" } },
   { id: "s1:m1", payload: { sessionId: "s1", id: "assistant:request:1", role: "assistant", text: "已列出 3 位东京投资人", index: 1, createdAt: "2026-09-27T01:00:05.000Z" } },
 ];
-export const state = window.fixture = { requests: [], navigation: [], syncs: {}, opened: [], savedCards: [], status: "fresh", ...window.initialFixture };
+export const state = window.fixture = { requests: [], navigation: [], syncs: {}, opened: [], savedCards: [], status: "fresh", pendingNoteChanges: 0, ...window.initialFixture };
 const records = (kind) => kind === "inbox_notification" ? inbox().map(r => JSON.parse(JSON.stringify(r))) : kind === "ai_session" ? sessions() : kind === "ai_session_message" ? messages() : [];
 const session = { isCurrent: () => true,
   async openAiSession(id) { state.opened.push(id); return { opened: [id], evicted: [], added: false }; },
   async readAiSessionCards(id) { return state.cards ?? null; },
   async saveAiSessionCards(id, cards) { state.savedCards.push(id); },
+  async readOutboxOverlay(domainId) {
+    const counts = { note: state.pendingNoteChanges, task: state.pendingTasks ?? 0, personal_schedule: state.pendingSchedule ?? 0, relationship_message: state.pendingMessages ?? 0 };
+    return { queuedMutations: Array.from({ length: counts[domainId] ?? 0 }, (_, index) => ({ mutationId: domainId + "-mutation:" + index, requestJson: JSON.stringify({ body: state.privateNoteBody ?? "private fixture note" }) })) };
+  },
 };
 // Stable per kind, like the real hook (its refresh and currentSession are memoized).
 const refreshers = {};
@@ -74,6 +78,7 @@ export const useSyncedCollection = ({ kind }) => ({
   invalidate: async () => null,
   currentSession,
 });
+export const useMirrorProbe = (refresh, enabled = true) => { React.useEffect(() => { if (enabled) void refresh(); }, [enabled, refresh]); };
 window.fetch = async (input, init) => {
   const u = new URL(String(input)); const method = (init && init.method) || "GET";
   state.requests.push(method + " " + u.pathname + u.search);
@@ -129,7 +134,7 @@ test.before(async () => {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
         plugin.onResolve({ filter: /^react-native-svg($|\/)|^expo-camera$|^expo-image-picker$|^expo-clipboard$|^expo-haptics$/ }, () => ({ path: "icons", namespace: "inbox-ai-icons" }));
         plugin.onLoad({ filter: /.*/, namespace: "inbox-ai-icons" }, () => ({ contents: "const Stub=()=>null; export default Stub; export const Svg=Stub, Path=Stub, Circle=Stub, G=Stub, Rect=Stub, Line=Stub, Defs=Stub, LinearGradient=Stub, Stop=Stub, Text=Stub, Ellipse=Stub, Polygon=Stub, Polyline=Stub, ClipPath=Stub, Mask=Stub; export const CameraView=Stub; export const useCameraPermissions=()=>[null,async()=>null]; export const launchImageLibraryAsync=async()=>({canceled:true}); export const requestMediaLibraryPermissionsAsync=async()=>({granted:false}); export const setStringAsync=async()=>true; export const impactAsync=async()=>{}; export const ImpactFeedbackStyle={};", loader: "js" }));
-        plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons)$|^react-native-safe-area-context($|\/)|\/(useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "inbox-ai" }));
+        plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons)$|^react-native-safe-area-context($|\/)|\/(useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|useMirrorProbe)$/ }, () => ({ path: "fixture", namespace: "inbox-ai" }));
         plugin.onLoad({ filter: /.*/, namespace: "inbox-ai" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
       },
     }],
@@ -218,6 +223,30 @@ test("AI conversation offline: the opened session shows its device messages and 
   await page.getByText(/发送.* · 需要联网/).first().waitFor();
   assert.deepEqual(await fixtureValue(page, "opened"), ["s1"], "opening marks the session opened on this device");
   assert.deepEqual((await requests(page)).filter((request) => request.startsWith("POST")), []);
+});
+
+test("AI conversation online: pending note changes show only a count; offline and empty queues show no notice", async (t) => {
+  const page = await open(t, { screen: "conversation", params: { id: "s1", source: "session" }, pendingNoteChanges: 2, privateNoteBody: "不应出现在提示里的笔记正文" });
+  await page.getByText("服务器上的最新回答").waitFor();
+  await page.getByText("有 2 项笔记修改还没同步，AI 暂时看不到", { exact: true }).waitFor();
+  assert.equal(await page.getByText("不应出现在提示里的笔记正文", { exact: true }).count(), 0);
+
+  const offline = await open(t, { status: "stale", screen: "conversation", params: { id: "s1", source: "session" }, pendingNoteChanges: 2 });
+  await offline.getByText("已列出 3 位东京投资人").waitFor();
+  assert.equal(await offline.getByText("有 2 项笔记修改还没同步，AI 暂时看不到", { exact: true }).count(), 0);
+
+  const empty = await open(t, { screen: "conversation", params: { id: "s1", source: "session" }, pendingNoteChanges: 0 });
+  await empty.getByText("服务器上的最新回答").waitFor();
+  assert.equal(await empty.getByText(/还没同步/).count(), 0);
+});
+
+test("AI conversation online: the pending line counts every kind still on the phone, by kind, including unsent messages (0136)", async (t) => {
+  const page = await open(t, { screen: "conversation", params: { id: "s1", source: "session" }, pendingNoteChanges: 2, pendingTasks: 1, pendingSchedule: 3, pendingMessages: 2 });
+  await page.getByText("服务器上的最新回答").waitFor();
+  await page.getByText("有 2 项笔记修改、1 项待办修改、3 项日程修改、2 条待发送消息还没同步，AI 暂时看不到", { exact: true }).waitFor();
+  const messagesOnly = await open(t, { screen: "conversation", params: { id: "s1", source: "session" }, pendingNoteChanges: 0, pendingMessages: 1 });
+  await messagesOnly.getByText("服务器上的最新回答").waitFor();
+  await messagesOnly.getByText("有 1 条待发送消息还没同步，AI 暂时看不到", { exact: true }).waitFor();
 });
 
 test("AI conversation online: the server page replaces the device copy and its cards are kept for offline", async (t) => {

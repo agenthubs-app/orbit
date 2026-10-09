@@ -21,6 +21,7 @@ import { PersonalScheduleTimeBlock } from "./PersonalScheduleTimeBlock";
 import { PersonalScheduleAssociations } from "./PersonalScheduleAssociations";
 import { PersonalScheduleRules } from "./PersonalScheduleRules";
 import { localDayStart, resolveLocalDateTime } from "../../time/date-time";
+import { buildOfflineScheduleMutation, isOfflineScheduleEditable } from "../../data/sync/schedule-outbox-mutation";
 
 export function PersonalScheduleScreen() {
   const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const params = useLocalSearchParams<{ id?: string | string[]; focus?: string | string[] }>();
@@ -54,6 +55,13 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   const reminderElapsed = typeof draft.reminderMinutes === "number" && reminderStart !== null && reminderStart - draft.reminderMinutes * 60_000 < Date.now();
   const stateRef = useRef({ baseline, draft, clean, editZone }); stateRef.current = { baseline, draft, clean, editZone };
   const stale = !!baseline && !!latest && baseline.updatedAt !== latest.updatedAt;
+  // Sprint 0134: on the phone, a write queues in the device outbox while offline, for a schedule created
+  // offline, or behind this schedule's own queued change. Only non-recurring personal schedules (design D7).
+  const outbox = writeStatus.outbox ?? source.outbox ?? null;
+  const isLocal = id.startsWith("local:");
+  const queueMode = Platform.OS !== "web" && !!outbox && (writeStatus.offline || isLocal || !!source.queued);
+  const repeatBlocked = queueMode && !!id && !!baseline && !isOfflineScheduleEditable(baseline, actorId);
+  const writeBlocked = (writeStatus.offline && !queueMode) || repeatBlocked;
   useEffect(() => {
     scope.active = true;
     if (scope.controller.signal.aborted) scope.controller = new AbortController();
@@ -71,7 +79,7 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   useEffect(() => { if (!baseline?.timeZone && clean && !saving && editZone !== timeZone) { setEditZone(timeZone); setDraft(personalScheduleDraft(baseline, timeZone)); } }, [timeZone, editZone, clean, saving, baseline]);
   const discard = () => { const zone = latest?.timeZone ?? timeZone; setBaseline(latest); setEditZone(zone); setDraft(personalScheduleDraft(latest, zone)); setError(""); };
   async function save(remove = false) {
-    if (!ready || !scope.active || current.current !== scope || scope.busy || stale || (id && !baseline) || writeStatus.offline) return;
+    if (!ready || !scope.active || current.current !== scope || scope.busy || stale || (id && !baseline) || writeBlocked) return;
     if (baseline?.recurrence && !mutationScope) { setError(locale.t("personal60.scopeRequired")); return; }
     if (!remove && !canSave) { setError(locale.t("schedule.timezoneUnavailable")); return; }
     const change = remove ? { kind: "ready" as const, fields: {} } : buildPersonalScheduleChange(baseline, draft, editZone);
@@ -81,6 +89,21 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
     const method = remove ? "delete" : baseline ? "patch" : "post";
     const path = personalSchedulePath(id || undefined); const fingerprint = JSON.stringify([method, path, body]);
     const key = scope.keys.get(fingerprint) ?? `ios:personal:${Crypto.randomUUID()}`; scope.keys.set(fingerprint, key);
+    if (queueMode && outbox) {
+      if (!remove && change.fields.recurrence) { setError(locale.t("schedule.repeatNeedsNetwork")); return; }
+      scope.busy = true; setSaving(true); setError(""); setMessage("");
+      try {
+        const entityId = id || `local:${Crypto.randomUUID()}`;
+        const mutation = buildOfflineScheduleMutation({ mutationId: key, entityId, operation: remove ? "delete" : baseline ? "update" : "create",
+          baseRevision: id && !isLocal ? source.baseRevision ?? null : null, requestBody: { ...body, idempotencyKey: key }, createdAt: new Date().toISOString() });
+        await outbox.enqueue(mutation);
+        scope.keys.delete(fingerprint);
+        if (!scope.active || current.current !== scope) return;
+        router.replace((remove ? "/schedule" : `/schedule/personal/${encodeURIComponent(entityId)}`) as Href);
+      } catch { if (scope.active && current.current === scope) setError(locale.t("schedule.operationFailed")); }
+      finally { scope.busy = false; if (scope.active && current.current === scope) setSaving(false); }
+      return;
+    }
     scope.busy = true; setSaving(true); setError(""); setMessage("");
     try {
       const result = await client[method]<unknown>(path, { headers: { "x-orbit-personal-schedule-version": "3" }, body: { ...body, idempotencyKey: key }, signal: scope.controller.signal });
@@ -110,8 +133,9 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   }
   const exit = () => { if (router.canGoBack()) router.back(); else router.replace((id ? `/schedule/personal/${encodeURIComponent(id)}` : "/schedule") as Href); };
   const cancel = () => { if (saving) return; if (clean) exit(); else setConfirmExit(true); };
-  return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "height" : undefined} style={styles.screen}><AppScreen onBack={cancel} backLabel={locale.t("personal53.cancel")} backAccessibilityLabel={locale.t("personal53.cancel")} title={locale.t(id ? "schedule.personalTitle" : "schedule.newPersonalTitle")} headerActions={<Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.save")} disabled={saving || stale || confirmExit || writeStatus.offline} onPress={() => void save()} style={styles.secondary}><Text style={styles.headerSave}>{locale.t("personal53.save")}</Text></Pressable>} refreshControl={<RefreshControl refreshing={loading} onRefresh={source.refresh} />}>
-    {writeStatus.offline ? <OfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} /> : null}
+  return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "height" : undefined} style={styles.screen}><AppScreen onBack={cancel} backLabel={locale.t("personal53.cancel")} backAccessibilityLabel={locale.t("personal53.cancel")} title={locale.t(id ? "schedule.personalTitle" : "schedule.newPersonalTitle")} headerActions={<Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.save")} disabled={saving || stale || confirmExit || writeBlocked} onPress={() => void save()} style={styles.secondary}><Text style={styles.headerSave}>{locale.t("personal53.save")}</Text></Pressable>} refreshControl={<RefreshControl refreshing={loading} onRefresh={source.refresh} />}>
+    {writeStatus.offline ? <OfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} queues="schedule" /> : null}
+    {repeatBlocked ? <Text accessibilityRole="alert" style={styles.hint}>{locale.t("schedule.repeatNeedsNetwork")}</Text> : null}
     {loading && !baseline ? <LoadingState /> : null}
     {editZone !== timeZone ? <Text accessibilityRole="alert" style={styles.hint}>{locale.t("schedule.draftZone", { timeZone: editZone })}</Text> : null}
     {stale ? <View><Text accessibilityRole="alert" style={styles.error}>{locale.t("schedule.newVersion")}</Text><Pressable accessibilityRole="button" onPress={discard} style={styles.secondary}><Text>{locale.t("schedule.discardDraft")}</Text></Pressable></View> : null}
@@ -125,13 +149,13 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
       <View accessibilityLabel={locale.t("taskDetail.notes")} style={styles.settingRow}><Text style={styles.settingLabel}>{locale.t("taskDetail.notes")}</Text><Text style={styles.settingValue}>{locale.t("personal59.unsupportedOption")}</Text></View>
       <Text style={styles.hint}>{locale.t("personal60.localOnly")}</Text>
       <Text style={styles.hint}>{locale.t("personal53.associations")}</Text>
-      {baseline ? <Pressable accessibilityRole="button" disabled={saving || stale || writeStatus.offline} onPress={() => setConfirmDelete(true)} style={styles.secondary}><Text style={styles.error}>{locale.t("schedule.deletePersonal")}</Text></Pressable> : null}
+      {baseline ? <Pressable accessibilityRole="button" disabled={saving || stale || writeBlocked} onPress={() => setConfirmDelete(true)} style={styles.secondary}><Text style={styles.error}>{locale.t("schedule.deletePersonal")}</Text></Pressable> : null}
       {confirmDelete ? <View><Text style={styles.hint}>{locale.t("schedule.deleteHint")}</Text><Pressable accessibilityRole="button" disabled={saving || stale} onPress={() => void save(true)} style={styles.secondary}><Text style={styles.error}>{locale.t("schedule.confirmDelete")}</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setConfirmDelete(false)} style={styles.secondary}><Text>{locale.t("schedule.keep")}</Text></Pressable></View> : null}
     </View> : null}
     {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}{message ? <Text style={styles.hint}>{message}</Text> : null}
     {confirmExit ? <View><Text accessibilityRole="alert" style={styles.hint}>{locale.t("personal53.unsaved")}</Text><Pressable accessibilityRole="button" disabled={saving} onPress={() => setConfirmExit(false)} style={styles.secondary}><Text style={styles.headerSave}>{locale.t("schedule.keep")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.cancel")} disabled={saving} onPress={exit} style={styles.secondary}><Text style={styles.error}>{locale.t("personal53.cancel")}</Text></Pressable></View> : null}
     <View style={{ height: 100 + insets.bottom }} />
-  </AppScreen>{ready && (!id || baseline) ? <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 12) }]}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("schedule.save")} disabled={saving || stale || confirmExit || writeStatus.offline} onPress={() => void save()} style={styles.primary}><Text style={styles.primaryText}>{locale.t(saving ? "schedule.saving" : "schedule.save")}</Text></Pressable></View> : null}</KeyboardAvoidingView>;
+  </AppScreen>{ready && (!id || baseline) ? <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 12) }]}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("schedule.save")} disabled={saving || stale || confirmExit || writeBlocked} onPress={() => void save()} style={styles.primary}><Text style={styles.primaryText}>{locale.t(saving ? "schedule.saving" : "schedule.save")}</Text></Pressable></View> : null}</KeyboardAvoidingView>;
 }
 const useStyles = createThemedStyles(colors => ({
   screen: { flex: 1, position: "relative" as const }, bottom: { position: "absolute" as const, bottom: 0, left: 0, right: 0, backgroundColor: colors.surface, paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderColor: colors.border },

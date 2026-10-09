@@ -244,10 +244,12 @@ export function createRelationshipMessageStore(input: { client: TransactionalPos
     },
 
     /**
-     * One transaction: lock the conversation row, check it is active and the
-     * qualification version matches, return the existing message for a replayed
-     * request id, otherwise take the next sequence number, insert the message and
-     * update both member rows (sender has read it, the other side gains one unread).
+     * One transaction: lock the conversation row; a replayed request id returns
+     * the stored message before any eligibility check (Sprint 0135: a lost
+     * receipt followed by a revocation is still "delivered"); otherwise check it
+     * is active and the qualification version matches, take the next sequence
+     * number, insert the message and update both member rows (sender has read
+     * it, the other side gains one unread).
      */
     send(value: SendRelationshipStoredMessageInput): Promise<{ message: RelationshipMessageRow; created: boolean }> {
       return write(async (tx) => {
@@ -255,20 +257,22 @@ export function createRelationshipMessageStore(input: { client: TransactionalPos
         if (!conversation || !conversation.members.some((member) => member.accountId === value.senderAccountId)) {
           throw new RelationshipMessageStoreError("NOT_AVAILABLE", "This conversation is not available to the signed-in account.");
         }
+        const existing = await messageById(tx, workspaceId, value.messageId);
+        if (existing) {
+          // The qualification version is not part of the fingerprint: an offline
+          // replay may carry the version the device saw when it wrote the message.
+          if (existing.conversationId !== value.conversationId || existing.body !== value.body
+            || existing.senderAccountId !== value.senderAccountId) {
+            throw new RelationshipMessageStoreError("REQUEST_REUSED", "This request id was already used for a different message.");
+          }
+          return { message: existing, created: false };
+        }
         const sender = conversation.members.find((member) => member.accountId === value.senderAccountId)!;
         if (conversation.status !== "active" || sender.state !== "active") {
           throw new RelationshipMessageStoreError("REVOKED", "Message eligibility has been revoked.");
         }
         if (conversation.qualificationVersion !== value.qualificationVersion) {
           throw new RelationshipMessageStoreError("STALE", "Message eligibility is stale; refresh before retrying.");
-        }
-        const existing = await messageById(tx, workspaceId, value.messageId);
-        if (existing) {
-          if (existing.conversationId !== value.conversationId || existing.body !== value.body
-            || existing.senderAccountId !== value.senderAccountId || existing.qualificationVersion !== value.qualificationVersion) {
-            throw new RelationshipMessageStoreError("REQUEST_REUSED", "This request id was already used for a different message.");
-          }
-          return { message: existing, created: false };
         }
         const sentAt = value.now();
         const inserted = await tx.query<RawMessage>(

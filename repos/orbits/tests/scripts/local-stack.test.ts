@@ -44,3 +44,33 @@ test("the stack uses port 3100 only and never mentions 3000", () => {
   assert.equal(commands.some((command: string) => /\b3000\b/.test(command)), false);
   assert.deepEqual(SERVICES.map((service: { name: string }) => service.name), ["web-3100", "event-operations-worker", "notification-delivery-worker"]);
 });
+
+test("--no-paid-ai blanks every paid provider key for the web server too, and reports names only", async () => {
+  const module = await import("../../scripts/local-stack.mjs");
+  const shell = { PATH: "/usr/bin", DEEPSEEK_API_KEY: "sk-shell", GEMINI_API_KEY: "g-shell", OPENAI_API_KEY: "o-shell", GOOGLE_API_KEY: "go-shell" };
+  const env = buildStackEnv(shell, { ORBIT_LOCAL_DATABASE_URL: local }, { noPaidAi: true });
+  for (const child of [env.server, env.worker]) {
+    for (const key of module.PAID_PROVIDER_KEYS) assert.equal(child[key], "", key);
+  }
+  assert.deepEqual([...module.PAID_PROVIDER_KEYS].sort(), ["DEEPSEEK_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"]);
+  const report = module.describeProviderKeys(env.server);
+  assert.equal(report, "DEEPSEEK_API_KEY=empty GEMINI_API_KEY=empty GOOGLE_API_KEY=empty OPENAI_API_KEY=empty");
+  assert.ok(!module.describeProviderKeys(shell).includes("sk-shell"), "values are never printed");
+  assert.equal(module.describeProviderKeys(shell), "DEEPSEEK_API_KEY=set GEMINI_API_KEY=set GOOGLE_API_KEY=set OPENAI_API_KEY=set");
+});
+
+test("--port picks another stack port (default 3100), never 3000, and the web server and its env follow it (0135)", async () => {
+  const module = await import("../../scripts/local-stack.mjs");
+  assert.equal(module.parseStackPort([]), 3100);
+  assert.equal(module.parseStackPort(["--build", "--port", "3200", "--no-paid-ai"]), 3200);
+  assert.equal(module.parseStackPort(["--port=3300"]), 3300);
+  for (const bad of [["--port", "3000"], ["--port"], ["--port", "abc"], ["--port=80"], ["--port", "70000"]]) {
+    assert.throws(() => module.parseStackPort(bad), /port/i, bad.join(" "));
+  }
+  const services = module.servicesFor(3200);
+  assert.equal(services[0].name, "web-3200");
+  assert.ok(services[0].args.join(" ").includes("start -p 3200"));
+  assert.deepEqual(services.slice(1).map((service: { name: string }) => service.name), ["event-operations-worker", "notification-delivery-worker"]);
+  const env = buildStackEnv({}, { ORBIT_LOCAL_DATABASE_URL: local }, { port: 3200 });
+  assert.equal(env.server.PORT, "3200");
+});

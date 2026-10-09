@@ -89,3 +89,10 @@ test("the server's dashboard computations are the shared code (same function obj
   const opportunityProvider = { source: "s", sourceLabel: "l", readOpportunityGraph: () => graph };
   assert.deepEqual(await opportunity.createLiveOpportunityReminderAnalyticsService({ now, provider: opportunityProvider }).getOpportunityReminderAnalytics(), await sharedOpportunity.createLiveOpportunityReminderAnalyticsService({ now, provider: opportunityProvider }).getOpportunityReminderAnalytics());
 });
+
+test("the server and device contact pipeline use the same shared stage decision", async () => {
+  const shared = await import(join(process.cwd(), "shared/compute/contact-pipeline")) as Record<string, unknown>;
+  const server = await import(join(process.cwd(), "features/contacts/pipeline-page-reader")) as Record<string, unknown>;
+  assert.equal(typeof shared.contactPipelineStageFor, "function");
+  assert.equal(server.contactPipelineStageFor, shared.contactPipelineStageFor);
+});

@@ -10,51 +10,51 @@ let browser: Browser;
 let server: Server;
 let url: string;
 
-// Keep the acquisition screen, forms and decoders real. Only device pickers,
-// navigation and network boundaries are replaced; no cloud or business writes.
+// Sprint 0140: the single-card review lives on 「扫描名片」 → 「核对名片信息」.
+// The scan page, image preparation/compression (real browser canvas), forms and
+// decoders are real. Only device pickers, navigation and the API client are
+// replaced; no cloud or business writes.
 const fixture = `
 import React from "react";
 const draft = { id: "card:risk", displayName: "Hana Sato", organization: "Aki Robotics", role: "Director", email: "wrong@example.invalid", phone: "", source: { type: "business_card_ocr" }, evidence: [{ evidenceId: "evidence:card:risk", excerpt: "Hana Sato" }] };
-const state = window.fixture = { requests: [], issues: [{ code: "INVALID_EMAIL", field: "emails", message: "Review the email." }], draft };
+const state = window.fixture = { requests: [], navigation: [], issues: [{ code: "INVALID_EMAIL", field: "emails", message: "Review the email." }], draft, picks: [] };
 const client = {
   async post(path, options) {
     state.requests.push({ method: "POST", path, ...options });
-    if (path.includes("business-card") && path.endsWith("/confirm")) return { success: true, data: { state: "created", contact: { id: "contact:saved", displayName: options.body.displayName } } };
+    if (path === "/api/contacts/business-card/confirm") return { success: true, data: { state: "created", contactId: "contact:saved", duplicateContactId: null, contactWriteExecuted: true, evidenceIds: [], confirmedAt: "2026-10-04T00:00:00Z" } };
     return { success: true, data: { draft: state.draft, capture: { imageDigest: "sha256:card:risk" }, ocr: { reviewIssues: state.issues } } };
-  },
-  async patch(path, options) {
-    state.requests.push({ method: "PATCH", path, ...options });
-    return { success: true, data: { reviewDraft: { ...state.draft, ...options.body.reviewedFields } } };
   }
 };
 export const useOrbitApiClient = () => client;
-export const useApiResource = () => ({ kind: "loading", refreshing: false, refresh() {} });
-export const useRouter = () => ({ push() {} });
-export const useLocalSearchParams = () => ({});
-export const useCameraPermissions = () => [{ granted: true }, async () => ({ granted: true })];
-export const CameraView = () => null;
-export const requestMediaLibraryPermissionsAsync = async () => ({ granted: true });
-export const requestCameraPermissionsAsync = requestMediaLibraryPermissionsAsync;
-export const launchImageLibraryAsync = async () => ({ canceled: false, assets: [{ uri: "data:image/png;base64,iVBORw0KGgo=", base64: "test-image", mimeType: "image/png", fileName: "card.png", fileSize: 10 }] });
+export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); } });
+export const requestCameraPermissionsAsync = async () => ({ granted: true });
+export const launchImageLibraryAsync = async () => {
+  const next = state.picks.shift();
+  const file = next ? await next() : new globalThis.File([Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII="), c => c.charCodeAt(0))], "card.png", { type: "image/png" });
+  return { canceled: false, assets: [{ uri: URL.createObjectURL(file), file, mimeType: file.type, fileName: file.name, fileSize: file.size }] };
+};
+export const UIImagePickerPreferredAssetRepresentationMode = { Current: "current" };
 export const launchCameraAsync = launchImageLibraryAsync;
 export const Ionicons = () => <span aria-hidden="true">◇</span>;
-export const AppScreen = ({ children }) => <main>{children}</main>;
-export const createThemedStyles = () => () => ({ colors: {}, styles: {} });
+export const SafeAreaView = ({ children, edges, ...props }) => <div {...props}>{children}</div>;
+export const CryptoDigestAlgorithm = { SHA256: "SHA-256" };
+export const digest = (_algorithm, bytes) => crypto.subtle.digest("SHA-256", bytes);
 `;
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { ContactAcquisitionScreen } from "./src/screens/contacts/ContactAcquisitionScreen"; createRoot(document.getElementById("root")).render(<ContactAcquisitionScreen />);`, resolveDir: process.cwd(), loader: "tsx" },
+    stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { BusinessCardScanScreen } from "./src/screens/contacts/BusinessCardScanScreen"; createRoot(document.getElementById("root")).render(<BusinessCardScanScreen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic",
-    define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
+    resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
+    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "card-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-      plugin.onResolve({ filter: /^(expo-router|expo-camera|expo-image-picker|@expo\/vector-icons)$|\/(useApiResource|useOrbitApiClient|AppScreen)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "card-test" }));
+      plugin.onResolve({ filter: /^(expo-router|expo-image-picker|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/useOrbitApiClient$/ }, () => ({ path: "fixture", namespace: "card-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "card-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
   });
   server = createServer((_request, response) => {
-    response.setHeader("content-type", "text/html");
+    response.setHeader("content-type", "text/html; charset=utf-8");
     response.end(`<div id="root"></div><script>${result.outputFiles[0]!.text}</script>`);
   });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
@@ -69,28 +69,34 @@ test.after(async () => {
   if (server) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 });
 
-async function openScan(t: { after: (fn: () => Promise<void>) => void }): Promise<Page> {
+async function openPage(t: { after: (fn: () => Promise<void>) => void }): Promise<Page> {
   const page = await browser.newPage();
   page.setDefaultTimeout(3000);
   t.after(() => page.close());
   await page.route("**/*", route => route.request().url().startsWith(url) ? route.continue() : route.abort());
   await page.goto(url);
-  await page.getByRole("button", { name: "选图片", exact: true }).click();
-  await page.getByRole("button", { name: "生成待确认候选", exact: true }).click();
-  await page.getByRole("button", { name: "写入联系人", exact: true }).waitFor();
   return page;
 }
 
-test("a scanned card cannot be written before risks and final fields are reviewed", async (t) => {
+async function openScan(t: { after: (fn: () => Promise<void>) => void }): Promise<Page> {
+  const page = await openPage(t);
+  await page.getByRole("button", { name: "从相册选择", exact: true }).click();
+  await page.getByRole("button", { name: "保存到人脉", exact: true }).waitFor();
+  return page;
+}
+
+const posts = (page: Page) => page.evaluate(() => (window as any).fixture.requests.map((request: any) => request.path));
+
+test("a scanned card cannot be saved before its risks are confirmed", async (t) => {
   const page = await openScan(t);
-  const write = page.getByRole("button", { name: "写入联系人", exact: true });
-  assert.equal(await write.isDisabled(), true);
-  const finalReview = page.getByRole("checkbox", { name: "我已核对所有字段，并决定将其收录进人脉。", exact: true });
-  await finalReview.click();
-  assert.equal(await write.isDisabled(), true, "final review alone cannot skip a risk");
+  await page.getByRole("heading", { name: "核对名片信息", exact: true }).waitFor();
+  const save = page.getByRole("button", { name: "保存到人脉", exact: true });
+  await save.click();
+  await page.getByText("请先勾选上面需要确认的地方。", { exact: true }).waitFor();
+  assert.deepEqual(await posts(page), ["/api/contact-drafts/business-card/scan"]);
   await page.getByRole("checkbox", { name: "邮箱可能有误，请对照名片核对。", exact: true }).click();
-  assert.equal(await write.isEnabled(), true);
-  await write.click();
+  await save.click();
+  await page.getByRole("heading", { name: "已保存到人脉", exact: true }).waitFor();
   const requests = await page.evaluate(() => (window as any).fixture.requests);
   assert.equal(requests.length, 2);
   assert.equal(requests[1].path, "/api/contacts/business-card/confirm");
@@ -98,59 +104,71 @@ test("a scanned card cannot be written before risks and final fields are reviewe
   assert.equal(requests[1].body.displayName, "Hana Sato");
 });
 
-test("editing a reviewed field requires a new final confirmation", async (t) => {
-  const page = await openScan(t);
-  const write = page.getByRole("button", { name: "写入联系人", exact: true });
-  await page.getByRole("checkbox", { name: "邮箱可能有误，请对照名片核对。", exact: true }).click();
-  await page.getByRole("checkbox", { name: "我已核对所有字段，并决定将其收录进人脉。", exact: true }).click();
-  await page.getByPlaceholder("wrong@example.invalid", { exact: true }).fill("correct@example.invalid");
-  assert.equal(await write.isDisabled(), true);
-  assert.equal(await page.getByRole("checkbox", { name: "我已核对所有字段，并决定将其收录进人脉。", exact: true }).isChecked(), false);
-});
-
-test("saving review fields does not erase outstanding OCR risks", async (t) => {
-  const page = await openScan(t);
-  await page.getByRole("button", { name: "保存复核字段", exact: true }).click();
-  await page.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.method === "PATCH"));
-  await page.getByRole("checkbox", { name: "邮箱可能有误，请对照名片核对。", exact: true }).waitFor();
-  assert.equal(await page.getByRole("button", { name: "写入联系人", exact: true }).isDisabled(), true);
-});
-
-test("rescanning the same image clears both acknowledgements and final review", async (t) => {
-  const page = await openScan(t);
-  await page.getByRole("checkbox", { name: "邮箱可能有误，请对照名片核对。", exact: true }).click();
-  await page.getByRole("checkbox", { name: "我已核对所有字段，并决定将其收录进人脉。", exact: true }).click();
-  await page.getByRole("button", { name: "生成待确认候选", exact: true }).click();
-  await page.waitForFunction(() => (window as any).fixture.requests.length === 2);
-  assert.equal(await page.getByRole("checkbox", { name: "邮箱可能有误，请对照名片核对。", exact: true }).isChecked(), false);
-  assert.equal(await page.getByRole("checkbox", { name: "我已核对所有字段，并决定将其收录进人脉。", exact: true }).isChecked(), false);
-  assert.equal(await page.getByRole("button", { name: "写入联系人", exact: true }).isDisabled(), true);
-});
-
-test("cards without OCR risks still require explicit final review", async (t) => {
-  const page = await openScan(t);
+test("a card without OCR risks is still saved only by the explicit save", async (t) => {
+  const page = await openPage(t);
   await page.evaluate(() => { (window as any).fixture.issues = []; });
-  await page.getByRole("button", { name: "生成待确认候选", exact: true }).click();
-  await page.waitForFunction(() => (window as any).fixture.requests.length === 2);
-  const write = page.getByRole("button", { name: "写入联系人", exact: true });
-  assert.equal(await write.isDisabled(), true);
-  await page.getByRole("checkbox", { name: "我已核对所有字段，并决定将其收录进人脉。", exact: true }).click();
-  assert.equal(await write.isEnabled(), true);
+  await page.getByRole("button", { name: "从相册选择", exact: true }).click();
+  await page.getByRole("button", { name: "保存到人脉", exact: true }).waitFor();
+  assert.equal(await page.getByRole("checkbox").count(), 0);
+  assert.deepEqual(await posts(page), ["/api/contact-drafts/business-card/scan"]);
+  await page.getByRole("button", { name: "保存到人脉", exact: true }).click();
+  await page.getByRole("heading", { name: "已保存到人脉", exact: true }).waitFor();
+  assert.deepEqual(await posts(page), ["/api/contact-drafts/business-card/scan", "/api/contacts/business-card/confirm"]);
 });
 
-test("a new scan of the same draft displays the newly returned fields", async (t) => {
+test("retaking clears acknowledgements and shows the newly recognized fields", async (t) => {
   const page = await openScan(t);
-  await page.getByPlaceholder("Hana Sato", { exact: true }).fill("Old unsaved edit");
+  await page.getByRole("checkbox", { name: "邮箱可能有误，请对照名片核对。", exact: true }).click();
+  await page.getByLabel("姓名", { exact: true }).fill("Old unsaved edit");
   await page.evaluate(() => { (window as any).fixture.draft = { ...(window as any).fixture.draft, displayName: "New recognition" }; });
-  await page.getByRole("button", { name: "生成待确认候选", exact: true }).click();
-  await page.getByPlaceholder("New recognition", { exact: true }).waitFor();
-  assert.equal(await page.getByPlaceholder("New recognition", { exact: true }).inputValue(), "New recognition");
+  await page.getByRole("button", { name: "重新拍摄或选择", exact: true }).click();
+  await page.getByRole("button", { name: "从相册选择", exact: true }).click();
+  await page.getByRole("button", { name: "保存到人脉", exact: true }).waitFor();
+  assert.equal(await page.getByLabel("姓名", { exact: true }).inputValue(), "New recognition");
+  assert.equal(await page.getByRole("checkbox", { name: "邮箱可能有误，请对照名片核对。", exact: true }).isChecked(), false);
+  assert.deepEqual(await posts(page), ["/api/contact-drafts/business-card/scan", "/api/contact-drafts/business-card/scan"]);
 });
 
-test("card capture offers image input and directs text users to manual entry", async (t) => {
-  const page = await openScan(t);
-  assert.equal(await page.getByPlaceholder("图片不清楚时，可粘贴：姓名\n公司\n职位\n邮箱或电话", { exact: true }).count(), 0);
-  await page.getByText("只有文字信息时，请使用手动录入。", { exact: true }).waitFor();
-  await page.getByRole("tab", { name: "手动", exact: true }).click();
-  await page.getByPlaceholder("例如：王小雨", { exact: true }).waitFor();
+test("an oversized photo is compressed in the browser and the scan carries the copy's bytes, size and type", { timeout: 60_000 }, async (t) => {
+  const page = await openPage(t);
+  const originalSize = await page.evaluate(() => {
+    (window as any).fixture.picks.push(async () => {
+      const canvas = document.createElement("canvas"); canvas.width = 4000; canvas.height = 2600;
+      const context = canvas.getContext("2d")!; const image = context.createImageData(4000, 2600); let seed = 140;
+      for (let index = 0; index < image.data.length; index += 4) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; const value = 80 + (seed % 70); image.data[index] = value; image.data[index + 1] = value; image.data[index + 2] = value; image.data[index + 3] = 255; }
+      context.putImageData(image, 0, 0); context.fillStyle = "#fafafa"; context.fillRect(700, 500, 2600, 1600);
+      context.fillStyle = "#111"; context.font = "bold 150px sans-serif"; context.fillText("Hana Sato", 900, 900);
+      const blob = await new Promise<Blob>(resolve => canvas.toBlob(b => resolve(b!), "image/png"));
+      (window as any).fixture.originalSize = blob.size;
+      return new File([blob], "IMG_0140.PNG", { type: "image/png" });
+    });
+    return 0;
+  });
+  assert.equal(originalSize, 0);
+  await page.getByRole("button", { name: "从相册选择", exact: true }).click();
+  await page.getByRole("button", { name: "保存到人脉", exact: true }).waitFor({ timeout: 30_000 });
+  const observed = await page.evaluate(() => {
+    const request = (window as any).fixture.requests[0];
+    return { original: (window as any).fixture.originalSize, size: request.body.imageSizeBytes, decoded: atob(request.body.imageBase64).length, mimeType: request.body.mimeType, name: request.body.imageName, head: atob(request.body.imageBase64).slice(0, 2).split("").map((c: string) => c.charCodeAt(0)) };
+  });
+  assert.ok(observed.original > 7 * 1024 * 1024, `sample must exceed the 7 MiB direct-scan target, got ${observed.original}`);
+  assert.equal(observed.size, observed.decoded, "imageSizeBytes is the size of the bytes actually sent");
+  assert.ok(observed.size <= 7 * 1024 * 1024);
+  assert.equal(observed.mimeType, "image/jpeg");
+  assert.equal(observed.name, "IMG_0140.jpg");
+  assert.deepEqual(observed.head, [0xff, 0xd8]);
+});
+
+test("a photo that cannot be compressed is never sent and the user can choose again", async (t) => {
+  const page = await openPage(t);
+  await page.evaluate(() => {
+    (window as any).fixture.picks.push(async () => {
+      const bytes = new Uint8Array(8 * 1024 * 1024); bytes.set([0xff, 0xd8, 0xff, 0xe0]);
+      return new File([bytes], "broken.jpg", { type: "image/jpeg" });
+    });
+  });
+  await page.getByRole("button", { name: "从相册选择", exact: true }).click();
+  await page.getByRole("alert").filter({ hasText: "这张图片无法在手机上压缩，没有上传。请重拍或换一张。" }).waitFor();
+  assert.deepEqual(await posts(page), []);
+  assert.equal(await page.getByRole("button", { name: "拍一张名片", exact: true }).isEnabled(), true);
 });

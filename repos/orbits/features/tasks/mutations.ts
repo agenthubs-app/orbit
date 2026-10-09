@@ -4,7 +4,7 @@ import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-liv
 import type { TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
 import { TaskServiceError, type TaskMutationResult } from "./service";
 
-export interface TaskMutationCommand { actorId: string; idempotencyKey: string; now: string; }
+export interface TaskMutationCommand { actorId: string; idempotencyKey: string; now: string; expectedUpdatedAt?: string; }
 const locks = new WeakMap<object, Map<string, Promise<void>>>();
 
 function canonical(value: unknown): unknown {

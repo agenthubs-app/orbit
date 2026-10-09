@@ -22,7 +22,6 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "GET", pathname: "/api/notes/:id", action: "read", policy: policy("note", "durable_normalized", "online_only") },
   { method: "POST", pathname: "/api/notes", action: "create", policy: policy("note", "durable_normalized", "offline_queue") },
   { method: "PATCH", pathname: "/api/notes/:id", action: "update", policy: policy("note", "durable_normalized", "offline_queue") },
-  { method: "DELETE", pathname: "/api/notes/:id", action: "delete", policy: policy("note", "durable_normalized", "offline_queue") },
   { method: "GET", pathname: "/api/tasks", action: "read", policy: policy("task", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/tasks/:id", action: "read", policy: policy("task", "durable_normalized", "online_only") },
   { method: "POST", pathname: "/api/tasks", action: "create", policy: policy("task", "durable_normalized", "offline_queue") },
@@ -47,6 +46,8 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "GET", pathname: "/api/relationship-communication/conversations/:id/messages", action: "read", policy: policy("relationship_message", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/relationship-communication/conversation-summaries", action: "read", policy: policy("relationship_conversation", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/relationship-communication/unread-summary", action: "read", policy: policy("relationship_conversation", "durable_normalized", "online_only") },
+  // Sprint 0135 (message plan M4): a text message into a conversation the device holds and that is active is queued offline; drafts, marking read, invitations and revocation stay online.
+  { method: "POST", pathname: "/api/relationship-communication/conversations/:id/messages", action: "send", policy: policy("relationship_message", "durable_normalized", "offline_queue") },
   { method: "GET", pathname: "/api/events/public", action: "read", policy: policy("public_event", "encrypted_ttl_snapshot", "online_only", "on_demand_encrypted") },
   // Sprint 0115: the registered attendee's event day (sync domains registered-events, event-registrations, event-published-results).
   { method: "GET", pathname: "/api/events/public/:id", action: "read", policy: policy("registered_event", "durable_normalized", "online_only") },

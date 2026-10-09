@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { SyncRecord } from "../src/api/contract/sync";
+import type { LocalSyncQueuedMutation } from "../src/data/sync/local-sync-repository";
 import { homeScheduleToView } from "../src/view-models/home-dashboard";
 import { localHomeScheduleItems, localHomeTaskPage } from "../src/view-models/home-local";
+import { localScheduleTasks } from "../src/screens/schedule/schedule-calendar-source-mirror";
 
 // Sprint 0131: the home cards from the device copy reproduce the server's
 // answers they stand in for (the task page rule of features/tasks/task-page.ts
@@ -35,6 +37,29 @@ test("home tasks: open tasks planned through the day or due before its end, in t
 
 test("home tasks: a foreign or invalid mirrored task makes the local page unavailable instead of partial", () => {
   assert.equal(localHomeTaskPage([task("x", { plannedDate: "2026-09-28", ownerUserId: "someone-else" })], A, "2026-09-28", "Asia/Tokyo", new Date(), "zh"), null);
+});
+
+test("home task copy overlays queued personal completion and local creation", () => {
+  const records = [task("personal:one", { category: "personal", plannedDate: "2026-09-28" })];
+  const queued = [
+    { actorId: A, workspaceId: "w", domainId: "tasks", mutationId: "complete-one", kind: "task", id: "personal:one", operation: "complete", state: "queued", patch: {}, requestJson: JSON.stringify({ action: "complete", idempotencyKey: "complete-one" }), baseRevision: "1", createdAt: "2026-09-28T01:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null, serverSnapshot: null },
+    { actorId: A, workspaceId: "w", domainId: "tasks", mutationId: "create-local", kind: "task", id: "local:task-a", operation: "create", state: "queued", patch: { category: "personal", title: "Local task", plannedDate: "2026-09-28" }, requestJson: JSON.stringify({ idempotencyKey: "create-local", category: "personal", title: "Local task", plannedDate: "2026-09-28" }), baseRevision: null, createdAt: "2026-09-28T02:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null, serverSnapshot: null },
+  ] as LocalSyncQueuedMutation[];
+  const page = localHomeTaskPage(records, A, "2026-09-28", "Asia/Tokyo", new Date("2026-09-28T03:00:00.000Z"), "en", queued);
+  assert.ok(page);
+  assert.equal(page.total, 1);
+  assert.equal(page.items[0]?.id, "local:task-a");
+});
+
+test("calendar task mirror overlays personal task completion without enabling relationship writes", () => {
+  const personal = task("personal:calendar", { category: "personal", plannedDate: "2026-09-28" });
+  const relationship = task("relationship:calendar", { category: "relationship", plannedDate: "2026-09-28" });
+  const mutation = {
+    actorId: A, workspaceId: "w", domainId: "tasks", mutationId: "complete-calendar", kind: "task", id: personal.id, operation: "complete", state: "queued",
+    patch: {}, requestJson: JSON.stringify({ action: "complete", idempotencyKey: "complete-calendar" }), baseRevision: "1", createdAt: "2026-09-28T01:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null, serverSnapshot: null,
+  } as LocalSyncQueuedMutation;
+  const result = localScheduleTasks([personal, relationship], A, [mutation]);
+  assert.deepEqual(result.tasks.map(item => item.id), ["relationship:calendar"]);
 });
 
 test("home schedule: personal items and registered events from the domains, meetings from the last answer", () => {

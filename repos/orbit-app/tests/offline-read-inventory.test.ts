@@ -72,6 +72,10 @@ test('unknown and secret endpoints never default to persistence', () => {
   }
   assert.throws(() => resolveReadSurface('GET', '/api/new-private-domain'), /UNREGISTERED_READ/);
   assert.equal(resolveReadSurface('GET', '/api/auth/session').readPersistence, 'online_only_secret');
+  const accountStatus = resolveReadSurface('GET', '/api/account/status');
+  assert.equal(accountStatus.readPersistence, 'online_only_secret');
+  assert.equal(accountStatus.mutationPolicy, 'online_only');
+  assert.equal(accountStatus.binaryPolicy, 'never_local');
   assert.equal(resolveReadSurface('GET', '/api/notes/n1').domainId, 'notes');
   assert.equal(resolveReadSurface('GET', '/api/notes?actorId=other').domainId, 'notes');
   assert.equal(resolveReadSurface('POST', '/api/notes').mutationPolicy, 'online_only');
@@ -163,10 +167,25 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/screens/tasks/TaskDetailScreen.tsx DELETE /api/tasks/:id',
     'src/screens/tasks/TaskDetailScreen.tsx POST /api/reminders',
     'src/screens/tasks/TaskDetailScreen.tsx PATCH /api/reminders/:id',
+    'src/data/sync/task-outbox-upload.ts POST /api/tasks',
+    'src/data/sync/task-outbox-upload.ts PATCH /api/tasks/:id',
+    'src/data/sync/task-outbox-upload.ts DELETE /api/tasks/:id',
+    'src/data/sync/schedule-outbox-upload.ts POST /api/schedule-items',
+    'src/data/sync/schedule-outbox-upload.ts PATCH /api/schedule-items/:id',
+    'src/data/sync/schedule-outbox-upload.ts DELETE /api/schedule-items/:id',
+    'src/data/sync/message-outbox-upload.ts POST /api/relationship-communication/conversations/:id/messages',
   ]) assert.ok(actual.has(expected), expected);
   assert.deepEqual(await auditReadSurfaces(root), { unregistered: [], invalid: [] });
   assert.ok(surfaces.some(row => row.readPersistence === 'device_only' && row.mutationPolicy === 'local_only'));
-  assert.ok(surfaces.every(row => row.mutationPolicy !== 'offline_queue'));
+  assert.deepEqual(surfaces.filter(row => row.mutationPolicy === 'offline_queue').map(row => `${row.consumerFile} ${row.method} ${row.endpointTemplate}`).sort(), [
+    'src/data/sync/message-outbox-upload.ts POST /api/relationship-communication/conversations/:id/messages',
+    'src/data/sync/schedule-outbox-upload.ts DELETE /api/schedule-items/:id',
+    'src/data/sync/schedule-outbox-upload.ts PATCH /api/schedule-items/:id',
+    'src/data/sync/schedule-outbox-upload.ts POST /api/schedule-items',
+    'src/data/sync/task-outbox-upload.ts DELETE /api/tasks/:id',
+    'src/data/sync/task-outbox-upload.ts PATCH /api/tasks/:id',
+    'src/data/sync/task-outbox-upload.ts POST /api/tasks',
+  ]);
 });
 
 test('bounded private pages and badge summaries stay network-only until permission invalidation is proven', () => {

@@ -127,7 +127,7 @@ export const writeSnapshot = async () => {};
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/home"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? <Route /> : null; } createRoot(document.getElementById("root")).render(<App />);',
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/home"; import { useFixture } from "fixture"; import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext"; import { createTranslator } from "./src/i18n/messages"; function App() { const s = useFixture(); const language = s.language || "zh"; const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) }; return s.mounted ? <OrbitLocaleContext.Provider value={locale}><Route /></OrbitLocaleContext.Provider> : null; } createRoot(document.getElementById("root")).render(<App />);',
       loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic",
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -251,22 +251,42 @@ test("search, shortcuts, inbox and real record destinations work without implici
   const p = await open(t); await hydrate(p);
   const search = p.getByRole("textbox", { name: "搜索人脉" });
   await search.fill(" 林 悦 "); await search.press("Enter"); await settle(p);
-  for (const name of ["收件箱", "扫名片", "查看日程", "新建待办", "记笔记", "查看待办：发送项目介绍", "查看日程：设计分享会", "查看活动：周末产品交流会"]) await press(p, name);
+  for (const name of ["收件箱", "扫名片", "查看日程", "新建待办", "笔记", "查看待办：发送项目介绍", "查看日程：设计分享会", "查看活动：周末产品交流会"]) await press(p, name);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), [
-    "/contacts/list?q=%E6%9E%97%20%E6%82%A6", "/inbox", "/contacts/new", "/schedule", "/today", "/notes/new",
+    "/contacts/list?q=%E6%9E%97%20%E6%82%A6", "/inbox", "/contacts/new/scan", "/schedule", "/today", "/notes",
     "/tasks/task%3A%2Fone", "/events/event%3A%2Fone", "/events/event%3A%2Fone"
   ]);
   assert.equal(await p.getByRole("button", { name: "联系跟进", exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
 });
 
-test("home keeps quick create and opens global saved-note history without filters or writes", async t => {
+test("home has one notes shortcut to unfiltered history without writes", async t => {
   const p = await open(t); await hydrate(p);
-  assert.equal(await p.getByRole("button", { name: "所有笔记", exact: true }).count(), 1);
-  await press(p, "所有笔记"); await press(p, "记笔记");
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/notes", "/notes/new"]);
+  assert.equal(await p.getByRole("button", { name: "笔记", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "所有笔记", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "记笔记", exact: true }).count(), 0);
+  await press(p, "笔记");
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/notes"]);
   assert.deepEqual(await writes(p), []);
 });
+
+for (const { language, label } of [
+  { language: "zh", label: "笔记" },
+  { language: "ja", label: "メモ" },
+  { language: "en", label: "Notes" },
+]) {
+  test("home shows one translated notes shortcut that stays tappable at narrow large text: " + language, async t => {
+    const p = await open(t, { language, width: 320, fontScale: 1.6 }); await hydrate(p);
+    const notes = p.getByRole("button", { name: label, exact: true });
+    assert.equal(await notes.count(), 1);
+    const box = (await notes.boundingBox())!;
+    assert.ok(box.x >= 0 && box.x + box.width <= 320 && box.width >= 44 && box.height >= 44, JSON.stringify(box));
+    assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= 320));
+    await notes.click(); await settle(p);
+    assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/notes"]);
+    assert.deepEqual(await writes(p), []);
+  });
+}
 
 for (const count of [0, 1, 5, 6]) {
   test("home displays at most five of " + count + " ordered incomplete tasks without changing the real count", async t => {
@@ -449,7 +469,7 @@ test("standard home keeps a two-column editorial layout with real counts and lar
   await hydrate(p);
   assert.equal(await p.getByTestId("home-day-sections").evaluate(el => getComputedStyle(el).flexDirection), "row");
   assert.match(await p.locator("body").innerText(), /3 项日程 · 5 项待办/);
-  for (const name of ["收件箱", "扫名片", "查看日程", "新建待办", "记笔记", "完成待办：发送项目介绍", "查看待办：发送项目介绍", "查看活动：周末产品交流会"]) {
+  for (const name of ["收件箱", "扫名片", "查看日程", "新建待办", "笔记", "完成待办：发送项目介绍", "查看待办：发送项目介绍", "查看活动：周末产品交流会"]) {
     const box = (await p.getByRole("button", { name, exact: true }).boundingBox())!;
     assert.ok(box.width >= 44 && box.height >= 44, name + " is a full touch target");
   }
@@ -491,7 +511,7 @@ test("the source large-text setting stacks day sections and keeps the three avai
   await p.waitForFunction(() => (window as any).fixture.requests.length === 4); await hydrate(p);
   assert.equal(await p.getByTestId("home-day-sections").evaluate(el => getComputedStyle(el).flexDirection), "column");
   const first = (await p.getByRole("button", { name: "扫名片", exact: true }).boundingBox())!;
-  const last = (await p.getByRole("button", { name: "记笔记", exact: true }).boundingBox())!;
+  const last = (await p.getByRole("button", { name: "笔记", exact: true }).boundingBox())!;
   assert.equal(first.y, last.y);
   const textSize = await p.getByRole("button", { name: "查看日程：林悦 · 合作沟通" }).getByText("林悦 · 合作沟通").evaluate(el => parseFloat(getComputedStyle(el).fontSize));
   assert.ok(textSize >= 15.5 && textSize <= 16);
@@ -520,7 +540,7 @@ test("loading sections use the approved schedule markers and task outlines witho
   const shortSummary = (await p.getByTestId("home-summary-loading").boundingBox())!;
   assert.equal(shortSummary.width, 140); assert.equal(shortSummary.height, 12);
   await press(p, "扫名片");
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/contacts/new"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/contacts/new/scan"]);
 });
 
 for (const change of [{ actor: "two" }, { focused: false }, { appState: "background" }, { mounted: false }]) {

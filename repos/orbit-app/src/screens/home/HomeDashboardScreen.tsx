@@ -19,6 +19,7 @@ import { OfflineNotice } from "../../components/OfflineNotice";
 import { keepsPageCopy } from "../../data/sync/page-copies";
 import { useMirrorProbe } from "../../hooks/useMirrorProbe";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { useOfflineTaskOutbox } from "../../data/sync/useOfflineTaskOutbox";
 import { usePageCopySession } from "../../hooks/usePageCopySession";
 import { mirrorFreshness } from "../../data/sync/mirror-freshness";
 import type { PageCopy } from "../../data/sync/page-copies";
@@ -41,11 +42,10 @@ const homeFont = Platform.select({
   default: "sans-serif",
 });
 const quickActions = [
-  { labelKey: "home.scanCard", href: "/contacts/new", icon: "scan" },
+  { labelKey: "home.scanCard", href: "/contacts/new/scan", icon: "scan" },
   { labelKey: "home.viewSchedule", href: "/schedule", icon: "calendar" },
   { labelKey: "home.newTask", href: "/today", icon: "task" },
-  { labelKey: "home.newNote", href: "/notes/new", icon: "notes" },
-  { labelKey: "notes.allNotes", href: "/notes", icon: "notes" },
+  { labelKey: "notes.title", href: "/notes", icon: "notes" },
 ] as const satisfies readonly { labelKey: MessageKey; href: string; icon: "scan" | "calendar" | "task" | "notes" }[];
 
 export function HomeDashboardScreen() {
@@ -88,6 +88,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
   // Sprint 0131: the device copy of every card — the task, personal-schedule and registered-event
   // domains, and the page copies of the recommendations and the last schedule answer.
   const taskMirror = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
+  const taskOutbox = useOfflineTaskOutbox(taskMirror, Platform.OS !== "web");
   const scheduleMirror = useSyncedCollection<Record<string, unknown>>({ kind: "personal_schedule" });
   const eventMirror = useSyncedCollection<Record<string, unknown>>({ kind: "registered_event" });
   const { session: copySession, whenReady: copySessionReady } = usePageCopySession();
@@ -228,12 +229,12 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
   const localFor = (section: Section) => resources[section].kind === "loading" || (resources[section].kind === "error" && resources[section].offline !== null);
   const localSchedule = localFor("schedule") && scheduleFresh.readable && eventFresh.readable
     ? homeScheduleToView(localHomeScheduleItems({ personal: scheduleMirror.records, events: eventMirror.records, lastAnswer: copies.schedule?.data ?? null }), date.selectedDateKey, now, timeZone, locale.language) : null;
-  const localTasks = localFor("tasks") && taskFresh.readable ? localHomeTaskPage(taskMirror.records, scope.actorId, date.selectedDateKey, timeZone, now, locale.language) : null;
+  const localTasks = taskFresh.readable ? localHomeTaskPage(taskMirror.records, scope.actorId, date.selectedDateKey, timeZone, now, locale.language, taskOutbox.queuedMutations) : null;
   const localEvents = localFor("events") && copies.events ? homeRecommendedEventsToView(copies.events.data, timeZone, locale.language) : null;
   const schedules = resources.schedule.kind === "ready" ? homeScheduleToView(resources.schedule.data, date.selectedDateKey, now, timeZone, locale.language) : localSchedule;
   const serverTaskPage = resources.tasks.kind === "ready" ? homeTaskPageToView(resources.tasks.data, scope.actorId, date.selectedDateKey, now, timeZone, locale.language) : null;
-  const taskPage = serverTaskPage ?? localTasks;
-  const tasksFromDevice = serverTaskPage === null && localTasks !== null;
+  const taskPage = taskOutbox.queuedMutations.length > 0 ? localTasks ?? serverTaskPage : serverTaskPage ?? localTasks;
+  const tasksFromDevice = taskPage === localTasks && localTasks !== null;
   const taskPending = taskPage === null && (resources.tasks.kind === "loading" || resources.tasks.kind === "ready");
   const events = resources.events.kind === "ready" ? homeRecommendedEventsToView(resources.events.data, timeZone, locale.language) : localEvents;
   const shownLocally: Record<Section, boolean> = { schedule: resources.schedule.kind !== "ready" && localSchedule !== null, tasks: tasksFromDevice, events: resources.events.kind !== "ready" && localEvents !== null };

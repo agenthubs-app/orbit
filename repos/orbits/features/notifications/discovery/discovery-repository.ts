@@ -1,5 +1,5 @@
 import {createStorageAccountLanguagePreferenceProvider} from '../../account-language/storage/account-language-live-record-provider';
-import type { TransactionalPostgresClient, TransactionalSqlExecutor } from '../../../shared/storage/transactional-postgres';
+import type { TransactionalPostgresClient, TransactionalSqlExecutor, TransactionOptions } from '../../../shared/storage/transactional-postgres';
 import { createPostgresLiveRecordStore } from '../../../shared/storage/postgres-live-record-store';
 import type { DiscoveryCursor, DiscoveryJob, DiscoveryPreferences, DiscoverySourceRef } from './contract';
 import { DISCOVERY_POLICY_VERSION } from './contract';
@@ -15,8 +15,12 @@ export function createDiscoveryRepository(input:{client:TransactionalPostgresCli
  const budgetWorkspaceId=input.budgetWorkspaceId??'orbit-project-ai-budget';
  const initialPrefs=(actorId:string):DiscoveryPreferences=>({actorId,enabled:false,messageAnalysisEnabled:false,timeZone:'Asia/Tokyo',language:'zh',revision:0,generation:0,enabledSince:now(),messageEnabledSince:now(),updatedAt:now()});
  const initialState=():DiscoveryState=>({cursor:null,leaseToken:null,leaseUntil:null,lastRoundAt:null,lastError:null});
- async function tx<T>(actorId:string,operation:(executor:TransactionalSqlExecutor)=>Promise<T>,workspaceId=input.workspaceId):Promise<T> {
-  for(let i=0;;i++)try{return await input.client.transaction(async executor=>{await executor.query('select pg_advisory_xact_lock(hashtextextended($1,0))',[JSON.stringify(['notification-discovery',workspaceId,actorId])]);return operation(executor);});}catch(e){if(i>=2||!['40001','40P01'].includes(String((e as {code?:string}).code)))throw e;}
+ // Every writer of an actor's discovery state, preferences and jobs runs through tx and first takes this
+ // per-account advisory lock (64-bit key namespaced by feature, workspace and actor), so they already run one
+ // at a time per account. A transaction may therefore ask for read committed: each statement after the lock
+ // sees what the previous holder committed, and it takes no SIREAD locks on the shared orbit_records table.
+ async function tx<T>(actorId:string,operation:(executor:TransactionalSqlExecutor)=>Promise<T>,workspaceId=input.workspaceId,options?:TransactionOptions):Promise<T> {
+  for(let i=0;;i++)try{return await input.client.transaction(async executor=>{await executor.query('select pg_advisory_xact_lock(hashtextextended($1,0))',[JSON.stringify(['notification-discovery',workspaceId,actorId])]);return operation(executor);},options);}catch(e){if(i>=2||!['40001','40P01'].includes(String((e as {code?:string}).code)))throw e;}
  }
  async function get<T>(executor:TransactionalSqlExecutor,collectionName:string,recordId:string,workspaceId=input.workspaceId):Promise<T|null>{return (await createPostgresLiveRecordStore({client:executor}).getRecord({workspaceId,collectionName,recordId}))?.payload as unknown as T??null;}
  async function save(executor:TransactionalSqlExecutor,collectionName:string,recordId:string,actorId:string,payload:unknown,workspaceId=input.workspaceId){await createPostgresLiveRecordStore({client:executor}).upsertRecord({workspaceId,collectionName,recordId,userId:actorId,sourceType:'system',sourceId:recordId,evidenceIds:[],lifecycleState:'active',payload:payload as Record<string,unknown>,createdAt:now(),updatedAt:now()});}
@@ -35,6 +39,7 @@ export function createDiscoveryRepository(input:{client:TransactionalPostgresCli
   preferences:(actorId:string)=>prefs(input.client,actorId),
   state:(actorId:string)=>state(input.client,actorId),
   jobs:(actorId:string)=>jobs(input.client,actorId),
+  // Read committed (0139): its bulk job update and the reads before it run after the per-account lock.
   async updatePreferences(actorId:string,patch:Partial<Pick<DiscoveryPreferences,'enabled'|'messageAnalysisEnabled'|'timeZone'|'language'>>&{expectedRevision:number}) {
    return tx(actorId,async executor=>{const old=await prefs(executor,actorId);if(old.revision!==patch.expectedRevision)throw new DiscoveryConflict('Preferences changed');
     if(patch.timeZone)new Intl.DateTimeFormat('en',{timeZone:patch.timeZone}).format();
@@ -51,10 +56,16 @@ export function createDiscoveryRepository(input:{client:TransactionalPostgresCli
      const s=await state(executor,actorId);await save(executor,C.state,actorId,actorId,{...s,cursor:globalChanged&&updated.enabled?{at:now(),key:''}:s.cursor,leaseToken:null,leaseUntil:null});
     }
     return updated;
-   });
+   },input.workspaceId,{isolation:'read committed'});
   },
   async acquireActor(actorId:string,token:string){return tx(actorId,async executor=>{const s=await state(executor,actorId);if(s.leaseUntil&&Date.parse(s.leaseUntil)>Date.parse(now()))return false;await save(executor,C.state,actorId,actorId,{...s,leaseToken:token,leaseUntil:new Date(Date.parse(now())+180000).toISOString()});return true;});},
   async releaseActor(actorId:string,token:string,error:string|null=null){return tx(actorId,async executor=>{const s=await state(executor,actorId);if(s.leaseToken===token)await save(executor,C.state,actorId,actorId,{...s,leaseToken:null,leaseUntil:null,lastRoundAt:now(),lastError:error});});},
+  // Read committed (sprint 0139): under serializable, up to 50 job reads on scattered heap pages (or a seq scan)
+  // promoted to a relation-level SIREAD lock on orbit_records, so any other account's write aborted it with 40001.
+  // The advisory lock in tx serializes it with every other writer of this account; job ids are deterministic and
+  // the existence check runs after the lock, so a re-scan neither duplicates nor resets an existing job.
+  // claim and updatePreferences use read committed for the same reason; complete stays serializable because the
+  // inbox rows it publishes are also written by inbox actions that do not take this lock.
   async enqueuePage(actorId:string,token:string,generation:number,refs:DiscoverySourceRef[],cursor:DiscoveryCursor){
    if(refs.length>50)throw new Error('Source page exceeds 50');
    return tx(actorId,async executor=>{const s=await state(executor,actorId),p=await prefs(executor,actorId);if(!leaseValid(s,token)||!p.enabled||p.generation!==generation)throw new DiscoveryConflict('Discovery lease or authorization changed');
@@ -63,14 +74,15 @@ export function createDiscoveryRepository(input:{client:TransactionalPostgresCli
      const job:DiscoveryJob={id,actorId,source,generation,state:allowed?'queued':'cancelled',attempts:0,nextAttemptAt:now(),leaseUntil:null,leaseToken:null,reason:allowed?null:'analysis_disabled',notificationId:null};await save(executor,C.jobs,id,actorId,job);
     }
     await save(executor,C.state,actorId,actorId,{...s,cursor});
-   });
+   },input.workspaceId,{isolation:'read committed'});
   },
+  // Read committed (0139): the job scan runs after the per-account lock, so concurrent claims hand each job out once.
   async claim(actorId:string,token:string,limit:number):Promise<DiscoveryJob[]> {
    if(!Number.isSafeInteger(limit)||limit<1||limit>20)throw new Error('Model batch exceeds 20');
    return tx(actorId,async executor=>{const s=await state(executor,actorId),p=await prefs(executor,actorId);if(!p.enabled||!leaseValid(s,token))return [];
     const rows=await executor.query<{payload:DiscoveryJob}>(`select payload from orbit_records where workspace_id=$1 and collection_name=$2 and user_id=$3 and (payload->>'generation')::int=$4 and (payload->>'nextAttemptAt')::timestamptz<=$5::timestamptz and (payload->>'state'='queued' or (payload->>'state'='running' and (payload->>'leaseUntil')::timestamptz<=$5::timestamptz)) order by created_at,record_id limit $6`,[input.workspaceId,C.jobs,actorId,p.generation,now(),limit]);
     const result:DiscoveryJob[]=[];for(const {payload:j} of rows.rows){if(j.attempts>=3){await save(executor,C.jobs,j.id,actorId,{...j,state:'failed',reason:'attempts_exhausted',leaseToken:null,leaseUntil:null});continue;}const job:DiscoveryJob={...j,state:'running',attempts:j.attempts+1,leaseToken:token,leaseUntil:s.leaseUntil};await save(executor,C.jobs,j.id,actorId,job);result.push(job);}return result;
-   });
+   },input.workspaceId,{isolation:'read committed'});
   },
   async fail(actorId:string,id:string,token:string,reason:string,retryable:boolean){return tx(actorId,async executor=>{const job=await get<DiscoveryJob>(executor,C.jobs,id);if(!job||job.actorId!==actorId||job.leaseToken!==token||job.state!=='running')return;const retry=retryable&&job.attempts<3;await save(executor,C.jobs,id,actorId,{...job,state:retry?'queued':'failed',reason,nextAttemptAt:new Date(Date.parse(now())+(job.attempts===1?300000:1800000)).toISOString(),leaseUntil:null,leaseToken:null});});},
   async deferUncalled(actorId:string,id:string,token:string,reason:string){return tx(actorId,async executor=>{const job=await get<DiscoveryJob>(executor,C.jobs,id);if(!job||job.actorId!==actorId||job.leaseToken!==token||job.state!=='running')return;await save(executor,C.jobs,id,actorId,{...job,state:'queued',attempts:Math.max(0,job.attempts-1),reason,nextAttemptAt:new Date(Date.parse(now())+300000).toISOString(),leaseUntil:null,leaseToken:null});});},

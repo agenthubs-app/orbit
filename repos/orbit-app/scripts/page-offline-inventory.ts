@@ -29,7 +29,7 @@ export interface PageOfflineEntry {
   title: string;
   classification: PageOfflineClassification;
   /** local-first: the sprint that made it readable offline. */
-  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131';
+  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131' | '0137';
   /** Where the content comes from: device domains (域), page copies (页面副本) and network reads. */
   reads: string;
   /** What the page does when the server cannot be reached. */
@@ -133,14 +133,16 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/events/[id]/operations/roles.tsx', path: '/events/:id/operations/roles', title: '活动角色与权限', classification: 'online-only', reasonCategory: 'organizer-live', reason: '主办方权限管理', reads: '/api/events/:id/access/roles', offline: NEEDS_NETWORK },
   { file: 'app/events/[id]/analytics.tsx', path: '/events/:id/analytics', title: '活动数据分析', classification: 'online-only', reasonCategory: 'organizer-live', reason: '主办方统计，服务器实时聚合', reads: '/api/events/:id/analytics/*', offline: NEEDS_NETWORK },
   { file: 'app/events/[id]/register.tsx', path: '/events/:id/register', title: '报名问卷', classification: 'online-only', reasonCategory: 'paid-ai', reason: '报名是写入；问卷题目由付费 AI 生成并在服务器缓存', reads: '/api/events/public/:id、/api/events/:id/registration', offline: NEEDS_NETWORK },
-  { file: 'app/contacts/new.tsx', path: '/contacts/new', title: '添加联系人（扫名片、手动、导入）', classification: 'online-only', reasonCategory: 'card-scan', reason: '名片识别要上传图片做 OCR；新建联系人是写入', reads: '/api/contact-drafts*', offline: NEEDS_NETWORK },
+  { file: 'app/contacts/new.tsx', path: '/contacts/new', title: '更多添加方式（QR、批量名片、外部导入、引荐、重复检查）', classification: 'online-only', reasonCategory: 'card-scan', reason: '名片识别要上传图片做 OCR；新建联系人是写入', reads: '/api/contact-drafts*', offline: NEEDS_NETWORK },
   { file: 'app/contacts/new/batch/[id].tsx', path: '/contacts/new/batch/:id', title: '名片批量识别（旧）', classification: 'online-only', reasonCategory: 'card-scan', reason: '批量识别在服务器进行', reads: '/api/contact-drafts/business-card/batches/:id', offline: NEEDS_NETWORK },
   { file: 'app/contacts/new/batch2/index.tsx', path: '/contacts/new/batch2', title: '名片批量识别', classification: 'online-only', reasonCategory: 'card-scan', reason: '批量识别在服务器进行', reads: '/api/contact-drafts/business-card/batches/v2', offline: NEEDS_NETWORK },
   { file: 'app/contacts/new/batch2/[id].tsx', path: '/contacts/new/batch2/:id', title: '名片批量识别结果', classification: 'online-only', reasonCategory: 'card-scan', reason: '识别结果和图片在服务器', reads: '/api/contact-drafts/business-card/batches/v2/:id', offline: NEEDS_NETWORK },
+  { file: 'app/contacts/new/manual.tsx', path: '/contacts/new/manual', title: '手动添加（姓名先行，核对后保存）', classification: 'online-only', reasonCategory: 'card-scan', reason: '保存联系人是写入：先建草稿再确认', reads: '/api/contact-drafts/manual、/api/contact-drafts/:id/confirm', offline: NEEDS_NETWORK },
+  { file: 'app/contacts/new/scan.tsx', path: '/contacts/new/scan', title: '扫描名片（拍照或选图，核对后保存）', classification: 'online-only', reasonCategory: 'card-scan', reason: '名片识别要上传图片做 OCR；保存联系人是写入', reads: '/api/contact-drafts/business-card/scan、/api/contacts/business-card/confirm', offline: NEEDS_NETWORK },
   { file: 'app/contacts/new/import/[id].tsx', path: '/contacts/new/import/:id', title: '名片导入进度', classification: 'online-only', reasonCategory: 'card-scan', reason: '导入任务在服务器运行', reads: '/api/contact-drafts/business-card/imports/:id', offline: NEEDS_NETWORK },
   { file: 'app/contacts/intros.tsx', path: '/contacts/intros', title: '引荐', classification: 'online-only', reasonCategory: 'server-computed', reason: '引荐候选由服务器跨账号实时计算', reads: '/api/contacts/intros/summary', offline: NEEDS_NETWORK },
   { file: 'app/contacts/matches.tsx', path: '/contacts/matches', title: '人脉需求匹配', classification: 'online-only', reasonCategory: 'server-computed', reason: '需求匹配由服务器按最新资料实时排序（0116 已定为需要联网）', reads: '/api/contacts/needs-matches、/api/profile', offline: NEEDS_NETWORK },
-  { file: 'app/contacts/pipeline.tsx', path: '/contacts/pipeline', title: '关系推进看板', classification: 'online-only', reasonCategory: 'server-computed', reason: '按全部关系在服务器分页实时计算阶段', reads: '/api/contacts/pipeline', offline: NEEDS_NETWORK },
+  { file: 'app/contacts/pipeline.tsx', path: '/contacts/pipeline', title: '关系推进看板', classification: 'local-first', sprint: '0137', reads: '域 contacts 的本机卡片；阶段分组使用 shared/compute/contact-pipeline；线上待处理事项仍读 /api/contacts/pipeline', offline: '「截至」；联系人阶段和数量由本机副本计算；待处理事项需要联网' },
   { file: 'app/invitations/[token].tsx', path: '/invitations/:token', title: '关系邀请', classification: 'online-only', reasonCategory: 'server-token', reason: '邀请链接由服务器验证后才能接受', reads: '/api/relationship-communication/invitations/:id', offline: NEEDS_NETWORK },
   { file: 'app/register.tsx', path: '/register', title: '邀请注册', classification: 'online-only', reasonCategory: 'server-token', reason: '邀请码由服务器验证', reads: '/api/events/public/:id、/api/profile', offline: NEEDS_NETWORK },
   { file: 'app/register/[code].tsx', path: '/register/:code', title: '邀请注册（带邀请码）', classification: 'online-only', reasonCategory: 'server-token', reason: '邀请码由服务器验证', reads: '同 /register', offline: NEEDS_NETWORK },
@@ -194,7 +196,7 @@ function cell(value: string): string {
 
 export function renderPageInventoryMarkdown(entries: readonly PageOfflineEntry[]): string {
   const count = (predicate: (entry: PageOfflineEntry) => boolean) => entries.filter(predicate).length;
-  const sprints = ['0108', '0115', '0116', '0117', '0118', '0119', '0125', '0131'] as const;
+  const sprints = ['0108', '0115', '0116', '0117', '0118', '0119', '0125', '0131', '0137'] as const;
   const lines: string[] = [
     '# 全 App 页面离线清单',
     '',

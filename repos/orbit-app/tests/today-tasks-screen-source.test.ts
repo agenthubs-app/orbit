@@ -16,8 +16,9 @@ const tasksSource = readFileSync(
 test("Today is a compact task-first workspace with schedule kept distinct", () => {
   assert.match(todaySource, /title=\{locale\.t\("today\.title"\)\}/u);
   assert.doesNotMatch(todaySource, /eyebrow=/u);
-  // Sprint 0131: offline the placeholder adds 需要联网 (the quick add is off); online it is the add-task label.
-  assert.match(todaySource, /placeholder=\{offline \? `\$\{locale\.t\("today\.addTask"\)\} · \$\{locale\.t\("sync\.needsNetwork"\)\}` : locale\.t\("today\.addTask"\)\}/u);
+  // Sprint 0133: native can queue personal quick-add offline; Web remains online-only.
+  assert.match(todaySource, /editable=\{!offline \|\| offlineWritesAllowed\}/u);
+  assert.match(todaySource, /placeholder=\{offline && !offlineWritesAllowed \?/u);
   assert.match(todaySource, /title=\{locale\.t\("today\.tasks"\)\}/u);
   assert.match(todaySource, /completedLabel/u);
   assert.match(todaySource, /title=\{locale\.t\("today\.suggestions"\)\}/u);

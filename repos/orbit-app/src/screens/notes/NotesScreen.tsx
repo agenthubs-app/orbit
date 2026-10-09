@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
@@ -12,6 +12,7 @@ import { radius, spacing, typography } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 import { OfflineNotice } from "../../components/OfflineNotice";
+import { NotesOfflineNotice } from "./NotesOfflineNotice";
 import { useNotesListSource } from "./notes-source";
 
 type Filter = "all" | "contacts" | "events" | "unlinked";
@@ -53,18 +54,19 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
   const locale = useOrbitLocale();
   const { styles, colors } = useStyles();
   const notes = source.notes;
+  const needsNetwork = source.offline && Platform.OS === "web";
   const groups = useMemo(() => ([
     { value: "today", label: locale.t("notes.groupToday") },
     { value: "week", label: locale.t("notes.groupWeek") },
     { value: "earlier", label: locale.t("notes.groupEarlier") },
   ] as const).map((group) => ({ ...group, notes: notes?.filter((note) => noteGroup(note.updatedAt) === group.value) ?? [] })).filter((group) => group.notes.length), [locale, notes]);
   return <AppScreen title={locale.t("notes.myNotes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("nav.home") })} backLabel={locale.t("nav.home")} onBack={() => router.replace("/home" as Href)} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} />} headerActions={
-    <Pressable accessibilityRole="button" accessibilityLabel={source.offline ? `${locale.t("notes.new")}，${locale.t("sync.needsNetwork")}` : locale.t("notes.new")} accessibilityState={{ disabled: source.offline }} disabled={source.offline} onPress={() => router.push((contactId ? `/notes/new?contactId=${encodeURIComponent(contactId)}` : "/notes/new") as Href)} style={[styles.add, source.offline && styles.addDisabled]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={needsNetwork ? `${locale.t("notes.new")}，${locale.t("sync.needsNetwork")}` : locale.t("notes.new")} accessibilityState={{ disabled: needsNetwork }} disabled={needsNetwork} onPress={() => router.push((contactId ? `/notes/new?contactId=${encodeURIComponent(contactId)}` : "/notes/new") as Href)} style={[styles.add, needsNetwork && styles.addDisabled]}>
       <Ionicons color={colors.onAccent} name="add" size={24} />
     </Pressable>
   }>
     <View style={styles.hero}><Text maxFontSizeMultiplier={2} style={styles.heroTitle}>{locale.t("notes.title")}</Text><Text maxFontSizeMultiplier={2} style={styles.heroCount}>{source.total ?? 0}</Text></View>
-    {source.offline ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : source.syncLabelKey ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t(source.syncLabelKey)}</Text> : null}
+    {source.offline ? Platform.OS === "web" ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : <NotesOfflineNotice lastSyncedAt={source.lastSyncedAt} /> : source.syncLabelKey ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t(source.syncLabelKey)}</Text> : null}
     {contactId ? <View><Text style={styles.sort}>{locale.t("notes.contactScope")}</Text><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.allNotes")} onPress={() => router.push("/notes")} style={styles.more}><Text style={styles.moreText}>{locale.t("notes.allNotes")}</Text></Pressable></View> : null}
     {notes ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t("notes.loadedCount", { loaded: notes.length, total: source.total ?? notes.length })}</Text> : null}
     <View style={styles.searchBox}>
@@ -87,6 +89,7 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
         {note.contactIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accent} name="people-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.peopleCount", { count: note.contactIds.length })}</Text></View> : null}
         {note.eventIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accent} name="calendar-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.eventsCount", { count: note.eventIds.length })}</Text></View> : null}
         {!note.contactIds.length && !note.eventIds.length ? <Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.unlinked")}</Text> : null}
+        {note.localMutationState ? <Text accessibilityLiveRegion="polite" maxFontSizeMultiplier={2} style={styles.mutationStatus}>{locale.t(`notes.outbox${note.localMutationState === "queued" ? "Queued" : note.localMutationState === "conflict" ? "Conflict" : "Failed"}` as MessageKey)}</Text> : null}
       </View>
     </Pressable>)}</View>)}</View>
     {source.hasMore ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.loadMore")} disabled={source.loadingMore} onPress={source.loadMore} style={styles.more}><Text maxFontSizeMultiplier={2} style={styles.moreText}>{locale.t(source.loadingMore ? "notes.loadingMore" : "notes.loadMore")}</Text></Pressable> : null}
@@ -118,6 +121,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   metaRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm, marginTop: 2 },
   metaPill: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.pill, flexDirection: "row", gap: 4, paddingHorizontal: 8, paddingVertical: 4 },
   meta: { color: colors.text3, fontSize: typography.caption, fontWeight: "600" },
+  mutationStatus: { color: colors.accent, fontSize: typography.caption, fontWeight: "800" },
   more: { alignItems: "center", minHeight: 48, justifyContent: "center" },
   moreText: { color: colors.accent, fontSize: typography.small, fontWeight: "700" },
 }));

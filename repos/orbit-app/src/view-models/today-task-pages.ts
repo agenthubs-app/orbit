@@ -9,6 +9,10 @@ import { taskCardSchema, taskPageSchema } from "../api/schema/task-page";
 import { todayTaskSummaryModeSchema } from "../api/schema/today";
 import { localDayStart, shiftCalendarDate } from "../time/date-time";
 import type { OrbitLanguage } from "../api/contract/language";
+import type { TaskItemContract } from "../api/contract/tasks";
+import type { LocalSyncQueuedMutation } from "../data/sync/local-sync-repository";
+import { overlayQueuedTasks } from "./tasks-mirror";
+import { isOfflineTaskCategory } from "../data/sync/task-outbox-mutation";
 import { createTranslator, type MessageKey } from "../i18n/messages";
 import { todayToView, type TodayHomeActionView, type HomeQuestion, type TodayHomeSummaryView, type TodayView } from "./today-tasks";
 
@@ -47,6 +51,11 @@ export interface TodayTaskCardRowView {
   dueLabel: string;
   dueTone: "danger" | "muted" | "normal";
   priority: "normal" | "high";
+  category: TaskCardContract["category"];
+  localMutationState?: "queued" | "conflict" | "failed";
+  plannedDate?: string;
+  dueAt?: string;
+  updatedAt: string;
 }
 
 export interface TodayTaskPageView extends Omit<TodayView, "tasks"> {
@@ -174,7 +183,7 @@ function dueForTask(task: Pick<TaskCardContract, "dueAt" | "plannedDate">, now: 
   return { dueLabel: "", dueTone: "muted" as const };
 }
 
-function todayTaskCardRow(card: TaskCardContract, now: Date, timeZone: string, language: OrbitLanguage): TodayTaskCardRowView {
+function todayTaskCardRow(card: TaskCardContract, now: Date, timeZone: string, language: OrbitLanguage, localMutationState?: TodayTaskCardRowView["localMutationState"]): TodayTaskCardRowView {
   return {
     id: card.id,
     titlePreview: card.titlePreview,
@@ -182,6 +191,56 @@ function todayTaskCardRow(card: TaskCardContract, now: Date, timeZone: string, l
     categoryLabel: categoryLabel(card.category, language),
     ...dueForTask(card, now, timeZone, language),
     priority: card.priority,
+    category: card.category,
+    ...(localMutationState ? { localMutationState } : {}),
+    ...(card.plannedDate ? { plannedDate: card.plannedDate } : {}),
+    ...(card.dueAt ? { dueAt: card.dueAt } : {}),
+    updatedAt: card.updatedAt,
+  };
+}
+
+/** Overlay the task-domain mirror/outbox on today's server/page copy without touching suggestions or schedule. */
+export function overlayTodayTaskPageView(
+  base: TodayTaskPageView | null,
+  canonical: readonly TaskItemContract[],
+  queued: readonly LocalSyncQueuedMutation[],
+  actorId: string,
+  date: string,
+  now = new Date(),
+  timeZone = "Asia/Tokyo",
+  language: OrbitLanguage = "zh",
+): TodayTaskPageView | null {
+  if (!base) return null;
+  const baseIds = new Set(base.tasks.map(task => task.id));
+  const merged = new Map<string, TaskItemContract>(canonical.map(task => [task.id, task]));
+  for (const card of base.tasks) {
+    if (!merged.has(card.id)) merged.set(card.id, {
+      id: card.id, accountId: actorId, ownerUserId: actorId, title: card.titlePreview, status: "open", category: card.category,
+      priority: card.priority, source: "manual", createdAt: card.updatedAt, updatedAt: card.updatedAt,
+      ...(card.locationPreview ? { location: card.locationPreview } : {}), ...(card.plannedDate ? { plannedDate: card.plannedDate } : {}),
+      ...(card.dueAt ? { dueAt: card.dueAt } : {}),
+    });
+  }
+  const projected = overlayQueuedTasks([...merged.values()], queued, actorId);
+  if (!projected) return base;
+  // Sprint 0136: a task changed on this phone joins today's list when it now falls in today's window,
+  // e.g. a server task completed earlier and reopened offline (it was not in the page copy).
+  const rows = projected.filter(task => task.status === "open" && (baseIds.has(task.id) || task.id.startsWith("local:") && task.plannedDate === date ||
+    Boolean(task.localMutationState) && inTodayWindow(task, date, timeZone)))
+    .map(task => todayTaskCardRow({
+      id: task.id, titlePreview: task.title, locationPreview: task.location ?? null, status: task.status,
+      category: task.category, priority: task.priority, plannedDate: task.plannedDate ?? null, dueAt: task.dueAt ?? null,
+      updatedAt: task.updatedAt, relatedContact: null,
+    } as TaskCardContract, now, timeZone, language, task.localMutationState));
+  const originalIds = new Set(base.tasks.map(task => task.id));
+  const removedExisting = base.tasks.filter(task => !rows.some(row => row.id === task.id)).length;
+  const added = rows.filter(row => !originalIds.has(row.id)).length;
+  const totalTaskCount = Math.max(0, base.totalTaskCount - removedExisting + added);
+  return {
+    ...base,
+    tasks: rows,
+    totalTaskCount,
+    summary: createTranslator(language)("todayVm.summary", { tasks: totalTaskCount, schedule: base.schedule.length }),
   };
 }
 
@@ -261,6 +320,80 @@ export function todaySummaryToHomeView(
     openTaskCount: parsed.data.summary.openTaskCount,
     suggestionCount: parsed.data.summary.suggestionCount,
   };
+}
+
+/** Sprint 0136: the server's Today window — planned on or before today, or due before today ends. */
+function inTodayWindow(task: Pick<TaskItemContract, "plannedDate" | "dueAt">, date: string, timeZone: string): boolean {
+  let window: { plannedThrough: string; dueBefore: string };
+  try { window = todayTaskWindow(date, timeZone); } catch { return false; }
+  return Boolean((task.plannedDate && task.plannedDate <= window.plannedThrough) || (task.dueAt && Date.parse(task.dueAt) < Date.parse(window.dueBefore)));
+}
+
+/**
+ * Sprint 0136: the AI-home Today block when neither the server nor today's page copy can
+ * answer (offline before any copy of today was kept): the device task mirror with this
+ * phone's queued changes, in the server's Today window. Schedule and suggestions stay
+ * server-owned, so they are absent rather than guessed.
+ */
+export function deviceTodayTaskSummaryView(
+  canonical: readonly TaskItemContract[],
+  queued: readonly LocalSyncQueuedMutation[],
+  actorId: string,
+  date: string,
+  now = new Date(),
+  timeZone = "Asia/Tokyo",
+  language: OrbitLanguage = "zh",
+): TodaySummaryHomeView | null {
+  const projected = overlayQueuedTasks(canonical.filter(task => task.ownerUserId === actorId), queued, actorId);
+  if (!projected) return null;
+  const today = projected.filter(task => task.status === "open" && inTodayWindow(task, date, timeZone))
+    .sort((a, b) => (a.dueAt ?? a.plannedDate ?? "9999").localeCompare(b.dueAt ?? b.plannedDate ?? "9999") || b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id));
+  return {
+    items: today.slice(0, 3).map((task, index) => taskSummaryAction({ id: task.id, titlePreview: task.title, category: task.category, priority: task.priority,
+      plannedDate: task.plannedDate ?? null, dueAt: task.dueAt ?? null } as TodayTaskActionSummaryContract, now, timeZone, language, index + 1)),
+    openTaskCount: today.length,
+    suggestionCount: 0,
+  };
+}
+
+/** Apply only personal-task queue state to the AI-home Today summary; schedule and suggestions remain server-owned. */
+export function overlayTodayTaskSummaryView(
+  base: TodaySummaryHomeView | null,
+  canonical: readonly TaskItemContract[],
+  queued: readonly LocalSyncQueuedMutation[],
+  actorId: string,
+  date: string,
+  now = new Date(),
+  timeZone = "Asia/Tokyo",
+  language: OrbitLanguage = "zh",
+): TodaySummaryHomeView | null {
+  if (!base) return null;
+  const taskMutations = queued.filter(mutation => mutation.kind === "task" && mutation.domainId === "tasks" && mutation.actorId === actorId);
+  if (taskMutations.length === 0) return base;
+  const projected = overlayQueuedTasks(canonical, queued, actorId);
+  if (!projected) return base;
+  const projectedById = new Map(projected.map(task => [task.id, task]));
+  const affectedIds = new Set(taskMutations.map(mutation => mutation.id));
+  const items = base.items.flatMap(item => {
+    if (item.kind !== "task" || !affectedIds.has(item.id)) return [item];
+    const task = projectedById.get(item.id);
+    if (!task || task.status !== "open") return [];
+    return [{ ...item, title: task.title, context: [categoryLabel(task.category, language), dueForTask({ plannedDate: task.plannedDate ?? null, dueAt: task.dueAt ?? null }, now, timeZone, language).dueLabel].filter(Boolean).join(" · ") }];
+  });
+  const existing = new Set(base.items.filter(item => item.kind === "task").map(item => item.id));
+  const localTasks = projected.filter(task => task.id.startsWith("local:") && task.status === "open" && isOfflineTaskCategory(task.category) && task.plannedDate === date && !existing.has(task.id));
+  for (const task of localTasks) items.push({
+    context: [categoryLabel(task.category, language), dueForTask({ plannedDate: task.plannedDate ?? null, dueAt: task.dueAt ?? null }, now, timeZone, language).dueLabel].filter(Boolean).join(" · "),
+    href: `/tasks/${encodeURIComponent(task.id)}`,
+    id: task.id,
+    kind: "task",
+    title: task.title,
+    index: items.length + 1,
+  });
+  const currentOpen = new Set(canonical.filter(task => task.status === "open" && task.ownerUserId === actorId).map(task => task.id));
+  const projectedOpen = new Set(projected.filter(task => task.status === "open").map(task => task.id));
+  const countDelta = [...projectedOpen].filter(id => !currentOpen.has(id)).length - [...currentOpen].filter(id => !projectedOpen.has(id)).length;
+  return { ...base, items, openTaskCount: Math.max(0, base.openTaskCount + countDelta) };
 }
 
 const defaultQuestions = (language: OrbitLanguage): readonly HomeQuestion[] => [

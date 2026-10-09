@@ -2,6 +2,10 @@ import type { SyncRecord } from "../../api/contract/sync";
 import { mirrorFreshness } from "../../data/sync/mirror-freshness";
 import type { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { localScheduleEvents } from "../../view-models/event-day-local";
+import { readTaskListItems } from "../../view-models/task-list-scope";
+import { overlayQueuedTasks } from "../../view-models/tasks-mirror";
+import type { LocalSyncQueuedMutation } from "../../data/sync/local-sync-repository";
+import { overlayQueuedScheduleItems } from "../../view-models/personal-schedule-overlay";
 
 /**
  * Sprint 0115 (coordinator item from 0130): the calendar page reads the device
@@ -34,17 +38,17 @@ type Synced = ReturnType<typeof useSyncedCollection<Record<string, unknown>>>;
 /** The page read at most four open tasks (the previous /api/tasks/page?status=open&scope=all&limit=4). */
 const CALENDAR_TASK_LIMIT = 4;
 
-export function localScheduleTasks(records: readonly SyncRecord[]): { tasks: Record<string, unknown>[] } {
-  const open = records
-    .filter((record) => record.deletedAt === null && record.payload && typeof record.payload === "object")
-    .map((record) => record.payload as Record<string, unknown>)
-    .filter((task) => task.status === "open" && typeof task.id === "string" && typeof task.title === "string");
+export function localScheduleTasks(records: readonly SyncRecord[], actorId = "", queued: readonly LocalSyncQueuedMutation[] = []): { tasks: Record<string, unknown>[] } {
+  const canonical = readTaskListItems({ tasks: records.filter(record => record.deletedAt === null).map(record => record.payload) }, actorId);
+  const projected = canonical ? overlayQueuedTasks(canonical, queued, actorId) : null;
+  const open = (projected ?? [])
+    .filter((task) => task.status === "open");
   const due = (task: Record<string, unknown>) => {
     const value = typeof task.dueAt === "string" ? Date.parse(task.dueAt) : typeof task.plannedDate === "string" ? Date.parse(`${task.plannedDate}T00:00:00Z`) : Number.NaN;
     return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
   };
   return {
-    tasks: open.sort((left, right) => due(left) - due(right) || String(left.id).localeCompare(String(right.id))).slice(0, CALENDAR_TASK_LIMIT).map((task) => ({
+    tasks: open.sort((left, right) => due(left as unknown as Record<string, unknown>) - due(right as unknown as Record<string, unknown>) || String(left.id).localeCompare(String(right.id))).slice(0, CALENDAR_TASK_LIMIT).map((task) => ({
       id: task.id, taskId: task.id, title: task.title, status: task.status, category: task.category, priority: task.priority,
       plannedDate: task.plannedDate ?? undefined, dueAt: task.dueAt ?? undefined, updatedAt: task.updatedAt,
       location: task.location ?? undefined, relatedContactId: task.relatedContactId ?? undefined,
@@ -52,12 +56,12 @@ export function localScheduleTasks(records: readonly SyncRecord[]): { tasks: Rec
   };
 }
 
-export function localScheduleItems(records: readonly SyncRecord[]): { scheduleItems: Record<string, unknown>[] } {
-  return {
-    scheduleItems: records
-      .filter((record) => record.deletedAt === null && record.payload && typeof record.payload === "object")
-      .map((record) => record.payload as Record<string, unknown>),
-  };
+export function localScheduleItems(records: readonly SyncRecord[], actorId = "", queued: readonly LocalSyncQueuedMutation[] = []): { scheduleItems: Record<string, unknown>[] } {
+  const payloads = records
+    .filter((record) => record.deletedAt === null && record.payload && typeof record.payload === "object")
+    .map((record) => record.payload as Record<string, unknown>);
+  // Sprint 0134: personal schedules changed on this device show their queued version, marked.
+  return { scheduleItems: actorId && queued.length ? overlayQueuedScheduleItems(payloads, queued, actorId) : payloads };
 }
 
 function part(state: Synced, ready: boolean, data: (records: readonly SyncRecord[]) => unknown): CalendarPart {
@@ -67,14 +71,14 @@ function part(state: Synced, ready: boolean, data: (records: readonly SyncRecord
   return { kind: "loading", data: null, message: "" };
 }
 
-export function mirrorScheduleCalendar(input: { tasks: Synced; schedule: Synced; events: Synced; ready: boolean; refresh(): void }): ScheduleCalendarSource {
+export function mirrorScheduleCalendar(input: { tasks: Synced; schedule: Synced; events: Synced; ready: boolean; actorId: string; queued?: readonly LocalSyncQueuedMutation[]; scheduleQueued?: readonly LocalSyncQueuedMutation[]; refresh(): void }): ScheduleCalendarSource {
   const states = [input.tasks, input.schedule, input.events];
   const freshness = states.map((state) => mirrorFreshness(state, input.ready));
   const offline = freshness.some((entry) => entry.offline);
   const synced = freshness.map((entry) => entry.lastSyncedAt).filter((value): value is string => value !== null).sort();
   return {
-    tasks: part(input.tasks, input.ready, localScheduleTasks),
-    scheduleItems: part(input.schedule, input.ready, localScheduleItems),
+    tasks: part(input.tasks, input.ready, records => localScheduleTasks(records, input.actorId, input.queued)),
+    scheduleItems: part(input.schedule, input.ready, records => localScheduleItems(records, input.actorId, input.scheduleQueued)),
     events: part(input.events, input.ready, localScheduleEvents),
     refreshing: freshness.some((entry) => entry.refreshing),
     // The oldest copy decides what "as of" can honestly say.

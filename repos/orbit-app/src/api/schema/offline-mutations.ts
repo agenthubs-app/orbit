@@ -111,7 +111,7 @@ function parsePatch(kind: z.infer<typeof base>["kind"], operation: z.infer<typeo
 export function parseOfflineMutation(input: unknown) {
   const mutation = base.parse(input);
   const allowed: Record<typeof mutation.kind, readonly typeof mutation.operation[]> = {
-    note: ["create", "update", "delete"],
+    note: ["create", "update"],
     task: ["create", "update", "complete", "reopen", "cancel", "delete"],
     relationship_followup: ["update", "complete", "reopen", "cancel", "delete"],
     personal_schedule: ["create", "update", "delete"],
@@ -119,7 +119,8 @@ export function parseOfflineMutation(input: unknown) {
   if (!allowed[mutation.kind].includes(mutation.operation)) throw new Error("mutation-operation-denied");
   if (mutation.operation === "create") {
     if (mutation.baseRevision !== null || !localEntityId.test(mutation.entityId)) throw new Error("mutation-create-identity-invalid");
-  } else if (mutation.baseRevision === null || mutation.baseRevision.trim().length === 0) {
+  } else if (!(mutation.kind === "note" && localEntityId.test(mutation.entityId) && mutation.baseRevision === null) &&
+      (mutation.baseRevision === null || mutation.baseRevision.trim().length === 0)) {
     throw new Error("mutation-base-revision-required");
   }
   return { ...mutation, patch: parsePatch(mutation.kind, mutation.operation, mutation.patch) };

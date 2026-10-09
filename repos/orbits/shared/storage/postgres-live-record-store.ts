@@ -350,7 +350,12 @@ export function createPostgresLiveRecordStore<
   return {
     async updateRecordIfCurrent(record, expected) {
       if ((record.userId ?? null) !== expected.userId ||
-          !(Date.parse(record.updatedAt) > Date.parse(expected.updatedAt))) return null;
+          (!expected.expectedPayloadVersion && !(Date.parse(record.updatedAt) > Date.parse(expected.updatedAt)))) return null;
+      if (expected.expectedPayloadVersion &&
+          (expected.expectedPayloadVersion.path.length === 0 ||
+            !Number.isSafeInteger(expected.expectedPayloadVersion.value) || expected.expectedPayloadVersion.value < 1)) {
+        throw new RangeError("Payload version precondition requires a non-empty JSON path and positive integer value.");
+      }
       const result = await client.query<PostgresLiveRecordRow>(`
         ${lockedWith(record.collectionName)}update orbit_records set
           source_type=$5, source_id=$6, source_label=$7, provider=$8,
@@ -362,8 +367,14 @@ export function createPostgresLiveRecordStore<
           and user_id is not distinct from $4::text
           and updated_at=$20::timestamptz and lifecycle_state <> 'deleted'
           and created_at=$17::timestamptz
+          and ($21::text is null or payload #>> $22::text[] = $21::text)
         returning ${recordColumns}
-      `, [...recordValues(record), expected.updatedAt]);
+      `, [
+        ...recordValues(record),
+        expected.updatedAt,
+        expected.expectedPayloadVersion ? String(expected.expectedPayloadVersion.value) : null,
+        expected.expectedPayloadVersion ? [...expected.expectedPayloadVersion.path] : null,
+      ]);
       return result.rows[0] ? rowToRecord<TPayload>(result.rows[0]) : null;
     },
     async deleteRecord(

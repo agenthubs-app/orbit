@@ -180,7 +180,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       if (id === "react") return react;
       if (id === "react/jsx-runtime") return { jsx: (type: unknown, props: unknown) => ({ type, props }), jsxs: (type: unknown, props: unknown) => ({ type, props }) };
       if (id === "react-native") return {
-        Platform: { OS: "ios" }, StyleSheet: { create: (value: unknown) => value }, Pressable: "Pressable", Text: "Text", View: "View", useColorScheme: () => "light",
+        Platform: { OS: "ios" }, Alert: { alert() {} }, StyleSheet: { create: (value: unknown) => value }, Pressable: "Pressable", Text: "Text", View: "View", useColorScheme: () => "light",
         AppState: { addEventListener(_event: string, listener: (state: string) => void) {
           // The auth provider's own session re-check (0127) is not a notification listener.
           const listeners = absolute.endsWith("AuthSessionProvider.tsx") ? authForegroundListeners : foregroundListeners;
@@ -210,6 +210,10 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       };
       if (id === "@expo/vector-icons") return { Ionicons: "Icon" };
       if (id.endsWith("/AuthSessionProvider")) return { useOrbitAuthSession: () => auth };
+      if (id.endsWith("/useSyncedCollection")) return { useSyncCoordinatorSession: () => ({
+        isCurrent: () => true,
+        synchronize: () => ({ promise: Promise.resolve(null) }),
+      }) };
       if (id.endsWith("/ApiBaseUrlProvider")) return { useOrbitApiBaseUrl: () => ({ baseUrl: "http://localhost", ready: true }) };
       if (id.endsWith("/useOrbitApiClient")) return { useOrbitApiClient: () => {
         if (!scopedClients.has(auth.cookieHeader)) scopedClients.set(auth.cookieHeader, Object.create(api));
@@ -243,12 +247,18 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
           user: { id: "actor-b", email: "actor-b@example.test", name: "Actor B" }
         } }),
         fetchMobileAuthProviders: async () => ({ success: true, data: { providers: [] } }),
+        fetchMobileAccountStatus: async () => ({ success: false, error: { status: 401 } }),
       };
       if (id === "./auth-session") return { signOutOrbitSession: async () => {
         calls.push("logout");
         return input.failLogout ? { success: false, error: { message: "logout unavailable" } } : { success: true };
       } };
-      if (id.endsWith("/sync-lifecycle")) return { syncLifecycle: { suspendScope: async () => { calls.push("sync-scope-suspend"); return true; }, setScope: async () => { calls.push("sync-scope-change"); return true; } } };
+      if (id.endsWith("/sync-lifecycle")) return { syncLifecycle: {
+        suspendScope: async () => { calls.push("sync-scope-suspend"); return true; },
+        setScope: async () => { calls.push("sync-scope-change"); return true; },
+        pendingWriteSummary: async () => ({ currentAccount: 0, otherAccounts: 0 }),
+        withDatabase: async (_scope: unknown, callback: (database: { get: () => Promise<{ count: number }> }) => unknown) => callback({ get: async () => ({ count: 0 }) }),
+      } };
       if (id.endsWith("/OrbitLocaleContext")) return {
         useOrbitLocale: () => ({
           choice: "system",
@@ -272,7 +282,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       return require(id);
     };
     runInNewContext("(function(require,module,exports){" + code + "\n})", {
-      console: { ...console, warn: (...args: unknown[]) => warnings.push(args) }, URL, process: { env: {} },
+      console: { ...console, warn: (...args: unknown[]) => warnings.push(args) }, URL, process: { env: {} }, setInterval, clearInterval,
     })(nativeRequire, module, module.exports);
     cache.set(absolute, module.exports);
     return module.exports;
@@ -394,7 +404,9 @@ test("failed logout preserves auth and restores the canonical push registry and 
       && app.calls.filter((call) => call.startsWith("POST-start:")).length >= postsBeforeForeground + 1,
     "failed logout left the retained account's notification sessions stopped");
     assert.equal(app.tokenListeners.size, 1);
-    assert.equal(app.foregroundListeners.size, 2);
+    // Sprint 0136: the outbox upload entry points listen for the foreground on their own (outbox-upload-triggers),
+    // next to the reminder sync and the push lifecycle: three listeners, each registered once.
+    assert.equal(app.foregroundListeners.size, 3);
   } finally { app.close(); }
 });
 

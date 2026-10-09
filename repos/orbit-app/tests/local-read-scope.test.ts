@@ -83,7 +83,7 @@ test("visibility deletion hides local overlay, removes its index/assets, and lea
   await db.run("UPDATE sync_records SET sync_state='pending' WHERE domain_id='notes'");
   await db.run("INSERT INTO local_read_index VALUES(?,?,?,?,?)", ["w", "notes", "e1", "r", "private"]);
   await db.run("INSERT INTO local_read_assets VALUES(?,?,?,?,?,?)", ["w", "notes", "e1", "asset", "r", "{}"]);
-  await db.run("INSERT INTO sync_outbox VALUES(?,?,?,?,?,?,?,?,?,?,?)", ["m", "w", "note", "r", "update", ' { "ink": [1,2] } ', "r1", "2026-09-16T00:00:00Z", 2, null, "CONFLICT"]);
+  await db.run("INSERT INTO sync_outbox(mutation_id, workspace_id, domain_id, kind, record_id, operation, state, patch_json, base_revision, created_at, retry_count, last_error_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", ["m", "w", "notes", "note", "r", "update", "conflict", ' { "ink": [1,2] } ', "r1", "2026-09-16T00:00:00Z", 2, "CONFLICT"]);
   const outbox = await db.all("SELECT * FROM sync_outbox");
   const payload = (await db.get<{ payload_json: string }>("SELECT payload_json FROM sync_records WHERE domain_id='notes'"))?.payload_json;
   await repo.applyDomainPage(scope, page({ changes: [{ id: "r", revision: "r2", operation: "visibility-delete", payload: null }] }));

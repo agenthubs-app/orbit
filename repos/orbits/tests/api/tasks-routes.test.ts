@@ -218,9 +218,25 @@ test("maps stale updates to conflict and soft deletes with retained history", as
   );
   assert.equal(stale.status, 409);
 
+  const staleDelete = await detail.DELETE(
+    new Request(`https://orbit.local/api/tasks/${created.id}`, {
+      body: JSON.stringify({
+        expectedUpdatedAt: "2026-01-01T00:00:00.000Z",
+        idempotencyKey: "api:delete:passport:stale",
+      }),
+      method: "DELETE",
+    }),
+    context,
+  );
+  assert.equal(staleDelete.status, 409);
+  assert.equal((await responseData(await collection.GET(new Request("https://orbit.local/api/tasks")))).data.tasks.length, 1);
+
   const deleted = await detail.DELETE(
     new Request(`https://orbit.local/api/tasks/${created.id}`, {
-      body: JSON.stringify({ idempotencyKey: "api:delete:passport" }),
+      body: JSON.stringify({
+        expectedUpdatedAt: created.updatedAt,
+        idempotencyKey: "api:delete:passport",
+      }),
       method: "DELETE",
     }),
     context,

@@ -231,7 +231,7 @@ type ContactMergeApplyRequest =
       success: false;
     };
 
-type ContactAcquisitionRequest =
+export type ContactAcquisitionRequest =
   | {
       request: {
         body: Record<string, unknown>;

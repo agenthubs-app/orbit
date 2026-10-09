@@ -65,7 +65,7 @@ test("Orbit AI composer menu carries card scanning and a new chat", () => {
   assert.match(screenSource, /ComposerMenuSheet/u);
   assert.match(screenSource, /locale\.t\("ai\.scanCard"\)/u);
   assert.match(screenSource, /locale\.t\("ai\.newChat"\)/u);
-  assert.match(screenSource, /onScanCard=\{\(\) => openCapability\("\/contacts\/new" as Href\)\}/u);
+  assert.match(screenSource, /onScanCard=\{\(\) => openCapability\("\/contacts\/new\/scan" as Href\)\}/u);
 });
 
 test("Orbit AI home uses a ChatGPT-style drawer for shortcuts and history", () => {

@@ -15,7 +15,7 @@ export interface ContactCardDTO {
    * W0051：该联系人洞察「和你目标的关系」一句，中英各截 60 字。只在 Web 列表请求（带 `insights=1`）时附带；
    * App 与离线同步不带，旧部署可省略。`nextActionPreview` 语义不变。
    */
-  insightPreview?: { zh: string; en: string };
+  insightPreview?: { zh: string; en: string } | undefined;
 }
 
 export interface ContactCardPageDTO {

@@ -19,6 +19,18 @@ test("relationship progress reads one bounded page resource and keeps the task-f
   assert.doesNotMatch(source, /contactsPipelineToView|\.slice\(0,\s*3\)/);
 });
 
+test("relationship progress can render its account-scoped device mirror when the page read is offline", () => {
+  assert.match(source, /useLocalContacts/);
+  assert.match(source, /contactPipelineLocalProjection/);
+  assert.match(source, /OfflineNotice/);
+  assert.match(source, /lastSyncedAt/);
+});
+
+test("native pipeline uses a readable mirror before requesting the network while phoneweb keeps server reads", () => {
+  assert.match(source, /Platform\.OS !== "web"/);
+  assert.match(source, /useContactPipelinePages\(selectedStageId, !nativeMirror\)/);
+});
+
 test("relationship progress has no legacy preview write path and retains task navigation", () => {
   assert.doesNotMatch(source, /ActionSheetIOS|connectionStagePath|client\.patch|pendingStageActionKey/);
   assert.match(source, /\/tasks\?scope=relationship/);

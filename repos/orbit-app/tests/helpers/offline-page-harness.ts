@@ -27,11 +27,12 @@ const reachabilityPath = resolve(root, "src/api/server-reachability.ts");
 
 const fixture = `
 import React from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { serverReachability } from ${JSON.stringify(reachabilityPath)};
 export const state = window.fixture = { requests: [], navigation: [], syncs: 0, saves: [], online: true, syncStatus: "fresh", records: {}, copies: {}, responses: {}, params: {}, ...window.initialFixture };
 const base = "http://fixture";
 if (state.startUnreachable) serverReachability.markUnreachable(base);
+if (state.startReachable) serverReachability.markReachable(base);
 export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const useGlobalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => window.fixture.pathname ?? "/";
@@ -60,7 +61,12 @@ function answer(method, path) {
 }
 const client = {
   baseUrl: base,
-  async get(path) { return answer("get", path); },
+  async get(path) {
+    if (path === "/api/health" && state.healthDelayMs) await new Promise(resolve => setTimeout(resolve, state.healthDelayMs));
+    const result = answer("get", path);
+    if (path === "/api/health") state.healthResolved = true;
+    return result;
+  },
   async post(path) { return answer("post", path); },
   async patch(path) { return answer("patch", path); },
   async put(path) { return answer("put", path); },
@@ -83,14 +89,57 @@ export const useApiResource = (path, isEmpty, options) => {
   }, [path, tick, options?.enabled]);
   return { ...result, refreshing: false, refresh() { setTick((value) => value + 1); } };
 };
+// Like the real hook, the same mirror rows keep the same array between renders (sprint 0134: editors key effects on it).
+const recordCache = new Map();
+// A kind the fixture does not seed reads one stable empty array (the real hook keeps its snapshot between renders).
+const NO_RECORDS = [];
+const mirrorRecords = (kind) => {
+  const source = state.records[kind] ?? NO_RECORDS;
+  const cached = recordCache.get(kind);
+  if (cached && cached.source === source) return cached.records;
+  const records = source.map((payload, index) => ({ id: payload.id ?? payload.eventId ?? payload.conversationId ?? String(index), kind, workspaceId: "workspace:one", revision: "1", updatedAt: "2026-09-28T01:00:00.000Z", deletedAt: null, payload }));
+  recordCache.set(kind, { source, records });
+  return records;
+};
 export const useSyncedCollection = ({ kind }) => ({
   status: state.syncStatus, error: state.syncStatus === "stale" ? "Network request failed" : null,
   lastSyncedAt: "2026-09-28T01:30:00.000Z", workspaceId: "workspace:one",
-  records: (state.records[kind] ?? []).map((payload, index) => ({ id: payload.id ?? payload.eventId ?? payload.conversationId ?? String(index), kind, workspaceId: "workspace:one", revision: "1", updatedAt: "2026-09-28T01:00:00.000Z", deletedAt: null, payload })),
-  refresh: async () => { state.syncs++; return null; },
-  invalidate: async () => null,
-  currentSession: () => null,
+  records: mirrorRecords(kind),
+  refresh: refreshMirror,
+  invalidate: invalidateMirror,
+  currentSession,
 });
+async function refreshMirror() { state.syncs++; return null; }
+async function invalidateMirror() { return null; }
+function currentSession() { return state.taskOutbox || state.scheduleOutbox ? taskOutboxSession : null; }
+// Sprint 0133: an opt-in device outbox session (fixture taskOutbox: true) records offline task enqueues.
+// Sprint 0134: scheduleOutbox: true adds schedule enqueues and conflict resolution; queued rows are read per kind.
+const queuedRow = (mutation) => ({ ...mutation, actorId: "account:one", workspaceId: "workspace:one", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null });
+const taskOutboxSession = {
+  async readOutboxOverlay(kind) { return { queuedMutations: kind === "personal_schedule" ? state.queuedSchedules ?? [] : kind === "note" ? state.queuedNotes ?? [] : state.queuedTasks ?? [] }; },
+  async enqueueOfflineScheduleMutation(mutation) {
+    state.enqueuedSchedules = [...(state.enqueuedSchedules ?? []), mutation];
+    state.queuedSchedules = [...(state.queuedSchedules ?? []), queuedRow(mutation)];
+  },
+  async resolveScheduleConflict(input) {
+    state.resolvedSchedules = [...(state.resolvedSchedules ?? []), input];
+    state.queuedSchedules = (state.queuedSchedules ?? []).filter((row) => row.mutationId !== input.mutationId).concat(input.replacement ? [queuedRow(input.replacement)] : []);
+  },
+  // Sprint 0136: 「未能保存 · 重试 / 放弃」.
+  async retryOfflineWrite(kind, mutationId) {
+    state.settledWrites = [...(state.settledWrites ?? []), ["retry", kind, mutationId]];
+    state.queuedSchedules = (state.queuedSchedules ?? []).map((row) => row.mutationId === mutationId ? { ...row, state: "queued", lastErrorCode: "USER_RETRY" } : row);
+  },
+  async discardOfflineWrite(kind, mutationId) {
+    state.settledWrites = [...(state.settledWrites ?? []), ["discard", kind, mutationId]];
+    state.queuedSchedules = (state.queuedSchedules ?? []).filter((row) => row.mutationId !== mutationId);
+    return 1;
+  },
+  async enqueueOfflineTaskMutation(mutation) {
+    state.enqueued = [...(state.enqueued ?? []), mutation];
+    state.queuedTasks = [...(state.queuedTasks ?? []), { ...mutation, actorId: "account:one", workspaceId: "workspace:one", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null }];
+  },
+};
 const session = {
   isCurrent: () => true,
   async readPageCopy(id, variant) { if (state.noMirror) return null; return state.copies[id + "|" + variant] ?? null; },
@@ -100,11 +149,19 @@ const session = {
 export const useSyncCoordinatorSession = () => { const [value, setValue] = React.useState(null); React.useEffect(() => { setValue(session); }, []); return value; };
 const authSession = { ready: true, signedIn: true, accountId: "account:one", actorId: "account:one", cookieHeader: "", user: { id: "account:one", name: "QA One", email: "qa1@example.test" }, notificationSessionRevision: 0 };
 export const useOrbitAuthSession = () => authSession;
-export const useOrbitApiBaseUrl = () => ({ baseUrl: base, ready: true });
+export const useOrbitApiBaseUrl = () => ({ baseUrl: base, ready: state.apiBaseReady ?? true });
 const memory = new Map();
 export default { getItem: async key => memory.get(key) ?? null, setItem: async (key, value) => { memory.set(key, value); }, removeItem: async key => { memory.delete(key); } };
-export const SafeAreaView = ({ children, edges, ...props }) => <View {...props}>{children}</View>;
-export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
+export const SafeAreaView = ({ children, edges, style, ...props }) => {
+  const includesTop = Array.isArray(edges)
+    ? edges.includes("top")
+    : edges !== null && typeof edges === "object" && Reflect.get(edges, "top") !== undefined && Reflect.get(edges, "top") !== "off";
+  const inset = includesTop ? window.initialFixture?.safeAreaTop ?? 0 : 0;
+  const flattened = inset ? StyleSheet.flatten(style) ?? {} : null;
+  const adjusted = flattened ? { ...flattened, paddingTop: (flattened.paddingTop ?? 0) + inset } : style;
+  return <View {...props} style={adjusted}>{children}</View>;
+};
+export const useSafeAreaInsets = () => ({ top: window.initialFixture?.safeAreaTop ?? 0, bottom: 0, left: 0, right: 0 });
 export const SafeAreaProvider = ({ children }) => children;
 `;
 
@@ -137,7 +194,7 @@ export async function startOfflinePageHarness(screens: readonly HarnessScreen[],
         plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|^expo-router\/react-navigation$|\/(useApiResource|useOrbitApiClient|useHomeDashboardClient|useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider|native-notifications)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "offline-page" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$|^react-native-svg$|^expo-crypto$|^expo-camera$|^expo-image-picker$|^expo-document-picker$|^expo-localization$|^expo-haptics$|^expo-clipboard$|^expo-linking$/ }, () => ({ path: "icons", namespace: "offline-page" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "offline-page" }, () => ({ contents: fixture, loader: "jsx", resolveDir: root }));
-        plugin.onLoad({ filter: /^native$/, namespace: "offline-page" }, () => ({ contents: `export * from "react-native-web";`, loader: "js", resolveDir: root }));
+        plugin.onLoad({ filter: /^native$/, namespace: "offline-page" }, () => ({ contents: `import { Platform as WebPlatform } from "react-native-web"; export * from "react-native-web"; const os = window.initialFixture?.platform; export const Platform = os ? { ...WebPlatform, OS: os, select: (options) => options[os] ?? options.native ?? options.default } : WebPlatform;`, loader: "js", resolveDir: root }));
         plugin.onLoad({ filter: /^icons$/, namespace: "offline-page" }, () => ({ contents: STUB, loader: "js" }));
       },
     }],
@@ -172,3 +229,6 @@ export const fixtureValue = <T>(page: Page, key: string) => page.evaluate((name)
 export const requestsOf = (page: Page) => fixtureValue<string[]>(page, "requests");
 export const OFFLINE_BANNER = /^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/;
 export const UNAVAILABLE_BANNER = /^服务暂时不可用 · 显示截至 .+ 的内容；新建和编辑需要联网$/;
+/** Sprint 0136: on the phone, a page whose own writes queue says so instead of 「新建和编辑需要联网」. */
+export const TASKS_OFFLINE_BANNER = /^无法连接 · 显示截至 .+ 的内容；个人待办的修改会在联网后同步，跟进、会面和活动待办需要联网$/;
+export const SCHEDULE_OFFLINE_BANNER = /^无法连接 · 显示截至 .+ 的日程；个人日程的修改会在联网后同步，重复日程和约见需要联网$/;

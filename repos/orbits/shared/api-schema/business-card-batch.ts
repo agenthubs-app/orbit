@@ -15,7 +15,7 @@ const REGION_CITY_MAX_LENGTH = 64;
 
 /** 读取识别结果里的职级与地区：不合法清成 null（国家码不合法时城市一起清空），不让整条响应失败。 */
 function sanitizeExtractionEnrichment(seniorityLevel: unknown, regionCountryCode: unknown, regionCity: unknown): {
-  seniorityLevel: Contract.BusinessCardStructuredExtractionContract["seniorityLevel"];
+  seniorityLevel: NonNullable<Contract.BusinessCardStructuredExtractionContract["seniorityLevel"]> | null;
   regionCountryCode: string | null;
   regionCity: string | null;
 } {
@@ -23,7 +23,7 @@ function sanitizeExtractionEnrichment(seniorityLevel: unknown, regionCountryCode
   const city = country && typeof regionCity === "string" && regionCity.trim() && regionCity.length <= REGION_CITY_MAX_LENGTH ? regionCity : null;
   return {
     seniorityLevel: (SENIORITY_LEVEL_CODES as readonly unknown[]).includes(seniorityLevel)
-      ? seniorityLevel as Contract.BusinessCardStructuredExtractionContract["seniorityLevel"]
+      ? seniorityLevel as NonNullable<Contract.BusinessCardStructuredExtractionContract["seniorityLevel"]>
       : null,
     regionCountryCode: country,
     regionCity: city,
@@ -274,6 +274,7 @@ export const ingestItemSchema: z.ZodType<Contract.IngestItemContract> = z.prepro
   usage: businessCardCloudOcrUsageSchema.nullable(),
   confirmedContactId: identity.nullable(),
   confirmedFieldSources: ingestCardFieldSourcesSchema.nullable().optional(),
+  cardIdentityExplicit: z.boolean().optional(),
   attemptCount: count,
   nextRetryAt: timestamp.nullable(),
   leaseExpiresAt: timestamp.nullable(),

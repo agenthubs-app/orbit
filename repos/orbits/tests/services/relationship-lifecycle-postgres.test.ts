@@ -11,6 +11,7 @@ import { createConfiguredTransactionalPostgresRuntime, createTransactionalPostgr
 import { createConfiguredRelationshipLifecycleService } from "../../features/connections/lifecycle/service-factory";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { executeActorScopedQuery } from "../../features/orbit-ai/data-query/query-service";
+import { cleanupTestSchema } from "../support/cleanup-test-schema";
 
 const now = "2026-08-21T01:00:00.000Z";
 const workspaceId = "workspace:lifecycle-test";
@@ -22,6 +23,32 @@ const command = { actorId, connectionId, expectedVersion: 3, idempotencyKey: "ke
 const mutation = { actorId, connectionId, expectedVersion: 3, idempotencyKey: "key:1", command: "change_stage" as const, requestHash: "hash:1" };
 const databaseUrl = process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL;
 const databaseTest = { skip: databaseUrl ? false : "ORBIT_LIFECYCLE_TEST_DATABASE_URL is not configured" };
+
+test("schema cleanup still drops its private schema and closes admin when client close fails", async () => {
+  const calls: string[] = [];
+  const closeError = new Error("client close failed");
+  await assert.rejects(cleanupTestSchema({
+    async closeClient() { calls.push("client"); throw closeError; },
+    async dropSchema() { calls.push("drop"); },
+    async closeAdmin() { calls.push("admin"); },
+  }), (error) => error === closeError);
+  assert.deepEqual(calls, ["client", "drop", "admin"]);
+});
+
+test("schema cleanup preserves every failure after attempting all cleanup steps", async () => {
+  const errors = [new Error("client close failed"), new Error("schema drop failed"), new Error("admin close failed")];
+  const calls: string[] = [];
+  await assert.rejects(cleanupTestSchema({
+    async closeClient() { calls.push("client"); throw errors[0]; },
+    async dropSchema() { calls.push("drop"); throw errors[1]; },
+    async closeAdmin() { calls.push("admin"); throw errors[2]; },
+  }), (error) => {
+    assert.ok(error instanceof AggregateError);
+    assert.deepEqual(error.errors, errors);
+    return true;
+  });
+  assert.deepEqual(calls, ["client", "drop", "admin"]);
+});
 
 test("followup detail refuses an owned task whose associated account contradicts its owner", databaseTest, async () => withDatabase(async ({ repo, insert }) => {
   await insert("tasks", "task:conflicting-account", actorId, {
@@ -93,9 +120,11 @@ async function withDatabase(operation: (fixture: {
     await insert("connections", connectionId, actorId, connectionPayload);
     await operation({ client, repo: createPostgresRelationshipLifecycleRepository({ client, workspaceId }), insert });
   } finally {
-    await client.close();
-    await admin.query(`drop schema if exists ${schema} cascade`);
-    await admin.end();
+    await cleanupTestSchema({
+      closeClient: () => client.close(),
+      dropSchema: () => admin.query(`drop schema if exists ${schema} cascade`),
+      closeAdmin: () => admin.end(),
+    });
   }
 }
 
@@ -317,6 +346,15 @@ test("PostgreSQL normalizes valid stored timestamps to UTC before persisting rec
   const first = await repo.mutate(mutation, (snapshot) => applyRelationshipStageCommand({ command, current: snapshot.connection, tasks: snapshot.tasks, now }));
   assert.equal(first.snapshot.connection.createdAt, "2026-08-21T01:00:00.000Z");
   assert.deepEqual((await repo.mutate(mutation, () => { throw new Error("must replay"); })).snapshot, first.snapshot);
+}));
+
+test("PostgreSQL lifecycle reads normalize stored microsecond timestamps to milliseconds", databaseTest, async () => withDatabase(async ({ client, repo }) => {
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload || $1::jsonb where collection_name='connections'", [{ createdAt: "2026-08-21T01:00:00.123456Z", updatedAt: "2026-08-21T10:00:00.654321+09:00" }]);
+  const snapshot = await repo.read(actorId, connectionId);
+  assert.equal(snapshot?.connection.createdAt, "2026-08-21T01:00:00.123Z");
+  assert.equal(snapshot?.connection.updatedAt, "2026-08-21T01:00:00.654Z");
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload || $1::jsonb where collection_name='connections'", [{ createdAt: "2026-02-30T01:00:00.123456Z" }]);
+  await assert.rejects(repo.read(actorId, connectionId), { code: "INVALID_TRANSITION" });
 }));
 
 test("configured lifecycle service persists to the configured workspace and replays through a cold service", databaseTest, async () => withDatabase(async ({ client, repo }) => {
