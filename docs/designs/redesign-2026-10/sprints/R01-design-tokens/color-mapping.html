@@ -38,12 +38,11 @@ code{font-family:var(--num);font-size:12.5px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <div class="wrap">
-<header><div><span class="status">待产品负责人确认 · RD-07</span><h1 style="margin-top:8px">R01 旧颜色 → 新颜色</h1><p class="sub">UI 换新：旧颜色在新设计里有对应的就用新的，没有的按新风格补。每行色块：旧 → 新浅色、新深色；带「Aa」的色块把文字色放在它通常所在的底色上，看是否清楚。规则见同目录 color-mapping.md。</p></div>
+<header><div><span class="status">待产品负责人确认 · RD-07</span><h1 style="margin-top:8px">R01 旧颜色 → 新颜色</h1><p class="sub">UI 换新：新 token 覆盖旧 token，旧名字不留；本页只含 token 层，0918 写死颜色随功能 Sprint 整屏重写。每行色块：旧 → 新浅色、新深色；带「Aa」的色块把文字色放在它通常所在的底色上，看是否清楚。规则见同目录 color-mapping.md。</p></div>
 <div class="seg" role="group" aria-label="页面主题"><button id="t-auto" data-t="">跟随系统</button><button id="t-light" data-t="light">浅色</button><button id="t-dark" data-t="dark">深色</button></div></header>
 <section><h2>新 token</h2><p class="lbl" style="margin:0 0 12px">★ 补齐项（设计稿没有）。左块浅色、右块深色；有对比度要求的颜色显示为文字。</p><div class="grid" id="tokens"></div></section>
 <section><h2>App · 37 个颜色 key</h2><div class="scroll"><table id="app"></table></div></section>
 <section><h2>Web · 产品变量层</h2><div class="scroll"><table id="web"></table></div></section>
-<section><h2>写死的颜色值 · Web 出现最多的 40 个</h2><p class="lbl" style="margin:0 0 12px" id="hexsum"></p><div class="scroll"><table id="hex"></table></div></section>
 <section><h2>写死的颜色值 · App 全部</h2><div class="scroll"><table id="hexapp"></table></div></section>
 </div>
 <script>
@@ -64,9 +63,7 @@ document.getElementById("app").innerHTML=head+D.app.map(r=>row(r[0],r[1],r[2],r[
 document.getElementById("web").innerHTML=head+D.web.map(r=>row(r[0],r[2],r[1],r[3],r[4],r[5],false)).join("");
 const hrow=r=>'<tr><td class="name"><code>'+esc(r[0])+'</code></td><td><div class="chips">'+chip(/^(#|rgba?)/.test(r[0])?r[0]:null)+'<span class="arrow">→</span>'+(D.tokens.light[r[3]]?chip(D.tokens.light[r[3]])+chip(D.tokens.dark[r[3]]):'')+'</div></td><td class="name"><code>'+esc(r[3])+'</code></td><td class="uses">'+r[1]+'</td><td class="note">'+esc(r[4])+'</td></tr>';
 const hhead='<tr><th>旧值</th><th>旧 → 新浅 · 新深</th><th>新 token</th><th style="text-align:right">处数</th><th>说明</th></tr>';
-document.getElementById("hex").innerHTML=hhead+D.vals.web.top.map(hrow).join("");
 document.getElementById("hexapp").innerHTML=hhead+D.vals.app.all.map(hrow).join("");
-document.getElementById("hexsum").textContent="Web 0918 等页面共 "+D.vals.web.distinct+" 种、"+D.vals.web.total+" 处写死颜色，全部换成新 token；完整清单见 color-mapping-values.md。";
 const btns=[...document.querySelectorAll(".seg button")];
 const setT=t=>{if(t)document.documentElement.setAttribute("data-theme",t);else document.documentElement.removeAttribute("data-theme");btns.forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.t===t)));try{localStorage.setItem("r01-theme",t)}catch(e){}};
 btns.forEach(b=>b.addEventListener("click",()=>setT(b.dataset.t)));

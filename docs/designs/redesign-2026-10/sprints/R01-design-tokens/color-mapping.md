@@ -1,16 +1,20 @@
 # R01 对照表：旧颜色 → 新颜色
 
 **状态：待产品负责人确认（RD-07）。确认前不改任何代码。**
-编制：小雨（执行会话），2026-10-09，分支 `redesign-R01-design-tokens`。修订 2：按用户「UI 换新」原则重写。
-新值来源：`repos/orbits/shared/design/tokens.json`。色块对照页：同目录 [`color-mapping.html`](color-mapping.html)。全部写死颜色值的逐条清单：[`color-mapping-values.md`](color-mapping-values.md)。
+编制：小雨（执行会话），2026-10-09，分支 `redesign-R01-design-tokens`。修订 3：按用户决定，范围回到「只换 token 层」，写死颜色随功能 Sprint 整屏重写。
+新值来源：`repos/orbits/shared/design/tokens.json`。色块对照页：同目录 [`color-mapping.html`](color-mapping.html)。旧屏归属：[`../screen-ownership.md`](../screen-ownership.md)。
 
 ## 原则
 
-**这是 UI 换新，不是新旧合并。** 旧颜色、旧样式在新设计里有对应的，就用新的；没有对应的，按新设计的风格补一个。旧颜色、旧名字、旧特例一个不留（RD-05、RD-06）。
+**改版是 UI 换新、按屏替换，不是新旧合并。** 新 token 直接覆盖旧 token，旧名字一个不留（RD-05、RD-06）；新设计里没有的，按新风格补。
 
-- 范围：App 和 Web 的**所有产品页面**，包括 Web 0918 各域（人脉、活动、iOrbit、个人、引导、主办）样式表里写死的颜色、星空首页、登录页、Agent 页。
-- 唯一排除：`/dev/**` 内部调试页（`app/globals.css` 的 `--orbit-color-*`、`shared/ui/theme.ts`），它们不是产品页面。
-- 两端改完后，代码里不再出现写死的颜色（照片、品牌图、二维码等必须固定的颜色除外，逐个写进 REPORT）。
+R01 只换 **token 层**：
+- App `src/design/tokens.ts` 的颜色、圆角、字号，和所有 `colors.X` 引用；App 写死的 57 种颜色值（PLANNER 要求处理）。
+- Web 的颜色变量层（`orbit-reference-styles.tsx`、`orbit-theme.tsx`、`app/layout.tsx`、`orbit-0918-tokens.ts`），包括删除登录页、Agent 页的独立配色。
+
+**不在 R01**：Web 0918 各域样式表里写死的颜色、星空首页场景。这些页面会在功能 Sprint 里按设计稿整屏重写、旧文件删除，现在逐处改色是白做（0918 的教训）。骨架期间它们挂在新壳里保持旧颜色。每个旧屏由哪个 Sprint 重写，见 [`screen-ownership.md`](../screen-ownership.md)；写死颜色的逐条清单 [`color-mapping-values.md`](color-mapping-values.md) 留给功能 Sprint 参考。
+
+下面「按用途换色」同时是功能 Sprint 写新屏时的用色规则。
 
 ## 按用途换色
 
@@ -49,9 +53,7 @@
 | --- | --- |
 | 渐变按钮、渐变进度条 | 纯色（`accent-text` / `accent`） |
 | 多层阴影、彩色发光 | 去掉；只有浮起的弹层用唯一的 `shadow-float` |
-| 星空首页的宇宙深色场景 | 改成新设计的雾面背景（`bg` + `fog-a/b/c`），星点用 `plum-300` / `rose-300`；深浅跟随主题，不再固定深色 |
-| 登录页、Agent 页、0918 各域各自的一套配色 | 全部删除，统一用新 token |
-| 写死的深色区块（深色侧栏、深色 chip、深色提示） | 跟随主题；需要「反色」的提示用 `ink` 底 + `on-accent` 字（深色模式下自动变成浅底深字） |
+| 登录页、Agent 页各自的一套配色变量 | 删除，统一用新 token |
 | 设计原值做文字对比度不够（`ink-3`、马卡龙字、`coral`、`ok`、`accent`） | 补「文字加深版」`*-text`，只调亮度、色相不变 |
 | 步骤圆点里的数字（设计稿 `ok` 绿底白字，浅色只有 3.1:1） | 补 `on-ok`：浅色用深色字；勾号图标仍可用白色 |
 | 照片上的白字、白角标 | 补 `on-image`、`on-image-badge`，两套主题相同 |
@@ -63,7 +65,7 @@
 不需要逐项做选择。请在色块对照页里看：
 
 1. 「新 token」里补齐的 ★ 颜色（文字加深版等）是否像同一套设计。
-2. 「写死的颜色值」一节里，旧主色换成新色后的对应关系有没有明显不对（比如原本表示错误的颜色被换成了别的含义）。
+2. App 和 Web 变量表里，旧颜色换成新色后的含义有没有明显不对（比如原本表示错误的颜色被换成了别的含义）。
 3. 有不满意的直接指出那一行，其余按表执行。
 
 ## 新 token（tokens.json）
@@ -310,91 +312,9 @@ Web 删除 Noto Serif SC、Newsreader、JetBrains Mono 的使用；Noto Sans JP 
 
 
 
-## 写死的颜色值
+## App 写死的颜色值
 
-Web `app/(app)/app/` 共 551 种、4832 处；App `src/` 共 57 种、119 处（不含 `design/tokens.ts`）。全部按「按用途换色」替换成新 token（Web 写成 `var(--x)`，App 用 `colors.x`）。
-
-每个值先按色相和明度给一个默认去向，实施时按所在位置的用途确认（例如 `#FFFFFF` 作底色是 `surface`，写在强调色按钮上就是 `on-accent`）。逐条清单见 [`color-mapping-values.md`](color-mapping-values.md)。
-
-**按新 token 汇总（Web）：**
-
-| 新 token | 处数 |
-| --- | --- |
-| `surface` | 576 |
-| `line` | 550 |
-| `ink-3-text` | 535 |
-| `accent-soft` | 424 |
-| `ink` | 414 |
-| `accent-text` | 358 |
-| `plum-900` | 322 |
-| `ink-2` | 301 |
-| `surface-2` | 244 |
-| `plum-300` | 238 |
-| `coral-text` | 91 |
-| `（去掉阴影）/ shadow-float` | 83 |
-| `scrim / scrim-web` | 80 |
-| `mac-apricot-ink` | 75 |
-| `ok-text` | 68 |
-| `mac-apricot-text` | 68 |
-| `mac-apricot` | 54 |
-| `ink-4` | 50 |
-| `ok-soft` | 46 |
-| `mac-teal-text` | 39 |
-| `accent` | 37 |
-| `coral-soft` | 37 |
-| `（看用途）` | 36 |
-| `glass` | 31 |
-| `bg` | 30 |
-| `mac-teal` | 15 |
-| `mac-blue-text` | 12 |
-| `mac-pink-text` | 8 |
-| `coral` | 7 |
-| `mac-blue` | 3 |
-
-**出现最多的 40 个值（Web）：**
-
-| 旧值 | 处数 / 文件数 | → 新 token | 说明 |
-| --- | --- | --- | --- |
-| `#FFFFFF` | 572 / 40 | `surface` | 作底色时；在深色 / 强调底上作文字时用 on-accent，照片上用 on-image |
-| `#6B6F99` | 368 / 33 | `ink-3-text` | 0918 说明文字 |
-| `#0E1225` | 349 / 29 | `ink` | 0918 主文字 |
-| `#4B4FC7` | 332 / 34 | `accent-text` | 0918 强调；纯图形处用 accent |
-| `#2E3270` | 313 / 33 | `plum-900` | 0918 深强调（结论文字、深色 chip） |
-| `#3B3F7A` | 288 / 29 | `ink-2` | 0918 次级文字 |
-| `#ECEEFB` | 235 / 33 | `accent-soft` | 0918 面板 / 选中浅底；无强调含义的大块用 surface-2 |
-| `#E8E9F6` | 224 / 24 | `line` | 0918 卡片边框 |
-| `#DDDEFA` | 222 / 30 | `line` | 0918 控件边框（新设计输入框靠 surface-2 底，不靠描边） |
-| `#9FA3C4` | 151 / 23 | `ink-3-text` | 0918 弱提示文字（原本不达标） |
-| `#F7F7FD` | 142 / 21 | `surface-2` | 0918 浅面板 |
-| `#B9BCEB` | 138 / 24 | `plum-300` | 0918 焦点环 / 强调描边 |
-| `#F1F1FA` | 43 / 14 | `surface-2` |  |
-| `#2F6B4F` | 41 / 13 | `ok-text` | 完成 / 成功文字 |
-| `#8B7BF0` | 37 / 5 | `accent` | 星空紫：图形用 accent，文字用 accent-text |
-| `#B5473A` | 35 / 10 | `coral-text` | 错误 / 删除 |
-| `#8A6420` | 31 / 11 | `mac-apricot-text` | 注意 / 提醒文字 |
-| `#E6F1EC` | 27 / 10 | `ok-soft` |  |
-| `#FBFBFE` | 20 / 14 | `bg` | 0918 页面底 |
-| `#FBF1DC` | 19 / 10 | `mac-apricot` | 黄 / 橙浅底 |
-| `#C9CBEA` | 16 / 5 | `line` | 分隔 / 描边 |
-| `#EEEFF8` | 16 / 5 | `surface-2` | 浅灰面 |
-| `#D8B06A` | 16 / 4 | `mac-apricot-ink` | 金黄图形；文字用 mac-apricot-text |
-| `#000000` | 15 / 3 | `ink` | 作文字时；阴影改 none 或 shadow-float |
-| `#C4461B` | 13 / 4 | `coral-text` | 错误 / 删除 |
-| `#9A6B22` | 13 / 2 | `mac-apricot-text` | 注意 / 提醒文字 |
-| `#F4F5FC` | 12 / 6 | `accent-soft` | 紫浅底 |
-| `#CFC6FF` | 12 / 4 | `accent-soft` | 紫浅底 |
-| `#FBECEA` | 11 / 4 | `coral-soft` | 红 / 橙红浅底 |
-| `#6359E9` | 10 / 6 | `accent-text` | 星空紫深 |
-| `#06050D` | 10 / 3 | `bg` | 星空底 → 跟随主题的页面底 |
-| `#C6A06A` | 10 / 2 | `mac-apricot-ink` | 金黄图形；文字用 mac-apricot-text |
-| `rgba(255,255,255,0.10)` | 10 / 3 | `line` | 白色低透明：深色面上的分隔 |
-| `#AEB2DD` | 10 / 2 | `ink-4` | 装饰灰；作文字时用 ink-3-text |
-| `#F0F1F8` | 9 / 5 | `surface-2` | 浅灰面 |
-| `rgba(14,18,37,0.25)` | 9 / 6 | `（去掉阴影）/ shadow-float` | 黑色半透明：阴影，浮层用 shadow-float，其余去掉 |
-| `#ECEAF6` | 8 / 3 | `surface-2` | 浅灰面 |
-| `#A99FE8` | 8 / 4 | `plum-300` | 浅紫装饰 / 焦点 |
-| `rgba(216,176,106,0.5)` | 8 / 2 | `mac-apricot-ink` | 金黄图形；文字用 mac-apricot-text |
-| `#3A2C11` | 8 / 4 | `ink` | 近黑 |
+App `src/` 共 57 种、119 处（不含 `design/tokens.ts`），R01 全部换成 token；必须固定的（二维码、品牌图等）逐个写进 REPORT。每个值先按色相和明度给默认去向，实施时按所在位置的用途确认。
 
 **App 写死颜色（全部 57 种）：**
 

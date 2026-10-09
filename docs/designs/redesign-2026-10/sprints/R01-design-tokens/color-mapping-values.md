@@ -1,5 +1,7 @@
 # R01 写死颜色值逐条清单
 
+**参考用，不在 R01 执行。** Web 部分随功能 Sprint 整屏重写时替换（归属见 [screen-ownership.md](../screen-ownership.md)）；App 部分在 R01 处理。
+
 由脚本按色相和明度给出默认去向；实施时按所在位置的用途确认（规则见 [color-mapping.md](color-mapping.md)「按用途换色」）。「（看用途）」= 写法特殊（变量拼接等），实施时逐个判断。
 
 ## Web `repos/orbits/app/(app)/app/`（551 种，4832 处）
