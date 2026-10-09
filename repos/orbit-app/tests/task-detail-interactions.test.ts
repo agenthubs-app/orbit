@@ -84,7 +84,7 @@ test.before(async () => {
       resolveDir: process.cwd(), loader: "tsx",
     },
     bundle: true, write: false, format: "iife", jsx: "automatic",
-    define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     plugins: [{
       name: "task-screen-boundaries",
       setup(plugin) {

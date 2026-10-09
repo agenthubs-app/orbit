@@ -46,7 +46,7 @@ test.before(async () => {
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { BusinessCardScanScreen } from "./src/screens/contacts/BusinessCardScanScreen"; createRoot(document.getElementById("root")).render(<BusinessCardScanScreen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic",
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
-    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "card-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^(expo-router|expo-image-picker|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/useOrbitApiClient$/ }, () => ({ path: "fixture", namespace: "card-test" }));

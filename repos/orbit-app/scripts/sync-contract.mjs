@@ -12,6 +12,7 @@
 // 改版 R01（RD-08）：shared/design 只放行生成好的 tokens.ts（零 import 常量），
 // 拷到 src/api/design；tokens.json 源文件和 README 不进 App。
 // 改版 R02：同目录生成的 icons.ts（图标形状，零 import）一起放行；icons.json 不进 App。
+// 改版 R03（RD-08）：shared/copy 的三语标准用词（零 import 常量）拷到 src/api/copy。
 //
 // 用法：npm run sync:contract
 
@@ -47,6 +48,12 @@ const syncTargets = [
     sourceDir: join(appRoot, "..", "orbits", "shared", "design"),
     targetDir: join(appRoot, "src", "api", "design"),
     fileNames: ["tokens.ts", "icons.ts"],
+  },
+  {
+    label: "标准用词",
+    sourceDir: join(appRoot, "..", "orbits", "shared", "copy"),
+    targetDir: join(appRoot, "src", "api", "copy"),
+    fileNames: ["ja.ts", "zh.ts", "en.ts"],
   },
 ];
 

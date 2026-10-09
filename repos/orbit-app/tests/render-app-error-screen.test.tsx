@@ -11,9 +11,10 @@ test("错误屏渲染出中文说明与重试按钮", () => {
     <AppErrorScreen error={new Error("BOOM")} onRetry={() => undefined} />
   );
 
-  assert.match(text, /这个页面出了点问题/u);
-  assert.match(text, /你的数据没有受影响/u);
-  assert.match(text, /错误信息/u);
+  // R03: title, body and retry come from the standard copy; zh is the legacy test language.
+  assert.match(text, /无法显示页面/u);
+  assert.match(text, /数据没有丢失/u);
+  assert.match(text, /错误详情/u);
   assert.match(text, /重试/u);
 });
 
@@ -34,7 +35,7 @@ test("错误屏把原始异常信息显示在次要位置", () => {
       onRetry={() => undefined}
     />
   );
-  const titleIndex = html.indexOf("这个页面出了点问题");
+  const titleIndex = html.indexOf("无法显示页面");
   const detailIndex = html.indexOf("ORBIT_SOMETHING_BROKE");
 
   assert.ok(titleIndex !== -1 && detailIndex !== -1);

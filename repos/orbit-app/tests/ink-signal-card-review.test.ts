@@ -92,7 +92,7 @@ export const randomUUID = () => "key-1";
 `;
 
 test.before(async () => {
-  const result = await build({ stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { BusinessCardBatchScreen } from "./src/screens/contacts/BusinessCardBatchScreen"; import { BusinessCardIngestScreen } from "./src/screens/contacts/BusinessCardIngestScreen"; import { BusinessCardScanScreen } from "./src/screens/contacts/BusinessCardScanScreen"; function App() { const s = useFixture(); return s.screen === "single" ? <BusinessCardScanScreen /> : s.screen === "legacy" ? <BusinessCardBatchScreen /> : <BusinessCardIngestScreen />; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "ink-card-boundaries", setup(plugin) {
+  const result = await build({ stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { BusinessCardBatchScreen } from "./src/screens/contacts/BusinessCardBatchScreen"; import { BusinessCardIngestScreen } from "./src/screens/contacts/BusinessCardIngestScreen"; import { BusinessCardScanScreen } from "./src/screens/contacts/BusinessCardScanScreen"; function App() { const s = useFixture(); return s.screen === "single" ? <BusinessCardScanScreen /> : s.screen === "legacy" ? <BusinessCardBatchScreen /> : <BusinessCardIngestScreen />; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "ink-card-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-card" }));
     plugin.onResolve({ filter: /^(fixture|expo-router|expo-camera|expo-image-picker|expo-file-system|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|useApiResource|useOrbitApiClient)$/ }, () => ({ path: "fixture", namespace: "ink-card" }));
     plugin.onLoad({ filter: /.*/, namespace: "ink-card" }, args => ({ contents: args.path === "native" ? `
@@ -284,7 +284,7 @@ test("batch deep-link headers keep balanced large text and a real parent destina
       return Object.values(counts);
     });
     assert.ok(lines.every(count => count >= 2), JSON.stringify(lines));
-    await page.getByRole("button", { name: "返回导入中心", exact: true }).click();
+    await page.getByRole("button", { name: "返回导入", exact: true }).click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/contacts/new"]);
     await shot(page, screen + "-deep-link-large");
   }

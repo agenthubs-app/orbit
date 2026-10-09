@@ -17,8 +17,8 @@
 | └ 由 Sprint 0131 实现 | 15 |
 | └ 由 Sprint 0137 实现 | 1 |
 | 只能在线 | 36 |
-| 不读账号数据（布局、跳转、本机设置） | 16 |
-| 合计（路由文件） | 94 |
+| 不读账号数据（布局、跳转、本机设置） | 17 |
+| 合计（路由文件） | 95 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -117,6 +117,7 @@
 | --- | --- | --- | --- |
 | `(根布局)` | 根布局：会话恢复、错误边界、通知协调 | 无（会话恢复见威胁模型第 6 节） | 按 0127 的离线冷启动身份进入 |
 | `(底部标签栏)` | 底部五个标签的布局 | 无 | 照常显示 |
+| `/showcase/copy` | 标准用词展示页（开发包和 TestFlight，R03） | 无（标准用词打包在 App 里） | 照常显示 |
 | `/showcase/icons` | 图标展示页（开发包和 TestFlight，R02） | 无（图标源打包在 App 里） | 照常显示 |
 | `(浏览器外壳)` | 浏览器版 HTML 外壳 | 无 | 照常加载 |
 | `/` | 入口跳转 | 无 | 跳到首页或登录页 |
@@ -224,6 +225,7 @@
 | `app/schedule/personal/new.tsx` | `/schedule/personal/new` | local-first (0108) |
 | `app/settings.tsx` | `/settings` | device-only |
 | `app/settings/api.tsx` | `/settings/api` | device-only |
+| `app/showcase/copy.tsx` | `/showcase/copy` | device-only |
 | `app/showcase/icons.tsx` | `/showcase/icons` | device-only |
 | `app/tasks.tsx` | `/tasks` | local-first (0131) |
 | `app/tasks/[id].tsx` | `/tasks/:id` | local-first (0131) |

@@ -1,0 +1,945 @@
+{
+  "_comment": "R03 / RD-24：旧页面写死的界面文字（hardcoded）和缺日文的 {zh, en} 文案对象（missingJa），文件 → 条数。只减不增：重写旧页面时归零并删掉这一行；不得新增文件或调大。规则见 tests/ui/no-hardcoded-copy.test.ts。",
+  "files": {
+    "app/(app)/app/_demo/demo-mode-context.tsx": {
+      "hardcoded": 0,
+      "missingJa": 2
+    },
+    "app/(app)/app/_demo/demo-mode-core.tsx": {
+      "hardcoded": 0,
+      "missingJa": 20
+    },
+    "app/(app)/app/_demo/demo-network-analysis.ts": {
+      "hardcoded": 64,
+      "missingJa": 2
+    },
+    "app/(app)/app/_demo/demo-network.ts": {
+      "hardcoded": 285,
+      "missingJa": 8
+    },
+    "app/(app)/app/_demo/demo-persona.ts": {
+      "hardcoded": 24,
+      "missingJa": 132
+    },
+    "app/(app)/app/account/auth-0918/auth-forgot.tsx": {
+      "hardcoded": 0,
+      "missingJa": 9
+    },
+    "app/(app)/app/account/auth-0918/auth-form.tsx": {
+      "hardcoded": 0,
+      "missingJa": 6
+    },
+    "app/(app)/app/account/auth-0918/auth-login.tsx": {
+      "hardcoded": 0,
+      "missingJa": 6
+    },
+    "app/(app)/app/account/auth-0918/auth-modal.tsx": {
+      "hardcoded": 1,
+      "missingJa": 1
+    },
+    "app/(app)/app/account/auth-0918/auth-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 17
+    },
+    "app/(app)/app/account/auth-0918/auth-register.tsx": {
+      "hardcoded": 0,
+      "missingJa": 11
+    },
+    "app/(app)/app/account/auth-0918/auth-reset.tsx": {
+      "hardcoded": 0,
+      "missingJa": 13
+    },
+    "app/(app)/app/account/auth-0918/use-account-auth.ts": {
+      "hardcoded": 0,
+      "missingJa": 3
+    },
+    "app/(app)/app/account/auth-0918/use-password-reset.ts": {
+      "hardcoded": 0,
+      "missingJa": 3
+    },
+    "app/(app)/app/account/mobile-google/mobile-google-auth.tsx": {
+      "hardcoded": 3,
+      "missingJa": 0
+    },
+    "app/(app)/app/account/mobile-google/page.tsx": {
+      "hardcoded": 3,
+      "missingJa": 0
+    },
+    "app/(app)/app/account/reset-password/page.tsx": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts": {
+      "hardcoded": 4,
+      "missingJa": 0
+    },
+    "app/(app)/app/admin/orbit-real-admin-events.tsx": {
+      "hardcoded": 0,
+      "missingJa": 10
+    },
+    "app/(app)/app/admin/orbit-real-admin-login.tsx": {
+      "hardcoded": 0,
+      "missingJa": 5
+    },
+    "app/(app)/app/admin/orbit-real-admin-shell.tsx": {
+      "hardcoded": 0,
+      "missingJa": 4
+    },
+    "app/(app)/app/admin/orbit-real-admin-workspace.tsx": {
+      "hardcoded": 0,
+      "missingJa": 9
+    },
+    "app/(app)/app/admin/read-cost/page.tsx": {
+      "hardcoded": 0,
+      "missingJa": 3
+    },
+    "app/(app)/app/admin/read-cost/read-cost-copy.ts": {
+      "hardcoded": 0,
+      "missingJa": 26
+    },
+    "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx": {
+      "hardcoded": 5,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/actions/orbit-today-decision-form.tsx": {
+      "hardcoded": 24,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/agent-action-status-card.tsx": {
+      "hardcoded": 22,
+      "missingJa": 26
+    },
+    "app/(app)/app/agent/agent-chat-history-organization.tsx": {
+      "hardcoded": 21,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/agent-outcome-feedback.tsx": {
+      "hardcoded": 9,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/agent-task-interaction-card.tsx": {
+      "hardcoded": 14,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/home-facts-route-service.ts": {
+      "hardcoded": 22,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/home-facts-view-model.ts": {
+      "hardcoded": 11,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/iorbit-0918/console-styles.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-actions.tsx": {
+      "hardcoded": 5,
+      "missingJa": 43
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-chat-aside.tsx": {
+      "hardcoded": 0,
+      "missingJa": 12
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx": {
+      "hardcoded": 1,
+      "missingJa": 21
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx": {
+      "hardcoded": 0,
+      "missingJa": 22
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-home-styles.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-home.tsx": {
+      "hardcoded": 11,
+      "missingJa": 134
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-model.ts": {
+      "hardcoded": 47,
+      "missingJa": 7
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-my-plan-styles.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-plan-card-styles.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-plan-card.tsx": {
+      "hardcoded": 7,
+      "missingJa": 38
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx": {
+      "hardcoded": 8,
+      "missingJa": 85
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx": {
+      "hardcoded": 0,
+      "missingJa": 51
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx": {
+      "hardcoded": 0,
+      "missingJa": 7
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-strategy.tsx": {
+      "hardcoded": 4,
+      "missingJa": 63
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-styles.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/iorbit-0918/iorbit-today-events.tsx": {
+      "hardcoded": 0,
+      "missingJa": 21
+    },
+    "app/(app)/app/agent/iorbit-0918/plan-match-sheet.tsx": {
+      "hardcoded": 0,
+      "missingJa": 44
+    },
+    "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts": {
+      "hardcoded": 14,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/iorbit-0918/use-agent-history.ts": {
+      "hardcoded": 2,
+      "missingJa": 11
+    },
+    "app/(app)/app/agent/orbit-agent-next-actions.ts": {
+      "hardcoded": 2,
+      "missingJa": 0
+    },
+    "app/(app)/app/agent/plan/plan-route-view-model.ts": {
+      "hardcoded": 21,
+      "missingJa": 9
+    },
+    "app/(app)/app/agent/strategy/strategy-route-view-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 1
+    },
+    "app/(app)/app/contacts/[id]/appointment-memo-capture.tsx": {
+      "hardcoded": 14,
+      "missingJa": 0
+    },
+    "app/(app)/app/contacts/[id]/page.tsx": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/contacts/analysis/insights-tab.ts": {
+      "hardcoded": 0,
+      "missingJa": 3
+    },
+    "app/(app)/app/contacts/analysis/network-copy.ts": {
+      "hardcoded": 0,
+      "missingJa": 66
+    },
+    "app/(app)/app/contacts/analysis/opportunities-report-card.ts": {
+      "hardcoded": 0,
+      "missingJa": 12
+    },
+    "app/(app)/app/contacts/analysis/opportunities-view-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 12
+    },
+    "app/(app)/app/contacts/analysis/structure-tab-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 6
+    },
+    "app/(app)/app/contacts/card-batch-0918/card-batch-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 23
+    },
+    "app/(app)/app/contacts/card-batch-0918/card-batch-styles.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/contacts/card-batch-0918/card-batch-ui.tsx": {
+      "hardcoded": 2,
+      "missingJa": 140
+    },
+    "app/(app)/app/contacts/card-batch-0918/card-batch-uploader.tsx": {
+      "hardcoded": 0,
+      "missingJa": 14
+    },
+    "app/(app)/app/contacts/card-batch-0918/use-card-batch.ts": {
+      "hardcoded": 0,
+      "missingJa": 6
+    },
+    "app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter.ts": {
+      "hardcoded": 7,
+      "missingJa": 3
+    },
+    "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-subroute-route-adapter.tsx": {
+      "hardcoded": 6,
+      "missingJa": 0
+    },
+    "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter.ts": {
+      "hardcoded": 6,
+      "missingJa": 0
+    },
+    "app/(app)/app/contacts/contact-card-view-model.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/contacts/contact-notes-editor.tsx": {
+      "hardcoded": 2,
+      "missingJa": 0
+    },
+    "app/(app)/app/contacts/contact-relationship-initialization-view-model.ts": {
+      "hardcoded": 10,
+      "missingJa": 4
+    },
+    "app/(app)/app/contacts/contact-relationship-initialization.tsx": {
+      "hardcoded": 25,
+      "missingJa": 0
+    },
+    "app/(app)/app/contacts/ingest-v2/ingest-v2-route-view-model.ts": {
+      "hardcoded": 2,
+      "missingJa": 0
+    },
+    "app/(app)/app/contacts/network-0918/contact-enrichment-inline.tsx": {
+      "hardcoded": 0,
+      "missingJa": 26
+    },
+    "app/(app)/app/contacts/network-0918/contact-value-line.tsx": {
+      "hardcoded": 0,
+      "missingJa": 4
+    },
+    "app/(app)/app/contacts/network-0918/contact-value.ts": {
+      "hardcoded": 0,
+      "missingJa": 7
+    },
+    "app/(app)/app/contacts/network-0918/detail-return.ts": {
+      "hardcoded": 0,
+      "missingJa": 7
+    },
+    "app/(app)/app/contacts/network-0918/network-all.tsx": {
+      "hardcoded": 0,
+      "missingJa": 11
+    },
+    "app/(app)/app/contacts/network-0918/network-analysis-gate.tsx": {
+      "hardcoded": 0,
+      "missingJa": 8
+    },
+    "app/(app)/app/contacts/network-0918/network-analysis-structure.tsx": {
+      "hardcoded": 0,
+      "missingJa": 37
+    },
+    "app/(app)/app/contacts/network-0918/network-analysis.tsx": {
+      "hardcoded": 0,
+      "missingJa": 7
+    },
+    "app/(app)/app/contacts/network-0918/network-cards.tsx": {
+      "hardcoded": 0,
+      "missingJa": 21
+    },
+    "app/(app)/app/contacts/network-0918/network-detail-modal.tsx": {
+      "hardcoded": 0,
+      "missingJa": 75
+    },
+    "app/(app)/app/contacts/network-0918/network-follow-modal.tsx": {
+      "hardcoded": 2,
+      "missingJa": 17
+    },
+    "app/(app)/app/contacts/network-0918/network-import-event.tsx": {
+      "hardcoded": 0,
+      "missingJa": 11
+    },
+    "app/(app)/app/contacts/network-0918/network-import-file.tsx": {
+      "hardcoded": 0,
+      "missingJa": 81
+    },
+    "app/(app)/app/contacts/network-0918/network-import-styles.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/contacts/network-0918/network-import.tsx": {
+      "hardcoded": 0,
+      "missingJa": 58
+    },
+    "app/(app)/app/contacts/network-0918/network-insight-copy.ts": {
+      "hardcoded": 0,
+      "missingJa": 23
+    },
+    "app/(app)/app/contacts/network-0918/network-insight-panel.tsx": {
+      "hardcoded": 0,
+      "missingJa": 7
+    },
+    "app/(app)/app/contacts/network-0918/network-insights.tsx": {
+      "hardcoded": 0,
+      "missingJa": 22
+    },
+    "app/(app)/app/contacts/network-0918/network-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 14
+    },
+    "app/(app)/app/contacts/network-0918/network-opportunities.tsx": {
+      "hardcoded": 0,
+      "missingJa": 52
+    },
+    "app/(app)/app/contacts/network-0918/network-overview-cockpit-model.ts": {
+      "hardcoded": 3,
+      "missingJa": 10
+    },
+    "app/(app)/app/contacts/network-0918/network-overview-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 8
+    },
+    "app/(app)/app/contacts/network-0918/network-overview.tsx": {
+      "hardcoded": 3,
+      "missingJa": 30
+    },
+    "app/(app)/app/contacts/network-0918/network-pipeline.tsx": {
+      "hardcoded": 0,
+      "missingJa": 16
+    },
+    "app/(app)/app/contacts/network-0918/network-shell.tsx": {
+      "hardcoded": 5,
+      "missingJa": 6
+    },
+    "app/(app)/app/contacts/page.tsx": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/[id]/analytics/page.tsx": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/[id]/live/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 29
+    },
+    "app/(app)/app/events/[id]/operations/admission/event-admission-policy-panel.tsx": {
+      "hardcoded": 37,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/[id]/operations/admission/page.tsx": {
+      "hardcoded": 7,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/[id]/operations/check-in/page.tsx": {
+      "hardcoded": 5,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/[id]/operations/experience/page.tsx": {
+      "hardcoded": 5,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/[id]/orbit-appointment-negotiation.tsx": {
+      "hardcoded": 0,
+      "missingJa": 40
+    },
+    "app/(app)/app/events/[id]/orbit-encounter-capture.tsx": {
+      "hardcoded": 0,
+      "missingJa": 18
+    },
+    "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx": {
+      "hardcoded": 1,
+      "missingJa": 65
+    },
+    "app/(app)/app/events/[id]/orbit-event-quick-signup.tsx": {
+      "hardcoded": 0,
+      "missingJa": 11
+    },
+    "app/(app)/app/events/[id]/orbit-post-event-center.tsx": {
+      "hardcoded": 0,
+      "missingJa": 59
+    },
+    "app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx": {
+      "hardcoded": 42,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/[id]/register/event-admission-status-card.tsx": {
+      "hardcoded": 6,
+      "missingJa": 4
+    },
+    "app/(app)/app/events/[id]/register/event-registration-workspace.tsx": {
+      "hardcoded": 3,
+      "missingJa": 102
+    },
+    "app/(app)/app/events/[id]/register/page.tsx": {
+      "hardcoded": 19,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/[id]/register/registration-portrait-recommendations.tsx": {
+      "hardcoded": 6,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/[id]/register/registration-portrait-workspace.tsx": {
+      "hardcoded": 63,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/[id]/register/registration-workspace-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 8
+    },
+    "app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts": {
+      "hardcoded": 29,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/events-0918/community-card.tsx": {
+      "hardcoded": 1,
+      "missingJa": 19
+    },
+    "app/(app)/app/events/events-0918/event-attendee-modal.tsx": {
+      "hardcoded": 0,
+      "missingJa": 20
+    },
+    "app/(app)/app/events/events-0918/event-contact-action.tsx": {
+      "hardcoded": 0,
+      "missingJa": 13
+    },
+    "app/(app)/app/events/events-0918/event-detail.tsx": {
+      "hardcoded": 0,
+      "missingJa": 68
+    },
+    "app/(app)/app/events/events-0918/event-exchange-modal.tsx": {
+      "hardcoded": 0,
+      "missingJa": 24
+    },
+    "app/(app)/app/events/events-0918/event-live.tsx": {
+      "hardcoded": 0,
+      "missingJa": 107
+    },
+    "app/(app)/app/events/events-0918/event-note-modal.tsx": {
+      "hardcoded": 0,
+      "missingJa": 24
+    },
+    "app/(app)/app/events/events-0918/event-register-modal.tsx": {
+      "hardcoded": 5,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/events-0918/event-schedule-modal.tsx": {
+      "hardcoded": 0,
+      "missingJa": 45
+    },
+    "app/(app)/app/events/events-0918/events-list.tsx": {
+      "hardcoded": 1,
+      "missingJa": 20
+    },
+    "app/(app)/app/events/events-0918/events-model.ts": {
+      "hardcoded": 6,
+      "missingJa": 51
+    },
+    "app/(app)/app/events/events-0918/events-shell.tsx": {
+      "hardcoded": 1,
+      "missingJa": 8
+    },
+    "app/(app)/app/events/events-0918/live-controls.ts": {
+      "hardcoded": 0,
+      "missingJa": 2
+    },
+    "app/(app)/app/events/explore-model.ts": {
+      "hardcoded": 28,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-boundary.tsx": {
+      "hardcoded": 2,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-checkin.tsx": {
+      "hardcoded": 23,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-console.tsx": {
+      "hardcoded": 2,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-form.tsx": {
+      "hardcoded": 40,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-hub.tsx": {
+      "hardcoded": 13,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-match.tsx": {
+      "hardcoded": 33,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-model.ts": {
+      "hardcoded": 126,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-operations-shared.tsx": {
+      "hardcoded": 47,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-overview.tsx": {
+      "hardcoded": 39,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-people.tsx": {
+      "hardcoded": 53,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-report.tsx": {
+      "hardcoded": 34,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-roles-drawer.tsx": {
+      "hardcoded": 28,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/ops-shell.tsx": {
+      "hardcoded": 13,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/use-admission-review.ts": {
+      "hardcoded": 7,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/use-check-in-roster.ts": {
+      "hardcoded": 9,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/use-event-analytics.ts": {
+      "hardcoded": 2,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/use-event-center.ts": {
+      "hardcoded": 2,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/use-event-operations.ts": {
+      "hardcoded": 6,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/use-experience-editor.ts": {
+      "hardcoded": 11,
+      "missingJa": 0
+    },
+    "app/(app)/app/events/ops-0918/use-role-management.ts": {
+      "hardcoded": 28,
+      "missingJa": 0
+    },
+    "app/(app)/app/home/home-demo-localization.ts": {
+      "hardcoded": 39,
+      "missingJa": 0
+    },
+    "app/(app)/app/home/orbit-real-home.tsx": {
+      "hardcoded": 1,
+      "missingJa": 90
+    },
+    "app/(app)/app/inbox/bounded-contact-messages-tab.tsx": {
+      "hardcoded": 0,
+      "missingJa": 20
+    },
+    "app/(app)/app/inbox/inbox-demo-localization.ts": {
+      "hardcoded": 33,
+      "missingJa": 0
+    },
+    "app/(app)/app/inbox/relationship-inbox-panel.tsx": {
+      "hardcoded": 0,
+      "missingJa": 53
+    },
+    "app/(app)/app/invitations/[token]/relationship-invitation-client.tsx": {
+      "hardcoded": 23,
+      "missingJa": 0
+    },
+    "app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts": {
+      "hardcoded": 1,
+      "missingJa": 4
+    },
+    "app/(app)/app/o/orbit-real-organizer-public.tsx": {
+      "hardcoded": 0,
+      "missingJa": 12
+    },
+    "app/(app)/app/orbit-account-auth-route-view-model.ts": {
+      "hardcoded": 15,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-account-shell.tsx": {
+      "hardcoded": 0,
+      "missingJa": 3
+    },
+    "app/(app)/app/orbit-agent-context-href.ts": {
+      "hardcoded": 5,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-agent-hero.tsx": {
+      "hardcoded": 0,
+      "missingJa": 20
+    },
+    "app/(app)/app/orbit-agent-route-view-model.ts": {
+      "hardcoded": 6,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-contacts-presentation.ts": {
+      "hardcoded": 4,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-event-registration-view-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 4
+    },
+    "app/(app)/app/orbit-event-roster.ts": {
+      "hardcoded": 46,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-event-view-helpers.ts": {
+      "hardcoded": 17,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-global-ask/orbit-ask-routes.ts": {
+      "hardcoded": 0,
+      "missingJa": 7
+    },
+    "app/(app)/app/orbit-global-ask/orbit-global-ask-styles.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-global-ask/orbit-global-ask.tsx": {
+      "hardcoded": 0,
+      "missingJa": 16
+    },
+    "app/(app)/app/orbit-landing-0918.tsx": {
+      "hardcoded": 19,
+      "missingJa": 145
+    },
+    "app/(app)/app/orbit-landing-route-view-model.ts": {
+      "hardcoded": 9,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-lang-runtime-client.tsx": {
+      "hardcoded": 12,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-public-shell.tsx": {
+      "hardcoded": 2,
+      "missingJa": 36
+    },
+    "app/(app)/app/orbit-real-landing-page.tsx": {
+      "hardcoded": 0,
+      "missingJa": 24
+    },
+    "app/(app)/app/orbit-reference-primitives.tsx": {
+      "hardcoded": 4,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-reference-styles.tsx": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-starfield-agent-prompt.ts": {
+      "hardcoded": 3,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-starfield-desktop-logic.ts": {
+      "hardcoded": 17,
+      "missingJa": 1
+    },
+    "app/(app)/app/orbit-starfield-desktop.tsx": {
+      "hardcoded": 35,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-starfield-mobile-logic.ts": {
+      "hardcoded": 17,
+      "missingJa": 1
+    },
+    "app/(app)/app/orbit-starfield-mobile.tsx": {
+      "hardcoded": 35,
+      "missingJa": 0
+    },
+    "app/(app)/app/orbit-theme.tsx": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts": {
+      "hardcoded": 39,
+      "missingJa": 0
+    },
+    "app/(app)/app/profile/goal-editor/goal-editor-model.ts": {
+      "hardcoded": 3,
+      "missingJa": 22
+    },
+    "app/(app)/app/profile/goal-editor/goal-editor.tsx": {
+      "hardcoded": 0,
+      "missingJa": 8
+    },
+    "app/(app)/app/profile/onboarding-0918/onboarding-flow.tsx": {
+      "hardcoded": 9,
+      "missingJa": 126
+    },
+    "app/(app)/app/profile/onboarding-0918/onboarding-previews.tsx": {
+      "hardcoded": 6,
+      "missingJa": 80
+    },
+    "app/(app)/app/profile/onboarding-0918/onboarding-styles.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/profile/profile-0918/business-card-preview.tsx": {
+      "hardcoded": 0,
+      "missingJa": 5
+    },
+    "app/(app)/app/profile/profile-0918/load-profile-editor-page.tsx": {
+      "hardcoded": 9,
+      "missingJa": 0
+    },
+    "app/(app)/app/profile/profile-0918/profile-basic.tsx": {
+      "hardcoded": 0,
+      "missingJa": 31
+    },
+    "app/(app)/app/profile/profile-0918/profile-connect.tsx": {
+      "hardcoded": 0,
+      "missingJa": 19
+    },
+    "app/(app)/app/profile/profile-0918/profile-legacy-settings.tsx": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/profile/profile-0918/profile-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 78
+    },
+    "app/(app)/app/profile/profile-0918/profile-overview.tsx": {
+      "hardcoded": 0,
+      "missingJa": 29
+    },
+    "app/(app)/app/profile/profile-0918/profile-persona.tsx": {
+      "hardcoded": 0,
+      "missingJa": 16
+    },
+    "app/(app)/app/profile/profile-0918/profile-screens.tsx": {
+      "hardcoded": 0,
+      "missingJa": 2
+    },
+    "app/(app)/app/profile/profile-0918/profile-settings.tsx": {
+      "hardcoded": 0,
+      "missingJa": 7
+    },
+    "app/(app)/app/profile/profile-0918/profile-shell.tsx": {
+      "hardcoded": 1,
+      "missingJa": 28
+    },
+    "app/(app)/app/profile/profile-0918/use-profile-editor-session.ts": {
+      "hardcoded": 0,
+      "missingJa": 18
+    },
+    "app/(app)/app/profile/profile-save-model.ts": {
+      "hardcoded": 0,
+      "missingJa": 4
+    },
+    "app/(app)/app/settings/orbit-agent-automation-settings.tsx": {
+      "hardcoded": 19,
+      "missingJa": 70
+    },
+    "app/(app)/app/settings/orbit-agent-execution-settings.tsx": {
+      "hardcoded": 58,
+      "missingJa": 0
+    },
+    "app/(app)/app/settings/orbit-agent-feedback-settings.tsx": {
+      "hardcoded": 0,
+      "missingJa": 17
+    },
+    "app/(app)/app/settings/orbit-agent-memory-settings.tsx": {
+      "hardcoded": 4,
+      "missingJa": 42
+    },
+    "app/(app)/app/settings/orbit-appearance-settings.tsx": {
+      "hardcoded": 0,
+      "missingJa": 6
+    },
+    "app/(app)/app/start/start-guide-styles.ts": {
+      "hardcoded": 1,
+      "missingJa": 0
+    },
+    "app/(app)/app/start/start-guide.tsx": {
+      "hardcoded": 2,
+      "missingJa": 24
+    },
+    "app/(app)/app/start/start-step-cards.tsx": {
+      "hardcoded": 0,
+      "missingJa": 18
+    },
+    "app/(app)/app/start/start-step-goal.tsx": {
+      "hardcoded": 0,
+      "missingJa": 10
+    },
+    "app/(app)/app/start/start-step-plan.tsx": {
+      "hardcoded": 0,
+      "missingJa": 33
+    },
+    "app/(app)/app/tasks/personal-schedule-association-sheet.tsx": {
+      "hardcoded": 16,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/personal-schedule-client.ts": {
+      "hardcoded": 24,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/personal-schedule-date-time-picker.tsx": {
+      "hardcoded": 20,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/personal-schedule-editor-model.ts": {
+      "hardcoded": 15,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/personal-schedule-rules.tsx": {
+      "hardcoded": 25,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/personal-schedule-workspace.tsx": {
+      "hardcoded": 85,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/personal/page.tsx": {
+      "hardcoded": 2,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/relationship-lifecycle-tasks-section.tsx": {
+      "hardcoded": 11,
+      "missingJa": 17
+    },
+    "app/(app)/app/tasks/relationship-lifecycle-tasks.ts": {
+      "hardcoded": 5,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/relationship/[id]/relationship-lifecycle-editor.tsx": {
+      "hardcoded": 45,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/task-detail-workspace.tsx": {
+      "hardcoded": 1,
+      "missingJa": 43
+    },
+    "app/(app)/app/tasks/task-schedule-editor.tsx": {
+      "hardcoded": 16,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/tasks-client.ts": {
+      "hardcoded": 10,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/tasks-controls.tsx": {
+      "hardcoded": 0,
+      "missingJa": 12
+    },
+    "app/(app)/app/tasks/tasks-page-heading.tsx": {
+      "hardcoded": 0,
+      "missingJa": 4
+    },
+    "app/(app)/app/tasks/tasks-view-model.ts": {
+      "hardcoded": 14,
+      "missingJa": 0
+    },
+    "app/(app)/app/tasks/tasks-workspace.tsx": {
+      "hardcoded": 0,
+      "missingJa": 21
+    }
+  }
+}

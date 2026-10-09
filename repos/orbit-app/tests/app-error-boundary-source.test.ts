@@ -24,15 +24,16 @@ test("渲染异常被边界收住，而不是白屏", () => {
 });
 
 test("错误屏给用户一条走得出去的路", () => {
-  assert.match(boundarySource, />这个页面出了点问题</u);
-  assert.match(boundarySource, />重试</u);
+  // R03: the wording comes from the standard copy (rendered text: render-app-error-screen).
+  assert.match(boundarySource, /copy\.error\.screenFailed/u);
+  assert.match(boundarySource, /copy\.action\.retry/u);
   assert.match(boundarySource, /accessibilityRole="button"/u);
   assert.match(boundarySource, /onPress=\{onRetry\}/u);
 });
 
 test("错误屏用中文说明，技术信息放次要位置", () => {
-  assert.match(boundarySource, /你的数据没有受影响/u);
-  assert.match(boundarySource, />错误信息</u);
+  assert.match(boundarySource, /copy\.error\.screenFailedBody/u);
+  assert.match(boundarySource, /t\("shell\.errorDetails"\)/u);
   assert.doesNotMatch(boundarySource, />Something went wrong</u);
 });
 

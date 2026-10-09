@@ -80,7 +80,7 @@ createRoot(document.getElementById("root")).render(<Fixture />);
 `, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic",
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
-    define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     plugins: [{ name: "shell-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
@@ -121,7 +121,7 @@ test("only exact primary routes own a tab bar and secondary routes have real par
   }
   for (const [path, href, label] of [
     ["/settings/api", "/settings", "设置"], ["/settings", "/profile", "我的"],
-    ["/contacts/one", "/contacts", "人脉"], ["/contacts/new/batch/one", "/contacts/new", "导入中心"],
+    ["/contacts/one", "/contacts", "人脉"], ["/contacts/new/batch/one", "/contacts/new", "导入"],
     ["/events/one/operations/admission", "/events/one/operations", "活动运营"],
     ["/events/one/operations", "/events/one", "活动详情"], ["/tasks/one", "/tasks", "待办"],
     ["/inbox/one", "/inbox", "收件箱"], ["/schedule", "/home", "首页"]
@@ -132,10 +132,10 @@ for (const [path, active] of [["/home", "首页"], ["/contacts", "人脉"], ["/e
   test(path + " has ordered working tabs, an active destination and no back button", async t => {
     const page = await open(t, path!, "history");
     const tabs = page.getByRole("tab");
-    assert.deepEqual(await tabs.allTextContents(), ["首页", "人脉", "IORBIT", "活动", "我的"]);
+    assert.deepEqual(await tabs.allTextContents(), ["首页", "人脉", "iOrbit", "活动", "我的"]);
     assert.equal(await page.getByRole("tab", { name: active!, exact: true }).getAttribute("aria-selected"), "true");
     assert.equal(await page.getByRole("button", { name: "返回", exact: true }).count(), 0);
-    await page.getByRole("tab", { name: "IORBIT", exact: true }).click();
+    await page.getByRole("tab", { name: "iOrbit", exact: true }).click();
     await page.getByRole("tab", { name: "活动", exact: true }).click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [{ method: "push", href: "/ai" }, { method: "replace", href: "/events" }]);
   });

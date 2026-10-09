@@ -1,0 +1,18 @@
+export const sync = {
+  "sync.localReady": "Loading saved content…",
+  "sync.syncing": "Syncing the latest content…",
+  "sync.fresh": "Up to date",
+  "sync.stale": "Showing saved content. Refresh when online.",
+  "sync.failure": "Sync failed. Try again.",
+  "sync.lastSynced": "Last synced: {time}",
+  "sync.mutationPending": "Saved in the cloud; local sync is still pending. Try again to confirm the latest content.",
+  "sync.offlineSnapshot": "Offline · showing content as of {time}. Creating and editing need a connection.",
+  "sync.offlineNoSnapshot": "Offline · nothing is stored on this device yet. Creating and editing need a connection.",
+  "sync.needsNetwork": "Needs a connection",
+  "sync.unavailableSnapshot": "The service is temporarily unavailable · showing content as of {time}. Creating and editing need a connection.",
+  "sync.needsNetworkBody": "This page works only while connected to the Orbit server. Tap Retry once you're back online.",
+  "sync.notOnDevice": "This isn't stored on this device yet. Open it once while connected and it will be readable offline.",
+  "sync.discardChange": "Discard",
+  "sync.retryChangeNamed": "Retry saving: {title}",
+  "sync.discardChangeNamed": "Discard this change: {title}",
+} as const;

@@ -1,4 +1,6 @@
 import * as Crypto from "expo-crypto";
+import { currentTranslator } from "../i18n/messages";
+import { currentStandardCopy } from "../i18n/standard-copy";
 import { router, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { Alert, AppState, Platform } from "react-native";
@@ -103,18 +105,19 @@ const OFFLINE_REVALIDATE_INTERVAL_MS = 10_000;
 const ONLINE_REVALIDATE_AFTER_MS = 12 * 60 * 60 * 1000;
 
 function obsoleteAuthActionResult(): AuthActionResult {
-  return { message: "登录服务器已切换，请重新登录。", success: false };
+  return { message: currentTranslator()("session.serverChanged"), success: false };
 }
 
 function confirmPendingWriteSignOut(): Promise<"keep" | "discard" | "cancel"> {
   return new Promise(resolve => {
+    const t = currentTranslator();
     Alert.alert(
-      "还有修改等待同步",
-      "注销前可以把这些修改加密保存在本机，之后用同一账号登录可继续；也可以明确放弃。",
+      t("session.pendingChangesTitle"),
+      t("session.pendingChangesBody"),
       [
-        { text: "取消", style: "cancel", onPress: () => resolve("cancel") },
-        { text: "加密保存并注销", onPress: () => resolve("keep") },
-        { text: "放弃修改并注销", style: "destructive", onPress: () => resolve("discard") },
+        { text: currentStandardCopy().action.cancel, style: "cancel", onPress: () => resolve("cancel") },
+        { text: t("session.keepAndSignOut"), onPress: () => resolve("keep") },
+        { text: t("session.discardAndSignOut"), style: "destructive", onPress: () => resolve("discard") },
       ],
       { cancelable: true, onDismiss: () => resolve("cancel") },
     );
@@ -123,12 +126,13 @@ function confirmPendingWriteSignOut(): Promise<"keep" | "discard" | "cancel"> {
 
 function confirmPendingOtherAccountWrites(count: number): Promise<boolean> {
   return new Promise(resolve => {
+    const t = currentTranslator();
     Alert.alert(
-      "这台设备还保存着其他账号的修改",
-      `有 ${count} 项修改已加密保存在本机。继续登录不会删除它们；之后用原账号登录可继续同步。`,
+      t("session.otherAccountTitle"),
+      t("session.otherAccountBody", { count }),
       [
-        { text: "返回登录", style: "cancel", onPress: () => resolve(false) },
-        { text: "继续此账号", onPress: () => resolve(true) },
+        { text: t("session.backToSignIn"), style: "cancel", onPress: () => resolve(false) },
+        { text: t("session.continueWithAccount"), onPress: () => resolve(true) },
       ],
       { cancelable: true, onDismiss: () => resolve(false) },
     );
@@ -412,7 +416,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       if (validation.data.user.id !== session.user.id) {
         await discardUnacceptedSession(session);
         return {
-          message: "登录身份校验失败，请重新登录。",
+          message: currentTranslator()("session.identityCheckFailed"),
           success: false
         };
       }
@@ -429,7 +433,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       if (!identity) {
         await discardUnacceptedSession(session);
         return {
-          message: "无法确认当前账号，请稍后重试。",
+          message: currentTranslator()("session.accountUnconfirmed"),
           success: false
         };
       }
@@ -439,18 +443,18 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           const pending = await syncLifecycle.pendingWriteSummary({ baseUrl, actorId: identity.accountId });
           if (!pending) {
             await discardUnacceptedSession(session);
-            return { message: "无法确认本机是否还有其他账号的待同步修改，请稍后重试。", success: false };
+            return { message: currentTranslator()("session.otherAccountUnknown"), success: false };
           }
           if (pending.otherAccounts > 0 && !(await confirmPendingOtherAccountWrites(pending.otherAccounts))) {
             await discardUnacceptedSession(session);
-            return { message: "已取消切换账号，原有待同步修改仍保留在本机。", success: false };
+            return { message: currentTranslator()("session.switchCancelled"), success: false };
           }
           if (authEnvironment.current.revision !== requestRevision) {
             await discardUnacceptedSession(session);
             return obsoleteAuthActionResult();
           }
           if (!(await syncLifecycle.setScope({ baseUrl, actorId: identity.accountId }))) {
-            return { message: "无法安全清除上个账号的本地数据，请稍后再试。", success: false };
+            return { message: currentTranslator()("session.clearPreviousFailed"), success: false };
           }
           if (authEnvironment.current.revision !== requestRevision) {
             await discardUnacceptedSession(session);
@@ -475,7 +479,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           }
         } catch {
           return {
-            message: "无法安全保存登录状态，请稍后再试。",
+            message: currentTranslator()("session.saveSignInFailed"),
             success: false
           };
         }
@@ -577,7 +581,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       } catch (error) {
         console.error("Orbit Google 登录启动失败", error);
         return {
-          message: "Google 登录没有完成，请重新登录。",
+          message: currentTranslator()("session.googleIncomplete"),
           success: false
         };
       }
@@ -614,11 +618,11 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       const count = await syncLifecycle.withDatabase({ baseUrl, actorId: accountId }, async database =>
         (await database.get<{ count: number }>("SELECT COUNT(*) AS count FROM sync_outbox"))?.count ?? 0,
       );
-      if (count === null) return { message: "无法确认待同步修改，请稍后重试注销。", success: false };
+      if (count === null) return { message: currentTranslator()("session.pendingUnknown"), success: false };
       if (count > 0) {
         const choice = await confirmPendingWriteSignOut();
         if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
-        if (choice === "cancel") return { message: "已取消注销。", success: false };
+        if (choice === "cancel") return { message: currentTranslator()("session.signOutCancelled"), success: false };
         discardPendingWrites = choice === "discard";
       }
     }
@@ -644,18 +648,18 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
             await database.run("DELETE FROM sync_aliases");
           }),
         );
-        if (discarded === null) return { message: "无法安全放弃待同步修改，请稍后重试。", success: false };
+        if (discarded === null) return { message: currentTranslator()("session.discardFailed"), success: false };
       }
       // The browser mirror is erased on sign-out too (0130); before, only native purged here.
       if (!(await syncLifecycle.setScope(null))) {
-        return { message: "无法安全清除这台设备上的本地数据，请稍后再试。", success: false };
+        return { message: currentTranslator()("session.clearDeviceFailed"), success: false };
       }
       if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
       await offlineIdentityStorage.clear(baseUrl);
       if (!usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
     } catch {
       return {
-        message: "无法清除这台设备上的登录状态，请稍后再试。",
+        message: currentTranslator()("session.clearSignInFailed"),
         success: false
       };
     }

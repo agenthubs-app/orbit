@@ -56,7 +56,7 @@ createRoot(document.getElementById("root")).render(<OrbitLocaleProvider><Probe /
       resolveDir: process.cwd(),
     },
     bundle: true,
-    define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     format: "iife",
     jsx: "automatic",
     plugins: [{

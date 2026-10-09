@@ -86,7 +86,7 @@ function Fixture() {
 }
 createRoot(document.getElementById("root")).render(<Fixture />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
-    define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     plugins: [{ name: "primitives-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|useOrbitApiClient|native-notifications|push-device-session|useLocalInbox|useLocalAiSessions|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "primitives-test" }));
@@ -115,7 +115,7 @@ async function openScreen(t: { after: (fn: () => Promise<void>) => void }, query
   t.after(() => page.close());
   await page.route("**/*", route => route.request().url().startsWith(url) ? route.continue() : route.abort());
   await page.goto(url + "?" + query);
-  await page.getByText(query.includes("settings") ? "设置" : query.includes("recovery") ? "这个页面出了点问题" : title, { exact: true }).waitFor();
+  await page.getByText(query.includes("settings") ? "设置" : query.includes("recovery") ? "无法显示页面" : title, { exact: true }).waitFor();
   return page;
 }
 
@@ -248,7 +248,7 @@ for (const appearance of ["light", "dark"] as const) {
       element.style.fontSize = `${parseFloat(style.fontSize) * 2}px`;
       element.style.lineHeight = `${parseFloat(style.lineHeight) * 2}px`;
     }));
-    await fits(page.getByText("这个页面出了点问题", { exact: true }));
+    await fits(page.getByText("无法显示页面", { exact: true }));
     await fits(retry, 320, 50);
     await retry.click();
     assert.equal((await page.evaluate(() => (window as any).fixture.requests)).length, 2);

@@ -205,7 +205,7 @@ async function bundle(mode: Mode) {
     absWorkingDir: app, bundle: true, write: false, format: "iife" as const, platform: "browser" as const,
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     jsx: "automatic" as const,
-    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{
       name: "session-restore-test",
       setup(plugin: { onResolve: Function; onLoad: Function }) {

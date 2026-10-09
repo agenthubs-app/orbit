@@ -33,7 +33,7 @@ test.before(async () => {
     write: false,
     format: "iife",
     jsx: "automatic",
-    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "today-page-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^fixture$|\/(ApiBaseUrlProvider|AuthSessionProvider|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "today-pages" }));
       plugin.onLoad({ filter: /.*/, namespace: "today-pages" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));

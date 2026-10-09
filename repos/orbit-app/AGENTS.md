@@ -10,7 +10,8 @@ This directory is the iOS-first Orbit mobile app.
   `src/api/domain/` copies only the approved `industries.ts` and `language.ts`
   dictionaries from `shared/domain/`, `src/api/compute/` copies `shared/compute/`, and
   `src/api/design/` copies only the generated `tokens.ts` and `icons.ts` from
-  `shared/design/` (redesign R01 / R02, RD-08; `shared/copy` joins in R03). Do not broaden that whitelist to
+  `shared/design/` (redesign R01 / R02, RD-08), and `src/api/copy/` copies the
+  three-language standard wording from `shared/copy/` (R03). Do not broaden that whitelist to
   other domain or feature code. The contract, API Schema, domain, compute and design
   sync tests verify these copies. Never edit copies by hand or import the source
   repository at build time.
@@ -20,6 +21,18 @@ This directory is the iOS-first Orbit mobile app.
   `npm run sync:contract` here. Use the design names (`colors.ink3Text`,
   `radius.xl`, `typography.cardTitle`); `tests/design-legacy-names.test.ts` rejects the
   old names and colour literals.
+- Copy (redesign R03): dictionaries are split by key prefix into
+  `src/i18n/<locale>/<domain>.ts` (add a key to all three locales); fixed phrases
+  (navigation, chips, toasts, confirm, offline / error / loading, draft boundary)
+  come from `useStandardCopy()` (`src/i18n/standard-copy.ts`, synced from
+  `repos/orbits/shared/copy`). Write no user-visible text in code:
+  `tests/no-hardcoded-copy.test.ts` fails on new hard-coded text and only lets the
+  legacy counts in `tests/fixtures/hardcoded-copy-legacy-allowlist.json` go down.
+  Follow `docs/designs/redesign-2026-10/sprints/R03-copy-and-ja/{glossary,style-guide}.md`
+  and run `npm run copy:qa -- --app <domain>` in `repos/orbits` on new copy.
+  Unsupported device languages fall back to Japanese; old-screen tests pin the
+  pre-R03 Chinese default through `__ORBIT_LEGACY_TEST_LANGUAGE__` (see
+  `src/i18n/locale-core.ts`), new tests should not rely on it.
 - Icons (redesign R02): draw every icon with `src/components/ui/Icon.tsx`
   (`<Icon name="calendar" />`, names from `src/api/design/icons.ts`, generated from
   `repos/orbits/shared/design/icons.json`). New code must not import

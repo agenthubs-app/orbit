@@ -43,6 +43,8 @@ test("the sync script copies only shared/design/tokens.ts and icons.ts and repla
   writeFileSync(join(shared, "design", "icons.ts"), "export const designIconNames = [\"home\"] as const;\n");
   writeFileSync(join(shared, "design", "tokens.json"), "{}\n");
   writeFileSync(join(shared, "design", "icons.json"), "{}\n");
+  mkdirSync(join(shared, "copy"), { recursive: true });
+  for (const lang of ["ja", "zh", "en"]) writeFileSync(join(shared, "copy", `${lang}.ts`), `export const ${lang} = {} as const;\n`);
   writeFileSync(join(shared, "design", "README.md"), "source notes\n");
   const target = join(app, "src", "api", "design");
   mkdirSync(target, { recursive: true });

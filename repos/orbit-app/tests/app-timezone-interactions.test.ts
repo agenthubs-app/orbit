@@ -9,7 +9,7 @@ let script: string;
 test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { OrbitTimeZoneProvider, useOrbitTimeZone } from "./src/time/OrbitTimeZoneProvider"; function View() { const zone=useOrbitTimeZone(); return <output>{JSON.stringify(zone)}</output>; } createRoot(document.getElementById("root")).render(<OrbitTimeZoneProvider><View /></OrbitTimeZoneProvider>);`, resolveDir: process.cwd(), loader: "tsx" },
-    bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"' },
+    bundle: true, write: false, format: "iife", jsx: "automatic", define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"' },
     plugins: [{ name: "native-lifecycle", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "fixture" }));
       plugin.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({ contents: `import React from "react"; const listeners = new Set(); window.foreground = () => listeners.forEach(fn => fn("active")); export const AppState = { addEventListener: (_name, fn) => { listeners.add(fn); return { remove: () => listeners.delete(fn) }; } }; export const Text = ({children}) => <div role="alert">{children}</div>;`, loader: "jsx", resolveDir: process.cwd() }));

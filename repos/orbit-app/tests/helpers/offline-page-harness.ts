@@ -185,7 +185,7 @@ export async function startOfflinePageHarness(screens: readonly HarnessScreen[],
     },
     bundle: true, write: false, format: "iife", jsx: "automatic",
     resolveExtensions: options.web ? [".web.tsx", ".web.ts", ".tsx", ".ts", ".jsx", ".js", ".json"] : [".tsx", ".ts", ".jsx", ".js", ".json"],
-    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     logLevel: "silent",
     plugins: [{
       name: "offline-page-boundaries",

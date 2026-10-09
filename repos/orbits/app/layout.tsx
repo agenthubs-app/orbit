@@ -3,7 +3,7 @@
  *
  * 这里声明全局 metadata 和基础样式，所有 App Router 页面都会包在这个 layout 下。
  */
-import { normalizeOrbitLanguage, orbitHtmlLang } from "./(app)/app/orbit-language-core";
+import { orbitHtmlLang, resolveRequestOrbitLanguage, type OrbitLanguage } from "./(app)/app/orbit-language-core";
 import "./(app)/app/orbit-2026/tokens.css";
 import { ORBIT_THEME_INIT_SCRIPT } from "./(app)/app/orbit-theme-init";
 
@@ -280,17 +280,20 @@ const globalStyles = `
 `;
 
 export default async function RootLayout({ children }) {
-  let rawLanguage: string | undefined;
+  let language: OrbitLanguage;
   try {
     const { cookies, headers } = await import("next/headers");
     const requestHeaders = await headers();
     const cookieStore = await cookies();
-    rawLanguage =
-      requestHeaders.get("x-orbit-lang") ?? cookieStore.get("orbit-lang")?.value ?? undefined;
+    language = resolveRequestOrbitLanguage({
+      header: requestHeaders.get("x-orbit-lang"),
+      cookie: cookieStore.get("orbit-lang")?.value,
+      acceptLanguage: requestHeaders.get("accept-language"),
+    });
   } catch {
-    rawLanguage = undefined;
+    language = resolveRequestOrbitLanguage({ header: null, cookie: null, acceptLanguage: null });
   }
-  const htmlLang = orbitHtmlLang(normalizeOrbitLanguage(rawLanguage));
+  const htmlLang = orbitHtmlLang(language);
 
   return (
     <html lang={htmlLang} suppressHydrationWarning>

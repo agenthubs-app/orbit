@@ -125,7 +125,7 @@ const screens = { events: EventsScreen, detail: EventDetailScreen, registration:
 const Screen = screens[new URLSearchParams(location.search).get("screen")] || ContentFixture;
 createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
-    define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     plugins: [{ name: "event-boundaries", setup(plugin) {
       // Optional retrospective replay; never replaces the working production file.
       if (process.env.APP_STYLE_HOME_BASELINE === "1") plugin.onLoad({ filter: /\/src\/screens\/home\/HomeScreen\.tsx$/ }, () => ({ contents: readFileSync("../../.superpowers/sdd/2026-09-08-app-wide-style/baseline-src/screens/home/HomeScreen.tsx", "utf8"), loader: "tsx" }));

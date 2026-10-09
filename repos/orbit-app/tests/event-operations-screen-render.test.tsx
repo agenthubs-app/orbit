@@ -44,7 +44,7 @@ test("named generation control calls only its start callback and preserves both 
       resolveDir: process.cwd(), loader: "tsx",
     },
     bundle: true, write: false, format: "iife", jsx: "automatic",
-    define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     plugins: [{
       name: "generation-device-boundaries",
       setup(plugin) {

@@ -58,7 +58,7 @@ test.before(async () => {
   const result = await build({
     stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/(app)/events"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? <Route /> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
-    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "ink-events-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "events" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
@@ -445,17 +445,17 @@ for (const patch of [{ width: 320, fontScale: 1.6 }, { width: 820 }, { width: 39
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-events-" + patch.width + (patch.dark ? "-dark" : "") + "-" + (process.env.EVENTS_QA_PASS ?? "current") + ".png" });
 });
 
-for (const fontScale of [1, 1.6, 2]) test("IORBIT brand remains a complete word and all five navigation targets fit at text scale " + fontScale, async t => {
+for (const fontScale of [1, 1.6, 2]) test("iOrbit brand remains a complete word and all five navigation targets fit at text scale " + fontScale, async t => {
   const p = await open(t, { width: 320, fontScale });
   const bar = p.getByRole("tablist", { name: "主导航" });
-  const brand = bar.getByText("IORBIT", { exact: true });
+  const brand = bar.getByText("iOrbit", { exact: true });
   const metrics = await brand.evaluate(el => ({ height: el.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(el).lineHeight), targetWidth: el.parentElement!.getBoundingClientRect().width, targetMaxWidth: getComputedStyle(el.parentElement!).maxWidth }));
-  assert.ok(metrics.height <= metrics.lineHeight + 1, "the IORBIT brand must not break across lines: " + JSON.stringify(metrics));
+  assert.ok(metrics.height <= metrics.lineHeight + 1, "the iOrbit brand must not break across lines: " + JSON.stringify(metrics));
   const targets = await bar.getByRole("tab").all(); assert.equal(targets.length, 5);
   for (const tab of targets) {
     const box = (await tab.boundingBox())!; const label = (await tab.locator('[dir="auto"]').boundingBox())!;
     assert.ok(box.width >= 44 && box.height >= 44 && box.x >= 16 && box.x + box.width <= 304);
     assert.ok(label.x >= box.x && label.x + label.width <= box.x + box.width + 0.01 && label.y + label.height <= box.y + box.height + 0.01);
   }
-  await bar.getByRole("tab", { name: "IORBIT", exact: true }).click(); assert.equal(await p.evaluate(() => (window as any).fixture.navigation.at(-1)), "/ai");
+  await bar.getByRole("tab", { name: "iOrbit", exact: true }).click(); assert.equal(await p.evaluate(() => (window as any).fixture.navigation.at(-1)), "/ai");
 });

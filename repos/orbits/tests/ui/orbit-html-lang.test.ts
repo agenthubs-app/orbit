@@ -29,8 +29,12 @@ test("the strict parser and fallback normalizer share one language namespace", (
   assert.equal(parseOrbitLanguage("ja"), "ja");
   assert.equal(parseOrbitLanguage("fr"), null);
   assert.equal(parseOrbitLanguage(null), null);
-  assert.equal(normalizeOrbitLanguage("fr"), "zh");
-  assert.equal(normalizeOrbitLanguage(null), "zh");
+  // R03 / RD-11: unknown languages fall back to Japanese (legacy test seam cleared).
+  const seam = process.env.ORBIT_LEGACY_TEST_LANGUAGE;
+  delete process.env.ORBIT_LEGACY_TEST_LANGUAGE;
+  assert.equal(normalizeOrbitLanguage("fr"), "ja");
+  assert.equal(normalizeOrbitLanguage(null), "ja");
+  if (seam !== undefined) process.env.ORBIT_LEGACY_TEST_LANGUAGE = seam;
 });
 
 test("the root layout resolves lang per request instead of hardcoding en", () => {

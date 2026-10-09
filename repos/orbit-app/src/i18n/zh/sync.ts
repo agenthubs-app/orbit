@@ -1,0 +1,18 @@
+export const sync = {
+  "sync.localReady": "正在读取本地内容…",
+  "sync.syncing": "正在同步最新内容…",
+  "sync.fresh": "已是最新内容",
+  "sync.stale": "显示本地内容，联网后可刷新",
+  "sync.failure": "同步失败，请重试。",
+  "sync.lastSynced": "上次同步：{time}",
+  "sync.mutationPending": "云端已保存，本地同步待处理。请重试以确认最新内容。",
+  "sync.offlineSnapshot": "无法连接 · 显示截至 {time} 的内容；新建和编辑需要联网",
+  "sync.offlineNoSnapshot": "无法连接 · 这台设备上还没有内容；新建和编辑需要联网",
+  "sync.needsNetwork": "需要联网",
+  "sync.unavailableSnapshot": "服务暂时不可用 · 显示截至 {time} 的内容；新建和编辑需要联网",
+  "sync.needsNetworkBody": "这个页面要连上 Orbit 服务器才能使用。联网后点「重试」。",
+  "sync.notOnDevice": "这项内容还没保存在这台设备上，联网打开一次后断网也能看。",
+  "sync.discardChange": "放弃",
+  "sync.retryChangeNamed": "重试保存：{title}",
+  "sync.discardChangeNamed": "放弃这次修改：{title}",
+} as const;

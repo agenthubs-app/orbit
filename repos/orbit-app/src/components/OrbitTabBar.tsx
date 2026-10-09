@@ -5,30 +5,30 @@ import { createThemedStyles } from "../design/theme";
 import { floatShadow } from "../design/tokens";
 import type { MainTab } from "../view-models/app-navigation";
 import { OrbitNavigationIcon } from "./OrbitNavigationIcon";
-import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
-import type { MessageKey } from "../i18n/messages";
+import { useStandardCopy } from "../i18n/standard-copy";
 import { useMobileViewport } from "../platform/use-mobile-viewport";
 
 const tabs = [
-  { id: "home", labelKey: "nav.home", href: "/home" },
-  { id: "contacts", labelKey: "nav.contacts", href: "/contacts" },
-  { id: "ai", labelKey: "nav.ai", href: "/ai" },
-  { id: "events", labelKey: "nav.events", href: "/events" },
-  { id: "profile", labelKey: "nav.profile", href: "/profile" }
+  { id: "home", copyKey: "home", href: "/home" },
+  { id: "contacts", copyKey: "network", href: "/contacts" },
+  { id: "ai", copyKey: "iorbit", href: "/ai" },
+  { id: "events", copyKey: "events", href: "/events" },
+  { id: "profile", copyKey: "me", href: "/profile" }
 ] as const;
 
 export function OrbitTabBar({ active }: { active: MainTab }) {
   const { colors, styles } = useStyles();
   const router = useRouter();
-  const locale = useOrbitLocale();
+  // R03 contract A: tab names are the standard wording shared with the Web.
+  const copy = useStandardCopy();
   const { keyboardVisible } = useMobileViewport();
 
   if (keyboardVisible) return null;
   return (
     <SafeAreaView edges={{ bottom: "maximum" }} pointerEvents="box-none" style={styles.safeArea}>
-      <View accessibilityRole="tablist" accessibilityLabel={locale.t("nav.main")} style={styles.bar}>
+      <View accessibilityRole="tablist" accessibilityLabel={copy.nav.main} style={styles.bar}>
         {tabs.map(tab => {
-          const label = locale.t(tab.labelKey as MessageKey);
+          const label = copy.nav[tab.copyKey];
           const selected = active === tab.id;
           const central = tab.id === "ai";
           const color = central ? colors.onAccent : selected ? colors.accentText : colors.ink3Text;
@@ -40,7 +40,8 @@ export function OrbitTabBar({ active }: { active: MainTab }) {
               <View style={central ? styles.planet : null}>
                 <OrbitNavigationIcon name={tab.id} size={central ? 24 : 22} color={color} />
               </View>
-              <Text style={[styles.label, { color: central ? colors.ink : color }, central && styles.centralLabel]}>{label}</Text>
+              {/* R03: one line, fixed size like iOS tab bars (large text uses the long-press large-content view, R05). */}
+              <Text maxFontSizeMultiplier={1} numberOfLines={1} style={[styles.label, { color: central ? colors.ink : color }, central && styles.centralLabel]}>{label}</Text>
             </Pressable>
           );
         })}

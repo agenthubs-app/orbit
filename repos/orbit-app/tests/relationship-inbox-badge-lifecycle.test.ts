@@ -61,7 +61,7 @@ test.before(async () => {
     stdin: { contents: `import React, { useState } from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { useRelationshipInboxBadgeCount } from "./src/hooks/useRelationshipInboxBadgeCount"; import { emitMessageStateInvalidation } from "./src/api/message-state"; window.invalidateMessageState = emitMessageStateInvalidation;
 function Badge({second=false}) { const s = useFixture(); const count = useRelationshipInboxBadgeCount(second ? "another-screen-scope" : s.scopeKey); const [draft, setDraft] = useState(""); return <><output aria-label="未读数量">{count ?? "unknown"}</output><input aria-label="草稿" value={draft} onChange={e => setDraft(e.target.value)} /></>; }
 function App() { const s = useFixture(); return s.mounted ? <><Badge />{s.multiple && <Badge second />}</> : null; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() },
-    bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    bundle: true, write: false, format: "iife", jsx: "automatic", define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "badge-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^(fixture|expo-router|react-native)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalInbox|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "badge" }));
       plugin.onLoad({ filter: /.*/, namespace: "badge" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));

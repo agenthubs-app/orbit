@@ -91,7 +91,7 @@ test.before(async () => {
     stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { AiConversationScreen } from "./src/screens/ai/AiConversationScreen"; createRoot(document.getElementById("root")).render(<div style={{ height: 844, display: "flex" }}><AiConversationScreen /></div>);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     loader: { ".png": "dataurl", ".jpg": "dataurl" },
-    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "conversation-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|useLocalAiSessions|notes-source)$/ }, () => ({ path: "fixture", namespace: "conversation" }));

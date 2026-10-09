@@ -26,7 +26,7 @@ test.before(async () => {
     import React from 'react';import {createRoot} from 'react-dom/client';import {useFixture} from 'fixture';
     import {useContactCardPages} from './src/hooks/useContactCardPages';
     function App(){const s=useFixture();const r=useContactCardPages({query:s.query});return <><output aria-label="state">{r.state.kind}</output><output aria-label="total">{r.summary?.total??'unknown'}</output><output aria-label="names">{r.page?.items.map(c=>c.displayName).join(',')??''}</output><button onClick={r.nextPage} disabled={!r.page?.hasMore}>next</button><button onClick={r.firstPage}>first</button><button onClick={r.state.refresh}>refresh</button></>};createRoot(document.getElementById('root')).render(<App/>);
-  ` }, bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "boundaries", setup(plugin) {
+  ` }, bundle: true, write: false, format: "iife", jsx: "automatic", define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^fixture$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalContacts)$/ }, () => ({ path: "fixture", namespace: "pages" }));
     plugin.onLoad({ filter: /.*/, namespace: "pages" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
   } }] });

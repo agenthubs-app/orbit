@@ -14,8 +14,9 @@ test("device locale resolution uses the first supported language and a documente
   assert.equal(languageFromDeviceLocales([{ languageCode: "ja", languageTag: "ja-JP" }]), "ja");
   assert.equal(languageFromDeviceLocales([{ languageCode: "fr", languageTag: "fr-FR" }, { languageCode: "en", languageTag: "en-US" }]), "en");
   assert.equal(languageFromDeviceLocales([{ languageCode: "zh", languageTag: "zh-Hant-TW" }]), "zh");
-  assert.equal(languageFromDeviceLocales([{ languageCode: null, languageTag: "fr-FR" }]), "zh");
-  assert.equal(languageFromDeviceLocales([]), "zh");
+  // R03 / RD-11: unsupported or missing device languages fall back to Japanese.
+  assert.equal(languageFromDeviceLocales([{ languageCode: null, languageTag: "fr-FR" }]), "ja");
+  assert.equal(languageFromDeviceLocales([]), "ja");
 });
 
 test("manual account language wins while system mode follows each device", () => {

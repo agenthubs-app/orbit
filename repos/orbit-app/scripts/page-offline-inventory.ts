@@ -55,6 +55,7 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   // ── structure ──
   { file: 'app/_layout.tsx', path: '(根布局)', title: '根布局：会话恢复、错误边界、通知协调', classification: 'device-only', reads: '无（会话恢复见威胁模型第 6 节）', offline: '按 0127 的离线冷启动身份进入' },
   { file: 'app/(app)/_layout.tsx', path: '(底部标签栏)', title: '底部五个标签的布局', classification: 'device-only', reads: '无', offline: '照常显示' },
+  { file: 'app/showcase/copy.tsx', path: '/showcase/copy', title: '标准用词展示页（开发包和 TestFlight，R03）', classification: 'device-only', reads: '无（标准用词打包在 App 里）', offline: '照常显示' },
   { file: 'app/showcase/icons.tsx', path: '/showcase/icons', title: '图标展示页（开发包和 TestFlight，R02）', classification: 'device-only', reads: '无（图标源打包在 App 里）', offline: '照常显示' },
   { file: 'app/+html.tsx', path: '(浏览器外壳)', title: '浏览器版 HTML 外壳', classification: 'device-only', reads: '无', offline: '照常加载' },
   { file: 'app/index.tsx', path: '/', title: '入口跳转', classification: 'device-only', reads: '无', offline: '跳到首页或登录页' },

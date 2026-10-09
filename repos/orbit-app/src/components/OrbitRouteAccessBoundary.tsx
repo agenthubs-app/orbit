@@ -1,3 +1,4 @@
+import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
 import {
   Redirect,
   Stack,
@@ -60,14 +61,15 @@ export function withOrbitPrivateRoute<Props extends object>(
 
 function OrbitAuthLoading() {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <View
-      accessibilityLabel="正在确认登录状态"
+      accessibilityLabel={locale.t("shell.checkingSignInLabel")}
       accessibilityRole="progressbar"
       style={styles.loading}
     >
       <ActivityIndicator color={colors.accentText} size="small" />
-      <Text style={styles.loadingText}>正在确认登录状态…</Text>
+      <Text style={styles.loadingText}>{locale.t("shell.checkingSignIn")}</Text>
     </View>
   );
 }

@@ -13,6 +13,10 @@ import { fileURLToPath } from "node:url";
 
 const helpersDir = dirname(fileURLToPath(import.meta.url));
 
+// R03 legacy test seam (src/i18n/locale-core.ts): the old-screen tests assume the
+// pre-R03 Chinese default. New tests that check the Japanese default clear it.
+globalThis.__ORBIT_LEGACY_TEST_LANGUAGE__ = "zh";
+
 // 原生模块引用 react-native 内部路径，在 Node 里解析不了，用测试替身顶上。
 const REDIRECTS = new Map([
   ["react-native", "react-native-web"],

@@ -71,7 +71,7 @@ const screens = { settings: SettingsScreen, api: NativeApiSettingsScreen, apiWeb
 const Screen = screens[params.get("screen")];
 createRoot(document.getElementById("root")).render(<Screen mode={params.get("mode") || "login"} surface={params.get("surface") || "dashboard"} />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
-    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "account-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context|expo-image-picker|expo-document-picker)$|\/(AuthSessionProvider|useApiResource|useOrbitApiClient|ApiBaseUrlProvider|native-notifications|push-device-session)$|\/api\/client$/ }, () => ({ path: "fixture", namespace: "account-test" }));

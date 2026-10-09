@@ -33,7 +33,7 @@ test("browser offline identity: persisted in the mirror key store, survives relo
     stdin: { contents: ENTRY, loader: "ts", resolveDir: app },
     bundle: true, write: false, format: "iife", platform: "browser",
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
-    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
   })).outputFiles[0]!.text;
   const server = http.createServer((request, response) => {
     if (request.url === "/app.js") { response.writeHead(200, { "content-type": "text/javascript" }); response.end(bundle); return; }

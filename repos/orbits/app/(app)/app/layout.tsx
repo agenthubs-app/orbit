@@ -18,7 +18,7 @@ import { ContactDetailReturnRecorder } from "./contacts/network-0918/detail-retu
 import { OrbitAskProvider } from "./orbit-global-ask/orbit-ask-context";
 import { OrbitGlobalAsk } from "./orbit-global-ask/orbit-global-ask";
 import { OrbitLanguageProvider } from "./orbit-language-context";
-import { normalizeOrbitLanguage } from "./orbit-language-core";
+import { resolveRequestOrbitLanguage } from "./orbit-language-core";
 import { OrbitResponsiveA11y } from "./orbit-responsive-a11y";
 import { OrbitThemeRuntime, OrbitThemeStyles } from "./orbit-theme";
 
@@ -26,9 +26,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const requestHeaders = await headers();
   const cookieStore = await cookies();
   const session = await auth();
-  const language = normalizeOrbitLanguage(
-    requestHeaders.get("x-orbit-lang") ?? cookieStore.get("orbit-lang")?.value,
-  );
+  const language = resolveRequestOrbitLanguage({
+    header: requestHeaders.get("x-orbit-lang"),
+    cookie: cookieStore.get("orbit-lang")?.value,
+    acceptLanguage: requestHeaders.get("accept-language"),
+  });
 
   return (
     <SessionProvider refetchOnWindowFocus={false} session={session}>

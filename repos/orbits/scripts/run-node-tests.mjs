@@ -23,7 +23,9 @@ const result = spawnSync(
   process.execPath,
   ["--test", "--import", "tsx", "--import", paidAiBoundary, "--import", cssStub, ...(testTargets.length > 0 ? testTargets : defaultTestPatterns)],
   {
-    env: { ...process.env, ORBIT_TEST_PAID_AI_LEDGER: ledger },
+    // ORBIT_LEGACY_TEST_LANGUAGE: the pre-R03 Chinese default the old page tests assume
+    // (app/(app)/app/orbit-language-core.ts). New tests that check Japanese clear it.
+    env: { ...process.env, ORBIT_TEST_PAID_AI_LEDGER: ledger, ORBIT_LEGACY_TEST_LANGUAGE: "zh" },
     stdio: "inherit",
   },
 );

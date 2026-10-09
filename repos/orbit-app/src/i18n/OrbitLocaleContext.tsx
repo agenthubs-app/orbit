@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 
 import type { OrbitLanguagePreferenceContract } from "../api/contract/account-language-preference";
 import type { OrbitLanguage } from "../api/contract/language";
-import type { OrbitLanguageSource } from "./locale-core";
+import { fallbackOrbitLanguage, type OrbitLanguageSource } from "./locale-core";
 import { createTranslator, type OrbitTranslator } from "./messages";
 
 export type OrbitLanguageChoice = OrbitLanguage | "system";
@@ -21,7 +21,8 @@ export interface OrbitLocaleContextValue {
   t: OrbitTranslator;
 }
 
-const fallbackLanguage = "zh" as const;
+// R03 / RD-11: a screen without a provider speaks the default language (Japanese).
+const fallbackLanguage = fallbackOrbitLanguage();
 const fallbackContext: OrbitLocaleContextValue = {
   choice: "system",
   deviceLanguage: fallbackLanguage,

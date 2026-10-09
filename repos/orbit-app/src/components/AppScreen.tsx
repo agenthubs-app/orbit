@@ -1,3 +1,5 @@
+import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
+import { fillCopy, useStandardCopy } from "../i18n/standard-copy";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, usePathname, type Href } from "expo-router";
 import type { PropsWithChildren, ReactElement, ReactNode } from "react";
@@ -7,8 +9,7 @@ import {
   StyleSheet,
   Text,
   View,
-  type RefreshControlProps
-} from "react-native";
+  type RefreshControlProps, PixelRatio } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { layout, spacing, textStyles } from "../design/tokens";
 import { createThemedStyles } from "../design/theme";
@@ -50,7 +51,12 @@ export function AppScreen({
   const viewport = useMobileViewport();
   const canGoBack = router.canGoBack();
   const mainTab = mainTabForPath(pathname);
-  const parent = parentForPath(pathname);
+  const locale = useOrbitLocale();
+  const copy = useStandardCopy();
+  const parent = parentForPath(pathname, locale.t);
+  // Like iOS: when the destination name would not fit (large text, long name), the
+  // back button says just 戻る / 返回 / Back; the accessibility label keeps the name.
+  const genericBack = canGoBack || PixelRatio.getFontScale() >= 1.5 || parent.label.length > 12;
   const navVisible = showBack ?? (!mainTab && pathname !== "/ai");
 
   return (
@@ -65,11 +71,11 @@ export function AppScreen({
     >
       {navVisible ? (
         <View style={styles.navigation}>
-          <Pressable accessibilityLabel={backAccessibilityLabel ?? (canGoBack ? "返回" : "返回" + parent.label)} accessibilityRole="button"
+          <Pressable accessibilityLabel={backAccessibilityLabel ?? (canGoBack ? copy.nav.back : fillCopy(copy.nav.backTo, { label: parent.label }))} accessibilityRole="button"
             onPress={onBack ?? (() => canGoBack ? router.back() : router.replace(parent.href as Href))}
             style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}>
             <Ionicons color={colors.accentText} name="chevron-back" size={20} />
-            <Text style={styles.backLabel}>{backLabel ?? (canGoBack ? "返回" : parent.label)}</Text>
+            <Text numberOfLines={1} style={styles.backLabel}>{backLabel ?? (genericBack ? copy.nav.back : parent.label)}</Text>
           </Pressable>
           <Text accessibilityRole="header" style={styles.navigationTitle}>{title}</Text>
           <View style={styles.navigationActions}>{headerActions}</View>

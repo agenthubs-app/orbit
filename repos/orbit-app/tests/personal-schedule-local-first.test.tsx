@@ -60,7 +60,7 @@ test.before(async () => {
     },
     bundle: true, write: false, format: "iife", jsx: "automatic",
     resolveExtensions: [".tsx", ".ts", ".jsx", ".js", ".json"],
-    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{
       name: "schedule-native-boundaries",
       setup(plugin) {

@@ -3,7 +3,7 @@ import { SessionProvider } from "next-auth/react";
 
 import { OrbitLanding0918 } from "./(app)/app/orbit-landing-0918";
 import { OrbitLanguageProvider } from "./(app)/app/orbit-language-context";
-import { normalizeOrbitLanguage } from "./(app)/app/orbit-language-core";
+import { resolveRequestOrbitLanguage } from "./(app)/app/orbit-language-core";
 import { OrbitReferenceStyles } from "./(app)/app/orbit-reference-styles";
 import { auth } from "../auth";
 
@@ -15,9 +15,11 @@ export default async function Page() {
     headers(),
     cookies(),
   ]);
-  const language = normalizeOrbitLanguage(
-    requestHeaders.get("x-orbit-lang") ?? cookieStore.get("orbit-lang")?.value,
-  );
+  const language = resolveRequestOrbitLanguage({
+    header: requestHeaders.get("x-orbit-lang"),
+    cookie: cookieStore.get("orbit-lang")?.value,
+    acceptLanguage: requestHeaders.get("accept-language"),
+  });
 
   return (
     <>

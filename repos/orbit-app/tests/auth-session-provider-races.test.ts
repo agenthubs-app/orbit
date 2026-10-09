@@ -130,7 +130,7 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
     write: false,
     format: "iife",
     jsx: "automatic",
-    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{
       name: "auth-provider-boundaries",
       setup(plugin) {
@@ -312,7 +312,7 @@ test("a validated cookie cannot accept a different actor than the login envelope
   await page.evaluate(() => (window as any).fixture.release());
   await page.waitForFunction(() => (window as any).fixture.results.length === 1);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.results), [{
-    message: "登录身份校验失败，请重新登录。",
+    message: "无法验证登录身份，请重新登录。",
     success: false
   }]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.writes), []);
@@ -533,7 +533,7 @@ test("a runtime 401 through the real provider archives a queued SQLite write bef
   assert.equal(vault?.vaultPayload.includes("mirror-only-sc03-marker"), false, "the server mirror is not copied into the pending-write vault");
 });
 
-for (const [branch, alertChoice] of [["continue", "继续此账号"], ["cancel", "返回登录"]] as const) {
+for (const [branch, alertChoice] of [["continue", "继续使用此账号"], ["cancel", "返回登录"]] as const) {
   test(`a real SQLite pending write follows the provider's other-account ${branch} branch`, async t => {
     const native = sqliteNativeFixture();
     t.after(() => { for (const database of native.files.values()) database.close(); });
@@ -555,8 +555,8 @@ for (const [branch, alertChoice] of [["continue", "继续此账号"], ["cancel",
     const result = await page.evaluate(() => (window as any).fixture.results[0]);
     const alerts = await page.evaluate(() => (window as any).fixture.alerts);
     assert.equal(alerts.length, 1);
-    assert.deepEqual(alerts[0].buttons, ["返回登录", "继续此账号"]);
-    assert.match(alerts[0].message, /^有 1 项修改已加密保存在本机/u);
+    assert.deepEqual(alerts[0].buttons, ["返回登录", "继续使用此账号"]);
+    assert.match(alerts[0].message, /^有1项修改已加密保存在本机/u);
     if (branch === "continue") {
       assert.equal(result.success, true);
       assert.equal(await page.evaluate(() => (window as any).fixture.auth.actorId), "account:other-sqlite-fixture");

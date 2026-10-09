@@ -18,7 +18,7 @@ async function bundle() {
     write: false,
     format: "iife",
     resolveExtensions: [".web.ts", ".web.js", ".ts", ".js", ".json"],
-    define: { "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env": "{}", __DEV__: "false" },
     plugins: [{
       name: "browser-crypto-boundary",
       setup(plugin) {

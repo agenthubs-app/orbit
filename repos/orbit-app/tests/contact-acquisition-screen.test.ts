@@ -11,7 +11,7 @@ test("actual acquisition batch action opens the private collection without sendi
   const result = await build({
     stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { ContactAcquisitionScreen } from "./src/screens/contacts/ContactAcquisitionScreen"; createRoot(document.getElementById("root")).render(<ContactAcquisitionScreen />);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
-    define: { "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "acquisition-native-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^(expo-router|expo-camera|expo-image-picker|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider)$/ }, () => ({ path: "fixture", namespace: "acquisition" }));

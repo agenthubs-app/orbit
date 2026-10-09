@@ -4,6 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { layout, radius, spacing, textStyles } from "../design/tokens";
 import { createControlStyles } from "../design/controls";
 import { createThemedStyles } from "../design/theme";
+import { currentTranslator, type OrbitTranslator } from "../i18n/messages";
+import { currentStandardCopy } from "../i18n/standard-copy";
 
 // 渲染期抛出的异常在 React Native 里会把整棵树卸载，用户看到白屏且只能杀进程。
 // 这里提供两层网：
@@ -19,11 +21,11 @@ import { createThemedStyles } from "../design/theme";
 // 两层网都只处理渲染异常。事件回调和异步请求里的错误不走这里，
 // 那些由 useApiResource 的 failure/offline 状态和各屏自己的错误文案负责。
 
-function errorDetail(error: Error): string {
+function errorDetail(error: Error, t: OrbitTranslator): string {
   const message = error.message.trim();
 
   if (!message) {
-    return "没有更多信息。";
+    return t("shell.noErrorDetails");
   }
 
   // 原始异常信息通常是英文技术文本，对用户没有帮助但对排查有用，
@@ -39,19 +41,21 @@ export function AppErrorScreen({
   onRetry: () => void;
 }) {
   const { styles } = useStyles();
+  // The root boundary can sit above OrbitLocaleProvider, so it follows the
+  // language the provider publishes instead of reading the context.
+  const t = currentTranslator();
+  const copy = currentStandardCopy();
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>这个页面出了点问题</Text>
-        <Text style={styles.body}>
-          页面没能显示出来。你的数据没有受影响，重试一下通常就好了。
-        </Text>
+        <Text style={styles.title}>{copy.error.screenFailed}</Text>
+        <Text style={styles.body}>{copy.error.screenFailedBody}</Text>
         <View style={styles.detailBox}>
-          <Text style={styles.detailLabel}>错误信息</Text>
-          <Text style={styles.detailText}>{errorDetail(error)}</Text>
+          <Text style={styles.detailLabel}>{t("shell.errorDetails")}</Text>
+          <Text style={styles.detailText}>{errorDetail(error, t)}</Text>
         </View>
         <Pressable
-          accessibilityLabel="重试"
+          accessibilityLabel={copy.action.retry}
           accessibilityRole="button"
           onPress={onRetry}
           style={({ pressed }) => [
@@ -59,7 +63,7 @@ export function AppErrorScreen({
             pressed ? styles.pressed : null
           ]}
         >
-          <Text style={styles.primaryButtonText}>重试</Text>
+          <Text style={styles.primaryButtonText}>{copy.action.retry}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

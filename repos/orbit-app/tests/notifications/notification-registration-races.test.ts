@@ -277,7 +277,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       if (id.endsWith("/DataCard")) return { DataCard: "DataCard" };
       if (id.startsWith(".")) {
         const target = resolve(dirname(absolute), id);
-        return load([`${target}.ts`, `${target}.tsx`].find(existsSync) ?? target);
+        return load([`${target}.ts`, `${target}.tsx`, `${target}/index.ts`].find(existsSync) ?? target);
       }
       return require(id);
     };

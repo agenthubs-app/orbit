@@ -22,7 +22,7 @@ function App() {
 createRoot(document.getElementById("root")).render(<App />);
 `, loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic",
-    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "picker-platform", setup(p) {
       p.onResolve({ filter: /^react-native$/ }, () => ({ path: "react-native-web", external: false, namespace: "native-picker" }));
       p.onLoad({ filter: /.*/, namespace: "native-picker" }, () => ({ contents: 'export * from "react-native-web";', resolveDir: process.cwd(), loader: "js" }));

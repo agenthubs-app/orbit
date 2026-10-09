@@ -1,6 +1,6 @@
 import { cookies, headers } from "next/headers";
 
-import { normalizeOrbitLanguage, type OrbitLanguage } from "./orbit-language-core";
+import { resolveRequestOrbitLanguage, type OrbitLanguage } from "./orbit-language-core";
 import { readPrototypeScriptAsset } from "./orbit-reference-styles";
 
 const I18N_SCRIPT_UUID = "3fb21a06-dad4-41b9-bec9-3ec6c3d10e46";
@@ -87,15 +87,18 @@ export function localizeOrbitTree<T>(value: T, language: OrbitLanguage): T {
 
 /**
  * Resolve the active language inside a Server Component, mirroring the logic in
- * the app layout (header set by the proxy, falling back to the persisted cookie).
+ * the app layout (header set by the proxy, then the persisted cookie, then the
+ * browser's Accept-Language; R03).
  */
 export async function getOrbitServerLanguage(): Promise<OrbitLanguage> {
   const requestHeaders = await headers();
   const cookieStore = await cookies();
 
-  return normalizeOrbitLanguage(
-    requestHeaders.get("x-orbit-lang") ?? cookieStore.get("orbit-lang")?.value,
-  );
+  return resolveRequestOrbitLanguage({
+    header: requestHeaders.get("x-orbit-lang"),
+    cookie: cookieStore.get("orbit-lang")?.value,
+    acceptLanguage: requestHeaders.get("accept-language"),
+  });
 }
 
 /**

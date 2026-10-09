@@ -1,0 +1,18 @@
+export const sync = {
+  "sync.localReady": "端末の内容を読み込んでいます…",
+  "sync.syncing": "最新の内容を同期しています…",
+  "sync.fresh": "最新の内容です",
+  "sync.stale": "端末の内容を表示中です。オンラインで更新できます。",
+  "sync.failure": "同期できませんでした。もう一度お試しください。",
+  "sync.lastSynced": "最終同期：{time}",
+  "sync.mutationPending": "クラウドには保存されましたが、端末への同期確認待ちです。もう一度お試しください。",
+  "sync.offlineSnapshot": "オフライン · {time} 時点の内容を表示しています。作成と編集には接続が必要です。",
+  "sync.offlineNoSnapshot": "オフライン · この端末にはまだ内容がありません。作成と編集には接続が必要です。",
+  "sync.needsNetwork": "接続が必要です",
+  "sync.unavailableSnapshot": "サービスが一時的に利用できません · {time} 時点の内容を表示しています。作成と編集には接続が必要です。",
+  "sync.needsNetworkBody": "このページは Orbit サーバーに接続しているときだけ使えます。接続後に「再試行」を押してください。",
+  "sync.notOnDevice": "この内容はまだこの端末に保存されていません。接続中に一度開くと、オフラインでも読めます。",
+  "sync.discardChange": "破棄",
+  "sync.retryChangeNamed": "保存を再試行：{title}",
+  "sync.discardChangeNamed": "この変更を破棄：{title}",
+} as const;

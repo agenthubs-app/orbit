@@ -22,7 +22,7 @@ import {
   type LanguagePreferenceScope,
 } from "../api/language-preference";
 import { useOrbitApiClient } from "../hooks/useOrbitApiClient";
-import { languageFromDeviceLocales } from "./locale-core";
+import { fallbackOrbitLanguage, languageFromDeviceLocales, publishOrbitLanguage } from "./locale-core";
 import {
   OrbitLocaleContext,
   type OrbitLanguageChoice,
@@ -44,7 +44,7 @@ const systemPreference: OrbitLanguagePreferenceContract = {
   updatedAt: null,
 };
 
-function readDeviceLanguage(previous: OrbitLanguage = "zh"): {
+function readDeviceLanguage(previous: OrbitLanguage = fallbackOrbitLanguage()): {
   error: string | null;
   language: OrbitLanguage;
 } {
@@ -80,7 +80,7 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
   const client = useOrbitApiClient();
   const initialDevice = useMemo(
     () => Platform.OS === "web"
-      ? { error: null, language: "zh" as const }
+      ? { error: null, language: fallbackOrbitLanguage() }
       : readDeviceLanguage(),
     [],
   );
@@ -331,6 +331,8 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
     : syncState === "idle" && preference.mode === "manual" && preference.language === displayChoice
       ? { language: displayChoice, source: "account" as const }
       : { language: displayChoice, source: "session-unsynced" as const };
+  // Mirror for code above this provider (AuthSessionProvider, root error boundary).
+  publishOrbitLanguage(effective.language);
   const value = useMemo<OrbitLocaleContextValue>(() => ({
     choice: displayChoice,
     deviceLanguage,

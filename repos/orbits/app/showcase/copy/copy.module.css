@@ -1,0 +1,9 @@
+/* R03 standard-copy showcase. New-scope styles (RD-18): CSS Modules, design tokens only. */
+.page { min-height: 100vh; padding: 24px; background: var(--bg); color: var(--ink); font-family: var(--font); }
+.title { margin: 0 0 16px; font-size: var(--fs-title-sm); font-weight: 800; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.group { padding: 12px 14px; border-radius: var(--r-md); background: var(--surface); }
+.groupName { margin: 0 0 8px; color: var(--ink-2); font-size: var(--fs-label); font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; padding: 3px 0; }
+.key { min-width: 112px; color: var(--ink-3-text); font-size: var(--fs-label); }
+.text { color: var(--ink); font-size: var(--fs-body); }

@@ -34,7 +34,7 @@ test.before(async () => {
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useApiResource } from "./src/hooks/useApiResource"; import { useOrbitAuthSession } from "./src/api/AuthSessionProvider";
       function Screen() { const auth = useOrbitAuthSession(); const state = useApiResource("/api/contacts/same-contact", () => false, { ...(location.search.includes("scoped") ? { scopeKey: auth.actorId } : {}), ...(location.search.includes("network-only") ? { cachePolicy: "network-only" } : {}) }); return <><output>{state.kind === "success" ? state.data.value : state.kind}</output><button onClick={state.refresh}>刷新</button></>; }
       createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
-    bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}" },
+    bundle: true, write: false, format: "iife", jsx: "automatic", define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}" },
     plugins: [{ name: "resource-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "resource-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "resource-test" }, () => ({ contents: boundaries, loader: "jsx", resolveDir: process.cwd() }));

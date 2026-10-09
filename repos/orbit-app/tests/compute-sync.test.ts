@@ -77,6 +77,8 @@ test("the sync script copies shared/compute (and still only the two domain dicti
   writeFileSync(join(shared, "compute", "notes.md"), "not code\n");
   writeFileSync(join(shared, "design", "tokens.ts"), "export const designColors = {} as const;\n");
   writeFileSync(join(shared, "design", "icons.ts"), "export const designIconNames = [] as const;\n");
+  mkdirSync(join(shared, "copy"), { recursive: true });
+  for (const lang of ["ja", "zh", "en"]) writeFileSync(join(shared, "copy", `${lang}.ts`), `export const ${lang} = {} as const;\n`);
   writeFileSync(join(shared, "storage", "pool.ts"), "export const pool = 'server-only';\n");
   writeFileSync(join(shared, "api", "envelope.ts"), "export const envelope = 'server-only';\n");
   const target = join(app, "src", "api", "compute");
@@ -88,6 +90,6 @@ test("the sync script copies shared/compute (and still only the two domain dicti
     assert.deepEqual(readdirSync(target).sort(), ["compute-text.ts", "dashboard-sample.ts"], "every compute .ts file, no stale copy, no non-code file");
     assert.equal(readFileSync(join(target, "dashboard-sample.ts"), "utf8"), readFileSync(join(shared, "compute", "dashboard-sample.ts"), "utf8"));
     assert.deepEqual(readdirSync(join(app, "src", "api", "domain")).sort(), ["industries.ts", "language.ts"], "the domain rule is unchanged");
-    assert.deepEqual(readdirSync(join(app, "src", "api")).sort(), ["compute", "contract", "design", "domain", "schema"], "no other shared directory reaches the App");
+    assert.deepEqual(readdirSync(join(app, "src", "api")).sort(), ["compute", "contract", "copy", "design", "domain", "schema"], "no other shared directory reaches the App");
   }
 });
