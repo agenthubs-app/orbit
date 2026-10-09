@@ -1,6 +1,6 @@
 # 旧屏归属表：每个现有页面由哪个 Sprint 重写
 
-**版本 1（2026-10-09，小雨编制，待产品负责人确认）。** 改版是按屏替换（`IMPLEMENTATION-PLAN.md` §0.1「边界 B」）：一张设计屏对应一个新组件文件，接真实数据；新屏上线、路由切过去之后，**删除旧屏文件和它写死的颜色**。功能 Sprint 的验收以「旧文件已删」为准，不接受「旧屏改了颜色」。
+**版本 2（2026-10-09，小雨编制；未归属项已按用户决定补齐）。** 改版是按屏替换（`IMPLEMENTATION-PLAN.md` §0.1「边界 B」）：一张设计屏对应一个新组件文件，接真实数据；新屏上线、路由切过去之后，**删除旧屏文件和它写死的颜色**。功能 Sprint 的验收以「旧文件已删」为准，不接受「旧屏改了颜色」。
 
 本表列出两端**全部**产品路由（App `repos/orbit-app/app/` 91 个，Web `repos/orbits/app/**/page.tsx` 48 个，不含 `/dev/**` 内部调试页和 `/api/**`），给每个指定归属。功能 Sprint 写 PLANNER 时，从本表认领自己的行；R09 骨架验收时核对本表没有空行。
 
@@ -8,7 +8,7 @@
 
 - **处理**：重写 = 按设计稿新做一屏，删除旧屏；并入 = 内容进入别的新屏，旧路由改重定向或删除；重定向 = 现在已是跳转，随目标页一起处理；删除 = 新设计里没有，直接删。
 - **设计稿**：`docs/designs/redesign-2026-10/` 下对应的画板文件；`IMPLEMENTATION-PLAN.md` §1 有逐屏的数据映射。
-- Sprint 编号按 [README](README.md) 分工：R10 首页、R11 人脈、R12 / R15 / R16 加人与邀请、R13 / R14 收件箱 · 秘書 · 推送、R17 主催、R18 账户、R19 小组件、R20 Task、R21 iOrbit、R22–R25 计划 v2.2、R26 / R27 活动。加人、收件箱、活动三组内部的拆分在写功能 Sprint 文档时定，本表先写到组。
+- Sprint 编号按 [README](README.md) 分工：R10 首页、R11 人脈、R12 / R15 / R16 加人与邀请、R13 / R14 收件箱 · 秘書 · 推送、R17 主催、R18 账户、R19 小组件、R20 Task、R21 iOrbit、R22–R25 计划 v2.2、R26 / R27 活动、R28 引导、R29 运营后台换新。加人、收件箱、活动三组内部的拆分在写功能 Sprint 文档时定，本表先写到组。
 
 ## 骨架期间
 
@@ -26,7 +26,7 @@
 | 人脈 | `contacts/[id]` | `ContactDetailScreen` | 連絡先詳細 | R11 | 重写 |
 | 人脈 | `contacts/dashboard`、`contacts/graph`、`contacts/analysis/[dimension]/[bucketId]` | `ContactsDashboardScreen`、`ContactStructureDetailScreen` | 人脈分析（構造 / 機会 / インサイト） | R11 | 重写 |
 | 人脈 | `contacts/intros` | `ContactIntrosScreen` | 人物タイプ詳細「紹介ルート」 | R22–R25 | 并入（**待核对**） |
-| 人脈 | `contacts/pipeline` | `ContactPipelineScreen` | 无 | — | **待定**：建议删除 |
+| 人脈 | `contacts/pipeline` | `ContactPipelineScreen` | 无 | R11 | 删除 |
 | 人脈 | `profile/suggestions` | `ProfileSuggestionsScreen` | 登録内容の更新提案 | R11 | 重写 |
 | 加人 | `contacts/new` | `ContactAcquisitionScreen` | 「＋」sheet | R12 / R15 / R16 | 重写 |
 | 加人 | `contacts/new/scan`、`contacts/new/batch/[id]`、`contacts/new/batch2`、`contacts/new/batch2/[id]`、`contacts/new/import/[id]` | 名片扫描 / 批量 / 导入 5 屏 | A1 名刺スキャン（b1、b9） | R12 / R15 / R16 | 重写（合并为一套流程） |
@@ -50,20 +50,20 @@
 | 账户 | `(app)/profile`、`profile/edit`、`profile/preview`、`profile/tags` | `ProfileScreen`、`EditProfileScreen`、`ProfilePreviewScreen`、`ProfileTagPickerScreen` | マイページ（b5、b7） | R18 | 重写 |
 | 账户 | `settings`、`settings/api`、`profile/more` | `SettingsScreen`、`ApiSettingsScreen`、`ProfileMoreScreen` | 設定 | R18 | 重写 |
 | 账户 | `account`、`account/login`、`account/signup`、`account/forgot-password`、`account/reset-password`、`account/permissions`、`account/mobile-google` | 认证 / 权限 6 屏 + 跳转 | 认证 4 态、権限（b7） | R18 | 重写 |
-| 引导 | `profile/onboarding`、`profile/continue` | `ProfileOnboardingScreen`（continue 为跳转） | はじめの 3ステップ + 4 步引导（b1） | **未分配** | **需补 Sprint**（见文末） |
-| 运营后台 | `admin`、`admin/access`、`admin/events`、`login-admin`、`platform` | `AdminScreen`、`AdminLoginScreen`、`PlatformScreen` | 无设计稿 | **未分配** | **待定**（见文末） |
+| 引导 | `profile/onboarding`、`profile/continue` | `ProfileOnboardingScreen`（continue 为跳转） | はじめの 3ステップ + 4 步引导（b1） | R28 | 重写 |
+| 运营后台 | `admin`、`admin/access`、`admin/events`、`login-admin`、`platform` | `AdminScreen`、`AdminLoginScreen`、`PlatformScreen` | 无设计稿 | R29 | 换新 token + 新组件，不重画 |
 
 ## Web（`repos/orbits/app/`）
 
 | 区域 | 路由 | 旧页面 | 新设计画面 | 归属 | 处理 |
 | --- | --- | --- | --- | --- | --- |
-| 公开 | `/`、`/app`（未登录） | `orbit-landing-0918` | 落地页 | **未分配** | **待定**（见文末） |
+| 公开 | `/`、`/app`（未登录） | `orbit-landing-0918` | 无新画板 | R18 | 换新 token + 新组件，不重画 |
 | 首页 | `/app/home` | 重定向到 `/app/agent` | ホーム 组件容器（web.html） | R10 | 重写（新首页真正落在这里） |
 | 首页 | `/app/home/events` | 活动列表 | イベント 主页 | R26 / R27 | 并入 |
 | 人脈 | `/app/contacts` | `network-0918/network-all` | 人脈一覧 | R11 | 重写 |
 | 人脈 | `/app/contacts/[id]` | 联系人详情（W0059） | 連絡先詳細 | R11 | 重写 |
 | 人脈 | `/app/contacts/dashboard`、`/app/contacts/analysis/[dimension]/[bucketId]` | 人脉分析 | 人脈分析 | R11 | 重写 |
-| 人脈 | `/app/contacts/pipeline` | pipeline | 无 | — | **待定**：建议删除 |
+| 人脈 | `/app/contacts/pipeline` | pipeline | 无 | R11 | 删除 |
 | 加人 | `/app/contacts/new` | `card-batch-0918`、network-import | 「＋」/ 名刺スキャン / 手入力 / 取り込み | R12 / R15 / R16 | 重写 |
 | 加人 | `/app/invitations/[token]`；新增 `/i/[code]` | 一对一邀请 | A2 招待コード 受け取り側（响应式） | R12 / R15 / R16 | 重写 + 新建 |
 | iOrbit | `/app/agent` | `iorbit-0918`（含星空首页、历史抽屉） | iOrbit 起始屏 / 会話中 / 会話リスト（b4） | R21 | 重写 |
@@ -78,18 +78,20 @@
 | 收件箱 | `/app/inbox/sources/[id]`；新增 `/app/inbox` | 右侧滑出面板 | 受信箱 列表页（b5） | R13 / R14 | 重写 + 新建 |
 | 账户 | `/app/profile`、`/app/settings` | `profile-0918` | マイページ / 設定（b5、b7） | R18 | 重写 |
 | 账户 | `/app/account/login`、`…/signup`、`…/forgot-password`、`…/reset-password`、`…/mobile-google` | `auth-0918` | 认证 4 态（b7） | R18 | 重写 |
-| 引导 | `/app/start`、`/app/profile/onboarding`、`/app/profile/continue` | 开始指南、`onboarding-0918` | はじめの 3ステップ + 4 步引导（b1） | **未分配** | **需补 Sprint**（见文末） |
-| 运营后台 | `/app/admin`、`/app/admin/access`、`/app/admin/events`、`/app/admin/read-cost`、`/app/login-admin`、`/app/platform` | 后台页面 | 无设计稿 | **未分配** | **待定**（见文末） |
+| 引导 | `/app/start`、`/app/profile/onboarding`、`/app/profile/continue` | 开始指南、`onboarding-0918` | はじめの 3ステップ + 4 步引导（b1） | R28 | 重写 |
+| 运营后台 | `/app/admin`、`/app/admin/access`、`/app/admin/events`、`/app/admin/read-cost`、`/app/login-admin`、`/app/platform` | 后台页面 | 无设计稿 | R29 | 换新 token + 新组件，不重画 |
 
-## 没有归属、需要决定的
+## 已决定（2026-10-09，用户：都按推荐）
 
-| # | 内容 | 现状 | 建议 |
-| --- | --- | --- | --- |
-| 1 | **新用户引导**（App `profile/onboarding`，Web `/app/start`、`/app/profile/onboarding`） | 设计稿 b1 有新引导，iOrbit 引导定稿也定了 4 步、1–3 硬顺序；但 README 的功能分工里没有它 | 新开一个 Sprint（如 R28 引导），或并入 R10 首页（「はじめの 3ステップ」本来就在首页空态）。引导第 4 步「生成计划」依赖 R22–R25 |
-| 2 | **运营后台**（`admin`、`platform`、`read-cost`、`login-admin`） | 内部人员用，设计稿没有画 | 不按设计稿重画：只用新 token 和新组件替换（R04 / R06 之后一次做完），作为一个小 Sprint；或明确「内部页面保持旧样式」 |
-| 3 | **落地页**（Web `/`） | 0918 落地页；设计稿只在 §1.9 提了「落地页 已有」 | 需要产品负责人确认是否重做；不重做就并入 R18 账户，只换 token |
-| 4 | `contacts/pipeline`（两端） | 旧的关系阶段看板，新设计没有 | 删除，阶段信息在人脈一覧和 Task 里体现 |
-| 5 | App `contacts/intros`、`chat` | 介绍、一对一聊天；新设计里分别对应「紹介ルート」和受信箱メッセージ，但没有完全对应的画板 | 写 R22–R25、R13 / R14 文档时核对，确认并入还是删除 |
+| # | 内容 | 决定 |
+| --- | --- | --- |
+| 1 | 新用户引导（App `profile/onboarding`，Web `/app/start`、`/app/profile/onboarding`） | 新开 **R28 引导**，按 b1 和 iOrbit 引导定稿（4 步，1–3 硬顺序）重写；第 4 步「生成计划」依赖 R22–R25，排在其后 |
+| 2 | 运营后台（`admin`、`platform`、`read-cost`、`login-admin`） | 新开 **R29 运营后台换新**：不按设计稿重画，在 R04 / R06 组件库完成后只换新 token 和新组件 |
+| 3 | 落地页（Web `/`） | 不重做，并入 **R18**：只换新 token 和新组件 |
+| 4 | `contacts/pipeline`（两端） | 由 **R11** 删除；阶段信息在人脈一覧和 Task 里体现 |
+| 5 | App `contacts/intros`、`chat` | 暂按表中归属（R22–R25 / R13·R14 并入）；写这两组功能 Sprint 文档时核对，确认并入还是删除 |
+
+R28、R29 的负责人在写功能 Sprint 文档时由用户指定。
 
 ## 维护规则
 

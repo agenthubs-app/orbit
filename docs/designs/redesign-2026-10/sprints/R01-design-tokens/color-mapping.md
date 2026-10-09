@@ -1,6 +1,6 @@
 # R01 对照表：旧颜色 → 新颜色
 
-**状态：待产品负责人确认（RD-07）。确认前不改任何代码。**
+**状态：产品负责人已确认（2026-10-09，见文末确认记录），按本表执行。**
 编制：小雨（执行会话），2026-10-09，分支 `redesign-R01-design-tokens`。修订 3：按用户决定，范围回到「只换 token 层」，写死颜色随功能 Sprint 整屏重写。
 新值来源：`repos/orbits/shared/design/tokens.json`。色块对照页：同目录 [`color-mapping.html`](color-mapping.html)。旧屏归属：[`../screen-ownership.md`](../screen-ownership.md)。
 
@@ -383,4 +383,4 @@ App `src/` 共 57 种、119 处（不含 `design/tokens.ts`），R01 全部换�
 
 | 日期 | 确认人 | 结论 | 修改意见 |
 | --- | --- | --- | --- |
-| | 产品负责人 | 待确认 | |
+| 2026-10-09 | 产品负责人（由小雨转达） | 确认（对照表修订 3，含色块页 Artifact 第 3 版） | 无 |
