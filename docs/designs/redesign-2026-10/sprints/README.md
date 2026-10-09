@@ -26,7 +26,7 @@
 
 | Sprint | 目标 | 依赖 | 档位 | 状态 |
 | --- | --- | --- | --- | --- |
-| [R01](R01-design-tokens/GOAL.md) | 设计源：一份 token 源生成两端，新值覆盖旧值，统一改用设计稿命名 | — | H | done，已合入 `redesign`（PR #1），待复核（[REPORT](R01-design-tokens/REPORT.md)） |
+| [R01](R01-design-tokens/GOAL.md) | 设计源：一份 token 源生成两端，新值覆盖旧值，统一改用设计稿命名 | — | H | done，已复核（有条件通过：M1、M2 待在 `redesign` 上修；[REPORT](R01-design-tokens/REPORT.md)、[REVIEW](R01-design-tokens/REVIEW.md)） |
 | [R02](R02-icons/GOAL.md) | 图标源 + 两端 `Icon` + 补画齐全 + Ionicons 只减不增门禁 | R01 | H | planned |
 | [R03](R03-copy-and-ja/GOAL.md) | 文案源 + 术语表 + 字典按功能拆分 + 回退日语 + 翻译质量工具；写死文字只减不增门禁 | R01 | H | planned |
 | [R04](R04-app-components/GOAL.md) | App 组件库（5 类）+ 展示页 + 基础设施改用新组件；旧写法只减不增门禁 | R01、R02、R03 | H | planned |
