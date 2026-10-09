@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
 import { scanCopy, scanWebCopy } from "../support/hardcoded-copy";
@@ -54,7 +55,34 @@ test("skeleton files stay at zero and can never be allow-listed", () => {
   assert.deepEqual(Object.keys(allowlist).filter((path) => ZERO.some((pattern) => pattern.test(path))), []);
 });
 
+// Outside app/(app)/app but also skeleton (R03 review m3): showcases, root layout,
+// landing page. Always zero, and in new code a copy object may not reuse the
+// English text as its Japanese (R03 review m4).
+function outsideFiles() {
+  const files = ["app/layout.tsx", "app/page.tsx"];
+  for (const entry of readdirSync("app/showcase", { recursive: true, withFileTypes: true })) if (entry.isFile() && /\.tsx?$/.test(entry.name)) files.push(join(entry.parentPath, entry.name));
+  for (const entry of readdirSync("app/(app)/app/orbit-2026", { recursive: true, withFileTypes: true })) if (entry.isFile() && /\.tsx?$/.test(entry.name)) files.push(join(entry.parentPath, entry.name));
+  return files;
+}
+
+test("showcases, the root layout, the landing page and orbit-2026 have no hard-coded text", () => {
+  const found = outsideFiles().map((path) => [path, scanCopy(readFileSync(path, "utf8"), path)] as const).filter(([, counts]) => counts.hardcoded || counts.missingJa).map(([path, counts]) => `${path}: ${JSON.stringify(counts)}`);
+  assert.deepEqual(found, []);
+});
+
+test("new copy never passes the English text off as Japanese", () => {
+  const copied: string[] = [];
+  for (const path of outsideFiles()) {
+    for (const match of readFileSync(path, "utf8").matchAll(/ja:\s*"([^"]*)"[^}]*?en:\s*"([^"]*)"|en:\s*"([^"]*)"[^}]*?ja:\s*"([^"]*)"/g)) {
+      const [ja, en] = match[1] !== undefined ? [match[1], match[2]] : [match[4], match[3]];
+      if (ja && ja === en && /[A-Za-z]{3}/.test(ja) && !/^(iOrbit|Task|To-do|Orbit)$/.test(ja)) copied.push(`${path}: ${ja}`);
+    }
+  }
+  assert.deepEqual(copied, []);
+});
+
 test("the scan: hard-coded strings count once, translation objects need ja", () => {
+  assert.deepEqual(scanCopy('const k = "ｶﾀｶﾅ";'), { hardcoded: 1, missingJa: 0 });
   assert.deepEqual(scanCopy('const a = "保存"; const b = `残り${n}件`;'), { hardcoded: 2, missingJa: 0 });
   assert.deepEqual(scanCopy('t({ en: "Save", zh: "保存" })'), { hardcoded: 0, missingJa: 1 });
   assert.deepEqual(scanCopy('t({ en: "Save", zh: "保存", ja: "" })'), { hardcoded: 0, missingJa: 1 });

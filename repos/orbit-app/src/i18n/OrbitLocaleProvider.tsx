@@ -84,7 +84,12 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
       : readDeviceLanguage(),
     [],
   );
-  const [deviceLanguage, setDeviceLanguage] = useState(initialDevice.language);
+  // Publish before the first render too (R03 review m2): code above this provider
+  // (AuthSessionProvider, the root error boundary) then speaks the device language.
+  const [deviceLanguage, setDeviceLanguage] = useState(() => {
+    publishOrbitLanguage(initialDevice.language);
+    return initialDevice.language;
+  });
   const [deviceError, setDeviceError] = useState(initialDevice.error);
   const [preference, setPreference] = useState<OrbitLanguagePreferenceContract>(systemPreference);
   const [displayChoice, setDisplayChoice] = useState<OrbitLanguageChoice>("system");

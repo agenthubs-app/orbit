@@ -17,12 +17,28 @@ export async function loadSharedCopy(root) {
   return entries;
 }
 
-/** App dictionaries, one domain file per key prefix: src/i18n/<lang>/<domain>.ts. */
-export async function loadAppDomains(appRoot, domains, kinds = {}) {
+/** The App's kind patterns (src/i18n/copy-kinds.ts): first match wins, `*` = one key segment. */
+export function appKindOf(patterns, key) {
+  for (const [pattern, kind] of patterns) {
+    const regex = new RegExp(`^${pattern.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join("[^.]+")}$`);
+    if (regex.test(key)) return kind;
+  }
+  return undefined;
+}
+
+/**
+ * App dictionaries, one domain file per key prefix: src/i18n/<lang>/<domain>.ts.
+ * Kinds come from src/i18n/copy-kinds.ts; a key without one is flagged `needsKind`.
+ */
+export async function loadAppDomains(appRoot, domains) {
+  const { appCopyKinds } = await importTs(path.join(appRoot, "src/i18n/copy-kinds.ts"));
   const entries = [];
   for (const domain of domains) {
     const [ja, zh, en] = await Promise.all(["ja", "zh", "en"].map(async (lang) => (await importTs(path.join(appRoot, "src/i18n", lang, `${domain}.ts`)))[domain]));
-    for (const key of Object.keys(ja)) entries.push({ id: `app.${key}`, kind: kinds[key], ja: ja[key], zh: zh[key], en: en[key] });
+    for (const key of Object.keys(ja)) {
+      const kind = appKindOf(appCopyKinds, key);
+      entries.push({ id: `app.${key}`, kind, needsKind: kind === undefined, ja: ja[key], zh: zh[key], en: en[key] });
+    }
   }
   return entries;
 }

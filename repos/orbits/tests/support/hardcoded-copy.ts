@@ -8,7 +8,8 @@ import ts from "typescript";
 //     except values inside a translation object ({ zh, ja, en } — the t({...}) form
 //     and the copy tables), testID-like props and console.* arguments;
 //   - missingJa: translation objects that have zh and en but no non-empty ja.
-const CJK = /[぀-ヿ㐀-鿿豈-﫿]/;
+// Kana, CJK ideographs and half-width katakana (R03 review m4).
+const CJK = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uff66-\uff9f]/;
 const LANGS = new Set(["zh", "ja", "en"]);
 const EXEMPT_PROPS = new Set(["data-testid", "key", "id"]);
 

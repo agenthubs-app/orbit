@@ -9,3 +9,4 @@ tsconfig.tsbuildinfo
 .superpowers/
 .orbit-batch-uploads/
 .vercel
+tsconfig.build.tsbuildinfo

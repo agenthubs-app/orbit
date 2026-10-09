@@ -27,7 +27,7 @@ export const KEY_KINDS = {
   "nav.backTo": "label",
   "nav.askIorbit": "label",
   "action.tomorrow": "swipe",
-  "confirm.deleteTitle": "dialogTitle",
+  "confirm.deleteTitle": "confirmTitle",
   "confirm.delete": "button",
   "confirm.keepGoing": "button",
   "aiCard.why": "label",

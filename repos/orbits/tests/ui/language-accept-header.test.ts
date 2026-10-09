@@ -35,6 +35,16 @@ test("request language: ?lang header, then the user's cookie, then Accept-Langua
   assert.equal(normalizeOrbitLanguage(undefined), "ja");
 });
 
+test("a production build ignores the legacy test seam", () => {
+  const env = process.env as Record<string, string | undefined>;
+  const [nodeEnv, seam] = [env.NODE_ENV, env.ORBIT_LEGACY_TEST_LANGUAGE];
+  env.NODE_ENV = "production";
+  env.ORBIT_LEGACY_TEST_LANGUAGE = "zh";
+  assert.equal(normalizeOrbitLanguage(undefined), "ja");
+  env.NODE_ENV = nodeEnv;
+  if (seam === undefined) delete env.ORBIT_LEGACY_TEST_LANGUAGE; else env.ORBIT_LEGACY_TEST_LANGUAGE = seam;
+});
+
 test("Japanese URLs carry no ?lang; zh and en carry it", () => {
   assert.equal(withOrbitLanguageHref("/app/home?lang=en", "ja"), "/app/home");
   assert.equal(withOrbitLanguageHref("/app/home", "zh"), "/app/home?lang=zh");

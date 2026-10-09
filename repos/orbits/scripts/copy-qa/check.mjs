@@ -7,6 +7,7 @@
 // Usage: scripts/copy-qa/README.md.
 
 export const RULES = [
+  "kind",
   "empty",
   "placeholders",
   "forbidden",
@@ -19,7 +20,7 @@ export const RULES = [
 ];
 
 // Limits in full-width characters (half-width counts 0.5, a {placeholder} counts 2).
-export const LENGTH_LIMITS = { chip: 8, toast: 16, button: 10, fullButton: 16, swipe: 5, nav: 6, tab: 6, dialogTitle: 24, banner: 32 };
+export const LENGTH_LIMITS = { chip: 8, toast: 16, button: 10, fullButton: 16, swipe: 5, nav: 6, tab: 6, dialogTitle: 24, confirmTitle: 24, banner: 32 };
 // English limits in characters (style-guide §3, review M15).
 export const EN_LENGTH_LIMITS = { chip: 20, button: 24, fullButton: 24, swipe: 12, toast: 32, nav: 12, tab: 12 };
 
@@ -96,6 +97,11 @@ function toneIssues(entry) {
   if (LABEL_KINDS.has(kind) && /。$/.test(ja)) issues.push(["ja", "标签和按钮不加「。」"]);
   if (BUTTON_KINDS.has(kind) && /(です|ます|ません|ください)$/.test(ja)) issues.push(["ja", "按钮用名词形或「〜する」，不用です・ます"]);
   if (kind === "toast" && /。$/.test(ja)) issues.push(["ja", "Toast 主句不加「。」"]);
+  if (kind === "confirmTitle") {
+    if (!/？$/.test(ja)) issues.push(["ja", "确认框标题用问句「〜しますか？」"]);
+    if (entry.zh && !/？$/.test(entry.zh)) issues.push(["zh", "确认框标题用问句，以「？」结尾"]);
+    if (entry.en && !/\?$/.test(entry.en)) issues.push(["en", "Confirm titles are questions"]);
+  }
   if (kind === "sentence" && !/(です|ます|ません|ください|でした|ました)。?$/.test(ja.split(" · ").at(-1))) issues.push(["ja", "正文句用です・ます"]);
   if (kind === "sentence" && /(です|ます|ません|ください|でした|ました)$/.test(ja)) issues.push(["ja", "正文句末尾加「。」"]);
   if (entry.en && LABEL_KINDS.has(kind)) {
@@ -133,6 +139,7 @@ export function checkCopy(entries) {
   const issues = [];
   const add = (rule, entry, lang, message) => issues.push({ rule, id: entry.id, lang, message, text: lang ? entry[lang] : undefined });
   for (const entry of entries) {
+    if (entry.needsKind) add("kind", entry, undefined, "没有组件类型：在 repos/orbit-app/src/i18n/copy-kinds.ts 登记，长度和语气检查才会执行");
     for (const lang of ["ja", "zh", "en"]) {
       const text = entry[lang];
       if (typeof text !== "string" || text.trim() === "") {

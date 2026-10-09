@@ -9,11 +9,13 @@ export const metadata = { title: "Copy · Orbit showcase", robots: { index: fals
 // R03: every standard phrase in the request language (?lang= / cookie / browser),
 // for the 375 / 1440 check of the copy loop. Developer surface: group and key names
 // are identifiers, not product copy.
-export default async function CopyShowcasePage() {
+export default async function CopyShowcasePage({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const requestHeaders = await headers();
   const cookieStore = await cookies();
+  // The language middleware covers /app and /api only, so ?lang is read here (R03 review m8).
+  const { lang } = await searchParams;
   const language = resolveRequestOrbitLanguage({
-    header: requestHeaders.get("x-orbit-lang"),
+    header: lang ?? requestHeaders.get("x-orbit-lang"),
     cookie: cookieStore.get("orbit-lang")?.value,
     acceptLanguage: requestHeaders.get("accept-language"),
   });

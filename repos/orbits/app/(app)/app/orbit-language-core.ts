@@ -18,7 +18,10 @@ export const ORBIT_DEFAULT_LANGUAGE: OrbitLanguage = "ja";
  * ORBIT_LEGACY_TEST_LANGUAGE=zh. Nothing else sets it; production is Japanese.
  */
 export function defaultOrbitLanguage(): OrbitLanguage {
-  return parseOrbitLanguage(typeof process === "undefined" ? undefined : process.env.ORBIT_LEGACY_TEST_LANGUAGE) ?? ORBIT_DEFAULT_LANGUAGE;
+  // A production build never honours the seam, even if the variable leaks into a
+  // deployment environment (R03 review m1).
+  if (typeof process === "undefined" || process.env.NODE_ENV === "production") return ORBIT_DEFAULT_LANGUAGE;
+  return parseOrbitLanguage(process.env.ORBIT_LEGACY_TEST_LANGUAGE) ?? ORBIT_DEFAULT_LANGUAGE;
 }
 
 export function normalizeOrbitLanguage(value: string | null | undefined): OrbitLanguage {

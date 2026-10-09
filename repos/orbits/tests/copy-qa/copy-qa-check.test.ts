@@ -20,7 +20,7 @@ test("approved design wording passes every rule", () => {
   ];
   const { issues } = checkCopy(approved);
   assert.deepEqual(issues, []);
-  assert.equal(RULES.length, 9);
+  assert.equal(RULES.length, 10);
 });
 
 test("each rule fires on its bad sample", () => {
@@ -43,6 +43,20 @@ test("each rule fires on its bad sample", () => {
   assert.deepEqual(rulesHit({ id: "zs", kind: "chip", ja: "あと{count}日", zh: "还剩 {count} 天", en: "{count}d left" }), ["width"]);
   assert.deepEqual(rulesHit({ id: "pl", kind: "label", ja: "{count}件を表示", zh: "显示{count}项", en: "Show {count} items" }), ["tone"]);
   assert.deepEqual(rulesHit({ id: "en", kind: "chip", ja: "推定", zh: "推测", en: "Estimated by your assistant" }), ["length"]);
+  // sub-rules (R03 review m5): one bad sample each
+  assert.deepEqual(rulesHit({ id: "k", needsKind: true, ja: "保存", zh: "保存", en: "Save" } as never), ["kind"]);
+  assert.deepEqual(rulesHit({ id: "q", kind: "confirmTitle", ja: "削除します", zh: "要删除吗？", en: "Delete?" }), ["tone"]);
+  assert.deepEqual(rulesHit({ ...ok, ja: "私たちが保存しました" }), ["forbidden"]);
+  assert.deepEqual(rulesHit({ ...ok, ja: "保存させていただきました" }), ["forbidden"]);
+  assert.deepEqual(rulesHit({ ...ok, en: "We saved it" }), ["forbidden"]);
+  assert.deepEqual(rulesHit({ id: "zs2", kind: "toast", ja: "完了にしました", zh: "已发送", en: "Done" }), ["forbidden"]);
+  assert.deepEqual(rulesHit({ id: "zs3", kind: "sentence", ja: "完了にしました。", zh: "对方已发送交换申请。", en: "Done." }), [], "narrative 已发送 is fine outside buttons and toasts");
+  assert.deepEqual(rulesHit({ ...ok, ja: "Google コンタクトに追加しました" }), [], "external service names are whitelisted");
+  assert.deepEqual(rulesHit({ ...ok, ja: "ドラフトにしました" }), ["glossary"]);
+  assert.deepEqual(rulesHit({ ...ok, ja: "10 月 7 日に移動しました" }), ["width"]);
+  assert.deepEqual(rulesHit({ ...ok, ja: "（完了）しました。" }), ["tone"]);
+  assert.deepEqual(rulesHit({ id: "s", kind: "sentence", ja: "保存した", zh: "已保存。", en: "Saved." }), ["tone"]);
+  assert.deepEqual(rulesHit({ ...ok, ja: "完了にしました?" }), ["width"]);
 });
 
 test("length counts full-width as 1, half-width as 0.5, a placeholder as 2, and skips a trailing parenthetical", () => {
