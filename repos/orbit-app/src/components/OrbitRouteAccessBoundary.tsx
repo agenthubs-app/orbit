@@ -1,4 +1,5 @@
 import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
+import { UiText } from "./ui/Text";
 import {
   Redirect,
   Stack,
@@ -69,7 +70,7 @@ function OrbitAuthLoading() {
       style={styles.loading}
     >
       <ActivityIndicator color={colors.accentText} size="small" />
-      <Text style={styles.loadingText}>{locale.t("shell.checkingSignIn")}</Text>
+      <UiText style={styles.loadingText}>{locale.t("shell.checkingSignIn")}</UiText>
     </View>
   );
 }

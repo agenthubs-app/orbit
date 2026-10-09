@@ -193,6 +193,12 @@ test("RootLayout records first commit and auth restoration after assigning the a
     export const OrbitApiBaseUrlProvider = Wrapper;
     export const AppErrorBoundary = Wrapper;
     export const OrbitLocaleProvider = Wrapper;
+    export const GestureHandlerRootView = Wrapper;
+    export const UiPortalHost = Wrapper;
+    export const ToastProvider = Wrapper;
+    export function UiFeedbackHost() { return null; }
+    export function usePathname() { return "/home"; }
+    export function mainTabForPath() { return "home"; }
     export function AppErrorScreen() { return null; }
     export function OrbitRouteAccessBoundary() { return null; }
     export function OrbitNotificationsCoordinator() { return null; }

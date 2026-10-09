@@ -35,7 +35,12 @@ const REDIRECTS = new Map([
   [
     "expo-sqlite",
     join(helpersDir, "stubs", "expo-sqlite.js")
-  ]
+  ],
+  // R04: native UI modules (gesture logic is tested as pure functions).
+  ["react-native-reanimated", join(helpersDir, "stubs", "react-native-reanimated.js")],
+  ["react-native-gesture-handler", join(helpersDir, "stubs", "react-native-gesture-handler.js")],
+  ["expo-haptics", join(helpersDir, "stubs", "expo-haptics.js")],
+  ["expo-blur", join(helpersDir, "stubs", "expo-blur.js")]
 ]);
 
 const originalResolveFilename = Module._resolveFilename;

@@ -6,6 +6,8 @@ import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Locator, type Page } from "playwright";
 
+import { nativeUiStubs } from "./helpers/native-ui-stubs";
+
 const require = createRequire(import.meta.url);
 let browser: Browser;
 let server: Server;
@@ -55,7 +57,6 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { AppScreen } from "./src/components/AppScreen";
 import { DataCard } from "./src/components/DataCard";
 import { SectionHeader } from "./src/components/SectionHeader";
-import { MetricPill } from "./src/components/MetricPill";
 import { EmptyState } from "./src/components/EmptyState";
 import { ErrorState } from "./src/components/ErrorState";
 import { LoadingState } from "./src/components/LoadingState";
@@ -78,7 +79,6 @@ function Fixture() {
       <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setSelected(!selected)} style={[controls.chip, selected && controls.selectedChip]}><Text style={[controls.chipText, selected && controls.selectedChipText]}>只看我报名的活动</Text></Pressable>
     </DataCard>
     <SectionHeader title="接下来要处理的事项" detail="完整保留辅助说明" />
-    <MetricPill label="近期仍待确认的活动报名人数" value="128 人" />
     <EmptyState title="暂时没有更多活动" message="新活动会显示在这里" />
     <ErrorState message="活动资料暂时未能读取" />
     <LoadingState />
@@ -87,7 +87,7 @@ function Fixture() {
 createRoot(document.getElementById("root")).render(<Fixture />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" },
-    plugins: [{ name: "primitives-boundaries", setup(plugin) {
+    plugins: [nativeUiStubs, { name: "primitives-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|useOrbitApiClient|native-notifications|push-device-session|useLocalInbox|useLocalAiSessions|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "primitives-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "primitives-test" }, () => ({ contents: boundaries, loader: "jsx", resolveDir: process.cwd() }));
@@ -172,10 +172,7 @@ for (const appearance of ["light", "dark"] as const) {
     for (const [label, container] of [["打开活动详情", section], ["暂时没有更多活动", page.getByText("暂时没有更多活动", { exact: true }).locator("..").locator("..")]] as const) {
       assert.ok(contrast(await page.getByText(label, { exact: true }).evaluate(node => getComputedStyle(node).color), await container.evaluate(node => getComputedStyle(node).backgroundColor)) >= 4.5);
     }
-    const metric = page.getByText("近期仍待确认的活动报名人数", { exact: true });
-    await fits(metric);
-    assert.equal(await metric.locator("..").evaluate(node => getComputedStyle(node).borderWidth), "0px", "secondary statistics must not create another bordered card");
-    assert.equal(await page.getByText("128 人", { exact: true }).evaluate(node => getComputedStyle(node).color), appearance === "light" ? "rgb(30, 26, 36)" : "rgb(243, 240, 246)");
+    // R04: MetricPill had no users and was deleted (legacy-ui ratchet).
     await fits(page.getByText("接下来要处理的事项", { exact: true }));
     await page.getByRole("progressbar", { name: "正在加载" }).waitFor();
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-primitives-${appearance}.png`, fullPage: true });
@@ -237,7 +234,8 @@ for (const appearance of ["light", "dark"] as const) {
   test(`${appearance}: recovery screen keeps a full-size retry and readable error details at 320pt`, async t => {
     const page = await openScreen(t, "recovery", appearance);
     const retry = page.getByRole("button", { name: "重试", exact: true });
-    await fits(retry, 320, 50);
+    // R04: the retry is the component library's Button (md: 44pt, the HIG minimum).
+    await fits(retry, 320, 44);
     await retry.click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ action: "retry", draft: "" }]);
     await fits(page.getByText("连接中断，请检查后重试", { exact: true }));
@@ -249,7 +247,7 @@ for (const appearance of ["light", "dark"] as const) {
       element.style.lineHeight = `${parseFloat(style.lineHeight) * 2}px`;
     }));
     await fits(page.getByText("无法显示页面", { exact: true }));
-    await fits(retry, 320, 50);
+    await fits(retry, 320, 44);
     await retry.click();
     assert.equal((await page.evaluate(() => (window as any).fixture.requests)).length, 2);
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-recovery-large-${appearance}.png`, fullPage: true });

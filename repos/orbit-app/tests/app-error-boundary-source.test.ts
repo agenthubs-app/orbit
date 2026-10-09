@@ -27,8 +27,8 @@ test("错误屏给用户一条走得出去的路", () => {
   // R03: the wording comes from the standard copy (rendered text: render-app-error-screen).
   assert.match(boundarySource, /copy\.error\.screenFailed/u);
   assert.match(boundarySource, /copy\.action\.retry/u);
-  assert.match(boundarySource, /accessibilityRole="button"/u);
-  assert.match(boundarySource, /onPress=\{onRetry\}/u);
+  // R04: the retry is the component library's primary Button (a 44pt button role).
+  assert.match(boundarySource, /<Button[^>]*onPress=\{onRetry\}/u);
 });
 
 test("错误屏用中文说明，技术信息放次要位置", () => {

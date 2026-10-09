@@ -1,9 +1,10 @@
 import * as Crypto from "expo-crypto";
 import { currentTranslator } from "../i18n/messages";
 import { currentStandardCopy } from "../i18n/standard-copy";
+import { presentActionSheet, presentConfirm } from "../components/ui/feedback-requests";
 import { router, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { Alert, AppState, Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import {
   createContext,
   useCallback,
@@ -108,34 +109,29 @@ function obsoleteAuthActionResult(): AuthActionResult {
   return { message: currentTranslator()("session.serverChanged"), success: false };
 }
 
-function confirmPendingWriteSignOut(): Promise<"keep" | "discard" | "cancel"> {
-  return new Promise(resolve => {
-    const t = currentTranslator();
-    Alert.alert(
-      t("session.pendingChangesTitle"),
-      t("session.pendingChangesBody"),
-      [
-        { text: currentStandardCopy().action.cancel, style: "cancel", onPress: () => resolve("cancel") },
-        { text: t("session.keepAndSignOut"), onPress: () => resolve("keep") },
-        { text: t("session.discardAndSignOut"), style: "destructive", onPress: () => resolve("discard") },
-      ],
-      { cancelable: true, onDismiss: () => resolve("cancel") },
-    );
+// R04: the old Alert.alert confirmations, now the component library's action sheet
+// (three choices) and confirm dialog, presented above every screen by UiFeedbackHost.
+async function confirmPendingWriteSignOut(): Promise<"keep" | "discard" | "cancel"> {
+  const t = currentTranslator();
+  const choice = await presentActionSheet({
+    title: t("session.pendingChangesTitle"),
+    effects: [{ icon: "info", text: t("session.pendingChangesBody") }],
+    options: [
+      { key: "discard", label: t("session.discardAndSignOut"), destructive: true },
+      { key: "keep", label: t("session.keepAndSignOut") },
+      { key: "cancel", label: currentStandardCopy().action.cancel },
+    ],
   });
+  return choice === "keep" || choice === "discard" ? choice : "cancel";
 }
 
 function confirmPendingOtherAccountWrites(count: number): Promise<boolean> {
-  return new Promise(resolve => {
-    const t = currentTranslator();
-    Alert.alert(
-      t("session.otherAccountTitle"),
-      t("session.otherAccountBody", { count }),
-      [
-        { text: t("session.backToSignIn"), style: "cancel", onPress: () => resolve(false) },
-        { text: t("session.continueWithAccount"), onPress: () => resolve(true) },
-      ],
-      { cancelable: true, onDismiss: () => resolve(false) },
-    );
+  const t = currentTranslator();
+  return presentConfirm({
+    title: t("session.otherAccountTitle"),
+    message: t("session.otherAccountBody", { count }),
+    confirmLabel: t("session.continueWithAccount"),
+    cancelLabel: t("session.backToSignIn"),
   });
 }
 

@@ -198,6 +198,7 @@ const integratedFeatureRoutes = [
   "/profile/onboarding",
   "/profile/preview",
   "/profile/suggestions",
+  "/showcase/components",
   "/showcase/copy",
   "/showcase/icons",
   "/profile/tags"

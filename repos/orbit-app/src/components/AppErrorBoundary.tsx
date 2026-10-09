@@ -1,11 +1,12 @@
 import { Component, type ErrorInfo, type PropsWithChildren } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { layout, radius, spacing, textStyles } from "../design/tokens";
-import { createControlStyles } from "../design/controls";
 import { createThemedStyles } from "../design/theme";
 import { currentTranslator, type OrbitTranslator } from "../i18n/messages";
 import { currentStandardCopy } from "../i18n/standard-copy";
+import { Button } from "./ui/Button";
+import { UiText } from "./ui/Text";
 
 // 渲染期抛出的异常在 React Native 里会把整棵树卸载，用户看到白屏且只能杀进程。
 // 这里提供两层网：
@@ -48,23 +49,14 @@ export function AppErrorScreen({
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>{copy.error.screenFailed}</Text>
-        <Text style={styles.body}>{copy.error.screenFailedBody}</Text>
+        {/* R04: drawn with the component library (UiText, Button). */}
+        <UiText accessibilityRole="header" style={styles.title}>{copy.error.screenFailed}</UiText>
+        <UiText style={styles.body}>{copy.error.screenFailedBody}</UiText>
         <View style={styles.detailBox}>
-          <Text style={styles.detailLabel}>{t("shell.errorDetails")}</Text>
-          <Text style={styles.detailText}>{errorDetail(error, t)}</Text>
+          <UiText style={styles.detailLabel}>{t("shell.errorDetails")}</UiText>
+          <UiText style={styles.detailText}>{errorDetail(error, t)}</UiText>
         </View>
-        <Pressable
-          accessibilityLabel={copy.action.retry}
-          accessibilityRole="button"
-          onPress={onRetry}
-          style={({ pressed }) => [
-            styles.primaryButton,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Text style={styles.primaryButtonText}>{copy.action.retry}</Text>
-        </Pressable>
+        <Button block icon="refresh" label={copy.action.retry} onPress={onRetry} variant="primary" />
       </ScrollView>
     </SafeAreaView>
   );
@@ -112,7 +104,6 @@ export class AppErrorBoundary extends Component<
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  ...createControlStyles(colors),
   body: {
     ...textStyles.body,
     color: colors.ink2

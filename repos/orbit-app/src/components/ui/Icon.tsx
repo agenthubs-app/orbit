@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import Svg, { Circle, Path, Rect } from "./svg";
 
 import { designIcons, designIconSpec, type DesignIconName, type DesignIconShape, type DesignIconSize } from "../../api/design/icons";
 import { useOrbitTheme } from "../../design/theme";

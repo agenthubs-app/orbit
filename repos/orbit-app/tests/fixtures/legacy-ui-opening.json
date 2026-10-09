@@ -1,0 +1,321 @@
+{
+  "src/api/AuthSessionProvider.tsx": {
+    "alert": 2
+  },
+  "src/components/AppErrorBoundary.tsx": {
+    "controls": 1
+  },
+  "src/components/OnlineOnlyBoundary.tsx": {
+    "oldComponent": 1
+  },
+  "src/platform/confirm-event-cancellation.ts": {
+    "alert": 1
+  },
+  "src/screens/admin/AdminLoginScreen.tsx": {
+    "oldComponent": 2,
+    "controls": 1
+  },
+  "src/screens/admin/AdminScreen.tsx": {
+    "oldComponent": 4,
+    "controls": 1
+  },
+  "src/screens/agent/AgentLedgerContent.tsx": {
+    "oldComponent": 2,
+    "controls": 1
+  },
+  "src/screens/agent/AgentLedgerScreen.tsx": {
+    "oldComponent": 4
+  },
+  "src/screens/ai/AgentActionsScreen.tsx": {
+    "oldComponent": 6,
+    "controls": 1
+  },
+  "src/screens/ai/AiContactArtifactPanel.tsx": {
+    "oldComponent": 1
+  },
+  "src/screens/ai/AiConversationScreen.tsx": {
+    "oldComponent": 5,
+    "controls": 1
+  },
+  "src/screens/ai/AiScreen.tsx": {
+    "controls": 1,
+    "oldComponent": 1,
+    "modal": 3
+  },
+  "src/screens/ai/AiSessionOrganization.tsx": {
+    "modal": 1
+  },
+  "src/screens/chat/RelationshipChatDetailScreen.tsx": {
+    "oldComponent": 5,
+    "controls": 1
+  },
+  "src/screens/chat/RelationshipChatScreen.tsx": {
+    "oldComponent": 5
+  },
+  "src/screens/contacts/BusinessCardBatchScreen.tsx": {
+    "alert": 1
+  },
+  "src/screens/contacts/BusinessCardImportScreen.tsx": {
+    "alert": 1
+  },
+  "src/screens/contacts/BusinessCardIngestScreen.tsx": {
+    "alert": 3
+  },
+  "src/screens/contacts/BusinessCardScanScreen.tsx": {
+    "controls": 1
+  },
+  "src/screens/contacts/ContactAcquisitionScreen.tsx": {
+    "oldComponent": 1,
+    "controls": 1
+  },
+  "src/screens/contacts/ContactDetailScreen.tsx": {
+    "oldComponent": 4,
+    "controls": 1
+  },
+  "src/screens/contacts/ContactIntrosScreen.tsx": {
+    "oldComponent": 4,
+    "controls": 1
+  },
+  "src/screens/contacts/ContactNeedsEditor.tsx": {
+    "modal": 1
+  },
+  "src/screens/contacts/ContactNeedsMatchesContent.tsx": {
+    "oldComponent": 1
+  },
+  "src/screens/contacts/ContactNeedsMatchesScreen.tsx": {
+    "oldComponent": 2
+  },
+  "src/screens/contacts/ContactPipelineScreen.tsx": {
+    "oldComponent": 4,
+    "controls": 1,
+    "tablist": 1
+  },
+  "src/screens/contacts/ContactRelationshipInitializer.tsx": {
+    "oldComponent": 1
+  },
+  "src/screens/contacts/ContactStructureDetailScreen.tsx": {
+    "oldComponent": 3
+  },
+  "src/screens/contacts/ContactsDashboardScreen.tsx": {
+    "oldComponent": 5,
+    "controls": 1,
+    "modal": 1
+  },
+  "src/screens/contacts/ContactsScreen.tsx": {
+    "oldComponent": 5,
+    "controls": 1
+  },
+  "src/screens/contacts/ManualContactAddScreen.tsx": {
+    "controls": 1
+  },
+  "src/screens/contacts/RelationshipInvitationScreen.tsx": {
+    "oldComponent": 3,
+    "controls": 1
+  },
+  "src/screens/dashboard/DashboardScreen.tsx": {
+    "oldComponent": 5,
+    "controls": 1
+  },
+  "src/screens/events/CanonicalEventDetailModules.tsx": {
+    "oldComponent": 2
+  },
+  "src/screens/events/EventAdmissionReviewContent.tsx": {
+    "oldComponent": 3,
+    "controls": 1,
+    "tablist": 1
+  },
+  "src/screens/events/EventAdmissionReviewScreen.tsx": {
+    "alert": 1
+  },
+  "src/screens/events/EventAnalyticsContent.tsx": {
+    "oldComponent": 2,
+    "controls": 1
+  },
+  "src/screens/events/EventCenterContent.tsx": {
+    "oldComponent": 3,
+    "controls": 1
+  },
+  "src/screens/events/EventCheckInContent.tsx": {
+    "oldComponent": 3,
+    "controls": 1
+  },
+  "src/screens/events/EventDetailScreen.tsx": {
+    "oldComponent": 5,
+    "controls": 1
+  },
+  "src/screens/events/EventExperienceScreen.tsx": {
+    "alert": 1
+  },
+  "src/screens/events/EventOperationsContent.tsx": {
+    "oldComponent": 3,
+    "controls": 1
+  },
+  "src/screens/events/EventOperationsScreen.tsx": {
+    "alert": 2
+  },
+  "src/screens/events/EventRegistrationScreen.tsx": {
+    "oldComponent": 4,
+    "controls": 1,
+    "alert": 1
+  },
+  "src/screens/events/EventRolesContent.tsx": {
+    "oldComponent": 3,
+    "controls": 1
+  },
+  "src/screens/events/EventRolesScreen.tsx": {
+    "controls": 1,
+    "alert": 1
+  },
+  "src/screens/events/EventsScreen.tsx": {
+    "oldComponent": 5,
+    "controls": 1,
+    "tablist": 1
+  },
+  "src/screens/events/live/EventLiveScreen.tsx": {
+    "controls": 1,
+    "oldComponent": 1,
+    "tablist": 1
+  },
+  "src/screens/events/live/LiveEntryCard.tsx": {
+    "controls": 1
+  },
+  "src/screens/events/live/LivePersonSheet.tsx": {
+    "controls": 1,
+    "modal": 1
+  },
+  "src/screens/home/HomeDashboardScreen.tsx": {
+    "oldComponent": 2
+  },
+  "src/screens/home/HomeScreen.tsx": {
+    "oldComponent": 5,
+    "controls": 1
+  },
+  "src/screens/inbox/NotificationDetailScreen.tsx": {
+    "oldComponent": 1
+  },
+  "src/screens/inbox/RelationshipInboxScreen.tsx": {
+    "oldComponent": 5,
+    "controls": 1,
+    "tablist": 1
+  },
+  "src/screens/notes/EditNoteScreen.tsx": {
+    "oldComponent": 4
+  },
+  "src/screens/notes/NewNoteScreen.tsx": {
+    "oldComponent": 1
+  },
+  "src/screens/notes/NoteDetailScreen.tsx": {
+    "oldComponent": 4
+  },
+  "src/screens/notes/NoteSourceTasks.tsx": {
+    "oldComponent": 1
+  },
+  "src/screens/notes/NotesScreen.tsx": {
+    "oldComponent": 4,
+    "tablist": 1
+  },
+  "src/screens/organizer/OrganizerPublicScreen.tsx": {
+    "oldComponent": 4,
+    "controls": 1
+  },
+  "src/screens/platform/PlatformScreen.tsx": {
+    "oldComponent": 4
+  },
+  "src/screens/profile/AccountAuthScreen.tsx": {
+    "controls": 1
+  },
+  "src/screens/profile/AccountPermissionsScreen.tsx": {
+    "oldComponent": 4,
+    "controls": 1
+  },
+  "src/screens/profile/AccountScreen.tsx": {
+    "oldComponent": 3,
+    "controls": 1
+  },
+  "src/screens/profile/ProfilePreviewScreen.tsx": {
+    "oldComponent": 1
+  },
+  "src/screens/profile/ProfileScreen.tsx": {
+    "oldComponent": 6,
+    "controls": 1
+  },
+  "src/screens/profile/ProfileTagPickerScreen.tsx": {
+    "oldComponent": 1
+  },
+  "src/screens/profile/onboarding/OnboardingParts.tsx": {
+    "controls": 1
+  },
+  "src/screens/profile/onboarding/ProfileOnboardingScreen.tsx": {
+    "oldComponent": 1,
+    "alert": 1
+  },
+  "src/screens/register/RegisterInviteScreen.tsx": {
+    "oldComponent": 5,
+    "controls": 1
+  },
+  "src/screens/schedule/MeetingDetailScreen.tsx": {
+    "oldComponent": 3,
+    "controls": 1
+  },
+  "src/screens/schedule/PersonalScheduleAssociations.tsx": {
+    "modal": 1
+  },
+  "src/screens/schedule/PersonalScheduleDateTimePicker.tsx": {
+    "modal": 1
+  },
+  "src/screens/schedule/PersonalScheduleDetailScreen.tsx": {
+    "oldComponent": 2
+  },
+  "src/screens/schedule/PersonalScheduleList.tsx": {
+    "oldComponent": 3
+  },
+  "src/screens/schedule/PersonalScheduleRules.tsx": {
+    "modal": 1
+  },
+  "src/screens/schedule/PersonalScheduleScreen.tsx": {
+    "controls": 1,
+    "oldComponent": 2
+  },
+  "src/screens/schedule/ScheduleEventPreviewScreen.tsx": {
+    "oldComponent": 4,
+    "controls": 1
+  },
+  "src/screens/schedule/ScheduleScreen.tsx": {
+    "oldComponent": 3,
+    "tablist": 1
+  },
+  "src/screens/settings/ApiSettingsScreen.tsx": {
+    "oldComponent": 1,
+    "controls": 1
+  },
+  "src/screens/settings/ApiSettingsScreen.web.tsx": {
+    "oldComponent": 1
+  },
+  "src/screens/tasks/PendingTaskSuggestions.tsx": {
+    "oldComponent": 3,
+    "controls": 1
+  },
+  "src/screens/tasks/RelationshipLifecycleList.tsx": {
+    "oldComponent": 2
+  },
+  "src/screens/tasks/RelationshipLifecycleScreen.tsx": {
+    "oldComponent": 2
+  },
+  "src/screens/tasks/RelationshipTaskTools.tsx": {
+    "oldComponent": 1,
+    "controls": 1
+  },
+  "src/screens/tasks/TaskDetailScreen.tsx": {
+    "oldComponent": 4,
+    "controls": 1,
+    "modal": 1
+  },
+  "src/screens/tasks/TasksScreen.tsx": {
+    "oldComponent": 4,
+    "tablist": 2
+  },
+  "src/screens/today/TodayScreen.tsx": {
+    "oldComponent": 4,
+    "controls": 1
+  }
+}

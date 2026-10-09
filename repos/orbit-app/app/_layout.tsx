@@ -1,5 +1,8 @@
 import { OrbitTimeZoneProvider } from "../src/time/OrbitTimeZoneProvider";
 import { StatusBar } from "expo-status-bar";
+import { usePathname } from "expo-router";
+import type { ReactNode } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   OrbitAuthSessionProvider,
@@ -20,6 +23,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loadAppearancePreference } from "../src/design/appearance";
 import { useOrbitTheme } from "../src/design/theme";
 import { OrbitLocaleProvider } from "../src/i18n/OrbitLocaleProvider";
+import { ToastProvider, UiFeedbackHost, UiPortalHost } from "../src/components/ui";
+import { mainTabForPath } from "../src/view-models/app-navigation";
 import { useEffect, useRef } from "react";
 import {
   appPerformanceInput,
@@ -77,6 +82,20 @@ export function ErrorBoundary({
   return <AppErrorScreen error={error} onRetry={() => void retry()} />;
 }
 
+// R04: one root host for overlays (dialogs, sheets, toasts) instead of RN <Modal>;
+// toasts sit above the tab bar on the main tab pages.
+function UiRoot({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  return (
+    <UiPortalHost>
+      <ToastProvider hasTabBar={mainTabForPath(pathname) !== null}>
+        {children}
+        <UiFeedbackHost />
+      </ToastProvider>
+    </UiPortalHost>
+  );
+}
+
 export default function RootLayout() {
   const { scheme } = useOrbitTheme();
   // R01: restore the Settings appearance choice (automatic / light / dark).
@@ -84,6 +103,7 @@ export default function RootLayout() {
     void loadAppearancePreference(AsyncStorage);
   }, []);
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       {/* 类组件边界兜住 router 之外的渲染异常，比如两个 Provider 自身出错。
           router 内部的异常由上面的 ErrorBoundary 导出处理。 */}
@@ -93,15 +113,18 @@ export default function RootLayout() {
             <AppPerformanceRootObserver />
             <OrbitLocaleProvider>
               <OrbitTimeZoneProvider>
-                <OrbitNotificationsCoordinator />
-                <OrbitNotificationLifecycle />
-                <OrbitRouteAccessBoundary />
-                <StatusBar style={scheme === "dark" ? "light" : "dark"} />
+                <UiRoot>
+                  <OrbitNotificationsCoordinator />
+                  <OrbitNotificationLifecycle />
+                  <OrbitRouteAccessBoundary />
+                  <StatusBar style={scheme === "dark" ? "light" : "dark"} />
+                </UiRoot>
               </OrbitTimeZoneProvider>
             </OrbitLocaleProvider>
           </OrbitAuthSessionProvider>
         </OrbitApiBaseUrlProvider>
       </AppErrorBoundary>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

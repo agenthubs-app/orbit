@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
@@ -10,9 +10,8 @@ import { createThemedStyles } from "../design/theme";
 import { layout, spacing, textStyles } from "../design/tokens";
 import { useOrbitApiClient } from "../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
-import { NeedsNetworkState } from "./NeedsNetworkState";
-
-export { NeedsNetworkState };
+import { Button } from "./ui/Button";
+import { RetryCard } from "./ui/States";
 
 /** A cold open decides from the page's own first read: an unreachable answer this soon after opening means offline. */
 export const ONLINE_ONLY_OPEN_WINDOW_MS = 3000;
@@ -83,8 +82,7 @@ export function OnlineOnlyBoundary({ children, probeOnOpen = false }: { children
       <View style={styles.probeScreen}>
         {offline ? (
           <SafeAreaView edges={["top"]} style={styles.probeNotice}>
-            <Text accessibilityRole="header" style={styles.title}>{locale.t("sync.needsNetwork")}</Text>
-            <NeedsNetworkState onRetry={() => { void retry(); }} retrying={retrying} />
+            <RetryCard title={locale.t("sync.needsNetwork")} message={locale.t("sync.needsNetworkBody")} onRetry={() => { void retry(); }} retrying={retrying} />
           </SafeAreaView>
         ) : null}
         {children}
@@ -102,13 +100,9 @@ function NeedsNetworkPage({ onRetry, retrying }: { onRetry: () => void; retrying
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        {router.canGoBack() ? (
-          <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
-            <Text style={styles.backText}>‹ {locale.t("common.back")}</Text>
-          </Pressable>
-        ) : null}
-        <Text accessibilityRole="header" style={styles.title}>{locale.t("sync.needsNetwork")}</Text>
-        <NeedsNetworkState onRetry={onRetry} retrying={retrying} />
+        {/* R04: drawn with the component library (Button, RetryCard). */}
+        {router.canGoBack() ? <Button icon="left" label={locale.t("common.back")} onPress={() => router.back()} variant="ghost" /> : null}
+        <RetryCard title={locale.t("sync.needsNetwork")} message={locale.t("sync.needsNetworkBody")} onRetry={onRetry} retrying={retrying} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -127,7 +121,4 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   probeScreen: { flex: 1, backgroundColor: colors.surface },
   probeNotice: { paddingHorizontal: layout.pageInset, paddingTop: spacing.sm },
   content: { paddingHorizontal: layout.pageInset, paddingTop: spacing.lg, paddingBottom: spacing.xl, gap: spacing.md },
-  back: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
-  backText: { ...textStyles.body, color: colors.accentText },
-  title: { ...textStyles.pageTitle, color: colors.ink },
 }));

@@ -57,7 +57,8 @@ function contrast(foreground: string, background: string): number {
 }
 
 function semanticHtml(html: string) {
-  return html.replace(/ (?:class|style)="[^"]*"/gu, "");
+  // R04: icons (Icon) carry their theme tint as SVG stroke/fill attributes — presentation, not structure.
+  return html.replace(/ (?:class|style)="[^"]*"/gu, "").replace(/ (?:stroke|fill)="#[0-9A-Fa-f]{3,8}"/gu, "");
 }
 
 test("cards follow the system appearance without changing their content or action", (t) => {
