@@ -1,10 +1,10 @@
 # Sprint R04 — App 组件库
 
-**Plan revision:** 1。**模式:** existing-codebase / single-generator（执行人：小雨）。
-**单一目标:** 在 `repos/orbit-app/src/components/ui/` 建立五类通用组件与展示页；替换 `Alert.alert`、自用 `Modal`、自写分段控件与旧公用视觉组件并删除旧组件；加入原生依赖并锁定 `react-native` 版本。
+**Plan revision:** 2（2026-10-09：按用户决定收窄范围。修订 1 要在骨架里把各旧屏的 `Alert.alert`、自用 `Modal`、手写分段和旧公用组件全部替换并删除；这些旧屏之后都会被功能 Sprint 整屏重写并删除，见 RD-24，所以改为「组件库 + 展示页 + 会保留的基础设施改用新组件；旧屏原样保留，旧写法用门禁只减不增」）。**模式:** existing-codebase / single-generator（执行人：小雨）。
+**单一目标:** 在 `repos/orbit-app/src/components/ui/` 建立五类通用组件与展示页；会保留的基础设施（访问边界、离线边界、错误边界、`AuthSessionProvider`）改用新组件；旧写法和旧公用组件用门禁只减不增，留给功能 Sprint 整屏重写时清掉；加入原生依赖并锁定 `react-native` 版本。
 **易读目标:** [GOAL.md](GOAL.md)。
 **基线:** R01、R02、R03 合入后的 `redesign` HEAD。
-**进入条件:** R01（token）、R02（`Icon`）、R03（文案源、字典拆分）completed。RD-14、RD-15、RD-16、RD-17 已定。
+**进入条件:** R01（token）、R02（`Icon`）、R03（文案源、字典拆分）completed。RD-14（修订）、RD-15、RD-16、RD-17、RD-24 已定。
 
 ## 已查清的事实（按 `9d404c1c8`）
 
@@ -23,8 +23,8 @@
 - App：`src/components/*`、`src/design/*`、上面列出的 Modal / 分段 / Alert 使用点、`theme-render.test.tsx`、`ink-signal-shell.test.ts`（夹具做法）。
 
 ### 关键符号与 impact（开工时重跑）
-- `ErrorState`、`LoadingState`、`DataCard`、`OfflineNotice`、`EmptyState`、`NeedsNetworkState` — 每个 14–46 处引用，按 HIGH 处理；替换后删除，typecheck 兜底。
-- 被替换 `Modal` / 分段 / `Alert` 的屏幕（`AiScreen` 2,185 行、`RelationshipInboxScreen` 2,161 行等）— 注意 `scripts/audit-offline-read-surfaces.ts:22-39` 的「文件:行号」key，行号移动会让审计失败，需要同步更新。
+- `ErrorState`、`LoadingState`、`DataCard`、`OfflineNotice`、`EmptyState`、`NeedsNetworkState` — 每个 14–46 处引用，按 HIGH 处理。**本 Sprint 不改不删**，只登记进旧组件允许清单；最后一个使用者被功能 Sprint 删除时由该 Sprint 删掉组件。
+- `OrbitRouteAccessBoundary`（74）、`OnlineOnlyBoundary`（35）、`AppErrorBoundary`（2）的视觉部分改用新组件 — 逻辑和 props 不变，跑 impact 后按 HIGH 处理；若改动让 `scripts/audit-offline-read-surfaces.ts:22-39` 的「文件:行号」key 移动，同步更新。
 - `AuthSessionProvider` 的 `Alert.alert` — 登录路径，HIGH；替换后走一遍登录、登出、会话失效。
 
 ### 易错边界（全部写进 SC）
@@ -33,6 +33,10 @@ Toast 撤销回调在页面卸载后仍执行；确认框打开时返回手势�
 ## 契约（本 Sprint 定稿，REPORT 交接）
 
 - 目录 `src/components/ui/`，每个组件一个文件，统一从 `src/components/ui/index.ts` 导出。组件只从 token 取颜色、圆角、字号、时长，只从文案源取固定说法。
+- **旧写法门禁（ratchet）`legacy-ui-ratchet`**：
+  - 新代码零容忍：`src/components/ui/**`、导航壳，以及之后功能 Sprint 新建的屏幕，不得使用 `Alert.alert`、直接 `<Modal>`、手写 `accessibilityRole="tablist"`、旧公用组件（`DataCard`、旧 `EmptyState`、`ErrorState`、`LoadingState`、`OfflineNotice`、`NeedsNetworkState`、`SectionHeader`、`MetricPill`）、旧 `controls.ts`；
+  - 旧屏只减不增：开工时把现有使用点按「文件 → 条数」记成允许清单 `tests/fixtures/legacy-ui-allowlist.json`；清单外出现即失败；清单内条数只能减少；文件删除后必须移出清单；
+  - 某个旧组件的使用点归零时，测试要求同时删除该组件文件；清单清空的进度由功能 Sprint 推进，合回 `chat-agent` 前的总验收要求清单为空（RD-24）。
 - **基础**：`Button`（`variant`: primary / accent / ghost / danger / dangerGhost / dangerSoft；`size`: md / sm；`block`）、`IconButton`（40 / 34，可带红点）、`Card`（default / flat / line）、`Chip`（7 色，`label` ≤8 字，不可点）、`Avatar`（38 / 30 / 56，马卡龙色，`AvatarStack`）、`MacTile`、`ListRow`、`SwipeRow`（最多 3 个动作，阈值 50）、`SearchField`、`TextField`（含字段错误态）、`Accordion`。
 - **反馈**：`ToastProvider` + `useToast()`（success / error / info；`undo` 选项生成撤销条；一次一条，新的顶替旧的；位置随是否有底栏变化）、`ConfirmDialog`（296；破坏性默认焦点在取消；点遮罩不关闭）、`ActionSheet`、`BottomSheet`（可拖动、抓手、80% 规则、键盘避让）、`FullDrawer`（318）、按钮加载态。
 - **AI**：`ConfirmCard`（`state`: pending / success / failure，原位变化）、`WhyDisclosure`。
@@ -46,19 +50,18 @@ Toast 撤销回调在页面卸载后仍执行；确认框打开时返回手势�
 
 - **新建**：`src/components/ui/**`、展示页路由、对应测试。
 - **修改**：
-  - 使用旧公用组件的所有文件；
-  - 9 处 `Modal`、9 处分段、11 个文件的 `Alert.alert`；
-  - `AppErrorBoundary` / `OnlineOnlyBoundary` 的视觉部分；
+  - `OrbitRouteAccessBoundary` / `OnlineOnlyBoundary` / `AppErrorBoundary` 的视觉部分；
+  - `AuthSessionProvider` 的 `Alert.alert`；
   - `package.json` 和锁文件；`app.config.*`（如插件需要）。
-- **删除**：`DataCard`、`EmptyState`（旧）、`ErrorState`、`LoadingState`、`OfflineNotice`、`NeedsNetworkState`、`SectionHeader`、`MetricPill`。旧 `controls.ts` 不再被引用时一并删除。
+- **删除**：`MetricPill`（0 处引用）。其余旧公用组件和旧 `controls.ts` 留到使用点归零时删除（见门禁）。
 - **登记**：
   - 展示页路由登记到 `tests/app-wide-route-coverage.test.ts` 的 `integratedFeatureRoutes`；
   - `scripts/page-offline-inventory.ts` 登记为 `device-only`，然后重新生成 `docs/offline/page-inventory.md`；
   - 行号移动后更新 `audit-offline-read-surfaces.ts` 的 key。
 - **测试**：
-  - 新增 `ui-components-render.test.tsx`（每个组件：明暗对比度、触控区、2 倍字号、减少动效）、`ui-toast.test.tsx`（撤销、顶替、出错不消失、卸载后不执行）、`ui-dialog.test.tsx`（焦点、遮罩、返回）、`no-legacy-ui.test.ts`（扫描禁止 `Alert.alert`、直接 `Modal`、手写 `tablist`、已删除组件）；
+  - 新增 `ui-components-render.test.tsx`（每个组件：明暗对比度、触控区、2 倍字号、减少动效）、`ui-toast.test.tsx`（撤销、顶替、出错不消失、卸载后不执行）、`ui-dialog.test.tsx`（焦点、遮罩、返回）、`legacy-ui-ratchet.test.ts`（规则见契约）；
   - 更新 `theme-render.test.tsx`，以及依赖旧组件的测试。
-- **不做**：业务专用组件（首页组件框、计划构成条、日历、笔记 @ 标签等，归各功能 Sprint）；底栏和导航（R05）。
+- **不做**：旧屏里 `Alert.alert` / `Modal` / 分段 / 旧公用组件的替换（各功能 Sprint 整屏重写时做，RD-24）；业务专用组件（首页组件框、计划构成条、日历、笔记 @ 标签等，归各功能 Sprint）；底栏和导航（R05）。
 
 ## 验收契约
 
@@ -67,8 +70,8 @@ Toast 撤销回调在页面卸载后仍执行；确认框打开时返回手势�
 | SC-R04-01 组件齐全且对得上设计 | 展示页列出全部组件和状态；每个组件与设计稿画板并排（浅色、深色、320 宽、2 倍字号） | 证据目录截图对照页 |
 | SC-R04-02 行为正确 | Toast 撤销、顶替、出错常驻；确认框焦点和遮罩；弹层拖动和 80% 规则；左滑阈值 | `ui-toast`、`ui-dialog`、`ui-components-render` |
 | SC-R04-03 无障碍与减少动效 | 所有组件触控区 ≥44；2 倍字号不裁切；减少动效时只剩淡入 | `ui-components-render` |
-| SC-R04-04 旧写法清零 | App 里 0 处 `Alert.alert`、直接 `Modal`、手写分段；旧公用组件已删除 | `no-legacy-ui.test.ts` |
-| SC-R04-05 被替换页面不坏 | 涉及的屏幕原有测试通过；模拟器里走一遍：名片相关确认、待办详情弹层、AI 页弹层、收件箱分段、登录 / 登出 | 原有测试 + 模拟器截图 |
+| SC-R04-04 旧写法只减不增 | 在新组件或允许清单外的文件里用 `Alert.alert` / 直接 `Modal` / 手写分段 / 旧公用组件 → 测试失败；基础设施里 0 处旧写法 | `legacy-ui-ratchet.test.ts`（含注入样例验证） |
+| SC-R04-05 基础设施改完不坏 | 原有测试通过；模拟器里走一遍：登录 / 登出 / 会话失效、无网络时的离线边界、无权限路由、错误边界 | 原有测试 + 模拟器截图 |
 | SC-R04-06 原生能力真实可用 | 模拟器开发包重建后，左滑跟手、弹层拖动顺滑、毛玻璃生效、触感（真机或 REPORT 说明） | 模拟器录屏或截图 |
 
 ### 必需证据子表
@@ -78,7 +81,8 @@ Toast 撤销回调在页面卸载后仍执行；确认框打开时返回手势�
 | 01 | 「完成」相关组件用 `ok` 绿；深色 Toast 是深色胶囊 | 截图 + 渲染测试 |
 | 02 | 破坏性确认默认焦点在「キャンセル」，点遮罩不关闭 | `ui-dialog` |
 | 04 | `react-native` 已锁定版本；新依赖版本与 Expo SDK 匹配 | `package.json` diff、`npx expo-doctor`（或等价检查）输出 |
-| 05 | `audit-offline-read-surfaces` 的行号 key 已同步，离线读取审计通过 | 测试 |
+| 04 | 允许清单的初始条数（按写法分类）写进 REPORT | REPORT |
+| 05 | 若行号 key 移动，`audit-offline-read-surfaces` 已同步，离线读取审计通过 | 测试 |
 | 全部 | 两端全量对照基线零新增失败；`tsc` 通过；`detect-changes` 写进 REPORT | 全量清单 |
 
 ## 执行顺序
@@ -87,11 +91,11 @@ Toast 撤销回调在页面卸载后仍执行；确认框打开时返回手势�
 2. 加原生依赖、锁版本、重建开发包，确认能启动。
 3. 组件逐类实现，测试先行；同时搭展示页。
 4. 截图对照并修正。
-5. 替换旧写法、删除旧组件，同步更新路由登记和离线清单。
+5. 生成旧写法允许清单，接上门禁；基础设施改用新组件；删除 `MetricPill`；同步更新路由登记和离线清单。
 6. 模拟器走查、全量测试、写 REPORT。
 
 ## 失败与交接
 
 原生依赖装不上或开发包起不来：停下报告，不降级成纯 JS 实现（RD-14 已定加依赖）。
 
-REPORT 交接内容：组件清单和用法、展示页入口、Toast 和确认框的使用规则（什么时候用哪个）、减少动效的实现方式。
+REPORT 交接内容：组件清单和用法、展示页入口、Toast 和确认框的使用规则（什么时候用哪个）、减少动效的实现方式、旧写法门禁的规则与允许清单位置（功能 Sprint 重写旧屏时从清单移除）。

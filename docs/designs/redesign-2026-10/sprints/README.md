@@ -7,7 +7,7 @@
 
 ## 分支
 
-- 改版全部在 **`redesign`** 分支开发（2026-10-09 从 `chat-agent` `9d404c1c8` 建立）。每个 Sprint 从 `redesign` 开 `redesign/R0x-<主题>` 分支，验收通过后合回 `redesign`。
+- 改版全部在 **`redesign`** 分支开发（2026-10-09 从 `chat-agent` `9d404c1c8` 建立）。**R02 起直接在 `redesign` 上提交，不再开 Sprint 分支、不开 PR**（RD-25）；R01 曾用分支 `redesign-R01-design-tokens` 经 PR #1 合入。
 - **`chat-agent` 冻结**：改版期间不做新功能、不修线上问题（RD-03）。
 - `redesign` 在**所有功能完成并整体验收后**一次合并回 `chat-agent`。
 
@@ -26,10 +26,10 @@
 
 | Sprint | 目标 | 依赖 | 档位 | 状态 |
 | --- | --- | --- | --- | --- |
-| [R01](R01-design-tokens/GOAL.md) | 设计源：一份 token 源生成两端，新值覆盖旧值，统一改用设计稿命名 | — | H | done，待复核（[REPORT](R01-design-tokens/REPORT.md)） |
-| [R02](R02-icons/GOAL.md) | 图标源 + App 图标全量替换，移除 Ionicons | R01 | H | planned |
-| [R03](R03-copy-and-ja/GOAL.md) | 文案源 + 字典按功能拆分 + 两端写死文字全部抽出并补齐日语（含翻译质量循环） | R01 | H | planned |
-| [R04](R04-app-components/GOAL.md) | App 组件库（5 类）+ 替换旧弹窗、弹层、分段和旧公用组件 | R01、R02、R03 | H | planned |
+| [R01](R01-design-tokens/GOAL.md) | 设计源：一份 token 源生成两端，新值覆盖旧值，统一改用设计稿命名 | — | H | done，已合入 `redesign`（PR #1），待复核（[REPORT](R01-design-tokens/REPORT.md)） |
+| [R02](R02-icons/GOAL.md) | 图标源 + 两端 `Icon` + 补画齐全 + Ionicons 只减不增门禁 | R01 | H | planned |
+| [R03](R03-copy-and-ja/GOAL.md) | 文案源 + 术语表 + 字典按功能拆分 + 回退日语 + 翻译质量工具；写死文字只减不增门禁 | R01 | H | planned |
+| [R04](R04-app-components/GOAL.md) | App 组件库（5 类）+ 展示页 + 基础设施改用新组件；旧写法只减不增门禁 | R01、R02、R03 | H | planned |
 | [R05](R05-app-shell/GOAL.md) | App 导航壳：NAV-V3 底栏、Task 容器、二级页规则 | R04 | H | planned |
 | [R06](R06-web-components/GOAL.md) | Web 组件库（5 类，CSS Modules，新作用域） | R01、R02、R03 | H | planned |
 | [R07](R07-web-shell/GOAL.md) | Web 导航壳：左栏、主标题区、右栏、⌘K，全站一次切换 | R06 | H | planned |
@@ -51,11 +51,11 @@
 | RD-07 | 「旧颜色 → 新颜色」对照表由执行人出好，**先给产品负责人确认再应用** | R01 |
 | RD-08 | `shared/design`、`shared/copy` 加进 App 同步白名单（`AGENTS.md` 相应修改） | R01、R03 |
 | RD-09 | 字体按界面语言切换：日文 Hiragino Sans / Noto Sans JP，中文 PingFang SC / Noto Sans SC，英文系统字体；去掉 Noto Serif SC | R01 |
-| RD-10 | 图标在骨架里一次换完：App 全部 Ionicons 换成设计稿图标；设计稿没有的按同样风格补画；最后移除 Ionicons 依赖 | R02 |
+| RD-10 | ~~图标在骨架里一次换完：App 全部 Ionicons 换成设计稿图标；最后移除 Ionicons 依赖~~ → **修订（2026-10-09）**：骨架建图标源、两端 `Icon` 和展示页，导航壳换新图标；设计稿没有的按同样风格一次补画齐，出「Ionicons → 新图标」对照表给功能 Sprint 用。旧屏的 Ionicons 原样保留，门禁保证新代码不用、旧用法只减不增；最后一个旧屏删除时移除依赖（RD-24） | R02 |
 | RD-11 | 语言：App 跟随设备、Web 跟随浏览器语言，不是中 / 日 / 英时回退**日语**；已手动选过语言的用户保持不变 | R03 |
-| RD-12 | 两端文案文件全部按功能拆开；**两端旧页面里写死的文字在骨架里全部抽出并补齐日语**；三语标准用词由产品负责人在 R03 报告里审 | R03 |
+| RD-12 | 两端文案文件全部按功能拆开；~~两端旧页面里写死的文字在骨架里全部抽出并补齐日语~~ → **修订（2026-10-09）**：骨架只处理标准用词源、导航壳和保留组件的文案；旧屏写死的文字原样保留，门禁保证新代码零容忍、旧用法只减不增，由功能 Sprint 整屏重写时按术语表处理（RD-24）；三语标准用词由产品负责人在 R03 报告里审 | R03 |
 | RD-13 | 翻译不能「直接翻一遍」：先调研成熟产品和风格指南定术语表，再按「翻译 → 自动检查 → 独立审校 → 放回界面截图 → 修改」循环到达标，每轮数字写进报告（细则见 R03） | R03 |
-| RD-14 | 组件库做前 5 类通用组件（基础、反馈、AI、控件、状态），业务专用组件由各功能 Sprint 做；App 里 `Alert.alert`、自用 `Modal`、自写分段控件全部换成新组件；**App 旧公用组件全部换成新组件并删除**；加原生依赖 gesture-handler、reanimated、expo-blur、expo-haptics；锁定 `react-native` 版本 | R04 |
+| RD-14 | 组件库做前 5 类通用组件（基础、反馈、AI、控件、状态），业务专用组件由各功能 Sprint 做；~~App 里 `Alert.alert`、自用 `Modal`、自写分段控件全部换成新组件；App 旧公用组件全部换成新组件并删除~~ → **修订（2026-10-09）**：只有会保留的基础设施（访问 / 离线 / 错误边界、登录会话）改用新组件；旧屏里的旧写法和旧公用组件原样保留，门禁保证只减不增，使用点归零时删除旧组件（RD-24）；加原生依赖 gesture-handler、reanimated、expo-blur、expo-haptics；锁定 `react-native` 版本 | R04 |
 | RD-15 | 组件展示页：App 在开发包和 TestFlight 可见、正式版隐藏；Web 在本地和预览 / staging 可见、正式环境隐藏 | R04、R06 |
 | RD-16 | 组件验收用展示页 + 与设计稿画板并排的截图（浅色、深色、窄屏、大字号）；**不做逐像素门禁**；所有动画遵守「减少动效」（只保留淡入） | R04、R06 |
 | RD-17 | 设计稿矛盾：「完成」一律用绿色（`ok`）；Web 抽屉内容多的 520、内容少的 380；Web iOrbit 历史栏 260；深色模式 Toast 仍是深色胶囊（比背景亮一档的面色 + 浅色字） | R04、R06、R07 |
@@ -65,6 +65,8 @@
 | RD-21 | App 首页右上「編集」按钮显示，点了提示「即将上线」，R10 再接 | R05 |
 | RD-22 | 契约：结构清楚的都做完（类型 + 校验 + mock 接口），计划 v2.2 只定顶层；正式环境返回「尚未实现」，界面隐藏入口或用默认值；加「只加不改」自动检查；假数据用一套统一的演示世界 | R08 |
 | RD-23 | 骨架文档放在本目录，统一 `R` 编号 | 全部 |
+| RD-24 | **骨架不改旧屏**（2026-10-09，承接 R01 修订 3）：骨架只做源文件（token、图标、文案、契约）、新组件、导航壳和会保留的基础设施。旧屏原样挂进新壳，它们的写死颜色、Ionicons、写死文字、旧组件都由 [旧屏归属表](screen-ownership.md) 里的功能 Sprint 整屏重写时一起换掉。理由：`redesign` 要所有功能做完才合回（RD-03），旧屏不会以骨架状态到用户手里，在骨架里修它们会在功能 Sprint 里被整屏删掉。三份允许清单（Ionicons、写死文字、旧写法）只减不增；**合回 `chat-agent` 前总验收**：归属表每行已处理、三份清单为空、Ionicons 依赖已移除、旧公用组件已删除 | R02、R03、R04、R09、全部功能 Sprint |
+| RD-25 | R02 起所有 Sprint 直接在 `redesign` 分支提交，不开 Sprint 分支和 PR；每个 Sprint 收口提交后由独立 AI 复核写 `REVIEW.md`，问题在 `redesign` 上直接修 | 全部 |
 
 ## 骨架通用规则（每个 Sprint 都适用，PLANNER 不再重复）
 
@@ -75,4 +77,5 @@
 5. **证据**：截图、日志放 `~/orbit-sprint-evidence/redesign/R0x/run-01/`；每个 Sprint 的 REPORT 附一个截图对照页（设计稿画板 ↔ 实现，浅色 / 深色）。
 6. **不碰生产**：不连 Neon、不部署；数据库只用本地 `orbit_test` 等测试库；骨架阶段**没有产品内的付费 AI 调用**（R03 的翻译和审校由开发用 AI 会话完成，不走产品的 AI 接口）。
 7. **界面用词**：所有用户看得到的文字用普通人能懂的说法，不出现「来源」「证据」「关系设置」这类内部用语。
-8. **复核**：每个 Sprint 结束由独立 AI 复核（跑全量、运行时抽查、对照 SC），写 `REVIEW.md`；产品负责人看截图集并试用后合回 `redesign`。
+8. **复核**：每个 Sprint 结束由独立 AI 复核（跑全量、运行时抽查、对照 SC），写 `REVIEW.md`；复核发现的问题直接在 `redesign` 上修（RD-25）；产品负责人看截图集并试用。
+9. **范围**：骨架不改旧屏，旧用法只减不增（RD-24）。
