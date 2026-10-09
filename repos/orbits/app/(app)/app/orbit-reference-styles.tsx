@@ -2059,6 +2059,9 @@ html:has([data-orbit-real-page]) {
 [data-orbit-real-page] .cover .badge-live { color: #7FE8BE; }
 [data-orbit-real-page] .cover .badge-soon { color: #CFC6F8; }
 [data-orbit-real-page] .cover .badge-ended { color: var(--ink-2); }
+/* R01 review M1: the prototype draws "ended" as ink-3-text on surface-3 (4.38:1 light,
+   3.96:1 dark); surface-3 carries only ink / ink-2 text. */
+[data-orbit-real-page] .badge-ended { color: var(--ink-2); }
 
 /* Platform mobile nav items must not wrap mid-label ("活动/审核"). */
 [data-orbit-real-page] .orbit-platform-nav-item {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { DESIGN_TOKEN_OUTPUTS, renderDesignTokenOutputs } from "../../scripts/design-tokens/generate.mjs";
+import { DESIGN_TOKEN_OUTPUTS, camelTokenName, renderDesignTokenOutputs } from "../../scripts/design-tokens/generate.mjs";
 
 type Tokens = {
   color: {
@@ -76,6 +76,22 @@ test("the contrast list covers every text variant and every macaron pair", () =>
   assert.ok(pairs.has("on-accent|accent"));
   assert.ok(pairs.has("coral-text|coral-soft"));
   assert.ok(pairs.has("on-ok|ok"));
+});
+
+test("surface-3 is a track / divider / skeleton fill: only ink and ink-2 may sit on it as text", () => {
+  // R01 review M1: the design names surface-3 "轨道 / 分隔"; it never carries body text.
+  const onSurface3 = tokens.color.contrast.filter(([, bg]) => bg === "surface-3").map(([fg]) => fg).sort();
+  assert.deepEqual(onSurface3, ["ink", "ink-2"]);
+});
+
+test("the TS output carries the one contrast list, camelCased, for the App's contrast test", () => {
+  // R01 review M6: one list in tokens.json; the App reads it from the synced copy.
+  const ts = outputs["shared/design/tokens.ts"]!;
+  const expected = tokens.color.contrast.map(([fg, bg]) => [fg.startsWith("#") ? fg : camelTokenName(fg), bg.startsWith("#") ? bg : camelTokenName(bg)]);
+  const match = ts.match(/export const designContrast = (\[[\s\S]*?\]) as const;/);
+  assert.ok(match, "designContrast missing from shared/design/tokens.ts");
+  assert.deepEqual(JSON.parse(match[1]!), expected);
+  assert.ok(expected.some(([fg, bg]) => fg === "ink2" && bg === "surface3"));
 });
 
 test("radius, type and motion scales are the ones the plan fixed", () => {

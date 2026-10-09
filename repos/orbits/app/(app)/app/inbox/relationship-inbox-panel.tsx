@@ -1302,7 +1302,7 @@ function RelationshipInboxPanel({
 
 [data-orbit-real-page="relationship-inbox"] .ri-list-head { padding:16px 14px 10px; }
 [data-orbit-real-page="relationship-inbox"] .ri-list-count { color:var(--ink-2); font-size:12.5px; letter-spacing:0; text-transform:none; }
-[data-orbit-real-page="relationship-inbox"] .ri-list-total { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; margin-left:7px; padding:0 6px; border-radius:999px; background:var(--surface-3); color:var(--ink-3-text); font-size:10.5px; font-weight:700; }
+[data-orbit-real-page="relationship-inbox"] .ri-list-total { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; margin-left:7px; padding:0 6px; border-radius:999px; background:var(--surface-3); color:var(--ink-2); font-size:10.5px; font-weight:700; }
 [data-orbit-real-page="relationship-inbox"] .ri-new-thread { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border:1px solid var(--line); border-radius:9px; background:var(--bg); color:var(--accent-text); cursor:pointer; transition:border-color .15s, background .15s; }
 [data-orbit-real-page="relationship-inbox"] .ri-new-thread:hover { border-color:var(--accent-text); background:var(--accent-soft); }
 [data-orbit-real-page="relationship-inbox"] .ri-thread-search { height:34px; margin:0 12px 10px; padding:0 10px; border:1px solid var(--line); border-radius:9px; background:var(--bg); color:var(--ink-3-text); display:flex; align-items:center; gap:7px; transition:border-color .15s, box-shadow .15s; }

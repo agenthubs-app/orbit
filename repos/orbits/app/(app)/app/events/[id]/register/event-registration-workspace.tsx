@@ -1034,7 +1034,7 @@ export function EventRegistrationWorkspace({
               {copy(language, { en: "Registered", zh: "已报名" })}
             </span>
           ) : status === "cancelled" || status === "withdrawn" ? (
-            <span style={{ alignItems: "center", background: "var(--surface-3)", border: "1px solid var(--line)", borderRadius: "var(--r-pill)", color: "var(--ink-3-text)", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
+            <span style={{ alignItems: "center", background: "var(--surface-3)", border: "1px solid var(--line)", borderRadius: "var(--r-pill)", color: "var(--ink-2)", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
               {status === "withdrawn"
                 ? copy(language, { en: "Application withdrawn", zh: "申请已撤回" })
                 : copy(language, { en: "Registration cancelled", zh: "报名已取消" })}

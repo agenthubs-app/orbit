@@ -141,7 +141,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   flexCopy: { flexShrink: 1, flexGrow: 1, gap: spacing.xs, minWidth: 0 },
   gate: { alignItems: "center", borderTopColor: colors.line, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 58, paddingVertical: spacing.sm },
   gates: { gap: spacing.xs },
-  gateState: { backgroundColor: colors.surface3, borderRadius: radius.pill, color: colors.ink3Text, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  gateState: { backgroundColor: colors.surface3, borderRadius: radius.pill, color: colors.ink2, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   gateStateActive: { backgroundColor: colors.okSoft, color: colors.okText },
   generationRow: { borderTopColor: colors.line, borderTopWidth: 1, gap: spacing.sm, paddingTop: spacing.md },
   iconButton: { alignItems: "center", backgroundColor: colors.accentText, borderRadius: radius.md, height: 44, justifyContent: "center", width: 44 },

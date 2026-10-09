@@ -35,6 +35,11 @@ function tsMap(record, render, indent) {
   return tsObject(Object.entries(record).map(([key, value]) => [camelTokenName(key), render(value)]), indent);
 }
 
+function renderContrast(pairs) {
+  const name = (value) => (value.startsWith("#") ? value : camelTokenName(value));
+  return `[\n${pairs.map(([fg, bg]) => `  [${quote(name(fg))}, ${quote(name(bg))}]`).join(",\n")}\n]`;
+}
+
 function renderTs(tokens) {
   const colors = (theme) => tsMap(tokens.color[theme], quote, 1);
   const num = (value) => String(value);
@@ -48,6 +53,10 @@ function renderTs(tokens) {
     "} as const;",
     "",
     "export type DesignColorName = keyof typeof designColors.light;",
+    "",
+    "// Every text × background pair that must clear 4.5:1 in both themes (RD-05).",
+    "// A \"#RRGGBB\" entry is a fixed colour (photo overlay, white badge), not a token.",
+    `export const designContrast = ${renderContrast(tokens.color.contrast)} as const;`,
     "",
     `export const designRadius = ${tsMap(tokens.radius, num, 0)} as const;`,
     "",

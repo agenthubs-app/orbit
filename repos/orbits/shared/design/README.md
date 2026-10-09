@@ -24,8 +24,12 @@
 
 ## 颜色规则（RD-05）
 
-- **文字一律用可读版**：`ink`、`ink-2`、`ink-3-text`、`accent-text`、`mac-*-text`、`coral-text`、`ok-text`、`on-*`。`color.contrast` 里列出的每一对「文字 × 底色」在浅色和深色下都必须 ≥4.5:1，测试逐对检查；新增文字用法时把组合加进清单。
+- **文字一律用可读版**：`ink`、`ink-2`、`ink-3-text`、`accent-text`、`mac-*-text`、`coral-text`、`ok-text`、`on-*`。`color.contrast` 里列出的每一对「文字 × 底色」在浅色和深色下都必须 ≥4.5:1，测试逐对检查；新增文字用法时把组合加进清单。**这是唯一一份清单**：生成脚本把它写进 `tokens.ts` 的 `designContrast`，Web（`tests/ui/orbit-contrast-tokens.test.ts`、`design-tokens-generated.test.ts`）和 App（`tests/design-tokens.test.ts`）都读它，不另写。
 - **设计原值只用于图形和装饰**：`ink-3`、`ink-4`、`accent`、`mac-*-ink`、`coral`、`ok`、`plum-*`、`rose-*` 用于图标、圆点、环形图、进度条、分隔，或 ≥18px 的粗体大字。不要拿它们写正文、标签或按钮字。
+- **`surface-3` 只做轨道、分隔、骨架**（设计稿定义为「轨道 / 分隔」），不承载正文。它上面万一要放字（计数小胶囊、只读输入框），只能用 `ink` 或 `ink-2`：`ink-3-text`、马卡龙文字色、`ok-text` 在浅色 `surface-3` 上都低于 4.5（`ink-3-text` 深色只有 3.96）。`color.contrast` 里 `surface-3` 只列了这两对，两端门禁按它扫描：
+  - Web `tests/ui/design-surface-3-text.test.ts`：同一条 CSS 规则或同一个内联样式对象里，`background: var(--surface-3)` 配了清单外的 `color` 即失败（禁用状态按钮除外，WCAG 1.4.3 不要求）。
+  - App `tests/design-surface-3-text.test.ts`：同一个样式对象里 `backgroundColor: colors.surface3` 配了清单外的 `color` 即失败。
+  - 扫描看不到层叠（父元素 `surface-3` 底、子元素自己设文字色），这种情况靠代码复核按本条检查。
 - 马卡龙底（`mac-*`）只占小面积：图标底、chip、迷你卡，不做整张卡底。
 - 绿色（`ok` 系）只表示「完成」。
 - 补齐项（设计稿没有、本源补上的）：`*-text` 加深版、`ok-soft`、`on-ok`、`on-image`、`on-image-badge`、`scrim` / `scrim-web`（原在 `kit/ui.css`）。

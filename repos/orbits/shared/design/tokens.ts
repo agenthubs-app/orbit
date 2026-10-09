@@ -118,6 +118,51 @@ export const designColors = {
 
 export type DesignColorName = keyof typeof designColors.light;
 
+// Every text × background pair that must clear 4.5:1 in both themes (RD-05).
+// A "#RRGGBB" entry is a fixed colour (photo overlay, white badge), not a token.
+export const designContrast = [
+  ["ink", "bg"],
+  ["ink", "surface"],
+  ["ink", "surface2"],
+  ["ink2", "bg"],
+  ["ink2", "surface"],
+  ["ink2", "surface2"],
+  ["ink3Text", "bg"],
+  ["ink3Text", "surface"],
+  ["ink3Text", "surface2"],
+  ["ink", "surface3"],
+  ["ink2", "surface3"],
+  ["accentText", "bg"],
+  ["accentText", "surface"],
+  ["accentText", "surface2"],
+  ["accentText", "accentSoft"],
+  ["onAccent", "accent"],
+  ["onAccent", "accentText"],
+  ["onAccent", "ink"],
+  ["macPinkText", "macPink"],
+  ["macApricotText", "macApricot"],
+  ["macBlueText", "macBlue"],
+  ["macTealText", "macTeal"],
+  ["macLavText", "macLav"],
+  ["macPinkText", "surface"],
+  ["macApricotText", "surface"],
+  ["macBlueText", "surface"],
+  ["macTealText", "surface"],
+  ["macLavText", "surface"],
+  ["coralText", "coralSoft"],
+  ["coralText", "bg"],
+  ["coralText", "surface"],
+  ["coralText", "surface2"],
+  ["onAccent", "coralText"],
+  ["okText", "okSoft"],
+  ["okText", "bg"],
+  ["okText", "surface"],
+  ["okText", "surface2"],
+  ["onOk", "ok"],
+  ["onImage", "#171C2A"],
+  ["onImageBadge", "#FFFFFF"]
+] as const;
+
 export const designRadius = {
   xl: 24,
   lg: 20,

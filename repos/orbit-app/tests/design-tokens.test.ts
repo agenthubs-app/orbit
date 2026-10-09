@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { designContrast } from "../src/api/design/tokens";
 import { colors, darkColors, radius, shadows, textStyles, typography, type OrbitColors } from "../src/design/tokens";
 
 function luminance(hex: string) {
@@ -18,42 +19,32 @@ function contrast(a: string, b: string) {
 type Key = keyof OrbitColors;
 
 // R01 / RD-05: every colour the App uses for text, on every surface it sits on.
-// The raw design values (ink3, ink4, accent, mac*Ink, coral, ok) are for icons
-// and decoration only, so they are deliberately absent from the foreground list.
-const TEXT_ON_SURFACE: [Key, Key[]][] = [
-  ["ink", ["bg", "surface", "surface2"]],
-  ["ink2", ["bg", "surface", "surface2"]],
-  ["ink3Text", ["bg", "surface", "surface2"]],
-  ["accentText", ["bg", "surface", "surface2", "accentSoft"]],
-  ["onAccent", ["accent", "accentText", "ink", "coralText"]],
-  ["macPinkText", ["macPink", "surface"]],
-  ["macApricotText", ["macApricot", "surface"]],
-  ["macBlueText", ["macBlue", "surface"]],
-  ["macTealText", ["macTeal", "surface"]],
-  ["macLavText", ["macLav", "surface"]],
-  ["coralText", ["coralSoft", "bg", "surface", "surface2"]],
-  ["okText", ["okSoft", "bg", "surface", "surface2"]],
-  ["onOk", ["ok"]],
-];
+// The pairs come from the one list in orbits/shared/design/tokens.json
+// (color.contrast), synced here as designContrast (R01 review M6). The raw
+// design values (ink3, ink4, accent, mac*Ink, coral, ok) are for icons and
+// decoration only, so they never appear as a foreground.
+const pairs = designContrast as readonly (readonly [string, string])[];
+const value = (palette: OrbitColors, name: string) => (name.startsWith("#") ? name : palette[name as Key]);
 
 for (const [name, palette] of [["light", colors], ["dark", darkColors]] as const) {
   test(`${name}: every text colour clears 4.5:1 on each surface it is used on`, () => {
-    for (const [foreground, backgrounds] of TEXT_ON_SURFACE) {
-      for (const background of backgrounds) {
-        const ratio = contrast(palette[foreground], palette[background]);
-        assert.ok(ratio >= 4.5, `${foreground} ${palette[foreground]} on ${background} ${palette[background]} is ${ratio.toFixed(2)}:1`);
-      }
+    for (const [foreground, background] of pairs) {
+      const fg = value(palette, foreground);
+      const bg = value(palette, background);
+      assert.ok(fg && bg, `${name}: unknown pair ${foreground} / ${background}`);
+      const ratio = contrast(fg, bg);
+      assert.ok(ratio >= 4.5, `${foreground} ${fg} on ${background} ${bg} is ${ratio.toFixed(2)}:1`);
     }
-    // Photo overlays: white text on a darkened photo, dark text in a white badge.
-    assert.ok(contrast(palette.onImage, "#171C2A") >= 4.5);
-    assert.ok(contrast(palette.onImageBadge, "#FFFFFF") >= 4.5);
   });
 }
 
 test("every *Text variant is contrast-checked", () => {
-  const checked = new Set(TEXT_ON_SURFACE.map(([foreground]) => foreground));
+  const checked = new Set(pairs.map(([foreground]) => foreground));
   for (const key of Object.keys(colors) as Key[]) {
-    if (key.endsWith("Text") && key !== "onImageBadge") assert.ok(checked.has(key), `${key} is never checked`);
+    if (key.endsWith("Text")) assert.ok(checked.has(key), `${key} is never checked`);
+  }
+  for (const pair of ["onAccent|ink", "onImage|#171C2A", "onImageBadge|#FFFFFF", "ink2|surface3"]) {
+    assert.ok(pairs.some(([fg, bg]) => `${fg}|${bg}` === pair), `${pair} not checked`);
   }
 });
 

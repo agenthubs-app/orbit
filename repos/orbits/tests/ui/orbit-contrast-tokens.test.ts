@@ -4,7 +4,8 @@
  * Reads the stylesheet the browser actually receives —
  * app/(app)/app/orbit-2026/tokens.css, generated from shared/design/tokens.json —
  * and checks every text colour against every surface it is used on, in the
- * light (:root) and dark ([data-theme="dark"]) blocks. The raw design values
+ * light (:root) and dark ([data-theme="dark"]) blocks. The pairs come from
+ * the source's `color.contrast` list. The raw design values
  * (ink-3, ink-4, accent, mac-*-ink, coral, ok) are decoration-only and are
  * deliberately absent from the foreground list.
  */
@@ -35,35 +36,22 @@ function contrastRatio(a: string, b: string) {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 
-const TEXT_ON_SURFACE: [string, string[]][] = [
-  ["ink", ["bg", "surface", "surface-2"]],
-  ["ink-2", ["bg", "surface", "surface-2"]],
-  ["ink-3-text", ["bg", "surface", "surface-2"]],
-  ["accent-text", ["bg", "surface", "surface-2", "accent-soft"]],
-  ["on-accent", ["accent", "accent-text", "ink", "coral-text"]],
-  ["mac-pink-text", ["mac-pink", "surface"]],
-  ["mac-apricot-text", ["mac-apricot", "surface"]],
-  ["mac-blue-text", ["mac-blue", "surface"]],
-  ["mac-teal-text", ["mac-teal", "surface"]],
-  ["mac-lav-text", ["mac-lav", "surface"]],
-  ["coral-text", ["coral-soft", "bg", "surface", "surface-2"]],
-  ["ok-text", ["ok-soft", "bg", "surface", "surface-2"]],
-  ["on-ok", ["ok"]],
-];
+// The one contrast list lives in the token source (M6 of the R01 review): this
+// test and the App's design-tokens test both read it instead of keeping copies.
+const { color } = JSON.parse(readFileSync("shared/design/tokens.json", "utf8")) as { color: { contrast: [string, string][] } };
+const TEXT_ON_SURFACE = color.contrast;
 
 for (const [themeName, palette] of [
   ["light", block(":root")],
   ["dark", block(':root[data-theme="dark"]')],
 ] as const) {
   test(`${themeName}: every text colour reads at >=4.5:1 on each surface it is used on`, () => {
-    for (const [foreground, backgrounds] of TEXT_ON_SURFACE) {
-      for (const background of backgrounds) {
-        const fg = palette[foreground];
-        const bg = palette[background];
-        assert.ok(fg && bg, `${themeName}: --${foreground} / --${background} missing`);
-        const ratio = contrastRatio(fg, bg);
-        assert.ok(ratio >= AA_TEXT, `${themeName} --${foreground} ${fg} vs --${background} ${bg} = ${ratio.toFixed(2)}, need >= ${AA_TEXT}`);
-      }
+    for (const [foreground, background] of TEXT_ON_SURFACE) {
+      const fg = foreground.startsWith("#") ? foreground : palette[foreground];
+      const bg = background.startsWith("#") ? background : palette[background];
+      assert.ok(fg && bg, `${themeName}: --${foreground} / --${background} missing`);
+      const ratio = contrastRatio(fg, bg);
+      assert.ok(ratio >= AA_TEXT, `${themeName} --${foreground} ${fg} vs --${background} ${bg} = ${ratio.toFixed(2)}, need >= ${AA_TEXT}`);
     }
   });
 }

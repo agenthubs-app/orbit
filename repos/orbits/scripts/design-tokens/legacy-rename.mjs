@@ -5,8 +5,13 @@
 //   - the one-off rename of the Web code base (this file's CLI, see below);
 //   - scripts/build-reference-css.mjs, so the regenerated prototype stylesheet
 //     speaks the new names too;
-//   - tests/ui/design-tokens-legacy-names.test.ts, which fails when an old
-//     name reappears.
+//   - tests/ui/design-tokens-legacy-names.test.ts, which fails when a banned
+//     old name reappears.
+//
+// Two lists (R01 review M2): LEGACY_CSS_VAR_RENAMES is the rename table the
+// codemod applies; LEGACY_BANNED_CSS_VAR_NAMES is what the scan rejects. They
+// differ by the old names the design kit reuses for a new meaning (`accent`,
+// `scrim`): the rename already ran, and new code must be free to use them.
 //
 //   node scripts/design-tokens/legacy-rename.mjs <file>...   rewrite files in place
 
@@ -105,7 +110,12 @@ export function adoptDesignTokens(css) {
   return renameLegacyCssVars(withoutPrototypeTokens);
 }
 
-export const LEGACY_NAME_PATTERN = new RegExp(`(?<![\\w-])--(?:${LEGACY_CSS_VAR_NAMES.sort((a, b) => b.length - a.length).map((name) => name.replace(/-/g, "\\-")).join("|")})(?![\\w-])`, "g");
+// Old names the design kit reuses: shared/design/tokens.json generates them.
+export const LEGACY_NAMES_REUSED_BY_DESIGN = ["accent", "scrim"];
+
+export const LEGACY_BANNED_CSS_VAR_NAMES = LEGACY_CSS_VAR_NAMES.filter((name) => !LEGACY_NAMES_REUSED_BY_DESIGN.includes(name));
+
+export const LEGACY_BANNED_NAME_PATTERN = new RegExp(`(?<![\\w-])--(?:${[...LEGACY_BANNED_CSS_VAR_NAMES].sort((a, b) => b.length - a.length).map((name) => name.replace(/-/g, "\\-")).join("|")})(?![\\w-])`, "g");
 
 function main(files) {
   let changed = 0;

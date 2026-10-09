@@ -20,7 +20,6 @@ export const CONSOLE_STYLES = `
   --glass: rgba(255,255,255,.66);
   --glass-border: #dbe7e4;
   --ink-3-text: #687078;
-  --ink-3-text: #687078;
   font-size: 15px;
   line-height: 1.65;
 }
