@@ -1,5 +1,7 @@
 # Orbit Web Sprint 管理入口
 
+> **2026-10 改版（redesign 分支）**：改版的所有 Sprint 统一放在 [`docs/designs/redesign-2026-10/sprints/`](../../../../docs/designs/redesign-2026-10/sprints/README.md)，用 `R` 编号；本目录不再登记改版 Sprint。
+
 **运行状态：ACTIVE（2026-09-28，用户要求 Web 端按 App 端同样的 Sprint 方法开发）。** 本目录是文档驱动的 Sprint 规程，方法与 App 端 [`repos/orbit-app/docs/sprints/`](../../../orbit-app/docs/sprints/README.md) 相同：每个 Sprint 一份 Planner、一次 Generator，不设 Evaluator，验证取最小必要；实现收口后提交、合并回 `chat-agent` 才算 completed。只领取前置条件与批准齐全的 Sprint。
 
 ## 先读哪里
