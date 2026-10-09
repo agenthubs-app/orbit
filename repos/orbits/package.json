@@ -51,6 +51,7 @@
     "audit:full-product": "node scripts/generate-full-product-functional-audit.mjs",
     "audit:web-transport": "node scripts/verify-web-route-transport.mjs",
     "build:reference-css": "node scripts/build-reference-css.mjs",
+    "design:tokens": "node scripts/design-tokens/generate.mjs",
     "images:lqip": "node scripts/generate-image-lqip.mjs",
     "dev": "next dev --webpack",
     "build": "npm run images:lqip && npm run build:reference-css && next build --webpack",
