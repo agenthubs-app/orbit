@@ -26,7 +26,7 @@
 
 | Sprint | 目标 | 依赖 | 档位 | 状态 |
 | --- | --- | --- | --- | --- |
-| [R01](R01-design-tokens/GOAL.md) | 设计源：一份 token 源生成两端，新值覆盖旧值，统一改用设计稿命名 | — | H | planned |
+| [R01](R01-design-tokens/GOAL.md) | 设计源：一份 token 源生成两端，新值覆盖旧值，统一改用设计稿命名 | — | H | done，待复核（[REPORT](R01-design-tokens/REPORT.md)） |
 | [R02](R02-icons/GOAL.md) | 图标源 + App 图标全量替换，移除 Ionicons | R01 | H | planned |
 | [R03](R03-copy-and-ja/GOAL.md) | 文案源 + 字典按功能拆分 + 两端写死文字全部抽出并补齐日语（含翻译质量循环） | R01 | H | planned |
 | [R04](R04-app-components/GOAL.md) | App 组件库（5 类）+ 替换旧弹窗、弹层、分段和旧公用组件 | R01、R02、R03 | H | planned |
