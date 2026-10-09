@@ -108,7 +108,8 @@ export const designIconNames = [
   "map",
   "navigate",
   "pushpin",
-  "skip"
+  "skip",
+  "gem"
 ] as const;
 
 export type DesignIconName = (typeof designIconNames)[number];
@@ -205,7 +206,8 @@ export const designIconSources: { readonly [Name in DesignIconName]: "kit" | "dr
   "map": "drawn",
   "navigate": "drawn",
   "pushpin": "drawn",
-  "skip": "drawn"
+  "skip": "drawn",
+  "gem": "drawn"
 };
 
 export const designIcons: { readonly [Name in DesignIconName]: readonly DesignIconShape[] } = {
@@ -295,9 +297,10 @@ export const designIcons: { readonly [Name in DesignIconName]: readonly DesignIc
   "upload": [{ tag: "path", d: "M7 18.5a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 8.5a4 4 0 0 1-.5 10" }, { tag: "path", d: "M12 19.5V12M9 14.5l3-3 3 3" }],
   "save": [{ tag: "path", d: "M12 4v11M7.5 10.5 12 15l4.5-4.5M4.5 15.5v2a3 3 0 0 0 3 3h9a3 3 0 0 0 3-3v-2" }],
   "swap": [{ tag: "path", d: "M4.5 8.5h14M15 5l3.5 3.5L15 12M19.5 15.5h-14M9 12l-3.5 3.5L9 19" }],
-  "merge": [{ tag: "circle", cx: 6.5, cy: 5.5, r: 2 }, { tag: "circle", cx: 6.5, cy: 18.5, r: 2 }, { tag: "circle", cx: 17.5, cy: 12, r: 2 }, { tag: "path", d: "M6.5 7.5v9M6.5 7.5c0 3 2.5 4.5 5.5 4.5h3.5" }],
+  "merge": [{ tag: "path", d: "M5 4.5l7 7v9M19 4.5l-7 7" }, { tag: "path", d: "m8.5 17 3.5 3.5 3.5-3.5" }],
   "map": [{ tag: "path", d: "M9 4.5 3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2-6-2ZM9 4.5v13M15 6.5v13" }],
   "navigate": [{ tag: "path", d: "M12 3.5 19 20l-7-3.8L5 20Z" }],
   "pushpin": [{ tag: "path", d: "M9 3.5h6M10 3.5V9l-3.5 4.5h11L14 9V3.5M12 13.5v7" }],
-  "skip": [{ tag: "path", d: "M5.5 5.5 14 12l-8.5 6.5ZM18.5 5.5v13" }]
+  "skip": [{ tag: "path", d: "M5.5 5.5 14 12l-8.5 6.5ZM18.5 5.5v13" }],
+  "gem": [{ tag: "path", d: "M7.5 4.5h9L20.5 9.5 12 20 3.5 9.5Z" }, { tag: "path", d: "M3.5 9.5h17M9.5 4.5 8 9.5l4 10.5 4-10.5-1.5-5" }]
 };

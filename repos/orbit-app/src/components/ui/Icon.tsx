@@ -48,8 +48,8 @@ export function Icon({
 
 // react-native-svg hands its props to the DOM on web, so the web build gets ARIA
 // attributes and native builds get the React Native accessibility props.
-function iconAccessibility(label: string | undefined) {
-  if (Platform.OS === "web") return label ? { role: "img" as const, "aria-label": label } : { "aria-hidden": true };
+export function iconAccessibility(label: string | undefined, platform: string = Platform.OS) {
+  if (platform === "web") return label ? { role: "img" as const, "aria-label": label } : { "aria-hidden": true };
   return label
     ? { accessible: true, accessibilityRole: "image" as const, accessibilityLabel: label }
     : { accessible: false, accessibilityElementsHidden: true, importantForAccessibility: "no-hide-descendants" as const };

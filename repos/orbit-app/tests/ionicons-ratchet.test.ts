@@ -12,8 +12,84 @@ const appRoot = new URL("..", import.meta.url).pathname;
 const ALLOWLIST_PATH = "tests/fixtures/ionicons-legacy-allowlist.json";
 const allowlist = (JSON.parse(readFileSync(join(appRoot, ALLOWLIST_PATH), "utf8")) as { files: string[] }).files;
 
-// 72 files imported Ionicons when R02 started; the list may only get shorter.
-const OPENING_COUNT = 72;
+// The 72 files that imported Ionicons when R02 started. The allow list may only
+// ever be a subset of these: dropping an old screen does not free a slot for a
+// new one (R02 review M1). Never add to this list.
+const OPENING = new Set([
+  "src/components/AppScreen.tsx",
+  "src/components/BusinessCardBatchReviewForm.tsx",
+  "src/screens/admin/AdminLoginScreen.tsx",
+  "src/screens/admin/AdminScreen.tsx",
+  "src/screens/ai/AgentActionsScreen.tsx",
+  "src/screens/ai/AiConversationScreen.tsx",
+  "src/screens/ai/AiScreen.tsx",
+  "src/screens/ai/AiSessionOrganization.tsx",
+  "src/screens/ai/OrbitNextActions.tsx",
+  "src/screens/ai/cards/AiEntityCard.tsx",
+  "src/screens/ai/cards/AiEntityDraftCard.tsx",
+  "src/screens/chat/RelationshipChatDetailScreen.tsx",
+  "src/screens/chat/RelationshipChatScreen.tsx",
+  "src/screens/contacts/BusinessCardBatchScreen.tsx",
+  "src/screens/contacts/BusinessCardImportScreen.tsx",
+  "src/screens/contacts/BusinessCardIngestStartScreen.tsx",
+  "src/screens/contacts/BusinessCardScanScreen.tsx",
+  "src/screens/contacts/ContactAcquisitionScreen.tsx",
+  "src/screens/contacts/ContactDetailScreen.tsx",
+  "src/screens/contacts/ContactIntrosScreen.tsx",
+  "src/screens/contacts/ContactNeedsEditor.tsx",
+  "src/screens/contacts/ContactNeedsMatchesContent.tsx",
+  "src/screens/contacts/ContactNotesSection.tsx",
+  "src/screens/contacts/ContactPage.tsx",
+  "src/screens/contacts/ContactPipelineScreen.tsx",
+  "src/screens/contacts/ContactStructureDetailScreen.tsx",
+  "src/screens/contacts/ContactsDashboardScreen.tsx",
+  "src/screens/contacts/ContactsScreen.tsx",
+  "src/screens/contacts/ManualContactAddScreen.tsx",
+  "src/screens/dashboard/DashboardScreen.tsx",
+  "src/screens/events/EventAdmissionReviewContent.tsx",
+  "src/screens/events/EventCenterContent.tsx",
+  "src/screens/events/EventCheckInContent.tsx",
+  "src/screens/events/EventDetailScreen.tsx",
+  "src/screens/events/EventExperienceContent.tsx",
+  "src/screens/events/EventOperationsContent.tsx",
+  "src/screens/events/EventRegistrationScreen.tsx",
+  "src/screens/events/EventRolesContent.tsx",
+  "src/screens/events/EventRolesScreen.tsx",
+  "src/screens/events/EventsScreen.tsx",
+  "src/screens/events/Registration7aViews.tsx",
+  "src/screens/events/live/EventLiveScreen.tsx",
+  "src/screens/events/live/LivePersonSheet.tsx",
+  "src/screens/home/HomeDashboardScreen.tsx",
+  "src/screens/home/HomeScreen.tsx",
+  "src/screens/inbox/NotificationDetailScreen.tsx",
+  "src/screens/inbox/NotificationInboxList.tsx",
+  "src/screens/inbox/RelationshipInboxScreen.tsx",
+  "src/screens/notes/NoteContactPicker.tsx",
+  "src/screens/notes/NoteDetailScreen.tsx",
+  "src/screens/notes/NoteEventPicker.tsx",
+  "src/screens/notes/NoteMentionEditor.tsx",
+  "src/screens/notes/NotesScreen.tsx",
+  "src/screens/organizer/OrganizerPublicScreen.tsx",
+  "src/screens/platform/PlatformScreen.tsx",
+  "src/screens/profile/AccountAuthScreen.tsx",
+  "src/screens/profile/AccountPermissionsScreen.tsx",
+  "src/screens/profile/AccountScreen.tsx",
+  "src/screens/profile/EditProfileScreen.tsx",
+  "src/screens/profile/PasswordResetScreen.tsx",
+  "src/screens/profile/ProfilePagePrimitives.tsx",
+  "src/screens/profile/ProfileScreen.tsx",
+  "src/screens/profile/onboarding/OnboardingParts.tsx",
+  "src/screens/profile/onboarding/ProfileOnboardingScreen.tsx",
+  "src/screens/register/RegisterInviteScreen.tsx",
+  "src/screens/schedule/MeetingDetailScreen.tsx",
+  "src/screens/schedule/ScheduleEventPreviewScreen.tsx",
+  "src/screens/schedule/ScheduleScreen.tsx",
+  "src/screens/settings/SettingsScreen.tsx",
+  "src/screens/tasks/TaskDetailScreen.tsx",
+  "src/screens/tasks/TasksScreen.tsx",
+  "src/screens/today/TodayScreen.tsx",
+]);
+const OPENING_COUNT = OPENING.size;
 
 // Places that are new by definition: no Ionicons here, ever, allow list or not.
 // Feature Sprints add their new screen directories here as they create them.
@@ -25,7 +101,7 @@ const NEW_CODE = [
   /^app\/showcase\//,
 ];
 
-const IONICONS_IMPORT = /(?:from\s*|require\(\s*|import\(\s*)["']@expo\/vector-icons(?:\/[^"']*)?["']/;
+const IONICONS_IMPORT = /(?:from\s*|require\(\s*|import\(\s*|\bimport\s+)["']@expo\/vector-icons(?:\/[^"']*)?["']/;
 
 function importsIonicons(source: string) {
   return IONICONS_IMPORT.test(source);
@@ -51,6 +127,7 @@ test("the allow list only shrinks: every entry still exists and still imports Io
   const stale = allowlist.filter((path) => !existsSync(join(appRoot, path)) || !importsIonicons(readFileSync(join(appRoot, path), "utf8")));
   assert.deepEqual(stale, [], `remove these from ${ALLOWLIST_PATH}`);
   assert.ok(allowlist.length <= OPENING_COUNT, `the allow list grew past ${OPENING_COUNT}`);
+  assert.deepEqual(allowlist.filter((path) => !OPENING.has(path)), [], "only files that used Ionicons when R02 started may be allow-listed");
   assert.deepEqual(allowlist, [...new Set(allowlist)].sort(), "keep the allow list sorted and unique");
 });
 
@@ -69,5 +146,6 @@ test("the import check sees every way of pulling Ionicons in", () => {
   assert.ok(importsIonicons("import Ionicons from '@expo/vector-icons/Ionicons';"));
   assert.ok(importsIonicons('const { Ionicons } = require("@expo/vector-icons");'));
   assert.ok(importsIonicons('const icons = await import("@expo/vector-icons");'));
+  assert.ok(importsIonicons('import "@expo/vector-icons";'));
   assert.ok(!importsIonicons('import { Icon } from "../components/ui/Icon"; // was @expo/vector-icons'));
 });

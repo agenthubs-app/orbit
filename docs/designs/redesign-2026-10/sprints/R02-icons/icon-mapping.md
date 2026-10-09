@@ -55,7 +55,7 @@
 | `construct-outline` | `settings` | 1 / 1 | 运营 / 管理入口 |
 | `copy-outline` | `copy` | 2 / 2 |  |
 | `create-outline` | `edit` | 6 / 5 |  |
-| `diamond-outline` | `star` | 1 / 1 | 人脉价值标记 |
+| `diamond-outline` | `gem` * | 1 / 1 | 人脉价值标记；不用 `star`，避免和「收藏」撞义（R02 复核 m2） |
 | `document-attach-outline` | `attach` * | 1 / 1 | 附件 |
 | `document-outline` | `note` | 1 / 1 |  |
 | `document-text-outline` | `note` | 4 / 4 |  |
@@ -87,7 +87,7 @@
 | `log-in-outline` | `login` * | 3 / 3 |  |
 | `logo-google` | （不收） | 1 / 1 | 品牌标志不进线性图标集：按 Google 登录按钮规范用官方多色 G 标，由账户 Sprint（R18）放进按钮 |
 | `mail-outline` | `mail` | 2 / 2 |  |
-| `mail-unread-outline` | `mail` | 1 / 1 | 未读用 dot 叠在右上 |
+| `mail-unread-outline` | `send` | 1 / 1 | 旧屏实际用法是收件箱对话里的「发送消息」按钮（`RelationshipInboxScreen.tsx:1436`，App 内消息，不是邮件代发）；R02 复核 M2 更正 |
 | `map-outline` | `map` * | 1 / 1 |  |
 | `menu-outline` | `menu` | 1 / 1 |  |
 | `navigate-outline` | `navigate` * | 1 / 1 | 导航 / 路线 |
@@ -124,7 +124,7 @@
 | `time-outline` | `clock` | 17 / 16 |  |
 | `trash-outline` | `trash` | 3 / 3 |  |
 
-## 补画清单（38 个）
+## 补画清单（39 个）
 
 风格照搬 `kit/ui.css:15`：24 × 24 视框，1.7 描边，圆头圆角，无填充；实心小点用 `fill="currentColor"`。圆角矩形外框的圆角与设计稿同档（3 / 3.5 / 4.5）。
 
@@ -163,10 +163,11 @@
 | `upload` | `cloud-upload-outline` |  |
 | `save` | `save-outline` | 保存 |
 | `swap` | `git-compare-outline`, `swap-horizontal-outline` | 介绍 / 互换 |
-| `merge` | `git-merge-outline` | 合并重复 |
+| `merge` | `git-merge-outline` | 合并重复（R02 复核 m2 后重画：两条线汇成一条向下的箭头，不再像「分支」） |
 | `map` | `map-outline` |  |
 | `navigate` | `navigate-outline` | 导航 / 路线 |
 | `pushpin` | `pin-outline` | 置顶（不是地点，地点用 pin） |
+| `gem` | `diamond-outline` | 人脉价值标记（R02 复核 m2 后补） |
 | `skip` | `play-skip-forward-outline` | 跳过 |
 
 ## 不收进图标集的

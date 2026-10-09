@@ -79,3 +79,12 @@ test("decorative icons are hidden from assistive tech; a labelled icon is an ima
 test("the ticket's dashed tear line keeps its dash pattern", () => {
   assert.match(renderToHtml(<Icon name="ticket" />), /stroke-dasharray="2 2"|strokeDasharray="2 2"/u);
 });
+
+test("native builds get React Native accessibility props, web gets ARIA (react-native-svg forwards props to the DOM)", async () => {
+  const { iconAccessibility } = await import("../src/components/ui/Icon");
+  assert.deepEqual(iconAccessibility(undefined, "ios"), { accessible: false, accessibilityElementsHidden: true, importantForAccessibility: "no-hide-descendants" });
+  assert.deepEqual(iconAccessibility("閉じる", "ios"), { accessible: true, accessibilityRole: "image", accessibilityLabel: "閉じる" });
+  assert.deepEqual(iconAccessibility("閉じる", "android"), { accessible: true, accessibilityRole: "image", accessibilityLabel: "閉じる" });
+  assert.deepEqual(iconAccessibility(undefined, "web"), { "aria-hidden": true });
+  assert.deepEqual(iconAccessibility("閉じる", "web"), { role: "img", "aria-label": "閉じる" });
+});
