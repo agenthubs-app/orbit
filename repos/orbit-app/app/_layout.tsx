@@ -83,16 +83,17 @@ export function ErrorBoundary({
 }
 
 // R04: one root host for overlays (dialogs, sheets, toasts) instead of RN <Modal>;
-// toasts sit above the tab bar on the main tab pages.
+// the toast provider wraps the portal host so a toast shows above an open dialog
+// or sheet; toasts sit above the tab bar on the main tab pages.
 function UiRoot({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   return (
-    <UiPortalHost>
-      <ToastProvider hasTabBar={mainTabForPath(pathname) !== null}>
+    <ToastProvider hasTabBar={mainTabForPath(pathname) !== null}>
+      <UiPortalHost>
         {children}
         <UiFeedbackHost />
-      </ToastProvider>
-    </UiPortalHost>
+      </UiPortalHost>
+    </ToastProvider>
   );
 }
 

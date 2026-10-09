@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, View } from "react-native";
-import Svg, { Circle } from "react-native-svg";
+import Svg, { Circle } from "./svg";
 
 import { useOrbitTheme } from "../../design/theme";
 import { durations, useReducedMotion } from "./motion";

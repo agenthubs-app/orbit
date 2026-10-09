@@ -11,9 +11,10 @@ import { UiPressable } from "./Pressable";
 import { claimsGesture, dragOffset, openWidth, settleOpen, SWIPE_ACTION_WIDTH, SWIPE_MAX_ACTIONS } from "./swipe-logic";
 import { UiText } from "./Text";
 
-export type SwipeAction = { key: string; label: string; icon: IconName; tone: "lav" | "teal" | "coral"; onPress: () => void };
+export type SwipeAction = { key: string; label: string; icon: IconName; tone: "lav" | "teal" | "ok" | "coral"; onPress: () => void };
 
-// kit .swipe: drag left to reveal up to three 72-wide actions (lav / teal / coral).
+// kit .swipe: drag left to reveal up to three 72-wide actions (lav / teal / coral;
+// a 「完了」 action uses ok, RD-17).
 // The row follows the finger (gesture-handler + reanimated on the UI thread); only
 // horizontal drags are claimed, so vertical page scrolling keeps working. With
 // Reduce Motion the row jumps to its rest position. The actions are also reachable
@@ -41,12 +42,16 @@ export function SwipeRow({ children, actions }: { children: ReactNode; actions: 
     });
   const faceStyle = useAnimatedStyle(() => ({ transform: [{ translateX: offset.value }] }));
   return (
+    // One accessible row: VoiceOver reads the row and offers the swipe actions as
+    // its custom actions (the iOS Mail pattern); the buttons behind the face are
+    // hidden from it so they are not reachable twice (R04 review m10).
     <View
+      accessible
       accessibilityActions={visible.map((action) => ({ name: action.key, label: action.label }))}
       onAccessibilityAction={(event) => visible.find((action) => action.key === event.nativeEvent.actionName)?.onPress()}
       style={styles.root}
     >
-      <View style={[styles.actions, { width }]}>
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.actions, { width }]}>
         {visible.map((action) => {
           const tone = actionColors(colors)[action.tone];
           return (
@@ -68,6 +73,7 @@ function actionColors(colors: OrbitColors) {
   return {
     lav: { background: colors.macLav, text: colors.macLavText },
     teal: { background: colors.macTeal, text: colors.macTealText },
+    ok: { background: colors.okSoft, text: colors.okText },
     coral: { background: colors.coralSoft, text: colors.coralText },
   };
 }

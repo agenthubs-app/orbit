@@ -1,7 +1,7 @@
 import { StyleSheet, View } from "react-native";
 
 import { useOrbitTheme } from "../../design/theme";
-import { successHaptic } from "./haptics";
+import { successHaptic, tapHaptic } from "./haptics";
 import { Icon } from "./Icon";
 import { UiPressable } from "./Pressable";
 
@@ -11,7 +11,7 @@ import { UiPressable } from "./Pressable";
 export function CheckCircle({ checked, onChange, accessibilityLabel }: { checked: boolean; onChange: (next: boolean) => void; accessibilityLabel: string }) {
   const { colors } = useOrbitTheme();
   return (
-    <UiPressable accessibilityRole="checkbox" accessibilityLabel={accessibilityLabel} accessibilityState={{ checked }} hitSlop={11} onPress={() => { if (!checked) successHaptic(); onChange(!checked); }} pressedScale={0.85}
+    <UiPressable accessibilityRole="checkbox" accessibilityLabel={accessibilityLabel} accessibilityState={{ checked }} haptic={false} hitSlop={11} onPress={() => { if (checked) tapHaptic(); else successHaptic(); onChange(!checked); }} pressedScale={0.85}
       style={[styles.circle, { borderColor: checked ? colors.ok : colors.ink4, backgroundColor: checked ? colors.ok : "transparent" }]}>
       {checked ? <Icon name="check" size={16} color={colors.surface} /> : null}
     </UiPressable>

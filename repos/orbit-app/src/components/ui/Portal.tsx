@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { ReducedMotionOverride } from "./motion";
+
 // R04: overlays (dialog, sheets, drawer, toast) render here, above every screen,
 // instead of each screen opening its own RN <Modal>. Mount <UiPortalHost> once at
 // the root (app/_layout.tsx). Later portals stack on top of earlier ones.
@@ -35,10 +37,13 @@ export function UiPortalHost({ children }: { children: ReactNode }) {
 /** Renders children in the root host; without a host (tests, showcase cells) renders in place. */
 export function UiPortal({ children }: { children: ReactNode }) {
   const api = useContext(PortalContext);
+  // Content renders under the host, so carry the caller's Reduce Motion override
+  // along (R04 review m12); other contexts used by overlays live above the host.
+  const reducedOverride = useContext(ReducedMotionOverride);
   const key = useRef(nextKey++).current;
   useEffect(() => {
     if (!api) return;
-    api.mount(key, children);
+    api.mount(key, <ReducedMotionOverride.Provider value={reducedOverride}>{children}</ReducedMotionOverride.Provider>);
   });
   useEffect(() => () => api?.unmount(key), [api, key]);
   return api ? null : <>{children}</>;

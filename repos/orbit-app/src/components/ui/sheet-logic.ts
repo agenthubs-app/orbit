@@ -5,10 +5,19 @@
 export const SHEET_MAX_RATIO = 0.8;
 export const SHEET_FLICK_VELOCITY = 900;
 
-export function sheetMaxHeight(screenHeight: number): number {
+/**
+ * Tallest the sheet may be. With the keyboard up (R04 review M6) the sheet sits on
+ * the keyboard, so it may use only the space above it, below the safe area and a
+ * small gap — otherwise its top (handle, first field) is pushed off screen.
+ */
+export function sheetMaxHeight(screenHeight: number, keyboardHeight = 0, topInset = 0): number {
   "worklet";
-  return Math.round(screenHeight * SHEET_MAX_RATIO);
+  const ratio = Math.round(screenHeight * SHEET_MAX_RATIO);
+  if (keyboardHeight <= 0) return ratio;
+  return Math.max(0, Math.min(ratio, Math.round(screenHeight - keyboardHeight - topInset - SHEET_KEYBOARD_GAP)));
 }
+
+export const SHEET_KEYBOARD_GAP = 12;
 
 export function sheetDragOffset(dy: number): number {
   "worklet";

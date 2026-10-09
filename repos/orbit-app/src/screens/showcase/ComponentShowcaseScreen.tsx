@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -7,19 +7,26 @@ import {
   CountUp, DegradedCard, EmptyState, FilterOption, GlassSurface, IconButton, ListRow, MacTile, OfflineBar, ProgressBar, QuotaChip, Radio,
   ReducedMotionOverride, RetryCard, RingChart, SampleBar, SampleTag, SearchField, Segmented, Skeleton, SwipeRow, TextField, Toggle, UiText, WhyDisclosure, useToast,
 } from "../../components/ui";
-import { setAppearanceChoice } from "../../design/appearance";
+import { getAppearanceChoice, setAppearanceChoice } from "../../design/appearance";
 import { createThemedStyles } from "../../design/theme";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 
 // R04 / RD-15 / RD-16: every component and state of src/components/ui, for side-by-
-// side checks with the design kit. Switches: light / dark, Reduce Motion. Text size
-// follows the system setting (set it in Settings to check 2×). Developer surface:
+// side checks with the design kit. Switches: light / dark (restored on leaving),
+// Reduce Motion. Text size follows the system setting, like every iOS screen —
+// check 2× with Settings › Accessibility › Larger Text or `simctl ui content_size`. Developer surface:
 // section names are identifiers; sample text is standard copy.
 export function ComponentShowcaseScreen() {
   const { colors, styles } = useStyles();
   const copy = useStandardCopy();
   const toast = useToast();
   const [reduced, setReduced] = useState(false);
+  // The light / dark buttons preview a theme; leaving the page puts the user's own
+  // Settings choice back (R04 review m5).
+  useEffect(() => {
+    const saved = getAppearanceChoice();
+    return () => { if (getAppearanceChoice() !== saved) void setAppearanceChoice(saved); };
+  }, []);
   const [toggle, setToggle] = useState(true);
   const [segment, setSegment] = useState<"calendar" | "todo" | "plan" | "notes">("todo");
   const [query, setQuery] = useState("");
@@ -53,7 +60,7 @@ export function ComponentShowcaseScreen() {
           <Section name="chip / avatar / tile">
             <View style={styles.row}>
               <Chip label={copy.chip.overdue} tone="coral" /><Chip label={copy.chip.today} tone="apricot" /><Chip label={copy.chip.inReview} tone="lav" />
-              <Chip label={copy.chip.completed} tone="teal" /><Chip label={copy.chip.going} tone="blue" /><Chip label={copy.chip.followUp} tone="pink" /><Chip label={copy.chip.declineSuggested} />
+              <Chip label={copy.chip.completed} tone="ok" /><Chip label={copy.chip.going} tone="blue" /><Chip label={copy.chip.followUp} tone="pink" /><Chip label={copy.chip.declineSuggested} />
               <SampleTag /><QuotaChip left={2} /><QuotaChip left={0} />
             </View>
             <View style={styles.row}><Avatar name="Aya Yamamoto" size="lg" /><Avatar name="Ken Sato" /><Avatar name="Alex Kim" size="sm" /><AvatarStack names={["Aya", "Ken", "Alex", "Mio"]} /><MacTile emoji="📇" /><MacTile emoji="🎟️" tone="teal" size="sm" /></View>
@@ -63,7 +70,7 @@ export function ComponentShowcaseScreen() {
             <Card><ListRow title="Aya Yamamoto" subtitle={copy.chip.going} leading={<Avatar name="Aya Yamamoto" />} trailing={<Chip label={copy.chip.today} tone="apricot" />} onPress={() => undefined} /></Card>
             <Card variant="flat"><UiText style={styles.caption}>flat</UiText></Card>
             <Card variant="line"><UiText style={styles.caption}>line</UiText></Card>
-            <SwipeRow actions={[{ key: "tomorrow", label: copy.action.tomorrow, icon: "clock", tone: "lav", onPress: () => toast.success(copy.toast.movedToTomorrow) }, { key: "done", label: copy.chip.completed, icon: "check", tone: "teal", onPress: () => toast.success(copy.toast.completed) }, { key: "delete", label: copy.action.delete, icon: "trash", tone: "coral", onPress: () => setDialog(true) }]}>
+            <SwipeRow actions={[{ key: "tomorrow", label: copy.action.tomorrow, icon: "clock", tone: "lav", onPress: () => toast.success(copy.toast.movedToTomorrow) }, { key: "done", label: copy.chip.completed, icon: "check", tone: "ok", onPress: () => toast.success(copy.toast.completed) }, { key: "delete", label: copy.action.delete, icon: "trash", tone: "coral", onPress: () => setDialog(true) }]}>
               <ListRow title="Aya Yamamoto" subtitle={copy.toast.addedToTasks} />
             </SwipeRow>
           </Section>
@@ -77,7 +84,7 @@ export function ComponentShowcaseScreen() {
           <Section name="feedback">
             <View style={styles.row}>
               <Button label="toast" onPress={() => toast.success(copy.toast.completed, { undo: () => undefined })} />
-              <Button label="toast error" onPress={() => toast.error(copy.toast.saveFailed)} />
+              <Button label="toast error" onPress={() => toast.error(copy.toast.saveFailed, { action: { label: copy.action.retry, onPress: () => undefined } })} />
               <Button label="undo bar" onPress={() => toast.info(copy.toast.savedOffline, { keep: true, sub: copy.toast.syncLater })} />
               <Button label="confirm" onPress={() => setDialog(true)} />
               <Button label="sheet" onPress={() => setSheet(true)} />

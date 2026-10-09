@@ -3,11 +3,13 @@
 //   - success / info leave after 5 s (the countdown line); errors stay until closed;
 //   - an `undo` adds 元に戻す (5 s); `keep` makes it an undo bar: no countdown, stays
 //     until closed, says until when (sub line);
-//   - an undo whose owner (the screen that showed it) has unmounted is disarmed, so
-//     a callback never runs into a screen that is gone.
+//   - one optional action button instead of undo: 再試行 on an error, 開く on info;
+//   - an undo or action whose owner (the screen that showed it) has unmounted is
+//     disarmed, so a callback never runs into a screen that is gone.
 export type ToastKind = "success" | "error" | "info";
-export type ToastInput = { kind?: ToastKind; message: string; sub?: string; undo?: () => void; keep?: boolean };
-export type ToastState = { id: number; owner: number; kind: ToastKind; message: string; sub?: string; undo?: () => void; keep: boolean; autoDismissMs: number | null };
+export type ToastAction = { label: string; onPress: () => void };
+export type ToastInput = { kind?: ToastKind; message: string; sub?: string; undo?: () => void; action?: ToastAction; keep?: boolean };
+export type ToastState = { id: number; owner: number; kind: ToastKind; message: string; sub?: string; undo?: () => void; action?: ToastAction; keep: boolean; autoDismissMs: number | null };
 
 export const TOAST_DURATION_MS = 5000;
 let nextId = 1;
@@ -21,16 +23,16 @@ export function createToast(input: ToastInput, owner: number): ToastState {
     kind,
     message: input.message,
     ...(input.sub ? { sub: input.sub } : {}),
-    ...(input.undo ? { undo: input.undo } : {}),
+    ...(input.undo ? { undo: input.undo } : input.action ? { action: input.action } : {}),
     keep,
     autoDismissMs: kind === "error" || keep ? null : TOAST_DURATION_MS,
   };
 }
 
-/** The current toast once its owner unmounts: still visible, undo removed. */
+/** The current toast once its owner unmounts: still visible, undo and action removed. */
 export function disarmOwner(current: ToastState | null, owner: number): ToastState | null {
-  if (!current || current.owner !== owner || !current.undo) return current;
-  const { undo: _removed, ...rest } = current;
+  if (!current || current.owner !== owner || (!current.undo && !current.action)) return current;
+  const { undo: _undo, action: _action, ...rest } = current;
   return rest;
 }
 

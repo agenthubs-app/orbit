@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { OrbitLocaleContext } from "../../src/i18n/OrbitLocaleContext";
 import { createTranslator } from "../../src/i18n/messages";
@@ -10,7 +11,7 @@ import {
   Accordion, ActionSheet, Avatar, AvatarStack, BottomSheet, Button, CategoryTabs, CheckCircle, Checkbox, Chip, ConfirmCard, ConfirmDialog,
   CountUp, DegradedCard, EmptyState, FilterOption, IconButton, ListRow, MacTile, OfflineBar, ProgressBar, QuotaChip, Radio, ReducedMotionOverride,
   RetryCard, RingChart, SampleBar, SampleTag, SearchField, Segmented, Skeleton, SwipeRow, TextField, Toggle, ToastProvider, UiFeedbackHost,
-  UiPortalHost, WhyDisclosure, presentConfirm, useToast, Card,
+  UiPortalHost, WhyDisclosure, presentConfirm, useToast, Card, FullDrawer,
 } from "../../src/components/ui";
 
 declare global { interface Window { uiFixture: Record<string, unknown>; events: string[]; ui: Record<string, unknown> } }
@@ -30,6 +31,7 @@ function ToastScreen() {
     success: () => toast.success("完了にしました", { undo: () => log("undo") }),
     successPlain: () => toast.success("コピーしました"),
     error: () => toast.error("保存できませんでした"),
+    retry: () => toast.error("保存できませんでした", { action: { label: "再試行", onPress: () => log("retry") } }),
     keep: () => toast.info("名刺を交換しました", { keep: true, sub: "24時間以内なら取り消せます", undo: () => log("undo-keep") }),
   };
   return <View />;
@@ -38,7 +40,7 @@ function ToastScreen() {
 function ToastScenario() {
   const [mounted, setMounted] = useState(true);
   (window.ui ??= {}).unmount = () => setMounted(false);
-  return <ToastProvider hasTabBar={Boolean(fixture.hasTabBar)}>{mounted ? <ToastScreen /> : null}<View testID="page" /></ToastProvider>;
+  return <>{mounted ? <ToastScreen /> : null}<View testID="page" /></>;
 }
 
 function DialogScenario() {
@@ -65,7 +67,6 @@ function Gallery() {
   const [on, setOn] = useState(true);
   const [segment, setSegment] = useState<"a" | "b">("a");
   const [text, setText] = useState("名刺");
-  const [sheet, setSheet] = useState(Boolean(fixture.sheet));
   return (
     <View style={{ padding: 16, gap: 12 }}>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -80,7 +81,7 @@ function Gallery() {
       </View>
       <Card><ListRow title="山本 彩" subtitle="伊藤忠テクノロジーベンチャーズ" leading={<Avatar name="山本 彩" />} trailing={<Chip label="今日" tone="apricot" />} onPress={() => undefined} /></Card>
       <Card variant="flat"><AvatarStack names={["山本", "佐藤", "Alex Kim", "鈴木"]} /><MacTile emoji="📇" accessibilityLabel="名刺" /></Card>
-      <SwipeRow actions={[{ key: "tomorrow", label: "明日", icon: "clock", tone: "lav", onPress: () => undefined }, { key: "done", label: "完了", icon: "check", tone: "teal", onPress: () => undefined }]}><ListRow title="資料を再送" subtitle="山本さん" /></SwipeRow>
+      <SwipeRow actions={[{ key: "tomorrow", label: "明日", icon: "clock", tone: "lav", onPress: () => undefined }, { key: "done", label: "完了", icon: "check", tone: "ok", onPress: () => undefined }]}><ListRow title="資料を再送" subtitle="山本さん" /></SwipeRow>
       <SearchField value={text} onChangeText={setText} placeholder="人脈を検索" />
       <TextField label="イベントの URL" value="https://example.com" error="ログインが必要なページです。" onChangeText={() => undefined} />
       <Accordion title="詳細" initiallyOpen><Card variant="line"><WhyDisclosure reason="10/2 の面談メモ" /></Card></Accordion>
@@ -105,19 +106,40 @@ function Gallery() {
       <RetryCard title="タスクを読み込めませんでした" onRetry={() => undefined} onViewCached={() => undefined} />
       <DegradedCard />
       <SampleBar />
-      <Button label="シートを開く" onPress={() => setSheet(true)} />
-      <BottomSheet visible={sheet} onClose={() => { setSheet(false); log("sheet-close"); }} accessibilityLabel="シート"><TextField label="メモ" value="" onChangeText={() => undefined} /></BottomSheet>
-      <ActionSheet visible={Boolean(fixture.actionSheet)} title="参加を取り消しますか？" effects={[{ icon: "bell", text: "主催者に取り消しが通知されます" }]} options={[{ key: "withdraw", label: "参加を取り消す", destructive: true }, { key: "keep", label: "参加を続ける" }]} onSelect={(key) => log(key)} onClose={() => log("sheet-dismiss")} />
     </View>
   );
 }
 
-const scenarios: Record<string, () => React.ReactElement> = { toast: () => <ToastScenario />, dialog: () => <DialogScenario />, imperative: () => <ImperativeScenario />, gallery: () => <Gallery /> };
+// Open overlays (R04 review M1 / M2 / M5 / M6 / M7 / m8): one of sheet, tallSheet,
+// dialog, drawer, actionSheet is open (fixture.overlay); toasts can be fired over it.
+function Overlays() {
+  const [open, setOpen] = useState(true);
+  const overlay = String(fixture.overlay);
+  const close = (event: string) => () => { log(event); setOpen(false); };
+  return (
+    <View style={{ padding: 16 }}>
+      <ToastScreen />
+      <BottomSheet visible={open && overlay === "sheet"} onClose={close("sheet-close")} accessibilityLabel="シート">
+        <TextField label="メモ" value="" onChangeText={() => undefined} />
+        <Button label="保存" onPress={() => log("save")} />
+      </BottomSheet>
+      <BottomSheet visible={open && overlay === "tallSheet"} onClose={close("sheet-close")} accessibilityLabel="長いシート">
+        <TextField label="一番上のメモ" value="" onChangeText={() => undefined} />
+        {Array.from({ length: 30 }, (_, index) => <ListRow key={index} title={`行 ${index + 1}`} />)}
+      </BottomSheet>
+      <ConfirmDialog visible={open && overlay === "dialog"} destructive title="このタスクを削除しますか？" message="元に戻せません。" confirmLabel="削除する" onConfirm={close("confirm")} onCancel={close("cancel")} />
+      <FullDrawer visible={open && overlay === "drawer"} title="メニュー" onClose={close("drawer-close")}><Button label="設定" onPress={() => log("settings")} /></FullDrawer>
+      <ActionSheet visible={open && overlay === "actionSheet"} title="参加を取り消しますか？" effects={[{ icon: "bell", text: "主催者に取り消しが通知されます" }]} options={[{ key: "withdraw", label: "参加を取り消す", destructive: true }, { key: "keep", label: "参加を続ける" }]} onSelect={(key) => { log(key); setOpen(false); }} onClose={close("sheet-dismiss")} />
+    </View>
+  );
+}
+
+const scenarios: Record<string, () => React.ReactElement> = { toast: () => <ToastScenario />, dialog: () => <DialogScenario />, imperative: () => <ImperativeScenario />, gallery: () => <Gallery />, overlays: () => <Overlays /> };
 const App = scenarios[String(fixture.scenario)]!;
 function Page({ children }: { children: React.ReactNode }) {
   const { colors } = useOrbitTheme();
   return <View style={{ flex: 1, minHeight: "100vh" as never, backgroundColor: colors.bg }}>{children}</View>;
 }
 createRoot(document.getElementById("root")!).render(
-  <Locale><ReducedMotionOverride.Provider value={fixture.reducedMotion === undefined ? null : Boolean(fixture.reducedMotion)}><UiPortalHost><Page><App /></Page></UiPortalHost></ReducedMotionOverride.Provider></Locale>,
+  <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><Locale><ReducedMotionOverride.Provider value={fixture.reducedMotion === undefined ? null : Boolean(fixture.reducedMotion)}><ToastProvider hasTabBar={Boolean(fixture.hasTabBar)}><UiPortalHost><Page><App /></Page></UiPortalHost></ToastProvider></ReducedMotionOverride.Provider></Locale></SafeAreaProvider>,
 );

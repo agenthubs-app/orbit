@@ -4,7 +4,8 @@ import { createThemedStyles } from "../../design/theme";
 import type { OrbitColors } from "../../design/tokens";
 import { UiText } from "./Text";
 
-export type ChipTone = "neutral" | "coral" | "apricot" | "lav" | "teal" | "blue" | "pink";
+// `ok` is for done / completed (RD-17: 「完成」 is always the ok green).
+export type ChipTone = "neutral" | "coral" | "apricot" | "lav" | "teal" | "blue" | "pink" | "ok";
 
 // kit .chip + 01-system ⑩: a status label — not a button, text always present,
 // ≤8 characters (copy-qa checks the standard wording), one coral chip per card,
@@ -28,6 +29,7 @@ export function chipColors(colors: OrbitColors): Record<ChipTone, { background: 
     teal: { background: colors.macTeal, text: colors.macTealText },
     blue: { background: colors.macBlue, text: colors.macBlueText },
     pink: { background: colors.macPink, text: colors.macPinkText },
+    ok: { background: colors.okSoft, text: colors.okText },
   };
 }
 

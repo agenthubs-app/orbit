@@ -1,5 +1,6 @@
-import { useCallback, useEffect, type ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
@@ -19,22 +20,31 @@ export function BottomSheet({ visible, onClose, children, accessibilityLabel }: 
   const { styles } = useStyles();
   const reduced = useReducedMotion();
   const { height } = useWindowDimensions();
-  const maxHeight = sheetMaxHeight(height);
+  const { top } = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight(visible);
+  const maxHeight = sheetMaxHeight(height, keyboard, top);
+  // Measured height: the close threshold is a quarter of the sheet as drawn.
+  const [sheetHeight, setSheetHeight] = useState(maxHeight);
   const offset = useSharedValue(reduced ? 0 : height);
   const opacity = useSharedValue(reduced ? 0 : 1);
   const close = useCallback(() => onClose(), [onClose]);
   useBackHandler(visible, close);
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      // Ready to slide in again next time (review m11).
+      offset.value = reduced ? 0 : height;
+      opacity.value = reduced ? 0 : 1;
+      return;
+    }
     offset.value = reduced ? 0 : withTiming(0, { duration: durations.sheet });
     opacity.value = withTiming(1, { duration: durations.sheet });
-  }, [offset, opacity, reduced, visible]);
-  const drag = Gesture.Pan()
+  }, [height, offset, opacity, reduced, visible]);
+  const drag = useMemo(() => Gesture.Pan()
     .onUpdate((event) => { offset.value = sheetDragOffset(event.translationY); })
     .onEnd((event) => {
-      if (shouldDismissSheet(event.translationY, event.velocityY, maxHeight)) runOnJS(close)();
-      else offset.value = withTiming(0, { duration: durations.sheet });
-    });
+      if (shouldDismissSheet(event.translationY, event.velocityY, sheetHeight)) runOnJS(close)();
+      else offset.value = reduced ? 0 : withTiming(0, { duration: durations.sheet });
+    }), [close, offset, reduced, sheetHeight]);
   const sheetStyle = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ translateY: offset.value }] }));
   if (!visible) return null;
   return (
@@ -42,7 +52,7 @@ export function BottomSheet({ visible, onClose, children, accessibilityLabel }: 
       <View accessibilityViewIsModal style={StyleSheet.absoluteFill}>
         <Scrim onPress={close} />
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} pointerEvents="box-none" style={styles.anchor}>
-          <Animated.View accessibilityLabel={accessibilityLabel} style={[styles.sheet, { maxHeight }, sheetStyle]}>
+          <Animated.View accessibilityLabel={accessibilityLabel} onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)} style={[styles.sheet, { maxHeight }, sheetStyle]}>
             <GestureDetector gesture={drag}>
               <View accessibilityRole="adjustable" accessibilityLabel={accessibilityLabel} style={styles.grabArea}><View style={styles.grab} /></View>
             </GestureDetector>
@@ -52,6 +62,18 @@ export function BottomSheet({ visible, onClose, children, accessibilityLabel }: 
       </View>
     </UiPortal>
   );
+}
+
+/** Keyboard height while the sheet is open (iOS reports it before the animation). */
+function useKeyboardHeight(active: boolean): number {
+  const [keyboard, setKeyboard] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const show = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow", (event) => setKeyboard(event.endCoordinates.height));
+    const hide = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide", () => setKeyboard(0));
+    return () => { show.remove(); hide.remove(); setKeyboard(0); };
+  }, [active]);
+  return keyboard;
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({

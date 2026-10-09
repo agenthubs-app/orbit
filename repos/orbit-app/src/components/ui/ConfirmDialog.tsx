@@ -61,7 +61,8 @@ export function ConfirmDialog({
     const node = findNodeHandle(focusTarget.current);
     if (!node) return;
     focused.current = true;
-    AccessibilityInfo.setAccessibilityFocus?.(node);
+    // One frame later: VoiceOver ignores focus requests during the presenting layout.
+    requestAnimationFrame(() => AccessibilityInfo.setAccessibilityFocus?.(node));
   };
   if (!visible) return null;
   const scale = appear.interpolate({ inputRange: [0, 1], outputRange: [reduced ? 1 : 0.96, 1] });

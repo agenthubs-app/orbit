@@ -61,16 +61,23 @@ test("every control offers a ≥44 touch target (visual size + hit slop)", async
   await page.close();
 });
 
-test("2× text at 320 wide: nothing spills sideways and no button label is clipped", async () => {
-  const page = await openScenario(browser, script, { scenario: "gallery", fontScale: 2 }, { width: 320 });
-  const overflow = await page.evaluate(() => ({
-    page: document.documentElement.scrollWidth,
-    clipped: Array.from(document.querySelectorAll<HTMLElement>('[role="button"]')).filter((el) => el.scrollHeight > el.clientHeight + 1).map((el) => el.textContent),
-  }));
-  assert.ok(overflow.page <= 321, `page is ${overflow.page} wide`);
-  assert.deepEqual(overflow.clipped, []);
-  await page.close();
-});
+// R04 review M3: a label cut short by an ellipsis is a horizontal overflow of the
+// text element itself. Segmented labels are exempt only because they shrink to fit
+// on iOS (adjustsFontSizeToFit, data-shrink), which the web build cannot do.
+const CLIPPED_TEXT = `(() => Array.from(document.querySelectorAll("#root *"))
+  .filter((el) => Array.from(el.childNodes).some((node) => node.nodeType === 3 && node.textContent.trim()))
+  .filter((el) => !el.closest('[data-shrink="1"], [aria-hidden="true"]'))
+  .filter((el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1)
+  .map((el) => el.textContent.trim().slice(0, 24)))()`;
+
+for (const scenario of [{ scenario: "gallery" }, { scenario: "overlays", overlay: "dialog" }, { scenario: "overlays", overlay: "actionSheet" }, { scenario: "overlays", overlay: "drawer" }]) {
+  test(`2× text at 320 wide (${scenario.overlay ?? scenario.scenario}): nothing spills sideways and no text is cut short`, async () => {
+    const page = await openScenario(browser, script, { ...scenario, fontScale: 2 }, { width: 320 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth) <= 321, "page spills sideways");
+    assert.deepEqual(await page.evaluate(CLIPPED_TEXT), []);
+    await page.close();
+  });
+}
 
 test("Reduce Motion: numbers and bars appear at their value at once; no countdown or shimmer", async () => {
   const page = await openScenario(browser, script, { scenario: "gallery", reducedMotion: true });
@@ -96,11 +103,4 @@ test("done is green (ok, RD-17); switches and multi-select are plum", async () =
   }
 });
 
-test("the bottom sheet closes on a backdrop tap and on Android back; the action sheet lists consequences", async () => {
-  const page = await openScenario(browser, script, { scenario: "gallery", sheet: true, actionSheet: true });
-  assert.equal(await page.getByText("主催者に取り消しが通知されます").count(), 1);
-  assert.equal(await page.evaluate(() => (window as any).fireBack()), true);
-  const events = await page.evaluate(() => (window as any).events as string[]);
-  assert.ok(events.includes("sheet-dismiss") || events.includes("sheet-close"), events.join(","));
-  await page.close();
-});
+// Backdrop / back / keyboard / focus on open overlays: tests/ui-overlays.test.ts.

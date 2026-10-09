@@ -8,7 +8,7 @@ import {
   usePathname
 } from "expo-router";
 import type { ComponentType, PropsWithChildren } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { spacing, typography } from "../design/tokens";

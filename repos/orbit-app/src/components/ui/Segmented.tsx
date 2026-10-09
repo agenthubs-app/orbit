@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { createThemedStyles } from "../../design/theme";
+import { useReducedMotion } from "./motion";
 import { UiPressable } from "./Pressable";
 import { UiText } from "./Text";
 
@@ -38,9 +39,10 @@ export function SwipeSegments<Key extends string>({ segments, value, onChange, a
   const { width } = useWindowDimensions();
   const pager = useRef<ScrollView>(null);
   const [pageWidth, setPageWidth] = useState(width);
+  const reduced = useReducedMotion();
   const select = (key: Key) => {
     onChange(key);
-    pager.current?.scrollTo({ x: segments.findIndex((segment) => segment.key === key) * pageWidth, animated: true });
+    pager.current?.scrollTo({ x: segments.findIndex((segment) => segment.key === key) * pageWidth, animated: !reduced });
   };
   return (
     <View style={{ flex: 1 }} onLayout={(event) => setPageWidth(event.nativeEvent.layout.width || width)}>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { createThemedStyles } from "../../design/theme";
 import { UiPressable } from "./Pressable";
@@ -7,6 +7,8 @@ import { UiText } from "./Text";
 
 // kit .list > .li: leading slot (avatar / tile), title 14/700 and one meta line
 // 12 / ink-3-text, trailing slot. Tappable rows are buttons with a 44+ target.
+// One line each at normal sizes; with larger text they wrap (up to 3 lines) instead
+// of cutting the name short, like iOS table cells (R04 review M3).
 export function ListRow({ title, subtitle, leading, trailing, onPress, accessibilityLabel }: {
   title: string;
   subtitle?: string;
@@ -16,12 +18,13 @@ export function ListRow({ title, subtitle, leading, trailing, onPress, accessibi
   accessibilityLabel?: string;
 }) {
   const { styles } = useStyles();
+  const lines = useWindowDimensions().fontScale > 1.2 ? 3 : 1;
   const content = (
     <>
       {leading}
       <View style={styles.meta}>
-        <UiText numberOfLines={1} style={styles.title}>{title}</UiText>
-        {subtitle ? <UiText numberOfLines={1} style={styles.subtitle}>{subtitle}</UiText> : null}
+        <UiText numberOfLines={lines} style={styles.title}>{title}</UiText>
+        {subtitle ? <UiText numberOfLines={lines} style={styles.subtitle}>{subtitle}</UiText> : null}
       </View>
       {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
     </>

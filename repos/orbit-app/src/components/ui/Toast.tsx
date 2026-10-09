@@ -13,7 +13,9 @@ type ToastApi = { show: (input: ToastInput, owner: number) => void; dismiss: () 
 const ToastContext = createContext<ToastApi | null>(null);
 let nextOwner = 1;
 
-// Mount once at the root. `hasTabBar` places the toast above the floating tab bar.
+// Mount once at the root, OUTSIDE UiPortalHost: the toast then renders after the
+// portal layer, so it stays visible above an open dialog or sheet (R04 review M1).
+// `hasTabBar` places the toast above the floating tab bar.
 export function ToastProvider({ children, hasTabBar = false }: { children: ReactNode; hasTabBar?: boolean }) {
   const [current, setCurrent] = useState<ToastState | null>(null);
   const api = useMemo<ToastApi>(() => ({
@@ -29,7 +31,10 @@ export function ToastProvider({ children, hasTabBar = false }: { children: React
   );
 }
 
-/** `toast.success("完了にしました", { undo })`. Undo callbacks die with the calling screen. */
+/**
+ * `toast.success("完了にしました", { undo })`, `toast.error(msg, { action: { label: copy.action.retry, onPress } })`.
+ * Undo and action callbacks die with the calling screen.
+ */
 export function useToast() {
   const api = useContext(ToastContext);
   const owner = useRef(nextOwner++).current;
@@ -76,9 +81,17 @@ function ToastView({ toast, bottom, onClose }: { toast: ToastState; bottom: numb
           <UiText numberOfLines={2} style={[styles.title, { color: text }]}>{toast.message}</UiText>
           {toast.sub ? <UiText numberOfLines={toast.keep ? 3 : 1} style={[styles.sub, { color: text }]}>{toast.sub}</UiText> : null}
         </View>
-        {toast.undo ? (
-          <UiPressable accessibilityRole="button" accessibilityLabel={copy.action.undo} onPress={() => { toast.undo?.(); onClose(); }} style={[styles.undo, { backgroundColor: scheme === "dark" ? colors.surface2 : colors.ink2 }]}>
-            <UiText numberOfLines={1} style={[styles.undoLabel, { color: text }]}>{copy.action.undo}</UiText>
+        {toast.undo || toast.action ? (
+          // 32 tall like the kit's capsule; hitSlop 6 makes the touch target 44.
+          <UiPressable
+            accessibilityRole="button"
+            accessibilityLabel={toast.undo ? copy.action.undo : toast.action?.label}
+            hitSlop={6}
+            onPress={() => { (toast.undo ?? toast.action?.onPress)?.(); onClose(); }}
+            style={[styles.undo, { backgroundColor: scheme === "dark" ? colors.surface2 : colors.ink2 }]}
+          >
+            {toast.undo ? <Icon name="undo" size={16} color={text} /> : null}
+            <UiText numberOfLines={1} style={[styles.undoLabel, { color: text }]}>{toast.undo ? copy.action.undo : toast.action?.label}</UiText>
           </UiPressable>
         ) : null}
         {toast.autoDismissMs === null ? (
@@ -100,7 +113,7 @@ const styles = StyleSheet.create({
   message: { flex: 1, minWidth: 0 },
   title: { fontSize: 13, fontWeight: "700", lineHeight: 17 },
   sub: { fontSize: 11, fontWeight: "600" },
-  undo: { minHeight: 32, borderRadius: 999, paddingHorizontal: 13, justifyContent: "center" },
+  undo: { minHeight: 32, borderRadius: 999, paddingHorizontal: 13, flexDirection: "row", alignItems: "center", gap: 5 },
   undoLabel: { fontSize: 12, fontWeight: "800" },
   close: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   countdown: { position: "absolute", left: 22, right: 22, bottom: 3, height: 2, borderRadius: 1, opacity: 0.4 },

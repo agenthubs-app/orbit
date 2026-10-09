@@ -1,4 +1,5 @@
-import { StyleSheet, View } from "react-native";
+import { useRef } from "react";
+import { AccessibilityInfo, findNodeHandle, StyleSheet, View } from "react-native";
 
 import { createThemedStyles } from "../../design/theme";
 import { BottomSheet } from "./BottomSheet";
@@ -11,15 +12,28 @@ export type ActionSheetOption = { key: string; label: string; destructive?: bool
 // 01-system ② / kit .actsheet: when an action needs its consequences listed, or
 // there are 3+ choices. Title, consequence rows, then 46-tall buttons stacked:
 // the destructive one on top, 「〜を続ける」/ cancel below (iOS action sheet).
-export function ActionSheet({ visible, title, effects = [], options, onSelect, onClose }: {
+// Screen-reader focus starts on the safe choice (`defaultFocusKey`, else the first
+// non-destructive option), like the kit's focus on 「〜を続ける」 (R04 review M5).
+export function ActionSheet({ visible, title, effects = [], options, defaultFocusKey, onSelect, onClose }: {
   visible: boolean;
   title: string;
   effects?: { icon: IconName; text: string }[];
   options: ActionSheetOption[];
+  defaultFocusKey?: string;
   onSelect: (key: string) => void;
   onClose: () => void;
 }) {
   const { colors, styles } = useStyles();
+  const focusKey = defaultFocusKey ?? options.find((option) => !option.destructive)?.key;
+  const focusTarget = useRef<View>(null);
+  const focused = useRef(false);
+  if (!visible) focused.current = false;
+  const focusOnce = () => {
+    if (focused.current) return;
+    focused.current = true;
+    // One frame later: VoiceOver ignores focus requests during the presenting layout.
+    requestAnimationFrame(() => { const handle = findNodeHandle(focusTarget.current); if (handle) AccessibilityInfo.setAccessibilityFocus(handle); });
+  };
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={title}>
       <UiText accessibilityRole="header" style={styles.title}>{title}</UiText>
@@ -31,7 +45,9 @@ export function ActionSheet({ visible, title, effects = [], options, onSelect, o
       ))}
       <View style={styles.buttons}>
         {options.map((option) => (
-          <Button key={option.key} block label={option.label} onPress={() => onSelect(option.key)} variant={option.destructive ? "danger" : "secondary"} />
+          <View key={option.key} ref={option.key === focusKey ? focusTarget : undefined} collapsable={false} onLayout={option.key === focusKey ? focusOnce : undefined}>
+            <Button block label={option.label} onPress={() => onSelect(option.key)} variant={option.destructive ? "danger" : "secondary"} />
+          </View>
         ))}
       </View>
     </BottomSheet>

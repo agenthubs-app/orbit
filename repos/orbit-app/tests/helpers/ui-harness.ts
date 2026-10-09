@@ -10,7 +10,9 @@ import { nativeUiStubs } from "./native-ui-stubs";
 //   - Text scales with fixture.fontScale (system text size) unless maxFontSizeMultiplier caps it;
 //   - Pressable exposes hitSlop as data-hitslop so touch targets can be measured;
 //   - BackHandler listeners are reachable through window.fireBack();
-//   - AccessibilityInfo.isReduceMotionEnabled follows fixture.reducedMotion.
+//   - AccessibilityInfo.isReduceMotionEnabled follows fixture.systemReducedMotion;
+//   - Text with adjustsFontSizeToFit (iOS-only shrinking) is marked data-shrink;
+//   - Keyboard listeners are reachable through window.fireKeyboard(height).
 // Scenarios live in the entry passed to `bundleScenarios`.
 const nativeShim = `
 import React from "react";
@@ -18,17 +20,20 @@ import * as RNW from "react-native-web";
 export * from "react-native-web";
 const fixture = () => window.uiFixture || {};
 export const useWindowDimensions = () => ({ ...RNW.useWindowDimensions(), fontScale: fixture().fontScale || 1 });
-export const Text = React.forwardRef(({ allowFontScaling = true, maxFontSizeMultiplier, style, lineBreakStrategyIOS, ...props }, ref) => {
+export const Text = React.forwardRef(({ allowFontScaling = true, maxFontSizeMultiplier, style, lineBreakStrategyIOS, adjustsFontSizeToFit, minimumFontScale, dataSet, ...props }, ref) => {
   const flat = RNW.StyleSheet.flatten(style) || {};
   const raw = allowFontScaling ? (fixture().fontScale || 1) : 1;
   const scale = maxFontSizeMultiplier ? Math.min(raw, maxFontSizeMultiplier) : raw;
-  return <RNW.Text ref={ref} {...props} style={[style, { fontSize: typeof flat.fontSize === "number" ? flat.fontSize * scale : undefined, lineHeight: typeof flat.lineHeight === "number" ? flat.lineHeight * scale : undefined }]} />;
+  return <RNW.Text ref={ref} {...props} dataSet={adjustsFontSizeToFit ? { ...dataSet, shrink: "1" } : dataSet} style={[style, { fontSize: typeof flat.fontSize === "number" ? flat.fontSize * scale : undefined, lineHeight: typeof flat.lineHeight === "number" ? flat.lineHeight * scale : undefined }]} />;
 });
 export const Pressable = React.forwardRef(({ hitSlop, dataSet, ...props }, ref) => <RNW.Pressable ref={ref} {...props} dataSet={{ ...dataSet, hitslop: String(typeof hitSlop === "number" ? hitSlop : hitSlop ? Math.min(hitSlop.top ?? 0, hitSlop.left ?? 0) : 0) }} />);
 const backListeners = new Set();
 window.fireBack = () => { for (const listener of [...backListeners].reverse()) if (listener()) return true; return false; };
 export const BackHandler = { addEventListener: (_event, listener) => { backListeners.add(listener); return { remove: () => backListeners.delete(listener) }; } };
-export const AccessibilityInfo = { ...RNW.AccessibilityInfo, isReduceMotionEnabled: async () => Boolean(fixture().reducedMotion), addEventListener: () => ({ remove() {} }), setAccessibilityFocus: (node) => { window.lastFocus = node; } };
+const keyboardListeners = new Set();
+window.fireKeyboard = (height) => { for (const [event, listener] of keyboardListeners) if (event === (height > 0 ? "keyboardDidShow" : "keyboardDidHide")) listener({ endCoordinates: { height } }); };
+export const Keyboard = { ...RNW.Keyboard, addListener: (event, listener) => { const entry = [event, listener]; keyboardListeners.add(entry); return { remove: () => keyboardListeners.delete(entry) }; }, dismiss() {} };
+export const AccessibilityInfo = { ...RNW.AccessibilityInfo, isReduceMotionEnabled: async () => Boolean(fixture().systemReducedMotion), addEventListener: () => ({ remove() {} }), setAccessibilityFocus: (node) => { window.lastFocus = node; } };
 export const findNodeHandle = (instance) => { if (instance && instance.setAttribute) instance.setAttribute("data-focus-target", "1"); return instance; };
 `;
 
