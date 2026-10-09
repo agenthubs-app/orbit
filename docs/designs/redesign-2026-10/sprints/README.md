@@ -27,9 +27,9 @@
 | Sprint | 目标 | 依赖 | 档位 | 状态 |
 | --- | --- | --- | --- | --- |
 | [R01](R01-design-tokens/GOAL.md) | 设计源：一份 token 源生成两端，新值覆盖旧值，统一改用设计稿命名 | — | H | done，已复核，问题已修（M1、M2、m1、m2、m5、m6 已修；m3 留 R05、m4 留 R07；[REPORT](R01-design-tokens/REPORT.md)、[REVIEW](R01-design-tokens/REVIEW.md) 末尾「处理记录」） |
-| [R02](R02-icons/GOAL.md) | 图标源 + 两端 `Icon` + 补画齐全 + Ionicons 只减不增门禁 | R01 | H | done，已复核，问题已修（M3 模拟器底栏截图、m4、m6 转 R04；[REPORT](R02-icons/REPORT.md)、[REVIEW](R02-icons/REVIEW.md) 末尾「处理记录」） |
+| [R02](R02-icons/GOAL.md) | 图标源 + 两端 `Icon` + 补画齐全 + Ionicons 只减不增门禁 | R01 | H | done，已复核，问题已修（M3 模拟器底栏截图已在 R04 走查补上，m4、m6 已在 R04 处理；[REPORT](R02-icons/REPORT.md)、[REVIEW](R02-icons/REVIEW.md) 末尾「处理记录」） |
 | [R03](R03-copy-and-ja/GOAL.md) | 文案源 + 术语表 + 字典按功能拆分 + 回退日语 + 翻译质量工具；写死文字只减不增门禁 | R01 | H | done，已复核，问题已修（M2 Web 导航壳转 R07；[REPORT](R03-copy-and-ja/REPORT.md)、[REVIEW](R03-copy-and-ja/REVIEW.md) 末尾「处理记录」） |
-| [R04](R04-app-components/GOAL.md) | App 组件库（5 类）+ 展示页 + 基础设施改用新组件；旧写法只减不增门禁 | R01、R02、R03 | H | done，已复核，问题已修（M8 模拟器手动走查待人工：左滑 / 弹层拖动与键盘 / 触感 / 毛玻璃 / 登录登出离线；[REPORT](R04-app-components/REPORT.md)、[REVIEW](R04-app-components/REVIEW.md) 末尾「处理记录」） |
+| [R04](R04-app-components/GOAL.md) | App 组件库（5 类）+ 展示页 + 基础设施改用新组件；旧写法只减不增门禁 | R01、R02、R03 | H | done，已复核，问题已修（模拟器走查已做，只剩触感需真机确认；[REPORT](R04-app-components/REPORT.md)、[REVIEW](R04-app-components/REVIEW.md) 末尾「处理记录」） |
 | [R05](R05-app-shell/GOAL.md) | App 导航壳：NAV-V3 底栏、Task 容器、二级页规则 | R04 | H | planned |
 | [R06](R06-web-components/GOAL.md) | Web 组件库（5 类，CSS Modules，新作用域） | R01、R02、R03 | H | planned |
 | [R07](R07-web-shell/GOAL.md) | Web 导航壳：左栏、主标题区、右栏、⌘K，全站一次切换 | R06 | H | planned |

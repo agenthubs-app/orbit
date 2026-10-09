@@ -233,7 +233,7 @@
 | M5 | 已修：`ActionSheet` 加 `defaultFocusKey`（缺省第一个非破坏性选项），焦点在「〜を続ける」，与设计稿 ② 一致；保留动作表（三选一），写入 REPORT 自定决定 3，请产品负责人事后确认 | `ActionSheet.tsx`；`ui-overlays`「starts screen-reader focus on the safe choice」 |
 | M6 | 已修：键盘弹出时最大高度 = min(80% 屏高, 屏高 − 键盘 − 安全区 − 12)，内容在弹层内滚动 | `sheet-logic.ts`、`BottomSheet.tsx`；`ui-overlays` 键盘用例（纯函数 + 模拟键盘事件下弹层顶部和第一个输入框在屏内）。原生键盘仍列入 M8 手动走查 |
 | M7 | 已修：系统设置整个 App 只读一次（模块级缓存 + `useSyncExternalStore`），之后出现的弹层 / Toast 第一帧就是减少动效；`SwipeSegments` 在减少动效下不带动画切页 | `motion.ts`、`Segmented.tsx`；`ui-overlays`「Reduce Motion」：四种弹层打开后无任何 transform，只开系统设置时 Toast 第一帧无位移 |
-| M8 | 未修（需要人）：模拟器手动走查仍待人工，REPORT「已知例外」已列步骤，并加上 M1（弹层上发 Toast）和 M6（弹层里弹键盘）两项 | REPORT「已知例外」 |
+| M8 | 已做（用户授权模拟器后）：左滑跟手、弹层滑入 / 拖动关闭、键盘避让、破坏性确认框点遮罩不关闭、动作表、深色、超大字号、登录 / 会话恢复 / 离线边界 / 有未同步修改时退出（动作表三选项，点遮罩 = 取消，加密保存后退出）全部在模拟器开发包上实测通过；R02 M3 底栏截图一并补上。剩余：触感需真机；毛玻璃在展示页上没有可模糊的内容；错误边界未人为触发（测试覆盖） | REPORT SC-05 / SC-06、`~/orbit-sprint-evidence/redesign/R04/run-01/sim/20–44` |
 | m1 | 已修：交接改为 `{ undo }` 5 秒、`keep` 才是不倒计时的撤销条 | REPORT「交接」 |
 | m2 | 已修：`Chip` 和左滑动作加 `ok` 色，「完了」改用 `ok` | `Chip.tsx`、`SwipeRow.tsx`、展示页 |
 | m3 | 已修：`Progress.tsx` 改走 `./svg` | |
