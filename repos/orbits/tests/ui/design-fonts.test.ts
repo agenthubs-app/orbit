@@ -41,6 +41,19 @@ test("no product file names the old serif or mono faces", () => {
   assert.deepEqual(offenders, []);
 });
 
+test("product styles take the language font from --font instead of pinning Chinese", () => {
+  // Canvas text cannot read CSS variables, so the starfield canvas keeps a
+  // concrete sans stack; the token files are where the stacks are defined.
+  const allowed = new Set([
+    "app/(app)/app/orbit-2026/tokens.css",
+    "app/(app)/app/orbit-starfield-mobile-logic.ts",
+    "app/(app)/app/orbit-starfield-desktop-logic.ts",
+    "shared/design/tokens.ts",
+  ]);
+  const offenders = productFiles().filter((path) => !allowed.has(path) && readFileSync(path, "utf8").includes("Noto Sans SC"));
+  assert.deepEqual(offenders, []);
+});
+
 test("the font stack follows <html lang>, Japanese by default", () => {
   const css = readFileSync("app/(app)/app/orbit-2026/tokens.css", "utf8");
   assert.match(css, /--font-ja: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP"/);

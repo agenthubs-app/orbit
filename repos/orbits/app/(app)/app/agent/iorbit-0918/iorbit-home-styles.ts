@@ -41,7 +41,7 @@ ${S} .ir-m-title { display: inline-flex; align-items: center; gap: 12px; }
 ${S} .ir-m-h1 { font-size: clamp(38px, 4.4vw, 54px); line-height: 1; letter-spacing: -0.035em; }
 ${S} .ir-m-orbit { width: 44px; height: 26px; margin-top: 6px; }
 ${S} .ir-m-date { font-family: var(--font); font-weight: 600; font-size: 16px; color: #3B3F7A; font-variant-numeric: tabular-nums; }
-${S} .ir-m-date small { font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-weight: 400; font-size: 13px; color: #6B6F99; margin-left: 8px; }
+${S} .ir-m-date small { font-family: var(--font); font-weight: 400; font-size: 13px; color: #6B6F99; margin-left: 8px; }
 ${S} .ir-m-lede { margin: 0; max-width: 44em; font-size: 18px; line-height: 1.6; color: #3B3F7A; text-wrap: balance; }
 ${S} .ir-m-lede strong { color: #0E1225; font-weight: 500; }
 /* 两栏骨架 */
@@ -179,7 +179,7 @@ ${S} .ir-m-empty a { color: #4B4FC7; }
 ${S} .ir-m-event { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: start; color: #0E1225; }
 ${S} .ir-m-event:hover { color: #2E3270; }
 ${S} .ir-m-event-date { font-family: var(--font); font-weight: 900; font-size: 20px; line-height: 1.05; font-variant-numeric: tabular-nums; }
-${S} .ir-m-event-date small { display: block; margin-top: 3px; font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-weight: 400; font-size: 11.5px; color: #6B6F99; white-space: nowrap; }
+${S} .ir-m-event-date small { display: block; margin-top: 3px; font-family: var(--font); font-weight: 400; font-size: 11.5px; color: #6B6F99; white-space: nowrap; }
 ${S} .ir-m-event-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 ${S} .ir-m-event-copy strong { font-size: 14.5px; font-weight: 500; line-height: 1.45; }
 ${S} .ir-m-event-copy span { font-size: 12.5px; color: #6B6F99; }
@@ -226,7 +226,7 @@ ${S} .btn.ir-demo-collapse { padding: 4px; border: 0; border-radius: 0; backgrou
 ${S} .btn.ir-demo-collapse:hover { color: #FFFFFF; }
 ${S} .btn.ir-demo-pill { padding: 6px 11px; border: 0; border-radius: 999px; background: #2E3270; color: #FFFFFF; font-size: 12px; font-weight: 500; }
 ${S} .btn.ir-demo-pill:hover { background: #4B4FC7; }
-${S} .ir-demo-tag { display: inline-block; margin-left: 6px; padding: 3px 4px; border: 1px dashed #B9BCEB; border-radius: 4px; color: #6B6F99; font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-size: 10.5px; font-weight: 500; line-height: 1; letter-spacing: 0.04em; vertical-align: 3px; }
+${S} .ir-demo-tag { display: inline-block; margin-left: 6px; padding: 3px 4px; border: 1px dashed #B9BCEB; border-radius: 4px; color: #6B6F99; font-family: var(--font); font-size: 10.5px; font-weight: 500; line-height: 1; letter-spacing: 0.04em; vertical-align: 3px; }
 ${S} .ir-m-pills .ir-demo-tag { margin-left: 0; vertical-align: 0; align-self: center; }
 ${S} .ir-demo-scrim { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; padding: 90px 16px 16px; background: rgba(14,18,37,0.32); }
 ${S} .ir-demo-sheet { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 420px; padding: 24px 24px 20px; border-radius: 18px; background: #FFFFFF; box-shadow: 0 24px 60px rgba(14,18,37,0.22); outline: none; }

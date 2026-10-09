@@ -7,7 +7,7 @@ const S = '[data-orbit-real-page="start-guide"]';
 const BUTTONS = ["sg-primary", "sg-secondary", "sg-link", "sg-step"];
 
 export const START_GUIDE_STYLES = `
-${S} { min-height: 100dvh; background: #FBFBFE; color: #0E1225; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+${S} { min-height: 100dvh; background: #FBFBFE; color: #0E1225; font-family: var(--font); -webkit-font-smoothing: antialiased; }
 ${S} *, ${S} *::before, ${S} *::after { box-sizing: border-box; }
 ${S} a { text-decoration: none; }
 ${BUTTONS.map((name) => `${S} .btn.${name}`).join(", ")} { height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; letter-spacing: 0; line-height: 1.4; white-space: nowrap; text-align: center; transition: background .15s, border-color .15s, color .15s; cursor: pointer; box-shadow: none; user-select: auto; }
@@ -92,7 +92,7 @@ ${S} .sg-goalbox .sg-goal-empty { color: #9FA3C4; }
 ${S} .sg-reads { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: #6B6F99; }
 ${S} .sg-reads b { color: #3B3F7A; font-weight: 500; }
 ${S} .sg-question { margin: 4px 0 0; font-family: var(--font); font-weight: 900; font-size: 23px; line-height: 1.45; color: #2E3270; letter-spacing: -.01em; }
-${S} .sg-ask-badge { display: inline-grid; place-items: center; width: 26px; height: 26px; margin-right: 10px; border-radius: 7px; background: #4B4FC7; color: #FFFFFF; font: 500 13px/1 "Noto Sans SC", "PingFang SC", sans-serif; vertical-align: 4px; }
+${S} .sg-ask-badge { display: inline-grid; place-items: center; width: 26px; height: 26px; margin-right: 10px; border-radius: 7px; background: #4B4FC7; color: #FFFFFF; font: 500 13px/1 var(--font); vertical-align: 4px; }
 ${S} .sg-input { width: 100%; border: 1px solid #DDDEFA; border-radius: 10px; padding: 10px 14px; font-size: 14.5px; color: #0E1225; background: #FFFFFF; outline: none; }
 ${S} .sg-input:focus { border-color: #B9BCEB; box-shadow: 0 0 0 4px rgba(75,79,199,.08); }
 ${S} .sg-input::placeholder { color: #9FA3C4; }

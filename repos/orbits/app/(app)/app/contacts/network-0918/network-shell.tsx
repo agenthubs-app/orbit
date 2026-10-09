@@ -74,7 +74,7 @@ const NETWORK_DEMO_MESSAGE = {
 // 每条规则 = 设计稿一个 style="" 原样搬入；顺序与值不得改动。
 export const NETWORK_STYLES = `
 @keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-[data-orbit-real-page="network"] { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif; -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip; }
+[data-orbit-real-page="network"] { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: var(--font); -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip; }
 [data-orbit-real-page="network"] a { color: #3B3F7A; text-decoration: none; }
 [data-orbit-real-page="network"] a:hover { color: #0E1225; }
 [data-orbit-real-page="network"] input, [data-orbit-real-page="network"] textarea, [data-orbit-real-page="network"] button, [data-orbit-real-page="network"] select { font-family: inherit; }
@@ -731,7 +731,7 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.ir-demo-collapse:hover { color: #FFFFFF; }
 [data-orbit-real-page="network"] .btn.ir-demo-pill { padding: 6px 11px; border: 0; border-radius: 999px; background: #2E3270; color: #FFFFFF; font-size: 12px; font-weight: 500; }
 [data-orbit-real-page="network"] .btn.ir-demo-pill:hover { background: #4B4FC7; }
-[data-orbit-real-page="network"] .ir-demo-tag { display: inline-block; margin-left: 6px; padding: 3px 4px; border: 1px dashed #B9BCEB; border-radius: 4px; color: #6B6F99; font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-size: 10.5px; font-weight: 500; line-height: 1; letter-spacing: 0.04em; vertical-align: 3px; white-space: nowrap; }
+[data-orbit-real-page="network"] .ir-demo-tag { display: inline-block; margin-left: 6px; padding: 3px 4px; border: 1px dashed #B9BCEB; border-radius: 4px; color: #6B6F99; font-family: var(--font); font-size: 10.5px; font-weight: 500; line-height: 1; letter-spacing: 0.04em; vertical-align: 3px; white-space: nowrap; }
 [data-orbit-real-page="network"] .ir-demo-scrim { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; padding: 90px 16px 16px; background: rgba(14,18,37,0.32); }
 [data-orbit-real-page="network"] .ir-demo-sheet { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 420px; padding: 24px 24px 20px; border-radius: 18px; background: #FFFFFF; box-shadow: 0 24px 60px rgba(14,18,37,0.22); outline: none; }
 [data-orbit-real-page="network"] .ir-demo-sheet h3 { margin: 0; font-family: var(--font); font-weight: 900; font-size: 21px; line-height: 1.35; color: #0E1225; }

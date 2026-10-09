@@ -74,7 +74,7 @@ export function AuthModal({
 // `.btn.au-*` 规则整段中和 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 + `:active{transform:none}`。
 export const AUTH_STYLES = `
 /* ── 作用域基线（设计 helmet：body 字体 / 链接色）── */
-[data-orbit-real-page="auth-0918"] { color: #0E1225; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif; -webkit-font-smoothing: antialiased; text-wrap: pretty; }
+[data-orbit-real-page="auth-0918"] { color: #0E1225; font-family: var(--font); -webkit-font-smoothing: antialiased; text-wrap: pretty; }
 [data-orbit-real-page="auth-0918"] a { color: #3B3F7A; text-decoration: none; }
 [data-orbit-real-page="auth-0918"] a:hover { color: #0E1225; }
 /* 设计 helmet 未给 input 字体（只有 body），输入框按 Chromium UA 默认渲染为 Arial（playwright 实测 computed fontFamily = Arial）；

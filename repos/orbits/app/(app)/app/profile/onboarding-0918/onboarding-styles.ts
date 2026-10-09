@@ -6,7 +6,7 @@ const S = '[data-orbit-real-page="onboarding-0918"]';
 export const ONBOARDING_STYLES = `
 @keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes ob-pulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
-${S} { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif; -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip; }
+${S} { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: var(--font); -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip; }
 ${S} a { color: #3B3F7A; text-decoration: none; }
 ${S} a:hover { color: #0E1225; }
 ${S} input, ${S} textarea, ${S} button, ${S} select { font-family: inherit; }

@@ -279,7 +279,7 @@ export function OpsReportFrame({ children, event }: { children: ReactNode; event
 // 每条规则 = 设计稿一个 style="" 原样搬入；顺序与值不得改动。前缀 [data-orbit-real-page="ops-0918"]。
 export const OPS_STYLES = `
 @keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-[data-orbit-real-page="ops-0918"] { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif; -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip; }
+[data-orbit-real-page="ops-0918"] { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: var(--font); -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip; }
 [data-orbit-real-page="ops-0918"] a { color: #3B3F7A; text-decoration: none; }
 [data-orbit-real-page="ops-0918"] a:hover { color: #0E1225; }
 [data-orbit-real-page="ops-0918"] input, [data-orbit-real-page="ops-0918"] textarea, [data-orbit-real-page="ops-0918"] button, [data-orbit-real-page="ops-0918"] select { font-family: inherit; }
@@ -438,7 +438,7 @@ export const OPS_STYLES = `
 [data-orbit-real-page="ops-0918"] .op-mstat { display: flex; align-items: center; gap: 16px; padding: 20px; border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; }
 [data-orbit-real-page="ops-0918"] .op-mstat-icon { width: 44px; height: 44px; flex: none; border-radius: 12px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
 [data-orbit-real-page="ops-0918"] .op-mstat-n { font-family: var(--font); font-weight: 900; font-size: 26px; }
-[data-orbit-real-page="ops-0918"] .op-mstat-unit { font-size: 14px; font-family: 'Noto Sans SC'; font-weight: 400; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-mstat-unit { font-size: 14px; font-family: var(--font); font-weight: 400; color: #6B6F99; }
 [data-orbit-real-page="ops-0918"] .op-rounds { display: flex; gap: 8px; padding: 6px; border-radius: 12px; background: #F7F7FD; align-self: flex-start; }
 [data-orbit-real-page="ops-0918"] .btn.op-round { padding: 11px 28px; border: 0; border-radius: 9px; font-size: 14px; cursor: pointer; }
 [data-orbit-real-page="ops-0918"] .op-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr)); gap: 18px; }

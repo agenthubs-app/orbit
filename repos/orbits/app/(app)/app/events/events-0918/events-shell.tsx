@@ -69,7 +69,7 @@ export function EventsShell({
 // 每条规则 = 设计稿一个 style="" 原样搬入；顺序与值不得改动。前缀 [data-orbit-real-page="events-0918"]。
 export const EVENTS_STYLES = `
 @keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-[data-orbit-real-page="events-0918"] { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif; -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip; }
+[data-orbit-real-page="events-0918"] { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: var(--font); -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip; }
 [data-orbit-real-page="events-0918"] a { color: #3B3F7A; text-decoration: none; }
 [data-orbit-real-page="events-0918"] a:hover { color: #0E1225; }
 [data-orbit-real-page="events-0918"] input, [data-orbit-real-page="events-0918"] textarea, [data-orbit-real-page="events-0918"] button, [data-orbit-real-page="events-0918"] select { font-family: inherit; }

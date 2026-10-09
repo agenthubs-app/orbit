@@ -193,7 +193,7 @@ ${R} .btn.ge-horizon:hover:not(:disabled) { border-color: #B9BCEB; }
 ${R} .btn.ge-horizon[aria-pressed="true"] { border-color: #4B4FC7; background: #F4F5FC; box-shadow: inset 0 0 0 1px #4B4FC7; }
 ${R} .btn.ge-horizon:disabled { cursor: default; opacity: .6; }
 ${R} .ge-horizon-num { font-family: var(--font); font-weight: 900; font-size: 22px; line-height: 1.1; color: #0E1225; }
-${R} .ge-horizon-num small { margin-left: 3px; font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-weight: 500; font-size: 13px; color: #3B3F7A; }
+${R} .ge-horizon-num small { margin-left: 3px; font-family: var(--font); font-weight: 500; font-size: 13px; color: #3B3F7A; }
 ${R} .btn.ge-horizon[aria-pressed="true"] .ge-horizon-num, ${R} .btn.ge-horizon[aria-pressed="true"] .ge-horizon-num small { color: #2E3270; }
 ${R} .ge-horizon-sub { font-size: 12px; color: #6B6F99; }
 @media (max-width: 560px) {

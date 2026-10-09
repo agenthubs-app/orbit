@@ -17,7 +17,7 @@ import { IORBIT_PLAN_CARD_STYLES } from "./iorbit-plan-card-styles";
 export const IORBIT_STYLES = `
 @keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 /* ── 设计 14–22 的全局 CSS + 25 行的页面包裹 ── */
-[data-orbit-real-page="iorbit-0918"] { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif; -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip;
+[data-orbit-real-page="iorbit-0918"] { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: var(--font); -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip;
   /* 双层作用域（「审阅修订」2）：外层 [data-orbit-real-page="agent"] 把字号压到 15px、
      行高压到 1.65，设计的 body 两者都没写（=16px / normal），这里显式还原。行高不还原时
      每个块的行盒都高 2px，面包屑→标题→副标题会累积出 5–6px 的纵向漂移。 */

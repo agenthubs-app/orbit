@@ -9,7 +9,7 @@ export const CARD_BATCH_STYLES = `
 @keyframes cb-pulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
 @keyframes cb-sheen { from { background-position: -200px 0; } to { background-position: 200px 0; } }
 @keyframes cb-scan { 0% { top: -12%; } 100% { top: 100%; } }
-${S} { color: #0E1225; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif; -webkit-font-smoothing: antialiased; text-wrap: pretty; }
+${S} { color: #0E1225; font-family: var(--font); -webkit-font-smoothing: antialiased; text-wrap: pretty; }
 ${S} input, ${S} textarea, ${S} button { font-family: inherit; }
 ${S} input::placeholder { color: #9FA3C4; }
 ${S} a { text-decoration: none; }
