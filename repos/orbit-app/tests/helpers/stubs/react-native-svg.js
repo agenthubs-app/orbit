@@ -2,6 +2,9 @@ const React = require("react");
 
 function Svg({
   accessibilityElementsHidden,
+  accessibilityLabel,
+  accessibilityRole,
+  accessible,
   children,
   importantForAccessibility,
   pointerEvents,
@@ -14,4 +17,12 @@ function Path({ accessible, onPress, ...props }) {
   return React.createElement("path", { ...props, onClick: onPress });
 }
 
-module.exports = { Path, default: Svg, __esModule: true };
+function Circle({ accessible, ...props }) {
+  return React.createElement("circle", props);
+}
+
+function Rect({ accessible, ...props }) {
+  return React.createElement("rect", props);
+}
+
+module.exports = { Circle, Path, Rect, default: Svg, __esModule: true };

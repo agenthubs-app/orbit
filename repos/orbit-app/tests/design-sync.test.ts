@@ -15,7 +15,7 @@ test("the design-token copy is byte-identical to the generated source", () => {
   const source = join(appRoot, "..", "orbits", "shared", "design", "tokens.ts");
   const copyDir = join(appRoot, "src", "api", "design");
   assert.equal(existsSync(copyDir), true, "run npm run sync:contract to copy the design tokens");
-  assert.deepEqual(readdirSync(copyDir), ["tokens.ts"], "only the generated constants reach the App, not tokens.json or the README");
+  assert.deepEqual(readdirSync(copyDir).sort(), ["icons.ts", "tokens.ts"], "only the generated constants reach the App, not the JSON sources or the README");
   assert.equal(readFileSync(join(copyDir, "tokens.ts"), "utf8"), readFileSync(source, "utf8"), "src/api/design/tokens.ts was edited by hand or is stale");
 });
 
@@ -26,7 +26,7 @@ test("the App palette is the synced design palette, nothing else", async () => {
   assert.deepEqual(darkColors, designColors.dark);
 });
 
-test("the sync script copies only shared/design/tokens.ts and replaces a stale copy", (t) => {
+test("the sync script copies only shared/design/tokens.ts and icons.ts and replaces a stale copy", (t) => {
   const root = mkdtempSync(join(tmpdir(), "orbit-design-sync-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const app = join(root, "orbit-app");
@@ -40,7 +40,9 @@ test("the sync script copies only shared/design/tokens.ts and replaces a stale c
   writeFileSync(join(shared, "domain", "language.ts"), "export const ORBIT_LANGUAGES = ['zh'] as const;\n");
   writeFileSync(join(shared, "compute", "compute-text.ts"), "export const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);\n");
   writeFileSync(join(shared, "design", "tokens.ts"), "export const designColors = { light: { ink: \"#1E1A24\" } } as const;\n");
+  writeFileSync(join(shared, "design", "icons.ts"), "export const designIconNames = [\"home\"] as const;\n");
   writeFileSync(join(shared, "design", "tokens.json"), "{}\n");
+  writeFileSync(join(shared, "design", "icons.json"), "{}\n");
   writeFileSync(join(shared, "design", "README.md"), "source notes\n");
   const target = join(app, "src", "api", "design");
   mkdirSync(target, { recursive: true });
@@ -48,6 +50,7 @@ test("the sync script copies only shared/design/tokens.ts and replaces a stale c
   writeFileSync(join(target, "stale.ts"), "export const stale = true;\n");
 
   execFileSync(process.execPath, [join(app, "scripts", "sync-contract.mjs")], { cwd: app });
-  assert.deepEqual(readdirSync(target), ["tokens.ts"]);
+  assert.deepEqual(readdirSync(target).sort(), ["icons.ts", "tokens.ts"]);
   assert.equal(readFileSync(join(target, "tokens.ts"), "utf8"), readFileSync(join(shared, "design", "tokens.ts"), "utf8"));
+  assert.equal(readFileSync(join(target, "icons.ts"), "utf8"), readFileSync(join(shared, "design", "icons.ts"), "utf8"));
 });

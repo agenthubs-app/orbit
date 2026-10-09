@@ -38,6 +38,7 @@ test("同步命令不会复制未授权的 domain 文件，并清理过期副本
   writeFileSync(join(source, "domain", "server-only.ts"), "export const privateRuntime = true;\n");
   writeFileSync(join(source, "compute", "compute-text.ts"), "export const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);\n");
   writeFileSync(join(source, "design", "tokens.ts"), "export const designColors = {} as const;\n");
+  writeFileSync(join(source, "design", "icons.ts"), "export const designIconNames = [] as const;\n");
   const target = join(app, "src", "api", "domain");
   mkdirSync(target, { recursive: true });
   writeFileSync(join(target, "stale.ts"), "export const stale = true;\n");

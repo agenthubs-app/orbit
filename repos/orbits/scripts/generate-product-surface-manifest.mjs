@@ -66,7 +66,8 @@ function isProductionPage(filePath) {
   }
 
   const relative = toPosix(path.relative(APP_ROOT, filePath));
-  return !relative.startsWith("api/") && !relative.startsWith("dev/");
+  // /dev and /showcase are developer surfaces hidden in production (RD-15).
+  return !relative.startsWith("api/") && !relative.startsWith("dev/") && !relative.startsWith("showcase/");
 }
 
 function routeFromPage(filePath) {
@@ -1534,7 +1535,7 @@ export function buildProductSurfaceManifest() {
   const metadata = stableGitMetadata();
   const manifest = {
     schemaVersion: 2,
-    scope: "All production Next.js page routes; API and /dev routes excluded",
+    scope: "All production Next.js page routes; API, /dev and /showcase routes excluded",
     evidenceLevel:
       "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
     ...metadata,

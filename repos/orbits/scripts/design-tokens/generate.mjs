@@ -3,20 +3,56 @@
 //   npm run design:tokens            write the generated files
 //
 // Outputs (each starts with a "do not edit" header; tests/ui/design-tokens-generated.test.ts
-// fails when a file drifts from what this script renders):
+// and tests/ui/icon-source-sync.test.ts fail when a file drifts from what this script renders):
 //   shared/design/tokens.ts               import-free constants; synced into the App
 //                                         by `npm run sync:contract` (repos/orbit-app)
 //   app/(app)/app/orbit-2026/tokens.css   Web custom properties, light + dark
+//   shared/design/icons.ts                icon shapes from shared/design/icons.json (R02);
+//                                         synced into the App the same way
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HEADER = "由 shared/design/tokens.json 生成，禁止手改；改源文件后运行 npm run design:tokens";
+const ICON_HEADER = "由 shared/design/icons.json 生成，禁止手改；改源文件后运行 npm run design:tokens";
 
 export const DESIGN_TOKEN_SOURCE = "shared/design/tokens.json";
 export const DESIGN_TOKEN_TS = "shared/design/tokens.ts";
 export const DESIGN_TOKEN_CSS = "app/(app)/app/orbit-2026/tokens.css";
 export const DESIGN_TOKEN_OUTPUTS = [DESIGN_TOKEN_TS, DESIGN_TOKEN_CSS];
+export const DESIGN_ICON_SOURCE = "shared/design/icons.json";
+export const DESIGN_ICON_TS = "shared/design/icons.ts";
+export const DESIGN_ICON_OUTPUTS = [DESIGN_ICON_TS];
+
+// Drawing spec of the design kit's line icons (kit/ui.css: `svg.i` 20px with
+// .sm 16 / .lg 24, the tab bar's 21; stroke 1.7, round caps and joins).
+const ICON_SPEC = { viewBox: "0 0 24 24", strokeWidth: 1.7, sizes: [16, 20, 21, 24], defaultSize: 20 };
+
+// The SVG attributes an icon body may use, by element, and how each is typed.
+const ICON_ATTRIBUTES = {
+  path: { d: "string", "stroke-dasharray": "string", fill: "string" },
+  circle: { cx: "number", cy: "number", r: "number", fill: "string" },
+  rect: { x: "number", y: "number", width: "number", height: "number", rx: "number", fill: "string" },
+};
+
+/** `<path d="…"/><circle …/>` → [{ tag: "path", d: "…" }, { tag: "circle", … }]; throws on anything else. */
+export function parseIconBody(body) {
+  const shapes = [];
+  const rest = body.replace(/<(\w+)((?:\s+[\w-]+="[^"]*")*)\s*\/>/g, (_, tag, attributes) => {
+    const allowed = ICON_ATTRIBUTES[tag];
+    if (!allowed) throw new Error(`unsupported icon element <${tag}>`);
+    const shape = { tag };
+    for (const [, name, value] of attributes.matchAll(/([\w-]+)="([^"]*)"/g)) {
+      const kind = allowed[name];
+      if (!kind || (name === "fill" && value !== "currentColor")) throw new Error(`unsupported icon attribute ${name}="${value}" on <${tag}>`);
+      shape[camelTokenName(name)] = kind === "number" ? Number(value) : value;
+    }
+    shapes.push(shape);
+    return "";
+  });
+  if (rest.trim()) throw new Error(`unsupported icon markup: ${rest.trim().slice(0, 40)}`);
+  return shapes;
+}
 
 // "ink-3-text" → "ink3Text", "plum-700" → "plum700", "card-web" → "cardWeb".
 export function camelTokenName(name) {
@@ -128,6 +164,45 @@ function renderCss(tokens) {
   ].join("\n");
 }
 
+function renderIconsTs(icons) {
+  const names = Object.keys(icons);
+  const shape = (item) => `{ ${Object.entries(item).map(([key, value]) => `${key}: ${quote(value)}`).join(", ")} }`;
+  return [
+    `// ${ICON_HEADER}`,
+    "// Pure constants, zero imports: this file is copied verbatim into repos/orbit-app/src/api/design/.",
+    "// Both clients' <Icon> draw these shapes with the stroke spec below (stroke = colour, no fill;",
+    "// a shape with fill \"currentColor\" is a solid dot in the same colour).",
+    "",
+    "export type DesignIconShape =",
+    '  | { readonly tag: "path"; readonly d: string; readonly strokeDasharray?: string; readonly fill?: "currentColor" }',
+    '  | { readonly tag: "circle"; readonly cx: number; readonly cy: number; readonly r: number; readonly fill?: "currentColor" }',
+    '  | { readonly tag: "rect"; readonly x: number; readonly y: number; readonly width: number; readonly height: number; readonly rx?: number; readonly fill?: "currentColor" };',
+    "",
+    `export const designIconSpec = ${tsObject([
+      ["viewBox", quote(ICON_SPEC.viewBox)],
+      ["strokeWidth", String(ICON_SPEC.strokeWidth)],
+      ["sizes", `[${ICON_SPEC.sizes.join(", ")}]`],
+      ["defaultSize", String(ICON_SPEC.defaultSize)],
+    ], 0)} as const;`,
+    "",
+    "export type DesignIconSize = (typeof designIconSpec.sizes)[number];",
+    "",
+    `export const designIconNames = [\n${names.map((name) => `  ${quote(name)}`).join(",\n")}\n] as const;`,
+    "",
+    "export type DesignIconName = (typeof designIconNames)[number];",
+    "",
+    "/** kit = from the design kit; drawn = drawn for R02 in the kit's style (see R02-icons/icon-mapping.md). */",
+    `export const designIconSources: { readonly [Name in DesignIconName]: "kit" | "drawn" } = ${tsObject(names.map((name) => [quote(name), quote(icons[name].source)]), 0)};`,
+    "",
+    `export const designIcons: { readonly [Name in DesignIconName]: readonly DesignIconShape[] } = ${tsObject(names.map((name) => [quote(name), `[${parseIconBody(icons[name].body).map(shape).join(", ")}]`]), 0)};`,
+    "",
+  ].join("\n");
+}
+
+export function renderDesignIconOutputs(icons) {
+  return { [DESIGN_ICON_TS]: renderIconsTs(icons) };
+}
+
 export function renderDesignTokenOutputs(tokens) {
   return {
     [DESIGN_TOKEN_TS]: renderTs(tokens),
@@ -138,7 +213,9 @@ export function renderDesignTokenOutputs(tokens) {
 function main() {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
   const tokens = JSON.parse(readFileSync(path.join(root, DESIGN_TOKEN_SOURCE), "utf8"));
-  for (const [file, content] of Object.entries(renderDesignTokenOutputs(tokens))) {
+  const icons = JSON.parse(readFileSync(path.join(root, DESIGN_ICON_SOURCE), "utf8"));
+  const outputs = { ...renderDesignTokenOutputs(tokens), ...renderDesignIconOutputs(icons) };
+  for (const [file, content] of Object.entries(outputs)) {
     const target = path.join(root, file);
     mkdirSync(path.dirname(target), { recursive: true });
     writeFileSync(target, content);

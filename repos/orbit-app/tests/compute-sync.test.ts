@@ -76,6 +76,7 @@ test("the sync script copies shared/compute (and still only the two domain dicti
   writeFileSync(join(shared, "compute", "dashboard-sample.ts"), "import { compareText } from \"./compute-text\";\nexport const first = (values: string[]) => [...values].sort(compareText)[0];\n");
   writeFileSync(join(shared, "compute", "notes.md"), "not code\n");
   writeFileSync(join(shared, "design", "tokens.ts"), "export const designColors = {} as const;\n");
+  writeFileSync(join(shared, "design", "icons.ts"), "export const designIconNames = [] as const;\n");
   writeFileSync(join(shared, "storage", "pool.ts"), "export const pool = 'server-only';\n");
   writeFileSync(join(shared, "api", "envelope.ts"), "export const envelope = 'server-only';\n");
   const target = join(app, "src", "api", "compute");

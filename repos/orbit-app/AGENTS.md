@@ -9,8 +9,8 @@ This directory is the iOS-first Orbit mobile app.
   `src/api/schema/` copies runtime validation from `shared/api-schema/`, and
   `src/api/domain/` copies only the approved `industries.ts` and `language.ts`
   dictionaries from `shared/domain/`, `src/api/compute/` copies `shared/compute/`, and
-  `src/api/design/` copies only the generated `tokens.ts` from `shared/design/`
-  (redesign R01, RD-08; `shared/copy` joins in R03). Do not broaden that whitelist to
+  `src/api/design/` copies only the generated `tokens.ts` and `icons.ts` from
+  `shared/design/` (redesign R01 / R02, RD-08; `shared/copy` joins in R03). Do not broaden that whitelist to
   other domain or feature code. The contract, API Schema, domain, compute and design
   sync tests verify these copies. Never edit copies by hand or import the source
   repository at build time.
@@ -20,6 +20,13 @@ This directory is the iOS-first Orbit mobile app.
   `npm run sync:contract` here. Use the design names (`colors.ink3Text`,
   `radius.xl`, `typography.cardTitle`); `tests/design-legacy-names.test.ts` rejects the
   old names and colour literals.
+- Icons (redesign R02): draw every icon with `src/components/ui/Icon.tsx`
+  (`<Icon name="calendar" />`, names from `src/api/design/icons.ts`, generated from
+  `repos/orbits/shared/design/icons.json`). New code must not import
+  `@expo/vector-icons`; `tests/ionicons-ratchet.test.ts` fails on any file outside
+  `tests/fixtures/ionicons-legacy-allowlist.json`, and that list only shrinks. When
+  rewriting an old screen, look up `docs/designs/redesign-2026-10/sprints/R02-icons/icon-mapping.md`
+  for the replacement and drop the file from the allow list.
 - View-models should type their field access against the contract (see `contactField`
   in `src/view-models/contacts.ts`) so a server-side rename fails `npm run typecheck`
   instead of silently yielding empty values at runtime.

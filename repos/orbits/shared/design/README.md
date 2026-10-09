@@ -7,6 +7,8 @@
 | `tokens.json` | **唯一的源**。人只改这个文件。 |
 | `tokens.ts` | 生成：零 import 常量，经 `npm run sync:contract` 复制到 App `src/api/design/tokens.ts`。 |
 | `app/(app)/app/orbit-2026/tokens.css` | 生成：Web CSS 变量（浅色在 `:root`，深色在 `[data-theme="dark"]` 和「未选择 + 系统深色」）。 |
+| `icons.json` | **图标的唯一源**（R02）。人只改这个文件。 |
+| `icons.ts` | 生成：图标形状常量，零 import，和 `tokens.ts` 一起同步到 App `src/api/design/icons.ts`。 |
 
 ## 改一个值
 
@@ -37,3 +39,11 @@
 ## 字体（RD-09）
 
 `font.family` 四组：`ja`（Hiragino Sans / Noto Sans JP）、`zh`（PingFang SC / Noto Sans SC）、`en`（系统字体）、`num`（数字，SF Pro Rounded）。Web 按 `<html lang>` 切换 `--font`，未知语言回退日语；App 在 iOS 用系统字体，不打包字体。不使用衬线体。
+
+## 图标（R02）
+
+- `icons.json`：`{ "<名字>": { "body": "<svg 内部标记>", "fill": ["dot"]?, "source": "kit" | "drawn" } }`。`kit` 是设计稿原图（`kit/kit.js` 的 48 个 + `kit/ui.css` 的 5 个补充图标，逐字照搬）；`drawn` 是 R02 按同样风格补画的。`fill: ["dot"]` 标记含实心小点（`fill="currentColor"`）的图标。
+- 画法规格（照 `kit/ui.css:15`）：24 × 24 视框，描边 1.7，圆头圆角，不填充；尺寸只有 16 / 20（默认）/ 21（底栏）/ 24。`body` 只能用 `path`（`d`、`stroke-dasharray`）、`circle`、`rect` 和 `fill="currentColor"`，生成脚本遇到别的标记直接报错。
+- 用法：App `src/components/ui/Icon.tsx`、Web `app/(app)/app/orbit-2026/ui/Icon.tsx`，都是 `<Icon name size? color? accessibilityLabel? />`。颜色默认跟随文字色（App 取主题 `ink`，Web 取 `currentColor`），实心点和描边同色；只做装饰时对读屏隐藏，图标单独表达意思（只有图标的按钮）时必须传 `accessibilityLabel`。
+- 功能图标用线性图标、放在圆形浅底上；emoji 只用于分类（`01-system.html:187, 219`）。
+- 加一个图标：先查 `docs/designs/redesign-2026-10/sprints/R02-icons/icon-mapping.md`，确实没有再按上面的规格画，`source: "drawn"`，在对照表补一行，然后跑 `npm run design:tokens` 和 App `npm run sync:contract`。展示页：Web `/showcase/icons`，App `/showcase/icons`（开发包和 TestFlight）。
