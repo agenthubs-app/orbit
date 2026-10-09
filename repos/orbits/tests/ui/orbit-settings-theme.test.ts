@@ -43,17 +43,19 @@ test("settings route renders inside the shared account shell", () => {
   assert.match(screens, /<ProfileSettings session=\{session\}/);
 });
 
-test("appearance settings offers explicit light and dark choices", () => {
+test("appearance settings offers automatic, light and dark choices", () => {
+  // R01: behaviour (apply + remember, system default) is covered by
+  // tests/ui/orbit-theme-preference.test.ts; this keeps the wiring visible.
   const appearance = source(
     "app/(app)/app/settings/orbit-appearance-settings.tsx",
   );
 
-  assert.match(appearance, /chooseTheme\("light"\)/);
-  assert.match(appearance, /chooseTheme\("dark"\)/);
-  assert.match(appearance, /aria-pressed=\{theme === "light"\}/);
-  assert.match(appearance, /aria-pressed=\{theme === "dark"\}/);
-  assert.match(appearance, /getOrbitTheme/);
-  assert.match(appearance, /toggleOrbitTheme/);
+  for (const choice of ["system", "light", "dark"]) {
+    assert.match(appearance, new RegExp(`choosePreference\\("${choice}"\\)`));
+    assert.match(appearance, new RegExp(`aria-pressed=\\{preference === "${choice}"\\}`));
+  }
+  assert.match(appearance, /getOrbitThemePreference/);
+  assert.match(appearance, /setOrbitThemePreference/);
 });
 
 test("settings page copy follows the shared language preference", () => {

@@ -90,8 +90,8 @@ export function MobileBar({
       style={{
         alignItems: "center",
         backdropFilter: transparent ? "none" : "blur(14px)",
-        background: transparent ? "transparent" : "var(--glass-bar, rgba(255,255,255,0.86))",
-        borderBottom: transparent ? "none" : "1px solid var(--border)",
+        background: transparent ? "transparent" : "var(--glass, rgba(255,255,255,0.86))",
+        borderBottom: transparent ? "none" : "1px solid var(--line)",
         display: "flex",
         flexShrink: 0,
         gap: 10,
@@ -124,7 +124,7 @@ export function MobileBar({
           <Icon name="chevL" size={20} />
         </button>
       ) : null}
-      {title ? <span style={{ color: dark ? "#fff" : "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 17, fontWeight: 600, letterSpacing: "-0.02em" }}>{title}</span> : null}
+      {title ? <span style={{ color: dark ? "#fff" : "var(--ink)", fontFamily: "var(--font)", fontSize: 17, fontWeight: 600, letterSpacing: "-0.02em" }}>{title}</span> : null}
       <div style={{ flex: 1 }} />
       {right}
     </div>
@@ -166,7 +166,7 @@ export function ModalShell({
 
   return (
     <div className="orbit-modal-overlay" style={{ alignItems: isSheet ? "flex-end" : "center", display: "flex", inset: 0, justifyContent: "center", position: "fixed", zIndex: ORBIT_Z.modal }}>
-      <div aria-hidden="true" className="orbit-modal-scrim" onClick={onClose} style={{ backdropFilter: "blur(4px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
+      <div aria-hidden="true" className="orbit-modal-scrim" onClick={onClose} style={{ backdropFilter: "blur(4px)", background: "var(--scrim-web)", inset: 0, position: "absolute" }} />
       <div
         aria-label={label ?? t({ en: "Dialog", zh: "对话框" })}
         aria-modal="true"
@@ -176,7 +176,7 @@ export function ModalShell({
         style={{
           animation: "pop .2s cubic-bezier(.22,1,.36,1)",
           borderRadius: isSheet ? "var(--r-xl) var(--r-xl) 0 0" : 20,
-          boxShadow: "var(--sh-pop)",
+          boxShadow: "var(--shadow-float)",
           display: "flex",
           flexDirection: "column",
           margin: isSheet ? 0 : 16,
@@ -197,8 +197,8 @@ export function ModalShell({
             <div style={{ alignItems: "center", display: "flex", gap: 12, padding: "20px 22px 6px" }}>
               <Logo size={22} />
               <div style={{ flex: 1 }} />
-              {step ? <span className="mono" style={{ color: "var(--text-3)", fontSize: 12, whiteSpace: "nowrap" }}>{step}</span> : null}
-              <button type="button" onClick={onClose} aria-label={t({ en: "Close", zh: "关闭" })} className="hit-44" style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 32, justifyContent: "center", width: 32 }}>
+              {step ? <span className="mono" style={{ color: "var(--ink-3-text)", fontSize: 12, whiteSpace: "nowrap" }}>{step}</span> : null}
+              <button type="button" onClick={onClose} aria-label={t({ en: "Close", zh: "关闭" })} className="hit-44" style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--ink-2)", cursor: "pointer", display: "flex", height: 32, justifyContent: "center", width: 32 }}>
                 <Icon name="x" size={17} />
               </button>
             </div>

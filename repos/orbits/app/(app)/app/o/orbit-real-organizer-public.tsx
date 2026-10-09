@@ -77,16 +77,16 @@ const ORGANIZER_CSS = `
 [data-orbit-real-page=organizer-public] .op-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; text-decoration: none; }
 [data-orbit-real-page=organizer-public] .op-back:hover { background: #ECEEFB; }
 [data-orbit-real-page=organizer-public] .op-head { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px 28px; }
-[data-orbit-real-page=organizer-public] .op-logo { width: 72px; height: 72px; border-radius: 18px; background: #0E1225; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-size: 26px; font-weight: 900; flex-shrink: 0; }
+[data-orbit-real-page=organizer-public] .op-logo { width: 72px; height: 72px; border-radius: 18px; background: #0E1225; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font); font-size: 26px; font-weight: 900; flex-shrink: 0; }
 [data-orbit-real-page=organizer-public] .op-head-copy { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
-[data-orbit-real-page=organizer-public] .op-name { margin: 0; color: #0E1225; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-size: 32px; font-weight: 900; line-height: 1.15; letter-spacing: -0.03em; }
+[data-orbit-real-page=organizer-public] .op-name { margin: 0; color: #0E1225; font-family: var(--font); font-size: 32px; font-weight: 900; line-height: 1.15; letter-spacing: -0.03em; }
 [data-orbit-real-page=organizer-public] .op-handle { font-size: 14px; color: #6B6F99; }
 [data-orbit-real-page=organizer-public] .op-badge { align-self: flex-start; padding: 5px 12px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; font-weight: 600; }
 [data-orbit-real-page=organizer-public] .op-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 14px; }
 [data-orbit-real-page=organizer-public] .op-stat { border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; padding: 18px 22px; display: flex; flex-direction: column; gap: 4px; }
-[data-orbit-real-page=organizer-public] .op-stat-n { color: #0E1225; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-size: 28px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; }
+[data-orbit-real-page=organizer-public] .op-stat-n { color: #0E1225; font-family: var(--font); font-size: 28px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; }
 [data-orbit-real-page=organizer-public] .op-stat-l { font-size: 13px; color: #6B6F99; }
-[data-orbit-real-page=organizer-public] .op-section-title { margin: 0; color: #0E1225; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-size: 22px; font-weight: 900; letter-spacing: -0.02em; }
+[data-orbit-real-page=organizer-public] .op-section-title { margin: 0; color: #0E1225; font-family: var(--font); font-size: 22px; font-weight: 900; letter-spacing: -0.02em; }
 [data-orbit-real-page=organizer-public] .op-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 18px; }
 [data-orbit-real-page=organizer-public] .op-card-link { color: inherit; text-decoration: none; display: block; }
 [data-orbit-real-page=organizer-public] .op-card { height: 100%; border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow 0.16s ease, transform 0.16s ease; }
@@ -130,7 +130,7 @@ export function OrbitRealOrganizerPublic({ language = "zh", viewModel }: { langu
   ];
 
   return (
-    <div className="orbit-shell" data-orbit-real-page="organizer-public" style={{ background: C.pageBg, minHeight: "100dvh" }}>
+    <div className="orbit-shell" data-orbit-real-page="organizer-public" style={{ background: C.bg, minHeight: "100dvh" }}>
       <style>{ORGANIZER_CSS}</style>
       <PublicTopNav active="events" />
       <main className="op-main">

@@ -55,9 +55,9 @@ export function ContactNotesEditor({ contactId, language, onClose, onSaved }: {
     <div style={{ position: "fixed", inset: 0, zIndex: ORBIT_Z.modal, background: "rgba(0,0,0,.35)", display: "grid", placeItems: "center", padding: 18 }}>
       <div ref={modalRef} role="dialog" aria-modal="true" aria-label={copy.title} tabIndex={-1} className="card" style={{ width: "100%", maxWidth: 480, padding: 22 }}>
         <h2 className="h-section" style={{ margin: "0 0 12px" }}>{copy.title}</h2>
-        <p style={{ color: "var(--text-3)", fontSize: 13 }}>{copy.privacy}</p>
-        <textarea aria-label={copy.title} disabled={status === "saving"} rows={5} value={draft} placeholder={copy.placeholder} onChange={(event) => { setDraft(event.target.value); setStatus("idle"); }} style={{ boxSizing: "border-box", width: "100%", resize: "vertical", minHeight: 120, maxHeight: "45dvh", padding: 12, color: "var(--text)", background: "var(--surface)", border: "1px solid var(--hairline)", borderRadius: "var(--r-md)", font: "inherit" }} />
-        {status === "error" ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13 }}>{copy.error}</p> : null}
+        <p style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{copy.privacy}</p>
+        <textarea aria-label={copy.title} disabled={status === "saving"} rows={5} value={draft} placeholder={copy.placeholder} onChange={(event) => { setDraft(event.target.value); setStatus("idle"); }} style={{ boxSizing: "border-box", width: "100%", resize: "vertical", minHeight: 120, maxHeight: "45dvh", padding: 12, color: "var(--ink)", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", font: "inherit" }} />
+        {status === "error" ? <p role="alert" style={{ color: "var(--coral-text)", fontSize: 13 }}>{copy.error}</p> : null}
         {status === "saved" ? <p role="status">{copy.saved}</p> : null}
         <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: 10, marginTop: 18 }}>
           <button type="button" className="btn btn-quiet" disabled={status === "saving"} onClick={onClose}>{copy.close}</button>

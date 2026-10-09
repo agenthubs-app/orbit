@@ -15,12 +15,13 @@ try {
 const defaultTestPatterns = ["tests/**/*.test.{ts,tsx}"];
 const testTargets = process.argv.slice(2);
 const paidAiBoundary = path.join(path.dirname(fileURLToPath(import.meta.url)), "test-paid-ai-boundary.mjs");
+const cssStub = path.join(path.dirname(fileURLToPath(import.meta.url)), "test-css-stub.mjs");
 const ledgerDir = mkdtempSync(path.join(os.tmpdir(), "orbits-paid-ai-"));
 const ledger = path.join(ledgerDir, "blocked.txt");
 
 const result = spawnSync(
   process.execPath,
-  ["--test", "--import", "tsx", "--import", paidAiBoundary, ...(testTargets.length > 0 ? testTargets : defaultTestPatterns)],
+  ["--test", "--import", "tsx", "--import", paidAiBoundary, "--import", cssStub, ...(testTargets.length > 0 ? testTargets : defaultTestPatterns)],
   {
     env: { ...process.env, ORBIT_TEST_PAID_AI_LEDGER: ledger },
     stdio: "inherit",

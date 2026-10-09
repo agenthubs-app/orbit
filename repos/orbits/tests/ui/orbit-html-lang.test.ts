@@ -38,7 +38,7 @@ test("the root layout resolves lang per request instead of hardcoding en", () =>
   assert.ok(layout.includes("orbitHtmlLang"));
   assert.ok(!layout.includes('<html lang="en"'));
   assert.ok(layout.includes("suppressHydrationWarning"), "theme init behavior preserved");
-  assert.ok(layout.includes("themeInitScript"), "theme script preserved");
+  assert.ok(layout.includes("ORBIT_THEME_INIT_SCRIPT"), "theme script preserved");
 });
 
 test("the language context syncs documentElement.lang on switch", () => {

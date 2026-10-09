@@ -4,6 +4,8 @@
  * 这里声明全局 metadata 和基础样式，所有 App Router 页面都会包在这个 layout 下。
  */
 import { normalizeOrbitLanguage, orbitHtmlLang } from "./(app)/app/orbit-language-core";
+import "./(app)/app/orbit-2026/tokens.css";
+import { ORBIT_THEME_INIT_SCRIPT } from "./(app)/app/orbit-theme-init";
 
 export const metadata = {
   title: "Orbit",
@@ -15,26 +17,21 @@ export const metadata = {
   },
 };
 
-const globalStyles = `
-  :root {
-    color-scheme: light;
-    --orbit-ink: #17211b;
-    --orbit-muted: #52645b;
-    --orbit-field: #f3f6f4;
-    --orbit-line: #d6ddd8;
-    --orbit-deep: #245b4e;
-    --orbit-signal: #b85a42;
-  }
+const ORBIT_WEB_FONTS_HREF =
+  "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&family=Noto+Sans+SC:wght@400;500;700;800&display=swap";
 
+// Colours, radius, type and motion come from the generated design tokens
+// (orbit-2026/tokens.css, imported above; R01).
+const globalStyles = `
   * {
     box-sizing: border-box;
   }
 
   body {
     margin: 0;
-    background: var(--orbit-field);
-    color: var(--orbit-ink);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
   }
 
   .orbit-page {
@@ -52,7 +49,7 @@ const globalStyles = `
   }
 
   .orbit-rule {
-    background: linear-gradient(90deg, var(--orbit-deep), var(--orbit-signal));
+    background: var(--accent-text);
     height: 5px;
     width: min(180px, 40vw);
   }
@@ -63,8 +60,8 @@ const globalStyles = `
   }
 
   .orbit-label {
-    color: var(--orbit-deep);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--accent-text);
+    font-family: var(--font-num);
     font-size: 0.74rem;
     letter-spacing: 0;
     line-height: 1.3;
@@ -73,7 +70,7 @@ const globalStyles = `
   }
 
   .orbit-title {
-    font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+    font-family: var(--font);
     font-size: 5.4rem;
     font-weight: 400;
     letter-spacing: 0;
@@ -82,7 +79,7 @@ const globalStyles = `
   }
 
   .orbit-copy {
-    color: var(--orbit-muted);
+    color: var(--ink-2);
     font-size: 1.15rem;
     line-height: 1.65;
     margin: 0;
@@ -91,8 +88,8 @@ const globalStyles = `
 
   .orbit-start-link {
     align-items: center;
-    border: 1px solid var(--orbit-deep);
-    color: var(--orbit-ink);
+    border: 1px solid var(--accent-text);
+    color: var(--ink);
     display: inline-flex;
     font-size: 0.95rem;
     font-weight: 700;
@@ -106,13 +103,13 @@ const globalStyles = `
   }
 
   .orbit-start-link:focus-visible {
-    outline: 3px solid var(--orbit-signal);
+    outline: 3px solid var(--coral-text);
     outline-offset: 3px;
   }
 
   .orbit-starter {
     background: #ffffff;
-    border-left: 5px solid var(--orbit-signal);
+    border-left: 5px solid var(--coral-text);
     display: grid;
     gap: 24px;
     grid-template-columns: minmax(180px, 0.35fr) minmax(0, 1fr);
@@ -120,8 +117,8 @@ const globalStyles = `
   }
 
   .orbit-starter-kicker {
-    color: var(--orbit-signal);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--coral-text);
+    font-family: var(--font-num);
     font-size: 0.74rem;
     font-weight: 700;
     letter-spacing: 0;
@@ -131,7 +128,7 @@ const globalStyles = `
   }
 
   .orbit-starter h2 {
-    font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+    font-family: var(--font);
     font-size: 1.85rem;
     font-weight: 400;
     letter-spacing: 0;
@@ -146,7 +143,7 @@ const globalStyles = `
   }
 
   .orbit-starter-list div {
-    border-top: 1px solid var(--orbit-line);
+    border-top: 1px solid var(--line);
     display: grid;
     gap: 6px;
     padding-top: 14px;
@@ -158,22 +155,22 @@ const globalStyles = `
   }
 
   .orbit-starter-list dt {
-    color: var(--orbit-ink);
+    color: var(--ink);
     font-size: 0.9rem;
     font-weight: 700;
     line-height: 1.35;
   }
 
   .orbit-starter-list dd {
-    color: var(--orbit-muted);
+    color: var(--ink-2);
     font-size: 0.94rem;
     line-height: 1.5;
     margin: 0;
   }
 
   .orbit-record {
-    border-bottom: 1px solid var(--orbit-line);
-    border-top: 1px solid var(--orbit-line);
+    border-bottom: 1px solid var(--line);
+    border-top: 1px solid var(--line);
     display: grid;
     gap: 24px;
     grid-template-columns: minmax(160px, 0.32fr) minmax(0, 1fr);
@@ -181,8 +178,8 @@ const globalStyles = `
   }
 
   .orbit-record-kicker {
-    color: var(--orbit-deep);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--accent-text);
+    font-family: var(--font-num);
     font-size: 0.74rem;
     font-weight: 700;
     letter-spacing: 0;
@@ -204,14 +201,14 @@ const globalStyles = `
   }
 
   .orbit-record-list dt {
-    color: var(--orbit-ink);
+    color: var(--ink);
     font-size: 0.94rem;
     font-weight: 700;
     line-height: 1.35;
   }
 
   .orbit-record-list dd {
-    color: var(--orbit-muted);
+    color: var(--ink-2);
     font-size: 0.94rem;
     line-height: 1.55;
     margin: 0;
@@ -227,15 +224,15 @@ const globalStyles = `
   }
 
   .orbit-principles li {
-    border-bottom: 1px solid var(--orbit-line);
+    border-bottom: 1px solid var(--line);
     display: grid;
     gap: 10px;
     padding: 22px 24px 22px 0;
   }
 
   .orbit-principles span {
-    color: var(--orbit-signal);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--coral-text);
+    font-family: var(--font-num);
     font-size: 0.74rem;
     font-weight: 700;
     letter-spacing: 0;
@@ -282,10 +279,6 @@ const globalStyles = `
   }
 `;
 
-// Sets the product theme before first paint to avoid a flash. Default is dark
-// (the new-UI identity); honours a saved choice or the OS light preference.
-const themeInitScript = `(function(){try{var t=localStorage.getItem('orbit-theme');if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
-
 export default async function RootLayout({ children }) {
   let rawLanguage: string | undefined;
   try {
@@ -302,7 +295,16 @@ export default async function RootLayout({ children }) {
   return (
     <html lang={htmlLang} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: ORBIT_THEME_INIT_SCRIPT }} />
+        {/* R01 / RD-09: the one place web fonts load. Japanese and Chinese UI
+            fall back to Noto Sans JP / SC where Hiragino / PingFang are missing;
+            English uses system fonts (orbit-2026/tokens.css --font-*). */}
+        <link href="https://fonts.googleapis.com" rel="preconnect" />
+        <link crossOrigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+        <link
+          href={ORBIT_WEB_FONTS_HREF}
+          rel="stylesheet"
+        />
       </head>
       <body>
         <style>{globalStyles}</style>

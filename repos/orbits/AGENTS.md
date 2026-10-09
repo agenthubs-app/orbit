@@ -38,6 +38,11 @@ workspace root for implementation work.
   通过同一命令按白名单同步到移动端 `src/api/domain/`；不复制其余 domain 或 feature
   代码。字典只能依赖同步范围内的类型，完整枚举一致性由编译期契约检查保障。
 - 完整规则与迁移步骤见 `docs/cross-client-contract.md`。
+- 改版 R01：设计 token 的唯一来源是 `shared/design/tokens.json`。改完跑 `npm run design:tokens`
+  生成 `shared/design/tokens.ts`（App 经 `sync:contract` 复制）和
+  `app/(app)/app/orbit-2026/tokens.css`（根 layout 加载），生成文件禁止手改。
+  样式只用设计稿命名的变量（`--ink`、`--ink-3-text`、`--surface-2`、`--line`、`--r-xl`、`--font`…），
+  旧名字由 `tests/ui/design-tokens-legacy-names.test.ts` 拦截；规则见 `shared/design/README.md`。
 
 ## Dev Capability Surfaces
 

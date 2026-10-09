@@ -32,16 +32,16 @@ function formatBytes(bytes: number): string {
   return `${bytes} B`;
 }
 
-const cell = { padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "left" as const, verticalAlign: "middle" as const };
+const cell = { padding: "8px 10px", borderBottom: "1px solid var(--line)", textAlign: "left" as const, verticalAlign: "middle" as const };
 const num = { ...cell, textAlign: "right" as const, fontVariantNumeric: "tabular-nums" as const, whiteSpace: "nowrap" as const };
-const head = { ...cell, color: "var(--text-3)", fontWeight: 500, fontSize: "var(--fs-12)" };
+const head = { ...cell, color: "var(--ink-3-text)", fontWeight: 500, fontSize: "var(--fs-label)" };
 const headNum = { ...head, textAlign: "right" as const };
 
 function Bar({ value, max, label }: { value: number; max: number; label: string }) {
   const width = max > 0 ? Math.max(value > 0 ? 2 : 0, Math.round((value / max) * 100)) : 0;
   return (
-    <div aria-hidden title={label} style={{ background: "var(--bg-sunken)", borderRadius: 4, height: 8, minWidth: 80, overflow: "hidden" }}>
-      <div style={{ background: "var(--accent)", borderRadius: 4, height: 8, width: `${width}%` }} />
+    <div aria-hidden title={label} style={{ background: "var(--surface-2)", borderRadius: 4, height: 8, minWidth: 80, overflow: "hidden" }}>
+      <div style={{ background: "var(--accent-text)", borderRadius: 4, height: 8, width: `${width}%` }} />
     </div>
   );
 }
@@ -73,7 +73,7 @@ function ReadCostView({ data, t, zh }: { data: ReadCostOverview; t: (key: keyof 
                 <td style={num}>{d.requests.toLocaleString("en-US")}</td>
                 <td style={num}>{formatBytes(d.recordedBytes)}</td>
                 <td style={{ ...cell, width: "30%" }}><Bar label={formatBytes(d.recordedBytes)} max={maxDay} value={d.recordedBytes} /></td>
-                <td style={num}>{d.neonStatus === "ok" && d.neonBytes !== null ? formatBytes(d.neonBytes) : <span style={{ color: "var(--text-3)" }}>{neonLabel(d.neonStatus)}</span>}</td>
+                <td style={num}>{d.neonStatus === "ok" && d.neonBytes !== null ? formatBytes(d.neonBytes) : <span style={{ color: "var(--ink-3-text)" }}>{neonLabel(d.neonStatus)}</span>}</td>
                 <td style={num}>{d.coverage !== null ? `${Math.round(d.coverage * 100)}%` : "—"}</td>
               </tr>
             ))}
@@ -86,8 +86,8 @@ function ReadCostView({ data, t, zh }: { data: ReadCostOverview; t: (key: keyof 
             <thead><tr><th style={head}>{t("route")}</th><th style={headNum}>{t("requests")}</th><th style={headNum}>{t("avg")}</th><th style={headNum}>{t("max")}</th><th style={headNum}>{t("total")}</th><th style={head} /></tr></thead>
             <tbody>
               {data.topRoutes.map((r) => (
-                <tr key={r.route} style={r.route === data.trend.route ? { background: "var(--accent-softer)" } : undefined}>
-                  <td style={{ ...cell, fontFamily: "var(--ff-mono)", fontSize: "var(--fs-13)", whiteSpace: "nowrap" }}>
+                <tr key={r.route} style={r.route === data.trend.route ? { background: "var(--accent-soft)" } : undefined}>
+                  <td style={{ ...cell, fontFamily: "var(--font-num)", fontSize: "var(--fs-body-sm)", whiteSpace: "nowrap" }}>
                     <Link href={`/app/admin/read-cost?route=${encodeURIComponent(r.route)}`}>{r.route}</Link>
                   </td>
                   <td style={num}>{r.requests.toLocaleString("en-US")}</td>
@@ -108,7 +108,7 @@ function ReadCostView({ data, t, zh }: { data: ReadCostOverview; t: (key: keyof 
             <tbody>
               {data.topAccounts.map((a) => (
                 <tr key={a.accountId}>
-                  <td style={{ ...cell, fontFamily: "var(--ff-mono)", fontSize: "var(--fs-13)", whiteSpace: "nowrap" }}>{a.accountId}</td>
+                  <td style={{ ...cell, fontFamily: "var(--font-num)", fontSize: "var(--fs-body-sm)", whiteSpace: "nowrap" }}>{a.accountId}</td>
                   <td style={num}>{a.requests.toLocaleString("en-US")}</td>
                   <td style={num}>{formatBytes(a.avgBytes)}</td>
                   <td style={num}>{formatBytes(a.totalBytes)}</td>
@@ -123,18 +123,18 @@ function ReadCostView({ data, t, zh }: { data: ReadCostOverview; t: (key: keyof 
         {data.trend.route === null ? <p className="orbit-host-muted">{t("noData")}</p> : (
           <>
             <p className="orbit-host-muted" style={{ margin: "0 0 10px" }}>{t("trendHint")}</p>
-            <div role="img" aria-label={`${t("trend")} ${data.trend.route}`} style={{ alignItems: "flex-end", borderBottom: "1px solid var(--border-strong)", display: "flex", gap: 4, height: 140 }}>
+            <div role="img" aria-label={`${t("trend")} ${data.trend.route}`} style={{ alignItems: "flex-end", borderBottom: "1px solid var(--ink-4)", display: "flex", gap: 4, height: 140 }}>
               {data.trend.points.map((p) => (
                 <div
                   key={p.day}
                   title={`${p.day} · ${t("avg")} ${formatBytes(p.avgBytes)} · ${t("requests")} ${p.requests.toLocaleString("en-US")}`}
                   style={{ alignItems: "flex-end", display: "flex", flex: 1, height: "100%", minWidth: 4 }}
                 >
-                  <div style={{ background: "var(--accent)", borderRadius: "4px 4px 0 0", height: `${maxTrend > 0 ? Math.max(p.avgBytes > 0 ? 2 : 0, Math.round((p.avgBytes / maxTrend) * 100)) : 0}%`, width: "100%" }} />
+                  <div style={{ background: "var(--accent-text)", borderRadius: "4px 4px 0 0", height: `${maxTrend > 0 ? Math.max(p.avgBytes > 0 ? 2 : 0, Math.round((p.avgBytes / maxTrend) * 100)) : 0}%`, width: "100%" }} />
                 </div>
               ))}
             </div>
-            <div className="orbit-host-muted" style={{ display: "flex", fontSize: "var(--fs-12)", justifyContent: "space-between", marginTop: 6 }}>
+            <div className="orbit-host-muted" style={{ display: "flex", fontSize: "var(--fs-label)", justifyContent: "space-between", marginTop: 6 }}>
               <span>{data.trend.points[0]?.day}</span><span>{t("peak")} {formatBytes(maxTrend)}</span><span>{data.trend.points.at(-1)?.day}</span>
             </div>
           </>
@@ -148,7 +148,7 @@ function ReadCostView({ data, t, zh }: { data: ReadCostOverview; t: (key: keyof 
                 <tr key={`${a.rule}:${a.day}:${a.subject}`}>
                   <td style={{ ...cell, whiteSpace: "nowrap" }}>{a.day}</td>
                   <td style={cell}>{RULES[a.rule][zh ? "zh" : "en"]}</td>
-                  <td style={{ ...cell, fontFamily: "var(--ff-mono)", fontSize: "var(--fs-13)" }}>{a.subject}</td>
+                  <td style={{ ...cell, fontFamily: "var(--font-num)", fontSize: "var(--fs-body-sm)" }}>{a.subject}</td>
                   <td style={num}>{a.rule === "low_coverage" ? `${Math.round(a.observed * 100)}%` : formatBytes(a.observed)}</td>
                   <td style={cell}>{a.notified ? t("notified") : t("waiting")}</td>
                 </tr>
@@ -176,7 +176,7 @@ export default async function AdminReadCostPage({ searchParams }: { searchParams
   return (
     <>
       <OrbitReferenceStyles />
-      <main data-orbit-route="app-admin-read-cost-route" style={{ background: "var(--bg)", color: "var(--text)", minHeight: "100vh", padding: "28px 16px 64px" }}>
+      <main data-orbit-route="app-admin-read-cost-route" style={{ background: "var(--bg)", color: "var(--ink)", minHeight: "100vh", padding: "28px 16px 64px" }}>
         <div style={{ margin: "0 auto", maxWidth: 1080 }}>
           <Link className="orbit-host-muted" href="/app/admin">← {t("back")}</Link>
           <div className="eyebrow" style={{ marginTop: 16 }}>READ COST</div>

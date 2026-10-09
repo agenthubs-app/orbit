@@ -160,7 +160,7 @@ export function IconButton({
 }
 
 export function Logo({
-  color = "var(--accent)",
+  color = "var(--accent-text)",
   size = 25,
   textColor = "var(--ink)",
   withText = true,
@@ -181,7 +181,7 @@ export function Logo({
         <span
           style={{
             color: textColor,
-            fontFamily: "var(--ff-display)",
+            fontFamily: "var(--font)",
             fontSize: size * 0.74,
             fontWeight: 600,
             letterSpacing: "-0.03em",
@@ -315,7 +315,7 @@ export function Cover({
           <span
             style={{
               color: "rgba(255,255,255,0.92)",
-              fontFamily: "var(--ff-display)",
+              fontFamily: "var(--font)",
               fontSize: monogram.size,
               fontWeight: 600,
               letterSpacing: "-0.03em",
@@ -373,7 +373,7 @@ export function FormField({
         <label className="field-label" htmlFor={id}>{label}</label>
       )}
       {children}
-      {helper && !error ? <span style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.4 }}>{helper}</span> : null}
+      {helper && !error ? <span style={{ color: "var(--ink-3-text)", fontSize: 13, lineHeight: 1.4 }}>{helper}</span> : null}
       <span aria-live="polite" role={error ? "alert" : undefined}>
         {error ? (
           <span className="field-error-text" id={`${id}-error`}>

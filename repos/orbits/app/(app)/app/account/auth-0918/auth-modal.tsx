@@ -90,11 +90,11 @@ export const AUTH_STYLES = `
   padding: 0; gap: 0; font-weight: 400; letter-spacing: 0; transition: none; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
 [data-orbit-real-page="auth-0918"] .btn.au-close:hover { background: #ECEEFB; color: #0E1225; }
 [data-orbit-real-page="auth-0918"] .btn.au-close:active { transform: none; }
-[data-orbit-real-page="auth-0918"] .au-wordmark { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 22px; letter-spacing: -0.03em; }
+[data-orbit-real-page="auth-0918"] .au-wordmark { font-family: var(--font); font-weight: 900; font-size: 22px; letter-spacing: -0.03em; }
 /* ── 视图（设计 348–351 / 371–374）── */
 [data-orbit-real-page="auth-0918"] .au-view { display: flex; flex-direction: column; gap: 24px; }
 [data-orbit-real-page="auth-0918"] .au-head { display: flex; flex-direction: column; gap: 10px; }
-[data-orbit-real-page="auth-0918"] .au-h2 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 34px; line-height: 1.15; letter-spacing: -0.03em; }
+[data-orbit-real-page="auth-0918"] .au-h2 { margin: 0; font-family: var(--font); font-weight: 900; font-size: 34px; line-height: 1.15; letter-spacing: -0.03em; }
 [data-orbit-real-page="auth-0918"] .au-sub { margin: 0; font-size: 15px; line-height: 1.65; color: #3B3F7A; }
 /* ── 字段（设计 353–360 / 376–383）：label 结构改为 div + label[for]（眼睛钮不能落进 label 的可访问名），CSS 逐字 ── */
 [data-orbit-real-page="auth-0918"] .au-fields { display: flex; flex-direction: column; gap: 14px; }

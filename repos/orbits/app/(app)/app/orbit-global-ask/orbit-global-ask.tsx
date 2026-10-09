@@ -17,7 +17,7 @@ const HINT_INTERVAL_MS = 3500;
  * 收起态的按钮标记：Orbit 品牌环 + 轨道点，白色描在 AI 渐变上。
  *
  * 与 `orbit-reference-primitives` 的 `Logo` 同形，但这里固定用 currentColor，
- * 好让按钮的白色继承下来——`Logo` 的 color 默认是 `--accent`，压在渐变上会糊。
+ * 好让按钮的白色继承下来——`Logo` 的 color 默认是 `--accent-text`，压在渐变上会糊。
  */
 function OrbitAskMark({ size = 26 }: { size?: number }) {
   return (
@@ -221,7 +221,7 @@ function OrbitAskDock() {
   const boundaryId = "orbit-global-ask-boundary";
 
   return (
-    // data-orbit-real-page 不是装饰：整套主题 token（--text-2/--surface/--border…）
+    // data-orbit-real-page 不是装饰：整套主题 token（--ink-2/--surface/--line…）
     // 都声明在 `[data-orbit-real-page]` 上，而这个组件挂在 layout 里、是页面根节点的
     // 兄弟，不带这个属性就一个变量都取不到。display:contents 让包裹层不生成盒子，
     // 只借用变量继承，不参与布局。

@@ -13,10 +13,10 @@
 const primitivesStyles = `
 .workbench-surface {
   background: var(--surface, #ffffff);
-  border: 1px solid var(--border-2, #d5ddd9);
-  border-radius: var(--r-xs, 8px);
-  box-shadow: var(--sh-xs, 0 1px 2px rgba(23, 33, 31, 0.08));
-  color: var(--text, inherit);
+  border: 1px solid var(--line, #d5ddd9);
+  border-radius: var(--r-sm, 8px);
+  box-shadow: none;
+  color: var(--ink, inherit);
   display: grid;
   gap: 16px;
   max-width: 100%;
@@ -27,7 +27,7 @@ const primitivesStyles = `
 
 .workbench-surface-raised {
   background: var(--surface-2, #f9fbfa);
-  box-shadow: var(--sh-lg, 0 16px 36px rgba(23, 33, 31, 0.1));
+  box-shadow: var(--shadow-float, 0 16px 36px rgba(23, 33, 31, 0.1));
 }
 
 .surface-heading {
@@ -37,7 +37,7 @@ const primitivesStyles = `
 }
 
 .surface-eyebrow {
-  color: var(--accent, #0f4758);
+  color: var(--accent-text, #0f4758);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.74rem;
   font-weight: 750;
@@ -61,7 +61,7 @@ const primitivesStyles = `
 
 .orbit-chip {
   align-items: center;
-  border: 1px solid var(--border-strong, #aebbb5);
+  border: 1px solid var(--ink-4, #aebbb5);
   border-radius: 6px;
   display: inline-flex;
   font-size: 0.78rem;
@@ -79,7 +79,7 @@ const primitivesStyles = `
 
 .orbit-chip-neutral {
   background: var(--surface-2, #f9fbfa);
-  color: var(--text, #17211f);
+  color: var(--ink, #17211f);
 }
 
 .orbit-chip-primary {

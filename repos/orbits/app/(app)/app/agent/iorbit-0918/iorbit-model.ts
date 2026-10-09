@@ -197,9 +197,9 @@ const MAX_AGENT_CHAT_TITLE_LENGTH = 18;
 
 function depthFor(t: Translate) {
   return {
-    to_contact: { label: t({ en: "To break ice · Just met", zh: "待破冰 · 一面之缘" }), color: "var(--amber)", soft: "var(--amber-soft)", text: "var(--amber)" },
-    in_progress: { label: t({ en: "In progress · In touch", zh: "在推进 · 已有交流" }), color: "var(--sky)", soft: "var(--sky-soft)", text: "var(--sky)" },
-    partnered: { label: t({ en: "Partnered · Solid", zh: "已合作 · 关系稳固" }), color: "var(--live)", soft: "var(--live-soft)", text: "var(--live-text)" },
+    to_contact: { label: t({ en: "To break ice · Just met", zh: "待破冰 · 一面之缘" }), color: "var(--mac-apricot-text)", soft: "var(--mac-apricot)", text: "var(--mac-apricot-text)" },
+    in_progress: { label: t({ en: "In progress · In touch", zh: "在推进 · 已有交流" }), color: "var(--mac-blue-text)", soft: "var(--mac-blue)", text: "var(--mac-blue-text)" },
+    partnered: { label: t({ en: "Partnered · Solid", zh: "已合作 · 关系稳固" }), color: "var(--ok-text)", soft: "var(--ok-soft)", text: "var(--ok-text)" },
   };
 }
 

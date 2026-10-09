@@ -21,18 +21,18 @@ export function ProfileLegacySettings() {
            五个设置模块零改动继承 0918 靛蓝体系（沿用批次 3d 的无引号选择器约定）。 */
         .pc-legacy-settings{
           color-scheme:light;
-          --ink:#0E1225;--text:#0E1225;--text-2:#3B3F7A;--text-3:#6B6F99;--text-4:#9FA3C4;
-          --bg:#FBFBFE;--bg-soft:#F7F7FD;--bg-sunken:#F1F1FA;
+          --ink:#0E1225;--ink-2:#3B3F7A;--ink-3-text:#6B6F99;
+          --bg:#FBFBFE;
           --surface:#FFFFFF;--surface-2:#F7F7FD;--surface-3:#ECEEFB;
-          --border:#E8E9F6;--border-2:#DDDEFA;--border-strong:#B9BCEB;--hairline:#F1F1FA;
-          --accent:#4B4FC7;--accent-hover:#2E3270;--accent-soft:#ECEEFB;--accent-ring:#B9BCEB;
+          --line:#E8E9F6;--ink-4:#B9BCEB;
+          --accent-text:#4B4FC7;--plum-900:#2E3270;--accent-soft:#ECEEFB;--plum-300:#B9BCEB;
           --on-accent:#FFFFFF;
           background:#FBFBFE;color:#0E1225;
         }
         .pc-legacy-settings .eyebrow{color:#6B6F99}
-        .pc-legacy-settings .settings-head h1{font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;letter-spacing:-0.02em;color:#0E1225}
+        .pc-legacy-settings .settings-head h1{font-family:var(--font);font-weight:900;letter-spacing:-0.02em;color:#0E1225}
         .pc-legacy-settings .card{background:#FFFFFF;border:1px solid #E8E9F6;border-radius:18px;box-shadow:none}
-        .pc-legacy-settings .card h2{font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;letter-spacing:-0.02em}
+        .pc-legacy-settings .card h2{font-family:var(--font);font-weight:900;letter-spacing:-0.02em}
         .pc-legacy-settings .btn-primary{background:#0E1225;border-color:#0E1225;box-shadow:none;color:#FFFFFF}
         .pc-legacy-settings .btn-primary:hover{background:#2E3270;border-color:#2E3270}
         .pc-legacy-settings .btn-ghost{background:#FFFFFF;border-color:#DDDEFA;color:#3B3F7A}

@@ -223,10 +223,10 @@ export function OrbitTodayDecisionForm({
                 type="checkbox"
               />
               <span>
-                <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 500 }}>
+                <span style={{ color: "var(--ink)", fontSize: 14, fontWeight: 500 }}>
                   {operation.title}
                 </span>
-                <span style={{ color: "var(--text-3)", display: "block", fontSize: 13 }}>
+                <span style={{ color: "var(--ink-3-text)", display: "block", fontSize: 13 }}>
                   {operation.effectSummary}
                 </span>
               </span>
@@ -236,7 +236,7 @@ export function OrbitTodayDecisionForm({
             selected.includes(operation.operationId) ? (
               <label
                 style={{
-                  color: "var(--text-2)",
+                  color: "var(--ink-2)",
                   display: "block",
                   fontSize: 13,
                   margin: "10px 0 2px 24px",
@@ -273,7 +273,7 @@ export function OrbitTodayDecisionForm({
                   style={{ display: "block", marginTop: 6, resize: "vertical", width: "100%" }}
                   value={editableValues[operation.operationId]?.text ?? ""}
                 />
-                <span style={{ color: "var(--text-4)", display: "block", marginTop: 4 }}>
+                <span style={{ color: "var(--ink-3-text)", display: "block", marginTop: 4 }}>
                   {operation.operationType === "save_event_goal"
                     ? "确认时会先保存你编辑后的目标，再执行写入。"
                     : "确认只会保存草稿，不会发送消息。"}
@@ -292,7 +292,7 @@ export function OrbitTodayDecisionForm({
                   margin: "10px 0 2px 24px",
                 }}
               >
-                <label style={{ color: "var(--text-2)", fontSize: 13 }}>
+                <label style={{ color: "var(--ink-2)", fontSize: 13 }}>
                   {operation.operationType === "create_followup_task"
                     ? "任务标题"
                     : "提醒标题"}
@@ -317,7 +317,7 @@ export function OrbitTodayDecisionForm({
                     value={editableValues[operation.operationId]?.title ?? ""}
                   />
                 </label>
-                <label style={{ color: "var(--text-2)", fontSize: 13 }}>
+                <label style={{ color: "var(--ink-2)", fontSize: 13 }}>
                   {operation.operationType === "create_followup_task"
                     ? "截止时间（可不填）"
                     : "提醒时间"}
@@ -349,7 +349,7 @@ export function OrbitTodayDecisionForm({
       </div>
 
       {error ? (
-        <p role="alert" style={{ color: "var(--danger, #b4413c)", fontSize: 13, margin: 0 }}>
+        <p role="alert" style={{ color: "var(--coral-text, #b4413c)", fontSize: 13, margin: 0 }}>
           {error}
         </p>
       ) : null}

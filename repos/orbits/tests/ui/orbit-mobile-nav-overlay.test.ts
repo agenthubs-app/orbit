@@ -46,5 +46,5 @@ test("the mobile menu preserves page color tokens and does not dim the header", 
   assert.match(scrimRule, /background:\s*transparent;/u);
   assert.ok(panelRule);
   assert.match(panelRule, /background:\s*var\(--surface\);/u);
-  assert.match(panelRule, /border:\s*1px solid var\(--border\);/u);
+  assert.match(panelRule, /border:\s*1px solid var\(--line\);/u);
 });

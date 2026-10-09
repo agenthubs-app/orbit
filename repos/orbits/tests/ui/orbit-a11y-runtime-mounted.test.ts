@@ -20,8 +20,8 @@ test("the app layout mounts the responsive a11y runtime", () => {
   assert.ok(layout.includes("OrbitResponsiveA11y"));
 });
 
-test("the app layout links the desktop font bundle", () => {
-  assert.ok(layout.includes("/iorbit-starfield/fonts/desktop.css"));
+test("the app layout no longer links its own font bundle (fonts load once, in the root layout)", () => {
+  assert.ok(!layout.includes("/iorbit-starfield/fonts/desktop.css"));
 });
 
 test("the theme styles stay mounted without a global floating control", () => {

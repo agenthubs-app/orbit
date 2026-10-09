@@ -4,21 +4,19 @@ import { useEffect, useState } from "react";
 
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Icon } from "../orbit-reference-primitives";
-import { getOrbitTheme, toggleOrbitTheme, type OrbitTheme } from "../orbit-theme";
+import { getOrbitThemePreference, setOrbitThemePreference, type OrbitThemePreference } from "../orbit-theme";
 
 export function OrbitAppearanceSettings() {
   const { t } = useOrbitLanguage();
-  const [theme, setTheme] = useState<OrbitTheme | null>(null);
+  const [preference, setPreference] = useState<OrbitThemePreference | null>(null);
 
   useEffect(() => {
-    setTheme(getOrbitTheme());
+    setPreference(getOrbitThemePreference());
   }, []);
 
-  function chooseTheme(nextTheme: OrbitTheme) {
-    if (getOrbitTheme() !== nextTheme) {
-      toggleOrbitTheme();
-    }
-    setTheme(nextTheme);
+  function choosePreference(next: OrbitThemePreference) {
+    setOrbitThemePreference(next);
+    setPreference(next);
   }
 
   return (
@@ -30,7 +28,7 @@ export function OrbitAppearanceSettings() {
             alignItems: "center",
             background: "var(--accent-soft)",
             borderRadius: 12,
-            color: "var(--accent)",
+            color: "var(--accent-text)",
             display: "inline-flex",
             flex: "0 0 auto",
             height: 42,
@@ -44,10 +42,10 @@ export function OrbitAppearanceSettings() {
           <h2 id="orbit-appearance-title" style={{ color: "var(--ink)", fontSize: 18, margin: 0 }}>
             {t({ en: "Appearance", zh: "外观" })}
           </h2>
-          <p style={{ color: "var(--text-3)", fontSize: 14, lineHeight: 1.6, margin: "6px 0 18px" }}>
+          <p style={{ color: "var(--ink-3-text)", fontSize: 14, lineHeight: 1.6, margin: "6px 0 18px" }}>
             {t({
-              en: "Choose the color mode used across Orbit on this device.",
-              zh: "选择此设备上 Orbit 全站使用的明暗配色。",
+              en: "Follows your device's light or dark setting by default. A manual choice is saved on this device.",
+              zh: "默认跟随系统的浅色 / 深色设置；手动选择会保存在这台设备上。",
             })}
           </p>
           <div
@@ -56,18 +54,26 @@ export function OrbitAppearanceSettings() {
             style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
           >
             <button
-              aria-pressed={theme === "light"}
-              className={`btn btn-sm ${theme === "light" ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => chooseTheme("light")}
+              aria-pressed={preference === "system"}
+              className={`btn btn-sm ${preference === "system" ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => choosePreference("system")}
+              type="button"
+            >
+              {t({ en: "Automatic", zh: "跟随系统" })}
+            </button>
+            <button
+              aria-pressed={preference === "light"}
+              className={`btn btn-sm ${preference === "light" ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => choosePreference("light")}
               type="button"
             >
               <Icon name="sun" size={16} />
               {t({ en: "Light", zh: "浅色" })}
             </button>
             <button
-              aria-pressed={theme === "dark"}
-              className={`btn btn-sm ${theme === "dark" ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => chooseTheme("dark")}
+              aria-pressed={preference === "dark"}
+              className={`btn btn-sm ${preference === "dark" ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => choosePreference("dark")}
               type="button"
             >
               <Icon name="moon" size={16} />

@@ -87,9 +87,9 @@ export function EventAdmissionStatusCard({
       data-admission-application-status={application.status}
       style={{
         background: "var(--surface)",
-        border: "1px solid var(--border)",
+        border: "1px solid var(--line)",
         borderRadius: 24,
-        boxShadow: "var(--sh-lg)",
+        boxShadow: "var(--shadow-float)",
         overflow: "hidden",
       }}
     >
@@ -97,7 +97,7 @@ export function EventAdmissionStatusCard({
         <span
           style={{
             alignItems: "center",
-            color: "var(--accent)",
+            color: "var(--accent-text)",
             display: "inline-flex",
             fontSize: 12,
             fontWeight: 750,
@@ -112,17 +112,17 @@ export function EventAdmissionStatusCard({
         <h2
           style={{
             color: "var(--ink)",
-            fontFamily: "var(--ff-display)",
+            fontFamily: "var(--font)",
             fontSize: "clamp(1.35rem, 3vw, 1.8rem)",
             margin: 0,
           }}
         >
           {localized.title}
         </h2>
-        <p style={{ color: "var(--text-2)", fontSize: 14.5, lineHeight: 1.65, margin: 0 }}>
+        <p style={{ color: "var(--ink-2)", fontSize: 14.5, lineHeight: 1.65, margin: 0 }}>
           {localized.description}
         </p>
-        <p style={{ color: "var(--text-4)", fontSize: 12.5, margin: 0 }}>
+        <p style={{ color: "var(--ink-3-text)", fontSize: 12.5, margin: 0 }}>
           {language === "en"
             ? `Application v${application.applicationVersion} · submitted ${new Date(application.submittedAt).toLocaleString("en")}`
             : `申请版本 v${application.applicationVersion} · 提交于 ${new Date(application.submittedAt).toLocaleString("zh-CN")}`}
@@ -130,7 +130,7 @@ export function EventAdmissionStatusCard({
 
         {answeredFields.length > 0 ? (
           <details data-admission-profile-answers open>
-            <summary style={{ color: "var(--text-2)", cursor: "pointer", fontSize: 13.5, fontWeight: 650 }}>
+            <summary style={{ color: "var(--ink-2)", cursor: "pointer", fontSize: 13.5, fontWeight: 650 }}>
               {language === "en"
                 ? `All submitted answers (${answeredFields.length})`
                 : `本次提交的全部回答（${answeredFields.length}）`}
@@ -142,14 +142,14 @@ export function EventAdmissionStatusCard({
                   key={field}
                   style={{
                     background: "var(--surface-2)",
-                    border: "1px solid var(--border)",
+                    border: "1px solid var(--line)",
                     borderRadius: 14,
                     display: "grid",
                     gap: 5,
                     padding: "13px 15px",
                   }}
                 >
-                  <dt style={{ color: "var(--text-3)", fontSize: 12, fontWeight: 700 }}>
+                  <dt style={{ color: "var(--ink-3-text)", fontSize: 12, fontWeight: 700 }}>
                     {EVENT_PROFILE_FIELD_LABELS[field][language]}
                   </dt>
                   <dd style={{ color: "var(--ink)", fontSize: 14.5, lineHeight: 1.55, margin: 0 }}>
@@ -166,7 +166,7 @@ export function EventAdmissionStatusCard({
         style={{
           alignItems: "center",
           background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))",
-          borderTop: "1px solid var(--border)",
+          borderTop: "1px solid var(--line)",
           display: "flex",
           flexWrap: "wrap",
           gap: 10,
@@ -183,9 +183,9 @@ export function EventAdmissionStatusCard({
             style={{
               background: "transparent",
               border: 0,
-              color: "var(--danger, #C2410C)",
+              color: "var(--coral-text, #C2410C)",
               cursor: pendingWithdraw ? "wait" : "pointer",
-              fontFamily: "var(--ff)",
+              fontFamily: "var(--font)",
               fontSize: 13,
               fontWeight: 650,
             }}
@@ -196,13 +196,13 @@ export function EventAdmissionStatusCard({
               : language === "en" ? "Withdraw application" : "撤回申请"}
           </button>
         ) : (
-          <span style={{ color: "var(--text-4)", fontSize: 12.5 }}>
+          <span style={{ color: "var(--ink-3-text)", fontSize: 12.5 }}>
             {language === "en"
               ? "This application state is final."
               : "这份申请已进入最终状态。"}
           </span>
         )}
-        <a className="reg-ghost-btn" href={eventHref} style={{ color: "var(--text-3)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+        <a className="reg-ghost-btn" href={eventHref} style={{ color: "var(--ink-3-text)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
           {language === "en" ? "Back to event" : "返回活动页"}
         </a>
       </footer>

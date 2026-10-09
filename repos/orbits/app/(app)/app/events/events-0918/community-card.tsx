@@ -32,7 +32,7 @@ ${S} .ev-community-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 ${S} .ev-community-tag { padding: 3px 10px; border-radius: 999px; font-size: 12px; line-height: 1.5; background: #FFFFFF; color: #3B3F7A; border: 1px solid #DDDEFA; }
 ${S} .ev-community-tag-free { background: #4B4FC7; border-color: #4B4FC7; color: #FFFFFF; }
 ${S} .ev-community-tag-pin { background: transparent; color: #4B4FC7; border-color: #B9BCEB; }
-${S} .ev-community-title { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 19px; line-height: 1.3; color: #0E1225; }
+${S} .ev-community-title { margin: 0; font-family: var(--font); font-weight: 900; font-size: 19px; line-height: 1.3; color: #0E1225; }
 ${S} .ev-community-intro { margin: 0; font-size: 13.5px; line-height: 1.65; color: #3B3F7A; }
 ${S} .ev-community-ph { color: #C4461B; font-size: 11.5px; }
 ${S} .ev-community-wx { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: #3B3F7A; }

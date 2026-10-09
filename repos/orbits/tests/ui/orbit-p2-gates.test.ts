@@ -2,7 +2,7 @@
  * T9 P2 门测试。
  *
  * 锁住六个 P2 修复项的可观察结果：sun/moon 图标注册、主题切换按钮去 emoji、
- * --ff-serif token 存在、schedule 两个 route 文件变薄壳、dashboard 命名澄清。
+ * （R01 起不再有衬线 token）、schedule 两个 route 文件变薄壳、dashboard 命名澄清。
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -38,14 +38,14 @@ test("P2-2: theme toggle renders icons, not emoji glyphs", () => {
   assert.doesNotMatch(appearanceSource, /[☀\u{1F31C}☾\u{1F319}]/u);
   assert.match(appearanceSource, /<Icon name="sun" size=\{16\} \/>/);
   assert.match(appearanceSource, /<Icon name="moon" size=\{16\} \/>/);
-  assert.match(appearanceSource, /aria-pressed=\{theme === "light"\}/);
-  assert.match(appearanceSource, /aria-pressed=\{theme === "dark"\}/);
+  assert.match(appearanceSource, /aria-pressed=\{preference === "light"\}/);
+  assert.match(appearanceSource, /aria-pressed=\{preference === "dark"\}/);
 });
 
-test("P2-3: --ff-serif token is defined", () => {
+test("P2-3 (superseded by R01 / RD-09): no serif token; the sans stack follows the language", () => {
   const stylesSource = source("app/(app)/app/orbit-reference-styles.tsx");
-
-  assert.match(stylesSource, /--ff-serif:\s*'Noto Serif SC'/);
+  assert.doesNotMatch(stylesSource, /--ff-serif|Noto Serif SC/);
+  assert.match(stylesSource, /font-family: var\(--font\)/);
 });
 
 // iOrbit 任务 6a：原来这里有两条 "P2-1: schedule/**/page.tsx is a thin route adapter"

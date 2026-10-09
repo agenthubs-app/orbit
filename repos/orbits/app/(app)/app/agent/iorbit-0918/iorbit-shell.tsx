@@ -196,7 +196,7 @@ function IOrbitDemoBody({
         data-orbit-ask-clearance="manual"
         data-orbit-guide-demo="on"
         data-orbit-real-page="agent"
-        style={{ "--text-3": "#6B6F99", "--text-4": "#9FA3C4" } as CSSProperties}
+        style={{ "--ink-3-text": "#6B6F99" } as CSSProperties}
       >
         <style>{CONSOLE_STYLES}</style>
         <div data-orbit-real-page="iorbit-0918">
@@ -495,7 +495,7 @@ function IOrbitLiveShell({
       data-orbit-agent-request-state={thinking ? "pending" : "idle"}
       data-orbit-ask-clearance="manual"
       data-orbit-real-page="agent"
-      style={{ "--text-3": "#6B6F99", "--text-4": "#9FA3C4" } as CSSProperties}
+      style={{ "--ink-3-text": "#6B6F99" } as CSSProperties}
     >
       {/* 回合内既有富组件（PanelCards / 任务卡 / 草稿卡 / 欢迎屏）与历史抽屉的皮肤：
           都是 `[data-orbit-real-page="agent"]` 作用域，外层 div 正好带着它。
@@ -652,7 +652,7 @@ function IOrbitLiveShell({
           }}
         >
           <Icon
-            color={historyFeedback.kind === "error" ? "var(--danger)" : "var(--accent)"}
+            color={historyFeedback.kind === "error" ? "var(--coral-text)" : "var(--accent-text)"}
             name={historyFeedback.kind === "error" ? "x" : "check"}
             size={15}
           />

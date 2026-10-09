@@ -40,7 +40,7 @@ ${S} .ir-m-mast-row { display: flex; flex-wrap: wrap; align-items: flex-end; jus
 ${S} .ir-m-title { display: inline-flex; align-items: center; gap: 12px; }
 ${S} .ir-m-h1 { font-size: clamp(38px, 4.4vw, 54px); line-height: 1; letter-spacing: -0.035em; }
 ${S} .ir-m-orbit { width: 44px; height: 26px; margin-top: 6px; }
-${S} .ir-m-date { font-family: 'Noto Serif SC', serif; font-weight: 600; font-size: 16px; color: #3B3F7A; font-variant-numeric: tabular-nums; }
+${S} .ir-m-date { font-family: var(--font); font-weight: 600; font-size: 16px; color: #3B3F7A; font-variant-numeric: tabular-nums; }
 ${S} .ir-m-date small { font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-weight: 400; font-size: 13px; color: #6B6F99; margin-left: 8px; }
 ${S} .ir-m-lede { margin: 0; max-width: 44em; font-size: 18px; line-height: 1.6; color: #3B3F7A; text-wrap: balance; }
 ${S} .ir-m-lede strong { color: #0E1225; font-weight: 500; }
@@ -55,13 +55,13 @@ ${S} .ir-m-label .btn.ir-refresh { padding: 0; border: 0; background: transparen
 ${S} .ir-m-label .btn.ir-refresh:hover { color: #2E3270; }
 /* 主稿：全页唯一的卡片 */
 ${S} .ir-m-lead { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; padding: 28px 30px 24px; border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; box-shadow: 0 10px 34px rgba(46,50,112,0.08); }
-${S} .ir-m-ord { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 64px; line-height: 0.9; color: #4B4FC7; font-variant-numeric: tabular-nums; }
+${S} .ir-m-ord { font-family: var(--font); font-weight: 900; font-size: 64px; line-height: 0.9; color: #4B4FC7; font-variant-numeric: tabular-nums; }
 ${S} .ir-m-ord-hot { color: #C4461B; }
 ${S} .ir-m-lead-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 ${S} .ir-m-pills { display: flex; flex-wrap: wrap; gap: 8px; }
 ${S} .ir-m-pill { display: inline-flex; padding: 3px 10px; border-radius: 999px; background: #ECEEFB; color: #3B3F7A; font-size: 12px; font-variant-numeric: tabular-nums; }
 ${S} .ir-m-pill-hot { background: #FBEDE6; color: #C4461B; font-weight: 500; }
-${S} .ir-m-lead-title { margin: 2px 0 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 27px; line-height: 1.3; letter-spacing: -0.02em; text-wrap: balance; }
+${S} .ir-m-lead-title { margin: 2px 0 0; font-family: var(--font); font-weight: 900; font-size: 27px; line-height: 1.3; letter-spacing: -0.02em; text-wrap: balance; }
 ${S} .ir-m-why { margin: 0; max-width: 36em; font-size: 15.5px; line-height: 1.75; color: #3B3F7A; }
 /* W0061：人物事项的「TA 能帮你」一句话（共享组件自带 .cvl 样式，这里只管位置）。 */
 ${S} .ir-m-value { display: block; max-width: 40em; margin: 2px 0 4px; }
@@ -84,7 +84,7 @@ ${S} .ir-m-quiet { margin: 0; padding: 22px 24px; border: 1px dashed #DDDEFA; bo
 ${S} .ir-m-briefs { display: flex; flex-direction: column; }
 ${S} .ir-m-brief { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 16px 4px; border-top: 1px solid #E8E9F6; }
 ${S} .ir-m-brief:first-child { border-top: 0; }
-${S} .ir-m-brief-n { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; line-height: 1.1; color: #B9BCEB; text-align: center; }
+${S} .ir-m-brief-n { font-family: var(--font); font-weight: 900; font-size: 26px; line-height: 1.1; color: #B9BCEB; text-align: center; }
 ${S} .ir-m-brief-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 ${S} .ir-m-brief-title { font-size: 16px; font-weight: 500; line-height: 1.45; }
 ${S} .btn.ir-m-go { padding: 4px 2px; border: 0; background: transparent; color: #4B4FC7; font-size: 13.5px; }
@@ -129,7 +129,7 @@ ${S} a.ir-m-tl-next:hover { color: #2E3270; text-decoration: underline; }
 /* 右栏：紧凑月历 */
 ${S} .ir-m-cal { padding-top: 18px; border-top: 1px solid #DDDEFA; }
 ${S} .ir-m-cal-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
-${S} .ir-m-cal-head strong { font-family: 'Noto Serif SC', serif; font-weight: 600; font-size: 15px; }
+${S} .ir-m-cal-head strong { font-family: var(--font); font-weight: 600; font-size: 15px; }
 ${S} .ir-m-cal-link { font-size: 12.5px; color: #4B4FC7; }
 ${S} .ir-m-cal-link:hover { color: #2E3270; }
 ${S} .ir-m-cal-head-side { display: inline-flex; align-items: baseline; gap: 14px; }
@@ -157,7 +157,7 @@ ${S} .ir-m-col { display: flex; flex-direction: column; gap: 12px; min-width: 0;
 ${S} .ir-m-col:first-child { padding-left: 0; border-left: 0; }
 ${S} .ir-m-col:last-child { padding-right: 0; }
 ${S} .ir-m-col-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-${S} .ir-m-col-head h3 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 18px; letter-spacing: -0.02em; }
+${S} .ir-m-col-head h3 { margin: 0; font-family: var(--font); font-weight: 900; font-size: 18px; letter-spacing: -0.02em; }
 ${S} .ir-m-col-head a { font-size: 12.5px; color: #4B4FC7; white-space: nowrap; }
 ${S} .ir-m-col-acts { display: inline-flex; gap: 12px; }
 ${S} .ir-m-col-acts .btn.ir-history-btn, ${S} .ir-m-col-acts .btn.ir-enter-btn { padding: 0; border: 0; background: transparent; color: #4B4FC7; font-size: 12.5px; font-weight: 400; }
@@ -178,7 +178,7 @@ ${S} .ir-m-empty { margin: 0; font-size: 13.5px; line-height: 1.6; color: #9FA3C
 ${S} .ir-m-empty a { color: #4B4FC7; }
 ${S} .ir-m-event { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: start; color: #0E1225; }
 ${S} .ir-m-event:hover { color: #2E3270; }
-${S} .ir-m-event-date { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 20px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+${S} .ir-m-event-date { font-family: var(--font); font-weight: 900; font-size: 20px; line-height: 1.05; font-variant-numeric: tabular-nums; }
 ${S} .ir-m-event-date small { display: block; margin-top: 3px; font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-weight: 400; font-size: 11.5px; color: #6B6F99; white-space: nowrap; }
 ${S} .ir-m-event-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 ${S} .ir-m-event-copy strong { font-size: 14.5px; font-weight: 500; line-height: 1.45; }
@@ -230,7 +230,7 @@ ${S} .ir-demo-tag { display: inline-block; margin-left: 6px; padding: 3px 4px; b
 ${S} .ir-m-pills .ir-demo-tag { margin-left: 0; vertical-align: 0; align-self: center; }
 ${S} .ir-demo-scrim { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; padding: 90px 16px 16px; background: rgba(14,18,37,0.32); }
 ${S} .ir-demo-sheet { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 420px; padding: 24px 24px 20px; border-radius: 18px; background: #FFFFFF; box-shadow: 0 24px 60px rgba(14,18,37,0.22); outline: none; }
-${S} .ir-demo-sheet h3 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 21px; line-height: 1.35; color: #0E1225; }
+${S} .ir-demo-sheet h3 { margin: 0; font-family: var(--font); font-weight: 900; font-size: 21px; line-height: 1.35; color: #0E1225; }
 ${S} .ir-demo-sheet p { margin: 0; font-size: 13.5px; line-height: 1.6; color: #6B6F99; }
 ${S} .ir-demo-sheet-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 16px; }
 ${S} .btn.ir-demo-dismiss { padding: 0; border: 0; border-radius: 0; background: transparent; color: #6B6F99; font-size: 14px; }

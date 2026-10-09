@@ -5,7 +5,7 @@
  * .gen-line / .skel。正文最小 13px，主文 15–16px。
  */
 const S = '[data-orbit-real-page="iorbit-0918"]';
-const SERIF = "'Noto Serif SC', 'Songti SC', serif";
+const SERIF = "var(--font)";
 
 // 折叠头是 .btn：同一条规则里整段中和 .btn 基类（与 IORBIT_HOME_STYLES 的 NEW_BUTTONS 同一口径），
 // 同一选择器只声明一次（iorbit-screens 的去重门禁）。

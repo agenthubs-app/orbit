@@ -124,20 +124,15 @@ test("theme exports Sprint 70 semantic visual tokens", async () => {
   );
 });
 
-test("product light mode uses the Agent white palette without restyling authentication", () => {
+test("product theme comes from the design tokens; login has no palette of its own (R01)", () => {
   const source = readProjectFile("app/(app)/app/orbit-theme.tsx");
   const appLayoutSource = readProjectFile("app/(app)/app/layout.tsx");
 
-  assert.match(
-    source,
-    /html\[data-theme="light"\] \[data-orbit-real-page\]\s*\{[\s\S]*--bg:\s*#ffffff;[\s\S]*--surface:\s*#ffffff;[\s\S]*--accent:\s*#176a73;/i,
-  );
-  assert.match(
-    source,
-    /html\[data-theme="light"\] \[data-orbit-real-page\]\.orbit-account-auth-page\s*\{[\s\S]*--bg:\s*#f4f7f5;[\s\S]*--surface:\s*#ffffff;/i,
-  );
+  // The old light remap and the separate authentication palette are gone.
+  assert.doesNotMatch(source, /html\[data-theme="light"\] \[data-orbit-real-page\]\s*\{[^}]*--bg:/i);
+  assert.doesNotMatch(source, /orbit-account-auth-page\s*\{/);
   assert.match(source, /type OrbitTheme = "light" \| "dark"/);
-  assert.match(source, /localStorage\.setItem\("orbit-theme", next\)/);
+  assert.match(source, /type OrbitThemePreference = "system" \| OrbitTheme/);
   assert.match(source, /export function OrbitThemeRuntime/);
   assert.match(source, /document\.documentElement\.setAttribute\("data-theme", theme\)/);
   assert.match(appLayoutSource, /<OrbitThemeRuntime \/>/);

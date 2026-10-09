@@ -69,5 +69,6 @@ test("no contacts surface hardcodes the sidebar column width", () => {
 
 test("the mobile bar uses a theme token, not hardcoded light glass", () => {
   const shellSource = source("app/(app)/app/orbit-account-shell.tsx");
-  assert.ok(shellSource.includes("var(--glass-bar"));
+  // R01: --glass-bar is the design's --glass.
+  assert.ok(shellSource.includes("var(--glass"));
 });

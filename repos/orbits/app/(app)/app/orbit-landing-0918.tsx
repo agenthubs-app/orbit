@@ -29,7 +29,7 @@ import {
 
 type Copy = { en: string; zh: string };
 
-const SERIF: CSSProperties = { fontFamily: F.serif, fontWeight: 900, letterSpacing: "-0.03em" };
+const SERIF: CSSProperties = { fontFamily: F.font, fontWeight: 900, letterSpacing: "-0.03em" };
 
 function Section({
   children,
@@ -63,7 +63,7 @@ function PanelCard({ children, plain = false }: { children: ReactNode; plain?: b
     <div
       style={{
         background: "#FFFFFF",
-        border: plain ? `1px solid ${C.border}` : 0,
+        border: plain ? `1px solid ${C.line}` : 0,
         borderRadius: plain ? 24 : 20,
         boxShadow: SH.card,
         display: "flex",
@@ -77,7 +77,7 @@ function PanelCard({ children, plain = false }: { children: ReactNode; plain?: b
   );
   if (plain) return inner;
   return (
-    <div style={{ background: C.panel, borderRadius: 28, padding: "clamp(20px,3vw,44px)" }}>
+    <div style={{ background: C.surface2, borderRadius: 28, padding: "clamp(20px,3vw,44px)" }}>
       {inner}
     </div>
   );
@@ -96,7 +96,7 @@ function TextCol({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <span style={{ color: C.text2, fontSize: 13, letterSpacing: "0.18em" }}>{eyebrow}</span>
+      <span style={{ color: C.ink2, fontSize: 13, letterSpacing: "0.18em" }}>{eyebrow}</span>
       <h2
         style={{
           ...SERIF,
@@ -109,7 +109,7 @@ function TextCol({
       </h2>
       <p
         style={{
-          color: C.text2,
+          color: C.ink2,
           fontSize: "clamp(16px,1.4vw,20px)",
           lineHeight: 1.7,
           margin: 0,
@@ -150,7 +150,7 @@ function TextLink({ href, label }: { href: string; label: string }) {
       style={{
         alignSelf: "flex-start",
         borderBottom: "1px solid #9FA3D9",
-        color: C.text2,
+        color: C.ink2,
         display: "inline-flex",
         fontSize: 17,
         gap: 8,
@@ -168,9 +168,9 @@ function Avatar({ letter, size = 52 }: { letter: string; size?: number }) {
     <span
       style={{
         alignItems: "center",
-        background: C.borderStrong,
+        background: C.ink4,
         borderRadius: "50%",
-        color: C.text2,
+        color: C.ink2,
         display: "flex",
         flexShrink: 0,
         fontSize: size * 0.35,
@@ -211,7 +211,7 @@ function PersonRow({
       <Avatar letter={initial} />
       <span style={{ display: "flex", flex: 1, flexDirection: "column", gap: 2 }}>
         <strong style={{ fontSize: 17, whiteSpace: "nowrap" }}>{name}</strong>
-        <span style={{ color: C.text3, fontSize: 14 }}>{role}</span>
+        <span style={{ color: C.ink3Text, fontSize: 14 }}>{role}</span>
       </span>
       {right}
     </div>
@@ -222,9 +222,9 @@ function Chip({ label }: { label: string }) {
   return (
     <span
       style={{
-        background: C.panel,
+        background: C.surface2,
         borderRadius: 999,
-        color: C.text2,
+        color: C.ink2,
         fontSize: 13,
         fontWeight: 500,
         padding: "6px 12px",
@@ -241,8 +241,8 @@ function AskPill({ question }: { question: string }) {
     <div
       style={{
         alignItems: "center",
-        background: C.panelSoft,
-        border: `1px solid ${C.borderStrong}`,
+        background: C.surface,
+        border: `1px solid ${C.ink4}`,
         borderRadius: 999,
         display: "flex",
         gap: 12,
@@ -253,7 +253,7 @@ function AskPill({ question }: { question: string }) {
       <span
         style={{
           alignItems: "center",
-          background: C.accent,
+          background: C.accentText,
           borderRadius: "50%",
           color: "#FFFFFF",
           display: "flex",
@@ -272,13 +272,13 @@ function AskPill({ question }: { question: string }) {
 function NoteBox({ children, label }: { children: string; label: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <span style={{ color: C.text2, fontSize: 14 }}>{label}</span>
+      <span style={{ color: C.ink2, fontSize: 14 }}>{label}</span>
       <div
         style={{
-          background: C.panelSoft,
-          border: `1px solid ${C.border}`,
+          background: C.surface,
+          border: `1px solid ${C.line}`,
           borderRadius: 10,
-          color: C.text2,
+          color: C.ink2,
           fontSize: 14,
           lineHeight: 1.6,
           padding: "12px 16px",
@@ -299,7 +299,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
 
   const h3Style: CSSProperties = {
     ...SERIF,
-    borderBottom: `1px solid ${C.border}`,
+    borderBottom: `1px solid ${C.line}`,
     fontSize: 28,
     letterSpacing: "-0.02em",
     margin: 0,
@@ -323,7 +323,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
         en: "First confirm that “cross-language meeting notes” is a real problem. Her pain points decide whether the next two steps are worth taking.",
         zh: "先确认“跨语言纪要”是真问题。她给出的痛点，决定后面两步值不值得走。",
       },
-      dot: C.accentDeep,
+      dot: C.plum900,
       name: "田中惠子",
       title: { en: "Validate the need", zh: "验证需求" },
     },
@@ -334,7 +334,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
         en: "Bring the real pain points to him — he can judge pricing, compliance, and the way into the market directly.",
         zh: "带着真实痛点去找他，他能直接判断定价、合规与进入方式。",
       },
-      dot: C.accent,
+      dot: C.accentText,
       name: "山本健",
       title: { en: "Understand the market", zh: "理解市场" },
     },
@@ -357,20 +357,20 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
         en: "He just invested in a Japanese SaaS — your market questions are valuable to him right now too.",
         zh: "他刚投了一家日本 SaaS——你的市场问题此刻对他也有价值。",
       },
-      dot: C.accentDeep,
+      dot: C.plum900,
       name: "山本健",
       tag: { en: "Worth contacting now", zh: "现在值得联系" },
-      tagStyle: { background: C.accentDeep, color: "#FFFFFF" },
+      tagStyle: { background: C.plum900, color: "#FFFFFF" },
     },
     {
       desc: {
         en: "Two proactive interactions in three days — her team is evaluating options.",
         zh: "三天内两次主动互动，她的团队正在评估方案。",
       },
-      dot: C.accent,
+      dot: C.accentText,
       name: "佐藤真理",
       tag: { en: "Warming up", zh: "正在升温" },
-      tagStyle: { background: C.panel, color: C.accentDeep },
+      tagStyle: { background: C.surface2, color: C.plum900 },
     },
     {
       desc: {
@@ -380,7 +380,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
       dot: "#9FA3D9",
       name: "林夏",
       tag: { en: "Keep in touch", zh: "保持联系" },
-      tagStyle: { background: C.panelSoft, color: C.text2 },
+      tagStyle: { background: C.surface, color: C.ink2 },
     },
     {
       desc: {
@@ -391,30 +391,30 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
       dot: "transparent",
       name: "田中惠子",
       tag: { en: "Do not disturb for now", zh: "暂时不打扰" },
-      tagStyle: { border: `1px solid ${C.border}`, color: C.text3 },
+      tagStyle: { border: `1px solid ${C.line}`, color: C.ink3Text },
     },
   ];
 
   const weekRows: { dateCopy: Copy; dot: string; dotBorder?: string; status: Copy; statusStyle: CSSProperties; title: Copy }[] = [
     {
       dateCopy: { en: "Tuesday", zh: "周二" },
-      dot: C.accentDeep,
+      dot: C.plum900,
       status: { en: "Prepared", zh: "已准备" },
-      statusStyle: { background: C.panel, color: C.accentDeep },
+      statusStyle: { background: C.surface2, color: C.plum900 },
       title: { en: "Send 田中惠子 the trial build", zh: "给田中惠子发送体验版" },
     },
     {
       dateCopy: { en: "Wednesday", zh: "周三" },
-      dot: C.accent,
+      dot: C.accentText,
       status: { en: "Needs your confirmation", zh: "需要你确认" },
-      statusStyle: { background: C.panel, color: C.accentDeep },
+      statusStyle: { background: C.surface2, color: C.plum900 },
       title: { en: "Book a chat with 山本健 about the Japanese market", zh: "与山本健约聊日本市场" },
     },
     {
       dateCopy: { en: "Thursday evening", zh: "周四晚" },
       dot: "#9FA3D9",
       status: { en: "Action plan ready", zh: "行动计划就绪" },
-      statusStyle: { background: C.panelSoft, color: C.text2 },
+      statusStyle: { background: C.surface, color: C.ink2 },
       title: { en: "Attend Tokyo AI Product Growth Night", zh: "参加东京 AI 产品增长夜" },
     },
     {
@@ -422,7 +422,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
       dot: "#FFFFFF",
       dotBorder: "#B9BCEB",
       status: { en: "Draft only", zh: "仅草稿" },
-      statusStyle: { border: `1px solid ${C.border}`, color: C.text3 },
+      statusStyle: { border: `1px solid ${C.line}`, color: C.ink3Text },
       title: { en: "Ask 林夏 to connect the pilot team", zh: "请林夏连接体验团队" },
     },
   ];
@@ -431,20 +431,14 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
     <main
       data-orbit-real-page="landing-0918"
       style={{
-        background: C.pageBg,
+        background: C.bg,
         color: C.ink,
-        fontFamily: F.sans,
+        fontFamily: F.font,
         overflowX: "clip",
         WebkitFontSmoothing: "antialiased",
         width: "100%",
       }}
     >
-      {/* 设计稿字体：Noto Serif SC（标题）/ Noto Sans SC（正文）。 */}
-      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-      <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap"
-        rel="stylesheet"
-      />
       <OrbitTopNav active={null} authenticatedFallback={authenticated} meHref="/app/profile" />
 
       {/* 01 · AI 找到对的人 */}
@@ -454,9 +448,9 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
             <strong style={{ fontSize: 19, fontWeight: 700, letterSpacing: "-0.01em" }}>
               {t({ en: "iOrbit Intelligence", zh: "iOrbit 智能" })}
             </strong>
-            <span style={{ color: C.accent, fontSize: 18 }}>✦</span>
-            <span style={{ background: C.borderStrong, height: 18, width: 1 }} />
-            <span style={{ color: C.text3 }}>
+            <span style={{ color: C.accentText, fontSize: 18 }}>✦</span>
+            <span style={{ background: C.ink4, height: 18, width: 1 }} />
+            <span style={{ color: C.ink3Text }}>
               {t({ en: "428 contacts analyzed", zh: "已分析 428 位人脉" })}
             </span>
           </div>
@@ -466,8 +460,8 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
               zh: "我有一款 AI 会议纪要产品，想在日本推广，应该先找谁聊聊？",
             })}
           />
-          <div style={{ background: C.border, height: 1 }} />
-          <span style={{ color: C.text2, fontSize: 15 }}>
+          <div style={{ background: C.line, height: 1 }} />
+          <span style={{ color: C.ink2, fontSize: 15 }}>
             {t({ en: "Talk to these 3 first", zh: "推荐先聊 3 人" })}
           </span>
           <div style={{ display: "flex", flexDirection: "column" }}>
@@ -494,9 +488,9 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
           <div
             style={{
               alignItems: "flex-start",
-              background: C.panel,
+              background: C.surface2,
               borderRadius: 12,
-              color: C.accentDeep,
+              color: C.plum900,
               display: "flex",
               fontSize: 14,
               gap: 12,
@@ -504,7 +498,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
               padding: "14px 16px",
             }}
           >
-            <span style={{ color: C.accent }}>✦</span>
+            <span style={{ color: C.accentText }}>✦</span>
             <span>
               {t({
                 en: "The three cover need, market, and users — together they form a complete path forward.",
@@ -548,7 +542,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
           </h1>
           <p
             style={{
-              color: C.text2,
+              color: C.ink2,
               fontSize: "clamp(17px,1.6vw,22px)",
               lineHeight: 1.65,
               margin: 0,
@@ -561,7 +555,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
             })}
           </p>
           <PrimaryCta href={startHref} label={t({ en: "Start with iOrbit", zh: "用 iOrbit 开始" })} />
-          <span style={{ color: C.text3, fontSize: 14 }}>
+          <span style={{ color: C.ink3Text, fontSize: 14 }}>
             {t({
               en: "Used by professionals from leading companies and events.",
               zh: "来自领先公司与活动的专业人士都在使用。",
@@ -614,14 +608,14 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
                     paddingBottom: i < flowSteps.length - 1 ? 26 : 0,
                   }}
                 >
-                  <span style={{ color: C.text3, fontSize: 12, letterSpacing: "0.14em" }}>
+                  <span style={{ color: C.ink3Text, fontSize: 12, letterSpacing: "0.14em" }}>
                     {t(step.copy)}
                   </span>
                   <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10 }}>
                     <strong style={{ fontSize: 18 }}>{t(step.title)}</strong>
-                    <span style={{ color: C.text3, fontSize: 14 }}>{step.name}</span>
+                    <span style={{ color: C.ink3Text, fontSize: 14 }}>{step.name}</span>
                   </div>
-                  <p style={{ color: C.text2, fontSize: 14, lineHeight: 1.7, margin: 0 }}>
+                  <p style={{ color: C.ink2, fontSize: 14, lineHeight: 1.7, margin: 0 }}>
                     {t(step.desc)}
                   </p>
                 </div>
@@ -630,22 +624,22 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
           </div>
           <div
             style={{
-              borderTop: `1px solid ${C.border}`,
+              borderTop: `1px solid ${C.line}`,
               display: "flex",
               flexDirection: "column",
               gap: 8,
               paddingTop: 18,
             }}
           >
-            <span style={{ color: C.text2, fontSize: 14 }}>
+            <span style={{ color: C.ink2, fontSize: 14 }}>
               {t({ en: "Why this order", zh: "为什么是这个顺序" })}
             </span>
             <div
               style={{
-                background: C.panelSoft,
-                border: `1px solid ${C.border}`,
+                background: C.surface,
+                border: `1px solid ${C.line}`,
                 borderRadius: 10,
-                color: C.text2,
+                color: C.ink2,
                 fontSize: 14,
                 lineHeight: 1.6,
                 padding: "12px 16px",
@@ -676,7 +670,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
               <h3 style={{ ...SERIF, fontSize: 28, letterSpacing: "-0.02em", margin: 0 }}>
                 {t({ en: "Tokyo AI Product Growth Night", zh: "东京 AI 产品增长夜" })}
               </h3>
-              <span style={{ color: C.text3, fontSize: 14 }}>
+              <span style={{ color: C.ink3Text, fontSize: 14 }}>
                 {t({ en: "Tomorrow · Tokyo · 480 attendees", zh: "明天 · 东京 · 480 位参与者" })}
               </span>
             </div>
@@ -684,8 +678,8 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
               <span style={{ borderBottom: `2px solid ${C.ink}`, fontWeight: 500, paddingBottom: 8 }}>
                 {t({ en: "Before", zh: "活动前" })}
               </span>
-              <span style={{ color: C.text3, paddingBottom: 8 }}>{t({ en: "On-site", zh: "现场" })}</span>
-              <span style={{ color: C.text3, paddingBottom: 8 }}>{t({ en: "After", zh: "活动后" })}</span>
+              <span style={{ color: C.ink3Text, paddingBottom: 8 }}>{t({ en: "On-site", zh: "现场" })}</span>
+              <span style={{ color: C.ink3Text, paddingBottom: 8 }}>{t({ en: "After", zh: "活动后" })}</span>
             </div>
           </div>
           <AskPill
@@ -694,11 +688,11 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
               zh: "这场活动我该重点见谁？",
             })}
           />
-          <div style={{ background: C.border, height: 1 }} />
+          <div style={{ background: C.line, height: 1 }} />
           <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(2,minmax(0,1fr))" }}>
             <div
               style={{
-                background: C.panelSoft,
+                background: C.surface,
                 borderRadius: 12,
                 display: "flex",
                 flexDirection: "column",
@@ -706,7 +700,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
                 padding: "14px 16px",
               }}
             >
-              <span style={{ color: C.text3, fontSize: 12, letterSpacing: "0.12em" }}>
+              <span style={{ color: C.ink3Text, fontSize: 12, letterSpacing: "0.12em" }}>
                 {t({ en: "SESSION WORTH JOINING", zh: "值得参加的环节" })}
               </span>
               <strong style={{ fontSize: 15, lineHeight: 1.5 }}>
@@ -715,7 +709,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
             </div>
             <div
               style={{
-                background: C.panelSoft,
+                background: C.surface,
                 borderRadius: 12,
                 display: "flex",
                 flexDirection: "column",
@@ -723,7 +717,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
                 padding: "14px 16px",
               }}
             >
-              <span style={{ color: C.text3, fontSize: 12, letterSpacing: "0.12em" }}>
+              <span style={{ color: C.ink3Text, fontSize: 12, letterSpacing: "0.12em" }}>
                 {t({ en: "EASIER TO MEET TARGET PEOPLE", zh: "更容易遇到目标人群" })}
               </span>
               <strong style={{ fontSize: 15, lineHeight: 1.5 }}>
@@ -731,7 +725,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
               </strong>
             </div>
           </div>
-          <span style={{ color: C.text2, fontSize: 15 }}>
+          <span style={{ color: C.ink2, fontSize: 15 }}>
             {t({ en: "People worth meeting", zh: "值得认识的人" })}
           </span>
           {[
@@ -745,10 +739,10 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
               name={p.name}
               right={
                 <span style={{ display: "flex", flexDirection: "column", textAlign: "right" }}>
-                  <strong style={{ color: C.accentDeep, fontSize: 26, letterSpacing: "-0.02em" }}>
+                  <strong style={{ color: C.plum900, fontSize: 26, letterSpacing: "-0.02em" }}>
                     {p.match}
                   </strong>
-                  <span style={{ color: C.text3, fontSize: 13 }}>{t({ en: "match", zh: "匹配" })}</span>
+                  <span style={{ color: C.ink3Text, fontSize: 13 }}>{t({ en: "match", zh: "匹配" })}</span>
                 </span>
               }
               role={t(p.role)}
@@ -774,7 +768,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
             >
               {t({ en: "Generate event action plan", zh: "生成活动行动计划" })}
             </span>
-            <span style={{ color: C.text2, fontSize: 14 }}>
+            <span style={{ color: C.ink2, fontSize: 14 }}>
               {t({ en: "View all attendees", zh: "查看全部参与者" })}
             </span>
           </div>
@@ -821,7 +815,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
           }
         >
           <PrimaryCta href={startHref} label={t({ en: "Build relationships with Orbit", zh: "用 Orbit 沉淀关系" })} />
-          <span style={{ color: C.text3, fontSize: 14 }}>
+          <span style={{ color: C.ink3Text, fontSize: 14 }}>
             {t({ en: "You stay in control. Orbit prepares — you decide.", zh: "你始终掌控。Orbit 准备——你决定。" })}
           </span>
         </TextCol>
@@ -829,7 +823,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
           <div
             style={{
               alignItems: "center",
-              borderBottom: `1px solid ${C.border}`,
+              borderBottom: `1px solid ${C.line}`,
               display: "flex",
               gap: 18,
               paddingBottom: 20,
@@ -838,7 +832,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
             <Avatar letter="佐" size={64} />
             <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <strong style={{ fontSize: 22 }}>佐藤真理</strong>
-              <span style={{ alignItems: "center", color: C.text2, display: "flex", fontSize: 15, gap: 8 }}>
+              <span style={{ alignItems: "center", color: C.ink2, display: "flex", fontSize: 15, gap: 8 }}>
                 {t({ en: "Tokyo AI Product Growth Night", zh: "东京 AI 产品增长夜" })}
                 <span style={{ background: "#3FBF9F", borderRadius: "50%", height: 7, width: 7 }} />
                 {t({ en: "Met yesterday", zh: "昨天认识" })}
@@ -857,30 +851,30 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
               lineHeight: 1.6,
             }}
           >
-            <span style={{ color: C.text3 }}>{t({ en: "Where you met", zh: "在哪里认识" })}</span>
+            <span style={{ color: C.ink3Text }}>{t({ en: "Where you met", zh: "在哪里认识" })}</span>
             <span>{t({ en: "Second-floor bar, after the roundtable", zh: "圆桌结束后，二楼吧台" })}</span>
-            <span style={{ color: C.text3 }}>{t({ en: "What you discussed", zh: "聊过什么" })}</span>
+            <span style={{ color: C.ink3Text }}>{t({ en: "What you discussed", zh: "聊过什么" })}</span>
             <span>{t({ en: "Accuracy of bilingual meeting notes and approval flows", zh: "双语会议纪要的准确率与审批流" })}</span>
-            <span style={{ color: C.text3 }}>{t({ en: "What they care about", zh: "对方关注什么" })}</span>
+            <span style={{ color: C.ink3Text }}>{t({ en: "What they care about", zh: "对方关注什么" })}</span>
             <span>{t({ en: "Whether data stays within Japan", zh: "数据是否留在日本境内" })}</span>
-            <span style={{ color: C.text3 }}>{t({ en: "What you promised", zh: "你答应了什么" })}</span>
-            <span style={{ color: C.accentDeep, fontWeight: 500 }}>
+            <span style={{ color: C.ink3Text }}>{t({ en: "What you promised", zh: "你答应了什么" })}</span>
+            <span style={{ color: C.plum900, fontWeight: 500 }}>
               {t({ en: "Send a trial build with a Japanese UI next week", zh: "下周发一版带日文界面的体验版" })}
             </span>
-            <span style={{ color: C.text3 }}>{t({ en: "Best time to reconnect", zh: "适合再次联系" })}</span>
+            <span style={{ color: C.ink3Text }}>{t({ en: "Best time to reconnect", zh: "适合再次联系" })}</span>
             <span>{t({ en: "Next Tuesday — she finalizes plans by end of month", zh: "下周二 — 她说月底前要定方案" })}</span>
           </div>
-          <div style={{ background: C.border, height: 1 }} />
+          <div style={{ background: C.line, height: 1 }} />
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={{ color: C.text3, fontSize: 12, letterSpacing: "0.14em" }}>
+            <span style={{ color: C.ink3Text, fontSize: 12, letterSpacing: "0.14em" }}>
               {t({ en: "FOLLOW-UP DRAFT READY", zh: "已准备好的跟进草稿" })}
             </span>
             <div
               style={{
-                background: C.panelSoft,
-                border: `1px solid ${C.border}`,
+                background: C.surface,
+                border: `1px solid ${C.line}`,
                 borderRadius: 10,
-                color: C.text2,
+                color: C.ink2,
                 fontSize: 14,
                 lineHeight: 1.6,
                 padding: "14px 16px",
@@ -910,7 +904,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
               style={{
                 border: "1px solid #B9BCEB",
                 borderRadius: 999,
-                color: C.accentDeep,
+                color: C.plum900,
                 fontSize: 14,
                 fontWeight: 500,
                 padding: "12px 22px",
@@ -921,8 +915,8 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
           </div>
           <span
             style={{
-              borderTop: `1px solid ${C.border}`,
-              color: C.text3,
+              borderTop: `1px solid ${C.line}`,
+              color: C.ink3Text,
               fontSize: 13,
               paddingTop: 14,
             }}
@@ -959,8 +953,8 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
                   }}
                 />
                 <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  <strong style={{ color: row.dim ? C.text3 : C.ink, fontSize: 16 }}>{row.name}</strong>
-                  <span style={{ color: row.dim ? C.text3 : C.text2, fontSize: 13, lineHeight: 1.5 }}>
+                  <strong style={{ color: row.dim ? C.ink3Text : C.ink, fontSize: 16 }}>{row.name}</strong>
+                  <span style={{ color: row.dim ? C.ink3Text : C.ink2, fontSize: 13, lineHeight: 1.5 }}>
                     {t(row.desc)}
                   </span>
                 </span>
@@ -980,17 +974,17 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
           </div>
           <div
             style={{
-              borderTop: `1px solid ${C.border}`,
+              borderTop: `1px solid ${C.line}`,
               display: "flex",
               flexDirection: "column",
               gap: 8,
               paddingTop: 16,
             }}
           >
-            <span style={{ color: C.text2, fontSize: 14 }}>
+            <span style={{ color: C.ink2, fontSize: 14 }}>
               {t({ en: "What the judgment is based on", zh: "判断依据" })}
             </span>
-            <span style={{ color: C.text3, fontSize: 14 }}>
+            <span style={{ color: C.ink3Text, fontSize: 14 }}>
               {t({
                 en: "Interaction history · relationship changes · current timing · their recent situation",
                 zh: "交流历史 · 关系变化 · 当前时机 · 对方近况",
@@ -1055,7 +1049,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
           <div
             style={{
               alignItems: "baseline",
-              borderBottom: `1px solid ${C.border}`,
+              borderBottom: `1px solid ${C.line}`,
               display: "flex",
               flexWrap: "wrap",
               gap: 10,
@@ -1066,7 +1060,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
             <h3 style={{ ...SERIF, fontSize: 26, letterSpacing: "-0.02em", margin: 0 }}>
               {t({ en: "This week's relationship schedule", zh: "本周关系日程" })}
             </h3>
-            <span style={{ color: C.text3, fontSize: 14 }}>
+            <span style={{ color: C.ink3Text, fontSize: 14 }}>
               {t({ en: "4 items to move forward", zh: "4 项待推进" })}
             </span>
           </div>
@@ -1095,7 +1089,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
                     paddingBottom: i < weekRows.length - 1 ? 24 : 0,
                   }}
                 >
-                  <span style={{ color: C.text3, fontSize: 12, letterSpacing: "0.14em" }}>
+                  <span style={{ color: C.ink3Text, fontSize: 12, letterSpacing: "0.14em" }}>
                     {t(row.dateCopy)}
                   </span>
                   <strong style={{ fontSize: 17 }}>{t(row.title)}</strong>
@@ -1114,12 +1108,12 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
               </div>
             ))}
           </div>
-          <div style={{ background: C.border, height: 1 }} />
+          <div style={{ background: C.line, height: 1 }} />
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ color: C.text3, fontSize: 12, letterSpacing: "0.14em" }}>
+            <span style={{ color: C.ink3Text, fontSize: 12, letterSpacing: "0.14em" }}>
               {t({ en: "NEXT STEP", zh: "下一步" })}
             </span>
-            <strong style={{ color: C.accentDeep, fontSize: 20, fontWeight: 500 }}>
+            <strong style={{ color: C.plum900, fontSize: 20, fontWeight: 500 }}>
               {t({
                 en: "Confirm the Japanese-UI requirements for the trial with 田中惠子",
                 zh: "向田中惠子确认体验版的日文界面需求",
@@ -1144,7 +1138,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
               style={{
                 border: "1px solid #B9BCEB",
                 borderRadius: 999,
-                color: C.accentDeep,
+                color: C.plum900,
                 fontSize: 14,
                 fontWeight: 500,
                 padding: "12px 22px",
@@ -1155,8 +1149,8 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
           </div>
           <span
             style={{
-              borderTop: `1px solid ${C.border}`,
-              color: C.text3,
+              borderTop: `1px solid ${C.line}`,
+              color: C.ink3Text,
               fontSize: 13,
               paddingTop: 14,
             }}
@@ -1222,7 +1216,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
                 <span style={i === arr.length - 1 ? { color: "#FFFFFF", fontWeight: 500 } : undefined}>
                   {t(step)}
                 </span>
-                {i < arr.length - 1 ? <span style={{ color: C.text3 }}>→</span> : null}
+                {i < arr.length - 1 ? <span style={{ color: C.ink3Text }}>→</span> : null}
               </span>
             ))}
           </div>
@@ -1243,7 +1237,7 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
         </div>
         <div
           style={{
-            color: C.text3,
+            color: C.ink3Text,
             display: "flex",
             flexWrap: "wrap",
             fontSize: 14,
@@ -1255,11 +1249,11 @@ export function OrbitLanding0918({ authenticated = false }: { authenticated?: bo
         >
           <span style={{ ...SERIF, color: C.ink, fontSize: 20 }}>Orbit</span>
           <div style={{ display: "flex", gap: 28 }}>
-            <a href={preserveHref("/app/agent")} style={{ color: C.text3, textDecoration: "none" }}>iOrbit</a>
-            <a href={preserveHref("/app/events")} style={{ color: C.text3, textDecoration: "none" }}>
+            <a href={preserveHref("/app/agent")} style={{ color: C.ink3Text, textDecoration: "none" }}>iOrbit</a>
+            <a href={preserveHref("/app/events")} style={{ color: C.ink3Text, textDecoration: "none" }}>
               {t({ en: "Events", zh: "活动" })}
             </a>
-            <a href={preserveHref("/app/contacts")} style={{ color: C.text3, textDecoration: "none" }}>
+            <a href={preserveHref("/app/contacts")} style={{ color: C.ink3Text, textDecoration: "none" }}>
               {t({ en: "Network", zh: "人脉" })}
             </a>
           </div>

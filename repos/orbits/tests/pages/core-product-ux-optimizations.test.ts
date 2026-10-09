@@ -132,8 +132,7 @@ test("long result surfaces expose list semantics for keyboard and screen-reader 
 test("small Agent status copy uses readable foreground tokens", () => {
   const agent = iorbitChatSurfaceSource();
 
-  // Orbit_0918 批次 4c：可读性规则不变（小字状态文案仍走 --text-3/--text-4 前景 token），
-  // 色值随 0918 设计更新为 #6B6F99/#9FA3C4（对比度不低于旧值）。
-  assert.match(agent, /"--text-3": "#6B6F99"/);
-  assert.match(agent, /"--text-4": "#9FA3C4"/);
+  // Orbit_0918 批次 4c：小字状态文案走说明文字前景 token。R01 起旧的 --text-3/--text-4
+  // 合并为设计稿的 --ink-3-text（0918 页面重写前仍取 0918 色值 #6B6F99）。
+  assert.match(agent, /"--ink-3-text": "#6B6F99"/);
 });

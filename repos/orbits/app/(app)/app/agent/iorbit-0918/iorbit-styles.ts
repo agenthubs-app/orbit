@@ -35,7 +35,7 @@ export const IORBIT_STYLES = `
 /* ── 标题行（设计 49–55）── */
 [data-orbit-real-page="iorbit-0918"] .ir-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; }
 [data-orbit-real-page="iorbit-0918"] .ir-head-copy { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-[data-orbit-real-page="iorbit-0918"] .ir-h1 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: clamp(34px, 4vw, 46px); line-height: 1.1; letter-spacing: -0.03em; }
+[data-orbit-real-page="iorbit-0918"] .ir-h1 { margin: 0; font-family: var(--font); font-weight: 900; font-size: clamp(34px, 4vw, 46px); line-height: 1.1; letter-spacing: -0.03em; }
 [data-orbit-real-page="iorbit-0918"] .ir-sub { margin: 0; font-size: 16px; color: #3B3F7A; }
 [data-orbit-real-page="iorbit-0918"] .ir-today { font-size: 14px; color: #6B6F99; }
 /* ── 提问行 + chips + 打开对话（设计 57–74）── */
@@ -71,7 +71,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #E8E9F6; }
 [data-orbit-real-page="iorbit-0918"] .ir-card-title { display: flex; align-items: center; gap: 10px; }
 [data-orbit-real-page="iorbit-0918"] .ir-card-icon { width: 30px; height: 30px; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-[data-orbit-real-page="iorbit-0918"] .ir-card-h { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 19px; letter-spacing: -0.02em; }
+[data-orbit-real-page="iorbit-0918"] .ir-card-h { font-family: var(--font); font-weight: 900; font-size: 19px; letter-spacing: -0.02em; }
 [data-orbit-real-page="iorbit-0918"] .ir-card-link { font-size: 13px; color: #4B4FC7; }
 /* 任务 6a（任务 5 遗留 10）：下面五条 ir-* 类都落在链接元素上，作用域的
    a{color:#3B3F7A} / a:hover{color:#0E1225} 会压掉它们（设计里这些块要么是按钮，
@@ -132,7 +132,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-bg-a { background: #DDDEFA; }
 [data-orbit-real-page="iorbit-0918"] .ir-bg-b { background: #ECEEFB; }
 [data-orbit-real-page="iorbit-0918"] .ir-event-month { font-size: 12px; }
-[data-orbit-real-page="iorbit-0918"] .ir-event-day { font-size: 22px; font-family: 'Noto Serif SC', serif; font-weight: 900; }
+[data-orbit-real-page="iorbit-0918"] .ir-event-day { font-size: 22px; font-family: var(--font); font-weight: 900; }
 [data-orbit-real-page="iorbit-0918"] .ir-event-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 [data-orbit-real-page="iorbit-0918"] .ir-event-title { font-size: 15px; font-weight: 500; color: #0E1225; }
 [data-orbit-real-page="iorbit-0918"] .ir-event-meta { font-size: 13px; color: #6B6F99; }
@@ -209,7 +209,7 @@ export const IORBIT_STYLES = `
 /* ── 标题行 + 两枚按钮（设计 259–267）── */
 [data-orbit-real-page="iorbit-0918"] .ir-chat-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
 [data-orbit-real-page="iorbit-0918"] .ir-chat-head-copy { display: flex; flex-direction: column; gap: 8px; }
-[data-orbit-real-page="iorbit-0918"] .ir-chat-h1 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: clamp(30px, 3.4vw, 40px); letter-spacing: -0.03em; }
+[data-orbit-real-page="iorbit-0918"] .ir-chat-h1 { margin: 0; font-family: var(--font); font-weight: 900; font-size: clamp(30px, 3.4vw, 40px); letter-spacing: -0.03em; }
 [data-orbit-real-page="iorbit-0918"] .ir-chat-sub { margin: 0; font-size: 15px; color: #3B3F7A; }
 [data-orbit-real-page="iorbit-0918"] .ir-chat-actions { display: flex; gap: 10px; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-back-btn { display: flex; align-items: center; gap: 8px; padding: 11px 18px; border: 1px solid #DDDEFA; border-radius: 12px; background: #FFFFFF; color: #3B3F7A; font-size: 14px; cursor: pointer;
@@ -278,7 +278,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-aside-card-16 { gap: 16px; }
 [data-orbit-real-page="iorbit-0918"] .ir-aside-head { display: flex; align-items: center; gap: 10px; }
 [data-orbit-real-page="iorbit-0918"] .ir-aside-icon { width: 28px; height: 28px; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 13px; }
-[data-orbit-real-page="iorbit-0918"] .ir-aside-h { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 17px; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-h { font-family: var(--font); font-weight: 900; font-size: 17px; }
 /* 设计 495 的「▦ 本周日程」不是衬线卡头，是 15px 的普通 <strong>（对比 486 的
    计划概览）。任务 7 的框级归因量到了这处字体面差异，用修饰类中和。 */
 [data-orbit-real-page="iorbit-0918"] .ir-aside-h.ir-aside-h-plain { font-family: inherit; font-weight: 700; font-size: 15px; }
@@ -312,7 +312,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-drawer-head-copy { display: flex; flex-direction: column; gap: 6px; }
 [data-orbit-real-page="iorbit-0918"] .ir-drawer-title-row { display: flex; align-items: center; gap: 10px; }
 [data-orbit-real-page="iorbit-0918"] .ir-drawer-title-icon { color: #4B4FC7; }
-[data-orbit-real-page="iorbit-0918"] .ir-drawer-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 21px; letter-spacing: -0.02em; }
+[data-orbit-real-page="iorbit-0918"] .ir-drawer-title { font-family: var(--font); font-weight: 900; font-size: 21px; letter-spacing: -0.02em; }
 [data-orbit-real-page="iorbit-0918"] .ir-drawer-sub { font-size: 13px; color: #6B6F99; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-close { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #F7F7FD; color: #3B3F7A; font-size: 16px; cursor: pointer;
   /* 中和 .btn 基类；**不写 height:auto**——设计 791 的 34px 圆钮靠上面那条 height 成立 */
@@ -386,7 +386,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-title-col > .ir-back { align-self: flex-start; }
 [data-orbit-real-page="iorbit-0918"] .ir-back:hover { border-color: #B9BCEB; color: #2E3270; }
 /* 355 / 436 / 508 / 668 */
-[data-orbit-real-page="iorbit-0918"] .ir-h1-sub { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: clamp(30px, 3.4vw, 40px); letter-spacing: -0.03em; }
+[data-orbit-real-page="iorbit-0918"] .ir-h1-sub { margin: 0; font-family: var(--font); font-weight: 900; font-size: clamp(30px, 3.4vw, 40px); letter-spacing: -0.03em; }
 [data-orbit-real-page="iorbit-0918"] .ir-lede { margin: 0; font-size: 15px; color: #3B3F7A; }
 /* 358 / 440 */
 [data-orbit-real-page="iorbit-0918"] .ir-two-col { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(260px, 1fr); gap: 22px; align-items: start; }
@@ -413,7 +413,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-tier-label { display: flex; align-items: center; gap: 10px; }
 [data-orbit-real-page="iorbit-0918"] .ir-tier-icon { width: 30px; height: 30px; flex: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 [data-orbit-real-page="iorbit-0918"] .ir-tint-accent { background: #ECEEFB; color: #4B4FC7; }
-[data-orbit-real-page="iorbit-0918"] .ir-tier-h { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 19px; }
+[data-orbit-real-page="iorbit-0918"] .ir-tier-h { font-family: var(--font); font-weight: 900; font-size: 19px; }
 [data-orbit-real-page="iorbit-0918"] .ir-tier-count { font-size: 13px; color: #6B6F99; }
 /* 362–365 的行 */
 [data-orbit-real-page="iorbit-0918"] .ir-row { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; }
@@ -506,7 +506,7 @@ export const IORBIT_STYLES = `
 /* 535–539 / 747 段头 */
 [data-orbit-real-page="iorbit-0918"] .ir-num-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 [data-orbit-real-page="iorbit-0918"] .ir-num { width: 28px; height: 28px; flex: none; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
-[data-orbit-real-page="iorbit-0918"] .ir-sec-h { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 18px; }
+[data-orbit-real-page="iorbit-0918"] .ir-sec-h { font-family: var(--font); font-weight: 900; font-size: 18px; }
 [data-orbit-real-page="iorbit-0918"] .ir-sec-hint { flex: 1; min-width: 180px; font-size: 13px; color: #6B6F99; }
 [data-orbit-real-page="iorbit-0918"] .ir-sec-link { font-size: 13px; color: #4B4FC7; }
 [data-orbit-real-page="iorbit-0918"] .ir-icon-head { display: flex; align-items: flex-start; gap: 12px; }
@@ -537,7 +537,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-event-row:hover { border-color: #B9BCEB; background: #F7F7FD; }
 /* 623 的 96px 封面占位块（无图来源，沿用设计自己的纯色块） */
 [data-orbit-real-page="iorbit-0918"] .ir-event-cover { width: 96px; height: 80px; flex: none; border-radius: 12px; background: #DDDEFA; }
-[data-orbit-real-page="iorbit-0918"] .ir-sec-event-date { width: 76px; flex: none; padding: 16px 0; border-radius: 12px; background: #DDDEFA; color: #2E3270; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 18px; }
+[data-orbit-real-page="iorbit-0918"] .ir-sec-event-date { width: 76px; flex: none; padding: 16px 0; border-radius: 12px; background: #DDDEFA; color: #2E3270; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; font-family: var(--font); font-weight: 900; font-size: 18px; }
 /* 690–712 完整联系人卡 */
 [data-orbit-real-page="iorbit-0918"] .ir-contact-card { border: 1px solid #E8E9F6; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 [data-orbit-real-page="iorbit-0918"] .ir-contact-card-head { display: flex; align-items: flex-start; gap: 14px; }

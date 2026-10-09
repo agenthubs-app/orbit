@@ -139,7 +139,7 @@ export function AgentChatHistoryOrganization({
       <button aria-expanded={open} aria-label={tr("Groups", "分组")} className="btn btn-sm btn-quiet" onClick={() => setOpen((value) => !value)} type="button">
         {tr("Groups", "分组")}
       </button>
-      {open ? <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-sm)", display: "grid", gap: 8, padding: 8 }}>
+      {open ? <div style={{ border: "1px solid var(--line)", borderRadius: "var(--r-sm)", display: "grid", gap: 8, padding: 8 }}>
         <button aria-label={tr("Show all conversations", "显示全部会话")} className="btn btn-sm btn-quiet" onClick={() => onFilter(null)} type="button">{tr("All conversations", "全部会话")}</button>
         {groups.map((group) => <div key={group.id} style={{ display: "grid", gap: 4 }}>
           <input aria-label={tr(`Group name: ${group.name}`, `分组名称：${group.name}`)} disabled={busy} onChange={(event) => setNames((current) => ({ ...current, [group.id]: event.target.value }))} value={names[group.id] ?? group.name} />

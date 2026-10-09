@@ -211,18 +211,18 @@ function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; la
       <EventCover g={gradientFromString(event.code || name)} imageAlt={name} imageSizes="52px" imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 22, text: name.slice(0, 1) }} style={{ borderRadius: 12, flexShrink: 0, height: 52, opacity: event.status === "ended" ? 0.72 : 1, width: 52 }} />
       <span className="orbit-home-event-row-copy" style={{ flex: 1, minWidth: 0 }}>
         <h3 className="h-section orbit-home-event-row-title" style={{ color: "var(--ink)", display: "block", margin: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{name}</h3>
-        <span style={{ alignItems: "center", color: "var(--text-3)", display: "flex", flexWrap: "wrap", fontSize: 13, gap: 8, marginTop: 3 }}>
-          <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--text-3)" name="clock" size={13} />{date.time}</span>
-          {place ? <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--text-3)" name="pin" size={13} />{place}</span> : null}
+        <span style={{ alignItems: "center", color: "var(--ink-3-text)", display: "flex", flexWrap: "wrap", fontSize: 13, gap: 8, marginTop: 3 }}>
+          <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--ink-3-text)" name="clock" size={13} />{date.time}</span>
+          {place ? <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--ink-3-text)" name="pin" size={13} />{place}</span> : null}
         </span>
       </span>
       <span className="orbit-home-event-row-action" style={{ alignItems: "center", display: "flex", flexShrink: 0, gap: 10 }}>
         {canEnter ? <span className="btn btn-soft btn-sm" style={{ height: 32, pointerEvents: "none" }}>{enterLabel}<Icon name="arrowUR" size={14} /></span> : <StatusBadge language={language} status={event.status} />}
-        <Icon color="var(--text-4)" name="chevR" size={17} />
+        <Icon color="var(--ink-3-text)" name="chevR" size={17} />
       </span>
     </>
   );
-  const rowStyle = { alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer", display: "flex", gap: 14, padding: "12px 14px", textAlign: "left" as const, textDecoration: "none", width: "100%" };
+  const rowStyle = { alignItems: "center", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", cursor: "pointer", display: "flex", gap: 14, padding: "12px 14px", textAlign: "left" as const, textDecoration: "none", width: "100%" };
 
   if (!canEnter) {
     return <a className="card-hover orbit-home-event-row" href={`/app/events/${event.code}`} onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }} style={rowStyle}>{content}</a>;
@@ -241,13 +241,13 @@ function MyEventsBlock({ events, language, t }: { events: OrbitLandingEventView[
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
         {homeFilters(t).map(([key, label]) => (
           <button className={`chip${tab === key ? " is-active" : ""}`} key={key} onClick={() => setTab(key)} type="button">
-            {label}<span style={{ fontFamily: "var(--ff-mono)", fontSize: 11, marginLeft: 4, opacity: 0.6 }}>{counts[key]}</span>
+            {label}<span style={{ fontFamily: "var(--font-num)", fontSize: 11, marginLeft: 4, opacity: 0.6 }}>{counts[key]}</span>
           </button>
         ))}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {list.map((event) => <HomeEventRow event={event} key={event.id} language={language} t={t} />)}
-        {!list.length ? <div className="card-flat" style={{ color: "var(--text-3)", fontSize: 14, padding: 20, textAlign: "center" }}>{t({ en: "No events in this state.", zh: "当前没有这个状态的活动。" })}</div> : null}
+        {!list.length ? <div className="card-flat" style={{ color: "var(--ink-3-text)", fontSize: 14, padding: 20, textAlign: "center" }}>{t({ en: "No events in this state.", zh: "当前没有这个状态的活动。" })}</div> : null}
       </div>
     </div>
   );
@@ -276,7 +276,7 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
       <EventCover className="orbit-account-event-module-cover" g={gradientFromString(event.code || name)} imageAlt={name} imageSizes="(max-width: 720px) calc(100vw - 36px), (max-width: 1100px) 50vw, 360px" imageUrl={eventImageUrl(event)} monogram={null} style={{ opacity: event.status === "ended" ? 0.78 : 1 }}>
         <span className="orbit-account-event-module-cover-top">
           <StatusBadge language={language} status={event.status} />
-          <span className="orbit-card-date"><span style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600 }}>{date.month}</span>{date.day ? <b style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 20, lineHeight: 1 }}>{date.day}</b> : null}</span>
+          <span className="orbit-card-date"><span style={{ color: "var(--coral-text)", fontSize: 11, fontWeight: 600 }}>{date.month}</span>{date.day ? <b style={{ color: "var(--ink)", fontFamily: "var(--font)", fontSize: 20, lineHeight: 1 }}>{date.day}</b> : null}</span>
         </span>
       </EventCover>
       <span className="orbit-account-event-module-body">
@@ -290,9 +290,9 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
           </span>
         ) : null}
         <span className="orbit-account-event-module-meta">
-          <span><Icon color="var(--text-3)" name="clock" size={15} />{date.time}</span>
-          {place ? <span><Icon color="var(--text-3)" name="pin" size={15} />{place}</span> : null}
-          {event.participantCount !== null ? <span><Icon color="var(--text-3)" name="users" size={15} />{event.participantCount} 人已报名</span> : null}
+          <span><Icon color="var(--ink-3-text)" name="clock" size={15} />{date.time}</span>
+          {place ? <span><Icon color="var(--ink-3-text)" name="pin" size={15} />{place}</span> : null}
+          {event.participantCount !== null ? <span><Icon color="var(--ink-3-text)" name="users" size={15} />{event.participantCount} 人已报名</span> : null}
         </span>
         <span className="orbit-account-event-module-foot">
           <span>{event.status === "ended" ? t({ en: "Tap to revisit details", zh: "点击回看活动详情" }) : t({ en: "Tap to view details", zh: "点击查看活动详情" })}</span>
@@ -406,32 +406,32 @@ function useTodayOpsSummary(eventId: string | null): TodayOpsSummary | null {
 function TodayEventHero({ event, t }: { event: OrbitLandingEventView; t: Translate }) {
   const ops = useTodayOpsSummary(event.id);
   return (
-    <div data-console-today style={{ background: "linear-gradient(120deg, #1a7d9b, var(--accent) 42%, #c8a24a 135%)", borderRadius: 20, boxShadow: "0 14px 40px -8px rgba(21,94,117,.30)", padding: 2 }}>
+    <div data-console-today style={{ background: "linear-gradient(120deg, #1a7d9b, var(--accent-text) 42%, #c8a24a 135%)", borderRadius: 20, boxShadow: "0 14px 40px -8px rgba(21,94,117,.30)", padding: 2 }}>
       <div style={{ background: "linear-gradient(180deg, var(--surface), var(--surface-2))", borderRadius: 18, display: "grid", gap: "6px 26px", gridTemplateColumns: ops?.topRec ? "1.2fr 1fr" : "1fr", overflow: "hidden", padding: "18px 22px", position: "relative" }}>
         <div style={{ alignItems: "center", display: "flex", gap: 10, gridColumn: "1 / -1" }}>
           <span className="badge badge-live"><span style={{ animation: "orbit-console-pulse 1.6s infinite", background: "currentcolor", borderRadius: "var(--r-pill)", display: "inline-block", height: 6, width: 6 }} />{t({ en: "Happening now", zh: "正在进行" })}</span>
-          <span style={{ color: "var(--text-3)", fontSize: 12, fontWeight: 600 }}>{homeDateTimeRange(event, t)}</span>
+          <span style={{ color: "var(--ink-3-text)", fontSize: 12, fontWeight: 600 }}>{homeDateTimeRange(event, t)}</span>
         </div>
         <div style={{ minWidth: 0 }}>
-          <h3 style={{ fontFamily: "var(--ff-display)", fontSize: 21, fontWeight: 600, lineHeight: 1.3, margin: 0 }}>{event.name}</h3>
-          <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 3 }}>
+          <h3 style={{ fontFamily: "var(--font)", fontSize: 21, fontWeight: 600, lineHeight: 1.3, margin: 0 }}>{event.name}</h3>
+          <div style={{ color: "var(--ink-3-text)", fontSize: 12.5, marginTop: 3 }}>
             {eventPlace(event, t)}{ops?.checkedIn ? ` · ${t({ en: "Checked in", zh: "已签到" })} ✓` : ""}
           </div>
           {ops?.tableNumber ? (
             <div style={{ alignItems: "center", display: "flex", gap: 14, marginTop: 12 }}>
-              <div style={{ color: "var(--accent)", fontFamily: "var(--ff-display)", fontSize: 46, fontWeight: 600, lineHeight: 0.95 }}>
-                {ops.tableNumber}<span style={{ color: "var(--text-2)", fontSize: 15, marginLeft: 2 }}>{t({ en: " table", zh: "号桌" })}</span>
+              <div style={{ color: "var(--accent-text)", fontFamily: "var(--font)", fontSize: 46, fontWeight: 600, lineHeight: 0.95 }}>
+                {ops.tableNumber}<span style={{ color: "var(--ink-2)", fontSize: 15, marginLeft: 2 }}>{t({ en: " table", zh: "号桌" })}</span>
               </div>
               <div style={{ display: "grid", gap: 4 }}>
                 {ops.seat ? <span className="chip" style={{ width: "max-content" }}>{t({ en: `Seat ${ops.seat}`, zh: `座位 ${ops.seat}` })}</span> : null}
-                {ops.theme ? <span style={{ color: "var(--text-3)", fontSize: 12, maxWidth: 260 }}>{ops.theme}</span> : null}
+                {ops.theme ? <span style={{ color: "var(--ink-3-text)", fontSize: 12, maxWidth: 260 }}>{ops.theme}</span> : null}
               </div>
             </div>
           ) : null}
           <div style={{ alignItems: "center", display: "flex", gap: 12, marginTop: 14 }}>
-            <button className="btn btn-primary" onClick={() => enterEvent(event.id)} type="button">{t({ en: "Enter live event", zh: "进入现场" })}<Icon color="var(--on-dark)" name="arrowUR" size={15} /></button>
+            <button className="btn btn-primary" onClick={() => enterEvent(event.id)} type="button">{t({ en: "Enter live event", zh: "进入现场" })}<Icon color="var(--on-image)" name="arrowUR" size={15} /></button>
             {ops ? (
-              <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+              <span style={{ color: "var(--ink-3-text)", fontSize: 12 }}>
                 {ops.recCount > 0 ? t({ en: `${ops.recCount} matches`, zh: `${ops.recCount} 位推荐` }) : null}
                 {ops.recCount > 0 && ops.pendingRequests > 0 ? " · " : ""}
                 {ops.pendingRequests > 0 ? t({ en: `${ops.pendingRequests} pending`, zh: `${ops.pendingRequests} 条待处理` }) : null}
@@ -440,17 +440,17 @@ function TodayEventHero({ event, t }: { event: OrbitLandingEventView; t: Transla
           </div>
         </div>
         {ops?.topRec ? (
-          <div style={{ borderLeft: "1px dashed var(--border-2)", display: "grid", gap: 8, paddingLeft: 22 }}>
-            <span className="eyebrow" style={{ color: "var(--accent)" }}>{t({ en: "TOP MATCH TONIGHT", zh: "今晚最值得见" })}</span>
+          <div style={{ borderLeft: "1px dashed var(--line)", display: "grid", gap: 8, paddingLeft: 22 }}>
+            <span className="eyebrow" style={{ color: "var(--accent-text)" }}>{t({ en: "TOP MATCH TONIGHT", zh: "今晚最值得见" })}</span>
             <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
               <span className="avatar g-emerald" style={{ fontSize: 15, height: 40, width: 40 }}>{ops.topRec.name.slice(0, 1)}</span>
               <div style={{ minWidth: 0 }}>
                 <strong style={{ display: "block", fontSize: 14.5 }}>{ops.topRec.name}</strong>
-                <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ops.topRec.role}</span>
+                <span style={{ color: "var(--ink-3-text)", display: "block", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ops.topRec.role}</span>
               </div>
-              <span style={{ background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", flexShrink: 0, fontSize: 11, fontWeight: 800, marginLeft: "auto", padding: "3px 9px" }}>{t({ en: `Match ${ops.topRec.score}`, zh: `匹配 ${ops.topRec.score}` })}</span>
+              <span style={{ background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent-text)", flexShrink: 0, fontSize: 11, fontWeight: 800, marginLeft: "auto", padding: "3px 9px" }}>{t({ en: `Match ${ops.topRec.score}`, zh: `匹配 ${ops.topRec.score}` })}</span>
             </div>
-            <p style={{ color: "var(--text-2)", fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>{ops.topRec.hint}</p>
+            <p style={{ color: "var(--ink-2)", fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>{ops.topRec.hint}</p>
           </div>
         ) : null}
       </div>
@@ -506,15 +506,15 @@ function useConsoleReminders(language: OrbitLanguage) {
 
 function ReminderRow({ alert, t }: { alert: ConsoleReminder; t: Translate }) {
   return (
-    <a href={alert.href} style={{ alignItems: "center", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 13, display: "flex", gap: 12, padding: "11px 13px", textDecoration: "none" }}>
+    <a href={alert.href} style={{ alignItems: "center", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 13, display: "flex", gap: 12, padding: "11px 13px", textDecoration: "none" }}>
       <span className="avatar g-sky" style={{ flexShrink: 0, fontSize: 14, height: 38, width: 38 }}>{(alert.contactName || alert.title).slice(0, 1)}</span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <strong style={{ color: "var(--ink)", display: "block", fontSize: 13.5 }}>{alert.title}</strong>
-        <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span style={{ color: "var(--ink-3-text)", display: "block", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {[alert.contactName, alert.organization].filter(Boolean).join(" · ") || alert.dueLabel}
         </span>
       </span>
-      <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 12.5, fontWeight: 700 }}>{t({ en: "Open", zh: "处理" })}</span>
+      <span style={{ color: "var(--accent-text)", flexShrink: 0, fontSize: 12.5, fontWeight: 700 }}>{t({ en: "Open", zh: "处理" })}</span>
     </a>
   );
 }
@@ -527,18 +527,18 @@ function ConsoleReminderPanels({ language, t }: { language: OrbitLanguage; t: Tr
     <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))" }}>
       <section className="card" data-console-section="schedule" style={{ display: "grid", gap: 11, padding: "16px 18px" }}>
         <span className="eyebrow">{t({ en: "SCHEDULE · PENDING", zh: "日程 · 待你处理" })}</span>
-        {reminders === null ? <span style={{ color: "var(--text-4)", fontSize: 13 }}>{t({ en: "Loading…", zh: "正在读取…" })}</span> : null}
+        {reminders === null ? <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ en: "Loading…", zh: "正在读取…" })}</span> : null}
         {schedule.map((alert) => <ReminderRow alert={alert} key={alert.id} t={t} />)}
         {reminders !== null && schedule.length === 0 ? (
-          <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "No appointment needs you right now.", zh: "暂无需要处理的约谈。" })} <a href="/app/agent/plan" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/agent/plan"); }} style={{ color: "var(--accent)", fontWeight: 700 }}>{t({ en: "Open schedule", zh: "打开日程" })}</a></span>
+          <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ en: "No appointment needs you right now.", zh: "暂无需要处理的约谈。" })} <a href="/app/agent/plan" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/agent/plan"); }} style={{ color: "var(--accent-text)", fontWeight: 700 }}>{t({ en: "Open schedule", zh: "打开日程" })}</a></span>
         ) : null}
       </section>
       <section className="card" data-console-section="contacts" style={{ display: "grid", gap: 11, padding: "16px 18px" }}>
         <span className="eyebrow">{t({ en: "WORTH FOLLOWING UP", zh: "值得联系" })}</span>
-        {reminders === null ? <span style={{ color: "var(--text-4)", fontSize: 13 }}>{t({ en: "Loading…", zh: "正在读取…" })}</span> : null}
+        {reminders === null ? <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ en: "Loading…", zh: "正在读取…" })}</span> : null}
         {people.map((alert) => <ReminderRow alert={alert} key={alert.id} t={t} />)}
         {reminders !== null && people.length === 0 ? (
-          <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "Nothing waiting — contacts appear here after events.", zh: "暂无待跟进——活动之后的关系提醒会出现在这里。" })} <a href="/app/contacts" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/contacts"); }} style={{ color: "var(--accent)", fontWeight: 700 }}>{t({ en: "Open contacts", zh: "打开人脉" })}</a></span>
+          <span style={{ color: "var(--ink-3-text)", fontSize: 13 }}>{t({ en: "Nothing waiting — contacts appear here after events.", zh: "暂无待跟进——活动之后的关系提醒会出现在这里。" })} <a href="/app/contacts" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/contacts"); }} style={{ color: "var(--accent-text)", fontWeight: 700 }}>{t({ en: "Open contacts", zh: "打开人脉" })}</a></span>
         ) : null}
       </section>
     </div>
@@ -623,9 +623,9 @@ function AgentDock({ state, t }: { state: AgentDockState; t: Translate }) {
     <div style={{ bottom: "calc(18px + env(safe-area-inset-bottom))", left: "50%", position: "fixed", transform: "translateX(-50%)", width: "min(680px, calc(100vw - 32px))", zIndex: ORBIT_Z.sticky }}>
       <form
         onSubmit={(submitEvent) => { submitEvent.preventDefault(); ask(); }}
-        style={{ alignItems: "center", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)", background: "color-mix(in srgb, var(--surface) 62%, transparent)", border: "1px solid color-mix(in srgb, var(--surface) 80%, transparent)", borderRadius: "var(--r-pill)", boxShadow: "0 12px 40px rgba(23,33,31,.16)", display: "flex", gap: 10, outline: "1px solid var(--border)", padding: "8px 8px 8px 18px" }}
+        style={{ alignItems: "center", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)", background: "color-mix(in srgb, var(--surface) 62%, transparent)", border: "1px solid color-mix(in srgb, var(--surface) 80%, transparent)", borderRadius: "var(--r-pill)", boxShadow: "0 12px 40px rgba(23,33,31,.16)", display: "flex", gap: 10, outline: "1px solid var(--line)", padding: "8px 8px 8px 18px" }}
       >
-        <span aria-hidden style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "grid", flexShrink: 0, fontSize: 14, height: 30, placeItems: "center", width: 30 }}>✦</span>
+        <span aria-hidden style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent-text)", display: "grid", flexShrink: 0, fontSize: 14, height: 30, placeItems: "center", width: 30 }}>✦</span>
         <input
           aria-label={t({ en: "Ask iOrbit", zh: "问 iOrbit" })}
           onInput={(inputEvent) => setDraft(inputEvent.currentTarget.value)}
@@ -634,7 +634,7 @@ function AgentDock({ state, t }: { state: AgentDockState; t: Translate }) {
           value={draft}
         />
         <button aria-label={t({ en: "Send", zh: "发送" })} className="btn btn-primary" style={{ borderRadius: "var(--r-pill)", height: 40, padding: 0, width: 40 }} type="submit">
-          <Icon color="var(--on-dark)" name="chevR" size={17} />
+          <Icon color="var(--on-image)" name="chevR" size={17} />
         </button>
       </form>
     </div>
@@ -651,19 +651,19 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="eyebrow" style={{ marginBottom: 4 }}>{t({ en: "Good evening", zh: "晚上好" })}</div>
             <h1 className="h-display" style={{ margin: 0 }}>{viewModel.account.fullName}</h1>
-            <div style={{ color: "var(--text-2)", fontSize: 15, marginTop: 4 }}>{subtitleFor(viewModel.account, language)}</div>
+            <div style={{ color: "var(--ink-2)", fontSize: 15, marginTop: 4 }}>{subtitleFor(viewModel.account, language)}</div>
           </div>
           <div style={{ display: "flex", flexShrink: 0, gap: 10 }}>
             <a className="btn btn-ghost" href="/app/profile" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/profile"); }}><Icon name="edit" size={16} />{t({ en: "Edit universal profile", zh: "编辑通用画像" })}</a>
             <button className="btn btn-soft" onClick={() => { void signOut({ callbackUrl: "/app" }); }} type="button"><Icon name="logout" size={16} />{t({ en: "Sign out", zh: "退出登录" })}</button>
           </div>
         </div>
-        <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", gap: 30, marginTop: 22, padding: "16px 22px" }}>
+        <div style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 16, display: "flex", gap: 30, marginTop: 22, padding: "16px 22px" }}>
           {viewModel.stats.events + viewModel.stats.people + viewModel.stats.inProgress === 0 ? (
-            <span style={{ color: "var(--text-2)", fontSize: 14 }}>{t({ en: "Register for an event and your contacts and follow-ups will build up here.", zh: "报名一场活动后，这里会开始积累你的名片夹和跟进中的关系。" })}</span>
+            <span style={{ color: "var(--ink-2)", fontSize: 14 }}>{t({ en: "Register for an event and your contacts and follow-ups will build up here.", zh: "报名一场活动后，这里会开始积累你的名片夹和跟进中的关系。" })}</span>
           ) : (
             ([[t({ en: "Events", zh: "活动" }), viewModel.stats.events], [t({ en: "Contacts", zh: "名片夹" }), viewModel.stats.people], [t({ en: "Following up", zh: "跟进中" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
-              <div key={label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 26, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>{label}</div></div>
+              <div key={label}><div style={{ color: "var(--ink)", fontFamily: "var(--font)", fontSize: 26, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--ink-3-text)", fontSize: 13, marginTop: 1 }}>{label}</div></div>
             ))
           )}
         </div>
@@ -683,9 +683,9 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {hubEntryCards(t).map((item) => (
               <a className="card card-hover" href={item.href} key={item.href} onClick={(event) => { event.preventDefault(); orbitNavigate(item.href); }} style={{ alignItems: "center", display: "flex", gap: 14, padding: 18, textDecoration: "none" }}>
-                <span className={`avatar ${item.g}`} style={{ borderRadius: 13, fontSize: 0, height: 46, width: 46 }}><Icon color="var(--on-dark)" name={item.icon} size={22} /></span>
-                <span style={{ flex: 1, minWidth: 0 }}><h3 className="h-section" style={{ color: "var(--ink)", display: "block", margin: 0 }}>{item.title}</h3><span style={{ color: "var(--text-3)", display: "block", fontSize: 13, marginTop: 2 }}>{item.sub}</span></span>
-                <Icon color="var(--text-4)" name="chevR" size={18} />
+                <span className={`avatar ${item.g}`} style={{ borderRadius: 13, fontSize: 0, height: 46, width: 46 }}><Icon color="var(--on-image)" name={item.icon} size={22} /></span>
+                <span style={{ flex: 1, minWidth: 0 }}><h3 className="h-section" style={{ color: "var(--ink)", display: "block", margin: 0 }}>{item.title}</h3><span style={{ color: "var(--ink-3-text)", display: "block", fontSize: 13, marginTop: 2 }}>{item.sub}</span></span>
+                <Icon color="var(--ink-3-text)" name="chevR" size={18} />
               </a>
             ))}
           </div>
@@ -715,25 +715,25 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
       <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 18px 36px" }}>
         <div style={{ alignItems: "center", display: "flex", gap: 14, padding: "8px 0 4px" }}>
           <span className="avatar g-indigo" style={{ fontSize: 21.84, height: 52, width: 52 }}>{viewModel.account.initial}</span>
-          <div style={{ flex: 1, minWidth: 0 }}><div style={{ color: "var(--text-3)", fontSize: 12 }}>{t({ en: "Good evening", zh: "晚上好" })}</div><h1 className="h-title" style={{ color: "var(--ink)", margin: 0 }}>{viewModel.account.fullName}</h1><div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitleFor(viewModel.account, language)}</div></div>
-          <a aria-label={t({ en: "Edit", zh: "编辑" })} className="hit-44" href="/app/profile" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/profile"); }} style={{ alignItems: "center", background: "var(--surface-2)", borderRadius: "var(--r-pill)", color: "var(--text-2)", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }}><Icon name="settings" size={19} /></a>
-          <button aria-label={t({ en: "Sign out", zh: "退出" })} className="hit-44" onClick={() => { void signOut({ callbackUrl: "/app" }); }} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--text-2)", cursor: "pointer", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="logout" size={18} /></button>
+          <div style={{ flex: 1, minWidth: 0 }}><div style={{ color: "var(--ink-3-text)", fontSize: 12 }}>{t({ en: "Good evening", zh: "晚上好" })}</div><h1 className="h-title" style={{ color: "var(--ink)", margin: 0 }}>{viewModel.account.fullName}</h1><div style={{ color: "var(--ink-3-text)", fontSize: 12.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitleFor(viewModel.account, language)}</div></div>
+          <a aria-label={t({ en: "Edit", zh: "编辑" })} className="hit-44" href="/app/profile" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/profile"); }} style={{ alignItems: "center", background: "var(--surface-2)", borderRadius: "var(--r-pill)", color: "var(--ink-2)", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }}><Icon name="settings" size={19} /></a>
+          <button aria-label={t({ en: "Sign out", zh: "退出" })} className="hit-44" onClick={() => { void signOut({ callbackUrl: "/app" }); }} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--ink-2)", cursor: "pointer", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="logout" size={18} /></button>
         </div>
-        <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", justifyContent: "space-between", marginTop: 16, padding: "14px 16px" }}>
+        <div style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 16, display: "flex", justifyContent: "space-between", marginTop: 16, padding: "14px 16px" }}>
           {viewModel.stats.events + viewModel.stats.people + viewModel.stats.inProgress === 0 ? (
-            <span style={{ color: "var(--text-2)", fontSize: 13 }}>{t({ en: "Register for an event and your contacts and follow-ups will build up here.", zh: "报名一场活动后，这里会开始积累你的名片夹和跟进中的关系。" })}</span>
+            <span style={{ color: "var(--ink-2)", fontSize: 13 }}>{t({ en: "Register for an event and your contacts and follow-ups will build up here.", zh: "报名一场活动后，这里会开始积累你的名片夹和跟进中的关系。" })}</span>
           ) : (
             ([[t({ en: "Events", zh: "活动" }), viewModel.stats.events], [t({ en: "Cards", zh: "名片" }), viewModel.stats.people], [t({ en: "Following up", zh: "跟进中" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
-              <div key={label} style={{ textAlign: "center" }}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 12 }}>{label}</div></div>
+              <div key={label} style={{ textAlign: "center" }}><div style={{ color: "var(--ink)", fontFamily: "var(--font)", fontSize: 22, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--ink-3-text)", fontSize: 12 }}>{label}</div></div>
             ))
           )}
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
           {hubEntryCards(t).map((item) => (
             <a className="card card-hover" href={item.href} key={item.href} onClick={(event) => { event.preventDefault(); orbitNavigate(item.href); }} style={{ flex: 1, padding: 14, textDecoration: "none" }}>
-              <span className={`avatar ${item.g}`} style={{ borderRadius: 11, fontSize: 0, height: 38, width: 38 }}><Icon color="var(--on-dark)" name={item.icon} size={19} /></span>
+              <span className={`avatar ${item.g}`} style={{ borderRadius: 11, fontSize: 0, height: 38, width: 38 }}><Icon color="var(--on-image)" name={item.icon} size={19} /></span>
               <h3 className="h-section" style={{ color: "var(--ink)", display: "block", margin: "10px 0 0" }}>{item.title}</h3>
-              <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginTop: 1 }}>{item.sub}</span>
+              <span style={{ color: "var(--ink-3-text)", display: "block", fontSize: 12, marginTop: 1 }}>{item.sub}</span>
             </a>
           ))}
         </div>
@@ -745,7 +745,7 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
         <div data-console-section="events">
           <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between", margin: "24px 0 12px" }}>
             <h2 className="h-section" style={{ margin: 0 }}>{t({ en: "My events", zh: "我的活动" })}</h2>
-            <a aria-label={t({ en: "View all events", zh: "查看全部活动" })} href="/app/home/events" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/events"); }} style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 2, textDecoration: "none" }}>{t({ en: "All", zh: "全部" })}<Icon name="chevR" size={14} /></a>
+            <a aria-label={t({ en: "View all events", zh: "查看全部活动" })} href="/app/home/events" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/events"); }} style={{ alignItems: "center", color: "var(--accent-text)", display: "flex", fontSize: 13, fontWeight: 600, gap: 2, textDecoration: "none" }}>{t({ en: "All", zh: "全部" })}<Icon name="chevR" size={14} /></a>
           </div>
           <MyEventsBlock events={viewModel.events} language={language} t={t} />
         </div>
@@ -806,26 +806,26 @@ export function OrbitRealHome({ mode, viewModel }: { mode: HomeMode; viewModel: 
       <style dangerouslySetInnerHTML={{ __html: `
 [data-orbit-real-page="home"] .orbit-hub-profile { display:flex; flex-direction:column; gap:18px; padding:22px 22px 24px; }
 [data-orbit-real-page="home"] .orbit-hub-profile-title { display:flex; align-items:center; gap:8px; }
-[data-orbit-real-page="home"] .orbit-hub-profile-title svg { color:var(--accent); }
-[data-orbit-real-page="home"] .orbit-hub-bio { margin:0; font-size:14.5px; line-height:1.72; color:var(--text-2); padding-left:13px; border-left:2px solid var(--border-2); }
+[data-orbit-real-page="home"] .orbit-hub-profile-title svg { color:var(--accent-text); }
+[data-orbit-real-page="home"] .orbit-hub-bio { margin:0; font-size:14.5px; line-height:1.72; color:var(--ink-2); padding-left:13px; border-left:2px solid var(--line); }
 /* facts as bordered stat cards */
 [data-orbit-real-page="home"] .orbit-hub-facts { display:flex; flex-wrap:wrap; gap:10px; }
-[data-orbit-real-page="home"] .orbit-hub-fact { display:flex; align-items:center; gap:10px; flex:1 1 150px; min-width:150px; padding:11px 14px; border:1px solid var(--border); border-radius:var(--r-md); background:var(--surface-2); }
-[data-orbit-real-page="home"] .orbit-hub-fact-icon { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:9px; background:var(--accent-soft); color:var(--accent); flex-shrink:0; }
+[data-orbit-real-page="home"] .orbit-hub-fact { display:flex; align-items:center; gap:10px; flex:1 1 150px; min-width:150px; padding:11px 14px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface-2); }
+[data-orbit-real-page="home"] .orbit-hub-fact-icon { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:9px; background:var(--accent-soft); color:var(--accent-text); flex-shrink:0; }
 [data-orbit-real-page="home"] .orbit-hub-fact-body { display:flex; flex-direction:column; gap:2px; min-width:0; }
-[data-orbit-real-page="home"] .orbit-hub-fact-k { font-size:11.5px; font-weight:600; letter-spacing:.01em; color:var(--text-3); }
+[data-orbit-real-page="home"] .orbit-hub-fact-k { font-size:11.5px; font-weight:600; letter-spacing:.01em; color:var(--ink-3-text); }
 [data-orbit-real-page="home"] .orbit-hub-fact-v { font-size:14px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* goal callout */
-[data-orbit-real-page="home"] .orbit-hub-goal { display:flex; align-items:flex-start; gap:11px; padding:13px 15px; border-radius:var(--r-md); background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
-[data-orbit-real-page="home"] .orbit-hub-goal-icon { display:inline-flex; color:var(--accent); margin-top:1px; flex-shrink:0; }
+[data-orbit-real-page="home"] .orbit-hub-goal { display:flex; align-items:flex-start; gap:11px; padding:13px 15px; border-radius:var(--r-md); background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent-text) 22%, transparent); }
+[data-orbit-real-page="home"] .orbit-hub-goal-icon { display:inline-flex; color:var(--accent-text); margin-top:1px; flex-shrink:0; }
 [data-orbit-real-page="home"] .orbit-hub-goal-main { display:flex; flex-direction:column; gap:3px; }
-[data-orbit-real-page="home"] .orbit-hub-goal-body { margin:0; font-size:13.5px; line-height:1.55; color:var(--text); }
+[data-orbit-real-page="home"] .orbit-hub-goal-body { margin:0; font-size:13.5px; line-height:1.55; color:var(--ink); }
 /* chip groups in a responsive 2-col grid */
 [data-orbit-real-page="home"] .orbit-hub-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
-[data-orbit-real-page="home"] .orbit-hub-group { display:flex; flex-direction:column; gap:9px; padding:13px 14px; border:1px solid var(--border); border-radius:var(--r-md); background:var(--surface-2); }
+[data-orbit-real-page="home"] .orbit-hub-group { display:flex; flex-direction:column; gap:9px; padding:13px 14px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface-2); }
 [data-orbit-real-page="home"] .orbit-hub-group-head { display:flex; align-items:center; gap:6px; }
-[data-orbit-real-page="home"] .orbit-hub-group-head svg { color:var(--accent); }
-[data-orbit-real-page="home"] .orbit-hub-group-k { font-size:12px; font-weight:600; color:var(--text-3); }
+[data-orbit-real-page="home"] .orbit-hub-group-head svg { color:var(--accent-text); }
+[data-orbit-real-page="home"] .orbit-hub-group-k { font-size:12px; font-weight:600; color:var(--ink-3-text); }
 [data-orbit-real-page="home"] .orbit-hub-chip-row { display:flex; flex-wrap:wrap; gap:6px; }
 [data-orbit-real-page="home"] .orbit-home-event-row-title { white-space:nowrap; }
 @media (max-width:640px) {

@@ -80,7 +80,7 @@ export function ContactRelationshipInitializationPanel({ controller: c, language
     <h2 className="h-section">{text("我的关系设置", "My relationship settings")}</h2>
     <p>{text("交换仅确认已认识。以下设置只属于你，不代表对方的选择，也不会发送消息。", "An exchange confirms you know each other. These settings are yours only; they do not represent the other person's choice or send a message.")}</p>
     {c.view.state === "loading" ? <p role="status">{text("正在读取关系状态…", "Loading relationship state…")}</p> : null}
-    {c.error ? <p role="alert" style={{ color: "var(--danger, #b42318)", overflowWrap: "anywhere" }}>{c.error}</p> : null}
+    {c.error ? <p role="alert" style={{ color: "var(--coral-text, #b42318)", overflowWrap: "anywhere" }}>{c.error}</p> : null}
     {c.notice ? <p role="status">{c.notice === "replayed" ? text("已确认此前提交，未重复创建。", "Previous submission confirmed; nothing duplicated.") : text("已保存你的关系选择。", "Your relationship choice was saved.")}</p> : null}
     {c.view.state === "pending" ? <>
       <p><strong>{text("待设置关系", "Pending initialization")}</strong></p>

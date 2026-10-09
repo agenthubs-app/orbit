@@ -144,9 +144,9 @@ function OrbitNavAccountControl({
           role="menu"
           style={{
             background: "var(--surface)",
-            border: "1px solid var(--border)",
+            border: "1px solid var(--line)",
             borderRadius: 12,
-            boxShadow: "var(--sh-pop)",
+            boxShadow: "var(--shadow-float)",
             minWidth: 200,
             padding: 6,
             position: "absolute",
@@ -155,14 +155,14 @@ function OrbitNavAccountControl({
             zIndex: ORBIT_Z.dropdown,
           }}
         >
-          <div style={{ borderBottom: "1px solid var(--border)", margin: "0 4px 5px", padding: "8px 6px 10px" }}>
+          <div style={{ borderBottom: "1px solid var(--line)", margin: "0 4px 5px", padding: "8px 6px 10px" }}>
             <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sessionUser.name}</div>
-            <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sessionUser.email}</div>
+            <div style={{ color: "var(--ink-3-text)", fontSize: 12, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sessionUser.email}</div>
           </div>
           <a
             href={preserveHref("/app/profile")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--ink)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="users" size={15} />
             {t({ en: "Profile", zh: "个人资料" })}
@@ -170,7 +170,7 @@ function OrbitNavAccountControl({
           <a
             href={preserveHref("/app/events?scope=registered")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--ink)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="calendar" size={15} />
             {t({ en: "My events", zh: "我的活动" })}
@@ -178,7 +178,7 @@ function OrbitNavAccountControl({
           <a
             href={preserveHref("/app/events/center")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--ink)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="settings" size={15} />
             {t({ en: "Event operations", zh: "活动运营中心" })}
@@ -186,7 +186,7 @@ function OrbitNavAccountControl({
           <a
             href={preserveHref("/app/settings")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--ink)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="settings" size={15} />
             {t({ en: "Settings", zh: "设置" })}
@@ -198,7 +198,7 @@ function OrbitNavAccountControl({
             }}
             role="menuitem"
             type="button"
-            style={{ alignItems: "center", background: "transparent", border: 0, borderRadius: 8, color: "var(--danger, #C2410C)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textAlign: "left", width: "100%" }}
+            style={{ alignItems: "center", background: "transparent", border: 0, borderRadius: 8, color: "var(--coral-text, #C2410C)", cursor: "pointer", display: "flex", fontFamily: "var(--font)", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textAlign: "left", width: "100%" }}
           >
             <Icon name="x" size={15} />
             {t({ en: "Sign out", zh: "退出登录" })}
@@ -397,11 +397,6 @@ export function OrbitTopNav({
 
   return (
     <>
-      {/* Noto Serif SC（品牌字）与 Noto Sans SC 全局字体；与落地页同源，React 会去重。 */}
-      <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap"
-        rel="stylesheet"
-      />
       <header
         className={`orbit-top-nav orbit-nav-menu orbit-top-nav-0918${tone === "starfield" ? " is-starfield" : ""}`}
         data-orbit-nav-scrolled={scrolled ? "true" : "false"}

@@ -1850,11 +1850,11 @@ const LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE = new Map(
       "Delete changed to Confirm delete on the first click and removed both temporary memories only on the second click; final reload showed zero memories.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-appearance-settings.tsx:58",
+      "repos/orbits/app/(app)/app/settings/orbit-appearance-settings.tsx:64",
       "Light restored the original device theme and rendered its pressed state.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-appearance-settings.tsx:67",
+      "repos/orbits/app/(app)/app/settings/orbit-appearance-settings.tsx:73",
       "Dark changed the device theme and rendered its pressed state before Light restored the original.",
     ],
   ].map(([sourceRef, actualResult]) => [

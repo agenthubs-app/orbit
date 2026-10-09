@@ -76,7 +76,7 @@ export function BusinessCardPreview({
           <Logo color="rgba(255,255,255,0.55)" size={20} withText={false} />
         </div>
         <div>
-          <div style={{ color: "#fff", fontFamily: ORBIT_0918_FONTS.serif, fontSize: 22, fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
+          <div style={{ color: "#fff", fontFamily: ORBIT_0918_FONTS.font, fontSize: 22, fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
             {profile.fullName.trim() || t({ en: "Your name", zh: "你的名字" })}
           </div>
           {(profile.bio.trim() || profile.headline.trim()) ? (
