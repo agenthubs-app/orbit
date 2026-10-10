@@ -9,7 +9,7 @@ import { AI_QUOTA_MAX_CALLS, AI_QUOTA_PURPOSE_POOLS, type AiQuotaPurpose } from 
 import type { AiQuotaGate } from "../../../ai-quota/gate";
 import type { PlanAiChat } from "../../ai-generator";
 import { PLAN_V2_PROMPT_VERSION, repairMessage, systemPrompt, TASKS } from "./prompts";
-import { checkBackground, checkDraft, checkFix, checkGoalKind, checkLadder, checkMembers, checkQuestions, type Checked } from "./schemas";
+import { checkBackground, checkDraft, checkFix, checkGoalKind, checkLadder, checkMembers, checkNextGoals, checkQuestions, checkReviewFix, checkReviewMarks, type Checked } from "./schemas";
 import type { FirstDraftInput, PlanAiContext, PlanAiOutcome, PlanFlowAi } from "./types";
 
 export type PlanFlowAiLog = (entry: Record<string, unknown>) => void;
@@ -91,6 +91,9 @@ export function createDeepseekPlanFlowAi(deps: DeepseekPlanFlowAiDeps): PlanFlow
     ladder: (input, context) => run("ladder", "plan_intake", context, TASKS.ladder, input, (raw) => checkLadder(raw, input.goalText)),
     members: (input, context) => run("members", "plan_intake", context, TASKS.members, input, (raw) => checkMembers(raw, input)),
     questions: (input, context) => run("questions", "plan_intake", context, TASKS.questions, input, (raw) => checkQuestions(raw, input)),
+    reviewMarks: (input, context) => run("review_marks", "plan_review_mark", context, TASKS.reviewMarks, input, (raw) => checkReviewMarks(raw, input)),
+    reviewFix: (input, context) => run("review_fix", "plan_review", context, TASKS.reviewFix, input, (raw) => checkReviewFix(raw, { ...draftCheckInput(input), enforceTemplate: false }, input.current, input)),
+    nextGoals: (input, context) => run("next_goals", "plan_intake", context, TASKS.nextGoals, input, (raw) => checkNextGoals(raw, input)),
   };
 }
 

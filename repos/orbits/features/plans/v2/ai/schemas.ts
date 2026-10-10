@@ -14,6 +14,11 @@ import type {
   DraftOutput,
   FixOutput,
   LadderOutput,
+  NextGoalsInput,
+  NextGoalsOutput,
+  ReviewFixInput,
+  ReviewMarksInput,
+  ReviewMarksOutput,
   MembersInput,
   MembersOutput,
   QuestionsInput,
@@ -173,4 +178,40 @@ export function checkFix(raw: unknown, input: ContentCheckInput, current?: Draft
   const disallowed = current ? disallowedChangeIssues(current, revised.value) : [];
   if (disallowed.length > 0) return { issues: disallowed, ok: false };
   return { ok: true, value: { noChangeReason: parsed.value.noChangeReason ?? null, reasons: (parsed.value.reasons ?? []) as FixOutput["reasons"], revised: revised.value, unchanged: parsed.value.unchanged ?? [] } };
+}
+
+/** C8：行 key ∈ 前提；依据 ∈ 输入的记录。 */
+export function checkReviewMarks(raw: unknown, input: ReviewMarksInput): Checked<ReviewMarksOutput> {
+  const parsed = parse(z.object({ marks: z.array(z.object({ key: z.string(), evidenceIds: z.array(z.string()).max(5), suggested: text(300).nullable().catch(null), reason: text(300).nullable().catch(null) })).max(12) }), raw);
+  if (parsed.ok === false) return { issues: parsed.issues, ok: false };
+  const keys = new Set(input.premise.map((row) => row.key));
+  const ids = new Set(input.records.map((record) => record.id));
+  const issues = parsed.value.marks.flatMap((mark) => [
+    ...(keys.has(mark.key) ? [] : [`marks: unknown premise row ${mark.key}`]),
+    ...mark.evidenceIds.filter((id) => !ids.has(id)).map((id) => `marks: unknown record ${id}`),
+  ]);
+  if (issues.length > 0) return { issues, ok: false };
+  return { ok: true, value: { marks: parsed.value.marks.filter((mark) => mark.evidenceIds.length > 0) as ReviewMarksOutput["marks"] } };
+}
+
+/** C9：同 C7（只改允许的部分），另加：配点不低于已得、已跳过的类型配点不变。 */
+export function checkReviewFix(raw: unknown, input: ContentCheckInput, current: DraftOutput, review: Pick<ReviewFixInput, "earned" | "skippedSlots">): Checked<FixOutput> {
+  const checked = checkFix(raw, input, current);
+  if (checked.ok === false) return checked;
+  const before = new Map(current.personTypes.map((type) => [type.slot, type]));
+  const issues: string[] = [];
+  for (const type of checked.value.revised.personTypes) {
+    const earned = review.earned[type.slot] ?? 0;
+    if (type.allocation < earned) issues.push(`personType ${type.slot}: allocation below the points already earned (${earned})`);
+    if (review.skippedSlots.includes(type.slot) && before.get(type.slot)?.allocation !== type.allocation) issues.push(`personType ${type.slot}: a skipped type keeps its allocation`);
+  }
+  return issues.length > 0 ? { issues, ok: false } : checked;
+}
+
+/** C10：≤2 个候选，类型 ∈ 6 类，依据 ∈ 输入。 */
+export function checkNextGoals(raw: unknown, input: NextGoalsInput): Checked<NextGoalsOutput> {
+  const parsed = parse(z.object({ candidates: z.array(z.object({ goalText: text(200).pipe(z.string().min(1)), goalKind: z.enum(PLAN_GOAL_KINDS), evidenceIds: z.array(z.string()).max(5).catch([]) })).max(4) }), raw);
+  if (parsed.ok === false) return { issues: parsed.issues, ok: false };
+  const ids = new Set(input.records.map((record) => record.id));
+  return { ok: true, value: { candidates: parsed.value.candidates.slice(0, 2).map((candidate) => ({ ...candidate, evidenceIds: (candidate.evidenceIds ?? []).filter((id) => ids.has(id)) })) as NextGoalsOutput["candidates"] } };
 }

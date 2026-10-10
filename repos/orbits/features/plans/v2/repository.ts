@@ -5,6 +5,7 @@
  *   所有读写都带 `workspace_id + actor_id`，并且只看 `model_version = 2` 的计划（v1 的仓储反过来只看 v1）。
  * - 内存（mock / 测试）：每个人一条 promise 链串行；事务在副本上执行，成功才替换。
  */
+import type { PlanLegacyDetail } from "../../../shared/contract/plan-v2";
 import type { PlanContactLink } from "../contract";
 import { planActorLockKey, type PlanPoolLike, type PlanQueryClient } from "../repository";
 import type {
@@ -24,6 +25,7 @@ import type {
   PlanV2PersonTypeMeta,
   PlanV2Reader,
   PlanV2Repository,
+  PlanV2RevisionRow,
   PlanV2Row,
   PlanV2Scope,
   PlanV2Transaction,
@@ -264,6 +266,34 @@ function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Read
         [ws, actor],
       )).map(planFromRow);
     },
+    async legacyPlans() {
+      const plans = await rows(
+        `select id, goal_snapshot, status, starts_on::text as starts_on, archived_at, analysis->>'summary' as summary from plans
+         where workspace_id = $1 and actor_id = $2 and coalesce(model_version, 1) = 1 order by created_at desc limit 20`,
+        [ws, actor],
+      );
+      if (plans.length === 0) return [];
+      const items = await rows(
+        `select plan_id, kind, title, status, phase from plan_items where workspace_id = $1 and actor_id = $2 and plan_id = any($3::text[]) order by sort_key, id`,
+        [ws, actor, plans.map((row) => String(row.id))],
+      );
+      return plans.map((row) => {
+        const own = items.filter((item) => String(item.plan_id) === String(row.id)).map((item) => ({ kind: item.kind as "action" | "network_need" | "info" | "event", phase: item.phase == null ? null : String(item.phase), status: String(item.status), title: String(item.title) }));
+        const actions = own.filter((item) => item.kind === "action");
+        return {
+          actionsDone: actions.filter((item) => item.status === "done").length,
+          actionsTotal: actions.length,
+          analysisSummary: row.summary == null ? null : String(row.summary),
+          archivedAt: row.archived_at == null ? null : new Date(row.archived_at as string).toISOString(),
+          goal: String(row.goal_snapshot),
+          items: own,
+          needs: own.filter((item) => item.kind === "network_need").length,
+          planId: String(row.id),
+          startsOn: String(row.starts_on),
+          status: row.status === "active" ? "active" as const : "archived" as const,
+        };
+      });
+    },
     async activeV1PlanId() {
       const [row] = await rows(`select id from plans where workspace_id = $1 and actor_id = $2 and model_version = 1 and status = 'active'`, [ws, actor]);
       return row ? String(row.id) : null;
@@ -313,6 +343,10 @@ function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Read
     },
     async draft(draftId) {
       const [row] = await rows(`select ${DRAFT_COLUMNS} from plan_drafts where workspace_id = $1 and actor_id = $2 and id = $3`, [ws, actor, draftId]);
+      return row ? draftFromRow(row) : null;
+    },
+    async openReviewDraft(planId) {
+      const [row] = await rows(`select ${DRAFT_COLUMNS} from plan_drafts where workspace_id = $1 and actor_id = $2 and plan_id = $3 and kind = 'review' and status = 'open' order by created_at desc limit 1`, [ws, actor, planId]);
       return row ? draftFromRow(row) : null;
     },
     async intake(intakeId) {
@@ -414,6 +448,16 @@ function postgresTransaction(client: PlanQueryClient, scope: PlanV2Scope): PlanV
         `insert into plan_items (workspace_id, id, actor_id, plan_id, kind, title, status, linked_event_id, sort_key, created_at, updated_at)
          values ($1,$2,$3,$4,'event',$5,$6,$7,$8,$9,$10)`,
         [ws, item.id, actor, item.planId, item.title, item.status, item.eventId, item.sortKey, item.createdAt, item.updatedAt],
+      );
+    },
+    async deleteTypeItem(itemId) {
+      await client.query(`delete from plan_items where workspace_id = $1 and actor_id = $2 and id = $3 and kind = 'network_need'`, [ws, actor, itemId]);
+    },
+    async insertRevision(revision) {
+      await client.query(
+        `insert into plan_revisions (workspace_id, id, actor_id, plan_id, from_revision, to_revision, source, draft_id, before, after, changes, created_at)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11::jsonb,$12)`,
+        [ws, revision.id, actor, revision.planId, revision.fromRevision, revision.toRevision, revision.source, revision.draftId, JSON.stringify(revision.before), JSON.stringify(revision.after), JSON.stringify(revision.changes), revision.createdAt],
       );
     },
     async decideMatchCandidate(candidateId, status, at) {
@@ -570,8 +614,11 @@ export interface MemoryPlanV2State {
   /** R24：匹配候补与联系人投影（mock / 测试）。 */
   candidates: PlanV2MatchCandidate[];
   contacts: PlanV2ContactView[];
+  revisions: PlanV2RevisionRow[];
   /** 生效中的 v1 计划 id（测试用；内存实现不保存 v1 的行）。 */
   activeV1PlanId: string | null;
+  /** R25：v1 计划只读摘要（测试种子）。 */
+  legacy: PlanLegacyDetail[];
   /** 本人用过的最大版本号（含 v1）。 */
   maxVersion: number;
 }
@@ -582,7 +629,7 @@ export interface MemoryPlanV2Repository extends PlanV2Repository {
 }
 
 function emptyState(): MemoryPlanV2State {
-  return { activeV1PlanId: null, candidates: [], contacts: [], drafts: [], eventItems: [], intakes: [], log: [], maxVersion: 0, plans: [], receipts: [], typeItems: [] };
+  return { activeV1PlanId: null, legacy: [], candidates: [], contacts: [], revisions: [], drafts: [], eventItems: [], intakes: [], log: [], maxVersion: 0, plans: [], receipts: [], typeItems: [] };
 }
 
 function memoryReader(state: MemoryPlanV2State): PlanV2Reader {
@@ -591,6 +638,7 @@ function memoryReader(state: MemoryPlanV2State): PlanV2Reader {
   return {
     async activePlans() { return structuredClone(sortPlans(state.plans.filter((plan) => plan.status === "active"))); },
     async activeV1PlanId() { return state.activeV1PlanId; },
+    async legacyPlans() { return structuredClone(state.legacy); },
     async eventItems(planId) { return structuredClone(state.eventItems.filter((item) => item.planId === planId).sort((a, b) => a.sortKey - b.sortKey)); },
     async flowReceipt(key) { return structuredClone(state.receipts.find((receipt) => receipt.idempotencyKey === key) ?? null); },
     async contactViews(ids) { return structuredClone(state.contacts.filter((contact) => ids.includes(contact.id))); },
@@ -599,6 +647,10 @@ function memoryReader(state: MemoryPlanV2State): PlanV2Reader {
     async countFlowReceipts(kind, sinceIso) { return state.receipts.filter((receipt) => receipt.kind === kind && receipt.createdAt >= sinceIso).length; },
     async countIntakesSince(sinceIso) { return state.intakes.filter((intake) => intake.createdAt >= sinceIso).length; },
     async draft(draftId) { return structuredClone(state.drafts.find((draft) => draft.id === draftId) ?? null); },
+    async openReviewDraft(planId) {
+      const open = state.drafts.filter((draft) => draft.planId === planId && draft.kind === "review" && draft.status === "open");
+      return structuredClone(open[open.length - 1] ?? null);
+    },
     async intake(intakeId) { return structuredClone(state.intakes.find((intake) => intake.id === intakeId) ?? null); },
     async openIntakes() {
       return structuredClone(state.intakes.filter((intake) => intake.status !== "planned" && intake.status !== "abandoned")
@@ -630,6 +682,11 @@ function memoryTransaction(state: MemoryPlanV2State): PlanV2Transaction {
       return id;
     },
     async insertEventItem(item) { state.eventItems.push(structuredClone(item)); },
+    async deleteTypeItem(itemId) { state.typeItems = state.typeItems.filter((item) => item.id !== itemId); },
+    async insertRevision(revision) {
+      unique(state.revisions.some((item) => item.planId === revision.planId && item.toRevision === revision.toRevision), "revision");
+      state.revisions.push(structuredClone(revision));
+    },
     async decideMatchCandidate(candidateId, status) {
       const candidate = state.candidates.find((item) => item.id === candidateId);
       if (!candidate) return null;
@@ -651,6 +708,8 @@ function memoryTransaction(state: MemoryPlanV2State): PlanV2Transaction {
       state.receipts.push(structuredClone(receipt));
     },
     async insertLog(entry) {
+      // 与 plan_log 的 check 一致（R25：内存仓储也拦空 body，避免只在 Postgres 上才暴露）。
+      if (entry.body.length < 1 || entry.body.length > 2000) throw new Error("plan_log_body_check");
       unique(state.log.some((item) => item.idempotencyKey === entry.idempotencyKey), "log key");
       state.log.push(structuredClone(entry));
     },

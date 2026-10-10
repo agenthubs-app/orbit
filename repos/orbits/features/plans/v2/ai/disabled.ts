@@ -7,5 +7,5 @@ import type { PlanAiOutcome, PlanFlowAi } from "./types";
 const disabled = async <T>(): Promise<PlanAiOutcome<T>> => ({ ok: false, reason: "disabled" });
 
 export function createDisabledPlanFlowAi(): PlanFlowAi {
-  return { background: disabled, firstDraft: disabled, fix: disabled, goalKind: disabled, id: "mock", ladder: disabled, members: disabled, questions: disabled };
+  return { background: disabled, firstDraft: disabled, fix: disabled, goalKind: disabled, id: "mock", ladder: disabled, members: disabled, nextGoals: disabled, questions: disabled, reviewFix: disabled, reviewMarks: disabled };
 }

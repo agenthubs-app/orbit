@@ -20,6 +20,9 @@ import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-cop
 import { candidatesFor, pendingItems, recentAwards, stepProgress, stepSuggestions, todayChance, typeDetail as buildTypeDetail, typeStats, type OverviewInput, type PlanEventFact } from "./overview";
 import { introDraftText, proposalDraftText } from "./drafts";
 import type {
+  PlanAchievementView,
+  PlanLegacyDetail,
+  PlanLegacyListResponse,
   PlanAwardRequest,
   PlanAwardResult,
   PlanCommandResult,
@@ -160,6 +163,11 @@ export interface PlanV2Service {
   /* ---------- R24 ---------- */
   /** 概要（带 R24 的可选字段：今日のチャンス、三格、Step 进度、最近加分、待确认）。 */
   overview(planId: string, view?: PlanViewOptions): Promise<PlanV2Detail | null>;
+  /** R25：完成页（只有达成的计划）。 */
+  achievement(planId: string, language: PlanCopyLanguage): Promise<PlanAchievementView | null>;
+  /** R25：v1 计划只读。 */
+  legacyList(): Promise<PlanLegacyListResponse>;
+  legacyDetail(planId: string): Promise<PlanLegacyDetail | null>;
   typeDetail(planId: string, itemId: string, view?: PlanViewOptions): Promise<PlanPersonTypeDetail | null>;
   /** 人物类型详情里的 ✓ / ✕：只关联联系人，不生成「约 TA」行动。 */
   decideCandidate(input: { planId: string; itemId: string; contactId: string; decision: "accept" | "dismiss"; idempotencyKey: string }): Promise<PlanCandidateDecisionResult>;
@@ -879,6 +887,49 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       });
     },
 
+    async achievement(planId, language) {
+      const id = requiredId(planId, "planId");
+      return repository.read(scope, async (reader) => {
+        const plan = await reader.plan(id);
+        if (!plan || !plan.achievedAt) return null;
+        const types = await reader.typeItems(plan.id);
+        const log = await reader.log(plan.id);
+        const score = summarizePlanScore({ achievedAt: plan.achievedAt, awards: activeAwards(log).map(toScoreAward), now: now(), reversals: scoreReversals(log), slots: scoreSlots(plan, types) });
+        // いちばん効いたこと：聊出来的分最高的人物类型（规则，不调 AI）；依据是该类型最近的加分记录。
+        const best = score.segments.filter((segment) => !segment.skipped && segment.key !== PLAN_EVENT_SEGMENT_KEY && segment.earned + segment.overflow > 0)
+          .sort((left, right) => right.earned + right.overflow - (left.earned + left.overflow))[0];
+        const bestRecords = best ? activeAwards(log).filter((entry) => entry.award.typeKey === best.key).slice(-3) : [];
+        return {
+          achievedAt: plan.achievedAt,
+          bestMove: best
+            ? {
+                basis: bestRecords.map((entry) => ({ kind: "record" as const, label: entry.body || best.shortLabel, ref: entry.id })),
+                text: language === "en" ? `Talking with ${best.shortLabel} (${best.earned + best.overflow} pts)` : language === "zh" ? `和${best.shortLabel}聊（${best.earned + best.overflow} 分）` : `${best.shortLabel}との対話（${best.earned + best.overflow} 点）`,
+              }
+            : null,
+          events: activeAwards(log).filter((entry) => entry.award.basis === "event").length,
+          goal: plan.goalText,
+          goalKind: plan.goalKind,
+          planId: plan.id,
+          skippedAreas: score.segments.filter((segment) => segment.skipped).map((segment) => segment.shortLabel),
+          talkedPeople: talkedPeople(log),
+          total: score.total,
+          ...(options.sample ? { sample: true as const } : {}),
+        } satisfies PlanAchievementView;
+      });
+    },
+
+    async legacyList() {
+      const plans = await repository.read(scope, (reader) => reader.legacyPlans());
+      return { plans: plans.map(({ analysisSummary: _summary, items: _items, ...item }) => item) };
+    },
+
+    async legacyDetail(planId) {
+      const id = requiredId(planId, "planId");
+      const plans = await repository.read(scope, (reader) => reader.legacyPlans());
+      return plans.find((plan) => plan.planId === id) ?? null;
+    },
+
     async overview(planId, view = {}) {
       const id = requiredId(planId, "planId");
       const events = await loadEvents();
@@ -1019,7 +1070,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
         return repository.transact(scope, async (tx) => {
           const plan = await requireActivePlan(tx, planId!);
           const result = await command<Record<string, unknown>>(tx, { body: { pendingId }, key: idempotencyKey, kind: "pending_dismiss", planId: plan.id }, async () => {
-            await tx.insertLog(logEntry({ body: "", event: "pending_dismissed", idempotencyKey: `pending:${pendingId}:${(await tx.log(plan.id)).length}`, itemId: null, linkedContactIds: [], linkedEventId: null, payload: { kind: "step_suggestion", pendingId, stepKey }, planId: plan.id }));
+            await tx.insertLog(logEntry({ body: `step suggestion dismissed: ${stepKey}`, event: "pending_dismissed", idempotencyKey: `pending:${pendingId}:${(await tx.log(plan.id)).length}`, itemId: null, linkedContactIds: [], linkedEventId: null, payload: { kind: "step_suggestion", pendingId, stepKey }, planId: plan.id }));
             return { outcome: "applied" as const, response: { id: pendingId, status: "dismissed" } };
           });
           return result as unknown as PlanPendingDecisionResult;
@@ -1044,7 +1095,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       }
       return repository.transact(scope, async (tx) => {
         const result = await command<Record<string, unknown>>(tx, { body: { decision, pendingId }, key: idempotencyKey, kind: "pending_decision", planId: located.plan.id }, async () => {
-          await tx.insertLog(logEntry({ body: "", event: decision === "accept" ? "pending_accepted" : "pending_dismissed", idempotencyKey: `pending:${pendingId}`, itemId, linkedContactIds: [], linkedEventId: null, payload: { kind: "memo_coverage", pendingId }, planId: located.plan.id }));
+          await tx.insertLog(logEntry({ body: `memo coverage ${decision}`, event: decision === "accept" ? "pending_accepted" : "pending_dismissed", idempotencyKey: `pending:${pendingId}`, itemId, linkedContactIds: [], linkedEventId: null, payload: { kind: "memo_coverage", pendingId }, planId: located.plan.id }));
           return { outcome: "applied" as const, response: { award, id: pendingId, status: decision === "accept" ? "accepted" : "dismissed" } };
         });
         return result as unknown as PlanPendingDecisionResult;
@@ -1087,7 +1138,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
             if (!manual && answered.length < PLAN_MEMO_COVERAGE_MIN) continue;
             const key = `memo-coverage:${memoId}:${type.id}`;
             if (log.some((entry) => entry.idempotencyKey === key)) continue;
-            await tx.insertLog(logEntry({ author: "system", body: "", event: "memo_coverage_proposed", idempotencyKey: key, itemId: type.id, linkedContactIds: [], linkedEventId: null, payload: { answered, contactId: id, manual: manual === true, memoId }, planId: plan.id }));
+            await tx.insertLog(logEntry({ author: "system", body: `memo coverage proposed: ${answered.length}`, event: "memo_coverage_proposed", idempotencyKey: key, itemId: type.id, linkedContactIds: [], linkedEventId: null, payload: { answered, contactId: id, manual: manual === true, memoId }, planId: plan.id }));
             proposed += 1;
           }
         }

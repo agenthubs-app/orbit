@@ -4,7 +4,7 @@
  * 界面语言取 `x-orbit-lang` 或 `?lang`，深链平台取 `x-orbit-platform` 或 `?platform`（`app` / 默认 `web`）。
  */
 import { NextResponse } from "next/server";
-import type { ZodType } from "zod";
+import { z, type ZodType } from "zod";
 
 import {
   planConfirmResultSchema,
@@ -22,6 +22,15 @@ import {
   planIntakeMembersRequestSchema,
   planIntakePremiseRequestSchema,
   planIntakeViewSchema,
+  planAchieveRequestSchema,
+  planGoalEditRequestSchema,
+  planGoalEditResultSchema,
+  planNextGoalsResponseSchema,
+  planQuotaResponseSchema,
+  planReviewFixRequestSchema,
+  planReviewStartRequestSchema,
+  planReviewToggleRequestSchema,
+  planReviewViewSchema,
 } from "../../../shared/api-schema/plan-v2";
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
 import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
@@ -91,8 +100,10 @@ async function body<T>(request: Request, schema: ZodType<T>): Promise<T> {
 }
 
 const notFound = (what: string) => {
-  throw new PlanFlowError(what === "draft" ? "DRAFT_NOT_FOUND" : "INTAKE_NOT_FOUND", "Not found.");
+  throw new PlanFlowError(what === "draft" ? "DRAFT_NOT_FOUND" : what === "plan" ? "PLAN_NOT_FOUND" : "INTAKE_NOT_FOUND", "Not found.");
 };
+
+const planAchievedSchema = z.object({ planId: z.string().min(1), achievedAt: z.string().min(1) });
 
 export function createPlanFlowHandlers(dependencies: PlanFlowRouteDependencies = {}) {
   return {
@@ -133,6 +144,28 @@ export function createPlanFlowHandlers(dependencies: PlanFlowRouteDependencies =
       const result = await service.confirm(params.draftId ?? "", (await body(request, planFlowStepRequestSchema)).idempotencyKey, context);
       return { data: result, status: result.replayed ? 200 : 201 };
     }, dependencies),
+
+    /* ---------- R25 見直し、配额、达成、改目标 ---------- */
+    /** POST /api/agent/plans/v2/[planId]/reviews：开始見直し（不扣次数；C8 预标当天缓存）。 */
+    startReview: flowRoute(planReviewViewSchema, async (service, request, params, context) => ({ data: await service.startReview(params.planId ?? "", (await body(request, planReviewStartRequestSchema)).idempotencyKey, context), status: 201 }), dependencies),
+    /** GET /api/agent/plans/v2/[planId]/reviews/current：进行中的見直し。 */
+    currentReview: flowRoute(planReviewViewSchema, async (service, _request, params, context) => ({ data: (await service.currentReview(params.planId ?? "", context)) ?? notFound("draft") }), dependencies),
+    /** GET /api/agent/plans/drafts/[draftId]/review。 */
+    getReview: flowRoute(planReviewViewSchema, async (service, _request, params, context) => ({ data: (await service.getReview(params.draftId ?? "", context)) ?? notFound("draft") }), dependencies),
+    /** POST /api/agent/plans/drafts/[draftId]/review/fix：发出修正（C9，扣月配额；失败不扣）。 */
+    reviewFix: flowRoute(planReviewViewSchema, async (service, request, params, context) => ({ data: await service.reviewFix(params.draftId ?? "", await body(request, planReviewFixRequestSchema), context) }), dependencies),
+    /** POST /api/agent/plans/drafts/[draftId]/changes/[changeId]/toggle：逐条采用 / 不采用。 */
+    toggleChange: flowRoute(planReviewViewSchema, async (service, request, params, context) => ({ data: await service.toggleChange(params.draftId ?? "", params.changeId ?? "", await body(request, planReviewToggleRequestSchema), context) }), dependencies),
+    /** GET /api/agent/plans/v2/quota。 */
+    quota: flowRoute(planQuotaResponseSchema, async (service) => ({ data: await service.quota() }), dependencies),
+    /** POST /api/agent/plans/v2/[planId]/manual-edit：确定后的手动编辑（开 review 草稿，不调 AI）。 */
+    openManualEdit: flowRoute(planDraftViewSchema, async (service, request, params, context) => ({ data: await service.openManualEdit(params.planId ?? "", (await body(request, planFlowStepRequestSchema)).idempotencyKey, context), status: 201 }), dependencies),
+    /** POST /api/agent/plans/v2/[planId]/achieve。 */
+    achieve: flowRoute(planAchievedSchema, async (service, request, params) => ({ data: await service.achieve(params.planId ?? "", await body(request, planAchieveRequestSchema)) }), dependencies),
+    /** GET /api/agent/plans/v2/[planId]/next-goals（C10，每计划一次）。 */
+    nextGoals: flowRoute(planNextGoalsResponseSchema, async (service, _request, params, context) => ({ data: await service.nextGoals(params.planId ?? "", context) }), dependencies),
+    /** PATCH /api/agent/plans/v2/[planId]/goal。 */
+    editGoal: flowRoute(planGoalEditResultSchema, async (service, request, params, context) => ({ data: await service.editGoal(params.planId ?? "", await body(request, planGoalEditRequestSchema), context) }), dependencies),
   };
 }
 

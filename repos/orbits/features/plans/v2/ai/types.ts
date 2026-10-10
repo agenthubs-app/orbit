@@ -178,6 +178,36 @@ export interface FixOutput {
   noChangeReason: string | null;
 }
 
+/** R25（C8）：見直し打开时预标可能变了的前提行。记录只用 id + 一行摘要（联系人只用别名）。 */
+export interface ReviewMarksInput {
+  goalKind: PlanGoalKind;
+  premise: readonly PlanPremiseRow[];
+  records: ReadonlyArray<{ id: string; kind: "talked" | "event" | "step" | "memo"; text: string; at: string }>;
+}
+
+export interface ReviewMarksOutput {
+  marks: Array<{ key: string; evidenceIds: string[]; suggested: string | null; reason: string | null }>;
+}
+
+/** R25（C9）：見直し修正案。规则同 C7，另加：配点不低于已得、已跳过类型不改配点。 */
+export interface ReviewFixInput extends FixInput {
+  /** 每个枠已得的 base 分（只读）。 */
+  earned: Readonly<Record<string, number>>;
+  skippedSlots: readonly string[];
+}
+
+/** R25（C10）：達成后的下一目标候选（≤2）。 */
+export interface NextGoalsInput {
+  goalText: string;
+  goalKind: PlanGoalKind;
+  summary: string;
+  records: ReadonlyArray<{ id: string; text: string }>;
+}
+
+export interface NextGoalsOutput {
+  candidates: Array<{ goalText: string; goalKind: PlanGoalKind; evidenceIds: string[] }>;
+}
+
 export interface PlanFlowAi {
   readonly id: "mock" | "deepseek";
   goalKind(input: GoalKindInput, context: PlanAiContext): Promise<PlanAiOutcome<{ goalKind: PlanGoalKind }>>;
@@ -187,4 +217,7 @@ export interface PlanFlowAi {
   questions(input: QuestionsInput, context: PlanAiContext): Promise<PlanAiOutcome<QuestionsOutput>>;
   firstDraft(input: FirstDraftInput, context: PlanAiContext): Promise<PlanAiOutcome<DraftOutput>>;
   fix(input: FixInput, context: PlanAiContext): Promise<PlanAiOutcome<FixOutput>>;
+  reviewMarks(input: ReviewMarksInput, context: PlanAiContext): Promise<PlanAiOutcome<ReviewMarksOutput>>;
+  reviewFix(input: ReviewFixInput, context: PlanAiContext): Promise<PlanAiOutcome<FixOutput>>;
+  nextGoals(input: NextGoalsInput, context: PlanAiContext): Promise<PlanAiOutcome<NextGoalsOutput>>;
 }

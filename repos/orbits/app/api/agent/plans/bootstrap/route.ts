@@ -1,8 +1,6 @@
-import { createPlanBootstrapRouteHandlers } from "./route-handlers";
+import { planV1RetiredPost } from "../../../../../features/plans/v2/v1-retired";
 
 export const dynamic = "force-dynamic";
-// W0048b（W48-8）：AI 生成在请求内同步完成（快照 + 骨架 + 前 2 个阶段，每次 HTTP ≤ 90 s）。
-export const maxDuration = 300;
 
-// POST /api/agent/plans/bootstrap：固定问题 → 生成并保存第一份计划（ORBIT_PLAN_GENERATOR：mock 或 ai）。
-export const POST = createPlanBootstrapRouteHandlers().POST;
+// POST /api/agent/plans/bootstrap：R25 起 v1 计划不再生成——一律 409 PLAN_V1_RETIRED，带 v2 目標入力的地址。
+export const POST = planV1RetiredPost;

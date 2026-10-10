@@ -7,6 +7,7 @@
  * - 分数 = `plan_log` 的 `score_awarded` 减去被 `score_reversed` 对冲的记录（记账式，DESIGN §4.2）。
  */
 import type {
+  PlanLegacyDetail,
   PlanAiLimitKind,
   PlanAiStepState,
   PlanBackgroundMe,
@@ -201,6 +202,8 @@ export interface PlanV2Reader {
   /** 某时刻之后新建的生成流程数（每月新目标 10 个）。 */
   countIntakesSince(sinceIso: string): Promise<number>;
   draft(draftId: string): Promise<PlanDraftRow | null>;
+  /** R25：这份计划进行中的見直し / 手动编辑草稿（最多一份）。 */
+  openReviewDraft(planId: string): Promise<PlanDraftRow | null>;
   /** R24：这些人物类型的匹配候补（待确认与已决定）。 */
   matchCandidates(itemIds: readonly string[]): Promise<PlanV2MatchCandidate[]>;
   /** R24：本人的联系人（名字、公司、职位、最后互动；他人的、已删除的不返回）。 */
@@ -210,6 +213,8 @@ export interface PlanV2Reader {
   maxVersion(): Promise<number>;
   /** 本人生效中的 v1 计划 id（没有为 null）。 */
   activeV1PlanId(): Promise<string | null>;
+  /** R25：本人的 v1 计划只读摘要（新的在前，含条目）。 */
+  legacyPlans(): Promise<PlanLegacyDetail[]>;
 }
 
 export interface PlanV2Transaction extends PlanV2Reader {
@@ -227,6 +232,10 @@ export interface PlanV2Transaction extends PlanV2Reader {
   updateIntake(intake: PlanIntakeRow): Promise<void>;
   insertDraft(draft: PlanDraftRow): Promise<void>;
   updateDraft(draft: PlanDraftRow): Promise<void>;
+  /** R25：見直し / 手动编辑确定时移除没有得分的人物类型。 */
+  deleteTypeItem(itemId: string): Promise<void>;
+  /** R25：方案内容改变的一版（plan_revisions）。 */
+  insertRevision(revision: PlanV2RevisionRow): Promise<void>;
   /** R24：候补 CAS（只有 pending 能变）；返回变更后的候补，已决定的返回现状，不存在为 null。 */
   decideMatchCandidate(candidateId: string, status: "accepted" | "dismissed", at: string): Promise<PlanV2MatchCandidate | null>;
 }
@@ -348,4 +357,18 @@ export interface PlanV2ContactView {
   lastInteractionAt: string | null;
   /** 对方也是 Orbit 用户（联系人关联了账户）。 */
   isOrbitUser: boolean;
+}
+
+/** R25：`plan_revisions` 一行。 */
+export interface PlanV2RevisionRow {
+  id: string;
+  planId: string;
+  fromRevision: number;
+  toRevision: number;
+  source: "review" | "manual_edit" | "goal_edit" | "undo";
+  draftId: string | null;
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
+  changes: unknown[];
+  createdAt: string;
 }

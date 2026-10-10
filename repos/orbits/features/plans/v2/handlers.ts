@@ -33,6 +33,9 @@ import {
   planProposalResultSchema,
   planTalkedOfflineRequestSchema,
   planTalkedOfflineResultSchema,
+  planAchievementViewSchema,
+  planLegacyDetailSchema,
+  planLegacyListResponseSchema,
 } from "../../../shared/api-schema/plan-v2";
 import { requestContext } from "./flow-handlers";
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
@@ -183,6 +186,18 @@ export function createPlanV2Handlers(dependencies: PlanV2RouteDependencies = {})
     reopenStep: planV2Route(planCommandResultSchema, async (service, request, params) => {
       const input = await body(request, planStepRequestSchema);
       return { data: await service.setStepCompleted({ completed: false, idempotencyKey: input.idempotencyKey, planId: params.planId ?? "", stepKey: params.stepKey ?? "" }) };
+    }, dependencies),
+    /** GET /api/agent/plans/v2/[planId]/achievement：完成页（R25）。 */
+    achievement: planV2Route(planAchievementViewSchema, async (service, request, params) => {
+      const view = await service.achievement(params.planId ?? "", requestContext(request).language);
+      return view ? { data: view } : notFound();
+    }, dependencies),
+    /** GET /api/agent/plans/legacy：v1 计划只读摘要（R25）。 */
+    legacyList: planV2Route(planLegacyListResponseSchema, async (service) => ({ data: await service.legacyList() }), dependencies),
+    /** GET /api/agent/plans/legacy/[planId]：以前のプラン（只读）。 */
+    legacyDetail: planV2Route(planLegacyDetailSchema, async (service, _request, params) => {
+      const detail = await service.legacyDetail(params.planId ?? "");
+      return detail ? { data: detail } : notFound();
     }, dependencies),
   };
 }

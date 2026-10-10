@@ -1,6 +1,6 @@
-import { createPlanRouteHandlers } from "./route-handlers";
+import { planV1RetiredPost } from "../../../../features/plans/v2/v1-retired";
 
 export const dynamic = "force-dynamic";
 
-// POST /api/agent/plans：保存新版本（旧版本归档，已完成内容按规则带入）。
-export const POST = createPlanRouteHandlers().POST_VERSION;
+// POST /api/agent/plans：R25 起 v1 计划不再生成——一律 409 PLAN_V1_RETIRED，带 v2 目標入力的地址。
+export const POST = planV1RetiredPost;

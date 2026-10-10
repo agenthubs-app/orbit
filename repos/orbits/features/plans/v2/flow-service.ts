@@ -51,6 +51,14 @@ import type {
   PlanReadingItem,
   PlanTeamMember,
   PlanV2Content,
+  PlanAchieveRequest,
+  PlanGoalEditRequest,
+  PlanGoalEditResult,
+  PlanNextGoalsResponse,
+  PlanQuotaResponse,
+  PlanReviewFixRequest,
+  PlanReviewToggleRequest,
+  PlanReviewView,
 } from "../../../shared/contract/plan-v2";
 import type { IndustryIdCode } from "../../../shared/contract/industries";
 import { AppError, type AppErrorCode } from "../../../shared/errors/app-error";
@@ -62,7 +70,8 @@ import type { PlanFlowContact, PlanFlowContextSource } from "./flow-context";
 import { emptyIntakeAiSteps, emptyStep } from "./repository";
 import { PLAN_V2_GOAL_LIMIT, type PlanDraftContent, type PlanDraftPersonType, type PlanDraftRow, type PlanFlowStepRecord, type PlanIntakeRow, type PlanV2Repository, type PlanV2Scope, type PlanV2Transaction } from "./types";
 import { allocationSlotsOf } from "./validate-content";
-import type { PlanV2Service } from "./service";
+import { activeAwards, PLAN_REVIEW_MONTHLY_LIMIT, type PlanV2Service } from "./service";
+import type { PlanV2Row, PlanV2TypeItem } from "./types";
 
 /** 每人每月新建目标的上限（DESIGN §10 第 4 项，用户已确认）。按新建的生成流程计（「もう一度」不重复计）。 */
 export const PLAN_NEW_GOAL_MONTHLY_LIMIT = 10;
@@ -95,6 +104,9 @@ export const PLAN_FLOW_ERROR_REASONS = [
   "AI_BUSY",
   "IDEMPOTENCY_KEY_REUSED",
   "INVALID_INPUT",
+  "PLAN_NOT_FOUND",
+  "PLAN_ACHIEVED",
+  "REVIEW_LIMIT",
 ] as const;
 export type PlanFlowErrorReason = (typeof PLAN_FLOW_ERROR_REASONS)[number];
 
@@ -112,6 +124,9 @@ const REASON_CODES: Record<PlanFlowErrorReason, AppErrorCode> = {
   IDEMPOTENCY_KEY_REUSED: "CONFLICT",
   INTAKE_NOT_FOUND: "NOT_FOUND",
   INVALID_INPUT: "VALIDATION_ERROR",
+  PLAN_ACHIEVED: "CONFLICT",
+  PLAN_NOT_FOUND: "NOT_FOUND",
+  REVIEW_LIMIT: "CONFLICT",
   LADDER_LIMIT: "CONFLICT",
   MANUAL_EDIT_USED: "CONFLICT",
   PLAN_GOAL_LIMIT: "CONFLICT",
@@ -154,6 +169,22 @@ export interface PlanFlowService {
   reset(draftId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanDraftView>;
   manualEdit(draftId: string, request: PlanDraftManualEditRequest, context: PlanFlowRequestContext): Promise<PlanConfirmResult>;
   confirm(draftId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanConfirmResult>;
+  /* ---------- R25 ---------- */
+  /** 開始見直し：打开（或续上）这份计划的见直草稿 + 前提预标（C8，每天最多一次；打开不扣次数）。 */
+  startReview(planId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanReviewView>;
+  getReview(draftId: string, context: PlanFlowRequestContext): Promise<PlanReviewView | null>;
+  /** R25：这份计划进行中的見直し（没有为 null，不新建）。 */
+  currentReview(planId: string, context: PlanFlowRequestContext): Promise<PlanReviewView | null>;
+  /** 发出修正（C9）：扣本月见直 1 次（失败不扣，不改也扣）。 */
+  reviewFix(draftId: string, request: PlanReviewFixRequest, context: PlanFlowRequestContext): Promise<PlanReviewView>;
+  /** 逐条 ✓ / ✕（只对最新一轮）；配点由回流保证合计 100。 */
+  toggleChange(draftId: string, changeId: string, request: PlanReviewToggleRequest, context: PlanFlowRequestContext): Promise<PlanReviewView>;
+  quota(): Promise<PlanQuotaResponse>;
+  /** 确定后的手动编辑：开一份只做手动编辑的见直草稿（不调 AI、不扣见直）。 */
+  openManualEdit(planId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanDraftView>;
+  achieve(planId: string, request: PlanAchieveRequest): Promise<{ planId: string; achievedAt: string }>;
+  nextGoals(planId: string, context: PlanFlowRequestContext): Promise<PlanNextGoalsResponse>;
+  editGoal(planId: string, request: PlanGoalEditRequest, context: PlanFlowRequestContext): Promise<PlanGoalEditResult>;
 }
 
 export interface PlanFlowServiceOptions {
@@ -677,6 +708,198 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       });
     }
     return { archivedV1PlanId: result.archivedV1PlanId, href: planTaskSegmentHref(context.platform, planId), planId, replayed: !result.created };
+  }
+
+  /* ---------- R25 見直し、達成、目标编辑 ---------- */
+
+  type StoredTurn = PlanDraftRow["turns"][number] & { base?: PlanDraftContent; revised?: PlanDraftContent };
+  const MANUAL_ONLY = -1; // 只做手动编辑的见直草稿（premiseVersion 记 -1）。
+
+  async function requirePlan(reader: Pick<PlanV2Transaction, "plan">, planId: string): Promise<PlanV2Row> {
+    const plan = await reader.plan(planId);
+    if (!plan || plan.status !== "active") {
+      if (plan?.achievedAt) throw new PlanFlowError("PLAN_ACHIEVED", "This goal is already achieved.");
+      throw new PlanFlowError("PLAN_NOT_FOUND", "Plan not found.");
+    }
+    return plan;
+  }
+
+  function planContentOf(plan: PlanV2Row, types: readonly PlanV2TypeItem[]): PlanDraftContent {
+    return {
+      allocationReasons: [...plan.analysis.allocationReasons],
+      basis: [...plan.analysis.basis],
+      citations: [...plan.analysis.citations],
+      conclusion: plan.analysis.conclusion,
+      diagnosis: plan.analysis.diagnosis,
+      event: { allocation: plan.eventAllocation, targetCount: plan.eventTargetCount },
+      flow: plan.analysis.flow ? [...plan.analysis.flow] : [],
+      personTypes: types.map((type) => ({
+        allocation: type.allocation,
+        countRule: type.personType.countRule,
+        emoji: type.personType.emoji,
+        introRoutes: [...type.personType.introRoutes],
+        itemId: type.personType.key,
+        key: type.personType.key,
+        opener: type.personType.opener,
+        persona: type.personType.persona,
+        primaryIndustryId: type.primaryIndustryId,
+        questions: [...type.personType.questions],
+        recognizeHints: [...type.personType.recognizeHints],
+        roleSituation: type.roleSituation,
+        secondaryIndustryId: type.secondaryIndustryId,
+        shortLabel: type.shortLabel,
+        shortLabelId: type.personType.shortLabelId,
+        slot: type.slot,
+        targetCount: type.targetCount,
+        why: type.personType.why,
+      })),
+      steps: plan.steps.map((step) => ({ ...step, personTypeKeys: [...step.personTypeKeys] })),
+    };
+  }
+
+  /** 每个类型已得的 base 分与已计入人数（只读；跳过记的满额也算已得）。 */
+  function earnedOf(log: Parameters<typeof activeAwards>[0]): { earned: Record<string, number>; met: Record<string, number> } {
+    const earned: Record<string, number> = {};
+    const met: Record<string, number> = {};
+    for (const entry of activeAwards(log)) {
+      if (entry.award.part !== "base") continue;
+      earned[entry.award.typeKey] = (earned[entry.award.typeKey] ?? 0) + entry.award.points;
+      if (entry.award.basis !== "skip") met[entry.award.typeKey] = (met[entry.award.typeKey] ?? 0) + 1;
+    }
+    return { earned, met };
+  }
+
+  async function reviewUsedThisMonth(reader: Pick<PlanV2Transaction, "goalPlans" | "log">): Promise<number> {
+    const month = tokyoUsageMonth(nowDate());
+    let used = 0;
+    for (const plan of await reader.goalPlans()) used += (await reader.log(plan.id)).filter((entry) => entry.event === "review_used" && entry.payload.month === month).length;
+    return used;
+  }
+
+  async function reviewView(reader: Pick<PlanV2Transaction, "plan" | "goalPlans" | "log" | "flowReceipt">, draft: PlanDraftRow, context: PlanFlowRequestContext): Promise<PlanReviewView> {
+    const plan = await reader.plan(draft.planId ?? "");
+    const used = await reviewUsedThisMonth(reader);
+    const marks = plan ? await reader.flowReceipt(`review-mark:${plan.id}:${tokyoUsageMonth(nowDate())}:${tokyoDayStart(nowDate()).slice(0, 10)}`) : null;
+    const log = plan ? await reader.log(plan.id) : [];
+    // 「確定以来」按计划创建的时刻比（startsOn 是东京日期，不能和 UTC 时间戳按字符串比）。
+    const since = (entry: { createdAt: string }) => !plan || Date.parse(entry.createdAt) >= Date.parse(plan.createdAt);
+    const awards = activeAwards(log).filter(since);
+    const base = draftView(draft, null, context);
+    return {
+      draft: { ...base, goal: plan?.goalText ?? "", goalKind: plan?.goalKind ?? "unknown", purposeText: plan?.purposeText ?? null, turns: base.turns.map(({ base: _base, revised: _revised, ...turn }: StoredTurn) => turn) },
+      premiseMarks: ((marks?.response as { marks?: PlanReviewView["premiseMarks"] } | undefined)?.marks ?? []),
+      resetsAt: nextTokyoMonthStart(nowDate()),
+      reviewLeftThisMonth: Math.max(0, PLAN_REVIEW_MONTHLY_LIMIT - used),
+      reviewMonthlyLimit: PLAN_REVIEW_MONTHLY_LIMIT,
+      sinceConfirmed: {
+        events: awards.filter((entry) => entry.award.basis === "event").length,
+        stepsCompleted: log.filter((entry) => entry.event === "step_completed").length,
+        talked: awards.filter((entry) => entry.award.basis === "talked" || entry.award.basis === "self_report" || entry.award.basis === "memo").length,
+      },
+    };
+  }
+
+  /** 按 ✓ / ✕ 从这一轮的基线重新组装方案；配点合计不是 100 时从配点高的类型按 5 点回流（不低于已得、跳过的不动）。 */
+  function applyAccepted(turn: StoredTurn, earned: Record<string, number>, skipped: ReadonlySet<string>): PlanDraftContent {
+    const base = structuredClone(turn.base!);
+    const revised = turn.revised!;
+    const accepted = (path: string) => turn.changes.some((change) => change.path === path && change.accepted !== false);
+    if (accepted("diagnosis")) base.diagnosis = revised.diagnosis;
+    if (accepted("conclusion")) base.conclusion = revised.conclusion;
+    if (accepted("citations")) base.citations = [...revised.citations];
+    if (accepted("event")) base.event = { ...revised.event };
+    const steps = Math.max(base.steps.length, revised.steps.length);
+    const nextSteps: Array<PlanDraftContent["steps"][number]> = [];
+    for (let index = 0; index < steps; index += 1) {
+      const before = base.steps[index];
+      const after = revised.steps[index];
+      const touched = turn.changes.filter((change) => change.path.startsWith(`steps.${index}.`));
+      const take = touched.length > 0 && touched.every((change) => change.accepted !== false);
+      if (take) {
+        if (after) nextSteps.push({ ...after });
+      } else if (before) nextSteps.push({ ...before });
+    }
+    base.steps = nextSteps;
+    base.personTypes = base.personTypes.map((type) => {
+      const after = revised.personTypes.find((item) => item.slot === type.slot);
+      if (!after) return type;
+      return {
+        ...type,
+        ...(accepted(`personTypes.${type.slot}`) ? { allocation: after.allocation, targetCount: after.targetCount } : {}),
+        ...(accepted(`personTypes.${type.slot}.roleSituation`) ? { roleSituation: after.roleSituation } : {}),
+        ...(accepted(`personTypes.${type.slot}.why`) ? { why: after.why } : {}),
+      };
+    });
+    let diff = 100 - base.personTypes.reduce((sum, type) => sum + type.allocation, 0) - base.event.allocation;
+    while (diff !== 0) {
+      const step = diff > 0 ? 5 : -5;
+      const candidates = base.personTypes.filter((type) => !skipped.has(type.slot) && (step > 0 || type.allocation - 5 >= Math.max(5, earned[type.key] ?? earned[type.slot] ?? 0))).sort((a, b) => b.allocation - a.allocation);
+      const target = candidates[0];
+      if (!target) break;
+      target.allocation += step;
+      diff -= step;
+    }
+    return base;
+  }
+
+  async function confirmReviewDraft(draftId: string, context: PlanFlowRequestContext): Promise<PlanConfirmResult> {
+    return repository.transact(scope, async (tx) => {
+      const draft = await requireDraft(tx, draftId);
+      if (draft.kind !== "review" || !draft.planId) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+      if (draft.status === "confirmed") return { archivedV1PlanId: null, href: planTaskSegmentHref(context.platform, draft.planId), planId: draft.planId, replayed: true };
+      if (draft.status !== "open") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+      const plan = await requirePlan(tx, draft.planId);
+      if (plan.revision !== draft.baseRevision) throw new PlanFlowError("STALE", "This plan was changed on another device.");
+      const types = await tx.typeItems(plan.id);
+      const { earned, met } = earnedOf(await tx.log(plan.id));
+      const content = draft.content;
+      const byKey = new Map(types.map((type) => [type.personType.key, type]));
+      const keys = new Set(content.personTypes.map((type) => type.key));
+      // 确定那一刻的已得分重新校验（DESIGN §3.2 第 9 条）。
+      for (const type of content.personTypes) {
+        const current = byKey.get(type.key);
+        if (type.allocation < (earned[type.key] ?? 0)) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel}: points cannot go below what was already earned.`);
+        if (type.targetCount < (met[type.key] ?? 0)) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel}: the target cannot go below the people already counted.`);
+        if (current?.skippedAt && current.allocation !== type.allocation) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel}: a skipped type keeps its points.`);
+        if (type.allocation < 5) throw new PlanFlowError("INVALID_INPUT", "Each person type needs at least 5 points.");
+      }
+      for (const type of types) {
+        if (!keys.has(type.personType.key) && ((earned[type.personType.key] ?? 0) > 0 || type.skippedAt)) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel} already has points and cannot be removed.`);
+      }
+      const allocation = validateAllocations(allocationSlotsOf(plan.goalKind, content));
+      if (allocation.ok === false) throw new PlanFlowError("INVALID_INPUT", `The allocation is not valid (${allocation.error}).`);
+      const at = now();
+      const before = planContentOf(plan, types);
+      const manualOnly = draft.premiseVersion === MANUAL_ONLY;
+      const next: PlanV2Row = {
+        ...plan,
+        analysis: { ...plan.analysis, allocationReasons: [...content.allocationReasons], basis: [...content.basis], citations: [...content.citations], conclusion: content.conclusion, diagnosis: content.diagnosis, ...(content.flow ? { flow: [...content.flow] } : {}) },
+        eventAllocation: content.event.allocation,
+        eventTargetCount: content.event.targetCount,
+        // 每次見直し确定后重新给 1 次手动编辑；这次用过手动编辑（或本来就是手动编辑）就是 0。
+        manualEditAvailable: manualOnly ? false : !draft.manualEditUsed,
+        premise: [...draft.premise],
+        revision: plan.revision + 1,
+        steps: content.steps.map((step) => ({ doneCriteria: step.doneCriteria, key: step.key, personTypeKeys: [...step.personTypeKeys], title: step.title, why: step.why })),
+        updatedAt: at,
+      };
+      await tx.updatePlan(next);
+      let sortKey = Math.max(0, ...types.map((type) => type.sortKey));
+      for (const type of content.personTypes) {
+        const current = byKey.get(type.key);
+        const meta = { countRule: type.countRule, emoji: type.emoji, introRoutes: [...type.introRoutes], key: type.key, opener: type.opener ?? null, persona: type.persona ?? null, questions: [...type.questions], recognizeHints: [...type.recognizeHints], shortLabelId: type.shortLabelId, why: type.why };
+        if (current) {
+          await tx.updateTypeItem({ ...current, allocation: type.allocation, personType: meta, roleSituation: type.roleSituation, shortLabel: type.shortLabel, targetCount: type.targetCount, updatedAt: at });
+        } else {
+          await tx.insertTypeItems([{ allocation: type.allocation, contactLinks: [], createdAt: at, id: `pitem_${newId()}`, personType: meta, planId: plan.id, primaryIndustryId: type.primaryIndustryId ?? null, roleSituation: type.roleSituation, secondaryIndustryId: type.secondaryIndustryId ?? null, shortLabel: type.shortLabel, skippedAt: null, slot: type.slot, sortKey: (sortKey += 1), targetCount: type.targetCount, updatedAt: at }]);
+        }
+      }
+      for (const type of types) if (!keys.has(type.personType.key)) await tx.deleteTypeItem(type.id);
+      const changes = diffContent(before, content, context.language);
+      await tx.insertRevision({ after: content as unknown as Record<string, unknown>, before: before as unknown as Record<string, unknown>, changes, createdAt: at, draftId: draft.id, fromRevision: plan.revision, id: `prev_${newId()}`, planId: plan.id, source: manualOnly ? "manual_edit" : "review", toRevision: plan.revision + 1 });
+      await tx.updateDraft({ ...draft, confirmedAt: at, status: "confirmed", updatedAt: at });
+      return { archivedV1PlanId: null, href: planTaskSegmentHref(context.platform, plan.id), planId: plan.id, replayed: false };
+    });
   }
 
   /* ---------- 对外 ---------- */
@@ -1224,12 +1447,15 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         const prior = await replayed<{ draftId: string }>(tx, request.idempotencyKey, "draft_manual_edit", body);
         const current = await requireDraft(tx, draftId);
         const intake = current.intakeId ? await requireIntake(tx, current.intakeId) : null;
-        if (!intake) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+        // R25：見直し草稿（含只手动编辑的）也走这里，目标类型取计划本身。
+        const reviewPlan = current.kind === "review" && current.planId ? await requirePlan(tx, current.planId) : null;
+        const goalKind = intake?.goalKind ?? reviewPlan?.goalKind;
+        if (!goalKind) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
         if (prior) return { draft: current, intake };
-        if (current.status !== "open" || current.kind !== "initial") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+        if (current.status !== "open") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
         if (current.manualEditUsed) throw new PlanFlowError("MANUAL_EDIT_USED", "The plan can be edited by hand only once.");
         if (current.updatedAt !== request.expectedRevision) throw new PlanFlowError("STALE", "This draft was changed on another device.");
-        const template = PLAN_GOAL_TEMPLATES[intake.goalKind];
+        const template = PLAN_GOAL_TEMPLATES[goalKind];
         const byKey = new Map(current.content.personTypes.map((type) => [type.key, type]));
         const personTypes: PlanDraftPersonType[] = request.personTypes.map((change) => {
           if (change.key) {
@@ -1238,7 +1464,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
             return { ...type, allocation: change.allocation, targetCount: change.targetCount };
           }
           const slot = template.slots.find((item) => item.slot === change.slot && item.slot !== PLAN_EVENT_SLOT);
-          if (!slot || byKey.has(slot.slot)) throw new PlanFlowError("INVALID_INPUT", "A new person type must be an unused template slot.");
+          if (!slot || current.content.personTypes.some((type) => type.slot === slot.slot)) throw new PlanFlowError("INVALID_INPUT", "A new person type must be an unused template slot.");
           const label = shortName(slot.slot, context.language);
           return {
             allocation: change.allocation,
@@ -1270,7 +1496,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
           return { doneCriteria: step.doneCriteria, key: step.key ?? `step-${(counter += 1)}`, personTypeKeys: typeKeys, title: step.title, why: previous?.why ?? null };
         });
         const content: PlanDraftContent = { ...current.content, event: { ...request.event }, personTypes, steps };
-        const slots: PlanAllocationSlot[] = allocationSlotsOf(intake.goalKind, content);
+        const slots: PlanAllocationSlot[] = allocationSlotsOf(goalKind, content);
         const allocation = validateAllocations(slots);
         if (allocation.ok === false) throw new PlanFlowError("INVALID_INPUT", `The allocation is not valid (${allocation.error}).`);
         // 复核 m1：人物类型至少 5 点；要去掉就移除这个类型。
@@ -1282,7 +1508,268 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         await writeReceipt(tx, { body, draftId, key: request.idempotencyKey, kind: "draft_manual_edit", response: { changes: changes.length, draftId } });
         return { draft: next, intake };
       });
+      if (saved.draft.kind === "review") return confirmReviewDraft(saved.draft.id, context);
+      if (!saved.intake) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
       return confirmDraft(saved.draft, saved.intake, true, context);
+    },
+
+    async startReview(planId, idempotencyKey, context) {
+      const today = tokyoDayStart(nowDate()).slice(0, 10);
+      const markKey = `review-mark:${planId}:${tokyoUsageMonth(nowDate())}:${today}`;
+      // 先建（或续上）草稿：打开不扣次数。
+      const draft = await repository.transact(scope, async (tx) => {
+        const plan = await requirePlan(tx, planId);
+        const prior = await tx.flowReceipt(idempotencyKey);
+        if (prior?.kind === "review_start" && typeof prior.response.draftId === "string") return requireDraft(tx, prior.response.draftId);
+        const open = (await tx.openReviewDraft(plan.id));
+        if (open && open.baseRevision === plan.revision && open.premiseVersion !== MANUAL_ONLY) {
+          await writeReceipt(tx, { body: { planId }, draftId: open.id, key: idempotencyKey, kind: "review_start", planId: plan.id, response: { draftId: open.id } });
+          return open;
+        }
+        const at = now();
+        if (open) await tx.updateDraft({ ...open, status: "discarded", updatedAt: at });
+        const content = planContentOf(plan, await tx.typeItems(plan.id));
+        const created: PlanDraftRow = { aiFixUsed: 0, baseRevision: plan.revision, confirmedAt: null, content, createdAt: at, fix: emptyStep(), id: `draft_${newId()}`, intakeId: null, kind: "review", manualEditUsed: false, originContent: content, planId: plan.id, premise: [...plan.premise], premiseVersion: 0, status: "open", turns: [], updatedAt: at };
+        await tx.insertDraft(created);
+        await writeReceipt(tx, { body: { planId }, draftId: created.id, key: idempotencyKey, kind: "review_start", planId: plan.id, response: { draftId: created.id } });
+        return created;
+      });
+      // C8：每份计划每东京日最多一次，结果当天缓存；失败也缓存为空（不扣见直）。
+      const cached = await repository.read(scope, (reader) => reader.flowReceipt(markKey));
+      if (!cached) {
+        const plan = await repository.read(scope, (reader) => requirePlan(reader, planId));
+        const log = await repository.read(scope, (reader) => reader.log(plan.id));
+        const records = log.filter((entry) => Date.parse(entry.createdAt) >= Date.parse(plan.createdAt) && (entry.event === "score_awarded" || entry.event === "step_completed")).slice(-30).map((entry) => ({
+          at: entry.createdAt,
+          id: entry.id,
+          kind: entry.event === "step_completed" ? ("step" as const) : (entry.payload as { basis?: string }).basis === "event" ? ("event" as const) : ("talked" as const),
+          text: entry.body.slice(0, 120),
+        }));
+        const outcome = records.length > 0 ? await ai.reviewMarks({ goalKind: plan.goalKind, premise: plan.premise, records }, { actorId: scope.actorId, language: context.language, ledgerKey: markKey, now: nowDate() }) : null;
+        if (!(outcome && outcome.ok === false && outcome.reason === "busy")) {
+          await repository.transact(scope, async (tx) => {
+            if (await tx.flowReceipt(markKey)) return;
+            await writeReceipt(tx, { body: { planId, today }, key: markKey, kind: "review_marks", planId, response: { marks: outcome?.ok === true ? outcome.value.marks : [] } });
+          }).catch(() => undefined);
+        }
+      }
+      return repository.read(scope, (reader) => reviewView(reader, draft, context));
+    },
+
+    async getReview(draftId, context) {
+      return repository.read(scope, async (reader) => {
+        const draft = await reader.draft(draftId);
+        if (!draft || draft.kind !== "review") return null;
+        return reviewView(reader, draft, context);
+      });
+    },
+
+    async currentReview(planId, context) {
+      return repository.read(scope, async (reader) => {
+        const draft = await reader.openReviewDraft(planId);
+        return draft ? reviewView(reader, draft, context) : null;
+      });
+    },
+
+    async reviewFix(draftId, request, context) {
+      const body = { premise: request.premise, text: request.text };
+      const early = await repository.read(scope, async (reader) => ({ draft: await requireDraft(reader, draftId), prior: await replayed<Record<string, unknown>>(reader, request.idempotencyKey, "review_fix", body) }));
+      throwIfFailedReceipt(early.prior);
+      if (early.prior) return repository.read(scope, (reader) => reviewView(reader, early.draft, context));
+      const draft = early.draft;
+      if (draft.kind !== "review" || draft.status !== "open" || !draft.planId || draft.premiseVersion === MANUAL_ONLY) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+      const plan = await repository.read(scope, (reader) => requirePlan(reader, draft.planId!));
+      const used = await repository.read(scope, (reader) => reviewUsedThisMonth(reader));
+      if (used >= PLAN_REVIEW_MONTHLY_LIMIT) throw new PlanFlowError("REVIEW_LIMIT", "All reviews for this month have been used.", { limit: "monthly", retryOn: nextTokyoMonthStart(nowDate()) });
+      const premise = draft.premise.map((row) => {
+        const edit = request.premise.find((item) => item.key === row.key);
+        return edit ? { ...row, guessed: false, value: edit.value } : row;
+      });
+      if (request.premise.some((edit) => !draft.premise.some((row) => row.key === edit.key))) throw new PlanFlowError("INVALID_INPUT", "Unknown premise row.");
+      const { earned } = earnedOf(await repository.read(scope, (reader) => reader.log(plan.id)));
+      const skippedSlots = (await repository.read(scope, (reader) => reader.typeItems(plan.id))).filter((type) => type.skippedAt).map((type) => type.slot);
+      const n = draft.turns.length + 1;
+      const attempt = draft.fix.state === "failed" ? draft.fix.attempts + 1 : 1;
+      const ledgerKey = attempt > 1 ? `review:${draftId}:${n}#${attempt}` : `review:${draftId}:${n}`;
+      const slots = slotInfos(plan.goalKind, [], context.language);
+      const landscape = publishedEntriesFor({ goalKind: plan.goalKind, industries: [], now: nowDate() }).map((entry) => ({ id: entry.id, summary: entry.summary[context.language], title: entry.title[context.language], version: entry.version }));
+      const contacts = aliasContacts((await source.draftContacts(scope.actorId, plan.goalText, nowDate())).slice(0, 200));
+      const aliasesById = new Map([...contacts.aliases.entries()].map(([alias, contact]) => [contact.id, alias]));
+      const premiseNote = request.premise.map((edit) => `${premise.find((row) => row.key === edit.key)?.label ?? edit.key}：${edit.value}`).join(" / ");
+      const outcome = await ai.reviewFix({
+        contacts: contacts.input,
+        current: toDraftOutput(draft.content, aliasesById),
+        earned: Object.fromEntries(Object.entries(earned).map(([key, points]) => [draft.content.personTypes.find((type) => type.key === key)?.slot ?? key, points])),
+        goalKind: plan.goalKind,
+        landscape,
+        premise,
+        previousTurns: draft.turns.map((turn) => turn.input),
+        request: [premiseNote, request.text ?? ""].filter(Boolean).join("\n"),
+        skippedSlots,
+        slots,
+      }, { actorId: scope.actorId, language: context.language, ledgerKey, now: nowDate() });
+      const result = await repository.transact(scope, async (tx) => {
+        const again = await replayed<Record<string, unknown>>(tx, request.idempotencyKey, "review_fix", body);
+        const current = await requireDraft(tx, draftId);
+        if (again) return { draft: current };
+        if (current.turns.length !== draft.turns.length || current.status !== "open") throw new PlanFlowError("STALE", "The draft changed while the revision was being written.");
+        const at = now();
+        if (outcome.ok === false) {
+          const failure = outcome as Extract<PlanAiOutcome<unknown>, { ok: false }>;
+          if (failure.reason !== "busy") {
+            // 失败不扣见直（DESIGN §2.8）。
+            await tx.updateDraft({ ...current, fix: { ...outcomeStep(current.fix, outcome, at, false), attempts: attempt }, updatedAt: at });
+            await writeReceipt(tx, { body, draftId, key: request.idempotencyKey, kind: "review_fix", response: failureResponse(failure) });
+          }
+          return { failure };
+        }
+        const usedNow = await reviewUsedThisMonth(tx);
+        if (usedNow >= PLAN_REVIEW_MONTHLY_LIMIT) throw new PlanFlowError("REVIEW_LIMIT", "All reviews for this month have been used.", { limit: "monthly", retryOn: nextTokyoMonthStart(nowDate()) });
+        const keys = current.content.steps.map((step) => step.key);
+        const revised = toDraftContent(outcome.value.revised, plan.goalKind, contacts.aliases, context.language, premise, keys);
+        // 保留原方案里人物类型的 key（确定时按 key 对应已有条目）。
+        revised.personTypes = revised.personTypes.map((type) => {
+          const original = current.content.personTypes.find((item) => item.slot === type.slot);
+          return original ? { ...type, itemId: original.key, key: original.key, primaryIndustryId: original.primaryIndustryId ?? type.primaryIndustryId, secondaryIndustryId: original.secondaryIndustryId ?? null } : type;
+        });
+        revised.steps = revised.steps.map((step) => ({ ...step, personTypeKeys: step.personTypeKeys.map((key) => current.content.personTypes.find((type) => type.slot === key)?.key ?? key) }));
+        const reasons = new Map(outcome.value.reasons.map((reason) => [reason.path, reason.reason]));
+        const changes = diffContent(current.content, revised, context.language, reasons).map((change, index) => ({ ...change, accepted: true, id: `t${n}-${index + 1}` }));
+        const turn: StoredTurn = {
+          at,
+          base: current.content,
+          changes,
+          input: [premiseNote, request.text ?? ""].filter(Boolean).join("\n"),
+          n,
+          noChangeReason: changes.length === 0 ? outcome.value.noChangeReason ?? tri(context.language, { en: "Nothing needed to change.", ja: "今回は変更しません。", zh: "这次不做修改。" }) : null,
+          revised,
+          unchanged: outcome.value.unchanged,
+        };
+        const month = tokyoUsageMonth(nowDate());
+        // 不改也计 1 次；月计数由唯一键兜底（并发两次发送只扣到上限）。
+        await tx.insertLog({ author: "system", body: `review ${month} #${usedNow + 1}`, createdAt: at, event: "review_used", id: `plog_${newId()}`, idempotencyKey: `review:${month}:${usedNow + 1}`, itemId: null, linkedContactIds: [], linkedEventId: null, payload: { draftId, month }, planId: plan.id });
+        const next: PlanDraftRow = { ...current, content: changes.length ? revised : current.content, fix: { ...outcomeStep(current.fix, outcome, at, false), attempts: 0 }, premise, turns: [...current.turns, turn], updatedAt: at };
+        await tx.updateDraft(next);
+        await writeReceipt(tx, { body, draftId, key: request.idempotencyKey, kind: "review_fix", response: { draftId } });
+        return { draft: next };
+      });
+      if ("failure" in result && result.failure) throw aiError(result.failure as Extract<PlanAiOutcome<unknown>, { ok: false }>);
+      return repository.read(scope, (reader) => reviewView(reader, (result as { draft: PlanDraftRow }).draft, context));
+    },
+
+    async toggleChange(draftId, changeId, request, context) {
+      const draft = await repository.transact(scope, async (tx) => {
+        const current = await requireDraft(tx, draftId);
+        if (current.kind !== "review" || current.status !== "open" || !current.planId) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+        const turns = [...current.turns] as StoredTurn[];
+        const last = turns[turns.length - 1];
+        if (!last || !last.base || !last.revised || !last.changes.some((change) => change.id === changeId)) throw new PlanFlowError("INVALID_INPUT", "Only the latest proposal can be toggled.");
+        const updatedTurn: StoredTurn = { ...last, changes: last.changes.map((change) => (change.id === changeId ? { ...change, accepted: request.accepted } : change)) };
+        const { earned } = earnedOf(await tx.log(current.planId));
+        const skipped = new Set((await tx.typeItems(current.planId)).filter((type) => type.skippedAt).map((type) => type.slot));
+        const content = applyAccepted(updatedTurn, earned, skipped);
+        const next: PlanDraftRow = { ...current, content, turns: [...turns.slice(0, -1), updatedTurn], updatedAt: now() };
+        await tx.updateDraft(next);
+        return next;
+      });
+      return repository.read(scope, (reader) => reviewView(reader, draft, context));
+    },
+
+    async quota() {
+      return repository.read(scope, async (reader) => {
+        const used = await reviewUsedThisMonth(reader);
+        const active = await reader.activePlans();
+        return { activeGoalLimit: PLAN_V2_GOAL_LIMIT, activeGoals: active.length, newGoalsLeftThisMonth: await newGoalsLeft(reader), resetsAt: nextTokyoMonthStart(nowDate()), reviewLeftThisMonth: Math.max(0, PLAN_REVIEW_MONTHLY_LIMIT - used), reviewMonthlyLimit: PLAN_REVIEW_MONTHLY_LIMIT };
+      });
+    },
+
+    async openManualEdit(planId, idempotencyKey, context) {
+      const draft = await repository.transact(scope, async (tx) => {
+        const plan = await requirePlan(tx, planId);
+        const prior = await tx.flowReceipt(idempotencyKey);
+        if (prior?.kind === "manual_edit_open" && typeof prior.response.draftId === "string") return requireDraft(tx, prior.response.draftId);
+        if (!plan.manualEditAvailable) throw new PlanFlowError("MANUAL_EDIT_USED", "The manual edit has been used.");
+        const open = await tx.openReviewDraft(plan.id);
+        const at = now();
+        if (open) await tx.updateDraft({ ...open, status: "discarded", updatedAt: at });
+        const content = planContentOf(plan, await tx.typeItems(plan.id));
+        const created: PlanDraftRow = { aiFixUsed: 0, baseRevision: plan.revision, confirmedAt: null, content, createdAt: at, fix: emptyStep(), id: `draft_${newId()}`, intakeId: null, kind: "review", manualEditUsed: false, originContent: content, planId: plan.id, premise: [...plan.premise], premiseVersion: MANUAL_ONLY, status: "open", turns: [], updatedAt: at };
+        await tx.insertDraft(created);
+        await writeReceipt(tx, { body: { planId }, draftId: created.id, key: idempotencyKey, kind: "manual_edit_open", planId: plan.id, response: { draftId: created.id } });
+        return created;
+      });
+      return (await repository.read(scope, (reader) => reviewView(reader, draft, context))).draft;
+    },
+
+    async achieve(planId, request) {
+      return repository.transact(scope, async (tx) => {
+        const prior = await tx.flowReceipt(request.idempotencyKey);
+        if (prior?.kind === "achieve") return prior.response as { planId: string; achievedAt: string };
+        const plan = await requirePlan(tx, planId);
+        if (plan.revision !== request.expectedRevision) throw new PlanFlowError("STALE", "This plan was changed on another device.");
+        const at = now();
+        // 达成 = archived + achieved_at：分数定格、不占生效名额、候补任务停。
+        await tx.updatePlan({ ...plan, achievedAt: at, archivedAt: at, status: "archived", updatedAt: at });
+        await tx.insertLog({ author: "user", body: plan.goalText.slice(0, 2000), createdAt: at, event: "goal_achieved", id: `plog_${newId()}`, idempotencyKey: `achieved:${plan.id}`, itemId: null, linkedContactIds: [], linkedEventId: null, payload: {}, planId: plan.id });
+        const open = await tx.openReviewDraft(plan.id);
+        if (open) await tx.updateDraft({ ...open, status: "discarded", updatedAt: at });
+        await writeReceipt(tx, { body: { planId }, key: request.idempotencyKey, kind: "achieve", planId: plan.id, response: { achievedAt: at, planId: plan.id } });
+        return { achievedAt: at, planId: plan.id };
+      });
+    },
+
+    async nextGoals(planId, context) {
+      const key = `next-goal:${planId}`;
+      const cached = await repository.read(scope, (reader) => reader.flowReceipt(key));
+      if (cached?.kind === "next_goals") return cached.response as unknown as PlanNextGoalsResponse;
+      const plan = await repository.read(scope, async (reader) => {
+        const row = await reader.plan(planId);
+        if (!row || !row.achievedAt) throw new PlanFlowError("PLAN_NOT_FOUND", "Plan not found.");
+        return row;
+      });
+      const log = await repository.read(scope, (reader) => reader.log(plan.id));
+      const records = activeAwards(log).slice(-20).map((entry) => ({ id: entry.id, text: entry.body.slice(0, 120) }));
+      const outcome = await ai.nextGoals({ goalKind: plan.goalKind, goalText: plan.goalText, records, summary: `${plan.goalText} / ${plan.analysis.conclusion}` }, { actorId: scope.actorId, language: context.language, ledgerKey: key, now: nowDate() });
+      if (outcome.ok === false && outcome.reason === "busy") throw new PlanFlowError("AI_BUSY", "This step is already running.");
+      const result: PlanNextGoalsResponse = outcome.ok === true
+        ? { candidates: outcome.value.candidates.map((candidate) => ({ basis: candidate.evidenceIds.map((id) => ({ kind: "record" as const, label: log.find((entry) => entry.id === id)?.body ?? id, ref: id })), goalKind: candidate.goalKind, goalText: candidate.goalText })), source: "ai" }
+        : { candidates: [], source: "none" };
+      await repository.transact(scope, async (tx) => {
+        if (await tx.flowReceipt(key)) return;
+        await writeReceipt(tx, { body: { planId }, key, kind: "next_goals", planId, response: result as unknown as Record<string, unknown> });
+      }).catch(() => undefined);
+      return result;
+    },
+
+    async editGoal(planId, request, context) {
+      const result = await repository.transact(scope, async (tx) => {
+        const prior = await tx.flowReceipt(request.idempotencyKey);
+        if (prior?.kind === "goal_edit") return prior.response as unknown as PlanGoalEditResult;
+        const plan = await requirePlan(tx, planId);
+        if (plan.revision !== request.expectedRevision) throw new PlanFlowError("STALE", "This plan was changed on another device.");
+        const at = now();
+        const goalText = request.goalText?.trim() || plan.goalText;
+        const goalKind = request.goalKind ?? plan.goalKind;
+        // 只改目标字段，不动配点（save_only）；save_and_rebuild 再开一份见直草稿，前提的目的行换成新目标。
+        const next: PlanV2Row = { ...plan, goalKind, goalText, revision: plan.revision + 1, updatedAt: at };
+        await tx.updatePlan(next);
+        await tx.insertRevision({ after: { goalKind, goalText }, before: { goalKind: plan.goalKind, goalText: plan.goalText }, changes: [], createdAt: at, draftId: null, fromRevision: plan.revision, id: `prev_${newId()}`, planId: plan.id, source: "goal_edit", toRevision: plan.revision + 1 });
+        let reviewDraftId: string | null = null;
+        if (request.mode === "save_and_rebuild") {
+          const open = await tx.openReviewDraft(plan.id);
+          if (open) await tx.updateDraft({ ...open, status: "discarded", updatedAt: at });
+          const content = planContentOf(next, await tx.typeItems(plan.id));
+          const premise = next.premise.map((row) => (row.key === "purpose" ? { ...row, guessed: false, value: goalText } : row));
+          const created: PlanDraftRow = { aiFixUsed: 0, baseRevision: next.revision, confirmedAt: null, content, createdAt: at, fix: emptyStep(), id: `draft_${newId()}`, intakeId: null, kind: "review", manualEditUsed: false, originContent: content, planId: plan.id, premise, premiseVersion: 0, status: "open", turns: [], updatedAt: at };
+          await tx.insertDraft(created);
+          reviewDraftId = created.id;
+        }
+        const response: PlanGoalEditResult = { planId: plan.id, reviewDraftId, revision: next.revision };
+        await writeReceipt(tx, { body: { goalKind: request.goalKind ?? null, goalText: request.goalText ?? null, mode: request.mode }, key: request.idempotencyKey, kind: "goal_edit", planId: plan.id, response: response as unknown as Record<string, unknown> });
+        return response;
+      });
+      void context;
+      return result;
     },
 
     async confirm(draftId, idempotencyKey, context) {
@@ -1291,6 +1778,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         const owner = current.intakeId ? await requireIntake(reader, current.intakeId) : null;
         return { draft: current, intake: owner };
       });
+      if (draft.kind === "review") return confirmReviewDraft(draftId, context);
       if (!intake || draft.kind !== "initial") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
       if (draft.status === "discarded") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
       void idempotencyKey; // 同一份草稿重复确定只建一份（creationKey = 草稿 id），幂等由 createPlanFromDraft 保证。

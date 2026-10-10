@@ -86,7 +86,7 @@ function draftFor(kind: PlanGoalKind, goalText: string, language: PlanCopyLangua
 const NO_CHANGE = /変更しない|変えない|そのまま|no change|keep it|不改|不用改/i;
 
 export function createMockPlanFlowAi(): PlanFlowAi {
-  return {
+  const ai: PlanFlowAi = {
     id: "mock",
     async background(input, context) {
       const self = { alias: "self", capabilities: capabilitiesFor(`${input.profile.name}:self`, input.capabilities, 3), relation: null };
@@ -139,5 +139,22 @@ export function createMockPlanFlowAi(): PlanFlowAi {
       const chosen = ruleQuestions(input, (id) => questionWhy(id, context.language));
       return ok(chosen);
     },
+    async reviewMarks(input, context) {
+      // 有记录就预标第一条回答行（演示用；真实由 C8 判断）。
+      const row = input.premise.find((item) => item.source !== "background");
+      const record = input.records[0];
+      if (!row || !record) return ok({ marks: [] });
+      return ok({ marks: [{ evidenceIds: [record.id], key: row.key, reason: pick({ en: "A recent record may change this.", ja: "最近の記録で変わったかもしれません。", zh: "最近的记录可能改变了这一点。" }, context.language), suggested: null }] });
+    },
+    async reviewFix(input, context) {
+      return ai.fix(input, context);
+    },
+    async nextGoals(input, context) {
+      const order: PlanGoalKind[] = ["sales", "hiring", "partnership", "fundraising", "launch", "career"];
+      const kinds = order.filter((kind) => kind !== input.goalKind).slice(0, 2);
+      const field = (kind: PlanGoalKind) => planCopy(PLAN_GOAL_KIND_COPY[kind], context.language);
+      return ok({ candidates: kinds.map((kind) => ({ evidenceIds: input.records.slice(0, 1).map((record) => record.id), goalKind: kind, goalText: pick({ en: `Next: ${field(kind)}`, ja: `次は${field(kind)}に取り組む`, zh: `接下来做${field(kind)}` }, context.language) })) });
+    },
   };
+  return ai;
 }

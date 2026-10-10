@@ -9,7 +9,7 @@ import type { PlanCopyLanguage } from "../../../../shared/compute/plan-template-
  * v3（R23 本机验证第 3 次初版被拒：删了一个枠却没补配点、Step 还引用它）：要求保留全部枠、默认照抄模板配点；
  * 修正时用户要求的改动在前提允许范围内就照做。v3 还没有真实调用验证（C6 本机 5 次已用完，见 R23 REPORT）。
  */
-export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-11-v3";
+export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-11-v4";
 
 const LANGUAGE: Record<PlanCopyLanguage, string> = { en: "English", ja: "Japanese (natural, polite です・ます)", zh: "Simplified Chinese" };
 
@@ -66,6 +66,22 @@ export const TASKS = {
     "If no change is needed or the request conflicts with the premise, return the plan unchanged and explain in noChangeReason (one or two sentences).",
     "The revised plan follows the same rules as the first draft (short names from the dictionary, allocations multiples of 5 totalling 100, citations only from the given landscape, numbers only with markers), except that allocations may move freely.",
     'Output: {"revised": <the full plan in the same shape as the input "current">, "reasons": [{"path": "steps.1.doneCriteria", "reason": "..."}], "unchanged": ["short labels of what stayed the same"], "noChangeReason": null}',
+  ].join("\n"),
+  reviewMarks: [
+    "The user is reviewing a confirmed plan. Given the confirmed premise rows and the records since then (talks, events, completed steps, memos), mark only the premise rows that may have changed.",
+    "For each marked row give the evidence record ids (from the input only), a suggested new value if the records say it, and a one-sentence reason. Mark nothing when nothing changed.",
+    'Output: {"marks": [{"key": "<premise row key>", "evidenceIds": ["..."], "suggested": "..." | null, "reason": "..."}]}',
+  ].join("\n"),
+  reviewFix: [
+    "The user changed some premise rows and/or wrote a request to revise the confirmed plan. Revise only what the change needs; keep the rest exactly.",
+    "Points already earned per slot are given in earned: a slot's allocation may never go below its earned points; skipped slots keep their allocation unchanged; allocations still total 100 in multiples of 5.",
+    "The 100 is the person-type allocations plus event.allocation. Whenever you raise one slot by N points, lower other non-skipped slots by exactly N in total (never below earned, never below 5). Add the numbers up before answering.",
+    "Same rules as a revision otherwise (no new citations, keep questions, count rule, recognition hints, persona, opener, intro routes). If nothing should change, return the plan unchanged with noChangeReason.",
+    'Output: {"revised": <full plan>, "reasons": [{"path": "...", "reason": "..."}], "unchanged": ["..."], "noChangeReason": null}',
+  ].join("\n"),
+  nextGoals: [
+    "The user achieved a goal. From the summary and the records, propose at most 2 natural next goals (one sentence each, in the user's words style) with a goal kind from: launch, fundraising, sales, hiring, partnership, career; give the record ids that support each.",
+    'Output: {"candidates": [{"goalText": "...", "goalKind": "...", "evidenceIds": ["..."]}]}',
   ].join("\n"),
 } as const;
 

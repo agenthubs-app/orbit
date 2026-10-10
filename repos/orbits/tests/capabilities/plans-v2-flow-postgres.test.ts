@@ -72,3 +72,51 @@ test("concurrent confirms of one draft create exactly one plan", databaseTest, a
     assert.equal(Number((await pool.query("select count(*) from plans where model_version = 2")).rows[0].count), 1);
   });
 });
+
+// R25：見直し（plan_drafts kind review、review_used 计次、plan_revisions）、手动编辑、改目标、达成、以前のプラン 走真实 PostgreSQL。
+test("R25 review, manual edit, goal edit, achieve and legacy round-trip through PostgreSQL", databaseTest, async () => {
+  await withNetworkDatabase(async ({ pool }) => {
+    const { flow, planService } = flowFor(pool);
+    let intake = await flow.createIntake({ goalKind: "fundraising", goalText: "シリーズA を年内に", idempotencyKey: "r25-create", source: "task" }, JA);
+    intake = await flow.confirmBlock(intake.intakeId, { block: "me", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "r25-me", me: { stance: "owner", wants: intake.background.me.value.wants } }, JA);
+    const members = intake.background.team.value.members.map((member) => ({ capabilities: [...member.capabilities], memberId: member.memberId, otherCapabilities: [], relation: member.relation }));
+    intake = await flow.confirmBlock(intake.intakeId, { block: "team", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "r25-team", team: { members, mode: intake.background.team.value.mode } }, JA);
+    intake = await flow.confirmBlock(intake.intakeId, { block: "purpose", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "r25-purpose", purpose: { selectedLevel: 2 } }, JA);
+    intake = await flow.chooseQuestions(intake.intakeId, "r25-q", JA);
+    intake = await flow.submitAnswers(intake.intakeId, { answers: [], idempotencyKey: "r25-a" }, JA);
+    const draft = await flow.makeDraft(intake.intakeId, "r25-d", JA);
+    const { planId } = await flow.confirm(draft.draftId, "r25-ok", JA);
+    const detail = (await planService.detail(planId))!;
+    await planService.award({ itemId: detail.content.personTypes[0]!.itemId, planId, request: { basis: "talked", contactId: "demo-person-ito", idempotencyKey: "r25-aw" } });
+
+    const review = await flow.startReview(planId, "r25-r1", JA);
+    assert.equal((await flow.startReview(planId, "r25-r2", JA)).draft.draftId, review.draft.draftId);
+    const fixed = await flow.reviewFix(review.draft.draftId, { idempotencyKey: "r25-f1", premise: [], text: "投資家に寄せたい" }, JA);
+    assert.equal(fixed.reviewLeftThisMonth, 2);
+    const change = fixed.draft.turns.at(-1)!.changes[0]!;
+    await flow.toggleChange(review.draft.draftId, change.id!, { accepted: false, idempotencyKey: "r25-t" }, JA);
+    await flow.toggleChange(review.draft.draftId, change.id!, { accepted: true, idempotencyKey: "r25-t2" }, JA);
+    await flow.confirm(review.draft.draftId, "r25-rc", JA);
+    assert.equal((await pool.query("select count(*)::int as n from plan_log where event = 'review_used'")).rows[0].n, 1);
+
+    const manual = await flow.openManualEdit(planId, "r25-m", JA);
+    await flow.manualEdit(manual.draftId, {
+      event: { ...manual.content.event },
+      expectedRevision: manual.revision,
+      idempotencyKey: "r25-me2",
+      personTypes: manual.content.personTypes.map((type) => ({ allocation: type.allocation, key: type.key, targetCount: type.targetCount })),
+      steps: manual.content.steps.map((step) => ({ doneCriteria: step.doneCriteria, key: step.key, personTypeKeys: [...step.personTypeKeys], title: step.title })),
+    }, JA);
+    const afterManual = (await planService.detail(planId))!;
+    const edited = await flow.editGoal(planId, { expectedRevision: afterManual.revision, goalText: "来春までにシリーズA", idempotencyKey: "r25-g", mode: "save_only" }, JA);
+    const revisions = (await pool.query("select source, from_revision, to_revision from plan_revisions order by to_revision")).rows;
+    assert.deepEqual(revisions.map((row) => row.source), ["review", "manual_edit", "goal_edit"]);
+    await flow.achieve(planId, { expectedRevision: edited.revision, idempotencyKey: "r25-ach" });
+    const plan = (await pool.query("select status, achieved_at is not null as achieved, goal_snapshot from plans where id = $1", [planId])).rows[0];
+    assert.deepEqual(plan, { achieved: true, goal_snapshot: "来春までにシリーズA", status: "archived" });
+    const view = (await planService.achievement(planId, "ja"))!;
+    assert.equal(view.talkedPeople, 1);
+    assert.equal((await flow.quota()).activeGoals, 0);
+    assert.deepEqual((await planService.legacyList()).plans, []);
+  });
+});

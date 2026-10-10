@@ -50,3 +50,8 @@ export function planTaskSegmentHref(platform: PlanHrefPlatform, planId?: string 
   const plan = planId ? `&plan=${seg(planId)}` : "";
   return platform === "web" ? `/app/tasks?tab=plan${plan}` : `/task?seg=plan${plan}`;
 }
+
+/** 新目标的目標入力（Task 画面「プラン」段直接打开输入）；v1 创建入口关闭后的落点（R25）。 */
+export function planNewGoalHref(platform: PlanHrefPlatform): string {
+  return platform === "web" ? "/app/tasks?tab=plan&new=1" : "/task?seg=plan&new=1";
+}
