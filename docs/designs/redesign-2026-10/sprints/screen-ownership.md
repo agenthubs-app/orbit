@@ -25,7 +25,7 @@
 | 人脈 | `(app)/contacts`、`contacts/list` | `ContactsScreen` | 人脈一覧 | R11 | 重写 |
 | 人脈 | `contacts/[id]` | `ContactDetailScreen` | 連絡先詳細 | R11 | 重写 |
 | 人脈 | `contacts/dashboard`、`contacts/graph`、`contacts/analysis/[dimension]/[bucketId]` | `ContactsDashboardScreen`、`ContactStructureDetailScreen` | 人脈分析（構造 / 機会 / インサイト） | R11 | 重写 |
-| 人脈 | `contacts/intros` | `ContactIntrosScreen` | 无（邀请由招待コード、请人引荐由人物タイプ詳細「紹介ルート」承担） | R25 | 删除（核对结论见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md) §9 #20；**待用户确认**） |
+| 人脈 | `contacts/intros` | `ContactIntrosScreen` | 无（邀请由招待コード、请人引荐由人物タイプ詳細「紹介ルート」承担） | R25 | R25 删除（已确认，2026-10-10；理由见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md) §9 #20） |
 | 人脈 | `contacts/pipeline` | `ContactPipelineScreen` | 无 | R11 | 删除 |
 | 人脈 | `profile/suggestions` | `ProfileSuggestionsScreen` | 登録内容の更新提案 | R11 | 重写 |
 | 加人 | `contacts/new` | `ContactAcquisitionScreen` | 「＋」sheet | R12 / R15 / R16 | 重写 |
@@ -89,7 +89,7 @@
 | 2 | 运营后台（`admin`、`platform`、`read-cost`、`login-admin`） | 新开 **R29 运营后台换新**：不按设计稿重画，在 R04 / R06 组件库完成后只换新 token 和新组件 |
 | 3 | 落地页（Web `/`） | 不重做，并入 **R18**：只换新 token 和新组件 |
 | 4 | `contacts/pipeline`（两端） | 由 **R11** 删除；阶段信息在人脈一覧和 Task 里体现 |
-| 5 | App `contacts/intros`、`chat` | 暂按表中归属（R22–R25 / R13·R14 并入）；写这两组功能 Sprint 文档时核对，确认并入还是删除。**`contacts/intros` 已核对（2026-10-10，计划 v2.2 文档）：建议删除，待用户确认** |
+| 5 | App `contacts/intros`、`chat` | 暂按表中归属（R22–R25 / R13·R14 并入）；写这两组功能 Sprint 文档时核对，确认并入还是删除。**`contacts/intros` 已核对（2026-10-10，计划 v2.2 文档）：R25 删除（用户已确认 2026-10-10）** |
 
 R28、R29 的负责人在写功能 Sprint 文档时由用户指定。
 

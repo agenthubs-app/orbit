@@ -4,7 +4,7 @@
 **单一目标:** 見直し（入口弹层、C8 / C9、逐条 ✓/✕）与月配额界面、确定后的手動編集、達成 → 完了 → 次の目標（C10）、目标下拉 / 添加 / 编辑 / 作り直し、以前のプラン（v1 只读）；关闭 v1 计划的创建入口；删除旧计划屏与兼容跳转、App `contacts/matches` / `contacts/intros` 及其专用接口和契约；全产品旧计划链接换新地址。
 **易读目标:** [GOAL.md](GOAL.md)。**整体设计:** [plan-v2.2/DESIGN.md](../plan-v2.2/DESIGN.md)（§2.8–2.11、§5 C8–C10、§5.3、§8、§12）。
 **基线:** R23、R24 收口后的 `redesign` HEAD。
-**进入条件:** R23 done（草稿服务、手动编辑页、流程页）、R24 done（概要与按钮占位）。`contacts/intros` 删除需要用户确认（DESIGN §10 第 3 项）；未确认前这一项跳过，其余照做。C8–C10 真实调用需要授权，没有就用 mock 收口。
+**进入条件:** R23 done（草稿服务、手动编辑页、流程页）、R24 done（概要与按钮占位）。`contacts/intros` 删除已确认（DESIGN §10 第 3 项）。C8–C10 已获授权：仅限本机验证，每项真实调用 ≤5 次，记账并写进 REPORT。
 **分支:** 同前；本 Sprint 改动 `iorbit-0918` 与 `features/**` 里别人的入口，开工前和乙对一次热点文件（两端 `AGENTS.md` 归属表），R21 已重写的文件不再碰。
 
 ## 已查清的事实（按 `fe896414`）
@@ -57,7 +57,7 @@
 - **新建（Web）**：`app/(app)/app/plans/[planId]/review/page.tsx`、`app/(app)/app/plans/[planId]/done/page.tsx`、`app/(app)/app/plans/legacy/[planId]/page.tsx`（与 App 同路径）；`orbit-2026/plan/` 下見直し入口弹层（b4 A4 ①：3 格配额条、重置日、这次参考的数据、「iOrbit で見直す」）、見直し页（前提卡预标、右栏配额、差分卡逐条 ✓/✕）、用完弹窗、達成确认 / 完成页 / 次の目標、目标下拉（Popover）与编辑 Modal（三个出口）、以前のプラン卡。
 - **新建（App）**：`app/plans/[planId]/review.tsx`、`app/plans/[planId]/done.tsx`、`app/plans/legacy/[planId].tsx`；`src/screens/plan/` 下对应组件（目标「▾」BottomSheet、作り直し动作表）。
 - **修改**：概要按钮接上（R24 占位）；Web `plan-slot.tsx` 的 v1 分支 → 以前のプラン 卡，然后插槽只剩新代码；App `PlanSlot` 同；首页契约 `current` 跟随 `last_opened_at`（R22 已有，切换时调用 `open`）；全产品旧链接 → 新深链（`shared/compute/plan-href.ts`）：第 2 条列出的位置、`features/**` 服务端 href、活动跟进 `taskHref` 的字面量类型（`contract:` 提交，App 同步）；旧引导（R28 重写前的 `/app/start`、`/app/profile/onboarding`）里「生成计划」一步改跳 v2 入口；README「合回前总验收」对应两项打勾；`screen-ownership.md` 计划行改为「已处理」。
-- **删除**：Web `app/(app)/app/agent/plan/**`（页面、`plan-slot.tsx` 的旧部分、`read-current-plan.ts`、`plan-route-view-model.ts`）、`app/(app)/app/agent/strategy/**`、第 4 条列出的 `iorbit-0918` 计划专用文件；App `app/contacts/matches.tsx`、`src/screens/contacts/{ContactNeedsMatchesScreen,ContactNeedsMatchesContent,ContactNeedsHomeEntry}.tsx` 与 `src/view-models/contact-needs.ts`（`ContactsScreen.tsx` 里的入口若 R11 尚未重写，一并去掉）、`app/contacts/intros.tsx`、`ContactIntrosScreen.tsx`、`src/view-models/contact-intros-summary.ts`、`src/data/offline-read/route-domain-inventory.ts` 的对应登记（**`contacts/intros` 一组待用户确认**）及 `ContactDetailScreen` 的入口按钮（若 R11 尚未重写）；服务端 `app/api/contacts/needs-matches/**`、`features/contact-needs/**`、`shared/contract/contact-needs.ts`、`app/api/contacts/intros/summary/**`、`features/contacts/contact-intros-summary-reader.ts`、`shared/contract/contact-intros-summary.ts`（契约删除在 `BREAKING.md` 登记、App 同步删除副本）；相应测试改写或删除（每个删掉的断言在 REPORT 列出理由）；两端写死文字 / Ionicons / 旧写法允许清单里这些文件的条目移除（只减不增）。
+- **删除**：Web `app/(app)/app/agent/plan/**`（页面、`plan-slot.tsx` 的旧部分、`read-current-plan.ts`、`plan-route-view-model.ts`）、`app/(app)/app/agent/strategy/**`、第 4 条列出的 `iorbit-0918` 计划专用文件；App `app/contacts/matches.tsx`、`src/screens/contacts/{ContactNeedsMatchesScreen,ContactNeedsMatchesContent,ContactNeedsHomeEntry}.tsx` 与 `src/view-models/contact-needs.ts`（`ContactsScreen.tsx` 里的入口若 R11 尚未重写，一并去掉）、`app/contacts/intros.tsx`、`ContactIntrosScreen.tsx`、`src/view-models/contact-intros-summary.ts`、`src/data/offline-read/route-domain-inventory.ts` 的对应登记（`contacts/intros` 一组用户已确认删除，2026-10-10）及 `ContactDetailScreen` 的入口按钮（若 R11 尚未重写）；服务端 `app/api/contacts/needs-matches/**`、`features/contact-needs/**`、`shared/contract/contact-needs.ts`、`app/api/contacts/intros/summary/**`、`features/contacts/contact-intros-summary-reader.ts`、`shared/contract/contact-intros-summary.ts`（契约删除在 `BREAKING.md` 登记、App 同步删除副本）；相应测试改写或删除（每个删掉的断言在 REPORT 列出理由）；两端写死文字 / Ionicons / 旧写法允许清单里这些文件的条目移除（只减不增）。
 - **测试**：
   - `review.test.ts`：打开不扣、发送扣、失败不扣、不改也扣、两个目标合计 3 次、东京月初恢复、并发两次发送只扣到上限（`review:<YYYY-MM>:<n>` 唯一键）、已得分不变、跳过类型配点不能改、有分类型不能删、逐条 ✕ 后合计仍 100、确定时按当时的已得分重新校验、`base_revision` 过期 409、见直后手动编辑重新可用、预标每天最多一次 AI；
   - `v1-retired.test.ts`：没有 v2 的新用户调 `bootstrap` / `POST /api/agent/plans` / `reanalyze` 都得到 409 `PLAN_V1_RETIRED` 与 v2 入口；旧引导的生成步骤跳到 v2 入口；
@@ -105,6 +105,5 @@
 ## 失败与交接
 
 - R21 尚未重写、`iorbit-home.tsx` 仍引用旧计划文件：只替换 import 与链接，删除旧文件；REPORT 列出动过的 R21 文件与通知记录。
-- 用户未确认删除 `contacts/intros`：保留该屏与接口，归属表该行写「待用户确认」，REPORT 列为已知例外；其余照常收口。
 - 删接口发现还有未登记的调用方：停下来改调用方或保留接口，REPORT 写明，不强删。
 - REPORT 交接：给 R21 的深链与「プランを見直したい」入口地址；给合回前总验收的勾选项；C8–C10 授权状态与调用记录。

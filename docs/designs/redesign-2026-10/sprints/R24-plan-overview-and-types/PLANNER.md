@@ -4,7 +4,7 @@
 **单一目标:** プラン概要与人物タイプ詳細（两端，含 Web 1024 / 390 版式）、计分界面（记录 / 自报 / 超额 / 撤销 / 跳过 / 撤回）、Step 完成确认（规则）、候补确认、面談提案与依頼文草稿、イベント枠与 `shared/compute/event-score.ts`（同时把契约 8 的 5 项改成设计稿口径）、C11 面谈メモ判定与 C12 候补推荐提示词变更、给 R11 / R20 的接口；App `contacts/matches` 改为跳转。
 **易读目标:** [GOAL.md](GOAL.md)。**整体设计:** [plan-v2.2/DESIGN.md](../plan-v2.2/DESIGN.md)（§2.5–2.7、§4、§5 C11 C12、§7、§8）。
 **基线:** R22 收口后的 `redesign` HEAD（R23 是否收口不影响本 Sprint：验收用 R22 的种子计划）。
-**进入条件:** R22 done。C11 / C12 的真实调用需要用户授权（DESIGN §10 第 1 项），没有授权就用 mock 收口。
+**进入条件:** R22 done。C11 / C12 已获授权（DESIGN §10 第 1 项，2026-10-10）：仅限本机验证，每项真实调用 ≤5 次，记账并写进 REPORT。
 **分支:** 同 R22。默认 R23 → R24 先后做；要并行时先约定共用文件的分段（Web `plan-slot.tsx` 与 App `PlanSlot`：R23 只写「没有计划」分支和「已确定」最小卡，本 Sprint 只替换「有 v2 计划」分支；`orbit-2026/plan/`、`src/screens/plan/`、`orbit-2026/copy/plan.ts`、`src/i18n/*/plan.ts` 按子目录 / 键前缀分开），合回时 rebase 解决冲突。
 
 ## 已查清的事实（按 `fe896414`）

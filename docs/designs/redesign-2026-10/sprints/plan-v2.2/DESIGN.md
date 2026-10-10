@@ -425,7 +425,7 @@ reallocate(input: { slots: …; change: …; templateOrder: … }): { slots: …
 | 17 | 目标类型推测（C1）的触发 | 输入停顿 800ms、≥6 字、同文不重调、每 intake 最多 5 次；失败用关键词规则 | 搜索框联想的去抖惯例；成本可控 |
 | 18 | App 计划页离线 | 全部 online-only | 现有 `contacts/matches` 已是 online-only；生成和计分都依赖服务端 |
 | 19 | 选题缓存 | 按人缓存（输入摘要做键），不跨用户共享 | 「同类同背景 → 同题同序」只需在同一用户内可复现；跨用户共享会泄露别人的背景摘要 |
-| 20 | App `contacts/intros` | **删除，不并入**（R25）：它是旧「关系管线」里给引荐候选发关系邀请，新设计里「邀请」由 R15 招待コード承担，「请人引荐」由人物类型详情的紹介ルート（依頼文草稿）承担。入口在联系人详情（R11 重写时去掉），接口 `/api/contacts/intros/summary` 只有这一屏用（文本确认：Web 侧只有 handler 和 reader） | 一个功能一个入口；**这一条会去掉现有功能，列入「需要用户拍板」请确认** |
+| 20 | App `contacts/intros` | **删除，不并入**（R25）：它是旧「关系管线」里给引荐候选发关系邀请，新设计里「邀请」由 R15 招待コード承担，「请人引荐」由人物类型详情的紹介ルート（依頼文草稿）承担。入口在联系人详情（R11 重写时去掉），接口 `/api/contacts/intros/summary` 只有这一屏用（文本确认：Web 侧只有 handler 和 reader） | 一个功能一个入口；**这一条会去掉现有功能；用户已确认删除（§10）** |
 | 21 | `/api/contacts/needs-matches` 与 `features/contact-needs` | R25 删除 App `contacts/matches` 后一并删除（文件头已写「仅供 App，App 迁移完成再下线」；GitNexus：handler LOW / 1，service UNKNOWN → 文本确认只有这个 handler 引用） | 按 W0055 的下线约定 |
 | 22 | 账本 `max_calls` | 每种上限不同的调用一个用途（`plan_intake` / `plan_background` / `plan_draft` / `plan_revise` / `plan_review_mark` / `plan_review`），不改 `reserve`（§3.3） | 不碰 CRITICAL 的账本函数；月度计数直接按用途数，不靠幂等键前缀 |
 | 23 | 计划生成流程的日上限 | 自己的日上限 15，不占 10 次总熔断（§5.3） | W0057 即时洞察的先例；避免一天做两个目标就莫名失败 |
@@ -446,17 +446,14 @@ reallocate(input: { slots: …; change: …; templateOrder: … }): { slots: …
 | 38 | 业界库审核人 | 按 Q7 用 Codex；Codex 不可用时由全新上下文的 AI 会话代替并在 REPORT 写明 | 保持 Q7；独立性靠「不看写作过程」保证 |
 | 39 | 题库文字放哪 | `shared/compute/plan-template-copy.ts`，不放 `shared/copy` 三个标准用词文件 | 标准用词文件只放通用说法；放 `shared/compute` 不用改同步白名单 |
 
-## 10. 需要用户拍板
+## 10. 用户已确认（2026-10-10）
 
-只列三类：付费 AI、生产迁移、真正的产品取舍。
+用户原话：「都按推荐，开工 R22」。四项口径：
 
-1. **付费 AI 授权**（§5.4 清单 C1–C12）：允许各 Sprint 在本机验证期对每项做 ≤5 次真实调用，并按表中「每用户每月上限」上线。**推荐：全部授权**（Q4 已定「该用 AI 的都用 AI」；最坏每用户每月约 $0.6）。未授权的项一直用 mock，界面照常可用。
-2. **生产迁移**（另行授权，Sprint 里只做本机验证）：
-   - 迁移一 `plans` v2「plans-v2-model」（加列、放宽 `horizon`、换唯一索引、4 张新表）；
-   - 迁移二 AI 账本用途放宽（`plan_intake` / `plan_revise` / `plan_review` / `event_assessment`）。
-   **推荐**：两个都在 `redesign` 整体合回前、和其他功能的迁移一起出授权清单（README「合回前总验收」）；执行前按 W0048a 的做法先在生产做只读预检（CHECK 约束名、现有 `purpose` 取值、active 计划数）。
-3. **App `contacts/intros` 删除**（§9 #20）：去掉「从关系管线给引荐候选发邀请」这个旧功能。**推荐：删除**，由招待コード（R15）和紹介ルート（R24）替代。
-4. **每人每月最多新建 10 个目标**（§5.3）：设计稿只规定了「同时 2 个生效目标」，这是为控制 AI 成本新加的限制，碰到时提示「今月はこれ以上新しい目標を作れません」。**推荐：10**（正常用户一个月 1–3 个，只挡反复建了又扔的情况）；也可以选「不限，只靠同时 2 个限制」，最坏成本会随新建次数上升。
+1. **付费 AI C1–C12 全部授权**：仅限本机验证，每项真实调用不超过 5 次，模型 deepseek-v4-flash，每用户每月上限按 §5.4 执行；调用要记账（`ai_usage_ledger` / `ai_usage_calls`），次数和 operationId 写进各 Sprint 的 REPORT。staging 和生产上线另行授权，不在这次授权里。
+2. **两个生产迁移现在不执行**（迁移一 `plans` v2「plans-v2-model」、迁移二 AI 账本用途放宽）：等 `redesign` 整体合回前，和其他功能的迁移一起出授权清单；执行前先在生产做只读预检（CHECK 约束名、现有 `purpose` 取值、active 计划数）。Sprint 里只在本机跑迁移。
+3. **App `contacts/intros` 确定删除**，由 R25 执行（邀请由招待コード R15、请人引荐由紹介ルート R24 承担）。
+4. **每人每月最多新建 10 个目标**：确定（碰到时提示「今月はこれ以上新しい目標を作れません」）。
 
 ## 11. Sprint 怎么切
 
@@ -483,7 +480,7 @@ reallocate(input: { slots: …; change: …; templateOrder: … }): { slots: …
 | Web | `/app/agent/strategy`（`?view=contacts` 联系人建议） | 删除；内容由人物タイプ詳細取代 | R25 |
 | Web | `agent/iorbit-0918/` 里只属于计划的文件（`iorbit-plan*.tsx`、`iorbit-plan-card*`、`iorbit-my-plan-styles.ts`、`plan-anchors.ts`、`plan-match-*`、`today-plan-items.ts`、`iorbit-strategy.tsx`） | 删除；`iorbit-home.tsx` 等 R21 的文件里对它们的引用，R21 先重写就随之消失，R21 未完成时由 R25 改成新链接（热点文件先找负责人） | R25 |
 | App | `contacts/matches`（`ContactNeedsMatchesScreen`、`ContactNeedsMatchesContent`、`src/view-models/contact-needs.ts`；入口 `ContactNeedsHomeEntry` 在人脈页 `ContactsScreen.tsx`，R11 的文件） | R24 改为跳转 Task › プラン；R25 删除路由、屏幕、视图模型和接口（动 `ContactsScreen.tsx` 前先通知乙；R11 已重写则入口已不在） | R24 / R25 |
-| App | `contacts/intros`（`ContactIntrosScreen`、`src/view-models/contact-intros-summary.ts`、`src/data/offline-read/route-domain-inventory.ts` 里的登记；入口在 `ContactDetailScreen.tsx`，R11 的文件） | **删除**（核对结论，§9 #20，待用户确认） | R25 |
+| App | `contacts/intros`（`ContactIntrosScreen`、`src/view-models/contact-intros-summary.ts`、`src/data/offline-read/route-domain-inventory.ts` 里的登记；入口在 `ContactDetailScreen.tsx`，R11 的文件） | **删除**（核对结论，§9 #20，用户已确认 2026-10-10） | R25 |
 | App | Task › プラン `PlanSlot`（「目標を決める」即将上线） | R23 替换 | R23 |
 | 服务端 | `/api/contacts/needs-matches`、`features/contact-needs/**`、`shared/contract/contact-needs.ts`、`/api/contacts/intros/summary`、`contact-intros-summary-reader.ts`、`shared/contract/contact-intros-summary.ts` | 删除（随 App 两屏；契约删除在 `BREAKING.md` 登记，App 同步副本一起删） | R25 |
 | 服务端 | v1 创建入口：`POST /api/agent/plans/bootstrap`、`POST /api/agent/plans`、`POST /api/agent/plans/reanalyze`；旧引导里的「生成计划」 | 返回 409 `PLAN_V1_RETIRED` + v2 入口地址；旧引导改跳 v2 入口（§3.6） | R25 |

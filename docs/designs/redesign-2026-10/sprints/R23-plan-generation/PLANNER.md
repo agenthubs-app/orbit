@@ -4,7 +4,7 @@
 **单一目标:** 目标入力空态（两端）、生成流程（背景 → ≤5 问 → 前提 → 初版 → AI 修正 ≤3 → 手動編集 1 → 確定，两端）、intake / draft 接口与 AI 调用 C1–C7（mock 先行）、业界现状库第一批条目与独立审核。
 **易读目标:** [GOAL.md](GOAL.md)。**整体设计:** [plan-v2.2/DESIGN.md](../plan-v2.2/DESIGN.md)（§2.1–2.4、§5、§6、§7）。
 **基线:** R22 收口后的 `redesign` HEAD。
-**进入条件:** R22 done（迁移在本机、`PlanV2Service.createPlanFromDraft`、`shared/compute/plan-templates` / `plan-allocation`、契约正式版）。真实 AI 调用需要用户对 C1–C7 的授权（DESIGN §10 第 1 项）；**没有授权就全程 mock 收口**，授权后补做本机验证并追加到 REPORT。「每人每月最多新建 10 个目标」等用户拍板（DESIGN §10 第 4 项）；未拍板前按推荐值 10 实现（一个常量，可改）。
+**进入条件:** R22 done（迁移在本机、`PlanV2Service.createPlanFromDraft`、`shared/compute/plan-templates` / `plan-allocation`、契约正式版）。C1–C7 已获授权（DESIGN §10 第 1 项，2026-10-10）：仅限本机验证，每项真实调用 ≤5 次，记账并写进 REPORT；开发和测试仍以 mock 为主。「每人每月最多新建 10 个目标」已确认（§10 第 4 项）。
 **分支:** 同 R22。
 
 ## 已查清的事实（按 `fe896414`）
