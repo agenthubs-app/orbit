@@ -101,6 +101,6 @@
 ## 需要人工
 
 1. 把 `AGENTS-redesign-section.md` 贴进 `repos/orbit-app/AGENTS.md`（链接改成相对 App 目录的路径）。
-2. 产品负责人确认热点文件归属表，结果改在两端 `AGENTS.md`。
+2. ~~产品负责人确认热点文件归属表，结果改在两端 `AGENTS.md`。~~ 已确认定稿（2026-10-10），两端 `AGENTS.md` 已改。
 3. 产品负责人看截图集、在模拟器和浏览器里试用，同意结束骨架（SC-06）。
 4. 本地 `repos/orbits/.env.local` 补 `ORBIT_SYNC_CURSOR_SECRET`（任意随机长串）并重启 dev server，App 的待办、人脈才能在本地同步。
