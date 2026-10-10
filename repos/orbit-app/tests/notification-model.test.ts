@@ -11,7 +11,9 @@ import {
 test("notification deep links are restricted to owned in-app destinations", () => {
   assert.equal(notificationHrefFromDeepLink("/tasks/task%3Aone"), "/tasks/task%3Aone");
   assert.equal(notificationHrefFromDeepLink("orbit://tasks/task%3Aone"), "/tasks/task%3Aone");
-  assert.equal(notificationHrefFromDeepLink("/schedule"), "/schedule");
+  // R05: the old calendar / today addresses open their Task segment.
+  assert.equal(notificationHrefFromDeepLink("/schedule"), "/task?seg=calendar");
+  assert.equal(notificationHrefFromDeepLink("/today"), "/task?seg=todo");
   assert.equal(notificationHrefFromDeepLink("/inbox/notification%3Aone"), "/inbox/notification%3Aone");
   assert.equal(notificationHrefFromDeepLink("https://example.com/tasks/one"), null);
   assert.equal(notificationHrefFromDeepLink("/admin"), null);

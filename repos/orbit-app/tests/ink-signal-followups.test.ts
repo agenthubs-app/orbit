@@ -41,10 +41,10 @@ test.before(async () => {
 test.after(async () => { await browser?.close(); });
 
 for (const [params, target] of [
-  [{}, "/tasks?scope=relationship"],
-  [{ view: "completed", scope: "all" }, "/tasks?scope=relationship&view=completed"],
-  [{ view: ["completed", "open"], next: "https://outside.example" }, "/tasks?scope=relationship&view=completed"],
-  [{ view: "unknown" }, "/tasks?scope=relationship"],
+  [{}, "/task?seg=todo&scope=relationship"],
+  [{ view: "completed", scope: "all" }, "/task?seg=todo&scope=relationship&view=completed"],
+  [{ view: ["completed", "open"], next: "https://outside.example" }, "/task?seg=todo&scope=relationship&view=completed"],
+  [{ view: "unknown" }, "/task?seg=todo&scope=relationship"],
 ] as const) {
   test(`authenticated legacy route redirects to ${target}: ${JSON.stringify(params)}`, async t => {
     const page = await browser.newPage(); t.after(() => page.close()); page.setDefaultTimeout(1500);
@@ -61,6 +61,6 @@ test("signed-out legacy link keeps authentication and a normalized relationship 
   await page.setContent('<div id="root"></div>');
   await page.evaluate(() => { (window as any).initialFixture = { signedIn: false, params: { view: "completed", next: "https://outside.example" } }; });
   await page.addScriptTag({ content: script });
-  assert.equal(await page.getByRole("status").textContent(), "/account/login?next=" + encodeURIComponent("/tasks?scope=relationship&view=completed"));
+  assert.equal(await page.getByRole("status").textContent(), "/account/login?next=" + encodeURIComponent("/task?seg=todo&scope=relationship&view=completed"));
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.reads), []);
 });

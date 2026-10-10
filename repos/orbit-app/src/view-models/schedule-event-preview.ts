@@ -3,7 +3,7 @@ import type { OrbitLanguage } from "../api/contract/language";
 import { createTranslator, type OrbitTranslator } from "../i18n/messages";
 
 export interface ScheduleEventPreviewAction {
-  href: "/events" | "/schedule";
+  href: "/events" | "/task?seg=calendar";
   label: string;
 }
 
@@ -27,7 +27,7 @@ export interface ScheduleEventPreviewView {
 
 function recoveryActions(t: OrbitTranslator): ScheduleEventPreviewAction[] {
   return [
-    { href: "/schedule", label: t("schedulePreview.back") },
+    { href: "/task?seg=calendar", label: t("schedulePreview.back") },
     { href: "/events", label: t("schedulePreview.events") }
   ];
 }

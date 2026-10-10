@@ -18,11 +18,12 @@ export function parseTaskListSelection(params?: { scope?: unknown; view?: unknow
   };
 }
 
+// R05: the task list is the Task page's To-do segment (the old /tasks redirects there).
 export function taskListHref(params?: { scope?: unknown; view?: unknown } | null): string {
-  const selection = parseTaskListSelection(params), query = new URLSearchParams();
+  const selection = parseTaskListSelection(params), query = new URLSearchParams({ seg: "todo" });
   if (selection.scope === "relationship") query.set("scope", selection.scope);
   if (selection.view === "completed") query.set("view", selection.view);
-  return query.size ? `/tasks?${query}` : "/tasks";
+  return `/task?${query}`;
 }
 
 export function selectTaskListItems<T extends Pick<TaskItemContract,"id"|"status"|"category"|"relatedContactId">>(tasks: readonly T[], selection: TaskListSelection): T[] {

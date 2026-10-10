@@ -21,4 +21,13 @@ export const shell = {
   "shell.checkingSignIn": "ログイン状態を確認しています…",
   "shell.errorDetails": "エラーの詳細",
   "shell.noErrorDetails": "詳しい情報はありません。",
+  "shell.parent.notes": "メモ",
+  "shell.task.addCalendar": "予定を追加",
+  "shell.task.addTodo": "To-do を追加",
+  "shell.task.addMemo": "メモを追加",
+  "shell.task.quickAddLabel": "To-do を追加",
+  "shell.task.quickAddPlaceholder": "やることを入力",
+  "shell.task.planEmptyTitle": "目標を決める",
+  "shell.task.planEmptyBody": "達成したいことを決めると、ここで計画として進められます。",
+  "shell.task.planEmptyAction": "目標を決める",
 } as const;

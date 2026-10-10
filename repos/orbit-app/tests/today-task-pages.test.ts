@@ -201,7 +201,7 @@ test("AI summary projects task and schedule unions locally and uses full-set que
   assert.equal(view.suggestionCount, 6);
   assert.deepEqual(view.items.map(({ kind, href, context, index }) => ({ kind, href, context, index })), [
     { kind: "task", href: "/tasks/task%3Aa%2Fb", context: "Relationship · Today", index: 1 },
-    { kind: "schedule", href: "/schedule", context: "11:30 · 线上", index: 2 },
+    { kind: "schedule", href: "/task?seg=calendar", context: "11:30 · 线上", index: 2 },
   ]);
   assert.deepEqual(todaySummaryQuestions(payload, "en").map(question => question.kind), ["tasks", "discovery"]);
 

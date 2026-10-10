@@ -10,11 +10,13 @@ const PRIVATE_ROUTE_PREFIXES = [
   "/followups",
   "/home",
   "/inbox",
+  "/notes",
   "/party",
   "/platform",
   "/profile",
   "/schedule",
   "/settings",
+  "/task",
   "/today",
   "/tasks"
 ] as const;

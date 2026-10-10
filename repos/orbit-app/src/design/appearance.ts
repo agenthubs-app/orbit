@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { Appearance } from "react-native";
+import { appearanceSyncStore } from "./appearance-sync";
 
 // R01 (RD-05): the App follows the system appearance until the person picks
 // light or dark in Settings. The choice is device-local (like iOS apps' own
@@ -30,6 +31,17 @@ function apply(next: AppearanceChoice) {
   listeners.forEach((listener) => listener());
 }
 
+/**
+ * R05 (R01 review m3): apply the last choice synchronously before the first frame
+ * (native). Returns whether a stored choice was found.
+ */
+export function applyStoredAppearanceSync(): boolean {
+  const stored = appearanceSyncStore.read(APPEARANCE_STORAGE_KEY);
+  if (stored === null) return false;
+  apply(parseChoice(stored));
+  return true;
+}
+
 export async function loadAppearancePreference(adapter: AppearanceStorage): Promise<void> {
   storage = adapter;
   let stored: string | null = null;
@@ -38,11 +50,14 @@ export async function loadAppearancePreference(adapter: AppearanceStorage): Prom
   } catch {
     stored = null;
   }
-  apply(parseChoice(stored));
+  const restored = parseChoice(stored);
+  apply(restored);
+  appearanceSyncStore.write(APPEARANCE_STORAGE_KEY, restored);
 }
 
 export async function setAppearanceChoice(next: AppearanceChoice): Promise<void> {
   apply(next);
+  appearanceSyncStore.write(APPEARANCE_STORAGE_KEY, next);
   try {
     await storage?.setItem(APPEARANCE_STORAGE_KEY, next);
   } catch {

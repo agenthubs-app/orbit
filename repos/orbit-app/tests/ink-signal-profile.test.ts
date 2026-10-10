@@ -307,7 +307,11 @@ test("profile overview follows the approved hierarchy with real statistics and n
   for (const label of ["人脉 2", "今日待办 3", "近期日程 2"]) assert.equal(await p.getByRole("button", { name: label, exact: true }).count(), 1);
   for (const text of ["基本资料", "互联网", "星野工作室", "产品经理", "记录工作中的交流，也寻找能一起做事的人。"]) assert.equal(await p.getByText(text, { exact: true }).count(), 1);
   for (const group of ["我能提供", "我想寻找", "想聊的话题"]) assert.equal(await p.getByLabel(group, { exact: true }).count(), 1);
-  assert.equal(await p.getByRole("tab", { name: "我的", exact: true }).getAttribute("aria-selected"), "true");
+  // R05 NAV-V3: マイページ is a secondary page (from the home avatar): no tab bar, a back
+  // button, and a 收件箱 row as the second way into the inbox.
+  assert.equal(await p.getByRole("tablist").count(), 0);
+  assert.equal(await p.getByRole("button", { name: "返回首页", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "收件箱", exact: true }).count(), 1);
   assert.deepEqual(await writes(p), []);
   const queries = await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.url));
   assert.ok(queries.some((url: string) => new URL(url).pathname === "/api/tasks/page" && new URL(url).searchParams.get("limit") === "1"));

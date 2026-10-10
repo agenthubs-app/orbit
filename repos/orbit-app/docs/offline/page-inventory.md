@@ -7,18 +7,18 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 42 |
+| 能断网看（本地优先） | 40 |
 | └ 由 Sprint 0108 实现 | 8 |
-| └ 由 Sprint 0115 实现 | 3 |
+| └ 由 Sprint 0115 实现 | 2 |
 | └ 由 Sprint 0116 实现 | 3 |
 | └ 由 Sprint 0117 实现 | 4 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
-| └ 由 Sprint 0131 实现 | 15 |
+| └ 由 Sprint 0131 实现 | 13 |
 | └ 由 Sprint 0137 实现 | 1 |
 | 只能在线 | 36 |
-| 不读账号数据（布局、跳转、本机设置） | 18 |
-| 合计（路由文件） | 96 |
+| 不读账号数据（布局、跳转、本机设置） | 21 |
+| 合计（路由文件） | 97 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -44,18 +44,16 @@
 | `/contacts/analysis/:dimension/:bucketId` | 分组详情 | 0117 | 域 dashboard-graph，本机计算（非 ASCII 分组编号只解码一次，0131） | 「截至」 |
 | `/events/:id` | 活动详情 | 0115 | 域 registered-events / event-registrations / event-published-results；未报名的活动读 /api/events/public/:id | 「截至」；404 显示「活动已不存在」，5xx 显示「服务暂时不可用」（0131）；取消或被拒后显示中性说明和返回按钮（0131）；报名、签到需要联网 |
 | `/events/:id/live` | 活动现场页 | 0115 | 域 event-published-results 等 | 「截至」；签到、交换名片、记笔记、约时间需要联网 |
-| `/schedule` | 日历 | 0115 | 域 registered-events、tasks、personal-schedule | 「截至」；点已报名活动进入 /events/:id（0131） |
 | `/schedule/personal/:id` | 个人日程详情 | 0108 | 域 personal-schedule | 「截至」；编辑、改期需要联网 |
 | `/schedule/personal/:id/edit` | 编辑个人日程 | 0108 | 域 personal-schedule | 表单显示本机内容；保存需要联网 |
 | `/schedule/personal/new` | 新建个人日程 | 0108 | 域 personal-schedule（关联选项读本机联系人、笔记） | 保存需要联网 |
 | `/tasks/personal` | 个人日程列表 | 0108 | 域 personal-schedule | 「截至」 |
-| `/notes` | 笔记列表 | 0108 | 域 notes（浏览器版 0125 起） | 「截至」；新建需要联网 |
+| `/notes` | 笔记列表：不带参数跳到 Task 的メモ段（R05）；?contactId= 是某个联系人的笔记 | 0108 | 域 notes（浏览器版 0125 起） | 「截至」；新建需要联网 |
 | `/notes/:id` | 笔记详情 | 0108 | 域 notes；关联联系人读域 contacts（0116） | 「截至」；编辑需要联网 |
 | `/notes/:id/edit` | 编辑笔记 | 0108 | 域 notes | 表单显示本机内容；保存需要联网 |
 | `/notes/new` | 新建笔记 | 0108 | 域 notes（草稿存本机） | 可以写草稿；保存需要联网 |
 | `/home` | 首页（日程、待办、推荐活动、收件箱角标） | 0131 | 日程读域 personal-schedule + registered-events，约谈读页面副本 home-schedule；待办读域 tasks；角标读域 inbox-notifications 的本机未读数；推荐活动读页面副本 event-recommendations | 「截至」；推荐活动显示最近一次同步的结果；勾选完成待办需要联网 |
-| `/today` | 今日待办 | 0131 | 页面副本 today-page（/api/today 第一页） | 「截至」；新建、完成、接受建议需要联网 |
-| `/tasks` | 待办（全部 / 关系 / 个人），含关系待办和待办建议 | 0131 | 列表读域 tasks（0087/0108）；关系待办读页面副本 relationship-tasks（/api/relationship-tasks/page 第一页）；待办建议读页面副本 task-suggestions（/api/task-suggestions/page 第一页） | 「截至」；完成、重开需要联网 |
+| `/task` | Task：カレンダー / To-do / プラン / メモ 四段（R05）；日历段 = 原日程页，To-do 段 = 添加框 + 原待办页，プラン段 = 空态，メモ段 = 原笔记页 | R05 | 日历段读域 registered-events、tasks、personal-schedule（0115）；To-do 段读域 tasks 和页面副本 relationship-tasks、task-suggestions（0131）；メモ段读域 notes（0108）；プラン段无 | 四段照常可读（「截至」）；添加 To-do 离线进本机队列，其余新建需要联网 |
 | `/tasks/:id` | 待办详情 | 0131 | 域 tasks 的这一行；活动记录和提醒读网络 | 「截至」；待办内容来自本机；活动记录、提醒和所有修改需要联网 |
 | `/tasks/relationship/:id` | 关系待办详情（关系下一步） | 0131 | 页面副本 relationship-lifecycle（/api/connections/:id/lifecycle，按关系保存最近打开的 20 个） | 「截至」；打开过的关系显示本机副本；确认下一步需要联网；没打开过的显示「需要联网」 |
 | `/profile` | 我的资料 | 0131 | 页面副本 self-profile（/api/profile）；统计读域 contacts、tasks、personal-schedule；资料更新建议读网络 | 「截至」；编辑、上传名片或简历、建议需要联网 |
@@ -115,8 +113,8 @@
 
 | 路由 | 页面 | 读取 | 断网时 |
 | --- | --- | --- | --- |
-| `(根布局)` | 根布局：会话恢复、错误边界、通知协调 | 无（会话恢复见威胁模型第 6 节） | 按 0127 的离线冷启动身份进入 |
-| `(底部标签栏)` | 底部五个标签的布局 | 无 | 照常显示 |
+| `(根布局)` | 根布局：会话恢复、错误边界、通知协调、底部标签栏（R05） | 无（会话恢复见威胁模型第 6 节） | 按 0127 的离线冷启动身份进入 |
+| `(主页面分组)` | 主页面分组的导航栈（底栏由根布局统一绘制，R05） | 无 | 照常显示 |
 | `/showcase/components` | 组件库展示页（开发包和 TestFlight，R04） | 无（示例数据打包在 App 里） | 照常显示 |
 | `/showcase/copy` | 标准用词展示页（开发包和 TestFlight，R03） | 无（标准用词打包在 App 里） | 照常显示 |
 | `/showcase/icons` | 图标展示页（开发包和 TestFlight，R02） | 无（图标源打包在 App 里） | 照常显示 |
@@ -130,22 +128,25 @@
 | `/party/checkin` | 旧派对签到跳转 | 无 | 跳到现场页 |
 | `/party/graph` | 旧派对关系图跳转 | 无 | 跳到现场页 |
 | `/profile/continue` | 补资料后继续跳转 | 无 | 跳到目标页 |
-| `/followups` | 旧跟进入口，跳到待办的「关系」分组 | 无（目标页见 app/tasks.tsx） | 跳到 /tasks?scope=relationship（0131 可离线） |
+| `/followups` | 旧跟进入口，跳到 Task 的 To-do 段「关系」分组 | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo&scope=relationship（可离线） |
 | `/settings` | 设置（语言、主题、本地镜像状态、通知权限） | 本机设置；通知投递和发现偏好读 /api/inbox/delivery/preferences、/api/inbox/discovery/preferences | 本机设置照常可用；两块通知偏好显示「需要联网」 |
 | `/settings/api` | 服务器地址设置 | 本机保存的服务器地址；「检查连接」按需读 /api/health | 可以改地址；检查连接会显示连不上 |
+| `/schedule` | 旧日历入口，跳到 Task 的カレンダー段（R05） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=calendar（可离线） |
+| `/today` | 旧今日待办入口，跳到 Task 的 To-do 段（R05，添加框在段顶部） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo（可离线） |
+| `/tasks` | 旧待办入口，跳到 Task 的 To-do 段（R05，保留 scope / view） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo（可离线） |
 
 ## 路由文件对照
 
 | 文件 | 路由 | 归属 |
 | --- | --- | --- |
 | `app/_layout.tsx` | `(根布局)` | device-only |
-| `app/(app)/_layout.tsx` | `(底部标签栏)` | device-only |
+| `app/(app)/_layout.tsx` | `(主页面分组)` | device-only |
 | `app/(app)/ai.tsx` | `/ai` | local-first (0118) |
 | `app/(app)/contacts.tsx` | `/contacts` | local-first (0116) |
 | `app/(app)/events.tsx` | `/events` | local-first (0131) |
 | `app/(app)/inbox.tsx` | `/inbox` | local-first (0119) |
 | `app/(app)/profile.tsx` | `/profile` | local-first (0131) |
-| `app/(app)/schedule.tsx` | `/schedule` | local-first (0115) |
+| `app/(app)/schedule.tsx` | `/schedule` | device-only |
 | `app/[...legacy].tsx` | `/*（旧链接）` | device-only |
 | `app/+html.tsx` | `(浏览器外壳)` | device-only |
 | `app/account.tsx` | `/account` | online-only |
@@ -229,8 +230,9 @@
 | `app/showcase/components.tsx` | `/showcase/components` | device-only |
 | `app/showcase/copy.tsx` | `/showcase/copy` | device-only |
 | `app/showcase/icons.tsx` | `/showcase/icons` | device-only |
-| `app/tasks.tsx` | `/tasks` | local-first (0131) |
+| `app/task.tsx` | `/task` | local-first (R05) |
+| `app/tasks.tsx` | `/tasks` | device-only |
 | `app/tasks/[id].tsx` | `/tasks/:id` | local-first (0131) |
 | `app/tasks/personal.tsx` | `/tasks/personal` | local-first (0108) |
 | `app/tasks/relationship/[id].tsx` | `/tasks/relationship/:id` | local-first (0131) |
-| `app/today.tsx` | `/today` | local-first (0131) |
+| `app/today.tsx` | `/today` | device-only |

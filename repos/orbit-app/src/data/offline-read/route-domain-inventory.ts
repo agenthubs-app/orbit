@@ -418,6 +418,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/tasks/TasksScreen.tsx","PATCH","/api/tasks/:id"],
   ["src/screens/today/TodayScreen.tsx","POST","/api/task-suggestions/:id/accept"],
   ["src/screens/today/TodayScreen.tsx","POST","/api/tasks"],
+  ["src/screens/task/TaskQuickAdd.tsx","POST","/api/tasks"],
   ["src/screens/today/TodayScreen.tsx","PATCH","/api/tasks/:id"],
   ["src/hooks/useTodayTaskPages.ts","GET","/api/today"],
   ["src/hooks/useTodayTaskPages.ts","GET","/api/tasks/page"],

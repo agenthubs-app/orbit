@@ -402,7 +402,7 @@ function followupTimelineItems(
         durationMinutes: 30,
         href: stringField(task, "id")
           ? `/tasks/${encodeURIComponent(stringField(task, "id"))}`
-          : "/tasks?scope=relationship",
+          : "/task?seg=todo&scope=relationship",
         id: item.id,
         kind: "followup" as const,
         monthLabel: calendarOnly?.monthLabel ?? normalizedDate?.monthLabel ?? item.monthLabel,

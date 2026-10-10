@@ -8,6 +8,12 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { eventValueRecommendationsPath, ORBIT_API_ENDPOINTS, taskPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
+import { Avatar } from "../../components/ui/Avatar";
+import { Button } from "../../components/ui/Button";
+import { Icon } from "../../components/ui/Icon";
+import { UiPressable } from "../../components/ui/Pressable";
+import { useToast } from "../../components/ui/Toast";
+import { useStandardCopy } from "../../i18n/standard-copy";
 import { LoadingState } from "../../components/LoadingState";
 import { createThemedStyles } from "../../design/theme";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
@@ -43,9 +49,10 @@ const homeFont = Platform.select({
 });
 const quickActions = [
   { labelKey: "home.scanCard", href: "/contacts/new/scan", icon: "scan" },
-  { labelKey: "home.viewSchedule", href: "/schedule", icon: "calendar" },
-  { labelKey: "home.newTask", href: "/today", icon: "task" },
-  { labelKey: "notes.title", href: "/notes", icon: "notes" },
+  // R05: the shortcuts land on their Task segment (the old addresses redirect there too).
+  { labelKey: "home.viewSchedule", href: "/task?seg=calendar", icon: "calendar" },
+  { labelKey: "home.newTask", href: "/task?seg=todo", icon: "task" },
+  { labelKey: "notes.title", href: "/task?seg=memo", icon: "notes" },
 ] as const satisfies readonly { labelKey: MessageKey; href: string; icon: "scan" | "calendar" | "task" | "notes" }[];
 
 export function HomeDashboardScreen() {
@@ -280,7 +287,8 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
   }
   return <AppScreen title={locale.t("home.title")} refreshControl={<RefreshControl onRefresh={refresh} refreshing={sections.some(section => resources[section].kind === "loading")} tintColor={colors.accentText} />}
     header={<View style={[styles.header, singleColumn && styles.headerWrap]}>
-      <Text style={styles.brand}>Orbit<Text style={styles.signal}>.</Text></Text>
+      {/* R05 NAV-V3: マイページ opens from the avatar (b5-me-inbox.html:178). */}
+      <HomeAvatarButton onPress={() => navigate("/profile")} />
       <View style={[styles.search, singleColumn && styles.largeHeaderControl]}>
         <View pointerEvents="none" style={styles.searchSurface} />
         <HomeIcon name="search" color={colors.ink3Text} size={16} />
@@ -290,9 +298,10 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.inbox")} onPress={() => navigate("/inbox")} style={[styles.inbox, singleColumn && styles.largeHeaderControl]}>
         <View pointerEvents="none" style={styles.inboxSurface} />
-        <HomeIcon name="inbox" color={colors.ink} size={18} />
+        <Icon name="bell" color={colors.ink} size={20} />
         {active ? <HomeInboxBadge scopeKey={JSON.stringify([scope.key, inboxReadVersion])} /> : null}
       </Pressable>
+      <HomeEditButton />
     </View>}>
     {offline ? <OfflineNotice lastSyncedAt={asOf} reason={offlineReason} /> : null}
     <View style={styles.dateRow}>
@@ -318,7 +327,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     </View>
     <View testID="home-day-sections" style={[styles.daySections, singleColumn && styles.singleColumn, singleColumn && styles.largeSections]}>
       <View style={[styles.scheduleColumn, singleColumn && styles.fullSchedule]}>
-        {sectionHeading(date.isToday ? locale.t("home.today") : locale.t("home.schedule"), schedules?.length, "/schedule", locale.t("home.allSchedule"), resources.schedule.kind === "loading" && !shownLocally.schedule)}
+        {sectionHeading(date.isToday ? locale.t("home.today") : locale.t("home.schedule"), schedules?.length, "/task?seg=calendar", locale.t("home.allSchedule"), resources.schedule.kind === "loading" && !shownLocally.schedule)}
         {sectionBody("schedule", locale.t("home.schedule"), schedules?.length ? schedules.map(item =>
           <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={locale.t("home.openSchedule", { name: item.title })} onPress={() => navigate(item.href)} style={[styles.scheduleRow, singleColumn && styles.largeScheduleRow]}>
             <View style={[styles.scheduleMarker, item.id !== highlightedSchedule?.id && styles.endedMarker]} />
@@ -329,7 +338,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
           </Pressable>) : <Text style={styles.empty}>{locale.t("home.noSchedule")}</Text>)}
       </View>
       <View style={[styles.taskColumn, singleColumn && styles.fullTasks]}>
-        {sectionHeading(locale.t("home.tasks"), taskPage?.total, "/tasks", locale.t("home.allTasks"), taskPending)}
+        {sectionHeading(locale.t("home.tasks"), taskPage?.total, "/task?seg=todo", locale.t("home.allTasks"), taskPending)}
         {sectionBody("tasks", locale.t("home.tasks"), visibleTasks?.length ? visibleTasks.map(task => <View key={task.id} style={styles.taskRow}>
           <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.completeTask", { name: task.title }) + (tasksFromDevice && offline ? " · " + locale.t("sync.needsNetwork") : "")}
             accessibilityState={{ disabled: updatingId !== null || tasksFromDevice }} disabled={updatingId !== null || tasksFromDevice}
@@ -367,6 +376,22 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
   </AppScreen>;
 }
 
+// R05 (RD-21): 編集 is shown and says it is coming soon; R10 wires the home editor.
+function HomeEditButton() {
+  const copy = useStandardCopy();
+  const toast = useToast();
+  return <Button label={copy.homeEdit.edit} size="sm" variant="ghost" onPress={() => toast.info(copy.homeEdit.comingSoon)} />;
+}
+
+function HomeAvatarButton({ onPress }: { onPress: () => void }) {
+  const copy = useStandardCopy();
+  const auth = useOrbitAuthSession();
+  const name = auth.user?.name?.trim() || auth.user?.email?.trim() || copy.nav.me;
+  return <UiPressable accessibilityRole="button" accessibilityLabel={copy.nav.me} hitSlop={4} onPress={onPress}>
+    <Avatar name={name} size="md" />
+  </UiPressable>;
+}
+
 function HomeInboxBadge({ scopeKey }: { scopeKey: string }) {
   const { styles } = useStyles();
   const count = useRelationshipInboxBadgeCount(scopeKey);
@@ -390,7 +415,6 @@ function HomeIcon({ name, size, color }: { name: "search" | "inbox" | "scan" | "
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: -9 },
   headerWrap: { flexWrap: "wrap" },
-  brand: { color: colors.ink, fontFamily: homeFont, fontSize: 19, fontWeight: "900", letterSpacing: -0.38 },
   signal: { color: colors.accentText },
   search: { flex: 1, minWidth: 110, minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12 },
   searchSurface: { position: "absolute", zIndex: -1, top: 3, bottom: 3, left: 0, right: 0, borderRadius: 10, backgroundColor: colors.surface2 },
@@ -398,7 +422,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   largeHeaderControl: { minHeight: 50 },
   inbox: { width: 44, minHeight: 44, marginHorizontal: -3, alignItems: "center", justifyContent: "center" },
   inboxSurface: { position: "absolute", zIndex: -1, top: 3, bottom: 3, left: 3, right: 3, borderRadius: 10, borderWidth: 1, borderColor: colors.line },
-  badge: { position: "absolute", top: 0, right: 0, minWidth: 16, minHeight: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: colors.accentText, alignItems: "center", justifyContent: "center" },
+  badge: { position: "absolute", top: 9, right: 10, minWidth: 16, minHeight: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: colors.coral, borderWidth: 1.5, borderColor: colors.surface, alignItems: "center", justifyContent: "center" },
   badgeText: { color: colors.onAccent, fontFamily: homeFont, fontSize: 10, fontWeight: "700" },
   dateRow: { flexDirection: "row", alignItems: "baseline", flexWrap: "wrap", columnGap: 10, rowGap: 4 },
   date: { fontFamily: homeFont, fontSize: 34, lineHeight: 34, fontWeight: "800", letterSpacing: -1.02, color: colors.ink },

@@ -15,7 +15,8 @@ test("native Today uses the task workspace while All Actions keeps the Agent Led
     "utf8"
   );
 
-  assert.match(today, /TodayScreen/u);
+  // R05: /today opens the Task page's To-do segment (TodayScreen's add box sits on top of it).
+  assert.match(today, /LegacyTaskRedirect/u);
   assert.doesNotMatch(today, /TodayAgentLedgerScreen/u);
   assert.doesNotMatch(today, /ScheduleScreen/u);
   assert.match(allActions, /AllActionsAgentLedgerScreen/u);

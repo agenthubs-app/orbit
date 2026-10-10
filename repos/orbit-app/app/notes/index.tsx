@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef } from "react";
 
 import { useOrbitApiBaseUrl } from "../../src/api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../src/api/AuthSessionProvider";
+import { LegacyTaskRedirect } from "../../src/components/LegacyTaskRedirect";
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 import { NotesScreen } from "../../src/screens/notes/NotesScreen";
 
@@ -15,4 +16,9 @@ function NotesRoute() {
   return enabled ? <NotesScreen key={scope.key} actorId={actorId} scopeKey={scope.key} /> : null;
 }
 
-export default withOrbitPrivateRoute(NotesRoute);
+// R05: /notes → /task?seg=memo; notes for one contact (?contactId=) stay their own page.
+function NotesEntry() {
+  return <LegacyTaskRedirect fallback={NotesRoute} />;
+}
+
+export default withOrbitPrivateRoute(NotesEntry);

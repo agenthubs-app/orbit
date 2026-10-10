@@ -49,7 +49,8 @@ test("all tasks keeps open and completed history as visible tabs", () => {
 
 test("native Today route points to the task and schedule workspace", () => {
   const route = readFileSync(join(repoRoot, "app", "today.tsx"), "utf8");
-  assert.match(route, /TodayScreen/u);
+  // R05: the route is a redirect to /task?seg=todo.
+  assert.match(route, /LegacyTaskRedirect/u);
   assert.doesNotMatch(route, /TodayAgentLedgerScreen/u);
 });
 

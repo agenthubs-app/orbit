@@ -18,11 +18,11 @@ test("tasks login returns retain only validated list selection and preserve cano
   assert.equal(isPrivateMobileRoute("/app/tasks/task%3Aone%2Ftwo"), true);
   assert.equal(isPrivateMobileRoute("/tasks-public"), false);
   const params = { scope: ["relationship", "all"], view: ["completed", "open"], next: "https://outside.example", "#": "ignored" };
-  const href = "/tasks?scope=relationship&view=completed";
+  const href = "/task?seg=todo&scope=relationship&view=completed";
   assert.equal(mobileAuthReturnHref("/tasks", params), href);
   assert.equal(mobileLoginHref("/tasks", params), `/account/login?next=${encodeURIComponent(href)}`);
   assert.equal(resolveSupportedInitialRouteHref(href + "&next=https://outside.example"), href);
-  assert.equal(resolveSupportedInitialRouteHref("/app/tasks?scope=bad&view=cancelled#ignored"), "/tasks");
+  assert.equal(resolveSupportedInitialRouteHref("/app/tasks?scope=bad&view=cancelled#ignored"), "/task?seg=todo");
   assert.equal(resolveSupportedInitialRouteHref("/tasks/task%3Aone%2Ftwo"), "/tasks/task%3Aone%2Ftwo");
   assert.equal(mobileAuthReturnHref("/tasks/task%3Aone%2Ftwo", { id: "task:one/two" }), "/tasks/task%3Aone%2Ftwo");
   assert.equal(resolveSupportedInitialRouteHref("/tasks/personal"), "/tasks/personal");
@@ -82,7 +82,7 @@ test("61 canonical tasks retain four orthogonal views, unique IDs and no candida
 });
 
 test("legacy followups links return to the relationship list with only supported status parameters", () => {
-  assert.equal(resolveSupportedInitialRouteHref("/followups?scope=all&view=completed&next=https://outside.example"), "/tasks?scope=relationship&view=completed");
-  assert.equal(resolveSupportedInitialRouteHref("/app/home/schedule?view=unknown"), "/tasks?scope=relationship");
-  assert.equal(mobileAuthReturnHref("/followups", { scope: "all", view: ["completed", "open"], next: "https://outside.example" }), "/tasks?scope=relationship&view=completed");
+  assert.equal(resolveSupportedInitialRouteHref("/followups?scope=all&view=completed&next=https://outside.example"), "/task?seg=todo&scope=relationship&view=completed");
+  assert.equal(resolveSupportedInitialRouteHref("/app/home/schedule?view=unknown"), "/task?seg=todo&scope=relationship");
+  assert.equal(mobileAuthReturnHref("/followups", { scope: "all", view: ["completed", "open"], next: "https://outside.example" }), "/task?seg=todo&scope=relationship&view=completed");
 });

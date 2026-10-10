@@ -69,7 +69,7 @@ test.before(async () => {
   ({ createTaskService } = await load("features/tasks/service.ts"));
   ({ createMemoryLiveRecordStore } = await load("shared/storage/live-record-store.ts"));
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/tasks"; import AiRoute from "./app/ai/[id]"; import { useFixture } from "c0022-fixture"; function App() { const state = useFixture(); return state.screen === "ai" ? <AiRoute /> : <Route />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { withOrbitPrivateRoute } from "./src/components/OrbitRouteAccessBoundary"; import { TasksScreen } from "./src/screens/tasks/TasksScreen"; /* R05: /tasks redirects to the Task page; its To-do slot is this screen. */ const Route = withOrbitPrivateRoute(TasksScreen); import AiRoute from "./app/ai/[id]"; import { useFixture } from "c0022-fixture"; function App() { const state = useFixture(); return state.screen === "ai" ? <AiRoute /> : <Route />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "unified-tasks-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));

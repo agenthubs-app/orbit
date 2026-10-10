@@ -75,6 +75,6 @@ test("home schedule: personal items and registered events from the domains, meet
   assert.deepEqual(rows?.map((row) => [row.title, row.href]), [
     ["和张伟喝咖啡", "/schedule/personal/p1"],
     ["储能论坛", "/events/ev1"],
-    ["约谈：佐藤", "/schedule"],
+    ["约谈：佐藤", "/task?seg=calendar"],
   ]);
 });

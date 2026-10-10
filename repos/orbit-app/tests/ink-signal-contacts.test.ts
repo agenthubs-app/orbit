@@ -83,6 +83,8 @@ const router = { canGoBack: () => false, back() { state.navigation.push("back");
 export const useRouter = () => router;
 export const Redirect = ({ href }) => <div role="status">{href}</div>;
 export const Stack = () => null;
+export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
+export const BlurView = () => null;
 export const SafeAreaView = ({ edges, style, ...props }) => <View {...props} style={[style, edges?.includes?.("top") && { paddingTop: 48 }]} />;
 export const Ionicons = ({ name, size, color }) => <span aria-hidden="true" style={{ display: "inline-block", flexShrink: 0, width: size, height: size, fontFamily: "OrbitTestIonicons", fontSize: size, lineHeight: 1, color }}>{String.fromCodePoint(iconGlyphs[name])}</span>;
 export const readSnapshot = async () => null;
@@ -97,14 +99,14 @@ export const launchCameraAsync = async () => { state.nativeCalls.push("camera");
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/(app)/contacts"; import Acquisition from "./app/contacts/new"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return !s.mounted ? null : s.acquisition ? <Acquisition /> : <Route />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/(app)/contacts"; import Acquisition from "./app/contacts/new"; import { useFixture } from "fixture"; import { ShellTabBar } from "./src/components/OrbitTabBar"; function App() { const s = useFixture(); return !s.mounted ? null : s.acquisition ? <Acquisition /> : <><Route /><ShellTabBar /></>; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic",
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "ink-contact-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "contacts" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context|expo-camera|expo-image-picker)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "contacts" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context|expo-blur|expo-camera|expo-image-picker)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "contacts" }));
       plugin.onLoad({ filter: /.*/, namespace: "contacts" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, StyleSheet, useWindowDimensions as useRealDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";

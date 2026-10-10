@@ -32,7 +32,7 @@ test("scheduleEventPreviewToView maps event detail into a read-only schedule pre
 
   assert.deepEqual(view, {
     actions: [
-      { href: "/schedule", label: "返回日程" },
+      { href: "/task?seg=calendar", label: "返回日程" },
       { href: "/events", label: "查看活动列表" }
     ],
     description: "投资人与创业者提前登记融资阶段和想认识的人。",
@@ -57,7 +57,7 @@ test("scheduleEventPreviewToView keeps failure states useful", () => {
   assert.equal(view.description, "这条活动安排暂时不可用。");
   assert.equal(view.guardrail, "来源不可用时，Orbit 不会写入日历、提醒、消息或外部系统。");
   assert.deepEqual(view.actions, [
-    { href: "/schedule", label: "返回日程" },
+    { href: "/task?seg=calendar", label: "返回日程" },
     { href: "/events", label: "查看活动列表" }
   ]);
 });

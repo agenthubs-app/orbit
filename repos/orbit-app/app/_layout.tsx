@@ -20,10 +20,11 @@ import { OrbitRouteAccessBoundary } from "../src/components/OrbitRouteAccessBoun
 import { OrbitNotificationsCoordinator } from "../src/components/OrbitNotificationsCoordinator";
 import { OrbitNotificationLifecycle } from "../src/notifications/NotificationLifecycle";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { loadAppearancePreference } from "../src/design/appearance";
+import { applyStoredAppearanceSync, loadAppearancePreference } from "../src/design/appearance";
 import { useOrbitTheme } from "../src/design/theme";
 import { OrbitLocaleProvider } from "../src/i18n/OrbitLocaleProvider";
 import { ToastProvider, UiFeedbackHost, UiPortalHost } from "../src/components/ui";
+import { ShellTabBar } from "../src/components/OrbitTabBar";
 import { mainTabForPath } from "../src/view-models/app-navigation";
 import { useEffect, useRef } from "react";
 import {
@@ -32,6 +33,9 @@ import {
   markAppPerformance,
   setAppPerformanceScope,
 } from "../src/performance/app-performance";
+
+// R05 (R01 review m3): the Settings appearance is applied before the first frame.
+applyStoredAppearanceSync();
 
 const ROOT_LAYOUT_STARTED_AT = isAppPerformanceEnabled()
   ? globalThis.performance.now()
@@ -85,12 +89,14 @@ export function ErrorBoundary({
 // R04: one root host for overlays (dialogs, sheets, toasts) instead of RN <Modal>;
 // the toast provider wraps the portal host so a toast shows above an open dialog
 // or sheet; toasts sit above the tab bar on the main tab pages.
+// R05: the shell's one tab bar sits over the navigator, under overlays.
 function UiRoot({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   return (
     <ToastProvider hasTabBar={mainTabForPath(pathname) !== null}>
       <UiPortalHost>
         {children}
+        <ShellTabBar />
         <UiFeedbackHost />
       </UiPortalHost>
     </ToastProvider>

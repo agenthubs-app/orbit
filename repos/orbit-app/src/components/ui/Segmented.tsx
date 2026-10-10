@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { createThemedStyles } from "../../design/theme";
@@ -17,7 +17,7 @@ export function Segmented<Key extends string>({ segments, value, onChange, acces
       {segments.map((segment) => {
         const selected = segment.key === value;
         return (
-          <UiPressable key={segment.key} accessibilityRole="tab" accessibilityLabel={segment.label} accessibilityState={{ selected }} hitSlop={4} onPress={() => onChange(segment.key)} pressedScale={0.97} style={[styles.option, selected && styles.selected]}>
+          <UiPressable key={segment.key} accessibilityRole="tab" accessibilityLabel={segment.label} accessibilityState={{ selected }} aria-selected={selected} hitSlop={4} onPress={() => onChange(segment.key)} pressedScale={0.97} style={[styles.option, selected && styles.selected]}>
             {/* Like UISegmentedControl: equal fixed widths, so text size is capped (1.4×) and shrinks to fit; the full label stays in accessibilityLabel. */}
             <UiText adjustsFontSizeToFit maxFontSizeMultiplier={1.4} minimumFontScale={0.75} numberOfLines={1} style={[styles.label, selected && styles.labelSelected]}>{segment.label}</UiText>
           </UiPressable>
@@ -27,8 +27,9 @@ export function Segmented<Key extends string>({ segments, value, onChange, acces
   );
 }
 
-// kit .tseg (Task 四段): equal segments over pages the user can also swipe between.
-// Segment positions are frozen (RD-20); the parent owns which page is shown.
+// kit .tseg (Task 四段) + .tswipe page dots: equal segments over pages the user can
+// also swipe between. Segment positions are frozen (RD-20); the parent owns which
+// page is shown — a value set from outside (a link, restored state) moves the pager.
 export function SwipeSegments<Key extends string>({ segments, value, onChange, accessibilityLabel, renderPage }: {
   segments: Segment<Key>[];
   value: Key;
@@ -36,25 +37,53 @@ export function SwipeSegments<Key extends string>({ segments, value, onChange, a
   accessibilityLabel: string;
   renderPage: (key: Key) => ReactNode;
 }) {
+  const { styles } = useStyles();
   const { width } = useWindowDimensions();
   const pager = useRef<ScrollView>(null);
   const [pageWidth, setPageWidth] = useState(width);
   const reduced = useReducedMotion();
+  const index = Math.max(0, segments.findIndex((segment) => segment.key === value));
+  const shown = useRef(index);
+  const positioned = useRef(false);
+  // Only the first position goes through contentOffset (iOS): a changing contentOffset
+  // prop fights the animated scrollTo of a tap and lands on the wrong page.
+  const initialOffset = useRef({ x: index * pageWidth, y: 0 }).current;
+  useEffect(() => {
+    if (shown.current === index) return;
+    shown.current = index;
+    pager.current?.scrollTo({ x: index * pageWidth, animated: false });
+  }, [index, pageWidth]);
   const select = (key: Key) => {
+    const next = segments.findIndex((segment) => segment.key === key);
+    shown.current = next;
     onChange(key);
-    pager.current?.scrollTo({ x: segments.findIndex((segment) => segment.key === key) * pageWidth, animated: !reduced });
+    pager.current?.scrollTo({ x: next * pageWidth, animated: !reduced });
   };
   return (
-    <View style={{ flex: 1 }} onLayout={(event) => setPageWidth(event.nativeEvent.layout.width || width)}>
-      <Segmented segments={segments} value={value} onChange={select} accessibilityLabel={accessibilityLabel} />
+    <View style={{ flex: 1 }} onLayout={(event) => {
+      const next = event.nativeEvent.layout.width || width;
+      // contentOffset is iOS-only: place the first page (and re-place after a resize) by hand.
+      if (next !== pageWidth || !positioned.current) {
+        positioned.current = true;
+        if (next !== pageWidth) setPageWidth(next);
+        pager.current?.scrollTo({ x: shown.current * next, animated: false });
+      }
+    }}>
+      <View style={styles.segmentsInset}><Segmented segments={segments} value={value} onChange={select} accessibilityLabel={accessibilityLabel} /></View>
+      <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={styles.dots}>
+        {segments.map((segment) => <View key={segment.key} style={[styles.dot, segment.key === value && styles.dotOn]} />)}
+      </View>
       <ScrollView
         ref={pager}
         horizontal
         pagingEnabled
+        contentOffset={initialOffset}
         showsHorizontalScrollIndicator={false}
+        style={{ flex: 1 }}
         onMomentumScrollEnd={(event) => {
-          const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
-          const segment = segments[index];
+          const landed = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
+          const segment = segments[landed];
+          shown.current = landed;
           if (segment && segment.key !== value) onChange(segment.key);
         }}
       >
@@ -70,4 +99,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   selected: { backgroundColor: colors.surface },
   label: { color: colors.ink2, fontSize: 12.5, fontWeight: "600", textAlign: "center" },
   labelSelected: { color: colors.ink, fontWeight: "700" },
+  segmentsInset: { paddingHorizontal: 16 },
+  dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 8, marginBottom: 4 },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.surface3 },
+  dotOn: { width: 16, backgroundColor: colors.ink3 },
 }));

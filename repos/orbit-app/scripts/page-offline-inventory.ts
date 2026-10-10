@@ -6,7 +6,8 @@ import { join, relative, resolve } from 'node:path';
  * app/ has exactly one entry, and every entry has an owner:
  *
  *   local-first   readable offline from the device copy; `sprint` names the
- *                 sprint that made it so (0108, 0115–0119, 0125, 0131).
+ *                 sprint that made it so (0108, 0115–0119, 0125, 0131; R05 for the
+ *                 Task container, whose four segments are those pages).
  *   online-only   needs the server by design; `reasonCategory` + `reason` say
  *                 why. Offline it shows the calm 「需要联网」 state, never an
  *                 error page.
@@ -29,7 +30,7 @@ export interface PageOfflineEntry {
   title: string;
   classification: PageOfflineClassification;
   /** local-first: the sprint that made it readable offline. */
-  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131' | '0137';
+  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131' | '0137' | 'R05';
   /** Where the content comes from: device domains (域), page copies (页面副本) and network reads. */
   reads: string;
   /** What the page does when the server cannot be reached. */
@@ -53,8 +54,8 @@ export const NEEDS_NETWORK = '显示「需要联网」空状态（不是报错�
 
 export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   // ── structure ──
-  { file: 'app/_layout.tsx', path: '(根布局)', title: '根布局：会话恢复、错误边界、通知协调', classification: 'device-only', reads: '无（会话恢复见威胁模型第 6 节）', offline: '按 0127 的离线冷启动身份进入' },
-  { file: 'app/(app)/_layout.tsx', path: '(底部标签栏)', title: '底部五个标签的布局', classification: 'device-only', reads: '无', offline: '照常显示' },
+  { file: 'app/_layout.tsx', path: '(根布局)', title: '根布局：会话恢复、错误边界、通知协调、底部标签栏（R05）', classification: 'device-only', reads: '无（会话恢复见威胁模型第 6 节）', offline: '按 0127 的离线冷启动身份进入' },
+  { file: 'app/(app)/_layout.tsx', path: '(主页面分组)', title: '主页面分组的导航栈（底栏由根布局统一绘制，R05）', classification: 'device-only', reads: '无', offline: '照常显示' },
   { file: 'app/showcase/components.tsx', path: '/showcase/components', title: '组件库展示页（开发包和 TestFlight，R04）', classification: 'device-only', reads: '无（示例数据打包在 App 里）', offline: '照常显示' },
   { file: 'app/showcase/copy.tsx', path: '/showcase/copy', title: '标准用词展示页（开发包和 TestFlight，R03）', classification: 'device-only', reads: '无（标准用词打包在 App 里）', offline: '照常显示' },
   { file: 'app/showcase/icons.tsx', path: '/showcase/icons', title: '图标展示页（开发包和 TestFlight，R02）', classification: 'device-only', reads: '无（图标源打包在 App 里）', offline: '照常显示' },
@@ -68,7 +69,7 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/party/checkin.tsx', path: '/party/checkin', title: '旧派对签到跳转', classification: 'device-only', reads: '无', offline: '跳到现场页' },
   { file: 'app/party/graph.tsx', path: '/party/graph', title: '旧派对关系图跳转', classification: 'device-only', reads: '无', offline: '跳到现场页' },
   { file: 'app/profile/continue.tsx', path: '/profile/continue', title: '补资料后继续跳转', classification: 'device-only', reads: '无', offline: '跳到目标页' },
-  { file: 'app/followups.tsx', path: '/followups', title: '旧跟进入口，跳到待办的「关系」分组', classification: 'device-only', reads: '无（目标页见 app/tasks.tsx）', offline: '跳到 /tasks?scope=relationship（0131 可离线）' },
+  { file: 'app/followups.tsx', path: '/followups', title: '旧跟进入口，跳到 Task 的 To-do 段「关系」分组', classification: 'device-only', reads: '无（目标页见 app/task.tsx）', offline: '跳到 /task?seg=todo&scope=relationship（可离线）' },
   { file: 'app/settings.tsx', path: '/settings', title: '设置（语言、主题、本地镜像状态、通知权限）', classification: 'device-only', reads: '本机设置；通知投递和发现偏好读 /api/inbox/delivery/preferences、/api/inbox/discovery/preferences', offline: '本机设置照常可用；两块通知偏好显示「需要联网」' },
   { file: 'app/settings/api.tsx', path: '/settings/api', title: '服务器地址设置', classification: 'device-only', reads: '本机保存的服务器地址；「检查连接」按需读 /api/health', offline: '可以改地址；检查连接会显示连不上' },
 
@@ -90,20 +91,21 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/contacts/analysis/[dimension]/[bucketId].tsx', path: '/contacts/analysis/:dimension/:bucketId', title: '分组详情', classification: 'local-first', sprint: '0117', reads: '域 dashboard-graph，本机计算（非 ASCII 分组编号只解码一次，0131）', offline: '「截至」' },
   { file: 'app/events/[id].tsx', path: '/events/:id', title: '活动详情', classification: 'local-first', sprint: '0115', reads: '域 registered-events / event-registrations / event-published-results；未报名的活动读 /api/events/public/:id', offline: '「截至」；404 显示「活动已不存在」，5xx 显示「服务暂时不可用」（0131）；取消或被拒后显示中性说明和返回按钮（0131）；报名、签到需要联网' },
   { file: 'app/events/[id]/live.tsx', path: '/events/:id/live', title: '活动现场页', classification: 'local-first', sprint: '0115', reads: '域 event-published-results 等', offline: '「截至」；签到、交换名片、记笔记、约时间需要联网' },
-  { file: 'app/(app)/schedule.tsx', path: '/schedule', title: '日历', classification: 'local-first', sprint: '0115', reads: '域 registered-events、tasks、personal-schedule', offline: '「截至」；点已报名活动进入 /events/:id（0131）' },
+  { file: 'app/(app)/schedule.tsx', path: '/schedule', title: '旧日历入口，跳到 Task 的カレンダー段（R05）', classification: 'device-only', reads: '无（目标页见 app/task.tsx）', offline: '跳到 /task?seg=calendar（可离线）' },
   { file: 'app/schedule/personal/[id].tsx', path: '/schedule/personal/:id', title: '个人日程详情', classification: 'local-first', sprint: '0108', reads: '域 personal-schedule', offline: '「截至」；编辑、改期需要联网' },
   { file: 'app/schedule/personal/[id]/edit.tsx', path: '/schedule/personal/:id/edit', title: '编辑个人日程', classification: 'local-first', sprint: '0108', reads: '域 personal-schedule', offline: '表单显示本机内容；保存需要联网' },
   { file: 'app/schedule/personal/new.tsx', path: '/schedule/personal/new', title: '新建个人日程', classification: 'local-first', sprint: '0108', reads: '域 personal-schedule（关联选项读本机联系人、笔记）', offline: '保存需要联网' },
   { file: 'app/tasks/personal.tsx', path: '/tasks/personal', title: '个人日程列表', classification: 'local-first', sprint: '0108', reads: '域 personal-schedule', offline: '「截至」' },
-  { file: 'app/notes/index.tsx', path: '/notes', title: '笔记列表', classification: 'local-first', sprint: '0108', reads: '域 notes（浏览器版 0125 起）', offline: '「截至」；新建需要联网' },
+  { file: 'app/notes/index.tsx', path: '/notes', title: '笔记列表：不带参数跳到 Task 的メモ段（R05）；?contactId= 是某个联系人的笔记', classification: 'local-first', sprint: '0108', reads: '域 notes（浏览器版 0125 起）', offline: '「截至」；新建需要联网' },
   { file: 'app/notes/[id].tsx', path: '/notes/:id', title: '笔记详情', classification: 'local-first', sprint: '0108', reads: '域 notes；关联联系人读域 contacts（0116）', offline: '「截至」；编辑需要联网' },
   { file: 'app/notes/[id]/edit.tsx', path: '/notes/:id/edit', title: '编辑笔记', classification: 'local-first', sprint: '0108', reads: '域 notes', offline: '表单显示本机内容；保存需要联网' },
   { file: 'app/notes/new.tsx', path: '/notes/new', title: '新建笔记', classification: 'local-first', sprint: '0108', reads: '域 notes（草稿存本机）', offline: '可以写草稿；保存需要联网' },
 
   // ── this sprint: local-first ──
   { file: 'app/home.tsx', path: '/home', title: '首页（日程、待办、推荐活动、收件箱角标）', classification: 'local-first', sprint: '0131', reads: '日程读域 personal-schedule + registered-events，约谈读页面副本 home-schedule；待办读域 tasks；角标读域 inbox-notifications 的本机未读数；推荐活动读页面副本 event-recommendations', offline: '「截至」；推荐活动显示最近一次同步的结果；勾选完成待办需要联网' },
-  { file: 'app/today.tsx', path: '/today', title: '今日待办', classification: 'local-first', sprint: '0131', reads: '页面副本 today-page（/api/today 第一页）', offline: '「截至」；新建、完成、接受建议需要联网' },
-  { file: 'app/tasks.tsx', path: '/tasks', title: '待办（全部 / 关系 / 个人），含关系待办和待办建议', classification: 'local-first', sprint: '0131', reads: '列表读域 tasks（0087/0108）；关系待办读页面副本 relationship-tasks（/api/relationship-tasks/page 第一页）；待办建议读页面副本 task-suggestions（/api/task-suggestions/page 第一页）', offline: '「截至」；完成、重开需要联网' },
+  { file: 'app/today.tsx', path: '/today', title: '旧今日待办入口，跳到 Task 的 To-do 段（R05，添加框在段顶部）', classification: 'device-only', reads: '无（目标页见 app/task.tsx）', offline: '跳到 /task?seg=todo（可离线）' },
+  { file: 'app/tasks.tsx', path: '/tasks', title: '旧待办入口，跳到 Task 的 To-do 段（R05，保留 scope / view）', classification: 'device-only', reads: '无（目标页见 app/task.tsx）', offline: '跳到 /task?seg=todo（可离线）' },
+  { file: 'app/task.tsx', path: '/task', title: 'Task：カレンダー / To-do / プラン / メモ 四段（R05）；日历段 = 原日程页，To-do 段 = 添加框 + 原待办页，プラン段 = 空态，メモ段 = 原笔记页', classification: 'local-first', sprint: 'R05', reads: '日历段读域 registered-events、tasks、personal-schedule（0115）；To-do 段读域 tasks 和页面副本 relationship-tasks、task-suggestions（0131）；メモ段读域 notes（0108）；プラン段无', offline: '四段照常可读（「截至」）；添加 To-do 离线进本机队列，其余新建需要联网' },
   { file: 'app/tasks/[id].tsx', path: '/tasks/:id', title: '待办详情', classification: 'local-first', sprint: '0131', reads: '域 tasks 的这一行；活动记录和提醒读网络', offline: '「截至」；待办内容来自本机；活动记录、提醒和所有修改需要联网' },
   { file: 'app/tasks/relationship/[id].tsx', path: '/tasks/relationship/:id', title: '关系待办详情（关系下一步）', classification: 'local-first', sprint: '0131', reads: '页面副本 relationship-lifecycle（/api/connections/:id/lifecycle，按关系保存最近打开的 20 个）', offline: '「截至」；打开过的关系显示本机副本；确认下一步需要联网；没打开过的显示「需要联网」' },
   { file: 'app/(app)/profile.tsx', path: '/profile', title: '我的资料', classification: 'local-first', sprint: '0131', reads: '页面副本 self-profile（/api/profile）；统计读域 contacts、tasks、personal-schedule；资料更新建议读网络', offline: '「截至」；编辑、上传名片或简历、建议需要联网' },

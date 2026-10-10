@@ -1,4 +1,5 @@
-import { ScheduleScreen } from "../../src/screens/schedule/ScheduleScreen";
+import { LegacyTaskRedirect } from "../../src/components/LegacyTaskRedirect";
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 
-export default withOrbitPrivateRoute(ScheduleScreen);
+// R05: /schedule → /task?seg=calendar. The detail pages under /schedule/… stay secondary pages.
+export default withOrbitPrivateRoute(LegacyTaskRedirect);

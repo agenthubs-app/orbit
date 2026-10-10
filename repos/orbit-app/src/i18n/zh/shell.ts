@@ -21,4 +21,13 @@ export const shell = {
   "shell.checkingSignIn": "正在确认登录状态…",
   "shell.errorDetails": "错误详情",
   "shell.noErrorDetails": "没有更多信息。",
+  "shell.parent.notes": "笔记",
+  "shell.task.addCalendar": "添加日程",
+  "shell.task.addTodo": "添加待办",
+  "shell.task.addMemo": "添加笔记",
+  "shell.task.quickAddLabel": "添加待办",
+  "shell.task.quickAddPlaceholder": "输入要做的事",
+  "shell.task.planEmptyTitle": "定一个目标",
+  "shell.task.planEmptyBody": "定下想达成的目标后，就可以在这里按计划推进。",
+  "shell.task.planEmptyAction": "定一个目标",
 } as const;

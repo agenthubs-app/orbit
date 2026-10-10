@@ -198,7 +198,7 @@ export function homeScheduleToView(payload: unknown, selectedDateKey: string, no
       timeLabel: allDay ? createTranslator(language)("schedule.allDay") : (startDate === selectedDateKey ? "" : dateNumber(startDate) + " ") + time,
       detail: [item.location, duration].filter(Boolean).join(" · "),
       // Sprint 0131 (coordinator decision from 0115): an event opens its detail page, which reads the device copy offline.
-      href: item.kind === "event" ? "/events/" + encodeURIComponent(item.sourceId) : item.kind === "personal" ? "/schedule/personal/" + encodeURIComponent(item.id) : "/schedule"
+      href: item.kind === "event" ? "/events/" + encodeURIComponent(item.sourceId) : item.kind === "personal" ? "/schedule/personal/" + encodeURIComponent(item.id) : "/task?seg=calendar"
     });
   }
   return rows.sort((left, right) => left.start - right.start).map(({ start: _start, ...row }) => row);

@@ -39,6 +39,8 @@ export const useRouter = () => ({
   replace: href => window.fixture.navigation.push({ method: "replace", href })
 });
 export const SafeAreaView = ({ children, edges, ...props }) => <View {...props}>{children}</View>;
+export const useSafeAreaInsets = () => ({ top: 0, bottom: 34, left: 0, right: 0 });
+export const BlurView = () => null;
 export const Ionicons = ({ size }) => <span aria-hidden="true" style={{ display: "inline-block", width: size, height: size }} />;
 `;
 
@@ -49,6 +51,7 @@ import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Keyboard, Pressable, Text, TextInput, View } from "react-native";
 import { AppScreen } from "./src/components/AppScreen";
+import { ShellTabBar } from "./src/components/OrbitTabBar";
 import { createControlStyles } from "./src/design/controls";
 import { useOrbitTheme } from "./src/design/theme";
 const listeners = new Map();
@@ -76,7 +79,11 @@ function Fixture() {
     <Pressable accessibilityRole="button" accessibilityLabel="最后一个操作" style={controls.primaryButton}><Text style={controls.primaryButtonText}>最后一个操作</Text></Pressable>
   </AppScreen>;
 }
-createRoot(document.getElementById("root")).render(<Fixture />);
+// R05: the root layout draws the one tab bar over the screen, as here.
+function Shell() {
+  return <><Fixture /><ShellTabBar /></>;
+}
+createRoot(document.getElementById("root")).render(<Shell />);
 `, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic",
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -84,7 +91,7 @@ createRoot(document.getElementById("root")).render(<Fixture />);
     plugins: [{ name: "shell-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context)$/ }, () => ({ path: "fixture", namespace: "shell" }));
+      plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context|expo-blur)$/ }, () => ({ path: "fixture", namespace: "shell" }));
       plugin.onLoad({ filter: /.*/, namespace: "shell" }, () => ({ contents: boundaries, loader: "jsx", resolveDir: process.cwd() }));
     } }]
   });
@@ -116,30 +123,40 @@ async function open(t: { after: (fn: () => Promise<void>) => void }, path: strin
 test("only exact primary routes own a tab bar and secondary routes have real parents", () => {
   const nav = existsSync("src/view-models/app-navigation.ts") ? require("../src/view-models/app-navigation") : {};
   assert.equal(typeof nav.mainTabForPath, "function", "primary route classification is missing");
-  for (const [path, tab] of [["/home", "home"], ["/contacts", "contacts"], ["/events", "events"], ["/profile", "profile"], ["/ai", null], ["/contacts/one", null], ["/events/one/register", null]]) {
+  for (const [path, tab] of [["/home", "home"], ["/contacts", "contacts"], ["/events", "events"], ["/task", "task"], ["/profile", null], ["/ai", null], ["/contacts/one", null], ["/events/one/register", null], ["/tasks", null]]) {
     assert.equal(nav.mainTabForPath(path), tab);
   }
   for (const [path, href, label] of [
     ["/settings/api", "/settings", "设置"], ["/settings", "/profile", "我的"],
     ["/contacts/one", "/contacts", "人脉"], ["/contacts/new/batch/one", "/contacts/new", "导入"],
     ["/events/one/operations/admission", "/events/one/operations", "活动运营"],
-    ["/events/one/operations", "/events/one", "活动详情"], ["/tasks/one", "/tasks", "待办"],
-    ["/inbox/one", "/inbox", "收件箱"], ["/schedule", "/home", "首页"]
+    ["/events/one/operations", "/events/one", "活动详情"], ["/tasks/one", "/task?seg=todo", "待办"],
+    ["/inbox/one", "/inbox", "收件箱"], ["/schedule/personal/one", "/task?seg=calendar", "日历"],
+    ["/notes/one", "/task?seg=memo", "笔记"], ["/profile", "/home", "首页"], ["/profile/edit", "/profile", "我的"]
   ]) assert.deepEqual(nav.parentForPath(path), { href, label });
 });
 
-for (const [path, active] of [["/home", "首页"], ["/contacts", "人脉"], ["/events", "活动"], ["/profile", "我的"]]) {
+for (const [path, active, other, otherHref] of [["/home", "首页", "活动", "/events"], ["/contacts", "人脉", "活动", "/events"], ["/events", "活动", "Task", "/task"], ["/task", "Task", "首页", "/home"]]) {
   test(path + " has ordered working tabs, an active destination and no back button", async t => {
     const page = await open(t, path!, "history");
     const tabs = page.getByRole("tab");
-    assert.deepEqual(await tabs.allTextContents(), ["首页", "人脉", "iOrbit", "活动", "我的"]);
+    assert.deepEqual(await tabs.allTextContents(), ["首页", "人脉", "iOrbit", "活动", "Task"]);
     assert.equal(await page.getByRole("tab", { name: active!, exact: true }).getAttribute("aria-selected"), "true");
     assert.equal(await page.getByRole("button", { name: "返回", exact: true }).count(), 0);
     await page.getByRole("tab", { name: "iOrbit", exact: true }).click();
-    await page.getByRole("tab", { name: "活动", exact: true }).click();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [{ method: "push", href: "/ai" }, { method: "replace", href: "/events" }]);
+    await page.getByRole("tab", { name: active!, exact: true }).click();
+    await page.getByRole("tab", { name: other!, exact: true }).click();
+    // iOrbit opens its full-screen page; the current tab does nothing; another tab replaces.
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [{ method: "push", href: "/ai" }, { method: "replace", href: otherHref }]);
   });
 }
+
+test("マイページ, iOrbit and the old Task addresses have no tab bar", async t => {
+  for (const path of ["/profile", "/ai", "/schedule/personal/one", "/notes/one"]) {
+    const page = await open(t, path, "history");
+    assert.equal(await page.getByRole("tablist").count(), 0, path);
+  }
+});
 
 test("secondary page has no tabs, prefers history and has a meaningful direct-open fallback", async t => {
   const history = await open(t, "/settings/api", "history");
@@ -189,7 +206,7 @@ test("tabs fit 320pt, stay outside the scroll content and never cover its last a
     assert.ok(box.height >= 44 && box.width >= 44 && box.x >= 0 && box.x + box.width <= 320);
   }
   const before = (await tabBar.boundingBox())!;
-  assert.equal(before.height, 72, "normal-size navigation follows the approved 72pt source");
+  assert.equal(before.height, 62, "the NAV-V3 glass capsule is 62pt (kit .tabbar)");
   const last = page.getByRole("button", { name: "最后一个操作" });
   await last.evaluate(el => el.scrollIntoView({ block: "start" }));
   const final = (await last.boundingBox())!;

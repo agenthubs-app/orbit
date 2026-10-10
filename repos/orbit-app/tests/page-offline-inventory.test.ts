@@ -47,12 +47,16 @@ test('the pages the user named in 0131 are local-first, and online-only pages na
   const byFile = new Map(PAGE_OFFLINE_INVENTORY.map((entry) => [entry.file, entry]));
   for (const file of [
     'app/home.tsx', 'app/(app)/profile.tsx', 'app/profile/preview.tsx', 'app/profile/tags.tsx', 'app/agent.tsx', 'app/agent/actions.tsx',
-    'app/contacts/all-actions.tsx', 'app/tasks.tsx', 'app/today.tsx', 'app/schedule/meetings/[id].tsx', 'app/(app)/events.tsx', 'app/home/events.tsx',
+    'app/contacts/all-actions.tsx', 'app/schedule/meetings/[id].tsx', 'app/(app)/events.tsx', 'app/home/events.tsx',
   ]) {
     const entry = byFile.get(file);
     assert.equal(entry?.classification, 'local-first', file);
     assert.equal(entry?.sprint, '0131', file);
   }
+  // R05: /tasks and /today became redirects to the Task page, which holds those 0131 pages.
+  for (const file of ['app/tasks.tsx', 'app/today.tsx']) assert.equal(byFile.get(file)?.classification, 'device-only', file);
+  assert.equal(byFile.get('app/task.tsx')?.classification, 'local-first');
+  assert.equal(byFile.get('app/task.tsx')?.sprint, 'R05');
   for (const entry of PAGE_OFFLINE_INVENTORY.filter((candidate) => candidate.classification === 'online-only')) {
     assert.ok(entry.reasonCategory, entry.file);
   }

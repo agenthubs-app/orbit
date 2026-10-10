@@ -1,4 +1,5 @@
+import { LegacyTaskRedirect } from "../src/components/LegacyTaskRedirect";
 import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
-import { TasksScreen } from "../src/screens/tasks/TasksScreen";
 
-export default withOrbitPrivateRoute(TasksScreen);
+// R05: /tasks → /task?seg=todo (keeps scope / view).
+export default withOrbitPrivateRoute(LegacyTaskRedirect);

@@ -296,7 +296,7 @@ function scheduleSummaryAction(schedule: Extract<TodaySummaryDTO["items"][number
         : localizedTime(schedule.startsAt, timeZone, language);
   return {
     context: [stateLabel, schedule.locationPreview || categoryLabel(schedule.category, language)].filter(Boolean).join(" · "),
-    href: "/schedule",
+    href: "/task?seg=calendar",
     id: schedule.id,
     kind: "schedule",
     title: schedule.titlePreview,

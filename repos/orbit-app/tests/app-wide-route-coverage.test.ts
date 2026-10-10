@@ -201,7 +201,8 @@ const integratedFeatureRoutes = [
   "/showcase/components",
   "/showcase/copy",
   "/showcase/icons",
-  "/profile/tags"
+  "/profile/tags",
+  "/task"
 ] as const;
 
 function scanAppRouteEntries(directory: string): string[] {

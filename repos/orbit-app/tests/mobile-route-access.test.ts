@@ -299,7 +299,12 @@ test("every root-level private entry uses the shared render gate", () => {
     "tasks/relationship/[id].tsx",
     "settings.tsx",
     "settings/api.tsx",
-    "today.tsx"
+    "task.tsx",
+    "today.tsx",
+    "notes/[id].tsx",
+    "notes/[id]/edit.tsx",
+    "notes/index.tsx",
+    "notes/new.tsx"
   ];
   const discoveredPrivateEntries = readdirSync(appRoot, {
     recursive: true,

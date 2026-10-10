@@ -29,7 +29,7 @@ const load = async () => ({
 test("without a provider the tab bar speaks Japanese", async () => {
   const { OrbitTabBar } = await load();
   const text = renderedText(<OrbitTabBar active="contacts" />);
-  for (const label of ["ホーム", "人脈", "iOrbit", "イベント", "マイページ"]) assert.ok(text.includes(label), label);
+  for (const label of ["ホーム", "人脈", "iOrbit", "イベント", "Task"]) assert.ok(text.includes(label), label);
 });
 
 test("the back bar names the parent at 1× and says 戻る at large text sizes", async (t) => {

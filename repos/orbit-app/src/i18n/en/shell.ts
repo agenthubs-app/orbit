@@ -21,4 +21,13 @@ export const shell = {
   "shell.checkingSignIn": "Checking your sign-in…",
   "shell.errorDetails": "Error details",
   "shell.noErrorDetails": "No more details.",
+  "shell.parent.notes": "Notes",
+  "shell.task.addCalendar": "Add event",
+  "shell.task.addTodo": "Add to-do",
+  "shell.task.addMemo": "Add note",
+  "shell.task.quickAddLabel": "Add a to-do",
+  "shell.task.quickAddPlaceholder": "What needs doing?",
+  "shell.task.planEmptyTitle": "Set a goal",
+  "shell.task.planEmptyBody": "Decide what you want to achieve, then move it forward here as a plan.",
+  "shell.task.planEmptyAction": "Set a goal",
 } as const;

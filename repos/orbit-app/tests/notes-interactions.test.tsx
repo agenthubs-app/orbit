@@ -638,8 +638,9 @@ test("AppScreen without an override preserves back and parent fallback navigatio
   await back.getByRole("button", { name: "返回", exact: true }).click();
   assert.deepEqual(await back.evaluate(() => (window as any).fixture.navigation), ["back"]);
   const fallback = await page(t, "fallback");
-  await fallback.getByRole("button", { name: "返回首页", exact: true }).click();
-  assert.deepEqual(await fallback.evaluate(() => (window as any).fixture.navigation), ["/home"]);
+  // R05: a note page opened directly goes back to the Task page's メモ segment.
+  await fallback.getByRole("button", { name: "返回笔记", exact: true }).click();
+  assert.deepEqual(await fallback.evaluate(() => (window as any).fixture.navigation), ["/task?seg=memo"]);
 });
 
 test("continuing after opening history does not redirect a later ordinary cancel", async (t) => {

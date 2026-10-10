@@ -1,18 +1,19 @@
-import type { MainTab } from "../view-models/app-navigation";
 import { Icon, type IconName } from "./ui/Icon";
 
-// R02: the tab icons are the design kit's (kit.js TABS) drawn by <Icon> from the
-// icon source. The tab bar's structure and the Task tab come with R05.
-const TAB_ICONS: Record<MainTab | "ai", IconName> = {
+// R02 / R05: the tab icons are the design kit's (kit.js TABS: home / users /
+// sparkle / calendar / task) drawn by <Icon> from the icon source.
+export type NavigationIconName = "home" | "contacts" | "iorbit" | "events" | "task";
+
+const TAB_ICONS: Record<NavigationIconName, IconName> = {
   home: "home",
   contacts: "users",
-  ai: "sparkle",
+  iorbit: "sparkle",
   events: "calendar",
-  profile: "user"
+  task: "task"
 };
 
 export function OrbitNavigationIcon({ name, size = 21, color }: {
-  name: MainTab | "ai";
+  name: NavigationIconName;
   size?: number;
   color: string;
 }) {

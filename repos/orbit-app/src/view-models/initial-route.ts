@@ -36,6 +36,7 @@ type InitialRoutePath =
   | "/settings"
   | "/settings/api"
   | "/today"
+  | "/task"
   | "/tasks"
   | `/tasks/${string}`
   | `/schedule/personal/${string}`
@@ -92,6 +93,7 @@ const routeByKey: Record<string, InitialRoutePath> = {
   settings: "/settings",
   "settings/api": "/settings/api",
   today: "/today",
+  task: "/task",
   tasks: "/tasks",
   "tasks/personal": "/tasks/personal",
 };
@@ -291,6 +293,13 @@ export function resolveSupportedInitialRouteHref(
 
   const routeKey = webShellRouteKey(parsedRoute.routeKey);
   if (routeKey.startsWith("events/") && (routeKey.includes("/participants/") || parsedRoute.searchParams.has("participant") || parsedRoute.rawHash.startsWith("event-matchmaking-title"))) return null;
+
+  // R05: the Task page keeps only a known segment (and To-do's list selection).
+  if (routeKey === "task") {
+    const segment = parsedRoute.searchParams.get("seg");
+    if (segment === "todo") return taskListHref({ scope: parsedRoute.searchParams.get("scope"), view: parsedRoute.searchParams.get("view") }) as InitialRouteHref;
+    return (segment === "calendar" || segment === "plan" || segment === "memo" ? "/task?seg=" + segment : "/task") as InitialRouteHref;
+  }
 
   if (routeKey === "tasks" || routeKey === "followups") {
     return taskListHref({ scope: routeKey === "followups" ? "relationship" : parsedRoute.searchParams.get("scope"), view: parsedRoute.searchParams.get("view") }) as InitialRouteHref;

@@ -25,7 +25,7 @@ import {
 import { profileDetailSchema, profileExtractionReceiptSchema, profileSaveReceiptSchema, profileSuggestionReceiptSchema, profileSuggestionsSchema, profileUpcomingScheduleCount,
   type AcceptedProfileSuggestion, type ProfileDetail, type ProfileExtraction, type ProfileSaveRequest, type ProfileSuggestions } from "../../api/profile-detail-contract";
 import { validateApiResourceState } from "../../api/validated-resource-state";
-import { OrbitTabBar } from "../../components/OrbitTabBar";
+import { ShellBackBar, ShellInboxRow } from "../../components/ShellBackBar";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -436,6 +436,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
 
   return (
     <SafeAreaView edges={["top"]} style={styles.page}>
+      <ShellBackBar />
       <ScrollView contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
         refreshControl={
         <RefreshControl
@@ -462,6 +463,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
           <Ionicons name="sunny-outline" size={20} color={colors.ink} />
         </Pressable>
       </View>
+      {auth.signedIn ? <ShellInboxRow /> : null}
       {!auth.ready ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
       {auth.ready && !auth.signedIn ? (
         <DataCard
@@ -533,7 +535,6 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
         />
       ) : null}
       </ScrollView>
-      <OrbitTabBar active="profile" />
     </SafeAreaView>
   );
 }

@@ -25,7 +25,6 @@ import {
 } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { validateApiResourceState } from "../../api/validated-resource-state";
-import { OrbitTabBar } from "../../components/OrbitTabBar";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -679,7 +678,6 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
       ) : null}
       </> : null}
     </ScrollView>
-    <OrbitTabBar active="events" />
     </SafeAreaView>
   );
 }

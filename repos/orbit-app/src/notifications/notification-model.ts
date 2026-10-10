@@ -28,10 +28,17 @@ export interface LocalNotificationRequest {
 
 const allowedPaths = [
   /^\/tasks\/[^/?#]+$/u,
-  /^\/schedule(?:\/events\/[^/?#]+)?$/u,
+  /^\/schedule\/events\/[^/?#]+$/u,
   /^\/inbox(?:\/[^/?#]+)?$/u,
-  /^\/today$/u,
 ];
+
+// R05: reminders scheduled before the Task page (and servers still sending the old
+// addresses) open the matching Task segment instead of the redirect route.
+const taskSegmentPaths: Readonly<Record<string, string>> = {
+  "/schedule": "/task?seg=calendar",
+  "/today": "/task?seg=todo",
+  "/task": "/task",
+};
 
 export function notificationHrefFromDeepLink(value: unknown): string | null {
   const participant = eventParticipantHref(value);
@@ -56,6 +63,7 @@ export function notificationHrefFromDeepLink(value: unknown): string | null {
     return null;
   }
 
+  if (Object.prototype.hasOwnProperty.call(taskSegmentPaths, path)) return taskSegmentPaths[path]!;
   return allowedPaths.some((pattern) => pattern.test(path)) ? path : null;
 }
 
