@@ -8,7 +8,13 @@
 import type { PlanContactLink } from "../contract";
 import { planActorLockKey, type PlanPoolLike, type PlanQueryClient } from "../repository";
 import type {
+  PlanDraftContent,
+  PlanDraftRow,
   PlanFlowReceipt,
+  PlanFlowStepRecord,
+  PlanIntakeAiSteps,
+  PlanIntakeBackground,
+  PlanIntakeRow,
   PlanV2Analysis,
   PlanV2EventItem,
   PlanV2LogEntry,
@@ -142,6 +148,66 @@ function typeCriteria(item: PlanV2TypeItem) {
 /* Postgres                                                            */
 /* ------------------------------------------------------------------ */
 
+const INTAKE_COLUMNS = `id, source, goal_text, goal_kind, status, background, questions, answers, premise, ai_steps, plan_id, created_at, updated_at`;
+const DRAFT_COLUMNS = `id, kind, intake_id, plan_id, base_revision, status, content, origin_content, premise, ai_fix_used, manual_edit_used, turns, created_at, updated_at, confirmed_at`;
+
+export function emptyStep(): PlanFlowStepRecord {
+  return { at: null, attempts: 0, limit: null, operationId: null, retryOn: null, state: "none" };
+}
+
+export function emptyIntakeAiSteps(): PlanIntakeAiSteps {
+  return { background: emptyStep(), draft: emptyStep(), draftId: null, ladder: emptyStep(), ladderCount: 0, members: emptyStep(), premiseVersion: 0, questions: emptyStep() };
+}
+
+function intakeFromRow(row: Row): PlanIntakeRow {
+  const answers = json<{ items?: PlanIntakeRow["answers"] } | null>(row.answers, null);
+  return {
+    aiSteps: { ...emptyIntakeAiSteps(), ...json<Partial<PlanIntakeAiSteps>>(row.ai_steps, {}) },
+    answers: answers?.items ?? null,
+    background: { me: null, purpose: null, reading: [], team: null, ...json<Partial<PlanIntakeBackground>>(row.background, {}) },
+    createdAt: iso(row.created_at),
+    goalKind: row.goal_kind as PlanIntakeRow["goalKind"],
+    goalText: String(row.goal_text),
+    id: String(row.id),
+    planId: textOrNull(row.plan_id),
+    premise: json(row.premise, null),
+    questions: json(row.questions, null),
+    source: row.source as PlanIntakeRow["source"],
+    status: row.status as PlanIntakeRow["status"],
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+type StoredDraftContent = PlanDraftContent & { _meta?: { premiseVersion?: number; fix?: PlanFlowStepRecord } };
+
+function draftFromRow(row: Row): PlanDraftRow {
+  const stored = json<StoredDraftContent>(row.content, {} as StoredDraftContent);
+  const { _meta: meta, ...content } = stored;
+  return {
+    aiFixUsed: Number(row.ai_fix_used ?? 0),
+    baseRevision: row.base_revision === null || row.base_revision === undefined ? null : Number(row.base_revision),
+    confirmedAt: isoOrNull(row.confirmed_at),
+    content,
+    createdAt: iso(row.created_at),
+    fix: meta?.fix ?? emptyStep(),
+    id: String(row.id),
+    intakeId: textOrNull(row.intake_id),
+    kind: row.kind as PlanDraftRow["kind"],
+    manualEditUsed: Boolean(row.manual_edit_used),
+    originContent: json(row.origin_content, content),
+    planId: textOrNull(row.plan_id),
+    premise: json(row.premise, []),
+    premiseVersion: Number(meta?.premiseVersion ?? 0),
+    status: row.status as PlanDraftRow["status"],
+    turns: json(row.turns, []),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+function storedDraftContent(draft: PlanDraftRow): StoredDraftContent {
+  return { ...draft.content, _meta: { fix: draft.fix, premiseVersion: draft.premiseVersion } };
+}
+
 function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Reader {
   const ws = scope.workspaceId;
   const actor = scope.actorId;
@@ -174,6 +240,31 @@ function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Read
       return row
         ? { createdAt: iso(row.created_at), fingerprint: String(row.fingerprint), idempotencyKey: String(row.idempotency_key), kind: String(row.kind), outcome: row.outcome as PlanFlowReceipt["outcome"], planId: textOrNull(row.plan_id), response: json(row.response, {}) }
         : null;
+    },
+    async countFlowReceipts(kind, sinceIso) {
+      const [row] = await rows(
+        `select count(*)::int as n from plan_flow_commands where workspace_id = $1 and actor_id = $2 and kind = $3 and created_at >= $4`,
+        [ws, actor, kind, sinceIso],
+      );
+      return Number(row?.n ?? 0);
+    },
+    async countIntakesSince(sinceIso) {
+      const [row] = await rows(`select count(*)::int as n from plan_intakes where workspace_id = $1 and actor_id = $2 and created_at >= $3`, [ws, actor, sinceIso]);
+      return Number(row?.n ?? 0);
+    },
+    async draft(draftId) {
+      const [row] = await rows(`select ${DRAFT_COLUMNS} from plan_drafts where workspace_id = $1 and actor_id = $2 and id = $3`, [ws, actor, draftId]);
+      return row ? draftFromRow(row) : null;
+    },
+    async intake(intakeId) {
+      const [row] = await rows(`select ${INTAKE_COLUMNS} from plan_intakes where workspace_id = $1 and actor_id = $2 and id = $3`, [ws, actor, intakeId]);
+      return row ? intakeFromRow(row) : null;
+    },
+    async openIntakes() {
+      return (await rows(
+        `select ${INTAKE_COLUMNS} from plan_intakes where workspace_id = $1 and actor_id = $2 and status not in ('planned', 'abandoned') order by updated_at desc, id limit 20`,
+        [ws, actor],
+      )).map(intakeFromRow);
     },
     async goalPlans() {
       return (await rows(
@@ -213,10 +304,19 @@ function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Read
   };
 }
 
+function intakeValuesFor(ws: string, actor: string, intake: PlanIntakeRow): unknown[] {
+  return [
+    ws, intake.id, actor, intake.source, intake.goalText, intake.goalKind, intake.status, JSON.stringify(intake.background),
+    intake.questions === null ? null : JSON.stringify(intake.questions), intake.answers === null ? null : JSON.stringify({ items: intake.answers }),
+    intake.premise === null ? null : JSON.stringify(intake.premise), JSON.stringify(intake.aiSteps), intake.planId, intake.createdAt, intake.updatedAt,
+  ];
+}
+
 function postgresTransaction(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Transaction {
   const ws = scope.workspaceId;
   const actor = scope.actorId;
   const reader = postgresReader(client, scope);
+  const intakeValues = (intake: PlanIntakeRow) => intakeValuesFor(ws, actor, intake);
   const writeTypeItem = async (item: PlanV2TypeItem, insert: boolean) => {
     const values = [
       ws, item.id, actor, item.planId, item.shortLabel, item.roleSituation, needStatus(item.contactLinks),
@@ -257,11 +357,45 @@ function postgresTransaction(client: PlanQueryClient, scope: PlanV2Scope): PlanV
         [ws, item.id, actor, item.planId, item.title, item.status, item.eventId, item.sortKey, item.createdAt, item.updatedAt],
       );
     },
+    async insertDraft(draft) {
+      await client.query(
+        `insert into plan_drafts (workspace_id, id, actor_id, kind, intake_id, plan_id, base_revision, status, content, origin_content, premise,
+           ai_fix_used, manual_edit_used, turns, created_at, updated_at, confirmed_at)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11::jsonb,$12,$13,$14::jsonb,$15,$16,$17)`,
+        [ws, draft.id, actor, draft.kind, draft.intakeId, draft.planId, draft.baseRevision, draft.status, JSON.stringify(storedDraftContent(draft)),
+          JSON.stringify(draft.originContent), JSON.stringify(draft.premise), draft.aiFixUsed, draft.manualEditUsed, JSON.stringify(draft.turns),
+          draft.createdAt, draft.updatedAt, draft.confirmedAt],
+      );
+    },
     async insertFlowReceipt(receipt) {
       await client.query(
-        `insert into plan_flow_commands (workspace_id, actor_id, idempotency_key, kind, plan_id, fingerprint, outcome, response, created_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9)`,
-        [ws, actor, receipt.idempotencyKey, receipt.kind, receipt.planId, receipt.fingerprint, receipt.outcome, JSON.stringify(receipt.response), receipt.createdAt],
+        `insert into plan_flow_commands (workspace_id, actor_id, idempotency_key, kind, intake_id, draft_id, plan_id, fingerprint, outcome, response, created_at)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11)`,
+        [ws, actor, receipt.idempotencyKey, receipt.kind, receipt.intakeId ?? null, receipt.draftId ?? null, receipt.planId, receipt.fingerprint, receipt.outcome, JSON.stringify(receipt.response), receipt.createdAt],
+      );
+    },
+    async insertIntake(intake) {
+      await client.query(
+        `insert into plan_intakes (workspace_id, id, actor_id, source, goal_text, goal_kind, status, background, questions, answers, premise, ai_steps, plan_id, created_at, updated_at)
+         values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb,$12::jsonb,$13,$14,$15)`,
+        intakeValues(intake),
+      );
+    },
+    async updateDraft(draft) {
+      await client.query(
+        `update plan_drafts set status = $4, content = $5::jsonb, origin_content = $6::jsonb, premise = $7::jsonb, ai_fix_used = $8,
+           manual_edit_used = $9, turns = $10::jsonb, updated_at = $11, confirmed_at = $12
+         where workspace_id = $1 and actor_id = $2 and id = $3`,
+        [ws, actor, draft.id, draft.status, JSON.stringify(storedDraftContent(draft)), JSON.stringify(draft.originContent), JSON.stringify(draft.premise),
+          draft.aiFixUsed, draft.manualEditUsed, JSON.stringify(draft.turns), draft.updatedAt, draft.confirmedAt],
+      );
+    },
+    async updateIntake(intake) {
+      await client.query(
+        `update plan_intakes set source = $4, goal_text = $5, goal_kind = $6, status = $7, background = $8::jsonb, questions = $9::jsonb,
+           answers = $10::jsonb, premise = $11::jsonb, ai_steps = $12::jsonb, plan_id = $13, updated_at = $15
+         where workspace_id = $1 and id = $2 and actor_id = $3 and created_at = $14::timestamptz`,
+        intakeValues(intake),
       );
     },
     async insertLog(entry) {
@@ -360,6 +494,8 @@ export interface MemoryPlanV2State {
   eventItems: PlanV2EventItem[];
   log: PlanV2LogEntry[];
   receipts: PlanFlowReceipt[];
+  intakes: PlanIntakeRow[];
+  drafts: PlanDraftRow[];
   /** 生效中的 v1 计划 id（测试用；内存实现不保存 v1 的行）。 */
   activeV1PlanId: string | null;
   /** 本人用过的最大版本号（含 v1）。 */
@@ -372,7 +508,7 @@ export interface MemoryPlanV2Repository extends PlanV2Repository {
 }
 
 function emptyState(): MemoryPlanV2State {
-  return { activeV1PlanId: null, eventItems: [], log: [], maxVersion: 0, plans: [], receipts: [], typeItems: [] };
+  return { activeV1PlanId: null, drafts: [], eventItems: [], intakes: [], log: [], maxVersion: 0, plans: [], receipts: [], typeItems: [] };
 }
 
 function memoryReader(state: MemoryPlanV2State): PlanV2Reader {
@@ -383,6 +519,14 @@ function memoryReader(state: MemoryPlanV2State): PlanV2Reader {
     async activeV1PlanId() { return state.activeV1PlanId; },
     async eventItems(planId) { return structuredClone(state.eventItems.filter((item) => item.planId === planId).sort((a, b) => a.sortKey - b.sortKey)); },
     async flowReceipt(key) { return structuredClone(state.receipts.find((receipt) => receipt.idempotencyKey === key) ?? null); },
+    async countFlowReceipts(kind, sinceIso) { return state.receipts.filter((receipt) => receipt.kind === kind && receipt.createdAt >= sinceIso).length; },
+    async countIntakesSince(sinceIso) { return state.intakes.filter((intake) => intake.createdAt >= sinceIso).length; },
+    async draft(draftId) { return structuredClone(state.drafts.find((draft) => draft.id === draftId) ?? null); },
+    async intake(intakeId) { return structuredClone(state.intakes.find((intake) => intake.id === intakeId) ?? null); },
+    async openIntakes() {
+      return structuredClone(state.intakes.filter((intake) => intake.status !== "planned" && intake.status !== "abandoned")
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id)).slice(0, 20));
+    },
     async goalPlans() {
       const active = sortPlans(state.plans.filter((plan) => plan.status === "active"));
       const achieved = sortPlans(state.plans.filter((plan) => plan.status === "archived" && plan.achievedAt));
@@ -409,6 +553,16 @@ function memoryTransaction(state: MemoryPlanV2State): PlanV2Transaction {
       return id;
     },
     async insertEventItem(item) { state.eventItems.push(structuredClone(item)); },
+    async insertDraft(draft) {
+      unique(state.drafts.some((item) => item.id === draft.id), "draft");
+      state.drafts.push(structuredClone(draft));
+    },
+    async insertIntake(intake) {
+      unique(state.intakes.some((item) => item.id === intake.id), "intake");
+      state.intakes.push(structuredClone(intake));
+    },
+    async updateDraft(draft) { state.drafts = state.drafts.map((current) => (current.id === draft.id ? structuredClone(draft) : current)); },
+    async updateIntake(intake) { state.intakes = state.intakes.map((current) => (current.id === intake.id ? structuredClone(intake) : current)); },
     async insertFlowReceipt(receipt) {
       unique(state.receipts.some((item) => item.idempotencyKey === receipt.idempotencyKey), "receipt");
       state.receipts.push(structuredClone(receipt));

@@ -604,7 +604,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       const stepKeys = content.steps.map((step) => step.key);
       if (new Set(stepKeys).size !== stepKeys.length) throw new PlanV2Error("INVALID_INPUT", "Step keys must be unique.");
       for (const step of content.steps) {
-        for (const key of step.personTypeKeys) if (!keys.includes(key)) throw new PlanV2Error("INVALID_INPUT", `Step ${step.key} names an unknown person type.`);
+        for (const key of step.personTypeKeys) if (key !== PLAN_EVENT_SEGMENT_KEY && !keys.includes(key)) throw new PlanV2Error("INVALID_INPUT", `Step ${step.key} names an unknown person type.`);
       }
       const slots: PlanAllocationSlot[] = [
         ...content.personTypes.map((type, index) => ({ allocation: type.allocation, earnedBase: 0, key: type.key, metCount: 0, skipped: false, targetCount: type.targetCount, templateIndex: index })),

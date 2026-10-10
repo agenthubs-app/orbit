@@ -7,6 +7,20 @@
  * - 分数 = `plan_log` 的 `score_awarded` 减去被 `score_reversed` 对冲的记录（记账式，DESIGN §4.2）。
  */
 import type {
+  PlanAiLimitKind,
+  PlanAiStepState,
+  PlanBackgroundMe,
+  PlanBackgroundPurpose,
+  PlanBackgroundTeam,
+  PlanDraftTurn,
+  PlanIntakeAnswer,
+  PlanIntakeBlock,
+  PlanIntakeQuestion,
+  PlanIntakeSource,
+  PlanIntakeStatus,
+  PlanReadingItem,
+  PlanV2Content,
+  PlanV2PersonType,
   PlanAwardBasis,
   PlanAwardPart,
   PlanBasisRef,
@@ -148,6 +162,9 @@ export interface PlanFlowReceipt {
   idempotencyKey: string;
   kind: string;
   planId: string | null;
+  /** R23：生成流程的回执带 intake / 草稿。 */
+  intakeId?: string | null;
+  draftId?: string | null;
   fingerprint: string;
   outcome: "applied" | "noop";
   response: Record<string, unknown>;
@@ -172,6 +189,14 @@ export interface PlanV2Reader {
   log(planId: string): Promise<PlanV2LogEntry[]>;
   hasLogKey(idempotencyKey: string): Promise<boolean>;
   flowReceipt(idempotencyKey: string): Promise<PlanFlowReceipt | null>;
+  /** R23：某类回执在某时刻之后的条数（C1 每日 20 次）。 */
+  countFlowReceipts(kind: string, sinceIso: string): Promise<number>;
+  intake(intakeId: string): Promise<PlanIntakeRow | null>;
+  /** 未完成的生成流程（不含 planned / abandoned），按更新时间倒序。 */
+  openIntakes(): Promise<PlanIntakeRow[]>;
+  /** 某时刻之后新建的生成流程数（每月新目标 10 个）。 */
+  countIntakesSince(sinceIso: string): Promise<number>;
+  draft(draftId: string): Promise<PlanDraftRow | null>;
   maxVersion(): Promise<number>;
   /** 本人生效中的 v1 计划 id（没有为 null）。 */
   activeV1PlanId(): Promise<string | null>;
@@ -188,9 +213,102 @@ export interface PlanV2Transaction extends PlanV2Reader {
   updateEventItem(item: PlanV2EventItem): Promise<void>;
   insertLog(entry: PlanV2LogEntry): Promise<void>;
   insertFlowReceipt(receipt: PlanFlowReceipt): Promise<void>;
+  insertIntake(intake: PlanIntakeRow): Promise<void>;
+  updateIntake(intake: PlanIntakeRow): Promise<void>;
+  insertDraft(draft: PlanDraftRow): Promise<void>;
+  updateDraft(draft: PlanDraftRow): Promise<void>;
 }
 
 export interface PlanV2Repository {
   transact<T>(scope: PlanV2Scope, operation: (tx: PlanV2Transaction) => Promise<T>): Promise<T>;
   read<T>(scope: PlanV2Scope, operation: (reader: PlanV2Reader) => Promise<T>): Promise<T>;
+}
+
+/* ------------------------------------------------------------------ */
+/* R23 生成流程的行（`plan_intakes` / `plan_drafts`）                    */
+/* ------------------------------------------------------------------ */
+
+/** 一个 AI 步骤的状态机（DESIGN §5.1）：只有 none 和用户主动「もう一度」的 failed 才发起调用。 */
+export interface PlanFlowStepRecord {
+  state: PlanAiStepState;
+  limit: PlanAiLimitKind | null;
+  retryOn: string | null;
+  /** 发起过几次（「もう一度」的幂等键序号）。 */
+  attempts: number;
+  operationId: string | null;
+  at: string | null;
+}
+
+/** `plan_intakes.ai_steps`：各步骤状态 + 流程计数。 */
+export interface PlanIntakeAiSteps {
+  background: PlanFlowStepRecord;
+  ladder: PlanFlowStepRecord;
+  questions: PlanFlowStepRecord;
+  members: PlanFlowStepRecord;
+  draft: PlanFlowStepRecord;
+  /** 「やりたいこと」改后重算阶梯用了几次（每 intake ≤3）。 */
+  ladderCount: number;
+  premiseVersion: number;
+  draftId: string | null;
+}
+
+/** `plan_intakes.background`。 */
+export interface PlanIntakeBackground {
+  me: PlanIntakeBlock<PlanBackgroundMe> | null;
+  team: PlanIntakeBlock<PlanBackgroundTeam> | null;
+  purpose: PlanIntakeBlock<PlanBackgroundPurpose> | null;
+  reading: PlanReadingItem[];
+}
+
+export interface PlanIntakeQuestionsState {
+  items: PlanIntakeQuestion[];
+  skipped: Array<{ id: string; reason: string }>;
+  cacheKey: string;
+}
+
+export interface PlanIntakeRow {
+  id: string;
+  source: PlanIntakeSource;
+  goalText: string;
+  goalKind: PlanGoalKind;
+  status: PlanIntakeStatus;
+  background: PlanIntakeBackground;
+  questions: PlanIntakeQuestionsState | null;
+  answers: PlanIntakeAnswer[] | null;
+  premise: PlanPremiseRow[] | null;
+  aiSteps: PlanIntakeAiSteps;
+  planId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 草稿里的人物类型：还没有条目，`itemId` = key；可带行业条件（规则匹配用）。 */
+export type PlanDraftPersonType = Omit<PlanV2PersonType, "skipped"> & {
+  primaryIndustryId?: IndustryIdCode | null;
+  secondaryIndustryId?: SecondaryIndustryIdCode | null;
+};
+
+export interface PlanDraftContent extends Omit<PlanV2Content, "personTypes" | "sample"> {
+  personTypes: PlanDraftPersonType[];
+}
+
+export interface PlanDraftRow {
+  id: string;
+  kind: "initial" | "review";
+  intakeId: string | null;
+  planId: string | null;
+  baseRevision: number | null;
+  status: "open" | "confirmed" | "discarded";
+  content: PlanDraftContent;
+  originContent: PlanDraftContent;
+  premise: PlanPremiseRow[];
+  aiFixUsed: number;
+  manualEditUsed: boolean;
+  turns: PlanDraftTurn[];
+  /** 这份草稿基于第几版前提（存在 content 的 `_meta` 里）。 */
+  premiseVersion: number;
+  fix: PlanFlowStepRecord;
+  createdAt: string;
+  updatedAt: string;
+  confirmedAt: string | null;
 }

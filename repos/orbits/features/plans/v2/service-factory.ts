@@ -18,6 +18,25 @@ interface PlansV2Global {
 
 const plansV2Global = globalThis as typeof globalThis & PlansV2Global;
 
+export interface PlanV2Parts {
+  repository: PlanV2Repository;
+  scope: { actorId: string; workspaceId: string };
+  service: PlanV2Service;
+  /** live 时的连接池（R23 生成流程读联系人用）；mock 为 null。 */
+  pool: unknown;
+}
+
+/** R23：生成流程与 v2 服务必须共用同一个仓储（确定时在同一份数据里建计划）。 */
+export function resolvePlanV2Parts(input: { actorId: string; mode?: ModuleMode | string; now?: () => Date }): ServiceResolution<PlanV2Parts> {
+  const resolution = resolvePlanV2Service(input);
+  if (resolution.success === false) return resolution;
+  const backend = resolvePlanBackend(input.mode);
+  if (backend.success === false) return backend;
+  const { pool, workspaceId } = backend.service;
+  const repository = pool ? plansV2Global.__orbitPlansV2LiveRepository!.repository : plansV2Global.__orbitPlansV2MockRepository!;
+  return { mode: resolution.mode, service: { pool: pool ?? null, repository, scope: { actorId: input.actorId, workspaceId }, service: resolution.service }, success: true };
+}
+
 export function resolvePlanV2Service(input: { actorId: string; mode?: ModuleMode | string; now?: () => Date }): ServiceResolution<PlanV2Service> {
   const backend = resolvePlanBackend(input.mode);
   if (backend.success === false) return backend;

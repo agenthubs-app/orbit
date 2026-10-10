@@ -75,11 +75,13 @@ export const PLAN_FLOW_DAILY_LIMIT = 15;
 
 /**
  * R22（DESIGN §5.3、§10 用户已确认 2026-10-10）：每用户每东京自然月的操作上限（不含 released）。
- * `plan_background` 10 = 每月最多新建 10 个目标；`plan_review` 3 = 見直し月 3 次（Free）。
+ * `plan_review` 3 = 見直し月 3 次（Free）。
+ * R23（R22 复核 m11 的决定）：「每月最多新建 10 个目标」按新建的生成流程计（`flow-service.ts` 的
+ * `PLAN_NEW_GOAL_MONTHLY_LIMIT`，「もう一度」不重复计）；`plan_background` 这里只是成本上限，留出重试余量为 20。
  */
 export const AI_QUOTA_MONTHLY_LIMITS: Readonly<Partial<Record<AiQuotaPurpose, number>>> = {
   plan_intake: 60,
-  plan_background: 10,
+  plan_background: 20,
   plan_draft: 30,
   plan_revise: 30,
   plan_review_mark: 20,

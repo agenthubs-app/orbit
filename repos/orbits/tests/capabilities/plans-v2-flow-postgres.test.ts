@@ -1,0 +1,74 @@
+/**
+ * R23 SC-R23-06（真实 PostgreSQL，本机回环库）：生成流程写 plan_intakes / plan_drafts / plan_flow_commands，
+ * 确定后 plans 多一份 v2 生效计划，intake 与草稿标为已确定；改前提作废旧草稿。
+ */
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { createMockPlanFlowContext } from "../../features/plans/v2/flow-context";
+import { createPlanFlowService } from "../../features/plans/v2/flow-service";
+import { createPostgresPlanV2Repository } from "../../features/plans/v2/repository";
+import { createPlanV2Service } from "../../features/plans/v2/service";
+import { databaseTest, withNetworkDatabase, WORKSPACE } from "../support/network-analysis-harness";
+import { countingAi, JA } from "../plans/flow-fixture";
+import { ANY_REFERENCES, steppingClock } from "../plans/v2-fixture";
+
+const ACTOR = "actor:alice";
+
+function flowFor(pool: import("pg").Pool) {
+  const scope = { actorId: ACTOR, workspaceId: WORKSPACE };
+  const repository = createPostgresPlanV2Repository({ pool });
+  const now = steppingClock();
+  let n = 0;
+  const planService = createPlanV2Service({ newId: () => `pg${(n += 1)}`, now, references: ANY_REFERENCES, repository, scope });
+  const ai = countingAi();
+  return { ai, flow: createPlanFlowService({ ai, context: createMockPlanFlowContext(), newId: () => `pf${(n += 1)}`, now, planService, repository, scope }), planService };
+}
+
+test("the whole flow round-trips through PostgreSQL and confirms one v2 plan", databaseTest, async () => {
+  await withNetworkDatabase(async ({ pool }) => {
+    const { ai, flow, planService } = flowFor(pool);
+    let intake = await flow.createIntake({ goalKind: "launch", goalText: "Orbit を黒字化したい", idempotencyKey: "pg-create", source: "task" }, JA);
+    intake = await flow.confirmBlock(intake.intakeId, { block: "me", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "pg-me", me: { stance: "cofounder", wants: "Orbit を世に出す" } }, JA);
+    const members = intake.background.team.value.members.map((member) => ({ capabilities: [...member.capabilities], memberId: member.memberId, otherCapabilities: [], relation: member.relation }));
+    intake = await flow.confirmBlock(intake.intakeId, { block: "team", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "pg-team", team: { members, mode: intake.background.team.value.mode } }, JA);
+    intake = await flow.confirmBlock(intake.intakeId, { block: "purpose", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "pg-purpose", purpose: { selectedLevel: 3 } }, JA);
+    intake = await flow.chooseQuestions(intake.intakeId, "pg-q", JA);
+    intake = await flow.submitAnswers(intake.intakeId, { answers: [], idempotencyKey: "pg-a" }, JA);
+    const first = await flow.makeDraft(intake.intakeId, "pg-d1", JA);
+    await flow.editPremise(intake.intakeId, { idempotencyKey: "pg-p", key: "purpose", value: "まず黒字化" }, JA);
+    const draft = await flow.makeDraft(intake.intakeId, "pg-d2", JA);
+    const fixed = await flow.fix(draft.draftId, { idempotencyKey: "pg-f", text: "主催者を先に" }, JA);
+    assert.equal(fixed.aiFixUsed, 1);
+    const confirmed = await flow.confirm(draft.draftId, "pg-ok", JA);
+
+    const intakes = (await pool.query("select status, plan_id, (ai_steps->>'premiseVersion')::int as pv from plan_intakes")).rows;
+    assert.deepEqual(intakes, [{ plan_id: confirmed.planId, pv: 2, status: "planned" }]);
+    const drafts = (await pool.query("select id, status, ai_fix_used, confirmed_at is not null as confirmed from plan_drafts order by created_at")).rows;
+    assert.deepEqual(drafts.map((row) => [row.id, row.status, row.ai_fix_used, row.confirmed]), [[first.draftId, "discarded", 0, false], [draft.draftId, "confirmed", 1, true]]);
+    const receipts = (await pool.query("select kind, intake_id is not null as has_intake from plan_flow_commands where kind like 'intake_%' or kind like 'draft_%' order by created_at")).rows;
+    assert.ok(receipts.length >= 8 && receipts.every((row) => row.has_intake || /^draft_/.test(row.kind)));
+    const plans = (await pool.query("select model_version, status, goal_id, creation_key, manual_edit_available from plans")).rows;
+    assert.deepEqual(plans, [{ creation_key: draft.draftId, goal_id: intake.intakeId, manual_edit_available: true, model_version: 2, status: "active" }]);
+    const detail = await planService.detail(confirmed.planId);
+    assert.equal(detail!.goalKind, "launch");
+    assert.equal(ai.calls.background, 1);
+    assert.equal(ai.calls.firstDraft, 2);
+  });
+});
+
+test("concurrent confirms of one draft create exactly one plan", databaseTest, async () => {
+  await withNetworkDatabase(async ({ pool }) => {
+    const { flow } = flowFor(pool);
+    let intake = await flow.createIntake({ goalKind: "sales", goalText: "新規顧客を増やす", idempotencyKey: "c-create", source: "task" }, JA);
+    intake = await flow.confirmBlock(intake.intakeId, { block: "me", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "c-me", me: { stance: "owner", wants: "顧客を増やす" } }, JA);
+    intake = await flow.confirmBlock(intake.intakeId, { block: "team", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "c-team", team: { members: [{ capabilities: [], memberId: "self", otherCapabilities: [], relation: null }], mode: "solo" } }, JA);
+    intake = await flow.confirmBlock(intake.intakeId, { block: "purpose", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "c-purpose", purpose: { selectedLevel: 2 } }, JA);
+    intake = await flow.chooseQuestions(intake.intakeId, "c-q", JA);
+    intake = await flow.submitAnswers(intake.intakeId, { answers: [], idempotencyKey: "c-a" }, JA);
+    const draft = await flow.makeDraft(intake.intakeId, "c-d", JA);
+    const results = await Promise.all([flow.confirm(draft.draftId, "c-1", JA), flow.confirm(draft.draftId, "c-2", JA), flow.confirm(draft.draftId, "c-3", JA)]);
+    assert.equal(new Set(results.map((result) => result.planId)).size, 1);
+    assert.equal(Number((await pool.query("select count(*) from plans where model_version = 2")).rows[0].count), 1);
+  });
+});
