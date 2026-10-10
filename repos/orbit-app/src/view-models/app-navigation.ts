@@ -75,6 +75,9 @@ export function parentForPath(pathname: string, t: OrbitTranslator = currentTran
       return { href: taskHref("todo"), label: t("shell.parent.tasks") };
     case "notes":
       return { href: taskHref("memo"), label: t("shell.parent.notes") };
+    case "plans":
+      // R23: the plan flow and its editor return to Task › プラン.
+      return { href: taskHref("plan"), label: t("shell.parent.plan") };
     case "inbox":
       if (parts.length > 1) return { href: "/inbox", label: t("shell.parent.inbox") };
       break;

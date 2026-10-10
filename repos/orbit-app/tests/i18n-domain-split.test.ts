@@ -20,7 +20,7 @@ const PRE_SPLIT = {
 };
 const dictionaries = { en, ja, zh } as const;
 // Domains added after the split (R03 contract D): not part of the pre-split pins.
-const ADDED_SINCE_SPLIT = new Set(["shell", "session"]);
+const ADDED_SINCE_SPLIT = new Set(["shell", "session", "plan"]);
 const preSplitPart = (dictionary: Record<string, string>) => Object.fromEntries(Object.entries(dictionary).filter(([key]) => !ADDED_SINCE_SPLIT.has(key.split(".")[0]!)));
 const i18nRoot = new URL("../src/i18n/", import.meta.url).pathname;
 

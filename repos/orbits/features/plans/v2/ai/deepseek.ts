@@ -64,6 +64,7 @@ export function createDeepseekPlanFlowAi(deps: DeepseekPlanFlowAiDeps): PlanFlow
           raw = JSON.parse(content);
         } catch {
           issues = ["the answer was not valid JSON"];
+          log({ attempt, event: "plan_v2_ai_output_rejected", issues, operationId, promptVersion: PLAN_V2_PROMPT_VERSION, step });
           continue;
         }
         const checked = check(raw);

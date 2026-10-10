@@ -47,6 +47,8 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/agent/signals')) return 'agent-signals';
   if (path.startsWith('/api/agent/actions')) return 'agent-actions';
   if (path.startsWith('/api/agent/ledger')) return 'agent-ledger';
+  // R23: the plan v2.2 generation flow (intakes, drafts, goal type, summary).
+  if (path.startsWith('/api/agent/plans')) return 'plans';
   if (path.startsWith('/api/recommendations/')) return 'event-recommendations';
   if (path.includes('/registration') || path.includes('/admission/application')) return 'registrations';
   if (path.includes('/access/') || path.includes('/admission/reviews')) return 'event-roles';
@@ -82,6 +84,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
     // Private portraits remain network-only until trusted grant/epoch invalidation is available.
     || endpointTemplate === '/api/events/:id/registration/portrait'
+    // R23: the plan flow is online-only (paid AI drafts, versioned intakes); nothing is kept on the device.
+    || consumerFile.startsWith('src/screens/plan/')
     // Bounded private readers have no proven revoke/version cache protocol yet.
     || (method === 'GET' && ([
       '/api/contacts/page','/api/contacts/summary','/api/contacts/labels','/api/inbox/summary',
@@ -108,6 +112,62 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
 }
 
 const surfaceKeys: readonly SurfaceKey[] = [
+  // R23: the plan v2.2 generation flow (src/screens/plan, all through plan-api.ts); online-only, never cached.
+  ["src/screens/plan/plan-api.ts","GET","/api/agent/plans/v2/summary"],
+  ["src/screens/plan/plan-api.ts","GET","/api/agent/plans/intakes"],
+  ["src/screens/plan/plan-api.ts","POST","/api/agent/plans/intakes"],
+  ["src/screens/plan/plan-api.ts","GET","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/plan-api.ts","PATCH","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/plan-api.ts","POST","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/plan-api.ts","POST","/api/agent/plans/goal-kind"],
+  ["src/screens/plan/plan-api.ts","GET","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/plan-api.ts","POST","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/PlanAddMemberSheet.tsx","GET","/api/agent/plans/v2/summary"],
+  ["src/screens/plan/PlanAddMemberSheet.tsx","GET","/api/agent/plans/intakes"],
+  ["src/screens/plan/PlanAddMemberSheet.tsx","POST","/api/agent/plans/intakes"],
+  ["src/screens/plan/PlanAddMemberSheet.tsx","GET","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanAddMemberSheet.tsx","PATCH","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanAddMemberSheet.tsx","POST","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanAddMemberSheet.tsx","POST","/api/agent/plans/goal-kind"],
+  ["src/screens/plan/PlanAddMemberSheet.tsx","GET","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/PlanAddMemberSheet.tsx","POST","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/PlanFlowScreen.tsx","GET","/api/agent/plans/v2/summary"],
+  ["src/screens/plan/PlanFlowScreen.tsx","GET","/api/agent/plans/intakes"],
+  ["src/screens/plan/PlanFlowScreen.tsx","POST","/api/agent/plans/intakes"],
+  ["src/screens/plan/PlanFlowScreen.tsx","GET","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanFlowScreen.tsx","PATCH","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanFlowScreen.tsx","POST","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanFlowScreen.tsx","POST","/api/agent/plans/goal-kind"],
+  ["src/screens/plan/PlanFlowScreen.tsx","GET","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/PlanFlowScreen.tsx","POST","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/PlanGoalInput.tsx","GET","/api/agent/plans/v2/summary"],
+  ["src/screens/plan/PlanGoalInput.tsx","GET","/api/agent/plans/intakes"],
+  ["src/screens/plan/PlanGoalInput.tsx","POST","/api/agent/plans/intakes"],
+  ["src/screens/plan/PlanGoalInput.tsx","GET","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanGoalInput.tsx","PATCH","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanGoalInput.tsx","POST","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanGoalInput.tsx","POST","/api/agent/plans/goal-kind"],
+  ["src/screens/plan/PlanGoalInput.tsx","GET","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/PlanGoalInput.tsx","POST","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/PlanManualEditScreen.tsx","GET","/api/agent/plans/v2/summary"],
+  ["src/screens/plan/PlanManualEditScreen.tsx","GET","/api/agent/plans/intakes"],
+  ["src/screens/plan/PlanManualEditScreen.tsx","POST","/api/agent/plans/intakes"],
+  ["src/screens/plan/PlanManualEditScreen.tsx","GET","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanManualEditScreen.tsx","PATCH","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanManualEditScreen.tsx","POST","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanManualEditScreen.tsx","POST","/api/agent/plans/goal-kind"],
+  ["src/screens/plan/PlanManualEditScreen.tsx","GET","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/PlanManualEditScreen.tsx","POST","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/PlanSegment.tsx","GET","/api/agent/plans/v2/summary"],
+  ["src/screens/plan/PlanSegment.tsx","GET","/api/agent/plans/intakes"],
+  ["src/screens/plan/PlanSegment.tsx","POST","/api/agent/plans/intakes"],
+  ["src/screens/plan/PlanSegment.tsx","GET","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanSegment.tsx","PATCH","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanSegment.tsx","POST","/api/agent/plans/intakes/:id"],
+  ["src/screens/plan/PlanSegment.tsx","POST","/api/agent/plans/goal-kind"],
+  ["src/screens/plan/PlanSegment.tsx","GET","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/PlanSegment.tsx","POST","/api/agent/plans/drafts/:id"],
+  ["src/screens/plan/plan-api.ts","GET","/api/contacts"],
   ["src/api/ai-session-management.ts","POST","/api/ai/conversations/groups"],
   ["src/api/ai-session-management.ts","DELETE","/api/ai/conversations/groups/:id"],
   ["src/api/ai-session-management.ts","PATCH","/api/ai/conversations/groups/:id"],

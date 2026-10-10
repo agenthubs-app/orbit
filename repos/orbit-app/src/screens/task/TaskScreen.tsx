@@ -9,9 +9,7 @@ import { serverReachability } from "../../api/server-reachability";
 import { AppScreenEmbeddingProvider } from "../../components/AppScreenEmbedding";
 import { IconButton } from "../../components/ui/IconButton";
 import { SwipeSegments } from "../../components/ui/Segmented";
-import { EmptyState } from "../../components/ui/States";
 import { UiText } from "../../components/ui/Text";
-import { useToast } from "../../components/ui/Toast";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useStandardCopy } from "../../i18n/standard-copy";
@@ -19,6 +17,7 @@ import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { TASK_SEGMENTS, type TaskSegment } from "../../view-models/app-navigation";
 import { initialTaskSegment, rememberTaskSegment } from "../../view-models/shell-state";
 import { NotesScreen } from "../notes/NotesScreen";
+import { PlanSegment } from "../plan/PlanSegment";
 import { ScheduleScreen } from "../schedule/ScheduleScreen";
 import { TasksScreen } from "../tasks/TasksScreen";
 import { TaskQuickAdd, type TaskQuickAddHandle } from "./TaskQuickAdd";
@@ -27,7 +26,7 @@ import { TaskQuickAdd, type TaskQuickAddHandle } from "./TaskQuickAdd";
 // one component and a feature Sprint replaces only its own slot:
 //   calendar → R20 (now the existing ScheduleScreen)
 //   todo     → R20 (now the existing TasksScreen under the add box)
-//   plan     → R25 (now the 「目標を決める」 empty state)
+//   plan     → R23 PlanSegment (goal input / confirmed card); R24 adds the overview
 //   memo     → R20 (now the existing NotesScreen)
 // Do not change the container (header, segments, 「＋」 dispatch, URL `?seg=`).
 export const TASK_SLOTS: Readonly<Record<TaskSegment, (props: TaskSlotProps) => ReactNode>> = {
@@ -36,7 +35,7 @@ export const TASK_SLOTS: Readonly<Record<TaskSegment, (props: TaskSlotProps) => 
     <TaskQuickAdd ref={quickAdd} onCreated={onCreated} />
     <TasksScreen key={revision} />
   </>,
-  plan: () => <PlanSlot />,
+  plan: () => <PlanSegment />,
   memo: () => <MemoSlot />,
 };
 
@@ -128,23 +127,6 @@ function useServerUnreachable(): boolean {
   return state === "unreachable";
 }
 
-function PlanSlot() {
-  const locale = useOrbitLocale();
-  const copy = useStandardCopy();
-  const toast = useToast();
-  const { styles } = useStyles();
-  // R25 fills this slot; until then the action says it is coming soon.
-  return (
-    <View style={styles.plan}>
-      <EmptyState
-        title={locale.t("shell.task.planEmptyTitle")}
-        message={locale.t("shell.task.planEmptyBody")}
-        action={{ label: locale.t("shell.task.planEmptyAction"), onPress: () => toast.info(copy.homeEdit.comingSoon) }}
-      />
-    </View>
-  );
-}
-
 function MemoSlot() {
   const focused = useIsFocused();
   const auth = useOrbitAuthSession();
@@ -163,5 +145,4 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   title: { color: colors.ink, fontSize: 26, lineHeight: 32, fontWeight: "800", letterSpacing: -0.5 },
   subtitle: { color: colors.ink3Text, fontSize: 13, lineHeight: 18 },
   headerSpacer: { width: 40, height: 40 },
-  plan: { paddingHorizontal: 16, paddingTop: 12 },
 }));

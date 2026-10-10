@@ -13,6 +13,7 @@ const PRIVATE_ROUTE_PREFIXES = [
   "/notes",
   "/party",
   "/platform",
+  "/plans",
   "/profile",
   "/schedule",
   "/settings",
@@ -26,6 +27,8 @@ const NO_PATH_PARAM_KEYS = new Set<string>();
 const ID_PATH_PARAM_KEYS = new Set(["id"]);
 const CODE_PATH_PARAM_KEYS = new Set(["code"]);
 const SLUG_PATH_PARAM_KEYS = new Set(["slug"]);
+const INTAKE_PATH_PARAM_KEYS = new Set(["intakeId"]);
+const DRAFT_PATH_PARAM_KEYS = new Set(["draftId"]);
 const STATIC_CONTACT_ROUTES = new Set([
   "all-actions",
   "dashboard",
@@ -58,6 +61,9 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
   const segments = appRelativePath(pathname).split("/").filter(Boolean);
   const [root, detail, leaf] = segments;
   if (root === "events" && detail && leaf === "participants" && segments.length === 4) return new Set(["id", "participantId"]);
+  // R23: the plan flow and the draft editor keep their id in the path.
+  if (root === "plans" && detail === "flow" && segments.length === 3) return INTAKE_PATH_PARAM_KEYS;
+  if (root === "plans" && detail === "drafts" && segments.length === 4 && segments[3] === "edit") return DRAFT_PATH_PARAM_KEYS;
 
   if ((root === "tasks" && detail !== undefined && detail !== "personal" && segments.length === 2) ||
     (root === "tasks" && detail === "relationship" && leaf !== undefined && segments.length === 3) ||

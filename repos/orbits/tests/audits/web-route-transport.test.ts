@@ -51,8 +51,9 @@ function requiresAuthentication(pathname: string): boolean {
 test("all dynamic Web routes have an explicit valid runtime sample", () => {
   const runtimePaths = webSurfaces.map(runtimePathForSurface);
 
-  assert.equal(runtimePaths.length, 57);
-  assert.equal(new Set(runtimePaths).size, 57);
+  // R23（2026-10-10）：+2 页 /app/plans/flow/[intakeId]、/app/plans/drafts/[draftId]/edit（都要登录）。
+  assert.equal(runtimePaths.length, 59);
+  assert.equal(new Set(runtimePaths).size, 59);
   assert.equal(runtimePaths.includes("/app/events/EVT01"), true);
   assert.equal(
     runtimePaths.includes(
@@ -114,9 +115,9 @@ test("whole-Web transport verification reports every route and any mismatch", as
   // `auth()`（同目录另外三个页面都有），此前未登录访客拿到的是取不到数据的编辑器空壳。
   // App 不受影响——它把该 href 翻译成自己的原生屏，不加载这个网页（见前缀表处的注释）。
   assert.deepEqual(report.summary, {
-    routeSurfaces: 57,
+    routeSurfaces: 59,
     okResponses: 30,
-    authRedirects: 27,
+    authRedirects: 29,
     failures: 0,
   });
   assert.equal(report.results.every((result) => result.conclusion === "pass"), true);
@@ -126,5 +127,5 @@ test("whole-Web transport verification reports every route and any mismatch", as
     fetchImplementation: async () =>
       new Response("<title>Failure</title>", { status: 500 }),
   });
-  assert.equal(failedReport.summary.failures, 57);
+  assert.equal(failedReport.summary.failures, 59);
 });

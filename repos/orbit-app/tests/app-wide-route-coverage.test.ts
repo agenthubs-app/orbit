@@ -167,6 +167,8 @@ const expectedRoutes: readonly ExpectedRoute[] = [
 // These functional routes were integrated after the 58-route visual snapshot.
 // Inclusion here does not extend that snapshot's native acceptance evidence.
 const integratedFeatureRoutes = [
+  "/plans/flow/[intakeId]",
+  "/plans/drafts/[draftId]/edit",
   "/agent/actions",
   "/inbox/notifications/[id]",
   "/inbox/sources/[id]",

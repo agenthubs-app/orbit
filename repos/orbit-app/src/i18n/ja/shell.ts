@@ -22,6 +22,7 @@ export const shell = {
   "shell.errorDetails": "エラーの詳細",
   "shell.noErrorDetails": "詳しい情報はありません。",
   "shell.parent.notes": "メモ",
+  "shell.parent.plan": "プラン",
   "shell.task.addCalendar": "予定を追加",
   "shell.task.addTodo": "To-do を追加",
   "shell.task.addMemo": "メモを追加",

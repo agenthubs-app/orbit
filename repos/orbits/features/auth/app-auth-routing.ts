@@ -5,6 +5,8 @@ const ORBIT_PRIVATE_APP_PREFIXES = [
   "/app/home",
   // R07: the inbox became a page (it was a drawer); signed-out visitors go to sign-in.
   "/app/inbox",
+  // R23: plan v2 pages (generation flow, manual edit; R24/R25 add the rest under /app/plans).
+  "/app/plans",
   "/app/platform",
   "/app/profile",
   "/app/settings",

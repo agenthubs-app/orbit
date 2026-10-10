@@ -23,6 +23,9 @@ const ZERO = [
   /^src\/components\/ui\//,
   /^src\/screens\/showcase\//,
   /^app\/showcase\//,
+  // R23 plan v2.2 generation flow.
+  /^src\/screens\/plan\//,
+  /^app\/plans\//,
   /^src\/components\/(?:AppScreen|OrbitTabBar|OrbitNavigationIcon|OrbitRouteAccessBoundary|OnlineOnlyBoundary|AppErrorBoundary)\.tsx$/,
   /^src\/view-models\/app-navigation\.ts$/,
   /^src\/api\/AuthSessionProvider\.tsx$/,

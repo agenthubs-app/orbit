@@ -8,7 +8,7 @@ import { loadAppDomains, loadPlanTemplateCopy, loadSharedCopy, loadWebCopy } fro
 
 // App dictionary domains the redesign skeleton owns (R03 D): navigation shell and
 // kept infrastructure. Feature Sprints add their rewritten domains here.
-export const APP_DOMAINS_IN_SCOPE = ["shell", "session"];
+export const APP_DOMAINS_IN_SCOPE = ["shell", "session", "plan"];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const appRoot = path.resolve(root, "../orbit-app");

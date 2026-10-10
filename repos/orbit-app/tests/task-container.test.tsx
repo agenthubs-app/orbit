@@ -34,6 +34,8 @@ const SLOTS: Record<string, string> = {
   "schedule/ScheduleScreen": "ScheduleScreen",
   "tasks/TasksScreen": "TasksScreen",
   "notes/NotesScreen": "NotesScreen",
+  // R23: the プラン slot is PlanSegment (its own behaviour: tests/plan-*.test.tsx).
+  "plan/PlanSegment": "PlanSegment",
   "TaskQuickAdd": "TaskQuickAdd",
 };
 
@@ -157,9 +159,8 @@ test("the 「＋」 follows the segment: new event, focus the add box, none on �
   assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("aria-label")), "quick add");
   await page.getByRole("tab", { name: "プラン" }).click();
   assert.equal(await page.getByRole("button", { name: /を追加$/ }).count(), 0);
-  assert.equal(await page.getByRole("button", { name: "目標を決める" }).count(), 1, "plan shows its empty state with one action");
-  await page.getByRole("button", { name: "目標を決める" }).click();
-  await page.getByText("近日公開").waitFor();
+  await page.waitForTimeout(400);
+  assert.equal(await visible(page, "PlanSegment page"), true, "the プラン slot shows PlanSegment (R23)");
   await page.getByRole("tab", { name: "メモ" }).click();
   await page.getByRole("button", { name: "メモを追加" }).click();
   const pushes = (await navigation(page)).filter((entry: { method: string }) => entry.method === "push");

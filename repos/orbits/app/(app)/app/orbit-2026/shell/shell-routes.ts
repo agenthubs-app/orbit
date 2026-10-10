@@ -34,6 +34,8 @@ export function shellNavKeyFor(pathname: string): ShellNavKey | null {
   if (matches(path, "/app/events/center") || /^\/app\/events\/[^/]+\/(operations|analytics|live)(\/|$)/u.test(path)) return "host";
   if (matches(path, "/app/events")) return "events";
   if (matches(path, "/app/tasks")) return "task";
+  // R23: plan pages belong to Task › プラン (DESIGN §7).
+  if (matches(path, "/app/plans")) return "task";
   if (matches(path, "/app/inbox")) return "inbox";
   if (matches(path, "/app/settings")) return "settings";
   if (matches(path, "/app/profile")) return "me";

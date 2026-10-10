@@ -3,9 +3,11 @@
  * 「我的计划」 screen (IOrbitPlan, W0009–W0021) until R25 rewrites the segment. This is
  * the composition the old /app/agent/plan page did, moved here unchanged:
  * the guide's sample plan, the actor's current plan with contact names and
- * tracking, or 「计划暂时读不到」. Only a person with no plan gets null — the Task
- * container then shows the 「目標を決める」 empty state, whose button goes where
- * the old empty plan pointed (`/app/start` with the guide on, else `/app/agent`).
+ * tracking, or 「计划暂时读不到」.
+ *
+ * R23: a person with an active v2 plan sees the minimal 「已確定」 card (R24 replaces it
+ * with the overview); with neither a v2 nor a v1 plan they get the goal input
+ * (目標入力) instead of null. The guide / demo branch is unchanged.
  */
 import type { ReactNode } from "react";
 
@@ -18,12 +20,17 @@ import {
 import type { PlanService, PlanViewSnapshot } from "../../../../../features/plans/contract";
 import { isAiPlanGeneratorConfigured } from "../../../../../features/plans/generator-service-factory";
 import { planWeekState } from "../../../../../features/plans/week";
+import { resolvePlanV2Service } from "../../../../../features/plans/v2/service-factory";
 import { createProfileService } from "../../../../../features/profile/service-factory";
+import { redesignContractMode } from "../../../../../features/redesign-contracts/route";
 import { readGuideDemoConfig } from "../../../../../shared/config/guide-demo";
 import { resolveModuleMode } from "../../../../../shared/services/module-mode";
 import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
+import { pickActiveV2Plan, type ActivePlanCard } from "../../orbit-2026/plan/plan-model";
+import { PlanConfirmedCard } from "../../orbit-2026/plan/PlanConfirmedCard";
+import { PlanGoalEntry } from "../../orbit-2026/plan/PlanGoalEntry";
 import { IOrbitPlan } from "../iorbit-0918/iorbit-plan";
 import type { PlanTrackingInput } from "./plan-route-view-model";
 import { readCurrentPlan } from "./read-current-plan";
@@ -56,13 +63,26 @@ export function planStartHref(): string {
   return readGuideDemoConfig().enabled ? "/app/start" : "/app/agent";
 }
 
-/** The プラン segment for this actor: the plan screen, or null when there is no plan yet. */
+/** The actor's own active v2 plan (same mode as `GET /api/agent/plans/v2/summary`); none when it cannot be read. */
+async function readActiveV2Plan(actorId: string): Promise<ActivePlanCard | null> {
+  try {
+    const resolution = resolvePlanV2Service({ actorId, mode: redesignContractMode("plan-v2-summary") });
+    if (resolution.success === false) return null;
+    return pickActiveV2Plan(await resolution.service.summary());
+  } catch {
+    return null;
+  }
+}
+
+/** The プラン segment for this actor: the v2 card, the v1 plan screen, or the goal input. */
 export async function loadPlanSlot(actor: { id: string }, userId: string): Promise<ReactNode | null> {
   const frame = (node: ReactNode) => <><OrbitReferenceStyles /><OrbitVisualFreezeRuntime />{node}</>;
   const guide = await readDemoModeViewForActor({ actorId: actor.id, userId });
   if (guide) return frame(<IOrbitPlan guide={guide} guideEnabled initialSnapshot={null} />);
+  const active = await readActiveV2Plan(actor.id);
+  if (active) return <PlanConfirmedCard goal={active.goal} goalKind={active.goalKind} total={active.total} />;
   const { service, snapshot } = await readCurrentPlan(actor.id);
-  if (snapshot === null) return null;
+  if (snapshot === null) return <PlanGoalEntry />;
   const [contactNames, tracking] = await Promise.all([readContactNames(actor.id, snapshot), readTracking(actor.id, service, snapshot)]);
   return frame(<IOrbitPlan contactNames={contactNames} guideEnabled={readGuideDemoConfig().enabled} initialSnapshot={snapshot} tracking={tracking} />);
 }

@@ -4,7 +4,12 @@
  */
 import type { PlanCopyLanguage } from "../../../../shared/compute/plan-template-copy";
 
-export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-11-v1";
+/**
+ * v2（R23 本机验证后）：初版 / 修正写明人物类型的全部字段，并强调「没有 ① 的句子不写数字」。
+ * v3（R23 本机验证第 3 次初版被拒：删了一个枠却没补配点、Step 还引用它）：要求保留全部枠、默认照抄模板配点；
+ * 修正时用户要求的改动在前提允许范围内就照做。v3 还没有真实调用验证（C6 本机 5 次已用完，见 R23 REPORT）。
+ */
+export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-11-v3";
 
 const LANGUAGE: Record<PlanCopyLanguage, string> = { en: "English", ja: "Japanese (natural, polite です・ます)", zh: "Simplified Chinese" };
 
@@ -47,15 +52,17 @@ export const TASKS = {
   ].join("\n"),
   firstDraft: [
     "Write the first plan for the goal from the confirmed premise, background and the industry landscape entries.",
-    "diagnosis: 2–4 sentences. When a sentence uses a landscape entry, put its marker ①, ②, ... (the order of your citations list) in that sentence. A sentence without a marker must not contain any number; general knowledge without an entry is allowed only without numbers.",
+    "diagnosis: 2–4 sentences. When a sentence uses a landscape entry, put its marker ①, ②, ... (the order of your citations list) in that sentence. STRICT: a sentence without a marker must not contain any digit at all (not even numbers from the premise such as user counts or hours; describe them in words instead). The conclusion must not contain digits either.",
     "conclusion: one sentence. flow: optional up to 3 cells {emoji, label, note}.",
     "steps: 3–6 steps, each with a title, doneCriteria (a countable state, not a date) and personTypeKeys (slot ids from personTypes, or \"event\").",
-    "personTypes: one per template slot you keep (slot ids from the given slots only). shortLabelId must be one of that slot's shortNames ids. roleSituation: one sentence 'role × situation' (not a job title). allocation: start from the template; you may change at most 2 slots by exactly ±5 each (a slot may be dropped only if its template allocation is 5); all allocations plus the event allocation must total 100 and be multiples of 5. targetCount 1–5. questions: exactly 3 things to ask. countRule, recognizeHints (up to 3), persona and opener (or null). introRoutes: only through given contact aliases, why without headcounts. primaryIndustryId: an industry id if obvious, else null.",
+    "personTypes: one per template slot you keep (slot ids from the given slots only). shortLabelId must be one of that slot's shortNames ids. roleSituation: one sentence 'role × situation' (not a job title). allocation: keep EVERY template slot (never drop one) and copy the template allocations exactly; only if the premise clearly calls for it, move 5 points from one slot to another (at most 2 slots changed in total), so that all allocations plus the event allocation still total exactly 100 in multiples of 5. When unsure, keep the template allocations unchanged. targetCount 1–5. questions: exactly 3 things to ask. countRule, recognizeHints (up to 3), persona and opener (or null). introRoutes: only through given contact aliases, why without headcounts. primaryIndustryId: an industry id if obvious, else null.",
     "event: allocation and targetCount (1–10). citations: [{id, version}] of the entries you used, only from the given landscape. allocationReasons: one line per slot you changed.",
+    'Every personType object must have ALL of these keys: {"slot": "<slot id>", "shortLabelId": "<one of that slot shortNames ids>", "roleSituation": "...", "allocation": 25, "targetCount": 3, "why": "...", "questions": ["...", "...", "..."], "countRule": "...", "recognizeHints": ["..."], "persona": null, "opener": null, "introRoutes": [{"viaAlias": "C1", "why": "..."}], "primaryIndustryId": null}. persona and opener may be strings.',
+    'Every step object: {"title": "...", "doneCriteria": "...", "why": null, "personTypeKeys": ["<slot id>", "event"]}.',
     'Output: {"diagnosis": "...", "conclusion": "...", "flow": [], "steps": [...], "personTypes": [...], "event": {"allocation": 10, "targetCount": 2}, "citations": [{"id": "L-101", "version": 1}], "allocationReasons": []}',
   ].join("\n"),
   fix: [
-    "The user asks for a change to the current plan. Apply only what the request needs; keep everything else exactly as it is.",
+    "The user asks for a change to the current plan. If the request fits the premise, apply it (for example rewrite a step's doneCriteria, rename or add a step, adjust allocations); apply only what the request needs and keep everything else exactly as it is.",
     "If no change is needed or the request conflicts with the premise, return the plan unchanged and explain in noChangeReason (one or two sentences).",
     "The revised plan follows the same rules as the first draft (short names from the dictionary, allocations multiples of 5 totalling 100, citations only from the given landscape, numbers only with markers), except that allocations may move freely.",
     'Output: {"revised": <the full plan in the same shape as the input "current">, "reasons": [{"path": "steps.1.doneCriteria", "reason": "..."}], "unchanged": ["short labels of what stayed the same"], "noChangeReason": null}',

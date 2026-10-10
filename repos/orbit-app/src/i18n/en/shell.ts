@@ -22,6 +22,7 @@ export const shell = {
   "shell.errorDetails": "Error details",
   "shell.noErrorDetails": "No more details.",
   "shell.parent.notes": "Notes",
+  "shell.parent.plan": "Plan",
   "shell.task.addCalendar": "Add event",
   "shell.task.addTodo": "Add to-do",
   "shell.task.addMemo": "Add note",

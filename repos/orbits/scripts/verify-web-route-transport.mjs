@@ -19,6 +19,9 @@ const ROUTE_SAMPLES = new Map([
     "/app/contacts/analysis/industry/demo-bucket-1",
   ],
   ["/app/contacts/[id]", "/app/contacts/demo-contact-1"],
+  // R23：计划生成流程与手动编辑页（动态段用样例 id；页面未登录跳登录）。
+  ["/app/plans/flow/[intakeId]", "/app/plans/flow/intake_demo"],
+  ["/app/plans/drafts/[draftId]/edit", "/app/plans/drafts/draft_demo/edit"],
   ["/app/events/[id]", "/app/events/EVT01"],
   ["/app/events/[id]/analytics", "/app/events/EVT01/analytics"],
   ["/app/events/[id]/live", "/app/events/EVT01/live"],
