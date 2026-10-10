@@ -3912,11 +3912,11 @@
     "event-assessment.ts::EventAssessmentCriterion": {
       "kind": "enum",
       "values": [
-        "'cost'",
-        "'followUp'",
-        "'goalFit'",
-        "'people'",
-        "'timing'"
+        "'confidence'",
+        "'connections'",
+        "'fit'",
+        "'format'",
+        "'timeCost'"
       ]
     },
     "event-assessment.ts::EventAssessmentFacts": {
@@ -3967,10 +3967,25 @@
           "kind": "text",
           "type": "number"
         },
+        "max": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
         "reason": {
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "facts": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "estimated": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -6021,15 +6036,22 @@
         "PlanBackgroundPurpose",
         "PlanBackgroundTeam",
         "PlanBasisRef",
+        "PlanCandidateDecisionRequest",
+        "PlanCandidateDecisionResult",
+        "PlanCandidateView",
         "PlanCitation",
         "PlanCitationView",
         "PlanCommandResult",
         "PlanConfirmResult",
+        "PlanContactFit",
+        "PlanContactFitStatus",
         "PlanDraftChange",
         "PlanDraftFixRequest",
         "PlanDraftManualEditRequest",
         "PlanDraftTurn",
         "PlanDraftView",
+        "PlanEventOption",
+        "PlanEventScore",
         "PlanFlowCell",
         "PlanFlowStepRequest",
         "PlanGoalKind",
@@ -6054,22 +6076,41 @@
         "PlanIntakeSource",
         "PlanIntakeStatus",
         "PlanIntakeView",
+        "PlanIntroDraftRequest",
+        "PlanIntroDraftResult",
         "PlanIntroRoute",
+        "PlanIntroRouteView",
         "PlanLadderRung",
         "PlanMemberRelation",
         "PlanMemberSource",
         "PlanOpenResult",
+        "PlanPendingDecisionRequest",
+        "PlanPendingDecisionResult",
+        "PlanPendingItem",
+        "PlanPendingKind",
+        "PlanPendingListResponse",
+        "PlanPersonTypeDetail",
         "PlanPremiseRow",
         "PlanPremiseSource",
+        "PlanProposalRequest",
+        "PlanProposalResult",
         "PlanQuotaView",
         "PlanReadingItem",
+        "PlanRecentAward",
         "PlanScoreSegment",
         "PlanScoreView",
         "PlanSkipRequest",
         "PlanStance",
+        "PlanStepProgress",
         "PlanStepRequest",
+        "PlanStepSuggestion",
+        "PlanTalkedOfflineRequest",
+        "PlanTalkedOfflineResult",
+        "PlanTalkedView",
+        "PlanTaskLinkView",
         "PlanTeamMember",
         "PlanTodayChance",
+        "PlanTypeStats",
         "PlanUndoRequest",
         "PlanV2Content",
         "PlanV2Detail",
@@ -8515,6 +8556,36 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "todayChance": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanTodayChance | null"
+        },
+        "typeStats": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanTypeStats[]"
+        },
+        "stepProgress": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanStepProgress[]"
+        },
+        "stepSuggestions": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanStepSuggestion[]"
+        },
+        "recentAwards": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanRecentAward[]"
+        },
+        "pending": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanPendingItem[]"
         }
       }
     },
@@ -9707,6 +9778,848 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanTypeStats": {
+      "kind": "object",
+      "members": {
+        "itemId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "candidates": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "events": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "introRoutes": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "plan-v2.ts::PlanStepProgress": {
+      "kind": "object",
+      "members": {
+        "stepKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "done": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "plan-v2.ts::PlanStepSuggestion": {
+      "kind": "object",
+      "members": {
+        "stepKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "question": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "evidenceIds": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanRecentAward": {
+      "kind": "object",
+      "members": {
+        "awardLogId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "itemId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "typeKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "shortLabel": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "points": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "part": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanAwardPart"
+        },
+        "basis": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanAwardBasis"
+        },
+        "contactName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "at": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanPendingKind": {
+      "kind": "enum",
+      "values": [
+        "'candidate'",
+        "'memo_coverage'",
+        "'step_suggestion'"
+      ]
+    },
+    "plan-v2.ts::PlanPendingItem": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanPendingKind"
+        },
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "itemId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "detail": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "answered": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly number[]"
+        },
+        "manual": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanPendingListResponse": {
+      "kind": "object",
+      "members": {
+        "items": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanPendingItem[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanPendingDecisionRequest": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "answered": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly number[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanPendingDecisionResult": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'dismissed' | 'accepted'"
+        },
+        "award": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanAwardResult | null"
+        },
+        "replayed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "plan-v2.ts::PlanCandidateView": {
+      "kind": "object",
+      "members": {
+        "candidateId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "company": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "recommendScore": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "reason": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "opener": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "isOrbitUser": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "lastContactAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "basis": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanBasisRef[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanTalkedView": {
+      "kind": "object",
+      "members": {
+        "awardLogId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "anonymous": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "at": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "points": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "part": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanAwardPart"
+        },
+        "basis": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanAwardBasis"
+        }
+      }
+    },
+    "plan-v2.ts::PlanIntroRouteView": {
+      "kind": "object",
+      "members": {
+        "viaContactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "viaName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "why": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanEventOption": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "venue": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "expectedCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "score": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanEventScore"
+        }
+      }
+    },
+    "plan-v2.ts::PlanEventScore": {
+      "kind": "object",
+      "members": {
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "verdict": {
+          "optional": false,
+          "kind": "text",
+          "type": "'recommend' | 'conditional' | 'skip'"
+        },
+        "scoreBreakdown": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventAssessmentScoreItem[]"
+        },
+        "rubricVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanTaskLinkView": {
+      "kind": "object",
+      "members": {
+        "taskId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "dueDate": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "plan-v2.ts::PlanPersonTypeDetail": {
+      "kind": "object",
+      "members": {
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "itemId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "letter": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "shortLabel": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "roleSituation": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "allocation": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "targetCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "unitPoints": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly number[]"
+        },
+        "earned": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "overflow": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "metCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "stepKeys": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "why": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "questions": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "countRule": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "recognizeHints": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "persona": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "opener": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "next": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "points": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "part": {
+              "optional": false,
+              "kind": "text",
+              "type": "'none' | PlanAwardPart"
+            }
+          }
+        },
+        "candidates": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanCandidateView[]"
+        },
+        "talked": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanTalkedView[]"
+        },
+        "introRoutes": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanIntroRouteView[]"
+        },
+        "events": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanEventOption[]"
+        },
+        "tasks": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanTaskLinkView[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "plan-v2.ts::PlanCandidateDecisionRequest": {
+      "kind": "object",
+      "members": {
+        "decision": {
+          "optional": false,
+          "kind": "text",
+          "type": "'dismiss' | 'accept'"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanCandidateDecisionResult": {
+      "kind": "object",
+      "members": {
+        "candidateId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'dismissed' | 'accepted'"
+        },
+        "replayed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "plan-v2.ts::PlanTalkedOfflineRequest": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "createContact": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "anonymous": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        },
+        "at": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanTalkedOfflineResult": {
+      "kind": "object",
+      "members": {
+        "matches": {
+          "optional": true,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "contactId": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "name": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "company": {
+                "optional": false,
+                "kind": "text",
+                "type": "string | null"
+              }
+            }
+          }
+        },
+        "award": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanAwardResult | null"
+        },
+        "createdContactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "plan-v2.ts::PlanProposalRequest": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "slots": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanProposalResult": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'draft' | 'request'"
+        },
+        "requestId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "draft": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ subject: string; body: string; } | null"
+        }
+      }
+    },
+    "plan-v2.ts::PlanIntroDraftRequest": {
+      "kind": "object",
+      "members": {
+        "viaContactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanIntroDraftResult": {
+      "kind": "object",
+      "members": {
+        "viaName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "subject": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "body": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanContactFitStatus": {
+      "kind": "enum",
+      "values": [
+        "'candidate'",
+        "'linked'",
+        "'talked'"
+      ]
+    },
+    "plan-v2.ts::PlanContactFit": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "fits": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "planId": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "goal": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "itemId": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "shortLabel": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "emoji": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "status": {
+                "optional": false,
+                "kind": "text",
+                "type": "PlanContactFitStatus"
+              }
+            }
+          }
         }
       }
     },

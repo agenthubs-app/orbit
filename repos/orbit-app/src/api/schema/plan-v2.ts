@@ -26,6 +26,19 @@ import type {
   PlanIntakeMembersRequest,
   PlanIntakePremiseRequest,
   PlanIntakeView,
+  PlanCandidateDecisionRequest,
+  PlanCandidateDecisionResult,
+  PlanContactFit,
+  PlanIntroDraftRequest,
+  PlanIntroDraftResult,
+  PlanPendingDecisionRequest,
+  PlanPendingDecisionResult,
+  PlanPendingListResponse,
+  PlanPersonTypeDetail,
+  PlanProposalRequest,
+  PlanProposalResult,
+  PlanTalkedOfflineRequest,
+  PlanTalkedOfflineResult,
 } from "../contract/plan-v2";
 
 // R22 plan v2.2 (owner 甲). Responses are read tolerantly (README rule 10): unknown keys
@@ -153,6 +166,24 @@ export const planV2DetailObject = z.object({
   }),
   achievedAt: z.string().nullable(),
   sample: z.literal(true).optional(),
+  // R24：概要的可选字段（读不懂的整条跳过）。
+  todayChance: z.object({ label: z.string().min(1), points: count, href: z.string().min(1) }).nullable().optional().catch(null),
+  typeStats: readableItems(z.object({ itemId: z.string().min(1), candidates: count, events: count, introRoutes: count })).optional(),
+  stepProgress: readableItems(z.object({ stepKey: z.string().min(1), label: z.string(), done: count, total: count })).optional(),
+  stepSuggestions: readableItems(z.object({ stepKey: z.string().min(1), question: z.string(), evidenceIds: z.array(z.string()) })).optional(),
+  recentAwards: readableItems(z.object({
+    awardLogId: z.string().min(1),
+    itemId: z.string().nullable(),
+    typeKey: z.string(),
+    shortLabel: z.string(),
+    emoji: z.string(),
+    points: count,
+    part: z.enum(["base", "overflow"]),
+    basis: z.enum(["talked", "self_report", "memo", "event", "skip"]),
+    contactName: z.string().nullable(),
+    at: z.string(),
+  })).optional(),
+  pending: z.lazy(() => readableItems(pendingItem)).optional(),
 });
 export const planV2DetailSchema = planV2DetailObject as z.ZodType<PlanV2Detail>;
 
@@ -418,3 +449,160 @@ export const planDraftManualEditRequestObject = z.object({
   idempotencyKey,
 }).strict();
 export const planDraftManualEditRequestSchema = planDraftManualEditRequestObject as z.ZodType<PlanDraftManualEditRequest>;
+
+/* ------------------------------------------------------------------ */
+/* R24 概要、人物类型详情与记录加分                                         */
+/* ------------------------------------------------------------------ */
+
+// 待确认项的种类决定用哪张卡：未知种类整条跳过。
+const pendingItem = z.object({
+  id: z.string().min(1),
+  kind: z.enum(["memo_coverage", "step_suggestion", "candidate"]),
+  planId: z.string().min(1),
+  itemId: z.string().nullable(),
+  title: z.string(),
+  detail: z.string().nullable(),
+  contactId: z.string().nullable().optional(),
+  answered: z.array(z.number().int().min(0).max(2)).optional(),
+  manual: z.boolean().optional(),
+  createdAt: z.string(),
+});
+
+export const planPendingListResponseObject = z.object({ items: readableItems(pendingItem) });
+export const planPendingListResponseSchema = planPendingListResponseObject as z.ZodType<PlanPendingListResponse>;
+
+const scoreItem = z.object({
+  criterion: z.enum(["fit", "confidence", "timeCost", "connections", "format"]),
+  score: z.number().int().min(0).max(45),
+  max: z.number().int().min(1).max(45),
+  reason: z.string(),
+  facts: z.array(z.string()).catch([]),
+  estimated: z.boolean().catch(false),
+});
+const eventScore = z.object({
+  total: z.number().int().min(0).max(100),
+  verdict: tolerantEnum(["recommend", "conditional", "skip"], "conditional"),
+  scoreBreakdown: readableItems(scoreItem),
+  rubricVersion: z.string().min(1),
+});
+const awardPart = z.enum(["base", "overflow"]);
+const awardBasis = z.enum(["talked", "self_report", "memo", "event", "skip"]);
+
+export const planPersonTypeDetailObject = z.object({
+  planId: z.string().min(1),
+  itemId: z.string().min(1),
+  key: z.string().min(1),
+  letter: z.string(),
+  shortLabel: z.string(),
+  emoji: z.string(),
+  roleSituation: z.string(),
+  allocation: count.max(100),
+  targetCount: z.number().int().min(1).max(10),
+  unitPoints: z.array(count),
+  earned: count,
+  overflow: count,
+  metCount: count,
+  skipped: z.boolean(),
+  stepKeys: z.array(z.string()),
+  why: z.string(),
+  questions: z.array(z.string()),
+  countRule: z.string(),
+  recognizeHints: z.array(z.string()),
+  persona: z.string().nullable(),
+  opener: z.string().nullable(),
+  next: z.object({ points: count, part: tolerantEnum(["base", "overflow", "none"], "none") }),
+  candidates: readableItems(z.object({
+    candidateId: z.string().min(1),
+    contactId: z.string().min(1),
+    name: z.string(),
+    company: z.string().nullable(),
+    role: z.string().nullable(),
+    recommendScore: z.number().int().min(0).max(100),
+    reason: z.string().nullable(),
+    opener: z.string().nullable(),
+    isOrbitUser: z.boolean(),
+    lastContactAt: z.string().nullable(),
+    basis: readableItems(z.object({ kind: z.enum(["premise", "landscape", "record", "template"]), ref: z.string(), label: z.string() })),
+  })),
+  talked: readableItems(z.object({
+    awardLogId: z.string().min(1),
+    contactId: z.string().nullable(),
+    name: z.string().nullable(),
+    anonymous: z.boolean(),
+    at: z.string(),
+    points: count,
+    part: awardPart,
+    basis: awardBasis,
+  })),
+  introRoutes: readableItems(z.object({ viaContactId: z.string().min(1), viaName: z.string(), why: z.string() })),
+  events: readableItems(z.object({
+    eventId: z.string().min(1),
+    title: z.string(),
+    startsAt: z.string(),
+    venue: z.string().nullable(),
+    expectedCount: count.nullable(),
+    score: eventScore,
+  })),
+  tasks: readableItems(z.object({ taskId: z.string().min(1), title: z.string(), dueDate: z.string().nullable() })),
+  sample: z.literal(true).optional(),
+});
+export const planPersonTypeDetailSchema = planPersonTypeDetailObject as unknown as z.ZodType<PlanPersonTypeDetail>;
+
+export const planCandidateDecisionRequestObject = z.object({ decision: z.enum(["accept", "dismiss"]), idempotencyKey }).strict();
+export const planCandidateDecisionRequestSchema = planCandidateDecisionRequestObject as z.ZodType<PlanCandidateDecisionRequest>;
+export const planCandidateDecisionResultObject = z.object({ candidateId: z.string().min(1), status: z.enum(["accepted", "dismissed"]), replayed: z.boolean() });
+export const planCandidateDecisionResultSchema = planCandidateDecisionResultObject as z.ZodType<PlanCandidateDecisionResult>;
+
+export const planTalkedOfflineRequestObject = z.object({
+  contactId: z.string().min(1).max(200).optional(),
+  name: z.string().trim().min(1).max(80).optional(),
+  createContact: z.boolean().optional(),
+  anonymous: z.literal(true).optional(),
+  at: z.string().datetime({ offset: true }).optional(),
+  idempotencyKey,
+}).strict().refine((body) => [body.contactId, body.name, body.anonymous].filter(Boolean).length === 1 && (!body.createContact || Boolean(body.name)), { message: "one of contactId, name or anonymous" });
+export const planTalkedOfflineRequestSchema = planTalkedOfflineRequestObject as unknown as z.ZodType<PlanTalkedOfflineRequest>;
+export const planTalkedOfflineResultObject = z.object({
+  matches: readableItems(z.object({ contactId: z.string().min(1), name: z.string(), company: z.string().nullable() })).optional(),
+  award: planAwardResultObject.nullable().optional(),
+  createdContactId: z.string().nullable().optional(),
+});
+export const planTalkedOfflineResultSchema = planTalkedOfflineResultObject as z.ZodType<PlanTalkedOfflineResult>;
+
+export const planProposalRequestObject = z.object({ contactId: z.string().min(1).max(200), slots: z.array(z.string().datetime({ offset: true })).min(3).max(5), idempotencyKey }).strict();
+export const planProposalRequestSchema = planProposalRequestObject as z.ZodType<PlanProposalRequest>;
+export const planProposalResultObject = z.object({
+  kind: z.enum(["request", "draft"]),
+  requestId: z.string().nullable().optional(),
+  draft: z.object({ subject: z.string(), body: z.string() }).nullable().optional(),
+});
+export const planProposalResultSchema = planProposalResultObject as z.ZodType<PlanProposalResult>;
+
+export const planIntroDraftRequestObject = z.object({ viaContactId: z.string().min(1).max(200), idempotencyKey }).strict();
+export const planIntroDraftRequestSchema = planIntroDraftRequestObject as z.ZodType<PlanIntroDraftRequest>;
+export const planIntroDraftResultObject = z.object({ viaName: z.string(), subject: z.string(), body: z.string() });
+export const planIntroDraftResultSchema = planIntroDraftResultObject as z.ZodType<PlanIntroDraftResult>;
+
+export const planPendingDecisionRequestObject = z.object({ idempotencyKey, answered: z.array(z.number().int().min(0).max(2)).max(3).optional() }).strict();
+export const planPendingDecisionRequestSchema = planPendingDecisionRequestObject as z.ZodType<PlanPendingDecisionRequest>;
+export const planPendingDecisionResultObject = z.object({
+  id: z.string().min(1),
+  status: z.enum(["accepted", "dismissed"]),
+  award: planAwardResultObject.nullable().optional(),
+  replayed: z.boolean(),
+});
+export const planPendingDecisionResultSchema = planPendingDecisionResultObject as z.ZodType<PlanPendingDecisionResult>;
+
+// 状态决定这个人显示在哪一栏：未知状态整条跳过。
+export const planContactFitObject = z.object({
+  contactId: z.string().min(1),
+  fits: readableItems(z.object({
+    planId: z.string().min(1),
+    goal: z.string(),
+    itemId: z.string().min(1),
+    shortLabel: z.string(),
+    emoji: z.string(),
+    status: z.enum(["candidate", "linked", "talked"]),
+  })),
+});
+export const planContactFitSchema = planContactFitObject as z.ZodType<PlanContactFit>;

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { knownValues, tolerantEnum } from "./tolerant";
 import type { EventAssessmentAddToPlanResult, EventAssessmentContract, EventAssessmentScoreItem, EventAssessmentCreateInput, EventAssessmentPatchInput } from "../contract/event-assessment";
 
-// R08 contract 8 (owner 甲 / R26). Five fixed criteria, 0–20 each, adding up to total.
+// R08 contract 8 (owner 甲 / R26); R24 rubric v2: five fixed criteria 45 / 15 / 20 / 10 / 10, adding up to total.
 // Responses tolerant, request bodies strict (see home-layout.ts).
 const factFields = {
   title: z.string().max(200).optional(),
@@ -12,7 +12,7 @@ const factFields = {
   price: z.string().max(60).optional(),
   url: z.string().url().optional(),
 };
-const CRITERIA = ["goalFit", "people", "timing", "cost", "followUp"] as const;
+const CRITERIA = ["fit", "confidence", "timeCost", "connections", "format"] as const;
 const criterion = z.enum(CRITERIA);
 const knownCriterion = new Set<string>(CRITERIA);
 const key = z.string().min(1).max(200);
@@ -24,8 +24,8 @@ export const eventAssessmentObject = z.object({
   sourceKind: tolerantEnum(["url", "poster", "orbit_event"], "url"),
   status: tolerantEnum(["reading", "ready", "needs_input", "failed"], "failed"),
   facts: z.object(factFields),
-  scoreBreakdown: z.array(z.object({ criterion: z.string(), score: z.number().int().min(0).max(20), reason: z.string().max(200) })).max(5)
-    .transform((items) => items.filter((item): item is EventAssessmentScoreItem => knownCriterion.has(item.criterion))),
+  scoreBreakdown: z.array(z.object({ criterion: z.string(), score: z.number().int().min(0).max(45), max: z.number().int().min(1).max(45), reason: z.string().max(200), facts: z.array(z.string().max(200)).max(8).catch([]), estimated: z.boolean().catch(false) })).max(5)
+    .transform((items) => items.filter((item) => knownCriterion.has(item.criterion)) as Array<Omit<EventAssessmentScoreItem, "facts"> & { facts: string[] }>),
   total: z.number().int().min(0).max(100),
   verdict: tolerantEnum(["recommend", "conditional", "skip"], "conditional"),
   missingFields: knownValues(["title", "startsAt", "venue", "organizer", "price", "url"]),

@@ -5,6 +5,8 @@
  * 只加不改（README 通用规则 10；破坏性改动先在 BREAKING.md 登记）。
  */
 
+import type { EventAssessmentScoreItem } from "./event-assessment";
+
 export type PlanGoalKind = "launch" | "fundraising" | "sales" | "hiring" | "partnership" | "career";
 /** 读取时未知的目标类型落到 `unknown`：界面只显示目标文，不显示类型名和 emoji。 */
 export type PlanGoalKindRead = PlanGoalKind | "unknown";
@@ -174,7 +176,7 @@ export interface PlanQuotaView {
   activeGoalLimit: number;
 }
 
-/** `GET /api/agent/plans/v2/[planId]`：概要。 */
+/** `GET /api/agent/plans/v2/[planId]`：概要。R24 加了可选的概要字段（今日のチャンス、类型三格、Step 进度、最近加分、待确认）。 */
 export interface PlanV2Detail {
   planId: string;
   revision: number;
@@ -188,6 +190,18 @@ export interface PlanV2Detail {
   quota: PlanQuotaView;
   achievedAt: string | null;
   sample?: true;
+  /** R24：今日のチャンス（规则挑选：推薦度最高且没聊过的候补，或剩余目标最多的会える活動）。 */
+  todayChance?: PlanTodayChance | null;
+  /** R24：人物类型卡的三格（人脈の候補 · 会える活動 · 紹介ルート）。 */
+  typeStats?: readonly PlanTypeStats[];
+  /** R24：Step 进度（关联类型已计入人数 / 目标人数）。 */
+  stepProgress?: readonly PlanStepProgress[];
+  /** R24：规则给出的「Step 可能已完成」确认卡（必须用户确认）。 */
+  stepSuggestions?: readonly PlanStepSuggestion[];
+  /** R24：最近 5 条计分（Web 1024「最近の加点」）。 */
+  recentAwards?: readonly PlanRecentAward[];
+  /** R24：待确认项（memo 计分提议、Step 建议、候补）。 */
+  pending?: readonly PlanPendingItem[];
 }
 
 /** 记一次「话过了」（有名字 / 无名字）。 */
@@ -521,4 +535,241 @@ export interface PlanDraftManualEditRequest {
   personTypes: readonly { key: string | null; slot?: string; targetCount: number; allocation: number }[];
   event: { targetCount: number; allocation: number };
   idempotencyKey: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* R24 概要、人物类型详情与记录加分                                         */
+/* ------------------------------------------------------------------ */
+
+export interface PlanTypeStats {
+  itemId: string;
+  candidates: number;
+  events: number;
+  introRoutes: number;
+}
+
+export interface PlanStepProgress {
+  stepKey: string;
+  label: string;
+  done: number;
+  total: number;
+}
+
+export interface PlanStepSuggestion {
+  stepKey: string;
+  question: string;
+  /** 计入的计分记录 id。 */
+  evidenceIds: readonly string[];
+}
+
+export interface PlanRecentAward {
+  awardLogId: string;
+  itemId: string | null;
+  typeKey: string;
+  shortLabel: string;
+  emoji: string;
+  points: number;
+  part: PlanAwardPart;
+  basis: PlanAwardBasis;
+  contactName: string | null;
+  at: string;
+}
+
+export type PlanPendingKind = "memo_coverage" | "step_suggestion" | "candidate";
+
+/** 待确认的一项（给 R20 的 To-do「プラン」段，可选）。 */
+export interface PlanPendingItem {
+  id: string;
+  kind: PlanPendingKind;
+  planId: string;
+  itemId: string | null;
+  title: string;
+  detail: string | null;
+  contactId?: string | null;
+  /** memo 判定：聊到的题号（0–2）。 */
+  answered?: readonly number[];
+  /** AI 不可用时的手动勾选卡。 */
+  manual?: boolean;
+  createdAt: string;
+}
+
+export interface PlanPendingListResponse {
+  items: readonly PlanPendingItem[];
+}
+
+export interface PlanPendingDecisionRequest {
+  idempotencyKey: string;
+  /** 手动勾选版：用户勾的题号。 */
+  answered?: readonly number[];
+}
+
+export interface PlanPendingDecisionResult {
+  id: string;
+  status: "accepted" | "dismissed";
+  award?: PlanAwardResult | null;
+  replayed: boolean;
+}
+
+/** 候补一人（人物类型详情）。 */
+export interface PlanCandidateView {
+  candidateId: string;
+  contactId: string;
+  name: string;
+  company: string | null;
+  role: string | null;
+  /** 推薦度 0–100（规则 + AI 层）。 */
+  recommendScore: number;
+  reason: string | null;
+  /** 开口第一句（C12，可空）。 */
+  opener: string | null;
+  isOrbitUser: boolean;
+  lastContactAt: string | null;
+  basis: readonly PlanBasisRef[];
+}
+
+export interface PlanTalkedView {
+  awardLogId: string;
+  contactId: string | null;
+  name: string | null;
+  anonymous: boolean;
+  at: string;
+  points: number;
+  part: PlanAwardPart;
+  basis: PlanAwardBasis;
+}
+
+export interface PlanIntroRouteView {
+  viaContactId: string;
+  viaName: string;
+  why: string;
+}
+
+/** 会える活動一场（分数用 `shared/compute/event-score.ts` 的规则算，内訳同契约 8）。 */
+export interface PlanEventOption {
+  eventId: string;
+  title: string;
+  startsAt: string;
+  venue: string | null;
+  /** 这类人预计到场人数（事实；没有为 null）。 */
+  expectedCount: number | null;
+  score: PlanEventScore;
+}
+
+/** 与契约 8 同形状的分数（R26 不再改形状）。 */
+export interface PlanEventScore {
+  total: number;
+  verdict: "recommend" | "conditional" | "skip";
+  scoreBreakdown: readonly EventAssessmentScoreItem[];
+  rubricVersion: string;
+}
+
+export interface PlanTaskLinkView {
+  taskId: string;
+  title: string;
+  dueDate: string | null;
+}
+
+/** `GET /api/agent/plans/v2/[planId]/types/[itemId]`：人物タイプ詳細。 */
+export interface PlanPersonTypeDetail {
+  planId: string;
+  itemId: string;
+  key: string;
+  /** 类型字母（A、B…，按方案顺序）。 */
+  letter: string;
+  shortLabel: string;
+  emoji: string;
+  roleSituation: string;
+  allocation: number;
+  targetCount: number;
+  /** 每人的分值（余数给最后 1 人）。 */
+  unitPoints: readonly number[];
+  earned: number;
+  overflow: number;
+  /** 已计入 base 的人数（含无名字自报）。 */
+  metCount: number;
+  skipped: boolean;
+  stepKeys: readonly string[];
+  why: string;
+  questions: readonly string[];
+  countRule: string;
+  recognizeHints: readonly string[];
+  persona: string | null;
+  opener: string | null;
+  /** 下一次「话过了」会加几分（预告；匿名到目标后为 0）。 */
+  next: { points: number; part: PlanAwardPart | "none" };
+  candidates: readonly PlanCandidateView[];
+  talked: readonly PlanTalkedView[];
+  introRoutes: readonly PlanIntroRouteView[];
+  events: readonly PlanEventOption[];
+  tasks: readonly PlanTaskLinkView[];
+  sample?: true;
+}
+
+export interface PlanCandidateDecisionRequest {
+  decision: "accept" | "dismiss";
+  idempotencyKey: string;
+}
+
+export interface PlanCandidateDecisionResult {
+  candidateId: string;
+  status: "accepted" | "dismissed";
+  replayed: boolean;
+}
+
+/** 线下聊过：名字可空；只给名字时先返回「この人ですか？」候选。 */
+export interface PlanTalkedOfflineRequest {
+  contactId?: string;
+  name?: string;
+  /** 候选都不是：新建联系人（来源「プラン」）后计分。 */
+  createContact?: boolean;
+  anonymous?: true;
+  at?: string;
+  idempotencyKey: string;
+}
+
+export interface PlanTalkedOfflineResult {
+  /** 只给了名字、人脉里有相似的人：先让用户选，不计分。 */
+  matches?: readonly { contactId: string; name: string; company: string | null }[];
+  award?: PlanAwardResult | null;
+  createdContactId?: string | null;
+}
+
+/** 面談を提案：Orbit 用户 → 站内结构化请求（3 个时段，无自由文本）；其他人 → 只有草稿。 */
+export interface PlanProposalRequest {
+  contactId: string;
+  slots: readonly string[];
+  idempotencyKey: string;
+}
+
+export interface PlanProposalResult {
+  kind: "request" | "draft";
+  requestId?: string | null;
+  draft?: { subject: string; body: string } | null;
+}
+
+/** 紹介ルートの依頼文：只出草稿（コピー / メールアプリで開く），没有发送。 */
+export interface PlanIntroDraftRequest {
+  viaContactId: string;
+  idempotencyKey: string;
+}
+
+export interface PlanIntroDraftResult {
+  viaName: string;
+  subject: string;
+  body: string;
+}
+
+export type PlanContactFitStatus = "candidate" | "linked" | "talked";
+
+/** `GET /api/agent/plans/v2/contacts/[contactId]/fit`（给 R11）：这个人在哪些目标的哪个类型下。 */
+export interface PlanContactFit {
+  contactId: string;
+  fits: readonly {
+    planId: string;
+    goal: string;
+    itemId: string;
+    shortLabel: string;
+    emoji: string;
+    status: PlanContactFitStatus;
+  }[];
 }
