@@ -22,15 +22,15 @@
 | SC | 结论 | 证据 |
 | --- | --- | --- |
 | 01 规则入库 | ⚠️ 一半 | orbits `AGENTS.md` 已写；App `AGENTS.md` 和归属表的产品确认需要人工 |
-| 02 开发说明可用 | ✅（演练后修订） | 见「开发说明演练」 |
-| 03 走查无严重问题 | ✅ | `walkthrough.md`：无严重；中等的代码问题已修并复查 |
-| 04 截图集 | ✅ | artifact 链接 |
+| 02 开发说明可用 | ✅（第二次演练） | 第一次演练卡在分支名和 `route-parity`，说明修订后第二次演练两端都做完、没问人、零新增失败；见「开发说明演练」 |
+| 03 走查无严重问题 | ✅ | `walkthrough.md`：Web 40 个页面 × 4 档共 160 次访问 + 键盘 / ⌘K；App 五个页签、Task 四段和 16 个二级页 × 浅深 / 三语 / 最大字号。无严重；中等的代码问题 W1、W2、W4 已修并有复查证据 |
+| 04 截图集 | ✅ | artifact（版本 3）：每节设计稿画板与实现并排，含 App iOrbit 页签、Web 40 页、390 打开态、深色 web.html、已知例外的负责 Sprint |
 | 05 基线对照 | ✅ | 见「基线对照」 |
 | 06 拍板 | 待人工 | 独立复核 `REVIEW.md`；产品负责人看截图集并试用 |
 
 ## 开发说明演练（SC-02）
 
-另一个 AI 会话（全新上下文）只读开发说明，在临时分支 `redesign-R09-drill` 上做了一个虚拟小功能：`/app/drill` 占位页（新壳标题 + `EmptyState`）、`GET /api/drill/summary` mock 接口（契约、zod、演示世界数据、live 503）、三语文案表、登录前缀与审计清单登记、「尚未实现」时隐藏数据行。约 10 分钟做完；copy-qa、`typecheck`、`typecheck:app`、相关 orbits 测试 60 条和 58 条全过，App `contract-sync` / `contract-fixtures-parse` 通过。唯一没做完的是 App `route-parity`：新 Web 页面需要 App 路由或用户决定的例外，演练会话按规则没有自作主张——这正是说明里缺的一条。演练分支已删除（只在本地，从未 push；`drill-diffstat.txt` 留了文件清单）。
+**第一次**：另一个 AI 会话（全新上下文）只读开发说明，在临时分支 `redesign-R09-drill` 上做了一个虚拟小功能：`/app/drill` 占位页（新壳标题 + `EmptyState`）、`GET /api/drill/summary` mock 接口（契约、zod、演示世界数据、live 503）、三语文案表、登录前缀与审计清单登记、「尚未实现」时隐藏数据行。约 10 分钟做完；copy-qa、`typecheck`、`typecheck:app`、相关 orbits 测试 60 条和 58 条全过，App `contract-sync` / `contract-fixtures-parse` 通过。唯一没做完的是 App `route-parity`：新 Web 页面需要 App 路由或用户决定的例外，演练会话按规则没有自作主张——这正是说明里缺的一条。演练分支已删除（只在本地，从未 push；`drill-diffstat.txt` 留了文件清单）。
 
 演练提出 15 条说明的缺口，处理如下（说明已改）：
 
@@ -50,16 +50,20 @@
 | 13 | 只做 Web 页面也会碰到 App `route-parity` | App 第 4 处写明，并说明例外只能由用户决定 |
 | 14 | App 基线不是零（`/start`） | 是 README 通用规则 1 记录的用户决定，写进合回前总验收 |
 
+**第二次**（说明修订后，复核 M5）：又一个全新会话照着修订后的说明，在两端各做一个「練習」占位页（Web `/app/practice`、App `/practice`）加新契约 `GET /api/practice/summary`，两端各 4 处登记全做。约 13 分钟，**没有问人**；copy-qa 0、两端 typecheck 0、orbits 相关 114 条全过、App 相关 74 条只剩已知的 `/start`。它又找到 12 处说明缺口（App 只跑单个测试文件的命令、App token 用法、新字典域的两处登记、App 路由的 `mobile-route-access` 和 `withOnlineOnlyRoute`、审计要两端路由加完再跑、App 客户端结果没有 `.json()` 等），已全部补进说明。练习分支已删除（本地，从未 push；`redrill-diffstat.txt`）。
+
 ## 基线对照
 
 | | 骨架开始（`9d404c1c8`） | R09 收口 |
 | --- | --- | --- |
-| orbits `npm test`（en-US） | 6811 条，0 失败 | **6940 条，0 失败**，872 跳过（与开始时相同的跳过集） |
-| App `npm test` | 4062 条，1 失败（`/start`） | **4172 条，1 失败（`/start`）**；全量里另有 3 条在模拟器走查同时运行时超时（`use-loading-deadline` 1 条、`ink-signal-event-operations` 2 条），单独连跑两次都通过 |
+| orbits `npm test`（en-US） | 6811 条，0 失败 | **6942 条，0 失败**，872 跳过（与开始时相同的跳过集） |
+| App `npm test` | 4062 条，1 失败（`/start`） | **4172 条，1 失败（`/start`）** |
 | orbits `typecheck` / `typecheck:app` / `lint` | 0 | 0 / 0 / 0 |
 | App `tsc` | 0 | 0 |
 | `next typegen` + `tsc`（Next 16 路由类型） | — | 0 |
 | `copy:qa`（全部来源） | — | 206 条，0 问题 |
+
+上面两行都在最终提交 `63fbdb42` 上跑（日志在 `final-63fbdb42/`，含 `HEAD.txt`）。复核时指出的旧日志问题：第一版 REPORT 用的全量早于审计清单重生成，App 那次有 4 条失败（3 条在模拟器走查同时运行）；现在以这次为准。
 
 **新门禁**（都在全量里，全部通过）：对比度（`orbit-contrast-tokens`、App `design-tokens`）、生成文件一致（`design-tokens-generated`、`icon-source-sync`、`contract-sync` / `compute-sync` / `api-schema-sync`）、新代码无写死文字（两端 `no-hardcoded-copy`）、新代码无旧写法和 Ionicons（`legacy-ui-ratchet`、`ionicons-ratchet`、`orbit-button-ratchet`）、新作用域（`orbit-2026-scope`）、新 CSS 不写死颜色（`orbit-2026-css-tokens`）、只加不改（`contract-append-only`、`redesign-schema-parity`）。
 
@@ -71,12 +75,17 @@
 - 索引在 R09 收口前重建（`analyze --index-only`，图和向量完成；关键词索引报 FTS 构建失败，需要时用 `gitnexus analyze --repair-fts` 修复，不影响 impact）。
 - `detect-changes --scope all`（`detect-changes-2.txt`）：15 个文件、15 个符号、0 条流程，与本 Sprint 改动一致；对骨架起点 `9d404c1c8` 的整体比较（`detect-changes-vs-skeleton-start.txt`）：962 个文件、754 个符号、224 条流程——R01–R09 的全部改动。
 
+## 复核处理
+
+独立复核（`REVIEW.md`）：有条件通过，5 M / 8 m，全部处理，见 REVIEW 末尾「处理记录」。
+
 ## 自定决定
 
 1. **App 的 `AGENTS.md` 不改，规则另存一份**：任务约束把它列为用户的未提交文件；规则内容在 sprints 目录里，贴进去即可。
 2. **DEP0205 用启动器统一屏蔽**，不逐个改测试：这是运行时环境（Node 26 + tsx）的提示，不是被测代码的输出；只屏蔽这一个编号，其他警告照常。对标：Node 官方建议用 `--disable-warning=<code>` 处理已知的第三方弃用。
 3. **审计器认组件的 `label`**：R04 / R06 的按钮组件要求 `label` 并把它渲染为可读名称，这是设计系统的约定；与其在每个调用处重复 `aria-label`，不如让审计懂这个约定（产品清单扫描器同样处理，R07）。
-4. **走查里的减少动效、断网沿用 R04 / R05 的结果**：模拟器没有切换这两项的命令行开关，同一套组件和离线边界在 R04 / R05 已逐项走查过。
+4. **App 的减少动效、断网沿用 R04 / R05 的走查**：模拟器没有切换这两项的命令行开关；R05 之后 App 壳没有再改（R06–R09 只改了 Web 和 R04 组件的无障碍属性）。Web 的减少动效本轮实测过。
+6. **旧页面对话框被胶囊遮住，在壳层统一处理**（页面有打开的对话框时，左栏和胶囊降到 `--z-raised`），不逐个改旧页面的 `z-index`：至少 6 个旧页面的遮罩用 60–100，逐个改既违反 RD-24 也容易漏。对标 iOS：模态出现时标签栏在模态之下。
 5. **截图集用 artifact 发布**（PLANNER 要求），图片压缩为 JPEG，深色、三语、宽度可筛选。
 
 ## 交接

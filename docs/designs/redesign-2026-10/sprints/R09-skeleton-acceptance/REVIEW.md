@@ -229,3 +229,23 @@
 | 4 减少动效、断网沿用 R04 / R05 | 不成立：R05 之后壳又改过，PLANNER 没给这个余地（M2） |
 | 5 截图集用 artifact | 合理；内容没达到 PLANNER §4 的要求（M1） |
 | 未列为决定的：分支命名改连字符 | 改得对，但应该作为决定登记并同步 README / RD-25（m7） |
+
+## 处理记录（执行人，2026-10-10）
+
+全部 M、m 已处理。最终提交 `63fbdb42` 上两端全量：orbits 6942 条 0 失败，App 4172 条只剩 `/start`（日志 `final-63fbdb42/`，含 `HEAD.txt`）。
+
+| # | 处理 |
+| --- | --- |
+| M1 | 截图集改为每节「设计稿 ↔ 实现」并排（App：b11-nav-v3 浅 / 深 + app.html；Web：web.html 浅 / 深 + b8-responsive；组件：01-system 浅 / 深），补上 App iOrbit 页签和 16 个二级页、Web 40 个页面、Web 组件展示页 390 下打开的抽屉 / 对话框 / 确认（浅 / 深）、深色 web.html；已知例外每条写明负责的 Sprint。版本 3，链接不变 |
+| M2 | Web 全量走查：审计清单里所有有运行样例的 40 个 `/app/**` 页面（真实 id），1440 / 1024 / 390 浅色 + 1440 深色共 160 次，外加 390 下「固定控件是否在胶囊下」的通用检查和键盘 / ⌘K / 减少动效；App 加 16 个二级页（浅 / 深）。App 的减少动效和断网仍沿用 R04 / R05：模拟器没有命令行开关，且 R05 之后 App 壳没有改动——理由写进 REPORT 自定决定 4 和 walkthrough |
+| M3 | W1 / W2 的修复前后证据分开：`web2/` 标为修复前，`web3/` 是修复后的全量走查（390 收件箱无溢出、⌘K 焦点在搜索框）。W2 改为根治：R06 `Modal` 新增 `initialFocus`，在焦点陷阱的首次聚焦之后执行（同一组件里按声明顺序），删掉逐帧重试；`orbit-2026-modal` 加回归测试。新走查又发现 W4（旧页面对话框被胶囊遮住），已在壳层修复并加测试 |
+| M4 | 在最终提交 `63fbdb42` 上重跑两端全量和全部 typecheck / lint，日志与 HEAD 一起保存；REPORT 的数字改为这次结果，并说明旧日志的问题 |
+| M5 | 用修订后的说明做了第二次演练（全新会话，两端各一页 + 新契约 + 两端各 4 处登记）：没问人、零新增失败；它找到的 12 处缺口已全部补进说明。SC-02 结论改为「第二次演练通过」 |
+| m1 | 规则节移到 `<!-- gitnexus:start -->` 之前（那一块会被 `gitnexus analyze` 重写），并在标题里注明 |
+| m2 | 两个扫描器的 `label` 规则只认 `Button`、`IconButton`、`FilterOption`（逐个核对过它们把 `label` 作为可读名称）；产品清单测试补「`<Pressable label>` 不算」的反例 |
+| m3 | 已知：直接 `node --test` 绕过启动器时这 3 个文件仍会因 DEP0205 失败；根治是升级 tsx（改用 `module.registerHooks`），属于依赖升级，登记进合回前总验收之外的技术债，不在骨架里做 |
+| m4 | `BottomSheet`、`FullDrawer`、`ConfirmDialog` 的模态根节点加 `onAccessibilityEscape`（确认框走「取消」），VoiceOver 的双指擦除手势可以关闭；`Scrim` 注释同步 |
+| m5 | 同 M3：`initialFocus` 取代逐帧重试，不会再从用户手里抢焦点 |
+| m6 | 合回前总验收补上 R04 M5（注销动作表）、R05 m6（底栏不随转场滑动）两项产品确认，以及走查的 W3、A2 交接 |
+| m7 | README「分支」一节和两处规则写清：骨架期直接提交 `redesign`（RD-25），功能 Sprint 两人并行时用 `redesign-R<编号>-<主题>`，rebase 后 `--ff-only` 合回；PLANNER 是契约文件，不改，偏差写在 REPORT |
+| m8 | 说明里的 `RetryState` 改为实际存在的 `RetryCard`；两端的引入路径按目录层级写清；`ShellPage` 的插槽补上 `left`、`demoPill` |

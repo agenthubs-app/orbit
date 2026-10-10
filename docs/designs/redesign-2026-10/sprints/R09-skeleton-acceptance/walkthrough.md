@@ -1,6 +1,6 @@
 # R09 全流程走查记录
 
-**日期：** 2026-10-10。**环境：** 本地 dev server（`localhost:3000`，QA 账号）；App 开发包在 iPhone 17 Pro 模拟器（`.env.development.local` 指向本地）。**证据：** `~/orbit-sprint-evidence/redesign/R09/run-01/`（`web/` 第一轮、`web2/` 修复后第二轮、`app/`、截图集 https://claude.ai/artifact/S8PXMfqVrY9nusMFtfdCHY ）。
+**日期：** 2026-10-10。**环境：** 本地 dev server（`localhost:3000`，QA 账号）；App 开发包在 iPhone 17 Pro 模拟器（`.env.development.local` 指向本地）。**证据：** `~/orbit-sprint-evidence/redesign/R09/run-01/`（`web/` 第一轮、`web2/` 第二轮（W1、W2 修复前）、`web3/` 复核后的全量走查及 `web3-walkthrough.log`、`contact-detail-390-after.png`、`app/` 与 `app2/` 模拟器截图、`showcase390/`），截图集 https://claude.ai/artifact/S8PXMfqVrY9nusMFtfdCHY 。
 
 严重程度：**严重** = 用户无法完成主要任务或数据出错；**中等** = 某条路径走不通或明显错位；**轻微** = 外观或措辞。
 
@@ -13,6 +13,15 @@
 | 只用键盘 | 1440 首页按 Tab 16 次、Ctrl+K、Escape | 左栏按 logo → 六个入口 → 搜索 → 主催 → 設定 → 头像的顺序可达，每一项都有可见焦点环（另外 2 次是 Next 开发浮层和 body）；Ctrl+K 打开面板但焦点落在「閉じる」（W2，已修），Escape 关闭 |
 | 减少动效 | `reducedMotion: reduce` 下打开面板 | 动画时长 0s |
 
+### 复核后的全量走查（`web3/`，R09 复核 M2）
+
+审计清单里所有有运行样例的 `/app/**` 页面（40 个，含 Task 四段的 `?tab=`），联系人和活动换成 QA 账号真实存在的 id；1440 / 1024 / 390 浅色 + 1440 深色，共 160 次访问。每次检查壳、旧顶栏、横向滚动、页面报错和控制台错误，390 下再检查有没有可点的固定控件落在底部胶囊下面。
+
+- 139 次有壳；没有壳的都是设计如此：`/app/admin`（主办方管理台自有外壳）、签到和入场（kiosk）、`/app/profile/onboarding`（全屏引导）、`/app/register`、`/app/start`。旧顶栏 0，横向滚动 0（W1 修复后）。
+- 390 下联系人详情的「+ Link to a plan need」被胶囊盖住 → W4（已修）。
+- 控制台：示例 id（`demo-task-1`、`demo-source-1`、`demo-invitation-token-1`）取数 404、非主办方打开 `/live` 的接口 403、`/app/tasks/personal` 与 `/app/profile` 一个资源 404、`/app/agent/actions` 重复 key 警告——都在旧页面里，与壳无关，登记给对应功能 Sprint（W5）。
+- 键盘（1440 / 390，减少动效）：左栏 / 顶部条按顺序可达，Ctrl+K 后焦点在搜索框（W2 修复后，`Modal` 的 `initialFocus`），Escape 关闭。减少动效下对话框改为 0.3 秒淡入、不位移（R06 设计如此，Apple 规范允许淡入淡出）。
+
 ## App
 
 | 范围 | 做法 | 结果 |
@@ -21,7 +30,8 @@
 | 浅色 / 深色 | `simctl ui appearance` | 深色下底栏、页面底色、文字随主题切换 |
 | 日 / 中 / 英 | 设备语言切换（App 设为「跟随设备」）后重开 | 三语完整（日文首页「つながりを検索」等旧屏用词随 R10 重写） |
 | 最大字号 | `content_size accessibility-extra-large` | 底栏、分段可用；iOrbit 旧屏标题换行（已知，R21） |
-| 减少动效、断网 | 模拟器没有命令行开关；沿用 R04 / R05 的走查（同一套组件与离线边界），本轮未重做 | — |
+| 二级页 | `app2/`：iOrbit、笔记、日程、资料编辑、权限、人脉分析 / 匹配 / 介绍、運営センター、组件展示页、旧地址 `today` / `followups` / `tasks` / `home/events` 的跳转，浅色 / 深色 | 旧地址都落到 Task 对应段；页面主体为旧屏 |
+| 减少动效、断网 | 模拟器没有切换这两项的命令行开关。R05 之后 App 壳没有再改（R06–R09 只动了 Web 和 R04 组件的无障碍属性），R05 的断网走查（离线边界、Task 快速添加进发件箱）和 R04 的减少动效走查仍然适用；本轮没有重做 | 沿用（见 R04 / R05 REPORT） |
 
 ## 发现的问题
 
@@ -30,7 +40,9 @@
 | W1 | Web | 中等 | 390 下 `/app/inbox` 横向溢出：收件箱内联面板本身是 390 全宽，R07 复核时新加的页面边距把它挤出视口 | 已修：<768 不加左右边距（`inbox-page.module.css`），复查无溢出 |
 | W2 | Web | 中等 | 真实页面里 ⌘K 打开后焦点在「閉じる」而不是搜索框：对话框经 portal 晚一帧挂载，焦点陷阱随后聚焦第一个按钮，覆盖了面板自己的聚焦（组件测试里 portal 同步挂载，所以没测出） | 已修：面板在对话框挂载后再聚焦输入框（最多等 6 帧），复查焦点在搜索框 |
 | W3 | Web | 轻微 | 两次开发模式水合警告（`/app/events` 1440、`/app/contacts` 390 深色），不稳定复现 | 旧页面（events-0918 / network-0918），只在开发模式出现；登记给 R26 / R11 |
+| W4 | Web | 中等 | 390 下旧页面自己的对话框（联系人详情等，`z-index` 60–100，和壳的吸顶层同级）被底部胶囊盖住 | 已修：页面里有打开的对话框时，壳的左栏和胶囊降到 `--z-raised`（壳层统一处理，不改旧页面）；组件测试和真实页面复查（`contact-detail-390-after.png`） |
+| W5 | Web | 轻微 | 旧页面的控制台噪音（示例 id 404、`/live` 403、资源 404、`/app/agent/actions` 重复 key） | 旧屏，登记给 R20 / R26 / R18 |
 | A1 | App | 中等（环境） | 待办、人脈显示「服务暂不可用 / 同步失败」：本地 `/api/sync/lease` 一直 503。原因是本地 `repos/orbits/.env.local` 没有 `ORBIT_SYNC_CURSOR_SECRET`，同步服务创建不出来 | 不是代码问题；需要在本地环境文件补一个随机值并重启 dev server（用户的环境文件，执行人没有改） |
 | A2 | App | 轻微 | 开发包启动时「正在确认登录状态…」画面已经显示底栏 | 外观问题，点击会在登录确认后才生效；登记给 R18（启动 / 认证态） |
 
-结论：没有未处理的严重问题；两条中等的代码问题已修并复查，一条中等的是本地环境配置。
+结论：没有未处理的严重问题；三条中等的代码问题（W1、W2、W4）已修并有复查证据，一条中等的是本地环境配置（A1）。

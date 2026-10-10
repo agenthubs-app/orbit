@@ -35,7 +35,7 @@
 | [R06](R06-web-components/GOAL.md) | Web 组件库（5 类，CSS Modules，新作用域） | R01、R02、R03 | H | done，已复核，问题已修（M1–M4、m1–m6、m10 已修；m9 staging 的 `VERCEL_ENV` 需人确认；[REPORT](R06-web-components/REPORT.md)、[REVIEW](R06-web-components/REVIEW.md) 末尾「处理记录」） |
 | [R07](R07-web-shell/GOAL.md) | Web 导航壳：左栏、主标题区、右栏、⌘K，全站一次切换 | R06 | H | done，已复核，问题已修（M5「プラン段放不放现有计划」待产品负责人选择；R03 M2、R01 m4 在此处理；[REPORT](R07-web-shell/REPORT.md)、[REVIEW](R07-web-shell/REVIEW.md) 末尾「处理记录」） |
 | [R08](R08-contracts-and-mocks/GOAL.md) | 12 个契约 + 校验 + mock 接口 + 统一演示世界 + 「只加不改」检查 | R01 | H | done，已复核，问题已修（M3 口径待产品负责人确认，见通用规则 10；[REPORT](R08-contracts-and-mocks/REPORT.md)、[REVIEW](R08-contracts-and-mocks/REVIEW.md) 末尾「处理记录」） |
-| [R09](R09-skeleton-acceptance/GOAL.md) | 骨架验收：规则入库、开发说明、全流程走查、截图集、基线对照 | R01–R08 | H | done，待复核（[REPORT](R09-skeleton-acceptance/REPORT.md)；拍板与 App `AGENTS.md` 需要人工） |
+| [R09](R09-skeleton-acceptance/GOAL.md) | 骨架验收：规则入库、开发说明、全流程走查、截图集、基线对照 | R01–R08 | H | done，已复核，问题已修（SC-06 拍板、热点文件归属确认、App `AGENTS.md` 贴规则需要人工；[REPORT](R09-skeleton-acceptance/REPORT.md)、[REVIEW](R09-skeleton-acceptance/REVIEW.md) 末尾「处理记录」、[截图集](https://claude.ai/artifact/S8PXMfqVrY9nusMFtfdCHY)） |
 
 执行顺序：R01 → R02 → R03 → R04 → R05 → R06 → R07 → R08 → R09（一人依次做；R08 只依赖 R01，可以提前）。
 
