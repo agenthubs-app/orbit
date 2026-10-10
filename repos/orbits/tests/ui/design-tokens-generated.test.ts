@@ -95,7 +95,8 @@ test("the TS output carries the one contrast list, camelCased, for the App's con
 });
 
 test("radius, type and motion scales are the ones the plan fixed", () => {
-  assert.deepEqual(tokens.radius, { xl: 24, lg: 20, md: 14, sm: 10, sheet: 34, dialog: 28, "card-web": 22, bubble: 18, pill: 999 });
+  // R06 added menu 18 (context menu), tile 16 (mac tiles, steps) and tag 6 (key caps, sample tags).
+  assert.deepEqual(tokens.radius, { xl: 24, lg: 20, md: 14, sm: 10, sheet: 34, dialog: 28, "card-web": 22, bubble: 18, pill: 999, menu: 18, tile: 16, tag: 6 });
   assert.deepEqual(Object.keys(tokens.font.family), ["ja", "zh", "en", "num"]);
   assert.ok(!JSON.stringify(tokens.font.family).includes("Serif"), "no serif face in any stack (RD-09)");
   assert.match(tokens.font.family.ja!, /^"Hiragino Sans"/);

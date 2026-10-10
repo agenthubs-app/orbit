@@ -1,0 +1,22 @@
+.wrap { width: 100%; overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: var(--fs-body-sm); }
+.caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.table th {
+  text-align: left;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  color: var(--ink-3-text);
+  padding: 0 10px 10px;
+}
+.table td { padding: 11px 10px; border-top: 1px solid var(--line); vertical-align: middle; }
+.table tbody tr { transition: background var(--dur-press); }
+.table tbody tr:hover { background: var(--surface-2); }
+.end { text-align: right; }
+.table th.end { text-align: right; }

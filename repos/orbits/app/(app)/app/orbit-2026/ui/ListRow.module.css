@@ -1,0 +1,71 @@
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--r-md);
+}
+.row + .row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50px;
+  right: 0;
+  height: 1px;
+  background: var(--line);
+}
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: 11px 4px;
+  min-height: 44px;
+  text-align: left;
+  border-radius: var(--r-md);
+}
+a.main:hover, button.main:hover { background: var(--surface-2); }
+.meta { flex: 1; min-width: 0; }
+.title {
+  display: block;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.subtitle {
+  display: block;
+  font-size: var(--fs-meta);
+  color: var(--ink-3-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trailing { flex: none; font-size: var(--fs-meta); color: var(--ink-3-text); display: inline-flex; align-items: center; gap: 4px; }
+
+.actions {
+  display: inline-flex;
+  gap: 4px;
+  padding-left: 6px;
+  opacity: 0;
+  transition: opacity var(--dur-press);
+}
+.row:hover .actions,
+.row:focus-within .actions { opacity: 1; }
+.action {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-pill);
+  display: inline-grid;
+  place-items: center;
+}
+.tone_lav { background: var(--mac-lav); color: var(--mac-lav-text); }
+.tone_ok { background: var(--ok-soft); color: var(--ok-text); }
+.tone_coral { background: var(--coral-soft); color: var(--coral-text); }
+
+/* Touch and narrow screens have no hover: the actions stay visible (and ≥44 to tap). */
+@media (hover: none), (max-width: 390px) {
+  .actions { opacity: 1; }
+  .action { width: 44px; height: 44px; }
+}

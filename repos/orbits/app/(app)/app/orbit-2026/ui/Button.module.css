@@ -1,0 +1,101 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-body-sm);
+  white-space: nowrap;
+  background: var(--surface-2);
+  color: var(--ink);
+  transition: transform var(--dur-press) var(--ease), background var(--dur-press), filter var(--dur-press);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.96);
+  filter: brightness(0.96);
+}
+
+.button:disabled {
+  opacity: 0.5;
+}
+
+.primary { background: var(--ink); color: var(--bg); }
+.accent { background: var(--accent); color: var(--on-accent); }
+.secondary { background: var(--surface-2); color: var(--ink); }
+.ghost { background: transparent; color: var(--ink-2); }
+.ghost:hover:not(:disabled) { background: var(--surface-2); }
+/* Solid coral needs the darker text tone for white text ≥4.5:1 (R04 decision 11). */
+.danger { background: var(--coral-text); color: var(--on-accent); }
+.dangerGhost { background: transparent; color: var(--coral-text); }
+.dangerSoft { background: var(--coral-soft); color: var(--coral-text); }
+
+.sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: var(--fs-meta);
+}
+
+.block {
+  width: 100%;
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--r-pill);
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+.icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+  flex: none;
+  transition: transform var(--dur-press) var(--ease), background var(--dur-press);
+}
+
+.icon:hover { background: var(--surface-2); }
+.icon:active { transform: scale(0.9); background: var(--accent-soft); }
+.soft { background: var(--surface-2); }
+.iconSm { width: 34px; height: 34px; }
+
+.dot {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-pill);
+  background: var(--coral);
+  border: 1.5px solid var(--surface);
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .button, .icon { transition: opacity var(--dur-press); }
+  .button:active:not(:disabled), .icon:active { transform: none; }
+  .spinner { animation: none; border-right-color: currentColor; opacity: 0.6; }
+}
+:global([data-motion="reduce"]) .button,
+:global([data-motion="reduce"]) .icon { transition: opacity var(--dur-press); }
+:global([data-motion="reduce"]) .button:active:not(:disabled),
+:global([data-motion="reduce"]) .icon:active { transform: none; }
+:global([data-motion="reduce"]) .spinner { animation: none; }

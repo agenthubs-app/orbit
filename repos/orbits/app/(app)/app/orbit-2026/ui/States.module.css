@@ -1,0 +1,155 @@
+.guide {
+  background: var(--surface);
+  border-radius: var(--r-card-web);
+  padding: var(--space-20);
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 8px;
+}
+.guide::before {
+  content: "";
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: var(--r-pill);
+  right: -80px;
+  top: -90px;
+  background: radial-gradient(circle, var(--mac-lav), transparent 70%);
+  opacity: 0.9;
+}
+.guide > * { position: relative; }
+.title { font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: var(--lh-title); }
+.message { font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.6; }
+.steps { list-style: none; display: grid; gap: 8px; margin-top: 4px; }
+.step {
+  display: flex;
+  gap: var(--space-12);
+  align-items: center;
+  padding: var(--space-12);
+  border-radius: var(--r-tile);
+  background: var(--surface-2);
+  font-size: var(--fs-body-sm);
+}
+.stepNumber {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-pill);
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-heavy);
+  background: var(--surface);
+  color: var(--ink-2);
+  flex: none;
+}
+.step_done .stepNumber { background: var(--ok); color: var(--on-ok); }
+.step_now { background: var(--accent-soft); }
+.step_now .stepNumber { background: var(--accent); color: var(--on-accent); }
+.ghost {
+  height: 46px;
+  border-radius: var(--r-md);
+  border: 1.5px dashed var(--surface-3);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+}
+.ghost i { width: 26px; height: 26px; border-radius: var(--r-pill); background: var(--surface-2); }
+.action { margin-top: 6px; }
+
+.skeleton { display: grid; gap: 10px; }
+.bone {
+  display: block;
+  height: 14px;
+  border-radius: var(--r-tag);
+  background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
+  background-size: 200% 100%;
+  animation: shimmer var(--dur-shimmer) linear infinite;
+}
+.slow { display: flex; align-items: center; gap: 10px; font-size: var(--fs-meta); color: var(--ink-2); }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-bold);
+  animation: fadeIn var(--dur-dialog) var(--ease);
+}
+.offline { background: var(--mac-apricot); color: var(--mac-apricot-text); }
+.synced { background: var(--mac-teal); color: var(--mac-teal-text); }
+.barText { flex: 1; min-width: 0; }
+.pending { font-family: var(--font-num); }
+
+.retry {
+  background: var(--surface);
+  border-radius: var(--r-card-web);
+  padding: var(--space-20);
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.retryIcon {
+  width: 54px;
+  height: 54px;
+  border-radius: var(--r-lg);
+  background: var(--coral-soft);
+  color: var(--coral-text);
+  display: grid;
+  place-items: center;
+}
+.retryActions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+
+.degraded {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.degradedBody { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.degradedTitle { color: var(--ink); font-size: var(--fs-body-sm); }
+
+.sampleTag {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-heavy);
+  padding: 1px 6px;
+  border-radius: var(--r-tag);
+  background: var(--mac-apricot);
+  color: var(--mac-apricot-text);
+  margin-left: 4px;
+  white-space: nowrap;
+}
+.sampleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: var(--r-md);
+  background: var(--mac-apricot);
+  color: var(--mac-apricot-text);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-bold);
+}
+.quota {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+}
+.quotaOut { background: var(--coral-soft); color: var(--coral-text); }
+
+@keyframes fadeIn { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bone { animation: none; } }
+:global([data-motion="reduce"]) .bone { animation: none; }

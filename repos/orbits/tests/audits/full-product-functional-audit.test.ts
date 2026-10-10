@@ -56,7 +56,9 @@ function expectedWebPageCount(): number {
     (filePath) =>
       (path.basename(filePath) === "page.tsx" ||
         path.basename(filePath) === "page.ts") &&
-      !filePath.includes(`${path.sep}app${path.sep}api${path.sep}`),
+      !filePath.includes(`${path.sep}app${path.sep}api${path.sep}`) &&
+      // R06: the developer showcase (/showcase, hidden in production) is not a product surface.
+      !filePath.includes(`${path.sep}app${path.sep}showcase${path.sep}`),
   ).length;
 }
 

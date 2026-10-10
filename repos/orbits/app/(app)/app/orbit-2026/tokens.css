@@ -68,6 +68,9 @@
   --r-card-web: 22px;
   --r-bubble: 18px;
   --r-pill: 999px;
+  --r-menu: 18px;
+  --r-tile: 16px;
+  --r-tag: 6px;
   --gap: 14px;
   --space-4: 4px;
   --space-8: 8px;
@@ -94,6 +97,9 @@
   --fs-body-sm: 13px;
   --fs-label: 11.5px;
   --fs-caption: 11px;
+  --fs-dialog-title: 16px;
+  --fs-control: 12.5px;
+  --fs-meta: 12px;
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-bold: 700;

@@ -1,0 +1,88 @@
+.stack {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: min(420px, calc(100vw - 32px));
+  display: grid;
+  gap: 8px;
+  z-index: var(--z-toast);
+}
+/* Dark: still a dark capsule — the raised surface with light text (RD-17). */
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--bg);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-bold);
+  box-shadow: var(--shadow-float);
+  position: relative;
+  overflow: hidden;
+  animation: toastUp var(--dur-toast-in) var(--ease) both;
+}
+:global(:root[data-theme="dark"]) .toast { background: var(--surface-3); color: var(--ink); }
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .toast { background: var(--surface-3); color: var(--ink); }
+}
+.keep { border-radius: var(--r-card-web); padding: 10px 10px 10px 12px; }
+.mark {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-pill);
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--ok);
+  color: var(--on-ok);
+}
+.error .mark { background: var(--coral); color: var(--on-ok); }
+.info .mark { background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; }
+.message { flex: 1; min-width: 0; line-height: 1.3; }
+.sub { display: block; font-size: var(--fs-caption); font-weight: var(--fw-bold); opacity: 0.75; }
+.keep .sub { white-space: normal; }
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-heavy);
+  white-space: nowrap;
+  flex: none;
+}
+.closeButton {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-pill);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  opacity: 0.8;
+}
+.countdown {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: var(--r-tag);
+  background: color-mix(in srgb, currentColor 40%, transparent);
+  transform-origin: left;
+  animation: countdown 5s linear both;
+}
+@keyframes countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes toastUp { from { opacity: 0; transform: translateY(16px) scale(0.97); } }
+@keyframes fadeIn { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation-name: fadeIn; }
+  .countdown { animation: none; }
+}
+:global([data-motion="reduce"]) .toast { animation-name: fadeIn; }
+:global([data-motion="reduce"]) .countdown { animation: none; }

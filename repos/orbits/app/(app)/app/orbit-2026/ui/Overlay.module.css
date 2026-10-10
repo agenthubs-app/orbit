@@ -1,0 +1,146 @@
+/* Web overlays: scrim --scrim-web (.22, dark .55), no blur; stacking from --z-*. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim-web);
+  z-index: var(--z-modal);
+  animation: fadeIn var(--dur-dialog) var(--ease);
+}
+.drawerScrim { z-index: var(--z-overlay); }
+
+.modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  transform: translate(-50%, -50%);
+  z-index: var(--z-modal);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--r-dialog);
+  padding: var(--space-24);
+  box-shadow: var(--shadow-float);
+  animation: dialogIn var(--dur-dialog) var(--ease) both;
+}
+.modal:focus { outline: none; }
+.w420 { width: min(420px, calc(100vw - 32px)); }
+.w480 { width: min(480px, calc(100vw - 32px)); }
+.w560 { width: min(560px, calc(100vw - 32px)); }
+.top { top: 96px; transform: translateX(-50%); animation-name: topIn; }
+.form { background: var(--bg); }
+.modalHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.modalTitle { font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: var(--lh-title); }
+.modalText { font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.6; margin-top: 6px; }
+.actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: var(--space-20); }
+.hint { margin-right: auto; font-size: var(--fs-meta); color: var(--ink-3-text); display: inline-flex; gap: 6px; align-items: center; }
+.close {
+  width: 36px;
+  height: 36px;
+  margin: -6px -6px 0 0;
+  border-radius: var(--r-pill);
+  display: inline-grid;
+  place-items: center;
+  color: var(--ink-2);
+  flex: none;
+}
+.close:hover { background: var(--surface-2); }
+.dialogIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-tile);
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+  background: var(--mac-apricot);
+  color: var(--mac-apricot-text);
+}
+.dialogIconDanger { background: var(--coral-soft); color: var(--coral-text); }
+
+.drawer {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  bottom: 14px;
+  width: min(600px, calc(100vw - 28px));
+  z-index: var(--z-overlay);
+  background: var(--bg);
+  color: var(--ink);
+  border-radius: var(--r-dialog);
+  box-shadow: var(--shadow-float);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: drawerIn var(--dur-sheet) var(--ease) both;
+}
+/* Dark: a hairline so the drawer edge stays visible on the dark page. */
+:global(:root[data-theme="dark"]) .drawer { border: 1px solid var(--line); }
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .drawer { border: 1px solid var(--line); }
+}
+.drawer:focus { outline: none; }
+.drawer_lg { width: min(600px, calc(100vw - 28px)); }
+.drawer_md { width: min(520px, calc(100vw - 28px)); }
+.drawer_sm { width: min(380px, calc(100vw - 28px)); }
+@media (max-width: 1279px) {
+  .drawer_lg { width: min(520px, calc(100vw - 28px)); }
+}
+.drawerHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: var(--space-22) var(--space-22) var(--space-12); }
+.drawerTitle { font-size: var(--fs-title-sm); font-weight: var(--fw-heavy); }
+.drawerBody { flex: 1; overflow: auto; padding: 0 var(--space-22) var(--space-22); }
+.drawerFooter { padding: var(--space-14) var(--space-22); border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
+
+.popover {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--r-card-web);
+  padding: var(--space-16);
+  box-shadow: var(--shadow-float);
+  border: 1px solid var(--line);
+  animation: fadeIn var(--dur-dialog) var(--ease);
+}
+
+.menu {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  width: 200px;
+  background: var(--surface);
+  border-radius: var(--r-menu);
+  padding: 6px;
+  box-shadow: var(--shadow-float);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 2px;
+  animation: fadeIn var(--dur-press) var(--ease);
+}
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-bold);
+  text-align: left;
+  color: var(--ink);
+}
+.menuItem:hover, .menuItem:focus-visible { background: var(--surface-2); outline: none; }
+.menuDanger { color: var(--coral-text); }
+.menuDanger:hover, .menuDanger:focus-visible { background: var(--coral-soft); }
+
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes dialogIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); } }
+@keyframes topIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } }
+@keyframes drawerIn { from { opacity: 0; transform: translateX(24px); } }
+
+/* Reduce Motion: overlays only fade. */
+@media (prefers-reduced-motion: reduce) {
+  .modal, .top, .drawer { animation-name: fadeIn; }
+}
+:global([data-motion="reduce"]) .modal,
+:global([data-motion="reduce"]) .top,
+:global([data-motion="reduce"]) .drawer { animation-name: fadeIn; }

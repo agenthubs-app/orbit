@@ -172,7 +172,10 @@ export const designRadius = {
   dialog: 28,
   cardWeb: 22,
   bubble: 18,
-  pill: 999
+  pill: 999,
+  menu: 18,
+  tile: 16,
+  tag: 6
 } as const;
 
 export const designSpace = {
@@ -196,7 +199,10 @@ export const designFont = {
     body: 14,
     bodySm: 13,
     label: 11.5,
-    caption: 11
+    caption: 11,
+    dialogTitle: 16,
+    control: 12.5,
+    meta: 12
   },
   weight: {
     regular: 400,

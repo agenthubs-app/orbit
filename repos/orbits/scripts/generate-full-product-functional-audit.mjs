@@ -7559,10 +7559,14 @@ function sourceFileFor(filePath) {
 }
 
 function isWebPage(filePath) {
+  const relative = toPosix(path.relative(WEB_APP_ROOT, filePath));
   return (
     (path.basename(filePath) === "page.tsx" ||
       path.basename(filePath) === "page.ts") &&
-    !toPosix(path.relative(WEB_APP_ROOT, filePath)).startsWith("api/")
+    !relative.startsWith("api/") &&
+    // R06: /showcase is the redesign's developer showcase (icons, copy, components),
+    // hidden in production (RD-15) and left out of the product surface manifest too.
+    !relative.startsWith("showcase/")
   );
 }
 
