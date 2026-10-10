@@ -31,6 +31,7 @@ import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { pickActiveV2Plan, type ActivePlanCard } from "../../orbit-2026/plan/plan-model";
 import { PlanConfirmedCard } from "../../orbit-2026/plan/PlanConfirmedCard";
 import { PlanGoalEntry } from "../../orbit-2026/plan/PlanGoalEntry";
+import { PlanSlotError } from "../../orbit-2026/plan/PlanSlotError";
 import { IOrbitPlan } from "../iorbit-0918/iorbit-plan";
 import type { PlanTrackingInput } from "./plan-route-view-model";
 import { readCurrentPlan } from "./read-current-plan";
@@ -63,14 +64,18 @@ export function planStartHref(): string {
   return readGuideDemoConfig().enabled ? "/app/start" : "/app/agent";
 }
 
-/** The actor's own active v2 plan (same mode as `GET /api/agent/plans/v2/summary`); none when it cannot be read. */
-async function readActiveV2Plan(actorId: string): Promise<ActivePlanCard | null> {
+/**
+ * The actor's active v2 plan (same mode as `GET /api/agent/plans/v2/summary`). Not set
+ * up at all (no v2 service: 「尚未実装」) → null, the slot carries on; a read that
+ * fails → "unavailable", the slot shows an error with retry (R23 review m10).
+ */
+async function readActiveV2Plan(actorId: string): Promise<ActivePlanCard | null | "unavailable"> {
   try {
     const resolution = resolvePlanV2Service({ actorId, mode: redesignContractMode("plan-v2-summary") });
     if (resolution.success === false) return null;
     return pickActiveV2Plan(await resolution.service.summary());
   } catch {
-    return null;
+    return "unavailable";
   }
 }
 
@@ -80,6 +85,7 @@ export async function loadPlanSlot(actor: { id: string }, userId: string): Promi
   const guide = await readDemoModeViewForActor({ actorId: actor.id, userId });
   if (guide) return frame(<IOrbitPlan guide={guide} guideEnabled initialSnapshot={null} />);
   const active = await readActiveV2Plan(actor.id);
+  if (active === "unavailable") return <PlanSlotError />;
   if (active) return <PlanConfirmedCard goal={active.goal} goalKind={active.goalKind} total={active.total} />;
   const { service, snapshot } = await readCurrentPlan(actor.id);
   if (snapshot === null) return <PlanGoalEntry />;

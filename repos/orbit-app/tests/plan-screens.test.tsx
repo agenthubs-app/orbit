@@ -58,7 +58,10 @@ createRoot(document.getElementById("root")).render(<Root />);
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"ja"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     plugins: [nativeUiStubs, { name: "plan-screens", setup(plugin) {
-      plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
+      // react-native-web plus the one thing the dialogs need that the browser lacks (focus moves via findNodeHandle).
+      plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "plan-native" }));
+      plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
+      plugin.onLoad({ filter: /.*/, namespace: "plan-native" }, () => ({ contents: `export * from "react-native-web"; export const findNodeHandle = (instance) => instance;`, loader: "js", resolveDir: root }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: join(root, "tests/helpers/stubs/react-native-svg.js") }));
       plugin.onResolve({ filter: /^react-native-safe-area-context$/ }, () => ({ path: join(root, "tests/helpers/stubs/react-native-safe-area-context.js") }));
       plugin.onResolve({ filter: /^expo-router$/ }, () => ({ path: "expo-router", namespace: "plan-stub" }));
@@ -161,6 +164,59 @@ test("background: わたし is open (確認中), チーム and 目的 wait as da
   assert.match(text, /下書き：3段目「/);
   assert.equal(await page.getByRole("button", { name: "わたしを確定 → チームへ" }).count(), 1);
   assert.equal(await page.getByRole("button", { name: "この背景で質問へ（5問まで）" }).count(), 0, "questions wait for all three blocks");
+});
+
+test("わたし: no stance from the AI → none pre-selected and the confirm button waits for one (m9)", async (t) => {
+  const intake = intakeAt("background");
+  intake.background.me.value.stance = null;
+  const { page } = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intake) : undefined);
+  const confirm = page.getByRole("button", { name: "わたしを確定 → チームへ" });
+  await confirm.waitFor();
+  for (const name of ["代表・オーナー", "共同創業者", "社内の担当者", "個人として"]) assert.equal(await page.getByRole("radio", { name }).getAttribute("aria-checked"), "false", name);
+  assert.equal(await confirm.getAttribute("aria-disabled"), "true");
+  await page.getByRole("radio", { name: "個人として" }).click();
+  assert.equal(await confirm.getAttribute("aria-disabled"), null);
+});
+
+test("わたし: a stance from the AI is pre-selected", async (t) => {
+  const { page } = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intakeAt("background")) : undefined);
+  await page.getByRole("button", { name: "わたしを確定 → チームへ" }).waitFor();
+  assert.equal(await page.getByRole("radio", { name: "共同創業者" }).getAttribute("aria-checked"), "true");
+});
+
+test("premise after a draft: with AI revisions a change asks first (history is discarded); without revisions it opens directly (m16)", async (t) => {
+  const revised = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intakeAt("drafted")) : call.path === "/api/agent/plans/drafts/draft_f2" ? ok(draftWith(1)) : undefined);
+  await revised.page.getByRole("button", { name: "すべて見る" }).click();
+  await revised.page.getByRole("button", { name: "現在地を直す" }).click();
+  await revised.page.getByText("この案と修正履歴は破棄されます。初版はつくり直しますが、回数には含みません。").waitFor();
+  await revised.page.getByRole("button", { name: "直す", exact: true }).click();
+  await revised.page.getByRole("button", { name: "この内容にする" }).waitFor();
+
+  const fresh = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intakeAt("drafted")) : call.path === "/api/agent/plans/drafts/draft_f2" ? ok(draftWith(0)) : undefined);
+  await fresh.page.getByRole("button", { name: "すべて見る" }).click();
+  await fresh.page.getByRole("button", { name: "現在地を直す" }).click();
+  await fresh.page.getByRole("button", { name: "この内容にする" }).waitFor();
+  assert.equal(await fresh.page.getByText("この案と修正履歴は破棄されます", { exact: false }).count(), 0);
+});
+
+test("AI_BUSY: no failure card — 「処理中です…」, then one more read of the intake and draft after 2 s", async (t) => {
+  const { page, calls } = await open(t, "/plans/flow/intake_f1", (call) => {
+    if (call.path === "/api/agent/plans/intakes/intake_f1") return ok(intakeAt("drafted"));
+    if (call.path === "/api/agent/plans/drafts/draft_f2") return ok(draftWith(0));
+    if (call.path === "/api/agent/plans/drafts/draft_f2/fix") return fail(409, "CONFLICT", { reason: "AI_BUSY" });
+    return undefined;
+  });
+  await page.getByText("あと 3 回").waitFor();
+  const reads = () => calls.filter((call) => call.method === "GET").length;
+  const before = reads();
+  await page.getByLabel("AI に頼む修正").fill("営業は 2人で");
+  await page.getByRole("button", { name: "修正を頼む" }).click();
+  await page.getByText("処理中です。少し待ってから読み直します。").waitFor();
+  assert.equal(await page.getByText("修正できませんでした").count(), 0);
+  await page.waitForTimeout(1500);
+  assert.equal(reads(), before, "nothing is read before 2 s");
+  await page.waitForTimeout(1200);
+  assert.equal(reads(), before + 2, "one GET of the intake and one of the draft");
 });
 
 test("team: ticking a capability updates 空き at once and sends nothing", async (t) => {

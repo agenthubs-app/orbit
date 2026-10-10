@@ -20,7 +20,7 @@ import { flowStage, isKnownGoalKind, newIdempotencyKey, turnChipText } from "./p
 import { PlanBackground } from "./PlanBackground";
 import { PlanDraftCard, PlanFixBar, PlanTurn } from "./PlanDraft";
 import { PlanPremiseCard, PlanQuestions } from "./PlanQuestions";
-import { InlineProblem, isLimitFailure, LimitNote, PlanFrame, StaleNote, useFailureText, usePlanStyles } from "./plan-ui";
+import { FailureNote, LimitNote, PlanFrame, usePlanStyles } from "./plan-ui";
 
 const STAGE_TITLES = ["plan.flow.stageBackground", "plan.flow.stageQuestions", "plan.flow.stageDraft", "plan.flow.stageFix", "plan.flow.stageManual"] as const;
 
@@ -35,7 +35,6 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const { styles } = useStyles();
   const { t } = useOrbitLocale();
   const copy = useStandardCopy();
-  const failureText = useFailureText();
   const scrollRef = useRef<ScrollView>(null);
   const turnOffsets = useRef<Record<number, number>>({});
   const [load, setLoad] = useState<LoadState>({ kind: "loading" });
@@ -124,8 +123,6 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const failureView = (op: "draft" | "fix" | "confirm") => {
     if (failure?.op !== op) return null;
     const item = failure.failure;
-    if (isLimitFailure(item)) return <LimitNote failure={item} />;
-    if (item.kind === "stale") return <StaleNote onReload={() => void reload()} />;
     if (item.kind === "aiFailed" && op !== "confirm") {
       return (
         <RetryCard
@@ -135,8 +132,9 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
         />
       );
     }
-    return <InlineProblem text={failureText(item)} />;
+    return <FailureNote failure={item} onReload={() => void reload()} />;
   };
+
 
   return (
     <PlanFrame
@@ -204,6 +202,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
               onIntake={onIntake}
               onReload={() => void reload()}
               hasDraft={Boolean(draft)}
+              hasRevisions={Boolean(draft && draft.turns.length > 0)}
               draftAction={draft ? null : (
                 <View style={styles.draftAction}>
                   {failureView("draft")}

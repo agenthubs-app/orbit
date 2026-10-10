@@ -15,7 +15,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useStandardCopy } from "../../i18n/standard-copy";
 import type { PlanApi, PlanFailure } from "./plan-api";
 import { newIdempotencyKey } from "./plan-model";
-import { ChoiceChip, InlineProblem, isLimitFailure, LimitNote, StaleNote, Tag, useFailureText, usePlanStyles } from "./plan-ui";
+import { ChoiceChip, FailureNote, Tag, usePlanStyles } from "./plan-ui";
 
 type AnswerDraft = { values: string[]; text: string; touched: boolean };
 
@@ -23,7 +23,6 @@ export function PlanQuestions({ intake, kind, api, onIntake, onReload }: { intak
   const shared = usePlanStyles().styles;
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
-  const failureText = useFailureText();
   const questions = intake.questions ?? [];
   const [answers, setAnswers] = useState<Record<string, AnswerDraft>>(() => Object.fromEntries(questions.map((question) => [question.id, { text: question.guess?.text ?? "", touched: false, values: [...(question.guess?.values ?? [])] }])));
   const [sending, setSending] = useState(false);
@@ -87,7 +86,7 @@ export function PlanQuestions({ intake, kind, api, onIntake, onReload }: { intak
           </View>
         );
       })}
-      {failure ? failure.kind === "stale" ? <StaleNote onReload={onReload} /> : isLimitFailure(failure) ? <LimitNote failure={failure} /> : <InlineProblem text={failureText(failure)} /> : null}
+      {failure ? <FailureNote failure={failure} onReload={() => { setFailure(null); onReload(); }} /> : null}
       <Button block label={t("plan.questions.submit", { count: questions.length })} loading={sending} onPress={() => void submit()} variant="primary" />
       <UiText style={[shared.caption, styles.center]}>{t("plan.questions.note")}</UiText>
     </View>
@@ -96,21 +95,22 @@ export function PlanQuestions({ intake, kind, api, onIntake, onReload }: { intak
 
 const SOURCE_LABEL: Record<PlanPremiseRow["source"], string> = { background: "", q1: "Q1", q2: "Q2", q3: "Q3", q4: "Q4", q5: "Q5", record: "" };
 
-/** 「確定した前提」. `collapsed` (a draft exists): a one-line summary with 「すべて見る」. */
-export function PlanPremiseCard({ intake, kind, api, onIntake, onReload, hasDraft, draftAction }: {
+/** 「確定した前提」. With a draft it starts folded (「すべて見る」); with AI revisions a change asks first. */
+export function PlanPremiseCard({ intake, kind, api, onIntake, onReload, hasDraft, hasRevisions = false, draftAction }: {
   intake: PlanIntakeView;
   kind: PlanGoalKind;
   api: PlanApi;
   onIntake: (intake: PlanIntakeView) => void;
   onReload: () => void;
   hasDraft: boolean;
+  /** The draft has AI revisions: changing a premise discards them, so ask first (m16). */
+  hasRevisions?: boolean;
   draftAction?: ReactNode;
 }) {
   const shared = usePlanStyles().styles;
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
   const copy = useStandardCopy();
-  const failureText = useFailureText();
   const rows = intake.premise ?? [];
   const [expanded, setExpanded] = useState(!hasDraft);
   const [editing, setEditing] = useState<string | null>(null);
@@ -124,7 +124,7 @@ export function PlanPremiseCard({ intake, kind, api, onIntake, onReload, hasDraf
   const sourceLabel = (row: PlanPremiseRow) => (row.source === "background" ? t("plan.premise.sourceBackground") : row.source === "record" ? t("plan.premise.sourceRecord") : SOURCE_LABEL[row.source]);
 
   const startEdit = (row: PlanPremiseRow) => {
-    if (hasDraft && confirmRedo !== row.key) {
+    if (hasRevisions && confirmRedo !== row.key) {
       setConfirmRedo(row.key);
       return;
     }
@@ -197,7 +197,7 @@ export function PlanPremiseCard({ intake, kind, api, onIntake, onReload, hasDraf
           ))}
         </>
       )}
-      {failure ? failure.kind === "stale" ? <StaleNote onReload={onReload} /> : isLimitFailure(failure) ? <LimitNote failure={failure} /> : <InlineProblem text={failureText(failure)} /> : null}
+      {failure ? <FailureNote failure={failure} onReload={() => { setFailure(null); onReload(); }} /> : null}
       {draftAction}
       <ConfirmDialog
         visible={confirmRedo !== null && editing === null}

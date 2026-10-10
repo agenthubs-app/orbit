@@ -39,6 +39,7 @@ test("errors: a limit is never a failure; known reasons are notices; the rest is
   assert.deepEqual(planErrorView(error("GOAL_MONTHLY_LIMIT"), "other"), { notice: "goalsMonth", tone: "notice" });
   assert.deepEqual(planErrorView(error("PLAN_GOAL_LIMIT"), "other"), { notice: "activeGoals", tone: "notice" });
   assert.deepEqual(planErrorView(error("STALE"), "other"), { notice: "stale", tone: "notice" });
+  assert.deepEqual(planErrorView(error("AI_BUSY"), "fix"), { notice: "busy", tone: "notice" });
   for (const reason of ["FIX_LIMIT", "MANUAL_EDIT_USED", "LADDER_LIMIT"]) assert.deepEqual(planErrorView(error(reason), "fix"), { notice: "used", tone: "notice" });
   assert.deepEqual(planErrorView(error(null, { network: true, status: 0 }), "other"), { op: "other", tone: "failure" });
 });

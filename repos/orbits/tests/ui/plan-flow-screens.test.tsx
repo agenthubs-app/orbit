@@ -15,7 +15,7 @@ import { confirmed, draftFixture, intakeFixture, premiseIntake, questionsIntake 
 // requests a step makes — and that ticking, choosing and typing make none.
 type Reply = { status: number; body: unknown };
 type Handler = { method: string; url: string; replies: Reply[] };
-type Fixture = { view: "goal" | "flow" | "edit" | "confirmed"; id?: string; lang?: string; handlers: Handler[]; card?: unknown };
+type Fixture = { view: "goal" | "flow" | "edit" | "confirmed" | "slot-error"; id?: string; lang?: string; handlers: Handler[]; card?: unknown };
 type Call = { url: string; method: string; body?: any; lang?: string };
 
 const ok = (data: unknown, status = 200): Reply => ({ body: { data, success: true }, status });
@@ -32,6 +32,7 @@ test.before(async () => {
     import { PlanFlowScreen } from "./app/(app)/app/orbit-2026/plan/PlanFlowScreen";
     import { PlanManualEditScreen } from "./app/(app)/app/orbit-2026/plan/PlanManualEditScreen";
     import { PlanConfirmedCard } from "./app/(app)/app/orbit-2026/plan/PlanConfirmedCard";
+    import { PlanSlotError } from "./app/(app)/app/orbit-2026/plan/PlanSlotError";
     const f = window.shellFixture;
     const counts = {};
     window.fetch = async (url, init = {}) => {
@@ -51,7 +52,7 @@ test.before(async () => {
       const reply = handler.replies[Math.min(n, handler.replies.length - 1)];
       return new Response(JSON.stringify(reply.body), { status: reply.status, headers: { "content-type": "application/json" } });
     };
-    const view = f.view === "goal" ? <PlanGoalEntry /> : f.view === "flow" ? <PlanFlowScreen intakeId={f.id} /> : f.view === "confirmed" ? <PlanConfirmedCard {...f.card} /> : <PlanManualEditScreen draftId={f.id} />;
+    const view = f.view === "goal" ? <PlanGoalEntry /> : f.view === "flow" ? <PlanFlowScreen intakeId={f.id} /> : f.view === "confirmed" ? <PlanConfirmedCard {...f.card} /> : f.view === "slot-error" ? <PlanSlotError /> : <PlanManualEditScreen draftId={f.id} />;
     createRoot(document.getElementById("root")).render(view);
   `, SHELL_STUBS);
   browser = await launch();
@@ -450,4 +451,86 @@ test("mock end to end: goal input → background → questions → premise → d
   await view.locator("[data-plan-confirmed]").getByText("シリーズA の資金調達をしたい").waitFor();
   await view.getByText("プランを確定しました。").waitFor();
   assert.deepEqual(await fetches(view), [], "the card reads nothing on the client");
+});
+
+/* ---------- R23 review: m10 / m15 / m16 / AI_BUSY ---------- */
+
+test("m10: a failed v2 read in Task › プラン is an error card with retry (refreshes the page)", async (t) => {
+  const page = await screen(t, { handlers: [], view: "slot-error" });
+  await page.locator("[data-plan-slot-error]").getByText("プランを読めませんでした").waitFor();
+  await page.getByRole("button", { name: "再試行" }).click();
+  assert.deepEqual(await calls(page), [], "router.refresh is not a push");
+  assert.deepEqual(await fetches(page), []);
+});
+
+test("m15: drafted but the draft cannot be read → a retry card, and retrying reads it", async (t) => {
+  const drafted = { ...premiseIntake(), draftId: "dr-1", status: "drafted" as const };
+  const page = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted)], url: "/intakes/in-1$" },
+    { method: "GET", replies: [{ body: { error: { code: "INTERNAL_ERROR", message: "x" }, success: false }, status: 500 }, ok(draftFixture())], url: "/drafts/dr-1$" },
+  ], id: "in-1", view: "flow" });
+  await page.locator("[data-plan-draft-failed]").getByText("方案を読み込めませんでした").waitFor();
+  await page.locator("[data-plan-draft-failed]").getByRole("button", { name: "再試行" }).click();
+  await page.locator("[data-plan-draft]").waitFor();
+  assert.equal(await page.locator("[data-plan-draft-failed]").count(), 0);
+});
+
+test("m16: after AI revisions, changing a premise asks first; cancel sends nothing, confirm sends once", async (t) => {
+  const drafted = { ...premiseIntake(), draftId: "dr-1", status: "drafted" as const };
+  const withTurn = draftFixture({ aiFixUsed: 1, turns: [{ at: "2026-10-10T01:00:00Z", changes: [], input: "Keep it", n: 1, noChangeReason: "OK", unchanged: [] }] });
+  const page = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted)], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(withTurn)], url: "/drafts/dr-1$" },
+    { method: "PATCH", replies: [ok(premiseIntake({ premiseVersion: 2 }))], url: "/premise$" },
+  ], id: "in-1", view: "flow" });
+  await page.getByRole("button", { name: "すべて見る" }).click();
+  const edit = async () => {
+    await page.locator("[data-premise='R2']").click();
+    await page.getByLabel("内容", { exact: true }).fill("Organisers and guests");
+    await page.getByRole("button", { name: "保存" }).click();
+  };
+  await edit();
+  const dialog = page.getByRole("alertdialog", { name: "この案と修正履歴を破棄しますか？" });
+  await dialog.waitFor();
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+  assert.equal((await fetches(page)).filter((call) => call.method === "PATCH").length, 0, "cancel sends nothing");
+  await page.getByRole("button", { name: "保存" }).click();
+  await dialog.getByRole("button", { name: "破棄して直す" }).click();
+  await page.getByRole("button", { name: "この前提で初版をつくる" }).waitFor();
+  const patches = (await fetches(page)).filter((call) => call.method === "PATCH");
+  assert.equal(patches.length, 1);
+  assert.equal(patches[0]!.body.key, "R2");
+});
+
+test("m16: without revisions a premise change is sent straight away", async (t) => {
+  const drafted = { ...premiseIntake(), draftId: "dr-1", status: "drafted" as const };
+  const page = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted)], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftFixture())], url: "/drafts/dr-1$" },
+    { method: "PATCH", replies: [ok(premiseIntake({ premiseVersion: 2 }))], url: "/premise$" },
+  ], id: "in-1", view: "flow" });
+  await page.getByRole("button", { name: "すべて見る" }).click();
+  await page.locator("[data-premise='R2']").click();
+  await page.getByLabel("内容", { exact: true }).fill("Organisers");
+  await page.getByRole("button", { name: "保存" }).click();
+  await page.getByRole("button", { name: "この前提で初版をつくる" }).waitFor();
+  assert.equal(await page.getByRole("alertdialog").count(), 0);
+  assert.equal((await fetches(page)).filter((call) => call.method === "PATCH").length, 1);
+});
+
+test("AI_BUSY: not a failure — 「処理中です」 and the intake and draft are read again once after 2 s", async (t) => {
+  const drafted = { ...premiseIntake(), draftId: "dr-1", status: "drafted" as const };
+  const page = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted)], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftFixture()), ok(draftFixture({ aiFixUsed: 1 }))], url: "/drafts/dr-1$" },
+    { method: "POST", replies: [fail(409, "AI_BUSY")], url: "/fix$" },
+  ], id: "in-1", view: "flow" });
+  await page.getByLabel("修正したいことを入力").fill("Design first");
+  await page.getByRole("button", { name: "修正する" }).click();
+  await page.locator("[data-plan-notice='busy']").getByText("処理中です。少し待ってから読み直します").waitFor();
+  assert.equal(await page.locator("[data-plan-failure]").count(), 0);
+  await page.locator("[data-plan-fix-left]").filter({ hasText: "2" }).waitFor({ timeout: 5000 });
+  await page.waitForTimeout(2500);
+  const reads = (await fetches(page)).filter((call) => call.method === "GET").map(path);
+  assert.deepEqual(reads, ["/intakes/in-1", "/drafts/dr-1", "/intakes/in-1", "/drafts/dr-1"], "exactly one re-read");
 });

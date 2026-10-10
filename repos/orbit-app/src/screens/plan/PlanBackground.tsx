@@ -29,7 +29,7 @@ import {
   type TeamMemberDraft,
 } from "./plan-model";
 import { PlanAddMemberSheet } from "./PlanAddMemberSheet";
-import { ChoiceChip, InlineProblem, isLimitFailure, LimitNote, StaleNote, Tag, useFailureText, usePlanStyles } from "./plan-ui";
+import { ChoiceChip, FailureNote, LimitNote, Tag, usePlanStyles } from "./plan-ui";
 
 export const STANCE_KEYS: Record<PlanStance, MessageKey> = {
   cofounder: "plan.stance.cofounder",
@@ -56,11 +56,10 @@ export function PlanBackground({ intake, kind, api, onIntake, onReload }: Props)
   const shared = usePlanStyles().styles;
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
-  const failureText = useFailureText();
   const { me, team, purpose } = intake.background;
   const locked = intake.status !== "background";
   const [editing, setEditing] = useState<BackgroundBlock | null>(null);
-  const [stance, setStance] = useState<PlanStance>(me.value.stance ?? "owner");
+  const [stance, setStance] = useState<PlanStance | null>(me.value.stance);
   const [wants, setWants] = useState(me.value.wants);
   const [mode, setMode] = useState<"solo" | "team">(team.value.mode);
   const [teamDraft, setTeamDraft] = useState<Record<string, TeamMemberDraft>>(() => teamDraftOf(team.value.members));
@@ -75,7 +74,7 @@ export function PlanBackground({ intake, kind, api, onIntake, onReload }: Props)
   useEffect(() => {
     if (seen.current === intake.updatedAt) return;
     seen.current = intake.updatedAt;
-    setStance(me.value.stance ?? "owner");
+    setStance(me.value.stance);
     setWants(me.value.wants);
     setMode(team.value.mode);
     setTeamDraft((previous) => mergeTeamDraft(previous, team.value.members));
@@ -102,6 +101,7 @@ export function PlanBackground({ intake, kind, api, onIntake, onReload }: Props)
   }
 
   const confirmMe = async () => {
+    if (!stance) return;
     const nextWants = wants.trim() || me.value.wants;
     let expectedUpdatedAt = intake.updatedAt;
     setBusy("me");
@@ -199,7 +199,7 @@ export function PlanBackground({ intake, kind, api, onIntake, onReload }: Props)
                     <Tag label={t("plan.me.fromGoal")} />
                   </View>
                   <TextInput accessibilityLabel={t("plan.me.wantsLabel")} onChangeText={setWants} placeholderTextColor={colors.ink3Text} style={shared.input} value={wants} />
-                  <Button block label={t("plan.me.confirm")} loading={busy === "me"} disabled={!wants.trim()} onPress={() => void confirmMe()} variant="primary" />
+                  <Button block label={t("plan.me.confirm")} loading={busy === "me"} disabled={!wants.trim() || !stance} onPress={() => void confirmMe()} variant="primary" />
                 </>
               ) : null}
               {block === "team" ? (
@@ -338,7 +338,7 @@ export function PlanBackground({ intake, kind, api, onIntake, onReload }: Props)
           </View>
         );
       })}
-      {failure ? failure.kind === "stale" ? <StaleNote onReload={onReload} /> : isLimitFailure(failure) ? <LimitNote failure={failure} /> : <InlineProblem text={failureText(failure)} /> : null}
+      {failure ? <FailureNote failure={failure} onReload={() => { setFailure(null); onReload(); }} /> : null}
       {!locked && allConfirmed ? <Button block label={t("plan.background.toQuestions")} loading={busy === "questions"} onPress={toQuestions} variant="primary" /> : null}
     </View>
   );

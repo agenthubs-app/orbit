@@ -74,12 +74,27 @@ const OWN_CONTACTS = `
     and c.payload->>'lifecycleInitialization' is distinct from 'pending'
     and coalesce(trim(c.payload->>'displayName'), '') <> ''`;
 const CONTACT_FIELDS = `c.record_id, c.payload->>'displayName' as name, c.payload->>'organization' as organization, c.payload->>'role' as role,
-  c.payload->>'primaryIndustryId' as industry, case when jsonb_typeof(c.payload->'tags') = 'array' then c.payload->'tags' else '[]'::jsonb end as tags`;
+  c.payload->>'primaryIndustryId' as industry, case when jsonb_typeof(c.payload->'tags') = 'array' then c.payload->'tags' else '[]'::jsonb end as tags,
+  c.payload->'publicProfile'->'offering' as offering, c.payload->'publicProfile'->'seeking' as seeking, c.payload->'publicProfile'->'topics' as topics`;
+
+/**
+ * 面谈记录摘要（复核 M5）：memo 提取写回联系人的「できること / 探していること / 話した話題」（W0046），
+ * 每项最多 5 个短语，整体截到 300 字。原文不送给模型。
+ */
+export function memoSummary(row: { offering?: unknown; seeking?: unknown; topics?: unknown }): string | null {
+  const list = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim() !== "").slice(0, 5) : []);
+  const parts = [
+    ["offering", list(row.offering)],
+    ["seeking", list(row.seeking)],
+    ["topics", list(row.topics)],
+  ].filter(([, items]) => (items as string[]).length > 0).map(([label, items]) => `${label}: ${(items as string[]).join(", ")}`);
+  return parts.length ? parts.join(" / ").slice(0, 300) : null;
+}
 
 function contactFromRow(row: Row): PlanFlowContact {
   const tags = Array.isArray(row.tags) ? row.tags.filter((tag): tag is string => typeof tag === "string") : [];
   const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
-  return { id: String(row.record_id), industry: text(row.industry), name: String(row.name), notes: null, organization: text(row.organization), role: text(row.role), tags };
+  return { id: String(row.record_id), industry: text(row.industry), name: String(row.name), notes: memoSummary(row), organization: text(row.organization), role: text(row.role), tags };
 }
 
 /** live：与计划同一个连接池（只读）。 */

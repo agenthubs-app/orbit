@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { PLAN_GOAL_KINDS, PLAN_QUESTION_LIMIT } from "../../../../shared/compute/plan-templates";
 import { isIndustryIdCode } from "../../../../shared/domain/industries";
-import { checkDraftContent, type ContentCheckInput } from "../validate-content";
+import { checkDraftContent, disallowedChangeIssues, type ContentCheckInput } from "../validate-content";
 import type {
   BackgroundInput,
   BackgroundOutput,
@@ -160,7 +160,7 @@ export function checkDraft(raw: unknown, input: ContentCheckInput): Checked<Draf
 }
 
 /** C7：改后的完整方案 + 改动理由；方案本身按 C6 的规则（不限模板 ±5）。 */
-export function checkFix(raw: unknown, input: ContentCheckInput): Checked<FixOutput> {
+export function checkFix(raw: unknown, input: ContentCheckInput, current?: DraftOutput): Checked<FixOutput> {
   const parsed = parse(z.object({
     revised: z.unknown(),
     reasons: z.array(z.object({ path: z.string(), reason: text(300) })).max(20).catch([]),
@@ -170,5 +170,7 @@ export function checkFix(raw: unknown, input: ContentCheckInput): Checked<FixOut
   if (parsed.ok === false) return { issues: parsed.issues, ok: false };
   const revised = checkDraft(parsed.value.revised, { ...input, enforceTemplate: false });
   if (revised.ok === false) return { issues: revised.issues, ok: false };
+  const disallowed = current ? disallowedChangeIssues(current, revised.value) : [];
+  if (disallowed.length > 0) return { issues: disallowed, ok: false };
   return { ok: true, value: { noChangeReason: parsed.value.noChangeReason ?? null, reasons: (parsed.value.reasons ?? []) as FixOutput["reasons"], revised: revised.value, unchanged: parsed.value.unchanged ?? [] } };
 }

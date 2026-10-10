@@ -337,7 +337,7 @@ export const planDraftViewObject = z.object({
     sourcePublishedOn: z.string(),
     updatedOn: z.string(),
   })),
-  aiFixUsed: count.max(3),
+  aiFixUsed: count,
   aiFixLimit: count,
   manualEditAvailable: z.boolean(),
   turns: readableItems(z.object({

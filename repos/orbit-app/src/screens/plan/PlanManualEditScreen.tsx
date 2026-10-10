@@ -41,7 +41,7 @@ import {
   unusedTemplateSlots,
   type ManualEditState,
 } from "./plan-model";
-import { InlineProblem, PlanFrame, StaleNote, Tag, useFailureText, usePlanStyles } from "./plan-ui";
+import { FailureNote, InlineProblem, PlanFrame, Tag, usePlanStyles } from "./plan-ui";
 
 export function PlanManualEditScreen({ draftId }: { draftId: string }) {
   const api = usePlanApi();
@@ -52,7 +52,6 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
   const copy = useStandardCopy();
-  const failureText = useFailureText();
   const [draft, setDraft] = useState<PlanDraftView | null>(null);
   const [loadFailure, setLoadFailure] = useState<PlanFailure | null>(null);
   const [state, setState] = useState<ManualEditState | null>(null);
@@ -153,7 +152,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
       footer={state && editable ? (
         <View style={styles.footer}>
           <UiText style={shared.caption}>{t("plan.manual.totals", { count: changes, total })}</UiText>
-          {saveFailure ? saveFailure.kind === "stale" ? <StaleNote onReload={() => void read()} /> : <InlineProblem text={saveFailure.kind === "used" ? t("plan.manual.used") : failureText(saveFailure)} /> : null}
+          {saveFailure ? saveFailure.kind === "used" ? <InlineProblem text={t("plan.manual.used")} /> : <FailureNote failure={saveFailure} onReload={() => { setSaveFailure(null); void read(); }} /> : null}
           <Button block disabled={!manualEditReady(state)} label={t("plan.manual.start")} loading={saving} onPress={() => void save()} variant="primary" />
         </View>
       ) : undefined}

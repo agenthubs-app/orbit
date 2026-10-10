@@ -183,7 +183,7 @@ export type PlanApiError = { status: number; code: string; reason: string | null
 export type PlanErrorView =
   | { tone: "limit"; limit: "daily" | "monthly" }
   | { tone: "failure"; op: "draft" | "fix" | "other" }
-  | { tone: "notice"; notice: "goalsMonth" | "activeGoals" | "stale" | "used" };
+  | { tone: "notice"; notice: "goalsMonth" | "activeGoals" | "stale" | "used" | "busy" };
 
 /** UI-SPEC 「常见错误原因 → 界面」: a limit is never shown as a failure card. */
 export function planErrorView(error: PlanApiError, op: "draft" | "fix" | "other"): PlanErrorView {
@@ -192,6 +192,8 @@ export function planErrorView(error: PlanApiError, op: "draft" | "fix" | "other"
     case "GOAL_MONTHLY_LIMIT": return { notice: "goalsMonth", tone: "notice" };
     case "PLAN_GOAL_LIMIT": return { notice: "activeGoals", tone: "notice" };
     case "STALE": return { notice: "stale", tone: "notice" };
+    // The same step is already running (409): not a failure — wait and read again.
+    case "AI_BUSY": return { notice: "busy", tone: "notice" };
     case "FIX_LIMIT":
     case "MANUAL_EDIT_USED":
     case "LADDER_LIMIT": return { notice: "used", tone: "notice" };

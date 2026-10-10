@@ -10,7 +10,7 @@ import type { DraftLandscapeItem, DraftOutput, DraftSlotInfo } from "./ai/types"
 export const PLAN_DRAFT_STEP_LIMIT = 7;
 const CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫";
 const DIGIT = /[0-9０-９]/;
-const HEADCOUNT = /[0-9０-９]+\s*(人|名|people|persons?|位)/i;
+const HEADCOUNT = /([0-9０-９]+|[一二三四五六七八九十両]+)\s*(人|名|people|persons?|位)/i;
 
 export interface ContentCheckInput {
   goalKind: PlanGoalKind;
@@ -23,6 +23,12 @@ export interface ContentCheckInput {
 
 function sentences(text: string): string[] {
   return text.split(/(?<=[。．！？.!?])\s*/u).map((sentence) => sentence.trim()).filter(Boolean);
+}
+
+/** 每条引用都要在見立て或結論里用 ①② 标出来（复核 m3）。 */
+export function unusedCitationIssues(texts: readonly string[], citationCount: number): string[] {
+  const used = new Set([...texts.join("")].filter((char) => CIRCLED.includes(char)).map((char) => CIRCLED.indexOf(char)));
+  return Array.from({ length: citationCount }, (_, index) => index).filter((index) => !used.has(index)).map((index) => `citation ${CIRCLED[index]} is not used in the text`);
 }
 
 /** 文中 ①② 的编号必须对应引用；没有编号的句子不能带数字（「没有引用的结论不得带数字」）。 */
@@ -70,6 +76,8 @@ export function checkDraftContent(content: DraftOutput, input: ContentCheckInput
     seen.add(type.slot);
     if (!info.shortNames.some((name) => name.id === type.shortLabelId)) issues.push(`personType ${type.slot}: short name ${type.shortLabelId} is not in the dictionary`);
     if (type.targetCount < 1 || type.targetCount > 5) issues.push(`personType ${type.slot}: target 1–5`);
+    // 0 点的类型不能留在方案里，要去掉就走「移除类型」（复核 m1）。
+    if (type.allocation < 5) issues.push(`personType ${type.slot}: at least 5 points`);
     if (type.questions.length !== 3) issues.push(`personType ${type.slot}: three questions`);
     for (const route of type.introRoutes) {
       if (!input.aliases.has(route.viaAlias)) issues.push(`personType ${type.slot}: intro route via unknown alias`);
@@ -97,5 +105,29 @@ export function checkDraftContent(content: DraftOutput, input: ContentCheckInput
   }
   issues.push(...citationMarkerIssues(content.diagnosis, content.citations.length, "diagnosis"));
   issues.push(...citationMarkerIssues(content.conclusion, content.citations.length, "conclusion"));
+  issues.push(...unusedCitationIssues([content.diagnosis, content.conclusion], content.citations.length));
+  return issues;
+}
+
+/**
+ * C7 只能改的部分（复核 M3，DESIGN §5.2「只改允许的路径」）：見立て、結論、flow、Step（名称、目安、理由、关联类型、增删）、
+ * 人物类型的配点 / 人数 / 役割×状況 / why、イベント、配点理由。引用、聞くこと、判定、見分け方、人物像、開口一番、紹介ルート、
+ * 短名、行业、枠的组成都不能改。
+ */
+export function disallowedChangeIssues(current: DraftOutput, revised: DraftOutput): string[] {
+  const issues: string[] = [];
+  const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  const citationKey = (items: DraftOutput["citations"]) => items.map((item) => `${item.id}@${item.version}`).sort();
+  if (!same(citationKey(current.citations), citationKey(revised.citations))) issues.push("citations: a revision may not change the cited entries");
+  const before = new Map(current.personTypes.map((type) => [type.slot, type]));
+  const after = new Map(revised.personTypes.map((type) => [type.slot, type]));
+  if (!same([...before.keys()].sort(), [...after.keys()].sort())) issues.push("personTypes: a revision may not add or remove types");
+  for (const [slot, type] of after) {
+    const previous = before.get(slot);
+    if (!previous) continue;
+    for (const field of ["shortLabelId", "questions", "countRule", "recognizeHints", "persona", "opener", "introRoutes", "primaryIndustryId"] as const) {
+      if (!same(previous[field], type[field])) issues.push(`personType ${slot}: ${field} may not change in a revision`);
+    }
+  }
   return issues;
 }

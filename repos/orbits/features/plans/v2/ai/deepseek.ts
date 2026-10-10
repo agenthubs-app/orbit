@@ -86,7 +86,7 @@ export function createDeepseekPlanFlowAi(deps: DeepseekPlanFlowAiDeps): PlanFlow
     id: "deepseek",
     background: (input, context) => run("background", "plan_background", context, TASKS.background, input, (raw) => checkBackground(raw, input)),
     firstDraft: (input, context) => run("first_draft", "plan_draft", context, TASKS.firstDraft, input, (raw) => checkDraft(raw, draftCheckInput(input))),
-    fix: (input, context) => run("fix", "plan_revise", context, TASKS.fix, input, (raw) => checkFix(raw, draftCheckInput(input))),
+    fix: (input, context) => run("fix", "plan_revise", context, TASKS.fix, input, (raw) => checkFix(raw, draftCheckInput(input), input.current)),
     goalKind: (input, context) => run("goal_kind", "plan_intake", context, TASKS.goalKind, input, checkGoalKind),
     ladder: (input, context) => run("ladder", "plan_intake", context, TASKS.ladder, input, (raw) => checkLadder(raw, input.goalText)),
     members: (input, context) => run("members", "plan_intake", context, TASKS.members, input, (raw) => checkMembers(raw, input)),

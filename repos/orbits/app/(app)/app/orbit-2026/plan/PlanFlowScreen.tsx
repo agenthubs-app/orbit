@@ -8,7 +8,7 @@ import { planDraftEditHref, planTaskSegmentHref } from "../../../../../shared/co
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { planFlowCopy } from "../copy/plan";
 import { ShellPage } from "../shell/slots";
-import { Button, Card, Chip, Orbit2026Scope, Skeleton, ToastProvider } from "../ui";
+import { Button, Card, Chip, ConfirmDialog, Orbit2026Scope, RetryCard, Skeleton, ToastProvider } from "../ui";
 import { BackgroundBlocks, STANCE_COPY, currentBlock, teamSummary, type BlockKey, type MeDraft } from "./BackgroundBlocks";
 import { DraftCard, DraftTurns, FixBar } from "./DraftCard";
 import { DraftRail, KnownRail } from "./FlowRail";
@@ -30,6 +30,9 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const [intake, setIntake] = useState<PlanIntakeView | null>(null);
   const [draft, setDraft] = useState<PlanDraftView | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [draftLoadFailed, setDraftLoadFailed] = useState(false);
+  // 改前提 after AI revisions: wait for 「破棄して直す」 before sending (review m16).
+  const [discard, setDiscard] = useState<{ key: string; value: string; resolve: (ok: boolean) => void } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const busyRef = useRef<string | null>(null);
   const [failed, setFailed] = useState<FailedAction | null>(null);
@@ -59,12 +62,22 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
     if (result.data.draftId) {
       const read = await planApi<PlanDraftView>(`/drafts/${enc(result.data.draftId)}`, { language });
       setDraft(read.ok ? read.data : null);
+      setDraftLoadFailed(!read.ok);
     } else {
       setDraft(null);
+      setDraftLoadFailed(false);
     }
   }, [adopt, intakeId, language]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // AI_BUSY: the same step is already running — say so and read again once after 2 s.
+  const busyNotice = failed?.view.tone === "notice" && failed.view.notice === "busy";
+  useEffect(() => {
+    if (!busyNotice) return;
+    const timer = window.setTimeout(() => void load(), 2000);
+    return () => window.clearTimeout(timer);
+  }, [busyNotice, load]);
 
   /**
    * One user action: one fresh idempotency key, one request at a time (a second
@@ -194,10 +207,14 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   } else {
     const purposeText = intake.background.purpose.value.rungs.find((rung) => rung.level === intake.background.purpose.value.selectedLevel)?.text ?? intake.goal;
     const hasDraft = Boolean(draft && intake.status === "drafted");
-    const editPremise = (key: string, value: string) => act<PlanIntakeView>("premise", "other", (actionKey) => planApi(`${base}/premise`, { body: { idempotencyKey: actionKey, key, value }, language, method: "PATCH" }), (next) => {
+    const sendPremise = (key: string, value: string) => act<PlanIntakeView>("premise", "other", (actionKey) => planApi(`${base}/premise`, { body: { idempotencyKey: actionKey, key, value }, language, method: "PATCH" }), (next) => {
       adopt(next, intake);
       if (!next.draftId) setDraft(null);
     });
+    // With AI revisions made, changing a premise throws the plan and its history away: confirm first.
+    const editPremise = (key: string, value: string): Promise<boolean> => (hasDraft && draft && draft.turns.length > 0
+      ? new Promise<boolean>((resolve) => setDiscard({ key, resolve, value }))
+      : sendPremise(key, value));
     body = (
       <div className={styles.stack}>
         <p className={styles.notice} data-plan-background-done="">
@@ -222,6 +239,9 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
             {errorAt("premise")}
             {errorAt("draft")}
           </>
+        ) : null}
+        {intake.status === "drafted" && !draft && draftLoadFailed ? (
+          <div data-plan-draft-failed=""><RetryCard title={t(planFlowCopy.draftLoadFailed)} onRetry={() => void load()} /></div>
         ) : null}
         {hasDraft && draft ? (
           <>
@@ -248,6 +268,17 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
           {intro}
           {body}
         </div>
+        <ConfirmDialog open={Boolean(discard)} destructive title={t(planFlowCopy.discardTitle)} message={t(planFlowCopy.discardBody)} confirmLabel={t(planFlowCopy.discardConfirm)}
+          onCancel={() => { discard?.resolve(false); setDiscard(null); }}
+          onConfirm={() => {
+            const pending = discard;
+            setDiscard(null);
+            if (!pending || !intake) return;
+            void act<PlanIntakeView>("premise", "other", (actionKey) => planApi(`/intakes/${enc(intake.intakeId)}/premise`, { body: { idempotencyKey: actionKey, key: pending.key, value: pending.value }, language, method: "PATCH" }), (next) => {
+              adopt(next, intake);
+              if (!next.draftId) setDraft(null);
+            }).then(pending.resolve);
+          }} />
       </ToastProvider>
     </Orbit2026Scope>
   );

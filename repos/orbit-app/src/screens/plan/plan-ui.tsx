@@ -1,6 +1,6 @@
 // R23 plan screens: small business pieces shared by the goal input, the flow page
 // and the manual edit page. Built from src/components/ui and theme tokens only.
-import type { ReactNode, RefObject } from "react";
+import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -130,6 +130,38 @@ export function StaleNote({ onReload }: { onReload: () => void }) {
       <Button label={t("plan.error.reload")} onPress={onReload} size="sm" variant="secondary" />
     </View>
   );
+}
+
+/** How long to wait before reading again after AI_BUSY (the same step is still running). */
+export const BUSY_RELOAD_MS = 2000;
+
+/**
+ * AI_BUSY: not a failure — 「処理中です。少し待ってから読み直します」, then one GET of the
+ * intake / draft after 2 s (onReload).
+ */
+export function BusyNote({ onReload }: { onReload: () => void }) {
+  const { styles } = useStyles();
+  const { t } = useOrbitLocale();
+  const reload = useRef(onReload);
+  reload.current = onReload;
+  useEffect(() => {
+    const timer = setTimeout(() => reload.current(), BUSY_RELOAD_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <View accessibilityRole="text" style={styles.limit}>
+      <UiText style={styles.limitText}>{t("plan.error.busy")}</UiText>
+    </View>
+  );
+}
+
+/** The one place a failed action is shown: stale, limits, busy (re-read), or a plain line. */
+export function FailureNote({ failure, onReload }: { failure: PlanFailure; onReload: () => void }) {
+  const failureText = useFailureText();
+  if (failure.kind === "stale") return <StaleNote onReload={onReload} />;
+  if (failure.kind === "aiBusy") return <BusyNote onReload={onReload} />;
+  if (isLimitFailure(failure)) return <LimitNote failure={failure} />;
+  return <InlineProblem text={failureText(failure)} />;
 }
 
 /** A plain one-line problem (network, used up, other) under the action that failed. */

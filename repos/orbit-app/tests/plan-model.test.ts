@@ -143,6 +143,7 @@ test("AI_LIMIT maps to the limit explanation (with the limit kind), AI_FAILED to
   assert.deepEqual(planFailureOf({ error: { code: "CONFLICT", context: { limit: "monthly", reason: "AI_LIMIT", retryOn: "2026-11-01" }, message: "x" }, meta, status: 409, success: false }), { kind: "aiLimit", limit: "monthly", retryOn: "2026-11-01" });
   assert.deepEqual(planFailureOf({ error: { code: "SERVICE_UNAVAILABLE", context: { reason: "AI_FAILED" }, message: "x" }, meta, status: 503, success: false }), { kind: "aiFailed" });
   assert.deepEqual(planFailureOf({ error: { code: "SERVICE_UNAVAILABLE", context: { reason: "NOT_IMPLEMENTED" }, message: "x" }, meta, status: 503, success: false }), { kind: "notImplemented" });
+  assert.deepEqual(planFailureOf({ error: { code: "CONFLICT", context: { reason: "AI_BUSY" }, message: "x" }, meta, status: 409, success: false }), { kind: "aiBusy" });
   assert.deepEqual(planFailureOf({ error: { code: "ORBIT_APP_NETWORK_ERROR", message: "x" }, meta, status: 0, success: false }), { kind: "network" });
 });
 

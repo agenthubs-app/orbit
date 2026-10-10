@@ -164,6 +164,8 @@ export interface PlanFlowServiceOptions {
   scope: PlanV2Scope;
   now?: () => Date;
   newId?: () => string;
+  /** R24：确定后为新计划入队 plan 来源的候补匹配（幂等、只跑规则层）；失败只记日志。 */
+  afterConfirmed?: (input: { actorId: string; planId: string }) => Promise<void>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -239,6 +241,16 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     if (!receipt) return null;
     if (receipt.kind !== kind || receipt.fingerprint !== sha({ body, kind })) throw new PlanFlowError("IDEMPOTENCY_KEY_REUSED", "The idempotency key was used for a different request.");
     return receipt.response as T;
+  }
+
+  /** 失败的 AI 步骤也留回执：同键重放直接返回同一个错误，不再调 AI（复核 m2）。 */
+  function failureResponse(failure: Extract<PlanAiOutcome<unknown>, { ok: false }>): Record<string, unknown> {
+    return { failure: { limit: failure.limit ?? null, reason: failure.reason, retryOn: failure.retryOn ?? null } };
+  }
+
+  function throwIfFailedReceipt(response: Record<string, unknown> | null): void {
+    const failure = response?.failure as { reason: "failed" | "limit" | "busy" | "disabled"; limit: "daily" | "monthly" | null; retryOn: string | null } | undefined;
+    if (failure) throw aiError({ limit: failure.limit ?? undefined, ok: false, reason: failure.reason, retryOn: failure.retryOn });
   }
 
   async function writeReceipt(tx: PlanV2Transaction, input: { key: string; kind: string; body: unknown; intakeId?: string | null; draftId?: string | null; planId?: string | null; response: Record<string, unknown> }) {
@@ -363,7 +375,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     return { basis: null, capabilities, contactId: null, headline, isSelf: true, memberId: "self", name: name || "—", otherCapabilities: [], relation: null, source: "profile" };
   }
 
-  async function runBackground(intake: PlanIntakeRow, attempt: number, context: PlanFlowRequestContext): Promise<PlanIntakeRow> {
+  async function runBackground(intake: PlanIntakeRow, attempt: number, context: PlanFlowRequestContext): Promise<PlanIntakeRow | null> {
     const kind = intake.goalKind;
     const capabilities = [...PLAN_GOAL_TEMPLATES[kind].capabilities];
     const [profile, candidates] = await Promise.all([source.profile(scope.actorId), source.teamCandidates(scope.actorId)]);
@@ -372,6 +384,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       { capabilities, contacts: input, goalKind: kind, goalText: intake.goalText, profile },
       { actorId: scope.actorId, language: context.language, ledgerKey: `intake:${intake.id}:background:${attempt}`, now: nowDate() },
     );
+    // 同键操作正在进行（或刚完成）：不是失败，不写回，读当前状态（复核 M2）。
+    if (outcome.ok === false && outcome.reason === "busy") return null;
     const at = now();
     const reading: PlanReadingItem[] = [
       { detail: [profile.name, profile.headline].filter(Boolean).join(" · "), kind: "profile" },
@@ -399,6 +413,13 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       team = { members, mode: members.length > 1 ? "team" : "solo" };
       purpose = { ...value.ladder, selectedLevel: value.ladder.suggestedLevel ?? 2 };
     }
+    // 「もう一度」时保留用户自己加的成员（手写的、AI 下书没提到的人脈から）（复核 m6）。
+    if (attempt > 1 && intake.background.team) {
+      const drafted = new Set(team.members.map((member) => member.contactId).filter(Boolean));
+      const candidateIds = new Set(candidates.map((contact) => contact.id));
+      const kept = intake.background.team.value.members.filter((member) => !member.isSelf && (member.source === "manual" || (member.contactId && !candidateIds.has(member.contactId) && !drafted.has(member.contactId))));
+      if (kept.length) team = { members: [...team.members, ...kept], mode: "team" };
+    }
     return {
       ...intake,
       aiSteps: { ...intake.aiSteps, background: { ...outcomeStep(intake.aiSteps.background, outcome, at, true), attempts: attempt } },
@@ -409,10 +430,14 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
   }
 
   /** 事务外调 AI，事务里写回（版本对不上就放弃这次结果，读当前状态）。 */
-  async function applyAfterAi(intakeId: string, expectedUpdatedAt: string, compute: (intake: PlanIntakeRow) => Promise<PlanIntakeRow>, receipt: { key: string; kind: string; body: unknown }): Promise<PlanIntakeRow> {
-    const before = await repository.read(scope, (reader) => requireIntake(reader, intakeId));
+  async function applyAfterAi(intakeId: string, expectedUpdatedAt: string, compute: (intake: PlanIntakeRow) => Promise<PlanIntakeRow | null>, receipt: { key: string; kind: string; body: unknown }): Promise<PlanIntakeRow> {
+    // 同键重放先查回执，不再调 AI（复核 M1）。
+    const replay = await repository.read(scope, async (reader) => ({ intake: await requireIntake(reader, intakeId), prior: await replayed<{ intakeId: string }>(reader, receipt.key, receipt.kind, receipt.body) }));
+    if (replay.prior) return replay.intake;
+    const before = replay.intake;
     if (before.updatedAt !== expectedUpdatedAt) return before;
     const next = await compute(before);
+    if (!next) return repository.read(scope, (reader) => requireIntake(reader, intakeId));
     return repository.transact(scope, async (tx) => {
       const prior = await replayed<{ intakeId: string }>(tx, receipt.key, receipt.kind, receipt.body);
       const current = await requireIntake(tx, intakeId);
@@ -581,6 +606,12 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       const n = index + 1;
       push(`steps.${index}.title`, tri(language, { en: `Step ${n} name`, ja: `Step ${n} の名前`, zh: `Step ${n} 名称` }), previous?.title ?? null, next?.title ?? null);
       push(`steps.${index}.doneCriteria`, tri(language, { en: `Step ${n} done when`, ja: `Step ${n} の目安`, zh: `Step ${n} 完成标准` }), previous?.doneCriteria ?? null, next?.doneCriteria ?? null);
+      // 复核 M3：Step 的关联类型与理由的变化也要在差分里看得见。
+      const typeLabels = (keys: readonly string[] | undefined) => (keys ? keys.map((key) => after.personTypes.find((type) => type.key === key)?.shortLabel ?? before.personTypes.find((type) => type.key === key)?.shortLabel ?? tri(language, { en: "Events", ja: "イベント", zh: "活动" })).join("・") : null);
+      if (previous && next && JSON.stringify(previous.personTypeKeys) !== JSON.stringify(next.personTypeKeys)) {
+        push(`steps.${index}.personTypeKeys`, tri(language, { en: `Step ${n} people`, ja: `Step ${n} の人物タイプ`, zh: `Step ${n} 的人物类型` }), typeLabels(previous.personTypeKeys), typeLabels(next.personTypeKeys));
+      }
+      if (previous && next) push(`steps.${index}.why`, tri(language, { en: `Step ${n} reason`, ja: `Step ${n} の理由`, zh: `Step ${n} 的理由` }), previous.why ?? null, next.why ?? null);
     }
     const slots = [...new Set([...before.personTypes.map((type) => type.slot), ...after.personTypes.map((type) => type.slot)])];
     for (const slot of slots) {
@@ -590,9 +621,12 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       const describe = (type: PlanDraftPersonType | undefined) => (type ? tri(language, { en: `${type.allocation} pts · ${type.targetCount}`, ja: `${type.allocation} 点 · ${type.targetCount}人`, zh: `${type.allocation} 分 · ${type.targetCount}人` }) : null);
       push(`personTypes.${slot}`, name, describe(previous), describe(next));
       if (previous && next) push(`personTypes.${slot}.roleSituation`, name, previous.roleSituation, next.roleSituation);
+      if (previous && next) push(`personTypes.${slot}.why`, `${name} · ${tri(language, { en: "why", ja: "理由", zh: "理由" })}`, previous.why, next.why);
     }
     const event = tri(language, { en: "Events", ja: "イベント", zh: "活动" });
     push("event", event, `${before.event.allocation}/${before.event.targetCount}`, `${after.event.allocation}/${after.event.targetCount}`);
+    const cites = (content: PlanDraftContent) => content.citations.map((citation) => `${citation.id} v${citation.version}`).join("・") || null;
+    push("citations", tri(language, { en: "Sources", ja: "参考資料", zh: "参考资料" }), cites(before), cites(after));
     return changes;
   }
 
@@ -637,6 +671,11 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       if (currentDraft.status !== "confirmed") await tx.updateDraft({ ...currentDraft, confirmedAt: at, manualEditUsed: currentDraft.manualEditUsed || manualEdit, planId, status: "confirmed", updatedAt: at });
       if (currentIntake.status !== "planned") await tx.updateIntake({ ...currentIntake, planId, status: "planned", updatedAt: at });
     });
+    if (result.created && options.afterConfirmed) {
+      await options.afterConfirmed({ actorId: scope.actorId, planId }).catch((error: unknown) => {
+        console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "plan_flow_enqueue_match_failed" }));
+      });
+    }
     return { archivedV1PlanId: result.archivedV1PlanId, href: planTaskSegmentHref(context.platform, planId), planId, replayed: !result.created };
   }
 
@@ -664,7 +703,10 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
 
     async listIntakes(context) {
       return repository.read(scope, async (reader) => {
-        const [intakes, left, active] = await Promise.all([reader.openIntakes(), newGoalsLeft(reader), reader.activePlans()]);
+        // 同一个连接上顺序查询（复核 m8：pg 不允许同一 client 并发查询）。
+        const intakes = await reader.openIntakes();
+        const left = await newGoalsLeft(reader);
+        const active = await reader.activePlans();
         return {
           activeGoalLimit: PLAN_V2_GOAL_LIMIT,
           activeGoals: active.length,
@@ -705,7 +747,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       });
       let intake = created.intake;
       if (intake.status === "drafting" && intake.aiSteps.background.state === "none") {
-        intake = await applyAfterAi(intake.id, intake.updatedAt, (current) => runBackground(current, 1, context), { body: { intakeId: intake.id, step: "background", attempt: 1 }, key: `${request.idempotencyKey}:background`, kind: "intake_background" });
+        intake = await applyAfterAi(intake.id, intake.updatedAt, (current) => runBackground(current, 1, context), { body: { intakeId: intake.id, step: "background" }, key: `${request.idempotencyKey}:background`, kind: "intake_background" });
       }
       return repository.read(scope, (reader) => intakeView(reader, intake, context));
     },
@@ -718,14 +760,16 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     },
 
     async retryBackground(intakeId, idempotencyKey, context) {
-      const intake = await repository.read(scope, (reader) => requireIntake(reader, intakeId));
+      const replay = await repository.read(scope, async (reader) => ({ intake: await requireIntake(reader, intakeId), prior: await replayed<{ intakeId: string }>(reader, idempotencyKey, "intake_background", { intakeId, step: "background" }) }));
+      if (replay.prior) return repository.read(scope, (reader) => intakeView(reader, replay.intake, context));
+      const intake = replay.intake;
       const step = intake.aiSteps.background;
       const blocksConfirmed = Boolean(intake.background.me?.confirmedAt || intake.background.team?.confirmedAt || intake.background.purpose?.confirmedAt);
       const retriable = (intake.status === "drafting" || intake.status === "background") && step.state !== "done" && !blocksConfirmed;
       let next = intake;
       if (retriable) {
         const attempt = step.attempts + 1;
-        next = await applyAfterAi(intakeId, intake.updatedAt, (current) => runBackground(current, attempt, context), { body: { attempt, intakeId, step: "background" }, key: idempotencyKey, kind: "intake_background" });
+        next = await applyAfterAi(intakeId, intake.updatedAt, (current) => runBackground(current, attempt, context), { body: { intakeId, step: "background" }, key: idempotencyKey, kind: "intake_background" });
       }
       return repository.read(scope, (reader) => intakeView(reader, next, context));
     },
@@ -785,9 +829,11 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         if (contacts.length > 0) {
           const { aliases, input } = aliasContacts(contacts);
           const ids = contacts.map((contact) => contact.id).sort();
-          const outcome = await ai.members({ capabilities, contacts: input, goalKind: before.goalKind }, { actorId: scope.actorId, language: context.language, ledgerKey: `intake:${intakeId}:members:${sha(ids).slice(0, 32)}`, now: nowDate() });
+          // 账本键带本 intake 第几次推定（同一组人移除后再加也会重新推定，不会撞上早已成功的旧键；复核 M2）。
+          const attempt = membersStep.attempts + 1;
+          const outcome = await ai.members({ capabilities, contacts: input, goalKind: before.goalKind }, { actorId: scope.actorId, language: context.language, ledgerKey: `intake:${intakeId}:members:${attempt}:${sha(ids).slice(0, 16)}`, now: nowDate() });
           const inferred = new Map(outcome.ok === true ? outcome.value.members.map((member) => [member.alias, member]) : []);
-          membersStep = outcomeStep(membersStep, outcome, now(), true);
+          membersStep = outcome.ok === false && outcome.reason === "busy" ? membersStep : { ...outcomeStep(membersStep, outcome, now(), true), attempts: attempt };
           added = [...aliases.entries()].map(([alias, contact]) => ({
             basis: inferred.get(alias)?.basis || null,
             capabilities: inferred.get(alias)?.capabilities ?? [],
@@ -803,11 +849,12 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         }
       } else {
         const relationLabel = tri(context.language, { en: request.relation, ja: { advisor: "アドバイザー", cofounder: "共同創業者", contractor: "業務委託", employee: "社員" }[request.relation], zh: { advisor: "顾问", cofounder: "联合创始人", contractor: "外包合作", employee: "员工" }[request.relation] });
-        const contactId = request.alsoAddToNetwork ? await source.addContact(scope.actorId, { name: request.name.trim(), relationLabel }) : null;
+        // 复核 M4：先在事务里占位写成员（校验状态、人数、回执），再建联系人，最后回填 contactId——
+        // 请求失败不留孤儿联系人，同键并发只建一张。
         added = [{
           basis: null,
           capabilities: request.capabilities.filter((id) => capabilities.includes(id)),
-          contactId,
+          contactId: null,
           headline: relationLabel,
           isSelf: false,
           memberId: `manual:${newId()}`,
@@ -836,22 +883,42 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         await writeReceipt(tx, { body, intakeId, key: request.idempotencyKey, kind: "intake_members", response: { intakeId } });
         return next;
       });
+      if (request.mode === "manual" && request.alsoAddToNetwork && added[0] && intake.background.team?.value.members.some((member) => member.memberId === added[0]!.memberId)) {
+        const memberId = added[0].memberId;
+        const contactId = await source.addContact(scope.actorId, { name: request.name.trim(), relationLabel: added[0].headline ?? "" });
+        if (contactId) {
+          const filled = await repository.transact(scope, async (tx) => {
+            const current = await requireIntake(tx, intakeId);
+            const team = current.background.team;
+            if (!team || !team.value.members.some((member) => member.memberId === memberId)) return current;
+            const next: PlanIntakeRow = { ...current, background: { ...current.background, team: { ...team, value: { ...team.value, members: team.value.members.map((member) => (member.memberId === memberId ? { ...member, contactId, source: "network" as const } : member)) } } }, updatedAt: now() };
+            await tx.updateIntake(next);
+            return next;
+          });
+          return repository.read(scope, (reader) => intakeView(reader, filled, context));
+        }
+      }
       return repository.read(scope, (reader) => intakeView(reader, intake, context));
     },
 
     async recomputeLadder(intakeId, request, context) {
       const wants = request.wants.trim();
-      const before = await repository.read(scope, (reader) => requireIntake(reader, intakeId));
+      const replay = await repository.read(scope, async (reader) => ({ intake: await requireIntake(reader, intakeId), prior: await replayed<{ intakeId: string }>(reader, request.idempotencyKey, "intake_ladder", { wants }) }));
+      if (replay.prior) return repository.read(scope, (reader) => intakeView(reader, replay.intake, context));
+      const before = replay.intake;
       if (before.status !== "background") throw new PlanFlowError("BACKGROUND_LOCKED", "The background can only be changed before the questions.");
       const me = before.background.me;
       if (!me || !before.background.purpose) throw new PlanFlowError("BLOCK_ORDER", "The background draft is not ready.");
       if (me.value.wants === wants) return repository.read(scope, (reader) => intakeView(reader, before, context));
       if (before.aiSteps.ladderCount >= PLAN_LADDER_LIMIT) throw new PlanFlowError("LADDER_LIMIT", "The purpose ladder can be rebuilt at most 3 times.");
       const team = before.background.team?.value;
+      const attempt = before.aiSteps.ladder.attempts + 1;
       const outcome = await ai.ladder(
         { goalText: before.goalText, team: `${team?.mode ?? "solo"} ${(team?.members ?? []).length}`, wants },
-        { actorId: scope.actorId, language: context.language, ledgerKey: `intake:${intakeId}:ladder:${sha(wants).slice(0, 32)}`, now: nowDate() },
+        { actorId: scope.actorId, language: context.language, ledgerKey: `intake:${intakeId}:ladder:${attempt}`, now: nowDate() },
       );
+      // 同键操作正在进行：不写回，读当前状态（复核 M2）。
+      if (outcome.ok === false && outcome.reason === "busy") return repository.read(scope, async (reader) => intakeView(reader, await requireIntake(reader, intakeId), context));
       const intake = await repository.transact(scope, async (tx) => {
         const body = { wants };
         const prior = await replayed<{ intakeId: string }>(tx, request.idempotencyKey, "intake_ladder", body);
@@ -864,7 +931,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
           : current.background.purpose;
         const next: PlanIntakeRow = {
           ...current,
-          aiSteps: { ...current.aiSteps, ladder: outcomeStep(current.aiSteps.ladder, outcome, at, true), ladderCount: current.aiSteps.ladderCount + (outcome.ok === true ? 1 : 0) },
+          aiSteps: { ...current.aiSteps, ladder: { ...outcomeStep(current.aiSteps.ladder, outcome, at, true), attempts: attempt }, ladderCount: current.aiSteps.ladderCount + (outcome.ok === true ? 1 : 0) },
           background: { ...current.background, me: { ...current.background.me, value: { ...current.background.me.value, wants } }, purpose },
           updatedAt: at,
         };
@@ -881,14 +948,18 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       const { me, team, purpose } = before.background;
       if (!me?.confirmedAt || !team?.confirmedAt || !purpose?.confirmedAt) throw new PlanFlowError("BACKGROUND_NOT_CONFIRMED", "Confirm all three background blocks first.");
       const summary = backgroundSummary(before, context.language);
-      const cacheKey = backgroundCacheKey(before.goalKind, summary.text);
+      // 缓存键用与界面语言无关的摘要（能力用 id；复核 m5）。
+      const cacheKey = backgroundCacheKey(before.goalKind, backgroundSummary(before, "en").text.replace(/^gaps: .*$/m, `gaps: ${summary.gaps.join(",")}`));
       const cached = await repository.read(scope, (reader) => reader.flowReceipt(cacheKey));
       let chosen = cached?.kind === "questions_cache" ? (cached.response as unknown as { items: PlanIntakeRow["questions"] }).items : null;
       let step = before.aiSteps.questions;
       if (!chosen) {
         const bank = questionBank(before.goalKind, context.language);
-        const outcome = await ai.questions({ background: summary.text, bank, gaps: summary.gaps, goalKind: before.goalKind }, { actorId: scope.actorId, language: context.language, ledgerKey: cacheKey, now: nowDate() });
-        step = outcomeStep(step, outcome, now(), true);
+        const attempt = step.attempts + 1;
+        const outcome = await ai.questions({ background: summary.text, bank, gaps: summary.gaps, goalKind: before.goalKind }, { actorId: scope.actorId, language: context.language, ledgerKey: `${cacheKey}:${intakeId}:${attempt}`, now: nowDate() });
+        // 同键操作正在进行（双击「質問へ」）：不写回，让界面稍后重读（复核 M2）。
+        if (outcome.ok === false && outcome.reason === "busy") throw new PlanFlowError("AI_BUSY", "This step is already running.");
+        step = { ...outcomeStep(step, outcome, now(), true), attempts: attempt };
         const picked = outcome.ok === true ? outcome.value : ruleQuestions({ gaps: summary.gaps, goalKind: before.goalKind }, () => tri(context.language, { en: "Chosen by the default order of this goal type.", ja: "この目標タイプの標準の順で選びました。", zh: "按这类目标的默认顺序选出。" }));
         chosen = { cacheKey, items: picked.questions.map((question) => ({ guess: question.guess, id: question.id, why: question.why })), skipped: picked.skipped };
       } else {
@@ -971,7 +1042,13 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     },
 
     async makeDraft(intakeId, idempotencyKey, context) {
-      const before = await repository.read(scope, (reader) => requireIntake(reader, intakeId));
+      const early = await repository.read(scope, async (reader) => {
+        const intake = await requireIntake(reader, intakeId);
+        const receipt = await reader.flowReceipt(idempotencyKey);
+        return { intake, receipt: receipt && receipt.kind === "draft_create" && receipt.intakeId === intakeId ? receipt.response : null };
+      });
+      throwIfFailedReceipt(early.receipt);
+      const before = early.intake;
       if (before.aiSteps.draftId) {
         const existing = await repository.read(scope, (reader) => reader.draft(before.aiSteps.draftId!));
         if (existing) return draftView(existing, before, context);
@@ -1007,8 +1084,12 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         if (current.status !== "premise" || current.aiSteps.premiseVersion !== premiseVersion) throw new PlanFlowError("STALE", "The premise changed while the draft was being written.");
         const at = now();
         if (outcome.ok === false) {
-          await tx.updateIntake({ ...current, aiSteps: { ...current.aiSteps, draft: { ...outcomeStep(current.aiSteps.draft, outcome, at, false), attempts: attempt } }, updatedAt: at });
-          return { failure: outcome as Extract<PlanAiOutcome<unknown>, { ok: false }>, intake: current };
+          const failure = outcome as Extract<PlanAiOutcome<unknown>, { ok: false }>;
+          if (failure.reason !== "busy") {
+            await tx.updateIntake({ ...current, aiSteps: { ...current.aiSteps, draft: { ...outcomeStep(current.aiSteps.draft, outcome, at, false), attempts: attempt } }, updatedAt: at });
+            await writeReceipt(tx, { body, intakeId, key: idempotencyKey, kind: "draft_create", response: failureResponse(failure) });
+          }
+          return { failure, intake: current };
         }
         const content = toDraftContent(outcome.value, current.goalKind, aliases, context.language, current.premise ?? []);
         const draft: PlanDraftRow = {
@@ -1051,7 +1132,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     async fix(draftId, request, context) {
       const text = request.text.trim();
       const body = { text };
-      const prior = await repository.read(scope, (reader) => replayed<{ draftId: string }>(reader, request.idempotencyKey, "draft_fix", body));
+      const prior = await repository.read(scope, (reader) => replayed<Record<string, unknown>>(reader, request.idempotencyKey, "draft_fix", body));
+      throwIfFailedReceipt(prior);
       const before = await repository.read(scope, (reader) => requireDraft(reader, draftId));
       const intake = before.intakeId ? await repository.read(scope, (reader) => requireIntake(reader, before.intakeId!)) : null;
       if (prior) return draftView(before, intake, context);
@@ -1084,8 +1166,12 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         const at = now();
         if (outcome.ok === false) {
           // 失败不计次（DESIGN §5.2 C7）：只记步骤状态，修正次数不变。
-          await tx.updateDraft({ ...current, fix: { ...outcomeStep(current.fix, outcome, at, false), attempts: attempt }, updatedAt: at });
-          return { failure: outcome as Extract<PlanAiOutcome<unknown>, { ok: false }> };
+          const failure = outcome as Extract<PlanAiOutcome<unknown>, { ok: false }>;
+          if (failure.reason !== "busy") {
+            await tx.updateDraft({ ...current, fix: { ...outcomeStep(current.fix, outcome, at, false), attempts: attempt }, updatedAt: at });
+            await writeReceipt(tx, { body, draftId, key: request.idempotencyKey, kind: "draft_fix", response: failureResponse(failure) });
+          }
+          return { failure };
         }
         const keys = current.content.steps.map((step) => step.key);
         const revised = toDraftContent(outcome.value.revised, intake.goalKind, aliases, context.language, current.premise, keys);
@@ -1187,6 +1273,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         const slots: PlanAllocationSlot[] = allocationSlotsOf(intake.goalKind, content);
         const allocation = validateAllocations(slots);
         if (allocation.ok === false) throw new PlanFlowError("INVALID_INPUT", `The allocation is not valid (${allocation.error}).`);
+        // 复核 m1：人物类型至少 5 点；要去掉就移除这个类型。
+        if (personTypes.some((type) => type.allocation < 5)) throw new PlanFlowError("INVALID_INPUT", "Each person type needs at least 5 points; remove the type instead.");
         const at = now();
         const changes = diffContent(current.content, content, context.language);
         const next: PlanDraftRow = { ...current, content, manualEditUsed: true, turns: current.turns, updatedAt: at };

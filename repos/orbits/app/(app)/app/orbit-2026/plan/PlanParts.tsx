@@ -53,7 +53,7 @@ export function PlanErrorNotice({ view, t, onRetry, onReload }: { view: PlanErro
     return <p role="status" className={styles.notice} data-plan-limit={view.limit}><Icon name="clock" size={16} />{t(view.limit === "monthly" ? planFlowCopy.limitMonthly : planFlowCopy.limitDaily)}</p>;
   }
   if (view.tone === "notice") {
-    const text = view.notice === "goalsMonth" ? planFlowCopy.limitGoalsMonth : view.notice === "activeGoals" ? planFlowCopy.limitActiveGoals : view.notice === "stale" ? planFlowCopy.stale : planFlowCopy.manualUsed;
+    const text = view.notice === "goalsMonth" ? planFlowCopy.limitGoalsMonth : view.notice === "activeGoals" ? planFlowCopy.limitActiveGoals : view.notice === "stale" ? planFlowCopy.stale : view.notice === "busy" ? planFlowCopy.busy : planFlowCopy.manualUsed;
     return (
       <div role="status" className={`${styles.notice} ${styles.noticeWarn}`} data-plan-notice={view.notice}>
         <Icon name="info" size={16} /><span>{t(text)}</span>
