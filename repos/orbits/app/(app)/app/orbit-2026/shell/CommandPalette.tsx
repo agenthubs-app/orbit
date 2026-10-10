@@ -61,21 +61,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const t = (entry: (typeof shellCopy)[keyof typeof shellCopy]) => pickCopy(entry, language);
 
   const input = useRef<HTMLInputElement>(null);
-  // The dialog mounts through a portal a commit later and then focuses its first
-  // control (閉じる); the palette starts in the field, so focus it after that, for a
-  // few frames at most.
-  useEffect(() => {
-    if (!open) { setQuery(""); setPeople([]); setCursor(0); return; }
-    let frames = 0;
-    let id = 0;
-    const settle = () => {
-      const field = input.current;
-      if (field && field.closest("[role='dialog']") && document.activeElement !== field) field.focus();
-      if (++frames < 6) id = requestAnimationFrame(settle);
-    };
-    id = requestAnimationFrame(settle);
-    return () => cancelAnimationFrame(id);
-  }, [open]);
+  // The dialog focuses its first control (閉じる) by default; the palette starts in
+  // the field (Modal initialFocus). Closing resets the panel.
+  useEffect(() => { if (!open) { setQuery(""); setPeople([]); setCursor(0); } }, [open]);
   useEffect(() => {
     const trimmed = query.trim();
     if (!open || !trimmed) { setPeople([]); setSearching(false); return; }
@@ -111,7 +99,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const optionId = (index: number) => `${listId}-${index}`;
 
   return (
-    <Modal open={open} onClose={onClose} title={t(shellCopy.paletteLabel)} size={680} top
+    <Modal open={open} onClose={onClose} title={t(shellCopy.paletteLabel)} size={680} top initialFocus={input}
       hint={<span className={styles.keys}><Kbd>↑↓</Kbd><Kbd>↵</Kbd>{t(shellCopy.paletteHintOpen)}<Kbd>⌘↵</Kbd>{t(shellCopy.paletteHintAsk)}</span>}>
       <div className={styles.field}>
         <Icon name="search" size={20} />

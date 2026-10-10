@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "339ff05a958f7c3eeaaea1b5f8a2cdbe7218e457",
-  "deterministicSourceTime": "2026-10-10T15:37:40+09:00",
+  "generatedFromCommit": "fcb49b43e11d9f2edf30968639d55963a57ca3c0",
+  "deterministicSourceTime": "2026-10-10T16:05:40+09:00",
   "sourceState": "head-plus-uncommitted-authoritative-inputs",
-  "uncommittedAuthoritativeInputChanges": 6,
+  "uncommittedAuthoritativeInputChanges": 17,
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -122400,6 +122400,7 @@
       "overlays": [],
       "testEvidence": [
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
+        "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/admin-read-cost-copy.test.ts",
         "repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts",
@@ -123415,6 +123416,7 @@
       ],
       "overlays": [],
       "testEvidence": [
+        "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/pages/admin-read-cost-copy.test.ts"
       ],
       "runtimeEvidence": [],
@@ -182174,6 +182176,7 @@
       "testEvidence": [
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
+        "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/pages/app-card-batch-host-yield.test.tsx",
         "repos/orbits/tests/pages/app-profile-onboarding-flow.test.tsx",
         "repos/orbits/tests/pages/app-profile-onboarding-navigation.test.ts",
@@ -189679,6 +189682,7 @@
         }
       ],
       "testEvidence": [
+        "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/pages/app-agent-iorbit-home.test.tsx",
         "repos/orbits/tests/pages/app-agent-plan-route-view-model.test.ts",
         "repos/orbits/tests/pages/app-card-batch-host-yield.test.tsx",

@@ -106,10 +106,10 @@
 | `web:/app/account/mobile-google` | web | production | `/app/account/mobile-google` | `web:/app` |  | 0 | 2 | 2 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/reset-password` | web | production | `/app/account/reset-password` | `web:/app` |  | 1 | 36 | 5 | inventory-complete-runtime-verification-pending |
 | `web:/app/account/signup` | web | production | `/app/account/signup` | `web:/app` |  | 1 | 39 | 6 | runtime-partially-verified-browser-base-state |
-| `web:/app/admin` | web | production | `/app/admin` | `web:/app` |  | 0 | 5 | 12 | runtime-partially-verified-web-actor-scoped-admin-dashboard |
+| `web:/app/admin` | web | production | `/app/admin` | `web:/app` |  | 0 | 5 | 13 | runtime-partially-verified-web-actor-scoped-admin-dashboard |
 | `web:/app/admin/access` | web | production | `/app/admin/access` | `web:/app/admin` |  | 0 | 1 | 3 | runtime-partially-verified-browser-base-state |
 | `web:/app/admin/events` | web | production | `/app/admin/events` | `web:/app/admin` |  | 0 | 5 | 4 | runtime-partially-verified-web-actor-scoped-admin-events |
-| `web:/app/admin/read-cost` | web | production | `/app/admin/read-cost` | `web:/app/admin` |  | 0 | 2 | 1 | inventory-complete-runtime-verification-pending |
+| `web:/app/admin/read-cost` | web | production | `/app/admin/read-cost` | `web:/app/admin` |  | 0 | 2 | 2 | inventory-complete-runtime-verification-pending |
 | `web:/app/agent` | web | production | `/app/agent` | `web:/app` |  | 4 | 139 | 101 | runtime-partially-verified-web-agent-session-actor-isolation |
 | `web:/app/agent/actions` | web | production | `/app/agent/actions` | `web:/app/agent` |  | 0 | 15 | 12 | inventory-complete-runtime-verification-pending |
 | `web:/app/agent/plan` | web | production | `/app/agent/plan` | `web:/app/agent` |  | 0 | 0 | 36 | inventory-complete-runtime-verification-pending |
@@ -140,10 +140,10 @@
 | `web:/app/platform` | web | production | `/app/platform` | `web:/app` |  | 0 | 2 | 5 | runtime-partially-verified-web-platform-provider-role-boundary |
 | `web:/app/profile` | web | production | `/app/profile` | `web:/app` |  | 0 | 93 | 36 | runtime-partially-verified-web-profile-complete-lifecycle |
 | `web:/app/profile/continue` | web | production | `/app/profile/continue` | `web:/app/profile` |  | 0 | 0 | 8 | inventory-complete-runtime-verification-pending |
-| `web:/app/profile/onboarding` | web | production | `/app/profile/onboarding` | `web:/app/profile` |  | 1 | 104 | 7 | inventory-complete-runtime-verification-pending |
+| `web:/app/profile/onboarding` | web | production | `/app/profile/onboarding` | `web:/app/profile` |  | 1 | 104 | 8 | inventory-complete-runtime-verification-pending |
 | `web:/app/register` | web | production | `/app/register` | `web:/app` |  | 0 | 2 | 5 | runtime-partially-verified-browser-base-state |
 | `web:/app/settings` | web | production | `/app/settings` | `web:/app` |  | 0 | 93 | 15 | runtime-partially-verified-web-settings-actor-scoped-lifecycle |
-| `web:/app/start` | web | production | `/app/start` | `web:/app` |  | 1 | 78 | 11 | inventory-complete-runtime-verification-pending |
+| `web:/app/start` | web | production | `/app/start` | `web:/app` |  | 1 | 78 | 12 | inventory-complete-runtime-verification-pending |
 | `web:/app/tasks` | web | production | `/app/tasks` | `web:/app` |  | 3 | 101 | 54 | inventory-complete-runtime-verification-pending |
 | `web:/app/tasks/[id]` | web | production | `/app/tasks/[id]` | `web:/app/tasks` | id | 0 | 47 | 49 | inventory-complete-runtime-verification-pending |
 | `web:/app/tasks/personal` | web | production | `/app/tasks/personal` | `web:/app/tasks` |  | 3 | 46 | 16 | inventory-complete-runtime-verification-pending |

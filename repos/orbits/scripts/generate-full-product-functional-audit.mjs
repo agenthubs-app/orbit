@@ -12,6 +12,9 @@ import { fileURLToPath } from "node:url";
 
 import ts from "typescript";
 
+/** Components whose required `label` prop is their accessible name (R09 review m2). */
+const LABELLED_COMPONENTS = new Set(["Button", "IconButton", "FilterOption"]);
+
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.resolve(SCRIPT_DIR, "..");
 const WORKSPACE_ROOT = path.resolve(WEB_ROOT, "../..");
@@ -8815,9 +8818,11 @@ export function collectInteractions(
             : staticAttribute("accessible") === false &&
               staticAttribute("accessibilityElementsHidden") === true &&
               staticAttribute("importantForAccessibility") === "no-hide-descendants";
-        // Redesign components (App R04 / Web R06 Button, IconButton …) take a
-        // required `label` prop and render it as the accessible name.
-        const componentLabel = /^[A-Z]/u.test(parts.tagName) ? attributes.get("label") : undefined;
+        // Redesign components that take a required `label` prop and render it as the
+        // accessible name (App R04 Button → accessibilityLabel, FilterOption; Web R06
+        // Button / IconButton → visible text / aria-label). Only these: RN Pressable,
+        // TextInput, Link … ignore a `label` prop.
+        const componentLabel = LABELLED_COMPONENTS.has(parts.tagName) ? attributes.get("label") : undefined;
         const accessibleNameEvidence = intentionallyHidden
           ? "intentionally-hidden-pointer-target"
           : kind === "form-submit-boundary" || isCallbackBoundary

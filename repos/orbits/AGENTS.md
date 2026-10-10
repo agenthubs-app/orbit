@@ -137,12 +137,11 @@ workspace root for implementation work.
 - Keep app-facing knowledge copy in Chinese, with English technical names only
   where they are source identifiers.
 
-<!-- gitnexus:start -->
-## redesign 开发规则（R09，两端 `AGENTS.md` 内容相同）
+## redesign 开发规则（R09，两端 `AGENTS.md` 内容相同；放在 `<!-- gitnexus:start -->` 之前，那一块会被 `gitnexus analyze` 重写）
 
 改版的全部计划、决定和 Sprint 文档在 `docs/designs/redesign-2026-10/sprints/`（[README](../../docs/designs/redesign-2026-10/sprints/README.md) 的决定表 RD-01…，[开始一个功能 Sprint](../../docs/designs/redesign-2026-10/sprints/HOW-TO-START-A-FEATURE-SPRINT.md)）。以下规则对 `redesign` 分支上的所有工作生效。
 
-- **分支**：在 `redesign` 上开发；个人分支 `redesign-R<编号>-<主题>`（全用连字符：已有 `redesign` 分支时，git 不允许再建 `redesign/…`）从 `redesign` 开出、合回 `redesign`。`chat-agent` 冻结（RD-03），所有功能 Sprint 完成并通过「合回 `chat-agent` 前总验收」（README）之前不合回。
+- **分支**：在 `redesign` 上开发；骨架 R02–R09 直接在 `redesign` 上提交（RD-25）；功能 Sprint 两人并行时，个人分支 `redesign-R<编号>-<主题>`（全用连字符：已有 `redesign` 分支时，git 不允许再建 `redesign/…`）从 `redesign` 开出，收口时先 `git rebase redesign`、全量通过后 `git switch redesign && git merge --ff-only <分支>` 合回（不开 PR）、合回 `redesign`。`chat-agent` 冻结（RD-03），所有功能 Sprint 完成并通过「合回 `chat-agent` 前总验收」（README）之前不合回。
 - **契约**（`repos/orbits/shared/contract/`）：只加不改；每个文件头写负责人和使用方；提交信息以 `contract:` 开头并注明「App 需要同步」，App 在同一提交里带上 `npm run sync:contract` 的副本（不直接改 App 的副本）；加字段后 `node scripts/contract-snapshot.mjs --write`；破坏性改动先在 `shared/contract/BREAKING.md` 登记（日期、id、改动、原因、甲乙同意、App 跟进）。`@draft` 文件不受检查。
 - **迁移**：每个模块独立编号、只向前；两个人负责的模块不重叠（按功能 Sprint 的归属）。
 - **新代码约定**：
@@ -166,6 +165,7 @@ workspace root for implementation work.
   | `shared/contract/.snapshot.json`、`BREAKING.md` | 改动该契约的负责人 | 按 R08 的契约归属 |
 - **每个 Sprint 的收口**：两端全量测试对照基线零新增失败（orbits 用 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`），typecheck、`lint` 通过；改函数前跑 GitNexus `impact`、提交前跑 `detect-changes`（索引落后时先 `node .gitnexus/run.cjs analyze --index-only`，否则新符号查不到、结论不可信）；写 REPORT，由独立 AI 复核写 REVIEW，问题直接在 `redesign` 上修（RD-25）。
 
+<!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
 This project is indexed by GitNexus as **orbits** (40053 symbols, 70551 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.

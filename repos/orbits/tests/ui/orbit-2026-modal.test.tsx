@@ -113,3 +113,31 @@ test("popover and context menu: Escape and outside clicks close them; the menu m
   await menu.waitFor({ state: "detached" });
   assert.equal(await active(page), "context menu", "focus returns to the trigger");
 });
+
+// R09 walkthrough W2: on the real page ⌘K opened with focus on 閉じる (the trap's
+// first control) instead of the search field. Modal takes `initialFocus`, applied
+// after the trap's own first focus.
+test("a dialog can start on a chosen control instead of its first one", async (t) => {
+  const focusCode = await bundle(`
+    import React, { useRef, useState } from "react";
+    import { createRoot } from "react-dom/client";
+    import { Modal, Orbit2026Scope } from "./app/(app)/app/orbit-2026/ui";
+    function Demo() {
+      const [open, setOpen] = useState(false);
+      const field = useRef(null);
+      return <Orbit2026Scope language="ja">
+        <button type="button" onClick={() => setOpen(true)}>open</button>
+        <Modal open={open} onClose={() => setOpen(false)} title="検索" initialFocus={field}><input ref={field} aria-label="search field" /></Modal>
+      </Orbit2026Scope>;
+    }
+    createRoot(document.getElementById("root")).render(<Demo />);
+  `);
+  const page = await open(browser, focusCode);
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  await page.getByRole("button", { name: "open" }).click();
+  await page.getByRole("dialog", { name: "検索" }).waitFor();
+  await page.waitForTimeout(100);
+  assert.equal(await active(page), "search field");
+  await page.keyboard.press("Escape");
+  assert.equal(await active(page), "open", "focus still returns to the opener");
+});

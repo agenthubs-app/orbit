@@ -28,7 +28,7 @@ export function FullDrawer({ visible, title, onClose, children }: { visible: boo
   const translateX = slide.interpolate({ inputRange: [0, 1], outputRange: [reduced ? 0 : 318, 0] });
   return (
     <UiPortal>
-      <View accessibilityViewIsModal style={StyleSheet.absoluteFill}>
+      <View accessibilityViewIsModal onAccessibilityEscape={close} style={StyleSheet.absoluteFill}>
         <Scrim onPress={close} />
         <Animated.View style={[styles.drawer, { opacity: slide, transform: [{ translateX }] }]}>
           <View style={styles.header}>

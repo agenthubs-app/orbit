@@ -28,7 +28,7 @@
 ## 2. 放进壳里
 
 - **App**：屏幕用 `AppScreen`（标题、返回、滚动记忆都有了）。Task 的四段在 `src/screens/task/TaskScreen.tsx` 的 `TASK_SLOTS`，只换自己那一段的组件，不改分段结构。
-- **Web**：页面里放 `<ShellPage title="…" subtitle="…" right={…} rightRail />`（`orbit-2026/shell/slots.tsx`），左栏、主标题区、右栏、⌘K 都由壳画；页面不再挂任何导航。Task 容器在 `orbit-2026/task/TaskContainer.tsx`，同样只换自己的段。
+- **Web**：页面里放 `<ShellPage title="…" subtitle="…" left={…} right={…} demoPill={…} rightRail />`（`left` / `right` 是标题两侧的按钮，`demoPill` 是示例模式药丸，一般用现成的 `ShellDemoPill`）（`orbit-2026/shell/slots.tsx`），左栏、主标题区、右栏、⌘K 都由壳画；页面不再挂任何导航。Task 容器在 `orbit-2026/task/TaskContainer.tsx`，同样只换自己的段。
   - 插槽的内容在壳里渲染，不在页面树里：它拿不到页面的 context（示例模式、页面状态），需要的值在页面里读好再作为 props 传进去（例子：`ShellDemoPill`）。
   - `ShellPage` 通常写在页面的 `Orbit2026Scope` 外面，那里 `useStandardCopy()` 会退回日文；标题用 `pickCopy(表.键, language)` 或 `standardCopyFor(language)`（`useOrbitLanguage()` 取 `language`）。
   - 不传 `rightRail`（或传 `false`）就没有右栏；传 `true` 用默认右栏；<1280 时右栏自动变成标题区按钮 + 380 抽屉。
@@ -57,12 +57,13 @@
 live 实现合入之前，正式环境里这些接口返回 `503` + `context.reason = "NOT_IMPLEMENTED"`。界面**不显示错误**：
 
 ```ts
-// Web：import { whenNotImplemented } from "../../../../../shared/compute/not-implemented";（按文件位置数层级）
-// App：import { whenNotImplemented } from "../api/compute/not-implemented";
+// Web：从 repos/orbits 根目录的 shared/compute/not-implemented.ts 引入。文件在 app/(app)/app/orbit-2026/<模块>/ 下时是
+//      import { whenNotImplemented } from "../../../../../shared/compute/not-implemented";（每深一层多一个 ../）
+// App：同步副本在 src/api/compute/not-implemented.ts；src/screens/<模块>/ 下的文件写 "../../api/compute/not-implemented"。
 const body = await response.json();                          // 统一信封：{ success: true, data } 或 { success: false, error }
 const missing = whenNotImplemented(body, { use: "hide" });   // 没有合理默认值 → 隐藏这个入口或这一块
 if (missing) return null;                                     // 「尚未実装」：不显示错误，整块不画
-if (!body.success) return <RetryState … />;                   // 真正的故障（含普通 503）照常显示错误和重试
+if (!body.success) return <RetryCard title={…} onRetry={reload} />; // 真正的故障（含普通 503）照常显示错误和重试（Web / App 的 ui 都有 RetryCard）
 render(body.data);
 // 有默认值的（首页布局）：whenNotImplemented(body, { use: "default", value: DEFAULT_HOME_LAYOUT }) 返回 { show: true, value }
 ```

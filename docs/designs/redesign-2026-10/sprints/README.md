@@ -10,6 +10,7 @@
 - 改版全部在 **`redesign`** 分支开发（2026-10-09 从 `chat-agent` `9d404c1c8` 建立）。**R02 起直接在 `redesign` 上提交，不再开 Sprint 分支、不开 PR**（RD-25）；R01 曾用分支 `redesign-R01-design-tokens` 经 PR #1 合入。
 - **`chat-agent` 冻结**：改版期间不做新功能、不修线上问题（RD-03）。
 - `redesign` 在**所有功能完成并整体验收后**一次合并回 `chat-agent`。
+- **功能 Sprint（R10 起）两人并行时**：个人分支 `redesign-R<编号>-<主题>`（全用连字符，`redesign/…` 建不了），收口时 rebase 到 `redesign`、全量通过后 `--ff-only` 合回；一个人做的 Sprint 仍可直接在 `redesign` 上提交。详见两端 `AGENTS.md`「redesign 开发规则」（R09）。
 
 ## 分工（RD-01）
 
@@ -97,6 +98,8 @@
 - [ ] R08 的 7 组新接口都有 live 实现，或明确保留「尚未实现」并在界面隐藏入口；生产环境不出现示例数据。
 - [ ] App `tests/route-parity.test.ts` 的 `/start`：按用户决定（App 以后做引导页）处理完毕，App 测试零失败。
 - [ ] Web `AgentDock` 按主区居中（R07 复核 M3 附带，R10）。
+- [ ] 产品负责人事后确认：R04 复核 M5（注销确认改为动作表、焦点在安全项）、R05 复核 m6（底栏不随页面转场滑动）。
+- [ ] R09 走查留给功能 Sprint 的两条：W3 开发模式水合警告（`/app/events`、`/app/contacts`，R26 / R11）、A2 登录确认画面已显示底栏（R18）。
 
 **上线前的环境与真机**
 - [ ] staging 的 `VERCEL_ENV` / 展示页开关核对（R06 复核 m9：`/showcase` 只在非生产可见）。

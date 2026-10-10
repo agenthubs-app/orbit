@@ -78,7 +78,7 @@ export function ConfirmDialog({
   );
   return (
     <UiPortal>
-      <View accessibilityViewIsModal style={styles.root}>
+      <View accessibilityViewIsModal onAccessibilityEscape={cancel} style={styles.root}>
         <Scrim onPress={destructive ? undefined : cancel} />
         <Animated.View accessibilityRole="alert" style={[styles.dialog, { opacity: appear, transform: [{ scale }] }]}>
           <View style={[styles.iconBlock, destructive ? styles.iconDanger : styles.iconNeutral]}>

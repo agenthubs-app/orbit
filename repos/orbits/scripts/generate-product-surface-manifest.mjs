@@ -12,6 +12,9 @@ import { fileURLToPath } from "node:url";
 
 import ts from "typescript";
 
+/** Components whose required `label` prop is their accessible name (R09 review m2). */
+const LABELLED_COMPONENTS = new Set(["Button", "IconButton", "FilterOption"]);
+
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PRODUCT_ROOT = path.resolve(SCRIPT_DIR, "..");
 const WORKSPACE_ROOT = path.resolve(PRODUCT_ROOT, "../..");
@@ -998,9 +1001,10 @@ function collectInteractions(filePath, imperativeBindings = []) {
       if (kind) {
         const start = source.getLineAndCharacterOfPosition(node.getStart(source));
         const childText = staticChildText(node, source);
-        // Redesign components (R04 / R06 Button, IconButton …) take a required
-        // `label` prop and render it as the control's accessible name.
-        const componentLabel = /^[A-Z]/.test(parts.tagName) ? attributes.get("label") : undefined;
+        // Redesign components whose required `label` prop is the accessible name
+        // (R04 / R06 Button, IconButton, FilterOption); RN Pressable, TextInput,
+        // Link … ignore a `label` prop.
+        const componentLabel = LABELLED_COMPONENTS.has(parts.tagName) ? attributes.get("label") : undefined;
         const label =
           attributes.get("aria-label") ??
           attributes.get("arialabel") ??

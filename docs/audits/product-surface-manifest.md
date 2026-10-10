@@ -1,8 +1,8 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `339ff05a958f7c3eeaaea1b5f8a2cdbe7218e457`
-- Deterministic generated timestamp (commit time): 2026-10-10T15:37:40+09:00
+- Indexed commit: `fcb49b43e11d9f2edf30968639d55963a57ca3c0`
+- Deterministic generated timestamp (commit time): 2026-10-10T16:05:40+09:00
 - Scope: All production Next.js page routes; API, /dev and /showcase routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 49
@@ -23,7 +23,7 @@
 | `/app/admin/access` | Admin access entry | authenticated | Live, Derived | 2 | 30 | 0 |
 | `/app/admin/events` | Admin event operations | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 7 | 30 | 0 |
 | `/app/admin` | Admin operations | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 7 | 30 | 0 |
-| `/app/admin/read-cost` | Production application surface; purpose requires product review | authenticated | Live, Mock, Derived, User Confirmed | 2 | 18 | 0 |
+| `/app/admin/read-cost` | Production application surface; purpose requires product review | authenticated | Live, Mock, Derived, User Confirmed | 2 | 19 | 0 |
 | `/app/agent/actions` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, User Confirmed, Externally Executed | 11 | 30 | 0 |
 | `/app/agent` | Relationship operations Agent | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 185 | 30 | 0 |
 | `/app/agent/plan` | Production application surface; purpose requires product review | authenticated | Unclassified | 0 | 30 | 0 |

@@ -27,14 +27,19 @@ type DialogFrameProps = {
   scrimClassName: string;
   children: ReactNode;
   role?: "dialog" | "alertdialog";
+  /** Focus this control instead of the first one (for example ⌘K's search field). */
+  initialFocus?: RefObject<HTMLElement | null>;
 };
 
 // Shared frame: scrim + panel in the scope host, focus trapped by useOrbitModalA11y
 // (first control focused, Tab cycles, focus returns to the opener on close), Escape
 // and scrim acting on the top layer only.
-function DialogFrame({ onClose, closeOnScrim = true, labelledBy, describedBy, className, scrimClassName, children, role = "dialog" }: DialogFrameProps) {
+function DialogFrame({ onClose, closeOnScrim = true, labelledBy, describedBy, className, scrimClassName, children, role = "dialog", initialFocus }: DialogFrameProps) {
   const isTop = useLayer(true);
   const cardRef = useOrbitModalA11y(() => { if (isTop()) onClose(); });
+  // Runs after the trap's own effect (declared after it), so the requested control
+  // wins over "first focusable" without fighting it or retrying.
+  useEffect(() => { initialFocus?.current?.focus(); }, [initialFocus]);
   return (
     <Portal>
       <div className={scrimClassName} aria-hidden onMouseDown={() => { if (closeOnScrim && isTop()) onClose(); }} />
@@ -47,7 +52,7 @@ function DialogFrame({ onClose, closeOnScrim = true, labelledBy, describedBy, cl
 
 // kit .wmodal: centred dialog 420 / 480 / 560 (680 for the ⌘K panel), radius 28, padding 24; `top` sits 96
 // from the top (⌘K); `form` uses --bg so cards inside keep their layer.
-export function Modal({ open, onClose, title, description, size = 420, top = false, form = false, actions, hint, children }: {
+export function Modal({ open, onClose, title, description, size = 420, top = false, form = false, actions, hint, initialFocus, children }: {
   open: boolean;
   onClose: () => void;
   title: string;
@@ -57,13 +62,14 @@ export function Modal({ open, onClose, title, description, size = 420, top = fal
   form?: boolean;
   actions?: ReactNode;
   hint?: ReactNode;
+  initialFocus?: RefObject<HTMLElement | null>;
   children?: ReactNode;
 }) {
   const id = useId();
   const copy = useStandardCopy();
   if (!open) return null;
   return (
-    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} describedBy={description ? `${id}-desc` : undefined} scrimClassName={styles.scrim}
+    <DialogFrame onClose={onClose} initialFocus={initialFocus} labelledBy={`${id}-title`} describedBy={description ? `${id}-desc` : undefined} scrimClassName={styles.scrim}
       className={[styles.modal, styles[`w${size}`], top ? styles.top : "", form ? styles.form : ""].filter(Boolean).join(" ")}>
       <div className={styles.modalHead}>
         <h2 id={`${id}-title`} className={styles.modalTitle}>{title}</h2>

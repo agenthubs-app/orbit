@@ -49,7 +49,7 @@ export function BottomSheet({ visible, onClose, children, accessibilityLabel }: 
   if (!visible) return null;
   return (
     <UiPortal>
-      <View accessibilityViewIsModal style={StyleSheet.absoluteFill}>
+      <View accessibilityViewIsModal onAccessibilityEscape={close} style={StyleSheet.absoluteFill}>
         <Scrim onPress={close} />
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} pointerEvents="box-none" style={styles.anchor}>
           <Animated.View accessibilityLabel={accessibilityLabel} onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)} style={[styles.sheet, { maxHeight }, sheetStyle]}>

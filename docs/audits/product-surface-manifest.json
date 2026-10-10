@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API, /dev and /showcase routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "339ff05a958f7c3eeaaea1b5f8a2cdbe7218e457",
-  "generatedAt": "2026-10-10T15:37:40+09:00",
+  "commit": "fcb49b43e11d9f2edf30968639d55963a57ca3c0",
+  "generatedAt": "2026-10-10T16:05:40+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -5320,6 +5320,7 @@
         }
       ],
       "testCoverage": [
+        "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/observability/read-receipts-postgres.test.ts",
         "repos/orbits/tests/observability/read-receipts.test.ts",
         "repos/orbits/tests/operations/read-cost-postgres.test.ts",
@@ -35193,6 +35194,7 @@
       "testCoverage": [
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
+        "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/profile-live-store.test.ts",
         "repos/orbits/tests/capabilities/profile-onboarding-and-manual-profile-editor.test.ts",
         "repos/orbits/tests/capabilities/profile-onboarding-policy.test.ts",
@@ -35219,8 +35221,7 @@
         "repos/orbits/tests/pages/profile-editor-draft.test.ts",
         "repos/orbits/tests/pages/profile-onboarding-access.test.ts",
         "repos/orbits/tests/pages/secondary-industry-editors.test.tsx",
-        "repos/orbits/tests/services/contact-needs.test.ts",
-        "repos/orbits/tests/ui/orbit-2026-shell.test.tsx"
+        "repos/orbits/tests/services/contact-needs.test.ts"
       ],
       "knownRisks": [
         {

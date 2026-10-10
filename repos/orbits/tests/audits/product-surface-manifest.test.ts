@@ -233,14 +233,15 @@ function scanFixture(source: string) {
   }
 }
 
-test("a redesign component's required label prop is its accessible name; a lower-case element's label attribute is not", () => {
+test("only the redesign components whose label prop is their accessible name get credit for it", () => {
   const actions = scanFixture(`export function Bar() {
-    return <><Button label="編集" onClick={() => go()} /><IconButton icon="bell" label="受信箱" onClick={() => go()} /><button label="x" onClick={() => go()} /></>;
+    return <><Button label="編集" onClick={() => go()} /><IconButton icon="bell" label="受信箱" onClick={() => go()} /><button label="x" onClick={() => go()} /><Pressable label="y" onPress={() => go()} /></>;
   }`);
   const evidence = Object.fromEntries(actions.map((action) => [action.tag, action.accessibleName]));
   assert.equal(evidence.Button, "present-static");
   assert.equal(evidence.IconButton, "present-static");
   assert.equal(evidence.button, "unresolved-static");
+  assert.notEqual(evidence.Pressable, "present-static", "a component that ignores `label` gets no credit for it");
 });
 
 test("AST fixtures preserve direct listeners and exact source/event evidence", () => {
