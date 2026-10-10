@@ -15,5 +15,6 @@ export const inboxNotificationSchema = z.object({
   target:z.object({kind:z.enum(['task','schedule','appointment','event','conversation','batch','source']),id,href:z.string().regex(/^\/(?!\/)/).nullable(),status:z.enum(['available','changed','unavailable'])}),
   actions:z.array(z.enum(['read','dismiss','handle','snooze','accept'])),occurredAt:instant,updatedAt:instant,readAt:instant.nullable(),dueAt:instant.optional(),scheduledFor:instant.optional(),expiresAt:instant.optional(),disposition:z.enum(['open','dismissed','handled','accepted','expired','archived']),legacyId:id.optional(),createdTaskId:id.optional(),
   copy:z.object({zh:z.object({title:z.string(),reason:z.string()}),en:z.object({title:z.string(),reason:z.string()}),ja:z.object({title:z.string(),reason:z.string()})}).optional(),
+  sample:z.literal(true).optional(),
 }).strict() as z.ZodType<InboxNotificationDTO>;
 export const inboxNotificationListSchema = z.object({enabled:z.boolean(),items:z.array(inboxNotificationSchema),unreadCount:z.number().int().nonnegative(),nextCursor:z.string().nullable(),asOf:instant}) as z.ZodType<InboxNotificationListDTO>;

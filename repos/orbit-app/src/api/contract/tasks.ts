@@ -35,6 +35,8 @@ export interface TaskItemContract {
   updatedAt: string;
   /** R08 (R20 owns, To-do use): how many times the task was moved to a later day. */
   deferralCount?: number;
+  /** R08: a demo-world record; the UI shows the sample tag and never stores, counts or searches it. */
+  sample?: true;
 }
 
 export interface TaskSuggestionContract {

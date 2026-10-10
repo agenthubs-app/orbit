@@ -88,6 +88,8 @@ export interface ContactListItemContract {
   calendarProviderRequested: false;
   emailProviderRequested: false;
   notificationDelivered: false;
+  /** R08: a demo-world record; the UI shows the sample tag and never stores, counts or searches it. */
+  sample?: true;
 }
 
 export interface ContactFilterOptionContract<TValue extends string> {

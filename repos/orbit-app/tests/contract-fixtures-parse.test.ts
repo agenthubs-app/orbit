@@ -10,6 +10,7 @@ import { eventRecommendationDismissResultSchema } from "../src/api/schema/event-
 import { homeLayoutSchema } from "../src/api/schema/home-layout";
 import { inboxNotificationSchema } from "../src/api/schema/inbox-notifications";
 import { inviteCodePreviewSchema, inviteCodeRedeemResultSchema, inviteCodeSchema } from "../src/api/schema/invite-codes";
+import { contactListItemSchema } from "../src/api/schema/mobile-contacts-dashboard";
 import { inboxDeliveryPreferencesSchema } from "../src/api/schema/notification-delivery-policy";
 import { planV2SummaryResponseSchema } from "../src/api/schema/plan-v2";
 // The demo-world fixtures live on the server side; a test may read ../orbits (it
@@ -34,6 +35,7 @@ test("the App's synced schemas parse every redesign fixture", () => {
   planV2SummaryResponseSchema.parse(fixtures.demoPlanSummary);
   const summary = contactCardSummarySchema.parse({ total: 10, sources: {}, statuses: {}, values: {}, tags: [], hasMoreTags: false, asOf: "2026-10-07T00:00:00.000Z", ...fixtures.demoContactSummaryExtras });
   assert.deepEqual(summary.densityCounts, fixtures.demoContactSummaryExtras.densityCounts);
+  for (const row of fixtures.demoContactRows) assert.equal(contactListItemSchema.parse(row).sample, true);
 });
 
 test("「尚未実装」 from the server picks a default or hides the entry", () => {

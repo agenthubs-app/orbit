@@ -2,24 +2,29 @@ import { z } from "zod";
 import type { HomeLayoutContract, HomeLayoutUpdateInput, HomeWidgetSlot } from "../contract/home-layout";
 
 // R08 contract 1 (owner 乙 / R10). Each widget at most once per surface.
+// Responses are read tolerantly (unknown keys are dropped, so an older client keeps
+// working after a later Sprint adds an optional field); request bodies stay strict.
+// The *Object exports are the uncast schemas for the TS ⇔ zod parity check.
 const key = z.enum(["today", "planScore", "nextEvent", "network", "secretary", "pending", "week", "eventPick", "memo", "deadline"]);
-const slot = z.object({ key, size: z.enum(["s", "m"]) }).strict();
+const slot = z.object({ key, size: z.enum(["s", "m"]) });
 const slots = z.array(slot).max(10).refine((items) => new Set(items.map((item) => item.key)).size === items.length, { message: "a widget appears once" });
 
-export const homeLayoutSchema = z.object({
+export const homeLayoutObject = z.object({
   revision: z.number().int().min(0),
   app: slots,
   web: slots,
   hintDismissedAt: z.string().datetime({ offset: true }).optional(),
-}).strict() as z.ZodType<HomeLayoutContract>;
+});
+export const homeLayoutSchema = homeLayoutObject as z.ZodType<HomeLayoutContract>;
 
-export const homeLayoutUpdateInputSchema = z.object({
+export const homeLayoutUpdateInputObject = z.object({
   expectedRevision: z.number().int().min(0),
   mutationId: z.string().min(1).max(200),
-  app: slots,
-  web: slots,
+  app: z.array(slot.strict()).max(10).refine((items) => new Set(items.map((item) => item.key)).size === items.length, { message: "a widget appears once" }),
+  web: z.array(slot.strict()).max(10).refine((items) => new Set(items.map((item) => item.key)).size === items.length, { message: "a widget appears once" }),
   hintDismissedAt: z.string().datetime({ offset: true }).optional(),
-}).strict() as z.ZodType<HomeLayoutUpdateInput>;
+}).strict();
+export const homeLayoutUpdateInputSchema = homeLayoutUpdateInputObject as z.ZodType<HomeLayoutUpdateInput>;
 
 /** The layout a person starts with (and the UI's fallback when the endpoint is not implemented yet). */
 export const DEFAULT_HOME_LAYOUT: HomeLayoutContract = {

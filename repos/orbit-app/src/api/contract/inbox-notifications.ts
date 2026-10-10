@@ -44,6 +44,8 @@ export interface InboxNotificationDTO {
   legacyId?: string;
   createdTaskId?: string;
   copy?: Readonly<Record<'zh' | 'en' | 'ja', { title: string; reason: string }>>;
+  /** R08: a demo-world record; the UI shows the sample tag. */
+  sample?: true;
 }
 export interface InboxNotificationListDTO {
   enabled: boolean;

@@ -17,6 +17,7 @@ export interface InviteCodeContract {
   createdAt: string;
   revokedAt?: string;
   shared: InviteSharedFields;
+  sample?: true;
 }
 
 /** Public preview: only what the inviter chose to share. */
@@ -24,6 +25,15 @@ export interface InviteCodePreview {
   code: string;
   expiresAt: string;
   shared: InviteSharedFields;
+  sample?: true;
+}
+
+/** POST /api/invite-codes — the inviter picks what to share and how many people may use it. */
+export interface InviteCodeCreateInput {
+  shared: InviteSharedFields;
+  /** 1–10. */
+  maxUses: number;
+  idempotencyKey: string;
 }
 
 export interface InviteCodeRedeemResult {

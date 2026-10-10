@@ -12,6 +12,12 @@ export interface AccountExportContract {
   expiresAt?: string;
 }
 
+/** POST /api/account/exports. */
+export interface AccountExportCreateInput {
+  scope: readonly AccountExportScope[];
+  idempotencyKey: string;
+}
+
 export interface AccountDeletionRequestContract {
   requestedAt: string;
   /** requestedAt + 30 days; cancelling before then keeps the account. */

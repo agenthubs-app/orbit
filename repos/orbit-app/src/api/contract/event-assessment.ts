@@ -33,16 +33,21 @@ export interface EventAssessmentContract {
   missingFields: readonly (keyof EventAssessmentFacts)[];
   rubricVersion: string;
   createdAt: string;
-  sample?: boolean;
+  sample?: true;
 }
 
-export interface EventAssessmentCreateInput {
-  sourceKind: EventAssessmentSourceKind;
-  url?: string;
-  eventId?: string;
-  idempotencyKey: string;
-}
+/** POST /api/events/assessments — one shape per source: a link, an uploaded poster, or an Orbit event. */
+export type EventAssessmentCreateInput =
+  | { sourceKind: "url"; url: string; idempotencyKey: string }
+  | { sourceKind: "poster"; posterAssetId: string; idempotencyKey: string }
+  | { sourceKind: "orbit_event"; eventId: string; idempotencyKey: string };
 
 export interface EventAssessmentPatchInput {
   facts: EventAssessmentFacts;
+}
+
+/** POST /api/events/assessments/[id]/add-to-plan. */
+export interface EventAssessmentAddToPlanResult {
+  assessmentId: string;
+  addedToPlan: true;
 }

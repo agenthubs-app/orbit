@@ -8,7 +8,7 @@ export interface ContactCompletionQuestion {
   /** Day the question was asked (YYYY-MM-DD, the person's time zone). */
   askedOn: string;
   skipCount: number;
-  sample?: boolean;
+  sample?: true;
 }
 
 export interface ContactCompletionAnswerInput {

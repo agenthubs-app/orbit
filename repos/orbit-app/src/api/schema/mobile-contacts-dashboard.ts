@@ -329,7 +329,7 @@ const contactSourceSchema = z
   })
   .passthrough();
 
-const contactListItemSchema = z
+export const contactListItemSchema = z
   .object({
     id: nonEmptyString,
     displayName: nonEmptyString,

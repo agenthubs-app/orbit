@@ -24,7 +24,7 @@
    | 12 | `plan-v2.ts`（新，**`@draft until R22`**） | `GET /api/agent/plans/v2/summary` | 甲 R22 → 首页、Task、活动评分 |
 
 2. **mock 路由的统一做法**：`features/redesign-contracts/service-factory.ts` 用现有 `createModuleServiceFactory`（只有 `mock` 实现）；`app/api/_shared/redesign-contract-route.ts` 解析模式 → mock / hybrid 走 `features/redesign-contracts/mock-service.ts`（演示世界，内存状态，不写库），live（生产环境永远是 live）返回 `503 SERVICE_UNAVAILABLE` + `context { capabilityId, reason: "NOT_IMPLEMENTED", requestedMode }`，与现有计划路由同一口径；每个响应出门前用契约的 zod 校验；坏 body 400、未知 id 404，都在统一信封里。路由文件只 re-export `features/redesign-contracts/handlers.ts` 的处理函数。
-3. **统一演示世界**（`shared/mock/demo-world/index.ts`）：10 个虚构人物（设计稿里的 渡辺 翔 / Nexa Robotics、高橋 美咲 / 青葉ベンチャーズ 等）、3 个活动、1 个计划、2 条笔记、3 条待办，日文；每条都带 `sample: true`。`fixtures.ts` 只从这里组装 12 组 fixture。
+3. **统一演示世界**（`shared/mock/demo-world/index.ts`）：10 个虚构人物（设计稿里的 渡辺 翔 / Nexa Robotics、高橋 美咲 / 青葉ベンチャーズ 等）、3 个活动、1 个计划、2 条笔记、3 条待办，日文；`fixtures.ts` 只从这里组装 12 组 fixture。**示例标记**（复核 M2 后定稿）：人能看到的内容记录（人物、活动、计划、笔记、待办、联系人行、收件箱通知、邀请码与预览、补全问题、评估）都带 `sample: true`，对应契约加了可选的 `sample?: true`；设置类、回执类（首页布局、通知偏好、导出 / 退会状态、App 版本、不感兴趣回执、兑换结果）不带，整份响应由 `X-Orbit-Feature-Mode: mock` 标明。`demo-world-consistency` 遍历全部导出检查这条。
 4. **「只加不改」**：`scripts/contract-snapshot.mjs`（TypeScript 编译器读 `shared/contract/*.ts` → `.snapshot.json`：字段名、可选、类型文本、枚举值），检查删类型 / 删字段（改名 = 删 + 加）、可选变必填、给已有类型加必填字段、枚举少值、类型不是放宽；`@draft` 文件不记录不检查；`BREAKING.md` 里用反引号写了 id 的破坏放行（表格：日期、id、改动、原因、甲乙同意、App 跟进）。`node scripts/contract-snapshot.mjs [--write]`。
 5. **「尚未实现」工具**：`shared/compute/not-implemented.ts`（两端共用目录，`sync:contract` 逐字拷到 App `src/api/compute/`，过共用目录审计）：`isNotImplemented(payload)` 认信封和已拆开的错误对象，真正的 503 故障不算；`whenNotImplemented(payload, { use: "default", value } | { use: "hide" })`。
 6. **登录代理**：`proxy.ts` 的公开 API 白名单加了 `/api/invite-codes/[code]/preview`（受邀人登录前看邀请）和 `/api/app/version`（App 启动时、登录前检查最低版本）；其余新接口默认受保护。
@@ -54,13 +54,13 @@
 
 ## 自定决定（用户指示：疑问一律选推荐方案，写明理由）
 
-1. **2 / 5 / 6 / 7 / 10 这五组扩展只交付 fixture，不改现有接口**：这些现有接口（`/api/contacts/page`、笔记、收件箱、偏好、待办）都没有 mock 模式，直接读本地 / 正式库；给它们加 mock 分支等于改旧接口的运行方式（RD-24 骨架不改旧屏、PLANNER「不做真实实现」）。功能 Sprint 接入时直接用 `demo-world/fixtures.ts` 里的 `filterDemoContacts`、`demoNotes`、`demoSecretaryNotifications`、`demoDeliveryPreferences`、`demoTodos`（都过 schema）。
+1. **2 / 5 / 6 / 7 / 10 这五组扩展只交付 fixture，不改现有接口**：这些现有接口（`/api/contacts/page`、笔记、收件箱、偏好、待办）都没有 mock 模式，直接读本地 / 正式库；给它们加 mock 分支等于改旧接口的运行方式（RD-24 骨架不改旧屏、PLANNER「不做真实实现」）。功能 Sprint 接入时直接用 `demo-world/fixtures.ts` 里的 `filterDemoContacts`、`demoContactRows`、`demoNotes`、`demoSecretaryNotifications`、`demoDeliveryPreferences`、`demoTodos`：联系人行、收件箱通知、偏好过各自的 zod（两端测试）；笔记、待办没有 zod，用 `satisfies NoteContract` / `TaskItemContract` 由 `tsc` 把关（复核 M1 后补齐；第一版这三组不是契约形状，原文「都过 schema」不准确）。
 2. **「尚未实现」= `503 SERVICE_UNAVAILABLE` + `context.reason = "NOT_IMPLEMENTED"`**，不新增错误码：`ApiErrorCodeContract` 没有 `NOT_IMPLEMENTED`，加错误码会改共享枚举；现有计划路由已经用这个口径。对标 HTTP 语义（501 是「服务器不支持这个方法」，功能开关未开更常用 503 + 原因）。
 3. **mock 状态放内存**（进程重启复原），不写库：PLANNER「示例数据不写库」。
 4. **`capability-registry` 不登记**这 7 个 capability：它是开发面板用的粗粒度目录（11 个领域），每个功能 Sprint 做 live 实现时登记更合适；PLANNER 写的是「如需要」。
 5. **公开白名单只放邀请预览和 App 版本**：预览只返回邀请人选择共享的字段（契约 4「公开」）；最低版本必须在登录前可读，否则强制升级拦不住旧版本无法登录的情况。对标 App Store 类应用的强更检查。
 6. **快照第一次记录在 R08 结束时**（340 个类型，`plan-v2` 除外），同时对 R07 提交的契约目录跑了同一检查，证明 R08 本身只加不改。
-7. **虚构公司「湾岸グロース・パートナーズ」改名「臨海グロース・パートナーズ」**：copy-qa 把「湾」当简体字形（日文正字也是「湾」），改检查器属于 R03，演示数据换个名字成本最低。见已知例外 2。
+7. ~~虚构公司改名「臨海」~~（复核 m8 不同意，已撤回）：改回设计稿的「湾岸グロース・パートナーズ」，并修了 R03 copy-qa 的误报（「湾」从简体字形表删除，日文也写「湾」）；小林 誠的职务按 `b10-plan-example.html` 改为「主宰」。
 8. **`DEFAULT_HOME_LAYOUT` 放在 `api-schema/home-layout.ts`**：契约文件按约定只放类型（`contract-surface` 要求自包含、无运行时值）。
 
 ## 基线 → 收口
@@ -88,7 +88,13 @@
 - **演示世界人物表**（`shared/mock/demo-world/index.ts`）：渡辺 翔（Nexa Robotics 代表取締役，密度 3）、高橋 美咲（青葉ベンチャーズ パートナー，3）、山本 彩（東都キャピタル，2）、青木 里奈（Kanade AI CTO，2）、小林 誠（丸の内イノベーションラボ，2）、伊藤 直子（株式会社ハルモニア，1）、佐々木 遼（臨海グロース・パートナーズ，1）、鈴木 大輔（北辰製作所，1）、松井 遥（株式会社ソラノテ，2）、岡田 紗希（Sakura Growth Partners，1）。活动：CFO Night Tokyo vol.18、SaaS Summit 2026、ロボティクス起業家ミートアップ。计划「年内に初期顧客を 5 社つくる」。新 fixture 只从这里取人和事，`demo-world-consistency` 会拦住不一致。
 - **改契约的流程**：只加可选字段 / 枚举值 / 新类型 → 跑 `node scripts/contract-snapshot.mjs --write`，提交信息以 `contract:` 开头并注明「App 需要同步」，App 侧 `npm run sync:contract`。破坏性改动 → 先在 `shared/contract/BREAKING.md` 登记（日期、id、改动、原因、甲乙同意、App 跟进），再 `--write`。`plan-v2.ts` 在 R22 定稿时去掉 `@draft` 并 `--write`。
 
+- **复核后补的交接**：
+  - **本地用假数据**：本地 `.env.local` 是 live 时，设 `ORBIT_REDESIGN_MOCK=home-layout,invite-codes`（或 `all`）只把这些契约切到演示世界，其他页面照旧（生产无效）。mock 状态全局共享、重启复原。
+  - **R20**：`NoteMentionContract` 提及活动时仍要求 `contactId`；改成可选会破坏读取方，R20 定稿时按 `BREAKING.md` 流程处理，或另加 `NoteEventMentionContract`。
+  - **R15**：`/api/invite-codes/[code]/preview` 不登录可读，live 实现前加限流和防按码枚举。
+  - **R13 / R14**：App 现在用 strict schema 读收件箱通知和通知偏好（`src/api/inbox-notifications.ts`、`NotificationDeliverySettings.tsx`），启用新来源 / 新字段之前先把这两处改成宽进读取，或抬高 `minSupportedAppVersion`（README 通用规则 10）。
+
 ## 已知例外
 
 1. **2 / 5 / 6 / 7 / 10 的现有接口在 mock 模式下不会返回新字段**（自定决定 1）；功能 Sprint 用 fixture 开发。
-2. **copy-qa 把「湾」列为简体字形**：日文常用字也是「湾」（旧字体「灣」），属于 R03 检查器的误报，登记给 R03 维护者；本 Sprint 用改名绕开，没有改检查器。
+2. ~~copy-qa 把「湾」列为简体字形~~：复核 m8 后已修检查器。

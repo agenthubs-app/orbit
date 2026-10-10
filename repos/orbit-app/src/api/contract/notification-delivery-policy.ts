@@ -27,6 +27,14 @@ export interface InboxDeliveryPreferencesInput {
  lockScreenContent?:'private'|'full';
  quietHoursEnabled?:boolean;
  muteConversation?:{conversationId:string;muted:boolean};
+ // R08 (R14): the same settings as the DTO's new optional fields.
+ quietStart?:string;
+ quietEnd?:string;
+ dailyCap?:1|2|3;
+ secretaryMail?:boolean;
+ secretaryDeadline?:boolean;
+ secretaryPick?:boolean;
+ meetingException?:boolean;
 }
 export interface InboxDeliveryOwnerDTO {
  actorId:string;

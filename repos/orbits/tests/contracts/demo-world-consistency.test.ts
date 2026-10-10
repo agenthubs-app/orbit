@@ -7,9 +7,11 @@ import { eventAssessmentSchema } from "../../shared/api-schema/event-assessment"
 import { eventRecommendationDismissResultSchema } from "../../shared/api-schema/event-recommendation-feedback";
 import { DEFAULT_HOME_LAYOUT, homeLayoutSchema } from "../../shared/api-schema/home-layout";
 import { inboxNotificationSchema } from "../../shared/api-schema/inbox-notifications";
+import { contactListItemSchema } from "../../shared/api-schema/mobile-contacts-dashboard";
 import { inviteCodePreviewSchema, inviteCodeRedeemResultSchema, inviteCodeSchema } from "../../shared/api-schema/invite-codes";
 import { inboxDeliveryPreferencesSchema } from "../../shared/api-schema/notification-delivery-policy";
 import { planV2SummaryResponseSchema } from "../../shared/api-schema/plan-v2";
+import * as world from "../../shared/mock/demo-world";
 import { DEMO_EVENTS, DEMO_NOTES, DEMO_PEOPLE, DEMO_PLAN, DEMO_TODOS } from "../../shared/mock/demo-world";
 import * as fixtures from "../../shared/mock/demo-world/fixtures";
 
@@ -31,6 +33,9 @@ test("every fixture parses with its contract schema", () => {
   accountDeletionRequestSchema.parse(fixtures.demoDeletionRequest);
   appVersionSchema.parse(fixtures.demoAppVersion);
   planV2SummaryResponseSchema.parse(fixtures.demoPlanSummary);
+  // Contracts 2 / 5 / 10 extend existing shapes: the contact rows parse with the
+  // list schema; notes and to-dos have no zod and are held by `satisfies` (tsc).
+  for (const row of fixtures.demoContactRows) contactListItemSchema.parse(row);
 });
 
 test("the people the fixtures name all exist, each with one name and one company", () => {
@@ -56,9 +61,34 @@ test("the people the fixtures name all exist, each with one name and one company
   assert.equal(fixtures.demoEventAssessment.facts.title, DEMO_EVENTS.find((event) => event.id === "demo-event-saas-summit")!.title);
 });
 
-test("every sample record is marked, and the summary counts agree with the people", () => {
-  for (const list of [DEMO_PEOPLE, DEMO_EVENTS, DEMO_NOTES, DEMO_TODOS, fixtures.demoContactRows, fixtures.demoNotes]) for (const item of list) assert.equal(item.sample, true);
-  for (const item of [DEMO_PLAN, fixtures.demoCompletionQuestion, fixtures.demoEventAssessment, fixtures.demoPlanSummary.summary]) assert.equal(item.sample, true);
+// Content a person sees as records must carry the sample mark; these exports are
+// settings or receipts (and the helpers / reference lists), covered by the
+// X-Orbit-Feature-Mode: mock header instead.
+const UNMARKED = new Set([
+  "DEMO_ACTOR_ID", "demoHomeLayout", "demoContactSummaryExtras", "filterDemoContacts", "demoInviteRedeem", "demoDeliveryPreferences",
+  "demoDismissResult", "demoAccountExport", "demoDeletionRequest", "demoAppVersion", "demoFixturePeopleRefs",
+  "DEMO_TODAY", "DEMO_TIME_ZONE", "demoPerson", "demoEvent",
+]);
+
+function records(value: unknown): Record<string, unknown>[] {
+  if (Array.isArray(value)) return value as Record<string, unknown>[];
+  if (value && typeof value === "object") return [value as Record<string, unknown>];
+  return [];
+}
+
+test("every content record in the demo world and its fixtures is marked sample", () => {
+  const checked: string[] = [];
+  for (const [name, value] of [...Object.entries(world), ...Object.entries(fixtures)]) {
+    if (UNMARKED.has(name)) continue;
+    const list = name === "demoPlanSummary" ? [(value as typeof fixtures.demoPlanSummary).summary] : records(value);
+    assert.ok(list.length > 0, `${name} is neither a record nor in the unmarked list`);
+    for (const item of list) assert.equal(item.sample, true, `${name} has an unmarked record`);
+    checked.push(name);
+  }
+  assert.ok(checked.length >= 14, checked.join(","));
+});
+
+test("the summary counts agree with the people and the assessment adds up", () => {
   const counts = fixtures.demoContactSummaryExtras.densityCounts!;
   assert.equal(counts[1] + counts[2] + counts[3], DEMO_PEOPLE.length);
   const total = fixtures.demoEventAssessment.scoreBreakdown.reduce((sum, item) => sum + item.score, 0);

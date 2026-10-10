@@ -27,7 +27,7 @@ export interface PlanV2Summary {
   goalKind: string;
   steps: readonly PlanV2Step[];
   personTypes: readonly PlanV2PersonType[];
-  sample?: boolean;
+  sample?: true;
 }
 
 export interface PlanScoreView {

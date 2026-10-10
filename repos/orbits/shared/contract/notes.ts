@@ -25,6 +25,8 @@ export interface NoteContract {
   version: number;
   createdAt: string;
   updatedAt: string;
+  /** R08: a demo-world record; the UI shows the sample tag and never stores, counts or searches it. */
+  sample?: true;
 }
 
 export interface NotesCollectionContract {
