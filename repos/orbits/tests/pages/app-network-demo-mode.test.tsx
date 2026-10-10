@@ -22,6 +22,7 @@ import { buildDemoNetworkAnalysis, buildDemoNetworkDetail, buildDemoNetworkOverv
 import { buildNetworkOverviewData } from "../../app/(app)/app/contacts/network-0918/network-overview-cockpit-model";
 import { NetworkAll } from "../../app/(app)/app/contacts/network-0918/network-all";
 import { NetworkDemoFrame } from "../../app/(app)/app/contacts/network-0918/network-demo-frame";
+import { ShellSlotsProvider, useShellSlots } from "../../app/(app)/app/orbit-2026/shell/slots";
 import { NetworkFollowModal } from "../../app/(app)/app/contacts/network-0918/network-follow-modal";
 import { NetworkOverview } from "../../app/(app)/app/contacts/network-0918/network-overview";
 import { NetworkPipeline } from "../../app/(app)/app/contacts/network-0918/network-pipeline";
@@ -228,7 +229,14 @@ test("W0054 SC-04（W54-6）: in the demo, opening a group list, re-analysing an
   assert.deepEqual(opportunities.fetches, [], "no recompute, no reconnect-draft request");
 });
 
-test("the demo frame: banner open → no pill; collapsed → the nav pill instead of the banner", () => {
+// R07: the frame no longer draws a top bar; the pill goes to Orbit2026Shell through
+// <ShellPage demoPill />. The pill checks mount the frame inside the shell's slot
+// provider and draw that slot, as the shell header does.
+function ShellDemoPillSlot() {
+  return <>{useShellSlots().demoPill}</>;
+}
+
+test("the demo frame: banner open → no pill; collapsed → the nav pill instead of the banner", async (t) => {
   const open = renderToStaticMarkup(<NetworkDemoFrame guide={VIEW} route="app-contacts-route"><NetworkAll viewModel={VM} /></NetworkDemoFrame>);
   assert.match(open, /data-orbit-guide-demo="on"/);
   assert.match(open, /data-orbit-route="app-contacts-route"/);
@@ -236,7 +244,8 @@ test("the demo frame: banner open → no pill; collapsed → the nav pill instea
   assert.doesNotMatch(open, /data-orbit-guide-demo-pill/);
   const collapsed = renderToStaticMarkup(<NetworkDemoFrame guide={{ ...VIEW, bannerCollapsed: true }} route="app-contacts-route"><NetworkAll viewModel={VM} /></NetworkDemoFrame>);
   assert.doesNotMatch(collapsed, /data-orbit-guide-demo-banner/);
-  assert.match(collapsed, /data-orbit-guide-demo-pill/);
+  const collapsedMounted = await mount(t, <ShellSlotsProvider><NetworkDemoFrame guide={{ ...VIEW, bannerCollapsed: true }} route="app-contacts-route"><NetworkAll viewModel={VM} /></NetworkDemoFrame><ShellDemoPillSlot /></ShellSlotsProvider>);
+  assert.equal(has(collapsedMounted.root, "data-orbit-guide-demo-pill"), true);
 });
 
 /* ── 交互（react-test-renderer） ───────────────────────────────────── */

@@ -1,4 +1,3 @@
-import { AccountTopNav } from "../orbit-account-shell";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { TaskDetailWorkspace } from "./task-detail-workspace";
 import { TasksPageHeading } from "./tasks-page-heading";
@@ -20,7 +19,6 @@ export function TasksPageContent({
     <OrbitReferenceStyles />
     <TasksStyles />
     <main data-orbit-real-page="tasks">
-      <AccountTopNav active="today" />
       <div className="orbit-task-page">
         <TasksPageHeading detail={taskId !== undefined} />
         {taskId !== undefined ? <TaskDetailWorkspace taskId={taskId} /> : <>

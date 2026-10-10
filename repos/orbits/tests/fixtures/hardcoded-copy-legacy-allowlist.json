@@ -7,7 +7,7 @@
     },
     "app/(app)/app/_demo/demo-mode-core.tsx": {
       "hardcoded": 0,
-      "missingJa": 20
+      "missingJa": 18
     },
     "app/(app)/app/_demo/demo-network-analysis.ts": {
       "hardcoded": 64,
@@ -643,7 +643,7 @@
     },
     "app/(app)/app/inbox/relationship-inbox-panel.tsx": {
       "hardcoded": 0,
-      "missingJa": 53
+      "missingJa": 52
     },
     "app/(app)/app/invitations/[token]/relationship-invitation-client.tsx": {
       "hardcoded": 23,
@@ -692,18 +692,6 @@
     "app/(app)/app/orbit-event-view-helpers.ts": {
       "hardcoded": 17,
       "missingJa": 0
-    },
-    "app/(app)/app/orbit-global-ask/orbit-ask-routes.ts": {
-      "hardcoded": 0,
-      "missingJa": 7
-    },
-    "app/(app)/app/orbit-global-ask/orbit-global-ask-styles.ts": {
-      "hardcoded": 1,
-      "missingJa": 0
-    },
-    "app/(app)/app/orbit-global-ask/orbit-global-ask.tsx": {
-      "hardcoded": 0,
-      "missingJa": 16
     },
     "app/(app)/app/orbit-landing-0918.tsx": {
       "hardcoded": 19,

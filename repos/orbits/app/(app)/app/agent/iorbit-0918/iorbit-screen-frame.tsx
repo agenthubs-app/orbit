@@ -5,7 +5,7 @@
  *   - 外层 `data-orbit-real-page="agent"`（冻结的 `orbit-reference-styles.tsx` 有 44 条
  *     该作用域规则，顶栏与既有富控件的皮肤靠它）
  *   - 内层 `data-orbit-real-page="iorbit-0918"` 承载 `IORBIT_STYLES`（「审阅修订」2）
- *   - 顶栏沿用 `AccountTopNav active="agent"`（「审阅修订」5）
+ *   - 顶栏由新壳 Orbit2026Shell 提供（R07）；navExtra 在页面树里渲染（示例模式传 ShellDemoPill，由它填壳的 demoPill 插槽）
  *   - `<main class="ir-main">`：设计 43 的 `max-width:1240px; margin:0 auto;
  *     padding:14px 40px 72px; display:flex; flex-direction:column; gap:26px`
  *
@@ -17,7 +17,6 @@
 
 import type { ReactNode } from "react";
 
-import { AccountTopNav } from "../../orbit-account-shell";
 import { IORBIT_STYLES } from "./iorbit-styles";
 
 export function IOrbitScreenFrame({
@@ -43,7 +42,7 @@ export function IOrbitScreenFrame({
         <h1 className="ir-screen-title" data-orbit-agent-screen-title>
           {screenTitle}
         </h1>
-        <AccountTopNav active="agent" mobileRightExtra={navExtra} rightExtra={navExtra} />
+        {navExtra}
         <main className="ir-main">{children}</main>
       </div>
     </div>

@@ -218,11 +218,11 @@ test("follow-up queue groups tasks under one card per contact", async () => {
 });
 
 test("/app/agent input has an explicit to-do capable accessible name", () => {
-  // 输入框的可访问名随组件搬到了全局提问入口。
-  const agentSource = readProjectFile("app/(app)/app/orbit-global-ask/orbit-global-ask.tsx");
+  // R07: the floating ask was deleted; the /app/agent input is the conversation composer.
+  const agentSource = readProjectFile("app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx");
 
   assert.match(agentSource, /en: "Ask Orbit about contacts, events, and relationship to-dos"/);
   assert.match(agentSource, /zh: "询问 Orbit 人脉、活动与关系待办"/);
-  assert.match(agentSource, /aria-describedby=\{boundaryId\}/);
+  // R07: aria-describedby pointed at the floating ask's privacy note, which has no successor yet (tracked by app-agent-general-conversation).
   assert.match(agentSource, /en: "Send Ask Orbit message"/);
 });

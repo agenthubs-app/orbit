@@ -29,7 +29,6 @@ import { redirect } from "next/navigation";
 import { auth } from "../../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
-import { AccountTopNav } from "../../orbit-account-shell";
 import { applyOrbitContactsPresentation } from "../../orbit-contacts-presentation";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
@@ -160,7 +159,6 @@ export default async function AppContactsDashboardPage({ searchParams }: {
       {routeModel.state === "success" ? (
         // 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
         <div data-orbit-real-page="network" data-orbit-route="app-contacts-dashboard-route">
-          <AccountTopNav active="cards" />
           {tab === "overview"
             ? <NetworkOverview
               analysis={analysis}

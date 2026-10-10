@@ -39,12 +39,12 @@ import {
   DemoBanner,
   DemoInterceptLayer,
   DemoModeProvider,
-  DemoNavPill,
   DemoTag,
   useDemoMode,
   type DemoModeView,
 } from "../../_demo/demo-mode-core";
 import { buildDemoPlanContactNames, buildDemoPlanSnapshot } from "../../_demo/demo-persona";
+import { ShellDemoPill } from "../../orbit-2026/shell/ShellDemoPill";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import {
   buildMyPlanViewModel,
@@ -172,7 +172,7 @@ function IOrbitPlanScreen({
   const [sheetCandidates, setSheetCandidates] = useState<PlanMatchList["candidates"]>([]);
 
   return (
-    <IOrbitScreenFrame navExtra={demoActive ? <DemoNavPill /> : undefined} ready screenTitle={screenTitle}>
+    <IOrbitScreenFrame navExtra={demoActive ? <ShellDemoPill /> : undefined} ready screenTitle={screenTitle}>
       {demoActive ? <DemoBanner message={PLAN_DEMO_MESSAGE} /> : null}
       <div className="ir-screen" data-orbit-guide-demo={demoActive ? "on" : undefined} data-orbit-iorbit-screen="plan">
         <span className="ir-crumb">

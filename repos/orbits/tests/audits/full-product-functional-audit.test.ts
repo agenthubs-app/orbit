@@ -377,7 +377,10 @@ test("literal route props exclude unreachable component branches", () => {
   );
 });
 
-test("navigation replay credits only its 27 exact route occurrences", () => {
+// R07: 27 → 26. The Settings account-menu sign-out lived in the deleted AccountTopNav
+// (orbit-public-shell.tsx); signed-in pages now get nav from Orbit2026Shell, so that
+// one historical credit has no inventoried control left to attach to.
+test("navigation replay credits only its 26 exact route occurrences", () => {
   const replayEvidence =
     "navigation-nonpass-runtime-replay-2026-07-30";
   const credited = inventory.surfaces.flatMap((surface) =>
@@ -393,6 +396,9 @@ test("navigation replay credits only its 27 exact route occurrences", () => {
           "repos/orbits/app/(app)/app/orbit-public-shell.tsx" &&
         interaction.visibleName === "Sign out / 退出登录",
     );
+  // R07: Settings no longer mounts the public-shell account control (the shell avatar
+  // menu owns sign-out for signed-in pages), so the old control must be gone there.
+  assert.equal(settingsSignOut, undefined);
   const siblingSignOuts = inventory.surfaces.flatMap((surface) =>
     surface.interactions.filter(
       (interaction) =>
@@ -403,14 +409,15 @@ test("navigation replay credits only its 27 exact route occurrences", () => {
     ),
   );
 
-  assert.equal(credited.length, 27);
-  assert.equal(settingsSignOut?.conclusion, "runtime-verified-exercised-case");
+  assert.equal(credited.length, 26);
   // iOrbit 任务 6b：兄弟计数 33 → 32。这个数字是「共享壳里有多少个同源退出登录控件」，
   // 会随路由增删漂移；任务 6a 删了 /app/chat、/app/today、/app/schedule、/app/followups
   // 四条路由，又因为审计产物先前长期未重生成，同期新增的 /app/events/**、/app/tasks*、
   // /app/invitations/[token] 等路由这次一并入账，净值为 32。本条真正的回归断言是下面
   // 「非 /app/settings 的同源控件一律 inventoried-static-only」——计数只是它的分母。
-  assert.equal(siblingSignOuts.length, 32);
+  // R07：32 → 9。删除 AccountTopNav 后，只有仍挂 PublicTopNav/OrbitTopNav 的公开页
+  // （/、/app、account/*、/app/events、/app/events/[id]、/app/o/[slug]）还带这个控件。
+  assert.equal(siblingSignOuts.length, 9);
   assert.equal(
     siblingSignOuts.every(
       (interaction) => interaction.conclusion === "inventoried-static-only",
@@ -453,15 +460,9 @@ test("Settings sign-out historical evidence is handler-bound across line shifts"
       `web:/app/settings|${sourceFile}:${line}`,
     ]), undefined, "a changed handler must not fall back to line evidence");
   }
-  const settings = inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/settings");
-  const signOut = settings?.interactions.find((interaction) =>
-    interaction.sourceFile === sourceFile && interaction.visibleName === "Sign out / 退出登录",
-  );
-  assert.ok(signOut);
-  assert.equal(signOut.actualResult, expected.actualResult);
-  assert.equal(signOut.idempotency, expected.idempotency);
-  assert.equal(signOut.testData, expected.testData);
-  assert.deepEqual(signOut.testEvidence, [expected.verificationCase]);
+  // R07: the inventory half of this test (Settings' sign-out control carries the evidence)
+  // is obsolete — AccountTopNav was deleted and Settings no longer mounts that control.
+  // The handler-bound lookup above still guards the historical evidence key itself.
 });
 
 test("route query parameters come from route-local URL consumers, not transitive get/set calls", () => {

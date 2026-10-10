@@ -114,7 +114,6 @@ function loadPage(t: TestContext, scenario: Scenario) {
       getOrbitServerLanguage: async () => "zh",
       localizeOrbitTree: (tree: unknown) => tree,
     },
-    [join(root, "app/(app)/app/orbit-account-shell.tsx")]: { AccountTopNav: () => null },
     [join(root, "app/(app)/app/orbit-public-shell.tsx")]: { PublicTopNav: () => null },
     [join(root, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(root, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },

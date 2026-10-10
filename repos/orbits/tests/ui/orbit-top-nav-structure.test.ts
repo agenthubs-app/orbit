@@ -14,8 +14,14 @@ const shell = readFileSync(
   join(projectRoot, "app/(app)/app/orbit-public-shell.tsx"),
   "utf8",
 );
-const accountShell = readFileSync(
-  join(projectRoot, "app/(app)/app/orbit-account-shell.tsx"),
+// R07: AccountTopNav (orbit-account-shell.tsx) was deleted; signed-in pages get their nav,
+// inbox entry and page extras from Orbit2026Shell.
+const appShell = readFileSync(
+  join(projectRoot, "app/(app)/app/orbit-2026/shell/Orbit2026Shell.tsx"),
+  "utf8",
+);
+const appShellRoutes = readFileSync(
+  join(projectRoot, "app/(app)/app/orbit-2026/shell/shell-routes.ts"),
   "utf8",
 );
 
@@ -110,18 +116,10 @@ test("session account control and inbox extras stay in the actions segment", () 
   assert.ok(actions.includes("orbit-nav-mobile-extra"));
   assert.ok(actions.includes("orbit-nav-account-slot"));
   assert.ok(actions.includes("orbit-nav-extra"));
-  const mobileExtraIdx = accountShell.indexOf("mobileRightExtra={");
-  const rightExtraIdx = accountShell.indexOf("rightExtra={", mobileExtraIdx);
-  const mobileExtras = accountShell.slice(mobileExtraIdx, rightExtraIdx);
-  const rightExtraEnd = accountShell.indexOf("/>", rightExtraIdx);
-  const desktopExtras = accountShell.slice(rightExtraIdx, rightExtraEnd);
-  assert.ok(mobileExtras.includes("{mobileRightExtra}"));
-  assert.ok(mobileExtras.includes("<RelationshipInboxTrigger />"));
-  assert.ok(
-    desktopExtras.indexOf("{rightExtra}") <
-      desktopExtras.indexOf("<RelationshipInboxTrigger"),
-    "desktop extras keep page actions and the global inbox together",
-  );
+  // R07: signed in, the page extras (demo pill, right actions) sit together in the shell
+  // header's right segment, and the inbox is a rail item every signed-in page shares.
+  assert.match(appShell, /\$\{styles\.headRight\}`\}>\{slots\.demoPill\}\{slots\.right\}<\/div>/);
+  assert.match(appShellRoutes, /\{ key: "inbox", href: "\/app\/inbox", icon: "inbox" \}/);
 });
 
 test("signed-in desktop and mobile account menus link to registered events", () => {
@@ -195,7 +193,11 @@ test("the iOrbit sibling screens mount through the shared frame, not their own s
     frame.indexOf('data-orbit-real-page="agent"') <
       frame.indexOf('data-orbit-real-page="iorbit-0918"'),
   );
-  assert.match(frame, /AccountTopNav active="agent"/);
+  // R07: no top bar in the frame; navExtra renders in the page tree (the demo
+  // pill is ShellDemoPill, which fills the shell's demoPill slot from there).
+  assert.doesNotMatch(frame, /AccountTopNav/);
+  assert.match(frame, /\{navExtra\}/);
+  assert.match(readFileSync(join(process.cwd(), "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx"), "utf8"), /navExtra=\{demoActive \? <ShellDemoPill \/> : undefined\}/);
 
   for (const file of [
     "app/(app)/app/agent/iorbit-0918/iorbit-actions.tsx",

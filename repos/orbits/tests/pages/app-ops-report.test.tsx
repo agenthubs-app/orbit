@@ -281,7 +281,8 @@ test("analytics page keeps its auth()-only gate, reads the published title witho
   assert.doesNotMatch(page, /loadEventOperationsPageEvent|\.getEvent\(/u, "no unpublished-title leak without a capability gate");
   assert.match(page, /<OrbitReferenceStyles \/>/u);
   assert.match(page, /data-orbit-real-page="ops-0918"/u);
-  assert.match(page, /<AccountTopNav active="events" \/>/u);
+  // R07: signed-in ops pages mount no nav themselves; Orbit2026Shell provides it.
+  assert.doesNotMatch(page, /AccountTopNav|OrbitTopNav/u);
   assert.match(page, /view="report"/u);
   assert.doesNotMatch(page, /EventAnalyticsRoute|PublicTopNav|className="orbit-shell"|data-appscroll|data-orbit-real-page="event-analytics"/u);
   assert.match(screen, /useEventAnalytics\(event\.id, activeView, setActiveView\)/u);

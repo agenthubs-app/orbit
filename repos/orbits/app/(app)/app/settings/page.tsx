@@ -1,4 +1,3 @@
-import { AccountTopNav } from "../orbit-account-shell";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import { loadProfileEditorPage } from "../profile/profile-0918/load-profile-editor-page";
@@ -25,7 +24,6 @@ export default async function AppSettingsPage() {
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
       <div data-orbit-real-page="profile-0918" data-orbit-route="app-settings-route">
-        <AccountTopNav active="settings" />
         <ProfileScreens view="settings" viewModel={page.viewModel} />
       </div>
     </>

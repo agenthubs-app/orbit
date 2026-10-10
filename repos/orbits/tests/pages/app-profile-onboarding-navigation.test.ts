@@ -669,10 +669,11 @@ test("profile page renders a canonical first-create editor from an empty live re
     const rendered = await page();
     const children = rendered.props.children as readonly ReactElement[];
 
-    // 成功分支：<div data-orbit-real-page="profile-0918"><AccountTopNav/><ProfileScreens/></div>
+    // 成功分支：<div data-orbit-real-page="profile-0918"><ProfileScreens/></div>
+    // （R07：顶栏由 Orbit2026Shell 提供，页面不再挂 AccountTopNav）
     const wrapper = children[2] as ReactElement<any>;
     assert.equal(wrapper.props["data-orbit-real-page"], "profile-0918");
-    const editor = wrapper.props.children[1] as ReactElement<any>;
+    const editor = wrapper.props.children as ReactElement<any>;
     assert.equal(editor.type.toString().includes("ProfileScreens"), true);
     assert.equal(editor.props.viewModel.profile.hasPersistedProfile, false);
     assert.equal(editor.props.viewModel.profile.expectedUpdatedAt, null);
@@ -712,10 +713,11 @@ test("profile page keeps an existing canonical live record in the editor", async
     const rendered = await page();
     const children = rendered.props.children as readonly ReactElement[];
 
-    // 成功分支：<div data-orbit-real-page="profile-0918"><AccountTopNav/><ProfileScreens/></div>
+    // 成功分支：<div data-orbit-real-page="profile-0918"><ProfileScreens/></div>
+    // （R07：顶栏由 Orbit2026Shell 提供，页面不再挂 AccountTopNav）
     const wrapper = children[2] as ReactElement<any>;
     assert.equal(wrapper.props["data-orbit-real-page"], "profile-0918");
-    const editor = wrapper.props.children[1] as ReactElement<any>;
+    const editor = wrapper.props.children as ReactElement<any>;
     assert.equal(editor.type.toString().includes("ProfileScreens"), true);
     assert.equal(editor.props.viewModel.profile.hasPersistedProfile, true);
     assert.equal(typeof editor.props.viewModel.profile.expectedUpdatedAt, "string");

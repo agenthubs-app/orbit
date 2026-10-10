@@ -71,35 +71,39 @@ export function allowsOrbitAsk(pathname: string): boolean {
  * 上下文，界面上就不显示那枚 chip。
  */
 const PAGE_CONTEXTS: readonly {
-  copy: { en: string; zh: string };
+  copy: { en: string; zh: string; ja: string };
   match: (path: string) => boolean;
 }[] = [
   {
-    copy: { en: "this event", zh: "这场活动" },
+    copy: { en: "this event", zh: "这场活动", ja: "このイベント" },
     match: (path) => /^\/app\/events\/[^/]+$/.test(path),
   },
   {
-    copy: { en: "this contact", zh: "这位人脉" },
+    copy: { en: "this contact", zh: "这位人脉", ja: "この人" },
     match: (path) => /^\/app\/contacts\/[^/]+$/.test(path),
   },
   {
-    copy: { en: "the event list", zh: "活动列表" },
+    copy: { en: "the event list", zh: "活动列表", ja: "イベント一覧" },
     match: (path) => hasPathPrefix(path, "/app/events"),
   },
   {
-    copy: { en: "my contacts", zh: "我的人脉" },
+    copy: { en: "my contacts", zh: "我的人脉", ja: "自分の人脈" },
     match: (path) => hasPathPrefix(path, "/app/contacts"),
   },
   {
-    copy: { en: "my schedule", zh: "我的日程" },
+    copy: { en: "my schedule", zh: "我的日程", ja: "自分の予定" },
     match: (path) => hasPathPrefix(path, "/app/agent/plan"),
   },
   {
-    copy: { en: "my follow-ups", zh: "我的待办" },
+    copy: { en: "my follow-ups", zh: "我的待办", ja: "自分のTo-do" },
     match: (path) => hasPathPrefix(path, "/app/agent/actions"),
   },
   {
-    copy: { en: "my inbox", zh: "我的收件箱" },
+    copy: { en: "my tasks", zh: "我的 Task", ja: "自分の Task" },
+    match: (path) => hasPathPrefix(path, "/app/tasks"),
+  },
+  {
+    copy: { en: "my inbox", zh: "我的收件箱", ja: "自分の受信箱" },
     match: (path) => hasPathPrefix(path, "/app/inbox"),
   },
 ];
@@ -113,5 +117,6 @@ export function orbitAskPageContext(
 
   if (!hit) return null;
 
-  return language === "zh" ? hit.copy.zh : hit.copy.en;
+  // R07: the ⌘K context chip also speaks Japanese (RD-11).
+  return hit.copy[language];
 }

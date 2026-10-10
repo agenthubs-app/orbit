@@ -1,9 +1,8 @@
 /**
  * 运营台子页的门禁 / 服务不可用边界页（任务 7：从 admission / check-in / experience 三个 page.tsx 抽成一份）。
- * 结构与文案口径不变：PublicTopNav + eyebrow + h-display 标题 + 说明 + 「重试」（回本页）/ 「返回运营活动中心」。
+ * 结构与文案口径不变：eyebrow（R07 起导航由新壳 Orbit2026Shell 提供） + h-display 标题 + 说明 + 「重试」（回本页）/ 「返回运营活动中心」。
  * `page` = 各页既有的 `data-orbit-real-page` 标记（测试与审计按此定位），三页各自保留原值。
  */
-import { PublicTopNav } from "../../orbit-public-shell";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 
 export function OpsBoundary({
@@ -22,7 +21,6 @@ export function OpsBoundary({
   return (
     <>
       <OrbitReferenceStyles />
-      <PublicTopNav active="events" />
       <main data-orbit-real-page={page} style={{ margin: "0 auto", maxWidth: 760, padding: 40 }}>
         <div className="eyebrow">{eyebrow}</div>
         <h1 className="h-display">{title}</h1>

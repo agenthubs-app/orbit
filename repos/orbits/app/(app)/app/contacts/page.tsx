@@ -21,7 +21,6 @@ import {
 } from "./compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { contactsRouteToOrbitContactsViewModel } from "./compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
 import { applyOrbitContactsPresentation } from "../orbit-contacts-presentation";
-import { AccountTopNav } from "../orbit-account-shell";
 import { NetworkAll } from "./network-0918/network-all";
 import { NetworkCards } from "./network-0918/network-cards";
 import { loadContactCardRoute } from "./contact-card-route-service";
@@ -106,7 +105,6 @@ export default async function AppContactsPage({
   if (cards) return <>
     <OrbitReferenceStyles /><OrbitVisualFreezeRuntime />
     <div data-orbit-real-page="network" data-orbit-route="app-contacts-route">
-      <AccountTopNav active="cards" />
       {cards.state === "ready" ? <NetworkCards key={`${actor.id}:${cards.view.params}`} view={cards.view} />
         : <section role="alert"><p>{cards.message}</p><a href="/app/contacts">清除筛选并返回第一页 / First page</a></section>}
     </div>
@@ -128,7 +126,6 @@ export default async function AppContactsPage({
       {routeModel.state === "success" ? (
         // 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
         <div data-orbit-real-page="network" data-orbit-route="app-contacts-route">
-          <AccountTopNav active="cards" />
           <NetworkAll
             viewModel={localizeOrbitTree(
               applyOrbitContactsPresentation(

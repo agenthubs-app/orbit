@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 
 import { ORBIT_Z } from "../orbit-z";
-import { AccountTopNav, orbitNavigate } from "../orbit-account-shell";
+import { orbitNavigate } from "../orbit-account-shell";
 import { EventCover } from "../events/orbit-event-cover";
 import type { OrbitHomeAccountView, OrbitHomeViewModel } from "../orbit-home-route-view-model";
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
@@ -644,7 +644,6 @@ function AgentDock({ state, t }: { state: AgentDockState; t: Translate }) {
 function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Translate; viewModel: OrbitHomeViewModel }) {
   return (
     <div className="orbit-desktop-only" style={{ background: "var(--bg)", minHeight: "100dvh" }}>
-      <AccountTopNav active="me" accountInitial={viewModel.account.initial} />
       <div style={{ margin: "0 auto", maxWidth: 1080, padding: "40px 40px 80px" }}>
         <div style={{ alignItems: "center", display: "flex", gap: 20 }}>
           <span className={`avatar g-indigo`} style={{ fontSize: 30, height: 72, width: 72 }}>{viewModel.account.initial}</span>
@@ -711,7 +710,6 @@ function liveConsoleEvent(events: OrbitLandingEventView[]): OrbitLandingEventVie
 function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Translate; viewModel: OrbitHomeViewModel }) {
   return (
     <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
-      <AccountTopNav active="me" accountInitial={viewModel.account.initial} />
       <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 18px 36px" }}>
         <div style={{ alignItems: "center", display: "flex", gap: 14, padding: "8px 0 4px" }}>
           <span className="avatar g-indigo" style={{ fontSize: 21.84, height: 52, width: 52 }}>{viewModel.account.initial}</span>
@@ -766,7 +764,6 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
 function EventsDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Translate; viewModel: OrbitHomeViewModel }) {
   return (
     <div className="orbit-desktop-only">
-      <AccountTopNav active="me" accountInitial={viewModel.account.initial} />
       <div className="scroll" style={{ margin: "0 auto", maxWidth: 1180, padding: "40px 40px 90px" }}>
         <div style={{ marginBottom: 22 }}><div className="eyebrow">MY EVENTS</div><h1 className="h-display" style={{ margin: "2px 0 0" }}>{t({ en: "My events", zh: "我的活动" })}</h1></div>
         <AccountEventsBlock events={viewModel.events} language={language} t={t} />
@@ -778,7 +775,6 @@ function EventsDesktop({ language, t, viewModel }: { language: OrbitLanguage; t:
 function EventsMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Translate; viewModel: OrbitHomeViewModel }) {
   return (
     <div className="orbit-mobile-only" style={{ background: "var(--bg)", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
-      <AccountTopNav active="me" accountInitial={viewModel.account.initial} />
       <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 36px" }}>
         <h1 className="h-display" style={{ margin: "6px 0 18px" }}>{t({ en: "My events", zh: "我的活动" })}</h1>
         <AccountEventsBlock events={viewModel.events} language={language} t={t} />

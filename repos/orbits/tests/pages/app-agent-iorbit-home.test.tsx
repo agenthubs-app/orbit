@@ -28,6 +28,7 @@ import {
   IORBIT_STYLES,
 } from "../../app/(app)/app/agent/iorbit-0918/iorbit-shell";
 import { IOrbitHome } from "../../app/(app)/app/agent/iorbit-0918/iorbit-home";
+import { ShellSlotsProvider, useShellSlots } from "../../app/(app)/app/orbit-2026/shell/slots";
 import { PENDING_CARDS_COALESCE_MS } from "../../app/(app)/app/agent/iorbit-0918/use-pending-cards";
 import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
 import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
@@ -1303,6 +1304,22 @@ function assertNoDemoRequests(calls: Mounted["calls"], when: string) {
   }
 }
 
+// R07: the demo nav pill is no longer drawn by the page's own top bar; IOrbitShell hands
+// it to Orbit2026Shell through <ShellPage demoPill />. Tests that click the pill mount the
+// page inside the shell's slot provider and draw that one slot, as the shell header does.
+function ShellDemoPillSlot() {
+  return <>{useShellSlots().demoPill}</>;
+}
+
+function inShellSlots(element: React.ReactElement): React.ReactElement {
+  return (
+    <ShellSlotsProvider>
+      {element}
+      <ShellDemoPillSlot />
+    </ShellSlotsProvider>
+  );
+}
+
 function demoShellMarkup(guide: typeof GUIDE_NEW | typeof GUIDE_STEP_TWO | null): string {
   return renderToStaticMarkup(
     <IOrbitShell guide={guide} home={HOME as never} viewModel={VIEW_MODEL} />,
@@ -1368,11 +1385,17 @@ test("the banner shows progress and the next step once part of the guide is done
   assert.ok(confirm.includes("进度 1 / 3 · 下一步：确认名片，凑够 3 位"));
 });
 
-test("a collapsed banner (stored in the guide record) renders as the nav pill on first paint", () => {
-  const html = demoShellMarkup({ ...GUIDE_STEP_TWO, bannerCollapsed: true });
-  assert.doesNotMatch(html, /data-orbit-guide-demo-banner/);
-  assert.match(html, /data-orbit-guide-demo-pill/);
-  assert.ok(html.includes("示例 · 继续引导"));
+test("a collapsed banner (stored in the guide record) renders as the nav pill on first paint", async (t) => {
+  const guide = { ...GUIDE_STEP_TWO, bannerCollapsed: true };
+  // First paint (SSR): the collapsed banner never flashes open.
+  assert.doesNotMatch(demoShellMarkup(guide), /data-orbit-guide-demo-banner/);
+  // R07: the pill reaches the shell header through the demoPill slot once mounted.
+  const mounted = await mountHome(t, () => inShellSlots(<IOrbitShell guide={guide} home={HOME as never} viewModel={VIEW_MODEL} />));
+  const find = (marker: string) => mounted.root.root.findAll((node) => node.props?.[marker] === true);
+  assert.equal(find("data-orbit-guide-demo-banner").length, 0);
+  const pills = find("data-orbit-guide-demo-pill");
+  assert.ok(pills.length > 0);
+  assert.ok(textOf(pills[0]!).includes("示例 · 继续引导"));
 });
 
 test("demo mode sends no signals / ledger / conversation requests on mount", async (t) => {
@@ -1633,7 +1656,7 @@ const GUIDE_OK = async (body: unknown) => Response.json({ data: { ...(body as ob
 test("收起 folds the banner into the nav pill and stores it in the guide record; the pill expands it back", async (t) => {
   const mounted = await mountHome(
     t,
-    () => <IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />,
+    () => inShellSlots(<IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />),
     { guidePatch: GUIDE_OK },
   );
   const root = mounted.root.root;
@@ -1679,7 +1702,7 @@ test("demo banner buttons keep the btn ir-* contract and IORBIT_STYLES neutralis
 test("a failed collapse write keeps this page's state only: nothing in local storage to replay onto another account", async (t) => {
   const mounted = await mountHome(
     t,
-    () => <IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />,
+    () => inShellSlots(<IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />),
     { guidePatch: async () => Response.json({ success: false }, { status: 503 }) },
   );
   const storageWrites: string[] = [];
@@ -1707,7 +1730,7 @@ test("a failed collapse write keeps this page's state only: nothing in local sto
   const before = mounted.calls.filter((call) => call.url === "/api/guide/state").length;
   await act(async () => {
     mounted.root.update(
-      <IOrbitShell guide={{ ...GUIDE_STEP_TWO }} home={HOME as never} key="bob" viewModel={VIEW_MODEL} />,
+      inShellSlots(<IOrbitShell guide={{ ...GUIDE_STEP_TWO }} home={HOME as never} key="bob" viewModel={VIEW_MODEL} />),
     );
   });
   await mounted.settle();
@@ -1721,7 +1744,7 @@ test("rapid collapse / expand clicks leave the server holding the last choice, w
   const pending: Array<{ body: { bannerCollapsed: boolean }; resolve: () => void }> = [];
   const mounted = await mountHome(
     t,
-    () => <IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />,
+    () => inShellSlots(<IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />),
     {
       guidePatch: (body) =>
         new Promise<Response>((resolve) => {

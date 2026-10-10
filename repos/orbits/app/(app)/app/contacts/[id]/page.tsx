@@ -34,7 +34,6 @@ import { loadContactCardRoute } from "../contact-card-route-service";
 import { loadAppContactsRouteViewModel } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { contactsRouteToOrbitContactsViewModel } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
 import { applyOrbitContactsPresentation } from "../../orbit-contacts-presentation";
-import { AccountTopNav } from "../../orbit-account-shell";
 import { auth } from "../../../../../auth";
 import { notFound, redirect } from "next/navigation";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
@@ -276,7 +275,6 @@ export default async function AppContactDetailPage({
       <OrbitVisualFreezeRuntime />
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
       <div data-orbit-real-page="network" data-orbit-route="app-contact-detail-route">
-        <AccountTopNav active="cards" />
         {cards?.state === "ready" ? <NetworkCards
           key={`${actor.id}:${contactId}`}
           view={cards.view}

@@ -16,7 +16,6 @@ import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { StateView } from "../../../../../shared/ui/state-view";
 import type { AppEventDetailBoundaryModel } from "../compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
-import { AccountTopNav } from "../../orbit-account-shell";
 import { PublicTopNav } from "../../orbit-public-shell";
 import { EventDetail } from "../events-0918/event-detail";
 import { presentOrbitEvent } from "../../orbit-event-presentation";
@@ -227,9 +226,9 @@ export default async function AppEventDetailPage({
       <>
         <OrbitReferenceStyles />
         {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
-            公开页：未登录用 PublicTopNav（AccountTopNav 会挂收件箱触发器并请求 /api/notifications → 401）。 */}
+            公开页：未登录用 PublicTopNav；已登录时导航由新壳 Orbit2026Shell 提供（R07）。 */}
         <div data-orbit-real-page="events-0918" data-orbit-route="app-event-detail-page">
-          {authenticated ? <AccountTopNav active="events" /> : <PublicTopNav active="events" />}
+          {authenticated ? null : <PublicTopNav active="events" />}
           <EventDetail
             canOpenOperations={resolution.canOpenOperations}
             event={localizeOrbitTree(accessibleEvent, language)}

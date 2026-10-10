@@ -2,7 +2,7 @@
  * 运营台（Orbit_0918）壳：活动中心页头（hub 头）+ 运营台共用头部（面包屑 / 标题 / 「查看活动页面 →」「更多 ⌄」/ 六页签）
  * + 全部 op-* 样式 + toast + 抽屉挂载点。
  * JSX 逐元素来自 docs/designs/Orbit_0918/Events 运营台.dc.html 第 43 行（<main>）、47–69 行（hub 头 / 页签 / 搜索）、
- * 94–111 行（运营台头部）、477–479 行（toast）。顶栏由 page.tsx 挂 AccountTopNav，不在壳内。
+ * 94–111 行（运营台头部）、477–479 行（toast）。导航由新壳 Orbit2026Shell 提供（R07），不在壳内。
  */
 "use client";
 

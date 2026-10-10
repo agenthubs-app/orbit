@@ -418,7 +418,9 @@ test("agent sidebar exposes deletion controls for history", () => {
     readProjectFile(IORBIT_DRAWER_PATH),
     readProjectFile("app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx"),
   ].join("\n");
-  const accountShell = readProjectFile("app/(app)/app/orbit-account-shell.tsx");
+  // R07: the inbox entry moved from AccountTopNav's RelationshipInboxTrigger to the
+  // shell's rail item (/app/inbox), drawn once by Orbit2026Shell for every signed-in page.
+  const shellRoutes = readProjectFile("app/(app)/app/orbit-2026/shell/shell-routes.ts");
   const publicShell = readProjectFile("app/(app)/app/orbit-public-shell.tsx");
   const styles = readProjectFile(
     "app/(app)/app/orbit-reference-styles.tsx",
@@ -470,10 +472,7 @@ test("agent sidebar exposes deletion controls for history", () => {
   assert.match(source, /aria-labelledby="orbit-iorbit-history-title"/);
   assert.match(source, /aria-modal="true"/);
   assert.match(source, /role="dialog"/);
-  assert.match(
-    accountShell,
-    /mobileRightExtra=\{\s*<>\s*\{mobileRightExtra\}\s*<RelationshipInboxTrigger \/>/,
-  );
+  assert.match(shellRoutes, /\{ key: "inbox", href: "\/app\/inbox", icon: "inbox" \}/);
   assert.match(publicShell, /className="orbit-nav-mobile-extra"/);
   assert.match(
     styles,

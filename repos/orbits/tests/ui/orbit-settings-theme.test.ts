@@ -17,7 +17,9 @@ test("settings route renders inside the shared account shell", () => {
   // 设置页与个人资料同壳（Orbit_0918 个人中心）：外层 profile-0918 作用域 + 顶栏 settings 高亮 + settings 屏。
   const page = readFileSync(pagePath, "utf8");
   assert.match(page, /data-orbit-real-page="profile-0918"/);
-  assert.match(page, /<AccountTopNav active="settings"/);
+  // R07: no top bar on the page; Orbit2026Shell provides nav and highlights the settings rail item.
+  assert.doesNotMatch(page, /AccountTopNav|OrbitTopNav/);
+  assert.match(source("app/(app)/app/orbit-2026/shell/shell-routes.ts"), /matches\(path, "\/app\/settings"\)\) return "settings"/);
   assert.match(page, /<ProfileScreens view="settings"/);
 
   // 五个既有设置模块仍然挂载，且包在 .pc-legacy-settings 皮肤作用域里（配色不回退）。

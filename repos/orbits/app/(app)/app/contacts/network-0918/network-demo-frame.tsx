@@ -7,16 +7,16 @@
  */
 "use client";
 
+import { ShellDemoPill } from "../../orbit-2026/shell/ShellDemoPill";
 import type { ReactNode } from "react";
 
-import { DemoInterceptLayer, DemoModeProvider, DemoNavPill, type DemoModeView } from "../../_demo/demo-mode-core";
-import { AccountTopNav } from "../../orbit-account-shell";
+import { DemoInterceptLayer, DemoModeProvider, type DemoModeView } from "../../_demo/demo-mode-core";
 
 export function NetworkDemoFrame({ children, guide, route }: { children: ReactNode; guide: DemoModeView; route: string }) {
   return (
     <DemoModeProvider view={guide}>
       <div data-orbit-guide-demo="on" data-orbit-real-page="network" data-orbit-route={route}>
-        <AccountTopNav active="cards" mobileRightExtra={<DemoNavPill />} rightExtra={<DemoNavPill />} />
+        <ShellDemoPill />
         {children}
         <DemoInterceptLayer />
       </div>

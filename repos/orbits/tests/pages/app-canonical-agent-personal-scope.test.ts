@@ -21,7 +21,6 @@ function loadPage(t: TestContext, route: "agent" | "tasks/personal" | "home/even
     [join(root, "app/(app)/app/orbit-language-server.ts")]: { getOrbitServerLanguage: async () => "zh", localizeOrbitTree: (tree: unknown) => tree },
     [join(root, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(root, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
-    [join(root, "app/(app)/app/orbit-account-shell.tsx")]: { AccountTopNav: () => null },
     [join(root, "app/(app)/app/tasks/personal-schedule-workspace.tsx")]: { PersonalScheduleWorkspace: () => null },
     // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除，页面挂的是 `IOrbitShell`。
     [join(root, "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx")]: { IOrbitShell: () => null },

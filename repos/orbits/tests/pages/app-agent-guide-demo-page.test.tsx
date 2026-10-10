@@ -450,159 +450,32 @@ test("flag on: right after step 3 saves the plan the user leaves the demo and se
   assert.equal(demo.calls.filter((call) => call.operation === "plan-read").length, 0);
 });
 
-/* ── W0014：「我的计划」页（`/app/agent/plan`）在示例模式开／关下读什么 ─────────────── */
+/* ── W0014：「我的计划」页（`/app/agent/plan`）──────────────────────────────────── */
 
-interface PlanPageScenario {
-  flag?: string;
-  /** readGuideStatusForActor 的结果：in-demo / out（已完成或老用户）。 */
-  guide?: "in-demo" | "out";
-}
-
-/**
- * `_demo/demo-guide-view.ts` 用真实实现（与人脉页同一套判定），只替换它底下的本人资料与引导进度；
- * 真实计划读取（`resolvePlanService`）与联系人名字（`readPlanContactNames`）换成记录调用的桩。
- */
-function loadPlanPage(t: TestContext, scenario: PlanPageScenario) {
-  const calls: Array<{ operation: string; input?: unknown }> = [];
-  const IOrbitPlan = (props: Record<string, unknown>) => {
-    void props;
-    return null;
-  };
-  const snapshot = { items: [], log: [], plan: { id: "plan:real" } };
-  const previousFlag = process.env.ORBIT_GUIDE_DEMO;
-  if (scenario.flag === undefined) delete process.env.ORBIT_GUIDE_DEMO;
-  else process.env.ORBIT_GUIDE_DEMO = scenario.flag;
-  const progress = { completed: 1, confirmedContacts: 3, nextStep: "goal", steps: { contacts: true, goal: false, plan: false } };
-
-  const modules: Record<string, unknown> = {
-    "next/navigation": { redirect: (href: string) => { throw new Error(`redirect:${href}`); } },
-    [join(root, "auth.ts")]: { auth: async () => ({ user: { email: "owner@example.test", id: "subject:external", name: "Owner" } }) },
-    [join(root, "app/api/_shared/authenticated-actor.ts")]: { resolveAuthenticatedApiActorFromSession: async () => ({ id: "account:canonical" }) },
-    [join(root, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
-    [join(root, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
-    [join(root, "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx")]: { IOrbitPlan },
-    [join(root, "features/plans/service-factory.ts")]: {
-      resolvePlanService: ({ actorId }: { actorId: string }) => {
-        calls.push({ input: actorId, operation: "plan" });
-        return {
-          mode: "mock",
-          service: {
-            // W0021：计划页与 API 同一个入口（阶段判定在里面），只调这一次。
-            getCurrentView: async (options?: { includeLog?: boolean }) => {
-              calls.push({ input: actorId, operation: options?.includeLog ? "view+log" : "view" });
-              return snapshot;
-            },
-            reanalysisQuota: async () => {
-              calls.push({ input: actorId, operation: "quota" });
-              return { limit: 1, month: "2026-09", remaining: 1, used: 0 };
-            },
-          },
-          success: true,
-        };
-      },
-    },
-    [join(root, "features/plans/contact-names.ts")]: {
-      planContactIds: () => ["contact:1"],
-      readPlanContactNames: async (actorId: string) => {
-        calls.push({ input: actorId, operation: "contact-names" });
-        return { "contact:1": { name: "Real person", subtitle: null } };
-      },
-    },
-    [join(root, "features/profile/service-factory.ts")]: {
-      createProfileService: () => ({
-        getProfile: async (input: unknown) => {
-          calls.push({ input, operation: "profile" });
-          return { data: { profile: { relationshipGoal: "" } }, success: true };
-        },
-      }),
-    },
-    [join(root, "features/guide/progress.ts")]: {
-      readGuideStatusForActor: async (input: unknown) => {
-        calls.push({ input, operation: "guide" });
-        return scenario.guide === "out"
-          ? { bannerCollapsed: false, grandfathered: true, inDemo: false, progress: null }
-          : { bannerCollapsed: false, grandfathered: false, inDemo: true, progress };
-      },
-    },
-  };
+// R07 (RD-20): /app/agent/plan no longer composes IOrbitPlan on the server — it only
+// redirects to the Task page's plan segment, so the three W0014 plan-page read-order
+// tests (flag off / flag on out of the guide / in the guide) have no page left to
+// exercise. The IOrbitPlan guide behaviour (demo banner, persona, no-guide leak checks)
+// stays covered through the component in app-agent-iorbit-screens.test.tsx.
+test("R07 plan page: /app/agent/plan redirects to the Task page's plan segment without reading anything", (t) => {
   const pagePath = join(root, "app/(app)/app/agent/plan/page.tsx");
-  const guideViewPath = join(root, "app/(app)/app/_demo/demo-guide-view.ts");
-  // W0021：计划读取移到 read-current-plan.ts，它也要按本用例的桩重新加载。
-  const readPlanPath = join(root, "app/(app)/app/agent/plan/read-current-plan.ts");
-  const ids = [...Object.keys(modules), pagePath, guideViewPath, readPlanPath].map((id) => require.resolve(id));
-  const before = new Map(ids.map((id) => [id, require.cache[id]]));
+  const navigationId = require.resolve("next/navigation");
+  const previousNavigation = require.cache[navigationId];
+  const previousPage = require.cache[require.resolve(pagePath)];
   t.after(() => {
-    for (const [id, previous] of before) {
-      if (previous) require.cache[id] = previous;
-      else delete require.cache[id];
-    }
-    if (previousFlag === undefined) delete process.env.ORBIT_GUIDE_DEMO;
-    else process.env.ORBIT_GUIDE_DEMO = previousFlag;
+    if (previousNavigation) require.cache[navigationId] = previousNavigation;
+    else delete require.cache[navigationId];
+    if (previousPage) require.cache[require.resolve(pagePath)] = previousPage;
+    else delete require.cache[require.resolve(pagePath)];
   });
-  for (const [id, exports] of Object.entries(modules)) {
-    const resolved = require.resolve(id);
-    const replacement = new Module(resolved);
-    replacement.filename = resolved;
-    replacement.loaded = true;
-    replacement.exports = exports;
-    require.cache[resolved] = replacement;
-  }
+  const replacement = new Module(navigationId);
+  replacement.filename = navigationId;
+  replacement.loaded = true;
+  replacement.exports = { redirect: (href: string) => { throw new Error(`redirect:${href}`); } };
+  require.cache[navigationId] = replacement;
   delete require.cache[require.resolve(pagePath)];
-  delete require.cache[require.resolve(guideViewPath)];
-  delete require.cache[require.resolve(readPlanPath)];
-  return { calls, page: require(pagePath).default as () => Promise<ReactElement>, snapshot };
-}
-
-function planPropsOf(tree: ReactElement): Record<string, unknown> {
-  const nodes: unknown[] = [tree];
-  while (nodes.length) {
-    const node = nodes.pop() as { props?: Record<string, unknown>; type?: unknown } | null;
-    if (!node || typeof node !== "object") continue;
-    if (typeof node.type === "function" && (node.type as { name?: string }).name === "IOrbitPlan") return node.props ?? {};
-    const children = node.props?.children;
-    nodes.push(...(Array.isArray(children) ? children : [children]));
-  }
-  assert.fail("IOrbitPlan was not rendered");
-}
-
-test("W0014 plan page, flag off: the real plan and names are read, no guide source is touched, props as before", async (t) => {
-  const { calls, page, snapshot } = loadPlanPage(t, { flag: undefined });
-  const props = planPropsOf(await page());
-  // W0012：读计划前惰性判定进入新阶段（W0021：与读取合在 getCurrentView 里，计划页带进展记录）；
-  // 另读额度与资料里的目标（计划未到期，不读期间联系人）。
-  assert.deepEqual(calls.map((call) => call.operation), ["plan", "view+log", "contact-names", "quota", "profile"]);
-  // W0014 的三个 props 不变，没有 `guide`；W0012 另加 `tracking`。
-  assert.deepEqual(Object.keys(props).sort(), ["contactNames", "guideEnabled", "initialSnapshot", "tracking"]);
-  // W0048b：另带 aiProvider（未配置 ORBIT_PLAN_GENERATOR=ai 时为 false）。
-  assert.deepEqual(props.tracking, { aiProvider: false, currentGoal: "", periodContacts: null, quotaRemaining: 1 });
-  assert.equal(props.initialSnapshot, snapshot);
-  assert.equal(props.guideEnabled, false);
-  assert.deepEqual(props.contactNames, { "contact:1": { name: "Real person", subtitle: null } });
-});
-
-test("W0014 plan page, flag on but out of the guide: the real plan page", async (t) => {
-  const { calls, page, snapshot } = loadPlanPage(t, { flag: "on", guide: "out" });
-  const props = planPropsOf(await page());
-  assert.deepEqual(calls.map((call) => call.operation), ["profile", "guide", "plan", "view+log", "contact-names", "quota", "profile"]);
-  assert.equal(props.guide, undefined);
-  assert.equal(props.initialSnapshot, snapshot);
-  assert.equal(props.guideEnabled, true);
-});
-
-test("W0014 plan page, in the guide: no real plan or contact-name read; the screen gets the demo guide", async (t) => {
-  const { calls, page } = loadPlanPage(t, { flag: "on", guide: "in-demo" });
-  const props = planPropsOf(await page());
-  assert.deepEqual(calls.map((call) => call.operation), ["profile", "guide"]);
-  assert.deepEqual(props.guide, {
-    bannerCollapsed: false,
-    completed: 1,
-    confirmedContacts: 3,
-    nextStep: "goal",
-    steps: { contacts: true, goal: false, plan: false },
-  });
-  assert.equal(props.initialSnapshot, null);
-  // 读取都以 canonical actor 进行。
-  assert.deepEqual(calls[1]!.input, { actorId: "account:canonical", relationshipGoal: "", userId: "subject:external" });
+  const page = require(pagePath).default as () => unknown;
+  assert.throws(() => page(), /^Error: redirect:\/app\/tasks\?tab=plan$/);
 });
 
 /* ── W0014：示例期间 `/app/agent` 不读真实对话／首页业务数据，也不把它们交给示例壳 ─────── */

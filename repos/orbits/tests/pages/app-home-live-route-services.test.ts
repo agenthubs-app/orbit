@@ -18,11 +18,14 @@ const personalHomeRoutes = [
   },
 ] as const;
 
-// iOrbit 工作台合并：hub 页收窄为 /app/agent 重定向，hub 数据（同一个
-// loadAppHomeRouteViewModel）改由 agent route adapter 组合进 dashboard 首屏。
-test("app-home-route redirects into the iOrbit workspace which composes home data", () => {
+// iOrbit 工作台合并：hub 数据（同一个 loadAppHomeRouteViewModel）由 agent route adapter
+// 组合进 dashboard 首屏。R07：/app/home 不再重定向到 /app/agent，而是登录门禁 + 新壳首页占位
+// （R10 换成组件首页）；旧 hub 组件仍不回流。
+test("app-home-route renders the R07 home placeholder while the iOrbit workspace composes home data", () => {
   const hubSource = source("app/(app)/app/home/page.tsx");
-  assert.match(hubSource, /redirect\("\/app\/agent"\)/);
+  assert.match(hubSource, /redirect\("\/app\/account\/login\?next=%2Fapp%2Fhome"\)/);
+  assert.match(hubSource, /<HomePlaceholder \/>/);
+  assert.doesNotMatch(hubSource, /redirect\("\/app\/agent"\)/);
   assert.doesNotMatch(hubSource, /OrbitRealHome|HomeRouteStateBoundary/);
 
   const agentPageSource = source("app/(app)/app/agent/page.tsx");

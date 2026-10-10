@@ -535,7 +535,8 @@ test("admission page stays canonical-only and mounts the people screen inside th
   assert.doesNotMatch(page, /mockEventRecords|readPublicEventCatalogue|legacyEvent/u);
   assert.match(page, /loadEventOperationsPageEvent/u);
   assert.match(page, /data-orbit-real-page="ops-0918"/u);
-  assert.match(page, /<AccountTopNav active="events" \/>/u);
+  // R07: signed-in ops pages mount no nav themselves; Orbit2026Shell provides it.
+  assert.doesNotMatch(page, /AccountTopNav|OrbitTopNav/u);
   assert.match(page, /view="people"/u);
   assert.match(screen, /EVENT_PARTICIPANT_PROFILE_FIELDS\.map/u);
   assert.match(screen, /interviewResponses \?\? \[\]/u);

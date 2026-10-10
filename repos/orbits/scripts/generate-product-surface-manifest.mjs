@@ -998,10 +998,14 @@ function collectInteractions(filePath, imperativeBindings = []) {
       if (kind) {
         const start = source.getLineAndCharacterOfPosition(node.getStart(source));
         const childText = staticChildText(node, source);
+        // Redesign components (R04 / R06 Button, IconButton …) take a required
+        // `label` prop and render it as the control's accessible name.
+        const componentLabel = /^[A-Z]/.test(parts.tagName) ? attributes.get("label") : undefined;
         const label =
           attributes.get("aria-label") ??
           attributes.get("arialabel") ??
           attributes.get("title") ??
+          componentLabel ??
           childText ??
           "";
         const handlerNames = [...attributes.keys()].filter((name) =>

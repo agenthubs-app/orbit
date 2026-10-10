@@ -109,10 +109,13 @@ test("/app/agent keeps ordinary assistant bubbles visible without inline API pan
 });
 
 test("/app/agent input explains the no-tool privacy boundary before sensitive context is shared", () => {
-  // 隐私边界说明挂在输入框上，随输入框搬到了全局组件。
-  const agentSource = readProjectFile("app/(app)/app/orbit-global-ask/orbit-global-ask.tsx");
+  // 隐私边界说明随全局提问入口走：R07 起是 ⌘K 面板里「iOrbit に聞く」下面的一行（三语）。
+  const palette = readProjectFile("app/(app)/app/orbit-2026/shell/CommandPalette.tsx");
+  const copy = readProjectFile("app/(app)/app/orbit-2026/copy/shell.ts");
 
-  assert.match(agentSource, /data-orbit-agent-privacy-boundary/);
-  assert.match(agentSource, /external actions always need your confirmation/);
-  assert.match(agentSource, /涉及对外动作会先经你确认/);
+  assert.match(palette, /data-orbit-agent-privacy-boundary/);
+  assert.match(palette, /shellCopy\.paletteAskPrivacy/);
+  assert.match(copy, /external actions always need your confirmation/);
+  assert.match(copy, /涉及对外动作会先经你确认/);
+  assert.match(copy, /外部への操作は必ず先に確認します/);
 });

@@ -1,0 +1,40 @@
+import type { OrbitCopyTable } from "./types";
+
+// R07: the Web shell's own wording (the nav labels themselves come from the
+// standard copy `nav.*`). All three languages; checked by `npm run copy:qa`.
+export const shellCopy = {
+  account: { ja: "アカウント", zh: "账号", en: "Account", kind: "label" },
+  language: { ja: "言語", zh: "语言", en: "Language", kind: "label" },
+  // Language names are written in their own language in every UI language (endonyms).
+  languageJa: { ja: "日本語", zh: "日本語", en: "日本語", kind: "button" },
+  languageZh: { ja: "中文", zh: "中文", en: "中文", kind: "button" },
+  appearance: { ja: "外観", zh: "外观", en: "Appearance", kind: "label" },
+  themeSystem: { ja: "自動", zh: "自动", en: "Auto", kind: "button" },
+  themeLight: { ja: "ライト", zh: "浅色", en: "Light", kind: "button" },
+  themeDark: { ja: "ダーク", zh: "深色", en: "Dark", kind: "button" },
+  signOut: { ja: "ログアウト", zh: "退出登录", en: "Sign out", kind: "menu" },
+  railNextTitle: { ja: "次の一手", zh: "下一步", en: "Next steps", kind: "label" },
+  railNextEmpty: { ja: "やることが見つかると、ここに表示されます。", zh: "有需要做的事时，会显示在这里。", en: "When something needs doing, it shows up here.", kind: "sentence" },
+  railRecentTitle: { ja: "最近の会話", zh: "最近的对话", en: "Recent conversations", kind: "label" },
+  railRecentEmpty: { ja: "iOrbit との会話はまだありません。", zh: "还没有和 iOrbit 的对话。", en: "No conversations with iOrbit yet.", kind: "sentence" },
+  paletteLabel: { ja: "検索と iOrbit", zh: "搜索与 iOrbit", en: "Search and iOrbit", kind: "dialogTitle" },
+  palettePlaceholder: { ja: "人を検索、または iOrbit に聞く", zh: "搜索人脉，或问 iOrbit", en: "Search people, or ask iOrbit", kind: "label" },
+  palettePeople: { ja: "人脈", zh: "人脉", en: "People", kind: "label" },
+  paletteAsk: { ja: "iOrbit に聞く", zh: "问 iOrbit", en: "Ask iOrbit", kind: "button" },
+  paletteAskPrivacy: { ja: "送ると iOrbit の会話が開きます · 外部への操作は必ず先に確認します", zh: "发送后进入 iOrbit 对话 · 涉及对外动作会先经你确认", en: "Sending opens the iOrbit conversation · external actions always need your confirmation first.", kind: "sentence" },
+  demoPillStart: { ja: "サンプル · ガイドを始める", zh: "示例 · 开始引导", en: "Demo · Start the guide", kind: "button" },
+  demoPillContinue: { ja: "サンプル · ガイドを続ける", zh: "示例 · 继续引导", en: "Demo · Continue the guide", kind: "button" },
+  paletteNoResults: { ja: "見つかりませんでした", zh: "没有找到", en: "No matches", kind: "label" },
+  paletteSearching: { ja: "検索中…", zh: "正在搜索…", en: "Searching…", kind: "label" },
+  paletteContext: { ja: "表示中：{page}", zh: "正在看：{page}", en: "Viewing: {page}", kind: "chip" },
+  paletteHintOpen: { ja: "開く", zh: "打开", en: "Open", kind: "label" },
+  paletteHintAsk: { ja: "iOrbit に渡す", zh: "交给 iOrbit", en: "Hand to iOrbit", kind: "label" },
+  homeEmptyTitle: { ja: "ホームを準備しています", zh: "首页正在准备", en: "Home is on its way", kind: "label" },
+  homeEmptyBody: { ja: "今日の予定、やること、人脈の動きをここにまとめます。それまでは左のメニューから各ページを開けます。", zh: "今天的日程、待办和人脉动态会汇总在这里。在那之前，可以从左侧菜单打开各个页面。", en: "Today's schedule, to-dos and people updates will gather here. Until then, open each page from the menu on the left.", kind: "sentence" },
+  taskTitle: { ja: "Task", zh: "Task", en: "Task", kind: "label" },
+  planEmptyTitle: { ja: "目標を決める", zh: "定一个目标", en: "Set a goal", kind: "label" },
+  planEmptyBody: { ja: "達成したいことを決めると、ここで計画として進められます。", zh: "定下想达成的目标后，就可以在这里按计划推进。", en: "Decide what you want to achieve, then move it forward here as a plan.", kind: "sentence" },
+  memoEmptyTitle: { ja: "メモはまもなく使えます", zh: "笔记即将开放", en: "Notes are coming soon", kind: "label" },
+  memoEmptyBody: { ja: "Web でもメモを書いて、人やイベントにつなげられるようになります。", zh: "很快也能在网页上写笔记，并关联到人和活动。", en: "Soon you can write notes on the web and link them to people and events.", kind: "sentence" },
+  inboxTitle: { ja: "受信箱", zh: "收件箱", en: "Inbox", kind: "label" },
+} satisfies OrbitCopyTable;

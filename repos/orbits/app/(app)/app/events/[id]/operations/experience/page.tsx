@@ -4,7 +4,6 @@ import { auth } from "../../../../../../../auth";
 import { requireEventCapability } from "../../../../../../../features/events/event-access/guard";
 import { createConfiguredEventAccessService } from "../../../../../../../features/events/event-access/runtime";
 import { createConfiguredEventCoreService } from "../../../../../../../features/events/core/runtime";
-import { AccountTopNav } from "../../../../orbit-account-shell";
 import { OrbitReferenceStyles } from "../../../../orbit-reference-styles";
 import { OpsBoundary } from "../../../ops-0918/ops-boundary";
 import { OpsForm } from "../../../ops-0918/ops-form";
@@ -75,7 +74,6 @@ export default async function AppEventExperiencePage({
       <OrbitReferenceStyles />
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
       <div data-orbit-real-page="ops-0918">
-        <AccountTopNav active="events" />
         {/* 「更多 ⌄」只放 导出 CSV（任务 5 决定；attendees.export 才出现，合并前终审修正 5；管理角色需 roles.manage，本页不解析） */}
         <OpsConsoleShell event={pageEvent} more={canExport ? [{ href: exportCsvHref(eventId), label: "导出 CSV" }] : []} view="form">
           <OpsForm event={pageEvent} />

@@ -18,7 +18,8 @@ test("/app/contacts/new renders the Network import screen without preflight side
   assert.match(pageSource, /redirect\("\/app\/account\/login\?next=/);
   assert.match(pageSource, /NetworkImport/);
   assert.match(pageSource, /resolveBusinessCardCaptureAvailability/);
-  assert.match(pageSource, /AccountTopNav active="cards"/);
+  // R07: the page mounts no nav itself; Orbit2026Shell (layout) provides it.
+  assert.doesNotMatch(pageSource, /AccountTopNav|OrbitTopNav|PublicTopNav/);
   assert.doesNotMatch(pageSource, /OrbitRealCardsImport/);
   // 页面加载不得触发任何 live 服务预检：只读配置可用性，批次数据由客户端按需拉取。
   assert.doesNotMatch(pageSource, /getOrbitContactsViewModel/);

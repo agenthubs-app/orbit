@@ -1,7 +1,7 @@
 /**
  * Events（Orbit_0918）参与者侧壳：列表页头 + 三页签 + 全部 ev-* 样式 + toast。
  * JSX 逐元素来自 docs/designs/Orbit_0918/Events.dc.html 第 43 行（<main>）、46–57 行（页头/页签）、781–783 行（toast）。
- * 顶栏由 page.tsx 按登录态挂（PublicTopNav / AccountTopNav），不在壳内。
+ * 已登录时导航由新壳 Orbit2026Shell 提供（R07），未登录时 page.tsx 挂 PublicTopNav，不在壳内。
  */
 "use client";
 

@@ -270,8 +270,9 @@ test("/app/events renders the public event catalogue without requiring authentic
   );
 
   assert.match(pageSource, /EventsList/);
-  // 公开页：顶栏按登录态选择，未登录不得挂 AccountTopNav（会请求 /api/notifications → 401）。
-  assert.match(pageSource, /authenticated \? <AccountTopNav active="events" \/> : <PublicTopNav active="events" \/>/);
+  // 公开页：未登录挂 PublicTopNav；R07 起已登录由 Orbit2026Shell 提供导航，页面不再挂 AccountTopNav。
+  assert.match(pageSource, /\{authenticated \? null : <PublicTopNav active="events" \/>\}/);
+  assert.doesNotMatch(pageSource, /AccountTopNav/);
   assert.match(pageSource, /createConfiguredCanonicalPublicEventCatalogue/);
   assert.match(pageSource, /getOrbitLandingViewModelFromCatalogue/);
   assert.match(pageSource, /readRuntimeEventRegistrationStates/);

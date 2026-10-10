@@ -37,15 +37,21 @@ test("starfield examples fill the prompt and disclose scope without auto-running
 });
 
 test("the global composer collapses after explicit send and suggestion chips only fill", () => {
-  const dock = source("app/(app)/app/orbit-global-ask/orbit-global-ask.tsx");
+  // R07: the floating ask (OrbitGlobalAsk) was deleted; its hand-off is the ⌘K palette,
+  // which still goes through orbit-ask-context and closes before handing the text over.
+  const palette = source("app/(app)/app/orbit-2026/shell/CommandPalette.tsx");
   const context = source("app/(app)/app/orbit-global-ask/orbit-ask-context.tsx");
 
-  assert.match(dock, /setDraft\?\.\(chip\.query\)/);
-  assert.doesNotMatch(dock, /onClick=\{\(\) => send\(chip\.query\)\}/);
+  // R07: the palette has no suggestion chips, so "chips only fill" has no surface left;
+  // the guarantee that typing never sends is kept: only ⌘↵ or the ask row submits.
+  assert.match(palette, /onClose\(\);\s*ask\.submit\(text, context\);/);
+  assert.match(palette, /event\.key === "Enter" && \(event\.metaKey \|\| event\.ctrlKey\)\) \{ event\.preventDefault\(\); handToIorbit\(\); \}/);
+  assert.match(palette, /if \(index === askRow\) \{ handToIorbit\(\); return; \}/);
+  assert.doesNotMatch(palette, /onChange=\{[^}]*submit/);
   assert.match(context, /const \[open, setOpen\] = useState\(false\)/);
   assert.match(context, /useEffect\(\(\) => \{\s*setOpen\(false\);\s*\}, \[pathname\]\)/);
   assert.match(context, /target\.onAsk\(trimmed\);\s*setOpen\(false\)/);
-  assert.match(dock, /!isOrbitAskHome\(pathname\)/);
+  // R07: `!isOrbitAskHome(pathname)` hid the floating dock on /app/agent; the palette is a shell-wide dialog, so that gate is obsolete.
 });
 
 test("Agent waiting, timeout recovery, and trust summaries state their real boundaries", () => {

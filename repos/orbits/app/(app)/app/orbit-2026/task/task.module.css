@@ -1,0 +1,4 @@
+.bar { display: flex; justify-content: center; padding: var(--space-14) var(--space-34) 0; }
+.empty { display: block; max-width: 640px; margin: var(--space-24) auto; padding: 0 var(--space-18); }
+@media (max-width: 1279px) { .bar { padding: var(--space-12) var(--space-26) 0; } }
+@media (max-width: 767px) { .bar { padding: var(--space-12) var(--space-18) 0; } }

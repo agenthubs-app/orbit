@@ -3,6 +3,8 @@ const ORBIT_PRIVATE_APP_PREFIXES = [
   "/app/agent",
   "/app/contacts",
   "/app/home",
+  // R07: the inbox became a page (it was a drawer); signed-out visitors go to sign-in.
+  "/app/inbox",
   "/app/platform",
   "/app/profile",
   "/app/settings",

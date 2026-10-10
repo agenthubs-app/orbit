@@ -49,23 +49,17 @@ test("Orbit agent UI sends prompts through the Chat Agent API boundary", () => {
 });
 
 test("Orbit agent submit controls expose a 44px target and guard blank or concurrent requests", () => {
-  // 输入框已提取成 layout 级的全局组件，发送守卫也跟着搬了过去。
-  const agentSource = readProjectFile("app/(app)/app/orbit-global-ask/orbit-global-ask.tsx");
-
-  assert.match(agentSource, /type="button"/);
-  assert.match(agentSource, /data-orbit-agent-submit="true"/);
-  // 发送守卫：请求进行中或空输入（无提示语兜底）时不提交
-  assert.match(agentSource, /if \(busy\) return/);
-  assert.match(agentSource, /const text = query\.trim\(\) \|\| hint/);
-  assert.match(agentSource, /if \(!text\) return/);
-  // 视觉尺寸按设计定稿（36px 圆钮），可点击热区仍为 44px（.hit-44 ::after）
-  assert.match(agentSource, /className="oga-send hit-44"/);
-
-  // 合并前终审 6：iOrbit 对话屏自己的发送键同一口径——换屏时 `hit-44` 掉了，
-  // `app/(app)/app/agent/` 下一处不剩。
+  // R07：layout 级的全局提问入口（OrbitGlobalAsk）已删除，发送键与守卫改断 iOrbit 对话屏自己的输入区。
   const iorbitChatSource = readProjectFile(
     "app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx",
   );
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+
+  assert.match(iorbitChatSource, /data-orbit-agent-submit="true"/);
+  // 发送守卫：请求进行中或空输入时不提交（按钮禁用 + hook 内再守一次）
+  assert.match(iorbitChatSource, /disabled=\{thinking \|\| !chatDraft\.trim\(\)\}/);
+  assert.match(chatHookSource, /const query = chatDraft\.trim\(\);\s*if \(!query \|\| thinking\) return;/);
+  // 合并前终审 6：视觉尺寸按设计定稿（36px 圆钮），可点击热区仍为 44px（.hit-44 ::after）。
   assert.match(iorbitChatSource, /className="btn ir-composer-send hit-44"/);
 });
 
@@ -89,9 +83,6 @@ test("the agent shell renders one tree and exposes one shared request state", ()
 
 test("chat composer stays on the Agent page without reopening the global launcher", () => {
   const agentSource = readProjectFile(IORBIT_CHAT_PATH);
-  const globalAskSource = readProjectFile(
-    "app/(app)/app/orbit-global-ask/orbit-global-ask.tsx",
-  );
 
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
 
@@ -102,7 +93,9 @@ test("chat composer stays on the Agent page without reopening the global launche
   assert.match(chatHookSource, /void ask\(query\)/);
   // 任务 6a：固定输入坞（`.agent-chat-composer-dock`）随旧 `height:100dvh` 应用框
   // 一起退役（「审阅修订」15），设计 309–313 是文档流里的内联输入区。
-  assert.match(globalAskSource, /!isOrbitAskHome\(pathname\)/);
+  // R07: the global launcher this guarded is gone (no floating ask to reopen on /app/agent);
+  // its successor, the ⌘K palette, is a dialog that opens only on ⌘K or an explicit click.
+  assert.doesNotMatch(agentSource, /useOrbitAsk\(\)|setOpen\(true\)/);
 });
 
 

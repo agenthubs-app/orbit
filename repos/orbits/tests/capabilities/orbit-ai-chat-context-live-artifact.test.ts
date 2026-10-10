@@ -414,7 +414,13 @@ test("/app/agent keeps technical provenance out of the user conversation", () =>
 
   assert.match(shellSource, /data-orbit-agent-screen-title/);
   assert.match(shellSource, /<h1/);
-  assert.match(shellSource, /<AccountTopNav active="agent"/);
+  // R07: the page no longer mounts a top bar; Orbit2026Shell (layout) provides nav and
+  // highlights iOrbit for /app/agent.
+  assert.doesNotMatch(shellSource, /AccountTopNav|OrbitTopNav/);
+  assert.match(
+    source("app/(app)/app/orbit-2026/shell/shell-routes.ts"),
+    /matches\(path, "\/app\/agent"\)\) return "iorbit"/,
+  );
   assert.doesNotMatch(agentSource, /function AgentTopNav/);
   assert.doesNotMatch(agentSource, /function AgentEvidenceSources/);
   assert.doesNotMatch(agentSource, /data-agent-evidence-sources/);

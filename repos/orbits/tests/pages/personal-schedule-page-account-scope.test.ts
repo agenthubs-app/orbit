@@ -22,7 +22,6 @@ function loadPersonalPage(t: TestContext, options: { signedIn?: boolean; actorId
       calls.push({ operation: "resolveActor", input });
       return options.actorId === null ? null : { id: options.actorId ?? "account:canonical" };
     } },
-    [join(projectRoot, "app/(app)/app/orbit-account-shell.tsx")]: { AccountTopNav: () => null },
     [join(projectRoot, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(projectRoot, "app/(app)/app/tasks/tasks-styles.tsx")]: { TasksStyles: () => null },
     [join(projectRoot, "app/(app)/app/tasks/personal-schedule-workspace.tsx")]: { PersonalScheduleWorkspace: Workspace },

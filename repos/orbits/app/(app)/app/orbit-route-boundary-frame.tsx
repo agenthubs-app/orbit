@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { PublicTopNav } from "./orbit-public-shell";
 import type { OrbitNavActive } from "./orbit-public-shell";
 
 /**
@@ -13,13 +12,13 @@ import type { OrbitNavActive } from "./orbit-public-shell";
  * routes here while the detail capability only serves demo-contact-1) that
  * leaves the user stranded on what reads as a broken page.
  *
- * Keeping the standard nav means a boundary is a state of the app, not an exit
- * from it. The frame also caps the reading measure — a full-bleed 1440px error
+ * The signed-in shell (Orbit2026Shell, R07) keeps its nav around a boundary, so a
+ * boundary is a state of the app, not an exit from it. The frame also caps the reading measure — a full-bleed 1440px error
  * paragraph was the widest line length anywhere in the product.
  */
 export function OrbitRouteBoundaryFrame({
   children,
-  navActive,
+  navActive: _navActive,
   page,
 }: {
   children: ReactNode;
@@ -32,7 +31,6 @@ export function OrbitRouteBoundaryFrame({
       data-orbit-real-page={page}
       style={{ background: "var(--bg)", minHeight: "100dvh" }}
     >
-      <PublicTopNav active={navActive} />
       <div
         style={{
           margin: "0 auto",

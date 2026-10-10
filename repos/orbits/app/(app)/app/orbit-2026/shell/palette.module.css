@@ -1,0 +1,43 @@
+.field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: var(--space-12);
+  padding: 0 14px;
+  min-height: 48px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink-3-text);
+}
+.field:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-body);
+  outline: none;
+}
+.input::placeholder { color: var(--ink-3-text); }
+.list { margin-top: var(--space-12); display: grid; gap: 2px; max-height: 50vh; overflow: auto; }
+.group { font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-3-text); padding: 6px 8px; }
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.rowOn { background: var(--accent-soft); }
+.rowText { flex: 1; min-width: 0; display: grid; }
+.rowText b { font-size: var(--fs-body-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rowText small { font-size: var(--fs-meta); color: var(--ink-3-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.askRow { color: var(--accent-text); border-top: 1px solid var(--line); margin-top: 4px; }
+.empty { font-size: var(--fs-meta); color: var(--ink-3-text); padding: 6px 8px; }
+.keys { display: inline-flex; gap: 6px; align-items: center; }
+/* The privacy line that used to sit under the floating ask's input. */
+.privacy { margin: 6px 8px 2px; font-size: var(--fs-meta); color: var(--ink-3-text); }

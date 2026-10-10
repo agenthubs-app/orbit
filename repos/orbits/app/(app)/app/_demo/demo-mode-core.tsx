@@ -198,24 +198,6 @@ export function DemoBanner({ message = HOME_BANNER_MESSAGE }: { message?: { en: 
 }
 
 /** 横条收起后在导航栏右侧的药丸；点它把横条展开回来。 */
-export function DemoNavPill() {
-  const demo = useDemoMode();
-  const { t } = useOrbitLanguage();
-  if (!demo || !demo.collapsed) return null;
-  return (
-    <button
-      className="btn ir-demo-pill"
-      data-orbit-guide-demo-pill
-      onClick={() => demo.setCollapsed(false)}
-      type="button"
-    >
-      {demo.view.completed === 0
-        ? t({ en: "Demo · Start the guide", zh: "示例 · 开始引导" })
-        : t({ en: "Demo · Continue the guide", zh: "示例 · 继续引导" })}
-    </button>
-  );
-}
-
 /** 示例人名旁的「示例」角标。 */
 export function DemoTag() {
   const { t } = useOrbitLanguage();

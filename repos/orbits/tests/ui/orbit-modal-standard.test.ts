@@ -117,8 +117,10 @@ test("admin does not retain the unpersisted CreateEventModal", () => {
 
 test("relationship inbox drawer exposes aria-modal for assistive tech", () => {
   const text = source(INBOX_PATH);
-  assert.match(text, /aria-modal="true"/);
-  assert.match(text, /role="dialog"/);
+  // R07: the panel also renders inline on /app/inbox (a page region, not a modal);
+  // drawer mode keeps aria-modal="true" + role="dialog".
+  assert.match(text, /aria-modal=\{inline \? undefined : "true"\}/);
+  assert.match(text, /role=\{inline \? "region" : "dialog"\}/);
   assert.match(text, /zIndex:\s*ORBIT_Z\.overlay/);
 });
 

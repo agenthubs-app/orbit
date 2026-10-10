@@ -94,6 +94,31 @@ export function openRelationshipInbox(): void {
   window.dispatchEvent(new CustomEvent(RELATIONSHIP_INBOX_OPEN_EVENT));
 }
 
+// R07: the shell turns the open / compose events into a visit to /app/inbox; the
+// compose seed rides along in sessionStorage and the page takes it once.
+const PENDING_COMPOSE_KEY = "orbit:inbox:pending-compose";
+
+export function stashInboxComposeSeed(seed: NewThreadSeed): void {
+  try { sessionStorage.setItem(PENDING_COMPOSE_KEY, JSON.stringify(seed)); } catch { /* the page opens without a draft */ }
+}
+
+function takeInboxComposeSeed(): NewThreadSeed | null {
+  try {
+    const raw = sessionStorage.getItem(PENDING_COMPOSE_KEY);
+    sessionStorage.removeItem(PENDING_COMPOSE_KEY);
+    const value = raw ? JSON.parse(raw) as unknown : null;
+    return value && typeof value === "object" ? value as NewThreadSeed : null;
+  } catch { return null; }
+}
+
+/** R07 /app/inbox: the relationship inbox as a page (same reads and 15-second refresh as the drawer). */
+export function RelationshipInboxPage() {
+  const [seed, setSeed] = useState<NewThreadSeed | null | undefined>(undefined);
+  useEffect(() => { setSeed(takeInboxComposeSeed()); }, []);
+  if (seed === undefined) return null;
+  return <RelationshipInboxPanel inline initialSeed={seed} onClose={() => undefined} />;
+}
+
 // 拉取 async correspondence workspace。传 conversationId 选中某条线程。
 // 面板只经这里的 view model 消费数据，不直接依赖 feature 契约的运行时代码。
 async function fetchInboxWorkspace(
@@ -910,9 +935,12 @@ function ThreadsTab({
 function RelationshipInboxPanel({
   onClose,
   initialSeed,
+  inline = false,
 }: {
   onClose: () => void;
   initialSeed?: NewThreadSeed | null;
+  /** R07: the /app/inbox page — the same inbox in the page flow (no scrim, focus trap, resize or close). */
+  inline?: boolean;
 }) {
   const { t, language } = useOrbitLanguage();
   // 带 seed（来自联系人详情页"起草邮件"）时默认进对话 tab。
@@ -971,6 +999,7 @@ function RelationshipInboxPanel({
   }, []);
 
   useEffect(() => {
+    if (inline) return;
     previouslyFocused.current = document.activeElement as HTMLElement | null;
     const items = focusable();
     (items[0] ?? panelRef.current)?.focus();
@@ -1003,7 +1032,7 @@ function RelationshipInboxPanel({
       document.removeEventListener("keydown", onKeyDown);
       previouslyFocused.current?.focus?.();
     };
-  }, [focusable, onClose]);
+  }, [focusable, inline, onClose]);
 
   useEffect(() => {
     const storedWidth = Number(
@@ -1107,20 +1136,21 @@ function RelationshipInboxPanel({
   return (
     <div
       data-orbit-real-page="relationship-inbox"
-      style={{ inset: 0, position: "fixed", zIndex: ORBIT_Z.overlay }}
+      data-relationship-inbox-inline={inline ? "" : undefined}
+      style={inline ? { position: "relative", minHeight: "100vh" } : { inset: 0, position: "fixed", zIndex: ORBIT_Z.overlay }}
     >
-      <div
+      {inline ? null : <div
         aria-hidden="true"
         onClick={onClose}
         style={{ background: "var(--scrim-web, rgba(10,12,16,0.42))", inset: 0, position: "absolute" }}
-      />
+      />}
       <div
-        aria-label={t({ en: "Relationship inbox", zh: "关系收件箱" })}
-        aria-modal="true"
+        aria-label={t({ en: "Relationship inbox", zh: "关系收件箱", ja: "受信箱" })}
+        aria-modal={inline ? undefined : "true"}
         className={`ri-panel${resizing ? " is-resizing" : ""}`}
         ref={panelRef}
-        role="dialog"
-        style={{
+        role={inline ? "region" : "dialog"}
+        style={inline ? { background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100vh", position: "relative", width: "100%" } : {
           background: "var(--bg, #fff)",
           borderLeft: "1px solid var(--line)",
           bottom: 0,
@@ -1136,7 +1166,7 @@ function RelationshipInboxPanel({
         }}
         tabIndex={-1}
       >
-        <div className="ri-panel-header">
+        {inline ? null : <><div className="ri-panel-header">
           <div>
             <h2 className="h-section" style={{ margin: 0 }}>
               {t({ en: "Inbox", zh: "收件箱" })}
@@ -1182,7 +1212,7 @@ function RelationshipInboxPanel({
           type="button"
         >
           <span aria-hidden="true" />
-        </button>
+        </button></>}
 
         <div className="ri-panel-tabs" role="tablist">
           {tabs.map((item) => (

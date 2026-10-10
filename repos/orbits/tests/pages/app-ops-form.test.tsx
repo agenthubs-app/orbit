@@ -450,7 +450,8 @@ test("experience page gates on experience.configure before reading the event and
   assert.match(page, /<OpsBoundary [^>]*eyebrow="EVENT OPERATIONS · EXPERIENCE"[^>]*page="event-experience-boundary"[^>]*retryHref=\{`\/app\/events\/\$\{encodeURIComponent\(eventId\)\}\/operations\/experience`\}[^>]*title="没有报名设置权限"/u);
   assert.match(boundary, /href="\/app\/events\/center">返回运营活动中心/u);
   assert.match(page, /data-orbit-real-page="ops-0918"/u);
-  assert.match(page, /<AccountTopNav active="events" \/>/u);
+  // R07: signed-in ops pages mount no nav themselves; Orbit2026Shell provides it.
+  assert.doesNotMatch(page, /AccountTopNav|OrbitTopNav/u);
   assert.match(page, /view="form"/u);
   // 合并前终审修正 5：导出 CSV 按 attendees.export 解析（fail-closed），无则 more 为空数组
   assert.match(page, /await requireEventCapability\(\{[^}]*capability: "attendees\.export"/u);

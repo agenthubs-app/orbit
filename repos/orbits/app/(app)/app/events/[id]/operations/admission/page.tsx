@@ -4,7 +4,6 @@ import { auth } from "../../../../../../../auth";
 import { requireEventCapability } from "../../../../../../../features/events/event-access/guard";
 import { createConfiguredEventAccessService } from "../../../../../../../features/events/event-access/runtime";
 import { createConfiguredEventCoreService } from "../../../../../../../features/events/core/runtime";
-import { AccountTopNav } from "../../../../orbit-account-shell";
 import { OrbitReferenceStyles } from "../../../../orbit-reference-styles";
 import { OpsBoundary } from "../../../ops-0918/ops-boundary";
 import { exportCsvHref } from "../../../ops-0918/ops-model";
@@ -94,7 +93,6 @@ export default async function EventAdmissionReviewPage({
       <OrbitReferenceStyles />
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
       <div data-orbit-real-page="ops-0918">
-        <AccountTopNav active="events" />
         {/* 「更多 ⌄」只放 导出 CSV（attendees.export 才出现，合并前终审修正 5）：管理角色需 roles.manage 页签级解析，本页不解析（任务 4 决定） */}
         <OpsConsoleShell event={pageEvent} more={canExport ? [{ href: exportCsvHref(event.eventId), label: "导出 CSV" }] : []} view="people">
           <OpsPeople canConfigurePolicy={canConfigurePolicy} event={pageEvent} />

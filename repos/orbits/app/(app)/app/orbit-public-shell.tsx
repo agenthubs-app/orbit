@@ -323,7 +323,7 @@ function OrbitNavMobileAccountLinks({
 
 /**
  * Single source of truth for the top navigation across public AND account
- * surfaces. Both PublicTopNav and AccountTopNav render this, so spacing,
+ * surfaces. Public (signed-out) pages render this through PublicTopNav; signed-in pages use Orbit2026Shell (R07), so spacing,
  * fonts, and structure are guaranteed identical on every page.
  */
 export function OrbitTopNav({

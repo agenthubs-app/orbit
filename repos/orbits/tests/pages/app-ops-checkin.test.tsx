@@ -301,7 +301,8 @@ test("check-in page gates on check_in.roster.read_limited before reading the eve
   assert.match(boundary, /data-orbit-real-page=\{page\}/u);
   assert.match(page, /loadEventOperationsPageEvent/u);
   assert.match(page, /data-orbit-real-page="ops-0918"/u);
-  assert.match(page, /<AccountTopNav active="events" \/>/u);
+  // R07: signed-in ops pages mount no nav themselves; Orbit2026Shell provides it.
+  assert.doesNotMatch(page, /AccountTopNav|OrbitTopNav/u);
   assert.match(page, /view="checkin"/u);
   // 合并前终审修正 5：导出 CSV 按 attendees.export 解析（fail-closed），无则 more 为空数组
   assert.match(page, /await requireEventCapability\(\{[^}]*capability: "attendees\.export"/u);

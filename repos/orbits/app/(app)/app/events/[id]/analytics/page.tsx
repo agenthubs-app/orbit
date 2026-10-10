@@ -5,7 +5,6 @@ import { requireEventCapability } from "../../../../../../features/events/event-
 import { createConfiguredEventAccessService } from "../../../../../../features/events/event-access/runtime";
 import { createConfiguredEventCoreService } from "../../../../../../features/events/core/runtime";
 import type { EventOperationsPageEvent } from "../operations/event-operations-page-event";
-import { AccountTopNav } from "../../../orbit-account-shell";
 import { OrbitReferenceStyles } from "../../../orbit-reference-styles";
 import { exportCsvHref } from "../../ops-0918/ops-model";
 import { OpsReport } from "../../ops-0918/ops-report";
@@ -76,7 +75,6 @@ export default async function EventAnalyticsPage({
       <OrbitReferenceStyles />
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
       <div data-orbit-real-page="ops-0918">
-        <AccountTopNav active="events" />
         {organizerShell ? (
           /* 「更多 ⌄」只放 导出 CSV（任务 5 决定；attendees.export 才出现，导出接口自行按能力校验） */
           <OpsConsoleShell event={pageEvent} more={canExport ? [{ href: exportCsvHref(eventId), label: "导出 CSV" }] : []} view="report">

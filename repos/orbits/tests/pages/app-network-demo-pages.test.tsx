@@ -93,7 +93,6 @@ function loadPage(t: TestContext, name: PageName, scenario: Scenario = {}) {
     },
     [join(root, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(root, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
-    [join(root, "app/(app)/app/orbit-account-shell.tsx")]: { AccountTopNav: component("AccountTopNav") },
     // 真实联系人读取：示例期间一个都不许调用。
     [join(root, "app/(app)/app/contacts/contact-card-route-service.ts")]: { loadContactCardRoute: stub("cards", null) },
     [join(root, "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model.ts")]: {

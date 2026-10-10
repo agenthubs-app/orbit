@@ -233,7 +233,9 @@ test("registered recap exposes private tabs and keeps 「生成总结」 as the 
 test("page wiring: events-0918 wrapper, nav by auth, view=recap passthrough, loaders untouched", () => {
   const page = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/page.tsx"), "utf8");
   assert.match(page, /data-orbit-real-page="events-0918"/);
-  assert.match(page, /authenticated \? <AccountTopNav active="events" \/> : <PublicTopNav active="events" \/>/);
+  // R07: signed in, Orbit2026Shell provides nav; the public top bar only when signed out.
+  assert.match(page, /\{authenticated \? null : <PublicTopNav active="events" \/>\}/);
+  assert.doesNotMatch(page, /AccountTopNav/);
   assert.match(page, /readSearchParam\(query, "view"\) === "recap"/);
   assert.match(page, /canOpenOperations=\{resolution\.canOpenOperations\}/);
   assert.match(page, /resolveConfiguredCanonicalEventDetailView/);

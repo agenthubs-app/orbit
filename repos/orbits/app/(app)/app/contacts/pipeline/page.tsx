@@ -22,7 +22,6 @@ import {
 } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { applyOrbitContactsPresentation } from "../../orbit-contacts-presentation";
-import { AccountTopNav } from "../../orbit-account-shell";
 import { loadContactsAnalysis } from "../analysis/contacts-analysis-route-service";
 import { NetworkPipeline } from "../network-0918/network-pipeline";
 import { NetworkDemoFrame } from "../network-0918/network-demo-frame";
@@ -106,7 +105,6 @@ export default async function AppContactsPipelinePage({
       {routeModel.state === "success" ? (
         // 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
         <div data-orbit-real-page="network" data-orbit-route="app-contacts-pipeline-route">
-          <AccountTopNav active="cards" />
           <NetworkPipeline
             // 与 dashboard/page.tsx 同一包裹：先做 contacts 展示层归一，再按语言本地化整棵树。
             viewModel={localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(routeModel.payload, tiers), language), language)}

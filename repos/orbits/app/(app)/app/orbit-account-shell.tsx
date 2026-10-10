@@ -4,9 +4,8 @@ import type { ReactNode } from "react";
 
 import { useOrbitLanguage } from "./orbit-language-context";
 import { useOrbitModalA11y } from "./orbit-modal-a11y";
-import { OrbitTopNav, productHref } from "./orbit-public-shell";
+import { productHref } from "./orbit-public-shell";
 import { Icon, Logo } from "./orbit-reference-primitives";
-import { RelationshipInboxTrigger } from "./inbox/relationship-inbox-panel";
 import { ORBIT_Z } from "./orbit-z";
 
 function accountHref(prototypeHref: string) {
@@ -17,40 +16,6 @@ function accountHref(prototypeHref: string) {
 export function orbitNavigate(prototypeHref: string) {
   if (typeof window === "undefined") return;
   window.location.href = accountHref(prototypeHref);
-}
-
-export function AccountTopNav({
-  active = "me",
-  agentTone,
-  mobileRightExtra,
-  rightExtra,
-}: {
-  accountInitial?: string;
-  active?: "agent" | "today" | "events" | "schedule" | "cards" | "me" | "settings";
-  agentTone?: "default" | "selected";
-  mobileRightExtra?: ReactNode;
-  rightExtra?: ReactNode;
-}) {
-  return (
-    <OrbitTopNav
-      active={active}
-      agentActive={agentTone ? agentTone === "selected" : active === "agent"}
-      meHref="/app/profile"
-      mobileRightExtra={
-        <>
-          {mobileRightExtra}
-          <RelationshipInboxTrigger />
-        </>
-      }
-      rightExtra={
-        // 关系收件箱入口在所有 /app/** 顶栏默认出现；页面传入的 rightExtra 仍保留。
-        <>
-          {rightExtra}
-          <RelationshipInboxTrigger />
-        </>
-      }
-    />
-  );
 }
 
 export function StatusBar({ dark = false }: { dark?: boolean }) {

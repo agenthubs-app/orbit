@@ -79,7 +79,6 @@ function loadRealDashboardPage(t: TestContext) {
     [join(projectRoot, "app/(app)/app/orbit-language-server.ts")]: { getOrbitServerLanguage: async () => "zh", localizeOrbitTree: (tree: unknown) => tree },
     [join(projectRoot, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(projectRoot, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
-    [join(projectRoot, "app/(app)/app/orbit-account-shell.tsx")]: { AccountTopNav: () => null },
   };
   const ids = Object.keys(stubs).map((id) => testRequire.resolve(id));
   const previous = new Map(ids.map((id) => [id, testRequire.cache[id]]));

@@ -1,4 +1,3 @@
-import { AccountTopNav } from "../orbit-account-shell";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import { loadProfileEditorPage } from "./profile-0918/load-profile-editor-page";
@@ -62,7 +61,6 @@ export default async function AppProfilePage({
       <OrbitVisualFreezeRuntime />
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
       <div data-orbit-real-page="profile-0918" data-orbit-route="app-profile-route">
-        <AccountTopNav active="me" />
         <ProfileScreens
           onboarding={onboarding}
           onboardingNext={onboardingNext}

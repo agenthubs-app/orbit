@@ -5,7 +5,7 @@
  *   11–13  字体 <link>（由既有 layout 提供，壳不重复注入）
  *   14–22  全局 CSS（* / body / a / a:hover / input,textarea,button / ::placeholder / @keyframes）
  *   25     页面包裹 min-height:100vh; background:#FBFBFE; overflow-x:clip
- *   27–41  顶栏：按「审阅修订」5 沿用 `AccountTopNav active="agent"`，设计的药丸头整体记一条偏差
+ *   27–41  顶栏：R07 起由新壳 Orbit2026Shell 统一提供（示例药丸由 ShellDemoPill 填进 demoPill 插槽）
  *   43     <main> max-width 1240px、margin 0 auto、padding 14px 40px 72px、列间距 26px
  *
  * 作用域双层（「审阅修订」2）：外层保留 `data-orbit-real-page="agent"`（冻结的
@@ -42,6 +42,7 @@
  */
 "use client";
 
+import { ShellDemoPill } from "../../orbit-2026/shell/ShellDemoPill";
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -50,10 +51,8 @@ import {
   DemoHandoffGuard,
   DemoInterceptLayer,
   DemoModeProvider,
-  DemoNavPill,
   type DemoModeView,
 } from "../../_demo/demo-mode-context";
-import { AccountTopNav } from "../../orbit-account-shell";
 import {
   DEMO_PLAN_SESSION_ID,
   buildDemoAgentViewModel,
@@ -204,7 +203,7 @@ function IOrbitDemoBody({
           <h1 className="ir-screen-title" data-orbit-agent-screen-title>
             {t({ en: "iOrbit workspace", zh: "iOrbit 工作区" })}
           </h1>
-          <AccountTopNav active="agent" mobileRightExtra={<DemoNavPill />} rightExtra={<DemoNavPill />} />
+          <ShellDemoPill />
           <main className="ir-main">
             <DemoBanner />
             {demoChat ? (
@@ -509,7 +508,6 @@ function IOrbitLiveShell({
         >
           {t({ en: "iOrbit workspace", zh: "iOrbit 工作区" })}
         </h1>
-        <AccountTopNav active="agent" />
         <main className="ir-main">
           {inChat ? (
             <IOrbitChat

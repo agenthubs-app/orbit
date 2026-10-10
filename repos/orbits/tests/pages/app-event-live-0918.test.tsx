@@ -396,7 +396,8 @@ test("live page wires auth redirect, canonical id resolution, the party loader, 
   assert.match(source, /id: session\.user\.id/);
   assert.match(source, /eventCore\.getEvent\(routeId\)/);
   assert.match(source, /data-orbit-real-page="events-0918"/);
-  assert.match(source, /<AccountTopNav active="events" \/>/);
+  // R07: signed-in only page — no nav of its own, Orbit2026Shell provides it.
+  assert.doesNotMatch(source, /<(?:AccountTopNav|OrbitTopNav)\b/);
   assert.match(source, /<EventLive/);
   assert.match(source, /StateView/);
   assert.doesNotMatch(source, /party-login-return|partyLoginHref|PublicTopNav/);

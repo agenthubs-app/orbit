@@ -46,7 +46,6 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
       calls.push({ operation: "contacts", input: { actorId, params } });
       return { state: "success", payload: { availableFilters: { sources: [{ count: 31, label: "Business card", selected: false, value: "business_card_ocr" }, { count: 4, label: "Manual", selected: false, value: "manual" }], statuses: [], values: [] }, contacts: [] } };
     } },
-    [join(projectRoot, "app/(app)/app/orbit-account-shell.tsx")]: { AccountTopNav: () => null },
     [join(projectRoot, "app/(app)/app/contacts/network-0918/network-overview.tsx")]: { NetworkOverview: () => null },
     [join(projectRoot, "app/(app)/app/contacts/network-0918/network-analysis.tsx")]: { NetworkAnalysis: () => null },
     [join(projectRoot, "features/relationship-strength/read-model.ts")]: {
@@ -102,7 +101,7 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
   delete testRequire.cache[testRequire.resolve(routePath)];
   const page = testRequire(pagePath).default as (input?: {
     searchParams?: Promise<{ tab?: string | string[] }>;
-  }) => Promise<ReactElement<{ children: Array<ReactElement<{ children: Array<ReactElement<{ analysis: unknown; initialTab?: string; opportunities?: unknown; structureExtras?: unknown; insights?: unknown }>> }>> }>>;
+  }) => Promise<ReactElement<{ children: Array<ReactElement<{ children: ReactElement<{ analysis: unknown; initialTab?: string; opportunities?: unknown; structureExtras?: unknown; insights?: unknown }> }>> }>>;
   return { calls, page, redirected };
 }
 
@@ -119,8 +118,8 @@ test("contacts dashboard loads analysis for the resolved account rather than the
     { operation: "structureTab", input: { actorId: "account:canonical", language: "en", strengthState: null, threshold: { confirmed: 5, met: true, missing: 0 } } },
     { operation: "tierLookup" },
   ]);
-  // 外层 div → [AccountTopNav, 屏组件]；?tab=structure 进分析子页并把同一份 analysis 传下去。
-  const screen = rendered.props.children[2].props.children[1];
+  // R07：页面不再挂顶栏（由 Orbit2026Shell 提供），外层 div 只剩屏组件；?tab=structure 进分析子页并把同一份 analysis 传下去。
+  const screen = rendered.props.children[2].props.children;
   assert.deepEqual(screen.props.analysis, { state: "error" });
   assert.equal(screen.props.initialTab, "struct");
 });
@@ -132,7 +131,7 @@ test("W0050 (W50-5): only the open analysis tab loads its extra data — opportu
   assert.ok(ops.includes("opportunitiesTab"));
   assert.ok(!ops.includes("structureTab"), "the opportunities tab does not load structure extras");
   assert.deepEqual(opportunities.calls.find((call) => call.operation === "opportunitiesTab")?.input, { actorId: "account:canonical", goal: null, language: "en" });
-  const screen = rendered.props.children[2].props.children[1];
+  const screen = rendered.props.children[2].props.children;
   assert.equal(screen.props.initialTab, "opp");
   assert.deepEqual(screen.props.opportunities, { coverage: { state: "no_plan" }, dormant: [], report: { state: "none" }, weekActions: { pendingMatches: null, planActions: [] } });
   assert.equal(screen.props.structureExtras, undefined);
@@ -159,7 +158,7 @@ test("W0051 SC-03: ?tab=insight loads only the insights page (with its sort/filt
   assert.ok(ops.includes("insightsTab"));
   assert.ok(!ops.includes("structureTab") && !ops.includes("opportunitiesTab"));
   assert.deepEqual(insight.calls.find((call) => call.operation === "insightsTab")?.input, { actorId: "account:canonical", goal: null, search: { sort: "tier", tab: "insight", tier: "core" } });
-  const screen = rendered.props.children[2].props.children[1];
+  const screen = rendered.props.children[2].props.children;
   assert.equal(screen.props.initialTab, "insight");
   assert.deepEqual(screen.props.insights, { rows: [], state: "ready" });
 });
@@ -170,7 +169,7 @@ test("contacts dashboard without a tab renders the overview screen for the resol
   // W0052：概览读驾驶舱附加数据，不再读本页档位表（档位与重点联系人来自全量分布与档位看板）。
   assert.deepEqual(calls.map((call) => call.operation), ["auth", "resolveActor", "language", "threshold", "dashboard", "contacts", "overviewCockpit", "overviewThreshold"]);
   assert.deepEqual(calls.find((call) => call.operation === "overviewCockpit")?.input, { actorId: "account:canonical", language: "en" });
-  const screen = rendered.props.children[2].props.children[1] as unknown as ReactElement<{ analysis: unknown; initialTab?: string; overview: { sources: unknown; total: unknown; meta: unknown } }>;
+  const screen = rendered.props.children[2].props.children as unknown as ReactElement<{ analysis: unknown; initialTab?: string; overview: { sources: unknown; total: unknown; meta: unknown } }>;
   assert.deepEqual(screen.props.analysis, { state: "error" });
   assert.equal(screen.props.initialTab, undefined);
   // 「按来源」= 名单读取已有的全量分面（不是名单条数）；分析读失败时总数为 null，meta 说明来源不可用。
@@ -215,7 +214,7 @@ test("W0054 SC-03: with 2 confirmed contacts every tab reads the threshold once 
     const rendered = await loaded.page(tab ? { searchParams: Promise.resolve({ tab }) } : undefined);
     assert.deepEqual(loaded.calls.filter((call) => call.operation === "threshold"), [{ operation: "threshold", input: "account:canonical" }], String(tab));
     const below = { confirmed: 2, met: false, missing: 1 };
-    const screen = rendered.props.children[2].props.children[1] as unknown as ReactElement<Record<string, unknown>>;
+    const screen = rendered.props.children[2].props.children as unknown as ReactElement<Record<string, unknown>>;
     if (tab === "structure") assert.deepEqual((loaded.calls.find((call) => call.operation === "structureTab")?.input as { threshold: unknown }).threshold, below);
     if (tab === "opportunities") assert.deepEqual(loaded.calls.find((call) => call.operation === "opportunitiesThreshold")?.input, below);
     if (tab === undefined) assert.deepEqual(loaded.calls.find((call) => call.operation === "overviewThreshold")?.input, below);
@@ -233,6 +232,6 @@ test("W0054: a failed threshold read is treated as unknown — the insight tab s
   const loaded = loadDashboardPage(t, { confirmed: null });
   const rendered = await loaded.page({ searchParams: Promise.resolve({ tab: "insight" }) });
   assert.ok(loaded.calls.some((call) => call.operation === "insightsTab"));
-  const screen = rendered.props.children[2].props.children[1] as unknown as ReactElement<Record<string, unknown>>;
+  const screen = rendered.props.children[2].props.children as unknown as ReactElement<Record<string, unknown>>;
   assert.equal(screen.props.insightGate, null);
 });

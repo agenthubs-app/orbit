@@ -10,7 +10,6 @@ import { redirect } from "next/navigation";
 import { auth } from "../../../../../../auth";
 import { createConfiguredEventCoreService } from "../../../../../../features/events/core/runtime";
 import { StateView } from "../../../../../../shared/ui/state-view";
-import { AccountTopNav } from "../../../orbit-account-shell";
 import { normalizeOrbitLanguage, type OrbitLanguage } from "../../../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../../orbit-language-server";
 import { OrbitReferenceStyles } from "../../../orbit-reference-styles";
@@ -115,7 +114,6 @@ export default async function AppEventLivePage({
       {routeModel.state === "success" ? (
         // 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx）；登录页用 AccountTopNav。
         <div data-orbit-real-page="events-0918" data-orbit-route="app-event-live-page">
-          <AccountTopNav active="events" />
           <EventLive
             initialPersonId={readSearchParam(query, "participant")}
             initialTab={liveTabFrom(readSearchParam(query, "tab"))}

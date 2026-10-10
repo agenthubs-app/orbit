@@ -1,16 +1,25 @@
 import { redirect } from "next/navigation";
 import { auth } from "../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
+import { OrbitReferenceStyles } from "../orbit-reference-styles";
+import { TaskContainer } from "../orbit-2026/task/TaskContainer";
+import { taskTabFrom } from "../orbit-2026/task/task-tabs";
 import { loadLifecycleTaskPages, type LifecyclePageSearchParams } from "./lifecycle-pages-route-service";
+import { PersonalScheduleWorkspace } from "./personal-schedule-workspace";
 import { TasksPageContent } from "./tasks-page-content";
+import { TasksStyles } from "./tasks-styles";
 
 export const dynamic = "force-dynamic";
 
-export default async function AppTasksPage({ searchParams }: { searchParams?: Promise<LifecyclePageSearchParams> } = {}) {
+// R07: /app/tasks is the Task container — カレンダー / To-do / プラン / メモ (`?tab=`).
+// The To-do slot is the existing To-do page, the calendar slot the existing
+// personal schedule (still also at /app/tasks/personal).
+export default async function AppTasksPage({ searchParams }: { searchParams?: Promise<LifecyclePageSearchParams & { tab?: string }> } = {}) {
   const params = await searchParams;
+  const tab = taskTabFrom(params?.tab);
   const session = await auth();
   if (!session?.user?.id) {
-    const next = params?.view === "completed" ? "/app/tasks?view=completed" : "/app/tasks";
+    const next = params?.view === "completed" ? "/app/tasks?view=completed" : params?.tab ? `/app/tasks?tab=${tab}` : "/app/tasks";
     redirect(`/app/account/login?${new URLSearchParams({ next })}`);
   }
   const actor = await resolveAuthenticatedApiActorFromSession({
@@ -18,13 +27,11 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
     name: session.user.name,
     userId: session.user.id,
   });
-  const relationshipTasks = await loadLifecycleTaskPages({
-    actorId: actor?.id ?? "",
-    params,
-  });
+  const relationshipTasks = await loadLifecycleTaskPages({ actorId: actor?.id ?? "", params });
 
-  return <TasksPageContent
-    initialStatus={params?.view === "completed" ? "completed" : "open"}
-    relationshipTasks={relationshipTasks}
+  return <TaskContainer
+    initialTab={tab}
+    calendar={actor ? <><OrbitReferenceStyles /><TasksStyles /><main data-orbit-real-page="tasks"><div className="orbit-task-page"><PersonalScheduleWorkspace key={actor.id} actorId={actor.id} /></div></main></> : null}
+    todo={<TasksPageContent initialStatus={params?.view === "completed" ? "completed" : "open"} relationshipTasks={relationshipTasks} />}
   />;
 }

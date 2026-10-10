@@ -166,8 +166,9 @@ test("/app/agent makes contact and event discovery explicit before submission", 
   assert.match(agentSource, /onPick\(suggest\.q\)/);
   assert.match(agentSource, /It can see your events, registration answers/);
   assert.match(agentSource, /just say the goal/);
-  // 输入框现在由全局组件渲染（layout 级），断言跟着组件走。
-  const composerSource = readProjectFile("app/(app)/app/orbit-global-ask/orbit-global-ask.tsx");
+  // R07: the layout-level floating ask was deleted (its hand-off moved to the ⌘K
+  // palette); the /app/agent composer is the conversation's own input in iorbit-chat.
+  const composerSource = readProjectFile("app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx");
   assert.match(composerSource, /Ask Orbit about contacts, events, and relationship to-dos/);
   assert.match(composerSource, /data-orbit-agent-submit="true"/);
 });

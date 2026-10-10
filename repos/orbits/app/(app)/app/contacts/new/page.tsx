@@ -9,7 +9,6 @@ import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
 import { resolveBusinessCardCaptureAvailability } from "../../../../../features/acquisition/business-card-capture-availability";
-import { AccountTopNav } from "../../orbit-account-shell";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { NetworkImport, type NetworkImportMethod } from "../network-0918/network-import";
@@ -45,7 +44,6 @@ export default async function AppContactScanPage({
       <OrbitVisualFreezeRuntime />
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
       <div data-orbit-real-page="network" data-orbit-route="app-contacts-new-route">
-        <AccountTopNav active="cards" />
         <NetworkImport
           availability={{ available: availability.available, reason: availability.reason }}
           importId={importId}

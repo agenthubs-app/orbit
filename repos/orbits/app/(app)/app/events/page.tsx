@@ -11,7 +11,6 @@ import {
   getOrbitLandingViewModelFromCatalogue,
   type OrbitLandingEventView,
 } from "../orbit-landing-route-view-model";
-import { AccountTopNav } from "../orbit-account-shell";
 import { PublicTopNav } from "../orbit-public-shell";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
@@ -116,9 +115,9 @@ export default async function AppEventsPage({
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
-          公开页：未登录用 PublicTopNav（AccountTopNav 会挂收件箱触发器并请求 /api/notifications → 401）。 */}
+          公开页：未登录用 PublicTopNav；已登录时导航由新壳 Orbit2026Shell 提供（R07）。 */}
       <div data-orbit-real-page="events-0918" data-orbit-route="app-events-public-catalogue">
-        {authenticated ? <AccountTopNav active="events" /> : <PublicTopNav active="events" />}
+        {authenticated ? null : <PublicTopNav active="events" />}
         <EventsList
           community={{
             joined: communityJoined,
