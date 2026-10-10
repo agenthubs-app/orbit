@@ -8,7 +8,6 @@ import { eventAssessmentAddToPlanResultSchema, eventAssessmentCreateInputSchema,
 import { eventRecommendationDismissInputSchema, eventRecommendationDismissResultSchema } from "../../shared/api-schema/event-recommendation-feedback";
 import { homeLayoutSchema, homeLayoutUpdateInputSchema } from "../../shared/api-schema/home-layout";
 import { inviteCodeCreateInputSchema, inviteCodePreviewSchema, inviteCodeRedeemResultSchema, inviteCodeSchema } from "../../shared/api-schema/invite-codes";
-import { planV2SummaryResponseSchema } from "../../shared/api-schema/plan-v2";
 import { AppError } from "../../shared/errors/app-error";
 import { redesignMock } from "./mock-service";
 import { readBody, redesignContractRoute } from "./route";
@@ -104,5 +103,5 @@ export const requestAccountDeletion = redesignContractRoute("account-lifecycle",
 export const cancelAccountDeletion = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema.nullable(), () => ({ data: redesignMock.cancelDeletion() }));
 export const getAppVersion = redesignContractRoute("account-lifecycle", appVersionSchema, () => ({ data: redesignMock.appVersion() }));
 
-// 12 plan v2 (draft)
-export const getPlanV2Summary = redesignContractRoute("plan-v2-summary", planV2SummaryResponseSchema, () => ({ data: redesignMock.planSummary() }));
+// 12 plan v2：R22 起由 features/plans/v2/handlers.ts 实现（mock 读演示世界，live 读真实计划）；
+// capability id「plan-v2-summary」仍用于 ORBIT_REDESIGN_MOCK 把这组接口切回 mock。

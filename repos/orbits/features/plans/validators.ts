@@ -35,6 +35,7 @@ const REASON_CODES: Record<PlanErrorReason, AppErrorCode> = {
   MATCH_ALREADY_DECIDED: "CONFLICT",
   PLAN_NOT_ENDED: "CONFLICT",
   REANALYSIS_QUOTA_EXHAUSTED: "CONFLICT",
+  V2_PLAN_ACTIVE: "CONFLICT",
 };
 
 export class PlanServiceError extends AppError {

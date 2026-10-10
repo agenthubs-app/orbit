@@ -29,8 +29,8 @@ export interface AiQuotaReserveInput {
   takeover?: boolean;
 }
 
-/** 拒绝时是哪一道额度：手动重新分析 3 次、用户池总熔断 10 次、后台池 60 次、即时洞察生成 20 次（W0057）。 */
-export type AiQuotaLimit = "manual" | "user" | "background" | "instant";
+/** 拒绝时是哪一道额度：手动重新分析 3 次、用户池总熔断 10 次、后台池 60 次、即时洞察生成 20 次（W0057）；R22：计划生成流程日上限 15、各用途的月上限。 */
+export type AiQuotaLimit = "manual" | "user" | "background" | "instant" | "plan_flow" | "monthly";
 
 export type AiQuotaReservation =
   | {
@@ -43,7 +43,7 @@ export type AiQuotaReservation =
       owner: boolean;
       status: "reserved" | "succeeded" | "failed";
     }
-  | { ok: false; reason: "disabled" | "daily_limit"; retryOn?: string; limit?: AiQuotaLimit };
+  | { ok: false; reason: "disabled" | "daily_limit" | "monthly_limit"; retryOn?: string; limit?: AiQuotaLimit };
 
 export interface AiQuotaGate {
   reserve(input: AiQuotaReserveInput): Promise<AiQuotaReservation>;

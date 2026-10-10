@@ -148,7 +148,8 @@ test("plan migrations apply forward, are idempotent on rerun, and refuse a chang
       "select tablename from pg_tables where schemaname = $1 order by tablename",
       [schema],
     )).rows.map((row) => row.tablename);
-    assert.deepEqual(tables, ["orbit_records", "plan_commands", "plan_items", "plan_log", "plans", "plans_schema_migrations"]);
+    // R22 v2：多了 plan_drafts / plan_flow_commands / plan_intakes / plan_revisions。
+    assert.deepEqual(tables, ["orbit_records", "plan_commands", "plan_drafts", "plan_flow_commands", "plan_intakes", "plan_items", "plan_log", "plan_revisions", "plans", "plans_schema_migrations"]);
 
     const ledger = async () =>
       (await pool.query("select version, name, checksum, applied_at from plans_schema_migrations order by version")).rows;

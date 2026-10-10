@@ -7,6 +7,7 @@
  */
 import { createProfileService } from "../profile/service-factory";
 import { resolvePlanService } from "../plans/service-factory";
+import { mergeActivePlanNeeds, readActiveV2Needs } from "../plans/v2/active-needs";
 import { createPostgresAiUsageLedger, type AiUsageLedger } from "../ai-quota/ledger";
 import { resolveModuleMode } from "../../shared/services/module-mode";
 import { createConfiguredTransactionalPostgresRuntime, type TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
@@ -34,12 +35,17 @@ export async function readSnapshotProfile(actorId: string): Promise<SnapshotProf
   return { goal: profile?.relationshipGoal ?? null, profileSection: { profile, state: profile ? "ready" : "empty" } };
 }
 
-/** 只读：生效计划（R-6：只经 getCurrent，不经 getCurrentView）。 */
+/**
+ * 只读：生效计划（R-6：只经 getCurrent，不经 getCurrentView）。
+ * R22（计划 v2.2 DESIGN §3.6）：v1 生效计划 + v2 各目标的人物类型合并（`mergeActivePlanNeeds`），
+ * 只有 v2 计划的人也有计划输入。
+ */
 export async function readCurrentPlanForSnapshot(actorId: string) {
   const resolution = resolvePlanService({ actorId, mode: "live" });
   if (resolution.success === false) return null;
   try {
-    return await resolution.service.getCurrent();
+    const v1 = await resolution.service.getCurrent();
+    return mergeActivePlanNeeds(v1, await readActiveV2Needs(actorId, "live"));
   } catch (error) {
     // 计划表缺失（未迁移的库）按无计划处理。
     if ((error as { code?: unknown })?.code === "42P01") return null;

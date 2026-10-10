@@ -46,6 +46,8 @@ interface PlanBackend {
   repository: PlanRepository;
   workspaceId: string;
   referencesFor(actorId: string): PlanReferenceValidator;
+  /** R22：live 后端的连接池（v2 计划与 v1 共用，同一把按人的锁）；mock 为 null。 */
+  pool: Pool | null;
 }
 
 interface PlansGlobal {
@@ -67,6 +69,7 @@ function mockBackend(): PlanBackend {
         actorId,
         allowList: plansGlobal.__orbitPlansMockAllowList ?? MOCK_ALLOW_ANY,
       }),
+    pool: null,
     repository: plansGlobal.__orbitPlansMockRepository,
     workspaceId: "orbit-plans-mock",
   };
@@ -95,6 +98,7 @@ function liveBackend(): PlanBackend | null {
         workspaceId: config.workspaceId,
       });
     },
+    pool,
     repository: createPostgresPlanRepository({ pool }),
     workspaceId: config.workspaceId,
   };
@@ -149,6 +153,18 @@ export function resolvePlanReferenceValidator(input: {
     return createNotImplementedFailure(PLANS_CAPABILITY_ID, resolution.mode, planServiceFactory.availableModes);
   }
   return { mode: resolution.mode, service: resolution.service.referencesFor(input.actorId), success: true };
+}
+
+/**
+ * R22：计划 v2 用的后端（与 v1 同一个 live 连接池、同一个 workspace；mock 时 pool 为 null）。
+ * 不改 `resolvePlanService` 的行为，只把同一个后端交给 `features/plans/v2/service-factory.ts`。
+ */
+export function resolvePlanBackend(mode?: ModuleMode | string): ServiceResolution<{ pool: Pool | null; workspaceId: string; referencesFor(actorId: string): PlanReferenceValidator }> {
+  const resolution = planServiceFactory.create(mode);
+  if (resolution.success === false) return resolution;
+  if (!resolution.service) return createNotImplementedFailure(PLANS_CAPABILITY_ID, resolution.mode, planServiceFactory.availableModes);
+  const backend = resolution.service;
+  return { mode: resolution.mode, service: { pool: backend.pool, referencesFor: backend.referencesFor, workspaceId: backend.workspaceId }, success: true };
 }
 
 export function resetPlansMockRepositoryForTests(): void {

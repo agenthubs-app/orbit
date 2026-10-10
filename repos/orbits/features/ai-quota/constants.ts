@@ -5,11 +5,28 @@
  * 额度只算 1 次；成本按每次 HTTP 一条子账（`ai_usage_calls`）。用户改数值只改这里的常量。
  */
 export type AiQuotaPool = "user" | "background" | "system";
-export type AiQuotaPurpose = "plan" | "plan_refine" | "snapshot" | "memo_extraction" | "insight" | "enrichment";
+export type AiQuotaPurpose =
+  | "plan"
+  | "plan_refine"
+  | "snapshot"
+  | "memo_extraction"
+  | "insight"
+  | "enrichment"
+  // R22（计划 v2.2 DESIGN §3.3）：账本按用途取 max_calls，所以上限不同的计划调用各用一个用途；event_assessment 给 R26。
+  | "plan_intake"
+  | "plan_background"
+  | "plan_draft"
+  | "plan_revise"
+  | "plan_review_mark"
+  | "plan_review"
+  | "event_assessment";
 export type AiQuotaTrigger = "auto" | "manual" | "plan";
 
 export const AI_QUOTA_POOLS: readonly AiQuotaPool[] = ["user", "background", "system"];
-export const AI_QUOTA_PURPOSES: readonly AiQuotaPurpose[] = ["plan", "plan_refine", "snapshot", "memo_extraction", "insight", "enrichment"];
+export const AI_QUOTA_PURPOSES: readonly AiQuotaPurpose[] = [
+  "plan", "plan_refine", "snapshot", "memo_extraction", "insight", "enrichment",
+  "plan_intake", "plan_background", "plan_draft", "plan_revise", "plan_review_mark", "plan_review", "event_assessment",
+];
 export const AI_QUOTA_TRIGGERS: readonly AiQuotaTrigger[] = ["auto", "manual", "plan"];
 
 /** 用户主动池总熔断：每人每东京日 10 次操作（含手动重新分析；W0057 起不含即时洞察生成，见 `isInstantInsightOperation`）。 */
@@ -38,7 +55,40 @@ export const AI_QUOTA_MAX_CALLS: Readonly<Record<AiQuotaPurpose, number>> = {
   plan: 4,
   plan_refine: 1,
   snapshot: 1,
+  // R22：C1 / C3 / C4 / C5 / C10 各 1 次；C2 背景、C7 生成中修正、C9 見直し含 1 次修复；C6 初版 = 初版 + 修复 + 顺带快照。
+  plan_intake: 1,
+  plan_background: 2,
+  plan_draft: 3,
+  plan_revise: 2,
+  plan_review_mark: 1,
+  plan_review: 2,
+  // R26 定（活动评估：抓取后抽取事实 1 次 + 修复 1 次）。
+  event_assessment: 2,
 };
+
+/**
+ * R22（DESIGN §5.3）：计划生成流程（背景、初版、AI 修正、見直し）在用户主动池里有自己的日上限，
+ * 不占 `USER_POOL_DAILY_LIMIT` 的 10 次总熔断（先例：W0057 即时洞察）。一次完整生成 = 5 次操作。
+ */
+export const PLAN_FLOW_PURPOSES: readonly AiQuotaPurpose[] = ["plan_background", "plan_draft", "plan_revise", "plan_review"];
+export const PLAN_FLOW_DAILY_LIMIT = 15;
+
+/**
+ * R22（DESIGN §5.3、§10 用户已确认 2026-10-10）：每用户每东京自然月的操作上限（不含 released）。
+ * `plan_background` 10 = 每月最多新建 10 个目标；`plan_review` 3 = 見直し月 3 次（Free）。
+ */
+export const AI_QUOTA_MONTHLY_LIMITS: Readonly<Partial<Record<AiQuotaPurpose, number>>> = {
+  plan_intake: 60,
+  plan_background: 10,
+  plan_draft: 30,
+  plan_revise: 30,
+  plan_review_mark: 20,
+  plan_review: 3,
+};
+
+export function isPlanFlowOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose }): boolean {
+  return input.pool === "user" && PLAN_FLOW_PURPOSES.includes(input.purpose);
+}
 
 /** W0057：用户池里的即时洞察生成（独立计数，不占 10 次总熔断）。 */
 export function isInstantInsightOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose; trigger: AiQuotaTrigger }): boolean {
@@ -47,6 +97,17 @@ export function isInstantInsightOperation(input: { pool: AiQuotaPool; purpose: A
 
 const TOKYO_OFFSET_MS = 9 * 3_600_000;
 const DAY_MS = 86_400_000;
+
+/** 东京自然月（YYYY-MM）。 */
+export function tokyoUsageMonth(now: Date): string {
+  return tokyoUsageDay(now).slice(0, 7);
+}
+
+/** 下个月 1 日 00:00 东京（UTC ISO）：月上限的 `retryOn`。 */
+export function nextTokyoMonthStart(now: Date): string {
+  const [year, month] = tokyoUsageMonth(now).split("-").map(Number) as [number, number];
+  return new Date(Date.UTC(month === 12 ? year + 1 : year, month === 12 ? 0 : month, 1) - TOKYO_OFFSET_MS).toISOString();
+}
 
 /** 东京自然日（YYYY-MM-DD）。 */
 export function tokyoUsageDay(now: Date): string {

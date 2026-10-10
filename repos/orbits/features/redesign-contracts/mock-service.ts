@@ -11,7 +11,7 @@ import type { InviteCodeContract, InviteCodeCreateInput } from "../../shared/con
 import { DEMO_EVENTS } from "../../shared/mock/demo-world";
 import {
   demoAccountExport, demoAppVersion, demoCompletionQuestion, demoDeletionRequest, demoEventAssessment, demoHomeLayout,
-  demoInviteCode, demoInviteRedeem, demoPlanSummary,
+  demoInviteCode, demoInviteRedeem,
 } from "../../shared/mock/demo-world/fixtures";
 
 type LayoutResult = { conflict: true; current: HomeLayoutContract } | { conflict: false; layout: HomeLayoutContract };
@@ -106,7 +106,6 @@ export const redesignMock = {
   /** DELETE is idempotent: with no request it answers null. */
   cancelDeletion() { state.deletion = state.deletion ? { ...state.deletion, cancelledAt: state.deletion.cancelledAt ?? nowIso() } : null; return state.deletion; },
   appVersion: () => demoAppVersion,
-  planSummary: () => demoPlanSummary,
   /** Tests only. */
   reset() { state = freshState(); },
 };

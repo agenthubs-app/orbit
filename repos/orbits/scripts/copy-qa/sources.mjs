@@ -64,3 +64,23 @@ export async function loadWebCopy(root) {
   }
   return entries;
 }
+
+/**
+ * R22 计划 v2.2 模板的三语文字（shared/compute/plan-template-copy.ts，两端共用）：
+ * 目标类型与题目选项是 chip，能力名、短名、前提行名是 label，题干是 dialogTitle（问句）。
+ */
+export async function loadPlanTemplateCopy(root) {
+  const copy = await importTs(path.join(root, "shared/compute/plan-template-copy.ts"));
+  const entries = [];
+  const add = (id, kind, text) => entries.push({ id, kind, ja: text.ja, zh: text.zh, en: text.en });
+  for (const [key, text] of Object.entries(copy.PLAN_GOAL_KIND_COPY)) add(`plan.goalKind.${key}`, "chip", text);
+  for (const [key, text] of Object.entries(copy.PLAN_CAPABILITY_COPY)) add(`plan.capability.${key}`, "label", text);
+  for (const [key, text] of Object.entries(copy.PLAN_SHORT_NAME_COPY)) add(`plan.shortName.${key}`, "label", text);
+  for (const [id, question] of Object.entries(copy.PLAN_QUESTION_COPY)) {
+    add(`plan.question.${id}.prompt`, "dialogTitle", question.prompt);
+    add(`plan.question.${id}.topic`, "label", question.topic);
+    for (const [option, text] of Object.entries(question.options)) add(`plan.question.${id}.${option}`, "chip", text);
+  }
+  add("plan.event", "label", copy.PLAN_EVENT_COPY);
+  return entries;
+}

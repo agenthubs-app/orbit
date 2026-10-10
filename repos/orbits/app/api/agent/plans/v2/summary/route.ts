@@ -1,3 +1,4 @@
-// R08 redesign contract (mock until its feature Sprint; live answers NOT_IMPLEMENTED).
-export { getPlanV2Summary as GET } from "../../../../../../features/redesign-contracts/handlers";
+// R22 计划 v2.2（features/plans/v2/handlers.ts）。
+import { planV2Handlers } from "../../../../../../features/plans/v2/handlers";
+export const GET = planV2Handlers.summary;
 export const dynamic = "force-dynamic";

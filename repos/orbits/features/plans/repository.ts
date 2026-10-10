@@ -21,6 +21,7 @@ import type {
   NetworkNeedCriteria,
 } from "./contract";
 import { markContactInsightsDirty } from "../contacts/insights/repository";
+import { PlanServiceError } from "./validators";
 
 export interface PlanScope {
   workspaceId: string;
@@ -113,6 +114,13 @@ export interface PlanQueryClient {
 export interface PlanPoolLike {
   connect(): Promise<PlanQueryClient & { release(destroy?: boolean): void }>;
 }
+
+/**
+ * R22（计划 v2.2 DESIGN §3.6）：这个仓储只服务 v1 计划。v2 计划（model_version = 2）对它不存在——
+ * 生效计划、按 id 读、版本列表、条目、周一小结的记录都只看 v1；v2 由 features/plans/v2 读写。
+ * `maxVersion` 不过滤：版本号在本人所有计划里唯一（unique (workspace, actor, version)）。
+ */
+const V1_ITEM_ONLY = `exists (select 1 from plans p where p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id and p.model_version = 1)`;
 
 const PLAN_COLUMNS = `
   id, version, status, goal_snapshot, horizon,
@@ -340,14 +348,14 @@ function postgresReader(client: PlanQueryClient, scope: PlanScope): PlanReader {
   return {
     async activePlan() {
       const [row] = await rows(
-        `select ${PLAN_COLUMNS} from plans where workspace_id = $1 and actor_id = $2 and status = 'active'`,
+        `select ${PLAN_COLUMNS} from plans where workspace_id = $1 and actor_id = $2 and status = 'active' and model_version = 1`,
         [ws, actor],
       );
       return row ? planFromRow(row) : null;
     },
     async activePlanView() {
       const [row] = await rows(
-        `select ${PLAN_VIEW_COLUMNS} from plans where workspace_id = $1 and actor_id = $2 and status = 'active'`,
+        `select ${PLAN_VIEW_COLUMNS} from plans where workspace_id = $1 and actor_id = $2 and status = 'active' and model_version = 1`,
         [ws, actor],
       );
       return row ? planViewFromRow(row) : null;
@@ -378,7 +386,7 @@ function postgresReader(client: PlanQueryClient, scope: PlanScope): PlanReader {
     },
     async item(itemId) {
       const [row] = await rows(
-        `select ${ITEM_COLUMNS} from plan_items where workspace_id = $1 and actor_id = $2 and id = $3`,
+        `select ${ITEM_COLUMNS} from plan_items i where workspace_id = $1 and actor_id = $2 and id = $3 and ${V1_ITEM_ONLY}`,
         [ws, actor, itemId],
       );
       return row ? itemFromRow(row) : null;
@@ -393,7 +401,7 @@ function postgresReader(client: PlanQueryClient, scope: PlanScope): PlanReader {
     },
     async listPlans() {
       return (await rows(
-        `select ${PLAN_COLUMNS} from plans where workspace_id = $1 and actor_id = $2 order by version desc`,
+        `select ${PLAN_COLUMNS} from plans where workspace_id = $1 and actor_id = $2 and model_version = 1 order by version desc`,
         [ws, actor],
       )).map(planFromRow);
     },
@@ -407,8 +415,9 @@ function postgresReader(client: PlanQueryClient, scope: PlanScope): PlanReader {
     },
     async logBetween(fromIso, toIso, limit) {
       return (await rows(
-        `select ${LOG_COLUMNS} from plan_log
+        `select ${LOG_COLUMNS} from plan_log l
          where workspace_id = $1 and actor_id = $2 and created_at >= $3 and created_at < $4
+           and exists (select 1 from plans p where p.workspace_id = l.workspace_id and p.actor_id = l.actor_id and p.id = l.plan_id and p.model_version = 1)
          order by created_at, seq limit $5`,
         [ws, actor, fromIso, toIso, limit],
       )).map(logFromRow);
@@ -456,14 +465,14 @@ function postgresReader(client: PlanQueryClient, scope: PlanScope): PlanReader {
     },
     async plan(planId) {
       const [row] = await rows(
-        `select ${PLAN_COLUMNS} from plans where workspace_id = $1 and actor_id = $2 and id = $3`,
+        `select ${PLAN_COLUMNS} from plans where workspace_id = $1 and actor_id = $2 and id = $3 and model_version = 1`,
         [ws, actor, planId],
       );
       return row ? planFromRow(row) : null;
     },
     async planByCreationKey(creationKey) {
       const [row] = await rows(
-        `select ${PLAN_COLUMNS} from plans where workspace_id = $1 and actor_id = $2 and creation_key = $3`,
+        `select ${PLAN_COLUMNS} from plans where workspace_id = $1 and actor_id = $2 and creation_key = $3 and model_version = 1`,
         [ws, actor, creationKey],
       );
       return row ? planFromRow(row) : null;
@@ -604,6 +613,14 @@ function postgresTransaction(client: PlanQueryClient, scope: PlanScope): PlanTra
       );
     },
     async insertPlan(plan) {
+      // R22：本人已有生效中的 v2 计划时，不再写入新的 v1 生效计划（bootstrap、v1 生成、重新分析都经过这里）。
+      if (plan.status === "active") {
+        const v2 = await client.query(
+          `select 1 from plans where workspace_id = $1 and actor_id = $2 and model_version = 2 and status = 'active' limit 1`,
+          [ws, actor],
+        );
+        if (v2.rows.length > 0) throw new PlanServiceError("V2_PLAN_ACTIVE", "A new-style plan is active; old-style plans can no longer be created.");
+      }
       await client.query(
         `insert into plans (
            workspace_id, id, actor_id, version, status, goal_snapshot, horizon, starts_on,
@@ -626,6 +643,11 @@ function postgresTransaction(client: PlanQueryClient, scope: PlanScope): PlanTra
 
 function actorLockKey(scope: PlanScope): string {
   return `orbit:plans:${scope.workspaceId}:${scope.actorId}`;
+}
+
+/** R22：v2 计划的事务用同一把按人的锁，v1 与 v2 的写操作对同一个人串行（归档 v1、生效目标上限都依赖它）。 */
+export function planActorLockKey(scope: PlanScope): string {
+  return actorLockKey(scope);
 }
 
 export function createPostgresPlanRepository(options: { pool: PlanPoolLike }): PlanRepository {

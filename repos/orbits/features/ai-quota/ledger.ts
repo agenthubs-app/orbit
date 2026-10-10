@@ -18,13 +18,20 @@ import { randomUUID } from "node:crypto";
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
 import {
   AI_QUOTA_MAX_CALLS,
+  AI_QUOTA_MONTHLY_LIMITS,
   BACKGROUND_POOL_DAILY_LIMIT,
   INSTANT_INSIGHT_DAILY_LIMIT,
   isInstantInsightOperation,
+  isPlanFlowOperation,
   MANUAL_REANALYSIS_DAILY_LIMIT,
   nextTokyoMidnight,
+  nextTokyoMonthStart,
+  PLAN_FLOW_DAILY_LIMIT,
+  PLAN_FLOW_PURPOSES,
   tokyoUsageDay,
+  tokyoUsageMonth,
   USER_POOL_DAILY_LIMIT,
+  type AiQuotaPurpose,
 } from "./constants";
 import type { AiQuotaGate, AiQuotaReservation, AiQuotaReserveInput } from "./gate";
 
@@ -44,6 +51,8 @@ export interface AiQuotaUsageToday {
   instant: number;
   /** 后台自动池当日已用次数。 */
   background: number;
+  /** R22：计划生成流程（背景、初版、AI 修正、見直し）当日已用次数（独立上限 15，不占用户池 10 次）。 */
+  planFlow: number;
 }
 
 export interface AiUsageOperationState {
@@ -62,6 +71,8 @@ export interface AiUsageLedger extends AiQuotaGate {
   reserveWith(executor: TransactionalSqlExecutor, input: AiQuotaReserveInput): Promise<AiQuotaReservation>;
   readUsageToday(actorId: string, now: Date): Promise<AiQuotaUsageToday>;
   readOperation(operationId: string, options?: { inflightWindowMs?: number }): Promise<AiUsageOperationState | null>;
+  /** R22：某用途在东京自然月里未释放的操作数（月上限、界面上的「今月あと N 回」用）。 */
+  countMonthly(actorId: string, purpose: AiQuotaPurpose, now: Date): Promise<number>;
 }
 
 type Row = Record<string, unknown>;
@@ -75,9 +86,12 @@ function count(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// R22：计划生成流程的用途（PLAN_FLOW_PURPOSES）不计入 user_used，单独计 plan_flow_used；其他用途的计数不变。
+const PLAN_FLOW_SQL_LIST = PLAN_FLOW_PURPOSES.map((purpose) => `'${purpose}'`).join(", ");
 const USAGE_SQL = `/* ai-quota:usage-today */
   select
-    count(*) filter (where pool = 'user' and not (purpose = 'insight' and trigger = 'auto'))::int as user_used,
+    count(*) filter (where pool = 'user' and not (purpose = 'insight' and trigger = 'auto') and purpose not in (${PLAN_FLOW_SQL_LIST}))::int as user_used,
+    count(*) filter (where pool = 'user' and purpose in (${PLAN_FLOW_SQL_LIST}))::int as plan_flow_used,
     count(*) filter (where pool = 'user' and purpose = 'insight' and trigger = 'auto')::int as instant_used,
     count(*) filter (where pool = 'user' and purpose = 'snapshot' and trigger = 'manual')::int as manual_used,
     count(*) filter (where pool = 'background')::int as background_used
@@ -104,8 +118,18 @@ const INSERT_CALL_SQL = `/* ai-quota:begin-call */
   insert into ai_usage_calls (workspace_id, operation_id, seq, epoch, provider, model, status, started_at)
   values ($1, $2, $3, $4, $5, $6, 'started', now())`;
 
+const MONTHLY_SQL = `/* ai-quota:usage-month */
+  select count(*)::int as used from ai_usage_ledger
+  where workspace_id = $1 and actor_id = $2 and purpose = $3 and status <> 'released'
+    and usage_day >= ($4 || '-01')::date and usage_day < (($4 || '-01')::date + interval '1 month')`;
+
 export function createPostgresAiUsageLedger(input: { client: TransactionalPostgresClient; workspaceId: string }): AiUsageLedger {
   const { client, workspaceId } = input;
+
+  async function countMonthlyWith(executor: Pick<TransactionalSqlExecutor, "query">, actorId: string, purpose: AiQuotaPurpose, now: Date): Promise<number> {
+    const row = (await executor.query<Row>(MONTHLY_SQL, [workspaceId, actorId, purpose, tokyoUsageMonth(now)])).rows[0];
+    return count(row?.used);
+  }
 
   async function reserveWith(executor: TransactionalSqlExecutor, request: AiQuotaReserveInput): Promise<AiQuotaReservation> {
     const actorId = request.actorId.trim();
@@ -130,7 +154,10 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
       if (request.pool === "background" && count(usage?.background_used) >= BACKGROUND_POOL_DAILY_LIMIT) {
         return { ok: false, reason: "daily_limit", retryOn, limit: "background" };
       }
-      if (isInstantInsightOperation(request)) {
+      if (isPlanFlowOperation(request)) {
+        // R22（DESIGN §5.3）：计划生成流程只受自己的日上限 15 约束，不占用户池 10 次总熔断。
+        if (count(usage?.plan_flow_used) >= PLAN_FLOW_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "plan_flow" };
+      } else if (isInstantInsightOperation(request)) {
         // W0057（D62）：即时洞察生成只受自己的 20 次上限约束，不占用户池 10 次总熔断。
         if (count(usage?.instant_used) >= INSTANT_INSIGHT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "instant" };
       } else if (request.pool === "user") {
@@ -139,6 +166,12 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
         }
         if (count(usage?.user_used) >= USER_POOL_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "user" };
       }
+    }
+    const monthlyLimit = AI_QUOTA_MONTHLY_LIMITS[request.purpose];
+    if (monthlyLimit !== undefined) {
+      // R22：有月上限的用途（只有计划 v2 的新用途），在同一把锁里数本月未释放的操作。
+      const used = await countMonthlyWith(executor, actorId, request.purpose, request.now);
+      if (used >= monthlyLimit) return { ok: false, reason: "monthly_limit", retryOn: nextTokyoMonthStart(request.now), limit: "monthly" };
     }
     if (replay) {
       await executor.query(
@@ -244,12 +277,20 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
     async readUsageToday(actorId, now) {
       try {
         const row = (await client.query<Row>(USAGE_SQL, [workspaceId, actorId, tokyoUsageDay(now)])).rows[0];
-        return { background: count(row?.background_used), instant: count(row?.instant_used), manual: count(row?.manual_used), user: count(row?.user_used) };
+        return { background: count(row?.background_used), instant: count(row?.instant_used), manual: count(row?.manual_used), planFlow: count(row?.plan_flow_used), user: count(row?.user_used) };
       } catch (error) {
-        if (isUndefinedTable(error)) return { background: 0, instant: 0, manual: 0, user: 0 };
+        if (isUndefinedTable(error)) return { background: 0, instant: 0, manual: 0, planFlow: 0, user: 0 };
         throw error;
       }
     },
     readOperation,
+    async countMonthly(actorId, purpose, now) {
+      try {
+        return await countMonthlyWith(client, actorId, purpose, now);
+      } catch (error) {
+        if (isUndefinedTable(error)) return 0;
+        throw error;
+      }
+    },
   };
 }

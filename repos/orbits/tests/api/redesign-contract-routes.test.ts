@@ -38,7 +38,7 @@ const CASES: Case[] = [
   { file: "account/deletion-request", method: "GET" },
   { file: "account/deletion-request", method: "DELETE" },
   { file: "app/version", method: "GET" },
-  { file: "agent/plans/v2/summary", method: "GET" },
+  // R22：agent/plans/v2/summary 已由计划 v2 实现（tests/api/plan-v2-routes.test.ts），不再是「尚未实现」。
 ];
 
 async function call(item: Case): Promise<Response> {

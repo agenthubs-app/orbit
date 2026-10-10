@@ -673,12 +673,14 @@ export function createPostgresPlanMatchRepository(options: {
       return result.rows[0] ? mapJob(result.rows[0]) : null;
     },
 
+    // R22：以下四个维护任务查询（活动归属、阶段进入、阶段补细、活动状态同步）只处理 v1 计划（model_version = 1）；
+    // v2 计划没有周次与阶段，活动参加由 PlanV2Service.recordEventAttendanceForPlans 记分。
     async listUnattendedAttributedEvents({ after = null, limit }) {
       const result = await pool.query(
         `select distinct i.actor_id, i.linked_event_id
          from plan_items i
          join plans p on p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id
-         where i.workspace_id = $1 and p.status = 'active' and i.kind = 'event' and i.status <> 'attended'
+         where i.workspace_id = $1 and p.status = 'active' and p.model_version = 1 and i.kind = 'event' and i.status <> 'attended'
            and exists (
              select 1 from orbit_records c
              where c.workspace_id = i.workspace_id and c.collection_name = 'contacts'
@@ -702,7 +704,7 @@ export function createPostgresPlanMatchRepository(options: {
                   case when $2::date < p.starts_on then 1 else (($2::date - p.starts_on) / 7) + 1 end as week,
                   p.phases
              from plans p
-            where p.workspace_id = $1 and p.status = 'active'
+            where p.workspace_id = $1 and p.status = 'active' and p.model_version = 1
          ), phase as (
            select c.actor_id, c.plan_id, ph.value->>'key' as phase_key, ph.ordinality as ord,
                   row_number() over (partition by c.plan_id order by ph.ordinality desc) as latest
@@ -735,7 +737,7 @@ export function createPostgresPlanMatchRepository(options: {
            select p.actor_id, p.id as plan_id, p.phases, p.analysis->'phases' as analysis_phases,
                   case when $2::date < p.starts_on then 1 else (($2::date - p.starts_on) / 7) + 1 end as week
              from plans p
-            where p.workspace_id = $1 and p.status = 'active' and p.analysis->>'generator' = $5
+            where p.workspace_id = $1 and p.status = 'active' and p.model_version = 1 and p.analysis->>'generator' = $5
          )
          select distinct c.actor_id
            from current c
@@ -765,7 +767,7 @@ export function createPostgresPlanMatchRepository(options: {
         `select i.actor_id, i.linked_event_id, i.id, i.status
            from plan_items i
            join plans p on p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id
-          where i.workspace_id = $1 and p.status = 'active' and i.kind = 'event'
+          where i.workspace_id = $1 and p.status = 'active' and p.model_version = 1 and i.kind = 'event'
             and i.status in ('recommended', 'registered') and i.linked_event_id is not null
             and ($3::text is null or (i.actor_id, i.linked_event_id, i.id) > ($3::text, $4::text, $5::text))
           order by i.actor_id, i.linked_event_id, i.id

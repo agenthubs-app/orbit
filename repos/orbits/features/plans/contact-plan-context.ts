@@ -10,6 +10,7 @@
  */
 import type { PlanService, PlanSnapshot } from "./contract";
 import { resolvePlanService } from "./service-factory";
+import { mergeActivePlanNeeds, readActiveV2Needs } from "./v2/active-needs";
 import { planWeekActions, planWeekState } from "./week";
 
 export interface ContactPlanNeedLink {
@@ -66,12 +67,15 @@ export function contactPlanContextFromSnapshot(snapshot: SnapshotLike | null, co
   };
 }
 
-/** 只读：本人当前生效计划（getCurrent）。计划服务不可用或计划表缺失时按无计划处理。 */
+/**
+ * 只读：本人当前生效计划（getCurrent）。计划服务不可用或计划表缺失时按无计划处理。
+ * R22（计划 v2.2 DESIGN §3.6）：同时并入 v2 各目标的人物类型（live 时），联系人详情对 v2 计划也有说明。
+ */
 export async function readCurrentPlanReadOnly(actorId: string): Promise<SnapshotLike | null> {
   const resolution = resolvePlanService({ actorId });
   if (resolution.success === false) return null;
   try {
-    return await resolution.service.getCurrent();
+    return mergeActivePlanNeeds(await resolution.service.getCurrent(), await readActiveV2Needs(actorId, resolution.mode));
   } catch (error) {
     if ((error as { code?: unknown })?.code === "42P01") return null;
     throw error;

@@ -133,6 +133,27 @@ alter table ai_usage_calls add column epoch integer not null default 1 check (ep
 create index ai_usage_calls_operation_epoch on ai_usage_calls (workspace_id, operation_id, epoch);
 `,
   },
+  {
+    // R22（计划 v2.2 DESIGN §3.3）：放宽 purpose。每种 max_calls 不同的计划调用一个用途（账本按用途取 max_calls），
+    // 另加 R26 要用的 event_assessment（同一个人负责，合进一次生产授权）。按定义找约束名，不依赖默认名。
+    name: "ai-usage-plan-v2-purposes",
+    version: 3,
+    sql: `
+declare
+  purpose_check record;
+begin
+  for purpose_check in
+    select conname from pg_constraint
+    where conrelid = 'ai_usage_ledger'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%purpose%'
+  loop
+    execute format('alter table ai_usage_ledger drop constraint %I', purpose_check.conname);
+  end loop;
+  alter table ai_usage_ledger add constraint ai_usage_ledger_purpose_check
+    check (purpose in ('plan', 'plan_refine', 'snapshot', 'memo_extraction', 'insight', 'enrichment',
+      'plan_intake', 'plan_background', 'plan_draft', 'plan_revise', 'plan_review_mark', 'plan_review', 'event_assessment'));
+end;
+`,
+  },
 ];
 
 function checksum(sql: string): string {

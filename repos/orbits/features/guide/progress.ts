@@ -25,6 +25,7 @@ import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/co
 import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { createConfiguredStorageAccountSessionProvider } from "../account/storage/account-live-record-provider";
 import { resolvePlanService } from "../plans/service-factory";
+import { readActiveV2Needs } from "../plans/v2/active-needs";
 import { resolveSharedReadBudgetGate } from "../sync/read-budget-gate";
 import type { GuideState, GuideStateService } from "./guide-state";
 import { resolveGuideStateService } from "./service-factory";
@@ -161,7 +162,9 @@ function configuredConfirmedContactCounter(): ConfirmedContactCounter {
 async function configuredHasActivePlan(actorId: string): Promise<boolean> {
   const resolution = resolvePlanService({ actorId });
   if (resolution.success === false) throw new Error(resolution.error.message);
-  return (await resolution.service.getCurrent()) !== null;
+  if ((await resolution.service.getCurrent()) !== null) return true;
+  // R22（计划 v2.2 DESIGN §3.6）：v1 或 v2 任一生效即完成（v2 只在 live 时读；mock 下示例计划不算）。
+  return (await readActiveV2Needs(actorId, resolution.mode)) !== null;
 }
 
 /** 账号创建时间：从账号记录读（认证 actor 里没有这个字段）。读不到返回 null。 */

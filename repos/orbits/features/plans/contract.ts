@@ -524,5 +524,7 @@ export const PLAN_ERROR_REASONS = [
   "MATCH_ALREADY_DECIDED",
   "REANALYSIS_QUOTA_EXHAUSTED",
   "PLAN_NOT_ENDED",
+  /** R22：本人已有生效中的 v2 计划（新计划），不再生成旧式（v1）计划。 */
+  "V2_PLAN_ACTIVE",
 ] as const;
 export type PlanErrorReason = (typeof PLAN_ERROR_REASONS)[number];
