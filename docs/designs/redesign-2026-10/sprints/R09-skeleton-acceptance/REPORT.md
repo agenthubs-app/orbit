@@ -69,6 +69,8 @@
 
 **三份允许清单（骨架结束时，只减不增）**：App Ionicons 71 个文件；App 写死文字 148 个文件 / 3779 处；App 旧写法 85 个文件 / 282 处；Web 写死文字 232 个文件 / 2305 处写死 + 3669 处缺日文。
 
+**产品决定落实后（2026-10-10）**：R07 M5 选 (a)（プラン段放现有计划，`0fdecbfa`）、R08 M3 定稿（宽进严出，`b2a225d9` + `bd8345cc`）。在 `bd8345cc` 上重跑：orbits 6950 条 0 失败，App 4174 条只剩 `/start`，typecheck / typecheck:app / lint / App tsc 都是 0（`final-bd8345cc/`）。真实页面验证见 `plan-slot/`（有计划时プラン段显示计划；`/app/agent/plan#plan-action-…` 跳到 `/app/tasks?tab=plan#…` 并定位到该行；客户端切页签也能读到）。
+
 ## GitNexus
 
 - 改动前的 impact：`Scrim` LOW（3 个直接调用方，只加两个无障碍属性）；`CommandPalette`、`RelationshipInboxPage` UNKNOWN（R07 新符号），文本搜索确认只有壳和收件箱页使用；测试启动器、审计生成器是脚本，不在调用图里。
