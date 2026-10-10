@@ -150,15 +150,15 @@ test("overview: the demo plan's score is the summary's; fields, segments, chance
   assert.equal(await page.locator('[data-type-card="vc_partner"]').getAttribute("href"), `/app/plans/${PLAN}/types/${VC}`);
   await page.locator("[data-plan-event]").getByText("1 / 2回 · 1回 5点").waitFor();
   await page.locator("[data-plan-footnote]").getByText("Orbit は目標の達成を保証しません。", { exact: false }).waitFor();
-  // 前提を見る: read-only rows; 「見直しで変える」 and the R25 buttons only say まもなく.
+  // 前提を見る: read-only rows; 「見直しで変える」 opens the R25 見直し entry (reads only).
   await page.getByRole("button", { name: "前提を見る" }).click();
   const dialog = page.getByRole("dialog", { name: "確定した前提" });
   await dialog.getByText(base.detail.premise[0]!.value).waitFor();
   assert.equal(await dialog.locator("input, textarea, select").count(), 0, "premises are read-only");
   await dialog.getByRole("button", { name: "見直しで変える" }).click();
-  await page.getByText("まもなく使えます").first().waitFor();
-  for (const name of ["方案を見直す", "手動で編集", "目標を達成した"]) await page.getByRole("button", { name, exact: true }).click();
-  assert.deepEqual(await writes(page), [], "opening, the premise card and the R25 placeholders write nothing");
+  await page.getByRole("dialog", { name: "方案を見直しますか？" }).waitFor();
+  assert.equal(await page.getByText("まもなく使えます").count(), 0, "R25: no まもなく placeholder is left");
+  assert.deepEqual(await writes(page), [], "opening, the premise card and the review entry write nothing");
 });
 
 test("segment bar: solid earned, striped skip, red-bean overflow after the scale, grey rest; the event segment is not a link", async (t) => {
@@ -230,7 +230,7 @@ test("1024: score across, step-grouped type rows on the left; today's chance, re
   assert.ok(left && right && left.x < right.x, "rows left, rail right");
 });
 
-test("390: steps become a horizontal snap carousel and 見直し is the ↻ icon (まもなく)", async (t) => {
+test("390: steps become a horizontal snap carousel and 見直し is the ↻ icon (opens the review entry)", async (t) => {
   const page = await screen(t, { handlers: [detailRead(base.detail)], planId: PLAN, view: "overview" }, { width: 390 });
   await page.locator('[data-tier="narrow"]').waitFor();
   const carousel = page.locator("[data-plan-carousel]");
@@ -238,14 +238,14 @@ test("390: steps become a horizontal snap carousel and 見直し is the ↻ icon
   assert.equal(await carousel.locator("[data-plan-step]").count(), base.detail.content.steps.length);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "no page-level horizontal scroll");
   await page.getByRole("button", { name: "方案を見直す" }).first().click();
-  await page.getByText("まもなく使えます").waitFor();
+  await page.getByRole("dialog", { name: "方案を見直しますか？" }).waitFor();
 });
 
 test("memo coverage: a proposal card adds only on 加点する; the manual card needs two ticks; the award toast can undo", async (t) => {
   const detail = clone(base.detail);
   detail.pending = [
-    { answered: [0, 2], contactId: "demo-person-okada", createdAt: "2026-10-10T00:00:00Z", detail: "岡田 紗希", id: "memo-1", itemId: VC, kind: "memo_coverage", planId: PLAN, title: "VC パートナー" },
-    { answered: [], contactId: "demo-person-ito", createdAt: "2026-10-10T00:00:00Z", detail: "伊藤 直子", id: "memo-2", itemId: "demo-plan-item-cfo", kind: "memo_coverage", manual: true, planId: PLAN, title: "CFO 経験者" },
+    { answered: [0, 2], contactId: "demo-person-okada", createdAt: "2026-10-10T00:00:00Z", detail: "岡田 紗希", id: "memo-1", itemId: VC, kind: "memo_coverage", planId: PLAN, points: 10, title: "VC パートナー" },
+    { answered: [], contactId: "demo-person-ito", createdAt: "2026-10-10T00:00:00Z", detail: "伊藤 直子", id: "memo-2", itemId: "demo-plan-item-cfo", kind: "memo_coverage", manual: true, planId: PLAN, points: 10, title: "CFO 経験者" },
   ];
   const page = await screen(t, { handlers: [
     detailRead(detail),
@@ -331,6 +331,8 @@ test("record: 「話した人」 adds the server's points with 元に戻す; und
   ], itemId: VC, planId: PLAN, view: "type" });
   await page.getByRole("button", { name: "オフラインで話した" }).click();
   const dialog = page.getByRole("dialog", { name: "話したことを記録" });
+  // R24 复核 m7: the toolbar opens in 名前で記録; pick 話した人 for a contact.
+  await dialog.getByRole("tab", { name: "話した人" }).click();
   await dialog.getByText("プランに反映：VC パートナー +10").waitFor();
   await dialog.getByText("同じ人は同じタイプで 1回だけ数えます。", { exact: false }).waitFor();
   await dialog.getByRole("radio", { name: /岡田 紗希/u }).click();
@@ -340,6 +342,7 @@ test("record: 「話した人」 adds the server's points with 元に戻す; und
   await toast.getByRole("button", { name: "元に戻す" }).click();
   await page.getByText("取り消しました").waitFor();
   await page.getByRole("button", { name: "オフラインで話した" }).click();
+  await page.getByRole("dialog").getByRole("tab", { name: "話した人" }).click();
   await page.getByRole("dialog").getByRole("radio", { name: /岡田 紗希/u }).click();
   await page.getByRole("dialog").getByRole("button", { name: "記録する" }).click();
   await page.getByText("この人は記録済みです（点数は 1 回だけ）").waitFor();
@@ -497,6 +500,7 @@ test("mock end to end: plan → type → record → undo → skip → unskip →
   const start = Number(await earned.getAttribute("data-plan-type-earned"));
   // record 岡田 紗希 (a candidate) → +10
   await page.getByRole("button", { name: "オフラインで話した" }).click();
+  await page.getByRole("dialog").getByRole("tab", { name: "話した人" }).click();
   await page.getByRole("dialog").getByRole("radio", { name: /岡田 紗希/u }).click();
   await page.getByRole("dialog").getByRole("button", { name: "記録する" }).click();
   const toast = page.getByRole("status").filter({ hasText: "+10点" });
@@ -522,4 +526,157 @@ test("mock end to end: plan → type → record → undo → skip → unskip →
   assert.deepEqual((await writes(page)).map((item) => item.replace(/awards\/[^/]+\/undo/u, "awards/:id/undo")), [
     `POST /v2/${PLAN}/types/${VC}/awards`, `POST /v2/${PLAN}/awards/:id/undo`, `POST /v2/${PLAN}/types/${VC}/skip`, `DELETE /v2/${PLAN}/types/${VC}/skip`,
   ]);
+});
+
+/* ---------- R24 独立复核（REVIEW.md）Web 修复 ---------- */
+
+const fail = (status: number, reason: string): Reply => ({ body: { error: { code: status === 409 ? "CONFLICT" : "SERVICE_UNAVAILABLE", context: { reason }, message: reason }, success: false }, status });
+
+test("M6: a failed undo never says 「取り消しました」; withdraw buttons are off while a write runs", async (t) => {
+  const type = clone(base.types[VC]!);
+  assert.ok(type.talked.length, "the demo VC type has a talked person");
+  const page = await screen(t, { handlers: [typeRead(type), detailRead(base.detail), { method: "POST", replies: [fail(503, "DOWN")], url: "/undo$" }], itemId: VC, planId: PLAN, view: "type" });
+  await page.locator("[data-plan-talked] button").first().click();
+  const row = page.locator("[data-plan-talked-row]").first();
+  await row.getByRole("button", { name: "取り消す" }).click();
+  await page.getByText("保存できませんでした").waitFor();
+  await page.waitForTimeout(300);
+  assert.equal(await page.getByText("取り消しました").count(), 0, "no success toast when the undo failed");
+});
+
+test("m4: today's chance with 0 points draws no 「+0」 chip", async (t) => {
+  const detail = clone(base.detail);
+  detail.todayChance = { href: detail.todayChance!.href, label: "製造業DXカンファレンス 大阪", points: 0 };
+  const page = await screen(t, { handlers: [detailRead(detail)], planId: PLAN, view: "overview" });
+  const chance = page.locator("[data-plan-chance]");
+  await chance.getByText("製造業DXカンファレンス 大阪").waitFor();
+  assert.equal(await chance.getByText("+0").count(), 0);
+});
+
+test("m7: each candidate row has 「すでに話した」 (one talked award); the toolbar opens 名前で記録", async (t) => {
+  const type = base.types[VC]!;
+  const page = await screen(t, { handlers: [typeRead(type), detailRead(base.detail), { method: "POST", replies: [ok(award(10, "base", { awardLogId: "log-row" }), 201)], url: `/types/${VC}/awards$` }], itemId: VC, planId: PLAN, view: "type" });
+  await page.getByRole("button", { name: "オフラインで話した" }).click();
+  await page.locator('[data-plan-record="offline"]').waitFor();
+  await page.getByRole("dialog").getByRole("button", { name: "キャンセル" }).click();
+  const first = type.candidates[0]!;
+  await page.locator(`[data-plan-already-talked="${first.contactId}"]`).dblclick();
+  await page.getByRole("status").filter({ hasText: "+10点" }).waitFor();
+  const posts = await writes(page);
+  assert.deepEqual(posts, [`POST /v2/${PLAN}/types/${VC}/awards`], "one click → one award");
+  const body = (await fetches(page)).find((item) => item.method === "POST")!.body;
+  assert.deepEqual({ basis: body.basis, contactId: body.contactId }, { basis: "talked", contactId: first.contactId });
+});
+
+function stepsDetail(): PlanV2Detail {
+  const detail = clone(base.detail);
+  const [first, second] = detail.content.steps;
+  const shared = first!.personTypeKeys[0]!;
+  detail.content.steps = [
+    { ...first!, completedAt: "2026-10-05T00:00:00.000Z" },
+    { ...second!, personTypeKeys: [...second!.personTypeKeys, shared] },
+    ...detail.content.steps.slice(2),
+    { doneCriteria: "資料を整える", key: "step-empty", personTypeKeys: [], title: "社内の準備", why: null },
+  ];
+  return detail;
+}
+
+test("m8 1024: every step shows (also one with no type), a type can sit under two steps; ✓ opens 完了を取り消す first", async (t) => {
+  const detail = stepsDetail();
+  const firstKey = detail.content.steps[0]!.key;
+  const shared = detail.content.steps[0]!.personTypeKeys[0]!;
+  const page = await screen(t, { handlers: [detailRead(detail), { method: "DELETE", replies: [ok({ completedAt: null, replayed: false, score: detail.score })], url: "/complete$" }], planId: PLAN, view: "overview" }, { width: 1024 });
+  await page.locator('[data-tier="medium"]').waitFor();
+  await page.locator('[data-plan-step="step-empty"]').getByText("社内の準備").waitFor();
+  assert.equal(await page.locator(`[data-type-row="${shared}"]`).count(), 2, "the shared type shows under both steps");
+  await page.locator(`[data-step-done-mark="${firstKey}"]`).click();
+  assert.deepEqual(await writes(page), [], "the ✓ only opens the choice");
+  await page.locator(`[data-step-reopen="${firstKey}"]`).click();
+  await page.waitForFunction(() => (window as any).shellFixture.fetches.some((item: { method: string }) => item.method === "DELETE"));
+  assert.deepEqual(await writes(page), [`DELETE /v2/${PLAN}/steps/${firstKey}/complete`]);
+});
+
+test("m8 390: a done step can be reopened the same way (✓ → 完了を取り消す)", async (t) => {
+  const detail = stepsDetail();
+  const firstKey = detail.content.steps[0]!.key;
+  const page = await screen(t, { handlers: [detailRead(detail), { method: "DELETE", replies: [ok({ completedAt: null, replayed: false, score: detail.score })], url: "/complete$" }], planId: PLAN, view: "overview" }, { width: 390 });
+  await page.locator('[data-tier="narrow"]').waitFor();
+  await page.locator(`[data-plan-carousel] [data-step-done-mark="${firstKey}"]`).click();
+  assert.deepEqual(await writes(page), []);
+  await page.locator(`[data-plan-carousel] [data-step-reopen="${firstKey}"]`).click();
+  await page.waitForFunction(() => (window as any).shellFixture.fetches.some((item: { method: string }) => item.method === "DELETE"));
+});
+
+test("m9: the memo card shows the server's points only; no contact → no 「さんとの」; PENDING_DECIDED re-reads quietly", async (t) => {
+  const detail = clone(base.detail);
+  detail.pending = [
+    { answered: [0, 1], contactId: "demo-person-okada", createdAt: "2026-10-10T00:00:00Z", detail: "岡田 紗希", id: "memo-a", itemId: VC, kind: "memo_coverage", planId: PLAN, title: "VC パートナー" },
+    { answered: [0, 1], contactId: null, createdAt: "2026-10-10T00:00:00Z", detail: null, id: "memo-b", itemId: VC, kind: "memo_coverage", planId: PLAN, points: 7, title: "VC パートナー" },
+  ];
+  const page = await screen(t, { handlers: [detailRead(detail), { method: "POST", replies: [fail(409, "PENDING_DECIDED")], url: "/v2/pending/memo-a/accept$" }], planId: PLAN, view: "overview" });
+  await page.locator('[data-plan-memo="memo-a"]').getByText("岡田 紗希さんとの面談で 3 問中 2 問を話せました · 加点しますか？").waitFor();
+  await page.locator('[data-plan-memo="memo-b"]').getByText("面談で 3 問中 2 問を話せました · +7点にしますか？").waitFor();
+  assert.equal(await page.getByText("さんとの面談で", { exact: false }).count(), 1, "only the card with a contact names someone");
+  const reads = async () => (await fetches(page)).filter((item) => item.method === "GET" && path(item) === `/v2/${PLAN}`).length;
+  const before = await reads();
+  await page.locator('[data-plan-memo="memo-a"]').getByRole("button", { name: "加点する" }).click();
+  await page.waitForFunction((n) => (window as any).shellFixture.fetches.filter((item: { method: string; url: string }) => item.method === "GET" && item.url.endsWith("/v2/demo-plan-series-a")).length > n, before);
+  assert.equal(await page.getByText("保存できませんでした").count(), 0, "decided elsewhere is not a failure");
+});
+
+test("m10: with reduced motion the +N only fades in and out (no float)", async (t) => {
+  const type = base.types[VC]!;
+  const page = await screen(t, { handlers: [typeRead(type), detailRead(base.detail), { method: "POST", replies: [ok(award(10, "base", { awardLogId: "log-r" }), 201)], url: `/types/${VC}/awards$` }], itemId: VC, planId: PLAN, view: "type" }, { reducedMotion: true });
+  await page.locator(`[data-plan-already-talked="${type.candidates[0]!.contactId}"]`).click();
+  const plus = page.locator('[data-plan-type-head] [aria-hidden]').filter({ hasText: "+10" });
+  await plus.waitFor();
+  assert.match(await plus.evaluate((node) => getComputedStyle(node).animationName), /fadeInOut/u);
+  await page.waitForFunction(() => { const node = [...document.querySelectorAll("[data-plan-type-head] [aria-hidden]")].find((item) => item.textContent === "+10"); return node && getComputedStyle(node).opacity === "0"; }, null, { timeout: 4000 });
+});
+
+test("m11: after 「この人ですか？」 another mode still has 記録する; CONTACT_CREATE_FAILED offers 名前なしで記録 (new key)", async (t) => {
+  const page = await screen(t, { handlers: [
+    typeRead(base.types[FOUNDER]!), detailRead(base.detail),
+    { method: "POST", replies: [ok({ matches: [{ company: "Nexa Robotics", contactId: "demo-person-watanabe", name: "渡辺 翔" }] }), fail(503, "CONTACT_CREATE_FAILED"), ok({ award: award(5, "base", { awardLogId: "log-anon" }) })], url: "/talked-offline$" },
+  ], itemId: FOUNDER, planId: PLAN, view: "type" });
+  await page.getByRole("button", { name: "オフラインで話した" }).click();
+  const dialog = page.getByRole("dialog", { name: "話したことを記録" });
+  await dialog.getByLabel("相手の名前（任意）").fill("渡辺");
+  await dialog.getByRole("button", { name: "記録する" }).click();
+  await dialog.getByText("この人ですか？").waitFor();
+  await dialog.getByRole("tab", { name: "名前なし" }).click();
+  await dialog.getByRole("button", { name: "記録する" }).waitFor();
+  await dialog.getByRole("tab", { name: "名前で記録" }).click();
+  await dialog.getByRole("button", { name: "新しく登録" }).click();
+  const failed = dialog.locator("[data-plan-create-failed]");
+  await failed.getByText("登録できませんでした · 名前なしで記録しますか？").waitFor();
+  assert.equal(await page.getByText("保存できませんでした").count(), 0);
+  await failed.getByRole("button", { name: "名前なしで記録" }).click();
+  await page.getByRole("status").filter({ hasText: "+5点" }).waitFor();
+  const posts = (await fetches(page)).filter((item) => item.method === "POST");
+  assert.deepEqual(posts.map((item) => ({ ...item.body, idempotencyKey: undefined })), [{ idempotencyKey: undefined, name: "渡辺" }, { createContact: true, idempotencyKey: undefined, name: "渡辺" }, { anonymous: true, idempotencyKey: undefined }]);
+  assert.notEqual(posts[1]!.body.idempotencyKey, posts[2]!.body.idempotencyKey);
+});
+
+test("m11: a multi-record toast marks the half part; a proposal answered as a request says so; the button reads 達成にする", async (t) => {
+  const type = clone(base.types[VC]!);
+  type.candidates = [type.candidates[0]!, { ...type.candidates[0]!, candidateId: "c-2", contactId: "p-2", isOrbitUser: true, name: "山口 大樹" }];
+  const page = await screen(t, { handlers: [
+    typeRead(type), detailRead(base.detail),
+    { method: "POST", replies: [ok(award(10, "base", { awardLogId: "l1" }), 201), ok(award(5, "overflow", { awardLogId: "l2" }), 201)], url: `/types/${VC}/awards$` },
+    { method: "POST", replies: [ok({ draft: null, kind: "request", requestId: "req-1" })], url: "/proposals$" },
+  ], itemId: VC, planId: PLAN, view: "type" });
+  await page.getByRole("checkbox", { name: "山口 大樹さんを選ぶ" }).click();
+  await page.locator("[data-plan-select-bar]").getByRole("button", { name: "面談を提案" }).click();
+  const drawer = page.getByRole("dialog", { name: "面談を提案" });
+  await drawer.getByRole("button", { name: "下書きをつくる" }).click();
+  await drawer.locator('[data-plan-proposal-requested="p-2"]').getByText("Orbit 上で面談を依頼しました").waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("checkbox", { name: "岡田 紗希さんを選ぶ" }).click();
+  await page.locator("[data-plan-select-bar]").getByRole("button", { name: "2人を記録" }).click();
+  await page.getByRole("status").filter({ hasText: "2人 · +15点（一部は半分）" }).waitFor();
+
+  const overview = await screen(t, { handlers: [detailRead(base.detail)], planId: PLAN, view: "overview" });
+  await overview.getByRole("button", { name: "達成にする" }).waitFor();
+  assert.equal(await overview.getByText("目標を達成した").count(), 0);
 });

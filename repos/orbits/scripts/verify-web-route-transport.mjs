@@ -24,6 +24,10 @@ const ROUTE_SAMPLES = new Map([
   ["/app/plans/drafts/[draftId]/edit", "/app/plans/drafts/draft_demo/edit"],
   // R24：人物タイプ詳細。
   ["/app/plans/[planId]/types/[itemId]", "/app/plans/plan_demo/types/item_demo"],
+  // R25：見直し、完了、以前のプラン（v1 只读）。
+  ["/app/plans/[planId]/review", "/app/plans/plan_demo/review"],
+  ["/app/plans/[planId]/done", "/app/plans/plan_demo/done"],
+  ["/app/plans/legacy/[planId]", "/app/plans/legacy/plan_v1_demo"],
   ["/app/events/[id]", "/app/events/EVT01"],
   ["/app/events/[id]/analytics", "/app/events/EVT01/analytics"],
   ["/app/events/[id]/live", "/app/events/EVT01/live"],

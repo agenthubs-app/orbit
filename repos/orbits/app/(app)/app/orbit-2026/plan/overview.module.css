@@ -194,7 +194,9 @@
 
 @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+/* R24 复核 m10: with reduced motion the +N only fades — in, then out (no movement). */
+@keyframes fadeInOut { 0% { opacity: 0; } 25% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes floatUp { 0% { opacity: 0; transform: translateY(6px); } 30% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-14px); } }
 :global([data-motion="reduce"]) .part { animation: none; }
-:global([data-motion="reduce"]) .floatPlus { animation: fadeIn var(--dur-enter) var(--ease) both; }
-@media (prefers-reduced-motion: reduce) { .part { animation: none; } .floatPlus { animation: fadeIn var(--dur-enter) var(--ease) both; } }
+:global([data-motion="reduce"]) .floatPlus { animation: fadeInOut 1.2s linear both; }
+@media (prefers-reduced-motion: reduce) { .part { animation: none; } .floatPlus { animation: fadeInOut 1.2s linear both; } }

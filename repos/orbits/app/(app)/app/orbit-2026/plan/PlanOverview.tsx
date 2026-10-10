@@ -1,17 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
-import type { PlanCommandResult, PlanPendingDecisionResult, PlanPendingItem, PlanV2Detail, PlanV2Step } from "../../../../../shared/contract/plan-v2";
-import { planTypeHref } from "../../../../../shared/compute/plan-href";
+import type { PlanCommandResult, PlanDraftView, PlanGoalListItem, PlanGoalListResponse, PlanPendingDecisionResult, PlanPendingItem, PlanV2Detail, PlanV2Step } from "../../../../../shared/contract/plan-v2";
+import { planDraftEditHref, planTypeHref } from "../../../../../shared/compute/plan-href";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { planFlowCopy, planOverviewCopy as c } from "../copy/plan";
+import { planFlowCopy, planOverviewCopy as c, planReviewCopy as r } from "../copy/plan";
 import { Button, Card, Checkbox, Chip, ConfirmCard, CountUp, IconButton, MacTile, Modal, Orbit2026Scope, ProgressBar, RetryCard, SampleTag, Skeleton, ToastProvider, WhyDisclosure, useStandardCopy, useToast } from "../ui";
-import { PLAN_EVENT_SEGMENT_KEY, eventView, nextPointsOf, overflowParts, segmentParts, stepGroups, typeCards, unitsOf, type TypeCardView } from "./overview-model";
+import { PLAN_EVENT_SEGMENT_KEY, eventView, overflowParts, segmentParts, stepGroups, typeCards, unitsOf, type TypeCardView } from "./overview-model";
 import { planApi } from "./plan-api";
 import { goalKindLabel } from "./plan-model";
+import { takePlanFlash } from "./plan-flash";
+import { AchieveDialog, GoalEditModal, GoalSwitcher } from "./PlanGoalDialogs";
+import { ReviewEntryModal } from "./PlanReviewEntry";
+import { sinceFromDetail } from "./review-model";
 import { useLayoutTier, usePlanWrites, v2Path, enc, type LayoutTier } from "./plan-v2-actions";
 import { translator, type Translate } from "./PlanParts";
 import styles from "./overview.module.css";
@@ -39,18 +44,34 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
   const [detail, setDetail] = useState<PlanV2Detail | null>(null);
   const [failed, setFailed] = useState(false);
   const [premiseOpen, setPremiseOpen] = useState(false);
+  // R25: 見直し入口 / 目標を編集 / 達成 dialogs and the goal list behind the switcher.
+  const [dialog, setDialog] = useState<"review" | "edit" | "achieve" | null>(null);
+  const [goals, setGoals] = useState<readonly PlanGoalListItem[]>([]);
   const { busy, run } = usePlanWrites(language);
+  const router = useRouter();
 
   const load = useCallback(async () => {
-    const result = await planApi<PlanV2Detail>(v2Path(planId), { language });
+    const [result, list] = await Promise.all([planApi<PlanV2Detail>(v2Path(planId), { language }), planApi<PlanGoalListResponse>("/v2", { language })]);
     if (result.ok) { setDetail(result.data); setFailed(false); } else setFailed(true);
+    if (list.ok) setGoals(list.data.goals);
   }, [planId, language]);
   useEffect(() => { void load(); }, [load]);
+  // A note carried from 確定 / 目標だけ保存 on another page (「方案を更新しました」).
+  useEffect(() => {
+    const flash = takePlanFlash();
+    if (flash) toast.success(t(flash === "updated" ? r.updatedToast : r.savedToast));
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (failed && !detail) return <div data-plan-overview-error=""><RetryCard title={t(planFlowCopy.slotLoadFailed)} onRetry={() => void load()} /></div>;
   if (!detail) return <Skeleton lines={6} />;
 
-  const soon = () => toast.info(t(c.comingSoon));
+  const openManualEdit = async () => {
+    if (!detail.quota.manualEditAvailable) return;
+    const draft = await run<PlanDraftView>("manual", { path: v2Path(planId, "/manual-edit") });
+    if (draft) router.push(planDraftEditHref("web", draft.draftId));
+  };
   const undoAward = async (awardLogId: string) => {
     const done = await run<PlanCommandResult>("undo", { path: v2Path(planId, `/awards/${enc(awardLogId)}/undo`) });
     if (done) { toast.success(t(c.undoneToast)); await load(); }
@@ -62,12 +83,18 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
     if (completed) toast.success(t(c.stepDoneToast), { undo: () => void setStep(step, false) });
     else toast.success(t(c.stepReopenedToast));
   };
+  // R24 复核: a card decided elsewhere (409 PENDING_DECIDED) is not a failure — read again.
+  const decidedElsewhere = (error: { reason: string | null }) => {
+    if (error.reason !== "PENDING_DECIDED") return false;
+    void load();
+    return true;
+  };
   const dismissPending = async (id: string) => {
-    const done = await run<PlanPendingDecisionResult>(`dismiss:${id}`, { path: `/v2/pending/${enc(id)}/dismiss` });
+    const done = await run<PlanPendingDecisionResult>(`dismiss:${id}`, { path: `/v2/pending/${enc(id)}/dismiss` }, decidedElsewhere);
     if (done) await load();
   };
   const acceptMemo = async (item: PlanPendingItem, answered?: number[]) => {
-    const done = await run<PlanPendingDecisionResult>(`accept:${item.id}`, { body: answered ? { answered } : {}, path: `/v2/pending/${enc(item.id)}/accept` });
+    const done = await run<PlanPendingDecisionResult>(`accept:${item.id}`, { body: answered ? { answered } : {}, path: `/v2/pending/${enc(item.id)}/accept` }, decidedElsewhere);
     if (!done) return;
     await load();
     const award = done.award;
@@ -78,7 +105,8 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
   };
 
   const actions = { acceptMemo, busy, dismissPending, setStep };
-  const buttons = <PlanButtons detail={detail} t={t} onPremise={() => setPremiseOpen(true)} onSoon={soon} />;
+  const buttons = <PlanButtons detail={detail} t={t} busy={busy} onPremise={() => setPremiseOpen(true)} onReview={() => setDialog("review")} onManual={() => void openManualEdit()} onAchieve={() => setDialog("achieve")} />;
+  const current = goals.find((goal) => goal.planId === detail.planId) ?? null;
   const plan = <PlanCard detail={detail} t={t} buttons={tier === "narrow" ? buttons : null} />;
   const pending = <PendingBlock detail={detail} t={t} actions={actions} withSteps={tier !== "wide"} />;
   const chance = <ChanceCard detail={detail} t={t} />;
@@ -88,12 +116,13 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
     <div data-plan-overview={detail.planId} data-tier={tier}>
       <div className={styles.head}>
         <div className={styles.goal}>
-          <span className={styles.goalText} data-plan-goal="">{detail.goal}</span>
+          <GoalSwitcher currentPlanId={detail.planId} currentGoal={detail.goal} currentKind={detail.goalKind} goals={goals.length ? goals : [{ goal: detail.goal, goalKind: detail.goalKind, planId: detail.planId, status: "active", talkedPeople: 0, total: detail.score.total }]}
+            activeGoalLimit={detail.quota.activeGoalLimit} t={t} language={language} onEdit={() => setDialog("edit")} />
           {goalKindLabel(detail.goalKind, language) ? <Chip label={goalKindLabel(detail.goalKind, language)!} tone="lav" /> : null}
           {detail.sample ? <SampleTag /> : null}
         </div>
         {tier === "narrow"
-          ? <span className={styles.push}><IconButton icon="refresh" label={t(c.reviewButton)} soft onClick={soon} /></span>
+          ? <span className={styles.push}><IconButton icon="refresh" label={t(c.reviewButton)} soft onClick={() => setDialog("review")} /></span>
           : <div className={styles.actions}>{buttons}</div>}
       </div>
       <ScoreCard detail={detail} t={t} />
@@ -122,7 +151,7 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
         </div>
       ) : (
         <div className={styles.narrow}>
-          <StepCarousel detail={detail} t={t} />
+          <StepCarousel detail={detail} t={t} actions={actions} />
           {chance}
           {pending}
           <section className={styles.panel} aria-label={t(c.typesTitle)}>
@@ -134,7 +163,13 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
           {footnote}
         </div>
       )}
-      <PremiseModal open={premiseOpen} detail={detail} t={t} onClose={() => setPremiseOpen(false)} onChange={() => { setPremiseOpen(false); soon(); }} />
+      <PremiseModal open={premiseOpen} detail={detail} t={t} onClose={() => setPremiseOpen(false)} onChange={() => { setPremiseOpen(false); setDialog("review"); }} />
+      <ReviewEntryModal open={dialog === "review"} onClose={() => setDialog(null)} planId={detail.planId}
+        serverSince={detail.sinceConfirmed ? { events: detail.sinceConfirmed.events, stepsCompleted: detail.sinceConfirmed.stepsDone, talked: detail.sinceConfirmed.talkedPeople } : null} fallbackSince={sinceFromDetail(detail)} t={t} language={language} />
+      <GoalEditModal open={dialog === "edit"} onClose={() => setDialog(null)} planId={detail.planId} goal={detail.goal} goalKind={detail.goalKind} revision={detail.revision}
+        reviewLeft={detail.quota.reviewLeftThisMonth} t={t} language={language} onSaved={() => { setDialog(null); toast.success(t(r.savedToast)); void load(); }} />
+      <AchieveDialog open={dialog === "achieve"} onClose={() => setDialog(null)} planId={detail.planId} revision={detail.revision} score={detail.score.total}
+        talkedPeople={current?.talkedPeople ?? null} t={t} language={language} onStale={() => void load()} />
     </div>
   );
 }
@@ -215,16 +250,21 @@ function SegmentBar({ detail, t }: { detail: PlanV2Detail; t: Translate }) {
 
 /* ---------- 確定した方案 + ボタン ---------- */
 
-function PlanButtons({ detail, t, onPremise, onSoon }: { detail: PlanV2Detail; t: Translate; onPremise: () => void; onSoon: () => void }) {
+function PlanButtons({ detail, t, busy, onPremise, onReview, onManual, onAchieve }: { detail: PlanV2Detail; t: Translate; busy: string | null; onPremise: () => void; onReview: () => void; onManual: () => void; onAchieve: () => void }) {
+  const manual = detail.quota.manualEditAvailable;
+  const std = useStandardCopy();
   return (
     <>
       <Button size="sm" icon="layers" label={t(c.premiseButton)} onClick={onPremise} />
       <span className={styles.actionWithChip}>
-        <Button size="sm" icon="refresh" label={t(c.reviewButton)} onClick={onSoon} data-soon="review" />
-        <Chip label={t(c.reviewQuota, { n: detail.quota.reviewMonthlyLimit })} tone="lav" />
+        <Button size="sm" icon="refresh" label={t(c.reviewButton)} onClick={onReview} data-plan-action="review" />
+        <Chip label={detail.quota.reviewLeftThisMonth > 0 ? t(c.reviewQuota, { n: detail.quota.reviewMonthlyLimit }) : std.quota.reached} tone={detail.quota.reviewLeftThisMonth > 0 ? "lav" : "coral"} />
       </span>
-      <Button size="sm" icon="edit" label={t(c.editButton)} onClick={onSoon} data-soon="edit" />
-      <Button size="sm" icon="flag" label={t(c.achieveButton)} onClick={onSoon} data-soon="achieve" />
+      <span className={styles.actionWithChip}>
+        <Button size="sm" icon="edit" label={t(c.editButton)} disabled={!manual || busy !== null} loading={busy === "manual"} onClick={onManual} data-plan-action="edit" aria-describedby={manual ? undefined : "plan-manual-note"} />
+        {manual ? null : <span id="plan-manual-note" className={styles.label} data-plan-manual-note="">{t(r.manualAvailableNote)}</span>}
+      </span>
+      <Button size="sm" icon="flag" label={t(c.achieveButton)} onClick={onAchieve} data-plan-action="achieve" />
     </>
   );
 }
@@ -279,7 +319,7 @@ function ChanceCard({ detail, t }: { detail: PlanV2Detail; t: Translate }) {
   if (!chance) return null;
   return (
     <section className={styles.chance} data-plan-chance="">
-      <div className={styles.row}><span aria-hidden>✨</span><span className={`${styles.grow} ${styles.strong}`}>{t(c.chanceTitle)}</span><Chip label={`+${chance.points}`} tone="lav" /></div>
+      <div className={styles.row}><span aria-hidden>✨</span><span className={`${styles.grow} ${styles.strong}`}>{t(c.chanceTitle)}</span>{chance.points > 0 ? <Chip label={`+${chance.points}`} tone="lav" /> : null}</div>
       <p className={styles.chanceText}>{chance.label}</p>
       <Link href={chance.href} className={styles.mailLink}>{copy.action.open}</Link>
     </section>
@@ -312,15 +352,19 @@ function PendingBlock({ detail, t, actions, withSteps }: { detail: PlanV2Detail;
 function MemoCard({ item, detail, t, actions }: { item: PlanPendingItem; detail: PlanV2Detail; t: Translate; actions: Actions }) {
   const [ticked, setTicked] = useState<number[]>([]);
   const type = detail.content.personTypes.find((candidate) => candidate.itemId === item.itemId);
-  const earned = detail.score.segments.find((segment) => segment.key === type?.key)?.earned ?? 0;
-  const points = type ? nextPointsOf(type.allocation, type.targetCount, earned).points : 0;
-  const name = item.detail ?? "";
+  // R24 复核 m9: the points are the server's (`nextAward`); without them no number is shown,
+  // and with no contact the sentence leaves out the name.
+  const points = item.points !== undefined && item.points > 0 ? item.points : null;
+  const name = item.contactId && item.detail ? item.detail : null;
+  const manualText = name ? (points !== null ? t(c.memoManual, { name, points }) : t(c.memoManualNoPoints, { name })) : (points !== null ? t(c.memoManualNoName, { points }) : t(c.memoManualBare));
+  const answeredN = item.answered?.length ?? 0;
+  const proposalText = name ? (points !== null ? t(c.memoProposal, { n: answeredN, name, points }) : t(c.memoProposalNoPoints, { n: answeredN, name })) : (points !== null ? t(c.memoProposalNoName, { n: answeredN, points }) : t(c.memoProposalBare, { n: answeredN }));
   const busy = actions.busy !== null;
   return (
     <div className={styles.pendingCard} data-plan-memo={item.id} data-manual={item.manual ? "" : undefined}>
       {item.manual ? (
         <>
-          <span className={styles.muted}>{t(c.memoManual, { name, points })}</span>
+          <span className={styles.muted}>{manualText}</span>
           <div className={styles.questions}>
             {(type?.questions ?? []).map((question, index) => (
               <label key={index}>
@@ -331,7 +375,7 @@ function MemoCard({ item, detail, t, actions }: { item: PlanPendingItem; detail:
           </div>
           {ticked.length < 2 ? <span className={styles.label}>{t(c.memoManualHint)}</span> : null}
         </>
-      ) : <span className={styles.muted}>{t(c.memoProposal, { n: item.answered?.length ?? 0, name, points })}</span>}
+      ) : <span className={styles.muted}>{proposalText}</span>}
       <div className={styles.row}>
         <Button size="sm" label={t(c.memoDismiss)} variant="ghost" disabled={busy} onClick={() => void actions.dismissPending(item.id)} />
         <Button size="sm" label={t(c.memoAccept)} variant="primary" disabled={busy || (item.manual === true && ticked.length < 2)} loading={actions.busy === `accept:${item.id}`}
@@ -390,6 +434,22 @@ function StepList({ detail, t, actions }: { detail: PlanV2Detail; t: Translate; 
   );
 }
 
+/**
+ * A step's number, or ✓ when done. R24 复核 m8: in all three layouts the ✓ first opens
+ * 「完了を取り消す」 and only that button reopens the step.
+ */
+function StepMark({ n, step, t, actions, render }: { n: number; step: PlanV2Step; t: Translate; actions: Actions; render: (mark: ReactNode, reopen: ReactNode) => ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const done = Boolean(step.completedAt);
+  const mark = done
+    ? <button type="button" className={`btn ${styles.stepNo} ${styles.stepNoDone}`} aria-expanded={open} aria-label={`${t(c.stepDone)} ${n}`} onClick={() => setOpen(!open)} data-step-done-mark={step.key}>✓</button>
+    : <span className={styles.stepNo} aria-hidden>{n}</span>;
+  const reopen = open && done
+    ? <div className={styles.reopen}><Button size="sm" variant="ghost" label={t(c.stepReopen)} loading={actions.busy === `step:${step.key}`} disabled={actions.busy !== null} onClick={() => { setOpen(false); void actions.setStep(step, false); }} data-step-reopen={step.key} /></div>
+    : null;
+  return <>{render(mark, reopen)}</>;
+}
+
 function StepItem({ n, step, planId, label, suggest, types, t, actions }: { n: number; step: PlanV2Step; planId: string; label: string | null; suggest: boolean; types: TypeCardView[]; t: Translate; actions: Actions }) {
   const [open, setOpen] = useState(false);
   const done = Boolean(step.completedAt);
@@ -397,12 +457,12 @@ function StepItem({ n, step, planId, label, suggest, types, t, actions }: { n: n
     <li data-plan-step={step.key} data-done={done ? "" : undefined}>
       <div className={styles.stepHead}>
         {done
-          ? <button type="button" className={`btn ${styles.stepNo} ${styles.stepNoDone}`} aria-expanded={open} aria-label={`${t(c.stepDone)} ${n}`} onClick={() => setOpen(!open)}>✓</button>
+          ? <button type="button" className={`btn ${styles.stepNo} ${styles.stepNoDone}`} aria-expanded={open} aria-label={`${t(c.stepDone)} ${n}`} onClick={() => setOpen(!open)} data-step-done-mark={step.key}>✓</button>
           : <span className={styles.stepNo} aria-hidden>{n}</span>}
         <span className={styles.stepTitle}>{step.title}</span>
         {done ? <Chip label={t(c.stepDone)} tone="ok" /> : null}
       </div>
-      {open && done ? <div className={styles.reopen}><Button size="sm" variant="ghost" label={t(c.stepReopen)} loading={actions.busy === `step:${step.key}`} onClick={() => { setOpen(false); void actions.setStep(step, false); }} /></div> : null}
+      {open && done ? <div className={styles.reopen}><Button size="sm" variant="ghost" label={t(c.stepReopen)} loading={actions.busy === `step:${step.key}`} disabled={actions.busy !== null} onClick={() => { setOpen(false); void actions.setStep(step, false); }} data-step-reopen={step.key} /></div> : null}
       <div className={styles.criteria}>
         <div className={styles.criteriaHead}><span className={`${styles.label} ${styles.grow}`}>{t(c.doneCriteria)}</span>{label ? <Chip label={label} tone="lav" /> : null}</div>
         {step.doneCriteria}
@@ -417,7 +477,7 @@ function StepItem({ n, step, planId, label, suggest, types, t, actions }: { n: n
   );
 }
 
-function StepCarousel({ detail, t }: { detail: PlanV2Detail; t: Translate }) {
+function StepCarousel({ detail, t, actions }: { detail: PlanV2Detail; t: Translate; actions: Actions }) {
   const cards = new Map(typeCards(detail).map((card) => [card.type.key, card]));
   const chanceItem = detail.todayChance?.href.split("/types/")[1] ?? null;
   return (
@@ -428,8 +488,8 @@ function StepCarousel({ detail, t }: { detail: PlanV2Detail; t: Translate }) {
         const allocation = types.reduce((sum, card) => sum + card.type.allocation, 0);
         const on = Boolean(chanceItem && types.some((card) => card.type.itemId === chanceItem));
         return (
-          <div key={step.key} role="listitem" className={`${styles.carouselCard} ${on ? styles.carouselOn : ""}`} data-plan-step={step.key}>
-            <div className={styles.stepHead}><span className={`${styles.stepNo} ${step.completedAt ? styles.stepNoDone : ""}`} aria-hidden>{step.completedAt ? "✓" : index + 1}</span><span className={styles.stepTitle}>{step.title}</span></div>
+          <div key={step.key} role="listitem" className={`${styles.carouselCard} ${on ? styles.carouselOn : ""}`} data-plan-step={step.key} data-done={step.completedAt ? "" : undefined}>
+            <StepMark n={index + 1} step={step} t={t} actions={actions} render={(mark, reopen) => <><div className={styles.stepHead}>{mark}<span className={styles.stepTitle}>{step.title}</span></div>{reopen}</>} />
             <div className={styles.row}>
               <span className={styles.emojis} aria-hidden>{types.map((card) => <span key={card.type.key}>{card.type.emoji}</span>)}</span>
               <span className={`${styles.push} ${styles.typePoints}`}>{earned} <small>/ {allocation}</small></span>
@@ -515,14 +575,17 @@ function GroupedTypeRows({ detail, t, actions }: { detail: PlanV2Detail; t: Tran
         const step = detail.content.steps.find((item) => item.key === group.stepKey);
         return (
           <div key={group.stepKey ?? "rest"} data-plan-step={group.stepKey ?? undefined} data-done={step?.completedAt ? "" : undefined}>
-            {group.stepKey ? (
-              <div className={styles.groupHead}>
-                {step?.completedAt
-                  ? <button type="button" className={`btn ${styles.stepNo} ${styles.stepNoDone}`} aria-label={`${t(c.stepReopen)} ${group.n}`} onClick={() => step && void actions.setStep(step, false)}>✓</button>
-                  : <span className={styles.stepNo} aria-hidden>{group.n}</span>}
-                <span className={styles.grow}>{group.title}</span>
-                {progress.get(group.stepKey) ? <Chip label={progress.get(group.stepKey)!.label} /> : null}
-              </div>
+            {group.stepKey && step ? (
+              <StepMark n={group.n} step={step} t={t} actions={actions} render={(mark, reopen) => (
+                <>
+                  <div className={styles.groupHead}>
+                    {mark}
+                    <span className={styles.grow}>{group.title}</span>
+                    {progress.get(step.key) ? <Chip label={progress.get(step.key)!.label} /> : null}
+                  </div>
+                  {reopen}
+                </>
+              )} />
             ) : null}
             {group.types.map((card) => <TypeRow key={card.type.key} planId={detail.planId} card={card} t={t} />)}
           </div>

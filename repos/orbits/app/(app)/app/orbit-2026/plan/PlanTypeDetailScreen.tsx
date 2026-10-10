@@ -46,7 +46,7 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
   const t = translator(language);
   const toast = useToast();
   const copy = useStandardCopy();
-  const { busy, run } = usePlanWrites(language);
+  const { busy, pending, run } = usePlanWrites(language);
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const [selected, setSelected] = useState<string[]>([]);
   const [record, setRecord] = useState<{ mode: RecordMode; contactId: string | null } | null>(null);
@@ -56,6 +56,8 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
   const [intro, setIntro] = useState<PlanIntroDraftResult | null>(null);
   const [plus, setPlus] = useState<{ points: number; half: boolean; at: number } | null>(null);
   const [talkedOpen, setTalkedOpen] = useState(false);
+  // R24 复核：「新しく登録」が失敗したら、名前なしで記録するかを聞く。
+  const [createFailed, setCreateFailed] = useState(false);
 
   const read = useCallback(async () => {
     const [type, plan] = await Promise.all([
@@ -79,13 +81,16 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
   const candidates = sortedCandidates(detail.candidates);
   const typePath = (rest = "") => v2Path(planId, `/types/${enc(itemId)}${rest}`);
 
+  /** R24 复核 M6：「取り消しました」 only when every undo went through; another write running → 処理中. */
   const undo = async (awardLogIds: string[]) => {
+    if (pending()) { toast.info(t(c.busyNow)); return; }
+    let all = true;
     for (const id of awardLogIds) {
       const done = await run<PlanCommandResult>(`undo:${id}`, { path: v2Path(planId, `/awards/${enc(id)}/undo`) });
-      if (!done) break;
+      if (!done) { all = false; break; }
     }
     await read();
-    toast.success(t(c.undoneToast));
+    if (all) toast.success(t(c.undoneToast));
   };
   /** The result of one record: points with 元に戻す, or why nothing was added. */
   const feedback = (award: PlanAwardResult) => {
@@ -108,7 +113,9 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
       return;
     }
     const body = submit.kind === "offline" ? { name: submit.name } : submit.kind === "offlineMatch" ? { contactId: submit.contactId } : submit.kind === "offlineNew" ? { createContact: true, name: submit.name } : { anonymous: true };
-    const result = await run<PlanTalkedOfflineResult>("record", { body, path: typePath("/talked-offline") });
+    setCreateFailed(false);
+    const result = await run<PlanTalkedOfflineResult>("record", { body, path: typePath("/talked-offline") },
+      (error) => { if (submit.kind === "offlineNew" && error.reason === "CONTACT_CREATE_FAILED") { setCreateFailed(true); return true; } return false; });
     if (!result) return;
     if (!result.award && result.matches?.length) { setMatches(result.matches); return; }
     setRecord(null);
@@ -119,16 +126,19 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
   const recordSelected = async () => {
     const ids: string[] = [];
     let points = 0;
+    let halves = 0;
     const notes: PlanAwardResult[] = [];
     for (const contactId of selected) {
       const award = await run<PlanAwardResult>("record", { body: { basis: "talked", contactId }, path: typePath("/awards") });
       if (!award) break;
-      if (award.awardLogId && award.part !== "none") { ids.push(award.awardLogId); points += award.points; } else notes.push(award);
+      if (award.awardLogId && award.part !== "none") { ids.push(award.awardLogId); points += award.points; if (award.part === "overflow") halves += 1; } else notes.push(award);
     }
     setSelected([]);
     await read();
-    if (ids.length === 1 && notes.length === 0) { setPlus({ at: Date.now(), half: false, points }); toast.success(t(c.awardToast, { points }), { undo: () => void undo(ids) }); }
-    else if (ids.length) { setPlus({ at: Date.now(), half: false, points }); toast.success(t(c.awardsToast, { n: ids.length, points }), { undo: () => void undo(ids) }); }
+    // R24 复核 m11：the server's `part` says which points were half.
+    const half = halves > 0;
+    if (ids.length === 1 && notes.length === 0) { setPlus({ at: Date.now(), half, points }); toast.success(t(half ? c.awardHalfToast : c.awardToast, { points }), { undo: () => void undo(ids) }); }
+    else if (ids.length) { setPlus({ at: Date.now(), half: halves === ids.length, points }); toast.success(t(half ? c.awardsHalfToast : c.awardsToast, { n: ids.length, points }), { undo: () => void undo(ids) }); }
     else if (notes[0]) feedback(notes[0]);
   };
   const decide = async (candidate: PlanCandidateView, decision: "accept" | "dismiss") => {
@@ -170,7 +180,7 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
         {skipped
           ? <Button label={t(c.unskip)} variant="secondary" loading={busy === "unskip"} onClick={() => void unskip()} />
           : <Button label={t(c.skipButton)} variant="ghost" onClick={() => setSkipOpen(true)} />}
-        <Button label={t(c.recordOffline)} icon="plus" variant="primary" disabled={skipped} onClick={() => { setMatches(null); setRecord({ contactId: null, mode: candidates.length ? "talked" : "offline" }); }} />
+        <Button label={t(c.recordOffline)} icon="plus" variant="primary" disabled={skipped} onClick={() => { setMatches(null); setCreateFailed(false); setRecord({ contactId: null, mode: "offline" }); }} data-plan-record-offline="" />
       </div>
 
       <HeadCard detail={detail} plan={plan} plus={plus} t={t} />
@@ -220,7 +230,8 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
             <Card data-plan-candidates="" className={skipped ? styles.faded : undefined}>
               <div className={styles.sectionHead}><h3 className={styles.h3}>{t(c.candidatesTitle)}</h3><span className={styles.label}>{t(c.candidatesNote, { n: candidates.length })}</span></div>
               <CandidateTable candidates={candidates} selected={selected} disabled={skipped || busy !== null} language={language} t={t}
-                onToggle={(id, on) => setSelected(on ? [...selected, id] : selected.filter((value) => value !== id))} onDecide={(candidate, decision) => void decide(candidate, decision)} />
+                onToggle={(id, on) => setSelected(on ? [...selected, id] : selected.filter((value) => value !== id))} onDecide={(candidate, decision) => void decide(candidate, decision)}
+                onTalked={(candidate) => void submitRecord({ contactId: candidate.contactId, kind: "talked" })} />
               {selected.length && !skipped ? (
                 <div className={styles.selectBar} data-plan-select-bar="">
                   <span className={`${styles.grow} ${styles.strong}`}>{t(c.selectedCount, { n: selected.length })}</span>
@@ -242,7 +253,7 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
                       <span className={`${styles.grow} ${styles.strong}`}>{item.anonymous || !item.name ? t(c.talkedAnonymous) : item.name}</span>
                       <span className={styles.label}>{new Intl.DateTimeFormat(language, { day: "numeric", month: "numeric" }).format(new Date(item.at))}</span>
                       <span className={`${styles.plus} ${item.part === "overflow" ? styles.plusHalf : ""}`}>+{item.points}</span>
-                      {skipped ? null : <Button size="sm" variant="ghost" label={copy.action.withdraw} loading={busy === `undo:${item.awardLogId}`} onClick={() => void undo([item.awardLogId])} />}
+                      {skipped ? null : <Button size="sm" variant="ghost" label={copy.action.withdraw} loading={busy === `undo:${item.awardLogId}`} disabled={busy !== null} onClick={() => void undo([item.awardLogId])} />}
                     </li>
                   ))}
                 </ul>
@@ -271,8 +282,8 @@ function TypeDetailBody({ planId, itemId, language }: { planId: string; itemId: 
         </div>
       </div>
 
-      <RecordModal open={Boolean(record)} detail={detail} initialMode={record?.mode ?? "talked"} initialContactId={record?.contactId} matches={matches ?? null} busy={busy === "record"} t={t}
-        onClose={() => { setRecord(null); setMatches(null); }} saveRecord={(submit) => void submitRecord(submit)} />
+      <RecordModal open={Boolean(record)} detail={detail} initialMode={record?.mode ?? "talked"} initialContactId={record?.contactId} matches={matches ?? null} busy={busy === "record"} createFailed={createFailed} t={t}
+        onClose={() => { setRecord(null); setMatches(null); setCreateFailed(false); }} saveRecord={(submit) => void submitRecord(submit)} />
       <SkipDialog open={skipOpen} points={Math.max(0, detail.allocation - detail.earned)} busy={busy === "skip"} t={t} onCancel={() => setSkipOpen(false)} onConfirm={() => void skip()} />
       <ProposalDrawer open={proposalOpen} people={candidates.filter((candidate) => selected.includes(candidate.contactId))} t={t} onClose={() => setProposalOpen(false)} onPropose={propose} />
       <IntroDraftDrawer draft={intro} t={t} onClose={() => setIntro(null)} />
@@ -350,7 +361,7 @@ function CountRules({ detail, t }: { detail: PlanPersonTypeDetail; t: Translate 
   );
 }
 
-function CandidateTable({ candidates, selected, disabled, language, t, onToggle, onDecide }: {
+function CandidateTable({ candidates, selected, disabled, language, t, onToggle, onDecide, onTalked }: {
   candidates: PlanCandidateView[];
   selected: string[];
   disabled: boolean;
@@ -358,6 +369,7 @@ function CandidateTable({ candidates, selected, disabled, language, t, onToggle,
   t: Translate;
   onToggle: (contactId: string, on: boolean) => void;
   onDecide: (candidate: PlanCandidateView, decision: "accept" | "dismiss") => void;
+  onTalked: (candidate: PlanCandidateView) => void;
 }) {
   const day = new Intl.DateTimeFormat(language, { day: "numeric", month: "numeric", year: "numeric" });
   return (
@@ -385,6 +397,8 @@ function CandidateTable({ candidates, selected, disabled, language, t, onToggle,
                 <div className={styles.cellActions}>
                   <IconButton icon="check" size={34} soft label={t(c.acceptCandidate)} disabled={disabled} onClick={() => onDecide(candidate, "accept")} />
                   <IconButton icon="x" size={34} soft label={t(c.dismissCandidate)} disabled={disabled} onClick={() => onDecide(candidate, "dismiss")} />
+                  {/* R24 复核 m7: record a talk with this person directly (UI-SPEC ✓ / ✕ / すでに話した). */}
+                  <Button size="sm" variant="ghost" label={t(c.alreadyTalked)} disabled={disabled} onClick={() => onTalked(candidate)} data-plan-already-talked={candidate.contactId} />
                 </div>
               </td>
             </tr>

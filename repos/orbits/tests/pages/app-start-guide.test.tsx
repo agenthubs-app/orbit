@@ -20,7 +20,6 @@ import type { StartGuideSnapshot } from "../../features/guide/start-steps";
 import type { CardBatch } from "../../app/(app)/app/contacts/card-batch-0918/use-card-batch";
 import { StartGuide, type StartGuideProps } from "../../app/(app)/app/start/start-guide";
 import { StepCards } from "../../app/(app)/app/start/start-step-cards";
-import { START_PLAN_BOOTSTRAP_URL } from "../../app/(app)/app/start/start-step-plan";
 
 const SNAPSHOT: StartGuideSnapshot = {
   completedAt: null,
@@ -46,7 +45,6 @@ function stubBrowser(
   options: {
     activeBatch?: string;
     /** W0008：计划生成接口的响应（按调用次序）。 */
-    bootstrap?: Array<() => Response>;
     failPatch?: boolean;
     relationshipGoal?: string;
   } = {},
@@ -113,10 +111,9 @@ function stubBrowser(
       return Response.json({ success: true, data: { mutationId, profile } });
     }
     if (url === "/api/profile") return Response.json({ success: true, data: { mutationId, profile } });
-    if (url === START_PLAN_BOOTSTRAP_URL && init?.method === "POST") {
+    if (url === "/api/agent/plans/bootstrap" && init?.method === "POST") {
       bootstraps.push(JSON.parse(String(init.body)) as Record<string, unknown>);
-      const next = options.bootstrap?.[bootstraps.length - 1];
-      return next ? next() : Response.json({ success: false }, { status: 500 });
+      return Response.json({ success: false }, { status: 500 });
     }
     return Response.json({ success: false }, { status: 404 });
   });
@@ -503,8 +500,6 @@ test("step 3: edit the goal in place as a draft — cancel keeps the saved goal,
     text(one(root, "data-start-question")),
     "问根据我的目标和人脉信息，我该如何实现目标？",
   );
-  assert.equal(one(root, "data-start-outline").children.length, 6);
-  assert.equal(one(root, "data-start-supplement").props.maxLength, 60);
 
   // 修改 → 草稿 → 取消：不写、不覆盖。
   await click(one(root, "data-start-goal-edit"));
@@ -531,69 +526,18 @@ test("step 3: edit the goal in place as a draft — cancel keeps the saved goal,
   act(() => root.unmount());
 });
 
-const planCreated = (planId: string) => () =>
-  Response.json({ data: { planId, replayed: false, version: 1 }, success: true }, { status: 201 });
-
-test("step 3 'Start analysis' sends the fixed question straight to plan bootstrap and opens the saved plan with the reveal", async (t) => {
-  const api = stubBrowser(t, { bootstrap: [planCreated("plan:v1")] });
+// R25 (v1 plan creation closed): step 3 no longer calls `POST /api/agent/plans/bootstrap`
+// (it answers 409 PLAN_V1_RETIRED now). The three W0008 / W0048b bootstrap tests (fixed
+// question + supplement sent to bootstrap, retry keys, 409 opens the existing v1 plan)
+// were replaced by this one: the button goes straight to the v2 goal input.
+test("step 3 'Start analysis' opens the v2 goal input (Task › プラン ?new=1) and never calls the v1 bootstrap", async (t) => {
+  const api = stubBrowser(t);
   const root = await mount(props({ relationshipGoal: "找渠道（3 个月内）", snapshot: { confirmedContacts: 3 } }));
-  await act(async () => {
-    one(root, "data-start-supplement").props.onChange({ target: { value: "  我更想先从制造业客户开始 " } });
-  });
   await click(one(root, "data-start-analyze"));
-
-  assert.equal(api.bootstraps.length, 1);
-  const [body] = api.bootstraps;
-  assert.equal(body!.supplement, "我更想先从制造业客户开始");
-  assert.equal(body!.locale, "zh");
-  assert.match(String(body!.idempotencyKey), /^plan-[A-Za-z0-9-]+$/);
-  assert.equal("goal" in body!, false, "the goal is read on the server, never sent by the client");
-  assert.deepEqual(api.assigned, ["/app/agent?plan=plan%3Av1&reveal=1"]);
-  assert.ok(!api.requests.some((request) => request.includes("/api/ai/conversations")), "the fixed question skips the chat API");
+  assert.deepEqual(api.assigned, ["/app/tasks?tab=plan&new=1"]);
+  assert.deepEqual(api.bootstraps, [], "the retired v1 bootstrap is never called");
+  assert.ok(!api.requests.some((request) => request.includes("/api/agent/plans")), "no plan API call at all");
   assert.deepEqual(api.patches, [], "no guide write either");
-  act(() => root.unmount());
-});
-
-test("step 3: a failed generation saves nothing and offers a retry; W0048b: a definite failure gets a new key, an in-progress reply keeps it, a changed question gets a new key", async (t) => {
-  const failed = () =>
-    Response.json({ error: { code: "SERVICE_UNAVAILABLE", context: { reason: "PLAN_GENERATION_FAILED" } }, success: false }, { status: 503 });
-  const inProgress = () =>
-    Response.json({ error: { code: "CONFLICT", context: { reason: "GENERATION_IN_PROGRESS" } }, success: false }, { status: 409 });
-  const api = stubBrowser(t, { bootstrap: [failed, inProgress, inProgress, planCreated("plan:v1")] });
-  const root = await mount(props({ relationshipGoal: "找渠道", snapshot: { confirmedContacts: 3 } }));
-
-  await click(one(root, "data-start-analyze"));
-  assert.match(text(one(root, "data-start-plan-error")), /计划没有生成成功，没有保存任何内容/);
-  assert.equal(text(one(root, "data-start-analyze")), "重试");
-  assert.deepEqual(api.assigned, []);
-
-  // 服务端明确失败（AI 生成失败已计次）：重试换新键。
-  await click(one(root, "data-start-analyze"));
-  assert.notEqual(api.bootstraps[1]!.idempotencyKey, api.bootstraps[0]!.idempotencyKey, "a retry after a definite failure is a new request");
-  assert.match(text(one(root, "data-start-plan-error")), /还在生成中，请稍后再试/);
-  // 同一个键还在生成：沿用这个键，稍后取回那次的结果。
-  await click(one(root, "data-start-analyze"));
-  assert.equal(api.bootstraps[2]!.idempotencyKey, api.bootstraps[1]!.idempotencyKey, "an in-progress request keeps its key");
-
-  await act(async () => {
-    one(root, "data-start-supplement").props.onChange({ target: { value: "先做东京" } });
-  });
-  await click(one(root, "data-start-analyze"));
-  assert.notEqual(api.bootstraps[3]!.idempotencyKey, api.bootstraps[2]!.idempotencyKey, "a different question is a new request");
-  assert.deepEqual(api.assigned, ["/app/agent?plan=plan%3Av1&reveal=1"]);
-  act(() => root.unmount());
-});
-
-test("step 3: when a plan already exists the button opens that plan instead of making another", async (t) => {
-  const conflict = () =>
-    Response.json(
-      { error: { code: "CONFLICT", context: { planId: "plan:old", reason: "PLAN_ALREADY_EXISTS" } }, success: false },
-      { status: 409 },
-    );
-  const api = stubBrowser(t, { bootstrap: [conflict] });
-  const root = await mount(props({ relationshipGoal: "找渠道", snapshot: { confirmedContacts: 3, currentStep: 3 } }));
-  await click(one(root, "data-start-analyze"));
-  assert.deepEqual(api.assigned, ["/app/agent?plan=plan%3Aold"]);
   act(() => root.unmount());
 });
 

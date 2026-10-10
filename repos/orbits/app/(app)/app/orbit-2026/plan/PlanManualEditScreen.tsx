@@ -5,16 +5,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { PlanConfirmResult, PlanDraftView } from "../../../../../shared/contract/plan-v2";
 import { changeAllocation, changeTargetCount, removeSlot, PLAN_EVENT_TARGET_MAX, PLAN_TYPE_TARGET_MAX, type PlanAllocationMove, type PlanAllocationSlot } from "../../../../../shared/compute/plan-allocation";
-import { planFlowHref } from "../../../../../shared/compute/plan-href";
+import { planFlowHref, planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 import { PLAN_EVENT_COPY, PLAN_SHORT_NAME_COPY, planCopy } from "../../../../../shared/compute/plan-template-copy";
 import { PLAN_EVENT_SLOT, PLAN_GOAL_TEMPLATES } from "../../../../../shared/compute/plan-templates";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { planFlowCopy } from "../copy/plan";
+import { planFlowCopy, planReviewCopy } from "../copy/plan";
 import type { OrbitCopyEntry } from "../copy/types";
 import { ShellPage } from "../shell/slots";
 import { standardCopyFor } from "../copy/standard";
 import { Button, Card, Chip, FilterOption, Icon, Modal, Orbit2026Scope, Skeleton, ToastProvider } from "../ui";
 import { newActionKey, planApi } from "./plan-api";
+import { setPlanFlash } from "./plan-flash";
 import {
   PLAN_STEP_LIMIT,
   allocationSlotsOf,
@@ -169,6 +170,8 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
         {shell}
         <PlanErrorNotice view={{ notice: "used", tone: "notice" }} t={t} />
         {draft.intakeId ? <div className={styles.blockActions}><Button label={t(planFlowCopy.backToFlow)} onClick={() => router.push(planFlowHref("web", draft.intakeId!))} /></div> : null}
+        {/* R25: a review draft (見直し or 手動で編集 from the overview) goes back to the plan. */}
+        {draft.kind === "review" && draft.planId ? <div className={styles.blockActions}><Button label={t(planReviewCopy.later)} onClick={() => router.push(planTaskSegmentHref("web", draft.planId))} data-plan-edit-back="" /></div> : null}
       </Orbit2026Scope>
     );
   }
@@ -265,6 +268,8 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
     busyRef.current = false;
     setBusy(false);
     if (result.ok === false) { setFailed(planErrorView(result.error, "other")); return; }
+    // R25: saving a review draft confirms it in place → back to the overview with 「方案を更新しました」.
+    if (draft.kind === "review") setPlanFlash("updated");
     router.push(result.data.href);
   };
 
@@ -280,6 +285,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
             <p className={styles.title}>{draft.purposeText ?? draft.goal}</p>
             <p className={styles.label}>{t(planFlowCopy.editSub)}</p>
           </div>
+          {draft.kind === "review" && draft.planId ? <Button variant="ghost" label={t(planReviewCopy.later)} onClick={() => router.push(planTaskSegmentHref("web", draft.planId))} data-plan-edit-back="" /> : null}
           <Button icon="undo" label={std.action.undo} onClick={() => reset(draft)} data-plan-reset="" />
         </div>
         <div className={styles.grid}>

@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API, /dev and /showcase routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "fcddbc318069556f3e48f2a46991a024cc96a1cc",
-  "generatedAt": "2026-10-10T23:53:55+09:00",
+  "commit": "efb2f858673aa60e9b16ff07b7894ac7a2f4ca79",
+  "generatedAt": "2026-10-11T01:31:01+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -21,9 +21,9 @@
     ]
   },
   "summary": {
-    "routes": 52,
-    "actions": 1931,
-    "authenticatedRoutes": 30,
+    "routes": 55,
+    "actions": 1982,
+    "authenticatedRoutes": 33,
     "publicRoutes": 22,
     "ungatedRoutes": 3,
     "risks": 10,
@@ -33098,6 +33098,692 @@
       "knownRisks": []
     },
     {
+      "route": "/app/plans/[planId]/done",
+      "purpose": "Production application surface; purpose requires product review",
+      "pageFile": "repos/orbits/app/(app)/app/plans/[planId]/done/page.tsx",
+      "access": {
+        "policy": "authenticated",
+        "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
+        "authenticatedBehavior": "allow",
+        "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
+        "runtimeAuthorization": "requires-browser-verification"
+      },
+      "data": {
+        "sourceKinds": [
+          "Live",
+          "Mock",
+          "Fixture",
+          "Derived",
+          "User Confirmed"
+        ],
+        "dependencies": {
+          "database": true,
+          "aiProvider": false,
+          "externalIntegration": true
+        },
+        "directMockImports": [],
+        "mockBoundaryImports": [],
+        "generatedAt": "build-time-static-scan",
+        "writesRequireRuntimeReadbackVerification": true
+      },
+      "states": {
+        "routeFiles": {
+          "loading": [],
+          "error": [],
+          "notFound": []
+        },
+        "sourceSignals": {
+          "redirect": true,
+          "loading": true,
+          "empty": true,
+          "partial": true,
+          "error": true,
+          "permissionDenied": true
+        },
+        "runtimeStatus": "loading/empty/partial/error/permission states require browser verification"
+      },
+      "responsive": {
+        "sourceSignals": {
+          "mobile": true,
+          "desktop": false
+        },
+        "desktop": "requires-browser-verification",
+        "mobile": "requires-browser-verification"
+      },
+      "actions": [
+        {
+          "actionId": "/app/plans/[planId]/done#1",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 136,
+          "kind": "button",
+          "tag": "button",
+          "label": "{candidate.goalText}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/done#2",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 146,
+          "kind": "button",
+          "tag": "button",
+          "label": "{t(r.ownGoal)} {t(r.ownGoalSub)}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/done#3",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 155,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.later)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/done#4",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 157,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.nextStart)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/done#5",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanParts.tsx",
+          "line": 60,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(planFlowCopy.reload)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        }
+      ],
+      "testCoverage": [
+        "repos/orbits/tests/api/agent-plan-candidates-routes.test.ts",
+        "repos/orbits/tests/api/agent-plans-routes.test.ts",
+        "repos/orbits/tests/api/contact-import-routes.test.ts",
+        "repos/orbits/tests/api/contact-insight-status-route.test.ts",
+        "repos/orbits/tests/api/guide-state-routes.test.ts",
+        "repos/orbits/tests/api/plan-review-routes.test.ts",
+        "repos/orbits/tests/audits/web-route-transport.test.ts",
+        "repos/orbits/tests/capabilities/agent-action-ledger-contract.test.ts",
+        "repos/orbits/tests/capabilities/agent-action-ledger-fixtures.test.ts",
+        "repos/orbits/tests/capabilities/agent-action-ledger-mock.test.ts",
+        "repos/orbits/tests/capabilities/agent-calendar-compensation.test.ts",
+        "repos/orbits/tests/capabilities/agent-runtime-evolution.test.ts",
+        "repos/orbits/tests/capabilities/business-card-ingest-v2-repository.test.ts",
+        "repos/orbits/tests/capabilities/event-adaptive-interview.test.ts",
+        "repos/orbits/tests/capabilities/password-reset-queue.test.ts",
+        "repos/orbits/tests/capabilities/plan-maintenance-daily-gate-postgres.test.ts",
+        "repos/orbits/tests/capabilities/plans-repository.test.ts",
+        "repos/orbits/tests/capabilities/plans-v2-flow-postgres.test.ts",
+        "repos/orbits/tests/capabilities/plans-v2-migrations-postgres.test.ts",
+        "repos/orbits/tests/capabilities/plans-v2-r24-review-postgres.test.ts",
+        "repos/orbits/tests/capabilities/relationship-timeline-build.test.ts",
+        "repos/orbits/tests/capabilities/relationship-timeline-reader-postgres.test.ts",
+        "repos/orbits/tests/contracts/contract-append-only.test.ts",
+        "repos/orbits/tests/copy-qa/copy-qa-check.test.ts",
+        "repos/orbits/tests/domain/plan-href.test.ts",
+        "repos/orbits/tests/observability/read-receipts.test.ts",
+        "repos/orbits/tests/pages/app-agent-actions-route-view-model.test.ts",
+        "repos/orbits/tests/pages/app-agent-guide-demo-page.test.tsx",
+        "repos/orbits/tests/pages/app-agent-iorbit-home.test.tsx",
+        "repos/orbits/tests/pages/app-agent-iorbit-plan-card.test.tsx"
+      ],
+      "knownRisks": []
+    },
+    {
+      "route": "/app/plans/[planId]/review",
+      "purpose": "Production application surface; purpose requires product review",
+      "pageFile": "repos/orbits/app/(app)/app/plans/[planId]/review/page.tsx",
+      "access": {
+        "policy": "authenticated",
+        "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
+        "authenticatedBehavior": "allow",
+        "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
+        "runtimeAuthorization": "requires-browser-verification"
+      },
+      "data": {
+        "sourceKinds": [
+          "Live",
+          "Mock",
+          "Fixture",
+          "Derived",
+          "User Confirmed"
+        ],
+        "dependencies": {
+          "database": true,
+          "aiProvider": false,
+          "externalIntegration": true
+        },
+        "directMockImports": [],
+        "mockBoundaryImports": [],
+        "generatedAt": "build-time-static-scan",
+        "writesRequireRuntimeReadbackVerification": true
+      },
+      "states": {
+        "routeFiles": {
+          "loading": [],
+          "error": [],
+          "notFound": []
+        },
+        "sourceSignals": {
+          "redirect": true,
+          "loading": true,
+          "empty": true,
+          "partial": true,
+          "error": true,
+          "permissionDenied": true
+        },
+        "runtimeStatus": "loading/empty/partial/error/permission states require browser verification"
+      },
+      "responsive": {
+        "sourceSignals": {
+          "mobile": true,
+          "desktop": false
+        },
+        "desktop": "requires-browser-verification",
+        "mobile": "requires-browser-verification"
+      },
+      "actions": [
+        {
+          "actionId": "/app/plans/[planId]/review#1",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanParts.tsx",
+          "line": 60,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(planFlowCopy.reload)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#2",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
+          "line": 127,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "copy.action.gotIt",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#3",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
+          "line": 128,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.startReview)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#4",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 100,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.startReview)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#5",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 214,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "standardCopyFor(language).action.gotIt",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#6",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 226,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.send)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#7",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 241,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.loadLatest)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#8",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 271,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "backLabel",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#9",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 273,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.manualOnce)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#10",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 274,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.again, { n: left })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#11",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 276,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.confirm)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "present-static",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#12",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 277,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.keepAsIs)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#13",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 315,
+          "kind": "keyboard-handler",
+          "tag": "input",
+          "label": "t(r.editRow, { label: row.label })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onkeydown"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#14",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 320,
+          "kind": "button",
+          "tag": "button",
+          "label": "t(r.editRow, { label: row.label })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#15",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 329,
+          "kind": "button",
+          "tag": "button",
+          "label": "{t(r.useSuggested, { value: mark.suggested })}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#16",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 366,
+          "kind": "button",
+          "tag": "button",
+          "label": "t(r.accept)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#17",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 367,
+          "kind": "button",
+          "tag": "button",
+          "label": "t(r.reject)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/review#18",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
+          "line": 99,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "usedUp ? std.action.gotIt : std.action.notNow",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        }
+      ],
+      "testCoverage": [
+        "repos/orbits/tests/api-schema/business-card-batch-schema.test.ts",
+        "repos/orbits/tests/api-schema/business-card-two-sided-contract.test.ts",
+        "repos/orbits/tests/api-schema/event-experience-schema.test.ts",
+        "repos/orbits/tests/api/agent-action-ledger-routes.test.ts",
+        "repos/orbits/tests/api/agent-plan-candidates-routes.test.ts",
+        "repos/orbits/tests/api/agent-post-event-followup-route.test.ts",
+        "repos/orbits/tests/api/business-card-batch-routes.test.ts",
+        "repos/orbits/tests/api/business-card-ingest-v2-routes.test.ts",
+        "repos/orbits/tests/api/business-card-review-readback.test.ts",
+        "repos/orbits/tests/api/chat-assist-rewrite-route.test.ts",
+        "repos/orbits/tests/api/contact-card-page.test.ts",
+        "repos/orbits/tests/api/contact-import-routes.test.ts",
+        "repos/orbits/tests/api/envelope.test.ts",
+        "repos/orbits/tests/api/event-access-assignment-route.test.ts",
+        "repos/orbits/tests/api/event-admission-application-route.test.ts",
+        "repos/orbits/tests/api/event-admission-policy-routes.test.ts",
+        "repos/orbits/tests/api/event-admission-review-routes.test.ts",
+        "repos/orbits/tests/api/event-analytics.test.ts",
+        "repos/orbits/tests/api/event-experience-routes.test.ts",
+        "repos/orbits/tests/api/event-operations-admin-capability.test.ts",
+        "repos/orbits/tests/api/event-operations-generation-capability.test.ts",
+        "repos/orbits/tests/api/event-operations-registered-access.test.ts",
+        "repos/orbits/tests/api/event-registration-portrait.test.ts",
+        "repos/orbits/tests/api/event-registration-preview-route.test.ts",
+        "repos/orbits/tests/api/note-task-page-schema.test.ts",
+        "repos/orbits/tests/api/personal-schedule-collection.test.ts",
+        "repos/orbits/tests/api/personal-schedule-routes.test.ts",
+        "repos/orbits/tests/api/plan-review-routes.test.ts",
+        "repos/orbits/tests/api/redesign-contract-routes.test.ts",
+        "repos/orbits/tests/api/relationship-communication-routes.test.ts"
+      ],
+      "knownRisks": []
+    },
+    {
       "route": "/app/plans/[planId]/types/[itemId]",
       "purpose": "Production application surface; purpose requires product review",
       "pageFile": "repos/orbits/app/(app)/app/plans/[planId]/types/[itemId]/page.tsx",
@@ -33177,7 +33863,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#2",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 171,
+          "line": 181,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.unskip)",
@@ -33199,7 +33885,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#3",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 172,
+          "line": 182,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.skipButton)",
@@ -33221,7 +33907,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#4",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 173,
+          "line": 183,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.recordOffline)",
@@ -33233,17 +33919,17 @@
           "behaviorEvidence": "present-static",
           "componentOwnershipEvidence": null,
           "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
+          "readWrite": "write-or-external-effect",
           "confirmation": "unknown-requires-runtime-verification",
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
           "loadingOrDisabled": "present-static",
-          "feedback": "unknown-requires-runtime-verification"
+          "feedback": "present-static"
         },
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#5",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 182,
+          "line": 192,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.unskip)",
@@ -33265,7 +33951,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#6",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 195,
+          "line": 205,
           "kind": "click-handler",
           "tag": "Button",
           "label": "copy.action.copy",
@@ -33287,7 +33973,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#7",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 200,
+          "line": 210,
           "kind": "click-handler",
           "tag": "Button",
           "label": "copy.action.copy",
@@ -33309,7 +33995,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#8",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 227,
+          "line": 238,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.recordSelected, { n: selected.length })",
@@ -33331,7 +34017,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#9",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 228,
+          "line": 239,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.propose)",
@@ -33353,7 +34039,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#10",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 235,
+          "line": 246,
           "kind": "button",
           "tag": "button",
           "label": "{t(c.talkedTitle, { n: detail.talked.length })} ▴ / ▾",
@@ -33375,7 +34061,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#11",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 245,
+          "line": 256,
           "kind": "click-handler",
           "tag": "Button",
           "label": "copy.action.withdraw",
@@ -33397,7 +34083,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#12",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 260,
+          "line": 271,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.makeIntro)",
@@ -33419,7 +34105,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#13",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 386,
+          "line": 398,
           "kind": "click-handler",
           "tag": "IconButton",
           "label": "t(c.acceptCandidate)",
@@ -33441,7 +34127,7 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#14",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 387,
+          "line": 399,
           "kind": "click-handler",
           "tag": "IconButton",
           "label": "t(c.dismissCandidate)",
@@ -33463,7 +34149,29 @@
         {
           "actionId": "/app/plans/[planId]/types/[itemId]#15",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 415,
+          "line": 401,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(c.alreadyTalked)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/types/[itemId]#16",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
+          "line": 429,
           "kind": "button",
           "tag": "button",
           "label": "{t(c.breakdown)} ▴ / ▾",
@@ -33483,9 +34191,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/[planId]/types/[itemId]#16",
+          "actionId": "/app/plans/[planId]/types/[itemId]#17",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDetailScreen.tsx",
-          "line": 72,
+          "line": 74,
           "kind": "link",
           "tag": "Link",
           "label": "← {t(c.backToPlan)}",
@@ -33503,9 +34211,31 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/[planId]/types/[itemId]#17",
+          "actionId": "/app/plans/[planId]/types/[itemId]#18",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx",
-          "line": 105,
+          "line": 101,
+          "kind": "button",
+          "tag": "button",
+          "label": "{match.name} {match.company}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/types/[itemId]#19",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx",
+          "line": 107,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.newContact)",
@@ -33525,9 +34255,31 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/[planId]/types/[itemId]#18",
+          "actionId": "/app/plans/[planId]/types/[itemId]#20",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx",
-          "line": 127,
+          "line": 111,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(c.recordAnonymous)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/[planId]/types/[itemId]#21",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx",
+          "line": 135,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.skipConfirm)",
@@ -33547,9 +34299,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/[planId]/types/[itemId]#19",
+          "actionId": "/app/plans/[planId]/types/[itemId]#22",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx",
-          "line": 143,
+          "line": 151,
           "kind": "click-handler",
           "tag": "Button",
           "label": "copy.action.copy",
@@ -33569,9 +34321,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/plans/[planId]/types/[itemId]#20",
+          "actionId": "/app/plans/[planId]/types/[itemId]#23",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx",
-          "line": 144,
+          "line": 152,
           "kind": "link",
           "tag": "a",
           "label": "{t(c.openMail)}",
@@ -33589,9 +34341,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/[planId]/types/[itemId]#21",
+          "actionId": "/app/plans/[planId]/types/[itemId]#24",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx",
-          "line": 207,
+          "line": 218,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.makeDraft)",
@@ -33611,9 +34363,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/[planId]/types/[itemId]#22",
+          "actionId": "/app/plans/[planId]/types/[itemId]#25",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx",
-          "line": 73,
+          "line": 75,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.recordSubmit)",
@@ -33633,9 +34385,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/[planId]/types/[itemId]#23",
+          "actionId": "/app/plans/[planId]/types/[itemId]#26",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx",
-          "line": 84,
+          "line": 86,
           "kind": "button",
           "tag": "button",
           "label": "{person.name} {person.sub}",
@@ -33652,28 +34404,6 @@
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
           "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/plans/[planId]/types/[itemId]#24",
-          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx",
-          "line": 99,
-          "kind": "button",
-          "tag": "button",
-          "label": "{match.name} {match.company}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "componentOwnershipEvidence": null,
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "write-or-external-effect",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "present-static",
           "feedback": "unknown-requires-runtime-verification"
         }
       ],
@@ -33745,7 +34475,7 @@
         {
           "actionId": "/app/plans/drafts/[draftId]/edit#1",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 148,
+          "line": 149,
           "kind": "button",
           "tag": "button",
           "label": "{changeText(change, t)}",
@@ -33767,7 +34497,7 @@
         {
           "actionId": "/app/plans/drafts/[draftId]/edit#2",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 171,
+          "line": 172,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(planFlowCopy.backToFlow)",
@@ -33789,7 +34519,51 @@
         {
           "actionId": "/app/plans/drafts/[draftId]/edit#3",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 283,
+          "line": 174,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(planReviewCopy.later)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/drafts/[draftId]/edit#4",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
+          "line": 288,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(planReviewCopy.later)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/drafts/[draftId]/edit#5",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
+          "line": 289,
           "kind": "click-handler",
           "tag": "Button",
           "label": "std.action.undo",
@@ -33809,9 +34583,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#4",
+          "actionId": "/app/plans/drafts/[draftId]/edit#6",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 315,
+          "line": 321,
           "kind": "button",
           "tag": "button",
           "label": "t(planFlowCopy.moveUp)",
@@ -33831,9 +34605,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#5",
+          "actionId": "/app/plans/drafts/[draftId]/edit#7",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 316,
+          "line": 322,
           "kind": "button",
           "tag": "button",
           "label": "t(planFlowCopy.moveDown)",
@@ -33853,9 +34627,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#6",
+          "actionId": "/app/plans/drafts/[draftId]/edit#8",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 317,
+          "line": 323,
           "kind": "button",
           "tag": "button",
           "label": "t(planFlowCopy.removeStep)",
@@ -33875,9 +34649,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#7",
+          "actionId": "/app/plans/drafts/[draftId]/edit#9",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 324,
+          "line": 330,
           "kind": "button",
           "tag": "button",
           "label": "{t(planFlowCopy.addStep)}",
@@ -33897,9 +34671,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#8",
+          "actionId": "/app/plans/drafts/[draftId]/edit#10",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 352,
+          "line": 358,
           "kind": "button",
           "tag": "button",
           "label": "t(planFlowCopy.decrease, { type: name })",
@@ -33919,9 +34693,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#9",
+          "actionId": "/app/plans/drafts/[draftId]/edit#11",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 354,
+          "line": 360,
           "kind": "button",
           "tag": "button",
           "label": "t(planFlowCopy.increase, { type: name })",
@@ -33941,9 +34715,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#10",
+          "actionId": "/app/plans/drafts/[draftId]/edit#12",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 358,
+          "line": 364,
           "kind": "keyboard-handler",
           "tag": "input",
           "label": "t(planFlowCopy.pointsOf, { type: name })",
@@ -33963,9 +34737,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#11",
+          "actionId": "/app/plans/drafts/[draftId]/edit#13",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 368,
+          "line": 374,
           "kind": "button",
           "tag": "button",
           "label": "t(planFlowCopy.removeType, { type: name })",
@@ -33985,9 +34759,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#12",
+          "actionId": "/app/plans/drafts/[draftId]/edit#14",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 384,
+          "line": 390,
           "kind": "button",
           "tag": "button",
           "label": "{t(planFlowCopy.addType)}",
@@ -34007,9 +34781,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#13",
+          "actionId": "/app/plans/drafts/[draftId]/edit#15",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 392,
+          "line": 398,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(planFlowCopy.startPlan)",
@@ -34029,9 +34803,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#14",
+          "actionId": "/app/plans/drafts/[draftId]/edit#16",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 395,
+          "line": 401,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(planFlowCopy.removeConfirm)",
@@ -34051,9 +34825,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#15",
+          "actionId": "/app/plans/drafts/[draftId]/edit#17",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 409,
+          "line": 415,
           "kind": "button",
           "tag": "button",
           "label": "{slot.emoji} {slot.slot}",
@@ -34073,7 +34847,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/plans/drafts/[draftId]/edit#16",
+          "actionId": "/app/plans/drafts/[draftId]/edit#18",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanParts.tsx",
           "line": 60,
           "kind": "click-handler",
@@ -34780,7 +35554,180 @@
       "testCoverage": [
         "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/plans/intake-flow.test.ts",
-        "repos/orbits/tests/ui/plan-flow-screens.test.tsx"
+        "repos/orbits/tests/ui/plan-flow-screens.test.tsx",
+        "repos/orbits/tests/ui/plan-review-screens.test.tsx"
+      ],
+      "knownRisks": []
+    },
+    {
+      "route": "/app/plans/legacy/[planId]",
+      "purpose": "Production application surface; purpose requires product review",
+      "pageFile": "repos/orbits/app/(app)/app/plans/legacy/[planId]/page.tsx",
+      "access": {
+        "policy": "authenticated",
+        "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
+        "authenticatedBehavior": "allow",
+        "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
+        "runtimeAuthorization": "requires-browser-verification"
+      },
+      "data": {
+        "sourceKinds": [
+          "Live",
+          "Mock",
+          "Fixture",
+          "Derived",
+          "User Confirmed"
+        ],
+        "dependencies": {
+          "database": true,
+          "aiProvider": false,
+          "externalIntegration": true
+        },
+        "directMockImports": [],
+        "mockBoundaryImports": [],
+        "generatedAt": "build-time-static-scan",
+        "writesRequireRuntimeReadbackVerification": true
+      },
+      "states": {
+        "routeFiles": {
+          "loading": [],
+          "error": [],
+          "notFound": []
+        },
+        "sourceSignals": {
+          "redirect": true,
+          "loading": true,
+          "empty": true,
+          "partial": true,
+          "error": true,
+          "permissionDenied": true
+        },
+        "runtimeStatus": "loading/empty/partial/error/permission states require browser verification"
+      },
+      "responsive": {
+        "sourceSignals": {
+          "mobile": true,
+          "desktop": false
+        },
+        "desktop": "requires-browser-verification",
+        "mobile": "requires-browser-verification"
+      },
+      "actions": [
+        {
+          "actionId": "/app/plans/legacy/[planId]#1",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
+          "line": 112,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.newPlan)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/legacy/[planId]#2",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
+          "line": 51,
+          "kind": "link",
+          "tag": "Link",
+          "label": "{t(r.legacyOpen)}",
+          "accessibleName": "dynamic-runtime",
+          "href": "planLegacyHref(\"web\", plan.planId)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/legacy/[planId]#3",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
+          "line": 53,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.newPlan)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/legacy/[planId]#4",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
+          "line": 77,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.later)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/plans/legacy/[planId]#5",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanParts.tsx",
+          "line": 60,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(planFlowCopy.reload)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        }
+      ],
+      "testCoverage": [
+        "repos/orbits/tests/audits/web-route-transport.test.ts",
+        "repos/orbits/tests/capabilities/plans-v2-flow-postgres.test.ts",
+        "repos/orbits/tests/pages/app-agent-guide-demo-page.test.tsx",
+        "repos/orbits/tests/ui/plan-review-screens.test.tsx"
       ],
       "knownRisks": []
     },
@@ -34995,8 +35942,8 @@
         "repos/orbits/tests/pages/typed-notifications-identity-browser.test.ts",
         "repos/orbits/tests/plans/draft-flow.test.ts",
         "repos/orbits/tests/plans/plan-overview.test.ts",
-        "repos/orbits/tests/services/historical-inbox-delivery-postgres.test.ts",
-        "repos/orbits/tests/services/industry-taxonomy.test.ts"
+        "repos/orbits/tests/plans/plan-r24-review-fixes.test.ts",
+        "repos/orbits/tests/services/historical-inbox-delivery-postgres.test.ts"
       ],
       "knownRisks": []
     },
@@ -41455,7 +42402,7 @@
         {
           "actionId": "/app/start#64",
           "sourceFile": "repos/orbits/app/(app)/app/start/start-step-plan.tsx",
-          "line": 160,
+          "line": 104,
           "kind": "button",
           "tag": "button",
           "label": "Edit / Write one",
@@ -41477,7 +42424,7 @@
         {
           "actionId": "/app/start#65",
           "sourceFile": "repos/orbits/app/(app)/app/start/start-step-plan.tsx",
-          "line": 175,
+          "line": 119,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -41499,7 +42446,7 @@
         {
           "actionId": "/app/start#66",
           "sourceFile": "repos/orbits/app/(app)/app/start/start-step-plan.tsx",
-          "line": 187,
+          "line": 131,
           "kind": "button",
           "tag": "button",
           "label": "Saving… / Save changes",
@@ -41521,10 +42468,10 @@
         {
           "actionId": "/app/start#67",
           "sourceFile": "repos/orbits/app/(app)/app/start/start-step-plan.tsx",
-          "line": 261,
+          "line": 180,
           "kind": "button",
           "tag": "button",
-          "label": "Generating… / Try again / Start analysis",
+          "label": "Start analysis",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -41538,7 +42485,7 @@
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
           "loadingOrDisabled": "present-static",
-          "feedback": "present-static"
+          "feedback": "unknown-requires-runtime-verification"
         }
       ],
       "testCoverage": [
@@ -43260,20 +44207,18 @@
         },
         {
           "actionId": "/app/tasks#37",
-          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalEntry.tsx",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
           "line": 102,
-          "kind": "keyboard-handler",
-          "tag": "input",
-          "label": null,
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onkeydown"
-          ],
+          "kind": "link",
+          "tag": "Link",
+          "label": "{plan.goal}",
+          "accessibleName": "dynamic-runtime",
+          "href": "planLegacyHref(\"web\", plan.planId)",
+          "handlers": [],
           "behaviorEvidence": "present-static",
           "componentOwnershipEvidence": null,
           "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
+          "readWrite": "read/navigation",
           "confirmation": "unknown-requires-runtime-verification",
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
@@ -43282,11 +44227,11 @@
         },
         {
           "actionId": "/app/tasks#38",
-          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalEntry.tsx",
-          "line": 111,
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
+          "line": 108,
           "kind": "click-handler",
           "tag": "Button",
-          "label": "t(planFlowCopy.start)",
+          "label": "t(r.addGoal)",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -43304,8 +44249,204 @@
         },
         {
           "actionId": "/app/tasks#39",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
+          "line": 109,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.editGoal)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#40",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
+          "line": 176,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "copy.action.cancel",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#41",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
+          "line": 177,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.saveOnly)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#42",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
+          "line": 178,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.saveAndRebuild)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#43",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
+          "line": 180,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "copy.action.save",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#44",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
+          "line": 242,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.achieveConfirm)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "present-static",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#45",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
+          "line": 70,
+          "kind": "button",
+          "tag": "button",
+          "label": "{currentGoal} {t(r.switchLabel)}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "present-static",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#46",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
+          "line": 80,
+          "kind": "button",
+          "tag": "button",
+          "label": "{goal.goal} {t(r.goalStats, { n: goal.talkedPeople, score: goal.total })}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#47",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
+          "line": 92,
+          "kind": "link",
+          "tag": "Link",
+          "label": "{goal.goal} {t(r.doneGoalStats, { score: goal.total })}",
+          "accessibleName": "dynamic-runtime",
+          "href": "planDoneHref(\"web\", goal.planId)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#48",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalEntry.tsx",
-          "line": 96,
+          "line": 102,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(planFlowCopy.resume)",
@@ -43325,9 +44466,183 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#40",
+          "actionId": "/app/tasks#49",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalEntry.tsx",
+          "line": 108,
+          "kind": "keyboard-handler",
+          "tag": "input",
+          "label": null,
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onkeydown"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#50",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalEntry.tsx",
+          "line": 117,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(planFlowCopy.start)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#51",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalEntry.tsx",
+          "line": 30,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(planReviewCopy.later)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#52",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
+          "line": 112,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.newPlan)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#53",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
+          "line": 51,
+          "kind": "link",
+          "tag": "Link",
+          "label": "{t(r.legacyOpen)}",
+          "accessibleName": "dynamic-runtime",
+          "href": "planLegacyHref(\"web\", plan.planId)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#54",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
+          "line": 53,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.newPlan)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#55",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
+          "line": 77,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.later)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#56",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 202,
+          "line": 125,
+          "kind": "click-handler",
+          "tag": "IconButton",
+          "label": "t(c.reviewButton)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "present-static",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#57",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
+          "line": 237,
           "kind": "link",
           "tag": "Link",
           "label": "label",
@@ -43345,9 +44660,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#41",
+          "actionId": "/app/tasks#58",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 221,
+          "line": 258,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.premiseButton)",
@@ -43367,9 +44682,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#42",
+          "actionId": "/app/tasks#59",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 223,
+          "line": 260,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.reviewButton)",
@@ -43389,9 +44704,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#43",
+          "actionId": "/app/tasks#60",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 226,
+          "line": 264,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.editButton)",
@@ -43407,13 +44722,13 @@
           "confirmation": "unknown-requires-runtime-verification",
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#44",
+          "actionId": "/app/tasks#61",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 227,
+          "line": 267,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.achieveButton)",
@@ -43433,9 +44748,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#45",
+          "actionId": "/app/tasks#62",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 246,
+          "line": 286,
           "kind": "button",
           "tag": "button",
           "label": "{t(full ? c.showLess : c.showFull)}",
@@ -43455,9 +44770,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#46",
+          "actionId": "/app/tasks#63",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 261,
+          "line": 301,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.premiseChange)",
@@ -43477,9 +44792,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#47",
+          "actionId": "/app/tasks#64",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 284,
+          "line": 324,
           "kind": "link",
           "tag": "Link",
           "label": "{copy.action.open}",
@@ -43497,9 +44812,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#48",
+          "actionId": "/app/tasks#65",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 304,
+          "line": 344,
           "kind": "link",
           "tag": "Link",
           "label": "{t(c.candidateFound, { name: item.detail ?? \"\", type: item.title })}",
@@ -43517,9 +44832,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#49",
+          "actionId": "/app/tasks#66",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 336,
+          "line": 380,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.memoDismiss)",
@@ -43539,9 +44854,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#50",
+          "actionId": "/app/tasks#67",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 337,
+          "line": 381,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.memoAccept)",
@@ -43561,9 +44876,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#51",
+          "actionId": "/app/tasks#68",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 400,
+          "line": 445,
           "kind": "button",
           "tag": "button",
           "label": "`${t(c.stepDone)} ${n}`",
@@ -43583,9 +44898,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#52",
+          "actionId": "/app/tasks#69",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 405,
+          "line": 448,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(c.stepReopen)",
@@ -43605,9 +44920,53 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#53",
+          "actionId": "/app/tasks#70",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 413,
+          "line": 460,
+          "kind": "button",
+          "tag": "button",
+          "label": "`${t(c.stepDone)} ${n}`",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#71",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
+          "line": 465,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(c.stepReopen)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#72",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
+          "line": 473,
           "kind": "link",
           "tag": "Link",
           "label": "{card.type.emoji} {card.letter} {card.type.shortLabel}",
@@ -43625,9 +44984,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#54",
+          "actionId": "/app/tasks#73",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 460,
+          "line": 520,
           "kind": "link",
           "tag": "Link",
           "label": "{type.roleSituation} {card.earned} / {type.allocation} {card.candidates} {t(card.candidates === 0 ? c.typeNone : planFlowCopy.sampleCandidates)} {card.events} {t(planFlowCopy.sampleEvents)} {card.introRoutes} {t(planFlowCopy.sampleRoutes)}",
@@ -43645,9 +45004,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#55",
+          "actionId": "/app/tasks#74",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 493,
+          "line": 553,
           "kind": "link",
           "tag": "Link",
           "label": "{type.shortLabel} {card.earned} / {type.allocation}",
@@ -43665,51 +45024,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#56",
-          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 521,
-          "kind": "button",
-          "tag": "button",
-          "label": "`${t(c.stepReopen)} ${group.n}`",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "componentOwnershipEvidence": null,
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/tasks#57",
-          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
-          "line": 96,
-          "kind": "click-handler",
-          "tag": "IconButton",
-          "label": "t(c.reviewButton)",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "componentOwnershipEvidence": null,
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/tasks#58",
+          "actionId": "/app/tasks#75",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanParts.tsx",
           "line": 60,
           "kind": "click-handler",
@@ -43731,7 +45046,51 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#59",
+          "actionId": "/app/tasks#76",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
+          "line": 127,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "copy.action.gotIt",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#77",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
+          "line": 128,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(r.startReview)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/tasks#78",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/shell/ShellDemoPill.tsx",
           "line": 23,
           "kind": "click-handler",
@@ -43753,7 +45112,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#60",
+          "actionId": "/app/tasks#79",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -43775,7 +45134,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#61",
+          "actionId": "/app/tasks#80",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-association-sheet.tsx",
           "line": 36,
           "kind": "click-handler",
@@ -43797,7 +45156,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/tasks#62",
+          "actionId": "/app/tasks#81",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-association-sheet.tsx",
           "line": 37,
           "kind": "keyboard-handler",
@@ -43819,7 +45178,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/tasks#63",
+          "actionId": "/app/tasks#82",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-association-sheet.tsx",
           "line": 42,
           "kind": "button",
@@ -43841,7 +45200,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#64",
+          "actionId": "/app/tasks#83",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-association-sheet.tsx",
           "line": 44,
           "kind": "button",
@@ -43863,7 +45222,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#65",
+          "actionId": "/app/tasks#84",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-association-sheet.tsx",
           "line": 45,
           "kind": "button",
@@ -43885,7 +45244,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#66",
+          "actionId": "/app/tasks#85",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-association-sheet.tsx",
           "line": 46,
           "kind": "button",
@@ -43907,7 +45266,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#67",
+          "actionId": "/app/tasks#86",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-date-time-picker.tsx",
           "line": 28,
           "kind": "click-handler",
@@ -43929,7 +45288,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#68",
+          "actionId": "/app/tasks#87",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-date-time-picker.tsx",
           "line": 29,
           "kind": "keyboard-handler",
@@ -43951,7 +45310,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#69",
+          "actionId": "/app/tasks#88",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-date-time-picker.tsx",
           "line": 32,
           "kind": "button",
@@ -43973,7 +45332,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#70",
+          "actionId": "/app/tasks#89",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-date-time-picker.tsx",
           "line": 35,
           "kind": "button",
@@ -43995,7 +45354,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#71",
+          "actionId": "/app/tasks#90",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-date-time-picker.tsx",
           "line": 36,
           "kind": "button",
@@ -44017,7 +45376,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#72",
+          "actionId": "/app/tasks#91",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-date-time-picker.tsx",
           "line": 37,
           "kind": "button",
@@ -44039,7 +45398,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#73",
+          "actionId": "/app/tasks#92",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-date-time-picker.tsx",
           "line": 38,
           "kind": "button",
@@ -44061,7 +45420,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#74",
+          "actionId": "/app/tasks#93",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-rules.tsx",
           "line": 12,
           "kind": "button",
@@ -44083,7 +45442,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#75",
+          "actionId": "/app/tasks#94",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 121,
           "kind": "button",
@@ -44105,7 +45464,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#76",
+          "actionId": "/app/tasks#95",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 122,
           "kind": "button",
@@ -44127,7 +45486,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#77",
+          "actionId": "/app/tasks#96",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 122,
           "kind": "link",
@@ -44147,7 +45506,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#78",
+          "actionId": "/app/tasks#97",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 124,
           "kind": "button",
@@ -44169,7 +45528,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/tasks#79",
+          "actionId": "/app/tasks#98",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 33,
           "kind": "button",
@@ -44191,7 +45550,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#80",
+          "actionId": "/app/tasks#99",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 37,
           "kind": "button",
@@ -44213,7 +45572,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#81",
+          "actionId": "/app/tasks#100",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 49,
           "kind": "link",
@@ -44233,7 +45592,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#82",
+          "actionId": "/app/tasks#101",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 49,
           "kind": "button",
@@ -44255,7 +45614,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#83",
+          "actionId": "/app/tasks#102",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 73,
           "kind": "button",
@@ -44277,7 +45636,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#84",
+          "actionId": "/app/tasks#103",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 74,
           "kind": "form-submit",
@@ -44299,7 +45658,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#85",
+          "actionId": "/app/tasks#104",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 83,
           "kind": "button",
@@ -44321,7 +45680,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#86",
+          "actionId": "/app/tasks#105",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 84,
           "kind": "button",
@@ -44343,7 +45702,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#87",
+          "actionId": "/app/tasks#106",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 85,
           "kind": "button",
@@ -44365,7 +45724,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#88",
+          "actionId": "/app/tasks#107",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 87,
           "kind": "button",
@@ -44387,7 +45746,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#89",
+          "actionId": "/app/tasks#108",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 91,
           "kind": "button",
@@ -44407,7 +45766,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#90",
+          "actionId": "/app/tasks#109",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 94,
           "kind": "button",
@@ -44429,7 +45788,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#91",
+          "actionId": "/app/tasks#110",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 95,
           "kind": "button",
@@ -44451,7 +45810,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#92",
+          "actionId": "/app/tasks#111",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 96,
           "kind": "button",
@@ -44473,7 +45832,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#93",
+          "actionId": "/app/tasks#112",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
           "line": 97,
           "kind": "button",
@@ -44495,7 +45854,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#94",
+          "actionId": "/app/tasks#113",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/relationship-lifecycle-tasks-section.tsx",
           "line": 108,
           "kind": "link",
@@ -44515,7 +45874,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#95",
+          "actionId": "/app/tasks#114",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/relationship-lifecycle-tasks-section.tsx",
           "line": 139,
           "kind": "link",
@@ -44535,7 +45894,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#96",
+          "actionId": "/app/tasks#115",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/relationship-lifecycle-tasks-section.tsx",
           "line": 140,
           "kind": "link",
@@ -44555,7 +45914,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#97",
+          "actionId": "/app/tasks#116",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/relationship-lifecycle-tasks-section.tsx",
           "line": 62,
           "kind": "link",
@@ -44575,7 +45934,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#98",
+          "actionId": "/app/tasks#117",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/relationship-lifecycle-tasks-section.tsx",
           "line": 63,
           "kind": "link",
@@ -44595,7 +45954,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#99",
+          "actionId": "/app/tasks#118",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
           "line": 37,
           "kind": "link",
@@ -44615,7 +45974,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#100",
+          "actionId": "/app/tasks#119",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
           "line": 42,
           "kind": "button",
@@ -44637,7 +45996,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#101",
+          "actionId": "/app/tasks#120",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
           "line": 49,
           "kind": "form-submit",
@@ -44659,7 +46018,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#102",
+          "actionId": "/app/tasks#121",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
           "line": 57,
           "kind": "button",
@@ -44679,7 +46038,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#103",
+          "actionId": "/app/tasks#122",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
           "line": 59,
           "kind": "button",
@@ -44701,7 +46060,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#104",
+          "actionId": "/app/tasks#123",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
           "line": 62,
           "kind": "button",
@@ -44723,7 +46082,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/tasks#105",
+          "actionId": "/app/tasks#124",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
           "line": 66,
           "kind": "button",
@@ -44745,7 +46104,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#106",
+          "actionId": "/app/tasks#125",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
           "line": 71,
           "kind": "button",
@@ -44767,7 +46126,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#107",
+          "actionId": "/app/tasks#126",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
           "line": 72,
           "kind": "button",
@@ -44789,7 +46148,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#108",
+          "actionId": "/app/tasks#127",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
           "line": 84,
           "kind": "button",
@@ -44811,7 +46170,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#109",
+          "actionId": "/app/tasks#128",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
           "line": 85,
           "kind": "button",
@@ -44833,7 +46192,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#110",
+          "actionId": "/app/tasks#129",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-schedule-editor.tsx",
           "line": 28,
           "kind": "form-submit",
@@ -44855,7 +46214,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/tasks#111",
+          "actionId": "/app/tasks#130",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-schedule-editor.tsx",
           "line": 44,
           "kind": "button",
@@ -44875,7 +46234,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/tasks#112",
+          "actionId": "/app/tasks#131",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/task-schedule-editor.tsx",
           "line": 46,
           "kind": "button",
@@ -44897,7 +46256,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#113",
+          "actionId": "/app/tasks#132",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-controls.tsx",
           "line": 22,
           "kind": "button",
@@ -44919,7 +46278,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#114",
+          "actionId": "/app/tasks#133",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-controls.tsx",
           "line": 30,
           "kind": "form-submit",
@@ -44941,7 +46300,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#115",
+          "actionId": "/app/tasks#134",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-controls.tsx",
           "line": 38,
           "kind": "button",
@@ -44961,7 +46320,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#116",
+          "actionId": "/app/tasks#135",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-controls.tsx",
           "line": 48,
           "kind": "link",
@@ -44981,7 +46340,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/tasks#117",
+          "actionId": "/app/tasks#136",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-controls.tsx",
           "line": 65,
           "kind": "button",
@@ -45003,7 +46362,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#118",
+          "actionId": "/app/tasks#137",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-controls.tsx",
           "line": 66,
           "kind": "button",
@@ -45025,7 +46384,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#119",
+          "actionId": "/app/tasks#138",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-page-heading.tsx",
           "line": 10,
           "kind": "link",
@@ -45045,7 +46404,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#120",
+          "actionId": "/app/tasks#139",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-page-heading.tsx",
           "line": 8,
           "kind": "link",
@@ -45065,7 +46424,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#121",
+          "actionId": "/app/tasks#140",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-workspace.tsx",
           "line": 24,
           "kind": "button",
@@ -45087,7 +46446,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/tasks#122",
+          "actionId": "/app/tasks#141",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-workspace.tsx",
           "line": 25,
           "kind": "button",
@@ -45109,7 +46468,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/tasks#123",
+          "actionId": "/app/tasks#142",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-workspace.tsx",
           "line": 27,
           "kind": "button",
@@ -45131,7 +46490,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#124",
+          "actionId": "/app/tasks#143",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-workspace.tsx",
           "line": 41,
           "kind": "button",
@@ -45153,7 +46512,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/tasks#125",
+          "actionId": "/app/tasks#144",
           "sourceFile": "repos/orbits/app/(app)/app/tasks/tasks-workspace.tsx",
           "line": 42,
           "kind": "button",

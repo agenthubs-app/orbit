@@ -99,6 +99,7 @@ test("a #plan-action-… link scrolls to that row once the plan screen is there"
 
 test("the server reads the plan only for ?tab=plan, and the old address stays a redirect", () => {
   const page = readFileSync("app/(app)/app/tasks/page.tsx", "utf8");
-  assert.match(page, /const plan = tab === "plan" && actor \? await loadPlanSlot\(actor, session\.user\.id\) : undefined;/u);
+  // R25: the slot also gets `?plan=` (which goal) and `?new=1` (goal input) — still only for ?tab=plan.
+  assert.match(page, /const plan = tab === "plan" && actor \? await loadPlanSlot\(actor, session\.user\.id, \{ newGoal: params\?\.new === "1", planId: [^}]+\}\) : undefined;/u);
   assert.match(readFileSync("app/(app)/app/agent/plan/page.tsx", "utf8"), /redirect\("\/app\/tasks\?tab=plan"\)/u);
 });

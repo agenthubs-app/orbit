@@ -10,7 +10,7 @@ import type {
   PlanV2PersonType,
 } from "../../../../../shared/contract/plan-v2";
 import { unitPoints } from "../../../../../shared/compute/plan-allocation";
-import { overflowPoints, PLAN_EVENT_SEGMENT_KEY } from "../../../../../shared/compute/plan-score";
+import { PLAN_EVENT_SEGMENT_KEY } from "../../../../../shared/compute/plan-score";
 
 export { PLAN_EVENT_SEGMENT_KEY };
 
@@ -50,14 +50,6 @@ export function metCountOf(allocation: number, targetCount: number, earned: numb
     count += 1;
   }
   return count;
-}
-
-/** The points the next named record would add (base unit until the target, then half). */
-export function nextPointsOf(allocation: number, targetCount: number, earned: number): { points: number; half: boolean } {
-  const met = metCountOf(allocation, targetCount, earned);
-  const units = unitPoints(allocation, targetCount);
-  if (met < targetCount) return { half: false, points: units[met] ?? 0 };
-  return { half: true, points: overflowPoints(allocation, targetCount) };
 }
 
 /** 「1人 7点（最後の1人 8点）」 or 「1人 10点」. */
@@ -114,17 +106,17 @@ export function typeCards(detail: Pick<PlanV2Detail, "content" | "score" | "type
   });
 }
 
-/** b8 1024: each type once, under the first step that lists it; types in no step come last. */
+/**
+ * b8 1024: every step in order (a step with no type still shows), each with all the
+ * types it lists — a type can sit under several steps (R24 复核 m8); types in no step
+ * come last.
+ */
 export function stepGroups(detail: Pick<PlanV2Detail, "content" | "score" | "typeStats">): { stepKey: string | null; n: number; title: string; types: TypeCardView[] }[] {
   const cards = typeCards(detail);
-  const placed = new Set<string>();
-  const groups = detail.content.steps.map((step, index) => {
-    const types = cards.filter((card) => step.personTypeKeys.includes(card.type.key) && !placed.has(card.type.key));
-    types.forEach((card) => placed.add(card.type.key));
-    return { n: index + 1, stepKey: step.key as string | null, title: step.title, types };
-  });
-  const rest = cards.filter((card) => !placed.has(card.type.key));
-  return [...groups.filter((group) => group.types.length > 0), ...(rest.length ? [{ n: 0, stepKey: null, title: "", types: rest }] : [])];
+  const listed = new Set(detail.content.steps.flatMap((step) => step.personTypeKeys));
+  const groups = detail.content.steps.map((step, index) => ({ n: index + 1, stepKey: step.key as string | null, title: step.title, types: cards.filter((card) => step.personTypeKeys.includes(card.type.key)) }));
+  const rest = cards.filter((card) => !listed.has(card.type.key));
+  return [...groups, ...(rest.length ? [{ n: 0, stepKey: null, title: "", types: rest }] : [])];
 }
 
 /** The event block: visits counted from its earned base points. */

@@ -451,7 +451,7 @@ test("mock end to end: goal input → background → questions → premise → d
   const view = await screen(t, { bridge: true, handlers: [], id: card.planId, view: "overview" }, bridge);
   await view.locator("[data-plan-goal]").getByText("シリーズA の資金調達をしたい", { exact: true }).waitFor();
   assert.equal(await view.locator("[data-plan-score]").getAttribute("data-plan-score"), String(card.total));
-  assert.deepEqual((await fetches(view)).map((call) => `${call.method} ${path(call)}`), [`GET /v2/${encodeURIComponent(card.planId)}`], "the overview only reads");
+  assert.deepEqual((await fetches(view)).map((call) => `${call.method} ${path(call)}`), [`GET /v2/${encodeURIComponent(card.planId)}`, "GET /v2"], "the overview only reads (R25: the plan and the goal list behind the switcher)");
 });
 
 /* ---------- R23 review: m10 / m15 / m16 / AI_BUSY ---------- */

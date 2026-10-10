@@ -30,13 +30,15 @@ type Match = { contactId: string; name: string; company: string | null };
  * will get before anything is written; the rules (once per person and type, unnamed
  * only up to the target) are always on screen.
  */
-export function RecordModal({ open, detail, initialMode, initialContactId, matches, busy, t, onClose, saveRecord }: {
+export function RecordModal({ open, detail, initialMode, initialContactId, matches, busy, createFailed = false, t, onClose, saveRecord }: {
   open: boolean;
   detail: PlanPersonTypeDetail;
   initialMode: RecordMode;
   initialContactId?: string | null;
   matches: readonly Match[] | null;
   busy: boolean;
+  /** 「新しく登録」 failed (CONTACT_CREATE_FAILED): offer an unnamed record instead. */
+  createFailed?: boolean;
   t: Translate;
   onClose: () => void;
   saveRecord: (submit: RecordSubmit) => void;
@@ -70,7 +72,7 @@ export function RecordModal({ open, detail, initialMode, initialContactId, match
 
   return (
     <Modal open={open} onClose={onClose} title={t(c.recordTitle)} size={420}
-      actions={matches ? null : <><Button label={copy.action.cancel} variant="secondary" onClick={onClose} /><Button label={t(c.recordSubmit)} variant="primary" disabled={!canSubmit} loading={busy} onClick={submit} /></>}>
+      actions={matches && mode === "offline" ? null : <><Button label={copy.action.cancel} variant="secondary" onClick={onClose} /><Button label={t(c.recordSubmit)} variant="primary" disabled={!canSubmit} loading={busy} onClick={submit} /></>}>
       <div className={styles.stack} data-plan-record={mode}>
         <div className={styles.modes}>
           <Segmented<RecordMode> label={t(c.recordModeLabel)} value={mode} onChange={setMode} wide
@@ -103,6 +105,12 @@ export function RecordModal({ open, detail, initialMode, initialContactId, match
               ))}
             </div>
             <Button size="sm" label={t(c.newContact)} icon="user-plus" disabled={busy} onClick={() => saveRecord({ kind: "offlineNew", name: name.trim() })} />
+            {createFailed ? (
+              <div className={styles.banner} role="alert" data-plan-create-failed="">
+                <span className={styles.grow}>{t(c.contactCreateFailed)}</span>
+                <Button size="sm" label={t(c.recordAnonymous)} disabled={busy} onClick={() => saveRecord({ kind: "anonymous" })} data-plan-record-anonymous="" />
+              </div>
+            ) : null}
           </div>
         ) : null}
         {mode === "anonymous" ? <p className={styles.muted}>{t(c.anonymousRule)}</p> : null}
@@ -194,7 +202,8 @@ export function ProposalDrawer({ open, people, t, onClose, onPropose }: {
           ))}
         </div>
         {people.map((person) => {
-          const draft = drafts[person.contactId]?.draft ?? null;
+          const result = drafts[person.contactId] ?? null;
+          const draft = result?.draft ?? null;
           return (
             <div key={person.contactId} className={styles.person} data-plan-proposal-person={person.contactId}>
               <div className={styles.row}>
@@ -203,7 +212,9 @@ export function ProposalDrawer({ open, people, t, onClose, onPropose }: {
                 {person.isOrbitUser ? <Chip label={t(c.orbitUser)} tone="teal" /> : null}
               </div>
               <span className={styles.label}>{t(person.isOrbitUser ? c.proposalOrbit : c.proposalEmail)}</span>
-              {draft ? <DraftView subject={draft.subject} body={draft.body} t={t} /> : (
+              {/* R24 复核 m11: a structured request (Orbit user) has no draft — say it was requested. */}
+              {result?.kind === "request" && !draft ? <span className={styles.strong} data-plan-proposal-requested={person.contactId}>{t(c.proposalRequested)}</span>
+                : draft ? <DraftView subject={draft.subject} body={draft.body} t={t} /> : (
                 <span><Button size="sm" icon="mail" label={t(c.makeDraft)} variant="primary" disabled={!ready || Boolean(running)} loading={running === person.contactId}
                   onClick={() => {
                     if (!ready) return;

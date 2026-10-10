@@ -161,6 +161,7 @@ test("the post-confirm manual edit opens a review draft without AI or quota, and
   const calls = { ...world.ai.calls };
   const draft = await world.flow.openManualEdit(planId, key(), JA);
   assert.equal(draft.kind, "review");
+  assert.equal(await world.flow.currentReview(planId, JA), null, "a manual-only draft is not an ongoing review");
   const types = draft.content.personTypes;
   const result = await world.flow.manualEdit(draft.draftId, {
     event: { ...draft.content.event },

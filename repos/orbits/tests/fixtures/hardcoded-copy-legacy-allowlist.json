@@ -859,7 +859,7 @@
     },
     "app/(app)/app/start/start-step-plan.tsx": {
       "hardcoded": 0,
-      "missingJa": 33
+      "missingJa": 17
     },
     "app/(app)/app/tasks/personal-schedule-association-sheet.tsx": {
       "hardcoded": 16,

@@ -1581,7 +1581,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     async currentReview(planId, context) {
       return repository.read(scope, async (reader) => {
         const draft = await reader.openReviewDraft(planId);
-        return draft ? reviewView(reader, draft, context) : null;
+        // 只做手动编辑的草稿不是「进行中的見直し」：送出会 DRAFT_CLOSED，界面也分辨不出来，所以不返回。
+        return draft && draft.premiseVersion !== MANUAL_ONLY ? reviewView(reader, draft, context) : null;
       });
     },
 

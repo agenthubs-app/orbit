@@ -7,7 +7,7 @@ import type { PlanGoalKind, PlanGoalKindResult, PlanIntakeListResponse, PlanInta
 import { PLAN_GOAL_KIND_COPY, PLAN_SHORT_NAME_COPY, planCopy } from "../../../../../shared/compute/plan-template-copy";
 import { PLAN_GOAL_KINDS, PLAN_GOAL_TEMPLATES, guessGoalKindByKeywords } from "../../../../../shared/compute/plan-templates";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { planFlowCopy } from "../copy/plan";
+import { planFlowCopy, planReviewCopy } from "../copy/plan";
 import { Button, Card, Chip, FilterOption, Orbit2026Scope, SampleTag } from "../ui";
 import { newActionKey, planApi } from "./plan-api";
 import { goalGuessReady, planErrorView, type PlanErrorView } from "./plan-model";
@@ -16,12 +16,18 @@ import styles from "./plan.module.css";
 
 const GUESS_DELAY_MS = 800;
 
-/** ① 目標入力: the Task › プラン empty state (UI-SPEC ①, web.html 「Task · プラン（目標入力）」). */
-export function PlanGoalEntry() {
+/**
+ * ① 目標入力: the Task › プラン empty state (UI-SPEC ①, web.html 「Task · プラン（目標入力）」).
+ * R25: also 「＋ 目標を追加」 (`?new=1`) — then `backHref` leads back to the open goal; at
+ * 2 active goals the input explains the limit instead (no paywall).
+ */
+export function PlanGoalEntry({ backHref }: { backHref?: string } = {}) {
   const { language } = useOrbitLanguage();
   const t = translator(language);
+  const router = useRouter();
   return (
     <Orbit2026Scope language={language} className={styles.slot}>
+      {backHref ? <div className={styles.backRow}><Button variant="ghost" icon="left" label={t(planReviewCopy.later)} onClick={() => router.push(backHref)} data-plan-entry-back="" /></div> : null}
       <GoalInput t={t} />
     </Orbit2026Scope>
   );
