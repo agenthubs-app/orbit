@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "../../../../auth";
 import { RelationshipInboxPage } from "./relationship-inbox-panel";
 import { InboxShellTitle } from "./inbox-shell-title";
+import styles from "./inbox-page.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -10,5 +11,5 @@ export const dynamic = "force-dynamic";
 export default async function AppInboxPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/app/account/login?next=%2Fapp%2Finbox");
-  return <><InboxShellTitle /><RelationshipInboxPage /></>;
+  return <><InboxShellTitle /><div className={styles.page}><RelationshipInboxPage /></div></>;
 }

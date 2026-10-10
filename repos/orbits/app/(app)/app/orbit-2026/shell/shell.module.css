@@ -1,5 +1,8 @@
 /* R07 Orbit2026Shell frame: kit/ui.css .web (84 / 1fr / 360) and b8-responsive breakpoints. */
 .frame {
+  /* Under 768 the bottom capsule covers this much of the viewport's foot; legacy
+     pages with their own fixed bottom controls add it to their `bottom`. */
+  --orbit-shell-bottom-inset: 0px;
   display: grid;
   grid-template-columns: 84px minmax(0, 1fr);
   min-height: 100vh;
@@ -104,6 +107,7 @@
 .railAsk span { flex: 1; }
 
 .menu { display: grid; gap: var(--space-14); }
+.menuLinks { display: grid; }
 .menuRow { display: flex; align-items: center; gap: 10px; min-height: 40px; font-weight: var(--fw-bold); font-size: var(--fs-body-sm); }
 .menuGroup { display: grid; gap: 6px; }
 .menuLabel { font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-3-text); }
@@ -113,7 +117,7 @@
   position: fixed;
   left: 14px;
   right: 14px;
-  bottom: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   height: 62px;
   z-index: var(--z-sticky);
   border-radius: var(--r-pill);
@@ -140,12 +144,55 @@
 }
 .bottomOn { background: var(--surface); color: var(--ink); }
 
+/* < 768 top bar: search, 受信箱 (round, with the unread dot), avatar. */
+.mobileTop { display: none; align-items: center; gap: 8px; padding: var(--space-12) var(--space-18) 0; }
+.mobileLogo {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: var(--ink);
+  color: var(--bg);
+  display: grid;
+  place-items: center;
+  font-weight: var(--fw-black);
+}
+.roundLink {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+}
+.roundLink .dot { top: 7px; right: 8px; }
+.railButton { display: none; }
+
 /* 768–1279: a 72 icons-only rail (the label moves to the tooltip); no right rail. */
 @media (max-width: 1279px) {
   .frame, .frame[data-rail="true"] { grid-template-columns: 72px minmax(0, 1fr); }
   .railScope { display: none; }
-  .item { width: 52px; padding: 10px 0; }
+  .item { width: 52px; padding: 10px 0; position: relative; }
   .itemLabel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* The label as a tooltip on hover and on keyboard focus (b8: dark chip to the right). */
+  .item[data-tip]:hover::after, .item[data-tip]:focus-visible::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 5px 9px;
+    border-radius: var(--r-sm);
+    background: var(--ink);
+    color: var(--bg);
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-bold);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: var(--z-dropdown);
+  }
+  .railButton { display: inline-flex; }
   .mainhead { padding: var(--space-22) var(--space-26) 0; }
 }
 
@@ -153,7 +200,10 @@
 @media (max-width: 767px) {
   .frame, .frame[data-rail="true"] { grid-template-columns: minmax(0, 1fr); }
   .sideScope { display: none; }
+  /* capsule (62) + its gap (14): legacy fixed controls add this on top of their own safe-area offset. */
+  .frame { --orbit-shell-bottom-inset: 76px; }
   .bottomScope { display: block; }
-  .content { padding-bottom: 96px; }
+  .mobileTop { display: flex; }
+  .content { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   .mainhead { padding: var(--space-16) var(--space-18) 0; }
 }

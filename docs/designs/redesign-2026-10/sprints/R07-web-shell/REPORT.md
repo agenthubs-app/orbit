@@ -10,7 +10,7 @@
    - **左栏 84**：logo、ホーム / 人脈 / iOrbit / イベント / Task / 受信箱（未读红点）、⌘K、主催、設定、头像菜单。标签读标准用词 `nav.*`（三语，R03 M2 在此关闭），图标读 `Icon`。当前项 `aria-current="page"`，深层页面高亮所属栏目（运营、分析、现场页高亮「主催」）。
    - **主标题区**：页面用 `<ShellPage title subtitle left right demoPill rightRail />` 设插槽；有插槽时才画（旧页面自带标题，不重复）。
    - **右栏 360**：页面传 `rightRail` 时出现（≥1280）；骨架默认内容是「次の一手」「最近の会話」空态 +「iOrbit に聞く… ⌘K」入口；iOrbit 页永远没有右栏。
-   - **三档宽度**：≥1280 左栏 84 + 可选右栏；768–1279 左栏 72 只显示图标（文字留给读屏和 tooltip）、没有右栏；<768 没有左栏，底部玻璃胶囊 5 项，内容底部留 96 不被遮挡。主区外边距 34 / 26 / 18。
+   - **三档宽度**：≥1280 左栏 84 + 可选右栏 360；768–1279 左栏 72 只显示图标（文字在悬停和键盘聚焦时以 tooltip 出现），页面要右栏时主标题区出现按钮、点开 380 抽屉；<768 没有左栏，顶部一条（搜索 / iOrbit に聞く、受信箱圆钮带红点、头像菜单），底部玻璃胶囊 5 项，内容底部留 96 + 安全区，旧页面自己固定在底部的控件加 `--orbit-shell-bottom-inset`。主区外边距 34 / 26 / 18。（复核 M1、M3、M4 后补齐）
    - **作用域**：壳的各部分都是独立的 `[data-orbit-2026]` 小岛，与旧页面的 `[data-orbit-real-page]` 是兄弟节点，互不嵌套（RD-18）。
    - 路由规则 `shell-routes.ts`：已登录的 `/app/**` 都有壳，例外是 `/app`（落地页）、`/app/account/**`、`/app/login-admin`、`/app/admin/**`（主办方管理台自有 `HostShell`）、`/app/o/**`（公开主办方页）、`/app/start`、`/app/register`、`/app/platform`、`/app/profile/onboarding`（全屏引导）。未登录不出现。
    - 常量 `ORBIT_2026_SIDEBAR 84`、`_COMPACT 72`、`_RAIL 360`、`_HISTORY 260`、`_WIDE 1280`、`_NARROW 768` 加进 `orbit-layout-constants.ts`，旧的 212 保留。
@@ -35,7 +35,7 @@
 | SC | 结论 | 证据 |
 | --- | --- | --- |
 | 01 全站新壳 | ✅ | 本地 dev server 登录 QA 账号后依次打开 12 个已登录页面，三种宽度下每页 `[data-orbit-2026-shell]` 存在、旧顶栏 0（脚本输出写在 `screens/` 旁）；`orbit-2026-shell` 零残留扫描（`app/`、`features/` 里没有 `AccountTopNav` / `OrbitGlobalAsk` / `RelationshipInboxTrigger` 挂载） |
-| 02 三档宽度 | ✅ | `orbit-2026-shell`：84 / 72 / 胶囊、右栏 360（≥1280）、390 下最后一行在胶囊之上、无横向滚动；截图 `*-1440/1024/390-light.png` |
+| 02 三档宽度 | ✅（复核后） | `orbit-2026-shell`：84 / 72（tooltip 键盘可见）/ 胶囊；右栏 360（≥1280）、1024 下按钮 + 380 抽屉；390 下最后一行和旧页面的固定控件都在胶囊之上、顶部条可达受信箱 / 设置 / 主催 / 登出、无横向滚动；截图 `*-1440/1024/390-light.png`。初版只做了 84 / 72 / 胶囊，窄屏缺入口、1024 缺右栏替代、胶囊盖住固定控件（复核 M1、M3、M4） |
 | 03 ⌘K | ✅ | `orbit-2026-cmdk`：Ctrl+K / ⌘K（含输入框内）打开、普通 k 不开、焦点在输入框、680 宽距顶 96、搜索 ↑↓↵ 打开联系人、⌘↵ 交给 iOrbit（`/app/agent`）、日文上下文 chip、快捷键只注册一次 |
 | 04 新入口 | ✅ | `/app/home` 200 无跳转（截图 `home-*`）；`app-inbox-page`（内联模式、读取与频率不变）；`app-tasks-container`（四段、← →、`?tab=`）；dev server 上 `/app/agent/plan` 落到 `/app/tasks?tab=plan` |
 | 05 登录与路由 | ✅ | `app-inbox-page`（`/app/inbox`、`/app/tasks`、`/app/home` 都是私有前缀）；审计与产品清单更新后通过 |
@@ -57,7 +57,7 @@
 2. **壳的各部分是新作用域「小岛」，旧页面是它们的兄弟**，而不是一个大作用域包住旧页面：新作用域的基础重置（按钮、标题、列表）会漏进旧页面（R06 复核 m5 已把优先级降到 0，但兄弟结构更彻底）。
 3. **主标题区只在页面设了插槽时出现**：旧页面都自带大标题，壳再画一个会重复；新页面（首页、Task、收件箱）设插槽。
 4. **右栏按页面选择**（只有首页占位用了默认右栏）：旧页面按全宽设计，强加 360 右栏会把它们挤坏；功能 Sprint 换页时再接右栏。
-5. **收件箱红点只在壳挂载时读一次**、不轮询；收件箱页本身保持 15 秒刷新。对标 Gmail 网页版左栏未读数随页面刷新而不是高频轮询；这样读取次数不增加（D24 / D25 轮询约束）。
+5. **收件箱红点只在壳挂载时读一次**（左栏和窄屏顶部条共用一次）、不轮询；收件箱页本身保持 15 秒刷新。对标 Gmail 网页版左栏未读数随页面刷新而不是高频轮询。导航用 `next/link`，壳跨页面保持挂载，读取次数比旧顶栏（每页一次）少（初版用普通 `<a>`，每次整页重载，原说法不成立，复核 m2 后改）。
 6. **⌘K 在输入框里也生效**，普通键不生效。对标 Linear、Slack、GitHub。
 7. **Task 的日历段放现有「个人日程」**（Web 没有日历网格），与 RD-20「先放现有页面」一致；`/app/tasks/personal` 仍可直接打开。
 8. **`/app/agent/plan` 按契约跳到 プラン 段**，代价是现有 iOrbit 计划界面在改版分支里暂时没有入口（R25 重做）。请产品负责人事后确认；如需保留旧计划界面，可把它放进 プラン 插槽，不改容器。
@@ -97,6 +97,7 @@
 - **功能页面怎么设标题、按钮、右栏**：页面树里任意位置渲染 `<ShellPage title="…" subtitle="…" left={…} right={…} demoPill={…} rightRail />`（`A/orbit-2026/shell/slots.tsx`）。`rightRail` 传 `true` 用默认右栏，传节点用自己的内容，不传或 `false` 不显示。`right` 里的按钮可用 `useToast()`（标题区有 `ToastProvider`）。
 - **Task 容器的插槽**：`A/orbit-2026/task/TaskContainer.tsx`，`calendar` / `todo` 由 `A/tasks/page.tsx` 传入；`plan` / `memo` 是容器内的空态，R25 / R20 只替换自己那一段，不改页签、键盘和 `?tab=`。
 - **⌘K 的扩展**：结果分组在 `CommandPalette.tsx`；加一组时保持「最后一行 = iOrbit に聞く、⌘↵ 交给 iOrbit」；需要页面自己接住提问的，用 `useOrbitAskTarget`（与原来一样）。
+- **窄屏旧页面的固定底部控件**：位置写成 `calc(<原值> + var(--orbit-shell-bottom-inset, 0px))`（<768 时为 76px，其他宽度为 0）；`events-shell` 的提问球、`orbit-real-home` 的 `AgentDock` 已改。
 - **被删组件**：`AccountTopNav`、`OrbitGlobalAsk`、`orbit-global-ask-styles.ts`；`RelationshipInboxTrigger` 不再挂载。
 - **公开页**：`OrbitTopNav` / `PublicTopNav` 只给未登录页面用；已登录页面一律不挂导航。
 - **热点文件（冻结结构，归属见 R09）**：`orbit-2026/shell/**`、`orbit-2026/task/TaskContainer.tsx`、`A/layout.tsx` 的挂载点。

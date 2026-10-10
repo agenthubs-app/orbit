@@ -1,5 +1,6 @@
 // R07: which signed-in pages the new shell frames, and which rail item is current.
 // Pure (no React) so the route rules are tested on their own.
+import { allowsOrbitAsk } from "../../orbit-global-ask/orbit-ask-routes";
 export type ShellNavKey = "home" | "network" | "iorbit" | "events" | "task" | "inbox" | "host" | "settings" | "me";
 
 // Pages with their own frame: the public landing, sign-in, the admin host console,
@@ -12,11 +13,16 @@ function matches(path: string, prefix: string): boolean {
   return path === prefix || path.startsWith(prefix + "/");
 }
 
+/**
+ * The shell (and with it ⌘K) also keeps the exclusions of the old floating ask
+ * (orbit-ask-routes): check-in and admission are kiosk screens — hands busy, a
+ * queue waiting — where a rail or a search panel only gets in the way.
+ */
 export function shellAppliesTo(pathname: string, signedIn: boolean): boolean {
   if (!signedIn) return false;
   const path = pathname.replace(/\/+$/u, "") || "/";
   if (!matches(path, "/app") || NO_SHELL_EXACT.has(path)) return false;
-  return !NO_SHELL_PREFIXES.some((prefix) => matches(path, prefix));
+  return !NO_SHELL_PREFIXES.some((prefix) => matches(path, prefix)) && allowsOrbitAsk(path);
 }
 
 /** The rail item a page belongs to (deep pages highlight their section). */

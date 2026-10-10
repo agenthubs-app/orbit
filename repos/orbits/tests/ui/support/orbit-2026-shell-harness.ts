@@ -13,6 +13,12 @@ export const SHELL_STUBS: Record<string, string> = {
     export const useSearchParams = () => new URLSearchParams(location.search);
     export const redirect = (href) => record({ redirect: href });
   `,
+  "^next/link$": `
+    import React from "react";
+    export default React.forwardRef(function Link({ href, prefetch, replace, scroll, ...rest }, ref) {
+      return <a ref={ref} href={typeof href === "string" ? href : String(href)} {...rest} />;
+    });
+  `,
   "^next-auth/react$": `
     import React from "react";
     export const useSession = () => ({ status: "authenticated", data: { user: { name: "Hana Yamada", email: "hana@orbit.test" } } });
@@ -22,6 +28,7 @@ export const SHELL_STUBS: Record<string, string> = {
   "relationship-inbox-panel$": `
     export const RELATIONSHIP_INBOX_COMPOSE_EVENT = "orbit:relationship-inbox-compose";
     export const RELATIONSHIP_INBOX_OPEN_EVENT = "orbit:relationship-inbox-open";
+    export const INBOX_PAGE_COMPOSE_EVENT = "orbit:inbox-page-compose";
     export const stashInboxComposeSeed = (seed) => window.shellFixture.calls.push({ seed });
     export async function readInboxUnreadCounts(language) {
       window.shellFixture.calls.push({ inboxRead: language });
@@ -57,7 +64,10 @@ export const LEGACY_PAGE = `
     return <>
       {f.demo ? <ShellPage title="人脈" demoPill={<button type="button" data-demo-pill>Demo</button>} /> : null}
       {f.rail ? <ShellPage title="ホーム" rightRail /> : null}
-      <main data-orbit-real-page="legacy" style={{ minHeight: 1600 }}><button type="button">legacy button</button><p data-last>last line of the page</p></main>
+      <main data-orbit-real-page="legacy" style={{ minHeight: 1600 }}><button type="button">legacy button</button><p data-last>last line of the page</p>
+        {/* A legacy page's own fixed bottom control (like the event page's ask button) lifted by the shell's inset. */}
+        <button type="button" data-fixed-dock style={{ position: "fixed", right: 14, bottom: "calc(14px + env(safe-area-inset-bottom) + var(--orbit-shell-bottom-inset, 0px))", width: 54, height: 54 }}>dock</button>
+      </main>
     </>;
   }
 `;

@@ -11,10 +11,10 @@ const panel = readFileSync("app/(app)/app/inbox/relationship-inbox-panel.tsx", "
 
 test("the page renders the panel inline: no scrim, focus trap, resize handle or close button", () => {
   const page = readFileSync("app/(app)/app/inbox/page.tsx", "utf8");
-  assert.match(page, /<RelationshipInboxPage \/>/u);
   assert.match(page, /redirect\("\/app\/account\/login\?next=%2Fapp%2Finbox"\)/u);
   assert.match(panel, /export function RelationshipInboxPage\(\)/u);
-  assert.match(panel, /<RelationshipInboxPanel inline initialSeed=\{seed\}/u);
+  assert.match(panel, /<RelationshipInboxPanel key=\{version\} inline initialSeed=\{seed\}/u);
+  assert.match(page, /<div className=\{styles\.page\}><RelationshipInboxPage \/><\/div>/u, "the page keeps the shell's main margins");
   assert.match(panel, /if \(inline\) return;\n\s+previouslyFocused/u, "no focus trap inline");
   assert.match(panel, /\{inline \? null : <div\n\s+aria-hidden="true"\n\s+onClick=\{onClose\}/u, "no scrim inline");
   assert.match(panel, /\{inline \? null : <><div className="ri-panel-header">/u, "no header / close / resize inline");
@@ -33,8 +33,9 @@ test("signed-out visitors are sent to sign-in for /app/inbox, /app/tasks and /ap
   for (const path of ["/app/inbox", "/app/inbox/sources/s1", "/app/tasks", "/app/home"]) assert.equal(isOrbitPrivateAppPath(path), true, path);
 });
 
-test("old drawer events still reach the inbox: the shell turns them into a visit, with the compose seed", () => {
-  const bridge = readFileSync("app/(app)/app/orbit-2026/shell/inbox-bridge.tsx", "utf8");
-  assert.match(bridge, /RELATIONSHIP_INBOX_OPEN_EVENT, onOpen/u);
-  assert.match(bridge, /stashInboxComposeSeed\(\(event as CustomEvent\)\.detail \?\? \{\}\)/u);
+// The bridge's behaviour (a visit with the seed; on the inbox page, the seed handed
+// straight to the mounted panel) is rendered in tests/ui/orbit-2026-shell.test.tsx.
+test("a compose request on the inbox page re-opens the panel with the new draft", () => {
+  assert.match(panel, /window\.addEventListener\(INBOX_PAGE_COMPOSE_EVENT, onCompose\)/u);
+  assert.match(panel, /setVersion\(\(value\) => value \+ 1\)/u);
 });

@@ -29,11 +29,12 @@ async function shell(t: { after: (fn: () => Promise<void>) => void }, fixture: P
 }
 
 test("route rules: every signed-in product page gets the shell; public, sign-in, admin and onboarding do not", () => {
-  for (const path of ["/app/home", "/app/contacts", "/app/contacts/c1", "/app/agent", "/app/agent/actions", "/app/events", "/app/events/e1", "/app/events/center", "/app/events/e1/operations/check-in", "/app/tasks", "/app/tasks/personal", "/app/inbox", "/app/inbox/sources/s1", "/app/settings", "/app/profile", "/app/home/events", "/app/invitations/t"]) {
+  for (const path of ["/app/home", "/app/contacts", "/app/contacts/c1", "/app/agent", "/app/agent/actions", "/app/events", "/app/events/e1", "/app/events/center", "/app/events/e1/operations", "/app/events/e1/operations/experience", "/app/tasks", "/app/tasks/personal", "/app/inbox", "/app/inbox/sources/s1", "/app/settings", "/app/profile", "/app/home/events", "/app/invitations/t"]) {
     assert.equal(shellAppliesTo(path, true), true, path);
     assert.equal(shellAppliesTo(path, false), false, `${path} signed out`);
   }
-  for (const path of ["/", "/app", "/app/account/login", "/app/login-admin", "/app/admin", "/app/admin/events", "/app/o/acme", "/app/start", "/app/register", "/app/profile/onboarding", "/app/platform", "/dev/capabilities", "/showcase/components"]) {
+  // Check-in and admission are kiosk screens (the old floating ask's exclusions): no rail, no ⌘K.
+  for (const path of ["/", "/app", "/app/account/login", "/app/login-admin", "/app/admin", "/app/admin/events", "/app/o/acme", "/app/start", "/app/register", "/app/profile/onboarding", "/app/platform", "/dev/capabilities", "/showcase/components", "/app/events/e1/operations/check-in", "/app/events/e1/operations/admission"]) {
     assert.equal(shellAppliesTo(path, true), false, path);
   }
   assert.equal(shellNavKeyFor("/app/contacts/c1"), "network");
@@ -56,12 +57,31 @@ test("1440: left rail 84 with the six items, host / settings / avatar at the bot
   assert.equal(await page.locator("[data-orbit-2026-content] > [data-orbit-real-page]").count(), 1);
 });
 
-test("1024: a 72 icons-only rail (labels kept for screen readers), no right rail", async (t) => {
+test("1024: a 72 icons-only rail whose labels show as a tooltip on hover and keyboard focus; the right rail becomes a button + 380 drawer", async (t) => {
   const page = await shell(t, { path: "/app/home", rail: true }, { width: 1024 });
   const nav = page.getByRole("navigation", { name: "メインナビゲーション" }).first();
   assert.equal(Math.round((await nav.boundingBox())!.width), 72);
-  assert.equal(await nav.getByRole("link", { name: "ホーム" }).count(), 1);
+  const home = nav.getByRole("link", { name: "ホーム" });
+  assert.equal(await home.count(), 1);
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  const focused = await page.evaluate(() => document.activeElement?.getAttribute("data-tip"));
+  assert.equal(focused, "ホーム", "Tab reaches the rail items in order (logo, then ホーム)");
+  const tip = await page.evaluate(() => getComputedStyle(document.activeElement!, "::after").content);
+  assert.equal(tip, '"ホーム"', "the label is visible on keyboard focus, not only in a title");
   assert.equal(await page.locator("aside").isVisible(), false);
+  await page.getByRole("button", { name: "次の一手を開く" }).click();
+  const drawer = page.getByRole("dialog", { name: "次の一手" });
+  assert.equal(Math.round((await drawer.boundingBox())!.width), 380);
+  assert.match(await drawer.innerText(), /iOrbit に聞く/u);
+  await page.keyboard.press("Escape");
+  assert.equal(await drawer.count(), 0);
+});
+
+test("the search / ask button is named for what it does, with the platform's shortcut", async (t) => {
+  const page = await shell(t, { path: "/app/contacts" });
+  const button = page.getByRole("button", { name: /^検索 · iOrbit に聞く \((⌘K|Ctrl K)\)$/u });
+  assert.equal(await button.count(), 1);
 });
 
 test("1440 with the rail slot: a 360 right rail with the ⌘K entry; iOrbit never has one", async (t) => {
@@ -73,7 +93,7 @@ test("1440 with the rail slot: a 360 right rail with the ⌘K entry; iOrbit neve
   assert.equal(await agent.locator("aside").count(), 0);
 });
 
-test("390: no left rail; a bottom capsule with five tabs that never covers the end of the page", async (t) => {
+test("390: no left rail; a bottom capsule with the five tabs that covers neither the page's end nor its fixed controls", async (t) => {
   const page = await shell(t, { path: "/app/tasks" }, { width: 390 });
   const bars = page.getByRole("navigation", { name: "メインナビゲーション" });
   const visible = [];
@@ -86,7 +106,28 @@ test("390: no left rail; a bottom capsule with five tabs that never covers the e
   const last = (await page.locator("[data-last]").boundingBox())!;
   const capsule = (await visible[0]!.boundingBox())!;
   assert.ok(last.y + last.height <= capsule.y, JSON.stringify({ last, capsule }));
+  const dock = (await page.locator("[data-fixed-dock]").boundingBox())!;
+  assert.ok(dock.y + dock.height <= capsule.y, `a legacy fixed control sits above the capsule: ${JSON.stringify({ dock, capsule })}`);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= 391));
+});
+
+test("390: a top bar keeps 受信箱 (with the unread dot), search / ask and the avatar menu — settings, host, my events, sign out", async (t) => {
+  const page = await shell(t, { path: "/app/tasks", unread: true }, { width: 390 });
+  const top = page.locator("[data-orbit-2026-mobile-top]");
+  assert.equal(await top.isVisible(), true);
+  const inbox = top.getByRole("link", { name: "受信箱" });
+  assert.equal(await inbox.getAttribute("href"), "/app/inbox");
+  await inbox.locator("i").waitFor();
+  await top.getByRole("button", { name: "検索 · iOrbit に聞く" }).click();
+  await page.getByRole("dialog", { name: "検索と iOrbit" }).waitFor();
+  await page.keyboard.press("Escape");
+  await top.getByRole("button", { name: "アカウント" }).click();
+  const menu = page.getByRole("dialog", { name: "アカウント" });
+  assert.deepEqual(await menu.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("href"))), ["/app/profile", "/app/events?scope=registered", "/app/settings", "/app/events/center"]);
+  await menu.getByRole("button", { name: "ログアウト" }).click();
+  assert.equal(await page.evaluate(() => (window as any).shellFixture.calls.filter((call: object) => "signOut" in call).length), 1);
+  const reads = await page.evaluate(() => (window as any).shellFixture.calls.filter((call: { inboxRead?: string }) => call.inboxRead).length);
+  assert.equal(reads, 1, "the rail and the top bar share one unread read");
 });
 
 test("the demo pill slot shows next to the main title; the inbox dot reads once and shows unread", async (t) => {
@@ -106,6 +147,19 @@ test("two ShellPages on one page each set their own slots (the pill and the rail
   await page.locator("[data-orbit-2026-mainhead] [data-demo-pill]").waitFor();
   assert.equal(await page.locator("aside").count(), 1, "the rail from the second ShellPage survives the first");
   assert.equal(await page.locator("[data-orbit-2026-mainhead] h1").innerText(), "ホーム", "a slot both name: the later-mounted wins");
+});
+
+test("old drawer events reach the inbox: elsewhere a visit with the seed; on the inbox page the seed goes straight to the panel", async (t) => {
+  const page = await shell(t, { path: "/app/contacts" });
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("orbit:relationship-inbox-compose", { detail: { subject: "資料の件" } })));
+  assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls.filter((call: object) => "seed" in call || "push" in call)), [{ seed: { subject: "資料の件" } }, { push: "/app/inbox" }]);
+  const inbox = await shell(t, { path: "/app/inbox" });
+  const received = await inbox.evaluate(() => new Promise((resolve) => {
+    window.addEventListener("orbit:inbox-page-compose", (event) => resolve((event as CustomEvent).detail), { once: true });
+    window.dispatchEvent(new CustomEvent("orbit:relationship-inbox-compose", { detail: { subject: "資料の件" } }));
+  }));
+  assert.deepEqual(received, { subject: "資料の件" });
+  assert.deepEqual(await inbox.evaluate(() => (window as any).shellFixture.calls.filter((call: object) => "push" in call)), [], "no navigation to the page already open");
 });
 
 test("the avatar menu: language, appearance (自動 / ライト / ダーク) and sign out", async (t) => {

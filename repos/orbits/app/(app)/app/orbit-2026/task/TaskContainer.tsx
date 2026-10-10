@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { pickCopy } from "../copy/types";
@@ -23,31 +23,42 @@ export function TaskContainer({ initialTab, calendar, todo }: { initialTab: Task
   const { language } = useOrbitLanguage();
   const router = useRouter();
   const pathname = usePathname() ?? "/app/tasks";
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<TaskTab>(initialTab);
   const choose = (next: TaskTab) => {
     setTab(next);
-    router.replace(`${pathname}?tab=${next}`, { scroll: false });
+    // Keep the slot's own parameters (for example the To-do view) when switching tabs.
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.set("tab", next);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
+  const latest = useRef({ tab, choose });
+  latest.current = { tab, choose };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      // ← → switch tabs only when nothing on the page wants the arrow keys: focus on
+      // the page itself or on the Task bar. Text fields, radio groups, lists, menus,
+      // sliders, grids and dialogs in the slots keep their own arrow keys.
       const target = event.target as HTMLElement | null;
-      // Arrow keys belong to text fields and the tabs' own roving focus.
-      if (target && (target.closest("input, textarea, select, [contenteditable='true'], [role='tablist'], [role='dialog']") )) return;
-      const index = TASK_TABS.indexOf(tab);
-      const next = TASK_TABS[(index + (event.key === "ArrowRight" ? 1 : TASK_TABS.length - 1)) % TASK_TABS.length]!;
+      const onPage = !target || target === document.body || target === document.documentElement || Boolean(target.closest("[data-task-bar]"));
+      if (!onPage || target?.closest("[role='tablist'], [role='dialog']")) return;
+      const { tab: current, choose: go } = latest.current;
+      const index = TASK_TABS.indexOf(current);
       event.preventDefault();
-      choose(next);
+      go(TASK_TABS[(index + (event.key === "ArrowRight" ? 1 : TASK_TABS.length - 1)) % TASK_TABS.length]!);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, []);
   return (
     <>
       <ShellPage title={pickCopy(shellCopy.taskTitle, language)} />
       <Orbit2026Scope language={language} className={styles.bar}>
-        <TaskTabs tab={tab} onChange={choose} />
+        <div data-task-bar="">
+          <TaskTabs tab={tab} onChange={choose} />
+        </div>
       </Orbit2026Scope>
       <div data-task-slot={tab}>
         {tab === "calendar" ? calendar : tab === "todo" ? todo : (

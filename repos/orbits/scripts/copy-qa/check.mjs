@@ -72,7 +72,8 @@ const GLOSSARY = {
 const SIMPLIFIED_ONLY = new Set([..."关设发录页动过选这还进间问题时网络对说话认识们个为门开长东车见几样么让给请应该边从读结经级纪线组织终细绿统计记讲论证识诉试误语详谈谢资费贵买卖实宝导岁岛带帮广库废异弃张弹归彻态总惊惯戏战户执扩扫扬扰护报择挂挤挥损换摆显晓暂术杀杂权极构档检楼欢气汉沟泪洁测济涨渐满灭灵灾炉炼烂热烦烧爱献环现确离种积稳穷竞笔筑签简粮紧红纤约纯纲纳纵纸纹练绍绑绕绘给络绝继续维综缓编缩罗罚职联肃肠肤脉脑脏脱节药获营虑虚虽补装观规视览觉订认讨训议讯许访评词译诗诚询课谁调谊谋谓贝负贡财责贤败货质购贯贴贷贸贺赏赔赖赛赞赠赶趋跃践转轮软轻载较辅辆辉辑输辞达迁运远违连迟适递遗邮针钟钢钥钱铁银链销锁错键镜闪闭闲闻阅队阳阴阵阶际陆陈险随隐难韩顶项顺须顾预领频额颜风飞饭饮馆驱驶驾验骑鱼鸟鸡齐齿龙龟"]);
 
 // Same text in ja and zh is fine for these (product names, shared kanji words).
-const SAME_OK = new Set(["iOrbit", "Task", "To-do", "保存", "主催", "名刺", "予定", "通知", "編集", "追加", "削除", "公開", "失敗", "管理"]);
+// 日本語 / 中文: language names are written in their own language in every UI language (endonyms).
+const SAME_OK = new Set(["iOrbit", "Task", "To-do", "保存", "主催", "名刺", "予定", "通知", "編集", "追加", "削除", "公開", "失敗", "管理", "日本語", "中文"]);
 
 const PLACEHOLDER = /\{([A-Za-z0-9_]+)\}/g;
 

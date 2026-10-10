@@ -18,5 +18,7 @@ test("the shell's bottom capsule never covers the page's last controls", () => {
   assert.equal(existsSync(path.join(root, "orbit-global-ask", "orbit-global-ask-styles.ts")), false);
   const shellStyles = readFileSync(path.join(root, "orbit-2026", "shell", "shell.module.css"), "utf8");
   assert.match(shellStyles, /\.bottom \{[^}]*position: fixed;/);
-  assert.match(shellStyles, /@media \(max-width: 767px\) \{[\s\S]*?\.bottomScope \{ display: block; \}[\s\S]*?\.content \{ padding-bottom: 96px; \}/);
+  assert.match(shellStyles, /@media \(max-width: 767px\) \{[\s\S]*?\.bottomScope \{ display: block; \}[\s\S]*?\.content \{ padding-bottom: calc\(96px \+ env\(safe-area-inset-bottom, 0px\)\); \}/);
+  // Legacy pages' own fixed bottom controls are lifted by the shell's inset (R07 review M3; the rendered check is in orbit-2026-shell).
+  assert.match(shellStyles, /\.frame \{ --orbit-shell-bottom-inset: 76px; \}/);
 });

@@ -118,7 +118,7 @@ test("session account control and inbox extras stay in the actions segment", () 
   assert.ok(actions.includes("orbit-nav-extra"));
   // R07: signed in, the page extras (demo pill, right actions) sit together in the shell
   // header's right segment, and the inbox is a rail item every signed-in page shares.
-  assert.match(appShell, /\$\{styles\.headRight\}`\}>\{slots\.demoPill\}\{slots\.right\}<\/div>/);
+  assert.match(appShell, /\$\{styles\.headRight\}`\}>\s*\{slots\.demoPill\}\{slots\.right\}/);
   assert.match(appShellRoutes, /\{ key: "inbox", href: "\/app\/inbox", icon: "inbox" \}/);
 });
 

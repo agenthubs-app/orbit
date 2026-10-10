@@ -111,12 +111,22 @@ function takeInboxComposeSeed(): NewThreadSeed | null {
   } catch { return null; }
 }
 
+/** Sent by the shell's bridge when a compose request arrives while /app/inbox is already open. */
+export const INBOX_PAGE_COMPOSE_EVENT = "orbit:inbox-page-compose";
+
 /** R07 /app/inbox: the relationship inbox as a page (same reads and 15-second refresh as the drawer). */
 export function RelationshipInboxPage() {
   const [seed, setSeed] = useState<NewThreadSeed | null | undefined>(undefined);
+  const [version, setVersion] = useState(0);
   useEffect(() => { setSeed(takeInboxComposeSeed()); }, []);
+  // Already on the page: open the new draft now (the panel takes its seed on mount).
+  useEffect(() => {
+    const onCompose = (event: Event) => { setSeed((event as CustomEvent<NewThreadSeed>).detail ?? {}); setVersion((value) => value + 1); };
+    window.addEventListener(INBOX_PAGE_COMPOSE_EVENT, onCompose);
+    return () => window.removeEventListener(INBOX_PAGE_COMPOSE_EVENT, onCompose);
+  }, []);
   if (seed === undefined) return null;
-  return <RelationshipInboxPanel inline initialSeed={seed} onClose={() => undefined} />;
+  return <RelationshipInboxPanel key={version} inline initialSeed={seed} onClose={() => undefined} />;
 }
 
 // 拉取 async correspondence workspace。传 conversationId 选中某条线程。

@@ -1,0 +1,4 @@
+/* R07 review m5: the inline inbox keeps the shell's main margins (34 / 26 / 18). */
+.page { padding: var(--space-18) var(--space-34) var(--space-34); }
+@media (max-width: 1279px) { .page { padding: var(--space-16) var(--space-26) var(--space-26); } }
+@media (max-width: 767px) { .page { padding: var(--space-12) var(--space-18) var(--space-18); } }

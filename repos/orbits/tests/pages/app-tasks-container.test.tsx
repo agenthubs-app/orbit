@@ -20,7 +20,9 @@ test.before(async () => {
     import { TaskContainer } from "./app/(app)/app/orbit-2026/task/TaskContainer";
     createRoot(document.getElementById("root")).render(<TaskContainer initialTab={window.shellFixture.tab}
       calendar={<main data-orbit-real-page="tasks"><p>personal schedule</p></main>}
-      todo={<main data-orbit-real-page="tasks"><input aria-label="new to-do" /><p>to-do list</p></main>} />);
+      todo={<main data-orbit-real-page="tasks"><input aria-label="new to-do" /><p>to-do list</p>
+        <div role="radiogroup" aria-label="view"><button type="button" role="radio" aria-checked="true">open</button><button type="button" role="radio" aria-checked="false">done</button></div>
+        <div tabIndex={0} aria-label="board" style={{ overflowX: "auto" }}>wide board</div></main>} />);
   `, SHELL_STUBS);
   browser = await launch();
 });
@@ -56,6 +58,12 @@ test("← → switch tabs from the page, but not while typing in a field", async
   await page.getByLabel("new to-do").focus();
   await page.keyboard.press("ArrowRight");
   assert.equal(await page.getByRole("tab", { selected: true }).textContent(), "To-do", "the field keeps its arrow keys");
+  // R07 review m4: any control in the slot keeps its arrow keys (radio groups, lists, scrollers …).
+  await page.getByRole("radio", { name: "open" }).focus();
+  await page.keyboard.press("ArrowRight");
+  await page.getByLabel("board").focus();
+  await page.keyboard.press("ArrowLeft");
+  assert.equal(await page.getByRole("tab", { selected: true }).textContent(), "To-do", "focus inside the slot never switches tabs");
 });
 
 test("?tab= opens a tab directly; anything else is To-do; /app/agent/plan goes to プラン", async (t) => {

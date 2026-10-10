@@ -21,9 +21,9 @@ export const shellCopy = {
   palettePlaceholder: { ja: "人を検索、または iOrbit に聞く", zh: "搜索人脉，或问 iOrbit", en: "Search people, or ask iOrbit", kind: "label" },
   palettePeople: { ja: "人脈", zh: "人脉", en: "People", kind: "label" },
   paletteAsk: { ja: "iOrbit に聞く", zh: "问 iOrbit", en: "Ask iOrbit", kind: "button" },
-  paletteAskPrivacy: { ja: "送ると iOrbit の会話が開きます · 外部への操作は必ず先に確認します", zh: "发送后进入 iOrbit 对话 · 涉及对外动作会先经你确认", en: "Sending opens the iOrbit conversation · external actions always need your confirmation first.", kind: "sentence" },
-  demoPillStart: { ja: "サンプル · ガイドを始める", zh: "示例 · 开始引导", en: "Demo · Start the guide", kind: "button" },
-  demoPillContinue: { ja: "サンプル · ガイドを続ける", zh: "示例 · 继续引导", en: "Demo · Continue the guide", kind: "button" },
+  paletteAskPrivacy: { ja: "送ると iOrbit の会話が開きます。外部への操作は必ず先に確認します。", zh: "发送后进入 iOrbit 对话。涉及对外动作会先经你确认。", en: "Sending opens the iOrbit conversation · external actions always need your confirmation first.", kind: "sentence" },
+  demoPillStart: { ja: "サンプル · ガイドを始める", zh: "示例 · 开始引导", en: "Demo: start the guide", kind: "fullButton" },
+  demoPillContinue: { ja: "サンプル · ガイドを続ける", zh: "示例 · 继续引导", en: "Demo: resume the guide", kind: "fullButton" },
   paletteNoResults: { ja: "見つかりませんでした", zh: "没有找到", en: "No matches", kind: "label" },
   paletteSearching: { ja: "検索中…", zh: "正在搜索…", en: "Searching…", kind: "label" },
   paletteContext: { ja: "表示中：{page}", zh: "正在看：{page}", en: "Viewing: {page}", kind: "chip" },
@@ -37,4 +37,9 @@ export const shellCopy = {
   memoEmptyTitle: { ja: "メモはまもなく使えます", zh: "笔记即将开放", en: "Notes are coming soon", kind: "label" },
   memoEmptyBody: { ja: "Web でもメモを書いて、人やイベントにつなげられるようになります。", zh: "很快也能在网页上写笔记，并关联到人和活动。", en: "Soon you can write notes on the web and link them to people and events.", kind: "sentence" },
   inboxTitle: { ja: "受信箱", zh: "收件箱", en: "Inbox", kind: "label" },
+  // R07 review: the avatar menu's links (the old account menu had 「我的活动」), the
+  // compact-width rail button and the search / ask button's spoken name.
+  myEvents: { ja: "参加するイベント", zh: "我报名的活动", en: "My events", kind: "menu" },
+  railOpen: { ja: "次の一手を開く", zh: "打开下一步", en: "Open next steps", kind: "label" },
+  searchAndAsk: { ja: "検索 · iOrbit に聞く", zh: "搜索 · 问 iOrbit", en: "Search or ask iOrbit", kind: "label" },
 } satisfies OrbitCopyTable;

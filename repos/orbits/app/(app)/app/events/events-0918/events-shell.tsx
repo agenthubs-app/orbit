@@ -291,7 +291,7 @@ export const EVENTS_STYLES = `
 [data-orbit-real-page="events-0918"] .ev-rstat-n { font-family: var(--font); font-weight: 900; font-size: 22px; }
 [data-orbit-real-page="events-0918"] .ev-rstat-label { font-size: 12px; color: #6B6F99; }
 /* ── 设计稿无：问 iOrbit 悬浮球（全局能力，沿用旧详情页） ── */
-[data-orbit-real-page="events-0918"] .ev-orb-dock { position: fixed; z-index: 80; right: 24px; bottom: 24px; }
+[data-orbit-real-page="events-0918"] .ev-orb-dock { position: fixed; z-index: 80; right: 24px; bottom: calc(24px + var(--orbit-shell-bottom-inset, 0px)); }
 [data-orbit-real-page="events-0918"] .ev-orb { position: relative; display: grid; width: 54px; height: 54px; place-items: center; border-radius: 50%; background: #4B4FC7; box-shadow: 0 8px 26px rgba(59,63,122,0.28), 0 2px 6px rgba(59,63,122,0.16); color: #FFFFFF; font-size: 22px; }
 [data-orbit-real-page="events-0918"] .ev-orb:hover { background: #2E3270; color: #FFFFFF; }
 [data-orbit-real-page="events-0918"] .ev-orb-pip { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border: 2px solid #FBFBFE; border-radius: 999px; background: #E8B34B; }
@@ -301,7 +301,7 @@ export const EVENTS_STYLES = `
   [data-orbit-real-page="events-0918"] .ev-hero-h1 { font-size: 30px; }
   [data-orbit-real-page="events-0918"] .ev-host { flex-direction: column; align-items: flex-start; }
   [data-orbit-real-page="events-0918"] .ev-recap-grid { grid-template-columns: 1fr; }
-  [data-orbit-real-page="events-0918"] .ev-orb-dock { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+  [data-orbit-real-page="events-0918"] .ev-orb-dock { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom) + var(--orbit-shell-bottom-inset, 0px)); }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-orbit-real-page="events-0918"] .ev-detail, [data-orbit-real-page="events-0918"] .ev-list { animation: none; }
