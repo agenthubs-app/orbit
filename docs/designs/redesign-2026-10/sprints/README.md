@@ -33,8 +33,8 @@
 | [R04](R04-app-components/GOAL.md) | App 组件库（5 类）+ 展示页 + 基础设施改用新组件；旧写法只减不增门禁 | R01、R02、R03 | H | done，已复核，问题已修（模拟器走查已做，只剩触感需真机确认；[REPORT](R04-app-components/REPORT.md)、[REVIEW](R04-app-components/REVIEW.md) 末尾「处理记录」） |
 | [R05](R05-app-shell/GOAL.md) | App 导航壳：NAV-V3 底栏、Task 容器、二级页规则 | R04 | H | done，已复核，问题已修（M1–M3、m1–m5 已修，m6 底栏随转场的观感请产品负责人在模拟器确认；R01 m3 冷启动闪主题已在本 Sprint 处理；[REPORT](R05-app-shell/REPORT.md)、[REVIEW](R05-app-shell/REVIEW.md) 末尾「处理记录」） |
 | [R06](R06-web-components/GOAL.md) | Web 组件库（5 类，CSS Modules，新作用域） | R01、R02、R03 | H | done，已复核，问题已修（M1–M4、m1–m6、m10 已修；m9 staging 的 `VERCEL_ENV` 需人确认；[REPORT](R06-web-components/REPORT.md)、[REVIEW](R06-web-components/REVIEW.md) 末尾「处理记录」） |
-| [R07](R07-web-shell/GOAL.md) | Web 导航壳：左栏、主标题区、右栏、⌘K，全站一次切换 | R06 | H | done，已复核，问题已修（M5「プラン段放不放现有计划」待产品负责人选择；R03 M2、R01 m4 在此处理；[REPORT](R07-web-shell/REPORT.md)、[REVIEW](R07-web-shell/REVIEW.md) 末尾「处理记录」） |
-| [R08](R08-contracts-and-mocks/GOAL.md) | 12 个契约 + 校验 + mock 接口 + 统一演示世界 + 「只加不改」检查 | R01 | H | done，已复核，问题已修（M3 口径待产品负责人确认，见通用规则 10；[REPORT](R08-contracts-and-mocks/REPORT.md)、[REVIEW](R08-contracts-and-mocks/REVIEW.md) 末尾「处理记录」） |
+| [R07](R07-web-shell/GOAL.md) | Web 导航壳：左栏、主标题区、右栏、⌘K，全站一次切换 | R06 | H | done，已复核，问题已修（M5 已按产品决定 (a) 落实；R03 M2、R01 m4 在此处理；[REPORT](R07-web-shell/REPORT.md)、[REVIEW](R07-web-shell/REVIEW.md) 末尾「处理记录」） |
+| [R08](R08-contracts-and-mocks/GOAL.md) | 12 个契约 + 校验 + mock 接口 + 统一演示世界 + 「只加不改」检查 | R01 | H | done，已复核，问题已修（M3 口径产品负责人已确认并落实，见通用规则 10；[REPORT](R08-contracts-and-mocks/REPORT.md)、[REVIEW](R08-contracts-and-mocks/REVIEW.md) 末尾「处理记录」） |
 | [R09](R09-skeleton-acceptance/GOAL.md) | 骨架验收：规则入库、开发说明、全流程走查、截图集、基线对照 | R01–R08 | H | done，已复核，问题已修（SC-06 拍板、热点文件归属确认、App `AGENTS.md` 贴规则需要人工；[REPORT](R09-skeleton-acceptance/REPORT.md)、[REVIEW](R09-skeleton-acceptance/REVIEW.md) 末尾「处理记录」、[截图集](https://claude.ai/artifact/S8PXMfqVrY9nusMFtfdCHY)） |
 
 执行顺序：R01 → R02 → R03 → R04 → R05 → R06 → R07 → R08 → R09（一人依次做；R08 只依赖 R01，可以提前）。
@@ -80,7 +80,11 @@
 7. **界面用词**：所有用户看得到的文字用普通人能懂的说法，不出现「来源」「证据」「关系设置」这类内部用语。
 8. **复核**：每个 Sprint 结束由独立 AI 复核（跑全量、运行时抽查、对照 SC），写 `REVIEW.md`；复核发现的问题直接在 `redesign` 上修（RD-25）；产品负责人看截图集并试用。
 9. **范围**：骨架不改旧屏，旧用法只减不增（RD-24）。
-10. **契约演进与已发布 App**（R08 复核 M3，**建议口径，待产品负责人确认**）：对标 Stripe / GitHub API 的「宽进严出」——响应 schema 不用 `.strict()`，多余字段丢弃；请求体保持 strict。已发布 App 解析不了的变更（给它用封闭枚举或 strict schema 读的字段加值、加字段）上线前，要么先发一版宽进读取的 App，要么同时抬高 `minSupportedAppVersion`（契约 11）。现存的两个 strict 读取点（App 的 `inbox-notifications.ts`、`NotificationDeliverySettings.tsx`）由 R13 / R14 在启用新来源和新字段之前改成宽进读取。
+10. **契约演进与客户端读取**（R08 复核 M3；**产品负责人已确认（2026-10-10）**）：按成熟产品的常规做法（对标 Stripe / GitHub API）「宽进严出」。
+    - **响应宽进**：解析响应的 schema 不用 `.strict()`，多余字段丢弃；响应里的枚举用 `shared/api-schema/tolerant.ts` 的 `tolerantEnum`（未知值落到写明的兜底值）或 `knownValues`（未知项跳过）；集合里不认识的条目跳过。读取用和写入用要分开时拆成两个 schema（例：`inboxNotificationSchema` 读取宽进、`inboxNotificationWriteSchema` 服务端写入严格）。
+    - **请求严出**：请求体 schema 保持 `.strict()`、枚举封闭；服务端写入校验同样严格。
+    - **检查器**：响应字段放宽为 `| null`、`| unknown`、`| any`，或给必填字段加 `| undefined`，仍判为破坏（`scripts/contract-snapshot.mjs`）。
+    - **`minSupportedAppVersion`（契约 11）在首次正式发布之后才启用**：正式发布前没有需要兼容的已装版本，契约可以直接改（走 `BREAKING.md` 登记），App 重新发布即可；正式发布后，旧版本读不了的变更必须先发一版能读的 App，或同时抬高 `minSupportedAppVersion`。
 
 ## 合回 `chat-agent` 前总验收（R09 写入；全部打勾才合回，RD-03 / RD-24）
 
@@ -92,8 +96,10 @@
 - [ ] Web 旧页面的深色模式（R01 复核 m4）、日文（R03 允许清单）随重写全部到位。
 
 **骨架留下的待办**
-- [ ] `/app/agent/plan` 与 Web Task「プラン」段：产品负责人的选择已落地（R07 复核 M5），旧的计划链接全部指向新入口；`iorbit-plan.tsx` 的示例药丸接线随之可达或删除。
-- [ ] 契约演进口径（通用规则 10）已确认；App 的两个 strict 读取点（`src/api/inbox-notifications.ts`、`NotificationDeliverySettings.tsx`）已改成宽进读取（R13 / R14）。
+- [x] Web Task「プラン」段按产品决定 (a) 放现有计划界面（R07 复核 M5，2026-10-10）；`/app/agent/plan` 保留为兼容跳转。
+- [ ] R25 重写プラン段时：把旧界面和服务端产生的计划链接（`features/**` 的 href、活动跟进的 `taskHref`）统一换成新地址，删除兼容跳转。
+- [x] 契约演进口径（通用规则 10）产品负责人已确认（2026-10-10）；App 的两个 strict 读取点已改成宽进读取（R08 复核修复）。
+- [ ] 首次正式发布时启用 `minSupportedAppVersion` 检查（R18 实现 App 启动检查），之后按通用规则 10 执行。
 - [ ] `plan-v2.ts` 去掉 `@draft`、进入快照（R22）；`NoteMentionContract` 的活动提及已定稿（R20）；公开邀请预览有限流和防枚举（R15）。
 - [ ] R08 的 7 组新接口都有 live 实现，或明确保留「尚未实现」并在界面隐藏入口；生产环境不出现示例数据。
 - [ ] App `tests/route-parity.test.ts` 的 `/start`：按用户决定（App 以后做引导页）处理完毕，App 测试零失败。

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { knownValues, tolerantEnum } from "./tolerant";
 import type { AccountDeletionRequestContract, AccountExportContract, AccountExportCreateInput, AppVersionContract } from "../contract/account";
 
 // R08 contract 11 (owner 乙 / R18). Responses tolerant, request bodies strict (see home-layout.ts).
@@ -6,8 +7,9 @@ const instant = z.string().datetime({ offset: true });
 const scope = z.enum(["contacts", "notes", "tasks", "events", "plans"]);
 export const accountExportObject = z.object({
   id: z.string().min(1),
-  scope: z.array(scope).min(1),
-  status: z.enum(["queued", "running", "ready", "failed", "expired"]),
+  // Read tolerantly: unknown scopes are skipped, an unknown status reads as "running".
+  scope: knownValues(["contacts", "notes", "tasks", "events", "plans"]),
+  status: tolerantEnum(["queued", "running", "ready", "failed", "expired"], "running"),
   requestedAt: instant,
   downloadUrl: z.string().url().optional(),
   expiresAt: instant.optional(),

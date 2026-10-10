@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { EventAssessmentAddToPlanResult, EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentPatchInput } from "../contract/event-assessment";
+import { knownValues, tolerantEnum } from "./tolerant";
+import type { EventAssessmentAddToPlanResult, EventAssessmentContract, EventAssessmentScoreItem, EventAssessmentCreateInput, EventAssessmentPatchInput } from "../contract/event-assessment";
 
 // R08 contract 8 (owner 甲 / R26). Five fixed criteria, 0–20 each, adding up to total.
 // Responses tolerant, request bodies strict (see home-layout.ts).
@@ -11,18 +12,23 @@ const factFields = {
   price: z.string().max(60).optional(),
   url: z.string().url().optional(),
 };
-const criterion = z.enum(["goalFit", "people", "timing", "cost", "followUp"]);
+const CRITERIA = ["goalFit", "people", "timing", "cost", "followUp"] as const;
+const criterion = z.enum(CRITERIA);
+const knownCriterion = new Set<string>(CRITERIA);
 const key = z.string().min(1).max(200);
 
 export const eventAssessmentObject = z.object({
   id: z.string().min(1),
-  sourceKind: z.enum(["url", "poster", "orbit_event"]),
-  status: z.enum(["reading", "ready", "needs_input", "failed"]),
+  // Read tolerantly: unknown source → "url", unknown status → "failed" (the UI offers a retry),
+  // unknown verdict → "conditional", unknown criteria and fields are skipped.
+  sourceKind: tolerantEnum(["url", "poster", "orbit_event"], "url"),
+  status: tolerantEnum(["reading", "ready", "needs_input", "failed"], "failed"),
   facts: z.object(factFields),
-  scoreBreakdown: z.array(z.object({ criterion, score: z.number().int().min(0).max(20), reason: z.string().max(200) })).max(5),
+  scoreBreakdown: z.array(z.object({ criterion: z.string(), score: z.number().int().min(0).max(20), reason: z.string().max(200) })).max(5)
+    .transform((items) => items.filter((item): item is EventAssessmentScoreItem => knownCriterion.has(item.criterion))),
   total: z.number().int().min(0).max(100),
-  verdict: z.enum(["recommend", "conditional", "skip"]),
-  missingFields: z.array(z.enum(["title", "startsAt", "venue", "organizer", "price", "url"])),
+  verdict: tolerantEnum(["recommend", "conditional", "skip"], "conditional"),
+  missingFields: knownValues(["title", "startsAt", "venue", "organizer", "price", "url"]),
   rubricVersion: z.string().min(1),
   createdAt: z.string().datetime({ offset: true }),
   sample: z.literal(true).optional(),

@@ -13,9 +13,9 @@
 文件头注释里写了 JSDoc 标签 `@draft` 的契约（目前只有 `plan-v2.ts`，到 R22 定稿）不进快照、不检查。
 运行时 schema 与契约是否一致，由 `tests/contracts/redesign-schema-parity.test.ts` 检查（R08 新增的 7 组）。
 
-**已发布 App 的口径**（R08 复核 M3，建议，待产品负责人确认，见 README 通用规则 10）：响应按「宽进」读——
-响应 schema 不用 `.strict()`（多余字段丢弃）；凡是已发布 App 解析不了的变更（例如给它用封闭枚举读的字段加值），
-上线前必须同时抬高 `minSupportedAppVersion`（契约 11）。
+**读取与发布口径**（README 通用规则 10，**产品负责人已确认（2026-10-10）**）：响应宽进（不用 `.strict()`，枚举用 `tolerantEnum` / `knownValues`），请求和服务端写入严格。
+`minSupportedAppVersion`（契约 11）在首次正式发布之后才启用：发布前破坏性改动在本表登记后直接改，App 重新发布即可；
+发布后，已装版本读不了的变更要先发一版能读的 App，或同时抬高 `minSupportedAppVersion`。
 
 确实要破坏时，在下面的表格里登记一行（每一列都要填；id 用反引号，和检查报错里的 id 一致；
 不完整的行、表格外的文字都不算），然后 `node scripts/contract-snapshot.mjs --write` 更新快照，

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tolerantEnum } from "./tolerant";
 import type { ContactCompletionAnswerInput, ContactCompletionQuestion, ContactCompletionResult } from "../contract/contact-completion";
 
 // R08 contract 3 (owner 甲 / R16). Responses tolerant, request bodies strict (see home-layout.ts).
@@ -18,7 +19,7 @@ export const contactCompletionAnswerInputSchema = contactCompletionAnswerInputOb
 
 export const contactCompletionResultObject = z.object({
   questionId: z.string().min(1),
-  status: z.enum(["answered", "skipped"]),
+  status: tolerantEnum(["answered", "skipped"], "answered"),
   next: contactCompletionQuestionObject.nullable(),
 });
 export const contactCompletionResultSchema = contactCompletionResultObject as z.ZodType<ContactCompletionResult>;

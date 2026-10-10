@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { InboxNotificationDTO, InboxNotificationKind, InboxNotificationActionInput, InboxNotificationActionReceipt, InboxNotificationReadBatchInput, InboxNotificationSource, InboxNotificationListDTO } from '../../shared/contract/inbox-notifications';
-import { inboxNotificationSchema, inboxNotificationActionSchema, inboxNotificationReadBatchSchema } from '../../shared/api-schema/inbox-notifications';
+import { inboxNotificationWriteSchema, inboxNotificationActionSchema, inboxNotificationReadBatchSchema } from '../../shared/api-schema/inbox-notifications';
 import type { InboxRecordRepository, InboxRecordTransaction } from './storage/inbox-record-repository';
 import { countAuthorizedUnread, readBoundedInbox } from './inbox-bounded-list';
 import { presentInboxNotification } from '../../shared/compute/inbox-local';
@@ -53,7 +53,7 @@ export function assertInboxRecordsIntact(notifications:readonly InboxNotificatio
 export function createInboxRecordUpserter(input:{transaction:InboxRecordRepository['transaction'];now:()=>string}) {
   return async (raw:InboxNotificationUpsert)=>{
     const id=inboxNotificationId(raw.actorId,raw.semanticKey);
-    const parsed=inboxNotificationSchema.safeParse({...raw,id,revision:1,readAt:raw.readAt??null,disposition:raw.disposition??'open',updatedAt:input.now()});
+    const parsed=inboxNotificationWriteSchema.safeParse({...raw,id,revision:1,readAt:raw.readAt??null,disposition:raw.disposition??'open',updatedAt:input.now()});
     if(!parsed.success || (raw.kind==='reminder' && !raw.dueAt && !raw.scheduledFor))throw new InboxRecordError('VALIDATION_ERROR','Notification needs valid sources, text and reminder time');
     return input.transaction(raw.actorId,async tx=>{
       const existing=await tx.get(id);

@@ -44,7 +44,7 @@
 4. App 用同一份契约：改完 orbits 的 `shared/**` 后在 App 跑 `npm run sync:contract`，副本和源在同一个提交里（不要直接改 App 的副本）。
 5. **新增一个契约**（而不是用已有的）：照着契约 8（事件评估）改这些地方——
    - `shared/contract/<名字>.ts`（文件头写负责人和使用方）和 `shared/contract/index.ts` 的 `export type`；
-   - `shared/api-schema/<名字>.ts`：导出未强转的 `*Object` 和强转后的 `*Schema`；响应不用 `.strict()`，请求体用；
+   - `shared/api-schema/<名字>.ts`：导出未强转的 `*Object` 和强转后的 `*Schema`；响应不用 `.strict()`、枚举用 `tolerantEnum` / `knownValues`（`shared/api-schema/tolerant.ts`，写明兜底值），请求体用 `.strict()`（README 通用规则 10）；
    - `features/redesign-contracts/service-factory.ts` 的 `REDESIGN_CONTRACT_CAPABILITIES` 加 capability；
    - `mock-service.ts` 加 mock 行为（幂等键、重放按契约语义），`handlers.ts` 加处理函数（`redesignContractRoute(capability, schema, …)`）；
    - 路由文件 `app/api/<路径>/route.ts` 只写 `export { getX as GET } from "<相对路径>/features/redesign-contracts/handlers";` 和 `export const dynamic = "force-dynamic";`；

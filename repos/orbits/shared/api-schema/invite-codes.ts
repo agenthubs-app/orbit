@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tolerantEnum } from "./tolerant";
 import type { InviteCodeContract, InviteCodeCreateInput, InviteCodePreview, InviteCodeRedeemResult } from "../contract/invite-codes";
 
 // R08 contract 4 (owner 甲 / R15). Responses tolerant, request bodies strict (see home-layout.ts).
@@ -22,7 +23,8 @@ export const inviteCodeSchema = inviteCodeObject.refine((value) => value.usedCou
 export const inviteCodePreviewObject = z.object({ code, expiresAt: z.string().datetime({ offset: true }), shared, sample: z.literal(true).optional() });
 export const inviteCodePreviewSchema = inviteCodePreviewObject as z.ZodType<InviteCodePreview>;
 
-export const inviteCodeRedeemResultObject = z.object({ outcome: z.enum(["connected", "merged", "already_connected"]), contactId: z.string().min(1) });
+// An unknown outcome reads as "connected" (the person is in your contacts either way).
+export const inviteCodeRedeemResultObject = z.object({ outcome: tolerantEnum(["connected", "merged", "already_connected"], "connected"), contactId: z.string().min(1) });
 export const inviteCodeRedeemResultSchema = inviteCodeRedeemResultObject as z.ZodType<InviteCodeRedeemResult>;
 
 export const inviteCodeCreateInputObject = z.object({ shared: z.object(sharedFields).strict(), maxUses: z.number().int().min(1).max(10), idempotencyKey: z.string().min(1).max(200) }).strict();

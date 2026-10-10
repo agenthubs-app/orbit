@@ -254,3 +254,12 @@
 | m10 | 跑了 `next typegen`（不碰 dev server 的 `.next/dev`）+ `tsc`：0 |
 
 **请产品负责人确认**：M3 的「宽进严出 + 抬最低版本」口径（README 通用规则 10）。
+
+### 产品决定后的处理（2026-10-10）
+
+产品负责人确认 M3 口径（原话：「不用管旧版，软件还没真正发布，可以重新发布的，你就按照正常成熟产品的要求设计方案」）。已落实：
+- 响应宽进：新增 `shared/api-schema/tolerant.ts`（`tolerantEnum` / `knownValues`）；R08 的响应 schema 里枚举改为宽进（每个字段写明兜底值），通知偏好 DTO 也改为宽进；
+- `inboxNotificationSchema` 拆成读取用（宽进，Web 收件箱 / 首页、App 收件箱读）和 `inboxNotificationWriteSchema`（严格，服务端写入校验 `inbox-record-service.ts`）；App 的两个 strict 读取点现在就是宽进读取，不再留给 R13 / R14；
+- 请求体和服务端写入保持严格；检查器继续把 `| null` 等判为破坏；
+- `minSupportedAppVersion` 写成首次正式发布后才启用的机制（契约 11 注释、README 通用规则 10、`BREAKING.md`），标注产品负责人已确认；
+- 测试：orbits `tests/contracts/tolerant-reading.test.ts`、App `tests/contract-tolerant-reading.test.ts`。

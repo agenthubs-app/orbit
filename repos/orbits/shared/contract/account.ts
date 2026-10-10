@@ -25,6 +25,12 @@ export interface AccountDeletionRequestContract {
   cancelledAt?: string;
 }
 
+/**
+ * GET /api/app/version. Enforced only after the first public release (README rule 10,
+ * confirmed 2026-10-10): before that there are no installed versions to keep working,
+ * so contract changes ship with a new App build; afterwards a change an installed
+ * version cannot read either waits for a tolerant release or raises this minimum.
+ */
 export interface AppVersionContract {
   minSupportedAppVersion: string;
   latestAppVersion: string;

@@ -1,13 +1,19 @@
 import { z } from "zod";
+import { tolerantEnum } from "./tolerant";
 import type { HomeLayoutContract, HomeLayoutUpdateInput, HomeWidgetSlot } from "../contract/home-layout";
 
 // R08 contract 1 (owner 乙 / R10). Each widget at most once per surface.
 // Responses are read tolerantly (unknown keys are dropped, so an older client keeps
 // working after a later Sprint adds an optional field); request bodies stay strict.
 // The *Object exports are the uncast schemas for the TS ⇔ zod parity check.
-const key = z.enum(["today", "planScore", "nextEvent", "network", "secretary", "pending", "week", "eventPick", "memo", "deadline"]);
+const KEYS = ["today", "planScore", "nextEvent", "network", "secretary", "pending", "week", "eventPick", "memo", "deadline"] as const;
+const key = z.enum(KEYS);
 const slot = z.object({ key, size: z.enum(["s", "m"]) });
-const slots = z.array(slot).max(10).refine((items) => new Set(items.map((item) => item.key)).size === items.length, { message: "a widget appears once" });
+// Read: a widget this client does not know is skipped, an unknown size reads as "s".
+const knownKey = new Set<string>(KEYS);
+const slots = z.array(z.object({ key: z.string(), size: tolerantEnum(["s", "m"], "s") }))
+  .transform((items) => items.filter((item): item is HomeWidgetSlot => knownKey.has(item.key)))
+  .refine((items) => new Set(items.map((item) => item.key)).size === items.length, { message: "a widget appears once" });
 
 export const homeLayoutObject = z.object({
   revision: z.number().int().min(0),
