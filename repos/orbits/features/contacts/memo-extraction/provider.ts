@@ -29,7 +29,7 @@ export interface MemoExtractionOutput {
 }
 
 /** R24：带 planQuestions 时提示词的版本（不带时提示词不变）。 */
-export const MEMO_EXTRACTION_PLAN_PROMPT_VERSION = "memo-plan-coverage-2026-11-v1";
+export const MEMO_EXTRACTION_PLAN_PROMPT_VERSION = "memo-plan-coverage-2026-10-v1";
 
 export const MEMO_EXTRACTION_PLAN_PROMPT = [
   "The input also has planTypes: for each type key (T1, T2, ...) three questions the user wanted to ask this contact.",

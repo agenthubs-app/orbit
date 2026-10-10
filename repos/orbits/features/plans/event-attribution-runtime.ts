@@ -39,17 +39,43 @@ export function createEventAttributionSource(deps: {
   };
 }
 
-/** 名片确认核实归属后：把本人生效计划里的这场活动标为已参加（幂等；计划服务未配置时什么都不做，读写出错时抛出——两种情况都由 `plan-event-attendance` 维护任务对账补上）。 */
-export async function markPlanEventAttendedForActor(input: { actorId: string; eventId: string }): Promise<void> {
-  const { resolvePlanService } = await import("./service-factory");
-  const resolution = resolvePlanService({ actorId: input.actorId });
-  if (resolution.success === false) return;
-  await resolution.service.markEventAttended({ eventId: input.eventId });
-  // R24：v2 计划的イベント枠——每个有イベント枠的生效目标各记一次（重复不记，已达成不记）。
-  const { resolvePlanV2Service } = await import("./v2/service-factory");
-  const v2 = resolvePlanV2Service({ actorId: input.actorId });
-  if (v2.success === false) return;
-  if (await v2.service.hasActivePlan()) await v2.service.recordEventAttendanceForPlans({ eventId: input.eventId });
+/**
+ * 名片确认核实归属后：把本人生效计划里的这场活动标为已参加（幂等；计划服务未配置时什么都不做，读写出错时抛出——
+ * 两种情况都由 `plan-event-attendance` 维护任务对账补上）。
+ *
+ * 复核 M4：v1（`markEventAttended`）与 v2（イベント枠计分 `recordEventAttendanceForPlans`）各自 try、互不挡：
+ * 一边失败另一边照常写；两边都跑完后，有失败就抛出第一个错误（调用方记录后吞掉，对账任务补）。
+ */
+export async function markPlanEventAttendedForActor(
+  input: { actorId: string; eventId: string },
+  deps: {
+    v1?: () => Promise<{ markEventAttended(input: { eventId: string }): Promise<unknown> } | null>;
+    v2?: () => Promise<{ hasActivePlan(): Promise<boolean>; recordEventAttendanceForPlans(input: { eventId: string }): Promise<unknown> } | null>;
+  } = {},
+): Promise<void> {
+  const failures: unknown[] = [];
+  try {
+    const v1 = await (deps.v1 ?? (async () => {
+      const { resolvePlanService } = await import("./service-factory");
+      const resolution = resolvePlanService({ actorId: input.actorId });
+      return resolution.success === false ? null : resolution.service;
+    }))();
+    if (v1) await v1.markEventAttended({ eventId: input.eventId });
+  } catch (error) {
+    failures.push(error);
+  }
+  try {
+    // R24：v2 计划的イベント枠——每个有イベント枠的生效目标各记一次（重复不记，已达成不记）。
+    const v2 = await (deps.v2 ?? (async () => {
+      const { resolvePlanV2Service } = await import("./v2/service-factory");
+      const resolution = resolvePlanV2Service({ actorId: input.actorId });
+      return resolution.success === false ? null : resolution.service;
+    }))();
+    if (v2 && (await v2.hasActivePlan())) await v2.recordEventAttendanceForPlans({ eventId: input.eventId });
+  } catch (error) {
+    failures.push(error);
+  }
+  if (failures.length > 0) throw failures[0];
 }
 
 /**

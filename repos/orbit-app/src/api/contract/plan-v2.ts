@@ -202,6 +202,8 @@ export interface PlanV2Detail {
   recentAwards?: readonly PlanRecentAward[];
   /** R24：待确认项（memo 计分提议、Step 建议、候补）。 */
   pending?: readonly PlanPendingItem[];
+  /** R25：確定以来の記録（見直し入口弹层「話した N 人 · イベント N 回 · Step 完了 N」；口径同 `PlanReviewView.sinceConfirmed`）。 */
+  sinceConfirmed?: { talkedPeople: number; events: number; stepsDone: number };
 }
 
 /** 记一次「话过了」（有名字 / 无名字）。 */
@@ -593,6 +595,10 @@ export interface PlanPendingItem {
   answered?: readonly number[];
   /** AI 不可用时的手动勾选卡。 */
   manual?: boolean;
+  /** 深链（`shared/compute/plan-href.ts`；按请求的平台）：memo / 候补 → 人物类型详情，Step 建议 → 概要。 */
+  href?: string;
+  /** memo 卡：确认后会得的分（服务端用 `nextAward` 算；这个人已计过、类型已跳过为 0）。 */
+  points?: number;
   createdAt: string;
 }
 
@@ -774,6 +780,10 @@ export interface PlanContactFit {
     shortLabel: string;
     emoji: string;
     status: PlanContactFitStatus;
+    /** 候补时的推荐度（0–100，与人物类型详情的候补同一口径）。 */
+    recommendScore?: number;
+    /** 候补时的理由（AI 匹配的一句；规则匹配为 null）。 */
+    reason?: string | null;
   }[];
 }
 
@@ -785,6 +795,8 @@ export interface PlanContactFit {
 export interface PlanPremiseMark {
   key: string;
   evidenceIds: readonly string[];
+  /** R25：依据的记录摘要（与 `evidenceIds` 对应；记录本身的摘要文字或类型短名 + 时间，不含联系人信息）。 */
+  evidence?: readonly { id: string; text: string; at: string }[];
   suggested?: string | null;
   reason?: string | null;
 }

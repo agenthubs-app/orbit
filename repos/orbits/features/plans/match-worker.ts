@@ -15,7 +15,7 @@
  * 读库或写库出错才让任务回到 pending（满 3 次记 failed）。
  */
 import type { PlanAiMatcher, PlanAiMatchUsage } from "./ai-matcher";
-import { PlanAiMatcherError } from "./ai-matcher";
+import { PLAN_AI_MATCH_PROMPT_VERSION, PlanAiMatcherError } from "./ai-matcher";
 import { acceptedAiPairs, scoreRuleMatches } from "./matching";
 import type { PlanMatchJob, PlanMatchRepository } from "./matching-repository";
 import { capPlanJobPairs } from "./plan-match-plan-job";
@@ -38,8 +38,9 @@ export interface PlanMatchJobOutcome {
   usage: PlanAiMatchUsage | null;
 }
 
+/** 任务行的 AI 用量记录：带提示词版本（R24 复核 M5：「提示词版本 +1」要能追溯到每次调用）。 */
 function usageRecord(usage: PlanAiMatchUsage | null): Record<string, unknown> | null {
-  return usage ? { inputTokens: usage.inputTokens, latencyMs: usage.latencyMs, outputTokens: usage.outputTokens } : null;
+  return usage ? { inputTokens: usage.inputTokens, latencyMs: usage.latencyMs, outputTokens: usage.outputTokens, promptVersion: PLAN_AI_MATCH_PROMPT_VERSION } : null;
 }
 
 export async function runClaimedMatchJob(deps: PlanMatchWorkerDeps, job: PlanMatchJob): Promise<PlanMatchJobOutcome> {

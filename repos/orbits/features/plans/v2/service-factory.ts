@@ -52,7 +52,14 @@ export function resolvePlanV2Service(input: { actorId: string; mode?: ModuleMode
       repository.seed(scope, demoPlanV2State());
       plansV2Global.__orbitPlansV2MockSeeded.add(input.actorId);
     }
-    return { mode: backend.mode, service: createPlanV2Service({ events: demoPlanEventFacts, now: input.now, references: referencesFor(input.actorId), repository, sample: true, scope }), success: true };
+    // 演示世界的「新しく登録」：在内存里加一张联系人卡（mock 不写库；复核 M2 之后建不了联系人会报错，不再静默匿名）。
+    const createContact = async ({ name }: { name: string }) => {
+      const state = repository.dump(scope);
+      const id = `demo-plan-contact-${state.contacts.length + 1}-${Date.now().toString(36)}`;
+      repository.seed(scope, { ...state, contacts: [...state.contacts, { id, isOrbitUser: false, lastInteractionAt: null, name, organization: null, role: null }] });
+      return id;
+    };
+    return { mode: backend.mode, service: createPlanV2Service({ createContact, events: demoPlanEventFacts, now: input.now, references: referencesFor(input.actorId), repository, sample: true, scope }), success: true };
   }
   if (plansV2Global.__orbitPlansV2LiveRepository?.pool !== pool) {
     plansV2Global.__orbitPlansV2LiveRepository = { pool, repository: createPostgresPlanV2Repository({ pool }) };

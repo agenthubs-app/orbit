@@ -78,7 +78,7 @@ export async function runConfiguredMemoExtraction(
 ): Promise<MemoExtractionRecord | null> {
   try {
     // R24（C11）：memo 打开「プランの話せた に使う」时，带上这个人作为候补 / 已关联的人物类型的 3 问。
-    const plan = input.usedForPlan ? await planCoverageHooks(input.actorId, input.contactId) : null;
+    const plan = input.usedForPlan ? await planCoverageHooksOrSkip(input) : null;
     const configured = createConfiguredPostgresLiveRecordStore();
     if (!configured) return null;
     if (!configured.store.insertRecordIfAbsent || !configured.store.updateRecordIfCurrent) {
@@ -118,8 +118,35 @@ export function logMemoExtractionFailure(
   }));
 }
 
+/**
+ * 复核 m1：计划那一块读失败时只跳过计划部分（这次不带 3 问、不出计分提议），原来的 memo 提取照常做；写结构化日志。
+ */
+export async function planCoverageHooksOrSkip(
+  input: Pick<MemoExtractionJobInput, "actorId" | "contactId" | "noteId">,
+  hooks: (actorId: string, contactId: string) => Promise<PlanCoverageHooks | null> = planCoverageHooks,
+): Promise<PlanCoverageHooks | null> {
+  try {
+    return await hooks(input.actorId, input.contactId);
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: "memo_extraction_error",
+      stage: "plan_hooks_failed",
+      actorId: input.actorId,
+      contactId: input.contactId,
+      noteId: input.noteId,
+      error: error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 200) : "unknown",
+    }));
+    return null;
+  }
+}
+
+export interface PlanCoverageHooks {
+  onPlanCoverage: (result: { memoId: string; coverage: ReadonlyArray<{ itemId: string; answered: readonly number[] }>; manual: boolean }) => Promise<void>;
+  planQuestions: Array<{ itemId: string; questions: readonly string[] }>;
+}
+
 /** R24（C11）：这个人在生效 v2 计划里作为候补 / 已关联的人物类型的 3 问，以及判定结果的去处（计分提议）。 */
-async function planCoverageHooks(actorId: string, contactId: string) {
+async function planCoverageHooks(actorId: string, contactId: string): Promise<PlanCoverageHooks | null> {
   const { resolvePlanV2Service } = await import("../../plans/v2/service-factory");
   const resolution = resolvePlanV2Service({ actorId, mode: "live" });
   if (resolution.success === false) return null;

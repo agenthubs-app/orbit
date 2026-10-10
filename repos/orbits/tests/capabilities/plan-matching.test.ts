@@ -8,7 +8,7 @@ import test from "node:test";
 
 import type { Pool } from "pg";
 
-import { PlanAiMatcherError, type PlanAiMatcher, type PlanAiMatchProposal } from "../../features/plans/ai-matcher";
+import { PLAN_AI_MATCH_PROMPT_VERSION, PlanAiMatcherError, type PlanAiMatcher, type PlanAiMatchProposal } from "../../features/plans/ai-matcher";
 import { createPlanMatchMaintenanceTask } from "../../features/plans/match-maintenance-task";
 import { runDueMatchJobs, runMatchJobForBatch, type PlanMatchWorkerDeps } from "../../features/plans/match-worker";
 import { PLAN_MATCHING_MIGRATIONS, runPlanMatchingMigrations } from "../../features/plans/matching-migrations";
@@ -262,7 +262,7 @@ test("the worker stores rule candidates and only in-scope AI pairs, billing exac
     assert.equal(job!.ai_state, "succeeded");
     assert.equal(job!.rule_hits, 3);
     assert.equal(job!.ai_hits, 1);
-    assert.deepEqual(job!.ai_usage, { inputTokens: 420, latencyMs: 12, outputTokens: 36 });
+    assert.deepEqual(job!.ai_usage, { inputTokens: 420, latencyMs: 12, outputTokens: 36, promptVersion: PLAN_AI_MATCH_PROMPT_VERSION }, "the prompt version is recorded with the usage (R24 review M5)");
 
     // 再触发一次（审阅页刷新）：任务已完成，不再调用。
     const again = await runMatchJobForBatch(worker(matches, matcher), { actorId: ALICE, batchId: batch.id });
@@ -345,7 +345,7 @@ test("invalid AI output is recorded with its usage and never retried", databaseT
     await runMatchJobForBatch(worker(matches, matcher), { actorId: ALICE, batchId: batch.id });
     const [job] = await jobRows(pool);
     assert.equal(job!.ai_state, "failed");
-    assert.deepEqual(job!.ai_usage, { inputTokens: 300, latencyMs: 5, outputTokens: 2 });
+    assert.deepEqual(job!.ai_usage, { inputTokens: 300, latencyMs: 5, outputTokens: 2, promptVersion: PLAN_AI_MATCH_PROMPT_VERSION });
     assert.equal((await candidates(pool)).length, 2);
   });
 });

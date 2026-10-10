@@ -17,7 +17,7 @@ import { PLAN_GOAL_KINDS } from "../../../shared/compute/plan-templates";
 import { tokyoUsageMonth } from "../../ai-quota/constants";
 import type { PlanHrefPlatform } from "../../../shared/compute/plan-href";
 import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
-import { candidatesFor, pendingItems, recentAwards, stepProgress, stepSuggestions, todayChance, typeDetail as buildTypeDetail, typeStats, type OverviewInput, type PlanEventFact } from "./overview";
+import { candidatesFor, pendingItems, recommendScore, recentAwards, stepProgress, stepSuggestions, todayChance, typeDetail as buildTypeDetail, typeStats, type OverviewInput, type PlanEventFact } from "./overview";
 import { introDraftText, proposalDraftText } from "./drafts";
 import type {
   PlanAchievementView,
@@ -58,6 +58,7 @@ import {
   type PlanV2Repository,
   type PlanV2Row,
   type PlanV2Scope,
+  type PlanV2ContactView,
   type PlanV2Transaction,
   type PlanV2TypeItem,
 } from "./types";
@@ -78,6 +79,12 @@ export const PLAN_V2_ERROR_REASONS = [
   "TYPE_SKIPPED",
   "CANDIDATE_NOT_FOUND",
   "PENDING_NOT_FOUND",
+  /** 复核 M1：这张待确认卡已经确认 / 不采用过（换了幂等键再决定）。同键重放返回原结果，不报这个错。 */
+  "PENDING_DECIDED",
+  /** 复核 M2：线下聊过「新しく登録」建联系人失败（不再静默改成匿名）；界面让用户选择重试或「名前なしで記録」。 */
+  "CONTACT_CREATE_FAILED",
+  /** 复核 M2：同一个幂等键的上一次请求还没结束（或中途断掉）：不再新建联系人。 */
+  "REQUEST_IN_PROGRESS",
 ] as const;
 export type PlanV2ErrorReason = (typeof PLAN_V2_ERROR_REASONS)[number];
 
@@ -94,6 +101,9 @@ const REASON_CODES: Record<PlanV2ErrorReason, AppErrorCode> = {
   TYPE_SKIPPED: "CONFLICT",
   CANDIDATE_NOT_FOUND: "NOT_FOUND",
   PENDING_NOT_FOUND: "NOT_FOUND",
+  PENDING_DECIDED: "CONFLICT",
+  CONTACT_CREATE_FAILED: "SERVICE_UNAVAILABLE",
+  REQUEST_IN_PROGRESS: "CONFLICT",
 };
 
 export class PlanV2Error extends AppError {
@@ -155,7 +165,8 @@ export interface PlanV2Service {
   setStepCompleted(input: { planId: string; stepKey: string; completed: boolean; idempotencyKey: string }): Promise<PlanCommandResult>;
   createPlanFromDraft(input: CreatePlanFromDraftInput): Promise<{ plan: PlanV2Detail; created: boolean; archivedV1PlanId: string | null }>;
   addEventToPlan(input: { planId?: string | null; eventId: string; title?: string }): Promise<{ planId: string; itemId: string; created: boolean } | null>;
-  recordEventAttendanceForPlans(input: { eventId: string; title?: string; at?: string }): Promise<Array<{ planId: string; points: number; part: string }>>;
+  /** `skipIfEverScored`（对账任务用）：这份计划为这场活动计过分（含已撤销）就不再记——用户撤销的不自动补回。 */
+  recordEventAttendanceForPlans(input: { eventId: string; title?: string; at?: string; skipIfEverScored?: boolean }): Promise<Array<{ planId: string; points: number; part: string }>>;
   planRemainingTargets(): Promise<PlanRemainingTargets[]>;
   activeTypeNeeds(): Promise<ActiveTypeNeeds>;
   /** 本人有没有生效中的 v2 计划（v1 生成前的便宜检查）。 */
@@ -239,6 +250,21 @@ export function scoreReversals(log: readonly PlanV2LogEntry[]): PlanScoreReversa
     if (!award) return [];
     return [{ awardedAt: award.createdAt, points: Number((award.payload as unknown as PlanAwardPayload).points ?? 0), reversedAt: entry.createdAt }];
   });
+}
+
+/**
+ * 「確定以来」的记录数（見直し的 `PlanReviewView.sinceConfirmed` 与概要的 `PlanV2Detail.sinceConfirmed` 共用这一个口径）：
+ * 按计划创建的时刻比（startsOn 是东京日期，不能和 UTC 时间戳按字符串比）；话过 = talked / self_report / memo 的未撤销计分条数，
+ * 活动 = event 计分条数，Step = step_completed 记录条数。
+ */
+export function planSinceConfirmed(plan: Pick<PlanV2Row, "createdAt"> | null, log: readonly PlanV2LogEntry[]): { talked: number; events: number; stepsCompleted: number } {
+  const since = (entry: { createdAt: string }) => !plan || Date.parse(entry.createdAt) >= Date.parse(plan.createdAt);
+  const awards = activeAwards(log).filter(since);
+  return {
+    events: awards.filter((entry) => entry.award.basis === "event").length,
+    stepsCompleted: log.filter((entry) => entry.event === "step_completed").length,
+    talked: awards.filter((entry) => entry.award.basis === "talked" || entry.award.basis === "self_report" || entry.award.basis === "memo").length,
+  };
 }
 
 /**
@@ -372,6 +398,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       if (entry.event === "step_reopened") completed.set(String(entry.payload.stepKey), null);
     }
     const used = await reviewUsedThisMonth(reader);
+    const since = planSinceConfirmed(plan, log);
     return {
       achievedAt: plan.achievedAt,
       content: {
@@ -418,6 +445,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       },
       revision: plan.revision,
       score,
+      sinceConfirmed: { events: since.events, stepsDone: since.stepsCompleted, talkedPeople: since.talked },
       startsOn: plan.startsOn,
       ...(options.sample ? { sample: true as const } : {}),
     };
@@ -469,31 +497,113 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     return decided.status === "pending" ? (decision === "accept" ? "accepted" : "dismissed") : decided.status;
   }
 
-  /** 内部计分（memo 确认卡）：同 award，但 basis 可以是 memo。 */
-  async function awardWith(input: { planId: string; itemId: string; contactId: string; basis: "memo"; idempotencyKey: string }): Promise<PlanAwardResult> {
-    return repository.transact(scope, async (tx) => {
-      const plan = await requireActivePlan(tx, input.planId);
-      const type = await requireType(tx, plan, input.itemId);
-      const result = await command<Record<string, unknown>>(tx, { body: { basis: input.basis, contactId: input.contactId, itemId: type.id }, key: input.idempotencyKey, kind: "award", planId: plan.id }, async () => {
-        const log = await tx.log(plan.id);
-        const mine = activeAwards(log).filter((entry) => entry.award.typeKey === type.personType.key);
-        if (mine.some((entry) => entry.award.contactId === input.contactId)) {
-          return { outcome: "noop" as const, response: { awardLogId: null, part: "none", points: 0, reason: "already_counted", score: await scoreOf(tx, plan) } };
-        }
-        const next = nextAward({ allocation: type.allocation, anonymous: false, awards: mine.map((entry) => entry.award), skipped: Boolean(type.skippedAt), targetCount: type.targetCount });
-        if (next.part === "none") return { outcome: "noop" as const, response: { awardLogId: null, part: "none", points: 0, reason: next.reason, score: await scoreOf(tx, plan) } };
-        const payload: PlanAwardPayload = { anonymous: false, basis: input.basis, contactId: input.contactId, eventId: null, part: next.part, points: next.points, typeKey: type.personType.key };
-        const entry = logEntry({ body: `${type.shortLabel}：+${next.points}`, event: "score_awarded", idempotencyKey: awardKey(log, `score:${plan.id}:${type.personType.key}:${input.contactId}`), itemId: type.id, linkedContactIds: [input.contactId], linkedEventId: null, payload: payload as unknown as Record<string, unknown>, planId: plan.id });
-        await tx.insertLog(entry);
-        const at = now();
-        const links = type.contactLinks.filter((link) => link.contactId !== input.contactId);
-        const previous = type.contactLinks.find((link) => link.contactId === input.contactId);
-        links.push({ contactId: input.contactId, establishedAt: at, linkedAt: previous?.linkedAt ?? at, state: "established" });
-        await tx.updateTypeItem({ ...type, contactLinks: links, updatedAt: at });
-        return { outcome: "applied" as const, response: { awardLogId: entry.id, part: next.part, points: next.points, score: await scoreOf(tx, plan) } };
-      });
-      return result as unknown as PlanAwardResult;
+  /**
+   * 计分的事务体（award、memo 确认卡、线下聊过新建联系人共用；复核 M1 / M2）：不写幂等回执，回执由调用方的 `command` 负责。
+   * 同人同类型已计过 → noop（already_counted）；`nextAward` 给 none → noop（skipped / anonymous_over_target）。
+   */
+  async function scoreIn(
+    tx: PlanV2Transaction,
+    plan: PlanV2Row,
+    type: PlanV2TypeItem,
+    input: { anonymous: boolean; basis: PlanAwardPayload["basis"]; contactId: string | null; at: string; anonymousKey?: string },
+  ): Promise<{ outcome: "applied" | "noop"; response: Record<string, unknown> }> {
+    const { anonymous, contactId, at } = input;
+    const log = await tx.log(plan.id);
+    const mine = activeAwards(log).filter((entry) => entry.award.typeKey === type.personType.key);
+    if (contactId && mine.some((entry) => entry.award.contactId === contactId)) {
+      return { outcome: "noop", response: { awardLogId: null, part: "none", points: 0, reason: "already_counted", score: await scoreOf(tx, plan) } };
+    }
+    const next = nextAward({ allocation: type.allocation, anonymous, awards: mine.map((entry) => entry.award), skipped: Boolean(type.skippedAt), targetCount: type.targetCount });
+    if (next.part === "none") return { outcome: "noop", response: { awardLogId: null, part: "none", points: 0, reason: next.reason, score: await scoreOf(tx, plan) } };
+    const keyBase = contactId ? `score:${plan.id}:${type.personType.key}:${contactId}` : `score:${plan.id}:${type.personType.key}:anon:${input.anonymousKey ?? newId()}`;
+    const payload: PlanAwardPayload = { anonymous, basis: input.basis, contactId, eventId: null, part: next.part, points: next.points, typeKey: type.personType.key };
+    const entry = logEntry({
+      body: `${type.shortLabel}：+${next.points}`,
+      createdAt: at,
+      event: "score_awarded",
+      idempotencyKey: awardKey(log, keyBase),
+      itemId: type.id,
+      linkedContactIds: contactId ? [contactId] : [],
+      linkedEventId: null,
+      payload: payload as unknown as Record<string, unknown>,
+      planId: plan.id,
     });
+    await tx.insertLog(entry);
+    if (contactId) {
+      const links = type.contactLinks.filter((link) => link.contactId !== contactId);
+      const previous = type.contactLinks.find((link) => link.contactId === contactId);
+      links.push({ contactId, establishedAt: at, linkedAt: previous?.linkedAt ?? at, state: "established" });
+      await tx.updateTypeItem({ ...type, contactLinks: links, updatedAt: now() });
+    }
+    return { outcome: "applied", response: { awardLogId: entry.id, part: next.part, points: next.points, score: await scoreOf(tx, plan) } };
+  }
+
+  /**
+   * 线下聊过「新しく登録」（复核 M2，照 R23 复核 M4「人脈にも登録する」的做法）：
+   * 1. 事务内按幂等键占位（`talked_offline_claim:<key>`，同时校验计划、类型与时间）；
+   * 2. 事务外建联系人（来源「プラン」）；
+   * 3. 事务内回填：用同一个幂等键计分（`award:<key>`），并写结果回执（`talked_offline_done:<key>`）。
+   * 同键重放读结果回执，不再建联系人；占位还在、结果回执没有（上一次还在进行或中途断掉）→ 409 REQUEST_IN_PROGRESS，
+   * 不冒险再建一人。建联系人失败 → 结果回执记失败并返回 CONTACT_CREATE_FAILED（不再静默改成匿名；同键重放仍是这个错，
+   * 界面换新键重试或让用户选「名前なしで記録」）。对标 Stripe 幂等键：结果（含失败）按键保存、进行中的同键请求返回 409。
+   */
+  async function createContactAndAward(input: { planId: string; itemId: string; name: string; at?: string; idempotencyKey: string }): Promise<PlanTalkedOfflineResult> {
+    const key = requiredId(input.idempotencyKey, "idempotencyKey");
+    const id = requiredId(input.planId, "planId");
+    const claimKey = `talked_offline_claim:${key}`;
+    const doneKey = `talked_offline_done:${key}`;
+    const print = fingerprint({ body: { at: input.at ?? null, itemId: input.itemId, name: input.name }, kind: "talked_offline_contact", planId: id });
+    const replayDone = (receipt: { fingerprint: string; response: Record<string, unknown> }): PlanTalkedOfflineResult => {
+      if (receipt.fingerprint !== print) throw new PlanV2Error("IDEMPOTENCY_KEY_REUSED", "The idempotency key was used for a different request.");
+      if (receipt.response.failed === true) throw new PlanV2Error("CONTACT_CREATE_FAILED", "The contact could not be created.");
+      const award = receipt.response.award as PlanAwardResult;
+      return { award: { ...award, replayed: true }, createdContactId: String(receipt.response.createdContactId) };
+    };
+    const claimed = await repository.transact(scope, async (tx) => {
+      const plan = await requireActivePlan(tx, id);
+      const type = await requireType(tx, plan, requiredId(input.itemId, "itemId"));
+      if (input.at) awardTime(plan, input.at);
+      const done = await tx.flowReceipt(doneKey);
+      if (done) return { done };
+      const claim = await tx.flowReceipt(claimKey);
+      if (claim) {
+        if (claim.fingerprint !== print) throw new PlanV2Error("IDEMPOTENCY_KEY_REUSED", "The idempotency key was used for a different request.");
+        throw new PlanV2Error("REQUEST_IN_PROGRESS", "The same request is still in progress.");
+      }
+      // 同一个键已经用于别的计分（例如先选了匿名）：建联系人之前就拒绝，不留孤儿联系人。
+      if (await tx.flowReceipt(`award:${key}`)) throw new PlanV2Error("IDEMPOTENCY_KEY_REUSED", "The idempotency key was used for a different request.");
+      await tx.insertFlowReceipt({ createdAt: now(), fingerprint: print, idempotencyKey: claimKey, kind: "talked_offline_claim", outcome: "applied", planId: plan.id, response: { itemId: type.id } });
+      return { done: null };
+    });
+    if (claimed.done) return replayDone(claimed.done);
+
+    let created: string | null = null;
+    try {
+      created = options.createContact ? await options.createContact({ name: input.name }) : null;
+    } catch (error) {
+      console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "plan_v2_talked_offline_create_contact_failed" }));
+      created = null;
+    }
+
+    const outcome = await repository.transact(scope, async (tx) => {
+      const done = await tx.flowReceipt(doneKey);
+      if (done) return { replay: done };
+      if (!created) {
+        await tx.insertFlowReceipt({ createdAt: now(), fingerprint: print, idempotencyKey: doneKey, kind: "talked_offline_done", outcome: "noop", planId: id, response: { failed: true } });
+        return { failed: true as const };
+      }
+      const contactId = created;
+      const plan = await requireActivePlan(tx, id);
+      const type = await requireType(tx, plan, requiredId(input.itemId, "itemId"));
+      const award = await command<Record<string, unknown>>(tx, { body: { anonymous: false, basis: "talked", contactId, itemId: type.id }, key, kind: "award", planId: plan.id }, async () =>
+        scoreIn(tx, plan, type, { anonymous: false, at: awardTime(plan, input.at), basis: "talked", contactId }));
+      const { replayed: _replayed, ...stored } = award;
+      await tx.insertFlowReceipt({ createdAt: now(), fingerprint: print, idempotencyKey: doneKey, kind: "talked_offline_done", outcome: "applied", planId: plan.id, response: { award: stored, createdContactId: contactId } });
+      return { result: { award: award as unknown as PlanAwardResult, createdContactId: contactId } };
+    });
+    if ("replay" in outcome && outcome.replay) return replayDone(outcome.replay);
+    if ("failed" in outcome) throw new PlanV2Error("CONTACT_CREATE_FAILED", "The contact could not be created.");
+    return (outcome as { result: PlanTalkedOfflineResult }).result;
   }
 
   return {
@@ -552,40 +662,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       return repository.transact(scope, async (tx) => {
         const plan = await requireActivePlan(tx, requiredId(planId, "planId"));
         const type = await requireType(tx, plan, requiredId(itemId, "itemId"));
-        const result = await command<Record<string, unknown>>(tx, { body: { anonymous, basis: request.basis, contactId, itemId: type.id }, key: request.idempotencyKey, kind: "award", planId: plan.id }, async () => {
-          const log = await tx.log(plan.id);
-          const mine = activeAwards(log).filter((entry) => entry.award.typeKey === type.personType.key);
-          const at = awardTime(plan, request.at);
-          if (contactId && mine.some((entry) => entry.award.contactId === contactId)) {
-            return { outcome: "noop" as const, response: { awardLogId: null, part: "none", points: 0, reason: "already_counted", score: await scoreOf(tx, plan) } };
-          }
-          const next = nextAward({ allocation: type.allocation, anonymous, awards: mine.map((entry) => entry.award), skipped: Boolean(type.skippedAt), targetCount: type.targetCount });
-          if (next.part === "none") {
-            return { outcome: "noop" as const, response: { awardLogId: null, part: "none", points: 0, reason: next.reason, score: await scoreOf(tx, plan) } };
-          }
-          const keyBase = contactId ? `score:${plan.id}:${type.personType.key}:${contactId}` : `score:${plan.id}:${type.personType.key}:anon:${request.idempotencyKey}`;
-          const awardIdempotencyKey = awardKey(log, keyBase);
-          const payload: PlanAwardPayload = { anonymous, basis: request.basis, contactId, eventId: null, part: next.part, points: next.points, typeKey: type.personType.key };
-          const entry = logEntry({
-            body: `${type.shortLabel}：+${next.points}`,
-            createdAt: at,
-            event: "score_awarded",
-            idempotencyKey: awardIdempotencyKey,
-            itemId: type.id,
-            linkedContactIds: contactId ? [contactId] : [],
-            linkedEventId: null,
-            payload: payload as unknown as Record<string, unknown>,
-            planId: plan.id,
-          });
-          await tx.insertLog(entry);
-          if (contactId) {
-            const links = type.contactLinks.filter((link) => link.contactId !== contactId);
-            const previous = type.contactLinks.find((link) => link.contactId === contactId);
-            links.push({ contactId, establishedAt: at, linkedAt: previous?.linkedAt ?? at, state: "established" });
-            await tx.updateTypeItem({ ...type, contactLinks: links, updatedAt: now() });
-          }
-          return { outcome: "applied" as const, response: { awardLogId: entry.id, part: next.part, points: next.points, score: await scoreOf(tx, plan) } };
-        });
+        const result = await command<Record<string, unknown>>(tx, { body: { anonymous, basis: request.basis, contactId, itemId: type.id }, key: request.idempotencyKey, kind: "award", planId: plan.id }, async () =>
+          scoreIn(tx, plan, type, { anonymous, anonymousKey: request.idempotencyKey, at: awardTime(plan, request.at), basis: request.basis, contactId }));
         return result as unknown as PlanAwardResult;
       });
     },
@@ -830,7 +908,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       });
     },
 
-    async recordEventAttendanceForPlans({ eventId, title, at }) {
+    async recordEventAttendanceForPlans({ eventId, title, at, skipIfEverScored }) {
       const event = requiredId(eventId, "eventId");
       return repository.transact(scope, async (tx) => {
         const results: Array<{ planId: string; points: number; part: string }> = [];
@@ -838,6 +916,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           if (plan.eventAllocation <= 0) continue;
           const planLog = await tx.log(plan.id);
           if (activeAwards(planLog).some((entry) => entry.award.eventId === event)) continue;
+          if (skipIfEverScored && planLog.some((entry) => entry.event === "score_awarded" && entry.linkedEventId === event)) continue;
           const key = awardKey(planLog, `score:${plan.id}:${PLAN_EVENT_SEGMENT_KEY}:${event}`);
           const when = at ?? now();
           const items = await tx.eventItems(plan.id);
@@ -1014,10 +1093,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
         const matches = await repository.read(scope, (reader) => reader.findContactsByName(name, 5));
         if (matches.length > 0) return { matches: matches.map((contact) => ({ company: contact.organization, contactId: contact.id, name: contact.name })) };
       }
-      // 人脈里没有这个人（或用户说都不是）：先建联系人再计分，不建重复的人。
-      const created = options.createContact ? await options.createContact({ name }) : null;
-      if (!created) return { award: await this.award({ itemId, planId, request: { anonymous: true, at: request.at, basis: "self_report", idempotencyKey: request.idempotencyKey } }), createdContactId: null };
-      return { award: await this.award({ itemId, planId, request: { at: request.at, basis: "talked", contactId: created, idempotencyKey: request.idempotencyKey } }), createdContactId: created };
+      return createContactAndAward({ at: request.at, idempotencyKey: request.idempotencyKey, itemId, name, planId });
     },
 
     async proposal({ planId, itemId, contactId, slots, language }) {
@@ -1040,7 +1116,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
         if (!route) throw new PlanV2Error("REFERENCE_NOT_FOUND", "Introduction route not found.");
         const [via] = await reader.contactViews([viaContactId]);
         if (!via) throw new PlanV2Error("REFERENCE_NOT_FOUND", "Contact not found.");
-        return { viaName: via.name, ...introDraftText({ goal: plan.goalText, language, roleSituation: type.roleSituation, typeLabel: type.shortLabel, viaName: via.name, why: route.why }) };
+        return { viaName: via.name, ...introDraftText({ goal: plan.goalText, language, roleSituation: type.roleSituation, typeLabel: type.shortLabel, viaName: via.name }) };
       });
     },
 
@@ -1077,25 +1153,37 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
         });
       }
       // memo 计分提议：确认才计分（basis memo）；手动勾选卡要 ≥2 问。
-      const located = await repository.read(scope, async (reader) => {
-        for (const plan of await reader.activePlans()) {
-          const entry = (await reader.log(plan.id)).find((item) => item.id === pendingId && item.event === "memo_coverage_proposed");
-          if (entry) return { entry, plan };
-        }
-        return null;
-      });
-      if (!located) throw new PlanV2Error("PENDING_NOT_FOUND", "Pending item not found.");
-      const contactId = String(located.entry.payload.contactId ?? "");
-      const itemId = located.entry.itemId ?? "";
-      let award: PlanAwardResult | null = null;
-      if (decision === "accept") {
-        const covered = located.entry.payload.manual === true ? [...new Set(answered ?? [])] : (located.entry.payload.answered as number[]) ?? [];
-        if (covered.length < PLAN_MEMO_COVERAGE_MIN) throw new PlanV2Error("INVALID_INPUT", "At least two of the three questions must be covered.");
-        award = await awardWith({ basis: "memo", contactId, idempotencyKey: `memo:${pendingId}`, itemId, planId: located.plan.id });
-      }
+      // 复核 M1：「查是否已决定 → 计分 → 写决定」在同一个事务里；同键重放返回原结果（回执），
+      // 已决定的卡换新键再决定 → 409 PENDING_DECIDED（对标 Stripe 对已 capture 的支付再 capture 报状态冲突，而不是静默成功）。
       return repository.transact(scope, async (tx) => {
-        const result = await command<Record<string, unknown>>(tx, { body: { decision, pendingId }, key: idempotencyKey, kind: "pending_decision", planId: located.plan.id }, async () => {
-          await tx.insertLog(logEntry({ body: `memo coverage ${decision}`, event: decision === "accept" ? "pending_accepted" : "pending_dismissed", idempotencyKey: `pending:${pendingId}`, itemId, linkedContactIds: [], linkedEventId: null, payload: { kind: "memo_coverage", pendingId }, planId: located.plan.id }));
+        let located: { entry: PlanV2LogEntry; plan: PlanV2Row } | null = null;
+        for (const plan of await tx.activePlans()) {
+          const entry = (await tx.log(plan.id)).find((item) => item.id === pendingId && item.event === "memo_coverage_proposed");
+          if (entry) {
+            located = { entry, plan };
+            break;
+          }
+        }
+        if (!located) throw new PlanV2Error("PENDING_NOT_FOUND", "Pending item not found.");
+        const { entry, plan } = located;
+        const contactId = String(entry.payload.contactId ?? "");
+        const itemId = entry.itemId ?? "";
+        const manual = entry.payload.manual === true;
+        const covered = manual ? [...new Set(answered ?? [])].sort() : ((entry.payload.answered as number[]) ?? []);
+        const result = await command<Record<string, unknown>>(tx, { body: { decision, pendingId, ...(manual && decision === "accept" ? { answered: covered } : {}) }, key: idempotencyKey, kind: "pending_decision", planId: plan.id }, async () => {
+          const log = await tx.log(plan.id);
+          if (log.some((item) => (item.event === "pending_accepted" || item.event === "pending_dismissed") && item.payload.pendingId === pendingId)) {
+            throw new PlanV2Error("PENDING_DECIDED", "This pending item has already been decided.");
+          }
+          let award: Record<string, unknown> | null = null;
+          if (decision === "accept") {
+            if (covered.length < PLAN_MEMO_COVERAGE_MIN) throw new PlanV2Error("INVALID_INPUT", "At least two of the three questions must be covered.");
+            const type = await requireType(tx, plan, itemId);
+            award = { ...(await scoreIn(tx, plan, type, { anonymous: false, at: now(), basis: "memo", contactId })).response, replayed: false };
+          }
+          const type = (await tx.typeItems(plan.id)).find((item) => item.id === itemId);
+          const label = type?.shortLabel ?? "memo";
+          await tx.insertLog(logEntry({ body: decision === "accept" ? `${label}：メモから記録` : `${label}：メモの提案を見送り`, event: decision === "accept" ? "pending_accepted" : "pending_dismissed", idempotencyKey: `pending:${pendingId}`, itemId, linkedContactIds: [], linkedEventId: null, payload: { kind: "memo_coverage", pendingId }, planId: plan.id }));
           return { outcome: "applied" as const, response: { award, id: pendingId, status: decision === "accept" ? "accepted" : "dismissed" } };
         });
         return result as unknown as PlanPendingDecisionResult;
@@ -1106,6 +1194,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       const id = requiredId(contactId, "contactId");
       return repository.read(scope, async (reader) => {
         const fits: PlanContactFit["fits"][number][] = [];
+        let contact: PlanV2ContactView | undefined;
+        let contactRead = false;
         for (const plan of await reader.activePlans()) {
           const types = await reader.typeItems(plan.id);
           const awards = activeAwards(await reader.log(plan.id));
@@ -1113,9 +1203,20 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           for (const type of types) {
             const talked = awards.some((entry) => entry.award.typeKey === type.personType.key && entry.award.contactId === id);
             const linked = type.contactLinks.some((link) => link.contactId === id);
-            const candidate = candidates.some((item) => item.needItemId === type.id && item.contactId === id && item.status === "pending");
+            const candidate = candidates.find((item) => item.needItemId === type.id && item.contactId === id && item.status === "pending");
             const status = talked ? "talked" : linked ? "linked" : candidate ? "candidate" : null;
-            if (status) fits.push({ emoji: type.personType.emoji, goal: plan.goalText, itemId: type.id, planId: plan.id, shortLabel: type.shortLabel, status });
+            if (!status) continue;
+            const base = { emoji: type.personType.emoji, goal: plan.goalText, itemId: type.id, planId: plan.id, shortLabel: type.shortLabel, status } as const;
+            if (status !== "candidate" || !candidate) {
+              fits.push(base);
+              continue;
+            }
+            // 复核 m3：候补给推荐度与理由（与人物类型详情的候补同一口径）。
+            if (!contactRead) {
+              [contact] = await reader.contactViews([id]);
+              contactRead = true;
+            }
+            fits.push({ ...base, reason: candidate.reason ?? null, recommendScore: recommendScore(candidate, contact, now()) });
           }
         }
         return { contactId: id, fits };
@@ -1130,15 +1231,20 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           const types = await tx.typeItems(plan.id);
           const log = await tx.log(plan.id);
           const awards = activeAwards(log);
+          const candidates = await tx.matchCandidates(types.map((type) => type.id));
           for (const item of coverage) {
             const type = types.find((candidate) => candidate.id === item.itemId);
             if (!type || type.skippedAt) continue;
+            // 复核 m6：只给这个类型的候补（未驳回）或已关联的人出提议；陌生人跳过（不靠调用方先筛）。
+            const related = type.contactLinks.some((link) => link.contactId === id)
+              || candidates.some((candidate) => candidate.needItemId === type.id && candidate.contactId === id && candidate.status !== "dismissed");
+            if (!related) continue;
             if (awards.some((entry) => entry.award.typeKey === type.personType.key && entry.award.contactId === id)) continue;
             const answered = [...new Set(item.answered.filter((index) => index >= 0 && index <= 2))];
             if (!manual && answered.length < PLAN_MEMO_COVERAGE_MIN) continue;
             const key = `memo-coverage:${memoId}:${type.id}`;
             if (log.some((entry) => entry.idempotencyKey === key)) continue;
-            await tx.insertLog(logEntry({ author: "system", body: `memo coverage proposed: ${answered.length}`, event: "memo_coverage_proposed", idempotencyKey: key, itemId: type.id, linkedContactIds: [], linkedEventId: null, payload: { answered, contactId: id, manual: manual === true, memoId }, planId: plan.id }));
+            await tx.insertLog(logEntry({ author: "system", body: manual ? `${type.shortLabel}：メモから確認（手動）` : `${type.shortLabel}：メモで ${answered.length}/3 問`, event: "memo_coverage_proposed", idempotencyKey: key, itemId: type.id, linkedContactIds: [], linkedEventId: null, payload: { answered, contactId: id, manual: manual === true, memoId }, planId: plan.id }));
             proposed += 1;
           }
         }

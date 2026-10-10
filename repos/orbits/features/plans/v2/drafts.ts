@@ -31,21 +31,32 @@ export function proposalDraftText(input: { contactName: string; goal: string; ty
   };
 }
 
-export function introDraftText(input: { viaName: string; goal: string; typeLabel: string; roleSituation: string; why: string; language: PlanCopyLanguage }): { subject: string; body: string } {
+/**
+ * 依頼文里「为什么想见这样的人」用固定句（复核 m5）：紹介ルート的 `why` 是 AI 写给用户看的第三人称说明
+ * （「为什么经这个人」），不能原样放进写给中间人本人的信。
+ */
+export const INTRO_DRAFT_REASON: Record<PlanCopyLanguage, string> = {
+  en: "Hearing from someone with that experience would really help me with my next step.",
+  ja: "実際にご経験のある方のお話が、次の一歩を決めるうえで大きな助けになると考えています。",
+  zh: "听听有这方面经验的人怎么说，对我决定下一步会很有帮助。",
+};
+
+export function introDraftText(input: { viaName: string; goal: string; typeLabel: string; roleSituation: string; language: PlanCopyLanguage }): { subject: string; body: string } {
+  const reason = INTRO_DRAFT_REASON[input.language] ?? INTRO_DRAFT_REASON.ja;
   if (input.language === "en") {
     return {
-      body: `Hi ${input.viaName},\n\nI'm working toward "${input.goal}". I'm looking to talk with ${input.roleSituation.toLowerCase()}. ${input.why}\n\nIf someone comes to mind, would you be willing to introduce us? A short note is fine; I'll take it from there.\n\nThank you.`,
+      body: `Hi ${input.viaName},\n\nI'm working toward "${input.goal}". I'm looking to talk with ${input.roleSituation.toLowerCase()}. ${reason}\n\nIf someone comes to mind, would you be willing to introduce us? A short note is fine; I'll take it from there.\n\nThank you.`,
       subject: "Could you introduce me to someone?",
     };
   }
   if (input.language === "zh") {
     return {
-      body: `${input.viaName}您好：\n\n我正在推进「${input.goal}」，想找「${input.roleSituation}」这样的人聊聊。${input.why}\n\n如果您想到合适的人，能帮忙介绍一下吗？一句话就好，之后我来联系。\n\n谢谢。`,
+      body: `${input.viaName}您好：\n\n我正在推进「${input.goal}」，想找「${input.roleSituation}」这样的人聊聊。${reason}\n\n如果您想到合适的人，能帮忙介绍一下吗？一句话就好，之后我来联系。\n\n谢谢。`,
       subject: "想请您帮忙介绍一位朋友",
     };
   }
   return {
-    body: `${input.viaName}さん\n\nいま「${input.goal}」に取り組んでいて、「${input.roleSituation}」にあたる方とお話ししたいと考えています。${input.why}\n\nお心当たりの方がいれば、ご紹介いただけないでしょうか。一言添えていただければ、あとはこちらから連絡します。\n\nよろしくお願いいたします。`,
+    body: `${input.viaName}さん\n\nいま「${input.goal}」に取り組んでいて、「${input.roleSituation}」にあたる方とお話ししたいと考えています。${reason}\n\nお心当たりの方がいれば、ご紹介いただけないでしょうか。一言添えていただければ、あとはこちらから連絡します。\n\nよろしくお願いいたします。`,
     subject: "ご紹介のお願い",
   };
 }

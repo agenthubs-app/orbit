@@ -196,6 +196,7 @@ export const planV2DetailObject = z.object({
     at: z.string(),
   })).optional(),
   pending: z.lazy(() => readableItems(pendingItem)).optional(),
+  sinceConfirmed: z.object({ talkedPeople: count, events: count, stepsDone: count }).optional().catch(undefined),
 });
 export const planV2DetailSchema = planV2DetailObject as z.ZodType<PlanV2Detail>;
 
@@ -477,6 +478,8 @@ const pendingItem = z.object({
   contactId: z.string().nullable().optional(),
   answered: z.array(z.number().int().min(0).max(2)).optional(),
   manual: z.boolean().optional(),
+  href: z.string().optional(),
+  points: z.number().int().min(0).optional(),
   createdAt: z.string(),
 });
 
@@ -615,6 +618,8 @@ export const planContactFitObject = z.object({
     shortLabel: z.string(),
     emoji: z.string(),
     status: z.enum(["candidate", "linked", "talked"]),
+    recommendScore: z.number().min(0).max(100).optional(),
+    reason: z.string().nullable().optional(),
   })),
 });
 export const planContactFitSchema = planContactFitObject as z.ZodType<PlanContactFit>;
@@ -627,7 +632,13 @@ const basisRef = z.object({ kind: z.enum(["premise", "landscape", "record", "tem
 
 export const planReviewViewObject = z.object({
   draft: planDraftViewObject,
-  premiseMarks: readableItems(z.object({ key: z.string().min(1), evidenceIds: z.array(z.string()), suggested: z.string().nullable().optional(), reason: z.string().nullable().optional() })),
+  premiseMarks: readableItems(z.object({
+    key: z.string().min(1),
+    evidenceIds: z.array(z.string()),
+    evidence: readableItems(z.object({ id: z.string().min(1), text: z.string(), at: z.string() })).optional(),
+    suggested: z.string().nullable().optional(),
+    reason: z.string().nullable().optional(),
+  })),
   reviewLeftThisMonth: count,
   reviewMonthlyLimit: count,
   resetsAt: z.string(),

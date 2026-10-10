@@ -36,7 +36,7 @@ const unusedAiProvider: EventOperationsAiProvider = {
   },
 };
 
-async function createHarness() {
+async function createHarness(extra: { onSelfCheckedIn?: (input: { actorId: string; eventId: string }) => Promise<void> } = {}) {
   let timestamp = "2026-08-02T09:15:00.000Z";
   const capabilitiesByActor = new Map<string, Set<OperationsCapability>>([
     [
@@ -194,6 +194,7 @@ async function createHarness() {
     notifyWorker: async ({ reason }) => {
       workerWakeReasons.push(reason);
     },
+    ...(extra.onSelfCheckedIn ? { onSelfCheckedIn: extra.onSelfCheckedIn } : {}),
     registrationService,
     repository: observedRepository,
   });
@@ -402,6 +403,21 @@ test("attendee workspace exposes the real registration directory and a real idem
     () => harness.service.checkIn({ actorId: "actor:mei", eventId }),
     /outside its configured time window/u,
   );
+});
+
+test("R24 review M4: a self check-in tells the plan (best effort); a failing plan hook never fails the check-in", async (t) => {
+  const seen: Array<{ actorId: string; eventId: string }> = [];
+  const harness = await createHarness({ onSelfCheckedIn: async (input) => { seen.push(input); } });
+  const checkIn = await harness.service.checkIn({ actorId: "actor:akira", eventId });
+  assert.deepEqual(seen, [{ actorId: "actor:akira", eventId }]);
+  assert.equal(checkIn.actorId, "actor:akira");
+
+  const errors: string[] = [];
+  t.mock.method(console, "error", (line: string) => errors.push(line));
+  const failing = await createHarness({ onSelfCheckedIn: async () => { throw new Error("plans down"); } });
+  const ok = await failing.service.checkIn({ actorId: "actor:akira", eventId });
+  assert.equal(ok.actorId, "actor:akira");
+  assert.equal(JSON.parse(errors[0]!).event, "event_operations_plan_attendance_failed");
 });
 
 test("authorized event staff can mark one participant arrived idempotently while attendees cannot", async () => {

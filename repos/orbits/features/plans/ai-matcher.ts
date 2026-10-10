@@ -10,7 +10,8 @@
  * 模块边界：worker 只依赖 `PlanAiMatcher` 接口；`createConfiguredPlanAiMatcher` 是 provider
  * factory——没有配置密钥时返回 null（worker 记为 skipped，不回落到别的 provider）。
  * 输出用 `json_object`；越界 id 的丢弃在 `matching.ts` 的 `acceptedAiPairs`，这里只负责请求与解析。
- * 提示词里只有联系人 id、姓名、公司、职位与需求文字，不含邮箱、电话等联系方式。
+ * 提示词里只有联系人的短期别名（C1…）、姓名、公司、职位与需求的别名（N1…）和文字，不含内部 id、邮箱、电话等联系方式
+ * （R24 复核 M5，DESIGN §5.1「id 不出境」）；模型回来的别名在这里反向映射成真实 id，不在输入里的别名丢弃。
  */
 import { DEFAULT_BUSINESS_CARD_TEXT_MODEL } from "../acquisition/deepseek-business-card-ocr-provider";
 import { industryLabel, secondaryIndustryLabel } from "../../shared/domain/industries";
@@ -66,16 +67,19 @@ export const PLAN_AI_MATCH_TIMEOUT_MS = 30_000;
  */
 export const PLAN_AI_MATCH_LIMITS = { needs: 200, proposals: 400 } as const;
 
-/** R24（C12）：v2 人物类型的描述是「役割 × 状況」一句、关键词是「見分け方」；提示词版本 +1（输出形状不变）。 */
-export const PLAN_AI_MATCH_PROMPT_VERSION = "plan-match-2026-11-v2";
+/**
+ * R24（C12）：v2 人物类型的描述是「役割 × 状況」一句、关键词是「見分け方」；复核 M5 起联系人 / 需求只用别名（C… / N…）。
+ * 版本号写进任务行的用量记录（`plan_match_jobs` 的 AI 用量，见 `match-worker.ts`）。
+ */
+export const PLAN_AI_MATCH_PROMPT_VERSION = "plan-match-2026-10-v3";
 
 export const PLAN_AI_MATCH_SYSTEM_PROMPT = [
   "You match newly added business contacts to the network needs in the user's plan.",
-  "Each contact has an id, name, and optionally company and job title. Each need has an id, a title, and optionally a description, title keywords and an industry; absent fields are omitted.",
+  "Each contact has an alias (C1, C2, …), a name, and optionally company and job title. Each need has an alias (N1, N2, …), a title, and optionally a description, title keywords and an industry; absent fields are omitted.",
   "Propose a pair only when the contact's company or job title makes them a plausible fit for the need. Industry alone is already handled elsewhere; focus on company and title.",
   "A description may be a 'role × situation' sentence (for example, a founder who raised a Series A within three years): match the situation as well as the role, and use the keywords as signs to recognise such a person.",
-  "Use only the ids given in the input. Never invent ids. It is fine to return no pairs.",
-  'Respond with a single JSON object: {"matches":[{"contactId":"...","needId":"...","reason":"one short sentence in the language of the need title"}]}.',
+  "Refer to contacts and needs only by the aliases given in the input. Never invent aliases. It is fine to return no pairs.",
+  'Respond with a single JSON object: {"matches":[{"contactId":"C1","needId":"N1","reason":"one short sentence in the language of the need title"}]}.',
 ].join(" ");
 
 function text(value: string | null | undefined): string | null {
@@ -89,16 +93,29 @@ function compact<T extends Record<string, unknown>>(value: T): Partial<T> {
   ) as Partial<T>;
 }
 
-/** 送给模型的输入（纯函数，测试与真实调用共用）。需求按新添加的在前（与读取顺序一致）。 */
-export function buildPlanAiMatchInput(contacts: readonly PlanMatchContact[], needs: readonly PlanMatchNeed[]) {
-  return {
-    contacts: contacts.map((contact) =>
-      compact({ company: text(contact.organization), id: contact.id, name: contact.displayName, title: text(contact.role) }),
+/** 别名 → 真实 id（只在本次调用内有效）。 */
+export interface PlanAiMatchAliases {
+  contacts: Map<string, string>;
+  needs: Map<string, string>;
+}
+
+/**
+ * 送给模型的输入与别名表（纯函数，测试与真实调用共用）。需求按新添加的在前（与读取顺序一致）。
+ * 联系人按输入顺序记作 C1…，需求记作 N1…；真实 id 不出现在输入里。
+ */
+export function buildPlanAiMatchPrompt(contacts: readonly PlanMatchContact[], needs: readonly PlanMatchNeed[]) {
+  const aliases: PlanAiMatchAliases = { contacts: new Map(), needs: new Map() };
+  const shownNeeds = needs.slice(0, PLAN_AI_MATCH_LIMITS.needs);
+  contacts.forEach((contact, index) => aliases.contacts.set(`C${index + 1}`, contact.id));
+  shownNeeds.forEach((need, index) => aliases.needs.set(`N${index + 1}`, need.id));
+  const input = {
+    contacts: contacts.map((contact, index) =>
+      compact({ company: text(contact.organization), id: `C${index + 1}`, name: contact.displayName, title: text(contact.role) }),
     ),
-    needs: needs.slice(0, PLAN_AI_MATCH_LIMITS.needs).map((need) =>
+    needs: shownNeeds.map((need, index) =>
       compact({
         description: text(need.criteria?.description ?? null),
-        id: need.id,
+        id: `N${index + 1}`,
         industry: need.criteria?.secondaryIndustryId
           ? secondaryIndustryLabel(need.criteria.secondaryIndustryId, "en")
           : need.criteria?.primaryIndustryId
@@ -109,6 +126,21 @@ export function buildPlanAiMatchInput(contacts: readonly PlanMatchContact[], nee
       }),
     ),
   };
+  return { aliases, input };
+}
+
+/** 送给模型的输入（只有别名，不含真实 id）。 */
+export function buildPlanAiMatchInput(contacts: readonly PlanMatchContact[], needs: readonly PlanMatchNeed[]) {
+  return buildPlanAiMatchPrompt(contacts, needs).input;
+}
+
+/** 把模型回来的别名换回真实 id；不在别名表里的（编造的、或直接写了真实 id 的）整条丢弃。 */
+export function resolvePlanAiMatchAliases(proposals: readonly PlanAiMatchProposal[], aliases: PlanAiMatchAliases): PlanAiMatchProposal[] {
+  return proposals.flatMap((proposal) => {
+    const contactId = typeof proposal.contactId === "string" ? aliases.contacts.get(proposal.contactId.trim()) : undefined;
+    const needId = typeof proposal.needId === "string" ? aliases.needs.get(proposal.needId.trim()) : undefined;
+    return contactId && needId ? [{ ...proposal, contactId, needId }] : [];
+  });
 }
 
 /** 解析模型输出：只要 `{ matches: [...] }` 里的对象；形状不对就是 INVALID_OUTPUT。 */
@@ -168,6 +200,7 @@ export function createDeepseekPlanAiMatcher({
       signal?.addEventListener("abort", onAbort, { once: true });
       if (signal?.aborted) controller.abort();
       const startedAt = nowMs();
+      const prompt = buildPlanAiMatchPrompt(contacts, needs);
       try {
         let response: Response;
         try {
@@ -175,7 +208,7 @@ export function createDeepseekPlanAiMatcher({
             body: JSON.stringify({
               messages: [
                 { content: PLAN_AI_MATCH_SYSTEM_PROMPT, role: "system" },
-                { content: JSON.stringify(buildPlanAiMatchInput(contacts, needs)), role: "user" },
+                { content: JSON.stringify(prompt.input), role: "user" },
               ],
               model,
               response_format: { type: "json_object" },
@@ -203,7 +236,7 @@ export function createDeepseekPlanAiMatcher({
         const content = contentOf(payload);
         if (!content?.trim()) throw new PlanAiMatcherError("INVALID_OUTPUT", "The matcher returned no content.", usage);
         try {
-          return { model, proposals: parsePlanAiMatchContent(content), usage };
+          return { model, proposals: resolvePlanAiMatchAliases(parsePlanAiMatchContent(content), prompt.aliases), usage };
         } catch (error) {
           throw error instanceof PlanAiMatcherError ? new PlanAiMatcherError(error.code, error.message, usage) : error;
         }

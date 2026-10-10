@@ -124,19 +124,19 @@ test("AI pairs outside this batch or this plan, duplicates, linked people and ru
   assert.equal(pairs[1]!.reason!.length, 200);
 });
 
-test("the matcher input carries only id, name, company, title and need text", () => {
+test("the matcher input carries only aliases, name, company, title and need text (no internal ids; review M5)", () => {
   const input = buildPlanAiMatchInput(
     [contact("c1", "technology_internet", null, { displayName: "佐藤", organization: "Cloudline", role: "CTO" })],
     [{ ...need("n1", "finance_investment"), criteria: { description: "早期", primaryIndustryId: "finance_investment", secondaryIndustryId: null, titleKeywords: ["投资"] } }],
   );
   assert.deepEqual(input, {
-    contacts: [{ company: "Cloudline", id: "c1", name: "佐藤", title: "CTO" }],
-    needs: [{ description: "早期", id: "n1", industry: "Finance & Investment", keywords: ["投资"], title: "need n1" }],
+    contacts: [{ company: "Cloudline", id: "C1", name: "佐藤", title: "CTO" }],
+    needs: [{ description: "早期", id: "N1", industry: "Finance & Investment", keywords: ["投资"], title: "need n1" }],
   });
   // 紧凑编码：空字段不出现。
   assert.deepEqual(buildPlanAiMatchInput([contact("c2", null)], [need("n2", null)]), {
-    contacts: [{ id: "c2", name: "c2" }],
-    needs: [{ id: "n2", title: "need n2" }],
+    contacts: [{ id: "C1", name: "c2" }],
+    needs: [{ id: "N1", title: "need n2" }],
   });
 });
 
@@ -155,7 +155,7 @@ test("the DeepSeek matcher reuses the card-recognition text model with json_obje
   const fetchImplementation = (async (url: string, init: RequestInit) => {
     requests.push({ auth: new Headers(init.headers).get("authorization"), body: JSON.parse(String(init.body)), url });
     return Response.json({
-      choices: [{ message: { content: JSON.stringify({ matches: [{ contactId: "c1", needId: "n1", reason: "CTO" }, "junk"] }) } }],
+      choices: [{ message: { content: JSON.stringify({ matches: [{ contactId: "C1", needId: "N1", reason: "CTO" }, { contactId: "c1", needId: "n1", reason: "raw id" }, { contactId: "C9", needId: "N1" }, "junk"] }) } }],
       usage: { completion_tokens: 21, prompt_tokens: 380 },
     });
   }) as unknown as typeof fetch;
@@ -165,8 +165,11 @@ test("the DeepSeek matcher reuses the card-recognition text model with json_obje
   });
   assert.ok(matcher);
   assert.equal(matcher.model, "card-text-model");
-  const result = await matcher.match({ contacts: [contact("c1", null)], needs: [need("n1", null)] });
+  const result = await matcher.match({ contacts: [contact("c1", null, null, { displayName: "佐藤" })], needs: [need("n1", null)] });
+  // 别名反向映射成真实 id；直接写真实 id、编造的别名都丢弃（复核 M5）。
   assert.deepEqual(result.proposals, [{ contactId: "c1", needId: "n1", reason: "CTO" }]);
+  const sent = String((requests[0]!.body.messages as Array<{ content: string }>)[1]!.content);
+  assert.doesNotMatch(sent, /"c1"|"n1"/, "internal ids never leave in the prompt");
   assert.equal(result.usage.inputTokens, 380);
   assert.equal(result.usage.outputTokens, 21);
   assert.equal(requests.length, 1);

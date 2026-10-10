@@ -70,7 +70,7 @@ import type { PlanFlowContact, PlanFlowContextSource } from "./flow-context";
 import { emptyIntakeAiSteps, emptyStep } from "./repository";
 import { PLAN_V2_GOAL_LIMIT, type PlanDraftContent, type PlanDraftPersonType, type PlanDraftRow, type PlanFlowStepRecord, type PlanIntakeRow, type PlanV2Repository, type PlanV2Scope, type PlanV2Transaction } from "./types";
 import { allocationSlotsOf } from "./validate-content";
-import { activeAwards, PLAN_REVIEW_MONTHLY_LIMIT, type PlanV2Service } from "./service";
+import { activeAwards, PLAN_REVIEW_MONTHLY_LIMIT, planSinceConfirmed, type PlanV2Service } from "./service";
 import type { PlanV2Row, PlanV2TypeItem } from "./types";
 
 /** 每人每月新建目标的上限（DESIGN §10 第 4 项，用户已确认）。按新建的生成流程计（「もう一度」不重复计）。 */
@@ -352,7 +352,11 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     };
   }
 
-  function draftView(draft: PlanDraftRow, intake: PlanIntakeRow | null, context: PlanFlowRequestContext): PlanDraftView {
+  /**
+   * `plan`：没有 intake 的草稿（見直し草稿 kind review）用计划本身的目标文、种类与目的（R25 App 界面任务发现：
+   * 原来 `goal: ""` 过不了 `planDraftViewSchema` → 500）。
+   */
+  function draftView(draft: PlanDraftRow, intake: PlanIntakeRow | null, context: PlanFlowRequestContext, plan?: Pick<PlanV2Row, "goalText" | "goalKind" | "purposeText"> | null): PlanDraftView {
     const asContent = (content: PlanDraftContent): PlanV2Content => ({
       ...content,
       personTypes: content.personTypes.map(({ primaryIndustryId: _primary, secondaryIndustryId: _secondary, ...type }) => ({ ...type, skipped: false })),
@@ -364,15 +368,15 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       content: asContent(draft.content),
       draftId: draft.id,
       fix: stepView(draft.fix),
-      goal: intake?.goalText ?? "",
-      goalKind: intake?.goalKind ?? "unknown",
+      goal: intake?.goalText ?? plan?.goalText ?? "",
+      goalKind: intake?.goalKind ?? plan?.goalKind ?? "unknown",
       intakeId: draft.intakeId,
       kind: draft.kind,
       manualEditAvailable: !draft.manualEditUsed && draft.status === "open",
       originContent: asContent(draft.originContent),
       planId: draft.planId,
       premise: draft.premise,
-      purposeText: purposeTextOf(intake),
+      purposeText: intake ? purposeTextOf(intake) : plan?.purposeText ?? purposeTextOf(intake),
       revision: draft.updatedAt,
       status: draft.status,
       turns: draft.turns,
@@ -776,26 +780,34 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     return used;
   }
 
-  async function reviewView(reader: Pick<PlanV2Transaction, "plan" | "goalPlans" | "log" | "flowReceipt">, draft: PlanDraftRow, context: PlanFlowRequestContext): Promise<PlanReviewView> {
+  async function reviewView(reader: Pick<PlanV2Transaction, "plan" | "goalPlans" | "log" | "flowReceipt" | "typeItems">, draft: PlanDraftRow, context: PlanFlowRequestContext): Promise<PlanReviewView> {
     const plan = await reader.plan(draft.planId ?? "");
     const used = await reviewUsedThisMonth(reader);
     const marks = plan ? await reader.flowReceipt(`review-mark:${plan.id}:${tokyoUsageMonth(nowDate())}:${tokyoDayStart(nowDate()).slice(0, 10)}`) : null;
     const log = plan ? await reader.log(plan.id) : [];
-    // 「確定以来」按计划创建的时刻比（startsOn 是东京日期，不能和 UTC 时间戳按字符串比）。
-    const since = (entry: { createdAt: string }) => !plan || Date.parse(entry.createdAt) >= Date.parse(plan.createdAt);
-    const awards = activeAwards(log).filter(since);
+    // 「確定以来」与概要的 sinceConfirmed 同一个函数（R25 App 界面任务：見直し入口弹层在开始之前也要显示）。
+    const since = planSinceConfirmed(plan, log);
     const base = draftView(draft, null, context);
+    // 依据的记录摘要（R25 App 界面任务：只有 id 时界面无法显示依据）：记录自己的摘要文字（没有时用类型短名）+ 时间。
+    // plan_log 的 body 是「CFO 経験者：+10」「Step 完了：…」这类计划内文字，不含联系人信息；读不到的 id 跳过。
+    const byId = new Map(log.map((entry) => [entry.id, entry]));
+    const typeLabels = new Map(plan ? (await reader.typeItems(plan.id)).map((item) => [item.id, item.shortLabel]) : []);
+    const withEvidence = (mark: PlanReviewView["premiseMarks"][number]) => ({
+      ...mark,
+      evidence: mark.evidenceIds.flatMap((id) => {
+        const entry = byId.get(id);
+        if (!entry) return [];
+        const text = entry.body.trim() || (entry.itemId ? typeLabels.get(entry.itemId) ?? "" : "");
+        return [{ at: entry.createdAt, id, text: text.slice(0, 120) }];
+      }),
+    });
     return {
       draft: { ...base, goal: plan?.goalText ?? "", goalKind: plan?.goalKind ?? "unknown", purposeText: plan?.purposeText ?? null, turns: base.turns.map(({ base: _base, revised: _revised, ...turn }: StoredTurn) => turn) },
-      premiseMarks: ((marks?.response as { marks?: PlanReviewView["premiseMarks"] } | undefined)?.marks ?? []),
+      premiseMarks: ((marks?.response as { marks?: PlanReviewView["premiseMarks"] } | undefined)?.marks ?? []).map(withEvidence),
       resetsAt: nextTokyoMonthStart(nowDate()),
       reviewLeftThisMonth: Math.max(0, PLAN_REVIEW_MONTHLY_LIMIT - used),
       reviewMonthlyLimit: PLAN_REVIEW_MONTHLY_LIMIT,
-      sinceConfirmed: {
-        events: awards.filter((entry) => entry.award.basis === "event").length,
-        stepsCompleted: log.filter((entry) => entry.event === "step_completed").length,
-        talked: awards.filter((entry) => entry.award.basis === "talked" || entry.award.basis === "self_report" || entry.award.basis === "memo").length,
-      },
+      sinceConfirmed: since,
     };
   }
 
@@ -1348,7 +1360,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       return repository.read(scope, async (reader) => {
         const draft = await reader.draft(draftId);
         if (!draft) return null;
-        return draftView(draft, draft.intakeId ? await reader.intake(draft.intakeId) : null, context);
+        const intake = draft.intakeId ? await reader.intake(draft.intakeId) : null;
+        return draftView(draft, intake, context, !intake && draft.planId ? await reader.plan(draft.planId) : null);
       });
     },
 
@@ -1438,7 +1451,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         return next;
       });
       const intake = draft.intakeId ? await repository.read(scope, (reader) => reader.intake(draft.intakeId!)) : null;
-      return draftView(draft, intake, context);
+      const plan = !intake && draft.planId ? await repository.read(scope, (reader) => reader.plan(draft.planId!)) : null;
+      return draftView(draft, intake, context, plan);
     },
 
     async manualEdit(draftId, request, context) {

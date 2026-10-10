@@ -18,7 +18,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import type { AiQuotaGate } from "../../ai-quota/gate";
 import type { AppliedEnrichmentField, EnrichedValue } from "../enrichment/apply-enrichment";
-import { MemoExtractionError, type MemoExtractionOutput, type MemoExtractionProvider } from "./provider";
+import { MEMO_EXTRACTION_PLAN_PROMPT_VERSION, MemoExtractionError, type MemoExtractionOutput, type MemoExtractionProvider } from "./provider";
 
 export type MemoExtractionStatus = "claimed" | "disabled" | "deferred" | "started" | "succeeded" | "failed";
 
@@ -43,6 +43,8 @@ export interface MemoExtractionRecord {
   output?: MemoExtractionOutput;
   writtenFields?: readonly AppliedEnrichmentField[];
   error?: string;
+  /** R24（C11）：这次调用带了计划的 3 问时的提示词版本（复核 M5：版本要能追溯到每次调用）。 */
+  planPromptVersion?: string;
 }
 
 export interface MemoExtractionStore {
@@ -142,9 +144,30 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
     return ok;
   };
 
+  /**
+   * 计分提议是派生的：失败不影响 memo 提取本身，但写结构化日志（复核 S1：原来静默吞掉，Postgres 上一直失败也没人知道）。
+   * 日志与 `store.ts` 的 `memo_extraction_error` 同一形状，不含 memo 正文。
+   */
+  const reportPlanCoverage = async (payload: Parameters<NonNullable<MemoExtractionJobDeps["onPlanCoverage"]>>[0]) => {
+    if (!deps.onPlanCoverage) return;
+    try {
+      await deps.onPlanCoverage(payload);
+    } catch (error) {
+      console.error(JSON.stringify({
+        event: "memo_extraction_error",
+        stage: "plan_coverage_failed",
+        actorId: input.actorId,
+        contactId: input.contactId,
+        noteId: input.noteId,
+        manual: payload.manual,
+        error: error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 200) : "unknown",
+      }));
+    }
+  };
+
   const planManual = async () => {
     if (!input.planQuestions?.length || !deps.onPlanCoverage) return;
-    await deps.onPlanCoverage({ coverage: input.planQuestions.map((item) => ({ answered: [], itemId: item.itemId })), manual: true, memoId: key }).catch(() => undefined);
+    await reportPlanCoverage({ coverage: input.planQuestions.map((item) => ({ answered: [], itemId: item.itemId })), manual: true, memoId: key });
   };
 
   // 2. 认领胜者才 reserve（一条 memo 一次操作）。
@@ -192,6 +215,7 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
     operationId,
     provider: deps.provider.providerName,
     model: deps.provider.model,
+    ...(input.planQuestions?.length ? { planPromptVersion: MEMO_EXTRACTION_PLAN_PROMPT_VERSION } : {}),
   });
   if (!startedOk) {
     // 认领被别人推进（不应发生）：HTTP 未发，结清子账并释放。
@@ -239,7 +263,7 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
   });
   await deps.gate.finish(operationId, "succeeded");
   if (input.planQuestions?.length && deps.onPlanCoverage && output.questionCoverage) {
-    await deps.onPlanCoverage({ coverage: output.questionCoverage, manual: false, memoId: key }).catch(() => undefined);
+    await reportPlanCoverage({ coverage: output.questionCoverage, manual: false, memoId: key });
   }
   return current;
 }

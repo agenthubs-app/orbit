@@ -3,7 +3,7 @@
  * 候补、联系人、活动事实，输出是契约形状。分数一律走 `shared/compute/plan-score.ts`，活动分走 `event-score.ts`。
  */
 import { unitPoints } from "../../../shared/compute/plan-allocation";
-import { planTypeHref, type PlanHrefPlatform } from "../../../shared/compute/plan-href";
+import { planOverviewHref, planTypeHref, type PlanHrefPlatform } from "../../../shared/compute/plan-href";
 import { nextAward, PLAN_EVENT_SEGMENT_KEY } from "../../../shared/compute/plan-score";
 import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
 import { scoreEvent, type EventScoreFacts, type EventScoreResult, type EventScoreType } from "../../../shared/compute/event-score";
@@ -252,6 +252,17 @@ export function todayChance(input: OverviewInput, now: string): PlanTodayChance 
   return null;
 }
 
+/**
+ * memo 卡确认后会得的分（复核 m9：由服务端用 `nextAward` 算，与确认时的实得一致）：
+ * 这个人在这个类型下已计过 → 0；类型已跳过 → 0；否则是下一份的分（base 或超额的半分）。
+ */
+export function memoAwardPoints(input: Pick<OverviewInput, "awards">, type: PlanV2TypeItem | undefined, contactId: string | null): number {
+  if (!type || !contactId || type.skippedAt) return 0;
+  const mine = input.awards.filter((entry) => entry.award.typeKey === type.personType.key);
+  if (mine.some((entry) => entry.award.contactId === contactId)) return 0;
+  return nextAward({ allocation: type.allocation, anonymous: false, awards: mine.map((entry) => entry.award), skipped: false, targetCount: type.targetCount }).points;
+}
+
 export function pendingItems(input: OverviewInput, now: string): PlanPendingItem[] {
   const decided = new Set(input.log.filter((entry) => entry.event === "pending_accepted" || entry.event === "pending_dismissed").map((entry) => String(entry.payload.pendingId)));
   const memo: PlanPendingItem[] = input.log
@@ -264,17 +275,20 @@ export function pendingItems(input: OverviewInput, now: string): PlanPendingItem
         contactId,
         createdAt: entry.createdAt,
         detail: contactId ? input.contacts.get(contactId)?.name ?? null : null,
+        ...(type && entry.itemId ? { href: planTypeHref(input.platform, input.plan.id, entry.itemId) } : {}),
         id: entry.id,
         itemId: entry.itemId,
         kind: "memo_coverage" as const,
         manual: entry.payload.manual === true,
         planId: input.plan.id,
+        points: memoAwardPoints(input, type, contactId),
         title: type?.shortLabel ?? "",
       };
     });
   const steps: PlanPendingItem[] = stepSuggestions(input).map((suggestion) => ({
     createdAt: now,
     detail: null,
+    href: planOverviewHref(input.platform, input.plan.id),
     id: `step:${input.plan.id}:${suggestion.stepKey}`,
     itemId: null,
     kind: "step_suggestion" as const,
@@ -285,6 +299,7 @@ export function pendingItems(input: OverviewInput, now: string): PlanPendingItem
     contactId: candidate.contactId,
     createdAt: now,
     detail: candidate.name,
+    href: planTypeHref(input.platform, input.plan.id, type.id),
     id: `candidate:${candidate.candidateId}`,
     itemId: type.id,
     kind: "candidate" as const,

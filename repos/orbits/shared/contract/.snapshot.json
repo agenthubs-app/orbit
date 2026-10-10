@@ -8601,6 +8601,27 @@
           "optional": true,
           "kind": "text",
           "type": "readonly PlanPendingItem[]"
+        },
+        "sinceConfirmed": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "talkedPeople": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "events": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "stepsDone": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
         }
       }
     },
@@ -9987,6 +10008,16 @@
           "kind": "text",
           "type": "boolean"
         },
+        "href": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "points": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
         "createdAt": {
           "optional": false,
           "kind": "text",
@@ -10642,6 +10673,16 @@
                 "optional": false,
                 "kind": "text",
                 "type": "PlanContactFitStatus"
+              },
+              "recommendScore": {
+                "optional": true,
+                "kind": "text",
+                "type": "number"
+              },
+              "reason": {
+                "optional": true,
+                "kind": "text",
+                "type": "string | null"
               }
             }
           }
@@ -10660,6 +10701,31 @@
           "optional": false,
           "kind": "text",
           "type": "readonly string[]"
+        },
+        "evidence": {
+          "optional": true,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "id": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "text": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "at": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
         },
         "suggested": {
           "optional": true,

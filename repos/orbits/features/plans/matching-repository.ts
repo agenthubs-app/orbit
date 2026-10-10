@@ -302,6 +302,11 @@ export interface PlanMatchRepository {
     after?: { actorId: string; eventId: string } | null;
   }): Promise<Array<{ actorId: string; eventId: string }>>;
   /**
+   * R24 复核 M4：v2 计划的イベント枠对账——本人生效 v2 计划（有イベント枠、未达成）开始之后加的联系人记着 `metEventId`，
+   * 但这份计划从没为这场活动计过分（被撤销过的也算计过：用户撤销的不自动补回）的 (actor, 活动)。按 (actor, 活动) 排序，有上限。
+   */
+  listUnscoredAttributedEventsV2?(input: { limit: number }): Promise<Array<{ actorId: string; eventId: string }>>;
+  /**
    * W0012 `plan-phase` 兜底：生效计划按东京周次已处在第 2 段及以后、而这一段还没有
    * 「进入新阶段」记录（`phase-entered:<plan>:<phase>`）的 actor。`today` 是东京日历日；有上限。
    * 周次与阶段的判定与 `week.ts` 同一口径（第 1 周从 starts_on 起；取起始周 ≤ 本周的最后一段）。
@@ -707,6 +712,28 @@ export function createPostgresPlanMatchRepository(options: {
         [workspaceId, Math.max(1, Math.min(500, limit)), after?.actorId ?? null, after?.eventId ?? null],
       );
       return result.rows.map((row) => ({ actorId: String(row.actor_id), eventId: String(row.linked_event_id) }));
+    },
+
+    async listUnscoredAttributedEventsV2({ limit }) {
+      const result = await pool.query(
+        `/* plan-event-attendance:v2 */
+         select distinct p.actor_id, c.payload->>'metEventId' as event_id
+         from plans p
+         join orbit_records c on c.workspace_id = p.workspace_id and c.collection_name = 'contacts'
+           and c.lifecycle_state <> 'deleted' and c.user_id = p.actor_id
+           and (c.payload->'accountId' is null or c.payload->'accountId' = 'null'::jsonb or c.payload->'accountId' = to_jsonb(p.actor_id))
+           and coalesce(c.payload->>'metEventId', '') <> '' and c.created_at >= p.created_at
+         where p.workspace_id = $1 and p.status = 'active' and p.model_version = 2 and p.achieved_at is null and p.event_allocation > 0
+           and not exists (
+             select 1 from plan_log l
+             where l.workspace_id = p.workspace_id and l.actor_id = p.actor_id and l.plan_id = p.id
+               and l.event = 'score_awarded' and l.linked_event_id = c.payload->>'metEventId'
+           )
+         order by 1, 2
+         limit $2`,
+        [workspaceId, Math.max(1, Math.min(500, limit))],
+      );
+      return result.rows.map((row) => ({ actorId: String(row.actor_id), eventId: String(row.event_id) }));
     },
 
     async listActorsEnteringPhase({ afterActorId = null, limit, today }) {

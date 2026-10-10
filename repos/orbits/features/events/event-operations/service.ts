@@ -154,6 +154,11 @@ export interface EventOperationsServiceOptions {
    * rows are already committed; maintenance remains the lost-wake fallback.
    */
   notifyWorker?: (input: { reason: EventOperationsQueueWakeReason }) => Promise<void>;
+  /**
+   * R24 复核 M4：参加者本人签到成功之后（签到已提交）尽力而为地通知计划（v1 已参加 / v2 イベント枠计分）。
+   * 失败只记日志，不影响签到结果；计划侧幂等，名片归属与对账任务是兜底。
+   */
+  onSelfCheckedIn?: (input: { actorId: string; eventId: string }) => Promise<void>;
   registrationService: Pick<EventRegistrationService, "list">;
   repository: EventOperationsRepository;
 }
@@ -229,6 +234,7 @@ export function createEventOperationsService({
   eventSchedule,
   now = () => new Date().toISOString(),
   notifyWorker,
+  onSelfCheckedIn,
   registrationService,
   repository,
 }: EventOperationsServiceOptions): EventOperationsService {
@@ -469,7 +475,15 @@ export function createEventOperationsService({
         requireConfiguration(await repository.getConfiguration(eventId)),
         actorId,
       );
-      return repository.checkInAtomically({ actorId, eventId, kind: "self" });
+      const checkIn = await repository.checkInAtomically({ actorId, eventId, kind: "self" });
+      if (onSelfCheckedIn) {
+        try {
+          await onSelfCheckedIn({ actorId, eventId });
+        } catch (error) {
+          console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_operations_plan_attendance_failed", eventId }));
+        }
+      }
+      return checkIn;
     },
 
     async getLimitedCheckInRoster({ actorId, eventId }) {

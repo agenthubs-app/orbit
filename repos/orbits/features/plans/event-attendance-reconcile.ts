@@ -15,9 +15,23 @@ export const PLAN_EVENT_ATTENDANCE_TASK = "plan-event-attendance";
 /** 每次维护最多处理的 (actor, 活动) 数。 */
 export const PLAN_EVENT_ATTENDANCE_LIMIT = 50;
 
+/** v2 计划服务里对账要用的部分。 */
+export interface PlanEventAttendanceV2Service {
+  recordEventAttendanceForPlans(input: { eventId: string; skipIfEverScored?: boolean }): Promise<ReadonlyArray<unknown>>;
+}
+
 export interface PlanEventAttendanceDeps {
-  repository: Pick<PlanMatchRepository, "listUnattendedAttributedEvents">;
+  repository: Pick<PlanMatchRepository, "listUnattendedAttributedEvents" | "listUnscoredAttributedEventsV2">;
   planServiceFor: (actorId: string) => PlanService;
+  /** R24 复核 M4：v2 计划的イベント枠对账；不给时按 actor 解析 live 的 v2 服务。 */
+  planV2ServiceFor?: (actorId: string) => Promise<PlanEventAttendanceV2Service>;
+}
+
+async function liveV2ServiceFor(actorId: string): Promise<PlanEventAttendanceV2Service> {
+  const { resolvePlanV2Service } = await import("./v2/service-factory");
+  const resolution = resolvePlanV2Service({ actorId, mode: "live" });
+  if (resolution.success === false) throw new Error(resolution.error.message);
+  return resolution.service;
 }
 
 function isUndefinedTable(error: unknown): boolean {
@@ -46,9 +60,9 @@ function decodeCursor(cursor: string | null | undefined): { actorId: string; eve
 export async function reconcileEventAttendanceBatch(
   deps: PlanEventAttendanceDeps,
   input: { limit: number; cursor?: string | null; deadline?: number; now?: () => number },
-): Promise<PlanDailyBatch & { summary: { examined: number; marked: number; failed: number } }> {
+): Promise<PlanDailyBatch & { summary: { examined: number; marked: number; failed: number; v2Examined?: number; v2Marked?: number; v2Failed?: number } }> {
   const now = input.now ?? Date.now;
-  const summary = { examined: 0, failed: 0, marked: 0 };
+  const summary: { examined: number; marked: number; failed: number; v2Examined?: number; v2Marked?: number; v2Failed?: number } = { examined: 0, failed: 0, marked: 0 };
   const after = decodeCursor(input.cursor);
   const pending = await deps.repository.listUnattendedAttributedEvents({ after, limit: input.limit });
   let cursor = after ? encodeCursor(after) : null;
@@ -67,6 +81,25 @@ export async function reconcileEventAttendanceBatch(
       // 单个 actor 失败不挡住其他人，下次扫描再试。
       summary.failed += 1;
     }
+  }
+  // R24 复核 M4：v2 的イベント枠对账——每个东京日的第一批跑一次（查询只返回还没计过分的，自然推进；超过上限的留到明天）。
+  // v1 的计划写入失败与 v2 互不影响：单个 actor 失败只记数。
+  if (!input.cursor && deps.repository.listUnscoredAttributedEventsV2 && !stopped) {
+    const v2Pending = await deps.repository.listUnscoredAttributedEventsV2({ limit: input.limit });
+    const v2For = deps.planV2ServiceFor ?? liveV2ServiceFor;
+    // 没有要补的 v2 时摘要形状不变（只在有事可做时出现 v2* 计数）。
+    const v2 = { examined: 0, failed: 0, marked: 0 };
+    for (const { actorId, eventId } of v2Pending) {
+      if (input.deadline !== undefined && now() >= input.deadline) break;
+      v2.examined += 1;
+      try {
+        const results = await (await v2For(actorId)).recordEventAttendanceForPlans({ eventId, skipIfEverScored: true });
+        if (results.length > 0) v2.marked += 1;
+      } catch {
+        v2.failed += 1;
+      }
+    }
+    if (v2.examined > 0) Object.assign(summary, { v2Examined: v2.examined, v2Failed: v2.failed, v2Marked: v2.marked });
   }
   return { cursor, hasMore: stopped || pending.length >= input.limit, summary };
 }
