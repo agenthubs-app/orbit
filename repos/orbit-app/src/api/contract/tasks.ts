@@ -33,6 +33,8 @@ export interface TaskItemContract {
   completionSource?: "user" | "agent_confirmed" | "notification_action";
   createdAt: string;
   updatedAt: string;
+  /** R08 (R20 owns, To-do use): how many times the task was moved to a later day. */
+  deferralCount?: number;
 }
 
 export interface TaskSuggestionContract {

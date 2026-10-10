@@ -77,6 +77,10 @@ export interface ContactListItemContract {
   primaryIndustryLabel?: string;
   secondaryIndustryId?: SecondaryIndustryIdCode;
   secondaryIndustryLabel?: string;
+  /** R08 (R11 owns, 人脈 / home use): relationship density, 1 = light … 3 = close. */
+  density?: 1 | 2 | 3;
+  /** R08 (R11): where the person came from, for the source chip. */
+  sourceChip?: "meishi" | "linkedin" | "phone" | "manual" | "self";
   databaseQueryExecuted: boolean;
   searchIndexReadExecuted: boolean;
   externalNetworkRequested: false;

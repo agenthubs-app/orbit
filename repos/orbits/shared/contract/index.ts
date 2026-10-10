@@ -349,3 +349,21 @@ export type {
   ContactInsightState,
   ContactInsightText
 } from "./contact-insight";
+// R08 redesign contracts (owners and users in each file).
+export type { HomeLayoutContract, HomeLayoutUpdateInput, HomeWidgetKey, HomeWidgetSlot } from "./home-layout";
+export type { ContactCompletionAnswerInput, ContactCompletionQuestion, ContactCompletionResult } from "./contact-completion";
+export type { InviteCodeContract, InviteCodePreview, InviteCodeRedeemResult, InviteSharedFields } from "./invite-codes";
+export type {
+  EventAssessmentContract,
+  EventAssessmentCreateInput,
+  EventAssessmentCriterion,
+  EventAssessmentFacts,
+  EventAssessmentPatchInput,
+  EventAssessmentScoreItem,
+  EventAssessmentSourceKind,
+  EventAssessmentStatus,
+  EventAssessmentVerdict
+} from "./event-assessment";
+export type { EventRecommendationDismissInput, EventRecommendationDismissReason, EventRecommendationDismissResult } from "./event-recommendation-feedback";
+export type { AccountDeletionRequestContract, AccountExportContract, AccountExportScope, AppVersionContract } from "./account";
+export type { PlanIntakeSummary, PlanScoreView, PlanV2PersonType, PlanV2Step, PlanV2Summary, PlanV2SummaryResponse } from "./plan-v2";

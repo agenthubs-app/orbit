@@ -9,6 +9,14 @@ export interface InboxDeliveryPreferencesDTO {
  quietHoursEnabled:boolean;
  timeZone:string;
  mutedConversationIds:readonly string[];
+ /** R08 (R14 owns, settings use): quiet hours "HH:MM", daily push cap 1..3, secretary switches. */
+ quietStart?:string;
+ quietEnd?:string;
+ dailyCap?:1|2|3;
+ secretaryMail?:boolean;
+ secretaryDeadline?:boolean;
+ secretaryPick?:boolean;
+ meetingException?:boolean;
 }
 export interface InboxDeliveryPreferencesInput {
  expectedRevision:number;

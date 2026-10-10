@@ -33,7 +33,7 @@
 | [R05](R05-app-shell/GOAL.md) | App 导航壳：NAV-V3 底栏、Task 容器、二级页规则 | R04 | H | done，已复核，问题已修（M1–M3、m1–m5 已修，m6 底栏随转场的观感请产品负责人在模拟器确认；R01 m3 冷启动闪主题已在本 Sprint 处理；[REPORT](R05-app-shell/REPORT.md)、[REVIEW](R05-app-shell/REVIEW.md) 末尾「处理记录」） |
 | [R06](R06-web-components/GOAL.md) | Web 组件库（5 类，CSS Modules，新作用域） | R01、R02、R03 | H | done，已复核，问题已修（M1–M4、m1–m6、m10 已修；m9 staging 的 `VERCEL_ENV` 需人确认；[REPORT](R06-web-components/REPORT.md)、[REVIEW](R06-web-components/REVIEW.md) 末尾「处理记录」） |
 | [R07](R07-web-shell/GOAL.md) | Web 导航壳：左栏、主标题区、右栏、⌘K，全站一次切换 | R06 | H | done，待复核（R03 M2、R01 m4 在此处理；[REPORT](R07-web-shell/REPORT.md)） |
-| [R08](R08-contracts-and-mocks/GOAL.md) | 12 个契约 + 校验 + mock 接口 + 统一演示世界 + 「只加不改」检查 | R01 | H | planned |
+| [R08](R08-contracts-and-mocks/GOAL.md) | 12 个契约 + 校验 + mock 接口 + 统一演示世界 + 「只加不改」检查 | R01 | H | done，待复核（[REPORT](R08-contracts-and-mocks/REPORT.md)） |
 | [R09](R09-skeleton-acceptance/GOAL.md) | 骨架验收：规则入库、开发说明、全流程走查、截图集、基线对照 | R01–R08 | H | planned |
 
 执行顺序：R01 → R02 → R03 → R04 → R05 → R06 → R07 → R08 → R09（一人依次做；R08 只依赖 R01，可以提前）。

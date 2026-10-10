@@ -3,6 +3,9 @@ export interface NoteMentionContract {
   start: number;
   end: number;
   displayText: string;
+  /** R08 (R20 owns): a mention can name an event; absent means a contact. */
+  entityType?: "contact" | "event";
+  eventId?: string;
 }
 
 export interface NoteContract {
@@ -15,6 +18,10 @@ export interface NoteContract {
   mentions: readonly NoteMentionContract[];
   contactIds: readonly string[];
   eventIds: readonly string[];
+  /** R08 (R20 owns, Task notes / plan use): free text, a meeting note or a voice memo. */
+  noteKind?: "free" | "meeting" | "voice";
+  /** R08 (R20): the note fed the plan analysis. */
+  usedForPlan?: boolean;
   version: number;
   createdAt: string;
   updatedAt: string;

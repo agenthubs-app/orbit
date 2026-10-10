@@ -25,6 +25,10 @@ function isPublicApiPath(pathname: string): boolean {
     // 注册前聚类预览只返回阈值保护后的聚合桶（无任何个人数据），供匿名
     // 详情页展示"谁会来"，因此放行；正则精确到该单一路径。
     /^\/api\/events\/[^/]+\/registration\/preview$/u.test(pathname) ||
+    // R08: an invite preview (only the fields the inviter chose to share) is read
+    // before sign-in, and the App asks for the minimum version at start-up.
+    /^\/api\/invite-codes\/[^/]+\/preview$/u.test(pathname) ||
+    pathname === "/api/app/version" ||
     pathname.startsWith("/api/auth/") ||
     /^\/api\/integrations\/[^/]+\/callback$/u.test(pathname)
   );

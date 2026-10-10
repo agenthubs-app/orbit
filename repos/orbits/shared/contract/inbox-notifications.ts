@@ -2,7 +2,9 @@ export type InboxNotificationKind = 'reminder' | 'suggestion' | 'update';
 export type InboxNotificationOrigin = 'user' | 'automation' | 'business';
 export type InboxNotificationDisposition = 'open' | 'dismissed' | 'handled' | 'accepted' | 'expired' | 'archived';
 export type InboxNotificationAction = 'read' | 'dismiss' | 'handle' | 'snooze' | 'accept';
-export type InboxSourceKind = 'reminder_plan' | 'task' | 'schedule' | 'appointment' | 'batch' | 'connection' | 'note' | 'message' | 'contact' | 'goal' | 'read_cost_alert' | 'event_contact_request';
+export type InboxSourceKind = 'reminder_plan' | 'task' | 'schedule' | 'appointment' | 'batch' | 'connection' | 'note' | 'message' | 'contact' | 'goal' | 'read_cost_alert' | 'event_contact_request'
+  // R08 (R13 owns, inbox / home secretary use): secretary sources.
+  | 'event_deadline' | 'event_prep' | 'event_pick' | 'mail_summary';
 export interface InboxNotificationSource {
   sourceKind: InboxSourceKind;
   sourceId: string;

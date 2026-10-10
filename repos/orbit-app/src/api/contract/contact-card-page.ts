@@ -34,4 +34,8 @@ export interface ContactCardSummaryDTO {
   tags: { value: string; count: number }[];
   hasMoreTags: boolean;
   asOf: string;
+  /** R08 (R11 owns): people per density 1 / 2 / 3. */
+  densityCounts?: { 1: number; 2: number; 3: number } | undefined;
+  /** R08 (R11): people added this calendar month. */
+  addedThisMonth?: number | undefined;
 }

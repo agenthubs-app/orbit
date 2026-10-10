@@ -30,4 +30,6 @@ export const contactCardSummarySchema = z.object({
   tags: z.array(z.object({ value: z.string().max(32), count })).max(50),
   hasMoreTags: z.boolean(),
   asOf: z.string().datetime({ offset: true }),
+  densityCounts: z.object({ 1: count, 2: count, 3: count }).optional(),
+  addedThisMonth: count.optional(),
 });
