@@ -198,6 +198,7 @@ async function readPlanLog(sql: EventOperationsSqlExecutor, workspaceId: string,
   const result = await sql.query<Row>(`select id, event, kind, left(body, ${EXCERPT_SQL_CHARS}) as body, ${linkedSql} as linked_contact_ids, linked_event_id, created_at
     from plan_log
     where workspace_id = $1 and actor_id = $2
+      /* R24：被撤销（score_reversed 对冲）的计分不算互动 */ and not exists (select 1 from plan_log rev where rev.workspace_id = plan_log.workspace_id and rev.actor_id = plan_log.actor_id and rev.event = 'score_reversed' and rev.payload->>'awardLogId' = plan_log.id)
       ${scope.contactId ? "and linked_contact_ids @> $4::text[]" : "and cardinality(linked_contact_ids) > 0"}
     order by created_at desc, id
     limit $3`, values);

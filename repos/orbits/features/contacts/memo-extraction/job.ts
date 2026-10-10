@@ -59,6 +59,8 @@ export interface MemoExtractionJobInput {
   noteId: string;
   body: string;
   contact: { organization?: string | null; role?: string | null };
+  /** R24（C11）：该联系人作为候补 / 已关联所在人物类型的 3 问（memo 打开「プランの話せた に使う」时才带）。 */
+  planQuestions?: ReadonlyArray<{ itemId: string; questions: readonly string[] }>;
 }
 
 export interface MemoExtractionJobDeps {
@@ -68,6 +70,11 @@ export interface MemoExtractionJobDeps {
   /** 写回联系人行（provider.applyContactMemoExtraction）；返回实际写入的字段。 */
   applyValues: (input: { actorId: string; contactId: string; values: readonly EnrichedValue[]; at: string }) => Promise<readonly AppliedEnrichmentField[]>;
   now?: () => Date;
+  /**
+   * R24（C11）：带 planQuestions 时的判定结果 → 计分提议（≥2 问才出确认卡，确认才计分）；
+   * AI 不可用（关闸、顺延、没有 provider、调用失败）时 `manual: true` → 手动勾选卡。
+   */
+  onPlanCoverage?: (input: { memoId: string; coverage: ReadonlyArray<{ itemId: string; answered: readonly number[] }>; manual: boolean }) => Promise<void>;
 }
 
 export const MEMO_EXTRACTION_CLAIM_LEASE_MS = 5 * 60_000;
@@ -135,6 +142,11 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
     return ok;
   };
 
+  const planManual = async () => {
+    if (!input.planQuestions?.length || !deps.onPlanCoverage) return;
+    await deps.onPlanCoverage({ coverage: input.planQuestions.map((item) => ({ answered: [], itemId: item.itemId })), manual: true, memoId: key }).catch(() => undefined);
+  };
+
   // 2. 认领胜者才 reserve（一条 memo 一次操作）。
   const reservation = await deps.gate.reserve({
     actorId: input.actorId,
@@ -151,6 +163,7 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
     await advance(refusal.reason === "daily_limit"
       ? { status: "deferred", ...(refusal.retryOn ? { retryOn: refusal.retryOn } : {}) }
       : { status: "disabled" });
+    await planManual();
     return current;
   }
   const operationId = reservation.operationId;
@@ -158,6 +171,7 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
     // 放行但没有 provider 配置：不发请求，按失败收尾（无子账 → released，不计次）；可在配置后重试。
     await advance({ status: "deferred", retryOn: clock().toISOString(), operationId, error: "PROVIDER_UNCONFIGURED" });
     await deps.gate.finish(operationId, "failed");
+    await planManual();
     return current;
   }
 
@@ -189,7 +203,7 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
   let output: MemoExtractionOutput;
   let usage: { inputTokens: number; outputTokens: number } | null = null;
   try {
-    const result = await deps.provider.extract({ memo: input.body, contact: input.contact });
+    const result = await deps.provider.extract({ memo: input.body, contact: input.contact, ...(input.planQuestions?.length ? { planQuestions: input.planQuestions } : {}) });
     usage = { inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens };
     output = result.output;
     await deps.gate.endCall(callId, usage);
@@ -200,6 +214,7 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
     await deps.gate.endCall(callId, errorUsage).catch(() => undefined);
     await advance({ status: "failed", usage: errorUsage, error: error instanceof MemoExtractionError ? error.code : "PROVIDER_ERROR" });
     await deps.gate.finish(operationId, "failed");
+    await planManual();
     return current;
   }
 
@@ -223,5 +238,8 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
     ...(writeError ? { error: `WRITE_BACK_FAILED: ${writeError}` } : {}),
   });
   await deps.gate.finish(operationId, "succeeded");
+  if (input.planQuestions?.length && deps.onPlanCoverage && output.questionCoverage) {
+    await deps.onPlanCoverage({ coverage: output.questionCoverage, manual: false, memoId: key }).catch(() => undefined);
+  }
   return current;
 }

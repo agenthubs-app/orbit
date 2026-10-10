@@ -73,17 +73,20 @@ export function createLiveRecordMemoExtractionStore(input: { store: StoreLike; w
  * 未配置数据库时什么都不做；异常不外抛（提取是派生缓存，不影响 memo 本身），但写结构化错误日志。
  */
 export async function runConfiguredMemoExtraction(
-  input: MemoExtractionJobInput,
+  input: MemoExtractionJobInput & { usedForPlan?: boolean },
   overrides: { gate?: AiQuotaGate; provider?: MemoExtractionProvider | null } = {},
 ): Promise<MemoExtractionRecord | null> {
   try {
+    // R24（C11）：memo 打开「プランの話せた に使う」时，带上这个人作为候补 / 已关联的人物类型的 3 问。
+    const plan = input.usedForPlan ? await planCoverageHooks(input.actorId, input.contactId) : null;
     const configured = createConfiguredPostgresLiveRecordStore();
     if (!configured) return null;
     if (!configured.store.insertRecordIfAbsent || !configured.store.updateRecordIfCurrent) {
       throw new Error("Memo extraction storage requires atomic insert and conditional update.");
     }
     const contacts = createConfiguredStorageContactGraphProvider();
-    return await runMemoExtraction(input, {
+    return await runMemoExtraction({ ...input, ...(plan?.planQuestions.length ? { planQuestions: plan.planQuestions } : {}) }, {
+      ...(plan?.planQuestions.length ? { onPlanCoverage: plan.onPlanCoverage } : {}),
       gate: overrides.gate ?? createConfiguredAiQuotaGate(),
       provider: overrides.provider !== undefined ? overrides.provider : createConfiguredMemoExtractionProvider(),
       store: createLiveRecordMemoExtractionStore({ store: configured.store as unknown as StoreLike, workspaceId: configured.workspaceId }),
@@ -113,4 +116,25 @@ export function logMemoExtractionFailure(
     noteId: input.noteId,
     error: error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 200) : "unknown",
   }));
+}
+
+/** R24（C11）：这个人在生效 v2 计划里作为候补 / 已关联的人物类型的 3 问，以及判定结果的去处（计分提议）。 */
+async function planCoverageHooks(actorId: string, contactId: string) {
+  const { resolvePlanV2Service } = await import("../../plans/v2/service-factory");
+  const resolution = resolvePlanV2Service({ actorId, mode: "live" });
+  if (resolution.success === false) return null;
+  const service = resolution.service;
+  const fit = await service.contactFit(contactId);
+  const planQuestions: Array<{ itemId: string; questions: readonly string[] }> = [];
+  for (const item of fit.fits) {
+    if (item.status === "talked") continue;
+    const detail = await service.typeDetail(item.planId, item.itemId);
+    if (detail && !detail.skipped && detail.questions.length) planQuestions.push({ itemId: item.itemId, questions: detail.questions });
+  }
+  return {
+    onPlanCoverage: async (result: { memoId: string; coverage: ReadonlyArray<{ itemId: string; answered: readonly number[] }>; manual: boolean }) => {
+      await service.proposeMemoCoverage({ contactId, coverage: result.coverage, manual: result.manual, memoId: result.memoId });
+    },
+    planQuestions,
+  };
 }

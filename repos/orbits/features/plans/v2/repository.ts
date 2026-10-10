@@ -16,6 +16,8 @@ import type {
   PlanIntakeBackground,
   PlanIntakeRow,
   PlanV2Analysis,
+  PlanV2ContactView,
+  PlanV2MatchCandidate,
   PlanV2EventItem,
   PlanV2LogEntry,
   PlanV2LogEvent,
@@ -141,7 +143,8 @@ export function needStatus(links: readonly PlanContactLink[]): "open" | "linked"
 }
 
 function typeCriteria(item: PlanV2TypeItem) {
-  return { description: item.roleSituation, primaryIndustryId: item.primaryIndustryId, secondaryIndustryId: item.secondaryIndustryId, targetCount: item.targetCount, titleKeywords: [] };
+  // R24（C12）：「見分け方」作为匹配关键词（规则层与 AI 层都用）。
+  return { description: item.roleSituation, primaryIndustryId: item.primaryIndustryId, secondaryIndustryId: item.secondaryIndustryId, targetCount: item.targetCount, titleKeywords: item.personType.recognizeHints.slice(0, 5) };
 }
 
 /* ------------------------------------------------------------------ */
@@ -208,6 +211,46 @@ function storedDraftContent(draft: PlanDraftRow): StoredDraftContent {
   return { ...draft.content, _meta: { fix: draft.fix, premiseVersion: draft.premiseVersion } };
 }
 
+const CANDIDATE_COLUMNS = `id, need_item_id, contact_id, tier, strength, reason, status, created_at`;
+
+function candidateFromRow(row: Row): PlanV2MatchCandidate {
+  return {
+    contactId: String(row.contact_id),
+    createdAt: iso(row.created_at),
+    id: String(row.id),
+    needItemId: String(row.need_item_id),
+    reason: textOrNull(row.reason),
+    status: row.status as PlanV2MatchCandidate["status"],
+    strength: row.strength as PlanV2MatchCandidate["strength"],
+    tier: row.tier as PlanV2MatchCandidate["tier"],
+  };
+}
+
+// 归属谓词同 `matching-repository.ts` 的 CONTACT_VIEWS_SQL；最后互动取 contact_detail_states。
+const CONTACT_VIEW_SELECT = `select c.record_id,
+       c.payload->>'displayName' as display_name,
+       c.payload->>'organization' as organization,
+       c.payload->>'role' as role,
+       (c.payload->>'linkedAccountId') is not null or (c.payload->>'orbitUserId') is not null as is_orbit_user,
+       (select max(d.payload->'lastInteraction'->>'occurredAt') from orbit_records d
+         where d.workspace_id = c.workspace_id and d.collection_name = 'contact_detail_states' and d.lifecycle_state <> 'deleted'
+           and d.user_id = $2 and d.payload->>'actorId' = $2 and d.payload->>'contactId' = c.record_id) as last_interaction_at
+  from orbit_records c
+ where c.workspace_id = $1 and c.collection_name = 'contacts' and c.lifecycle_state <> 'deleted' and c.user_id = $2
+   and (c.payload->'accountId' is null or c.payload->'accountId' = 'null'::jsonb or c.payload->'accountId' = to_jsonb($2::text))
+   and c.payload->>'lifecycleInitialization' is distinct from 'pending'`;
+
+function contactViewFromRow(row: Row): PlanV2ContactView {
+  return {
+    id: String(row.record_id),
+    isOrbitUser: Boolean(row.is_orbit_user),
+    lastInteractionAt: textOrNull(row.last_interaction_at),
+    name: textOrNull(row.display_name) ?? "",
+    organization: textOrNull(row.organization),
+    role: textOrNull(row.role),
+  };
+}
+
 function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Reader {
   const ws = scope.workspaceId;
   const actor = scope.actorId;
@@ -240,6 +283,22 @@ function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Read
       return row
         ? { createdAt: iso(row.created_at), fingerprint: String(row.fingerprint), idempotencyKey: String(row.idempotency_key), kind: String(row.kind), outcome: row.outcome as PlanFlowReceipt["outcome"], planId: textOrNull(row.plan_id), response: json(row.response, {}) }
         : null;
+    },
+    async contactViews(contactIds) {
+      const ids = [...new Set(contactIds)].slice(0, 200);
+      if (ids.length === 0) return [];
+      return (await rows(`${CONTACT_VIEW_SELECT} and c.record_id = any($3::text[])`, [ws, actor, ids])).map(contactViewFromRow);
+    },
+    async findContactsByName(name, limit) {
+      const pattern = `%${name.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+      return (await rows(`${CONTACT_VIEW_SELECT} and c.payload->>'displayName' ilike $3 order by c.updated_at desc limit $4`, [ws, actor, pattern, limit])).map(contactViewFromRow);
+    },
+    async matchCandidates(itemIds) {
+      if (itemIds.length === 0) return [];
+      return (await rows(
+        `select ${CANDIDATE_COLUMNS} from plan_match_candidates where workspace_id = $1 and actor_id = $2 and need_item_id = any($3::text[]) order by created_at desc, id`,
+        [ws, actor, [...itemIds]],
+      )).map(candidateFromRow);
     },
     async countFlowReceipts(kind, sinceIso) {
       const [row] = await rows(
@@ -356,6 +415,18 @@ function postgresTransaction(client: PlanQueryClient, scope: PlanV2Scope): PlanV
          values ($1,$2,$3,$4,'event',$5,$6,$7,$8,$9,$10)`,
         [ws, item.id, actor, item.planId, item.title, item.status, item.eventId, item.sortKey, item.createdAt, item.updatedAt],
       );
+    },
+    async decideMatchCandidate(candidateId, status, at) {
+      const updated = await client.query(
+        `update plan_match_candidates set status = $4, decided_at = $5
+         where workspace_id = $1 and actor_id = $2 and id = $3 and status = 'pending' returning ${CANDIDATE_COLUMNS}`,
+        [ws, actor, candidateId, status, at],
+      );
+      const row = (updated.rows as Row[])[0];
+      if (row) return candidateFromRow(row);
+      const current = await client.query(`select ${CANDIDATE_COLUMNS} from plan_match_candidates where workspace_id = $1 and actor_id = $2 and id = $3`, [ws, actor, candidateId]);
+      const existing = (current.rows as Row[])[0];
+      return existing ? candidateFromRow(existing) : null;
     },
     async insertDraft(draft) {
       await client.query(
@@ -496,6 +567,9 @@ export interface MemoryPlanV2State {
   receipts: PlanFlowReceipt[];
   intakes: PlanIntakeRow[];
   drafts: PlanDraftRow[];
+  /** R24：匹配候补与联系人投影（mock / 测试）。 */
+  candidates: PlanV2MatchCandidate[];
+  contacts: PlanV2ContactView[];
   /** 生效中的 v1 计划 id（测试用；内存实现不保存 v1 的行）。 */
   activeV1PlanId: string | null;
   /** 本人用过的最大版本号（含 v1）。 */
@@ -508,7 +582,7 @@ export interface MemoryPlanV2Repository extends PlanV2Repository {
 }
 
 function emptyState(): MemoryPlanV2State {
-  return { activeV1PlanId: null, drafts: [], eventItems: [], intakes: [], log: [], maxVersion: 0, plans: [], receipts: [], typeItems: [] };
+  return { activeV1PlanId: null, candidates: [], contacts: [], drafts: [], eventItems: [], intakes: [], log: [], maxVersion: 0, plans: [], receipts: [], typeItems: [] };
 }
 
 function memoryReader(state: MemoryPlanV2State): PlanV2Reader {
@@ -519,6 +593,9 @@ function memoryReader(state: MemoryPlanV2State): PlanV2Reader {
     async activeV1PlanId() { return state.activeV1PlanId; },
     async eventItems(planId) { return structuredClone(state.eventItems.filter((item) => item.planId === planId).sort((a, b) => a.sortKey - b.sortKey)); },
     async flowReceipt(key) { return structuredClone(state.receipts.find((receipt) => receipt.idempotencyKey === key) ?? null); },
+    async contactViews(ids) { return structuredClone(state.contacts.filter((contact) => ids.includes(contact.id))); },
+    async findContactsByName(name, limit) { return structuredClone(state.contacts.filter((contact) => contact.name.toLowerCase().includes(name.toLowerCase())).slice(0, limit)); },
+    async matchCandidates(itemIds) { return structuredClone(state.candidates.filter((candidate) => itemIds.includes(candidate.needItemId))); },
     async countFlowReceipts(kind, sinceIso) { return state.receipts.filter((receipt) => receipt.kind === kind && receipt.createdAt >= sinceIso).length; },
     async countIntakesSince(sinceIso) { return state.intakes.filter((intake) => intake.createdAt >= sinceIso).length; },
     async draft(draftId) { return structuredClone(state.drafts.find((draft) => draft.id === draftId) ?? null); },
@@ -553,6 +630,12 @@ function memoryTransaction(state: MemoryPlanV2State): PlanV2Transaction {
       return id;
     },
     async insertEventItem(item) { state.eventItems.push(structuredClone(item)); },
+    async decideMatchCandidate(candidateId, status) {
+      const candidate = state.candidates.find((item) => item.id === candidateId);
+      if (!candidate) return null;
+      if (candidate.status === "pending") candidate.status = status;
+      return structuredClone(candidate);
+    },
     async insertDraft(draft) {
       unique(state.drafts.some((item) => item.id === draft.id), "draft");
       state.drafts.push(structuredClone(draft));

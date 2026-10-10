@@ -62,7 +62,7 @@ function recentRecordsSql(perContact: number, label: string) {
       select id, event, kind, cid as contact_id, created_at,
         row_number() over (partition by cid order by created_at desc, id) as rn
       from plan_log cross join lateral unnest(linked_contact_ids) as cid
-      where workspace_id = $1 and actor_id = $2 and cid = any($3::text[])
+      where workspace_id = $1 and actor_id = $2 and cid = any($3::text[]) and not exists (select 1 from plan_log rev where rev.workspace_id = plan_log.workspace_id and rev.actor_id = plan_log.actor_id and rev.event = 'score_reversed' and rev.payload->>'awardLogId' = plan_log.id) /* R24：被撤销的计分不算互动 */
     ) ranked where rn <= ${PER_CONTACT}`,
   schedule: `/* ${label}:schedule */
     select record_id, kind, starts_at, state, contact_id from (

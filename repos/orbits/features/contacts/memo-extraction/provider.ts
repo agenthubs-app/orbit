@@ -12,6 +12,11 @@ import type { MemoEventType } from "../../../shared/contract/relationship-timeli
 export interface MemoExtractionInput {
   memo: string;
   contact: { organization?: string | null; role?: string | null };
+  /**
+   * R24（C11）：memo 打开「プランの話せた に使う」且 @ 的人是某个人物类型的候补或已关联时，带上该类型的聞くこと 3 問。
+   * 只用别名（T1…）给模型；不带时输入与提示词和 W0046 完全一样。
+   */
+  planQuestions?: ReadonlyArray<{ itemId: string; questions: readonly string[] }>;
 }
 
 export interface MemoExtractionOutput {
@@ -19,7 +24,18 @@ export interface MemoExtractionOutput {
   seeking: string[];
   topics: string[];
   eventTypes: MemoEventType[];
+  /** R24（C11）：每个人物类型的 3 问里聊到了哪几问（题号 0–2）。只在输入带 planQuestions 时出现。 */
+  questionCoverage?: Array<{ itemId: string; answered: number[] }>;
 }
+
+/** R24：带 planQuestions 时提示词的版本（不带时提示词不变）。 */
+export const MEMO_EXTRACTION_PLAN_PROMPT_VERSION = "memo-plan-coverage-2026-11-v1";
+
+export const MEMO_EXTRACTION_PLAN_PROMPT = [
+  "The input also has planTypes: for each type key (T1, T2, ...) three questions the user wanted to ask this contact.",
+  "For each type, list which of the three questions the memo shows were actually discussed (indexes 0, 1, 2). Only count a question when the memo clearly covers it.",
+  'Add to the JSON object: "questionCoverage":[{"type":"T1","answered":[0,2]}].',
+].join(" ");
 
 export interface MemoExtractionUsage {
   inputTokens: number;
@@ -62,15 +78,37 @@ function text(value: string | null | undefined): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-/** 送给模型的输入（纯函数）：只有 memo 正文与对方公司／职位。 */
+/** 送给模型的输入（纯函数）：只有 memo 正文与对方公司／职位（R24：可选的人物类型 3 问，别名 T1…）。 */
 export function buildMemoExtractionInput(input: MemoExtractionInput) {
   const company = text(input.contact.organization);
   const title = text(input.contact.role);
+  const planTypes = (input.planQuestions ?? []).slice(0, 5).map((item, index) => ({ questions: item.questions.slice(0, 3), type: `T${index + 1}` }));
   return {
     memo: Array.from(input.memo.trim()).slice(0, MEMO_EXTRACTION_LIMITS.memoChars).join(""),
     ...(company ? { company } : {}),
     ...(title ? { title } : {}),
+    ...(planTypes.length ? { planTypes } : {}),
   };
+}
+
+/** 系统提示词：不带人物类型时与 W0046 完全相同。 */
+export function memoExtractionSystemPrompt(input: MemoExtractionInput): string {
+  return input.planQuestions?.length ? `${MEMO_EXTRACTION_SYSTEM_PROMPT} ${MEMO_EXTRACTION_PLAN_PROMPT}` : MEMO_EXTRACTION_SYSTEM_PROMPT;
+}
+
+function coverageOf(value: unknown, planQuestions: MemoExtractionInput["planQuestions"]): MemoExtractionOutput["questionCoverage"] {
+  if (!planQuestions?.length) return undefined;
+  const byAlias = new Map(planQuestions.slice(0, 5).map((item, index) => [`T${index + 1}`, item.itemId]));
+  const out = new Map<string, number[]>();
+  for (const entry of Array.isArray(value) ? value : []) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const record = entry as { type?: unknown; answered?: unknown };
+    const itemId = typeof record.type === "string" ? byAlias.get(record.type) : undefined;
+    if (!itemId) continue;
+    const answered = Array.isArray(record.answered) ? record.answered.filter((index): index is number => Number.isInteger(index) && index >= 0 && index <= 2) : [];
+    out.set(itemId, [...new Set([...(out.get(itemId) ?? []), ...answered])].sort());
+  }
+  return [...byAlias.values()].map((itemId) => ({ answered: out.get(itemId) ?? [], itemId }));
 }
 
 function phrases(value: unknown): string[] {
@@ -88,7 +126,7 @@ function phrases(value: unknown): string[] {
   return out;
 }
 
-export function parseMemoExtractionContent(content: string): MemoExtractionOutput {
+export function parseMemoExtractionContent(content: string, planQuestions?: MemoExtractionInput["planQuestions"]): MemoExtractionOutput {
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
@@ -106,6 +144,7 @@ export function parseMemoExtractionContent(content: string): MemoExtractionOutpu
     eventTypes: Array.isArray(record.eventTypes)
       ? [...new Set(record.eventTypes.filter((entry): entry is MemoEventType => EVENT_TYPES.includes(entry as MemoEventType)))]
       : [],
+    ...(planQuestions?.length ? { questionCoverage: coverageOf(record.questionCoverage, planQuestions) } : {}),
   };
 }
 
@@ -156,7 +195,7 @@ export function createDeepseekMemoExtractionProvider({
           response = await fetchImplementation(DEEPSEEK_CHAT_COMPLETIONS_ENDPOINT, {
             body: JSON.stringify({
               messages: [
-                { content: MEMO_EXTRACTION_SYSTEM_PROMPT, role: "system" },
+                { content: memoExtractionSystemPrompt(input), role: "system" },
                 { content: JSON.stringify(buildMemoExtractionInput(input)), role: "user" },
               ],
               model,
@@ -186,7 +225,7 @@ export function createDeepseekMemoExtractionProvider({
         const content = contentOf(payload);
         if (!content?.trim()) throw new MemoExtractionError("INVALID_OUTPUT", "The memo extractor returned no content.", usage);
         try {
-          return { model, output: parseMemoExtractionContent(content), usage };
+          return { model, output: parseMemoExtractionContent(content, input.planQuestions), usage };
         } catch (error) {
           throw error instanceof MemoExtractionError ? new MemoExtractionError(error.code, error.message, usage) : error;
         }

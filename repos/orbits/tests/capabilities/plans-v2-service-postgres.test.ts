@@ -86,16 +86,39 @@ test("undo and re-record use a fresh unique key; skip and unskip round-trip in t
   });
 });
 
-test("until R24 wires candidate decisions, v2 types stay out of the matching pipeline (no job, no needs read)", databaseTest, async () => {
+test("R24: v2 types join the matching pipeline (job, needs without skipped types); accepting a v2 candidate only links it", databaseTest, async () => {
   await withNetworkDatabase(async ({ pool }) => {
-    const { v2 } = services(pool);
+    const { v1, v2 } = services(pool);
     const { plan } = await v2.createPlanFromDraft(draftInput());
     const queued = await pool.query(ENQUEUE_PLAN_JOB_SQL, [WORKSPACE, ACTOR, plan.planId, "job-1"]);
-    assert.equal(queued.rows.length, 0);
+    assert.equal(queued.rows.length, 1);
     const { createPostgresPlanMatchRepository } = await import("../../features/plans/matching-repository");
+    const { createPlanMatchingService } = await import("../../features/plans/matching-service");
     const repository = createPostgresPlanMatchRepository({ pool, workspaceId: WORKSPACE });
-    assert.deepEqual(await repository.readActiveNeeds(ACTOR), []);
-    assert.deepEqual(await repository.readActiveNeedViews(ACTOR), []);
+    const types = plan.content.personTypes;
+    assert.equal((await repository.readActiveNeeds(ACTOR)).length, types.length);
+    await v2.skip({ idempotencyKey: "skip-lawyer", itemId: types.find((type) => type.key === "lawyer")!.itemId, planId: plan.planId });
+    const needs = await repository.readActiveNeedViews(ACTOR);
+    assert.equal(needs.length, types.length - 1, "a skipped type is not a need");
+    assert.equal(await repository.needModelVersion!({ actorId: ACTOR, needItemId: types[0]!.itemId }), 2);
+    const vc = types.find((type) => type.key === "vc_partner")!;
+    await pool.query(
+      `insert into plan_match_candidates (workspace_id, id, actor_id, job_id, plan_id, need_item_id, contact_id, tier, strength)
+       values ($1, 'cand-1', $2, 'job-1', $3, $4, 'contact:vc-9', 'rule', 'strong')`,
+      [WORKSPACE, ACTOR, plan.planId, vc.itemId],
+    );
+    const matching = createPlanMatchingService({ planServiceFor: () => v1, planV2For: () => v2, repository, worker: {} as never });
+    const decided = await matching.decide({ actorId: ACTOR, candidateId: "cand-1", decision: "accept" });
+    assert.equal(decided.status, "accepted");
+    assert.equal(decided.link, null, "no v1 「約 TA」 action");
+    const replay = await matching.decide({ actorId: ACTOR, candidateId: "cand-1", decision: "accept" });
+    assert.equal(replay.replayed, true);
+    const item = (await pool.query("select contact_links, status from plan_items where id = $1", [vc.itemId])).rows[0];
+    assert.deepEqual(item.contact_links.map((link: { contactId: string; state: string }) => [link.contactId, link.state]), [["contact:vc-9", "linked"]]);
+    assert.equal(item.status, "linked");
+    assert.equal(Number((await pool.query("select count(*) from plan_items where plan_id = $1 and kind = 'action'", [plan.planId])).rows[0].count), 0);
+    const detail = await v2.typeDetail(plan.planId, vc.itemId);
+    assert.equal(detail!.candidates.length, 0, "a linked person is no longer a candidate");
   });
 });
 

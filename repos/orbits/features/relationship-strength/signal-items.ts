@@ -54,7 +54,7 @@ export const RELATIONSHIP_SIGNAL_ITEMS_SQL = `/* relationship-strength:signal-it
   select 'plan', jsonb_build_object('id', id, 'event', event, 'kind', kind, 'body', left(body, ${TITLE_CHARS}), 'linkedEventId', linked_event_id,
       'createdAt', to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
     from plan_log
-    where workspace_id = $1 and actor_id = $2 and linked_contact_ids @> array[$3::text] and 'plan:' || id = any($4::text[])
+    where workspace_id = $1 and actor_id = $2 and linked_contact_ids @> array[$3::text] and 'plan:' || id = any($4::text[]) and not exists (select 1 from plan_log rev where rev.workspace_id = plan_log.workspace_id and rev.actor_id = plan_log.actor_id and rev.event = 'score_reversed' and rev.payload->>'awardLogId' = plan_log.id) /* R24：被撤销的计分不算互动 */
   union all
   select 'schedule', jsonb_build_object('id', record_id, 'kind', payload->>'kind', 'title', left(payload->>'title', ${TITLE_CHARS}),
       'startsAt', payload->>'startsAt', 'state', payload->>'state', 'eventId', payload->>'eventId')

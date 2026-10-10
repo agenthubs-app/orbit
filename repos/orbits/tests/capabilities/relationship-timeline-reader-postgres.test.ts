@@ -290,3 +290,20 @@ test("单条笔记关联超多联系人：单人读取仍命中；最近动态�
     assertReadOnlyBounded(meter);
   });
 });
+
+test("R24: an undone plan score (score_reversed) is not an interaction on the timeline", databaseTest, async () => {
+  await withTimelineDatabase(async (pool) => {
+    const insert = (id: string, event: string, contactIds: string[], payload: Record<string, unknown>, createdAt: string) => pool.query(
+      `insert into plan_log (workspace_id, id, actor_id, plan_id, kind, event, author, body, linked_contact_ids, payload, idempotency_key, created_at)
+       values ($1, $2, $3, $4, 'auto', $5, 'user', '計画：更新', $6, $7::jsonb, $2, $8)`,
+      [WORKSPACE, id, ALICE, `plan:${ALICE}`, event, contactIds, JSON.stringify(payload), createdAt],
+    );
+    await insert("award-kept", "score_awarded", [C2], { points: 10 }, "2026-09-27T00:00:00.000Z");
+    await insert("award-undone", "score_awarded", [C2], { points: 10 }, "2026-09-28T00:00:00.000Z");
+    await insert("award-undone-rev", "score_reversed", [], { awardLogId: "award-undone" }, "2026-09-28T00:01:00.000Z");
+    const result = await readRelationshipTimelineForContact({ actorId: ALICE, contactId: C2, now: NOW, limit: 50 }, { runtime: runtimeFor(pool, { bytes: 0, statements: [], writes: 0 }) });
+    const ids = result.items.map((item) => item.id);
+    assert.ok(ids.some((id) => id.includes("award-kept")), ids.join(","));
+    assert.ok(!ids.some((id) => id.includes("award-undone")), ids.join(","));
+  });
+});

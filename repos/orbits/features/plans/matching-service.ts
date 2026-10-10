@@ -16,6 +16,7 @@ import { eventLinked } from "./matching";
 import type { PlanMatchContactView, PlanMatchNeedView, PlanMatchPendingCandidate, PlanMatchRepository } from "./matching-repository";
 import { runMatchJobForBatch, type PlanMatchBatchRun, type PlanMatchWorkerDeps } from "./match-worker";
 import { PlanServiceError } from "./validators";
+import type { PlanV2Service } from "./v2/service";
 
 export interface PlanMatchCandidateView {
   id: string;
@@ -78,6 +79,8 @@ export function createPlanMatchingService(deps: {
   repository: PlanMatchRepository;
   worker: PlanMatchWorkerDeps;
   planServiceFor: (actorId: string) => PlanService;
+  /** R24：v2 计划的人物类型走 v2 服务（只关联，不生成「约 TA」行动）。没有就按 v1 处理。 */
+  planV2For?: (actorId: string) => PlanV2Service;
   draftProvider?: PlanEmailDraftProvider;
 }): PlanMatchingService {
   const { repository } = deps;
@@ -140,6 +143,11 @@ export function createPlanMatchingService(deps: {
     async decide({ actorId, candidateId, decision }) {
       const candidate = await repository.getCandidate({ actorId, candidateId });
       if (!candidate) throw new PlanServiceError("ITEM_NOT_FOUND", "Match candidate not found.");
+      if (deps.planV2For && (await repository.needModelVersion?.({ actorId, needItemId: candidate.needItemId })) === 2) {
+        const result = await deps.planV2For(actorId).decideCandidateById({ candidateId, decision });
+        if (!result) throw new PlanServiceError("ITEM_NOT_FOUND", "Match candidate not found.");
+        return { candidateId, link: null, replayed: result.replayed, status: result.status };
+      }
       // 名字只用于行动标题，事务外读取；决定本身（CAS + 关联 + 行动 + 记录）在计划服务的一个事务里。
       const contactName = decision === "accept" ? await contactNameFor(actorId, candidate.contactId) : null;
       const result = await deps.planServiceFor(actorId).decideMatchCandidate({ candidateId, contactName, decision });
@@ -175,6 +183,14 @@ export function createPlanMatchingService(deps: {
     },
 
     async linkManually({ actorId, contactId, idempotencyKey, needItemId }) {
+      if (deps.planV2For && (await repository.needModelVersion?.({ actorId, needItemId })) === 2) {
+        await contactNameFor(actorId, contactId);
+        const linked = await deps.planV2For(actorId).linkTypeContact({ contactId, itemId: needItemId });
+        if (!linked) throw new PlanServiceError("ITEM_NOT_FOUND", "Person type not found.");
+        await repository.acceptPendingPair({ actorId, contactId, needItemId });
+        // v2 没有 v1 的「约 TA」行动；对旧接口返回最小的关联结果。
+        return { action: null, log: null, need: { id: needItemId, kind: "network_need" }, replayed: false } as unknown as LinkNeedContactResult;
+      }
       const link = await deps.planServiceFor(actorId).linkNeedContact({
         contactId,
         contactName: await contactNameFor(actorId, contactId),

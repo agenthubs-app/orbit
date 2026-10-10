@@ -66,10 +66,14 @@ export const PLAN_AI_MATCH_TIMEOUT_MS = 30_000;
  */
 export const PLAN_AI_MATCH_LIMITS = { needs: 200, proposals: 400 } as const;
 
+/** R24（C12）：v2 人物类型的描述是「役割 × 状況」一句、关键词是「見分け方」；提示词版本 +1（输出形状不变）。 */
+export const PLAN_AI_MATCH_PROMPT_VERSION = "plan-match-2026-11-v2";
+
 export const PLAN_AI_MATCH_SYSTEM_PROMPT = [
   "You match newly added business contacts to the network needs in the user's plan.",
   "Each contact has an id, name, and optionally company and job title. Each need has an id, a title, and optionally a description, title keywords and an industry; absent fields are omitted.",
   "Propose a pair only when the contact's company or job title makes them a plausible fit for the need. Industry alone is already handled elsewhere; focus on company and title.",
+  "A description may be a 'role × situation' sentence (for example, a founder who raised a Series A within three years): match the situation as well as the role, and use the keywords as signs to recognise such a person.",
   "Use only the ids given in the input. Never invent ids. It is fine to return no pairs.",
   'Respond with a single JSON object: {"matches":[{"contactId":"...","needId":"...","reason":"one short sentence in the language of the need title"}]}.',
 ].join(" ");

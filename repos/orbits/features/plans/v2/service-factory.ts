@@ -6,6 +6,8 @@
 import type { ModuleMode, ServiceResolution } from "../../../shared/services/module-mode";
 import { resolvePlanBackend } from "../service-factory";
 import { demoPlanV2State } from "./mock-seed";
+import { demoPlanEventFacts, livePlanEventFacts } from "./event-facts";
+import { createLivePlanFlowContext } from "./flow-context";
 import { createMemoryPlanV2Repository, createPostgresPlanV2Repository, type MemoryPlanV2Repository } from "./repository";
 import { createPlanV2Service, type PlanV2Service } from "./service";
 import type { PlanV2Repository } from "./types";
@@ -50,14 +52,21 @@ export function resolvePlanV2Service(input: { actorId: string; mode?: ModuleMode
       repository.seed(scope, demoPlanV2State());
       plansV2Global.__orbitPlansV2MockSeeded.add(input.actorId);
     }
-    return { mode: backend.mode, service: createPlanV2Service({ now: input.now, references: referencesFor(input.actorId), repository, sample: true, scope }), success: true };
+    return { mode: backend.mode, service: createPlanV2Service({ events: demoPlanEventFacts, now: input.now, references: referencesFor(input.actorId), repository, sample: true, scope }), success: true };
   }
   if (plansV2Global.__orbitPlansV2LiveRepository?.pool !== pool) {
     plansV2Global.__orbitPlansV2LiveRepository = { pool, repository: createPostgresPlanV2Repository({ pool }) };
   }
   return {
     mode: backend.mode,
-    service: createPlanV2Service({ now: input.now, references: referencesFor(input.actorId), repository: plansV2Global.__orbitPlansV2LiveRepository.repository, scope }),
+    service: createPlanV2Service({
+      createContact: async ({ name }) => createLivePlanFlowContext({ mode: "live", pool: pool as never, workspaceId }).addContact(input.actorId, { name, relationLabel: "" }),
+      events: livePlanEventFacts(),
+      now: input.now,
+      references: referencesFor(input.actorId),
+      repository: plansV2Global.__orbitPlansV2LiveRepository.repository,
+      scope,
+    }),
     success: true,
   };
 }

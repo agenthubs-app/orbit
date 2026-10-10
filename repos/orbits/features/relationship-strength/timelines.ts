@@ -99,7 +99,7 @@ export const RELATIONSHIP_STRENGTH_TIMELINE_SQL = {
   planLog: `/* relationship-strength:timeline:plan-log */
     select id, event, kind, linked_contact_ids, created_at
     from plan_log
-    where workspace_id = $1 and actor_id = $2 and cardinality(linked_contact_ids) > 0
+    where workspace_id = $1 and actor_id = $2 and cardinality(linked_contact_ids) > 0 and not exists (select 1 from plan_log rev where rev.workspace_id = plan_log.workspace_id and rev.actor_id = plan_log.actor_id and rev.event = 'score_reversed' and rev.payload->>'awardLogId' = plan_log.id) /* R24：被撤销的计分不算互动 */
     order by id limit ${LIMIT}`,
   schedule: `/* relationship-strength:timeline:schedule */
     select record_id, payload->>'kind' as kind, payload->>'startsAt' as starts_at, payload->>'state' as state,

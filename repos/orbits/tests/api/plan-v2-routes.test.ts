@@ -110,3 +110,36 @@ test("live commands: skip, undo and steps answer with the new score; an achieved
   assert.equal(late.status, 409);
   assert.equal((await late.json()).error.context.reason, "PLAN_ACHIEVED");
 });
+
+test("R24 mock routes: overview extras, type detail, candidate decision, offline talk, drafts, pending, fit — all pass their schemas", async () => {
+  resetPlansV2MockRepositoryForTests();
+  const handlers = createPlanV2Handlers({ resolveActor: async () => null, resolveMode: () => "mock" });
+  const { planContactFitSchema, planPendingListResponseSchema, planPersonTypeDetailSchema, planTalkedOfflineResultSchema, planCandidateDecisionResultSchema, planIntroDraftResultSchema, planProposalResultSchema } = await import("../../shared/api-schema/plan-v2");
+  const detail = planV2DetailSchema.parse((await (await call(handlers.detail, "GET", { planId: DEMO_PLAN.id })).json()).data);
+  assert.ok(detail.typeStats && detail.stepProgress && detail.recentAwards);
+  const cvc = detail.content.personTypes.find((type) => type.key === "cvc")!;
+  const type = planPersonTypeDetailSchema.parse((await (await call(handlers.typeDetail, "GET", { itemId: cvc.itemId, planId: DEMO_PLAN.id })).json()).data);
+  assert.equal(type.candidates[0]!.contactId, "demo-person-sasaki");
+  assert.ok(type.events.length > 0);
+  const decided = await call(handlers.candidateDecision, "POST", { contactId: "demo-person-sasaki", itemId: cvc.itemId, planId: DEMO_PLAN.id }, { decision: "accept", idempotencyKey: "d1" });
+  assert.equal(planCandidateDecisionResultSchema.parse((await decided.json()).data).status, "accepted");
+  const offline = await call(handlers.talkedOffline, "POST", { itemId: cvc.itemId, planId: DEMO_PLAN.id }, { idempotencyKey: "o1", name: "佐々木" });
+  assert.deepEqual(planTalkedOfflineResultSchema.parse((await offline.json()).data).matches?.map((match) => match.contactId), ["demo-person-sasaki"]);
+  const proposal = await call(handlers.proposal, "POST", { itemId: cvc.itemId, planId: DEMO_PLAN.id }, { contactId: "demo-person-sasaki", idempotencyKey: "p1", slots: ["2026-10-09T10:00:00+09:00", "2026-10-10T10:00:00+09:00", "2026-10-11T10:00:00+09:00"] });
+  assert.equal(planProposalResultSchema.parse((await proposal.json()).data).kind, "draft");
+  const angel = detail.content.personTypes.find((item) => item.key === "angel")!;
+  const intro = await call(handlers.introDraft, "POST", { itemId: angel.itemId, planId: DEMO_PLAN.id }, { idempotencyKey: "i1", viaContactId: "nobody" });
+  assert.equal(intro.status, 404);
+  void planIntroDraftResultSchema;
+  planPendingListResponseSchema.parse((await (await call(handlers.pending, "GET")).json()).data);
+  const fit = planContactFitSchema.parse((await (await call(handlers.contactFit, "GET", { contactId: "demo-person-takahashi" })).json()).data);
+  assert.equal(fit.fits[0]!.status, "talked");
+  resetPlansV2MockRepositoryForTests();
+});
+
+test("R24 live routes require login", async () => {
+  const handlers = createPlanV2Handlers({ resolveActor: async () => null, resolveMode: () => "live" });
+  for (const [handler, params] of [[handlers.typeDetail, { itemId: "i", planId: "p" }], [handlers.pending, {}], [handlers.contactFit, { contactId: "c" }]] as const) {
+    assert.equal((await call(handler as Handler, "GET", params)).status, 401);
+  }
+});

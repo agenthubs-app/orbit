@@ -45,6 +45,11 @@ export async function markPlanEventAttendedForActor(input: { actorId: string; ev
   const resolution = resolvePlanService({ actorId: input.actorId });
   if (resolution.success === false) return;
   await resolution.service.markEventAttended({ eventId: input.eventId });
+  // R24：v2 计划的イベント枠——每个有イベント枠的生效目标各记一次（重复不记，已达成不记）。
+  const { resolvePlanV2Service } = await import("./v2/service-factory");
+  const v2 = resolvePlanV2Service({ actorId: input.actorId });
+  if (v2.success === false) return;
+  if (await v2.service.hasActivePlan()) await v2.service.recordEventAttendanceForPlans({ eventId: input.eventId });
 }
 
 /**

@@ -3,7 +3,7 @@
  * 这样 mock 下所有 v2 接口（首页、概要、计分）读写的是同一份示例计划（`sample: true`，不写库）。
  */
 import { PLAN_EVENT_SEGMENT_KEY } from "../../../shared/compute/plan-score";
-import { DEMO_PLAN } from "../../../shared/mock/demo-world";
+import { DEMO_PEOPLE, DEMO_PLAN } from "../../../shared/mock/demo-world";
 import { demoPlanAwards, demoPlanDetail } from "../../../shared/mock/demo-world/fixtures";
 import type { MemoryPlanV2State } from "./repository";
 import type { PlanAwardPayload, PlanV2LogEntry, PlanV2TypeItem } from "./types";
@@ -98,5 +98,17 @@ export function demoPlanV2State(): Partial<MemoryPlanV2State> {
       version: 1,
     }],
     typeItems,
+    // R24：演示世界的人（联系人投影）与几位候补（人物タイプ詳細的候补表）。
+    contacts: DEMO_PEOPLE.map((person) => ({ id: person.id, isOrbitUser: person.id === "demo-person-aoki", lastInteractionAt: person.density === 3 ? "2026-10-01T10:00:00+09:00" : null, name: person.name, organization: person.company, role: person.role })),
+    candidates: [
+      { contactId: "demo-person-ito", needItemId: itemIdFor("cfo"), reason: null, strength: "candidate" as const, tier: "rule" as const },
+      { contactId: "demo-person-kobayashi", needItemId: itemIdFor("angel"), reason: "起業家コミュニティを主宰し、エンジェル投資の経験がある", strength: "strong" as const, tier: "ai" as const },
+      { contactId: "demo-person-sasaki", needItemId: itemIdFor("cvc"), reason: null, strength: "strong" as const, tier: "rule" as const },
+      { contactId: "demo-person-okada", needItemId: itemIdFor("vc_partner"), reason: "VC でシリーズ A の案件を担当している", strength: "candidate" as const, tier: "ai" as const },
+    ].map((candidate, index) => ({ ...candidate, createdAt: "2026-10-05T09:00:00+09:00", id: `demo-candidate-${index + 1}`, status: "pending" as const })),
   };
+
+  function itemIdFor(key: string): string {
+    return typeItems.find((type) => type.personType.key === key)!.id;
+  }
 }

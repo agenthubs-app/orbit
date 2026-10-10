@@ -249,6 +249,8 @@ export type ClaimForBatchResult =
   | { state: "missing" };
 
 export interface PlanMatchRepository {
+  /** R24：候补所在需求属于哪一版计划（1 = v1 行动管线，2 = v2 人物类型）；找不到为 null。 */
+  needModelVersion?(input: { actorId: string; needItemId: string }): Promise<1 | 2 | null>;
   readonly workspaceId: string;
   /** 维护任务：领取到期的 pending（或租约过期的 running）任务，跨用户，带上限。 */
   claimDueJobs(input: { limit: number }): Promise<PlanMatchJob[]>;
@@ -514,7 +516,7 @@ export function createPostgresPlanMatchRepository(options: {
                             and i.phase is not null and e.phase = i.phase), '{}') as event_ids
          from plan_items i
          join plans p on p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id
-         where i.workspace_id = $1 and i.actor_id = $2 and p.status = 'active' and p.model_version = 1 and i.kind = 'network_need'
+         where i.workspace_id = $1 and i.actor_id = $2 and p.status = 'active' and i.kind = 'network_need' and i.skipped_at is null
          order by i.created_at desc, i.sort_key desc`,
         [workspaceId, actorId],
       );
@@ -600,7 +602,7 @@ export function createPostgresPlanMatchRepository(options: {
                             and i.phase is not null and e.phase = i.phase), '{}') as event_ids
          from plan_items i
          join plans p on p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id
-         where i.workspace_id = $1 and i.actor_id = $2 and p.status = 'active' and p.model_version = 1 and i.kind = 'network_need'
+         where i.workspace_id = $1 and i.actor_id = $2 and p.status = 'active' and i.kind = 'network_need' and i.skipped_at is null
          order by i.created_at desc, i.sort_key desc`,
         [workspaceId, actorId],
       );
@@ -631,6 +633,16 @@ export function createPostgresPlanMatchRepository(options: {
         }),
       );
       return ids.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : []));
+    },
+
+    async needModelVersion({ actorId, needItemId }) {
+      const result = await pool.query(
+        `select p.model_version from plan_items i join plans p on p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id
+          where i.workspace_id = $1 and i.actor_id = $2 and i.id = $3`,
+        [workspaceId, actorId, needItemId],
+      );
+      const version = Number(result.rows[0]?.model_version);
+      return version === 1 || version === 2 ? version : null;
     },
 
     async getCandidate({ actorId, candidateId }) {

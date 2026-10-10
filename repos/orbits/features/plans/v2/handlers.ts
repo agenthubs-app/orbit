@@ -20,7 +20,21 @@ import {
   planUndoRequestSchema,
   planV2DetailSchema,
   planV2SummaryResponseSchema,
+  planCandidateDecisionRequestSchema,
+  planCandidateDecisionResultSchema,
+  planContactFitSchema,
+  planIntroDraftRequestSchema,
+  planIntroDraftResultSchema,
+  planPendingDecisionRequestSchema,
+  planPendingDecisionResultSchema,
+  planPendingListResponseSchema,
+  planPersonTypeDetailSchema,
+  planProposalRequestSchema,
+  planProposalResultSchema,
+  planTalkedOfflineRequestSchema,
+  planTalkedOfflineResultSchema,
 } from "../../../shared/api-schema/plan-v2";
+import { requestContext } from "./flow-handlers";
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
 import { DEMO_ACTOR_ID } from "../../../shared/mock/demo-world/fixtures";
@@ -90,11 +104,50 @@ export function createPlanV2Handlers(dependencies: PlanV2RouteDependencies = {})
     summary: planV2Route(planV2SummaryResponseSchema, async (service) => ({ data: await service.summary() }), dependencies),
     /** GET /api/agent/plans/v2：目标列表（生效 + 已达成）。 */
     list: planV2Route(planGoalListResponseSchema, async (service) => ({ data: { goals: await service.listGoals() } }), dependencies),
-    /** GET /api/agent/plans/v2/[planId]：概要。 */
-    detail: planV2Route(planV2DetailSchema, async (service, _request, params) => {
-      const detail = await service.detail(params.planId ?? "");
+    /** GET /api/agent/plans/v2/[planId]：概要（R24 带今日のチャンス、三格、Step 进度、最近加分、待确认）。 */
+    detail: planV2Route(planV2DetailSchema, async (service, request, params) => {
+      const detail = await service.overview(params.planId ?? "", requestContext(request));
       return detail ? { data: detail } : notFound();
     }, dependencies),
+    /** GET /api/agent/plans/v2/[planId]/types/[itemId]：人物タイプ詳細。 */
+    typeDetail: planV2Route(planPersonTypeDetailSchema, async (service, request, params) => {
+      const detail = await service.typeDetail(params.planId ?? "", params.itemId ?? "", requestContext(request));
+      return detail ? { data: detail } : notFound();
+    }, dependencies),
+    /** POST …/types/[itemId]/candidates/[contactId]/decision：候补 ✓ / ✕（只关联，不生成行动）。 */
+    candidateDecision: planV2Route(planCandidateDecisionResultSchema, async (service, request, params) => {
+      const input = await body(request, planCandidateDecisionRequestSchema);
+      return { data: await service.decideCandidate({ contactId: params.contactId ?? "", decision: input.decision, idempotencyKey: input.idempotencyKey, itemId: params.itemId ?? "", planId: params.planId ?? "" }) };
+    }, dependencies),
+    /** POST …/types/[itemId]/talked-offline：线下聊过（名字可空）。 */
+    talkedOffline: planV2Route(planTalkedOfflineResultSchema, async (service, request, params) => {
+      const input = await body(request, planTalkedOfflineRequestSchema);
+      return { data: await service.talkedOffline({ itemId: params.itemId ?? "", planId: params.planId ?? "", request: input }) };
+    }, dependencies),
+    /** POST …/types/[itemId]/proposals：面談を提案（草稿）。 */
+    proposal: planV2Route(planProposalResultSchema, async (service, request, params) => {
+      const input = await body(request, planProposalRequestSchema);
+      return { data: await service.proposal({ contactId: input.contactId, itemId: params.itemId ?? "", language: requestContext(request).language, planId: params.planId ?? "", slots: input.slots }) };
+    }, dependencies),
+    /** POST …/types/[itemId]/intro-drafts：紹介ルートの依頼文（草稿）。 */
+    introDraft: planV2Route(planIntroDraftResultSchema, async (service, request, params) => {
+      const input = await body(request, planIntroDraftRequestSchema);
+      return { data: await service.introDraft({ itemId: params.itemId ?? "", language: requestContext(request).language, planId: params.planId ?? "", viaContactId: input.viaContactId }) };
+    }, dependencies),
+    /** GET /api/agent/plans/v2/pending：待确认项（给 R20）。 */
+    pending: planV2Route(planPendingListResponseSchema, async (service, request) => ({ data: { items: await service.pending(requestContext(request)) } }), dependencies),
+    /** POST /api/agent/plans/v2/pending/[id]/accept。 */
+    acceptPending: planV2Route(planPendingDecisionResultSchema, async (service, request, params) => {
+      const input = await body(request, planPendingDecisionRequestSchema);
+      return { data: await service.decidePending({ answered: input.answered, decision: "accept", id: params.id ?? "", idempotencyKey: input.idempotencyKey }) };
+    }, dependencies),
+    /** POST /api/agent/plans/v2/pending/[id]/dismiss。 */
+    dismissPending: planV2Route(planPendingDecisionResultSchema, async (service, request, params) => {
+      const input = await body(request, planPendingDecisionRequestSchema);
+      return { data: await service.decidePending({ decision: "dismiss", id: params.id ?? "", idempotencyKey: input.idempotencyKey }) };
+    }, dependencies),
+    /** GET /api/agent/plans/v2/contacts/[contactId]/fit（给 R11）。 */
+    contactFit: planV2Route(planContactFitSchema, async (service, _request, params) => ({ data: await service.contactFit(params.contactId ?? "") }), dependencies),
     /** POST /api/agent/plans/v2/[planId]/open：切换目标时记下最近打开。 */
     open: planV2Route(planOpenResultSchema, async (service, _request, params) => {
       await service.markOpened(params.planId ?? "");

@@ -245,7 +245,7 @@ export type RelationshipStrengthStampMode = "revision" | "timestamp";
 const PLAN_STAMP_SQL = `(
     select count(*)::text as plan_count, coalesce(max(seq), 0)::text as plan_max_seq
     from plan_log
-    where workspace_id = $1 and actor_id = $2 and cardinality(linked_contact_ids) > 0
+    where workspace_id = $1 and actor_id = $2 and cardinality(linked_contact_ids) > 0 and not exists (select 1 from plan_log rev where rev.workspace_id = plan_log.workspace_id and rev.actor_id = plan_log.actor_id and rev.event = 'score_reversed' and rev.payload->>'awardLogId' = plan_log.id) /* R24：被撤销的计分不算互动 */
   ) plan`;
 
 /**

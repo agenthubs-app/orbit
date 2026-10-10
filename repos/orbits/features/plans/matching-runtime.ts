@@ -20,6 +20,7 @@ import { createPostgresPlanMatchRepository, type PlanMatchRepository } from "./m
 import { createPostgresPlanDailyRunStore, type PlanDailyRunStore } from "./maintenance-daily-gate";
 import { runPlanSourceMatchJob, type PlanMatchWorkerDeps } from "./match-worker";
 import { resolvePlanService } from "./service-factory";
+import { resolvePlanV2Service } from "./v2/service-factory";
 
 export interface PlanMatchingRuntime {
   repository: PlanMatchRepository;
@@ -57,6 +58,11 @@ export function getConfiguredPlanMatchingRuntime(): PlanMatchingRuntime | null {
   const service = createPlanMatchingService({
     planServiceFor: (actorId) => {
       const resolution = resolvePlanService({ actorId, mode: "live" });
+      if (resolution.success === false) throw new Error(resolution.error.message);
+      return resolution.service;
+    },
+    planV2For: (actorId) => {
+      const resolution = resolvePlanV2Service({ actorId, mode: "live" });
       if (resolution.success === false) throw new Error(resolution.error.message);
       return resolution.service;
     },

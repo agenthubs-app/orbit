@@ -15,6 +15,10 @@ import { validateAllocations, type PlanAllocationSlot } from "../../../shared/co
 import { nextAward, PLAN_EVENT_SEGMENT_KEY, skipAwardPoints, summarizePlanScore, type PlanScoreAward, type PlanScoreReversal, type PlanScoreSlot } from "../../../shared/compute/plan-score";
 import { PLAN_GOAL_KINDS } from "../../../shared/compute/plan-templates";
 import { tokyoUsageMonth } from "../../ai-quota/constants";
+import type { PlanHrefPlatform } from "../../../shared/compute/plan-href";
+import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
+import { candidatesFor, pendingItems, recentAwards, stepProgress, stepSuggestions, todayChance, typeDetail as buildTypeDetail, typeStats, type OverviewInput, type PlanEventFact } from "./overview";
+import { introDraftText, proposalDraftText } from "./drafts";
 import type {
   PlanAwardRequest,
   PlanAwardResult,
@@ -28,6 +32,15 @@ import type {
   PlanV2HomeSummary,
   PlanV2PersonType,
   PlanV2SummaryResponse,
+  PlanCandidateDecisionResult,
+  PlanContactFit,
+  PlanIntroDraftResult,
+  PlanPendingDecisionResult,
+  PlanPendingItem,
+  PlanPersonTypeDetail,
+  PlanProposalResult,
+  PlanTalkedOfflineRequest,
+  PlanTalkedOfflineResult,
 } from "../../../shared/contract/plan-v2";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../shared/contract/industries";
 import { AppError, type AppErrorCode } from "../../../shared/errors/app-error";
@@ -60,6 +73,8 @@ export const PLAN_V2_ERROR_REASONS = [
   "INVALID_INPUT",
   "REFERENCE_NOT_FOUND",
   "TYPE_SKIPPED",
+  "CANDIDATE_NOT_FOUND",
+  "PENDING_NOT_FOUND",
 ] as const;
 export type PlanV2ErrorReason = (typeof PLAN_V2_ERROR_REASONS)[number];
 
@@ -74,6 +89,8 @@ const REASON_CODES: Record<PlanV2ErrorReason, AppErrorCode> = {
   REFERENCE_NOT_FOUND: "NOT_FOUND",
   STEP_NOT_FOUND: "NOT_FOUND",
   TYPE_SKIPPED: "CONFLICT",
+  CANDIDATE_NOT_FOUND: "NOT_FOUND",
+  PENDING_NOT_FOUND: "NOT_FOUND",
 };
 
 export class PlanV2Error extends AppError {
@@ -140,6 +157,29 @@ export interface PlanV2Service {
   activeTypeNeeds(): Promise<ActiveTypeNeeds>;
   /** 本人有没有生效中的 v2 计划（v1 生成前的便宜检查）。 */
   hasActivePlan(): Promise<boolean>;
+  /* ---------- R24 ---------- */
+  /** 概要（带 R24 的可选字段：今日のチャンス、三格、Step 进度、最近加分、待确认）。 */
+  overview(planId: string, view?: PlanViewOptions): Promise<PlanV2Detail | null>;
+  typeDetail(planId: string, itemId: string, view?: PlanViewOptions): Promise<PlanPersonTypeDetail | null>;
+  /** 人物类型详情里的 ✓ / ✕：只关联联系人，不生成「约 TA」行动。 */
+  decideCandidate(input: { planId: string; itemId: string; contactId: string; decision: "accept" | "dismiss"; idempotencyKey: string }): Promise<PlanCandidateDecisionResult>;
+  /** 旧候补接口（matching-service）的 v2 分流：按候补 id 决定。 */
+  decideCandidateById(input: { candidateId: string; decision: "accept" | "dismiss" }): Promise<{ status: "accepted" | "dismissed"; replayed: boolean; planId: string; itemId: string } | null>;
+  /** 手动关联（matching-service.linkManually 的 v2 分流）。 */
+  linkTypeContact(input: { itemId: string; contactId: string }): Promise<{ planId: string; itemId: string } | null>;
+  talkedOffline(input: { planId: string; itemId: string; request: PlanTalkedOfflineRequest }): Promise<PlanTalkedOfflineResult>;
+  proposal(input: { planId: string; itemId: string; contactId: string; slots: readonly string[]; language: PlanCopyLanguage }): Promise<PlanProposalResult>;
+  introDraft(input: { planId: string; itemId: string; viaContactId: string; language: PlanCopyLanguage }): Promise<PlanIntroDraftResult>;
+  pending(view?: PlanViewOptions): Promise<PlanPendingItem[]>;
+  decidePending(input: { id: string; decision: "accept" | "dismiss"; answered?: readonly number[]; idempotencyKey: string }): Promise<PlanPendingDecisionResult>;
+  contactFit(contactId: string): Promise<PlanContactFit>;
+  /** C11：面谈メモ判定的结果 → ≥2 问出计分提议（确认卡）；AI 不可用时出手动勾选卡。 */
+  proposeMemoCoverage(input: { contactId: string; memoId: string; coverage: ReadonlyArray<{ itemId: string; answered: readonly number[] }>; manual?: boolean }): Promise<number>;
+}
+
+export interface PlanViewOptions {
+  language?: PlanCopyLanguage;
+  platform?: PlanHrefPlatform;
 }
 
 /** 生效中的 v2 计划（概要）与它们的人物类型（人脉分析、覆盖度、联系人计划说明合并读取用）。 */
@@ -156,7 +196,14 @@ export interface PlanV2ServiceOptions {
   newId?: () => string;
   /** mock 模式（演示世界）：响应带 `sample: true`。 */
   sample?: boolean;
+  /** R24：会える活動的事实（库内活动；没有就是空）。 */
+  events?: () => Promise<PlanEventFact[]>;
+  /** R24：线下聊过新建联系人（来源「プラン」）；不可用时为 null。 */
+  createContact?: (input: { name: string }) => Promise<string | null>;
 }
+
+/** memo 判定达到几问才出计分提议（DESIGN §2.7）。 */
+export const PLAN_MEMO_COVERAGE_MIN = 2;
 
 function fingerprint(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -372,6 +419,73 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     if (!options.references) return;
     const missing = await options.references.findMissingContactIds([contactId]);
     if (missing.length > 0) throw new PlanV2Error("REFERENCE_NOT_FOUND", "Contact not found.");
+  }
+
+  async function loadEvents(): Promise<PlanEventFact[]> {
+    if (!options.events) return [];
+    try {
+      return await options.events();
+    } catch (error) {
+      // 活动读不到不挡概要：会える活動这一块为空。
+      console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "plan_v2_events_unavailable" }));
+      return [];
+    }
+  }
+
+  async function overviewInput(reader: PlanV2Reader, plan: PlanV2Row, events: PlanEventFact[], view: PlanViewOptions): Promise<OverviewInput> {
+    const types = await reader.typeItems(plan.id);
+    const log = await reader.log(plan.id);
+    const awards = activeAwards(log);
+    const candidates = await reader.matchCandidates(types.map((type) => type.id));
+    const contactIds = new Set<string>();
+    for (const candidate of candidates) contactIds.add(candidate.contactId);
+    for (const entry of awards) if (entry.award.contactId) contactIds.add(entry.award.contactId);
+    for (const type of types) for (const route of type.personType.introRoutes) contactIds.add(route.viaContactId);
+    for (const entry of log) if (entry.event === "memo_coverage_proposed" && typeof entry.payload.contactId === "string") contactIds.add(entry.payload.contactId);
+    const contacts = new Map((await reader.contactViews([...contactIds])).map((contact) => [contact.id, contact]));
+    return { awards, candidates, contacts, events, language: view.language ?? "ja", log, plan, platform: view.platform ?? "web", types };
+  }
+
+  /** 把联系人关联到类型（linked；已 established 的不降级）。 */
+  async function linkContact(tx: PlanV2Transaction, type: PlanV2TypeItem, contactId: string) {
+    if (type.contactLinks.some((link) => link.contactId === contactId)) return;
+    const at = now();
+    await tx.updateTypeItem({ ...type, contactLinks: [...type.contactLinks, { contactId, establishedAt: null, linkedAt: at, state: "linked" }], updatedAt: at });
+  }
+
+  async function applyCandidateDecision(tx: PlanV2Transaction, type: PlanV2TypeItem, candidateId: string, decision: "accept" | "dismiss"): Promise<"accepted" | "dismissed"> {
+    const decided = await tx.decideMatchCandidate(candidateId, decision === "accept" ? "accepted" : "dismissed", now());
+    if (!decided) throw new PlanV2Error("CANDIDATE_NOT_FOUND", "Candidate not found.");
+    // 只关联，不生成 v1 式「约 TA」行动（DESIGN §2.6）。
+    if (decided.status === "accepted") await linkContact(tx, type, decided.contactId);
+    return decided.status === "pending" ? (decision === "accept" ? "accepted" : "dismissed") : decided.status;
+  }
+
+  /** 内部计分（memo 确认卡）：同 award，但 basis 可以是 memo。 */
+  async function awardWith(input: { planId: string; itemId: string; contactId: string; basis: "memo"; idempotencyKey: string }): Promise<PlanAwardResult> {
+    return repository.transact(scope, async (tx) => {
+      const plan = await requireActivePlan(tx, input.planId);
+      const type = await requireType(tx, plan, input.itemId);
+      const result = await command<Record<string, unknown>>(tx, { body: { basis: input.basis, contactId: input.contactId, itemId: type.id }, key: input.idempotencyKey, kind: "award", planId: plan.id }, async () => {
+        const log = await tx.log(plan.id);
+        const mine = activeAwards(log).filter((entry) => entry.award.typeKey === type.personType.key);
+        if (mine.some((entry) => entry.award.contactId === input.contactId)) {
+          return { outcome: "noop" as const, response: { awardLogId: null, part: "none", points: 0, reason: "already_counted", score: await scoreOf(tx, plan) } };
+        }
+        const next = nextAward({ allocation: type.allocation, anonymous: false, awards: mine.map((entry) => entry.award), skipped: Boolean(type.skippedAt), targetCount: type.targetCount });
+        if (next.part === "none") return { outcome: "noop" as const, response: { awardLogId: null, part: "none", points: 0, reason: next.reason, score: await scoreOf(tx, plan) } };
+        const payload: PlanAwardPayload = { anonymous: false, basis: input.basis, contactId: input.contactId, eventId: null, part: next.part, points: next.points, typeKey: type.personType.key };
+        const entry = logEntry({ body: `${type.shortLabel}：+${next.points}`, event: "score_awarded", idempotencyKey: awardKey(log, `score:${plan.id}:${type.personType.key}:${input.contactId}`), itemId: type.id, linkedContactIds: [input.contactId], linkedEventId: null, payload: payload as unknown as Record<string, unknown>, planId: plan.id });
+        await tx.insertLog(entry);
+        const at = now();
+        const links = type.contactLinks.filter((link) => link.contactId !== input.contactId);
+        const previous = type.contactLinks.find((link) => link.contactId === input.contactId);
+        links.push({ contactId: input.contactId, establishedAt: at, linkedAt: previous?.linkedAt ?? at, state: "established" });
+        await tx.updateTypeItem({ ...type, contactLinks: links, updatedAt: at });
+        return { outcome: "applied" as const, response: { awardLogId: entry.id, part: next.part, points: next.points, score: await scoreOf(tx, plan) } };
+      });
+      return result as unknown as PlanAwardResult;
+    });
   }
 
   return {
@@ -762,6 +876,222 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           });
         }
         return out;
+      });
+    },
+
+    async overview(planId, view = {}) {
+      const id = requiredId(planId, "planId");
+      const events = await loadEvents();
+      return repository.read(scope, async (reader) => {
+        const plan = await reader.plan(id);
+        if (!plan || (plan.status !== "active" && !plan.achievedAt)) return null;
+        const detail = await buildDetail(reader, plan);
+        const input = await overviewInput(reader, plan, events, view);
+        const at = now();
+        return {
+          ...detail,
+          pending: pendingItems(input, at),
+          recentAwards: recentAwards(input),
+          stepProgress: stepProgress(input),
+          stepSuggestions: stepSuggestions(input),
+          todayChance: plan.status === "active" ? todayChance(input, at) : null,
+          typeStats: typeStats(input, at),
+        };
+      });
+    },
+
+    async typeDetail(planId, itemId, view = {}) {
+      const id = requiredId(planId, "planId");
+      const events = await loadEvents();
+      return repository.read(scope, async (reader) => {
+        const plan = await reader.plan(id);
+        if (!plan || (plan.status !== "active" && !plan.achievedAt)) return null;
+        const input = await overviewInput(reader, plan, events, view);
+        const type = input.types.find((item) => item.id === itemId);
+        return type ? buildTypeDetail(input, type, now(), Boolean(options.sample)) : null;
+      });
+    },
+
+    async decideCandidate({ planId, itemId, contactId, decision, idempotencyKey }) {
+      return repository.transact(scope, async (tx) => {
+        const plan = await requireActivePlan(tx, requiredId(planId, "planId"));
+        const type = await requireType(tx, plan, requiredId(itemId, "itemId"));
+        const candidate = (await tx.matchCandidates([type.id])).find((item) => item.contactId === contactId);
+        if (!candidate) throw new PlanV2Error("CANDIDATE_NOT_FOUND", "Candidate not found.");
+        const result = await command<Record<string, unknown>>(tx, { body: { candidateId: candidate.id, decision }, key: idempotencyKey, kind: "candidate_decision", planId: plan.id }, async () => {
+          const status = await applyCandidateDecision(tx, type, candidate.id, decision);
+          return { outcome: "applied" as const, response: { candidateId: candidate.id, status } };
+        });
+        return result as unknown as PlanCandidateDecisionResult;
+      });
+    },
+
+    async decideCandidateById({ candidateId, decision }) {
+      return repository.transact(scope, async (tx) => {
+        for (const plan of await tx.activePlans()) {
+          for (const type of await tx.typeItems(plan.id)) {
+            const candidate = (await tx.matchCandidates([type.id])).find((item) => item.id === candidateId);
+            if (!candidate) continue;
+            const replayed = candidate.status !== "pending";
+            const status = replayed ? (candidate.status as "accepted" | "dismissed") : await applyCandidateDecision(tx, type, candidate.id, decision);
+            return { itemId: type.id, planId: plan.id, replayed, status };
+          }
+        }
+        return null;
+      });
+    },
+
+    async linkTypeContact({ itemId, contactId }) {
+      await assertContact(requiredId(contactId, "contactId"));
+      return repository.transact(scope, async (tx) => {
+        for (const plan of await tx.activePlans()) {
+          const type = (await tx.typeItems(plan.id)).find((item) => item.id === itemId);
+          if (!type) continue;
+          await linkContact(tx, type, contactId);
+          return { itemId: type.id, planId: plan.id };
+        }
+        return null;
+      });
+    },
+
+    async talkedOffline({ planId, itemId, request }) {
+      if (request.contactId) return { award: await this.award({ itemId, planId, request: { at: request.at, basis: "talked", contactId: request.contactId, idempotencyKey: request.idempotencyKey } }) };
+      if (request.anonymous) return { award: await this.award({ itemId, planId, request: { anonymous: true, at: request.at, basis: "self_report", idempotencyKey: request.idempotencyKey } }) };
+      const name = (request.name ?? "").trim();
+      if (!name) throw new PlanV2Error("INVALID_INPUT", "Give a contact, a name or anonymous.");
+      if (!request.createContact) {
+        const matches = await repository.read(scope, (reader) => reader.findContactsByName(name, 5));
+        if (matches.length > 0) return { matches: matches.map((contact) => ({ company: contact.organization, contactId: contact.id, name: contact.name })) };
+      }
+      // 人脈里没有这个人（或用户说都不是）：先建联系人再计分，不建重复的人。
+      const created = options.createContact ? await options.createContact({ name }) : null;
+      if (!created) return { award: await this.award({ itemId, planId, request: { anonymous: true, at: request.at, basis: "self_report", idempotencyKey: request.idempotencyKey } }), createdContactId: null };
+      return { award: await this.award({ itemId, planId, request: { at: request.at, basis: "talked", contactId: created, idempotencyKey: request.idempotencyKey } }), createdContactId: created };
+    },
+
+    async proposal({ planId, itemId, contactId, slots, language }) {
+      const { contact, plan, type } = await repository.read(scope, async (reader) => {
+        const current = await requireActivePlan(reader, requiredId(planId, "planId"));
+        const item = await requireType(reader, current, requiredId(itemId, "itemId"));
+        const [view] = await reader.contactViews([requiredId(contactId, "contactId")]);
+        if (!view) throw new PlanV2Error("REFERENCE_NOT_FOUND", "Contact not found.");
+        return { contact: view, plan: current, type: item };
+      });
+      // 站内结构化请求要等收件箱（R13 / R14）的面谈请求接口；在那之前一律只出草稿，绝不显示「已发送」。
+      return { draft: proposalDraftText({ contactName: contact.name, goal: plan.goalText, language, questions: type.personType.questions, slots, typeLabel: type.shortLabel }), kind: "draft", requestId: null };
+    },
+
+    async introDraft({ planId, itemId, viaContactId, language }) {
+      return repository.read(scope, async (reader) => {
+        const plan = await requireActivePlan(reader, requiredId(planId, "planId"));
+        const type = await requireType(reader, plan, requiredId(itemId, "itemId"));
+        const route = type.personType.introRoutes.find((item) => item.viaContactId === viaContactId);
+        if (!route) throw new PlanV2Error("REFERENCE_NOT_FOUND", "Introduction route not found.");
+        const [via] = await reader.contactViews([viaContactId]);
+        if (!via) throw new PlanV2Error("REFERENCE_NOT_FOUND", "Contact not found.");
+        return { viaName: via.name, ...introDraftText({ goal: plan.goalText, language, roleSituation: type.roleSituation, typeLabel: type.shortLabel, viaName: via.name, why: route.why }) };
+      });
+    },
+
+    async pending(view = {}) {
+      const events = await loadEvents();
+      return repository.read(scope, async (reader) => {
+        const items: PlanPendingItem[] = [];
+        for (const plan of await reader.activePlans()) items.push(...pendingItems(await overviewInput(reader, plan, events, view), now()));
+        return items;
+      });
+    },
+
+    async decidePending({ id, decision, answered, idempotencyKey }) {
+      const pendingId = requiredId(id, "id");
+      if (pendingId.startsWith("candidate:")) {
+        const result = await this.decideCandidateById({ candidateId: pendingId.slice("candidate:".length), decision });
+        if (!result) throw new PlanV2Error("PENDING_NOT_FOUND", "Pending item not found.");
+        return { id: pendingId, replayed: result.replayed, status: result.status };
+      }
+      if (pendingId.startsWith("step:")) {
+        const [, planId, ...rest] = pendingId.split(":");
+        const stepKey = rest.join(":");
+        if (decision === "accept") {
+          await this.setStepCompleted({ completed: true, idempotencyKey, planId: planId!, stepKey });
+          return { id: pendingId, replayed: false, status: "accepted" };
+        }
+        return repository.transact(scope, async (tx) => {
+          const plan = await requireActivePlan(tx, planId!);
+          const result = await command<Record<string, unknown>>(tx, { body: { pendingId }, key: idempotencyKey, kind: "pending_dismiss", planId: plan.id }, async () => {
+            await tx.insertLog(logEntry({ body: "", event: "pending_dismissed", idempotencyKey: `pending:${pendingId}:${(await tx.log(plan.id)).length}`, itemId: null, linkedContactIds: [], linkedEventId: null, payload: { kind: "step_suggestion", pendingId, stepKey }, planId: plan.id }));
+            return { outcome: "applied" as const, response: { id: pendingId, status: "dismissed" } };
+          });
+          return result as unknown as PlanPendingDecisionResult;
+        });
+      }
+      // memo 计分提议：确认才计分（basis memo）；手动勾选卡要 ≥2 问。
+      const located = await repository.read(scope, async (reader) => {
+        for (const plan of await reader.activePlans()) {
+          const entry = (await reader.log(plan.id)).find((item) => item.id === pendingId && item.event === "memo_coverage_proposed");
+          if (entry) return { entry, plan };
+        }
+        return null;
+      });
+      if (!located) throw new PlanV2Error("PENDING_NOT_FOUND", "Pending item not found.");
+      const contactId = String(located.entry.payload.contactId ?? "");
+      const itemId = located.entry.itemId ?? "";
+      let award: PlanAwardResult | null = null;
+      if (decision === "accept") {
+        const covered = located.entry.payload.manual === true ? [...new Set(answered ?? [])] : (located.entry.payload.answered as number[]) ?? [];
+        if (covered.length < PLAN_MEMO_COVERAGE_MIN) throw new PlanV2Error("INVALID_INPUT", "At least two of the three questions must be covered.");
+        award = await awardWith({ basis: "memo", contactId, idempotencyKey: `memo:${pendingId}`, itemId, planId: located.plan.id });
+      }
+      return repository.transact(scope, async (tx) => {
+        const result = await command<Record<string, unknown>>(tx, { body: { decision, pendingId }, key: idempotencyKey, kind: "pending_decision", planId: located.plan.id }, async () => {
+          await tx.insertLog(logEntry({ body: "", event: decision === "accept" ? "pending_accepted" : "pending_dismissed", idempotencyKey: `pending:${pendingId}`, itemId, linkedContactIds: [], linkedEventId: null, payload: { kind: "memo_coverage", pendingId }, planId: located.plan.id }));
+          return { outcome: "applied" as const, response: { award, id: pendingId, status: decision === "accept" ? "accepted" : "dismissed" } };
+        });
+        return result as unknown as PlanPendingDecisionResult;
+      });
+    },
+
+    async contactFit(contactId) {
+      const id = requiredId(contactId, "contactId");
+      return repository.read(scope, async (reader) => {
+        const fits: PlanContactFit["fits"][number][] = [];
+        for (const plan of await reader.activePlans()) {
+          const types = await reader.typeItems(plan.id);
+          const awards = activeAwards(await reader.log(plan.id));
+          const candidates = await reader.matchCandidates(types.map((type) => type.id));
+          for (const type of types) {
+            const talked = awards.some((entry) => entry.award.typeKey === type.personType.key && entry.award.contactId === id);
+            const linked = type.contactLinks.some((link) => link.contactId === id);
+            const candidate = candidates.some((item) => item.needItemId === type.id && item.contactId === id && item.status === "pending");
+            const status = talked ? "talked" : linked ? "linked" : candidate ? "candidate" : null;
+            if (status) fits.push({ emoji: type.personType.emoji, goal: plan.goalText, itemId: type.id, planId: plan.id, shortLabel: type.shortLabel, status });
+          }
+        }
+        return { contactId: id, fits };
+      });
+    },
+
+    async proposeMemoCoverage({ contactId, memoId, coverage, manual }) {
+      const id = requiredId(contactId, "contactId");
+      return repository.transact(scope, async (tx) => {
+        let proposed = 0;
+        for (const plan of await tx.activePlans()) {
+          const types = await tx.typeItems(plan.id);
+          const log = await tx.log(plan.id);
+          const awards = activeAwards(log);
+          for (const item of coverage) {
+            const type = types.find((candidate) => candidate.id === item.itemId);
+            if (!type || type.skippedAt) continue;
+            if (awards.some((entry) => entry.award.typeKey === type.personType.key && entry.award.contactId === id)) continue;
+            const answered = [...new Set(item.answered.filter((index) => index >= 0 && index <= 2))];
+            if (!manual && answered.length < PLAN_MEMO_COVERAGE_MIN) continue;
+            const key = `memo-coverage:${memoId}:${type.id}`;
+            if (log.some((entry) => entry.idempotencyKey === key)) continue;
+            await tx.insertLog(logEntry({ author: "system", body: "", event: "memo_coverage_proposed", idempotencyKey: key, itemId: type.id, linkedContactIds: [], linkedEventId: null, payload: { answered, contactId: id, manual: manual === true, memoId }, planId: plan.id }));
+            proposed += 1;
+          }
+        }
+        return proposed;
       });
     },
 

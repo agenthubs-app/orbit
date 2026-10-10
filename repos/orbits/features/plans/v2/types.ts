@@ -46,6 +46,10 @@ export const PLAN_V2_LOG_EVENTS = [
   "plan_revised",
   "review_used",
   "goal_achieved",
+  // R24：面谈メモ判定的计分提议（确认卡）、待确认项的确认 / 驳回。
+  "memo_coverage_proposed",
+  "pending_accepted",
+  "pending_dismissed",
 ] as const;
 export type PlanV2LogEvent = (typeof PLAN_V2_LOG_EVENTS)[number];
 
@@ -197,6 +201,12 @@ export interface PlanV2Reader {
   /** 某时刻之后新建的生成流程数（每月新目标 10 个）。 */
   countIntakesSince(sinceIso: string): Promise<number>;
   draft(draftId: string): Promise<PlanDraftRow | null>;
+  /** R24：这些人物类型的匹配候补（待确认与已决定）。 */
+  matchCandidates(itemIds: readonly string[]): Promise<PlanV2MatchCandidate[]>;
+  /** R24：本人的联系人（名字、公司、职位、最后互动；他人的、已删除的不返回）。 */
+  contactViews(contactIds: readonly string[]): Promise<PlanV2ContactView[]>;
+  /** R24：按姓名找本人的联系人（线下聊过「この人ですか？」）。 */
+  findContactsByName(name: string, limit: number): Promise<PlanV2ContactView[]>;
   maxVersion(): Promise<number>;
   /** 本人生效中的 v1 计划 id（没有为 null）。 */
   activeV1PlanId(): Promise<string | null>;
@@ -217,6 +227,8 @@ export interface PlanV2Transaction extends PlanV2Reader {
   updateIntake(intake: PlanIntakeRow): Promise<void>;
   insertDraft(draft: PlanDraftRow): Promise<void>;
   updateDraft(draft: PlanDraftRow): Promise<void>;
+  /** R24：候补 CAS（只有 pending 能变）；返回变更后的候补，已决定的返回现状，不存在为 null。 */
+  decideMatchCandidate(candidateId: string, status: "accepted" | "dismissed", at: string): Promise<PlanV2MatchCandidate | null>;
 }
 
 export interface PlanV2Repository {
@@ -311,4 +323,29 @@ export interface PlanDraftRow {
   createdAt: string;
   updatedAt: string;
   confirmedAt: string | null;
+}
+
+/* ------------------------------------------------------------------ */
+/* R24 候补与联系人投影                                                  */
+/* ------------------------------------------------------------------ */
+
+export interface PlanV2MatchCandidate {
+  id: string;
+  needItemId: string;
+  contactId: string;
+  tier: "rule" | "ai";
+  strength: "strong" | "candidate";
+  reason: string | null;
+  status: "pending" | "accepted" | "dismissed";
+  createdAt: string;
+}
+
+export interface PlanV2ContactView {
+  id: string;
+  name: string;
+  organization: string | null;
+  role: string | null;
+  lastInteractionAt: string | null;
+  /** 对方也是 Orbit 用户（联系人关联了账户）。 */
+  isOrbitUser: boolean;
 }
