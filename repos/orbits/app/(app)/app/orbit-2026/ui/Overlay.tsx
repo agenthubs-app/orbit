@@ -45,14 +45,14 @@ function DialogFrame({ onClose, closeOnScrim = true, labelledBy, describedBy, cl
   );
 }
 
-// kit .wmodal: centred dialog 420 / 480 / 560, radius 28, padding 24; `top` sits 96
+// kit .wmodal: centred dialog 420 / 480 / 560 (680 for the ⌘K panel), radius 28, padding 24; `top` sits 96
 // from the top (⌘K); `form` uses --bg so cards inside keep their layer.
 export function Modal({ open, onClose, title, description, size = 420, top = false, form = false, actions, hint, children }: {
   open: boolean;
   onClose: () => void;
   title: string;
   description?: string;
-  size?: 420 | 480 | 560;
+  size?: 420 | 480 | 560 | 680;
   top?: boolean;
   form?: boolean;
   actions?: ReactNode;
@@ -132,15 +132,18 @@ export function Drawer({ open, onClose, title, size = "lg", children, footer }: 
   );
 }
 
+// Below the anchor when it fits, otherwise above it (an anchor near the bottom —
+// the avatar at the foot of the left rail — opens upwards).
 function useAnchorPosition(anchor: RefObject<HTMLElement | null>, open: boolean, width: number) {
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const [position, setPosition] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
       const box = anchor.current?.getBoundingClientRect();
       if (!box) return;
       const left = Math.max(8, Math.min(box.left, window.innerWidth - width - 8));
-      setPosition({ top: box.bottom + 8, left });
+      const below = window.innerHeight - box.bottom;
+      setPosition(below >= 320 || below >= box.top ? { top: box.bottom + 8, left } : { bottom: window.innerHeight - box.top + 8, left });
     };
     place();
     window.addEventListener("resize", place);
@@ -149,6 +152,9 @@ function useAnchorPosition(anchor: RefObject<HTMLElement | null>, open: boolean,
   }, [anchor, open, width]);
   return position;
 }
+
+const placed = (position: { top?: number; bottom?: number; left: number } | null) =>
+  position ? { left: position.left, ...(position.bottom !== undefined ? { bottom: position.bottom } : { top: position.top }) } : { top: -9999, left: -9999 };
 
 function useDismiss(open: boolean, isTop: () => boolean, panel: RefObject<HTMLElement | null>, anchor: RefObject<HTMLElement | null>, onClose: () => void) {
   const close = useRef(onClose);
@@ -183,10 +189,20 @@ export function Popover({ open, onClose, anchor, label, width = 360, children }:
   const clamped = Math.max(340, Math.min(440, width));
   const position = useAnchorPosition(anchor, open, clamped);
   useDismiss(open, isTop, panel, anchor, onClose);
+  // Keyboard users land inside (first control, else the panel); closing returns to the anchor (review M2).
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => {
+      const first = panel.current?.querySelector<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])');
+      (first ?? panel.current)?.focus();
+    });
+    const opener = anchor.current;
+    return () => { cancelAnimationFrame(frame); if (panel.current?.contains(document.activeElement) || document.activeElement === document.body) opener?.focus(); };
+  }, [open, anchor]);
   if (!open) return null;
   return (
     <Portal>
-      <div ref={panel} role="dialog" aria-label={label} className={styles.popover} style={{ width: clamped, top: position?.top ?? -9999, left: position?.left ?? -9999 }}>
+      <div ref={panel} role="dialog" aria-label={label} tabIndex={-1} className={styles.popover} style={{ width: clamped, ...placed(position) }}>
         {children}
       </div>
     </Portal>
@@ -217,10 +233,11 @@ export function ContextMenu({ open, onClose, anchor, label, items }: {
     const index = nodes.indexOf(document.activeElement as HTMLElement);
     const next = event.key === "ArrowDown" ? (index + 1) % nodes.length : event.key === "ArrowUp" ? (index - 1 + nodes.length) % nodes.length : event.key === "Home" ? 0 : event.key === "End" ? nodes.length - 1 : -1;
     if (next >= 0) { event.preventDefault(); nodes[next]?.focus(); }
+    else if (event.key === "Tab") onClose();
   };
   return (
     <Portal>
-      <div ref={panel} role="menu" aria-label={label} className={styles.menu} style={{ top: position?.top ?? -9999, left: position?.left ?? -9999 }} onKeyDown={move}>
+      <div ref={panel} role="menu" aria-label={label} className={styles.menu} style={placed(position)} onKeyDown={move}>
         {items.map((item) => (
           <button key={item.key} type="button" role="menuitem" tabIndex={-1} className={`btn ${styles.menuItem} ${item.destructive ? styles.menuDanger : ""}`}
             onClick={() => { onClose(); item.onSelect(); anchor.current?.focus(); }}>

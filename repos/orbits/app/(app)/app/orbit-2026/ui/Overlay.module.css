@@ -28,7 +28,8 @@
 .w420 { width: min(420px, calc(100vw - 32px)); }
 .w480 { width: min(480px, calc(100vw - 32px)); }
 .w560 { width: min(560px, calc(100vw - 32px)); }
-.top { top: 96px; transform: translateX(-50%); animation-name: topIn; }
+.w680 { width: min(680px, calc(100vw - 32px)); }
+.top { top: 96px; max-height: calc(100vh - 120px); transform: translateX(-50%); animation-name: topIn; }
 .form { background: var(--bg); }
 .modalHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .modalTitle { font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: var(--lh-title); }
@@ -91,9 +92,11 @@
 .drawerBody { flex: 1; overflow: auto; padding: 0 var(--space-22) var(--space-22); }
 .drawerFooter { padding: var(--space-14) var(--space-22); border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
 
+/* A popover or menu can open from inside a dialog or drawer: it shares the dialog
+   layer and, rendered later in the host, sits above it (review M1). */
 .popover {
   position: fixed;
-  z-index: var(--z-dropdown);
+  z-index: var(--z-modal);
   background: var(--surface);
   color: var(--ink);
   border-radius: var(--r-card-web);
@@ -105,7 +108,7 @@
 
 .menu {
   position: fixed;
-  z-index: var(--z-dropdown);
+  z-index: var(--z-modal);
   width: 200px;
   background: var(--surface);
   border-radius: var(--r-menu);

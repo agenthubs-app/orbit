@@ -1,4 +1,4 @@
-import { build } from "esbuild";
+import { build, type Plugin } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
 
 // R06: renders the real orbit-2026 components in Chromium. CSS Modules go through
@@ -7,7 +7,17 @@ import { chromium, type Browser, type Page } from "playwright";
 // the root layout does. `entry` is a TSX module that renders into #root.
 const root = process.cwd();
 
-export async function bundle(entry: string): Promise<{ js: string; css: string }> {
+/** `stubs`: module specifier pattern → replacement source (for next/navigation, next-auth …). */
+export async function bundle(entry: string, stubs: Record<string, string> = {}): Promise<{ js: string; css: string }> {
+  const stubPlugin: Plugin = {
+    name: "orbit-2026-stubs",
+    setup(plugin) {
+      Object.entries(stubs).forEach(([pattern, source], index) => {
+        plugin.onResolve({ filter: new RegExp(pattern) }, () => ({ path: String(index), namespace: "orbit-2026-stub" }));
+        plugin.onLoad({ filter: new RegExp(`^${index}$`), namespace: "orbit-2026-stub" }, () => ({ contents: source, loader: "tsx", resolveDir: root }));
+      });
+    },
+  };
   const result = await build({
     stdin: { contents: entry, loader: "tsx", resolveDir: root },
     bundle: true,
@@ -18,6 +28,7 @@ export async function bundle(entry: string): Promise<{ js: string; css: string }
     jsx: "automatic",
     loader: { ".module.css": "local-css", ".css": "css" },
     define: { "process.env.NODE_ENV": '"test"' },
+    plugins: [stubPlugin],
   });
   const js = result.outputFiles.find((file) => file.path.endsWith(".js"))!.text;
   const css = result.outputFiles.find((file) => file.path.endsWith(".css"))?.text ?? "";

@@ -98,4 +98,4 @@
 :global([data-motion="reduce"]) .icon { transition: opacity var(--dur-press); }
 :global([data-motion="reduce"]) .button:active:not(:disabled),
 :global([data-motion="reduce"]) .icon:active { transform: none; }
-:global([data-motion="reduce"]) .spinner { animation: none; }
+:global([data-motion="reduce"]) .spinner { animation: none; border-right-color: currentColor; opacity: 0.6; }

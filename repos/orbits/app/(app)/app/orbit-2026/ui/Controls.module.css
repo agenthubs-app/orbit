@@ -101,7 +101,8 @@
 .foptOn > svg { color: var(--plum-700); }
 .cats { display: flex; gap: 6px; flex-wrap: wrap; }
 .catOn { background: var(--ink); color: var(--bg); }
-.count { font-weight: var(--fw-medium); opacity: 0.75; font-family: var(--font-num); font-size: var(--fs-caption); }
+.count { font-weight: var(--fw-medium); color: var(--ink-3-text); font-family: var(--font-num); font-size: var(--fs-caption); }
+.catOn .count, .foptOn .count { color: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   .knob, .circleMark { transition: none; }

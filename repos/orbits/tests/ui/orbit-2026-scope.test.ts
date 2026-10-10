@@ -16,10 +16,24 @@ test("new component files import no legacy style modules and never render the le
     for (const entry of readdirSync(root, { recursive: true, withFileTypes: true })) {
       if (!entry.isFile() || !/\.(tsx?|css)$/.test(entry.name)) continue;
       const path = join(entry.parentPath, entry.name);
-      const source = readFileSync(path, "utf8");
+      const source = readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gmu, "");
       for (const match of source.matchAll(/(?:import|from)\s+["']([^"']+)["']/g)) if (LEGACY_IMPORTS.test(match[1]!)) offenders.push(`${path}: ${match[1]}`);
       if (/data-orbit-real-page/.test(source) && !path.endsWith("Scope.tsx")) offenders.push(`${path}: data-orbit-real-page`);
     }
+  }
+  assert.deepEqual(offenders, []);
+});
+
+// Review M4: a legacy page (a file that renders the old scope) must not render the
+// new scope inside it; the shell keeps them siblings (R07).
+test("no legacy page file renders Orbit2026Scope", () => {
+  const offenders: string[] = [];
+  for (const entry of readdirSync("app", { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile() || !/\.tsx$/.test(entry.name)) continue;
+    const path = join(entry.parentPath, entry.name);
+    if (path.includes("orbit-2026/") || path.includes("showcase/")) continue;
+    const source = readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gmu, "");
+    if (/data-orbit-real-page/u.test(source) && /<Orbit2026Scope\b/u.test(source)) offenders.push(path);
   }
   assert.deepEqual(offenders, []);
 });

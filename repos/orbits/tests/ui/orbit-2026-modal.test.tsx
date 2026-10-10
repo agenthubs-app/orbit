@@ -93,6 +93,9 @@ test("popover and context menu: Escape and outside clicks close them; the menu m
   const page = await showcase(t);
   await page.getByRole("button", { name: "popover" }).click();
   await page.getByRole("dialog", { name: "popover" }).waitFor();
+  await page.waitForTimeout(50);
+  assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("aria-label")), "popover", "keyboard focus moves into the popover (review M2)");
+  assert.equal(await page.getByRole("dialog", { name: "popover" }).evaluate((el) => getComputedStyle(el).zIndex), "400", "popovers share the dialog layer, so one opened in a dialog is on top (review M1)");
   await page.keyboard.press("Escape");
   await page.getByRole("dialog", { name: "popover" }).waitFor({ state: "detached" });
   await page.getByRole("button", { name: "popover" }).click();

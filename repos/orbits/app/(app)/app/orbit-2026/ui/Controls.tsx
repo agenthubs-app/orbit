@@ -81,11 +81,21 @@ export function FilterOption({ label, selected, count, onToggle }: { label: stri
 }
 
 // kit .cat: single-choice category tabs, ink fill when chosen.
+// Arrow keys move the choice like any radio group (review m3).
 export function CategoryTabs<Key extends string>({ options, value, onChange, label }: { options: { key: Key; label: string; count?: number }[]; value: Key; onChange: (key: Key) => void; label: string }) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const move = (event: KeyboardEvent, index: number) => {
+    const delta = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
+    if (!delta) return;
+    event.preventDefault();
+    const target = (index + delta + options.length) % options.length;
+    onChange(options[target]!.key);
+    refs.current[target]?.focus();
+  };
   return (
     <div role="radiogroup" aria-label={label} className={styles.cats}>
-      {options.map((option) => (
-        <button key={option.key} type="button" role="radio" aria-checked={option.key === value} className={`btn ${styles.cat} ${option.key === value ? styles.catOn : ""}`} onClick={() => onChange(option.key)}>
+      {options.map((option, index) => (
+        <button key={option.key} ref={(node) => { refs.current[index] = node; }} type="button" role="radio" aria-checked={option.key === value} tabIndex={option.key === value ? 0 : -1} onKeyDown={(event) => move(event, index)} className={`btn ${styles.cat} ${option.key === value ? styles.catOn : ""}`} onClick={() => onChange(option.key)}>
           {option.label}
           {option.count !== undefined ? <small className={styles.count}>{option.count}</small> : null}
         </button>

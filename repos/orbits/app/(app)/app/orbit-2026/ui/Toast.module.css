@@ -77,6 +77,7 @@
   transform-origin: left;
   animation: countdown 5s linear both;
 }
+.toast[data-paused] .countdown { animation-play-state: paused; }
 @keyframes countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes toastUp { from { opacity: 0; transform: translateY(16px) scale(0.97); } }
 @keyframes fadeIn { from { opacity: 0; } }

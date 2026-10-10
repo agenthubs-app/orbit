@@ -57,14 +57,20 @@ function ToastView({ toast, onClose }: { toast: ToastState; onClose: () => void 
   const copy = useStandardCopy();
   const close = useRef(onClose);
   close.current = onClose;
-  // The countdown starts once per toast; other toasts coming and going do not reset it.
+  // The countdown starts once per toast; other toasts coming and going do not reset
+  // it. Hovering or focusing the toast pauses it (WCAG 2.2.1), so 元に戻す stays
+  // reachable from the keyboard (review m2).
+  const [paused, setPaused] = useState(false);
+  const left = useRef(toast.autoDismissMs ?? 0);
   useEffect(() => {
-    if (toast.autoDismissMs === null) return;
-    const timer = setTimeout(() => close.current(), toast.autoDismissMs);
-    return () => clearTimeout(timer);
-  }, [toast.id, toast.autoDismissMs]);
+    if (toast.autoDismissMs === null || paused) return;
+    const started = Date.now();
+    const timer = setTimeout(() => close.current(), left.current);
+    return () => { clearTimeout(timer); left.current = Math.max(0, left.current - (Date.now() - started)); };
+  }, [toast.id, toast.autoDismissMs, paused]);
   return (
-    <div role={toast.kind === "error" ? "alert" : "status"} className={`${styles.toast} ${styles[toast.kind]} ${toast.keep ? styles.keep : ""}`} data-kind={toast.kind}>
+    <div role={toast.kind === "error" ? "alert" : "status"} className={`${styles.toast} ${styles[toast.kind]} ${toast.keep ? styles.keep : ""}`} data-kind={toast.kind} data-paused={paused || undefined}
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
       <span className={styles.mark} aria-hidden><Icon name={toast.kind === "error" ? "alert" : toast.kind === "success" ? "check" : "info"} size={16} /></span>
       <span className={styles.message}>
         {toast.message}

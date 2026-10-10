@@ -52,15 +52,18 @@ test("at most three on screen, bottom-right, newest last; success leaves after 5
   await page.getByRole("button", { name: "owner" }).waitFor();
   await page.evaluate(() => { const w = window as any; w.show("error", "E1"); w.show("success", "S1"); w.show("success", "S2"); w.show("info", "I1"); });
   const toasts = page.locator("[data-kind]");
-  assert.deepEqual(await toasts.allTextContents().then((texts) => texts.map((text) => text.replace(/閉じる|元に戻す/g, "").trim())), ["S1", "S2", "I1"]);
+  const texts = () => toasts.allTextContents().then((all) => all.map((text) => text.replace(/閉じる|元に戻す/g, "").trim()));
+  // The 4th pushed out the oldest one that counts down; the error stays (review m1).
+  assert.deepEqual(await texts(), ["E1", "S2", "I1"]);
   const stack = (await toasts.first().evaluate((el) => el.parentElement!.getBoundingClientRect().toJSON())) as DOMRect;
   assert.equal(Math.round(1440 - stack.right), 24);
   assert.equal(Math.round(stack.width), 420);
   await page.evaluate(() => (window as any).show("error", "E2"));
+  assert.deepEqual(await texts(), ["E1", "I1", "E2"]);
   await page.clock.runFor(5200);
-  assert.deepEqual(await toasts.allTextContents().then((texts) => texts.map((text) => text.replace(/閉じる/g, "").trim())), ["E2"]);
-  assert.equal(await page.locator('[data-kind="error"]').getAttribute("role"), "alert");
-  await page.getByRole("button", { name: "閉じる" }).click();
+  assert.deepEqual(await texts(), ["E1", "E2"]);
+  assert.equal(await page.locator('[data-kind="error"]').first().getAttribute("role"), "alert");
+  while (await page.getByRole("button", { name: "閉じる" }).count()) await page.getByRole("button", { name: "閉じる" }).first().click();
   assert.equal(await toasts.count(), 0);
 });
 
@@ -77,6 +80,18 @@ test("the undo bar does not count down; undo runs once; a gone owner's undo is r
   await page.evaluate(`window.show("success", "完了にしました", { undo: () => window.undone.push("owner") })`);
   await page.evaluate(() => (window as any).unmountOwner());
   assert.equal(await page.getByRole("button", { name: "元に戻す" }).count(), 0, "the undo of an unmounted component is gone");
+});
+
+test("hovering or focusing a toast pauses its countdown (review m2)", async (t) => {
+  const page = await open(browser, code);
+  t.after(async () => { await page.close(); });
+  await page.clock.install();
+  await page.getByRole("button", { name: "owner" }).waitFor();
+  await page.evaluate(`window.show("success", "完了にしました", { undo: () => window.undone.push("late") })`);
+  await page.locator("[data-kind]").hover();
+  await page.clock.runFor(8000);
+  await page.getByRole("button", { name: "元に戻す" }).click();
+  assert.deepEqual(await page.evaluate(() => (window as any).undone), ["late"]);
 });
 
 test("dark: still a dark capsule (raised surface, light text) and readable", async (t) => {

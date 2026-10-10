@@ -16,7 +16,7 @@ export function ProgressBar({ value, thin = false, tone = "plum", label }: { val
 }
 
 // kit .ring: segments drawn on a circle, a centred label.
-export function RingChart({ size = 96, stroke = 10, segments, center, label }: { size?: number; stroke?: number; segments: { value: number; color: string }[]; center?: string; label: string }) {
+export function RingChart({ size = 96, stroke = 10, segments, center, label }: { size?: number; stroke?: number; segments: { value: number; color: `var(--${string})` }[]; center?: string; label: string }) {
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;

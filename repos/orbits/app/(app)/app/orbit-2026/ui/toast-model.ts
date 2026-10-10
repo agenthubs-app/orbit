@@ -1,5 +1,6 @@
 // R06 Web Toast rules (01-system ① / kit .toast + .toast-stack), as a pure model:
-//   - up to 3 on screen, newest at the bottom; a 4th pushes the oldest out;
+//   - up to 3 on screen, newest at the bottom; a 4th pushes out the oldest one that
+//     counts down (errors and undo bars stay while any other can go);
 //   - success / info leave after 5 s (the countdown line); errors stay until closed;
 //   - `undo` adds 元に戻す; `keep` makes an undo bar: no countdown, stays until closed;
 //   - one optional action instead of undo (再試行 on an error, 開く on info);
@@ -29,8 +30,14 @@ export function createToast(input: ToastInput, owner: number): ToastState {
   };
 }
 
+/** A 4th pushes out the oldest that would leave anyway; an error is dropped only when all are errors (review m1). */
 export function pushToast(stack: readonly ToastState[], toast: ToastState): ToastState[] {
-  return [...stack, toast].slice(-TOAST_STACK_MAX);
+  const next = [...stack, toast];
+  while (next.length > TOAST_STACK_MAX) {
+    const passing = next.findIndex((item) => item.autoDismissMs !== null && item !== toast);
+    next.splice(passing >= 0 ? passing : 0, 1);
+  }
+  return next;
 }
 
 export function removeToast(stack: readonly ToastState[], id: number): ToastState[] {
