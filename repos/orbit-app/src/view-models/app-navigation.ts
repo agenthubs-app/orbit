@@ -1,4 +1,5 @@
 import { currentTranslator, type OrbitTranslator } from "../i18n/messages";
+import { taskListHref } from "./task-list-scope";
 
 // R05 NAV-V3 (RD-02): the tab bar is ホーム / 人脈 / iOrbit / イベント / Task.
 // iOrbit is a full-screen page (`/ai`) without the bar, so it is not a MainTab.
@@ -43,8 +44,9 @@ export function legacyTaskRedirect(pathname: string, params: Readonly<Record<str
   switch (pathname) {
     case "/schedule": return taskHref("calendar", { date: params.date });
     case "/today": return taskHref("todo");
-    case "/tasks": return taskHref("todo", { scope: params.scope, view: params.view });
-    case "/followups": return taskHref("todo", { scope: "relationship", view: params.view });
+    // The list selection is normalised the same way as everywhere else (taskListHref).
+    case "/tasks": return taskListHref({ scope: params.scope, view: params.view });
+    case "/followups": return taskListHref({ scope: "relationship", view: params.view });
     case "/notes": return params.contactId ? null : taskHref("memo");
     default: return null;
   }

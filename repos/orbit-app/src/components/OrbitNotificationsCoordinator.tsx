@@ -8,6 +8,7 @@ import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { serverReachability } from "../api/server-reachability";
 import { useOrbitApiClient } from "../hooks/useOrbitApiClient";
 import { useSyncCoordinatorSession } from "../hooks/useSyncedCollection";
+import { isTabPageHref, openMainTab } from "./shell-navigation";
 import { startOutboxUploadTriggers, syncThenNavigate } from "../data/sync/outbox-upload-triggers";
 import {
   createNotificationResponseGuard,
@@ -50,7 +51,8 @@ function openNotification(
   if (!session) return;
   void syncThenNavigate(session, () => {
     if (deliveryId) router.push({ pathname: "/inbox", params: { deliveryId } } as Href);
-    else if (href) router.push(href as Href);
+    // R05 review M1: a tab page (Task) goes to the bottom of the stack, not on top.
+    else if (href) { if (isTabPageHref(href)) openMainTab(router, href); else router.push(href as Href); }
   });
 }
 

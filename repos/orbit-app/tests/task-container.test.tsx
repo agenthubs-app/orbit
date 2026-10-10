@@ -22,7 +22,7 @@ import React, { forwardRef, useImperativeHandle, useRef } from "react";
 import { Text, TextInput } from "react-native";
 import { AppScreen } from "${join(root, "src/components/AppScreen")}";
 ${name === "TaskQuickAdd" ? "" : `export function ${name}() {
-  return <AppScreen title="${name} title" headerActions={<Text>${name} header action</Text>}><Text>${name} page</Text></AppScreen>;
+  return <AppScreen title="${name} title" headerActions={<Text>${name} header action</Text>}><Text>${name} page</Text>{Array.from({ length: ${name === "TasksScreen" ? 60 : 0} }, (_, i) => <Text key={i} style={{ height: 40 }}>${name} row {i}</Text>)}</AppScreen>;
 }`}
 export const TaskQuickAdd = forwardRef(function TaskQuickAdd(_props, ref) {
   const input = useRef(null);
@@ -47,7 +47,9 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { TaskScreen } from "./src/screens/task/TaskScreen";
 import { ToastProvider, UiPortalHost } from "./src/components/ui";
-createRoot(document.getElementById("root")).render(<ToastProvider hasTabBar><UiPortalHost><TaskScreen /></UiPortalHost></ToastProvider>);
+// window.remount(): the Task tab mounted again (a tab switch replaces it).
+function Root() { const [key, setKey] = React.useState(0); window.remount = () => setKey((value) => value + 1); return <TaskScreen key={key} />; }
+createRoot(document.getElementById("root")).render(<ToastProvider hasTabBar><UiPortalHost><Root /></UiPortalHost></ToastProvider>);
 `, loader: "tsx", resolveDir: root },
     bundle: true, write: false, format: "iife", jsx: "automatic",
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"ja"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
@@ -113,6 +115,26 @@ test("tapping a segment switches the page, keeps the URL in step and keeps visit
   assert.deepEqual(await navigation(page), [{ method: "setParams", params: { seg: "todo" } }]);
 });
 
+test("two taps in a row are never pulled back while the URL catches up (review M2)", async (t) => {
+  const page = await open(t, { seg: "todo" }, 390, 600);
+  // A plain script: both taps happen in the same task, before the first URL write lands.
+  await page.evaluate(`(() => {
+    const seen = [];
+    window.seen = seen;
+    const read = () => { const label = document.querySelector('[role="tab"][aria-selected="true"]')?.textContent ?? ""; if (seen[seen.length - 1] !== label) seen.push(label); };
+    new MutationObserver(read).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["aria-selected"] });
+    const tab = (name) => [...document.querySelectorAll('[role="tab"]')].find((el) => el.textContent === name);
+    tab("カレンダー").click();
+    tab("メモ").click();
+  })()`);
+  await page.waitForTimeout(1600);
+  // Never back to カレンダー once メモ showed (the old code went メモ → カレンダー → メモ).
+  const seen: string[] = await page.evaluate(() => (window as any).seen);
+  assert.equal(seen.at(-1), "メモ");
+  assert.equal(seen.slice(seen.indexOf("メモ")).includes("カレンダー"), false, JSON.stringify(seen));
+  assert.equal(await selected(page), "メモ");
+});
+
 test("tapping segments in a row is not pulled back by the URL catching up a render later", async (t) => {
   const page = await open(t, { seg: "todo" }, 390, 150);
   await page.getByRole("tab", { name: "プラン" }).click();
@@ -151,6 +173,25 @@ test("a later link while Task is open moves the segment", async (t) => {
   assert.equal(await selected(page), "メモ");
 });
 
+test("a Task segment mounted again comes back at the same scroll position (review m2)", async (t) => {
+  const page = await open(t, { seg: "todo" });
+  await page.getByText("TasksScreen row 59").waitFor({ state: "attached" });
+  const scrollerOf = () => page.evaluate(() => {
+    const node = [...document.querySelectorAll<HTMLElement>("div")].find((el) => el.scrollHeight > el.clientHeight + 10 && /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.textContent?.includes("TasksScreen row 59"))!;
+    return node.scrollTop;
+  });
+  await page.evaluate(() => {
+    const node = [...document.querySelectorAll<HTMLElement>("div")].find((el) => el.scrollHeight > el.clientHeight + 10 && /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.textContent?.includes("TasksScreen row 59"))!;
+    node.scrollTop = 800; node.dispatchEvent(new Event("scroll"));
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => (window as any).remount());
+  await page.getByText("TasksScreen row 59").waitFor({ state: "attached" });
+  await page.waitForTimeout(300);
+  assert.ok(Math.abs((await scrollerOf()) - 800) <= 2, String(await scrollerOf()));
+  assert.equal(await selected(page), "To-do");
+});
+
 test("320pt and 2× text: four segments stay inside the screen", async (t) => {
   const page = await open(t, { seg: "todo" }, 320);
   await page.addStyleTag({ content: '[role="tab"] [dir="auto"] { font-size: 25px !important; }' });
@@ -173,9 +214,15 @@ test("old addresses and notifications land on the matching segment", () => {
   // Links generated in shared code use the new address.
   assert.equal(taskListHref({ scope: "relationship" }), "/task?seg=todo&scope=relationship");
   assert.equal(taskListHref(), "/task?seg=todo");
-  // Reminder deep links scheduled with the old addresses open the Task segment.
+  // Reminder deep links scheduled with the old addresses open the Task segment;
+  // the new address keeps its segment and To-do's list selection (review M3).
   assert.equal(notificationHrefFromDeepLink("orbit://today"), "/task?seg=todo");
   assert.equal(notificationHrefFromDeepLink("/schedule"), "/task?seg=calendar");
+  assert.equal(notificationHrefFromDeepLink("/task?seg=todo"), "/task?seg=todo");
+  assert.equal(notificationHrefFromDeepLink("orbit://task?seg=memo"), "/task?seg=memo");
+  assert.equal(notificationHrefFromDeepLink("/task?seg=todo&scope=relationship&next=https://x.example"), "/task?seg=todo&scope=relationship");
+  assert.equal(notificationHrefFromDeepLink("/task?seg=bogus"), "/task");
+  assert.equal(notificationHrefFromDeepLink("/inbox?x=1"), null, "other addresses still take no query");
   assert.equal(notificationHrefFromDeepLink("/tasks/abc"), "/tasks/abc");
   assert.equal(notificationHrefFromDeepLink("/schedule/events/e1"), "/schedule/events/e1");
   // Detail pages go back to their segment.

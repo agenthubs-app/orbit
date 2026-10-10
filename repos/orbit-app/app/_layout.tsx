@@ -26,6 +26,7 @@ import { OrbitLocaleProvider } from "../src/i18n/OrbitLocaleProvider";
 import { ToastProvider, UiFeedbackHost, UiPortalHost } from "../src/components/ui";
 import { ShellTabBar } from "../src/components/OrbitTabBar";
 import { mainTabForPath } from "../src/view-models/app-navigation";
+import { useMobileViewport } from "../src/platform/use-mobile-viewport";
 import { useEffect, useRef } from "react";
 import {
   appPerformanceInput,
@@ -92,8 +93,10 @@ export function ErrorBoundary({
 // R05: the shell's one tab bar sits over the navigator, under overlays.
 function UiRoot({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  // The bar hides while the keyboard is up; the toast then drops to its no-bar place (R05 review m6).
+  const { keyboardVisible } = useMobileViewport();
   return (
-    <ToastProvider hasTabBar={mainTabForPath(pathname) !== null}>
+    <ToastProvider hasTabBar={mainTabForPath(pathname) !== null && !keyboardVisible}>
       <UiPortalHost>
         {children}
         <ShellTabBar />

@@ -47,6 +47,7 @@ export const useOrbitLocale = () => { observe(); return { language: state.langua
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useLocalSearchParams = () => ({});
 export const usePathname = () => "/events";
+export const useRootNavigationState = () => undefined;
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(href); } });
 export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 export const BlurView = () => null;

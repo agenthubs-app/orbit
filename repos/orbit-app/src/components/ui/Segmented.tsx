@@ -41,6 +41,9 @@ export function SwipeSegments<Key extends string>({ segments, value, onChange, a
   const { width } = useWindowDimensions();
   const pager = useRef<ScrollView>(null);
   const [pageWidth, setPageWidth] = useState(width);
+  // Each page gets the pager's height, so a page's own vertical scroll view is bounded
+  // (native stretches children of a horizontal scroll view; react-native-web does not).
+  const [pageHeight, setPageHeight] = useState<number | undefined>(undefined);
   const reduced = useReducedMotion();
   const index = Math.max(0, segments.findIndex((segment) => segment.key === value));
   const shown = useRef(index);
@@ -80,6 +83,7 @@ export function SwipeSegments<Key extends string>({ segments, value, onChange, a
         contentOffset={initialOffset}
         showsHorizontalScrollIndicator={false}
         style={{ flex: 1 }}
+        onLayout={(event) => setPageHeight(event.nativeEvent.layout.height || undefined)}
         onMomentumScrollEnd={(event) => {
           const landed = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
           const segment = segments[landed];
@@ -87,7 +91,7 @@ export function SwipeSegments<Key extends string>({ segments, value, onChange, a
           if (segment && segment.key !== value) onChange(segment.key);
         }}
       >
-        {segments.map((segment) => <View key={segment.key} style={{ width: pageWidth }}>{renderPage(segment.key)}</View>)}
+        {segments.map((segment) => <View key={segment.key} style={{ width: pageWidth, height: pageHeight }}>{renderPage(segment.key)}</View>)}
       </ScrollView>
     </View>
   );

@@ -109,6 +109,7 @@ export const useOrbitApiBaseUrl = () => { observe(); return { baseUrl: state.bas
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, cookieHeader: state.cookieHeader,
   accountId: state.actor || null, actorId: state.actor || null, user: state.actor ? { id: state.actor } : null }; };
 export const usePathname = () => "/home";
+export const useRootNavigationState = () => undefined;
 export const useGlobalSearchParams = () => ({});
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useFocusEffect = fn => { observe(); useEffect(() => state.focused ? fn() : undefined, [fn, state.focused]); };

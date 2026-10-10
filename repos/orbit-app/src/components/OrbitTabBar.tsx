@@ -1,4 +1,4 @@
-import { usePathname, useRouter, type Href } from "expo-router";
+import { usePathname, useRootNavigationState, useRouter, type Href } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createThemedStyles } from "../design/theme";
@@ -9,6 +9,7 @@ import { useStandardCopy } from "../i18n/standard-copy";
 import { useMobileViewport } from "../platform/use-mobile-viewport";
 import { GlassSurface } from "./ui/GlassSurface";
 import { TAB_BAR_HEIGHT } from "./shell-metrics";
+import { openMainTab, trackRootNavigationState } from "./shell-navigation";
 import { UiPressable } from "./ui/Pressable";
 import { UiText } from "./ui/Text";
 
@@ -45,7 +46,7 @@ export function OrbitTabBar({ active }: { active: MainTab }) {
             return (
               <UiPressable key={tab.id} accessibilityRole="tab" accessibilityLabel={label}
                 accessibilityState={{ selected }} aria-selected={selected}
-                onPress={() => tab.id === "iorbit" ? router.push("/ai" as Href) : selected ? undefined : router.replace(MAIN_TAB_PATHS[tab.id] as Href)}
+                onPress={() => tab.id === "iorbit" ? router.push("/ai" as Href) : selected ? undefined : openMainTab(router, MAIN_TAB_PATHS[tab.id])}
                 style={[styles.tab, selected && styles.selected]}>
                 <OrbitNavigationIcon name={tab.id} color={selected ? styles.labelSelected.color : styles.label.color} />
                 {/* One line at a fixed size like iOS tab bars; VoiceOver reads the full label. */}
@@ -62,6 +63,7 @@ export function OrbitTabBar({ active }: { active: MainTab }) {
 
 /** The one tab bar: mounted once by the root layout, shown only on the four tab pages. */
 export function ShellTabBar() {
+  trackRootNavigationState(useRootNavigationState());
   const active = mainTabForPath(usePathname());
   return active ? <OrbitTabBar active={active} /> : null;
 }

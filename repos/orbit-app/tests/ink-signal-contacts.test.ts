@@ -79,6 +79,7 @@ export const useIsFocused = () => { observe(); return state.focused; };
 export const useLocalSearchParams = () => { observe(); return state.params; };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => state.acquisition ? "/contacts/new" : "/contacts";
+export const useRootNavigationState = () => undefined;
 const router = { canGoBack: () => false, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); } };
 export const useRouter = () => router;
 export const Redirect = ({ href }) => <div role="status">{href}</div>;

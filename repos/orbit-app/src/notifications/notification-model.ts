@@ -33,12 +33,22 @@ const allowedPaths = [
 ];
 
 // R05: reminders scheduled before the Task page (and servers still sending the old
-// addresses) open the matching Task segment instead of the redirect route.
-const taskSegmentPaths: Readonly<Record<string, string>> = {
-  "/schedule": "/task?seg=calendar",
-  "/today": "/task?seg=todo",
-  "/task": "/task",
-};
+// addresses) open the matching Task segment instead of the redirect route; the new
+// address keeps only a known segment and To-do's list selection (review M3).
+const TASK_SEGMENTS = new Set(["calendar", "todo", "plan", "memo"]);
+
+// Only URL is assumed (the notification runtime does not provide URLSearchParams).
+function taskSegmentHref(path: string, query: { get(name: string): string | null }): string | null {
+  if (path === "/schedule") return "/task?seg=calendar";
+  if (path === "/today") return "/task?seg=todo";
+  if (path !== "/task") return null;
+  const segment = query.get("seg");
+  if (!segment || !TASK_SEGMENTS.has(segment)) return "/task";
+  if (segment !== "todo") return "/task?seg=" + segment;
+  // The same normalisation as taskListHref (view-models/task-list-scope), kept local so
+  // this module stays light for the notification runtime.
+  return "/task?seg=todo" + (query.get("scope") === "relationship" ? "&scope=relationship" : "") + (query.get("view") === "completed" ? "&view=completed" : "");
+}
 
 export function notificationHrefFromDeepLink(value: unknown): string | null {
   const participant = eventParticipantHref(value);
@@ -46,10 +56,12 @@ export function notificationHrefFromDeepLink(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   let path = value.trim();
 
+  let query: { get(name: string): string | null } = { get: () => null };
   if (path.startsWith("orbit://")) {
     try {
       const url = new URL(path);
       path = `/${url.host}${url.pathname}`;
+      query = url.searchParams;
     } catch {
       return null;
     }
@@ -63,7 +75,13 @@ export function notificationHrefFromDeepLink(value: unknown): string | null {
     return null;
   }
 
-  if (Object.prototype.hasOwnProperty.call(taskSegmentPaths, path)) return taskSegmentPaths[path]!;
+  // Only the Task page takes a query; any other address with one is refused as before.
+  if (path.includes("?")) {
+    const parsed = new URL(path, "orbit://local");
+    return taskSegmentHref(parsed.pathname, parsed.searchParams);
+  }
+  const task = taskSegmentHref(path, query);
+  if (task) return task;
   return allowedPaths.some((pattern) => pattern.test(path)) ? path : null;
 }
 

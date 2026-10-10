@@ -1,10 +1,11 @@
 import { useGlobalSearchParams, useIsFocused, useRouter, type Href } from "expo-router";
-import { useCallback, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
-import { StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Platform, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { serverReachability } from "../../api/server-reachability";
 import { AppScreenEmbeddingProvider } from "../../components/AppScreenEmbedding";
 import { IconButton } from "../../components/ui/IconButton";
 import { SwipeSegments } from "../../components/ui/Segmented";
@@ -51,13 +52,21 @@ export function TaskScreen() {
   const [segment, setSegment] = useState<TaskSegment>(() => initialTaskSegment(params.seg));
   const linked = Array.isArray(params.seg) ? params.seg[0] : params.seg;
   const observedLink = useRef(linked);
-  // A new link while the page is open (a notification, an old address) moves the
-  // segment. Only a change of the URL value counts: after a tap, setParams lands a
-  // render later, and the stale value in between must not pull the segment back.
+  // The values this page wrote with setParams and has not seen come back yet. They
+  // land a render (or several) later, in order; while they arrive they are only
+  // consumed, never followed — otherwise a quick second tap would be pulled back to
+  // the first one for a moment (R05 review M2). Any other value is a new link (a
+  // notification, an old address) and moves the segment.
+  const ownWrites = useRef<string[]>([]);
   if (linked !== observedLink.current) {
     observedLink.current = linked;
-    const next = initialTaskSegment(linked);
-    if (next !== segment) setSegment(next);
+    const own = linked === undefined ? -1 : ownWrites.current.indexOf(linked);
+    if (own >= 0) ownWrites.current.splice(0, own + 1);
+    else {
+      ownWrites.current = [];
+      const next = initialTaskSegment(linked);
+      if (next !== segment) setSegment(next);
+    }
   }
   // Pages mount the first time they are shown and then stay, like a tab pager.
   const [visited, setVisited] = useState<ReadonlySet<TaskSegment>>(() => new Set([segment]));
@@ -69,12 +78,17 @@ export function TaskScreen() {
   const choose = useCallback((next: TaskSegment) => {
     setSegment(next);
     rememberTaskSegment(next);
+    ownWrites.current.push(next);
     router.setParams({ seg: next });
   }, [router]);
   rememberTaskSegment(segment);
 
   const segments = useMemo(() => TASK_SEGMENTS.map((key) => ({ key, label: copy.taskSegments[key === "memo" ? "notes" : key] })), [copy]);
   const addLabel = segment === "calendar" ? locale.t("shell.task.addCalendar") : segment === "todo" ? locale.t("shell.task.addTodo") : segment === "memo" ? locale.t("shell.task.addMemo") : null;
+  // A new note needs the server on the Web (the notes page disables its own 「＋」 the
+  // same way, review m3); the device saves notes offline.
+  const unreachable = useServerUnreachable();
+  const addDisabled = segment === "memo" && Platform.OS === "web" && unreachable;
   const add = () => {
     if (segment === "calendar") router.push("/schedule/personal/new" as Href);
     else if (segment === "todo") quickAdd.current?.focus();
@@ -89,7 +103,7 @@ export function TaskScreen() {
           <UiText accessibilityRole="header" style={styles.title}>{copy.nav.task}</UiText>
           <UiText style={styles.subtitle}>{today}</UiText>
         </View>
-        {addLabel ? <IconButton icon="plus" accessibilityLabel={addLabel} onPress={add} /> : <View style={styles.headerSpacer} />}
+        {addLabel ? <IconButton icon="plus" accessibilityLabel={addLabel} onPress={add} disabled={addDisabled} /> : <View style={styles.headerSpacer} />}
       </View>
       <SwipeSegments
         segments={segments}
@@ -102,6 +116,16 @@ export function TaskScreen() {
       />
     </SafeAreaView>
   );
+}
+
+function useServerUnreachable(): boolean {
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const [state, setState] = useState(() => serverReachability.state(baseUrl));
+  useEffect(() => {
+    setState(serverReachability.state(baseUrl));
+    return serverReachability.subscribe((url, next) => { if (url === baseUrl) setState(next); });
+  }, [baseUrl]);
+  return state === "unreachable";
 }
 
 function PlanSlot() {

@@ -54,7 +54,8 @@
 2. **Task 默认段 = 上次用过的段，第一次打开是カレンダー（第一个插槽）**。对标：iOS 各 App 的分段控件记住上次选择；设计稿 01-system N3TASK 以第 0 段为默认。
 3. **页内筛选保留在页面里**（To-do 的「全部 / 人脈」「未完成 / 已完成」、メモ 的筛选）：PLANNER 易错边界明确保留为页内筛选。
 4. **嵌入页面不显示自己的标题和头部按钮**：Task 头部已有标题和「＋」，同一屏两个标题、两个加号会混淆；`AppScreen` 用 context 判断，props 不变。
-5. **To-do 添加框写成新组件 `TaskQuickAdd`，不从 `TodayScreen` 抽取**：`TodayScreen` 是旧屏（归 R20 重写），RD-24 不改旧屏；写法逐行对照它的在线 / 离线分支，共用 `buildOfflineTaskMutation` 和任务发件箱。`/today` 页本身不再有入口（跳到 To-do），文件保留到 R20 删除。
+5. **To-do 添加框写成新组件 `TaskQuickAdd`，不从 `TodayScreen` 抽取**：`TodayScreen` 是旧屏（归 R20 重写），RD-24 不改旧屏；写同一条请求（计划日 = 今天），共用 `buildOfflineTaskMutation` 和任务发件箱。判断离线的方式不同：「今天」页看自己页面副本的离线标记，添加框看 `serverReachability`（服务器上次没应答就直接进发件箱），请求失败于网络时也进发件箱（复核 m4 后）。`/today` 页本身不再有入口（跳到 To-do），文件保留到 R20 删除。
+12. **一级页永远在栈底**（复核 M1）：打开一级页（底栏、首页快捷入口、通知、被旧屏 push 的旧 Task 地址）一律先退到栈底再替换。对标：iOS `UITabBarController` 切 tab 不压栈；Android 底部导航「切 tab 清掉该 tab 之上的页」。
 6. **只把集中生成链接的地方改成新地址**，旧屏里写死的 `/tasks`、`/schedule` 等不改，靠跳转到达。对标：网站改版保留 301 跳转、只改模板和站点地图。理由：RD-24；这些旧屏会被整屏重写。
 7. **`/notes?contactId=` 保留为独立页**：它是「某个人的笔记」，属于联系人详情的下一层，放进 Task 的 メモ 段会丢掉返回联系人的路径。
 8. **「我的」页不改用 `AppScreen`，只在顶部加一个与 `AppScreen` 同规则的返回条**（`ShellBackBar`）：`ProfileScreen` 1,971 行、自带滚动和刷新，改成 `AppScreen` 等于重写（归 R18）；返回行为、文案、读屏标签与 `AppScreen` 一致。
@@ -67,7 +68,8 @@
 | 项目 | 基线 `da75d7c6` | 收口 | 对照 |
 | --- | --- | --- | --- |
 | App `npm test` | 4152 条，4 失败（见上） | **4164 条，4161 通过，3 失败** | 只剩基线既有：`route-parity`（`/start`）、两条 events tab 离线（基线单独重跑也失败）；偶发项单独重跑通过。**零新增** |
-| App `tsc` | 0 | **0** | |
+| App `npm test`（复核修复后） | — | **4170 条，4167 通过，3 失败** | 同样只剩上面 3 条基线既有失败；零新增 |
+| App `tsc` | 0 | **0**（复核修复后同） | |
 | orbits | — | 未改 orbits（`shared/**` 未动），未重跑 | 与 R04 相同处理 |
 
 中途问题：第一次全量 945 条失败——`AppScreen` 引入底栏后几十个旧测试的打包替身缺 `useSafeAreaInsets` / expo-blur；改为页面只依赖无依赖的 `shell-metrics.ts`、首页按需单独导入组件后解决。迁移的旧测试：`ink-signal-shell`、`ink-signal-contacts` / `events`（夹具里加根布局的 `ShellTabBar`）、`ink-signal-profile`（二级页断言）、`home-dashboard-interactions`、`notes-interactions`、`tasks-unification-interactions`（直接渲染 To-do 插槽的 `TasksScreen`）、`navigation-icon`、`skeleton-japanese`、`mobile-route-access`、`page-offline-inventory`、`app-wide-route-coverage`、`app-performance-wiring`、`initial-route`、`task-list-scope`、`ink-signal-followups`、`notification-model`、`home-dashboard`、`home-local`、`today-task-pages`、`schedule-view-model`、`schedule-event-preview-view-model`、`agent-ledger-route-wiring`、`today-tasks-screen-source`、`offline-read-inventory`（只改旧地址期望值或夹具，断言意图不变）。
@@ -95,9 +97,10 @@
 - **真推送**：模拟器不能收远程推送。通知的落地完全由 `notificationHrefFromDeepLink` 决定（单测覆盖），模拟器用同一深链 `simctl openurl` 验证了落点。真机步骤：在本地服务器给 QA 账号排一个今天的提醒（deepLink `/today`），锁屏收到后点开，应停在 Task 的 To-do 段。
 - **本地服务器的同步租约返回 503**（`/api/sync/lease`），本机副本没有建立，所以走查里日历 / To-do 列表 / 笔记显示「暂时打不开」类提示——这是本地环境（旧页面在 `/schedule` 下同样如此），不是壳的问题；断网走查只证明了壳和四段在断网时可打开、可切换。四段内容的离线可读由原有的 local-first 测试保证。
 - **触感**：模拟器无触感硬件，底栏点按的轻触感需真机确认。
+- **底栏随路径即时出现 / 消失**，不像 iOS `hidesBottomBarWhenPushed` 那样随转场滑动（复核 m6）：请产品负责人在模拟器上看是否接受。
 - **系统字号「实时」调大时已打开的页面会被截断**（R04 已记录的 RN 现象），重启后正常（`43`）。
 
 ## 后续（不属于 R05）
 
 - iOrbit 全屏页的 ≡ / ✕ / 左缘右滑（R21）；首页编辑（R10）；计划段（R25）。
-- `TodayScreen`、`FollowupsScreen` 不再有路由直接渲染（前者被 To-do 段取代），留给 R20 删除。
+- `TodayScreen` 不再有路由直接渲染（被 To-do 段取代），留给 R20 删除；`FollowupsScreen` 仍由 `/followups` 渲染，只是一个转到 To-do「人脉」的跳转。

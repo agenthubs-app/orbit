@@ -10,7 +10,8 @@ const tools = read("src/screens/tasks/RelationshipTaskTools.tsx");
 
 test("legacy route keeps its private wrapper and delegates to a normalized relationship list", () => {
   assert.match(read("app/followups.tsx"), /withOrbitPrivateRoute\(FollowupsScreen\)/);
-  assert.match(screen, /<Redirect href=\{taskListHref\(\{ scope: "relationship", view: params.view \}\)/);
+  // R05: the hop is the shared Task redirect (/followups → /task?seg=todo&scope=relationship).
+  assert.match(screen, /<LegacyTaskRedirect \/>/);
   assert.doesNotMatch(screen, /useApiResource|useOrbitApiClient|client\.(post|patch)/);
 });
 

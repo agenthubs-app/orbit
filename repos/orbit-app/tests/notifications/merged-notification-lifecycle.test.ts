@@ -116,6 +116,8 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
       if (id.endsWith("/native-notifications")) return native;
       if (id.endsWith("/push-device-session")) return pushSession;
       if (id.endsWith("/push-registration-queue")) return load("src/notifications/push-registration-queue.ts");
+      // R05 review M1: notifications open a tab page through the shell's openMainTab.
+      if (id.endsWith("/shell-navigation")) return load("src/components/shell-navigation.ts");
       // Sprint 0136: the upload entry points moved into their own module; the real one runs here.
       if (id.endsWith("/outbox-upload-triggers")) return load("src/data/sync/outbox-upload-triggers.ts");
       if (id.endsWith("/profile-edit-session")) return { clearProfileEditSession() {} };

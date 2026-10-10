@@ -14,6 +14,7 @@ import { Icon } from "../../components/ui/Icon";
 import { UiPressable } from "../../components/ui/Pressable";
 import { useToast } from "../../components/ui/Toast";
 import { useStandardCopy } from "../../i18n/standard-copy";
+import { isTabPageHref, openMainTab } from "../../components/shell-navigation";
 import { LoadingState } from "../../components/LoadingState";
 import { createThemedStyles } from "../../design/theme";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
@@ -230,7 +231,8 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
       ticket.release();
     }
   }
-  function navigate(href: string) { if (isCurrent()) router.push(href as Href); }
+  // R05 review M1: the Task shortcuts open a tab page — it replaces home at the bottom of the stack.
+  function navigate(href: string) { if (!isCurrent()) return; if (isTabPageHref(href)) openMainTab(router, href); else router.push(href as Href); }
   // Sprint 0131: while a card reads (or when the server cannot be reached / answers 5xx) it shows the device copy.
   const taskFresh = mirrorFreshness(taskMirror, true), scheduleFresh = mirrorFreshness(scheduleMirror, true), eventFresh = mirrorFreshness(eventMirror, true);
   const localFor = (section: Section) => resources[section].kind === "loading" || (resources[section].kind === "error" && resources[section].offline !== null);

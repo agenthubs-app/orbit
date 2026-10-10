@@ -2,7 +2,9 @@ import * as Crypto from "expo-crypto";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { Platform, StyleSheet, TextInput, View } from "react-native";
 
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { serverReachability } from "../../api/server-reachability";
 import { Icon } from "../../components/ui/Icon";
 import { useToast } from "../../components/ui/Toast";
 import { UiText } from "../../components/ui/Text";
@@ -33,12 +35,23 @@ export const TaskQuickAdd = forwardRef<TaskQuickAddHandle, { onCreated: () => vo
   const toast = useToast();
   const { timeZone, canSave } = useOrbitTimeZone();
   const client = useOrbitApiClient();
+  const { baseUrl } = useOrbitApiBaseUrl();
   const taskMirror = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
   const outbox = useOfflineTaskOutbox(taskMirror, Platform.OS !== "web");
   const input = useRef<TextInput>(null);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   useImperativeHandle(ref, () => ({ focus: () => input.current?.focus() }), []);
+
+  async function queueOffline(idempotencyKey: string, plannedDate: string, title: string) {
+    await outbox.enqueueOfflineMutation(buildOfflineTaskMutation({
+      mutationId: idempotencyKey, entityId: `local:${Crypto.randomUUID()}`, operation: "create", baseRevision: null,
+      requestBody: { category: "other", idempotencyKey, plannedDate, title }, createdAt: new Date().toISOString(),
+    }));
+    setDraft("");
+    toast.info(copy.toast.savedOffline, { sub: copy.toast.syncLater });
+    onCreated();
+  }
 
   async function submit() {
     const title = draft.trim();
@@ -47,26 +60,25 @@ export const TaskQuickAdd = forwardRef<TaskQuickAddHandle, { onCreated: () => vo
     setSaving(true);
     const idempotencyKey = `ios:create-task:${Crypto.randomUUID()}`;
     const plannedDate = dateKey(timeZone);
-    const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.tasks, { body: { category: "other", idempotencyKey, plannedDate, title } });
-    if (result.success) {
-      setDraft("");
-      onCreated();
-    } else if (result.error.code === "ORBIT_APP_NETWORK_ERROR" && Platform.OS !== "web") {
-      try {
-        await outbox.enqueueOfflineMutation(buildOfflineTaskMutation({
-          mutationId: idempotencyKey, entityId: `local:${Crypto.randomUUID()}`, operation: "create", baseRevision: null,
-          requestBody: { category: "other", idempotencyKey, plannedDate, title }, createdAt: new Date().toISOString(),
-        }));
+    const native = Platform.OS !== "web";
+    try {
+      // Known offline (the server did not answer the last request): straight to the
+      // device outbox, like the Today page's box — no waiting for a request to time out.
+      if (native && serverReachability.state(baseUrl) === "unreachable") { await queueOffline(idempotencyKey, plannedDate, title); return; }
+      const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.tasks, { body: { category: "other", idempotencyKey, plannedDate, title } });
+      if (result.success) {
         setDraft("");
-        toast.info(copy.toast.savedOffline, { sub: copy.toast.syncLater });
         onCreated();
-      } catch {
-        toast.error(copy.toast.saveFailed);
+      } else if (result.error.code === "ORBIT_APP_NETWORK_ERROR" && native) {
+        await queueOffline(idempotencyKey, plannedDate, title);
+      } else {
+        toast.error(result.error.message || copy.toast.saveFailed);
       }
-    } else {
-      toast.error(result.error.message || copy.toast.saveFailed);
+    } catch {
+      toast.error(copy.toast.saveFailed);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   return (

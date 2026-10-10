@@ -32,6 +32,7 @@ const boundaries = `
 import React from "react";
 import { View } from "react-native";
 export const usePathname = () => new URLSearchParams(location.search).get("path") || "/home";
+export const useRootNavigationState = () => undefined;
 export const useRouter = () => ({
   canGoBack: () => location.search.includes("history"),
   back: () => window.fixture.navigation.push({ method: "back" }),
