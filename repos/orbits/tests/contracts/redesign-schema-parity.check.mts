@@ -14,14 +14,14 @@ import type { EventAssessmentAddToPlanResult, EventAssessmentContract, EventAsse
 import type { EventRecommendationDismissInput, EventRecommendationDismissResult } from "../../shared/contract/event-recommendation-feedback";
 import type { HomeLayoutContract, HomeLayoutUpdateInput } from "../../shared/contract/home-layout";
 import type { InviteCodeContract, InviteCodeCreateInput, InviteCodePreview, InviteCodeRedeemResult } from "../../shared/contract/invite-codes";
-import type { PlanAwardRequest, PlanAwardResult, PlanCommandResult, PlanGoalListResponse, PlanOpenResult, PlanSkipRequest, PlanStepRequest, PlanUndoRequest, PlanV2Detail, PlanV2SummaryResponse } from "../../shared/contract/plan-v2";
+import type { PlanAwardRequest, PlanAwardResult, PlanCommandResult, PlanGoalListResponse, PlanOpenResult, PlanSkipRequest, PlanStepRequest, PlanUndoRequest, PlanV2Detail, PlanV2SummaryResponse, PlanIntakeView, PlanIntakeListResponse, PlanDraftView, PlanConfirmResult, PlanGoalKindResult, PlanGoalKindRequest, PlanIntakeCreateRequest, PlanIntakeMembersRequest, PlanIntakeLadderRequest, PlanFlowStepRequest, PlanIntakeAnswersRequest, PlanIntakePremiseRequest, PlanDraftFixRequest, PlanDraftManualEditRequest } from "../../shared/contract/plan-v2";
 import type { accountDeletionRequestObject, accountExportCreateInputObject, accountExportObject, appVersionObject } from "../../shared/api-schema/account";
 import type { contactCompletionAnswerInputObject, contactCompletionQuestionObject, contactCompletionResultObject } from "../../shared/api-schema/contact-completion";
 import type { eventAssessmentAddToPlanResultObject, eventAssessmentCreateInputObject, eventAssessmentObject, eventAssessmentPatchInputObject } from "../../shared/api-schema/event-assessment";
 import type { eventRecommendationDismissInputObject, eventRecommendationDismissResultObject } from "../../shared/api-schema/event-recommendation-feedback";
 import type { homeLayoutObject, homeLayoutUpdateInputObject } from "../../shared/api-schema/home-layout";
 import type { inviteCodeCreateInputObject, inviteCodeObject, inviteCodePreviewObject, inviteCodeRedeemResultObject } from "../../shared/api-schema/invite-codes";
-import type { planAwardRequestObject, planAwardResultObject, planCommandResultObject, planGoalListResponseObject, planOpenResultObject, planSkipRequestObject, planStepRequestObject, planUndoRequestObject, planV2DetailObject, planV2SummaryResponseObject } from "../../shared/api-schema/plan-v2";
+import type { planAwardRequestObject, planAwardResultObject, planCommandResultObject, planGoalListResponseObject, planOpenResultObject, planSkipRequestObject, planStepRequestObject, planUndoRequestObject, planV2DetailObject, planV2SummaryResponseObject, planIntakeViewObject, planIntakeListResponseObject, planDraftViewObject, planConfirmResultObject, planGoalKindResultObject, planGoalKindRequestObject, planIntakeCreateRequestObject, planIntakeMembersRequestObject, planIntakeLadderRequestObject, planFlowStepRequestObject, planIntakeAnswersRequestObject, planIntakePremiseRequestObject, planDraftFixRequestObject, planDraftManualEditRequestObject } from "../../shared/api-schema/plan-v2";
 
 // Contracts use readonly arrays; zod infers mutable ones. Compare structure, not mutability.
 type DeepMutable<T> = T extends readonly (infer U)[] ? DeepMutable<U>[] : T extends object ? { -readonly [K in keyof T]: DeepMutable<T[K]> } : T;
@@ -58,3 +58,17 @@ expectParity<Parity<PlanStepRequest, typeof planStepRequestObject>>();
 expectParity<Parity<PlanCommandResult, typeof planCommandResultObject>>();
 expectParity<Parity<PlanGoalListResponse, typeof planGoalListResponseObject>>();
 expectParity<Parity<PlanOpenResult, typeof planOpenResultObject>>();
+expectParity<Parity<PlanIntakeView, typeof planIntakeViewObject>>();
+expectParity<Parity<PlanIntakeListResponse, typeof planIntakeListResponseObject>>();
+expectParity<Parity<PlanDraftView, typeof planDraftViewObject>>();
+expectParity<Parity<PlanConfirmResult, typeof planConfirmResultObject>>();
+expectParity<Parity<PlanGoalKindResult, typeof planGoalKindResultObject>>();
+expectParity<Parity<PlanGoalKindRequest, typeof planGoalKindRequestObject>>();
+expectParity<Parity<PlanIntakeCreateRequest, typeof planIntakeCreateRequestObject>>();
+expectParity<Parity<PlanIntakeMembersRequest, typeof planIntakeMembersRequestObject>>();
+expectParity<Parity<PlanIntakeLadderRequest, typeof planIntakeLadderRequestObject>>();
+expectParity<Parity<PlanFlowStepRequest, typeof planFlowStepRequestObject>>();
+expectParity<Parity<PlanIntakeAnswersRequest, typeof planIntakeAnswersRequestObject>>();
+expectParity<Parity<PlanIntakePremiseRequest, typeof planIntakePremiseRequestObject>>();
+expectParity<Parity<PlanDraftFixRequest, typeof planDraftFixRequestObject>>();
+expectParity<Parity<PlanDraftManualEditRequest, typeof planDraftManualEditRequestObject>>();
