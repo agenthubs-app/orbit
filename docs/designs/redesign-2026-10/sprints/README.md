@@ -34,7 +34,7 @@
 | [R06](R06-web-components/GOAL.md) | Web 组件库（5 类，CSS Modules，新作用域） | R01、R02、R03 | H | done，已复核，问题已修（M1–M4、m1–m6、m10 已修；m9 staging 的 `VERCEL_ENV` 需人确认；[REPORT](R06-web-components/REPORT.md)、[REVIEW](R06-web-components/REVIEW.md) 末尾「处理记录」） |
 | [R07](R07-web-shell/GOAL.md) | Web 导航壳：左栏、主标题区、右栏、⌘K，全站一次切换 | R06 | H | done，已复核，问题已修（M5「プラン段放不放现有计划」待产品负责人选择；R03 M2、R01 m4 在此处理；[REPORT](R07-web-shell/REPORT.md)、[REVIEW](R07-web-shell/REVIEW.md) 末尾「处理记录」） |
 | [R08](R08-contracts-and-mocks/GOAL.md) | 12 个契约 + 校验 + mock 接口 + 统一演示世界 + 「只加不改」检查 | R01 | H | done，已复核，问题已修（M3 口径待产品负责人确认，见通用规则 10；[REPORT](R08-contracts-and-mocks/REPORT.md)、[REVIEW](R08-contracts-and-mocks/REVIEW.md) 末尾「处理记录」） |
-| [R09](R09-skeleton-acceptance/GOAL.md) | 骨架验收：规则入库、开发说明、全流程走查、截图集、基线对照 | R01–R08 | H | planned |
+| [R09](R09-skeleton-acceptance/GOAL.md) | 骨架验收：规则入库、开发说明、全流程走查、截图集、基线对照 | R01–R08 | H | done，待复核（[REPORT](R09-skeleton-acceptance/REPORT.md)；拍板与 App `AGENTS.md` 需要人工） |
 
 执行顺序：R01 → R02 → R03 → R04 → R05 → R06 → R07 → R08 → R09（一人依次做；R08 只依赖 R01，可以提前）。
 
@@ -80,3 +80,29 @@
 8. **复核**：每个 Sprint 结束由独立 AI 复核（跑全量、运行时抽查、对照 SC），写 `REVIEW.md`；复核发现的问题直接在 `redesign` 上修（RD-25）；产品负责人看截图集并试用。
 9. **范围**：骨架不改旧屏，旧用法只减不增（RD-24）。
 10. **契约演进与已发布 App**（R08 复核 M3，**建议口径，待产品负责人确认**）：对标 Stripe / GitHub API 的「宽进严出」——响应 schema 不用 `.strict()`，多余字段丢弃；请求体保持 strict。已发布 App 解析不了的变更（给它用封闭枚举或 strict schema 读的字段加值、加字段）上线前，要么先发一版宽进读取的 App，要么同时抬高 `minSupportedAppVersion`（契约 11）。现存的两个 strict 读取点（App 的 `inbox-notifications.ts`、`NotificationDeliverySettings.tsx`）由 R13 / R14 在启用新来源和新字段之前改成宽进读取。
+
+## 合回 `chat-agent` 前总验收（R09 写入；全部打勾才合回，RD-03 / RD-24）
+
+**旧屏与旧用法（RD-24）**
+- [ ] [`screen-ownership.md`](screen-ownership.md) 每一行都已按「处理」一栏完成（重写 / 并入 / 重定向 / 删除），没有「待核对」。
+- [ ] 三份允许清单为空：App `tests/fixtures/ionicons-legacy-allowlist.json`（骨架结束 71 个文件）、App `hardcoded-copy-legacy-allowlist.json`（148 个文件 / 3779 处）与 `legacy-ui-allowlist.json`（85 个文件 / 282 处）、Web `tests/fixtures/hardcoded-copy-legacy-allowlist.json`（232 个文件 / 2305 处写死 + 3669 处缺日文）。
+- [ ] `@expo/vector-icons` 依赖已从 App 移除（`ionicons-ratchet` 的依赖检查改为「不存在」）。
+- [ ] 旧公用组件已删除：App 旧 `OrbitTabBar` 以外的旧导航 / 旧卡片 / 旧按钮（`legacy-ui-ratchet` 的 `oldComponent` 为 0），Web `OrbitTopNav` 的登录后分支（账号菜单、语言切换，R07 复核 m7）、`orbit-reference-styles.tsx` 里写死颜色的旧样式。
+- [ ] Web 旧页面的深色模式（R01 复核 m4）、日文（R03 允许清单）随重写全部到位。
+
+**骨架留下的待办**
+- [ ] `/app/agent/plan` 与 Web Task「プラン」段：产品负责人的选择已落地（R07 复核 M5），旧的计划链接全部指向新入口；`iorbit-plan.tsx` 的示例药丸接线随之可达或删除。
+- [ ] 契约演进口径（通用规则 10）已确认；App 的两个 strict 读取点（`src/api/inbox-notifications.ts`、`NotificationDeliverySettings.tsx`）已改成宽进读取（R13 / R14）。
+- [ ] `plan-v2.ts` 去掉 `@draft`、进入快照（R22）；`NoteMentionContract` 的活动提及已定稿（R20）；公开邀请预览有限流和防枚举（R15）。
+- [ ] R08 的 7 组新接口都有 live 实现，或明确保留「尚未实现」并在界面隐藏入口；生产环境不出现示例数据。
+- [ ] App `tests/route-parity.test.ts` 的 `/start`：按用户决定（App 以后做引导页）处理完毕，App 测试零失败。
+- [ ] Web `AgentDock` 按主区居中（R07 复核 M3 附带，R10）。
+
+**上线前的环境与真机**
+- [ ] staging 的 `VERCEL_ENV` / 展示页开关核对（R06 复核 m9：`/showcase` 只在非生产可见）。
+- [ ] 真机：触感反馈（R02–R04 只在模拟器验证）、真推送落地（R05）、Dynamic Type 最大字号走查。
+- [ ] 本地与 staging 都配置 `ORBIT_SYNC_CURSOR_SECRET`（R09 走查 A1：缺了它 App 的待办、人脈同步全部 503）。
+
+**验收**
+- [ ] 两端全量对照 R09 基线零新增失败（orbits 6940 / 0、App 4172 / 仅 `/start`，之后各 Sprint 只增不减）。
+- [ ] 产品负责人看完合回前的截图集并试用两端，同意合回。

@@ -45,11 +45,14 @@ function requiresAuthentication(pathname: string): boolean {
 // operations×4）、/app/tasks*、/app/inbox/sources/[id]、/app/invitations/[token]、
 // /app/contacts/analysis/[dimension]/[bucketId]、/app/account/reset-password、
 // /app/profile/continue、/app/agent/{actions,plan,strategy}、/app/home。
+// 改版 R09：53 → 57。inventory 重新生成后补进了此前没登记的四个页面：/app/inbox（R07
+// 新建）、/app/start、/app/profile/onboarding、/app/admin/read-cost。四个都要求登录，
+// 所以未登录跳登录 23 → 27，200 的数量不变。
 test("all dynamic Web routes have an explicit valid runtime sample", () => {
   const runtimePaths = webSurfaces.map(runtimePathForSurface);
 
-  assert.equal(runtimePaths.length, 53);
-  assert.equal(new Set(runtimePaths).size, 53);
+  assert.equal(runtimePaths.length, 57);
+  assert.equal(new Set(runtimePaths).size, 57);
   assert.equal(runtimePaths.includes("/app/events/EVT01"), true);
   assert.equal(
     runtimePaths.includes(
@@ -111,9 +114,9 @@ test("whole-Web transport verification reports every route and any mismatch", as
   // `auth()`（同目录另外三个页面都有），此前未登录访客拿到的是取不到数据的编辑器空壳。
   // App 不受影响——它把该 href 翻译成自己的原生屏，不加载这个网页（见前缀表处的注释）。
   assert.deepEqual(report.summary, {
-    routeSurfaces: 53,
+    routeSurfaces: 57,
     okResponses: 30,
-    authRedirects: 23,
+    authRedirects: 27,
     failures: 0,
   });
   assert.equal(report.results.every((result) => result.conclusion === "pass"), true);
@@ -123,5 +126,5 @@ test("whole-Web transport verification reports every route and any mismatch", as
     fetchImplementation: async () =>
       new Response("<title>Failure</title>", { status: 500 }),
   });
-  assert.equal(failedReport.summary.failures, 53);
+  assert.equal(failedReport.summary.failures, 57);
 });
