@@ -9,10 +9,12 @@
 3. 记录基线：
    - orbits：`cd repos/orbits && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npm test`、`npm run typecheck`、`npm run typecheck:app`、`npm run lint`；
    - App：`cd repos/orbit-app && npm test`、`npx tsc --noEmit`。
+   - 只跑几个文件：orbits `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node scripts/run-node-tests.mjs <文件…>`；App `node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs <文件…>`（App 的 `npm test -- 文件` 仍会跑全部）。
    - 已知失败以 README「骨架登记表」最后一行为准，收口时逐条对照，零新增。
 4. 先刷新 GitNexus 索引（落后时新符号查不到，`impact` / `detect-changes` 的结论也不可信）：`node .gitnexus/run.cjs analyze --index-only`（几分钟，可放后台）。改函数或组件之前跑 `node .gitnexus/run.cjs impact <符号> -f <文件> --direction upstream --repo . --summary-only`。
    - HIGH / CRITICAL 先在 REPORT 写对策；只是往一张表里加一项（例如登录前缀表）也可能报 CRITICAL，对策写「只追加，不改已有项」即可。
-   - UNKNOWN（类型、常量数组、新文件里的符号常见）用文本搜索确认调用方。
+   - UNKNOWN（类型、常量数组、新文件里的符号常见）和「Target not found」（文件内部没导出的常量，例如登录前缀表）都用文本搜索确认调用方。
+   - `detect-changes` 有时把改动算到相邻的无关函数上并报 critical（行号映射偏差）；核对它列出的符号确实是你改的，不是就在 REPORT 写明，不当结论。
 
 ## 1. 组件在哪、长什么样
 
@@ -22,7 +24,7 @@
 | Web | `repos/orbits/app/(app)/app/orbit-2026/ui/index.ts`（`Button`、`ListRow`、`Modal`、`Drawer`、`Popover`、`useToast`、`Table` …） | 浏览器打开 `/showcase/components`（只在开发环境） |
 
 - 图标只用 `Icon`（形状在 `shared/design/icons.json`，`npm run design:tokens` 生成两端代码）。新代码里出现 `@expo/vector-icons` / `Ionicons` 会被 `ionicons-ratchet` 拦下。
-- 颜色、圆角、字号、动效只用 token：App 读 `src/api/design/tokens.ts`，Web 写 `var(--…)`。Web 新样式只用 CSS Modules，渲染在 `<Orbit2026Scope>`（`[data-orbit-2026]`）里，不能嵌进旧的 `[data-orbit-real-page]`（`orbit-2026-scope` 测试）。CSS 里写死颜色会被 `orbit-2026-css-tokens` 拦下。
+- 颜色、圆角、字号、动效只用 token：App 用 `src/design/theme.ts` 的 `useOrbitTheme()` / `createThemedStyles`（它们读同步来的 `src/api/design/tokens.ts`，不要直接引那个生成文件），Web 写 `var(--…)`。Web 新样式只用 CSS Modules，渲染在 `<Orbit2026Scope>`（`[data-orbit-2026]`）里，不能嵌进旧的 `[data-orbit-real-page]`（`orbit-2026-scope` 测试）。CSS 里写死颜色会被 `orbit-2026-css-tokens` 拦下。
 - 缺组件时找热点文件负责人提需求，不在自己的屏里另写一个。
 
 ## 2. 放进壳里
@@ -40,13 +42,13 @@
 2. 本地 dev server 默认是 mock 模式（`ORBIT_MODULE_MODE` 不设或设 `mock`）：`GET /api/events/assessments` 直接返回演示世界里的「SaaS Summit 2026」评估（78 分、推荐）。
 3. 需要更多假数据时，加在 `shared/mock/demo-world/`：人和事只从 `index.ts` 取（10 个虚构人物、3 个活动、1 个计划），每条带 `sample: true`；`demo-world-consistency` 和 `demo-world-copy` 会检查名字、公司和日文。
 4. App 用同一份契约：改完 orbits 的 `shared/**` 后在 App 跑 `npm run sync:contract`，副本和源在同一个提交里（不要直接改 App 的副本）。
-5. **新增一个契约**（而不是用已有的）：照着契约 8（事件评估）改 8 处——
+5. **新增一个契约**（而不是用已有的）：照着契约 8（事件评估）改这些地方——
    - `shared/contract/<名字>.ts`（文件头写负责人和使用方）和 `shared/contract/index.ts` 的 `export type`；
    - `shared/api-schema/<名字>.ts`：导出未强转的 `*Object` 和强转后的 `*Schema`；响应不用 `.strict()`，请求体用；
    - `features/redesign-contracts/service-factory.ts` 的 `REDESIGN_CONTRACT_CAPABILITIES` 加 capability；
    - `mock-service.ts` 加 mock 行为（幂等键、重放按契约语义），`handlers.ts` 加处理函数（`redesignContractRoute(capability, schema, …)`）；
    - 路由文件 `app/api/<路径>/route.ts` 只写 `export { getX as GET } from "<相对路径>/features/redesign-contracts/handlers";` 和 `export const dynamic = "force-dynamic";`；
-   - 测试：`tests/api/redesign-contract-routes.test.ts` 的 `CASES`（mock 成功、live 503），`tests/contracts/redesign-schema-parity.check.mts` 加一行，fixture 进 `demo-world-consistency`；
+   - 测试：`tests/api/redesign-contract-routes.test.ts` 的 `CASES`（mock 成功、live 503），`tests/contracts/redesign-schema-parity.check.mts` 加一行，fixture 进 `demo-world-consistency`（它要求 `demo-world/fixtures.ts` 的每个新导出都带 `sample: true`，设置类、回执类才放进 `UNMARKED`），App 的 `tests/contract-fixtures-parse.test.ts` 也解析一遍；
    - 最后 `node scripts/contract-snapshot.mjs --write`。
 6. **只改 `shared/**` 也要同步 App**：`cd repos/orbit-app && npm run sync:contract`，副本和源放在同一个提交。纯 Web 功能也一样，否则 App 的 `contract-sync` 测试变红。
 7. **本地看假数据**：本地 `.env.local` 是 live 时，设 `ORBIT_REDESIGN_MOCK=<capability>`（逗号分隔，或 `all`）只把这些契约切到演示世界，其他页面照旧；生产忽略这个开关。
@@ -55,6 +57,8 @@
 ## 4. 「尚未实现」
 
 live 实现合入之前，正式环境里这些接口返回 `503` + `context.reason = "NOT_IMPLEMENTED"`。界面**不显示错误**：
+
+Web 用 `fetch` 拿到信封（下面的 `body`）；App 的 `client.get()` 本身就返回带 `success` 的结果对象，直接把它交给 `whenNotImplemented`，没有 `.json()`。
 
 ```ts
 // Web：从 repos/orbits 根目录的 shared/compute/not-implemented.ts 引入。文件在 app/(app)/app/orbit-2026/<模块>/ 下时是
@@ -81,7 +85,7 @@ render(body.data);
 
 ## 6. 文案
 
-- **App**：用户看得到的文字进字典 `src/i18n/`（日中英三语），组件类型在 `src/i18n/copy-kinds.ts` 登记。
+- **App**：用户看得到的文字进字典 `src/i18n/`（日中英三语），组件类型在 `src/i18n/copy-kinds.ts` 登记。**新建一个字典域**还要：在 `src/i18n/{ja,zh,en}/index.ts` 里展开引入；把域名加进 `tests/i18n-domain-split.test.ts` 的 `ADDED_SINCE_SPLIT`；加进 `scripts/copy-qa/cli.mjs`（orbits）的 `APP_DOMAINS_IN_SCOPE`（新域和重写过的域都加）。
 - **Web**：新代码的文字进 `app/(app)/app/orbit-2026/copy/*.ts`（`OrbitCopyTable`，`pickCopy` 取值）；通用的词（导航、按钮、状态）已在 `shared/copy/{ja,zh,en}.ts`，两端共用。
 - 每条文案写 `kind`（`label`、`button`、`fullButton`、`menu`、`chip`、`sentence`、`dialogTitle`、`toast` …），长度上限和语气规则按 kind 执行，上限见 `scripts/copy-qa/check.mjs` 的 `LENGTH_LIMITS` / `EN_LENGTH_LIMITS`。常见问题：日文正文句末要「。」、中文与数字和占位符之间不加空格、拉丁字母单词与日文之间加半角空格、英文按钮用句首大写。
 - 术语和写法看 R03 的术语表和写作规范；跑 `cd repos/orbits && npm run copy:qa`（Web 新文案、共用词、App 已纳入的域；你重写了 App 的哪个域，就把它加进 `scripts/copy-qa/cli.mjs` 的 `APP_DOMAINS_IN_SCOPE`）。
@@ -93,7 +97,7 @@ render(body.data);
 
 1. `src/view-models/mobile-route-access.ts` 的 `PRIVATE_ROUTE_PREFIXES`（需要登录的）；
 2. `tests/app-wide-route-coverage.test.ts` 的 `integratedFeatureRoutes`；
-3. `scripts/page-offline-inventory.ts` 登记离线策略，再 `npx tsx scripts/page-offline-inventory.ts --write` 重新生成 `docs/offline/page-inventory.md`；
+3. `scripts/page-offline-inventory.ts` 登记离线策略，再 `npx tsx scripts/page-offline-inventory.ts --write` 重新生成 `docs/offline/page-inventory.md`；标成「需要联网」（`online-only`）的页面，路由文件要包一层 `withOnlineOnlyRoute(...)`（`tests/offline-pages-actions.test.tsx` 检查）；需要登录的根目录路由文件还要加进 `tests/mobile-route-access.test.ts` 的列表；
 4. `tests/route-parity.test.ts`：Web 有的页面 App 也要有对应路由。**只做 Web 页面也要处理这一条**：这个测试扫描 Web 的页面目录，新加任何 Web 页面都会让它失败。要么同时加 App 路由（连同上面 3 处），要么请产品负责人决定加进 `tests/route-parity-exceptions.ts`（那里写明只有用户明确决定才能加，不能为了消掉失败而加）。
 
 二级页在 `src/view-models/app-navigation.ts` 的 `parentForPath` 定义返回到哪一个一级页；推送落地链接在 `notification-model.ts`。
@@ -101,8 +105,8 @@ render(body.data);
 **Web（4 处）**
 
 1. `features/auth/app-auth-routing.ts` 的 `ORBIT_PRIVATE_APP_PREFIXES`（需要登录的页面）；新的 `/api/**` 默认要登录，只有登录前必须可读的才进 `proxy.ts` 的 `isPublicApiPath`；
-2. 审计清单：在 `repos/orbits` 里跑 `npm run audit:full-product`，它写到**工作区根目录**的 `docs/audits/full-product-functional-audit/`；然后改 `tests/audits/web-route-transport.test.ts` 里的计数（`runtimePaths` 的两处、`report.summary` 的 `routeSurfaces` 和要登录的 `authRedirects`、`failedReport` 的 `failures`），并在旁边注释写明多了哪些页面。动态路由（`[id]`）要在 `scripts/verify-web-route-transport.mjs` 加一个运行样例。R09 结束时是 57 页。
-3. 产品清单：同样在 `repos/orbits` 里跑 `npm run audit:surfaces`（写到根目录 `docs/audits/product-surface-*`），`tests/audits/product-surface-manifest.test.ts` 会检查新的 P0 / P1 候选。
+2. 审计清单（它也统计 App 的路由，所以**两端路由都加完再跑**）：在 `repos/orbits` 里跑 `npm run audit:full-product`，它写到**工作区根目录**的 `docs/audits/full-product-functional-audit/`；然后改 `tests/audits/web-route-transport.test.ts` 里的计数（`runtimePaths` 的两处、`report.summary` 的 `routeSurfaces` 和要登录的 `authRedirects`、`failedReport` 的 `failures`），并在旁边注释写明多了哪些页面。动态路由（`[id]`）要在 `scripts/verify-web-route-transport.mjs` 加一个运行样例。R09 结束时是 57 页。
+3. 产品清单：同样在 `repos/orbits` 里跑 `npm run audit:surfaces`（写到根目录 `docs/audits/product-surface-*` 和 `button-action-coverage.md`，一起提交；生成的 README 会写当前 HEAD 和未提交改动数，在干净的工作区里生成最准），`tests/audits/product-surface-manifest.test.ts` 会检查新的 P0 / P1 候选。
 4. `orbit-2026/shell/shell-routes.ts`：新页面默认就有壳（已登录的 `/app/**`）；只有它属于左栏某一栏时才在 `shellNavKeyFor` 加一行，全屏或 kiosk 类页面才需要在例外里排除；iOrbit 以外的页面默认允许右栏。⌘K 的页面上下文（`orbit-global-ask/orbit-ask-routes.ts` 的 `PAGE_CONTEXTS`）可选：加了，⌘K 交给 iOrbit 时会带上「表示中：…」。
 
 ## 8. 截图对照页

@@ -66,13 +66,14 @@ export const LEGACY_PAGE = `
       {f.rail ? <ShellPage title="ホーム" rightRail /> : null}
       <main data-orbit-real-page="legacy" style={{ minHeight: 1600 }}><button type="button">legacy button</button><p data-last>last line of the page</p>
         {/* A legacy page's own fixed bottom control (like the event page's ask button) lifted by the shell's inset. */}
+        {f.modal ? <div data-legacy-overlay style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,.3)" }}><div role="dialog" aria-modal="true" aria-label="legacy dialog" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 120, background: "white" }}><button type="button">dialog action</button></div></div> : null}
         <button type="button" data-fixed-dock style={{ position: "fixed", right: 14, bottom: "calc(14px + env(safe-area-inset-bottom) + var(--orbit-shell-bottom-inset, 0px))", width: 54, height: 54 }}>dock</button>
       </main>
     </>;
   }
 `;
 
-export async function openShell(browser: Browser, code: { js: string; css: string }, fixture: { path: string; lang?: string; signedIn?: boolean; unread?: boolean; demo?: boolean; rail?: boolean }, options: { width?: number; dark?: boolean } = {}): Promise<Page> {
+export async function openShell(browser: Browser, code: { js: string; css: string }, fixture: { path: string; lang?: string; signedIn?: boolean; unread?: boolean; demo?: boolean; rail?: boolean; modal?: boolean }, options: { width?: number; dark?: boolean } = {}): Promise<Page> {
   const page = await open(browser, code, { ...options, html: `<div id="root"></div><script>window.shellFixture=${JSON.stringify({ lang: "ja", signedIn: true, unread: false, calls: [], ...fixture })}</script>`.replace("<script>", "<script>") });
   return page;
 }

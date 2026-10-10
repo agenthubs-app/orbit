@@ -169,6 +169,12 @@
 .roundLink .dot { top: 7px; right: 8px; }
 .railButton { display: none; }
 
+/* While a page's own dialog is open, the shell's fixed / sticky bars step back:
+   legacy overlays use z-index 60–100 (the sticky tier), and the capsule, later in
+   the DOM, would paint over their scrim and buttons (R09 walkthrough). */
+.frame:has(.content :is([aria-modal="true"], [role="dialog"])) .sideScope,
+.frame:has(.content :is([aria-modal="true"], [role="dialog"])) .bottom { z-index: var(--z-raised); }
+
 /* 768–1279: a 72 icons-only rail (the label moves to the tooltip); no right rail. */
 @media (max-width: 1279px) {
   .frame, .frame[data-rail="true"] { grid-template-columns: 72px minmax(0, 1fr); }

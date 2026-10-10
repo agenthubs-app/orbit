@@ -111,6 +111,14 @@ test("390: no left rail; a bottom capsule with the five tabs that covers neither
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= 391));
 });
 
+test("390: a legacy page's own dialog sits above the capsule (the shell's bars step back while it is open)", async (t) => {
+  const page = await shell(t, { path: "/app/contacts", modal: true }, { width: 390 });
+  const capsule = (await page.locator("[data-orbit-2026-shell] nav").last().boundingBox())!;
+  const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("[role=dialog]")?.getAttribute("aria-label") ?? null, { x: capsule.x + capsule.width / 2, y: capsule.y + capsule.height / 2 });
+  assert.equal(hit, "legacy dialog");
+  await page.getByRole("button", { name: "dialog action" }).click();
+});
+
 test("390: a top bar keeps 受信箱 (with the unread dot), search / ask and the avatar menu — settings, host, my events, sign out", async (t) => {
   const page = await shell(t, { path: "/app/tasks", unread: true }, { width: 390 });
   const top = page.locator("[data-orbit-2026-mobile-top]");
