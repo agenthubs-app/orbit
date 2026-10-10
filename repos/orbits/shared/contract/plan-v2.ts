@@ -404,6 +404,9 @@ export interface PlanDraftChange {
   before: string | null;
   after: string | null;
   reason?: string | null;
+  /** R25：見直し的变更可以逐条 ✓ / ✕（id 在这一轮里唯一；默认采用）。 */
+  id?: string;
+  accepted?: boolean;
 }
 
 export interface PlanDraftTurn {
@@ -772,4 +775,125 @@ export interface PlanContactFit {
     emoji: string;
     status: PlanContactFitStatus;
   }[];
+}
+
+/* ------------------------------------------------------------------ */
+/* R25 見直し、達成、多目标与以前のプラン                                     */
+/* ------------------------------------------------------------------ */
+
+/** 見直し时 AI 预标的前提行（C8）：可能变了，依据是确定以来的记录。 */
+export interface PlanPremiseMark {
+  key: string;
+  evidenceIds: readonly string[];
+  suggested?: string | null;
+  reason?: string | null;
+}
+
+/** `POST /api/agent/plans/v2/[planId]/reviews` 与 `GET …/reviews/current`：見直し草稿与配额。 */
+export interface PlanReviewView {
+  draft: PlanDraftView;
+  premiseMarks: readonly PlanPremiseMark[];
+  reviewLeftThisMonth: number;
+  reviewMonthlyLimit: number;
+  /** 下次恢复（下个月 1 日 0 点，东京）。 */
+  resetsAt: string;
+  /** 这次见直参考的数据（确定以来的记录数）。 */
+  sinceConfirmed: { talked: number; events: number; stepsCompleted: number };
+}
+
+export interface PlanReviewStartRequest {
+  idempotencyKey: string;
+}
+
+/** 見直し的修正（C9）：前提改动 + 用户一句话。 */
+export interface PlanReviewFixRequest {
+  premise: readonly { key: string; value: string }[];
+  text: string | null;
+  idempotencyKey: string;
+}
+
+export interface PlanReviewToggleRequest {
+  accepted: boolean;
+  idempotencyKey: string;
+}
+
+/** `GET /api/agent/plans/v2/quota`。 */
+export interface PlanQuotaResponse {
+  reviewLeftThisMonth: number;
+  reviewMonthlyLimit: number;
+  resetsAt: string;
+  activeGoals: number;
+  activeGoalLimit: number;
+  newGoalsLeftThisMonth: number;
+}
+
+export interface PlanAchieveRequest {
+  expectedRevision: number;
+  idempotencyKey: string;
+}
+
+/** `GET /api/agent/plans/v2/[planId]/achievement`：完成页。 */
+export interface PlanAchievementView {
+  planId: string;
+  goal: string;
+  goalKind: PlanGoalKindRead;
+  achievedAt: string;
+  total: number;
+  talkedPeople: number;
+  events: number;
+  /** いちばん効いたこと：分数最高的类型（规则）。 */
+  bestMove: { text: string; basis: readonly PlanBasisRef[] } | null;
+  skippedAreas: readonly string[];
+  sample?: true;
+}
+
+export interface PlanNextGoalCandidate {
+  goalText: string;
+  goalKind: PlanGoalKind;
+  basis: readonly PlanBasisRef[];
+}
+
+/** `GET /api/agent/plans/v2/[planId]/next-goals`（C10，每计划一次，缓存）。 */
+export interface PlanNextGoalsResponse {
+  candidates: readonly PlanNextGoalCandidate[];
+  /** ai = 模型给的；none = AI 不可用，只剩「自分で決める」。 */
+  source: "ai" | "none";
+}
+
+/** `PATCH /api/agent/plans/v2/[planId]/goal`：只保存 / 保存并作り直し（打开见直草稿）。 */
+export interface PlanGoalEditRequest {
+  goalText?: string;
+  goalKind?: PlanGoalKind;
+  mode: "save_only" | "save_and_rebuild";
+  expectedRevision: number;
+  idempotencyKey: string;
+}
+
+export interface PlanGoalEditResult {
+  planId: string;
+  revision: number;
+  /** save_and_rebuild 时打开的见直草稿。 */
+  reviewDraftId: string | null;
+}
+
+/** `GET /api/agent/plans/legacy`：v1 计划只读摘要。 */
+export interface PlanLegacyItem {
+  planId: string;
+  goal: string;
+  status: "active" | "archived";
+  startsOn: string;
+  archivedAt: string | null;
+  needs: number;
+  actionsDone: number;
+  actionsTotal: number;
+}
+
+export interface PlanLegacyListResponse {
+  plans: readonly PlanLegacyItem[];
+}
+
+/** `GET /api/agent/plans/legacy/[planId]`：以前のプラン（只读）。 */
+export interface PlanLegacyDetail extends PlanLegacyItem {
+  analysisSummary: string | null;
+  items: readonly { kind: "action" | "network_need" | "info" | "event"; title: string; status: string; phase: string | null }[];
 }

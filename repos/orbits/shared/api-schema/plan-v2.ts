@@ -39,6 +39,18 @@ import type {
   PlanProposalResult,
   PlanTalkedOfflineRequest,
   PlanTalkedOfflineResult,
+  PlanAchieveRequest,
+  PlanAchievementView,
+  PlanGoalEditRequest,
+  PlanGoalEditResult,
+  PlanLegacyDetail,
+  PlanLegacyListResponse,
+  PlanNextGoalsResponse,
+  PlanQuotaResponse,
+  PlanReviewFixRequest,
+  PlanReviewStartRequest,
+  PlanReviewToggleRequest,
+  PlanReviewView,
 } from "../contract/plan-v2";
 
 // R22 plan v2.2 (owner 甲). Responses are read tolerantly (README rule 10): unknown keys
@@ -313,7 +325,7 @@ export const planIntakeListResponseObject = z.object({
 });
 export const planIntakeListResponseSchema = planIntakeListResponseObject as z.ZodType<PlanIntakeListResponse>;
 
-const draftChange = z.object({ path: z.string().min(1), label: z.string(), before: z.string().nullable(), after: z.string().nullable(), reason: z.string().nullable().optional() });
+const draftChange = z.object({ path: z.string().min(1), label: z.string(), before: z.string().nullable(), after: z.string().nullable(), reason: z.string().nullable().optional(), id: z.string().min(1).optional(), accepted: z.boolean().optional() });
 // 草稿里的人物类型还没有条目：`itemId` = 类型 key。
 export const planDraftViewObject = z.object({
   draftId: z.string().min(1),
@@ -606,3 +618,85 @@ export const planContactFitObject = z.object({
   })),
 });
 export const planContactFitSchema = planContactFitObject as z.ZodType<PlanContactFit>;
+
+/* ------------------------------------------------------------------ */
+/* R25 見直し、達成、多目标与以前のプラン                                     */
+/* ------------------------------------------------------------------ */
+
+const basisRef = z.object({ kind: z.enum(["premise", "landscape", "record", "template"]), ref: z.string(), label: z.string() });
+
+export const planReviewViewObject = z.object({
+  draft: planDraftViewObject,
+  premiseMarks: readableItems(z.object({ key: z.string().min(1), evidenceIds: z.array(z.string()), suggested: z.string().nullable().optional(), reason: z.string().nullable().optional() })),
+  reviewLeftThisMonth: count,
+  reviewMonthlyLimit: count,
+  resetsAt: z.string(),
+  sinceConfirmed: z.object({ talked: count, events: count, stepsCompleted: count }),
+});
+export const planReviewViewSchema = planReviewViewObject as unknown as z.ZodType<PlanReviewView>;
+
+export const planReviewStartRequestObject = z.object({ idempotencyKey }).strict();
+export const planReviewStartRequestSchema = planReviewStartRequestObject as z.ZodType<PlanReviewStartRequest>;
+export const planReviewFixRequestObject = z.object({
+  premise: z.array(z.object({ key: z.string().min(1).max(40), value: z.string().trim().min(1).max(300) }).strict()).max(12),
+  text: z.string().trim().max(1000).nullable(),
+  idempotencyKey,
+}).strict().refine((body) => body.premise.length > 0 || Boolean(body.text), { message: "change a premise row or write something" });
+export const planReviewFixRequestSchema = planReviewFixRequestObject as unknown as z.ZodType<PlanReviewFixRequest>;
+export const planReviewToggleRequestObject = z.object({ accepted: z.boolean(), idempotencyKey }).strict();
+export const planReviewToggleRequestSchema = planReviewToggleRequestObject as z.ZodType<PlanReviewToggleRequest>;
+
+export const planQuotaResponseObject = z.object({ reviewLeftThisMonth: count, reviewMonthlyLimit: count, resetsAt: z.string(), activeGoals: count, activeGoalLimit: count, newGoalsLeftThisMonth: count });
+export const planQuotaResponseSchema = planQuotaResponseObject as z.ZodType<PlanQuotaResponse>;
+
+export const planAchieveRequestObject = z.object({ expectedRevision: z.number().int().min(1), idempotencyKey }).strict();
+export const planAchieveRequestSchema = planAchieveRequestObject as z.ZodType<PlanAchieveRequest>;
+export const planAchievementViewObject = z.object({
+  planId: z.string().min(1),
+  goal: z.string().min(1),
+  goalKind,
+  achievedAt: z.string(),
+  total: count,
+  talkedPeople: count,
+  events: count,
+  bestMove: z.object({ text: z.string(), basis: readableItems(basisRef) }).nullable(),
+  skippedAreas: z.array(z.string()),
+  sample: z.literal(true).optional(),
+});
+export const planAchievementViewSchema = planAchievementViewObject as z.ZodType<PlanAchievementView>;
+
+export const planNextGoalsResponseObject = z.object({
+  // 候选的类型决定进哪本题库：未知类型的候选整条跳过。
+  candidates: readableItems(z.object({ goalText: z.string().min(1), goalKind: z.enum(STRICT_GOAL_KINDS), basis: readableItems(basisRef) })),
+  source: tolerantEnum(["ai", "none"], "none"),
+});
+export const planNextGoalsResponseSchema = planNextGoalsResponseObject as z.ZodType<PlanNextGoalsResponse>;
+
+export const planGoalEditRequestObject = z.object({
+  goalText: z.string().trim().min(1).max(2000).optional(),
+  goalKind: z.enum(STRICT_GOAL_KINDS).optional(),
+  mode: z.enum(["save_only", "save_and_rebuild"]),
+  expectedRevision: z.number().int().min(1),
+  idempotencyKey,
+}).strict();
+export const planGoalEditRequestSchema = planGoalEditRequestObject as z.ZodType<PlanGoalEditRequest>;
+export const planGoalEditResultObject = z.object({ planId: z.string().min(1), revision: z.number().int().min(1), reviewDraftId: z.string().nullable() });
+export const planGoalEditResultSchema = planGoalEditResultObject as z.ZodType<PlanGoalEditResult>;
+
+const legacyItem = z.object({
+  planId: z.string().min(1),
+  goal: z.string(),
+  status: z.enum(["active", "archived"]),
+  startsOn: z.string(),
+  archivedAt: z.string().nullable(),
+  needs: count,
+  actionsDone: count,
+  actionsTotal: count,
+});
+export const planLegacyListResponseObject = z.object({ plans: readableItems(legacyItem) });
+export const planLegacyListResponseSchema = planLegacyListResponseObject as z.ZodType<PlanLegacyListResponse>;
+export const planLegacyDetailObject = legacyItem.extend({
+  analysisSummary: z.string().nullable(),
+  items: readableItems(z.object({ kind: z.enum(["action", "network_need", "info", "event"]), title: z.string(), status: z.string(), phase: z.string().nullable() })),
+});
+export const planLegacyDetailSchema = planLegacyDetailObject as z.ZodType<PlanLegacyDetail>;

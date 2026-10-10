@@ -6025,6 +6025,8 @@
         "PersonalScheduleAssociationKind",
         "PersonalScheduleAssociationOption",
         "PersonalScheduleAssociationOptionsPage",
+        "PlanAchieveRequest",
+        "PlanAchievementView",
         "PlanAiLimitKind",
         "PlanAiStepState",
         "PlanAiStepView",
@@ -6054,6 +6056,8 @@
         "PlanEventScore",
         "PlanFlowCell",
         "PlanFlowStepRequest",
+        "PlanGoalEditRequest",
+        "PlanGoalEditResult",
         "PlanGoalKind",
         "PlanGoalKindRead",
         "PlanGoalKindRequest",
@@ -6081,8 +6085,13 @@
         "PlanIntroRoute",
         "PlanIntroRouteView",
         "PlanLadderRung",
+        "PlanLegacyDetail",
+        "PlanLegacyItem",
+        "PlanLegacyListResponse",
         "PlanMemberRelation",
         "PlanMemberSource",
+        "PlanNextGoalCandidate",
+        "PlanNextGoalsResponse",
         "PlanOpenResult",
         "PlanPendingDecisionRequest",
         "PlanPendingDecisionResult",
@@ -6090,13 +6099,19 @@
         "PlanPendingKind",
         "PlanPendingListResponse",
         "PlanPersonTypeDetail",
+        "PlanPremiseMark",
         "PlanPremiseRow",
         "PlanPremiseSource",
         "PlanProposalRequest",
         "PlanProposalResult",
+        "PlanQuotaResponse",
         "PlanQuotaView",
         "PlanReadingItem",
         "PlanRecentAward",
+        "PlanReviewFixRequest",
+        "PlanReviewStartRequest",
+        "PlanReviewToggleRequest",
+        "PlanReviewView",
         "PlanScoreSegment",
         "PlanScoreView",
         "PlanSkipRequest",
@@ -9245,6 +9260,16 @@
           "optional": true,
           "kind": "text",
           "type": "string | null"
+        },
+        "id": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "accepted": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -10620,6 +10645,467 @@
               }
             }
           }
+        }
+      }
+    },
+    "plan-v2.ts::PlanPremiseMark": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "evidenceIds": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "suggested": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "reason": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "plan-v2.ts::PlanReviewView": {
+      "kind": "object",
+      "members": {
+        "draft": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanDraftView"
+        },
+        "premiseMarks": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanPremiseMark[]"
+        },
+        "reviewLeftThisMonth": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "reviewMonthlyLimit": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "resetsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sinceConfirmed": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "talked": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "events": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "stepsCompleted": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "plan-v2.ts::PlanReviewStartRequest": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanReviewFixRequest": {
+      "kind": "object",
+      "members": {
+        "premise": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "key": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "value": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanReviewToggleRequest": {
+      "kind": "object",
+      "members": {
+        "accepted": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanQuotaResponse": {
+      "kind": "object",
+      "members": {
+        "reviewLeftThisMonth": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "reviewMonthlyLimit": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "resetsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "activeGoals": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "activeGoalLimit": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "newGoalsLeftThisMonth": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "plan-v2.ts::PlanAchieveRequest": {
+      "kind": "object",
+      "members": {
+        "expectedRevision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanAchievementView": {
+      "kind": "object",
+      "members": {
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "goal": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "goalKind": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanGoalKindRead"
+        },
+        "achievedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "talkedPeople": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "events": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "bestMove": {
+          "optional": false,
+          "kind": "text",
+          "type": "{ text: string; basis: readonly PlanBasisRef[]; } | null"
+        },
+        "skippedAreas": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "plan-v2.ts::PlanNextGoalCandidate": {
+      "kind": "object",
+      "members": {
+        "goalText": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "goalKind": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanGoalKind"
+        },
+        "basis": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanBasisRef[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanNextGoalsResponse": {
+      "kind": "object",
+      "members": {
+        "candidates": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanNextGoalCandidate[]"
+        },
+        "source": {
+          "optional": false,
+          "kind": "text",
+          "type": "'none' | 'ai'"
+        }
+      }
+    },
+    "plan-v2.ts::PlanGoalEditRequest": {
+      "kind": "object",
+      "members": {
+        "goalText": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "goalKind": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanGoalKind"
+        },
+        "mode": {
+          "optional": false,
+          "kind": "text",
+          "type": "'save_only' | 'save_and_rebuild'"
+        },
+        "expectedRevision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanGoalEditResult": {
+      "kind": "object",
+      "members": {
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "reviewDraftId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "plan-v2.ts::PlanLegacyItem": {
+      "kind": "object",
+      "members": {
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "goal": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'active' | 'archived'"
+        },
+        "startsOn": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "archivedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "needs": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "actionsDone": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "actionsTotal": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "plan-v2.ts::PlanLegacyListResponse": {
+      "kind": "object",
+      "members": {
+        "plans": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanLegacyItem[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanLegacyDetail": {
+      "kind": "object",
+      "members": {
+        "analysisSummary": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "items": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "kind": {
+                "optional": false,
+                "kind": "text",
+                "type": "'event' | 'action' | 'network_need' | 'info'"
+              },
+              "title": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "status": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "phase": {
+                "optional": false,
+                "kind": "text",
+                "type": "string | null"
+              }
+            }
+          }
+        },
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "goal": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'active' | 'archived'"
+        },
+        "startsOn": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "archivedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "needs": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "actionsDone": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "actionsTotal": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
         }
       }
     },
