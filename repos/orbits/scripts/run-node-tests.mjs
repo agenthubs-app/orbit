@@ -25,7 +25,15 @@ const result = spawnSync(
   {
     // ORBIT_LEGACY_TEST_LANGUAGE: the pre-R03 Chinese default the old page tests assume
     // (app/(app)/app/orbit-language-core.ts). New tests that check Japanese clear it.
-    env: { ...process.env, ORBIT_TEST_PAID_AI_LEDGER: ledger, ORBIT_LEGACY_TEST_LANGUAGE: "zh" },
+    // NODE_OPTIONS: Node 26 prints DEP0205 for tsx's `module.register()` in every child
+    // process the tests spawn; tests that assert a clean stderr would fail on that
+    // runtime notice alone (R09 baseline). Only that one warning is silenced.
+    env: {
+      ...process.env,
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, "--disable-warning=DEP0205"].filter(Boolean).join(" "),
+      ORBIT_TEST_PAID_AI_LEDGER: ledger,
+      ORBIT_LEGACY_TEST_LANGUAGE: "zh",
+    },
     stdio: "inherit",
   },
 );

@@ -12,7 +12,8 @@ export function Scrim({ onPress }: { onPress?: (() => void) | undefined }) {
   useEffect(() => { Animated.timing(opacity, { toValue: 1, duration: durations.dialog, useNativeDriver: true }).start(); }, [opacity]);
   return (
     <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim, opacity }]}>
-      <Pressable accessible={false} disabled={!onPress} onPress={onPress} style={StyleSheet.absoluteFill} />
+      {/* Hidden from assistive tech: screen readers close a dialog with their own gesture (Escape / two-finger scrub). */}
+      <Pressable accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" disabled={!onPress} onPress={onPress} style={StyleSheet.absoluteFill} />
     </Animated.View>
   );
 }

@@ -10,7 +10,10 @@ const copy = (data: unknown) => ({ data, syncedAt: "2026-09-28T01:10:00.000Z" })
 const meeting = { appointmentId: "m1", confirmed: { durationMinutes: 30, medium: { kind: "in_person", location: "丸之内咖啡" }, startsAtUtc: "2026-10-02T02:00:00.000Z", timezone: "Asia/Tokyo" },
   contactId: "contact:1", details: "聊储能试点的报价", detailsUpdatedAt: "2026-09-27T01:00:00.000Z", detailsUpdatedBy: "you", eventId: null, proposals: [],
   status: "confirmed", title: "和张伟约谈", updatedAt: "2026-09-27T01:00:00.000Z", version: 3, visibility: "participants" };
-const publicEvent = (id: string, title: string) => ({ id, title, startsAt: "2026-10-10T01:00:00.000Z", endsAt: "2026-10-10T04:00:00.000Z", location: "东京", status: "imported", topics: ["AI"], summary: "简介" });
+// The events tab lists upcoming events only, so the catalogue starts a week from now
+// (a fixed date turned into a past event on 2026-10-10 and the two tab tests timed out).
+const inAWeek = Date.now() + 7 * 24 * 60 * 60 * 1000;
+const publicEvent = (id: string, title: string) => ({ id, title, startsAt: new Date(inAWeek).toISOString(), endsAt: new Date(inAWeek + 3 * 60 * 60 * 1000).toISOString(), location: "东京", status: "imported", topics: ["AI"], summary: "简介" });
 const registered = { eventId: "ev1", participantId: "pt1", title: "储能论坛", description: "年度论坛", venue: "东京国际论坛", timeZone: "Asia/Tokyo", startsAt: "2026-10-01T01:00:00.000Z", endsAt: "2026-10-01T08:00:00.000Z", lifecycleState: "published", checkInOpensAt: null, eventStartsAt: null, eventEndsAt: null, profileEditDeadlineAt: null, resultsAvailableAt: null, roundOneStartsAt: null, roundTwoStartsAt: null };
 
 let harness: Awaited<ReturnType<typeof startOfflinePageHarness>>;

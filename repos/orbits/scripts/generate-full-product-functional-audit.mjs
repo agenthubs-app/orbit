@@ -8815,6 +8815,9 @@ export function collectInteractions(
             : staticAttribute("accessible") === false &&
               staticAttribute("accessibilityElementsHidden") === true &&
               staticAttribute("importantForAccessibility") === "no-hide-descendants";
+        // Redesign components (App R04 / Web R06 Button, IconButton …) take a
+        // required `label` prop and render it as the accessible name.
+        const componentLabel = /^[A-Z]/u.test(parts.tagName) ? attributes.get("label") : undefined;
         const accessibleNameEvidence = intentionallyHidden
           ? "intentionally-hidden-pointer-target"
           : kind === "form-submit-boundary" || isCallbackBoundary
@@ -8822,8 +8825,9 @@ export function collectInteractions(
             : attributes.get("accessibilitylabel") ||
                 attributes.get("aria-label") ||
                 attributes.get("aria-labelledby") ||
+                componentLabel ||
                 label
-              ? label.startsWith("{")
+              ? (label || componentLabel || "").startsWith("{")
                 ? "dynamic-static-expression"
                 : "present-static"
               : attributes.has("__spread")
