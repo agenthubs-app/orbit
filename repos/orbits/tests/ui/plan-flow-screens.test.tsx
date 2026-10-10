@@ -15,7 +15,7 @@ import { confirmed, draftFixture, intakeFixture, premiseIntake, questionsIntake 
 // requests a step makes — and that ticking, choosing and typing make none.
 type Reply = { status: number; body: unknown };
 type Handler = { method: string; url: string; replies: Reply[] };
-type Fixture = { view: "goal" | "flow" | "edit" | "confirmed" | "slot-error"; id?: string; lang?: string; handlers: Handler[]; card?: unknown };
+type Fixture = { view: "goal" | "flow" | "edit" | "overview" | "slot-error"; id?: string; lang?: string; handlers: Handler[] };
 type Call = { url: string; method: string; body?: any; lang?: string };
 
 const ok = (data: unknown, status = 200): Reply => ({ body: { data, success: true }, status });
@@ -31,7 +31,7 @@ test.before(async () => {
     import { PlanGoalEntry } from "./app/(app)/app/orbit-2026/plan/PlanGoalEntry";
     import { PlanFlowScreen } from "./app/(app)/app/orbit-2026/plan/PlanFlowScreen";
     import { PlanManualEditScreen } from "./app/(app)/app/orbit-2026/plan/PlanManualEditScreen";
-    import { PlanConfirmedCard } from "./app/(app)/app/orbit-2026/plan/PlanConfirmedCard";
+    import { PlanOverview } from "./app/(app)/app/orbit-2026/plan/PlanOverview";
     import { PlanSlotError } from "./app/(app)/app/orbit-2026/plan/PlanSlotError";
     const f = window.shellFixture;
     const counts = {};
@@ -52,7 +52,7 @@ test.before(async () => {
       const reply = handler.replies[Math.min(n, handler.replies.length - 1)];
       return new Response(JSON.stringify(reply.body), { status: reply.status, headers: { "content-type": "application/json" } });
     };
-    const view = f.view === "goal" ? <PlanGoalEntry /> : f.view === "flow" ? <PlanFlowScreen intakeId={f.id} /> : f.view === "confirmed" ? <PlanConfirmedCard {...f.card} /> : f.view === "slot-error" ? <PlanSlotError /> : <PlanManualEditScreen draftId={f.id} />;
+    const view = f.view === "goal" ? <PlanGoalEntry /> : f.view === "flow" ? <PlanFlowScreen intakeId={f.id} /> : f.view === "overview" ? <PlanOverview planId={f.id} /> : f.view === "slot-error" ? <PlanSlotError /> : <PlanManualEditScreen draftId={f.id} />;
     createRoot(document.getElementById("root")).render(view);
   `, SHELL_STUBS);
   browser = await launch();
@@ -389,6 +389,7 @@ test("mock end to end: goal input → background → questions → premise → d
     ["POST", /^\/drafts\/([^/]+)\/fix$/u, flow.fix, ["draftId"]],
     ["POST", /^\/drafts\/([^/]+)\/manual-edit$/u, flow.manualEdit, ["draftId"]],
     ["POST", /^\/drafts\/([^/]+)\/confirm$/u, flow.confirm, ["draftId"]],
+    ["GET", /^\/v2\/([^/]+)$/u, v2.detail, ["planId"]],
   ];
   const bridge = async (page: Page) => {
     await page.exposeFunction("planServer", (url: string, method: string, body: string | null, lang: string) => serve(url, method, body, lang));
@@ -440,17 +441,17 @@ test("mock end to end: goal input → background → questions → premise → d
     "POST /intakes/:id/questions", "POST /intakes/:id/answers", "POST /intakes/:id/draft", "POST /drafts/:id/confirm",
   ], "only the designed triggers write");
 
-  // Task › プラン: with an active v2 plan the slot shows the 「已確定」 card.
+  // Task › プラン: with an active v2 plan the slot shows the プラン概要 (R24 replaced the 「已確定」 card).
   const summary = await (await v2.summary(new Request("http://localhost/api/agent/plans/v2/summary"))).json();
   const mine = summary.data.goals.find((item: { goal: string }) => item.goal === "シリーズA の資金調達をしたい");
   assert.equal(mine?.status, "active", "confirming made an active v2 plan");
   const card = pickActiveV2Plan({ current: null, goals: [mine] });
-  assert.ok(pickActiveV2Plan(summary.data), "an active plan → the card, not the goal input");
+  assert.ok(pickActiveV2Plan(summary.data), "an active plan → the overview, not the goal input");
   assert.ok(card);
-  const view = await screen(t, { card: { goal: card.goal, goalKind: card.goalKind, total: card.total }, handlers: [], view: "confirmed" });
-  await view.locator("[data-plan-confirmed]").getByText("シリーズA の資金調達をしたい").waitFor();
-  await view.getByText("プランを確定しました。").waitFor();
-  assert.deepEqual(await fetches(view), [], "the card reads nothing on the client");
+  const view = await screen(t, { bridge: true, handlers: [], id: card.planId, view: "overview" }, bridge);
+  await view.locator("[data-plan-goal]").getByText("シリーズA の資金調達をしたい", { exact: true }).waitFor();
+  assert.equal(await view.locator("[data-plan-score]").getAttribute("data-plan-score"), String(card.total));
+  assert.deepEqual((await fetches(view)).map((call) => `${call.method} ${path(call)}`), [`GET /v2/${encodeURIComponent(card.planId)}`], "the overview only reads");
 });
 
 /* ---------- R23 review: m10 / m15 / m16 / AI_BUSY ---------- */

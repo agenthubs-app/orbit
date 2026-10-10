@@ -169,6 +169,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
 const integratedFeatureRoutes = [
   "/plans/flow/[intakeId]",
   "/plans/drafts/[draftId]/edit",
+  "/plans/[planId]/types/[itemId]",
   "/agent/actions",
   "/inbox/notifications/[id]",
   "/inbox/sources/[id]",

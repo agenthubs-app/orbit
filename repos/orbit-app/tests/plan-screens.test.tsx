@@ -380,6 +380,9 @@ test("empty state → confirmed: goal, background, questions, premise, first dra
       return ok(confirmed ? { current: { goal: intake.goal, goalKind: "launch", planId: "plan_1", score: { overflow: 0, remainingToFull: 100, segments: [], skipped: 0, talked: 0, todayDelta: 0, total: 0 } }, goals: [] } : summaryEmpty);
     }
     if (call.method === "GET" && path === "/api/agent/plans/intakes") return ok(intakesEmpty);
+    // R24: the overview endpoint 「尚未実装」 → the R23 confirmed card stays as the fallback
+    // (the overview itself is covered by tests/plan-overview-screens.test.tsx).
+    if (call.method === "GET" && path === "/api/agent/plans/v2/plan_1") return fail(503, "SERVICE_UNAVAILABLE", { reason: "NOT_IMPLEMENTED" });
     if (path === "/api/agent/plans/goal-kind") return ok({ goalKind: "launch", source: "rule" });
     if (call.method === "POST" && path === "/api/agent/plans/intakes") return ok(intake, 201);
     if (call.method === "GET" && path === "/api/agent/plans/intakes/intake_f1") return ok(intake);

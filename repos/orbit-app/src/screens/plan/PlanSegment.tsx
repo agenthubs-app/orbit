@@ -1,12 +1,14 @@
-// R23: the Task › プラン segment. With an active v2 plan it shows the minimal
-// 「確定しました」 card (R24 replaces it with the overview); without one it shows the
-// goal input (目標入力). Reads GET /api/agent/plans/v2/summary and GET …/intakes when
-// the segment is shown; nothing else is requested until the user acts.
+// R23 / R24: the Task › プラン segment. With an active v2 plan it shows the overview
+// (R24 プラン概要; the R23 minimal 「確定しました」 card stays only as the fallback while
+// the overview endpoint is 「尚未実装」); without one it shows the goal input (目標入力).
+// Reads GET /api/agent/plans/v2/summary and GET …/intakes when the segment is shown,
+// then GET /api/agent/plans/v2/[planId] for the current goal; nothing is written until
+// the user acts.
 import { useIsFocused } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import type { PlanIntakeListResponse, PlanV2HomeSummary } from "../../api/contract/plan-v2";
+import type { PlanIntakeListResponse, PlanV2Detail, PlanV2HomeSummary } from "../../api/contract/plan-v2";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
@@ -18,12 +20,13 @@ import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi } from "./plan-api";
 import { goalKindLabel } from "./plan-model";
 import { PlanGoalInput } from "./PlanGoalInput";
+import { PlanOverview } from "./PlanOverview";
 
 type SegmentState =
   | { kind: "loading" }
   | { kind: "offline" }
   | { kind: "failed" }
-  | { kind: "ready"; current: PlanV2HomeSummary | null; intakes: PlanIntakeListResponse | null };
+  | { kind: "ready"; current: PlanV2HomeSummary | null; intakes: PlanIntakeListResponse | null; overview: PlanV2Detail | null };
 
 export function PlanSegment() {
   const api = usePlanApi();
@@ -46,7 +49,16 @@ export function PlanSegment() {
     const current = summary.ok ? summary.data.current : null;
     if (!summary.ok && summary.failure.kind !== "notImplemented") return setState({ kind: "failed" });
     if (!intakes.ok && intakes.failure.kind !== "notImplemented") return setState({ kind: "failed" });
-    setState({ current, intakes: intakes.ok ? intakes.data : null, kind: "ready" });
+    // R24: the overview of the current goal (same score as the summary: both come from summarizePlanScore).
+    let overview: PlanV2Detail | null = null;
+    if (current) {
+      const detail = await api.overview(current.planId);
+      if (run !== sequence.current) return;
+      if (!detail.ok && detail.failure.kind === "network") return setState({ kind: "offline" });
+      if (!detail.ok && detail.failure.kind !== "notImplemented") return setState({ kind: "failed" });
+      overview = detail.ok ? detail.data : null;
+    }
+    setState({ current, intakes: intakes.ok ? intakes.data : null, kind: "ready", overview });
   }, [api]);
 
   // Read again each time the segment comes back into view (a plan may have been confirmed meanwhile).
@@ -66,14 +78,15 @@ export function PlanSegment() {
       {state.kind === "loading" ? <Skeleton lines={4} /> : null}
       {state.kind === "offline" ? <EmptyState title={t("plan.segment.offlineTitle")} message={t("plan.segment.offlineBody")} action={{ label: copy.action.retry, onPress: () => void retry() }} /> : null}
       {state.kind === "failed" ? <RetryCard title={fillCopy(copy.error.loadFailed, { item: copy.taskSegments.plan })} onRetry={() => void retry()} retrying={reloading} /> : null}
-      {state.kind === "ready" && state.current ? <ConfirmedPlanCard plan={state.current} /> : null}
+      {state.kind === "ready" && state.current && state.overview ? <PlanOverview plan={state.overview} reload={load} /> : null}
+      {state.kind === "ready" && state.current && !state.overview ? <ConfirmedPlanCard plan={state.current} /> : null}
       {state.kind === "ready" && !state.current && state.intakes ? <PlanGoalInput intakes={state.intakes} /> : null}
       {state.kind === "ready" && !state.current && !state.intakes ? <EmptyState title={t("shell.task.planEmptyTitle")} message={t("shell.task.planEmptyBody")} /> : null}
     </AppScreen>
   );
 }
 
-/** The minimal confirmed card (UI-SPEC「已確定」最小卡; R24 replaces it with the overview). */
+/** The R23 minimal confirmed card: only shown while the R24 overview endpoint is 「尚未実装」. */
 export function ConfirmedPlanCard({ plan }: { plan: PlanV2HomeSummary }) {
   const { styles } = useStyles();
   const { t, language } = useOrbitLocale();

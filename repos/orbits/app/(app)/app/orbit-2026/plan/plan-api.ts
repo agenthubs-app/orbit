@@ -24,7 +24,7 @@ async function once(path: string, init: RequestInit): Promise<Response> {
   return fetch(`${PLAN_API}${path}`, init);
 }
 
-export async function planApi<T>(path: string, options: { language: OrbitLanguage; method?: "GET" | "POST" | "PATCH"; body?: unknown }): Promise<PlanApiResult<T>> {
+export async function planApi<T>(path: string, options: { language: OrbitLanguage; method?: "GET" | "POST" | "PATCH" | "DELETE"; body?: unknown }): Promise<PlanApiResult<T>> {
   const init: RequestInit = {
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     cache: "no-store",

@@ -5,9 +5,9 @@
  * the guide's sample plan, the actor's current plan with contact names and
  * tracking, or 「计划暂时读不到」.
  *
- * R23: a person with an active v2 plan sees the minimal 「已確定」 card (R24 replaces it
- * with the overview); with neither a v2 nor a v1 plan they get the goal input
- * (目標入力) instead of null. The guide / demo branch is unchanged.
+ * R23: with neither a v2 nor a v1 plan the person gets the goal input (目標入力)
+ * instead of null. R24: an active v2 plan shows the プラン概要 (it replaces R23's
+ * minimal 「已確定」 card). The guide / demo branch is unchanged.
  */
 import type { ReactNode } from "react";
 
@@ -29,8 +29,8 @@ import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { pickActiveV2Plan, type ActivePlanCard } from "../../orbit-2026/plan/plan-model";
-import { PlanConfirmedCard } from "../../orbit-2026/plan/PlanConfirmedCard";
 import { PlanGoalEntry } from "../../orbit-2026/plan/PlanGoalEntry";
+import { PlanOverview } from "../../orbit-2026/plan/PlanOverview";
 import { PlanSlotError } from "../../orbit-2026/plan/PlanSlotError";
 import { IOrbitPlan } from "../iorbit-0918/iorbit-plan";
 import type { PlanTrackingInput } from "./plan-route-view-model";
@@ -79,14 +79,14 @@ async function readActiveV2Plan(actorId: string): Promise<ActivePlanCard | null 
   }
 }
 
-/** The プラン segment for this actor: the v2 card, the v1 plan screen, or the goal input. */
+/** The プラン segment for this actor: the v2 overview, the v1 plan screen, or the goal input. */
 export async function loadPlanSlot(actor: { id: string }, userId: string): Promise<ReactNode | null> {
   const frame = (node: ReactNode) => <><OrbitReferenceStyles /><OrbitVisualFreezeRuntime />{node}</>;
   const guide = await readDemoModeViewForActor({ actorId: actor.id, userId });
   if (guide) return frame(<IOrbitPlan guide={guide} guideEnabled initialSnapshot={null} />);
   const active = await readActiveV2Plan(actor.id);
   if (active === "unavailable") return <PlanSlotError />;
-  if (active) return <PlanConfirmedCard goal={active.goal} goalKind={active.goalKind} total={active.total} />;
+  if (active) return <PlanOverview planId={active.planId} />;
   const { service, snapshot } = await readCurrentPlan(actor.id);
   if (snapshot === null) return <PlanGoalEntry />;
   const [contactNames, tracking] = await Promise.all([readContactNames(actor.id, snapshot), readTracking(actor.id, service, snapshot)]);

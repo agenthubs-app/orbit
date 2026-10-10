@@ -29,6 +29,7 @@ const CODE_PATH_PARAM_KEYS = new Set(["code"]);
 const SLUG_PATH_PARAM_KEYS = new Set(["slug"]);
 const INTAKE_PATH_PARAM_KEYS = new Set(["intakeId"]);
 const DRAFT_PATH_PARAM_KEYS = new Set(["draftId"]);
+const PLAN_TYPE_PATH_PARAM_KEYS = new Set(["planId", "itemId"]);
 const STATIC_CONTACT_ROUTES = new Set([
   "all-actions",
   "dashboard",
@@ -64,6 +65,8 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
   // R23: the plan flow and the draft editor keep their id in the path.
   if (root === "plans" && detail === "flow" && segments.length === 3) return INTAKE_PATH_PARAM_KEYS;
   if (root === "plans" && detail === "drafts" && segments.length === 4 && segments[3] === "edit") return DRAFT_PATH_PARAM_KEYS;
+  // R24: the person-type page keeps both ids in the path.
+  if (root === "plans" && detail !== "flow" && detail !== "drafts" && leaf === "types" && segments.length === 4) return PLAN_TYPE_PATH_PARAM_KEYS;
 
   if ((root === "tasks" && detail !== undefined && detail !== "personal" && segments.length === 2) ||
     (root === "tasks" && detail === "relationship" && leaf !== undefined && segments.length === 3) ||

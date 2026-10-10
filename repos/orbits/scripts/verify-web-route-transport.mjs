@@ -22,6 +22,8 @@ const ROUTE_SAMPLES = new Map([
   // R23：计划生成流程与手动编辑页（动态段用样例 id；页面未登录跳登录）。
   ["/app/plans/flow/[intakeId]", "/app/plans/flow/intake_demo"],
   ["/app/plans/drafts/[draftId]/edit", "/app/plans/drafts/draft_demo/edit"],
+  // R24：人物タイプ詳細。
+  ["/app/plans/[planId]/types/[itemId]", "/app/plans/plan_demo/types/item_demo"],
   ["/app/events/[id]", "/app/events/EVT01"],
   ["/app/events/[id]/analytics", "/app/events/EVT01/analytics"],
   ["/app/events/[id]/live", "/app/events/EVT01/live"],

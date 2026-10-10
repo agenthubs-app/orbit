@@ -6,11 +6,13 @@
  * - 「共同創業者」等的判断：联系人的职位或标签里含共同創業者 / co-founder / 共同创始人（没有单独的标签字段时按职位），
  *   最多 5 人（DESIGN §5.2 C2）。
  */
-import { DEMO_PEOPLE } from "../../../shared/mock/demo-world";
 import { createManualContactCreationServiceForActor } from "../../acquisition/service-factory";
 import { createProfileService } from "../../profile/service-factory";
 import { createConfiguredPlanInputSource } from "../input-source";
 import type { PlanPoolLike } from "../repository";
+
+// mock 实现放在 mock 文件里（产品面审计：生产模块不直接 import shared/mock）。
+export { createMockPlanFlowContext } from "./mock-flow-context";
 
 export interface PlanFlowProfile {
   name: string;
@@ -44,26 +46,6 @@ const TEAM_PATTERN = /共同創業者|共同创始人|co-?founder/i;
 
 export function looksLikeTeamMember(contact: Pick<PlanFlowContact, "role" | "tags">): boolean {
   return TEAM_PATTERN.test(contact.role ?? "") || contact.tags.some((tag) => TEAM_PATTERN.test(tag));
-}
-
-/** mock：演示世界（Kanade AI の CTO を共同創業者として扱う）。 */
-export function createMockPlanFlowContext(): PlanFlowContextSource {
-  const people: PlanFlowContact[] = DEMO_PEOPLE.map((person) => ({
-    id: person.id,
-    industry: null,
-    name: person.name,
-    notes: null,
-    organization: person.company,
-    role: person.role,
-    tags: person.id === "demo-person-aoki" ? ["共同創業者"] : [],
-  }));
-  return {
-    async addContact() { return null; },
-    async contacts(_actorId, ids) { return people.filter((person) => ids.includes(person.id)); },
-    async draftContacts() { return people; },
-    async profile() { return { headline: "代表 · サンプル株式会社", name: "Orbit デモ" }; },
-    async teamCandidates() { return people.filter(looksLikeTeamMember).slice(0, PLAN_TEAM_CANDIDATE_LIMIT); },
-  };
 }
 
 type Row = Record<string, unknown>;

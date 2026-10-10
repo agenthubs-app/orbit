@@ -17,8 +17,8 @@
 | └ 由 Sprint 0131 实现 | 13 |
 | └ 由 Sprint 0137 实现 | 1 |
 | 只能在线 | 38 |
-| 不读账号数据（布局、跳转、本机设置） | 21 |
-| 合计（路由文件） | 99 |
+| 不读账号数据（布局、跳转、本机设置） | 22 |
+| 合计（路由文件） | 100 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -53,7 +53,7 @@
 | `/notes/:id/edit` | 编辑笔记 | 0108 | 域 notes | 表单显示本机内容；保存需要联网 |
 | `/notes/new` | 新建笔记 | 0108 | 域 notes（草稿存本机） | 可以写草稿；保存需要联网 |
 | `/home` | 首页（日程、待办、推荐活动、收件箱角标） | 0131 | 日程读域 personal-schedule + registered-events，约谈读页面副本 home-schedule；待办读域 tasks；角标读域 inbox-notifications 的本机未读数；推荐活动读页面副本 event-recommendations | 「截至」；推荐活动显示最近一次同步的结果；勾选完成待办需要联网 |
-| `/task` | Task：カレンダー / To-do / プラン / メモ 四段（R05）；日历段 = 原日程页，To-do 段 = 添加框 + 原待办页，プラン段 = 目標入力或「確定しました」卡（R23），メモ段 = 原笔记页 | R05 | 日历段读域 registered-events、tasks、personal-schedule（0115）；To-do 段读域 tasks 和页面副本 relationship-tasks、task-suggestions（0131）；メモ段读域 notes（0108）；プラン段读 /api/agent/plans/v2/summary、/api/agent/plans/intakes（R23，不存本机） | 日历、To-do、メモ三段照常可读（「截至」）；プラン段显示「オフラインでは見られません」；添加 To-do 离线进本机队列，其余新建需要联网 |
+| `/task` | Task：カレンダー / To-do / プラン / メモ 四段（R05）；日历段 = 原日程页，To-do 段 = 添加框 + 原待办页，プラン段 = 目標入力或プラン概要（R23 / R24），メモ段 = 原笔记页 | R05 | 日历段读域 registered-events、tasks、personal-schedule（0115）；To-do 段读域 tasks 和页面副本 relationship-tasks、task-suggestions（0131）；メモ段读域 notes（0108）；プラン段读 /api/agent/plans/v2/summary、/api/agent/plans/intakes、/api/agent/plans/v2/:planId（R23 / R24，不存本机） | 日历、To-do、メモ三段照常可读（「截至」）；プラン段显示「オフラインでは見られません」；添加 To-do 离线进本机队列，其余新建需要联网 |
 | `/tasks/:id` | 待办详情 | 0131 | 域 tasks 的这一行；活动记录和提醒读网络 | 「截至」；待办内容来自本机；活动记录、提醒和所有修改需要联网 |
 | `/tasks/relationship/:id` | 关系待办详情（关系下一步） | 0131 | 页面副本 relationship-lifecycle（/api/connections/:id/lifecycle，按关系保存最近打开的 20 个） | 「截至」；打开过的关系显示本机副本；确认下一步需要联网；没打开过的显示「需要联网」 |
 | `/profile` | 我的资料 | 0131 | 页面副本 self-profile（/api/profile）；统计读域 contacts、tasks、personal-schedule；资料更新建议读网络 | 「截至」；编辑、上传名片或简历、建议需要联网 |
@@ -98,12 +98,12 @@
 | `/contacts/new/scan` | 扫描名片（拍照或选图，核对后保存） | 名片识别（上传图片、OCR）：名片识别要上传图片做 OCR；保存联系人是写入 | /api/contact-drafts/business-card/scan、/api/contacts/business-card/confirm | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new/import/:id` | 名片导入进度 | 名片识别（上传图片、OCR）：导入任务在服务器运行 | /api/contact-drafts/business-card/imports/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/intros` | 引荐 | 需要服务器实时计算：引荐候选由服务器跨账号实时计算 | /api/contacts/intros/summary | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/contacts/matches` | 人脉需求匹配 | 需要服务器实时计算：需求匹配由服务器按最新资料实时排序（0116 已定为需要联网） | /api/contacts/needs-matches、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/invitations/:token` | 关系邀请 | 需要服务器验证链接或邀请码：邀请链接由服务器验证后才能接受 | /api/relationship-communication/invitations/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/register` | 邀请注册 | 需要服务器验证链接或邀请码：邀请码由服务器验证 | /api/events/public/:id、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/register/:code` | 邀请注册（带邀请码） | 需要服务器验证链接或邀请码：邀请码由服务器验证 | 同 /register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/plans/flow/:intakeId` | 计划生成流程：背景确认、≤5 问、前提、初版、AI 修正（R23） | 付费 AI：背景下书、选题、初版和修正由付费 AI 在服务器生成，每一步都要实时写入 | /api/agent/plans/intakes/:id、/api/agent/plans/drafts/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/plans/drafts/:draftId/edit` | 计划手动编辑（1 次，保存即确定，R23） | 需要服务器实时计算：保存即确定计划，要和服务器上的草稿版本核对 | /api/agent/plans/drafts/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/plans/:planId/types/:itemId` | 人物类型详情：候补、记录加分、跳过、面谈提案与依頼文草稿（R24） | 需要服务器实时计算：分数、候补和活动分由服务器按最新记录计算，记录与撤销要实时写入 | /api/agent/plans/v2/:planId/types/:itemId、/api/agent/plans/v2/:planId | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/platform` | 平台工作台（公开活动审核队列） | 管理员工具：平台运营工具：审核导入的公开活动 | /api/events/public | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/o/:slug` | 主办方公开页 | 公开访客页面（不属于账号）：给未登录访客看的公开页，不属于任何账号的本机副本 | /api/events/public | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/profile/edit` | 编辑资料 | 涉及凭据或会话：编辑会话从服务器取最新版本并保存，离线编辑属于 0120 断网写 | /api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -136,6 +136,7 @@
 | `/schedule` | 旧日历入口，跳到 Task 的カレンダー段（R05） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=calendar（可离线） |
 | `/today` | 旧今日待办入口，跳到 Task 的 To-do 段（R05，添加框在段顶部） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo（可离线） |
 | `/tasks` | 旧待办入口，跳到 Task 的 To-do 段（R05，保留 scope / view） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo（可离线） |
+| `/contacts/matches` | 旧人脉需求匹配链接跳转到 Task › プラン（R24） | 无 | 跳到 Task › プラン（プラン段离线显示「オフラインでは見られません」） |
 
 ## 路由文件对照
 
@@ -173,7 +174,7 @@
 | `app/contacts/graph.tsx` | `/contacts/graph` | local-first (0117) |
 | `app/contacts/intros.tsx` | `/contacts/intros` | online-only |
 | `app/contacts/list.tsx` | `/contacts/list` | local-first (0116) |
-| `app/contacts/matches.tsx` | `/contacts/matches` | online-only |
+| `app/contacts/matches.tsx` | `/contacts/matches` | device-only |
 | `app/contacts/new.tsx` | `/contacts/new` | online-only |
 | `app/contacts/new/batch/[id].tsx` | `/contacts/new/batch/:id` | online-only |
 | `app/contacts/new/batch2/[id].tsx` | `/contacts/new/batch2/:id` | online-only |
@@ -212,6 +213,7 @@
 | `app/party.tsx` | `/party` | device-only |
 | `app/party/checkin.tsx` | `/party/checkin` | device-only |
 | `app/party/graph.tsx` | `/party/graph` | device-only |
+| `app/plans/[planId]/types/[itemId].tsx` | `/plans/:planId/types/:itemId` | online-only |
 | `app/plans/drafts/[draftId]/edit.tsx` | `/plans/drafts/:draftId/edit` | online-only |
 | `app/plans/flow/[intakeId].tsx` | `/plans/flow/:intakeId` | online-only |
 | `app/platform.tsx` | `/platform` | online-only |

@@ -1,4 +1,5 @@
-// R23: the plan v2 generation endpoints as the App calls them. Every request carries
+// R23 / R24: the plan v2 endpoints as the App calls them (generation flow, overview,
+// person-type page and their commands). Every request carries
 // the screen language (`x-orbit-lang`) and `x-orbit-platform: app`, so the `href`s
 // come back in App shape (`/plans/flow/<id>`, `/task?seg=plan&plan=<id>`). Answers
 // are read through the synced zod schemas; failures become one small union the
@@ -8,7 +9,17 @@ import type { ZodType } from "zod";
 
 import type { OrbitApiClient } from "../../api/client";
 import type {
+  PlanAwardResult,
+  PlanCandidateDecisionResult,
+  PlanCommandResult,
   PlanConfirmResult,
+  PlanIntroDraftResult,
+  PlanPendingDecisionResult,
+  PlanPersonTypeDetail,
+  PlanProposalResult,
+  PlanTalkedOfflineRequest,
+  PlanTalkedOfflineResult,
+  PlanV2Detail,
   PlanDraftView,
   PlanGoalKindResult,
   PlanIntakeBlockRequest,
@@ -21,6 +32,15 @@ import type {
 } from "../../api/contract/plan-v2";
 import { contactsListPath } from "../../api/endpoints";
 import {
+  planAwardResultSchema,
+  planCandidateDecisionResultSchema,
+  planCommandResultSchema,
+  planIntroDraftResultSchema,
+  planPendingDecisionResultSchema,
+  planPersonTypeDetailSchema,
+  planProposalResultSchema,
+  planTalkedOfflineResultSchema,
+  planV2DetailSchema,
   planConfirmResultSchema,
   planDraftViewSchema,
   planGoalKindResultSchema,
@@ -58,9 +78,24 @@ export interface PlanApi {
   manualEdit(draftId: string, body: PlanDraftManualEditRequest): Promise<PlanResult<PlanConfirmResult>>;
   /** 人脈から選ぶ: the existing contacts list search (id, name, company, role, tags only). */
   searchContacts(query: string): Promise<PlanResult<ContactCandidate[]>>;
+  // R24: the overview, the person-type page and their commands (UI-SPEC「接口」).
+  overview(planId: string): Promise<PlanResult<PlanV2Detail>>;
+  typeDetail(planId: string, itemId: string): Promise<PlanResult<PlanPersonTypeDetail>>;
+  award(planId: string, itemId: string, contactId: string, idempotencyKey: string): Promise<PlanResult<PlanAwardResult>>;
+  talkedOffline(planId: string, itemId: string, body: PlanTalkedOfflineRequest): Promise<PlanResult<PlanTalkedOfflineResult>>;
+  undoAward(planId: string, awardLogId: string, idempotencyKey: string): Promise<PlanResult<PlanCommandResult>>;
+  skip(planId: string, itemId: string, idempotencyKey: string): Promise<PlanResult<PlanCommandResult>>;
+  unskip(planId: string, itemId: string, idempotencyKey: string): Promise<PlanResult<PlanCommandResult>>;
+  completeStep(planId: string, stepKey: string, idempotencyKey: string): Promise<PlanResult<PlanCommandResult>>;
+  reopenStep(planId: string, stepKey: string, idempotencyKey: string): Promise<PlanResult<PlanCommandResult>>;
+  decideCandidate(planId: string, itemId: string, contactId: string, decision: "accept" | "dismiss", idempotencyKey: string): Promise<PlanResult<PlanCandidateDecisionResult>>;
+  proposal(planId: string, itemId: string, contactId: string, slots: readonly string[], idempotencyKey: string): Promise<PlanResult<PlanProposalResult>>;
+  introDraft(planId: string, itemId: string, viaContactId: string, idempotencyKey: string): Promise<PlanResult<PlanIntroDraftResult>>;
+  acceptPending(id: string, idempotencyKey: string, answered?: readonly number[]): Promise<PlanResult<PlanPendingDecisionResult>>;
+  dismissPending(id: string, idempotencyKey: string): Promise<PlanResult<PlanPendingDecisionResult>>;
 }
 
-type Method = "get" | "post" | "patch";
+type Method = "get" | "post" | "patch" | "delete";
 
 export function createPlanApi(client: OrbitApiClient, language: string): PlanApi {
   const headers = { "x-orbit-lang": language, "x-orbit-platform": "app" };
@@ -73,7 +108,24 @@ export function createPlanApi(client: OrbitApiClient, language: string): PlanApi
   }
   const intake = (id: string, rest = "") => `${PLANS}/intakes/${segment(id)}${rest}`;
   const draft = (id: string, rest = "") => `${PLANS}/drafts/${segment(id)}${rest}`;
+  const plan = (id: string, rest = "") => `${PLANS}/v2/${segment(id)}${rest}`;
+  const type = (id: string, itemId: string, rest = "") => `${PLANS}/v2/${segment(id)}/types/${segment(itemId)}${rest}`;
+  const pending = (id: string, rest: string) => `${PLANS}/v2/pending/${segment(id)}${rest}`;
   return {
+    acceptPending: (id, idempotencyKey, answered) => call("post", pending(id, "/accept"), planPendingDecisionResultSchema, answered ? { answered, idempotencyKey } : { idempotencyKey }),
+    award: (id, itemId, contactId, idempotencyKey) => call("post", type(id, itemId, "/awards"), planAwardResultSchema, { basis: "talked", contactId, idempotencyKey }),
+    completeStep: (id, stepKey, idempotencyKey) => call("post", plan(id, `/steps/${segment(stepKey)}/complete`), planCommandResultSchema, { idempotencyKey }),
+    decideCandidate: (id, itemId, contactId, decision, idempotencyKey) => call("post", type(id, itemId, `/candidates/${segment(contactId)}/decision`), planCandidateDecisionResultSchema, { decision, idempotencyKey }),
+    dismissPending: (id, idempotencyKey) => call("post", pending(id, "/dismiss"), planPendingDecisionResultSchema, { idempotencyKey }),
+    introDraft: (id, itemId, viaContactId, idempotencyKey) => call("post", type(id, itemId, "/intro-drafts"), planIntroDraftResultSchema, { idempotencyKey, viaContactId }),
+    overview: (id) => call("get", plan(id), planV2DetailSchema),
+    proposal: (id, itemId, contactId, slots, idempotencyKey) => call("post", type(id, itemId, "/proposals"), planProposalResultSchema, { contactId, idempotencyKey, slots }),
+    reopenStep: (id, stepKey, idempotencyKey) => call("delete", plan(id, `/steps/${segment(stepKey)}/complete`), planCommandResultSchema, { idempotencyKey }),
+    skip: (id, itemId, idempotencyKey) => call("post", type(id, itemId, "/skip"), planCommandResultSchema, { idempotencyKey }),
+    talkedOffline: (id, itemId, body) => call("post", type(id, itemId, "/talked-offline"), planTalkedOfflineResultSchema, body),
+    typeDetail: (id, itemId) => call("get", type(id, itemId), planPersonTypeDetailSchema),
+    undoAward: (id, awardLogId, idempotencyKey) => call("post", plan(id, `/awards/${segment(awardLogId)}/undo`), planCommandResultSchema, { idempotencyKey }),
+    unskip: (id, itemId, idempotencyKey) => call("delete", type(id, itemId, "/skip"), planCommandResultSchema, { idempotencyKey }),
     addMembers: (id, body) => call("post", intake(id, "/members"), planIntakeViewSchema, body),
     answers: (id, answers, idempotencyKey) => call("post", intake(id, "/answers"), planIntakeViewSchema, { answers, idempotencyKey }),
     confirm: (id, idempotencyKey) => call("post", draft(id, "/confirm"), planConfirmResultSchema, { idempotencyKey }),
