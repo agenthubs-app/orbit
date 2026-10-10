@@ -11,10 +11,12 @@ import * as fixtures from "../../orbits/shared/mock/demo-world/fixtures";
 // dropping the record.
 test("a notification with fields and values this build does not know still reads", () => {
   const note = fixtures.demoSecretaryNotifications[0]!;
-  const parsed = inboxNotificationSchema.safeParse({ ...note, priority: "high", kind: "celebration", sources: [{ ...note.sources[0]!, sourceKind: "calendar_digest" }], actions: ["read", "pin"] });
+  const parsed = inboxNotificationSchema.safeParse({ ...note, priority: "high", origin: "partner", actions: ["read", "pin"] });
   assert.equal(parsed.success, true);
-  const value = parsed.data as unknown as Record<string, unknown> & { kind: string; actions: string[] };
-  assert.deepEqual([value.kind, value.actions, "priority" in value], ["update", ["read"], false]);
+  const value = parsed.data as unknown as Record<string, unknown> & { origin: string; actions: string[] };
+  assert.deepEqual([value.origin, value.actions, "priority" in value], ["automation", ["read"], false]);
+  // A kind this build cannot show is still skipped by the list (Sprint 0104).
+  assert.equal(inboxNotificationSchema.safeParse({ ...note, kind: "celebration" }).success, false);
 });
 
 test("delivery preferences with a newer setting still read", () => {

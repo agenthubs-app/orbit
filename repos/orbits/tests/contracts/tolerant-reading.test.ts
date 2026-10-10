@@ -13,23 +13,29 @@ import { demoDeliveryPreferences, demoEventAssessment, demoHomeLayout, demoSecre
 // bodies and server writes stay strict.
 const note = demoSecretaryNotifications[0]!;
 
-test("a notification from a newer server still reads: extra keys dropped, unknown values fall back", () => {
+test("a notification from a newer server still reads: extra keys dropped, unknown secondary values fall back", () => {
   const newer = {
     ...note,
     futureField: { anything: true },
-    kind: "celebration",
     origin: "partner",
-    sources: [{ ...note.sources[0]!, sourceKind: "calendar_digest", futureFlag: 1 }],
+    sources: [{ ...note.sources[0]!, futureFlag: 1 }],
     target: { ...note.target, kind: "workspace", status: "archived_elsewhere" },
     actions: ["read", "pin", "dismiss"],
     disposition: "snoozed_forever",
   };
   const read = inboxNotificationSchema.parse(newer) as unknown as Record<string, unknown> & typeof note;
   assert.equal("futureField" in read, false);
-  assert.deepEqual([read.kind, read.origin, read.target.kind, read.target.status, read.disposition], ["update", "automation", "source", "unavailable", "open"]);
+  assert.deepEqual([read.origin, read.target.kind, read.target.status, read.disposition], ["automation", "source", "unavailable", "open"]);
   assert.deepEqual(read.actions, ["read", "dismiss"]);
-  assert.equal(read.sources[0]!.sourceKind, "calendar_digest", "an unknown source kind is kept; no branch matches it");
-  assert.equal(inboxNotificationListSchema.parse({ enabled: true, items: [newer], unreadCount: 1, nextCursor: null, asOf: note.occurredAt }).items.length, 1);
+  assert.equal(inboxNotificationSchema.safeParse({ ...note, kind: undefined }).success, false, "a missing value is still an error");
+});
+
+test("a notification of a kind this client cannot show is skipped; the page and the server unread total stay", () => {
+  const unknownKind = { ...note, id: "n-kind", kind: "celebration" };
+  const unknownSource = { ...note, id: "n-source", sources: [{ ...note.sources[0]!, sourceKind: "calendar_digest" }] };
+  const page = inboxNotificationListSchema.parse({ enabled: true, items: [note, unknownKind, unknownSource, { id: "broken" }], unreadCount: 4, nextCursor: "p2", asOf: note.occurredAt });
+  assert.deepEqual(page.items.map((item) => item.id), [note.id]);
+  assert.equal(page.unreadCount, 4);
 });
 
 test("the server's write validation stays strict", () => {
@@ -55,6 +61,6 @@ test("the redesign responses read tolerantly; their request bodies stay strict",
   assert.equal(homeLayoutUpdateInputSchema.safeParse({ expectedRevision: 1, mutationId: "m", app: [], web: [], theme: "x" }).success, false);
   const assessment = eventAssessmentSchema.parse({ ...demoEventAssessment, verdict: "maybe", missingFields: ["price", "dressCode"] }) as typeof demoEventAssessment;
   assert.deepEqual([assessment.verdict, assessment.missingFields], ["conditional", ["price"]]);
-  const exported = accountExportSchema.parse({ id: "e1", scope: ["contacts", "photos"], status: "archiving", requestedAt: demoEventAssessment.createdAt }) as { scope: string[]; status: string };
+  const exported = accountExportSchema.parse({ id: "e1", scope: ["contacts", "photos"], status: "archiving", requestedAt: demoEventAssessment.createdAt }) as unknown as { scope: string[]; status: string };
   assert.deepEqual([exported.scope, exported.status], [["contacts"], "running"]);
 });

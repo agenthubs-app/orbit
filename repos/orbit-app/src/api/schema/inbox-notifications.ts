@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { knownValues, tolerantEnum } from './tolerant';
+import { knownValues, readableItems, tolerantEnum } from './tolerant';
 import type { InboxNotificationDTO, InboxNotificationListDTO, InboxNotificationActionInput, InboxNotificationReadBatchInput } from '../contract/inbox-notifications';
 const id = z.string().trim().min(1).max(512);
 const instant = z.string().datetime({ offset: true });
@@ -29,19 +29,20 @@ export const inboxNotificationWriteSchema = z.object({
 
 /**
  * Reading a notification (Web inbox and home, App inbox): tolerant (README rule 10).
- * Unknown keys are dropped; an unknown kind reads as `update`, origin as
- * `automation`, target kind as `source`, target status as `unavailable` (the UI then
- * offers no jump), disposition as `open`; unknown actions are skipped. A source kind
- * this client does not know is kept as text: no branch matches it, so the generic
- * rendering applies.
+ * Unknown keys are dropped; an unknown target kind reads as `source`, target status as
+ * `unavailable` (no jump offered), disposition as `open`, origin as `automation`;
+ * unknown actions are skipped. A notification kind or source kind this client does
+ * not know means the item cannot be shown meaningfully: it fails here and the list
+ * skips it, keeping the server's unread total (Sprint 0104 / 0122).
  */
 export const inboxNotificationSchema = z.object({
-  id,actorId:id,revision:z.number().int().positive(),kind:tolerantEnum(['reminder','suggestion','update'],'update'),origin:tolerantEnum(['user','automation','business'],'automation'),semanticKey:id,
+  id,actorId:id,revision:z.number().int().positive(),kind:z.enum(['reminder','suggestion','update']),origin:tolerantEnum(['user','automation','business'],'automation'),semanticKey:id,
   title:z.string().min(1).max(1000),reason:z.string().min(1).max(4000),object:z.object({id,name:z.string().min(1)}).optional(),
-  sources:z.array(z.object({sourceKind:z.string().min(1),sourceId:id,sourceRevision:id,occurredAt:instant,readAt:instant,authorId:id.optional(),objectId:id.optional(),excerpt:z.string().max(4000).optional()})).min(1).max(20),
+  sources:z.array(z.object({sourceKind:z.enum(SOURCE_KINDS),sourceId:id,sourceRevision:id,occurredAt:instant,readAt:instant,authorId:id.optional(),objectId:id.optional(),excerpt:z.string().max(4000).optional()})).min(1).max(20),
   target:z.object({kind:tolerantEnum(['task','schedule','appointment','event','conversation','batch','source'],'source'),id,href:z.string().regex(/^\/(?!\/)/).nullable(),status:tolerantEnum(['available','changed','unavailable'],'unavailable')}),
   actions:knownValues(ACTIONS),occurredAt:instant,updatedAt:instant,readAt:instant.nullable(),dueAt:instant.optional(),scheduledFor:instant.optional(),expiresAt:instant.optional(),disposition:tolerantEnum(['open','dismissed','handled','accepted','expired','archived'],'open'),legacyId:id.optional(),createdTaskId:id.optional(),
   copy:copyShape(z.string()).optional(),
   sample:z.literal(true).optional(),
 }) as unknown as z.ZodType<InboxNotificationDTO>;
-export const inboxNotificationListSchema = z.object({enabled:z.boolean(),items:z.array(inboxNotificationSchema),unreadCount:z.number().int().nonnegative(),nextCursor:z.string().nullable(),asOf:instant}) as z.ZodType<InboxNotificationListDTO>;
+/** A page: items this client cannot read are skipped; `unreadCount` stays the server total. */
+export const inboxNotificationListSchema = z.object({enabled:z.boolean(),items:readableItems(inboxNotificationSchema),unreadCount:z.number().int().nonnegative(),nextCursor:z.string().nullable(),asOf:instant}) as z.ZodType<InboxNotificationListDTO>;

@@ -262,4 +262,5 @@
 - `inboxNotificationSchema` 拆成读取用（宽进，Web 收件箱 / 首页、App 收件箱读）和 `inboxNotificationWriteSchema`（严格，服务端写入校验 `inbox-record-service.ts`）；App 的两个 strict 读取点现在就是宽进读取，不再留给 R13 / R14；
 - 请求体和服务端写入保持严格；检查器继续把 `| null` 等判为破坏；
 - `minSupportedAppVersion` 写成首次正式发布后才启用的机制（契约 11 注释、README 通用规则 10、`BREAKING.md`），标注产品负责人已确认；
-- 测试：orbits `tests/contracts/tolerant-reading.test.ts`、App `tests/contract-tolerant-reading.test.ts`。
+- 通知的 `kind` 与来源 `sourceKind` 出现未知值时整条跳过（保留 Sprint 0104 / 0122 已定的做法：这类条目无法有意义地显示），列表逐条读（`readableItems`），Web 收件箱也不再因一条读不了而整页失败；缺字段仍然是错误（`tolerantEnum` 只映射未知值）；
+- 测试：orbits `tests/contracts/tolerant-reading.test.ts`、App `tests/contract-tolerant-reading.test.ts`；原有的收件箱容错测试（`inbox-notification-tolerance`、`typed-notification-inbox` 等）不变且通过。

@@ -81,7 +81,7 @@
 8. **复核**：每个 Sprint 结束由独立 AI 复核（跑全量、运行时抽查、对照 SC），写 `REVIEW.md`；复核发现的问题直接在 `redesign` 上修（RD-25）；产品负责人看截图集并试用。
 9. **范围**：骨架不改旧屏，旧用法只减不增（RD-24）。
 10. **契约演进与客户端读取**（R08 复核 M3；**产品负责人已确认（2026-10-10）**）：按成熟产品的常规做法（对标 Stripe / GitHub API）「宽进严出」。
-    - **响应宽进**：解析响应的 schema 不用 `.strict()`，多余字段丢弃；响应里的枚举用 `shared/api-schema/tolerant.ts` 的 `tolerantEnum`（未知值落到写明的兜底值）或 `knownValues`（未知项跳过）；集合里不认识的条目跳过。读取用和写入用要分开时拆成两个 schema（例：`inboxNotificationSchema` 读取宽进、`inboxNotificationWriteSchema` 服务端写入严格）。
+    - **响应宽进**：解析响应的 schema 不用 `.strict()`，多余字段丢弃；响应里的枚举用 `shared/api-schema/tolerant.ts` 的 `tolerantEnum`（未知值落到写明的兜底值；缺字段仍是错误）或 `knownValues`（未知项跳过）；列表用 `readableItems` 逐条读，读不了的条目跳过、整页不失败。决定「这条是什么」的枚举（如通知的 `kind`、来源 `sourceKind`）出现未知值时，整条跳过而不是猜一个兜底（Sprint 0104 / 0122 的做法，服务端未读总数照常）。读取用和写入用要分开时拆成两个 schema（例：`inboxNotificationSchema` 读取宽进、`inboxNotificationWriteSchema` 服务端写入严格）。
     - **请求严出**：请求体 schema 保持 `.strict()`、枚举封闭；服务端写入校验同样严格。
     - **检查器**：响应字段放宽为 `| null`、`| unknown`、`| any`，或给必填字段加 `| undefined`，仍判为破坏（`scripts/contract-snapshot.mjs`）。
     - **`minSupportedAppVersion`（契约 11）在首次正式发布之后才启用**：正式发布前没有需要兼容的已装版本，契约可以直接改（走 `BREAKING.md` 登记），App 重新发布即可；正式发布后，旧版本读不了的变更必须先发一版能读的 App，或同时抬高 `minSupportedAppVersion`。
