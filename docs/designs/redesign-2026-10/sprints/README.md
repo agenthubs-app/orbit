@@ -39,6 +39,19 @@
 
 执行顺序：R01 → R02 → R03 → R04 → R05 → R06 → R07 → R08 → R09（一人依次做；R08 只依赖 R01，可以提前）。
 
+## 功能登记表
+
+功能 Sprint（R10 起）的文档按 [HOW-TO](HOW-TO-START-A-FEATURE-SPRINT.md) 写；一组功能有整体设计时，先写 `<功能>/DESIGN.md` 并独立复核。
+
+| Sprint | 目标 | 依赖 | 档位 | 负责 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| [R22](R22-plan-data-and-score/GOAL.md) | 计划 v2.2：数据、契约与分数（迁移两个本机、契约转正、计分纯函数、v2 读接口与计分命令、旧计划守卫） | R09 | H | 甲 | planned（文档待复核） |
+| [R23](R23-plan-generation/GOAL.md) | 计划 v2.2：生成流程与 AI（目标入力 → 背景 → ≤5 问 → 前提 → 初版 → AI 修正 → 手動編集 → 確定；业界现状库） | R22 | H | 甲 | planned（文档待复核） |
+| [R24](R24-plan-overview-and-types/GOAL.md) | 计划 v2.2：概要、人物类型与记录加分（含 `event-score.ts`、面谈メモ判定） | R22 | H | 甲 | planned（文档待复核） |
+| [R25](R25-plan-review-goals-cleanup/GOAL.md) | 计划 v2.2：见直、达成、多目标与旧屏清理（删兼容跳转、旧链接换新） | R23、R24 | H | 甲 | planned（文档待复核） |
+
+计划 v2.2 的整体设计、AI 调用清单、需要用户拍板的事项见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md)，复核见 [plan-v2.2/REVIEW.md](plan-v2.2/REVIEW.md)。
+
 ## 用户决定（2026-10-09）
 
 | 编号 | 决定 | 影响 |
