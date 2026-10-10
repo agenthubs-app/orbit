@@ -83,6 +83,7 @@ test("only the JSDoc tag @draft in the header makes a draft", () => {
   assert.equal(isDraftContract("/** This file is not @draft any more. */\nexport interface A { id: string }"), false);
   assert.equal(isDraftContract("export interface A { id: string }\n/** @draft */"), false);
   const files = readContractFiles(join(process.cwd(), "shared", "contract"));
-  assert.equal("plan-v2.ts" in files, false);
+  // R22 fixed plan v2: no draft contract is left, so every file is in the snapshot.
+  assert.equal("plan-v2.ts" in files, true);
   assert.equal("home-layout.ts" in files, true);
 });

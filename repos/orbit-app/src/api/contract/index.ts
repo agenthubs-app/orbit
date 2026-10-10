@@ -140,6 +140,7 @@ export type {
   ScheduleItemContract,
   TaskCategory,
   TaskItemContract,
+  TaskPlanLink,
   TaskStatus,
   TaskSuggestionContract
 } from "./tasks";
@@ -366,4 +367,35 @@ export type {
 } from "./event-assessment";
 export type { EventRecommendationDismissInput, EventRecommendationDismissReason, EventRecommendationDismissResult } from "./event-recommendation-feedback";
 export type { AccountDeletionRequestContract, AccountExportContract, AccountExportScope, AppVersionContract } from "./account";
-export type { PlanIntakeSummary, PlanScoreView, PlanV2PersonType, PlanV2Step, PlanV2Summary, PlanV2SummaryResponse } from "./plan-v2";
+export type {
+  PlanAwardBasis,
+  PlanAwardPart,
+  PlanAwardRequest,
+  PlanAwardResult,
+  PlanBasisRef,
+  PlanCitation,
+  PlanCommandResult,
+  PlanFlowCell,
+  PlanGoalKind,
+  PlanGoalKindRead,
+  PlanGoalListItem,
+  PlanGoalStatus,
+  PlanIntakeSource,
+  PlanIntroRoute,
+  PlanPremiseRow,
+  PlanPremiseSource,
+  PlanQuotaView,
+  PlanScoreSegment,
+  PlanScoreView,
+  PlanSkipRequest,
+  PlanStepRequest,
+  PlanTodayChance,
+  PlanUndoRequest,
+  PlanV2Content,
+  PlanV2Detail,
+  PlanV2EventBlock,
+  PlanV2HomeSummary,
+  PlanV2PersonType,
+  PlanV2Step,
+  PlanV2SummaryResponse,
+} from "./plan-v2";

@@ -12,7 +12,7 @@ import { inboxNotificationSchema } from "../src/api/schema/inbox-notifications";
 import { inviteCodePreviewSchema, inviteCodeRedeemResultSchema, inviteCodeSchema } from "../src/api/schema/invite-codes";
 import { contactListItemSchema } from "../src/api/schema/mobile-contacts-dashboard";
 import { inboxDeliveryPreferencesSchema } from "../src/api/schema/notification-delivery-policy";
-import { planV2SummaryResponseSchema } from "../src/api/schema/plan-v2";
+import { planV2DetailSchema, planV2SummaryResponseSchema } from "../src/api/schema/plan-v2";
 // The demo-world fixtures live on the server side; a test may read ../orbits (it
 // never ships in the App bundle).
 import * as fixtures from "../../orbits/shared/mock/demo-world/fixtures";
@@ -33,6 +33,7 @@ test("the App's synced schemas parse every redesign fixture", () => {
   accountDeletionRequestSchema.parse(fixtures.demoDeletionRequest);
   appVersionSchema.parse(fixtures.demoAppVersion);
   planV2SummaryResponseSchema.parse(fixtures.demoPlanSummary);
+  planV2DetailSchema.parse(fixtures.demoPlanDetail);
   const summary = contactCardSummarySchema.parse({ total: 10, sources: {}, statuses: {}, values: {}, tags: [], hasMoreTags: false, asOf: "2026-10-07T00:00:00.000Z", ...fixtures.demoContactSummaryExtras });
   assert.deepEqual(summary.densityCounts, fixtures.demoContactSummaryExtras.densityCounts);
   for (const row of fixtures.demoContactRows) assert.equal(contactListItemSchema.parse(row).sample, true);

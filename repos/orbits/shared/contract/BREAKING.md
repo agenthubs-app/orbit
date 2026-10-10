@@ -23,3 +23,5 @@
 
 | 日期 | id | 改动 | 原因 | 甲乙同意 | App 跟进 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-10-10 | `index.ts::(exports)=PlanV2Summary` | R22 计划 v2.2 契约定稿：`PlanV2Summary` 改为 `PlanV2HomeSummary`；`PlanV2SummaryResponse` 从 `{ summary, score }` 改为 `{ current, goals }`；`PlanScoreView.total` 不再限 ≤100（不封顶）、`byType` 改为 `segments`；`PlanV2Step` 的 `id / personTypeKey` 改为 `key / personTypeKeys[]`；`PlanV2PersonType` 字段整套更换（`plan-v2.ts` 在 R08 是 `@draft`，不在快照里，这里一并记录） | R08 草案只定了顶层，R22 按 plan-v2.2/DESIGN.md 定全字段；分数按设计不封顶 | 甲（执行）、乙（用户 2026-10-10「都按推荐，开工 R22」） | 同一提交带 App 同步副本；App 尚无计划界面，只有 `tests/contract-fixtures-parse.test.ts` 读它 |
+| 2026-10-10 | `index.ts::(exports)=PlanIntakeSummary` | R22 删除 `PlanIntakeSummary`，生成流程的形状由 R23 的 `PlanIntakeView` 取代 | 草案里的 intake 摘要不够表达背景三块、≤5 问与前提（DESIGN §3.2） | 甲（执行）、乙（用户 2026-10-10「都按推荐，开工 R22」） | 同上；App 没有使用方 |

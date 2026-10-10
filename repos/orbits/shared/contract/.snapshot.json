@@ -6010,11 +6010,35 @@
         "PersonalScheduleAssociationKind",
         "PersonalScheduleAssociationOption",
         "PersonalScheduleAssociationOptionsPage",
-        "PlanIntakeSummary",
+        "PlanAwardBasis",
+        "PlanAwardPart",
+        "PlanAwardRequest",
+        "PlanAwardResult",
+        "PlanBasisRef",
+        "PlanCitation",
+        "PlanCommandResult",
+        "PlanFlowCell",
+        "PlanGoalKind",
+        "PlanGoalKindRead",
+        "PlanGoalListItem",
+        "PlanGoalStatus",
+        "PlanIntakeSource",
+        "PlanIntroRoute",
+        "PlanPremiseRow",
+        "PlanPremiseSource",
+        "PlanQuotaView",
+        "PlanScoreSegment",
         "PlanScoreView",
+        "PlanSkipRequest",
+        "PlanStepRequest",
+        "PlanTodayChance",
+        "PlanUndoRequest",
+        "PlanV2Content",
+        "PlanV2Detail",
+        "PlanV2EventBlock",
+        "PlanV2HomeSummary",
         "PlanV2PersonType",
         "PlanV2Step",
-        "PlanV2Summary",
         "PlanV2SummaryResponse",
         "PortraitAnswerProof",
         "PortraitField",
@@ -6094,6 +6118,7 @@
         "TaskCategory",
         "TaskItemContract",
         "TaskPageContract",
+        "TaskPlanLink",
         "TaskStatus",
         "TaskSuggestionCardContract",
         "TaskSuggestionContract",
@@ -7799,6 +7824,774 @@
           "optional": false,
           "kind": "text",
           "type": "boolean"
+        }
+      }
+    },
+    "plan-v2.ts::PlanGoalKind": {
+      "kind": "enum",
+      "values": [
+        "'career'",
+        "'fundraising'",
+        "'hiring'",
+        "'launch'",
+        "'partnership'",
+        "'sales'"
+      ]
+    },
+    "plan-v2.ts::PlanGoalKindRead": {
+      "kind": "enum",
+      "values": [
+        "'career'",
+        "'fundraising'",
+        "'hiring'",
+        "'launch'",
+        "'partnership'",
+        "'sales'",
+        "'unknown'"
+      ]
+    },
+    "plan-v2.ts::PlanIntakeSource": {
+      "kind": "enum",
+      "values": [
+        "'iorbit'",
+        "'next_goal'",
+        "'onboarding'",
+        "'task'"
+      ]
+    },
+    "plan-v2.ts::PlanPremiseSource": {
+      "kind": "enum",
+      "values": [
+        "'background'",
+        "'q1'",
+        "'q2'",
+        "'q3'",
+        "'q4'",
+        "'q5'",
+        "'record'"
+      ]
+    },
+    "plan-v2.ts::PlanAwardBasis": {
+      "kind": "enum",
+      "values": [
+        "'event'",
+        "'memo'",
+        "'self_report'",
+        "'skip'",
+        "'talked'"
+      ]
+    },
+    "plan-v2.ts::PlanAwardPart": {
+      "kind": "enum",
+      "values": [
+        "'base'",
+        "'overflow'"
+      ]
+    },
+    "plan-v2.ts::PlanGoalStatus": {
+      "kind": "enum",
+      "values": [
+        "'achieved'",
+        "'active'"
+      ]
+    },
+    "plan-v2.ts::PlanCitation": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "version": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "plan-v2.ts::PlanBasisRef": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'record' | 'premise' | 'landscape' | 'template'"
+        },
+        "ref": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanV2Step": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "doneCriteria": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "why": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "personTypeKeys": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "completedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "plan-v2.ts::PlanIntroRoute": {
+      "kind": "object",
+      "members": {
+        "viaContactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "why": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanV2PersonType": {
+      "kind": "object",
+      "members": {
+        "itemId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "slot": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "shortLabelId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "shortLabel": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "roleSituation": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "allocation": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "targetCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "why": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "questions": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "countRule": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "recognizeHints": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "persona": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "opener": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "introRoutes": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanIntroRoute[]"
+        },
+        "skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "plan-v2.ts::PlanV2EventBlock": {
+      "kind": "object",
+      "members": {
+        "allocation": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "targetCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "plan-v2.ts::PlanFlowCell": {
+      "kind": "object",
+      "members": {
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "note": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanV2Content": {
+      "kind": "object",
+      "members": {
+        "diagnosis": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "conclusion": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "flow": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanFlowCell[]"
+        },
+        "steps": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanV2Step[]"
+        },
+        "personTypes": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanV2PersonType[]"
+        },
+        "event": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanV2EventBlock"
+        },
+        "citations": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanCitation[]"
+        },
+        "allocationReasons": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "basis": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanBasisRef[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "plan-v2.ts::PlanScoreSegment": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "shortLabel": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "allocation": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "earned": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "overflow": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "plan-v2.ts::PlanScoreView": {
+      "kind": "object",
+      "members": {
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "talked": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "overflow": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "remainingToFull": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "todayDelta": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "segments": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanScoreSegment[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanTodayChance": {
+      "kind": "object",
+      "members": {
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "points": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanV2HomeSummary": {
+      "kind": "object",
+      "members": {
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "goal": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "goalKind": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanGoalKindRead"
+        },
+        "score": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanScoreView"
+        },
+        "todayChance": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanTodayChance | null"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "plan-v2.ts::PlanGoalListItem": {
+      "kind": "object",
+      "members": {
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "goal": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "goalKind": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanGoalKindRead"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanGoalStatus"
+        },
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "talkedPeople": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "lastOpenedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "plan-v2.ts::PlanV2SummaryResponse": {
+      "kind": "object",
+      "members": {
+        "current": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanV2HomeSummary | null"
+        },
+        "goals": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanGoalListItem[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanPremiseRow": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "value": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "source": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanPremiseSource"
+        },
+        "guessed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "plan-v2.ts::PlanQuotaView": {
+      "kind": "object",
+      "members": {
+        "reviewLeftThisMonth": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "reviewMonthlyLimit": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "manualEditAvailable": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "activeGoals": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "activeGoalLimit": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "plan-v2.ts::PlanV2Detail": {
+      "kind": "object",
+      "members": {
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "goal": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "goalKind": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanGoalKindRead"
+        },
+        "purposeText": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "startsOn": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "premise": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanPremiseRow[]"
+        },
+        "content": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanV2Content"
+        },
+        "score": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanScoreView"
+        },
+        "quota": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanQuotaView"
+        },
+        "achievedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "plan-v2.ts::PlanAwardRequest": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "anonymous": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        },
+        "at": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "basis": {
+          "optional": false,
+          "kind": "text",
+          "type": "'talked' | 'self_report'"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanAwardResult": {
+      "kind": "object",
+      "members": {
+        "awardLogId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "points": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "part": {
+          "optional": false,
+          "kind": "text",
+          "type": "'none' | PlanAwardPart"
+        },
+        "reason": {
+          "optional": true,
+          "kind": "text",
+          "type": "'skipped' | 'anonymous_over_target' | 'already_counted'"
+        },
+        "score": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanScoreView"
+        },
+        "replayed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "plan-v2.ts::PlanUndoRequest": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanSkipRequest": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanStepRequest": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanCommandResult": {
+      "kind": "object",
+      "members": {
+        "score": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanScoreView"
+        },
+        "replayed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "completedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -10244,6 +11037,26 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "planLink": {
+          "optional": true,
+          "kind": "text",
+          "type": "TaskPlanLink"
+        }
+      }
+    },
+    "tasks.ts::TaskPlanLink": {
+      "kind": "object",
+      "members": {
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "typeItemId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
         }
       }
     },

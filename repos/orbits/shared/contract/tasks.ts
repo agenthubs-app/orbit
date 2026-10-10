@@ -37,6 +37,16 @@ export interface TaskItemContract {
   deferralCount?: number;
   /** R08: a demo-world record; the UI shows the sample tag and never stores, counts or searches it. */
   sample?: true;
+  /**
+   * R22 (plan v2.2 DESIGN §8; R20 stores it, R24 shows it, R21 sets it from iOrbit's 「プランに追加」):
+   * the person type this to-do hangs under.
+   */
+  planLink?: TaskPlanLink;
+}
+
+export interface TaskPlanLink {
+  planId: string;
+  typeItemId: string;
 }
 
 export interface TaskSuggestionContract {

@@ -50,20 +50,30 @@ export const DEMO_EVENTS = [
   { id: "demo-event-robotics-meetup", title: "ロボティクス起業家ミートアップ", startsAt: "2026-11-05T19:00:00+09:00", venue: "東京・渋谷", organizer: "Nexa Robotics", attendeeIds: ["demo-person-watanabe", "demo-person-suzuki"], sample: true },
 ] as const satisfies readonly DemoEvent[];
 
+// R22: the plan is a v2.2 plan (DESIGN §3, b4 / app.html の「シリーズA 資金調達」). `personIds` are the people
+// already talked to under each type; `attendedEventIds` the events attended for the event block.
 export const DEMO_PLAN = {
   id: "demo-plan-series-a",
-  goal: "年内に初期顧客を 5 社つくる",
-  goalKind: "customers",
+  goal: "シリーズA 資金調達（3億円）",
+  goalKind: "fundraising",
+  purposeText: "製造業 DX の SaaS を、次の2年で伸ばせる体制にする",
+  startsOn: "2026-09-15",
   steps: [
-    { id: "demo-step-1", title: "同じ道を通った起業家に話を聞く", personTypeKey: "founder" },
-    { id: "demo-step-2", title: "製造業の現場の声を集める", personTypeKey: "maker" },
-    { id: "demo-step-3", title: "投資家に紹介をお願いする", personTypeKey: "investor" },
+    { key: "demo-step-1", title: "数字と資料を固める", doneCriteria: "ピッチ資料と事業計画を CFO 経験者 1 人に見てもらう", personTypeKeys: ["cfo"] },
+    { key: "demo-step-2", title: "先輩起業家に紹介を頼む", doneCriteria: "調達経験のある起業家 3 人から、VC の紹介を 2 件もらう", personTypeKeys: ["funded_founder", "angel"] },
+    { key: "demo-step-3", title: "VC と並行して話す", doneCriteria: "VC パートナー 3 人と面談し、1 社と DD に進む", personTypeKeys: ["vc_partner"] },
+    { key: "demo-step-4", title: "CVC を後から加える", doneCriteria: "CVC 担当者 3 人に事業の相性を聞く", personTypeKeys: ["cvc"] },
+    { key: "demo-step-5", title: "契約をまとめる", doneCriteria: "投資契約を弁護士に確認してもらう", personTypeKeys: ["lawyer"] },
   ],
   personTypes: [
-    { key: "founder", label: "先に起業した人", target: 3, personIds: ["demo-person-watanabe", "demo-person-aoki"] },
-    { key: "maker", label: "製造業の現場の人", target: 3, personIds: ["demo-person-suzuki"] },
-    { key: "investor", label: "紹介してくれる投資家", target: 2, personIds: ["demo-person-takahashi", "demo-person-yamamoto"] },
+    { key: "cfo", slot: "cfo", shortLabelId: "cfo", label: "CFO 経験者", emoji: "📊", roleSituation: "シリーズ A 前後の資金調達を、CFO として 1 回以上まとめた人", allocation: 10, target: 1, personIds: [], skipped: false },
+    { key: "funded_founder", slot: "funded_founder", shortLabelId: "funded_founder", label: "調達経験のある起業家", emoji: "🧗", roleSituation: "3年以内にシリーズ A を調達した、技術系スタートアップの創業者", allocation: 15, target: 3, personIds: ["demo-person-watanabe", "demo-person-aoki"], skipped: false },
+    { key: "angel", slot: "angel", shortLabelId: "angel", label: "エンジェル投資家", emoji: "👼", roleSituation: "製造業や SaaS に個人で投資している、元起業家のエンジェル", allocation: 10, target: 2, personIds: [], skipped: false },
+    { key: "vc_partner", slot: "vc_partner", shortLabelId: "vc_partner", label: "VC パートナー", emoji: "🏦", roleSituation: "シリーズ A のリードを取れる VC のパートナー", allocation: 30, target: 3, personIds: ["demo-person-takahashi", "demo-person-yamamoto"], skipped: false },
+    { key: "cvc", slot: "cvc", shortLabelId: "cvc", label: "CVC 担当者", emoji: "🏢", roleSituation: "製造業 DX に出資している、事業会社 CVC の投資担当", allocation: 15, target: 3, personIds: [], skipped: false },
+    { key: "lawyer", slot: "lawyer", shortLabelId: "lawyer", label: "弁護士（投資契約）", emoji: "⚖️", roleSituation: "スタートアップの投資契約を多く見てきた弁護士", allocation: 10, target: 1, personIds: [], skipped: true },
   ],
+  event: { allocation: 10, targetCount: 2, attendedEventIds: ["demo-event-cfo-night"] },
   sample: true,
 } as const;
 

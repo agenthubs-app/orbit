@@ -18,7 +18,8 @@ import type { HomeLayoutContract } from "../../contract/home-layout";
 import type { InboxDeliveryPreferencesDTO } from "../../contract/notification-delivery-policy";
 import type { InboxNotificationDTO } from "../../contract/inbox-notifications";
 import type { InviteCodeContract, InviteCodePreview, InviteCodeRedeemResult } from "../../contract/invite-codes";
-import type { PlanV2SummaryResponse } from "../../contract/plan-v2";
+import type { PlanPremiseRow, PlanV2Content, PlanV2Detail, PlanV2SummaryResponse } from "../../contract/plan-v2";
+import { nextAward, PLAN_EVENT_SEGMENT_KEY, skipAwardPoints, summarizePlanScore, type PlanScoreAward } from "../../compute/plan-score";
 import { DEMO_EVENTS, DEMO_NOTES, DEMO_PEOPLE, DEMO_PLAN, DEMO_TIME_ZONE, DEMO_TODAY, DEMO_TODOS, demoEvent, demoPerson } from "./index";
 
 export const DEMO_ACTOR_ID = "demo-actor";
@@ -226,16 +227,119 @@ export const demoAccountExport: AccountExportContract = { id: "demo-export-1", s
 export const demoDeletionRequest: AccountDeletionRequestContract = { requestedAt: "2026-10-07T00:00:00.000Z", purgeAfter: "2026-11-06T00:00:00.000Z" };
 export const demoAppVersion: AppVersionContract = { minSupportedAppVersion: "1.0.0", latestAppVersion: "1.2.0" };
 
-// 12 plan v2 (draft) — the demo plan with met counts and a score.
+// 12 plan v2 (R22) — the demo plan's score is computed with the same shared function the
+// server and both clients use, from award records in the order they happened.
+export const DEMO_PLAN_NOW = at("12:00:00");
+const PLAN_AWARD_TIMES = ["2026-09-22T19:00:00+09:00", "2026-09-29T10:00:00+09:00", "2026-10-03T15:00:00+09:00", at("10:00:00")];
+
+function buildDemoPlanAwards(): PlanScoreAward[] {
+  const awards: PlanScoreAward[] = [];
+  let clock = 0;
+  for (const type of DEMO_PLAN.personTypes) {
+    const mine = () => awards.filter((award) => award.typeKey === type.key);
+    for (const personId of type.personIds) {
+      const next = nextAward({ allocation: type.allocation, anonymous: false, awards: mine(), skipped: false, targetCount: type.target });
+      if (next.part === "none") continue;
+      awards.push({ anonymous: false, at: PLAN_AWARD_TIMES[clock++ % PLAN_AWARD_TIMES.length]!, basis: "talked", id: `demo-award-${type.key}-${personId}`, part: next.part, points: next.points, typeKey: type.key });
+    }
+    if (type.skipped) {
+      awards.push({ anonymous: false, at: "2026-09-20T09:00:00+09:00", basis: "skip", id: `demo-award-${type.key}-skip`, part: "base", points: skipAwardPoints(type.allocation, mine()), typeKey: type.key });
+    }
+  }
+  for (const eventId of DEMO_PLAN.event.attendedEventIds) {
+    const next = nextAward({ allocation: DEMO_PLAN.event.allocation, anonymous: false, awards: awards.filter((award) => award.typeKey === PLAN_EVENT_SEGMENT_KEY), skipped: false, targetCount: DEMO_PLAN.event.targetCount });
+    if (next.part !== "none") awards.push({ anonymous: false, at: "2026-10-01T21:00:00+09:00", basis: "event", id: `demo-award-event-${eventId}`, part: next.part, points: next.points, typeKey: PLAN_EVENT_SEGMENT_KEY });
+  }
+  return awards;
+}
+
+export const demoPlanAwards = buildDemoPlanAwards();
+
+const demoPlanScore = summarizePlanScore({
+  achievedAt: null,
+  awards: demoPlanAwards,
+  now: DEMO_PLAN_NOW,
+  slots: [
+    ...DEMO_PLAN.personTypes.map((type) => ({ allocation: type.allocation, emoji: type.emoji, key: type.key, shortLabel: type.label, skipped: type.skipped, targetCount: type.target })),
+    { allocation: DEMO_PLAN.event.allocation, emoji: "🎟️", key: PLAN_EVENT_SEGMENT_KEY, shortLabel: "イベント", skipped: false, targetCount: DEMO_PLAN.event.targetCount },
+  ],
+});
+
 export const demoPlanSummary: PlanV2SummaryResponse = {
-  summary: {
+  current: {
     goal: DEMO_PLAN.goal,
     goalKind: DEMO_PLAN.goalKind,
-    steps: DEMO_PLAN.steps.map((step) => ({ ...step })),
-    personTypes: DEMO_PLAN.personTypes.map((type) => ({ key: type.key, label: type.label, target: type.target, met: type.personIds.length })),
+    planId: DEMO_PLAN.id,
     sample: true,
+    score: demoPlanScore,
+    todayChance: { href: "/app/tasks?tab=plan", label: `${demoPerson("demo-person-sasaki").name}さんと話す（VC パートナー）`, points: 10 },
   },
-  score: { total: 46, byType: DEMO_PLAN.personTypes.map((type) => ({ key: type.key, label: type.label, score: Math.round((type.personIds.length / type.target) * 100) })), todayDelta: 3 },
+  goals: [{
+    goal: DEMO_PLAN.goal,
+    goalKind: DEMO_PLAN.goalKind,
+    lastOpenedAt: at("08:30:00"),
+    planId: DEMO_PLAN.id,
+    sample: true,
+    status: "active",
+    talkedPeople: DEMO_PLAN.personTypes.reduce((sum, type) => sum + type.personIds.length, 0),
+    total: demoPlanScore.total,
+  }],
+};
+
+const demoPlanPremise: PlanPremiseRow[] = [
+  { guessed: false, key: "purpose", label: "目的", source: "background", value: DEMO_PLAN.purposeText },
+  { guessed: false, key: "team", label: "チーム", source: "background", value: "2名 · 空き：財務・投資家対応" },
+  { guessed: false, key: "F1", label: "ラウンドと金額", source: "q1", value: "シリーズ A · 3億円" },
+  { guessed: false, key: "F2", label: "直近の数字", source: "q2", value: "ARR 8,000万円 · 前年比 2.4倍" },
+  { guessed: false, key: "F3", label: "既存株主・リード候補", source: "q3", value: "既存株主 2 社 · リード候補なし" },
+  { guessed: true, key: "F5", label: "使い道と締切", source: "q4", value: "採用と営業 · 半年以内（推測）" },
+  { guessed: false, key: "F7", label: "使える時間", source: "q5", value: "フルタイム" },
+];
+
+const demoPlanContent: PlanV2Content = {
+  allocationReasons: ["テンプレート「資金調達」の既定のままです。"],
+  basis: [
+    { kind: "premise", label: "確定した前提 7件", ref: "premise" },
+    { kind: "template", label: "目標タイプ「資金調達」の高度プロンプト v4", ref: "fundraising@v4" },
+  ],
+  citations: [],
+  conclusion: "先に数字と資料を固め、先輩起業家の紹介で VC 3 社と並行して話す。CVC は後から加える。",
+  diagnosis: "数字は伸びていますが、リード候補がまだいません。紹介経由で VC と並行して話すのが近道です。",
+  event: { allocation: DEMO_PLAN.event.allocation, targetCount: DEMO_PLAN.event.targetCount },
+  personTypes: DEMO_PLAN.personTypes.map((type) => ({
+    allocation: type.allocation,
+    countRule: "3 問のうち 2 問以上を聞けたら「話せた」です。",
+    emoji: type.emoji,
+    introRoutes: [],
+    itemId: `demo-plan-item-${type.key}`,
+    key: type.key,
+    questions: ["いまの判断基準は何ですか？", "最初に見る数字は何ですか？", "ほかに会うべき人はいますか？"],
+    recognizeHints: [],
+    roleSituation: type.roleSituation,
+    shortLabel: type.label,
+    shortLabelId: type.shortLabelId,
+    skipped: type.skipped,
+    slot: type.slot,
+    targetCount: type.target,
+    why: "このタイプの人と話すと、次の Step の判断材料がそろいます。",
+  })),
+  sample: true,
+  steps: DEMO_PLAN.steps.map((step) => ({ ...step, personTypeKeys: [...step.personTypeKeys], why: null })),
+};
+
+export const demoPlanDetail: PlanV2Detail = {
+  achievedAt: null,
+  content: demoPlanContent,
+  goal: DEMO_PLAN.goal,
+  goalKind: DEMO_PLAN.goalKind,
+  planId: DEMO_PLAN.id,
+  premise: demoPlanPremise,
+  purposeText: DEMO_PLAN.purposeText,
+  quota: { activeGoalLimit: 2, activeGoals: 1, manualEditAvailable: true, reviewLeftThisMonth: 2, reviewMonthlyLimit: 3 },
+  revision: 2,
+  sample: true,
+  score: demoPlanScore,
+  startsOn: DEMO_PLAN.startsOn,
 };
 
 /** Every person reference used by the fixtures above (for the consistency check). */
