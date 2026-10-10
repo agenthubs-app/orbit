@@ -151,3 +151,61 @@ test("remaining targets and active type needs", async () => {
   assert.deepEqual(plans.map((item) => item.planId), [plan.planId]);
   assert.deepEqual(needs.find((need) => need.itemId === typeId("vc_partner"))!.contactLinks.map((link) => [link.contactId, link.state]), [["contact:t", "established"]]);
 });
+
+test("review M5: while a type is skipped its earned points cannot be undone (take back the skip first)", async () => {
+  const { plan, service, typeId } = await setup();
+  const first = await service.award({ itemId: typeId("vc_partner"), planId: plan.planId, request: { basis: "talked", contactId: "contact:t", idempotencyKey: "k1" } });
+  await service.skip({ idempotencyKey: "s1", itemId: typeId("vc_partner"), planId: plan.planId });
+  await assert.rejects(service.undo({ idempotencyKey: "u1", logId: first.awardLogId!, planId: plan.planId }), (error: unknown) => error instanceof PlanV2Error && error.reason === "TYPE_SKIPPED");
+  assert.equal((await service.detail(plan.planId))!.score.segments.find((segment) => segment.key === "vc_partner")!.earned, 30);
+  await service.unskip({ idempotencyKey: "s2", itemId: typeId("vc_partner"), planId: plan.planId });
+  assert.equal((await service.undo({ idempotencyKey: "u2", logId: first.awardLogId!, planId: plan.planId })).score.total, 0);
+});
+
+test("review M4: today's delta subtracts today's undo of yesterday's points", async () => {
+  const repository = createMemoryPlanV2Repository();
+  let now = Date.parse("2026-10-06T03:00:00.000Z");
+  const clock = () => new Date((now += 1000));
+  const service = serviceFor(repository, SCOPE, clock);
+  const { plan } = await service.createPlanFromDraft(draftInput());
+  const vc = plan.content.personTypes.find((type) => type.key === "vc_partner")!.itemId;
+  const first = await service.award({ itemId: vc, planId: plan.planId, request: { basis: "talked", contactId: "contact:t", idempotencyKey: "k1" } });
+  assert.equal(first.score.todayDelta, 10);
+  now = Date.parse("2026-10-07T03:00:00.000Z");
+  const undone = await service.undo({ idempotencyKey: "u1", logId: first.awardLogId!, planId: plan.planId });
+  assert.equal(undone.score.total, 0);
+  assert.equal(undone.score.todayDelta, -10);
+});
+
+test("review m2: an award time must lie between the plan's start and now", async () => {
+  const { plan, service, typeId } = await setup();
+  for (const at of ["2030-01-01T00:00:00+09:00", "2020-01-01T00:00:00+09:00"]) {
+    await assert.rejects(service.award({ itemId: typeId("cfo"), planId: plan.planId, request: { at, basis: "talked", contactId: "contact:x", idempotencyKey: at } }), (error: unknown) => error instanceof PlanV2Error && error.reason === "INVALID_INPUT");
+  }
+});
+
+test("review m3: an event score can be undone and recorded again on the next attendance", async () => {
+  const repository = createMemoryPlanV2Repository();
+  const service = serviceFor(repository);
+  const { plan } = await service.createPlanFromDraft(draftInput());
+  await service.recordEventAttendanceForPlans({ eventId: "event:1" });
+  const award = repository.dump(SCOPE).log.find((entry) => entry.event === "score_awarded")!;
+  assert.equal(award.idempotencyKey, `score:${plan.planId}:event:event:1:1`);
+  assert.equal((await service.undo({ idempotencyKey: "u", logId: award.id, planId: plan.planId })).score.total, 0);
+  const again = await service.recordEventAttendanceForPlans({ eventId: "event:1" });
+  assert.equal(again[0]!.points, 5);
+  assert.ok(repository.dump(SCOPE).log.some((entry) => entry.idempotencyKey === `score:${plan.planId}:event:event:1:2`));
+});
+
+test("review M3: the award key is deterministic, so two writers that skip the service check collide on the unique key", async () => {
+  const { awardKey } = await import("../../features/plans/v2/service");
+  const { plan, repository, service, typeId } = await setup();
+  const first = await service.award({ itemId: typeId("vc_partner"), planId: plan.planId, request: { basis: "talked", contactId: "contact:t", idempotencyKey: "k1" } });
+  const log = repository.dump(SCOPE).log;
+  const base = `score:${plan.planId}:vc_partner:contact:t`;
+  assert.equal(log.find((entry) => entry.id === first.awardLogId)!.idempotencyKey, `${base}:1`);
+  // 不经过服务层先查的第二个写入方算出的仍是 :1 → 数据库唯一键拦住（内存仓储同样拒绝重复键）。
+  assert.equal(awardKey(log, base), `${base}:1`);
+  await service.undo({ idempotencyKey: "u", logId: first.awardLogId!, planId: plan.planId });
+  assert.equal(awardKey(repository.dump(SCOPE).log, base), `${base}:2`);
+});

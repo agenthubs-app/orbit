@@ -16,6 +16,7 @@ import { runPlanMatchingMigrations } from "../features/plans/matching-migrations
 import { runPlanMigrations } from "../features/plans/migrations";
 import { createPostgresPlanV2Repository } from "../features/plans/v2/repository";
 import { createPlanV2Service, type CreatePlanFromDraftInput } from "../features/plans/v2/service";
+import { acquireSyncCommitOrderLock } from "../features/sync/commit-order-lock";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../shared/storage/migrations";
 
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
@@ -91,6 +92,11 @@ export function seedDraft(goalId: string): CreatePlanFromDraftInput {
   };
 }
 
+export const SEED_CONTACTS: ReadonlyArray<readonly [string, string, string]> = [
+  ["seed-contact-vc-1", "高橋 美咲（種）", "青葉ベンチャーズ"],
+  ["seed-contact-vc-2", "山本 彩（種）", "東都キャピタル"],
+];
+
 async function main(): Promise<void> {
   const url = process.env.ORBIT_SEED_DATABASE_URL;
   if (!url) throw new Error("Set ORBIT_SEED_DATABASE_URL to a local test database (this script never reads .env).");
@@ -104,6 +110,27 @@ async function main(): Promise<void> {
     await runPlanMigrations(pool);
     await runPlanMatchingMigrations(pool);
     await runNetworkAnalysisMigrations(pool);
+    // 复核 m8：计分用到的两位联系人在本机库里真实存在（时间线与联系人计划说明不悬空）。
+    // contacts 是同步集合：在同一事务里先取同步提交顺序锁再写（Sprint 0108 规则）。
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      await acquireSyncCommitOrderLock(client);
+      for (const [id, name, company] of SEED_CONTACTS) {
+        await client.query(
+        `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, lifecycle_state, payload, created_at, updated_at)
+         values ($1, 'contacts', $2, $3, 'manual', 'seed-plan-v2', 'active', $4::jsonb, now(), now())
+         on conflict do nothing`,
+        [workspaceId, id, actorId, JSON.stringify({ accountId: actorId, displayName: name, id, organization: company, role: "パートナー" })],
+        );
+      }
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
     const service = createPlanV2Service({ repository: createPostgresPlanV2Repository({ pool }), scope: { actorId, workspaceId } });
     const { created, plan } = await service.createPlanFromDraft(seedDraft(goalId));
     if (created) {

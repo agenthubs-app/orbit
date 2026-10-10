@@ -182,7 +182,7 @@ v2 的取舍：
 7. v2 计划行怎么满足现有约束：`version` = 本人所有计划（v1、v2、各目标）里最大版本号 + 1（满足 `unique (workspace_id, actor_id, version)`，在按人串行的事务里取）；`goal_snapshot` = 目标文；`starts_on` = 确定那天（东京日）；`previous_plan_id` 留空（v2 不走版本链）；`creation_key` = 草稿 id（重复确定只建一份）。
 8. **已达成**：`status = 'archived'` + `achieved_at` 非空（加 `check (achieved_at is null or (status = 'archived' and model_version = 2))`）。这样所有按 `status = 'active'` 读的地方（候补管线、引导、覆盖度、`goalRelated`）自然不再把它当生效计划，候补任务也停；列表里「完了した目標」= v2 且 `achieved_at` 非空，「以前のプラン」= v1 已归档。不新增状态值，免得放宽 `status` 的 CHECK。
 9. **`revision` 什么时候 +1**：只在方案内容改变时——見直し确定、手动编辑确定、目标编辑保存。计分、撤销、跳过 / 撤回、Step 完成 / 撤回**不带** `expectedRevision`、不推进 `revision`，正确性靠幂等键和按人串行的事务。見直し / 手动编辑确定时，用「确定那一刻」的已得分重新跑 `reallocate` 的约束（配点 ≥ 已得、人数 ≥ 已计入、已跳过不改配点），不满足就让用户回到差分页调整；`base_revision` 不等于当前 `revision`（别的设备刚改过方案）→ 409，提示「別の端末で変更されました」。
-10. 新表 `plan_revisions`：`workspace_id, id, actor_id, plan_id, from_revision, to_revision, source ('review','manual_edit','goal_edit','step_completed','undo'), draft_id, before jsonb, after jsonb, changes jsonb, created_at`；`unique (workspace_id, plan_id, to_revision)`。
+10. 新表 `plan_revisions`：`workspace_id, id, actor_id, plan_id, from_revision, to_revision, source ('review','manual_edit','goal_edit','undo')（Step 完成不改方案、不进这张表，见 §3.1）, draft_id, before jsonb, after jsonb, changes jsonb, created_at`；`unique (workspace_id, plan_id, to_revision)`。
 11. 新表 `plan_flow_commands`（生成流程的命令回执，形状同 `plan_commands`，但不要求 plan_id）：`workspace_id, actor_id, idempotency_key, kind, intake_id, draft_id, fingerprint (sha256 hex), outcome ('applied','noop'), response jsonb, created_at`，主键 `(workspace_id, actor_id, idempotency_key)`；同一键不同指纹 → 409。
 
 ### 3.3 迁移二：AI 账本用途「ai-usage-plan-v2-purposes」（R22，本机验证；生产另行授权）
@@ -224,10 +224,11 @@ v2 的取舍：
   - **只认 v1 的旧界面与旧流程**——R25 删除或改造，返回 null 没关系：`app/(app)/app/agent/plan/plan-route-view-model.ts`、`agent/iorbit-0918/iorbit-plan.tsx`、`agent/strategy/page.tsx`、`features/plans/reanalysis.ts`（到期回顾）、`features/plans/bootstrap.ts`（第一份计划）。
   - **要同时认 v2 的服务**——改走 R22 新的只读函数 `readActivePlanNeeds(actorId)`：返回本人**所有生效计划**（v1 + v2 各目标）的人脉需求 / 人物类型（`itemId, planId, modelVersion, criteria, targetCount, contactLinks, skipped`），多目标**合并**（对标 Notion 多项目视图默认合并显示；人脉分析看的是「我现在需要哪些人」，不分目标）：`features/plans/coverage.ts`（W0050 覆盖度与机会标签）、`features/network-analysis/{runtime,input-source,service}.ts`（快照的计划输入）、`app/(app)/app/contacts/analysis/{overview-cockpit-loader,structure-tab-model,structure-tab-loader,opportunities-route-service}.ts`（人脉分析三个标签）、`features/plans/contact-plan-context.ts`（联系人详情的计划说明）、`features/plans/matching-service.ts`（候补；v2 需求接受时不生成「约 TA」，§2.7）、`features/guide/progress.ts`（引导：任一生效即完成）。
   - R22 SC-R22-06 用 v2 种子计划断言：覆盖度、快照的计划输入、人脉分析结构 / 机会标签、联系人详情的计划说明都仍有数据。
-- 写：v1 的写接口（`PATCH items`、`interaction`、`reanalyze`、`bootstrap`）对 v2 计划返回 409 `PLAN_MODEL_MISMATCH`；`bootstrap` 改为「已有 v2 生效目标时拒绝」。
+- 写：v1 的读写把 v2 计划当「不存在」（读返回 null、改条目 404，与「别人的计划」同一口径；R22 实现，见 R22 REPORT 自定决定 1）；v2 接口收到 v1 计划 id 同样 404。只有「生成新的 v1 生效计划」返回 409 `V2_PLAN_ACTIVE`：`bootstrap` 在调生成器之前就检查（不花 AI），v1 仓储写入前再兜底一次。
 - **v1 的创建入口在 R25 关闭**：`POST /api/agent/plans/bootstrap`、`POST /api/agent/plans`（v1 生成）、`POST /api/agent/plans/reanalyze` 对所有人返回 409 `PLAN_V1_RETIRED`，响应带 v2 入口地址（Task › プラン 的目標入力）；旧引导（`/app/start`、`/app/profile/onboarding` 的生成步骤，R28 重写前）里的「生成计划」改为跳到同一入口。这样无论 R28 何时完成，合回后不会再有人生成 v1 计划。
 - 引导第 3 步「有生效计划」（`features/guide/progress.ts` 的 `configuredHasActivePlan`，文本确认只在本文件两处调用）：v1 或 v2 任一生效即完成。
-- 人脉覆盖度（W0050）、候补管线（`plan_match_*`）：v2 人物类型就是 `network_need`，数据形状不用改，但读取入口改走 `readActivePlanNeeds`（上一条）；`plan` 来源的匹配任务在确定 v2 计划时入队一次（同 W0050）。
+- 人脉覆盖度（W0050）：v2 人物类型就是 `network_need`，读取入口改走合并读取（上一条）。
+- 候补管线（`plan_match_*`）：**R22 先把 v2 排除在外**（不入队、不读 v2 需求、不花 AI；R22 复核 S1），**R24 接入**：v2 版「接受候补」（只关联、不生成「约 TA」）、确定计划时入队 `plan` 来源匹配任务、排除已跳过的类型，然后去掉匹配查询里的 `model_version = 1`。
 - 共享快照：v2 初版的那次操作照旧按 `decideSnapshotRefresh`（HIGH，13）判断要不要顺带生成 `origin = plan` 的人脉分析快照（只调用，不改函数）。
 
 ## 4. 分数怎么算（`shared/compute/plan-score.ts`）

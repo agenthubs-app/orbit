@@ -82,3 +82,24 @@ test("SC-03 R-5 the timeline/plan SQL never reads plan_log.sync_revision", () =>
     assert.match(sql, /coalesce\(sum\(seq\), 0\)/);
   }
 });
+
+test("R22 (review M8): with two active v2 goals, a change to the second goal's types moves the plan need version", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    const insertGoal = (id: string, goal: string, version: number) => harness.pool.query(
+      `insert into plans (workspace_id, id, actor_id, version, status, goal_snapshot, starts_on, model_version, goal_id, goal_kind, event_allocation, event_target_count)
+       values ($1, $2, $3, $4, 'active', 'g', '2026-10-01', 2, $5, 'launch', 15, 3)`, [WORKSPACE, id, ALICE, version, goal]);
+    await insertGoal("goal-a", "intake-a", 1);
+    await insertGoal("goal-b", "intake-b", 2);
+    for (const [id, plan] of [["type-a", "goal-a"], ["type-b", "goal-b"]] as const) {
+      await harness.pool.query(
+        `insert into plan_items (workspace_id, id, actor_id, plan_id, kind, title, status, sort_key, criteria, allocation, type_slot)
+         values ($1, $2, $3, $4, 'network_need', 'VC', 'open', 1, '{"targetCount":2}'::jsonb, 30, 'vc')`, [WORKSPACE, id, ALICE, plan]);
+    }
+    const read = async () => (await harness.pool.query(snapshotTimelinePlanVersionSql("timestamp"), [WORKSPACE, ALICE])).rows[0].plan_need_version as string;
+    const before = await read();
+    assert.ok(before.includes("goal-a") && before.includes("goal-b"), before);
+    assert.equal(await read(), before, "stable when nothing changed");
+    await harness.pool.query(`update plan_items set updated_at = now() + interval '1 minute', skipped_at = now() where id = 'type-b'`);
+    assert.notEqual(await read(), before);
+  });
+});

@@ -19,6 +19,7 @@ import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../.
 import {
   AI_QUOTA_MAX_CALLS,
   AI_QUOTA_MONTHLY_LIMITS,
+  AI_QUOTA_PURPOSE_POOLS,
   BACKGROUND_POOL_DAILY_LIMIT,
   INSTANT_INSIGHT_DAILY_LIMIT,
   isInstantInsightOperation,
@@ -135,6 +136,8 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
     const actorId = request.actorId.trim();
     const key = request.idempotencyKey.trim();
     if (!actorId || !key) throw new Error("AI quota reservation requires an actor and an idempotency key.");
+    const fixedPool = AI_QUOTA_PURPOSE_POOLS[request.purpose];
+    if (fixedPool && fixedPool !== request.pool) throw new Error(`AI quota purpose ${request.purpose} is reserved from the ${fixedPool} pool only.`);
     await executor.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [`ai-quota:${workspaceId}:${actorId}:${request.pool}`]);
     const existing = await executor.query<Row>(
       `/* ai-quota:replay */ select id, status from ai_usage_ledger where workspace_id = $1 and actor_id = $2 and idempotency_key = $3`,

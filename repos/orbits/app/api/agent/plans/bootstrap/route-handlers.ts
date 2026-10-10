@@ -13,6 +13,7 @@ import {
   PlanGenerationUnavailableError,
 } from "../../../../../features/plans/generator";
 import { resolvePlanGenerator } from "../../../../../features/plans/generator-service-factory";
+import { resolvePlanV2Service } from "../../../../../features/plans/v2/service-factory";
 import { enqueuePlanSourceMatchAfterSave } from "../../../../../features/plans/matching-runtime";
 import { createConfiguredPlanInputSource } from "../../../../../features/plans/input-source";
 import {
@@ -65,6 +66,15 @@ export interface PlanBootstrapRouteDependencies {
   serviceForActor?: (actorId: string) => ServiceResolution<PlanBootstrapService & { metered?: boolean }>;
   /** 示例模式（只在按操作计次的生成器时判定）。 */
   isDemo?: (actor: AuthenticatedApiActor) => Promise<boolean>;
+  /** R22：本人已有生效中的 v2 计划时，不再生成旧式计划（在调生成器、花 AI 之前就拒绝）。 */
+  hasActiveV2Plan?: (actorId: string) => Promise<boolean>;
+}
+
+async function defaultHasActiveV2Plan(actorId: string): Promise<boolean> {
+  const resolution = resolvePlanV2Service({ actorId });
+  // mock 下的 v2 是演示世界的示例计划，不算本人的计划；数据库层另有 V2_PLAN_ACTIVE 兜底。
+  if (resolution.success === false || resolution.mode !== "live") return false;
+  return resolution.service.hasActivePlan();
 }
 
 /**
@@ -123,6 +133,7 @@ export function createPlanBootstrapRouteHandlers(dependencies: PlanBootstrapRout
   const readGoal = dependencies.readGoal ?? readProfileGoal;
   const serviceForActor = dependencies.serviceForActor ?? resolveDefaultPlanBootstrapService;
   const isDemo = dependencies.isDemo ?? defaultIsDemo;
+  const hasActiveV2Plan = dependencies.hasActiveV2Plan ?? defaultHasActiveV2Plan;
   const afterPlanSaved =
     dependencies.afterPlanSaved ?? ((actorId: string, planId: string) => enqueuePlanSourceMatchAfterSave({ actorId, planId }, { after }));
 
@@ -156,6 +167,12 @@ export function createPlanBootstrapRouteHandlers(dependencies: PlanBootstrapRout
           return NextResponse.json(failure(new AppError("FORBIDDEN", "The example plan cannot be generated."), { reason: "DEMO_MODE" }), {
             headers,
             status: 403,
+          });
+        }
+        if (await hasActiveV2Plan(actorId)) {
+          return NextResponse.json(failure(new AppError("CONFLICT", "A new-style plan is active; old-style plans can no longer be created."), { href: "/app/tasks?tab=plan", reason: "V2_PLAN_ACTIVE" }), {
+            headers,
+            status: 409,
           });
         }
       } catch (error) {

@@ -86,6 +86,19 @@ export const AI_QUOTA_MONTHLY_LIMITS: Readonly<Partial<Record<AiQuotaPurpose, nu
   plan_review: 3,
 };
 
+/**
+ * R22（复核 m11）：有月上限的新用途固定从一个池预留。月度计数在按池的锁下进行，固定池才不会有两个池并发各算各的。
+ */
+export const AI_QUOTA_PURPOSE_POOLS: Readonly<Partial<Record<AiQuotaPurpose, AiQuotaPool>>> = {
+  plan_intake: "background",
+  plan_background: "user",
+  plan_draft: "user",
+  plan_revise: "user",
+  plan_review_mark: "background",
+  plan_review: "user",
+  event_assessment: "user",
+};
+
 export function isPlanFlowOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose }): boolean {
   return input.pool === "user" && PLAN_FLOW_PURPOSES.includes(input.purpose);
 }

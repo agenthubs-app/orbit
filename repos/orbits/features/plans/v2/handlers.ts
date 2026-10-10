@@ -13,6 +13,8 @@ import {
   planAwardRequestSchema,
   planAwardResultSchema,
   planCommandResultSchema,
+  planGoalListResponseSchema,
+  planOpenResultSchema,
   planSkipRequestSchema,
   planStepRequestSchema,
   planUndoRequestSchema,
@@ -87,14 +89,14 @@ export function createPlanV2Handlers(dependencies: PlanV2RouteDependencies = {})
     /** GET /api/agent/plans/v2/summary：首页「プラン スコア」组件。 */
     summary: planV2Route(planV2SummaryResponseSchema, async (service) => ({ data: await service.summary() }), dependencies),
     /** GET /api/agent/plans/v2：目标列表（生效 + 已达成）。 */
-    list: planV2Route(null, async (service) => ({ data: { goals: await service.listGoals() } }), dependencies),
+    list: planV2Route(planGoalListResponseSchema, async (service) => ({ data: { goals: await service.listGoals() } }), dependencies),
     /** GET /api/agent/plans/v2/[planId]：概要。 */
     detail: planV2Route(planV2DetailSchema, async (service, _request, params) => {
       const detail = await service.detail(params.planId ?? "");
       return detail ? { data: detail } : notFound();
     }, dependencies),
     /** POST /api/agent/plans/v2/[planId]/open：切换目标时记下最近打开。 */
-    open: planV2Route(null, async (service, _request, params) => {
+    open: planV2Route(planOpenResultSchema, async (service, _request, params) => {
       await service.markOpened(params.planId ?? "");
       return { data: { planId: params.planId } };
     }, dependencies),

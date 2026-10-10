@@ -183,6 +183,9 @@ alter table plans
 
 alter table plans add constraint plans_v2_goal_check
   check (model_version = 1 or (goal_id is not null and goal_kind is not null and event_allocation is not null and event_target_count is not null));
+-- v1 没有 goal_id（都在 'legacy' 桶里，保证 v1 仍每人一份生效）；v2 的 goal_id 不能冒用 'legacy'。
+alter table plans add constraint plans_goal_id_by_model_check
+  check ((model_version = 2) = (goal_id is not null) and (goal_id is null or goal_id <> 'legacy'));
 alter table plans add constraint plans_achieved_check
   check (achieved_at is null or (status = 'archived' and model_version = 2));
 

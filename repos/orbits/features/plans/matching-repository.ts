@@ -514,7 +514,7 @@ export function createPostgresPlanMatchRepository(options: {
                             and i.phase is not null and e.phase = i.phase), '{}') as event_ids
          from plan_items i
          join plans p on p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id
-         where i.workspace_id = $1 and i.actor_id = $2 and p.status = 'active' and i.kind = 'network_need'
+         where i.workspace_id = $1 and i.actor_id = $2 and p.status = 'active' and p.model_version = 1 and i.kind = 'network_need'
          order by i.created_at desc, i.sort_key desc`,
         [workspaceId, actorId],
       );
@@ -600,7 +600,7 @@ export function createPostgresPlanMatchRepository(options: {
                             and i.phase is not null and e.phase = i.phase), '{}') as event_ids
          from plan_items i
          join plans p on p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id
-         where i.workspace_id = $1 and i.actor_id = $2 and p.status = 'active' and i.kind = 'network_need'
+         where i.workspace_id = $1 and i.actor_id = $2 and p.status = 'active' and p.model_version = 1 and i.kind = 'network_need'
          order by i.created_at desc, i.sort_key desc`,
         [workspaceId, actorId],
       );

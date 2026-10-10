@@ -82,12 +82,16 @@ export function snapshotTimelinePlanVersionSql(mode: RelationshipStrengthStampMo
     (select count(*)::text || ':' || coalesce(sum(seq), 0)::text || ':' || coalesce(max(seq), 0)::text
        from plan_log where workspace_id = $1 and actor_id = $2) as plan_log_version,
     coalesce((
-      select p.id || ':' || p.version::text || ':' || count(i.id)::text || ':' || coalesce(max(i.updated_at)::text, '') || ':' || coalesce(sum(extract(epoch from i.updated_at)), 0)::text
-      from plans p
-      left join plan_items i on i.workspace_id = p.workspace_id and i.actor_id = p.actor_id and i.plan_id = p.id and i.kind = 'network_need'
-      where p.workspace_id = $1 and p.actor_id = $2 and p.status = 'active'
-      group by p.id, p.version
-      limit 1
+      -- R22（计划 v2.2）：一个人可以同时有多个生效计划（v2 每个目标一份），按 id 排序后全部拼起来；
+      -- 只有一份时与改前的值逐字相同，不会让现有快照因为口径变化被判为过期。
+      select string_agg(per_plan.version_text, ',' order by per_plan.id)
+      from (
+        select p.id, p.id || ':' || p.version::text || ':' || count(i.id)::text || ':' || coalesce(max(i.updated_at)::text, '') || ':' || coalesce(sum(extract(epoch from i.updated_at)), 0)::text as version_text
+        from plans p
+        left join plan_items i on i.workspace_id = p.workspace_id and i.actor_id = p.actor_id and i.plan_id = p.id and i.kind = 'network_need'
+        where p.workspace_id = $1 and p.actor_id = $2 and p.status = 'active'
+        group by p.id, p.version
+      ) per_plan
     ), 'none') as plan_need_version`;
 }
 

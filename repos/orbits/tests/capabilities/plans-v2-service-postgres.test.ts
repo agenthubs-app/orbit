@@ -86,12 +86,16 @@ test("undo and re-record use a fresh unique key; skip and unskip round-trip in t
   });
 });
 
-test("a v2 plan can be queued for candidate matching like a v1 plan", databaseTest, async () => {
+test("until R24 wires candidate decisions, v2 types stay out of the matching pipeline (no job, no needs read)", databaseTest, async () => {
   await withNetworkDatabase(async ({ pool }) => {
     const { v2 } = services(pool);
     const { plan } = await v2.createPlanFromDraft(draftInput());
     const queued = await pool.query(ENQUEUE_PLAN_JOB_SQL, [WORKSPACE, ACTOR, plan.planId, "job-1"]);
-    assert.equal(queued.rows.length, 1);
+    assert.equal(queued.rows.length, 0);
+    const { createPostgresPlanMatchRepository } = await import("../../features/plans/matching-repository");
+    const repository = createPostgresPlanMatchRepository({ pool, workspaceId: WORKSPACE });
+    assert.deepEqual(await repository.readActiveNeeds(ACTOR), []);
+    assert.deepEqual(await repository.readActiveNeedViews(ACTOR), []);
   });
 });
 
@@ -113,5 +117,35 @@ test("v1 maintenance queries (phase entry, phase refinement, event status, event
     assert.deepEqual(await repository.listActorsNeedingPhaseRefinement({ aiGeneratorId: "ai", limit: 10, today: "2026-10-20" }), []);
     assert.deepEqual(await repository.listActiveEventItems({ limit: 10 }), []);
     assert.deepEqual(await repository.listUnattendedAttributedEvents({ limit: 10 }), []);
+  });
+});
+
+test("review M3: the database itself refuses a second score row with the same award key", databaseTest, async () => {
+  await withNetworkDatabase(async ({ pool }) => {
+    const { v2 } = services(pool);
+    const { plan } = await v2.createPlanFromDraft(draftInput());
+    const itemId = plan.content.personTypes.find((type) => type.key === "vc_partner")!.itemId;
+    await v2.award({ itemId, planId: plan.planId, request: { basis: "talked", contactId: "contact:t", idempotencyKey: "a" } });
+    const insert = () => pool.query(
+      `insert into plan_log (workspace_id, id, actor_id, plan_id, item_id, kind, event, author, body, idempotency_key)
+       values ($1, $2, $3, $4, $5, 'auto', 'score_awarded', 'user', 'dup', $6)`,
+      [WORKSPACE, `dup-${Math.random()}`, ACTOR, plan.planId, itemId, `score:${plan.planId}:vc_partner:contact:t:1`],
+    );
+    await assert.rejects(insert(), (error: unknown) => (error as { code?: string }).code === "23505");
+  });
+});
+
+test("review m10: the v1 weekly summary log reader skips v2 score records", databaseTest, async () => {
+  await withNetworkDatabase(async ({ pool }) => {
+    const { v1, v2 } = services(pool);
+    const old = await v1.createVersion(planInput({ basePlanId: null }));
+    const created = await v2.createPlanFromDraft(draftInput());
+    const itemId = created.plan.content.personTypes[0]!.itemId;
+    await v2.award({ itemId, planId: created.plan.planId, request: { basis: "talked", contactId: "contact:weekly", idempotencyKey: "weekly-1" } });
+    const v2Rows = (await pool.query("select count(*)::int as n from plan_log where plan_id = $1", [created.plan.planId])).rows[0].n;
+    assert.ok(v2Rows > 0, "the v2 plan has log rows");
+    const entries = await createPostgresPlanRepository({ pool }).read({ actorId: ACTOR, workspaceId: WORKSPACE }, (reader) => reader.logBetween("2000-01-01T00:00:00Z", "2100-01-01T00:00:00Z", 500));
+    assert.ok(entries.length > 0, "v1 log rows are still read");
+    assert.ok(entries.every((entry) => entry.planId === old.plan.id), "no v2 log row reaches the weekly summary");
   });
 });

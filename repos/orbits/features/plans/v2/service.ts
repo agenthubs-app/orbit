@@ -12,7 +12,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { validateAllocations, type PlanAllocationSlot } from "../../../shared/compute/plan-allocation";
-import { nextAward, PLAN_EVENT_SEGMENT_KEY, skipAwardPoints, summarizePlanScore, type PlanScoreAward, type PlanScoreSlot } from "../../../shared/compute/plan-score";
+import { nextAward, PLAN_EVENT_SEGMENT_KEY, skipAwardPoints, summarizePlanScore, type PlanScoreAward, type PlanScoreReversal, type PlanScoreSlot } from "../../../shared/compute/plan-score";
 import { PLAN_GOAL_KINDS } from "../../../shared/compute/plan-templates";
 import { tokyoUsageMonth } from "../../ai-quota/constants";
 import type {
@@ -59,6 +59,7 @@ export const PLAN_V2_ERROR_REASONS = [
   "IDEMPOTENCY_KEY_REUSED",
   "INVALID_INPUT",
   "REFERENCE_NOT_FOUND",
+  "TYPE_SKIPPED",
 ] as const;
 export type PlanV2ErrorReason = (typeof PLAN_V2_ERROR_REASONS)[number];
 
@@ -72,6 +73,7 @@ const REASON_CODES: Record<PlanV2ErrorReason, AppErrorCode> = {
   PLAN_NOT_FOUND: "NOT_FOUND",
   REFERENCE_NOT_FOUND: "NOT_FOUND",
   STEP_NOT_FOUND: "NOT_FOUND",
+  TYPE_SKIPPED: "CONFLICT",
 };
 
 export class PlanV2Error extends AppError {
@@ -136,6 +138,8 @@ export interface PlanV2Service {
   recordEventAttendanceForPlans(input: { eventId: string; title?: string; at?: string }): Promise<Array<{ planId: string; points: number; part: string }>>;
   planRemainingTargets(): Promise<PlanRemainingTargets[]>;
   activeTypeNeeds(): Promise<ActiveTypeNeeds>;
+  /** 本人有没有生效中的 v2 计划（v1 生成前的便宜检查）。 */
+  hasActivePlan(): Promise<boolean>;
 }
 
 /** 生效中的 v2 计划（概要）与它们的人物类型（人脉分析、覆盖度、联系人计划说明合并读取用）。 */
@@ -171,6 +175,27 @@ export function activeAwards(log: readonly PlanV2LogEntry[]): Array<PlanV2LogEnt
     .map((entry) => ({ ...entry, award: entry.payload as unknown as PlanAwardPayload }));
 }
 
+/** 被对冲的计分（「今日 +N」要减掉今天的对冲）。 */
+export function scoreReversals(log: readonly PlanV2LogEntry[]): PlanScoreReversal[] {
+  const awards = new Map(log.filter((entry) => entry.event === "score_awarded").map((entry) => [entry.id, entry]));
+  return log.flatMap((entry) => {
+    if (entry.event !== "score_reversed") return [];
+    const award = awards.get(String(entry.payload.awardLogId));
+    if (!award) return [];
+    return [{ awardedAt: award.createdAt, points: Number((award.payload as unknown as PlanAwardPayload).points ?? 0), reversedAt: entry.createdAt }];
+  });
+}
+
+/**
+ * 计分记录的唯一键：`<base>:<n>`，n = 同一键基下已被对冲的条数 + 1（确定性）。
+ * 同一时刻的重复写入撞上唯一键（数据库兜底，不只靠服务层先查）；撤销之后重记拿到下一个 n。
+ */
+export function awardKey(log: readonly PlanV2LogEntry[], base: string): string {
+  const reversed = new Set(log.filter((entry) => entry.event === "score_reversed").map((entry) => String(entry.payload.awardLogId)));
+  const used = log.filter((entry) => entry.event === "score_awarded" && entry.idempotencyKey.startsWith(`${base}:`) && reversed.has(entry.id)).length;
+  return `${base}:${used + 1}`;
+}
+
 function toScoreAward(entry: PlanV2LogEntry & { award: PlanAwardPayload }): PlanScoreAward {
   return { anonymous: entry.award.anonymous, at: entry.createdAt, basis: entry.award.basis, id: entry.id, part: entry.award.part, points: entry.award.points, typeKey: entry.award.typeKey };
 }
@@ -191,7 +216,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     // 同一个事务连接上的查询依次执行（pg 不支持一条连接并发查询）。
     const types = await reader.typeItems(plan.id);
     const log = await reader.log(plan.id);
-    return summarizePlanScore({ achievedAt: plan.achievedAt, awards: activeAwards(log).map(toScoreAward), now: at, slots: scoreSlots(plan, types) });
+    return summarizePlanScore({ achievedAt: plan.achievedAt, awards: activeAwards(log).map(toScoreAward), now: at, reversals: scoreReversals(log), slots: scoreSlots(plan, types) });
   }
 
   function talkedPeople(log: readonly PlanV2LogEntry[]): number {
@@ -205,20 +230,25 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     return people.size + anonymous;
   }
 
-  async function goalItem(reader: PlanV2Reader, plan: PlanV2Row): Promise<PlanGoalListItem> {
+  async function goalItem(reader: PlanV2Reader, plan: PlanV2Row): Promise<PlanGoalListItem & { score: PlanScoreView }> {
+    // 每个目标只读一次条目与记录（复核 m6）。
+    const types = await reader.typeItems(plan.id);
     const log = await reader.log(plan.id);
-    const score = await scoreOf(reader, plan);
+    const score = summarizePlanScore({ achievedAt: plan.achievedAt, awards: activeAwards(log).map(toScoreAward), now: now(), reversals: scoreReversals(log), slots: scoreSlots(plan, types) });
     return {
       goal: plan.goalText,
       goalKind: plan.goalKind,
       lastOpenedAt: plan.lastOpenedAt,
       planId: plan.id,
       status: plan.achievedAt ? "achieved" : "active",
+      score,
       talkedPeople: talkedPeople(log),
       total: score.total,
       ...(options.sample ? { sample: true as const } : {}),
     };
   }
+
+  const withoutScore = ({ score: _score, ...item }: PlanGoalListItem & { score: PlanScoreView }): PlanGoalListItem => item;
 
   async function requireActivePlan(tx: PlanV2Reader, planId: string): Promise<PlanV2Row> {
     const plan = await tx.plan(planId);
@@ -256,13 +286,15 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     return { author: input.author ?? "user", createdAt: input.createdAt ?? now(), id: `plog_${newId()}`, ...input };
   }
 
-  /** 唯一键上取第一个空位（撤销后同一人同一类型可以再记）。 */
-  async function freeKey(tx: PlanV2Reader, base: string): Promise<string> {
-    for (let n = 1; n < 1000; n += 1) {
-      const key = `${base}:${n}`;
-      if (!(await tx.hasLogKey(key))) return key;
+  /** 计分时间：不填 = 现在；填了必须在计划开始日（东京）到「现在 + 5 分钟」之间。 */
+  function awardTime(plan: PlanV2Row, at: string | undefined): string {
+    if (!at) return now();
+    const time = Date.parse(at);
+    const earliest = Date.parse(`${plan.startsOn}T00:00:00+09:00`);
+    if (!Number.isFinite(time) || time < earliest || time > Date.parse(now()) + 5 * 60_000) {
+      throw new PlanV2Error("INVALID_INPUT", "The time must be between the plan's start and now.");
     }
-    throw new Error("No free plan log key.");
+    return new Date(time).toISOString();
   }
 
   async function reviewUsedThisMonth(reader: PlanV2Reader): Promise<number> {
@@ -278,7 +310,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     const types = await reader.typeItems(plan.id);
     const log = await reader.log(plan.id);
     const active = await reader.activePlans();
-    const score = summarizePlanScore({ achievedAt: plan.achievedAt, awards: activeAwards(log).map(toScoreAward), now: now(), slots: scoreSlots(plan, types) });
+    const score = summarizePlanScore({ achievedAt: plan.achievedAt, awards: activeAwards(log).map(toScoreAward), now: now(), reversals: scoreReversals(log), slots: scoreSlots(plan, types) });
     const completed = new Map<string, string | null>();
     for (const entry of log) {
       if (entry.event === "step_completed") completed.set(String(entry.payload.stepKey), entry.createdAt);
@@ -346,7 +378,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     async summary() {
       return repository.read(scope, async (reader) => {
         const goals = await reader.goalPlans();
-        const items: PlanGoalListItem[] = [];
+        const items: Array<PlanGoalListItem & { score: PlanScoreView }> = [];
         for (const plan of goals) items.push(await goalItem(reader, plan));
         const current = goals.find((plan) => plan.status === "active");
         let home: PlanV2HomeSummary | null = null;
@@ -355,18 +387,18 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
             goal: current.goalText,
             goalKind: current.goalKind,
             planId: current.id,
-            score: await scoreOf(reader, current),
+            score: items.find((item) => item.planId === current.id)!.score,
             ...(options.sample ? { sample: true as const } : {}),
           };
         }
-        return { current: home, goals: items };
+        return { current: home, goals: items.map(withoutScore) };
       });
     },
 
     async listGoals() {
       return repository.read(scope, async (reader) => {
         const items: PlanGoalListItem[] = [];
-        for (const plan of await reader.goalPlans()) items.push(await goalItem(reader, plan));
+        for (const plan of await reader.goalPlans()) items.push(withoutScore(await goalItem(reader, plan)));
         return items;
       });
     },
@@ -401,7 +433,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
         const result = await command<Record<string, unknown>>(tx, { body: { anonymous, basis: request.basis, contactId, itemId: type.id }, key: request.idempotencyKey, kind: "award", planId: plan.id }, async () => {
           const log = await tx.log(plan.id);
           const mine = activeAwards(log).filter((entry) => entry.award.typeKey === type.personType.key);
-          const at = request.at ?? now();
+          const at = awardTime(plan, request.at);
           if (contactId && mine.some((entry) => entry.award.contactId === contactId)) {
             return { outcome: "noop" as const, response: { awardLogId: null, part: "none", points: 0, reason: "already_counted", score: await scoreOf(tx, plan) } };
           }
@@ -410,12 +442,13 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
             return { outcome: "noop" as const, response: { awardLogId: null, part: "none", points: 0, reason: next.reason, score: await scoreOf(tx, plan) } };
           }
           const keyBase = contactId ? `score:${plan.id}:${type.personType.key}:${contactId}` : `score:${plan.id}:${type.personType.key}:anon:${request.idempotencyKey}`;
+          const awardIdempotencyKey = awardKey(log, keyBase);
           const payload: PlanAwardPayload = { anonymous, basis: request.basis, contactId, eventId: null, part: next.part, points: next.points, typeKey: type.personType.key };
           const entry = logEntry({
             body: `${type.shortLabel}：+${next.points}`,
             createdAt: at,
             event: "score_awarded",
-            idempotencyKey: await freeKey(tx, keyBase),
+            idempotencyKey: awardIdempotencyKey,
             itemId: type.id,
             linkedContactIds: contactId ? [contactId] : [],
             linkedEventId: null,
@@ -449,6 +482,11 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
             throw new PlanV2Error("AWARD_NOT_FOUND", "Score record not found.");
           }
           if (award.award.basis === "skip") throw new PlanV2Error("INVALID_INPUT", "Use unskip to take back a skip.");
+          if (award.itemId) {
+            const type = (await tx.typeItems(plan.id)).find((item) => item.id === award.itemId);
+            // 跳过 = 满额：跳过期间撤销已得分会让满额不成立，先撤回跳过（对标 YNAB 锁定已对账的分类）。
+            if (type?.skippedAt) throw new PlanV2Error("TYPE_SKIPPED", "Take back the skip before undoing a score of this type.");
+          }
           await tx.insertLog(logEntry({
             body: `取り消し：-${award.award.points}`,
             event: "score_reversed",
@@ -487,7 +525,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           await tx.insertLog(logEntry({
             body: `${type.shortLabel}：習熟済み +${points}`,
             event: "score_awarded",
-            idempotencyKey: await freeKey(tx, `skip:${plan.id}:${type.personType.key}`),
+            idempotencyKey: awardKey(await tx.log(plan.id), `skip:${plan.id}:${type.personType.key}`),
             itemId: type.id,
             linkedContactIds: [],
             linkedEventId: null,
@@ -540,7 +578,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           const entry = logEntry({
             body: completed ? `Step 完了：${plan.steps.find((step) => step.key === key)!.title}` : `Step を未完了に戻しました`,
             event: completed ? "step_completed" : "step_reopened",
-            idempotencyKey: await freeKey(tx, `step:${plan.id}:${key}`),
+            idempotencyKey: `step:${plan.id}:${key}:${log.filter((item) => (item.event === "step_completed" || item.event === "step_reopened") && item.payload.stepKey === key).length + 1}`,
             itemId: null,
             linkedContactIds: [],
             linkedEventId: null,
@@ -676,8 +714,9 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
         const results: Array<{ planId: string; points: number; part: string }> = [];
         for (const plan of await tx.activePlans()) {
           if (plan.eventAllocation <= 0) continue;
-          const key = `score:${plan.id}:${PLAN_EVENT_SEGMENT_KEY}:${event}`;
-          if (await tx.hasLogKey(key)) continue;
+          const planLog = await tx.log(plan.id);
+          if (activeAwards(planLog).some((entry) => entry.award.eventId === event)) continue;
+          const key = awardKey(planLog, `score:${plan.id}:${PLAN_EVENT_SEGMENT_KEY}:${event}`);
           const when = at ?? now();
           const items = await tx.eventItems(plan.id);
           const item = items.find((candidate) => candidate.eventId === event);
@@ -724,6 +763,10 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
         }
         return out;
       });
+    },
+
+    async hasActivePlan() {
+      return repository.read(scope, async (reader) => (await reader.activePlans()).length > 0);
     },
 
     async activeTypeNeeds() {

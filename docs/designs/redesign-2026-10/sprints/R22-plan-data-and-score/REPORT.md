@@ -8,7 +8,7 @@
 ## 做了什么
 
 1. **第一天先提交契约**（`0bc931f4`，`contract:` 提交，App 副本同提交）：`shared/contract/plan-v2.ts` 去掉 `@draft` 进入快照；`PlanV2SummaryResponse { current, goals }`、`PlanScoreView`（不封顶、`segments`）、`PlanV2Detail`、`PlanV2Content`、计分命令的请求 / 结果；`BREAKING.md` 两行；契约 10 加可选 `TaskPlanLink`；`shared/api-schema/plan-v2.ts` 响应宽进（`goalKind` 未知 → `unknown`）、请求 strict；演示世界的计划改成 v2「シリーズA 資金調達」，分数由共享计分函数算出。
-2. **共享纯函数**（`shared/compute`，两端同步）：`plan-score.ts`（记账式计分：`nextAward`、`skipAwardPoints`、`summarizePlanScore`）、`plan-allocation.ts`（配点回流、`unitPoints`、校验）、`plan-templates.ts`（6 类模板、题库、配点、短名字典、关键词、空き、±5 校验）、`plan-template-copy.ts`（三语文字，已纳入 `copy:qa`）。
+2. **共享纯函数**（`shared/compute`，两端同步）：`plan-score.ts`（记账式计分：`nextAward`、`skipAwardPoints`、`summarizePlanScore`）、`plan-allocation.ts`（配点回流、`unitPoints`、校验）、`plan-templates.ts`（6 类模板、题库、配点、短名字典、关键词、空き、±5 校验）、`plan-template-copy.ts`（三语文字，已纳入 `copy:qa`）、`plan-href.ts`（两端同路径的深链构造函数，复核 M1 补上）。
 3. **两个迁移（本机）**：`plans` v2「plans-v2-model」（加列、放宽 `horizon`、按目标分桶的唯一索引、达成 = archived + `achieved_at`、4 张新表）；AI 账本「ai-usage-plan-v2-purposes」（7 个新用途，含 R26 的 `event_assessment`）。
 4. **AI 配额基础**：新用途与各自 `max_calls`、月上限 `AI_QUOTA_MONTHLY_LIMITS`（`plan_background` 10 = 每月新目标 10 个、`plan_review` 3 …）、计划生成流程日上限 15（不占 10 次总熔断）、`countMonthly`。
 5. **`PlanV2Service`**（`features/plans/v2/`）：Postgres + 内存两种仓储（与 v1 同一把按人的锁、同一个连接池）；读（目标列表、首页当前目标、概要）；计分命令（有名字 / 无名字、撤销、跳过 / 撤回、Step 完成 / 撤回，幂等回执 + 唯一键）；给别人的函数（`createPlanFromDraft`、`addEventToPlan`、`recordEventAttendanceForPlans`、`planRemainingTargets`、`activeTypeNeeds`，以及 `active-needs.ts` 的 `planGoalRelatedContactIds`）。mock 模式用演示世界装好的内存仓储。
@@ -21,15 +21,15 @@
 
 | SC | 结论 | 证据 |
 | --- | --- | --- |
-| 01 迁移可用 | ✅ | `tests/capabilities/plans-v2-migrations-postgres.test.ts`：从零、在已有 v1 计划 / 各类条目 / 记录 / 回执的库上升级、重跑不变、v1 `horizon` 不能为空、v2 不能有 `horizon`、v2 缺目标被拒、同一人两份 v1 生效被拒、两个 v2 目标可共存、同一目标两份被拒、生效计划不能带达成时间、配点必须 5 的倍数、跳过只给人物类型、每份计划只一份打开的见直草稿；`plans-repository` 的表清单更新 |
+| 01 迁移可用 | ✅ | 结构截图 `psql-plans-structure.txt`（`\d` plans / plan_items / 四张新表）；`tests/capabilities/plans-v2-migrations-postgres.test.ts`：从零、在已有 v1 计划 / 各类条目 / 记录 / 回执的库上升级、重跑不变、v1 `horizon` 不能为空、v2 不能有 `horizon`、v2 缺目标被拒、同一人两份 v1 生效被拒、两个 v2 目标可共存、同一目标两份被拒、生效计划不能带达成时间、配点必须 5 的倍数、跳过只给人物类型、每份计划只一份打开的见直草稿；`plans-repository` 的表清单更新 |
 | 02 契约转正 | ✅ | 快照包含 `plan-v2.ts`（376 个类型），`BREAKING.md` 两行；App `contract-fixtures-parse` 解析 summary 与 detail；`redesign-schema-parity` 新增 7 组对照；`contract-append-only` 通过 |
 | 03 分数规则 | ✅ | `tests/support/plan-score-cases.ts` 一张表，服务端 `tests/domain/plan-score.test.ts` 与 App `tests/plan-score-compute.test.ts` 各跑同步副本；`plan-allocation.test.ts`（b10 ⑥ 的两个例子：E +5 从 A 扣；移除 C 15 → A、B、D 各 +5）、`plan-templates.test.ts` |
-| 04 读接口 | ✅ | `tests/api/plan-v2-routes.test.ts`：mock 下读写演示计划且过 schema；live 未登录 401、他人 404、没有计划 `current: null`、live 响应里不出现演示数据、后端缺失 503 NOT_IMPLEMENTED；种子计划的分数 40 与 `summarizePlanScore` 一致（`seed-plan-v2-run1.log`） |
-| 05 计分命令 | ✅ | `tests/plans/v2-service.test.ts`（11 条）+ `tests/capabilities/plans-v2-service-postgres.test.ts`：同人同类型一次、同键重放、同键不同内容 409、余数给最后 1 人、超额半分、匿名到目标后不加、撤销后可重记（唯一键 `:1` → `:2`）、跳过记满额（扣已得）与撤回、跳过期间不加分、**三个并发请求只记一条**、计分不推进 `revision` |
-| 06 旧计划不受影响、新计划被认得 | ✅ | Postgres：确定 v2 归档 v1；v1 的 `getCurrent` / `getCurrentView` / `getPlan` / `listVersions` 看不到 v2；v1 `updateItem` 对 v2 条目 404；已有 v2 时 v1 `createVersion` 409 `V2_PLAN_ACTIVE`；v1 维护查询跳过 v2（`plans-v2-service-postgres` 第 5 条）；`plans-v2-consumers-postgres`：只有 v2 的人，快照输入、覆盖度、行业高亮、联系人计划说明都有数据，两个目标合并、跳过和已达成不算；现有计划 / 匹配 / 维护 / 快照 / 洞察 Postgres 测试全过（见收口） |
+| 04 读接口 | ✅ | `tests/api/plan-v2-routes.test.ts`：mock 下读写演示计划且过 schema；live 未登录 401、他人 404、没有计划 `current: null`、live 响应里不出现演示数据、后端缺失 503 NOT_IMPLEMENTED；种子计划的分数 40 与 `summarizePlanScore` 一致（`seed-plan-v2-run1.log`）。没有另做 curl 记录：路由测试直接调用处理函数、断言状态码与响应体 |
+| 05 计分命令 | ✅ | `tests/plans/v2-service.test.ts`（11 条）+ `tests/capabilities/plans-v2-service-postgres.test.ts`：同人同类型一次、同键重放、同键不同内容 409、余数给最后 1 人、超额半分、匿名到目标后不加、撤销后可重记（唯一键 `:1` → `:2`）、跳过记满额（扣已得）与撤回、跳过期间不加分、**三个并发请求只记一条**（按人锁）、**唯一键确定性兜底**（复核 M3 后：键 = 同一人同一类型已被对冲的条数 + 1；绕过服务层的重复写入直接撞唯一键 23505）、跳过期间不能撤销（409 `TYPE_SKIPPED`）、计分时间限在开始日到现在、计分不推进 `revision` |
+| 06 旧计划不受影响、新计划被认得 | ✅ | Postgres：确定 v2 归档 v1；v1 的 `getCurrent` / `getCurrentView` / `getPlan` / `listVersions` 看不到 v2；周一小结读的记录不含 v2 计分（复核 m10 补测）；v1 `updateItem` 对 v2 条目 404；已有 v2 时 v1 `createVersion` 409 `V2_PLAN_ACTIVE`；v1 维护查询跳过 v2（`plans-v2-service-postgres` 第 5 条）；`plans-v2-consumers-postgres`：只有 v2 的人，快照输入、覆盖度、行业高亮、联系人计划说明都有数据，两个目标合并、跳过和已达成不算；现有计划 / 匹配 / 维护 / 快照 / 洞察 Postgres 测试全过（见收口） |
 | 07 配额基础 | ✅ | `plans-v2-migrations-postgres` 第 4 条：新用途写库与 `max_calls`、旧用途外的值被拒、見直し第 4 次 `monthly_limit`（下月 1 日恢复）、released 不计、跨月重新计数、计划生成流程第 16 次 `plan_flow` 被挡而用户池仍可用 10 次；`ai-usage-ledger-postgres` 只多了 `planFlow: 0` 的读数 |
 | 08 种子与演示世界 | ✅ | `seed-plan-v2-run1/2/refuse.log`；`tests/scripts/seed-plan-v2.test.ts`；`demo-world-consistency`、`demo-world-copy` 通过；`copy:qa` 501 条 0 问题 |
-| 09 给别人的服务端函数 | ✅ | `v2-service.test.ts`：`createPlanFromDraft`（归档 v1、版本号接在 v1 之后、重复确定只建一份、第 3 个目标拒绝、配点 / Step 校验）、`addEventToPlan`、`recordEventAttendanceForPlans`（两个目标各记一次、重复不记）、`planRemainingTargets`、`activeTypeNeeds`；Postgres：v2 计划能入队候补匹配、`planGoalRelatedContactIds` 跨目标去重 |
+| 09 给别人的服务端函数 | ✅ | `v2-service.test.ts`：`createPlanFromDraft`（归档 v1、版本号接在 v1 之后、重复确定只建一份、第 3 个目标拒绝、配点 / Step 校验）、`addEventToPlan`、`recordEventAttendanceForPlans`（两个目标各记一次、重复不记）、`planRemainingTargets`、`activeTypeNeeds`；Postgres：`planGoalRelatedContactIds` 跨目标去重；**v2 计划在 R24 之前不进候补管线**（不入队、不读需求，复核 S1） |
 
 ## 自定决定
 
@@ -39,14 +39,23 @@
 | 2 | 账本 `reserve` | 只给 R22 的新用途加了两条分支（计划生成流程日上限、月上限）；旧用途的计数与行为不变（`USAGE_SQL` 的 `user_used` 排除了新用途，旧用途的结果不变） | 月上限要和预留在同一把锁里判断，否则并发会超；旧用途回归测试全过 |
 | 3 | v2 的 `plan_log` 事件名 | 常量在 `features/plans/v2/types.ts`（`PLAN_V2_LOG_EVENTS`），不改 v1 的 `PLAN_LOG_EVENTS` | v1 只按自己的事件名处理；数据库不约束取值 |
 | 4 | 撤销记录不挂联系人 | `score_reversed` 的 `linked_contact_ids` 为空 | 关系强度与时间线按「挂了联系人的计划记录」计互动，撤销不该再算一次 |
-| 5 | mock 模式的 v2 | 每个人第一次访问时装入演示世界的示例计划（`sample: true`，不写库） | 前端在 mock 下能走完整的读写；与 R08「mock 返回演示世界」一致 |
-| 6 | 合并读取只在 live | `readActiveV2Needs` 只在 live 读；mock、后端缺失、表未迁移时返回 null | 防止示例计划混进分析和测试 |
+| 5 | mock 模式的 v2 | 每个人第一次访问时装入演示世界的示例计划（`sample: true`，不写库）；mock 仓储是进程级全局的，同一台开发服务器上共用，重启后复原 | 前端在 mock 下能走完整的读写；与 R08「mock 返回演示世界」一致 |
+| 6 | 合并读取只在 live | `readActiveV2Needs` 只在 live 读；mock 或后端缺失时返回 null；其余错误照常抛出（复核 m5：不再吞掉配置错误） | 防止示例计划混进分析和测试，同时让生产的配置错误能被看到 |
 | 7 | 人物类型的行业条件 | `plan_items.criteria` 里存 `primaryIndustryId / secondaryIndustryId`（R23 的初版给出） | 规则匹配与分析高亮靠它；契约外的内部字段 |
 | 8 | 迁移里的 `horizon` 约束 | 写成 `model_version = 1 and horizon is not null and …` | CHECK 遇到 NULL 会放行，测试发现 v1 可写空期限，补上 |
 | 9 | 题库文字 | 设计稿没有的选项、能力名、短名由本 Sprint 撰写（日文为主，三语），过 `copy:qa`；`AI・データ` 按写作规范改成「AI とデータ」，几处选项缩短以符合 chip 长度 | 请产品负责人过目文字（见交接） |
 | 10 | 演示计划 | 改为「シリーズA 資金調達（3億円）」（`fundraising`），和 app.html / b4 的示例一致；原「年内に初期顧客を 5 社つくる」的 `customers` 不是 6 类之一 | 示例人物多是 VC，和资金调达更配 |
 | 11 | `TaskPlanLink` | 在第一天的契约提交里加（只加不改） | DESIGN §8 约定；用户 2026-10-10「都按推荐」已覆盖，**仍请乙在 R20 时确认** |
-| 12 | 种子脚本的连接串 | 只读 `ORBIT_SEED_DATABASE_URL`，不读 `.env` | 避免误连到 `.env.local` 里的开发库或云端 |
+| 12 | 种子脚本的连接串 | 只读 `ORBIT_SEED_DATABASE_URL`，不读 `.env`；同时在本机库建两位种子联系人 | 避免误连到 `.env.local` 里的开发库或云端；计分引用的联系人真实存在 |
+| 13 | v2 与候补管线（复核 S1 / M2） | R22 先把 v2 排除在匹配管线外（入队、读需求都限 `model_version = 1`），接受候补、确定后入队、排除跳过的类型都移到 R24（R24 PLANNER 已加「R22 交接过来的事」） | 不出现「看得到、接受不了」的候补，也不为它们花后台 AI；R24 本来就负责人物类型详情里的候补 ✓/✕ |
+| 14 | 「今日 +N」（复核 M4） | 照 DESIGN §4.3：今天写下的计分减去今天写下的对冲（今天撤销昨天的 +10 → 今日 −10） | 和用户今天看到的总分变化一致；契约 `todayDelta` 允许负数 |
+| 15 | 跳过期间撤销（复核 M5） | 拒绝（409 `TYPE_SKIPPED`），先撤回跳过 | 「跳过 = 满额」始终成立；对标 YNAB 锁定已对账的分类 |
+| 16 | 旧 bootstrap（复核 M7） | 调生成器之前先查有没有生效的 v2，有就 409 `V2_PLAN_ACTIVE`（带 v2 入口地址），不花 AI；只在 live 判断（mock 的 v2 是示例） | DESIGN §3.6「先拒绝」 |
+| 17 | 新用途固定池（复核 m11） | `AI_QUOTA_PURPOSE_POOLS`：用错池直接抛错 | 月度计数在按池的锁下进行，固定池才没有竞态 |
+| 18 | 响应宽进（复核 m4） | 目标状态、前提出处、依据种类遇到未知值整条跳过；「没加分的原因」读不懂就当没有 | 通用规则 10：决定这条是什么的枚举不猜兜底 |
+| 19 | 深链（复核 M1） | 补上 `shared/compute/plan-href.ts`：路径段两端相同（`plans/...`），Web 挂 `/app/`、App 挂 `/`；Task 的プラン段 Web `?tab=plan`、App `/task?seg=plan`；两端各跑同一张用例表 | DESIGN §7 / §8；页面本身由 R23 / R24 落地 |
+| 20 | 确定后入队（复核 M2） | 不在 `createPlanFromDraft` 的事务里入队；R24 接入匹配管线时在确定后调 `enqueuePlanSourceMatchAfterSave`，漏掉的由维护任务补建 | 与 v1 现在的「保存后入队 + 维护补建」一致（W0050）；R22 阶段 v2 不进管线，事务里入队没有意义 |
+| 21 | 种子脚本写联系人 | 两位种子联系人在一个事务里先取同步提交顺序锁再写（`sync-write-lock-audit` 已登记） | contacts 是同步集合，Sprint 0108 规定所有写入者都要取锁 |
 
 ## 基线 → 收口
 
@@ -59,9 +68,11 @@
 | `copy:qa` | — | 501 条，0 问题 |
 
 第一次收口全量发现 13 条失败，都已修：
-- 11 条 `app-agent-guide-demo-page`：测试把 `features/plans/service-factory.ts` 整个替换成只有 `resolvePlanService` 的替身，引导进度新读 v2 时拿不到 `resolvePlanBackend` 而抛错。修法：`readActiveV2Needs` 解析 v2 服务失败时按「没有 v2 计划」处理。
+- 11 条 `app-agent-guide-demo-page`：测试把 `features/plans/service-factory.ts` 整个替换成只有 `resolvePlanService` 的替身，引导进度新读 v2 时拿不到 `resolvePlanBackend` 而抛错。修法（复核 m5 后的最终做法）：测试替身补上 `resolvePlanBackend`，`readActiveV2Needs` 不再吞错。
 - 1 条全项目类型检查：种子脚本测试传 `{}` 给 `NodeJS.ProcessEnv`。修法：参数类型放宽为只读的字符串字典。
 - 1 条 `app-plan-match-sheet` slow match：基线已有的不稳定用例。
+
+**复核修完后的收口**（`review-fix-*.log`）：orbits 7026 条，1 失败（`sync-write-lock-audit`：种子脚本新写联系人没登记，已修——事务内先取同步锁并登记，单独重跑 10 / 10 通过）；Postgres 136 / 0；App 4192 条，1 失败（`route-parity` 的 `/start`，基线已知）；`typecheck` / `typecheck:app` / `lint` / App `tsc` / `copy:qa` 全 0。之后追加的 `plan-href`（两端各 10 条）、周一小结补测（Postgres 7 / 7）、同步锁修复已单独跑过，并重跑 `typecheck` / `lint` / App `tsc`（`review-fix2-*.log`）全 0。
 
 收口全量（修完后第二次）：orbits 7011 / 0 失败（`final2-orbits-test.log`）；计划、匹配、维护、账本、快照、洞察的 Postgres 测试（`ORBIT_EVENT_DATABASE_URL` 指本机 `orbit_test`）118 / 0（`final-postgres-tests.log`）。之后只追加了 `planGoalRelatedContactIds` 与它的 Postgres 测试（3 / 3 通过）。
 
@@ -73,7 +84,8 @@
   - `createPostgresPlanRepository`（HIGH）：只给 7 条查询加 `model_version = 1`，`insertPlan` 前加 v2 生效检查；新增导出 `planActorLockKey`。
   - `createPostgresAiUsageLedger`（CRITICAL）：新增 `countMonthly`；`reserveWith` 只对新用途加分支；回归测试 `ai-usage-ledger-postgres` 全过。
 - `resolvePlanService` 的 14 个非测试调用方核对：`agent/page.tsx`、`agent/plan/read-current-plan.ts`、`agent/strategy/page.tsx`、`api/agent/plans/{route,candidates,bootstrap,reanalyze}/route-handlers.ts`、`features/plans/{matching-runtime,event-attribution-runtime}.ts`、`features/operations/maintenance/configured-tasks.ts`、`scripts/seed-verify-accounts.ts` → 只认 v1，行为不变（v2 对它们不存在）；`features/network-analysis/runtime.ts`、`features/plans/contact-plan-context.ts`、`features/guide/progress.ts` → 改为同时认 v2（S1）。
-- 提交前 `detect-changes`（增量刷新后）：25 个文件、132 个符号、0 条受影响流程、风险 low（`detect-changes-final.log`；含用户自己未提交的 `bridge/handoffs.md`，不在本次提交）。
+- 复核修复提交前 `detect-changes`（`analyze --index-only` 刷新后；全文检索索引这次没建成，不影响图）：37 个文件、102 个符号、4 条受影响流程（旧 bootstrap 路由的 POST，对应 M7 的提前拒绝）、风险 medium（`detect-changes-review.log`）。
+- 第一次提交前 `detect-changes`（增量刷新后）：25 个文件、132 个符号、0 条受影响流程、风险 low（`detect-changes-final.log`；含用户自己未提交的 `bridge/handoffs.md`，不在本次提交）。
 
 ## 交接
 
@@ -84,9 +96,14 @@
 - **给 R24**：读模型 `detail()`、计分命令全部可用；`recordEventAttendanceForPlans` 待接到活动签到 / 「参加した」；关系时间线对 `score_awarded` 显示通用标题「计划：更新」，R24 可加专用标题。
 - **给 R26**：`event_assessment` 用途与 `max_calls: 2` 已在迁移里；`addEventToPlan`、`planRemainingTargets` 可用。
 - **请产品负责人过目**：题库选项、能力名、短名字典的三语文字（`shared/compute/plan-template-copy.ts`）。
-- **生产授权清单（合回前）**：迁移一 `plans-v2-model`（plans 模块 v2）、迁移二 `ai-usage-plan-v2-purposes`（network-analysis 模块 v3）。执行前在生产只读预检：`plans` 上含 `horizon` 的 CHECK 名、`ai_usage_ledger.purpose` 现有取值、每人 active 计划数（应 ≤1）。
+- **生产授权清单（合回前）**：迁移一 `plans-v2-model`（plans 模块 v2）、迁移二 `ai-usage-plan-v2-purposes`（network-analysis 模块 v3）。
+  - **顺序（复核 M6）：先迁移、再部署代码。** R22 起 v1 的计划查询、匹配维护查询、v1 写入守卫都引用 `plans.model_version`，代码先上线而迁移没跑，所有计划读写会报 42703。
+  - 执行前只读预检：`plans` 上含 `horizon` 的 CHECK 名、`ai_usage_ledger.purpose` 现有取值、每人 active 计划数（应 ≤1）、`plans.goal_id` 不存在（迁移会新增）。
+  - 部署前确认：`select 1 from information_schema.columns where table_name = 'plans' and column_name = 'model_version'` 有结果。
+  - 失败回滚：两个迁移各在一个事务里，失败自动回滚、不留半张表；若迁移成功但部署需回退到旧代码，旧代码不读新列，可直接回退（新列都有默认值或可空）。
 
 ## 已知例外
 
+- 读取成本（复核 m6）：首页 summary 每个目标只读一次条目和记录（已改）；概要里的「本月见直剩余」仍读本人所有目标的记录，R25 接 `review_used` 时改成按月份键查；联系人详情等页面多一个只读事务查 v2（没有 v2 时只有一条 `activePlans` 查询）。
 - v2 人物类型的 `status` 沿用 v1 口径（有一个 established 就是 established），目标人数没到也会显示为已建立；结构标签的行业高亮因此只看 open / linked 的类型。覆盖度按 `targetCount` 计，不受影响。
-- `GET /api/agent/plans/v2`（目标列表）没有单独的契约 schema（响应是 `{ goals: PlanGoalListItem[] }`），R25 做目标下拉时补。
+- （已修，复核 m9）目标列表与 `open` 的响应已有契约与 schema（`PlanGoalListResponse`、`PlanOpenResult`）。

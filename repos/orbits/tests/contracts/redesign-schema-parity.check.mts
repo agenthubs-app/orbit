@@ -14,14 +14,14 @@ import type { EventAssessmentAddToPlanResult, EventAssessmentContract, EventAsse
 import type { EventRecommendationDismissInput, EventRecommendationDismissResult } from "../../shared/contract/event-recommendation-feedback";
 import type { HomeLayoutContract, HomeLayoutUpdateInput } from "../../shared/contract/home-layout";
 import type { InviteCodeContract, InviteCodeCreateInput, InviteCodePreview, InviteCodeRedeemResult } from "../../shared/contract/invite-codes";
-import type { PlanAwardRequest, PlanAwardResult, PlanCommandResult, PlanSkipRequest, PlanStepRequest, PlanUndoRequest, PlanV2Detail, PlanV2SummaryResponse } from "../../shared/contract/plan-v2";
+import type { PlanAwardRequest, PlanAwardResult, PlanCommandResult, PlanGoalListResponse, PlanOpenResult, PlanSkipRequest, PlanStepRequest, PlanUndoRequest, PlanV2Detail, PlanV2SummaryResponse } from "../../shared/contract/plan-v2";
 import type { accountDeletionRequestObject, accountExportCreateInputObject, accountExportObject, appVersionObject } from "../../shared/api-schema/account";
 import type { contactCompletionAnswerInputObject, contactCompletionQuestionObject, contactCompletionResultObject } from "../../shared/api-schema/contact-completion";
 import type { eventAssessmentAddToPlanResultObject, eventAssessmentCreateInputObject, eventAssessmentObject, eventAssessmentPatchInputObject } from "../../shared/api-schema/event-assessment";
 import type { eventRecommendationDismissInputObject, eventRecommendationDismissResultObject } from "../../shared/api-schema/event-recommendation-feedback";
 import type { homeLayoutObject, homeLayoutUpdateInputObject } from "../../shared/api-schema/home-layout";
 import type { inviteCodeCreateInputObject, inviteCodeObject, inviteCodePreviewObject, inviteCodeRedeemResultObject } from "../../shared/api-schema/invite-codes";
-import type { planAwardRequestObject, planAwardResultObject, planCommandResultObject, planSkipRequestObject, planStepRequestObject, planUndoRequestObject, planV2DetailObject, planV2SummaryResponseObject } from "../../shared/api-schema/plan-v2";
+import type { planAwardRequestObject, planAwardResultObject, planCommandResultObject, planGoalListResponseObject, planOpenResultObject, planSkipRequestObject, planStepRequestObject, planUndoRequestObject, planV2DetailObject, planV2SummaryResponseObject } from "../../shared/api-schema/plan-v2";
 
 // Contracts use readonly arrays; zod infers mutable ones. Compare structure, not mutability.
 type DeepMutable<T> = T extends readonly (infer U)[] ? DeepMutable<U>[] : T extends object ? { -readonly [K in keyof T]: DeepMutable<T[K]> } : T;
@@ -56,3 +56,5 @@ expectParity<Parity<PlanUndoRequest, typeof planUndoRequestObject>>();
 expectParity<Parity<PlanSkipRequest, typeof planSkipRequestObject>>();
 expectParity<Parity<PlanStepRequest, typeof planStepRequestObject>>();
 expectParity<Parity<PlanCommandResult, typeof planCommandResultObject>>();
+expectParity<Parity<PlanGoalListResponse, typeof planGoalListResponseObject>>();
+expectParity<Parity<PlanOpenResult, typeof planOpenResultObject>>();

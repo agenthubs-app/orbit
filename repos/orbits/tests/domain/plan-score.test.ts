@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { nextAward, PLAN_EVENT_SEGMENT_KEY, skipAwardPoints, summarizePlanScore, type PlanScoreAward, type PlanScoreSlot } from "../../shared/compute/plan-score";
 import { unitPoints } from "../../shared/compute/plan-allocation";
-import { NEXT_AWARD_CASES, UNIT_POINTS_CASES } from "../support/plan-score-cases";
+import { NEXT_AWARD_CASES, SUMMARY_CASES, SUMMARY_SLOTS, UNIT_POINTS_CASES } from "../support/plan-score-cases";
 
 // R22 SC-R22-03（DESIGN §4.4）：计分口径，表驱动。同一张表在 App 侧对同步副本再跑一遍。
 for (const item of NEXT_AWARD_CASES) {
@@ -82,3 +82,16 @@ test("summarizePlanScore: after the goal is achieved the score is frozen", () =>
   assert.equal(score.total, 10);
   assert.equal(score.todayDelta, 0);
 });
+
+for (const item of SUMMARY_CASES) {
+  test(`summarizePlanScore: ${item.name}`, () => {
+    const score = summarizePlanScore({
+      achievedAt: item.achievedAt,
+      awards: item.awards.map((award, index) => ({ ...award, anonymous: false, id: `a${index}` })),
+      now: item.now,
+      reversals: item.reversals,
+      slots: SUMMARY_SLOTS,
+    });
+    assert.deepEqual({ remainingToFull: score.remainingToFull, todayDelta: score.todayDelta, total: score.total }, item.expected);
+  });
+}

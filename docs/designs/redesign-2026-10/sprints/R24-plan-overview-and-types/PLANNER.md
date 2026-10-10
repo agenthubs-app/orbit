@@ -32,6 +32,10 @@
 - `ai-matcher.ts` 的提示词：版本 +1（C12），输出只加可选 `opener`。
 - App `ContactNeedsMatchesScreen` UNKNOWN（文本确认：只由 `app/contacts/matches.tsx` 挂载）。
 
+### R22 交接过来的事（R22 复核 S1 / M2）
+- **把 v2 人物类型接进候补管线**：R22 为了不出现「接受不了的候补」，让 `plan-match-plan-job.ts` 的两条入队 SQL 与 `matching-repository.ts` 的 `readActiveNeeds` / `readActiveNeedViews` 只取 `model_version = 1`。本 Sprint 要：① 实现 v2 版「接受 / 驳回候补」（`PlanV2Service` 在同一把按人的锁里 CAS 候补状态、把联系人写进类型的 `contact_links`（`linked`），不生成「约 TA」）；② `matching-service.decide` / `linkManually` 按需求所属计划的 `model_version` 分流；③ `createPlanFromDraft` 确定后入队 `plan` 来源匹配任务（R23 的确定路由调用 `enqueuePlanSourceMatchAfterSave`，维护任务补建兜底）；④ 匹配查询排除 `skipped_at` 非空的类型；⑤ 去掉上述 `model_version = 1`。测试：v2 候补的列出、接受、驳回各一条，跳过的类型不出候补。
+- **已撤销的计分不算互动**（R22 复核对自定决定 #4 的评价）：`score_reversed` 本身不挂联系人，但被撤销的那条 `score_awarded` 仍挂着。关系时间线给计分加专用标题时，排除已被对冲的计分；关系强度若读 `plan_log` 的联系人，同样排除。测试各一条。
+
 ### 易错边界（全部写进 SC）
 概要的分数和首页契约不一致；两端各自算分（必须都用 `summarizePlanScore`）；动效在「减少动效」下仍播放；撤销 Toast 删了面谈记录；同一人在候补里点两次「すでに話した」加两次分；匿名自报超过目标人数还加分；跳过后候补名单被删；Step 达到目安就自动变完成（必须用户确认）；memo 判定 ≥2 问就直接加分（必须确认卡）；AI 不可用时没有手动勾选的退路；面谈提案对非 Orbit 用户出现「送信」；依頼文有发送按钮；活动分数用 AI 打分（只能 AI 填事实、规则算分）；会える活動在没有事实时显示虚高的分；人脉里没有这类人时页面空白；他人的计划 / 条目能被读到；`contacts/matches` 跳转后丢失返回位置；示例模式下写操作没被拦截；接受 v2 候补时生成了 v1 式「约 TA」行动；同一场活动给同一目标记两次、或两个目标只记了一个；线下聊过填了名字却建出重复联系人；「前提を見る」能直接改前提（应只读，改要走見直し）；1024 / 390 的版式没按 b8。
 

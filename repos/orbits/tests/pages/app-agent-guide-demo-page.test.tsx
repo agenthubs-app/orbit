@@ -253,6 +253,8 @@ function loadPage(t: TestContext, scenario: Scenario) {
           success: true,
         };
       },
+      // R22：引导进度也会问「有没有 v2 计划」（与 v1 同一后端）；替身里的后端是 mock，没有 v2 计划。
+      resolvePlanBackend: () => ({ mode: "mock", service: { pool: null, referencesFor: () => ({ findMissingContactIds: async () => [], findMissingEventIds: async () => [] }), workspaceId: "workspace:test" }, success: true }),
     },
     [join(root, "features/account/storage/account-live-record-provider.ts")]: {
       createConfiguredStorageAccountSessionProvider: () => ({

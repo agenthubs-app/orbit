@@ -4,6 +4,8 @@ import type {
   PlanAwardRequest,
   PlanAwardResult,
   PlanCommandResult,
+  PlanGoalListResponse,
+  PlanOpenResult,
   PlanSkipRequest,
   PlanStepRequest,
   PlanUndoRequest,
@@ -52,7 +54,8 @@ const goalItem = z.object({
   planId: z.string().min(1),
   goal: z.string().min(1),
   goalKind,
-  status: tolerantEnum(["active", "achieved"], "active"),
+  // 决定目标落在「进行中」还是「完了」：未知值整条跳过，不猜（通用规则 10）。
+  status: z.enum(["active", "achieved"]),
   total: count,
   talkedPeople: count,
   lastOpenedAt: z.string().nullable().optional(),
@@ -65,7 +68,8 @@ export const planV2SummaryResponseObject = z.object({
 });
 export const planV2SummaryResponseSchema = planV2SummaryResponseObject as z.ZodType<PlanV2SummaryResponse>;
 
-const basis = z.object({ kind: tolerantEnum(["premise", "landscape", "record", "template"], "template"), ref: z.string(), label: z.string() });
+// 依据的种类决定「?」里怎么显示：未知种类的依据整条跳过。
+const basis = z.object({ kind: z.enum(["premise", "landscape", "record", "template"]), ref: z.string(), label: z.string() });
 const step = z.object({
   key: z.string().min(1),
   title: z.string().min(1),
@@ -110,7 +114,8 @@ const premiseRow = z.object({
   key: z.string().min(1),
   label: z.string(),
   value: z.string(),
-  source: tolerantEnum(["background", "q1", "q2", "q3", "q4", "q5", "record"], "background"),
+  // 出处标签：未知来源的前提行整条跳过，不冒充「背景」。
+  source: z.enum(["background", "q1", "q2", "q3", "q4", "q5", "record"]),
   guessed: z.boolean(),
 });
 
@@ -151,7 +156,8 @@ export const planAwardResultObject = z.object({
   awardLogId: z.string().nullable(),
   points: count,
   part: tolerantEnum(["base", "overflow", "none"], "none"),
-  reason: tolerantEnum(["skipped", "anonymous_over_target", "already_counted"], "already_counted").optional(),
+  // 没加分的原因只影响说明文字：读不懂就当没有原因（不猜成某一种）。
+  reason: z.enum(["skipped", "anonymous_over_target", "already_counted"]).optional().catch(undefined),
   score: planScoreViewObject,
   replayed: z.boolean(),
 });
@@ -170,3 +176,11 @@ export const planCommandResultObject = z.object({
   completedAt: z.string().nullable().optional(),
 });
 export const planCommandResultSchema = planCommandResultObject as z.ZodType<PlanCommandResult>;
+
+/** `GET /api/agent/plans/v2`：目标列表（R25 的目标下拉也读它）。 */
+export const planGoalListResponseObject = z.object({ goals: readableItems(goalItem) });
+export const planGoalListResponseSchema = planGoalListResponseObject as z.ZodType<PlanGoalListResponse>;
+
+/** `POST /api/agent/plans/v2/[planId]/open`：记下最近打开。 */
+export const planOpenResultObject = z.object({ planId: z.string().min(1) });
+export const planOpenResultSchema = planOpenResultObject as z.ZodType<PlanOpenResult>;

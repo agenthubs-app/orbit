@@ -18,13 +18,7 @@ export type ReadV2Needs = (actorId: string) => Promise<ActiveTypeNeeds | null>;
 
 /** live 时读本人的 v2 生效需求；mock、未配置、表还没迁移（42P01）时为 null。 */
 export async function readActiveV2Needs(actorId: string, mode?: ModuleMode | string): Promise<ActiveTypeNeeds | null> {
-  let resolution: ReturnType<typeof resolvePlanV2Service>;
-  try {
-    resolution = resolvePlanV2Service({ actorId, mode });
-  } catch {
-    // 计划后端没有 v2 入口（例如被替身替换的测试环境）：按「没有 v2 计划」处理，不影响 v1 的读取。
-    return null;
-  }
+  const resolution = resolvePlanV2Service({ actorId, mode });
   if (resolution.success === false || resolution.mode !== "live") return null;
   try {
     const result = await resolution.service.activeTypeNeeds();

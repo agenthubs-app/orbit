@@ -42,11 +42,13 @@ const HAS_NEEDS_SQL = `exists (
   where i.workspace_id = p.workspace_id and i.actor_id = p.actor_id and i.plan_id = p.id and i.kind = 'network_need'
 )`;
 
+// R22（复核 S1）：v2 计划的人物类型在 R24 接好「接受候补」之前不进匹配管线（不入队、不读需求、不花 AI）；
+// R24 去掉这里与 matching-repository 的 model_version = 1 并排除已跳过的类型。
 export const ENQUEUE_PLAN_JOB_SQL = `/* plan-match:enqueue-plan */
   insert into plan_match_jobs (workspace_id, id, actor_id, source_kind, source_key, contact_ids, ai_state)
   select p.workspace_id, $4, p.actor_id, 'plan', p.id, ${RECENT_CONTACT_IDS_SQL("$2")}, 'skipped'
   from plans p
-  where p.workspace_id = $1 and p.actor_id = $2 and p.id = $3 and p.status = 'active' and ${HAS_NEEDS_SQL}
+  where p.workspace_id = $1 and p.actor_id = $2 and p.id = $3 and p.status = 'active' and p.model_version = 1 and ${HAS_NEEDS_SQL}
   on conflict (workspace_id, actor_id, source_kind, source_key) do nothing
   returning id`;
 
@@ -55,7 +57,7 @@ export const ENQUEUE_MISSING_PLAN_JOBS_SQL = `/* plan-match:enqueue-missing-plan
   select m.workspace_id, gen_random_uuid()::text, m.actor_id, 'plan', m.id, ${RECENT_CONTACT_IDS_SQL("m.actor_id")}, 'skipped'
   from (
     select p.workspace_id, p.actor_id, p.id from plans p
-    where p.workspace_id = $1 and p.status = 'active' and ${HAS_NEEDS_SQL}
+    where p.workspace_id = $1 and p.status = 'active' and p.model_version = 1 and ${HAS_NEEDS_SQL}
       and not exists (
         select 1 from plan_match_jobs j
         where j.workspace_id = p.workspace_id and j.actor_id = p.actor_id and j.source_kind = 'plan' and j.source_key = p.id

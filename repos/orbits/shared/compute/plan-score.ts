@@ -94,13 +94,22 @@ export function skipAwardPoints(allocation: number, awards: readonly Pick<PlanSc
   return Math.max(0, allocation - earnedBase(awards).points);
 }
 
+/** 一条被对冲（撤销 / 撤回跳过）的计分：原分值、原时间与对冲时间（「今日 +N」用）。 */
+export interface PlanScoreReversal {
+  points: number;
+  awardedAt: string;
+  reversedAt: string;
+}
+
 /**
  * 概要、首页组件、小组件用的汇总。`awards` 只放未被对冲的记录；
  * `achievedAt` 之后的记录不计（达成后分数定格）。
+ * 「今日 +N」= 东京今天写下的计分减去今天写下的对冲（DESIGN §4.3）：今天撤销昨天的 +10，今日是 −10。
  */
 export function summarizePlanScore(input: {
   slots: readonly PlanScoreSlot[];
   awards: readonly PlanScoreAward[];
+  reversals?: readonly PlanScoreReversal[];
   achievedAt: string | null;
   now: string;
 }): PlanScoreView {
@@ -133,6 +142,11 @@ export function summarizePlanScore(input: {
       skipped: slot.skipped,
     };
   });
+  for (const reversal of input.reversals ?? []) {
+    if (input.achievedAt && !isAtOrBefore(reversal.awardedAt, input.achievedAt)) continue;
+    if (tokyoCalendarDaysUntil(reversal.awardedAt, input.now) === 0) todayDelta += reversal.points;
+    if (tokyoCalendarDaysUntil(reversal.reversedAt, input.now) === 0) todayDelta -= reversal.points;
+  }
   return {
     overflow,
     remainingToFull: Math.max(0, PLAN_FULL_SCORE - baseTotal),

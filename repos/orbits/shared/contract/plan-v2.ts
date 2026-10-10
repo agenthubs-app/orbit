@@ -226,3 +226,13 @@ export interface PlanCommandResult {
   replayed: boolean;
   completedAt?: string | null;
 }
+
+/** `GET /api/agent/plans/v2`：目标列表（生效 + 已达成）。 */
+export interface PlanGoalListResponse {
+  goals: readonly PlanGoalListItem[];
+}
+
+/** `POST /api/agent/plans/v2/[planId]/open` 的结果。 */
+export interface PlanOpenResult {
+  planId: string;
+}

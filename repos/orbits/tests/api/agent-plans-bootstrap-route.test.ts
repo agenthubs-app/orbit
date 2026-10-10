@@ -243,3 +243,17 @@ test("W0055: the guide's plan step may generate the first plan; other demo state
   assert.equal(planBootstrapBlockedByDemo({ nextStep: "goal" }), true);
   assert.equal(planBootstrapBlockedByDemo({ nextStep: null }), true);
 });
+
+test("R22: a person with an active v2 plan is refused before the generator runs (no AI spent)", async () => {
+  let generated = 0;
+  const handlers = createPlanBootstrapRouteHandlers({
+    hasActiveV2Plan: async () => true,
+    readGoal: async () => "goal",
+    resolveActor: async () => ({ id: "actor:v2" }),
+    serviceForActor: () => ({ mode: "live", service: { bootstrap: async () => { generated += 1; throw new Error("must not run"); } }, success: true } as never),
+  });
+  const response = await handlers.POST(post({ idempotencyKey: "plan-bootstrap-0000000000000001" }));
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).error.context.reason, "V2_PLAN_ACTIVE");
+  assert.equal(generated, 0);
+});

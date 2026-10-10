@@ -163,6 +163,16 @@ test("the AI ledger accepts the plan v2 purposes with their own max_calls, month
     assert.equal(usage.user, 0);
     for (let n = 0; n < USER_POOL_DAILY_LIMIT; n += 1) assert.equal((await reserve(`insight:${n}`, "insight")).ok, true);
     assert.equal((await reserve("insight:over", "insight")).ok, false);
+    // 复核 m11：有月上限的新用途只能从固定的池预留。
+    await assert.rejects(reserve("draft:wrong-pool", "plan_draft", "background"), /user pool only/);
     await client.close().catch(() => undefined);
+  });
+});
+
+test("review m1: a v1 row cannot carry a goal id (it would escape the one-active-v1 bucket); a v2 goal id cannot be 'legacy'", databaseTest, async () => {
+  await withSchema(async (pool) => {
+    await runPlanMigrations(pool);
+    await assert.rejects(pool.query(`insert into plans (workspace_id, id, actor_id, version, status, goal_snapshot, horizon, starts_on, goal_id) values ($1, 'v1g', 'a', 1, 'active', 'g', 'month', '2026-09-01', 'goal-x')`, [WS]));
+    await assert.rejects(insertV2(pool, "v2l", "a", 2, "legacy"));
   });
 });

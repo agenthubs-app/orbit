@@ -7,6 +7,10 @@
 **进入条件:** R22 done（迁移在本机、`PlanV2Service.createPlanFromDraft`、`shared/compute/plan-templates` / `plan-allocation`、契约正式版）。C1–C7 已获授权（DESIGN §10 第 1 项，2026-10-10）：仅限本机验证，每项真实调用 ≤5 次，记账并写进 REPORT；开发和测试仍以 mock 为主。「每人每月最多新建 10 个目标」已确认（§10 第 4 项）。
 **分支:** 同 R22。
 
+## R22 交接过来的事
+- `plan_background` 的月上限（10）数的是 C2 操作次数，不是「新建目标数」：同一个 intake「もう一度」重新下书也会占一次（R22 复核 m11）。本 Sprint 定：C2 的重试在同一个 intake 内复用同一个幂等键前缀并只在**第一次成功**时计入「新目标」，或把提示文案改成「背景の下書き 今月あと N 回」——推荐前者（按 intake 去重，对用户只说「新しい目標」）。
+- 确定路由在 `createPlanFromDraft` 成功后调 `enqueuePlanSourceMatchAfterSave`（R24 才打开 v2 的匹配，R22 起入队对 v2 是空操作）。
+
 ## 已查清的事实（按 `fe896414`）
 
 1. **现有生成管线**：`features/plans/ai-generator.ts`（`plan-ai-2026-10-v1`，两阶段：骨架 + 前 2 阶段细化 + 快照，`purpose: plan`、`max_calls: 4`，id 用短期别名、解析层丢弃编造的别名、超时 90s）；`generator.ts` 的 `runPlanGeneration` 是唯一结算者；开关 `ORBIT_PLAN_GENERATOR`（默认 mock）。`createAiPlanGenerator` LOW 7。

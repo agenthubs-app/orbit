@@ -6021,9 +6021,11 @@
         "PlanGoalKind",
         "PlanGoalKindRead",
         "PlanGoalListItem",
+        "PlanGoalListResponse",
         "PlanGoalStatus",
         "PlanIntakeSource",
         "PlanIntroRoute",
+        "PlanOpenResult",
         "PlanPremiseRow",
         "PlanPremiseSource",
         "PlanQuotaView",
@@ -8592,6 +8594,26 @@
           "optional": true,
           "kind": "text",
           "type": "string | null"
+        }
+      }
+    },
+    "plan-v2.ts::PlanGoalListResponse": {
+      "kind": "object",
+      "members": {
+        "goals": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanGoalListItem[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanOpenResult": {
+      "kind": "object",
+      "members": {
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
