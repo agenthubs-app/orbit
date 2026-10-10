@@ -18,7 +18,9 @@ test.before(async () => {
     import React from "react";
     import { createRoot } from "react-dom/client";
     import { TaskContainer } from "./app/(app)/app/orbit-2026/task/TaskContainer";
-    createRoot(document.getElementById("root")).render(<TaskContainer initialTab={window.shellFixture.tab}
+    const f = window.shellFixture;
+    const plan = f.plan === "screen" ? <main data-orbit-real-page="agent"><h2>my plan</h2><div style={{ height: 2400 }} /><p id="plan-action-a1">action a1</p></main> : f.plan === "none" ? null : undefined;
+    createRoot(document.getElementById("root")).render(<TaskContainer initialTab={f.tab} plan={plan} planStartHref="/app/start"
       calendar={<main data-orbit-real-page="tasks"><p>personal schedule</p></main>}
       todo={<main data-orbit-real-page="tasks"><input aria-label="new to-do" /><p>to-do list</p>
         <div role="radiogroup" aria-label="view"><button type="button" role="radio" aria-checked="true">open</button><button type="button" role="radio" aria-checked="false">done</button></div>
@@ -28,8 +30,8 @@ test.before(async () => {
 });
 test.after(async () => { await browser?.close(); });
 
-async function container(t: { after: (fn: () => Promise<void>) => void }, tab: string): Promise<Page> {
-  const page = await open(browser, code, { html: `<div id="root"></div><script>window.shellFixture=${JSON.stringify({ path: "/app/tasks", lang: "ja", calls: [], tab })}</script>` });
+async function container(t: { after: (fn: () => Promise<void>) => void }, tab: string, plan: "screen" | "none" | "unread" = "none", hash = ""): Promise<Page> {
+  const page = await open(browser, code, { html: `<div id="root"></div><script>${hash ? `history.replaceState(null, "", "#${hash}");` : ""}window.shellFixture=${JSON.stringify({ path: "/app/tasks", lang: "ja", calls: [], tab, plan })}</script>` });
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
   await page.getByRole("tablist", { name: "Task" }).waitFor();
   return page;
@@ -75,4 +77,28 @@ test("?tab= opens a tab directly; anything else is To-do; /app/agent/plan goes t
   assert.equal(taskTabFrom("bogus"), "todo");
   assert.match(readFileSync("app/(app)/app/agent/plan/page.tsx", "utf8"), /redirect\("\/app\/tasks\?tab=plan"\)/u);
   assert.match(readFileSync("app/(app)/app/tasks/page.tsx", "utf8"), /<TaskContainer\n\s+initialTab=\{tab\}/u);
+});
+
+// Product decision (a), R07 review M5: プラン shows the existing plan screen; the
+// empty state is only for people without a plan, and its button starts one.
+test("プラン shows the plan screen; without a plan the 「目標を決める」 empty state starts one; unread shows a skeleton", async (t) => {
+  const withPlan = await container(t, "plan", "screen");
+  await withPlan.getByRole("heading", { name: "my plan" }).waitFor();
+  assert.equal(await withPlan.getByRole("button", { name: "目標を決める" }).count(), 0);
+  const none = await container(t, "plan", "none");
+  await none.getByRole("button", { name: "目標を決める" }).click();
+  assert.deepEqual(await none.evaluate(() => (window as any).shellFixture.calls.filter((call: object) => "push" in call)), [{ push: "/app/start" }]);
+  const unread = await container(t, "plan", "unread");
+  assert.equal(await unread.getByRole("button", { name: "目標を決める" }).count(), 0, "no empty state before the plan was read");
+});
+
+test("a #plan-action-… link scrolls to that row once the plan screen is there", async (t) => {
+  const page = await container(t, "plan", "screen", "plan-action-a1");
+  await page.waitForFunction(() => { const r = document.getElementById("plan-action-a1")!.getBoundingClientRect(); return r.top >= 0 && r.bottom <= window.innerHeight; });
+});
+
+test("the server reads the plan only for ?tab=plan, and the old address stays a redirect", () => {
+  const page = readFileSync("app/(app)/app/tasks/page.tsx", "utf8");
+  assert.match(page, /const plan = tab === "plan" && actor \? await loadPlanSlot\(actor, session\.user\.id\) : undefined;/u);
+  assert.match(readFileSync("app/(app)/app/agent/plan/page.tsx", "utf8"), /redirect\("\/app\/tasks\?tab=plan"\)/u);
 });

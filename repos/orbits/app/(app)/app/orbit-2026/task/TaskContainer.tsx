@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { pickCopy } from "../copy/types";
 import { shellCopy } from "../copy/shell";
-import { EmptyState, Orbit2026Scope, Segmented, ToastProvider, useStandardCopy, useToast } from "../ui";
+import { EmptyState, Orbit2026Scope, Segmented, Skeleton, ToastProvider, useStandardCopy } from "../ui";
 import { ShellPage } from "../shell/slots";
 import { TASK_TABS, type TaskTab } from "./task-tabs";
 import styles from "./task.module.css";
@@ -15,11 +15,17 @@ import styles from "./task.module.css";
 // order; a feature Sprint replaces only its own slot:
 //   calendar → R20 (now the existing personal schedule, /app/tasks/personal)
 //   todo     → R20 (now the existing To-do workspace)
-//   plan     → R25 (now the 「目標を決める」 empty state)
+//   plan     → R25 (now the existing plan screen; 「目標を決める」 only without a plan —
+//              product decision (a), R07 review M5)
 //   memo     → R20 (the Web has no notes page yet: an empty state)
 // Tabs, ← → keys (outside text fields) and `?tab=` are the container's.
 
-export function TaskContainer({ initialTab, calendar, todo }: { initialTab: TaskTab; calendar: ReactNode; todo: ReactNode }) {
+/**
+ * `plan`: the plan screen, `null` when the person has no plan yet (empty state), or
+ * `undefined` while it has not been read — the server reads it only for ?tab=plan,
+ * and switching to the tab re-requests the page.
+ */
+export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref = "/app/agent" }: { initialTab: TaskTab; calendar: ReactNode; todo: ReactNode; plan?: ReactNode | null; planStartHref?: string }) {
   const { language } = useOrbitLanguage();
   const router = useRouter();
   const pathname = usePathname() ?? "/app/tasks";
@@ -61,9 +67,9 @@ export function TaskContainer({ initialTab, calendar, todo }: { initialTab: Task
         </div>
       </Orbit2026Scope>
       <div data-task-slot={tab}>
-        {tab === "calendar" ? calendar : tab === "todo" ? todo : (
+        {tab === "calendar" ? calendar : tab === "todo" ? todo : tab === "plan" && plan ? <PlanSlot>{plan}</PlanSlot> : (
           <Orbit2026Scope language={language} className={styles.empty}>
-            <ToastProvider>{tab === "plan" ? <PlanEmpty /> : <EmptyState title={pickCopy(shellCopy.memoEmptyTitle, language)} message={pickCopy(shellCopy.memoEmptyBody, language)} />}</ToastProvider>
+            <ToastProvider>{tab === "plan" ? (plan === undefined ? <Skeleton lines={4} /> : <PlanEmpty href={planStartHref} />) : <EmptyState title={pickCopy(shellCopy.memoEmptyTitle, language)} message={pickCopy(shellCopy.memoEmptyBody, language)} />}</ToastProvider>
           </Orbit2026Scope>
         )}
       </div>
@@ -76,9 +82,27 @@ function TaskTabs({ tab, onChange }: { tab: TaskTab; onChange: (tab: TaskTab) =>
   return <Segmented<TaskTab> label={copy.nav.task} value={tab} onChange={onChange} segments={TASK_TABS.map((key) => ({ key, label: copy.taskSegments[key === "memo" ? "notes" : key] }))} />;
 }
 
-function PlanEmpty() {
+// No plan yet: the button goes where the old empty plan pointed (the guide's step 3,
+// or iOrbit, which builds the first plan).
+function PlanEmpty({ href }: { href: string }) {
   const { language } = useOrbitLanguage();
-  const copy = useStandardCopy();
-  const toast = useToast();
-  return <EmptyState title={pickCopy(shellCopy.planEmptyTitle, language)} message={pickCopy(shellCopy.planEmptyBody, language)} action={{ label: pickCopy(shellCopy.planEmptyTitle, language), onSelect: () => toast.info(copy.homeEdit.comingSoon) }} />;
+  const router = useRouter();
+  return <EmptyState title={pickCopy(shellCopy.planEmptyTitle, language)} message={pickCopy(shellCopy.planEmptyBody, language)} action={{ label: pickCopy(shellCopy.planEmptyTitle, language), onSelect: () => router.push(href) }} />;
+}
+
+// The plan screen with its anchors: /app/tasks?tab=plan#plan-action-<id> (or a link
+// that came through /app/agent/plan) scrolls to that row once the screen is there —
+// a client-side tab switch does not get the browser's own fragment scroll.
+function PlanSlot({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id.startsWith("plan-")) return;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      const target = document.getElementById(id);
+      if (target || ++tries > 20) { window.clearInterval(timer); target?.scrollIntoView({ block: "center" }); }
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, []);
+  return <div data-task-plan="">{children}</div>;
 }
