@@ -14,21 +14,21 @@ import {
   normalizedNext
 } from "../src/view-models/account-auth";
 
-test("current batch private entry and encoded detail preserve auth return context", () => {
-  const path = "/contacts/new/batch2/batch%3A%2F%20%E7%A9%BA";
-  for (const route of ["/contacts/new/batch2", path]) {
+test("R12 scan batch private entry and encoded detail preserve auth return context", () => {
+  const path = "/contacts/new/scan/batch%3A%2F%20%E7%A9%BA";
+  for (const route of ["/contacts/new/scan", path, "/contacts/new/manual", "/contacts/new/drafts"]) {
     assert.equal(isPrivateMobileRoute(route), true);
     assert.equal(resolveInitialRouteHref(route), route);
   }
-  const next = mobileAuthReturnHref(path, { id: "batch:/ 空", tab: "upload" });
+  const next = mobileAuthReturnHref(path, { batchId: "batch:/ 空", tab: "upload" });
   assert.equal(next, path + "?tab=upload"); assert.equal(normalizedNext(next), next);
-  for (const suffix of ["%ZZ", "%2E", "%2E%2E", "a/extra"]) assert.equal(resolveInitialRouteHref("/contacts/new/batch2/" + suffix), "/home");
+  for (const suffix of ["%ZZ", "%2E", "%2E%2E", "a/extra"]) assert.equal(resolveInitialRouteHref("/contacts/new/scan/" + suffix), "/home");
 });
 
-test("legacy batch login completion handoff preserves context and omits the path id", () => {
-  const path = "/contacts/new/batch/batch%3A%2F%20%E7%A9%BA";
+test("R12 scan batch login completion handoff preserves context and omits the path id", () => {
+  const path = "/contacts/new/scan/batch%3A%2F%20%E7%A9%BA";
   assert.equal(isPrivateMobileRoute(path), true);
-  const login = mobileLoginHref(path, { id: ["batch:/ 空", "duplicate"], tab: "review", "#": "card" });
+  const login = mobileLoginHref(path, { batchId: ["batch:/ 空", "duplicate"], tab: "review", "#": "card" });
   const next = new URL(login, "https://orbit.invalid").searchParams.get("next")!;
   assert.equal(next, `${path}?tab=review#card`);
   assert.equal(normalizedNext(next), next);
@@ -249,12 +249,10 @@ test("every root-level private entry uses the shared render gate", () => {
     "contacts/graph.tsx",
     "contacts/list.tsx",
     "contacts/new.tsx",
-    "contacts/new/batch/[id].tsx",
-    "contacts/new/batch2/[id].tsx",
-    "contacts/new/batch2/index.tsx",
-    "contacts/new/import/[id].tsx",
+    "contacts/new/drafts.tsx",
     "contacts/new/manual.tsx",
     "contacts/new/scan.tsx",
+    "contacts/new/scan/[batchId].tsx",
     "contacts/pipeline.tsx",
     "dashboard.tsx",
     "events/[id]/attendees.tsx",

@@ -250,7 +250,8 @@ export interface EventPostEventConfirmView {
   confirmedCountLabel: string;
   feedback: string;
   nextAction: string;
-  reviewQueueHref: "/contacts/new";
+  /** R12: the draft queue (確認待ちの下書き), with the event when it is known (参加者から取り込む). */
+  reviewQueueHref: "/contacts/new/drafts" | `/contacts/new/drafts?eventId=${string}`;
   reviewQueueLabel: string;
   title: string;
 }
@@ -1449,7 +1450,8 @@ export function eventPostEventConfirmRequestFromReview(
 }
 
 export function eventPostEventConfirmToView(
-  data: unknown
+  data: unknown,
+  eventId?: string | null
 ): EventPostEventConfirmView {
   const payload = envelopeData(data);
   const record = isRecord(payload) ? payload : {};
@@ -1470,7 +1472,9 @@ export function eventPostEventConfirmToView(
       stringField(record, "nextAction"),
       "先检查确认记录，再决定是否写入联系人或发送消息。"
     ),
-    reviewQueueHref: "/contacts/new",
+    reviewQueueHref: eventId?.trim()
+      ? `/contacts/new/drafts?eventId=${encodeURIComponent(eventId.trim())}`
+      : "/contacts/new/drafts",
     reviewQueueLabel: "去复核联系人",
     title: "会后复核已确认"
   };

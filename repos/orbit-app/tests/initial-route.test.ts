@@ -4,11 +4,24 @@ import { describe, it } from "node:test";
 import { resolveInitialRouteHref } from "../src/view-models/initial-route";
 
 describe("resolveInitialRouteHref", () => {
-  it("supports only the exact legacy batch detail with encoded identifiers", () => {
-    const path = "/contacts/new/batch/batch%3A%2F%20%E7%A9%BA";
-    assert.equal(resolveInitialRouteHref(`/app${path}?tab=review#card`), `${path}?tab=review#card`);
-    for (const id of ["%ZZ", "%2E", "%2E%2E", "", "a/extra"]) assert.equal(resolveInitialRouteHref(`/contacts/new/batch/${id}`), "/home");
-    assert.equal(resolveInitialRouteHref("/contacts/new/batch2/id"), "/contacts/new/batch2/id");
+  it("R12: old card batch links land on the new 名刺 pages; invalid identifiers fall back to home", () => {
+    const encoded = "batch%3A%2F%20%E7%A9%BA";
+    // v2 batches (old batch2/<id> and new scan/<id>) open the batch page, query and hash kept.
+    assert.equal(resolveInitialRouteHref(`/app/contacts/new/batch2/${encoded}?tab=review#card`), `/contacts/new/scan/${encoded}?tab=review#card`);
+    assert.equal(resolveInitialRouteHref(`/contacts/new/scan/${encoded}`), `/contacts/new/scan/${encoded}`);
+    // v1 batches and v1 card file imports cannot be opened any more: 名刺をスキャン with the notice.
+    assert.equal(resolveInitialRouteHref(`/app/contacts/new/batch/${encoded}?tab=review#card`), "/contacts/new/scan?from=legacy");
+    assert.equal(resolveInitialRouteHref("/contacts/new/import/123e4567-e89b-12d3-a456-426614174000"), "/contacts/new/scan?from=legacy");
+    assert.equal(resolveInitialRouteHref("/contacts/new/batch2"), "/contacts/new/scan");
+    for (const prefix of ["batch", "batch2", "scan"]) {
+      for (const id of ["%ZZ", "%2E", "%2E%2E", "", "a/extra"]) assert.equal(resolveInitialRouteHref(`/contacts/new/${prefix}/${id}`), "/home");
+    }
+    for (const page of ["scan", "manual", "drafts"]) assert.equal(resolveInitialRouteHref(`/app/contacts/new/${page}`), `/contacts/new/${page}`);
+    assert.equal(resolveInitialRouteHref("/contacts/new/drafts?eventId=e1"), "/contacts/new/drafts?eventId=e1");
+    // Web's old 人脈を追加 queries.
+    assert.equal(resolveInitialRouteHref(`/app/contacts/new?job=${encoded}`), `/contacts/new/scan/${encodeURIComponent("batch:/ 空")}`);
+    assert.equal(resolveInitialRouteHref("/app/contacts/new?method=scan"), "/contacts/new/scan");
+    assert.equal(resolveInitialRouteHref("/app/contacts/new?add=manual"), "/contacts/new/manual");
   });
   it("opens only the experience operation route, including encoded event identifiers", () => {
     assert.equal(resolveInitialRouteHref("/app/events/event%3A%2F%20%E7%A9%BA/operations/experience?tab=preview#questions"), "/events/event%3A%2F%20%E7%A9%BA/operations/experience?tab=preview#questions");

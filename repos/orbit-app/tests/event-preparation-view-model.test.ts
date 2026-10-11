@@ -476,9 +476,11 @@ test("eventPostEventConfirmToView maps confirmation payloads into guarded Chines
   assert.deepEqual(view, {
     confirmedCountLabel: "2 位已确认",
     feedback: "已确认 2 位候选。发送消息仍需另外确认。",
-    reviewQueueHref: "/contacts/new",
+    reviewQueueHref: "/contacts/new/drafts",
     reviewQueueLabel: "去复核联系人",
     nextAction: "先检查确认记录，再决定是否写入联系人或发送消息。",
     title: "会后复核已确认"
   });
+  // R12: with the event known, 「去复核联系人」 opens the draft queue for that event (参加者から取り込む).
+  assert.equal(eventPostEventConfirmToView({ data: { confirmedContacts: [] }, success: true }, "event:demo / 1").reviewQueueHref, "/contacts/new/drafts?eventId=event%3Ademo%20%2F%201");
 });

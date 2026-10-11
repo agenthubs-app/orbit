@@ -72,7 +72,11 @@ const routeByKey: Record<string, InitialRoutePath> = {
   chat: "/chat",
   contacts: "/contacts",
   "contacts/list": "/contacts/list",
-  "contacts/new/batch2": "/contacts/new/batch2",
+  // R12: 人脈を追加's pages; the old batch entry opens 名刺をスキャン.
+  "contacts/new/batch2": "/contacts/new/scan",
+  "contacts/new/drafts": "/contacts/new/drafts",
+  "contacts/new/manual": "/contacts/new/manual",
+  "contacts/new/scan": "/contacts/new/scan",
   dashboard: "/dashboard",
   events: "/events",
   followups: "/followups",
@@ -177,6 +181,10 @@ function hasContactsListQuery(searchParams: URLSearchParams): boolean {
   ].some((key) => Boolean(searchParams.get(key)?.trim()));
 }
 
+/** R12: where an old v1 card batch link lands (名刺をスキャン with 「以前の読み取りは人脈に反映済みです」). */
+const LEGACY_SCAN_ROUTE = "/contacts/new/scan" as InitialRoutePath;
+const LEGACY_SCAN_QUERY = "from=legacy";
+
 function detailRouteHref(routeKey: string): InitialRoutePath | null {
   const personalEditMatch = /^schedule\/personal\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)\/edit$/u.exec(routeKey);
   if (personalEditMatch) {
@@ -193,16 +201,19 @@ function detailRouteHref(routeKey: string): InitialRoutePath | null {
       return null;
     }
   }
+  // R12 (DESIGN §7): a v2 batch (`scan/<id>`, old `batch2/<id>`) opens the new batch page; a v1
+  // batch (`batch/<id>`) or a v1 card file import (`import/<uuid>`) cannot be opened there any
+  // more — those cards are already in 人脈 — so it lands on 名刺をスキャン with a notice.
   if (/^contacts\/new\/import\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/u.test(routeKey)) {
-    return ("/" + routeKey) as InitialRoutePath;
+    return LEGACY_SCAN_ROUTE;
   }
 
-  const batchMatch = /^contacts\/new\/(batch2?)\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)$/u.exec(routeKey);
+  const batchMatch = /^contacts\/new\/(batch2?|scan)\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)$/u.exec(routeKey);
   if (batchMatch) {
     try {
       const batchId = decodeURIComponent(batchMatch[2]!);
       if (batchId === "." || batchId === ".." || !batchId.trim()) return null;
-      return `/contacts/new/${batchMatch[1]}/${encodeURIComponent(batchId)}`;
+      return batchMatch[1] === "batch" ? LEGACY_SCAN_ROUTE : `/contacts/new/scan/${encodeURIComponent(batchId)}`;
     } catch {
       return null;
     }
@@ -311,6 +322,14 @@ export function resolveSupportedInitialRouteHref(
     }
   }
 
+  // R12: Web's old 人脈を追加 links (?job=<v2 batch>, ?method=scan, ?add=manual) open the same pages.
+  if (routeKey === "contacts/new") {
+    const job = parsedRoute.searchParams.get("job")?.trim();
+    if (job) return `/contacts/new/scan/${encodeURIComponent(job)}` as InitialRouteHref;
+    if (parsedRoute.searchParams.get("method") === "scan") return "/contacts/new/scan" as InitialRouteHref;
+    if (parsedRoute.searchParams.get("add") === "manual") return "/contacts/new/manual" as InitialRouteHref;
+  }
+
   if (routeKey === "contacts" && hasContactsListQuery(parsedRoute.searchParams)) {
     return hrefWithQuery(
       "/contacts/list",
@@ -323,6 +342,10 @@ export function resolveSupportedInitialRouteHref(
 
   if (!route) {
     return null;
+  }
+
+  if (route === LEGACY_SCAN_ROUTE && /^contacts\/new\/(?:batch|import)\//u.test(routeKey)) {
+    return hrefWithQuery(route, LEGACY_SCAN_QUERY, "");
   }
 
   return hrefWithQuery(route, parsedRoute.rawQuery, parsedRoute.rawHash);

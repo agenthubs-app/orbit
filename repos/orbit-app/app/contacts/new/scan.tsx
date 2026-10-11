@@ -1,5 +1,7 @@
-import { withOrbitPrivateRoute } from "../../../src/components/OrbitRouteAccessBoundary";
-import { BusinessCardScanScreen } from "../../../src/screens/contacts/BusinessCardScanScreen";
 import { withOnlineOnlyRoute } from "../../../src/components/OnlineOnlyBoundary";
-// Sprint 0140: card scanning needs the server for OCR and saving; online-only like /contacts/new.
-export default withOrbitPrivateRoute(withOnlineOnlyRoute(BusinessCardScanScreen));
+import { withOrbitPrivateRoute } from "../../../src/components/OrbitRouteAccessBoundary";
+import { ScanCaptureScreen } from "../../../src/screens/add/ScanCaptureScreen";
+
+// R12 名刺をスキャン (DESIGN §2.2 steps 1–3): guide, camera permission, camera / photos, upload.
+// Online-only: reading runs on the server (docs/offline/page-inventory.md).
+export default withOrbitPrivateRoute(withOnlineOnlyRoute(ScanCaptureScreen));

@@ -16,9 +16,9 @@
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 13 |
 | └ 由 Sprint 0137 实现 | 1 |
-| 只能在线 | 40 |
-| 不读账号数据（布局、跳转、本机设置） | 21 |
-| 合计（路由文件） | 101 |
+| 只能在线 | 38 |
+| 不读账号数据（布局、跳转、本机设置） | 22 |
+| 合计（路由文件） | 100 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -90,13 +90,11 @@
 | `/events/:id/operations/roles` | 活动角色与权限 | 主办方实时运营：主办方权限管理 | /api/events/:id/access/roles | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/analytics` | 活动数据分析 | 主办方实时运营：主办方统计，服务器实时聚合 | /api/events/:id/analytics/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/register` | 报名问卷 | 付费 AI：报名是写入；问卷题目由付费 AI 生成并在服务器缓存 | /api/events/public/:id、/api/events/:id/registration | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/contacts/new` | 更多添加方式（QR、批量名片、外部导入、引荐、重复检查） | 名片识别（上传图片、OCR）：名片识别要上传图片做 OCR；新建联系人是写入 | /api/contact-drafts* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/contacts/new/batch/:id` | 名片批量识别（旧） | 名片识别（上传图片、OCR）：批量识别在服务器进行 | /api/contact-drafts/business-card/batches/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/contacts/new/batch2` | 名片批量识别 | 名片识别（上传图片、OCR）：批量识别在服务器进行 | /api/contact-drafts/business-card/batches/v2 | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/contacts/new/batch2/:id` | 名片批量识别结果 | 名片识别（上传图片、OCR）：识别结果和图片在服务器 | /api/contact-drafts/business-card/batches/v2/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/contacts/new/manual` | 手动添加（姓名先行，核对后保存） | 名片识别（上传图片、OCR）：保存联系人是写入：先建草稿再确认 | /api/contact-drafts/manual、/api/contact-drafts/:id/confirm | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/contacts/new/scan` | 扫描名片（拍照或选图，核对后保存） | 名片识别（上传图片、OCR）：名片识别要上传图片做 OCR；保存联系人是写入 | /api/contact-drafts/business-card/scan、/api/contacts/business-card/confirm | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/contacts/new/import/:id` | 名片导入进度 | 名片识别（上传图片、OCR）：导入任务在服务器运行 | /api/contact-drafts/business-card/imports/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/contacts/new` | 人脈を追加（名刺をスキャン、手入力、確認待ちの下書き件数；R12） | 名片识别（上传图片、OCR）：下書き件数和各入口的后续操作都在服务器进行 | /api/contact-drafts | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/contacts/new/manual` | 手入力（名字即可保存，即时查重与统合，5 秒撤销；R12） | 名片识别（上传图片、OCR）：保存联系人与查重是服务器写入 / 查询 | /api/contacts/manual、/api/contacts/manual/duplicates、/api/contacts/manual/organizations、/api/events | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/contacts/new/scan` | 名刺をスキャン（はじめての方へ、相机权限、表 / 裏连拍、相册多选，建 v2 批次上传；R12） | 名片识别（上传图片、OCR）：名片识别要上传图片在服务器读取 | /api/contact-drafts/business-card/batches/v2 | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/contacts/new/scan/:batchId` | 名刺の読み取り → 自動で人脈へ → まとめて確認 → 完成（R12） | 名片识别（上传图片、OCR）：读取在服务器进行，确认是写入 | /api/contact-drafts/business-card/batches/v2/:id、/api/agent/event-attribution/candidates | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/contacts/new/drafts` | 確認待ちの下書き（确认 / 丢弃，?eventId= 参加者取り込み；R12） | 名片识别（上传图片、OCR）：草稿队列与确认在服务器 | /api/contact-drafts、/api/contact-drafts/event-attendees/import | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/invitations/:token` | 关系邀请 | 需要服务器验证链接或邀请码：邀请链接由服务器验证后才能接受 | /api/relationship-communication/invitations/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/register` | 邀请注册 | 需要服务器验证链接或邀请码：邀请码由服务器验证 | /api/events/public/:id、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/register/:code` | 邀请注册（带邀请码） | 需要服务器验证链接或邀请码：邀请码由服务器验证 | 同 /register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -124,6 +122,7 @@
 | `/showcase/icons` | 图标展示页（开发包和 TestFlight，R02） | 无（图标源打包在 App 里） | 照常显示 |
 | `(浏览器外壳)` | 浏览器版 HTML 外壳 | 无 | 照常加载 |
 | `/` | 入口跳转 | 无 | 跳到首页或登录页 |
+| `/start` | 引导入口跳转（Web /app/start → App 引导 /profile/onboarding） | 无 | 跳到引导页 |
 | `/*（旧链接）` | 旧深链接跳转 | 无 | 跳到对应新页面 |
 | `/account/mobile-google` | 旧 Google 登录链接跳转 | 无 | 跳到登录页 |
 | `/events/:id/attendees` | 旧参会者链接跳转到现场页 | 无 | 跳到现场页（0115 可离线） |
@@ -175,12 +174,10 @@
 | `app/contacts/graph.tsx` | `/contacts/graph` | local-first (0117) |
 | `app/contacts/list.tsx` | `/contacts/list` | local-first (0116) |
 | `app/contacts/new.tsx` | `/contacts/new` | online-only |
-| `app/contacts/new/batch/[id].tsx` | `/contacts/new/batch/:id` | online-only |
-| `app/contacts/new/batch2/[id].tsx` | `/contacts/new/batch2/:id` | online-only |
-| `app/contacts/new/batch2/index.tsx` | `/contacts/new/batch2` | online-only |
-| `app/contacts/new/import/[id].tsx` | `/contacts/new/import/:id` | online-only |
+| `app/contacts/new/drafts.tsx` | `/contacts/new/drafts` | online-only |
 | `app/contacts/new/manual.tsx` | `/contacts/new/manual` | online-only |
 | `app/contacts/new/scan.tsx` | `/contacts/new/scan` | online-only |
+| `app/contacts/new/scan/[batchId].tsx` | `/contacts/new/scan/:batchId` | online-only |
 | `app/contacts/pipeline.tsx` | `/contacts/pipeline` | local-first (0137) |
 | `app/dashboard.tsx` | `/dashboard` | local-first (0117) |
 | `app/events/[id].tsx` | `/events/:id` | local-first (0115) |
@@ -238,6 +235,7 @@
 | `app/showcase/components.tsx` | `/showcase/components` | device-only |
 | `app/showcase/copy.tsx` | `/showcase/copy` | device-only |
 | `app/showcase/icons.tsx` | `/showcase/icons` | device-only |
+| `app/start.tsx` | `/start` | device-only |
 | `app/task.tsx` | `/task` | local-first (R05) |
 | `app/tasks.tsx` | `/tasks` | device-only |
 | `app/tasks/[id].tsx` | `/tasks/:id` | local-first (0131) |

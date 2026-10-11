@@ -45,22 +45,6 @@
     "src/screens/chat/RelationshipChatScreen.tsx": {
       "oldComponent": 5
     },
-    "src/screens/contacts/BusinessCardBatchScreen.tsx": {
-      "alert": 1
-    },
-    "src/screens/contacts/BusinessCardImportScreen.tsx": {
-      "alert": 1
-    },
-    "src/screens/contacts/BusinessCardIngestScreen.tsx": {
-      "alert": 3
-    },
-    "src/screens/contacts/BusinessCardScanScreen.tsx": {
-      "controls": 1
-    },
-    "src/screens/contacts/ContactAcquisitionScreen.tsx": {
-      "oldComponent": 1,
-      "controls": 1
-    },
     "src/screens/contacts/ContactDetailScreen.tsx": {
       "oldComponent": 4,
       "controls": 1
@@ -83,9 +67,6 @@
     },
     "src/screens/contacts/ContactsScreen.tsx": {
       "oldComponent": 5,
-      "controls": 1
-    },
-    "src/screens/contacts/ManualContactAddScreen.tsx": {
       "controls": 1
     },
     "src/screens/contacts/RelationshipInvitationScreen.tsx": {

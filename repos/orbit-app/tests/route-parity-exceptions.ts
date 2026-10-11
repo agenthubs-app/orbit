@@ -18,18 +18,4 @@ export const webOnlyRouteExceptions: readonly RouteParityException[] = [
     decidedAt: "2026-09-27",
     decidedBy: "user",
   },
-  {
-    route: "/agent/plan",
-    reason:
-      "不符合事务管家定位；内容以后拆进 App 首页和收件箱，不做原样移植；网页端暂不改。",
-    decidedAt: "2026-09-27",
-    decidedBy: "user",
-  },
-  {
-    route: "/agent/strategy",
-    reason:
-      "不符合事务管家定位；内容以后拆进 App 首页和收件箱，不做原样移植；网页端暂不改。",
-    decidedAt: "2026-09-27",
-    decidedBy: "user",
-  },
 ];

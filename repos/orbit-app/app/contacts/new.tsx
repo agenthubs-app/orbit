@@ -1,6 +1,6 @@
-import { ContactAcquisitionScreen } from "../../src/screens/contacts/ContactAcquisitionScreen";
-import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 import { withOnlineOnlyRoute } from "../../src/components/OnlineOnlyBoundary";
+import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
+import { AddContactScreen } from "../../src/screens/add/AddContactScreen";
 
-// Sprint 0131: online-only page (docs/offline/page-inventory.md); offline it shows 「需要联网」, not an error page.
-export default withOrbitPrivateRoute(withOnlineOnlyRoute(ContactAcquisitionScreen));
+// R12 人脈を追加 (DESIGN §2.1): the doors page. Online-only (docs/offline/page-inventory.md).
+export default withOrbitPrivateRoute(withOnlineOnlyRoute(AddContactScreen));

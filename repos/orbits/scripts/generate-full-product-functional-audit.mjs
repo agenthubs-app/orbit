@@ -99,7 +99,10 @@ const LIVE_EVENT_REGISTRATION_RUNTIME_SURFACE = "web:/app/events/[id]/register";
 const LIVE_BUSINESS_CARD_RESTRICTED_RUNTIME_SURFACE = "web:/app/contacts/new";
 const LIVE_CONTACTS_LIST_RUNTIME_SURFACE = "web:/app/contacts";
 const LIVE_CONTACT_DETAIL_RUNTIME_SURFACE = "web:/app/contacts/[id]";
-const LIVE_MOBILE_CONTACT_ACQUISITION_RUNTIME_SURFACE = "mobile:/contacts/new";
+// R12 (2026-10-11): App `contacts/new` was rewritten as 人脈を追加 and the old acquisition hub
+// (QR / external / referral / draft queue) was deleted, so its runtime evidence no longer
+// describes any screen. The surface has no runtime evidence until R12's simulator walk-through.
+const LIVE_MOBILE_CONTACT_ACQUISITION_RUNTIME_SURFACE = null;
 const LIVE_MOBILE_AUTH_RUNTIME_SURFACES = new Set([
   "mobile:/account",
   "mobile:/account/login",
@@ -1072,184 +1075,8 @@ const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
     },
   ],
 ]);
-const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onconfirm:confirmDraft|onconfirmrecommendation:confirmReferralRecommendation|ondismiss:dismissDraft|onselectsource:setSelectedReferralSource#null",
-    {
-      actualResult:
-        "The authenticated native referral card staged actor-owned central contact drafts on generation, filtered rows by the selected source kind, confirmed the recommended contact and the remaining referral draft against persisted state, and kept dismissal session-local.",
-      testData:
-        "Disposable actor A with a live referral graph of one sponsor, two targets, and two match recommendations (warm_intro and context_share) seeded in the configured Postgres record store",
-      idempotency:
-        "Source selection changed only session-local presentation; staging replay kept byte-identical central rows; draft confirmation updated the same actor-owned central record without creating a contact; dismissal performed no server delete.",
-      verificationCase:
-        "native-referral-contact-draft-persistence-2026-07-31",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onconfirm:onConfirmRecommendation#null",
-    {
-      actualResult:
-        "Confirming a recommended contact from the native referral item persisted the confirmed central contact draft for the owning actor and synchronized the recommendation and draft rows with the persisted terminal state.",
-      testData:
-        "The warm_intro live recommendation staged as an actor-scoped referral-draft:live central record for disposable actor A",
-      idempotency:
-        "Concurrent and lost-response confirmation replays converged on one confirmed draft with a single confirmation evidence entry, byte-identical responses, and zero contact writes.",
-      verificationCase:
-        "native-referral-contact-draft-persistence-2026-07-31",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onpress:() => onConfirm(recommendation.id)#已确认推荐 / 确认中 / 确认推荐",
-    {
-      actualResult:
-        "The native 确认推荐 control sent the formal recommended-contact confirmation request, flipped to the persisted 已确认推荐 state, and the confirmed state survived native relaunch and re-staging readback.",
-      testData:
-        "The visible referral recommendation item for disposable actor A rendered from the live referral provider over the configured Postgres store",
-      idempotency:
-        "Repeated activation converged on the same confirmed central draft; cold relaunch re-read the persisted confirmation instead of resetting to an unconfirmed response-only state.",
-      verificationCase:
-        "native-referral-contact-draft-persistence-2026-07-31",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onimport:importExternalContacts|onselectsource:setSelectedExternalSource#null",
-    {
-      actualResult:
-        "The authenticated native source selector chose the actor-backed external source and rendered the exact available candidate count before import.",
-      testData:
-        "Disposable actor A with two live networkPeople fixtures and actor B with the same provider person IDs under a separate account",
-      idempotency:
-        "Selecting the source changed only session-local presentation and did not write a contactDraft or contact.",
-      verificationCase:
-        "native-external-contact-draft-lifecycle-2026-07-31",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onconfirm:confirmDraft|ondismiss:dismissDraft#null",
-    {
-      actualResult:
-        "The native external result card and the central draft queue displayed the two centrally persisted actor-owned drafts, confirmed one through the generic contact-draft endpoint, hid the other only for the current session, and after native relaunch the queue read both drafts back from the formal API preserving the earlier confirmed state.",
-      testData:
-        "The two canonical external drafts returned by the same live import, including one confirmed result, one session-local dismissal, and a cold GET /api/contact-drafts readback after Expo relaunch",
-      idempotency:
-        "Generic confirmation updated the same central draft without creating a contact; session-local dismissal performed no server delete; cold readback created no draft and retained the exact actor-owned record IDs.",
-      verificationCase:
-        "native-external-contact-draft-lifecycle-2026-07-31",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onpress:() => onImport(activeSource)#导入中 / 导入为候选",
-    {
-      actualResult:
-        "The native import control sent one formal live import request under rapid double activation and rendered two canonical central contactDrafts.",
-      testData:
-        "Two source-backed external candidates for disposable actor A against the configured API, live external provider, and Postgres record store",
-      idempotency:
-        "Rapid activation issued one import request; lost-response replay retained stable actor-scoped IDs, timestamps, payloads, and row count; controlled batch failure rolled back all staged drafts.",
-      verificationCase:
-        "native-external-contact-draft-lifecycle-2026-07-31",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1659",
-    {
-      actualResult:
-        "Confirming the selected external result updated that exact central draft to confirmed and synchronized the result card with the persisted terminal state.",
-      testData:
-        "One pending external result draft produced by the actor-owned native import",
-      idempotency:
-        "Concurrent and lost-response confirmation replay converged on one confirmed draft with one stable evidence payload and zero contact writes.",
-      verificationCase:
-        "native-external-contact-draft-lifecycle-2026-07-31",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1987",
-    {
-      actualResult:
-        "Confirming the remaining draft from the cold-start central queue updated the same Postgres row and survived a subsequent queue readback as confirmed.",
-      testData:
-        "The pending imported draft recovered through GET /api/contact-drafts after native relaunch",
-      idempotency:
-        "The generic confirm replay returned the persisted terminal payload without creating another draft, evidence record, or contact.",
-      verificationCase:
-        "native-external-contact-draft-lifecycle-2026-07-31",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onpress:() => selectMode(item.mode)#{item.label}",
-    {
-      actualResult:
-        "While the browser-owned camera permission request was still pending, switching from QR to 手动 invalidated that request, removed the waiting state, rendered no camera/video, and preserved the zero-draft state.",
-      testData:
-        "Authenticated Expo Web audit account with an unresolved browser camera permission prompt",
-      idempotency:
-        "Mode selection changed local UI state only; it performed no API call, scan, candidate staging, or persistent write.",
-      verificationCase: "expo-qr-permission-pending-cancellation-2026-07-29",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onpress:submitSource#提交中 / 生成待确认候选",
-    {
-      actualResult:
-        "Submitting the selected PNG through credentialed CORS reached the live business-card scan boundary, returned a specific Chinese OCR-unconfigured recovery message, created no candidate or draft, and left no new console warning or error.",
-      testData:
-        "Authenticated Expo Web audit account; repository PNG test asset; production API with the cloud OCR provider intentionally unconfigured",
-      idempotency:
-        "Hard navigation cleared the local image/error state and still showed zero saved drafts; the failed request performed no candidate, contact, or database write.",
-      verificationCase: "expo-business-card-media-failure-closed-2026-07-29",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onpress:onOpenScanner#等待相机权限 / 扫 QR",
-    {
-      actualResult:
-        "Requesting QR camera access displayed 等待相机权限 and disabled the scan button while the browser-owned permission prompt remained unresolved; the rest of the page stayed usable and the draft queue stayed empty.",
-      testData:
-        "Authenticated Expo Web audit account in QR mode with no existing camera decision in the in-app browser",
-      idempotency:
-        "The pending permission request performed no QR read, API call, candidate staging, or persistent write.",
-      verificationCase: "expo-qr-permission-pending-cancellation-2026-07-29",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onpress:onCaptureImage#处理中 / 拍名片",
-    {
-      actualResult:
-        "The Web camera entry opened one image-only file input with capture=camera, accepted a real PNG, rendered its preview/name/18 KB size, and returned both media buttons from 处理中 to their ready labels.",
-      testData:
-        "Authenticated Expo Web audit account and repos/orbits/public/iorbit-starfield/avatars/mobile/ava0.png",
-      idempotency:
-        "Selecting media only updated the in-memory form; it made no API call or persistent write.",
-      verificationCase: "expo-business-card-media-failure-closed-2026-07-29",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onpress:onPickImage#处理中 / 选图片",
-    {
-      actualResult:
-        "The Web photo-library entry opened one image-only file input, accepted the same real PNG, rendered its preview/name/18 KB size, and returned both media buttons from 处理中 to their ready labels.",
-      testData:
-        "Authenticated Expo Web audit account and repos/orbits/public/iorbit-starfield/avatars/mobile/ava0.png",
-      idempotency:
-        "Selecting media only updated the in-memory form; it made no API call or persistent write.",
-      verificationCase: "expo-business-card-media-failure-closed-2026-07-29",
-    },
-  ],
-  [
-    'repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onpress:onPress#{label} {[countLabel, stateLabel].filter(Boolean).join(" · ")}',
-    {
-      actualResult:
-        "Selecting the phone source changed only the local filter; all four zero-candidate sources remained visibly 未连接 and the import action remained disabled.",
-      testData:
-        "Authenticated Expo Web audit account with no actor-owned external-contact records",
-      idempotency:
-        "Filter selection performed no provider sync, file parse, candidate staging, contact write, or database write.",
-      verificationCase: "expo-live-external-source-truthfulness-2026-07-29",
-    },
-  ],
-]);
+// R12: entries keyed to the deleted ContactAcquisitionScreen were retired with it.
+const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([]);
 const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
   [
     "mobile:/home/events|repos/orbit-app/src/screens/home/HomeScreen.tsx#onpress:() => onFilterChange(key)#{filterLabels[key]} {counts[key]}",

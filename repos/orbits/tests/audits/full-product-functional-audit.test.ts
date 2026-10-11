@@ -1037,11 +1037,13 @@ test("native auth and acquisition runtime cases remain credited", () => {
     )?.verificationConclusion,
     "runtime-partially-verified-expo-web-permission-persistence",
   );
+  // R12: App contacts/new was rewritten as 人脈を追加; the old acquisition hub's runtime case no
+  // longer describes it, so the surface waits for new runtime evidence.
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "mobile:/contacts/new",
     )?.verificationConclusion,
-    "runtime-partially-verified-expo-contact-acquisition-live-boundaries",
+    "inventory-complete-runtime-verification-pending",
   );
 });
 

@@ -5,7 +5,6 @@ import { createOrbitApiClient } from "../src/api/client";
 import { prepareBatchImages, type BatchImageNative, type PreparedBatchImage } from "../src/api/batch-images";
 import type { IngestBatchDetailContract } from "../src/api/contract/business-card-batch";
 import * as ingest from "../src/view-models/business-card-ingest";
-import { activatePendingIdentity, clearPendingFiles, pendingFiles, rememberPendingFiles, retainPendingIdentity } from "../src/screens/contacts/business-card-pending-files";
 
 const png = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=", "base64"));
 const digest = "sha256:" + createHash("sha256").update(png).digest("hex");
@@ -192,57 +191,6 @@ test("upload rejects wrong bytes, stale scope, terminal batches and mismatched a
 test("installed helper boundary prepares original bytes without retaining raw arrays", async () => {
   const prepared = await prepareBatchImages([{ uri: file.uri, mimeType: "image/heic" }], { native });
   assert.equal(prepared[0]?.mimeType, "image/png"); assert.equal(prepared[0]?.clientDigest, digest);
-});
-
-test("pending URI ownership is isolated by server/subject/readiness/batch and clears on last owner unmount", async () => {
-  const d = detail();
-  const one = activatePendingIdentity("https://one.invalid", "subject", true);
-  const release = retainPendingIdentity(one);
-  const scope = { identity: one, batchId: d.batch.id };
-  assert.deepEqual(rememberPendingFiles(scope, d, [file]), []);
-  assert.equal(pendingFiles(scope, d).get("item:0")?.uri, file.uri);
-  assert.equal(pendingFiles({ ...scope, batchId: "other" }, d).size, 0);
-  const two = activatePendingIdentity("https://one.invalid", "other-subject", true);
-  assert.equal(pendingFiles(scope, d).size, 0);
-  assert.deepEqual(rememberPendingFiles(scope, d, [file]), [file]);
-  const second = { identity: two, batchId: d.batch.id };
-  rememberPendingFiles(second, d, [file]);
-  activatePendingIdentity("https://two.invalid", "other-subject", true);
-  assert.equal(pendingFiles(second, d).size, 0);
-  const ready = activatePendingIdentity("https://two.invalid", "other-subject", true);
-  rememberPendingFiles({ identity: ready, batchId: d.batch.id }, d, [file]);
-  activatePendingIdentity("https://two.invalid", "other-subject", false);
-  assert.equal(pendingFiles({ identity: ready, batchId: d.batch.id }, d).size, 0);
-  release();
-  const last = activatePendingIdentity("https://one.invalid", "subject", true);
-  const stop = retainPendingIdentity(last);
-  const final = { identity: last, batchId: d.batch.id };
-  rememberPendingFiles(final, d, [file]); stop(); await Promise.resolve();
-  assert.equal(pendingFiles(final, d).size, 0);
-});
-test("pending handoff survives overlapping route owners but removes cancelled/completed/expired entries", async () => {
-  const identity = activatePendingIdentity("https://one.invalid", "subject", true);
-  const scope = { identity, batchId: detail().batch.id };
-  const start = retainPendingIdentity(identity); const next = retainPendingIdentity(identity);
-  rememberPendingFiles(scope, detail(), [file]); start(); await Promise.resolve();
-  assert.equal(pendingFiles(scope, detail()).size, 1);
-  for (const status of ["cancelled", "completed", "expired"] as const) {
-    rememberPendingFiles(scope, detail(), [file]);
-    assert.equal(pendingFiles(scope, { ...detail(), batch: { ...detail().batch, status } }).size, 0);
-    assert.equal(pendingFiles(scope, detail()).size, 0);
-  }
-  rememberPendingFiles(scope, detail(), [file]); clearPendingFiles(scope);
-  assert.equal(pendingFiles(scope, detail()).size, 0); next();
-});
-test("expired pending entries stay cleared even after a later clock correction", async () => {
-  const now = Date.now();
-  const d = { ...detail(), batch: { ...detail().batch, expiresAt: new Date(now + 20).toISOString() } };
-  const identity = activatePendingIdentity("https://expiry.invalid", "subject", true);
-  const scope = { identity, batchId: d.batch.id }; const release = retainPendingIdentity(identity);
-  rememberPendingFiles(scope, d, [file]); await new Promise(r => setTimeout(r, 35));
-  const original = Date.now; Date.now = () => now;
-  try { assert.equal(pendingFiles(scope, d).size, 0); }
-  finally { Date.now = original; release(); }
 });
 
 test("upload accepts only the exact item's advanced uploaded version under HTTP2xx", async () => {

@@ -11,7 +11,7 @@ const targetScreens = [
   "src/screens/contacts/ContactsScreen.tsx",
   "src/screens/contacts/ContactDetailScreen.tsx",
   "src/screens/contacts/RelationshipInvitationScreen.tsx",
-  "src/screens/contacts/BusinessCardIngestScreen.tsx",
+  "src/screens/add/ScanBatchScreen.tsx",
   "src/screens/events/EventsScreen.tsx",
   "src/screens/events/EventDetailScreen.tsx",
   "src/screens/events/EventRegistrationScreen.tsx",

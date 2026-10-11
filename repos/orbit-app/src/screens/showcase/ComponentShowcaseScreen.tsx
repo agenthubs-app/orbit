@@ -10,6 +10,7 @@ import {
 import { getAppearanceChoice, setAppearanceChoice } from "../../design/appearance";
 import { createThemedStyles } from "../../design/theme";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
+import { AddContactSheet } from "../add/AddContactSheet";
 
 // R04 / RD-15 / RD-16: every component and state of src/components/ui, for side-by-
 // side checks with the design kit. Switches: light / dark (restored on leaving),
@@ -34,6 +35,7 @@ export function ComponentShowcaseScreen() {
   const [sheet, setSheet] = useState(false);
   const [actionSheet, setActionSheet] = useState(false);
   const [done, setDone] = useState(true);
+  const [addSheet, setAddSheet] = useState(false);
   return (
     <ReducedMotionOverride.Provider value={reduced ? true : null}>
       <SafeAreaView edges={["top"]} style={styles.root}>
@@ -93,6 +95,12 @@ export function ComponentShowcaseScreen() {
             <ConfirmDialog visible={dialog} destructive title={fillCopy(copy.confirm.deleteTitle, { item: copy.nav.task })} message={copy.confirm.irreversible} confirmLabel={copy.confirm.delete} onConfirm={() => { setDialog(false); toast.success(copy.toast.deleted); }} onCancel={() => setDialog(false)} />
             <BottomSheet visible={sheet} onClose={() => setSheet(false)} accessibilityLabel="sheet"><TextField label={copy.taskSegments.notes} value="" onChangeText={() => undefined} /></BottomSheet>
             <ActionSheet visible={actionSheet} title={copy.action.withdraw} effects={[{ icon: "bell", text: copy.push.openedFromPush }]} options={[{ key: "withdraw", label: copy.action.withdraw, destructive: true }, { key: "cancel", label: copy.action.cancel }]} onSelect={() => setActionSheet(false)} onClose={() => setActionSheet(false)} />
+          </Section>
+
+          {/* R12: the 人脈を追加 sheet R11 opens from 人脈 「＋」 (doors only; choosing one closes it). */}
+          <Section name="add contact sheet">
+            <Button label="add contact sheet" onPress={() => setAddSheet(true)} />
+            <AddContactSheet visible={addSheet} draftCount={2} onClose={() => setAddSheet(false)} onOpen={() => undefined} />
           </Section>
 
           <Section name="ai">

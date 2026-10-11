@@ -26,6 +26,9 @@ const ZERO = [
   // R23 plan v2.2 generation flow.
   /^src\/screens\/plan\//,
   /^app\/plans\//,
+  // R12 人脈を追加 (doors, scan, batch, manual, drafts).
+  /^src\/screens\/add\//,
+  /^app\/contacts\/new(?:\.tsx|\/)/,
   /^src\/components\/(?:AppScreen|OrbitTabBar|OrbitNavigationIcon|OrbitRouteAccessBoundary|OnlineOnlyBoundary|AppErrorBoundary)\.tsx$/,
   /^src\/view-models\/app-navigation\.ts$/,
   /^src\/api\/AuthSessionProvider\.tsx$/,

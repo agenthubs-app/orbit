@@ -28,9 +28,9 @@
 | 人脈 | `contacts/intros` | `ContactIntrosScreen` | 无（邀请由招待コード、请人引荐由人物タイプ詳細「紹介ルート」承担） | R25 | 已处理：R25 删除（已确认，2026-10-10；理由见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md) §9 #20）；屏、入口、`/api/contacts/intros/summary` 与契约已删（2026-10-11） |
 | 人脈 | `contacts/pipeline` | `ContactPipelineScreen` | 无 | R11 | 删除 |
 | 人脈 | `profile/suggestions` | `ProfileSuggestionsScreen` | 登録内容の更新提案 | R11 | 重写 |
-| 加人 | `contacts/new` | `ContactAcquisitionScreen` | 「＋」sheet | R12 / R15 / R16 | 重写 |
-| 加人 | `contacts/new/scan`、`contacts/new/batch/[id]`、`contacts/new/batch2`、`contacts/new/batch2/[id]`、`contacts/new/import/[id]` | 名片扫描 / 批量 / 导入 5 屏 | A1 名刺スキャン（b1、b9） | R12 / R15 / R16 | 重写（合并为一套流程） |
-| 加人 | `contacts/new/manual` | `ManualContactAddScreen` | A3 手入力 | R12 / R15 / R16 | 重写 |
+| 加人 | `contacts/new` | `ContactAcquisitionScreen` | 「＋」sheet | R12 / R15 / R16 | 已处理（R12：`AddContactScreen` / `AddContactSheet`；草稿队列 → `contacts/new/drafts`；招待 / その他 门待 R15 / R16） |
+| 加人 | `contacts/new/scan`、`contacts/new/batch/[id]`、`contacts/new/batch2`、`contacts/new/batch2/[id]`、`contacts/new/import/[id]` | 名片扫描 / 批量 / 导入 5 屏 | A1 名刺スキャン（b1、b9） | R12 / R15 / R16 | 已处理（R12：`contacts/new/scan` + `scan/[batchId]`，旧路由删除、旧链接翻译） |
+| 加人 | `contacts/new/manual` | `ManualContactAddScreen` | A3 手入力 | R12 / R15 / R16 | 已处理（R12：`ManualContactScreen`） |
 | 加人 | `invitations/[token]` | `RelationshipInvitationScreen` | A2 招待コード 受け取り側 | R12 / R15 / R16 | 重写 |
 | iOrbit | `(app)/ai`、`ai/[id]` | `AiScreen`、`AiConversationScreen` | iOrbit 起始屏 / 会話中 / 会話リスト（b4） | R21 | 重写 |
 | 活动 | `(app)/events` | `EventsScreen` | イベント 主页（評価 / 参加予定 / 探す）（b2） | R26 / R27 | 重写 |

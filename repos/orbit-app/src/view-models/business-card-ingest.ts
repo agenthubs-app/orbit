@@ -14,7 +14,9 @@ export function ingestBatchPath(batchId: string): string { return INGEST_COLLECT
 export function ingestItemPath(batchId: string, itemId: string): string { return ingestBatchPath(batchId) + "/items/" + encodeURIComponent(itemId); }
 export function itemContentPath(batchId: string, itemId: string): string { return ingestItemPath(batchId, itemId) + "/content"; }
 export function itemReplacePath(batchId: string, itemId: string): string { return ingestItemPath(batchId, itemId) + "/replace"; }
-export function batchRoutePath(source: BatchSource, batchId: string): string { return "/contacts/new/" + (source === "current" ? "batch2/" : "batch/") + encodeURIComponent(batchId); }
+// R12: v2 batches open on the new batch page; a v1 batch cannot be opened there any more (its cards
+// are already in 人脈), so it lands on 名刺をスキャン with the 「以前の読み取り」 notice.
+export function batchRoutePath(source: BatchSource, batchId: string): string { return source === "current" ? "/contacts/new/scan/" + encodeURIComponent(batchId) : "/contacts/new/scan?from=legacy"; }
 export function isHttpSuccess(result: ApiResult<unknown>): result is ApiResult<unknown> & { success: true } { return result.success && result.status >= 200 && result.status < 300; }
 
 export type IngestCardImage = PreparedBatchImage & { readonly cardId?: string; readonly side?: "front" | "back" };

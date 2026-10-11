@@ -31,6 +31,7 @@ const INTAKE_PATH_PARAM_KEYS = new Set(["intakeId"]);
 const DRAFT_PATH_PARAM_KEYS = new Set(["draftId"]);
 const PLAN_TYPE_PATH_PARAM_KEYS = new Set(["planId", "itemId"]);
 const PLAN_PATH_PARAM_KEYS = new Set(["planId"]);
+const BATCH_PATH_PARAM_KEYS = new Set(["batchId"]);
 const STATIC_CONTACT_ROUTES = new Set([
   "all-actions",
   "dashboard",
@@ -74,8 +75,9 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
     (root === "tasks" && detail === "relationship" && leaf !== undefined && segments.length === 3) ||
     (root === "schedule" && detail === "personal" && leaf !== undefined && leaf !== "new" && (segments.length === 3 || (segments.length === 4 && segments[3] === "edit")))) return ID_PATH_PARAM_KEYS;
 
-  if (root === "contacts" && detail === "new" && (leaf === "batch" || leaf === "batch2" || leaf === "import") && segments.length === 4) {
-    return ID_PATH_PARAM_KEYS;
+  // R12: the 名刺 batch page keeps the batch id in the path.
+  if (root === "contacts" && detail === "new" && leaf === "scan" && segments.length === 4) {
+    return BATCH_PATH_PARAM_KEYS;
   }
 
   if (

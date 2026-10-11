@@ -100,7 +100,7 @@ export const launchCameraAsync = async () => { state.nativeCalls.push("camera");
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/(app)/contacts"; import Acquisition from "./app/contacts/new"; import { useFixture } from "fixture"; import { ShellTabBar } from "./src/components/OrbitTabBar"; function App() { const s = useFixture(); return !s.mounted ? null : s.acquisition ? <Acquisition /> : <><Route /><ShellTabBar /></>; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/(app)/contacts"; import { useFixture } from "fixture"; import { ShellTabBar } from "./src/components/OrbitTabBar"; function App() { const s = useFixture(); return !s.mounted ? null : <><Route /><ShellTabBar /></>; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic",
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
@@ -321,19 +321,8 @@ test("main route stops private reads while unfocused or signed out", async t => 
   }
 });
 
-// Sprint 0140: /contacts/new is the 「更多添加方式」 hub. Scan and manual add are
-// separate pages; an old ?mode=manual link is forwarded to the manual page.
-for (const mode of [undefined, "manual", "qr", "invalid"]) {
-  test("acquisition hub keeps every source and forwards only manual links " + String(mode), async t => {
-    const p = await open(t, { acquisition: true, params: mode ? { mode } : {} });
-    for (const name of ["扫描名片", "手动添加", "批量导入名片"]) assert.equal(await p.getByRole("button", { name, exact: true }).count(), 1, name);
-    assert.equal(await p.getByRole("button", { name: "扫 QR", exact: true }).count(), 1);
-    assert.equal(await p.getByRole("tab").count(), 0);
-    assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), mode === "manual" ? ["/contacts/new/manual"] : []);
-    assert.deepEqual(await p.evaluate(() => (window as any).fixture.nativeCalls), []);
-    assert.deepEqual(await writes(p), []);
-  });
-}
+// R12: /contacts/new is 人脈を追加 now (tests/add-contact-screens.test.tsx); the old hub and its
+// ?mode=manual forwarding were deleted with ContactAcquisitionScreen.
 
 for (const change of [{ actor: "two" }, { baseUrl: "https://other.example" }, { cookieHeader: "session=new" }, { focused: false }, { mounted: false }, { signedIn: false }]) {
   test("primary contact searches revoke retained actions and late 401 after " + JSON.stringify(change), async t => {

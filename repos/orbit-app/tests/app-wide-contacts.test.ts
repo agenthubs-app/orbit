@@ -71,14 +71,11 @@ test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client";
 import { ContactsScreen } from "./src/screens/contacts/ContactsScreen";
-import { ContactAcquisitionScreen } from "./src/screens/contacts/ContactAcquisitionScreen";
-import { BusinessCardScanScreen } from "./src/screens/contacts/BusinessCardScanScreen";
-import { ManualContactAddScreen } from "./src/screens/contacts/ManualContactAddScreen";
 import { ContactsDashboardScreen } from "./src/screens/contacts/ContactsDashboardScreen";
 import { ContactPipelineScreen } from "./src/screens/contacts/ContactPipelineScreen";
 import { ContactStructureDetailScreen } from "./src/screens/contacts/ContactStructureDetailScreen";
 import { DashboardScreen } from "./src/screens/dashboard/DashboardScreen";
-const screens = { overview: ContactsScreen, acquisition: ContactAcquisitionScreen, scan: BusinessCardScanScreen, manual: ManualContactAddScreen, analysis: ContactsDashboardScreen, pipeline: ContactPipelineScreen, structure: ContactStructureDetailScreen, dashboard: DashboardScreen };
+const screens = { overview: ContactsScreen, analysis: ContactsDashboardScreen, pipeline: ContactPipelineScreen, structure: ContactStructureDetailScreen, dashboard: DashboardScreen };
 const Screen = screens[new URLSearchParams(location.search).get("screen") || "overview"];
 createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -149,55 +146,6 @@ for (const scheme of ["light", "dark"] as const) {
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-contacts-overview-${scheme}.png`, fullPage: true });
   });
 
-  test(`${scheme}: the add-people hub keeps scan, manual, batch, QR and referral sources reachable`, async t => {
-    const page = await openScreen(t, "acquisition", scheme);
-    await touchFits(page.getByRole("button", { name: "生成待确认候选", exact: true }), 50);
-    if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-contacts-acquisition-${scheme}.png`, fullPage: true });
-    for (const [label, href] of [["扫描名片", "/contacts/new/scan"], ["手动添加", "/contacts/new/manual"], ["批量导入名片", "/contacts/new/batch2"]] as const) {
-      const entry = page.getByRole("button", { name: label, exact: true });
-      await touchFits(entry, 64); await entry.click();
-      assert.equal(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), href);
-    }
-    for (const name of ["名片", "手动"]) assert.equal(await page.getByRole("tab", { name, exact: true }).count(), 0, "scan and manual are pages, not tabs");
-    await page.getByRole("button", { name: "扫 QR", exact: true }).click();
-    await page.getByTestId("camera-preview").waitFor();
-    await page.getByRole("button", { name: "关闭扫描", exact: true }).click();
-    await touchFits(page.getByPlaceholder("粘贴扫码得到的文本或链接"));
-    const referral = page.getByRole("radio", { name: /创始人引荐/ });
-    await touchFits(referral); await referral.click();
-    assert.equal(await referral.getAttribute("aria-checked"), "true");
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-  });
-
-  test(`${scheme}: scan offers exactly two equal monochrome choices and asks for nothing until one is chosen`, async t => {
-    const page = await openScreen(t, "scan", scheme);
-    await page.getByRole("button", { name: "拍一张名片", exact: true }).waitFor();
-    if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-0140-scan-${scheme}.png`, fullPage: true });
-    for (const text of ["扫描名片", "选择一种方式", "用相机拍手上的名片", "选择已经拍好的照片", "核对信息后，再保存到人脉。"]) assert.equal(await page.getByText(text, { exact: true }).count(), 1, text);
-    const rows = [page.getByRole("button", { name: "拍一张名片", exact: true }), page.getByRole("button", { name: "从相册选择", exact: true })];
-    const [camera, library] = await Promise.all(rows.map(row => row.boundingBox()));
-    assert.ok(camera && library && Math.abs(camera.height - library.height) < 1 && Math.abs(camera.width - library.width) < 1, "both choices are the same size");
-    for (const row of rows) await touchFits(row, 64);
-    assert.equal(await page.getByRole("button").filter({ hasText: /QR|导入|引荐|批量|手动/u }).count(), 0, "no other import methods on the scan page");
-    const titleColor = await page.getByText("拍一张名片", { exact: true }).evaluate(el => getComputedStyle(el).color);
-    assert.equal(titleColor, scheme === "dark" ? "rgb(243, 240, 246)" : "rgb(30, 26, 36)", "row titles use ink, not the blue accent");
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.nativeCalls), [], "no permission is requested on open");
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-  });
-
-  test(`${scheme}: manual add shows name, company and title first and folds relationship details`, async t => {
-    const page = await openScreen(t, "manual", scheme);
-    await page.getByRole("textbox", { name: "姓名", exact: true }).waitFor();
-    if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-0140-manual-${scheme}.png`, fullPage: true });
-    for (const name of ["姓名", "公司", "职位"]) await touchFits(page.getByRole("textbox", { name, exact: true }));
-    for (const name of ["关系备注", "下一步", "标签"]) assert.equal(await page.getByRole("textbox", { name, exact: true }).count(), 0, name + " starts folded");
-    const disclosure = page.getByRole("button", { name: "补充关系信息", exact: true });
-    await touchFits(disclosure, 64);
-    assert.equal(await disclosure.getAttribute("aria-expanded"), "false");
-    await touchFits(page.getByRole("button", { name: "下一步：核对信息", exact: true }), 50);
-    assert.equal(await page.getByText("核对后再保存到人脉", { exact: true }).count(), 1);
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-  });
 }
 
 test("analysis uses open 15/22 sections and keeps structure, opportunity and reports operable at 320pt", async t => {
@@ -317,16 +265,11 @@ test("structure detail renders real success content and opens its contact at 320
   await page.getByText("连接暂时失败", { exact: true }).waitFor();
 });
 
-test("contact navigation and acquisition controls grow with doubled text without clipping", async t => {
-  for (const screen of ["overview", "acquisition", "scan", "manual"]) {
+test("contact navigation controls grow with doubled text without clipping", async t => {
+  // R12: the add-people pages (人脈を追加 / 名刺 / 手入力) are covered by add-contact-screens.test.tsx.
+  for (const screen of ["overview"]) {
     const page = await openScreen(t, screen, "dark");
-    const actions = screen === "overview"
-      ? [page.getByRole("button", { name: /联系人库/ }), page.getByRole("button", { name: /添加人脉/ })]
-      : screen === "acquisition"
-        ? [page.getByRole("button", { name: "扫描名片", exact: true }), page.getByRole("button", { name: "生成待确认候选", exact: true }), page.getByRole("button", { name: "批量导入名片", exact: true })]
-        : screen === "scan"
-          ? [page.getByRole("button", { name: "拍一张名片", exact: true }), page.getByRole("button", { name: "从相册选择", exact: true })]
-          : [page.getByRole("button", { name: "补充关系信息", exact: true }), page.getByRole("button", { name: "下一步：核对信息", exact: true })];
+    const actions = [page.getByRole("button", { name: /联系人库/ }), page.getByRole("button", { name: /添加人脉/ })];
     await actions[0]!.waitFor();
     // Browser inflation measures reflow; actual native Dynamic Type is checked separately.
     await page.evaluate(() => document.querySelectorAll("[dir='auto'],input,textarea").forEach(node => {
@@ -400,31 +343,3 @@ test("dashboard retains its real actions and request boundaries", async t => {
   assert.equal((await dashboard.evaluate(() => (window as any).fixture.requests)).length, 1);
 });
 
-test("denied camera access shows feedback, keeps the album choice, and recovers without writes", async t => {
-  // Sprint 0140: the scan page asks for the camera only after 「拍一张名片」;
-  // choosing a photo uses the system picker without a library prompt.
-  const page = await openScreen(t, "scan");
-  await page.evaluate(() => (window as any).fixture.update({ cameraGranted: false }));
-  const camera = page.getByRole("button", { name: "拍一张名片", exact: true });
-  await camera.click();
-  await page.getByText("没有相机权限，拍不了名片。可以在系统设置里允许，或从相册选择。", { exact: true }).waitFor();
-  assert.equal(await camera.isEnabled(), true, "denial must release the pending state for retry");
-  const library = page.getByRole("button", { name: "从相册选择", exact: true });
-  await library.click();
-  assert.equal(await library.isEnabled(), true);
-  // Controlled permission recovery only; no native system permission is changed.
-  await page.evaluate(() => (window as any).fixture.update({ cameraGranted: true }));
-  await camera.click();
-  await page.waitForFunction(() => (window as any).fixture.nativeCalls.length === 4);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.nativeCalls), ["camera-permission", "photo-launch", "camera-permission", "camera-launch"]);
-  assert.equal(await page.getByText("选择一种方式", { exact: true }).count(), 1, "cancelling stays on the choice page");
-  const hub = await openScreen(t, "acquisition");
-  await hub.evaluate(() => (window as any).fixture.update({ cameraGranted: false }));
-  const scan = hub.getByRole("button", { name: "扫 QR", exact: true });
-  await scan.click();
-  await hub.getByText("需要允许使用相机，才能扫描 QR。", { exact: true }).waitFor();
-  assert.equal(await scan.isEnabled(), true);
-  assert.equal(await hub.getByTestId("camera-preview").count(), 0);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-  assert.deepEqual(await hub.evaluate(() => (window as any).fixture.requests), []);
-});

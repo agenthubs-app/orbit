@@ -1240,7 +1240,7 @@ function EventPostEventReviewModule({
       const receipt = result.success && result.status >= 200 && result.status < 300
         ? eventDetailReviewReceiptSchema(eventId, data.reviewId, request.contactDraftIds).safeParse(result.data) : null;
       if (receipt?.success) {
-        const confirmed = eventPostEventConfirmToView(receipt.data);
+        const confirmed = eventPostEventConfirmToView(receipt.data, eventId);
         setConfirmResult({ ...confirmed, nextAction: detailBusinessText(receipt.data.nextAction, confirmed.nextAction) });
         onConfirmed();
       } else setConfirmError("候选暂时未能确认，请重试。");

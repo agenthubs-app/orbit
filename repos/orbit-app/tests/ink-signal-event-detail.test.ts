@@ -624,7 +624,7 @@ test("post-event confirmation locks synchronously and only valid selected candid
   assert.equal(await p.getByRole("button", { name: "去复核联系人", exact: true }).count(), 0);
   await replyWrite(p, reviewConfirmationPayload);
   assert.equal(await p.getByText("已确认 1 位候选。发送消息仍需另外确认。", { exact: true }).count(), 1);
-  await press(p, "去复核联系人"); assert.equal(await p.evaluate(() => (window as any).fixture.navigation.at(-1)), "/contacts/new");
+  await press(p, "去复核联系人"); assert.equal(await p.evaluate(() => (window as any).fixture.navigation.at(-1)), "/contacts/new/drafts?eventId=event%3A1");
   assert.equal((await writes(p)).length, 1);
 });
 

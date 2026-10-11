@@ -1,7 +1,6 @@
 {
   "_comment": "R02 / RD-24：开工时（redesign 19fe37b59 之后）import @expo/vector-icons 的旧屏文件。只减不增：文件删掉或不再用 Ionicons 时从这里移除；清单外的文件不得 import Ionicons；清单清空时同时移除 @expo/vector-icons 依赖。替换对照见 docs/designs/redesign-2026-10/sprints/R02-icons/icon-mapping.md。",
   "files": [
-    "src/components/BusinessCardBatchReviewForm.tsx",
     "src/screens/admin/AdminLoginScreen.tsx",
     "src/screens/admin/AdminScreen.tsx",
     "src/screens/ai/AgentActionsScreen.tsx",
@@ -13,11 +12,6 @@
     "src/screens/ai/cards/AiEntityDraftCard.tsx",
     "src/screens/chat/RelationshipChatDetailScreen.tsx",
     "src/screens/chat/RelationshipChatScreen.tsx",
-    "src/screens/contacts/BusinessCardBatchScreen.tsx",
-    "src/screens/contacts/BusinessCardImportScreen.tsx",
-    "src/screens/contacts/BusinessCardIngestStartScreen.tsx",
-    "src/screens/contacts/BusinessCardScanScreen.tsx",
-    "src/screens/contacts/ContactAcquisitionScreen.tsx",
     "src/screens/contacts/ContactDetailScreen.tsx",
     "src/screens/contacts/ContactNotesSection.tsx",
     "src/screens/contacts/ContactPage.tsx",
@@ -25,7 +19,6 @@
     "src/screens/contacts/ContactStructureDetailScreen.tsx",
     "src/screens/contacts/ContactsDashboardScreen.tsx",
     "src/screens/contacts/ContactsScreen.tsx",
-    "src/screens/contacts/ManualContactAddScreen.tsx",
     "src/screens/dashboard/DashboardScreen.tsx",
     "src/screens/events/EventAdmissionReviewContent.tsx",
     "src/screens/events/EventCenterContent.tsx",
