@@ -1,5 +1,6 @@
 import { taskListHref } from "./task-list-scope";
 import { eventParticipantHref } from "./event-participant-route";
+import { inviteRouteHref } from "./invite-route";
 
 type InitialRoutePath =
   | "/account"
@@ -20,6 +21,8 @@ type InitialRoutePath =
   | "/followups"
   | "/home"
   | "/home/events"
+  | "/i"
+  | `/i/${string}`
   | "/contacts"
   | "/contacts/list"
   | "/inbox"
@@ -75,6 +78,8 @@ const routeByKey: Record<string, InitialRoutePath> = {
   // R12: 人脈を追加's pages; the old batch entry opens 名刺をスキャン.
   "contacts/new/batch2": "/contacts/new/scan",
   "contacts/new/drafts": "/contacts/new/drafts",
+  // R15: 招待コード · 発出方.
+  "contacts/new/invite": "/contacts/new/invite",
   "contacts/new/manual": "/contacts/new/manual",
   "contacts/new/scan": "/contacts/new/scan",
   dashboard: "/dashboard",
@@ -292,6 +297,10 @@ function hrefWithQuery(
 export function resolveSupportedInitialRouteHref(
   configuredRoute: string | undefined,
 ): InitialRouteHref | null {
+  // R15: invite links (`https://<invite host>/i/<code>`, `orbit://i/<code>`, `/i/<code>`, `/i`) open the
+  // invite pages; a malformed code goes home. Anything else resolves exactly as before.
+  const invite = inviteRouteHref(configuredRoute);
+  if (invite !== undefined) return invite as InitialRouteHref | null;
   const participant = eventParticipantHref(configuredRoute);
   if (participant) return participant as InitialRouteHref;
   const parsedRoute = parsedConfiguredRoute(configuredRoute);

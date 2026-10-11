@@ -229,3 +229,47 @@ describe("resolveInitialRouteHref", () => {
     assert.equal(resolveInitialRouteHref("contacts/../../settings"), "/home");
   });
 });
+
+describe("R15 invite links", () => {
+  it("https://<invite host>/i/<code>, orbit://i/<code>, /i/<code> and /i open the invite pages with a tidied code", () => {
+    for (const route of [
+      "https://orbitailink.com/i/K7QX-2M9P",
+      "https://www.orbitailink.com/i/k7qx2m9p?utm_source=line#x",
+      "orbit://i/K7QX-2M9P",
+      "orbit:///i/k7qx-2m9p",
+      "/i/K7QX-2M9P",
+      "/i/k7qx%202m9p",
+      "i/K7QX2M9P",
+    ]) assert.equal(resolveInitialRouteHref(route), "/i/K7QX-2M9P", route);
+    assert.equal(resolveInitialRouteHref("/i"), "/i");
+    assert.equal(resolveInitialRouteHref("orbit://i"), "/i");
+    assert.equal(resolveInitialRouteHref("https://orbitailink.com/i/"), "/i");
+    assert.equal(resolveInitialRouteHref("/contacts/new/invite"), "/contacts/new/invite");
+  });
+  it("a malformed code, an unknown host or a deeper path goes home", () => {
+    for (const route of [
+      "/i/K7QX-2M9O", // O is not in the code alphabet
+      "/i/K7QX-2M9",
+      "/i/%ZZ",
+      "/i/K7QX-2M9P/extra",
+      "orbit://i/SATO",
+      "https://evil.example/i/K7QX-2M9P",
+      "https://orbitailink.com.evil.example/i/K7QX-2M9P",
+      "//orbitailink.com/i/K7QX-2M9P",
+    ]) assert.equal(resolveInitialRouteHref(route), "/home", route);
+  });
+  it("the API host is an invite host too (dev links point at the local server)", async () => {
+    const { inviteRouteHref, inviteLinkHosts } = await import("../src/view-models/invite-route");
+    const hosts = inviteLinkHosts({ apiBaseUrl: "http://localhost:3000", publicOrigin: "https://invite.example" });
+    assert.equal(inviteRouteHref("http://localhost:3000/i/K7QX-2M9P", hosts), "/i/K7QX-2M9P");
+    assert.equal(inviteRouteHref("https://invite.example/i/K7QX-2M9P", hosts), "/i/K7QX-2M9P");
+    assert.equal(inviteRouteHref("https://other.example/i/K7QX-2M9P", hosts), undefined);
+    assert.equal(inviteRouteHref("/inbox", hosts), undefined);
+  });
+  it("ログイン / 登録 come back to /i/<code> (next is kept, no onboarding detour for the route itself)", async () => {
+    const { normalizedNext } = await import("../src/view-models/account-auth");
+    assert.equal(normalizedNext("/i/K7QX-2M9P"), "/i/K7QX-2M9P");
+    assert.equal(normalizedNext("/i/K7QX-2M9O"), "/home");
+    assert.equal(normalizedNext("//evil.example/i/K7QX-2M9P"), "/home");
+  });
+});

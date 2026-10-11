@@ -97,3 +97,15 @@ export async function discardDraft(accountId: string, draftId: string): Promise<
   await writeJson(discardedKey(accountId), next);
   return next;
 }
+
+// ── R15 招待コード: 説明 is shown the first time only; after that the page opens on 共有 (DESIGN §2.4) ──
+
+export const INVITE_GUIDE_KEY = "orbit:add:invite-guide:v1";
+
+export async function readInviteGuideSeen(): Promise<boolean> {
+  return (await readJson(INVITE_GUIDE_KEY, (value): value is true => value === true)) === true;
+}
+
+export async function markInviteGuideSeen(): Promise<void> {
+  await writeJson(INVITE_GUIDE_KEY, true);
+}

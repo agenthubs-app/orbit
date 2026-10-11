@@ -1,7 +1,4 @@
-import type {
-  RelationshipDeliveryReceiptDTO,
-  RelationshipInvitationPreviewDTO,
-} from "./contract/relationship-communication";
+import type { RelationshipDeliveryReceiptDTO } from "./contract/relationship-communication";
 import {
   relationshipCommunicationInvitationsPath,
   relationshipCommunicationMessagesPath,
@@ -43,15 +40,6 @@ export type RelationshipMessageDeliveryRequestResult =
 
 function cleaned(value: string): string {
   return typeof value === "string" ? value.trim() : "";
-}
-
-export function isRelationshipInvitationPreview(value: unknown): value is RelationshipInvitationPreviewDTO {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const preview = value as Partial<RelationshipInvitationPreviewDTO>;
-  return typeof preview.invitationId === "string" && Boolean(preview.invitationId.trim()) &&
-    typeof preview.inviterDisplayName === "string" && typeof preview.recipientName === "string" &&
-    typeof preview.expiresAt === "string" && typeof preview.canAccept === "boolean" &&
-    ["pending", "accepted", "expired", "revoked"].includes(preview.status ?? "");
 }
 
 export function buildRelationshipInvitationRequest(

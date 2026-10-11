@@ -22,6 +22,8 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/contact-drafts')) return 'acquisition';
   // R12: the card batch's event candidates (会った場所) belong to card acquisition.
   if (path.startsWith('/api/agent/event-attribution')) return 'acquisition';
+  // R15: 招待コード (codes, the public preview, redeem, connections) — its own domain, never cached.
+  if (path.startsWith('/api/invite-codes')) return 'invite-codes';
   if (path.startsWith('/api/contacts')) return 'contacts';
   if (path.startsWith('/api/connections')) return path.includes('/evidence') ? 'relationship-evidence' : 'connections';
   if (path.startsWith('/api/analysis/relationship-value')) return 'relationship-evidence';
@@ -87,6 +89,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     || endpointTemplate === '/api/events/:id/registration/portrait'
     // R23: the plan flow is online-only (paid AI drafts, versioned intakes); nothing is kept on the device.
     || consumerFile.startsWith('src/screens/plan/')
+    // R15: invite codes, previews and connections are online-only; a code or a preview is never kept on the device.
+    || endpointTemplate.startsWith('/api/invite-codes')
     // Bounded private readers have no proven revoke/version cache protocol yet.
     || (method === 'GET' && ([
       '/api/contacts/page','/api/contacts/summary','/api/contacts/labels','/api/inbox/summary',
@@ -511,6 +515,19 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/add/add-api.ts","POST","/api/contacts/manual"],
   ["src/screens/add/add-api.ts","POST","/api/contacts/manual/:id/undo"],
   ["src/screens/add/add-api.ts","POST","/api/contacts/manual/duplicates"],
+  // R15 招待コード (src/screens/add/invite/invite-api.ts): the sender, the receiver and the share / unlink sheets.
+  ["src/screens/add/invite/invite-api.ts","GET","/api/invite-codes"],
+  ["src/screens/add/invite/invite-api.ts","GET","/api/invite-codes/:id/preview"],
+  ["src/screens/add/invite/invite-api.ts","GET","/api/invite-codes/connections/:id"],
+  ["src/screens/add/invite/invite-api.ts","GET","/api/invite-codes/current"],
+  ["src/screens/add/invite/invite-api.ts","GET","/api/profile"],
+  ["src/screens/add/invite/invite-api.ts","POST","/api/contacts/manual/duplicates"],
+  ["src/screens/add/invite/invite-api.ts","POST","/api/invite-codes"],
+  ["src/screens/add/invite/invite-api.ts","POST","/api/invite-codes/:id/redeem"],
+  ["src/screens/add/invite/invite-api.ts","POST","/api/invite-codes/:id/revoke"],
+  ["src/screens/add/invite/invite-api.ts","POST","/api/invite-codes/connections/:id/unlink"],
+  ["src/screens/add/invite/invite-api.ts","PUT","/api/invite-codes/connections/:id/share"],
+  ["src/screens/add/invite/invite-api.ts","PUT","/api/profile"],
   ["src/screens/admin/AdminScreen.tsx","GET","/api/dashboard"],
   ["src/screens/admin/AdminScreen.tsx","GET","/api/events"],
   ["src/screens/admin/AdminScreen.tsx","GET","/api/profile"],
@@ -565,8 +582,6 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/contacts/ContactsScreen.tsx","POST","/api/search/relationships"],
   ["src/screens/contacts/ContactsScreen.tsx","GET","/api/search/suggestions"],
   ["src/screens/contacts/ContactStructureDetailScreen.tsx","GET","/api/dashboard/structure/:id/:id"],
-  ["src/screens/contacts/RelationshipInvitationScreen.tsx","GET","/api/relationship-communication/invitations/:id"],
-  ["src/screens/contacts/RelationshipInvitationScreen.tsx","POST","/api/relationship-communication/invitations/:id/accept"],
   ["src/screens/dashboard/DashboardScreen.tsx","GET","/api/audit/provenance"],
   ["src/screens/dashboard/DashboardScreen.tsx","POST","/api/audit/provenance/run"],
   ["src/screens/dashboard/DashboardScreen.tsx","GET","/api/dashboard"],

@@ -178,6 +178,10 @@ const integratedFeatureRoutes = [
   "/account/reset-password",
   // R12 人脈を追加: 名刺 (capture, batch), 手入力, 確認待ちの下書き. The v1 / batch2 / import routes are gone.
   "/contacts/new/drafts",
+  // R15 招待コード: 発出方 (private) and 受け取る側 / 手入力 (public). The old /invitations/[token] is gone.
+  "/contacts/new/invite",
+  "/i/[code]",
+  "/i",
   "/contacts/new/manual",
   "/contacts/new/scan",
   "/contacts/new/scan/[batchId]",
@@ -186,7 +190,6 @@ const integratedFeatureRoutes = [
   "/events/[id]/live",
   "/events/[id]/operations/experience",
   "/events/[id]/participants/[participantId]",
-  "/invitations/[token]",
   "/schedule/meetings/[id]",
   "/schedule/personal/[id]",
   "/schedule/personal/[id]/edit",

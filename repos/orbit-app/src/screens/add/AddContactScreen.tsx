@@ -1,5 +1,5 @@
 // R12 `contacts/new` 「人脈を追加」 (DESIGN §2.1, App): a plain page with the doors (名刺を
-// スキャン / 手入力; 招待コード and その他 hidden until R15 / R16) and 確認待ちの下書き N件
+// スキャン / 招待コード (R15) / 手入力; その他 hidden until R16) and 確認待ちの下書き N件
 // when the draft queue has drafts (§2.9). Back returns to 人脈 (parentForPath).
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useState } from "react";

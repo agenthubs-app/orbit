@@ -2,15 +2,15 @@
 // 招待コード, 手入力, その他 (連絡先 / LinkedIn), 確認待ちの下書き N件 (only when there
 // are drafts, §2.9) and the density legend. One component for the page
 // (`contacts/new`) and for `AddContactSheet` (R11 opens it from 人脈 「＋」).
-// 招待コード waits for R15 and その他 for R16: hidden, not greyed (§9 #4).
+// 招待コード opened with R15; その他 waits for R16: hidden, not greyed (§9 #4).
 import { View } from "react-native";
 
 import { Card, Icon, ListRow, MacTile } from "../../components/ui";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { Caption, DensityLegend, SectionTitle, useAddColors, useAddStyles } from "./add-ui";
 
-/** R15 turns this on (the 招待コード door, `contacts/new/invite`). */
-export const ADD_INVITE_DOOR_ENABLED = false;
+/** R15: the 招待コード door (`contacts/new/invite`) is open. */
+export const ADD_INVITE_DOOR_ENABLED = true;
 /** R16 turns this on (連絡先 / LinkedIn, `contacts/new/import`). */
 export const ADD_OTHER_DOORS_ENABLED = false;
 

@@ -795,14 +795,6 @@ export function relationshipCommunicationInvitationsPath(): string {
   return `${ORBIT_API_ENDPOINTS.relationshipCommunication}/invitations`;
 }
 
-export function relationshipCommunicationInvitationAcceptPath(token: string): string {
-  return `${relationshipCommunicationInvitationPath(token)}/accept`;
-}
-
-export function relationshipCommunicationInvitationPath(token: string): string {
-  return `${relationshipCommunicationInvitationsPath()}/${encodeURIComponent(token.trim())}`;
-}
-
 export function relationshipCommunicationConversationsPath(): string {
   return `${ORBIT_API_ENDPOINTS.relationshipCommunication}/conversations`;
 }

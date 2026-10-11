@@ -56,8 +56,6 @@ import {
   profileResumeExtractionPath,
   profileUpdateSuggestionAcceptPath,
   profileUpdateSuggestionDismissPath,
-  relationshipCommunicationInvitationAcceptPath,
-  relationshipCommunicationInvitationPath,
   relationshipValueAnalysisPath,
   relationshipValueRecomputePath,
   relationshipSignalConfirmPath,
@@ -640,17 +638,6 @@ test("Orbit API endpoints expose profile document extraction routes", () => {
   assert.equal(
     profileResumeExtractionPath(),
     "/api/profile/extractions/resume"
-  );
-});
-
-test("Orbit API endpoints expose relationship invitation preview and explicit acceptance", () => {
-  assert.equal(
-    relationshipCommunicationInvitationPath("invite token/1"),
-    "/api/relationship-communication/invitations/invite%20token%2F1"
-  );
-  assert.equal(
-    relationshipCommunicationInvitationAcceptPath("invite token/1"),
-    "/api/relationship-communication/invitations/invite%20token%2F1/accept"
   );
 });
 

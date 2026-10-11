@@ -11,6 +11,8 @@ import { getAppearanceChoice, setAppearanceChoice } from "../../design/appearanc
 import { createThemedStyles } from "../../design/theme";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { AddContactSheet } from "../add/AddContactSheet";
+import type { InviteApi } from "../add/invite/invite-api";
+import { InviteShareSheet, InviteUnlinkSheet } from "../add/invite/InviteConnectionSheets";
 
 // R04 / RD-15 / RD-16: every component and state of src/components/ui, for side-by-
 // side checks with the design kit. Switches: light / dark (restored on leaving),
@@ -36,6 +38,7 @@ export function ComponentShowcaseScreen() {
   const [actionSheet, setActionSheet] = useState(false);
   const [done, setDone] = useState(true);
   const [addSheet, setAddSheet] = useState(false);
+  const [inviteSheet, setInviteSheet] = useState<"share" | "unlink" | null>(null);
   return (
     <ReducedMotionOverride.Provider value={reduced ? true : null}>
       <SafeAreaView edges={["top"]} style={styles.root}>
@@ -103,6 +106,17 @@ export function ComponentShowcaseScreen() {
             <AddContactSheet visible={addSheet} draftCount={2} onClose={() => setAddSheet(false)} onOpen={() => undefined} />
           </Section>
 
+          {/* R15: the two sheets R11 mounts on an invite-connected contact's detail (「⋯ › 共有する項目」 / 「⋯ › つながりを解除」). Sample answers, nothing is written. */}
+          <Section name="invite share sheet">
+            <Button label="invite share sheet" onPress={() => setInviteSheet("share")} />
+            <InviteShareSheet visible={inviteSheet === "share"} contactId="showcase-contact" name="Aya Yamamoto" api={SHOWCASE_INVITE_API} onClose={() => setInviteSheet(null)} />
+          </Section>
+
+          <Section name="invite unlink sheet">
+            <Button label="invite unlink sheet" onPress={() => setInviteSheet("unlink")} />
+            <InviteUnlinkSheet visible={inviteSheet === "unlink"} contactId="showcase-contact" name="Aya Yamamoto" api={SHOWCASE_INVITE_API} onClose={() => setInviteSheet(null)} />
+          </Section>
+
           <Section name="ai">
             <ConfirmCard state="pending" title={copy.toast.addedToTasks} actions={[{ label: copy.aiCard.add, primary: true, onPress: () => undefined }, { label: copy.aiCard.decline, onPress: () => undefined }]} />
             <ConfirmCard state="success" title={copy.aiCard.added} actions={[{ label: copy.action.undo, onPress: () => undefined }]} />
@@ -138,6 +152,24 @@ export function ComponentShowcaseScreen() {
     </ReducedMotionOverride.Provider>
   );
 }
+
+/** Sample answers for the invite sheets (the showcase never calls the server). */
+const SHOWCASE_CONNECTION = { connectedAt: "2026-10-08T10:00:00+09:00", contactId: "showcase-contact", pausedFields: ["seeking" as const], sharedByMe: ["organization" as const, "offering" as const], sharedByPeer: ["organization" as const], via: { code: "K7QX-2M9P" } };
+const showcaseNotUsed = async () => ({ code: null, ok: false as const, reason: null, status: 404 });
+const SHOWCASE_INVITE_API: InviteApi = {
+  connection: async () => ({ data: SHOWCASE_CONNECTION, ok: true }),
+  create: showcaseNotUsed,
+  current: showcaseNotUsed,
+  history: showcaseNotUsed,
+  inviterInNetwork: async () => false,
+  preview: showcaseNotUsed,
+  profile: async () => ({ data: { profile: { displayName: "Ken Sato", handles: { email: "ken@example.com" }, offering: ["Hiring advice"], organization: "Minato Link", role: "CEO", seeking: ["Investor intros"] } }, ok: true }),
+  redeem: showcaseNotUsed,
+  revoke: showcaseNotUsed,
+  saveShortProfile: showcaseNotUsed,
+  unlink: async () => ({ data: { outcome: "unlinked" }, ok: true }),
+  updateShare: async (_contactId, input) => ({ data: { ...SHOWCASE_CONNECTION, sharedByMe: input.sharedKeys }, ok: true }),
+};
 
 function Section({ name, children }: { name: string; children: ReactNode }) {
   const { styles } = useStyles();

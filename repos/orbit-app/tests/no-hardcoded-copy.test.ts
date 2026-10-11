@@ -29,6 +29,8 @@ const ZERO = [
   // R12 人脈を追加 (doors, scan, batch, manual, drafts).
   /^src\/screens\/add\//,
   /^app\/contacts\/new(?:\.tsx|\/)/,
+  // R15 招待コード · 受け取る側 / 手入力.
+  /^app\/i\//,
   /^src\/components\/(?:AppScreen|OrbitTabBar|OrbitNavigationIcon|OrbitRouteAccessBoundary|OnlineOnlyBoundary|AppErrorBoundary)\.tsx$/,
   /^src\/view-models\/app-navigation\.ts$/,
   /^src\/api\/AuthSessionProvider\.tsx$/,

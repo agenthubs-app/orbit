@@ -69,10 +69,6 @@
       "oldComponent": 5,
       "controls": 1
     },
-    "src/screens/contacts/RelationshipInvitationScreen.tsx": {
-      "oldComponent": 3,
-      "controls": 1
-    },
     "src/screens/dashboard/DashboardScreen.tsx": {
       "oldComponent": 5,
       "controls": 1
