@@ -251,7 +251,7 @@ const V2 = (() => {
   const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
     return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
       <div class="v22mey ${o.mcls || ''}">${ic('flag', 'sm')}<div class="mt"><small>完了の目安</small>${MEY[n]}</div>${S ? `<span class="chip ${S[1]}">${S[0]}</span>` : ''}</div>
-      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">高橋 美咲さん（青葉ベンチャーズ）とは、DD に進みましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
+      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">「${t}」は完了しましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
       ${ch.length ? `<div class="chips">${ch.map(k => tchip(k)).join('')}</div>` : '<div class="lbl" style="margin-top:8px">新しく会う人はいません · Step 3・4 の相手と着地させます</div>'}</div>`; };
   /* 人物タイプ卡：上 = 短名 · Step，名称 = 「役割 × 状況」一句（不截断），三格 = 人脈の候補 / 会える活動 / 紹介ルート */
   const tcard = (k, s, o = {}) => { const p = PER[k], r = pts(k, ST[s][k]);

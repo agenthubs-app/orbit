@@ -53,6 +53,7 @@
   /* 状态 */
   --coral: #E58A76;
   --coral-soft: #FBE7E1;
+  --coral-text: #B83E23; /* 错误/删除文字、危险按钮底（与产品 tokens.json coral-text 一致；2026-10-12 用户定稿 D02/D08） */
   --ok: #5E9E86;
 
   /* 形状与节奏 */
@@ -108,6 +109,7 @@
   --mac-lav-ink: #C9BBEB;
   --coral: #F29C88;
   --coral-soft: #42302C;
+  --coral-text: #F29C88; /* 深色下与 --coral 同值；危险按钮配 --on-accent 深字 */
   --ok: #8CC7AF;
   --shadow-float: 0 12px 30px -10px rgba(0, 0, 0, .6);
 }

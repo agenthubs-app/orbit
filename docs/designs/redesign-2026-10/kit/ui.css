@@ -344,14 +344,15 @@ body:not(.no-pins) .pinned { outline: 1.5px dashed color-mix(in srgb, var(--rose
 @keyframes toastCount { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes toastUp { from { opacity: 0; transform: translateY(16px) scale(.97); } }
 
-/* ---- 破坏性按钮：确认框里的最终动作 = 实心珊瑚；入口 = 珊瑚字 ghost；浅珊瑚底只给菜单项 ---- */
-.btn.danger { background: var(--coral); color: var(--on-accent); }
-.btn.danger-ghost { background: transparent; color: var(--coral); }
-.btn.danger-soft { background: var(--coral-soft); color: var(--coral); }
+/* ---- 破坏性按钮：确认框里的最终动作 = 实心深珊瑚（--coral-text）；入口 = 深珊瑚字 ghost；浅珊瑚底只给菜单项
+   2026-10-12 用户定稿 D02/D08：保留现在——照实现用 coral-text（--coral 底配白字对比度不到 4.5） ---- */
+.btn.danger { background: var(--coral-text); color: var(--on-accent); }
+.btn.danger-ghost { background: transparent; color: var(--coral-text); }
+.btn.danger-soft { background: var(--coral-soft); color: var(--coral-text); }
 
 /* ---- App 居中确认框（宽 296；两选项横排，キャンセル 在左）· App 动作表（≥3 选项 / 需列后果）· Web 居中模态 ---- */
 .dialog { position: absolute; left: 50%; top: 50%; width: 296px; transform: translate(-50%, -50%); z-index: 52; background: var(--surface); border-radius: 28px; padding: 22px 18px 16px; text-align: center; box-shadow: var(--shadow-float); animation: dialogIn .3s var(--ease) both; }
-.dialog .dic { width: 48px; height: 48px; border-radius: 16px; background: var(--coral-soft); color: var(--coral); display: grid; place-items: center; margin: 0 auto 10px; }
+.dialog .dic { width: 48px; height: 48px; border-radius: 16px; background: var(--coral-soft); color: var(--coral-text); /* D02/D08：同实现 .dialogIconDanger */ display: grid; place-items: center; margin: 0 auto 10px; }
 .dialog .dic.emo { background: var(--mac-apricot); color: var(--mac-apricot-ink); font-size: 24px; }
 .dialog .dt { display: block; font-size: 16px; font-weight: 800; line-height: 1.4; }
 .dialog .dd { font-size: 12.5px; color: var(--ink-2); margin: 6px 0 16px; line-height: 1.6; }
@@ -367,7 +368,7 @@ body:not(.no-pins) .pinned { outline: 1.5px dashed color-mix(in srgb, var(--rose
 .wmodal.top { top: 96px; transform: translateX(-50%); }   /* ⌘K 等：距顶 96 */
 .wmodal .macts { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 20px; }
 .wmodal .macts .hint { margin-right: auto; }
-.wmodal .dic { width: 48px; height: 48px; border-radius: 16px; background: var(--coral-soft); color: var(--coral); display: grid; place-items: center; flex: none; }
+.wmodal .dic { width: 48px; height: 48px; border-radius: 16px; background: var(--coral-soft); color: var(--coral-text); display: grid; place-items: center; flex: none; }
 .kbd.on-dark { background: color-mix(in srgb, var(--bg) 18%, transparent); color: inherit; }   /* 深色按钮 / tooltip 里的 kbd */
 
 /* ---- Web 右侧抽屉 ---- */

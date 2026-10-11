@@ -707,7 +707,7 @@ const V2 = (() => {
   const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
     return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
       <div class="v22mey ${o.mcls || ''}">${ic('flag', 'sm')}<div class="mt"><small>完了の目安</small>${MEY[n]}</div>${S ? `<span class="chip ${S[1]}">${S[0]}</span>` : ''}</div>
-      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">高橋 美咲さん（青葉ベンチャーズ）とは、DD に進みましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
+      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">「${t}」は完了しましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
       ${ch.length ? `<div class="chips">${ch.map(k => tchip(k)).join('')}</div>` : '<div class="lbl" style="margin-top:8px">新しく会う人はいません · Step 3・4 の相手と着地させます</div>'}</div>`; };
   /* 人物タイプ卡：上 = 短名 · Step，名称 = 「役割 × 状況」一句（不截断），三格 = 人脈の候補 / 会える活動 / 紹介ルート */
   const tcard = (k, s, o = {}) => { const p = PER[k], r = pts(k, ST[s][k]);
@@ -1883,19 +1883,19 @@ function camera(side) {
 
 /* ===================== B3 Web 上传 ===================== */
 const uploadRail = `<h4><span class="emo sm lav">💡</span>うまく読み取るコツ</h4>
-  <div class="card" style="padding:16px">${[['表と裏', 'ファイル名や撮影順から自動でペアにします。ずれたらドラッグで直せます'], ['重なり', '1枚の写真に複数の名刺がある場合は、1枚ずつ切り出します'], ['向き', '横向き・逆さまでも自動で補正します']].map(([t, d]) => `<div style="padding:8px 0"><b style="font-size:13px">${t}</b><div class="lbl" style="line-height:1.6">${d}</div></div>`).join('')}</div>
+  <div class="card" style="padding:16px">${[['表と裏', '裏の写真は「前の名刺の裏にする」でペアにします。「裏を外す」で戻せます'], ['重なり', '1枚の写真に複数の名刺がある場合は、1枚ずつ切り出します'], ['向き', '横向き・逆さまでも自動で補正します']].map(([t, d]) => `<div style="padding:8px 0"><b style="font-size:13px">${t}</b><div class="lbl" style="line-height:1.6">${d}</div></div>`).join('')}</div>
   <div class="card flat" style="padding:14px"><div class="row" style="gap:10px"><span class="emo sm teal">🔒</span><div class="sub">画像は読み取りにだけ使い、あなた以外には表示されません。</div></div></div>`;
 function uploadEmpty() {
-  return mainhead('名刺をまとめて追加', '画像 · PDF · CSV', back, '') + `<div class="wgrid">
-    <div class="span12 dropbig hover" style="height:420px"><span style="font-size:56px">📇</span><div style="font-size:22px;font-weight:800">名刺の画像をここにドロップ</div><div class="sub">JPG・PNG・HEIC・PDF · 一度に最大100枚 · 表と裏は自動でペアになります</div><div class="row" style="gap:10px;margin-top:8px"><button class="btn primary xl">ファイルを選ぶ</button><button class="btn xl">${ic('phone', 'sm')}スマホで連続撮影</button></div></div>
+  return mainhead('名刺をまとめて追加', '画像 · CSV', back, '') + `<div class="wgrid">
+    <div class="span12 dropbig hover" style="height:420px"><span style="font-size:56px">📇</span><div style="font-size:22px;font-weight:800">名刺の画像をここにドロップ</div><div class="sub">JPG · PNG · HEIC · 一度に最大 100枚 · 表と裏はペアにできます</div><div class="row" style="gap:10px;margin-top:8px"><button class="btn primary xl">ファイルを選ぶ</button><button class="btn xl">${ic('phone', 'sm')}スマホで連続撮影</button></div></div>
     ${[['🗂️', 'pink', 'CSV · Eight', '列の対応づけを自動で'], ['👤', 'blue', 'vCard', 'iPhone・Google 連絡先'], ['🔗', 'lav', 'LinkedIn', 'Connections の書き出し'], ['🎟️', 'teal', 'イベントで交換した人', '参加イベントから']].map(([e, c, t, d]) => `<div class="card span3 row" style="gap:12px"><span class="emo ${c}">${e}</span><div><b>${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div>`;
 }
 function uploadPicked() {
-  const pairs = NEW.map((p, k) => ({ p, back: k % 3 !== 2, warn: k === 7, drag: k === 4 }));
-  return mainhead('名刺をまとめて追加', '24枚を選択 · 12人分', back, `<button class="btn">${ic('plus', 'sm')}さらに追加</button>`) + `<div class="wgrid">
-    <div class="card span12"><div class="row between" style="margin-bottom:14px"><div class="seg"><button class="on">すべて 12</button><button>表＋裏 8</button><button>表のみ 4</button><button>要確認 1</button></div><span class="lbl">ペアがずれていたら、裏面をドラッグして入れ替えられます</span></div>
-      <div class="pairs">${pairs.map(({ p, back: b, warn, drag }) => `<div class="pair ${warn ? 'warn' : ''} ${drag ? 'drag' : ''}"><div class="ph"><div class="tp ${warn ? 'blur' : ''}"></div><div class="tp ${b ? 'b' : 'none'}"></div></div><div class="row between"><span class="lbl">${b ? '表＋裏' : '表のみ'}</span>${warn ? '<span class="chip coral">ぼやけ</span>' : `<span class="lbl">IMG_${2400 + NEW.indexOf(p) * 2}</span>`}</div></div>`).join('')}</div></div>
-    <div class="span12 sticky-bar"><span class="emo sm" style="background:var(--surface-3)">📇</span><div style="flex:1"><b style="font-size:15px">24枚 → 12人分として読み取ります</b><div class="lbl">表＋裏 8組 · 表のみ 4枚 · ぼやけた画像 1枚（そのままでも読み取れます）</div></div><button class="btn ghost" style="background:transparent;color:inherit">キャンセル</button><button class="btn xl tap-demo">読み取りを開始</button></div></div>`;
+  const pairs = NEW.map((p, k) => ({ p, back: k < 4, warn: k === 7, canPair: k >= 5 }));
+  return mainhead('名刺をまとめて追加', '16枚を選択 · 12人分', back, `<button class="btn">${ic('plus', 'sm')}さらに追加</button>`) + `<div class="wgrid">
+    <div class="card span12"><div class="row between" style="margin-bottom:14px"><div class="seg"><button class="on">すべて 12</button><button>表＋裏 4</button><button>表のみ 8</button><button>要確認 1</button></div><span class="lbl">裏の写真は「前の名刺の裏にする」でペアに</span></div>
+      <div class="pairs">${pairs.map(({ p, back: b, warn, canPair }) => `<div class="pair ${warn ? 'warn' : ''}"><div class="ph"><div class="tp ${warn ? 'blur' : ''}"></div><div class="tp ${b ? 'b' : 'none'}"></div></div><div class="row between"><span class="lbl">${b ? '表＋裏' : '表のみ'}</span>${warn ? '<span class="chip coral">ぼやけ</span>' : `<span class="lbl">IMG_${2400 + NEW.indexOf(p) * 2}</span>`}</div>${canPair ? '<button class="btn sm ghost k-pairbtn" style="width:100%;min-width:0;padding:0 4px;font-size:11px;overflow:hidden">前の名刺の裏にする</button>' : b ? '<span class="lbl">裏を外す</span>' : ''}</div>`).join('')}</div></div>
+    <div class="span12 sticky-bar"><span class="emo sm" style="background:var(--surface-3)">📇</span><div style="flex:1"><b style="font-size:15px">16枚 → 12人分として読み取ります</b><div class="lbl">表＋裏 4組 · 表のみ 8枚 · ぼやけた画像 1枚（そのままでも読み取れます）</div></div><button class="btn ghost" style="background:transparent;color:inherit">キャンセル</button><button class="btn xl tap-demo">読み取りを開始</button></div></div>`;
 }
 
 /* ===================== B4 批量识别进度 ===================== */
@@ -2207,11 +2207,11 @@ h += boards([
 ]);
 
 /* ---- B3 ---- */
-h += sec('B3 · Web 批量上传', '拖放区 → 已选 N 张缩略图（正反面自动配对）→ 开始识别');
+h += sec('B3 · Web 批量上传', '拖放区 → 已选 N 张缩略图（正反面手动配对「前の名刺の裏にする」，D25）→ 开始识别');
 h += board('① 拖放区', '', webFrame({ nav: 1, head: '', body: uploadEmpty(), rail: uploadRail, pins: pin(1, '.dropbig') + pin(2, '.dropbig .btn', 1) }),
-  ['文件拖入页面任意位置时，拖放区变为深紫虚线 + 底色加深（hover 态即本图）', '「スマホで連続撮影」→ 弹出 QR，手机拍的照片实时出现在下一屏']);
-h += board('② 已选 24 张 · 正反面配对', '', webFrame({ nav: 1, head: '', body: uploadPicked(), rail: uploadRail, pins: pin(1, '.pair.drag') + pin(2, '.pair.warn') + pin(3, '.sticky-bar .btn.xl') }),
-  ['配对错误时把裏面缩略图拖到另一张上即可交换（拖动中卡片微倾斜 + 浮影）', '模糊图标珊瑚描边 + 「ぼやけ」chip，可照常读取', '底部深色条汇总「24枚 → 12人分」，「読み取りを開始」→ B4 进度页']);
+  ['2026-10-12 用户定稿 D24：保留现在——只收 JPG · PNG · HEIC（不收 PDF，选了会提示「PDF は読み取れません」）；表里不自动配对（D25）。文件拖入页面任意位置时，拖放区变为深紫虚线 + 底色加深（hover 态即本图）', '「スマホで連続撮影」→ 弹出 QR，手机拍的照片实时出现在下一屏']);
+h += board('② 已选 24 张 · 正反面配对', '', webFrame({ nav: 1, head: '', body: uploadPicked(), rail: uploadRail, pins: pin(1, '.k-pairbtn') + pin(2, '.pair.warn') + pin(3, '.sticky-bar .btn.xl') }),
+  ['2026-10-12 用户定稿 D25：保留现在——不自动配对（选进来都是「表のみ」）；在裏面那张上点「前の名刺の裏にする」手动并到上一张（上一张已有裏时不出现），「裏を外す」拆回；没有拖拽交换', '模糊图标珊瑚描边 + 「ぼやけ」chip，可照常读取', '底部深色条汇总「16枚 → 12人分」，「読み取りを開始」→ B4 进度页']);
 
 /* ---- B4 ---- */
 h += sec('B4 · 批量识别进度', '总进度大数字 + 逐张状态（識別中 / 確認待ち / 失敗→再識別）；可离开，完成后通知');

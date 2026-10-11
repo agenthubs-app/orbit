@@ -261,7 +261,7 @@ const V2 = (() => {
   const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
     return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
       <div class="v22mey ${o.mcls || ''}">${ic('flag', 'sm')}<div class="mt"><small>完了の目安</small>${MEY[n]}</div>${S ? `<span class="chip ${S[1]}">${S[0]}</span>` : ''}</div>
-      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">高橋 美咲さん（青葉ベンチャーズ）とは、DD に進みましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
+      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">「${t}」は完了しましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
       ${ch.length ? `<div class="chips">${ch.map(k => tchip(k)).join('')}</div>` : '<div class="lbl" style="margin-top:8px">新しく会う人はいません · Step 3・4 の相手と着地させます</div>'}</div>`; };
   /* 人物タイプ卡：上 = 短名 · Step，名称 = 「役割 × 状況」一句（不截断），三格 = 人脈の候補 / 会える活動 / 紹介ルート */
   const tcard = (k, s, o = {}) => { const p = PER[k], r = pts(k, ST[s][k]);
@@ -819,8 +819,8 @@ html += boards([
     ['.k-gsw', 0, '分段下方目标名「▾」→ 目标切替下拉（④ A6，含「目標を追加」与 編集）；プラン 的二级页（人物タイプ詳細・見直し・手動編集・生成流程）都从这里进，返回回到 Task › プラン'],
     ['.k-hero .big', 0, '刚确定 0 分：大数字 0，「満点 100 · 上限なし」常驻；构成条按 7 段（6 类型 + イベント）配点分段'],
     ['.k-diag .why', 0, '「確定した方案」卡：見立て / 結論一文（先 CFO 固数字 → 先辈介绍 → VC 3 社并行 → CVC 后补）；「?」展开依据（確定した前提 6 件 · 業界の現状 3 件 · AI 修正 1 回）'],
-    ['.k-diag .k-prem', 0, '按钮组（与 Web 标题栏同一组）：前提を見る →「確定した前提」卡（可逐行改）/ 方案を見直す（AI · 月 3 回，不改也扣 1 次）/ 手動で編集（每次見直し后 1 回）/ 目標を達成した → 确认框'],
-    ['.k-today', 0, '今日 +10 のチャンス：伊藤 直子（CFO 経験者，1 人满额 10）；「面談を提案」只生成站内请求 / 草稿，送信はあなたが行います'],
+    ['.k-diag .k-prem', 0, '2026-10-12 用户定稿 D49：保留现在——按钮组（与 Web 标题栏同一组）：前提を見る →「確定した前提」只读弹层，每行「見直しで変える」进入見直し（不能就地改，画法见 b12 A-R24-05 / W-R24-03）/ 方案を見直す（AI · 月 3 回，不改也扣 1 次）/ 手動で編集（确定后 1 回：生成时没用的那次保留；之后每次見直し再给 1 回）/ 目標を達成した → 确认框'],
+    ['.k-today', 0, '今日 +10 のチャンス：伊藤 直子（CFO 経験者，1 人满额 10）；「面談を提案」只生成草稿（コピー / メールアプリで開く），送信はあなたが行います（2026-10-12 用户定稿 D46）'],
   ]),
   AP('Task · プラン 概要（ステップ · スクロール後）', 'few', { body: plan('few', 'steps'), tab: 4 }, [
     ['.k-mey1', 0, '每个 Step 的「完了の目安」写成可数的状态（Step 1：ピッチ資料と事業計画 + CFO 経験者 1 人に見てもらう）；顺序是目安、不排期'],
@@ -841,7 +841,7 @@ html += boards([
   ]),
   AP('Task · プラン 概要（進行中 46 · ステップ）', 'many', { body: plan('many', 'steps'), tab: 4 }, [
     ['.k-mey1 .chip', 0, '目安右侧显示进度 chip（CFO 0 / 1人 · 紹介 2件 · VC 2 / 3人 · 習熟済み · まだ）'],
-    ['.k-stepok', 0, 'Step 3 目安可能已达成 → 虚线确认卡「高橋 美咲さんとは、DD に進みましたか？」；只有用户点「完了にする」才算完成'],
+    ['.k-stepok', 0, '2026-10-12 用户定稿 D50：保留现在——Step 3 目安可能已达成 → 虚线确认卡，规则出卡，模板文案「「{Step 名}」は完了しましたか？」（字典 plan.step.suggestion，不让 AI 读目安）；只有用户点「完了にする」才算完成'],
   ]),
   AP('Task · プラン 概要（進行中 46 · イベント）', 'many', { body: plan('many', 'types'), tab: 4 }, [
     ['.k-tc-law .v22tf', 0, '弁護士 = 习熟跳过：卡底「習熟済み · スキップ（満額）」+ 斜纹迷你条，可撤回'],

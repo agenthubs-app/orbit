@@ -319,14 +319,14 @@ const actSheet = `<div class="asheet actsheet"><div class="grab"></div><div clas
 const modalWeb = `<div class="wmodal static"><div class="row" style="gap:14px;align-items:flex-start"><div class="dic">${ix('trash', 'lg')}</div><div style="min-width:0"><b style="font-size:17px">このタスクを削除しますか？</b>
   <div class="sub" style="margin-top:6px;line-height:1.65">「山本 彩さんに資料を再送」を削除します。元に戻せません。元になったメモとやりとりは残ります。</div></div></div>
   <div class="macts"><span class="lbl hint">${kbd('Esc')} キャンセル</span><button class="btn focus">キャンセル</button><button class="btn danger">削除する</button></div></div>`;
-P += sec2('c-confirm', '② 确认框（居中确认 vs 底部动作表）', '破坏性按钮实心珊瑚；破坏性操作默认焦点在「キャンセル」');
+P += sec2('c-confirm', '② 确认框（居中确认 vs 底部动作表）', '破坏性按钮实心深珊瑚（--coral-text）；破坏性操作默认焦点在「キャンセル」');
 P += comp(duo(`<div class="srow" style="gap:12px">
     ${cell('App 居中确认 · 宽 296（单一不可逆动作）', `<div class="scrimbox" style="width:322px;min-height:390px">${alertApp}</div>`)}
     ${cell('App 底部动作表（需列出多条后果）', `<div class="scrimbox bottom" style="width:380px;min-height:390px">${actSheet}</div>`)}
     ${cell('Web 居中模态 · 宽 420', `<div class="scrimbox wsc" style="width:446px;min-height:390px">${modalWeb}</div>`)}</div>`, true), {
   rules: [['kit 类', 'App 居中 <code>.dialog</code>（<code>.dic</code> 图标块 · <code>.dt</code> 标题 · <code>.dd</code> 正文 · <code>.dacts</code> 两列）；动作表 <code>.sheet.actsheet</code>（<code>.eff</code> 后果行）；Web <code>.wmodal</code>（<code>.w480</code> / <code>.w560</code> / <code>.top</code> / <code>.macts</code> + <code>.hint</code>）；破坏按钮 <code>.btn.danger</code> / 入口 <code>.btn.danger-ghost</code> / 菜单项 <code>.btn.danger-soft</code>；遮罩 token <code>--scrim</code>（App）/ <code>--scrim-web</code>（Web）'], ['选型', '一个不可逆动作、后果一两句说得清 → <b>App 居中确认框</b>；需要列出多条后果（通知主办方 / 退款 / 保留什么）或有第 3 个选项 → <b>App 底部动作表</b>；Web 一律居中模态（确认 420 / 带说明 480–560）'],
     ['结构', '48px 图标块（破坏性 = <code>--coral-soft</code> 底 + 珊瑚线性图标；一般 = 马卡龙 emoji 方块）→ 标题用问句「〜しますか？」→ 正文写后果 + <b>什么会保留</b>（「メモとやりとりは残ります」）；可恢复写恢复路径（「30日間は『最近削除した項目』から復元できます」），不可恢复写「元に戻せません」'],
-    ['破坏按钮', '实心珊瑚 <code>--coral</code> + <code>--on-accent</code> 字，文案用具体动词「削除する / 取り消す」，不用「OK / はい」。页面里的入口按钮用珊瑚色文字的 ghost 按钮；浅珊瑚底只用于菜单项'],
+    ['破坏按钮', '2026-10-12 用户定稿 D02 + D08：保留现在——实心深珊瑚 <code>--coral-text</code>（浅 #B83E23 / 深 #F29C88）+ <code>--on-accent</code> 字（浅白字 / 深 #1E1A24 深字），不用 <code>--coral</code> 底（白字对比度不到 4.5）；App / Web 同。文案用具体动词「削除する / 取り消す」，不用「OK / はい」。页面里的入口按钮用 <code>--coral-text</code> 字的 ghost 按钮；浅珊瑚底（<code>--coral-soft</code> 底 + <code>--coral-text</code> 字）只用于菜单项'],
     ['按钮顺序', 'App 居中：左「キャンセル」右破坏（iOS alert）；动作表：破坏在上、「〜を続ける」在下（iOS action sheet）；Web：右对齐 [キャンセル][主动作]，左侧可放快捷键提示'],
     ['默认焦点', '破坏性 → 「キャンセル」（Esc = キャンセル，⏎ 不触发删除）；非破坏性确认（公開する、作り直す）→ 主按钮'],
     ['出现', '遮罩 28%（App）/ 22%（Web）/ 深色 55% 黑，不加模糊 + 缩放 .96→1 淡入 300ms；破坏性确认不因点遮罩关闭'], ['补充（10-07）', '非破坏性的两选项提示框（示例写操作拦截）文案放不下两列时用 <code>.dacts.stack</code> 竖排、主按钮在上；Web 表单型大模态（内含卡片，860 / 1000 等）用 <code>.wmodal.form</code> 底色 <code>--bg</code> 保留卡片层次，确认 / 说明类一律 <code>--surface</code>'],
@@ -692,6 +692,7 @@ P += comp(duo(N3TASK(1) + `<div style="height:10px"></div>` + N3TASK(2), true), 
   use: 'Task 页顶部（App）与 Web Task mainhead 左侧；プラン 段 = 原「プラン」页（顶栏标题统一为 Task，目标切换在分段下一行）。',
   rules: [['kit 类', '<code>.tseg</code>（4 等分胶囊）+ <code>.tswipe</code>（页码点，当前段拉长）；Web 中 <code>.web .tseg</code> 自动变内联页签'],
     ['切换', '点分段或横滑过半松手；列表行内左滑只在行上触发，不和分段切换冲突；首次进入演示一次'],
+    ['默认段', '2026-10-12 用户定稿 D04：保留现在——App 再次进入停在上次的段（第一次是カレンダー）；外观不变'],
     ['To-do', '吸收 判断待ち / 今日の一手 / フォロー；完成 = 打勾 + 撤销 Toast；延期 = 今日の夜 / 明日 / 今週末 / 来週 / 日付'],
     ['メモ', '<code>.memo</code> 卡 + <code>.at</code>（@人）/ <code>.at.ev</code>（@活动）token；类型 面談の記録 / 自由メモ / 音声'],
     ['プラン', '二级页（人物タイプ詳細 · 見直し · 手動編集 · 生成流程）从这里进，← 回 Task › プラン']],

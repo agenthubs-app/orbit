@@ -352,7 +352,7 @@ const V2 = (() => {
   const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
     return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
       <div class="v22mey ${o.mcls || ''}">${ic('flag', 'sm')}<div class="mt"><small>完了の目安</small>${MEY[n]}</div>${S ? `<span class="chip ${S[1]}">${S[0]}</span>` : ''}</div>
-      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">高橋 美咲さん（青葉ベンチャーズ）とは、DD に進みましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
+      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">「${t}」は完了しましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
       ${ch.length ? `<div class="chips">${ch.map(k => tchip(k)).join('')}</div>` : '<div class="lbl" style="margin-top:8px">新しく会う人はいません · Step 3・4 の相手と着地させます</div>'}</div>`; };
   /* 人物タイプ卡：上 = 短名 · Step，名称 = 「役割 × 状況」一句（不截断），三格 = 人脈の候補 / 会える活動 / 紹介ルート */
   const tcard = (k, s, o = {}) => { const p = PER[k], r = pts(k, ST[s][k]);
@@ -1596,15 +1596,15 @@ const urlbar = u => `<div class="urlbar">${ic('link', 'sm')}${u}</div>`;
    ================================================================= */
 let h = '';
 /* ---- A ---- */
-h += sec('A · 手動で連絡先を追加', '与 ⑨ A4「手入力」是同一屏（统一标题 手入力 / Web 抽屉「手入力で追加」）：这里画展开全部项目 + 查重的状态。入口：人脈右上「＋」› 手入力（NAV-V3，替代全局「＋追加」；指导屏见 ⑪）。App 全屏表单 → 业界二级选择 → 保存前重复候选 → 详情 + 计划关联确认卡；Web 右侧抽屉。对标 iOS 連絡先 + HubSpot「重复记录提示」');
+h += sec('A · 手動で連絡先を追加', '【2026-10-12 用户定稿 D29：本节作废，以 ⑪ b11 A3「手入力」为准】与 ⑨ A4「手入力」是同一屏（统一标题 手入力 / Web 抽屉「手入力で追加」）：这里画展开全部项目 + 查重的状态。入口：人脈右上「＋」› 手入力（NAV-V3，替代全局「＋追加」；指导屏见 ⑪）。App 全屏表单 → 业界二级选择 → 保存前重复候选 → 详情 + 计划关联确认卡；Web 右侧抽屉。对标 iOS 連絡先 + HubSpot「重复记录提示」');
 h += boards([
-  AP('① 新しい連絡先 · 入力中', '', { body: newApp() }, [['.k-scan', 0, '顶部先提示「名刺があればスキャン」——手入力是兜底，不是主路'], ['.k-duph', 0, '氏名失焦即查重：只给一行杏色提示「保存前に確認します」，不打断输入'], ['.k-ind', 0, '業界按公司名预填并标杏色「推定」chip；点开 → ② 二级选择器（底部弹层）'], ['.foot .btn', 0, '只有氏名必填；点「保存する」→ 有重复候选时先弹 ③，否则直达 ④']]),
-  AP('② 業界を選ぶ（一级/二级）', '', { body: newApp(), overlay: indSheet }, [['.k-guess', 0, '推测来源默认收起，「?」展开依据（公司名 + 公开企业信息）'], ['.casc', 0, '左列一级、右列二级（对标 Mercari 类目选择）；可搜索直达二级；「決定」回填并去掉「推定」']]),
-  AP('③ 似た人がいます（保存前）', '', { body: newApp(), overlay: dupSheet }, [['.k-cmp', 0, '左右对照，差异项（会社・役職）用珊瑚色字；「?」说明一致/不一致的字段'], ['.k-sep', 0, '「別の人として保存」→ ④ 详情'], ['.k-same', 0, '「同じ人です」→ 进入 b1 的统合画面（逐项选值，可撤销）；系统绝不自动合并']]),
-  AP('④ 保存後 → 詳細', '', { body: savedApp(), overlay: toast('保存しました', { sub: NEWC.n + ' · 人脈に追加' }) }, [['.toast', 0, '底部 Toast「保存しました · 元に戻す」5 秒倒计时线后收起（元に戻す = 删除刚建的联系人）'], ['.k-conf', 0, '虚线确认卡「プランに関係づけますか？」：AI 只提议「製造業の決裁者」枠，点「関係づける」才写入计划；「?」看依据'], ['.k-thx', 0, '次の一手：「お礼の下書きを作成」，按钮下常驻「送信はしません · 送信はあなたが行います」']]),
+  AP('① 新しい連絡先 · 入力中', '作废 · D29', { body: newApp() }, [['.k-scan', 0, '2026-10-12 用户定稿 D29：作废——本节全字段手入力（含「サブ目標・枠」旧计划用语）不做，两端按 ⑪ b11 A3「手入力」（名前だけ + あるといいもの + 重複の候補）。原说明：顶部先提示「名刺があればスキャン」——手入力是兜底，不是主路'], ['.k-duph', 0, '氏名失焦即查重：只给一行杏色提示「保存前に確認します」，不打断输入'], ['.k-ind', 0, '業界按公司名预填并标杏色「推定」chip；点开 → ② 二级选择器（底部弹层）'], ['.foot .btn', 0, '只有氏名必填；点「保存する」→ 有重复候选时先弹 ③，否则直达 ④']]),
+  AP('② 業界を選ぶ（一级/二级）', '作废 · D29', { body: newApp(), overlay: indSheet }, [['.k-guess', 0, '推测来源默认收起，「?」展开依据（公司名 + 公开企业信息）'], ['.casc', 0, '左列一级、右列二级（对标 Mercari 类目选择）；可搜索直达二级；「決定」回填并去掉「推定」']]),
+  AP('③ 似た人がいます（保存前）', '作废 · D29', { body: newApp(), overlay: dupSheet }, [['.k-cmp', 0, '左右对照，差异项（会社・役職）用珊瑚色字；「?」说明一致/不一致的字段'], ['.k-sep', 0, '「別の人として保存」→ ④ 详情'], ['.k-same', 0, '「同じ人です」→ 进入 b1 的统合画面（逐项选值，可撤销）；系统绝不自动合并']]),
+  AP('④ 保存後 → 詳細', '作废 · D29', { body: savedApp(), overlay: toast('保存しました', { sub: NEWC.n + ' · 人脈に追加' }) }, [['.toast', 0, '底部 Toast「保存しました · 元に戻す」5 秒倒计时线后收起（元に戻す = 删除刚建的联系人）'], ['.k-conf', 0, '虚线确认卡「プランに関係づけますか？」：AI 只提议「製造業の決裁者」枠，点「関係づける」才写入计划；「?」看依据'], ['.k-thx', 0, '次の一手：「お礼の下書きを作成」，按钮下常驻「送信はしません · 送信はあなたが行います」']]),
 ]);
-h += WB('Web · 新しい連絡先（右侧抽屉）', '', { nav: 1, head: '', body: netBg() }, newDrawer, [['.k-dupw', 0, '查重结果内嵌在表单里（不弹第二层）：比べる / 同じ人（統合へ）/ 別の人です'], ['.cascpop', 0, '業界字段展开为两列级联下拉，可键盘 ↑↓→ 选择'], ['.k-save', 0, '「保存」或 ⌘↵；保存后抽屉关闭并打开详情（下图）']]);
-h += WB('Web · 保存後の詳細', '', { nav: 1, head: '', body: savedWeb(), rail: savedRail }, wtoast('保存しました', { sub: NEWC.n + ' · 人脈に追加' }), [['.k-conf', 0, '计划关系确认卡与资料并排（span5），同一确认口径'], ['.k-task', 0, '右栏：从メモ识别出「送资料」→ 虚线确认卡「タスクに追加しますか？」，点「追加する」才建任务'], ['.toast', 0, 'Web Toast 在右下角 24px（.toast-stack），带「元に戻す」，悬停暂停倒计时']]);
+h += WB('Web · 新しい連絡先（右侧抽屉）', '作废 · D29', { nav: 1, head: '', body: netBg() }, newDrawer, [['.k-dupw', 0, '2026-10-12 用户定稿 D29：作废——Web 按 ⑪ b11 A3 / ⑨ A4「手入力 · Web 右侧抽屉」。原说明：查重结果内嵌在表单里（不弹第二层）：比べる / 同じ人（統合へ）/ 別の人です'], ['.cascpop', 0, '業界字段展开为两列级联下拉，可键盘 ↑↓→ 选择'], ['.k-save', 0, '「保存」或 ⌘↵；保存后抽屉关闭并打开详情（下图）']]);
+h += WB('Web · 保存後の詳細', '作废 · D29', { nav: 1, head: '', body: savedWeb(), rail: savedRail }, wtoast('保存しました', { sub: NEWC.n + ' · 人脈に追加' }), [['.k-conf', 0, '计划关系确认卡与资料并排（span5），同一确认口径'], ['.k-task', 0, '右栏：从メモ识别出「送资料」→ 虚线确认卡「タスクに追加しますか？」，点「追加する」才建任务'], ['.toast', 0, 'Web Toast 在右下角 24px（.toast-stack），带「元に戻す」，悬停暂停倒计时']]);
 
 /* ---- B ---- */
 h += sec('B · サブスクリプション（App）', '① ご利用プラン「Pro に変更」→ ② App Store 购买表单 → ③ 完成 → ④ 管理 → ⑤ 解约告知 → ⑥ iOS 系统解约 → ⑦ 付款失败。对标 Spotify / Notion 解约：先说清楚失去什么、数据保留，不做挽留弹窗');
@@ -1714,7 +1714,7 @@ h += boards([
 /* ---- ダーク ---- */
 h += sec('ダークモード', '手動追加 · サブスクリプション管理 · 退会確認 · ヘルプ · ライブアクティビティ · NFC 交換');
 h += boards([
-  AP('① 新しい連絡先', '', { body: newApp(), theme: 'dark' }),
+  AP('① 新しい連絡先', '作废 · D29', { body: newApp(), theme: 'dark' }),
   AP('④ サブスクリプション管理', '', { body: subApp(), theme: 'dark' }),
   AP('退会 · 本人確認 + 30日', '', { body: delApp2(), theme: 'dark' }),
   AP('ヘルプセンター', '', { body: helpApp(), theme: 'dark' }),
@@ -1722,7 +1722,7 @@ h += boards([
   AP('会场中 · 展开态', '', { body: '', overlay: homeIsland('venue'), theme: 'dark' }),
   AP('NFC ③ つながりました', '', { body: nfc3(), overlay: urlbar('orbit.example/c/k-sato'), theme: 'dark' }),
 ]);
-h += WB('Web · 新しい連絡先', '', { nav: 1, head: '', body: netBg(), theme: 'dark' }, newDrawer);
+h += WB('Web · 新しい連絡先', '作废 · D29', { nav: 1, head: '', body: netBg(), theme: 'dark' }, newDrawer);
 h += WB('Web · サブスクリプション管理', '', { nav: 'settings', head: '', body: planWeb(), theme: 'dark' });
 h += WB('Web · 退会 2/2', '', { nav: 'settings', head: '', body: delWeb(), theme: 'dark' }, reauthModal);
 h += WB('Web · ヘルプセンター', '', { nav: 'settings', head: '', body: helpWeb(), theme: 'dark' });

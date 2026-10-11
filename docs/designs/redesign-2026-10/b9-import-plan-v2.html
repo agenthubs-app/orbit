@@ -235,7 +235,7 @@ const V2 = (() => {
   const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
     return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
       <div class="v22mey ${o.mcls || ''}">${ic('flag', 'sm')}<div class="mt"><small>完了の目安</small>${MEY[n]}</div>${S ? `<span class="chip ${S[1]}">${S[0]}</span>` : ''}</div>
-      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">高橋 美咲さん（青葉ベンチャーズ）とは、DD に進みましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
+      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">「${t}」は完了しましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
       ${ch.length ? `<div class="chips">${ch.map(k => tchip(k)).join('')}</div>` : '<div class="lbl" style="margin-top:8px">新しく会う人はいません · Step 3・4 の相手と着地させます</div>'}</div>`; };
   /* 人物タイプ卡：上 = 短名 · Step，名称 = 「役割 × 状況」一句（不截断），三格 = 人脈の候補 / 会える活動 / 紹介ルート */
   const tcard = (k, s, o = {}) => { const p = PER[k], r = pts(k, ST[s][k]);
@@ -1295,12 +1295,12 @@ h += WB('LinkedIn ④ まとめて確認 · Web（统一）', '', { nav: 1, head
 
 h += sec('A4 · 手入力', '只有氏名必填；粘贴签名 → 自动拆字段（每个字段带置信圆点，推测项杏色 chip）');
 h += boards([
-  AP('手入力 ① 貼り付け', '', { body: handPaste() }, [
-    ['.k-paste', 0, '顶部粘贴区优先（邮件签名、网页、聊天里的自我介绍都可以）'],
+  AP('手入力 ① 貼り付け', '作废 · D28', { body: handPaste() }, [
+    ['.k-paste', 0, '2026-10-12 用户定稿 D28：作废——App 手入力不做粘贴签名，以更新的 ⑪ b11 A3「手入力」为准（名前だけ + あるといいもの）；粘贴签名只在 Web 右侧抽屉（下方「手入力 · Web 右侧抽屉」保留）。原说明：顶部粘贴区优先（邮件签名、网页、聊天里的自我介绍都可以）'],
     ['.k-split', 0, '「項目に分ける」→ ②；不粘贴也能直接填，氏名之外全部可空'],
   ]),
-  AP('手入力 ② 分けた結果', '', { body: handResult() }, [
-    ['.k-pasted', 0, '原文保留并用马卡龙底色标出被识别的片段，字段与原文一一对应，可点片段改归属'],
+  AP('手入力 ② 分けた結果', '作废 · D28', { body: handResult() }, [
+    ['.k-pasted', 0, '2026-10-12 用户定稿 D28：作废（同 ①，以 ⑪ A3 为准）。原说明：原文保留并用马卡龙底色标出被识别的片段，字段与原文一一对应，可点片段改归属'],
     ['.k-fields', 0, '克制行式：字段 · 置信圆点 · 值；地址等推测项挂杏色「推定」'],
     ['.k-where', 0, '可选「どこで会いましたか？」一点回答 → 直接到 ●●○；跳过也能保存'],
     ['.k-handsave', 0, '保存 → Toast「人脈に追加しました · 開く」；不经过まとめて確認（单人）'],
@@ -1374,8 +1374,8 @@ h += boards([
     ['.dn.up', 0, '答完浓度点动效 ●○○ → ●●○（第二点放大填色）'],
     ['.k-askskip', 0, '「スキップ」= 今天不问，不计入判断待ち数量；连续跳过 3 次的人不再问'],
   ]),
-  AP('字段冲突 · 転職', '', { body: conflictApp() }, [
-    ['.k-conflict', 0, '同一字段两个来源冲突时，按更新时间提示较新的一方；两列对比，标注来源与日期'],
+  AP('字段冲突 · 転職', '下一期 · D34', { body: conflictApp() }, [
+    ['.k-conflict', 0, '2026-10-12 用户定稿 D34：下一期——本期「あとで補完」每天一问只做「どこで会った」「会社は」两种题型；转职冲突提示放下一期。原说明：同一字段两个来源冲突时，按更新时间提示较新的一方；两列对比，标注来源与日期'],
     ['.k-takenew', 0, '一键采用 LinkedIn；旧值进履历，不覆盖名片原图'],
     ['.k-fsrc', 0, '人物页每个字段右侧小字显示来源与日期（名刺 25/11 · LinkedIn · 手入力）'],
   ]),
