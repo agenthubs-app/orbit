@@ -43,13 +43,15 @@ test("old links: ?job= and ?method=scan go to the new scan pages; その他 keep
   assert.deepEqual(resolveAddContactRoute({ method: "contacts", import: "imp-1" }), { kind: "legacy", method: "contacts", importId: "imp-1" });
   assert.deepEqual(resolveAddContactRoute({ method: "event" }), { kind: "legacy", method: "event" });
   assert.deepEqual(resolveAddContactRoute({ import: "imp-2" }), { kind: "legacy", method: "csv", importId: "imp-2" });
-  assert.deepEqual(resolveAddContactRoute({}), { kind: "doors", manual: false });
-  assert.deepEqual(resolveAddContactRoute({ add: "manual" }), { kind: "doors", manual: true });
-  assert.deepEqual(resolveAddContactRoute({ method: "unknown" }), { kind: "doors", manual: false });
+  assert.deepEqual(resolveAddContactRoute({}), { kind: "doors", manual: false, invite: false });
+  assert.deepEqual(resolveAddContactRoute({ add: "manual" }), { kind: "doors", manual: true, invite: false });
+  // R15: ?add=invite opens the 招待コード dialog.
+  assert.deepEqual(resolveAddContactRoute({ add: "invite" }), { kind: "doors", manual: false, invite: true });
+  assert.deepEqual(resolveAddContactRoute({ method: "unknown" }), { kind: "doors", manual: false, invite: false });
 });
 
-test("doors: 招待コード hidden until R15; the four その他 doors point at the old import", () => {
-  assert.equal(ADD_INVITE_DOOR_ENABLED, false);
+test("doors: 招待コード open since R15; the four その他 doors point at the old import", () => {
+  assert.equal(ADD_INVITE_DOOR_ENABLED, true);
   assert.deepEqual(ADD_OTHER_DOORS.map((door) => door.href), [
     "/app/contacts/new?method=contacts",
     "/app/contacts/new?method=csv",
@@ -59,6 +61,9 @@ test("doors: 招待コード hidden until R15; the four その他 doors point at
   assert.equal(addSearchFor("?lang=en", true), "?lang=en&add=manual");
   assert.equal(addSearchFor("?lang=en&add=manual", false), "?lang=en");
   assert.equal(addSearchFor("", false), "");
+  assert.equal(addSearchFor("?lang=en", "invite"), "?lang=en&add=invite");
+  assert.equal(addSearchFor("?add=invite", null), "");
+  assert.equal(addSearchFor("?add=manual", "invite"), "?add=invite");
 });
 
 const candidate = (patch: Partial<IngestContactCandidateContract>): IngestContactCandidateContract => ({

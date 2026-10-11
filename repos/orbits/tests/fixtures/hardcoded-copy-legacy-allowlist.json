@@ -613,10 +613,6 @@
       "hardcoded": 0,
       "missingJa": 52
     },
-    "app/(app)/app/invitations/[token]/relationship-invitation-client.tsx": {
-      "hardcoded": 23,
-      "missingJa": 0
-    },
     "app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts": {
       "hardcoded": 1,
       "missingJa": 4

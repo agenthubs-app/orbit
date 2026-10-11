@@ -48,8 +48,9 @@ const ROUTE_SAMPLES = new Map([
   ],
   ["/app/events/[id]/register", "/app/events/EVT01/register"],
   ["/app/inbox/sources/[id]", "/app/inbox/sources/demo-source-1"],
-  ["/app/invitations/[token]", "/app/invitations/demo-invitation-token-1"],
   ["/app/o/[slug]", "/app/o/demo-event-1"],
+  // R15：公开招待页 /i/<码>（不进登录前缀；样例码是演示世界里别人发给我的码）。旧 /app/invitations/[token] 已删。
+  ["/i/[code]", "/i/H8MW-4QZT"],
   ["/app/tasks/[id]", "/app/tasks/demo-task-1"],
   [
     "/app/tasks/relationship/[id]",

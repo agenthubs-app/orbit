@@ -84,20 +84,21 @@ const settles = (page: Page, selector: string, value: number) => page.waitForFun
 
 /* ---------- 入口 ---------- */
 
-test("doors: 名刺 and 手入力 up front, 招待コード hidden (R15), その他 four go to the old import; the shell title is 人脈を追加", async (t) => {
+test("doors: 名刺, 招待コード (R15) and 手入力 up front, その他 four go to the old import; the shell title is 人脈を追加", async (t) => {
   const page = await screen(t, { view: "doors" });
   await page.locator("[data-add-doors]").waitFor();
   assert.equal(await page.locator("[data-orbit-2026-mainhead] h1").textContent(), "人脈を追加");
   const doors = await page.locator("[data-add-door]").evaluateAll((nodes) => nodes.map((node) => [node.getAttribute("data-add-door"), node.getAttribute("href")]));
   assert.deepEqual(doors, [
     ["scan", "/app/contacts/new/scan"],
+    ["invite", null],
     ["manual", null],
     ["contacts", "/app/contacts/new?method=contacts"],
     ["linkedin", "/app/contacts/new?method=csv"],
     ["csv", "/app/contacts/new?method=csv"],
     ["event", "/app/contacts/new?method=event"],
   ]);
-  assert.equal(await page.getByText("招待コード").count(), 0);
+  assert.equal(await page.locator('[data-add-door="invite"]').getByText("招待コード").count(), 1);
 });
 
 test("doors: 1024 is the same layout; 390 is one column", async (t) => {

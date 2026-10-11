@@ -30,6 +30,11 @@ const nextConfig = {
   allowedDevOrigins: ["orbit.shares.zrok.io", "127.0.0.1", "localhost"],
   async headers() {
     return [
+      // R15：公开招待页 `/i`、`/i/<码>` 离开时不带 Referer（码不外泄）；noindex 由页面 metadata 给出。
+      {
+        source: "/i/:path*",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
       {
         source: "/api/:path*",
         headers: [

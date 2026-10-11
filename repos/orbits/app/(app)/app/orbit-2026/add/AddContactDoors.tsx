@@ -9,10 +9,10 @@ import { DensityDots, translator } from "./add-parts";
 import styles from "./add.module.css";
 
 /**
- * R15 opens the 招待コード door (DESIGN §2.1, §9 #4: doors that are not live yet are hidden,
- * not greyed out). Until then the main row is 名刺をスキャン and 手入力.
+ * 招待コード door (DESIGN §2.1, §9 #4: doors that are not live are hidden, not greyed out). R15
+ * opened it: it opens the invite dialog (`?add=invite`) when the page passes `onInvite`.
  */
-export const ADD_INVITE_DOOR_ENABLED = false;
+export const ADD_INVITE_DOOR_ENABLED = true;
 
 /**
  * その他 (DESIGN §2.7): until R16 builds the new import pages these four go to the old

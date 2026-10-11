@@ -23,17 +23,17 @@
 | `mobile:/ai/[id]` | mobile | production | `/ai/[id]` | `mobile:/ai` | id | 0 | 44 | 30 | runtime-partially-verified-expo-ai-conversation-readback |
 | `mobile:/chat` | mobile | production | `/chat` | `mobile:/` |  | 0 | 8 | 20 | runtime-partially-verified-expo-chat-empty-boundary |
 | `mobile:/chat/[id]` | mobile | production | `/chat/[id]` | `mobile:/chat` | id | 0 | 11 | 15 | runtime-partially-verified-expo-chat-missing-boundary |
-| `mobile:/contacts` | mobile | production | `/contacts` | `mobile:/` |  | 0 | 41 | 86 | runtime-partially-verified-expo-relationship-workbench-navigation |
-| `mobile:/contacts/[id]` | mobile | production | `/contacts/[id]` | `mobile:/contacts` | id | 0 | 53 | 71 | runtime-partially-verified-expo-contact-missing-boundary |
+| `mobile:/contacts` | mobile | production | `/contacts` | `mobile:/` |  | 0 | 41 | 87 | runtime-partially-verified-expo-relationship-workbench-navigation |
+| `mobile:/contacts/[id]` | mobile | production | `/contacts/[id]` | `mobile:/contacts` | id | 0 | 53 | 72 | runtime-partially-verified-expo-contact-missing-boundary |
 | `mobile:/contacts/all-actions` | mobile | production | `/contacts/all-actions` | `mobile:/contacts` |  | 0 | 10 | 4 | runtime-partially-verified-expo-empty-agent-ledger-boundary |
 | `mobile:/contacts/analysis/[dimension]/[bucketId]` | mobile | production | `/contacts/analysis/[dimension]/[bucketId]` | `mobile:/contacts` | dimension, bucketId | 0 | 6 | 1 | inventory-complete-runtime-verification-pending |
 | `mobile:/contacts/dashboard` | mobile | production | `/contacts/dashboard` | `mobile:/contacts` |  | 1 | 30 | 4 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
 | `mobile:/contacts/graph` | mobile | production | `/contacts/graph` | `mobile:/contacts` |  | 1 | 30 | 2 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
 | `mobile:/contacts/list` | mobile | production | `/contacts/list` | `mobile:/contacts` |  | 0 | 41 | 8 | runtime-partially-verified-expo-empty-contact-search-boundary |
-| `mobile:/contacts/new` | mobile | production | `/contacts/new` | `mobile:/contacts` |  | 0 | 12 | 15 | inventory-complete-runtime-verification-pending |
+| `mobile:/contacts/new` | mobile | production | `/contacts/new` | `mobile:/contacts` |  | 0 | 12 | 16 | inventory-complete-runtime-verification-pending |
 | `mobile:/contacts/new/drafts` | mobile | production | `/contacts/new/drafts` | `mobile:/contacts/new` |  | 0 | 20 | 6 | inventory-complete-runtime-verification-pending |
 | `mobile:/contacts/new/manual` | mobile | production | `/contacts/new/manual` | `mobile:/contacts/new` |  | 0 | 33 | 5 | inventory-complete-runtime-verification-pending |
-| `mobile:/contacts/new/scan` | mobile | production | `/contacts/new/scan` | `mobile:/contacts/new` |  | 0 | 35 | 8 | inventory-complete-runtime-verification-pending |
+| `mobile:/contacts/new/scan` | mobile | production | `/contacts/new/scan` | `mobile:/contacts/new` |  | 0 | 35 | 10 | inventory-complete-runtime-verification-pending |
 | `mobile:/contacts/new/scan/[batchId]` | mobile | production | `/contacts/new/scan/[batchId]` | `mobile:/contacts/new/scan` | batchId | 0 | 52 | 5 | inventory-complete-runtime-verification-pending |
 | `mobile:/contacts/pipeline` | mobile | production | `/contacts/pipeline` | `mobile:/contacts` |  | 0 | 13 | 9 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
 | `mobile:/dashboard` | mobile | production | `/dashboard` | `mobile:/` |  | 0 | 10 | 19 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
@@ -102,26 +102,26 @@
 | `mobile:/tasks/personal` | mobile | production | `/tasks/personal` | `mobile:/tasks` |  | 0 | 4 | 2 | inventory-complete-runtime-verification-pending |
 | `mobile:/tasks/relationship/[id]` | mobile | production | `/tasks/relationship/[id]` | `mobile:/tasks` | id | 0 | 8 | 5 | inventory-complete-runtime-verification-pending |
 | `mobile:/today` | mobile | production | `/today` | `mobile:/` |  | 0 | 0 | 25 | runtime-partially-verified-expo-empty-agent-ledger-boundary |
-| `web:/` | web | production | `/` | — |  | 0 | 27 | 1131 | runtime-partially-verified-browser-base-state |
-| `web:/app` | web | production | `/app` | `web:/` |  | 0 | 27 | 587 | runtime-partially-verified-browser-base-state |
+| `web:/` | web | production | `/` | — |  | 0 | 27 | 1144 | runtime-partially-verified-browser-base-state |
+| `web:/app` | web | production | `/app` | `web:/` |  | 0 | 27 | 593 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/forgot-password` | web | production | `/app/account/forgot-password` | `web:/app` |  | 1 | 36 | 7 | runtime-partially-verified-browser-base-state |
-| `web:/app/account/login` | web | production | `/app/account/login` | `web:/app` |  | 1 | 40 | 24 | runtime-partially-verified-browser-base-state |
+| `web:/app/account/login` | web | production | `/app/account/login` | `web:/app` |  | 1 | 40 | 27 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/mobile-google` | web | production | `/app/account/mobile-google` | `web:/app` |  | 0 | 2 | 2 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/reset-password` | web | production | `/app/account/reset-password` | `web:/app` |  | 1 | 36 | 5 | inventory-complete-runtime-verification-pending |
-| `web:/app/account/signup` | web | production | `/app/account/signup` | `web:/app` |  | 1 | 39 | 6 | runtime-partially-verified-browser-base-state |
-| `web:/app/admin` | web | production | `/app/admin` | `web:/app` |  | 0 | 5 | 13 | runtime-partially-verified-web-actor-scoped-admin-dashboard |
+| `web:/app/account/signup` | web | production | `/app/account/signup` | `web:/app` |  | 1 | 39 | 10 | runtime-partially-verified-browser-base-state |
+| `web:/app/admin` | web | production | `/app/admin` | `web:/app` |  | 0 | 5 | 15 | runtime-partially-verified-web-actor-scoped-admin-dashboard |
 | `web:/app/admin/access` | web | production | `/app/admin/access` | `web:/app/admin` |  | 0 | 1 | 3 | runtime-partially-verified-browser-base-state |
 | `web:/app/admin/events` | web | production | `/app/admin/events` | `web:/app/admin` |  | 0 | 5 | 4 | runtime-partially-verified-web-actor-scoped-admin-events |
 | `web:/app/admin/read-cost` | web | production | `/app/admin/read-cost` | `web:/app/admin` |  | 0 | 2 | 2 | inventory-complete-runtime-verification-pending |
 | `web:/app/agent` | web | production | `/app/agent` | `web:/app` |  | 3 | 120 | 81 | runtime-partially-verified-web-agent-session-actor-isolation |
 | `web:/app/agent/actions` | web | production | `/app/agent/actions` | `web:/app/agent` |  | 0 | 15 | 13 | inventory-complete-runtime-verification-pending |
-| `web:/app/contacts` | web | production | `/app/contacts` | `web:/app` |  | 3 | 67 | 129 | runtime-partially-verified-live-contact-list |
-| `web:/app/contacts/[id]` | web | production | `/app/contacts/[id]` | `web:/app/contacts` | id | 3 | 82 | 123 | runtime-partially-verified-live-contact-detail |
+| `web:/app/contacts` | web | production | `/app/contacts` | `web:/app` |  | 3 | 67 | 133 | runtime-partially-verified-live-contact-list |
+| `web:/app/contacts/[id]` | web | production | `/app/contacts/[id]` | `web:/app/contacts` | id | 3 | 82 | 126 | runtime-partially-verified-live-contact-detail |
 | `web:/app/contacts/analysis/[dimension]/[bucketId]` | web | production | `/app/contacts/analysis/[dimension]/[bucketId]` | `web:/app/contacts` | dimension, bucketId | 0 | 7 | 3 | inventory-complete-runtime-verification-pending |
 | `web:/app/contacts/dashboard` | web | production | `/app/contacts/dashboard` | `web:/app/contacts` |  | 3 | 101 | 22 | runtime-partially-verified-web-empty-relationship-dashboard |
-| `web:/app/contacts/new` | web | production | `/app/contacts/new` | `web:/app/contacts` |  | 2 | 113 | 20 | runtime-partially-verified-external-capability-restricted |
-| `web:/app/contacts/new/scan` | web | production | `/app/contacts/new/scan` | `web:/app/contacts/new` |  | 0 | 16 | 6 | inventory-complete-runtime-verification-pending |
-| `web:/app/contacts/new/scan/[batchId]` | web | production | `/app/contacts/new/scan/[batchId]` | `web:/app/contacts/new/scan` | batchId | 0 | 42 | 5 | inventory-complete-runtime-verification-pending |
+| `web:/app/contacts/new` | web | production | `/app/contacts/new` | `web:/app/contacts` |  | 5 | 146 | 24 | runtime-partially-verified-external-capability-restricted |
+| `web:/app/contacts/new/scan` | web | production | `/app/contacts/new/scan` | `web:/app/contacts/new` |  | 0 | 16 | 7 | inventory-complete-runtime-verification-pending |
+| `web:/app/contacts/new/scan/[batchId]` | web | production | `/app/contacts/new/scan/[batchId]` | `web:/app/contacts/new/scan` | batchId | 0 | 41 | 6 | inventory-complete-runtime-verification-pending |
 | `web:/app/contacts/pipeline` | web | production | `/app/contacts/pipeline` | `web:/app/contacts` |  | 2 | 48 | 9 | runtime-partially-verified-web-empty-read-only-pipeline |
 | `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 0 | 37 | 89 | inventory-complete-runtime-verification-pending |
 | `web:/app/events/[id]` | web | production | `/app/events/[id]` | `web:/app/events` | id | 2 | 136 | 85 | inventory-complete-runtime-verification-pending |
@@ -133,11 +133,10 @@
 | `web:/app/events/[id]/operations/experience` | web | production | `/app/events/[id]/operations/experience` | `web:/app/events/[id]/operations` | id | 0 | 25 | 1 | inventory-complete-runtime-verification-pending |
 | `web:/app/events/[id]/register` | web | production | `/app/events/[id]/register` | `web:/app/events/[id]` | id | 4 | 50 | 14 | runtime-partially-verified-live-event-registration |
 | `web:/app/events/center` | web | production | `/app/events/center` | `web:/app/events` |  | 0 | 6 | 2 | inventory-complete-runtime-verification-pending |
-| `web:/app/home` | web | production | `/app/home` | `web:/app` |  | 0 | 5 | 29 | inventory-complete-runtime-verification-pending |
+| `web:/app/home` | web | production | `/app/home` | `web:/app` |  | 0 | 5 | 32 | inventory-complete-runtime-verification-pending |
 | `web:/app/home/events` | web | production | `/app/home/events` | `web:/app/home` |  | 0 | 25 | 5 | runtime-partially-verified-web-home-events-filter-and-detail |
 | `web:/app/inbox` | web | production | `/app/inbox` | `web:/app` |  | 0 | 43 | 19 | inventory-complete-runtime-verification-pending |
 | `web:/app/inbox/sources/[id]` | web | production | `/app/inbox/sources/[id]` | `web:/app/inbox` | id | 0 | 1 | 4 | inventory-complete-runtime-verification-pending |
-| `web:/app/invitations/[token]` | web | production | `/app/invitations/[token]` | `web:/app` | token | 0 | 2 | 4 | inventory-complete-runtime-verification-pending |
 | `web:/app/login-admin` | web | production | `/app/login-admin` | `web:/app` |  | 0 | 1 | 5 | runtime-partially-verified-browser-base-state |
 | `web:/app/o/[slug]` | web | production | `/app/o/[slug]` | `web:/app` | slug | 0 | 25 | 7 | inventory-complete-runtime-verification-pending |
 | `web:/app/plans/[planId]/done` | web | production | `/app/plans/[planId]/done` | `web:/app` | planId | 0 | 19 | 1 | inventory-complete-runtime-verification-pending |
@@ -147,8 +146,8 @@
 | `web:/app/plans/flow/[intakeId]` | web | production | `/app/plans/flow/[intakeId]` | `web:/app` | intakeId | 2 | 75 | 4 | inventory-complete-runtime-verification-pending |
 | `web:/app/plans/legacy/[planId]` | web | production | `/app/plans/legacy/[planId]` | `web:/app` | planId | 0 | 8 | 2 | inventory-complete-runtime-verification-pending |
 | `web:/app/platform` | web | production | `/app/platform` | `web:/app` |  | 0 | 2 | 5 | runtime-partially-verified-web-platform-provider-role-boundary |
-| `web:/app/profile` | web | production | `/app/profile` | `web:/app` |  | 0 | 93 | 36 | runtime-partially-verified-web-profile-complete-lifecycle |
-| `web:/app/profile/continue` | web | production | `/app/profile/continue` | `web:/app/profile` |  | 0 | 0 | 8 | inventory-complete-runtime-verification-pending |
+| `web:/app/profile` | web | production | `/app/profile` | `web:/app` |  | 0 | 93 | 38 | runtime-partially-verified-web-profile-complete-lifecycle |
+| `web:/app/profile/continue` | web | production | `/app/profile/continue` | `web:/app/profile` |  | 0 | 0 | 9 | inventory-complete-runtime-verification-pending |
 | `web:/app/profile/onboarding` | web | production | `/app/profile/onboarding` | `web:/app/profile` |  | 1 | 95 | 8 | inventory-complete-runtime-verification-pending |
 | `web:/app/register` | web | production | `/app/register` | `web:/app` |  | 0 | 2 | 5 | runtime-partially-verified-browser-base-state |
 | `web:/app/settings` | web | production | `/app/settings` | `web:/app` |  | 0 | 93 | 15 | runtime-partially-verified-web-settings-actor-scoped-lifecycle |
@@ -165,6 +164,8 @@
 | `web:/dev/foundation/style` | web | development | `/dev/foundation/style` | `web:/` |  | 0 | 8 | 3 | runtime-partially-verified-browser-base-state |
 | `web:/dev/knowledge` | web | development | `/dev/knowledge` | `web:/` |  | 0 | 22 | 4 | runtime-partially-verified-browser-base-state |
 | `web:/dev/orbit-ai/trace` | web | development | `/dev/orbit-ai/trace` | `web:/` |  | 0 | 13 | 4 | runtime-partially-verified-browser-base-state |
+| `web:/i` | web | production | `/i` | `web:/` |  | 0 | 5 | 486 | inventory-complete-runtime-verification-pending |
+| `web:/i/[code]` | web | production | `/i/[code]` | `web:/i` | code | 0 | 33 | 11 | inventory-complete-runtime-verification-pending |
 
 ## 弹层实现
 
@@ -220,7 +221,9 @@
 | `repos/orbits/app/(app)/app/events/events-0918/event-register-modal.tsx:111` | dialog | {title} {eventName} × {<div className="ev-reg-leave" data-events-register-leave role="alertdialog" aria-live="assertive"> <span className="ev-reg-leave-copy">{language === "en" ? "Leaving now discards your unsubmitted registration." : "离开将丢失未提交的报名内容"}</span> <span className="ev-reg-leave-actions"> <button autoFocus className="btn ev-reg-leave-stay" data-events-register-leave-action="stay" onClick={() => setConfirmLeave(false)} type="button">{language === "en" ? "Keep editing" : "继续填写"}</button> <button className="btn ev-reg-leave-go" data-events-register-leave-action="leave" onClick={leave} type="button">{language === "en" ? "Leave" : "离开"}</button> </span> </div>} / {null} {children} | `repos/orbits/app/(app)/app/events/events-0918/event-register-modal.tsx:111` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/events/events-0918/event-register-modal.tsx:120` | alertdialog | Leaving now discards your unsubmitted registration. / 离开将丢失未提交的报名内容 Keep editing / 继续填写 Leave / 离开 | `repos/orbits/app/(app)/app/events/events-0918/event-register-modal.tsx:120` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/events/ops-0918/ops-roles-drawer.tsx:195` | dialog | ⚇ 协作者管理 仅管理当前活动的协作者权限。 ✕ {<div className="op-note op-note-error op-dw-note" role="alert"> <span>{error}</span> <button className="btn op-dw-cancel op-dw-reload" data-event-role-reload disabled={disabled \|\| loading} onClick={() => void load()} type="button"> {loading ? "正在刷新…" : "刷新角色"} </button> </div>} / {null} 当前协作者（ {total} ） {<span className="op-dw-hint" role="status">正在读取当前角色…</span>} / {null} {renderRow(owner)} / {null} {delegatedMembers.map(renderRow)} {<span className="op-dw-hint">除活动负责人外，尚无协作者。</span>} / {null} 添加协作者 参与者 {<select className="op-dw-input" data-event-role-participant-picker disabled={disabled} onChange={(input) => { if (input.target.value === MANUAL_SUBJECT) { setManualSubject(true); setNewSubjectActorId(""); return; } setManualSubject(false); setNewSubjectActorId(input.target.value); }} value={manualSubject ? MANUAL_SUBJECT : participantLabelByActorId.has(newSubjectActorId) ? newSubjectActorId : ""} > <option value="">请选择参与者</option> {participantOptions.map((option) => <option key={option.actorId} value={option.actorId}>{option.label}</option>)} <option value={MANUAL_SUBJECT}>其他账号 ID…</option> </select>} / {null} {<input className="op-dw-input" data-event-role-subject="new" disabled={disabled} onChange={(input) => setNewSubjectActorId(input.target.value)} placeholder={participantOptions ? "请输入准确的账号 ID（可为活动之外的人员）" : "请输入参与者 actor ID"} value={newSubjectActorId} />} / {null} 角色 {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)} 理由 正在保存… / 添加协作者 ⓘ 权限仅对当前活动生效。 | `repos/orbits/app/(app)/app/events/ops-0918/ops-roles-drawer.tsx:195` | not-runtime-verified |
-| `repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx:74` | Drawer | t(m.drawerTitle) | `repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx:74` | not-runtime-verified |
+| `repos/orbits/app/(app)/app/orbit-2026/add/invite/InviteCodeModal.tsx:151` | Modal | t(c.title) | `repos/orbits/app/(app)/app/orbit-2026/add/invite/InviteCodeModal.tsx:151` | not-runtime-verified |
+| `repos/orbits/app/(app)/app/orbit-2026/add/invite/InviteCodeModal.tsx:216` | Modal | t(c.qrTitle) | `repos/orbits/app/(app)/app/orbit-2026/add/invite/InviteCodeModal.tsx:216` | not-runtime-verified |
+| `repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx:220` | Drawer | t(m.drawerTitle) | `repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx:220` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/orbit-2026/plan/BackgroundBlocks.tsx:319` | Modal | t(planFlowCopy.addMemberTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/BackgroundBlocks.tsx:319` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx:183` | Modal | t(r.editTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx:183` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx:241` | Modal | t(r.achieveTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx:241` | not-runtime-verified |
@@ -234,7 +237,7 @@
 | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx:192` | Drawer | t(c.proposalTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx:192` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx:74` | Modal | t(c.recordTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx:74` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/orbit-2026/ui/Overlay.tsx:102` | alertdialog | {<span className={`${styles.dialogIcon} ${destructive ? styles.dialogIconDanger : ""}`}><Icon name={icon ?? "trash"} size={24} /></span>} / {null} {title} {<p id={`${id}-desc`} className={styles.modalText}>{message}</p>} / {null} | `repos/orbits/app/(app)/app/orbit-2026/ui/Overlay.tsx:102` | not-runtime-verified |
-| `repos/orbits/app/(app)/app/orbit-2026/ui/Overlay.tsx:211` | dialog | label | `repos/orbits/app/(app)/app/orbit-2026/ui/Overlay.tsx:211` | not-runtime-verified |
+| `repos/orbits/app/(app)/app/orbit-2026/ui/Overlay.tsx:213` | dialog | label | `repos/orbits/app/(app)/app/orbit-2026/ui/Overlay.tsx:213` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/tasks/personal-schedule-association-sheet.tsx:37` | dialog | kind === "note" ? "关联笔记窗" : "关联人脉窗" | `repos/orbits/app/(app)/app/tasks/personal-schedule-association-sheet.tsx:37` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/tasks/personal-schedule-date-time-picker.tsx:29` | dialog | kind === "date" ? "日期" : "时间" | `repos/orbits/app/(app)/app/tasks/personal-schedule-date-time-picker.tsx:29` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx:95` | system-confirmation | 有未保存的修改，确认放弃？ | `repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx:95` | not-runtime-verified |
