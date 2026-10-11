@@ -9,7 +9,7 @@ import { eventRecommendationDismissInputSchema, eventRecommendationDismissResult
 import { homeLayoutSchema, homeLayoutUpdateInputSchema } from "../../shared/api-schema/home-layout";
 import {
   inviteCodeCreateInputSchema, inviteCodeHistoryResponseSchema, inviteCodePreviewSchema, inviteCodeRedeemInputSchema, inviteCodeRedeemResultSchema, inviteCodeSchema,
-  inviteConnectionViewSchema, inviteShareUpdateInputSchema, inviteUnlinkInputSchema, inviteUnlinkResultSchema,
+  inviteConnectionViewSchema, inviteMergeInputSchema, inviteShareUpdateInputSchema, inviteUnlinkInputSchema, inviteUnlinkResultSchema,
 } from "../../shared/api-schema/invite-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { redesignMock, type InviteFailure } from "./mock-service";
@@ -84,6 +84,15 @@ export const unlinkInviteConnection = redesignContractRoute("invite-codes", invi
   const result = redesignMock.unlinkInvite(params.contactId ?? "", body.value);
   return result ? { data: result } : notFound();
 });
+// R15 复核 S1：可能是同一人的建议——我确认统合 / 不是同一人。
+const resolveMerge = (action: "merge" | "dismiss") => redesignContractRoute("invite-codes", inviteConnectionViewSchema, async (request, params) => {
+  const body = await readBody(request, inviteMergeInputSchema);
+  if (body.ok === false) return body.reply;
+  const updated = redesignMock.resolveInviteMerge(params.contactId ?? "", body.value, action);
+  return updated ? { data: updated } : notFound();
+});
+export const mergeInviteConnection = resolveMerge("merge");
+export const dismissInviteMerge = resolveMerge("dismiss");
 
 // 8 event assessment
 export const listAssessments = redesignContractRoute("event-assessment", z.array(eventAssessmentSchema), () => ({ data: redesignMock.assessments() }));

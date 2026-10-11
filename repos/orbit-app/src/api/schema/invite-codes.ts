@@ -2,7 +2,7 @@ import { z } from "zod";
 import { knownValues, readableItems, tolerantEnum } from "./tolerant";
 import type {
   InviteCodeContract, InviteCodeCreateInput, InviteCodeHistoryItem, InviteCodeHistoryResponse, InviteCodePreview, InviteCodeRedeemInput, InviteCodeRedeemResult,
-  InviteConnectionView, InviteSharedFieldKey, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult,
+  InviteConnectionView, InviteMergeInput, InviteMergeMatchReason, InviteSharedFieldKey, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult,
 } from "../contract/invite-codes";
 
 // R08 contract 4 (owner 甲 / R15). Responses tolerant, request bodies strict (see home-layout.ts).
@@ -54,7 +54,11 @@ export const inviteCodeRedeemInputObject = z.object({ idempotencyKey, sharedKeys
 export const inviteCodeRedeemInputSchema = inviteCodeRedeemInputObject as z.ZodType<InviteCodeRedeemInput>;
 
 const datetime = z.string().datetime({ offset: true });
-const historyJoined = z.object({ contactId: z.string().min(1), displayName: z.string().min(1), joinedAt: datetime });
+// R15 复核 S1：可能是同一人的建议（依据未知值跳过；整条读不出时当作没有建议）。
+export const INVITE_MERGE_MATCH_REASON_VALUES = ["email", "phone", "name_organization"] as const satisfies readonly InviteMergeMatchReason[];
+export const inviteMergeSuggestionObject = z.object({ contactId: z.string().min(1), displayName: z.string().min(1), matchedOn: knownValues(INVITE_MERGE_MATCH_REASON_VALUES) });
+const mergeSuggestion = inviteMergeSuggestionObject.optional().catch(undefined);
+const historyJoined = z.object({ contactId: z.string().min(1), displayName: z.string().min(1), joinedAt: datetime, mergeSuggestion });
 // 未知状态按 expired 读；一个加入的人读不出不影响其余。
 export const inviteCodeHistoryItemObject = z.object({
   code,
@@ -79,6 +83,7 @@ export const inviteConnectionViewObject = z.object({
   sharedByPeer: knownValues(INVITE_SHARED_FIELD_KEY_VALUES),
   pausedFields: knownValues(INVITE_SHARED_FIELD_KEY_VALUES),
   sample: z.literal(true).optional(),
+  mergeSuggestion,
 });
 export const inviteConnectionViewSchema = inviteConnectionViewObject as unknown as z.ZodType<InviteConnectionView>;
 
@@ -88,3 +93,6 @@ export const inviteUnlinkInputObject = z.object({ keepAsContact: z.boolean(), id
 export const inviteUnlinkInputSchema = inviteUnlinkInputObject as z.ZodType<InviteUnlinkInput>;
 export const inviteUnlinkResultObject = z.object({ outcome: tolerantEnum(["unlinked"], "unlinked"), keptContactId: z.string().min(1).optional() });
 export const inviteUnlinkResultSchema = inviteUnlinkResultObject as z.ZodType<InviteUnlinkResult>;
+// R15 复核 S1：确认统合 / 不是同一人。
+export const inviteMergeInputObject = z.object({ idempotencyKey }).strict();
+export const inviteMergeInputSchema = inviteMergeInputObject as z.ZodType<InviteMergeInput>;

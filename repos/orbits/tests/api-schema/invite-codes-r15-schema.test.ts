@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   inviteCodeCreateInputSchema, inviteCodeHistoryItemSchema, inviteCodeHistoryResponseSchema, inviteCodePreviewSchema, inviteCodeRedeemInputSchema,
-  inviteCodeRedeemResultSchema, inviteConnectionViewSchema, inviteShareUpdateInputSchema, inviteUnlinkInputSchema, inviteUnlinkResultSchema,
+  inviteCodeRedeemResultSchema, inviteConnectionViewSchema, inviteMergeInputSchema, inviteShareUpdateInputSchema, inviteUnlinkInputSchema, inviteUnlinkResultSchema,
 } from "../../shared/api-schema/invite-codes";
 
 // R15（DESIGN §4.2，契约规则 10）：响应宽进（未知状态兜底、未知键跳过、读不出的条目跳过），请求严格。
@@ -43,6 +43,18 @@ test("history: unknown status → expired; an unreadable item or joined person i
 test("connection view: unknown field keys are skipped", () => {
   const view = inviteConnectionViewSchema.parse({ ...connection, sharedByMe: ["organization", "birthday"], pausedFields: ["phone", "avatar"] });
   assert.deepEqual([view.sharedByMe, view.pausedFields], [["organization"], ["phone"]]);
+});
+
+test("R15 review S1: merge suggestion on the connection view and on a joined person is optional and tolerant", () => {
+  const suggestion = { contactId: "card-1", displayName: "田中 太郎", matchedOn: ["email", "fingerprint"] };
+  assert.deepEqual(inviteConnectionViewSchema.parse({ ...connection, mergeSuggestion: suggestion }).mergeSuggestion, { ...suggestion, matchedOn: ["email"] }, "unknown reasons are skipped");
+  assert.equal(inviteConnectionViewSchema.parse(connection).mergeSuggestion, undefined, "an R15 view without it still reads");
+  assert.equal(inviteConnectionViewSchema.parse({ ...connection, mergeSuggestion: { contactId: "" } }).mergeSuggestion, undefined, "an unreadable suggestion reads as none");
+  const read = inviteCodeHistoryItemSchema.parse({ ...history, joined: [{ contactId: "c-1", displayName: "高橋", joinedAt: "2026-10-08T10:00:00+09:00", mergeSuggestion: suggestion }] });
+  assert.equal(read.joined[0].mergeSuggestion?.contactId, "card-1");
+  assert.equal(inviteMergeInputSchema.safeParse({ idempotencyKey: "k" }).success, true);
+  assert.equal(inviteMergeInputSchema.safeParse({ idempotencyKey: "k", contactId: "x" }).success, false, "strict");
+  assert.equal(inviteMergeInputSchema.safeParse({}).success, false);
 });
 
 test("unlink result: an unknown outcome still reads as unlinked", () => {

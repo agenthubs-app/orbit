@@ -240,6 +240,31 @@ test("R15 mock: already connected from the start; unlink keeps or removes; after
   redesignMock.reset();
 });
 
+test("R15 review S1 mock: a merge suggestion is only resolved by the owner — merge moves the link to the existing card, dismiss just drops it", async () => {
+  redesignMock.reset();
+  await withMode("mock", async () => {
+    const view = async (contactId: string) => call({ file: "invite-codes/connections/[contactId]", method: "GET", params: { contactId } });
+    const resolve = (action: "merge" | "merge/dismiss", contactId: string, idempotencyKey: string) =>
+      call({ file: `invite-codes/connections/[contactId]/${action}`, method: "POST", params: { contactId }, body: { idempotencyKey } });
+    const suggestion = { contactId: "demo-person-watanabe", displayName: "渡辺", matchedOn: ["name_organization" as const] };
+    redesignMock.setInviteMergeSuggestion("demo-person-takahashi", suggestion);
+    assert.deepEqual((await (await view("demo-person-takahashi")).json()).data.mergeSuggestion, suggestion);
+    const merged = await (await resolve("merge", "demo-person-takahashi", "m-1")).json();
+    assert.equal(merged.data.contactId, "demo-person-watanabe");
+    assert.equal(merged.data.mergeSuggestion, undefined);
+    assert.deepEqual((await (await resolve("merge", "demo-person-takahashi", "m-1")).json()).data, merged.data, "a retry gives the first answer");
+    assert.equal((await view("demo-person-takahashi")).status, 404);
+    assert.equal((await resolve("merge", "demo-person-watanabe", "m-2")).status, 404, "nothing left to merge");
+    redesignMock.setInviteMergeSuggestion("demo-person-watanabe", suggestion);
+    const dismissed = await (await resolve("merge/dismiss", "demo-person-watanabe", "d-1")).json();
+    assert.deepEqual([dismissed.data.contactId, dismissed.data.mergeSuggestion], ["demo-person-watanabe", undefined]);
+    assert.equal((await resolve("merge/dismiss", "demo-person-watanabe", "d-2")).status, 200, "dismissing again is harmless");
+    assert.equal((await resolve("merge/dismiss", "demo-person-okada", "d-3")).status, 404, "not an invite connection");
+    assert.equal((await call({ file: "invite-codes/connections/[contactId]/merge", method: "POST", params: { contactId: "demo-person-watanabe" }, body: {} })).status, 400, "the key is required");
+  });
+  redesignMock.reset();
+});
+
 test("R15 mock: own code is 409 OWN_CODE; unknown, bad format, revoked and superseded are one 404 INVITE_UNAVAILABLE", async () => {
   redesignMock.reset();
   await withMode("mock", async () => {

@@ -90,6 +90,8 @@ export interface InviteCodeHistoryJoined {
   contactId: string;
   displayName: string;
   joinedAt: string;
+  /** R15 复核 S1 追加：这个人可能与我人脈里已有的某人是同一人（由我确认后才统合）。 */
+  mergeSuggestion?: InviteMergeSuggestion;
 }
 
 export interface InviteCodeHistoryItem {
@@ -121,6 +123,8 @@ export interface InviteConnectionView {
   /** 我自己改过、因此停止同步的字段。 */
   pausedFields: InviteSharedFieldKey[];
   sample?: true;
+  /** R15 复核 S1 追加：招待新建的这条可能与我人脈里已有的某人是同一人（我确认后才统合，见 merge / dismiss）。 */
+  mergeSuggestion?: InviteMergeSuggestion;
 }
 
 /** PUT /api/invite-codes/connections/[contactId]/share：改我共享给对方的项目（下一轮同步生效）。 */
@@ -139,4 +143,25 @@ export interface InviteUnlinkInput {
 export interface InviteUnlinkResult {
   outcome: "unlinked";
   keptContactId?: string;
+}
+
+// ── R15 复核 S1（2026-10-11）：兑换不再自动统合进已有联系人（对方的资料是自报的，未经验证）。
+// 兑换总是新建一条「本人入力」；若我人脈里已有可能是同一人的联系人，只在连接上记一条建议，由我确认后才统合。
+
+/** 判断「可能是同一人」的依据（读取端未知值跳过）。 */
+export type InviteMergeMatchReason = "email" | "phone" | "name_organization";
+
+/** 可能是同一人的、我人脈里已有的那条联系人（名字是我自己存的，不是对方报的）。 */
+export interface InviteMergeSuggestion {
+  contactId: string;
+  displayName: string;
+  matchedOn: InviteMergeMatchReason[];
+}
+
+/**
+ * POST /api/invite-codes/connections/[contactId]/merge（我确认是同一人：统合进已有那条；已有的值只补空、不同的不覆盖）
+ * 与 …/merge/dismiss（不是同一人：去掉建议）。`contactId` 是招待新建的那条。响应都是 `InviteConnectionView`（统合后 contactId 变成已有那条）。
+ */
+export interface InviteMergeInput {
+  idempotencyKey: string;
 }

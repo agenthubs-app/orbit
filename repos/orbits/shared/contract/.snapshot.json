@@ -6297,6 +6297,11 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "mergeSuggestion": {
+          "optional": true,
+          "kind": "text",
+          "type": "InviteMergeSuggestion"
         }
       }
     },
@@ -6398,6 +6403,11 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "mergeSuggestion": {
+          "optional": true,
+          "kind": "text",
+          "type": "InviteMergeSuggestion"
         }
       }
     },
@@ -6441,6 +6451,44 @@
         },
         "keptContactId": {
           "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "invite-codes.ts::InviteMergeMatchReason": {
+      "kind": "enum",
+      "values": [
+        "'email'",
+        "'name_organization'",
+        "'phone'"
+      ]
+    },
+    "invite-codes.ts::InviteMergeSuggestion": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "displayName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "matchedOn": {
+          "optional": false,
+          "kind": "text",
+          "type": "InviteMergeMatchReason[]"
+        }
+      }
+    },
+    "invite-codes.ts::InviteMergeInput": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
           "kind": "text",
           "type": "string"
         }

@@ -9,7 +9,7 @@ import type { EventRecommendationDismissReason, EventRecommendationDismissResult
 import type { HomeLayoutContract, HomeLayoutUpdateInput } from "../../shared/contract/home-layout";
 import type {
   InviteCodeContract, InviteCodeCreateInput, InviteCodeFailureReason, InviteCodeHistoryItem, InviteCodeHistoryJoined, InviteCodePreview, InviteCodeRedeemInput,
-  InviteCodeRedeemResult, InviteConnectionView, InviteSharedFieldKey, InviteSharedFields, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult,
+  InviteCodeRedeemResult, InviteConnectionView, InviteMergeInput, InviteSharedFieldKey, InviteSharedFields, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult,
 } from "../../shared/contract/invite-codes";
 import { formatInviteCode, INVITE_CODE_ALPHABET, INVITE_DEFAULT_SHARED_KEYS, normalizeInviteCode } from "../../shared/compute/invite-code-format";
 import { DEMO_EVENTS } from "../../shared/mock/demo-world";
@@ -96,6 +96,7 @@ function freshInviteState() {
     redeems: new Map<string, { code: string; result: InviteCodeRedeemResult | InviteFailure }>(),
     shares: new Map<string, InviteConnectionView>(),
     unlinks: new Map<string, InviteUnlinkResult>(),
+    merges: new Map<string, InviteConnectionView>(),
   };
 }
 
@@ -232,6 +233,29 @@ export const redesignMock = {
     const result: InviteUnlinkResult = { outcome: "unlinked", ...(input.keepAsContact ? { keptContactId: contactId } : {}) };
     state.invite.unlinks.set(input.idempotencyKey, result);
     return result;
+  },
+  /**
+   * R15 复核 S1：我确认「同じ人」→ 统合进建议里已有的那条（连接改挂到那条上，建议消失）；`dismiss` = 「別の人」只去掉建议。
+   * 不是招待连接 → null（404）；统合时没有建议 → null（404）。同一个键重放第一次的答案。
+   */
+  resolveInviteMerge(contactId: string, input: InviteMergeInput, action: "merge" | "dismiss"): InviteConnectionView | null {
+    const replay = state.invite.merges.get(`${action}:${input.idempotencyKey}`);
+    if (replay) return replay;
+    const found = state.invite.connections.get(contactId);
+    if (!found) return null;
+    // 「別の人」没有建议时原样返回（与 live 一样幂等）；统合没有建议 = 没东西可统合。
+    if (!found.mergeSuggestion) return action === "dismiss" ? found : null;
+    const { mergeSuggestion, ...rest } = found;
+    const next: InviteConnectionView = action === "merge" ? { ...rest, contactId: mergeSuggestion.contactId } : rest;
+    state.invite.connections.delete(contactId);
+    state.invite.connections.set(next.contactId, next);
+    state.invite.merges.set(`${action}:${input.idempotencyKey}`, next);
+    return next;
+  },
+  /** Tests only: put a merge suggestion on a connection. */
+  setInviteMergeSuggestion(contactId: string, suggestion: InviteConnectionView["mergeSuggestion"]) {
+    const found = state.invite.connections.get(contactId);
+    if (found) state.invite.connections.set(contactId, { ...found, mergeSuggestion: suggestion });
   },
   /** Tests only: the mock clock (null = the demo world's now). */
   setInviteClock(iso: string | null) { state.invite.clock = iso; },
