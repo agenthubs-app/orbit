@@ -138,7 +138,7 @@
   [data-theme="dark"] .ctx { background: rgba(48,44,56,.78); color: #f1edf5; }
   .ctx div { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; font-size: 15px; }
   .ctx div + div { border-top: .5px solid rgba(120,100,150,.25); }
-  .ctx .del { color: var(--coral); }
+  .ctx .del { color: var(--coral-text); }
   .wcfg { position: absolute; left: 24px; right: 24px; z-index: 10; border-radius: 26px; padding: 16px; background: rgba(250,248,252,.8); backdrop-filter: blur(30px) saturate(1.6); -webkit-backdrop-filter: blur(30px) saturate(1.6); color: #2a2433; }
   [data-theme="dark"] .wcfg { background: rgba(44,40,52,.8); color: #f1edf5; }
   .wcfg .grp { background: rgba(255,255,255,.6); border-radius: 14px; overflow: hidden; margin-top: 6px; }
@@ -380,7 +380,7 @@ const V2 = (() => {
   const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
     return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
       <div class="v22mey ${o.mcls || ''}">${ic('flag', 'sm')}<div class="mt"><small>完了の目安</small>${MEY[n]}</div>${S ? `<span class="chip ${S[1]}">${S[0]}</span>` : ''}</div>
-      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">高橋 美咲さん（青葉ベンチャーズ）とは、DD に進みましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
+      ${S && n === 3 ? `<div class="confirm-card in-row ${o.okcls || ''}" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">「${t}」は完了しましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
       ${ch.length ? `<div class="chips">${ch.map(k => tchip(k)).join('')}</div>` : '<div class="lbl" style="margin-top:8px">新しく会う人はいません · Step 3・4 の相手と着地させます</div>'}</div>`; };
   /* 人物タイプ卡：上 = 短名 · Step，名称 = 「役割 × 状況」一句（不截断），三格 = 人脈の候補 / 会える活動 / 紹介ルート */
   const tcard = (k, s, o = {}) => { const p = PER[k], r = pts(k, ST[s][k]);
@@ -1428,7 +1428,7 @@ const nfc2 = () => topbar('名刺を交換', 'CFO Night Tokyo vol.18', `<button 
 const undoBar = `<div class="toast keep info pos notab"><span class="tk"><span class="lic sm i-undo"></span></span><span class="tmsg">24時間以内なら取り消せます<small>相手の人脈からも削除 · 10/8 19:42 まで</small></span><button class="undo">取り消す</button></div>`;
 const nfc3 = () => wallPhone(`<div class="lock"><div class="date">10月7日 水曜日</div><div class="time">19:42</div></div>
   <div class="pn notif" style="top:330px"><span class="emo sm" style="background:var(--ink);color:var(--bg);font-weight:900">O</span><div style="flex:1"><div class="row between"><b>Orbit</b><span style="opacity:.55">今</span></div><div style="margin-top:2px"><b>佐藤 健一さん</b>（株式会社ミナトリンク）とつながりました。</div><div style="opacity:.65;margin-top:2px">CFO Night Tokyo vol.18 · 24時間以内なら取り消せます</div></div></div>
-  <div class="nacts" style="top:452px"><div>名刺を見る${ic('user', 'sm')}</div><div>メモを追加${ic('pen', 'sm')}</div><div style="color:var(--coral)">つながりを取り消す${ic('x', 'sm')}</div></div>`, '', pin(1, '.notif') + pin(2, '.nacts div', 2));
+  <div class="nacts" style="top:452px"><div>名刺を見る${ic('user', 'sm')}</div><div>メモを追加${ic('pen', 'sm')}</div><div style="color:var(--coral-text)">つながりを取り消す${ic('x', 'sm')}</div></div>`, '', pin(1, '.notif') + pin(2, '.nacts div', 2));
 const nfc4 = () => phone({ tab: -1, body: nfc2(), overlay: `<div class="sheet-scrim"></div><div class="sheet actsheet"><div class="grab"></div><div style="text-align:center"><span class="emo" style="display:inline-grid;background:var(--coral-soft);color:var(--coral)"><span class="lic i-undo"></span></span><div style="font-size:18px;font-weight:800;margin-top:10px">つながりを取り消しますか？</div><div class="sub" style="margin-top:6px;line-height:1.7">森田さんの名刺はあなたの人脈から、<br>あなたの名刺は森田さんの人脈から削除されます。<br>相手には「交換が取り消されました」とだけ通知されます。</div></div>
     <div class="lbl" style="text-align:center;margin-top:10px">取り消せる期限：10月8日（木）19:42 まで</div>
     <button class="btn danger block" style="margin-top:14px">取り消す</button><button class="btn block">このままにする</button></div>`, pins: pin(1, '.sheet .btn') });
@@ -1581,8 +1581,8 @@ h += boards([
 ]);
 
 h += sec('D · Web 响应式', '1024：左栏收为图标（悬停出 tooltip），右栏收成标题区「次の一手」按钮 → 右侧抽屉；390 手机浏览器：底部胶囊导航（与 App 同构）+ Safari 底栏');
-h += board('ホーム · 1024', 'many', w1024(0, rHome1024(), '<span class="side-tip" style="top:144px">人脈</span>', pin(1, '.side-tip') + pin(2, '.rail-btn') + pin(3, '.k-hw-net .hw-ppl') + pin(4, '.k-hw-todo .ck')).replace(/(<aside class="side">[\s\S]*?<\/a>[\s\S]*?)<a class="">/, '$1<a class="hov">'), ['左栏只留图标（ホーム / 人脈 / iOrbit / イベント / Task / 受信箱），悬停出黑色 tooltip；1280 以下进入此布局', '右栏「次の一手」收成按钮（带计数），点击 → 右侧抽屉（下一张）', '首页组件网格与 1440 同构（web.html ホーム NAV-V3）：人脈组件只显示头像 / 姓名 / 公司', '今日やること / プラン スコア / 次のイベント / 秘書から 与 1440 同一组件；宽度不足时 小组件 自动换行'], 1024);
-h += board('ホーム · 1024 抽屉展开', '弹层', w1024(0, rHome1024(), `<div class="overlay"></div><div class="drawer rdrawer">${assist}</div>`, pin(1, '.rdrawer')), ['380px 抽屉从右滑入、背景暗化；Esc / 点遮罩关闭；内容与 1440 右栏完全一致'], 1024);
+h += board('ホーム · 1024', '部分作废 · Q2（「次の一手」按钮位置以 b12 N07 为准）', w1024(0, rHome1024(), '<span class="side-tip" style="top:144px">人脈</span>', pin(1, '.side-tip') + pin(2, '.rail-btn') + pin(3, '.k-hw-net .hw-ppl') + pin(4, '.k-hw-todo .ck')).replace(/(<aside class="side">[\s\S]*?<\/a>[\s\S]*?)<a class="">/, '$1<a class="hov">'), ['左栏只留图标（ホーム / 人脈 / iOrbit / イベント / Task / 受信箱），悬停出黑色 tooltip；1280 以下进入此布局', '右栏「次の一手」收成按钮（带计数），点击 → 右侧抽屉（下一张）', '首页组件网格与 1440 同构（web.html ホーム NAV-V3）：人脈组件只显示头像 / 姓名 / 公司', '今日やること / プラン スコア / 次のイベント / 秘書から 与 1440 同一组件；宽度不足时 小组件 自动换行'], 1024);
+h += board('ホーム · 1024 抽屉展开', '作废 · Q2（以 b12 N07b 为准）', w1024(0, rHome1024(), `<div class="overlay"></div><div class="drawer rdrawer">${assist}</div>`, pin(1, '.rdrawer')), ['380px 抽屉从右滑入、背景暗化；Esc / 点遮罩关闭；内容与 1440 右栏完全一致'], 1024);
 h += board('人脈 · 1024', 'many', w1024(1, rNet1024(), '', pin(1, '.k-wtable') + pin(2, '.k-wcats') + pin(3, '.k-waddbtn')), ['与 web.html 人脈 同构（濃さ三点 + 出どころ chip）；表格去掉「最終接点」列；点行 → 520px 抽屉（1440 为 600px，见 ⑧ 断点规范）', '分类页签：すべて / 情報が少ない人 / 目標に関係 / 要フォロー（与 1440、App 同一组）', '「人脈を追加」→ 5 门弹窗（与 1440 相同）；右栏「今日の 1問」收进「次の一手」抽屉'], 1024);
 h += boards([
   board('ホーム · 390 手机浏览器', 'many', mweb(mHome(), 0, pin(1, '.tabbar') + pin(2, '.mw-head .rbtn') + pin(3, '.k-hw-todo')), ['底部胶囊导航与 App 同构（NAV-V3 5 项：ホーム / 人脈 / iOrbit / イベント / Task，无「＋追加」），抬高到 Safari 底栏之上；滚动时 Safari 栏收起、胶囊跟随下移', '受信箱进顶部圆钮（iOrbit 已在底栏；App 由首页 🔔 进入受信箱）', '正文与 App ホーム 完全同构：组件容器（今日やること · プラン スコア · 次のイベント · 人脈 · 秘書から）']),
