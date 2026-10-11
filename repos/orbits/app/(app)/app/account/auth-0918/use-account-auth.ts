@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { normalizeOrbitAuthReturnPath } from "../../../../../features/auth/app-auth-routing";
+import { isInviteCodePath } from "../../../../../shared/compute/invite-code-format";
 import {
   normalizeProfileAuthReturnPath,
   profileContinuationPath,
@@ -27,6 +28,8 @@ import { AUTH_ERROR_COPY } from "./auth-model";
 // `isSignup` / `isForgot` 仍是 hook 内部分支常量（live-route 源码正则按它们切片）。
 
 export function productHref(prototypeHref: string) {
+  // R15：招待页 `/i/<码>` 在 /app 之外（注册 / 登录后从这里回去），原样返回。
+  if (isInviteCodePath(prototypeHref)) return prototypeHref;
   if (prototypeHref === "/") return "/app";
   if (prototypeHref.startsWith("/app")) return prototypeHref;
   if (prototypeHref.startsWith("/account/")) return `/app${prototypeHref}`;

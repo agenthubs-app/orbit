@@ -1,0 +1,293 @@
+/**
+ * R15 SC-R15-01 / 02 / 03 / 05（服务层，内存 + 真实 PostgreSQL 各一套）：发码替换旧码、幂等、只认共享键；
+ * 过期 / 作废 / 被替换 / 满员；并发兑换不超过上限；already_connected 不占用量；自己的码；双向建联系人且值来自资料；
+ * 两个方向的统合（以对方为准、旧值进历史）；连接行；通知邀请人一条；双方入队计划候补；解除后再连；他人隔离。
+ */
+import assert from "node:assert/strict";
+import test from "node:test";
+
+type TestOptions = { skip?: string | boolean };
+
+import { InviteCodeError } from "../../features/invite-codes/contract";
+import { createInviteCodeService, type InviteConnectedNotice } from "../../features/invite-codes/service";
+import { migrateConfiguredTestDatabase } from "../support/migrated-configured-database";
+import {
+  ALICE, BOB, CAROL, databaseTest, INVITE_WS, memoryHarness, profile, seedContact, withInviteDatabase,
+  type InviteHarness, type PlanMatchCall,
+} from "../support/invite-codes-harness";
+
+test.before(async () => {
+  if (!databaseTest.skip) await migrateConfiguredTestDatabase();
+});
+
+const DAY = 24 * 60 * 60 * 1000;
+const START = Date.parse("2026-10-11T03:00:00.000Z");
+
+function setup(harness: InviteHarness, options: { generateCode?: () => string } = {}) {
+  let clock = START;
+  const notices: InviteConnectedNotice[] = [];
+  const service = createInviteCodeService({
+    linkOrigin: "https://orbit.example",
+    log: () => undefined,
+    notifier: { connected: async (notice) => void notices.push(notice) },
+    now: () => new Date(clock),
+    storage: harness.storage,
+    ...(options.generateCode ? { generateCode: options.generateCode } : {}),
+  });
+  return { advance: (ms: number) => void (clock += ms), notices, service };
+}
+
+async function contact(harness: InviteHarness, id: string) {
+  return harness.contacts.getRecord({ collectionName: "contacts", includeDeleted: true, recordId: id, workspaceId: INVITE_WS });
+}
+
+async function expectError(promise: Promise<unknown>, code: InviteCodeError["code"]) {
+  await assert.rejects(promise, (error: unknown) => error instanceof InviteCodeError && error.code === code, code);
+}
+
+const key = (value: string) => ({ idempotencyKey: value });
+
+function suite(name: string, options: TestOptions, withHarness: (run: (harness: InviteHarness, planCalls: () => Promise<PlanMatchCall[]>) => Promise<void>) => Promise<void>) {
+  test(`${name}: issuing a code supersedes the old one, replays by key, and reads shared values from the profile only`, options, async () => {
+    await withHarness(async (harness) => {
+      await harness.setProfile(profile(ALICE));
+      const { advance, service } = setup(harness);
+      const first = await service.create(ALICE, { maxUses: 10, shared: { displayName: "Spoofed", email: "spoof@example.invalid" }, ...key("c-1") });
+      assert.match(first.code, /^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{4}-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{4}$/u);
+      assert.equal(first.link, `https://orbit.example/i/${first.code}`);
+      assert.deepEqual(first.shared, { displayName: "Alice Example", offering: ["alice offers advice"], organization: "alice Inc", role: "CEO", seeking: ["alice seeks investors"] }, "default keys; the client's values are ignored");
+      assert.equal(first.expiresAt, new Date(START + 7 * DAY).toISOString());
+      assert.deepEqual(await service.create(ALICE, { maxUses: 10, shared: { displayName: "x" }, ...key("c-1") }), first, "same key replays");
+      await expectError(service.create(ALICE, { maxUses: 3, shared: { displayName: "x" }, ...key("c-1") }), "IDEMPOTENCY_CONFLICT");
+
+      advance(1000);
+      const second = await service.create(ALICE, { maxUses: 3, shared: { displayName: "x" }, sharedKeys: ["email", "organization"], ...key("c-2") });
+      assert.notEqual(second.code, first.code);
+      assert.deepEqual(second.shared, { displayName: "Alice Example", email: "alice@example.invalid", organization: "alice Inc", role: "CEO" });
+      assert.equal((await service.current(ALICE))?.code, second.code);
+      const history = (await service.history(ALICE)).items;
+      assert.deepEqual(history.map((item) => [item.code, item.status]), [[second.code, "active"], [first.code, "superseded"]]);
+      await expectError(service.preview(first.code, null), "UNAVAILABLE");
+
+      await expectError(service.create(BOB, { maxUses: 10, shared: { displayName: "Bob" }, ...key("c-3") }), "PROFILE_REQUIRED");
+    });
+  });
+
+  test(`${name}: a code collision retries up to five times`, options, async () => {
+    await withHarness(async (harness) => {
+      await harness.setProfile(profile(ALICE));
+      await harness.setProfile(profile(BOB));
+      const queue = ["K7QX2M9P", "K7QX2M9P", "H8MW4QZT"];
+      const { service } = setup(harness, { generateCode: () => queue.shift() ?? "K7QX2M9P" });
+      assert.equal((await service.create(ALICE, { maxUses: 10, shared: { displayName: "a" }, ...key("a") })).code, "K7QX-2M9P");
+      assert.equal((await service.create(BOB, { maxUses: 10, shared: { displayName: "b" }, ...key("b") })).code, "H8MW-4QZT", "one collision, then a fresh code");
+      await expectError(service.create(BOB, { maxUses: 10, shared: { displayName: "b" }, ...key("b2") }), "CONFLICT");
+    });
+  });
+
+  test(`${name}: the preview never shows contacts and hides revoked, superseded, unknown and long-expired codes`, options, async () => {
+    await withHarness(async (harness) => {
+      await harness.setProfile(profile(ALICE));
+      await harness.setProfile(profile(BOB));
+      const { advance, service } = setup(harness);
+      const code = (await service.create(ALICE, { maxUses: 10, shared: { displayName: "a" }, sharedKeys: ["organization", "email", "phone", "offering"], ...key("p-1") })).code;
+      const preview = await service.preview(code, null);
+      assert.deepEqual(preview, { code, expiresAt: new Date(START + 7 * DAY).toISOString(), shared: { displayName: "Alice Example", offering: ["alice offers advice"], organization: "alice Inc", role: "CEO" }, status: "active" });
+      assert.equal(JSON.stringify(preview).includes("@"), false);
+      assert.deepEqual(await service.preview(code.toLowerCase().replace("-", " "), BOB).then((item) => [item.isOwnCode, item.inviterAlreadyConnected]), [false, false]);
+      assert.equal((await service.preview(code, ALICE)).isOwnCode, true);
+      await expectError(service.preview("K7QX-2M9O", null), "UNAVAILABLE");
+      await expectError(service.preview("ZZZZ-ZZZZ", null), "UNAVAILABLE");
+      advance(7 * DAY);
+      assert.equal((await service.preview(code, null)).status, "expired");
+      assert.equal(await service.current(ALICE), null, "an expired code is not current");
+      advance(30 * DAY);
+      assert.equal((await service.preview(code, null)).status, "expired", "exactly 30 days after expiry still previews");
+      advance(1);
+      await expectError(service.preview(code, null), "UNAVAILABLE");
+      const fresh = (await service.create(ALICE, { maxUses: 10, shared: { displayName: "a" }, ...key("p-2") })).code;
+      await service.revoke(ALICE, fresh);
+      await expectError(service.preview(fresh, null), "UNAVAILABLE");
+      await expectError(service.redeem(BOB, fresh, { sharedKeys: [], ...key("r-1") }), "UNAVAILABLE");
+    });
+  });
+
+  test(`${name}: redeeming connects both people with only the chosen keys, values from each profile`, options, async () => {
+    await withHarness(async (harness, planCalls) => {
+      await harness.setProfile(profile(ALICE));
+      await harness.setProfile(profile(BOB));
+      const { notices, service } = setup(harness);
+      const code = (await service.create(ALICE, { maxUses: 10, shared: { displayName: "a" }, sharedKeys: ["organization", "email"], ...key("c") })).code;
+      const result = await service.redeem(BOB, code, { sharedKeys: ["offering"], ...key("r") });
+      assert.equal(result.outcome, "connected");
+      assert.deepEqual(result.peer, { displayName: "Alice Example", email: "alice@example.invalid", organization: "alice Inc", role: "CEO" });
+
+      const bobsAlice = await contact(harness, result.contactId);
+      assert.equal(bobsAlice?.userId, BOB);
+      assert.equal(bobsAlice?.payload.displayName, "Alice Example");
+      assert.equal(bobsAlice?.payload.primaryEmail, "alice@example.invalid");
+      assert.equal(bobsAlice?.payload.primaryPhone, undefined, "phone was not shared");
+      assert.equal(bobsAlice?.sourceType, "referral");
+      assert.deepEqual(bobsAlice?.payload.acquisition, { code, via: "invite_code" });
+      assert.equal(bobsAlice?.payload.publicProfile, undefined);
+
+      const linkedForAlice = await service.linkedContactIds(ALICE);
+      assert.equal(linkedForAlice.length, 1);
+      const alicesBob = await contact(harness, linkedForAlice[0]!);
+      assert.equal(alicesBob?.userId, ALICE);
+      assert.equal(alicesBob?.payload.displayName, "Bob Example");
+      assert.deepEqual(alicesBob?.payload.publicProfile, { offering: ["bob offers advice"] });
+      for (const hidden of ["organization", "primaryEmail", "primaryPhone"]) assert.equal(alicesBob?.payload[hidden], undefined, hidden);
+      assert.deepEqual(await service.linkedContactIds(BOB), [result.contactId]);
+
+      const view = await service.connection(BOB, result.contactId);
+      assert.deepEqual([view.sharedByMe, view.sharedByPeer, view.pausedFields, view.via.code], [["offering"], ["organization", "email"], [], code]);
+      assert.equal((await service.current(ALICE))?.usedCount, 1);
+      assert.deepEqual((await service.history(ALICE)).items[0]!.joined.map((item) => [item.contactId, item.displayName]), [[linkedForAlice[0], "Bob Example"]]);
+
+      assert.equal(notices.length, 1, "only the inviter is told");
+      assert.deepEqual([notices[0]!.inviterActorId, notices[0]!.inviterContactId, notices[0]!.redeemerDisplayName], [ALICE, linkedForAlice[0], "Bob Example"]);
+      assert.deepEqual((await planCalls()).filter((call) => call.op === "enqueue").map((call) => [call.actorId, call.contactId]).sort(), [[ALICE, linkedForAlice[0]], [BOB, result.contactId]].sort());
+
+      // 同一个键重放：同样的结果，不再占用量、不再通知。
+      assert.deepEqual(await service.redeem(BOB, code, { sharedKeys: ["offering"], ...key("r") }), result);
+      assert.equal((await service.current(ALICE))?.usedCount, 1);
+      assert.equal(notices.length, 1);
+      // 已经连着：再用（换一个键）→ already_connected，不占用量；用 A 的新码也一样。
+      const again = await service.redeem(BOB, code, { sharedKeys: [], ...key("r-2") });
+      assert.deepEqual([again.outcome, again.contactId], ["already_connected", result.contactId]);
+      const newCode = (await service.create(ALICE, { maxUses: 10, shared: { displayName: "a" }, ...key("c-2") })).code;
+      assert.equal((await service.redeem(BOB, newCode, { sharedKeys: [], ...key("r-3") })).outcome, "already_connected");
+      assert.equal((await service.current(ALICE))?.usedCount, 0);
+      assert.equal((await service.preview(newCode, BOB)).inviterAlreadyConnected, true);
+      // B 的码给 A 用：同一对人，也是 already_connected。
+      const bobsCode = (await service.create(BOB, { maxUses: 10, shared: { displayName: "b" }, ...key("b-1") })).code;
+      const reverse = await service.redeem(ALICE, bobsCode, { sharedKeys: [], ...key("r-4") });
+      assert.deepEqual([reverse.outcome, reverse.contactId], ["already_connected", linkedForAlice[0]]);
+      assert.equal((await service.current(BOB))?.usedCount, 0);
+      await expectError(service.redeem(ALICE, newCode, { sharedKeys: [], ...key("own") }), "OWN_CODE");
+      await expectError(service.redeem(BOB, "ABCD", { sharedKeys: [], ...key("bad") }), "UNAVAILABLE");
+    });
+  });
+
+  test(`${name}: expired, full, and a redeemer without a profile fail without using the code`, options, async () => {
+    await withHarness(async (harness) => {
+      for (const actor of [ALICE, BOB, CAROL]) await harness.setProfile(profile(actor));
+      const { advance, service } = setup(harness);
+      const code = (await service.create(ALICE, { maxUses: 1, shared: { displayName: "a" }, ...key("c") })).code;
+      await harness.removeProfile(CAROL);
+      await expectError(service.redeem(CAROL, code, { sharedKeys: [], ...key("r-0") }), "PROFILE_REQUIRED");
+      assert.equal((await service.current(ALICE))?.usedCount, 0);
+      await harness.setProfile(profile(CAROL));
+      await service.redeem(BOB, code, { sharedKeys: [], ...key("r-1") });
+      assert.equal((await service.preview(code, null)).status, "full");
+      await expectError(service.redeem(CAROL, code, { sharedKeys: [], ...key("r-2") }), "FULL");
+      advance(1000);
+      const expiring = (await service.create(ALICE, { maxUses: 10, shared: { displayName: "a" }, ...key("c-2") })).code;
+      advance(7 * DAY);
+      await expectError(service.redeem(CAROL, expiring, { sharedKeys: [], ...key("r-3") }), "EXPIRED");
+      assert.deepEqual((await service.history(ALICE)).items.map((item) => item.status), ["expired", "superseded"]);
+    });
+  });
+
+  test(`${name}: an existing card of the other person is merged in both directions, the peer's values win, old values go to history`, options, async () => {
+    await withHarness(async (harness) => {
+      await harness.setProfile(profile(ALICE));
+      await harness.setProfile(profile(BOB));
+      // A 的人脈里已有 B 的名刺（同一个邮箱）；B 的人脈里已有 A 的名刺（姓名 + 公司相同）。
+      await seedContact(harness.contacts, { contactId: "card-bob", ownerId: ALICE, payload: { displayName: "Bob E.", notes: "met at expo", organization: "Old Corp", primaryEmail: "bob@example.invalid", role: "Intern" }, workspaceId: INVITE_WS });
+      await seedContact(harness.contacts, { contactId: "card-alice", ownerId: BOB, payload: { displayName: "Alice Example", organization: "alice Inc", primaryPhone: "03-0000-0000" }, workspaceId: INVITE_WS });
+      const { service } = setup(harness);
+      const code = (await service.create(ALICE, { maxUses: 10, shared: { displayName: "a" }, sharedKeys: ["organization", "phone"], ...key("c") })).code;
+      const result = await service.redeem(BOB, code, { sharedKeys: ["organization", "email"], ...key("r") });
+      assert.deepEqual([result.outcome, result.contactId], ["merged", "card-alice"]);
+      assert.deepEqual(await service.linkedContactIds(ALICE), ["card-bob"]);
+
+      const alicesBob = await contact(harness, "card-bob");
+      assert.deepEqual([alicesBob?.payload.displayName, alicesBob?.payload.organization, alicesBob?.payload.role, alicesBob?.payload.notes], ["Bob Example", "bob Inc", "CEO", "met at expo"]);
+      const history = alicesBob?.payload.fieldHistory as Array<{ field: string; previous: string; source: string }>;
+      assert.deepEqual(history.map((entry) => [entry.field, entry.previous, entry.source]), [["displayName", "Bob E.", "invite"], ["organization", "Old Corp", "invite"], ["role", "Intern", "invite"]]);
+      const bobsAlice = await contact(harness, "card-alice");
+      assert.deepEqual([bobsAlice?.payload.primaryPhone, bobsAlice?.payload.role], ["090-1234-5678", "CEO"]);
+      // 没有建出重复卡。
+      assert.equal((await harness.contacts.listRecords({ collectionName: "contacts", limit: 50, workspaceId: INVITE_WS })).length, 2);
+    });
+  });
+
+  test(`${name}: twenty concurrent redemptions of a code with one use left produce exactly one connection`, options, async () => {
+    await withHarness(async (harness) => {
+      await harness.setProfile(profile(ALICE));
+      const { service } = setup(harness);
+      const code = (await service.create(ALICE, { maxUses: 2, shared: { displayName: "a" }, ...key("c") })).code;
+      await harness.setProfile(profile("actor:first"));
+      await service.redeem("actor:first", code, { sharedKeys: [], ...key("first") });
+      const people = Array.from({ length: 20 }, (_, index) => `actor:r${index}`);
+      for (const actor of people) await harness.setProfile(profile(actor));
+      const results = await Promise.allSettled(people.map((actor) => service.redeem(actor, code, { sharedKeys: [], ...key(`k-${actor}`) })));
+      const ok = results.filter((item) => item.status === "fulfilled");
+      assert.equal(ok.length, 1, JSON.stringify(results.filter((item) => item.status === "rejected").map((item) => String((item as PromiseRejectedResult).reason?.code ?? (item as PromiseRejectedResult).reason))));
+      for (const item of results) if (item.status === "rejected") assert.equal((item.reason as InviteCodeError).code, "FULL");
+      assert.equal((await service.current(ALICE))?.usedCount, 2);
+      assert.equal((await service.linkedContactIds(ALICE)).length, 2);
+    });
+  });
+
+  test(`${name}: people can only act on their own codes and their own side of a connection; unlinking frees the pair`, options, async () => {
+    await withHarness(async (harness) => {
+      for (const actor of [ALICE, BOB, CAROL]) await harness.setProfile(profile(actor));
+      const { service } = setup(harness);
+      const code = (await service.create(ALICE, { maxUses: 10, shared: { displayName: "a" }, ...key("c") })).code;
+      await expectError(service.revoke(BOB, code), "NOT_FOUND");
+      const result = await service.redeem(BOB, code, { sharedKeys: [], ...key("r") });
+      await expectError(service.connection(CAROL, result.contactId), "NOT_FOUND");
+      await expectError(service.connection(ALICE, result.contactId), "NOT_FOUND");
+      await expectError(service.updateShare(CAROL, result.contactId, { sharedKeys: ["email"], ...key("s") }), "NOT_FOUND");
+      await expectError(service.unlink(CAROL, result.contactId, { keepAsContact: true, ...key("u") }), "NOT_FOUND");
+      assert.equal((await service.history(BOB)).items.length, 0);
+
+      await service.unlink(BOB, result.contactId, { keepAsContact: false, ...key("u") });
+      assert.deepEqual(await service.linkedContactIds(ALICE), []);
+      const again = await service.redeem(BOB, code, { sharedKeys: ["organization"], ...key("r-again") });
+      assert.equal(again.outcome, "connected", "after unlinking the same two people can connect again");
+      assert.equal((await service.current(ALICE))?.usedCount, 2);
+      assert.equal((await service.linkedContactIds(ALICE)).length, 1);
+    });
+  });
+}
+
+suite("memory", {}, async (run) => {
+  const calls: PlanMatchCall[] = [];
+  await run(memoryHarness(calls), async () => calls);
+});
+
+suite("postgres", databaseTest, (run) =>
+  withInviteDatabase((harness) =>
+    run(harness, async () => {
+      const rows = (await harness.pool!.query<{ actor_id: string; contact_id: string }>("select actor_id, contact_id from plan_match_job_contacts")).rows;
+      return rows.map((row) => ({ actorId: row.actor_id, contactId: row.contact_id, op: "enqueue" as const }));
+    })));
+
+test("the inviter's notification uses the existing inbox kinds and opens the contact (written through the real inbox service)", databaseTest, async () => {
+  const { inviteConnectedNotification } = await import("../../features/invite-codes/notification");
+  const { createInboxInviteNotifier } = await import("../../features/invite-codes/configured");
+  const { createInboxRuntime } = await import("../../features/notifications/inbox-record-service-factory");
+  const shape = inviteConnectedNotification({ at: "2026-10-11T03:00:00.000Z", connectionId: "n1", contactRevision: "r", inviterActorId: ALICE, inviterContactId: "contact:x", redeemerDisplayName: "高橋 美咲" });
+  assert.deepEqual([shape.kind, shape.sources[0]!.sourceKind, shape.target.kind, shape.target.href], ["update", "contact", "source", "/contacts/contact%3Ax"]);
+  assert.deepEqual(Object.keys(shape.copy!).sort(), ["en", "ja", "zh"]);
+  assert.equal(shape.copy!.ja.title, "高橋 美咲さんが招待から登録しました");
+
+  await withInviteDatabase(async (harness) => {
+    await harness.setProfile(profile(ALICE));
+    await harness.setProfile(profile(BOB));
+    const inbox = createInboxRuntime({ client: harness.client!, workspaceId: INVITE_WS });
+    const notifier = createInboxInviteNotifier({ client: harness.client!, upsert: (notification) => inbox.service.upsert(notification), workspaceId: INVITE_WS });
+    const service = createInviteCodeService({ notifier, storage: harness.storage });
+    const code = (await service.create(ALICE, { idempotencyKey: "c", maxUses: 10, shared: { displayName: "a" } })).code;
+    await service.redeem(BOB, code, { idempotencyKey: "r", sharedKeys: [] });
+    const [contactId] = await service.linkedContactIds(ALICE);
+    const alice = await inbox.service.list(ALICE, { limit: 10 });
+    assert.equal(alice.items.length, 1);
+    assert.deepEqual([alice.items[0]!.title, alice.items[0]!.target.href, alice.items[0]!.target.status], ["Bob Example通过你的邀请加入了", `/contacts/${encodeURIComponent(contactId!)}`, "available"], "listed in the account language (zh by default)");
+    assert.equal((await inbox.service.list(BOB, { limit: 10 })).items.length, 0, "the redeemer is not notified");
+  });
+});

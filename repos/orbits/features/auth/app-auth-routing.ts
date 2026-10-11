@@ -1,3 +1,5 @@
+import { isInviteCodePath } from "../../shared/compute/invite-code-format";
+
 const ORBIT_PRIVATE_APP_PREFIXES = [
   "/app/admin",
   "/app/agent",
@@ -59,6 +61,12 @@ export function normalizeOrbitAuthReturnPath(
     candidate.includes("\\")
   ) {
     return fallback;
+  }
+
+  // R15（DESIGN add-and-invite §2.5 第 2 步）：招待页 `/i`、`/i/<码>` 在 /app 之外，只在完全匹配时原样放行；
+  // 形如招待路径但不完全匹配的（`/i/../app/admin`、带查询或片段、小写、字母表外、超长）一律回退，不交给下面的分支。
+  if (/^\/i(?:[/?#]|$)/u.test(candidate)) {
+    return isInviteCodePath(candidate) ? candidate : fallback;
   }
 
   try {

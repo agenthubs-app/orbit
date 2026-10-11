@@ -48,3 +48,11 @@ test("production maintenance runs the agent run retention task once, inside the 
   assert.ok(tasks.findIndex((task) => task.name === "agent_run_retention") < tasks.findIndex((task) => task.name === "read_cost_rollup"));
   assert.deepEqual(await retention[0]!.run({ now: () => new Date(0), deadline: 1000 }), { skipped: "database_unconfigured" });
 });
+
+test("R15: production maintenance registers the invite profile sync and the invite attempt cleanup once each, before the read-cost rollup", async () => {
+  const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
+  for (const name of ["invite_profile_sync", "invite_attempts_cleanup"]) {
+    assert.equal(tasks.filter((task) => task.name === name).length, 1, name);
+    assert.ok(tasks.findIndex((task) => task.name === name) < tasks.findIndex((task) => task.name === "read_cost_rollup"), name);
+  }
+});

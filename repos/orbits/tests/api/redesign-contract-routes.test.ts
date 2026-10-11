@@ -82,7 +82,8 @@ test("mock: every route answers success from the demo world (the handlers parse 
 
 test("live (and so production): every route answers 503 NOT_IMPLEMENTED with no fixture in the body", async () => {
   await withMode("live", async () => {
-    for (const item of CASES) {
+    // R15：招待コード已有 live 实现（features/invite-codes，测试见 tests/api/invite-codes-routes.test.ts），不再是 NOT_IMPLEMENTED。
+    for (const item of CASES.filter((entry) => !entry.file.startsWith("invite-codes"))) {
       const response = await call(item);
       const text = await response.text();
       const body = JSON.parse(text);
@@ -150,7 +151,7 @@ test("ORBIT_REDESIGN_MOCK turns the demo world on per contract outside productio
     process.env.ORBIT_REDESIGN_MOCK = "home-layout";
     await withMode("live", async () => {
       assert.equal((await call({ file: "home/layout", method: "GET" })).status, 200);
-      assert.equal((await call({ file: "invite-codes/current", method: "GET" })).status, 503, "contracts not listed stay live");
+      assert.equal((await call({ file: "events/assessments", method: "GET" })).status, 503, "contracts not listed stay live");
       (process.env as Record<string, string>).NODE_ENV = "production";
       assert.equal((await call({ file: "home/layout", method: "GET" })).status, 503, "production ignores the switch");
     });

@@ -11,6 +11,7 @@ import { runPlanMatchingMigrations } from "../features/plans/matching-migrations
 import { runNetworkAnalysisMigrations } from "../features/network-analysis/migrations";
 import { runContactInsightsMigrations } from "../features/contacts/insights/migrations";
 import { runContactImportMigrations } from "../features/contacts/import/migrations";
+import { runInviteCodeMigrations } from "../features/invite-codes/migrations";
 import { loadLocalEnv } from "./load-local-env";
 
 async function main() {
@@ -40,6 +41,8 @@ async function main() {
     await runContactInsightsMigrations(runtime.client);
     phase = "contact-import";
     await runContactImportMigrations(runtime.client);
+    phase = "invite-codes";
+    await runInviteCodeMigrations(runtime.client);
     console.info("Web runtime schemas migrated; no demo data seeded.");
   } catch {
     throw new Error(`WEB_MIGRATION_FAILED:${phase}`);

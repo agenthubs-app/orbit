@@ -33,6 +33,8 @@ import { createContactInsightsMaintenanceTask } from "../../contacts/insights/ma
 import { getConfiguredContactInsightsRuntime } from "../../contacts/insights/runtime";
 import { createContactImportMaintenanceTask } from "../../contacts/import/maintenance-task";
 import { getConfiguredContactImportMaintenance } from "../../contacts/import/runtime";
+import { getConfiguredInviteCodeRuntime } from "../../invite-codes/configured";
+import { createInviteAttemptsCleanupMaintenanceTask, createInviteProfileSyncMaintenanceTask } from "../../invite-codes/sync";
 import type { MaintenanceTask } from "./pass";
 
 // The production task list. Each task checks its own configuration and reports
@@ -272,6 +274,11 @@ export function createConfiguredMaintenanceTasks({
     // AI A4 (0111): run sets whose action ended over a year ago are deleted
     // whole, a bounded number per pass; open sets are never touched.
     createAgentRunRetentionMaintenanceTask({ env }),
+    // R15 (added before the read-cost rollup, which stays last): invite connections — copy each side's changed profile onto the other side's contact
+    // (shared fields only; fields the owner edited stop syncing), ≤500 connections per pass.
+    createInviteProfileSyncMaintenanceTask({ resolve: () => getConfiguredInviteCodeRuntime()?.storage ?? null }),
+    // R15: drop invite preview / redeem rate-limit windows older than two days.
+    createInviteAttemptsCleanupMaintenanceTask({ resolve: () => getConfiguredInviteCodeRuntime()?.attempts ?? null }),
     // Monitoring O2/O3: daily read-cost rollup, Neon reconciliation, retention
     // and admin alerts. Days already final are skipped, so heartbeat passes are cheap.
     createReadCostMaintenanceTask({ env }),

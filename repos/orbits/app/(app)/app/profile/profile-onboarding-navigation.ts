@@ -1,4 +1,5 @@
 import { normalizeOrbitAuthReturnPath } from "../../../../features/auth/app-auth-routing";
+import { isInviteCodePath } from "../../../../shared/compute/invite-code-format";
 
 const PROFILE_ROUTE_PREFIX = "/app/profile";
 const PROFILE_CONTINUE_ROUTE = "/app/profile/continue";
@@ -86,6 +87,9 @@ export function profileOnboardingFlowPath(next: string): string {
 }
 
 export function profileContinuationPath(next: string): string {
+  // R15（DESIGN add-and-invite §2.5 第 2 步）：注册 / 登录后要回招待页 `/i/<码>` 时直接回去，不先进资料引导
+  // （资料门禁在之后第一次进 /app 时照常出现）。
+  if (isInviteCodePath(next)) return next;
   const safeNext = normalizeProfileOnboardingNext(next);
   return `${PROFILE_CONTINUE_ROUTE}?next=${encodeURIComponent(safeNext)}`;
 }

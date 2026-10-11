@@ -1,3 +1,3 @@
-// R08 redesign contract (mock until its feature Sprint; live answers NOT_IMPLEMENTED).
-export { previewInviteCode as GET } from "../../../../../features/redesign-contracts/handlers";
+// R15：招待コード（mock = R08 演示世界；live = features/invite-codes 的真实实现）。
+export { previewInviteCode as GET } from "../../../../../features/invite-codes/handlers";
 export const dynamic = "force-dynamic";
