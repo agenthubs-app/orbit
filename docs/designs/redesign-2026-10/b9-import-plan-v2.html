@@ -949,7 +949,7 @@ function netApp(s, o = {}) {
       <div class="sub" style="margin:6px 0 16px">いま手元にある名刺から。<br>あとで LinkedIn や連絡先もまとめて入れられます。</div>
       <button class="btn primary block xl">${ic('scan', 'sm')}名刺をスキャン</button></div>
     <div class="grid2 k-netmac" style="margin-top:12px;gap:8px">
-      ${[['🤝', 'pink', '招待コード', '相手が自分で入力'], ['🔗', 'teal', 'LinkedIn', 'CSV を取り込む'], ['📱', 'blue', '連絡先から', 'iPhone · Google'], ['✍️', 'lav', '手入力', '署名の貼り付けも']].map(([e, c, t, d]) => `<div class="mac ${c} row" style="gap:10px;padding:11px 12px"><span style="font-size:22px">${e}</span><div style="min-width:0"><b style="font-size:12.5px;display:block">${t}</b><div class="lbl" style="font-size:10.5px">${d}</div></div></div>`).join('')}</div>
+      ${[['🤝', 'pink', '招待コード', '相手が自分で入力'], ['🔗', 'teal', 'LinkedIn', 'CSV を取り込む'], ['📱', 'blue', '連絡先から', 'iPhone · Google'], ['✍️', 'lav', '手入力', '氏名だけで登録可']].map(([e, c, t, d]) => `<div class="mac ${c} row" style="gap:10px;padding:11px 12px"><span style="font-size:22px">${e}</span><div style="min-width:0"><b style="font-size:12.5px;display:block">${t}</b><div class="lbl" style="font-size:10.5px">${d}</div></div></div>`).join('')}</div>
     <div class="card" style="margin-top:14px"><div class="card-h"><h3>登録するとこう並びます <span class="sample-tag">サンプル</span></h3></div>
       <div class="faded list">${nrow(NP[0])}${nrow(NP[4])}</div>
       <div class="lbl" style="margin-top:8px;line-height:1.6">右の 3 つの点は<b style="color:var(--ink-2)">情報の濃さ</b>。少ない人は、毎日ひとつの質問で少しずつ補えます。</div></div>`;
