@@ -190,7 +190,14 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
           changed={reviewHasChanges(view.draft, plan?.premise ?? null)}
           canSend={hasReviewInput(premiseEdits(view.draft.premise, edits).length, text)}
           onClose={close}
-          failure={failureView("confirm")}
+          failure={
+            // 模拟器走查（2026-10-11）：发送中 / 发送失败放在发送按钮旁边——放在正文底部时，点了发送看不到任何反应。
+            <>
+              {busy === "send" ? <UiText style={shared.caption}>{t("plan.review.sending")}</UiText> : null}
+              {failureView("send")}
+              {failureView("confirm")}
+            </>
+          }
         />
       ) : undefined}
     >
@@ -245,8 +252,6 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
               onToggle={(change, accepted) => void toggle(change, accepted)}
             />
           ))}
-          {busy === "send" ? <UiText style={shared.caption}>{t("plan.review.sending")}</UiText> : null}
-          {failureView("send")}
           {failureView("toggle")}
           {!sendable && open ? <ReviewUsedUpNote limit={limit} resetsAt={view.resetsAt} reason={view.reviewLimitReason} /> : null}
           {!open ? <InlineProblem text={t("plan.review.closed")} /> : null}

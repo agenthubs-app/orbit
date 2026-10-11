@@ -601,6 +601,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["plan.goals.saveOnly", "fullButton"],
   ["plan.goals.saved", "toast"],
   ["plan.legacy.title", "label"],
+  ["plan.legacy.phase", "label"],
   ["plan.legacy.readOnly", "chip"],
   ["plan.legacy.cardBody", "sentence"],
   ["plan.legacy.open", "label"],

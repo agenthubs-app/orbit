@@ -552,6 +552,7 @@ export const plan = {
   "plan.goals.saveOnly": "目標だけ保存",
   "plan.goals.saved": "目標を保存しました",
   "plan.legacy.title": "以前のプラン",
+  "plan.legacy.phase": "フェーズ {n}",
   "plan.legacy.readOnly": "閲覧のみ",
   "plan.legacy.cardBody": "以前の形式のプランです。見ることはできますが、編集や再分析はできません。新しいプランは目標から作ります。",
   "plan.legacy.open": "{goal}（以前のプラン）を見る",

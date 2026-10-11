@@ -612,6 +612,7 @@ export const planReviewCopy = {
   legacyNeeds: { ja: "会いたい人 {n}", zh: "想见的人{n}", en: "People to meet {n}", kind: "label" },
   legacyActive: { ja: "進行中", zh: "进行中", en: "Active", kind: "chip" },
   legacyArchived: { ja: "終了", zh: "已结束", en: "Ended", kind: "chip" },
+  legacyPhase: { ja: "フェーズ {n}", zh: "阶段{n}", en: "Phase {n}", kind: "label" },
   legacyOpen: { ja: "詳しく見る", zh: "查看详情", en: "See details", kind: "button" },
   newPlan: { ja: "新しいプランを作る", zh: "制定新计划", en: "Make a new plan", kind: "fullButton" },
   newPlanNote: { ja: "新しいプランでは、目標から話すべき人のタイプと配点を一緒に決めます。", zh: "新计划会根据目标，一起定下该聊的人的类型和配分。", en: "A new plan sets the types of people to talk to and their points from your goal.", kind: "sentence" },

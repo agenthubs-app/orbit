@@ -223,7 +223,7 @@ const LEGACY: PlanLegacyDetail = {
   actionsDone: 3, actionsTotal: 7, analysisSummary: "既存顧客の紹介から商談をつくる流れが強み。展示会経由の新規は弱い。", archivedAt: null, goal: "製造業向けの新規顧客を 5社増やす", needs: 4, planId: "v1-plan-1", startsOn: "2026-06-02", status: "active",
   items: [
     { kind: "action", phase: "準備", status: "done", title: "事例資料を 2本つくる" },
-    { kind: "action", phase: null, status: "todo", title: "展示会のリストから 10社に連絡" },
+    { kind: "action", phase: "p2", status: "todo", title: "展示会のリストから 10社に連絡" },
     { kind: "network_need", phase: null, status: "open", title: "製造業 DX の購買担当者" },
     { kind: "info", phase: null, status: "skipped", title: "補助金の締切" },
     { kind: "event", phase: null, status: "dismissed", title: "ものづくり DX 展" },
@@ -363,8 +363,9 @@ test("AI failure: 「もう一度」 and the count is not used", async (t) => {
   await page.getByTestId("premise-card").waitFor();
   await page.getByLabel("ほかに変わったこと（任意）").fill("CVC も");
   await page.getByRole("button", { name: "前提を送って修正案をつくる" }).click();
-  await page.getByText("修正案をつくれませんでした").waitFor();
-  await page.getByText("見直しの回数は減っていません。もう一度お試しください。").waitFor();
+  // 模拟器走查：失败提示在发送按钮旁（底部栏里），不在正文底部。
+  await page.getByTestId("review-footer").getByText("修正案をつくれませんでした").waitFor();
+  await page.getByTestId("review-footer").getByText("見直しの回数は減っていません。もう一度お試しください。").waitFor();
   assert.equal((await direct<PlanQuotaResponse>(server, "GET", "/api/agent/plans/v2/quota")).data.reviewLeftThisMonth, 3);
   await page.getByRole("button", { name: "もう一度" }).click();
   await page.getByTestId("review-turn").waitFor();
@@ -547,6 +548,10 @@ test("以前のプラン: the card replaces the goal input for a v1 user; the pa
   for (const label of ["行動", "会いたい人", "情報", "イベント"]) await page.getByRole("heading", { name: label }).waitFor();
   await groups.first().getByText("完了", { exact: true }).waitFor();
   await groups.first().getByText("未完了", { exact: true }).waitFor();
+  // 模拟器走查：旧计划的阶段 id「p2」显示成「フェーズ 2」，其他写法原样。
+  await groups.first().getByText("フェーズ 2", { exact: true }).waitFor();
+  await groups.first().getByText("準備", { exact: true }).waitFor();
+  assert.equal(await groups.first().getByText("p2", { exact: true }).count(), 0);
   await page.getByText(LEGACY.analysisSummary!).waitFor();
   await page.getByText("以前のプランは閲覧のみです。編集や再分析はできません。").waitFor();
   assert.equal(await page.locator("input, textarea").count(), 0, "nothing to edit");

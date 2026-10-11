@@ -552,6 +552,7 @@ export const plan = {
   "plan.goals.saveOnly": "Save goal only",
   "plan.goals.saved": "Goal saved",
   "plan.legacy.title": "Earlier plan",
+  "plan.legacy.phase": "Phase {n}",
   "plan.legacy.readOnly": "Read only",
   "plan.legacy.cardBody": "This plan uses the earlier format. You can read it, but not edit or re-analyse it. A new plan starts from a goal.",
   "plan.legacy.open": "Open {goal} (earlier plan)",

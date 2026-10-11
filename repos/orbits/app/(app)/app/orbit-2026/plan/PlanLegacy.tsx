@@ -12,6 +12,12 @@ import { ShellPage } from "../shell/slots";
 import { Button, Card, Chip, EmptyState, MacTile, Orbit2026Scope, RetryCard, Skeleton } from "../ui";
 import { planApi } from "./plan-api";
 import { translator, type Translate } from "./PlanParts";
+
+/** 旧计划的阶段 id 是 p1 / p2…（模拟器走查：直接显示内部代号用户看不懂）→「阶段 1」；其他格式原样。 */
+export function legacyPhaseLabel(phase: string, t: Translate): string {
+  const match = /^p(\d+)$/i.exec(phase.trim());
+  return match ? t(r.legacyPhase, { n: Number(match[1]) }) : phase;
+}
 import { LEGACY_KIND_COPY, fullDate, legacyGroups, legacyStatusCopy } from "./review-model";
 import styles from "./review.module.css";
 
@@ -97,7 +103,7 @@ export function PlanLegacyScreen({ planId }: { planId: string }) {
                     return (
                       <li key={`${group.kind}-${index}`} data-legacy-item={item.status}>
                         <span className={styles.grow}>{item.title}</span>
-                        {item.phase ? <span className={styles.label}>{item.phase}</span> : null}
+                        {item.phase ? <span className={styles.label}>{legacyPhaseLabel(item.phase, t)}</span> : null}
                         {status ? <Chip label={t(status)} tone={item.status === "done" || item.status === "established" || item.status === "attended" || item.status === "answered" ? "ok" : "neutral"} /> : null}
                       </li>
                     );

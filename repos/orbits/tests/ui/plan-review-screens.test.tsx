@@ -470,7 +470,7 @@ const legacyDetail: PlanLegacyDetail = {
   actionsDone: 2, actionsTotal: 5, analysisSummary: "製造業向けの販路を、紹介とイベントで広げる計画です。", archivedAt: null, goal: "製造業の販路を広げる",
   items: [
     { kind: "action", phase: "第1週", status: "done", title: "既存顧客に紹介を頼む" },
-    { kind: "action", phase: null, status: "in_progress", title: "展示会の出展を決める" },
+    { kind: "action", phase: "p2", status: "in_progress", title: "展示会の出展を決める" },
     { kind: "network_need", phase: null, status: "linked", title: "工場長クラスの決裁者" },
     { kind: "event", phase: null, status: "recommended", title: "製造業DXカンファレンス" },
   ],
@@ -495,6 +495,9 @@ test("以前のプラン detail: read only — items grouped by kind with status
   await page.locator('[data-plan-legacy="v1-1"]').waitFor();
   assert.deepEqual(await page.locator("[data-legacy-group]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-legacy-group"))), ["action", "network_need", "event"]);
   await page.locator('[data-legacy-group="action"]').getByText("完了").waitFor();
+  // 模拟器走查：旧计划的阶段 id「p2」显示成「フェーズ 2」，其他写法（第1週）原样。
+  await page.locator('[data-legacy-group="action"]').getByText("フェーズ 2", { exact: true }).waitFor();
+  await page.locator('[data-legacy-group="action"]').getByText("第1週", { exact: true }).waitFor();
   await page.locator('[data-legacy-group="network_need"]').getByText("候補あり").waitFor();
   await page.locator("[data-legacy-summary]").getByText(legacyDetail.analysisSummary!).waitFor();
   await page.getByText("見るだけ", { exact: true }).waitFor();

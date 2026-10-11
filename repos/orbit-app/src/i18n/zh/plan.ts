@@ -552,6 +552,7 @@ export const plan = {
   "plan.goals.saveOnly": "只保存目标",
   "plan.goals.saved": "目标已保存",
   "plan.legacy.title": "以前的计划",
+  "plan.legacy.phase": "阶段{n}",
   "plan.legacy.readOnly": "只读",
   "plan.legacy.cardBody": "这是旧格式的计划。可以查看，但不能编辑或重新分析。新计划从目标开始制定。",
   "plan.legacy.open": "查看{goal}（以前的计划）",

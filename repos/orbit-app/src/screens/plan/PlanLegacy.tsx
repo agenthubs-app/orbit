@@ -14,6 +14,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { openMainTab } from "../../components/shell-navigation";
 import { Button, Chip, type ChipTone, Icon, RetryCard, Skeleton, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
+import type { OrbitTranslator } from "../../i18n/messages";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi, type PlanFailure } from "./plan-api";
@@ -133,7 +134,7 @@ export function PlanLegacyScreen({ planId }: { planId: string }) {
                   <View key={`${item.title}-${index}`} style={styles.item}>
                     <View style={shared.grow}>
                       <UiText style={shared.body}>{item.title}</UiText>
-                      {item.phase ? <UiText style={shared.caption}>{item.phase}</UiText> : null}
+                      {item.phase ? <UiText style={shared.caption}>{legacyPhaseLabel(item.phase, t)}</UiText> : null}
                     </View>
                     <Chip label={t(status.key)} tone={status.tone} />
                   </View>
@@ -152,3 +153,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   page: { gap: 14 },
   item: { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
 }));
+
+/** 旧计划的阶段 id 是 p1 / p2…（模拟器走查：直接显示内部代号用户看不懂）→「阶段 1」；其他格式原样。 */
+export function legacyPhaseLabel(phase: string, t: OrbitTranslator): string {
+  const match = /^p(\d+)$/i.exec(phase.trim());
+  return match ? t("plan.legacy.phase", { n: Number(match[1]) }) : phase;
+}

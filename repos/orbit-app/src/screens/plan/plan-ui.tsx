@@ -1,7 +1,7 @@
 // R23 plan screens: small business pieces shared by the goal input, the flow page
 // and the manual edit page. Built from src/components/ui and theme tokens only.
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button, IconButton, UiPressable, UiText } from "../../components/ui";
@@ -59,10 +59,13 @@ export function PlanFrame({ title, subtitle, stage, progress, onClose, right, fo
         <View style={styles.headerRight}>{right}</View>
       </View>
       {progress ?? (stage === null ? null : <PlanProgress stage={stage} />)}
-      <ScrollView ref={scrollRef} automaticallyAdjustKeyboardInsets contentContainerStyle={styles.body} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled">
-        {children}
-      </ScrollView>
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
+      {/* 模拟器走查（2026-10-11）：固定 footer 里的输入框（見直し栏、AI 修正栏）会被键盘挡住；iOS 上让正文 + footer 随键盘上移。 */}
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.body} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled">
+          {children}
+        </ScrollView>
+        {footer ? <View style={styles.footer}>{footer}</View> : null}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -241,6 +244,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   progressLabel: { color: colors.ink3Text, fontSize: 10.5, textAlign: "center" },
   progressLabelNow: { color: colors.ink, fontWeight: "800" },
   body: { alignSelf: "center", width: "100%", maxWidth: 540, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 32, gap: 14 },
+  keyboard: { flex: 1 },
   footer: { borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, gap: 8 },
   chip: { minHeight: 36, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: "transparent", maxWidth: "100%" },
   chipOn: { borderColor: colors.plum500, backgroundColor: colors.accentSoft },
