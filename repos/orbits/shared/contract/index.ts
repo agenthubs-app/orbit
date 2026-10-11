@@ -460,3 +460,17 @@ export type {
   PlanReviewToggleRequest,
   PlanReviewView,
 } from "./plan-v2";
+
+// R12 手入力（DESIGN §4.1）。Owner: 甲 (R12).
+export type {
+  ManualContactCreateInput,
+  ManualContactCreateResult,
+  ManualContactDuplicateCheckInput,
+  ManualContactDuplicateCheckResult,
+  ManualContactFieldChoice,
+  ManualContactMergeField,
+  ManualContactMetContext,
+  ManualContactOrganizationSuggestion,
+  ManualContactOrganizationSuggestionsResult,
+  ManualContactUndoResult,
+} from "./manual-contact";

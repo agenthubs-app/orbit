@@ -13,6 +13,7 @@ import {
   type IngestV2CardViewModel,
   type IngestV2Field,
 } from "../ingest-v2/ingest-v2-route-view-model";
+import { isCardAutoImportEligible, isCardAutoMergeEligible, type CardAutoImportFacts } from "../../../../../shared/compute/card-auto-import";
 export type Copy = { zh: string; en: string };
 
 export type ParseStage = "upload" | "recognize" | "review";
@@ -90,33 +91,44 @@ export function enrichmentNeedsReview(draft: IngestV2CardDraft): boolean {
   return industryNeedsReview(draft) || draft.seniority?.conflicted === true || draft.region?.conflicted === true;
 }
 
+/** 共享规则（shared/compute/card-auto-import.ts）的输入：从 Web 视图模型取出与端无关的最小字段集。 */
+export function cardAutoImportFacts(card: IngestV2CardViewModel, draft: IngestV2CardDraft): CardAutoImportFacts {
+  return {
+    reviewable: card.reviewable,
+    allExtracted: card.allExtracted,
+    allConfirmed: card.allConfirmed,
+    invalidStructure: card.invalidStructure,
+    hasMissingImageDigest: card.hasMissingImageDigest,
+    hasTerminalFailure: card.hasTerminalFailure,
+    issueCount: cardIssues(card).length,
+    conflictedFieldCount: draft.conflictedFields.length,
+    staleFieldCount: draft.staleFields.length,
+    enrichmentNeedsReview: enrichmentNeedsReview(draft),
+    displayName: draft.fields.displayName,
+  };
+}
+
 /**
  * 设计稿「识别可靠，已自动导入」的判定：卡已全部识别、没有任何 reviewIssue、
  * 没有正反面冲突（含行业）/过期来源、有姓名。只要有一条疑点就交给用户确认。
+ * R12：规则在 shared/compute/card-auto-import.ts（App 同一份），这里只取字段。
  */
 export function isAutoImportEligible(card: IngestV2CardViewModel, draft: IngestV2CardDraft): boolean {
-  return card.reviewable
-    && card.allExtracted
-    && !card.allConfirmed
-    && !card.invalidStructure
-    && !card.hasMissingImageDigest
-    && !card.hasTerminalFailure
-    && cardIssues(card).length === 0
-    && draft.conflictedFields.length === 0
-    && draft.staleFields.length === 0
-    && !enrichmentNeedsReview(draft)
-    && Boolean(draft.fields.displayName.trim());
+  return isCardAutoImportEligible(cardAutoImportFacts(card, draft));
 }
 
 /**
  * 与已有联系人完全一致的卡直接并入（哪怕识别有疑点）的前提：识别完成、没有失败面、没有正反面冲突。
  * 行业两面不一致时也不自动并入——联系人字段对得上，不代表该补哪个行业。
+ * R12：规则在 shared/compute/card-auto-import.ts。
  */
 export function isAutoMergeEligible(card: IngestV2CardViewModel, draft: IngestV2CardDraft): boolean {
-  return card.allExtracted
-    && !card.hasTerminalFailure
-    && draft.conflictedFields.length === 0
-    && !enrichmentNeedsReview(draft);
+  return isCardAutoMergeEligible({
+    allExtracted: card.allExtracted,
+    hasTerminalFailure: card.hasTerminalFailure,
+    conflictedFieldCount: draft.conflictedFields.length,
+    enrichmentNeedsReview: enrichmentNeedsReview(draft),
+  });
 }
 
 export function isCardSkipped(card: IngestV2CardViewModel<IngestCardGroupingItem>): boolean {

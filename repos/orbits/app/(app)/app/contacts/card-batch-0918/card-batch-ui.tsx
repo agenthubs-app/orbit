@@ -860,8 +860,11 @@ function CardBatchRemindersBody({ batch, hidePendingPill = false, onOpen, t, vie
   return null;
 }
 
+// R12：同名候选（DESIGN §2.3，只提示不统合）。
+const SAME_NAME_REASON = { ja: "同じ名前", zh: "同名", en: "Same name" };
 const MATCH_REASON: Record<ContactCandidate["matchedOn"][number], Copy> = {
   email: { zh: "同邮箱", en: "Same email" },
+  name: SAME_NAME_REASON,
   name_organization: { zh: "同名同公司", en: "Same name & company" },
   phone: { zh: "同电话", en: "Same phone" },
 };

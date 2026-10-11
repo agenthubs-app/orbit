@@ -13,6 +13,8 @@ import type { ContactCompletionAnswerInput, ContactCompletionQuestion, ContactCo
 import type { EventAssessmentAddToPlanResult, EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentPatchInput } from "../../shared/contract/event-assessment";
 import type { EventRecommendationDismissInput, EventRecommendationDismissResult } from "../../shared/contract/event-recommendation-feedback";
 import type { HomeLayoutContract, HomeLayoutUpdateInput } from "../../shared/contract/home-layout";
+import type { IngestContactCandidateContract } from "../../shared/contract/business-card-batch";
+import type { ManualContactCreateInput, ManualContactCreateResult, ManualContactDuplicateCheckInput, ManualContactDuplicateCheckResult, ManualContactMetContext, ManualContactOrganizationSuggestion, ManualContactOrganizationSuggestionsResult, ManualContactUndoResult } from "../../shared/contract/manual-contact";
 import type { InviteCodeContract, InviteCodeCreateInput, InviteCodePreview, InviteCodeRedeemResult } from "../../shared/contract/invite-codes";
 import type { PlanAwardRequest, PlanAwardResult, PlanCommandResult, PlanGoalListResponse, PlanOpenResult, PlanSkipRequest, PlanStepRequest, PlanUndoRequest, PlanV2Detail, PlanV2SummaryResponse, PlanIntakeView, PlanIntakeListResponse, PlanDraftView, PlanConfirmResult, PlanGoalKindResult, PlanGoalKindRequest, PlanIntakeCreateRequest, PlanIntakeMembersRequest, PlanIntakeLadderRequest, PlanFlowStepRequest, PlanIntakeAnswersRequest, PlanIntakePremiseRequest, PlanDraftFixRequest, PlanDraftManualEditRequest, PlanPersonTypeDetail, PlanCandidateDecisionRequest, PlanCandidateDecisionResult, PlanTalkedOfflineResult, PlanProposalRequest, PlanProposalResult, PlanIntroDraftRequest, PlanIntroDraftResult, PlanPendingListResponse, PlanPendingDecisionRequest, PlanPendingDecisionResult, PlanContactFit, PlanReviewView, PlanReviewStartRequest, PlanReviewToggleRequest, PlanQuotaResponse, PlanAchieveRequest, PlanAchievementView, PlanNextGoalsResponse, PlanGoalEditRequest, PlanGoalEditResult, PlanLegacyListResponse, PlanLegacyDetail } from "../../shared/contract/plan-v2";
 import type { accountDeletionRequestObject, accountExportCreateInputObject, accountExportObject, appVersionObject } from "../../shared/api-schema/account";
@@ -20,6 +22,8 @@ import type { contactCompletionAnswerInputObject, contactCompletionQuestionObjec
 import type { eventAssessmentAddToPlanResultObject, eventAssessmentCreateInputObject, eventAssessmentObject, eventAssessmentPatchInputObject } from "../../shared/api-schema/event-assessment";
 import type { eventRecommendationDismissInputObject, eventRecommendationDismissResultObject } from "../../shared/api-schema/event-recommendation-feedback";
 import type { homeLayoutObject, homeLayoutUpdateInputObject } from "../../shared/api-schema/home-layout";
+import type { ingestContactCandidateObject } from "../../shared/api-schema/business-card-batch";
+import type { manualContactCreateInputObject, manualContactCreateResultObject, manualContactDuplicateCheckInputObject, manualContactDuplicateCheckResultObject, manualContactMetContextObject, manualContactOrganizationSuggestionObject, manualContactOrganizationSuggestionsResultObject, manualContactUndoResultObject } from "../../shared/api-schema/manual-contact";
 import type { inviteCodeCreateInputObject, inviteCodeObject, inviteCodePreviewObject, inviteCodeRedeemResultObject } from "../../shared/api-schema/invite-codes";
 import type { planAwardRequestObject, planAwardResultObject, planCommandResultObject, planGoalListResponseObject, planOpenResultObject, planSkipRequestObject, planStepRequestObject, planUndoRequestObject, planV2DetailObject, planV2SummaryResponseObject, planIntakeViewObject, planIntakeListResponseObject, planDraftViewObject, planConfirmResultObject, planGoalKindResultObject, planGoalKindRequestObject, planIntakeCreateRequestObject, planIntakeMembersRequestObject, planIntakeLadderRequestObject, planFlowStepRequestObject, planIntakeAnswersRequestObject, planIntakePremiseRequestObject, planDraftFixRequestObject, planDraftManualEditRequestObject, planPersonTypeDetailObject, planCandidateDecisionRequestObject, planCandidateDecisionResultObject, planTalkedOfflineResultObject, planProposalRequestObject, planProposalResultObject, planIntroDraftRequestObject, planIntroDraftResultObject, planPendingListResponseObject, planPendingDecisionRequestObject, planPendingDecisionResultObject, planContactFitObject, planReviewViewObject, planReviewStartRequestObject, planReviewToggleRequestObject, planQuotaResponseObject, planAchieveRequestObject, planAchievementViewObject, planNextGoalsResponseObject, planGoalEditRequestObject, planGoalEditResultObject, planLegacyListResponseObject, planLegacyDetailObject } from "../../shared/api-schema/plan-v2";
 
@@ -95,3 +99,13 @@ expectParity<Parity<PlanGoalEditRequest, typeof planGoalEditRequestObject>>();
 expectParity<Parity<PlanGoalEditResult, typeof planGoalEditResultObject>>();
 expectParity<Parity<PlanLegacyListResponse, typeof planLegacyListResponseObject>>();
 expectParity<Parity<PlanLegacyDetail, typeof planLegacyDetailObject>>();
+// R12 手入力 + 名片候选（matchedOn 加 name，宽进）。
+expectParity<Parity<IngestContactCandidateContract, typeof ingestContactCandidateObject>>();
+expectParity<Parity<ManualContactMetContext, typeof manualContactMetContextObject>>();
+expectParity<Parity<ManualContactCreateInput, typeof manualContactCreateInputObject>>();
+expectParity<Parity<ManualContactCreateResult, typeof manualContactCreateResultObject>>();
+expectParity<Parity<ManualContactDuplicateCheckInput, typeof manualContactDuplicateCheckInputObject>>();
+expectParity<Parity<ManualContactDuplicateCheckResult, typeof manualContactDuplicateCheckResultObject>>();
+expectParity<Parity<ManualContactOrganizationSuggestion, typeof manualContactOrganizationSuggestionObject>>();
+expectParity<Parity<ManualContactOrganizationSuggestionsResult, typeof manualContactOrganizationSuggestionsResultObject>>();
+expectParity<Parity<ManualContactUndoResult, typeof manualContactUndoResultObject>>();

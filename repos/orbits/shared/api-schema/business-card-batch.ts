@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type * as Contract from "../contract/business-card-batch";
 import { INDUSTRY_IDS, sanitizeIndustryPair, validateIndustrySelection } from "../domain/industries";
+import { tolerantEnum } from "./tolerant";
 
 const identity = z.string().refine((value) => value.trim().length > 0);
 const timestamp = z.iso.datetime({ offset: true });
@@ -420,7 +421,12 @@ function normalizeLegacyIngestConfirmation(value: unknown): unknown {
 }
 
 // candidate（c9f465ca）：已有联系人与名片相似时服务端随 duplicate_review 一起回，供「合并 / 仍新建」选择。
-const ingestContactCandidateSchema: z.ZodType<Contract.IngestContactCandidateContract> = z.strictObject({
+// R12（DESIGN §4.1，复核 S1）：命中理由宽进——服务端新加的理由（如 `name` 同名）旧客户端读成 `name_organization`，
+// 不让整条响应失败；落到同一个值的重复项只留一个。
+const INGEST_CANDIDATE_MATCH_REASONS = ["email", "phone", "name_organization", "name"] as const;
+const ingestCandidateMatchedOn = z.array(tolerantEnum(INGEST_CANDIDATE_MATCH_REASONS, "name_organization"))
+  .transform((reasons) => [...new Set(reasons)]);
+export const ingestContactCandidateObject = z.strictObject({
   contactId: identity,
   displayName: z.string(),
   organization: z.string(),
@@ -428,9 +434,11 @@ const ingestContactCandidateSchema: z.ZodType<Contract.IngestContactCandidateCon
   email: z.string(),
   phone: z.string(),
   address: z.string(),
-  matchedOn: z.array(z.enum(["email", "phone", "name_organization"])),
+  matchedOn: ingestCandidateMatchedOn,
   identical: z.boolean(),
 });
+export const ingestContactCandidateSchema = ingestContactCandidateObject as z.ZodType<Contract.IngestContactCandidateContract>;
+
 const ingestDuplicateReviewSchema = z.strictObject({ state: z.literal("duplicate_review"), duplicateContactId: identity, candidate: ingestContactCandidateSchema.nullable().optional() });
 
 export const ingestConfirmationResponseSchema: z.ZodType<Contract.IngestConfirmationResponseContract> = z.preprocess(normalizeLegacyIngestConfirmation, z.discriminatedUnion("state", [

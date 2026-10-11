@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { IngestItemDTO } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
+import { readIngestContactCandidate, readIngestDuplicateMatches } from "../../../../../shared/api-schema/business-card-candidate";
 import type { IngestContactCandidateContract } from "../../../../../shared/contract/business-card-batch";
 import {
   INGEST_V2_API_BASE,
@@ -327,11 +328,12 @@ export function useCardBatch(batchId: string | null, t: T) {
       ...(metEventId ? { metEventId } : {}),
     };
     const response = await postAction(`/${batchId}/items/${card.items[0]!.id}/${manual ? "manual-entry" : "confirm"}`, payload);
-    const body = (await response.json().catch(() => null)) as { data?: { state?: string; contactId?: string; merged?: boolean; metEventId?: string | null; candidate?: ContactCandidate | null; item?: IngestItemDTO; items?: IngestItemDTO[] } } | null;
+    const body = (await response.json().catch(() => null)) as { data?: { state?: string; contactId?: string; merged?: boolean; metEventId?: string | null; candidate?: unknown; item?: IngestItemDTO; items?: IngestItemDTO[] } } | null;
     if (!response.ok) return "failed";
     if (body?.data?.state === "duplicate_review") {
       // 服务端发现了候选（例如复核页还没来得及查到）：交给复核页显示「可能是同一个联系人」。
-      const candidate = body.data.candidate ?? null;
+      // R12：候选宽进读取（不认识的命中理由读成 name_organization；读不出当作没有候选）。
+      const candidate = readIngestContactCandidate(body.data.candidate);
       if (candidate) {
         matchKeys.current[card.cardId] = JSON.stringify(matchFields(draft));
         setMatches(current => ({ ...current, [card.cardId]: candidate }));
@@ -364,8 +366,9 @@ export function useCardBatch(batchId: string | null, t: T) {
         method: "POST",
       })
         .then(response => (response.ok ? response.json() : null))
-        .then((body: { data?: { matches?: Record<string, ContactCandidate | null> } } | null) => {
-          const found = body?.data?.matches ?? {};
+        .then((body: { data?: unknown } | null) => {
+          // R12：逐条宽进读取，一条读不出不影响其余的卡。
+          const found = readIngestDuplicateMatches(body?.data);
           for (const entry of request) matchKeys.current[entry.cardId] = JSON.stringify(entry.fields);
           setMatches(current => {
             const next = { ...current };

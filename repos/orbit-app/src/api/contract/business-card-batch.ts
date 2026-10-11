@@ -252,7 +252,11 @@ export interface IngestContactCandidateContract {
   email: string;
   phone: string;
   address: string;
-  matchedOn: readonly ("email" | "phone" | "name_organization")[];
+  /**
+   * 命中理由。`name`（R12，DESIGN §2.3）：规范化后姓名相同、且至少一方没有公司 / 邮箱 / 电话的「同名」候选——
+   * 只提示、不自动统合，`identical` 恒为 false。读取端宽进：不认识的理由读成 `name_organization`。
+   */
+  matchedOn: readonly ("email" | "phone" | "name_organization" | "name")[];
   /** 名片六个字段与该联系人逐一相同：直接并入，不再询问。 */
   identical: boolean;
 }

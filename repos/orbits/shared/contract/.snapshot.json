@@ -2210,7 +2210,7 @@
         "matchedOn": {
           "optional": false,
           "kind": "text",
-          "type": "readonly ('phone' | 'email' | 'name_organization')[]"
+          "type": "readonly ('phone' | 'email' | 'name_organization' | 'name')[]"
         },
         "identical": {
           "optional": false,
@@ -5599,6 +5599,16 @@
         "LegacyNotificationUnreadSummaryDTO",
         "LocalContactDirectoryQuery",
         "LocalSyncState",
+        "ManualContactCreateInput",
+        "ManualContactCreateResult",
+        "ManualContactDuplicateCheckInput",
+        "ManualContactDuplicateCheckResult",
+        "ManualContactFieldChoice",
+        "ManualContactMergeField",
+        "ManualContactMetContext",
+        "ManualContactOrganizationSuggestion",
+        "ManualContactOrganizationSuggestionsResult",
+        "ManualContactUndoResult",
         "ManualProfileContract",
         "MeetingDetailsActorRole",
         "MeetingDetailsContract",
@@ -6189,6 +6199,224 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        }
+      }
+    },
+    "manual-contact.ts::ManualContactMergeField": {
+      "kind": "enum",
+      "values": [
+        "'displayName'",
+        "'email'",
+        "'organization'",
+        "'phone'",
+        "'role'"
+      ]
+    },
+    "manual-contact.ts::ManualContactFieldChoice": {
+      "kind": "enum",
+      "values": [
+        "'existing'",
+        "'incoming'"
+      ]
+    },
+    "manual-contact.ts::ManualContactMetContext": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'event' | 'other' | 'intro'"
+        },
+        "eventId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "manual-contact.ts::ManualContactCreateInput": {
+      "kind": "object",
+      "members": {
+        "displayName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "organization": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "role": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "email": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "phone": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "metContext": {
+          "optional": true,
+          "kind": "text",
+          "type": "ManualContactMetContext"
+        },
+        "note": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "mergeIntoContactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "fieldChoices": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "phone": {
+              "optional": true,
+              "kind": "text",
+              "type": "ManualContactFieldChoice | undefined"
+            },
+            "email": {
+              "optional": true,
+              "kind": "text",
+              "type": "ManualContactFieldChoice | undefined"
+            },
+            "displayName": {
+              "optional": true,
+              "kind": "text",
+              "type": "ManualContactFieldChoice | undefined"
+            },
+            "organization": {
+              "optional": true,
+              "kind": "text",
+              "type": "ManualContactFieldChoice | undefined"
+            },
+            "role": {
+              "optional": true,
+              "kind": "text",
+              "type": "ManualContactFieldChoice | undefined"
+            }
+          }
+        },
+        "allowDuplicate": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "manual-contact.ts::ManualContactCreateResult": {
+      "kind": "object",
+      "members": {
+        "outcome": {
+          "optional": false,
+          "kind": "text",
+          "type": "'merged' | 'created' | 'duplicate_review'"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "candidates": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly IngestContactCandidateContract[]"
+        },
+        "undoUntil": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "manual-contact.ts::ManualContactDuplicateCheckInput": {
+      "kind": "object",
+      "members": {
+        "displayName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "organization": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "email": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "phone": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "manual-contact.ts::ManualContactDuplicateCheckResult": {
+      "kind": "object",
+      "members": {
+        "candidates": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly IngestContactCandidateContract[]"
+        }
+      }
+    },
+    "manual-contact.ts::ManualContactOrganizationSuggestion": {
+      "kind": "object",
+      "members": {
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "manual-contact.ts::ManualContactOrganizationSuggestionsResult": {
+      "kind": "object",
+      "members": {
+        "organizations": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly ManualContactOrganizationSuggestion[]"
+        }
+      }
+    },
+    "manual-contact.ts::ManualContactUndoResult": {
+      "kind": "object",
+      "members": {
+        "outcome": {
+          "optional": false,
+          "kind": "text",
+          "type": "'undone'"
         }
       }
     },

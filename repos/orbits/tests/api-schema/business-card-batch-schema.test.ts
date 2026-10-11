@@ -319,7 +319,9 @@ test("confirmation schemas distinguish duplicate review, legacy ack and current 
   const candidate = { contactId: "contact:existing", displayName: "Aki Example", organization: "Example Inc.", role: "Director", email: "aki@example.test", phone: "", address: "", matchedOn: ["email"], identical: false };
   assert.deepEqual(current.parse({ ...duplicate, candidate }), { ...duplicate, candidate });
   assert.deepEqual(current.parse({ ...duplicate, candidate: null }), { ...duplicate, candidate: null });
-  for (const invalid of [{ ...candidate, matchedOn: ["fax"] }, { ...candidate, contactId: "" }, { ...candidate, extra: true }]) assert.equal(current.safeParse({ ...duplicate, candidate: invalid }).success, false);
+  for (const invalid of [{ ...candidate, contactId: "" }, { ...candidate, extra: true }]) assert.equal(current.safeParse({ ...duplicate, candidate: invalid }).success, false);
+  // R12（复核 S1）：命中理由宽进——不认识的理由读成 name_organization，整条响应照常（tests/api-schema/business-card-candidate-tolerant.test.ts）。
+  assert.deepEqual((current.parse({ ...duplicate, candidate: { ...candidate, matchedOn: ["fax"] } }) as { candidate?: { matchedOn: string[] } }).candidate?.matchedOn, ["name_organization"]);
   assert.equal(legacy.safeParse({ ...duplicate, candidate }).success, false);
   for (const [name, valid] of Object.entries(validFixtures).filter(([name]) => /(?:Retry|Skip|Finish)ResponseSchema$/.test(name))) {
     assert.equal((await schema(name)).safeParse({ ...valid as object, item }).success, false);
