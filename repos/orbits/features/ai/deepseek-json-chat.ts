@@ -32,6 +32,8 @@ export interface DeepseekJsonChatInput {
   system: string;
   user: string;
   timeoutMs: number;
+  /** 可选的输出 token 上限；不传时沿用供应商默认值（大方案输出可能被截断成不完整 JSON）。 */
+  maxTokens?: number;
   signal?: AbortSignal;
   fetchImplementation?: typeof fetch;
   nowMs?: () => number;
@@ -74,6 +76,7 @@ export async function deepseekJsonChat(input: DeepseekJsonChatInput): Promise<{ 
             { content: input.user, role: "user" },
           ],
           model: input.model,
+          ...(input.maxTokens ? { max_tokens: input.maxTokens } : {}),
           response_format: { type: "json_object" },
           thinking: { type: "disabled" },
         }),

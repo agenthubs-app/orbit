@@ -1,0 +1,4094 @@
+{
+ "source": "本机真实 deepseek-v4-flash，2026-10-11 跑通第 1 轮 C9（提示词 v5）的 6 次被拒原文；输入取自模型回显",
+ "promptVersion": "plan-v2-flow-2026-11-v5",
+ "cases": [
+  {
+   "id": "c9-op1",
+   "input": {
+    "current": {
+     "allocationReasons": [],
+     "citations": [
+      {
+       "id": "L-101",
+       "version": 1
+      },
+      {
+       "id": "L-102",
+       "version": 1
+      }
+     ],
+     "conclusion": "法務と手続きの体制を整えつつ、投資家との面談を重ねてシリーズAのクロージングを目指します。",
+     "diagnosis": "資金調達の目的とチームの状況を踏まえると、法務・手続きの空白を埋めることが最優先です。①国内の資金調達環境は前年より緩やかに拡大しており、投資家との接点づくりを進めやすい時期です。②事業会社系ファンドの存在感も高まっており、CVC も選択肢として検討する価値があります。ただし、資金使途と締切の前提には推測が含まれるため、まず関係者への確認が必要です。",
+     "event": {
+      "allocation": 10,
+      "targetCount": 2
+     },
+     "flow": [],
+     "personTypes": [
+      {
+       "allocation": 5,
+       "countRule": "資金調達の実務経験と財務モデル作成の実績で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C2",
+         "why": "投資家との接点を持つため、実務人材の紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "資金使途の内訳をどのように整理すべきでしょうか。",
+        "投資家向けの財務モデルで押さえるべき点は何でしょうか。",
+        "締切から逆算したスケジュールの組み方はありますか。"
+       ],
+       "recognizeHints": [
+        "シリーズA の実務経験があるか",
+        "財務モデルの作成支援実績があるか"
+       ],
+       "roleSituation": "資金調達の実務を主導する立場として、資金使途と締切の整理を担う。",
+       "shortLabelId": "cfo",
+       "slot": "cfo",
+       "targetCount": 1,
+       "why": "資金使途と締切の前提が推測であるため、財務面の実務を担う人材の助言が有効です。"
+      },
+      {
+       "allocation": 10,
+       "countRule": "自社と近い領域で調達経験があるかで判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C1",
+         "why": "起業家同士のネットワークから実務経験者の紹介が期待できます。"
+        },
+        {
+         "viaAlias": "C4",
+         "why": "共同創業者の立場から、調達経験者との接点が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "調達プロセスで最も苦労した点は何でしたか。",
+        "投資家との交渉で準備しておくべき資料は何ですか。",
+        "法務・手続きで早めに動くべきことは何ですか。"
+       ],
+       "recognizeHints": [
+        "シリーズA の調達経験があるか",
+        "投資契約の実務を経験しているか"
+       ],
+       "roleSituation": "過去に資金調達を経験した起業家として、実務の勘所を共有する立場。",
+       "shortLabelId": "funded_founder",
+       "slot": "funded_founder",
+       "targetCount": 3,
+       "why": "調達経験のある起業家から実務知見を得ることで、手続きの抜け漏れを防げます。"
+      },
+      {
+       "allocation": 10,
+       "countRule": "過去の投資実績と領域の近さで判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C2",
+         "why": "投資家ネットワークを通じてエンジェルの紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資家が最初に確認するポイントはどこですか。",
+        "事業の成長性をどう伝えると効果的ですか。",
+        "既存株主との関係で気をつける点はありますか。"
+       ],
+       "recognizeHints": [
+        "シード期の投資実績があるか",
+        "既存株主との接点があるか"
+       ],
+       "roleSituation": "初期段階から支援する投資家として、事業の成長性を見極める立場。",
+       "shortLabelId": "angel",
+       "slot": "angel",
+       "targetCount": 2,
+       "why": "エンジェル投資家からの助言は、投資家向けの説明資料の改善に役立ちます。"
+      },
+      {
+       "allocation": 40,
+       "countRule": "投資ステージと領域の一致度で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C3",
+         "why": "投資会社のネットワークからパートナーとの接点が期待できます。"
+        },
+        {
+         "viaAlias": "C7",
+         "why": "グロース支援の立場から投資家の紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資判断で重視する指標は何ですか。",
+        "ラウンド組成の進め方で助言はありますか。",
+        "デューデリジェンスで準備すべき資料は何ですか。"
+       ],
+       "recognizeHints": [
+        "シリーズA の投資実績があるか",
+        "既存株主との関係があるか"
+       ],
+       "roleSituation": "投資判断を担うパートナーとして、ラウンドの組成を検討する立場。",
+       "shortLabelId": "vc_partner",
+       "slot": "vc_partner",
+       "targetCount": 3,
+       "why": "VC パートナーとの面談は、ラウンド組成の中心となるため最も比重を置きます。リード投資家との面談を優先するため、配点をさらに厚くします。"
+      },
+      {
+       "allocation": 10,
+       "countRule": "事業領域の近さと投資実績で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C5",
+         "why": "イノベーション拠点の主宰として、CVC との接点が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資検討の際に重視するシナジーは何ですか。",
+        "意思決定までの一般的な期間はどのくらいですか。",
+        "事業会社との協業可能性はどのように評価しますか。"
+       ],
+       "recognizeHints": [
+        "CVC の投資実績があるか",
+        "事業会社との協業経験があるか"
+       ],
+       "roleSituation": "事業会社の投資担当として、事業シナジーを検討する立場。",
+       "shortLabelId": "cvc",
+       "slot": "cvc",
+       "targetCount": 3,
+       "why": "CVC は場合によるという前提のため、選択肢として接点を持っておきます。"
+      },
+      {
+       "allocation": 15,
+       "countRule": "投資契約の実務経験の有無で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C2",
+         "why": "投資家との接点から、契約実務に強い弁護士の紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資契約で注意すべき条項は何ですか。",
+        "デューデリジェンス前に準備すべき書類は何ですか。",
+        "手続きのスケジュール感はどのくらいですか。"
+       ],
+       "recognizeHints": [
+        "スタートアップの投資契約実績があるか",
+        "シリーズA の支援経験があるか"
+       ],
+       "roleSituation": "投資契約を扱う弁護士として、法務・手続きの空白を埋める立場。",
+       "shortLabelId": "lawyer",
+       "slot": "lawyer",
+       "targetCount": 1,
+       "why": "法務・手続きの空白が課題であるため、投資契約に強い弁護士の確保が急務です。"
+      }
+     ],
+     "steps": [
+      {
+       "doneCriteria": "資金使途の内訳（項目数）と締切までの残り週数が数値で文書化され、共有済みになっている。",
+       "personTypeKeys": [
+        "cfo",
+        "event"
+       ],
+       "title": "資金使途と締切の前提を確定する",
+       "why": null
+      },
+      {
+       "doneCriteria": "投資契約に強い弁護士との初回面談が完了している。",
+       "personTypeKeys": [
+        "lawyer",
+        "event"
+       ],
+       "title": "投資契約を担う弁護士を確保する",
+       "why": null
+      },
+      {
+       "doneCriteria": "VC との面談が複数回実施され、次回の打ち合わせが設定されている。",
+       "personTypeKeys": [
+        "vc_partner",
+        "event"
+       ],
+       "title": "VC パートナーとの面談を積み上げる",
+       "why": null
+      },
+      {
+       "doneCriteria": "起業家へのインタビューが複数件実施され、示唆がまとまっている。",
+       "personTypeKeys": [
+        "funded_founder",
+        "event"
+       ],
+       "title": "調達経験のある起業家から実務知見を得る",
+       "why": null
+      },
+      {
+       "doneCriteria": "CVC 担当者との面談が設定され、関心度が確認できている。",
+       "personTypeKeys": [
+        "cvc",
+        "event"
+       ],
+       "title": "CVC との接点をつくる",
+       "why": null
+      }
+     ]
+    },
+    "earned": {
+     "cfo": 5
+    },
+    "skippedSlots": [],
+    "slots": [
+     {
+      "allocation": 10,
+      "emoji": "📊",
+      "shortNames": [
+       {
+        "id": "cfo",
+        "label": "CFO 経験者"
+       }
+      ],
+      "slot": "cfo",
+      "targetCount": 1
+     },
+     {
+      "allocation": 10,
+      "emoji": "🧗",
+      "shortNames": [
+       {
+        "id": "funded_founder",
+        "label": "調達経験のある起業家"
+       }
+      ],
+      "slot": "funded_founder",
+      "targetCount": 3
+     },
+     {
+      "allocation": 10,
+      "emoji": "👼",
+      "shortNames": [
+       {
+        "id": "angel",
+        "label": "エンジェル投資家"
+       }
+      ],
+      "slot": "angel",
+      "targetCount": 2
+     },
+     {
+      "allocation": 40,
+      "emoji": "🏦",
+      "shortNames": [
+       {
+        "id": "vc_partner",
+        "label": "VC パートナー"
+       }
+      ],
+      "slot": "vc_partner",
+      "targetCount": 3
+     },
+     {
+      "allocation": 15,
+      "emoji": "🏢",
+      "shortNames": [
+       {
+        "id": "cvc",
+        "label": "CVC 担当者"
+       }
+      ],
+      "slot": "cvc",
+      "targetCount": 3
+     },
+     {
+      "allocation": 15,
+      "emoji": "⚖️",
+      "shortNames": [
+       {
+        "id": "lawyer",
+        "label": "弁護士（投資契約）"
+       }
+      ],
+      "slot": "lawyer",
+      "targetCount": 1
+     }
+    ],
+    "landscape": [
+     {
+      "id": "L-101",
+      "summary": "2024 年の国内スタートアップの資金調達額は約 7,793 億円（デット除く・集計時点の値）で、前年の同じ時点の集計より 3% 増えました。1 社あたりの平均は約 3.1 億円です。",
+      "title": "国内スタートアップの資金調達（2024 年）",
+      "version": 1
+     },
+     {
+      "id": "L-102",
+      "summary": "2024 年に国内で設立された VC ファンドの総額のうち、事業会社系（CVC）ファンドは約 36% を占めました。",
+      "title": "事業会社系ファンド（CVC）の比重",
+      "version": 1
+     },
+     {
+      "id": "L-103",
+      "summary": "日本政策金融公庫が 2024 年 4〜9 月に融資し、融資時点で開業後 1 年以内だった回答企業（不動産賃貸業を除く）では、開業時の資金調達額は平均 1,219 万円で、その金額の 67.9% が金融機関などからの借入れでした。",
+      "title": "開業時の資金の集め方",
+      "version": 1
+     }
+    ],
+    "contacts": [
+     {
+      "alias": "C1",
+      "industry": null,
+      "name": "渡辺 翔",
+      "notes": null,
+      "organization": "Nexa Robotics",
+      "role": "代表取締役",
+      "tags": []
+     },
+     {
+      "alias": "C2",
+      "industry": null,
+      "name": "高橋 美咲",
+      "notes": null,
+      "organization": "青葉ベンチャーズ",
+      "role": "パートナー",
+      "tags": []
+     },
+     {
+      "alias": "C3",
+      "industry": null,
+      "name": "山本 彩",
+      "notes": null,
+      "organization": "東都キャピタル",
+      "role": "シニアアソシエイト",
+      "tags": []
+     },
+     {
+      "alias": "C4",
+      "industry": null,
+      "name": "青木 里奈",
+      "notes": null,
+      "organization": "Kanade AI",
+      "role": "CTO",
+      "tags": [
+       "共同創業者"
+      ]
+     },
+     {
+      "alias": "C5",
+      "industry": null,
+      "name": "小林 誠",
+      "notes": null,
+      "organization": "丸の内イノベーションラボ",
+      "role": "主宰",
+      "tags": []
+     },
+     {
+      "alias": "C6",
+      "industry": null,
+      "name": "伊藤 直子",
+      "notes": null,
+      "organization": "株式会社ハルモニア",
+      "role": "事業開発部長",
+      "tags": []
+     },
+     {
+      "alias": "C7",
+      "industry": null,
+      "name": "佐々木 遼",
+      "notes": null,
+      "organization": "湾岸グロース・パートナーズ",
+      "role": "マネージャー",
+      "tags": []
+     },
+     {
+      "alias": "C8",
+      "industry": null,
+      "name": "鈴木 大輔",
+      "notes": null,
+      "organization": "北辰製作所",
+      "role": "製造部長",
+      "tags": []
+     },
+     {
+      "alias": "C9",
+      "industry": null,
+      "name": "松井 遥",
+      "notes": null,
+      "organization": "株式会社ソラノテ",
+      "role": "プロダクトマネージャー",
+      "tags": []
+     },
+     {
+      "alias": "C10",
+      "industry": null,
+      "name": "岡田 紗希",
+      "notes": null,
+      "organization": "Sakura Growth Partners",
+      "role": "アナリスト",
+      "tags": []
+     }
+    ],
+    "goalKind": "fundraising"
+   },
+   "outputs": [
+    {
+     "attempt": 1,
+     "issues": [
+      "diagnosis: Invalid input: expected string, received undefined",
+      "conclusion: Invalid input: expected string, received undefined",
+      "steps: Invalid input: expected array, received undefined",
+      "personTypes: Invalid input: expected array, received undefined",
+      "event: Invalid input: expected object, received undefined",
+      "citations: Invalid input: expected array, received undefined"
+     ],
+     "content": {
+      "revised": {
+       "contacts": [
+        {
+         "alias": "C1",
+         "industry": null,
+         "name": "渡辺 翔",
+         "notes": null,
+         "organization": "Nexa Robotics",
+         "role": "代表取締役",
+         "tags": []
+        },
+        {
+         "alias": "C2",
+         "industry": null,
+         "name": "高橋 美咲",
+         "notes": null,
+         "organization": "青葉ベンチャーズ",
+         "role": "パートナー",
+         "tags": []
+        },
+        {
+         "alias": "C3",
+         "industry": null,
+         "name": "山本 彩",
+         "notes": null,
+         "organization": "東都キャピタル",
+         "role": "シニアアソシエイト",
+         "tags": []
+        },
+        {
+         "alias": "C4",
+         "industry": null,
+         "name": "青木 里奈",
+         "notes": null,
+         "organization": "Kanade AI",
+         "role": "CTO",
+         "tags": [
+          "共同創業者"
+         ]
+        },
+        {
+         "alias": "C5",
+         "industry": null,
+         "name": "小林 誠",
+         "notes": null,
+         "organization": "丸の内イノベーションラボ",
+         "role": "主宰",
+         "tags": []
+        },
+        {
+         "alias": "C6",
+         "industry": null,
+         "name": "伊藤 直子",
+         "notes": null,
+         "organization": "株式会社ハルモニア",
+         "role": "事業開発部長",
+         "tags": []
+        },
+        {
+         "alias": "C7",
+         "industry": null,
+         "name": "佐々木 遼",
+         "notes": null,
+         "organization": "湾岸グロース・パートナーズ",
+         "role": "マネージャー",
+         "tags": []
+        },
+        {
+         "alias": "C8",
+         "industry": null,
+         "name": "鈴木 大輔",
+         "notes": null,
+         "organization": "北辰製作所",
+         "role": "製造部長",
+         "tags": []
+        },
+        {
+         "alias": "C9",
+         "industry": null,
+         "name": "松井 遥",
+         "notes": null,
+         "organization": "株式会社ソラノテ",
+         "role": "プロダクトマネージャー",
+         "tags": []
+        },
+        {
+         "alias": "C10",
+         "industry": null,
+         "name": "岡田 紗希",
+         "notes": null,
+         "organization": "Sakura Growth Partners",
+         "role": "アナリスト",
+         "tags": []
+        }
+       ],
+       "current": {
+        "allocationReasons": [],
+        "citations": [
+         {
+          "id": "L-101",
+          "version": 1
+         },
+         {
+          "id": "L-102",
+          "version": 1
+         }
+        ],
+        "conclusion": "法務と手続きの体制を整えつつ、投資家との面談を重ねてシリーズAのクロージングを目指します。",
+        "diagnosis": "資金調達の目的とチームの状況を踏まえると、法務・手続きの空白を埋めることが最優先です。①国内の資金調達環境は前年より緩やかに拡大しており、投資家との接点づくりを進めやすい時期です。②事業会社系ファンドの存在感も高まっており、CVC も選択肢として検討する価値があります。ただし、資金使途と締切の前提には推測が含まれるため、まず関係者への確認が必要です。",
+        "event": {
+         "allocation": 10,
+         "targetCount": 2
+        },
+        "flow": [],
+        "personTypes": [
+         {
+          "allocation": 5,
+          "countRule": "資金調達の実務経験と財務モデル作成の実績で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家との接点を持つため、実務人材の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "資金使途の内訳をどのように整理すべきでしょうか。",
+           "投資家向けの財務モデルで押さえるべき点は何でしょうか。",
+           "締切から逆算したスケジュールの組み方はありますか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の実務経験があるか",
+           "財務モデルの作成支援実績があるか"
+          ],
+          "roleSituation": "資金調達の実務を主導する立場として、資金使途と締切の整理を担う。",
+          "shortLabelId": "cfo",
+          "slot": "cfo",
+          "targetCount": 1,
+          "why": "資金使途と締切の前提が推測であるため、財務面の実務を担う人材の助言が有効です。"
+         },
+         {
+          "allocation": 10,
+          "countRule": "自社と近い領域で調達経験があるかで判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C1",
+            "why": "起業家同士のネットワークから実務経験者の紹介が期待できます。"
+           },
+           {
+            "viaAlias": "C4",
+            "why": "共同創業者の立場から、調達経験者との接点が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "調達プロセスで最も苦労した点は何でしたか。",
+           "投資家との交渉で準備しておくべき資料は何ですか。",
+           "法務・手続きで早めに動くべきことは何ですか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の調達経験があるか",
+           "投資契約の実務を経験しているか"
+          ],
+          "roleSituation": "過去に資金調達を経験した起業家として、実務の勘所を共有する立場。",
+          "shortLabelId": "funded_founder",
+          "slot": "funded_founder",
+          "targetCount": 3,
+          "why": "調達経験のある起業家から実務知見を得ることで、手続きの抜け漏れを防げます。"
+         },
+         {
+          "allocation": 10,
+          "countRule": "過去の投資実績と領域の近さで判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家ネットワークを通じてエンジェルの紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資家が最初に確認するポイントはどこですか。",
+           "事業の成長性をどう伝えると効果的ですか。",
+           "既存株主との関係で気をつける点はありますか。"
+          ],
+          "recognizeHints": [
+           "シード期の投資実績があるか",
+           "既存株主との接点があるか"
+          ],
+          "roleSituation": "初期段階から支援する投資家として、事業の成長性を見極める立場。",
+          "shortLabelId": "angel",
+          "slot": "angel",
+          "targetCount": 2,
+          "why": "エンジェル投資家からの助言は、投資家向けの説明資料の改善に役立ちます。"
+         },
+         {
+          "allocation": 40,
+          "countRule": "投資ステージと領域の一致度で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C3",
+            "why": "投資会社のネットワークからパートナーとの接点が期待できます。"
+           },
+           {
+            "viaAlias": "C7",
+            "why": "グロース支援の立場から投資家の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資判断で重視する指標は何ですか。",
+           "ラウンド組成の進め方で助言はありますか。",
+           "デューデリジェンスで準備すべき資料は何ですか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の投資実績があるか",
+           "既存株主との関係があるか"
+          ],
+          "roleSituation": "投資判断を担うパートナーとして、ラウンドの組成を検討する立場。",
+          "shortLabelId": "vc_partner",
+          "slot": "vc_partner",
+          "targetCount": 3,
+          "why": "VC パートナーとの面談は、ラウンド組成の中心となるため最も比重を置きます。リード投資家との面談を優先するため、配点をさらに厚くします。"
+         },
+         {
+          "allocation": 10,
+          "countRule": "事業領域の近さと投資実績で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C5",
+            "why": "イノベーション拠点の主宰として、CVC との接点が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資検討の際に重視するシナジーは何ですか。",
+           "意思決定までの一般的な期間はどのくらいですか。",
+           "事業会社との協業可能性はどのように評価しますか。"
+          ],
+          "recognizeHints": [
+           "CVC の投資実績があるか",
+           "事業会社との協業経験があるか"
+          ],
+          "roleSituation": "事業会社の投資担当として、事業シナジーを検討する立場。",
+          "shortLabelId": "cvc",
+          "slot": "cvc",
+          "targetCount": 3,
+          "why": "CVC は場合によるという前提のため、選択肢として接点を持っておきます。"
+         },
+         {
+          "allocation": 15,
+          "countRule": "投資契約の実務経験の有無で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家との接点から、契約実務に強い弁護士の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資契約で注意すべき条項は何ですか。",
+           "デューデリジェンス前に準備すべき書類は何ですか。",
+           "手続きのスケジュール感はどのくらいですか。"
+          ],
+          "recognizeHints": [
+           "スタートアップの投資契約実績があるか",
+           "シリーズA の支援経験があるか"
+          ],
+          "roleSituation": "投資契約を扱う弁護士として、法務・手続きの空白を埋める立場。",
+          "shortLabelId": "lawyer",
+          "slot": "lawyer",
+          "targetCount": 1,
+          "why": "法務・手続きの空白が課題であるため、投資契約に強い弁護士の確保が急務です。"
+         }
+        ],
+        "steps": [
+         {
+          "doneCriteria": "資金使途の内訳（項目数）と締切までの残り週数が数値で文書化され、共有済みになっている。",
+          "personTypeKeys": [
+           "cfo",
+           "event"
+          ],
+          "title": "資金使途と締切の前提を確定する",
+          "why": null
+         },
+         {
+          "doneCriteria": "投資契約に強い弁護士との初回面談が完了している。",
+          "personTypeKeys": [
+           "lawyer",
+           "event"
+          ],
+          "title": "投資契約を担う弁護士を確保する",
+          "why": null
+         },
+         {
+          "doneCriteria": "VC との面談が複数回実施され、次回の打ち合わせが設定されている。",
+          "personTypeKeys": [
+           "vc_partner",
+           "event"
+          ],
+          "title": "VC パートナーとの面談を積み上げる",
+          "why": null
+         },
+         {
+          "doneCriteria": "起業家へのインタビューが複数件実施され、示唆がまとまっている。",
+          "personTypeKeys": [
+           "funded_founder",
+           "event"
+          ],
+          "title": "調達経験のある起業家から実務知見を得る",
+          "why": null
+         },
+         {
+          "doneCriteria": "CVC 担当者との面談が設定され、関心度が確認できている。",
+          "personTypeKeys": [
+           "cvc",
+           "event"
+          ],
+          "title": "CVC との接点をつくる",
+          "why": null
+         }
+        ]
+       },
+       "earned": {
+        "cfo": 5
+       },
+       "goalKind": "fundraising",
+       "landscape": [
+        {
+         "id": "L-101",
+         "summary": "2024 年の国内スタートアップの資金調達額は約 7,793 億円（デット除く・集計時点の値）で、前年の同じ時点の集計より 3% 増えました。1 社あたりの平均は約 3.1 億円です。",
+         "title": "国内スタートアップの資金調達（2024 年）",
+         "version": 1
+        },
+        {
+         "id": "L-102",
+         "summary": "2024 年に国内で設立された VC ファンドの総額のうち、事業会社系（CVC）ファンドは約 36% を占めました。",
+         "title": "事業会社系ファンド（CVC）の比重",
+         "version": 1
+        },
+        {
+         "id": "L-103",
+         "summary": "日本政策金融公庫が 2024 年 4〜9 月に融資し、融資時点で開業後 1 年以内だった回答企業（不動産賃貸業を除く）では、開業時の資金調達額は平均 1,219 万円で、その金額の 67.9% が金融機関などからの借入れでした。",
+         "title": "開業時の資金の集め方",
+         "version": 1
+        }
+       ],
+       "premise": [
+        {
+         "key": "purpose",
+         "label": "目的",
+         "value": "シリーズAの資金調達を成功させ、事業拡大を進めるための体制を整える。",
+         "source": "background",
+         "guessed": false
+        },
+        {
+         "key": "team",
+         "label": "チーム",
+         "value": "2名（空き：法務・手続き）",
+         "source": "background",
+         "guessed": false
+        },
+        {
+         "key": "F3",
+         "label": "既存株主・リード候補",
+         "value": "既存株主は追加出資に前向き · リード投資家は ARR 1 億円の見込みを重視",
+         "source": "q1",
+         "guessed": false
+        },
+        {
+         "key": "F4",
+         "label": "調達の経験",
+         "value": "経験あり",
+         "source": "q2",
+         "guessed": false
+        },
+        {
+         "key": "F1",
+         "label": "ラウンドと金額",
+         "value": "シリーズ A",
+         "source": "q3",
+         "guessed": false
+        },
+        {
+         "key": "F6",
+         "label": "事業会社（CVC）",
+         "value": "場合による",
+         "source": "q4",
+         "guessed": false
+        },
+        {
+         "key": "F5",
+         "label": "使い道と締切",
+         "value": "1年以内",
+         "source": "q5",
+         "guessed": true
+        }
+       ],
+       "previousTurns": [],
+       "request": "既存株主・リード候補：既存株主は追加出資に前向き · リード投資家は ARR 1 億円の見込みを重視\nリード投資家との面談を優先したいので、配点を少し寄せてほしい",
+       "skippedSlots": [],
+       "slots": [
+        {
+         "allocation": 10,
+         "emoji": "📊",
+         "shortNames": [
+          {
+           "id": "cfo",
+           "label": "CFO 経験者"
+          }
+         ],
+         "slot": "cfo",
+         "targetCount": 1
+        },
+        {
+         "allocation": 10,
+         "emoji": "🧗",
+         "shortNames": [
+          {
+           "id": "funded_founder",
+           "label": "調達経験のある起業家"
+          }
+         ],
+         "slot": "funded_founder",
+         "targetCount": 3
+        },
+        {
+         "allocation": 10,
+         "emoji": "👼",
+         "shortNames": [
+          {
+           "id": "angel",
+           "label": "エンジェル投資家"
+          }
+         ],
+         "slot": "angel",
+         "targetCount": 2
+        },
+        {
+         "allocation": 40,
+         "emoji": "🏦",
+         "shortNames": [
+          {
+           "id": "vc_partner",
+           "label": "VC パートナー"
+          }
+         ],
+         "slot": "vc_partner",
+         "targetCount": 3
+        },
+        {
+         "allocation": 15,
+         "emoji": "🏢",
+         "shortNames": [
+          {
+           "id": "cvc",
+           "label": "CVC 担当者"
+          }
+         ],
+         "slot": "cvc",
+         "targetCount": 3
+        },
+        {
+         "allocation": 15,
+         "emoji": "⚖️",
+         "shortNames": [
+          {
+           "id": "lawyer",
+           "label": "弁護士（投資契約）"
+          }
+         ],
+         "slot": "lawyer",
+         "targetCount": 1
+        }
+       ]
+      },
+      "reasons": [
+       {
+        "path": "slots[vc_partner].allocation",
+        "reason": "リード投資家との面談を優先したいというご要望に合わせ、VC パートナーの配点を 30 から 40 に引き上げました。"
+       },
+       {
+        "path": "slots[funded_founder].allocation",
+        "reason": "VC パートナーを 10 ポイント増やすため、調達経験のある起業家の配点を 15 から 10 に引き下げました。"
+       },
+       {
+        "path": "slots[lawyer].allocation",
+        "reason": "VC パートナーを 10 ポイント増やすため、弁護士（投資契約）の配点を 10 から 15 に引き下げました。"
+       },
+       {
+        "path": "personTypes[vc_partner].why",
+        "reason": "リード投資家との面談を優先する方針を反映して理由を補足しました。"
+       }
+      ],
+      "unchanged": [
+       "premise",
+       "landscape",
+       "current.citations",
+       "current.steps",
+       "current.conclusion",
+       "current.diagnosis",
+       "contacts",
+       "slots[cfo]",
+       "slots[angel]",
+       "slots[cvc]",
+       "allocationReasons"
+      ],
+      "noChangeReason": null
+     }
+    },
+    {
+     "attempt": 2,
+     "issues": [
+      "personType vc_partner: recognizeHints may not change in a revision"
+     ],
+     "content": {
+      "revised": {
+       "allocationReasons": [],
+       "citations": [
+        {
+         "id": "L-101",
+         "version": 1
+        },
+        {
+         "id": "L-102",
+         "version": 1
+        }
+       ],
+       "conclusion": "法務と手続きの体制を整えつつ、リード投資家との面談を優先して重ね、シリーズAのクロージングを目指します。",
+       "diagnosis": "資金調達の目的とチームの状況を踏まえると、法務・手続きの空白を埋めることが最優先です。①国内の資金調達環境は前年より緩やかに拡大しており、投資家との接点づくりを進めやすい時期です。②事業会社系ファンドの存在感も高まっており、CVC も選択肢として検討する価値があります。ただし、資金使途と締切の前提には推測が含まれるため、まず関係者への確認が必要です。今回はリード投資家との面談を優先する方針のため、VC パートナーの配点を厚くします。",
+       "event": {
+        "allocation": 10,
+        "targetCount": 2
+       },
+       "flow": [],
+       "personTypes": [
+        {
+         "allocation": 5,
+         "countRule": "資金調達の実務経験と財務モデル作成の実績で判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C2",
+           "why": "投資家との接点を持つため、実務人材の紹介が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "資金使途の内訳をどのように整理すべきでしょうか。",
+          "投資家向けの財務モデルで押さえるべき点は何でしょうか。",
+          "締切から逆算したスケジュールの組み方はありますか。"
+         ],
+         "recognizeHints": [
+          "シリーズA の実務経験があるか",
+          "財務モデルの作成支援実績があるか"
+         ],
+         "roleSituation": "資金調達の実務を主導する立場として、資金使途と締切の整理を担う。",
+         "shortLabelId": "cfo",
+         "slot": "cfo",
+         "targetCount": 1,
+         "why": "資金使途と締切の前提が推測であるため、財務面の実務を担う人材の助言が有効です。"
+        },
+        {
+         "allocation": 15,
+         "countRule": "自社と近い領域で調達経験があるかで判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C1",
+           "why": "起業家同士のネットワークから実務経験者の紹介が期待できます。"
+          },
+          {
+           "viaAlias": "C4",
+           "why": "共同創業者の立場から、調達経験者との接点が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "調達プロセスで最も苦労した点は何でしたか。",
+          "投資家との交渉で準備しておくべき資料は何ですか。",
+          "法務・手続きで早めに動くべきことは何ですか。"
+         ],
+         "recognizeHints": [
+          "シリーズA の調達経験があるか",
+          "投資契約の実務を経験しているか"
+         ],
+         "roleSituation": "過去に資金調達を経験した起業家として、実務の勘所を共有する立場。",
+         "shortLabelId": "funded_founder",
+         "slot": "funded_founder",
+         "targetCount": 3,
+         "why": "調達経験のある起業家から実務知見を得ることで、手続きの抜け漏れを防げます。"
+        },
+        {
+         "allocation": 10,
+         "countRule": "過去の投資実績と領域の近さで判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C2",
+           "why": "投資家ネットワークを通じてエンジェルの紹介が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "投資家が最初に確認するポイントはどこですか。",
+          "事業の成長性をどう伝えると効果的ですか。",
+          "既存株主との関係で気をつける点はありますか。"
+         ],
+         "recognizeHints": [
+          "シード期の投資実績があるか",
+          "既存株主との接点があるか"
+         ],
+         "roleSituation": "初期段階から支援する投資家として、事業の成長性を見極める立場。",
+         "shortLabelId": "angel",
+         "slot": "angel",
+         "targetCount": 2,
+         "why": "エンジェル投資家からの助言は、投資家向けの説明資料の改善に役立ちます。"
+        },
+        {
+         "allocation": 35,
+         "countRule": "投資ステージと領域の一致度で判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C3",
+           "why": "投資会社のネットワークからパートナーとの接点が期待できます。"
+          },
+          {
+           "viaAlias": "C7",
+           "why": "グロース支援の立場から投資家の紹介が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "投資判断で重視する指標は何ですか。",
+          "ラウンド組成の進め方で助言はありますか。",
+          "デューデリジェンスで準備すべき資料は何ですか。"
+         ],
+         "recognizeHints": [
+          "シリーズA の投資実績があるか",
+          "ARR 1 億円の見込みをどう評価するか",
+          "既存株主との関係があるか"
+         ],
+         "roleSituation": "投資判断を担うパートナーとして、ラウンドの組成を検討する立場。",
+         "shortLabelId": "vc_partner",
+         "slot": "vc_partner",
+         "targetCount": 3,
+         "why": "リード投資家は ARR 1 億円の見込みを重視しており、面談を優先するため最も比重を置きます。"
+        },
+        {
+         "allocation": 10,
+         "countRule": "事業領域の近さと投資実績で判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C5",
+           "why": "イノベーション拠点の主宰として、CVC との接点が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "投資検討の際に重視するシナジーは何ですか。",
+          "意思決定までの一般的な期間はどのくらいですか。",
+          "事業会社との協業可能性はどのように評価しますか。"
+         ],
+         "recognizeHints": [
+          "CVC の投資実績があるか",
+          "事業会社との協業経験があるか"
+         ],
+         "roleSituation": "事業会社の投資担当として、事業シナジーを検討する立場。",
+         "shortLabelId": "cvc",
+         "slot": "cvc",
+         "targetCount": 3,
+         "why": "CVC は場合によるという前提のため、選択肢として接点を持っておきます。"
+        },
+        {
+         "allocation": 15,
+         "countRule": "投資契約の実務経験の有無で判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C2",
+           "why": "投資家との接点から、契約実務に強い弁護士の紹介が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "投資契約で注意すべき条項は何ですか。",
+          "デューデリジェンス前に準備すべき書類は何ですか。",
+          "手続きのスケジュール感はどのくらいですか。"
+         ],
+         "recognizeHints": [
+          "スタートアップの投資契約実績があるか",
+          "シリーズA の支援経験があるか"
+         ],
+         "roleSituation": "投資契約を扱う弁護士として、法務・手続きの空白を埋める立場。",
+         "shortLabelId": "lawyer",
+         "slot": "lawyer",
+         "targetCount": 1,
+         "why": "法務・手続きの空白が課題であるため、投資契約に強い弁護士の確保が急務です。"
+        }
+       ],
+       "steps": [
+        {
+         "doneCriteria": "資金使途の内訳（項目数）と締切までの残り週数が数値で文書化され、共有済みになっている。",
+         "personTypeKeys": [
+          "cfo",
+          "event"
+         ],
+         "title": "資金使途と締切の前提を確定する",
+         "why": null
+        },
+        {
+         "doneCriteria": "投資契約に強い弁護士との初回面談が完了している。",
+         "personTypeKeys": [
+          "lawyer",
+          "event"
+         ],
+         "title": "投資契約を担う弁護士を確保する",
+         "why": null
+        },
+        {
+         "doneCriteria": "リード投資家（VC パートナー）との面談が複数回実施され、ARR 1 億円の見込みの伝え方への助言を得て、次回の打ち合わせが設定されている。",
+         "personTypeKeys": [
+          "vc_partner",
+          "event"
+         ],
+         "title": "リード投資家（VC パートナー）との面談を優先して積み上げる",
+         "why": null
+        },
+        {
+         "doneCriteria": "起業家へのインタビューが複数件実施され、示唆がまとまっている。",
+         "personTypeKeys": [
+          "funded_founder",
+          "event"
+         ],
+         "title": "調達経験のある起業家から実務知見を得る",
+         "why": null
+        },
+        {
+         "doneCriteria": "CVC 担当者との面談が設定され、関心度が確認できている。",
+         "personTypeKeys": [
+          "cvc",
+          "event"
+         ],
+         "title": "CVC との接点をつくる",
+         "why": null
+        }
+       ]
+      },
+      "reasons": [
+       {
+        "path": "current.personTypes.vc_partner",
+        "reason": "リード投資家との面談を優先するという要望に合わせ、VC パートナーの配点を 30 から 35 に引き上げました。"
+       },
+       {
+        "path": "current.personTypes.funded_founder",
+        "reason": "配点を 100 に保つため、調達経験のある起業家の配点を 15 から 10 に下げました。"
+       },
+       {
+        "path": "current.personTypes.vc_partner.recognizeHints",
+        "reason": "前提 F3 でリード投資家は ARR 1 億円の見込みを重視すると確認できたため、その確認観点を追加しました。"
+       },
+       {
+        "path": "current.steps[2]",
+        "reason": "面談を優先する方針に合わせ、VC パートナーとの面談ステップの達成基準に ARR 1 億円の見込みの伝え方への助言を追加しました。"
+       }
+      ],
+      "unchanged": [
+       "current.citations",
+       "current.diagnosis",
+       "current.conclusion",
+       "current.event",
+       "current.personTypes.cfo",
+       "current.personTypes.angel",
+       "current.personTypes.cvc",
+       "current.personTypes.lawyer",
+       "current.steps[0]",
+       "current.steps[1]",
+       "current.steps[3]",
+       "current.steps[4]"
+      ],
+      "noChangeReason": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "c9-op2",
+   "input": {
+    "current": {
+     "allocationReasons": [],
+     "citations": [
+      {
+       "id": "L-101",
+       "version": 1
+      },
+      {
+       "id": "L-102",
+       "version": 1
+      }
+     ],
+     "conclusion": "法務と手続きの体制を整えつつ、投資家との面談を重ねてシリーズAのクロージングを目指します。",
+     "diagnosis": "資金調達の目的とチームの状況を踏まえると、法務・手続きの空白を埋めることが最優先です。①国内の資金調達環境は前年より緩やかに拡大しており、投資家との接点づくりを進めやすい時期です。②事業会社系ファンドの存在感も高まっており、CVC も選択肢として検討する価値があります。ただし、資金使途と締切の前提には推測が含まれるため、まず関係者への確認が必要です。",
+     "event": {
+      "allocation": 10,
+      "targetCount": 2
+     },
+     "flow": [],
+     "personTypes": [
+      {
+       "allocation": 5,
+       "countRule": "資金調達の実務経験と財務モデル作成の実績で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C2",
+         "why": "投資家との接点を持つため、実務人材の紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "資金使途の内訳をどのように整理すべきでしょうか。",
+        "投資家向けの財務モデルで押さえるべき点は何でしょうか。",
+        "締切から逆算したスケジュールの組み方はありますか。"
+       ],
+       "recognizeHints": [
+        "シリーズA の実務経験があるか",
+        "財務モデルの作成支援実績があるか"
+       ],
+       "roleSituation": "資金調達の実務を主導する立場として、資金使途と締切の整理を担う。",
+       "shortLabelId": "cfo",
+       "slot": "cfo",
+       "targetCount": 1,
+       "why": "資金使途と締切の前提が推測であるため、財務面の実務を担う人材の助言が有効です。"
+      },
+      {
+       "allocation": 10,
+       "countRule": "自社と近い領域で調達経験があるかで判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C1",
+         "why": "起業家同士のネットワークから実務経験者の紹介が期待できます。"
+        },
+        {
+         "viaAlias": "C4",
+         "why": "共同創業者の立場から、調達経験者との接点が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "調達プロセスで最も苦労した点は何でしたか。",
+        "投資家との交渉で準備しておくべき資料は何ですか。",
+        "法務・手続きで早めに動くべきことは何ですか。"
+       ],
+       "recognizeHints": [
+        "シリーズA の調達経験があるか",
+        "投資契約の実務を経験しているか"
+       ],
+       "roleSituation": "過去に資金調達を経験した起業家として、実務の勘所を共有する立場。",
+       "shortLabelId": "funded_founder",
+       "slot": "funded_founder",
+       "targetCount": 3,
+       "why": "調達経験のある起業家から実務知見を得ることで、手続きの抜け漏れを防げます。"
+      },
+      {
+       "allocation": 10,
+       "countRule": "過去の投資実績と領域の近さで判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C2",
+         "why": "投資家ネットワークを通じてエンジェルの紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資家が最初に確認するポイントはどこですか。",
+        "事業の成長性をどう伝えると効果的ですか。",
+        "既存株主との関係で気をつける点はありますか。"
+       ],
+       "recognizeHints": [
+        "シード期の投資実績があるか",
+        "既存株主との接点があるか"
+       ],
+       "roleSituation": "初期段階から支援する投資家として、事業の成長性を見極める立場。",
+       "shortLabelId": "angel",
+       "slot": "angel",
+       "targetCount": 2,
+       "why": "エンジェル投資家からの助言は、投資家向けの説明資料の改善に役立ちます。"
+      },
+      {
+       "allocation": 40,
+       "countRule": "投資ステージと領域の一致度で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C3",
+         "why": "投資会社のネットワークからパートナーとの接点が期待できます。"
+        },
+        {
+         "viaAlias": "C7",
+         "why": "グロース支援の立場から投資家の紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資判断で重視する指標は何ですか。",
+        "ラウンド組成の進め方で助言はありますか。",
+        "デューデリジェンスで準備すべき資料は何ですか。"
+       ],
+       "recognizeHints": [
+        "シリーズA の投資実績があるか",
+        "既存株主との関係があるか"
+       ],
+       "roleSituation": "投資判断を担うパートナーとして、ラウンドの組成を検討する立場。",
+       "shortLabelId": "vc_partner",
+       "slot": "vc_partner",
+       "targetCount": 3,
+       "why": "VC パートナーとの面談は、ラウンド組成の中心となるため最も比重を置きます。リード投資家との面談を優先するため、配点をさらに厚くします。"
+      },
+      {
+       "allocation": 10,
+       "countRule": "事業領域の近さと投資実績で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C5",
+         "why": "イノベーション拠点の主宰として、CVC との接点が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資検討の際に重視するシナジーは何ですか。",
+        "意思決定までの一般的な期間はどのくらいですか。",
+        "事業会社との協業可能性はどのように評価しますか。"
+       ],
+       "recognizeHints": [
+        "CVC の投資実績があるか",
+        "事業会社との協業経験があるか"
+       ],
+       "roleSituation": "事業会社の投資担当として、事業シナジーを検討する立場。",
+       "shortLabelId": "cvc",
+       "slot": "cvc",
+       "targetCount": 3,
+       "why": "CVC は場合によるという前提のため、選択肢として接点を持っておきます。"
+      },
+      {
+       "allocation": 15,
+       "countRule": "投資契約の実務経験の有無で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C2",
+         "why": "投資家との接点から、契約実務に強い弁護士の紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資契約で注意すべき条項は何ですか。",
+        "デューデリジェンス前に準備すべき書類は何ですか。",
+        "手続きのスケジュール感はどのくらいですか。"
+       ],
+       "recognizeHints": [
+        "スタートアップの投資契約実績があるか",
+        "シリーズA の支援経験があるか"
+       ],
+       "roleSituation": "投資契約を扱う弁護士として、法務・手続きの空白を埋める立場。",
+       "shortLabelId": "lawyer",
+       "slot": "lawyer",
+       "targetCount": 1,
+       "why": "法務・手続きの空白が課題であるため、投資契約に強い弁護士の確保が急務です。"
+      }
+     ],
+     "steps": [
+      {
+       "doneCriteria": "資金使途の内訳（項目数）と締切までの残り週数が数値で文書化され、共有済みになっている。",
+       "personTypeKeys": [
+        "cfo",
+        "event"
+       ],
+       "title": "資金使途と締切の前提を確定する",
+       "why": null
+      },
+      {
+       "doneCriteria": "投資契約に強い弁護士との初回面談が完了している。",
+       "personTypeKeys": [
+        "lawyer",
+        "event"
+       ],
+       "title": "投資契約を担う弁護士を確保する",
+       "why": null
+      },
+      {
+       "doneCriteria": "VC との面談が複数回実施され、次回の打ち合わせが設定されている。",
+       "personTypeKeys": [
+        "vc_partner",
+        "event"
+       ],
+       "title": "VC パートナーとの面談を積み上げる",
+       "why": null
+      },
+      {
+       "doneCriteria": "起業家へのインタビューが複数件実施され、示唆がまとまっている。",
+       "personTypeKeys": [
+        "funded_founder",
+        "event"
+       ],
+       "title": "調達経験のある起業家から実務知見を得る",
+       "why": null
+      },
+      {
+       "doneCriteria": "CVC 担当者との面談が設定され、関心度が確認できている。",
+       "personTypeKeys": [
+        "cvc",
+        "event"
+       ],
+       "title": "CVC との接点をつくる",
+       "why": null
+      }
+     ]
+    },
+    "earned": {
+     "cfo": 5
+    },
+    "skippedSlots": [],
+    "slots": [
+     {
+      "allocation": 10,
+      "emoji": "📊",
+      "shortNames": [
+       {
+        "id": "cfo",
+        "label": "CFO 経験者"
+       }
+      ],
+      "slot": "cfo",
+      "targetCount": 1
+     },
+     {
+      "allocation": 10,
+      "emoji": "🧗",
+      "shortNames": [
+       {
+        "id": "funded_founder",
+        "label": "調達経験のある起業家"
+       }
+      ],
+      "slot": "funded_founder",
+      "targetCount": 3
+     },
+     {
+      "allocation": 10,
+      "emoji": "👼",
+      "shortNames": [
+       {
+        "id": "angel",
+        "label": "エンジェル投資家"
+       }
+      ],
+      "slot": "angel",
+      "targetCount": 2
+     },
+     {
+      "allocation": 30,
+      "emoji": "🏦",
+      "shortNames": [
+       {
+        "id": "vc_partner",
+        "label": "VC パートナー"
+       }
+      ],
+      "slot": "vc_partner",
+      "targetCount": 3
+     },
+     {
+      "allocation": 10,
+      "emoji": "🏢",
+      "shortNames": [
+       {
+        "id": "cvc",
+        "label": "CVC 担当者"
+       }
+      ],
+      "slot": "cvc",
+      "targetCount": 3
+     },
+     {
+      "allocation": 30,
+      "emoji": "⚖️",
+      "shortNames": [
+       {
+        "id": "lawyer",
+        "label": "弁護士（投資契約）"
+       }
+      ],
+      "slot": "lawyer",
+      "targetCount": 1
+     }
+    ],
+    "landscape": [
+     {
+      "id": "L-101",
+      "summary": "2024 年の国内スタートアップの資金調達額は約 7,793 億円（デット除く・集計時点の値）で、前年の同じ時点の集計より 3% 増えました。1 社あたりの平均は約 3.1 億円です。",
+      "title": "国内スタートアップの資金調達（2024 年）",
+      "version": 1
+     },
+     {
+      "id": "L-102",
+      "summary": "2024 年に国内で設立された VC ファンドの総額のうち、事業会社系（CVC）ファンドは約 36% を占めました。",
+      "title": "事業会社系ファンド（CVC）の比重",
+      "version": 1
+     },
+     {
+      "id": "L-103",
+      "summary": "日本政策金融公庫が 2024 年 4〜9 月に融資し、融資時点で開業後 1 年以内だった回答企業（不動産賃貸業を除く）では、開業時の資金調達額は平均 1,219 万円で、その金額の 67.9% が金融機関などからの借入れでした。",
+      "title": "開業時の資金の集め方",
+      "version": 1
+     }
+    ],
+    "contacts": [
+     {
+      "alias": "C1",
+      "industry": null,
+      "name": "渡辺 翔",
+      "notes": null,
+      "organization": "Nexa Robotics",
+      "role": "代表取締役",
+      "tags": []
+     },
+     {
+      "alias": "C2",
+      "industry": null,
+      "name": "高橋 美咲",
+      "notes": null,
+      "organization": "青葉ベンチャーズ",
+      "role": "パートナー",
+      "tags": []
+     },
+     {
+      "alias": "C3",
+      "industry": null,
+      "name": "山本 彩",
+      "notes": null,
+      "organization": "東都キャピタル",
+      "role": "シニアアソシエイト",
+      "tags": []
+     },
+     {
+      "alias": "C4",
+      "industry": null,
+      "name": "青木 里奈",
+      "notes": null,
+      "organization": "Kanade AI",
+      "role": "CTO",
+      "tags": [
+       "共同創業者"
+      ]
+     },
+     {
+      "alias": "C5",
+      "industry": null,
+      "name": "小林 誠",
+      "notes": null,
+      "organization": "丸の内イノベーションラボ",
+      "role": "主宰",
+      "tags": []
+     },
+     {
+      "alias": "C6",
+      "industry": null,
+      "name": "伊藤 直子",
+      "notes": null,
+      "organization": "株式会社ハルモニア",
+      "role": "事業開発部長",
+      "tags": []
+     },
+     {
+      "alias": "C7",
+      "industry": null,
+      "name": "佐々木 遼",
+      "notes": null,
+      "organization": "湾岸グロース・パートナーズ",
+      "role": "マネージャー",
+      "tags": []
+     },
+     {
+      "alias": "C8",
+      "industry": null,
+      "name": "鈴木 大輔",
+      "notes": null,
+      "organization": "北辰製作所",
+      "role": "製造部長",
+      "tags": []
+     },
+     {
+      "alias": "C9",
+      "industry": null,
+      "name": "松井 遥",
+      "notes": null,
+      "organization": "株式会社ソラノテ",
+      "role": "プロダクトマネージャー",
+      "tags": []
+     },
+     {
+      "alias": "C10",
+      "industry": null,
+      "name": "岡田 紗希",
+      "notes": null,
+      "organization": "Sakura Growth Partners",
+      "role": "アナリスト",
+      "tags": []
+     }
+    ],
+    "goalKind": "fundraising"
+   },
+   "outputs": [
+    {
+     "attempt": 1,
+     "issues": [
+      "diagnosis: Invalid input: expected string, received undefined",
+      "conclusion: Invalid input: expected string, received undefined",
+      "steps: Invalid input: expected array, received undefined",
+      "personTypes: Invalid input: expected array, received undefined",
+      "event: Invalid input: expected object, received undefined",
+      "citations: Invalid input: expected array, received undefined"
+     ],
+     "content": {
+      "revised": {
+       "contacts": [
+        {
+         "alias": "C1",
+         "industry": null,
+         "name": "渡辺 翔",
+         "notes": null,
+         "organization": "Nexa Robotics",
+         "role": "代表取締役",
+         "tags": []
+        },
+        {
+         "alias": "C2",
+         "industry": null,
+         "name": "高橋 美咲",
+         "notes": null,
+         "organization": "青葉ベンチャーズ",
+         "role": "パートナー",
+         "tags": []
+        },
+        {
+         "alias": "C3",
+         "industry": null,
+         "name": "山本 彩",
+         "notes": null,
+         "organization": "東都キャピタル",
+         "role": "シニアアソシエイト",
+         "tags": []
+        },
+        {
+         "alias": "C4",
+         "industry": null,
+         "name": "青木 里奈",
+         "notes": null,
+         "organization": "Kanade AI",
+         "role": "CTO",
+         "tags": [
+          "共同創業者"
+         ]
+        },
+        {
+         "alias": "C5",
+         "industry": null,
+         "name": "小林 誠",
+         "notes": null,
+         "organization": "丸の内イノベーションラボ",
+         "role": "主宰",
+         "tags": []
+        },
+        {
+         "alias": "C6",
+         "industry": null,
+         "name": "伊藤 直子",
+         "notes": null,
+         "organization": "株式会社ハルモニア",
+         "role": "事業開発部長",
+         "tags": []
+        },
+        {
+         "alias": "C7",
+         "industry": null,
+         "name": "佐々木 遼",
+         "notes": null,
+         "organization": "湾岸グロース・パートナーズ",
+         "role": "マネージャー",
+         "tags": []
+        },
+        {
+         "alias": "C8",
+         "industry": null,
+         "name": "鈴木 大輔",
+         "notes": null,
+         "organization": "北辰製作所",
+         "role": "製造部長",
+         "tags": []
+        },
+        {
+         "alias": "C9",
+         "industry": null,
+         "name": "松井 遥",
+         "notes": null,
+         "organization": "株式会社ソラノテ",
+         "role": "プロダクトマネージャー",
+         "tags": []
+        },
+        {
+         "alias": "C10",
+         "industry": null,
+         "name": "岡田 紗希",
+         "notes": null,
+         "organization": "Sakura Growth Partners",
+         "role": "アナリスト",
+         "tags": []
+        }
+       ],
+       "current": {
+        "allocationReasons": [],
+        "citations": [
+         {
+          "id": "L-101",
+          "version": 1
+         },
+         {
+          "id": "L-102",
+          "version": 1
+         }
+        ],
+        "conclusion": "法務と手続きの体制を整えつつ、リード投資家との面談を重ねてシリーズAのクロージングを目指します。",
+        "diagnosis": "資金調達の目的とチームの状況を踏まえると、法務・手続きの空白を埋めることが最優先です。①国内の資金調達環境は前年より緩やかに拡大しており、投資家との接点づくりを進めやすい時期です。②事業会社系ファンドの存在感も高まっており、CVC も選択肢として検討する価値があります。リード投資家は ARR 1 億円の見込みを重視しているため、リード投資家との面談を優先する配点としています。ただし、資金使途と締切の前提には推測が含まれるため、まず関係者への確認が必要です。",
+        "event": {
+         "allocation": 10,
+         "targetCount": 2
+        },
+        "flow": [],
+        "personTypes": [
+         {
+          "allocation": 10,
+          "countRule": "資金調達の実務経験と財務モデル作成の実績で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家との接点を持つため、実務人材の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "資金使途の内訳をどのように整理すべきでしょうか。",
+           "投資家向けの財務モデルで押さえるべき点は何でしょうか。",
+           "締切から逆算したスケジュールの組み方はありますか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の実務経験があるか",
+           "財務モデルの作成支援実績があるか"
+          ],
+          "roleSituation": "資金調達の実務を主導する立場として、資金使途と締切の整理を担う。",
+          "shortLabelId": "cfo",
+          "slot": "cfo",
+          "targetCount": 1,
+          "why": "資金使途と締切の前提が推測であるため、財務面の実務を担う人材の助言が有効です。"
+         },
+         {
+          "allocation": 10,
+          "countRule": "自社と近い領域で調達経験があるかで判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C1",
+            "why": "起業家同士のネットワークから実務経験者の紹介が期待できます。"
+           },
+           {
+            "viaAlias": "C4",
+            "why": "共同創業者の立場から、調達経験者との接点が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "調達プロセスで最も苦労した点は何でしたか。",
+           "投資家との交渉で準備しておくべき資料は何ですか。",
+           "法務・手続きで早めに動くべきことは何ですか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の調達経験があるか",
+           "投資契約の実務を経験しているか"
+          ],
+          "roleSituation": "過去に資金調達を経験した起業家として、実務の勘所を共有する立場。",
+          "shortLabelId": "funded_founder",
+          "slot": "funded_founder",
+          "targetCount": 3,
+          "why": "調達経験のある起業家から実務知見を得ることで、手続きの抜け漏れを防げます。"
+         },
+         {
+          "allocation": 10,
+          "countRule": "過去の投資実績と領域の近さで判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家ネットワークを通じてエンジェルの紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資家が最初に確認するポイントはどこですか。",
+           "事業の成長性をどう伝えると効果的ですか。",
+           "既存株主との関係で気をつける点はありますか。"
+          ],
+          "recognizeHints": [
+           "シード期の投資実績があるか",
+           "既存株主との接点があるか"
+          ],
+          "roleSituation": "初期段階から支援する投資家として、事業の成長性を見極める立場。",
+          "shortLabelId": "angel",
+          "slot": "angel",
+          "targetCount": 2,
+          "why": "エンジェル投資家からの助言は、投資家向けの説明資料の改善に役立ちます。"
+         },
+         {
+          "allocation": 30,
+          "countRule": "投資ステージと領域の一致度で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C3",
+            "why": "投資会社のネットワークからパートナーとの接点が期待できます。"
+           },
+           {
+            "viaAlias": "C7",
+            "why": "グロース支援の立場から投資家の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資判断で重視する指標は何ですか。",
+           "ラウンド組成の進め方で助言はありますか。",
+           "デューデリジェンスで準備すべき資料は何ですか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の投資実績があるか",
+           "既存株主との関係があるか",
+           "ARR の成長見込みをどう評価するか"
+          ],
+          "roleSituation": "投資判断を担うパートナーとして、ラウンドの組成を検討する立場。",
+          "shortLabelId": "vc_partner",
+          "slot": "vc_partner",
+          "targetCount": 3,
+          "why": "リード投資家との面談を優先するため、配点を少し寄せて最も比重を置きます。"
+         },
+         {
+          "allocation": 10,
+          "countRule": "事業領域の近さと投資実績で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C5",
+            "why": "イノベーション拠点の主宰として、CVC との接点が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資検討の際に重視するシナジーは何ですか。",
+           "意思決定までの一般的な期間はどのくらいですか。",
+           "事業会社との協業可能性はどのように評価しますか。"
+          ],
+          "recognizeHints": [
+           "CVC の投資実績があるか",
+           "事業会社との協業経験があるか"
+          ],
+          "roleSituation": "事業会社の投資担当として、事業シナジーを検討する立場。",
+          "shortLabelId": "cvc",
+          "slot": "cvc",
+          "targetCount": 3,
+          "why": "CVC は場合によるという前提のため、選択肢として接点を持っておきます。"
+         },
+         {
+          "allocation": 30,
+          "countRule": "投資契約の実務経験の有無で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家との接点から、契約実務に強い弁護士の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資契約で注意すべき条項は何ですか。",
+           "デューデリジェンス前に準備すべき書類は何ですか。",
+           "手続きのスケジュール感はどのくらいですか。"
+          ],
+          "recognizeHints": [
+           "スタートアップの投資契約実績があるか",
+           "シリーズA の支援経験があるか"
+          ],
+          "roleSituation": "投資契約を扱う弁護士として、法務・手続きの空白を埋める立場。",
+          "shortLabelId": "lawyer",
+          "slot": "lawyer",
+          "targetCount": 1,
+          "why": "法務・手続きの空白が課題であるため、投資契約に強い弁護士の確保が急務です。"
+         }
+        ],
+        "steps": [
+         {
+          "doneCriteria": "資金使途の内訳（項目数）と締切までの残り週数が数値で文書化され、共有済みになっている。",
+          "personTypeKeys": [
+           "cfo",
+           "event"
+          ],
+          "title": "資金使途と締切の前提を確定する",
+          "why": null
+         },
+         {
+          "doneCriteria": "投資契約に強い弁護士との初回面談が完了している。",
+          "personTypeKeys": [
+           "lawyer",
+           "event"
+          ],
+          "title": "投資契約を担う弁護士を確保する",
+          "why": null
+         },
+         {
+          "doneCriteria": "リード投資家との面談が複数回実施され、次回の打ち合わせが設定されている。",
+          "personTypeKeys": [
+           "vc_partner",
+           "event"
+          ],
+          "title": "リード投資家との面談を積み上げる",
+          "why": null
+         },
+         {
+          "doneCriteria": "起業家へのインタビューが複数件実施され、示唆がまとまっている。",
+          "personTypeKeys": [
+           "funded_founder",
+           "event"
+          ],
+          "title": "調達経験のある起業家から実務知見を得る",
+          "why": null
+         },
+         {
+          "doneCriteria": "CVC 担当者との面談が設定され、関心度が確認できている。",
+          "personTypeKeys": [
+           "cvc",
+           "event"
+          ],
+          "title": "CVC との接点をつくる",
+          "why": null
+         }
+        ]
+       },
+       "earned": {
+        "cfo": 5
+       },
+       "goalKind": "fundraising",
+       "landscape": [
+        {
+         "id": "L-101",
+         "summary": "2024 年の国内スタートアップの資金調達額は約 7,793 億円（デット除く・集計時点の値）で、前年の同じ時点の集計より 3% 増えました。1 社あたりの平均は約 3.1 億円です。",
+         "title": "国内スタートアップの資金調達（2024 年）",
+         "version": 1
+        },
+        {
+         "id": "L-102",
+         "summary": "2024 年に国内で設立された VC ファンドの総額のうち、事業会社系（CVC）ファンドは約 36% を占めました。",
+         "title": "事業会社系ファンド（CVC）の比重",
+         "version": 1
+        },
+        {
+         "id": "L-103",
+         "summary": "日本政策金融公庫が 2024 年 4〜9 月に融資し、融資時点で開業後 1 年以内だった回答企業（不動産賃貸業を除く）では、開業時の資金調達額は平均 1,219 万円で、その金額の 67.9% が金融機関などからの借入れでした。",
+         "title": "開業時の資金の集め方",
+         "version": 1
+        }
+       ],
+       "premise": [
+        {
+         "key": "purpose",
+         "label": "目的",
+         "value": "シリーズAの資金調達を成功させ、事業拡大を進めるための体制を整える。",
+         "source": "background",
+         "guessed": false
+        },
+        {
+         "key": "team",
+         "label": "チーム",
+         "value": "2名（空き：法務・手続き）",
+         "source": "background",
+         "guessed": false
+        },
+        {
+         "key": "F3",
+         "label": "既存株主・リード候補",
+         "value": "既存株主は追加出資に前向き · リード投資家は ARR 1 億円の見込みを重視",
+         "source": "q1",
+         "guessed": false
+        },
+        {
+         "key": "F4",
+         "label": "調達の経験",
+         "value": "経験あり",
+         "source": "q2",
+         "guessed": false
+        },
+        {
+         "key": "F1",
+         "label": "ラウンドと金額",
+         "value": "シリーズ A",
+         "source": "q3",
+         "guessed": false
+        },
+        {
+         "key": "F6",
+         "label": "事業会社（CVC）",
+         "value": "場合による",
+         "source": "q4",
+         "guessed": false
+        },
+        {
+         "key": "F5",
+         "label": "使い道と締切",
+         "value": "1年以内",
+         "source": "q5",
+         "guessed": true
+        }
+       ],
+       "previousTurns": [],
+       "request": "既存株主・リード候補：既存株主は追加出資に前向き · リード投資家は ARR 1 億円の見込みを重視\nリード投資家との面談を優先したいので、配点を少し寄せてほしい",
+       "skippedSlots": [],
+       "slots": [
+        {
+         "allocation": 10,
+         "emoji": "📊",
+         "shortNames": [
+          {
+           "id": "cfo",
+           "label": "CFO 経験者"
+          }
+         ],
+         "slot": "cfo",
+         "targetCount": 1
+        },
+        {
+         "allocation": 10,
+         "emoji": "🧗",
+         "shortNames": [
+          {
+           "id": "funded_founder",
+           "label": "調達経験のある起業家"
+          }
+         ],
+         "slot": "funded_founder",
+         "targetCount": 3
+        },
+        {
+         "allocation": 10,
+         "emoji": "👼",
+         "shortNames": [
+          {
+           "id": "angel",
+           "label": "エンジェル投資家"
+          }
+         ],
+         "slot": "angel",
+         "targetCount": 2
+        },
+        {
+         "allocation": 30,
+         "emoji": "🏦",
+         "shortNames": [
+          {
+           "id": "vc_partner",
+           "label": "VC パートナー"
+          }
+         ],
+         "slot": "vc_partner",
+         "targetCount": 3
+        },
+        {
+         "allocation": 10,
+         "emoji": "🏢",
+         "shortNames": [
+          {
+           "id": "cvc",
+           "label": "CVC 担当者"
+          }
+         ],
+         "slot": "cvc",
+         "targetCount": 3
+        },
+        {
+         "allocation": 30,
+         "emoji": "⚖️",
+         "shortNames": [
+          {
+           "id": "lawyer",
+           "label": "弁護士（投資契約）"
+          }
+         ],
+         "slot": "lawyer",
+         "targetCount": 1
+        }
+       ]
+      },
+      "reasons": [
+       {
+        "path": "slots.cfo.allocation",
+        "reason": "リード投資家との面談を優先するため、CFO 経験者の配点を 35 から 10 に減らしました（獲得済みの 5 以上を確保）。"
+       },
+       {
+        "path": "slots.funded_founder.allocation",
+        "reason": "リード投資家との面談を優先するため、調達経験のある起業家の配点を 35 から 10 に減らしました。"
+       },
+       {
+        "path": "slots.cvc.allocation",
+        "reason": "リード投資家との面談を優先するため、CVC 担当者の配点を 10 から 10 に据え置きました。"
+       },
+       {
+        "path": "slots.vc_partner.allocation",
+        "reason": "リード投資家は ARR 1 億円の見込みを重視するため、VC パートナーの配点を変えず最も高い 30 を維持しました。"
+       },
+       {
+        "path": "slots.vc_partner.recognizeHints",
+        "reason": "リード投資家が ARR の見込みを重視する前提を踏まえ、ARR の成長見込みに関する確認観点を追加しました。"
+       },
+       {
+        "path": "slots.lawyer.allocation",
+        "reason": "リード投資家との面談を優先しつつ、法務・手続きの空白という課題に対応するため、弁護士の配点を 30 に引き上げました。"
+       },
+       {
+        "path": "current.diagnosis",
+        "reason": "リード投資家が ARR 1 億円の見込みを重視する前提と、リード投資家との面談を優先する方針を反映しました。"
+       },
+       {
+        "path": "current.conclusion",
+        "reason": "リード投資家との面談を重ねる方針を結論に反映しました。"
+       },
+       {
+        "path": "current.steps",
+        "reason": "VC 一般ではなくリード投資家との面談を積み上げる手順であることを明確にしました。"
+       }
+      ],
+      "unchanged": [
+       "landscape",
+       "premise",
+       "contacts",
+       "goalKind",
+       "earned",
+       "current.citations",
+       "current.event.allocation",
+       "personTypes.cfo.questions",
+       "personTypes.funded_founder",
+       "personTypes.angel",
+       "personTypes.lawyer.questions",
+       "personTypes.cvc.questions",
+       "steps[0].title",
+       "steps[1].title",
+       "steps[3].title",
+       "steps[4].title"
+      ],
+      "noChangeReason": null
+     }
+    },
+    {
+     "attempt": 2,
+     "issues": [
+      "diagnosis: Invalid input: expected string, received undefined",
+      "conclusion: Invalid input: expected string, received undefined",
+      "steps: Invalid input: expected array, received undefined",
+      "personTypes: Invalid input: expected array, received undefined",
+      "event: Invalid input: expected object, received undefined",
+      "citations: Invalid input: expected array, received undefined"
+     ],
+     "content": {
+      "revised": {
+       "contacts": [
+        {
+         "alias": "C1",
+         "industry": null,
+         "name": "渡辺 翔",
+         "notes": null,
+         "organization": "Nexa Robotics",
+         "role": "代表取締役",
+         "tags": []
+        },
+        {
+         "alias": "C2",
+         "industry": null,
+         "name": "高橋 美咲",
+         "notes": null,
+         "organization": "青葉ベンチャーズ",
+         "role": "パートナー",
+         "tags": []
+        },
+        {
+         "alias": "C3",
+         "industry": null,
+         "name": "山本 彩",
+         "notes": null,
+         "organization": "東都キャピタル",
+         "role": "シニアアソシエイト",
+         "tags": []
+        },
+        {
+         "alias": "C4",
+         "industry": null,
+         "name": "青木 里奈",
+         "notes": null,
+         "organization": "Kanade AI",
+         "role": "CTO",
+         "tags": [
+          "共同創業者"
+         ]
+        },
+        {
+         "alias": "C5",
+         "industry": null,
+         "name": "小林 誠",
+         "notes": null,
+         "organization": "丸の内イノベーションラボ",
+         "role": "主宰",
+         "tags": []
+        },
+        {
+         "alias": "C6",
+         "industry": null,
+         "name": "伊藤 直子",
+         "notes": null,
+         "organization": "株式会社ハルモニア",
+         "role": "事業開発部長",
+         "tags": []
+        },
+        {
+         "alias": "C7",
+         "industry": null,
+         "name": "佐々木 遼",
+         "notes": null,
+         "organization": "湾岸グロース・パートナーズ",
+         "role": "マネージャー",
+         "tags": []
+        },
+        {
+         "alias": "C8",
+         "industry": null,
+         "name": "鈴木 大輔",
+         "notes": null,
+         "organization": "北辰製作所",
+         "role": "製造部長",
+         "tags": []
+        },
+        {
+         "alias": "C9",
+         "industry": null,
+         "name": "松井 遥",
+         "notes": null,
+         "organization": "株式会社ソラノテ",
+         "role": "プロダクトマネージャー",
+         "tags": []
+        },
+        {
+         "alias": "C10",
+         "industry": null,
+         "name": "岡田 紗希",
+         "notes": null,
+         "organization": "Sakura Growth Partners",
+         "role": "アナリスト",
+         "tags": []
+        }
+       ],
+       "current": {
+        "allocationReasons": [],
+        "citations": [
+         {
+          "id": "L-101",
+          "version": 1
+         },
+         {
+          "id": "L-102",
+          "version": 1
+         }
+        ],
+        "conclusion": "法務と手続きの体制を整えつつ、リード投資家との面談を優先してシリーズAのクロージングを目指します。",
+        "diagnosis": "資金調達の目的とチームの状況を踏まえると、法務・手続きの空白を埋めることが最優先です。①国内の資金調達環境は前年より緩やかに拡大しており、投資家との接点づくりを進めやすい時期です。②事業会社系ファンドの存在感も高まっており、CVC も選択肢として検討する価値があります。加えて、既存株主は追加出資に前向きで、リード投資家は ARR 1 億円の見込みを重視しているため、リード投資家との面談を優先することが有効です。ただし、資金使途と締切の前提には推測が含まれるため、まず関係者への確認が必要です。",
+        "event": {
+         "allocation": 10,
+         "targetCount": 2
+        },
+        "flow": [],
+        "personTypes": [
+         {
+          "allocation": 5,
+          "countRule": "資金調達の実務経験と財務モデル作成の実績で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家との接点を持つため、実務人材の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "資金使途の内訳をどのように整理すべきでしょうか。",
+           "投資家向けの財務モデルで押さえるべき点は何でしょうか。",
+           "締切から逆算したスケジュールの組み方はありますか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の実務経験があるか",
+           "財務モデルの作成支援実績があるか"
+          ],
+          "roleSituation": "資金調達の実務を主導する立場として、資金使途と締切の整理を担う。",
+          "shortLabelId": "cfo",
+          "slot": "cfo",
+          "targetCount": 1,
+          "why": "資金使途と締切の前提が推測であるため、財務面の実務を担う人材の助言が有効です。"
+         },
+         {
+          "allocation": 10,
+          "countRule": "自社と近い領域で調達経験があるかで判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C1",
+            "why": "起業家同士のネットワークから実務経験者の紹介が期待できます。"
+           },
+           {
+            "viaAlias": "C4",
+            "why": "共同創業者の立場から、調達経験者との接点が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "調達プロセスで最も苦労した点は何でしたか。",
+           "投資家との交渉で準備しておくべき資料は何ですか。",
+           "法務・手続きで早めに動くべきことは何ですか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の調達経験があるか",
+           "投資契約の実務を経験しているか"
+          ],
+          "roleSituation": "過去に資金調達を経験した起業家として、実務の勘所を共有する立場。",
+          "shortLabelId": "funded_founder",
+          "slot": "funded_founder",
+          "targetCount": 3,
+          "why": "調達経験のある起業家から実務知見を得ることで、手続きの抜け漏れを防げます。"
+         },
+         {
+          "allocation": 10,
+          "countRule": "過去の投資実績と領域の近さで判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家ネットワークを通じてエンジェルの紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資家が最初に確認するポイントはどこですか。",
+           "事業の成長性をどう伝えると効果的ですか。",
+           "既存株主との関係で気をつける点はありますか。"
+          ],
+          "recognizeHints": [
+           "シード期の投資実績があるか",
+           "既存株主との接点があるか"
+          ],
+          "roleSituation": "初期段階から支援する投資家として、事業の成長性を見極める立場。",
+          "shortLabelId": "angel",
+          "slot": "angel",
+          "targetCount": 2,
+          "why": "エンジェル投資家からの助言は、投資家向けの説明資料の改善に役立ちます。"
+         },
+         {
+          "allocation": 35,
+          "countRule": "投資ステージと領域の一致度で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C3",
+            "why": "投資会社のネットワークからパートナーとの接点が期待できます。"
+           },
+           {
+            "viaAlias": "C7",
+            "why": "グロース支援の立場から投資家の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資判断で重視する指標は何ですか。",
+           "ラウンド組成の進め方で助言はありますか。",
+           "デューデリジェンスで準備すべき資料は何ですか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の投資実績があるか",
+           "既存株主との関係があるか"
+          ],
+          "roleSituation": "投資判断を担うパートナーとして、ラウンドの組成を検討する立場。",
+          "shortLabelId": "vc_partner",
+          "slot": "vc_partner",
+          "targetCount": 3,
+          "why": "リード投資家との面談を優先するため、VC パートナーの比重を最も高くします。"
+         },
+         {
+          "allocation": 10,
+          "countRule": "事業領域の近さと投資実績で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C5",
+            "why": "イノベーション拠点の主宰として、CVC との接点が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資検討の際に重視するシナジーは何ですか。",
+           "意思決定までの一般的な期間はどのくらいですか。",
+           "事業会社との協業可能性はどのように評価しますか。"
+          ],
+          "recognizeHints": [
+           "CVC の投資実績があるか",
+           "事業会社との協業経験があるか"
+          ],
+          "roleSituation": "事業会社の投資担当として、事業シナジーを検討する立場。",
+          "shortLabelId": "cvc",
+          "slot": "cvc",
+          "targetCount": 3,
+          "why": "CVC は場合によるという前提のため、選択肢として接点を持っておきます。"
+         },
+         {
+          "allocation": 20,
+          "countRule": "投資契約の実務経験の有無で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家との接点から、契約実務に強い弁護士の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資契約で注意すべき条項は何ですか。",
+           "デューデリジェンス前に準備すべき書類は何ですか。",
+           "手続きのスケジュール感はどのくらいですか。"
+          ],
+          "recognizeHints": [
+           "スタートアップの投資契約実績があるか",
+           "シリーズA の支援経験があるか"
+          ],
+          "roleSituation": "投資契約を扱う弁護士として、法務・手続きの空白を埋める立場。",
+          "shortLabelId": "lawyer",
+          "slot": "lawyer",
+          "targetCount": 1,
+          "why": "法務・手続きの空白が課題であるため、投資契約に強い弁護士の確保が急務です。"
+         }
+        ],
+        "steps": [
+         {
+          "doneCriteria": "資金使途の内訳（項目数）と締切までの残り週数が数値で文書化され、共有済みになっている。",
+          "personTypeKeys": [
+           "cfo",
+           "event"
+          ],
+          "title": "資金使途と締切の前提を確定する",
+          "why": null
+         },
+         {
+          "doneCriteria": "投資契約に強い弁護士との初回面談が完了している。",
+          "personTypeKeys": [
+           "lawyer",
+           "event"
+          ],
+          "title": "投資契約を担う弁護士を確保する",
+          "why": null
+         },
+         {
+          "doneCriteria": "リード投資家との面談が複数回実施され、次回の打ち合わせが設定されている。",
+          "personTypeKeys": [
+           "vc_partner",
+           "event"
+          ],
+          "title": "リード投資家との面談を優先して積み上げる",
+          "why": null
+         },
+         {
+          "doneCriteria": "起業家へのインタビューが複数件実施され、示唆がまとまっている。",
+          "personTypeKeys": [
+           "funded_founder",
+           "event"
+          ],
+          "title": "調達経験のある起業家から実務知見を得る",
+          "why": null
+         },
+         {
+          "doneCriteria": "CVC 担当者との面談が設定され、関心度が確認できている。",
+          "personTypeKeys": [
+           "cvc",
+           "event"
+          ],
+          "title": "CVC との接点をつくる",
+          "why": null
+         }
+        ]
+       },
+       "earned": {
+        "cfo": 5
+       },
+       "goalKind": "fundraising",
+       "landscape": [
+        {
+         "id": "L-101",
+         "summary": "2024 年の国内スタートアップの資金調達額は約 7,793 億円（デット除く・集計時点の値）で、前年の同じ時点の集計より 3% 増えました。1 社あたりの平均は約 3.1 億円です。",
+         "title": "国内スタートアップの資金調達（2024 年）",
+         "version": 1
+        },
+        {
+         "id": "L-102",
+         "summary": "2024 年に国内で設立された VC ファンドの総額のうち、事業会社系（CVC）ファンドは約 36% を占めました。",
+         "title": "事業会社系ファンド（CVC）の比重",
+         "version": 1
+        },
+        {
+         "id": "L-103",
+         "summary": "日本政策金融公庫が 2024 年 4〜9 月に融資し、融資時点で開業後 1 年以内だった回答企業（不動産賃貸業を除く）では、開業時の資金調達額は平均 1,219 万円で、その金額の 67.9% が金融機関などからの借入れでした。",
+         "title": "開業時の資金の集め方",
+         "version": 1
+        }
+       ],
+       "premise": [
+        {
+         "key": "purpose",
+         "label": "目的",
+         "value": "シリーズAの資金調達を成功させ、事業拡大を進めるための体制を整える。",
+         "source": "background",
+         "guessed": false
+        },
+        {
+         "key": "team",
+         "label": "チーム",
+         "value": "2名（空き：法務・手続き）",
+         "source": "background",
+         "guessed": false
+        },
+        {
+         "key": "F3",
+         "label": "既存株主・リード候補",
+         "value": "既存株主は追加出資に前向き · リード投資家は ARR 1 億円の見込みを重視",
+         "source": "q1",
+         "guessed": false
+        },
+        {
+         "key": "F4",
+         "label": "調達の経験",
+         "value": "経験あり",
+         "source": "q2",
+         "guessed": false
+        },
+        {
+         "key": "F1",
+         "label": "ラウンドと金額",
+         "value": "シリーズ A",
+         "source": "q3",
+         "guessed": false
+        },
+        {
+         "key": "F6",
+         "label": "事業会社（CVC）",
+         "value": "場合による",
+         "source": "q4",
+         "guessed": false
+        },
+        {
+         "key": "F5",
+         "label": "使い道と締切",
+         "value": "1年以内",
+         "source": "q5",
+         "guessed": true
+        }
+       ],
+       "previousTurns": [],
+       "request": "既存株主・リード候補：既存株主は追加出資に前向き · リード投資家は ARR 1 億円の見込みを重視\nリード投資家との面談を優先したいので、配点を少し寄せてほしい",
+       "skippedSlots": [],
+       "slots": [
+        {
+         "allocation": 10,
+         "emoji": "📊",
+         "shortNames": [
+          {
+           "id": "cfo",
+           "label": "CFO 経験者"
+          }
+         ],
+         "slot": "cfo",
+         "targetCount": 1
+        },
+        {
+         "allocation": 15,
+         "emoji": "🧗",
+         "shortNames": [
+          {
+           "id": "funded_founder",
+           "label": "調達経験のある起業家"
+          }
+         ],
+         "slot": "funded_founder",
+         "targetCount": 3
+        },
+        {
+         "allocation": 10,
+         "emoji": "👼",
+         "shortNames": [
+          {
+           "id": "angel",
+           "label": "エンジェル投資家"
+          }
+         ],
+         "slot": "angel",
+         "targetCount": 2
+        },
+        {
+         "allocation": 30,
+         "emoji": "🏦",
+         "shortNames": [
+          {
+           "id": "vc_partner",
+           "label": "VC パートナー"
+          }
+         ],
+         "slot": "vc_partner",
+         "targetCount": 3
+        },
+        {
+         "allocation": 15,
+         "emoji": "🏢",
+         "shortNames": [
+          {
+           "id": "cvc",
+           "label": "CVC 担当者"
+          }
+         ],
+         "slot": "cvc",
+         "targetCount": 3
+        },
+        {
+         "allocation": 10,
+         "emoji": "⚖️",
+         "shortNames": [
+          {
+           "id": "lawyer",
+           "label": "弁護士（投資契約）"
+          }
+         ],
+         "slot": "lawyer",
+         "targetCount": 1
+        }
+       ]
+      },
+      "reasons": [
+       {
+        "path": "slots.vc_partner.allocation",
+        "reason": "リード投資家との面談を優先するため、VC パートナーの配点を 30 から 35 に引き上げました。"
+       },
+       {
+        "path": "slots.funded_founder.allocation",
+        "reason": "VC パートナーを 5 ポイント引き上げるため、調達経験のある起業家の配点を 15 から 10 に引き下げました。"
+       },
+       {
+        "path": "slots.cvc.allocation",
+        "reason": "VC パートナーを 5 ポイント引き上げるため、CVC 担当者の配点を 15 から 10 に引き下げました。"
+       },
+       {
+        "path": "steps.2.title",
+        "reason": "リード投資家との面談を優先する方針に合わせて、ステップの表現を変更しました。"
+       },
+       {
+        "path": "diagnosis",
+        "reason": "既存株主とリード投資家の前提と、リード投資家との面談を優先する方針を反映しました。"
+       },
+       {
+        "path": "conclusion",
+        "reason": "リード投資家との面談を優先する方針を反映しました。"
+       }
+      ],
+      "unchanged": [
+       "event",
+       "premise",
+       "landscape",
+       "slots.cfo",
+       "slots.angel",
+       "slots.lawyer",
+       "personTypes.cfo",
+       "personTypes.angel",
+       "personTypes.lawyer",
+       "steps.0",
+       "steps.1",
+       "steps.3",
+       "steps.4"
+      ],
+      "noChangeReason": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "c9-op3",
+   "input": {
+    "current": {
+     "allocationReasons": [],
+     "citations": [
+      {
+       "id": "L-101",
+       "version": 1
+      },
+      {
+       "id": "L-102",
+       "version": 1
+      }
+     ],
+     "conclusion": "法務と手続きの体制を整えつつ、投資家との面談を重ねてシリーズAのクロージングを目指します。",
+     "diagnosis": "資金調達の目的とチームの状況を踏まえると、法務・手続きの空白を埋めることが最優先です。①国内の資金調達環境は前年より緩やかに拡大しており、投資家との接点づくりを進めやすい時期です。②事業会社系ファンドの存在感も高まっており、CVC も選択肢として検討する価値があります。ただし、資金使途と締切の前提には推測が含まれるため、まず関係者への確認が必要です。",
+     "event": {
+      "allocation": 10,
+      "targetCount": 2
+     },
+     "flow": [],
+     "personTypes": [
+      {
+       "allocation": 5,
+       "countRule": "資金調達の実務経験と財務モデル作成の実績で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C2",
+         "why": "投資家との接点を持つため、実務人材の紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "資金使途の内訳をどのように整理すべきでしょうか。",
+        "投資家向けの財務モデルで押さえるべき点は何でしょうか。",
+        "締切から逆算したスケジュールの組み方はありますか。"
+       ],
+       "recognizeHints": [
+        "シリーズA の実務経験があるか",
+        "財務モデルの作成支援実績があるか"
+       ],
+       "roleSituation": "資金調達の実務を主導する立場として、資金使途と締切の整理を担う。",
+       "shortLabelId": "cfo",
+       "slot": "cfo",
+       "targetCount": 1,
+       "why": "資金使途と締切の前提が推測であるため、財務面の実務を担う人材の助言が有効です。"
+      },
+      {
+       "allocation": 10,
+       "countRule": "自社と近い領域で調達経験があるかで判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C1",
+         "why": "起業家同士のネットワークから実務経験者の紹介が期待できます。"
+        },
+        {
+         "viaAlias": "C4",
+         "why": "共同創業者の立場から、調達経験者との接点が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "調達プロセスで最も苦労した点は何でしたか。",
+        "投資家との交渉で準備しておくべき資料は何ですか。",
+        "法務・手続きで早めに動くべきことは何ですか。"
+       ],
+       "recognizeHints": [
+        "シリーズA の調達経験があるか",
+        "投資契約の実務を経験しているか"
+       ],
+       "roleSituation": "過去に資金調達を経験した起業家として、実務の勘所を共有する立場。",
+       "shortLabelId": "funded_founder",
+       "slot": "funded_founder",
+       "targetCount": 3,
+       "why": "調達経験のある起業家から実務知見を得ることで、手続きの抜け漏れを防げます。"
+      },
+      {
+       "allocation": 10,
+       "countRule": "過去の投資実績と領域の近さで判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C2",
+         "why": "投資家ネットワークを通じてエンジェルの紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資家が最初に確認するポイントはどこですか。",
+        "事業の成長性をどう伝えると効果的ですか。",
+        "既存株主との関係で気をつける点はありますか。"
+       ],
+       "recognizeHints": [
+        "シード期の投資実績があるか",
+        "既存株主との接点があるか"
+       ],
+       "roleSituation": "初期段階から支援する投資家として、事業の成長性を見極める立場。",
+       "shortLabelId": "angel",
+       "slot": "angel",
+       "targetCount": 2,
+       "why": "エンジェル投資家からの助言は、投資家向けの説明資料の改善に役立ちます。"
+      },
+      {
+       "allocation": 40,
+       "countRule": "投資ステージと領域の一致度で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C3",
+         "why": "投資会社のネットワークからパートナーとの接点が期待できます。"
+        },
+        {
+         "viaAlias": "C7",
+         "why": "グロース支援の立場から投資家の紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資判断で重視する指標は何ですか。",
+        "ラウンド組成の進め方で助言はありますか。",
+        "デューデリジェンスで準備すべき資料は何ですか。"
+       ],
+       "recognizeHints": [
+        "シリーズA の投資実績があるか",
+        "既存株主との関係があるか"
+       ],
+       "roleSituation": "投資判断を担うパートナーとして、ラウンドの組成を検討する立場。",
+       "shortLabelId": "vc_partner",
+       "slot": "vc_partner",
+       "targetCount": 3,
+       "why": "VC パートナーとの面談は、ラウンド組成の中心となるため最も比重を置きます。リード投資家との面談を優先するため、配点をさらに厚くします。"
+      },
+      {
+       "allocation": 10,
+       "countRule": "事業領域の近さと投資実績で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C5",
+         "why": "イノベーション拠点の主宰として、CVC との接点が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資検討の際に重視するシナジーは何ですか。",
+        "意思決定までの一般的な期間はどのくらいですか。",
+        "事業会社との協業可能性はどのように評価しますか。"
+       ],
+       "recognizeHints": [
+        "CVC の投資実績があるか",
+        "事業会社との協業経験があるか"
+       ],
+       "roleSituation": "事業会社の投資担当として、事業シナジーを検討する立場。",
+       "shortLabelId": "cvc",
+       "slot": "cvc",
+       "targetCount": 3,
+       "why": "CVC は場合によるという前提のため、選択肢として接点を持っておきます。"
+      },
+      {
+       "allocation": 15,
+       "countRule": "投資契約の実務経験の有無で判断します。",
+       "introRoutes": [
+        {
+         "viaAlias": "C2",
+         "why": "投資家との接点から、契約実務に強い弁護士の紹介が期待できます。"
+        }
+       ],
+       "opener": null,
+       "persona": null,
+       "primaryIndustryId": null,
+       "questions": [
+        "投資契約で注意すべき条項は何ですか。",
+        "デューデリジェンス前に準備すべき書類は何ですか。",
+        "手続きのスケジュール感はどのくらいですか。"
+       ],
+       "recognizeHints": [
+        "スタートアップの投資契約実績があるか",
+        "シリーズA の支援経験があるか"
+       ],
+       "roleSituation": "投資契約を扱う弁護士として、法務・手続きの空白を埋める立場。",
+       "shortLabelId": "lawyer",
+       "slot": "lawyer",
+       "targetCount": 1,
+       "why": "法務・手続きの空白が課題であるため、投資契約に強い弁護士の確保が急務です。"
+      }
+     ],
+     "steps": [
+      {
+       "doneCriteria": "資金使途の内訳（項目数）と締切までの残り週数が数値で文書化され、共有済みになっている。",
+       "personTypeKeys": [
+        "cfo",
+        "event"
+       ],
+       "title": "資金使途と締切の前提を確定する",
+       "why": null
+      },
+      {
+       "doneCriteria": "投資契約に強い弁護士との初回面談が完了している。",
+       "personTypeKeys": [
+        "lawyer",
+        "event"
+       ],
+       "title": "投資契約を担う弁護士を確保する",
+       "why": null
+      },
+      {
+       "doneCriteria": "VC との面談が複数回実施され、次回の打ち合わせが設定されている。",
+       "personTypeKeys": [
+        "vc_partner",
+        "event"
+       ],
+       "title": "VC パートナーとの面談を積み上げる",
+       "why": null
+      },
+      {
+       "doneCriteria": "起業家へのインタビューが複数件実施され、示唆がまとまっている。",
+       "personTypeKeys": [
+        "funded_founder",
+        "event"
+       ],
+       "title": "調達経験のある起業家から実務知見を得る",
+       "why": null
+      },
+      {
+       "doneCriteria": "CVC 担当者との面談が設定され、関心度が確認できている。",
+       "personTypeKeys": [
+        "cvc",
+        "event"
+       ],
+       "title": "CVC との接点をつくる",
+       "why": null
+      }
+     ]
+    },
+    "earned": {
+     "cfo": 5
+    },
+    "skippedSlots": [],
+    "slots": [
+     {
+      "allocation": 5,
+      "emoji": "📊",
+      "shortNames": [
+       {
+        "id": "cfo",
+        "label": "CFO 経験者"
+       }
+      ],
+      "slot": "cfo",
+      "targetCount": 1
+     },
+     {
+      "allocation": 15,
+      "emoji": "🧗",
+      "shortNames": [
+       {
+        "id": "funded_founder",
+        "label": "調達経験のある起業家"
+       }
+      ],
+      "slot": "funded_founder",
+      "targetCount": 3
+     },
+     {
+      "allocation": 10,
+      "emoji": "👼",
+      "shortNames": [
+       {
+        "id": "angel",
+        "label": "エンジェル投資家"
+       }
+      ],
+      "slot": "angel",
+      "targetCount": 2
+     },
+     {
+      "allocation": 35,
+      "emoji": "🏦",
+      "shortNames": [
+       {
+        "id": "vc_partner",
+        "label": "VC パートナー"
+       }
+      ],
+      "slot": "vc_partner",
+      "targetCount": 3
+     },
+     {
+      "allocation": 15,
+      "emoji": "🏢",
+      "shortNames": [
+       {
+        "id": "cvc",
+        "label": "CVC 担当者"
+       }
+      ],
+      "slot": "cvc",
+      "targetCount": 3
+     },
+     {
+      "allocation": 10,
+      "emoji": "⚖️",
+      "shortNames": [
+       {
+        "id": "lawyer",
+        "label": "弁護士（投資契約）"
+       }
+      ],
+      "slot": "lawyer",
+      "targetCount": 1
+     }
+    ],
+    "landscape": [
+     {
+      "id": "L-101",
+      "summary": "2024 年の国内スタートアップの資金調達額は約 7,793 億円（デット除く・集計時点の値）で、前年の同じ時点の集計より 3% 増えました。1 社あたりの平均は約 3.1 億円です。",
+      "title": "国内スタートアップの資金調達（2024 年）",
+      "version": 1
+     },
+     {
+      "id": "L-102",
+      "summary": "2024 年に国内で設立された VC ファンドの総額のうち、事業会社系（CVC）ファンドは約 36% を占めました。",
+      "title": "事業会社系ファンド（CVC）の比重",
+      "version": 1
+     },
+     {
+      "id": "L-103",
+      "summary": "日本政策金融公庫が 2024 年 4〜9 月に融資し、融資時点で開業後 1 年以内だった回答企業（不動産賃貸業を除く）では、開業時の資金調達額は平均 1,219 万円で、その金額の 67.9% が金融機関などからの借入れでした。",
+      "title": "開業時の資金の集め方",
+      "version": 1
+     }
+    ],
+    "contacts": [
+     {
+      "alias": "C1",
+      "industry": null,
+      "name": "渡辺 翔",
+      "notes": null,
+      "organization": "Nexa Robotics",
+      "role": "代表取締役",
+      "tags": []
+     },
+     {
+      "alias": "C2",
+      "industry": null,
+      "name": "高橋 美咲",
+      "notes": null,
+      "organization": "青葉ベンチャーズ",
+      "role": "パートナー",
+      "tags": []
+     },
+     {
+      "alias": "C3",
+      "industry": null,
+      "name": "山本 彩",
+      "notes": null,
+      "organization": "東都キャピタル",
+      "role": "シニアアソシエイト",
+      "tags": []
+     },
+     {
+      "alias": "C4",
+      "industry": null,
+      "name": "青木 里奈",
+      "notes": null,
+      "organization": "Kanade AI",
+      "role": "CTO",
+      "tags": [
+       "共同創業者"
+      ]
+     },
+     {
+      "alias": "C5",
+      "industry": null,
+      "name": "小林 誠",
+      "notes": null,
+      "organization": "丸の内イノベーションラボ",
+      "role": "主宰",
+      "tags": []
+     },
+     {
+      "alias": "C6",
+      "industry": null,
+      "name": "伊藤 直子",
+      "notes": null,
+      "organization": "株式会社ハルモニア",
+      "role": "事業開発部長",
+      "tags": []
+     },
+     {
+      "alias": "C7",
+      "industry": null,
+      "name": "佐々木 遼",
+      "notes": null,
+      "organization": "湾岸グロース・パートナーズ",
+      "role": "マネージャー",
+      "tags": []
+     },
+     {
+      "alias": "C8",
+      "industry": null,
+      "name": "鈴木 大輔",
+      "notes": null,
+      "organization": "北辰製作所",
+      "role": "製造部長",
+      "tags": []
+     },
+     {
+      "alias": "C9",
+      "industry": null,
+      "name": "松井 遥",
+      "notes": null,
+      "organization": "株式会社ソラノテ",
+      "role": "プロダクトマネージャー",
+      "tags": []
+     },
+     {
+      "alias": "C10",
+      "industry": null,
+      "name": "岡田 紗希",
+      "notes": null,
+      "organization": "Sakura Growth Partners",
+      "role": "アナリスト",
+      "tags": []
+     }
+    ],
+    "goalKind": "fundraising"
+   },
+   "outputs": [
+    {
+     "attempt": 1,
+     "issues": [
+      "diagnosis: Invalid input: expected string, received undefined",
+      "conclusion: Invalid input: expected string, received undefined",
+      "steps: Invalid input: expected array, received undefined",
+      "personTypes: Invalid input: expected array, received undefined",
+      "event: Invalid input: expected object, received undefined",
+      "citations: Invalid input: expected array, received undefined"
+     ],
+     "content": {
+      "revised": {
+       "contacts": [
+        {
+         "alias": "C1",
+         "industry": null,
+         "name": "渡辺 翔",
+         "notes": null,
+         "organization": "Nexa Robotics",
+         "role": "代表取締役",
+         "tags": []
+        },
+        {
+         "alias": "C2",
+         "industry": null,
+         "name": "高橋 美咲",
+         "notes": null,
+         "organization": "青葉ベンチャーズ",
+         "role": "パートナー",
+         "tags": []
+        },
+        {
+         "alias": "C3",
+         "industry": null,
+         "name": "山本 彩",
+         "notes": null,
+         "organization": "東都キャピタル",
+         "role": "シニアアソシエイト",
+         "tags": []
+        },
+        {
+         "alias": "C4",
+         "industry": null,
+         "name": "青木 里奈",
+         "notes": null,
+         "organization": "Kanade AI",
+         "role": "CTO",
+         "tags": [
+          "共同創業者"
+         ]
+        },
+        {
+         "alias": "C5",
+         "industry": null,
+         "name": "小林 誠",
+         "notes": null,
+         "organization": "丸の内イノベーションラボ",
+         "role": "主宰",
+         "tags": []
+        },
+        {
+         "alias": "C6",
+         "industry": null,
+         "name": "伊藤 直子",
+         "notes": null,
+         "organization": "株式会社ハルモニア",
+         "role": "事業開発部長",
+         "tags": []
+        },
+        {
+         "alias": "C7",
+         "industry": null,
+         "name": "佐々木 遼",
+         "notes": null,
+         "organization": "湾岸グロース・パートナーズ",
+         "role": "マネージャー",
+         "tags": []
+        },
+        {
+         "alias": "C8",
+         "industry": null,
+         "name": "鈴木 大輔",
+         "notes": null,
+         "organization": "北辰製作所",
+         "role": "製造部長",
+         "tags": []
+        },
+        {
+         "alias": "C9",
+         "industry": null,
+         "name": "松井 遥",
+         "notes": null,
+         "organization": "株式会社ソラノテ",
+         "role": "プロダクトマネージャー",
+         "tags": []
+        },
+        {
+         "alias": "C10",
+         "industry": null,
+         "name": "岡田 紗希",
+         "notes": null,
+         "organization": "Sakura Growth Partners",
+         "role": "アナリスト",
+         "tags": []
+        }
+       ],
+       "current": {
+        "allocationReasons": [],
+        "citations": [
+         {
+          "id": "L-101",
+          "version": 1
+         },
+         {
+          "id": "L-102",
+          "version": 1
+         }
+        ],
+        "conclusion": "法務と手続きの体制を整えつつ、リード投資家との面談を最優先で進め、シリーズAのクロージングを目指します。",
+        "diagnosis": "資金調達の目的とチームの状況を踏まえると、法務・手続きの空白を埋めることが最優先です。①国内の資金調達環境は前年より緩やかに拡大しており、投資家との接点づくりを進めやすい時期です。②事業会社系ファンドの存在感も高まっており、CVC も選択肢として検討する価値があります。③既存株主は追加出資に前向きで、リード投資家は ARR 1 億円の見込みを重視しているため、リード投資家との面談を優先する方針とします。ただし、資金使途と締切の前提には推測が含まれるため、まず関係者への確認が必要です。",
+        "event": {
+         "allocation": 10,
+         "targetCount": 2
+        },
+        "flow": [],
+        "personTypes": [
+         {
+          "allocation": 5,
+          "countRule": "資金調達の実務経験と財務モデル作成の実績で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家との接点を持つため、実務人材の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "資金使途の内訳をどのように整理すべきでしょうか。",
+           "投資家向けの財務モデルで押さえるべき点は何でしょうか。",
+           "締切から逆算したスケジュールの組み方はありますか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の実務経験があるか",
+           "財務モデルの作成支援実績があるか"
+          ],
+          "roleSituation": "資金調達の実務を主導する立場として、資金使途と締切の整理を担う。",
+          "shortLabelId": "cfo",
+          "slot": "cfo",
+          "targetCount": 1,
+          "why": "資金使途と締切の前提が推測であるため、財務面の実務を担う人材の助言が有効です。"
+         },
+         {
+          "allocation": 15,
+          "countRule": "自社と近い領域で調達経験があるかで判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C1",
+            "why": "起業家同士のネットワークから実務経験者の紹介が期待できます。"
+           },
+           {
+            "viaAlias": "C4",
+            "why": "共同創業者の立場から、調達経験者との接点が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "調達プロセスで最も苦労した点は何でしたか。",
+           "投資家との交渉で準備しておくべき資料は何ですか。",
+           "法務・手続きで早めに動くべきことは何ですか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の調達経験があるか",
+           "投資契約の実務を経験しているか"
+          ],
+          "roleSituation": "過去に資金調達を経験した起業家として、実務の勘所を共有する立場。",
+          "shortLabelId": "funded_founder",
+          "slot": "funded_founder",
+          "targetCount": 3,
+          "why": "調達経験のある起業家から実務知見を得ることで、手続きの抜け漏れを防げます。"
+         },
+         {
+          "allocation": 10,
+          "countRule": "過去の投資実績と領域の近さで判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家ネットワークを通じてエンジェルの紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資家が最初に確認するポイントはどこですか。",
+           "事業の成長性をどう伝えると効果的ですか。",
+           "既存株主との関係で気をつける点はありますか。"
+          ],
+          "recognizeHints": [
+           "シード期の投資実績があるか",
+           "既存株主との接点があるか"
+          ],
+          "roleSituation": "初期段階から支援する投資家として、事業の成長性を見極める立場。",
+          "shortLabelId": "angel",
+          "slot": "angel",
+          "targetCount": 2,
+          "why": "エンジェル投資家からの助言は、投資家向けの説明資料の改善に役立ちます。"
+         },
+         {
+          "allocation": 35,
+          "countRule": "投資ステージと領域の一致度で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C3",
+            "why": "投資会社のネットワークからパートナーとの接点が期待できます。"
+           },
+           {
+            "viaAlias": "C7",
+            "why": "グロース支援の立場から投資家の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資判断で重視する指標は何ですか。",
+           "ARR 1 億円の見込みをどのように評価しますか。",
+           "ラウンド組成の進め方で助言はありますか。",
+           "デューデリジェンスで準備すべき資料は何ですか。"
+          ],
+          "recognizeHints": [
+           "シリーズA の投資実績があるか",
+           "リード投資家としての実績があるか"
+          ],
+          "roleSituation": "投資判断を担うパートナーとして、ラウンドの組成を検討する立場。リード投資家としての面談を優先する相手。",
+          "shortLabelId": "vc_partner",
+          "slot": "vc_partner",
+          "targetCount": 3,
+          "why": "リード投資家は ARR 1 億円の見込みを重視しており、面談を優先するため、VC パートナーに最も比重を置きます。"
+         },
+         {
+          "allocation": 15,
+          "countRule": "事業領域の近さと投資実績で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C5",
+            "why": "イノベーション拠点の主宰として、CVC との接点が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資検討の際に重視するシナジーは何ですか。",
+           "意思決定までの一般的な期間はどのくらいですか。",
+           "事業会社との協業可能性はどのように評価しますか。"
+          ],
+          "recognizeHints": [
+           "CVC の投資実績があるか",
+           "事業会社との協業経験があるか"
+          ],
+          "roleSituation": "事業会社の投資担当として、事業シナジーを検討する立場。",
+          "shortLabelId": "cvc",
+          "slot": "cvc",
+          "targetCount": 3,
+          "why": "CVC は場合によるという前提のため、選択肢として接点を持っておきます。"
+         },
+         {
+          "allocation": 10,
+          "countRule": "投資契約の実務経験の有無で判断します。",
+          "introRoutes": [
+           {
+            "viaAlias": "C2",
+            "why": "投資家との接点から、契約実務に強い弁護士の紹介が期待できます。"
+           }
+          ],
+          "opener": null,
+          "persona": null,
+          "primaryIndustryId": null,
+          "questions": [
+           "投資契約で注意すべき条項は何ですか。",
+           "デューデリジェンス前に準備すべき書類は何ですか。",
+           "手続きのスケジュール感はどのくらいですか。"
+          ],
+          "recognizeHints": [
+           "スタートアップの投資契約実績があるか",
+           "シリーズA の支援経験があるか"
+          ],
+          "roleSituation": "投資契約を扱う弁護士として、法務・手続きの空白を埋める立場。",
+          "shortLabelId": "lawyer",
+          "slot": "lawyer",
+          "targetCount": 1,
+          "why": "法務・手続きの空白が課題であるため、投資契約に強い弁護士の確保が急務です。"
+         }
+        ],
+        "steps": [
+         {
+          "doneCriteria": "資金使途の内訳（項目数）と締切までの残り週数が数値で文書化され、共有済みになっている。",
+          "personTypeKeys": [
+           "cfo",
+           "event"
+          ],
+          "title": "資金使途と締切の前提を確定する",
+          "why": null
+         },
+         {
+          "doneCriteria": "リード投資家との面談が複数回実施され、ARR 1 億円の見込みに関する評価が確認できている。",
+          "personTypeKeys": [
+           "vc_partner",
+           "event"
+          ],
+          "title": "リード投資家との面談を最優先で進める",
+          "why": null
+         },
+         {
+          "doneCriteria": "投資契約に強い弁護士との初回面談が完了している。",
+          "personTypeKeys": [
+           "lawyer",
+           "event"
+          ],
+          "title": "投資契約を担う弁護士を確保する",
+          "why": null
+         },
+         {
+          "doneCriteria": "起業家へのインタビューが複数件実施され、示唆がまとまっている。",
+          "personTypeKeys": [
+           "funded_founder",
+           "event"
+          ],
+          "title": "調達経験のある起業家から実務知見を得る",
+          "why": null
+         },
+         {
+          "doneCriteria": "CVC 担当者との面談が設定され、関心度が確認できている。",
+          "personTypeKeys": [
+           "cvc",
+           "event"
+          ],
+          "title": "CVC との接点をつくる",
+          "why": null
+         }
+        ]
+       },
+       "earned": {
+        "cfo": 5
+       },
+       "goalKind": "fundraising",
+       "landscape": [
+        {
+         "id": "L-101",
+         "summary": "2024 年の国内スタートアップの資金調達額は約 7,793 億円（デット除く・集計時点の値）で、前年の同じ時点の集計より 3% 増えました。1 社あたりの平均は約 3.1 億円です。",
+         "title": "国内スタートアップの資金調達（2024 年）",
+         "version": 1
+        },
+        {
+         "id": "L-102",
+         "summary": "2024 年に国内で設立された VC ファンドの総額のうち、事業会社系（CVC）ファンドは約 36% を占めました。",
+         "title": "事業会社系ファンド（CVC）の比重",
+         "version": 1
+        },
+        {
+         "id": "L-103",
+         "summary": "日本政策金融公庫が 2024 年 4〜9 月に融資し、融資時点で開業後 1 年以内だった回答企業（不動産賃貸業を除く）では、開業時の資金調達額は平均 1,219 万円で、その金額の 67.9% が金融機関などからの借入れでした。",
+         "title": "開業時の資金の集め方",
+         "version": 1
+        }
+       ],
+       "premise": [
+        {
+         "key": "purpose",
+         "label": "目的",
+         "value": "シリーズAの資金調達を成功させ、事業拡大を進めるための体制を整える。",
+         "source": "background",
+         "guessed": false
+        },
+        {
+         "key": "team",
+         "label": "チーム",
+         "value": "2名（空き：法務・手続き）",
+         "source": "background",
+         "guessed": false
+        },
+        {
+         "key": "F3",
+         "label": "既存株主・リード候補",
+         "value": "既存株主は追加出資に前向き · リード投資家は ARR 1 億円の見込みを重視",
+         "source": "q1",
+         "guessed": false
+        },
+        {
+         "key": "F4",
+         "label": "調達の経験",
+         "value": "経験あり",
+         "source": "q2",
+         "guessed": false
+        },
+        {
+         "key": "F1",
+         "label": "ラウンドと金額",
+         "value": "シリーズ A",
+         "source": "q3",
+         "guessed": false
+        },
+        {
+         "key": "F6",
+         "label": "事業会社（CVC）",
+         "value": "場合による",
+         "source": "q4",
+         "guessed": false
+        },
+        {
+         "key": "F5",
+         "label": "使い道と締切",
+         "value": "1年以内",
+         "source": "q5",
+         "guessed": true
+        }
+       ],
+       "previousTurns": [],
+       "request": "既存株主・リード候補：既存株主は追加出資に前向き · リード投資家は ARR 1 億円の見込みを重視\nリード投資家との面談を優先したいので、配点を少し寄せてほしい",
+       "skippedSlots": [],
+       "slots": [
+        {
+         "allocation": 5,
+         "emoji": "📊",
+         "shortNames": [
+          {
+           "id": "cfo",
+           "label": "CFO 経験者"
+          }
+         ],
+         "slot": "cfo",
+         "targetCount": 1
+        },
+        {
+         "allocation": 15,
+         "emoji": "🧗",
+         "shortNames": [
+          {
+           "id": "funded_founder",
+           "label": "調達経験のある起業家"
+          }
+         ],
+         "slot": "funded_founder",
+         "targetCount": 3
+        },
+        {
+         "allocation": 10,
+         "emoji": "👼",
+         "shortNames": [
+          {
+           "id": "angel",
+           "label": "エンジェル投資家"
+          }
+         ],
+         "slot": "angel",
+         "targetCount": 2
+        },
+        {
+         "allocation": 35,
+         "emoji": "🏦",
+         "shortNames": [
+          {
+           "id": "vc_partner",
+           "label": "VC パートナー"
+          }
+         ],
+         "slot": "vc_partner",
+         "targetCount": 3
+        },
+        {
+         "allocation": 15,
+         "emoji": "🏢",
+         "shortNames": [
+          {
+           "id": "cvc",
+           "label": "CVC 担当者"
+          }
+         ],
+         "slot": "cvc",
+         "targetCount": 3
+        },
+        {
+         "allocation": 10,
+         "emoji": "⚖️",
+         "shortNames": [
+          {
+           "id": "lawyer",
+           "label": "弁護士（投資契約）"
+          }
+         ],
+         "slot": "lawyer",
+         "targetCount": 1
+        }
+       ]
+      },
+      "reasons": [
+       {
+        "path": "slots.vc_partner.allocation",
+        "reason": "リード投資家との面談を優先するため、VC パートナーの配点を 30 から 35 に引き上げました。"
+       },
+       {
+        "path": "slots.cfo.allocation",
+        "reason": "人材タイプの合計を 100 に保つため、CFO 経験者の配点を 5 に下げました（獲得済み 5 ポイントの範囲内で、下限の 5 を維持しています）。"
+       },
+       {
+        "path": "current.personTypes.vc_partner",
+        "reason": "リード投資家が ARR 1 億円の見込みを重視している点を確認する質問を追加し、リード投資家としての実績を認識条件に加えました。"
+       },
+       {
+        "path": "current.steps",
+        "reason": "リード投資家との面談を最優先する手順を追加しました。"
+       },
+       {
+        "path": "current.diagnosis",
+        "reason": "既存株主とリード投資家の前提を踏まえ、リード投資家との面談を優先する方針を診断に反映しました。"
+       },
+       {
+        "path": "current.conclusion",
+        "reason": "リード投資家との面談を最優先で進める方針を結論に反映しました。"
+       }
+      ],
+      "unchanged": [
+       "premise",
+       "landscape",
+       "current.citations",
+       "current.event",
+       "current.personTypes.funded_founder",
+       "current.personTypes.angel",
+       "current.personTypes.cvc",
+       "current.personTypes.lawyer",
+       "current.steps[2]",
+       "current.steps[3]",
+       "current.steps[4]"
+      ],
+      "noChangeReason": null
+     }
+    },
+    {
+     "attempt": 2,
+     "issues": [
+      "diagnosis: a number without a citation"
+     ],
+     "content": {
+      "revised": {
+       "allocationReasons": [],
+       "citations": [
+        {
+         "id": "L-101",
+         "version": 1
+        },
+        {
+         "id": "L-102",
+         "version": 1
+        }
+       ],
+       "conclusion": "法務と手続きの体制を整えつつ、リード投資家との面談を優先して進め、シリーズAのクロージングを目指します。",
+       "diagnosis": "資金調達の目的とチームの状況を踏まえると、法務・手続きの空白を埋めることが最優先です。①国内の資金調達環境は前年より緩やかに拡大しており、投資家との接点づくりを進めやすい時期です。②事業会社系ファンドの存在感も高まっており、CVC も選択肢として検討する価値があります。ご要望のとおり、リード投資家は ARR 1 億円の見込みを重視しているため、リード投資家との面談を優先できるよう配点を VC パートナーに寄せています。ただし、資金使途と締切の前提には推測が含まれるため、まず関係者への確認が必要です。",
+       "event": {
+        "allocation": 10,
+        "targetCount": 2
+       },
+       "flow": [],
+       "personTypes": [
+        {
+         "allocation": 5,
+         "countRule": "資金調達の実務経験と財務モデル作成の実績で判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C2",
+           "why": "投資家との接点を持つため、実務人材の紹介が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "資金使途の内訳をどのように整理すべきでしょうか。",
+          "投資家向けの財務モデルで押さえるべき点は何でしょうか。",
+          "締切から逆算したスケジュールの組み方はありますか。"
+         ],
+         "recognizeHints": [
+          "シリーズA の実務経験があるか",
+          "財務モデルの作成支援実績があるか"
+         ],
+         "roleSituation": "資金調達の実務を主導する立場として、資金使途と締切の整理を担う。",
+         "shortLabelId": "cfo",
+         "slot": "cfo",
+         "targetCount": 1,
+         "why": "資金使途と締切の前提が推測であるため、財務面の実務を担う人材の助言が有効です。"
+        },
+        {
+         "allocation": 10,
+         "countRule": "自社と近い領域で調達経験があるかで判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C1",
+           "why": "起業家同士のネットワークから実務経験者の紹介が期待できます。"
+          },
+          {
+           "viaAlias": "C4",
+           "why": "共同創業者の立場から、調達経験者との接点が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "調達プロセスで最も苦労した点は何でしたか。",
+          "投資家との交渉で準備しておくべき資料は何ですか。",
+          "法務・手続きで早めに動くべきことは何ですか。"
+         ],
+         "recognizeHints": [
+          "シリーズA の調達経験があるか",
+          "投資契約の実務を経験しているか"
+         ],
+         "roleSituation": "過去に資金調達を経験した起業家として、実務の勘所を共有する立場。",
+         "shortLabelId": "funded_founder",
+         "slot": "funded_founder",
+         "targetCount": 3,
+         "why": "調達経験のある起業家から実務知見を得ることで、手続きの抜け漏れを防げます。"
+        },
+        {
+         "allocation": 10,
+         "countRule": "過去の投資実績と領域の近さで判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C2",
+           "why": "投資家ネットワークを通じてエンジェルの紹介が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "投資家が最初に確認するポイントはどこですか。",
+          "事業の成長性をどう伝えると効果的ですか。",
+          "既存株主との関係で気をつける点はありますか。"
+         ],
+         "recognizeHints": [
+          "シード期の投資実績があるか",
+          "既存株主との接点があるか"
+         ],
+         "roleSituation": "初期段階から支援する投資家として、事業の成長性を見極める立場。",
+         "shortLabelId": "angel",
+         "slot": "angel",
+         "targetCount": 2,
+         "why": "エンジェル投資家からの助言は、投資家向けの説明資料の改善に役立ちます。"
+        },
+        {
+         "allocation": 35,
+         "countRule": "投資ステージと領域の一致度、ARR の見込みに関する対話の相性で判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C3",
+           "why": "投資会社のネットワークからパートナーとの接点が期待できます。"
+          },
+          {
+           "viaAlias": "C7",
+           "why": "グロース支援の立場から投資家の紹介が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "投資判断で重視する指標は何ですか。ARR 1 億円の見込みはどのように評価しますか。",
+          "ラウンド組成の進め方で助言はありますか。",
+          "デューデリジェンスで準備すべき資料は何ですか。"
+         ],
+         "recognizeHints": [
+          "シリーズA の投資実績があるか",
+          "ARR の成長を重視する投資家との接点があるか"
+         ],
+         "roleSituation": "投資判断を担うパートナーとして、ラウンドの組成を検討する立場。",
+         "shortLabelId": "vc_partner",
+         "slot": "vc_partner",
+         "targetCount": 3,
+         "why": "リード投資家が ARR 1 億円の見込みを重視しているため、リード候補との面談を優先し、最も比重を置きます。"
+        },
+        {
+         "allocation": 15,
+         "countRule": "事業領域の近さと投資実績で判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C5",
+           "why": "イノベーション拠点の主宰として、CVC との接点が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "投資検討の際に重視するシナジーは何ですか。",
+          "意思決定までの一般的な期間はどのくらいですか。",
+          "事業会社との協業可能性はどのように評価しますか。"
+         ],
+         "recognizeHints": [
+          "CVC の投資実績があるか",
+          "事業会社との協業経験があるか"
+         ],
+         "roleSituation": "事業会社の投資担当として、事業シナジーを検討する立場。",
+         "shortLabelId": "cvc",
+         "slot": "cvc",
+         "targetCount": 3,
+         "why": "CVC は場合によるという前提のため、選択肢として接点を持っておきます。"
+        },
+        {
+         "allocation": 15,
+         "countRule": "投資契約の実務経験の有無で判断します。",
+         "introRoutes": [
+          {
+           "viaAlias": "C2",
+           "why": "投資家との接点から、契約実務に強い弁護士の紹介が期待できます。"
+          }
+         ],
+         "opener": null,
+         "persona": null,
+         "primaryIndustryId": null,
+         "questions": [
+          "投資契約で注意すべき条項は何ですか。",
+          "デューデリジェンス前に準備すべき書類は何ですか。",
+          "手続きのスケジュール感はどのくらいですか。"
+         ],
+         "recognizeHints": [
+          "スタートアップの投資契約実績があるか",
+          "シリーズA の支援経験があるか"
+         ],
+         "roleSituation": "投資契約を扱う弁護士として、法務・手続きの空白を埋める立場。",
+         "shortLabelId": "lawyer",
+         "slot": "lawyer",
+         "targetCount": 1,
+         "why": "法務・手続きの空白が課題であるため、投資契約に強い弁護士の確保が急務です。"
+        }
+       ],
+       "steps": [
+        {
+         "doneCriteria": "資金使途の内訳（項目数）と締切までの残り週数が数値で文書化され、共有済みになっている。",
+         "personTypeKeys": [
+          "cfo",
+          "event"
+         ],
+         "title": "資金使途と締切の前提を確定する",
+         "why": null
+        },
+        {
+         "doneCriteria": "投資契約に強い弁護士との初回面談が完了している。",
+         "personTypeKeys": [
+          "lawyer",
+          "event"
+         ],
+         "title": "投資契約を担う弁護士を確保する",
+         "why": null
+        },
+        {
+         "doneCriteria": "リード投資家候補との面談が複数回実施され、ARR 1 億円の見込みの評価と次回の打ち合わせが設定されている。",
+         "personTypeKeys": [
+          "vc_partner",
+          "event"
+         ],
+         "title": "リード投資家との面談を優先して積み上げる",
+         "why": null
+        },
+        {
+         "doneCriteria": "起業家へのインタビューが複数件実施され、示唆がまとまっている。",
+         "personTypeKeys": [
+          "funded_founder",
+          "event"
+         ],
+         "title": "調達経験のある起業家から実務知見を得る",
+         "why": null
+        },
+        {
+         "doneCriteria": "CVC 担当者との面談が設定され、関心度が確認できている。",
+         "personTypeKeys": [
+          "cvc",
+          "event"
+         ],
+         "title": "CVC との接点をつくる",
+         "why": null
+        }
+       ]
+      },
+      "reasons": [
+       {
+        "path": "personTypes.vc_partner.allocation",
+        "reason": "リード投資家（ARR 1 億円の見込みを重視）との面談を優先するため、配点を 30 から 35 に引き上げました。"
+       },
+       {
+        "path": "personTypes.vc_partner.countRule",
+        "reason": "リード投資家が重視する ARR の見込みを判断基準に加えました。"
+       },
+       {
+        "path": "personTypes.vc_partner.questions",
+        "reason": "ARR 1 億円の見込みの評価を確認する質問を追加しました。"
+       },
+       {
+        "path": "personTypes.vc_partner.recognizeHints",
+        "reason": "ARR の成長を重視する投資家との接点を確認する観点を加えました。"
+       },
+       {
+        "path": "personTypes.vc_partner.why",
+        "reason": "リード候補との面談を優先する方針を反映しました。"
+       },
+       {
+        "path": "personTypes.cfo.allocation",
+        "reason": "配点を 10 から 5 に下げ、合計を調整しました（獲得済みの 5 ポイントは下回らない範囲）。"
+       },
+       {
+        "path": "personTypes.funded_founder.allocation",
+        "reason": "配点を 15 から 10 に下げ、合計を調整しました。"
+       },
+       {
+        "path": "personTypes.cvc.allocation",
+        "reason": "配点を 15 から 10 に下げ、合計を調整しました。"
+       },
+       {
+        "path": "personTypes.lawyer.allocation",
+        "reason": "配点を 10 から 15 に戻し、合計を調整しました。"
+       },
+       {
+        "path": "steps.2.title",
+        "reason": "リード投資家との面談を優先する方針に合わせて手順を具体化しました。"
+       },
+       {
+        "path": "steps.2.doneCriteria",
+        "reason": "ARR 1 億円の見込みの評価を完了条件に反映しました。"
+       },
+       {
+        "path": "diagnosis",
+        "reason": "リード投資家の優先方針を診断に反映しました。"
+       },
+       {
+        "path": "conclusion",
+        "reason": "リード投資家との面談を優先する方針を結論に反映しました。"
+       }
+      ],
+      "unchanged": [
+       "event",
+       "citations",
+       "flow",
+       "personTypes.cfo（allocation 以外）",
+       "personTypes.funded_founder（allocation 以外）",
+       "personTypes.angel",
+       "personTypes.cvc（allocation 以外）",
+       "personTypes.lawyer（allocation 以外）",
+       "steps.0",
+       "steps.1",
+       "steps.3",
+       "steps.4"
+      ],
+      "noChangeReason": null
+     }
+    }
+   ]
+  }
+ ],
+ "note": "三次操作针对同一份草稿；模型在第 2、3 次回显输入时改写了 current，所以修正前的参照统一用第 1 次（未被改写）的 current。"
+}

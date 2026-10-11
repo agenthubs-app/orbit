@@ -92,11 +92,12 @@ export function ledgerCallMeter(ledger: AiQuotaGate, operationId: string, model:
   };
 }
 
-export function bindDeepseekPlanChat(options: { apiKey: string; model: string; fetchImplementation?: typeof fetch; timeoutMs?: number }): PlanAiChat {
+export function bindDeepseekPlanChat(options: { apiKey: string; model: string; fetchImplementation?: typeof fetch; timeoutMs?: number; maxTokens?: number }): PlanAiChat {
   return async ({ system, user }) => {
     const result = await deepseekJsonChat({
       apiKey: options.apiKey,
       fetchImplementation: options.fetchImplementation,
+      maxTokens: options.maxTokens,
       model: options.model,
       system,
       timeoutMs: options.timeoutMs ?? PLAN_AI_TIMEOUT_MS,

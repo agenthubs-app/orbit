@@ -5,7 +5,7 @@ import { PLAN_GOAL_TEMPLATES, planShortNameCandidates, PLAN_EVENT_SLOT } from ".
 import type { AiQuotaGate, AiQuotaReservation } from "../../features/ai-quota/gate";
 import { createDeepseekPlanFlowAi } from "../../features/plans/v2/ai/deepseek";
 import { createMockPlanFlowAi } from "../../features/plans/v2/ai/mock";
-import { checkBackground, checkDraft, checkLadder, checkQuestions } from "../../features/plans/v2/ai/schemas";
+import { checkBackground, checkDraft, checkLadder, checkQuestions, checkReviewFix } from "../../features/plans/v2/ai/schemas";
 import type { DraftOutput, FirstDraftInput, PlanAiContext } from "../../features/plans/v2/ai/types";
 import { citationMarkerIssues } from "../../features/plans/v2/validate-content";
 
@@ -54,18 +54,45 @@ test("first-draft checks reject what the design forbids", async () => {
     assert.ok((result as { issues: string[] }).issues.some((issue) => pattern.test(issue)), (result as { issues: string[] }).issues.join(" | "));
   };
   reject((draft) => { draft.personTypes[0]!.shortLabelId = "made_up_name"; }, /not in the dictionary/);
-  reject((draft) => { draft.personTypes[0]!.allocation += 5; }, /total_not_100|allocation/);
-  reject((draft) => { draft.personTypes[0]!.allocation += 3; draft.personTypes[1]!.allocation -= 3; }, /not_multiple/);
-  reject((draft) => { draft.personTypes[0]!.allocation += 10; draft.personTypes[1]!.allocation -= 10; }, /template: over_adjusted/);
-  reject((draft) => { draft.personTypes[0]!.allocation += 5; draft.personTypes[1]!.allocation -= 5; draft.personTypes[2]!.allocation += 5; draft.personTypes[3]!.allocation -= 5; }, /too_many_adjustments/);
   reject((draft) => { draft.citations = [{ id: "L-777", version: 1 }]; }, /not a published entry/);
   reject((draft) => { draft.diagnosis = "市場は 7,793 億円です。"; }, /number without a citation/);
   reject((draft) => { draft.citations = []; draft.diagnosis = "伸びています①。"; }, /has no citation/);
   reject((draft) => { draft.personTypes[0]!.introRoutes = [{ viaAlias: "C9", why: "知り合い" }]; }, /unknown alias/);
   reject((draft) => { draft.personTypes[0]!.introRoutes = [{ viaAlias: "C1", why: "VC を 3 人紹介できる" }]; }, /headcount/);
-  reject((draft) => { draft.steps[0]!.personTypeKeys = ["nobody"]; }, /unknown type/);
   reject((draft) => { draft.personTypes[0]!.slot = "not_a_slot"; }, /not a template slot/);
   reject((draft) => { draft.personTypes[0]!.targetCount = 6; }, /target/);
+});
+
+// 真实跑通（R23 / R25 补充）：算术与引用一致性由服务端规整（normalize.ts），规整后的结果仍要过同一套校验。
+// 这几种以前直接拒绝；真实 C6 被拦的正是这些（合计不是 100、Step 引用不存在的类型），现在规整成合规方案。
+test("first drafts: off-template or off-total allocations snap back to the template; steps drop unknown types", async () => {
+  const input = draftInputFor();
+  const base = await mockDraft(input);
+  const template = new Map(PLAN_GOAL_TEMPLATES[input.goalKind].slots.map((slot) => [slot.slot, slot.allocation]));
+  const accepted = (mutate: (draft: DraftOutput) => void) => {
+    const draft = structuredClone(base);
+    mutate(draft);
+    const result = checkDraft(draft, checkInput(input));
+    assert.equal(result.ok, true, (result as { issues?: string[] }).issues?.join(" | "));
+    return (result as { value: DraftOutput }).value;
+  };
+  for (const mutate of [
+    (draft: DraftOutput) => { draft.personTypes[0]!.allocation += 5; },
+    (draft: DraftOutput) => { draft.personTypes[0]!.allocation += 10; draft.personTypes[1]!.allocation -= 10; },
+    (draft: DraftOutput) => { draft.personTypes[0]!.allocation += 5; draft.personTypes[1]!.allocation -= 5; draft.personTypes[2]!.allocation += 5; draft.personTypes[3]!.allocation -= 5; },
+  ]) {
+    const value = accepted(mutate);
+    for (const type of value.personTypes) assert.equal(type.allocation, template.get(type.slot), "back to the template");
+    assert.equal(value.personTypes.reduce((sum, type) => sum + type.allocation, value.event.allocation), 100);
+  }
+  // 合规的 ±5（最多 2 处）保留模型的调整。
+  const kept = accepted((draft) => { draft.personTypes[0]!.allocation += 5; draft.personTypes[1]!.allocation -= 5; });
+  assert.equal(kept.personTypes[0]!.allocation, base.personTypes[0]!.allocation + 5);
+  // 不是 5 分一档：四舍五入。
+  accepted((draft) => { draft.personTypes[0]!.allocation += 3; draft.personTypes[1]!.allocation -= 3; });
+  // 真实 C6 第 3 次：Step 引用了方案里没有的类型（heavy_user）→ 去掉这个引用。
+  const steps = accepted((draft) => { draft.steps[0]!.personTypeKeys = ["heavy_user", draft.personTypes[0]!.slot]; });
+  assert.deepEqual(steps.steps[0]!.personTypeKeys, [base.personTypes[0]!.slot]);
 });
 
 test("numbers are allowed only in sentences that carry a citation marker", () => {
@@ -168,4 +195,30 @@ test("limits and a replayed key make zero HTTP requests", async () => {
   const done = fakeLedger({ ok: true, operationId: "op-9", owner: false, status: "failed" });
   assert.deepEqual(await ai(done.ledger).firstDraft(input, CONTEXT), { ok: false, reason: "failed" });
   assert.equal(http.calls, 0);
+});
+
+// R25 真实 C9 第 2 次：「投資家にもっと寄せたい」把一个槽 +10 却没有从别处扣，合计 110 → 被拒、没扣次数。
+// 规整：差额由模型没改、未跳过的槽按配点高的先扣回，不低于已得与 5 分；跳过的槽不动；补不齐仍拒绝。
+test("review fixes: an off-total revision is rebalanced from untouched slots, never from skipped ones or below earned", async () => {
+  const input = draftInputFor();
+  const current = await mockDraft(input);
+  const [raised, skipped, ...others] = current.personTypes;
+  const revised = structuredClone(current);
+  revised.personTypes[0]!.allocation += 10;
+  const earned = { [others[0]!.slot]: others[0]!.allocation };
+  const result = checkReviewFix({ noChangeReason: null, reasons: [], revised, unchanged: [] }, checkInput(input, false), current, { earned, skippedSlots: [skipped!.slot] });
+  assert.equal(result.ok, true, (result as { issues?: string[] }).issues?.join(" | "));
+  const value = (result as { value: { revised: DraftOutput } }).value.revised;
+  const by = new Map(value.personTypes.map((type) => [type.slot, type.allocation]));
+  assert.equal(by.get(raised!.slot), raised!.allocation + 10, "the model's change is kept");
+  assert.equal(by.get(skipped!.slot), skipped!.allocation, "a skipped slot is not touched");
+  assert.ok(by.get(others[0]!.slot)! >= others[0]!.allocation, "never below earned");
+  assert.equal(value.personTypes.reduce((sum, type) => sum + type.allocation, value.event.allocation), 100);
+
+  // 补不齐（其余都已在下限）→ 仍然拒绝。
+  const tight = structuredClone(current);
+  const floorEarned = Object.fromEntries([...current.personTypes.map((type) => [type.slot, type.allocation]), ["event", current.event.allocation]]);
+  tight.personTypes[0]!.allocation += 10;
+  const refused = checkReviewFix({ noChangeReason: null, reasons: [], revised: tight, unchanged: [] }, checkInput(input, false), current, { earned: floorEarned, skippedSlots: [] });
+  assert.equal(refused.ok, false);
 });

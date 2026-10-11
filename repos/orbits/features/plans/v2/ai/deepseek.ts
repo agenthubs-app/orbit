@@ -21,6 +21,8 @@ export interface DeepseekPlanFlowAiDeps {
   ledger: AiQuotaGate;
   model: string;
   log?: PlanFlowAiLog;
+  /** 可选：模型输出被拒时交出原文（本机验证脚本留作回归 fixture；产品里不传）。 */
+  onRejected?: (entry: { step: string; attempt: number; content: string; issues: readonly string[] }) => void;
 }
 
 export function createDeepseekPlanFlowAi(deps: DeepseekPlanFlowAiDeps): PlanFlowAi {
@@ -65,6 +67,7 @@ export function createDeepseekPlanFlowAi(deps: DeepseekPlanFlowAiDeps): PlanFlow
         } catch {
           issues = ["the answer was not valid JSON"];
           log({ attempt, event: "plan_v2_ai_output_rejected", issues, operationId, promptVersion: PLAN_V2_PROMPT_VERSION, step });
+          deps.onRejected?.({ attempt, content, issues, step });
           continue;
         }
         const checked = check(raw);
@@ -75,6 +78,7 @@ export function createDeepseekPlanFlowAi(deps: DeepseekPlanFlowAiDeps): PlanFlow
         }
         issues = (checked as Extract<Checked<T>, { ok: false }>).issues;
         log({ attempt, event: "plan_v2_ai_output_rejected", issues: issues.slice(0, 5), operationId, promptVersion: PLAN_V2_PROMPT_VERSION, step });
+        deps.onRejected?.({ attempt, content, issues, step });
       }
       return { ok: false, reason: "failed" };
     } finally {

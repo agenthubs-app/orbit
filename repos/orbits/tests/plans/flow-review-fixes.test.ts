@@ -52,17 +52,25 @@ function draftFor(): { draft: DraftOutput; input: Parameters<typeof checkFix>[1]
   return { draft: undefined as unknown as DraftOutput, input: { aliases: new Set(["C1"]), enforceTemplate: false, goalKind: "fundraising", landscape, slots } };
 }
 
-test("M3: a revision may not swap citations or rewrite the questions to ask", async () => {
+// 真实跑通（2026-10-11）后：不许改的部分不再整份拒绝，而是由服务端还原成修正前的值——结果同样「没换引用、没改聞くこと」。
+test("M3: a revision may not swap citations or rewrite the questions to ask (they are put back as they were)", async () => {
   const { input } = draftFor();
   const outcome = await createMockPlanFlowAi().firstDraft({ background: "", contacts: [], eventSlot: { allocation: 10, targetCount: 2 }, gaps: [], goalKind: "fundraising", goalText: "調達", landscape: input.landscape, premise: [], purpose: null, slots: input.slots }, { actorId: "a", language: "ja", ledgerKey: "k", now: new Date() });
   const current = (outcome as { value: DraftOutput }).value;
   const swapped = structuredClone(current);
   swapped.citations = [{ id: "L-103", version: 1 }, { id: "L-102", version: 1 }];
   const swappedResult = checkFix({ reasons: [], revised: swapped, unchanged: [] }, input, current);
-  assert.equal(swappedResult.ok, false);
+  assert.equal(swappedResult.ok, true);
+  assert.deepEqual((swappedResult as { value: { revised: DraftOutput } }).value.revised.citations, current.citations);
   const rewritten = structuredClone(current);
   rewritten.personTypes[0]!.questions = ["a", "b", "c"];
-  assert.equal(checkFix({ reasons: [], revised: rewritten, unchanged: [] }, input, current).ok, false);
+  const rewrittenResult = checkFix({ reasons: [], revised: rewritten, unchanged: [] }, input, current);
+  assert.equal(rewrittenResult.ok, true);
+  assert.deepEqual((rewrittenResult as { value: { revised: DraftOutput } }).value.revised.personTypes[0]!.questions, current.personTypes[0]!.questions);
+  // 类型的增删仍然拒绝（没法还原）。
+  const dropped = structuredClone(current);
+  dropped.personTypes = dropped.personTypes.slice(1);
+  assert.equal(checkFix({ reasons: [], revised: dropped, unchanged: [] }, input, current).ok, false);
   const fine = structuredClone(current);
   fine.steps[0]!.doneCriteria = "新しい目安";
   fine.steps[1]!.personTypeKeys = [fine.personTypes[0]!.slot];

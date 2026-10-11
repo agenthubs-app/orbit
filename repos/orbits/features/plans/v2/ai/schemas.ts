@@ -8,6 +8,7 @@ import { z } from "zod";
 import { PLAN_EVENT_SLOT, PLAN_GOAL_KINDS, PLAN_QUESTION_LIMIT } from "../../../../shared/compute/plan-templates";
 import { isIndustryIdCode } from "../../../../shared/domain/industries";
 import { checkDraftContent, disallowedChangeIssues, type ContentCheckInput } from "../validate-content";
+import { normalizeDraftOutput, unwrapRevised, type DraftNormalizeOptions } from "./normalize";
 import type {
   BackgroundInput,
   BackgroundOutput,
@@ -157,15 +158,17 @@ const draftSchema = z.object({
 });
 
 /** C6：方案结构 + `checkDraftContent`（短名、配点、模板 ±5、引用、①②、紹介ルート）。 */
-export function checkDraft(raw: unknown, input: ContentCheckInput): Checked<DraftOutput> {
+export function checkDraft(raw: unknown, input: ContentCheckInput, normalize?: Omit<DraftNormalizeOptions, "goalKind" | "enforceTemplate">): Checked<DraftOutput> {
   const parsed = parse(draftSchema as z.ZodType<DraftOutput>, raw);
   if (parsed.ok === false) return { issues: parsed.issues, ok: false };
-  const issues = checkDraftContent(parsed.value, input);
-  return issues.length > 0 ? { issues, ok: false } : { ok: true, value: parsed.value };
+  // 算术与引用一致性由服务端规整（normalize.ts），规整后再走同一套校验。
+  const value = normalizeDraftOutput(parsed.value, { ...normalize, enforceTemplate: input.enforceTemplate, goalKind: input.goalKind });
+  const issues = checkDraftContent(value, input);
+  return issues.length > 0 ? { issues, ok: false } : { ok: true, value };
 }
 
 /** C7：改后的完整方案 + 改动理由；方案本身按 C6 的规则（不限模板 ±5）。 */
-export function checkFix(raw: unknown, input: ContentCheckInput, current?: DraftOutput): Checked<FixOutput> {
+export function checkFix(raw: unknown, input: ContentCheckInput, current?: DraftOutput, review?: Pick<ReviewFixInput, "earned" | "skippedSlots">): Checked<FixOutput> {
   const parsed = parse(z.object({
     revised: z.unknown(),
     reasons: z.array(z.object({ path: z.string(), reason: text(300) })).max(20).catch([]),
@@ -173,7 +176,7 @@ export function checkFix(raw: unknown, input: ContentCheckInput, current?: Draft
     noChangeReason: text(500).nullable().catch(null),
   }), raw);
   if (parsed.ok === false) return { issues: parsed.issues, ok: false };
-  const revised = checkDraft(parsed.value.revised, { ...input, enforceTemplate: false });
+  const revised = checkDraft(unwrapRevised(parsed.value.revised), { ...input, enforceTemplate: false }, { earned: review?.earned, reference: current, skippedSlots: review?.skippedSlots });
   if (revised.ok === false) return { issues: revised.issues, ok: false };
   const disallowed = current ? disallowedChangeIssues(current, revised.value) : [];
   if (disallowed.length > 0) return { issues: disallowed, ok: false };
@@ -196,7 +199,7 @@ export function checkReviewMarks(raw: unknown, input: ReviewMarksInput): Checked
 
 /** C9：同 C7（只改允许的部分），另加：配点不低于已得、已跳过的类型配点不变。 */
 export function checkReviewFix(raw: unknown, input: ContentCheckInput, current: DraftOutput, review: Pick<ReviewFixInput, "earned" | "skippedSlots">): Checked<FixOutput> {
-  const checked = checkFix(raw, input, current);
+  const checked = checkFix(raw, input, current, review);
   if (checked.ok === false) return checked;
   const before = new Map(current.personTypes.map((type) => [type.slot, type]));
   const issues: string[] = [];

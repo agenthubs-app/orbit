@@ -10,8 +10,10 @@ import type { PlanCopyLanguage } from "../../../../shared/compute/plan-template-
  * 修正时用户要求的改动在前提允许范围内就照做。v3 还没有真实调用验证（C6 本机 5 次已用完，见 R23 REPORT）。
  * v4（R25）：C9 加「升 N 就降 N、先加总」。
  * v5（R25 复核 M4）：C8 / C10 的记录换成短别名 R1…（联系人 C1…），并带面谈メモ摘要（kind memo）；依据只能用输入里的 R 别名。
+ * v6（真实跑通，2026-10-11）：C7 / C9 写明 `revised` 就是方案本体（与输入 `current` 同形状、不要回显输入）；
+ *     配合服务端规整（ai/normalize.ts：配点算术、Step 引用、不许改字段还原）。
  */
-export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-11-v5";
+export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-10-v6";
 
 const LANGUAGE: Record<PlanCopyLanguage, string> = { en: "English", ja: "Japanese (natural, polite です・ます)", zh: "Simplified Chinese" };
 
@@ -25,6 +27,8 @@ const POLICY = [
 export function systemPrompt(task: string, language: PlanCopyLanguage): string {
   return `${POLICY}\nWrite every user-facing sentence in ${LANGUAGE[language]}.\n\nTask:\n${task}`;
 }
+
+const REVISED_SHAPE = '"revised" is the plan object itself, with exactly the keys of the input "current" (diagnosis, conclusion, flow, steps, personTypes, event, citations, allocationReasons). Do not wrap it and do not echo the input (no "current", "slots", "landscape", "request" keys inside it). A sentence without a marker ① ② ... must not contain any digit.';
 
 export const TASKS = {
   goalKind: [
@@ -67,7 +71,8 @@ export const TASKS = {
     "The user asks for a change to the current plan. If the request fits the premise, apply it (for example rewrite a step's doneCriteria, rename or add a step, adjust allocations); apply only what the request needs and keep everything else exactly as it is.",
     "If no change is needed or the request conflicts with the premise, return the plan unchanged and explain in noChangeReason (one or two sentences).",
     "The revised plan follows the same rules as the first draft (short names from the dictionary, allocations multiples of 5 totalling 100, citations only from the given landscape, numbers only with markers), except that allocations may move freely.",
-    'Output: {"revised": <the full plan in the same shape as the input "current">, "reasons": [{"path": "steps.1.doneCriteria", "reason": "..."}], "unchanged": ["short labels of what stayed the same"], "noChangeReason": null}',
+    REVISED_SHAPE,
+    'Output: {"revised": {"diagnosis": "...", "conclusion": "...", "flow": [...], "steps": [...], "personTypes": [...], "event": {...}, "citations": [...], "allocationReasons": [...]}, "reasons": [{"path": "steps.1.doneCriteria", "reason": "..."}], "unchanged": ["short labels of what stayed the same"], "noChangeReason": null}',
   ].join("\n"),
   reviewMarks: [
     "The user is reviewing a confirmed plan. Given the confirmed premise rows and the records since then (talks, events, completed steps, and memo summaries of meetings), mark only the premise rows that may have changed.",
@@ -80,7 +85,8 @@ export const TASKS = {
     "Points already earned per slot are given in earned: a slot's allocation may never go below its earned points; skipped slots keep their allocation unchanged; allocations still total 100 in multiples of 5.",
     "The 100 is the person-type allocations plus event.allocation. Whenever you raise one slot by N points, lower other non-skipped slots by exactly N in total (never below earned, never below 5). Add the numbers up before answering.",
     "Same rules as a revision otherwise (no new citations, keep questions, count rule, recognition hints, persona, opener, intro routes). If nothing should change, return the plan unchanged with noChangeReason.",
-    'Output: {"revised": <full plan>, "reasons": [{"path": "...", "reason": "..."}], "unchanged": ["..."], "noChangeReason": null}',
+    REVISED_SHAPE,
+    'Output: {"revised": {"diagnosis": "...", "conclusion": "...", "flow": [...], "steps": [...], "personTypes": [...], "event": {...}, "citations": [...], "allocationReasons": [...]}, "reasons": [{"path": "...", "reason": "..."}], "unchanged": ["..."], "noChangeReason": null}',
   ].join("\n"),
   nextGoals: [
     "The user achieved a goal. From the summary and the records, propose at most 2 natural next goals (one sentence each, in the user's words style) with a goal kind from: launch, fundraising, sales, hiring, partnership, career; give the record ids that support each.",

@@ -17,6 +17,9 @@ import { createPlanFlowService, type PlanFlowService } from "./flow-service";
 import { configuredPlanReviewBudget, resolvePlanV2Parts } from "./service-factory";
 import { enqueuePlanSourceMatchAfterSave } from "../matching-runtime";
 
+/** 初版 / 修正的完整方案 JSON 约 2–4k token；显式给足上限，避免被供应商默认值截断成不完整 JSON（R25 真实 C9 第一次失败）。 */
+export const PLAN_V2_MAX_OUTPUT_TOKENS = 8192;
+
 export const PLAN_V2_AI_ENV = "ORBIT_PLAN_V2_AI";
 
 /**
@@ -29,7 +32,7 @@ export function configuredPlanFlowAi(env: Record<string, string | undefined> = p
   const runtime = apiKey ? getConfiguredNetworkAnalysisRuntime() : null;
   if (!apiKey || !runtime) return createDisabledPlanFlowAi();
   const model = env.ORBIT_BUSINESS_CARD_OCR_TEXT_MODEL?.trim() || DEFAULT_BUSINESS_CARD_TEXT_MODEL;
-  return createDeepseekPlanFlowAi({ chat: bindDeepseekPlanChat({ apiKey, model }), ledger: runtime.ledger, model });
+  return createDeepseekPlanFlowAi({ chat: bindDeepseekPlanChat({ apiKey, maxTokens: PLAN_V2_MAX_OUTPUT_TOKENS, model }), ledger: runtime.ledger, model });
 }
 
 export function resolvePlanFlowService(input: { actorId: string; mode?: ModuleMode | string; now?: () => Date; ai?: PlanFlowAi }): ServiceResolution<PlanFlowService> {
