@@ -17,6 +17,12 @@ test('card results aggregate once per batch and ignore per-item processing',()=>
  assert.equal(batchResultNotification({...args,status:'processing'}),null);
  const n=batchResultNotification({...args,status:'ready_for_review'});assert.equal(n?.semanticKey,'batch:v1:batch');assert.match(n!.copy!.zh.reason,/12/);
 });
+test('R12: card batch notifications open the new scan pages (v2 batch page, v1 scan entry)',()=>{
+ const args={actorId:'a',batchId:'batch/1',revision:'3',occurredAt:at,count:2,status:'ready_for_review'};
+ assert.equal(batchResultNotification({...args,pipeline:'v2'})?.target.href,'/contacts/new/scan/batch%2F1');
+ assert.equal(batchResultNotification({...args,pipeline:'v1'})?.target.href,'/contacts/new/scan');
+ assert.equal(batchResultNotification({...args,pipeline:'v2'})?.semanticKey,'batch:v2:batch/1','the notification identity is unchanged');
+});
 test('appointment time is readable in the proposal timezone and not a raw UTC string',()=>{
  const n=appointmentChangeNotification({actorId:'a',appointmentId:'ap',contactName:'佐藤健一',contactId:'sato',history:{actorId:'b',at,command:'accept',detail:'accepted',proposalRevision:1,version:3},time:'2026-09-17T01:00:00.000Z',timeZone:'Asia/Tokyo'});
  assert.match(n!.copy!.zh.reason,/10:00/);assert.doesNotMatch(n!.copy!.zh.reason,/T01:00/);

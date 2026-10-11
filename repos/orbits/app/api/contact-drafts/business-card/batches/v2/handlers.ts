@@ -34,6 +34,7 @@ import {
   type CardContactFields,
   type ContactCandidate,
 } from "../../../../../../features/contacts/business-card-contact-match";
+import { findCardDuplicateCandidate } from "../../../../../../features/contacts/contact-duplicate-candidates";
 import { createLiveBusinessCardContactWriteService } from "../../../../../../features/contacts/live-contact-write-service";
 import { createStorageBusinessCardContactWriteProvider } from "../../../../../../features/contacts/storage/contact-write-live-record-provider";
 import { createPostgresLiveRecordStore } from "../../../../../../shared/storage/postgres-live-record-store";
@@ -1050,6 +1051,7 @@ function cardFieldsFrom(value: unknown): CardContactFields | null {
 
 /**
  * POST { cards: [{ cardId, fields }] } → { matches: { [cardId]: candidate | null } }。
+ * R12：没有命中邮箱 / 电话 / 姓名 + 公司的卡，追加「同名」候选（`matchedOn: ['name']`、`identical: false`）。
  * 字段取复核页当前草稿（用户可能改过），只在本人名下的联系人里找；只读，不改任何数据。
  */
 export function createIngestV2DuplicateCandidatesHandler(deps: IngestV2HandlerDeps = {}) {
@@ -1076,7 +1078,8 @@ export function createIngestV2DuplicateCandidatesHandler(deps: IngestV2HandlerDe
         const records = await runtime.repository.withReadClient((client) =>
           listActorContactRecords(recordStoreFor(client), runtime.workspaceId, actorId),
         );
-        for (const { cardId, fields } of requests) matches[cardId] = findContactCandidate(records, actorId, fields);
+        // R12：原有候选（`findContactCandidate`）不变；没有命中的卡再看「同名」（只提示，identical 恒为 false）。
+        for (const { cardId, fields } of requests) matches[cardId] = findCardDuplicateCandidate(records, actorId, fields);
       }
       return NextResponse.json(success({ matches }), { headers: runtimeBoundaryHeaders(mode) });
     });

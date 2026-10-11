@@ -239,6 +239,81 @@ export async function enqueuePlanMatchJob(
   }
 }
 
+export interface CancelPendingPlanMatchForContactInput {
+  workspaceId: string;
+  actorId: string;
+  contactId: string;
+  /** 入队时用的来源 id（手入力是 `manual-contact:<联系人 id>`）；从待处理任务的 batch_ids 里一并去掉。 */
+  batchId?: string;
+}
+
+export type CancelPendingPlanMatchForContactResult =
+  | { state: "cancelled"; jobsUpdated: number; jobsDeleted: number; candidatesDeleted: number }
+  | { state: "skipped"; reason: "schema_missing" };
+
+/**
+ * R12（手入力撤销，DESIGN §3.1）：把一位联系人从本人**待处理**（pending）的名片 / 当天任务里撤掉——
+ * 从 contact_ids 与来源表去掉；任务因此空了就删掉这条任务；这位联系人还在待确认的候补一并删掉。
+ * 已在执行（running）的任务不动：worker 读联系人时排除已删除的联系人，不会为他产生候补。
+ * 'plan' 任务（contact_ids 本来就是空的）不碰。与 `enqueuePlanMatchJob` 一样在调用方的事务里跑，表不存在时返回 skipped。
+ */
+export async function cancelPendingPlanMatchForContact(
+  client: PlanMatchQueryClient,
+  input: CancelPendingPlanMatchForContactInput,
+): Promise<CancelPendingPlanMatchForContactResult> {
+  await client.query("savepoint plan_match_cancel");
+  try {
+    const params = [input.workspaceId, input.actorId, input.contactId];
+    await client.query(
+      `delete from plan_match_job_contacts jc
+        using plan_match_jobs j
+        where jc.workspace_id = $1 and jc.actor_id = $2 and jc.contact_id = $3
+          and j.workspace_id = jc.workspace_id and j.actor_id = jc.actor_id and j.id = jc.job_id
+          and j.status = 'pending' and j.source_kind in ('batch', 'day')`,
+      params,
+    );
+    const updated = await client.query(
+      `update plan_match_jobs
+          set contact_ids = array_remove(contact_ids, $3),
+              batch_ids = case when $4::text is null then batch_ids else array_remove(batch_ids, $4::text) end,
+              updated_at = now()
+        where workspace_id = $1 and actor_id = $2 and status = 'pending'
+          and source_kind in ('batch', 'day') and $3 = any(contact_ids)
+        returning id, cardinality(contact_ids) as remaining`,
+      [...params, input.batchId ?? null],
+    );
+    const emptied = updated.rows.filter((row) => Number(row.remaining) === 0).map((row) => String(row.id));
+    const deleted = emptied.length
+      ? await client.query(
+          `delete from plan_match_jobs
+            where workspace_id = $1 and actor_id = $2 and status = 'pending' and id = any($3::text[])
+              and cardinality(contact_ids) = 0
+            returning id`,
+          [input.workspaceId, input.actorId, emptied],
+        )
+      : { rows: [] };
+    const candidates = await client.query(
+      `delete from plan_match_candidates
+        where workspace_id = $1 and actor_id = $2 and contact_id = $3 and status = 'pending'
+        returning id`,
+      params,
+    );
+    await client.query("release savepoint plan_match_cancel");
+    return {
+      // 行数按 returning 计：事务执行器（TransactionalSqlExecutor）不带 rowCount。
+      candidatesDeleted: candidates.rows.length,
+      jobsDeleted: deleted.rows.length,
+      jobsUpdated: updated.rows.length,
+      state: "cancelled",
+    };
+  } catch (error) {
+    await client.query("rollback to savepoint plan_match_cancel");
+    await client.query("release savepoint plan_match_cancel");
+    if (isUndefinedTable(error)) return { reason: "schema_missing", state: "skipped" };
+    throw error;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* worker 与接口使用的仓储                                              */
 /* ------------------------------------------------------------------ */
