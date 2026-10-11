@@ -1,4 +1,23 @@
-.bar { display: flex; justify-content: center; padding: var(--space-14) var(--space-34) 0; }
+/* web.html .web .tseg: the four tabs in the header's left slot, 7 / 18 padding.
+   The Task page also loads the legacy page styles, whose global `.btn` (44 high,
+   15px, radius 10) matches the tab buttons: restate the kit values here. */
+.tabs [role="tablist"] [role="tab"], .mobileTabs [role="tablist"] [role="tab"] {
+  height: auto;
+  min-height: 0;
+  padding: 7px 18px;
+  gap: 0;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-control);
+  font-weight: var(--fw-bold);
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+/* Under 768 (b8): no header row; the tabs sit full width under the top bar (.tseg, 4 equal columns). */
+.bar { display: none; }
+.barAlone { display: flex; justify-content: center; padding: var(--space-14) var(--space-34) 0; }
 .empty { display: block; max-width: 640px; margin: var(--space-24) auto; padding: 0 var(--space-18); }
-@media (max-width: 1279px) { .bar { padding: var(--space-12) var(--space-26) 0; } }
-@media (max-width: 767px) { .bar { padding: var(--space-12) var(--space-18) 0; } }
+@media (max-width: 767px) {
+  .bar { display: block; padding: 0 var(--space-18) var(--space-12); }
+  .mobileTabs [role="tablist"] { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; }
+  .mobileTabs [role="tablist"] [role="tab"] { padding: 7px 0; }
+}

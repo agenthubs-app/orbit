@@ -47,7 +47,7 @@ export async function shellBundle(page: string): Promise<{ js: string; css: stri
   return bundle(`
     import React from "react";
     import { createRoot } from "react-dom/client";
-    import { Orbit2026Shell } from "./app/(app)/app/orbit-2026/shell/Orbit2026Shell";
+    import { Orbit2026Shell, ShellBellButton, ShellSearchButton } from "./app/(app)/app/orbit-2026/shell/Orbit2026Shell";
     import { ShellPage } from "./app/(app)/app/orbit-2026/shell/slots";
     import { OrbitAskProvider } from "./app/(app)/app/orbit-global-ask/orbit-ask-context";
     ${page}
@@ -63,7 +63,7 @@ export const LEGACY_PAGE = `
     const f = window.shellFixture;
     return <>
       {f.demo ? <ShellPage title="人脈" demoPill={<button type="button" data-demo-pill>Demo</button>} /> : null}
-      {f.rail ? <ShellPage title="ホーム" rightRail /> : null}
+      {f.rail ? <ShellPage title="ホーム" subtitle="10月1日–10月31日" left={<ShellSearchButton />} right={<ShellBellButton />} rightRail /> : null}
       <main data-orbit-real-page="legacy" style={{ minHeight: 1600 }}><button type="button">legacy button</button><p data-last>last line of the page</p>
         {/* A legacy page's own fixed bottom control (like the event page's ask button) lifted by the shell's inset. */}
         {f.modal ? <div data-legacy-overlay style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,.3)" }}><div role="dialog" aria-modal="true" aria-label="legacy dialog" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 120, background: "white" }}><button type="button">dialog action</button></div></div> : null}

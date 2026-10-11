@@ -108,14 +108,11 @@ test("/app/agent keeps ordinary assistant bubbles visible without inline API pan
   assert.match(readProjectFile(IORBIT_CHAT_HOOK_PATH), /items:\s*\[\],\s*kind:\s*"people"/);
 });
 
-test("/app/agent input explains the no-tool privacy boundary before sensitive context is shared", () => {
-  // 隐私边界说明随全局提问入口走：R07 起是 ⌘K 面板里「iOrbit に聞く」下面的一行（三语）。
+test("the ⌘K panel has no privacy line under 「iOrbit に聞く」 (D16, user decision 2026-10-12: as the design)", () => {
+  // The boundary itself is enforced where the answer is made (local:orbit-agent-privacy-boundary,
+  // orbit-agent-gemini-live); the panel follows 01-system c-kbd / b5 ⌘K without the extra line.
   const palette = readProjectFile("app/(app)/app/orbit-2026/shell/CommandPalette.tsx");
   const copy = readProjectFile("app/(app)/app/orbit-2026/copy/shell.ts");
-
-  assert.match(palette, /data-orbit-agent-privacy-boundary/);
-  assert.match(palette, /shellCopy\.paletteAskPrivacy/);
-  assert.match(copy, /external actions always need your confirmation/);
-  assert.match(copy, /涉及对外动作会先经你确认/);
-  assert.match(copy, /外部への操作は必ず先に確認します/);
+  assert.doesNotMatch(palette, /data-orbit-agent-privacy-boundary|paletteAskPrivacy/);
+  assert.doesNotMatch(copy, /paletteAskPrivacy/);
 });

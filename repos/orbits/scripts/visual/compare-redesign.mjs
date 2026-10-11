@@ -81,6 +81,24 @@ async function shootDesign() {
     await page.waitForTimeout(300);
   }
   await frame.evaluate((f, { theme, unroll, kind, removes }) => {
+    // 画框搬到页面最顶上 (0, 0)、其余内容隐藏，不用滚动就能截：画框原位在文档深处（web.html #0 的 top = 387.25），
+    // 带 backdrop-filter 的合成层（.rail）在原位按另一套亚像素对齐栅格化文字，同一行字和实现差出整整 1px 行
+    // （R07 返工实测：DOM 位置完全一致；原位清边距也不行，搬到顶部后差异为 0）。b12 等按分组类名用 CSS 嵌套
+    // 写样式，所以用「同名类的空壳」把祖先链复刻一层包住画框（只留类名，布局、边距、背景清掉）。
+    const chain = [];
+    for (let el = f.parentElement; el && el !== document.body; el = el.parentElement) chain.push(el.className);
+    let wrapped = f;
+    f.replaceWith(document.createElement("div"));
+    for (const cls of chain) {
+      const shell = document.createElement("div");
+      shell.className = cls;
+      Object.assign(shell.style, { display: "block", padding: "0", margin: "0", gap: "0", border: "0", minWidth: "0", background: "none" });
+      shell.append(wrapped);
+      wrapped = shell;
+    }
+    document.body.prepend(wrapped);
+    Object.assign(document.body.style, { padding: "0", margin: "0" });
+    for (const el of document.body.children) if (el !== wrapped && !["SCRIPT", "STYLE", "LINK", "TEMPLATE"].includes(el.tagName)) el.style.display = "none";
     f.setAttribute("data-theme", theme);
     f.style.borderRadius = "0";
     f.style.boxShadow = "none";
@@ -92,6 +110,8 @@ async function shootDesign() {
       const sbarH = f.querySelector(":scope > .sbar")?.getBoundingClientRect().height ?? 0;
       const tab = f.querySelector(":scope > .tabbar");
       if (tab && sbarH) tab.style.bottom = `${Math.max(0, parseFloat(getComputedStyle(tab).bottom) - sbarH)}px`;
+      // 底部弹层与它的遮罩同样被抬在 Safari 底栏之上（b12 .mweb .sheet bottom 100 / .sheet-scrim bottom 92）：一并放回。
+      if (sbarH) for (const el of f.querySelectorAll(":scope > .sheet, :scope > .sheet-scrim")) el.style.bottom = `${Math.max(0, parseFloat(getComputedStyle(el).bottom) - sbarH)}px`;
       for (const el of f.querySelectorAll(":scope > .status, :scope > .home-ind, :scope > .sbar, :scope > .safari")) el.remove();
       const scroll = f.querySelector(":scope > .scroll");
       if (scroll) scroll.style.top = "0";
@@ -167,12 +187,20 @@ async function shootApp(designHeight) {
     colorScheme: theme,
     locale: args.locale ?? "ja-JP",
   });
-  await ctx.addInitScript((t) => { try { localStorage.setItem("orbit-theme", t); } catch {} }, theme);
+  // 主题靠 colorScheme（实现默认「自動」跟随系统，RD-05）；不写 localStorage，否则头像菜单的「外観」会显示成手动选了浅 / 深。
+  await ctx.addInitScript(() => { try { localStorage.removeItem("orbit-theme"); } catch {} });
   const origin = new URL(args.app).origin;
   if (args.login && args.login !== "true") await ensureLogin(ctx, origin);
   const page = await ctx.newPage();
   try { await page.goto(args.app, { waitUntil: "networkidle", timeout: 30000 }); }
   catch { await page.waitForTimeout(1500); }
+  // Next dev 的悬浮指示器不是产品界面；先隐藏再做点击 / 步骤（它盖在左下角，会挡住左栏头像）。
+  await page.waitForLoadState("load").catch(() => {});
+  await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-dev-tools-button],[data-next-mark]{display:none!important}" }).catch(async () => {
+    // 页面在客户端跳转途中（例：旧路由兼容跳转）：等跳完再注入一次。
+    await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
+    await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-dev-tools-button],[data-next-mark]{display:none!important}" });
+  });
   if (args["wait-for"]) await page.waitForSelector(args["wait-for"], { timeout: 20000 }).catch(() => console.warn(`warn: --wait-for ${args["wait-for"]} 超时，按原样截`));
   for (const sel of many(args.click)) { await page.locator(sel).first().click(); await page.waitForTimeout(400); }
   // --steps '<JSON 数组>'：按顺序执行的实现侧操作，适合「先按 ⌘K 再输入」「先填名字再等重复候选」这类多步状态。
@@ -187,13 +215,6 @@ async function shootApp(designHeight) {
     if (step.waitFor) await page.waitForSelector(step.waitFor, { timeout: 20000 }).catch(() => console.warn(`warn: waitFor ${step.waitFor} 超时`));
     await page.waitForTimeout(step.wait ?? 400);
   }
-  // Next dev 的悬浮指示器不是产品界面。
-  await page.waitForLoadState("load").catch(() => {});
-  await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-dev-tools-button],[data-next-mark]{display:none!important}" }).catch(async () => {
-    // 页面在客户端跳转途中（例：旧路由兼容跳转）：等跳完再注入一次。
-    await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
-    await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-dev-tools-button],[data-next-mark]{display:none!important}" });
-  });
   for (const sel of many(args["app-remove"])) await page.locator(sel).evaluateAll((els) => els.forEach((e) => e.remove()));
   await page.waitForTimeout(Number(args["app-wait"] ?? 800));
   const naturalHeight = await page.evaluate(() => Math.ceil(document.scrollingElement?.scrollHeight ?? document.body.scrollHeight));

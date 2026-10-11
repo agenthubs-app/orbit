@@ -56,7 +56,9 @@ test("product styles take the language font from --font instead of pinning Chine
 
 test("the font stack follows <html lang>, Japanese by default", () => {
   const css = readFileSync("app/(app)/app/orbit-2026/tokens.css", "utf8");
-  assert.match(css, /--font-ja: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP"/);
+  // 2026-10-12 (user): Japanese follows the design kit's --font — the system font first
+  // (SF for Latin and digits), Hiragino Sans for kana and kanji (pixel rework of R07).
+  assert.match(css, /--font-ja: -apple-system, "SF Pro Display", "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP"/);
   assert.match(css, /--font-zh: "PingFang SC", "Noto Sans SC"/);
   assert.match(css, /--font: var\(--font-ja\);/);
   assert.match(css, /:root:lang\(zh\) \{\s*--font: var\(--font-zh\);/);

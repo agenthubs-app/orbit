@@ -30,7 +30,7 @@ export function PersonalScheduleWorkspace({ actorId }: { actorId: string }) {
   const listed = selected ? list.data?.find(item => item.id === selected) : null;
   const item = selected ? lastSaved?.id === selected && (!listed || Date.parse(lastSaved.updatedAt) >= Date.parse(listed.updatedAt)) ? lastSaved : listed ?? null : null;
   return <section>
-    <div className="task-controls"><button className="btn btn-primary" onClick={() => { setSelected(null); setEditing(true); }}>新建个人日程</button><button className="btn btn-secondary" onClick={list.refresh}>刷新个人日程</button></div>
+    <div className="task-controls"><button className="btn btn-primary" data-task-add="" onClick={() => { setSelected(null); setEditing(true); }}>新建个人日程</button><button className="btn btn-secondary" onClick={list.refresh}>刷新个人日程</button></div>
     {list.error ? <p role="alert">个人日程读取失败，请重试。</p> : null}
     {list.loading ? <p role="status">正在读取个人日程…</p> : null}
     {!list.error && list.data?.length === 0 ? <p>暂无个人日程</p> : null}

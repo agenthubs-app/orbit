@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import type { Browser, Page } from "playwright";
 
+import { monthHeading } from "../../app/(app)/app/orbit-2026/shell/month-heading";
 import { shellAppliesTo, shellNavKeyFor, shellShowsRail } from "../../app/(app)/app/orbit-2026/shell/shell-routes";
 import { ORBIT_2026_HISTORY, ORBIT_2026_RAIL, ORBIT_2026_SIDEBAR, ORBIT_2026_SIDEBAR_COMPACT, ORBIT_LEFT_SIDEBAR_WIDTH } from "../../app/(app)/app/orbit-layout-constants";
 import { launch } from "./support/orbit-2026-harness";
@@ -44,6 +45,12 @@ test("route rules: every signed-in product page gets the shell; public, sign-in,
   assert.deepEqual([ORBIT_2026_SIDEBAR, ORBIT_2026_SIDEBAR_COMPACT, ORBIT_2026_RAIL, ORBIT_2026_HISTORY, ORBIT_LEFT_SIDEBAR_WIDTH], [84, 72, 360, 260, 212]);
 });
 
+test("the header's date line: the month over its first to last day (web.html 「10月」 / 「10月1日–10月31日」)", () => {
+  assert.deepEqual(monthHeading("ja", new Date(2026, 9, 11)), { month: "10月", range: "10月1日–10月31日" });
+  assert.deepEqual(monthHeading("zh", new Date(2026, 1, 3)), { month: "2月", range: "2月1日–2月28日" });
+  assert.deepEqual(monthHeading("en", new Date(2026, 8, 30)), { month: "September", range: "Sep 1 – Sep 30" });
+});
+
 test("1440: left rail 84 with the six items, host / settings / avatar at the bottom, current item marked", async (t) => {
   const page = await shell(t, { path: "/app/contacts/c1" });
   const nav = page.getByRole("navigation", { name: "メインナビゲーション" }).first();
@@ -78,17 +85,39 @@ test("1024: a 72 icons-only rail whose labels show as a tooltip on hover and key
   assert.equal(await drawer.count(), 0);
 });
 
-test("the search / ask button is named for what it does, with the platform's shortcut", async (t) => {
-  const page = await shell(t, { path: "/app/contacts" });
-  const button = page.getByRole("button", { name: /^検索 · iOrbit に聞く \((⌘K|Ctrl K)\)$/u });
+test("the header's round 🔍 (no rail item any more) is named for what it does, with the platform's shortcut, and opens ⌘K", async (t) => {
+  const page = await shell(t, { path: "/app/home", rail: true });
+  const nav = page.getByRole("navigation", { name: "メインナビゲーション" }).first();
+  assert.equal(await nav.getByRole("button").count(), 1, "the rail keeps only the avatar button (web.html: no ⌘K item)");
+  const button = page.locator("[data-orbit-2026-mainhead]").getByRole("button", { name: /^検索 · iOrbit に聞く \((⌘K|Ctrl K)\)$/u });
   assert.equal(await button.count(), 1);
+  await button.click();
+  await page.getByRole("dialog", { name: "検索と iOrbit" }).waitFor();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Meta+k");
+  await page.getByRole("dialog", { name: "検索と iOrbit" }).waitFor();
+});
+
+test("the main header is three parts: left slot · title over subtitle · right slot; 🔔 links to 受信箱 with the unread dot", async (t) => {
+  const page = await shell(t, { path: "/app/home", rail: true, unread: true });
+  const head = page.locator("[data-orbit-2026-mainhead]");
+  const [left, middle, right] = await head.locator(":scope > div").all();
+  assert.equal(await left!.locator("[data-orbit-2026-search]").count(), 1);
+  assert.match(await middle!.innerText(), /ホーム\s+10月1日–10月31日/u);
+  const bell = right!.getByRole("link", { name: "受信箱" });
+  assert.equal(await bell.getAttribute("href"), "/app/inbox");
+  await bell.locator("i").waitFor();
 });
 
 test("1440 with the rail slot: a 360 right rail with the ⌘K entry; iOrbit never has one", async (t) => {
   const home = await shell(t, { path: "/app/home", rail: true });
   const rail = home.locator("aside");
   assert.equal(Math.round((await rail.boundingBox())!.width), 360);
-  assert.match(await rail.innerText(), /次の一手[\s\S]*最近の会話[\s\S]*iOrbit に聞く/u);
+  assert.match(await rail.innerText(), /iOrbit[\s\S]*はじめまして。[\s\S]*こんなことを聞けます[\s\S]*iOrbit に聞く…/u);
+  // 「iOrbit に聞く…」 sits at the rail's foot (web.html assistRail: flex spacer).
+  const ask = (await rail.getByRole("button", { name: /iOrbit に聞く…/u }).boundingBox())!;
+  const box = (await rail.boundingBox())!;
+  assert.ok(box.y + box.height - (ask.y + ask.height) <= 30, JSON.stringify({ ask, box }));
   const agent = await shell(t, { path: "/app/agent", rail: true });
   assert.equal(await agent.locator("aside").count(), 0);
 });
@@ -119,19 +148,22 @@ test("390: a legacy page's own dialog sits above the capsule (the shell's bars s
   await page.getByRole("button", { name: "dialog action" }).click();
 });
 
-test("390: a top bar keeps 受信箱 (with the unread dot), search / ask and the avatar menu — settings, host, my events, sign out", async (t) => {
-  const page = await shell(t, { path: "/app/tasks", unread: true }, { width: 390 });
+test("390: a top bar with the 「O Orbit」 wordmark, 受信箱 (with the unread dot) and the avatar menu as a bottom sheet (マイページ, language, appearance, sign out); no header row", async (t) => {
+  const page = await shell(t, { path: "/app/tasks", unread: true, rail: true }, { width: 390 });
   const top = page.locator("[data-orbit-2026-mobile-top]");
   assert.equal(await top.isVisible(), true);
+  assert.equal(await top.getByRole("link", { name: "Orbit" }).innerText(), "O\nOrbit");
+  assert.equal(await top.getByRole("button", { name: /検索/u }).count(), 0, "b6 mwHead: no search button in the top bar");
+  assert.equal(await page.locator("[data-orbit-2026-mainhead] h1").isVisible(), false, "390: the title folds into the page (b6 / b8)");
   const inbox = top.getByRole("link", { name: "受信箱" });
   assert.equal(await inbox.getAttribute("href"), "/app/inbox");
   await inbox.locator("i").waitFor();
-  await top.getByRole("button", { name: "検索 · iOrbit に聞く" }).click();
-  await page.getByRole("dialog", { name: "検索と iOrbit" }).waitFor();
-  await page.keyboard.press("Escape");
   await top.getByRole("button", { name: "アカウント" }).click();
   const menu = page.getByRole("dialog", { name: "アカウント" });
-  assert.deepEqual(await menu.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("href"))), ["/app/profile", "/app/events?scope=registered", "/app/settings", "/app/events/center"]);
+  // b12 W-R07-07b (user-approved 2026-10-12): a bottom sheet with the same items as 1440 — 設定 / 主催 via マイページ.
+  assert.deepEqual(await menu.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("href"))), ["/app/profile"]);
+  const sheet = (await menu.boundingBox())!;
+  assert.ok(sheet.y + sheet.height >= 844 - 8 - 1 && sheet.x <= 8.5, `a bottom sheet 8 from the edges: ${JSON.stringify(sheet)}`);
   await menu.getByRole("button", { name: "ログアウト" }).click();
   assert.equal(await page.evaluate(() => (window as any).shellFixture.calls.filter((call: object) => "signOut" in call).length), 1);
   const reads = await page.evaluate(() => (window as any).shellFixture.calls.filter((call: { inboxRead?: string }) => call.inboxRead).length);
@@ -174,6 +206,12 @@ test("the avatar menu: language, appearance (自動 / ライト / ダーク) and
   const page = await shell(t, { path: "/app/settings" });
   await page.getByRole("button", { name: "アカウント" }).click();
   const menu = page.getByRole("dialog", { name: "アカウント" });
+  // b12 W-R07-07: a 340 pop-up beside the rail (rail edge + 8), its foot by the avatar's.
+  const box = (await menu.boundingBox())!;
+  const avatar = (await page.getByRole("button", { name: "アカウント" }).boundingBox())!;
+  assert.equal(Math.round(box.x), 92);
+  assert.equal(Math.round(box.width), 340);
+  assert.ok(Math.abs(box.y + box.height - (avatar.y + avatar.height + 4)) <= 1, JSON.stringify({ box, avatar }));
   await menu.getByRole("tab", { name: "English" }).click();
   await menu.getByRole("tab", { name: "ダーク" }).click();
   assert.equal(await page.evaluate(() => document.documentElement.getAttribute("data-theme")), "dark");

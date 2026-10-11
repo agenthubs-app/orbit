@@ -6,7 +6,11 @@
   display: grid;
   grid-template-columns: 84px minmax(0, 1fr);
   min-height: 100vh;
-  background: var(--bg);
+  /* kit .web: two fog blooms, top left (lavender) and top right (smoke pink). */
+  background:
+    radial-gradient(900px 500px at 10% -10%, var(--fog-a), transparent 70%),
+    radial-gradient(700px 500px at 95% 0%, var(--fog-b), transparent 70%),
+    var(--bg);
 }
 .frame[data-rail="true"] { grid-template-columns: 84px minmax(0, 1fr) 360px; }
 
@@ -43,14 +47,14 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: var(--ink-3-text);
+  color: var(--ink-3);
   flex: none;
   transition: background var(--dur-press), color var(--dur-press);
 }
 .item:hover { background: var(--surface-2); color: var(--ink-2); }
 .itemOn, .itemOn:hover { background: var(--surface); color: var(--ink); }
 .itemIcon { position: relative; display: inline-flex; }
-.itemLabel { font-size: var(--fs-caption); font-weight: var(--fw-bold); line-height: 1.2; text-align: center; }
+.itemLabel { font-size: var(--fs-nav); font-weight: var(--fw-bold); line-height: 1.5; text-align: center; }
 .dot {
   position: absolute;
   top: -1px;
@@ -62,7 +66,23 @@
   border: 1.5px solid var(--surface);
 }
 .spacer { flex: 1; }
-.avatarButton { border-radius: var(--r-pill); padding: 2px; margin-top: 6px; flex: none; }
+.avatarButton { border-radius: var(--r-pill); flex: none; }
+/* Two classes from here on: legacy pages load a global, unscoped `.btn` (44 high,
+   15px, radius 10, padding 0 20) that would otherwise restyle the shell's buttons. */
+.side .avatarButton, .mobileTop .avatarButton { height: auto; padding: 0; gap: 0; border: 0; }
+.side .avatarButton { margin-top: 8px; }
+/* kit .avatar-btn: 40 lavender circle, the initial in 14 / 800. */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-pill);
+  display: grid;
+  place-items: center;
+  font-weight: var(--fw-heavy);
+  font-size: var(--fs-body);
+  background: var(--mac-lav);
+  color: var(--mac-lav-ink);
+}
 
 .main { min-width: 0; display: flex; flex-direction: column; }
 .headScope { display: block; }
@@ -72,12 +92,15 @@
   align-items: center;
   gap: var(--space-12);
   padding: var(--space-26) var(--space-34) 0;
+  margin-bottom: var(--space-22);
 }
 .headSide { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .headRight { justify-content: flex-end; }
-.headTitle { text-align: center; display: grid; }
-.title { font-size: var(--fs-title-sm); font-weight: var(--fw-heavy); line-height: var(--lh-title); }
-.subtitle { font-size: var(--fs-meta); color: var(--ink-3-text); }
+/* kit .mainhead .t: the title block over an inline <small>, whose line box takes the
+   14 / 1.5 strut — the header is 30 + 21 = 51 high, and the side buttons centre on that. */
+.headTitle { text-align: center; display: block; font-size: var(--fs-body); line-height: 1.5; }
+.title { display: block; font-size: var(--fs-title-sm); font-weight: var(--fw-heavy); line-height: 1.5; }
+.headTitle .subtitle { display: inline; font-size: var(--fs-meta); color: var(--ink-3); }
 .content { flex: 1; min-width: 0; }
 
 .railScope { display: block; position: sticky; top: 0; height: 100vh; }
@@ -89,35 +112,119 @@
   padding: var(--space-24) var(--space-22);
   overflow-y: auto;
 }
-.railBody { display: flex; flex-direction: column; gap: var(--space-14); }
-.railTitle { font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); }
-.railEmpty { font-size: var(--fs-meta); color: var(--ink-3-text); }
-.railAsk {
+.railBody { display: flex; flex-direction: column; gap: var(--space-14); min-height: 100%; }
+.railTitle { font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); display: flex; align-items: center; gap: 8px; line-height: 1.5; }
+/* kit .emo.sm.lav */
+.emo { width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; font-size: var(--fs-emoji-sm); flex: none; background: var(--mac-lav); }
+.railCard { background: var(--surface); border-radius: var(--r-card-web); padding: var(--space-16); }
+.railCard b { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); line-height: 1.5; }
+.railCard p { margin-top: 6px; font-size: var(--fs-control); line-height: 1.7; color: var(--ink-2); }
+.railLabel { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); line-height: 1.5; }
+.prompts { display: grid; gap: 8px; }
+/* Two classes: beat the [data-orbit-real-page] button reset like the other controls here. */
+.railBody .prompt {
+  padding: 9px 13px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  font-size: var(--fs-control);
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-align: left;
+}
+.railBody .prompt:hover { background: var(--accent-soft); color: var(--ink); }
+/* kit .assist-in */
+.railBody .railAsk {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: var(--r-md);
+  padding: 12px 14px;
+  border-radius: var(--r-bubble);
   background: var(--surface);
-  color: var(--ink-3-text);
+  color: var(--ink-3);
   font-size: var(--fs-body-sm);
+  line-height: 1.5;
   text-align: left;
 }
 .railAsk span { flex: 1; }
+.railKey { font-size: var(--fs-body-sm); }
 
-.menu { display: grid; gap: var(--space-14); }
-.menuLinks { display: grid; }
-.menuRow { display: flex; align-items: center; gap: 10px; min-height: 40px; font-weight: var(--fw-bold); font-size: var(--fs-body-sm); }
-.menuGroup { display: grid; gap: 6px; }
-.menuLabel { font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-3-text); }
+/* The page's own header buttons (kit .btn, 40 high): restated over the legacy `.btn`. */
+.mainhead :global(.btn) { height: 40px; padding: 0 16px; gap: 6px; border: 0; border-radius: var(--r-pill); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
+/* kit .rbtn: a 40 round button (🔍 / 🔔 / 受信箱) with the coral unread dot. */
+.rbtn, .mainhead .rbtn, .mobileTop .rbtn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  flex: none;
+  padding: 0;
+  border: 0;
+}
+.rbtnOn { background: var(--accent-soft); color: var(--ink); }
+.rdot { position: absolute; top: 9px; right: 10px; width: 7px; height: 7px; border-radius: var(--r-pill); background: var(--coral); border: 1.5px solid var(--surface); }
+/* b6 .rail-btn: kit .btn (40, surface-2, 13 / 700) with a coral count. */
+.headScope .railButton {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+}
+.headScope .railButtonOn { background: var(--accent-soft); }
+/* b12 N07b .rdrawer: 20 padding (the drawer's), 14 between rows; .dh = ✕ · 「Esc で閉じる」. */
+.drawerRail { display: flex; flex-direction: column; gap: var(--space-14); min-height: 100%; }
+.drawerRail > :last-child { flex: 1; }
+.drawerHead { display: flex; align-items: center; gap: 10px; }
+.drawerHint { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); line-height: 1.5; }
+.cnum { min-width: 18px; height: 18px; border-radius: var(--r-pill); background: var(--coral); color: var(--surface); font-size: var(--fs-nav); font-weight: var(--fw-heavy); display: inline-grid; place-items: center; padding: 0 5px; }
+.demoSlot { display: contents; }
+/* b1 .spill: the sample-mode pill (apricot, 11.5 / 800). */
+.headScope .spill { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px 6px 9px; border-radius: var(--r-pill); background: var(--mac-apricot); color: var(--mac-apricot-ink); font-size: var(--fs-label); font-weight: var(--fw-heavy); line-height: 1.5; white-space: nowrap; }
+
+/* b12 .amenu rows (b4 .pop .op), separators, group labels and segmented controls. */
+/* Block flow on purpose: the separators' margins collapse with the segmented controls' as in b12. */
+.menu { display: block; }
+.menuHead { display: flex; align-items: center; gap: 10px; padding: 8px 8px 10px; }
+.menuAvatar { width: 36px; height: 36px; font-size: var(--fs-body-sm); }
+.menuWho { min-width: 0; display: grid; line-height: 1.5; }
+.menuWho b { font-size: var(--fs-body); font-weight: var(--fw-bold); }
+.menuWho small { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menuRow { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--r-row); font-size: var(--fs-row); font-weight: 600; line-height: 1.5; color: var(--ink); }
+.menuRow > svg { color: var(--ink-2); }
+.menuRow:hover { background: var(--surface-2); }
+/* The chevron takes the row icons' ink-2 (b12 `.amenu .op svg.i` outranks `.go`). */
+.menuGo { margin-left: auto; display: block; color: var(--ink-2); }
+.menuGo svg { display: inline; }
+.menuSep { display: block; height: 1px; background: var(--line); margin: 6px; }
+.menuLabel { display: block; font-size: var(--fs-nav); font-weight: var(--fw-bold); color: var(--ink-3); padding: 6px 10px; letter-spacing: 0.04em; line-height: 1.5; }
+.menuSeg { margin: 0 6px 6px; }
+/* kit .seg buttons (6 / 13, 12 / 600) — the menu's segmented controls are the plain kit size. */
+.menuSeg [role="tablist"] [role="tab"] { min-height: 0; padding: 6px 13px; font-size: var(--fs-meta); font-weight: 600; line-height: 1.5; }
+.menu .menuOut { justify-content: flex-start; padding: 0 10px; margin-top: 2px; }
+/* b12 .sheet.amenu (390): bigger rows and segments for touch. */
+.menuCompact .menuRow { padding: 11px 10px; font-size: var(--fs-card-title); }
+.menuCompact .menuSeg [role="tablist"] [role="tab"] { padding: 8px 0; font-size: var(--fs-control); }
+/* b12 .avatar-btn.on: the avatar keeps a soft ring while its menu is open. */
+.avatarOpen { box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .bottomScope { display: none; }
 .bottom {
   position: fixed;
   left: 14px;
   right: 14px;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  /* b6 .mweb .tabbar: 8 above the viewport's foot (the frame's 100 = Safari's bar 92 + 8). */
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   height: 62px;
   z-index: var(--z-sticky);
   border-radius: var(--r-pill);
@@ -138,36 +245,32 @@
   justify-content: center;
   gap: 2px;
   min-height: 44px;
-  font-size: var(--fs-caption);
+  font-size: var(--fs-tab);
   font-weight: var(--fw-bold);
-  color: var(--ink-3-text);
+  line-height: 1.5;
+  color: var(--ink-3);
 }
 .bottomOn { background: var(--surface); color: var(--ink); }
+:global(:root[data-theme="dark"]) .bottomOn { background: var(--surface-3); }
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .bottomOn { background: var(--surface-3); }
+}
 
-/* < 768 top bar: search, 受信箱 (round, with the unread dot), avatar. */
-.mobileTop { display: none; align-items: center; gap: 8px; padding: var(--space-12) var(--space-18) 0; }
+/* < 768 top bar (b6 .mw-head): 「O Orbit」, 受信箱, avatar. */
+.mobileTop { display: none; align-items: center; gap: 8px; padding: 6px var(--space-18) 14px; }
+.mobileBrand { display: flex; align-items: center; gap: 8px; }
+.mobileBrand b { font-size: var(--fs-dialog-title); font-weight: var(--fw-bold); }
 .mobileLogo {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--r-md);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
   background: var(--ink);
   color: var(--bg);
   display: grid;
   place-items: center;
   font-weight: var(--fw-black);
 }
-.roundLink {
-  position: relative;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--r-pill);
-  background: var(--surface);
-  color: var(--ink-2);
-  display: grid;
-  place-items: center;
-}
-.roundLink .dot { top: 7px; right: 8px; }
-.railButton { display: none; }
+
 
 /* While a page's own dialog is open, the shell's fixed / sticky bars step back:
    legacy overlays use z-index 60–100 (the sticky tier), and the capsule, later in
@@ -179,26 +282,28 @@
 @media (max-width: 1279px) {
   .frame, .frame[data-rail="true"] { grid-template-columns: 72px minmax(0, 1fr); }
   .railScope { display: none; }
-  .item { width: 52px; padding: 10px 0; position: relative; }
+  .item { width: 48px; padding: 12px 0; gap: 0; position: relative; }
+  .logo { margin-bottom: 14px; }
   .itemLabel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   /* The label as a tooltip on hover and on keyboard focus (b8: dark chip to the right). */
   .item[data-tip]:hover::after, .item[data-tip]:focus-visible::after {
     content: attr(data-tip);
     position: absolute;
-    left: calc(100% + 8px);
+    left: calc(100% + 6px);
     top: 50%;
     transform: translateY(-50%);
-    padding: 5px 9px;
+    padding: 5px 10px;
     border-radius: var(--r-sm);
     background: var(--ink);
     color: var(--bg);
-    font-size: var(--fs-meta);
+    font-size: var(--fs-label);
+    line-height: 1.5;
     font-weight: var(--fw-bold);
     white-space: nowrap;
     pointer-events: none;
     z-index: var(--z-dropdown);
   }
-  .railButton { display: inline-flex; }
+  .headScope .railButton { display: inline-flex; }
   .mainhead { padding: var(--space-22) var(--space-26) 0; }
 }
 
@@ -206,10 +311,14 @@
 @media (max-width: 767px) {
   .frame, .frame[data-rail="true"] { grid-template-columns: minmax(0, 1fr); }
   .sideScope { display: none; }
-  /* capsule (62) + its gap (14): legacy fixed controls add this on top of their own safe-area offset. */
-  .frame { --orbit-shell-bottom-inset: 76px; }
+  /* capsule (62) + its gap (8): legacy fixed controls add this on top of their own safe-area offset. */
+  .frame { --orbit-shell-bottom-inset: 70px; }
   .bottomScope { display: block; }
   .mobileTop { display: flex; }
   .content { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
-  .mainhead { padding: var(--space-16) var(--space-18) 0; }
+  /* b6 / b8 390: no main header row — the page's title folds into its own content.
+     Only the sample-mode pill stays (it is the way out of the demo). */
+  .mainhead { display: flex; justify-content: flex-start; padding: 0 var(--space-18); margin-bottom: 0; }
+  .mainhead:not(:has(.demoSlot)) { display: none; }
+  .headTitle, .headSide > :not(.demoSlot) { display: none; }
 }

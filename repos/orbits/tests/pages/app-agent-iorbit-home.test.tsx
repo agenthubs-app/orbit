@@ -1352,7 +1352,7 @@ test("a collapsed banner (stored in the guide record) renders as the nav pill on
   assert.equal(find("data-orbit-guide-demo-banner").length, 0);
   const pills = find("data-orbit-guide-demo-pill");
   assert.ok(pills.length > 0);
-  assert.ok(textOf(pills[0]!).includes("示例 · 继续引导"));
+  assert.equal(pills[0]!.props["aria-label"], "示例 · 继续引导", "D17: the pill shows 🧪 示例; its name says what it does");
 });
 
 test("demo mode sends no signals / ledger / conversation requests on mount", async (t) => {
@@ -1488,7 +1488,7 @@ test("收起 folds the banner into the nav pill and stores it in the guide recor
   assert.equal(find("data-orbit-guide-demo-banner").length, 0);
   const pills = find("data-orbit-guide-demo-pill");
   assert.ok(pills.length > 0, "the nav pill appears");
-  assert.ok(textOf(pills[0]!).includes("示例 · 开始引导"));
+  assert.equal(pills[0]!.props["aria-label"], "示例 · 开始引导");
 
   const collapseCall = mounted.calls.filter((call) => call.url === "/api/guide/state");
   assert.deepEqual(collapseCall.map((call) => [call.method, call.body]), [["PATCH", { bannerCollapsed: true }]]);

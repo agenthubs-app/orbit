@@ -6,8 +6,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { pickCopy } from "../copy/types";
 import { shellCopy } from "../copy/shell";
-import { EmptyState, Orbit2026Scope, Segmented, Skeleton, ToastProvider, useStandardCopy } from "../ui";
-import { ShellPage } from "../shell/slots";
+import { Button, EmptyState, Orbit2026Scope, Segmented, Skeleton, ToastProvider, useStandardCopy } from "../ui";
+import { monthHeading } from "../shell/month-heading";
+import { ShellPage, useInShell } from "../shell/slots";
 import { TASK_TABS, type TaskTab } from "./task-tabs";
 import styles from "./task.module.css";
 
@@ -19,6 +20,10 @@ import styles from "./task.module.css";
 //              product decision (a), R07 review M5)
 //   memo     → R20 (the Web has no notes page yet: an empty state)
 // Tabs, ← → keys (outside text fields) and `?tab=` are the container's.
+// Header (web.html wTaskHead): the tabs at the left, 「Task」 over the month's range,
+// and the tab's ＋ add button at the right — only where the slot has an add flow
+// (プラン → 目標を追加); the other slots' buttons come with their R20 screens.
+// Under 768 the shell drops the header row and the tabs sit full width on top (b8).
 
 /**
  * `plan`: the plan screen, `null` when the person has no plan yet (empty state), or
@@ -58,11 +63,16 @@ export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  const inShell = useInShell();
+  const tabs = <div data-task-bar="" className={styles.tabs}><TaskTabs tab={tab} onChange={choose} /></div>;
+  const add = tab === "plan" ? <TaskAddButton label={pickCopy(shellCopy.taskAddGoal, language)} onSelect={() => router.push(`${pathname}?tab=plan&new=1`)} />
+    : tab === "calendar" || tab === "todo" ? <TaskAddButton label={pickCopy(tab === "calendar" ? shellCopy.taskAddEvent : shellCopy.taskAddTodo, language)} onSelect={startSlotAdd} /> : undefined;
   return (
     <>
-      <ShellPage title={pickCopy(shellCopy.taskTitle, language)} />
-      <Orbit2026Scope language={language} className={styles.bar}>
-        <div data-task-bar="">
+      <ShellPage title={pickCopy(shellCopy.taskTitle, language)} subtitle={monthHeading(language).range} left={tabs} right={add} rightRail />
+      {/* Outside the shell (a page on its own) there is no header: the tabs stay on the page. */}
+      <Orbit2026Scope language={language} className={inShell ? styles.bar : styles.barAlone}>
+        <div data-task-bar="" className={styles.mobileTabs}>
           <TaskTabs tab={tab} onChange={choose} />
         </div>
       </Orbit2026Scope>
@@ -75,6 +85,20 @@ export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref 
       </div>
     </>
   );
+}
+
+// kit .btn.accent with ＋ (web.html k-wtadd).
+function TaskAddButton({ label, onSelect }: { label: string; onSelect: () => void }) {
+  return <Button label={label} variant="accent" icon="plus" onClick={onSelect} />;
+}
+
+// カレンダー / To-do: the slot's own add flow, marked `data-task-add` (the schedule's
+// 「new」 button, the To-do field) — clicked or focused, until R20 brings the new screens.
+function startSlotAdd() {
+  const target = document.querySelector<HTMLElement>("[data-task-slot] [data-task-add]");
+  if (!target) return;
+  target.scrollIntoView({ block: "center" });
+  if (target instanceof HTMLInputElement) target.focus(); else target.click();
 }
 
 function TaskTabs({ tab, onChange }: { tab: TaskTab; onChange: (tab: TaskTab) => void }) {

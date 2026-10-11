@@ -94,6 +94,10 @@
 .drawerHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: var(--space-22) var(--space-22) var(--space-12); }
 .drawerTitle { font-size: var(--fs-title-sm); font-weight: var(--fw-heavy); }
 .drawerBody { flex: 1; overflow: auto; padding: 0 var(--space-22) var(--space-22); }
+/* b6 .rdrawer: padding 20, the content fills the height (its ask field sits at the foot). */
+.drawerBare { flex: 1; overflow: auto; padding: var(--space-20); display: flex; flex-direction: column; }
+.drawerBare > * { flex: 1; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .drawerFooter { padding: var(--space-14) var(--space-22); border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
 
 /* A popover or menu can open from inside a dialog or drawer: it shares the dialog
@@ -109,6 +113,28 @@
   border: 1px solid var(--line);
   animation: fadeIn var(--dur-dialog) var(--ease);
 }
+
+.popoverTight { padding: 8px; }
+
+/* kit .sheet / .sheet-scrim */
+.sheetScrim { background: var(--scrim); }
+.sheet {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: var(--z-modal);
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--r-sheet);
+  padding: 10px 18px 26px;
+  animation: fadeIn var(--dur-dialog) var(--ease) both;
+}
+.sheet:focus { outline: none; }
+.sheetTight { padding: 10px 14px 18px; }
+.grab { display: block; width: 38px; height: 5px; border-radius: var(--r-pill); background: var(--surface-3); margin: 0 auto 14px; }
 
 .menu {
   position: fixed;

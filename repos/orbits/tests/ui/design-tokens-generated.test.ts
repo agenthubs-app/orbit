@@ -95,11 +95,13 @@ test("the TS output carries the one contrast list, camelCased, for the App's con
 });
 
 test("radius, type and motion scales are the ones the plan fixed", () => {
-  // R06 added menu 18 (context menu), tile 16 (mac tiles, steps) and tag 6 (key caps, sample tags).
-  assert.deepEqual(tokens.radius, { xl: 24, lg: 20, md: 14, sm: 10, sheet: 34, dialog: 28, "card-web": 22, bubble: 18, pill: 999, menu: 18, tile: 16, tag: 6 });
+  // R06 added menu 18 (context menu), tile 16 (mac tiles, steps) and tag 6 (key caps, sample tags);
+  // the R07 pixel rework added row 12 (b12 account-menu rows).
+  assert.deepEqual(tokens.radius, { xl: 24, lg: 20, md: 14, sm: 10, sheet: 34, dialog: 28, "card-web": 22, bubble: 18, pill: 999, menu: 18, tile: 16, row: 12, tag: 6 });
   assert.deepEqual(Object.keys(tokens.font.family), ["ja", "zh", "en", "num"]);
   assert.ok(!JSON.stringify(tokens.font.family).includes("Serif"), "no serif face in any stack (RD-09)");
-  assert.match(tokens.font.family.ja!, /^"Hiragino Sans"/);
+  // RD-09 revised (user, 2026-10-12): Japanese starts with the system font like the kit's --font; Hiragino for kana / kanji.
+  assert.match(tokens.font.family.ja!, /^-apple-system, "SF Pro Display", "SF Pro Text", "Hiragino Sans"/);
   assert.match(tokens.font.family.zh!, /^"PingFang SC"/);
   for (const key of ["press", "expand", "swipe", "count", "enter", "sheet", "dialog", "toast-in", "toast-out"]) {
     assert.equal(typeof tokens.motion.duration[key], "number", `motion.duration.${key}`);

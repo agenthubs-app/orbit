@@ -34,7 +34,7 @@ export function TaskComposer({ busy, onCreate }: { busy: boolean; onCreate: (tit
     try { if (await onCreate(draft)) setDraft(""); }
     finally { pending.current = false; }
   }}>
-    <input aria-label={t({ zh: "添加待办", en: "Add a task" })} disabled={busy} maxLength={300} onChange={(event) => setDraft(event.target.value)} placeholder={t({ zh: "添加待办", en: "Add a task" })} value={draft} />
+    <input aria-label={t({ zh: "添加待办", en: "Add a task" })} data-task-add="" disabled={busy} maxLength={300} onChange={(event) => setDraft(event.target.value)} placeholder={t({ zh: "添加待办", en: "Add a task" })} value={draft} />
     <button className="btn btn-primary" disabled={busy || !draft.trim()} type="submit">{t({ zh: "添加", en: "Add" })}</button>
   </form>;
 }

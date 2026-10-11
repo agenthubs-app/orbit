@@ -177,6 +177,7 @@
   .w1024 .main { padding: 22px 26px 40px; }
   .w1024 .rdrawer { width: 380px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
   .w1024 .rdrawer h4 { font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .side a.hov { background: var(--surface-2); color: var(--ink-2); } /* 2026-10-12 用户拍板：tooltip 画板补上悬停态（同 kit .side a:hover） */
   .side-tip { position: absolute; left: 66px; top: 0; padding: 5px 10px; border-radius: 9px; background: var(--ink); color: var(--bg); font-size: 11.5px; font-weight: 700; white-space: nowrap; z-index: 5; }
   .cnum { min-width: 18px; height: 18px; border-radius: 9px; background: var(--coral); color: var(--surface); font-size: 10.5px; font-weight: 800; display: inline-grid; place-items: center; padding: 0 5px; }
   .mweb .scroll { padding-bottom: 200px; }
@@ -1580,7 +1581,7 @@ h += boards([
 ]);
 
 h += sec('D · Web 响应式', '1024：左栏收为图标（悬停出 tooltip），右栏收成标题区「次の一手」按钮 → 右侧抽屉；390 手机浏览器：底部胶囊导航（与 App 同构）+ Safari 底栏');
-h += board('ホーム · 1024', 'many', w1024(0, rHome1024(), '<span class="side-tip" style="top:144px">人脈</span>', pin(1, '.side-tip') + pin(2, '.rail-btn') + pin(3, '.k-hw-net .hw-ppl') + pin(4, '.k-hw-todo .ck')), ['左栏只留图标（ホーム / 人脈 / iOrbit / イベント / Task / 受信箱），悬停出黑色 tooltip；1280 以下进入此布局', '右栏「次の一手」收成按钮（带计数），点击 → 右侧抽屉（下一张）', '首页组件网格与 1440 同构（web.html ホーム NAV-V3）：人脈组件只显示头像 / 姓名 / 公司', '今日やること / プラン スコア / 次のイベント / 秘書から 与 1440 同一组件；宽度不足时 小组件 自动换行'], 1024);
+h += board('ホーム · 1024', 'many', w1024(0, rHome1024(), '<span class="side-tip" style="top:144px">人脈</span>', pin(1, '.side-tip') + pin(2, '.rail-btn') + pin(3, '.k-hw-net .hw-ppl') + pin(4, '.k-hw-todo .ck')).replace(/(<aside class="side">[\s\S]*?<\/a>[\s\S]*?)<a class="">/, '$1<a class="hov">'), ['左栏只留图标（ホーム / 人脈 / iOrbit / イベント / Task / 受信箱），悬停出黑色 tooltip；1280 以下进入此布局', '右栏「次の一手」收成按钮（带计数），点击 → 右侧抽屉（下一张）', '首页组件网格与 1440 同构（web.html ホーム NAV-V3）：人脈组件只显示头像 / 姓名 / 公司', '今日やること / プラン スコア / 次のイベント / 秘書から 与 1440 同一组件；宽度不足时 小组件 自动换行'], 1024);
 h += board('ホーム · 1024 抽屉展开', '弹层', w1024(0, rHome1024(), `<div class="overlay"></div><div class="drawer rdrawer">${assist}</div>`, pin(1, '.rdrawer')), ['380px 抽屉从右滑入、背景暗化；Esc / 点遮罩关闭；内容与 1440 右栏完全一致'], 1024);
 h += board('人脈 · 1024', 'many', w1024(1, rNet1024(), '', pin(1, '.k-wtable') + pin(2, '.k-wcats') + pin(3, '.k-waddbtn')), ['与 web.html 人脈 同构（濃さ三点 + 出どころ chip）；表格去掉「最終接点」列；点行 → 520px 抽屉（1440 为 600px，见 ⑧ 断点规范）', '分类页签：すべて / 情報が少ない人 / 目標に関係 / 要フォロー（与 1440、App 同一组）', '「人脈を追加」→ 5 门弹窗（与 1440 相同）；右栏「今日の 1問」收进「次の一手」抽屉'], 1024);
 h += boards([

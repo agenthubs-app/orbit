@@ -13,7 +13,7 @@ export { Accordion } from "./Disclosure";
 export { Table, type TableColumn } from "./Table";
 // feedback
 export { ToastProvider, useToast } from "./Toast";
-export { ConfirmDialog, ContextMenu, Drawer, Modal, Popover, type MenuItem } from "./Overlay";
+export { BottomSheet, ConfirmDialog, ContextMenu, Drawer, Modal, Popover, type MenuItem } from "./Overlay";
 // AI
 export { ConfirmCard, WhyDisclosure, type ConfirmCardAction } from "./Disclosure";
 // controls

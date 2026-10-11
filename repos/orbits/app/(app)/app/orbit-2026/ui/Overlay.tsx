@@ -116,7 +116,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
 // 1280 wide), md 520, sm 380 (RD-17: rich content 520 / light 380 at 1024); never
 // wider than the window minus the margins. `fullOnPhone`: under 768 the drawer fills the
 // screen (no margins, no radius) — for a form that is the whole task on a phone (R12 手入力, b8).
-export function Drawer({ open, onClose, title, size = "lg", children, footer, fullOnPhone = false }: {
+export function Drawer({ open, onClose, title, size = "lg", children, footer, fullOnPhone = false, bare = false }: {
   open: boolean;
   onClose: () => void;
   title: string;
@@ -124,31 +124,54 @@ export function Drawer({ open, onClose, title, size = "lg", children, footer, fu
   children: ReactNode;
   footer?: ReactNode;
   fullOnPhone?: boolean;
+  /** No title row and no ✕ (b6 1024 rail drawer): the content brings its own heading; Esc and the scrim close it, the title stays its accessible name. */
+  bare?: boolean;
 }) {
   const id = useId();
   const copy = useStandardCopy();
   if (!open) return null;
   return (
     <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.drawerScrim}`} className={`${styles.drawer} ${styles[`drawer_${size}`]}${fullOnPhone ? ` ${styles.drawerFullPhone}` : ""}`}>
-      <div className={styles.drawerHead}>
-        <h2 id={`${id}-title`} className={styles.drawerTitle}>{title}</h2>
-        <button type="button" className={`btn ${styles.close}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={20} /></button>
-      </div>
-      <div className={styles.drawerBody}>{children}</div>
+      {bare ? <h2 id={`${id}-title`} className={styles.srOnly}>{title}</h2> : (
+        <div className={styles.drawerHead}>
+          <h2 id={`${id}-title`} className={styles.drawerTitle}>{title}</h2>
+          <button type="button" className={`btn ${styles.close}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={20} /></button>
+        </div>
+      )}
+      <div className={bare ? styles.drawerBare : styles.drawerBody}>{children}</div>
       {footer ? <div className={styles.drawerFooter}>{footer}</div> : null}
+    </DialogFrame>
+  );
+}
+
+// kit .sheet (390): a bottom sheet — 8 from the edges, radius 34, grab handle, the
+// darker sheet scrim; Esc and the scrim close it, focus is trapped like a dialog.
+export function BottomSheet({ open, onClose, label, tight = false, children }: { open: boolean; onClose: () => void; label: string; /** 10 / 14 / 18 padding for a menu of full-width rows (b12 .sheet.amenu). */ tight?: boolean; children: ReactNode }) {
+  const id = useId();
+  if (!open) return null;
+  return (
+    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.sheetScrim}`} className={`${styles.sheet}${tight ? ` ${styles.sheetTight}` : ""}`}>
+      <h2 id={`${id}-title`} className={styles.srOnly}>{label}</h2>
+      <span className={styles.grab} aria-hidden />
+      {children}
     </DialogFrame>
   );
 }
 
 // Below the anchor when it fits, otherwise above it (an anchor near the bottom —
 // the avatar at the foot of the left rail — opens upwards).
-function useAnchorPosition(anchor: RefObject<HTMLElement | null>, open: boolean, width: number) {
-  const [position, setPosition] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
+type AnchorPosition = { top?: number; bottom?: number; left: number };
+
+function useAnchorPosition(anchor: RefObject<HTMLElement | null>, open: boolean, width: number, custom?: (anchor: DOMRect) => AnchorPosition) {
+  const [position, setPosition] = useState<AnchorPosition | null>(null);
+  const customRef = useRef(custom);
+  customRef.current = custom;
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
       const box = anchor.current?.getBoundingClientRect();
       if (!box) return;
+      if (customRef.current) { setPosition(customRef.current(box)); return; }
       const left = Math.max(8, Math.min(box.left, window.innerWidth - width - 8));
       const below = window.innerHeight - box.bottom;
       setPosition(below >= 320 || below >= box.top ? { top: box.bottom + 8, left } : { bottom: window.innerHeight - box.top + 8, left });
@@ -184,18 +207,22 @@ function useDismiss(open: boolean, isTop: () => boolean, panel: RefObject<HTMLEl
 }
 
 // kit .pop: anchored panel 340–440, radius 22, no scrim; Esc or a click outside closes.
-export function Popover({ open, onClose, anchor, label, width = 360, children }: {
+export function Popover({ open, onClose, anchor, label, width = 360, place, tight = false, children }: {
   open: boolean;
   onClose: () => void;
   anchor: RefObject<HTMLElement | null>;
   label: string;
   width?: number;
+  /** Own placement from the anchor's box (default: below it, or above near the bottom). */
+  place?: (anchor: DOMRect) => AnchorPosition;
+  /** 8 padding instead of 16, for a menu of full-width rows (b12 .amenu). */
+  tight?: boolean;
   children: ReactNode;
 }) {
   const isTop = useLayer(open);
   const panel = useRef<HTMLDivElement>(null);
   const clamped = Math.max(340, Math.min(440, width));
-  const position = useAnchorPosition(anchor, open, clamped);
+  const position = useAnchorPosition(anchor, open, clamped, place);
   useDismiss(open, isTop, panel, anchor, onClose);
   // Keyboard users land inside (first control, else the panel); closing returns to the anchor (review M2).
   useEffect(() => {
@@ -210,7 +237,7 @@ export function Popover({ open, onClose, anchor, label, width = 360, children }:
   if (!open) return null;
   return (
     <Portal>
-      <div ref={panel} role="dialog" aria-label={label} tabIndex={-1} className={styles.popover} style={{ width: clamped, ...placed(position) }}>
+      <div ref={panel} role="dialog" aria-label={label} tabIndex={-1} className={`${styles.popover}${tight ? ` ${styles.popoverTight}` : ""}`} style={{ width: clamped, ...placed(position) }}>
         {children}
       </div>
     </Portal>

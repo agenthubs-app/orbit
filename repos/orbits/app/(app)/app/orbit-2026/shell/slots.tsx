@@ -7,7 +7,10 @@ import { createContext, useCallback, useContext, useEffect, useId, useMemo, useS
 //   title / subtitle — the centred main title (mainhead);
 //   left / right     — buttons either side of the title;
 //   demoPill         — the sample-mode pill (ShellDemoPill), shown next to the title;
-//   rightRail        — the rail content (≥1280 only; `false` hides the rail).
+//   rightRail        — the rail content (≥1280; 768–1279 the shell adds a 次の一手
+//                      button after `right` that opens it as a drawer; `false` hides the rail).
+// Shell-drawn header buttons for the slots: ShellSearchButton (🔍 → ⌘K) and
+// ShellBellButton (🔔 → 受信箱, unread dot).
 // Node slots render inside the shell, not inside the page: anything they need
 // from the page (demo mode, page state) must be read in the page and passed in
 // as props (see ShellDemoPill). Several <ShellPage>s may be mounted at once; each
@@ -56,6 +59,11 @@ export function ShellSlotsProvider({ children }: { children: ReactNode }) {
 
 export function useShellSlots(): ShellSlots {
   return useContext(SlotsContext) ?? {};
+}
+
+/** Whether the page renders inside the shell (signed in, a framed page); false in tests of a page on its own. */
+export function useInShell(): boolean {
+  return useContext(SetSlotsContext) !== null;
 }
 
 /** Sets the shell slots while mounted. Outside the shell (signed out, tests) it renders nothing. */

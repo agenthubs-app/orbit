@@ -133,7 +133,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             <span className={styles.rowText}><b>{t(shellCopy.paletteAsk)}</b><small>{query.trim()}</small></span>
             <Kbd>⌘↵</Kbd>
           </div>
-          <p className={styles.privacy} data-orbit-agent-privacy-boundary="">{t(shellCopy.paletteAskPrivacy)}</p>
         </div>
       ) : null}
     </Modal>

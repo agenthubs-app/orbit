@@ -70,6 +70,7 @@
   --r-pill: 999px;
   --r-menu: 18px;
   --r-tile: 16px;
+  --r-row: 12px;
   --r-tag: 6px;
   --gap: 14px;
   --space-4: 4px;
@@ -83,7 +84,7 @@
   --space-24: 24px;
   --space-26: 26px;
   --space-34: 34px;
-  --font-ja: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-ja: -apple-system, "SF Pro Display", "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
   --font-zh: "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-en: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   --font-num: "SF Pro Rounded", -apple-system, "SF Pro Display", system-ui, sans-serif;
@@ -97,6 +98,10 @@
   --fs-body-sm: 13px;
   --fs-label: 11.5px;
   --fs-caption: 11px;
+  --fs-nav: 10.5px;
+  --fs-tab: 10px;
+  --fs-emoji-sm: 17px;
+  --fs-row: 13.5px;
   --fs-dialog-title: 16px;
   --fs-control: 12.5px;
   --fs-meta: 12px;

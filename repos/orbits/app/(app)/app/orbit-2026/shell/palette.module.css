@@ -39,5 +39,3 @@
 .askRow { color: var(--accent-text); border-top: 1px solid var(--line); margin-top: 4px; }
 .empty { font-size: var(--fs-meta); color: var(--ink-3-text); padding: 6px 8px; }
 .keys { display: inline-flex; gap: 6px; align-items: center; }
-/* The privacy line that used to sit under the floating ask's input. */
-.privacy { margin: 6px 8px 2px; font-size: var(--fs-meta); color: var(--ink-3-text); }
