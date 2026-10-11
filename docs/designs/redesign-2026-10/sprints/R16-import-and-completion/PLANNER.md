@@ -1,6 +1,6 @@
 # Sprint R16 — 加人：导入与「每天一问」
 
-**Plan revision:** 2（按 `add-and-invite/REVIEW.md` 修订）。**模式:** existing-codebase / single-generator（执行人：小雨（甲））。**档位:** H。
+**Plan revision:** 3（rev 2 按 `add-and-invite/REVIEW.md` 修订；rev 3 按 README 规则 11 补像素 SC）。**模式:** existing-codebase / single-generator（执行人：小雨（甲））。**档位:** H。
 **单一目标:** その他导入（App 連絡先经 `expo-contacts` 读取并转 vCard、App LinkedIn CSV 经 `expo-document-picker`；Web vCard / LinkedIn CSV·ZIP / 汎用 CSV / イベントから）全部走现有 `/api/contacts/import/**`，界面统一为「选人 / 列对应 → まとめて確認（R12 组件）→ 完成」；`shared/contract/contact-import.ts` 把导入的 HTTP 形状提升为共享契约；R08 契约 3「每天一问」live（规则出题、零 AI）+ 两端 `CompletionQuestionCard` 组件；删除 Web 旧导入组件。
 **易读目标:** [GOAL.md](GOAL.md)。**整体设计:** [add-and-invite/DESIGN.md](../add-and-invite/DESIGN.md)（§2.7、§2.8、§3.3、§4.3、§7、§8 R11 / R20 / R10 行、§9 #20 #21 #24 #30、§13）。
 **基线:** R15 收口后的 `redesign` HEAD（不依赖 R15 的代码；只为顺序执行）。
@@ -79,6 +79,26 @@
 | SC-R16-04 一致性 | 完成页数字 = 人脈变化；导入的新联系人入队计划候补；来源 chip 正确（連絡先 / LinkedIn / CSV） | 服务 + 端到端 |
 | SC-R16-05 每天一问 | 契约 3 live：规则全部（每天一题、东京日、回答写到正确位置、这个人的信息多一项、浓度按 D-10 重算、覚えていない、明日、跳过 3 次停止、选项有据）；两端卡片组件在展示页可用 | `completion-question` + 渲染 + 截图（b9 A7） |
 | SC-R16-06 旧导入页已删 | `network-import*` 删除、允许清单只减不增、`?method=` 与 `?import=` 旧链接 redirect、`screen-ownership.md` 加人行全部「已处理」 | 测试 + 点击验证 |
+
+### 像素 SC（README 通用规则 11，2026-10-11 追加）
+
+每个画面按 HOW-TO 第 8 节跑逐像素门禁（整屏 raw ≤0.02，超阈值带只能是 `[data]`），归因文件 `repos/orbits/scripts/visual/attribution-redesign-R16.json`。Web 1440 / 1024 / 390 × 浅 / 深；App 模拟器 浅 / 深。
+
+| SC | 画面 | 设计稿画板 | 端 / 宽度 | 到达方式 |
+| --- | --- | --- | --- | --- |
+| SC-R16-P01 | 連絡先 ① 権限 | `b9-import-plan-v2.html` A2「① 権限」 | App | 人脈を追加 › その他 › 連絡先（未授权） |
+| SC-R16-P02 | 連絡先 ② 選ぶ | b9 A2「② 選ぶ」 | App | 授权后 |
+| SC-R16-P03 | 連絡先 ③ 取り込み中 | b9 A2「③ 取り込み中」 | App | 点「N人を取り込む」 |
+| SC-R16-P04 | まとめて確認（連絡先） | b9 A2「④ まとめて確認」 | App | 导入完成 |
+| SC-R16-P05 | LinkedIn ① 3 ステップ | b9 A3「① 3ステップの説明」 | App | 其他 › LinkedIn |
+| SC-R16-P06 | LinkedIn ② アップロード | b9 A3「② アップロード」 | Web 1440 / 1024 / 390 | `/app/contacts/new/import?method=linkedin` |
+| SC-R16-P07 | LinkedIn ③ 列の対応 | b9 A3「③ 列の対応を確認」 | Web 三宽度 | 上传样例 CSV 后 |
+| SC-R16-P08 | LinkedIn ④ まとめて確認 | b9 A3「④ まとめて確認」 | Web 三宽度 | 列对应确认后 |
+| SC-R16-P09 | 今日の 1問 卡 | b9 A7「Task › To-do · 判断待ちの 1問」 | App 组件展示页、Web 组件展示页 | `/showcase/components` |
+| SC-R16-P10 | Web 导入选门页 | **设计稿无**（web.html 人脈空态四张门卡只有入口） | Web | `/app/contacts/new/import`；请用户拍板画法 |
+| SC-R16-P11 | 連絡先（Web vCard）、汎用 CSV、イベントから | **设计稿无**（像素盘点「设计稿无」类） | Web | 请用户拍板，先按 LinkedIn 同构 |
+
+像素门禁结果写进 REPORT；在导航壳返工（像素盘点返工顺序第 1、2 位）完成前，共性差异会让门禁不通过，如实记录，不标 done。
 
 ### 必需证据子表
 
