@@ -49,8 +49,11 @@
 | [R23](R23-plan-generation/GOAL.md) | 计划 v2.2：生成流程与 AI（目标入力 → 背景 → ≤5 问 → 前提 → 初版 → AI 修正 → 手動編集 → 確定；业界现状库） | R22 | H | 甲 | done，已复核，问题已修（[REPORT](R23-plan-generation/REPORT.md)、[REVIEW](R23-plan-generation/REVIEW.md)） |
 | [R24](R24-plan-overview-and-types/GOAL.md) | 计划 v2.2：概要、人物类型与记录加分（含 `event-score.ts`、面谈メモ判定） | R22 | H | 甲 | done，已复核，问题已修（[REPORT](R24-plan-overview-and-types/REPORT.md)、[REVIEW](R24-plan-overview-and-types/REVIEW.md)） |
 | [R25](R25-plan-review-goals-cleanup/GOAL.md) | 计划 v2.2：见直、达成、多目标与旧屏清理（删兼容跳转、旧链接换新） | R23、R24 | H | 甲 | done，已复核，问题已修（[REPORT](R25-plan-review-goals-cleanup/REPORT.md)、[REVIEW](R25-plan-review-goals-cleanup/REVIEW.md)） |
+| [R12](R12-add-cards-and-manual/GOAL.md) | 加人：「人脈を追加」入口、名刺スキャン（拍 / 传含表裏 → 读完自动进人脈 → まとめて確認 → 完成）、手入力（查重与名片同一规则 + 同名提示、逐字段合并、撤销）、待确认草稿页；删除 App 7 个旧加人屏 | R09 | H | 甲 | 文档已写，待开工 |
+| [R15](R15-invite-codes/GOAL.md) | 加人：招待コード（迁移、发码 / 兑换 / 历史 / 同步 / 解除、公开预览限流与防枚举、发出方两端、接收方 `/i/<code>`）；删除两端旧邀请页 | R12 | H | 甲 | 文档已写，待开工 |
+| [R16](R16-import-and-completion/GOAL.md) | 加人：導入（連絡先 / LinkedIn / CSV / イベントから → まとめて確認）与「每天一问」live（规则、零 AI）；删除 Web 旧导入页 | R12 | H | 甲 | 文档已写，待开工 |
 
-计划 v2.2 的整体设计、AI 调用清单、需要用户拍板的事项见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md)，复核见 [plan-v2.2/REVIEW.md](plan-v2.2/REVIEW.md)。
+计划 v2.2 的整体设计、AI 调用清单、需要用户拍板的事项见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md)，复核见 [plan-v2.2/REVIEW.md](plan-v2.2/REVIEW.md)。加人与邀请（R12、R15、R16）见 [add-and-invite/DESIGN.md](add-and-invite/DESIGN.md)，复核见 [add-and-invite/REVIEW.md](add-and-invite/REVIEW.md)。
 
 ## 用户决定（2026-10-09）
 
