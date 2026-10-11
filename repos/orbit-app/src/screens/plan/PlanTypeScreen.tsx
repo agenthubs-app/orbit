@@ -4,10 +4,14 @@
 // 取り消す). Every state has 聞くこと, 話せたの判定, 会える活動 (expandable 5-item
 // breakdown) and やること when there are tasks. Reads the type and the overview (for
 // step numbers) on open; writes only when the user acts.
+// R24 review: each candidate row also has 「すでに話した」 (records that person right
+// away, basis talked); one write at a time (skip confirm, ✓ / ✕, 取り消す); with the
+// type skipped the selection bar cannot record; the bar sits above the home indicator.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { PlanPersonTypeDetail, PlanV2Detail } from "../../api/contract/plan-v2";
+import type { PlanAwardResult, PlanPersonTypeDetail, PlanV2Detail } from "../../api/contract/plan-v2";
 import { AppScreen } from "../../components/AppScreen";
 import {
   Avatar,
@@ -75,9 +79,9 @@ export function PlanTypeScreen({ planId, itemId }: { planId: string; itemId: str
       {state.kind === "loading" ? <Skeleton lines={5} /> : null}
       {state.kind === "offline" ? <EmptyState title={t("plan.segment.offlineTitle")} message={t("plan.segment.offlineBody")} action={{ label: copy.action.retry, onPress: () => void load() }} /> : null}
       {state.kind === "failed" ? <RetryCard title={fillCopy(copy.error.loadFailed, { item: t("plan.type.title") })} onRetry={() => { setRetrying(true); void load().finally(() => setRetrying(false)); }} retrying={retrying} /> : null}
-      {state.kind === "ready" ? <PlanTypeBody detail={state.detail} plan={state.plan} reload={load} selected={selected} onSelect={setSelected} onRecord={setRecordFor} /> : null}
+      {state.kind === "ready" ? <PlanTypeBody detail={state.detail} plan={state.plan} reload={load} selected={selected} onSelect={setSelected} onRecord={setRecordFor} onAwarded={(results, who) => showAward(results, state.detail.shortLabel, who)} /> : null}
     </AppScreen>
-    {detail && selectedPeople.length > 0 ? <SelectionBar count={selectedPeople.length} onRecord={() => setRecordFor(selectedPeople.map((person) => ({ contactId: person.contactId, name: person.name })))} onPropose={() => setProposalFor(selectedPeople.map((person) => ({ contactId: person.contactId, isOrbitUser: person.isOrbitUser, name: person.name })))} /> : null}
+    {detail && selectedPeople.length > 0 ? <SelectionBar count={selectedPeople.length} canRecord={!detail.skipped} onRecord={() => setRecordFor(selectedPeople.map((person) => ({ contactId: person.contactId, name: person.name })))} onPropose={() => setProposalFor(selectedPeople.map((person) => ({ contactId: person.contactId, isOrbitUser: person.isOrbitUser, name: person.name })))} /> : null}
     {detail ? (
       <PlanRecordSheet
         visible={recordFor !== null}
@@ -98,25 +102,27 @@ export function PlanTypeScreen({ planId, itemId }: { planId: string; itemId: str
 }
 
 /** 「N人を選択中 · N人を記録 · 面談を提案」 fixed under the page (b4 A2 ① ⑤). */
-function SelectionBar({ count, onRecord, onPropose }: { count: number; onRecord: () => void; onPropose: () => void }) {
+function SelectionBar({ count, canRecord, onRecord, onPropose }: { count: number; canRecord: boolean; onRecord: () => void; onPropose: () => void }) {
   const shared = usePlanOverviewStyles().styles;
   const { t } = useOrbitLocale();
+  const insets = useSafeAreaInsets();
   return (
-    <View style={shared.footer} testID="selection-bar">
+    <View style={[shared.footer, { paddingBottom: Math.max(12, insets.bottom + 8) }]} testID="selection-bar">
       <UiText style={[shared.strong, shared.grow]}>{t("plan.type.selected", { count })}</UiText>
-      <Button size="sm" label={t("plan.type.recordSelected", { count })} onPress={onRecord} variant="secondary" />
+      <Button size="sm" label={t("plan.type.recordSelected", { count })} onPress={onRecord} variant="secondary" disabled={!canRecord} />
       <Button size="sm" label={t("plan.type.propose")} onPress={onPropose} variant="primary" />
     </View>
   );
 }
 
-function PlanTypeBody({ detail, plan, reload, selected, onSelect, onRecord }: {
+function PlanTypeBody({ detail, plan, reload, selected, onSelect, onRecord, onAwarded }: {
   detail: PlanPersonTypeDetail;
   plan: PlanV2Detail | null;
   reload: () => Promise<void>;
   selected: readonly string[];
   onSelect: (next: string[]) => void;
   onRecord: (people: RecordPerson[]) => void;
+  onAwarded: (results: PlanAwardResult[], who: string) => void;
 }) {
   const { styles } = useStyles();
   const shared = usePlanOverviewStyles().styles;
@@ -139,12 +145,23 @@ function PlanTypeBody({ detail, plan, reload, selected, onSelect, onRecord }: {
   const lastUnit = detail.unitPoints[detail.unitPoints.length - 1] ?? 0;
   const paceParams = { allocation: detail.allocation, last: lastUnit, met: detail.metCount, target: detail.targetCount, unit: firstUnit };
 
+  const running = useRef(false);
   const run = async (work: () => Promise<boolean>) => {
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setProblem(null);
-    await work();
-    setBusy(false);
+    try { await work(); } finally { running.current = false; setBusy(false); }
   };
+  /** すでに話した: record this one person now (basis talked), same toast as the sheet. */
+  const talked = (contactId: string, name: string) => void run(async () => {
+    const result = await api.award(planId, detail.itemId, contactId, newIdempotencyKey("award"));
+    if (!result.ok) { setProblem(failureText(result.failure)); return false; }
+    onSelect(selected.filter((id) => id !== contactId));
+    onAwarded([result.data], name);
+    await reload();
+    return true;
+  });
   const decide = (contactId: string, name: string, decision: "accept" | "dismiss") => void run(async () => {
     const result = await api.decideCandidate(planId, detail.itemId, contactId, decision, newIdempotencyKey("candidate"));
     if (!result.ok) { setProblem(failureText(result.failure)); return false; }
@@ -256,6 +273,7 @@ function PlanTypeBody({ detail, plan, reload, selected, onSelect, onRecord }: {
                 <View style={shared.row}>
                   <Button size="sm" icon="check" label={t("plan.type.accept")} accessibilityLabel={t("plan.type.acceptA11y", { name: candidate.name })} onPress={() => decide(candidate.contactId, candidate.name, "accept")} variant="secondary" disabled={busy} />
                   <IconButton icon="x" size={34} soft accessibilityLabel={t("plan.type.dismissA11y", { name: candidate.name })} onPress={() => decide(candidate.contactId, candidate.name, "dismiss")} disabled={busy} />
+                  <Button size="sm" icon="chat" label={t("plan.type.alreadyTalked")} accessibilityLabel={t("plan.type.alreadyTalkedA11y", { name: candidate.name })} onPress={() => talked(candidate.contactId, candidate.name)} variant="ghost" disabled={busy} />
                 </View>
               </View>
             );
@@ -389,7 +407,7 @@ function PlanTypeBody({ detail, plan, reload, selected, onSelect, onRecord }: {
         title={t("plan.skip.title")}
         message={t("plan.skip.body", { points: Math.max(0, detail.allocation - detail.earned) })}
         confirmLabel={t("plan.skip.confirm")}
-        onConfirm={skip}
+        onConfirm={() => { if (!busy) skip(); }}
         onCancel={() => setSkipAsk(false)}
       />
     </View>

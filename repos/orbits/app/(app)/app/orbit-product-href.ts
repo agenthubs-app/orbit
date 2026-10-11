@@ -15,11 +15,11 @@ export function productHref(prototypeHref: string) {
   if (prototypeHref === "/home") return "/app/account/login";
   if (prototypeHref === "/home/events") return "/app/home/events";
   if (prototypeHref === "/home/profile") return "/app/profile";
-  // iOrbit 任务 6a：`/app/today` / `/app/schedule` / `/app/followups` 已随路由归并
-  // 删除；原型里的日程/待办入口改落到取代它们的两条 iOrbit 兄弟屏。
-  if (prototypeHref === "/home/schedule") return "/app/agent/plan";
-  if (prototypeHref === "/today" || prototypeHref === "/schedule")
-    return "/app/agent/plan";
+  // iOrbit 任务 6a：`/app/today` / `/app/schedule` / `/app/followups` 已随路由归并删除。
+  // R25：旧的计划页（agent/plan）也已删除——日程落到 Task › カレンダー，今天落到 Task › To-do（与 App 的
+  // `app-navigation.ts` 同一套映射）。
+  if (prototypeHref === "/home/schedule" || prototypeHref === "/schedule") return "/app/tasks?tab=calendar";
+  if (prototypeHref === "/today") return "/app/tasks";
   if (prototypeHref === "/followups") return "/app/agent/actions";
   if (prototypeHref === "/contacts" || prototypeHref === "/home/cards")
     return "/app/contacts/dashboard";

@@ -24,6 +24,7 @@ import { localizeHomeList } from "../../home/home-demo-localization";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitAgentViewModel } from "../../orbit-agent-route-view-model";
 import type { OrbitHomeViewModel } from "../../orbit-home-route-view-model";
+import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 import { agentSuggestLabel, iorbitEventChipDate, iorbitRegisteredEvents } from "./iorbit-model";
 
 /** 设计 334 的「编辑」落点：个人资料的「人物画像」分屏（兴趣方向 / 目标人脉都在那里编辑）。 */
@@ -89,7 +90,7 @@ export function IOrbitChatAside({ home, onAsk, viewModel }: IOrbitChatAsideProps
           </button>
         ))}
         {/* 326：设计里这一条是导航（`goContacts`），不是发消息 */}
-        <a className="ir-aside-next" href="/app/agent/strategy?view=contacts">
+        <a className="ir-aside-next" href={planTaskSegmentHref("web")}>
           {t({ en: "Who should I contact first?", zh: "先联系谁比较好？" })}
           <span className="ir-caret">›</span>
         </a>

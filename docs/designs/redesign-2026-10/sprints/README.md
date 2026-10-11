@@ -47,8 +47,8 @@
 | --- | --- | --- | --- | --- | --- |
 | [R22](R22-plan-data-and-score/GOAL.md) | 计划 v2.2：数据、契约与分数（迁移两个本机、契约转正、计分纯函数、v2 读接口与计分命令、旧计划守卫） | R09 | H | 甲 | done，已复核，问题已修（[REPORT](R22-plan-data-and-score/REPORT.md)、[REVIEW](R22-plan-data-and-score/REVIEW.md)） |
 | [R23](R23-plan-generation/GOAL.md) | 计划 v2.2：生成流程与 AI（目标入力 → 背景 → ≤5 问 → 前提 → 初版 → AI 修正 → 手動編集 → 確定；业界现状库） | R22 | H | 甲 | done，已复核，问题已修（[REPORT](R23-plan-generation/REPORT.md)、[REVIEW](R23-plan-generation/REVIEW.md)） |
-| [R24](R24-plan-overview-and-types/GOAL.md) | 计划 v2.2：概要、人物类型与记录加分（含 `event-score.ts`、面谈メモ判定） | R22 | H | 甲 | done，待复核（[REPORT](R24-plan-overview-and-types/REPORT.md)） |
-| [R25](R25-plan-review-goals-cleanup/GOAL.md) | 计划 v2.2：见直、达成、多目标与旧屏清理（删兼容跳转、旧链接换新） | R23、R24 | H | 甲 | planned（文档已定稿） |
+| [R24](R24-plan-overview-and-types/GOAL.md) | 计划 v2.2：概要、人物类型与记录加分（含 `event-score.ts`、面谈メモ判定） | R22 | H | 甲 | done，已复核，问题已修（[REPORT](R24-plan-overview-and-types/REPORT.md)、[REVIEW](R24-plan-overview-and-types/REVIEW.md)） |
+| [R25](R25-plan-review-goals-cleanup/GOAL.md) | 计划 v2.2：见直、达成、多目标与旧屏清理（删兼容跳转、旧链接换新） | R23、R24 | H | 甲 | done，待复核（[REPORT](R25-plan-review-goals-cleanup/REPORT.md)） |
 
 计划 v2.2 的整体设计、AI 调用清单、需要用户拍板的事项见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md)，复核见 [plan-v2.2/REVIEW.md](plan-v2.2/REVIEW.md)。
 
@@ -109,8 +109,8 @@
 - [ ] Web 旧页面的深色模式（R01 复核 m4）、日文（R03 允许清单）随重写全部到位。
 
 **骨架留下的待办**
-- [x] Web Task「プラン」段按产品决定 (a) 放现有计划界面（R07 复核 M5，2026-10-10）；`/app/agent/plan` 保留为兼容跳转。
-- [ ] R25 重写プラン段时：把旧界面和服务端产生的计划链接（`features/**` 的 href、活动跟进的 `taskHref`）统一换成新地址，删除兼容跳转。
+- [x] Web Task「プラン」段按产品决定 (a) 放现有计划界面（R07 复核 M5，2026-10-10）；`/app/agent/plan` 保留为兼容跳转。（R25 已换成计划 v2 插槽，兼容跳转已删除，2026-10-11。）
+- [x] R25 重写プラン段时：把旧界面和服务端产生的计划链接（`features/**` 的 href、活动跟进的 `taskHref`）统一换成新地址，删除兼容跳转。（2026-10-11：Web 与服务端已换，`tests/audits/no-legacy-plan-links.test.ts` 锁住两端源码；`taskHref` 改动登记在 `shared/contract/BREAKING.md`。）
 - [x] 契约演进口径（通用规则 10）产品负责人已确认（2026-10-10）；App 的两个 strict 读取点已改成宽进读取（R08 复核修复）。
 - [ ] 首次正式发布时启用 `minSupportedAppVersion` 检查（R18 实现 App 启动检查），之后按通用规则 10 执行。
 - [ ] `plan-v2.ts` 去掉 `@draft`、进入快照（R22，已完成）；`NoteMentionContract` 的活动提及已定稿（R20）；公开邀请预览有限流和防枚举（R15）。

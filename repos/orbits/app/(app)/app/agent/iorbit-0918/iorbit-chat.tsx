@@ -20,8 +20,7 @@
  * 用户行与助手行的复制按钮、`useAgentTaskSuggestions` 的身份补丁（在 `use-agent-chat` 里）、
  * `AgentWelcome` 空态。
  *
- * W0008：助手回合带 `planCard` 时渲染计划回答卡片（`iorbit-plan-card.tsx`），
- * 用户回合的 `supplement` 在气泡里另起一行。
+ * 用户回合的 `supplement` 在气泡里另起一行。R25：W0008 的 v1 计划回答卡片已删除。
  *
  * 设计有、但没有来源的两处按「不得出现 mock」处理：助手时间戳（`AgentMessage` 无时间
  * 字段）省略；♡ / ⌄ 反应省略（`tests/pages/app-agent-feedback-controls.test.ts:38`
@@ -44,7 +43,7 @@ import {
   ThinkingIndicator,
 } from "./iorbit-rich-components";
 import { agentSuggestLabel, iorbitSelectedDayLabel, type AgentMessage } from "./iorbit-model";
-import { IOrbitPlanCard } from "./iorbit-plan-card";
+import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 import type { AgentEarlierMessages } from "./use-agent-chat";
 
 // 首屏不加载 markdown 渲染器（门禁：tests/performance/orbit-agent-markdown-split.test.ts）。
@@ -164,16 +163,16 @@ export function IOrbitChat({
     language === "zh" ? "zh" : "en",
   );
 
-  // 设计 300–303 的四枚追问：两枚发消息，两枚是导航（`goStrategy` / `goContacts`）。
+  // 设计 300–303 的四枚追问：两枚发消息，两枚是导航（R25 起都去 Task › プラン）。
   // 导航两枚的文案取设计自己的导航说法，不沿用 306 那句带具体行业的 mock。
   const followupAsks = [
     t({ en: "How do I sign up for these events?", zh: "这些活动怎么报名？" }),
     t({ en: "Recommend more events like these", zh: "推荐更多类似活动" }),
   ];
   const followupLinks = [
-    { href: "/app/agent/strategy", label: t({ en: "Draft a plan for me", zh: "帮我制定推进计划" }) },
+    { href: planTaskSegmentHref("web"), label: t({ en: "Draft a plan for me", zh: "帮我制定推进计划" }) },
     {
-      href: "/app/agent/strategy?view=contacts",
+      href: planTaskSegmentHref("web"),
       label: t({ en: "Who should I contact first?", zh: "我应该先联系谁？" }),
     },
   ];
@@ -260,14 +259,6 @@ export function IOrbitChat({
                   ) : null}
                 </span>
                 <span className="ir-user-avatar">{userInitial}</span>
-              </div>
-            ) : message.planCard ? (
-              // W0008：第一份计划的回答卡片（结论在前）。不套灰色气泡，没有复制 / 重试。
-              <div className="ir-a-row ir-pc-row" data-orbit-plan-turn key={`plan-${message.planCard.view.planId}`}>
-                <span className="ir-a-avatar">✦</span>
-                <span className="ir-a-col">
-                  <IOrbitPlanCard reveal={message.planCard.reveal} view={message.planCard.view} />
-                </span>
               </div>
             ) : (
               <div className="ir-a-row" data-orbit-iorbit-message key={message.id ?? `assistant-${index}`}>

@@ -8,13 +8,11 @@
  *   右窄栏   时间：选中日的时间线（今天带「现在」线）+ 紧凑月历
  *   栏目区   本周推进 | 已报名活动 | 最近对话，无卡片边框、细线分栏
  *
- * 今日要事的来源与排序：2 小时内开始的日程 → critical/high 信号 →
- * 「N 位新联系人可能对应你的计划」（W0010，有生效计划且有待确认的匹配时，点开共用确认弹层）→
+ * 今日要事的来源与排序：2 小时内开始的日程 → critical/high 信号 → 名片待确认 →
  * 其余信号 → 跟进队列（仅在信号里没有 followup_due 时补位，避免同一件事出现两次）。
  * 排序只看 severity 与真实时间戳，不用跟进队列的到期字段（到期时间被夹成「今天」的旧 bug）。
- * W0036（RH-02）：原有来源之后补入本周计划行动（≤2，拖期优先）与补人脉提示，**只补到前 3 个
- * 位置**（`today-plan-items.ts`）；计划行动可勾掉（同一个 `togglePlanAction`，本周推进同步）、
- * 「今天先不做」（只存本机、按账号与东京日分 key，不补位）、点标题跳转。首页内另算共享的
+ * W0036（RH-02）：原有来源之后补入补人脉提示，**只补到前 3 个位置**。R25：v1 计划只读，首页不再读
+ * v1 计划（本周行动、计划匹配、周一小结、计划点名活动都已去掉；计划在 Task › プラン）。首页内另算共享的
  * 推荐活动池 `eventPool`／`eventPoolReady`（W0037／W0038 消费），本 Sprint 只给空日导语用。
  * W0037（RH-03）：「还有 N 件」之后、追问条之前是活动小模组（`iorbit-today-events.tsx`）：要事就绪且
  * 池就绪后才渲染；要事为空（含部分来源读不到）时展开社群卡 + 活动，有要事时只剩「本周还有 N 场」一行；
@@ -26,13 +24,8 @@
  *     社群不是活动（D6）：只在活动小模组里以紧凑社群卡出现，「已报名活动」栏只列报名
  *   - 日程 / 月历 / 跟进：`refreshHomeDashboardAction()` 的 D25 facts
  *   - 信号：`POST /api/agent/signals?view=home`，完成 / 明天提醒走 `PATCH /api/agent/signals/{id}`
- *   - 本周推进（W0009）：有生效计划时读 `GET /api/agent/plans/current`，显示当前阶段、
- *     「第 n 周 / 共 N 周」、本周最多 3 件可打勾的行动（`PATCH /api/agent/plans/items/{id}`，
- *     乐观更新、失败回滚并提示）、行动完成数与已建立联系人数；没有计划（或读不到）时保持
- *     原来的账本进度显示（`GET /api/agent/ledger`）
+ *   - 本周推进：账本进度（`GET /api/agent/ledger`）；「执行计划 →」去 Task › プラン
  *   - 最近对话：`GET /api/ai/conversations/sessions?limit=3`
- *   - 周一小结（W0012）：东京时间周一且有生效计划时读 `GET /api/agent/plans/weekly-summary`，
- *     报头导语换成规则拼出的上周小结（不调 AI）；其他日子、读取中或读不到时保持今日导语
  * 无数据一律走空态文案，不伪造数字。
  *
  * 示例模式（W0004）：壳挂了 `DemoModeProvider` 时，上面每个来源都换成
@@ -45,7 +38,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
-import type { PlanViewSnapshot } from "../../../../../features/plans/contract";
 import {
   buildHomeEventPool,
   type HomeEventPoolCandidate,
@@ -64,12 +56,6 @@ import type {
 } from "../home-facts-route-service";
 import type { HomeFactsViewItem } from "../home-facts-view-model";
 import {
-  buildPlanWeekSummary,
-  isTokyoMonday,
-  weeklySummaryLede,
-  type PlanWeeklySummary,
-} from "../plan/plan-route-view-model";
-import {
   agentSignalsToNextActionRows,
   type AgentTodaySignalView,
 } from "../orbit-agent-next-actions";
@@ -86,14 +72,6 @@ import {
   iorbitSelectedDayLabel,
 } from "./iorbit-model";
 import {
-  fetchCurrentPlan,
-  fetchWeeklySummary,
-  patchPlanActionDone,
-  withActionDone,
-  withServerItem,
-} from "./iorbit-plan-client";
-import { fetchPlanMatches, withoutCandidate, type PlanMatchCandidate, type PlanMatchList } from "./plan-match-client";
-import {
   contactValueLine,
   contactValueWhyNow,
   type ContactValueLineModel,
@@ -104,22 +82,11 @@ import {
   fetchContactValueLines,
   type ContactValueLineItem,
 } from "../../contacts/network-0918/contact-value-line";
-import { PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { usePendingCards } from "./use-pending-cards";
 import { formatHomeEventReason, IOrbitTodayEvents } from "./iorbit-today-events";
 import { eventDetailHref } from "../../events/events-0918/events-model";
-import {
-  currentPlanPhase,
-  NETWORK_NUDGE_HREF,
-  NETWORK_NUDGE_THRESHOLD,
-  networkNudgeQuiet,
-  networkNudgeStorageKey,
-  planPoolEventIds,
-  selectTodayPlanActions,
-  TODAY_SKIP_KEY_PREFIX,
-  todaySkipStorageKey,
-} from "./today-plan-items";
+import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 
 const TZ = "Asia/Tokyo";
 /** 日程在多久之内开始才进今日要事（Q6：2 小时）。 */
@@ -128,6 +95,34 @@ const SOON_MS = 2 * 60 * 60 * 1000;
 const VISIBLE_ITEMS = 3;
 /** W0061：首页一次批量读取「TA 能帮你」最多带几个联系人 id（只看露出的 3 条事项；PLANNER 硬上限 6）。 */
 const HOME_VALUE_LINE_MAX_IDS = 3;
+/** W0036 补人脉：已确认联系人少于这个数才提示。 */
+const NETWORK_NUDGE_THRESHOLD = 10;
+/** 「7 天内不再提示」：按东京日计，关掉当天算第 1 天，第 8 天再出现。 */
+const NETWORK_NUDGE_QUIET_DAYS = 7;
+const NETWORK_NUDGE_KEY_PREFIX = "orbit.today.networkNudge.v1:";
+/** 补人脉按钮的去处：名片上传区的正式入口（全站只挂一份名片状态机，首页不嵌上传组件）。 */
+const NETWORK_NUDGE_HREF = "/app/contacts/new?method=scan";
+
+function networkNudgeStorageKey(account: string): string {
+  return `${NETWORK_NUDGE_KEY_PREFIX}${account}`;
+}
+
+const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function dayNumber(day: string): number | null {
+  const match = ISO_DAY.exec(day);
+  return match ? Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) / 86_400_000 : null;
+}
+
+/** 关掉补人脉的那个东京日 → 今天是否仍在免打扰期内。 */
+function networkNudgeQuiet(dismissedDay: string | null, today: string): boolean {
+  if (!dismissedDay) return false;
+  const from = dayNumber(dismissedDay);
+  const to = dayNumber(today);
+  if (from === null || to === null) return false;
+  const elapsed = to - from;
+  return elapsed >= 0 && elapsed < NETWORK_NUDGE_QUIET_DAYS;
+}
 
 type Loadable<T> = T | "pending" | "unavailable";
 
@@ -142,7 +137,7 @@ export interface IOrbitHomeProps {
   communityJoined?: boolean;
   /**
    * W0022：服务端开关 `ORBIT_GUIDE_DEMO` 是否打开。打开时无计划分支的「帮我制定推进计划 →」
-   * 去 `/app/start?step=3`；默认 false（链接保持 `/app/agent/strategy`）。示例期不生效。
+   * 去 `/app/start?step=3`；默认 false（链接去 Task › プラン）。示例期不生效。
    */
   guideEnabled?: boolean;
   home: OrbitHomeViewModel | null;
@@ -158,14 +153,9 @@ export interface IOrbitHomeProps {
   clock?: () => Date;
   /**
    * W0036：示例期服务端读到的「近期可报名」真实活动（RH-03「活动始终真实」）。只在示例期用来组
-   * 活动池；真实期活动池由 snapshot + 计划算出。缺省等于空池。
+   * 活动池；真实期活动池由 snapshot 算出。缺省等于空池。
    */
   demoEventCandidates?: readonly HomeEventPoolCandidate[];
-  /**
-   * 覆盖点，仅测试使用：SC-07 备选约束下补查计划点名活动（默认动态 import `home-plan-events-actions`）。
-   * 读不到时 reject。
-   */
-  resolvePlanEvents?: (eventIds: readonly string[]) => Promise<readonly HomeEventPoolCandidate[]>;
 }
 
 const isPersonalFact = (item: HomeFactsViewItem): item is HomeFactsPersonalItem =>
@@ -213,10 +203,8 @@ interface TodayItem {
   signalId: string | null;
   /** 在本页打开（W0010 匹配确认弹层）而不是导航；示例模式下同样被拦下。 */
   open?: () => void;
-  /** W0036：计划行动（可勾掉、今天先不做、标题可点）或补人脉提示。 */
-  kind?: "plan" | "nudge";
-  /** 计划行动的条目 id。 */
-  planItemId?: string;
+  /** W0036：补人脉提示（R25 起 v1 计划行动不再进今日要事）。 */
+  kind?: "nudge";
   /**
    * W0061：恰好指向一位联系人的事项（计划行动、跟进）——挂「TA 能帮你」一句话。
    * `whyAction` 只有计划行动才有（「为什么现在」，G-17）；跟进等事项为 null。
@@ -245,23 +233,6 @@ function writeStored(key: string, value: string): void {
     window.localStorage?.setItem(key, value);
   } catch {
     // 写不进（隐私模式、配额、被禁用）：本页内存里照样生效。
-  }
-}
-
-/** 写入「今天先不做」时顺手删掉同一账号其他日期的 key（只留今天）。 */
-function pruneSkipKeys(account: string, keep: string): void {
-  try {
-    const storage = window.localStorage;
-    if (!storage || typeof storage.key !== "function") return;
-    const prefix = `${TODAY_SKIP_KEY_PREFIX}${account}:`;
-    const stale: string[] = [];
-    for (let index = 0; index < storage.length; index += 1) {
-      const key = storage.key(index);
-      if (key && key.startsWith(prefix) && key !== keep) stale.push(key);
-    }
-    for (const key of stale) storage.removeItem(key);
-  } catch {
-    // 清理失败不影响今天的隐藏。
   }
 }
 
@@ -375,7 +346,6 @@ export function IOrbitHome({
   onOpenSession,
   clock,
   demoEventCandidates,
-  resolvePlanEvents,
 }: IOrbitHomeProps) {
   const { language, t } = useOrbitLanguage();
   const lang: "en" | "zh" = language === "zh" ? "zh" : "en";
@@ -388,11 +358,6 @@ export function IOrbitHome({
   const [draft, setDraft] = useState("");
   const [snapshotState, setSnapshot] = useState<Loadable<HomeDashboardSnapshot>>("pending");
   const [ledgerState, setLedger] = useState<Loadable<readonly AgentLedgerEntry[]>>("pending");
-  const [planState, setPlan] = useState<Loadable<PlanViewSnapshot | null>>("pending");
-  const [planBusyId, setPlanBusyId] = useState<string | null>(null);
-  const [planError, setPlanError] = useState<string | null>(null);
-  // 首页上刚打过勾的行动暂留一行（可撤销），不占「最多 3 件」的名额；刷新后消失。
-  const [planSticky, setPlanSticky] = useState<readonly string[]>([]);
   const [signalsState, setSignals] = useState<Loadable<readonly AgentTodaySignalView[]>>("pending");
   const [sessionsState, setSessions] = useState<Loadable<readonly IOrbitHomeSession[]>>("pending");
   const [signalBusyId, setSignalBusyId] = useState<string | null>(null);
@@ -400,10 +365,6 @@ export function IOrbitHome({
   const [signalsRefreshing, setSignalsRefreshing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
-  // W0010：待确认的人脉需求匹配（只在有生效计划时读取）；弹层打开时固定一份清单，
-  // 确认过的行留在弹层里显示「约 TA」行动卡，计数照常减少。
-  const [matches, setMatches] = useState<PlanMatchList | null>(null);
-  const [matchSheet, setMatchSheet] = useState<readonly PlanMatchCandidate[] | null>(null);
   // W0011：本机进行中批次里待确认的名片（只读 GET；示例模式不读，恒为就绪）。
   // 读取中不算就绪、读不到算部分数据缺失：都不能给出「今天没有要紧的事」。
   const pendingCardsState = usePendingCards(!demoActive);
@@ -452,33 +413,7 @@ export function IOrbitHome({
   const home = demoData ? demoData.home : homeProp;
   // W0022：示例期不出引导入口与提醒（示例壳本来也不传这两个值）。
   const guideEnabled = guideEnabledProp && !demoActive;
-  // 示例模式保留示例的账本显示，不读计划。
-  const plan: Loadable<PlanViewSnapshot | null> = demoData ? null : planState;
-  const planSnapshot = plan !== "pending" && plan !== "unavailable" ? plan : null;
-
-  // W0036「今天先不做」：按「账号 + 东京日」记一份隐藏集合。只在 effect 里读存储（服务端渲染不碰
-  // localStorage）；集合带着它所属的范围，账号或日期一变就不再生效（A → B 不沿用 A 的隐藏项）。
-  const skipScope = `${account ?? ""}|${todayKey}`;
-  const [skipState, setSkipState] = useState<{ ids: readonly string[]; scope: string }>({ ids: [], scope: "" });
-  useEffect(() => {
-    if (typeof window === "undefined" || demoActive) return;
-    if (account === null) {
-      setSkipState({ ids: [], scope: `|${todayKey}` });
-      return;
-    }
-    const stored = readStoredJson(todaySkipStorageKey(account, todayKey));
-    const ids = Array.isArray(stored) ? stored.filter((value): value is string => typeof value === "string") : [];
-    setSkipState({ ids, scope: `${account}|${todayKey}` });
-  }, [account, demoActive, todayKey]);
-  const skippedIds = skipState.scope === skipScope ? skipState.ids : [];
-  const skipPlanToday = (itemId: string) => {
-    const ids = skippedIds.includes(itemId) ? skippedIds : [...skippedIds, itemId];
-    setSkipState({ ids, scope: skipScope });
-    if (account === null) return;
-    const key = todaySkipStorageKey(account, todayKey);
-    writeStored(key, JSON.stringify(ids));
-    pruneSkipKeys(account, key);
-  };
+  // R25：v1 计划只读、不再进首页（本周推进一律显示账本进度；v2 计划在 Task › プラン）。
 
   // W0036 补人脉「7 天内不再提示」：按账号记关掉当天的东京日，同样只在 effect 里读。
   const [nudgeState, setNudgeState] = useState<{ day: string | null; scope: string | null }>({ day: null, scope: null });
@@ -539,41 +474,6 @@ export function IOrbitHome({
       .catch(() => setLedger("unavailable"));
     return () => controller.abort();
   }, [demoActive]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || demoActive) return;
-    const controller = new AbortController();
-    // W0021：首页只要计划与条目（`?view=home`，服务端不读进展记录）。
-    void fetchCurrentPlan(controller.signal, { view: "home" })
-      .then((value) => setPlan(value))
-      .catch(() => {
-        if (!controller.signal.aborted) setPlan("unavailable");
-      });
-    return () => controller.abort();
-  }, [demoActive]);
-
-  const hasPlan = planState !== "pending" && planState !== "unavailable" && planState !== null;
-  // W0012：东京周一才读上周小结（示例模式不读）；读不到就保持今日导语。
-  const [weeklySummary, setWeeklySummary] = useState<PlanWeeklySummary | null>(null);
-  const monday = isTokyoMonday(now);
-  useEffect(() => {
-    if (typeof window === "undefined" || demoActive || !hasPlan || !monday) return;
-    const controller = new AbortController();
-    void fetchWeeklySummary(controller.signal)
-      .then((value) => setWeeklySummary(value))
-      .catch(() => undefined);
-    return () => controller.abort();
-  }, [demoActive, hasPlan, monday]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || demoActive || !hasPlan) return;
-    const controller = new AbortController();
-    // 读不到就当没有：今日要事不因为匹配接口故障而报错。
-    void fetchPlanMatches(controller.signal, lang)
-      .then((value) => setMatches(value))
-      .catch(() => undefined);
-    return () => controller.abort();
-  }, [demoActive, hasPlan, lang]);
 
   useEffect(() => {
     if (typeof window === "undefined" || demoActive) return;
@@ -801,7 +701,7 @@ export function IOrbitHome({
           hot: true,
           key: row.id,
           pills: [{ hot: true, text: t({ en: `Starts ${row.time} · ${left}`, zh: `${row.time} 开始 · ${left}` }) }],
-          primary: { href: "/app/agent/plan", label: t({ en: "Open schedule", zh: "查看日程" }) },
+          primary: { href: "/app/tasks?tab=calendar", label: t({ en: "Open schedule", zh: "查看日程" }) },
           proof: [[t({ en: "Schedule", zh: "日程" }), row.meta] as const],
           signalId: null,
           title: `${row.time} ${row.title}`,
@@ -875,36 +775,9 @@ export function IOrbitHome({
         ]
       : [];
 
-    // W0010：「N 位新联系人可能对应你的计划」排在 critical/high 信号之后、其余信号之前。
-    // W0011：名片待确认排在它前面——名片确认后才会产生新的匹配。
     const urgentCount = signalRows.filter(
       (row) => row.signal.severity === "critical" || row.signal.severity === "high",
     ).length;
-    const matchCount = matches?.contactCount ?? 0;
-    const matchNeeds = matches ? [...new Set(matches.candidates.map((candidate) => candidate.needTitle))] : [];
-    const fromMatches: TodayItem[] =
-      matches && matchCount > 0
-        ? [
-            {
-              ask: null,
-              hot: false,
-              key: "plan-match",
-              open: () => setMatchSheet(matches.candidates),
-              pills: [{ text: t({ en: "Plan", zh: "计划" }) }],
-              primary: { href: "/app/agent/plan", label: t({ en: "Review one by one", zh: "逐个确认" }) },
-              proof: [[t({ en: "Network needs", zh: "人脉需求" }), matchNeeds.slice(0, 3).join(" · ")] as const],
-              signalId: null,
-              title: t({
-                en: `${matchCount} new contact(s) may fit your plan`,
-                zh: `${matchCount} 位新联系人可能对应你的计划`,
-              }),
-              why: t({
-                en: "Only a suggestion — nothing is linked until you confirm.",
-                zh: "只是建议，确认后才会关联到计划。",
-              }),
-            },
-          ]
-        : [];
 
     // 信号里已经有 followup_due 时，跟进队列不再补位（同一件事不出现两次）。
     const hasFollowupSignal = signalRows.some((row) => row.signal.type === "followup_due");
@@ -937,73 +810,18 @@ export function IOrbitHome({
       ...soon,
       ...fromSignals.slice(0, urgentCount),
       ...fromCards,
-      ...fromMatches,
       ...fromSignals.slice(urgentCount),
       ...fromFollowups,
     ];
 
-    // W0036：原有来源之后补计划行动（≤ min(2, 3 − n)），先选定再去掉「今天先不做」的，不补位。
-    // 示例期 `plan = null`，不加（W36-2）。
-    const fromPlan: TodayItem[] = planSnapshot
-      ? selectTodayPlanActions(planSnapshot, now, { baseCount: base.length, skippedIds }).map((action) => ({
-          ask: null,
-          hot: false,
-          key: `plan:${action.id}`,
-          kind: "plan" as const,
-          pills: [
-            {
-              text: action.phase
-                ? t({
-                    en: `This week's plan · Phase ${action.phase.phaseNo} ${action.phase.phaseTitle}`,
-                    zh: `本周计划 · 第 ${action.phase.phaseNo} 阶段 ${action.phase.phaseTitle}`,
-                  })
-                : t({ en: "This week's plan", zh: "本周计划" }),
-            },
-            ...(action.weeksOverdue > 0
-              ? [{ text: t({ en: `Carried over ${action.weeksOverdue} wk`, zh: `已顺延 ${action.weeksOverdue} 周` }) }]
-              : []),
-          ],
-          planItemId: action.id,
-          ...(action.contactId
-            ? {
-                person: {
-                  contactId: action.contactId,
-                  name: "",
-                  needTitle: action.needTitle,
-                  subtitle: null,
-                  whyAction: {
-                    detail: action.detail,
-                    phaseNo: action.phase?.phaseNo ?? null,
-                    phaseTitle: action.phase?.phaseTitle ?? null,
-                  },
-                },
-              }
-            : {}),
-          primary: {
-            href: action.href,
-            label: action.href.startsWith("/app/contacts/")
-              ? t({ en: "Open contact", zh: "打开联系人" })
-              : action.href.startsWith("/app/events/")
-                ? t({ en: "Open event", zh: "查看活动" })
-                : t({ en: "Open in plan", zh: "在计划里查看" }),
-          },
-          proof: [],
-          signalId: null,
-          title: action.title,
-          why: action.detail,
-        }))
-      : [];
-
     // W0036 补人脉：已确认联系人 < 10 且还有空位（计划读到之后才判断，免得计划行动到来时被挤走）。
     // `home` 为 null 时人数未知，不出。
     const people = home?.stats.people;
-    const phase = planSnapshot ? currentPlanPhase(planSnapshot, now) : null;
     const nudgeOpen =
       !demoActive &&
-      plan !== "pending" &&
       typeof people === "number" &&
       people < NETWORK_NUDGE_THRESHOLD &&
-      base.length + fromPlan.length < 3 &&
+      base.length < 3 &&
       !networkNudgeQuiet(nudgeDismissedDay, todayKey);
     const fromNudge: TodayItem[] = nudgeOpen
       ? [
@@ -1012,17 +830,7 @@ export function IOrbitHome({
             hot: false,
             key: "network-nudge",
             kind: "nudge",
-            // W36-4：有计划时药丸带当前阶段名（主稿与短讯都看得到），没有计划时不提阶段。
-            pills: [
-              {
-                text: phase
-                  ? t({
-                      en: `Grow your network · Phase ${phase.phaseNo} ${phase.phaseTitle}`,
-                      zh: `补人脉 · 第 ${phase.phaseNo} 阶段 ${phase.phaseTitle}`,
-                    })
-                  : t({ en: "Grow your network", zh: "补人脉" }),
-              },
-            ],
+            pills: [{ text: t({ en: "Grow your network", zh: "补人脉" }) }],
             primary: { href: NETWORK_NUDGE_HREF, label: t({ en: "Scan cards", zh: "去扫名片" }) },
             proof: [[t({ en: "Confirmed contacts", zh: "已确认联系人" }), t({ en: `${people}`, zh: `${people} 位` })] as const],
             signalId: null,
@@ -1030,34 +838,25 @@ export function IOrbitHome({
               en: `Only ${people} confirmed contact(s) so far — add a few business cards`,
               zh: `已确认的联系人只有 ${people} 位，补几张名片`,
             }),
-            why: phase
-              ? t({
-                  en: `Phase ${phase.phaseNo} of your plan, ${phase.phaseTitle}, moves faster with more people to reach.`,
-                  zh: `计划第 ${phase.phaseNo} 阶段「${phase.phaseTitle}」需要更多可以联系的人。`,
-                })
-              : t({
-                  en: "The more people you have on file, the more paths iOrbit can find for you.",
-                  zh: "联系人越多，iOrbit 能帮你找到的路越多。",
-                }),
+            why: t({
+              en: "The more people you have on file, the more paths iOrbit can find for you.",
+              zh: "联系人越多，iOrbit 能帮你找到的路越多。",
+            }),
           },
         ]
       : [];
 
-    return [...base, ...fromPlan, ...fromNudge];
+    return [...base, ...fromNudge];
   }, [
     demoActive,
     followupItems,
     fmtDay,
     fmtTime,
     home,
-    matches,
     now,
     nudgeDismissedDay,
     pendingCards,
-    plan,
-    planSnapshot,
     signalRows,
-    skippedIds,
     t,
     todayKey,
     todayRows,
@@ -1066,7 +865,7 @@ export function IOrbitHome({
   // W0061：今日要事里指向单一联系人的事项——要事就绪后发一次批量只读请求取「TA 能帮你」；
   // 之后事项变化只补查没取过的 id。示例期 0 次请求（示例没有人物事项）；首页不轮询（下次打开即更新）。
   const itemsSettledForValues =
-    snapshot !== "pending" && signals !== "pending" && plan !== "pending" && pendingCardsState.status !== "pending";
+    snapshot !== "pending" && signals !== "pending" && pendingCardsState.status !== "pending";
   // 只取默认露出的前 3 条事项（≤3 个 id，流量按此计）；展开后的其余事项保持原样。
   const personIdsKey = useMemo(
     () =>
@@ -1145,71 +944,24 @@ export function IOrbitHome({
 
   const recentSessions = Array.isArray(sessions) ? sessions.slice(0, 3) : [];
 
-  const planSummary = planSnapshot ? buildPlanWeekSummary(planSnapshot, now, lang, planSticky) : null;
-
   // W0036 推荐活动池（RH-03，W0037 小模组与 W0038 月历只消费这两个值）。真实期由 snapshot 的
   // 目标匹配与「近期可报名」+ 已读到的计划算出，不新增客户端请求；示例期只用服务端读到的真实近期活动。
   // 标题按当前首页语言换成审阅过的三语标题（ja → en，未知 id 回退原标题）；地点是来源原文。
   const recommendations =
     snapshot !== "pending" && snapshot !== "unavailable" ? snapshot.recommendations : undefined;
-  // SC-07 备选约束：snapshot 只带前 12 场时，计划点名却不在其中（也不在目标匹配里）的活动补查一次。
-  const missingPlanEventKey = useMemo(() => {
-    if (demoActive || !recommendations?.upcomingTruncated || !planSnapshot) return "";
-    const known = new Set([
-      ...(recommendations.upcoming ?? []).map((item) => item.eventId),
-      ...(recommendations.state === "success" ? recommendations.items.map((item) => item.eventId) : []),
-    ]);
-    return planPoolEventIds(planSnapshot)
-      .filter((eventId) => !known.has(eventId))
-      .join("\n");
-  }, [demoActive, planSnapshot, recommendations]);
-  // 结果按「缺哪些 id」这把 key 记：同一 key 只查一次；key 变了（换账号、计划刷新后点名了别的活动）
-  // 旧结果立即作废，再按新 key 查一次（review P2）。
-  const [planEventLookup, setPlanEventLookup] = useState<{
-    key: string;
-    value: Loadable<readonly HomeEventPoolCandidate[]>;
-  } | null>(null);
-  const requestedPlanEventKey = useRef<string | null>(null);
-  useEffect(() => {
-    if (typeof window === "undefined" || !missingPlanEventKey) return;
-    if (requestedPlanEventKey.current === missingPlanEventKey) return;
-    requestedPlanEventKey.current = missingPlanEventKey;
-    const key = missingPlanEventKey;
-    const eventIds = key.split("\n");
-    setPlanEventLookup({ key, value: "pending" });
-    const load = resolvePlanEvents
-      ? resolvePlanEvents(eventIds)
-      : import("../home-plan-events-actions")
-          .then((mod) => mod.resolveHomePlanEventsAction(eventIds))
-          .then((result) => {
-            if (result.state !== "events") throw new Error(result.state);
-            return result.items;
-          });
-    void load.then(
-      (items) => setPlanEventLookup((current) => (current?.key === key ? { key, value: items } : current)),
-      () => setPlanEventLookup((current) => (current?.key === key ? { key, value: "unavailable" } : current)),
-    );
-  }, [missingPlanEventKey, resolvePlanEvents]);
-  const planEventExtra: Loadable<readonly HomeEventPoolCandidate[]> | "idle" =
-    planEventLookup && planEventLookup.key === missingPlanEventKey ? planEventLookup.value : "idle";
   const eventPool: readonly HomeEventPoolItem[] = useMemo(() => {
     const pool = buildHomeEventPool({
       goalMatches: demoActive || recommendations?.state !== "success" ? [] : recommendations.items,
       now,
-      planEventIds: planSnapshot ? planPoolEventIds(planSnapshot) : [],
+      planEventIds: [],
       registeredEventIds: new Set(registeredEvents.map((event) => event.id)),
       upcoming: demoActive
         ? (demoEventCandidates ?? [])
-        : [...(recommendations?.upcoming ?? []), ...(Array.isArray(planEventExtra) ? planEventExtra : [])],
+        : (recommendations?.upcoming ?? []),
     });
     return localizeHomeEventPool(pool, lang);
-  }, [demoActive, demoEventCandidates, lang, now, planEventExtra, planSnapshot, recommendations, registeredEvents]);
-  const eventPoolReady =
-    demoActive ||
-    (snapshot !== "pending" &&
-      plan !== "pending" &&
-      planEventExtra !== "pending" &&
-      !(missingPlanEventKey && planEventExtra === "idle"));
+  }, [demoActive, demoEventCandidates, lang, now, recommendations, registeredEvents]);
+  const eventPoolReady = demoActive || snapshot !== "pending";
 
   // W0038（RH-04）：月历空心圈 = 活动池里当月的前 5 场（池的顺序、东京日期落位）。
   // 它们只进右栏时间线与月历标记，不进 `scheduleRows`／`todayRows`／今日要事／「N 个日程」。
@@ -1249,33 +1001,6 @@ export function IOrbitHome({
     const right = Number.isFinite(b.startMs) ? b.startMs : Number.POSITIVE_INFINITY;
     return left - right || a.id.localeCompare(b.id);
   });
-  // 打勾：先改本地，服务端确认后换成返回的条目；失败只把这一条回滚并提示。
-  const togglePlanAction = async (itemId: string, done: boolean) => {
-    if (!planSnapshot || planBusyId) return;
-    const previous = planSnapshot.items.find((item) => item.id === itemId);
-    setPlanError(null);
-    setPlanBusyId(itemId);
-    setPlanSticky((current) => (current.includes(itemId) ? current : [...current, itemId]));
-    setPlan((current) => (current && current !== "pending" && current !== "unavailable" ? withActionDone(current, itemId, done, new Date()) : current));
-    try {
-      const result = await patchPlanActionDone(itemId, done);
-      setPlan((current) => (current && current !== "pending" && current !== "unavailable" ? withServerItem(current, result.item, result.log) : current));
-    } catch (error) {
-      setPlan((current) =>
-        current && current !== "pending" && current !== "unavailable" && previous
-          ? { ...current, items: current.items.map((item) => (item.id === itemId ? previous : item)) }
-          : current,
-      );
-      setPlanError(
-        t({
-          en: `Couldn't save that — it has been put back. (${(error as Error).message})`,
-          zh: `没能保存，已恢复原状。（${(error as Error).message}）`,
-        }),
-      );
-    } finally {
-      setPlanBusyId(null);
-    }
-  };
 
   const dateMain = new Intl.DateTimeFormat(locale, {
     day: "numeric",
@@ -1335,15 +1060,12 @@ export function IOrbitHome({
   const ready =
     snapshot !== "pending" &&
     ledger !== "pending" &&
-    plan !== "pending" &&
     signals !== "pending" &&
     sessions !== "pending" &&
     pendingCardsState.status !== "pending";
-  // W0036：计划行动是要事来源，计划读到之前不下「没有要紧的事」的结论。
   const itemsSettled =
     snapshot !== "pending" &&
     signals !== "pending" &&
-    plan !== "pending" &&
     pendingCardsState.status !== "pending";
   // 任一核心来源读不到时，不能给出「今天没有要紧的事」这种确定结论。
   // 跟进来源（排序运行时未验证等）单独失败时 snapshot 仍可用，也要算进来（W0025）。
@@ -1361,12 +1083,10 @@ export function IOrbitHome({
 
   // 导语：一句话概括今天，只用真实计数（Q9）。最紧的一件若有时间压力，钟点用暖色。
   // 暖色一屏不超过 3 处（主稿序号、倒计时、「现在」线），导语只用墨色强调。
-  const lede = weeklySummary && monday && !demoActive ? (
-    weeklySummaryLede(weeklySummary, lang)
-  ) : !itemsSettled ? (
+  const lede = !itemsSettled ? (
     t({ en: "Reading your day…", zh: "正在整理今天的事…" })
   ) : lead?.kind ? (
-    // W0036：第一条是计划行动或补人脉时，导语只说可以推进的一步。
+    // W0036：第一条是补人脉时，导语只说可以推进的一步。
     <>
       {t({ en: "One step you can take today: ", zh: "今天可以推进一步：" })}
       <strong>{lead.title}</strong>
@@ -1392,7 +1112,7 @@ export function IOrbitHome({
       zh: `今天没有要紧的事，日程上有 ${todayRows.length} 项安排。`,
     })
   ) : !eventPoolReady ? (
-    // 空日导语要引池里的活动：池还在补查计划活动时先不下「没有要紧的事」的结论，免得导语跳变。
+    // 空日导语要引池里的活动：池还没就绪时先不下「没有要紧的事」的结论，免得导语跳变。
     t({ en: "Reading your day…", zh: "正在整理今天的事…" })
   ) : eventPool[0] ? (
     // W0036：空日导语引一场池里的活动（不写活动类型：目录里没有这个字段）。
@@ -1409,27 +1129,7 @@ export function IOrbitHome({
   );
 
   const signalOps = (item: TodayItem) =>
-    item.kind === "plan" && item.planItemId ? (
-      <span className="ir-m-ops">
-        <button
-          className="btn ir-signal-op"
-          data-orbit-today-plan-done={item.planItemId}
-          disabled={planBusyId !== null}
-          onClick={() => void togglePlanAction(item.planItemId!, true)}
-          type="button"
-        >
-          {t({ en: "Done", zh: "完成" })}
-        </button>
-        <button
-          className="btn ir-signal-op"
-          data-orbit-today-plan-skip={item.planItemId}
-          onClick={() => skipPlanToday(item.planItemId!)}
-          type="button"
-        >
-          {t({ en: "Not today", zh: "今天先不做" })}
-        </button>
-      </span>
-    ) : item.kind === "nudge" ? (
+    item.kind === "nudge" ? (
       <span className="ir-m-ops">
         <button className="btn ir-signal-op" data-orbit-today-nudge-dismiss onClick={dismissNudge} type="button">
           {t({ en: "Don't remind me for 7 days", zh: "7 天内不再提示" })}
@@ -1466,23 +1166,7 @@ export function IOrbitHome({
       </span>
     ) : null;
 
-  // W0036：计划行动的标题可点，去联系人／活动／计划页对应行（与主按钮同一个去处）。
-  const titleOf = (item: TodayItem) =>
-    item.kind === "plan" && item.primary ? (
-      <a
-        className="ir-m-title-link"
-        data-orbit-today-plan-title={item.planItemId}
-        href={item.primary.href}
-        onClick={(event) => {
-          event.preventDefault();
-          openItem(item);
-        }}
-      >
-        {item.title}
-      </a>
-    ) : (
-      item.title
-    );
+  const titleOf = (item: TodayItem) => item.title;
 
   const proofLine = (proof: TodayItem["proof"]) =>
     proof.length > 0 ? (
@@ -1550,7 +1234,7 @@ export function IOrbitHome({
             <small>{weekday}</small>
           </span>
         </div>
-        <p className="ir-m-lede" data-orbit-home-lede={weeklySummary && monday && !demoActive ? "weekly" : "today"}>
+        <p className="ir-m-lede" data-orbit-home-lede="today">
           {lede}
         </p>
       </header>
@@ -1595,12 +1279,6 @@ export function IOrbitHome({
           {signalError ? (
             <p className="ir-note ir-note-error" role="alert">
               {signalError}
-            </p>
-          ) : null}
-          {/* W0036：今日要事里勾掉失败时，这里也要看得到（本周推进那一列照旧提示）。 */}
-          {planError && items.some((item) => item.kind === "plan") ? (
-            <p className="ir-m-plan-alert" data-orbit-today-plan-error role="alert">
-              {planError}
             </p>
           ) : null}
 
@@ -1866,7 +1544,7 @@ export function IOrbitHome({
                 >
                   {calOpen ? t({ en: "Week ▴", zh: "收起月历 ▴" }) : t({ en: "Month ▾", zh: "月历 ▾" })}
                 </button>
-                <a className="ir-m-cal-link" href="/app/agent/plan">
+                <a className="ir-m-cal-link" href="/app/tasks?tab=calendar">
                   {t({ en: "Schedule →", zh: "日程页 →" })}
                 </a>
               </span>
@@ -1928,78 +1606,11 @@ export function IOrbitHome({
 
       {/* 栏目区（Q14） */}
       <section aria-label={t({ en: "Columns", zh: "栏目" })} className="ir-m-cols">
-        {planSummary ? (
-          <div className="ir-m-col" data-orbit-iorbit-week="plan">
-            <div className="ir-m-col-head">
-              <h3>{t({ en: "This week", zh: "本周推进" })}</h3>
-              <em className="ir-m-plan-week">
-                {lang === "zh"
-                  ? `第 ${planSummary.week} 周 / 共 ${planSummary.totalWeeks} 周`
-                  : `Week ${planSummary.week} of ${planSummary.totalWeeks}`}
-              </em>
-            </div>
-            {planSummary.phaseTitle ? (
-              <p className="ir-m-plan-phase">
-                {lang === "zh" ? `第 ${planSummary.phaseNo} 阶段 · ` : `Phase ${planSummary.phaseNo} · `}
-                <b>{planSummary.phaseTitle}</b>
-              </p>
-            ) : null}
-            {planError ? (
-              <p className="ir-m-plan-alert" role="alert">
-                {planError}
-              </p>
-            ) : null}
-            {planSummary.actions.length > 0 ? (
-              <ul className="ir-m-plan-acts">
-                {planSummary.actions.map((action) => (
-                  <li
-                    className={action.done ? "ir-m-plan-act ir-m-plan-act-done" : "ir-m-plan-act"}
-                    data-orbit-iorbit-plan-action={action.id}
-                    key={action.id}
-                  >
-                    <button
-                      aria-checked={action.done}
-                      aria-label={action.title}
-                      className="btn ir-m-plan-box"
-                      disabled={planBusyId === action.id}
-                      onClick={() => void togglePlanAction(action.id, !action.done)}
-                      role="checkbox"
-                      type="button"
-                    />
-                    <span>{action.title}</span>
-                    {action.weeksOverdue > 0 ? (
-                      <small>
-                        {lang === "zh" ? `已延后 ${action.weeksOverdue} 周` : `Pushed back ${action.weeksOverdue} wk`}
-                      </small>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="ir-m-empty">{t({ en: "Nothing left to do this week.", zh: "这周没有待办的行动。" })}</p>
-            )}
-            <span className="ir-m-plan-counts">
-              <span>
-                {t({ en: "Actions ", zh: "行动 " })}
-                <b>
-                  {planSummary.actionsDone}/{planSummary.actionsTotal}
-                </b>
-              </span>
-              <span>
-                {t({ en: "Connected ", zh: "已建立联系 " })}
-                <b>{planSummary.contactsEstablished}</b>
-                {t({ en: "", zh: " 位" })}
-              </span>
-            </span>
-            <a className="ir-m-plan-link" href="/app/agent/plan">
-              {t({ en: "See the full plan →", zh: "查看完整计划 →" })}
-            </a>
-          </div>
-        ) : (
+        {/* R25：v1 计划不再进首页；本周推进只显示账本进度，计划入口去 Task › プラン。 */}
           <div className="ir-m-col">
             <div className="ir-m-col-head">
               <h3>{t({ en: "This week", zh: "本周推进" })}</h3>
-              <a href="/app/agent/plan">{t({ en: "Plan →", zh: "执行计划 →" })}</a>
+              <a href={planTaskSegmentHref("web")}>{t({ en: "Plan →", zh: "执行计划 →" })}</a>
             </div>
             <p className="ir-m-goal">
               {home?.account.relationshipGoal?.trim() ||
@@ -2035,15 +1646,11 @@ export function IOrbitHome({
               </p>
             )}
             <span className="ir-m-strategy">
-              <a href="/app/agent/strategy?view=contacts">
-                {t({ en: "Who should I contact first? →", zh: "我该先联系谁 →" })}
-              </a>
-              <a href={guideEnabled ? "/app/start?step=3" : "/app/agent/strategy"}>
+              <a href={guideEnabled ? "/app/start?step=3" : planTaskSegmentHref("web")}>
                 {t({ en: "Draft a plan →", zh: "帮我制定推进计划 →" })}
               </a>
             </span>
           </div>
-        )}
 
         <div className="ir-m-col">
           <div className="ir-m-col-head">
@@ -2133,22 +1740,6 @@ export function IOrbitHome({
           )}
         </div>
       </section>
-      {matchSheet ? (
-        <PlanMatchDialog label={t({ en: "Plan matches", zh: "计划匹配" })} onClose={() => setMatchSheet(null)}>
-          <PlanMatchSheet
-            candidates={matchSheet}
-            onDecided={(candidateId, decision) => {
-              setMatches((current) => (current ? withoutCandidate(current, candidateId) : current));
-              // 确认后本周多了一条「约 TA」：重新读计划，本周推进跟着更新。
-              if (decision === "accept") {
-                void fetchCurrentPlan(undefined, { view: "home" })
-                  .then((value) => setPlan(value))
-                  .catch(() => undefined);
-              }
-            }}
-          />
-        </PlanMatchDialog>
-      ) : null}
     </div>
   );
 }

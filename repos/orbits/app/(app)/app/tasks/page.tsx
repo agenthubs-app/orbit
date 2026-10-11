@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
-import { loadPlanSlot, planStartHref } from "../agent/plan/plan-slot";
+import { loadPlanSlot, planStartHref } from "./plan-slot";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { TaskContainer } from "../orbit-2026/task/TaskContainer";
 import { taskTabFrom } from "../orbit-2026/task/task-tabs";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 // R07: /app/tasks is the Task container — カレンダー / To-do / プラン / メモ (`?tab=`).
 // The To-do slot is the existing To-do page, the calendar slot the existing
 // personal schedule (still also at /app/tasks/personal). The プラン slot is the
-// existing plan screen (product decision (a), R07 review M5), read only when that
+// plan v2 overview / goal input / 以前のプラン (`plan-slot.tsx`), read only when that
 // tab is asked for: switching tabs on the client re-requests the page with ?tab=.
 export default async function AppTasksPage({ searchParams }: { searchParams?: Promise<LifecyclePageSearchParams & { tab?: string; plan?: string; new?: string }> } = {}) {
   const params = await searchParams;
@@ -32,7 +32,7 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
   });
   const relationshipTasks = await loadLifecycleTaskPages({ actorId: actor?.id ?? "", params });
   // R25: `plan` picks the goal (after the switcher's `open`), `new=1` opens the goal input.
-  const plan = tab === "plan" && actor ? await loadPlanSlot(actor, session.user.id, { newGoal: params?.new === "1", planId: typeof params?.plan === "string" ? params.plan : null }) : undefined;
+  const plan = tab === "plan" && actor ? await loadPlanSlot(actor, { newGoal: params?.new === "1", planId: typeof params?.plan === "string" ? params.plan : null }) : undefined;
 
   return <TaskContainer
     initialTab={tab}

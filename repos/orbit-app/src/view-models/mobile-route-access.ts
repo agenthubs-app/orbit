@@ -30,13 +30,12 @@ const SLUG_PATH_PARAM_KEYS = new Set(["slug"]);
 const INTAKE_PATH_PARAM_KEYS = new Set(["intakeId"]);
 const DRAFT_PATH_PARAM_KEYS = new Set(["draftId"]);
 const PLAN_TYPE_PATH_PARAM_KEYS = new Set(["planId", "itemId"]);
+const PLAN_PATH_PARAM_KEYS = new Set(["planId"]);
 const STATIC_CONTACT_ROUTES = new Set([
   "all-actions",
   "dashboard",
   "graph",
-  "intros",
   "list",
-  "matches",
   "new",
   "pipeline"
 ]);
@@ -67,6 +66,9 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
   if (root === "plans" && detail === "drafts" && segments.length === 4 && segments[3] === "edit") return DRAFT_PATH_PARAM_KEYS;
   // R24: the person-type page keeps both ids in the path.
   if (root === "plans" && detail !== "flow" && detail !== "drafts" && leaf === "types" && segments.length === 4) return PLAN_TYPE_PATH_PARAM_KEYS;
+  // R25: 見直し, 完了 and 以前のプラン keep the plan id in the path.
+  if (root === "plans" && detail !== "flow" && detail !== "drafts" && detail !== "legacy" && (leaf === "review" || leaf === "done") && segments.length === 3) return PLAN_PATH_PARAM_KEYS;
+  if (root === "plans" && detail === "legacy" && segments.length === 3) return PLAN_PATH_PARAM_KEYS;
 
   if ((root === "tasks" && detail !== undefined && detail !== "personal" && segments.length === 2) ||
     (root === "tasks" && detail === "relationship" && leaf !== undefined && segments.length === 3) ||

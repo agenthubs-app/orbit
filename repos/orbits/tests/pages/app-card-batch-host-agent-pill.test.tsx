@@ -173,7 +173,7 @@ test("the hide-pending-pill rule is exact /app/agent only and separate from the 
   // 兜底：今日要事读不到或没挂时，胶囊照常。
   assert.equal(cardBatchHostHidesPendingPill("/app/agent", "unavailable"), false);
   assert.equal(cardBatchHostHidesPendingPill("/app/agent", "absent"), false);
-  for (const pathname of ["/app/agent/plan", "/app/contacts", "/app/events", "/app"]) {
+  for (const pathname of ["/app/tasks", "/app/contacts", "/app/events", "/app"]) {
     assert.equal(cardBatchHostHidesPendingPill(pathname, "ready"), false, pathname);
   }
   // 宿主在 /app/agent 不让位：状态机照常在这里运行。

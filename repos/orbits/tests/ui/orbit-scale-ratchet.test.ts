@@ -184,8 +184,7 @@ const SNAPPED_FILES = [
   "app/(app)/app/agent/iorbit-0918/iorbit-chat-aside.tsx",
   "app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
   "app/(app)/app/agent/iorbit-0918/iorbit-actions.tsx",
-  "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx",
-  "app/(app)/app/agent/iorbit-0918/iorbit-strategy.tsx",
+  // R25：iorbit-plan.tsx / iorbit-strategy.tsx 随旧计划页与策略页删除。
 ];
 
 test("every snapped file has zero off-scale fontSize/fontWeight/gap literals", () => {

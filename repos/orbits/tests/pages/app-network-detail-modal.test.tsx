@@ -214,16 +214,17 @@ function panelHtml(row: ContactInsightRow | null, options: { goal?: string | nul
   return renderToStaticMarkup(<NetworkDetailModal contact={(options.contact ?? contact) as never} closeHref="/app/contacts" onFollow={() => {}} insight={insightOf(row, options)} planContext={options.plan === undefined ? PLAN : options.plan} />);
 }
 
-test("SC-W0060-03: a ready insight — goal line, 「TA 能帮你」, evidence, linked need chip with its phase, + 关联到其他需求, next step from the insight, why now from the week action, 约 TA／起草邮件", () => {
+test("SC-W0060-03: a ready insight — goal line, 「TA 能帮你」, evidence, linked need chip with its phase, next step from the insight, why now from the week action, 约 TA／起草邮件", () => {
   const html = panelHtml(readyRow, { contact: contactWithTimeline });
   const why = html.slice(html.indexOf('data-network-detail-section="why"'), html.indexOf('data-network-detail-section="profile"'));
   assert.match(why, /data-network-insight-panel="ready"/);
   assert.match(why, /为什么是 TA[\s\S]*?data-network-why-goal[^>]*>对照目标：认识 SaaS 决策人/);
   // W0061：首行是三处共用的 ContactValueLine。
   assert.match(why, /TA 能帮你：<\/span><span data-value-line-relation="true">惠子负责一家 AI 公司的合作。/);
-  assert.match(why, /依据[\s\S]*?href="\/app\/contacts\/c1#tl-memo_note_live-contact-detail-update_abc"[^>]*>memo 9\/28<[\s\S]*?href="\/app\/agent\/plan#plan-need-need-1"[^>]*>计划需求『认识能引荐目标客户的投资人』</);
+  assert.match(why, /依据[\s\S]*?href="\/app\/contacts\/c1#tl-memo_note_live-contact-detail-update_abc"[^>]*>memo 9\/28<[\s\S]*?href="\/app\/tasks\?tab=plan"[^>]*>计划需求『认识能引荐目标客户的投资人』</);
   assert.match(why, /对应计划需求[\s\S]*?data-plan-linked-need="need-1">阶段 1 · 认识能引荐目标客户的投资人 ✓/);
-  assert.match(why, /data-plan-need-link-open[^>]*>\+ 关联到其他需求</);
+  // R25：「+ 关联到其他需求」（旧的计划匹配面板）随 v1 计划界面删除。
+  assert.doesNotMatch(why, /data-plan-need-link-open/);
   assert.match(why, /data-insight-next-step="true">约产品演示。</);
   assert.doesNotMatch(why, /下周约产品演示/, "the insight's next step wins over contact.nextAction");
   assert.match(why, /data-network-why-now[^>]*>为什么现在：阶段 1 · 盘点：你已经认识 TA，是离目标最近的一步。/);
@@ -232,18 +233,19 @@ test("SC-W0060-03: a ready insight — goal line, 「TA 能帮你」, evidence, 
   assert.doesNotMatch(why, /data-insight-regenerate/);
 });
 
-test("SC-W0060-03: no insight next step → contact.nextAction; no week action → no why-now line; no linked needs → + 关联到计划需求", () => {
+test("SC-W0060-03: no insight next step → contact.nextAction; no week action → no why-now line; no linked needs → no plan strip", () => {
   const html = panelHtml({ ...readyRow, goalRelation: null, nextStep: null, status: "pending" }, { plan: null });
   assert.match(html, /data-insight-next-step="true">下周约产品演示</);
   assert.doesNotMatch(html, /data-network-why-now|为什么现在/);
-  assert.match(html, /data-plan-need-link-open[^>]*>\+ 关联到计划需求</);
+  // R25：没有已关联需求时整条「对应计划需求」不渲染（旧的「+ 关联到计划需求」入口已删除）。
+  assert.doesNotMatch(html, /data-network-detail-plan-link|data-plan-need-link-open/);
   assert.doesNotMatch(html, /data-plan-linked-need/);
   const noNext = renderToStaticMarkup(<NetworkDetailModal contact={{ ...(contact as object), nextAction: null } as never} closeHref="/app/contacts" onFollow={() => {}} insight={insightOf(null, { goal: "" })} planContext={PLAN} />);
   assert.doesNotMatch(noNext, /data-insight-next-step|为什么现在/);
   assert.match(noNext, /data-network-detail-schedule/, "the actions stay even without a next step");
 });
 
-test("SC-W0060-03 / W0057: pending, failed, retrying and no-goal states show in ② while the plan strip and both buttons stay usable", () => {
+test("SC-W0060-03 / W0057: pending, failed, retrying and no-goal states show in ② while both buttons stay usable", () => {
   const states: [string, string, RegExp][] = [
     ["pending", panelHtml(null), /data-network-insight-panel="pending"[^>]*data-insight-polling="true"[\s\S]*?正在生成，通常 1 分钟内/],
     ["leased", panelHtml({ ...readyRow, aiState: "started", goalRelation: null, leaseExpiresAt: "2026-10-03T03:04:00.000Z", nextStep: null, status: "pending" }), /正在生成…/],
@@ -255,7 +257,6 @@ test("SC-W0060-03 / W0057: pending, failed, retrying and no-goal states show in 
   ];
   for (const [name, html, pattern] of states) {
     assert.match(html, pattern, name);
-    assert.match(html, /data-plan-need-link-open/, `${name}: plan link usable`);
     assert.match(html, /data-network-detail-schedule[^>]*>约 TA/, `${name}: 约 TA usable`);
     assert.match(html, /data-network-detail-draft[^>]*>起草邮件/, `${name}: 起草邮件 usable`);
     assert.doesNotMatch(html, /惠子负责一家 AI 公司的合作/, `${name}: no stale relation`);
@@ -296,18 +297,15 @@ test("W0051 R-11: when today's 10 user-pool actions are used the button is disab
   await act(async () => { root!.unmount(); });
 });
 
-test("SC-W0060-03: a successful 关联 refreshes the server view (router.refresh, no history entry); 起草邮件 posts the template draft once and shows it editable", async (t) => {
+test("SC-W0060-03: 起草邮件 posts the template draft once and shows it editable", async (t) => {
+  // R25：原用例前半「关联成功后 router.refresh」随旧的计划匹配面板（PlanNeedLinkPanel）删除。
   const { AppRouterContext } = await import("next/dist/shared/lib/app-router-context.shared-runtime");
-  let refreshed = 0;
-  const router = { back() {}, forward() {}, prefetch() {}, push() {}, refresh() { refreshed += 1; }, replace() {} } as never;
+  const router = { back() {}, forward() {}, prefetch() {}, push() {}, refresh() {}, replace() {} } as never;
   const mounted = await mountModal(t, <AppRouterContext.Provider value={router}><NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} insight={insightOf(readyRow)} planContext={PLAN} /></AppRouterContext.Provider>, {
     fetch: (url) => url === "/api/contacts/c1/reconnect-draft"
       ? Response.json({ data: { draft: { body: "田中さん\n…", provider: "template", subject: "ご無沙汰しています" } }, success: true })
       : Response.json({ success: false }, { status: 404 }),
   });
-  const link = mounted.root.root.find((node) => typeof node.type === "function" && (node.type as { name?: string }).name === "PlanNeedLinkPanel");
-  await mounted.act(async () => link.props.onLinked());
-  assert.equal(refreshed, 1);
   assert.deepEqual(mounted.assigned, []);
   const draft = () => mounted.byData("data-network-detail-draft")[0]!;
   await mounted.act(async () => { draft().props.onClick(); draft().props.onClick(); });
@@ -605,7 +603,7 @@ const freshIntent = (from: string, to = "/app/contacts/c1") => ({ from, to, at: 
 test("SC-W0059-01: with an in-app source, ×／底部关闭／Esc／遮罩／返回 each call router.back() once and never location.assign", async (t) => {
   for (const way of WAYS) {
     await t.test(way, async (st) => {
-      const h = await mountClose(st, { intent: freshIntent("/app/agent/plan") });
+      const h = await mountClose(st, { intent: freshIntent("/app/plans/plan-1") });
       assert.equal(h.storage.has(DETAIL_RETURN_STORAGE_KEY), false, "intent consumed on mount");
       assert.equal(h.backLabel(), "‹ 返回我的计划");
       const event = await h.close(way);
@@ -641,7 +639,7 @@ test("SC-W0059-02: no usable source → every way goes to /app/contacts (or the 
     { name: "intent for another contact", options: { intent: freshIntent("/app/agent", "/app/contacts/c2") }, href: "/app/contacts", label: "‹ 返回人脉" },
     { name: "refresh of this detail", options: { intent: freshIntent("/app/agent"), navigationType: "reload" }, href: "/app/contacts", label: "‹ 返回人脉" },
     { name: "sessionStorage throws", options: { storageThrows: true }, href: "/app/contacts", label: "‹ 返回人脉" },
-    { name: "valid returnTo from the page", options: { closeHref: "/app/agent/plan" }, href: "/app/agent/plan", label: "‹ 返回我的计划" },
+    { name: "valid returnTo from the page", options: { closeHref: "/app/plans/plan-1" }, href: "/app/plans/plan-1", label: "‹ 返回我的计划" },
   ];
   for (const scenario of scenarios) {
     for (const way of WAYS) {

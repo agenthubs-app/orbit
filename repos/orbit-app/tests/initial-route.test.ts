@@ -98,10 +98,6 @@ describe("resolveInitialRouteHref", () => {
       "/contacts/dashboard"
     );
     assert.equal(
-      resolveInitialRouteHref("contacts/matches"),
-      "/contacts/matches"
-    );
-    assert.equal(
       resolveInitialRouteHref("chat/demo-conversation-1"),
       "/chat/demo-conversation-1"
     );

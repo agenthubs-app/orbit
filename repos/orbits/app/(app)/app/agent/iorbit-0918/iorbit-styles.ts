@@ -4,15 +4,13 @@
  * 每条规则 = 设计稿一个 style="" 原样搬入；顺序与值不得改动。
  * 前缀一律 `[data-orbit-real-page="iorbit-0918"]`（`@keyframes` 除外）。
  *
- * 任务 5 从 `iorbit-shell.tsx` 抽出：`agent/{actions,plan,strategy}` 三条兄弟路由
+ * 任务 5 从 `iorbit-shell.tsx` 抽出：`agent/actions` 等兄弟路由（R25 删去 plan、strategy 两条）
  * 要同一份皮肤，但它们不需要壳的聊天 hook —— 如果从壳里 import，`orbit-real-agent.tsx`
  * （3892 行，任务 6 才删）会被拖进这三个路由的客户端包。本文件不含 React，
  * 壳继续 `export { IORBIT_STYLES }` 保持既有 import 路径不变。
  */
 // 每条规则 = 设计稿一个 style="" 原样搬入；顺序与值不得改动。前缀 [data-orbit-real-page="iorbit-0918"]。
 import { IORBIT_HOME_STYLES } from "./iorbit-home-styles";
-import { IORBIT_MY_PLAN_STYLES } from "./iorbit-my-plan-styles";
-import { IORBIT_PLAN_CARD_STYLES } from "./iorbit-plan-card-styles";
 
 export const IORBIT_STYLES = `
 @keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -576,4 +574,4 @@ export const IORBIT_STYLES = `
   [data-orbit-real-page="iorbit-0918"] .ir-two-col { grid-template-columns: minmax(0, 1fr); }
   [data-orbit-real-page="iorbit-0918"] .ir-contact-grid { grid-template-columns: minmax(0, 1fr); }
 }
-` + IORBIT_HOME_STYLES + IORBIT_PLAN_CARD_STYLES + IORBIT_MY_PLAN_STYLES;
+` + IORBIT_HOME_STYLES;

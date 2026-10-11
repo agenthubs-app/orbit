@@ -11,18 +11,16 @@
  * （`features/guide/progress.ts`），处于引导期的人把 `guide` 下传给壳，壳改渲染示例。
  * 开关关闭时 `readGuideStatusForActor` 不做任何读取、直接返回 null，页面与 W0001 一致。
  *
- * W0008：`?plan=<id>` 以本人身份读这份计划（他人的计划一律视为不存在），映射成回答卡片的
- * 视图模型交给壳，直接落在对话分支；`&reveal=1`（第 3 步生成完跳来）让卡片揭示一次。
- * 示例壳没有对话分支，处于示例期时不读计划。
+ * R25：W0008 的 `?plan=<id>` 计划回答卡片随 v1 计划删除；带 `?plan=` 的旧链接落在概览（计划在 Task › プラン）。
  *
  * W0014：示例判定挪到最前（`readDemoModeViewForActor`，判定口径不变：目标仍取首页数据的
  * relationshipGoal，首页数据读不到时按真实页面处理）。处于示例期时只读了判定所需的首页数据，
- * 对话路由模型、活动报名／canonical id、计划卡片一概不读（社群状态见 W0037）——示例壳不用它们，真实
+ * 对话路由模型、活动报名／canonical id 一概不读（社群状态见 W0037）——示例壳不用它们，真实
  * `viewModel` 的 suggests 还带真实人名与草稿，不能进示例；那些读取出错也不影响示例渲染。
  * 开关关闭时判定零读取，下面的真实路径与改动前一致。
  *
- * W0022：开关状态交给壳：首页无计划时「帮我制定推进计划 →」去 `/app/start?step=3`（开关关闭时
- * 仍是 `/app/agent/strategy`）。W0035 删去引导的「活动」一步后，首页不再判定它、不再提醒，
+ * W0022：开关状态交给壳：首页「帮我制定推进计划 →」去 `/app/start?step=3`（开关关闭时
+ * 去 Task › プラン）。W0035 删去引导的「活动」一步后，首页不再判定它、不再提醒，
  * 也不再为它读报名事实（`hasAnyActiveRegistration` 0 次）。
  *
  * W0036（RH-03「活动始终真实」）：示例期唯一新增的真实读取——「近期可报名」活动（公开目录 1 次 +
@@ -50,11 +48,6 @@ import { readGuideDemoConfig } from "../../../../shared/config/guide-demo";
 import { readGuideStatusForActor } from "../../../../features/guide/progress";
 import { readDemoModeViewForActor } from "../_demo/demo-guide-view";
 import { readDemoHomeEventCandidates } from "../../../../features/agent/home-event-pool-runtime";
-import { resolvePlanService } from "../../../../features/plans/service-factory";
-import {
-  planCardViewFromSnapshot,
-  type IOrbitPlanCardView,
-} from "./iorbit-0918/iorbit-plan-card-model";
 
 export type AppAgentSearchParams = {
   /** 历史会话深链（由 iOrbit 壳在客户端读取）。 */
@@ -62,23 +55,11 @@ export type AppAgentSearchParams = {
   /** `?history=1`：strategy / contacts 两屏页头的「◷ 历史记录」落点（任务 5）。 */
   history?: string | string[];
   lang?: string | string[];
-  /** W0008：`?plan=<id>` 打开一份已保存计划的回答卡片；`&reveal=1` 只在刚生成完时带。 */
+  /** R25 前的 `?plan=<id>`（v1 计划回答卡片）：已不再读取，落在概览。 */
   plan?: string | string[];
   q?: string | string[];
   reveal?: string | string[];
 };
-
-/** 本人的某份计划 → 回答卡片。读不到、不是本人的、不是第一份计划生成的都返回 null（落回概览）。 */
-async function readPlanCard(actorId: string, planId: string): Promise<IOrbitPlanCardView | null> {
-  try {
-    const resolution = resolvePlanService({ actorId });
-    if (resolution.success === false) return null;
-    const snapshot = await resolution.service.getPlan(planId);
-    return snapshot ? planCardViewFromSnapshot(snapshot) : null;
-  } catch {
-    return null;
-  }
-}
 
 async function getAgentPageLanguage(): Promise<OrbitLanguage> {
   try {
@@ -177,7 +158,6 @@ export default async function AppAgentPage({
             demoEventCandidates={demoEventCandidates}
             guide={guide}
             home={null}
-            initialPlanCard={null}
             viewModel={createOrbitAgentStarterViewModel()}
           />
         </div>
@@ -216,8 +196,6 @@ export default async function AppAgentPage({
   const communityJoined = await readCommunityJoinedForActor({ actorId });
   // W0022：开关只决定无计划时「帮我制定推进计划 →」的去向，不做任何读取。
   const guideEnabled = readGuideDemoConfig().enabled;
-  const requestedPlanId = firstSearchParam(resolvedSearchParams, "plan");
-  const planCard = requestedPlanId ? await readPlanCard(actorId, requestedPlanId) : null;
   const viewModel = createOrbitAgentStarterViewModel();
   const language = requestedLanguage ?? (await getAgentPageLanguage());
 
@@ -232,11 +210,8 @@ export default async function AppAgentPage({
             guideEnabled={guideEnabled}
             initialDeepLink={Boolean(
               firstSearchParam(resolvedSearchParams, "q") ||
-                firstSearchParam(resolvedSearchParams, "session") ||
-                planCard,
+                firstSearchParam(resolvedSearchParams, "session"),
             )}
-            initialPlanCard={planCard}
-            initialPlanReveal={Boolean(planCard) && firstSearchParam(resolvedSearchParams, "reveal") === "1"}
             initialHistoryOpen={
               firstSearchParam(resolvedSearchParams, "history") === "1"
             }

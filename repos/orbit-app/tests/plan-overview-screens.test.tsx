@@ -42,14 +42,12 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { PlanSegment } from "./src/screens/plan/PlanSegment";
 import { PlanTypeScreen } from "./src/screens/plan/PlanTypeScreen";
-import MatchesRoute from "./app/contacts/matches";
 import { ToastProvider, UiPortalHost } from "./src/components/ui";
 function Root() {
   const [path, setPath] = React.useState(window.planNav.stack[window.planNav.stack.length - 1]);
   window.planNav.setPath = setPath;
   const type = path.match(/^\\/plans\\/([^/?]+)\\/types\\/([^/?]+)/);
   const screen = type ? <PlanTypeScreen key={path} planId={decodeURIComponent(type[1])} itemId={decodeURIComponent(type[2])} />
-    : path === "/contacts/matches" ? <MatchesRoute />
     : path.startsWith("/task") ? <PlanSegment key={path} />
     : <div data-testid="elsewhere">{path}</div>;
   return <ToastProvider><UiPortalHost>{screen}</UiPortalHost></ToastProvider>;
@@ -150,7 +148,7 @@ function planServer(actorId: string) {
   };
 }
 
-async function open(t: { after: (fn: () => Promise<void>) => void }, path: string, options: { dark?: boolean; reduceMotion?: boolean; rewrite?: Rewrite; stack?: string[]; height?: number } = {}): Promise<{ page: Page; calls: Call[]; server: (call: Call) => Promise<Reply | null> }> {
+async function open(t: { after: (fn: () => Promise<void>) => void }, path: string, options: { dark?: boolean; reduceMotion?: boolean; rewrite?: Rewrite; stack?: string[]; height?: number; delay?: (call: Call) => number; insets?: { bottom: number } } = {}): Promise<{ page: Page; calls: Call[]; server: (call: Call) => Promise<Reply | null> }> {
   const page = await browser.newPage({ viewport: { width: 390, height: options.height ?? 844 }, colorScheme: options.dark ? "dark" : "light" });
   const errors: string[] = [];
   const calls: Call[] = [];
@@ -160,12 +158,14 @@ async function open(t: { after: (fn: () => Promise<void>) => void }, path: strin
   await page.exposeFunction("planServer", async (raw: string) => {
     const call = JSON.parse(raw) as Call;
     calls.push(call);
+    const wait = options.delay?.(call) ?? 0;
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
     const base = await server(call);
     const reply = options.rewrite ? options.rewrite(call, base) ?? base : base;
     return reply ?? { body: { error: { code: "NOT_FOUND", message: "unexpected " + call.method + " " + call.path }, success: false }, status: 404 };
   });
   const stack = options.stack ?? [path];
-  await page.setContent(`<!doctype html><html><body style="margin:0"><div id="root" style="height:100vh;display:flex;flex-direction:column"></div><script>window.reduceMotion=${Boolean(options.reduceMotion)};window.planNav=${JSON.stringify({ navigation: [], stack })}</script></body></html>`);
+  await page.setContent(`<!doctype html><html><body style="margin:0"><div id="root" style="height:100vh;display:flex;flex-direction:column"></div><script>window.reduceMotion=${Boolean(options.reduceMotion)};${options.insets ? `window.__orbitSafeInsets=${JSON.stringify({ left: 0, right: 0, top: 0, ...options.insets })};` : ""}window.planNav=${JSON.stringify({ navigation: [], stack })}</script></body></html>`);
   await page.addScriptTag({ content: script });
   return { calls, page, server };
 }
@@ -204,16 +204,14 @@ test("overview: every field from GET /v2/[planId], the score equal to the home s
     assert.equal(call.headers["x-orbit-lang"], "ja");
   }
   assert.deepEqual(writes(calls), []);
-  // 見直し / 手動編集 / 達成 say 「まもなく使えます」; 前提を見る is read-only.
-  for (const label of ["方案を見直す", "手動で編集", "目標を達成した"]) {
-    await page.getByRole("button", { name: label }).click();
-    await page.getByText("まもなく使えます").waitFor();
-  }
+  // 前提を見る is read-only; 「見直しで変える」 opens the R25 review entry (见 plan-review-screens).
+  assert.equal(await page.getByText("まもなく使えます").count(), 0, "R25 wired the buttons");
   await page.getByRole("button", { name: "前提を見る" }).click();
   const sheet = page.getByTestId("premise-sheet");
   await sheet.getByText(detail.premise[0]!.value).waitFor();
   assert.equal(await sheet.locator("input, textarea").count(), 0, "premises cannot be edited here");
   await sheet.getByRole("button", { name: "見直しで変える" }).click();
+  await page.getByTestId("review-entry").waitFor();
   assert.deepEqual(writes(calls), []);
 });
 
@@ -372,9 +370,72 @@ test("memo check: the manual card needs two ticked questions before 加点する
   assert.equal(await accept.isDisabled(), true, "one question is not enough");
   await boxes.nth(2).click();
   await accept.click();
-  await page.getByText("加点しました").waitFor();
+  // R24 review M6-2: the server answered award null — no points, so never 「加点しました」.
+  await page.getByText("加点はありません").waitFor();
+  assert.equal(await page.getByText("加点しました").count(), 0);
   const body = calls.find((call) => call.path.includes("/pending/memo-1/accept"))!.body as { answered: number[] };
   assert.deepEqual(body.answered, [0, 2]);
+});
+
+const SCORE = { overflow: 0, remainingToFull: 45, segments: [], skipped: 10, talked: 45, todayDelta: 0, total: 55 };
+/** Puts memo cards (and, optionally, a today's chance) into the overview answer. */
+function withPending(pending: Record<string, unknown>[], extra: Partial<PlanV2Detail> = {}): Rewrite {
+  return (call, reply) => {
+    if (call.method !== "GET" || !reply || !/\/v2\/demo-plan-series-a$/.test(call.path)) return undefined;
+    const body = clone(reply.body) as { data: PlanV2Detail };
+    body.data = { ...body.data, ...extra, pending: [...pending.map((entry) => ({ answered: [0, 1], contactId: "demo-person-sasaki", createdAt: "2026-10-10T00:00:00.000Z", detail: "佐々木 遼", itemId: item("cvc"), kind: "memo_coverage", planId: PLAN, title: "CVC 担当者", ...entry })), ...(body.data.pending ?? [])] as PlanV2Detail["pending"] };
+    return { ...reply, body };
+  };
+}
+
+test("memo accept: a 0-point award says 「加点はありません」 with the server's reason (M6-2)", async (t) => {
+  const { page } = await open(t, "/task?seg=plan", {
+    rewrite: (call, reply) => (call.method === "POST" && call.path.includes("/pending/memo-1/accept")
+      ? ok({ award: { awardLogId: null, part: "none", points: 0, reason: "already_counted", replayed: false, score: SCORE }, id: "memo-1", replayed: false, status: "accepted" })
+      : withPending([{ id: "memo-1" }])(call, reply)),
+  });
+  await page.getByTestId("memo-card").getByRole("button", { name: "加点する" }).click();
+  await page.getByText("加点はありません").waitFor();
+  await page.getByText("この人は記録済みです。点数は 1 回だけです。").waitFor();
+  assert.equal(await page.getByText("加点しました").count(), 0);
+  assert.equal(await page.getByText(/^\+\d+ 点$/).count(), 0);
+});
+
+test("memo cards: +X comes from the server's points; none → no number; no contact → no 「さんとの」 (m9)", async (t) => {
+  const { page } = await open(t, "/task?seg=plan", { rewrite: withPending([
+    { id: "memo-a", points: 7 },
+    { contactId: "demo-person-ito", detail: "伊藤 直子", id: "memo-b", itemId: item("cfo"), title: "CFO 経験者" },
+    { contactId: null, detail: "交流会で会った人", id: "memo-c", itemId: item("angel"), title: "エンジェル" },
+  ]) });
+  const cards = page.getByTestId("memo-card");
+  await cards.nth(2).waitFor();
+  const texts = (await cards.allInnerTexts()).map((text) => text.split("\n")[0]);
+  assert.deepEqual(texts, [
+    "佐々木 遼さんとの面談で 3 問中 2 問を話せました · +7 点にしますか？",
+    "伊藤 直子さんとの面談で 3 問中 2 問を話せました · 加点しますか？",
+    "面談で 3 問中 2 問を話せました · 加点しますか？",
+  ], "server points only; no number without them; no 「さんとの」 without a contact");
+});
+
+test("today's chance with 0 points draws no 「+0」 (m4)", async (t) => {
+  const { page } = await open(t, "/task?seg=plan", { rewrite: withPending([], { todayChance: { href: "/events", label: "製造業 DX カンファレンス", points: 0 } }) });
+  await page.getByTestId("today-chance").getByText("製造業 DX カンファレンス").waitFor();
+  assert.equal(await page.getByTestId("today-chance").getByText("+0").count(), 0);
+});
+
+test("step reopen: a second confirm while the first request runs sends nothing (m11)", async (t) => {
+  const { page, calls } = await open(t, "/task?seg=plan", { delay: (call) => (call.method === "DELETE" ? 800 : 0) });
+  const card = page.getByTestId("step-suggestion");
+  await card.getByRole("button", { name: "完了にする" }).click();
+  const done = page.getByRole("button", { name: "Step 5 は完了しています" });
+  await done.waitFor();
+  await done.click();
+  await page.getByRole("button", { name: "取り消す" }).click();
+  await done.click({ force: true });
+  await page.getByRole("button", { name: "取り消す" }).click();
+  await page.getByText("完了を取り消しました").waitFor();
+  await page.waitForTimeout(900);
+  assert.equal(writes(calls).filter((line) => line.startsWith("DELETE")).length, 1);
 });
 
 function withTwoCandidates(extra: (detail: PlanPersonTypeDetail) => PlanPersonTypeDetail = (detail) => detail): Rewrite {
@@ -475,14 +536,101 @@ test("three type states: candidates, not in the network (persona, events), skipp
   assert.equal(await skipped.page.getByRole("button", { name: "この分野はもう詳しい" }).count(), 0);
 });
 
-test("contacts/matches replaces itself with Task › プラン, so back returns to 人脈", async (t) => {
-  const { page } = await open(t, "/contacts/matches", { stack: ["/contacts", "/contacts/matches"] });
-  await page.getByTestId("plan-overview").waitFor();
-  const state = await navigation(page);
-  assert.deepEqual(state.navigation, [{ href: "/task?seg=plan", method: "replace" }]);
-  assert.deepEqual(state.stack, ["/contacts", "/task?seg=plan"]);
-  await page.evaluate(() => (window as unknown as { planRouter: { back: () => void } }).planRouter.back());
-  await page.getByTestId("elsewhere").getByText("/contacts").waitFor();
+test("several people, one fails midway: the sheet stays with both counts; 記録する retries only the rest (M6-3)", async (t) => {
+  let failed = false;
+  const { page, calls } = await open(t, `/plans/${PLAN}/types/${item("vc_partner")}`, {
+    rewrite: (call, reply) => {
+      if (call.method === "POST" && call.path.endsWith("/awards") && (call.body as { contactId: string }).contactId === "demo-person-nakamura" && !failed) { failed = true; return { body: { error: { code: "CONFLICT", context: { reason: "TEST_FAILURE" }, message: "x" }, success: false }, status: 409 }; }
+      // After the first (real) award the demo person is no longer a candidate: keep the page readable.
+      if (call.method === "GET" && reply && call.path.endsWith(`/types/${item("vc_partner")}`) && (reply.body as { data: PlanPersonTypeDetail }).data.candidates.length === 0) return undefined;
+      return withTwoCandidates()(call, reply);
+    },
+  });
+  const rows = page.getByTestId("candidate-row");
+  await rows.nth(1).waitFor();
+  for (let index = 0; index < 2; index += 1) await rows.nth(index).getByRole("checkbox").click();
+  await page.getByRole("button", { name: "2人を記録" }).click();
+  const sheet = page.getByTestId("record-sheet");
+  await sheet.getByRole("button", { name: "記録する" }).click();
+  await sheet.getByText("1人を記録しました · 1人は記録できませんでした。残りの人はもう一度記録できます。").waitFor();
+  await page.getByText("+10 点", { exact: true }).waitFor();
+  await sheet.getByText("1人を記録します").waitFor();
+  await sheet.getByRole("button", { name: "記録する" }).click();
+  await page.waitForFunction(() => !document.querySelector("[data-testid=record-sheet]"));
+  const awarded = calls.filter((call) => call.path.endsWith("/awards")).map((call) => (call.body as { contactId: string }).contactId);
+  assert.equal(awarded.length, 3, "first person once, the failed one twice");
+  assert.equal(awarded.filter((id) => id === "demo-person-nakamura").length, 2);
+});
+
+test("candidate row 「すでに話した」 records that person at once (m7)", async (t) => {
+  const { page, calls } = await open(t, `/plans/${PLAN}/types/${item("cfo")}`);
+  await page.getByRole("button", { name: "伊藤 直子とはすでに話した（記録する）" }).click();
+  await page.getByText("+10 点", { exact: true }).waitFor();
+  const awards = calls.filter((call) => call.path.endsWith("/awards"));
+  assert.equal(awards.length, 1);
+  assert.deepEqual({ basis: (awards[0]!.body as { basis: string }).basis, contactId: (awards[0]!.body as { contactId: string }).contactId }, { basis: "talked", contactId: "demo-person-ito" });
+  assert.equal(await page.getByTestId("record-sheet").count(), 0, "no sheet in between");
+});
+
+test("「この人ですか？」 rows are disabled while recording; 新しく登録 failing asks before recording without a name", async (t) => {
+  const { page, calls } = await open(t, `/plans/${PLAN}/types/${item("cvc")}`, {
+    delay: (call) => (call.path.endsWith("/talked-offline") && (call.body as { contactId?: string }).contactId ? 800 : 0),
+    rewrite: (call) => {
+      if (!call.path.endsWith("/talked-offline")) return undefined;
+      const body = call.body as { name?: string; contactId?: string; createContact?: boolean };
+      if (body.createContact) return { body: { error: { code: "CONFLICT", context: { reason: "CONTACT_CREATE_FAILED" }, message: "x" }, success: false }, status: 409 };
+      if (body.name && !body.contactId) return ok({ matches: [{ company: "東邦重工", contactId: "demo-person-sasaki", name: "佐々木 遼" }] });
+      return undefined;
+    },
+  });
+  const openOffline = async () => {
+    await page.getByRole("button", { name: "話したを記録" }).click();
+    await page.getByRole("tab", { name: "オフライン" }).click();
+    await page.getByLabel("相手の名前（任意）").fill("佐々木");
+    await page.getByTestId("record-sheet").getByRole("button", { name: "記録する" }).click();
+    await page.getByText("この人ですか？").waitFor();
+  };
+  await openOffline();
+  const row = page.getByRole("button", { name: "佐々木 遼 · 東邦重工" });
+  await row.click();
+  await row.click({ force: true, timeout: 500 }).catch(() => undefined);
+  await page.getByText("+5 点", { exact: true }).waitFor();
+  assert.equal(calls.filter((call) => call.path.endsWith("/talked-offline") && (call.body as { contactId?: string }).contactId).length, 1, "one request for a double tap");
+  await openOffline();
+  await page.getByRole("button", { name: "新しく登録" }).click();
+  await page.getByTestId("create-failed").getByText("登録できませんでした · 名前なしで記録しますか？").waitFor();
+  assert.equal(calls.filter((call) => call.path.endsWith("/talked-offline") && (call.body as { anonymous?: boolean }).anonymous).length, 0, "nothing anonymous until asked");
+  await page.getByRole("button", { name: "名前なしで記録" }).click();
+  await page.getByText("+5 点", { exact: true }).last().waitFor();
+  assert.equal(calls.filter((call) => call.path.endsWith("/talked-offline") && (call.body as { anonymous?: boolean }).anonymous).length, 1);
+});
+
+test("skip confirm twice while the first runs sends one request; with the type skipped the bar cannot record; the bar reads the safe area (m11)", async (t) => {
+  const { page, calls } = await open(t, `/plans/${PLAN}/types/${item("cfo")}`, { delay: (call) => (call.path.endsWith("/skip") ? 800 : 0), insets: { bottom: 34 } });
+  await page.getByRole("checkbox", { name: "伊藤 直子を選ぶ" }).click();
+  const bar = page.getByTestId("selection-bar");
+  await bar.waitFor();
+  assert.equal(await bar.evaluate((node) => getComputedStyle(node).paddingBottom), "42px", "home indicator (34) + 8");
+  await page.getByRole("button", { name: "この分野はもう詳しい" }).click();
+  await page.getByRole("button", { name: "スキップする" }).click();
+  await page.getByRole("button", { name: "この分野はもう詳しい" }).click({ force: true, timeout: 500 }).catch(() => undefined);
+  await page.getByRole("button", { name: "スキップする" }).click({ timeout: 500 }).catch(() => undefined);
+  await page.getByTestId("type-skipped").waitFor();
+  await page.waitForTimeout(900);
+  assert.equal(writes(calls).filter((line) => line.endsWith("/skip")).length, 1);
+  assert.equal(await bar.getByRole("button", { name: "1人を記録" }).isDisabled(), true, "a skipped type cannot record");
+});
+
+test("proposal answered kind request: 「Orbit で依頼を届けました」 instead of a draft (m11)", async (t) => {
+  const { page } = await open(t, `/plans/${PLAN}/types/${item("vc_partner")}`, {
+    rewrite: (call, reply) => (call.path.endsWith("/proposals") ? ok({ draft: null, kind: "request", requestId: "req-1" }) : withTwoCandidates()(call, reply)),
+  });
+  await page.getByTestId("candidate-row").first().getByRole("checkbox").click();
+  await page.getByRole("button", { name: "面談を提案" }).click();
+  const sheet = page.getByTestId("proposal-sheet");
+  await sheet.getByRole("button", { name: /さんへの下書きをつくる$/ }).click();
+  await sheet.getByTestId("proposal-requested").getByText(/^Orbit で .+さんに面談の依頼を届けました$/).waitFor();
+  assert.equal(await sheet.getByTestId("mail-draft").count(), 0);
 });
 
 test("seed plan end to end: overview → type → record → undo → skip → unskip → overview score unchanged", async (t) => {

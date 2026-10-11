@@ -25,8 +25,6 @@ test("surface scanner covers every production page and excludes API/dev routes",
     // iOrbit 任务 6b：/app/chat、/app/schedule、/app/today 在任务 6a 随对话域归并删除，
     // 换成归并后仍在售的三个兄弟屏与保留下来的 /app/tasks（6a 报告 §0）。
     "/app/agent/actions",
-    "/app/agent/plan",
-    "/app/agent/strategy",
     "/app/contacts",
     "/app/contacts/[id]",
     "/app/contacts/dashboard",

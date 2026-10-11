@@ -34,7 +34,6 @@ export const ORBIT_API_ENDPOINTS = {
   connections: "/api/connections",
   contacts: "/api/contacts",
   contactPipeline: "/api/contacts/pipeline",
-  contactNeedsMatches: "/api/contacts/needs-matches",
   contactsSearch: "/api/contacts/search",
   conversations: "/api/ai/conversations",
   aiConversationSessions: "/api/ai/conversations/sessions",

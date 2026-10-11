@@ -10,6 +10,8 @@
 
 2026-09-27 补充（Sprint 0107）：新增 `/events/[id]/live`（`EventLiveScreen`，活动现场页，对应网页 `/app/events/[id]/live`），登记在集成入口组，不继承这 58 条的原生观察证据；运行时证据见 Sprint 0107 报告。现场页取代了「参会者与名片交换」和旧派对模式：`/events/[id]/attendees` 与 `/party*` 在下表中改为 redirect，`/events/[id]/participants/[participantId]`（集成入口组）改为跳到现场页并打开对方资料。
 
+2026-10-11 补充（改版 R25）：`/contacts/intros`（`ContactIntrosScreen`，引荐）已删除，下表从 58 条减为 57 条，路由清单测试同步改为 57；集成入口组里的 `/contacts/matches`（R24 起已是跳到 Task › プラン 的跳转页）也一并删除。
+
 沿用已确认的蓝灰浅深色和原生排版，将统一页头、开放分区、表单及操作层级覆盖到全 App，不改变业务、API、权限或导航行为。
 
 - [执行规格](../../superpowers/specs/2026-09-08-app-wide-style-design.md)
@@ -101,7 +103,6 @@ Tasks 1–5 的领域实现、修补及独立复审已经闭合，58 个真实 `
 | `/contacts/dashboard` | `ContactsDashboardScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success，完整分析 | `tests/app-wide-contacts.test.ts`: 320pt 分析、完整数值、深色弹层 |
 | `/contacts/graph` | `ContactsDashboardScreen` | alias | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success，同 dashboard 实屏 | `tests/app-wide-contacts.test.ts`: alias 动作与请求边界；`tests/contacts-analysis-route-source.test.ts`: canonical 绑定 |
 | `/contacts/pipeline` | `ContactPipelineScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success_with_empty_scheduled_tasks | `tests/app-wide-contacts.test.ts`: 模式切换、44pt 目标、无推进写入 |
-| `/contacts/intros` | `ContactIntrosScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success | `tests/app-wide-contacts.test.ts`: 可编辑邀请草稿且不准备/发送 |
 | `/contacts/analysis/[dimension]/[bucketId]` | `ContactStructureDetailScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: NOT_FOUND，未冒充成功 | `tests/app-wide-contacts.test.ts`: 受控 success 内容和 320pt 联系人入口 |
 | `/contacts/all-actions` | `AllActionsAgentLedgerScreen` | screen | `.tmp/app-wide-style/after/task4/native-route-observations.json`: 0 条账本记录空态 | `tests/app-wide-workspaces.test.ts`: workspace 标题/动作；`tests/agent-ledger-screen-render.test.tsx`: 受控内容 |
 | `/events` | `EventsScreen` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: success，真实活动列表 | `tests/app-wide-events.test.ts`: 封面、筛选、320pt 大字动作 |

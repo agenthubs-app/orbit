@@ -10,7 +10,6 @@ import test from "node:test";
 
 import { Client } from "pg";
 
-import { buildMyPlanViewModel } from "../../app/(app)/app/agent/plan/plan-route-view-model";
 import {
   createPostgresPlanContactNameReader,
   PLAN_CONTACT_NAME_LIMIT,
@@ -18,7 +17,7 @@ import {
 } from "../../features/plans/contact-names";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { ME, OTHER } from "../support/plan-bootstrap-fixture";
-import { PLAN_NOW, planSnapshotFixture } from "../support/plan-snapshot-fixture";
+import { planSnapshotFixture } from "../support/plan-snapshot-fixture";
 
 test("the reader queries once by a bounded, de-duplicated id list and skips empty lists", async () => {
   const queries: Array<{ sql: string; values: readonly unknown[] }> = [];
@@ -102,36 +101,7 @@ test(
         "contact:c2": { name: "高木一郎", subtitle: "北辰精工" },
       });
 
-      // 快照里关联了一个别人的联系人 id：界面显示占位名，不泄露对方的名字。
-      const snapshot = planSnapshotFixture();
-      snapshot.items = snapshot.items.map((item) =>
-        item.id === "n-connector"
-          ? {
-              ...item,
-              contactLinks: [
-                ...item.contactLinks,
-                { contactId: "contact:theirs", establishedAt: null, linkedAt: "2026-09-27T01:00:00.000Z", state: "linked" as const },
-              ],
-            }
-          : item,
-      );
-      const model = buildMyPlanViewModel({
-        contactNames: await read(ME, planContactIds(snapshot)),
-        guideEnabled: true,
-        language: "zh",
-        now: PLAN_NOW,
-        snapshot,
-      });
-      assert.equal(model.state, "ready");
-      const people = model.state === "ready" ? model.view.needs[0]!.people : [];
-      assert.deepEqual(
-        people.map((person) => [person.contactId, person.name, person.subtitle, person.known]),
-        [
-          ["contact:theirs", "联系人", null, false],
-          ["contact:c2", "高木一郎", "北辰精工", true],
-          ["contact:c1", "森下真理", "丸和工业 · 情报系统课长", true],
-        ],
-      );
+      // R25：「我的计划」视图模型（占位名渲染）随 v1 计划页删除；对方的名字不出读取器，由上面的 names 断言锁住。
     } finally {
       await client.query(`drop schema if exists ${schema} cascade`).catch(() => undefined);
       await client.end();

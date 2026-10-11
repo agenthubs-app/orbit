@@ -25,7 +25,7 @@
 | 人脈 | `(app)/contacts`、`contacts/list` | `ContactsScreen` | 人脈一覧 | R11 | 重写 |
 | 人脈 | `contacts/[id]` | `ContactDetailScreen` | 連絡先詳細 | R11 | 重写 |
 | 人脈 | `contacts/dashboard`、`contacts/graph`、`contacts/analysis/[dimension]/[bucketId]` | `ContactsDashboardScreen`、`ContactStructureDetailScreen` | 人脈分析（構造 / 機会 / インサイト） | R11 | 重写 |
-| 人脈 | `contacts/intros` | `ContactIntrosScreen` | 无（邀请由招待コード、请人引荐由人物タイプ詳細「紹介ルート」承担） | R25 | R25 删除（已确认，2026-10-10；理由见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md) §9 #20） |
+| 人脈 | `contacts/intros` | `ContactIntrosScreen` | 无（邀请由招待コード、请人引荐由人物タイプ詳細「紹介ルート」承担） | R25 | 已处理：R25 删除（已确认，2026-10-10；理由见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md) §9 #20）；屏、入口、`/api/contacts/intros/summary` 与契约已删（2026-10-11） |
 | 人脈 | `contacts/pipeline` | `ContactPipelineScreen` | 无 | R11 | 删除 |
 | 人脈 | `profile/suggestions` | `ProfileSuggestionsScreen` | 登録内容の更新提案 | R11 | 重写 |
 | 加人 | `contacts/new` | `ContactAcquisitionScreen` | 「＋」sheet | R12 / R15 / R16 | 重写 |
@@ -44,7 +44,7 @@
 | Task | `today`、`tasks`、`tasks/[id]`、`tasks/relationship/[id]`、`followups` | `TodayScreen`、`TasksScreen`、`TaskDetailScreen`、`RelationshipLifecycleScreen`、`FollowupsScreen` | Task › To-do（判断待ち / 今日の一手 / フォロー）、下書きエディタ | R20 | 重写（合并） |
 | Task | `agent`、`agent/actions`、`contacts/all-actions` | `AgentActionsScreen`、`AgentLedgerScreen` | To-do「判断待ち」 | R20 | 并入 |
 | Task | `notes`、`notes/[id]`、`notes/[id]/edit`、`notes/new` | 笔记 4 屏 | Task › メモ | R20 | 重写 |
-| 计划 | `contacts/matches` | `ContactNeedsMatchesScreen` | 人物タイプ詳細（候补） | R24（改跳转）/ R25（删除） | 重写 |
+| 计划 | `contacts/matches` | `ContactNeedsMatchesScreen` | 人物タイプ詳細（候补） | R24（改跳转）/ R25（删除） | 已处理：R25 删除屏、人脈页入口、`/api/contacts/needs-matches` 与契约（2026-10-11） |
 | 收件箱 | `(app)/inbox`、`inbox/[id]`、`inbox/notifications/[id]`、`inbox/sources/[id]` | `RelationshipInboxScreen`、`NotificationDetailScreen` | 受信箱（メッセージ / 通知、秘書）（b5） | R13 / R14 | 重写 |
 | 收件箱 | `chat`、`chat/[id]` | `RelationshipChatScreen`、`RelationshipChatDetailScreen` | 受信箱 › メッセージ | R13 / R14 | 并入（**待核对**） |
 | 账户 | `(app)/profile`、`profile/edit`、`profile/preview`、`profile/tags` | `ProfileScreen`、`EditProfileScreen`、`ProfilePreviewScreen`、`ProfileTagPickerScreen` | マイページ（b5、b7） | R18 | 重写 |
@@ -74,7 +74,7 @@
 | Task | `/app/tasks`、`/app/tasks/[id]`、`/app/tasks/relationship/[id]`、`/app/agent/actions` | 任务页、Agent 决策 | Task › To-do | R20 | 重写 |
 | Task | `/app/tasks/personal` | 个人日程 | Task › カレンダー | R20 | 重写 |
 | Task | 新增 Web メモ | 无 | Task › メモ | R20 | 新建 |
-| 计划 | `/app/agent/plan`、`/app/agent/strategy` | `iorbit-plan`、策略页 | Task › プラン、計画 v2.2 生成流程、人物タイプ詳細（b4、b9、b10） | R23–R25（插槽分三步换，R25 删旧页与兼容跳转） | 重写 |
+| 计划 | `/app/agent/plan`、`/app/agent/strategy` | `iorbit-plan`、策略页 | Task › プラン、計画 v2.2 生成流程、人物タイプ詳細（b4、b9、b10） | R23–R25（插槽分三步换，R25 删旧页与兼容跳转） | 已处理：R25 删除旧计划页、兼容跳转与策略页，全产品旧链接换成 `shared/compute/plan-href.ts` 的新地址（2026-10-11） |
 | 收件箱 | `/app/inbox/sources/[id]`；新增 `/app/inbox` | 右侧滑出面板 | 受信箱 列表页（b5） | R13 / R14 | 重写 + 新建 |
 | 账户 | `/app/profile`、`/app/settings` | `profile-0918` | マイページ / 設定（b5、b7） | R18 | 重写 |
 | 账户 | `/app/account/login`、`…/signup`、`…/forgot-password`、`…/reset-password`、`…/mobile-google` | `auth-0918` | 认证 4 态（b7） | R18 | 重写 |

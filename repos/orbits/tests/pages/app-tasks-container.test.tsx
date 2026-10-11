@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import type { Browser, Page } from "playwright";
 
@@ -9,7 +9,7 @@ import { bundle, errorsOf, open } from "../ui/support/orbit-2026-harness";
 import { SHELL_STUBS } from "../ui/support/orbit-2026-shell-harness";
 
 // R07 (SC-R07-04): /app/tasks is the Task container — four frozen tabs, ← → keys
-// outside text fields, `?tab=`; /app/agent/plan lands on プラン.
+// outside text fields, `?tab=`. (R25: the old plan address and its redirect are gone.)
 let browser: Browser;
 let code: { js: string; css: string };
 
@@ -68,14 +68,13 @@ test("← → switch tabs from the page, but not while typing in a field", async
   assert.equal(await page.getByRole("tab", { selected: true }).textContent(), "To-do", "focus inside the slot never switches tabs");
 });
 
-test("?tab= opens a tab directly; anything else is To-do; /app/agent/plan goes to プラン", async (t) => {
+test("?tab= opens a tab directly; anything else is To-do", async (t) => {
   const page = await container(t, "plan");
   assert.equal(await page.getByRole("tab", { selected: true }).textContent(), "プラン");
   assert.deepEqual(TASK_TABS, ["calendar", "todo", "plan", "memo"]);
   assert.equal(taskTabFrom("memo"), "memo");
   assert.equal(taskTabFrom(["calendar"]), "calendar");
   assert.equal(taskTabFrom("bogus"), "todo");
-  assert.match(readFileSync("app/(app)/app/agent/plan/page.tsx", "utf8"), /redirect\("\/app\/tasks\?tab=plan"\)/u);
   assert.match(readFileSync("app/(app)/app/tasks/page.tsx", "utf8"), /<TaskContainer\n\s+initialTab=\{tab\}/u);
 });
 
@@ -97,9 +96,9 @@ test("a #plan-action-… link scrolls to that row once the plan screen is there"
   await page.waitForFunction(() => { const r = document.getElementById("plan-action-a1")!.getBoundingClientRect(); return r.top >= 0 && r.bottom <= window.innerHeight; });
 });
 
-test("the server reads the plan only for ?tab=plan, and the old address stays a redirect", () => {
+test("the server reads the plan only for ?tab=plan, and the old plan address is gone (R25)", () => {
   const page = readFileSync("app/(app)/app/tasks/page.tsx", "utf8");
   // R25: the slot also gets `?plan=` (which goal) and `?new=1` (goal input) — still only for ?tab=plan.
-  assert.match(page, /const plan = tab === "plan" && actor \? await loadPlanSlot\(actor, session\.user\.id, \{ newGoal: params\?\.new === "1", planId: [^}]+\}\) : undefined;/u);
-  assert.match(readFileSync("app/(app)/app/agent/plan/page.tsx", "utf8"), /redirect\("\/app\/tasks\?tab=plan"\)/u);
+  assert.match(page, /const plan = tab === "plan" && actor \? await loadPlanSlot\(actor, \{ newGoal: params\?\.new === "1", planId: [^}]+\}\) : undefined;/u);
+  assert.equal(existsSync("app/(app)/app/agent/plan"), false);
 });

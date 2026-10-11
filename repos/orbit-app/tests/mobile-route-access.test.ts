@@ -46,7 +46,6 @@ test("mobile actor workspaces share one private-route policy", () => {
     "/agent/actions",
     "/ai/conversation-1",
     "/chat/thread-1",
-    "/contacts/matches",
     "/contacts/person-1",
     "/dashboard",
     "/followups",
@@ -149,11 +148,11 @@ test("auth return parameter ownership follows the matched route instead of globa
     "/contacts/list?id=query-owned-on-static-route&q=tokyo"
   );
   assert.equal(
-    mobileAuthReturnHref("/contacts/matches", {
+    mobileAuthReturnHref("/contacts/pipeline", {
       id: "query-owned-on-static-route",
       view: "all"
     }),
-    "/contacts/matches?id=query-owned-on-static-route&view=all"
+    "/contacts/pipeline?id=query-owned-on-static-route&view=all"
   );
 });
 
@@ -248,9 +247,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "contacts/analysis/[dimension]/[bucketId].tsx",
     "contacts/dashboard.tsx",
     "contacts/graph.tsx",
-    "contacts/intros.tsx",
     "contacts/list.tsx",
-    "contacts/matches.tsx",
     "contacts/new.tsx",
     "contacts/new/batch/[id].tsx",
     "contacts/new/batch2/[id].tsx",
@@ -281,9 +278,12 @@ test("every root-level private entry uses the shared render gate", () => {
     "party/checkin.tsx",
     "party/graph.tsx",
     "platform.tsx",
+    "plans/[planId]/done.tsx",
+    "plans/[planId]/review.tsx",
     "plans/[planId]/types/[itemId].tsx",
     "plans/drafts/[draftId]/edit.tsx",
     "plans/flow/[intakeId].tsx",
+    "plans/legacy/[planId].tsx",
     "profile/continue.tsx",
     "profile/edit.tsx",
     "profile/more.tsx",

@@ -10,7 +10,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createPlanBootstrapRouteHandlers } from "../../app/api/agent/plans/bootstrap/route-handlers";
 import { BACKGROUND_POOL_DAILY_LIMIT, USER_POOL_DAILY_LIMIT } from "../../features/ai-quota/constants";
 import { DeepseekJsonChatError } from "../../features/ai/deepseek-json-chat";
 import {
@@ -195,7 +194,7 @@ test("SC-01: the ledger refuses a fifth call — the request is never sent", asy
   assert.equal(ledger.operations[0]!.calls.length, 4);
 });
 
-test("SC-01: a full background pool does not block a plan; a full user pool → PlanGenerationLimitError with 0 calls and 429 USER_DAILY_LIMIT", async () => {
+test("SC-01: a full background pool does not block a plan; a full user pool → PlanGenerationLimitError with 0 calls", async () => {
   const background = harness();
   background.ledger.preset.background = BACKGROUND_POOL_DAILY_LIMIT;
   await background.bootstrap();
@@ -208,39 +207,8 @@ test("SC-01: a full background pool does not block a plan; a full user pool → 
   assert.equal(full.ledger.operations.length, 0);
   assert.equal(await full.plans.getCurrent(), null);
 
-  const route = createPlanBootstrapRouteHandlers({
-    isDemo: async () => false,
-    readGoal: async () => GOAL.text,
-    resolveActor: async () => ({ id: ME }) as never,
-    serviceForActor: () => ({ mode: "live", service: Object.assign(createPlanBootstrapService({
-      actorId: ME,
-      generator: full.generator,
-      now: () => NOW,
-      plans: full.plans,
-      references: createAllowListPlanReferenceValidator({ actorId: ME, allowList: { contactsByActor: "any", eventIds: "any" } }),
-      source: { listContacts: async () => ({ contacts: CONTACTS, total: CONTACTS.length }), listEvents: async () => EVENTS },
-    }), { metered: true }), success: true }),
-  });
-  const response = await route.POST(new Request("http://localhost/api/agent/plans/bootstrap", { body: JSON.stringify({ idempotencyKey: "limit-1" }), method: "POST" }));
-  assert.equal(response.status, 429);
-  const body = (await response.json()) as { error: { context?: Record<string, string> } };
-  assert.equal(body.error.context?.reason, "USER_DAILY_LIMIT");
-  assert.ok(body.error.context?.retryOn);
+  // R25：v1 引导生成接口（bootstrap 路由）已改为 409 PLAN_V1_RETIRED，路由层 429 映射的断言随处理函数删除。
   assert.equal(full.http.count, 0);
-});
-
-test("SC-01: demo mode returns 403 without reserving or generating", async () => {
-  const h = harness();
-  const route = createPlanBootstrapRouteHandlers({
-    isDemo: async () => true,
-    readGoal: async () => GOAL.text,
-    resolveActor: async () => ({ id: ME }) as never,
-    serviceForActor: () => ({ mode: "live", service: Object.assign({ bootstrap: () => h.bootstrap() }, { metered: true }), success: true }),
-  });
-  const response = await route.POST(new Request("http://localhost/api/agent/plans/bootstrap", { body: JSON.stringify({ idempotencyKey: "demo-1" }), method: "POST" }));
-  assert.equal(response.status, 403);
-  assert.equal(h.ledger.operations.length, 0);
-  assert.equal(h.http.count, 0);
 });
 
 test("SC-01: figures are the rule values (model numbers ignored) and ally names come from the input", async () => {
@@ -468,15 +436,7 @@ test("review P1: two requests with the same key at once — only the owner gener
   // 稍后用同一个键重试：replay。
   assert.equal((await service.bootstrap(request)).replayed, true);
 
-  const route = createPlanBootstrapRouteHandlers({
-    isDemo: async () => false,
-    readGoal: async () => GOAL.text,
-    resolveActor: async () => ({ id: ME }) as never,
-    serviceForActor: () => ({ mode: "live", service: { bootstrap: async () => { throw new PlanGenerationInProgressError(); }, metered: true }, success: true }),
-  });
-  const response = await route.POST(new Request("http://localhost/api/agent/plans/bootstrap", { body: JSON.stringify({ idempotencyKey: "dup" }), method: "POST" }));
-  assert.equal(response.status, 409);
-  assert.equal(((await response.json()) as { error: { context: { reason: string } } }).error.context.reason, "GENERATION_IN_PROGRESS");
+  // R25：bootstrap 路由的 409 GENERATION_IN_PROGRESS 映射随处理函数删除（接口现一律 409 PLAN_V1_RETIRED）。
 });
 
 test("review P2-4: a 12-phase AI skeleton is saved through runPlanGeneration — phases 1–2 detailed, 3–12 as skeletons", async () => {

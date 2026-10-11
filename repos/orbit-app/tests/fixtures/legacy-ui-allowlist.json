@@ -65,19 +65,6 @@
       "oldComponent": 4,
       "controls": 1
     },
-    "src/screens/contacts/ContactIntrosScreen.tsx": {
-      "oldComponent": 4,
-      "controls": 1
-    },
-    "src/screens/contacts/ContactNeedsEditor.tsx": {
-      "modal": 1
-    },
-    "src/screens/contacts/ContactNeedsMatchesContent.tsx": {
-      "oldComponent": 1
-    },
-    "src/screens/contacts/ContactNeedsMatchesScreen.tsx": {
-      "oldComponent": 2
-    },
     "src/screens/contacts/ContactPipelineScreen.tsx": {
       "oldComponent": 4,
       "controls": 1,

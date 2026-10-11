@@ -80,7 +80,7 @@ const englishFallbackItems: readonly OrbitAiStageItem[] = [
   {
     actionLabel: "Open follow-ups",
     body: "Review promises, draft boundaries, and follow-up timing before anything is sent.",
-    href: "/app/agent/plan",
+    href: "/app/tasks",
     label: "Follow-ups",
     title: "Follow-up queue",
   },
@@ -132,7 +132,7 @@ const chineseFallbackItems: readonly OrbitAiStageItem[] = [
   {
     actionLabel: "打开跟进",
     body: "先看承诺、草稿边界和时机，再决定要不要发出去。",
-    href: "/app/agent/plan",
+    href: "/app/tasks",
     label: "跟进",
     title: "跟进队列",
   },
@@ -476,7 +476,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
                 language === "en"
                   ? task.recommendedAction
                   : "先确认摘要和语气，再决定是否发送。",
-              href: "/app/agent/plan",
+              href: "/app/tasks",
               label: language === "en" ? task.dueLabel : "等待确认",
               title:
                 language === "en"
@@ -492,7 +492,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
                   language === "en"
                     ? task.recommendedAction
                     : "把承诺、草稿和提醒放在一起复核。",
-                href: "/app/agent/plan",
+                href: "/app/tasks",
                 label:
                   language === "en"
                     ? `${task.contactName} at ${task.organization}`
@@ -515,7 +515,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
           panel,
           prompt,
           sideEffectsExecuted: false,
-          stageCtaHref: "/app/agent/plan",
+          stageCtaHref: "/app/tasks",
           stageCtaLabel: language === "en" ? "Open follow-ups" : "打开跟进",
           stageItems: [...bootstrapTasks, ...tasks].slice(0, 3),
           stageSubtitle:
@@ -548,7 +548,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
                 language === "en"
                   ? task.recommendedAction
                   : "跟进草稿保持待确认，不会自动发送。",
-              href: "/app/agent/plan",
+              href: "/app/tasks",
               label: language === "en" ? "Follow-up" : "跟进",
               title: task.title,
             }),

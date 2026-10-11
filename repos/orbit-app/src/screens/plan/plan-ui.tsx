@@ -34,10 +34,12 @@ export function PlanProgress({ stage }: { stage: FlowStage }) {
  * tab bar): a close button, the title, the five-step progress, a scrolling body and
  * an optional fixed footer (the AI-fix bar, the totals bar).
  */
-export function PlanFrame({ title, subtitle, stage, onClose, right, footer, scrollRef, children }: {
+export function PlanFrame({ title, subtitle, stage, progress, onClose, right, footer, scrollRef, children }: {
   title: string;
-  subtitle?: string;
+  subtitle?: string | undefined;
   stage: FlowStage | null;
+  /** R25: a progress of its own (the review page's 前提 / AI 修正 / 手動編集) instead of the flow's five steps. */
+  progress?: ReactNode;
   onClose: () => void;
   right?: ReactNode;
   footer?: ReactNode;
@@ -56,7 +58,7 @@ export function PlanFrame({ title, subtitle, stage, onClose, right, footer, scro
         </View>
         <View style={styles.headerRight}>{right}</View>
       </View>
-      {stage === null ? null : <PlanProgress stage={stage} />}
+      {progress ?? (stage === null ? null : <PlanProgress stage={stage} />)}
       <ScrollView ref={scrollRef} automaticallyAdjustKeyboardInsets contentContainerStyle={styles.body} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>

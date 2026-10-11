@@ -45,7 +45,6 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { createTranslator } from "../../i18n/messages";
 import { ContactPage } from "./ContactPage";
-import { ContactNeedsHomeEntry } from "./ContactNeedsHomeEntry";
 import {
   buildContactsSearchRequest,
   contactAvatarFor,
@@ -1521,7 +1520,6 @@ function ContactsListContent({
           onSelectRecentRelationshipSearch={onSelectRecentRelationshipSearch}
           searches={recentRelationshipSearches}
         /> : null}
-        {primary ? <ContactNeedsHomeEntry offline={offline} /> : null}
         {!directoryEmpty ? <ContactFilterToolbar
           actionStateOptions={actionStateOptions}
           advancedFilterSections={advancedFilterSections}

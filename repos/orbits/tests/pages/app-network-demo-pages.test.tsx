@@ -416,7 +416,7 @@ test("W0054 SC-04: the three demo analysis tabs render the static demo snapshot 
       assert.equal(view.coverage.state, "ready");
       assert.deepEqual(view.coverage.needs.map((need) => [need.needId, need.have, need.target, need.missing]), [["demo-need-it", 2, 3, 1], ["demo-need-channel", 1, 3, 2], ["demo-need-chamber", 0, 2, 2]]);
       assert.ok(view.coverage.needs.every((need) => need.gapNote && need.gapNote.evidence.every((person) => person.id.startsWith("demo:"))), "every need has a demo gap note with evidence");
-      assert.ok(view.weekActions.planActions.length > 0 && view.weekActions.planActions.every((action) => action.href.startsWith("/app/agent/plan#plan-action-")));
+      assert.ok(view.weekActions.planActions.length > 0 && view.weekActions.planActions.every((action) => action.href === "/app/tasks?tab=plan"));
       assert.ok(view.dormant.length > 0 && view.dormant.every((row) => row.contactId.startsWith("demo:") && row.draftAvailable));
       assert.equal(view.report.state, "ready");
       assert.equal(view.report.contactCount, 30);

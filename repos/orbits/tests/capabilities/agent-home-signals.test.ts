@@ -16,7 +16,7 @@ function signal(
     actions: [
       {
         actionId: "open",
-        href: "/app/agent/plan",
+        href: "/app/tasks",
         label: "查看跟进",
       },
     ],

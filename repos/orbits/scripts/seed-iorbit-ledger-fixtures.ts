@@ -1,7 +1,7 @@
 /**
  * iOrbit 像素终验（任务 7）的账本种子。
  *
- * 任务 5 / 6a 的像素比对里 `/app/agent/actions` 与 `/app/agent/plan` 的左栏一直
+ * 任务 5 / 6a 的像素比对里 `/app/agent/actions` 与（R25 已删除的）旧计划页的左栏一直
  * 是空态：验证库里该账号没有任何 `agentActionsV2` 记录，账本三档全是 0。本脚本
  * 通过**运行时服务自身的 API**（`createRun` / `proposeAction` / `approveAction` /
  * `deferAction` / `processOutbox`）补齐最小验证集，不直接写表、不绕过任何状态机：

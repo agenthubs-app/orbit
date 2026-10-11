@@ -53,7 +53,7 @@ test("reminder alerts view model maps reminders to navigable alert rows", async 
   const first = alerts[0];
   assert.ok(first.title.length > 0);
   assert.ok(first.dueLabel.length > 0);
-  assert.equal(first.href, "/app/agent/plan");
+  assert.equal(first.href, "/app/tasks");
   assert.ok(["high", "normal", "low"].includes(first.priority));
 });
 

@@ -259,17 +259,9 @@ test("every *-0918 <a> keeps its own colour against the scope's a:hover", () => 
     }
   }
 
-  // 扫描面自检：六域加起来的链接数量不该悄悄塌掉，且计划页里落成 <a> 的行必须仍在扫描面里。
-  // 这条门禁最初为 plan「本周重点」行（任务 5 修订轮 1 的 linkify）而设；W0009 把 plan 屏
-  // 重写为「我的计划」，那一行没有了，改盯新页上同样被 linkify 的行：人脉需求里的联系人、计划里的活动。
+  // 扫描面自检：六域加起来的链接数量不该悄悄塌掉。R25：「我的计划」屏（iorbit-plan.tsx）随 v1 计划界面删除，
+  // 原来盯住的计划页链接行（.ir-p-person / .ir-p-ev-t）没有了，那段自检随之删除。
   assert.ok(scanned >= 60, `expected the six domains' anchors, found ${scanned}`);
-  const iorbit = DOMAINS.find((domain) => domain.name === "iorbit")!;
-  for (const planRow of ["ir-p-person", "ir-p-ev-t"]) {
-    assert.ok(
-      collectAnchors(iorbit).some((anchor) => anchor.classes.includes(planRow)),
-      `the plan page's linked row .${planRow} must stay in this gate's scan`,
-    );
-  }
   assert.deepEqual(
     uncovered,
     [],

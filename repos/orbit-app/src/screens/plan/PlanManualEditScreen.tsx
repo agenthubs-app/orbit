@@ -4,6 +4,9 @@
 // flows from the highest other types by the shared rule (plan-allocation), so the
 // total stays 100; removing a type shows where its points go first. 「元に戻す」
 // drops the local edits. Nothing is sent until 「このプランで始める」.
+// R25: the same page edits a review draft (kind review: after a 見直し, or opened by
+// 「手動で編集」 on the overview): the review's 3-step progress, 「保存して確定」, and on
+// success Task › プラン with 「方案を更新しました」; back returns to where it came from.
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
@@ -16,7 +19,7 @@ import { PLAN_EVENT_SLOT } from "../../api/compute/plan-templates";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { openMainTab } from "../../components/shell-navigation";
-import { BottomSheet, Button, FilterOption, IconButton, RetryCard, Skeleton, UiPressable, UiText } from "../../components/ui";
+import { BottomSheet, Button, FilterOption, IconButton, RetryCard, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -41,6 +44,7 @@ import {
   unusedTemplateSlots,
   type ManualEditState,
 } from "./plan-model";
+import { ReviewProgress } from "./plan-review-ui";
 import { FailureNote, InlineProblem, PlanFrame, Tag, usePlanStyles } from "./plan-ui";
 
 export function PlanManualEditScreen({ draftId }: { draftId: string }) {
@@ -52,6 +56,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
   const copy = useStandardCopy();
+  const toast = useToast();
   const [draft, setDraft] = useState<PlanDraftView | null>(null);
   const [loadFailure, setLoadFailure] = useState<PlanFailure | null>(null);
   const [state, setState] = useState<ManualEditState | null>(null);
@@ -68,7 +73,13 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
 
   const read = useCallback(async () => {
     setLoadFailure(null);
-    const result = await api.getDraft(draftId);
+    let result = await api.getDraft(draftId);
+    // R25: a review draft (no intake) is also readable through …/review, which carries
+    // the plan's goal; GET …/drafts/[id] alone fails for it on the server (see REPORT).
+    if (!result.ok && result.failure.kind !== "network") {
+      const review = await api.getReview(draftId);
+      if (review.ok) result = { data: review.data.draft, ok: true, status: review.status };
+    }
     if (!result.ok) return setLoadFailure(result.failure);
     setDraft(result.data);
     setState(manualEditStateOf(result.data.content));
@@ -134,26 +145,31 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
     setSaveFailure(null);
     const result = await api.manualEdit(draft.draftId, { ...body, idempotencyKey: attempt.current.key });
     setSaving(false);
-    if (result.ok) return openMainTab(router, result.data.href);
+    if (result.ok) {
+      if (draft.kind === "review") toast.success(t("plan.review.updated"));
+      return openMainTab(router, result.data.href);
+    }
     if (result.failure.kind !== "network") attempt.current = null;
     setSaveFailure(result.failure);
   };
 
   const total = state ? allocationTotal(state) : 0;
   const changes = state && origin ? changeCount(origin, state) : 0;
+  const review = draft?.kind === "review";
 
   return (
     <PlanFrame
       title={t("plan.manual.title")}
-      subtitle={t("plan.manual.subtitle")}
+      subtitle={t(review ? "plan.manual.reviewSubtitle" : "plan.manual.subtitle")}
       stage={4}
+      progress={review ? <ReviewProgress stage={2} /> : undefined}
       onClose={close}
       right={state && origin && editable ? <Button label={copy.action.undo} disabled={changes === 0} onPress={() => { setState(origin); setInputs({}); setNotice(null); }} size="sm" variant="ghost" /> : null}
       footer={state && editable ? (
         <View style={styles.footer}>
           <UiText style={shared.caption}>{t("plan.manual.totals", { count: changes, total })}</UiText>
           {saveFailure ? saveFailure.kind === "used" ? <InlineProblem text={t("plan.manual.used")} /> : <FailureNote failure={saveFailure} onReload={() => { setSaveFailure(null); void read(); }} /> : null}
-          <Button block disabled={!manualEditReady(state)} label={t("plan.manual.start")} loading={saving} onPress={() => void save()} variant="primary" />
+          <Button block disabled={!manualEditReady(state)} label={t(review ? "plan.manual.reviewSave" : "plan.manual.start")} loading={saving} onPress={() => void save()} variant="primary" />
         </View>
       ) : undefined}
     >
@@ -167,7 +183,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
       ) : null}
       {draft && state && editable ? (
         <>
-          <UiText style={shared.body2}>{t("plan.manual.intro")}</UiText>
+          <UiText style={shared.body2}>{t(review ? "plan.manual.reviewIntro" : "plan.manual.intro")}</UiText>
           <View style={shared.card}>
             <View style={shared.row}>
               <UiText accessibilityRole="header" style={[shared.title, shared.grow]}>{t("plan.manual.steps")}</UiText>
@@ -255,7 +271,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
             })}
             {unusedTemplateSlots(state, kind).length ? <Button icon="plus" label={t("plan.manual.addType")} onPress={() => setAddingType(true)} variant="secondary" /> : null}
           </View>
-          <UiText style={shared.caption}>{t("plan.manual.after")}</UiText>
+          <UiText style={shared.caption}>{t(review ? "plan.manual.reviewAfter" : "plan.manual.after")}</UiText>
 
           <BottomSheet visible={removing !== null && preview !== null} onClose={() => setRemoving(null)} accessibilityLabel={t("plan.manual.removeTitle", { letter: removing ? letters.get(removing) ?? "" : "" })}>
             {removing && preview ? (

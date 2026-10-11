@@ -17,5 +17,6 @@ module.exports = {
   SafeAreaView: passthrough,
   initialWindowMetrics: { frame: { height: 0, width: 0, x: 0, y: 0 }, insets },
   useSafeAreaFrame: () => ({ height: 0, width: 0, x: 0, y: 0 }),
-  useSafeAreaInsets: () => insets
+  // A test may set globalThis.__orbitSafeInsets to check that a screen reads the insets.
+  useSafeAreaInsets: () => globalThis.__orbitSafeInsets ?? insets
 };

@@ -5,7 +5,8 @@
  * - 同一阶段后续读取不再进写事务，语句数与字节都比旧路径（enterCurrentPhase + getCurrent）少；
  * - 同周重新分析出的新计划（新 id）照常执行首次进入；
  * - 并发读取结果一致、只写一次；
- * - API（`GET /api/agent/plans/current`）与计划页 SSR（`readCurrentPlan`）两个入口结果一致；首页 `?view=home` 不读进展记录。
+ * - API（`GET /api/agent/plans/current`）重复读取结果一致；首页 `?view=home` 不读进展记录。
+ *   （R25：v1 计划页与它的 SSR 入口 `readCurrentPlan` 已删除，对应的「两个入口一致」断言随之去掉。）
  *
  * 只连 `ORBIT_EVENT_DATABASE_URL` 指向的回环库，随机 schema，用完即删。
  */
@@ -15,7 +16,6 @@ import test from "node:test";
 
 import { Pool, type PoolClient } from "pg";
 
-import { readCurrentPlan } from "../../app/(app)/app/agent/plan/read-current-plan";
 import { createPlanRouteHandlers } from "../../app/api/agent/plans/route-handlers";
 import type { PlanService } from "../../features/plans/contract";
 import { runPlanMigrations } from "../../features/plans/migrations";
@@ -195,7 +195,7 @@ test("concurrent first reads after the boundary agree and write the entry once",
   });
 });
 
-test("the API and the plan page SSR read the same snapshot; the home view skips the log", databaseTest, async () => {
+test("repeated API reads return the same snapshot; the home view skips the log", databaseTest, async () => {
   await withPlansDatabase(async (pool) => {
     const clock = { now: "2026-09-28T03:00:00.000Z" };
     const meter: Meter = { bytes: 0, statements: 0, writes: 0 };
@@ -205,11 +205,8 @@ test("the API and the plan page SSR read the same snapshot; the home view skips 
     const resolve = () => ({ mode: "live" as const, service: plans, success: true as const });
     const routes = createPlanRouteHandlers({ resolveActor: async () => ({ id: ALICE }) as never, serviceForActor: resolve as never });
 
-    // 先让 API 入口完成进入（第一次打开），再比较两个入口的稳定读取。
+    // 先让 API 入口完成进入（第一次打开），再比较稳定读取。
     const first = await (await routes.GET_CURRENT(new Request("http://test/api/agent/plans/current"))).json();
-    const ssr = await readCurrentPlan(ALICE, resolve as never);
-    assert.notEqual(ssr.snapshot, "unavailable");
-    assert.deepEqual(JSON.parse(JSON.stringify(ssr.snapshot)), first.data);
     const api = await (await routes.GET_CURRENT(new Request("http://test/api/agent/plans/current"))).json();
     assert.deepEqual(api.data, first.data);
     assert.equal(await phaseEnteredRows(pool, first.data.plan.id), 1);
@@ -258,7 +255,7 @@ const AI_YEAR_PLAN = planInput({
   startsOn: "2026-09-28",
 });
 
-test("W0048b SC-03: GET current and the plan page SSR on an AI plan make 0 model calls and only log the phase entry", databaseTest, async () => {
+test("W0048b SC-03: GET current on an AI plan makes 0 model calls and only logs the phase entry", databaseTest, async () => {
   await withPlansDatabase(async (pool) => {
     const clock = { now: "2026-09-28T03:00:00.000Z" };
     const spy = { calls: 0 };
@@ -284,11 +281,9 @@ test("W0048b SC-03: GET current and the plan page SSR on an AI plan make 0 model
     const created = await plans.createVersion(AI_YEAR_PLAN);
     clock.now = "2026-12-29T03:00:00.000Z"; // 第 14 周（第 2 段）
     const resolve = () => ({ mode: "live" as const, service: plans, success: true as const });
-    const ssr = await readCurrentPlan(ALICE, resolve as never);
     const routes = createPlanRouteHandlers({ resolveActor: async () => ({ id: ALICE }) as never, serviceForActor: resolve as never });
     const api = await (await routes.GET_CURRENT(new Request("http://test/api/agent/plans/current"))).json();
     assert.equal(spy.calls, 0, "opening the page never calls a generator for an AI plan");
-    assert.notEqual(ssr.snapshot, "unavailable");
     assert.equal(await phaseEnteredRows(pool, created.plan.id), 1);
     assert.equal(api.data.items.filter((item: { phaseKey: string }) => item.phaseKey === "p2").length, 1, "nothing was refined on read");
     assert.ok(api.data.log.some((entry: { event: string }) => entry.event === "phase_entered"));

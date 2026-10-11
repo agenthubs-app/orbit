@@ -1,4 +1,4 @@
-import {criteriaForNeed} from '../../contact-needs/scoring';
+import {criteriaForNeed} from './need-criteria';
 import type { DiscoveryCandidate, DiscoveryEvidence, DiscoveryQualification } from './contract';
 
 const unsafe = /忽略.{0,8}(指令|规则)|系统提示|调用工具|ignore.{0,25}instructions|system prompt|以前の指示を無視/i;

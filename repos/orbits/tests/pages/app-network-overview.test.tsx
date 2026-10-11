@@ -55,7 +55,7 @@ test("SC-W0052-01/02/03 (zh): cards, tier bar, highlights and activity from the 
   // ② 目标缺口 → 机会标签
   assert.match(cockpit, /href="\/app\/contacts\/dashboard\?tab=opportunities" data-overview-card="gap"[\s\S]*?已有 3／共 5[\s\S]*?还缺能引荐制造业采购的人。/);
   // ③ 本周行动 → 计划页
-  assert.match(cockpit, /href="\/app\/agent\/plan" data-overview-card="week"[\s\S]*?3 项建议动作[\s\S]*?本周先约王敏聊试用。/);
+  assert.match(cockpit, /href="\/app\/tasks\?tab=plan" data-overview-card="week"[\s\S]*?3 项建议动作[\s\S]*?本周先约王敏聊试用。/);
   // ④ 待唤醒 → 机会标签
   assert.match(cockpit, /href="\/app\/contacts\/dashboard\?tab=opportunities" data-overview-card="dormant"[\s\S]*?5 位待唤醒[\s\S]*?5 位曾有往来、60 天没有新记录/);
   assert.match(html, /nw-cockpit-meta">生成于10月1日 · 基于 33 人</);
@@ -121,7 +121,7 @@ test("SC-W0052-01: snapshot read failure → numbers as usual, no sentences, met
 
 test("SC-W0052-01: no plan → card ② is the 「生成计划」 entry linking to the plan page", () => {
   const html = withoutStyles(renderToStaticMarkup(<NetworkOverview analysis={ANALYSIS_35} overview={overviewFor(ANALYSIS_35, { pendingMatches: 0, plan: null })} />));
-  assert.match(html, /href="\/app\/agent\/plan" data-overview-card="gap"[\s\S]*?nw-cockpit-plan-cta">生成计划 →</);
+  assert.match(html, /href="\/app\/tasks\?tab=plan" data-overview-card="gap"[\s\S]*?nw-cockpit-plan-cta">生成计划 →</);
   assert.match(html, /data-overview-card="week"[\s\S]*?0 项建议动作/);
 });
 

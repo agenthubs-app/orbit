@@ -532,7 +532,7 @@ test("SC-W0059-03: the in-page demo detail — ×, bottom close, ‹ 返回 and 
   assert.deepEqual(mounted.fetches, []);
 });
 
-test("SC-W0060-05: in the demo detail every write — quick memo, a profile chip, linking a need — and 约 TA／起草邮件 are intercepted: 0 requests, no navigation", async (t) => {
+test("SC-W0060-05: in the demo detail every write — quick memo, a profile chip — and 约 TA／起草邮件 are intercepted: 0 requests, no navigation", async (t) => {
   const mounted = await mount(t, inDemo(<><NetworkAll viewModel={VM} /><DemoInterceptLayer /></>));
   const open = async () => {
     await act(async () => {
@@ -555,9 +555,8 @@ test("SC-W0060-05: in the demo detail every write — quick memo, a profile chip
   await act(async () => host("data-enrichment-edit").props.onClick());
   await dismiss();
   assert.equal(mounted.root.root.findAll((node) => node.type === "select").length, 0, "the edit form never opens");
-  // 关联需求。
-  await act(async () => host("data-plan-need-link-open").props.onClick());
-  await dismiss();
+  // 「关联需求」入口随 v1 计划匹配一起删除（R25 清理），不再测。
+  assert.equal(mounted.root.root.findAll((node) => typeof node.type === "string" && node.props?.["data-plan-need-link-open"] !== undefined).length, 0);
   // 约 TA（头卡与②两处同一个处理）。
   const schedule = mounted.root.root.findAll((node) => node.type === "a" && node.props["data-network-detail-schedule"] !== undefined);
   assert.equal(schedule.length, 2);

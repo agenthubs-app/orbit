@@ -1,15 +1,17 @@
 // R24 プラン概要 (Task › プラン with an active v2 plan; b10 ⑦, UI-SPEC「Task › プラン」).
 // Score head (count-up; fade only with 「減らす動き」), composition bar, the confirmed
-// plan card with its four buttons (前提を見る read-only; 見直し / 手動編集 / 達成 say
-// 「まもなく使えます」 until R25), 今日のチャンス, pending cards, steps with progress
+// plan card with its four buttons, 今日のチャンス, pending cards, steps with progress
 // and the user-confirmed completion, person-type cards with three cells, the event
 // block and the footnote. Every number comes from GET /api/agent/plans/v2/[planId].
+// R25: the goal name opens the goal switcher (▾); 方案を見直す / ↻ open the review
+// entry sheet; 手動で編集 opens a review draft in the manual editor (greyed with
+// 「見直すと 1回つきます」 once used); 目標を達成した asks, achieves and opens 完了.
 import { useRouter, type Href } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import type { PlanPendingItem, PlanV2Detail, PlanV2PersonType } from "../../api/contract/plan-v2";
-import { planTypeHref } from "../../api/compute/plan-href";
+import type { PlanGoalListItem, PlanPendingItem, PlanV2Detail, PlanV2PersonType } from "../../api/contract/plan-v2";
+import { planDoneHref, planDraftEditHref, planTypeHref } from "../../api/compute/plan-href";
 import {
   BottomSheet,
   Button,
@@ -29,12 +31,15 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi } from "./plan-api";
 import { goalKindLabel, newIdempotencyKey, PLAN_EVENT_EMOJI } from "./plan-model";
-import { canConfirmManualMemo, groupPending, segmentKinds, stepNumbers, typeLetterOf, typePace } from "./plan-overview-model";
+import { canConfirmManualMemo, groupPending, pendingPoints, segmentKinds, stepNumbers, typeLetterOf, typePace } from "./plan-overview-model";
 import { LegendItem, ScoreBar, ScoreNumber, Section, StatCells, Stripes, usePlanOverviewStyles } from "./plan-overview-ui";
+import { PlanGoalEditSheet, PlanGoalSwitcher, PlanGoalTitle } from "./PlanGoalSwitcher";
+import { PlanReviewEntrySheet } from "./PlanReviewEntrySheet";
+import { sinceConfirmedOf } from "./plan-review-model";
 import { InlineProblem, useFailureText } from "./plan-ui";
 import { usePlanAwardToast } from "./usePlanAwardToast";
 
-export function PlanOverview({ plan, reload }: { plan: PlanV2Detail; reload: () => Promise<void> }) {
+export function PlanOverview({ plan, reload, goals = [], onAddGoal }: { plan: PlanV2Detail; reload: () => Promise<void>; goals?: readonly PlanGoalListItem[]; onAddGoal?: () => void }) {
   const shared = usePlanOverviewStyles().styles;
   const { styles } = useStyles();
   const { t, language } = useOrbitLocale();
@@ -49,29 +54,59 @@ export function PlanOverview({ plan, reload }: { plan: PlanV2Detail; reload: () 
   const [reopen, setReopen] = useState<{ key: string; number: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [cardProblem, setCardProblem] = useState<string | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [achieveOpen, setAchieveOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const kind = goalKindLabel(plan.goalKind, language);
   const score = plan.score;
   const kinds = segmentKinds(score.segments);
   const pending = groupPending(plan.pending ?? []);
-  const soon = () => toast.info(t("plan.overview.soon"));
+  const activeGoals = goals.filter((goal) => goal.status === "active");
+  const goalIndex = activeGoals.findIndex((goal) => goal.planId === plan.planId);
+  const talkedPeople = goals.find((goal) => goal.planId === plan.planId)?.talkedPeople ?? 0;
   const openType = (itemId: string) => router.push(planTypeHref("app", plan.planId, itemId) as Href);
   const typeByKey = new Map(plan.content.personTypes.map((type) => [type.key, type]));
   const segmentLabel = (key: string) => (key === "event" ? t("plan.event.title") : typeByKey.get(key)?.shortLabel ?? key);
 
+  // One write at a time (R24 review m11: a second tap while a request runs does nothing).
+  const running = useRef(false);
   const run = async (work: () => Promise<void>) => {
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setProblem(null);
-    await work();
-    setBusy(false);
+    try { await work(); } finally { running.current = false; setBusy(false); }
   };
   const decidePending = (item: PlanPendingItem, accept: boolean, answered?: readonly number[]) => void run(async () => {
     const key = newIdempotencyKey(accept ? "pending-accept" : "pending-dismiss");
     const result = accept ? await api.acceptPending(item.id, key, answered) : await api.dismissPending(item.id, key);
     if (!result.ok) { setProblem(failureText(result.failure)); return; }
-    if (item.kind === "memo_coverage" && accept && result.data.award) showAward([result.data.award], item.title, item.detail ?? t("plan.type.anonymous"));
-    else if (item.kind === "memo_coverage") toast.info(t(accept ? "plan.pending.accepted" : "plan.pending.dismissed"));
+    // R24 review M6-2: only a counted award says 「+X 点」; none / no award says 「加点はありません」 (+ the reason).
+    if (item.kind === "memo_coverage" && accept && result.data.award) showAward([result.data.award], item.title, item.contactId && item.detail ? item.detail : t("plan.type.anonymous"));
+    else if (item.kind === "memo_coverage" && accept) toast.info(t("plan.award.noPoints"));
+    else if (item.kind === "memo_coverage") toast.info(t("plan.pending.dismissed"));
     else if (item.kind === "step_suggestion" && accept) toast.success(copy.toast.completed, { undo: () => void reopenStep(item.id.split(":").slice(2).join(":")) });
     await reload();
+  });
+  // R25: 手動で編集 opens a review draft (no AI, no review used) in the R23 editor.
+  const openManualEdit = () => void run(async () => {
+    setCardProblem(null);
+    const result = await api.openManualEdit(plan.planId, newIdempotencyKey("manual-open"));
+    if (!result.ok) { setCardProblem(result.failure.kind === "used" ? t("plan.overview.manualUsed") : failureText(result.failure)); return; }
+    router.push(planDraftEditHref("app", result.data.draftId) as Href);
+  });
+  const achieve = () => void run(async () => {
+    setAchieveOpen(false);
+    setCardProblem(null);
+    const result = await api.achieve(plan.planId, plan.revision, newIdempotencyKey("achieve"));
+    if (!result.ok) {
+      setCardProblem(result.failure.kind === "stale" ? t("plan.error.stale") : failureText(result.failure));
+      if (result.failure.kind === "stale" || result.failure.kind === "achieved") await reload();
+      return;
+    }
+    router.push(planDoneHref("app", plan.planId) as Href);
   });
   const reopenStep = (stepKey: string) => run(async () => {
     setReopen(null);
@@ -84,12 +119,17 @@ export function PlanOverview({ plan, reload }: { plan: PlanV2Detail; reload: () 
   return (
     <View style={styles.page} testID="plan-overview">
       <View style={shared.between}>
-        <View style={[shared.row, shared.grow]}>
-          <UiText accessibilityRole="header" style={shared.title}>{plan.goal}</UiText>
-          {kind ? <Chip label={kind} tone="lav" /> : null}
+        <View style={shared.grow}>
+          <PlanGoalTitle goal={plan.goal} goalKind={plan.goalKind} index={goalIndex + 1} count={goalIndex >= 0 ? plan.quota.activeGoalLimit : 0} onPress={() => setSwitcherOpen(true)} />
         </View>
-        {plan.sample ? <SampleTag /> : null}
+        <IconButton icon="refresh" size={34} accessibilityLabel={t("plan.overview.review")} onPress={() => setReviewOpen(true)} />
       </View>
+      {kind || plan.sample ? (
+        <View style={shared.row}>
+          {kind ? <Chip label={kind} tone="lav" /> : null}
+          {plan.sample ? <SampleTag /> : null}
+        </View>
+      ) : null}
 
       <View style={shared.card} testID="score-head">
         <View style={shared.between}>
@@ -134,11 +174,13 @@ export function PlanOverview({ plan, reload }: { plan: PlanV2Detail; reload: () 
         <UiText style={shared.strong}>{plan.content.conclusion}</UiText>
         <View style={styles.buttons}>
           <View style={styles.buttonCell}><Button block icon="layers" label={t("plan.overview.premise")} onPress={() => setPremiseOpen(true)} variant="secondary" /></View>
-          <View style={styles.buttonCell}><Button block icon="refresh" label={t("plan.overview.review")} onPress={soon} variant="secondary" /></View>
-          <View style={styles.buttonCell}><Button block icon="pen" label={t("plan.overview.manualEdit")} onPress={soon} variant="secondary" /></View>
-          <View style={styles.buttonCell}><Button block icon="flag" label={t("plan.overview.achieve")} onPress={soon} variant="secondary" /></View>
+          <View style={styles.buttonCell}><Button block icon="refresh" label={t("plan.overview.review")} onPress={() => setReviewOpen(true)} variant="secondary" /></View>
+          <View style={styles.buttonCell}><Button block icon="pen" label={t("plan.overview.manualEdit")} onPress={openManualEdit} disabled={busy || !plan.quota.manualEditAvailable} variant="secondary" /></View>
+          <View style={styles.buttonCell}><Button block icon="flag" label={t("plan.overview.achieve")} onPress={() => setAchieveOpen(true)} disabled={busy} variant="secondary" /></View>
         </View>
+        {!plan.quota.manualEditAvailable ? <UiText style={shared.meta}>{t("plan.overview.manualLocked")}</UiText> : null}
         <UiText style={shared.meta}>{t("plan.overview.reviewNote", { left: plan.quota.reviewLeftThisMonth, limit: plan.quota.reviewMonthlyLimit })}</UiText>
+        {cardProblem ? <InlineProblem text={cardProblem} /> : null}
       </View>
 
       {plan.todayChance ? (
@@ -242,7 +284,7 @@ export function PlanOverview({ plan, reload }: { plan: PlanV2Detail; reload: () 
               <UiText style={shared.body}>{row.value}</UiText>
             </View>
           ))}
-          <Button block icon="refresh" label={t("plan.overview.premiseChange")} onPress={soon} variant="secondary" />
+          <Button block icon="refresh" label={t("plan.overview.premiseChange")} onPress={() => { setPremiseOpen(false); setReviewOpen(true); }} variant="secondary" />
         </View>
       </BottomSheet>
       <ConfirmDialog
@@ -253,24 +295,52 @@ export function PlanOverview({ plan, reload }: { plan: PlanV2Detail; reload: () 
         onConfirm={() => reopen && void reopenStep(reopen.key)}
         onCancel={() => setReopen(null)}
       />
+      <ConfirmDialog
+        visible={achieveOpen}
+        title={t("plan.achieve.title")}
+        message={t("plan.achieve.body", { people: talkedPeople, total: score.total })}
+        confirmLabel={t("plan.achieve.confirm")}
+        stacked
+        onConfirm={achieve}
+        onCancel={() => setAchieveOpen(false)}
+      />
+      <PlanReviewEntrySheet planId={plan.planId} visible={reviewOpen} onClose={() => setReviewOpen(false)} since={sinceConfirmedOf(plan)} />
+      <PlanGoalSwitcher
+        visible={switcherOpen}
+        onClose={() => setSwitcherOpen(false)}
+        goals={goals}
+        currentPlanId={plan.planId}
+        activeGoalLimit={plan.quota.activeGoalLimit}
+        onSwitched={() => void reload()}
+        onAdd={() => onAddGoal?.()}
+        onEdit={() => setEditOpen(true)}
+      />
+      <PlanGoalEditSheet visible={editOpen} onClose={() => setEditOpen(false)} plan={plan} reviewLeft={plan.quota.reviewLeftThisMonth} onSaved={() => void reload()} />
     </View>
   );
 }
 
-/** 「〇〇さんとの面談で 3 問中 N 問を話せました · +X 点にしますか？」, or the manual tick card (≥2 to confirm). */
+/**
+ * 「〇〇さんとの面談で 3 問中 N 問を話せました · +X 点にしますか？」, or the manual tick card (≥2 to confirm).
+ * R24 review m9: +X is the server's `points` (it knows already-counted people and skipped
+ * types); without it the card asks without a number. No contact → no 「〇〇さんとの」.
+ */
 function MemoCard({ item, plan, busy, onDecide }: { item: PlanPendingItem; plan: PlanV2Detail; busy: boolean; onDecide: (accept: boolean, answered?: readonly number[]) => void }) {
   const shared = usePlanOverviewStyles().styles;
   const { t } = useOrbitLocale();
   const [ticked, setTicked] = useState<number[]>([]);
   const type = plan.content.personTypes.find((entry) => entry.itemId === item.itemId);
-  const segment = plan.score.segments.find((entry) => entry.key === type?.key);
-  const points = type && segment ? typePace(type.allocation, type.targetCount, segment.earned, segment.skipped).next : 0;
-  const name = item.detail;
+  const points = pendingPoints(item);
+  const name = item.contactId && item.detail ? item.detail : null;
   const count = item.answered?.length ?? 0;
+  const text = (base: "plan.pending.memo" | "plan.pending.memoManual") => {
+    const key = `${base}${name ? "" : "NoName"}${points === null ? "NoPoints" : ""}` as `${typeof base}${"" | "NoName"}${"" | "NoPoints"}`;
+    return t(key, { count, name: name ?? "", points: points ?? 0 });
+  };
   if (item.manual) {
     return (
       <View style={shared.dashedCard} testID="memo-manual">
-        <UiText style={shared.strong}>{name ? t("plan.pending.memoManual", { name, points }) : t("plan.pending.memoManualNoName", { points })}</UiText>
+        <UiText style={shared.strong}>{text("plan.pending.memoManual")}</UiText>
         <UiText style={shared.meta}>{t("plan.pending.memoManualNote")}</UiText>
         {(type?.questions ?? []).map((question, index) => {
           const checked = ticked.includes(index);
@@ -290,7 +360,7 @@ function MemoCard({ item, plan, busy, onDecide }: { item: PlanPendingItem; plan:
   }
   return (
     <View style={shared.dashedCard} testID="memo-card">
-      <UiText style={shared.strong}>{name ? t("plan.pending.memo", { count, name, points }) : t("plan.pending.memoNoName", { count, points })}</UiText>
+      <UiText style={shared.strong}>{text("plan.pending.memo")}</UiText>
       <View style={shared.row}>
         <Button size="sm" icon="x" label={t("plan.pending.dismiss")} onPress={() => onDecide(false)} variant="ghost" disabled={busy} />
         <Button size="sm" icon="check" label={t("plan.pending.accept")} onPress={() => onDecide(true)} variant="primary" disabled={busy} />

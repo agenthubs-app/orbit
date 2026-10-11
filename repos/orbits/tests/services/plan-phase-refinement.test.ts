@@ -8,7 +8,6 @@ import test from "node:test";
 import { createPlanBootstrapService } from "../../features/plans/bootstrap";
 import type { PlanSnapshot } from "../../features/plans/contract";
 import { createMockPlanGenerator } from "../../features/plans/mock-generator";
-import { buildMyPlanViewModel } from "../../app/(app)/app/agent/plan/plan-route-view-model";
 import { BACKGROUND_POOL_DAILY_LIMIT } from "../../features/ai-quota/constants";
 import { bindDeepseekPlanChat, createAiPhaseRefiner } from "../../features/plans/ai-generator";
 import type { PlanGenerator } from "../../features/plans/generator";
@@ -371,12 +370,7 @@ test("W0048b SC-03: plan-phase refines the next skeleton phase when the previous
   // review P2-3：同一事务里阶段元数据更新为已细化，跟进规则与要认识的人持久化；view-model 输出跟进规则、不再是骨架。
   const phase3 = (current.plan.analysis.phases as Array<{ key: string; detailed: boolean; followups: string[]; who: string[] }>)[2]!;
   assert.deepEqual([phase3.key, phase3.detailed, phase3.followups, phase3.who], ["p3", true, ["当天发感谢"], ["季度 3 要认识的人"]]);
-  const view = await ai.plans.getCurrentView();
-  const model = buildMyPlanViewModel({ guideEnabled: true, language: "zh", now: new Date(clock.now), snapshot: view });
-  assert.equal(model.state, "ready");
-  const p3View = model.state === "ready" ? model.view.phases[2]! : null;
-  assert.deepEqual(p3View?.followups, ["当天发感谢"]);
-  assert.equal(p3View?.refinement, "none");
+  // R25：「我的计划」视图模型的阶段渲染断言随 v1 计划页删除；持久化的阶段元数据由上一条断言锁住。
 
   // 同一天重跑：0 次调用（已补细的阶段按幂等键挡住）。
   await ai.maintenance();

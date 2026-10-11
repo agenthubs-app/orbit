@@ -129,7 +129,7 @@ test("goal input: the type is guessed after a pause, a picked chip is never over
   const { page, calls } = await open(t, "/task", (call) => segmentReads(call, []) ?? (call.path === "/api/agent/plans/goal-kind" ? ok({ goalKind: "fundraising", source: "ai" }) : undefined));
   await page.getByText("何を達成したいですか？").waitFor();
   await page.getByText("人物タイプは、こう具体的になります").waitFor();
-  assert.deepEqual(calls.map((call) => `${call.method} ${call.path}`).sort(), ["GET /api/agent/plans/intakes", "GET /api/agent/plans/v2/summary"], "opening the segment (and the sample card) only reads");
+  assert.deepEqual(calls.map((call) => `${call.method} ${call.path}`).sort(), ["GET /api/agent/plans/intakes", "GET /api/agent/plans/legacy", "GET /api/agent/plans/v2/summary"], "opening the segment (and the sample card) only reads (R25: plus 以前のプラン)");
   for (const call of calls) {
     assert.equal(call.headers["x-orbit-lang"], "ja");
     assert.equal(call.headers["x-orbit-platform"], "app");

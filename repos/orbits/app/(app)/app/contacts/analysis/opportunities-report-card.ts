@@ -4,9 +4,11 @@
  */
 import type { NetworkSnapshotView } from "../../../../../features/network-analysis/contract";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 import { pickCopy, type NetworkCopy } from "./network-copy";
 
-export const PLAN_HREF = "/app/agent/plan";
+/** 计划入口：Task › プラン（R25 起旧的计划页 agent/plan 已删除）。 */
+export const PLAN_HREF = planTaskSegmentHref("web");
 
 export type ReportCardLimit = "manual" | "user" | null;
 

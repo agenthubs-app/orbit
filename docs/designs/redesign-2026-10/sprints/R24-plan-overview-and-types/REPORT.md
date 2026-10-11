@@ -86,3 +86,31 @@
 - 真机 / 模拟器走查（BottomSheet、横滑、Toast 撤销时序、触感）需要人工。
 - C12 真实调用没有进账本（见上表），上线前确认。
 - **给 R25**：概要上「まもなく」的見直し / 手動編集 / 達成按钮接线；删 App `ContactNeedsMatchesScreen` 与 matches 跳转、旧链接换新。
+
+## 复核修复（REVIEW 处理记录）
+
+复核结论**不通过**（S 1、M 7、m 12）。处理：
+
+| 条 | 处理 | 提交 |
+| --- | --- | --- |
+| S1 `plan_log.body` 空串 | 三处改成可读模板（随 R25 服务端 `0f7e1ef1`），内存仓储同样检查；补 Postgres 测试（memo 提议 → pending → 确认 / 不采用 → Step 建议「まだ」）；`job.ts` 吞错改结构化日志 | `0f7e1ef1`、`efb2f858` |
+| M1 memo 卡确认不原子 | 「查是否已决定 → 计分 → 写决定」同一事务（`scoreIn` 共用）；已决定换键 409 `PENDING_DECIDED`（对标 Stripe 状态冲突）；内存 + Postgres 测试 | `efb2f858` |
+| M2 线下新建联系人不幂等 | 占位 → 建联系人 → 回填计分（同 R23 M4）；同键重放 / 并发只建 1 人；失败 503 `CONTACT_CREATE_FAILED`，不再静默匿名；两端界面问「名前なしで記録しますか？」 | `efb2f858`、Web `6b1a9492`、App（本提交） |
+| M3 live 全表读活动 | R26 前 `livePlanEventFacts` 返回空、不读库（`PLAN_LIVE_EVENT_FACTS_READY = false`）；给 R26 留有界读取（未来 60 天、≤20 场） | `efb2f858` |
+| M4 参加计分只接名片一路 | v1 / v2 各自 try；对账任务补 v2（每东京日一轮，≤50 组）；本人签到接上（`onSelfCheckedIn`）。**工作人员代签没接**（参加者 → actor 映射不明），交 R26 / R27 | `efb2f858` |
+| M5 C12 | 别名 C1… / N1… 不出境、未知别名丢弃；提示词版本进账本 `ai_usage.promptVersion`（`plan-match-2026-10-v3`、`memo-plan-coverage-2026-10-v1`）。**`opener` 不做**，候补「切り出し方」仍用类型级（交后续） | `efb2f858` |
+| M6 提示与实际不符 | Web 撤销只在全部成功时提示、写入中提示「処理中です」；App memo 卡没加分显示「加点はありません · 理由」（改掉错误断言）；App 多人记录部分失败保留弹层并只补记失败的人 | Web `6b1a9492`、App（本提交） |
+| M7 证据缺口 | Postgres 回归：R24 新接口他人隔离（11 个入口）、「撤销不算互动」对关系强度 / stamp / 信号 / 近期记录各一条；全量带本机库跑（见 R25 REPORT 收口） | `efb2f858` |
+| m1 | `planCoverageHooksOrSkip`：计划部分出错只跳过并记日志，不影响 memo 提取；**live 触发点待 R20**（保存 memo 不带 `usedForPlan`） | `efb2f858` |
+| m2 | 例 2 按设计稿原文事实代入，逐项断言 31 / 10 / 6 / 6 / 3 = 56；注明「分项按本实现子公式，与设计稿示意数字不同」。上文「设计稿两例 82 / 61」改读为：例 1 = 82（固定用例）、例 2 = 56 | `efb2f858` |
+| m3 / m9 | 契约只加可选：`PlanPendingItem.href / points`（服务端 `nextAward` 算）、`PlanContactFit.fits[].recommendScore / reason`；两端「+X」只读服务端 | `efb2f858` + 两端 |
+| m4 | 两端 `points` 为 0 不画 chip | 两端 |
+| m5 | 依頼文不放 AI 的 `why`，改固定句（三语） | `efb2f858` |
+| m6 | `proposeMemoCoverage` 只接受候补（未驳回）或已关联的人 | `efb2f858` |
+| m7 | 候补每行加「すでに話した」（两端）；Web 工具栏默认线下模式 | 两端 |
+| m8 | Web 1024 Step 分组补全；三版式「完了を取り消す」一致（390 可撤回） | `6b1a9492` |
+| m10 | 减少动效下浮标淡入再淡出 | `6b1a9492` |
+| m11 | 两端双击防护、已跳过不可提交、App 底部栏读安全区、提案 `kind:"request"` 文案、Web「達成にする」、删未用文案键；**示例计划不拦写**仍交 R28 | 两端 |
+| m12 | 本节即更正：SC-05 的 Postgres 证据补齐后成立（live 触发点待 R20）；参加计分调用点见 M4；全量 skip 数见 R25 收口 | — |
+
+**SC-05 更正：** 原 ✅ 不成立（S1）；修复后 ✅（Postgres 测试 `plans-v2-r24-review-postgres`），live 端到端触发待 R20。

@@ -4,7 +4,7 @@
  * 五块与数据来源（单一事实来源、处处有据）：
  * 1. 规则覆盖度 = 计划人脉需求的 `contact_links` 与 `targetCount`（`features/plans/coverage.ts`），快照内容不改变任何数字；
  * 2. 缺口补法 = 每条还缺人的需求下最多 2 场活动（计划点名在前，其余显示真实命中词）+「待确认 N」（同一张候选表）；
- * 3. 本周建议动作 = 计划本周（含拖期）未完成的行动，直链 `/app/agent/plan#plan-action-<id>`；不新生成、不调 AI；
+ * 3. 本周建议动作 = 计划本周（含拖期）未完成的行动，链到 Task › プラン（R25 起不再带行锚点）；不新生成、不调 AI；
  * 4. 待唤醒 = dormant 且与目标相关的联系人，`why` 由规则拼句（最近一条真实记录 + 与目标的关系），依据 = 那条记录；
  * 5. 报告卡 = W0048a `NetworkSnapshotView`（只读），按钮走 `POST /api/network/snapshot/recompute`（用户主动池）。
  *
@@ -384,7 +384,7 @@ export function buildOpportunitiesTabView(parts: OpportunitiesTabParts, input: {
     report: parts.report,
     weekActions: {
       pendingMatches: plan && parts.pending ? parts.pending.contactCount : null,
-      planActions: plan === undefined ? null : (plan?.weekActions ?? []).map((action) => ({ ...action, href: `${PLAN_HREF}#plan-action-${encodeURIComponent(action.id)}` })),
+      planActions: plan === undefined ? null : (plan?.weekActions ?? []).map((action) => ({ ...action, href: PLAN_HREF })),
     },
   };
 }

@@ -170,7 +170,7 @@ type Copy = { zh: string; en: string };
 
 /** 最长前缀优先（按路径段匹配，`/app/contactsX` 不算 `/app/contacts`）。 */
 const RETURN_LABELS: readonly { prefix: string; label: Copy }[] = [
-  { prefix: "/app/agent/plan", label: { zh: "返回我的计划", en: "Back to My plan" } },
+  { prefix: "/app/plans", label: { zh: "返回我的计划", en: "Back to My plan" } },
   { prefix: "/app/agent", label: { zh: "返回 iOrbit", en: "Back to iOrbit" } },
   { prefix: "/app/contacts/dashboard", label: { zh: "返回人脉分析", en: "Back to Network analysis" } },
   { prefix: "/app/contacts/analysis", label: { zh: "返回人脉分析", en: "Back to Network analysis" } },

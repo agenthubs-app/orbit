@@ -2,9 +2,9 @@
  * W0050 组件层：「机会」标签（`NetworkAnalysis initialTab="opp"` → `NetworkOpportunities`）。
  *
  * - SC-01：覆盖度 = Σmin(a,t) ÷ Σt 的取整值、每行「已有 a／t · 还缺 b」；换成任意快照（含写着「覆盖度 90%」的句子）数字不变；
- *   无计划 → 覆盖区只给「去生成计划」（/app/agent/plan），其余四块照常；计划无需求 → 如实空态；
- * - SC-02：未满足的需求下 ≤2 场活动（计划点名／命中词）与「待确认 N」，点开 `PlanMatchSheet` 只列该需求候选；
- * - SC-03：本周行动链接 `/app/agent/plan#plan-action-<id>`、拖期「已延后 N 周」、「N 位待确认」入口；
+ *   无计划 → 覆盖区只给「去生成计划」（Task › プラン），其余四块照常；计划无需求 → 如实空态；
+ * - SC-02：未满足的需求下 ≤2 场活动（计划点名／命中词）与「待确认 N」（R25 起链到 Task › プラン；旧的确认弹层已删除）；
+ * - SC-03：本周行动链到 Task › プラン（R25 起不带行锚点）、拖期「已延后 N 周」、「N 位待确认」入口；
  * - SC-04：待唤醒 why + 依据链接、「起草邮件」返回可编辑模板草稿（POST reconnect-draft 一次，不发送）；
  * - SC-05：报告卡各状态与按钮（生成于／基于 N 人／新增 M 人未纳入、正在更新、明天更新、none、insufficient、
  *   手动用满／429 MANUAL_REFRESH_LIMIT、用户池用满／429 USER_DAILY_LIMIT）；「重新分析」调 recompute 一次；
@@ -152,7 +152,7 @@ test("SC-01: replacing the snapshot (even one that says “覆盖度 90%”) nev
 test("SC-01: with no plan only the coverage block changes to a plan entry; the other four blocks still render", () => {
   const html = render(fullView({ goal: "拿到天使轮融资", pending: null, plan: null }));
   const sections = networkSections(html);
-  assert.match(sections.coverage ?? "", /href="\/app\/agent\/plan"[^>]*>✦ 去生成计划/);
+  assert.match(sections.coverage ?? "", /href="\/app\/tasks\?tab=plan"[^>]*>✦ 去生成计划/);
   assert.doesNotMatch(sections.coverage ?? "", /data-network-coverage-percent/);
   for (const key of ["gaps", "actions", "dormant", "report"]) assert.ok(sections[key], key);
   assert.match(sections.dormant ?? "", /周杰/);
@@ -170,7 +170,7 @@ test("SC-01: a plan without network needs shows an honest empty state", () => {
 
 // ---- SC-02 ----
 
-test("SC-02: an unmet need lists ≤2 events with their reason and “待确认 N”; the sheet lists only that need's candidates", async (t) => {
+test("SC-02: an unmet need lists ≤2 events with their reason and “待确认 N”, which links to Task › プラン", async (t) => {
   const calls = stubFetch(t, () => ({ body: { success: true } }));
   const renderer = await mount(t, <NetworkAnalysis viewModel={empty} analysis={analysis} initialTab="opp" opportunities={fullView()} />);
   const gaps = byData(renderer.root, "data-network-gap");
@@ -180,36 +180,8 @@ test("SC-02: an unmet need lists ≤2 events with their reason and “待确认 
   assert.match(gapText, /SaaS Night Tokyo[\s\S]*命中：cto/);
   const pending = byData(renderer.root, "data-network-gap-pending");
   assert.equal(pending[0]!.props["data-network-gap-pending"], 2);
-  await act(async () => { pending[0]!.props.onClick(); });
-  const sheet = renderer.root.findAll((node) => node.props["data-plan-match-candidate"] !== undefined);
-  assert.deepEqual(sheet.map((node) => node.props["data-plan-match-candidate"]), ["m1", "m2"], "need-a's candidate is not in need-c's sheet");
-  assert.equal(calls.length, 0, "opening the sheet does not fetch");
-});
-
-test("SC-02 / review P2: clicking “是” in the sheet links the contact and the coverage numbers update in place; “不是” only removes the row", async (t) => {
-  const calls = stubFetch(t, (url, init) => {
-    if (url !== "/api/agent/plans/candidates") return { body: {}, status: 500 };
-    const body = JSON.parse(String(init?.body)) as { decision: string };
-    return { body: { data: body.decision === "accept"
-      ? { link: { action: { id: "act-new", meta: { contactId: "contact:m1" }, title: "约 高桥" }, need: { id: "need-c" } }, status: "accepted" }
-      : { link: null, status: "dismissed" }, success: true } };
-  });
-  const renderer = await mount(t, <NetworkAnalysis viewModel={empty} analysis={analysis} initialTab="opp" opportunities={fullView()} />);
-  const percent = () => byData(renderer.root, "data-network-coverage-percent")[0]!.props["data-network-coverage-percent"];
-  const needC = () => textOf(byData(renderer.root, "data-network-need").find((node) => node.props["data-network-need"] === "need-c")!);
-  assert.equal(percent(), 75);
-  assert.match(needC(), /已有 0／1 · 还缺 1/);
-  await act(async () => { byData(renderer.root, "data-network-gap-pending")[0]!.props.onClick(); });
-  // 「不是」：覆盖不变
-  await act(async () => { renderer.root.find((node) => node.props["data-plan-match-candidate"] === "m2").find((node) => node.props["data-plan-match-no"] !== undefined).props.onClick(); });
-  assert.equal(percent(), 75);
-  // 「是」：need-c 0→1，总覆盖 3/4 → 4/4
-  await act(async () => { renderer.root.find((node) => node.props["data-plan-match-candidate"] === "m1").find((node) => node.props["data-plan-match-yes"] !== undefined).props.onClick(); });
-  assert.deepEqual(calls.map((call) => JSON.parse(call.body ?? "{}").decision), ["dismiss", "accept"]);
-  assert.equal(percent(), 100);
-  assert.match(needC(), /已有 1／1 · 已满足/);
-  assert.equal(byData(renderer.root, "data-network-gap").length, 0, "need-c is no longer a gap");
-  assert.match(textOf(byData(renderer.root, "data-network-pending-matches")[0]!), /1 位待确认/);
+  assert.equal(pending[0]!.props.href, "/app/tasks?tab=plan");
+  assert.equal(calls.length, 0, "rendering does not fetch");
 });
 
 test("review P3: the English goal line uses an ASCII separator", () => {
@@ -220,17 +192,16 @@ test("review P3: the English goal line uses an ASCII separator", () => {
 
 // ---- SC-03 ----
 
-test("SC-03: week actions link to /app/agent/plan#plan-action-<id>, overdue ones say “已延后 N 周”, and “N 位待确认” opens all candidates", async (t) => {
+test("SC-03: week actions link to Task › プラン, overdue ones say “已延后 N 周”, and “N 位待确认” links there too", async (t) => {
   const html = render(fullView());
   const actions = networkSections(html).actions ?? "";
-  assert.match(actions, /href="\/app\/agent\/plan#plan-action-act-1"[\s\S]*?整理目标客户名单[\s\S]*?已延后 2 周/);
-  assert.match(actions, /href="\/app\/agent\/plan#plan-action-act-2"[\s\S]*?约佐藤喝咖啡[\s\S]*?本周/);
+  assert.match(actions, /href="\/app\/tasks\?tab=plan"[^>]*data-network-week-action="act-1"[\s\S]*?整理目标客户名单[\s\S]*?已延后 2 周/);
+  assert.match(actions, /href="\/app\/tasks\?tab=plan"[^>]*data-network-week-action="act-2"[\s\S]*?约佐藤喝咖啡[\s\S]*?本周/);
   assert.doesNotMatch(actions, /已完成的行动/);
   assert.match(actions, /3 位待确认/);
   stubFetch(t, () => ({ body: { success: true } }));
   const renderer = await mount(t, <NetworkAnalysis viewModel={empty} analysis={analysis} initialTab="opp" opportunities={fullView()} />);
-  await act(async () => { byData(renderer.root, "data-network-pending-matches")[0]!.props.onClick(); });
-  assert.equal(renderer.root.findAll((node) => node.props["data-plan-match-candidate"] !== undefined).length, 3);
+  assert.equal(byData(renderer.root, "data-network-pending-matches")[0]!.props.href, "/app/tasks?tab=plan");
 });
 
 // ---- SC-04 ----

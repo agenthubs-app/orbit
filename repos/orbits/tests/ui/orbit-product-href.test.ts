@@ -34,9 +34,10 @@ test("prototype mappings survive the unification", () => {
   assert.equal(productHref("/home/cards"), "/app/contacts/dashboard");
   // iOrbit 任务 6a：原型的日程/待办入口从已删除的 `/app/today` / `/app/followups`
   // 改到取代它们的两条 iOrbit 兄弟屏。
-  assert.equal(productHref("/home/schedule"), "/app/agent/plan");
-  assert.equal(productHref("/today"), "/app/agent/plan");
-  assert.equal(productHref("/schedule"), "/app/agent/plan");
+  // R25：旧计划页删除；日程去 Task › カレンダー，今天去 Task › To-do（与 App 的映射一致）。
+  assert.equal(productHref("/home/schedule"), "/app/tasks?tab=calendar");
+  assert.equal(productHref("/today"), "/app/tasks");
+  assert.equal(productHref("/schedule"), "/app/tasks?tab=calendar");
   assert.equal(productHref("/followups"), "/app/agent/actions");
 });
 

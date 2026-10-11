@@ -450,10 +450,6 @@ function ContactCommunicationStatus({ contactId, state }: { contactId: string; s
         <Pressable accessibilityRole="button" onPress={() => router.push(`/chat/${encodeURIComponent(view.conversationId)}` as Href)} style={styles.secondaryActionButton}>
           <Text style={styles.secondaryActionText}>{locale.t("contacts.openChat")}</Text>
         </Pressable>
-      ) : view.canInvite ? (
-        <Pressable accessibilityRole="button" onPress={() => router.push("/contacts/intros" as Href)} style={styles.secondaryActionButton}>
-          <Text style={styles.secondaryActionText}>{locale.t("contacts.createInvitation")}</Text>
-        </Pressable>
       ) : null}
     </View>
   );

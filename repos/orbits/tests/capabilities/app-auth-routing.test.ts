@@ -12,7 +12,7 @@ test("personal app route trees are private", () => {
     "/app/agent",
     "/app/admin",
     "/app/admin/events",
-    "/app/agent/plan",
+    "/app/plans/plan-1",
     "/app/contacts",
     "/app/contacts/person-1",
     "/app/home",

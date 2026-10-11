@@ -63,7 +63,7 @@ const HOME_FACTS_VIEW_HREFS: Record<HomeFactsSourceKey, string> = {
   tasks: "/app/tasks",
   followups: "/app/tasks",
   personal: "/app/tasks/personal",
-  appointments: "/app/agent/plan",
+  appointments: "/app/tasks?tab=calendar",
 };
 const GROUP_ORDER: readonly HomeFactsGroupKey[] = [
   "overdue",

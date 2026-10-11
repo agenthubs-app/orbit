@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 
 import type {
   AddManualLogInput,
-  CreatePlanVersionInput,
   PlanItemChange,
   PlanService,
 } from "../../../../features/plans/contract";
@@ -51,7 +50,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  *
  * - `GET  /api/agent/plans/current`          → `{ plan, items, log } | null`（W0021：页面投影 `PlanViewSnapshot`；
  *                                              `?view=home` 时 `log` 为空数组）
- * - `POST /api/agent/plans`                  → 第一份计划，201；已有生效计划时 409（换版本走 reanalyze，W0012）
+ * - `POST /api/agent/plans`                  → R25 起一律 409 PLAN_V1_RETIRED（`features/plans/v2/v1-retired.ts`），不经本文件
  * - `PATCH /api/agent/plans/items/:itemId`   → 单个条目变化 `{ change, idempotencyKey? }`
  * - `POST /api/agent/plans/log`              → 手动进展记录，201（`linkedContactIds`／`linkedEventId` 是结构化的 @）
  * - `GET  /api/agent/plans/weekly-summary`   → 东京周一：上周小结；其他日子 null（W0012）
@@ -121,17 +120,6 @@ export function createPlanRouteHandlers(dependencies: PlanRouteDependencies = {}
       }),
 
     GET_WEEKLY_SUMMARY: () => run((service) => service.weeklySummary()),
-
-    // W0012：通用创建只能建第一份计划。已有生效计划时一律 409 `BASE_PLAN_MISMATCH`、不写库——
-    // 换版本只能走 `/api/agent/plans/reanalyze`（服务端决定的 origin：`reanalysis` 占本月额度，
-    // `next_plan` 要求计划已到期），否则这里就是绕过额度的后门。`basePlanId` 由服务端强制为 null，
-    // 请求体里的值被忽略；同一 `creationKey` 的重放在服务里先于这项检查，照常返回已保存的那份。
-    POST_VERSION: (request: Request) =>
-      run(async (service) => {
-        const body = await readJson(request);
-        if (!isPlainObject(body)) throw new AppError("VALIDATION_ERROR", "Request body must be an object.");
-        return service.createVersion({ ...(body as unknown as CreatePlanVersionInput), basePlanId: null });
-      }, 201),
 
     PATCH_ITEM: (request: Request, context: ItemContext) =>
       run(async (service) => {

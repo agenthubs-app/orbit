@@ -22,7 +22,7 @@ const view: ConfirmedEventFollowupView = {
   sourceKind: "next_step",
   sourceText: "Review metrics on Friday",
   state: "available",
-  taskHref: "/app/agent/plan",
+  taskHref: "/app/tasks",
   taskId: "task:event-followup:one",
   taskStatus: "missing",
 };

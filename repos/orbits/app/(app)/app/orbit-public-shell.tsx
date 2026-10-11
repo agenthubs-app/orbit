@@ -10,7 +10,7 @@ import { productHref } from "./orbit-product-href";
 import { ORBIT_Z } from "./orbit-z";
 
 // iOrbit 任务 6a：`/app/schedule`、`/app/followups`、`/app/today` 三条路由已随
-// 路由归并删除（取代者是 `/app/agent/plan` 与 `/app/agent/actions`）。"schedule"
+// 路由归并删除（取代者是 Task 画面 `/app/tasks` 与 `/app/agent/actions`）。"schedule"
 // 与 "today" 已无任何页面使用，但留在 union 里：这个 union 是壳的公共 API，
 // 收窄它会波及仍在传 `active` 的其它壳调用点，属于 6a 范围外的改动。
 export type OrbitNavActive = "home" | "today" | "events" | "schedule" | "cards" | "agent" | "me" | "settings";

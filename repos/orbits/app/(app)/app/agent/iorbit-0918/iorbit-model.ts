@@ -20,7 +20,6 @@ import type {
 } from "../../orbit-agent-route-view-model";
 import { gradientFromString } from "../../orbit-reference-primitives";
 import { parseAgentTaskInteraction, type AgentTaskInteractionView } from "../agent-task-interaction-view-model";
-import type { IOrbitPlanCardMessage } from "./iorbit-plan-card-model";
 
 type AgentPanel = Pick<OrbitAgentScenarioView, "items" | "kind" | "panelTitle">;
 type AgentReliableRequest = ReliableAiSendInputContract;
@@ -41,11 +40,6 @@ type AgentMessage =
       id?: string;
       note?: string;
       panelTitle: string;
-      /**
-       * W0008：第一份计划的回答卡片（仅前端类型，不进 `shared/contract/ai-sessions`）。
-       * 这类回合由壳从已保存的计划拼出，不进对话历史、不发给对话接口。
-       */
-      planCard?: IOrbitPlanCardMessage;
       retryRequest?: string;
       reliableRequest?: AgentReliableRequest;
       role: "assistant";
@@ -1521,7 +1515,7 @@ function iorbitPlanWeeks(
   timeZone: string = IORBIT_TZ,
 ): readonly { no: number; range: string }[] {
   // 合并前终审 3：原来用运行时本地的 `setHours` / `getDay` / `getDate` 起算，而这个
-  // 表头是从 `agent/plan/page.tsx` 服务端渲染出去的——UTC 服务端 + UTC+8 用户在周一
+  // 表头是从（R25 已删除的）`agent/plan/page.tsx` 服务端渲染出去的——UTC 服务端 + UTC+8 用户在周一
   // 02:00 会先收到上一周的四个表头，hydration 之后又换成另一周。本文件其余日期派生
   // （`iorbitDayKey` 等）与 `plan-route-view-model.ts` 的 `PLAN_TZ` 一律钉东京日，
   // 这里跟上：先把 `now` 折算成目标时区的日历日，再全程用 UTC 字段做整天加减，
@@ -1554,7 +1548,7 @@ function iorbitPlanWeeks(
 }
 
 /**
- * 设计 contacts 屏 = `/app/agent/strategy?view=contacts`（「审阅修订」3）。
+ * 设计 contacts 屏 = 旧的策略页 contacts 视图（「审阅修订」3；R25 已删除）。
  * 解析口径放在这个**不含 React**的模块里：`strategy/page.tsx` 是服务端组件，
  * 从 `"use client"` 模块里调用普通函数会抛
  * 「Attempted to call … from the server but … is on the client」。

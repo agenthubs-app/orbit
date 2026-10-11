@@ -6,9 +6,7 @@
  *   - 开关关：`guide` 为 null，引导记录 / 联系人计数 / 计划一个都不读；
  *   - 开关开 + 新用户：`guide` 带进度（0 / 3，下一步名片），读取都以 canonical actor 进行；
  *   - 开关开 + D2 老用户：`guide` 为 null（真实首页）。
- *   - W0008 `?plan=<id>`：开关关、或开关开且前 3 步已完成（刚生成完计划）时，以 canonical actor 读这份
- *     计划并把回答卡片交给壳（直接落在对话，`reveal=1` 时揭示一次）；读不到的计划落回概览；
- *     仍在示例期时不读计划。
+ *   - W0008 `?plan=<id>`：R25 起 v1 计划回答卡片删除，`?plan=` 不再读取、落在概览。
  */
 import assert from "node:assert/strict";
 import Module, { createRequire } from "node:module";
@@ -395,89 +393,17 @@ test("W0054 SC-02: flag on + completedAt recorded + only 2 contacts left: the re
   assert.equal(calls.filter((call) => call.operation === "mark-completed").length, 0);
 });
 
-/* ── W0008：?plan=<id> ─────────────────────────────────────────────── */
+/* ── W0008：?plan=<id>（R25 起不再读取） ──────────────────────────────── */
 
-async function planScenario() {
-  const { savedBootstrapPlan } = await import("../support/plan-bootstrap-fixture");
-  const snapshot = await savedBootstrapPlan();
-  return { planId: snapshot.plan.id, plans: { [snapshot.plan.id]: snapshot } };
-}
-
-test("flag off + ?plan=<id>&reveal=1: the actor's plan reaches the shell as the answer card, straight into the chat", async (t) => {
-  const { planId, plans } = await planScenario();
-  const { calls, page } = loadPage(t, { contacts: 0, flag: undefined, plans });
-  const props = shellPropsOf(await page({ searchParams: Promise.resolve({ plan: planId, reveal: "1" }) }));
+// R25：v1 计划回答卡片随 v1 计划界面删除。原三条 W0008 用例（读到卡片直接进对话、读不到落回概览、
+// 示例期不读）改为这一条：带 `?plan=` 的旧链接落在概览、不读计划、壳不再收 `initialPlanCard`。
+test("R25: ?plan=<id>&reveal=1 no longer reads a plan; the shell lands on the overview", async (t) => {
+  const { calls, page } = loadPage(t, { contacts: 0, flag: undefined, plans: {} });
+  const props = shellPropsOf(await page({ searchParams: Promise.resolve({ plan: "plan:any", reveal: "1" }) }));
   assert.equal(props.guide, null);
-  assert.equal(props.initialDeepLink, true);
-  assert.equal(props.initialPlanReveal, true);
-  const card = props.initialPlanCard as { planId: string; version: number; phases: unknown[] };
-  assert.equal(card.planId, planId);
-  assert.equal(card.version, 1);
-  assert.equal(card.phases.length, 3);
-  assert.deepEqual(calls.find((call) => call.operation === "plan-read")?.input, ["account:canonical", planId]);
-
-  // 刷新（没有 reveal）：直接是已完成的卡片。
-  const refreshed = shellPropsOf(await loadPage(t, { contacts: 0, flag: undefined, plans }).page({ searchParams: Promise.resolve({ plan: planId }) }));
-  assert.equal(refreshed.initialPlanReveal, false);
-  assert.ok(refreshed.initialPlanCard);
-});
-
-test("?plan= for a plan the actor cannot read falls back to the overview", async (t) => {
-  const { page } = loadPage(t, { contacts: 0, flag: undefined, plans: {} });
-  const props = shellPropsOf(await page({ searchParams: Promise.resolve({ plan: "plan:someone-elses", reveal: "1" }) }));
-  assert.equal(props.initialPlanCard, null);
   assert.equal(props.initialDeepLink, false);
-  assert.equal(props.initialPlanReveal, false);
-});
-
-test("flag on: right after step 3 saves the plan the user leaves the demo and sees the card; still in the demo, no plan is read", async (t) => {
-  const { planId, plans } = await planScenario();
-  const done = loadPage(t, {
-    activePlan: true,
-    contacts: 3,
-    createdAt: "2026-10-20T00:00:00.000Z",
-    flag: "on",
-    goal: "三个月内拿到 10 家企业客户的试用",
-    plans,
-    since: "2026-10-15",
-  });
-  const props = shellPropsOf(await done.page({ searchParams: Promise.resolve({ plan: planId, reveal: "1" }) }));
-  assert.equal(props.guide, null, "steps 1–3 are done, so the demo is over");
-  assert.equal((props.initialPlanCard as { planId: string }).planId, planId);
-
-  const demo = loadPage(t, { contacts: 0, flag: "on", plans });
-  const demoProps = shellPropsOf(await demo.page({ searchParams: Promise.resolve({ plan: planId }) }));
-  assert.ok(demoProps.guide, "a user still in the demo keeps the demo shell");
-  assert.equal(demoProps.initialPlanCard, null);
-  assert.equal(demo.calls.filter((call) => call.operation === "plan-read").length, 0);
-});
-
-/* ── W0014：「我的计划」页（`/app/agent/plan`）──────────────────────────────────── */
-
-// R07 (RD-20): /app/agent/plan no longer composes IOrbitPlan on the server — it only
-// redirects to the Task page's plan segment, so the three W0014 plan-page read-order
-// tests (flag off / flag on out of the guide / in the guide) have no page left to
-// exercise. The IOrbitPlan guide behaviour (demo banner, persona, no-guide leak checks)
-// stays covered through the component in app-agent-iorbit-screens.test.tsx.
-test("R07 plan page: /app/agent/plan redirects to the Task page's plan segment without reading anything", (t) => {
-  const pagePath = join(root, "app/(app)/app/agent/plan/page.tsx");
-  const navigationId = require.resolve("next/navigation");
-  const previousNavigation = require.cache[navigationId];
-  const previousPage = require.cache[require.resolve(pagePath)];
-  t.after(() => {
-    if (previousNavigation) require.cache[navigationId] = previousNavigation;
-    else delete require.cache[navigationId];
-    if (previousPage) require.cache[require.resolve(pagePath)] = previousPage;
-    else delete require.cache[require.resolve(pagePath)];
-  });
-  const replacement = new Module(navigationId);
-  replacement.filename = navigationId;
-  replacement.loaded = true;
-  replacement.exports = { redirect: (href: string) => { throw new Error(`redirect:${href}`); } };
-  require.cache[navigationId] = replacement;
-  delete require.cache[require.resolve(pagePath)];
-  const page = require(pagePath).default as () => unknown;
-  assert.throws(() => page(), /^Error: redirect:\/app\/tasks\?tab=plan$/);
+  assert.equal("initialPlanCard" in props, false);
+  assert.equal(calls.filter((call) => call.operation === "plan-read").length, 0);
 });
 
 /* ── W0014：示例期间 `/app/agent` 不读真实对话／首页业务数据，也不把它们交给示例壳 ─────── */
@@ -506,7 +432,7 @@ test("W0014 in the guide: every real chat / home-business loader throws, yet the
   // 首页数据只读一次（示例判定要用目标）；示例壳拿不到真实 home／viewModel。
   assert.equal(calls.filter((call) => call.operation === "home").length, 1);
   assert.equal(props.home, null);
-  assert.equal(props.initialPlanCard, null);
+  assert.equal("initialPlanCard" in props, false);
   assert.ok(!JSON.stringify(props.viewModel).includes("甲斐真由美"), "no real suggests reach the demo shell");
 });
 
@@ -652,7 +578,7 @@ test("W0037 in the demo: the community state is read once for the canonical acto
     assert.deepEqual(calls.filter((call) => DEMO_FORBIDDEN.includes(call.operation)), []);
     assert.deepEqual(props.viewModel, createOrbitAgentStarterViewModel());
     // 示例壳相对 W0036 只多收到 communityJoined。
-    assert.deepEqual(Object.keys(props).sort(), ["communityJoined", "demoEventCandidates", "guide", "home", "initialPlanCard", "viewModel"]);
+    assert.deepEqual(Object.keys(props).sort(), ["communityJoined", "demoEventCandidates", "guide", "home", "viewModel"]);
   }
 });
 

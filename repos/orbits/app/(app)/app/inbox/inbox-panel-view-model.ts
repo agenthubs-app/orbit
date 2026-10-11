@@ -234,9 +234,9 @@ function reminderWebHref(href: string | undefined): string {
   if (href && /^\/tasks\/[^/?#]+$/u.test(href)) {
     try {
       if (!decodeURIComponent(href).includes("..")) return `/app${href}`;
-    } catch { /* Invalid encoded paths keep the legacy fallback. */ }
+    } catch { /* Invalid encoded paths keep the To-do fallback. */ }
   }
-  return "/app/agent/plan";
+  return "/app/tasks";
 }
 
 export function toReminderAlerts(
@@ -262,7 +262,7 @@ const proactiveSurfaceHref: Record<string, string> = {
   orbit_ai_chat: "/app/agent",
   events: "/app/events",
   contacts: "/app/contacts",
-  followups: "/app/agent/plan",
+  followups: "/app/tasks",
   messages: "/app/agent",
 };
 

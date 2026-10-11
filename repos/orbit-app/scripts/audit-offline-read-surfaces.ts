@@ -32,7 +32,6 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/contacts/ContactAcquisitionScreen.tsx:678': ['/api/contact-drafts/referral'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:711': ['/api/contact-drafts/recommended/:id/confirm'],
   'src/screens/contacts/ManualContactAddScreen.tsx:80': ['/api/contact-drafts/manual'],
-  'src/screens/contacts/ContactIntrosScreen.tsx:146': ['/api/relationship-communication/invitations'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:1309': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:1500': ['/api/chat/relationship-inbox'],
   'src/screens/profile/ProfileMoreScreen.tsx:78': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],

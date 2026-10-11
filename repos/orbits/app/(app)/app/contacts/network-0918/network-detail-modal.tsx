@@ -30,7 +30,8 @@ import type { RelationshipTimelineItem, RelationshipTimelineSource } from "../..
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
-import { PLAN_MATCH_SCHEDULE_HREF, PlanNeedLinkPanel } from "../../agent/iorbit-0918/plan-match-sheet";
+/** 「约 TA」的去处：个人日程（与旧计划匹配卡片同一个入口）。 */
+const SCHEDULE_HREF = "/app/tasks/personal";
 import type { ContactInsightView } from "../../../../../features/contacts/insights/view";
 import { ContactEnrichmentInline } from "./contact-enrichment-inline";
 import { DEFAULT_DETAIL_CLOSE_HREF, detailReturnLabel } from "./detail-return";
@@ -440,15 +441,12 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
   const onCopy = async (label: string, value: string, element: HTMLElement | null) => {
     setCopyNote({ kind: await copyChannel(value, element), label });
   };
-  const refreshAfterLink = () => {
-    // 关联成功：服务端重读计划关联，出现新的需求 chip（不新增历史条目）。
-    if (router) router.refresh();
-  };
   const scheduleButton = (
-    <a className="btn nw-dv-primary" href={PLAN_MATCH_SCHEDULE_HREF} onClick={onSchedule} data-network-detail-schedule>{t({ en: "Meet", zh: "约 TA" })}</a>
+    <a className="btn nw-dv-primary" href={SCHEDULE_HREF} onClick={onSchedule} data-network-detail-schedule>{t({ en: "Meet", zh: "约 TA" })}</a>
   );
   const linkedNeeds = planContext?.linkedNeeds ?? [];
-  const planStrip = (
+  // R25：旧的「+ 关联到计划需求」（`PlanNeedLinkPanel`）随 v1 计划界面删除；只剩已关联需求的只读 chip，没有就不渲染。
+  const planStrip = linkedNeeds.length === 0 ? null : (
     <div className="nw-why-needs" data-network-detail-plan-link>
       <span className="nw-why-needs-l">{t({ en: "Plan needs", zh: "对应计划需求" })}</span>
       {linkedNeeds.map((need) => (
@@ -456,13 +454,6 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
           {need.phaseNo !== null ? t({ en: `Phase ${need.phaseNo} · `, zh: `阶段 ${need.phaseNo} · ` }) : ""}{need.title} ✓
         </span>
       ))}
-      <PlanNeedLinkPanel
-        contactId={contact.id}
-        guard={guardWrite ? () => (guardWrite(t({ en: "plan link", zh: "计划关联" })), true) : undefined}
-        onLinked={refreshAfterLink}
-        openClassName="btn nw-why-link-more"
-        openLabel={linkedNeeds.length ? { en: "+ Link to another need", zh: "+ 关联到其他需求" } : { en: "+ Link to a plan need", zh: "+ 关联到计划需求" }}
-      />
     </div>
   );
   const whyActions = (

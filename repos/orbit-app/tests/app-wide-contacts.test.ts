@@ -19,7 +19,6 @@ const listeners = new Set(); let revision = 0;
 const state = window.fixture = { actor: "actor:one", cookieHeader: "session=one", baseUrl: "http://fixture", requests: [], navigation: [], nativeCalls: [], cameraGranted: true, photoGranted: true, kind: "success", postMode: "failure", putMode: "failure", pendingPost: null, pendingPut: null, refreshes: 0, resourceScopeKey: JSON.stringify(["actor:one", "session=one", "http://fixture"]), uuidSequence: 0, update(patch) { Object.assign(state, patch); revision++; listeners.forEach(f => f()); } };
 const rerender = () => useSyncExternalStore(f => { listeners.add(f); return () => listeners.delete(f); }, () => revision);
 const contacts = { contacts: [{ id: "contact:1", displayName: "林悦", organization: "红桥科技", role: "市场负责人", location: "东京", industry: "enterprise_saas", status: "active", value: { score: 89, valueTypes: [] } }] };
-const introSummary = { totalContacts: 7, referralCandidateCount: 1, candidates: [{ id: "contact:1", displayName: "林悦", organization: "红桥科技", role: "市场负责人", hasReferralPath: false, sourceLabel: "朋友介绍", strengthScore: 89 }] };
 const mobile = {
   aggregate: { relationshipAssetTotals: { contacts: 1 }, highValueCount: 1, pendingFollowups: { count: 1 }, dormantContacts: { count: 0 } },
   analysis: { current: { analysisVersion: "contacts.analysis@1", sourceDataVersion: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, report: { analysisVersion: "contacts.analysis@1", body: "现有人脉覆盖零售合作，下一步应补充投资人联系。", generatedAt: "2026-09-15T01:00:01.000Z", messageId: "message:analysis:1", sessionId: "session:analysis:1", sourceDataVersion: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, stale: true },
@@ -38,7 +37,7 @@ export const usePathname = () => "/contacts";
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 const structure = { dimension: "industry", bucket: { label: "科技合作伙伴", contactCount: 1, percentage: 100 }, contacts: [{ ...contacts.contacts[0], relationshipStrength: "strong" }], commonTags: [{ label: "日本市场", contactCount: 1 }], relationshipQuality: [{ id: "strong", label: "强关系", contactCount: 1, percentage: 100 }], insight: "科技合作伙伴已有交流基础。" };
 const connections = { connections: [{ id: "connection:1", contactId: "contact:1", displayName: "林悦", organization: "红桥科技", relationshipStage: "needs_follow_up", strengthScore: 89, sourceLinks: [{ label: "朋友引荐", type: "referral" }], evidenceTimeline: [{ title: "已有交流记录" }] }] };
-export const useApiResource = path => { rerender(); return { kind: state.kind, error: { message: "连接暂时失败" }, data: path.includes("intros/summary") ? introSummary : path.includes("structure/") ? structure : path.includes("connections") ? connections : path.includes("tasks") ? { tasks: [] } : path.includes("draft") ? {} : path.includes("aggregate") ? mobile.aggregate : path.includes("opportunities") ? mobile.opportunities : path.includes("distributions") ? mobile.distributions : path.includes("gaps") ? mobile.gaps : contacts, refreshing: false, refresh() {} }; };
+export const useApiResource = path => { rerender(); return { kind: state.kind, error: { message: "连接暂时失败" }, data: path.includes("structure/") ? structure : path.includes("connections") ? connections : path.includes("tasks") ? { tasks: [] } : path.includes("draft") ? {} : path.includes("aggregate") ? mobile.aggregate : path.includes("opportunities") ? mobile.opportunities : path.includes("distributions") ? mobile.distributions : path.includes("gaps") ? mobile.gaps : contacts, refreshing: false, refresh() {} }; };
 export const useValidatedApiResource = (_path, _schema, isEmpty, options = {}) => { rerender(); state.dashboardScopeKey = options.scopeKey; state.dashboardPath = _path; const base = state.zeroContacts ? { ...mobile, aggregate: { ...mobile.aggregate, relationshipAssetTotals: { ...mobile.aggregate.relationshipAssetTotals, contacts: 0 } }, contacts: { contacts: [] } } : mobile; const data = state.remoteGoal === undefined ? base : { ...base, profile: { ...base.profile, profile: { ...base.profile.profile, relationshipGoal: state.remoteGoal, updatedAt: state.remoteUpdatedAt } } }; const scopeCurrent = options.scopeKey === undefined || options.scopeKey === state.resourceScopeKey; return { kind: scopeCurrent ? (isEmpty(data) ? "empty" : state.kind) : "loading", data, error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes++; state.resourceScopeKey = options.scopeKey; revision++; listeners.forEach(f => f()); } }; };
 const record = method => async (path, options) => {
   state.requests.push({ method, path, body: options?.body });
@@ -78,9 +77,8 @@ import { ManualContactAddScreen } from "./src/screens/contacts/ManualContactAddS
 import { ContactsDashboardScreen } from "./src/screens/contacts/ContactsDashboardScreen";
 import { ContactPipelineScreen } from "./src/screens/contacts/ContactPipelineScreen";
 import { ContactStructureDetailScreen } from "./src/screens/contacts/ContactStructureDetailScreen";
-import { ContactIntrosScreen } from "./src/screens/contacts/ContactIntrosScreen";
 import { DashboardScreen } from "./src/screens/dashboard/DashboardScreen";
-const screens = { overview: ContactsScreen, acquisition: ContactAcquisitionScreen, scan: BusinessCardScanScreen, manual: ManualContactAddScreen, analysis: ContactsDashboardScreen, pipeline: ContactPipelineScreen, structure: ContactStructureDetailScreen, intros: ContactIntrosScreen, dashboard: DashboardScreen };
+const screens = { overview: ContactsScreen, acquisition: ContactAcquisitionScreen, scan: BusinessCardScanScreen, manual: ManualContactAddScreen, analysis: ContactsDashboardScreen, pipeline: ContactPipelineScreen, structure: ContactStructureDetailScreen, dashboard: DashboardScreen };
 const Screen = screens[new URLSearchParams(location.search).get("screen") || "overview"];
 createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -389,21 +387,6 @@ test("analysis opened in dark appearance keeps its real modal readable and bound
   const labelColor = await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).color);
   assert.equal(labelColor, "rgb(30, 26, 36)");
   if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-contacts-analysis-brief-dark.png", fullPage: true, animations: "disabled" });
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-});
-
-test("introduction selection opens an editable draft without preparing or sending an invitation", async t => {
-  const page = await openScreen(t, "intros");
-  await page.getByText("7", { exact: true }).waitFor();
-  await page.getByText("1 位联系人适合先准备引荐。", { exact: true }).waitFor();
-  await page.getByText("来自朋友介绍，适合先整理双方需求。", { exact: true }).waitFor();
-  await page.getByText("朋友介绍", { exact: true }).waitFor();
-  const prepare = page.getByRole("button", { name: "准备邀请", exact: true });
-  await touchFits(prepare, 50); await prepare.click();
-  const email = page.getByPlaceholder("name@example.com");
-  await touchFits(email); await email.fill("lin@example.com");
-  await page.emulateMedia({ colorScheme: "dark" });
-  assert.equal(await email.inputValue(), "lin@example.com");
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
 });
 

@@ -5,6 +5,12 @@
 //              「この人ですか？」 (pick one, or 新しく登録); without one it is an
 //              anonymous self-report, which counts only up to the target.
 // The line 「プランに反映：<type> +X」 previews the next award (server `next`).
+// R24 review: several people are recorded one by one; when one fails midway the
+// sheet stays open with what happened (「N人を記録しました · M人は記録できませんでした」)
+// and only the people not yet recorded stay ticked, so 記録する retries just them —
+// a toast would vanish with the names of who still needs recording. The match rows
+// are disabled while a request runs. 新しく登録 failing (CONTACT_CREATE_FAILED) asks
+// before recording without a name; nothing is recorded until the user says so.
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -46,7 +52,9 @@ export function PlanRecordSheet({ visible, onClose, planId, detail, preselected,
   const [matches, setMatches] = useState<{ contactId: string; name: string; company: string | null }[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [createFailed, setCreateFailed] = useState(false);
   const sequence = useRef(0);
+  const inFlight = useRef(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -57,6 +65,7 @@ export function PlanRecordSheet({ visible, onClose, planId, detail, preselected,
     setDay("today");
     setMatches(null);
     setProblem(null);
+    setCreateFailed(false);
   }, [preselected, visible]);
 
   useEffect(() => {
@@ -78,19 +87,35 @@ export function PlanRecordSheet({ visible, onClose, planId, detail, preselected,
     return date.toISOString();
   };
   const finish = (awards: PlanAwardResult[], who: string) => {
+    inFlight.current = false;
     setBusy(false);
     onClose();
     onRecorded(awards, who);
   };
-
-  const recordPeople = async () => {
-    if (picked.length === 0) return;
+  const begin = () => {
+    if (inFlight.current) return false;
+    inFlight.current = true;
     setBusy(true);
     setProblem(null);
+    return true;
+  };
+  const stop = () => { inFlight.current = false; setBusy(false); };
+
+  const recordPeople = async () => {
+    if (picked.length === 0 || !begin()) return;
     const awards: PlanAwardResult[] = [];
-    for (const person of picked) {
+    for (const [index, person] of picked.entries()) {
       const result = await api.award(planId, detail.itemId, person.contactId, newIdempotencyKey("award"));
-      if (!result.ok) { setBusy(false); setProblem(failureText(result.failure)); if (awards.length) finish(awards, whoOf(awards.length)); return; }
+      if (!result.ok) {
+        stop();
+        if (awards.length === 0) { setProblem(failureText(result.failure)); return; }
+        // Partial: keep the sheet, report both counts, leave only the unrecorded people ticked.
+        const left = picked.slice(index);
+        setPicked(left);
+        setProblem(t("plan.record.partial", { failed: left.length, recorded: awards.length }));
+        onRecorded(awards, awards.length === 1 ? picked[0]!.name : whoOf(awards.length));
+        return;
+      }
       awards.push(result.data);
     }
     finish(awards, picked.length === 1 ? picked[0]!.name : whoOf(picked.length));
@@ -98,13 +123,18 @@ export function PlanRecordSheet({ visible, onClose, planId, detail, preselected,
   const whoOf = (count: number) => t("plan.award.people", { count });
 
   const recordOffline = async (body: { contactId?: string; name?: string; createContact?: boolean; anonymous?: true }, who: string) => {
-    setBusy(true);
-    setProblem(null);
+    if (!begin()) return;
+    setCreateFailed(false);
     const result = await api.talkedOffline(planId, detail.itemId, { ...body, at: at(), idempotencyKey: newIdempotencyKey("offline") });
-    if (!result.ok) { setBusy(false); setProblem(failureText(result.failure)); return; }
-    if (result.data.matches && result.data.matches.length > 0) { setBusy(false); setMatches([...result.data.matches]); return; }
+    if (!result.ok) {
+      stop();
+      if (body.createContact && result.failure.kind === "other" && result.failure.reason === "CONTACT_CREATE_FAILED") { setCreateFailed(true); return; }
+      setProblem(failureText(result.failure));
+      return;
+    }
+    if (result.data.matches && result.data.matches.length > 0) { stop(); setMatches([...result.data.matches]); return; }
     if (result.data.award) finish([result.data.award], who);
-    else setBusy(false);
+    else stop();
   };
   const submitOffline = () => {
     const trimmed = name.trim();
@@ -123,7 +153,7 @@ export function PlanRecordSheet({ visible, onClose, planId, detail, preselected,
       <View style={styles.body} testID="record-sheet">
         <UiText accessibilityRole="header" style={styles.title}>{t("plan.record.title")}</UiText>
         <UiText style={styles.note}>{`${detail.emoji} ${detail.shortLabel}`}</UiText>
-        <Segmented accessibilityLabel={t("plan.record.title")} value={tab} onChange={(key) => { setTab(key); setMatches(null); setProblem(null); }} segments={[{ key: "network", label: t("plan.record.tabNetwork") }, { key: "offline", label: t("plan.record.tabOffline") }]} />
+        <Segmented accessibilityLabel={t("plan.record.title")} value={tab} onChange={(key) => { setTab(key); setMatches(null); setProblem(null); setCreateFailed(false); }} segments={[{ key: "network", label: t("plan.record.tabNetwork") }, { key: "offline", label: t("plan.record.tabOffline") }]} />
         {tab === "network" ? (
           <View style={styles.block}>
             {preselected.length === 0 ? <SearchField value={query} onChangeText={setQuery} placeholder={t("plan.record.searchPlaceholder")} accessibilityLabel={t("plan.record.searchLabel")} /> : <UiText style={styles.note}>{t("plan.record.people", { count: picked.length })}</UiText>}
@@ -143,12 +173,17 @@ export function PlanRecordSheet({ visible, onClose, planId, detail, preselected,
           <View style={styles.block}>
             <UiText style={styles.subtitle}>{t("plan.record.matchTitle")}</UiText>
             {matches.map((match) => (
-              <UiPressable key={match.contactId} accessibilityRole="button" accessibilityLabel={match.company ? `${match.name} · ${match.company}` : match.name} onPress={() => void recordOffline({ contactId: match.contactId }, match.name)} style={styles.match}>
+              <UiPressable key={match.contactId} accessibilityRole="button" accessibilityLabel={match.company ? `${match.name} · ${match.company}` : match.name} accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => void recordOffline({ contactId: match.contactId }, match.name)} style={[styles.match, busy && styles.disabled]}>
                 <UiText style={styles.name}>{match.name}</UiText>
                 {match.company ? <UiText style={styles.note}>{match.company}</UiText> : null}
               </UiPressable>
             ))}
-            <Button label={t("plan.record.newContact")} icon="user-plus" onPress={() => void recordOffline({ createContact: true, name: name.trim() }, name.trim())} variant="secondary" disabled={busy} />
+            {createFailed ? (
+              <View accessibilityRole="alert" style={styles.ask} testID="create-failed">
+                <UiText style={styles.askText}>{t("plan.record.createFailed")}</UiText>
+                <Button label={t("plan.record.recordAnonymous")} onPress={() => void recordOffline({ anonymous: true }, t("plan.type.anonymous"))} variant="secondary" loading={busy} disabled={busy} />
+              </View>
+            ) : <Button label={t("plan.record.newContact")} icon="user-plus" onPress={() => void recordOffline({ createContact: true, name: name.trim() }, name.trim())} variant="secondary" disabled={busy} />}
           </View>
         ) : (
           <View style={styles.block}>
@@ -187,4 +222,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   chips: { flexDirection: "row", gap: 8 },
   preview: { backgroundColor: colors.macLav, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10 },
   previewText: { color: colors.macLavText, fontSize: 13, fontWeight: "700" },
+  disabled: { opacity: 0.45 },
+  ask: { backgroundColor: colors.macApricot, borderRadius: radius.md, padding: 12, gap: 8 },
+  askText: { color: colors.macApricotText, fontSize: 13, lineHeight: 20, fontWeight: "600" },
 }));

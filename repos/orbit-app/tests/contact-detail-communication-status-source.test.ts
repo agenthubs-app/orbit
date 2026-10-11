@@ -9,6 +9,7 @@ test("contact detail shows server eligibility and only opens a verified conversa
   assert.match(source, /relationshipCommunicationEligibilityToView/u);
   assert.match(source, /isRelationshipEligibility/u);
   assert.match(source, /contacts\.chatEligibility/u);
-  assert.match(source, /contacts\.createInvitation/u);
+  // R25: the 「招待リンクを作成」 entry went with the deleted intros screen.
+  assert.doesNotMatch(source, /contacts\/intros|contacts\.createInvitation/u);
   assert.match(source, /router\.push\(`\/chat\/\$\{encodeURIComponent\(view\.conversationId\)\}` as Href\)/u);
 });

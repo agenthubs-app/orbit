@@ -2,13 +2,14 @@
  * W0050（RN-08）：「AI 人脉分析」的「机会」标签（从 network-analysis.tsx 拆出）。数据 = 服务端 `loadOpportunitiesTab`。
  *
  * 五块（从上到下）：① 规则覆盖度（计划人脉需求的确认关联 ÷ 目标人数；无计划时只换这一块为「去生成计划」）
- * ② 缺口补法（每条还缺人的需求：≤2 场活动、「待确认 N」打开同一个确认组件、快照 gap 句子带依据）
- * ③ 本周建议动作（计划本周行动直链 `/app/agent/plan#plan-action-<id>`，「N 位待确认」入口）
+ * ② 缺口补法（每条还缺人的需求：≤2 场活动、「待确认 N」去 Task › プラン、快照 gap 句子带依据）
+ * ③ 本周建议动作（计划本周行动链到 Task › プラン，「N 位待确认」入口同去）。R25：旧的计划匹配确认弹层
+ *    （`plan-match-sheet.tsx`）随 v1 计划界面删除，确认改在プラン概要的確認待ち里做。
  * ④ 待唤醒（dormant 且与目标相关，规则拼句带依据，「起草邮件」= 模板草稿，不发送、不保存）
  * ⑤ 报告卡（W0048a 快照：生成于／基于 N 人／新增 M 人未纳入；「重新分析」= 用户主动池 1 次操作）。
  *
  * 不再有：「⟳ 刷新机会」、固定阈值覆盖拨盘、「高价值／核心关系」两行、规则重排的建议动作、「去 iOrbit 分析」。
- * 本组件不请求 `/api/dashboard/opportunities/recompute`、`/api/contacts/needs-matches`，也不调用任何模型。
+ * 本组件不请求 `/api/dashboard/opportunities/recompute`，也不调用任何模型。
  * W0054：`view.gate`（门槛未达／正在更新／明天更新）时⑤报告卡的位置换成替换卡；示例期「重新分析」「起草邮件」
  * 走 `guardWrite` 拦截（W54-6），待唤醒姓名与报告卡带「示例」角标。
  */
@@ -18,9 +19,6 @@ import { useState } from "react";
 
 import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { PlanMatchDialog, PlanMatchSheet } from "../../agent/iorbit-0918/plan-match-sheet";
-import type { PlanMatchCandidate } from "../../agent/iorbit-0918/plan-match-client";
-import { newPlanIdempotencyKey } from "../../agent/iorbit-0918/iorbit-plan-client";
 import type { NetworkSnapshotView } from "../../../../../features/network-analysis/contract";
 import type { DormantRow, NeedCoverageRow, OpportunitiesTabView } from "../analysis/opportunities-view-model";
 import { PLAN_HREF, reportCardModel, type ReportCardLimit } from "../analysis/opportunities-report-card";
@@ -88,16 +86,25 @@ function eventDate(iso: string, language: string): string {
   return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", { day: "numeric", month: language === "zh" ? "numeric" : "short", timeZone: "Asia/Tokyo" }).format(date);
 }
 
-function GapRow({ need, onOpenMatches }: { need: NeedCoverageRow; onOpenMatches: (need: NeedCoverageRow) => void }) {
+/** 用户主动「重新分析」的幂等键（每次点击一个）。 */
+function newIdempotencyKey(prefix: string): string {
+  const random =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}:${random}`;
+}
+
+function GapRow({ need }: { need: NeedCoverageRow }) {
   const { t, language, preserveHref } = useOrbitLanguage();
   return (
     <li className="nw-op-gap" data-network-gap={need.needId}>
       <div className="nw-op-gap-head">
         <strong className="nw-suggest-title">{t({ en: `${need.missing} more for “${need.title}”`, zh: `「${need.title}」还缺 ${need.missing} 位` })}</strong>
         {need.pendingCount ? (
-          <button type="button" className="btn nw-op-pending" data-network-gap-pending={need.pendingCount} onClick={() => onOpenMatches(need)}>
+          <a className="btn nw-op-pending" data-network-gap-pending={need.pendingCount} href={preserveHref(PLAN_HREF)}>
             {t({ en: `${need.pendingCount} to confirm`, zh: `待确认 ${need.pendingCount}` })}
-          </button>
+          </a>
         ) : null}
       </div>
       {need.gapNote ? (
@@ -127,7 +134,7 @@ function GapRow({ need, onOpenMatches }: { need: NeedCoverageRow; onOpenMatches:
   );
 }
 
-function GapsSection({ view, onOpenMatches }: { view: OpportunitiesTabView["coverage"]; onOpenMatches: (need: NeedCoverageRow) => void }) {
+function GapsSection({ view }: { view: OpportunitiesTabView["coverage"] }) {
   const { t, preserveHref } = useOrbitLanguage();
   const gaps = view.state === "ready" ? view.needs.filter((need) => need.missing > 0) : [];
   return (
@@ -143,21 +150,21 @@ function GapsSection({ view, onOpenMatches }: { view: OpportunitiesTabView["cove
         : view.state === "no_plan" ? <Empty>{t({ en: "Gaps show up here once you have a plan.", zh: "生成计划后，这里列出每条需求的补法。" })}</Empty>
           : view.percent === null ? <Empty>{t({ en: "Your plan has no network needs yet", zh: "计划里还没有人脉需求" })}</Empty>
             : gaps.length === 0 ? <Empty>{t({ en: "Every network need is covered", zh: "所有人脉需求都已满足" })}</Empty>
-              : <ul className="nw-op-gaps">{gaps.map((need) => <GapRow key={need.needId} need={need} onOpenMatches={onOpenMatches} />)}</ul>}
+              : <ul className="nw-op-gaps">{gaps.map((need) => <GapRow key={need.needId} need={need} />)}</ul>}
     </div>
   );
 }
 
-function ActionsSection({ actions, onOpenAllMatches }: { actions: OpportunitiesTabView["weekActions"]; onOpenAllMatches: () => void }) {
+function ActionsSection({ actions }: { actions: OpportunitiesTabView["weekActions"] }) {
   const { t, preserveHref } = useOrbitLanguage();
   return (
     <div className="nw-cockpit" data-network-section="actions">
       <div className="nw-act-head">
         <span className="nw-act-title nw-op-title"><h2 className="nw-h2">{t({ en: "Suggested this week", zh: "本周建议动作" })}</h2><span className="nw-ai-desc">{t({ en: "This week's actions from your plan.", zh: "来自你的计划的本周行动。" })}</span></span>
         {actions.pendingMatches ? (
-          <button type="button" className="btn nw-op-pending" data-network-pending-matches={actions.pendingMatches} onClick={onOpenAllMatches}>
+          <a className="btn nw-op-pending" data-network-pending-matches={actions.pendingMatches} href={preserveHref(PLAN_HREF)}>
             {t({ en: `${actions.pendingMatches} ${actions.pendingMatches === 1 ? "contact" : "contacts"} to confirm`, zh: `${actions.pendingMatches} 位待确认` })}
-          </button>
+          </a>
         ) : null}
       </div>
       {actions.planActions === null ? <Empty>{t(UNAVAILABLE)}</Empty>
@@ -286,7 +293,7 @@ function ReportSection({ report, onReport }: { report: NetworkSnapshotView; onRe
     setError(false);
     try {
       const response = await fetch(`/api/network/snapshot/recompute?lang=${language === "zh" ? "zh" : "en"}`, {
-        body: JSON.stringify({ idempotencyKey: newPlanIdempotencyKey("snapshot-manual") }),
+        body: JSON.stringify({ idempotencyKey: newIdempotencyKey("snapshot-manual") }),
         headers: { "content-type": "application/json" },
         method: "POST",
       });
@@ -326,49 +333,14 @@ function ReportSection({ report, onReport }: { report: NetworkSnapshotView; onRe
 }
 
 export function NetworkOpportunities({ view, goal, onEditGoal }: { view: OpportunitiesTabView; goal: string | null; onEditGoal: (() => void) | null }) {
-  const { t } = useOrbitLanguage();
   const [report, setReport] = useState(view.report);
-  const [coverage, setCoverage] = useState(view.coverage);
-  const [pendingMatches, setPendingMatches] = useState(view.weekActions.pendingMatches);
-  const [sheet, setSheet] = useState<{ heading: string; candidates: PlanMatchCandidate[] } | null>(null);
-  const allCandidates = coverage.state === "ready" ? coverage.needs.flatMap((need) => need.candidates) : [];
-  // 「是」= 服务端已把这位联系人关联到该需求（与覆盖度同一事实来源 contact_links）：本地同步 have／missing 与总百分比；
-  // 「不是」只移除候选。两者都减待确认数。
-  const onDecided = (candidateId: string, decision: "accept" | "dismiss") => {
-    const decided = allCandidates.find((candidate) => candidate.id === candidateId);
-    setCoverage((current) => {
-      if (current.state !== "ready") return current;
-      const needs = current.needs.map((need) => {
-        if (!need.candidates.some((candidate) => candidate.id === candidateId)) return need;
-        const have = decision === "accept" ? need.have + 1 : need.have;
-        return {
-          ...need,
-          candidates: need.candidates.filter((candidate) => candidate.id !== candidateId),
-          have,
-          missing: Math.max(0, need.target - have),
-          pendingCount: Math.max(0, (need.pendingCount ?? 1) - 1),
-        };
-      });
-      const total = needs.reduce((sum, need) => sum + need.target, 0);
-      const covered = needs.reduce((sum, need) => sum + Math.min(need.have, need.target), 0);
-      return { ...current, needs, percent: total > 0 ? Math.round((covered / total) * 100) : null };
-    });
-    if (decided && !allCandidates.some((candidate) => candidate.id !== candidateId && candidate.contactId === decided.contactId)) {
-      setPendingMatches((value) => (value ? Math.max(0, value - 1) : value));
-    }
-  };
   return (
     <div className="nw-an-sec" data-network-opportunities="">
-      <CoverageSection view={coverage} goal={goal} onEditGoal={onEditGoal} />
-      <GapsSection view={coverage} onOpenMatches={(need) => setSheet({ candidates: need.candidates, heading: t({ en: `Who may fit “${need.title}”`, zh: `可能对应「${need.title}」的人` }) })} />
-      <ActionsSection actions={{ ...view.weekActions, pendingMatches }} onOpenAllMatches={() => setSheet({ candidates: allCandidates, heading: t({ en: "Who may fit your plan", zh: "可能对应你的计划的人" }) })} />
+      <CoverageSection view={view.coverage} goal={goal} onEditGoal={onEditGoal} />
+      <GapsSection view={view.coverage} />
+      <ActionsSection actions={view.weekActions} />
       <DormantSection rows={view.dormant} />
       {view.gate ? <NetworkAnalysisGateCard gate={view.gate} /> : <ReportSection report={report} onReport={setReport} />}
-      {sheet ? (
-        <PlanMatchDialog label={t({ en: "Plan matches", zh: "计划匹配" })} onClose={() => setSheet(null)}>
-          <PlanMatchSheet candidates={sheet.candidates} heading={sheet.heading} onDecided={(candidateId, decision) => onDecided(candidateId, decision)} />
-        </PlanMatchDialog>
-      ) : null}
     </div>
   );
 }

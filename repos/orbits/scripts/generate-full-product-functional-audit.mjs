@@ -440,7 +440,6 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
     "mobile:/dashboard",
     "mobile:/contacts/dashboard",
     "mobile:/contacts/graph",
-    "mobile:/contacts/intros",
     "mobile:/contacts/pipeline",
   ].map((surfaceId) => [
     surfaceId,
@@ -823,24 +822,6 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
       verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-web-empty-relationship-graph",
-    },
-  ],
-  [
-    "web:/app/contacts/intros",
-    {
-      entryBehavior:
-        "authenticated-browser-actor-scoped-empty-introduction-ledger-and-picker-verified",
-      runtimeEvidence: [
-        "the introduction ledger kept all, draft, and sent counts at zero without deriving history from contacts",
-        "the three zero-count filters each preserved the truthful no-match state",
-        "发起引荐 opened a draft-only composer whose save action stayed disabled",
-        "the first contact picker initially reproduced a blank-search dead end",
-        "after repair the zero-contact picker explained that two source-backed contacts are required and exposed 添加联系人",
-        "添加联系人 opened the fail-closed import hub, while 取消 closed the unchanged composer without a write",
-      ],
-      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
-      verificationConclusion:
-        "runtime-partially-verified-web-empty-introduction-ledger-and-picker",
     },
   ],
   [
@@ -2832,64 +2813,6 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1132",
-    {
-      actualResult:
-        "选择联系人 opened the first-contact picker without substituting a fixture identity; after repair the zero-contact state named the prerequisite instead of showing a blank search field.",
-      testData:
-        "Authenticated introduction composer with zero actor-scoped contacts",
-      idempotency:
-        "Local modal state only; no contact, introduction draft, message, or external record was written.",
-      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx##Add contacts / 添加联系人",
-    {
-      actualResult:
-        "添加联系人 left the repaired picker and opened the fail-closed import hub.",
-      testData: "Repaired introduction picker with zero source-backed contacts",
-      idempotency:
-        "Navigation only; no image was uploaded and no contact, introduction, draft, or external record was written.",
-      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx#onclick:onClose#Cancel / 取消",
-    {
-      actualResult:
-        "取消 closed the introduction composer and returned to the unchanged zero-entry ledger.",
-      testData: "Open introduction composer with no selected contacts or note",
-      idempotency:
-        "Local modal state only; no introduction, draft, contact, message, or external record was written.",
-      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx#onclick:() => setComposerOpen(true)#Make introduction / 发起引荐",
-    {
-      actualResult:
-        "发起引荐 opened a draft-only composer, left 保存草稿 disabled, and stated that nothing would be sent.",
-      testData:
-        "Authenticated actor with zero contacts and zero stored introduction records",
-      idempotency:
-        "Local modal state only; no introduction, draft, contact, message, notification, or external record was written.",
-      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1370",
-    {
-      actualResult:
-        "草稿 0, 已发送 0, and 全部 0 each became the pressed filter in turn while preserving the explicit no-match state and zero counts.",
-      testData:
-        "Actor-scoped introduction ledger with zero all, draft, and sent records",
-      idempotency:
-        "Local filter state only; no introduction, draft, contact, message, or external record was written.",
-      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
-    },
-  ],
-  [
     "web:/app/party|repos/orbits/shared/ui/state-view.tsx:217",
     {
       actualResult:
@@ -3024,7 +2947,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
   // 下面每一条 actualResult 都是那一轮**实测**到的结果，不是预期。
   ...[
     [
-      "app/agent/iorbit-0918/iorbit-home.tsx:2095",
+      "app/agent/iorbit-0918/iorbit-home.tsx:1702",
       "Activating ◷ 历史记录 on the overview mounted the history drawer (0 → 1 [data-orbit-agent-history-drawer] node), rendered five real conversation rows under the 历史记录 heading, and moved keyboard focus inside the drawer. No conversation request was issued: the list was already resident from the page load.",
     ],
     [

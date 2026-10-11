@@ -35,11 +35,16 @@ function harness() {
     }),
     success: true as const,
   });
+  // R25：`POST /api/agent/plans`（v1 创建）已改为 409 PLAN_V1_RETIRED，`POST_VERSION` 处理函数删除；
+  // 需要一份 v1 计划的用例直接经服务创建（`createVersion`）。
   const handlersFor = (actorId: string | null) =>
-    createPlanRouteHandlers({
-      resolveActor: async () => (actorId ? { id: actorId } : null),
-      serviceForActor,
-    });
+    Object.assign(
+      createPlanRouteHandlers({
+        resolveActor: async () => (actorId ? { id: actorId } : null),
+        serviceForActor,
+      }),
+      { createVersion: (input: unknown) => serviceForActor(actorId ?? "actor:anonymous").service.createVersion(input as never) },
+    );
   const rows = (actorId: string) => repository.dump({ actorId, workspaceId: WORKSPACE });
   return { handlersFor, rows };
 }
@@ -55,11 +60,8 @@ function jsonRequest(method: string, body: unknown): Request {
 const itemContext = (itemId: string) => ({ params: Promise.resolve({ itemId }) });
 
 async function createPlanAs(handlers: ReturnType<ReturnType<typeof harness>["handlersFor"]>) {
-  const response = await handlers.POST_VERSION(jsonRequest("POST", planInput()));
-  assert.equal(response.status, 201);
-  const body = await response.json();
-  assert.equal(body.success, true);
-  return body.data as { plan: { id: string }; items: Array<{ id: string; kind: string; status: string }> };
+  const created = JSON.parse(JSON.stringify(await handlers.createVersion(planInput())));
+  return created as { plan: { id: string }; items: Array<{ id: string; kind: string; status: string }> };
 }
 
 test("signed-out requests to every plan route get 401 before any write", async () => {
@@ -67,7 +69,6 @@ test("signed-out requests to every plan route get 401 before any write", async (
   const handlers = handlersFor(null);
   const responses = [
     await handlers.GET_CURRENT(),
-    await handlers.POST_VERSION(jsonRequest("POST", planInput())),
     await handlers.PATCH_ITEM(jsonRequest("PATCH", { change: { op: "set_status", status: "done" } }), itemContext("item:x")),
     await handlers.POST_LOG(jsonRequest("POST", { body: "note" })),
   ];
@@ -164,13 +165,10 @@ test("malformed bodies are rejected with 400 and write nothing", async () => {
   const { handlersFor, rows } = harness();
   const me = handlersFor("actor:me");
 
-  const notJson = await me.POST_VERSION(jsonRequest("POST", "{not json"));
-  assert.equal(notJson.status, 400);
-  assert.equal((await notJson.json()).error.code, "VALIDATION_ERROR");
-
-  const badPlan = await me.POST_VERSION(jsonRequest("POST", { ...planInput(), horizon: "forever" }));
-  assert.equal(badPlan.status, 400);
-  assert.equal((await badPlan.json()).error.context.reason, "INVALID_INPUT");
+  // R25：v1 创建接口的 400（坏 JSON、坏 horizon）断言随 `POST_VERSION` 删除。
+  const notJsonLog = await me.POST_LOG(jsonRequest("POST", "{not json"));
+  assert.equal(notJsonLog.status, 400);
+  assert.equal((await notJsonLog.json()).error.code, "VALIDATION_ERROR");
   assert.deepEqual(rows("actor:me").plans, []);
 
   const created = await createPlanAs(me);
@@ -203,12 +201,10 @@ test("contacts and events the actor does not own are 404 and nothing is written"
   assert.equal(unknownEventNote.status, 404);
   assert.deepEqual(rows("actor:me"), before);
 
-  const foreignPlan = await handlersFor("actor:owner").POST_VERSION(jsonRequest("POST", {
+  await assert.rejects(handlersFor("actor:owner").createVersion({
     ...planInput(),
     items: [{ contactIds: ["contact:tanaka"], kind: "network_need", title: "别人的联系人" }],
-  }));
-  assert.equal(foreignPlan.status, 404);
-  assert.equal((await foreignPlan.json()).error.context.reason, "REFERENCE_NOT_FOUND");
+  }), (error: unknown) => (error as { reason?: string }).reason === "REFERENCE_NOT_FOUND");
   assert.deepEqual(rows("actor:owner").plans, []);
 });
 
@@ -260,29 +256,3 @@ test("an unavailable plan service fails closed with 503", async () => {
   assert.equal(body.error.context.capabilityId, "plans");
 });
 
-test("W0012: the legacy POST /api/agent/plans creates only the first plan; with an active plan it is 409 and writes nothing", async () => {
-  const { handlersFor, rows } = harness();
-  const me = handlersFor("actor:me");
-  const first = await me.POST_VERSION(jsonRequest("POST", { ...planInput(), creationKey: "first-plan" }));
-  assert.equal(first.status, 201);
-  const firstPlan = (await first.json()).data as { plan: { id: string } };
-
-  // 同一 creationKey 的重放照常返回那一份（不新建）。
-  const replay = await me.POST_VERSION(jsonRequest("POST", { ...planInput(), creationKey: "first-plan" }));
-  assert.equal(replay.status, 201);
-  assert.equal(((await replay.json()).data as { plan: { id: string } }).plan.id, firstPlan.plan.id);
-
-  const before = rows("actor:me");
-  // 带上正确的 basePlanId、或不带、或带 origin 都不能绕过额度换版本。
-  for (const body of [
-    { ...planInput(), basePlanId: firstPlan.plan.id },
-    planInput(),
-    { ...planInput(), basePlanId: firstPlan.plan.id, origin: "next_plan" },
-  ]) {
-    const response = await me.POST_VERSION(jsonRequest("POST", body));
-    assert.equal(response.status, 409);
-    assert.equal((await response.json()).error.context.reason, "BASE_PLAN_MISMATCH");
-  }
-  assert.deepEqual(rows("actor:me"), before);
-  assert.equal(rows("actor:me").plans.length, 1);
-});

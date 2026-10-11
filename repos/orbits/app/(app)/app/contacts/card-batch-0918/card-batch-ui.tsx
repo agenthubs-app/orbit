@@ -39,7 +39,6 @@ import {
   isCardSkipped,
   type Copy,
 } from "./card-batch-model";
-import { BatchPlanMatch } from "../../agent/iorbit-0918/plan-match-sheet";
 import { CARD_BATCH_STYLES } from "./card-batch-styles";
 import { CardBatchUploader } from "./card-batch-uploader";
 import type { CardBatch, CardBatchAttributionEvent, ContactCandidate } from "./use-card-batch";
@@ -422,8 +421,6 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
             </p>
           );
         })}
-        {/* W0010：服务端批次已完成（没有「稍后处理」的名片）才有匹配任务；最多等 8 秒。 */}
-        {status === "completed" ? <BatchPlanMatch batchId={batchId} /> : null}
       </>
     );
   }

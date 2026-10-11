@@ -38,7 +38,6 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { route: "/contacts/dashboard", consumer: "ContactsDashboardScreen", kind: "screen" },
   { route: "/contacts/graph", consumer: "ContactsDashboardScreen", kind: "alias" },
   { route: "/contacts/pipeline", consumer: "ContactPipelineScreen", kind: "screen" },
-  { route: "/contacts/intros", consumer: "ContactIntrosScreen", kind: "screen" },
   {
     route: "/contacts/analysis/[dimension]/[bucketId]",
     consumer: "ContactStructureDetailScreen",
@@ -170,6 +169,9 @@ const integratedFeatureRoutes = [
   "/plans/flow/[intakeId]",
   "/plans/drafts/[draftId]/edit",
   "/plans/[planId]/types/[itemId]",
+  "/plans/[planId]/review",
+  "/plans/[planId]/done",
+  "/plans/legacy/[planId]",
   "/agent/actions",
   "/inbox/notifications/[id]",
   "/inbox/sources/[id]",
@@ -180,7 +182,6 @@ const integratedFeatureRoutes = [
   "/contacts/new/import/[id]",
   "/contacts/new/manual",
   "/contacts/new/scan",
-  "/contacts/matches",
   "/events/[id]/live",
   "/events/[id]/operations/experience",
   "/events/[id]/participants/[participantId]",
@@ -291,8 +292,8 @@ function readDocumentedRouteRows(readme: string): DocumentedRoute[] {
     }));
 }
 
-test("the 58-route visual snapshot plus subsequent feature routes matches every real app entry", () => {
-  assert.equal(expectedRoutes.length, 58);
+test("the 58-route visual snapshot (57 since R25 removed the intros screen) plus subsequent feature routes matches every real app entry", () => {
+  assert.equal(expectedRoutes.length, 57);
   assert.deepEqual(
     coverageDelta(
       [...expectedRoutes.map(({ route }) => route), ...integratedFeatureRoutes],
@@ -334,7 +335,7 @@ test("route scanning excludes only Expo's root HTML document", t => {
   assert.deepEqual(scanAppRouteEntries(temporaryApp), ["/future", "/nested/+html"]);
 });
 
-test("the final README records canonical status and concrete evidence for all 58 routes", () => {
+test("the final README records canonical status and concrete evidence for all 57 remaining snapshot routes", () => {
   const readme = readFileSync(readmePath, "utf8");
   const documented = readDocumentedRouteRows(readme);
   const expectedByRoute = new Map(expectedRoutes.map((entry) => [entry.route, entry]));
@@ -346,7 +347,7 @@ test("the final README records canonical status and concrete evidence for all 58
     ),
     { missing: [], unexpected: [], duplicates: [] }
   );
-  assert.equal(documented.length, 58);
+  assert.equal(documented.length, 57);
 
   for (const row of documented) {
     const expected = expectedByRoute.get(row.route);

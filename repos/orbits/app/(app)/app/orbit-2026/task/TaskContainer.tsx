@@ -90,9 +90,9 @@ function PlanEmpty({ href }: { href: string }) {
   return <EmptyState title={pickCopy(shellCopy.planEmptyTitle, language)} message={pickCopy(shellCopy.planEmptyBody, language)} action={{ label: pickCopy(shellCopy.planEmptyTitle, language), onSelect: () => router.push(href) }} />;
 }
 
-// The plan screen with its anchors: /app/tasks?tab=plan#plan-action-<id> (or a link
-// that came through /app/agent/plan) scrolls to that row once the screen is there —
-// a client-side tab switch does not get the browser's own fragment scroll.
+// The plan screen with its anchors: /app/tasks?tab=plan#plan-… scrolls to that row once
+// the screen is there — a client-side tab switch does not get the browser's own
+// fragment scroll. (R25: links no longer promise an anchor; one that matches still scrolls.)
 function PlanSlot({ children }: { children: ReactNode }) {
   useEffect(() => {
     const id = decodeURIComponent(window.location.hash.slice(1));

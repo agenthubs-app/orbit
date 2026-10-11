@@ -23,7 +23,8 @@ export interface ConfirmedEventFollowupView {
   sourceKind: ConfirmedFollowupSourceKind;
   sourceText: string;
   state: "available" | "completed" | "created" | "dismissed" | "partial";
-  taskHref: "/app/agent/plan";
+  /** R25：旧的计划页（agent/plan）已删除，跟进任务在 Task › To-do（BREAKING.md 登记）。 */
+  taskHref: "/app/tasks";
   taskId: string;
   taskStatus: "completed" | "dismissed" | "missing" | "open" | "scheduled";
 }
@@ -224,7 +225,7 @@ function view(input: {
     sourceKind: input.sourceKind,
     sourceText: input.sourceText,
     state: followupState(input.marker, resolvedTaskStatus, resolvedReminderStatus),
-    taskHref: "/app/agent/plan",
+    taskHref: "/app/tasks",
     taskId: identityIds.taskId,
     taskStatus: resolvedTaskStatus,
   };
@@ -425,7 +426,7 @@ export function createConfirmedEventFollowupService(input: {
             sourceIndex: value.sourceIndex,
             sourceKind: value.sourceKind,
             sourceText,
-            taskHref: "/app/agent/plan",
+            taskHref: "/app/tasks",
             taskId: identityIds.taskId,
           },
           recordId: identityIds.markerId,

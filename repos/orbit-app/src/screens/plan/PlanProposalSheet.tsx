@@ -2,6 +2,8 @@
 // 30 minutes), then one draft per person. The server answers `kind: "draft"` for
 // everyone for now (the in-app request waits for the inbox Sprints), so the sheet
 // shows the draft with コピー / メールアプリで開く only — never a send button.
+// The contract also allows `kind: "request"` (delivered in Orbit, no draft): that
+// person then shows 「Orbit で依頼を届けました」 instead of a draft (R24 review m11).
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -12,7 +14,7 @@ import { radius } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { usePlanApi } from "./plan-api";
 import { newIdempotencyKey } from "./plan-model";
-import { defaultProposalSlots, shiftSlot } from "./plan-overview-model";
+import { defaultProposalSlots, proposalOutcome, shiftSlot } from "./plan-overview-model";
 import { MailDraftView } from "./plan-overview-ui";
 import { InlineProblem, useFailureText } from "./plan-ui";
 
@@ -33,6 +35,7 @@ export function PlanProposalSheet({ visible, onClose, planId, itemId, people }: 
   const api = usePlanApi();
   const [slots, setSlots] = useState<Date[]>(() => defaultProposalSlots(new Date()));
   const [drafts, setDrafts] = useState<Record<string, NonNullable<PlanProposalResult["draft"]>>>({});
+  const [requested, setRequested] = useState<Record<string, true>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -40,6 +43,7 @@ export function PlanProposalSheet({ visible, onClose, planId, itemId, people }: 
     if (!visible) return;
     setSlots(defaultProposalSlots(new Date()));
     setDrafts({});
+    setRequested({});
     setProblem(null);
   }, [visible]);
 
@@ -54,7 +58,9 @@ export function PlanProposalSheet({ visible, onClose, planId, itemId, people }: 
     const result = await api.proposal(planId, itemId, person.contactId, slots.map((slot) => slot.toISOString()), newIdempotencyKey("proposal"));
     setBusy(null);
     if (!result.ok) { setProblem(failureText(result.failure)); return; }
-    if (result.data.draft) setDrafts((map) => ({ ...map, [person.contactId]: result.data.draft! }));
+    const outcome = proposalOutcome(result.data);
+    if (outcome === "request") setRequested((map) => ({ ...map, [person.contactId]: true }));
+    else if (outcome === "draft") setDrafts((map) => ({ ...map, [person.contactId]: result.data.draft! }));
   };
 
   return (
@@ -90,7 +96,7 @@ export function PlanProposalSheet({ visible, onClose, planId, itemId, people }: 
                 {person.isOrbitUser ? <Chip label={t("plan.type.orbitUser")} tone="teal" /> : null}
               </View>
               <UiText style={styles.note}>{person.isOrbitUser ? t("plan.proposal.orbitUser") : t("plan.proposal.notOrbit")}</UiText>
-              {draft ? <MailDraftView to={person.name} subject={draft.subject} body={draft.body} /> : (
+              {requested[person.contactId] ? <UiText accessibilityRole="text" style={styles.requested} testID="proposal-requested">{t("plan.proposal.requested", { name: person.name })}</UiText> : draft ? <MailDraftView to={person.name} subject={draft.subject} body={draft.body} /> : (
                 <Button label={t("plan.proposal.make")} accessibilityLabel={t("plan.proposal.makeA11y", { name: person.name })} icon="pen" onPress={() => void make(person)} variant="primary" loading={busy === person.contactId} disabled={busy !== null} />
               )}
             </View>
@@ -113,4 +119,5 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   person: { gap: 8, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 12 },
   personHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   name: { color: colors.ink, fontSize: 14, fontWeight: "800" },
+  requested: { color: colors.okText, backgroundColor: colors.okSoft, borderRadius: radius.md, padding: 12, fontSize: 13, fontWeight: "700" },
 }));

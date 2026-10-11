@@ -113,11 +113,6 @@ export type {
   StoredAiSessionOriginContract
 } from "./ai-sessions";
 export type { AiSessionSummaryItemContract, AiSessionSummaryPageContract } from "./ai-session-page";
-export type {
-  ContactIntroSourceLabelContract,
-  ContactIntroSummaryCandidateContract,
-  ContactIntrosSummaryContract
-} from "./contact-intros-summary";
 
 export type {
   ContactEvidenceContract,
@@ -263,19 +258,6 @@ export type {
   AccountLanguagePreferenceSaveReceiptContract,
   OrbitLanguagePreferenceContract
 } from "./account-language-preference";
-
-export type {
-  ContactNeedCriterionContract,
-  ContactNeedCriterionMatchContract,
-  ContactNeedCriterionTypeCode,
-  ContactNeedDimensionCode,
-  ContactNeedMatchContract,
-  ContactNeedMatchStatusCode,
-  ContactNeedScoreComponentContract,
-  ContactNeedsMatchesPayloadContract,
-  ContactNeedsStateCode,
-  ContactNeedSummaryContract
-} from "./contact-needs";
 
 export type {
   CanonicalResult,

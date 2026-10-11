@@ -57,9 +57,9 @@ test("comparableAppPath only drops the lang parameter", () => {
 
 test("write → consume: a fresh intent to exactly this path returns the source once, then is gone", () => {
   const storage = memoryStorage();
-  const written = writeDetailReturnIntent(storage, { from: "/app/agent/plan", to: DETAIL, now: T0, nonce: "n1" });
-  assert.deepEqual(written, { from: "/app/agent/plan", to: DETAIL, at: T0, nonce: "n1" });
-  assert.equal(consumeDetailReturnIntent(storage, { current: DETAIL, now: T0 + 1200, navigation: { type: "navigate", path: DETAIL } }), "/app/agent/plan");
+  const written = writeDetailReturnIntent(storage, { from: "/app/plans/plan-1", to: DETAIL, now: T0, nonce: "n1" });
+  assert.deepEqual(written, { from: "/app/plans/plan-1", to: DETAIL, at: T0, nonce: "n1" });
+  assert.equal(consumeDetailReturnIntent(storage, { current: DETAIL, now: T0 + 1200, navigation: { type: "navigate", path: DETAIL } }), "/app/plans/plan-1");
   assert.equal(storage.data.has(DETAIL_RETURN_STORAGE_KEY), false, "consumed on read");
   assert.equal(consumeDetailReturnIntent(storage, { current: DETAIL, now: T0 + 1300 }), null, "second read finds nothing");
 });
@@ -118,7 +118,7 @@ test("a reload of some other page earlier in this document's life does not block
 });
 
 test("SC-W0059-02: returnTo accepts only a single-slash /app/ relative path that is not this contact", () => {
-  assert.equal(sanitizeReturnTo("/app/agent/plan", "c:1"), "/app/agent/plan");
+  assert.equal(sanitizeReturnTo("/app/plans/plan-1", "c:1"), "/app/plans/plan-1");
   assert.equal(sanitizeReturnTo("/app/contacts/dashboard?tab=opp#x", "c:1"), "/app/contacts/dashboard?tab=opp#x");
   assert.equal(sanitizeReturnTo("/app/contacts/other", "c:1"), "/app/contacts/other");
   const rejected: unknown[] = [
@@ -148,11 +148,11 @@ test("SC-W0059-02: returnTo accepts only a single-slash /app/ relative path that
 
 test("SC-W0059-01: 返回 {来源} label — longest prefix wins, segment-aware, zh and en", () => {
   const cases: [string | null, string, string][] = [
-    ["/app/agent/plan", "返回我的计划", "Back to My plan"],
-    ["/app/agent/plan?lang=en#plan-action-x", "返回我的计划", "Back to My plan"],
+    ["/app/plans/plan-1", "返回我的计划", "Back to My plan"],
+    ["/app/plans/plan-1/types/t1?lang=en#x", "返回我的计划", "Back to My plan"],
     ["/app/agent", "返回 iOrbit", "Back to iOrbit"],
     ["/app/agent?q=hi", "返回 iOrbit", "Back to iOrbit"],
-    ["/app/agent/strategy", "返回 iOrbit", "Back to iOrbit"],
+    ["/app/agent/actions", "返回 iOrbit", "Back to iOrbit"],
     ["/app/contacts/dashboard", "返回人脉分析", "Back to Network analysis"],
     ["/app/contacts/analysis/structure", "返回人脉分析", "Back to Network analysis"],
     ["/app/contacts", "返回人脉", "Back to Network"],

@@ -129,6 +129,21 @@ export function groupPending(items: readonly PlanPendingItem[]): { memo: PlanPen
   };
 }
 
+/**
+ * The points a memo card would add, as the server computed them (`PlanPendingItem.points`;
+ * it knows already-counted people and skipped types). Absent → null: the card asks
+ * without a number, never a front-end guess (R24 review m9).
+ */
+export function pendingPoints(item: PlanPendingItem): number | null {
+  return typeof item.points === "number" && Number.isFinite(item.points) && item.points >= 0 ? item.points : null;
+}
+
+/** The step a proposal answer ended in: an in-app request (contract allows it) or a draft to copy. */
+export function proposalOutcome(result: { kind: "request" | "draft"; draft?: { subject: string; body: string } | null }): "request" | "draft" | "none" {
+  if (result.kind === "request") return "request";
+  return result.draft ? "draft" : "none";
+}
+
 /** A manual memo card can be confirmed once at least 2 of the 3 questions are ticked. */
 export const MEMO_MIN_ANSWERED = 2;
 

@@ -173,7 +173,7 @@ test("the chat aside ships every design block from lines 321–343 with real dat
   // 设计 334 的「编辑」必须是真落点（审阅修订 17），不是 href="#"。
   assert.match(html, /<a class="ir-aside-edit" href="\/app\/profile\?view=persona">编辑<\/a>/);
   // 326 的第三条是导航（`goContacts`），不是发消息。
-  assert.match(html, /<a class="ir-aside-next" href="\/app\/agent\/strategy\?view=contacts">/);
+  assert.match(html, /<a class="ir-aside-next" href="\/app\/tasks\?tab=plan">/);
   assert.ok(!html.includes('href="#"'));
 });
 

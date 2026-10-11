@@ -91,8 +91,8 @@ const PAGE_CONTEXTS: readonly {
     match: (path) => hasPathPrefix(path, "/app/contacts"),
   },
   {
-    copy: { en: "my schedule", zh: "我的日程", ja: "自分の予定" },
-    match: (path) => hasPathPrefix(path, "/app/agent/plan"),
+    copy: { en: "my plan", zh: "我的计划", ja: "自分のプラン" },
+    match: (path) => hasPathPrefix(path, "/app/plans"),
   },
   {
     copy: { en: "my follow-ups", zh: "我的待办", ja: "自分のTo-do" },

@@ -197,12 +197,10 @@ test("the iOrbit sibling screens mount through the shared frame, not their own s
   // pill is ShellDemoPill, which fills the shell's demoPill slot from there).
   assert.doesNotMatch(frame, /AccountTopNav/);
   assert.match(frame, /\{navExtra\}/);
-  assert.match(readFileSync(join(process.cwd(), "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx"), "utf8"), /navExtra=\{demoActive \? <ShellDemoPill \/> : undefined\}/);
+  // R25：唯一传 navExtra（示例胶囊）的旧计划屏 iorbit-plan.tsx 已删除，那条断言随之去掉。
 
   for (const file of [
     "app/(app)/app/agent/iorbit-0918/iorbit-actions.tsx",
-    "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx",
-    "app/(app)/app/agent/iorbit-0918/iorbit-strategy.tsx",
   ]) {
     const source = readFileSync(join(projectRoot, file), "utf8");
     assert.ok(source.includes("IOrbitScreenFrame"), `${file} must mount the shared frame`);

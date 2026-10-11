@@ -25,7 +25,7 @@ test("SC-W0052-01 main: with a snapshot and a plan the 4 cards are snapshot sent
     // 覆盖 = Σmin(a,t)／Σt：min(1,3) + min(4,2) = 3，共 5（W0050 planNeedCoverage 同一口径，超额不抵其他需求）。
     ["gap", 3, "已有 3／共 5", "还缺能引荐制造业采购的人。", "/app/contacts/dashboard?tab=opportunities"],
     // 本周建议动作 = 计划本周行动 2 + 待确认匹配 1。
-    ["week", 3, "3 项建议动作", "本周先约王敏聊试用。", "/app/agent/plan"],
+    ["week", 3, "3 项建议动作", "本周先约王敏聊试用。", "/app/tasks?tab=plan"],
     ["dormant", 5, "5 位待唤醒", "5 位曾有往来、60 天没有新记录", "/app/contacts/dashboard?tab=opportunities"],
   ]);
   assert.deepEqual(data.cards.map((card) => card.value?.en), ["35 contacts", "3 of 5 covered", "3 suggested actions", "5 to re-engage"]);
@@ -62,7 +62,7 @@ test("SC-W0052-01: snapshot read failure → numbers as usual, no sentences, met
 test("SC-W0052-01: no plan → card ② becomes the 「生成计划」 entry, card ③ counts only pending matches", () => {
   const data = buildNetworkOverviewData(parts({ pendingMatches: 0, plan: null }), ANALYSIS_35);
   const [, gap, week] = data.cards;
-  assert.deepEqual([gap!.cta, gap!.n, gap!.value, gap!.href, gap!.sentence], [true, null, { en: "Create a plan →", zh: "生成计划 →" }, "/app/agent/plan", null]);
+  assert.deepEqual([gap!.cta, gap!.n, gap!.value, gap!.href, gap!.sentence], [true, null, { en: "Create a plan →", zh: "生成计划 →" }, "/app/tasks?tab=plan", null]);
   assert.deepEqual([week!.n, week!.value?.zh], [0, "0 项建议动作"]);
   // 计划读取失败：②③ 数字位为「—」，其余卡照常。
   const failed = buildNetworkOverviewData(parts({ pendingMatches: null, plan: undefined }), ANALYSIS_35);

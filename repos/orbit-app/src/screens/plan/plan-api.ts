@@ -1,11 +1,12 @@
-// R23 / R24: the plan v2 endpoints as the App calls them (generation flow, overview,
-// person-type page and their commands). Every request carries
+// R23 / R24 / R25: the plan v2 endpoints as the App calls them (generation flow, overview,
+// person-type page and their commands; R25 見直し, quota, 達成, next goals, goal edit,
+// goal switching and 以前のプラン). Every request carries
 // the screen language (`x-orbit-lang`) and `x-orbit-platform: app`, so the `href`s
 // come back in App shape (`/plans/flow/<id>`, `/task?seg=plan&plan=<id>`). Answers
 // are read through the synced zod schemas; failures become one small union the
 // screens map to UI (UI-SPEC「常见错误原因 → 界面」). No AI runs here.
 import { useMemo } from "react";
-import type { ZodType } from "zod";
+import { z, type ZodType } from "zod";
 
 import type { OrbitApiClient } from "../../api/client";
 import type {
@@ -29,6 +30,15 @@ import type {
   PlanIntakeView,
   PlanV2SummaryResponse,
   PlanDraftManualEditRequest,
+  PlanAchievementView,
+  PlanGoalEditRequest,
+  PlanGoalEditResult,
+  PlanLegacyDetail,
+  PlanLegacyListResponse,
+  PlanNextGoalsResponse,
+  PlanOpenResult,
+  PlanQuotaResponse,
+  PlanReviewView,
 } from "../../api/contract/plan-v2";
 import { contactsListPath } from "../../api/endpoints";
 import {
@@ -47,6 +57,14 @@ import {
   planIntakeListResponseSchema,
   planIntakeViewSchema,
   planV2SummaryResponseSchema,
+  planAchievementViewSchema,
+  planGoalEditResultSchema,
+  planLegacyDetailSchema,
+  planLegacyListResponseSchema,
+  planNextGoalsResponseSchema,
+  planOpenResultSchema,
+  planQuotaResponseSchema,
+  planReviewViewSchema,
 } from "../../api/schema/plan-v2";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -54,6 +72,10 @@ import { planFailureOf, type PlanResult } from "./plan-failure";
 import type { ContactCandidate } from "./plan-model";
 
 export type { PlanFailure, PlanResult } from "./plan-failure";
+
+/** `POST …/v2/[planId]/achieve` answers `{ planId, achievedAt }` (no shared schema for it). */
+const planAchievedSchema = z.object({ planId: z.string().min(1), achievedAt: z.string().min(1) });
+export type PlanAchieved = z.infer<typeof planAchievedSchema>;
 
 const PLANS = "/api/agent/plans";
 const segment = (value: string) => encodeURIComponent(value);
@@ -93,6 +115,21 @@ export interface PlanApi {
   introDraft(planId: string, itemId: string, viaContactId: string, idempotencyKey: string): Promise<PlanResult<PlanIntroDraftResult>>;
   acceptPending(id: string, idempotencyKey: string, answered?: readonly number[]): Promise<PlanResult<PlanPendingDecisionResult>>;
   dismissPending(id: string, idempotencyKey: string): Promise<PlanResult<PlanPendingDecisionResult>>;
+  // R25: 見直し, quota, 達成, next goals, goal edit, switching, 以前のプラン (UI-SPEC「接口」).
+  quota(): Promise<PlanResult<PlanQuotaResponse>>;
+  startReview(planId: string, idempotencyKey: string): Promise<PlanResult<PlanReviewView>>;
+  currentReview(planId: string): Promise<PlanResult<PlanReviewView>>;
+  getReview(draftId: string): Promise<PlanResult<PlanReviewView>>;
+  reviewFix(draftId: string, premise: readonly { key: string; value: string }[], text: string | null, idempotencyKey: string): Promise<PlanResult<PlanReviewView>>;
+  toggleChange(draftId: string, changeId: string, accepted: boolean, idempotencyKey: string): Promise<PlanResult<PlanReviewView>>;
+  openManualEdit(planId: string, idempotencyKey: string): Promise<PlanResult<PlanDraftView>>;
+  achieve(planId: string, expectedRevision: number, idempotencyKey: string): Promise<PlanResult<PlanAchieved>>;
+  achievement(planId: string): Promise<PlanResult<PlanAchievementView>>;
+  nextGoals(planId: string): Promise<PlanResult<PlanNextGoalsResponse>>;
+  editGoal(planId: string, body: PlanGoalEditRequest): Promise<PlanResult<PlanGoalEditResult>>;
+  openGoal(planId: string): Promise<PlanResult<PlanOpenResult>>;
+  legacyList(): Promise<PlanResult<PlanLegacyListResponse>>;
+  legacyDetail(planId: string): Promise<PlanResult<PlanLegacyDetail>>;
 }
 
 type Method = "get" | "post" | "patch" | "delete";
@@ -112,6 +149,20 @@ export function createPlanApi(client: OrbitApiClient, language: string): PlanApi
   const type = (id: string, itemId: string, rest = "") => `${PLANS}/v2/${segment(id)}/types/${segment(itemId)}${rest}`;
   const pending = (id: string, rest: string) => `${PLANS}/v2/pending/${segment(id)}${rest}`;
   return {
+    achieve: (id, expectedRevision, idempotencyKey) => call("post", plan(id, "/achieve"), planAchievedSchema, { expectedRevision, idempotencyKey }),
+    achievement: (id) => call("get", plan(id, "/achievement"), planAchievementViewSchema),
+    currentReview: (id) => call("get", plan(id, "/reviews/current"), planReviewViewSchema),
+    editGoal: (id, body) => call("patch", plan(id, "/goal"), planGoalEditResultSchema, body),
+    getReview: (id) => call("get", draft(id, "/review"), planReviewViewSchema),
+    legacyDetail: (id) => call("get", `${PLANS}/legacy/${segment(id)}`, planLegacyDetailSchema),
+    legacyList: () => call("get", `${PLANS}/legacy`, planLegacyListResponseSchema),
+    nextGoals: (id) => call("get", plan(id, "/next-goals"), planNextGoalsResponseSchema),
+    openGoal: (id) => call("post", plan(id, "/open"), planOpenResultSchema, {}),
+    openManualEdit: (id, idempotencyKey) => call("post", plan(id, "/manual-edit"), planDraftViewSchema, { idempotencyKey }),
+    quota: () => call("get", `${PLANS}/v2/quota`, planQuotaResponseSchema),
+    reviewFix: (id, premise, text, idempotencyKey) => call("post", draft(id, "/review/fix"), planReviewViewSchema, { idempotencyKey, premise, text }),
+    startReview: (id, idempotencyKey) => call("post", plan(id, "/reviews"), planReviewViewSchema, { idempotencyKey }),
+    toggleChange: (id, changeId, accepted, idempotencyKey) => call("post", draft(id, `/changes/${segment(changeId)}/toggle`), planReviewViewSchema, { accepted, idempotencyKey }),
     acceptPending: (id, idempotencyKey, answered) => call("post", pending(id, "/accept"), planPendingDecisionResultSchema, answered ? { answered, idempotencyKey } : { idempotencyKey }),
     award: (id, itemId, contactId, idempotencyKey) => call("post", type(id, itemId, "/awards"), planAwardResultSchema, { basis: "talked", contactId, idempotencyKey }),
     completeStep: (id, stepKey, idempotencyKey) => call("post", plan(id, `/steps/${segment(stepKey)}/complete`), planCommandResultSchema, { idempotencyKey }),

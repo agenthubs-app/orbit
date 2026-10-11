@@ -3,7 +3,7 @@
  */
 import type { ContactInsightEvidence } from "../../../../../shared/contract/contact-insight";
 import type { NetworkCopy } from "../analysis/network-copy";
-import { planNeedHref } from "../../agent/iorbit-0918/plan-anchors";
+import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 
 export const INSIGHT_EVIDENCE_LABEL: Readonly<Record<ContactInsightEvidence["source"], NetworkCopy>> = {
   capture: { en: "Added", zh: "添加" },
@@ -32,9 +32,9 @@ export function timelineAnchorId(itemId: string): string {
   return `tl-${itemId.replace(/[^A-Za-z0-9_-]/g, "_")}`;
 }
 
-/** 依据链接：计划需求去计划页；关系记录去联系人详情里的那条时间线。 */
+/** 依据链接：计划需求去 Task › プラン（R25 起不再带需求锚点）；关系记录去联系人详情里的那条时间线。 */
 export function insightEvidenceHref(evidence: ContactInsightEvidence, contactHref: string | null): string {
-  if (evidence.source === "plan_need") return planNeedHref(evidence.id);
+  if (evidence.source === "plan_need") return planTaskSegmentHref("web");
   return `${contactHref ?? ""}#${timelineAnchorId(evidence.id)}`;
 }
 

@@ -13,6 +13,10 @@ export type PlanFailure =
   | { kind: "goalMonthlyLimit" }
   | { kind: "goalLimit" }
   | { kind: "stale" }
+  /** R25: this month's 見直し are used up (`retryOn` = the next Tokyo month start). */
+  | { kind: "reviewLimit"; retryOn: string | null }
+  /** R25: the goal was already achieved (score frozen; no review / edit). */
+  | { kind: "achieved" }
   | { kind: "used"; reason: string }
   | { kind: "other"; reason: string | null; message: string };
 
@@ -30,6 +34,8 @@ export function planFailureOf(result: Extract<ApiResult<unknown>, { success: fal
     case "GOAL_MONTHLY_LIMIT": return { kind: "goalMonthlyLimit" };
     case "PLAN_GOAL_LIMIT": return { kind: "goalLimit" };
     case "STALE": return { kind: "stale" };
+    case "REVIEW_LIMIT": return { kind: "reviewLimit", retryOn: result.error.context?.retryOn ?? null };
+    case "PLAN_ACHIEVED": return { kind: "achieved" };
     case "FIX_LIMIT":
     case "MANUAL_EDIT_USED":
     case "LADDER_LIMIT":
