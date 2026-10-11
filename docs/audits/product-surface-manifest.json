@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API, /dev and /showcase routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "a91fecae3303d716d4b40464b1f171f3192364c0",
-  "generatedAt": "2026-10-11T09:36:36+09:00",
+  "commit": "45cd4f760ac7a6c74f875f3b4179f68f2333ae68",
+  "generatedAt": "2026-10-11T13:54:16+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -21,9 +21,9 @@
     ]
   },
   "summary": {
-    "routes": 53,
-    "actions": 1810,
-    "authenticatedRoutes": 31,
+    "routes": 55,
+    "actions": 1856,
+    "authenticatedRoutes": 33,
     "publicRoutes": 22,
     "ungatedRoutes": 3,
     "risks": 10,
@@ -4888,6 +4888,7 @@
         }
       ],
       "testCoverage": [
+        "repos/orbits/tests/api-schema/business-card-batch-schema.test.ts",
         "repos/orbits/tests/api-schema/event-experience-schema.test.ts",
         "repos/orbits/tests/api-schema/mobile-contacts-dashboard-schema.test.ts",
         "repos/orbits/tests/api/account-scoped-aggregate-isolation.test.ts",
@@ -4916,8 +4917,7 @@
         "repos/orbits/tests/api/event-registration-account-scope.test.ts",
         "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-blocking-reason.test.ts",
-        "repos/orbits/tests/api/event-registration-deadline-route.test.ts",
-        "repos/orbits/tests/api/event-registration-plan-sync.test.ts"
+        "repos/orbits/tests/api/event-registration-deadline-route.test.ts"
       ],
       "knownRisks": []
     },
@@ -5202,8 +5202,10 @@
         "repos/orbits/tests/api/envelope.test.ts",
         "repos/orbits/tests/api/event-operations-admin-capability.test.ts",
         "repos/orbits/tests/api/event-operations-registered-access.test.ts",
+        "repos/orbits/tests/api/ingest-v2-duplicates-name.test.ts",
         "repos/orbits/tests/api/knowledge-document-content.test.ts",
         "repos/orbits/tests/api/manual-contact-optional-note-postgres.test.ts",
+        "repos/orbits/tests/api/manual-contact-v2-routes.test.ts",
         "repos/orbits/tests/api/profile-suggestions-postgres-parity.test.ts",
         "repos/orbits/tests/api/read-budget-gate-routes-postgres.test.ts",
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
@@ -5219,9 +5221,7 @@
         "repos/orbits/tests/capabilities/app-bootstrap-mock-aggregator.test.ts",
         "repos/orbits/tests/capabilities/bootstrap-dashboard-egress-bounds.test.ts",
         "repos/orbits/tests/capabilities/business-card-batch-transactions.test.ts",
-        "repos/orbits/tests/capabilities/business-card-ingest-v2-repository.test.ts",
-        "repos/orbits/tests/capabilities/business-card-ingest-v2-worker.test.ts",
-        "repos/orbits/tests/capabilities/business-card-review-and-confirm-flow.test.ts"
+        "repos/orbits/tests/capabilities/business-card-ingest-v2-repository.test.ts"
       ],
       "knownRisks": []
     },
@@ -14367,7 +14367,7 @@
         {
           "actionId": "/app/contacts/new#35",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/card-batch-0918/card-batch-ui.tsx",
-          "line": 936,
+          "line": 939,
           "kind": "button",
           "tag": "button",
           "label": "Upload another batch",
@@ -14809,11 +14809,272 @@
           "undoCompensation": "unknown-requires-runtime-verification",
           "loadingOrDisabled": "unknown-requires-runtime-verification",
           "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new#56",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/AddContactDoors.tsx",
+          "line": 47,
+          "kind": "link",
+          "tag": "Link",
+          "label": "{t(d.scanTitle)} {t(d.scanBody)}",
+          "accessibleName": "dynamic-runtime",
+          "href": "href(ADD_SCAN_HREF)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new#57",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/AddContactDoors.tsx",
+          "line": 54,
+          "kind": "button",
+          "tag": "button",
+          "label": "{t(d.inviteTitle)} {t(d.inviteBody)}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new#58",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/AddContactDoors.tsx",
+          "line": 61,
+          "kind": "button",
+          "tag": "button",
+          "label": "{t(d.manualTitle)} {t(d.manualBody)}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new#59",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/AddContactDoors.tsx",
+          "line": 71,
+          "kind": "link",
+          "tag": "Link",
+          "label": "{t(door.title)} {t(door.body)}",
+          "accessibleName": "dynamic-runtime",
+          "href": "href(door.href)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new#60",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx",
+          "line": 208,
+          "kind": "form-submit",
+          "tag": "form",
+          "label": "{t(m.drawerLead)} {t(m.met)} {t(m.metHint)} {t(m.note)} {t(m.contact)} 📋 {t(m.pasteTitle)} {t(m.pasteLabel)} {t(m.densityPreview, { level: densityLabel(level, t) })} ⌘↵",
+          "accessibleName": "not-applicable-container",
+          "href": null,
+          "handlers": [
+            "onsubmit"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "present-static",
+          "loadingOrDisabled": "present-static",
+          "feedback": "present-static"
+        },
+        {
+          "actionId": "/app/contacts/new#61",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx",
+          "line": 225,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(m.dupUndoSeparate)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "present-static",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new#62",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx",
+          "line": 240,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(m.dupMerge)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new#63",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx",
+          "line": 241,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(m.dupSeparate)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new#64",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx",
+          "line": 266,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(m.mergeCancel)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new#65",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx",
+          "line": 285,
+          "kind": "button",
+          "tag": "button",
+          "label": "{t(m.orgSuggestion, { name: org.name, n: org.contactCount })}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new#66",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx",
+          "line": 348,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(m.pasteApply)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new#67",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx",
+          "line": 362,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(m.cancel)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
         }
       ],
       "testCoverage": [
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
+        "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/pages/app-account-auth-characterization.test.tsx",
         "repos/orbits/tests/pages/app-account-auth-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-agent-iorbit-home.test.tsx",
@@ -14827,7 +15088,918 @@
         "repos/orbits/tests/pages/contact-detail-return.test.ts",
         "repos/orbits/tests/pages/ingest-v2-private-image.test.tsx",
         "repos/orbits/tests/services/network-analysis-threshold.test.ts",
+        "repos/orbits/tests/ui/add-contact-model.test.ts",
+        "repos/orbits/tests/ui/add-contact-screens.test.tsx",
+        "repos/orbits/tests/ui/add-scan-flow.test.tsx",
         "repos/orbits/tests/ui/state-view.test.tsx"
+      ],
+      "knownRisks": []
+    },
+    {
+      "route": "/app/contacts/new/scan/[batchId]",
+      "purpose": "Production application surface; purpose requires product review",
+      "pageFile": "repos/orbits/app/(app)/app/contacts/new/scan/[batchId]/page.tsx",
+      "access": {
+        "policy": "authenticated",
+        "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
+        "authenticatedBehavior": "allow",
+        "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
+        "runtimeAuthorization": "requires-browser-verification"
+      },
+      "data": {
+        "sourceKinds": [
+          "Live",
+          "Mock",
+          "Fixture",
+          "Derived",
+          "AI Generated",
+          "User Confirmed"
+        ],
+        "dependencies": {
+          "database": true,
+          "aiProvider": true,
+          "externalIntegration": true
+        },
+        "directMockImports": [],
+        "mockBoundaryImports": [],
+        "generatedAt": "build-time-static-scan",
+        "writesRequireRuntimeReadbackVerification": true
+      },
+      "states": {
+        "routeFiles": {
+          "loading": [],
+          "error": [],
+          "notFound": []
+        },
+        "sourceSignals": {
+          "redirect": true,
+          "loading": true,
+          "empty": true,
+          "partial": true,
+          "error": true,
+          "permissionDenied": true
+        },
+        "runtimeStatus": "loading/empty/partial/error/permission states require browser verification"
+      },
+      "responsive": {
+        "sourceSignals": {
+          "mobile": true,
+          "desktop": false
+        },
+        "desktop": "requires-browser-verification",
+        "mobile": "requires-browser-verification"
+      },
+      "actions": [
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#1",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 110,
+          "kind": "click-handler",
+          "tag": "IconButton",
+          "label": "t(s.back)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#2",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 121,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.scanAgain)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#3",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 170,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.retryUpload)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "present-static",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#4",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 175,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.reselect)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#5",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 287,
+          "kind": "button",
+          "tag": "button",
+          "label": "{t(b.tileDuplicate)}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#6",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 290,
+          "kind": "button",
+          "tag": "button",
+          "label": "{t(b.tileReview)}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#7",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 293,
+          "kind": "button",
+          "tag": "button",
+          "label": "{t(b.tileAsIs)}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#8",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 355,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.addAll, { n: addable.length })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#9",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 356,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.later)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#10",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 438,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "choice === \"merge\" ? t(b.merge) : t(b.separate)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "present-static",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#11",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 439,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.skip)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#12",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 457,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "open ? t(b.closeCard) : t(b.editCard)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#13",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 462,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.addThis)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "present-static",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#14",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 463,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.skip)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#15",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 488,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.addThis)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "present-static",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "present-static"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#16",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 495,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.retryRead)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "present-static",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "present-static"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#17",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 497,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.retake)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "present-static"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#18",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 503,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.typeIn)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "present-static"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#19",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 504,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.skip)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "present-static"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#20",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 530,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "entry.value",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#21",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 565,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "option.label",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#22",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 566,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.clearValue)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#23",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 594,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.nextPlanOpen)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#24",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 604,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.viewNetwork)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan/[batchId]#25",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanBatchScreen.tsx",
+          "line": 605,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(b.scanMore)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        }
+      ],
+      "testCoverage": [
+        "repos/orbits/tests/api/event-attribution-candidates-route.test.ts",
+        "repos/orbits/tests/audits/web-route-transport.test.ts",
+        "repos/orbits/tests/capabilities/business-card-ingest-v2-repository.test.ts",
+        "repos/orbits/tests/pages/app-agent-iorbit-home.test.tsx",
+        "repos/orbits/tests/pages/app-card-batch-host-yield.test.tsx",
+        "repos/orbits/tests/pages/app-contacts-new-live-route-services.test.ts",
+        "repos/orbits/tests/ui/add-contact-model.test.ts",
+        "repos/orbits/tests/ui/add-contact-screens.test.tsx"
+      ],
+      "knownRisks": []
+    },
+    {
+      "route": "/app/contacts/new/scan",
+      "purpose": "Production application surface; purpose requires product review",
+      "pageFile": "repos/orbits/app/(app)/app/contacts/new/scan/page.tsx",
+      "access": {
+        "policy": "authenticated",
+        "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
+        "authenticatedBehavior": "allow",
+        "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
+        "runtimeAuthorization": "requires-browser-verification"
+      },
+      "data": {
+        "sourceKinds": [
+          "Live",
+          "Mock",
+          "Fixture",
+          "Derived",
+          "AI Generated",
+          "User Confirmed"
+        ],
+        "dependencies": {
+          "database": true,
+          "aiProvider": true,
+          "externalIntegration": true
+        },
+        "directMockImports": [],
+        "mockBoundaryImports": [],
+        "generatedAt": "build-time-static-scan",
+        "writesRequireRuntimeReadbackVerification": true
+      },
+      "states": {
+        "routeFiles": {
+          "loading": [],
+          "error": [],
+          "notFound": []
+        },
+        "sourceSignals": {
+          "redirect": true,
+          "loading": true,
+          "empty": true,
+          "partial": true,
+          "error": true,
+          "permissionDenied": true
+        },
+        "runtimeStatus": "loading/empty/partial/error/permission states require browser verification"
+      },
+      "responsive": {
+        "sourceSignals": {
+          "mobile": true,
+          "desktop": false
+        },
+        "desktop": "requires-browser-verification",
+        "mobile": "requires-browser-verification"
+      },
+      "actions": [
+        {
+          "actionId": "/app/contacts/new/scan#1",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanUploadScreen.tsx",
+          "line": 132,
+          "kind": "button",
+          "tag": "button",
+          "label": "📇 {t(s.dropTitle)} {t(s.dropHint, { max: maxPhotos })} {t(s.choose)}",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan#2",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanUploadScreen.tsx",
+          "line": 142,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(s.addMore)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan#3",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanUploadScreen.tsx",
+          "line": 156,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(s.unpair)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan#4",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanUploadScreen.tsx",
+          "line": 157,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(s.pairBack)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan#5",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanUploadScreen.tsx",
+          "line": 158,
+          "kind": "click-handler",
+          "tag": "IconButton",
+          "label": "t(s.remove, { name: card.front.file.name })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan#6",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanUploadScreen.tsx",
+          "line": 168,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(s.start, { n: photos })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan#7",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanUploadScreen.tsx",
+          "line": 189,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(s.guideShow)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan#8",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanUploadScreen.tsx",
+          "line": 59,
+          "kind": "click-handler",
+          "tag": "IconButton",
+          "label": "t(s.back)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/new/scan#9",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/add/ScanUploadScreen.tsx",
+          "line": 69,
+          "kind": "click-handler",
+          "tag": "Button",
+          "label": "t(s.activeOpen)",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        }
+      ],
+      "testCoverage": [
+        "repos/orbits/tests/api/business-card-review-readback.test.ts",
+        "repos/orbits/tests/api/event-attribution-candidates-route.test.ts",
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
+        "repos/orbits/tests/audits/no-legacy-plan-links.test.ts",
+        "repos/orbits/tests/audits/product-surface-manifest.test.ts",
+        "repos/orbits/tests/audits/unbounded-list-reads.test.ts",
+        "repos/orbits/tests/audits/web-route-transport.test.ts",
+        "repos/orbits/tests/capabilities/account-identity-read-budget.test.ts",
+        "repos/orbits/tests/capabilities/business-card-contact-write.test.ts",
+        "repos/orbits/tests/capabilities/business-card-ingest-v2-normalization.test.ts",
+        "repos/orbits/tests/capabilities/business-card-scan-ocr-live-store.test.ts",
+        "repos/orbits/tests/capabilities/business-card-scan-ocr-mock.test.ts",
+        "repos/orbits/tests/capabilities/contact-acquisition-draft-pipeline.test.ts",
+        "repos/orbits/tests/capabilities/contact-detail-language-localization.test.ts",
+        "repos/orbits/tests/capabilities/contact-detail-live-store.test.ts",
+        "repos/orbits/tests/capabilities/contact-search-pagination.test.ts",
+        "repos/orbits/tests/capabilities/contacts-list-search-and-filter-mock.test.ts",
+        "repos/orbits/tests/capabilities/contacts-live-store.test.ts",
+        "repos/orbits/tests/capabilities/orbit-agent-self-profile-trace.test.ts",
+        "repos/orbits/tests/capabilities/orbit-ai-live-trace-store.test.ts",
+        "repos/orbits/tests/capabilities/permission-state-and-staged-authorization-mock.test.ts",
+        "repos/orbits/tests/capabilities/plan-maintenance-daily-gate-postgres.test.ts",
+        "repos/orbits/tests/capabilities/plans-repository.test.ts",
+        "repos/orbits/tests/capabilities/qr-scan-connect-live-store.test.ts",
+        "repos/orbits/tests/capabilities/qr-scan-connect-mock.test.ts",
+        "repos/orbits/tests/capabilities/relationship-strength-read-model-postgres.test.ts",
+        "repos/orbits/tests/capabilities/relationship-timeline-build.test.ts",
+        "repos/orbits/tests/capabilities/source-consistency-and-provenance-audit.test.ts",
+        "repos/orbits/tests/domain/contact-name-match.test.ts",
+        "repos/orbits/tests/domain/contracts.test.ts"
       ],
       "knownRisks": []
     },
@@ -16003,11 +17175,11 @@
         "repos/orbits/tests/api/contact-reconnect-draft-route.test.ts",
         "repos/orbits/tests/api/contact-value-lines-route.test.ts",
         "repos/orbits/tests/api/event-registration-plan-sync.test.ts",
+        "repos/orbits/tests/api/ingest-v2-duplicates-name.test.ts",
         "repos/orbits/tests/api/manual-contact-optional-note-postgres.test.ts",
+        "repos/orbits/tests/api/manual-contact-v2-routes.test.ts",
         "repos/orbits/tests/api/mobile-contacts-dashboard-route.test.ts",
-        "repos/orbits/tests/api/notes-routes.test.ts",
-        "repos/orbits/tests/api/orbit-ai-reliable-reply-identity.test.ts",
-        "repos/orbits/tests/api/personal-schedule-association-options.test.ts"
+        "repos/orbits/tests/api/notes-routes.test.ts"
       ],
       "knownRisks": []
     },
@@ -19002,13 +20174,13 @@
         "repos/orbits/tests/api/event-registration-preview-route.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
         "repos/orbits/tests/api/guide-state-routes.test.ts",
+        "repos/orbits/tests/api/ingest-v2-duplicates-name.test.ts",
         "repos/orbits/tests/api/live-post-event-followup-fail-closed.test.ts",
         "repos/orbits/tests/api/manual-contact-optional-note-postgres.test.ts",
+        "repos/orbits/tests/api/manual-contact-v2-routes.test.ts",
         "repos/orbits/tests/api/mobile-contacts-dashboard-route.test.ts",
         "repos/orbits/tests/api/notes-routes.test.ts",
-        "repos/orbits/tests/api/notification-delivery-policy.test.ts",
-        "repos/orbits/tests/api/notification-delivery-route.test.ts",
-        "repos/orbits/tests/api/orbit-ai-reliable-reply-identity.test.ts"
+        "repos/orbits/tests/api/notification-delivery-policy.test.ts"
       ],
       "knownRisks": []
     },
@@ -19679,7 +20851,6 @@
         "repos/orbits/tests/pages/app-ops-model.test.ts",
         "repos/orbits/tests/pages/app-ops-overview.test.tsx",
         "repos/orbits/tests/pages/app-ops-people.test.tsx",
-        "repos/orbits/tests/pages/business-card-import-client.test.ts",
         "repos/orbits/tests/pages/core-product-ux-optimizations.test.ts",
         "repos/orbits/tests/pages/event-admission-status-card.test.tsx",
         "repos/orbits/tests/pages/event-registration-portrait-workspace.test.tsx",
@@ -19694,7 +20865,8 @@
         "repos/orbits/tests/services/event-admission-journey-postgres.test.ts",
         "repos/orbits/tests/services/event-admission-journey.test.ts",
         "repos/orbits/tests/services/event-admission-postgres.test.ts",
-        "repos/orbits/tests/services/event-admission-review-postgres.test.ts"
+        "repos/orbits/tests/services/event-admission-review-postgres.test.ts",
+        "repos/orbits/tests/services/event-operations-migrations.test.ts"
       ],
       "knownRisks": []
     },
@@ -26543,6 +27715,7 @@
         }
       ],
       "testCoverage": [
+        "repos/orbits/tests/api-schema/business-card-batch-schema.test.ts",
         "repos/orbits/tests/api-schema/event-experience-schema.test.ts",
         "repos/orbits/tests/api-schema/mobile-contacts-dashboard-schema.test.ts",
         "repos/orbits/tests/api/account-scoped-aggregate-isolation.test.ts",
@@ -26571,8 +27744,7 @@
         "repos/orbits/tests/api/event-registration-account-scope.test.ts",
         "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-blocking-reason.test.ts",
-        "repos/orbits/tests/api/event-registration-deadline-route.test.ts",
-        "repos/orbits/tests/api/event-registration-plan-sync.test.ts"
+        "repos/orbits/tests/api/event-registration-deadline-route.test.ts"
       ],
       "knownRisks": []
     },
@@ -27720,6 +28892,7 @@
         }
       ],
       "testCoverage": [
+        "repos/orbits/tests/api-schema/business-card-batch-schema.test.ts",
         "repos/orbits/tests/api-schema/event-experience-schema.test.ts",
         "repos/orbits/tests/api-schema/mobile-contacts-dashboard-schema.test.ts",
         "repos/orbits/tests/api/account-scoped-aggregate-isolation.test.ts",
@@ -27748,8 +28921,7 @@
         "repos/orbits/tests/api/event-registration-account-scope.test.ts",
         "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-blocking-reason.test.ts",
-        "repos/orbits/tests/api/event-registration-deadline-route.test.ts",
-        "repos/orbits/tests/api/event-registration-plan-sync.test.ts"
+        "repos/orbits/tests/api/event-registration-deadline-route.test.ts"
       ],
       "knownRisks": []
     },
@@ -30996,11 +32168,13 @@
         }
       ],
       "testCoverage": [
+        "repos/orbits/tests/api-schema/manual-contact-schema.test.ts",
         "repos/orbits/tests/api/agent-plan-candidates-routes.test.ts",
         "repos/orbits/tests/api/agent-plans-routes.test.ts",
         "repos/orbits/tests/api/contact-import-routes.test.ts",
         "repos/orbits/tests/api/contact-insight-status-route.test.ts",
         "repos/orbits/tests/api/guide-state-routes.test.ts",
+        "repos/orbits/tests/api/manual-contact-v2-routes.test.ts",
         "repos/orbits/tests/api/plan-review-routes.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/agent-action-ledger-contract.test.ts",
@@ -31023,9 +32197,7 @@
         "repos/orbits/tests/domain/plan-href.test.ts",
         "repos/orbits/tests/observability/read-receipts.test.ts",
         "repos/orbits/tests/pages/app-agent-actions-route-view-model.test.ts",
-        "repos/orbits/tests/pages/app-agent-iorbit-home.test.tsx",
-        "repos/orbits/tests/pages/app-card-batch-host-agent-pill.test.tsx",
-        "repos/orbits/tests/pages/app-event-exchange-modal.test.tsx"
+        "repos/orbits/tests/pages/app-agent-iorbit-home.test.tsx"
       ],
       "knownRisks": []
     },
@@ -31483,8 +32655,10 @@
       ],
       "testCoverage": [
         "repos/orbits/tests/api-schema/business-card-batch-schema.test.ts",
+        "repos/orbits/tests/api-schema/business-card-candidate-tolerant.test.ts",
         "repos/orbits/tests/api-schema/business-card-two-sided-contract.test.ts",
         "repos/orbits/tests/api-schema/event-experience-schema.test.ts",
+        "repos/orbits/tests/api-schema/manual-contact-schema.test.ts",
         "repos/orbits/tests/api/agent-action-ledger-routes.test.ts",
         "repos/orbits/tests/api/agent-plan-candidates-routes.test.ts",
         "repos/orbits/tests/api/agent-post-event-followup-route.test.ts",
@@ -31506,12 +32680,10 @@
         "repos/orbits/tests/api/event-operations-registered-access.test.ts",
         "repos/orbits/tests/api/event-registration-portrait.test.ts",
         "repos/orbits/tests/api/event-registration-preview-route.test.ts",
+        "repos/orbits/tests/api/manual-contact-v2-routes.test.ts",
         "repos/orbits/tests/api/note-task-page-schema.test.ts",
         "repos/orbits/tests/api/personal-schedule-collection.test.ts",
-        "repos/orbits/tests/api/personal-schedule-routes.test.ts",
-        "repos/orbits/tests/api/plan-review-routes.test.ts",
-        "repos/orbits/tests/api/redesign-contract-routes.test.ts",
-        "repos/orbits/tests/api/relationship-communication-routes.test.ts"
+        "repos/orbits/tests/api/personal-schedule-routes.test.ts"
       ],
       "knownRisks": []
     },
@@ -33349,7 +34521,7 @@
         {
           "actionId": "/app/plans/legacy/[planId]#1",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
-          "line": 112,
+          "line": 118,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(r.newPlan)",
@@ -33371,7 +34543,7 @@
         {
           "actionId": "/app/plans/legacy/[planId]#2",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
-          "line": 51,
+          "line": 57,
           "kind": "link",
           "tag": "Link",
           "label": "{t(r.legacyOpen)}",
@@ -33391,7 +34563,7 @@
         {
           "actionId": "/app/plans/legacy/[planId]#3",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
-          "line": 53,
+          "line": 59,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(r.newPlan)",
@@ -33413,7 +34585,7 @@
         {
           "actionId": "/app/plans/legacy/[planId]#4",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
-          "line": 77,
+          "line": 83,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(r.later)",
@@ -34469,7 +35641,7 @@
         {
           "actionId": "/app/profile/onboarding#30",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/card-batch-0918/card-batch-ui.tsx",
-          "line": 936,
+          "line": 939,
           "kind": "button",
           "tag": "button",
           "label": "Upload another batch",
@@ -39000,7 +40172,7 @@
         {
           "actionId": "/app/start#30",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/card-batch-0918/card-batch-ui.tsx",
-          "line": 936,
+          "line": 939,
           "kind": "button",
           "tag": "button",
           "label": "Upload another batch",
@@ -39409,6 +40581,7 @@
         }
       ],
       "testCoverage": [
+        "repos/orbits/tests/api-schema/business-card-batch-schema.test.ts",
         "repos/orbits/tests/api/agent-plan-candidates-routes.test.ts",
         "repos/orbits/tests/api/agent-plans-reanalyze-route.test.ts",
         "repos/orbits/tests/api/agent-plans-routes.test.ts",
@@ -39437,8 +40610,7 @@
         "repos/orbits/tests/api/personal-schedule-routes.test.ts",
         "repos/orbits/tests/api/plan-review-routes.test.ts",
         "repos/orbits/tests/api/public-events-route.test.ts",
-        "repos/orbits/tests/api/reminder-plan-routes.test.ts",
-        "repos/orbits/tests/api/schedule-items-route.test.ts"
+        "repos/orbits/tests/api/reminder-plan-routes.test.ts"
       ],
       "knownRisks": []
     },
@@ -40635,7 +41807,7 @@
         {
           "actionId": "/app/tasks#16",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
-          "line": 112,
+          "line": 118,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(r.newPlan)",
@@ -40657,7 +41829,7 @@
         {
           "actionId": "/app/tasks#17",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
-          "line": 51,
+          "line": 57,
           "kind": "link",
           "tag": "Link",
           "label": "{t(r.legacyOpen)}",
@@ -40677,7 +41849,7 @@
         {
           "actionId": "/app/tasks#18",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
-          "line": 53,
+          "line": 59,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(r.newPlan)",
@@ -40699,7 +41871,7 @@
         {
           "actionId": "/app/tasks#19",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
-          "line": 77,
+          "line": 83,
           "kind": "click-handler",
           "tag": "Button",
           "label": "t(r.later)",

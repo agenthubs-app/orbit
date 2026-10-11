@@ -1,7 +1,7 @@
 /**
  * 全站名片解析提醒（挂在 /app layout）：盯住本机「进行中批次」登记表里最新的一批——
  * 从 IndexedDB 续传照片、轮询识别进度、识别后自动导入可靠的名片，并在任意页面显示
- * 「正在解析」胶囊 / 解析完成弹窗 / 待确认胶囊；「去确认」进入人脉 → 导入人脉的该批次。
+ * 「正在解析」胶囊 / 解析完成弹窗 / 待确认胶囊；「去确认」进入该批次的まとめて確認页（R12：`/app/contacts/new/scan/<id>`）。
  * 新用户引导页、引导页 /app/start（W0006）与人脉导入页自己挂着同一个状态机，这里在这些页面
  * 让位，避免同一批次被两个状态机同时上传 / 自动导入。
  * iOrbit 首页 /app/agent（W0011）不让位：状态机照常只在这里运行一份，只是不显示右下角的
@@ -27,7 +27,9 @@ import {
 } from "./card-batch-store";
 import { useCardBatch } from "./use-card-batch";
 
-export const CARD_BATCH_HOST_YIELD_PREFIXES = ["/app/profile/onboarding", "/app/start", "/app/contacts/new", "/app/account"] as const;
+// R12：从 `/app/contacts/new` 收窄为 `/app/contacts/new/scan`（读取 / まとめて確認页自己挂状态机）；入口页、手入力抽屉、
+// 旧导入页（`?method=`）不挂 `useCardBatch`，续传不能停在这些页面（DESIGN §2.2 Web、复核 m3）。
+export const CARD_BATCH_HOST_YIELD_PREFIXES = ["/app/profile/onboarding", "/app/start", "/app/contacts/new/scan", "/app/account"] as const;
 
 /** 这条路径上全站宿主是否让位（未登录、非 /app 页面、或页面自己挂着状态机）。 */
 export function cardBatchHostYields(input: { authenticated: boolean; pathname: string }): boolean {
@@ -97,7 +99,7 @@ export function CardBatchHost() {
     <CardBatchReminders
       batch={batch}
       hidePendingPill={cardBatchHostHidesPendingPill(pathname, reader)}
-      onOpen={() => window.location.assign(preserveHref(`/app/contacts/new?job=${encodeURIComponent(batchId)}`))}
+      onOpen={() => window.location.assign(preserveHref(`/app/contacts/new/scan/${encodeURIComponent(batchId)}`))}
       t={t}
       viewingImport={false}
     />

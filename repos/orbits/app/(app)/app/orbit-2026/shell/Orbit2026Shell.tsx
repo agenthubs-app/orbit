@@ -14,6 +14,7 @@ import { shellCopy } from "../copy/shell";
 import { Avatar, Button, Drawer, Icon, IconButton, Kbd, Orbit2026Scope, Popover, Segmented, ToastProvider, useStandardCopy } from "../ui";
 import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
 import { InboxEventBridge } from "./inbox-bridge";
+import { ShellToastBridge } from "./shell-toast-bridge";
 import { SHELL_NAV, shellAppliesTo, shellNavKeyFor, shellShowsRail, type ShellNavKey } from "./shell-routes";
 import { ShellSlotsProvider, useShellSlots } from "./slots";
 import styles from "./shell.module.css";
@@ -73,6 +74,7 @@ function ShellFrame({ language, pathname, children }: { language: OrbitLanguage;
             <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
             {rail ? <Drawer open={railDrawer} onClose={() => setRailDrawer(false)} title={pickCopy(shellCopy.railNextTitle, language)} size="sm">{railContent}</Drawer> : null}
             <InboxEventBridge />
+            <ShellToastBridge />
           </ToastProvider>
         </Orbit2026Scope>
         <div className={styles.content} data-orbit-2026-content="">{children}</div>

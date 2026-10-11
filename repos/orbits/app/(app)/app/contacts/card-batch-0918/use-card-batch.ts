@@ -392,9 +392,10 @@ export function useCardBatch(batchId: string | null, t: T) {
   // ── 识别完成后：没有疑点的卡自动导入 ──
   // 等「可能是同一个联系人」查完再动手：与已有联系人完全一致的卡直接并入（哪怕识别有疑点——
   // 每个字段都和人脉里的记录对得上，疑点已被印证）；有相似但不一致的候选时交给用户。
-  useEffect(() => {
-    if (!batchId || status !== "ready_for_review" || autoRunning || !matchesReady || !attribution) return;
-    const eligible = cards.filter(card => {
+  // 筛选在 effect 与 R12 的 `autoPending`（批次页据此不提前显示まとめて確認）之间共用，判定不变。
+  const autoEligibleNow = (): IngestV2CardViewModel[] => {
+    if (!batchId || status !== "ready_for_review" || !matchesReady || !attribution) return [];
+    return cards.filter(card => {
       const draft = drafts[card.cardId];
       if (!draft || autoAttempted.current.has(card.cardId) || !card.reviewable || card.allConfirmed || isCardSkipped(card)) return false;
       // W0015：有活动归属候选的名片留给用户在审阅页确认——默认勾选不是用户的决定，后台宿主也不替用户做。
@@ -403,6 +404,12 @@ export function useCardBatch(batchId: string | null, t: T) {
       if (candidate) return candidate.identical && isAutoMergeEligible(card, draft);
       return isAutoImportEligible(card, draft);
     });
+  };
+  // R12：读完后还在等候选 / 活动归属，或还有卡要自动进人脈——这时不该把卡交给用户。
+  const autoPending = status === "ready_for_review" && (!attribution || !matchesReady || autoRunning || autoEligibleNow().length > 0);
+  useEffect(() => {
+    if (!batchId || status !== "ready_for_review" || autoRunning || !matchesReady || !attribution) return;
+    const eligible = autoEligibleNow();
     if (!eligible.length) return;
     setAutoRunning(true);
     void (async () => {
@@ -512,6 +519,37 @@ export function useCardBatch(batchId: string | null, t: T) {
     }
   }
 
+  /**
+   * R12 まとめて確認（`/app/contacts/new/scan/[batchId]`）：按卡确认 / 统合 / 跳过，不动当前复核卡（activeId）。
+   * 走的接口、载荷与账本记法和 `act` 完全相同（确认 = confirm 或 manual-entry；有候选时「确认」= 用户看过并选择新建）。
+   * 不在这里刷新批次，调用方处理完一组后自己调 `refresh()`。
+   */
+  const settleCard = useCallback(async (cardId: string, kind: "confirm" | "merge" | "skip"): Promise<ConfirmResult | "skipped"> => {
+    const card = cards.find(entry => entry.cardId === cardId);
+    if (!batchId || !card) return "failed";
+    try {
+      if (kind === "skip") {
+        const response = await postAction(`/${batchId}/items/${card.items[0]!.id}/skip`);
+        return response.ok ? "skipped" : "failed";
+      }
+      const draft = drafts[cardId] ?? initialCardDraft(card);
+      const candidate = matches[cardId];
+      const result = kind === "merge" && candidate
+        ? await confirmCard(card, draft, { mergeInto: candidate.contactId })
+        : await confirmCard(card, draft, { allowDuplicate: Boolean(candidate) });
+      if (result === "created" || result === "merged") {
+        setLedger(current => ({
+          ...current,
+          merged: result === "merged" ? [...new Set([...current.merged, cardId])] : current.merged,
+          user: [...new Set([...current.user, cardId])],
+        }));
+      }
+      return result;
+    } catch {
+      return "failed";
+    }
+  }, [batchId, cards, confirmCard, drafts, matches]);
+
   async function retryRecognition(card: IngestV2CardViewModel) {
     if (!batchId || busy) return;
     setBusy(true);
@@ -536,9 +574,9 @@ export function useCardBatch(batchId: string | null, t: T) {
   }
 
   return {
-    act, active, attributed, attribution: attribution ?? EMPTY_ATTRIBUTION, attributionDecisions, setAttributionDecision, autoCount, autoRunning, batchId, busy, cards, detail, drafts, duplicates, error, finished, isHandled, matches, mergedCount,
+    act, active, attributed, attribution: attribution ?? EMPTY_ATTRIBUTION, attributionDecisions, setAttributionDecision, autoCount, autoPending, autoRunning, batchId, busy, cards, detail, drafts, duplicates, error, finished, isHandled, matches, mergedCount,
     laterCount, laterSet, loadFailed, markNotified, missing, notified: ledger.notified, openCard, pending, pumpUploads,
-    queue, reattach, refresh, retryRecognition, reviewing, setAside, setDrafts, setSide, setZoom, settledCount, side, stage, status, uploadFailed, userCount, zoom,
+    queue, reattach, refresh, retryRecognition, reviewing, setAside, setDrafts, setSide, setZoom, settleCard, settledCount, side, stage, status, uploadFailed, userCount, zoom,
   };
 }
 

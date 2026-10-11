@@ -55,8 +55,9 @@ test("all dynamic Web routes have an explicit valid runtime sample", () => {
   // R24：+1 页 /app/plans/[planId]/types/[itemId]（要登录）。
   // R25：+3 页 /app/plans/[planId]/review、/app/plans/[planId]/done、/app/plans/legacy/[planId]（都要登录）；
   // R25 清理：−2 页 /app/agent/plan（兼容跳转）、/app/agent/strategy（旧策略页）→ 61。
-  assert.equal(runtimePaths.length, 61);
-  assert.equal(new Set(runtimePaths).size, 61);
+  // R12：+2 页 /app/contacts/new/scan、/app/contacts/new/scan/[batchId]（都要登录）→ 63。
+  assert.equal(runtimePaths.length, 63);
+  assert.equal(new Set(runtimePaths).size, 63);
   assert.equal(runtimePaths.includes("/app/events/EVT01"), true);
   assert.equal(
     runtimePaths.includes(
@@ -120,9 +121,10 @@ test("whole-Web transport verification reports every route and any mismatch", as
   assert.deepEqual(report.summary, {
     // R25：+3 个要登录的计划页（見直し、完了、以前のプラン）→ 63 / 30 / 33；
     // R25 清理：删掉 /app/agent/plan、/app/agent/strategy 两个要登录的页面 → 61 / 30 / 31。
-    routeSurfaces: 61,
+    // R12：+2 个要登录的名刺页（/app/contacts/new/scan、/app/contacts/new/scan/[batchId]）→ 63 / 30 / 33。
+    routeSurfaces: 63,
     okResponses: 30,
-    authRedirects: 31,
+    authRedirects: 33,
     failures: 0,
   });
   assert.equal(report.results.every((result) => result.conclusion === "pass"), true);
@@ -132,5 +134,5 @@ test("whole-Web transport verification reports every route and any mismatch", as
     fetchImplementation: async () =>
       new Response("<title>Failure</title>", { status: 500 }),
   });
-  assert.equal(failedReport.summary.failures, 61);
+  assert.equal(failedReport.summary.failures, 63);
 });

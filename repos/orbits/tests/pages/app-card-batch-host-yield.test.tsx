@@ -15,12 +15,13 @@ import {
   cardBatchHostYields,
 } from "../../app/(app)/app/contacts/card-batch-0918/card-batch-host";
 
-test("the host yields on /app/start next to onboarding, import and account pages", () => {
+test("the host yields on /app/start next to onboarding, card scan and account pages, not on the add-people page", () => {
   assert.ok(CARD_BATCH_HOST_YIELD_PREFIXES.includes("/app/start"));
-  for (const pathname of ["/app/start", "/app/profile/onboarding", "/app/contacts/new", "/app/account/login"]) {
+  for (const pathname of ["/app/start", "/app/profile/onboarding", "/app/contacts/new/scan", "/app/contacts/new/scan/batch-1", "/app/account/login"]) {
     assert.equal(cardBatchHostYields({ authenticated: true, pathname }), true, pathname);
   }
-  for (const pathname of ["/app/agent", "/app/contacts", "/app/events"]) {
+  // R12：入口页（含手入力抽屉 `?add=manual`、旧导入 `?method=`）不挂状态机，宿主不让位，续传照常进行。
+  for (const pathname of ["/app/agent", "/app/contacts", "/app/events", "/app/contacts/new"]) {
     assert.equal(cardBatchHostYields({ authenticated: true, pathname }), false, pathname);
   }
   assert.equal(cardBatchHostYields({ authenticated: false, pathname: "/app/agent" }), true);

@@ -1,0 +1,153 @@
+/* R12 人脈を追加 (b11 A1 Web / A3 Web, b9 A1 / A2 ④, b1 B4–B6). Tokens only (orbit-2026-css-tokens).
+   Motion: sections fade in; cards also rise a little — with Reduce Motion only the fade stays. */
+
+.page { display: block; padding: var(--space-14) var(--space-34) 120px; max-width: 1240px; margin: 0 auto; }
+@media (max-width: 1279px) { .page { padding-left: var(--space-26); padding-right: var(--space-26); } }
+@media (max-width: 767px) { .page { padding-left: var(--space-16); padding-right: var(--space-16); } }
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fade { animation: fade var(--dur-enter) var(--ease) both; }
+.rise { animation: rise var(--dur-enter) var(--ease) both; }
+:global([data-motion="reduce"]) .rise { animation-name: fade; }
+
+.stack { display: flex; flex-direction: column; gap: var(--space-16); min-width: 0; }
+.row { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; }
+.rowBetween { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.push { margin-left: auto; }
+.label { margin: 0; color: var(--ink-3-text); font-size: var(--fs-label); line-height: var(--lh-label); }
+.body { margin: 0; color: var(--ink-2); font-size: var(--fs-body-sm); line-height: var(--lh-body); }
+.title { margin: 0; color: var(--ink); font-size: var(--fs-card-title); font-weight: var(--fw-heavy); line-height: var(--lh-title); }
+.bigTitle { margin: 0; color: var(--ink); font-size: var(--fs-title); font-weight: var(--fw-heavy); line-height: var(--lh-title); }
+.sectionTitle { margin: 0; color: var(--ink-2); font-size: var(--fs-label); font-weight: var(--fw-heavy); letter-spacing: .02em; }
+.notice { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; margin: 0; padding: var(--space-12) var(--space-14); border-radius: var(--r-md); background: var(--mac-apricot); color: var(--mac-apricot-text); font-size: var(--fs-body-sm); line-height: var(--lh-body); }
+.notice > span { flex: 1; min-width: 0; }
+.error { display: flex; align-items: center; gap: var(--space-8); margin: 0; color: var(--coral-text); font-size: var(--fs-meta); }
+
+/* 1440 / 1024: main + side (同构)；< 768 one column. */
+.columns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--space-16); align-items: start; }
+@media (max-width: 767px) { .columns { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── 入口：门卡 ── */
+.doors { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-14); }
+@media (max-width: 767px) { .doors { grid-template-columns: minmax(0, 1fr); } }
+.door {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); min-height: 168px; padding: var(--space-20);
+  border: 0; border-radius: var(--r-card-web); background: var(--surface); color: var(--ink); font: inherit; text-align: left; text-decoration: none; cursor: pointer;
+  transition: box-shadow var(--dur-press) var(--ease);
+}
+.door:hover { box-shadow: inset 0 0 0 1.5px var(--plum-300); }
+.door:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.doorTitle { font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
+.doorBody { color: var(--ink-2); font-size: var(--fs-body-sm); line-height: var(--lh-body); }
+.doorFoot { margin-top: auto; display: flex; align-items: center; gap: var(--space-8); color: var(--ink-3-text); font-size: var(--fs-meta); }
+.others { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-12); }
+@media (max-width: 1023px) { .others { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .others { grid-template-columns: minmax(0, 1fr); } }
+.other {
+  display: flex; align-items: center; gap: var(--space-12); padding: var(--space-14) var(--space-16); border-radius: var(--r-lg);
+  background: var(--surface); color: var(--ink); text-decoration: none; font-size: var(--fs-body-sm);
+}
+.other:hover { box-shadow: inset 0 0 0 1.5px var(--plum-300); }
+.other:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dots { display: inline-flex; gap: 3px; }
+.dot { width: 7px; height: 7px; border-radius: var(--r-pill); background: var(--surface-3); }
+.dotOn { background: var(--plum-700); }
+
+/* ── 名刺：拖放与暂存 ── */
+.drop {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-8); width: 100%; min-height: 240px; padding: var(--space-24);
+  border: 2px dashed var(--plum-300); border-radius: var(--r-card-web); background: var(--surface-2); color: var(--ink); font: inherit; text-align: center; cursor: pointer;
+}
+.dropOn { border-color: var(--plum-700); background: var(--accent-soft); }
+.dropEmoji { font-size: var(--fs-display); line-height: 1; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-12); }
+.thumb { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-8); border-radius: var(--r-lg); background: var(--surface); }
+.thumbPair { box-shadow: inset 0 0 0 1.5px var(--plum-300); }
+.thumbImages { display: flex; gap: var(--space-4); }
+.thumbImg { width: 100%; aspect-ratio: 1.6; object-fit: cover; border-radius: var(--r-sm); background: var(--surface-2); }
+.thumbName { overflow: hidden; color: var(--ink-3-text); font-size: var(--fs-meta); white-space: nowrap; text-overflow: ellipsis; }
+
+/* はじめての方へ */
+.tips { display: flex; flex-direction: column; gap: var(--space-12); margin: 0; padding: 0; list-style: none; }
+.tip { display: flex; align-items: flex-start; gap: var(--space-12); }
+.tipEmoji { font-size: var(--fs-title-sm); line-height: 1.2; }
+.steps { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.privacy { margin: 0; padding: var(--space-12) var(--space-14); border-radius: var(--r-md); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-meta); line-height: var(--lh-body); }
+.guideCollapsed { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+
+/* ── 读取列表 ── */
+.list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.listRow { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) 0; min-width: 0; }
+.listRow + .listRow { border-top: 1px solid var(--line); }
+.cardTile { flex: none; width: 44px; height: 28px; border-radius: var(--r-sm); background: var(--surface-2); }
+.cardTileFail { background: var(--coral-soft); }
+.cardTileRead { background: var(--mac-lav); }
+.ellipsis { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* ── まとめて確認：三格 ── */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-12); }
+.tilesSpaced { margin-top: var(--space-16); }
+.contents { display: contents; }
+.tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); padding: var(--space-16); border: 0; border-radius: var(--r-lg);
+  background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.tile:hover { box-shadow: inset 0 0 0 1.5px var(--plum-300); }
+.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tileNumber { font-family: var(--font-num); font-size: var(--fs-number); font-weight: var(--fw-heavy); line-height: 1.1; }
+.tileWarn .tileNumber { color: var(--coral-text); }
+.section { display: flex; flex-direction: column; gap: var(--space-12); scroll-margin-top: var(--space-24); }
+.reviewCard { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16); border-radius: var(--r-lg); background: var(--surface); }
+.reviewCardFocus { box-shadow: inset 0 0 0 2px var(--plum-500); }
+.reviewCardError { box-shadow: inset 0 0 0 1.5px var(--coral); }
+.compare { display: grid; grid-template-columns: minmax(64px, auto) minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4) var(--space-12); align-items: baseline; font-size: var(--fs-body-sm); }
+.compare > * > span, .compare > span { min-width: 0; overflow-wrap: anywhere; }
+.compareHead { color: var(--ink-3-text); font-size: var(--fs-label); font-weight: var(--fw-bold); }
+.compareDiff { color: var(--plum-700); font-weight: var(--fw-bold); }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-12); }
+@media (max-width: 767px) { .fields { grid-template-columns: minmax(0, 1fr); } }
+.fieldWide { grid-column: 1 / -1; }
+.flagged { border-radius: var(--r-md); box-shadow: 0 0 0 2px var(--mac-apricot); }
+.choiceRow { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; }
+.kbd { display: flex; flex-direction: column; gap: var(--space-8); }
+/* No keyboard on a phone: the shortcut card is hidden at 390. */
+@media (max-width: 767px) { .keysCard { display: none; } }
+.footer { position: sticky; bottom: var(--space-16); display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; padding: var(--space-12) var(--space-16); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-float); }
+@media (max-width: 767px) { .footer { bottom: 88px; } }
+
+/* ── 完成 ── */
+.doneHead { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); }
+.next { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) 0; }
+.next + .next { border-top: 1px solid var(--line); }
+
+/* ── 手入力 抽屉 ── */
+.form { display: flex; flex-direction: column; gap: var(--space-16); }
+.fieldLabel { display: flex; align-items: center; gap: var(--space-8); color: var(--ink-2); font-size: var(--fs-label); font-weight: var(--fw-bold); }
+.textarea {
+  width: 100%; min-height: 88px; padding: var(--space-12) var(--space-14); border: 1.5px solid transparent; border-radius: var(--r-md);
+  background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body-sm); line-height: var(--lh-body); resize: vertical;
+}
+.textarea:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+.suggestions { display: flex; flex-direction: column; gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
+.suggestion {
+  display: flex; align-items: center; gap: var(--space-8); width: 100%; padding: var(--space-8) var(--space-12); border: 0; border-radius: var(--r-md);
+  background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body-sm); text-align: left; cursor: pointer;
+}
+.suggestion:hover { background: var(--accent-soft); }
+.dup { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-12) var(--space-14); border-radius: var(--r-lg); background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--plum-300); }
+.merge { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-12) var(--space-14); border-radius: var(--r-lg); background: var(--surface-2); }
+.mergeRow { display: grid; grid-template-columns: minmax(56px, auto) minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-8); align-items: center; }
+.paste { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-12) var(--space-14); border-radius: var(--r-lg); background: var(--surface-2); }
+.sig { margin: 0; padding: var(--space-12); border-radius: var(--r-md); background: var(--surface); color: var(--ink); font-size: var(--fs-body-sm); line-height: var(--lh-body); white-space: pre-wrap; word-break: break-word; }
+.mark { padding: 0 2px; border-radius: var(--r-tag); color: inherit; }
+.mark_displayName { background: var(--mac-lav); }
+.mark_organization { background: var(--mac-blue); }
+.mark_role { background: var(--mac-teal); }
+.mark_email { background: var(--mac-pink); }
+.mark_phone { background: var(--mac-apricot); }
+.mark_postalCode, .mark_address, .mark_url { background: var(--surface-3); }
+/* Save stays in reach while the drawer body scrolls (⌘↵ also saves). */
+.drawerFoot { position: sticky; bottom: 0; display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; width: 100%; padding: var(--space-12) 0; background: var(--bg); }

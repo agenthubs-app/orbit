@@ -19,6 +19,8 @@ const ROUTE_SAMPLES = new Map([
     "/app/contacts/analysis/industry/demo-bucket-1",
   ],
   ["/app/contacts/[id]", "/app/contacts/demo-contact-1"],
+  // R12：名刺 · 読み取り / まとめて確認 / 完成（页面未登录跳登录）。
+  ["/app/contacts/new/scan/[batchId]", "/app/contacts/new/scan/batch_demo"],
   // R23：计划生成流程与手动编辑页（动态段用样例 id；页面未登录跳登录）。
   ["/app/plans/flow/[intakeId]", "/app/plans/flow/intake_demo"],
   ["/app/plans/drafts/[draftId]/edit", "/app/plans/drafts/draft_demo/edit"],
