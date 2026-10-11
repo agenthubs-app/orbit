@@ -17,6 +17,8 @@ import type { IngestContactCandidateContract } from "../../shared/contract/busin
 import type { ManualContactCreateInput, ManualContactCreateResult, ManualContactDuplicateCheckInput, ManualContactDuplicateCheckResult, ManualContactMetContext, ManualContactOrganizationSuggestion, ManualContactOrganizationSuggestionsResult, ManualContactUndoResult } from "../../shared/contract/manual-contact";
 import type { InviteCodeContract, InviteCodeCreateInput, InviteCodeHistoryItem, InviteCodeHistoryResponse, InviteCodePreview, InviteCodeRedeemInput, InviteCodeRedeemResult, InviteConnectionView, InviteMergeInput, InviteMergeSuggestion, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult } from "../../shared/contract/invite-codes";
 import type { PlanAwardRequest, PlanAwardResult, PlanCommandResult, PlanGoalListResponse, PlanOpenResult, PlanSkipRequest, PlanStepRequest, PlanUndoRequest, PlanV2Detail, PlanV2SummaryResponse, PlanIntakeView, PlanIntakeListResponse, PlanDraftView, PlanConfirmResult, PlanGoalKindResult, PlanGoalKindRequest, PlanIntakeCreateRequest, PlanIntakeMembersRequest, PlanIntakeLadderRequest, PlanFlowStepRequest, PlanIntakeAnswersRequest, PlanIntakePremiseRequest, PlanDraftFixRequest, PlanDraftManualEditRequest, PlanPersonTypeDetail, PlanCandidateDecisionRequest, PlanCandidateDecisionResult, PlanTalkedOfflineResult, PlanProposalRequest, PlanProposalResult, PlanIntroDraftRequest, PlanIntroDraftResult, PlanPendingListResponse, PlanPendingDecisionRequest, PlanPendingDecisionResult, PlanContactFit, PlanReviewView, PlanReviewStartRequest, PlanReviewToggleRequest, PlanQuotaResponse, PlanAchieveRequest, PlanAchievementView, PlanNextGoalsResponse, PlanGoalEditRequest, PlanGoalEditResult, PlanLegacyListResponse, PlanLegacyDetail } from "../../shared/contract/plan-v2";
+import type { ContactImportBatchListResponse, ContactImportBatchResponse, ContactImportBatchResult, ContactImportBatchView, ContactImportCommitInput, ContactImportDecisionsResult, ContactImportEventInput, ContactImportEventListResponse, ContactImportEventSummary, ContactImportMappingInput, ContactImportRowDecisionInput, ContactImportRowView, ContactImportRowsPage } from "../../shared/contract/contact-import";
+import type { contactImportBatchListResponseObject, contactImportBatchResponseObject, contactImportBatchResultObject, contactImportBatchViewObject, contactImportCommitInputObject, contactImportDecisionsResultObject, contactImportEventInputObject, contactImportEventListResponseObject, contactImportEventSummaryObject, contactImportMappingInputObject, contactImportRowDecisionInputObject, contactImportRowViewObject, contactImportRowsPageObject } from "../../shared/api-schema/contact-import";
 import type { accountDeletionRequestObject, accountExportCreateInputObject, accountExportObject, appVersionObject } from "../../shared/api-schema/account";
 import type { contactCompletionAnswerInputObject, contactCompletionQuestionObject, contactCompletionResultObject } from "../../shared/api-schema/contact-completion";
 import type { eventAssessmentAddToPlanResultObject, eventAssessmentCreateInputObject, eventAssessmentObject, eventAssessmentPatchInputObject } from "../../shared/api-schema/event-assessment";
@@ -120,3 +122,17 @@ expectParity<Parity<ManualContactDuplicateCheckResult, typeof manualContactDupli
 expectParity<Parity<ManualContactOrganizationSuggestion, typeof manualContactOrganizationSuggestionObject>>();
 expectParity<Parity<ManualContactOrganizationSuggestionsResult, typeof manualContactOrganizationSuggestionsResultObject>>();
 expectParity<Parity<ManualContactUndoResult, typeof manualContactUndoResultObject>>();
+// R16：导入契约（只描述现有 /api/contacts/import/** 的形状）。
+expectParity<Parity<ContactImportBatchView, typeof contactImportBatchViewObject>>();
+expectParity<Parity<ContactImportRowView, typeof contactImportRowViewObject>>();
+expectParity<Parity<ContactImportBatchResult, typeof contactImportBatchResultObject>>();
+expectParity<Parity<ContactImportBatchResponse, typeof contactImportBatchResponseObject>>();
+expectParity<Parity<ContactImportBatchListResponse, typeof contactImportBatchListResponseObject>>();
+expectParity<Parity<ContactImportRowsPage, typeof contactImportRowsPageObject>>();
+expectParity<Parity<ContactImportDecisionsResult, typeof contactImportDecisionsResultObject>>();
+expectParity<Parity<ContactImportEventSummary, typeof contactImportEventSummaryObject>>();
+expectParity<Parity<ContactImportEventListResponse, typeof contactImportEventListResponseObject>>();
+expectParity<Parity<ContactImportMappingInput, typeof contactImportMappingInputObject>>();
+expectParity<Parity<ContactImportRowDecisionInput, typeof contactImportRowDecisionInputObject>>();
+expectParity<Parity<ContactImportCommitInput, typeof contactImportCommitInputObject>>();
+expectParity<Parity<ContactImportEventInput, typeof contactImportEventInputObject>>();

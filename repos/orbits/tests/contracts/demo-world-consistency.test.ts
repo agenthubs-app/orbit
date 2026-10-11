@@ -23,6 +23,13 @@ test("every fixture parses with its contract schema", () => {
   homeLayoutSchema.parse(fixtures.demoHomeLayout);
   homeLayoutSchema.parse({ revision: 1, ...DEFAULT_HOME_LAYOUT });
   contactCompletionQuestionSchema.parse(fixtures.demoCompletionQuestion);
+  // R16：卡片上的名字、来源与人物记录一致；选项只来自参加过的活动与固定项（DESIGN §2.8）。
+  const asked = DEMO_PEOPLE.find((person) => person.id === fixtures.demoCompletionQuestion.contactId)!;
+  assert.equal(fixtures.demoCompletionQuestion.contactName, asked.name);
+  assert.equal(fixtures.demoCompletionQuestion.sourceChip, asked.source);
+  assert.equal(asked.density, 1, "the daily question asks about a ●○○ person");
+  const attended = new Set<string>(DEMO_PLAN.event.attendedEventIds.map((id) => DEMO_EVENTS.find((event) => event.id === id)!.title));
+  for (const option of fixtures.demoCompletionQuestion.options) assert.ok(attended.has(option) || ["紹介", "前職の同僚", "覚えていない"].includes(option), option);
   inviteCodeSchema.parse(fixtures.demoInviteCode);
   inviteCodePreviewSchema.parse(fixtures.demoInvitePreview);
   inviteCodeRedeemResultSchema.parse(fixtures.demoInviteRedeem);

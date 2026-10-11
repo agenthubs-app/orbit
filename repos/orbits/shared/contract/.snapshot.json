@@ -2518,6 +2518,13 @@
         }
       }
     },
+    "contact-completion.ts::ContactCompletionQuestionKind": {
+      "kind": "enum",
+      "values": [
+        "'met_where'",
+        "'organization'"
+      ]
+    },
     "contact-completion.ts::ContactCompletionQuestion": {
       "kind": "object",
       "members": {
@@ -2555,6 +2562,26 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "contactName": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactSubtitle": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "sourceChip": {
+          "optional": true,
+          "kind": "text",
+          "type": "'manual' | 'phone' | 'meishi' | 'linkedin' | 'self'"
+        },
+        "kind": {
+          "optional": true,
+          "kind": "text",
+          "type": "ContactCompletionQuestionKind"
         }
       }
     },
@@ -2590,8 +2617,762 @@
           "optional": false,
           "kind": "text",
           "type": "ContactCompletionQuestion | null"
+        },
+        "densityAfter": {
+          "optional": true,
+          "kind": "text",
+          "type": "1 | 2 | 3"
         }
       }
+    },
+    "contact-import.ts::ContactImportKind": {
+      "kind": "enum",
+      "values": [
+        "'csv'",
+        "'event'",
+        "'vcard'"
+      ]
+    },
+    "contact-import.ts::ContactImportFormat": {
+      "kind": "enum",
+      "values": [
+        "'event'",
+        "'generic'",
+        "'linkedin'",
+        "'vcard'"
+      ]
+    },
+    "contact-import.ts::ContactImportBatchStatus": {
+      "kind": "enum",
+      "values": [
+        "'cancelled'",
+        "'committing'",
+        "'completed'",
+        "'expired'",
+        "'failed'",
+        "'parsed'",
+        "'reviewing'"
+      ]
+    },
+    "contact-import.ts::ContactImportRowStatus": {
+      "kind": "enum",
+      "values": [
+        "'created'",
+        "'failed'",
+        "'merged'",
+        "'pending'",
+        "'skipped'"
+      ]
+    },
+    "contact-import.ts::ContactImportFollowUpState": {
+      "kind": "enum",
+      "values": [
+        "'done'",
+        "'none'",
+        "'pending'",
+        "'retry'"
+      ]
+    },
+    "contact-import.ts::ContactImportDecision": {
+      "kind": "enum",
+      "values": [
+        "'create'",
+        "'merge'",
+        "'skip'"
+      ]
+    },
+    "contact-import.ts::ContactImportParseIssue": {
+      "kind": "enum",
+      "values": [
+        "'decode_failed'",
+        "'field_truncated'",
+        "'invalid_email'",
+        "'malformed_row'",
+        "'missing_name'",
+        "'unknown_country'"
+      ]
+    },
+    "contact-import.ts::ContactImportMappableField": {
+      "kind": "enum",
+      "values": [
+        "'connectedOn'",
+        "'country'",
+        "'email'",
+        "'firstName'",
+        "'lastName'",
+        "'linkedinUrl'",
+        "'location'",
+        "'name'",
+        "'notes'",
+        "'organization'",
+        "'phone'",
+        "'role'"
+      ]
+    },
+    "contact-import.ts::ContactImportMapping": {
+      "kind": "object",
+      "members": {
+        "notes": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "phone": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "email": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "organization": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "firstName": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "lastName": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "location": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "country": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "linkedinUrl": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "connectedOn": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportFieldsView": {
+      "kind": "object",
+      "members": {
+        "displayName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "organization": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "email": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "phone": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "location": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "linkedinUrl": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "connectedOn": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "notes": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "countryCode": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "city": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "metEventId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "metEventTitle": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportCounts": {
+      "kind": "object",
+      "members": {
+        "created": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "merged": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "failed": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportReview": {
+      "kind": "object",
+      "members": {
+        "create": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "merge": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "skip": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "undecided": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "blocked": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "inFileDuplicates": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "candidates": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "issues": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "mergeConfirmations": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly ContactImportMergeConfirmation[]"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportMergeConfirmation": {
+      "kind": "object",
+      "members": {
+        "seq": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportBatchView": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportKind"
+        },
+        "format": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportFormat"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportBatchStatus"
+        },
+        "failureReason": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "fileName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sourceEventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "rowCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "headers": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "mapping": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportMapping | null"
+        },
+        "counts": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportCounts"
+        },
+        "review": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportReview | null"
+        },
+        "followUp": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "state": {
+              "optional": false,
+              "kind": "text",
+              "type": "ContactImportFollowUpState"
+            },
+            "enrichmentDeferredUntil": {
+              "optional": false,
+              "kind": "text",
+              "type": "string | null"
+            }
+          }
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "completedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "expiresAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportRowView": {
+      "kind": "object",
+      "members": {
+        "seq": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "fields": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportFieldsView"
+        },
+        "issues": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly ContactImportParseIssue[]"
+        },
+        "inFileDuplicateOf": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "candidate": {
+          "optional": false,
+          "kind": "text",
+          "type": "IngestContactCandidateContract | null"
+        },
+        "decision": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportDecision | null"
+        },
+        "mergeIntoContactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportRowStatus"
+        },
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportBatchResult": {
+      "kind": "object",
+      "members": {
+        "batch": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportBatchView"
+        },
+        "replayed": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportBatchResponse": {
+      "kind": "object",
+      "members": {
+        "batch": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportBatchView"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportBatchListResponse": {
+      "kind": "object",
+      "members": {
+        "batches": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly ContactImportBatchView[]"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportRowFilter": {
+      "kind": "enum",
+      "values": [
+        "'all'",
+        "'duplicates'",
+        "'issues'",
+        "'new'"
+      ]
+    },
+    "contact-import.ts::ContactImportRowsPage": {
+      "kind": "object",
+      "members": {
+        "rows": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly ContactImportRowView[]"
+        },
+        "nextCursor": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportDecisionsResult": {
+      "kind": "object",
+      "members": {
+        "batch": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactImportBatchView"
+        },
+        "updated": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly number[]"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportEventSummary": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "lastExchangeAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "exchanged": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "inNetwork": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "syncing": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "alreadyMarked": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportEventListResponse": {
+      "kind": "object",
+      "members": {
+        "events": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly ContactImportEventSummary[]"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportUploadHeaders": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'x-orbit-import-kind'"
+        },
+        "fileName": {
+          "optional": false,
+          "kind": "text",
+          "type": "'x-orbit-import-file-name'"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "'idempotency-key'"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportMappingInput": {
+      "kind": "object",
+      "members": {
+        "mapping": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "notes": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
+            "phone": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
+            "email": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
+            "name": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
+            "organization": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
+            "firstName": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
+            "lastName": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
+            "role": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
+            "location": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
+            "country": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
+            "linkedinUrl": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
+            "connectedOn": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            }
+          }
+        }
+      }
+    },
+    "contact-import.ts::ContactImportRowDecisionInput": {
+      "kind": "object",
+      "members": {
+        "decisions": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "seq": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "decision": {
+                "optional": false,
+                "kind": "text",
+                "type": "ContactImportDecision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "contact-import.ts::ContactImportCommitInput": {
+      "kind": "object",
+      "members": {
+        "confirmationIntentId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "mergeConfirmations": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly ContactImportMergeConfirmation[]"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportEventInput": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "contact-import.ts::ContactImportFailureReason": {
+      "kind": "enum",
+      "values": [
+        "'INTENT_CONFLICT'",
+        "'INVALID_DECISIONS'",
+        "'INVALID_MAPPING'",
+        "'MERGE_NOT_CONFIRMED'",
+        "'NOTHING_TO_IMPORT'",
+        "'NOT_FOUND'",
+        "'NOT_REVIEWABLE'",
+        "'UNDECIDED_ROWS'",
+        "'empty'",
+        "'not_vcard'",
+        "'too_large'",
+        "'too_many_rows'",
+        "'undecodable'",
+        "'unsupported_type'"
+      ]
     },
     "contact-insight.ts::ContactInsightText": {
       "kind": "object",
@@ -5492,10 +6273,40 @@
         "ContactCardSummaryDTO",
         "ContactCompletionAnswerInput",
         "ContactCompletionQuestion",
+        "ContactCompletionQuestionKind",
         "ContactCompletionResult",
         "ContactEvidenceContract",
         "ContactFilterOptionContract",
         "ContactHandlesContract",
+        "ContactImportBatchListResponse",
+        "ContactImportBatchResponse",
+        "ContactImportBatchResult",
+        "ContactImportBatchStatus",
+        "ContactImportBatchView",
+        "ContactImportCommitInput",
+        "ContactImportCounts",
+        "ContactImportDecision",
+        "ContactImportDecisionsResult",
+        "ContactImportEventInput",
+        "ContactImportEventListResponse",
+        "ContactImportEventSummary",
+        "ContactImportFailureReason",
+        "ContactImportFieldsView",
+        "ContactImportFollowUpState",
+        "ContactImportFormat",
+        "ContactImportKind",
+        "ContactImportMappableField",
+        "ContactImportMapping",
+        "ContactImportMappingInput",
+        "ContactImportMergeConfirmation",
+        "ContactImportParseIssue",
+        "ContactImportReview",
+        "ContactImportRowDecisionInput",
+        "ContactImportRowFilter",
+        "ContactImportRowStatus",
+        "ContactImportRowView",
+        "ContactImportRowsPage",
+        "ContactImportUploadHeaders",
         "ContactInsight",
         "ContactInsightEvidence",
         "ContactInsightEvidenceSource",
@@ -6222,7 +7033,7 @@
         "outcome": {
           "optional": false,
           "kind": "text",
-          "type": "'connected' | 'merged' | 'already_connected'"
+          "type": "'merged' | 'connected' | 'already_connected'"
         },
         "contactId": {
           "optional": false,
@@ -6621,12 +7432,12 @@
               "kind": "text",
               "type": "ManualContactFieldChoice | undefined"
             },
-            "displayName": {
+            "role": {
               "optional": true,
               "kind": "text",
               "type": "ManualContactFieldChoice | undefined"
             },
-            "role": {
+            "displayName": {
               "optional": true,
               "kind": "text",
               "type": "ManualContactFieldChoice | undefined"
@@ -6651,7 +7462,7 @@
         "outcome": {
           "optional": false,
           "kind": "text",
-          "type": "'merged' | 'created' | 'duplicate_review'"
+          "type": "'created' | 'merged' | 'duplicate_review'"
         },
         "contactId": {
           "optional": true,
@@ -10449,7 +11260,7 @@
         "verdict": {
           "optional": false,
           "kind": "text",
-          "type": "'recommend' | 'conditional' | 'skip'"
+          "type": "'skip' | 'recommend' | 'conditional'"
         },
         "scoreBreakdown": {
           "optional": false,
@@ -13543,7 +14354,7 @@
         "scope": {
           "optional": false,
           "kind": "text",
-          "type": "'relationship' | 'all'"
+          "type": "'all' | 'relationship'"
         },
         "query": {
           "optional": false,
@@ -13650,7 +14461,7 @@
         "scope": {
           "optional": false,
           "kind": "text",
-          "type": "'relationship' | 'all'"
+          "type": "'all' | 'relationship'"
         },
         "items": {
           "optional": false,

@@ -87,15 +87,21 @@ export function filterDemoContacts(params: URLSearchParams) {
     && (params.get("needsFollowUp") !== "1" || followUp.has(row.id)));
 }
 
-// 3 contact completion — one question a day.
+// 3 contact completion — one question a day. R16: a ●○○ person added from LinkedIn;
+// the options are an event I attended, the fixed 「紹介」 and 「覚えていない」 (DESIGN §2.8).
+const completionPerson = demoPerson("demo-person-okada");
 export const demoCompletionQuestion: ContactCompletionQuestion = {
   id: "demo-question-1",
-  contactId: "demo-person-aoki",
-  question: `${demoPerson("demo-person-aoki").name}さんとはどこで知り合いましたか？`,
-  options: ["イベント", "紹介", "仕事", "その他"],
+  contactId: completionPerson.id,
+  question: `${completionPerson.name}さんとは、どこで？`,
+  options: [demoEvent("demo-event-cfo-night").title, "紹介", "覚えていない"],
   askedOn: DEMO_TODAY,
   skipCount: 0,
   sample: true,
+  contactName: completionPerson.name,
+  contactSubtitle: `${completionPerson.company} · ${completionPerson.role}`,
+  sourceChip: completionPerson.source,
+  kind: "met_where",
 };
 
 // 4 invite codes.

@@ -11,6 +11,11 @@ export const contactCompletionQuestionObject = z.object({
   askedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   skipCount: z.number().int().min(0),
   sample: z.literal(true).optional(),
+  // R16 (append-only, all optional): unknown chip → manual, unknown kind → met_where.
+  contactName: z.string().min(1).max(120).optional(),
+  contactSubtitle: z.string().max(300).optional(),
+  sourceChip: tolerantEnum(["meishi", "linkedin", "phone", "manual", "self"], "manual").optional(),
+  kind: tolerantEnum(["met_where", "organization"], "met_where").optional(),
 });
 export const contactCompletionQuestionSchema = contactCompletionQuestionObject as z.ZodType<ContactCompletionQuestion>;
 
@@ -21,5 +26,7 @@ export const contactCompletionResultObject = z.object({
   questionId: z.string().min(1),
   status: tolerantEnum(["answered", "skipped"], "answered"),
   next: contactCompletionQuestionObject.nullable(),
+  // R16: D-10 density after the answer.
+  densityAfter: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
 });
 export const contactCompletionResultSchema = contactCompletionResultObject as z.ZodType<ContactCompletionResult>;

@@ -335,6 +335,8 @@ export type {
 // R08 redesign contracts (owners and users in each file).
 export type { HomeLayoutContract, HomeLayoutUpdateInput, HomeWidgetKey, HomeWidgetSlot } from "./home-layout";
 export type { ContactCompletionAnswerInput, ContactCompletionQuestion, ContactCompletionResult } from "./contact-completion";
+// R16：每天一问的题型（契约 3 追加）。
+export type { ContactCompletionQuestionKind } from "./contact-completion";
 export type { InviteCodeContract, InviteCodePreview, InviteCodeRedeemResult, InviteSharedFields } from "./invite-codes";
 // R15：招待コード契约补全（共享项目只传键、预览状态、兑换请求体、历史、连接与解除）。
 export type {
@@ -479,3 +481,36 @@ export type {
   ManualContactOrganizationSuggestionsResult,
   ManualContactUndoResult,
 } from "./manual-contact";
+
+// R16 导入（DESIGN add-and-invite §4.3）。Owner: 甲 (R16).
+export type {
+  ContactImportBatchListResponse,
+  ContactImportBatchResponse,
+  ContactImportBatchResult,
+  ContactImportBatchStatus,
+  ContactImportBatchView,
+  ContactImportCommitInput,
+  ContactImportCounts,
+  ContactImportDecision,
+  ContactImportDecisionsResult,
+  ContactImportEventInput,
+  ContactImportEventListResponse,
+  ContactImportEventSummary,
+  ContactImportFailureReason,
+  ContactImportFieldsView,
+  ContactImportFollowUpState,
+  ContactImportFormat,
+  ContactImportKind,
+  ContactImportMappableField,
+  ContactImportMapping,
+  ContactImportMappingInput,
+  ContactImportMergeConfirmation,
+  ContactImportParseIssue,
+  ContactImportReview,
+  ContactImportRowDecisionInput,
+  ContactImportRowFilter,
+  ContactImportRowStatus,
+  ContactImportRowView,
+  ContactImportRowsPage,
+  ContactImportUploadHeaders,
+} from "./contact-import";
