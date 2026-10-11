@@ -1,6 +1,6 @@
 # Phoneweb 页面覆盖清单
 
-来源：`f416887dc` 的实际 Expo Router 文件，共 81 个页面入口（含legacy/重定向及动态路由，不表示独立业务数量）。
+来源：`f416887dc` 的实际 Expo Router 文件，共 81 个页面入口（含legacy/重定向及动态路由，不表示独立业务数量）；R15（2026-10-11）删除旧 `/invitations/[token]` 后为 80 个。
 
 PW-0003逐项登记真实浏览器结果、代表性记录及证据。动态路由使用隔离环境中真实存在的合成记录，权限入口按演示角色检查允许或拒绝。不通过“去掉未验入口”缩小范围。首次清单仅静态盘点，不代表页面可运行。
 
@@ -59,7 +59,6 @@ PW-0003逐项登记真实浏览器结果、代表性记录及证据。动态路�
 | `/inbox/notifications/[id]` | `repos/orbit-app/app/inbox/notifications/[id].tsx` | PW-0003：缺真实样本（notificationId） |
 | `/inbox/sources/[id]` | `repos/orbit-app/app/inbox/sources/[id].tsx` | PW-0003：缺真实样本（inboxSourceId） |
 | `/` | `repos/orbit-app/app/index.tsx` | PW-0003 Chromium 390：已渲染（仅入口渲染） |
-| `/invitations/[token]` | `repos/orbit-app/app/invitations/[token].tsx` | PW-0003：缺真实样本（invitationToken） |
 | `/login-admin` | `repos/orbit-app/app/login-admin.tsx` | PW-0003 Chromium 390：已渲染（仅入口渲染） |
 | `/notes/[id]` | `repos/orbit-app/app/notes/[id].tsx` | PW-0003：缺真实样本（noteId） |
 | `/notes/[id]/edit` | `repos/orbit-app/app/notes/[id]/edit.tsx` | PW-0003：缺真实样本（noteId） |

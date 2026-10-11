@@ -383,7 +383,7 @@ export const add = {
   "add.inviteIn.confirmSub": "新しいアカウントは作りません。お互いの人脈に追加されます。",
   "add.inviteIn.showTitle": "{name}さんに見せる情報",
   "add.inviteIn.showHint": "メールと電話は、オンにしたときだけ届きます。",
-  "add.inviteIn.alreadyInNetwork": "{name}さんはすでにあなたの人脈にいます。つながると本人入力に統合されます。",
+  "add.inviteIn.sameLater": "つながったあと、同じ人かどうか確認できます。",
   "add.inviteIn.connect": "つながる",
   "add.inviteIn.notNow": "今はしない",
   "add.inviteIn.changeLater": "あとから項目の変更やつながりの解除ができます。",
@@ -416,6 +416,7 @@ export const add = {
   "add.inviteIn.hintInvalidChar": "使えない文字が含まれています",
   "add.inviteIn.hintLength": "コードは 8文字です",
   "add.inviteIn.loadFailed": "招待を読み込めませんでした。",
+  "add.inviteIn.legacyLink": "このリンクは使えなくなりました。招待コードを入力してください。",
   // R15 招待でつながった相手：共有する項目（InviteShareSheet）とつながりの解除（InviteUnlinkSheet）。R11 の詳細画面が使う。
   "add.inviteConn.shareTitle": "共有する項目",
   "add.inviteConn.shareSub": "{name}さんに見せる情報",
@@ -435,4 +436,8 @@ export const add = {
   "add.inviteConn.unlink": "つながりを解除する",
   "add.inviteConn.unlinked": "つながりを解除しました",
   "add.inviteConn.unlinkFailed": "解除できませんでした",
+  "add.inviteConn.maybeSame": "同じ人かも：{name}",
+  "add.inviteConn.merge": "統合する",
+  "add.inviteConn.notSame": "別の人",
+  "add.inviteConn.merged": "統合しました",
 } as const;

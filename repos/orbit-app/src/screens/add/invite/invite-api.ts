@@ -40,6 +40,9 @@ export function inviteRedeemPath(code: string): string { return INVITE_CODES_PAT
 export function inviteConnectionPath(contactId: string): string { return INVITE_CONNECTIONS_PATH + "/" + encodeURIComponent(contactId); }
 export function inviteSharePath(contactId: string): string { return inviteConnectionPath(contactId) + "/share"; }
 export function inviteUnlinkPath(contactId: string): string { return inviteConnectionPath(contactId) + "/unlink"; }
+/** R15 复核 S1: 「同じ人かも」 — `contactId` is the contact the invite made; 統合する merges it into the existing one. */
+export function inviteMergePath(contactId: string): string { return inviteConnectionPath(contactId) + "/merge"; }
+export function inviteMergeDismissPath(contactId: string): string { return inviteMergePath(contactId) + "/dismiss"; }
 
 export type InviteProfileFields = { displayName: string; organization: string; role: string; offering: string[]; seeking: string[] };
 
@@ -52,10 +55,13 @@ export interface InviteApi {
   redeem(code: string, input: { idempotencyKey: string; sharedKeys: InviteSharedFieldKey[] }): Promise<InviteApiResult<InviteCodeRedeemResult>>;
   profile(): Promise<InviteApiResult<{ profile: InviteProfile | null }>>;
   saveShortProfile(fields: InviteProfileFields, expectedUpdatedAt: string | null): Promise<InviteApiResult<unknown>>;
-  inviterInNetwork(input: { displayName: string; organization?: string }): Promise<boolean>;
   connection(contactId: string): Promise<InviteApiResult<InviteConnectionView>>;
   updateShare(contactId: string, input: { sharedKeys: InviteSharedFieldKey[]; idempotencyKey: string }): Promise<InviteApiResult<InviteConnectionView>>;
   unlink(contactId: string, input: { keepAsContact: boolean; idempotencyKey: string }): Promise<InviteApiResult<InviteUnlinkResult>>;
+  /** 統合する: the answer's `contactId` is the existing contact (the suggestion is gone). */
+  merge(contactId: string, input: { idempotencyKey: string }): Promise<InviteApiResult<InviteConnectionView>>;
+  /** 別の人: only the suggestion goes (idempotent). */
+  dismissMerge(contactId: string, input: { idempotencyKey: string }): Promise<InviteApiResult<InviteConnectionView>>;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
@@ -101,18 +107,11 @@ export function createInviteApi(client: OrbitApiClient): InviteApi {
       const latest = await profileRead();
       return put(latest.ok ? latest.data.profile?.updatedAt ?? null : null);
     },
-    /** POST /api/contacts/manual/duplicates (R12): is the inviter already in my network? Fails quietly (no hint). */
-    async inviterInNetwork(input) {
-      const body = { displayName: input.displayName, ...(input.organization ? { organization: input.organization } : {}) };
-      const result = await read<unknown>(client.post<unknown>("/api/contacts/manual/duplicates", { body }), null);
-      const candidates = result.ok && isRecord(result.data) ? result.data.candidates : null;
-      if (!Array.isArray(candidates)) return false;
-      // Only matches a connection would merge into (e-mail / phone / name + company); 「同名」 alone is a hint only.
-      return candidates.some((candidate) => isRecord(candidate) && Array.isArray(candidate.matchedOn) && candidate.matchedOn.some((reason) => reason !== "name"));
-    },
     connection: (contactId) => read(client.get<unknown>(inviteConnectionPath(contactId)), inviteConnectionViewSchema),
     updateShare: (contactId, input) => read(client.put<unknown>(inviteSharePath(contactId), { body: input }), inviteConnectionViewSchema),
     unlink: (contactId, input) => read(client.post<unknown>(inviteUnlinkPath(contactId), { body: input }), inviteUnlinkResultSchema),
+    merge: (contactId, input) => read(client.post<unknown>(inviteMergePath(contactId), { body: { idempotencyKey: input.idempotencyKey } }), inviteConnectionViewSchema),
+    dismissMerge: (contactId, input) => read(client.post<unknown>(inviteMergeDismissPath(contactId), { body: { idempotencyKey: input.idempotencyKey } }), inviteConnectionViewSchema),
   };
 }
 

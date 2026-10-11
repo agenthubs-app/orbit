@@ -3,13 +3,15 @@
 // a big QR, the 8-character code and the link, [QR を表示] (full sheet to scan face to face), [リンクをコピー],
 // [メッセージで送る] (draft sheet: three fixed tones, コピー / LINE で開く / メールで開く — Orbit never sends),
 // 有効期限 · あと N日, 使える人数 残り N / 10人 · 登録済み N人, 相手に届くあなたの情報 [変更] (changing it makes a
-// new code; the server takes keys only), 無効にする (action sheet, focus on キャンセル), and これまでのコード.
+// new code; the server takes keys only), 無効にする (action sheet, focus on キャンセル), and これまでのコード
+// (a joined person who may be someone already in my network shows 「同じ人かも」 with 統合する / 別の人 — R15 复核 S1).
+// Leaving the page (another page pushed on top) closes any open sheet: they render in the root portal (复核 M3).
 import * as Clipboard from "expo-clipboard";
-import { type Href, useRouter } from "expo-router";
+import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
-import type { InviteCodeContract, InviteCodeHistoryItem, InviteSharedFieldKey, InviteSharedFields } from "../../../api/contract/invite-codes";
+import type { InviteCodeContract, InviteCodeHistoryItem, InviteCodeHistoryJoined, InviteSharedFieldKey, InviteSharedFields } from "../../../api/contract/invite-codes";
 import { inviteMessageText, type InviteMessageTone } from "../../../api/compute/invite-message-templates";
 import { AppScreen } from "../../../components/AppScreen";
 import { ActionSheet, BottomSheet, Button, Card, Chip, Icon, MacTile, RetryCard, Segmented, Skeleton, Toggle, UiPressable, UiText, useToast } from "../../../components/ui";
@@ -37,6 +39,7 @@ import {
   orderedInviteKeys,
   toggleInviteKey,
 } from "./invite-model";
+import { InviteMergeSuggestionRow, useInviteMerge } from "./InviteMergeSuggestion";
 import { InviteQr } from "./InviteQr";
 
 type Phase = "loading" | "failed" | "intro" | "share";
@@ -101,6 +104,14 @@ export function InviteSenderScreen({ api: injected, now = Date.now }: { api?: In
   }, [api, loadHistory]);
 
   useEffect(() => { void load(); }, [load]);
+  // The sheets live in the root portal, and a pushed page keeps this one mounted: close them on blur (复核 M3).
+  useFocusEffect(useCallback(() => () => setSheet(null), []));
+
+  const merging = useInviteMerge(api);
+  const settleSuggestion = useCallback(async (action: "merge" | "dismiss", contactId: string) => {
+    const view = await (action === "merge" ? merging.merge(contactId) : merging.dismiss(contactId));
+    if (view) await loadHistory();
+  }, [merging, loadHistory]);
 
   const available = useMemo(() => inviteKeysWithValues(profile), [profile]);
   const currentKeys = useMemo(() => (current ? inviteKeysWithValues(current.shared) : []), [current]);
@@ -194,7 +205,15 @@ export function InviteSenderScreen({ api: injected, now = Date.now }: { api?: In
                   </View>
                 </Card>
               )}
-              <History items={history} busy={busy} onReissue={() => void create(reissueKeys)} onOpenPerson={(contactId) => router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)} />
+              <History
+                items={history}
+                busy={busy}
+                mergingId={merging.busyId}
+                onReissue={() => void create(reissueKeys)}
+                onOpenPerson={(contactId) => router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)}
+                onMerge={(contactId) => void settleSuggestion("merge", contactId)}
+                onDismiss={(contactId) => void settleSuggestion("dismiss", contactId)}
+              />
             </>
           ) : null}
         </View>
@@ -451,10 +470,24 @@ function MessageDraftSheet({ visible, code, name, onClose, onCopy }: { visible: 
   );
 }
 
-function History({ items, busy, onReissue, onOpenPerson }: { items: InviteCodeHistoryItem[] | null; busy: boolean; onReissue: () => void; onOpenPerson: (contactId: string) => void }) {
+function History({ items, busy, mergingId, onReissue, onOpenPerson, onMerge, onDismiss }: {
+  items: InviteCodeHistoryItem[] | null;
+  busy: boolean;
+  /** The joined contact whose 統合する / 別の人 is running. */
+  mergingId: string | null;
+  onReissue: () => void;
+  onOpenPerson: (contactId: string) => void;
+  onMerge: (contactId: string) => void;
+  onDismiss: (contactId: string) => void;
+}) {
   const { language, t } = useOrbitLocale();
   const { styles } = useAddStyles();
   const local = useStyles().styles;
+  const personLink = (person: InviteCodeHistoryJoined) => (
+    <UiPressable key={person.contactId} testID="invite-joined" accessibilityRole="link" accessibilityLabel={person.displayName} onPress={() => onOpenPerson(person.contactId)} style={local.link}>
+      <UiText style={local.linkText}>{person.displayName}</UiText>
+    </UiPressable>
+  );
   return (
     <View style={styles.stack} testID="invite-history">
       <SectionTitle>{t("add.invite.historyTitle")}</SectionTitle>
@@ -469,12 +502,22 @@ function History({ items, busy, onReissue, onOpenPerson }: { items: InviteCodeHi
                 </View>
                 <Caption>{t("add.invite.historyCreated", { date: inviteDate(item.createdAt, language, t) })}</Caption>
                 {item.joined.length ? (
-                  <View style={styles.row}>
-                    {item.joined.map((person) => (
-                      <UiPressable key={person.contactId} testID="invite-joined" accessibilityRole="link" accessibilityLabel={person.displayName} onPress={() => onOpenPerson(person.contactId)} style={local.link}>
-                        <UiText style={local.linkText}>{person.displayName}</UiText>
-                      </UiPressable>
-                    ))}
+                  <View style={styles.tightStack}>
+                    {item.joined.some((person) => !person.mergeSuggestion) ? (
+                      <View style={styles.row}>{item.joined.filter((person) => !person.mergeSuggestion).map(personLink)}</View>
+                    ) : null}
+                    {item.joined.map((person) => (person.mergeSuggestion ? (
+                      <View key={person.contactId} style={styles.tightStack}>
+                        {personLink(person)}
+                        <InviteMergeSuggestionRow
+                          contactId={person.contactId}
+                          suggestion={person.mergeSuggestion}
+                          busy={mergingId !== null}
+                          onMerge={() => onMerge(person.contactId)}
+                          onDismiss={() => onDismiss(person.contactId)}
+                        />
+                      </View>
+                    ) : null))}
                   </View>
                 ) : <Caption>{t("add.invite.historyNobody")}</Caption>}
                 {item.status === "expired" || item.status === "superseded" ? (

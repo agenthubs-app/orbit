@@ -38,7 +38,7 @@ export function ComponentShowcaseScreen() {
   const [actionSheet, setActionSheet] = useState(false);
   const [done, setDone] = useState(true);
   const [addSheet, setAddSheet] = useState(false);
-  const [inviteSheet, setInviteSheet] = useState<"share" | "unlink" | null>(null);
+  const [inviteSheet, setInviteSheet] = useState<"share" | "shareSuggested" | "unlink" | null>(null);
   return (
     <ReducedMotionOverride.Provider value={reduced ? true : null}>
       <SafeAreaView edges={["top"]} style={styles.root}>
@@ -112,6 +112,12 @@ export function ComponentShowcaseScreen() {
             <InviteShareSheet visible={inviteSheet === "share"} contactId="showcase-contact" name="Aya Yamamoto" api={SHOWCASE_INVITE_API} onClose={() => setInviteSheet(null)} />
           </Section>
 
+          {/* R15 复核 S1: the same sheet when the connection may be someone already in the network (「同じ人かも」 · 統合する / 別の人). */}
+          <Section name="invite share sheet · maybe same person">
+            <Button label="invite share sheet · maybe same person" onPress={() => setInviteSheet("shareSuggested")} />
+            <InviteShareSheet visible={inviteSheet === "shareSuggested"} contactId="showcase-contact" name="Aya Yamamoto" api={SHOWCASE_INVITE_API_SUGGESTED} onClose={() => setInviteSheet(null)} />
+          </Section>
+
           <Section name="invite unlink sheet">
             <Button label="invite unlink sheet" onPress={() => setInviteSheet("unlink")} />
             <InviteUnlinkSheet visible={inviteSheet === "unlink"} contactId="showcase-contact" name="Aya Yamamoto" api={SHOWCASE_INVITE_API} onClose={() => setInviteSheet(null)} />
@@ -161,7 +167,6 @@ const SHOWCASE_INVITE_API: InviteApi = {
   create: showcaseNotUsed,
   current: showcaseNotUsed,
   history: showcaseNotUsed,
-  inviterInNetwork: async () => false,
   preview: showcaseNotUsed,
   profile: async () => ({ data: { profile: { displayName: "Ken Sato", handles: { email: "ken@example.com" }, offering: ["Hiring advice"], organization: "Minato Link", role: "CEO", seeking: ["Investor intros"] } }, ok: true }),
   redeem: showcaseNotUsed,
@@ -169,6 +174,12 @@ const SHOWCASE_INVITE_API: InviteApi = {
   saveShortProfile: showcaseNotUsed,
   unlink: async () => ({ data: { outcome: "unlinked" }, ok: true }),
   updateShare: async (_contactId, input) => ({ data: { ...SHOWCASE_CONNECTION, sharedByMe: input.sharedKeys }, ok: true }),
+  merge: async () => ({ data: { ...SHOWCASE_CONNECTION, contactId: "showcase-contact-card" }, ok: true }),
+  dismissMerge: async () => ({ data: SHOWCASE_CONNECTION, ok: true }),
+};
+const SHOWCASE_INVITE_API_SUGGESTED: InviteApi = {
+  ...SHOWCASE_INVITE_API,
+  connection: async () => ({ data: { ...SHOWCASE_CONNECTION, mergeSuggestion: { contactId: "showcase-contact-card", displayName: "Aya Yamamoto (card)", matchedOn: ["email" as const] } }, ok: true }),
 };
 
 function Section({ name, children }: { name: string; children: ReactNode }) {

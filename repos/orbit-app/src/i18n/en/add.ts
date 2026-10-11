@@ -382,7 +382,7 @@ export const add = {
   "add.inviteIn.confirmSub": "No new account is made. You're added to each other's network.",
   "add.inviteIn.showTitle": "What {name} gets from you",
   "add.inviteIn.showHint": "Email and phone are shared only if you turn them on.",
-  "add.inviteIn.alreadyInNetwork": "{name} is already in your network. Connecting merges in their self-entered details.",
+  "add.inviteIn.sameLater": "After you connect, you can check whether this is someone you already have.",
   "add.inviteIn.connect": "Connect",
   "add.inviteIn.notNow": "Not now",
   "add.inviteIn.changeLater": "You can change what you share or disconnect later.",
@@ -415,6 +415,7 @@ export const add = {
   "add.inviteIn.hintInvalidChar": "Contains characters that aren't used in codes",
   "add.inviteIn.hintLength": "Codes are 8 characters",
   "add.inviteIn.loadFailed": "Couldn't load the invite.",
+  "add.inviteIn.legacyLink": "This link no longer works. Enter the invite code instead.",
   // R15 招待でつながった相手：共有する項目（InviteShareSheet）とつながりの解除（InviteUnlinkSheet）。R11 の詳細画面が使う。
   "add.inviteConn.shareTitle": "What you share",
   "add.inviteConn.shareSub": "What {name} gets from you",
@@ -434,4 +435,8 @@ export const add = {
   "add.inviteConn.unlink": "Disconnect",
   "add.inviteConn.unlinked": "Disconnected",
   "add.inviteConn.unlinkFailed": "Couldn't disconnect",
+  "add.inviteConn.maybeSame": "Maybe the same person: {name}",
+  "add.inviteConn.merge": "Merge",
+  "add.inviteConn.notSame": "Different person",
+  "add.inviteConn.merged": "Merged",
 } as const;

@@ -33,6 +33,19 @@ export function inviteLinkHosts(env: { apiBaseUrl?: string | undefined; publicOr
   return hosts;
 }
 
+// R15 复核 m3: the old relationship-invitation links (`/app/invitations/<token>`, `orbit://invitations/<token>`;
+// the page was removed in R15) open 招待コードを入力 with 「このリンクは使えなくなりました」.
+export const LEGACY_INVITATION_HREF = "/i?from=legacy";
+const LEGACY_SCHEME_LINK = /^orbit:\/\/\/?(?:app\/)?invitations\/[^/?#]+\/?(?:[?#].*)?$/iu;
+const LEGACY_WEB_LINK = /^https?:\/\/([^/?#]+)\/(?:app\/)?invitations\/[^/?#]+\/?(?:[?#].*)?$/iu;
+const LEGACY_APP_PATH = /^\/?(?:app\/)?invitations\/[^/?#]+\/?(?:[?#].*)?$/u;
+
+function legacyInvitationHref(route: string, hosts: ReadonlySet<string>): string | undefined {
+  if (LEGACY_SCHEME_LINK.test(route) || LEGACY_APP_PATH.test(route)) return LEGACY_INVITATION_HREF;
+  const web = LEGACY_WEB_LINK.exec(route);
+  return web && hosts.has(web[1]!.toLowerCase()) ? LEGACY_INVITATION_HREF : undefined;
+}
+
 const SCHEME_LINK = /^orbit:\/\/\/?i(?:\/([^/?#]*))?\/?(?:[?#].*)?$/iu;
 const WEB_LINK = /^https?:\/\/([^/?#]+)\/i(?:\/([^/?#]*))?\/?(?:[?#].*)?$/iu;
 const APP_PATH = /^\/?i(?:\/([^/?#]*))?(?:[?#].*)?$/u;
@@ -51,11 +64,13 @@ function inviteHref(rawCode: string | undefined): string | null {
 
 /**
  * `undefined` = not an invite link (the caller keeps resolving); `null` = an invite link that must not
- * open (malformed code); otherwise `/i` or `/i/XXXX-XXXX`.
+ * open (malformed code); otherwise `/i`, `/i/XXXX-XXXX` or (an old invitation link) `/i?from=legacy`.
  */
 export function inviteRouteHref(configuredRoute: string | undefined, hosts: ReadonlySet<string> = inviteLinkHosts()): string | null | undefined {
   const route = configuredRoute?.trim();
   if (!route) return undefined;
+  const legacy = legacyInvitationHref(route, hosts);
+  if (legacy) return legacy;
   const scheme = SCHEME_LINK.exec(route);
   if (scheme) return inviteHref(scheme[1]);
   const web = WEB_LINK.exec(route);

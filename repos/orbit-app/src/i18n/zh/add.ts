@@ -382,7 +382,7 @@ export const add = {
   "add.inviteIn.confirmSub": "不会新建账号，你们会加入彼此的人脉。",
   "add.inviteIn.showTitle": "给{name}看的信息",
   "add.inviteIn.showHint": "邮箱和电话只有打开时才会给对方。",
-  "add.inviteIn.alreadyInNetwork": "{name}已经在你的人脉里。建立联系后会合并为本人填写的信息。",
+  "add.inviteIn.sameLater": "连上之后，你可以确认是不是同一个人。",
   "add.inviteIn.connect": "建立联系",
   "add.inviteIn.notNow": "暂不",
   "add.inviteIn.changeLater": "之后可以更改项目或解除联系。",
@@ -415,6 +415,7 @@ export const add = {
   "add.inviteIn.hintInvalidChar": "包含不能使用的字符",
   "add.inviteIn.hintLength": "邀请码为8位",
   "add.inviteIn.loadFailed": "无法读取邀请。",
+  "add.inviteIn.legacyLink": "这个链接已经不能用了。请输入邀请码。",
   // R15 招待でつながった相手：共有する項目（InviteShareSheet）とつながりの解除（InviteUnlinkSheet）。R11 の詳細画面が使う。
   "add.inviteConn.shareTitle": "共享的项目",
   "add.inviteConn.shareSub": "给{name}看的信息",
@@ -434,4 +435,8 @@ export const add = {
   "add.inviteConn.unlink": "解除联系",
   "add.inviteConn.unlinked": "已解除联系",
   "add.inviteConn.unlinkFailed": "无法解除",
+  "add.inviteConn.maybeSame": "可能是同一个人：{name}",
+  "add.inviteConn.merge": "合并",
+  "add.inviteConn.notSame": "不是同一人",
+  "add.inviteConn.merged": "已合并",
 } as const;

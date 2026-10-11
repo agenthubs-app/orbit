@@ -94,7 +94,7 @@ test("dynamic routes use real discovered samples and never invent placeholder id
   );
 });
 
-test("the checked-in inventory produces exactly 81 concrete routes when real samples exist", async () => {
+test("the checked-in inventory produces exactly 80 concrete routes when real samples exist", async () => {
   const markdown = await readFile(new URL("../../../docs/phoneweb/route-inventory.md", import.meta.url), "utf8");
   const samples = {
     aiConversationId: "ai-1",
@@ -107,7 +107,6 @@ test("the checked-in inventory produces exactly 81 concrete routes when real sam
     eventId: "event-1",
     inboxConversationId: "inbox-1",
     inboxSourceId: "source-1",
-    invitationToken: "invite-1",
     legacyPath: "/app/home",
     noteId: "note-1",
     notificationId: "notification-1",
@@ -118,8 +117,10 @@ test("the checked-in inventory produces exactly 81 concrete routes when real sam
   };
   const plan = buildInventoryPlan(markdown, samples);
 
-  assert.equal(plan.length, 81);
+  // R15 removed /invitations/[token] (the old relationship invitation page) from the app and the inventory.
+  assert.equal(plan.length, 80);
   assert.equal(plan.every((item) => item.status === "ready"), true);
+  assert.equal(plan.some((item) => item.route === "/invitations/[token]"), false);
   assert.equal(plan.some((item) => item.path?.includes("[")), false);
 });
 

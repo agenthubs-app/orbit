@@ -35,7 +35,7 @@ function Screen({ path }) {
   if (pathname === "/i") return <InviteCodeEntryScreen key={path} />;
   if (pathname === "/contacts/new/invite") return <InviteSenderScreen key={path} now={fixedNow} />;
   if (pathname === "/contacts/new") return <AddContactScreen key={path} />;
-  if (pathname === "/share-sheet") return <InviteShareSheet visible={window.sheetOpen !== false} contactId="contact-peer" name="松井 遥" onClose={() => { window.addNav.navigation.push({ method: "closeSheet" }); window.sheetOpen = false; window.addNav.render?.(); }} />;
+  if (pathname === "/share-sheet") return <InviteShareSheet visible={window.sheetOpen !== false} contactId="contact-peer" name="松井 遥" onClose={() => { window.addNav.navigation.push({ method: "closeSheet" }); window.sheetOpen = false; window.addNav.render?.(); }} onMerged={(view) => window.addNav.navigation.push({ method: "merged", contactId: view.contactId })} />;
   if (pathname === "/unlink-sheet") return <InviteUnlinkSheet visible={window.sheetOpen !== false} contactId="contact-peer" name="松井 遥" onClose={() => { window.addNav.navigation.push({ method: "closeSheet" }); window.sheetOpen = false; window.addNav.render?.(); }} onUnlinked={(result) => window.addNav.navigation.push({ method: "unlinked", result })} />;
   return <div data-testid="elsewhere">{path}</div>;
 }
@@ -69,6 +69,12 @@ export const findNodeHandle = (instance) => instance ?? null;
 export const AccessibilityInfo = { ...RNW.AccessibilityInfo, isReduceMotionEnabled: async () => false, addEventListener: () => ({ remove() {} }), setAccessibilityFocus: (node) => { (window.focused ??= []).push(node?.getAttribute?.("data-testid") ?? String(node)); } };
 export const Linking = { ...RNW.Linking, openSettings: async () => {}, openURL: async (url) => { if (window.openFails) throw new Error("no app"); (window.opened ??= []).push(url); } };
 export const AppState = { currentState: "active", addEventListener: () => ({ remove() {} }) };
+// Android hardware back: listeners run newest first until one returns true (as React Native does).
+export const BackHandler = {
+  addEventListener: (_name, fn) => { const list = (window.backListeners ??= []); list.push(fn); return { remove() { const at = list.indexOf(fn); if (at >= 0) list.splice(at, 1); } }; },
+  exitApp() {},
+};
+window.hardwareBack = () => { for (const fn of [...(window.backListeners ?? [])].reverse()) if (fn()) return true; return false; };
 `, loader: "js", resolveDir: root }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: join(root, "tests/helpers/stubs/react-native-svg.js") }));
       plugin.onResolve({ filter: /^react-native-safe-area-context$/ }, () => ({ path: join(root, "tests/helpers/stubs/react-native-safe-area-context.js") }));
@@ -82,10 +88,13 @@ export default { getItem: async (key) => store()[key] ?? null, setItem: async (k
       plugin.onLoad({ filter: /^expo-clipboard$/, namespace: "invite-stub" }, () => ({ contents: `
 export const setStringAsync = async (text) => { if (window.clipboardFails) throw new Error("denied"); window.clipboard = text; return true; };`, loader: "js" }));
       plugin.onLoad({ filter: /^expo-router$/, namespace: "invite-stub" }, () => ({ contents: `
+import { useEffect, useRef } from "react";
 const nav = () => window.addNav;
 const top = () => nav().stack[nav().stack.length - 1];
+// A pushed page blurs the pages below it (they stay mounted, as in a native stack).
+const blurBelow = () => { for (const onBlur of [...(nav().blurListeners ?? [])]) onBlur(); };
 const router = {
-  push: (href) => { nav().navigation.push({ method: "push", href }); nav().stack.push(href); nav().render?.(); },
+  push: (href) => { nav().navigation.push({ method: "push", href }); blurBelow(); nav().stack.push(href); nav().render?.(); },
   replace: (href) => { nav().navigation.push({ method: "replace", href }); nav().stack[nav().stack.length - 1] = href; nav().render?.(); },
   back: () => { nav().navigation.push({ method: "back" }); if (nav().stack.length > 1) nav().stack.pop(); nav().render?.(); },
   canGoBack: () => nav().stack.length > 1,
@@ -95,10 +104,21 @@ export const useRouter = () => router;
 export const usePathname = () => top().split("?")[0];
 export const useLocalSearchParams = () => Object.fromEntries(new URLSearchParams(top().split("?")[1] ?? ""));
 export const useGlobalSearchParams = useLocalSearchParams;
-export const useFocusEffect = () => {};
+export const useFocusEffect = (effect) => {
+  const latest = useRef(effect);
+  latest.current = effect;
+  useEffect(() => {
+    let cleanup = latest.current();
+    const listeners = (nav().blurListeners ??= new Set());
+    const onBlur = () => { if (typeof cleanup === "function") cleanup(); cleanup = undefined; };
+    listeners.add(onBlur);
+    return () => { listeners.delete(onBlur); onBlur(); };
+  }, []);
+};
 export const useIsFocused = () => true;
 export const Redirect = () => null;
-export const Stack = { Screen: () => null };`, loader: "js" }));
+export const Stack = { Screen: () => null };
+window.inviteRouter = router;`, loader: "js", resolveDir: root }));
     } }],
   });
   script = result.outputFiles[0]!.text;
@@ -133,7 +153,24 @@ class FakeInviteServer {
   redeem: Reply = ok({ contactId: "contact-sato", outcome: "connected", peer: INVITER });
   duplicates: unknown[] = [];
   connection: Reply = ok({ connectedAt: "2026-10-08T10:00:00+09:00", contactId: "contact-peer", pausedFields: ["seeking"], sharedByMe: ["organization", "offering"], sharedByPeer: ["organization"], via: { code: "K7QX-2M9P" } });
+  mergeFails = false;
   seq = 0;
+
+  /** POST …/merge (统合进已有那条：contactId 变成已有那条) and …/merge/dismiss (只去掉建议). */
+  mergeOrDismiss(contactId: string, dismiss: boolean): Reply {
+    if (this.mergeFails) return fail(500, "INTERNAL");
+    type Joined = { contactId: string; mergeSuggestion?: { contactId: string } };
+    const settle = <T extends Joined>(person: T): T => {
+      if (person.contactId !== contactId) return person;
+      const { mergeSuggestion, ...rest } = person;
+      return { ...rest, contactId: dismiss ? person.contactId : (mergeSuggestion?.contactId ?? person.contactId) } as T;
+    };
+    this.history = (this.history as { joined: Joined[] }[]).map((item) => ({ ...item, joined: item.joined.map(settle) }));
+    const view = (this.connection.body as { data: Joined }).data;
+    const next = view.contactId === contactId ? settle(view) : view;
+    this.connection = ok(next);
+    return ok(next);
+  }
 
   handle(call: Call): Reply {
     this.calls.push(call);
@@ -161,8 +198,10 @@ class FakeInviteServer {
     if (method === "GET" && /^\/api\/invite-codes\/[^/]+\/preview$/u.test(path)) return this.preview;
     if (method === "POST" && /^\/api\/invite-codes\/[^/]+\/redeem$/u.test(path)) return this.redeem;
     if (method === "POST" && path === "/api/contacts/manual/duplicates") return ok({ candidates: this.duplicates });
+    const merge = /^\/api\/invite-codes\/connections\/([^/]+)\/merge(\/dismiss)?$/u.exec(path);
+    if (method === "POST" && merge) return this.mergeOrDismiss(decodeURIComponent(merge[1]!), Boolean(merge[2]));
     if (method === "GET" && path === "/api/invite-codes/connections/contact-peer") return this.connection;
-    if (method === "PUT" && path === "/api/invite-codes/connections/contact-peer/share") return ok({ ...(this.connection.body as { data: object }).data, sharedByMe: body?.sharedKeys });
+    if (method === "PUT" && /^\/api\/invite-codes\/connections\/[^/]+\/share$/u.test(path)) return ok({ ...(this.connection.body as { data: object }).data, sharedByMe: body?.sharedKeys });
     if (method === "POST" && path === "/api/invite-codes/connections/contact-peer/unlink") return ok({ keptContactId: body?.keepAsContact ? "contact-peer" : undefined, outcome: "unlinked" });
     return fail(404, "NOT_FOUND");
   }
@@ -403,13 +442,16 @@ test("i/<code> signed in without a name: short profile (名前 required, prefill
   assert.equal(saved.body?.expectedUpdatedAt, null);
 });
 
-test("i/<code> signed in: 共有する項目 defaults (名前 always; 会社・役職 / 提供 / 求めている on; メール off), already-in-network hint, つながる sends keys only → 完了", async (t) => {
+test("i/<code> signed in: 共有する項目 defaults (名前 always; 会社・役職 / 提供 / 求めている on; メール off), a neutral 「同じ人か確認できます」 line (no client-side network check), つながる sends keys only → 完了", async (t) => {
   const { page, server } = await open(t, "/i/K7QX-2M9P", { setup: (s) => { s.duplicates = [{ contactId: "contact-sato-card", matchedOn: ["email"] }]; } });
   await page.getByTestId("invite-confirm").waitFor();
   await page.getByText("佐藤 健一さんとつながりますか？").waitFor();
   await page.getByText("新しいアカウントは作りません。お互いの人脈に追加されます。").waitFor();
   assert.equal(await page.getByTestId("invite-switch-displayName").getByRole("switch").isDisabled(), true, "名前 cannot be turned off");
-  await page.getByTestId("invite-known").getByText("佐藤 健一さんはすでにあなたの人脈にいます。つながると本人入力に統合されます。").waitFor();
+  // R15 复核 S1: the page no longer guesses 「すでにあなたの人脈にいます」 (the server never merges on its own now).
+  await page.getByTestId("invite-same-later").getByText("つながったあと、同じ人かどうか確認できます。").waitFor();
+  assert.equal(await page.getByTestId("invite-known").count(), 0);
+  assert.equal(server.calls.some((call) => call.path === "/api/contacts/manual/duplicates"), false, "no client-side duplicate lookup");
   await page.getByTestId("invite-switch-seeking").getByRole("switch").click();
   await page.getByTestId("invite-connect").getByRole("button").click();
   await page.getByTestId("invite-done-connected").waitFor();
@@ -562,4 +604,101 @@ test("InviteUnlinkSheet: consequences, 「名前と会社だけの連絡先と�
   await drop.page.getByText("つながりを解除しました").waitFor();
   assert.equal(drop.server.writes()[0]!.body?.keepAsContact, false);
   assert.equal((await state(drop.page, "addNav")).navigation.find((entry) => entry.method === "unlinked")?.result !== undefined, true);
+});
+
+// ── R15 复核修复 ──
+
+const JOINED_AT = "2026-10-11T10:00:00+09:00";
+function suggestedHistory() {
+  return [{
+    code: "K7QX-2M9P", createdAt: "2026-10-11T09:00:00+09:00", expiresAt: "2026-10-18T09:00:00+09:00", maxUses: 10, status: "active", usedCount: 3,
+    joined: [
+      { contactId: "contact-tanaka", displayName: "田中 太郎", joinedAt: JOINED_AT, mergeSuggestion: { contactId: "contact-tanaka-card", displayName: "田中 太郎（名刺）", matchedOn: ["name_organization"] } },
+      { contactId: "contact-matsui", displayName: "松井 遥", joinedAt: JOINED_AT, mergeSuggestion: { contactId: "contact-haruka", displayName: "松井 はるか", matchedOn: ["email"] } },
+      { contactId: "contact-ito", displayName: "伊藤 光", joinedAt: JOINED_AT },
+    ],
+  }];
+}
+
+test("S1 これまでのコード: 「同じ人かも」 under a joined person — 統合する merges (the name then opens the existing contact), 別の人 dismisses", async (t) => {
+  const { page, server } = await open(t, "/contacts/new/invite", { deviceStore: SEEN, setup: (s) => { s.history = suggestedHistory(); } });
+  const tanaka = page.getByTestId("invite-merge-contact-tanaka");
+  await tanaka.getByText("同じ人かも：田中 太郎（名刺）").waitFor();
+  await page.getByTestId("invite-merge-contact-matsui").getByText("同じ人かも：松井 はるか").waitFor();
+  assert.equal(await page.getByTestId("invite-merge-contact-ito").count(), 0, "no suggestion → no line");
+  await tanaka.getByRole("button", { name: "統合する" }).click();
+  await page.getByText("統合しました").waitFor();
+  await page.getByTestId("invite-merge-contact-tanaka").waitFor({ state: "detached" });
+  assert.deepEqual(server.writes().map((call) => [call.method, call.path, Object.keys(call.body ?? {})]), [["POST", "/api/invite-codes/connections/contact-tanaka/merge", ["idempotencyKey"]]]);
+  await page.getByTestId("invite-history").getByRole("link", { name: "田中 太郎" }).click();
+  assert.deepEqual((await state(page, "addNav")).navigation.at(-1), { href: "/contacts/contact-tanaka-card", method: "push" }, "the link points at the merged contact");
+  await page.evaluate(() => { const w = window as unknown as W & { addNav: { stack: string[]; render?: () => void } }; w.addNav.stack.pop(); w.addNav.render?.(); });
+  await page.getByTestId("invite-merge-contact-matsui").getByRole("button", { name: "別の人" }).click();
+  await page.getByTestId("invite-merge-contact-matsui").waitFor({ state: "detached" });
+  assert.deepEqual(server.writes().at(-1)!.path, "/api/invite-codes/connections/contact-matsui/merge/dismiss");
+  await page.getByTestId("invite-history").getByRole("link", { name: "松井 遥" }).click();
+  assert.deepEqual((await state(page, "addNav")).navigation.at(-1), { href: "/contacts/contact-matsui", method: "push" }, "別の人 keeps the invite contact");
+});
+
+test("S1 これまでのコード: a failed 統合する says so, keeps the suggestion and lets you try again", async (t) => {
+  const { page, server } = await open(t, "/contacts/new/invite", { deviceStore: SEEN, setup: (s) => { s.history = suggestedHistory(); s.mergeFails = true; } });
+  const tanaka = page.getByTestId("invite-merge-contact-tanaka");
+  await tanaka.getByRole("button", { name: "統合する" }).click();
+  await page.getByText("保存できませんでした", { exact: true }).waitFor();
+  assert.equal(await tanaka.getByRole("button", { name: "統合する" }).isDisabled(), false);
+  server.mergeFails = false;
+  await tanaka.getByRole("button", { name: "統合する" }).click();
+  await page.getByTestId("invite-merge-contact-tanaka").waitFor({ state: "detached" });
+  const keys = server.writes().map((call) => call.body?.idempotencyKey);
+  assert.equal(keys.length, 2);
+});
+
+test("S1 InviteShareSheet: 「同じ人かも」 with 統合する / 別の人; after 統合する the sheet works on the merged contact", async (t) => {
+  const base = { connectedAt: "2026-10-08T10:00:00+09:00", contactId: "contact-peer", pausedFields: [], sharedByMe: ["organization"], sharedByPeer: ["organization"], via: { code: "K7QX-2M9P" } };
+  const withSuggestion = { ...base, mergeSuggestion: { contactId: "contact-peer-card", displayName: "松井 遥（名刺）", matchedOn: ["email"] } };
+  const { page, server } = await open(t, "/share-sheet", { setup: (s) => { s.connection = ok(withSuggestion); } });
+  const block = page.getByTestId("invite-merge-contact-peer");
+  await block.getByText("同じ人かも：松井 遥（名刺）").waitFor();
+  await block.getByRole("button", { name: "統合する" }).click();
+  await page.getByTestId("invite-merge-contact-peer").waitFor({ state: "detached" });
+  assert.deepEqual((await state(page, "addNav")).navigation.at(-1), { contactId: "contact-peer-card", method: "merged" });
+  await page.getByTestId("invite-share-save").getByRole("button").click();
+  await page.getByText("共有する項目を変えました").waitFor();
+  assert.deepEqual(server.writes().map((call) => call.path), ["/api/invite-codes/connections/contact-peer/merge", "/api/invite-codes/connections/contact-peer-card/share"]);
+  const other = await open(t, "/share-sheet", { setup: (s) => { s.connection = ok(withSuggestion); } });
+  await other.page.getByTestId("invite-merge-contact-peer").getByRole("button", { name: "別の人" }).click();
+  await other.page.getByTestId("invite-merge-contact-peer").waitFor({ state: "detached" });
+  assert.deepEqual(other.server.writes().map((call) => call.path), ["/api/invite-codes/connections/contact-peer/merge/dismiss"]);
+});
+
+test("M3: leaving the sender page closes its sheets — the draft or the QR does not float over the next page", async (t) => {
+  const { page } = await open(t, "/contacts/new/invite", { deviceStore: SEEN });
+  await page.getByTestId("invite-message").getByRole("button").click();
+  await page.getByTestId("invite-draft-sheet").waitFor();
+  await page.evaluate(() => (window as unknown as { inviteRouter: { push: (href: string) => void } }).inviteRouter.push("/i/K7QX-2M9P"));
+  await page.getByTestId("invite-confirm").waitFor();
+  assert.equal(await page.getByTestId("invite-draft-sheet").count(), 0, "the draft sheet closed on blur");
+  const qr = await open(t, "/contacts/new/invite", { deviceStore: SEEN });
+  await qr.page.getByTestId("invite-show-qr").getByRole("button").click();
+  await qr.page.getByTestId("invite-qr-sheet").waitFor();
+  await qr.page.evaluate(() => (window as unknown as { inviteRouter: { push: (href: string) => void } }).inviteRouter.push("/contacts/contact-x"));
+  await qr.page.getByTestId("elsewhere").waitFor();
+  assert.equal(await qr.page.getByTestId("invite-qr-sheet").count(), 0, "the QR sheet closed on blur");
+});
+
+test("m4 InviteUnlinkSheet: Android back = キャンセル (closes, writes nothing); while 解除 runs back does nothing", async (t) => {
+  const { page, server } = await open(t, "/unlink-sheet");
+  await page.getByTestId("invite-unlink-sheet").waitFor();
+  assert.equal(await page.evaluate(() => (window as unknown as { hardwareBack: () => boolean }).hardwareBack()), true, "back is handled");
+  assert.deepEqual((await state(page, "addNav")).navigation, [{ method: "closeSheet" }]);
+  await page.getByTestId("invite-unlink-sheet").waitFor({ state: "detached" });
+  assert.deepEqual(server.writes(), []);
+});
+
+test("m3 i?from=legacy: an old invitation link lands on 招待コードを入力 with 「このリンクは使えなくなりました」", async (t) => {
+  const { page } = await open(t, "/i?from=legacy", { signedIn: false });
+  await page.getByTestId("invite-entry-legacy").getByText("このリンクは使えなくなりました。招待コードを入力してください。").waitFor();
+  const plain = await open(t, "/i", { signedIn: false });
+  await plain.page.getByTestId("invite-entry-field").waitFor();
+  assert.equal(await plain.page.getByTestId("invite-entry-legacy").count(), 0);
 });

@@ -300,16 +300,9 @@ function ConfirmStep({ preview, profile, accountEmail, api, onResult, onNotNow }
   const [keys, setKeys] = useState<InviteSharedFieldKey[]>(() => inviteDefaultKeys(available));
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [known, setKnown] = useState(false);
   // One key per visit: a retry after a lost response is answered from the first connection (no second use).
   const redeemKey = useRef(newInviteKey("invite-redeem"));
   const inviter = preview.shared.displayName;
-
-  useEffect(() => {
-    let live = true;
-    void api.inviterInNetwork({ displayName: inviter, ...(preview.shared.organization ? { organization: preview.shared.organization } : {}) }).then((found) => { if (live) setKnown(found); });
-    return () => { live = false; };
-  }, [api, inviter, preview.shared.organization]);
 
   const connect = async () => {
     setBusy(true);
@@ -351,12 +344,8 @@ function ConfirmStep({ preview, profile, accountEmail, api, onResult, onNotNow }
           {available.includes("email") || available.includes("phone") ? <Caption>{t("add.inviteIn.showHint")}</Caption> : null}
         </View>
       </Card>
-      {known ? (
-        <View style={styles.notice} testID="invite-known">
-          <UiText importantForAccessibility="no" accessibilityElementsHidden>📇</UiText>
-          <View style={styles.grow}><UiText style={styles.body}>{t("add.inviteIn.alreadyInNetwork", { name: inviter })}</UiText></View>
-        </View>
-      ) : null}
+      {/* R15 复核 S1: no client-side 「すでに人脈にいます」 guess; the owner checks 「同じ人かも」 after connecting. */}
+      <View testID="invite-same-later"><Caption>{t("add.inviteIn.sameLater")}</Caption></View>
       {failed ? (
         <View style={[styles.notice, styles.noticeError]} testID="invite-connect-failed">
           <Icon name="alert" size={16} color={colors.coralText} />

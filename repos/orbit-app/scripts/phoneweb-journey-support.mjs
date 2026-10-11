@@ -25,7 +25,6 @@ const dynamicRouteSamples = {
   "/inbox/[id]": ["inboxConversationId"],
   "/inbox/notifications/[id]": ["notificationId"],
   "/inbox/sources/[id]": ["inboxSourceId"],
-  "/invitations/[token]": ["invitationToken"],
   "/notes/[id]": ["noteId"],
   "/notes/[id]/edit": ["noteId"],
   "/o/[slug]": ["organizerSlug"],
@@ -182,7 +181,6 @@ export function resolveInventoryRoute(route, samples) {
     dimension: encodedSample(samples, "contactDimension"),
     id: encodedSample(samples, requirements.at(-1)),
     slug: encodedSample(samples, "organizerSlug"),
-    token: encodedSample(samples, "invitationToken"),
   };
   const path = route.replace(/\[([^\]]+)\]/gu, (_match, parameter) => replacements[parameter]);
   return { path, status: "ready" };

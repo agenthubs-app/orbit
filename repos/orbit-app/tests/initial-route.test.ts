@@ -273,3 +273,27 @@ describe("R15 invite links", () => {
     assert.equal(normalizedNext("//evil.example/i/K7QX-2M9P"), "/home");
   });
 });
+
+describe("R15 复核 m3: old relationship-invitation links", () => {
+  it("orbit://invitations/<token>, https://<invite host>/app/invitations/<token> and the old paths open 招待コードを入力 with a notice", () => {
+    for (const route of [
+      "orbit://invitations/inv_abc123",
+      "orbit:///invitations/inv_abc123",
+      "orbit://app/invitations/inv_abc123",
+      "https://orbitailink.com/app/invitations/inv_abc123",
+      "https://www.orbitailink.com/invitations/inv_abc123?utm_source=mail#x",
+      "/app/invitations/inv_abc123",
+      "/invitations/inv_abc123",
+      "invitations/inv_abc123",
+      "app/invitations/inv_abc123",
+    ]) assert.equal(resolveInitialRouteHref(route), "/i?from=legacy", route);
+  });
+  it("another host, no token or a deeper path is not translated", () => {
+    for (const route of [
+      "https://evil.example/app/invitations/inv_abc123",
+      "/invitations",
+      "/app/invitations/",
+      "/invitations/inv_abc123/accept",
+    ]) assert.equal(resolveInitialRouteHref(route), "/home", route);
+  });
+});

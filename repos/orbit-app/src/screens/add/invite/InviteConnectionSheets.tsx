@@ -4,11 +4,14 @@
 //   - InviteShareSheet: what I share with this person (名前 always; switches for what my profile has),
 //     loaded from GET /api/invite-codes/connections/<contactId>; 保存 = PUT …/share (keys only, idempotent;
 //     the next sync round updates their side). Fields I rewrote myself are listed as no longer synced.
+//     When the connection carries 「同じ人かも」 (复核 S1), 統合する / 別の人 run here; after 統合する the sheet
+//     works on the merged contact and `onMerged` tells the detail page (its contact id changed).
 //   - InviteUnlinkSheet: the consequences (their network too, no notification; no more updates; my notes
 //     can stay), 「名前と会社だけの連絡先として残す」 on by default, POST …/unlink. A backdrop tap or a drag does
-//     not close it, and screen-reader focus starts on キャンセル.
+//     not close it, and screen-reader focus starts on キャンセル. Android back and the VoiceOver escape
+//     gesture are キャンセル (复核 m4) — handled here, before the sheet's own (ignored) dismiss.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, findNodeHandle, View } from "react-native";
+import { AccessibilityInfo, BackHandler, findNodeHandle, View } from "react-native";
 
 import type { InviteConnectionView, InviteSharedFieldKey, InviteSharedFields, InviteUnlinkResult } from "../../../api/contract/invite-codes";
 import { BottomSheet, Button, Checkbox, Icon, RetryCard, Skeleton, UiText, useToast, type IconName } from "../../../components/ui";
@@ -17,6 +20,7 @@ import { useStandardCopy } from "../../../i18n/standard-copy";
 import { Caption, useAddColors, useAddStyles } from "../add-ui";
 import { useInviteApi, type InviteApi } from "./invite-api";
 import { INVITE_KEY_COPY, inviteFieldsFromProfile, inviteKeysWithValues, newInviteKey, orderedInviteKeys, toggleInviteKey } from "./invite-model";
+import { InviteMergeSuggestionRow, useInviteMerge } from "./InviteMergeSuggestion";
 import { InviteKeySwitches } from "./InviteSenderScreen";
 
 type ShareState =
@@ -25,13 +29,15 @@ type ShareState =
   | { kind: "notLinked" }
   | { kind: "ready"; connection: InviteConnectionView; mine: InviteSharedFields | null };
 
-export function InviteShareSheet({ visible, contactId, name, onClose, onSaved, api: injected }: {
+export function InviteShareSheet({ visible, contactId, name, onClose, onSaved, onMerged, api: injected }: {
   visible: boolean;
   contactId: string;
   /** The other person's name (「〇〇さんに見せる情報」). */
   name: string;
   onClose: () => void;
   onSaved?: (connection: InviteConnectionView) => void;
+  /** 統合する finished: the connection now lives on the existing contact (`connection.contactId`). */
+  onMerged?: (connection: InviteConnectionView) => void;
   api?: InviteApi;
 }) {
   const fallbackApi = useInviteApi();
@@ -66,12 +72,22 @@ export function InviteShareSheet({ visible, contactId, name, onClose, onSaved, a
   // A key already shared stays switchable even when the profile no longer has a value behind it.
   const available = useMemo(() => (ready ? orderedInviteKeys([...inviteKeysWithValues(ready.mine), ...ready.connection.sharedByMe]) : []), [ready]);
   const paused = ready?.connection.pausedFields ?? [];
+  // After 統合する the connection belongs to the existing contact.
+  const linkedId = ready?.connection.contactId ?? contactId;
+  const merging = useInviteMerge(api);
+
+  const settleSuggestion = async (action: "merge" | "dismiss") => {
+    const view = await (action === "merge" ? merging.merge(linkedId) : merging.dismiss(linkedId));
+    if (!view) return;
+    setState((current) => (current.kind === "ready" ? { ...current, connection: view } : current));
+    if (action === "merge") onMerged?.(view);
+  };
 
   const save = async () => {
     setBusy(true);
     setNotice(null);
     saveKey.current ??= newInviteKey("invite-share");
-    const result = await api.updateShare(contactId, { idempotencyKey: saveKey.current, sharedKeys: orderedInviteKeys(keys) });
+    const result = await api.updateShare(linkedId, { idempotencyKey: saveKey.current, sharedKeys: orderedInviteKeys(keys) });
     setBusy(false);
     saveKey.current = null;
     if (result.ok) {
@@ -94,6 +110,15 @@ export function InviteShareSheet({ visible, contactId, name, onClose, onSaved, a
         {state.kind === "notLinked" ? <View testID="invite-share-not-linked"><UiText style={styles.body}>{t("add.inviteConn.notLinked")}</UiText></View> : null}
         {ready ? (
           <>
+            {ready.connection.mergeSuggestion ? (
+              <InviteMergeSuggestionRow
+                contactId={ready.connection.contactId}
+                suggestion={ready.connection.mergeSuggestion}
+                busy={merging.busyId !== null}
+                onMerge={() => void settleSuggestion("merge")}
+                onDismiss={() => void settleSuggestion("dismiss")}
+              />
+            ) : null}
             <InviteKeySwitches name={ready.mine?.displayName ?? ""} fields={ready.mine} available={available} keys={keys} onToggle={(key, on) => setKeys((current) => toggleInviteKey(current, key, on))} />
             {paused.length ? (
               <View testID="invite-share-paused"><Caption>{t("add.inviteConn.paused", { labels: paused.map((key) => t(INVITE_KEY_COPY[key])).join(t("add.invite.listSeparator")) })}</Caption></View>
@@ -141,6 +166,18 @@ export function InviteUnlinkSheet({ visible, contactId, name, onClose, onUnlinke
     setSample(false);
   }, [visible]);
 
+  // Android back = キャンセル (复核 m4). Registered after the sheet's own handler (a parent's effect runs after
+  // its children's), so React Native asks this one first; while 解除 runs, back is swallowed.
+  useEffect(() => {
+    if (!visible) return;
+    const subscription = BackHandler.addEventListener?.("hardwareBackPress", () => {
+      if (!busy) onClose();
+      return true;
+    });
+    return () => subscription?.remove?.();
+  }, [visible, busy, onClose]);
+  const cancelByEscape = () => { if (!busy) onClose(); };
+
   const focusCancel = () => {
     if (focused.current) return;
     focused.current = true;
@@ -172,9 +209,10 @@ export function InviteUnlinkSheet({ visible, contactId, name, onClose, onUnlinke
     ["note", t("add.inviteConn.unlinkEffect3")],
   ];
   return (
-    // Destructive confirm: a backdrop tap, a drag or the back gesture does not close it (DESIGN §9 #32); キャンセル does.
+    // Destructive confirm: a backdrop tap or a drag does not close it (DESIGN §9 #32); キャンセル, Android back
+    // and the VoiceOver escape gesture (caught on the content, before the sheet's own) do.
     <BottomSheet visible={visible} onClose={ignoreDismiss} accessibilityLabel={t("add.inviteConn.unlinkTitle", { name })}>
-      <View style={styles.stack} testID="invite-unlink-sheet">
+      <View style={styles.stack} testID="invite-unlink-sheet" onAccessibilityEscape={cancelByEscape}>
         <View style={styles.centered}>
           <UiText accessibilityRole="header" style={styles.title}>{t("add.inviteConn.unlinkTitle", { name })}</UiText>
           <Caption>{t("add.inviteConn.unlinkSub")}</Caption>
