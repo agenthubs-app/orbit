@@ -131,6 +131,8 @@ export interface IngestItemDTO {
   confirmedFieldSources?: IngestCardFieldSources | null;
   /** False for migrated rows and requests using the legacy manifest shape. */
   cardIdentityExplicit?: boolean;
+  /** R12 复核 m4：已确认条目是否统合进已有联系人（批次详情 GET 填写）。 */
+  confirmedMerged?: boolean;
   attemptCount: number;
   nextRetryAt: string | null;
   leaseExpiresAt: string | null;

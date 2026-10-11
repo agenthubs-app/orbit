@@ -17,13 +17,15 @@ import type {
 const name = z.string().max(120).refine((value) => value.trim().length > 0, { message: "displayName is required" });
 const optionalText = (max: number) => z.string().max(max).optional();
 const nonEmpty = z.string().refine((value) => value.trim().length > 0);
+/** 请求里的 id（活动 / 统合目标）：与 idempotencyKey 同一上限（复核 M3：没有上限的字符串会进联系人记录）。 */
+const requestId = z.string().max(200).refine((value) => value.trim().length > 0);
 
 const MERGE_FIELDS = ["displayName", "organization", "role", "email", "phone"] as const;
 const fieldChoice = z.enum(["existing", "incoming"]);
 
 export const manualContactMetContextObject = z.object({
   kind: z.enum(["event", "intro", "other"]),
-  eventId: nonEmpty.optional(),
+  eventId: requestId.optional(),
   label: optionalText(120),
 }).strict();
 
@@ -35,7 +37,7 @@ export const manualContactCreateInputObject = z.object({
   phone: optionalText(40),
   metContext: manualContactMetContextObject.optional(),
   note: optionalText(2000),
-  mergeIntoContactId: nonEmpty.optional(),
+  mergeIntoContactId: requestId.optional(),
   fieldChoices: z.object({
     displayName: fieldChoice.optional(),
     organization: fieldChoice.optional(),

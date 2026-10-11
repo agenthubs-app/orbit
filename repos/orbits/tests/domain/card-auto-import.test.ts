@@ -69,6 +69,10 @@ const decideCases: readonly [string, Partial<CardAutoActionInput>, ReturnType<ty
   ["not reviewable", { reviewable: false }, "review"],
   ["flagged card without candidate", { issueCount: 1 }, "review"],
   ["no name without candidate", { displayName: "" }, "review"],
+  // R12 复核 m9：查重没成功的卡（不知道有没有同名 / 相似的人）一律留给用户。
+  ["duplicate lookup failed → review even when clean", { candidateLookupFailed: true }, "review"],
+  ["duplicate lookup failed wins over an identical candidate", { candidateLookupFailed: true, candidate: { identical: true } }, "review"],
+  ["lookup explicitly succeeded", { candidateLookupFailed: false }, "import"],
 ];
 
 for (const [name, change, expected] of decideCases) {

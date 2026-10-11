@@ -191,6 +191,11 @@ export interface IngestItemContract {
   confirmedFieldSources?: IngestCardFieldSourcesContract | null | undefined;
   /** False for migrated rows and requests using the legacy manifest shape. */
   cardIdentityExplicit?: boolean | undefined;
+  /**
+   * R12（复核 m4）：已确认条目是否「统合进已有联系人」（不是这张卡新建的人）。批次详情 GET 填写；
+   * 未确认条目、旧服务端没有这个字段——读取端没有时退回本机记录。
+   */
+  confirmedMerged?: boolean | undefined;
   attemptCount: number;
   nextRetryAt: string | null;
   leaseExpiresAt: string | null;

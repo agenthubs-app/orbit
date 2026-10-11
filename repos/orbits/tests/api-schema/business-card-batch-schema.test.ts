@@ -226,6 +226,15 @@ test("ingest item schema preserves optional card identity provenance without def
   assert.equal(validator.safeParse({ ...item, cardIdentityExplicit: "false" }).success, false);
 });
 
+test("R12 review m4: confirmedMerged is optional and kept; older servers without it still parse", async () => {
+  const validator = await schema("ingestItemSchema");
+  assert.equal("confirmedMerged" in validator.parse(item), false, "absent stays absent (no default)");
+  for (const confirmedMerged of [false, true]) {
+    const expected = { ...item, confirmedMerged };
+    assert.deepEqual(validator.parse(expected), expected);
+  }
+});
+
 test("all source enum members remain accepted without a second state machine", async () => {
   for (const [name, fixture, field, values] of [
     ["businessCardBatchSchema", legacyBatch, "status", ["processing", "ready_for_review", "completed", "cancelled"]],

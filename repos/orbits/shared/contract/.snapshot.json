@@ -1916,6 +1916,11 @@
           "kind": "text",
           "type": "boolean | undefined"
         },
+        "confirmedMerged": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean | undefined"
+        },
         "attemptCount": {
           "optional": false,
           "kind": "text",

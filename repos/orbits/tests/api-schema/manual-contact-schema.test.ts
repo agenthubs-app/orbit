@@ -51,3 +51,17 @@ test("organization suggestions and undo", () => {
   assert.deepEqual(manualContactUndoResultSchema.parse({ outcome: "undone" }), { outcome: "undone" });
   assert.deepEqual(manualContactUndoResultSchema.parse({ outcome: "something_new" }), { outcome: "undone" });
 });
+
+test("create input (R12 review M3): every text has a length cap — ids at 200 like idempotencyKey", () => {
+  const long = (n: number) => "x".repeat(n);
+  const base = { displayName: "A", idempotencyKey: "k" };
+  assert.equal(manualContactCreateInputSchema.safeParse({ ...base, metContext: { kind: "event", eventId: long(200) } }).success, true);
+  assert.equal(manualContactCreateInputSchema.safeParse({ ...base, metContext: { kind: "event", eventId: long(201) } }).success, false);
+  assert.equal(manualContactCreateInputSchema.safeParse({ ...base, mergeIntoContactId: long(200) }).success, true);
+  assert.equal(manualContactCreateInputSchema.safeParse({ ...base, mergeIntoContactId: long(201) }).success, false);
+  assert.equal(manualContactCreateInputSchema.safeParse({ ...base, mergeIntoContactId: long(200_000) }).success, false);
+  for (const [field, max] of [["displayName", 120], ["organization", 200], ["role", 120], ["email", 254], ["phone", 40], ["note", 2000]] as const) {
+    assert.equal(manualContactCreateInputSchema.safeParse({ ...base, [field]: long(max + 1) }).success, false, field);
+  }
+  assert.equal(manualContactCreateInputSchema.safeParse({ ...base, metContext: { kind: "other", label: long(121) } }).success, false);
+});

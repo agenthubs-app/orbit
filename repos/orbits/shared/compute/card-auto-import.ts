@@ -7,7 +7,8 @@
  *   - 自动导入：识别完成、没有 reviewIssue、正反面不冲突、没有过期来源、补全（行业 / 职级 / 地区）不需复核、有姓名；
  *   - 自动并入：与已有联系人完全一致（候选 identical）时，只要识别完成、没有失败面、没有正反面冲突、补全不需复核；
  *   - W0015：有活动归属候选的卡留给用户（默认勾选不是用户的决定）；
- *   - 有候选但不完全一致（含同名候选，identical 恒为 false）→ 留给用户。
+ *   - 有候选但不完全一致（含同名候选，identical 恒为 false）→ 留给用户；
+ *   - 查重请求没成功（不知道有没有同名 / 相似的人）→ 留给用户（复核 m9：确认接口不看同名，不能靠它兜底）。
  * 输入是与端无关的最小字段集，由调用方从各自的视图模型取出。纯函数，不碰 IO 与时钟。
  */
 
@@ -68,6 +69,8 @@ export interface CardAutoActionInput extends CardAutoImportFacts {
   hasEventCandidate: boolean;
   /** 「可能是同一个联系人」的查询结果；null = 没有候选。 */
   candidate: { identical: boolean } | null;
+  /** 这张卡的查重请求失败了（null 候选不可信）。缺省 = 查到了。 */
+  candidateLookupFailed?: boolean;
   /** 这张卡的每一面都被跳过 / 排除。 */
   skipped: boolean;
 }
@@ -79,6 +82,7 @@ export type CardAutoAction = "import" | "merge" | "review";
 export function decideCardAutoAction(input: CardAutoActionInput): CardAutoAction {
   if (!input.reviewable || input.allConfirmed || input.skipped) return "review";
   if (input.hasEventCandidate) return "review";
+  if (input.candidateLookupFailed) return "review";
   if (input.candidate) return input.candidate.identical && isCardAutoMergeEligible(input) ? "merge" : "review";
   return isCardAutoImportEligible(input) ? "import" : "review";
 }

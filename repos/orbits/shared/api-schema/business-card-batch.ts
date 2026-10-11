@@ -276,6 +276,7 @@ export const ingestItemSchema: z.ZodType<Contract.IngestItemContract> = z.prepro
   confirmedContactId: identity.nullable(),
   confirmedFieldSources: ingestCardFieldSourcesSchema.nullable().optional(),
   cardIdentityExplicit: z.boolean().optional(),
+  confirmedMerged: z.boolean().optional(),
   attemptCount: count,
   nextRetryAt: timestamp.nullable(),
   leaseExpiresAt: timestamp.nullable(),
