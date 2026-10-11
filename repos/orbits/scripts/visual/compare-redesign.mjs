@@ -15,7 +15,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright";
-import { compareImages, listBoardsInPage, many, parseArgs, readPng, readSecret } from "./redesign-pixel-lib.mjs";
+import { compareImages, crop, listBoardsInPage, many, parseArgs, readPng, readSecret, writePng } from "./redesign-pixel-lib.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const designBase = args["design-base"] ?? "http://localhost:3320/redesign-2026-10/";
@@ -87,6 +87,11 @@ async function shootDesign() {
     for (const sel of removes) for (const el of f.querySelectorAll(sel)) el.remove();
     if (kind === "mweb390") {
       // 手机浏览器画框：状态栏、Safari 地址栏、Home 指示条是浏览器 / 系统外壳，不是网页内容。
+      // 胶囊导航在画框里被抬到 Safari 底栏之上（bottom 100 = 底栏 92 + 间距 8）；真实浏览器视口不含 Safari 底栏，
+      // 去掉底栏后把胶囊放回「底栏顶边之上同样间距」的位置。
+      const sbarH = f.querySelector(":scope > .sbar")?.getBoundingClientRect().height ?? 0;
+      const tab = f.querySelector(":scope > .tabbar");
+      if (tab && sbarH) tab.style.bottom = `${Math.max(0, parseFloat(getComputedStyle(tab).bottom) - sbarH)}px`;
       for (const el of f.querySelectorAll(":scope > .status, :scope > .home-ind, :scope > .sbar, :scope > .safari")) el.remove();
       const scroll = f.querySelector(":scope > .scroll");
       if (scroll) scroll.style.top = "0";
@@ -130,7 +135,7 @@ async function ensureLogin(ctx, origin) {
   const storage = args.storage ? resolve(args.storage.replace(/^~(?=\/)/, process.env.HOME)) : null;
   if (storage && existsSync(storage)) {
     const probe = await ctx.newPage();
-    const res = await probe.goto(`${origin}/api/auth/session`, { waitUntil: "domcontentloaded" }).catch(() => null);
+    const res = await probe.goto(`${origin}/api/auth/session`, { waitUntil: "domcontentloaded", timeout: 60000 }).catch(() => null);
     const body = res ? await res.text().catch(() => "") : "";
     await probe.close();
     if (body.includes(args.login)) return;
@@ -170,8 +175,25 @@ async function shootApp(designHeight) {
   catch { await page.waitForTimeout(1500); }
   if (args["wait-for"]) await page.waitForSelector(args["wait-for"], { timeout: 20000 }).catch(() => console.warn(`warn: --wait-for ${args["wait-for"]} 超时，按原样截`));
   for (const sel of many(args.click)) { await page.locator(sel).first().click(); await page.waitForTimeout(400); }
+  // --steps '<JSON 数组>'：按顺序执行的实现侧操作，适合「先按 ⌘K 再输入」「先填名字再等重复候选」这类多步状态。
+  // 每步一个对象：{"click": sel} | {"keys": "Meta+k"} | {"type": "文字"} | {"fill": [sel, 文字]} | {"upload": [sel, 文件…]} | {"hover": sel} | {"wait": ms} | {"waitFor": sel}
+  for (const step of args.steps ? JSON.parse(args.steps) : []) {
+    if (step.click) await page.locator(step.click).first().click();
+    if (step.hover) await page.locator(step.hover).first().hover();
+    if (step.keys) await page.keyboard.press(step.keys);
+    if (step.type) await page.keyboard.type(step.type, { delay: 30 });
+    if (step.fill) await page.locator(step.fill[0]).first().fill(step.fill[1]);
+    if (step.upload) await page.locator(step.upload[0]).first().setInputFiles(step.upload.slice(1).map((f) => resolve(f)));
+    if (step.waitFor) await page.waitForSelector(step.waitFor, { timeout: 20000 }).catch(() => console.warn(`warn: waitFor ${step.waitFor} 超时`));
+    await page.waitForTimeout(step.wait ?? 400);
+  }
   // Next dev 的悬浮指示器不是产品界面。
-  await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
+  await page.waitForLoadState("load").catch(() => {});
+  await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-dev-tools-button],[data-next-mark]{display:none!important}" }).catch(async () => {
+    // 页面在客户端跳转途中（例：旧路由兼容跳转）：等跳完再注入一次。
+    await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
+    await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-dev-tools-button],[data-next-mark]{display:none!important}" });
+  });
   for (const sel of many(args["app-remove"])) await page.locator(sel).evaluateAll((els) => els.forEach((e) => e.remove()));
   await page.waitForTimeout(Number(args["app-wait"] ?? 800));
   const naturalHeight = await page.evaluate(() => Math.ceil(document.scrollingElement?.scrollHeight ?? document.body.scrollHeight));
@@ -200,6 +222,14 @@ try {
   const design = { png: await finishDesign(d, tall), board: d.board };
   if (design.png.width !== width) console.warn(`warn: 画板宽 ${design.png.width} ≠ --width ${width}（${design.board.kind}）；比对只取两者较窄的宽度`);
   const app = await finishApp(a, tall);
+  // --region "x,y,w,h"：只比画面里的一块（导航壳的左栏 / 主标题区 / 右栏单独验收时用）；全屏数字仍以不带本项为准。
+  if (args.region) {
+    const [rx, ry, rw, rh] = String(args.region).split(",").map(Number);
+    design.png = crop(design.png, rx, ry, rw, rh);
+    app.png = crop(app.png, rx, ry, rw, rh);
+    writePng(join(out, "design.png"), design.png);
+    writePng(join(out, "app.png"), app.png);
+  }
   const viewKey = args["grid-view"] ?? `${args.board ?? args["board-index"]}-${width}-${theme}`;
   const result = compareImages({
     design: design.png,
@@ -210,7 +240,7 @@ try {
     threshold: Number(args["grid-threshold"] ?? 0.02),
     attributionPath: args.attribution,
     viewKey,
-    meta: { view: viewKey, design: args.design, board: design.board, app: args.app, finalUrl: app.finalUrl, width, theme, fullPage, naturalHeight: { design: d.naturalHeight, app: a.naturalHeight }, renderHeight: tall },
+    meta: { view: viewKey, design: args.design, board: design.board, app: args.app, finalUrl: app.finalUrl, width, theme, fullPage, region: args.region ?? null, naturalHeight: { design: d.naturalHeight, app: a.naturalHeight }, renderHeight: tall },
   });
   console.log(`raw=${result.raw} design=${result.designSize.join("x")} app=${result.appSize.join("x")}` + (result.band ? ` bands=${result.cells} over=${result.overBands} unattributed=${result.unattributed}` : "") + ` ${result.pass ? "PASS" : "FAIL"} out=${out}`);
   writeFileSync(join(out, "board.json"), `${JSON.stringify(design.board, null, 2)}\n`);
