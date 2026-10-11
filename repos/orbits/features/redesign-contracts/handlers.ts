@@ -13,7 +13,7 @@ import {
 } from "../../shared/api-schema/invite-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { contactCompletionLiveHandlers } from "../contacts/completion/handlers";
-import { redesignMock, type InviteFailure } from "./mock-service";
+import { redesignMock, type CompletionMockResult, type InviteFailure } from "./mock-service";
 import { readBody, redesignContractRoute, type ContractReply } from "./route";
 
 const notFound = () => ({ error: new AppError("NOT_FOUND", "Not found.") });
@@ -31,7 +31,19 @@ export const putHomeLayout = redesignContractRoute("home-layout", homeLayoutSche
 });
 
 // 3 contact completion — R16: live goes to features/contacts/completion (the
-// resolved service says which); mock / hybrid answer from the demo world.
+// resolved service says which); mock / hybrid answer from the demo world with the
+// same rules and the same failure shapes as live (review M5).
+const completionReply = (outcome: CompletionMockResult): ContractReply => {
+  if ("result" in outcome) return { data: outcome.result };
+  switch (outcome.failure) {
+    case "not_found":
+      return { context: { reason: "NOT_FOUND" }, error: new AppError("NOT_FOUND", "The question was not found.") };
+    case "invalid":
+      return { context: { reason: "INVALID_ANSWER" }, error: new AppError("VALIDATION_ERROR", "The answer is not one of the choices.") };
+    case "conflict":
+      return { context: { reason: "CONFLICT" }, error: new AppError("CONFLICT", "This question was already answered or skipped.") };
+  }
+};
 export const getCompletionQuestion = redesignContractRoute("contact-completion", contactCompletionQuestionSchema.nullable(), (request, params, { service }) => {
   if (service.mode === "live") return contactCompletionLiveHandlers().get(request, params);
   return { data: redesignMock.completionQuestion() };
@@ -40,13 +52,13 @@ export const answerCompletionQuestion = redesignContractRoute("contact-completio
   if (service.mode === "live") return contactCompletionLiveHandlers().answer(request, params);
   const body = await readBody(request, contactCompletionAnswerInputSchema);
   if (body.ok === false) return body.reply;
-  return params.id === redesignMock.completionQuestion().id ? { data: { questionId: params.id, status: "answered", next: null } } : notFound();
+  return completionReply(redesignMock.completionAnswer(params.id ?? "", body.value));
 });
 export const skipCompletionQuestion = redesignContractRoute("contact-completion", contactCompletionResultSchema, async (request, params, { service }) => {
   if (service.mode === "live") return contactCompletionLiveHandlers().skip(request, params);
   const body = await readBody(request, keyOnly);
   if (body.ok === false) return body.reply;
-  return params.id === redesignMock.completionQuestion().id ? { data: { questionId: params.id, status: "skipped", next: null } } : notFound();
+  return completionReply(redesignMock.completionSkip(params.id ?? "", body.value));
 });
 
 // 4 invite codes

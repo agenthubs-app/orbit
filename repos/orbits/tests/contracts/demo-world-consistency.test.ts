@@ -30,6 +30,14 @@ test("every fixture parses with its contract schema", () => {
   assert.equal(asked.density, 1, "the daily question asks about a ●○○ person");
   const attended = new Set<string>(DEMO_PLAN.event.attendedEventIds.map((id) => DEMO_EVENTS.find((event) => event.id === id)!.title));
   for (const option of fixtures.demoCompletionQuestion.options) assert.ok(attended.has(option) || ["紹介", "前職の同僚", "覚えていない"].includes(option), option);
+  // R16 复核 M5：「会社は？」样例——问的是 ●○○ 的人，公司选项就是演示世界里这个人的公司（来自同域名的人，不编造）。
+  const org = contactCompletionQuestionSchema.parse(fixtures.demoCompletionOrganizationQuestion);
+  const orgPerson = DEMO_PEOPLE.find((person) => person.id === org.contactId)!;
+  assert.equal(org.kind, "organization");
+  assert.equal(org.contactName, orgPerson.name);
+  assert.equal(org.sourceChip, orgPerson.source);
+  assert.equal(orgPerson.density, 1);
+  assert.deepEqual(org.options, [orgPerson.company, "自分で入力", "覚えていない"]);
   inviteCodeSchema.parse(fixtures.demoInviteCode);
   inviteCodePreviewSchema.parse(fixtures.demoInvitePreview);
   inviteCodeRedeemResultSchema.parse(fixtures.demoInviteRedeem);
@@ -61,7 +69,7 @@ test("the people the fixtures name all exist, each with one name and one company
   for (const [where, refs] of Object.entries(fixtures.demoFixturePeopleRefs)) for (const id of refs) assert.ok(ids.has(id), `${where} names ${id}`);
   assert.equal(new Set(DEMO_PEOPLE.map((person) => person.name)).size, DEMO_PEOPLE.length, "names are unique");
   // The names inside free text (questions, reasons, titles) match the person records.
-  const text = JSON.stringify([fixtures.demoCompletionQuestion, fixtures.demoSecretaryNotifications, fixtures.demoEventAssessment, DEMO_NOTES, DEMO_TODOS]);
+  const text = JSON.stringify([fixtures.demoCompletionQuestion, fixtures.demoCompletionOrganizationQuestion, fixtures.demoSecretaryNotifications, fixtures.demoEventAssessment, DEMO_NOTES, DEMO_TODOS]);
   // (「青木 里奈さん」 is a full name; 「渡辺さん」 a surname.)
   const named = text.match(/(?:\p{Script=Han}{1,3} )?\p{Script=Han}{1,3}(?=さん)/gu) ?? [];
   assert.ok(named.length >= 5);

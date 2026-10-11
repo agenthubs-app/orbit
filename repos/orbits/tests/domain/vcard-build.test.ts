@@ -86,3 +86,37 @@ test("an entry with nothing usable produces no card; several entries become one 
   const parsed = parse(text);
   assert.deepEqual(parsed.rows.map((row) => row.fields.displayName), ["田中 一郎", "Avery Lin"]);
 });
+
+// R16 复核 M2：服务端只取第一个 EMAIL、第一个 TEL（有 CELL 时取 CELL）——生成端把公司邮箱、语音号码排在前面。
+test("M2 round trip: a private address listed first does not hide the company address", () => {
+  const row = parse(buildVcard({ displayName: "佐藤 健", organization: "Nexa", emails: [{ label: "home", value: "ken@gmail.com" }, { label: "work", value: "ken.sato@nexa.co.jp" }], phones: [] })).rows[0]!;
+  assert.equal(row.fields.email, "ken.sato@nexa.co.jp");
+});
+
+test("M2 round trip: an unlabeled company-domain address beats a labeled free-mail one; label order is kept otherwise", () => {
+  const row = parse(buildVcard({ displayName: "A", emails: [{ label: "other", value: "a@yahoo.co.jp" }, { value: "a@corp.example" }], phones: [] })).rows[0]!;
+  assert.equal(row.fields.email, "a@corp.example");
+  const text = buildVcard({ displayName: "B", emails: [{ label: "home", value: "b1@gmail.com" }, { label: "home", value: "b2@icloud.com" }], phones: [] });
+  assert.ok(text.indexOf("b1@gmail.com") < text.indexOf("b2@icloud.com"), "stable order among equals");
+  assert.equal(text.match(/^EMAIL;/gmu)?.length, 2, "nothing is dropped");
+});
+
+test("M2 round trip: a fax listed first is not stored as the phone; a work line comes before home when there is no mobile", () => {
+  const fax = parse(buildVcard({ displayName: "B", emails: [], phones: [{ label: "work fax", value: "03-1" }, { label: "work", value: "03-2" }] })).rows[0]!;
+  assert.equal(fax.fields.phone, "03-2");
+  const home = parse(buildVcard({ displayName: "C", emails: [], phones: [{ label: "home", value: "03-9" }, { label: "work", value: "03-8" }] })).rows[0]!;
+  assert.equal(home.fields.phone, "03-8");
+  const onlyFax = parse(buildVcard({ displayName: "D", emails: [], phones: [{ label: "fax", value: "03-7" }] })).rows[0]!;
+  assert.equal(onlyFax.fields.phone, "03-7", "a fax is still kept when it is the only number");
+});
+
+// R16 复核 m5：没有名字的条目不被挡下；名字里的换行折成空格。
+test("m5: no name → reading, then the email's local part; a line break in the name becomes a space", () => {
+  const phonetic = parse(buildVcard({ phoneticFamilyName: "たなか", phoneticGivenName: "いちろう", emails: [], phones: [{ value: "1" }] })).rows[0]!;
+  assert.equal(phonetic.fields.displayName, "たなか いちろう");
+  assert.ok(!phonetic.issues.includes("missing_name" as never));
+  const email = parse(buildVcard({ emails: [{ value: "x.yamada@corp.example" }], phones: [] })).rows[0]!;
+  assert.equal(email.fields.displayName, "x.yamada");
+  const cr = parse(buildVcard({ displayName: "C\rD", emails: [], phones: [] })).rows[0]!;
+  assert.equal(cr.fields.displayName, "C D");
+});

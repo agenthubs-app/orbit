@@ -7,7 +7,12 @@
  * - 规则出题、不调 AI（`shared/compute/completion-question-rules.ts`）：挑 ●○○、最近 30 个东京日内加入的人；两种题型；
  *   选项只来自真实数据（我参加过的活动、我人脈里的同公司 / 同邮箱域名的人）或固定项。
  * - 「我参加过的活动」= 我的联系人里记着 `metEventId` 的活动（有人证明我在场），时间取那场活动最早一位联系人的加入时间；
- *   R26 的参加记录接口出来后可以换掉这个来源（`events` 依赖）。
+ *   R26 的参加记录接口出来后可以换掉这个来源（`events` 依赖）。※ 复核 M3（改用参加记录与活动开始时间）等用户拍板，未改。
+ * - 读库按需（复核 M4，`CompletionContactSource`）：只读近 30 天加入的人（不读备注全文）、选定目标后再查同公司 / 同域名的人
+ *   与目标前后的活动；读多少与人脈规模无关。
+ * - 题目生成后会再核对（复核 m1）：显示前与回答前按联系人当前的值判断这一题还缺不缺，已经有了（别处补上了、或前一天的同一题
+ *   先答了）就当作解决：当天不再显示，回答 → CONFLICT，不覆盖后来的值。
+ * - 当天记了「没有可问的人」之后又新加了人（导入完成等）：下次取题时再出一次（仍然一天最多一题，复核 m6）。
  * - 回答写到哪里：活动 → `metEventId`（只补空，与名片同一字段）；紹介 / 前職の同僚 → 备注一行「出会い：…」；公司 →
  *   `organization`（`applyContactFieldValues`，旧值进 `fieldHistory`，来源 `completion`）；覚えていない → 只记在问题上。
  *   回答后按 D-10 重算浓度（`densityAfter`）：没有邮箱 / 电话的人答了「どこで」仍是 ●○○。
@@ -19,28 +24,31 @@
 import type { ContactCompletionQuestion, ContactCompletionResult } from "../../../shared/contract/contact-completion";
 import {
   buildCompletionOptions,
+  COMPLETION_EVENT_WINDOW_DAYS,
+  COMPLETION_RECENT_DAYS,
   completionDensityFacts,
+  completionOrganizationKey,
   completionQuestionText,
-  hasMeetingNote,
   pickCompletionTarget,
   resolveCompletionAnswer,
   tokyoDayOf,
   type CompletionContactFacts,
   type CompletionContactHistory,
-  type CompletionEventFact,
 } from "../../../shared/compute/completion-question-rules";
+import { emailDomain, isFreeMailDomain } from "../../../shared/compute/work-contact-likelihood";
 import type { LiveRecordStoreLike } from "../../../shared/storage/live-record-store";
 import { applyContactFieldValues, ContactFieldWriteError } from "../contact-field-write";
 import {
   completionQuestionRecordId,
   getCompletionContact,
+  createStoreCompletionContactSource,
   getCompletionQuestion,
   insertCompletionQuestion,
-  listCompletionContacts,
   listCompletionQuestions,
   listInteractedContactIds,
   saveCompletionQuestion,
   type CompletionContactRow,
+  type CompletionContactSource,
   type CompletionQuestionRecord,
 } from "./repository";
 
@@ -56,11 +64,14 @@ export class ContactCompletionError extends Error {
   }
 }
 
+type Store = LiveRecordStoreLike<Record<string, unknown>>;
+
 export interface ContactCompletionStorage {
   workspaceId: string;
-  read<T>(fn: (store: LiveRecordStoreLike<Record<string, unknown>>) => Promise<T>): Promise<T>;
+  /** `source` 缺省时在 `store` 上按内存方式读（测试替身用）；live 传 PostgreSQL 的按需查询。 */
+  read<T>(fn: (store: Store, source?: CompletionContactSource) => Promise<T>): Promise<T>;
   /** 同一个人的写操作串行、整体成功或整体失败。 */
-  write<T>(actorId: string, fn: (store: LiveRecordStoreLike<Record<string, unknown>>) => Promise<T>): Promise<T>;
+  write<T>(actorId: string, fn: (store: Store, source?: CompletionContactSource) => Promise<T>): Promise<T>;
 }
 
 export interface ContactCompletionService {
@@ -87,12 +98,12 @@ function clip(value: string, max: number): string {
 }
 
 /** 人脈列表的来源 chip（与 `ContactListItemContract.sourceChip` 同一组值）。 */
-export function completionSourceChip(row: Pick<CompletionContactRow, "sourceType" | "sourceLabel" | "notes">, selfReported: boolean): NonNullable<ContactCompletionQuestion["sourceChip"]> {
+export function completionSourceChip(row: Pick<CompletionContactRow, "sourceType" | "sourceLabel" | "hasLinkedinNote">, selfReported: boolean): NonNullable<ContactCompletionQuestion["sourceChip"]> {
   if (selfReported) return "self";
   if (row.sourceType === "business_card_ocr" || row.sourceType === "qr_scan") return "meishi";
   if (row.sourceType === "external_contacts") {
     if (/vcard/iu.test(row.sourceLabel)) return "phone";
-    if (/^LinkedIn:/mu.test(row.notes)) return "linkedin";
+    if (row.hasLinkedinNote) return "linkedin";
   }
   return "manual";
 }
@@ -104,21 +115,19 @@ function contactFacts(row: CompletionContactRow, strong: boolean): CompletionCon
     displayName: row.displayName,
     emails: row.email ? [row.email] : [],
     hasContactPoint: Boolean(row.email || row.phone),
-    hasMetContext: Boolean(row.metEventId) || hasMeetingNote(row.notes),
+    hasMetContext: Boolean(row.metEventId) || row.hasMeetingNote,
     hasStrongSignal: strong,
     organization: row.organization,
   };
 }
 
-/** 我参加过的活动：我的联系人里记着的 metEventId（标题取记录里的活动名，时间取最早一位联系人的加入时间）。 */
-function attendedEvents(rows: readonly CompletionContactRow[]): CompletionEventFact[] {
-  const byEvent = new Map<string, CompletionEventFact>();
-  for (const row of rows) {
-    if (!row.metEventId || !row.metEventTitle) continue;
-    const existing = byEvent.get(row.metEventId);
-    if (!existing || row.createdAt < existing.at) byEvent.set(row.metEventId, { at: row.createdAt, eventId: row.metEventId, title: row.metEventTitle });
-  }
-  return [...byEvent.values()];
+/** 这一题现在还缺吗（复核 m1）：公司已经有了 / 相遇场合已经有了 → 不缺。 */
+function stillMissing(question: CompletionQuestionRecord, row: CompletionContactRow): boolean {
+  return question.kind === "organization" ? !row.organization : !(row.metEventId || row.hasMeetingNote);
+}
+
+function shiftDays(iso: string, days: number): string {
+  return new Date(Date.parse(iso) + days * 86_400_000).toISOString();
 }
 
 /** 每个人最近的问题记录 → 连续跳过次数与答过的题型。 */
@@ -172,10 +181,10 @@ export function createContactCompletionService({
     }
   }
 
-  /** 生成今天的题（写锁内）。 */
-  async function generate(store: LiveRecordStoreLike<Record<string, unknown>>, actorId: string, askedOn: string, at: string): Promise<CompletionQuestionRecord> {
+  /** 生成今天的题（写锁内）。只读近 30 天加入的人；选定目标后再按条件查选项需要的人与活动（复核 M4）。 */
+  async function generate(store: Store, source: CompletionContactSource, actorId: string, askedOn: string, at: string): Promise<CompletionQuestionRecord> {
     const id = completionQuestionRecordId(actorId, askedOn);
-    const rows = await listCompletionContacts(store, workspaceId, actorId);
+    const rows = await source.recentContacts(actorId, shiftDays(at, -(COMPLETION_RECENT_DAYS + 1)));
     const questions = await listCompletionQuestions(store, workspaceId, actorId);
     const history = historyOf(questions);
     // 先按身份 / 联系方式 / 相遇场合筛出可能的 ●○○，再只为这些人读往来与本人入力。
@@ -184,11 +193,16 @@ export function createContactCompletionService({
     const strong = (contactId: string) => interacted.has(contactId) || self.has(contactId);
     const target = pickCompletionTarget({ contacts: loose.map((row) => contactFacts(row, strong(row.contactId))), history, now: at });
     const base = { actorId, askedOn, createdAt: at, id, updatedAt: at };
-    if (!target) return { ...base, status: "none" };
+    if (!target) return { ...base, checkedAt: at, status: "none" };
     const row = rows.find((item) => item.contactId === target.contactId)!;
     const facts = contactFacts(row, false);
-    const others = rows.filter((item) => item.contactId !== row.contactId).map((item) => ({ emails: item.email ? [item.email] : [], organization: item.organization }));
-    const options = buildCompletionOptions({ contact: facts, events: attendedEvents(rows), kind: target.kind, others });
+    const domains = [...new Set(facts.emails.map(emailDomain).filter((domain): domain is string => domain !== null && !isFreeMailDomain(domain)))];
+    const window = COMPLETION_EVENT_WINDOW_DAYS + 2;
+    const [others, events] = await Promise.all([
+      source.peers(actorId, { domains, excludeContactId: row.contactId, organizationKey: completionOrganizationKey(row.organization) }),
+      target.kind === "met_where" ? source.events(actorId, { from: shiftDays(row.createdAt, -window), to: shiftDays(row.createdAt, window) }) : Promise.resolve([]),
+    ]);
+    const options = buildCompletionOptions({ contact: facts, events, kind: target.kind, others });
     const name = row.displayName || row.contactId;
     const subtitle = [row.organization, row.role].filter(Boolean).join(" · ");
     return {
@@ -205,7 +219,7 @@ export function createContactCompletionService({
     };
   }
 
-  async function requireQuestion(store: LiveRecordStoreLike<Record<string, unknown>>, actorId: string, questionId: string): Promise<CompletionQuestionRecord> {
+  async function requireQuestion(store: Store, actorId: string, questionId: string): Promise<CompletionQuestionRecord> {
     const question = questionId.trim() ? await getCompletionQuestion(store, workspaceId, actorId, questionId.trim()) : null;
     // 别人的、不存在的、「当天没有题」的记录一律 NOT_FOUND（不泄露存在与否）。
     if (!question || question.status === "none" || !question.contactId || !question.kind) throw new ContactCompletionError("NOT_FOUND", "The question was not found.");
@@ -218,17 +232,28 @@ export function createContactCompletionService({
       const iso = at.toISOString();
       const askedOn = tokyoDayOf(iso)!;
       const id = completionQuestionRecordId(actorId, askedOn);
-      const visible = async (store: LiveRecordStoreLike<Record<string, unknown>>, question: CompletionQuestionRecord | null) => {
+      const sourceOf = (store: Store, source?: CompletionContactSource) => source ?? createStoreCompletionContactSource(store, workspaceId);
+      const visible = async (store: Store, question: CompletionQuestionRecord | null) => {
         if (!question || question.status !== "open" || !question.contactId) return null;
-        // 这个人被删了（或不再归我）：今天不再出题。
-        return (await getCompletionContact(store, workspaceId, actorId, question.contactId)) ? toView(question) : null;
+        // 这个人被删了（或不再归我），或这一题已经有答案了（复核 m1）：今天不再出题。
+        const row = await getCompletionContact(store, workspaceId, actorId, question.contactId);
+        return row && stillMissing(question, row) ? toView(question) : null;
       };
+      /** 「没有可问的人」之后又新加了人（复核 m6）。 */
+      const stale = (store: Store, source: CompletionContactSource | undefined, question: CompletionQuestionRecord) =>
+        question.status === "none" ? sourceOf(store, source).addedSince(actorId, question.checkedAt ?? question.createdAt) : Promise.resolve(false);
       const existing = await storage.read((store) => getCompletionQuestion(store, workspaceId, actorId, id));
-      if (existing) return storage.read((store) => visible(store, existing));
-      return storage.write(actorId, async (store) => {
+      if (existing && !(await storage.read((store, source) => stale(store, source, existing)))) return storage.read((store) => visible(store, existing));
+      return storage.write(actorId, async (store, source) => {
         const again = await getCompletionQuestion(store, workspaceId, actorId, id);
-        if (again) return visible(store, again);
-        const created = await generate(store, actorId, askedOn, iso);
+        if (again && !(await stale(store, source, again))) return visible(store, again);
+        const created = await generate(store, sourceOf(store, source), actorId, askedOn, iso);
+        if (again) {
+          // 当天的「没有可问的人」重算：有了就换成这道题，还是没有就记下这次确认的时间。
+          const replaced = { ...created, createdAt: again.createdAt };
+          await saveCompletionQuestion(store, workspaceId, replaced);
+          return visible(store, replaced);
+        }
         const inserted = await insertCompletionQuestion(store, workspaceId, created);
         return visible(store, inserted ? created : await getCompletionQuestion(store, workspaceId, actorId, id));
       });
@@ -242,6 +267,9 @@ export function createContactCompletionService({
           throw new ContactCompletionError("CONFLICT", "This question was already answered.");
         }
         if (question.status === "skipped") throw new ContactCompletionError("CONFLICT", "This question was skipped.");
+        const current = await getCompletionContact(store, workspaceId, actorId, question.contactId!);
+        if (!current) throw new ContactCompletionError("NOT_FOUND", "The person was not found.");
+        if (!stillMissing(question, current)) throw new ContactCompletionError("CONFLICT", "This is already known about the person.");
         const effect = resolveCompletionAnswer({ answer: input.answer, kind: question.kind!, options: question.options ?? [] });
         if (!effect) throw new ContactCompletionError("INVALID", "The answer is not one of the choices.");
         const at = now();

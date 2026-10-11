@@ -3,6 +3,7 @@
 // when the process restarts; nothing is written to the database. The semantics
 // follow the contracts — retries with the same mutation id / idempotency key give
 // the first answer back, revoked codes stop working, PATCH and create persist.
+import type { ContactCompletionAnswerInput, ContactCompletionQuestion, ContactCompletionResult } from "../../shared/contract/contact-completion";
 import type { AccountDeletionRequestContract, AccountExportContract, AccountExportCreateInput } from "../../shared/contract/account";
 import type { EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentFacts } from "../../shared/contract/event-assessment";
 import type { EventRecommendationDismissReason, EventRecommendationDismissResult } from "../../shared/contract/event-recommendation-feedback";
@@ -12,11 +13,37 @@ import type {
   InviteCodeRedeemResult, InviteConnectionView, InviteMergeInput, InviteSharedFieldKey, InviteSharedFields, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult,
 } from "../../shared/contract/invite-codes";
 import { formatInviteCode, INVITE_CODE_ALPHABET, INVITE_DEFAULT_SHARED_KEYS, normalizeInviteCode } from "../../shared/compute/invite-code-format";
+import { COMPLETION_OPTION_LABELS, resolveCompletionAnswer, type CompletionOption } from "../../shared/compute/completion-question-rules";
+import { contactDensity } from "../../shared/compute/contact-density";
 import { DEMO_EVENTS } from "../../shared/mock/demo-world";
 import {
-  demoAccountExport, demoAppVersion, demoCompletionQuestion, demoDeletionRequest, demoEventAssessment, demoHomeLayout,
+  demoAccountExport, demoAppVersion, demoCompletionOrganizationQuestion, demoCompletionQuestion, demoDeletionRequest, demoEventAssessment, demoHomeLayout,
   demoInviteAlreadyConnected, demoInviteCode, demoInviteConnection, demoInviteFromPeer, demoInviteHistory, DEMO_PLAN_NOW, type DemoInvitePeerCode,
 } from "../../shared/mock/demo-world/fixtures";
+
+// ── R16 每天一问（复核 M5：照 live 规则走）。演示世界一天一题：GET 给「どこで？」那题；答过 / 跳过后当天 GET 返回 null；
+// 答案必须是选项之一（「会社は？」还可以手输公司名，「自分で入力」本身不算）→ 否则 invalid；同键重放同结果，换键 / 答后跳过 /
+// 跳后再答 → conflict；结果带 densityAfter（D-10，按演示世界这两个人的已知信息算）。「会社は？」样例可以按 id 回答（卡片展示用）。
+const COMPLETION_QUESTIONS: readonly ContactCompletionQuestion[] = [demoCompletionQuestion, demoCompletionOrganizationQuestion];
+/** 演示世界里这两个人都有邮箱或电话（LinkedIn 导出带了邮箱 / 电话里存了号码）。 */
+const COMPLETION_HAS_CONTACT_POINT: Readonly<Record<string, boolean>> = { [demoCompletionQuestion.contactId]: true, [demoCompletionOrganizationQuestion.contactId]: true };
+export type CompletionMockResult = { result: ContactCompletionResult } | { failure: "not_found" | "invalid" | "conflict" };
+type CompletionDone = { status: "answered" | "skipped"; key: string; result: ContactCompletionResult };
+
+function completionOptions(question: ContactCompletionQuestion): CompletionOption[] {
+  const fixed: Record<string, CompletionOption["target"]> = {
+    [COMPLETION_OPTION_LABELS.forgot]: { kind: "forgot" },
+    [COMPLETION_OPTION_LABELS.formerColleague]: { kind: "former_colleague" },
+    [COMPLETION_OPTION_LABELS.intro]: { kind: "intro" },
+    [COMPLETION_OPTION_LABELS.typeIn]: { kind: "type_in" },
+  };
+  return question.options.map((label) => ({
+    label,
+    target: fixed[label] ?? (question.kind === "organization"
+      ? { kind: "organization", value: label }
+      : { eventId: DEMO_EVENTS.find((event) => event.title === label)?.id ?? label, kind: "event", title: label }),
+  }));
+}
 
 type LayoutResult = { conflict: true; current: HomeLayoutContract } | { conflict: false; layout: HomeLayoutContract };
 
@@ -110,6 +137,7 @@ function freshState() {
     exports: new Map<string, AccountExportContract>([[demoAccountExport.id, demoAccountExport]]),
     exportCreates: new Map<string, AccountExportContract>(),
     deletion: null as AccountDeletionRequestContract | null,
+    completion: new Map<string, CompletionDone>(),
   };
 }
 let state = freshState();
@@ -149,7 +177,35 @@ export const redesignMock = {
     state.layoutMutations.set(input.mutationId, result);
     return result;
   },
-  completionQuestion: () => demoCompletionQuestion,
+  /** 今天的题：答过 / 跳过任何一题后当天 null（与 live 一天一题同口径）。 */
+  completionQuestion: (): ContactCompletionQuestion | null => (state.completion.size > 0 ? null : demoCompletionQuestion),
+  completionAnswer(questionId: string, input: ContactCompletionAnswerInput): CompletionMockResult {
+    const question = COMPLETION_QUESTIONS.find((item) => item.id === questionId);
+    if (!question) return { failure: "not_found" };
+    const done = state.completion.get(questionId);
+    if (done) return done.status === "answered" && done.key === input.idempotencyKey ? { result: done.result } : { failure: "conflict" };
+    const effect = resolveCompletionAnswer({ answer: input.answer, kind: question.kind ?? "met_where", options: completionOptions(question) });
+    if (!effect) return { failure: "invalid" };
+    const densityAfter = contactDensity({
+      hasContactPoint: COMPLETION_HAS_CONTACT_POINT[question.contactId] ?? false,
+      hasGoalRelation: false,
+      hasIdentity: true,
+      hasInteraction: false,
+      hasMetContext: question.kind !== "organization" && (effect.kind === "event" || effect.kind === "note"),
+      selfReported: false,
+    }).level;
+    const result: ContactCompletionResult = { densityAfter, next: null, questionId, status: "answered" };
+    state.completion.set(questionId, { key: input.idempotencyKey, result, status: "answered" });
+    return { result };
+  },
+  completionSkip(questionId: string, input: { idempotencyKey: string }): CompletionMockResult {
+    if (!COMPLETION_QUESTIONS.some((item) => item.id === questionId)) return { failure: "not_found" };
+    const done = state.completion.get(questionId);
+    if (done) return done.status === "skipped" && done.key === input.idempotencyKey ? { result: done.result } : { failure: "conflict" };
+    const result: ContactCompletionResult = { next: null, questionId, status: "skipped" };
+    state.completion.set(questionId, { key: input.idempotencyKey, result, status: "skipped" });
+    return { result };
+  },
   /** The active code: null after it was revoked, superseded or expired. */
   currentInvite(): InviteCodeContract | null {
     const current = state.invite.mine[0];

@@ -254,7 +254,7 @@ for (const backend of BACKENDS) {
     await seedContact(store, ws, ALICE, "c:full", { createdAt: "2026-10-11T03:00:00.000Z", displayName: "全部 ある", metEventId: "e", metEventTitle: "E", organization: "X", primaryEmail: "a@x.example" });
     const { clock, now } = clockAt("2026-10-12T01:00:00.000Z");
     let reads = 0;
-    const counted: ContactCompletionStorage = { ...storage, read: (fn) => storage.read(fn), write: (actorId, fn) => storage.write(actorId, (s) => { reads += 1; return fn(s); }) };
+    const counted: ContactCompletionStorage = { ...storage, read: (fn) => storage.read(fn), write: (actorId, fn) => storage.write(actorId, (s, source) => { reads += 1; return fn(s, source); }) };
     const service = createContactCompletionService({ log: () => undefined, now, storage: counted });
     assert.equal(await service.today(ALICE), null);
     assert.equal(await service.today(ALICE), null);
@@ -268,4 +268,92 @@ for (const backend of BACKENDS) {
     assert.equal(await service.today(ALICE), null);
     await assert.rejects(service.answer(ALICE, question.id, { answer: "覚えていない", idempotencyKey: "z" }), (error: unknown) => error instanceof ContactCompletionError && error.code === "NOT_FOUND");
   });
+
+  // R16 复核 m1：题目生成后对方的信息变了（别处补上了公司 / 相遇场合），这一题就算解决了：不再显示、回答 409、不覆盖。
+  test(`[${backend.name}] m1: a stale question never overwrites a later value; it disappears once the answer is known`, run, async () => {
+    const { storage, store } = await backend.storage();
+    const ws = storage.workspaceId;
+    await seedContact(store, ws, ALICE, "c:x", { createdAt: "2026-10-10T03:00:00.000Z", displayName: "西村 光", primaryEmail: "hikaru@x.example" });
+    const { clock, now } = clockAt("2026-10-12T01:00:00.000Z");
+    const service = createContactCompletionService({ log: () => undefined, now, storage });
+    const yesterday = (await service.today(ALICE))!;
+    assert.equal(yesterday.kind, "organization");
+    clock.now = new Date("2026-10-13T01:00:00.000Z");
+    const todays = (await service.today(ALICE))!;
+    assert.equal(todays.kind, "organization", "yesterday's question was left open, so it is asked again");
+    assert.notEqual(todays.id, yesterday.id);
+    await service.answer(ALICE, yesterday.id, { answer: "Acme", idempotencyKey: "y" });
+    assert.equal(await service.today(ALICE), null, "the company is known now → today's question is gone");
+    await assert.rejects(service.answer(ALICE, todays.id, { answer: "Globex", idempotencyKey: "t" }), (error: unknown) => error instanceof ContactCompletionError && error.code === "CONFLICT");
+    const after = await contact(store, ws, "c:x");
+    assert.equal(after.organization, "Acme");
+    assert.equal((after.fieldHistory as unknown[]).length, 1, "written once");
+
+    // 相遇场合在人物页补上了 → 「どこで？」也算解决。
+    clock.now = new Date("2026-10-14T01:00:00.000Z");
+    const where = (await service.today(ALICE))!;
+    assert.equal(where.kind, "met_where");
+    await seedContact(store, ws, ALICE, "c:x", { ...after, metEventId: "event:filled", metEventTitle: "Filled elsewhere" });
+    assert.equal(await service.today(ALICE), null);
+    await assert.rejects(service.answer(ALICE, where.id, { answer: "紹介", idempotencyKey: "w" }), (error: unknown) => error instanceof ContactCompletionError && error.code === "CONFLICT");
+    assert.doesNotMatch(String((await contact(store, ws, "c:x")).notes ?? ""), /出会い/u);
+  });
+
+  // R16 复核 m6：当天先记了「没有可问的人」，之后导入 / 新加了人 → 当天就能出题（仍然一天最多一题）。
+  test(`[${backend.name}] m6: people added after the 「nobody today」 marker can still be asked the same day`, run, async () => {
+    const { storage, store } = await backend.storage();
+    const ws = storage.workspaceId;
+    const { clock, now } = clockAt("2026-10-12T01:00:00.000Z");
+    const service = createContactCompletionService({ log: () => undefined, now, storage });
+    assert.equal(await service.today(ALICE), null);
+    await seedContact(store, ws, ALICE, "c:new", { createdAt: "2026-10-12T02:00:00.000Z", displayName: "今日 来た" });
+    clock.now = new Date("2026-10-12T02:30:00.000Z");
+    const question = (await service.today(ALICE))!;
+    assert.equal(question.contactId, "c:new");
+    assert.equal(question.askedOn, "2026-10-12");
+    await service.skip(ALICE, question.id, { idempotencyKey: "s" });
+    await seedContact(store, ws, ALICE, "c:newer", { createdAt: "2026-10-12T03:00:00.000Z", displayName: "もう 一人" });
+    clock.now = new Date("2026-10-12T04:00:00.000Z");
+    assert.equal(await service.today(ALICE), null, "still at most one question a day");
+  });
 }
+
+// R16 复核 M4：每天第一次取题不全量读人脈（不读备注全文、只读近 30 天加入的人、选项按条件查）。
+test("[postgres] M4: the first question of the day reads a handful of rows however big the network is", databaseTest, async (t) => {
+  assert.ok(pool && databaseUrl);
+  const workspaceId = `${WS}:${randomUUID()}`;
+  const base = createTransactionalPostgresClient({ connectionString: databaseUrl, pool: pool as unknown as TransactionalPostgresPool });
+  const seedStore = createPostgresLiveRecordStore<Record<string, unknown>>({ client: base });
+  // 3,000 个半年前加入的 ●○○ 联系人，每人 2 KB 备注；另有 1 个近期加入的人、1 个同公司的人、1 场活动。
+  await pool.query(
+    `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, evidence_ids, lifecycle_state, payload, created_at, updated_at)
+     select $1, 'contacts', 'c:old-' || n, $2, 'manual', 'seed', '{}'::text[], 'active',
+            jsonb_build_object('id', 'c:old-' || n, 'displayName', '古い ' || n, 'notes', repeat('メモ', 340), 'createdAt', '2026-04-01T00:00:00.000Z'),
+            '2026-04-01T00:00:00Z', '2026-04-01T00:00:00Z'
+       from generate_series(1, 3000) n`,
+    [workspaceId, ALICE],
+  );
+  await seedContact(seedStore, workspaceId, ALICE, "c:peer", { createdAt: "2026-05-01T03:00:00.000Z", displayName: "同僚", organization: "Kanade AI", primaryEmail: "p@kanade.example" });
+  await seedContact(seedStore, workspaceId, ALICE, "c:event", { createdAt: "2026-10-05T03:00:00.000Z", displayName: "会場 の人", metEventId: "event:near", metEventTitle: "Near Event", organization: "Z", primaryEmail: "z@z.example" });
+  await seedContact(seedStore, workspaceId, ALICE, "c:recent", { createdAt: "2026-10-10T03:00:00.000Z", displayName: "最近 の人", organization: "Kanade AI" });
+  let rows = 0;
+  let bytes = 0;
+  const count = <T extends { rows: readonly unknown[] }>(result: T): T => {
+    rows += result.rows.length;
+    bytes += Buffer.byteLength(JSON.stringify(result.rows));
+    return result;
+  };
+  const counted = {
+    ...base,
+    query: (async (text: string, values?: readonly unknown[]) => count(await base.query(text, values))) as typeof base.query,
+    transaction: ((operation, options) =>
+      base.transaction((tx) => operation({ query: (async (text: string, values?: readonly unknown[]) => count(await tx.query(text, values))) as typeof tx.query }), options)) as typeof base.transaction,
+  } as typeof base;
+  const service = createContactCompletionService({ log: () => undefined, now: () => new Date("2026-10-12T01:00:00.000Z"), storage: createPostgresContactCompletionStorage({ client: counted, workspaceId }) });
+  const question = (await service.today(ALICE))!;
+  assert.equal(question.contactId, "c:recent");
+  assert.deepEqual(question.options, ["Near Event", "前職の同僚", "紹介", "覚えていない"], "the options are still found");
+  t.diagnostic(`rows read: ${rows}, bytes: ${bytes}`);
+  assert.ok(rows < 50, `rows read: ${rows}`);
+  assert.ok(bytes < 50_000, `bytes read: ${bytes}`);
+});

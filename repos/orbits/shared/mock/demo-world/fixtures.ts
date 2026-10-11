@@ -104,6 +104,22 @@ export const demoCompletionQuestion: ContactCompletionQuestion = {
   kind: "met_where",
 };
 
+// R16 复核 M5：「会社は？」的样例。电话里只存了名字和邮箱的人（演示世界里她的公司是株式会社ハルモニア）；
+// 第一个选项来自我人脈里同一邮箱域名的人所在的公司，其余是固定项（DESIGN §2.8）。卡片展示页与 mock 回答用。
+const completionOrgPerson = demoPerson("demo-person-ito");
+export const demoCompletionOrganizationQuestion: ContactCompletionQuestion = {
+  id: "demo-question-2",
+  contactId: completionOrgPerson.id,
+  question: `${completionOrgPerson.name}さんの会社は？`,
+  options: [completionOrgPerson.company, "自分で入力", "覚えていない"],
+  askedOn: DEMO_TODAY,
+  skipCount: 0,
+  sample: true,
+  contactName: completionOrgPerson.name,
+  sourceChip: completionOrgPerson.source,
+  kind: "organization",
+};
+
 // 4 invite codes.
 export const demoInviteCode: InviteCodeContract = {
   sample: true,
@@ -412,7 +428,7 @@ export const demoPlanDetail: PlanV2Detail = {
 
 /** Every person reference used by the fixtures above (for the consistency check). */
 export const demoFixturePeopleRefs = {
-  completion: [demoCompletionQuestion.contactId],
+  completion: [demoCompletionQuestion.contactId, demoCompletionOrganizationQuestion.contactId],
   invite: [
     demoInviteRedeem.contactId, demoInviteFromPeer.redeem.contactId, demoInviteAlreadyConnected.redeem.contactId, demoInviteConnection.contactId,
     ...demoInviteHistory.flatMap((item) => item.joined.map((person) => person.contactId)),

@@ -6,22 +6,25 @@
  *   库未配置 → null（接口 503）。不建表：问题在 `orbit_records`。
  * - 本人入力（D-10 的 ●●●）：R15 的 `inviteLinkedContactIds`（招待连接表；读不到时按没有算）。
  * - mock / hybrid 不走这里：R08 演示世界（`features/redesign-contracts/handlers.ts`）。
+ * - 读联系人按需查询（复核 M4）：live 用 `createPostgresCompletionContactSource`（同一个连接 / 事务），内存用
+ *   `createStoreCompletionContactSource`。
  * - 测试：内存存储（同一个人的写操作串行）。
  */
 import { createMemoryLiveRecordStore, type LiveRecordStoreLike } from "../../../shared/storage/live-record-store";
 import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
 import { createConfiguredTransactionalPostgresRuntime, type TransactionalPostgresClient } from "../../../shared/storage/transactional-postgres";
+import { createPostgresCompletionContactSource, createStoreCompletionContactSource } from "./repository";
 import { createContactCompletionService, type ContactCompletionService, type ContactCompletionServiceOptions, type ContactCompletionStorage } from "./service";
 
 export function createPostgresContactCompletionStorage(input: { client: TransactionalPostgresClient; workspaceId: string }): ContactCompletionStorage {
   const { client, workspaceId } = input;
   return {
-    read: (fn) => fn(createPostgresLiveRecordStore<Record<string, unknown>>({ client })),
+    read: (fn) => fn(createPostgresLiveRecordStore<Record<string, unknown>>({ client }), createPostgresCompletionContactSource(client, workspaceId)),
     workspaceId,
     write: (actorId, fn) =>
       client.transaction(async (tx) => {
         await tx.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [JSON.stringify(["contact-completion", workspaceId, actorId])]);
-        return fn(createPostgresLiveRecordStore<Record<string, unknown>>({ client: tx }));
+        return fn(createPostgresLiveRecordStore<Record<string, unknown>>({ client: tx }), createPostgresCompletionContactSource(tx, workspaceId));
       }, { isolation: "read committed" }),
   };
 }
@@ -32,13 +35,15 @@ export function createMemoryContactCompletionStorage(input: { workspaceId?: stri
 } {
   const store = input.store ?? createMemoryLiveRecordStore<Record<string, unknown>>();
   const queues = new Map<string, Promise<unknown>>();
+  const workspaceId = input.workspaceId ?? "workspace:contact-completion-memory";
+  const source = createStoreCompletionContactSource(store, workspaceId);
   return {
-    read: (fn) => fn(store),
+    read: (fn) => fn(store, source),
     store,
-    workspaceId: input.workspaceId ?? "workspace:contact-completion-memory",
+    workspaceId,
     write: (actorId, fn) => {
       const previous = queues.get(actorId) ?? Promise.resolve();
-      const next = previous.catch(() => undefined).then(() => fn(store));
+      const next = previous.catch(() => undefined).then(() => fn(store, source));
       queues.set(actorId, next.catch(() => undefined));
       return next;
     },

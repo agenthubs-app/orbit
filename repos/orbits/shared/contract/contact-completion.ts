@@ -9,7 +9,18 @@ export type ContactCompletionQuestionKind = "met_where" | "organization";
 export interface ContactCompletionQuestion {
   id: string;
   contactId: string;
+  /**
+   * The question in Japanese (R16 review m2). Cards build their own text from `kind` +
+   * `contactName` in the UI language; this is the fallback when `kind` is missing.
+   */
   question: string;
+  /**
+   * The choices; the answer sends one back exactly as given. Fixed choices are the stable
+   * Japanese values 「紹介」「前職の同僚」「覚えていない」「自分で入力」 (shared/compute/
+   * completion-question-rules.ts `COMPLETION_OPTION_LABELS`): cards show them through their
+   * own three-language copy and send the value back. Other choices are event titles or company
+   * names from the person's own data and are shown as they are.
+   */
   options: readonly string[];
   /** Day the question was asked (YYYY-MM-DD, Tokyo day — Asia/Tokyo, UTC+9). */
   askedOn: string;

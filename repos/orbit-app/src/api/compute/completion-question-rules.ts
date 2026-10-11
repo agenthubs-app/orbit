@@ -79,6 +79,10 @@ export interface CompletionContactHistory {
   answeredKinds: readonly ContactCompletionQuestionKind[];
 }
 
+/**
+ * 复核 m4：「计划已关联」（hasGoalRelation）这里不算——出题时只读近 30 天加入的人，再读计划要多一次查询；
+ * 已关联计划的人多数也有往来记录（●●●）。已知取舍：极少数「刚加入、只关联了计划」的人可能被问一题。
+ */
 export function completionDensityFacts(contact: CompletionContactFacts): ContactDensity {
   return contactDensity({
     hasContactPoint: contact.hasContactPoint,
@@ -153,7 +157,8 @@ export interface CompletionPeerFacts {
   emails: readonly string[];
 }
 
-function organizationKey(value: string): string {
+/** 公司名的比较键（NFKC、小写、空白合并）。服务端按它查「同公司」的人（SQL 预筛后再用它精确比）。 */
+export function completionOrganizationKey(value: string): string {
   return lowerText(value.normalize("NFKC")).replace(/\s+/gu, " ").trim();
 }
 
@@ -195,7 +200,7 @@ function domainCompany(contact: CompletionContactFacts, others: readonly Complet
       const domain = emailDomain(email);
       return domain !== null && domains.has(domain);
     })) continue;
-    const key = organizationKey(name);
+    const key = completionOrganizationKey(name);
     const entry = counts.get(key) ?? { count: 0, name };
     entry.count += 1;
     counts.set(key, entry);
@@ -219,8 +224,8 @@ export function buildCompletionOptions(input: {
       { label: COMPLETION_OPTION_LABELS.forgot, target: { kind: "forgot" } },
     ];
   }
-  const organization = organizationKey(input.contact.organization);
-  const colleague = organization.length > 0 && input.others.some((other) => organizationKey(other.organization) === organization);
+  const organization = completionOrganizationKey(input.contact.organization);
+  const colleague = organization.length > 0 && input.others.some((other) => completionOrganizationKey(other.organization) === organization);
   return [
     ...eventOptions(input.contact, input.events),
     ...(colleague ? [{ label: COMPLETION_OPTION_LABELS.formerColleague, target: { kind: "former_colleague" } as const }] : []),

@@ -18,8 +18,9 @@ const CASES: Case[] = [
   { file: "home/layout", method: "GET" },
   { file: "home/layout", method: "PUT", body: { expectedRevision: 3, mutationId: "m-1", app: DEFAULT_HOME_LAYOUT.app, web: DEFAULT_HOME_LAYOUT.web } },
   { file: "contacts/completion-question", method: "GET" },
-  { file: "contacts/completion-question/[id]/answer", method: "POST", params: { id: "demo-question-1" }, body: { answer: "イベント", ...key } },
-  { file: "contacts/completion-question/[id]/skip", method: "POST", params: { id: "demo-question-1" }, body: key },
+  // R16 复核 M5：mock 校验答案（必须是选项之一）；答过的题不能再跳过，所以跳过用「会社は？」样例。
+  { file: "contacts/completion-question/[id]/answer", method: "POST", params: { id: "demo-question-1" }, body: { answer: "覚えていない", ...key } },
+  { file: "contacts/completion-question/[id]/skip", method: "POST", params: { id: "demo-question-2" }, body: key },
   { file: "invite-codes/current", method: "GET" },
   { file: "invite-codes/[code]/preview", method: "GET", params: { code: "K7QX-2M9P" } },
   // R15：兑换要请求体；自己的码不能兑换，所以用演示世界里松井さん的码。

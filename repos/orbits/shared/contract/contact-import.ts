@@ -213,7 +213,13 @@ export interface ContactImportEventInput {
   idempotencyKey: string;
 }
 
-/** 失败响应 `error.context.reason` 的取值（读取端遇到不认识的值按一般错误处理）。 */
+/**
+ * 失败响应 `error.context.reason` 的取值（读取端遇到不认识的值按一般错误处理）。
+ * R16 复核 m7：`context` 里还会带的键（值都是十进制数字字符串）：
+ * - `UNDECIDED_ROWS`（409）：`undecided` = 还没决定的「可能重复」行数（界面「あと N 件」）；
+ * - `MERGE_NOT_CONFIRMED`（409）：`missing` = 本次提交漏确认的合并行数，`stray` = 确认了但不是合并的行数。
+ * 503（库未配置 / 还没建表）只有 `error.code = SERVICE_UNAVAILABLE`，没有 `reason`。
+ */
 export type ContactImportFailureReason =
   | "NOT_FOUND"
   | "NOT_REVIEWABLE"
