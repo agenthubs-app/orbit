@@ -121,6 +121,23 @@ create table invite_code_attempts (
 create index invite_code_attempts_window on invite_code_attempts (window_start);
 `,
   },
+  {
+    // 复核 S1：兑换不再自动统合，只在连接上记「可能是同一人」的建议（{ contactId, matchedOn }），所有者确认后才统合。
+    // 复核 M2：同步任务按 sync_checked_at 从旧到新轮转（null 最先），每轮接着上一轮没检查到的连接，覆盖全部连接。
+    name: "invite-codes-merge-suggestion-and-sync-queue",
+    version: 2,
+    sql: `
+alter table invite_connections
+  add column inviter_merge_suggestion jsonb
+    check (inviter_merge_suggestion is null or jsonb_typeof(inviter_merge_suggestion) = 'object'),
+  add column redeemer_merge_suggestion jsonb
+    check (redeemer_merge_suggestion is null or jsonb_typeof(redeemer_merge_suggestion) = 'object'),
+  add column sync_checked_at timestamptz;
+create index invite_connections_sync_queue
+  on invite_connections (workspace_id, sync_checked_at nulls first, id)
+  where unlinked_at is null;
+`,
+  },
 ];
 
 function checksum(sql: string): string {

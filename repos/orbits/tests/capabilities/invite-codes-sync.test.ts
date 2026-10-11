@@ -100,10 +100,67 @@ function suite(name: string, options: TestOptions, withHarness: (run: (harness: 
       assert.equal((await read(bobsAlice)).payload.organization, "alice Inc");
     });
   });
+
+  test(`${name}: REVIEW M2 — more connections than one pass can take: passes rotate through all of them, oldest-checked first`, options, async () => {
+    await withHarness(async (harness) => {
+      let clock = NOW;
+      const now = () => new Date(clock);
+      const service = createInviteCodeService({ log: () => undefined, now, storage: harness.storage });
+      const people = Array.from({ length: 12 }, (_, index) => `actor:p${String(index).padStart(2, "0")}`);
+      for (const actor of [ALICE, BOB, ...people]) await harness.setProfile(profile(actor));
+      for (const [index, inviter] of [ALICE, BOB].entries()) {
+        const code = (await service.create(inviter, { idempotencyKey: "c", maxUses: 10, shared: { displayName: "a" } })).code;
+        for (const actor of people.slice(index * 6, index * 6 + 6)) await service.redeem(actor, code, { idempotencyKey: "r", sharedKeys: ["organization"] });
+      }
+      const pass = (maxConnections = 5) => {
+        clock += 60_000;
+        return runInviteProfileSync({ log: () => undefined, maxConnections, now, storage: harness.storage });
+      };
+      assert.deepEqual([await pass(), await pass(), await pass()].map((result) => result.examined), [5, 5, 5], "each pass takes at most five");
+      // 每个兑换人都改公司；三轮（15 次检查）之内 12 条连接全部跟上——只有每条都先轮到一次、才会有连接被查第二次时才成立。
+      for (const actor of people) await harness.setProfile(profile(actor, { organization: `${actor} Labs`, updatedAt: "2026-10-12T00:00:00.000Z" }));
+      for (let round = 0; round < 3; round += 1) await pass();
+      for (const inviter of [ALICE, BOB]) {
+        const orgs = [];
+        for (const id of await service.linkedContactIds(inviter)) {
+          orgs.push((await harness.contacts.getRecord({ collectionName: "contacts", recordId: id, workspaceId: INVITE_WS }))?.payload.organization);
+        }
+        assert.equal(orgs.length, 6);
+        assert.ok(orgs.every((org) => typeof org === "string" && org.endsWith(" Labs")), `${inviter}: ${orgs.join(", ")}`);
+      }
+    });
+  });
 }
 
 suite("memory", {}, (run) => run(memoryHarness()));
 suite("postgres", databaseTest, (run) => withInviteDatabase(run));
+
+test("REVIEW M2 probe: with more than 500 live connections the last one by id is synced within three default passes (memory)", async () => {
+  const harness = memoryHarness();
+  let clock = NOW;
+  const now = () => new Date(clock);
+  const service = createInviteCodeService({ log: () => undefined, now, storage: harness.storage });
+  const inviters = Array.from({ length: 52 }, (_, index) => `actor:inv${index}`);
+  for (const actor of inviters) await harness.setProfile(profile(actor));
+  for (const [index, inviter] of inviters.entries()) {
+    const code = (await service.create(inviter, { idempotencyKey: "c", maxUses: 10, shared: { displayName: "x" } })).code;
+    for (let k = 0; k < 10; k += 1) {
+      const redeemer = `actor:r${index * 10 + k}`;
+      await harness.setProfile(profile(redeemer));
+      await service.redeem(redeemer, code, { idempotencyKey: "r", sharedKeys: ["organization"] });
+    }
+  }
+  const pass = () => {
+    clock += 60_000;
+    return runInviteProfileSync({ log: () => undefined, now, storage: harness.storage });
+  };
+  await pass();
+  const memory = harness.storage as unknown as { tables: { connections: Array<{ id: string; redeemerActorId: string; inviterContactId: string }> } };
+  const last = [...memory.tables.connections].sort((a, b) => (a.id < b.id ? -1 : 1)).at(-1)!;
+  await harness.setProfile(profile(last.redeemerActorId, { organization: "NEW ORG", updatedAt: "2026-10-12T00:00:00.000Z" }));
+  for (let round = 0; round < 3; round += 1) await pass();
+  assert.equal((await harness.contacts.getRecord({ collectionName: "contacts", recordId: last.inviterContactId, workspaceId: INVITE_WS }))?.payload.organization, "NEW ORG");
+});
 
 test("maintenance tasks: names, skips when unconfigured, attempt cleanup keeps two days", async () => {
   const sync = createInviteProfileSyncMaintenanceTask({ resolve: () => null });

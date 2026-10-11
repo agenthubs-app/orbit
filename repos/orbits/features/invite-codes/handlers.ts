@@ -21,6 +21,7 @@ import {
   inviteCodeRedeemResultSchema,
   inviteCodeSchema,
   inviteConnectionViewSchema,
+  inviteMergeInputSchema,
   inviteShareUpdateInputSchema,
   inviteUnlinkInputSchema,
   inviteUnlinkResultSchema,
@@ -173,6 +174,18 @@ export function createInviteCodeLiveHandlers(deps: InviteCodeLiveDeps = {}) {
       if (!parsed.success) return errorResponse(new AppError("VALIDATION_ERROR", "The request body is not valid."));
       return okResponse(inviteUnlinkResultSchema, await service.unlink(actorId, params.contactId ?? "", parsed.data));
     }),
+    /** POST /api/invite-codes/connections/[contactId]/merge（复核 S1：所有者确认「同じ人」，只补空） */
+    merge: authed(true, async ({ actorId, params, request, service }) => {
+      const parsed = inviteMergeInputSchema.safeParse(await readJson(request));
+      if (!parsed.success) return errorResponse(new AppError("VALIDATION_ERROR", "The request body is not valid."));
+      return okResponse(inviteConnectionViewSchema, await service.mergeConnection(actorId, params.contactId ?? "", parsed.data));
+    }),
+    /** POST /api/invite-codes/connections/[contactId]/merge/dismiss（复核 S1：「別の人」，幂等） */
+    dismissMerge: authed(true, async ({ actorId, params, request, service }) => {
+      const parsed = inviteMergeInputSchema.safeParse(await readJson(request));
+      if (!parsed.success) return errorResponse(new AppError("VALIDATION_ERROR", "The request body is not valid."));
+      return okResponse(inviteConnectionViewSchema, await service.dismissMerge(actorId, params.contactId ?? "", parsed.data));
+    }),
 
     /** GET /api/invite-codes/[code]/preview（公开；登录时多给 inviterAlreadyConnected / isOwnCode） */
     async preview(request: Request, context?: { params?: Promise<Params> }): Promise<Response> {
@@ -247,3 +260,5 @@ export const redeemInviteCode = inviteCodeRoute(mock.redeemInviteCode, (live) =>
 export const getInviteConnection = inviteCodeRoute(mock.getInviteConnection, (live) => live.connection);
 export const updateInviteShare = inviteCodeRoute(mock.updateInviteShare, (live) => live.share);
 export const unlinkInviteConnection = inviteCodeRoute(mock.unlinkInviteConnection, (live) => live.unlink);
+export const mergeInviteConnection = inviteCodeRoute(mock.mergeInviteConnection, (live) => live.merge);
+export const dismissInviteMerge = inviteCodeRoute(mock.dismissInviteMerge, (live) => live.dismissMerge);

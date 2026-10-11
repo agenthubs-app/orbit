@@ -190,27 +190,36 @@ function suite(name: string, options: TestOptions, withHarness: (run: (harness: 
     });
   });
 
-  test(`${name}: an existing card of the other person is merged in both directions, the peer's values win, old values go to history`, options, async () => {
+  test(`${name}: REVIEW S1 — an existing card of the other person (either direction) is left alone; each owner gets a suggestion and merges it himself`, options, async () => {
     await withHarness(async (harness) => {
       await harness.setProfile(profile(ALICE));
       await harness.setProfile(profile(BOB));
       // A 的人脈里已有 B 的名刺（同一个邮箱）；B 的人脈里已有 A 的名刺（姓名 + 公司相同）。
       await seedContact(harness.contacts, { contactId: "card-bob", ownerId: ALICE, payload: { displayName: "Bob E.", notes: "met at expo", organization: "Old Corp", primaryEmail: "bob@example.invalid", role: "Intern" }, workspaceId: INVITE_WS });
       await seedContact(harness.contacts, { contactId: "card-alice", ownerId: BOB, payload: { displayName: "Alice Example", organization: "alice Inc", primaryPhone: "03-0000-0000" }, workspaceId: INVITE_WS });
+      const cards = async () => JSON.stringify([(await contact(harness, "card-bob"))?.payload, (await contact(harness, "card-alice"))?.payload]);
+      const before = await cards();
       const { service } = setup(harness);
       const code = (await service.create(ALICE, { maxUses: 10, shared: { displayName: "a" }, sharedKeys: ["organization", "phone"], ...key("c") })).code;
       const result = await service.redeem(BOB, code, { sharedKeys: ["organization", "email"], ...key("r") });
-      assert.deepEqual([result.outcome, result.contactId], ["merged", "card-alice"]);
-      assert.deepEqual(await service.linkedContactIds(ALICE), ["card-bob"]);
+      assert.equal(result.outcome, "connected");
+      assert.notEqual(result.contactId, "card-alice");
+      assert.equal(await cards(), before, "neither existing card changed");
+      const [alicesBob] = await service.linkedContactIds(ALICE);
+      assert.notEqual(alicesBob, "card-bob");
+      assert.deepEqual((await service.connection(ALICE, alicesBob!)).mergeSuggestion, { contactId: "card-bob", displayName: "Bob E.", matchedOn: ["email"] });
+      assert.deepEqual((await service.connection(BOB, result.contactId)).mergeSuggestion, { contactId: "card-alice", displayName: "Alice Example", matchedOn: ["name_organization"] });
+      assert.equal((await harness.contacts.listRecords({ collectionName: "contacts", limit: 50, workspaceId: INVITE_WS })).length, 4, "two new self-entered cards");
 
-      const alicesBob = await contact(harness, "card-bob");
-      assert.deepEqual([alicesBob?.payload.displayName, alicesBob?.payload.organization, alicesBob?.payload.role, alicesBob?.payload.notes], ["Bob Example", "bob Inc", "CEO", "met at expo"]);
-      const history = alicesBob?.payload.fieldHistory as Array<{ field: string; previous: string; source: string }>;
-      assert.deepEqual(history.map((entry) => [entry.field, entry.previous, entry.source]), [["displayName", "Bob E.", "invite"], ["organization", "Old Corp", "invite"], ["role", "Intern", "invite"]]);
-      const bobsAlice = await contact(harness, "card-alice");
-      assert.deepEqual([bobsAlice?.payload.primaryPhone, bobsAlice?.payload.role], ["090-1234-5678", "CEO"]);
-      // 没有建出重复卡。
-      assert.equal((await harness.contacts.listRecords({ collectionName: "contacts", limit: 50, workspaceId: INVITE_WS })).length, 2);
+      // 两个方向都由各自的主人确认统合：只补空，不同的值不覆盖。
+      assert.equal((await service.mergeConnection(ALICE, alicesBob!, key("m-a"))).contactId, "card-bob");
+      assert.equal((await service.mergeConnection(BOB, result.contactId, key("m-b"))).contactId, "card-alice");
+      const alicesCard = await contact(harness, "card-bob");
+      assert.deepEqual([alicesCard?.payload.displayName, alicesCard?.payload.organization, alicesCard?.payload.role, alicesCard?.payload.notes], ["Bob E.", "Old Corp", "Intern", "met at expo"]);
+      const bobsCard = await contact(harness, "card-alice");
+      assert.deepEqual([bobsCard?.payload.primaryPhone, bobsCard?.payload.role], ["03-0000-0000", "CEO"], "my phone stays; the empty role is filled");
+      assert.deepEqual([await service.linkedContactIds(ALICE), await service.linkedContactIds(BOB)], [["card-bob"], ["card-alice"]]);
+      assert.equal((await harness.contacts.listRecords({ collectionName: "contacts", limit: 50, workspaceId: INVITE_WS })).length, 2, "the two new cards were tombstoned");
     });
   });
 

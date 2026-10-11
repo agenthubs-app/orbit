@@ -72,6 +72,20 @@ export interface InviteSyncedState {
   keys: InviteSharedFieldKey[];
   values: Partial<Record<InviteSyncField, string>>;
   at: string;
+  /**
+   * 复核 S1 / M1：所有者确认统合进自己已有的联系人时，那条联系人上**统合前就有值**的字段 → 原值。
+   * 统合只补空：这些字段不被覆盖（与对方不同的值记在 `values` 里当作「我改过」，停止同步）；解除时「保留」只清招待写入且之后没被改过的字段，
+   * 这里列的字段恢复原值而不是清空；对方之后取消共享时同样恢复原值。招待新建的联系人没有这一项。
+   */
+  before?: Partial<Record<InviteSyncField, string>>;
+  /** 复核 S1：统合前招待新建的那条联系人 id（统合接口重放时据此找回连接）。 */
+  mergedFrom?: string;
+}
+
+/** 复核 S1：兑换时只记「可能是同一人」，不改已有联系人；所有者确认后才统合。显示名每次从我自己的联系人读。 */
+export interface InviteMergeSuggestionRow {
+  contactId: string;
+  matchedOn: Array<"email" | "phone" | "name_organization">;
 }
 
 export interface InviteCodeRow {
@@ -107,8 +121,13 @@ export interface InviteConnectionRow {
   redeemerSharedKeys: InviteSharedFieldKey[];
   inviterSynced: InviteSyncedState;
   redeemerSynced: InviteSyncedState;
+  /** 复核 S1：邀请人这边那条（新建的）可能与邀请人已有的某人是同一人。 */
+  inviterMergeSuggestion: InviteMergeSuggestionRow | null;
+  redeemerMergeSuggestion: InviteMergeSuggestionRow | null;
   redeemerIdempotencyKey: string;
   createdAt: string;
+  /** 复核 M2：同步任务上次检查这条连接的时间（按它从旧到新轮转，覆盖全部连接）。 */
+  syncCheckedAt: string | null;
   unlinkedAt: string | null;
   unlinkedBy: string | null;
   unlinkIdempotencyKey: string | null;
@@ -134,6 +153,8 @@ export interface InviteConnectionPerspective {
   mySynced: InviteSyncedState;
   /** 对方那条联系人的同步状态。 */
   peerSynced: InviteSyncedState;
+  /** 复核 S1：我这边那条的「可能是同一人」建议。 */
+  myMergeSuggestion: InviteMergeSuggestionRow | null;
 }
 
 export function perspectiveOf(row: InviteConnectionRow, actorId: string): InviteConnectionPerspective | null {
@@ -142,6 +163,7 @@ export function perspectiveOf(row: InviteConnectionRow, actorId: string): Invite
       myActorId: row.inviterActorId,
       myContactCreated: row.inviterContactCreated,
       myContactId: row.inviterContactId,
+      myMergeSuggestion: row.inviterMergeSuggestion,
       mySynced: row.inviterSynced,
       peerActorId: row.redeemerActorId,
       peerContactCreated: row.redeemerContactCreated,
@@ -157,6 +179,7 @@ export function perspectiveOf(row: InviteConnectionRow, actorId: string): Invite
       myActorId: row.redeemerActorId,
       myContactCreated: row.redeemerContactCreated,
       myContactId: row.redeemerContactId,
+      myMergeSuggestion: row.redeemerMergeSuggestion,
       mySynced: row.redeemerSynced,
       peerActorId: row.inviterActorId,
       peerContactCreated: row.inviterContactCreated,

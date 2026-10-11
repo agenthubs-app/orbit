@@ -141,6 +141,26 @@ test("signed-in previews count failures per account, not per IP", async () => {
   assert.deepEqual([flags.isOwnCode, flags.inviterAlreadyConnected], [false, false], "signed-in previews carry the flags");
 });
 
+test("REVIEW m1: a locked IP is locked for signed-in previews too (429, same body), new accounts included", async () => {
+  const w = await world();
+  for (let index = 0; index < INVITE_RATE_RULES.ipFailuresPerHour; index += 1) {
+    if (index === 40) w.advance(10 * 60 * 1000);
+    await w.preview("ZZZZ-ZZZZ", ip("10.3.3.3"));
+  }
+  const anonymous = await w.preview(w.code, ip("10.3.3.3"));
+  assert.equal(anonymous.status, 429);
+  for (const actor of [BOB, CAROL, "actor:dave"]) {
+    w.as(actor);
+    const locked = await w.preview(w.code, ip("10.3.3.3"));
+    assert.equal(locked.status, 429, `${actor} on the locked IP`);
+    assert.equal(await locked.text(), await anonymous.clone().text(), "the same answer as anonymous");
+    assert.equal((await w.preview(w.code, ip("10.3.3.4"))).status, 200, `${actor} elsewhere is fine`);
+  }
+  w.as(BOB);
+  w.advance(60 * 60 * 1000);
+  assert.equal((await w.preview(w.code, ip("10.3.3.3"))).status, 200, "the window recovers");
+});
+
 test("redeem needs a signed-in account; failures also count against the IP so switching accounts does not help", async () => {
   const w = await world();
   w.as(null);

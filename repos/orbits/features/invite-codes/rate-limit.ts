@@ -137,12 +137,13 @@ export function createInviteRateLimiter(input: { secret: Buffer; store: InviteAt
   return {
     async checkPreview({ ip, actorId }) {
       const at = now().getTime();
+      // 被锁的 IP 对所有人都锁（复核 m1：已登录也一样，否则换个新账号就能在被锁的 IP 上继续区分真假码）。
+      if (await ipLocked(ip, at)) return blocked(ONE_HOUR, at);
       if (actorId) {
         // 已登录：按账号计失败，不占 IP 的额度（会场里登录的人互不影响）。
         const failures = await input.store.read(bucket("acctfail", "account", actorId), windowStart(ONE_HOUR, at));
         return failures >= INVITE_RATE_RULES.accountPreviewFailuresPerHour ? blocked(ONE_HOUR, at) : { allowed: true };
       }
-      if (await ipLocked(ip, at)) return blocked(ONE_HOUR, at);
       const tenMinutes = await input.store.increment(bucket("pv10m", "ip", ip), windowStart(TEN_MINUTES, at));
       if (tenMinutes > INVITE_RATE_RULES.previewsPerTenMinutes) return blocked(TEN_MINUTES, at);
       const day = await input.store.increment(bucket("pvday", "ip", ip), windowStart(ONE_DAY, at));

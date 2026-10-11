@@ -16,7 +16,7 @@ import {
 } from "../../shared/api-schema/invite-codes";
 import { DEMO_ACTOR_ID } from "../../shared/mock/demo-world/fixtures";
 import { migrateConfiguredTestDatabase } from "../support/migrated-configured-database";
-import { ALICE, BOB, databaseTest, memoryHarness, profile, withInviteDatabase, type InviteHarness } from "../support/invite-codes-harness";
+import { ALICE, BOB, databaseTest, INVITE_WS, memoryHarness, profile, seedContact, withInviteDatabase, type InviteHarness } from "../support/invite-codes-harness";
 
 test.before(async () => {
   if (!databaseTest.skip) await migrateConfiguredTestDatabase();
@@ -69,6 +69,8 @@ function liveSuite(name: string, options: TestOptions, withHarness: (run: (harne
         [live.connection, request("/connections/c"), { contactId: "c" }],
         [live.share, request("/connections/c/share", "PUT", { idempotencyKey: "s", sharedKeys: [] }), { contactId: "c" }],
         [live.unlink, request("/connections/c/unlink", "POST", { idempotencyKey: "u", keepAsContact: true }), { contactId: "c" }],
+        [live.merge, request("/connections/c/merge", "POST", { idempotencyKey: "m" }), { contactId: "c" }],
+        [live.dismissMerge, request("/connections/c/merge/dismiss", "POST", { idempotencyKey: "d" }), { contactId: "c" }],
       ] as const) assert.equal((await call(handler, req, params)).status, 401, req.url);
 
       as(BOB);
@@ -99,6 +101,31 @@ function liveSuite(name: string, options: TestOptions, withHarness: (run: (harne
       as(null);
       const gone = await call(live.preview, request(`/${code.code}/preview`), { code: code.code });
       assert.deepEqual([gone.status, (await gone.json()).error.context.reason], [404, "INVITE_UNAVAILABLE"]);
+    });
+  });
+
+  test(`${name}: REVIEW S1 — merge / dismiss routes: only the owner, strict body, a suggestion is needed to merge`, options, async () => {
+    await withHarness(async (harness) => {
+      const { as, live, service } = await liveWorld(harness);
+      await seedContact(harness.contacts, { contactId: "card-bob", ownerId: ALICE, payload: { displayName: "Bob Example", organization: "bob Inc" }, workspaceId: INVITE_WS });
+      const code = (await service.create(ALICE, { idempotencyKey: "c", maxUses: 5, shared: { displayName: "a" } })).code;
+      await service.redeem(BOB, code, { idempotencyKey: "r", sharedKeys: ["organization"] });
+      const [created] = await service.linkedContactIds(ALICE);
+      const merge = (body: unknown, contactId = created!) => call(live.merge, request(`/connections/${contactId}/merge`, "POST", body), { contactId });
+      as(BOB);
+      assert.equal((await merge({ idempotencyKey: "m" })).status, 404, "someone else's card");
+      as(ALICE);
+      assert.equal((await merge({ idempotencyKey: "m", contactId: "card-bob" })).status, 400, "strict body: the target is never sent");
+      const sample = await call(live.merge, request(`/connections/${created}/merge`, "POST", { idempotencyKey: "m" }, { "x-orbit-sample": "1" }), { contactId: created! });
+      assert.equal(sample.status, 403);
+      const view = await call(live.connection, request(`/connections/${created}`), { contactId: created! });
+      assert.equal(inviteConnectionViewSchema.parse((await view.json()).data).mergeSuggestion?.contactId, "card-bob");
+      const merged = await merge({ idempotencyKey: "m" });
+      assert.equal(merged.status, 200);
+      assert.equal(inviteConnectionViewSchema.parse((await merged.json()).data).contactId, "card-bob");
+      const dismissNothing = await call(live.dismissMerge, request("/connections/card-bob/merge/dismiss", "POST", { idempotencyKey: "d" }), { contactId: "card-bob" });
+      assert.equal(dismissNothing.status, 200, "dismiss is harmless without a suggestion");
+      assert.equal((await merge({ idempotencyKey: "m-2" }, "card-bob")).status, 404, "nothing left to merge");
     });
   });
 }

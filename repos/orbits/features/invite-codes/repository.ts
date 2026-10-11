@@ -7,7 +7,7 @@
  */
 import type { InviteSharedFieldKey } from "../../shared/contract/invite-codes";
 import type { TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
-import type { InviteCodeRow, InviteConnectionRow, InviteSide, InviteSyncedState } from "./contract";
+import type { InviteCodeRow, InviteConnectionRow, InviteMergeSuggestionRow, InviteSide, InviteSyncedState } from "./contract";
 
 export interface InviteCodeInsert {
   id: string;
@@ -20,7 +20,7 @@ export interface InviteCodeInsert {
   idempotencyKey: string;
 }
 
-export type InviteConnectionInsert = Omit<InviteConnectionRow, "code" | "unlinkedAt" | "unlinkedBy" | "unlinkIdempotencyKey" | "unlinkKept">;
+export type InviteConnectionInsert = Omit<InviteConnectionRow, "code" | "unlinkedAt" | "unlinkedBy" | "unlinkIdempotencyKey" | "unlinkKept" | "syncCheckedAt">;
 
 export interface InviteCodeRepository {
   /** 同一个人的发码 / 作废串行。 */
@@ -53,8 +53,19 @@ export interface InviteCodeRepository {
   updateSharedKeys(connectionId: string, side: InviteSide, keys: InviteSharedFieldKey[]): Promise<void>;
   updateSynced(connectionId: string, side: InviteSide, state: InviteSyncedState): Promise<void>;
   unlink(input: { connectionId: string; actorId: string; at: string; idempotencyKey: string; kept: boolean }): Promise<void>;
-  /** 生效连接，按 id 顺序分页（同步任务用）。 */
-  listActiveConnections(input: { afterId: string | null; limit: number }): Promise<InviteConnectionRow[]>;
+  /**
+   * 复核 M2：同步队列——生效连接里本轮还没检查过的（`sync_checked_at` 为空或早于 `checkedBefore`），
+   * 按上次检查时间从旧到新、再按 id；`excludeIds` 是本轮已失败的（不在同一轮里反复重试）。
+   */
+  listSyncQueue(input: { checkedBefore: string; excludeIds: readonly string[]; limit: number }): Promise<InviteConnectionRow[]>;
+  /** 复核 M2：记下这条连接本轮已检查。 */
+  markSyncChecked(connectionId: string, at: string): Promise<void>;
+  /** 复核 S1：设置 / 去掉一边的「可能是同一人」建议。 */
+  setMergeSuggestion(connectionId: string, side: InviteSide, suggestion: InviteMergeSuggestionRow | null): Promise<void>;
+  /** 复核 S1：所有者确认统合——这一边改挂到已有联系人（不再是招待新建）、写入新的同步状态、去掉建议、outcome = merged。 */
+  mergeSide(input: { connectionId: string; side: InviteSide; contactId: string; synced: InviteSyncedState }): Promise<void>;
+  /** 复核 S1：统合接口重放——我这边由 `contactId`（招待新建的那条）统合而来的生效连接。 */
+  findActiveConnectionMergedFrom(actorId: string, contactId: string): Promise<InviteConnectionRow | null>;
   /** 我人脈里属于生效招待连接的联系人 id（R11「本人入力」）。 */
   listLinkedContactIds(actorId: string): Promise<string[]>;
 }
@@ -76,19 +87,34 @@ function isoOrNull(value: unknown): string | null {
   return value === null || value === undefined ? null : iso(value);
 }
 
+const SYNC_FIELDS = ["displayName", "organization", "role", "email", "phone", "offering", "seeking"] as const;
+
+function readFieldValues(value: unknown): InviteSyncedState["values"] {
+  const raw = typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+  const values: InviteSyncedState["values"] = {};
+  for (const field of SYNC_FIELDS) if (typeof raw[field] === "string") values[field] = raw[field] as string;
+  return values;
+}
+
 export function readSyncedState(value: unknown): InviteSyncedState {
   const raw = (typeof value === "string" ? JSON.parse(value) : value) as Record<string, unknown> | null;
-  const values: InviteSyncedState["values"] = {};
-  const rawValues = raw && typeof raw.values === "object" && raw.values !== null ? (raw.values as Record<string, unknown>) : {};
-  for (const field of ["displayName", "organization", "role", "email", "phone", "offering", "seeking"] as const) {
-    if (typeof rawValues[field] === "string") values[field] = rawValues[field] as string;
-  }
   return {
     at: typeof raw?.at === "string" ? raw.at : new Date(0).toISOString(),
     keys: readSharedKeys(raw?.keys),
     profileUpdatedAt: typeof raw?.profileUpdatedAt === "string" ? raw.profileUpdatedAt : null,
-    values,
+    values: readFieldValues(raw?.values),
+    ...(raw && typeof raw.before === "object" && raw.before !== null ? { before: readFieldValues(raw.before) } : {}),
+    ...(typeof raw?.mergedFrom === "string" && raw.mergedFrom ? { mergedFrom: raw.mergedFrom } : {}),
   };
+}
+
+const MATCH_REASONS = ["email", "phone", "name_organization"] as const;
+
+export function readMergeSuggestion(value: unknown): InviteMergeSuggestionRow | null {
+  const raw = (typeof value === "string" ? JSON.parse(value) : value) as Record<string, unknown> | null;
+  if (!raw || typeof raw.contactId !== "string" || !raw.contactId) return null;
+  const matchedOn = Array.isArray(raw.matchedOn) ? MATCH_REASONS.filter((reason) => (raw.matchedOn as unknown[]).includes(reason)) : [];
+  return { contactId: raw.contactId, matchedOn };
 }
 
 // ── PostgreSQL ───────────────────────────────────────────────────────────────
@@ -121,6 +147,7 @@ function connectionFromRow(row: Row): InviteConnectionRow {
     inviterContactCreated: row.inviter_contact_created === true,
     inviterContactId: String(row.inviter_contact_id),
     inviterSharedKeys: readSharedKeys(row.inviter_shared_keys),
+    inviterMergeSuggestion: readMergeSuggestion(row.inviter_merge_suggestion),
     inviterSynced: readSyncedState(row.inviter_synced),
     outcome: row.outcome === "merged" ? "merged" : "connected",
     redeemerActorId: String(row.redeemer_actor_id),
@@ -128,7 +155,9 @@ function connectionFromRow(row: Row): InviteConnectionRow {
     redeemerContactId: String(row.redeemer_contact_id),
     redeemerIdempotencyKey: String(row.redeemer_idempotency_key),
     redeemerSharedKeys: readSharedKeys(row.redeemer_shared_keys),
+    redeemerMergeSuggestion: readMergeSuggestion(row.redeemer_merge_suggestion),
     redeemerSynced: readSyncedState(row.redeemer_synced),
+    syncCheckedAt: isoOrNull(row.sync_checked_at),
     unlinkIdempotencyKey: row.unlink_idempotency_key === null || row.unlink_idempotency_key === undefined ? null : String(row.unlink_idempotency_key),
     unlinkKept: typeof row.unlink_kept === "boolean" ? row.unlink_kept : null,
     unlinkedAt: isoOrNull(row.unlinked_at),
@@ -242,13 +271,16 @@ export function createPostgresInviteCodeRepository(tx: TransactionalSqlExecutor,
         `insert into invite_connections (
            workspace_id, id, code_id, inviter_actor_id, redeemer_actor_id, outcome,
            inviter_contact_id, redeemer_contact_id, inviter_contact_created, redeemer_contact_created,
-           inviter_shared_keys, redeemer_shared_keys, inviter_synced, redeemer_synced, redeemer_idempotency_key, created_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::text[], $12::text[], $13::jsonb, $14::jsonb, $15, $16::timestamptz)`,
+           inviter_shared_keys, redeemer_shared_keys, inviter_synced, redeemer_synced, redeemer_idempotency_key, created_at,
+           inviter_merge_suggestion, redeemer_merge_suggestion)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::text[], $12::text[], $13::jsonb, $14::jsonb, $15, $16::timestamptz, $17::jsonb, $18::jsonb)`,
         [
           workspaceId, input.id, input.codeId, input.inviterActorId, input.redeemerActorId, input.outcome,
           input.inviterContactId, input.redeemerContactId, input.inviterContactCreated, input.redeemerContactCreated,
           input.inviterSharedKeys, input.redeemerSharedKeys, JSON.stringify(input.inviterSynced), JSON.stringify(input.redeemerSynced),
           input.redeemerIdempotencyKey, input.createdAt,
+          input.inviterMergeSuggestion ? JSON.stringify(input.inviterMergeSuggestion) : null,
+          input.redeemerMergeSuggestion ? JSON.stringify(input.redeemerMergeSuggestion) : null,
         ],
       );
     },
@@ -272,12 +304,40 @@ export function createPostgresInviteCodeRepository(tx: TransactionalSqlExecutor,
         [workspaceId, input.connectionId, input.at, input.actorId, input.idempotencyKey, input.kept],
       );
     },
-    async listActiveConnections({ afterId, limit }) {
+    async listSyncQueue({ checkedBefore, excludeIds, limit }) {
       const rows = await many(
-        `${CONNECTION_SELECT} where c.workspace_id = $1 and c.unlinked_at is null and ($2::text is null or c.id > $2) order by c.id limit $3`,
-        [workspaceId, afterId, limit],
+        `${CONNECTION_SELECT} where c.workspace_id = $1 and c.unlinked_at is null
+           and (c.sync_checked_at is null or c.sync_checked_at < $2::timestamptz)
+           and not (c.id = any($3::text[]))
+         order by c.sync_checked_at asc nulls first, c.id limit $4`,
+        [workspaceId, checkedBefore, [...excludeIds], limit],
       );
       return rows.map(connectionFromRow);
+    },
+    async markSyncChecked(connectionId, at) {
+      await tx.query("update invite_connections set sync_checked_at = $3::timestamptz where workspace_id = $1 and id = $2", [workspaceId, connectionId, at]);
+    },
+    async setMergeSuggestion(connectionId, side, suggestion) {
+      const column = side === "inviter" ? "inviter_merge_suggestion" : "redeemer_merge_suggestion";
+      await tx.query(`update invite_connections set ${column} = $3::jsonb where workspace_id = $1 and id = $2`, [workspaceId, connectionId, suggestion ? JSON.stringify(suggestion) : null]);
+    },
+    async mergeSide({ connectionId, side, contactId, synced }) {
+      const prefix = side === "inviter" ? "inviter" : "redeemer";
+      await tx.query(
+        `update invite_connections set ${prefix}_contact_id = $3, ${prefix}_contact_created = false, ${prefix}_synced = $4::jsonb,
+           ${prefix}_merge_suggestion = null, outcome = 'merged'
+         where workspace_id = $1 and id = $2 and unlinked_at is null`,
+        [workspaceId, connectionId, contactId, JSON.stringify(synced)],
+      );
+    },
+    async findActiveConnectionMergedFrom(actorId, contactId) {
+      const row = await one(
+        `${CONNECTION_SELECT} where c.workspace_id = $1 and c.unlinked_at is null
+           and ((c.inviter_actor_id = $2 and c.inviter_synced->>'mergedFrom' = $3) or (c.redeemer_actor_id = $2 and c.redeemer_synced->>'mergedFrom' = $3))
+         order by c.created_at desc limit 1`,
+        [workspaceId, actorId, contactId],
+      );
+      return row ? connectionFromRow(row) : null;
     },
     async listLinkedContactIds(actorId) {
       const rows = await many(
@@ -365,7 +425,7 @@ export function createMemoryInviteCodeRepository(tables: MemoryInviteCodeTables)
       return row ? withCode(row) : null;
     },
     async insertConnection(input) {
-      const row: InviteConnectionRow = { ...clone(input), code: codeOf(input.codeId), unlinkIdempotencyKey: null, unlinkKept: null, unlinkedAt: null, unlinkedBy: null };
+      const row: InviteConnectionRow = { ...clone(input), code: codeOf(input.codeId), syncCheckedAt: null, unlinkIdempotencyKey: null, unlinkKept: null, unlinkedAt: null, unlinkedBy: null };
       if (tables.connections.some((item) => item.unlinkedAt === null && pairOf(item) === pairOf(row))) throw new Error("invite_connections_one_live_pair");
       if (tables.connections.some((item) => item.redeemerActorId === row.redeemerActorId && item.redeemerIdempotencyKey === row.redeemerIdempotencyKey)) {
         throw new Error("invite_connections redeemer idempotency key");
@@ -391,8 +451,34 @@ export function createMemoryInviteCodeRepository(tables: MemoryInviteCodeTables)
       if (!row) return;
       Object.assign(row, { unlinkIdempotencyKey: input.idempotencyKey, unlinkKept: input.kept, unlinkedAt: input.at, unlinkedBy: input.actorId });
     },
-    listActiveConnections: async ({ afterId, limit }) =>
-      tables.connections.filter((row) => row.unlinkedAt === null && (afterId === null || row.id > afterId)).sort((a, b) => (a.id < b.id ? -1 : 1)).slice(0, limit).map(withCode),
+    listSyncQueue: async ({ checkedBefore, excludeIds, limit }) =>
+      tables.connections
+        .filter((row) => row.unlinkedAt === null && !excludeIds.includes(row.id) && (row.syncCheckedAt === null || Date.parse(row.syncCheckedAt) < Date.parse(checkedBefore)))
+        .sort((a, b) => (a.syncCheckedAt === b.syncCheckedAt ? 0 : a.syncCheckedAt === null ? -1 : b.syncCheckedAt === null ? 1 : Date.parse(a.syncCheckedAt) - Date.parse(b.syncCheckedAt)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+        .slice(0, limit)
+        .map(withCode),
+    async markSyncChecked(connectionId, at) {
+      const row = tables.connections.find((item) => item.id === connectionId);
+      if (row) row.syncCheckedAt = at;
+    },
+    async setMergeSuggestion(connectionId, side, suggestion) {
+      const row = tables.connections.find((item) => item.id === connectionId);
+      if (!row) return;
+      if (side === "inviter") row.inviterMergeSuggestion = clone(suggestion);
+      else row.redeemerMergeSuggestion = clone(suggestion);
+    },
+    async mergeSide({ connectionId, side, contactId, synced }) {
+      const row = tables.connections.find((item) => item.id === connectionId && item.unlinkedAt === null);
+      if (!row) return;
+      if (side === "inviter") Object.assign(row, { inviterContactCreated: false, inviterContactId: contactId, inviterMergeSuggestion: null, inviterSynced: clone(synced) });
+      else Object.assign(row, { redeemerContactCreated: false, redeemerContactId: contactId, redeemerMergeSuggestion: null, redeemerSynced: clone(synced) });
+      row.outcome = "merged";
+    },
+    async findActiveConnectionMergedFrom(actorId, contactId) {
+      const row = [...tables.connections].reverse().find((item) => item.unlinkedAt === null && (
+        (item.inviterActorId === actorId && item.inviterSynced.mergedFrom === contactId) || (item.redeemerActorId === actorId && item.redeemerSynced.mergedFrom === contactId)));
+      return row ? withCode(row) : null;
+    },
     listLinkedContactIds: async (actorId) =>
       [...new Set(tables.connections.filter((row) => row.unlinkedAt === null).flatMap((row) => [
         ...(row.inviterActorId === actorId ? [row.inviterContactId] : []),

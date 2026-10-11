@@ -25,7 +25,9 @@ async function setup(harness: InviteHarness, options: { aliceHasBobsCard?: boole
   const service = createInviteCodeService({ log: () => undefined, notifier: { connected: async (notice) => void notices.push(notice) }, now: () => new Date("2026-10-11T03:00:00.000Z"), storage: harness.storage });
   const code = (await service.create(ALICE, { idempotencyKey: "c", maxUses: 10, shared: { displayName: "a" }, sharedKeys: ["organization", "email", "phone", "offering"] })).code;
   const bobsAlice = (await service.redeem(BOB, code, { idempotencyKey: "r", sharedKeys: ["organization", "email"] })).contactId;
-  const alicesBob = (await service.linkedContactIds(ALICE))[0]!;
+  let alicesBob = (await service.linkedContactIds(ALICE))[0]!;
+  // 复核 S1：兑换不再自动统合；Alice 自己确认「同じ人」后才统合进她的名刺。
+  if (options.aliceHasBobsCard) alicesBob = (await service.mergeConnection(ALICE, alicesBob, { idempotencyKey: "m" })).contactId;
   const read = (id: string) => harness.contacts.getRecord({ collectionName: "contacts", includeDeleted: true, recordId: id, workspaceId: INVITE_WS });
   return { alicesBob, bobsAlice, code, notices, read, service };
 }
@@ -55,7 +57,7 @@ function suite(name: string, options: TestOptions, withHarness: (run: (harness: 
   test(`${name}: delete removes my card; a card merged into the other side's own business card only ends the link`, options, async () => {
     await withHarness(async (harness) => {
       const { alicesBob, bobsAlice, read, service } = await setup(harness, { aliceHasBobsCard: true });
-      assert.equal(alicesBob, "card-bob", "Bob was merged into Alice's existing card");
+      assert.equal(alicesBob, "card-bob", "Alice merged Bob into her existing card");
       assert.deepEqual(await service.unlink(BOB, bobsAlice, { idempotencyKey: "u", keepAsContact: false }), { outcome: "unlinked" });
       assert.equal((await read(bobsAlice))?.lifecycleState, "deleted");
       const card = await read("card-bob");
