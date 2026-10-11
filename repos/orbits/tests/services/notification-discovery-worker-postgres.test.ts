@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, {before} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {createTransactionalPostgresClient} from '../../shared/storage/transactional-postgres';
@@ -9,7 +9,10 @@ import {createDiscoveryWorker} from '../../features/notifications/discovery/disc
 import {createInboxRuntime} from '../../features/notifications/inbox-record-service-factory';
 import type {DiscoveryExtractor} from '../../features/notifications/discovery/evidence-extractor';
 import {createRelationshipMessageStore} from '../../features/relationship-communication/message-store';
+import {migrateConfiguredTestDatabase} from '../support/migrated-configured-database';
 const url=process.env.ORBIT_EVENT_DATABASE_URL;
+// The worker reads the configured database's public schema; a fresh local test database needs the product migration first.
+before(async()=>{if(url)await migrateConfiguredTestDatabase();});
 test('saved cloud facts drain in bounded batches; daily quota and ignored identities persist across workers',{skip:!url},async()=>{
  const client=createTransactionalPostgresClient({connectionString:url!,max:4}),workspaceId='qa:discovery-worker:'+randomUUID();let now='2026-09-16T00:00:00.000Z';const actor='a',store=createPostgresLiveRecordStore({client});const repo=createDiscoveryRepository({client,workspaceId,now:()=>now,budgetWorkspaceId:workspaceId});
  const save=async(collectionName:string,recordId:string,payload:Record<string,unknown>)=>store.upsertRecord({workspaceId,collectionName,recordId,userId:actor,sourceType:'manual',sourceId:recordId,evidenceIds:[],lifecycleState:'active',payload,createdAt:now,updatedAt:now});

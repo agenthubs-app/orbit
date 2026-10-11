@@ -419,9 +419,24 @@ function normalizeLegacyIngestConfirmation(value: unknown): unknown {
   return { ...response, items: [response.item], replayed: false };
 }
 
+// candidate（c9f465ca）：已有联系人与名片相似时服务端随 duplicate_review 一起回，供「合并 / 仍新建」选择。
+const ingestContactCandidateSchema: z.ZodType<Contract.IngestContactCandidateContract> = z.strictObject({
+  contactId: identity,
+  displayName: z.string(),
+  organization: z.string(),
+  role: z.string(),
+  email: z.string(),
+  phone: z.string(),
+  address: z.string(),
+  matchedOn: z.array(z.enum(["email", "phone", "name_organization"])),
+  identical: z.boolean(),
+});
+const ingestDuplicateReviewSchema = z.strictObject({ state: z.literal("duplicate_review"), duplicateContactId: identity, candidate: ingestContactCandidateSchema.nullable().optional() });
+
 export const ingestConfirmationResponseSchema: z.ZodType<Contract.IngestConfirmationResponseContract> = z.preprocess(normalizeLegacyIngestConfirmation, z.discriminatedUnion("state", [
-  z.strictObject({ state: z.literal("created"), contactId: identity, item: ingestItemSchema, items: z.array(ingestItemSchema).min(1).max(2).readonly(), replayed: z.boolean() }),
-  duplicateReviewSchema,
+  // merged（c9f465ca 并入已有联系人）／metEventId（70d038e6 在活动认识）：服务端一直在回，旧服务端不回。
+  z.strictObject({ state: z.literal("created"), contactId: identity, item: ingestItemSchema, items: z.array(ingestItemSchema).min(1).max(2).readonly(), replayed: z.boolean(), merged: z.boolean().optional(), metEventId: identity.nullable().optional() }),
+  ingestDuplicateReviewSchema,
 ])).superRefine((value, context) => {
   if (value.state === "created") {
     const ids = value.items.map((item) => item.id);
@@ -436,5 +451,12 @@ export const ingestConfirmationResponseSchema: z.ZodType<Contract.IngestConfirma
     }
   }
 }).transform((value): Contract.IngestConfirmationResponseContract => value.state === "created"
-  ? { ...value, item: value.item, items: value.items }
-  : value);
+  ? {
+    state: value.state, contactId: value.contactId, item: value.item, items: value.items, replayed: value.replayed,
+    ...(value.merged !== undefined ? { merged: value.merged } : {}),
+    ...(value.metEventId !== undefined ? { metEventId: value.metEventId } : {}),
+  }
+  : {
+    state: value.state, duplicateContactId: value.duplicateContactId,
+    ...(value.candidate !== undefined ? { candidate: value.candidate } : {}),
+  });

@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import test from "node:test";
+import test, { before } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import type { EventRecord } from "../../features/events/event-crud-and-import/contract";
 import type { EventOperationsAttendeeWorkspace } from "../../features/events/event-operations/service";
+import { migrateConfiguredTestDatabase } from "../support/migrated-configured-database";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -13,6 +14,10 @@ const liveDatabaseEnvKeys = [
   "ORBIT_DATABASE_URL",
 ] as const;
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
+
+// With a database configured, the module-level live runtimes read its public
+// schema; a fresh local test database gets the product migration first.
+before(migrateConfiguredTestDatabase);
 
 function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");

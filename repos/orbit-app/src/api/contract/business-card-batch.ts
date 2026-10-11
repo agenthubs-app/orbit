@@ -276,5 +276,5 @@ export interface IngestCardConfirmationInputContract extends BusinessCardBatchRe
 }
 
 export type IngestConfirmationResponseContract =
-  | { state: "created"; contactId: string; item: IngestItemContract; items: readonly IngestItemContract[]; replayed: boolean; merged?: boolean }
+  | { state: "created"; contactId: string; item: IngestItemContract; items: readonly IngestItemContract[]; replayed: boolean; merged?: boolean; metEventId?: string | null }
   | { state: "duplicate_review"; duplicateContactId: string; candidate?: IngestContactCandidateContract | null };

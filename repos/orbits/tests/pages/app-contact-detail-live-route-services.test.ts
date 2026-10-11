@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import test from "node:test";
+import test, { before } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 import type { LiveContactsGraphProvider } from "../../features/contacts/live-service";
 import type { LocalRemoteContactGraph } from "../../features/contacts/contact-graph-provider";
+import { migrateConfiguredTestDatabase } from "../support/migrated-configured-database";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -15,6 +16,10 @@ const liveDatabaseEnvKeys = [
   "ORBIT_DATABASE_URL",
 ] as const;
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
+
+// With a database configured, the module-level live runtimes read its public
+// schema; a fresh local test database gets the product migration first.
+before(migrateConfiguredTestDatabase);
 
 function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");

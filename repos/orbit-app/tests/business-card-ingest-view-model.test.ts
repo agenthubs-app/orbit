@@ -94,6 +94,19 @@ test("Task5 review acknowledgments reject stale versions, state and contact inco
   }
 });
 
+test("2026-10-11 confirm acknowledgments the server sends since September are accepted, not reported as unconfirmable", () => {
+  const d = detail(); d.batch.status = "ready_for_review";
+  const old = { ...d.items[0]!, status: "extracted" as const };
+  const item = { ...old, status: "confirmed" as const, version: 2, confirmedContactId: "contact" };
+  // merged (merge into an existing contact) and metEventId (met at a registered event).
+  for (const extra of [{ merged: true, metEventId: "event:met" }, { merged: false, metEventId: null }]) {
+    assert.equal(ingest.acceptedIngestReview(ok({ state: "created", contactId: "contact", item, items: [item], replayed: false, ...extra }), d, old, "confirm")?.state, "accepted", JSON.stringify(extra));
+  }
+  // A similar existing contact comes back as the duplicate candidate.
+  const candidate = { contactId: "contact:existing", displayName: "Aki", organization: "Example", role: "Director", email: "aki@example.test", phone: "", address: "", matchedOn: ["email"], identical: false };
+  assert.deepEqual(ingest.acceptedIngestReview(ok({ state: "duplicate_review", duplicateContactId: "contact:existing", candidate }), d, old, "confirm"), { state: "duplicate_review", duplicateContactId: "contact:existing", candidate });
+});
+
 test("creation freezes manifest/key across ambiguous retry and changes key on manifest edits", () => {
   const files = [{ ...file }]; let keys = 0;
   const first = ingest.creationAttempt(files, null, () => "key-" + ++keys);

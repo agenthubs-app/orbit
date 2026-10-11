@@ -21,16 +21,21 @@ const now = "2026-09-10T00:00:00.000Z";
 const digest = `sha256:${"a".repeat(64)}`;
 const APPROVED_BATCH_SCHEMA_TEST_URL = "postgresql://xzhao@127.0.0.1:5432/orbit_0137_event_v2_test";
 
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
+
+// Any developer's dedicated local test database: loopback, default port, no
+// password or connection options, and a database name with a `test` token
+// (orbit_test, orbit_test_fixes, orbit_0137_event_v2_test, ...). The test works
+// in its own random schema and drops it afterwards.
 function isApprovedBatchSchemaTestUrl(value: string): boolean {
   try {
     const url = new URL(value);
-    return url.protocol === "postgresql:"
-      && url.hostname === "127.0.0.1"
-      && url.port === "5432"
-      && url.username === "xzhao"
+    return ["postgres:", "postgresql:"].includes(url.protocol)
+      && LOOPBACK_HOSTS.has(url.hostname)
+      && (url.port === "" || url.port === "5432")
       && url.password === ""
-      // The dedicated local event test databases (0137 ×2, 0133, 0135, 0134); the test works in its own random schema.
-      && ["/orbit_0137_event_v2_test", "/orbit_0137_event_main_test", "/orbit_0133_event_test", "/orbit_0135_test", "/orbit_0134_event_test", "/orbit_0136_event_test"].includes(url.pathname)
+      && /^\/[a-z0-9_]+$/u.test(url.pathname)
+      && /(?:^|_)test(?:_|$)/u.test(url.pathname.slice(1))
       && url.search === ""
       && url.hash === "";
   } catch {
@@ -38,15 +43,21 @@ function isApprovedBatchSchemaTestUrl(value: string): boolean {
   }
 }
 
-test("business-card batch PG profile is limited to the verified local event test database", () => {
-  assert.equal(isApprovedBatchSchemaTestUrl(APPROVED_BATCH_SCHEMA_TEST_URL), true);
+test("business-card batch PG profile is limited to a dedicated local test database", () => {
+  for (const value of [
+    APPROVED_BATCH_SCHEMA_TEST_URL,
+    "postgres://localhost/orbit_test_fixes",
+    "postgresql://localhost:5432/orbit_test",
+  ]) assert.equal(isApprovedBatchSchemaTestUrl(value), true, value.replace(/\/\/[^@/]+@/u, "//[redacted]@"));
   for (const value of [
     "postgresql://xzhao@127.0.0.1:5432/orbit_merge_verify_20260907_c45a",
+    "postgres://localhost/orbit_events",
+    "postgres://localhost/orbit_testing",
     "postgresql://xzhao@127.0.0.1:5432/orbit_0137_event_v2_test?options=-c%20search_path=public",
     "postgresql://xzhao:secret@127.0.0.1:5432/orbit_0137_event_v2_test",
-    "postgresql://xzhao@localhost:5432/orbit_0137_event_v2_test",
     "postgresql://xzhao@127.0.0.1:5433/orbit_0137_event_v2_test",
     "postgresql://xzhao@remote.invalid:5432/orbit_0137_event_v2_test",
+    "mysql://xzhao@127.0.0.1:5432/orbit_0137_event_v2_test",
   ]) assert.equal(isApprovedBatchSchemaTestUrl(value), false, value.replace(/\/\/[^@/]+@/u, "//[redacted]@"));
 });
 const resolveActor = async () => ({ id: "actor:batch-schema" });
@@ -299,6 +310,17 @@ test("confirmation schemas distinguish duplicate review, legacy ack and current 
   assert.equal(current.safeParse({ state: "created", contactId: "contact:new" }).success, false);
   assert.equal(current.safeParse({ ...created, item: { ...created.item, confirmedContactId: "contact:other" } }).success, false);
   assert.equal(current.safeParse({ ...created, item }).success, false);
+  // The confirm handler has returned merged (c9f465ca) and metEventId (70d038e6) since September; the strict schema must accept them.
+  const mergedAtEvent = { ...created, merged: true, metEventId: "event:met" };
+  assert.equal((current.parse(mergedAtEvent) as { merged?: boolean }).merged, true);
+  assert.equal((current.parse({ ...created, merged: false, metEventId: null }) as { metEventId?: string | null }).metEventId, null);
+  for (const invalid of [{ ...created, merged: "yes" }, { ...created, metEventId: "" }, { ...created, metEventId: 1 }]) assert.equal(current.safeParse(invalid).success, false);
+  // duplicate_review has carried the matched contact (c9f465ca) so clients can offer merge / create anyway.
+  const candidate = { contactId: "contact:existing", displayName: "Aki Example", organization: "Example Inc.", role: "Director", email: "aki@example.test", phone: "", address: "", matchedOn: ["email"], identical: false };
+  assert.deepEqual(current.parse({ ...duplicate, candidate }), { ...duplicate, candidate });
+  assert.deepEqual(current.parse({ ...duplicate, candidate: null }), { ...duplicate, candidate: null });
+  for (const invalid of [{ ...candidate, matchedOn: ["fax"] }, { ...candidate, contactId: "" }, { ...candidate, extra: true }]) assert.equal(current.safeParse({ ...duplicate, candidate: invalid }).success, false);
+  assert.equal(legacy.safeParse({ ...duplicate, candidate }).success, false);
   for (const [name, valid] of Object.entries(validFixtures).filter(([name]) => /(?:Retry|Skip|Finish)ResponseSchema$/.test(name))) {
     assert.equal((await schema(name)).safeParse({ ...valid as object, item }).success, false);
   }
@@ -376,9 +398,12 @@ test("unchanged current handlers emit exact wrappers with injected local reposit
     const identity = await admin.query(
       "SELECT current_database() AS db,current_user AS actor,host(inet_server_addr()) AS host,inet_server_port() AS port,(SELECT pg_catalog.pg_get_userbyid(datdba)=current_user FROM pg_catalog.pg_database WHERE datname=current_database()) AS owner",
     );
-    assert.deepEqual(identity.rows[0], {
-      db: new URL(databaseUrl ?? "").pathname.slice(1), actor: "xzhao", host: "127.0.0.1", port: 5432, owner: true,
+    const configured = new URL(databaseUrl ?? "");
+    const { host, ...connected } = identity.rows[0] as { host: string | null } & Record<string, unknown>;
+    assert.deepEqual(connected, {
+      db: configured.pathname.slice(1), actor: configured.username || connected.actor, port: 5432, owner: true,
     });
+    assert.ok(host === null || ["127.0.0.1", "::1"].includes(host), "connected over loopback or a local socket");
     await admin.query(`create schema ${schemaName}`);
     pool = new Pool({ connectionString: databaseUrl, max: 2, options: `-c search_path=${schemaName}` });
     const client = await pool.connect();
@@ -404,13 +429,16 @@ test("unchanged current handlers emit exact wrappers with injected local reposit
     await parsedResponse("ingestBatchDetailSchema", await detail(request(), params({ id })));
     await parsedResponse("ingestBatchSummarySchema", await detail(new Request("http://orbit.local/fixture?view=summary"), params({ id })));
     const content = () => new Request("http://orbit.local/fixture", { method: "PUT", headers: { "content-type": "image/jpeg" }, body: new Uint8Array(bytes) });
-    for (const entry of items) {
+    // Since c9f465ca the last upload starts recognition by itself, so the fourth card is
+    // never uploaded: replace runs on an uploaded card while the batch is still collecting,
+    // and excluding the fourth leaves the manual finalize below to start recognition.
+    for (const entry of items.slice(0, 3)) {
       const context = params({ id, itemId: entry.id });
       assert.equal((await parsedResponse("ingestUploadResponseSchema", await handlers.createIngestV2UploadHandler(deps)(content(), context))).alreadyUploaded, false);
     }
     assert.equal((await parsedResponse("ingestUploadResponseSchema", await handlers.createIngestV2UploadHandler(deps)(content(), params({ id, itemId: items[0].id })))).alreadyUploaded, true);
     const replaceRequest = content(); replaceRequest.headers.set("if-match", "2");
-    await parsedResponse("ingestItemActionResponseSchema", await handlers.createIngestV2ReplaceHandler(deps)(replaceRequest, params({ id, itemId: items[3].id })));
+    await parsedResponse("ingestItemActionResponseSchema", await handlers.createIngestV2ReplaceHandler(deps)(replaceRequest, params({ id, itemId: items[2].id })));
     await parsedResponse("ingestItemActionResponseSchema", await handlers.createIngestV2ExcludeHandler(deps)(request(), params({ id, itemId: items[3].id })));
     assert.equal((await parsedResponse("ingestFinalizeResponseSchema", await handlers.createIngestV2FinalizeHandler(deps)(request(), params({ id })))).alreadyFinalized, false);
     assert.equal((await parsedResponse("ingestFinalizeResponseSchema", await handlers.createIngestV2FinalizeHandler(deps)(request(), params({ id })))).alreadyFinalized, true);
@@ -419,8 +447,12 @@ test("unchanged current handlers emit exact wrappers with injected local reposit
     const confirmed = await parsedResponse("ingestConfirmationResponseSchema", await handlers.createIngestV2ConfirmHandler(deps)(request(reviewInput), params({ id, itemId: items[0].id })));
     assert.equal(confirmed.state, "created");
     assert.equal(confirmed.contactId, confirmed.item.confirmedContactId);
-    const duplicate = await parsedResponse("ingestConfirmationResponseSchema", await handlers.createIngestV2ConfirmHandler(deps)(request(reviewInput), params({ id, itemId: items[1].id })));
-    assert.deepEqual(duplicate, { state: "duplicate_review", duplicateContactId: confirmed.contactId });
+    // Since c9f465ca a card identical to an existing contact is merged without asking, so the
+    // review path needs a card that only shares the email.
+    const duplicate = await parsedResponse("ingestConfirmationResponseSchema", await handlers.createIngestV2ConfirmHandler(deps)(request({ ...reviewInput, role: "Advisor" }), params({ id, itemId: items[1].id })));
+    assert.equal(duplicate.state, "duplicate_review");
+    assert.equal(duplicate.duplicateContactId, confirmed.contactId);
+    assert.equal(duplicate.candidate?.contactId, confirmed.contactId);
     await pool.query("update bc_ingest_items set status = 'terminal_failed', error_code = 'OCR_PROVIDER_TIMEOUT', error_stage = 'ocr' where id = $1", [items[2].id]);
     await parsedResponse("ingestItemActionResponseSchema", await handlers.createIngestV2RetryHandler(deps)(request(), params({ id, itemId: items[2].id })));
     await pool.query("update bc_ingest_items set status = 'terminal_failed', extraction = null where id = $1", [items[2].id]);

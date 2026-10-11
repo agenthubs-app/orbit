@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { before } from "node:test";
 
 import { createAgentPreferencesRouteHandlers } from "../../app/api/agent/preferences/route-handler";
 import {
   createAgentPreferencesService,
   resetAgentPreferencesServiceForTests,
 } from "../../features/agent/preferences";
+import { migrateConfiguredTestDatabase } from "../support/migrated-configured-database";
 
 const { GET: getPreferences, PUT: updatePreferences } =
   createAgentPreferencesRouteHandlers({
@@ -13,6 +14,10 @@ const { GET: getPreferences, PUT: updatePreferences } =
     serviceForActor: (actorId) =>
       createAgentPreferencesService({ actorId }),
   });
+
+// With a database configured the preferences service persists to its public
+// schema; a fresh local test database gets the product migration first.
+before(migrateConfiguredTestDatabase);
 
 test.beforeEach(() => {
   resetAgentPreferencesServiceForTests();

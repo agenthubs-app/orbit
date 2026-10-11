@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import test from "node:test";
+import test, { before } from "node:test";
 
 import { Pool } from "pg";
 
@@ -12,9 +12,16 @@ import {
 import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
 import { createEventOperationsPostgresClient } from "../../features/events/event-operations/storage/postgres-client";
 import { loadLocalEnv } from "../../scripts/load-local-env";
+import { migrateConfiguredTestDatabase } from "../support/migrated-configured-database";
 
 loadLocalEnv();
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
+
+// The main-schema checks read the configured database itself; a fresh local
+// test database gets the same migration the setup scripts run on a real one.
+before(async () => {
+  if (databaseUrl) await migrateConfiguredTestDatabase();
+});
 
 function schemaUrl(value: string, searchPath: string): string {
   const url = new URL(value);
