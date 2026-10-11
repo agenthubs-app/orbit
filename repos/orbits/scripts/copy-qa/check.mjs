@@ -104,7 +104,10 @@ function toneIssues(entry) {
     if (entry.zh && !/？$/.test(entry.zh)) issues.push(["zh", "确认框标题用问句，以「？」结尾"]);
     if (entry.en && !/\?$/.test(entry.en)) issues.push(["en", "Confirm titles are questions"]);
   }
-  if (kind === "sentence" && !/(です|ます|ません|ください|でした|ました)。?$/.test(ja.split(" · ").at(-1))) issues.push(["ja", "正文句用です・ます"]);
+  // R15: a full-width supplement right before the closing 「。」 (「登録できます（アプリは不要です）。」) is skipped, and a
+  // polite question (「〜ますか？」) counts as です・ます.
+  const lastSentence = ja.split(" · ").at(-1).replace(/（[^（）]*）(?=。$)/, "");
+  if (kind === "sentence" && !/(です|ます|ません|ください|でした|ました)(?:。|か？)?$/.test(lastSentence)) issues.push(["ja", "正文句用です・ます"]);
   if (kind === "sentence" && /(です|ます|ません|ください|でした|ました)$/.test(ja)) issues.push(["ja", "正文句末尾加「。」"]);
   if (entry.en && LABEL_KINDS.has(kind)) {
     const words = entry.en.split(/\s+/).filter((w) => /^[A-Za-z]/.test(w));

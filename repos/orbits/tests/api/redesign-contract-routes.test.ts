@@ -20,11 +20,17 @@ const CASES: Case[] = [
   { file: "contacts/completion-question", method: "GET" },
   { file: "contacts/completion-question/[id]/answer", method: "POST", params: { id: "demo-question-1" }, body: { answer: "イベント", ...key } },
   { file: "contacts/completion-question/[id]/skip", method: "POST", params: { id: "demo-question-1" }, body: key },
-  { file: "invite-codes", method: "POST", body: { shared: { displayName: "Orbit デモ" }, maxUses: 5, ...key }, status: 201 },
   { file: "invite-codes/current", method: "GET" },
   { file: "invite-codes/[code]/preview", method: "GET", params: { code: "K7QX-2M9P" } },
-  { file: "invite-codes/[code]/redeem", method: "POST", params: { code: "K7QX-2M9P" } },
+  // R15：兑换要请求体；自己的码不能兑换，所以用演示世界里松井さん的码。
+  { file: "invite-codes/[code]/preview", method: "GET", params: { code: "H8MW-4QZT" } },
+  { file: "invite-codes/[code]/redeem", method: "POST", params: { code: "H8MW-4QZT" }, body: { sharedKeys: ["organization"], ...key } },
+  { file: "invite-codes", method: "GET" },
+  { file: "invite-codes/connections/[contactId]", method: "GET", params: { contactId: "demo-person-takahashi" } },
+  { file: "invite-codes/connections/[contactId]/share", method: "PUT", params: { contactId: "demo-person-takahashi" }, body: { sharedKeys: ["organization", "email"], ...key } },
+  { file: "invite-codes/connections/[contactId]/unlink", method: "POST", params: { contactId: "demo-person-takahashi" }, body: { keepAsContact: true, ...key } },
   { file: "invite-codes/[code]/revoke", method: "POST", params: { code: "K7QX-2M9P" } },
+  { file: "invite-codes", method: "POST", body: { shared: { displayName: "Orbit デモ" }, maxUses: 5, ...key }, status: 201 },
   { file: "events/assessments", method: "GET" },
   { file: "events/assessments", method: "POST", body: { sourceKind: "url", url: "https://example.com/e", ...key }, status: 202 },
   { file: "events/assessments/[id]", method: "GET", params: { id: "demo-assessment-saas-summit" } },
@@ -110,7 +116,7 @@ test("the mock keeps what it was told: revoke stops the code, PATCH persists, id
     const code = { code: "K7QX-2M9P" };
     await call({ file: "invite-codes/[code]/revoke", method: "POST", params: code });
     assert.equal((await call({ file: "invite-codes/[code]/preview", method: "GET", params: code })).status, 404);
-    assert.equal((await call({ file: "invite-codes/[code]/redeem", method: "POST", params: code })).status, 404);
+    assert.equal((await call({ file: "invite-codes/[code]/redeem", method: "POST", params: code, body: { sharedKeys: [], ...key } })).status, 404);
     assert.equal((await (await call({ file: "invite-codes/current", method: "GET" })).json()).data, null);
 
     const id = { id: "demo-assessment-saas-summit" };
@@ -180,4 +186,131 @@ test("the invite preview and the App version are the only new routes open before
   assert.match(proxy, /\\\/api\\\/invite-codes\\\/\[\^\/\]\+\\\/preview\$/u);
   assert.match(proxy, /pathname === "\/api\/app\/version"/u);
   assert.doesNotMatch(proxy, /\/api\/(home\/layout|account\/exports|account\/deletion-request|events\/assessments)/u);
+});
+
+// ── R15（DESIGN §4.2 mock）：兑换真实计数、过期 / 上限 / 作废、重复兑换不占用量、历史、连接与解除。
+const redeem = (code: string, body: unknown = { sharedKeys: ["organization"], idempotencyKey: `r-${Math.random()}` }) =>
+  call({ file: "invite-codes/[code]/redeem", method: "POST", params: { code }, body });
+const preview = async (code: string) => {
+  const response = await call({ file: "invite-codes/[code]/preview", method: "GET", params: { code } });
+  return { status: response.status, body: await response.json() };
+};
+
+test("R15 mock redeem: needs the body, counts one use, the same person again is already_connected and costs nothing", async () => {
+  redesignMock.reset();
+  await withMode("mock", async () => {
+    assert.equal((await call({ file: "invite-codes/[code]/redeem", method: "POST", params: { code: "H8MW-4QZT" } })).status, 400, "no body");
+    assert.equal((await redeem("H8MW-4QZT", { sharedKeys: ["displayName"], idempotencyKey: "x" })).status, 400, "unknown key");
+    assert.equal((await redeem("H8MW-4QZT", { sharedKeys: [], idempotencyKey: "x", shared: { email: "a@example.com" } })).status, 400, "values are never sent");
+    const before = redesignMock.invitePeerUsage("H8MW-4QZT");
+    const first = await (await redeem("H8MW-4QZT", { sharedKeys: ["organization"], idempotencyKey: "same" })).json();
+    assert.deepEqual([first.data.outcome, first.data.contactId], ["connected", "demo-person-matsui"]);
+    assert.equal(first.data.peer.email, "matsui@example.com", "contact details arrive once connected");
+    assert.equal(redesignMock.invitePeerUsage("H8MW-4QZT"), before + 1);
+    const replay = await (await redeem("H8MW-4QZT", { sharedKeys: ["organization"], idempotencyKey: "same" })).json();
+    assert.equal(replay.data.outcome, "connected", "a retry gives the first answer");
+    const again = await (await redeem("h8mw4qzt")).json();
+    assert.equal(again.data.outcome, "already_connected", "lower case without the hyphen is the same code");
+    assert.equal(redesignMock.invitePeerUsage("H8MW-4QZT"), before + 1, "already_connected costs no use");
+    const view = await (await call({ file: "invite-codes/connections/[contactId]", method: "GET", params: { contactId: "demo-person-matsui" } })).json();
+    assert.deepEqual(view.data.sharedByMe, ["organization"]);
+    assert.equal((await preview("H8MW-4QZT")).body.data.inviterAlreadyConnected, true);
+  });
+  redesignMock.reset();
+});
+
+test("R15 mock: already connected from the start; unlink keeps or removes; after unlink the code connects again", async () => {
+  redesignMock.reset();
+  await withMode("mock", async () => {
+    const usage = redesignMock.invitePeerUsage("R4VN-8HTC");
+    assert.equal((await preview("R4VN-8HTC")).body.data.inviterAlreadyConnected, true);
+    assert.equal((await (await redeem("R4VN-8HTC")).json()).data.outcome, "already_connected");
+    assert.equal(redesignMock.invitePeerUsage("R4VN-8HTC"), usage);
+    const unlink = (keepAsContact: boolean, idempotencyKey: string) =>
+      call({ file: "invite-codes/connections/[contactId]/unlink", method: "POST", params: { contactId: "demo-person-takahashi" }, body: { keepAsContact, idempotencyKey } });
+    const kept = await (await unlink(true, "u-1")).json();
+    assert.deepEqual(kept.data, { outcome: "unlinked", keptContactId: "demo-person-takahashi" });
+    assert.deepEqual((await (await unlink(true, "u-1")).json()).data, kept.data, "a retry gives the first answer");
+    assert.equal((await unlink(true, "u-2")).status, 404, "nothing left to unlink");
+    assert.equal((await call({ file: "invite-codes/connections/[contactId]", method: "GET", params: { contactId: "demo-person-takahashi" } })).status, 404);
+    assert.equal((await (await redeem("R4VN-8HTC")).json()).data.outcome, "connected", "a new connection after unlinking");
+    assert.equal(redesignMock.invitePeerUsage("R4VN-8HTC"), usage + 1);
+  });
+  redesignMock.reset();
+});
+
+test("R15 mock: own code is 409 OWN_CODE; unknown, bad format, revoked and superseded are one 404 INVITE_UNAVAILABLE", async () => {
+  redesignMock.reset();
+  await withMode("mock", async () => {
+    const own = await preview("K7QX-2M9P");
+    assert.deepEqual([own.body.data.isOwnCode, own.body.data.status], [true, "active"]);
+    assert.equal("email" in own.body.data.shared || "phone" in own.body.data.shared, false, "a preview never carries contact details");
+    const ownRedeem = await redeem("K7QX-2M9P");
+    assert.equal(ownRedeem.status, 409);
+    assert.equal((await ownRedeem.json()).error.context.reason, "OWN_CODE");
+    const texts: string[] = [];
+    for (const code of ["ZZZZ-ZZZZ", "K7QX-2M0P", "nope", "P9KD-3RXF"]) {
+      const response = await call({ file: "invite-codes/[code]/preview", method: "GET", params: { code } });
+      assert.equal(response.status, 404, code);
+      texts.push(await response.text());
+    }
+    assert.equal(new Set(texts).size, 1, "the 404s cannot be told apart");
+    assert.equal(JSON.parse(texts[0]).error.context.reason, "INVITE_UNAVAILABLE");
+  });
+  redesignMock.reset();
+});
+
+test("R15 mock: expired within 30 days previews as expired and refuses to connect; older is unavailable; full refuses", async () => {
+  redesignMock.reset();
+  await withMode("mock", async () => {
+    redesignMock.setInviteClock("2026-10-15T09:00:00+09:00");
+    assert.equal((await preview("H8MW-4QZT")).body.data.status, "expired");
+    const expired = await redeem("H8MW-4QZT");
+    assert.deepEqual([expired.status, (await expired.json()).error.context.reason], [409, "INVITE_EXPIRED"]);
+    assert.equal((await (await call({ file: "invite-codes/current", method: "GET" })).json()).data, null, "an expired code is not current");
+    redesignMock.setInviteClock("2026-11-14T18:00:01+09:00");
+    assert.equal((await preview("H8MW-4QZT")).status, 404, "more than 30 days after it expired");
+    redesignMock.setInviteClock(null);
+    redesignMock.setInvitePeerUsage("H8MW-4QZT", 10);
+    assert.equal((await preview("H8MW-4QZT")).body.data.status, "full");
+    const full = await redeem("H8MW-4QZT");
+    assert.deepEqual([full.status, (await full.json()).error.context.reason], [409, "INVITE_FULL"]);
+  });
+  redesignMock.reset();
+});
+
+test("R15 mock: a new code supersedes the old one; history lists every code with its status and who joined", async () => {
+  redesignMock.reset();
+  await withMode("mock", async () => {
+    const history = async () => (await (await call({ file: "invite-codes", method: "GET" })).json()).data.items as { code: string; status: string; joined: { contactId: string }[] }[];
+    const before = await history();
+    assert.deepEqual(before.map((item) => [item.code, item.status]), [["K7QX-2M9P", "active"], ["P9KD-3RXF", "superseded"], ["M3TB-6WQA", "expired"]]);
+    assert.deepEqual(before[2].joined.map((person) => person.contactId), ["demo-person-takahashi"]);
+    const created = await (await call({ file: "invite-codes", method: "POST", body: { shared: { displayName: "x", email: "spoof@example.com" }, maxUses: 3, sharedKeys: ["organization"], idempotencyKey: "c-1" } })).json();
+    assert.notEqual(created.data.code, "K7QX-2M9P");
+    assert.equal(created.data.shared.displayName, "Orbit デモ", "values come from my profile, not the request");
+    assert.equal(created.data.shared.email, undefined, "only the keys I chose");
+    assert.equal(created.data.shared.offering, undefined);
+    assert.equal(Date.parse(created.data.expiresAt) - Date.parse(created.data.createdAt), 7 * 86_400_000, "valid for 7 days");
+    assert.equal(created.data.usedCount, 0);
+    const after = await history();
+    assert.deepEqual(after.slice(0, 2).map((item) => [item.code, item.status]), [[created.data.code, "active"], ["K7QX-2M9P", "superseded"]]);
+    assert.equal((await preview("K7QX-2M9P")).status, 404, "a superseded code is unavailable");
+    const defaults = await (await call({ file: "invite-codes", method: "POST", body: { shared: { displayName: "x" }, maxUses: 3, idempotencyKey: "c-2" } })).json();
+    assert.deepEqual([Boolean(defaults.data.shared.organization), Boolean(defaults.data.shared.offering), defaults.data.shared.email], [true, true, undefined], "default keys: organization, offering, seeking");
+  });
+  redesignMock.reset();
+});
+
+test("R15 mock: share update changes what I share; unknown contact is 404; bad bodies are 400", async () => {
+  redesignMock.reset();
+  await withMode("mock", async () => {
+    const put = (contactId: string, body: unknown) => call({ file: "invite-codes/connections/[contactId]/share", method: "PUT", params: { contactId }, body });
+    const updated = await (await put("demo-person-takahashi", { sharedKeys: ["organization", "email"], idempotencyKey: "s-1" })).json();
+    assert.deepEqual(updated.data.sharedByMe, ["organization", "email"]);
+    assert.equal((await put("demo-person-watanabe", { sharedKeys: [], idempotencyKey: "s-2" })).status, 404, "not an invite connection");
+    assert.equal((await put("demo-person-takahashi", { sharedKeys: ["email", "email"], idempotencyKey: "s-3" })).status, 400);
+    assert.equal((await call({ file: "invite-codes/connections/[contactId]/unlink", method: "POST", params: { contactId: "demo-person-takahashi" }, body: { idempotencyKey: "u" } })).status, 400);
+  });
+  redesignMock.reset();
 });

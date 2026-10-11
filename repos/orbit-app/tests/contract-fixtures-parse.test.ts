@@ -9,7 +9,7 @@ import { eventAssessmentSchema } from "../src/api/schema/event-assessment";
 import { eventRecommendationDismissResultSchema } from "../src/api/schema/event-recommendation-feedback";
 import { homeLayoutSchema } from "../src/api/schema/home-layout";
 import { inboxNotificationSchema } from "../src/api/schema/inbox-notifications";
-import { inviteCodePreviewSchema, inviteCodeRedeemResultSchema, inviteCodeSchema } from "../src/api/schema/invite-codes";
+import { inviteCodeHistoryResponseSchema, inviteCodePreviewSchema, inviteCodeRedeemResultSchema, inviteCodeSchema, inviteConnectionViewSchema } from "../src/api/schema/invite-codes";
 import { contactListItemSchema } from "../src/api/schema/mobile-contacts-dashboard";
 import { inboxDeliveryPreferencesSchema } from "../src/api/schema/notification-delivery-policy";
 import { planV2DetailSchema, planV2SummaryResponseSchema } from "../src/api/schema/plan-v2";
@@ -25,6 +25,13 @@ test("the App's synced schemas parse every redesign fixture", () => {
   inviteCodeSchema.parse(fixtures.demoInviteCode);
   inviteCodePreviewSchema.parse(fixtures.demoInvitePreview);
   inviteCodeRedeemResultSchema.parse(fixtures.demoInviteRedeem);
+  // 改版 R15：履历、别人发给我的码（预览与兑换结果，含 already_connected）、招待连接。
+  assert.equal(inviteCodeHistoryResponseSchema.parse({ items: fixtures.demoInviteHistory }).items.length, fixtures.demoInviteHistory.length);
+  for (const peer of [fixtures.demoInviteFromPeer, fixtures.demoInviteAlreadyConnected]) {
+    inviteCodePreviewSchema.parse(peer.preview);
+    inviteCodeRedeemResultSchema.parse(peer.redeem);
+  }
+  assert.equal(inviteConnectionViewSchema.parse(fixtures.demoInviteConnection).contactId, fixtures.demoInviteConnection.contactId);
   for (const item of fixtures.demoSecretaryNotifications) inboxNotificationSchema.parse(item);
   inboxDeliveryPreferencesSchema.parse(fixtures.demoDeliveryPreferences);
   eventAssessmentSchema.parse(fixtures.demoEventAssessment);

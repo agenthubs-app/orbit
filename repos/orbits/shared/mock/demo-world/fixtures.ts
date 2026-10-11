@@ -17,7 +17,7 @@ import type { EventRecommendationDismissResult } from "../../contract/event-reco
 import type { HomeLayoutContract } from "../../contract/home-layout";
 import type { InboxDeliveryPreferencesDTO } from "../../contract/notification-delivery-policy";
 import type { InboxNotificationDTO } from "../../contract/inbox-notifications";
-import type { InviteCodeContract, InviteCodePreview, InviteCodeRedeemResult } from "../../contract/invite-codes";
+import type { InviteCodeContract, InviteCodeHistoryItem, InviteCodePreview, InviteCodeRedeemResult, InviteConnectionView, InviteSharedFieldKey, InviteSharedFields } from "../../contract/invite-codes";
 import type { PlanPremiseRow, PlanV2Content, PlanV2Detail, PlanV2SummaryResponse } from "../../contract/plan-v2";
 import { nextAward, PLAN_EVENT_SEGMENT_KEY, skipAwardPoints, summarizePlanScore, type PlanScoreAward } from "../../compute/plan-score";
 import { DEMO_EVENTS, DEMO_NOTES, DEMO_PEOPLE, DEMO_PLAN, DEMO_TIME_ZONE, DEMO_TODAY, DEMO_TODOS, demoEvent, demoPerson } from "./index";
@@ -111,6 +111,67 @@ export const demoInviteCode: InviteCodeContract = {
 };
 export const demoInvitePreview: InviteCodePreview = { code: demoInviteCode.code, expiresAt: demoInviteCode.expiresAt, shared: demoInviteCode.shared, sample: true };
 export const demoInviteRedeem: InviteCodeRedeemResult = { outcome: "connected", contactId: "demo-person-matsui" };
+
+// R15：我的码的履历（新的在前：当前码、被替换的、过期的——过期那个有 1 个人用它连上了）。
+type DemoPersonId = Parameters<typeof demoPerson>[0];
+const joined = (id: DemoPersonId, joinedAt: string) => ({ contactId: id, displayName: demoPerson(id).name, joinedAt });
+export const demoInviteHistory: InviteCodeHistoryItem[] = [
+  { sample: true, code: demoInviteCode.code, createdAt: demoInviteCode.createdAt, expiresAt: demoInviteCode.expiresAt, status: "active", usedCount: 2, maxUses: 10, joined: [joined("demo-person-okada", at("10:30:00")), joined("demo-person-sasaki", at("11:15:00"))] },
+  { sample: true, code: "P9KD-3RXF", createdAt: "2026-09-30T18:00:00+09:00", expiresAt: "2026-10-07T18:00:00+09:00", status: "superseded", usedCount: 0, maxUses: 10, joined: [] },
+  { sample: true, code: "M3TB-6WQA", createdAt: "2026-09-20T10:00:00+09:00", expiresAt: "2026-09-27T10:00:00+09:00", status: "expired", usedCount: 1, maxUses: 10, joined: [joined("demo-person-takahashi", "2026-09-21T09:40:00+09:00")] },
+];
+
+/** R15：别人发给我的码（接收方画面用）。值是对方选择共享的项目从对方资料读出的；预览不含邮箱和电话。 */
+export interface DemoInvitePeerCode {
+  sample: true;
+  preview: InviteCodePreview;
+  sharedKeys: InviteSharedFieldKey[];
+  /** 连上之后对方共享给我的（含连絡先）。 */
+  peer: InviteSharedFields;
+  usedCount: number;
+  maxUses: number;
+  redeem: InviteCodeRedeemResult;
+}
+const peerShared = (id: DemoPersonId, extra: Omit<InviteSharedFields, "displayName" | "organization" | "role">): InviteSharedFields => {
+  const person = demoPerson(id);
+  return { displayName: person.name, organization: person.company, role: person.role, ...extra };
+};
+const previewShared = ({ email: _email, phone: _phone, ...rest }: InviteSharedFields): InviteSharedFields => rest;
+
+const matsuiShared = peerShared("demo-person-matsui", { offering: ["プロダクト設計の相談"], seeking: ["SaaS の導入事例"], email: "matsui@example.com" });
+/** 松井さんのコード：まだつながっていない（兑换 → connected）。 */
+export const demoInviteFromPeer: DemoInvitePeerCode = {
+  sample: true,
+  preview: { sample: true, code: "H8MW-4QZT", expiresAt: "2026-10-14T18:00:00+09:00", shared: previewShared(matsuiShared), status: "active", inviterAlreadyConnected: false, isOwnCode: false },
+  sharedKeys: ["organization", "offering", "seeking", "email"],
+  peer: matsuiShared,
+  usedCount: 3,
+  maxUses: 10,
+  redeem: { ...demoInviteRedeem, peer: matsuiShared },
+};
+
+const takahashiShared = peerShared("demo-person-takahashi", { offering: ["シード投資の相談"], seeking: ["ロボティクスの起業家"] });
+/** 高橋さんのコード：すでにつながっている（9/21 に私のコードで連絡先を交換済み）→ already_connected、用量は増えない。 */
+export const demoInviteAlreadyConnected: DemoInvitePeerCode = {
+  sample: true,
+  preview: { sample: true, code: "R4VN-8HTC", expiresAt: "2026-10-13T09:00:00+09:00", shared: previewShared(takahashiShared), status: "active", inviterAlreadyConnected: true, isOwnCode: false },
+  sharedKeys: ["organization", "offering", "seeking"],
+  peer: takahashiShared,
+  usedCount: 4,
+  maxUses: 10,
+  redeem: { outcome: "already_connected", contactId: "demo-person-takahashi", peer: takahashiShared },
+};
+
+/** 高橋さんとの招待连接（她用我的 M3TB-6WQA 连上；我自己改过她的「会社・役職」，所以这一项暂停同步）。 */
+export const demoInviteConnection: InviteConnectionView = {
+  sample: true,
+  contactId: "demo-person-takahashi",
+  connectedAt: "2026-09-21T09:40:00+09:00",
+  via: { code: "M3TB-6WQA" },
+  sharedByMe: ["organization", "offering", "seeking"],
+  sharedByPeer: demoInviteAlreadyConnected.sharedKeys,
+  pausedFields: ["organization"],
+};
 
 // 5 notes — the existing note shape plus the new optional fields.
 export const demoNotes = DEMO_NOTES.map((note, index) => ({
@@ -346,7 +407,10 @@ export const demoPlanDetail: PlanV2Detail = {
 /** Every person reference used by the fixtures above (for the consistency check). */
 export const demoFixturePeopleRefs = {
   completion: [demoCompletionQuestion.contactId],
-  invite: [demoInviteRedeem.contactId],
+  invite: [
+    demoInviteRedeem.contactId, demoInviteFromPeer.redeem.contactId, demoInviteAlreadyConnected.redeem.contactId, demoInviteConnection.contactId,
+    ...demoInviteHistory.flatMap((item) => item.joined.map((person) => person.contactId)),
+  ],
   notes: demoNotes.flatMap((note) => note.contactIds),
   plan: DEMO_PLAN.personTypes.flatMap((type) => type.personIds),
   todos: demoTodos.flatMap((todo) => ("relatedContactId" in todo && todo.relatedContactId ? [todo.relatedContactId] : [])),

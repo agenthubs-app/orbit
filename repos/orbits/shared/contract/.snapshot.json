@@ -5597,9 +5597,21 @@
         "IngestManifestEntryContract",
         "IngestUploadResponseContract",
         "InviteCodeContract",
+        "InviteCodeCreateInput",
+        "InviteCodeFailureReason",
+        "InviteCodeHistoryItem",
+        "InviteCodeHistoryJoined",
+        "InviteCodeHistoryResponse",
+        "InviteCodeHistoryStatus",
         "InviteCodePreview",
+        "InviteCodeRedeemInput",
         "InviteCodeRedeemResult",
+        "InviteConnectionView",
+        "InviteShareUpdateInput",
+        "InviteSharedFieldKey",
         "InviteSharedFields",
+        "InviteUnlinkInput",
+        "InviteUnlinkResult",
         "LegacyAiSessionOriginContract",
         "LegacyNotificationUnreadSummaryDTO",
         "LocalContactDirectoryQuery",
@@ -6066,6 +6078,26 @@
           "optional": true,
           "kind": "text",
           "type": "string"
+        },
+        "offering": {
+          "optional": true,
+          "kind": "text",
+          "type": "string[]"
+        },
+        "seeking": {
+          "optional": true,
+          "kind": "text",
+          "type": "string[]"
+        },
+        "email": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "phone": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -6141,6 +6173,21 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "status": {
+          "optional": true,
+          "kind": "text",
+          "type": "'expired' | 'active' | 'full'"
+        },
+        "inviterAlreadyConnected": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "isOwnCode": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -6161,6 +6208,11 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "sharedKeys": {
+          "optional": true,
+          "kind": "text",
+          "type": "InviteSharedFieldKey[]"
         }
       }
     },
@@ -6174,6 +6226,221 @@
         },
         "contactId": {
           "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "peer": {
+          "optional": true,
+          "kind": "text",
+          "type": "InviteSharedFields"
+        }
+      }
+    },
+    "invite-codes.ts::InviteSharedFieldKey": {
+      "kind": "enum",
+      "values": [
+        "'email'",
+        "'offering'",
+        "'organization'",
+        "'phone'",
+        "'seeking'"
+      ]
+    },
+    "invite-codes.ts::InviteCodeRedeemInput": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sharedKeys": {
+          "optional": false,
+          "kind": "text",
+          "type": "InviteSharedFieldKey[]"
+        }
+      }
+    },
+    "invite-codes.ts::InviteCodeFailureReason": {
+      "kind": "enum",
+      "values": [
+        "'INVITE_EXPIRED'",
+        "'INVITE_FULL'",
+        "'INVITE_UNAVAILABLE'",
+        "'OWN_CODE'"
+      ]
+    },
+    "invite-codes.ts::InviteCodeHistoryStatus": {
+      "kind": "enum",
+      "values": [
+        "'active'",
+        "'expired'",
+        "'full'",
+        "'revoked'",
+        "'superseded'"
+      ]
+    },
+    "invite-codes.ts::InviteCodeHistoryJoined": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "displayName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "joinedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "invite-codes.ts::InviteCodeHistoryItem": {
+      "kind": "object",
+      "members": {
+        "code": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "expiresAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "InviteCodeHistoryStatus"
+        },
+        "usedCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "maxUses": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "joined": {
+          "optional": false,
+          "kind": "text",
+          "type": "InviteCodeHistoryJoined[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "invite-codes.ts::InviteCodeHistoryResponse": {
+      "kind": "object",
+      "members": {
+        "items": {
+          "optional": false,
+          "kind": "text",
+          "type": "InviteCodeHistoryItem[]"
+        }
+      }
+    },
+    "invite-codes.ts::InviteConnectionView": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "connectedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "via": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "code": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        },
+        "sharedByMe": {
+          "optional": false,
+          "kind": "text",
+          "type": "InviteSharedFieldKey[]"
+        },
+        "sharedByPeer": {
+          "optional": false,
+          "kind": "text",
+          "type": "InviteSharedFieldKey[]"
+        },
+        "pausedFields": {
+          "optional": false,
+          "kind": "text",
+          "type": "InviteSharedFieldKey[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "invite-codes.ts::InviteShareUpdateInput": {
+      "kind": "object",
+      "members": {
+        "sharedKeys": {
+          "optional": false,
+          "kind": "text",
+          "type": "InviteSharedFieldKey[]"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "invite-codes.ts::InviteUnlinkInput": {
+      "kind": "object",
+      "members": {
+        "keepAsContact": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "invite-codes.ts::InviteUnlinkResult": {
+      "kind": "object",
+      "members": {
+        "outcome": {
+          "optional": false,
+          "kind": "text",
+          "type": "'unlinked'"
+        },
+        "keptContactId": {
+          "optional": true,
           "kind": "text",
           "type": "string"
         }
@@ -6301,12 +6568,12 @@
               "kind": "text",
               "type": "ManualContactFieldChoice | undefined"
             },
-            "displayName": {
+            "organization": {
               "optional": true,
               "kind": "text",
               "type": "ManualContactFieldChoice | undefined"
             },
-            "organization": {
+            "displayName": {
               "optional": true,
               "kind": "text",
               "type": "ManualContactFieldChoice | undefined"

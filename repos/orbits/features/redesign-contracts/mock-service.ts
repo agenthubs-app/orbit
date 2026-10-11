@@ -7,21 +7,103 @@ import type { AccountDeletionRequestContract, AccountExportContract, AccountExpo
 import type { EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentFacts } from "../../shared/contract/event-assessment";
 import type { EventRecommendationDismissReason, EventRecommendationDismissResult } from "../../shared/contract/event-recommendation-feedback";
 import type { HomeLayoutContract, HomeLayoutUpdateInput } from "../../shared/contract/home-layout";
-import type { InviteCodeContract, InviteCodeCreateInput } from "../../shared/contract/invite-codes";
+import type {
+  InviteCodeContract, InviteCodeCreateInput, InviteCodeFailureReason, InviteCodeHistoryItem, InviteCodeHistoryJoined, InviteCodePreview, InviteCodeRedeemInput,
+  InviteCodeRedeemResult, InviteConnectionView, InviteSharedFieldKey, InviteSharedFields, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult,
+} from "../../shared/contract/invite-codes";
+import { formatInviteCode, INVITE_CODE_ALPHABET, INVITE_DEFAULT_SHARED_KEYS, normalizeInviteCode } from "../../shared/compute/invite-code-format";
 import { DEMO_EVENTS } from "../../shared/mock/demo-world";
 import {
   demoAccountExport, demoAppVersion, demoCompletionQuestion, demoDeletionRequest, demoEventAssessment, demoHomeLayout,
-  demoInviteCode, demoInviteRedeem,
+  demoInviteAlreadyConnected, demoInviteCode, demoInviteConnection, demoInviteFromPeer, demoInviteHistory, DEMO_PLAN_NOW, type DemoInvitePeerCode,
 } from "../../shared/mock/demo-world/fixtures";
 
 type LayoutResult = { conflict: true; current: HomeLayoutContract } | { conflict: false; layout: HomeLayoutContract };
+
+// ── R15 招待コード（DESIGN §4.2 mock）。演示世界里只有一个人（演示账号）：发码的是我，兑换的也是我
+// （兑换的是别人发给我的码，fixtures 的 demoInviteFromPeer / demoInviteAlreadyConnected）。时钟固定在演示世界的
+// 「现在」（DEMO_PLAN_NOW），测试用 setInviteClock 换。失败与 live 同形：不存在 / 作废 / 被替换 / 格式错 /
+// 过期超过 30 天 → 同一个 404 INVITE_UNAVAILABLE；过期、满员、自己的码 → 409 带各自的 reason。
+export type InviteFailure = { failure: "unavailable" | "conflict"; reason: InviteCodeFailureReason };
+type MyCode = { contract: InviteCodeContract; joined: InviteCodeHistoryJoined[]; supersededAt?: string };
+type PeerCode = DemoInvitePeerCode & { usedCount: number };
+
+const DAY_MS = 86_400_000;
+const EXPIRED_PREVIEW_DAYS = 30;
+/** 演示账号的资料（发码时按选择的键从这里读值，客户端传的 shared 值一律不用）。 */
+const DEMO_PROFILE: Required<Pick<InviteSharedFields, "displayName" | "organization" | "role" | "offering" | "seeking" | "email" | "phone">> = {
+  ...(demoInviteCode.shared as Required<Pick<InviteSharedFields, "displayName" | "organization" | "role">>),
+  offering: ["新規事業の壁打ち"], seeking: ["シリーズA の投資家"], email: "demo@example.com", phone: "03-0000-0000",
+};
+
+/** 资料里按键取值（名字总是带上；organization 带会社和役職）。 */
+function pickShared(profile: InviteSharedFields, keys: readonly InviteSharedFieldKey[]): InviteSharedFields {
+  const picked: InviteSharedFields = { displayName: profile.displayName };
+  for (const key of keys) {
+    if (key === "organization") Object.assign(picked, profile.organization ? { organization: profile.organization } : {}, profile.role ? { role: profile.role } : {});
+    else if (profile[key] !== undefined) Object.assign(picked, { [key]: profile[key] });
+  }
+  return picked;
+}
+/** 预览永远不含邮箱和电话。 */
+const withoutContact = ({ email: _email, phone: _phone, ...rest }: InviteSharedFields): InviteSharedFields => rest;
+const sharedKeysOf = (fields: InviteSharedFields): InviteSharedFieldKey[] =>
+  (["organization", "offering", "seeking", "email", "phone"] as const).filter((key) => fields[key] !== undefined);
+
+function myCodeStatus(code: MyCode, now: number): InviteCodeHistoryItem["status"] {
+  if (code.contract.revokedAt) return "revoked";
+  if (code.supersededAt) return "superseded";
+  if (Date.parse(code.contract.expiresAt) <= now) return "expired";
+  return code.contract.usedCount >= code.contract.maxUses ? "full" : "active";
+}
+/** 能预览的状态：作废 / 被替换 / 过期超过 30 天都当作不存在。 */
+function previewStatus(status: InviteCodeHistoryItem["status"], expiresAt: string, now: number): InviteCodePreview["status"] | null {
+  if (status === "revoked" || status === "superseded") return null;
+  if (status === "expired") return now - Date.parse(expiresAt) > EXPIRED_PREVIEW_DAYS * DAY_MS ? null : "expired";
+  return status;
+}
+function peerStatus(peer: PeerCode, now: number): InviteCodeHistoryItem["status"] {
+  if (Date.parse(peer.preview.expiresAt) <= now) return "expired";
+  return peer.usedCount >= peer.maxUses ? "full" : "active";
+}
+/** 演示里新发的码：固定前缀 + 序号，保证不与已有码重复，也都在字母表里。 */
+function demoNewCode(sequence: number): string {
+  let digits = "";
+  let rest = sequence;
+  for (let index = 0; index < 4; index += 1) {
+    digits = INVITE_CODE_ALPHABET[rest % INVITE_CODE_ALPHABET.length] + digits;
+    rest = Math.floor(rest / INVITE_CODE_ALPHABET.length);
+  }
+  return `N3WC-${digits}`;
+}
+
+function freshInviteState() {
+  const [current, ...past] = demoInviteHistory;
+  const mine: MyCode[] = [{ contract: demoInviteCode, joined: current.joined }];
+  for (const item of past) {
+    mine.push({
+      contract: { sample: true, code: item.code, link: `https://orbitailink.com/i/${item.code}`, maxUses: item.maxUses, usedCount: item.usedCount, createdAt: item.createdAt, expiresAt: item.expiresAt, shared: demoInviteCode.shared },
+      joined: item.joined,
+      ...(item.status === "superseded" ? { supersededAt: item.expiresAt } : {}),
+    });
+  }
+  return {
+    clock: null as string | null,
+    mine,
+    creates: new Map<string, InviteCodeContract>(),
+    peers: new Map<string, PeerCode>([demoInviteFromPeer, demoInviteAlreadyConnected].map((peer) => [normalizeInviteCode(peer.preview.code)!, { ...peer }])),
+    connections: new Map<string, InviteConnectionView>([[demoInviteConnection.contactId, demoInviteConnection]]),
+    redeems: new Map<string, { code: string; result: InviteCodeRedeemResult | InviteFailure }>(),
+    shares: new Map<string, InviteConnectionView>(),
+    unlinks: new Map<string, InviteUnlinkResult>(),
+  };
+}
 
 function freshState() {
   return {
     layout: demoHomeLayout as HomeLayoutContract,
     layoutMutations: new Map<string, LayoutResult>(),
-    invite: demoInviteCode as InviteCodeContract,
-    inviteCreates: new Map<string, InviteCodeContract>(),
+    invite: freshInviteState(),
     assessments: new Map<string, EventAssessmentContract>([[demoEventAssessment.id, demoEventAssessment]]),
     assessmentCreates: new Map<string, EventAssessmentContract>(),
     exports: new Map<string, AccountExportContract>([[demoAccountExport.id, demoAccountExport]]),
@@ -31,6 +113,27 @@ function freshState() {
 }
 let state = freshState();
 const nowIso = () => new Date().toISOString();
+const inviteNow = () => Date.parse(state.invite.clock ?? DEMO_PLAN_NOW);
+const UNAVAILABLE: InviteFailure = { failure: "unavailable", reason: "INVITE_UNAVAILABLE" };
+const conflict = (reason: InviteCodeFailureReason): InviteFailure => ({ failure: "conflict", reason });
+
+function redeemOnce(code: string, input: InviteCodeRedeemInput): InviteCodeRedeemResult | InviteFailure {
+  const preview = redesignMock.invitePreview(code);
+  if ("failure" in preview) return preview;
+  if (preview.isOwnCode) return conflict("OWN_CODE");
+  const peer = state.invite.peers.get(normalizeInviteCode(code)!)!;
+  const contactId = peer.redeem.contactId;
+  const peerFields = pickShared(peer.peer, peer.sharedKeys);
+  if (state.invite.connections.has(contactId)) return { outcome: "already_connected", contactId, peer: peerFields };
+  if (preview.status === "expired") return conflict("INVITE_EXPIRED");
+  if (preview.status === "full") return conflict("INVITE_FULL");
+  peer.usedCount += 1;
+  state.invite.connections.set(contactId, {
+    sample: true, contactId, connectedAt: new Date(inviteNow()).toISOString(), via: { code: formatInviteCode(code)! },
+    sharedByMe: [...input.sharedKeys], sharedByPeer: sharedKeysOf(peerFields), pausedFields: [],
+  });
+  return { outcome: "connected", contactId, peer: peerFields };
+}
 
 export const redesignMock = {
   homeLayout: () => state.layout,
@@ -46,29 +149,96 @@ export const redesignMock = {
     return result;
   },
   completionQuestion: () => demoCompletionQuestion,
-  /** The active code, or null after it was revoked. */
-  currentInvite: () => (state.invite.revokedAt ? null : state.invite),
+  /** The active code: null after it was revoked, superseded or expired. */
+  currentInvite(): InviteCodeContract | null {
+    const current = state.invite.mine[0];
+    const status = current ? myCodeStatus(current, inviteNow()) : null;
+    return current && (status === "active" || status === "full") ? current.contract : null;
+  },
+  /** A new code replaces every code of mine still standing (superseded); values come from my profile by the chosen keys. */
   createInvite(input: InviteCodeCreateInput): InviteCodeContract {
-    const replay = state.inviteCreates.get(input.idempotencyKey);
+    const replay = state.invite.creates.get(input.idempotencyKey);
     if (replay) return replay;
-    state.invite = { ...demoInviteCode, shared: input.shared, maxUses: input.maxUses, usedCount: 0, createdAt: nowIso() };
-    state.inviteCreates.set(input.idempotencyKey, state.invite);
-    return state.invite;
+    const now = inviteNow();
+    const at = new Date(now).toISOString();
+    // 还在用的（有效 / 满员）都被替换；已过期、已作废的保持各自的状态。
+    for (const code of state.invite.mine) if (["active", "full"].includes(myCodeStatus(code, now))) code.supersededAt = at;
+    const code = demoNewCode(state.invite.creates.size + 1);
+    const created: InviteCodeContract = {
+      sample: true, code, link: `https://orbitailink.com/i/${code}`, maxUses: input.maxUses, usedCount: 0, createdAt: at, expiresAt: new Date(now + 7 * DAY_MS).toISOString(),
+      shared: pickShared(DEMO_PROFILE, input.sharedKeys ?? INVITE_DEFAULT_SHARED_KEYS),
+    };
+    state.invite.mine.unshift({ contract: created, joined: [] });
+    state.invite.creates.set(input.idempotencyKey, created);
+    return created;
   },
+  /** Only my code that is still standing can be revoked (again: the same answer). */
   revokeInvite(code: string): InviteCodeContract | null {
-    if (code !== state.invite.code) return null;
-    state.invite = { ...state.invite, revokedAt: state.invite.revokedAt ?? nowIso() };
-    return state.invite;
+    const normalized = normalizeInviteCode(code);
+    const found = state.invite.mine.find((item) => normalizeInviteCode(item.contract.code) === normalized);
+    if (!found || found.supersededAt) return null;
+    found.contract = { ...found.contract, revokedAt: found.contract.revokedAt ?? new Date(inviteNow()).toISOString() };
+    return found.contract;
   },
-  /** Only an active code previews or redeems (a revoked or unknown one is a 404 either way). */
-  invitePreview(code: string) {
-    const invite = this.currentInvite();
-    return invite && invite.code === code ? { code: invite.code, expiresAt: invite.expiresAt, shared: invite.shared, sample: true as const } : null;
+  /** Public preview (DESIGN §6): a code that is gone or never was is one and the same 404. */
+  invitePreview(code: string): InviteCodePreview | InviteFailure {
+    const normalized = normalizeInviteCode(code);
+    const now = inviteNow();
+    const mine = state.invite.mine.find((item) => normalizeInviteCode(item.contract.code) === normalized);
+    if (mine) {
+      const status = previewStatus(myCodeStatus(mine, now), mine.contract.expiresAt, now);
+      if (!status) return UNAVAILABLE;
+      return { sample: true, code: mine.contract.code, expiresAt: mine.contract.expiresAt, shared: withoutContact(mine.contract.shared), status, inviterAlreadyConnected: false, isOwnCode: true };
+    }
+    const peer = normalized ? state.invite.peers.get(normalized) : undefined;
+    if (!peer) return UNAVAILABLE;
+    const status = previewStatus(peerStatus(peer, now), peer.preview.expiresAt, now);
+    if (!status) return UNAVAILABLE;
+    return { ...peer.preview, shared: withoutContact(peer.preview.shared), status, inviterAlreadyConnected: state.invite.connections.has(peer.redeem.contactId), isOwnCode: false };
   },
-  inviteRedeem(code: string) {
-    const invite = this.currentInvite();
-    return invite && invite.code === code ? demoInviteRedeem : null;
+  /** Redeem: one use per new connection; the same pair again is already_connected and costs nothing; a retry with the same key replays. */
+  inviteRedeem(code: string, input: InviteCodeRedeemInput): InviteCodeRedeemResult | InviteFailure {
+    const replay = state.invite.redeems.get(input.idempotencyKey);
+    if (replay) return replay.result;
+    const result = redeemOnce(code, input);
+    state.invite.redeems.set(input.idempotencyKey, { code, result });
+    return result;
   },
+  /** GET /api/invite-codes: my codes, newest first, at most 20. */
+  inviteHistory(): InviteCodeHistoryItem[] {
+    const now = inviteNow();
+    return [...state.invite.mine]
+      .sort((a, b) => Date.parse(b.contract.createdAt) - Date.parse(a.contract.createdAt))
+      .slice(0, 20)
+      .map((item) => ({ sample: true, code: item.contract.code, createdAt: item.contract.createdAt, expiresAt: item.contract.expiresAt, status: myCodeStatus(item, now), usedCount: item.contract.usedCount, maxUses: item.contract.maxUses, joined: item.joined }));
+  },
+  inviteConnection: (contactId: string) => state.invite.connections.get(contactId) ?? null,
+  /** What I share with this person from now on (the next sync round applies it in live). */
+  updateInviteShare(contactId: string, input: InviteShareUpdateInput): InviteConnectionView | null {
+    const replay = state.invite.shares.get(input.idempotencyKey);
+    if (replay) return replay;
+    const found = state.invite.connections.get(contactId);
+    if (!found) return null;
+    const updated = { ...found, sharedByMe: [...input.sharedKeys] };
+    state.invite.connections.set(contactId, updated);
+    state.invite.shares.set(input.idempotencyKey, updated);
+    return updated;
+  },
+  /** Unlink (DESIGN §2.6): the connection ends on both sides; nobody is told. */
+  unlinkInvite(contactId: string, input: InviteUnlinkInput): InviteUnlinkResult | null {
+    const replay = state.invite.unlinks.get(input.idempotencyKey);
+    if (replay) return replay;
+    if (!state.invite.connections.delete(contactId)) return null;
+    const result: InviteUnlinkResult = { outcome: "unlinked", ...(input.keepAsContact ? { keptContactId: contactId } : {}) };
+    state.invite.unlinks.set(input.idempotencyKey, result);
+    return result;
+  },
+  /** Tests only: the mock clock (null = the demo world's now). */
+  setInviteClock(iso: string | null) { state.invite.clock = iso; },
+  /** Tests only: how many times a peer code was used. */
+  invitePeerUsage: (code: string) => state.invite.peers.get(normalizeInviteCode(code) ?? "")?.usedCount ?? -1,
+  /** Tests only. */
+  setInvitePeerUsage(code: string, usedCount: number) { const peer = state.invite.peers.get(normalizeInviteCode(code) ?? ""); if (peer) peer.usedCount = usedCount; },
   assessments: () => [...state.assessments.values()],
   assessment: (id: string) => state.assessments.get(id) ?? null,
   createAssessment(input: EventAssessmentCreateInput): EventAssessmentContract {

@@ -336,6 +336,11 @@ export type {
 export type { HomeLayoutContract, HomeLayoutUpdateInput, HomeWidgetKey, HomeWidgetSlot } from "./home-layout";
 export type { ContactCompletionAnswerInput, ContactCompletionQuestion, ContactCompletionResult } from "./contact-completion";
 export type { InviteCodeContract, InviteCodePreview, InviteCodeRedeemResult, InviteSharedFields } from "./invite-codes";
+// R15：招待コード契约补全（共享项目只传键、预览状态、兑换请求体、历史、连接与解除）。
+export type {
+  InviteCodeCreateInput, InviteCodeFailureReason, InviteCodeHistoryItem, InviteCodeHistoryJoined, InviteCodeHistoryResponse, InviteCodeHistoryStatus,
+  InviteCodeRedeemInput, InviteConnectionView, InviteSharedFieldKey, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult,
+} from "./invite-codes";
 export type {
   EventAssessmentContract,
   EventAssessmentCreateInput,

@@ -7,10 +7,13 @@ import { contactCompletionAnswerInputSchema, contactCompletionQuestionSchema, co
 import { eventAssessmentAddToPlanResultSchema, eventAssessmentCreateInputSchema, eventAssessmentPatchInputSchema, eventAssessmentSchema } from "../../shared/api-schema/event-assessment";
 import { eventRecommendationDismissInputSchema, eventRecommendationDismissResultSchema } from "../../shared/api-schema/event-recommendation-feedback";
 import { homeLayoutSchema, homeLayoutUpdateInputSchema } from "../../shared/api-schema/home-layout";
-import { inviteCodeCreateInputSchema, inviteCodePreviewSchema, inviteCodeRedeemResultSchema, inviteCodeSchema } from "../../shared/api-schema/invite-codes";
+import {
+  inviteCodeCreateInputSchema, inviteCodeHistoryResponseSchema, inviteCodePreviewSchema, inviteCodeRedeemInputSchema, inviteCodeRedeemResultSchema, inviteCodeSchema,
+  inviteConnectionViewSchema, inviteShareUpdateInputSchema, inviteUnlinkInputSchema, inviteUnlinkResultSchema,
+} from "../../shared/api-schema/invite-codes";
 import { AppError } from "../../shared/errors/app-error";
-import { redesignMock } from "./mock-service";
-import { readBody, redesignContractRoute } from "./route";
+import { redesignMock, type InviteFailure } from "./mock-service";
+import { readBody, redesignContractRoute, type ContractReply } from "./route";
 
 const notFound = () => ({ error: new AppError("NOT_FOUND", "Not found.") });
 const keyOnly = z.object({ idempotencyKey: z.string().min(1).max(200) }).strict();
@@ -50,12 +53,35 @@ export const revokeInviteCode = redesignContractRoute("invite-codes", inviteCode
   const revoked = redesignMock.revokeInvite(params.code ?? "");
   return revoked ? { data: revoked } : notFound();
 });
+// R15：失败与 live 同形——不可用一律 404 + reason INVITE_UNAVAILABLE（防枚举），过期 / 满员 / 自己的码是 409 + 各自的 reason。
+const inviteFailure = (failed: InviteFailure): ContractReply => failed.failure === "unavailable"
+  ? { error: new AppError("NOT_FOUND", "This invite code cannot be used."), context: { reason: failed.reason } }
+  : { error: new AppError("CONFLICT", "This invite code cannot be used now."), context: { reason: failed.reason } };
 export const previewInviteCode = redesignContractRoute("invite-codes", inviteCodePreviewSchema, (_request, params) => {
   const preview = redesignMock.invitePreview(params.code ?? "");
-  return preview ? { data: preview } : notFound();
+  return "failure" in preview ? inviteFailure(preview) : { data: preview };
 });
-export const redeemInviteCode = redesignContractRoute("invite-codes", inviteCodeRedeemResultSchema, (_request, params) => {
-  const result = redesignMock.inviteRedeem(params.code ?? "");
+export const redeemInviteCode = redesignContractRoute("invite-codes", inviteCodeRedeemResultSchema, async (request, params) => {
+  const body = await readBody(request, inviteCodeRedeemInputSchema);
+  if (body.ok === false) return body.reply;
+  const result = redesignMock.inviteRedeem(params.code ?? "", body.value);
+  return "failure" in result ? inviteFailure(result) : { data: result };
+});
+export const listInviteCodeHistory = redesignContractRoute("invite-codes", inviteCodeHistoryResponseSchema, () => ({ data: { items: redesignMock.inviteHistory() } }));
+export const getInviteConnection = redesignContractRoute("invite-codes", inviteConnectionViewSchema, (_request, params) => {
+  const found = redesignMock.inviteConnection(params.contactId ?? "");
+  return found ? { data: found } : notFound();
+});
+export const updateInviteShare = redesignContractRoute("invite-codes", inviteConnectionViewSchema, async (request, params) => {
+  const body = await readBody(request, inviteShareUpdateInputSchema);
+  if (body.ok === false) return body.reply;
+  const updated = redesignMock.updateInviteShare(params.contactId ?? "", body.value);
+  return updated ? { data: updated } : notFound();
+});
+export const unlinkInviteConnection = redesignContractRoute("invite-codes", inviteUnlinkResultSchema, async (request, params) => {
+  const body = await readBody(request, inviteUnlinkInputSchema);
+  if (body.ok === false) return body.reply;
+  const result = redesignMock.unlinkInvite(params.contactId ?? "", body.value);
   return result ? { data: result } : notFound();
 });
 

@@ -17,6 +17,9 @@ test("approved design wording passes every rule", () => {
     { id: "e", kind: "chip", ja: "保存", zh: "保存", en: "Save" },
     { id: "f", kind: "label", ja: "22:00〜7:30 は送りません", zh: "22:00〜7:30 不推送", en: "Quiet from 22:00 to 7:30" },
     { id: "g", kind: "chip", ja: "シリーズA", zh: "A 轮", en: "Series A" },
+    // R15: a sentence may end with a full-width supplement before 「。」, or as a polite question.
+    { id: "h", kind: "sentence", ja: "下のリンクから 1分ほどで登録できます（アプリは不要です）。", zh: "通过下面的链接大约1分钟就能注册（不需要下载应用）。", en: "Sign up from the link below in about a minute (no app needed)." },
+    { id: "i", kind: "sentence", ja: "お手数ですが、もう一度送っていただけますか？", zh: "麻烦您再发一次好吗？", en: "Could you send a new one?" },
   ];
   const { issues } = checkCopy(approved);
   assert.deepEqual(issues, []);
@@ -57,6 +60,10 @@ test("each rule fires on its bad sample", () => {
   assert.deepEqual(rulesHit({ ...ok, ja: "（完了）しました。" }), ["tone"]);
   assert.deepEqual(rulesHit({ id: "s", kind: "sentence", ja: "保存した", zh: "已保存。", en: "Saved." }), ["tone"]);
   assert.deepEqual(rulesHit({ ...ok, ja: "完了にしました?" }), ["width"]);
+  // R15: the supplement is skipped only before 「。」; what precedes it must still be です・ます.
+  assert.deepEqual(rulesHit({ id: "s2", kind: "sentence", ja: "登録できます（アプリは不要です）", zh: "可以注册。", en: "Sign up." }), ["tone"]);
+  assert.deepEqual(rulesHit({ id: "s3", kind: "sentence", ja: "登録する（アプリ不要）。", zh: "可以注册。", en: "Sign up." }), ["tone"]);
+  assert.deepEqual(rulesHit({ id: "s4", kind: "sentence", ja: "送ってくれる？", zh: "再发一次？", en: "Again?" }), ["tone"]);
 });
 
 test("length counts full-width as 1, half-width as 0.5, a placeholder as 2, and skips a trailing parenthetical", () => {

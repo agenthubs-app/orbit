@@ -8,7 +8,7 @@ import { eventRecommendationDismissResultSchema } from "../../shared/api-schema/
 import { DEFAULT_HOME_LAYOUT, homeLayoutSchema } from "../../shared/api-schema/home-layout";
 import { inboxNotificationSchema } from "../../shared/api-schema/inbox-notifications";
 import { contactListItemSchema } from "../../shared/api-schema/mobile-contacts-dashboard";
-import { inviteCodePreviewSchema, inviteCodeRedeemResultSchema, inviteCodeSchema } from "../../shared/api-schema/invite-codes";
+import { inviteCodeHistoryResponseSchema, inviteCodePreviewSchema, inviteCodeRedeemResultSchema, inviteCodeSchema, inviteConnectionViewSchema } from "../../shared/api-schema/invite-codes";
 import { inboxDeliveryPreferencesSchema } from "../../shared/api-schema/notification-delivery-policy";
 import { planV2DetailSchema, planV2SummaryResponseSchema } from "../../shared/api-schema/plan-v2";
 import { PLAN_EVENT_SEGMENT_KEY } from "../../shared/compute/plan-score";
@@ -26,6 +26,15 @@ test("every fixture parses with its contract schema", () => {
   inviteCodeSchema.parse(fixtures.demoInviteCode);
   inviteCodePreviewSchema.parse(fixtures.demoInvitePreview);
   inviteCodeRedeemResultSchema.parse(fixtures.demoInviteRedeem);
+  // R15：履历、别人发给我的码（预览与兑换结果）、招待连接。
+  assert.equal(inviteCodeHistoryResponseSchema.parse({ items: fixtures.demoInviteHistory }).items.length, fixtures.demoInviteHistory.length);
+  for (const peer of [fixtures.demoInviteFromPeer, fixtures.demoInviteAlreadyConnected]) {
+    inviteCodePreviewSchema.parse(peer.preview);
+    inviteCodeRedeemResultSchema.parse(peer.redeem);
+    assert.equal("email" in peer.preview.shared || "phone" in peer.preview.shared, false, "a preview never carries contact details");
+  }
+  assert.equal(fixtures.demoInviteAlreadyConnected.redeem.outcome, "already_connected");
+  inviteConnectionViewSchema.parse(fixtures.demoInviteConnection);
   for (const item of fixtures.demoSecretaryNotifications) inboxNotificationSchema.parse(item);
   inboxDeliveryPreferencesSchema.parse(fixtures.demoDeliveryPreferences);
   eventAssessmentSchema.parse(fixtures.demoEventAssessment);

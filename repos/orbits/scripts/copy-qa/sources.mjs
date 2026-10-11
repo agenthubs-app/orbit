@@ -84,3 +84,17 @@ export async function loadPlanTemplateCopy(root) {
   add("plan.event", "label", copy.PLAN_EVENT_COPY);
   return entries;
 }
+
+/**
+ * R15 招待消息草稿的三语模板（shared/compute/invite-message-templates.ts，两端共用）：
+ * 正文与「请对方重发」是 sentence，链接行是 label。
+ */
+export async function loadInviteMessageCopy(root) {
+  const copy = await importTs(path.join(root, "shared/compute/invite-message-templates.ts"));
+  const entries = [];
+  const add = (id, kind, text) => entries.push({ id, kind, ja: text.ja, zh: text.zh, en: text.en });
+  for (const [tone, text] of Object.entries(copy.INVITE_MESSAGE_BODY_COPY)) add(`invite.message.${tone}`, "sentence", text);
+  add("invite.message.linkLine", "label", copy.INVITE_MESSAGE_LINK_LINE_COPY);
+  add("invite.resendRequest", "sentence", copy.INVITE_RESEND_REQUEST_COPY);
+  return entries;
+}

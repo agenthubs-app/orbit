@@ -15,7 +15,7 @@ import type { EventRecommendationDismissInput, EventRecommendationDismissResult 
 import type { HomeLayoutContract, HomeLayoutUpdateInput } from "../../shared/contract/home-layout";
 import type { IngestContactCandidateContract } from "../../shared/contract/business-card-batch";
 import type { ManualContactCreateInput, ManualContactCreateResult, ManualContactDuplicateCheckInput, ManualContactDuplicateCheckResult, ManualContactMetContext, ManualContactOrganizationSuggestion, ManualContactOrganizationSuggestionsResult, ManualContactUndoResult } from "../../shared/contract/manual-contact";
-import type { InviteCodeContract, InviteCodeCreateInput, InviteCodePreview, InviteCodeRedeemResult } from "../../shared/contract/invite-codes";
+import type { InviteCodeContract, InviteCodeCreateInput, InviteCodeHistoryItem, InviteCodeHistoryResponse, InviteCodePreview, InviteCodeRedeemInput, InviteCodeRedeemResult, InviteConnectionView, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult } from "../../shared/contract/invite-codes";
 import type { PlanAwardRequest, PlanAwardResult, PlanCommandResult, PlanGoalListResponse, PlanOpenResult, PlanSkipRequest, PlanStepRequest, PlanUndoRequest, PlanV2Detail, PlanV2SummaryResponse, PlanIntakeView, PlanIntakeListResponse, PlanDraftView, PlanConfirmResult, PlanGoalKindResult, PlanGoalKindRequest, PlanIntakeCreateRequest, PlanIntakeMembersRequest, PlanIntakeLadderRequest, PlanFlowStepRequest, PlanIntakeAnswersRequest, PlanIntakePremiseRequest, PlanDraftFixRequest, PlanDraftManualEditRequest, PlanPersonTypeDetail, PlanCandidateDecisionRequest, PlanCandidateDecisionResult, PlanTalkedOfflineResult, PlanProposalRequest, PlanProposalResult, PlanIntroDraftRequest, PlanIntroDraftResult, PlanPendingListResponse, PlanPendingDecisionRequest, PlanPendingDecisionResult, PlanContactFit, PlanReviewView, PlanReviewStartRequest, PlanReviewToggleRequest, PlanQuotaResponse, PlanAchieveRequest, PlanAchievementView, PlanNextGoalsResponse, PlanGoalEditRequest, PlanGoalEditResult, PlanLegacyListResponse, PlanLegacyDetail } from "../../shared/contract/plan-v2";
 import type { accountDeletionRequestObject, accountExportCreateInputObject, accountExportObject, appVersionObject } from "../../shared/api-schema/account";
 import type { contactCompletionAnswerInputObject, contactCompletionQuestionObject, contactCompletionResultObject } from "../../shared/api-schema/contact-completion";
@@ -24,7 +24,7 @@ import type { eventRecommendationDismissInputObject, eventRecommendationDismissR
 import type { homeLayoutObject, homeLayoutUpdateInputObject } from "../../shared/api-schema/home-layout";
 import type { ingestContactCandidateObject } from "../../shared/api-schema/business-card-batch";
 import type { manualContactCreateInputObject, manualContactCreateResultObject, manualContactDuplicateCheckInputObject, manualContactDuplicateCheckResultObject, manualContactMetContextObject, manualContactOrganizationSuggestionObject, manualContactOrganizationSuggestionsResultObject, manualContactUndoResultObject } from "../../shared/api-schema/manual-contact";
-import type { inviteCodeCreateInputObject, inviteCodeObject, inviteCodePreviewObject, inviteCodeRedeemResultObject } from "../../shared/api-schema/invite-codes";
+import type { inviteCodeCreateInputObject, inviteCodeHistoryItemObject, inviteCodeHistoryResponseObject, inviteCodeObject, inviteCodePreviewObject, inviteCodeRedeemInputObject, inviteCodeRedeemResultObject, inviteConnectionViewObject, inviteShareUpdateInputObject, inviteUnlinkInputObject, inviteUnlinkResultObject } from "../../shared/api-schema/invite-codes";
 import type { planAwardRequestObject, planAwardResultObject, planCommandResultObject, planGoalListResponseObject, planOpenResultObject, planSkipRequestObject, planStepRequestObject, planUndoRequestObject, planV2DetailObject, planV2SummaryResponseObject, planIntakeViewObject, planIntakeListResponseObject, planDraftViewObject, planConfirmResultObject, planGoalKindResultObject, planGoalKindRequestObject, planIntakeCreateRequestObject, planIntakeMembersRequestObject, planIntakeLadderRequestObject, planFlowStepRequestObject, planIntakeAnswersRequestObject, planIntakePremiseRequestObject, planDraftFixRequestObject, planDraftManualEditRequestObject, planPersonTypeDetailObject, planCandidateDecisionRequestObject, planCandidateDecisionResultObject, planTalkedOfflineResultObject, planProposalRequestObject, planProposalResultObject, planIntroDraftRequestObject, planIntroDraftResultObject, planPendingListResponseObject, planPendingDecisionRequestObject, planPendingDecisionResultObject, planContactFitObject, planReviewViewObject, planReviewStartRequestObject, planReviewToggleRequestObject, planQuotaResponseObject, planAchieveRequestObject, planAchievementViewObject, planNextGoalsResponseObject, planGoalEditRequestObject, planGoalEditResultObject, planLegacyListResponseObject, planLegacyDetailObject } from "../../shared/api-schema/plan-v2";
 
 // Contracts use readonly arrays; zod infers mutable ones. Compare structure, not mutability.
@@ -42,6 +42,14 @@ expectParity<Parity<InviteCodeContract, typeof inviteCodeObject>>();
 expectParity<Parity<InviteCodePreview, typeof inviteCodePreviewObject>>();
 expectParity<Parity<InviteCodeRedeemResult, typeof inviteCodeRedeemResultObject>>();
 expectParity<Parity<InviteCodeCreateInput, typeof inviteCodeCreateInputObject>>();
+// R15
+expectParity<Parity<InviteCodeRedeemInput, typeof inviteCodeRedeemInputObject>>();
+expectParity<Parity<InviteCodeHistoryItem, typeof inviteCodeHistoryItemObject>>();
+expectParity<Parity<InviteCodeHistoryResponse, typeof inviteCodeHistoryResponseObject>>();
+expectParity<Parity<InviteConnectionView, typeof inviteConnectionViewObject>>();
+expectParity<Parity<InviteShareUpdateInput, typeof inviteShareUpdateInputObject>>();
+expectParity<Parity<InviteUnlinkInput, typeof inviteUnlinkInputObject>>();
+expectParity<Parity<InviteUnlinkResult, typeof inviteUnlinkResultObject>>();
 expectParity<Parity<EventAssessmentContract, typeof eventAssessmentObject>>();
 expectParity<Parity<EventAssessmentCreateInput, typeof eventAssessmentCreateInputObject>>();
 expectParity<Parity<EventAssessmentPatchInput, typeof eventAssessmentPatchInputObject>>();
