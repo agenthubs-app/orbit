@@ -49,9 +49,9 @@
 | [R23](R23-plan-generation/GOAL.md) | 计划 v2.2：生成流程与 AI（目标入力 → 背景 → ≤5 问 → 前提 → 初版 → AI 修正 → 手動編集 → 確定；业界现状库） | R22 | H | 甲 | done，已复核，问题已修（[REPORT](R23-plan-generation/REPORT.md)、[REVIEW](R23-plan-generation/REVIEW.md)） |
 | [R24](R24-plan-overview-and-types/GOAL.md) | 计划 v2.2：概要、人物类型与记录加分（含 `event-score.ts`、面谈メモ判定） | R22 | H | 甲 | done，已复核，问题已修（[REPORT](R24-plan-overview-and-types/REPORT.md)、[REVIEW](R24-plan-overview-and-types/REVIEW.md)） |
 | [R25](R25-plan-review-goals-cleanup/GOAL.md) | 计划 v2.2：见直、达成、多目标与旧屏清理（删兼容跳转、旧链接换新） | R23、R24 | H | 甲 | done，已复核，问题已修（[REPORT](R25-plan-review-goals-cleanup/REPORT.md)、[REVIEW](R25-plan-review-goals-cleanup/REVIEW.md)） |
-| [R12](R12-add-cards-and-manual/GOAL.md) | 加人：「人脈を追加」入口、名刺スキャン（拍 / 传含表裏 → 读完自动进人脈 → まとめて確認 → 完成）、手入力（查重与名片同一规则 + 同名提示、逐字段合并、撤销）、待确认草稿页；删除 App 7 个旧加人屏 | R09 | H | 甲 | 功能完成，已复核，问题已修；像素门禁未过（规则 11 在收口后生效，见 [像素盘点](maintenance/2026-10-11-pixel-audit.md) W-R12、D19–D29）（[REPORT](R12-add-cards-and-manual/REPORT.md)、[REVIEW](R12-add-cards-and-manual/REVIEW.md)；相机拍照与权限被拒态需真机） |
-| [R15](R15-invite-codes/GOAL.md) | 加人：招待コード（迁移、发码 / 兑换 / 历史 / 同步 / 解除、公开预览限流与防枚举、发出方两端、接收方 `/i/<code>`）；删除两端旧邀请页 | R12 | H | 甲 | 功能完成，已复核，问题已修（[REPORT](R15-invite-codes/REPORT.md)、[REVIEW](R15-invite-codes/REVIEW.md)）；像素门禁未过（规则 11，等导航壳返工与用户拍板） |
-| [R16](R16-import-and-completion/GOAL.md) | 加人：導入（連絡先 / LinkedIn / CSV / イベントから → まとめて確認）与「每天一问」live（规则、零 AI）；删除 Web 旧导入页 | R12 | H | 甲 | 文档已写，待开工 |
+| [R12](R12-add-cards-and-manual/GOAL.md) | 加人：「人脈を追加」入口、名刺スキャン（拍 / 传含表裏 → 读完自动进人脈 → まとめて確認 → 完成）、手入力（查重与名片同一规则 + 同名提示、逐字段合并、撤销）、待确认草稿页；删除 App 7 个旧加人屏 | R09 | H | 甲 | 服务端完成、已复核（[REPORT](R12-add-cards-and-manual/REPORT.md)、[REVIEW](R12-add-cards-and-manual/REVIEW.md)）；界面待导航壳返工与用户拍板（D19–D29）后按像素标准做（已写的 Web / App 界面保留，按盘点第 5 位返工） |
+| [R15](R15-invite-codes/GOAL.md) | 加人：招待コード（迁移、发码 / 兑换 / 历史 / 同步 / 解除、公开预览限流与防枚举、发出方两端、接收方 `/i/<code>`）；删除两端旧邀请页 | R12 | H | 甲 | 服务端完成、已复核（[REPORT](R15-invite-codes/REPORT.md)、[REVIEW](R15-invite-codes/REVIEW.md)）；界面待导航壳返工与用户拍板（D30–D32、DESIGN §10 #7）后按像素标准做 |
+| [R16](R16-import-and-completion/GOAL.md) | 加人：導入（連絡先 / LinkedIn / CSV / イベントから → まとめて確認）与「每天一问」live（规则、零 AI）；删除 Web 旧导入页 | R12 | H | 甲 | 服务端完成、已复核（[REPORT](R16-import-and-completion/REPORT.md)、[REVIEW](R16-import-and-completion/REVIEW.md)）；界面未写，待导航壳返工与用户拍板后按像素标准做 |
 
 计划 v2.2 的整体设计、AI 调用清单、需要用户拍板的事项见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md)，复核见 [plan-v2.2/REVIEW.md](plan-v2.2/REVIEW.md)。加人与邀请（R12、R15、R16）见 [add-and-invite/DESIGN.md](add-and-invite/DESIGN.md)，复核见 [add-and-invite/REVIEW.md](add-and-invite/REVIEW.md)。
 
@@ -63,11 +63,11 @@
 | RD-02 | 导航用 **NAV-V3**：App 底栏 ホーム / 人脈 / iOrbit / イベント / Task；「我的」从首页左上头像进入，收件箱从首页右上 🔔 进入（只显示红点）；Web 左栏 ホーム / 人脈 / iOrbit / イベント / Task / 受信箱，底部 主催 / 設定。替代 2026-10-04 人脉方案的导航（其内容想法放进各功能 Sprint） | R05、R07 |
 | RD-03 | 在 `redesign` 分支开发；所有功能完成并整体验收后一次合并回 `chat-agent`；**改版期间 `chat-agent` 冻结** | 全部 |
 | RD-04 | 骨架由小雨一人做完；时间不作为约束；验收 = 产品负责人看截图集并在模拟器 / 浏览器试用 + 独立 AI 复核（`REVIEW.md`） | R01–R09 |
-| RD-05 | **新 token 值直接覆盖旧 token**；文字用加深版颜色，所有「文字 × 底色」组合 ≥4.5:1，设计原值只用于图形、装饰和 ≥18px 粗体；两端默认主题跟随系统，设置里提供 自动 / 浅色 / 深色 | R01、R07 |
+| RD-05 | **新 token 值直接覆盖旧 token**；文字用加深版颜色，所有「文字 × 底色」组合 ≥4.5:1，设计原值只用于图形、装饰和 ≥18px 粗体；两端默认主题跟随系统，设置里提供 自动 / 浅色 / 深色。**例外（用户决定 2026-10-12）**：Web 左栏未选中项的图标与文字照设计稿用 `--ink-3`（对标 iOS 标签栏未选中项的浅灰，靠图标与选中态区分） | R01、R07 |
 | RD-06 | **一律改用设计稿的命名**（ink、surface、plum、rose、mac、coral、ok …）；App 和 Web 引用旧名字的地方一次改完，不保留旧名字或别名 | R01 |
 | RD-07 | 「旧颜色 → 新颜色」对照表由执行人出好，**先给产品负责人确认再应用** | R01 |
 | RD-08 | `shared/design`、`shared/copy` 加进 App 同步白名单（`AGENTS.md` 相应修改） | R01、R03 |
-| RD-09 | 字体按界面语言切换：日文 Hiragino Sans / Noto Sans JP，中文 PingFang SC / Noto Sans SC，英文系统字体；去掉 Noto Serif SC | R01 |
+| RD-09 | 字体按界面语言切换：日文 Hiragino Sans / Noto Sans JP，中文 PingFang SC / Noto Sans SC，英文系统字体；去掉 Noto Serif SC → **修订（用户决定 2026-10-12，R07 像素返工）**：日文改用设计稿 kit 的 `--font`——系统字体优先（英文、数字为 SF），假名汉字仍是 Hiragino Sans / Noto Sans JP；中文、英文不变 | R01、R07 |
 | RD-10 | ~~图标在骨架里一次换完：App 全部 Ionicons 换成设计稿图标；最后移除 Ionicons 依赖~~ → **修订（2026-10-09）**：骨架建图标源、两端 `Icon` 和展示页，导航壳换新图标；设计稿没有的按同样风格一次补画齐，出「Ionicons → 新图标」对照表给功能 Sprint 用。旧屏的 Ionicons 原样保留，门禁保证新代码不用、旧用法只减不增；最后一个旧屏删除时移除依赖（RD-24） | R02 |
 | RD-11 | 语言：App 跟随设备、Web 跟随浏览器语言，不是中 / 日 / 英时回退**日语**；已手动选过语言的用户保持不变 | R03 |
 | RD-12 | 两端文案文件全部按功能拆开；~~两端旧页面里写死的文字在骨架里全部抽出并补齐日语~~ → **修订（2026-10-09）**：骨架只处理标准用词源、导航壳和保留组件的文案；旧屏写死的文字原样保留，门禁保证新代码零容忍、旧用法只减不增，由功能 Sprint 整屏重写时按术语表处理（RD-24）；三语标准用词由产品负责人在 R03 报告里审 | R03 |
