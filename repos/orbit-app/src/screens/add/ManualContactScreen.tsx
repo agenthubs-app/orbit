@@ -69,7 +69,8 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
   const [problem, setProblem] = useState<"name" | "review" | "sample" | "failed" | null>(null);
   const key = useRef<{ fingerprint: string; key: string } | null>(null);
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  // Set on every mount: Fast Refresh and StrictMode re-run effects, and a ref left false would drop answers.
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
     void api.listEvents().then((list) => { if (mounted.current) setEvents(eventChips(list, now())); });
@@ -153,20 +154,30 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
     }
     toast.success(t("add.manual.addedToast"), {
       sub: t("add.manual.addedSub", { name: snapshot.displayName.trim() }),
-      undo: () => {
-        void api.undoManual(contactId).then((undone) => {
-          if (!mounted.current) return;
-          if (undone.ok) {
-            // Back from the person's page to the form, with what was typed.
-            router.back();
-            setForm(snapshot);
-            toast.info(t("add.manual.undoneToast"));
-          } else {
-            toast.error(t(undone.failure.kind === "other" && undone.failure.status === 409 ? "add.manual.undoExpired" : "add.manual.undoFailed"));
-          }
-        });
-      },
+      undo: () => void undoSaved(contactId, snapshot),
     });
+  }
+
+  // 元に戻す (simulator walkthrough fix): the server can take a few seconds, so say so at once;
+  // the answer is always reported (the toast lives at the root, so it shows even if this page
+  // has gone); the form comes back only while this page is still there, and dismissTo returns to
+  // it whether the person's page is still on top or the person already went back by themselves.
+  async function undoSaved(contactId: string, snapshot: ManualForm) {
+    const request = api.undoManual(contactId).catch(() => null);
+    // The toast closes itself right after this callback returns; show 元に戻しています… just after that.
+    await Promise.resolve();
+    toast.info(t("add.manual.undoing"));
+    const undone = await request;
+    if (!undone?.ok) {
+      const expired = undone?.failure.kind === "other" && undone.failure.status === 409;
+      toast.error(t(expired ? "add.manual.undoExpired" : "add.manual.undoFailed"));
+      return;
+    }
+    if (mounted.current) {
+      setForm(snapshot);
+      router.dismissTo("/contacts/new/manual" as Href);
+    }
+    toast.info(t("add.manual.undoneToast"));
   }
 
   const saveLabel = decision.kind === "merge" ? t("add.manual.saveMerge") : t("add.manual.save");

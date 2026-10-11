@@ -228,6 +228,7 @@ export const add = {
   "add.manual.addedToast": "已加入人脉",
   "add.manual.addedSub": "{name} · 手动输入",
   "add.manual.mergedToast": "已合并到已有的人",
+  "add.manual.undoing": "正在撤销…",
   "add.manual.undoneToast": "已撤销添加",
   "add.manual.undoExpired": "已超过可撤销的时间",
   "add.manual.undoFailed": "没能撤销",

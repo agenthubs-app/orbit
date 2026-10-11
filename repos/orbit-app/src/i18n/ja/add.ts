@@ -229,6 +229,7 @@ export const add = {
   "add.manual.addedToast": "人脈に追加しました",
   "add.manual.addedSub": "{name} · 手入力",
   "add.manual.mergedToast": "既存の人に統合しました",
+  "add.manual.undoing": "元に戻しています…",
   "add.manual.undoneToast": "追加を取り消しました",
   "add.manual.undoExpired": "取り消せる時間を過ぎました",
   "add.manual.undoFailed": "取り消せませんでした",

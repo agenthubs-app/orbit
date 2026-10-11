@@ -228,6 +228,7 @@ export const add = {
   "add.manual.addedToast": "Added to your network",
   "add.manual.addedSub": "{name} · added by hand",
   "add.manual.mergedToast": "Merged into someone",
+  "add.manual.undoing": "Undoing…",
   "add.manual.undoneToast": "The addition was undone",
   "add.manual.undoExpired": "Too late to undo",
   "add.manual.undoFailed": "Could not undo",

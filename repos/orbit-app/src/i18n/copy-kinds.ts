@@ -852,6 +852,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["add.manual.addedToast", "toast"],
   ["add.manual.addedSub", "label"],
   ["add.manual.mergedToast", "toast"],
+  ["add.manual.undoing", "toast"],
   ["add.manual.undoneToast", "toast"],
   ["add.manual.undoExpired", "toast"],
   ["add.manual.undoFailed", "toast"],

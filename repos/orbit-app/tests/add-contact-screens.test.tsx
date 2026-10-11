@@ -122,6 +122,8 @@ const router = {
   replace: (href) => { nav().navigation.push({ method: "replace", href }); nav().stack[nav().stack.length - 1] = href; nav().render?.(); },
   back: () => { nav().navigation.push({ method: "back" }); if (nav().stack.length > 1) nav().stack.pop(); nav().render?.(); },
   canGoBack: () => nav().stack.length > 1,
+  // expo-router: pops back to the nearest href in the stack; not in the stack → it replaces the top.
+  dismissTo: (href) => { nav().navigation.push({ method: "dismissTo", href }); const at = nav().stack.lastIndexOf(href); if (at >= 0) nav().stack.length = at + 1; else nav().stack[nav().stack.length - 1] = href; nav().render?.(); },
   dismissAll: () => {}, setParams() {},
 };
 export const useRouter = () => router;
@@ -554,6 +556,38 @@ test("手入力: 保存 opens the person with 「人脈に追加しました · 
   assert.equal(server.people.length, 0, "the contact is gone (the server keeps a tombstone)");
   assert.equal((await nav(page)).stack.at(-1), "/contacts/new/manual", "back on the form");
   assert.equal(await page.getByRole("textbox", { name: "名前" }).inputValue(), "新井 光", "with what was typed");
+});
+
+test("模拟器走查: 元に戻す says it is working at once, waits for the server, then returns to the form (not further back)", async (t) => {
+  let release!: () => void;
+  const { page, server } = await open(t, "/contacts/new/manual", { stack: ["/contacts/new", "/contacts/new/manual"], setup: (s) => { s.undoGate = new Promise((resolve) => { release = resolve; }); } });
+  await page.getByRole("textbox", { name: "名前" }).fill("遅延 太郎");
+  await page.waitForTimeout(500);
+  await page.getByRole("button", { name: "保存" }).last().click();
+  await page.getByText("人脈に追加しました").waitFor();
+  await page.getByRole("button", { name: "元に戻す" }).click();
+  await page.getByText("元に戻しています…").waitFor();
+  assert.ok(server.calls.some((call) => /\/api\/contacts\/manual\/[^/]+\/undo$/.test(call.path)), "元に戻す reached the server");
+  // The person goes back to the form by themselves while the answer is on its way.
+  await page.evaluate(() => { const w = window as unknown as { addNav: { stack: string[]; render?: () => void } }; w.addNav.stack.pop(); w.addNav.render?.(); });
+  release();
+  await page.getByText("追加を取り消しました").waitFor();
+  assert.equal(server.people.length, 0);
+  assert.deepEqual((await nav(page)).stack, ["/contacts/new", "/contacts/new/manual"], "still on the form, not one page further back");
+  assert.equal(await page.getByRole("textbox", { name: "名前" }).inputValue(), "遅延 太郎", "with what was typed");
+});
+
+test("模拟器走查: 元に戻す too late (409 UNDO_EXPIRED) says so and keeps the person's page", async (t) => {
+  const { page, server } = await open(t, "/contacts/new/manual");
+  await page.getByRole("textbox", { name: "名前" }).fill("期限 花子");
+  await page.waitForTimeout(500);
+  await page.getByRole("button", { name: "保存" }).last().click();
+  await page.getByText("人脈に追加しました").waitFor();
+  server.undoExpired = true;
+  await page.getByRole("button", { name: "元に戻す" }).click();
+  await page.getByText("取り消せる時間を過ぎました").waitFor();
+  assert.equal(server.people.length, 1, "still in 人脈");
+  assert.match((await nav(page)).stack.at(-1)!, /^\/contacts\/contact-manual/, "the person's page stays");
 });
 
 test("手入力: the sample account cannot save (403 SAMPLE_READ_ONLY) and the page says so", async (t) => {

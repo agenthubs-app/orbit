@@ -36,6 +36,10 @@ export class FakeAddServer {
   /** R12 review m7: uploads wait for this before answering (null = answer at once). */
   uploadGate: Promise<void> | null = null;
   undone: string[] = [];
+  /** 元に戻す waits for this before answering (null = answer at once), like a slow network. */
+  undoGate: Promise<void> | null = null;
+  /** 元に戻す answers 409 UNDO_EXPIRED (the person was touched or 10 minutes passed). */
+  undoExpired = false;
   private sequence = 0;
 
   constructor(people: Partial<Person>[] = []) {
@@ -221,8 +225,9 @@ export class FakeAddServer {
     }
     if ((match = /^\/api\/contacts\/manual\/([^/]+)\/undo$/.exec(path)) && call.method === "POST") {
       const id = decodeURIComponent(match[1]!);
+      if (this.undoGate) await this.undoGate;
       const index = this.people.findIndex((person) => person.id === id && person.createdVia === "manual_v2");
-      if (index < 0) return fail(409, "CONFLICT", "UNDO_EXPIRED");
+      if (index < 0 || this.undoExpired) return fail(409, "CONFLICT", "UNDO_EXPIRED");
       this.people.splice(index, 1);
       this.undone.push(id);
       return ok({ outcome: "undone" });
