@@ -1,5 +1,7 @@
 # 0918 像素比对
 
+> 2026-10 改版（`redesign` 分支，设计稿 `docs/designs/redesign-2026-10/`）用 `compare-redesign.mjs` / `compare-redesign-app.mjs`，见 [README-redesign.md](README-redesign.md)。
+
 前置：`python3 -m http.server 3320 -d /Users/li/work/orbit/docs/designs`（或 launch.json 的 `designs`）与 dev server（launch.json `orbits-newui`，3100）。
 
 ## 认证方式
