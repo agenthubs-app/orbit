@@ -81,5 +81,9 @@
 - **乙（R18）**：`profile-onboarding-navigation.ts` 的 `profileContinuationPath` 与登录回跳加了「`next=/i/<码>` 直接回去」一行；マイページ「招待コード」入口链接 `contacts/new/invite`。
 - **乙（R11）**：`inviteLinkedContactIds` → `sourceChip = 'self'`；`InviteShareSheet` / `InviteUnlinkSheet`（展示页）挂到联系人详情；`publicProfile.offering / seeking` 与 `fieldHistory`；同步暂停字段 `pausedFields`。
 - **乙（R13 / R14）**：「邀请被接受」通知用现有 `contact` / `source`；App 推送白名单需要 `/contacts/*`。
-- **合回前授权**：生产迁移 `invite-codes-core`（先迁移后部署；只读预检三张表不存在）、`ORBIT_INVITE_RATE_SECRET`、邀请链接正式域名（`ORBIT_PUBLIC_ORIGIN`）、通用链接关联文件、App 新原生依赖（`expo-clipboard`）的 TestFlight 构建。
+- **合回前授权**：生产迁移 `invite-codes-core` v1 + v2（先迁移后部署；只读预检三张表不存在）、确认生产由平台写入 `x-real-ip`（复核 m2）、`ORBIT_INVITE_RATE_SECRET`、邀请链接正式域名（`ORBIT_PUBLIC_ORIGIN`）、通用链接关联文件、App 新原生依赖（`expo-clipboard`）的 TestFlight 构建。
 - 本机库留有走查数据：QA 的码 `EVPE-N93F` 与它和 `verify-event` 的连接，以及子任务 C 端到端建的两个一次性账号 `r15-e2e-*@orbit.test`。
+
+## 复核修复（2026-10-11）
+
+复核结论「不通过」（S1 兑换时用自报资料覆盖已有联系人），已全部处理，见 [REVIEW 处理记录](REVIEW.md#处理记录执行人2026-10-11)。S1 改为「可能同一人只记建议、所有者确认后统合」，列入 DESIGN §10 #7 请用户拍板。对照页与点击记录：`~/orbit-sprint-evidence/redesign/R15/run-01/compare.html`、`click-verify.log`。
