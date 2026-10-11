@@ -12,6 +12,7 @@
   - Web 新样式只用 CSS Modules，渲染在 `[data-orbit-2026]` 作用域内，不嵌进旧的 `[data-orbit-real-page]`；
   - 新路由按开发说明第 7 节登记（App 4 处、Web 4 处）；
   - 新接口在 live 实现之前返回 `NOT_IMPLEMENTED`，界面用 `whenNotImplemented` 隐藏入口或用默认值，不显示错误。
+- **还原设计稿**（RD-16 修订，用户决定 2026-10-11，取代「展示页 + 并排截图、不做逐像素门禁」）：每个画面必须和设计稿画板**一模一样**，只允许测试数据与设计稿示例数据的**文字内容**不同（人名、数字、日期）；排版、颜色、间距、字号、字重、圆角、阴影、图标、元素有无和顺序都必须一致。设计稿里有的不许自己改、不许省略，做不到或不该做的**先请用户拍板**；REPORT「自定决定」里不得再出现偏离设计的条目（以前的全部作废，见 [maintenance/2026-10-11-pixel-audit.md](maintenance/2026-10-11-pixel-audit.md)）。验收靠逐像素门禁：整屏 raw ≤0.02，`--grid` 逐带比对，超阈值的带必须在归因文件里具名且只能是 `[data]`（数据文字不同）。Web 1440 / 1024 / 390 × 浅色 / 深色、截完整页面含导航壳（`repos/orbits/scripts/visual/compare-redesign.mjs`）；App 用内置 iOS 模拟器截真实画面、不用 react-native-web，浅色 / 深色（`compare-redesign-app.mjs`）。用法见 `repos/orbits/scripts/visual/README-redesign.md`；不过门禁的画面不得标 done。
 - **旧屏**（RD-24）：旧屏按 [`screen-ownership.md`](screen-ownership.md) 由对应功能 Sprint 整屏重写；三份允许清单（Ionicons、写死文字、旧写法）只减不增，重写一个屏就把它从清单里删掉。
 - **热点文件归属**（定稿，2026-10-10 确认；以后变更改在这里，两端同步）。非负责人要改热点文件时，先向负责人提需求，由负责人改：
 

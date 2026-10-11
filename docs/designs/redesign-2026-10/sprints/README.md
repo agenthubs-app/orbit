@@ -74,7 +74,7 @@
 | RD-13 | 翻译不能「直接翻一遍」：先调研成熟产品和风格指南定术语表，再按「翻译 → 自动检查 → 独立审校 → 放回界面截图 → 修改」循环到达标，每轮数字写进报告（细则见 R03） | R03 |
 | RD-14 | 组件库做前 5 类通用组件（基础、反馈、AI、控件、状态），业务专用组件由各功能 Sprint 做；~~App 里 `Alert.alert`、自用 `Modal`、自写分段控件全部换成新组件；App 旧公用组件全部换成新组件并删除~~ → **修订（2026-10-09）**：只有会保留的基础设施（访问 / 离线 / 错误边界、登录会话）改用新组件；旧屏里的旧写法和旧公用组件原样保留，门禁保证只减不增，使用点归零时删除旧组件（RD-24）；加原生依赖 gesture-handler、reanimated、expo-blur、expo-haptics；锁定 `react-native` 版本 | R04 |
 | RD-15 | 组件展示页：App 在开发包和 TestFlight 可见、正式版隐藏；Web 在本地和预览 / staging 可见、正式环境隐藏 | R04、R06 |
-| RD-16 | 组件验收用展示页 + 与设计稿画板并排的截图（浅色、深色、窄屏、大字号）；**不做逐像素门禁**；所有动画遵守「减少动效」（只保留淡入） | R04、R06 |
+| RD-16 | ~~组件验收用展示页 + 与设计稿画板并排的截图（浅色、深色、窄屏、大字号）；**不做逐像素门禁**~~；所有动画遵守「减少动效」（只保留淡入） → **修订（用户决定 2026-10-11）**：**每个画面必须和设计稿画板一模一样**。①允许不同的只有一项：测试数据和设计稿示例数据的**文字内容**（人名、数字、日期等）；排版、颜色、间距、字号、字重、圆角、阴影、图标、元素有无和顺序都必须一致。②设计稿里有的东西不许自己改、也不许省略；确实做不到或不该做的，**先由用户拍板**再动。以前各 Sprint REPORT「自定决定」里偏离设计的条目**全部作废、重新上报**（清单见 [maintenance/2026-10-11-pixel-audit.md](maintenance/2026-10-11-pixel-audit.md)）。③验收靠**逐像素门禁**，不靠目测并排截图：整屏 raw 差异 ≤0.02；用 `--grid` 逐带比对，超阈值的带必须在归因文件里具名，且**只能归因为「数据文字不同」**（`[data]`）。④Web：1440 / 1024 / 390 三种宽度 × 浅色 / 深色，截**完整页面（含导航壳）**，工具 `repos/orbits/scripts/visual/compare-redesign.mjs`；App：内置 iOS 模拟器（`mcp__Claude_Code_iOS_Simulator__control` / `xcrun simctl io booted screenshot`）截**真实画面**，不用 react-native-web，浅色 / 深色都截，工具 `compare-redesign-app.mjs`（用法见 `repos/orbits/scripts/visual/README-redesign.md`）。展示页仍保留，但展示页的组件同样过像素门禁 | R04、R06、全部功能 Sprint |
 | RD-17 | 设计稿矛盾：「完成」一律用绿色（`ok`）；Web 抽屉内容多的 520、内容少的 380；Web iOrbit 历史栏 260；深色模式 Toast 仍是深色胶囊（比背景亮一档的面色 + 浅色字） | R04、R06、R07 |
 | RD-18 | Web 新组件样式用 **CSS Modules**，放在新作用域 `[data-orbit-2026]`，不嵌在旧 `[data-orbit-real-page]` 里；新组件 CSS 禁止十六进制颜色 | R06 |
 | RD-19 | Web 所有已登录页面在骨架里**一次**切换到新左栏，删除旧顶栏和悬浮球 | R07 |
@@ -91,7 +91,7 @@
 2. **档位 H**：每个 Sprint 都动共享代码。TDD（先 RED），真实渲染测试，收口跑两端全量和 typecheck；orbits 另跑 `typecheck:app`、`lint`。
 3. **GitNexus**：改函数 / 组件前跑 `impact`（upstream），HIGH / CRITICAL 先在 REPORT 写明对策；`UNKNOWN` 必须用文本搜索确认；提交前跑 `detect-changes`。
 4. **同步**：改了 `repos/orbits/shared/**` 的同步目录，必须在 App 跑 `npm run sync:contract`，并在同一提交里带上副本；**不得直接改 App 里的副本**。
-5. **证据**：截图、日志放 `~/orbit-sprint-evidence/redesign/R0x/run-01/`；每个 Sprint 的 REPORT 附一个截图对照页（设计稿画板 ↔ 实现，浅色 / 深色）。
+5. **证据**：截图、日志放 `~/orbit-sprint-evidence/redesign/R0x/run-01/`；每个 Sprint 的 REPORT 附一个截图对照页（设计稿画板 ↔ 实现，浅色 / 深色）。**RD-16 修订（用户决定 2026-10-11）后另附像素门禁结果：每个画面 × 宽度 × 主题的 raw、超阈值带数、归因文件路径；不过门禁的画面不得标 done。**
 6. **不碰生产**：不连 Neon、不部署；数据库只用本地 `orbit_test` 等测试库；骨架阶段**没有产品内的付费 AI 调用**（R03 的翻译和审校由开发用 AI 会话完成，不走产品的 AI 接口）。
 7. **界面用词**：所有用户看得到的文字用普通人能懂的说法，不出现「来源」「证据」「关系设置」这类内部用语。
 8. **复核**：每个 Sprint 结束由独立 AI 复核（跑全量、运行时抽查、对照 SC），写 `REVIEW.md`；复核发现的问题直接在 `redesign` 上修（RD-25）；产品负责人看截图集并试用。

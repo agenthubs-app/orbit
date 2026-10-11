@@ -109,12 +109,18 @@ render(body.data);
 3. 产品清单：同样在 `repos/orbits` 里跑 `npm run audit:surfaces`（写到根目录 `docs/audits/product-surface-*` 和 `button-action-coverage.md`，一起提交；生成的 README 会写当前 HEAD 和未提交改动数，在干净的工作区里生成最准），`tests/audits/product-surface-manifest.test.ts` 会检查新的 P0 / P1 候选。
 4. `orbit-2026/shell/shell-routes.ts`：新页面默认就有壳（已登录的 `/app/**`）；只有它属于左栏某一栏时才在 `shellNavKeyFor` 加一行，全屏或 kiosk 类页面才需要在例外里排除；iOrbit 以外的页面默认允许右栏。⌘K 的页面上下文（`orbit-global-ask/orbit-ask-routes.ts` 的 `PAGE_CONTEXTS`）可选：加了，⌘K 交给 iOrbit 时会带上「表示中：…」。
 
-## 8. 截图对照页
+## 8. 截图对照页与像素门禁
+
+> ~~组件 / 画面验收用「设计稿画板 ↔ 实现」并排截图，不做逐像素门禁~~ → **修订（RD-16，用户决定 2026-10-11）**：画面必须和设计稿画板一模一样，只允许数据文字内容不同；验收靠逐像素门禁，并排对照页只作阅读辅助。
 
 - 证据放 `~/orbit-sprint-evidence/redesign/R<编号>/run-01/`。
-- **App**：模拟器开发包（`repos/orbit-app/.env.development.local` 指向 `http://localhost:3000`，不要改 `.env.local`；起 Metro 不带 `CI=1`）；`xcrun simctl io booted screenshot <文件>`，浅色 / 深色各一张。
-- **Web**：本地 dev server 登录 QA 账号（密码在 `repos/orbits/.env.local` 的 `ORBIT_PRIMARY_TEST_ACCOUNT_PASSWORD`，脚本从文件读，不要贴出来），用 Playwright 在 1440 / 1024 / 390 截图；可以照 R07 的 `screens/` 做法。
-- 对照页 `compare.html`：左边设计稿画板（`docs/designs/redesign-2026-10/` 下的原型），右边实现，浅色 / 深色各一行；放在证据目录，REPORT 里写路径。
+- **先找画板**：每个画面先在 `docs/designs/redesign-2026-10/` 里找到对应画板（文件 + 画板标题），写进 PLANNER；找不到画板的状态（如 STALE、错误态）标「设计稿无」并**先请用户拍板**画法，不许自己发挥。
+- **设计稿里有的不许改、不许省**：做不到或不该做的先上报用户；REPORT「自定决定」只能写和设计稿无关的工程决定。
+- **Web**：本地 dev server 登录 QA 账号（密码在 `repos/orbits/.env.local` 的 `ORBIT_PRIMARY_TEST_ACCOUNT_PASSWORD`，脚本从文件读，不要贴出来），用 `repos/orbits/scripts/visual/compare-redesign.mjs` 在 **1440 / 1024 / 390 × 浅色 / 深色**截**完整页面（含左栏、主标题区、右栏等导航壳）**，与设计稿画板逐像素比对。
+- **App**：内置 iOS 模拟器（`mcp__Claude_Code_iOS_Simulator__control`；开发包用 `repos/orbit-app/.env.development.local` 指向 `http://localhost:3000`，不要改 `.env.local`；起 Metro 不带 `CI=1`）截**真实画面**，**不用 react-native-web**；`xcrun simctl io booted screenshot <文件>`，浅色 / 深色各一张；用 `compare-redesign-app.mjs` 按设备点宽缩放后与设计稿 App 画板逐带比对。
+- **门禁**：整屏 raw ≤0.02；`--grid` 逐带比对，超阈值的带必须在归因文件（`repos/orbits/scripts/visual/attribution-redesign-<Sprint>.json`）里具名，且只能归因为 `[data]`（数据文字不同）；有一条带写不出 `[data]` 理由，就是缺陷，修完再跑。不过门禁的画面不得标 done。
+- 对照页 `compare.html`：左边设计稿画板，中间实现，右边 diff，浅色 / 深色各一行，附 raw 与超阈值带数；放在证据目录，REPORT 里写路径和总表。
+- 用法细节见 `repos/orbits/scripts/visual/README-redesign.md`。
 
 ## 9. 改契约、改热点文件
 
@@ -125,5 +131,5 @@ render(body.data);
 
 1. 两端全量、typecheck、lint，对照基线零新增失败（失败的单独重跑确认是否不稳定）。`npm run lint` 只检查一份固定清单；新文件靠 `npm run typecheck` / `typecheck:app` 和各门禁测试把关。
 2. 先 `node .gitnexus/run.cjs analyze --index-only`，再 `node .gitnexus/run.cjs detect-changes --scope all --repo .`，结果写进 REPORT（索引落后时它只看得到少数文件，结论不可信）。
-3. 写 `REPORT.md`（做了什么、SC 对照、自定决定、基线 → 收口、GitNexus、交接、已知例外），登记表改「done，待复核」，提交并 push。
+3. 写 `REPORT.md`（做了什么、SC 对照、**像素门禁总表**、自定决定（只限工程决定，偏离设计稿的必须先请用户拍板，RD-16）、基线 → 收口、GitNexus、交接、已知例外），登记表改「done，待复核」，提交并 push。
 4. 独立 AI 复核写 `REVIEW.md`；修完 M 级和能修的 m 级，追加「处理记录」，登记表改「done，已复核，问题已修」。
