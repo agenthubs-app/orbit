@@ -63,7 +63,7 @@ export function createIngestContentUploader({ request = fetch, put = upload, cac
       const mode = await json(BASE);
       if (!mode.ok || typeof mode.body?.data?.directUpload !== "boolean") return { ok: false, errorCode: mode.errorCode ?? "UPLOAD_UNAVAILABLE" };
       if (!mode.body.data.directUpload) {
-        const url = `/api/contact-drafts/business-card/batches/v2/${input.batchId}/items/${input.itemId}/${input.operation === "replace" ? "replace" : "content"}`;
+        const url = `/api/contact-drafts/business-card/batches/v2/${encodeURIComponent(input.batchId)}/items/${encodeURIComponent(input.itemId)}/${input.operation === "replace" ? "replace" : "content"}`;
         const result = await json(url, { method: input.operation === "replace" ? "POST" : "PUT", body: input.file,
           headers: { "Content-Type": input.mimeType, ...(input.operation === "replace" ? { "If-Match": String(input.expectedVersion) } : {}) } });
         return { ok: result.ok, errorCode: result.errorCode };

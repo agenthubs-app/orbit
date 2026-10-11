@@ -61,6 +61,13 @@ test("?method=csv / contacts / event mount their own work areas (file uploader, 
   assert.match(event, /<a class="nwi-link" href="\/app\/events">去活动页交换名片<\/a>/);
 });
 
+test("R12 review m6: with scanHref (the temporary landing for その他) the card method links to the new reading page instead of the old uploader", () => {
+  const html = render(<NetworkImport availability={availability} initialMethod="csv" scanHref="/app/contacts/new/scan" />);
+  assert.match(html, /data-import-method="scan"[\s\S]*?<a class="btn nw-import-cta" href="\/app\/contacts\/new\/scan" data-import-scan-link="">上传名片<\/a>/);
+  assert.equal((html.match(/class="btn nw-import-cta( nw-import-cta-on)?"/g) ?? []).length, 4, "still four method cards");
+  assert.doesNotMatch(html, /data-card-uploader/);
+});
+
 test("the CSV/vCard availability does not depend on OCR: unavailable card capture only affects the scan method", () => {
   const scan = render(<NetworkImport availability={{ available: false, reason: "ocr_provider_unconfigured" }} />);
   assert.doesNotMatch(scan, /data-card-uploader/);

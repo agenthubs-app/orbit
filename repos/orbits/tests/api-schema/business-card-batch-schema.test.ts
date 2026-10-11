@@ -228,7 +228,7 @@ test("ingest item schema preserves optional card identity provenance without def
 
 test("R12 review m4: confirmedMerged is optional and kept; older servers without it still parse", async () => {
   const validator = await schema("ingestItemSchema");
-  assert.equal("confirmedMerged" in validator.parse(item), false, "absent stays absent (no default)");
+  assert.equal("confirmedMerged" in (validator.parse(item) as object), false, "absent stays absent (no default)");
   for (const confirmedMerged of [false, true]) {
     const expected = { ...item, confirmedMerged };
     assert.deepEqual(validator.parse(expected), expected);

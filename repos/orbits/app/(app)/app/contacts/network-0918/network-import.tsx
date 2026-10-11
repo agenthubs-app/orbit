@@ -128,7 +128,10 @@ export function ImportLogRow({ batch: b, href, t, nowMs }: { batch: ContactImpor
   );
 }
 
-export function NetworkImport({ availability, initialMethod = "scan", jobId, importId }: { availability: NetworkImportAvailability; initialMethod?: NetworkImportMethod; jobId?: string; importId?: string }) {
+/**
+ * `scanHref`（R12 复核 m6）：给了就不在这里走旧的名片上传——「名片」方法卡的按钮直接去这个地址（新「名刺の読み取り」页）。
+ */
+export function NetworkImport({ availability, initialMethod = "scan", jobId, importId, scanHref }: { availability: NetworkImportAvailability; initialMethod?: NetworkImportMethod; jobId?: string; importId?: string; scanHref?: string }) {
   const { t, preserveHref } = useOrbitLanguage();
   const router = useRouter();
   const [method, setMethod] = useState<NetworkImportMethod>(initialMethod);
@@ -239,7 +242,9 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId, imp
                       <span className="nw-import-method-icon" style={{ background: m.iconBg, color: m.iconFg }}>{m.icon}</span>
                       <strong className="nw-import-method-title">{t(m.title)}</strong>
                       <span className="nw-import-method-desc">{t(m.desc)}</span>
-                      <button type="button" className={on ? "btn nw-import-cta nw-import-cta-on" : "btn nw-import-cta"} onClick={() => choose(m.key)}>{t(m.cta)}</button>
+                      {m.key === "scan" && scanHref
+                        ? <a className="btn nw-import-cta" href={preserveHref(scanHref)} data-import-scan-link="">{t(m.cta)}</a>
+                        : <button type="button" className={on ? "btn nw-import-cta nw-import-cta-on" : "btn nw-import-cta"} onClick={() => choose(m.key)}>{t(m.cta)}</button>}
                       <span className="nw-import-method-hint">{t(m.hint)}</span>
                     </div>
                   );

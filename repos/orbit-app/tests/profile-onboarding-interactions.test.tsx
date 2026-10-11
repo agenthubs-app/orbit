@@ -252,7 +252,7 @@ test("import: 拍名片 opens the existing batch import and 完成设置 goes to
   await shot(page, "06-import");
   await page.getByRole("button", { name: "拍名片" }).click();
   await page.getByRole("button", { name: "完成设置" }).click();
-  assert.deepEqual((await fx(page)).navigation, ["push:/contacts/new/batch2", "replace:/events/e1"]);
+  assert.deepEqual((await fx(page)).navigation, ["push:/contacts/new/scan", "replace:/events/e1"]);
 });
 
 test("English and Japanese render the whole welcome and step copy", async t => {

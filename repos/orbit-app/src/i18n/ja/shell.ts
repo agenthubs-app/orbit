@@ -1,7 +1,7 @@
 export const shell = {
   "shell.parent.settings": "設定",
   "shell.parent.me": "マイページ",
-  "shell.parent.importCenter": "取り込み",
+  "shell.parent.importCenter": "人脈を追加",
   "shell.parent.networkAnalysis": "人脈分析",
   "shell.parent.network": "人脈",
   "shell.parent.eventOperations": "イベント運営",

@@ -108,7 +108,8 @@ test("手入力: event chips are the person's events within 30 days, nearest fir
     { id: "tomorrow", title: "製造業DX", startsAt: "2026-10-12T01:00:00Z" },
     { id: 3, title: "bad" },
   ], now);
-  assert.deepEqual(chips.map((chip) => chip.eventId), ["tomorrow", "last-week"]);
+  // R12 review M3: only events that have started (an upcoming one is not 「会った場所」 yet — the plan would count it as attended).
+  assert.deepEqual(chips.map((chip) => chip.eventId), ["last-week"]);
   assert.equal(formDensity({ ...EMPTY_MANUAL_FORM, displayName: "A" }), 1);
   assert.equal(formDensity({ ...EMPTY_MANUAL_FORM, displayName: "A", email: "a@b.example", met: { kind: "intro" } }), 2);
 });

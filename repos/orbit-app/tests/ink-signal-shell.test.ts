@@ -129,7 +129,7 @@ test("only exact primary routes own a tab bar and secondary routes have real par
   }
   for (const [path, href, label] of [
     ["/settings/api", "/settings", "设置"], ["/settings", "/profile", "我的"],
-    ["/contacts/one", "/contacts", "人脉"], ["/contacts/new/batch/one", "/contacts/new", "导入"],
+    ["/contacts/one", "/contacts", "人脉"], ["/contacts/new/batch/one", "/contacts/new", "添加人脉"],
     ["/events/one/operations/admission", "/events/one/operations", "活动运营"],
     ["/events/one/operations", "/events/one", "活动详情"], ["/tasks/one", "/task?seg=todo", "待办"],
     ["/inbox/one", "/inbox", "收件箱"], ["/schedule/personal/one", "/task?seg=calendar", "日历"],

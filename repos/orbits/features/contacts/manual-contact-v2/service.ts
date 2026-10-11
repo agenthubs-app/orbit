@@ -5,9 +5,12 @@
  * - 查重 = `findContactCandidate`（名片同一规则）+「同名」规则；手入力**不自动统合**（完全相同也返回候选），≤3 条。
  * - 新建走现有 `saveContact`（`orbit_records` 的 `contacts` 集合，与名片同一写入方式，`source.type = 'manual'`），
  *   记录带 `createdVia: 'manual_v2'`；「出会った場所」= 活动时写 `metEventId`（与名片同字段），紹介 / その他 写进备注一行「出会い：…」。
+ * - 活动核对（复核 M3）：`metEventId` 只写「存在、本人看得到（与 GET /api/events 同一份列表）、已经开始」的活动；
+ *   查不到 / 别人的 / 还没开始 / 查询失败 → 不写 `metEventId`（计划会按它记「已参加」），选的活动名改写成备注一行「出会い：…」。
  * - 统合 = `mergeIntoContactId` + `fieldChoices`，经 `applyContactFieldValues`（逐字段覆盖 + `fieldHistory`）。
  * - 幂等：`idempotencyKey` 的回执存 `orbit_records`（集合 `manual_contact_commands`，同 `task_mutations` 的做法）；
- *   重放返回第一次的结果，同键不同内容 → `IDEMPOTENCY_CONFLICT`。`duplicate_review` 没有写入，不留回执
+ *   重放返回第一次的结果，同键不同内容 → `IDEMPOTENCY_CONFLICT`；新建的人已被撤销 → `UNDONE`（复核 m2：不再回放
+ *   指向已删除联系人的 `created`）。`duplicate_review` 没有写入，不留回执
  *   （用户选「別の人として保存」时可以带同一个键重发）。
  * - 建完 / 统合后入队计划候补（`enqueuePlanMatchJob`，与单张名片同一种「东京当天」任务）；入队失败只记日志。
  * - 撤销：10 分钟内、本接口新建、之后没被改过 → 墓碑删除（`deleteRecord`，以 updatedAt 为前提）并撤掉待处理的计划候补；
@@ -43,7 +46,7 @@ export const MANUAL_CONTACT_SOURCE_LABEL = "Manual entry";
 
 const MERGE_FIELDS: readonly ManualContactMergeField[] = ["displayName", "organization", "role", "email", "phone"];
 
-export type ManualContactV2ErrorCode = "INVALID" | "NOT_FOUND" | "UNDO_EXPIRED" | "IDEMPOTENCY_CONFLICT" | "CONFLICT";
+export type ManualContactV2ErrorCode = "INVALID" | "NOT_FOUND" | "UNDO_EXPIRED" | "UNDONE" | "IDEMPOTENCY_CONFLICT" | "CONFLICT";
 
 export class ManualContactV2Error extends Error {
   readonly code: ManualContactV2ErrorCode;
@@ -59,6 +62,14 @@ export class ManualContactV2Error extends Error {
 export interface ManualContactPlanMatchPort {
   enqueue(input: { actorId: string; contactId: string }): Promise<void>;
   cancel(input: { actorId: string; contactId: string }): Promise<void>;
+}
+
+/**
+ * 「出会った場所」的活动核对：本人看得到的活动（null = 不存在或看不到）。`startsAt` 用来判断活动是否已经开始。
+ * live / mock 都用 GET /api/events 同一个活动服务（`configured.ts`）。
+ */
+export interface ManualContactEventLookup {
+  find(actorId: string, eventId: string): Promise<{ startsAt: string | null } | null>;
 }
 
 export interface ManualContactV2Unit {
@@ -83,6 +94,8 @@ export interface ManualContactV2Service {
 
 export interface ManualContactV2ServiceOptions {
   storage: ManualContactV2Storage;
+  /** 活动核对；缺省 = 无法核对，一律不写 metEventId。 */
+  events?: ManualContactEventLookup | null;
   now?: () => Date;
   log?: (line: string) => void;
 }
@@ -93,6 +106,11 @@ function text(value: unknown): string {
 
 function digest(parts: readonly string[]): string {
   return createHash("sha256").update(JSON.stringify(parts)).digest("hex");
+}
+
+/** 手入力新建的联系人 id（按人 + 幂等键，回放时同一个）。 */
+function createdContactId(actorId: string, key: string): string {
+  return `contact:manual-v2:${digest([actorId, key]).slice(0, 24)}`;
 }
 
 function canonical(value: unknown): unknown {
@@ -124,17 +142,21 @@ function organizationKey(value: string): string {
   return value.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-/** 「出会った場所」是紹介 / その他 时写进备注的一行；活动走 metEventId，不写备注。 */
-function meetingNoteLine(input: ManualContactCreateInput): string | null {
+/**
+ * 「出会った場所」写进备注的一行：紹介 / その他；活动核对通过时走 metEventId、不写备注，
+ * 没通过时把选的活动名写成「出会い：…」。
+ */
+function meetingNoteLine(input: ManualContactCreateInput, eventVerified: boolean): string | null {
   const context = input.metContext;
-  if (!context || context.kind === "event") return null;
+  if (!context) return null;
   const label = text(context.label);
+  if (context.kind === "event") return eventVerified || !label ? null : `出会い：${label}`;
   if (context.kind === "intro") return label ? `出会い：紹介（${label}）` : "出会い：紹介";
   return label ? `出会い：${label}` : null;
 }
 
-function noteLines(input: ManualContactCreateInput): string[] {
-  const meeting = meetingNoteLine(input);
+function noteLines(input: ManualContactCreateInput, eventVerified: boolean): string[] {
+  const meeting = meetingNoteLine(input, eventVerified);
   const note = text(input.note);
   return [...(meeting ? [meeting] : []), ...(note ? note.split(/\r?\n/).map((line) => line.trimEnd()).filter((line) => line.trim()) : [])];
 }
@@ -145,12 +167,16 @@ function metEventOf(input: ManualContactCreateInput): { eventId: string; title: 
   return eventId ? { eventId, title: text(context?.label) || null } : null;
 }
 
-/** 统合时逐字段的写入值：选「existing」不动；选「incoming」照这次输入写（空 = 清空，姓名除外）；没选的只补空。 */
-export function mergeFieldValues(
-  existingPayload: Record<string, unknown>,
-  input: ManualContactCreateInput,
-): Partial<Record<ContactWritableField, string | null>> {
+/**
+ * 统合时逐字段的写入：选「existing」不动；选「incoming」照这次输入写（空 = 清空，姓名除外）；没选的只补空。
+ * 「只补空」交给 `applyContactFieldValues` 的 `fillBlanks`，在写入那一刻按最新记录判断（复核 m1）。
+ */
+export function mergeFieldValues(input: ManualContactCreateInput): {
+  values: Partial<Record<ContactWritableField, string | null>>;
+  fillBlanks: Partial<Record<ContactWritableField, string>>;
+} {
   const values: Partial<Record<ContactWritableField, string | null>> = {};
+  const fillBlanks: Partial<Record<ContactWritableField, string>> = {};
   for (const field of MERGE_FIELDS) {
     const incoming = text(input[field]);
     const choice = input.fieldChoices?.[field];
@@ -160,13 +186,27 @@ export function mergeFieldValues(
       values[field] = incoming || null;
       continue;
     }
-    if (incoming && !text(existingPayload[CONTACT_FIELD_PAYLOAD_KEY[field]])) values[field] = incoming;
+    if (incoming) fillBlanks[field] = incoming;
   }
-  return values;
+  return { fillBlanks, values };
 }
 
-export function createManualContactV2Service({ storage, now = () => new Date(), log = (line) => console.warn(line) }: ManualContactV2ServiceOptions): ManualContactV2Service {
+export function createManualContactV2Service({ storage, events = null, now = () => new Date(), log = (line) => console.warn(line) }: ManualContactV2ServiceOptions): ManualContactV2Service {
   const workspaceId = storage.workspaceId;
+
+  /** 复核 M3：这场活动存在、本人看得到、已经开始，才算「在这里认识」。 */
+  async function verifiedMetEvent(actorId: string, input: ManualContactCreateInput): Promise<{ eventId: string; title: string | null } | null> {
+    const candidate = metEventOf(input);
+    if (!candidate || !events) return null;
+    try {
+      const found = await events.find(actorId, candidate.eventId);
+      const startsAt = found?.startsAt ? Date.parse(found.startsAt) : Number.NaN;
+      return found && Number.isFinite(startsAt) && startsAt <= now().getTime() ? candidate : null;
+    } catch (error) {
+      log(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "manual_contact_event_lookup_failed" }));
+      return null;
+    }
+  }
 
   async function enqueueBestEffort(unit: ManualContactV2Unit, actorId: string, contactId: string): Promise<void> {
     if (!unit.planMatch) return;
@@ -178,13 +218,12 @@ export function createManualContactV2Service({ storage, now = () => new Date(), 
     }
   }
 
-  async function createContact(unit: ManualContactV2Unit, actorId: string, input: ManualContactCreateInput, key: string): Promise<ManualContactCreateResult> {
+  async function createContact(unit: ManualContactV2Unit, actorId: string, input: ManualContactCreateInput, key: string, metEvent: { eventId: string; title: string | null } | null): Promise<ManualContactCreateResult> {
     const fields = incomingFields(input);
     const at = now().toISOString();
-    const id = digest([actorId, key]).slice(0, 24);
-    const contactId = `contact:manual-v2:${id}`;
-    const metEvent = metEventOf(input);
-    const notes = noteLines(input).join("\n");
+    const contactId = createdContactId(actorId, key);
+    const id = contactId.slice("contact:manual-v2:".length);
+    const notes = noteLines(input, metEvent !== null).join("\n");
     const contact = {
       id: contactId,
       displayName: fields.displayName,
@@ -210,21 +249,23 @@ export function createManualContactV2Service({ storage, now = () => new Date(), 
     };
   }
 
-  async function mergeContact(unit: ManualContactV2Unit, actorId: string, input: ManualContactCreateInput, contactId: string): Promise<ManualContactCreateResult> {
+  async function mergeContact(unit: ManualContactV2Unit, actorId: string, input: ManualContactCreateInput, contactId: string, metEvent: { eventId: string; title: string | null } | null): Promise<ManualContactCreateResult> {
     const record = await unit.store.getRecord({ collectionName: "contacts", recordId: contactId, workspaceId });
     if (!record || record.lifecycleState !== "active" || !ownedByActor(record, actorId)) {
       throw new ManualContactV2Error("NOT_FOUND", "The contact to merge into was not found.");
     }
+    const { fillBlanks, values } = mergeFieldValues(input);
     try {
       await applyContactFieldValues({
         actorId,
-        appendNoteLines: noteLines(input),
+        appendNoteLines: noteLines(input, metEvent !== null),
         contactId,
-        fillMetEvent: metEventOf(input),
+        fillBlanks,
+        fillMetEvent: metEvent,
         now,
         source: "manual",
         store: unit.store,
-        values: mergeFieldValues(record.payload, input),
+        values,
         workspaceId,
       });
     } catch (error) {
@@ -280,6 +321,8 @@ export function createManualContactV2Service({ storage, now = () => new Date(), 
       const { idempotencyKey: _key, ...intent } = input;
       const fingerprint = digest([JSON.stringify(canonical(intent))]);
       const receiptId = digest([actorId, key]);
+      // 活动核对在事务外读（只读，读的是活动服务，不是联系人）。
+      const metEvent = await verifiedMetEvent(actorId, input);
       return storage.write(actorId, async (unit) => {
         const receiptQuery = { collectionName: MANUAL_CONTACT_RECEIPT_COLLECTION, recordId: receiptId, workspaceId };
         const receipt = await unit.store.getRecord({ ...receiptQuery, includeDeleted: true });
@@ -287,13 +330,19 @@ export function createManualContactV2Service({ storage, now = () => new Date(), 
           if (receipt.userId !== actorId || receipt.payload.fingerprint !== fingerprint) {
             throw new ManualContactV2Error("IDEMPOTENCY_CONFLICT", "The idempotency key was already used with different content.");
           }
-          return receipt.payload.result as ManualContactCreateResult;
+          const replayed = receipt.payload.result as ManualContactCreateResult;
+          // 复核 m2：新建的人已被撤销（墓碑）时，不回放指向已删除联系人的 created。
+          if (replayed.outcome === "created" && replayed.contactId) {
+            const contact = await unit.store.getRecord({ collectionName: "contacts", includeDeleted: true, recordId: replayed.contactId, workspaceId });
+            if (!contact || contact.lifecycleState !== "active") throw new ManualContactV2Error("UNDONE", "This contact was undone.");
+          }
+          return replayed;
         }
 
         let result: ManualContactCreateResult;
         const mergeInto = text(input.mergeIntoContactId);
         if (mergeInto) {
-          result = await mergeContact(unit, actorId, input, mergeInto);
+          result = await mergeContact(unit, actorId, input, mergeInto, metEvent);
         } else {
           if (input.allowDuplicate !== true) {
             const records = await listActorContactRecords(unit.store, workspaceId, actorId);
@@ -301,7 +350,7 @@ export function createManualContactV2Service({ storage, now = () => new Date(), 
             // 手入力不自动统合：完全相同的也交给用户选。没有写入，不留回执。
             if (candidates.length) return { candidates, outcome: "duplicate_review" };
           }
-          result = await createContact(unit, actorId, input, key);
+          result = await createContact(unit, actorId, input, key, metEvent);
         }
 
         await enqueueBestEffort(unit, actorId, result.contactId!);

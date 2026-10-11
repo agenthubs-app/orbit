@@ -16,7 +16,8 @@ export function LegacyNetworkImport({ method, importId }: { method: Exclude<Netw
       <OrbitVisualFreezeRuntime />
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
       <div data-orbit-real-page="network" data-orbit-route="app-contacts-new-route">
-        <NetworkImport availability={{ available: availability.available, reason: availability.reason }} importId={importId} initialMethod={method} />
+        {/* 复核 m6：「名片」方法卡去新的读取页，不再在这里打开旧的名片上传。 */}
+        <NetworkImport availability={{ available: availability.available, reason: availability.reason }} importId={importId} initialMethod={method} scanHref="/app/contacts/new/scan" />
       </div>
     </>
   );

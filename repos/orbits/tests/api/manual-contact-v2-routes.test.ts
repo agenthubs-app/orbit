@@ -125,6 +125,19 @@ test("idempotency conflict and undo-expired map to 409 with a reason", async () 
   assert.match(String(expired.error?.message), /^UNDO_EXPIRED/);
 });
 
+test("R12 review: replay after undo is 409 UNDONE; over-long ids are 400 before the service", async () => {
+  const h = handlers({ mode: "mock", resolveActor: actor("actor:u"), service: createManualContactV2Service({ storage: createMemoryManualContactV2Storage() }) });
+  const created = await read(await h.create(post("/m", { displayName: "A", idempotencyKey: "u1" })));
+  assert.equal((await h.undo(post("/u", {}), undoContext(String(created.data.contactId)))).status, 200);
+  const replay = await read(await h.create(post("/m", { displayName: "A", idempotencyKey: "u1" })));
+  assert.equal(replay.status, 409);
+  assert.deepEqual(replay.error?.context, { reason: "UNDONE" });
+  const long = "x".repeat(201);
+  assert.equal((await h.create(post("/m", { displayName: "A", idempotencyKey: "u2", mergeIntoContactId: long }))).status, 400);
+  assert.equal((await h.create(post("/m", { displayName: "A", idempotencyKey: "u3", metContext: { eventId: long, kind: "event" } }))).status, 400);
+  assert.equal((await h.undo(post("/u", {}), undoContext(long))).status, 400);
+});
+
 test("live mode without a configured database answers 503", async () => {
   const h = handlers({ mode: "live", resolveActor: actor("actor:live"), service: null });
   const res = await read(await h.create(post("/m", { displayName: "A", idempotencyKey: "l1" })));

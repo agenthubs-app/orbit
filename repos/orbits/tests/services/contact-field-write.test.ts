@@ -141,3 +141,30 @@ test("still conflicting after three attempts is a clear CONFLICT error", async (
   );
   assert.equal(attempts, 3);
 });
+
+test("fillBlanks (R12 review m1): blanks are decided again on each retry, so a value another edit just wrote is not overwritten", async () => {
+  const inner = seed(contact("c1", ALICE, { primaryPhone: undefined, organization: undefined }));
+  let raced = false;
+  const store: LiveRecordStoreLike<Record<string, unknown>> = {
+    ...inner,
+    async updateRecordIfCurrent(record, expected) {
+      if (!raced) {
+        raced = true;
+        const current = (await inner.getRecord({ collectionName: "contacts", recordId: "c1", workspaceId: WS }))!;
+        inner.upsertRecord({ ...current, payload: { ...current.payload, organization: "名刺で入った会社" }, updatedAt: "2026-10-11T00:30:00.000Z" });
+      }
+      return inner.updateRecordIfCurrent!(record, expected);
+    },
+  };
+  const result = await applyContactFieldValues({
+    actorId: ALICE, contactId: "c1", now: clock(), source: "manual", store, workspaceId: WS,
+    values: { role: "CTO" },
+    fillBlanks: { organization: "手入力の会社", phone: "090-0000-1111" },
+  });
+  assert.equal(result.written, true);
+  const saved = (await inner.getRecord({ collectionName: "contacts", recordId: "c1", workspaceId: WS }))!;
+  assert.equal(saved.payload.organization, "名刺で入った会社", "filled by the other edit in between: kept");
+  assert.equal(saved.payload.primaryPhone, "090-0000-1111", "still blank: filled");
+  assert.equal(saved.payload.role, "CTO");
+  assert.deepEqual(result.changed.sort(), ["phone", "role"]);
+});

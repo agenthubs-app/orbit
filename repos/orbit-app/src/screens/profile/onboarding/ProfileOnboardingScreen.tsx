@@ -332,7 +332,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   const footer = view === "import" ? (
     <>
       {banner}
-      <SecondaryButton label={t("onboarding.takeCards")} onPress={() => router.push("/contacts/new/batch2" as Href)} />
+      <SecondaryButton label={t("onboarding.takeCards")} onPress={() => router.push("/contacts/new/scan" as Href)} />
       <PrimaryButton label={t("onboarding.finish")} onPress={leave} />
     </>
   ) : (

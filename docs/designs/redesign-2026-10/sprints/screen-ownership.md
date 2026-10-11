@@ -64,7 +64,7 @@
 | 人脈 | `/app/contacts/[id]` | 联系人详情（W0059） | 連絡先詳細 | R11 | 重写 |
 | 人脈 | `/app/contacts/dashboard`、`/app/contacts/analysis/[dimension]/[bucketId]` | 人脉分析 | 人脈分析 | R11 | 重写 |
 | 人脈 | `/app/contacts/pipeline` | pipeline | 无 | R11 | 删除 |
-| 加人 | `/app/contacts/new` | `card-batch-0918`、network-import | 「＋」/ 名刺スキャン / 手入力 / 取り込み | R12 / R15 / R16 | 重写 |
+| 加人 | `/app/contacts/new` | `card-batch-0918`、network-import | 「＋」/ 名刺スキャン / 手入力 / 取り込み | R12 / R15 / R16 | 部分处理（R12：名片与手入力；その他四门暂进旧导入页，待 R16） |
 | 加人 | `/app/invitations/[token]`；新增 `/i/[code]` | 一对一邀请 | A2 招待コード 受け取り側（响应式） | R12 / R15 / R16 | 重写 + 新建 |
 | iOrbit | `/app/agent` | `iorbit-0918`（含星空首页、历史抽屉） | iOrbit 起始屏 / 会話中 / 会話リスト（b4） | R21 | 重写 |
 | 活动 | `/app/events`、`/app/events/[id]`、`/app/events/[id]/register`、`/app/register` | `events-0918`、报名工作台 | イベント 主页 / 詳細 / 参加登録（b2） | R26 / R27 | 重写 |

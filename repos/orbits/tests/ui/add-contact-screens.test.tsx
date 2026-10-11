@@ -249,26 +249,27 @@ const extraction = (name: string, organization: string, email = "") => ({
   organization, romanizedFullName: null, title: "部長", website: null,
 });
 
-function batchView(stage: "review" | "done", completed = false): ScanBatchView {
+/** `serverMerged`: the server marks each confirmed item (R12 review m4) and this device has no ledger (opened elsewhere). */
+function batchView(stage: "review" | "done", completed = false, serverMerged = false): ScanBatchView {
   const items = [
     item({ id: "auto", cardId: "c-auto", seq: 1, status: "confirmed", confirmedContactId: "p1", extraction: extraction("高山 亮", "ミライ精機") }),
     item({ id: "dup", cardId: "c-dup", seq: 2, extraction: extraction("高橋 美咲", "青葉ベンチャーズ", "misaki@aoba.example") }),
     item({ id: "guess", cardId: "c-guess", seq: 3, extraction: extraction("松本 千尋", "関西テクノ"), reviewIssues: [{ code: "ORG_SUFFIX_MISSING", field: "organization" }] as never }),
-    item({ id: "held", cardId: "c-held", seq: 4, extraction: extraction("伊達 修平", "北辰製作所") }),
+    item({ id: "held", cardId: "c-held", seq: 4, extraction: extraction("伊達 修平", "北辰製作所", "shuhei@hokushin.example") }),
     item({ id: "fail", cardId: "c-fail", seq: 5, status: "terminal_failed", errorCode: "IMAGE_INVALID" }),
   ];
   const done = stage === "done";
-  const finalItems = done ? items.map((entry) => entry.cardId === "c-fail" ? { ...entry, status: "skipped" as const } : { ...entry, status: "confirmed" as const, confirmedContactId: `p-${entry.id}` }) : items;
+  const finalItems = done ? items.map((entry) => entry.cardId === "c-fail" ? { ...entry, status: "skipped" as const } : { ...entry, status: "confirmed" as const, confirmedContactId: `p-${entry.id}`, ...(serverMerged ? { confirmedMerged: entry.cardId === "c-dup" } : {}) }) : items;
   const cards = groupIngestItemsByCardId(finalItems);
   const drafts = Object.fromEntries(groupIngestItemsByCardId(items).filter((card) => card.reviewable).map((card) => [card.cardId, initialCardDraft(card)]));
   const pending = done ? [] : cards.filter((card) => card.cardId !== "c-auto");
   return buildScanBatchView({
     attributed: done ? { "c-held": "ev-1" } : {}, attribution: { cards: { "c-held": "ev-1" }, events: [{ eventId: "ev-1", startsAt: "2026-10-07T10:00:00Z", title: "CFO Night Tokyo" }] },
-    attributionDecisions: {}, autoCount: 1, autoPending: false, autoRunning: false, batchId: "b1", cards,
+    attributionDecisions: {}, autoCount: serverMerged ? 0 : 1, autoPending: false, autoRunning: false, batchId: "b1", cards,
     detail: { batch: { createdAt: "2026-10-07T10:00:00Z" }, items: finalItems } as never,
     drafts, duplicates: new Set(done ? [] : ["c-dup"]), finished: done, loadFailed: false,
     matches: done ? {} : { "c-dup": { address: "", contactId: "p9", displayName: "高橋 美咲", email: "misaki@aoba.example", identical: false, matchedOn: ["email"], organization: "青葉VC", phone: "", role: "パートナー" } },
-    mergedCount: done ? 1 : 0, missing: 0, pending, queue: pending, reviewing: true, settledCount: 5, stage: "review", status: completed ? "completed" : "ready_for_review", uploadFailed: false, userCount: done ? 1 : 0,
+    mergedCount: done && !serverMerged ? 1 : 0, missing: 0, pending, queue: pending, reviewing: true, settledCount: 5, stage: "review", status: completed ? "completed" : "ready_for_review", uploadFailed: false, userCount: done && !serverMerged ? 1 : 0,
   });
 }
 
@@ -294,6 +295,19 @@ test("まとめて確認: three tiles, one 会った場所 for the batch, 重複
   await page.locator("[data-scan-add-all]").click();
   await page.waitForFunction(() => (window as any).shellFixture.calls.some((c: any) => c.refresh));
   assert.deepEqual((await calls(page)).filter((c) => c.settle).map((c) => c.settle), [["c-dup", "merge"], ["c-guess", "confirm"], ["c-held", "confirm"]]);
+});
+
+test("まとめて確認 (R12 review M2 / m5): a duplicate card has one choice (統合する / 別人として追加) and only スキップ; the button counts new and merged apart", async (t) => {
+  const page = await screen(t, { view: "batch", batch: batchView("review") });
+  await page.locator("[data-scan-review]").waitFor();
+  const card = page.locator('[data-duplicate-card="c-dup"]');
+  assert.equal(await card.getByText("統合する", { exact: true }).count(), 1, "統合する appears once (the choice), not again as a second button");
+  assert.equal(await card.locator("[data-duplicate-confirm]").count(), 0);
+  assert.deepEqual(await card.locator("button").evaluateAll((nodes) => nodes.map((node) => node.textContent?.trim())), ["統合する", "別人として追加", "スキップ"]);
+  const addAll = page.locator("[data-scan-add-all]");
+  assert.equal(await addAll.textContent(), "2人を追加 · 1人を統合");
+  await card.getByRole("button", { name: "別人として追加" }).click();
+  assert.equal(await addAll.textContent(), "3人を人脈に追加");
 });
 
 test("まとめて確認 keyboard: → moves to the next card, S skips it, ↵ confirms (別人として追加 when chosen)", async (t) => {
@@ -322,6 +336,60 @@ test("完成: new / merged / unreadable (unreadable not counted as added); plan 
   await completed.locator('[data-done-plan="ready"]').getByRole("button", { name: "プランで見る" }).click();
   await completed.locator("[data-done-more]").click();
   assert.deepEqual((await calls(completed)).filter((c) => c.push).map((c) => c.push), ["/app/tasks?tab=plan", "/app/contacts/new/scan"]);
+});
+
+test("完成 (R12 review m4 / m11): merged comes from the server, not this device; the density bar counts the new people", async (t) => {
+  const page = await screen(t, { view: "batch", batch: batchView("done", false, true) });
+  await page.locator("[data-scan-done]").waitFor();
+  assert.equal(await page.locator("[data-orbit-2026-mainhead] h1").textContent(), "4人を人脈に追加しました");
+  await settles(page, '[data-done-tile="created"]', 3);
+  await settles(page, '[data-done-tile="merged"]', 1);
+  // 高山 / 松本: name only (●○○); 伊達: email + 会った場所 (●●○). The merged one is not counted.
+  assert.equal(await page.locator("[data-done-density]").getAttribute("data-done-density"), "2,1,0");
+  assert.match(await page.locator("[data-done-density]").innerText(), /身元だけ/);
+  // Without the server marks (older server) the bar is not shown.
+  const old = await screen(t, { view: "batch", batch: batchView("done") });
+  await old.locator("[data-scan-done]").waitFor();
+  assert.equal(await old.locator("[data-done-density]").count(), 0);
+});
+
+test("手入力 (R12 review M1): the save bar is the drawer footer, outside the scrolling body; 390 is full screen without the shortcut", async (t) => {
+  for (const width of [1440, 1024]) {
+    const page = await screen(t, { view: "manual", handlers: [EVENTS] }, { width });
+    await page.locator("[data-manual-form]").waitFor();
+    const layout = await page.evaluate(() => {
+      const save = document.querySelector("[data-manual-save]") as HTMLButtonElement;
+      const footer = document.querySelector("[data-manual-footer]")!;
+      const form = document.querySelector("[data-manual-form]") as HTMLFormElement;
+      const body = form.parentElement!;
+      return {
+        bodyBottom: body.getBoundingClientRect().bottom,
+        bodyScrolls: getComputedStyle(body).overflowY,
+        footerOutsideBody: !body.contains(footer),
+        footerTop: footer.getBoundingClientRect().top,
+        inFooter: footer.contains(save),
+        inForm: form.contains(save),
+        linked: Boolean(form.id) && save.form === form,
+        kbdWraps: (() => { const kbd = footer.querySelector("kbd"); return kbd ? kbd.getBoundingClientRect().height > 40 : null; })(),
+      };
+    });
+    assert.equal(layout.inFooter, true, `${width}: save is in the footer`);
+    assert.equal(layout.inForm, false);
+    assert.equal(layout.linked, true, `${width}: the footer button still submits the form`);
+    assert.equal(layout.footerOutsideBody, true);
+    assert.ok(layout.bodyBottom <= layout.footerTop + 0.5, `${width}: nothing scrolls under the save bar`);
+    assert.equal(layout.kbdWraps, false);
+  }
+  const narrow = await screen(t, { view: "manual", handlers: [EVENTS] }, { width: 390 });
+  await narrow.locator("[data-manual-form]").waitFor();
+  await narrow.locator('[role="dialog"]').evaluate((node) => Promise.all(node.getAnimations().map((animation) => animation.finished)));
+  const box = await narrow.locator('[role="dialog"]').boundingBox();
+  assert.deepEqual(box && [box.x, box.y, box.width, box.height], [0, 0, 390, 900], "full screen at 390");
+  assert.equal(await narrow.locator('[role="dialog"]').evaluate((node) => getComputedStyle(node).borderTopLeftRadius), "0px", "square corners");
+  assert.equal(await narrow.locator("[data-manual-footer] kbd").isVisible(), false, "no keyboard shortcut on a phone");
+  await narrow.locator('[data-manual-field="displayName"]').fill("山田 太郎");
+  await narrow.locator("[data-manual-save]").click();
+  await narrow.waitForFunction(() => (window as any).shellFixture.fetches.some((c: any) => c.url === "/api/contacts/manual" && c.method === "POST"));
 });
 
 test("dark mode and 390 render without errors", async (t) => {

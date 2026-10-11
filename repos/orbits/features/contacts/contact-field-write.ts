@@ -4,6 +4,8 @@
  *
  * - 按字段写：值为字符串 → 覆盖（去首尾空白；空串等同清空），`null` → 清空；没列的字段不动。
  *   姓名不能清空（联系人必须有名字）。
+ * - `fillBlanks`：只在该字段当前为空时写入。「空」按每次尝试读到的最新记录判断（复核 m1：冲突重试时
+ *   不能用第一次读到的结果，否则会把别人刚补上的值覆盖掉）。
  * - 乐观并发：读 → 改 → `updateRecordIfCurrent`（以读到的 updatedAt 为前提）；别人先改了就重读重试，
  *   最多 3 次，仍冲突抛 `ContactFieldWriteError('CONFLICT')`。
  * - 被覆盖 / 清空的旧值写进联系人 payload 的 `fieldHistory`（每条 `{ field, previous, next, source, at }`，
@@ -58,6 +60,8 @@ export interface ApplyContactFieldValuesInput {
   actorId: string;
   contactId: string;
   values: Partial<Record<ContactWritableField, string | null>>;
+  /** 只补空：该字段在写入时仍为空才写（`values` 里列了的字段以 `values` 为准）。 */
+  fillBlanks?: Partial<Record<ContactWritableField, string>>;
   source: ContactFieldWriteSource;
   /** 追加到联系人备注末尾的几行（已有备注里出现过的行不重复追加）。不进字段历史。 */
   appendNoteLines?: readonly string[];
@@ -100,8 +104,13 @@ function nextPayload(record: ContactRecord, input: ApplyContactFieldValuesInput,
   const changed: ContactWritableField[] = [];
   const history = readHistory(payload.fieldHistory);
   for (const field of FIELDS) {
-    const raw = input.values[field];
-    if (raw === undefined) continue;
+    let raw = input.values[field];
+    if (raw === undefined) {
+      const blankFill = text(input.fillBlanks?.[field]);
+      // 只补空：按这次读到的记录判断（每次重试都重新判断）。
+      if (blankFill === null || text(payload[CONTACT_FIELD_PAYLOAD_KEY[field]]) !== null) continue;
+      raw = blankFill;
+    }
     if (raw !== null && typeof raw !== "string") throw new ContactFieldWriteError("INVALID", `${field} must be a string or null.`);
     const next = raw === null ? null : text(raw);
     if (field === "displayName" && next === null) throw new ContactFieldWriteError("INVALID", "A contact must keep a name.");

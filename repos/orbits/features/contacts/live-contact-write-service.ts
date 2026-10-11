@@ -33,7 +33,8 @@ function normalizedEmail(value: string | undefined): string {
   return normalizedComparisonValue(value);
 }
 
-function stableContactId(actorId: string, draftId: string): string {
+/** 名片确认新建的联系人 id（按人 + 草稿 id 稳定）。R12 复核 m4：批次详情据此判断一张卡是新建还是统合。 */
+export function stableContactId(actorId: string, draftId: string): string {
   const digest = createHash("sha256")
     .update(actorId)
     .update("\u0000")

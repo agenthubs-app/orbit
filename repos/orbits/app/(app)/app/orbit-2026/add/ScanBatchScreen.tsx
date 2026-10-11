@@ -28,7 +28,7 @@ import { addBatchCopy as b, addScanCopy as s } from "../copy/add";
 import type { OrbitCopyEntry } from "../copy/types";
 import { ShellPage } from "../shell/slots";
 import { Button, Card, Chip, CountUp, FilterOption, Icon, IconButton, Kbd, MacTile, Orbit2026Scope, ProgressBar, Skeleton, TextField, ToastProvider } from "../ui";
-import { translator, type Translate } from "./add-parts";
+import { DensityBar, translator, type Translate } from "./add-parts";
 import type { ScanBatchActions, ScanBatchView, ScanCardKind, ScanCardView, ScanIssueGroup, ScanSettleResult } from "./scan-types";
 import styles from "./add.module.css";
 
@@ -215,6 +215,9 @@ function ReviewPanel({ view, actions, t, language, onLater }: { view: ScanBatchV
   const failed = pending.filter((card) => card.section === "failed");
   const order = [...dups, ...reviews, ...ready, ...failed];
   const addable = [...dups, ...reviews, ...ready];
+  // R12 review m5: 統合 is not 追加 — the button counts them apart.
+  const merging = dups.filter((card) => (choices[card.cardId] ?? "merge") === "merge").length;
+  const adding = addable.length - merging;
   const current = order.find((card) => card.cardId === focused) ?? order[0] ?? null;
 
   const settleOne = async (card: ScanCardView): Promise<ScanSettleResult> => {
@@ -352,7 +355,7 @@ function ReviewPanel({ view, actions, t, language, onLater }: { view: ScanBatchV
         ) : null}
 
         <div className={styles.footer} data-scan-footer="">
-          <Button variant="primary" icon="user-plus" label={t(b.addAll, { n: addable.length })} disabled={!addable.length} loading={busy} onClick={() => void addAll()} data-scan-add-all={addable.length} />
+          <Button variant="primary" icon="user-plus" label={!merging ? t(b.addAll, { n: adding }) : adding ? t(b.addAllWithMerge, { n: adding, m: merging }) : t(b.mergeAll, { m: merging })} disabled={!addable.length} loading={busy} onClick={() => void addAll()} data-scan-add-all={addable.length} />
           <Button variant="ghost" label={t(b.later)} onClick={onLater} data-scan-later="" />
           <span className={styles.label}>{t(b.laterNote)}</span>
         </div>
@@ -400,7 +403,7 @@ function cardClass(focused: boolean, problem: ScanSettleResult | null): string {
   return [styles.reviewCard, styles.fade, focused ? styles.reviewCardFocus : "", problem === "blocked" || problem === "failed" ? styles.reviewCardError : ""].filter(Boolean).join(" ");
 }
 
-function DuplicateCard({ card, t, busy, focused, problem, onFocus, onConfirm, onSkip, choice, onChoose }: CardProps & { choice: Choice; onChoose: (choice: Choice) => void }) {
+function DuplicateCard({ card, t, busy, focused, problem, onFocus, onSkip, choice, onChoose }: CardProps & { choice: Choice; onChoose: (choice: Choice) => void }) {
   const candidate = card.candidate;
   const message = problemCopy(card, problem);
   if (!candidate) return null;
@@ -434,9 +437,9 @@ function DuplicateCard({ card, t, busy, focused, problem, onFocus, onConfirm, on
         <span className={styles.label}>{t(b.mergeNote)}</span>
       </div>
       {message ? <p className={styles.error} role="alert"><Icon name="alert" size={16} />{t(message)}</p> : null}
+      {/* R12 review M2: the choice above is the only 統合する; 「N人を追加」 (or ↵) carries it out. */}
       <div className={styles.row}>
-        <Button size="sm" variant="primary" label={choice === "merge" ? t(b.merge) : t(b.separate)} disabled={busy} onClick={onConfirm} data-duplicate-confirm={card.cardId} />
-        <Button size="sm" variant="ghost" label={t(b.skip)} disabled={busy} onClick={onSkip} />
+        <Button size="sm" variant="ghost" label={t(b.skip)} disabled={busy} onClick={onSkip} data-duplicate-skip={card.cardId} />
       </div>
     </div>
   );
@@ -586,6 +589,7 @@ function DonePanel({ view, t, language, go }: { view: ScanBatchView; t: Translat
             <div className={`${styles.tile} ${styles.rise}`} data-done-tile="merged"><CountUp value={view.counts.merged} className={styles.tileNumber} /><span className={styles.label}>{t(b.doneMerged)}</span></div>
             <div className={`${styles.tile} ${styles.rise} ${view.counts.unreadable ? styles.tileWarn : ""}`} data-done-tile="unreadable"><CountUp value={view.counts.unreadable} className={styles.tileNumber} /><span className={styles.label}>{t(b.doneFailed)}</span></div>
           </div>
+          {view.density ? <DensityBar counts={view.density} t={t} countCopy={b.doneDensityLevel} /> : null}
         </Card>
         <Card title={t(b.nextTitle)}>
           <div className={styles.next} data-done-plan={view.completed ? "ready" : "pending"}>

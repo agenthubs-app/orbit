@@ -1,7 +1,7 @@
 export const shell = {
   "shell.parent.settings": "Settings",
   "shell.parent.me": "Me",
-  "shell.parent.importCenter": "Import",
+  "shell.parent.importCenter": "Add people",
   "shell.parent.networkAnalysis": "Network analysis",
   "shell.parent.network": "Network",
   "shell.parent.eventOperations": "Event operations",

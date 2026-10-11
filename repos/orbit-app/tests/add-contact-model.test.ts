@@ -122,6 +122,12 @@ test("automatic pass: clean cards import, an identical match merges, similar / �
   assert.deepEqual(autoEligible(input({ ...FOUR, batch: { ...READY, status: "processing" } }, { matches })), []);
 });
 
+test("R12 review m9: a card whose duplicate lookup failed is never added automatically", () => {
+  const matches = { clean: null, same: candidate("contact-sato", { identical: true, matchedOn: ["email"] }), similar: null };
+  assert.deepEqual(autoEligible(input(FOUR, { lookupFailed: new Set(["clean", "same", "similar"]), matches })), []);
+  assert.deepEqual(autoEligible(input(FOUR, { lookupFailed: new Set(["same"]), matches })).map((entry) => entry.cardId), ["similar", "clean"]);
+});
+
 test("W0015: a card with an event candidate is never added automatically; its 会った場所 is the batch choice", () => {
   const attribution = readAttribution({ cards: { clean: "event-cfo", similar: null }, events: [{ eventId: "event-cfo", startsAt: "2026-10-07T10:00:00.000Z", title: "CFO Night Tokyo" }, { eventId: "event-other", title: "Other" }] });
   const view = input(FOUR, { attribution });
@@ -159,6 +165,23 @@ test("まとめて確認: sections, issue groups, reading marks and the 完成 c
   assert.equal(finished.phase, "done");
   assert.deepEqual([finished.counts.created, finished.counts.merged, finished.counts.unreadable], [2, 1, 1]);
   assert.equal(finished.completed, true);
+});
+
+test("完成 (R12 review m4 / m11): merged comes from the server marks, not this device; the density bar counts the new people", () => {
+  const done = detail({ ...READY, status: "completed" }, FOUR.items.map((entry) => {
+    if (entry.cardId === "unread") return { ...entry, status: "skipped" as const };
+    return { ...entry, confirmedContactId: `contact-${entry.cardId}`, confirmedMerged: entry.cardId === "same", status: "confirmed" as const };
+  }));
+  // Opened on another device: no ledger at all.
+  const elsewhere = buildScanView(input(done));
+  assert.deepEqual([elsewhere.counts.created, elsewhere.counts.merged, elsewhere.counts.unreadable], [2, 1, 1]);
+  // 石川 (no email / phone, no 会った場所) and 高橋 (name only): both ●○○; the merged 佐藤 is not counted.
+  assert.deepEqual(elsewhere.density, { 1: 2, 2: 0, 3: 0 });
+  // An older server without the marks: the ledger decides and no bar is shown.
+  const older = detail({ ...READY, status: "completed" }, done.items.map(({ confirmedMerged: _drop, ...entry }) => entry));
+  const fallback = buildScanView(input(older, { ledger: { auto: ["clean", "same"], merged: ["same"], user: ["similar"] } }));
+  assert.deepEqual([fallback.counts.created, fallback.counts.merged], [2, 1]);
+  assert.equal(fallback.density, null);
 });
 
 test("issue groups follow the existing codes; a two-sided conflict blocks the confirmation until picked", () => {
@@ -218,7 +241,8 @@ test("手入力: a name alone is checked; 統合 lists only differing fields; th
   assert.deepEqual(createBody(form, { kind: "separate" }, "k2").allowDuplicate, true);
   assert.equal(formDensity({ ...EMPTY_MANUAL_FORM, displayName: "A" }), 1);
   assert.equal(formDensity({ ...form, met: { eventId: "e", kind: "event" } }), 2);
-  const chips = eventChips([{ id: "far", startsAt: "2026-12-30T00:00:00Z", title: "Far" }, { id: "near", startsAt: "2026-10-07T10:00:00Z", title: "CFO Night" }, { id: "x" }], new Date("2026-10-11T00:00:00Z"));
+  const chips = eventChips([{ id: "far", startsAt: "2026-12-30T00:00:00Z", title: "Far" }, { id: "near", startsAt: "2026-10-07T10:00:00Z", title: "CFO Night" }, { id: "tomorrow", startsAt: "2026-10-12T01:00:00Z", title: "製造業DX" }, { id: "x" }], new Date("2026-10-11T00:00:00Z"));
+  // R12 review M3: only events that have started (an upcoming one is not 「会った場所」 yet).
   assert.deepEqual(chips.map((chip) => chip.eventId), ["near"]);
 });
 
@@ -231,4 +255,37 @@ test("draft queue: only drafts still waiting; a confirmed draft names its contac
   assert.deepEqual(rows.map((row) => [row.id, row.sourceLabel]), [["d1", "CFO Night"]]);
   assert.equal(confirmedDraftContactId({ contactCandidate: { contactId: "contact-1" } }), "contact-1");
   assert.equal(confirmedDraftContactId({ contactCandidate: {} }), null);
+});
+
+test("R12 review m7: the upload queue keeps going without a page, can be retried, and is kept apart per account", async () => {
+  const { forgetScanUpload, resetScanUploadsForTests, runScanUpload, scanUploadState, startScanUpload, subscribeScanUpload } = await import("../src/screens/add/scan-upload-queue");
+  resetScanUploadsForTests();
+  const collecting = detail(batch("b-up", "collecting", 2), [
+    item("b-up", "c1", "front", 1, { status: "awaiting_upload" }),
+    item("b-up", "c2", "front", 2, { status: "awaiting_upload" }),
+  ]);
+  let attempt = 0;
+  const finalized: string[] = [];
+  const api = {
+    async uploadPending(current: typeof collecting) {
+      attempt += 1;
+      const waiting = current.items.filter((entry) => entry.status === "awaiting_upload");
+      // First pass: only the first photo goes up.
+      const ok = attempt === 1 ? waiting.slice(0, 1) : waiting;
+      return { failed: attempt === 1 ? [{ itemId: waiting[1]!.id, message: "x" }] : [], gone: false, recovery: false, uploaded: ok.map((entry) => ({ ...entry, status: "uploaded" as const, version: entry.version + 1 })) };
+    },
+    async finalize(batchId: string) { finalized.push(batchId); return { data: collecting.batch, ok: true as const }; },
+  };
+  const seen: string[] = [];
+  const first = await startScanUpload({ api: api as never, detail: collecting, files: new Map(), ownerId: "actor-a" });
+  assert.deepEqual([first.done, first.problem, first.finished], [1, "upload", false]);
+  const stop = subscribeScanUpload("actor-a", "b-up", (state) => seen.push(`${state.done}/${state.total}${state.finished ? " done" : ""}`));
+  assert.equal(scanUploadState("actor-b", "b-up"), null, "another account never sees it");
+  const second = await runScanUpload("actor-a", "b-up");
+  assert.deepEqual([second?.done, second?.problem, second?.finished], [2, null, true]);
+  assert.deepEqual(finalized, ["b-up"]);
+  assert.equal(seen.at(-1), "2/2 done");
+  stop();
+  forgetScanUpload("actor-a", "b-up");
+  assert.equal(scanUploadState("actor-a", "b-up"), null);
 });

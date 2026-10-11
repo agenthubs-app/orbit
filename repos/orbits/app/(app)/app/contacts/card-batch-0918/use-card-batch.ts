@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { IngestItemDTO } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { readIngestContactCandidate, readIngestDuplicateMatches } from "../../../../../shared/api-schema/business-card-candidate";
+import { decideCardAutoAction } from "../../../../../shared/compute/card-auto-import";
 import type { IngestContactCandidateContract } from "../../../../../shared/contract/business-card-batch";
 import {
   INGEST_V2_API_BASE,
@@ -31,9 +32,8 @@ import {
 import {
   CARD_BATCH_LEDGER_PREFIX,
   EMPTY_CARD_BATCH_LEDGER,
+  cardAutoImportFacts,
   cardReviewQueue,
-  isAutoImportEligible,
-  isAutoMergeEligible,
   isCardSkipped,
   parseStage,
   type CardBatchLedger,
@@ -57,6 +57,11 @@ export interface CardBatchAttribution {
   cards: Record<string, string | null>;
 }
 const EMPTY_ATTRIBUTION: CardBatchAttribution = { cards: {}, events: [] };
+
+/** R12 复核 m12：批次 id 来自地址栏，拼进接口路径前先编码（`..`、`/` 不能把请求带到别的接口）。 */
+function batchPath(batchId: string): string {
+  return `/${encodeURIComponent(batchId)}`;
+}
 const ATTRIBUTION_FETCH_TIMEOUT_MS = 8_000;
 const ATTRIBUTION_RETRY_DELAY_MS = 2_000;
 
@@ -94,6 +99,8 @@ export function useCardBatch(batchId: string | null, t: T) {
   // cardId → 人脉里「可能是同一个人」的候选（null = 查过、没有）。按当前草稿字段查，字段变了重查。
   const [matches, setMatches] = useState<Record<string, ContactCandidate | null>>({});
   const matchKeys = useRef<Record<string, string>>({});
+  // R12 复核 m9：查重请求没成功的卡（候选 null 不可信）——不自动导入，留给用户。
+  const lookupFailed = useRef<Set<string>>(new Set());
   const [autoRunning, setAutoRunning] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [side, setSide] = useState<"front" | "back">("front");
@@ -250,7 +257,7 @@ export function useCardBatch(batchId: string | null, t: T) {
     const uploaded = items.filter(item => item.status === "uploaded").length;
     if (awaiting > 0 || uploaded === 0) return;
     finalizingRef.current = true;
-    void postAction(`/${batchId}/finalize`).finally(() => {
+    void postAction(`${batchPath(batchId)}/finalize`).finally(() => {
       finalizingRef.current = false;
       void refresh();
     });
@@ -327,7 +334,7 @@ export function useCardBatch(batchId: string | null, t: T) {
       ...(options.mergeInto ? { mergeIntoContactId: options.mergeInto } : {}),
       ...(metEventId ? { metEventId } : {}),
     };
-    const response = await postAction(`/${batchId}/items/${card.items[0]!.id}/${manual ? "manual-entry" : "confirm"}`, payload);
+    const response = await postAction(`${batchPath(batchId)}/items/${card.items[0]!.id}/${manual ? "manual-entry" : "confirm"}`, payload);
     const body = (await response.json().catch(() => null)) as { data?: { state?: string; contactId?: string; merged?: boolean; metEventId?: string | null; candidate?: unknown; item?: IngestItemDTO; items?: IngestItemDTO[] } } | null;
     if (!response.ok) return "failed";
     if (body?.data?.state === "duplicate_review") {
@@ -360,16 +367,22 @@ export function useCardBatch(batchId: string | null, t: T) {
     if (!stale.length) return;
     const timer = window.setTimeout(() => {
       const request = stale.map(card => ({ cardId: card.cardId, fields: matchFields(drafts[card.cardId]!) }));
-      void fetch(`${INGEST_V2_API_BASE}/${batchId}/duplicates`, {
+      void fetch(`${INGEST_V2_API_BASE}${batchPath(batchId)}/duplicates`, {
         body: JSON.stringify({ cards: request }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       })
-        .then(response => (response.ok ? response.json() : null))
+        .then(response => {
+          if (!response.ok) throw new Error(`duplicates ${response.status}`);
+          return response.json() as Promise<{ data?: unknown } | null>;
+        })
         .then((body: { data?: unknown } | null) => {
           // R12：逐条宽进读取，一条读不出不影响其余的卡。
           const found = readIngestDuplicateMatches(body?.data);
-          for (const entry of request) matchKeys.current[entry.cardId] = JSON.stringify(entry.fields);
+          for (const entry of request) {
+            matchKeys.current[entry.cardId] = JSON.stringify(entry.fields);
+            lookupFailed.current.delete(entry.cardId);
+          }
           setMatches(current => {
             const next = { ...current };
             for (const entry of request) next[entry.cardId] = found[entry.cardId] ?? null;
@@ -377,8 +390,11 @@ export function useCardBatch(batchId: string | null, t: T) {
           });
         })
         .catch(() => {
-          // 查不到候选不阻塞导入：视为没有候选，确认时服务端仍会判重。
-          for (const entry of request) matchKeys.current[entry.cardId] = JSON.stringify(entry.fields);
+          // 查不到候选不阻塞流程，但这些卡不自动导入（R12 复核 m9：确认接口不看同名，不能靠它兜底），留给用户。
+          for (const entry of request) {
+            matchKeys.current[entry.cardId] = JSON.stringify(entry.fields);
+            lookupFailed.current.add(entry.cardId);
+          }
           setMatches(current => {
             const next = { ...current };
             for (const entry of request) if (!(entry.cardId in next)) next[entry.cardId] = null;
@@ -397,12 +413,16 @@ export function useCardBatch(batchId: string | null, t: T) {
     if (!batchId || status !== "ready_for_review" || !matchesReady || !attribution) return [];
     return cards.filter(card => {
       const draft = drafts[card.cardId];
-      if (!draft || autoAttempted.current.has(card.cardId) || !card.reviewable || card.allConfirmed || isCardSkipped(card)) return false;
-      // W0015：有活动归属候选的名片留给用户在审阅页确认——默认勾选不是用户的决定，后台宿主也不替用户做。
-      if (attribution.cards[card.cardId]) return false;
-      const candidate = matches[card.cardId];
-      if (candidate) return candidate.identical && isAutoMergeEligible(card, draft);
-      return isAutoImportEligible(card, draft);
+      if (!draft || autoAttempted.current.has(card.cardId)) return false;
+      // R12 复核 m10：判定完全交给共享规则（App 同一份）——W0015 有活动归属候选的卡、不完全一致的候选、
+      // 查重失败的卡都留给用户；以后改规则两端一起变。
+      return decideCardAutoAction({
+        ...cardAutoImportFacts(card, draft),
+        candidate: matches[card.cardId] ?? null,
+        candidateLookupFailed: lookupFailed.current.has(card.cardId),
+        hasEventCandidate: Boolean(attribution.cards[card.cardId]),
+        skipped: isCardSkipped(card),
+      }) !== "review";
     });
   };
   // R12：读完后还在等候选 / 活动归属，或还有卡要自动进人脈——这时不该把卡交给用户。
@@ -483,7 +503,7 @@ export function useCardBatch(batchId: string | null, t: T) {
     setBusy(true);
     try {
       if (kind === "skip") {
-        const response = await postAction(`/${batchId}/items/${active.items[0]!.id}/skip`);
+        const response = await postAction(`${batchPath(batchId)}/items/${active.items[0]!.id}/skip`);
         if (!response.ok) throw new Error("skip_failed");
         moveOn(active);
       } else {
@@ -529,7 +549,7 @@ export function useCardBatch(batchId: string | null, t: T) {
     if (!batchId || !card) return "failed";
     try {
       if (kind === "skip") {
-        const response = await postAction(`/${batchId}/items/${card.items[0]!.id}/skip`);
+        const response = await postAction(`${batchPath(batchId)}/items/${card.items[0]!.id}/skip`);
         return response.ok ? "skipped" : "failed";
       }
       const draft = drafts[cardId] ?? initialCardDraft(card);
@@ -555,7 +575,7 @@ export function useCardBatch(batchId: string | null, t: T) {
     setBusy(true);
     setError("");
     try {
-      await Promise.all(card.items.filter(item => item.status === "terminal_failed").map(item => postAction(`/${batchId}/items/${item.id}/retry`)));
+      await Promise.all(card.items.filter(item => item.status === "terminal_failed").map(item => postAction(`${batchPath(batchId)}/items/${item.id}/retry`)));
       autoAttempted.current.delete(card.cardId);
       await refresh();
     } catch {

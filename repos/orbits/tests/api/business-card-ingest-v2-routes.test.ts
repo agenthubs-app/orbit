@@ -688,6 +688,11 @@ test("v2 confirm links identical cards to the existing contact, surfaces similar
     assert.equal(merged.merged, true);
     assert.equal(merged.contactId, first.contactId);
 
+    // R12 复核 m4：批次详情带上每张已确认卡「是不是统合进已有的人」，完成页不靠本机记录。
+    const detail = await envelope(await createIngestV2BatchDetailHandler(deps)(new Request(`http://test/api/v2/${batch.id}`), params({ id: batch.id })));
+    const mergedByCard = Object.fromEntries((detail.items as Array<{ cardId: string; confirmedMerged?: boolean }>).map((item) => [item.cardId, item.confirmedMerged]));
+    assert.deepEqual(mergedByCard, { "card:a": false, "card:b": true, "card:c": true });
+
     const contacts = await pool.query(`select payload from orbit_records where collection_name = 'contacts'`);
     assert.equal(contacts.rows.length, 1, "three cards of the same person leave one contact");
     const payload = contacts.rows[0].payload as { organization: string; location: string; notes: string };

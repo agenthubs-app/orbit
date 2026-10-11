@@ -49,6 +49,38 @@ export function DensityLegend() {
   );
 }
 
+/**
+ * 完成: how much is known about the new people (D-10, R12 review m11) — one segment per level
+ * sized by count, then 身元だけ N人 / 名刺レベル N人 / よく知っている N人.
+ */
+export function DensityBar({ counts }: { counts: Readonly<Record<ContactDensityLevel, number>> }) {
+  const { colors, styles } = useStyles();
+  const { t } = useOrbitLocale();
+  const levels: [ContactDensityLevel, string, string][] = [
+    [1, t("add.doors.density1"), colors.plum300],
+    [2, t("add.doors.density2"), colors.plum500],
+    [3, t("add.doors.density3"), colors.plum700],
+  ];
+  const line = (label: string, level: ContactDensityLevel) => t("add.batch.doneDensityLevel", { label, n: counts[level] });
+  const summary = levels.map(([level, label]) => line(label, level)).join(" · ");
+  return (
+    <View style={styles.legend} testID="add-done-density">
+      <UiText style={styles.caption}>{t("add.doors.densityTitle")}</UiText>
+      <View style={styles.track} accessible accessibilityRole="image" accessibilityLabel={summary}>
+        {levels.map(([level, , color]) => (counts[level] ? <View key={level} style={[styles.segment, { backgroundColor: color, flexGrow: counts[level] }]} /> : null))}
+      </View>
+      <View style={styles.legendRow}>
+        {levels.map(([level, label]) => (
+          <View key={level} style={styles.legendItem} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+            <DensityDots level={level} />
+            <UiText style={styles.caption}>{line(label, level)}</UiText>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export interface CountTile { key: string; label: string; value: number; tone?: "warn"; onPress?: () => void }
 
 /** Three count tiles (まとめて確認: 重複 / 要確認 / そのまま追加; 完成: 新しく追加 / 既存と統合 / 読み取れず). */
@@ -120,6 +152,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   legend: { gap: 6, paddingVertical: 4 },
   legendRow: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
   legendItem: { alignItems: "center", flexDirection: "row", gap: 6 },
+  track: { backgroundColor: colors.surface3, borderRadius: radius.pill, flexDirection: "row", gap: 3, height: 10, overflow: "hidden" },
+  segment: { minWidth: 6 },
   caption: { color: colors.ink3Text, fontSize: 12, lineHeight: 17 },
   body: { color: colors.ink2, fontSize: 13.5, lineHeight: 20 },
   error: { color: colors.coralText },

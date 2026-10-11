@@ -54,6 +54,13 @@
 .dots { display: inline-flex; gap: 3px; }
 .dot { width: 7px; height: 7px; border-radius: var(--r-pill); background: var(--surface-3); }
 .dotOn { background: var(--plum-700); }
+/* 完成 density bar (R12 review m11): ●○○ light → ●●● deep. */
+.densityBar { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-16); }
+.densityTrack { display: flex; gap: 3px; height: 10px; border-radius: var(--r-pill); overflow: hidden; background: var(--surface-3); }
+.densitySeg { display: block; min-width: 6px; }
+.densitySeg1 { background: var(--plum-300); }
+.densitySeg2 { background: var(--plum-500); }
+.densitySeg3 { background: var(--plum-700); }
 
 /* ── 名刺：拖放与暂存 ── */
 .drop {
@@ -149,5 +156,7 @@
 .mark_email { background: var(--mac-pink); }
 .mark_phone { background: var(--mac-apricot); }
 .mark_postalCode, .mark_address, .mark_url { background: var(--surface-3); }
-/* Save stays in reach while the drawer body scrolls (⌘↵ also saves). */
-.drawerFoot { position: sticky; bottom: 0; display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; width: 100%; padding: var(--space-12) 0; background: var(--bg); }
+/* The 手入力 save bar, drawn in the Drawer footer slot (outside the scrolling body, R12 review M1). */
+.drawerFoot { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; width: 100%; }
+.footKbd { display: inline-flex; white-space: nowrap; }
+@media (max-width: 767px) { .footKbd { display: none; } }

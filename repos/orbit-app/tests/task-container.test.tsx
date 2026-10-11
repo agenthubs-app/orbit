@@ -8,6 +8,7 @@ import { chromium, type Browser, type Page } from "playwright";
 
 import { nativeUiStubs } from "./helpers/native-ui-stubs";
 import { legacyTaskRedirect, parentForPath, taskHref } from "../src/view-models/app-navigation";
+import { shell as jaShell } from "../src/i18n/ja/shell";
 import { notificationHrefFromDeepLink } from "../src/notifications/notification-model";
 import { taskListHref } from "../src/view-models/task-list-scope";
 import { isPrivateMobileRoute } from "../src/view-models/mobile-route-access";
@@ -230,6 +231,9 @@ test("old addresses and notifications land on the matching segment", () => {
   assert.deepEqual(parentForPath("/tasks/one").href, "/task?seg=todo");
   assert.deepEqual(parentForPath("/notes/one").href, "/task?seg=memo");
   assert.deepEqual(parentForPath("/schedule/personal/one").href, "/task?seg=calendar");
+  // R12 review m13: the add pages go back to 「人脈を追加」 (the page title), not the old 取り込み.
+  const jaT = (key: string) => (jaShell as Record<string, string>)[key] ?? key;
+  assert.deepEqual(parentForPath("/contacts/new/scan", jaT as never), { href: "/contacts/new", label: "人脈を追加" });
   // Signed-out visitors cannot open Task or notes.
   for (const route of ["/task", "/notes", "/notes/one"]) assert.equal(isPrivateMobileRoute(route), true, route);
 });

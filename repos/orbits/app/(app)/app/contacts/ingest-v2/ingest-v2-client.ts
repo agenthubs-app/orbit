@@ -59,7 +59,8 @@ export function getPendingFiles(batchId: string): Map<string, File> {
 }
 
 export async function fetchBatchDetail(batchId: string): Promise<IngestBatchDetail | null> {
-  const response = await fetch(`${INGEST_V2_API_BASE}/${batchId}`);
+  // R12 复核 m12：批次 id 可能来自地址栏，编码后再拼路径。
+  const response = await fetch(`${INGEST_V2_API_BASE}/${encodeURIComponent(batchId)}`);
   if (!response.ok) {
     return null;
   }

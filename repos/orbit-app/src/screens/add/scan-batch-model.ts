@@ -4,9 +4,10 @@
 // reading list marks, the まとめて確認 sections (重複 / 要確認 by issue code / そのまま
 // 追加 / 読み取れず), the confirmation body and the 完成 counts. No React, no IO, no clock.
 import { decideCardAutoAction, isCardAutoImportEligible, type CardAutoAction, type CardAutoImportFacts } from "../../api/compute/card-auto-import";
+import { contactDensity, type ContactDensityLevel } from "../../api/compute/contact-density";
 import type { IngestBatchDetailContract, IngestContactCandidateContract, IngestItemContract } from "../../api/contract/business-card-batch";
 import { isIndustryIdCode, sanitizeIndustryPair } from "../../api/domain/industries";
-import type { BusinessCardReviewCardDraft, BusinessCardReviewFields } from "../../view-models/business-card-batch";
+import { reconcileBusinessCardReviewCard, type BusinessCardReviewCardDraft, type BusinessCardReviewFields } from "../../view-models/business-card-batch";
 import { cardConfirmationSnapshot, ingestCards, ingestExpired, type IngestCard } from "../../view-models/business-card-ingest";
 import type { BatchAttribution, CardMatchFields } from "./add-api";
 import type { ScanLedger } from "./add-storage";
@@ -145,6 +146,8 @@ export interface ScanBatchInput {
   matches: Readonly<Record<string, IngestContactCandidateContract | null>>;
   /** True once every lookup reflects the current drafts. */
   matchesReady: boolean;
+  /** Cards whose last duplicate lookup failed (R12 review m9): never added automatically. */
+  lookupFailed?: ReadonlySet<string>;
   attribution: BatchAttribution | null;
   ledger: ScanLedger;
   /** Cards the automatic pass already tried (never twice). */
@@ -172,6 +175,11 @@ export interface ScanBatchView {
     merged: number;
     unreadable: number;
   };
+  /**
+   * 完成 density bar (DESIGN §2.2 step 7, R12 review m11): the new people by D-10 level.
+   * null = not enough to tell (the server did not mark merged cards, or nobody new).
+   */
+  density: Readonly<Record<ContactDensityLevel, number>> | null;
   events: readonly { eventId: string; title: string; startsAt: string }[];
 }
 
@@ -236,6 +244,7 @@ export function autoEligible(input: ScanBatchInput): { cardId: string; action: E
     const action = decideCardAutoAction({
       ...cardAutoImportFacts(card, draft, enrichment),
       candidate,
+      candidateLookupFailed: input.lookupFailed?.has(card.cardId) ?? false,
       hasEventCandidate: Boolean(attribution.cards[card.cardId]),
       skipped: isCardSkipped(card),
     });
@@ -293,7 +302,13 @@ export function buildScanView(input: ScanBatchInput): ScanBatchView {
   const held = count("ready");
   const items = cards.flatMap((card) => card.items);
   const candidateEvents = new Set(Object.values(input.attribution?.cards ?? {}).filter((value): value is string => Boolean(value)));
-  const mergedCount = confirmed.filter((card) => merged.has(card.cardId)).length;
+  // R12 review m4: the server marks each confirmed item (`confirmedMerged`); only an older
+  // server without the marks falls back to this device's ledger.
+  const serverKnows = confirmed.length > 0 && confirmed.every((card) => card.items.some((item) => typeof item.confirmedMerged === "boolean"));
+  const mergedCount = serverKnows
+    ? confirmed.filter((card) => card.items.some((item) => item.confirmedMerged === true)).length
+    : confirmed.filter((card) => merged.has(card.cardId)).length;
+  const newCards = serverKnows ? confirmed.filter((card) => !card.items.some((item) => item.confirmedMerged === true)) : [];
   return {
     cards: views,
     completed: detail?.batch.status === "completed",
@@ -310,12 +325,32 @@ export function buildScanView(input: ScanBatchInput): ScanBatchView {
       unreadable: cards.filter((card) => !isCardConfirmed(card) && card.items.some((item) => item.errorCode !== null && (item.status === "terminal_failed" || item.status === "skipped"))).length,
     },
     createdAt: detail?.batch.createdAt ?? null,
+    density: densityOf(newCards, input),
     events: (input.attribution?.events ?? []).filter((event) => candidateEvents.has(event.eventId)),
     phase: phaseFor(input, pendingIds.size, [...pendingIds].some((cardId) => !input.autoAttempted.has(cardId))),
     photos: items.length,
     settled: cards.filter((card) => !card.items.some((item) => ["awaiting_upload", "uploaded", "queued", "processing"].includes(item.status))).length,
     uploaded: items.filter((item) => item.status !== "awaiting_upload").length,
   };
+}
+
+/** D-10 levels of the new people (`contact-density`): name, email / phone, the batch's 会った場所. */
+function densityOf(cards: readonly IngestCard[], input: ScanBatchInput): Record<ContactDensityLevel, number> | null {
+  if (!cards.length) return null;
+  const out: Record<ContactDensityLevel, number> = { 1: 0, 2: 0, 3: 0 };
+  for (const card of cards) {
+    const fields = (input.drafts[card.cardId] ?? reconcileBusinessCardReviewCard(card.items)).fields;
+    const { level } = contactDensity({
+      hasContactPoint: Boolean(fields.email.trim() || fields.phone.trim()),
+      hasGoalRelation: false,
+      hasIdentity: Boolean(fields.displayName.trim()),
+      hasInteraction: false,
+      hasMetContext: Boolean(metEventFor(card.cardId, input.attribution, input.selectedEventId)),
+      selfReported: false,
+    });
+    out[level] += 1;
+  }
+  return out;
 }
 
 /**

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import type { IngestContactCandidateContract } from "../../../../../shared/contract/business-card-batch";
 import type { ManualContactFieldChoice, ManualContactMergeField } from "../../../../../shared/contract/manual-contact";
@@ -56,7 +56,8 @@ function newKey(): string {
 }
 
 /**
- * 手入力 (b11 A3 Web): a 520 drawer on 人脈を追加 (`?add=manual`, full screen at 390).
+ * 手入力 (b11 A3 Web): a 520 drawer on 人脈を追加 (`?add=manual`, full screen under 768). The save
+ * bar is the drawer's footer slot, outside the scrolling body.
  * Name only is enough; a duplicate check runs as soon as a name is typed (same rule as a
  * card + 同名); 統合 lists only the fields that differ; 「署名を貼り付け」 splits a signature
  * by rules and marks the pieces in the original. ⌘↵ saves; on success the person's page
@@ -70,11 +71,9 @@ export function ManualContactDrawer({ open, onClose, navigate, now = () => new D
 }) {
   const language = useScopeLanguage();
   const t = translator(language);
-  return (
-    <Drawer open={open} onClose={onClose} title={t(m.drawerTitle)} size="md">
-      {open ? <ManualFormBody t={t} onClose={onClose} navigate={navigate} now={now} /> : null}
-    </Drawer>
-  );
+  // The form state lives in ManualFormBody, which also draws the drawer: the save bar goes in
+  // the drawer's own footer (outside the scrolling body — R12 review M1), full screen on a phone.
+  return open ? <ManualFormBody t={t} onClose={onClose} navigate={navigate} now={now} /> : null;
 }
 
 function ManualFormBody({ t, onClose, navigate, now }: { t: Translate; onClose: () => void; navigate: (href: string) => void; now: () => Date }) {
@@ -92,6 +91,7 @@ function ManualFormBody({ t, onClose, navigate, now }: { t: Translate; onClose: 
   const [signature, setSignature] = useState("");
   const [applied, setApplied] = useState(false);
   const key = useRef<{ fingerprint: string; value: string } | null>(null);
+  const formId = useId();
   const update = (patch: Partial<ManualForm>) => setForm((current) => ({ ...current, ...patch }));
 
   // 出会った場所: the person's events around today (参加予定 / 最近参加).
@@ -204,8 +204,21 @@ function ManualFormBody({ t, onClose, navigate, now }: { t: Translate; onClose: 
   const level = formDensity(form);
   const metOn = (kind: "intro" | "other") => form.met?.kind === kind;
 
+  const footer = (
+    <div className={styles.drawerFoot} data-manual-footer="">
+      <span className={styles.label} data-manual-density={level}>{t(m.densityPreview, { level: densityLabel(level, t) })}</span>
+      <span className={styles.push} />
+      <Button variant="ghost" label={t(m.cancel)} onClick={onClose} />
+      {/* Outside the <form> (footer slot) but still its submit button (`form`), so ↵ in a field saves too;
+          the click saves directly (implicit submission also arrives here as a click). */}
+      <Button type="submit" form={formId} variant="primary" loading={saving} label={decision.kind === "merge" ? t(m.saveMerge) : t(m.save)} onClick={(event) => { event.preventDefault(); void save(); }} data-manual-save="" />
+      <span className={styles.footKbd}><Kbd>⌘↵</Kbd></span>
+    </div>
+  );
+
   return (
-    <form className={styles.form} onSubmit={(event) => { event.preventDefault(); void save(); }} data-manual-form="" noValidate>
+    <Drawer open onClose={onClose} title={t(m.drawerTitle)} size="md" footer={footer} fullOnPhone>
+    <form id={formId} className={styles.form} onSubmit={(event) => { event.preventDefault(); void save(); }} data-manual-form="" noValidate>
       <p className={styles.label}>{t(m.drawerLead)}</p>
 
       <div className={styles.stack}>
@@ -355,14 +368,7 @@ function ManualFormBody({ t, onClose, navigate, now }: { t: Translate; onClose: 
       </div>
 
       {failure ? <p className={styles.error} role="alert" data-manual-error=""><Icon name="alert" size={16} />{failure}</p> : null}
-
-      <div className={styles.drawerFoot}>
-        <span className={styles.label} data-manual-density={level}>{t(m.densityPreview, { level: densityLabel(level, t) })}</span>
-        <span className={styles.push} />
-        <Button variant="ghost" label={t(m.cancel)} onClick={onClose} />
-        <Button type="submit" variant="primary" loading={saving} label={decision.kind === "merge" ? t(m.saveMerge) : t(m.save)} data-manual-save="" />
-        <Kbd>⌘↵</Kbd>
-      </div>
     </form>
+    </Drawer>
   );
 }

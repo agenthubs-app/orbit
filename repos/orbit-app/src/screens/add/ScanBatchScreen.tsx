@@ -27,7 +27,7 @@ import { reconcileBusinessCardReviewCard, type BusinessCardConflictField, type B
 import { ingestCards, type IngestCard } from "../../view-models/business-card-ingest";
 import { EMPTY_ATTRIBUTION, useAddApi, type BatchAttribution } from "./add-api";
 import { EMPTY_LEDGER, readScanLedger, writeScanLedger, type ScanLedger } from "./add-storage";
-import { Body, Caption, CountTiles, FadeIn, SectionTitle, useAddStyles } from "./add-ui";
+import { Body, Caption, CountTiles, DensityBar, FadeIn, SectionTitle, useAddStyles } from "./add-ui";
 import { newAddKey } from "./manual-model";
 import { AfterSteps, CameraPermissionPanel, CardCameraPane } from "./ScanCaptureScreen";
 import {
@@ -51,6 +51,7 @@ import {
   type ScanIssueGroup,
 } from "./scan-batch-model";
 import { EMPTY_TRAY } from "./scan-capture-model";
+import { forgetScanUpload, runScanUpload, scanUploadState, subscribeScanUpload, type ScanUploadState } from "./scan-upload-queue";
 import { pickCardImages, preparedImageBytes, useCameraAccess } from "./scan-media";
 
 const POLL_MS = 3000;
@@ -110,6 +111,8 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
   const edited = useRef(new Set<string>());
   const [matches, setMatches] = useState<Record<string, IngestContactCandidateContract | null>>({});
   const matchKeys = useRef<Record<string, string>>({});
+  // R12 review m9: cards whose duplicate lookup failed — never added automatically.
+  const lookupFailed = useRef(new Set<string>());
   const [attribution, setAttribution] = useState<BatchAttribution | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null | undefined>(undefined);
   const [ledger, setLedger] = useState<ScanLedger>(EMPTY_LEDGER);
@@ -167,6 +170,17 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
     });
   }, [batchId, load]);
 
+  // R12 review m7: photos still going up from the camera page (the queue keeps going when that page closes).
+  const [upload, setUpload] = useState<ScanUploadState | null>(() => scanUploadState(ownerId, batchId));
+  useEffect(() => subscribeScanUpload(ownerId, batchId, (state) => {
+    if (!mounted.current) return;
+    setUpload(state);
+    if (state.finished) {
+      forgetScanUpload(ownerId, batchId);
+      void load();
+    }
+  }), [batchId, load, ownerId]);
+
   const status = detail?.batch.status ?? null;
   useEffect(() => {
     if (status !== "collecting" && status !== "processing") return;
@@ -208,8 +222,13 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
       const request = stale.map((card) => ({ cardId: card.cardId, fields: cardMatchFields(drafts[card.cardId]!) }));
       void api.duplicates(batchId, request).then((result) => {
         if (!mounted.current) return;
-        for (const entry of request) matchKeys.current[entry.cardId] = JSON.stringify(entry.fields);
-        // A failed lookup never blocks: no candidate, and the confirm endpoint still checks.
+        for (const entry of request) {
+          matchKeys.current[entry.cardId] = JSON.stringify(entry.fields);
+          if (result.ok) lookupFailed.current.delete(entry.cardId);
+          else lookupFailed.current.add(entry.cardId);
+        }
+        // A failed lookup never blocks the page, but those cards wait for the person (R12 review m9:
+        // the confirm endpoint does not check 同名, so it cannot be the safety net).
         setMatches((current) => {
           const next = { ...current };
           for (const entry of request) next[entry.cardId] = result.ok ? result.data[entry.cardId] ?? null : null;
@@ -259,7 +278,7 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
     return result.data.kind;
   }, [api, batchId, drafts, enrichment, remember]);
 
-  const input = { attribution, autoAttempted: autoAttempted.current, autoRunning, detail, drafts, enrichment, ledger, loadFailed, matches, matchesReady, now, selectedEventId: selectedEventId ?? null };
+  const input = { attribution, autoAttempted: autoAttempted.current, autoRunning, detail, drafts, enrichment, ledger, loadFailed, lookupFailed: lookupFailed.current, matches, matchesReady, now, selectedEventId: selectedEventId ?? null };
   const view = buildScanView(input);
 
   // 自動で人脈へ: when reading is over and the lookups are known, every card waiting at that
@@ -331,7 +350,18 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
       <FadeIn testID={`add-batch-phase-${view.phase}`}>
         {view.phase === "loading" ? <Skeleton lines={6} /> : null}
         {view.phase === "missing" ? <RetryCard title={t("add.batch.loadFailed")} onRetry={() => void load()} /> : null}
-        {view.phase === "uploading" || view.phase === "expired" || view.phase === "cancelled" ? (
+        {view.phase === "uploading" && upload && !upload.finished ? (
+          <Card>
+            <View style={styles.stack} testID="add-batch-uploading">
+              <UiText style={styles.title}>{t("add.scan.uploadingTitle", { done: upload.done, n: upload.total })}</UiText>
+              <ProgressBar value={upload.total ? Math.round((upload.done / upload.total) * 100) : 0} accessibilityLabel={t("add.scan.uploadingTitle", { done: upload.done, n: upload.total })} />
+              <Body>{t("add.scan.uploadingLead")}</Body>
+              {upload.problem ? <Caption tone="error">{t("add.scan.uploadFailed")}</Caption> : null}
+              {upload.problem ? <Button label={t("add.scan.retryUpload")} icon="refresh" loading={upload.busy} onPress={() => void runScanUpload(ownerId, batchId)} /> : null}
+            </View>
+          </Card>
+        ) : null}
+        {(view.phase === "uploading" && !(upload && !upload.finished)) || view.phase === "expired" || view.phase === "cancelled" ? (
           <Card>
             <View style={styles.stack}>
               <Body>{t(view.phase === "uploading" ? "add.batch.notUploaded" : view.phase === "expired" ? "add.batch.expired" : "add.batch.cancelled")}</Body>
@@ -447,6 +477,10 @@ function ReviewPanel({ view, language, selectedEventId, onChooseEvent, settle, r
   const ready = pending.filter((card) => card.section === "ready");
   const failed = pending.filter((card) => card.section === "failed");
   const addable = [...dups, ...reviews, ...ready];
+  // R12 review m5: 統合 is not 追加 — the button counts them apart.
+  const merging = dups.filter((card) => (choices[card.cardId] ?? "merge") === "merge").length;
+  const adding = addable.length - merging;
+  const addLabel = !merging ? t("add.batch.addAll", { n: adding }) : adding ? t("add.batch.addAllWithMerge", { m: merging, n: adding }) : t("add.batch.mergeAll", { m: merging });
 
   const settleOne = async (card: ScanCardView): Promise<SettleResult> => {
     const kind = card.section === "duplicate" ? ((choices[card.cardId] ?? "merge") === "merge" ? "merge" : "separate") : "confirm";
@@ -554,7 +588,7 @@ function ReviewPanel({ view, language, selectedEventId, onChooseEvent, settle, r
       ) : null}
 
       <View style={styles.stack}>
-        <Button variant="primary" block icon="user-plus" label={t("add.batch.addAll", { n: addable.length })} disabled={!addable.length} loading={busy} onPress={() => void addAll()} />
+        <Button variant="primary" block icon="user-plus" label={addLabel} disabled={!addable.length} loading={busy} onPress={() => void addAll()} />
         <Button variant="ghost" label={t("add.batch.later")} onPress={onLater} />
         <Caption>{t("add.batch.laterNote")}</Caption>
       </View>
@@ -594,7 +628,7 @@ function Problem({ card, problem }: { card: ScanCardView; problem: SettleResult 
   return key ? <Caption tone="error">{t(key)}</Caption> : null;
 }
 
-function DuplicateCard({ card, busy, problem, onConfirm, onSkip, choice, onChoose }: CardProps & { choice: Choice; onChoose: (choice: Choice) => void }) {
+function DuplicateCard({ card, busy, problem, onSkip, choice, onChoose }: CardProps & { choice: Choice; onChoose: (choice: Choice) => void }) {
   const { t } = useOrbitLocale();
   const { styles } = useAddStyles();
   const candidate = card.candidate;
@@ -633,8 +667,8 @@ function DuplicateCard({ card, busy, problem, onConfirm, onSkip, choice, onChoos
         </View>
         <Caption>{t("add.batch.mergeNote")}</Caption>
         <Problem card={card} problem={problem} />
+        {/* R12 review M2: the choice above is the only 統合する; 「N人を追加」 carries it out. */}
         <View style={styles.row}>
-          <Button size="sm" variant="primary" label={choice === "merge" ? t("add.batch.merge") : t("add.batch.separate")} disabled={busy} onPress={onConfirm} />
           <Button size="sm" variant="ghost" label={t("add.batch.skip")} disabled={busy} onPress={onSkip} />
         </View>
       </View>
@@ -805,6 +839,7 @@ function DonePanel({ view, eventTitle, dateLabel, onPlan, onNetwork, onMore }: {
             { key: "unreadable", label: t("add.batch.doneFailed"), tone: "warn", value: view.counts.unreadable },
           ]} />
         </View>
+        {view.density ? <View style={styles.spaced}><DensityBar counts={view.density} /></View> : null}
       </Card>
       <Card>
         <View style={styles.stack}>

@@ -87,6 +87,10 @@
 @media (max-width: 1279px) {
   .drawer_lg { width: min(520px, calc(100vw - 28px)); }
 }
+@media (max-width: 767px) {
+  /* Square corners: the drawer radius token set to 0 for this drawer only. */
+  .drawerFullPhone { top: 0; right: 0; bottom: 0; left: 0; width: 100vw; height: 100dvh; --r-dialog: 0px; }
+}
 .drawerHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: var(--space-22) var(--space-22) var(--space-12); }
 .drawerTitle { font-size: var(--fs-title-sm); font-weight: var(--fw-heavy); }
 .drawerBody { flex: 1; overflow: auto; padding: 0 var(--space-22) var(--space-22); }

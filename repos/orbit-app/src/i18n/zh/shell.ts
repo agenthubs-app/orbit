@@ -1,7 +1,7 @@
 export const shell = {
   "shell.parent.settings": "设置",
   "shell.parent.me": "我的",
-  "shell.parent.importCenter": "导入",
+  "shell.parent.importCenter": "添加人脉",
   "shell.parent.networkAnalysis": "人脉分析",
   "shell.parent.network": "人脉",
   "shell.parent.eventOperations": "活动运营",

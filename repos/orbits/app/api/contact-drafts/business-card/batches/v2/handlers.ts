@@ -35,7 +35,7 @@ import {
   type ContactCandidate,
 } from "../../../../../../features/contacts/business-card-contact-match";
 import { findCardDuplicateCandidate } from "../../../../../../features/contacts/contact-duplicate-candidates";
-import { createLiveBusinessCardContactWriteService } from "../../../../../../features/contacts/live-contact-write-service";
+import { createLiveBusinessCardContactWriteService, stableContactId } from "../../../../../../features/contacts/live-contact-write-service";
 import { createStorageBusinessCardContactWriteProvider } from "../../../../../../features/contacts/storage/contact-write-live-record-provider";
 import { createPostgresLiveRecordStore } from "../../../../../../shared/storage/postgres-live-record-store";
 import { ingestCardConfirmationInputSchema } from "../../../../../../shared/api-schema/business-card-batch";
@@ -418,10 +418,23 @@ export function createIngestV2BatchDetailHandler(deps: IngestV2HandlerDeps = {})
       if (!detail) {
         return jsonError(new AppError("NOT_FOUND", `batch ${id} was not found`), mode);
       }
-      return NextResponse.json(success(detail), {
+      return NextResponse.json(success(withConfirmedMerged(detail, actorId)), {
         headers: runtimeBoundaryHeaders(mode),
       });
     });
+  };
+}
+
+/**
+ * R12 复核 m4：已确认条目带上 `confirmedMerged`——确认时新建的联系人 id 是按「人 + 批次 + 卡」稳定生成的
+ * （`stableContactId`，与确认处理的 draftId 同一写法），不是这个 id 就是统合进了已有的人。两端完成页据此计数，不靠本机记录。
+ */
+function withConfirmedMerged<T extends { batch: { id: string }; items: readonly IngestItemDTO[] }>(detail: T, actorId: string): T {
+  return {
+    ...detail,
+    items: detail.items.map((item) => item.status === "confirmed" && item.confirmedContactId
+      ? { ...item, confirmedMerged: item.confirmedContactId !== stableContactId(actorId, `business-card-batch:${detail.batch.id}:${item.cardId}`) }
+      : item),
   };
 }
 

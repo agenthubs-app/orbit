@@ -353,6 +353,11 @@ test("読み取り中 → 自動で人脈へ → まとめて確認 → 完成: 
   const failed = page.getByTestId("add-section-failed");
   await failed.getByText("画像を読み取れませんでした").waitFor();
   for (const label of ["撮り直す", "手入力で補う", "スキップ"]) await failed.getByRole("button", { name: label }).waitFor();
+  // R12 review M2: 統合する is only the choice (no second 統合する button); the card itself only has スキップ.
+  assert.equal(await duplicate.getByText("統合する", { exact: true }).count(), 1);
+  assert.deepEqual(await duplicate.getByRole("button").allInnerTexts(), ["スキップ"]);
+  // R12 review m5: 統合 is counted apart from 追加.
+  await page.getByRole("button", { name: "1人を統合" }).waitFor();
   // 別人として追加 for the similar card, スキップ for the unreadable one, then 「N人を人脈に追加」.
   await duplicate.getByRole("checkbox", { name: "別人として追加" }).click();
   await failed.getByRole("button", { name: "スキップ" }).click();
@@ -367,12 +372,51 @@ test("読み取り中 → 自動で人脈へ → まとめて確認 → 完成: 
   assert.equal(await page.getByTestId("add-tile-unreadable").getAttribute("aria-label"), "読み取れず 1件");
   assert.equal(server.people.length - before, 2);
   assert.equal(server.people.find((person) => person.id === "contact-sato")!.merged, 1);
+  // R12 review m11: the two new people are both 身元だけ (no email / phone, no 会った場所).
+  assert.match(await page.getByTestId("add-done-density").innerText(), /身元だけ\s*2人/);
   // The batch is completed, so the plan line offers プランで見る.
   await page.getByTestId("add-done-plan-ready").getByRole("button", { name: "プランで見る" }).click();
   assert.deepEqual((await nav(page)).navigation.at(-1), { href: "/task?seg=plan", method: "push" });
   // Every card was confirmed at most once.
   const confirmedItems = server.calls.filter((call) => /\/(confirm|manual-entry)$/.test(call.path) && call.method === "POST").map((call) => call.path);
   assert.equal(new Set(confirmedItems).size, confirmedItems.length, "no card was confirmed twice");
+});
+
+test("R12 review m9: when the duplicate lookup fails nothing is added automatically", async (t) => {
+  const { page, server, batchId } = await batchPage(t, 2, {
+    readings: [
+      { fields: { name: "林 悦", organization: "星野" }, kind: "read" },
+      { fields: { name: "森 恭平", organization: "海風" }, kind: "read" },
+    ],
+    setup: (s) => { s.duplicatesFail = true; },
+  });
+  server.completeReading(batchId);
+  await page.getByTestId("add-batch-review").waitFor({ timeout: 10000 });
+  assert.equal(server.calls.filter((call) => /\/confirm$/.test(call.path)).length, 0, "nothing was added behind the person's back");
+  await page.getByRole("button", { name: "2人を人脈に追加" }).waitFor();
+});
+
+test("R12 review m7: leaving the camera page while photos go up does not drop the batch — it is uploaded and read", async (t) => {
+  let release: () => void = () => undefined;
+  const { page, server } = await open(t, "/contacts/new/scan", { deviceStore: GUIDE_DONE, stack: ["/contacts/new", "/contacts/new/scan"], setup: (s) => { s.uploadGate = new Promise((resolve) => { release = resolve; }); } });
+  await page.getByTestId("add-scan-camera").waitFor();
+  for (let index = 1; index <= 2; index += 1) {
+    await page.getByRole("button", { name: "撮影する" }).click();
+    await page.getByText(`連続撮影 ${index}枚`, { exact: false }).waitFor();
+  }
+  await page.getByRole("button", { name: /^完了 / }).click();
+  await page.getByTestId("add-scan-upload").waitFor();
+  for (let attempt = 0; attempt < 50 && !server.calls.some((call) => call.method === "PUT"); attempt += 1) await page.waitForTimeout(50);
+  // The person goes back while the photos are still going up.
+  await page.evaluate(() => { const nav = (window as unknown as { addNav: { stack: string[]; render?: () => void } }).addNav; nav.stack.pop(); nav.render?.(); });
+  await page.getByTestId("add-scan-upload").waitFor({ state: "detached" });
+  const batchId = [...server.batches.keys()][0]!;
+  assert.equal(server.batches.get(batchId)!.batch.status, "collecting");
+  release();
+  for (let attempt = 0; attempt < 50 && server.batches.get(batchId)!.batch.status === "collecting"; attempt += 1) await page.waitForTimeout(100);
+  assert.equal(server.batches.get(batchId)!.batch.status, "processing", "uploaded and finalized without the page");
+  assert.equal(server.writes().filter((write) => write.startsWith("PUT")).length, 2);
+  assert.equal((await nav(page)).stack.at(-1), "/contacts/new", "the person was not pulled back to the batch page");
 });
 
 test("W0015: cards with an event candidate wait in そのまま追加; the batch's 会った場所 goes with their confirmation", async (t) => {

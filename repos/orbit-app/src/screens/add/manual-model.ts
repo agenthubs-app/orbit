@@ -89,10 +89,11 @@ export type EventChip = { eventId: string; title: string; startsAt: string };
 
 const DAY = 86_400_000;
 
-/** 出会った場所 chips: events from 30 days ago to 30 days ahead (参加予定 and 最近参加), nearest first. */
+/** 出会った場所 chips: events that started in the last 30 days (最近参加; not upcoming ones — R12 review M3), nearest first. */
 export function eventChips(events: readonly { id?: unknown; title?: unknown; startsAt?: unknown }[], now: Date, limit = 3): EventChip[] {
   const from = now.getTime() - 30 * DAY;
-  const to = now.getTime() + 30 * DAY;
+  // R12 review M3: only events that have already started — the server also refuses a future one as 会った場所.
+  const to = now.getTime();
   return events
     .flatMap((event) => {
       if (typeof event.id !== "string" || typeof event.title !== "string" || typeof event.startsAt !== "string") return [];

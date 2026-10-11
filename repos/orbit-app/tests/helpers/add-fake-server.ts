@@ -31,6 +31,10 @@ export class FakeAddServer {
   sample = false;
   /** Keeps the batch in ready_for_review after the last card (plan candidates not queued yet). */
   holdCompletion = false;
+  /** R12 review m9: the duplicate lookup answers 500. */
+  duplicatesFail = false;
+  /** R12 review m7: uploads wait for this before answering (null = answer at once). */
+  uploadGate: Promise<void> | null = null;
   undone: string[] = [];
   private sequence = 0;
 
@@ -95,6 +99,7 @@ export class FakeAddServer {
       return ok({ batch, items, reused: false }, 201);
     }
     if ((match = new RegExp(`^${v2}/([^/]+)/items/([^/]+)/content$`).exec(path)) && call.method === "PUT") {
+      if (this.uploadGate) await this.uploadGate;
       const entry = this.batches.get(decodeURIComponent(match[1]!))!;
       const index = entry.items.findIndex((item) => item.id === decodeURIComponent(match![2]!));
       const item = { ...entry.items[index]!, derivativeObjectKey: `d/${match[2]}`, derivativeSize: 900, imageDigest: entry.items[index]!.clientDigest, status: "uploaded" as const, version: entry.items[index]!.version + 1 };
@@ -108,6 +113,7 @@ export class FakeAddServer {
       return ok({ alreadyFinalized: false, batch: entry.batch });
     }
     if ((match = new RegExp(`^${v2}/([^/]+)/duplicates$`).exec(path)) && call.method === "POST") {
+      if (this.duplicatesFail) return fail(500, "INTERNAL_ERROR", "LOOKUP_DOWN");
       const matches: Record<string, IngestContactCandidateContract | null> = {};
       for (const card of body.cards as { cardId: string; fields: { displayName: string; organization: string; role: string; email: string; phone: string } }[]) matches[card.cardId] = this.candidateFor(card.fields);
       return ok({ matches });
@@ -136,7 +142,8 @@ export class FakeAddServer {
           this.people.push({ ...fields, createdVia: "card", id: contactId, merged: 0 });
         }
       }
-      const items = card.map((item) => ({ ...item, confirmedContactId: contactId, status: "confirmed" as const, version: item.version + 1 }));
+      // Like the server's batch detail (R12 review m4): each confirmed item says whether it was merged.
+      const items = card.map((item) => ({ ...item, confirmedContactId: contactId, confirmedMerged: merged, status: "confirmed" as const, version: item.version + 1 }));
       entry.items = entry.items.map((item) => items.find((next) => next.id === item.id) ?? item);
       this.reconcile(entry.batch.id);
       return ok({ contactId, item: items.find((item) => item.id === target.id)!, items, merged, metEventId: typeof body.metEventId === "string" ? body.metEventId : null, replayed: false, state: "created" });

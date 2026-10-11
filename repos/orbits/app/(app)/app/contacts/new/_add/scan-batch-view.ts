@@ -20,6 +20,7 @@ import {
   isCardSkipped,
 } from "../../card-batch-0918/card-batch-model";
 import type { CardBatch } from "../../card-batch-0918/use-card-batch";
+import { contactDensity } from "../../../../../../shared/compute/contact-density";
 import { initialCardDraft, type IngestV2CardViewModel } from "../../ingest-v2/ingest-v2-route-view-model";
 
 type BatchState = Pick<CardBatch,
@@ -107,6 +108,13 @@ export function buildScanBatchView(batch: BatchState): ScanBatchView {
   // 自动进人脈的卡不在复核队列里（cardReviewQueue 口径）：已确认且不在队列 = 自动导入 / 自动统合。
   const autoAdded = batch.cards.filter((card) => card.allConfirmed && !queueIds.has(card.cardId)).length;
   const held = count("ready");
+  // R12 review m4: which confirmed cards were merged comes from the server (`confirmedMerged`);
+  // only an older server without it falls back to this device's ledger counts.
+  const confirmedCards = batch.cards.filter((card) => card.allConfirmed);
+  const serverKnows = confirmedCards.length > 0 && confirmedCards.every((card) => card.items.some((item) => typeof item.confirmedMerged === "boolean"));
+  const mergedCards = confirmedCards.filter((card) => card.items.some((item) => item.confirmedMerged === true));
+  const newCards = serverKnows ? confirmedCards.filter((card) => !mergedCards.includes(card)) : [];
+  const density = densityOf(newCards, batch);
   const events = batch.attribution.events;
   const candidateEvents = new Set(Object.values(batch.attribution.cards).filter((value): value is string => Boolean(value)));
   // 整批选择：有候选的卡都勾选同一场活动时就是它；全部取消 = つけない。
@@ -127,15 +135,35 @@ export function buildScanBatchView(batch: BatchState): ScanBatchView {
       autoAdded,
       held,
       failed: count("failed"),
-      created: batch.autoCount + batch.userCount,
-      merged: batch.mergedCount,
+      created: serverKnows ? newCards.length : batch.autoCount + batch.userCount,
+      merged: serverKnows ? mergedCards.length : batch.mergedCount,
       // 读不出的不计入「追加」：没有被手入力补成联系人的读不出卡（跳过后条目仍保留 errorCode）。
       unreadable: batch.cards.filter((card) => !card.allConfirmed && card.items.some((item) => item.errorCode !== null && (item.status === "terminal_failed" || item.status === "skipped"))).length,
     },
+    density,
     events: events.filter((event) => candidateEvents.has(event.eventId)),
     selectedEventId: chosen,
     writtenEventIds: [...new Set(Object.values(batch.attributed))],
     uploadFailed: batch.uploadFailed,
     missingFiles: batch.missing,
   };
+}
+
+/** D-10 levels of the new people (`shared/compute/contact-density`): name, email / phone, 会った場所 written on confirm. */
+function densityOf(cards: readonly IngestV2CardViewModel[], batch: Pick<BatchState, "attributed" | "drafts">): Record<1 | 2 | 3, number> | null {
+  if (!cards.length) return null;
+  const out: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 };
+  for (const card of cards) {
+    const fields = (batch.drafts[card.cardId] ?? initialCardDraft(card)).fields;
+    const { level } = contactDensity({
+      hasContactPoint: Boolean(fields.email.trim() || fields.phone.trim()),
+      hasGoalRelation: false,
+      hasIdentity: Boolean(fields.displayName.trim()),
+      hasInteraction: false,
+      hasMetContext: Boolean(batch.attributed[card.cardId]),
+      selfReported: false,
+    });
+    out[level] += 1;
+  }
+  return out;
 }

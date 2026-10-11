@@ -4,8 +4,10 @@
  * - 都要登录（未登录 401）；不在 `proxy.ts` 的公开白名单里。
  * - live：服务 = `createConfiguredManualContactV2Service()`（库未配置 → 503）；mock / hybrid：进程内存储。
  * - 请求体严格（`shared/api-schema/manual-contact.ts`），响应先过契约 schema 再发出。
- * - 示例模式拦写：演示账号（`DEMO_ACTOR_ID`），或请求带 `x-orbit-sample: 1`（示例画面发出的请求），写接口一律 403 `SAMPLE_READ_ONLY`，
- *   不碰存储。界面侧的 `guardWrite` 本来就不发请求，这里是服务端的兜底。
+ * - 示例模式拦写（复核 m3 如实说明）：服务端只认得出 mock 演示账号（`DEMO_ACTOR_ID`，只在 mock 模式的夹具里存在）——
+ *   它的写接口一律 403 `SAMPLE_READ_ONLY`，不碰存储。Web 的引导期示例模式（`_demo/DemoModeProvider`）只挂在人脈 / iOrbit，
+ *   不包住「人脈を追加」的页面和手入力抽屉；App 没有示例模式。所以真实账号的请求这里永远拦不到，也不该拦。
+ *   请求头 `x-orbit-sample: 1` 是预留给以后示例画面用的兜底，目前两端都不发。
  */
 import { NextResponse } from "next/server";
 import type { ZodType } from "zod";
@@ -61,6 +63,7 @@ function errorReply(error: unknown): Reply {
       case "NOT_FOUND":
         return { error: new AppError("NOT_FOUND", error.message), reason: error.code };
       case "UNDO_EXPIRED":
+      case "UNDONE":
       case "IDEMPOTENCY_CONFLICT":
       case "CONFLICT":
         return { error: new AppError("CONFLICT", `${error.code}: ${error.message}`), reason: error.code };
@@ -148,7 +151,8 @@ export function createManualContactOrganizationsHandler(deps: ManualContactHandl
 export function createManualContactUndoHandler(deps: ManualContactHandlerDeps = {}) {
   return run(deps, { write: true }, async ({ actorId, params, service }) => {
     const contactId = (params.contactId ?? "").trim();
-    if (!contactId || contactId.length > 512) return invalid("contactId is required.");
+    // 与请求体里的 id 同一上限（复核 M3）。
+    if (!contactId || contactId.length > 200) return invalid("contactId is required.");
     return { data: await service.undo(actorId, contactId), schema: manualContactUndoResultSchema };
   });
 }

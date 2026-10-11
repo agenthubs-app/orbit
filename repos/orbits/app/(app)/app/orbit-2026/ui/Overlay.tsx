@@ -114,20 +114,22 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
 
 // kit .drawer: from the right, 14 from each edge, radius 28, --bg. lg 600 (520 under
 // 1280 wide), md 520, sm 380 (RD-17: rich content 520 / light 380 at 1024); never
-// wider than the window minus the margins.
-export function Drawer({ open, onClose, title, size = "lg", children, footer }: {
+// wider than the window minus the margins. `fullOnPhone`: under 768 the drawer fills the
+// screen (no margins, no radius) — for a form that is the whole task on a phone (R12 手入力, b8).
+export function Drawer({ open, onClose, title, size = "lg", children, footer, fullOnPhone = false }: {
   open: boolean;
   onClose: () => void;
   title: string;
   size?: "lg" | "md" | "sm";
   children: ReactNode;
   footer?: ReactNode;
+  fullOnPhone?: boolean;
 }) {
   const id = useId();
   const copy = useStandardCopy();
   if (!open) return null;
   return (
-    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.drawerScrim}`} className={`${styles.drawer} ${styles[`drawer_${size}`]}`}>
+    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.drawerScrim}`} className={`${styles.drawer} ${styles[`drawer_${size}`]}${fullOnPhone ? ` ${styles.drawerFullPhone}` : ""}`}>
       <div className={styles.drawerHead}>
         <h2 id={`${id}-title`} className={styles.drawerTitle}>{title}</h2>
         <button type="button" className={`btn ${styles.close}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={20} /></button>

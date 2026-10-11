@@ -64,6 +64,11 @@ export interface ScanBatchView {
     merged: number;
     unreadable: number;
   };
+  /**
+   * 完成 density bar (DESIGN §2.2 step 7, R12 review m11): new people by D-10 level (●○○ / ●●○ / ●●●).
+   * null = not enough to tell (the server did not say which cards were merged, or nobody new).
+   */
+  density: Readonly<Record<1 | 2 | 3, number>> | null;
   events: readonly ScanAttributionEvent[];
   /** The event chosen for the whole batch (null = つけない / no candidate). */
   selectedEventId: string | null;

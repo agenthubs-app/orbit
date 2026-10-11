@@ -4,6 +4,7 @@
  * - live：与联系人同一个 PostgreSQL（`createConfiguredTransactionalPostgresRuntime`）；写操作在一个 read committed 事务里，
  *   先拿「这个人 · 手入力」的 advisory 锁，联系人、统合、回执、计划候补的入队 / 撤销同事务提交。库未配置 → null（接口 503）。
  * - mock：进程内存储（不连库、不入队计划候补），返回符合契约的结果。
+ * - 活动核对（复核 M3）：用 GET /api/events 同一个活动服务的 `listEvents`（本人看得到的活动），按 id 找。
  */
 import { createMemoryLiveRecordStore, type LiveRecordStoreLike } from "../../../shared/storage/live-record-store";
 import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
@@ -12,9 +13,11 @@ import {
   type TransactionalPostgresClient,
   type TransactionalSqlExecutor,
 } from "../../../shared/storage/transactional-postgres";
+import { createEventCrudAndImportService } from "../../events/service-factory";
 import { cancelPendingPlanMatchForContact, enqueuePlanMatchJob } from "../../plans/matching-repository";
 import {
   createManualContactV2Service,
+  type ManualContactEventLookup,
   type ManualContactPlanMatchPort,
   type ManualContactV2Service,
   type ManualContactV2Storage,
@@ -34,6 +37,18 @@ export function createTransactionalPlanMatchPort(tx: TransactionalSqlExecutor, w
     },
     async enqueue({ actorId, contactId }) {
       await enqueuePlanMatchJob(client, { actorId, batchId: manualContactPlanMatchSource(contactId), contactIds: [contactId], singleCard: true, workspaceId });
+    },
+  };
+}
+
+/** 「出会った場所」的活动核对：与人脈を追加的活动 chip 同一个来源（GET /api/events 的 listEvents）。 */
+export function createEventServiceLookup(mode: "live" | "mock"): ManualContactEventLookup {
+  return {
+    async find(actorId, eventId) {
+      const result = await createEventCrudAndImportService(mode).listEvents({ actorId });
+      if (result.success === false) throw new Error(`event list failed: ${result.error.code}`);
+      const event = result.data.events.find((entry) => entry.id === eventId);
+      return event ? { startsAt: typeof event.startsAt === "string" ? event.startsAt : null } : null;
     },
   };
 }
@@ -75,7 +90,7 @@ export function createMemoryManualContactV2Storage(input: {
 export function createConfiguredManualContactV2Service(): ManualContactV2Service | null {
   const runtime = createConfiguredTransactionalPostgresRuntime();
   if (!runtime) return null;
-  return createManualContactV2Service({ storage: createPostgresManualContactV2Storage(runtime) });
+  return createManualContactV2Service({ events: createEventServiceLookup("live"), storage: createPostgresManualContactV2Storage(runtime) });
 }
 
 interface MockGlobal {
@@ -85,6 +100,6 @@ interface MockGlobal {
 /** mock 模式：进程内一份（开发 / 测试），不连库。 */
 export function getMockManualContactV2Service(): ManualContactV2Service {
   const holder = globalThis as typeof globalThis & MockGlobal;
-  holder.__orbitManualContactV2Mock ??= createManualContactV2Service({ storage: createMemoryManualContactV2Storage() });
+  holder.__orbitManualContactV2Mock ??= createManualContactV2Service({ events: createEventServiceLookup("mock"), storage: createMemoryManualContactV2Storage() });
   return holder.__orbitManualContactV2Mock;
 }

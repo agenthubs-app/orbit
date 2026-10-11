@@ -33,6 +33,13 @@ function contact(id: string, owner: string, payload: Record<string, unknown>, up
   };
 }
 
+// 本人可见的活动（M3：服务端核对活动存在、本人可见、已开始）。
+const EVENTS: Record<string, { actorIds: string[]; startsAt: string | null }> = {
+  "event:expo": { actorIds: [ALICE], startsAt: "2026-10-09T01:00:00.000Z" },
+  "event:future": { actorIds: [ALICE], startsAt: "2026-10-20T01:00:00.000Z" },
+  "event:bobs": { actorIds: [BOB], startsAt: "2026-10-01T01:00:00.000Z" },
+};
+
 function harness(seed: LiveRecord<Record<string, unknown>>[] = [], start = "2026-10-11T03:00:00.000Z") {
   let now = new Date(start);
   const enqueued: string[] = [];
@@ -43,7 +50,12 @@ function harness(seed: LiveRecord<Record<string, unknown>>[] = [], start = "2026
   };
   const storage = createMemoryManualContactV2Storage({ planMatch, workspaceId: WS });
   for (const record of seed) storage.store.upsertRecord(record);
-  const service = createManualContactV2Service({ log: () => undefined, now: () => now, storage });
+  const service = createManualContactV2Service({
+    events: { async find(actorId, eventId) { const event = EVENTS[eventId]; return event && event.actorIds.includes(actorId) ? { startsAt: event.startsAt } : null; } },
+    log: () => undefined,
+    now: () => now,
+    storage,
+  });
   return {
     advance(ms: number) { now = new Date(now.getTime() + ms); },
     cancelled,
@@ -85,6 +97,35 @@ test("met context: an event writes metEventId; intro / other and the note go int
   assert.equal((await h.get(intro.contactId!))!.payload.notes, "出会い：紹介（佐藤さん）\n来月また連絡");
   const other = await h.service.create(ALICE, input({ displayName: "C", metContext: { kind: "other", label: "大学の同窓会" } }));
   assert.equal((await h.get(other.contactId!))!.payload.notes, "出会い：大学の同窓会");
+});
+
+test("met event (R12 review M3): only an event that exists, is the person's own and has started is written as metEventId", async () => {
+  const h = harness();
+  for (const [displayName, eventId] of [["未来", "event:future"], ["他人", "event:bobs"], ["不明", "event:nope"]] as const) {
+    const saved = await h.service.create(ALICE, input({ displayName, metContext: { eventId, kind: "event", label: "Japan IT Week" } }));
+    assert.equal(saved.outcome, "created");
+    const payload = (await h.get(saved.contactId!))!.payload;
+    assert.equal(payload.metEventId, undefined, `${eventId} is not written`);
+    assert.equal(payload.metEventTitle, undefined);
+    assert.equal(payload.notes, "出会い：Japan IT Week", "the chosen name is kept as a note line");
+  }
+  const noLabel = await h.service.create(ALICE, input({ displayName: "ラベルなし", metContext: { eventId: "event:future", kind: "event" } }));
+  assert.equal((await h.get(noLabel.contactId!))!.payload.notes, undefined);
+  // 统合也一样：未来的活动不补进已有联系人。
+  const target = await h.service.create(ALICE, input({ displayName: "統合先" }));
+  await h.service.create(ALICE, input({ displayName: "統合先", mergeIntoContactId: target.contactId!, metContext: { eventId: "event:future", kind: "event", label: "Expo" } }));
+  assert.equal((await h.get(target.contactId!))!.payload.metEventId, undefined);
+  await h.service.create(ALICE, input({ displayName: "統合先", mergeIntoContactId: target.contactId!, metContext: { eventId: "event:expo", kind: "event", label: "Expo" } }));
+  assert.equal((await h.get(target.contactId!))!.payload.metEventId, "event:expo");
+});
+
+test("an event lookup failure saves the person without metEventId", async () => {
+  const storage = createMemoryManualContactV2Storage({ workspaceId: WS });
+  const service = createManualContactV2Service({ events: { async find() { throw new Error("down"); } }, log: () => undefined, now: () => new Date("2026-10-11T03:00:00.000Z"), storage });
+  const saved = await service.create(ALICE, input({ displayName: "A", metContext: { eventId: "event:expo", kind: "event", label: "Expo" } }));
+  const payload = (await storage.store.getRecord({ collectionName: "contacts", recordId: saved.contactId!, workspaceId: WS }))!.payload;
+  assert.equal(payload.metEventId, undefined);
+  assert.equal(payload.notes, "出会い：Expo");
 });
 
 test("duplicates use the business-card rule (email / phone / name + company), and identical ones are never auto-merged", async () => {
@@ -209,6 +250,15 @@ test("undo within 10 minutes tombstones the contact and cancels its plan-match j
   assert.equal(tombstone.lifecycleState, "deleted", "a tombstone, not a physical delete (App sync relies on it)");
   assert.deepEqual(h.cancelled, [created.contactId]);
   await assert.rejects(h.service.undo(ALICE, created.contactId!), isError("NOT_FOUND"));
+});
+
+test("replaying the same key after undo is UNDONE, never a created result pointing at the deleted contact (R12 review m2)", async () => {
+  const h = harness();
+  const created = await h.service.create(ALICE, input({ idempotencyKey: "k-undo" }));
+  await h.service.undo(ALICE, created.contactId!);
+  await assert.rejects(h.service.create(ALICE, input({ idempotencyKey: "k-undo" })), isError("UNDONE"));
+  assert.equal((await h.store.listRecords({ collectionName: "contacts", limit: 10, workspaceId: WS })).length, 0, "nothing is created again");
+  assert.deepEqual(h.enqueued, [created.contactId], "no second plan-match job");
 });
 
 test("undo is refused after 10 minutes, after an edit, for other sources, and for other people", async () => {

@@ -82,6 +82,7 @@ const FAKE_SERVER = `
       server.items = server.items.map((item) => ({ ...item, status: "queued" }));
       return json(detail());
     }
+    if (path === base + "/batch-e2e/duplicates" && window.shellFixture.duplicatesFail) return json({ code: "INTERNAL_ERROR", message: "down" }, 500);
     if (path === base + "/batch-e2e/duplicates") {
       const matches = {};
       for (const entry of body.cards) matches[entry.cardId] = candidateFor(entry.fields);
@@ -195,4 +196,28 @@ test("e2e: upload 4 cards (one front + back) → read → auto into 人脈 → �
   assert.equal(await contacts(), before + 2, "完成「新しく追加」= how many people the network gained");
   assert.equal(await page.locator("[data-orbit-2026-mainhead] h1").textContent(), "3人を人脈に追加しました");
   await page.locator('[data-done-plan="ready"]').waitFor();
+});
+
+test("R12 review m9: when the duplicate lookup fails nothing is added automatically — every readable card waits in まとめて確認", { timeout: 90_000 }, async (t) => {
+  const page = await open(browser, code, { html: `<div id="root"></div><script>window.shellFixture=${JSON.stringify({ calls: [], duplicatesFail: true, lang: "ja", path: "/app/contacts/new/scan", unread: false })}</script>` });
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors.filter((error) => !/500/.test(error)), []); });
+  const before = await page.evaluate(() => (window as any).fakeServer.contacts.length);
+  const jpg = (name: string) => ({ name, mimeType: "image/jpeg", buffer: Buffer.from(name) });
+  await page.locator("[data-scan-input]").setInputFiles(["same.jpg", "normal.jpg"].map(jpg));
+  await page.locator("[data-scan-start]").click();
+  await page.locator('[data-scan-phase="review"]').waitFor({ timeout: 45_000 });
+  assert.equal(await page.evaluate(() => (window as any).fakeServer.contacts.length), before, "nothing was added behind the person's back");
+  const confirms = await page.evaluate(() => (window as any).fakeServer.log.filter((line: string) => /\/confirm$/.test(line)));
+  assert.deepEqual(confirms, []);
+  assert.equal(await page.locator("[data-scan-auto-added]").count(), 0);
+  assert.equal(await page.locator("[data-scan-add-all]").getAttribute("data-scan-add-all"), "2");
+});
+
+test("R12 review m12: the batch id is encoded before it goes into the API path", { timeout: 30_000 }, async (t) => {
+  const page = await open(browser, code, { html: `<div id="root"></div><script>window.shellFixture=${JSON.stringify({ calls: [], lang: "ja", path: "/app/contacts/new/scan/../evil", unread: false })}</script>` });
+  t.after(async () => { await page.close(); });
+  await page.waitForFunction(() => (window as any).fakeServer.log.length > 0);
+  const log: string[] = await page.evaluate(() => (window as any).fakeServer.log);
+  assert.ok(log.some((line) => line === "GET /api/contact-drafts/business-card/batches/v2/..%2Fevil"), JSON.stringify(log));
+  assert.ok(!log.some((line) => line.includes("/v2/../")), JSON.stringify(log));
 });

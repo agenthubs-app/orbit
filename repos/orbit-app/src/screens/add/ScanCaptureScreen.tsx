@@ -5,14 +5,15 @@
 //     and the camera opens by itself when the person comes back from Settings;
 //   camera — [表面][裏面], continuous shots, 「連続撮影 N枚 · あと M枚まで」 (100), a tray
 //     (tap a photo to remove it), 裏なし, 完了 N; 写真から選ぶ picks several at once;
-//   then the v2 batch is created, uploaded and finalized, and the batch page opens.
+//   then the v2 batch is created, uploaded and finalized, and the batch page opens. The upload
+//   runs in scan-upload-queue (R12 review m7): leaving this page does not stop it.
 // No live frame hints and no auto-capture (§9 #6).
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Image, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import type { IngestBatchDetailContract } from "../../api/contract/business-card-batch";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import type { PreparedBatchImage } from "../../api/batch-images";
 import { AppScreen } from "../../components/AppScreen";
 import { Button, Card, Chip, ConfirmDialog, IconButton, MacTile, ProgressBar, Segmented, Skeleton, UiPressable, UiText } from "../../components/ui";
@@ -26,6 +27,7 @@ import { Body, Caption, FadeIn, useAddStyles } from "./add-ui";
 import { newAddKey } from "./manual-model";
 import { addFronts, addShot, canShootBack, cardCount, chooseSide, EMPTY_TRAY, remainingShots, removeShot, SCAN_MAX_PHOTOS, skipBack, trayImages, type ShotSide, type ShotTray } from "./scan-capture-model";
 import { CardCamera, openAppSettings, pickCardImages, prepareCameraShot, uploadNative, useCameraAccess, type CardCameraHandle } from "./scan-media";
+import { runScanUpload, startScanUpload, subscribeScanUpload, type ScanUploadState } from "./scan-upload-queue";
 
 type Mode = "loading" | "guide" | "camera" | "upload";
 type UploadState = { done: number; total: number; problem: "start" | "upload" | "unavailable" | null; busy: boolean };
@@ -47,9 +49,11 @@ export function ScanCaptureScreen() {
   const [notice, setNotice] = useState<"limit" | "pick" | "camera" | null>(null);
   const [upload, setUpload] = useState<UploadState>({ busy: false, done: 0, problem: null, total: 0 });
   const attempt = useRef<CreationAttempt | null>(null);
-  const batch = useRef<{ detail: IngestBatchDetailContract; files: Map<string, PreparedBatchImage> } | null>(null);
+  const batchId = useRef<string | null>(null);
+  const unwatch = useRef<(() => void) | null>(null);
+  const ownerId = useOrbitAuthSession().actorId ?? null;
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  useEffect(() => () => { mounted.current = false; unwatch.current?.(); }, []);
 
   useEffect(() => {
     void (async () => {
@@ -91,8 +95,9 @@ export function ScanCaptureScreen() {
     }
     attempt.current = submission;
     const created = await api.createBatch(submission);
-    if (!mounted.current) return;
+    // Created while the person already left: the upload still starts (it does not need this page).
     if (!created.ok) {
+      if (!mounted.current) return;
       setUpload((current) => ({ ...current, busy: false, problem: created.failure.kind === "notImplemented" ? "unavailable" : "start" }));
       return;
     }
@@ -101,50 +106,34 @@ export function ScanCaptureScreen() {
       const image = images[item.seq - 1];
       if (image) files.set(item.id, image);
     }
-    batch.current = { detail: created.data, files };
-    await pump();
+    batchId.current = created.data.batch.id;
+    // R12 review m7: the upload runs in the module-level queue, so leaving this page does not
+    // stop it (the batch is finalized and read on the server; the batch page can watch / retry).
+    watch(created.data.batch.id);
+    await settled(await startScanUpload({ api, detail: created.data, files, native: uploadNative, ownerId }));
   }
 
-  /** Uploads what is still waiting, then starts reading and opens the batch page. */
-  async function pump() {
-    const current = batch.current;
-    if (!current) return;
-    setUpload((state) => ({ ...state, busy: true, problem: null }));
-    const controller = new AbortController();
-    const result = await api.uploadPending(current.detail, current.files, controller.signal, uploadNative);
-    if (!mounted.current) return;
-    const uploaded = new Map(result.uploaded.map((item) => [item.id, item]));
-    const detail = { ...current.detail, items: current.detail.items.map((item) => uploaded.get(item.id) ?? item) };
-    batch.current = { ...current, detail };
-    const done = detail.items.filter((item) => item.status !== "awaiting_upload").length;
-    if (result.failed.length || detail.items.some((item) => item.status === "awaiting_upload")) {
-      setUpload((state) => ({ ...state, busy: false, done, problem: "upload" }));
-      return;
-    }
-    setUpload((state) => ({ ...state, done }));
-    const finalized = await api.finalize(detail.batch.id);
-    if (!mounted.current) return;
-    if (!finalized.ok) {
-      setUpload((state) => ({ ...state, busy: false, problem: "upload" }));
-      return;
-    }
-    router.replace(scanBatchHref(detail.batch.id) as Href);
+  /** While this page is open it mirrors the queue's progress. */
+  function watch(id: string) {
+    unwatch.current?.();
+    unwatch.current = subscribeScanUpload(ownerId, id, (state) => {
+      if (mounted.current) setUpload({ busy: state.busy, done: state.done, problem: state.problem, total: state.total });
+    });
+  }
+
+  /** Uploaded and reading: open the batch page (only if the person is still here). */
+  async function settled(state: ScanUploadState) {
+    if (state.finished && mounted.current) router.replace(scanBatchHref(state.batchId) as Href);
   }
 
   async function retryUpload() {
-    const current = batch.current;
-    if (!current) {
+    const id = batchId.current;
+    const running = id ? runScanUpload(ownerId, id) : null;
+    if (!running) {
       void startUpload(trayImages(tray));
       return;
     }
-    const fresh = await api.getBatch(current.detail.batch.id, current.detail.batch.actorId);
-    if (!mounted.current) return;
-    if (fresh.ok) batch.current = { ...current, detail: fresh.data };
-    if (fresh.ok && fresh.data.batch.status !== "collecting") {
-      router.replace(scanBatchHref(fresh.data.batch.id) as Href);
-      return;
-    }
-    await pump();
+    await settled(await running);
   }
 
   const helpButton = <IconButton icon="info" size={34} soft accessibilityLabel={t("add.scan.help")} onPress={() => setMode("guide")} />;
