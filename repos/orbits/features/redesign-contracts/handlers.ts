@@ -12,6 +12,7 @@ import {
   inviteConnectionViewSchema, inviteMergeInputSchema, inviteShareUpdateInputSchema, inviteUnlinkInputSchema, inviteUnlinkResultSchema,
 } from "../../shared/api-schema/invite-codes";
 import { AppError } from "../../shared/errors/app-error";
+import { contactCompletionLiveHandlers } from "../contacts/completion/handlers";
 import { redesignMock, type InviteFailure } from "./mock-service";
 import { readBody, redesignContractRoute, type ContractReply } from "./route";
 
@@ -29,14 +30,20 @@ export const putHomeLayout = redesignContractRoute("home-layout", homeLayoutSche
     : { data: result.layout };
 });
 
-// 3 contact completion
-export const getCompletionQuestion = redesignContractRoute("contact-completion", contactCompletionQuestionSchema.nullable(), () => ({ data: redesignMock.completionQuestion() }));
-export const answerCompletionQuestion = redesignContractRoute("contact-completion", contactCompletionResultSchema, async (request, params) => {
+// 3 contact completion — R16: live goes to features/contacts/completion (the
+// resolved service says which); mock / hybrid answer from the demo world.
+export const getCompletionQuestion = redesignContractRoute("contact-completion", contactCompletionQuestionSchema.nullable(), (request, params, { service }) => {
+  if (service.mode === "live") return contactCompletionLiveHandlers().get(request, params);
+  return { data: redesignMock.completionQuestion() };
+});
+export const answerCompletionQuestion = redesignContractRoute("contact-completion", contactCompletionResultSchema, async (request, params, { service }) => {
+  if (service.mode === "live") return contactCompletionLiveHandlers().answer(request, params);
   const body = await readBody(request, contactCompletionAnswerInputSchema);
   if (body.ok === false) return body.reply;
   return params.id === redesignMock.completionQuestion().id ? { data: { questionId: params.id, status: "answered", next: null } } : notFound();
 });
-export const skipCompletionQuestion = redesignContractRoute("contact-completion", contactCompletionResultSchema, async (request, params) => {
+export const skipCompletionQuestion = redesignContractRoute("contact-completion", contactCompletionResultSchema, async (request, params, { service }) => {
+  if (service.mode === "live") return contactCompletionLiveHandlers().skip(request, params);
   const body = await readBody(request, keyOnly);
   if (body.ok === false) return body.reply;
   return params.id === redesignMock.completionQuestion().id ? { data: { questionId: params.id, status: "skipped", next: null } } : notFound();

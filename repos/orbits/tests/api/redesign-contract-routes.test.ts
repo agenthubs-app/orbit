@@ -83,7 +83,8 @@ test("mock: every route answers success from the demo world (the handlers parse 
 test("live (and so production): every route answers 503 NOT_IMPLEMENTED with no fixture in the body", async () => {
   await withMode("live", async () => {
     // R15：招待コード已有 live 实现（features/invite-codes，测试见 tests/api/invite-codes-routes.test.ts），不再是 NOT_IMPLEMENTED。
-    for (const item of CASES.filter((entry) => !entry.file.startsWith("invite-codes"))) {
+    // R16：每天一问已有 live 实现（features/contacts/completion，测试见 tests/api/completion-question-routes.test.ts）。
+    for (const item of CASES.filter((entry) => !entry.file.startsWith("invite-codes") && !entry.file.startsWith("contacts/completion-question"))) {
       const response = await call(item);
       const text = await response.text();
       const body = JSON.parse(text);

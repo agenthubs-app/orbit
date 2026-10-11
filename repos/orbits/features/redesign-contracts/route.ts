@@ -4,11 +4,13 @@ import type { ZodType } from "zod";
 import { failure, runtimeBoundaryHeaders, success } from "../../shared/api/envelope";
 import { resolveFeatureMode, type FeatureMode } from "../../shared/config/feature-mode";
 import { AppError, getHttpStatusForAppErrorCode, SAFE_INTERNAL_ERROR_MESSAGE } from "../../shared/errors/app-error";
-import { resolveRedesignContract, type RedesignContractCapability } from "./service-factory";
+import { resolveRedesignContract, type RedesignContractCapability, type RedesignContractService } from "./service-factory";
 
 // R08: one wrapper for the redesign contract routes. Mock (dev / tests) answers
 // from the demo world; live — always in production — answers 503 with
 // `reason: NOT_IMPLEMENTED` (the same shape the plan routes use), never fixtures.
+// R16: a capability registered live in service-factory.ts reaches its handler with
+// `service.mode === "live"`, and the handler calls the real implementation.
 // Responses are validated against the contract schema before they leave; a
 // response that fails its own schema is a 500 in the envelope, never sent.
 export type ContractReply = { data: unknown; status?: number } | { error: AppError; context?: Record<string, string> };
@@ -29,7 +31,10 @@ export function redesignContractMode(capability: RedesignContractCapability): Fe
   return mode;
 }
 
-export function redesignContractRoute<T>(capability: RedesignContractCapability, schema: ZodType<T> | null, handle: (request: Request, params: Params) => Promise<ContractReply> | ContractReply) {
+/** R16: the resolved service (`mode: "live"` only for capabilities registered live in service-factory.ts). */
+export type RedesignContractContext = { service: RedesignContractService };
+
+export function redesignContractRoute<T>(capability: RedesignContractCapability, schema: ZodType<T> | null, handle: (request: Request, params: Params, context: RedesignContractContext) => Promise<ContractReply> | ContractReply) {
   return async function route(request: Request, context?: { params?: Promise<Params> }): Promise<Response> {
     const mode = redesignContractMode(capability);
     const headers = runtimeBoundaryHeaders(mode);
@@ -41,7 +46,7 @@ export function redesignContractRoute<T>(capability: RedesignContractCapability,
         requestedMode: resolution.error.requestedMode,
       }), { headers, status: getHttpStatusForAppErrorCode("SERVICE_UNAVAILABLE") });
     }
-    const reply = await handle(request, (await context?.params) ?? {});
+    const reply = await handle(request, (await context?.params) ?? {}, { service: resolution.service });
     if ("error" in reply) return NextResponse.json(failure(reply.error, reply.context), { headers, status: getHttpStatusForAppErrorCode(reply.error.code) });
     if (!schema) return NextResponse.json(success(reply.data), { headers, status: reply.status ?? 200 });
     const checked = schema.safeParse(reply.data);
