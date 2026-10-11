@@ -254,3 +254,47 @@ test("dark: the QR keeps dark modules on a light ground (cameras read it)", asyn
   const lum = (value: string) => { const [r, g, b] = (value.match(/[\d.]+/g) ?? []).map(Number); return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!; };
   assert.ok(lum(bg) > lum(fg) + 100, `light ground ${bg}, dark modules ${fg}`);
 });
+
+// R15 复核 S1: a code no longer merges on its own; the owner decides per person in これまでのコード.
+const SUGGESTED = { contactId: "c-tanaka-old", displayName: "田中 太郎", matchedOn: ["name_organization"] };
+const HISTORY_SUGGEST = { items: [{ ...HISTORY.items[0], joined: [{ contactId: "c-invite-new", displayName: "田中 太郎", joinedAt: iso(-500), mergeSuggestion: SUGGESTED }] }] };
+const HISTORY_MERGED = { items: [{ ...HISTORY.items[0], joined: [{ contactId: "c-tanaka-old", displayName: "田中 太郎", joinedAt: iso(-500) }] }] };
+const HISTORY_DISMISSED = { items: [{ ...HISTORY.items[0], joined: [{ contactId: "c-invite-new", displayName: "田中 太郎", joinedAt: iso(-500) }] }] };
+const CONNECTION = (contactId: string) => ({ contactId, connectedAt: iso(-500), via: { code: "K7QX-2M9P" }, sharedByMe: [], sharedByPeer: [], pausedFields: [] });
+
+test("これまでのコード · 同じ人かも: 統合する posts merge for the new contact, then the list reloads (link points at the kept contact, the question is gone)", async (t) => {
+  const page = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET,
+    { method: "GET", url: "^/api/invite-codes$", replies: [ok(HISTORY_SUGGEST), ok(HISTORY_MERGED)] },
+    { method: "POST", url: "^/api/invite-codes/connections/c-invite-new/merge$", replies: [ok(CONNECTION("c-tanaka-old"))] }] });
+  const suggestion = page.locator("[data-invite-merge]");
+  await suggestion.waitFor();
+  assert.equal(await suggestion.getByText("同じ人かも：田中 太郎", { exact: true }).count(), 1);
+  assert.equal(await suggestion.getByRole("button", { name: "統合する" }).count(), 1);
+  assert.equal(await suggestion.getByRole("button", { name: "別の人" }).count(), 1);
+  await suggestion.getByRole("button", { name: "統合する" }).click();
+  await page.locator("[data-invite-merge]").waitFor({ state: "detached" });
+  const [merge, ...rest] = await writes(page);
+  assert.equal(rest.length, 0);
+  assert.equal(merge!.url, "/api/invite-codes/connections/c-invite-new/merge");
+  assert.deepEqual(Object.keys(merge!.body), ["idempotencyKey"]);
+  assert.match(merge!.body.idempotencyKey, /^invite-merge-/u);
+  assert.deepEqual(await page.locator("[data-invite-joined-link]").evaluateAll((links) => links.map((link) => link.getAttribute("href"))), ["/app/contacts/c-tanaka-old"]);
+});
+
+test("これまでのコード · 同じ人かも: 別の人 posts dismiss and the question goes away; a failed merge keeps it and says so", async (t) => {
+  const page = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET,
+    { method: "GET", url: "^/api/invite-codes$", replies: [ok(HISTORY_SUGGEST), ok(HISTORY_DISMISSED)] },
+    { method: "POST", url: "^/api/invite-codes/connections/c-invite-new/merge/dismiss$", replies: [ok(CONNECTION("c-invite-new"))] }] });
+  await page.locator("[data-invite-merge]").getByRole("button", { name: "別の人" }).click();
+  await page.locator("[data-invite-merge]").waitFor({ state: "detached" });
+  assert.deepEqual((await writes(page)).map((call) => call.url), ["/api/invite-codes/connections/c-invite-new/merge/dismiss"]);
+  assert.deepEqual(await page.locator("[data-invite-joined-link]").evaluateAll((links) => links.map((link) => link.getAttribute("href"))), ["/app/contacts/c-invite-new"]);
+
+  const broken = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET,
+    { method: "GET", url: "^/api/invite-codes$", replies: [ok(HISTORY_SUGGEST)] },
+    { method: "POST", url: "/merge$", replies: [fail(500, "INTERNAL_ERROR")] }] });
+  const suggestion = broken.locator("[data-invite-merge]");
+  await suggestion.getByRole("button", { name: "統合する" }).click();
+  await broken.getByText("保存できませんでした").waitFor();
+  assert.equal(await suggestion.getByRole("button", { name: "統合する" }).isEnabled(), true, "can try again");
+});

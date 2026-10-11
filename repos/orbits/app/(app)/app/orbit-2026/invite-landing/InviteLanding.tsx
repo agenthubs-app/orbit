@@ -8,7 +8,7 @@ import { inviteResendRequestText } from "../../../../../shared/compute/invite-me
 import { inviteLandingCopy as l, inviteSenderCopy as c } from "../copy/invite";
 import { pickCopy, type OrbitCopyEntry } from "../copy/types";
 import { Avatar, Button, Card, Chip, Icon, Orbit2026Scope, TextField, Toggle, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
-import { inviterAlreadyInNetwork, readMyProfile, redeemInviteCode, saveShortProfile, type InviteProfileRead } from "../add/invite/invite-api";
+import { readMyProfile, redeemInviteCode, saveShortProfile, type InviteProfileRead } from "../add/invite/invite-api";
 import {
   INVITE_KEY_COPY,
   inviteAppLink,
@@ -92,13 +92,15 @@ function LandingBody({ language, initial, signedIn, accountName, accountEmail = 
     if (view.view === "checking") void loadProfile();
   }, [view.view, loadProfile]);
 
-  const head = view.view === "profile" || view.view === "confirm" || view.view === "done" ? t(l.headSub) : preview ? t(l.headSub) : t(l.manualTitle);
+  // 「アプリなしで登録できます」 is for a visitor who has not signed up yet (the signed-out open page only, m7);
+  // the code-less unavailable page keeps 「招待コードを入力」; signed-in steps carry no subtitle.
+  const head = view.view === "open" && !signedIn ? t(l.headSub) : preview ? null : t(l.manualTitle);
 
   return (
     <div className={styles.column} data-invite-landing={view.view}>
       <header className={styles.head}>
         <span className={styles.appIcon} aria-hidden>O</span>
-        <span className={styles.headText}><b>{t(l.brand)}</b><span className={styles.label}>{head}</span></span>
+        <span className={styles.headText}><b>{t(l.brand)}</b>{head ? <span className={styles.label}>{head}</span> : null}</span>
       </header>
       <div className={styles.fade} key={view.view}>
         {view.view === "checking" ? (profileFailed ? <ProfileRetry t={t} onRetry={() => void loadProfile()} /> : <div className={styles.skeleton} aria-busy="true" />) : null}
@@ -276,15 +278,8 @@ function ConfirmStep({ t, language, preview, profile, accountName, accountEmail,
   const [keys, setKeys] = useState<InviteSharedFieldKey[]>(() => inviteDefaultKeys(available));
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [known, setKnown] = useState(false);
   const redeemKey = useRef(newInviteKey("invite-redeem"));
   const inviter = preview.shared.displayName;
-
-  useEffect(() => {
-    let live = true;
-    void inviterAlreadyInNetwork({ displayName: inviter, organization: preview.shared.organization }).then((found) => { if (live) setKnown(found); });
-    return () => { live = false; };
-  }, [inviter, preview.shared.organization]);
 
   const connect = async () => {
     setBusy(true);
@@ -334,7 +329,8 @@ function ConfirmStep({ t, language, preview, profile, accountName, accountEmail,
         </ul>
         {available.includes("email") || available.includes("phone") ? <p className={styles.label}>{t(l.showHint)}</p> : null}
       </Card>
-      {known ? <p className={styles.known} data-invite-known=""><span aria-hidden>📇</span><span>{t(l.alreadyInNetwork, { name: inviter })}</span></p> : null}
+      {/* Whether the inviter is someone I already have is decided after connecting, by me (R15 复核 S1) — never guessed here. */}
+      <p className={styles.checkLater} data-invite-check-later="">{t(l.checkLater)}</p>
       {failed ? <p className={styles.error} role="alert"><Icon name="alert" size={16} />{t(l.connectFailed)}</p> : null}
       <div className={styles.actions}>
         <Button label={t(l.connect)} variant="primary" block loading={busy} onClick={() => void connect()} data-invite-connect="" />

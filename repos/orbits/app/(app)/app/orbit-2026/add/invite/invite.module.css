@@ -97,3 +97,7 @@
 /* 右栏 */
 .rail { display: flex; flex-direction: column; gap: var(--space-12); animation: fade var(--dur-enter) var(--ease) both; }
 .railTitle { display: flex; align-items: center; gap: var(--space-8); margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
+
+/* これまでのコード · 同じ人かも（R15 复核 S1）：統合するかは本人が決める */
+.merge { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); margin-top: var(--space-4); padding: var(--space-12) var(--space-14); border-radius: var(--r-md); background: var(--surface-2); }
+.mergeText { display: inline-flex; align-items: center; gap: var(--space-8); color: var(--ink); font-size: var(--fs-body-sm); line-height: var(--lh-body); }

@@ -81,6 +81,10 @@ export const inviteSenderCopy = {
   historyTitle: { ja: "これまでのコード", zh: "以往的邀请码", en: "Past codes", kind: "label" },
   historyCreated: { ja: "{date} 作成", zh: "{date}创建", en: "Made {date}", kind: "label" },
   historyNobody: { ja: "まだ誰も登録していません", zh: "还没有人加入", en: "Nobody has joined yet", kind: "label" },
+  // R15 复核 S1：招待で入った人が、すでに人脈にいる人と同じかもしれないとき（統合するかは本人が決める）
+  mergeMaybe: { ja: "同じ人かも：{name}", zh: "可能是同一个人：{name}", en: "Maybe the same person: {name}", kind: "label" },
+  mergeAccept: { ja: "統合する", zh: "合并", en: "Merge", kind: "button" },
+  mergeReject: { ja: "別の人", zh: "不是同一个人", en: "Different person", kind: "button" },
   historyEmpty: { ja: "まだコードはありません", zh: "还没有邀请码", en: "No codes yet", kind: "label" },
   statusActive: { ja: "有効", zh: "有效", en: "Active", kind: "chip" },
   statusExpired: { ja: "期限切れ", zh: "已过期", en: "Expired", kind: "chip" },
@@ -153,10 +157,10 @@ export const inviteLandingCopy = {
   confirmSub: { ja: "新しいアカウントは作りません。お互いの人脈に追加されます。", zh: "不会新建账号，你们会加入彼此的人脉。", en: "No new account is made. You're added to each other's network.", kind: "sentence" },
   showTitle: { ja: "{name}さんに見せる情報", zh: "给{name}看的信息", en: "What {name} gets from you", kind: "label" },
   showHint: { ja: "メールと電話は、オンにしたときだけ届きます。", zh: "邮箱和电话只有打开时才会给对方。", en: "Email and phone are shared only if you turn them on.", kind: "sentence" },
-  alreadyInNetwork: { ja: "{name}さんはすでにあなたの人脈にいます。つながると本人入力に統合されます。", zh: "{name}已经在你的人脉里。建立联系后会合并为本人填写的信息。", en: "{name} is already in your network. Connecting merges in their self-entered details.", kind: "sentence" },
   connect: { ja: "つながる", zh: "建立联系", en: "Connect", kind: "fullButton" },
   notNow: { ja: "今はしない", zh: "暂不", en: "Not now", kind: "fullButton" },
   changeLater: { ja: "あとから項目の変更やつながりの解除ができます。", zh: "之后可以更改项目或解除联系。", en: "You can change what you share or disconnect later.", kind: "sentence" },
+  checkLater: { ja: "つながったあと、同じ人かどうか確認できます。", zh: "连上之后，你可以确认是不是同一个人。", en: "After you connect, you can check whether this is someone you already have.", kind: "sentence" },
   connectFailed: { ja: "つながれませんでした。もう一度お試しください。", zh: "未能建立联系，请再试一次。", en: "Couldn't connect. Please try again.", kind: "sentence" },
   // 完了（⑪ ⑤）
   doneTitle: { ja: "{name}さんとつながりました", zh: "已和{name}建立联系", en: "You're connected with {name}", kind: "label" },
@@ -186,6 +190,7 @@ export const inviteLandingCopy = {
   enterAnother: { ja: "別のコードを入力", zh: "输入其他邀请码", en: "Enter another code", kind: "button" },
   // /i 手输
   manualTitle: { ja: "招待コードを入力", zh: "输入邀请码", en: "Enter an invite code", kind: "label" },
+  legacyLink: { ja: "このリンクは使えなくなりました。招待コードを入力してください。", zh: "这个链接已经不能用了。请输入邀请码。", en: "This link no longer works. Please enter an invite code.", kind: "sentence" },
   manualSub: { ja: "届いた 8文字のコードを入れてください。", zh: "请输入收到的8位邀请码。", en: "Enter the 8-character code you received.", kind: "sentence" },
   manualField: { ja: "招待コード", zh: "邀请码", en: "Invite code", kind: "label" },
   manualOpen: { ja: "開く", zh: "打开", en: "Open", kind: "fullButton" },

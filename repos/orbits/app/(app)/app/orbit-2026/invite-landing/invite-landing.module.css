@@ -64,9 +64,10 @@
 .switches { display: flex; flex-direction: column; margin: var(--space-8) 0 0; padding: 0; list-style: none; }
 .switchRow { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-8) 0; font-size: var(--fs-body-sm); }
 .switchRow + .switchRow { border-top: 1px solid var(--line); }
-.known { display: flex; gap: var(--space-8); margin: 0; padding: var(--space-12) var(--space-14); border-radius: var(--r-lg); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-meta); line-height: var(--lh-body); }
+.checkLater { margin: 0; color: var(--ink-3-text); font-size: var(--fs-meta); line-height: var(--lh-body); }
 
 /* 异常 */
 .notice { display: flex; flex-direction: column; align-items: center; gap: var(--space-8); padding: var(--space-24) var(--space-20); border-radius: var(--r-card-web); background: var(--surface); text-align: center; }
 .noticeEmoji { font-size: var(--fs-display); line-height: 1; }
 .draftBox { margin: 0; padding: var(--space-12) var(--space-14); border-radius: var(--r-md); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); line-height: var(--lh-body); white-space: pre-wrap; word-break: break-word; }
+.legacy { display: flex; align-items: center; gap: var(--space-8); margin: 0; padding: var(--space-12) var(--space-14); border-radius: var(--r-lg); background: var(--mac-apricot); color: var(--mac-apricot-text); font-size: var(--fs-body-sm); line-height: var(--lh-body); }

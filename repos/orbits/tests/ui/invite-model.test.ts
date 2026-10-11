@@ -153,6 +153,17 @@ test("response header: next.config adds Referrer-Policy: no-referrer for /i and 
   assert.equal(entries[1]!.source, "/api/:path*");
 });
 
+test("m3: old /app/invitations/<token> links redirect (temporary) to /i?expired=legacy — before the proxy, and the token never reaches the query", async () => {
+  const { default: config } = await import("../../next.config.js");
+  const redirects = await (config as { redirects: () => Promise<{ source: string; destination: string; permanent: boolean }[]> }).redirects();
+  const legacy = redirects.find((entry) => entry.source.startsWith("/app/invitations"));
+  assert.deepEqual(legacy, { source: "/app/invitations/:token*", destination: "/i?expired=legacy", permanent: false });
+  assert.doesNotMatch(legacy!.destination, /:token/u, "the token is not carried over");
+  // Next resolves config redirects before middleware / proxy.ts and does not append unused path params to a redirect's query.
+  const page = readFileSync("app/i/page.tsx", "utf8");
+  assert.match(page, /expired === "legacy"/u, "/i reads the flag");
+});
+
 test("server render: same service and same rate limit as the preview API (shared buckets: 60 previews per IP per 10 minutes across page and API); no mock data in the live page", async () => {
   const loader = readFileSync("app/i/_landing/load-invite.ts", "utf8");
   assert.match(loader, /negotiateOrbitLanguage\(\(await headers\(\)\)\.get\("accept-language"\)\)/u, "language from Accept-Language only");

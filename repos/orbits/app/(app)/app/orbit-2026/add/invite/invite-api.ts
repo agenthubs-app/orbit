@@ -10,11 +10,13 @@ import {
   inviteCodeHistoryResponseSchema,
   inviteCodeRedeemResultSchema,
   inviteCodeSchema,
+  inviteConnectionViewSchema,
 } from "../../../../../../shared/api-schema/invite-codes";
 import type {
   InviteCodeContract,
   InviteCodeHistoryResponse,
   InviteCodeRedeemResult,
+  InviteConnectionView,
   InviteSharedFieldKey,
 } from "../../../../../../shared/contract/invite-codes";
 import type { ManualProfileContract } from "../../../../../../shared/contract/profile";
@@ -60,6 +62,19 @@ export function redeemInviteCode(code: string, input: { idempotencyKey: string; 
   return call(`/api/invite-codes/${enc(code)}/redeem`, { method: "POST", body: JSON.stringify(input) }, inviteCodeRedeemResultSchema);
 }
 
+/**
+ * R15 复核 S1: a person who joined through my code may be someone already in my network. Only I decide:
+ * 統合する folds the new contact (`contactId` = the one the invite created) into the existing one — the response's
+ * `contactId` is the kept contact — and 別の人 drops the question. Both are idempotent by key.
+ */
+export function mergeInviteConnection(contactId: string, idempotencyKey: string): Promise<InviteApiResult<InviteConnectionView>> {
+  return call(`/api/invite-codes/connections/${enc(contactId)}/merge`, { method: "POST", body: JSON.stringify({ idempotencyKey }) }, inviteConnectionViewSchema);
+}
+
+export function dismissInviteMerge(contactId: string, idempotencyKey: string): Promise<InviteApiResult<InviteConnectionView>> {
+  return call(`/api/invite-codes/connections/${enc(contactId)}/merge/dismiss`, { method: "POST", body: JSON.stringify({ idempotencyKey }) }, inviteConnectionViewSchema);
+}
+
 /** GET /api/profile → `profile` (null when there is none yet). */
 export type InviteProfileRead = { profile: Pick<ManualProfileContract, "displayName" | "organization" | "role" | "offering" | "seeking" | "handles" | "updatedAt"> | null };
 
@@ -84,13 +99,4 @@ export async function saveShortProfile(fields: InviteProfileFields, expectedUpda
   if (first.status !== 409 && first.code !== "PROFILE_VERSION_CONFLICT") return first;
   const latest = await readMyProfile();
   return put(latest.ok ? latest.data.profile?.updatedAt ?? null : null);
-}
-
-/** POST /api/contacts/manual/duplicates (R12): is the inviter already in my network? Fails quietly (no hint). */
-export async function inviterAlreadyInNetwork(input: { displayName: string; organization?: string }): Promise<boolean> {
-  const body = { displayName: input.displayName, ...(input.organization ? { organization: input.organization } : {}) };
-  const result = await call<{ candidates?: { matchedOn?: string[] }[] }>("/api/contacts/manual/duplicates", { method: "POST", body: JSON.stringify(body) }, null);
-  if (!result.ok || !Array.isArray(result.data?.candidates)) return false;
-  // Only the matches the connection would merge into (e-mail / phone / name + company); 「同名」 alone is a hint only.
-  return result.data.candidates.some((candidate) => Array.isArray(candidate.matchedOn) && candidate.matchedOn.some((reason) => reason !== "name"));
 }

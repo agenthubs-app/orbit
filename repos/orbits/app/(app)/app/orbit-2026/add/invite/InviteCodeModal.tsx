@@ -9,7 +9,7 @@ import { inviteMessageText, type InviteMessageTone } from "../../../../../../sha
 import { inviteSenderCopy as c } from "../../copy/invite";
 import { Accordion, Button, Card, Chip, ConfirmDialog, Icon, MacTile, Modal, Segmented, Skeleton, Toggle, fillCopy, useStandardCopy, useToast } from "../../ui";
 import { DensityDots, translator, type Translate } from "../add-parts";
-import { createInviteCode, readCurrentInviteCode, readInviteHistory, readMyProfile, revokeInviteCode } from "./invite-api";
+import { createInviteCode, dismissInviteMerge, mergeInviteConnection, readCurrentInviteCode, readInviteHistory, readMyProfile, revokeInviteCode } from "./invite-api";
 import {
   INVITE_HISTORY_STATUS_COPY,
   INVITE_KEY_COPY,
@@ -32,6 +32,7 @@ import styles from "./invite.module.css";
 
 type Phase = "loading" | "intro" | "share" | "failed";
 type Notice = "profile" | "sample" | null;
+type MergeChoice = "merge" | "dismiss";
 
 async function copyText(text: string): Promise<boolean> {
   try {
@@ -47,7 +48,8 @@ async function copyText(text: string): Promise<boolean> {
  * under 768). The first time it explains (3 steps + 3 questions); after that it opens on 共有 — QR, the
  * 8-character code, the link with コピー, QR を拡大, 有効期限 / 使える人数, 相手に届くあなたの情報 (changing it
  * makes a new code, the server only takes keys), メッセージの下書き (three fixed tones; copy / LINE / mail —
- * Orbit never sends), 無効にする (confirmed), and これまでのコード. Every write is one button press.
+ * Orbit never sends), 無効にする (confirmed), and これまでのコード — where a person who joined and may already be
+ * in my network asks 同じ人かも (統合する / 別の人; nothing is merged until I say so). Every write is one button press.
  */
 export function InviteCodeModal({ open, onClose, language }: { open: boolean; onClose: () => void; language: OrbitLanguage }) {
   const t = translator(language);
@@ -65,6 +67,9 @@ export function InviteCodeModal({ open, onClose, language }: { open: boolean; on
   const [draftKeys, setDraftKeys] = useState<InviteSharedFieldKey[]>([]);
   const [tone, setTone] = useState<InviteMessageTone>("polite");
   const createKey = useRef<string | null>(null);
+  const [deciding, setDeciding] = useState<string | null>(null);
+  // One key per (choice, person) until it succeeds, so a retry after a lost answer is the same request.
+  const decideKeys = useRef(new Map<string, string>());
 
   const loadHistory = useCallback(async () => {
     const result = await readInviteHistory();
@@ -139,6 +144,22 @@ export function InviteCodeModal({ open, onClose, language }: { open: boolean; on
     void loadHistory();
   };
 
+  /** 同じ人かも: 統合する / 別の人 for a person who joined (R15 复核 S1); the list is read again afterwards. */
+  const decide = async (contactId: string, choice: MergeChoice) => {
+    const slot = `${choice}:${contactId}`;
+    const key = decideKeys.current.get(slot) ?? newInviteKey(`invite-${choice}`);
+    decideKeys.current.set(slot, key);
+    setDeciding(contactId);
+    const result = choice === "merge" ? await mergeInviteConnection(contactId, key) : await dismissInviteMerge(contactId, key);
+    if (result.ok === true) {
+      decideKeys.current.delete(slot);
+      await loadHistory();
+    } else {
+      toast.error(standard.toast.saveFailed);
+    }
+    setDeciding(null);
+  };
+
   const copy = async (text: string, done: typeof c.linkCopied) => {
     if (await copyText(text)) toast.success(t(done));
     else toast.error(t(c.copyFailed));
@@ -208,7 +229,7 @@ export function InviteCodeModal({ open, onClose, language }: { open: boolean; on
                   </div>
                 </Card>
               )}
-              <History items={history} language={language} t={t} busy={busy} onReissue={() => void create(reissueKeys)} />
+              <History items={history} language={language} t={t} busy={busy} deciding={deciding} onReissue={() => void create(reissueKeys)} onDecide={(contactId, choice) => void decide(contactId, choice)} />
             </div>
           ) : null}
         </div>
@@ -375,7 +396,16 @@ function MessageDraft({ code, name, tone, onTone, language, t, onCopy }: {
   );
 }
 
-function History({ items, language, t, busy, onReissue }: { items: InviteCodeHistoryItem[] | null; language: OrbitLanguage; t: Translate; busy: boolean; onReissue: () => void }) {
+function History({ items, language, t, busy, deciding, onReissue, onDecide }: {
+  items: InviteCodeHistoryItem[] | null;
+  language: OrbitLanguage;
+  t: Translate;
+  busy: boolean;
+  /** The person whose 同じ人かも answer is being saved (both buttons wait). */
+  deciding: string | null;
+  onReissue: () => void;
+  onDecide: (contactId: string, choice: MergeChoice) => void;
+}) {
   return (
     <section className={styles.stack} data-invite-history="">
       <h3 className={styles.smallTitle}>{t(c.historyTitle)}</h3>
@@ -391,6 +421,15 @@ function History({ items, language, t, busy, onReissue }: { items: InviteCodeHis
                     {item.joined.map((person) => <Link key={person.contactId} className={styles.link} href={`/app/contacts/${encodeURIComponent(person.contactId)}`} data-invite-joined-link="">{person.displayName}</Link>)}
                   </span>
                 ) : <span className={styles.label}>{t(c.historyNobody)}</span>}
+                {item.joined.map((person) => person.mergeSuggestion ? (
+                  <span key={`merge-${person.contactId}`} className={styles.merge} data-invite-merge={person.contactId}>
+                    <span className={styles.mergeText}><Icon name="info" size={16} />{t(c.mergeMaybe, { name: person.mergeSuggestion.displayName })}</span>
+                    <span className={styles.row}>
+                      <Button label={t(c.mergeAccept)} size="sm" variant="primary" loading={deciding === person.contactId} disabled={deciding !== null} onClick={() => onDecide(person.contactId, "merge")} data-invite-merge-accept="" />
+                      <Button label={t(c.mergeReject)} size="sm" disabled={deciding !== null} onClick={() => onDecide(person.contactId, "dismiss")} data-invite-merge-reject="" />
+                    </span>
+                  </span>
+                ) : null)}
               </span>
               {item.status === "expired" || item.status === "superseded" ? <Button label={t(c.reissue)} size="sm" disabled={busy} onClick={onReissue} data-invite-reissue="" /> : null}
             </li>

@@ -5,7 +5,7 @@ import type { Browser, Page } from "playwright";
 import { bundle, errorsOf, launch, open } from "./support/orbit-2026-harness";
 
 // R15 招待コード · 接收方 /i/<code> and /i (DESIGN §2.5, b9 A5 ② + 1–3/3, b11 A2 ④⑤⑦⑧): every state
-// rendered for real — signed out, the short profile, signed in (share switches), already in my network,
+// rendered for real — signed out, the short profile, signed in (share switches, no in-browser 「same person」 guess),
 // done, expired, full, unavailable, rate-limited, already connected, own code — and the hand-typed code.
 type Reply = { status: number; body: unknown };
 type Handler = { method: string; url: string; replies: Reply[] };
@@ -17,6 +17,7 @@ type Fixture = {
   signedIn?: boolean;
   accountName?: string | null;
   handlers?: Handler[];
+  legacy?: boolean;
 };
 
 const ok = (data: unknown, status = 200): Reply => ({ body: { data, success: true }, status });
@@ -32,7 +33,6 @@ const OPEN = { kind: "preview", preview: PREVIEW };
 const MY_PROFILE = { profile: { displayName: "高橋 美咲", organization: "青葉ベンチャーズ", role: "パートナー", offering: ["投資"], seeking: ["起業家との出会い"], handles: { email: "misaki@aoba.example", phone: "090-0000-0000" }, updatedAt: "2026-10-01T00:00:00.000Z" } };
 const EMPTY_PROFILE = { profile: { displayName: "", organization: "", role: "", offering: [], seeking: [], updatedAt: "2026-10-01T00:00:00.000Z" } };
 const PROFILE_GET: Handler = { method: "GET", url: "^/api/profile$", replies: [ok(MY_PROFILE)] };
-const NOT_KNOWN: Handler = { method: "POST", url: "^/api/contacts/manual/duplicates$", replies: [ok({ candidates: [] })] };
 const REDEEMED = { outcome: "connected", contactId: "contact:invite:abc", peer: { ...PREVIEW.shared, email: "kenichi@minato.example" } };
 
 let browser: Browser;
@@ -60,7 +60,7 @@ test.before(async () => {
     };
     const navigate = (href) => f.navigations.push(href);
     createRoot(document.getElementById("root")).render(f.view === "entry"
-      ? <InviteCodeEntry language={f.lang} navigate={navigate} />
+      ? <InviteCodeEntry language={f.lang} navigate={navigate} legacyLink={Boolean(f.legacy)} />
       : <InviteLanding language={f.lang} initial={f.initial} signedIn={f.signedIn} accountName={f.accountName} navigate={navigate} />);
   `);
   browser = await launch();
@@ -95,7 +95,6 @@ test("signed in, no name yet: the short profile (name required, prefilled from t
   const page = await landing(t, { signedIn: true, accountName: "misaki", handlers: [
     { method: "GET", url: "^/api/profile$", replies: [ok(EMPTY_PROFILE), ok(MY_PROFILE)] },
     { method: "PUT", url: "^/api/profile$", replies: [ok({ mutationId: "m" })] },
-    NOT_KNOWN,
   ] });
   await page.locator("[data-invite-profile]").waitFor();
   assert.equal(await page.getByRole("heading", { name: "あなたのことを教えてください" }).count(), 1);
@@ -121,7 +120,7 @@ test("signed in, no name yet: the short profile (name required, prefilled from t
 });
 
 test("signed in: つながりますか？ with switches — 名前 always (cannot be turned off), 会社 / 提供 / 求めている on, メール / 電話 off; つながる sends keys only and lands on 完了", async (t) => {
-  const page = await landing(t, { signedIn: true, handlers: [PROFILE_GET, NOT_KNOWN, { method: "POST", url: "^/api/invite-codes/H8MW-4QZT/redeem$", replies: [ok(REDEEMED)] }] });
+  const page = await landing(t, { signedIn: true, handlers: [PROFILE_GET, { method: "POST", url: "^/api/invite-codes/H8MW-4QZT/redeem$", replies: [ok(REDEEMED)] }] });
   const confirm = page.locator("[data-invite-confirm]");
   await confirm.waitFor();
   assert.equal(await confirm.getByRole("heading", { name: "佐藤 健一さんとつながりますか？" }).count(), 1);
@@ -141,7 +140,7 @@ test("signed in: つながりますか？ with switches — 名前 always (canno
 });
 
 test("完了: two avatars, what they shared with me (peer), what they got from me, あとから変える note, アプリで続ける = orbit://i/<code>", async (t) => {
-  const page = await landing(t, { signedIn: true, handlers: [PROFILE_GET, NOT_KNOWN, { method: "POST", url: "/redeem$", replies: [ok(REDEEMED)] }] });
+  const page = await landing(t, { signedIn: true, handlers: [PROFILE_GET, { method: "POST", url: "/redeem$", replies: [ok(REDEEMED)] }] });
   await page.locator("[data-invite-connect]").click();
   const done = page.locator("[data-invite-done]");
   await done.waitFor();
@@ -155,39 +154,47 @@ test("完了: two avatars, what they shared with me (peer), what they got from m
   assert.equal(await page.locator("[data-invite-view-contact]").getAttribute("href"), "/app/contacts/contact%3Ainvite%3Aabc");
 });
 
-test("already in my network (a card from before): the confirm step says it will merge into 本人入力", async (t) => {
+test("R15 复核 S1: the confirm step no longer guesses 「already in your network」 in the browser — one neutral line, and my network is not read", async (t) => {
   const page = await landing(t, { signedIn: true, handlers: [PROFILE_GET, { method: "POST", url: "^/api/contacts/manual/duplicates$", replies: [ok({ candidates: [{ contactId: "c-1", displayName: "佐藤 健一", organization: "株式会社ミナトリンク", role: "", email: "", phone: "", address: "", identical: false, matchedOn: ["name_organization"] }] })] }] });
-  await page.locator("[data-invite-known]").waitFor();
-  assert.equal(await page.locator("[data-invite-known]").textContent(), "📇佐藤 健一さんはすでにあなたの人脈にいます。つながると本人入力に統合されます。");
-  const check = (await fetches(page)).find((call) => call.url === "/api/contacts/manual/duplicates")!;
-  assert.deepEqual(check.body, { displayName: "佐藤 健一", organization: "株式会社ミナトリンク" });
+  const confirm = page.locator("[data-invite-confirm]");
+  await confirm.waitFor();
+  await page.waitForTimeout(150);
+  assert.equal(await page.locator("[data-invite-check-later]").textContent(), "つながったあと、同じ人かどうか確認できます。");
+  assert.doesNotMatch((await page.locator("body").textContent())!, /すでにあなたの人脈|統合されます/u);
+  assert.deepEqual((await fetches(page)).map((call) => call.url), ["/api/profile"], "only my profile is read");
 });
 
-test("a same-name hint alone is not called 「already in your network」", async (t) => {
-  const page = await landing(t, { signedIn: true, handlers: [PROFILE_GET, { method: "POST", url: "^/api/contacts/manual/duplicates$", replies: [ok({ candidates: [{ contactId: "c-1", displayName: "佐藤 健一", organization: "", role: "", email: "", phone: "", address: "", identical: false, matchedOn: ["name"] }] })] }] });
-  await page.locator("[data-invite-confirm]").waitFor();
-  await page.waitForTimeout(150);
-  assert.equal(await page.locator("[data-invite-known]").count(), 0);
+test("m7: 「アプリなしで登録できます」 only on the signed-out open page — not on confirm or done", async (t) => {
+  const head = (page: Page) => page.locator("header").textContent();
+  const out = await landing(t, {});
+  await out.locator("[data-invite-open]").waitFor();
+  assert.match((await head(out))!, /アプリなしで登録できます/u);
+  const signedIn = await landing(t, { signedIn: true, handlers: [PROFILE_GET, { method: "POST", url: "/redeem$", replies: [ok(REDEEMED)] }] });
+  await signedIn.locator("[data-invite-confirm]").waitFor();
+  assert.doesNotMatch((await head(signedIn))!, /アプリなしで登録できます/u);
+  await signedIn.locator("[data-invite-connect]").click();
+  await signedIn.locator("[data-invite-done]").waitFor();
+  assert.doesNotMatch((await head(signedIn))!, /アプリなしで登録できます/u);
 });
 
 test("今はしない leaves without writing anything", async (t) => {
-  const page = await landing(t, { signedIn: true, handlers: [PROFILE_GET, NOT_KNOWN] });
+  const page = await landing(t, { signedIn: true, handlers: [PROFILE_GET] });
   await page.locator("[data-invite-not-now]").click();
   assert.deepEqual(await page.evaluate(() => (window as any).landingFixture.navigations), ["/app/home"]);
-  assert.deepEqual((await fetches(page)).filter((call) => call.method !== "GET" && !call.url.endsWith("/duplicates")), []);
+  assert.deepEqual((await fetches(page)).filter((call) => call.method !== "GET"), []);
 });
 
 test("redeem answers: PROFILE_REQUIRED → short profile; INVITE_FULL → 上限 page; 429 → unavailable with しばらくしてから; other failures stay with an error", async (t) => {
-  const profile = await landing(t, { signedIn: true, handlers: [PROFILE_GET, NOT_KNOWN, { method: "POST", url: "/redeem$", replies: [fail(409, "CONFLICT", "PROFILE_REQUIRED")] }] });
+  const profile = await landing(t, { signedIn: true, handlers: [PROFILE_GET, { method: "POST", url: "/redeem$", replies: [fail(409, "CONFLICT", "PROFILE_REQUIRED")] }] });
   await profile.locator("[data-invite-connect]").click();
   await profile.locator("[data-invite-profile]").waitFor();
-  const full = await landing(t, { signedIn: true, handlers: [PROFILE_GET, NOT_KNOWN, { method: "POST", url: "/redeem$", replies: [fail(409, "CONFLICT", "INVITE_FULL")] }] });
+  const full = await landing(t, { signedIn: true, handlers: [PROFILE_GET, { method: "POST", url: "/redeem$", replies: [fail(409, "CONFLICT", "INVITE_FULL")] }] });
   await full.locator("[data-invite-connect]").click();
   await full.locator('[data-invite-notice="full"]').waitFor();
-  const limited = await landing(t, { signedIn: true, handlers: [PROFILE_GET, NOT_KNOWN, { method: "POST", url: "/redeem$", replies: [fail(429, "NOT_FOUND", "INVITE_UNAVAILABLE")] }] });
+  const limited = await landing(t, { signedIn: true, handlers: [PROFILE_GET, { method: "POST", url: "/redeem$", replies: [fail(429, "NOT_FOUND", "INVITE_UNAVAILABLE")] }] });
   await limited.locator("[data-invite-connect]").click();
   await limited.locator('[data-invite-notice="limited"]').waitFor();
-  const broken = await landing(t, { signedIn: true, handlers: [PROFILE_GET, NOT_KNOWN, { method: "POST", url: "/redeem$", replies: [fail(500, "INTERNAL_ERROR")] }] });
+  const broken = await landing(t, { signedIn: true, handlers: [PROFILE_GET, { method: "POST", url: "/redeem$", replies: [fail(500, "INTERNAL_ERROR")] }] });
   await broken.locator("[data-invite-connect]").click();
   await broken.getByText("つながれませんでした。もう一度お試しください。").waitFor();
   assert.equal(await state(broken), "confirm");
@@ -261,6 +268,18 @@ test("/i: typing upper-cases and adds the hyphen; characters outside the code al
   assert.equal(await field.inputValue(), "H8MW-4QZT");
   await page.locator("[data-invite-entry-open]").click();
   assert.deepEqual(await page.evaluate(() => (window as any).landingFixture.navigations), ["/i/H8MW-4QZT"]);
+});
+
+test("m3: /i?expired=legacy (an old /app/invitations link) says the link no longer works and asks for a code; plain /i does not", async (t) => {
+  const legacy = await landing(t, { view: "entry", legacy: true });
+  await legacy.locator("[data-invite-entry-field]").waitFor();
+  assert.equal(await legacy.locator("[data-invite-legacy]").textContent(), "このリンクは使えなくなりました。招待コードを入力してください。");
+  const plain = await landing(t, { view: "entry" });
+  await plain.locator("[data-invite-entry-field]").waitFor();
+  assert.equal(await plain.locator("[data-invite-legacy]").count(), 0);
+  const zh = await landing(t, { view: "entry", legacy: true, lang: "zh" });
+  await zh.locator("[data-invite-legacy]").waitFor();
+  assert.equal(await zh.locator("[data-invite-legacy]").textContent(), "这个链接已经不能用了。请输入邀请码。");
 });
 
 test("responsive: 390 fills the width (16 gutters); 1024 centres a 560 column; dark mode uses the dark tokens", async (t) => {
