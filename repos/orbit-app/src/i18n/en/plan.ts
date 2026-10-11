@@ -585,4 +585,13 @@ export const plan = {
   "plan.type.alreadyTalkedA11y": "Already talked to {name} (record)",
   "plan.proposal.requested": "Meeting request delivered to {name} in Orbit",
   "plan.review.markEvidenceLine": "Based on: {text}",
+  // R25 review fixes (App).
+  "plan.manual.errorBelowEarned": "Points cannot go below what is already earned.",
+  "plan.manual.errorSkipped": "A skipped type keeps its points.",
+  "plan.manual.errorBelowMet": "The count cannot go below the people already talked to.",
+  "plan.manual.errorHasPoints": "A type with points, or a skipped one, cannot be removed.",
+  "plan.review.aiBudgetTitle": "⏳ This month's AI limit is reached",
+  "plan.review.aiBudgetMeta": "Reviews are back on {month}/{day} (in {days} days)",
+  "plan.review.aiBudgetShort": "This month's AI limit is reached",
+  "plan.done.decide": "Choose the next goal",
 } as const;

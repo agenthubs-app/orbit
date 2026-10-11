@@ -11,6 +11,7 @@ import type {
   PlanMemberRelation,
   PlanStance,
   PlanTeamMember,
+  PlanDraftSlotState,
   PlanV2Content,
   PlanV2PersonType,
 } from "../../api/contract/plan-v2";
@@ -212,10 +213,18 @@ export interface ManualEditState {
   steps: EditableStep[];
   types: EditableType[];
   event: { allocation: number; targetCount: number };
+  /**
+   * R25 review S1: what each slot already has on the live plan (review drafts only:
+   * `PlanDraftView.slotState`, keyed by slot, イベント枠 = "event"). The reflow then never
+   * takes points from a skipped type, never goes below what was earned, and a type with
+   * points cannot be removed. Absent (a first draft) = nothing earned yet.
+   */
+  slotState?: readonly PlanDraftSlotState[];
 }
 
-export function manualEditStateOf(content: PlanV2Content): ManualEditState {
+export function manualEditStateOf(content: PlanV2Content, slotState?: readonly PlanDraftSlotState[]): ManualEditState {
   return {
+    ...(slotState ? { slotState } : {}),
     event: { allocation: content.event.allocation, targetCount: content.event.targetCount },
     steps: content.steps.map((step) => ({ doneCriteria: step.doneCriteria, id: step.key, key: step.key, originalTitle: step.title, personTypeKeys: [...step.personTypeKeys], title: step.title })),
     types: content.personTypes.map((type) => ({ allocation: type.allocation, emoji: type.emoji, isNew: false, key: type.key, roleSituation: type.roleSituation, shortLabel: type.shortLabel, slot: type.slot, targetCount: type.targetCount })),
@@ -228,11 +237,23 @@ function templateIndex(kind: PlanGoalKind | null, slot: string, fallback: number
   return index < 0 ? 100 + fallback : index;
 }
 
-/** The allocation slots (types + event) the shared reflow works on. Nothing is earned yet in a draft. */
+/** What a slot already has (earned base, people counted, skipped); 0 / false when the plan has nothing there yet. */
+export function slotLock(state: Pick<ManualEditState, "slotState">, slot: string): { earnedBase: number; metCount: number; skipped: boolean } {
+  const found = state.slotState?.find((item) => item.key === slot);
+  return found ? { earnedBase: found.earned, metCount: found.metCount, skipped: found.skipped } : { earnedBase: 0, metCount: 0, skipped: false };
+}
+
+/** Whether a type can be removed by hand (no points, nobody counted, not skipped). */
+export function canRemoveType(state: ManualEditState, slot: string): boolean {
+  const lock = slotLock(state, slot);
+  return lock.earnedBase === 0 && lock.metCount === 0 && !lock.skipped;
+}
+
+/** The allocation slots (types + event) the shared reflow works on, with what each already has. */
 export function allocationSlotsOf(state: ManualEditState, kind: PlanGoalKind | null): PlanAllocationSlot[] {
   return [
-    ...state.types.map((type, index) => ({ allocation: type.allocation, earnedBase: 0, key: type.key, metCount: 0, skipped: false, targetCount: type.targetCount, templateIndex: templateIndex(kind, type.slot, index) })),
-    { allocation: state.event.allocation, earnedBase: 0, isEvent: true, key: PLAN_EVENT_SLOT, metCount: 0, skipped: false, targetCount: state.event.targetCount, templateIndex: templateIndex(kind, PLAN_EVENT_SLOT, state.types.length) },
+    ...state.types.map((type, index) => ({ allocation: type.allocation, ...slotLock(state, type.slot), key: type.key, targetCount: type.targetCount, templateIndex: templateIndex(kind, type.slot, index) })),
+    { allocation: state.event.allocation, ...slotLock(state, PLAN_EVENT_SLOT), isEvent: true, key: PLAN_EVENT_SLOT, targetCount: state.event.targetCount, templateIndex: templateIndex(kind, PLAN_EVENT_SLOT, state.types.length) },
   ];
 }
 

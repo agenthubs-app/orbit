@@ -65,6 +65,7 @@
 | 11 | 只做手动编辑的草稿 | `reviews/current` 不返回它 | 界面分辨不出来，送出会得到 `DRAFT_CLOSED` |
 | 12 | 入口弹层的「这次参考的数据」 | 用概要里的 `sinceConfirmed`（服务端新加的可选字段） | 打开弹层时不该为了几个数字去开一份見直し |
 | 13 | 修正卡上的轮次 | 写「（n 回目）」，按这份草稿的第几轮编号 | 月计数跨月时不准；配额另有显示 |
+| 15 | C9 能否改紹介ルート（R25 复核 m9） | 维持不能改（与 C7 同一禁改清单） | C9 输入没有联系人列表，改紹介ルート只能编造中间人；DESIGN §5.2 C9「可以更新紹介ルート」待 R21 / 后续接上人脉候选时再放开 |
 | 14 | `kind:"request"` 的提案文案 | 「依頼を届けました」，不说「送信」 | copy-qa 禁止 Orbit 自称「送信」 |
 
 ## 付费 AI 调用记录（本机，deepseek-v4-flash）
@@ -76,9 +77,11 @@
 | C8 前提预标 | 1 | 1 | 724 / 164 | 约 $0.0005 | 标出「調達の経験」那一行，依据是 3 条真实计分记录的 id，建议文合理 |
 | C9 見直し | 5（额度用完） | 3（1 成功、2 失败） | 13,886 / 10,678 | 约 $0.0172 | 1 次成功（结果因脚本在后面一步崩溃没留下记录）；另 2 次被校验器拦下：一次 JSON 不完整，修复后配点合计不是 100；一次两轮都不合格。**没保存、没扣次数**。提示词 v3 → v4（加「升 N 就降 N、先加总」）**未验证** |
 | C10 下一目标 | 1 | 1 | 415 / 172 | 约 $0.0004 | 2 个候选，依据都是真实记录 id |
-| **合计** | **7** | **5** | **15,025 / 11,014** | **约 $0.018** | |
+| C8 前提预标（复核 M4 后，提示词 v5） | 1 | 1 | 774 / 122 | 约 $0.0004 | 输入改为面谈メモ摘要 + `R1…` / `C1…` 别名后，从 memo「次のラウンドはシリーズB」「ARR 1 億円の見込み」标出 F1 / F2 并给建议值，依据映射回 memo id；输入里没有联系人 id / 计划 id / `plog_` |
+| C10 下一目标（v5） | 1 | 1 | 529 / 116 | 约 $0.0003 | 2 个候选，依据可映射 |
+| **合计** | **9**（C8 2、C9 5、C10 2） | **7** | **16,328 / 11,252** | **约 $0.019** | |
 
-记录：`real-ai.json`。真实调用当场暴露并修好了两个 bug：
+记录：`real-ai.json`、`real-ai-v5.json`。真实调用当场暴露并修好了两个 bug：
 
 - **`plan_log.body` 为空被 Postgres 拒绝**：R25 有 2 处，R24 已提交的代码里还有 3 处。内存仓储加了同样的检查。
 - **「確定以来の記録」比较出错**：拿东京日期字符串和 UTC 时间戳比较，东京 0–9 点确定的计划会把当天的记录漏掉。改为按计划创建时刻比较，并加了回归测试。
@@ -129,7 +132,8 @@
 **动过的别人的文件**（只改 import、链接和入口，并删掉随之变成死代码的部分）
 - R21：`iorbit-home.tsx`、`iorbit-shell.tsx`、`iorbit-chat.tsx`、`iorbit-chat-aside.tsx`、`iorbit-model.ts`、`iorbit-styles.ts`、`agent/page.tsx`、`_demo/demo-persona.ts`
 - R11 / R12：`network-opportunities.tsx`、`network-detail-modal.tsx`、`network-insight-copy.ts`、`card-batch-ui.tsx`；App 的 `ContactsScreen.tsx`、`ContactDetailScreen.tsx`
-- 热点文件通知：乙没有在线会话，用这份 REPORT 代替通知。
+- 不止 import / 链接 / 入口、而是随依赖删除一并去掉的功能块（都因依赖的 v1 组件被删）：`iorbit-shell.tsx` 的 W0014 示例只读问答、`iorbit-home.tsx` 的本周行动 / 计划匹配 / 周一小结 / 计划点名活动、`agent/page.tsx` 的 W0008 `?plan=` 回答卡片、`_demo/demo-persona.ts` 的示例计划快照与 `buildDemoAgentViewModel`。
+- 热点文件通知：乙没有在线会话，先用这份 REPORT 代替；**乙上线时需要补一次通知**（列入人工事项）。
 
 **留着没删的**（不在清单里，交给 R21）
 - `home-plan-events-actions.ts`、`resolveHomePlanEventCandidates`
@@ -154,7 +158,7 @@
 
 - 旧地址 `/app/agent/plan`（含 `#plan-action-…`）、`/app/agent/strategy`（含 `?view=contacts`）→ **404**，没有 307 兼容跳转。
 - 入口页 `/app/home`、`/app/agent`、`/app/contacts/dashboard`（含 `?tab=opportunities`）、`/app/inbox`、`/app/tasks`（含 `?tab=plan`、`?tab=plan&new=1`、`?tab=calendar`）、`/app/start?step=3` → 全部 200，渲染的 HTML 里**没有旧地址**。
-- 从这些页面收集到的 Task / Plans 链接共 37 个，逐个打开 → 全部 **200**，没有跳转。
+- 从这些页面收集到的 Task / Plans 链接逐个打开（日志 35 行 `OPEN`）→ 全部 **200**，没有跳转。其中 30 个是 `/app/tasks/relationship/*` 任务详情，真正的计划 / 日程 / To-do 落点是 `/app/tasks`、`?tab=plan`、`?tab=calendar` 三种；活动详情页的跟进链接没有打开（该页的链接改动由 `no-legacy-plan-links` 与单元测试覆盖）。
 - v1 创建入口 `POST /api/agent/plans/bootstrap`、`POST /api/agent/plans`、`POST /api/agent/plans/reanalyze` → 全部 **409 `PLAN_V1_RETIRED`**，`href=/app/tasks?tab=plan&new=1`。
 - 旧引导第 3 步的「开始分析」是客户端跳转，由 `app-start-guide` 测试覆盖（跳 v2 目標入力、不调任何计划接口）。
 
@@ -164,6 +168,7 @@
 | --- | --- | --- |
 | orbits `npm test`（**带本机库** `ORBIT_EVENT_DATABASE_URL=postgres://localhost/orbit_test`） | R24 收口 7176 条 0 失败，但当时没连库（跳过 892） | 7014 条（清理删掉一批旧测试），通过 6485、失败 12、跳过 517。12 条里 **8 条在基线 `3b8f0d20` 上同样失败**（同库重跑同一批文件确认）：通知发现 worker 3 条、活动访问 schema 2 条、联系人详情 live 路由 1 条、party live 路由 1 条、名片批次 schema 包装 1 条——都是以前没连库时被跳过的、与本 Sprint 无关的已有问题，列入交接。**另外 4 条是清理带出来的**：人脉总览 2 条、iOrbit 对话右栏 1 条（期望值还是旧地址）、人脉示例模式 1 条（「关联需求」入口已删）→ 已修，单独重跑 47 + 22 条全过 |
 | App `npm test` | 4252 条，失败 1（`route-parity` 的 `/start`，已知） | 4252 条，失败 1（同一条 `/start`） |
+| **复核修复后**（`review-fix-*.log`） | | orbits 7036 条：通过 6511、失败 8（**正是上面 8 条基线已有失败**）、跳过 517；App 4256 条：失败 1（`/start`）。typecheck / typecheck:app / lint 0，App tsc 0，`copy:qa` 1679 条 0 问题 |
 | orbits `typecheck` / `typecheck:app` / `lint` | 0 / 0 / 0 | 0 / 0 / 0 |
 | App `tsc` | 0 | 0 |
 | `copy:qa` | 1366 条 0 问题 | 1662 条 0 问题 |
@@ -181,6 +186,28 @@
 `~/orbit-sprint-evidence/redesign/R25/run-01/compare.html`，12 组：上面是设计稿 b4 A3–A6 的画板（16 张；A4 ③ ご利用プラン按 Q6 不做），下面是 Web 1440 / 1024 / 390 × 浅 / 深（72 张）和 App 浅 / 深（24 张）。
 
 截图都来自两端渲染测试框架（mock 数据）：Web 截页面主体，不含左栏；App 用 react-native-web 在 390 宽渲染，**没有用模拟器或真机**。STALE 和以前のプラン没有对应设计稿。
+
+## 复核修复（REVIEW 处理记录）
+
+复核结论**不通过**（S 1、M 4、m 10）。处理：
+
+| 条 | 处理 |
+| --- | --- |
+| S1 手动编辑联动不知道已得分 / 跳过，見直し草稿失败后卡死 | 服务端：review 草稿的手动编辑「保存 + 校验 + 确定」同一事务，不合格整体回滚、`manualEditUsed` 不变；契约只加 `PlanDraftView.slotState`（每槽已得 / 已计人数 / 跳过）。两端手动编辑把它填进配点槽，联动不再从跳过类型扣分、不能删有分类型。回归测试（内存 + mock 端到端） |
+| M1 见直两套计数 | 显示与拦截取 min(用户次数剩余, 账本本月剩余)，为 0 时给 `reviewLimitReason`（`monthly` / `ai_budget`），界面分别说明；**成本上限 `plan_review: 3` 未改**（付费 AI，列入待授权：建议放到 6，给失败留余量） |
+| M2 イベント枠可降到已得以下 | 确定与 C9 校验都拦；测试 |
+| M3 计划改过后旧草稿仍能送出扣次数 | 送出前与写回时比对 `baseRevision`，不等 `STALE`（不扣、不调 AI）；「目標だけ保存」也作废进行中的草稿；`currentReview` 不返回过期草稿；测试 |
+| M4 C8 / C10 只有计分流水、带内部 id | 输入加确定以来关联联系人的面谈メモ摘要（≤20 条、≤200 字，用提取结果不发原文），记录 / 联系人换 `R1…` / `C1…` 别名并反向映射；提示词 v5；本机真实验证 C8、C10 各 1 次（见上表） |
+| m1 两端「このまま」语义不一致 | 两端统一：按整个草稿是否有改动决定文案，「このまま」不确定只回概要；送出条件一致（改了前提或写了一句） |
+| m2 Step 数不准 | 按每步最终状态、只算确定以来；测试 |
+| m3 完成页一打开就调 C10 | 两端改为按「次の目標を決める」才请求；缓存**仍按计划一次、不分语言**（按语言分会增加付费调用，未采用；换语言沿用第一次的候选） |
+| m4 点击验证说法偏强 | 上文「点击验证」已更正 |
+| m5 测试删多了 | `contactValueLine` 纯函数的断言补回 |
+| m6 他人隔离没进仓库回归 | 收进 `plans-v2-flow-postgres`，含 AI 0 次断言 |
+| m7 R21 文件改动范围 | 上文「动过的别人的文件」补全；乙上线时补通知（人工事项） |
+| m8 以前のプラン 重复版本 | 同一目标被新版本接替的旧版本不再列出；测试 |
+| m9 C9 不能改紹介ルート | 维持，见自定决定 #15 |
+| m10 `next-env.d.ts` | 还原 |
 
 ## 已知例外 / 交接
 

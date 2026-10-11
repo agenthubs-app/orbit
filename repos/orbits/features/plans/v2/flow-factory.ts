@@ -14,7 +14,7 @@ import { createDisabledPlanFlowAi } from "./ai/disabled";
 import type { PlanFlowAi } from "./ai/types";
 import { createLivePlanFlowContext, createMockPlanFlowContext } from "./flow-context";
 import { createPlanFlowService, type PlanFlowService } from "./flow-service";
-import { resolvePlanV2Parts } from "./service-factory";
+import { configuredPlanReviewBudget, resolvePlanV2Parts } from "./service-factory";
 import { enqueuePlanSourceMatchAfterSave } from "../matching-runtime";
 
 export const PLAN_V2_AI_ENV = "ORBIT_PLAN_V2_AI";
@@ -46,6 +46,7 @@ export function resolvePlanFlowService(input: { actorId: string; mode?: ModuleMo
       now: input.now,
       planService: service,
       repository,
+      reviewBudget: live ? configuredPlanReviewBudget() : undefined,
       scope,
     }),
     success: true,

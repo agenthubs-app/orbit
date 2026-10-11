@@ -4,6 +4,7 @@
 // theme tokens only.
 import { StyleSheet, View } from "react-native";
 
+import type { PlanReviewLimitReason } from "../../api/contract/plan-v2";
 import { UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
@@ -48,14 +49,14 @@ export function ReviewProgress({ stage }: { stage: ReviewStage }) {
  * This month's reviews are used up (b4 A4 ②): what still works, when it comes back.
  * Deliberately no plan / pricing entry (Q6).
  */
-export function ReviewUsedUpNote({ limit, resetsAt, now = new Date() }: { limit: number; resetsAt: string; now?: Date }) {
+export function ReviewUsedUpNote({ limit, resetsAt, reason, now = new Date() }: { limit: number; resetsAt: string; reason?: PlanReviewLimitReason | undefined; now?: Date }) {
   const { styles } = useStyles();
   const { t } = useOrbitLocale();
   const reset = dateParts(resetsAt);
   return (
     <View accessibilityRole="text" style={styles.usedUp} testID="review-used-up">
-      <UiText style={styles.usedUpTitle}>{t("plan.review.usedUpTitle")}</UiText>
-      <UiText style={styles.usedUpMeta}>{t("plan.review.usedUpMeta", { day: reset.day, days: daysUntil(resetsAt, now), limit, month: reset.month })}</UiText>
+      <UiText style={styles.usedUpTitle}>{t(reason === "ai_budget" ? "plan.review.aiBudgetTitle" : "plan.review.usedUpTitle")}</UiText>
+      <UiText style={styles.usedUpMeta}>{t(reason === "ai_budget" ? "plan.review.aiBudgetMeta" : "plan.review.usedUpMeta", { day: reset.day, days: daysUntil(resetsAt, now), limit, month: reset.month })}</UiText>
       <UiText style={styles.usedUpBody}>{t("plan.review.usedUpBody")}</UiText>
     </View>
   );

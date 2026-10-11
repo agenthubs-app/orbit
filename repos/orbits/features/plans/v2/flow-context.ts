@@ -29,6 +29,14 @@ export interface PlanFlowContact {
   industry: string | null;
 }
 
+/** R25 复核 M4：面谈メモ摘要（C8 / C10 的输入；不是 memo 原文）。`id` = memo（笔记）id。 */
+export interface PlanFlowMemo {
+  id: string;
+  contactId: string;
+  at: string;
+  text: string;
+}
+
 export interface PlanFlowContextSource {
   profile(actorId: string): Promise<PlanFlowProfile>;
   /** 可能是团队成员的联系人（≤5）。 */
@@ -39,6 +47,11 @@ export interface PlanFlowContextSource {
   draftContacts(actorId: string, goalText: string, now: Date): Promise<PlanFlowContact[]>;
   /** 「人脈にも登録する」：建一张联系人卡，返回联系人 id（失败为 null，不挡流程）。 */
   addContact(actorId: string, input: { name: string; relationLabel: string }): Promise<string | null>;
+  /**
+   * R25 复核 M4：这些联系人在 `since` 之后写的面谈メモ摘要（新的在前，≤limit）。摘要 = memo 提取写回的
+   * 「できること / 探していること / 話した話題」（同 C2 的 `memoSummary`，原文不送给模型）。没有实现时视为没有 memo。
+   */
+  planMemos?(actorId: string, input: { contactIds: readonly string[]; since: string; limit: number }): Promise<PlanFlowMemo[]>;
 }
 
 export const PLAN_TEAM_CANDIDATE_LIMIT = 5;
@@ -117,6 +130,28 @@ export function createLivePlanFlowContext(input: { pool: PlanPoolLike; workspace
       const profile = result.success === true ? result.data.profile : null;
       const headline = [profile?.role, profile?.organization].filter((part): part is string => Boolean(part && part.trim())).join(" · ");
       return { headline: headline || profile?.headline || null, name: profile?.displayName?.trim() || "—" };
+    },
+    async planMemos(actorId, request) {
+      if (request.contactIds.length === 0) return [];
+      // 每条 memo 取最新一份成功的提取（memo 改过会有多份）；memo 本身已删的不算。
+      const rows = await query(
+        `select * from (
+           select distinct on (m.source_id) m.source_id as note_id, m.target_id as contact_id, n.created_at as at,
+             m.payload->'output'->'offering' as offering, m.payload->'output'->'seeking' as seeking, m.payload->'output'->'topics' as topics
+           from orbit_records m
+           join orbit_records n on n.workspace_id = m.workspace_id and n.collection_name = 'notes' and n.record_id = m.source_id
+             and n.user_id = $2 and n.lifecycle_state <> 'deleted'
+           where m.workspace_id = $1 and m.collection_name = 'memo_extractions' and m.user_id = $2 and m.lifecycle_state <> 'deleted'
+             and m.payload->>'status' = 'succeeded' and m.target_id = any($3::text[]) and n.created_at >= $4::timestamptz
+           order by m.source_id, m.updated_at desc
+         ) latest order by at desc limit $5`,
+        [input.workspaceId, actorId, [...request.contactIds], request.since, Math.max(1, Math.min(request.limit, 50))],
+      );
+      return rows.flatMap((row) => {
+        const text = memoSummary(row);
+        if (!text) return [];
+        return [{ at: new Date(row.at as string).toISOString(), contactId: String(row.contact_id), id: String(row.note_id), text }];
+      });
     },
     async teamCandidates(actorId) {
       const rows = await query(

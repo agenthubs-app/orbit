@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "6b1a9492c8803625179f1b242b3a511b673104b5",
-  "deterministicSourceTime": "2026-10-11T01:55:24+09:00",
+  "generatedFromCommit": "a91fecae3303d716d4b40464b1f171f3192364c0",
+  "deterministicSourceTime": "2026-10-11T09:36:36+09:00",
   "sourceState": "head-plus-uncommitted-authoritative-inputs",
-  "uncommittedAuthoritativeInputChanges": 189,
+  "uncommittedAuthoritativeInputChanges": 39,
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -35,9 +35,9 @@
     "dynamicRoutes": 61,
     "overlayImplementations": 71,
     "overlayRouteInstances": 103,
-    "interactionRouteInstances": 4551,
-    "uniqueInteractionSourceLocations": 2977,
-    "normalizedStaticBehaviorImplementations": 2577,
+    "interactionRouteInstances": 4557,
+    "uniqueInteractionSourceLocations": 2983,
+    "normalizedStaticBehaviorImplementations": 2581,
     "renderedLeafControls": null,
     "renderedLeafControlStatus": "unresolved-runtime-denominator; route instances, source locations, and normalized static implementations are not runtime leaf counts",
     "renderedLeafObservedOccurrences": 3001,
@@ -75901,6 +75901,7 @@
           "repos/orbit-app/src/screens/plan/plan-failure.ts",
           "repos/orbit-app/src/screens/plan/plan-model.ts",
           "repos/orbit-app/src/screens/plan/plan-review-model.ts",
+          "repos/orbit-app/src/screens/plan/plan-review-ui.tsx",
           "repos/orbit-app/src/view-models/task-list-scope.ts",
           "repos/orbit-app/src/view-models/today-tasks.ts"
         ],
@@ -76013,85 +76014,97 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 96,
+          "line": 105,
           "tag": "PlanFrame",
           "text": "t(\"plan.done.title\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 99,
+          "line": 108,
           "tag": "RetryCard",
           "text": "load.failure.kind === \"network\" ? t(\"plan.flow.offlineTitle\") : fillCopy(copy.error.loadFailed, { item: t(\"plan.done.title\") })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 113,
+          "line": 122,
           "tag": "BigNumber",
           "text": "t(\"plan.done.score\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 114,
+          "line": 123,
           "tag": "BigNumber",
           "text": "t(\"plan.done.talked\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 115,
+          "line": 124,
           "tag": "BigNumber",
           "text": "t(\"plan.done.events\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 139,
+          "line": 149,
           "tag": "View",
           "text": "t(\"plan.done.nextTitle\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 143,
+          "line": 153,
           "tag": "UiPressable",
           "text": "t(\"plan.done.self\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 159,
+          "line": 169,
           "tag": "Radio",
           "text": "t(\"plan.done.self\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 166,
+          "line": 176,
           "tag": "Button",
           "text": "t(\"plan.done.start\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 168,
+          "line": 178,
           "tag": "Button",
           "text": "t(\"plan.done.later\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 179,
+          "line": 182,
+          "tag": "Button",
+          "text": "t(\"plan.done.decide\")"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
+          "line": 183,
+          "tag": "Button",
+          "text": "t(\"plan.done.later\")"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
+          "line": 195,
           "tag": "View",
           "text": "`${label} ${value}`"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 192,
+          "line": 208,
           "tag": "UiPressable",
           "text": "candidate.goalText"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 206,
+          "line": 222,
           "tag": "Chip",
           "text": "kind"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 208,
+          "line": 224,
           "tag": "Radio",
           "text": "candidate.goalText"
         },
@@ -76669,7 +76682,7 @@
           "interactionId": "mobile:/plans/[planId]/done#interaction-15",
           "surfaceId": "mobile:/plans/[planId]/done",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 96,
+          "line": 105,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "PlanFrame",
@@ -76701,7 +76714,7 @@
           "interactionId": "mobile:/plans/[planId]/done#interaction-16",
           "surfaceId": "mobile:/plans/[planId]/done",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 99,
+          "line": 108,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "RetryCard",
@@ -76735,7 +76748,7 @@
           "interactionId": "mobile:/plans/[planId]/done#interaction-17",
           "surfaceId": "mobile:/plans/[planId]/done",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 141,
+          "line": 151,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "CandidateCard",
@@ -76770,7 +76783,7 @@
           "interactionId": "mobile:/plans/[planId]/done#interaction-18",
           "surfaceId": "mobile:/plans/[planId]/done",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 143,
+          "line": 153,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "UiPressable",
@@ -76804,7 +76817,7 @@
           "interactionId": "mobile:/plans/[planId]/done#interaction-19",
           "surfaceId": "mobile:/plans/[planId]/done",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 159,
+          "line": 169,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "Radio",
@@ -76838,7 +76851,7 @@
           "interactionId": "mobile:/plans/[planId]/done#interaction-20",
           "surfaceId": "mobile:/plans/[planId]/done",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 166,
+          "line": 176,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -76872,7 +76885,7 @@
           "interactionId": "mobile:/plans/[planId]/done#interaction-21",
           "surfaceId": "mobile:/plans/[planId]/done",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 168,
+          "line": 178,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -76904,7 +76917,73 @@
           "interactionId": "mobile:/plans/[planId]/done#interaction-22",
           "surfaceId": "mobile:/plans/[planId]/done",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 192,
+          "line": 182,
+          "ownerPropBranchConditions": [],
+          "controlType": "native-control",
+          "tag": "Button",
+          "visibleName": null,
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() => void decideNext()"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "decideNext"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "present-static-signal",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/plans/[planId]/done#interaction-23",
+          "surfaceId": "mobile:/plans/[planId]/done",
+          "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
+          "line": 183,
+          "ownerPropBranchConditions": [],
+          "controlType": "native-control",
+          "tag": "Button",
+          "visibleName": null,
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "later"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/plans/[planId]/done#interaction-24",
+          "surfaceId": "mobile:/plans/[planId]/done",
+          "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
+          "line": 208,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "UiPressable",
@@ -76933,10 +77012,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/[planId]/done#interaction-23",
+          "interactionId": "mobile:/plans/[planId]/done#interaction-25",
           "surfaceId": "mobile:/plans/[planId]/done",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
-          "line": 208,
+          "line": 224,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "Radio",
@@ -77030,6 +77109,7 @@
           "repos/orbit-app/src/screens/plan/plan-failure.ts",
           "repos/orbit-app/src/screens/plan/plan-model.ts",
           "repos/orbit-app/src/screens/plan/plan-review-model.ts",
+          "repos/orbit-app/src/screens/plan/plan-review-ui.tsx",
           "repos/orbit-app/src/view-models/task-list-scope.ts",
           "repos/orbit-app/src/view-models/today-tasks.ts"
         ],
@@ -77142,157 +77222,163 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 147,
+          "line": 148,
           "tag": "Button",
           "text": "t(\"plan.review.loadLatest\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 156,
+          "line": 157,
           "tag": "Button",
           "text": "t(\"plan.common.again\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 173,
+          "line": 174,
           "tag": "PlanFrame",
           "text": "t(\"plan.review.title\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 195,
+          "line": 199,
           "tag": "RetryCard",
           "text": "load.failure.kind === \"network\" ? t(\"plan.flow.offlineTitle\") : fillCopy(copy.error.loadFailed, { item: t(\"plan.review.title\") })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 206,
+          "line": 210,
           "tag": "Button",
           "text": "t(\"plan.common.back\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 213,
+          "line": 217,
           "tag": "Button",
           "text": "t(\"plan.review.start\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 252,
+          "line": 256,
           "tag": "Button",
           "text": "t(\"plan.common.back\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 301,
+          "line": 305,
           "tag": "UiPressable",
           "text": "t(\"plan.review.premiseEdit\", { label: row.label })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 310,
+          "line": 314,
           "tag": "Chip",
           "text": "t(\"plan.review.markChip\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 312,
+          "line": 316,
           "tag": "Tag",
           "text": "t(SOURCE_KEYS[row.source])"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 315,
+          "line": 319,
           "tag": "TextInput",
           "text": "t(\"plan.review.premiseInput\", { label: row.label })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 339,
+          "line": 343,
           "tag": "UiPressable",
           "text": "t(\"plan.review.useSuggested\", { value: mark.suggested })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 382,
+          "line": 386,
           "tag": "Tag",
           "text": "t(\"plan.turn.changed\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 392,
+          "line": 396,
           "tag": "View",
           "text": "change.label"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 393,
+          "line": 397,
           "tag": "ToggleCell",
           "text": "t(\"plan.review.accept\", { label: change.label })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 394,
+          "line": 398,
           "tag": "ToggleCell",
           "text": "t(\"plan.review.reject\", { label: change.label })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 397,
+          "line": 401,
           "tag": "Chip",
           "text": "t(accepted ? \"plan.review.accepted\" : \"plan.review.rejected\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 405,
+          "line": 409,
           "tag": "Chip",
           "text": "t(\"plan.review.countsNoChange\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 418,
+          "line": 422,
           "tag": "UiPressable",
           "text": "label"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 458,
+          "line": 464,
           "tag": "UiText",
           "text": "t(\"plan.review.leftA11y\", { count: left })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 464,
+          "line": 470,
           "tag": "TextInput",
           "text": "t(\"plan.review.otherLabel\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 464,
+          "line": 470,
           "tag": "TextInput",
           "text": "t(\"plan.review.otherPlaceholder\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 474,
+          "line": 480,
           "tag": "Button",
           "text": "turns.length ? t(\"plan.review.again\", { count: left }) : t(\"plan.review.send\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 492,
+          "line": 498,
           "tag": "Button",
           "text": "t(\"plan.review.manual\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 493,
+          "line": 500,
           "tag": "Button",
-          "text": "noChange ? t(\"plan.review.keep\") : t(\"plan.review.confirm\")"
+          "text": "t(\"plan.review.confirm\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 496,
+          "line": 501,
+          "tag": "Button",
+          "text": "t(\"plan.review.keep\")"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
+          "line": 504,
           "tag": "Button",
           "text": "t(\"plan.review.understood\")"
         },
@@ -77316,13 +77402,13 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/plan-review-ui.tsx",
-          "line": 23,
+          "line": 24,
           "tag": "View",
           "text": "t(\"plan.review.quotaA11y\", { left, limit })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/plan-review-ui.tsx",
-          "line": 36,
+          "line": 37,
           "tag": "View",
           "text": "t(\"plan.stage.label\", { stage: t(STAGES[stage]) })"
         },
@@ -77838,7 +77924,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-14",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 147,
+          "line": 148,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -77872,7 +77958,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-15",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 156,
+          "line": 157,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -77906,7 +77992,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-16",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 173,
+          "line": 174,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "PlanFrame",
@@ -77938,7 +78024,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-17",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 180,
+          "line": 181,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ReviewFooter",
@@ -77981,7 +78067,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-18",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 195,
+          "line": 199,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "RetryCard",
@@ -78015,7 +78101,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-19",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 206,
+          "line": 210,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -78047,7 +78133,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-20",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 213,
+          "line": 217,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -78081,7 +78167,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-21",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 222,
+          "line": 226,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "PremiseCard",
@@ -78120,7 +78206,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-22",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 233,
+          "line": 237,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ReviewTurn",
@@ -78154,7 +78240,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-23",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 252,
+          "line": 256,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -78186,7 +78272,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-24",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 281,
+          "line": 285,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "UiPressable",
@@ -78220,7 +78306,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-25",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 301,
+          "line": 305,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "UiPressable",
@@ -78254,7 +78340,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-26",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 315,
+          "line": 319,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -78288,7 +78374,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-27",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 339,
+          "line": 343,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "UiPressable",
@@ -78322,7 +78408,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-28",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 393,
+          "line": 397,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ToggleCell",
@@ -78356,7 +78442,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-29",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 394,
+          "line": 398,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ToggleCell",
@@ -78390,7 +78476,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-30",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 418,
+          "line": 422,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "UiPressable",
@@ -78422,7 +78508,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-31",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 464,
+          "line": 470,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -78454,14 +78540,14 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-32",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 474,
+          "line": 480,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
           "visibleName": null,
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": "busy !== null && busy !== \"send\"",
+          "disabledCondition": "!canSend || (busy !== null && busy !== \"send\")",
           "handlers": [
             {
               "event": "onpress",
@@ -78486,7 +78572,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-33",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 492,
+          "line": 498,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -78518,7 +78604,7 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-34",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 493,
+          "line": 500,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -78550,7 +78636,39 @@
           "interactionId": "mobile:/plans/[planId]/review#interaction-35",
           "surfaceId": "mobile:/plans/[planId]/review",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
-          "line": 496,
+          "line": 501,
+          "ownerPropBranchConditions": [],
+          "controlType": "native-control",
+          "tag": "Button",
+          "visibleName": null,
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": "busy !== null",
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "onKeep"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/plans/[planId]/review#interaction-36",
+          "surfaceId": "mobile:/plans/[planId]/review",
+          "sourceFile": "repos/orbit-app/src/screens/plan/PlanReviewScreen.tsx",
+          "line": 504,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -81671,6 +81789,7 @@
           "repos/orbit-app/src/screens/plan/plan-failure.ts",
           "repos/orbit-app/src/screens/plan/plan-model.ts",
           "repos/orbit-app/src/screens/plan/plan-review-model.ts",
+          "repos/orbit-app/src/screens/plan/plan-review-ui.tsx",
           "repos/orbit-app/src/view-models/task-list-scope.ts",
           "repos/orbit-app/src/view-models/today-tasks.ts"
         ],
@@ -81783,181 +81902,187 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 161,
+          "line": 184,
           "tag": "PlanFrame",
           "text": "t(\"plan.manual.title\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 167,
+          "line": 190,
           "tag": "Button",
           "text": "copy.action.undo"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 172,
+          "line": 197,
+          "tag": "Button",
+          "text": "t(\"plan.review.loadLatest\")"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
+          "line": 200,
           "tag": "Button",
           "text": "t(review ? \"plan.manual.reviewSave\" : \"plan.manual.start\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 177,
+          "line": 205,
           "tag": "RetryCard",
           "text": "fillCopy(copy.error.loadFailed, { item: t(\"plan.manual.title\") })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 181,
+          "line": 209,
           "tag": "Button",
           "text": "t(\"plan.common.back\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 194,
+          "line": 222,
           "tag": "View",
           "text": "t(\"plan.manual.stepLabel\", { number: index + 1 })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 197,
+          "line": 225,
           "tag": "TextInput",
           "text": "t(\"plan.manual.stepName\", { number: index + 1 })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 205,
+          "line": 233,
           "tag": "TextInput",
           "text": "t(\"plan.manual.stepCriteria\", { number: index + 1 })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 205,
+          "line": 233,
           "tag": "TextInput",
           "text": "t(\"plan.manual.criteriaPlaceholder\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 215,
+          "line": 243,
           "tag": "Tag",
           "text": "key === PLAN_EVENT_SLOT ? PLAN_EVENT_EMOJI : `${state.types.find((type) => type.key === key)?.emoji ?? \"\"} ${letters.get(key) ?? \"\"}`"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 216,
+          "line": 244,
           "tag": "IconButton",
           "text": "t(\"plan.manual.moveUp\", { number: index + 1 })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 217,
+          "line": 245,
           "tag": "IconButton",
           "text": "t(\"plan.manual.moveDown\", { number: index + 1 })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 218,
+          "line": 246,
           "tag": "IconButton",
           "text": "t(\"plan.manual.deleteStep\", { number: index + 1 })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 232,
+          "line": 260,
           "tag": "Tag",
           "text": "t(\"plan.manual.total\", { total })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 241,
+          "line": 269,
           "tag": "View",
           "text": "row.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 248,
+          "line": 276,
           "tag": "IconButton",
           "text": "t(\"plan.manual.removeType\", { label: row.title })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 252,
+          "line": 280,
           "tag": "IconButton",
           "text": "t(\"plan.manual.fewer\", { label: row.title })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 253,
+          "line": 281,
           "tag": "UiText",
           "text": "t(\"plan.manual.countValue\", { count: row.count, label: row.title })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 254,
+          "line": 282,
           "tag": "IconButton",
           "text": "t(\"plan.manual.more\", { label: row.title })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 257,
+          "line": 285,
           "tag": "TextInput",
           "text": "t(\"plan.manual.pointsOf\", { label: row.title })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 272,
+          "line": 300,
           "tag": "Button",
           "text": "t(\"plan.manual.addType\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 276,
+          "line": 304,
           "tag": "BottomSheet",
           "text": "t(\"plan.manual.removeTitle\", { letter: removing ? letters.get(removing) ?? \"\" : \"\" })"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 299,
+          "line": 327,
           "tag": "Button",
           "text": "copy.action.cancel"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 300,
+          "line": 328,
           "tag": "Button",
           "text": "t(\"plan.manual.removeConfirm\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 306,
+          "line": 334,
           "tag": "BottomSheet",
           "text": "t(\"plan.manual.addType\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 323,
+          "line": 351,
           "tag": "BottomSheet",
           "text": "t(\"plan.manual.addStep\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 326,
+          "line": 354,
           "tag": "TextInput",
           "text": "t(\"plan.manual.newStepName\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 327,
+          "line": 355,
           "tag": "TextInput",
           "text": "t(\"plan.manual.criteriaPlaceholder\")"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 331,
+          "line": 359,
           "tag": "FilterOption",
           "text": "item.label"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 334,
+          "line": 362,
           "tag": "Button",
           "text": "t(\"plan.manual.addStepConfirm\")"
         },
@@ -81981,7 +82106,7 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/plan-review-ui.tsx",
-          "line": 36,
+          "line": 37,
           "tag": "View",
           "text": "t(\"plan.stage.label\", { stage: t(STAGES[stage]) })"
         },
@@ -82061,7 +82186,8 @@
         "deepLinkEvidenceFiles": [
           "repos/orbit-app/app/plans/drafts/[draftId]/edit.tsx",
           "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "repos/orbit-app/src/components/shell-navigation.ts"
+          "repos/orbit-app/src/components/shell-navigation.ts",
+          "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx"
         ]
       },
       "states": {
@@ -82570,7 +82696,7 @@
           "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-16",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 161,
+          "line": 184,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "PlanFrame",
@@ -82602,7 +82728,7 @@
           "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-17",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 167,
+          "line": 190,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -82638,7 +82764,41 @@
           "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-18",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 172,
+          "line": 197,
+          "ownerPropBranchConditions": [],
+          "controlType": "native-control",
+          "tag": "Button",
+          "visibleName": null,
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() => void reopenLatest()"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "reopenLatest"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "present-static-signal",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-19",
+          "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
+          "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
+          "line": 200,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -82669,10 +82829,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-19",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-20",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 177,
+          "line": 205,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "RetryCard",
@@ -82703,10 +82863,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-20",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-21",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 181,
+          "line": 209,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -82735,10 +82895,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-21",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-22",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 197,
+          "line": 225,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -82770,10 +82930,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-22",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-23",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 205,
+          "line": 233,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -82805,10 +82965,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-23",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-24",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 216,
+          "line": 244,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "IconButton",
@@ -82840,10 +83000,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-24",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-25",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 217,
+          "line": 245,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "IconButton",
@@ -82875,10 +83035,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-25",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-26",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 218,
+          "line": 246,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "IconButton",
@@ -82910,10 +83070,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-26",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-27",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 223,
+          "line": 251,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "UiPressable",
@@ -82944,17 +83104,17 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-27",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-28",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 248,
+          "line": 276,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "IconButton",
           "visibleName": "t(\"plan.manual.removeType\", { label: row.title })",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": "state.types.length <= 1",
+          "disabledCondition": "state.types.length <= 1 || !canRemoveType(state, row.slot)",
           "handlers": [
             {
               "event": "onpress",
@@ -82978,10 +83138,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-28",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-29",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 252,
+          "line": 280,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "IconButton",
@@ -83012,10 +83172,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-29",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-30",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 254,
+          "line": 282,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "IconButton",
@@ -83046,10 +83206,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-30",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-31",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 257,
+          "line": 285,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -83086,10 +83246,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-31",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-32",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 272,
+          "line": 300,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -83120,10 +83280,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-32",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-33",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 276,
+          "line": 304,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "BottomSheet",
@@ -83154,10 +83314,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-33",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-34",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 299,
+          "line": 327,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -83188,10 +83348,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-34",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-35",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 300,
+          "line": 328,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -83224,10 +83384,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-35",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-36",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 306,
+          "line": 334,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "BottomSheet",
@@ -83258,10 +83418,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-36",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-37",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 310,
+          "line": 338,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "UiPressable",
@@ -83295,10 +83455,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-37",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-38",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 323,
+          "line": 351,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "BottomSheet",
@@ -83329,10 +83489,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-38",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-39",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 326,
+          "line": 354,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -83363,10 +83523,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-39",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-40",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 327,
+          "line": 355,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -83397,10 +83557,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-40",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-41",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 331,
+          "line": 359,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "FilterOption",
@@ -83433,10 +83593,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-41",
+          "interactionId": "mobile:/plans/drafts/[draftId]/edit#interaction-42",
           "surfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 334,
+          "line": 362,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Button",
@@ -83473,37 +83633,37 @@
       ],
       "overlays": [
         {
-          "overlayInstanceId": "mobile:/plans/drafts/[draftId]/edit#overlay-repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:276",
+          "overlayInstanceId": "mobile:/plans/drafts/[draftId]/edit#overlay-repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:304",
           "parentSurfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:276",
+          "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:304",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 276,
+          "line": 304,
           "kind": "BottomSheet",
           "visibleName": "t(\"plan.manual.removeTitle\", { letter: removing ? letters.get(removing) ?? \"\" : \"\" })",
           "runtimeStatus": "not-runtime-verified"
         },
         {
-          "overlayInstanceId": "mobile:/plans/drafts/[draftId]/edit#overlay-repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:306",
+          "overlayInstanceId": "mobile:/plans/drafts/[draftId]/edit#overlay-repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:334",
           "parentSurfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:306",
+          "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:334",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 306,
+          "line": 334,
           "kind": "BottomSheet",
           "visibleName": "t(\"plan.manual.addType\")",
           "runtimeStatus": "not-runtime-verified"
         },
         {
-          "overlayInstanceId": "mobile:/plans/drafts/[draftId]/edit#overlay-repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:323",
+          "overlayInstanceId": "mobile:/plans/drafts/[draftId]/edit#overlay-repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:351",
           "parentSurfaceId": "mobile:/plans/drafts/[draftId]/edit",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:323",
+          "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:351",
           "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-          "line": 323,
+          "line": 351,
           "kind": "BottomSheet",
           "visibleName": "t(\"plan.manual.addStep\")",
           "runtimeStatus": "not-runtime-verified"
@@ -87027,6 +87187,7 @@
           "repos/orbit-app/src/screens/plan/plan-failure.ts",
           "repos/orbit-app/src/screens/plan/plan-model.ts",
           "repos/orbit-app/src/screens/plan/plan-review-model.ts",
+          "repos/orbit-app/src/screens/plan/plan-review-ui.tsx",
           "repos/orbit-app/src/view-models/task-list-scope.ts",
           "repos/orbit-app/src/view-models/today-tasks.ts"
         ],
@@ -113578,6 +113739,7 @@
           "repos/orbit-app/src/screens/plan/plan-overview-model.ts",
           "repos/orbit-app/src/screens/plan/plan-overview-ui.tsx",
           "repos/orbit-app/src/screens/plan/plan-review-model.ts",
+          "repos/orbit-app/src/screens/plan/plan-review-ui.tsx",
           "repos/orbit-app/src/screens/plan/usePlanAwardToast.ts",
           "repos/orbit-app/src/screens/schedule/PersonalScheduleList.tsx",
           "repos/orbit-app/src/screens/schedule/ScheduleScreen.tsx",
@@ -115294,7 +115456,7 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/plan/plan-review-ui.tsx",
-          "line": 23,
+          "line": 24,
           "tag": "View",
           "text": "t(\"plan.review.quotaA11y\", { left, limit })"
         },
@@ -125700,6 +125862,7 @@
         "repos/orbits/tests/plans/plan-flow-ai.test.ts",
         "repos/orbits/tests/plans/plan-overview.test.ts",
         "repos/orbits/tests/plans/plan-r24-review-fixes.test.ts",
+        "repos/orbits/tests/plans/review-r25-server-fixes.test.ts",
         "repos/orbits/tests/plans/review-r25-ui-followups.test.ts",
         "repos/orbits/tests/plans/review.test.ts",
         "repos/orbits/tests/plans/v2-service.test.ts",
@@ -136162,6 +136325,8 @@
           "repos/orbits/features/acquisition/storage/event-attendee-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/external-import-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/referral-live-record-provider.ts",
+          "repos/orbits/features/ai-quota/gate.ts",
+          "repos/orbits/features/ai-quota/ledger.ts",
           "repos/orbits/features/appointments/home-summary-reader.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -142314,6 +142479,8 @@
           "repos/orbits/features/acquisition/storage/event-attendee-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/external-import-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/referral-live-record-provider.ts",
+          "repos/orbits/features/ai-quota/gate.ts",
+          "repos/orbits/features/ai-quota/ledger.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/contract.ts",
           "repos/orbits/features/auth/service-factory.ts",
@@ -145611,6 +145778,8 @@
           "repos/orbits/features/acquisition/storage/event-attendee-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/external-import-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/referral-live-record-provider.ts",
+          "repos/orbits/features/ai-quota/gate.ts",
+          "repos/orbits/features/ai-quota/ledger.ts",
           "repos/orbits/features/analysis/live-value-service.ts",
           "repos/orbits/features/analysis/service-factory.ts",
           "repos/orbits/features/analysis/storage/relationship-value-live-record-provider.ts",
@@ -149466,6 +149635,8 @@
           "repos/orbits/features/acquisition/storage/event-attendee-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/external-import-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/referral-live-record-provider.ts",
+          "repos/orbits/features/ai-quota/gate.ts",
+          "repos/orbits/features/ai-quota/ledger.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/contract.ts",
           "repos/orbits/features/auth/service-factory.ts",
@@ -154553,6 +154724,7 @@
         "repos/orbits/tests/pages/app-agent-iorbit-chat.test.tsx",
         "repos/orbits/tests/pages/app-agent-iorbit-history.test.tsx",
         "repos/orbits/tests/pages/app-agent-task-interaction.test.tsx",
+        "repos/orbits/tests/pages/app-contact-value-line.test.tsx",
         "repos/orbits/tests/pages/app-contacts-dashboard-account-scope.test.ts",
         "repos/orbits/tests/pages/app-contacts-dashboard-opportunities-writes-postgres.test.ts",
         "repos/orbits/tests/pages/app-contacts-dashboard-overview-writes-postgres.test.ts",
@@ -157534,6 +157706,8 @@
           "repos/orbits/features/acquisition/storage/event-attendee-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/external-import-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/referral-live-record-provider.ts",
+          "repos/orbits/features/ai-quota/gate.ts",
+          "repos/orbits/features/ai-quota/ledger.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/contract.ts",
           "repos/orbits/features/auth/service-factory.ts",
@@ -184130,37 +184304,49 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 54,
+          "line": 61,
           "tag": "ShellPage",
           "text": "t(r.doneTitle)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 59,
+          "line": 66,
           "tag": "RetryCard",
           "text": "t(r.doneLoadFailed)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 131,
-          "tag": "div",
-          "text": "t(r.nextTitle)"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 140,
-          "tag": "Chip",
-          "text": "planCopy(PLAN_GOAL_KIND_COPY[candidate.goalKind], language)"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 155,
+          "line": 117,
           "tag": "Button",
           "text": "t(r.later)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 157,
+          "line": 119,
+          "tag": "Button",
+          "text": "t(r.nextDecide)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 156,
+          "tag": "div",
+          "text": "t(r.nextTitle)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 165,
+          "tag": "Chip",
+          "text": "planCopy(PLAN_GOAL_KIND_COPY[candidate.goalKind], language)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 180,
+          "tag": "Button",
+          "text": "t(r.later)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 182,
           "tag": "Button",
           "text": "t(r.nextStart)"
         },
@@ -184278,7 +184464,7 @@
           "interactionId": "web:/app/plans/[planId]/done#interaction-1",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 59,
+          "line": 66,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "RetryCard",
@@ -184312,110 +184498,7 @@
           "interactionId": "web:/app/plans/[planId]/done#interaction-2",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 136,
-          "ownerPropBranchConditions": [],
-          "controlType": "button",
-          "tag": "button",
-          "visibleName": "{candidate.goalText} {<Chip label={planCopy(PLAN_GOAL_KIND_COPY[candidate.goalKind], language)} tone=\"lav\" />} / {null} {<span className={styles.label} data-plan-next-basis=\"\">{candidate.basis.map((item) => item.label).join(\" · \")}</span>} / {null}",
-          "accessibleNameEvidence": "dynamic-static-expression",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onclick",
-              "expression": "() => setPicked(String(index))"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "setPicked",
-            "String"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-3",
-          "surfaceId": "web:/app/plans/[planId]/done",
-          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 146,
-          "ownerPropBranchConditions": [],
-          "controlType": "button",
-          "tag": "button",
-          "visibleName": "{t(r.ownGoal)} {t(r.ownGoalSub)}",
-          "accessibleNameEvidence": "dynamic-static-expression",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onclick",
-              "expression": "() => setPicked(OWN)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "setPicked"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-4",
-          "surfaceId": "web:/app/plans/[planId]/done",
-          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 153,
-          "ownerPropBranchConditions": [],
-          "controlType": "callback-control",
-          "tag": "PlanErrorNotice",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onretry",
-              "expression": "() => void start()"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "start"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "present-static-signal",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-5",
-          "surfaceId": "web:/app/plans/[planId]/done",
-          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 155,
+          "line": 117,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -184447,10 +184530,180 @@
           "severity": null
         },
         {
+          "interactionId": "web:/app/plans/[planId]/done#interaction-3",
+          "surfaceId": "web:/app/plans/[planId]/done",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 119,
+          "ownerPropBranchConditions": [],
+          "controlType": "button",
+          "tag": "Button",
+          "visibleName": null,
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onDecide"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/plans/[planId]/done#interaction-4",
+          "surfaceId": "web:/app/plans/[planId]/done",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 161,
+          "ownerPropBranchConditions": [],
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "{candidate.goalText} {<Chip label={planCopy(PLAN_GOAL_KIND_COPY[candidate.goalKind], language)} tone=\"lav\" />} / {null} {<span className={styles.label} data-plan-next-basis=\"\">{candidate.basis.map((item) => item.label).join(\" · \")}</span>} / {null}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setPicked(String(index))"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setPicked",
+            "String"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/plans/[planId]/done#interaction-5",
+          "surfaceId": "web:/app/plans/[planId]/done",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 171,
+          "ownerPropBranchConditions": [],
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "{t(r.ownGoal)} {t(r.ownGoalSub)}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setPicked(OWN)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setPicked"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
           "interactionId": "web:/app/plans/[planId]/done#interaction-6",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
-          "line": 157,
+          "line": 178,
+          "ownerPropBranchConditions": [],
+          "controlType": "callback-control",
+          "tag": "PlanErrorNotice",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onretry",
+              "expression": "() => void start()"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "start"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "present-static-signal",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/plans/[planId]/done#interaction-7",
+          "surfaceId": "web:/app/plans/[planId]/done",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 180,
+          "ownerPropBranchConditions": [],
+          "controlType": "button",
+          "tag": "Button",
+          "visibleName": null,
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => router.push(planTaskSegmentHref(\"web\"))"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push",
+            "planTaskSegmentHref"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/plans/[planId]/done#interaction-8",
+          "surfaceId": "web:/app/plans/[planId]/done",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDoneScreen.tsx",
+          "line": 182,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -184481,7 +184734,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-7",
+          "interactionId": "web:/app/plans/[planId]/done#interaction-9",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanParts.tsx",
           "line": 60,
@@ -184513,7 +184766,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-8",
+          "interactionId": "web:/app/plans/[planId]/done#interaction-10",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/ui/Button.tsx",
           "line": 34,
@@ -184540,7 +184793,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-9",
+          "interactionId": "web:/app/plans/[planId]/done#interaction-11",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/ui/Disclosure.tsx",
           "line": 34,
@@ -184574,7 +184827,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-10",
+          "interactionId": "web:/app/plans/[planId]/done#interaction-12",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/ui/Disclosure.tsx",
           "line": 63,
@@ -184606,7 +184859,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-11",
+          "interactionId": "web:/app/plans/[planId]/done#interaction-13",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/ui/States.tsx",
           "line": 54,
@@ -184638,7 +184891,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-12",
+          "interactionId": "web:/app/plans/[planId]/done#interaction-14",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/ui/States.tsx",
           "line": 98,
@@ -184670,7 +184923,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-13",
+          "interactionId": "web:/app/plans/[planId]/done#interaction-15",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/ui/States.tsx",
           "line": 99,
@@ -184702,7 +184955,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-14",
+          "interactionId": "web:/app/plans/[planId]/done#interaction-16",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/ui/Toast.tsx",
           "line": 28,
@@ -184736,7 +184989,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-15",
+          "interactionId": "web:/app/plans/[planId]/done#interaction-17",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/ui/Toast.tsx",
           "line": 79,
@@ -184770,7 +185023,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-16",
+          "interactionId": "web:/app/plans/[planId]/done#interaction-18",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/ui/Toast.tsx",
           "line": 80,
@@ -184805,7 +185058,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/plans/[planId]/done#interaction-17",
+          "interactionId": "web:/app/plans/[planId]/done#interaction-19",
           "surfaceId": "web:/app/plans/[planId]/done",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/ui/Toast.tsx",
           "line": 81,
@@ -184947,157 +185200,157 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 59,
+          "line": 61,
           "tag": "ShellPage",
           "text": "t(r.reviewTitle)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 66,
+          "line": 68,
           "tag": "RetryCard",
           "text": "t(r.loadFailed)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 99,
+          "line": 101,
           "tag": "Button",
           "text": "usedUp ? std.action.gotIt : std.action.notNow"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 100,
+          "line": 102,
           "tag": "Button",
           "text": "t(r.startReview)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 214,
+          "line": 219,
           "tag": "Button",
           "text": "standardCopyFor(language).action.gotIt"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 223,
+          "line": 228,
           "tag": "label",
           "text": "{t(r.otherChanges)}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 224,
+          "line": 229,
           "tag": "textarea",
           "text": "t(r.otherPlaceholder)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 226,
+          "line": 231,
           "tag": "Button",
           "text": "t(r.send)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 233,
+          "line": 238,
           "tag": "ol",
           "text": "t(r.reviewTitle)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 241,
+          "line": 246,
           "tag": "Button",
           "text": "t(r.loadLatest)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 253,
+          "line": 258,
           "tag": "section",
           "text": "t(r.quotaTitle)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 271,
+          "line": 276,
           "tag": "Button",
           "text": "backLabel"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 273,
+          "line": 278,
           "tag": "Button",
           "text": "t(r.manualOnce)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 274,
+          "line": 279,
           "tag": "Button",
           "text": "t(r.again, { n: left })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 276,
+          "line": 281,
           "tag": "Button",
           "text": "t(r.confirm)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 277,
+          "line": 282,
           "tag": "Button",
           "text": "t(r.keepAsIs)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 312,
+          "line": 317,
           "tag": "Chip",
           "text": "source.n === undefined ? t(source.entry) : t(source.entry, { n: source.n })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 315,
+          "line": 320,
           "tag": "input",
           "text": "t(r.editRow, { label: row.label })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 320,
+          "line": 325,
           "tag": "button",
           "text": "t(r.editRow, { label: row.label })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 326,
+          "line": 331,
           "tag": "Chip",
           "text": "t(r.maybeChanged)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 348,
+          "line": 353,
           "tag": "Chip",
           "text": "t(r.noChangeCounts)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 348,
+          "line": 353,
           "tag": "Chip",
           "text": "t(r.turnUpdated)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 360,
+          "line": 365,
           "tag": "Chip",
           "text": "t(planFlowCopy.changedTag)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 360,
+          "line": 365,
           "tag": "Chip",
           "text": "t(r.rejected)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 366,
+          "line": 371,
           "tag": "button",
           "text": "t(r.accept)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 367,
+          "line": 372,
           "tag": "button",
           "text": "t(r.reject)"
         },
@@ -185157,13 +185410,13 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 51,
+          "line": 55,
           "tag": "section",
           "text": "t(r.quotaTitle)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 60,
+          "line": 64,
           "tag": "section",
           "text": "t(r.dataTitle)"
         },
@@ -185259,7 +185512,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-2",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 66,
+          "line": 68,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "RetryCard",
@@ -185293,7 +185546,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-3",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 97,
+          "line": 99,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "PlanErrorNotice",
@@ -185327,7 +185580,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-4",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 99,
+          "line": 101,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -185361,7 +185614,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-5",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 100,
+          "line": 102,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -185395,7 +185648,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-6",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 214,
+          "line": 219,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -185429,7 +185682,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-7",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 224,
+          "line": 229,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "textarea",
@@ -185463,7 +185716,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-8",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 226,
+          "line": 231,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -185497,7 +185750,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-9",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 241,
+          "line": 246,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -185531,7 +185784,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-10",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 247,
+          "line": 252,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "PremiseCard",
@@ -185571,7 +185824,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-11",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 259,
+          "line": 264,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "TurnCard",
@@ -185603,7 +185856,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-12",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 265,
+          "line": 270,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "PlanErrorNotice",
@@ -185635,7 +185888,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-13",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 266,
+          "line": 271,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "PlanErrorNotice",
@@ -185667,7 +185920,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-14",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 271,
+          "line": 276,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -185701,7 +185954,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-15",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 273,
+          "line": 278,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -185736,7 +185989,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-16",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 274,
+          "line": 279,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -185768,7 +186021,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-17",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 276,
+          "line": 281,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -185802,7 +186055,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-18",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 277,
+          "line": 282,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -185836,7 +186089,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-19",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 315,
+          "line": 320,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -185875,7 +186128,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-20",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 320,
+          "line": 325,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -185909,7 +186162,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-21",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 329,
+          "line": 334,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -185943,7 +186196,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-22",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 366,
+          "line": 371,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -185977,7 +186230,7 @@
           "interactionId": "web:/app/plans/[planId]/review#interaction-23",
           "surfaceId": "web:/app/plans/[planId]/review",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewScreen.tsx",
-          "line": 367,
+          "line": 372,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -189107,145 +189360,151 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 150,
+          "line": 162,
           "tag": "Chip",
           "text": "t(CHANGE_KIND[change.kind])"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 162,
+          "line": 174,
           "tag": "ShellPage",
           "text": "t(planFlowCopy.editTitle)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 172,
+          "line": 184,
           "tag": "Button",
           "text": "t(planFlowCopy.backToFlow)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 174,
+          "line": 186,
           "tag": "Button",
           "text": "t(planReviewCopy.later)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 288,
+          "line": 301,
           "tag": "Button",
           "text": "t(planReviewCopy.later)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 289,
+          "line": 302,
           "tag": "Button",
           "text": "std.action.undo"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 292,
+          "line": 305,
           "tag": "Card",
           "text": "t(planFlowCopy.editSteps)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 306,
+          "line": 319,
           "tag": "input",
           "text": "t(planFlowCopy.stepTitleLabel)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 309,
+          "line": 322,
           "tag": "input",
           "text": "t(planFlowCopy.stepDoneLabel)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 312,
+          "line": 325,
           "tag": "div",
           "text": "t(planFlowCopy.stepTypesLabel)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 315,
+          "line": 328,
           "tag": "FilterOption",
           "text": "typeName(slot.key)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 321,
+          "line": 334,
           "tag": "button",
           "text": "t(planFlowCopy.moveUp)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 322,
+          "line": 335,
           "tag": "button",
           "text": "t(planFlowCopy.moveDown)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 323,
+          "line": 336,
           "tag": "button",
           "text": "t(planFlowCopy.removeStep)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 334,
+          "line": 347,
           "tag": "Card",
           "text": "t(planFlowCopy.editTypes)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 358,
+          "line": 371,
           "tag": "button",
           "text": "t(planFlowCopy.decrease, { type: name })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 360,
+          "line": 373,
           "tag": "button",
           "text": "t(planFlowCopy.increase, { type: name })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 364,
+          "line": 377,
+          "tag": "Chip",
+          "text": "t(planFlowCopy.skippedType)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
+          "line": 378,
           "tag": "input",
           "text": "t(planFlowCopy.pointsOf, { type: name })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 374,
+          "line": 388,
           "tag": "button",
           "text": "t(planFlowCopy.removeType, { type: name })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 398,
+          "line": 414,
           "tag": "Button",
           "text": "t(planFlowCopy.startPlan)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 400,
+          "line": 416,
           "tag": "Modal",
           "text": "removing ? t(planFlowCopy.removeTitle, { type: typeName(removing.key) }) : \"\""
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 401,
+          "line": 417,
           "tag": "Button",
           "text": "std.action.cancel"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 401,
+          "line": 417,
           "tag": "Button",
           "text": "t(planFlowCopy.removeConfirm)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 412,
+          "line": 428,
           "tag": "Modal",
           "text": "t(planFlowCopy.addTypeTitle)"
         },
@@ -189345,7 +189604,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-1",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 149,
+          "line": 161,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -189381,7 +189640,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-2",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 164,
+          "line": 176,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "PlanErrorNotice",
@@ -189415,7 +189674,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-3",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 165,
+          "line": 177,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "Skeleton",
@@ -189449,7 +189708,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-4",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 172,
+          "line": 184,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -189484,7 +189743,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-5",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 174,
+          "line": 186,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -189519,7 +189778,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-6",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 288,
+          "line": 301,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -189554,7 +189813,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-7",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 289,
+          "line": 302,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -189588,7 +189847,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-8",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 306,
+          "line": 319,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -189622,7 +189881,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-9",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 309,
+          "line": 322,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -189656,7 +189915,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-10",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 315,
+          "line": 328,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "FilterOption",
@@ -189691,7 +189950,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-11",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 321,
+          "line": 334,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -189725,7 +189984,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-12",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 322,
+          "line": 335,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -189759,7 +190018,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-13",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 323,
+          "line": 336,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -189794,7 +190053,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-14",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 330,
+          "line": 343,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -189826,14 +190085,14 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-15",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 358,
+          "line": 371,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
           "visibleName": "t(planFlowCopy.decrease, { type: name })",
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": "slot.targetCount <= 1",
+          "disabledCondition": "slot.targetCount <= Math.max(1, slot.metCount)",
           "handlers": [
             {
               "event": "onclick",
@@ -189860,7 +190119,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-16",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 360,
+          "line": 373,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -189894,14 +190153,14 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-17",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 364,
+          "line": 378,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
           "visibleName": "t(planFlowCopy.pointsOf, { type: name })",
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
+          "disabledCondition": "slot.skipped",
           "handlers": [
             {
               "event": "onchange",
@@ -189933,7 +190192,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-18",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 374,
+          "line": 388,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -189967,7 +190226,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-19",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 390,
+          "line": 404,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -190001,7 +190260,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-20",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 394,
+          "line": 408,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "PlanErrorNotice",
@@ -190035,7 +190294,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-21",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 398,
+          "line": 414,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -190069,7 +190328,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-22",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 400,
+          "line": 416,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "Modal",
@@ -190103,7 +190362,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-23",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 401,
+          "line": 417,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -190135,7 +190394,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-24",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 412,
+          "line": 428,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "Modal",
@@ -190169,7 +190428,7 @@
           "interactionId": "web:/app/plans/drafts/[draftId]/edit#interaction-25",
           "surfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 415,
+          "line": 431,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -190556,25 +190815,25 @@
       ],
       "overlays": [
         {
-          "overlayInstanceId": "web:/app/plans/drafts/[draftId]/edit#overlay-repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:400",
+          "overlayInstanceId": "web:/app/plans/drafts/[draftId]/edit#overlay-repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:416",
           "parentSurfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:400",
+          "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:416",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 400,
+          "line": 416,
           "kind": "Modal",
           "visibleName": "removing ? t(planFlowCopy.removeTitle, { type: typeName(removing.key) }) : \"\"",
           "runtimeStatus": "not-runtime-verified"
         },
         {
-          "overlayInstanceId": "web:/app/plans/drafts/[draftId]/edit#overlay-repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:412",
+          "overlayInstanceId": "web:/app/plans/drafts/[draftId]/edit#overlay-repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:428",
           "parentSurfaceId": "web:/app/plans/drafts/[draftId]/edit",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:412",
+          "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:428",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-          "line": 412,
+          "line": 428,
           "kind": "Modal",
           "visibleName": "t(planFlowCopy.addTypeTitle)",
           "runtimeStatus": "not-runtime-verified"
@@ -207129,6 +207388,8 @@
           "repos/orbits/features/acquisition/storage/event-attendee-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/external-import-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/referral-live-record-provider.ts",
+          "repos/orbits/features/ai-quota/gate.ts",
+          "repos/orbits/features/ai-quota/ledger.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/contract.ts",
           "repos/orbits/features/auth/service-factory.ts",
@@ -210121,6 +210382,8 @@
           "repos/orbits/features/acquisition/storage/event-attendee-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/external-import-live-record-provider.ts",
           "repos/orbits/features/acquisition/storage/referral-live-record-provider.ts",
+          "repos/orbits/features/ai-quota/gate.ts",
+          "repos/orbits/features/ai-quota/ledger.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/contract.ts",
           "repos/orbits/features/auth/service-factory.ts",
@@ -211525,39 +211788,39 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 51,
+          "line": 55,
           "tag": "section",
           "text": "t(r.quotaTitle)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 60,
+          "line": 64,
           "tag": "section",
           "text": "t(r.dataTitle)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 127,
+          "line": 131,
           "tag": "Button",
           "text": "copy.action.gotIt"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 128,
+          "line": 132,
           "tag": "Button",
           "text": "copy.action.notNow"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 128,
+          "line": 132,
           "tag": "Button",
           "text": "t(r.startReview)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 131,
+          "line": 135,
           "tag": "Modal",
-          "text": "t(usedUp ? r.usedUpTitle : r.entryTitle)"
+          "text": "t(usedUp ? (quota?.reviewLimitReason === \"ai_budget\" ? r.aiBudgetTitle : r.usedUpTitle) : r.entryTitle)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/ui/Basics.tsx",
@@ -213406,7 +213669,7 @@
           "interactionId": "web:/app/tasks#interaction-53",
           "surfaceId": "web:/app/tasks",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 127,
+          "line": 131,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -213438,7 +213701,7 @@
           "interactionId": "web:/app/tasks#interaction-54",
           "surfaceId": "web:/app/tasks",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 128,
+          "line": 132,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "Button",
@@ -213472,11 +213735,11 @@
           "interactionId": "web:/app/tasks#interaction-55",
           "surfaceId": "web:/app/tasks",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 131,
+          "line": 135,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "Modal",
-          "visibleName": "t(usedUp ? r.usedUpTitle : r.entryTitle)",
+          "visibleName": "t(usedUp ? (quota?.reviewLimitReason === \"ai_budget\" ? r.aiBudgetTitle : r.usedUpTitle) : r.entryTitle)",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -213504,7 +213767,7 @@
           "interactionId": "web:/app/tasks#interaction-56",
           "surfaceId": "web:/app/tasks",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 136,
+          "line": 140,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "PlanErrorNotice",
@@ -217381,15 +217644,15 @@
           "runtimeStatus": "not-runtime-verified"
         },
         {
-          "overlayInstanceId": "web:/app/tasks#overlay-repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx:131",
+          "overlayInstanceId": "web:/app/tasks#overlay-repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx:135",
           "parentSurfaceId": "web:/app/tasks",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx:131",
+          "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx:135",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-          "line": 131,
+          "line": 135,
           "kind": "Modal",
-          "visibleName": "t(usedUp ? r.usedUpTitle : r.entryTitle)",
+          "visibleName": "t(usedUp ? (quota?.reviewLimitReason === \"ai_budget\" ? r.aiBudgetTitle : r.usedUpTitle) : r.entryTitle)",
           "runtimeStatus": "not-runtime-verified"
         },
         {
@@ -240907,25 +241170,25 @@
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:276",
+      "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:304",
       "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-      "line": 276,
+      "line": 304,
       "kind": "BottomSheet",
       "visibleName": "t(\"plan.manual.removeTitle\", { letter: removing ? letters.get(removing) ?? \"\" : \"\" })",
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:306",
+      "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:334",
       "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-      "line": 306,
+      "line": 334,
       "kind": "BottomSheet",
       "visibleName": "t(\"plan.manual.addType\")",
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:323",
+      "implementationId": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:351",
       "sourceFile": "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx",
-      "line": 323,
+      "line": 351,
       "kind": "BottomSheet",
       "visibleName": "t(\"plan.manual.addStep\")",
       "runtimeStatus": "not-runtime-verified"
@@ -241187,17 +241450,17 @@
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:400",
+      "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:416",
       "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-      "line": 400,
+      "line": 416,
       "kind": "Modal",
       "visibleName": "removing ? t(planFlowCopy.removeTitle, { type: typeName(removing.key) }) : \"\"",
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:412",
+      "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:428",
       "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
-      "line": 412,
+      "line": 428,
       "kind": "Modal",
       "visibleName": "t(planFlowCopy.addTypeTitle)",
       "runtimeStatus": "not-runtime-verified"
@@ -241211,11 +241474,11 @@
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx:131",
+      "implementationId": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx:135",
       "sourceFile": "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx",
-      "line": 131,
+      "line": 135,
       "kind": "Modal",
-      "visibleName": "t(usedUp ? r.usedUpTitle : r.entryTitle)",
+      "visibleName": "t(usedUp ? (quota?.reviewLimitReason === \"ai_budget\" ? r.aiBudgetTitle : r.usedUpTitle) : r.entryTitle)",
       "runtimeStatus": "not-runtime-verified"
     },
     {

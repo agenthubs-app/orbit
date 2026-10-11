@@ -14,7 +14,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { validateAllocations, type PlanAllocationSlot } from "../../../shared/compute/plan-allocation";
 import { nextAward, PLAN_EVENT_SEGMENT_KEY, skipAwardPoints, summarizePlanScore, type PlanScoreAward, type PlanScoreReversal, type PlanScoreSlot } from "../../../shared/compute/plan-score";
 import { PLAN_GOAL_KINDS } from "../../../shared/compute/plan-templates";
-import { tokyoUsageMonth } from "../../ai-quota/constants";
+import { AI_QUOTA_MONTHLY_LIMITS, tokyoUsageMonth } from "../../ai-quota/constants";
 import type { PlanHrefPlatform } from "../../../shared/compute/plan-href";
 import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
 import { candidatesFor, pendingItems, recommendScore, recentAwards, stepProgress, stepSuggestions, todayChance, typeDetail as buildTypeDetail, typeStats, type OverviewInput, type PlanEventFact } from "./overview";
@@ -65,6 +65,31 @@ import {
 
 /** 見直し的月上限（Q6：所有人按 Free）。月用量由 R25 记在 `review_used`；R22 只读出来给概要显示。 */
 export const PLAN_REVIEW_MONTHLY_LIMIT = 3;
+
+/** 見直し（C9）在 AI 账本里的月成本上限（`plan_review`，非 released 的操作；失败有 HTTP 响应也算）。不在这里改数字。 */
+export const PLAN_REVIEW_AI_MONTHLY_LIMIT = AI_QUOTA_MONTHLY_LIMITS.plan_review ?? PLAN_REVIEW_MONTHLY_LIMIT;
+
+/** R25 复核 M1：读 AI 账本里本月 `plan_review` 已占的次数（读不到时返回 null，只按用户次数显示）。 */
+export type PlanReviewBudgetReader = (actorId: string, now: Date) => Promise<number | null>;
+
+/** 账本（`AiUsageLedger.countMonthly`）→ 见直的成本读数；出错（如表未迁移）按读不到处理。 */
+export function ledgerReviewBudget(ledger: { countMonthly(actorId: string, purpose: "plan_review", now: Date): Promise<number> }): PlanReviewBudgetReader {
+  return async (actorId, now) => ledger.countMonthly(actorId, "plan_review", now).catch(() => null);
+}
+
+export type PlanReviewLimitReason = "monthly" | "ai_budget";
+
+/**
+ * R25 复核 M1：见直剩余次数 = min(用户看得到的次数剩余, 账本本月剩余)。用户次数只扣成功的送出；账本连失败也算，
+ * 所以账本可能先用完——这时界面也显示 0，并给出原因 `ai_budget`（用户次数用完时为 `monthly`）。还有剩余时没有原因。
+ */
+export function planReviewQuota(used: number, ledgerUsed: number | null): { left: number; reason: PlanReviewLimitReason | null } {
+  const userLeft = Math.max(0, PLAN_REVIEW_MONTHLY_LIMIT - used);
+  const budgetLeft = ledgerUsed === null ? Number.POSITIVE_INFINITY : Math.max(0, PLAN_REVIEW_AI_MONTHLY_LIMIT - ledgerUsed);
+  const left = Math.min(userLeft, budgetLeft);
+  if (left > 0) return { left, reason: null };
+  return { left: 0, reason: userLeft <= 0 ? "monthly" : "ai_budget" };
+}
 
 export const PLAN_V2_ERROR_REASONS = [
   "PLAN_NOT_FOUND",
@@ -219,6 +244,8 @@ export interface PlanV2ServiceOptions {
   events?: () => Promise<PlanEventFact[]>;
   /** R24：线下聊过新建联系人（来源「プラン」）；不可用时为 null。 */
   createContact?: (input: { name: string }) => Promise<string | null>;
+  /** R25 复核 M1：AI 账本里本月见直已占的次数（live 由账本给；没有时只按用户次数）。 */
+  reviewBudget?: PlanReviewBudgetReader;
 }
 
 /** memo 判定达到几问才出计分提议（DESIGN §2.7）。 */
@@ -260,9 +287,15 @@ export function scoreReversals(log: readonly PlanV2LogEntry[]): PlanScoreReversa
 export function planSinceConfirmed(plan: Pick<PlanV2Row, "createdAt"> | null, log: readonly PlanV2LogEntry[]): { talked: number; events: number; stepsCompleted: number } {
   const since = (entry: { createdAt: string }) => !plan || Date.parse(entry.createdAt) >= Date.parse(plan.createdAt);
   const awards = activeAwards(log).filter(since);
+  // 复核 m2：Step 按每一步的最终状态算——确定以来完成、之后没被撤回的才算；完成 → 撤回 → 再完成算 1。
+  const steps = new Map<string, string | null>();
+  for (const entry of log) {
+    if (entry.event === "step_completed") steps.set(String(entry.payload.stepKey), entry.createdAt);
+    if (entry.event === "step_reopened") steps.set(String(entry.payload.stepKey), null);
+  }
   return {
     events: awards.filter((entry) => entry.award.basis === "event").length,
-    stepsCompleted: log.filter((entry) => entry.event === "step_completed").length,
+    stepsCompleted: [...steps.values()].filter((at): at is string => at !== null && since({ createdAt: at })).length,
     talked: awards.filter((entry) => entry.award.basis === "talked" || entry.award.basis === "self_report" || entry.award.basis === "memo").length,
   };
 }
@@ -398,6 +431,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       if (entry.event === "step_reopened") completed.set(String(entry.payload.stepKey), null);
     }
     const used = await reviewUsedThisMonth(reader);
+    const review = planReviewQuota(used, options.reviewBudget ? await options.reviewBudget(scope.actorId, new Date(now())) : null);
     const since = planSinceConfirmed(plan, log);
     return {
       achievedAt: plan.achievedAt,
@@ -440,8 +474,9 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
         activeGoalLimit: PLAN_V2_GOAL_LIMIT,
         activeGoals: active.length,
         manualEditAvailable: plan.manualEditAvailable,
-        reviewLeftThisMonth: Math.max(0, PLAN_REVIEW_MONTHLY_LIMIT - used),
+        reviewLeftThisMonth: review.left,
         reviewMonthlyLimit: PLAN_REVIEW_MONTHLY_LIMIT,
+        ...(review.reason ? { reviewLimitReason: review.reason } : {}),
       },
       revision: plan.revision,
       score,

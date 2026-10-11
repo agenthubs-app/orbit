@@ -268,8 +268,16 @@ function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Read
     },
     async legacyPlans() {
       const plans = await rows(
-        `select id, goal_snapshot, status, starts_on::text as starts_on, archived_at, analysis->>'summary' as summary from plans
-         where workspace_id = $1 and actor_id = $2 and coalesce(model_version, 1) = 1 order by created_at desc limit 20`,
+        // 复核 m8：v1 每次重新分析都留一个归档版本（新版本的 previous_plan_id 指向旧版、目标快照相同）。
+        // 同一系列只列最新一版：被同目标的新版本接替的旧版本不列；换了目标的「下一份计划」另算一条。
+        `select p.id, p.goal_snapshot, p.status, p.starts_on::text as starts_on, p.archived_at, p.analysis->>'summary' as summary from plans p
+         where p.workspace_id = $1 and p.actor_id = $2 and coalesce(p.model_version, 1) = 1
+           and not exists (
+             select 1 from plans n
+             where n.workspace_id = p.workspace_id and n.actor_id = p.actor_id and coalesce(n.model_version, 1) = 1
+               and n.previous_plan_id = p.id and n.goal_snapshot = p.goal_snapshot
+           )
+         order by p.created_at desc limit 20`,
         [ws, actor],
       );
       if (plans.length === 0) return [];

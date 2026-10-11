@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { PlanConfirmResult, PlanDraftView } from "../../../../../shared/contract/plan-v2";
-import { changeAllocation, changeTargetCount, removeSlot, PLAN_EVENT_TARGET_MAX, PLAN_TYPE_TARGET_MAX, type PlanAllocationMove, type PlanAllocationSlot } from "../../../../../shared/compute/plan-allocation";
+import { changeAllocation, changeTargetCount, removeSlot, PLAN_EVENT_TARGET_MAX, PLAN_TYPE_TARGET_MAX, type PlanAllocationError, type PlanAllocationMove, type PlanAllocationSlot } from "../../../../../shared/compute/plan-allocation";
 import { planFlowHref, planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 import { PLAN_EVENT_COPY, PLAN_SHORT_NAME_COPY, planCopy } from "../../../../../shared/compute/plan-template-copy";
 import { PLAN_EVENT_SLOT, PLAN_GOAL_TEMPLATES } from "../../../../../shared/compute/plan-templates";
@@ -50,6 +50,18 @@ const CHANGE_KIND: Record<EditChange["kind"], OrbitCopyEntry> = {
   removeType: planFlowCopy.changeKindRemove,
 };
 
+/** R25 复核 S1: why a move was refused, in words (earned points, skips and counted people are kept). */
+function allocationErrorCopy(error: PlanAllocationError): OrbitCopyEntry {
+  switch (error) {
+    case "no_room": return planFlowCopy.noRoom;
+    case "below_earned": return planFlowCopy.belowEarned;
+    case "skipped_locked": return planFlowCopy.skippedLocked;
+    case "target_below_met": return planFlowCopy.targetBelowMet;
+    case "cannot_remove_with_points": return planFlowCopy.removeWithPoints;
+    default: return planFlowCopy.notMultiple;
+  }
+}
+
 export function changeText(change: EditChange, t: Translate): string {
   switch (change.kind) {
     case "name": return t(planFlowCopy.changeName, { from: change.from, n: change.n, to: change.to });
@@ -93,7 +105,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
 
   const reset = useCallback((source: PlanDraftView) => {
     setSteps(stepsOf(source.content));
-    const next = allocationSlotsOf(source.goalKind, source.content);
+    const next = allocationSlotsOf(source.goalKind, source.content, source.slotState ?? []);
     setSlots(next);
     setInputs(Object.fromEntries(next.map((slot) => [slot.key, String(slot.allocation)])));
     setMoved(new Set());
@@ -195,7 +207,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
 
   const applyResult = (result: ReturnType<typeof changeAllocation>, key: string) => {
     if (result.ok === false) {
-      setAllocError({ key, text: result.error === "no_room" ? planFlowCopy.noRoom : planFlowCopy.notMultiple });
+      setAllocError({ key, text: allocationErrorCopy(result.error) });
       setInputs((current) => ({ ...current, [key]: String(slots.find((slot) => slot.key === key)?.allocation ?? 0) }));
       return;
     }
@@ -223,7 +235,8 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
   };
   const askRemove = (key: string) => {
     const result = removeSlot(slots, key);
-    if (result.ok) setRemoving({ key, moves: result.moves.filter((move) => move.key !== key), points: slots.find((slot) => slot.key === key)?.allocation ?? 0, slots: result.slots });
+    if (result.ok === false) { setAllocError({ key, text: allocationErrorCopy(result.error) }); return; }
+    setRemoving({ key, moves: result.moves.filter((move) => move.key !== key), points: slots.find((slot) => slot.key === key)?.allocation ?? 0, slots: result.slots });
   };
   const confirmRemove = () => {
     if (!removing) return;
@@ -355,13 +368,14 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
                         </td>
                         <td>
                           <span className={styles.stepper}>
-                            <button type="button" className={`btn ${styles.stepperButton}`} aria-label={t(planFlowCopy.decrease, { type: name })} disabled={slot.targetCount <= 1} onClick={() => stepCount(slot.key, -1)}><Icon name="minus" size={16} /></button>
+                            <button type="button" className={`btn ${styles.stepperButton}`} aria-label={t(planFlowCopy.decrease, { type: name })} disabled={slot.targetCount <= Math.max(1, slot.metCount)} onClick={() => stepCount(slot.key, -1)}><Icon name="minus" size={16} /></button>
                             <span data-count="">{t(isEvent ? planFlowCopy.timesCount : planFlowCopy.peopleCount, { count: slot.targetCount })}</span>
                             <button type="button" className={`btn ${styles.stepperButton}`} aria-label={t(planFlowCopy.increase, { type: name })} disabled={slot.targetCount >= (isEvent ? PLAN_EVENT_TARGET_MAX : PLAN_TYPE_TARGET_MAX)} onClick={() => stepCount(slot.key, 1)}><Icon name="plus" size={16} /></button>
                           </span>
                         </td>
                         <td>
-                          <input className={styles.pointsInput} inputMode="numeric" step={5} min={0} max={100} type="number" aria-label={t(planFlowCopy.pointsOf, { type: name })}
+                          {slot.skipped ? <Chip label={t(planFlowCopy.skippedType)} /> : null}
+                          <input className={styles.pointsInput} inputMode="numeric" step={5} min={slot.earnedBase} max={100} type="number" aria-label={t(planFlowCopy.pointsOf, { type: name })} disabled={slot.skipped} data-slot-skipped={slot.skipped ? "" : undefined}
                             aria-invalid={allocError?.key === slot.key ? true : undefined} value={inputs[slot.key] ?? String(slot.allocation)}
                             onChange={(event) => setInputs((current) => ({ ...current, [slot.key]: event.target.value }))}
                             onBlur={() => commitAllocation(slot.key)} onKeyDown={(event) => { if (event.key === "Enter") commitAllocation(slot.key); }} />
@@ -391,7 +405,9 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
             </div>
           </Card>
         </div>
-        {failed ? <div className={styles.field}><PlanErrorNotice view={failed} t={t} onRetry={() => void start()} onReload={() => void load()} /></div> : null}
+        {failed ? <div className={styles.field}><PlanErrorNotice view={failed} t={t} onRetry={() => void start()}
+          // R25 复核: a review draft voided by a plan change answers STALE — the latest is the plan itself.
+          onReload={() => (draft.kind === "review" && draft.planId ? router.push(planTaskSegmentHref("web", draft.planId)) : void load())} /></div> : null}
         <div className={styles.totalBar} data-plan-totalbar="">
           <span className={total === 100 ? undefined : styles.totalOff} data-plan-total-text="">{t(planFlowCopy.totalBar, { count: changes.length, total })}</span>
           <span className={styles.push} />

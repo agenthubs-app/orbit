@@ -69,10 +69,10 @@
 | `mobile:/party` | mobile | production | `/party` | `mobile:/` |  | 0 | 0 | 6 | runtime-partially-verified-expo-party-truthful-boundary |
 | `mobile:/party/checkin` | mobile | production | `/party/checkin` | `mobile:/party` |  | 0 | 0 | 3 | runtime-partially-verified-expo-party-truthful-boundary |
 | `mobile:/party/graph` | mobile | production | `/party/graph` | `mobile:/party` |  | 0 | 0 | 3 | runtime-partially-verified-expo-party-truthful-boundary |
-| `mobile:/plans/[planId]/done` | mobile | production | `/plans/[planId]/done` | `mobile:/` | planId | 0 | 23 | 1 | inventory-complete-runtime-verification-pending |
-| `mobile:/plans/[planId]/review` | mobile | production | `/plans/[planId]/review` | `mobile:/` | planId | 0 | 35 | 1 | inventory-complete-runtime-verification-pending |
+| `mobile:/plans/[planId]/done` | mobile | production | `/plans/[planId]/done` | `mobile:/` | planId | 0 | 25 | 1 | inventory-complete-runtime-verification-pending |
+| `mobile:/plans/[planId]/review` | mobile | production | `/plans/[planId]/review` | `mobile:/` | planId | 0 | 36 | 1 | inventory-complete-runtime-verification-pending |
 | `mobile:/plans/[planId]/types/[itemId]` | mobile | production | `/plans/[planId]/types/[itemId]` | `mobile:/` | planId, itemId | 3 | 65 | 1 | inventory-complete-runtime-verification-pending |
-| `mobile:/plans/drafts/[draftId]/edit` | mobile | production | `/plans/drafts/[draftId]/edit` | `mobile:/` | draftId | 3 | 41 | 1 | inventory-complete-runtime-verification-pending |
+| `mobile:/plans/drafts/[draftId]/edit` | mobile | production | `/plans/drafts/[draftId]/edit` | `mobile:/` | draftId | 3 | 42 | 1 | inventory-complete-runtime-verification-pending |
 | `mobile:/plans/flow/[intakeId]` | mobile | production | `/plans/flow/[intakeId]` | `mobile:/` | intakeId | 1 | 77 | 3 | inventory-complete-runtime-verification-pending |
 | `mobile:/plans/legacy/[planId]` | mobile | production | `/plans/legacy/[planId]` | `mobile:/` | planId | 0 | 13 | 2 | inventory-complete-runtime-verification-pending |
 | `mobile:/platform` | mobile | production | `/platform` | `mobile:/` |  | 0 | 10 | 9 | runtime-partially-verified-expo-platform-public-readonly-boundary |
@@ -103,7 +103,7 @@
 | `mobile:/tasks/personal` | mobile | production | `/tasks/personal` | `mobile:/tasks` |  | 0 | 4 | 2 | inventory-complete-runtime-verification-pending |
 | `mobile:/tasks/relationship/[id]` | mobile | production | `/tasks/relationship/[id]` | `mobile:/tasks` | id | 0 | 8 | 5 | inventory-complete-runtime-verification-pending |
 | `mobile:/today` | mobile | production | `/today` | `mobile:/` |  | 0 | 0 | 25 | runtime-partially-verified-expo-empty-agent-ledger-boundary |
-| `web:/` | web | production | `/` | — |  | 0 | 27 | 1115 | runtime-partially-verified-browser-base-state |
+| `web:/` | web | production | `/` | — |  | 0 | 27 | 1116 | runtime-partially-verified-browser-base-state |
 | `web:/app` | web | production | `/app` | `web:/` |  | 0 | 27 | 582 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/forgot-password` | web | production | `/app/account/forgot-password` | `web:/app` |  | 1 | 36 | 7 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/login` | web | production | `/app/account/login` | `web:/app` |  | 1 | 40 | 24 | runtime-partially-verified-browser-base-state |
@@ -119,7 +119,7 @@
 | `web:/app/contacts` | web | production | `/app/contacts` | `web:/app` |  | 3 | 67 | 127 | runtime-partially-verified-live-contact-list |
 | `web:/app/contacts/[id]` | web | production | `/app/contacts/[id]` | `web:/app/contacts` | id | 3 | 82 | 121 | runtime-partially-verified-live-contact-detail |
 | `web:/app/contacts/analysis/[dimension]/[bucketId]` | web | production | `/app/contacts/analysis/[dimension]/[bucketId]` | `web:/app/contacts` | dimension, bucketId | 0 | 7 | 3 | inventory-complete-runtime-verification-pending |
-| `web:/app/contacts/dashboard` | web | production | `/app/contacts/dashboard` | `web:/app/contacts` |  | 3 | 101 | 21 | runtime-partially-verified-web-empty-relationship-dashboard |
+| `web:/app/contacts/dashboard` | web | production | `/app/contacts/dashboard` | `web:/app/contacts` |  | 3 | 101 | 22 | runtime-partially-verified-web-empty-relationship-dashboard |
 | `web:/app/contacts/new` | web | production | `/app/contacts/new` | `web:/app/contacts` |  | 1 | 74 | 16 | runtime-partially-verified-external-capability-restricted |
 | `web:/app/contacts/pipeline` | web | production | `/app/contacts/pipeline` | `web:/app/contacts` |  | 2 | 48 | 9 | runtime-partially-verified-web-empty-read-only-pipeline |
 | `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 0 | 37 | 89 | inventory-complete-runtime-verification-pending |
@@ -139,7 +139,7 @@
 | `web:/app/invitations/[token]` | web | production | `/app/invitations/[token]` | `web:/app` | token | 0 | 2 | 4 | inventory-complete-runtime-verification-pending |
 | `web:/app/login-admin` | web | production | `/app/login-admin` | `web:/app` |  | 0 | 1 | 5 | runtime-partially-verified-browser-base-state |
 | `web:/app/o/[slug]` | web | production | `/app/o/[slug]` | `web:/app` | slug | 0 | 25 | 7 | inventory-complete-runtime-verification-pending |
-| `web:/app/plans/[planId]/done` | web | production | `/app/plans/[planId]/done` | `web:/app` | planId | 0 | 17 | 1 | inventory-complete-runtime-verification-pending |
+| `web:/app/plans/[planId]/done` | web | production | `/app/plans/[planId]/done` | `web:/app` | planId | 0 | 19 | 1 | inventory-complete-runtime-verification-pending |
 | `web:/app/plans/[planId]/review` | web | production | `/app/plans/[planId]/review` | `web:/app` | planId | 0 | 33 | 1 | inventory-complete-runtime-verification-pending |
 | `web:/app/plans/[planId]/types/[itemId]` | web | production | `/app/plans/[planId]/types/[itemId]` | `web:/app` | planId, itemId | 4 | 60 | 1 | inventory-complete-runtime-verification-pending |
 | `web:/app/plans/drafts/[draftId]/edit` | web | production | `/app/plans/drafts/[draftId]/edit` | `web:/app` | draftId | 2 | 36 | 1 | inventory-complete-runtime-verification-pending |
@@ -192,9 +192,9 @@
 | `repos/orbit-app/src/screens/plan/PlanAddMemberSheet.tsx:106` | BottomSheet | t("plan.member.sheetTitle") | `repos/orbit-app/src/screens/plan/PlanAddMemberSheet.tsx:106` | not-runtime-verified |
 | `repos/orbit-app/src/screens/plan/PlanGoalSwitcher.tsx:198` | BottomSheet | t("plan.goals.editTitle") | `repos/orbit-app/src/screens/plan/PlanGoalSwitcher.tsx:198` | not-runtime-verified |
 | `repos/orbit-app/src/screens/plan/PlanGoalSwitcher.tsx:88` | BottomSheet | t("plan.goals.title") | `repos/orbit-app/src/screens/plan/PlanGoalSwitcher.tsx:88` | not-runtime-verified |
-| `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:276` | BottomSheet | t("plan.manual.removeTitle", { letter: removing ? letters.get(removing) ?? "" : "" }) | `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:276` | not-runtime-verified |
-| `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:306` | BottomSheet | t("plan.manual.addType") | `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:306` | not-runtime-verified |
-| `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:323` | BottomSheet | t("plan.manual.addStep") | `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:323` | not-runtime-verified |
+| `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:304` | BottomSheet | t("plan.manual.removeTitle", { letter: removing ? letters.get(removing) ?? "" : "" }) | `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:304` | not-runtime-verified |
+| `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:334` | BottomSheet | t("plan.manual.addType") | `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:334` | not-runtime-verified |
+| `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:351` | BottomSheet | t("plan.manual.addStep") | `repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx:351` | not-runtime-verified |
 | `repos/orbit-app/src/screens/plan/PlanOverview.tsx:274` | BottomSheet | t("plan.overview.premiseTitle") | `repos/orbit-app/src/screens/plan/PlanOverview.tsx:274` | not-runtime-verified |
 | `repos/orbit-app/src/screens/plan/PlanProposalSheet.tsx:67` | BottomSheet | t("plan.proposal.title") | `repos/orbit-app/src/screens/plan/PlanProposalSheet.tsx:67` | not-runtime-verified |
 | `repos/orbit-app/src/screens/plan/PlanRecordSheet.tsx:152` | BottomSheet | t("plan.record.title") | `repos/orbit-app/src/screens/plan/PlanRecordSheet.tsx:152` | not-runtime-verified |
@@ -227,10 +227,10 @@
 | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx:183` | Modal | t(r.editTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx:183` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx:241` | Modal | t(r.achieveTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx:241` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx:76` | Popover | {t(r.activeGoals)} {active.map((goal) => ( <button key={goal.planId} type="button" className={`btn ${styles.menuRow}`} aria-current={goal.planId === currentPlanId ? "true" : undefined} disabled={switching !== null} onClick={() => void pick(goal.planId)} data-plan-goal-option={goal.planId}> <MacTile emoji={goalEmoji(goal.goalKind)} size="sm" /> <span className={styles.grow}> <b className={styles.menuTitle}>{goal.goal}</b> <span className={styles.label}>{t(r.goalStats, { n: goal.talkedPeople, score: goal.total })}</span> </span> {goal.planId === currentPlanId ? <Icon name="check" size={16} /> : null} </button> ))} {<span className={styles.menuHead}>{t(r.doneGoals)}</span>} / {null} {achieved.map((goal) => ( <Link key={goal.planId} href={planDoneHref("web", goal.planId)} className={styles.menuRow} data-plan-goal-done={goal.planId}> <MacTile emoji="🏁" size="sm" /> <span className={styles.grow}> <b className={styles.menuTitle}>{goal.goal}</b> <span className={styles.label}>{t(r.doneGoalStats, { score: goal.total })}</span> </span> </Link> ))} {<span className={styles.menuHead}>{t(r.legacyPlans)}</span>} / {null} {(legacy ?? []).map((plan) => ( <Link key={plan.planId} href={planLegacyHref("web", plan.planId)} className={styles.menuRow} data-plan-goal-legacy={plan.planId}> <MacTile emoji="🗂️" size="sm" tone="apricot" /> <span className={styles.grow}><b className={styles.menuTitle}>{plan.goal}</b></span> </Link> ))} {<Button size="sm" variant="ghost" icon="edit" label={t(r.editGoal)} onClick={() => { setOpen(false); onEdit(); }} data-plan-edit-goal="" />} / {null} {<p className={styles.label} data-plan-goal-limit="">{t(r.goalLimit)}</p>} / {null} | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx:76` | not-runtime-verified |
-| `repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:400` | Modal | removing ? t(planFlowCopy.removeTitle, { type: typeName(removing.key) }) : "" | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:400` | not-runtime-verified |
-| `repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:412` | Modal | t(planFlowCopy.addTypeTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:412` | not-runtime-verified |
+| `repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:416` | Modal | removing ? t(planFlowCopy.removeTitle, { type: typeName(removing.key) }) : "" | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:416` | not-runtime-verified |
+| `repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:428` | Modal | t(planFlowCopy.addTypeTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx:428` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx:300` | Modal | t(c.premiseTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx:300` | not-runtime-verified |
-| `repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx:131` | Modal | t(usedUp ? r.usedUpTitle : r.entryTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx:131` | not-runtime-verified |
+| `repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx:135` | Modal | t(usedUp ? (quota?.reviewLimitReason === "ai_budget" ? r.aiBudgetTitle : r.usedUpTitle) : r.entryTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanReviewEntry.tsx:135` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx:134` | Modal | t(c.skipTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx:134` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx:161` | Drawer | t(c.introTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx:161` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx:192` | Drawer | t(c.proposalTitle) | `repos/orbits/app/(app)/app/orbit-2026/plan/PlanTypeDialogs.tsx:192` | not-runtime-verified |

@@ -23,7 +23,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi, type PlanFailure } from "./plan-api";
 import { newIdempotencyKey } from "./plan-model";
-import { canSendReview, markEvidenceTexts, markOf, premiseEdits, reviewStage, turnOrdinal } from "./plan-review-model";
+import { canSendReview, hasReviewInput, markEvidenceTexts, markOf, premiseEdits, reviewHasChanges, reviewStage, turnOrdinal } from "./plan-review-model";
 import { QuotaBar, ReviewProgress, ReviewUsedUpNote } from "./plan-review-ui";
 import { FailureNote, InlineProblem, PlanFrame, Tag, usePlanStyles } from "./plan-ui";
 
@@ -116,6 +116,7 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
     if (!view) return;
     const premise = premiseEdits(view.draft.premise, edits);
     const note = text.trim();
+    if (!hasReviewInput(premise.length, note)) return;
     return act("send", () => api.reviewFix(view.draft.draftId, premise, note || null, newIdempotencyKey("review-fix")), (data) => {
       setView(data);
       setEdits({});
@@ -185,6 +186,9 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
           onSend={() => void send()}
           onManual={() => draft && router.push(planDraftEditHref("app", draft.draftId) as Href)}
           onConfirm={() => void confirm()}
+          onKeep={() => openMainTab(router, planTaskSegmentHref("app", planId))}
+          changed={reviewHasChanges(view.draft, plan?.premise ?? null)}
+          canSend={hasReviewInput(premiseEdits(view.draft.premise, edits).length, text)}
           onClose={close}
           failure={failureView("confirm")}
         />
@@ -244,7 +248,7 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
           {busy === "send" ? <UiText style={shared.caption}>{t("plan.review.sending")}</UiText> : null}
           {failureView("send")}
           {failureView("toggle")}
-          {!sendable && open ? <ReviewUsedUpNote limit={limit} resetsAt={view.resetsAt} /> : null}
+          {!sendable && open ? <ReviewUsedUpNote limit={limit} resetsAt={view.resetsAt} reason={view.reviewLimitReason} /> : null}
           {!open ? <InlineProblem text={t("plan.review.closed")} /> : null}
           {left > 0 && sendable && draft.turns.length > 0 ? <UiText style={[shared.caption, styles.center]}>{t("plan.review.leftNote", { count: left })}</UiText> : null}
         </>
@@ -431,7 +435,7 @@ function ToggleCell({ icon, selected, disabled, label, onPress }: { icon: "check
 }
 
 /** The fixed bottom: the quota line, 「ほかに変わったこと」, send; after a revision, 手動編集 / 確定. */
-function ReviewFooter({ view, text, onText, busy, onSend, onManual, onConfirm, onClose, failure }: {
+function ReviewFooter({ view, text, onText, busy, onSend, onManual, onConfirm, onKeep, changed, canSend, onClose, failure }: {
   view: PlanReviewView;
   text: string;
   onText: (text: string) => void;
@@ -439,6 +443,10 @@ function ReviewFooter({ view, text, onText, busy, onSend, onManual, onConfirm, o
   onSend: () => void;
   onManual: () => void;
   onConfirm: () => void;
+  /** 「このままにする」: back to the overview, nothing confirmed. */
+  onKeep: () => void;
+  changed: boolean;
+  canSend: boolean;
   onClose: () => void;
   failure: ReactNode;
 }) {
@@ -449,8 +457,6 @@ function ReviewFooter({ view, text, onText, busy, onSend, onManual, onConfirm, o
   const limit = view.reviewMonthlyLimit;
   const sendable = canSendReview(view);
   const turns = view.draft.turns;
-  const last = turns.at(-1) ?? null;
-  const noChange = Boolean(last && (last.changes.length === 0 || last.noChangeReason));
   return (
     <View style={styles.footer} testID="review-footer">
       <View style={shared.row}>
@@ -475,7 +481,7 @@ function ReviewFooter({ view, text, onText, busy, onSend, onManual, onConfirm, o
             block
             label={turns.length ? t("plan.review.again", { count: left }) : t("plan.review.send")}
             loading={busy === "send"}
-            disabled={busy !== null && busy !== "send"}
+            disabled={!canSend || (busy !== null && busy !== "send")}
             onPress={onSend}
             variant={turns.length ? "secondary" : "primary"}
           />
@@ -483,14 +489,16 @@ function ReviewFooter({ view, text, onText, busy, onSend, onManual, onConfirm, o
         </>
       ) : (
         <View style={[shared.input, styles.fieldOff]}>
-          <UiText style={shared.caption}>{t("plan.review.usedUpShort")}</UiText>
+          <UiText style={shared.caption}>{t(view.reviewLimitReason === "ai_budget" ? "plan.review.aiBudgetShort" : "plan.review.usedUpShort")}</UiText>
         </View>
       )}
       {failure}
       {turns.length ? (
         <View style={shared.footerRow}>
           <View style={shared.grow}><Button block disabled={!view.draft.manualEditAvailable || busy !== null} label={t("plan.review.manual")} onPress={onManual} variant="secondary" /></View>
-          <View style={shared.grow}><Button block label={noChange ? t("plan.review.keep") : t("plan.review.confirm")} loading={busy === "confirm"} disabled={busy !== null && busy !== "confirm"} onPress={onConfirm} variant="primary" /></View>
+          <View style={shared.grow}>{changed
+            ? <Button block label={t("plan.review.confirm")} loading={busy === "confirm"} disabled={busy !== null && busy !== "confirm"} onPress={onConfirm} variant="primary" />
+            : <Button block label={t("plan.review.keep")} disabled={busy !== null} onPress={onKeep} variant="primary" />}</View>
         </View>
       ) : !sendable ? (
         <Button block label={t("plan.review.understood")} onPress={onClose} variant="primary" />

@@ -218,7 +218,10 @@ test("review turn: changes struck / new, 変わらない点 and 獲得済み; �
 test("no change this time (A3 ④): 「今回は変更しません」 with the reason; 「このままにする」 goes back without writing", async (t) => {
   const review = withLeft(base.review1, 0);
   review.draft.turns = [{ ...review.draft.turns[0]!, changes: [], noChangeReason: "リードが決まっても、ほかの VC とも並行で話すのが一般的です。" }];
-  const page = await screen(t, { draftId: review.draft.draftId, handlers: [reviewRead(review), detailRead()], view: "review" });
+  // m1: the draft's premise equals the plan's, so nothing changes at all.
+  const plan = clone(base.detail);
+  plan.premise = review.draft.premise;
+  const page = await screen(t, { draftId: review.draft.draftId, handlers: [reviewRead(review), detailRead(plan)], view: "review" });
   await page.locator("[data-turn-no-change]").getByText("今回は変更しません").waitFor();
   await page.getByText("リードが決まっても、", { exact: false }).waitFor();
   await page.getByText("変更なしでも 1回").waitFor();
@@ -352,6 +355,9 @@ test("done: three big numbers, いちばん効いたこと with basis, skipped a
   await page.locator("[data-plan-done-best]").getByText(achievement.bestMove!.text).waitFor();
   await page.locator("[data-plan-done-skipped]").getByText("スキップした分野：弁護士（投資契約）").waitFor();
   assert.equal(await page.locator("canvas, [data-confetti]").count(), 0, "no confetti");
+  // R25 复核 m3: C10 only after 「次の目標を決める」.
+  assert.equal((await fetches(page)).filter((item) => path(item).endsWith("/next-goals")).length, 0, "opening the done page asks no AI");
+  await page.locator("[data-plan-next-decide]").click();
   assert.equal(await page.locator("[data-plan-next-candidate]").count(), 2);
   await page.locator("[data-plan-next-basis]").getByText("話した CVC 担当者 3人のうち 2社が PoC に関心").waitFor();
   assert.deepEqual(await writes(page), [], "the done page only reads");
@@ -366,6 +372,7 @@ test("done: three big numbers, いちばん効いたこと with basis, skipped a
 test("done: no best move and no AI ideas → only 「自分で決める」, which opens the goal input; at 2 goals the start is off with the reason", async (t) => {
   const plain = { ...achievement, bestMove: null, skippedAreas: [] };
   const page = await screen(t, { handlers: [{ method: "GET", replies: [ok(plain)], url: "/achievement$" }, { method: "GET", replies: [ok({ candidates: [], source: "none" })], url: "/next-goals$" }, quotaRead({ activeGoals: 1 })], view: "done" });
+  await page.locator("[data-plan-next-decide]").click();
   await page.locator("[data-plan-next-own][aria-checked='true']").waitFor();
   assert.equal(await page.locator("[data-plan-done-best]").count(), 0);
   assert.equal(await page.locator("[data-plan-next-candidate]").count(), 0);
@@ -373,6 +380,7 @@ test("done: no best move and no AI ideas → only 「自分で決める」, whic
   assert.deepEqual(await pushes(page), ["/app/tasks?tab=plan&new=1"]);
 
   const full = await screen(t, { handlers: doneHandlers([], nextGoals, { activeGoals: 2 }), view: "done" });
+  await full.locator("[data-plan-next-decide]").click();
   await full.locator("[data-plan-next-limit]").getByText("同時に進められる目標は 2 つまでです。").waitFor();
   assert.equal(await full.locator("[data-plan-next-start]").isDisabled(), true);
   assert.doesNotMatch(await full.locator(`[data-plan-done="${PLAN}"]`).innerText(), PAID);
@@ -605,4 +613,105 @@ test("entry numbers come from the overview's sinceConfirmed (no extra read); a m
   review.premiseMarks = [{ evidence: [{ at: "2026-10-05T01:00:00.000Z", id: "e1", text: "面談メモ「ARR 1億円の見込み」" }], evidenceIds: ["e1"], key: "F2", reason: "最近の記録で変わったかもしれません。", suggested: null }];
   const reviewPage = await screen(t, { draftId: review.draft.draftId, handlers: [reviewRead(review), detailRead()], view: "review" });
   await reviewPage.locator('[data-premise-evidence="F2"]').getByText("根拠：面談メモ「ARR 1億円の見込み」（10月5日）").waitFor();
+});
+
+/* ---------- R25 复核（REVIEW.md S1 / m1 / m3 / ai_budget / STALE） ---------- */
+
+test("m1: 「このままにする」 follows the whole draft — a sent premise change still confirms; nothing changed → back without a write", async (t) => {
+  // Every change ✕ but the premise F2 was changed and sent: the draft changes the plan.
+  const page = await screen(t, { draftId: base.review1Off.draft.draftId, handlers: [reviewRead(base.review1Off), detailRead()], view: "review" });
+  await page.locator("[data-plan-review-confirm]").waitFor();
+  assert.equal(await page.locator("[data-plan-review-keep]").count(), 0);
+  // Same draft against a plan that already has that premise: nothing changes → このままにする, no write.
+  const same = clone(base.detail);
+  same.premise = base.review1Off.draft.premise;
+  const keep = await screen(t, { draftId: base.review1Off.draft.draftId, handlers: [reviewRead(base.review1Off), detailRead(same)], view: "review" });
+  await keep.locator("[data-plan-review-keep]").click();
+  assert.deepEqual(await pushes(keep), [`/app/tasks?tab=plan&plan=${PLAN}`]);
+  assert.deepEqual(await writes(keep), []);
+});
+
+test("m1: send needs a changed premise or a line — empty input sends nothing", async (t) => {
+  const page = await screen(t, { draftId: base.review0.draft.draftId, handlers: [reviewRead(base.review0), detailRead()], view: "review" });
+  await page.locator("[data-plan-review-send]").waitFor();
+  assert.equal(await page.locator("[data-plan-review-send]").isDisabled(), true);
+  await page.locator("[data-plan-review-text]").fill("   ");
+  assert.equal(await page.locator("[data-plan-review-send]").isDisabled(), true, "spaces are not a line");
+});
+
+test("ai_budget: the used-up state says the month's AI limit (entry and page), still no paid plan", async (t) => {
+  const page = await screen(t, { handlers: [detailRead(), goalsRead(), quotaRead({ reviewLeftThisMonth: 0, reviewLimitReason: "ai_budget" })], view: "overview" });
+  await page.getByRole("button", { name: "方案を見直す", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "今月の AI 利用上限に達しました" });
+  await dialog.locator("[data-plan-review-used-up='ai_budget']").getByText("11月1日に戻ります", { exact: false }).waitFor();
+  assert.doesNotMatch(await dialog.innerText(), PAID);
+  const view = { ...withLeft(base.review0, 0), reviewLimitReason: "ai_budget" as const };
+  const review = await screen(t, { draftId: view.draft.draftId, handlers: [reviewRead(view), detailRead()], view: "review" });
+  await review.locator("[data-plan-review-composer='off']").getByText("今月の AI 利用上限に達しました").waitFor();
+  assert.doesNotMatch(await review.locator("[data-plan-review]").innerText(), PAID);
+});
+
+test("STALE on 確定 and on ✓ / ✕ (draft voided by a plan change) → 「最新を読み込む」", async (t) => {
+  const page = await screen(t, { draftId: base.review1.draft.draftId, handlers: [reviewRead(base.review1), detailRead(),
+    { method: "POST", replies: [fail(409, "STALE")], url: "/confirm$" }, { method: "POST", replies: [fail(409, "STALE")], url: "/toggle$" }], view: "review" });
+  await page.locator("[data-plan-review-confirm]").click();
+  await page.locator("[data-plan-review-stale]").getByRole("button", { name: "最新を読み込む" }).waitFor();
+  const change = base.review1.draft.turns[0]!.changes[0]!;
+  await page.locator(`[data-change="${change.id}"]`).getByRole("button", { name: "この変更を採用しない" }).click();
+  await page.locator("[data-plan-review-stale]").waitFor();
+  assert.equal(await page.getByText("保存できませんでした").count(), 0);
+});
+
+test("S1 (mock end to end): with a skipped type, +5 on another type never takes from the skipped one, and saving confirms", async (t) => {
+  resetPlansV2MockRepositoryForTests();
+  t.after(() => resetPlansV2MockRepositoryForTests());
+  const { flow, v2 } = mocks();
+  const before = await call(v2.detail, { planId: PLAN }) as PlanV2Detail;
+  const types = [...before.content.personTypes].filter((type) => !type.skipped);
+  const skipped = types.reduce((top, type) => (type.allocation > top.allocation ? type : top));
+  await call(v2.skip, { itemId: skipped.itemId, planId: PLAN }, { idempotencyKey: "s1-skip" });
+  const draft = await call(flow.openManualEdit, { planId: PLAN }, { idempotencyKey: "s1-open" }) as PlanReviewView["draft"];
+  assert.ok(draft.slotState?.some((item) => item.skipped), "the server says which slot is skipped");
+  const target = types.find((type) => type.itemId !== skipped.itemId && type.allocation <= 90)!;
+
+  const routes: [string, RegExp, RouteHandler, string[]][] = [
+    ["GET", /^\/drafts\/([^/]+)$/u, flow.getDraft, ["draftId"]],
+    ["POST", /^\/drafts\/([^/]+)\/manual-edit$/u, flow.manualEdit, ["draftId"]],
+  ];
+  const page = await screen(t, { bridge: true, draftId: draft.draftId, handlers: [], view: "edit" }, {}, async (p) => {
+    await p.exposeFunction("planServer", async (url: string, method: string, body: string | null, lang: string) => {
+      const sub = url.replace(/^\/api\/agent\/plans/u, "");
+      for (const [verb, pattern, handler, names] of routes) {
+        const match = verb === method ? pattern.exec(sub) : null;
+        if (!match) continue;
+        const params = Object.fromEntries(names.map((name, index) => [name, decodeURIComponent(match[index + 1]!)]));
+        const response = await handler(new Request(`http://localhost${url}`, { body: body ?? undefined, headers: { "content-type": "application/json", "x-orbit-lang": lang }, method }), { params: Promise.resolve(params) });
+        return { body: await response.json(), status: response.status };
+      }
+      return { body: { error: { code: "NOT_FOUND", message: sub }, success: false }, status: 404 };
+    });
+  });
+  await page.locator("[data-plan-edit]").waitFor();
+  await page.locator("[data-slot-skipped]").first().waitFor();
+  assert.equal(await page.locator("[data-slot-skipped]").first().isDisabled(), true, "a skipped type's points are locked");
+  const points = page.getByLabel(new RegExp(`${target.shortLabel}の配点$`, "u"));
+  await points.fill(String(target.allocation + 5));
+  await points.press("Enter");
+  assert.equal(await page.locator("[data-plan-total]").textContent(), "100");
+  await page.getByRole("button", { name: "このプランで始める" }).click();
+  await waitPush(page);
+  assert.deepEqual(await pushes(page), [`/app/tasks?tab=plan&plan=${PLAN}`]);
+  const after = await call(v2.detail, { planId: PLAN }) as PlanV2Detail;
+  const allocation = (itemId: string) => after.content.personTypes.find((type) => type.itemId === itemId)!.allocation;
+  assert.equal(allocation(skipped.itemId), skipped.allocation, "the skipped type keeps its points");
+  assert.equal(allocation(target.itemId), target.allocation + 5);
+  assert.equal(after.content.personTypes.reduce((sum, type) => sum + type.allocation, 0) + after.content.event.allocation, 100);
+});
+
+test("manual edit of a review draft voided by a plan change (STALE) → 読み直す goes to the plan", async (t) => {
+  const draft = clone(base.review0.draft);
+  const page = await screen(t, { draftId: draft.draftId, handlers: [{ method: "GET", replies: [ok(draft)], url: `/drafts/${draft.draftId}$` }, { method: "POST", replies: [fail(409, "STALE")], url: "/manual-edit$" }], view: "edit" });
+  await page.getByRole("button", { name: "このプランで始める" }).click();
+  await page.locator("[data-plan-notice='stale']").getByRole("button", { name: "読み直す" }).click();
+  assert.deepEqual(await pushes(page), [`/app/tasks?tab=plan&plan=${PLAN}`]);
 });

@@ -76,7 +76,7 @@ export function PlanReviewEntrySheet({ planId, visible, onClose, since: planSinc
         {state.kind === "failed" ? <FailureNote failure={state.failure} onReload={() => void load()} /> : null}
         {ready && left <= 0 ? (
           <>
-            <ReviewUsedUpNote limit={limit} resetsAt={ready.quota.resetsAt} />
+            <ReviewUsedUpNote limit={limit} resetsAt={ready.quota.resetsAt} reason={ready.quota.reviewLimitReason} />
             {resume ? <Button block label={t("plan.review.resume")} onPress={() => { onClose(); router.push(planReviewHref("app", planId) as Href); }} variant="secondary" /> : null}
             <Button block label={t("plan.review.understood")} onPress={onClose} variant="primary" />
           </>

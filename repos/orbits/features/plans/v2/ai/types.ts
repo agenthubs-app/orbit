@@ -178,11 +178,23 @@ export interface FixOutput {
   noChangeReason: string | null;
 }
 
-/** R25（C8）：見直し打开时预标可能变了的前提行。记录只用 id + 一行摘要（联系人只用别名）。 */
+/**
+ * R25（C8 / C10）的输入记录（复核 M4）：`id` 是这次调用的短别名（R1…，回来后由服务层换回真实记录 id），
+ * `contact` 是联系人的短别名（C1…；没有联系人为 null）。`memo` = 面谈メモ摘要（≤200 字）。
+ */
+export interface PlanAiRecord {
+  id: string;
+  kind: "talked" | "event" | "step" | "memo";
+  text: string;
+  at: string;
+  contact: string | null;
+}
+
+/** R25（C8）：見直し打开时预标可能变了的前提行。记录只用短别名 + 一行摘要（联系人只用别名）。 */
 export interface ReviewMarksInput {
   goalKind: PlanGoalKind;
   premise: readonly PlanPremiseRow[];
-  records: ReadonlyArray<{ id: string; kind: "talked" | "event" | "step" | "memo"; text: string; at: string }>;
+  records: readonly PlanAiRecord[];
 }
 
 export interface ReviewMarksOutput {
@@ -201,7 +213,8 @@ export interface NextGoalsInput {
   goalText: string;
   goalKind: PlanGoalKind;
   summary: string;
-  records: ReadonlyArray<{ id: string; text: string }>;
+  /** 计分记录 + 面谈メモ摘要（复核 M4：短别名，同 C8）。 */
+  records: readonly PlanAiRecord[];
 }
 
 export interface NextGoalsOutput {

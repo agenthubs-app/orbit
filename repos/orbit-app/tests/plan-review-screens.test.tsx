@@ -408,7 +408,12 @@ test("achieve: the question → 完了 (three numbers, best move, skipped) → n
   await hero.getByLabel(`話した人 ${goal.talkedPeople}`).waitFor();
   await page.getByTestId("best-move").getByText("VC パートナーとの対話（20 点）").waitFor();
   await page.getByTestId("skipped-areas").getByText("スキップした分野：弁護士（投資契約）").waitFor();
+  // R25 review m3: looking back never asks for candidates; only 「次の目標を決める」 does.
+  assert.equal(calls.filter((call) => call.path.endsWith("/next-goals")).length, 0);
+  await page.getByRole("button", { name: "次の目標を決める" }).click();
   const candidates = page.getByTestId("next-candidate");
+  await candidates.first().waitFor();
+  assert.equal(calls.filter((call) => call.path.endsWith("/next-goals")).length, 1);
   assert.equal(await candidates.count(), 2);
   await page.getByTestId("next-self").waitFor();
   await candidates.nth(1).click();
@@ -422,6 +427,7 @@ test("achieve: the question → 完了 (three numbers, best move, skipped) → n
 
 test("done: 自分で決める opens the goal input; with two active goals the limit is explained and the choice is disabled", async (t) => {
   const self = await open(t, `/plans/${PLAN}/done`, { prepare: async (server) => { const detail = await direct<PlanV2Detail>(server, "GET", `/api/agent/plans/v2/${PLAN}`); await direct(server, "POST", `/api/agent/plans/v2/${PLAN}/achieve`, { expectedRevision: detail.data.revision, idempotencyKey: "a" }); } });
+  await self.page.getByRole("button", { name: "次の目標を決める" }).click();
   await self.page.getByTestId("next-self").click();
   await self.page.getByRole("button", { name: "この目標で具体化する" }).click();
   assert.deepEqual((await navigation(self.page)).navigation.at(-1), { href: "/task?seg=plan&new=1", method: "replace" });
@@ -429,6 +435,7 @@ test("done: 自分で決める opens the goal input; with two active goals the l
     prepare: async (server) => { const detail = await direct<PlanV2Detail>(server, "GET", `/api/agent/plans/v2/${PLAN}`); await direct(server, "POST", `/api/agent/plans/v2/${PLAN}/achieve`, { expectedRevision: detail.data.revision, idempotencyKey: "a" }); },
     rewrite: withGoals,
   });
+  await full.page.getByRole("button", { name: "次の目標を決める" }).click();
   await full.page.getByText("同時に進められる目標は 2 つまでです。").waitFor();
   assert.equal(await full.page.getByRole("button", { name: "この目標で具体化する" }).isDisabled(), true);
   assert.equal(await full.page.getByText(PAID).count(), 0);
@@ -603,6 +610,90 @@ test("optional server field: evidence summaries under a mark replace the bare co
   assert.equal(await review.page.getByText(/確定以降の記録 \d+件/).count(), 0, "summaries replace the bare count");
 });
 
+test("S1: manual edit on a plan with a skipped type — +5 to one type leaves the skipped one alone and confirms", async (t) => {
+  const { page, calls, server } = await open(t, "/task?seg=plan");
+  await page.getByTestId("plan-overview").waitFor();
+  const before = (await direct<PlanV2Detail>(server, "GET", `/api/agent/plans/v2/${PLAN}`)).data;
+  const lawyer = before.content.personTypes.find((type) => type.key === "lawyer")!;
+  const cfo = before.content.personTypes.find((type) => type.key === "cfo")!;
+  assert.ok(before.score.segments.find((segment) => segment.key === "lawyer")!.skipped, "the demo plan has a skipped type");
+  await page.getByRole("button", { name: "手動で編集" }).click();
+  await page.getByRole("progressbar", { name: "進み具合：手動編集" }).waitFor();
+  const draftId = (await navigation(page)).navigation[0]!.href!.split("/")[3]!;
+  const draft = await direct<PlanReviewView>(server, "GET", `/api/agent/plans/drafts/${draftId}/review`);
+  assert.ok((draft.data.draft.slotState ?? []).some((slot) => slot.skipped), "the server sends slotState");
+  // The skipped type and a type with points cannot be removed.
+  assert.equal(await page.getByRole("button", { name: /弁護士.*を外す$/ }).isDisabled(), true);
+  assert.equal(await page.getByRole("button", { name: /VC パートナーを外す$/ }).isDisabled(), true);
+  const points = page.getByLabel(/CFO 経験者の配点$/);
+  await points.fill(String(cfo.allocation + 5));
+  await points.press("Enter");
+  await page.getByText(new RegExp(`${cfo.allocation} → ${cfo.allocation + 5}`)).first().waitFor();
+  assert.equal(await page.getByLabel(/弁護士.*の配点$/).inputValue(), String(lawyer.allocation), "the skipped type keeps its points");
+  await page.getByRole("button", { name: "保存して確定" }).click();
+  await page.getByText("方案を更新しました").waitFor();
+  const after = (await direct<PlanV2Detail>(server, "GET", `/api/agent/plans/v2/${PLAN}`)).data;
+  assert.equal(after.content.personTypes.find((type) => type.key === "cfo")!.allocation, cfo.allocation + 5);
+  assert.equal(after.content.personTypes.find((type) => type.key === "lawyer")!.allocation, lawyer.allocation);
+  for (const type of after.content.personTypes) {
+    const earned = after.score.segments.find((segment) => segment.key === type.key)!;
+    assert.ok(type.allocation >= earned.earned - (earned.skipped ? type.allocation : 0), `${type.key} not below earned`);
+  }
+  assert.ok(writes(calls).some((line) => line.endsWith("/manual-edit") && line.includes("/drafts/")));
+});
+
+test("m1: 「このままにする」 only when the whole draft is unchanged, and it never confirms; sending needs a premise change or a sentence", async (t) => {
+  const { page, calls } = await open(t, `/plans/${PLAN}/review`, { prepare: async (server) => {
+    const view = await startReview(server);
+    await sendReview(server, view.draft.draftId, "CVC も");
+    await sendReview(server, view.draft.draftId, "そのままでいい");
+  } });
+  await page.getByTestId("review-turn").nth(1).waitFor();
+  // The last turn changed nothing, but the first one did (and is still accepted): confirm.
+  await page.getByRole("button", { name: "この内容で確定" }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "このままにする" }).count(), 0);
+  // Nothing typed, nothing edited: no send.
+  assert.equal(await page.getByRole("button", { name: /もう一度直す/ }).isDisabled(), true);
+  await page.getByLabel("ほかに変わったこと（任意）").fill("もう少し");
+  assert.equal(await page.getByRole("button", { name: /もう一度直す/ }).isDisabled(), false);
+  // A draft that equals the plan → 「このままにする」 goes back without confirming.
+  const unchanged = await open(t, `/plans/${PLAN}/review`, { prepare: async (server) => {
+    const view = await startReview(server);
+    await sendReview(server, view.draft.draftId, "そのままでいい");
+  } });
+  await unchanged.page.getByRole("button", { name: "このままにする" }).click();
+  assert.equal(writes(unchanged.calls).filter((line) => line.endsWith("/confirm")).length, 0, "このまま never confirms");
+  assert.deepEqual((await navigation(unchanged.page)).navigation.at(-1), { href: `/task?seg=plan&plan=${PLAN}`, method: "replace" });
+  assert.equal(writes(calls).filter((line) => line.endsWith("/confirm")).length, 0);
+});
+
+test("ai_budget: the used-up note says the AI limit (no paid entry)", async (t) => {
+  const { page } = await open(t, `/plans/${PLAN}/review`, {
+    prepare: async (server) => { await startReview(server); },
+    rewrite: (call, reply) => (call.method === "GET" && reply && call.path.endsWith("/reviews/current")
+      ? ok({ ...(reply.body as { data: PlanReviewView }).data, reviewLeftThisMonth: 0, reviewLimitReason: "ai_budget" }) : undefined),
+  });
+  await page.getByText("⏳ 今月の AI 利用上限に達しました").waitFor();
+  await page.getByText(/^見直しは \d+月\d+日から使えます（あと \d+日）$/).waitFor();
+  assert.equal(await page.getByText("⏳ 今月の見直しは使い切りました").count(), 0);
+  assert.equal(await page.getByText(PAID).count(), 0);
+});
+
+test("STALE on a manual edit of a review draft: 「最新を読み込む」 opens a fresh review", async (t) => {
+  const { page, calls, server } = await open(t, "/task?seg=plan");
+  await page.getByTestId("plan-overview").waitFor();
+  await page.getByRole("button", { name: "手動で編集" }).click();
+  await page.getByRole("button", { name: "保存して確定" }).waitFor();
+  const detail = (await direct<PlanV2Detail>(server, "GET", `/api/agent/plans/v2/${PLAN}`)).data;
+  await direct(server, "PATCH", `/api/agent/plans/v2/${PLAN}/goal`, { expectedRevision: detail.revision, goalText: "シリーズA 資金調達（5億円）", idempotencyKey: "elsewhere", mode: "save_only" });
+  await page.getByRole("button", { name: "保存して確定" }).click();
+  await page.getByTestId("manual-stale").getByText("ほかの画面でプランが変わりました。最新のプランで見直しをやり直します。").waitFor();
+  await page.getByRole("button", { name: "最新を読み込む" }).click();
+  await page.getByTestId("premise-card").waitFor();
+  assert.ok(writes(calls).includes(`POST /api/agent/plans/v2/${PLAN}/reviews`));
+  assert.deepEqual((await navigation(page)).navigation.at(-1), { href: `/plans/${PLAN}/review`, method: "replace" });
+});
+
 test("dark theme renders the review, done and legacy pages without errors", async (t) => {
   const review = await open(t, `/plans/${PLAN}/review`, { dark: true, prepare: async (server) => { await startReview(server); } });
   await review.page.getByTestId("premise-card").waitFor();
@@ -630,8 +721,8 @@ test("screenshots", { skip: !process.env.R25_SHOTS }, async (t) => {
       await page.getByTestId("review-stale").waitFor();
     }, { prepare: async (server) => { await startReview(server); } }],
     ["achieve-confirm", "/task?seg=plan", async (page) => { await page.getByRole("button", { name: "目標を達成した" }).click(); await page.getByText("目標を達成したとして記録しますか？").waitFor(); }, {}],
-    ["done", `/plans/${PLAN}/done`, async (page) => { await page.getByTestId("next-candidate").first().waitFor(); }, { height: 1400, prepare: achieved }],
-    ["done-goal-limit", `/plans/${PLAN}/done`, async (page) => { await page.getByText("同時に進められる目標は 2 つまでです。").scrollIntoViewIfNeeded(); }, { height: 1400, prepare: achieved, rewrite: withGoals }],
+    ["done", `/plans/${PLAN}/done`, async (page) => { await page.getByRole("button", { name: "次の目標を決める" }).click(); await page.getByTestId("next-candidate").first().waitFor(); }, { height: 1400, prepare: achieved }],
+    ["done-goal-limit", `/plans/${PLAN}/done`, async (page) => { await page.getByRole("button", { name: "次の目標を決める" }).click(); await page.getByText("同時に進められる目標は 2 つまでです。").scrollIntoViewIfNeeded(); }, { height: 1400, prepare: achieved, rewrite: withGoals }],
     ["goal-switcher", "/task?seg=plan", async (page) => { await page.getByTestId("goal-switcher-open").click(); await page.getByTestId("goal-switcher").waitFor(); }, { rewrite: withGoals }],
     ["goal-edit", "/task?seg=plan", async (page) => { await page.getByTestId("goal-switcher-open").click(); await page.getByRole("button", { name: "この目標を編集" }).click(); await page.getByTestId("goal-edit").getByLabel("目標", { exact: true }).fill("シリーズA 資金調達（5億円）"); await page.getByRole("button", { name: "保存", exact: true }).click(); await page.getByText("方案を作り直しますか？").waitFor(); }, {}],
     ["legacy-card", "/task?seg=plan", async (page) => { await page.getByTestId("legacy-card").waitFor(); }, { rewrite: withLegacyOnly }],

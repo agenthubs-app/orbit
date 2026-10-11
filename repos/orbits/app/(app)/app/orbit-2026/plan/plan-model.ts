@@ -3,6 +3,7 @@
 // slots and its change list, and how an API error shows (DESIGN §2.1–2.4, UI-SPEC).
 // Business rules come from shared/compute; nothing here calls AI.
 import type {
+  PlanDraftSlotState,
   PlanDraftView,
   PlanGoalKind,
   PlanGoalKindRead,
@@ -212,11 +213,22 @@ export function templateIndexOf(kind: PlanGoalKindRead, slot: string): number {
   return index === -1 ? 99 : index;
 }
 
-/** The draft's person types + the event block as allocation slots (nothing earned yet). */
-export function allocationSlotsOf(kind: PlanGoalKindRead, content: Pick<PlanV2Content, "personTypes" | "event">): PlanAllocationSlot[] {
+/**
+ * The draft's person types + the event block as allocation slots. R25 复核 S1: a review /
+ * manual-edit draft carries `slotState` (by template slot; the event block is "event") —
+ * earned points, people counted and skips go into the slots so the shared moves never
+ * take points from a skipped type, go below what was earned or remove a type with points.
+ * A first draft has none: nothing earned yet.
+ */
+export function allocationSlotsOf(kind: PlanGoalKindRead, content: Pick<PlanV2Content, "personTypes" | "event">, slotState: readonly PlanDraftSlotState[] = []): PlanAllocationSlot[] {
+  const state = new Map(slotState.map((item) => [item.key, item]));
+  const of = (slot: string) => {
+    const item = state.get(slot);
+    return { earnedBase: item?.earned ?? 0, metCount: item?.metCount ?? 0, skipped: item?.skipped ?? false };
+  };
   return [
-    ...content.personTypes.map((type) => ({ allocation: type.allocation, earnedBase: 0, key: type.key, metCount: 0, skipped: false, targetCount: type.targetCount, templateIndex: templateIndexOf(kind, type.slot) })),
-    { allocation: content.event.allocation, earnedBase: 0, isEvent: true, key: PLAN_EVENT_SLOT, metCount: 0, skipped: false, targetCount: content.event.targetCount, templateIndex: templateIndexOf(kind, PLAN_EVENT_SLOT) },
+    ...content.personTypes.map((type) => ({ allocation: type.allocation, ...of(type.slot), key: type.key, targetCount: type.targetCount, templateIndex: templateIndexOf(kind, type.slot) })),
+    { allocation: content.event.allocation, ...of(PLAN_EVENT_SLOT), isEvent: true, key: PLAN_EVENT_SLOT, targetCount: content.event.targetCount, templateIndex: templateIndexOf(kind, PLAN_EVENT_SLOT) },
   ];
 }
 

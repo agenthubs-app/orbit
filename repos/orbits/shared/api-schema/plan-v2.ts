@@ -60,6 +60,8 @@ import type {
 const GOAL_KINDS = ["launch", "fundraising", "sales", "hiring", "partnership", "career", "unknown"] as const;
 const goalKind = tolerantEnum(GOAL_KINDS, "unknown");
 const count = z.number().int().min(0);
+/** R25 复核 M1：见直次数为 0 的原因（读不懂的值丢掉）。 */
+const reviewLimitReason = z.enum(["monthly", "ai_budget"]).catch(undefined as never);
 
 const segment = z.object({
   key: z.string().min(1),
@@ -172,6 +174,7 @@ export const planV2DetailObject = z.object({
   quota: z.object({
     reviewLeftThisMonth: count,
     reviewMonthlyLimit: count,
+    reviewLimitReason: reviewLimitReason.optional(),
     manualEditAvailable: z.boolean(),
     activeGoals: count,
     activeGoalLimit: count,
@@ -364,6 +367,8 @@ export const planDraftViewObject = z.object({
   fix: aiStep,
   revision: z.string().min(1),
   updatedAt: z.string().min(1),
+  // R25 复核 S1：见直 / 手动编辑草稿的配点槽状态（只读、可选）。
+  slotState: z.array(z.object({ key: z.string().min(1), earned: count, metCount: count, skipped: z.boolean() })).optional(),
 });
 export const planDraftViewSchema = planDraftViewObject as unknown as z.ZodType<PlanDraftView>;
 
@@ -641,6 +646,7 @@ export const planReviewViewObject = z.object({
   })),
   reviewLeftThisMonth: count,
   reviewMonthlyLimit: count,
+  reviewLimitReason: reviewLimitReason.optional(),
   resetsAt: z.string(),
   sinceConfirmed: z.object({ talked: count, events: count, stepsCompleted: count }),
 });
@@ -657,7 +663,7 @@ export const planReviewFixRequestSchema = planReviewFixRequestObject as unknown 
 export const planReviewToggleRequestObject = z.object({ accepted: z.boolean(), idempotencyKey }).strict();
 export const planReviewToggleRequestSchema = planReviewToggleRequestObject as z.ZodType<PlanReviewToggleRequest>;
 
-export const planQuotaResponseObject = z.object({ reviewLeftThisMonth: count, reviewMonthlyLimit: count, resetsAt: z.string(), activeGoals: count, activeGoalLimit: count, newGoalsLeftThisMonth: count });
+export const planQuotaResponseObject = z.object({ reviewLeftThisMonth: count, reviewMonthlyLimit: count, reviewLimitReason: reviewLimitReason.optional(), resetsAt: z.string(), activeGoals: count, activeGoalLimit: count, newGoalsLeftThisMonth: count });
 export const planQuotaResponseSchema = planQuotaResponseObject as z.ZodType<PlanQuotaResponse>;
 
 export const planAchieveRequestObject = z.object({ expectedRevision: z.number().int().min(1), idempotencyKey }).strict();

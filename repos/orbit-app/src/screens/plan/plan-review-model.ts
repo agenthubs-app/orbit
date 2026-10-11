@@ -82,6 +82,21 @@ export function reviewStage(view: { draft: { turns: readonly unknown[]; manualEd
 }
 
 /** Whether a 見直し can be sent now: the draft is open and this month still has one. */
+/**
+ * R25 review m1: whether the whole draft differs from the plan (content or premises).
+ * Unchanged → 「このままにする」 just goes back (never confirms); changed → 「この内容で確定」.
+ */
+export function reviewHasChanges(draft: Pick<PlanReviewView["draft"], "content" | "originContent" | "premise">, planPremise: readonly Pick<PlanPremiseRow, "key" | "value">[] | null): boolean {
+  if (JSON.stringify(draft.content) !== JSON.stringify(draft.originContent)) return true;
+  if (!planPremise) return false;
+  return draft.premise.some((row) => planPremise.find((item) => item.key === row.key)?.value !== row.value);
+}
+
+/** Sending needs something to send: a changed premise row or a sentence (same rule as Web). */
+export function hasReviewInput(editedRows: number, text: string): boolean {
+  return editedRows > 0 || text.trim() !== "";
+}
+
 export function canSendReview(view: Pick<PlanReviewView, "reviewLeftThisMonth"> & { draft: { status: string } }): boolean {
   return view.draft.status === "open" && view.reviewLeftThisMonth > 0;
 }

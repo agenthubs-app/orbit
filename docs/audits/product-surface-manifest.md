@@ -1,12 +1,12 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `6b1a9492c8803625179f1b242b3a511b673104b5`
-- Deterministic generated timestamp (commit time): 2026-10-11T01:55:24+09:00
+- Indexed commit: `a91fecae3303d716d4b40464b1f171f3192364c0`
+- Deterministic generated timestamp (commit time): 2026-10-11T09:36:36+09:00
 - Scope: All production Next.js page routes; API, /dev and /showcase routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 53
-- Actions/interactions: 1808
+- Actions/interactions: 1810
 - Authenticated routes: 31
 - Public-at-proxy routes: 22
 - Ungated routes (no prefix-list entry and no page-level auth gate): 3
@@ -50,7 +50,7 @@
 | `/app/login-admin` | Legacy admin sign in entry | ungated | Live, Derived | 2 | 5 | 0 |
 | `/app/o/[slug]` | Organizer public profile | ungated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 27 | 30 | 0 |
 | `/app` | Public product entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 28 | 30 | 0 |
-| `/app/plans/[planId]/done` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, User Confirmed | 5 | 30 | 0 |
+| `/app/plans/[planId]/done` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, User Confirmed | 7 | 30 | 0 |
 | `/app/plans/[planId]/review` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, User Confirmed | 18 | 30 | 0 |
 | `/app/plans/[planId]/types/[itemId]` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, User Confirmed | 26 | 6 | 0 |
 | `/app/plans/drafts/[draftId]/edit` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, User Confirmed | 18 | 30 | 0 |

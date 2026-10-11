@@ -16,7 +16,7 @@ import { setPlanFlash } from "./plan-flash";
 import { planErrorView, type PlanApiError, type PlanErrorView } from "./plan-model";
 import { PlanErrorNotice, translator, type Translate } from "./PlanParts";
 import { QuotaBar, ReviewEntryBody, UsedUpNote, reviewPageHref } from "./PlanReviewEntry";
-import { isToggleable, markEvidence, monthDay, premiseEdits, premiseRows, premiseSource, sinceFromDetail, turnHasChanges } from "./review-model";
+import { draftHasChanges, isToggleable, markEvidence, monthDay, premiseEdits, premiseRows, premiseSource, sinceFromDetail } from "./review-model";
 import styles from "./review.module.css";
 
 type Load = { state: "loading" } | { state: "failed" } | { state: "none"; quota: PlanQuotaResponse | null; detail: PlanV2Detail | null } | { state: "ready"; view: PlanReviewView };
@@ -36,12 +36,14 @@ export function PlanReviewScreen({ planId, draftId }: { planId: string; draftId:
   const std = standardCopyFor(language);
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [earned, setEarned] = useState<number | null>(null);
+  const [planPremise, setPlanPremise] = useState<PlanV2Detail["premise"] | null>(null);
 
   const read = useCallback(async () => {
     setLoad({ state: "loading" });
     const path = draftId ? `/drafts/${enc(draftId)}/review` : `/v2/${enc(planId)}/reviews/current`;
     const [result, detail] = await Promise.all([planApi<PlanReviewView>(path, { language }), planApi<PlanV2Detail>(`/v2/${enc(planId)}`, { language })]);
     setEarned(detail.ok ? detail.data.score.total : null);
+    setPlanPremise(detail.ok ? detail.data.premise : null);
     if (result.ok && result.data.draft.status === "open") { setLoad({ state: "ready", view: result.data }); return; }
     const failure = errorOf(result);
     if (!failure || failure.status === 404 || failure.reason === "DRAFT_NOT_FOUND") {
@@ -65,7 +67,7 @@ export function PlanReviewScreen({ planId, draftId }: { planId: string; draftId:
         {load.state === "loading" ? <Skeleton lines={8} />
           : load.state === "failed" ? <div data-plan-review-error=""><RetryCard title={t(r.loadFailed)} onRetry={() => void read()} /></div>
           : load.state === "none" ? <StartReview planId={planId} load={load} t={t} language={language} />
-          : <ReviewBody key={load.view.draft.draftId} planId={planId} initial={load.view} earned={earned} t={t} language={language} backLabel={std.nav.back} />}
+          : <ReviewBody key={load.view.draft.draftId} planId={planId} initial={load.view} earned={earned} planPremise={planPremise} t={t} language={language} backLabel={std.nav.back} />}
       </ToastProvider>
     </Orbit2026Scope>
   );
@@ -90,7 +92,7 @@ function StartReview({ planId, load, t, language }: { planId: string; load: Extr
   const usedUp = quota !== null && quota.reviewLeftThisMonth <= 0;
   return (
     <Card className={styles.startCard} data-plan-review-start-card="">
-      <p className={styles.strong}>{t(usedUp ? r.usedUpTitle : r.noReview)}</p>
+      <p className={styles.strong}>{t(usedUp ? (quota?.reviewLimitReason === "ai_budget" ? r.aiBudgetTitle : r.usedUpTitle) : r.noReview)}</p>
       {!quota ? <PlanErrorNotice view={{ op: "other", tone: "failure" }} t={t} />
         : usedUp ? <UsedUpNote quota={quota} t={t} language={language} />
         : <ReviewEntryBody quota={quota} since={load.detail ? sinceFromDetail(load.detail) : { events: 0, stepsCompleted: 0, talked: 0 }} t={t} language={language} />}
@@ -105,7 +107,7 @@ function StartReview({ planId, load, t, language }: { planId: string; load: Extr
 
 type Problem = { kind: "error"; view: PlanErrorView; retry: (() => void) | null } | { kind: "stale" } | null;
 
-function ReviewBody({ planId, initial, earned, t, language, backLabel }: { planId: string; initial: PlanReviewView; earned: number | null; t: Translate; language: OrbitLanguage; backLabel: string }) {
+function ReviewBody({ planId, initial, earned, planPremise, t, language, backLabel }: { planId: string; initial: PlanReviewView; earned: number | null; planPremise: PlanV2Detail["premise"] | null; t: Translate; language: OrbitLanguage; backLabel: string }) {
   const router = useRouter();
   const textId = useId();
   const [view, setView] = useState(initial);
@@ -157,7 +159,9 @@ function ReviewBody({ planId, initial, earned, t, language, backLabel }: { planI
     }
     const failure = errorOf(result)!;
     if (failure.reason === "REVIEW_LIMIT") {
-      setView((current) => ({ ...current, reviewLeftThisMonth: 0 }));
+      // Read again for the reason (月 3 回 or the month's AI budget); keep the input either way.
+      const again = await planApi<PlanReviewView>(`/drafts/${enc(draft.draftId)}/review`, { language });
+      setView((current) => (again.ok ? { ...again.data, reviewLeftThisMonth: 0 } : { ...current, reviewLeftThisMonth: 0 }));
       return;
     }
     if (failure.reason === "STALE" || failure.reason === "DRAFT_CLOSED") return;
@@ -204,11 +208,12 @@ function ReviewBody({ planId, initial, earned, t, language, backLabel }: { planI
   };
 
   const stage = turns.length === 0 ? 0 : 1;
-  const anyChange = turnHasChanges(turns);
+  // R25 复核 m1: the whole draft decides — any accepted change in any turn, or a premise it changed.
+  const anyChange = draftHasChanges(turns, draft.premise, planPremise);
 
   const composer = usedUp ? (
     <section className={`${styles.composer} ${styles.composerOff}`} data-plan-review-composer="off" aria-disabled>
-      <b>{t(r.usedUpInput)}</b>
+      <b>{t(view.reviewLimitReason === "ai_budget" ? r.aiBudgetTitle : r.usedUpInput)}</b>
       <p className={styles.body}>{t(r.usedUpBody)}</p>
       <p className={styles.label}>{t(r.usedUpManual)} {t(r.resetsOn, { date: monthDay(view.resetsAt, language) })}</p>
       {turns.length === 0 ? <div className={styles.actionsRow}><Button variant="primary" label={standardCopyFor(language).action.gotIt} onClick={() => router.push(back)} data-plan-review-gotit="" /></div> : null}

@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 
-import { PLAN_GOAL_KINDS, PLAN_QUESTION_LIMIT } from "../../../../shared/compute/plan-templates";
+import { PLAN_EVENT_SLOT, PLAN_GOAL_KINDS, PLAN_QUESTION_LIMIT } from "../../../../shared/compute/plan-templates";
 import { isIndustryIdCode } from "../../../../shared/domain/industries";
 import { checkDraftContent, disallowedChangeIssues, type ContentCheckInput } from "../validate-content";
 import type {
@@ -205,6 +205,9 @@ export function checkReviewFix(raw: unknown, input: ContentCheckInput, current: 
     if (type.allocation < earned) issues.push(`personType ${type.slot}: allocation below the points already earned (${earned})`);
     if (review.skippedSlots.includes(type.slot) && before.get(type.slot)?.allocation !== type.allocation) issues.push(`personType ${type.slot}: a skipped type keeps its allocation`);
   }
+  // 复核 M2：イベント枠也不低于已得（earned 里 key = "event"）。
+  const eventEarned = review.earned[PLAN_EVENT_SLOT] ?? 0;
+  if (checked.value.revised.event.allocation < eventEarned) issues.push(`event: allocation below the points already earned (${eventEarned})`);
   return issues.length > 0 ? { issues, ok: false } : checked;
 }
 

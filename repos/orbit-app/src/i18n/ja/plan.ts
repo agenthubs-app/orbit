@@ -585,4 +585,13 @@ export const plan = {
   "plan.type.alreadyTalkedA11y": "{name}とはすでに話した（記録する）",
   "plan.proposal.requested": "Orbit で {name}さんに面談の依頼を届けました",
   "plan.review.markEvidenceLine": "根拠：{text}",
+  // R25 review fixes (App).
+  "plan.manual.errorBelowEarned": "獲得済みの点より少なくはできません。",
+  "plan.manual.errorSkipped": "スキップ中のタイプの配点は変えられません。",
+  "plan.manual.errorBelowMet": "すでに話した人数より少なくはできません。",
+  "plan.manual.errorHasPoints": "点が入っているタイプやスキップ中のタイプは外せません。",
+  "plan.review.aiBudgetTitle": "⏳ 今月の AI 利用上限に達しました",
+  "plan.review.aiBudgetMeta": "見直しは {month}月{day}日から使えます（あと {days}日）",
+  "plan.review.aiBudgetShort": "今月の AI 利用上限に達しました",
+  "plan.done.decide": "次の目標を決める",
 } as const;

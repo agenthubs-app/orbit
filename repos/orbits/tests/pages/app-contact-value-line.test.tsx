@@ -13,6 +13,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { insightEvidenceLabels, tokyoDayOf } from "../../features/contacts/insights/evidence-labels";
 import { contactInsightView } from "../../features/contacts/insights/view";
 import {
+  type ContactValueInsight,
   contactValueLine,
   contactValueWhyNow,
   evidenceFactsFromDetail,
@@ -104,4 +105,35 @@ test("SC-W0061-03: why-now = the plan item's own reason (phase prefix) → ready
   const model = contactValueLine({ insight: valueInsight("zh"), name: "N", subtitle: null, whyNow: contactValueWhyNow(action, ready, zh) }, zh);
   const html = renderToStaticMarkup(<OrbitLanguageProvider initialLanguage="zh">{model.kind === "ready" ? <span>{model.whyNow}</span> : null}</OrbitLanguageProvider>);
   assert.match(html, /阶段 2 · 拓展引荐：「拿到 3 个引荐」还差 2 个/);
+});
+
+// R25：候选卡渲染随 plan-match-sheet 删除；纯函数 `contactValueLine` 仍被详情面板使用，断言保留。
+test("SC-W0061-02: none／pending／failed／no_goal fall back to company · title + matched need + industry + a state tail (pure function)", () => {
+  const base = { industry: "金融与投资", name: "田中惠子", needTitle: VALUE_NEED_TITLE, subtitle: "Nexa Capital · 合伙人" };
+  const cases: Array<[ContactValueInsight | null, string, string, string | null]> = [
+    [null, "pending", "「TA 能帮你」生成中，通常 1 分钟内出现", null],
+    [{ evidence: [], nextStep: null, relation: null, state: "none" }, "none", "「TA 能帮你」生成中，通常 1 分钟内出现", null],
+    [{ evidence: [], nextStep: null, relation: null, state: "pending" }, "pending", "「TA 能帮你」生成中，通常 1 分钟内出现", null],
+    [{ evidence: [], nextStep: null, relation: null, state: "failed" }, "failed", "「TA 能帮你」暂时没生成出来", null],
+    [{ evidence: [], nextStep: null, relation: null, state: "no_goal" }, "no_goal", "设置关系目标后生成「TA 能帮你」", "/app/contacts/dashboard?tab=insight"],
+    // ready 但没有文字：按生成中退化，不渲染空的「TA 能帮你：」。
+    [{ evidence: [], nextStep: null, relation: "  ", state: "ready" }, "pending", "「TA 能帮你」生成中，通常 1 分钟内出现", null],
+  ];
+  for (const [insight, state, tail, href] of cases) {
+    const model = contactValueLine({ ...base, insight }, zh);
+    assert.equal(model.kind, "fallback");
+    if (model.kind !== "fallback") continue;
+    assert.equal(model.state, state);
+    assert.equal(model.who, "Nexa Capital · 合伙人");
+    assert.equal(model.context, `可能对应：计划需求『${VALUE_NEED_TITLE}』 · 同属 金融与投资`);
+    assert.equal(model.tail, tail);
+    assert.equal(model.tailHref, href);
+  }
+  // 公司职位都空 → 姓名占位；姓名也空 → 「—」；没有需求与行业 → 没有 context 行。
+  const bare = contactValueLine({ insight: null, name: "田中惠子", subtitle: "  " }, zh);
+  assert.ok(bare.kind === "fallback" && bare.who === "田中惠子" && bare.context === null);
+  const nameless = contactValueLine({ insight: null, name: "", subtitle: null }, zh);
+  assert.ok(nameless.kind === "fallback" && nameless.who === "—");
+  const enModel = contactValueLine({ insight: { evidence: [], nextStep: null, relation: null, state: "failed" }, name: "Keiko", subtitle: null }, en);
+  assert.ok(enModel.kind === "fallback" && enModel.tail === "“How they can help” couldn't be generated for now");
 });

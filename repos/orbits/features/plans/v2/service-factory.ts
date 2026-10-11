@@ -4,12 +4,14 @@
  * 路由只通过 `resolvePlanV2Service` 取服务。
  */
 import type { ModuleMode, ServiceResolution } from "../../../shared/services/module-mode";
+import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
+import { createPostgresAiUsageLedger } from "../../ai-quota/ledger";
 import { resolvePlanBackend } from "../service-factory";
 import { demoPlanV2State } from "./mock-seed";
 import { demoPlanEventFacts, livePlanEventFacts } from "./event-facts";
 import { createLivePlanFlowContext } from "./flow-context";
 import { createMemoryPlanV2Repository, createPostgresPlanV2Repository, type MemoryPlanV2Repository } from "./repository";
-import { createPlanV2Service, type PlanV2Service } from "./service";
+import { createPlanV2Service, ledgerReviewBudget, type PlanReviewBudgetReader, type PlanV2Service } from "./service";
 import type { PlanV2Repository } from "./types";
 
 interface PlansV2Global {
@@ -37,6 +39,16 @@ export function resolvePlanV2Parts(input: { actorId: string; mode?: ModuleMode |
   const { pool, workspaceId } = backend.service;
   const repository = pool ? plansV2Global.__orbitPlansV2LiveRepository!.repository : plansV2Global.__orbitPlansV2MockRepository!;
   return { mode: resolution.mode, service: { pool: pool ?? null, repository, scope: { actorId: input.actorId, workspaceId }, service: resolution.service }, success: true };
+}
+
+/**
+ * R25 复核 M1：live 下见直的 AI 成本读数（`ai_usage_ledger` 本月 `plan_review` 非 released 行）。
+ * 没配置事务连接时为 undefined（只按用户次数显示）。
+ */
+export function configuredPlanReviewBudget(): PlanReviewBudgetReader | undefined {
+  const runtime = createConfiguredTransactionalPostgresRuntime();
+  if (!runtime) return undefined;
+  return ledgerReviewBudget(createPostgresAiUsageLedger({ client: runtime.client, workspaceId: runtime.workspaceId }));
 }
 
 export function resolvePlanV2Service(input: { actorId: string; mode?: ModuleMode | string; now?: () => Date }): ServiceResolution<PlanV2Service> {
@@ -72,6 +84,7 @@ export function resolvePlanV2Service(input: { actorId: string; mode?: ModuleMode
       now: input.now,
       references: referencesFor(input.actorId),
       repository: plansV2Global.__orbitPlansV2LiveRepository.repository,
+      reviewBudget: configuredPlanReviewBudget(),
       scope,
     }),
     success: true,

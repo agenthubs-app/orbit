@@ -12,6 +12,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { validateAllocations, type PlanAllocationSlot } from "../../../shared/compute/plan-allocation";
 import { planFlowHref, planTaskSegmentHref, type PlanHrefPlatform } from "../../../shared/compute/plan-href";
+import { PLAN_EVENT_SEGMENT_KEY } from "../../../shared/compute/plan-score";
 import {
   PLAN_CAPABILITY_COPY,
   PLAN_GOAL_KIND_COPY,
@@ -36,6 +37,7 @@ import type {
   PlanConfirmResult,
   PlanDraftChange,
   PlanDraftManualEditRequest,
+  PlanDraftSlotState,
   PlanDraftTurn,
   PlanDraftView,
   PlanGoalKind,
@@ -65,13 +67,13 @@ import { AppError, type AppErrorCode } from "../../../shared/errors/app-error";
 import { AI_QUOTA_MONTHLY_LIMITS, nextTokyoMidnight, nextTokyoMonthStart, tokyoUsageMonth } from "../../ai-quota/constants";
 import { publishedEntriesFor, resolveCitations } from "../landscape/store";
 import { backgroundCacheKey, ruleLadder, ruleQuestions } from "./ai/rules";
-import type { DraftOutput, DraftSlotInfo, PlanAiContact, PlanAiOutcome, PlanFlowAi } from "./ai/types";
-import type { PlanFlowContact, PlanFlowContextSource } from "./flow-context";
+import type { DraftOutput, DraftSlotInfo, PlanAiContact, PlanAiOutcome, PlanAiRecord, PlanFlowAi } from "./ai/types";
+import type { PlanFlowContact, PlanFlowContextSource, PlanFlowMemo } from "./flow-context";
 import { emptyIntakeAiSteps, emptyStep } from "./repository";
 import { PLAN_V2_GOAL_LIMIT, type PlanDraftContent, type PlanDraftPersonType, type PlanDraftRow, type PlanFlowStepRecord, type PlanIntakeRow, type PlanV2Repository, type PlanV2Scope, type PlanV2Transaction } from "./types";
 import { allocationSlotsOf } from "./validate-content";
-import { activeAwards, PLAN_REVIEW_MONTHLY_LIMIT, planSinceConfirmed, type PlanV2Service } from "./service";
-import type { PlanV2Row, PlanV2TypeItem } from "./types";
+import { activeAwards, PLAN_REVIEW_MONTHLY_LIMIT, planReviewQuota, planSinceConfirmed, type PlanReviewBudgetReader, type PlanV2Service } from "./service";
+import type { PlanV2LogEntry, PlanV2Row, PlanV2TypeItem } from "./types";
 
 /** 每人每月新建目标的上限（DESIGN §10 第 4 项，用户已确认）。按新建的生成流程计（「もう一度」不重复计）。 */
 export const PLAN_NEW_GOAL_MONTHLY_LIMIT = 10;
@@ -83,6 +85,9 @@ export const PLAN_LADDER_LIMIT = 3;
 export const PLAN_AI_FIX_LIMIT = 3;
 export const PLAN_TEAM_MEMBER_LIMIT = 12;
 const GOAL_KIND_MIN_LENGTH = 6;
+/** R25 复核 M4：C8 / C10 输入里面谈メモ摘要的条数与每条字数上限。 */
+export const PLAN_REVIEW_MEMO_LIMIT = 20;
+export const PLAN_REVIEW_MEMO_CHARS = 200;
 
 export const PLAN_FLOW_ERROR_REASONS = [
   "INTAKE_NOT_FOUND",
@@ -197,6 +202,8 @@ export interface PlanFlowServiceOptions {
   newId?: () => string;
   /** R24：确定后为新计划入队 plan 来源的候补匹配（幂等、只跑规则层）；失败只记日志。 */
   afterConfirmed?: (input: { actorId: string; planId: string }) => Promise<void>;
+  /** R25 复核 M1：AI 账本里本月见直已占的次数（live 由账本给；没有时只按用户次数）。 */
+  reviewBudget?: PlanReviewBudgetReader;
 }
 
 /* ------------------------------------------------------------------ */
@@ -761,16 +768,76 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     };
   }
 
-  /** 每个类型已得的 base 分与已计入人数（只读；跳过记的满额也算已得）。 */
-  function earnedOf(log: Parameters<typeof activeAwards>[0]): { earned: Record<string, number>; met: Record<string, number> } {
+  /**
+   * 每个类型（含イベント枠，key = `PLAN_EVENT_SEGMENT_KEY`）已得的 base 分与已计入人数（只读）。
+   * `earned` 含跳过记的满额；`earnedBase` 不含（= 配点槽的 `earnedBase` 口径）。
+   */
+  function earnedOf(log: Parameters<typeof activeAwards>[0]): { earned: Record<string, number>; earnedBase: Record<string, number>; met: Record<string, number> } {
     const earned: Record<string, number> = {};
+    const earnedBase: Record<string, number> = {};
     const met: Record<string, number> = {};
     for (const entry of activeAwards(log)) {
       if (entry.award.part !== "base") continue;
       earned[entry.award.typeKey] = (earned[entry.award.typeKey] ?? 0) + entry.award.points;
-      if (entry.award.basis !== "skip") met[entry.award.typeKey] = (met[entry.award.typeKey] ?? 0) + 1;
+      if (entry.award.basis !== "skip") {
+        earnedBase[entry.award.typeKey] = (earnedBase[entry.award.typeKey] ?? 0) + entry.award.points;
+        met[entry.award.typeKey] = (met[entry.award.typeKey] ?? 0) + 1;
+      }
     }
-    return { earned, met };
+    return { earned, earnedBase, met };
+  }
+
+  /** R25 复核 S1：见直 / 手动编辑草稿的配点槽状态（key = 配点槽 key：类型的 slot，イベント枠 = "event"）。 */
+  async function slotStateOf(reader: Pick<PlanV2Transaction, "typeItems" | "log">, planId: string): Promise<PlanDraftSlotState[]> {
+    const types = await reader.typeItems(planId);
+    const { earnedBase, met } = earnedOf(await reader.log(planId));
+    return [
+      ...types.map((type) => ({ earned: earnedBase[type.personType.key] ?? 0, key: type.slot, metCount: met[type.personType.key] ?? 0, skipped: Boolean(type.skippedAt) })),
+      { earned: earnedBase[PLAN_EVENT_SEGMENT_KEY] ?? 0, key: PLAN_EVENT_SLOT, metCount: met[PLAN_EVENT_SEGMENT_KEY] ?? 0, skipped: false },
+    ];
+  }
+
+  /** R25 复核 M1：见直剩余 = min(用户次数剩余, 账本本月剩余)；账本读不到时只看用户次数。 */
+  async function reviewQuotaNow(reader: Pick<PlanV2Transaction, "goalPlans" | "log">): Promise<{ left: number; reason: "monthly" | "ai_budget" | null }> {
+    const used = await reviewUsedThisMonth(reader);
+    const ledgerUsed = options.reviewBudget ? await options.reviewBudget(scope.actorId, nowDate()).catch(() => null) : null;
+    return planReviewQuota(used, ledgerUsed);
+  }
+
+  /**
+   * R25 复核 M4：C8 / C10 的输入记录。记录 id 换成 `R1…`、联系人换成 `C1…` 短别名（DESIGN §5.1 id 不出境），
+   * 回来后用 `byAlias` 反向映射；面谈メモ只给摘要（≤20 条、每条 ≤200 字），只取与本计划类型关联的联系人、确定以来的。
+   */
+  async function aiRecords(plan: PlanV2Row, log: readonly PlanV2LogEntry[], entries: readonly PlanV2LogEntry[]): Promise<{ input: PlanAiRecord[]; byAlias: Map<string, { id: string; text: string; at: string }>; memos: PlanFlowMemo[] }> {
+    const contactIds = new Set<string>();
+    for (const entry of activeAwards(log)) if (entry.award.contactId) contactIds.add(entry.award.contactId);
+    for (const entry of log) if (entry.event === "memo_coverage_proposed" && typeof entry.payload.contactId === "string") contactIds.add(entry.payload.contactId);
+    for (const type of await repository.read(scope, (reader) => reader.typeItems(plan.id))) for (const link of type.contactLinks) contactIds.add(link.contactId);
+    const memos = contactIds.size > 0 && source.planMemos
+      ? (await source.planMemos(scope.actorId, { contactIds: [...contactIds].slice(0, 200), limit: PLAN_REVIEW_MEMO_LIMIT, since: plan.createdAt }).catch((error: unknown) => {
+          console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "plan_review_memos_failed" }));
+          return [] as PlanFlowMemo[];
+        })).filter((memo) => contactIds.has(memo.contactId) && Date.parse(memo.at) >= Date.parse(plan.createdAt)).slice(0, PLAN_REVIEW_MEMO_LIMIT).map((memo) => ({ ...memo, text: memo.text.slice(0, PLAN_REVIEW_MEMO_CHARS) }))
+      : [];
+    const contactAlias = new Map<string, string>();
+    const aliasOf = (contactId: string | null | undefined) => {
+      if (!contactId) return null;
+      if (!contactAlias.has(contactId)) contactAlias.set(contactId, `C${contactAlias.size + 1}`);
+      return contactAlias.get(contactId)!;
+    };
+    const byAlias = new Map<string, { id: string; text: string; at: string }>();
+    const input: PlanAiRecord[] = [];
+    const push = (record: { id: string; kind: PlanAiRecord["kind"]; text: string; at: string; contactId: string | null }) => {
+      const alias = `R${input.length + 1}`;
+      byAlias.set(alias, { at: record.at, id: record.id, text: record.text });
+      input.push({ at: record.at, contact: aliasOf(record.contactId), id: alias, kind: record.kind, text: record.text });
+    };
+    for (const entry of entries) {
+      const award = entry.event === "score_awarded" ? (entry.payload as { basis?: string; contactId?: string | null }) : null;
+      push({ at: entry.createdAt, contactId: award?.contactId ?? null, id: entry.id, kind: entry.event === "step_completed" ? "step" : award?.basis === "event" ? "event" : "talked", text: entry.body.slice(0, 120) });
+    }
+    for (const memo of memos) push({ at: memo.at, contactId: memo.contactId, id: memo.id, kind: "memo", text: memo.text });
+    return { byAlias, input, memos };
   }
 
   async function reviewUsedThisMonth(reader: Pick<PlanV2Transaction, "goalPlans" | "log">): Promise<number> {
@@ -782,7 +849,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
 
   async function reviewView(reader: Pick<PlanV2Transaction, "plan" | "goalPlans" | "log" | "flowReceipt" | "typeItems">, draft: PlanDraftRow, context: PlanFlowRequestContext): Promise<PlanReviewView> {
     const plan = await reader.plan(draft.planId ?? "");
-    const used = await reviewUsedThisMonth(reader);
+    const quota = await reviewQuotaNow(reader);
     const marks = plan ? await reader.flowReceipt(`review-mark:${plan.id}:${tokyoUsageMonth(nowDate())}:${tokyoDayStart(nowDate()).slice(0, 10)}`) : null;
     const log = plan ? await reader.log(plan.id) : [];
     // 「確定以来」与概要的 sinceConfirmed 同一个函数（R25 App 界面任务：見直し入口弹层在开始之前也要显示）。
@@ -792,21 +859,26 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     // plan_log 的 body 是「CFO 経験者：+10」「Step 完了：…」这类计划内文字，不含联系人信息；读不到的 id 跳过。
     const byId = new Map(log.map((entry) => [entry.id, entry]));
     const typeLabels = new Map(plan ? (await reader.typeItems(plan.id)).map((item) => [item.id, item.shortLabel]) : []);
+    // R25 复核 M4：依据也可能是面谈メモ（不在 plan_log 里）：用预标时存下的摘要。
+    const memoEvidence = new Map(((marks?.response as { memos?: Array<{ id: string; text: string; at: string }> } | undefined)?.memos ?? []).map((memo) => [memo.id, memo]));
     const withEvidence = (mark: PlanReviewView["premiseMarks"][number]) => ({
       ...mark,
       evidence: mark.evidenceIds.flatMap((id) => {
         const entry = byId.get(id);
+        const memo = memoEvidence.get(id);
+        if (!entry && memo) return [{ at: memo.at, id, text: memo.text.slice(0, 120) }];
         if (!entry) return [];
         const text = entry.body.trim() || (entry.itemId ? typeLabels.get(entry.itemId) ?? "" : "");
         return [{ at: entry.createdAt, id, text: text.slice(0, 120) }];
       }),
     });
     return {
-      draft: { ...base, goal: plan?.goalText ?? "", goalKind: plan?.goalKind ?? "unknown", purposeText: plan?.purposeText ?? null, turns: base.turns.map(({ base: _base, revised: _revised, ...turn }: StoredTurn) => turn) },
+      draft: { ...base, goal: plan?.goalText ?? "", goalKind: plan?.goalKind ?? "unknown", purposeText: plan?.purposeText ?? null, turns: base.turns.map(({ base: _base, revised: _revised, ...turn }: StoredTurn) => turn), ...(plan ? { slotState: await slotStateOf(reader, plan.id) } : {}) },
       premiseMarks: ((marks?.response as { marks?: PlanReviewView["premiseMarks"] } | undefined)?.marks ?? []).map(withEvidence),
       resetsAt: nextTokyoMonthStart(nowDate()),
-      reviewLeftThisMonth: Math.max(0, PLAN_REVIEW_MONTHLY_LIMIT - used),
+      reviewLeftThisMonth: quota.left,
       reviewMonthlyLimit: PLAN_REVIEW_MONTHLY_LIMIT,
+      ...(quota.reason ? { reviewLimitReason: quota.reason } : {}),
       sinceConfirmed: since,
     };
   }
@@ -854,64 +926,84 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     return base;
   }
 
+  /**
+   * 复核 M3：已关闭的见直草稿——若是因为计划之后改过（revision 变了）而被作废，报 STALE（界面「最新を読み込む」），
+   * 其余报 DRAFT_CLOSED。
+   */
+  async function closedReviewError(reader: Pick<PlanV2Transaction, "plan">, draft: PlanDraftRow): Promise<PlanFlowError> {
+    if (draft.kind === "review" && draft.status === "discarded" && draft.planId) {
+      const plan = await reader.plan(draft.planId);
+      if (plan && plan.status === "active" && plan.revision !== draft.baseRevision) return new PlanFlowError("STALE", "This plan was changed after the review started.");
+    }
+    return new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+  }
+
   async function confirmReviewDraft(draftId: string, context: PlanFlowRequestContext): Promise<PlanConfirmResult> {
-    return repository.transact(scope, async (tx) => {
-      const draft = await requireDraft(tx, draftId);
-      if (draft.kind !== "review" || !draft.planId) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
-      if (draft.status === "confirmed") return { archivedV1PlanId: null, href: planTaskSegmentHref(context.platform, draft.planId), planId: draft.planId, replayed: true };
-      if (draft.status !== "open") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
-      const plan = await requirePlan(tx, draft.planId);
-      if (plan.revision !== draft.baseRevision) throw new PlanFlowError("STALE", "This plan was changed on another device.");
-      const types = await tx.typeItems(plan.id);
-      const { earned, met } = earnedOf(await tx.log(plan.id));
-      const content = draft.content;
-      const byKey = new Map(types.map((type) => [type.personType.key, type]));
-      const keys = new Set(content.personTypes.map((type) => type.key));
-      // 确定那一刻的已得分重新校验（DESIGN §3.2 第 9 条）。
-      for (const type of content.personTypes) {
-        const current = byKey.get(type.key);
-        if (type.allocation < (earned[type.key] ?? 0)) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel}: points cannot go below what was already earned.`);
-        if (type.targetCount < (met[type.key] ?? 0)) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel}: the target cannot go below the people already counted.`);
-        if (current?.skippedAt && current.allocation !== type.allocation) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel}: a skipped type keeps its points.`);
-        if (type.allocation < 5) throw new PlanFlowError("INVALID_INPUT", "Each person type needs at least 5 points.");
+    return repository.transact(scope, async (tx) => confirmReviewIn(tx, await requireDraft(tx, draftId), context));
+  }
+
+  /**
+   * 见直草稿的确定（在调用方的事务里）。手动编辑与确定合成一个事务（复核 S1）：这里任何一条校验不过就整体回滚，
+   * 草稿不会被记成「手动编辑已用」。
+   */
+  async function confirmReviewIn(tx: PlanV2Transaction, draft: PlanDraftRow, context: PlanFlowRequestContext): Promise<PlanConfirmResult> {
+    if (draft.kind !== "review" || !draft.planId) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+    if (draft.status === "confirmed") return { archivedV1PlanId: null, href: planTaskSegmentHref(context.platform, draft.planId), planId: draft.planId, replayed: true };
+    if (draft.status !== "open") throw await closedReviewError(tx, draft);
+    const plan = await requirePlan(tx, draft.planId);
+    if (plan.revision !== draft.baseRevision) throw new PlanFlowError("STALE", "This plan was changed on another device.");
+    const types = await tx.typeItems(plan.id);
+    const { earned, met } = earnedOf(await tx.log(plan.id));
+    const content = draft.content;
+    const byKey = new Map(types.map((type) => [type.personType.key, type]));
+    const keys = new Set(content.personTypes.map((type) => type.key));
+    // 确定那一刻的已得分重新校验（DESIGN §3.2 第 9 条）。
+    for (const type of content.personTypes) {
+      const current = byKey.get(type.key);
+      if (type.allocation < (earned[type.key] ?? 0)) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel}: points cannot go below what was already earned.`);
+      if (type.targetCount < (met[type.key] ?? 0)) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel}: the target cannot go below the people already counted.`);
+      if (current?.skippedAt && current.allocation !== type.allocation) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel}: a skipped type keeps its points.`);
+      if (type.allocation < 5) throw new PlanFlowError("INVALID_INPUT", "Each person type needs at least 5 points.");
+    }
+    for (const type of types) {
+      if (!keys.has(type.personType.key) && ((earned[type.personType.key] ?? 0) > 0 || type.skippedAt)) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel} already has points and cannot be removed.`);
+    }
+    // 复核 M2：イベント枠也是计分枠：配点不低于已得、活动数不少于已计分的活动。
+    if (content.event.allocation < (earned[PLAN_EVENT_SEGMENT_KEY] ?? 0)) throw new PlanFlowError("INVALID_INPUT", "Events: points cannot go below what was already earned.");
+    if (content.event.targetCount < (met[PLAN_EVENT_SEGMENT_KEY] ?? 0)) throw new PlanFlowError("INVALID_INPUT", "Events: the target cannot go below the events already counted.");
+    const allocation = validateAllocations(allocationSlotsOf(plan.goalKind, content));
+    if (allocation.ok === false) throw new PlanFlowError("INVALID_INPUT", `The allocation is not valid (${allocation.error}).`);
+    const at = now();
+    const before = planContentOf(plan, types);
+    const manualOnly = draft.premiseVersion === MANUAL_ONLY;
+    const next: PlanV2Row = {
+      ...plan,
+      analysis: { ...plan.analysis, allocationReasons: [...content.allocationReasons], basis: [...content.basis], citations: [...content.citations], conclusion: content.conclusion, diagnosis: content.diagnosis, ...(content.flow ? { flow: [...content.flow] } : {}) },
+      eventAllocation: content.event.allocation,
+      eventTargetCount: content.event.targetCount,
+      // 每次見直し确定后重新给 1 次手动编辑；这次用过手动编辑（或本来就是手动编辑）就是 0。
+      manualEditAvailable: manualOnly ? false : !draft.manualEditUsed,
+      premise: [...draft.premise],
+      revision: plan.revision + 1,
+      steps: content.steps.map((step) => ({ doneCriteria: step.doneCriteria, key: step.key, personTypeKeys: [...step.personTypeKeys], title: step.title, why: step.why })),
+      updatedAt: at,
+    };
+    await tx.updatePlan(next);
+    let sortKey = Math.max(0, ...types.map((type) => type.sortKey));
+    for (const type of content.personTypes) {
+      const current = byKey.get(type.key);
+      const meta = { countRule: type.countRule, emoji: type.emoji, introRoutes: [...type.introRoutes], key: type.key, opener: type.opener ?? null, persona: type.persona ?? null, questions: [...type.questions], recognizeHints: [...type.recognizeHints], shortLabelId: type.shortLabelId, why: type.why };
+      if (current) {
+        await tx.updateTypeItem({ ...current, allocation: type.allocation, personType: meta, roleSituation: type.roleSituation, shortLabel: type.shortLabel, targetCount: type.targetCount, updatedAt: at });
+      } else {
+        await tx.insertTypeItems([{ allocation: type.allocation, contactLinks: [], createdAt: at, id: `pitem_${newId()}`, personType: meta, planId: plan.id, primaryIndustryId: type.primaryIndustryId ?? null, roleSituation: type.roleSituation, secondaryIndustryId: type.secondaryIndustryId ?? null, shortLabel: type.shortLabel, skippedAt: null, slot: type.slot, sortKey: (sortKey += 1), targetCount: type.targetCount, updatedAt: at }]);
       }
-      for (const type of types) {
-        if (!keys.has(type.personType.key) && ((earned[type.personType.key] ?? 0) > 0 || type.skippedAt)) throw new PlanFlowError("INVALID_INPUT", `${type.shortLabel} already has points and cannot be removed.`);
-      }
-      const allocation = validateAllocations(allocationSlotsOf(plan.goalKind, content));
-      if (allocation.ok === false) throw new PlanFlowError("INVALID_INPUT", `The allocation is not valid (${allocation.error}).`);
-      const at = now();
-      const before = planContentOf(plan, types);
-      const manualOnly = draft.premiseVersion === MANUAL_ONLY;
-      const next: PlanV2Row = {
-        ...plan,
-        analysis: { ...plan.analysis, allocationReasons: [...content.allocationReasons], basis: [...content.basis], citations: [...content.citations], conclusion: content.conclusion, diagnosis: content.diagnosis, ...(content.flow ? { flow: [...content.flow] } : {}) },
-        eventAllocation: content.event.allocation,
-        eventTargetCount: content.event.targetCount,
-        // 每次見直し确定后重新给 1 次手动编辑；这次用过手动编辑（或本来就是手动编辑）就是 0。
-        manualEditAvailable: manualOnly ? false : !draft.manualEditUsed,
-        premise: [...draft.premise],
-        revision: plan.revision + 1,
-        steps: content.steps.map((step) => ({ doneCriteria: step.doneCriteria, key: step.key, personTypeKeys: [...step.personTypeKeys], title: step.title, why: step.why })),
-        updatedAt: at,
-      };
-      await tx.updatePlan(next);
-      let sortKey = Math.max(0, ...types.map((type) => type.sortKey));
-      for (const type of content.personTypes) {
-        const current = byKey.get(type.key);
-        const meta = { countRule: type.countRule, emoji: type.emoji, introRoutes: [...type.introRoutes], key: type.key, opener: type.opener ?? null, persona: type.persona ?? null, questions: [...type.questions], recognizeHints: [...type.recognizeHints], shortLabelId: type.shortLabelId, why: type.why };
-        if (current) {
-          await tx.updateTypeItem({ ...current, allocation: type.allocation, personType: meta, roleSituation: type.roleSituation, shortLabel: type.shortLabel, targetCount: type.targetCount, updatedAt: at });
-        } else {
-          await tx.insertTypeItems([{ allocation: type.allocation, contactLinks: [], createdAt: at, id: `pitem_${newId()}`, personType: meta, planId: plan.id, primaryIndustryId: type.primaryIndustryId ?? null, roleSituation: type.roleSituation, secondaryIndustryId: type.secondaryIndustryId ?? null, shortLabel: type.shortLabel, skippedAt: null, slot: type.slot, sortKey: (sortKey += 1), targetCount: type.targetCount, updatedAt: at }]);
-        }
-      }
-      for (const type of types) if (!keys.has(type.personType.key)) await tx.deleteTypeItem(type.id);
-      const changes = diffContent(before, content, context.language);
-      await tx.insertRevision({ after: content as unknown as Record<string, unknown>, before: before as unknown as Record<string, unknown>, changes, createdAt: at, draftId: draft.id, fromRevision: plan.revision, id: `prev_${newId()}`, planId: plan.id, source: manualOnly ? "manual_edit" : "review", toRevision: plan.revision + 1 });
-      await tx.updateDraft({ ...draft, confirmedAt: at, status: "confirmed", updatedAt: at });
-      return { archivedV1PlanId: null, href: planTaskSegmentHref(context.platform, plan.id), planId: plan.id, replayed: false };
-    });
+    }
+    for (const type of types) if (!keys.has(type.personType.key)) await tx.deleteTypeItem(type.id);
+    const changes = diffContent(before, content, context.language);
+    await tx.insertRevision({ after: content as unknown as Record<string, unknown>, before: before as unknown as Record<string, unknown>, changes, createdAt: at, draftId: draft.id, fromRevision: plan.revision, id: `prev_${newId()}`, planId: plan.id, source: manualOnly ? "manual_edit" : "review", toRevision: plan.revision + 1 });
+    await tx.updateDraft({ ...draft, confirmedAt: at, status: "confirmed", updatedAt: at });
+    return { archivedV1PlanId: null, href: planTaskSegmentHref(context.platform, plan.id), planId: plan.id, replayed: false };
   }
 
   /* ---------- 对外 ---------- */
@@ -1361,7 +1453,9 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         const draft = await reader.draft(draftId);
         if (!draft) return null;
         const intake = draft.intakeId ? await reader.intake(draft.intakeId) : null;
-        return draftView(draft, intake, context, !intake && draft.planId ? await reader.plan(draft.planId) : null);
+        const view = draftView(draft, intake, context, !intake && draft.planId ? await reader.plan(draft.planId) : null);
+        // 复核 S1：见直 / 手动编辑草稿带上配点槽的已得分与跳过状态（intake 草稿没有）。
+        return draft.kind === "review" && draft.planId ? { ...view, slotState: await slotStateOf(reader, draft.planId) } : view;
       });
     },
 
@@ -1465,8 +1559,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         const reviewPlan = current.kind === "review" && current.planId ? await requirePlan(tx, current.planId) : null;
         const goalKind = intake?.goalKind ?? reviewPlan?.goalKind;
         if (!goalKind) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
-        if (prior) return { draft: current, intake };
-        if (current.status !== "open") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+        if (prior) return current.kind === "review" ? { confirmed: await confirmReviewIn(tx, current, context) } : { draft: current, intake };
+        if (current.status !== "open") throw await closedReviewError(tx, current);
         if (current.manualEditUsed) throw new PlanFlowError("MANUAL_EDIT_USED", "The plan can be edited by hand only once.");
         if (current.updatedAt !== request.expectedRevision) throw new PlanFlowError("STALE", "This draft was changed on another device.");
         const template = PLAN_GOAL_TEMPLATES[goalKind];
@@ -1520,9 +1614,12 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         const next: PlanDraftRow = { ...current, content, manualEditUsed: true, turns: current.turns, updatedAt: at };
         await tx.updateDraft(next);
         await writeReceipt(tx, { body, draftId, key: request.idempotencyKey, kind: "draft_manual_edit", response: { changes: changes.length, draftId } });
+        // 复核 S1：见直草稿的「保存即确定」在同一个事务里：确定的校验（已得分、跳过、有分不能删、イベント枠）不过就整体回滚，
+        // 草稿不会被记成手动编辑已用，用户可以改了再试。
+        if (next.kind === "review") return { confirmed: await confirmReviewIn(tx, next, context) };
         return { draft: next, intake };
       });
-      if (saved.draft.kind === "review") return confirmReviewDraft(saved.draft.id, context);
+      if ("confirmed" in saved) return saved.confirmed;
       if (!saved.intake) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
       return confirmDraft(saved.draft, saved.intake, true, context);
     },
@@ -1553,17 +1650,19 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       if (!cached) {
         const plan = await repository.read(scope, (reader) => requirePlan(reader, planId));
         const log = await repository.read(scope, (reader) => reader.log(plan.id));
-        const records = log.filter((entry) => Date.parse(entry.createdAt) >= Date.parse(plan.createdAt) && (entry.event === "score_awarded" || entry.event === "step_completed")).slice(-30).map((entry) => ({
-          at: entry.createdAt,
-          id: entry.id,
-          kind: entry.event === "step_completed" ? ("step" as const) : (entry.payload as { basis?: string }).basis === "event" ? ("event" as const) : ("talked" as const),
-          text: entry.body.slice(0, 120),
-        }));
-        const outcome = records.length > 0 ? await ai.reviewMarks({ goalKind: plan.goalKind, premise: plan.premise, records }, { actorId: scope.actorId, language: context.language, ledgerKey: markKey, now: nowDate() }) : null;
+        const entries = log.filter((entry) => Date.parse(entry.createdAt) >= Date.parse(plan.createdAt) && (entry.event === "score_awarded" || entry.event === "step_completed")).slice(-30);
+        const records = await aiRecords(plan, log, entries);
+        const outcome = records.input.length > 0 ? await ai.reviewMarks({ goalKind: plan.goalKind, premise: plan.premise, records: records.input }, { actorId: scope.actorId, language: context.language, ledgerKey: markKey, now: nowDate() }) : null;
         if (!(outcome && outcome.ok === false && outcome.reason === "busy")) {
+          // 依据的别名（R1…）换回真实记录 id；面谈メモ的摘要一起存下（依据显示用）。
+          const marks = outcome?.ok === true
+            ? outcome.value.marks.map((mark) => ({ ...mark, evidenceIds: mark.evidenceIds.flatMap((alias) => { const record = records.byAlias.get(alias); return record ? [record.id] : []; }) })).filter((mark) => mark.evidenceIds.length > 0)
+            : [];
+          const cited = new Set(marks.flatMap((mark) => mark.evidenceIds));
+          const memos = records.memos.filter((memo) => cited.has(memo.id)).map((memo) => ({ at: memo.at, id: memo.id, text: memo.text }));
           await repository.transact(scope, async (tx) => {
             if (await tx.flowReceipt(markKey)) return;
-            await writeReceipt(tx, { body: { planId, today }, key: markKey, kind: "review_marks", planId, response: { marks: outcome?.ok === true ? outcome.value.marks : [] } });
+            await writeReceipt(tx, { body: { planId, today }, key: markKey, kind: "review_marks", planId, response: { marks, memos } });
           }).catch(() => undefined);
         }
       }
@@ -1582,7 +1681,11 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       return repository.read(scope, async (reader) => {
         const draft = await reader.openReviewDraft(planId);
         // 只做手动编辑的草稿不是「进行中的見直し」：送出会 DRAFT_CLOSED，界面也分辨不出来，所以不返回。
-        return draft && draft.premiseVersion !== MANUAL_ONLY ? reviewView(reader, draft, context) : null;
+        if (!draft || draft.premiseVersion === MANUAL_ONLY) return null;
+        // 复核 M3：计划在草稿之后改过（revision 变了）的草稿已过期：不返回（「開始」会开一份新的）。
+        const plan = await reader.plan(planId);
+        if (!plan || plan.revision !== draft.baseRevision) return null;
+        return reviewView(reader, draft, context);
       });
     },
 
@@ -1592,10 +1695,14 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       throwIfFailedReceipt(early.prior);
       if (early.prior) return repository.read(scope, (reader) => reviewView(reader, early.draft, context));
       const draft = early.draft;
-      if (draft.kind !== "review" || draft.status !== "open" || !draft.planId || draft.premiseVersion === MANUAL_ONLY) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+      if (draft.kind !== "review" || !draft.planId || draft.premiseVersion === MANUAL_ONLY) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+      if (draft.status !== "open") throw await repository.read(scope, (reader) => closedReviewError(reader, draft));
       const plan = await repository.read(scope, (reader) => requirePlan(reader, draft.planId!));
-      const used = await repository.read(scope, (reader) => reviewUsedThisMonth(reader));
-      if (used >= PLAN_REVIEW_MONTHLY_LIMIT) throw new PlanFlowError("REVIEW_LIMIT", "All reviews for this month have been used.", { limit: "monthly", retryOn: nextTokyoMonthStart(nowDate()) });
+      // 复核 M3：计划在草稿之后改过：直接 STALE（不扣次数、不调 AI）。
+      if (plan.revision !== draft.baseRevision) throw new PlanFlowError("STALE", "This plan was changed after the review started.");
+      // 复核 M1：用户次数与 AI 成本上限取小；任一用完都不调 AI。
+      const quota = await repository.read(scope, (reader) => reviewQuotaNow(reader));
+      if (quota.left <= 0) throw new PlanFlowError("REVIEW_LIMIT", "All reviews for this month have been used.", { limit: "monthly", retryOn: nextTokyoMonthStart(nowDate()) });
       const premise = draft.premise.map((row) => {
         const edit = request.premise.find((item) => item.key === row.key);
         return edit ? { ...row, guessed: false, value: edit.value } : row;
@@ -1628,6 +1735,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         const current = await requireDraft(tx, draftId);
         if (again) return { draft: current };
         if (current.turns.length !== draft.turns.length || current.status !== "open") throw new PlanFlowError("STALE", "The draft changed while the revision was being written.");
+        if ((await requirePlan(tx, plan.id)).revision !== current.baseRevision) throw new PlanFlowError("STALE", "This plan was changed after the review started.");
         const at = now();
         if (outcome.ok === false) {
           const failure = outcome as Extract<PlanAiOutcome<unknown>, { ok: false }>;
@@ -1675,7 +1783,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     async toggleChange(draftId, changeId, request, context) {
       const draft = await repository.transact(scope, async (tx) => {
         const current = await requireDraft(tx, draftId);
-        if (current.kind !== "review" || current.status !== "open" || !current.planId) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+        if (current.kind !== "review" || !current.planId) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+        if (current.status !== "open") throw await closedReviewError(tx, current);
         const turns = [...current.turns] as StoredTurn[];
         const last = turns[turns.length - 1];
         if (!last || !last.base || !last.revised || !last.changes.some((change) => change.id === changeId)) throw new PlanFlowError("INVALID_INPUT", "Only the latest proposal can be toggled.");
@@ -1692,9 +1801,9 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
 
     async quota() {
       return repository.read(scope, async (reader) => {
-        const used = await reviewUsedThisMonth(reader);
+        const quota = await reviewQuotaNow(reader);
         const active = await reader.activePlans();
-        return { activeGoalLimit: PLAN_V2_GOAL_LIMIT, activeGoals: active.length, newGoalsLeftThisMonth: await newGoalsLeft(reader), resetsAt: nextTokyoMonthStart(nowDate()), reviewLeftThisMonth: Math.max(0, PLAN_REVIEW_MONTHLY_LIMIT - used), reviewMonthlyLimit: PLAN_REVIEW_MONTHLY_LIMIT };
+        return { activeGoalLimit: PLAN_V2_GOAL_LIMIT, activeGoals: active.length, newGoalsLeftThisMonth: await newGoalsLeft(reader), resetsAt: nextTokyoMonthStart(nowDate()), reviewLeftThisMonth: quota.left, reviewMonthlyLimit: PLAN_REVIEW_MONTHLY_LIMIT, ...(quota.reason ? { reviewLimitReason: quota.reason } : {}) };
       });
     },
 
@@ -1734,6 +1843,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     },
 
     async nextGoals(planId, context) {
+      // 每计划只调一次（授权口径）：换语言沿用第一次的候选（复核 m3 的按语言分缓存会增加付费调用，未采用）。
       const key = `next-goal:${planId}`;
       const cached = await repository.read(scope, (reader) => reader.flowReceipt(key));
       if (cached?.kind === "next_goals") return cached.response as unknown as PlanNextGoalsResponse;
@@ -1743,15 +1853,20 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         return row;
       });
       const log = await repository.read(scope, (reader) => reader.log(plan.id));
-      const records = activeAwards(log).slice(-20).map((entry) => ({ id: entry.id, text: entry.body.slice(0, 120) }));
-      const outcome = await ai.nextGoals({ goalKind: plan.goalKind, goalText: plan.goalText, records, summary: `${plan.goalText} / ${plan.analysis.conclusion}` }, { actorId: scope.actorId, language: context.language, ledgerKey: key, now: nowDate() });
+      const records = await aiRecords(plan, log, activeAwards(log).slice(-20));
+      const outcome = await ai.nextGoals({ goalKind: plan.goalKind, goalText: plan.goalText, records: records.input, summary: `${plan.goalText} / ${plan.analysis.conclusion}` }, { actorId: scope.actorId, language: context.language, ledgerKey: key, now: nowDate() });
       if (outcome.ok === false && outcome.reason === "busy") throw new PlanFlowError("AI_BUSY", "This step is already running.");
+      // 依据的别名（R1…）换回真实记录 id（计分记录 = plan_log id，面谈メモ = memo id），标签用记录自己的摘要。
+      const basisOf = (aliases: readonly string[]) => aliases.flatMap((alias) => {
+        const record = records.byAlias.get(alias);
+        return record ? [{ kind: "record" as const, label: record.text || record.id, ref: record.id }] : [];
+      });
       const result: PlanNextGoalsResponse = outcome.ok === true
-        ? { candidates: outcome.value.candidates.map((candidate) => ({ basis: candidate.evidenceIds.map((id) => ({ kind: "record" as const, label: log.find((entry) => entry.id === id)?.body ?? id, ref: id })), goalKind: candidate.goalKind, goalText: candidate.goalText })), source: "ai" }
+        ? { candidates: outcome.value.candidates.map((candidate) => ({ basis: basisOf(candidate.evidenceIds), goalKind: candidate.goalKind, goalText: candidate.goalText })), source: "ai" }
         : { candidates: [], source: "none" };
       await repository.transact(scope, async (tx) => {
         if (await tx.flowReceipt(key)) return;
-        await writeReceipt(tx, { body: { planId }, key, kind: "next_goals", planId, response: result as unknown as Record<string, unknown> });
+        await writeReceipt(tx, { body: { language: context.language, planId }, key, kind: "next_goals", planId, response: result as unknown as Record<string, unknown> });
       }).catch(() => undefined);
       return result;
     },
@@ -1770,9 +1885,10 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         await tx.updatePlan(next);
         await tx.insertRevision({ after: { goalKind, goalText }, before: { goalKind: plan.goalKind, goalText: plan.goalText }, changes: [], createdAt: at, draftId: null, fromRevision: plan.revision, id: `prev_${newId()}`, planId: plan.id, source: "goal_edit", toRevision: plan.revision + 1 });
         let reviewDraftId: string | null = null;
+        // 复核 M3：两种模式都作废进行中的见直草稿（基线 revision 已过期；与确定后手动编辑、达成一致）。
+        const open = await tx.openReviewDraft(plan.id);
+        if (open) await tx.updateDraft({ ...open, status: "discarded", updatedAt: at });
         if (request.mode === "save_and_rebuild") {
-          const open = await tx.openReviewDraft(plan.id);
-          if (open) await tx.updateDraft({ ...open, status: "discarded", updatedAt: at });
           const content = planContentOf(next, await tx.typeItems(plan.id));
           const premise = next.premise.map((row) => (row.key === "purpose" ? { ...row, guessed: false, value: goalText } : row));
           const created: PlanDraftRow = { aiFixUsed: 0, baseRevision: next.revision, confirmedAt: null, content, createdAt: at, fix: emptyStep(), id: `draft_${newId()}`, intakeId: null, kind: "review", manualEditUsed: false, originContent: content, planId: plan.id, premise, premiseVersion: 0, status: "open", turns: [], updatedAt: at };

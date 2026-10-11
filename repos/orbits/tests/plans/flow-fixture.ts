@@ -6,6 +6,7 @@ import type { PlanAiOutcome, PlanFlowAi } from "../../features/plans/v2/ai/types
 import { createMockPlanFlowContext, type PlanFlowContextSource } from "../../features/plans/v2/flow-context";
 import { createPlanFlowService, type PlanFlowRequestContext } from "../../features/plans/v2/flow-service";
 import { createMemoryPlanV2Repository } from "../../features/plans/v2/repository";
+import type { PlanReviewBudgetReader } from "../../features/plans/v2/service";
 import { SCOPE, serviceFor, steppingClock } from "./v2-fixture";
 
 export type AiStep = Exclude<keyof PlanFlowAi, "id">;
@@ -50,13 +51,13 @@ export function countingAi(base: PlanFlowAi = createMockPlanFlowAi()): CountingA
   };
 }
 
-export function flowWorld(options: { context?: PlanFlowContextSource; ai?: CountingAi; now?: () => Date } = {}) {
+export function flowWorld(options: { context?: PlanFlowContextSource; ai?: CountingAi; now?: () => Date; reviewBudget?: PlanReviewBudgetReader } = {}) {
   const repository = createMemoryPlanV2Repository();
   const now = options.now ?? steppingClock();
   const planService = serviceFor(repository, SCOPE, now);
   const ai = options.ai ?? countingAi();
   let n = 0;
-  const flow = createPlanFlowService({ ai, context: options.context ?? createMockPlanFlowContext(), newId: () => `f${(n += 1)}`, now, planService, repository, scope: SCOPE });
+  const flow = createPlanFlowService({ ai, context: options.context ?? createMockPlanFlowContext(), newId: () => `f${(n += 1)}`, now, planService, repository, reviewBudget: options.reviewBudget, scope: SCOPE });
   return { ai, flow, planService, repository };
 }
 

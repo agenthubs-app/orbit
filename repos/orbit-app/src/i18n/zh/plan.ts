@@ -585,4 +585,13 @@ export const plan = {
   "plan.type.alreadyTalkedA11y": "已经和{name}聊过（记录）",
   "plan.proposal.requested": "已通过 Orbit 向{name}发出面谈请求",
   "plan.review.markEvidenceLine": "依据：{text}",
+  // R25 review fixes (App).
+  "plan.manual.errorBelowEarned": "不能少于已获得的分数。",
+  "plan.manual.errorSkipped": "跳过中的类型不能改配分。",
+  "plan.manual.errorBelowMet": "不能少于已经聊过的人数。",
+  "plan.manual.errorHasPoints": "有分数或跳过中的类型不能移除。",
+  "plan.review.aiBudgetTitle": "⏳ 本月的 AI 使用已达上限",
+  "plan.review.aiBudgetMeta": "{month}月{day}日起可以再审视（还有{days}天）",
+  "plan.review.aiBudgetShort": "本月的 AI 使用已达上限",
+  "plan.done.decide": "决定下一个目标",
 } as const;

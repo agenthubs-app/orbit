@@ -32,11 +32,15 @@ export function QuotaBar({ left, limit, t }: { left: number; limit: number; t: T
 }
 
 /** A4 ②: what still works when the month's reviews are used up. Never a paid plan link (Q6). */
-export function UsedUpNote({ quota, t, language }: { quota: Pick<PlanQuotaResponse, "reviewMonthlyLimit" | "resetsAt">; t: Translate; language: OrbitLanguage }) {
+export function UsedUpNote({ quota, t, language }: { quota: Pick<PlanQuotaResponse, "reviewMonthlyLimit" | "resetsAt" | "reviewLimitReason">; t: Translate; language: OrbitLanguage }) {
+  // R25 复核: the month's AI budget can run out before the 3 reviews do — say which.
+  const budget = quota.reviewLimitReason === "ai_budget";
   return (
-    <div className={styles.usedUp} data-plan-review-used-up="">
+    <div className={styles.usedUp} data-plan-review-used-up={budget ? "ai_budget" : "monthly"}>
       <span className={styles.usedUpIcon} aria-hidden>⏳</span>
-      <p className={styles.label}>{t(r.usedUpCount, { date: monthDay(quota.resetsAt, language), days: daysUntil(quota.resetsAt), limit: quota.reviewMonthlyLimit })}</p>
+      <p className={styles.label}>{budget
+        ? t(r.aiBudgetCount, { date: monthDay(quota.resetsAt, language), days: daysUntil(quota.resetsAt) })
+        : t(r.usedUpCount, { date: monthDay(quota.resetsAt, language), days: daysUntil(quota.resetsAt), limit: quota.reviewMonthlyLimit })}</p>
       <p className={styles.body}>{t(r.usedUpBody)}</p>
       <p className={styles.body}>{t(r.usedUpScore)}</p>
     </div>
@@ -128,7 +132,7 @@ export function ReviewEntryModal({ open, onClose, planId, serverSince = null, fa
     : <><Button variant="ghost" label={copy.action.notNow} onClick={onClose} /><Button variant="primary" icon="sparkle" label={t(r.startReview)} loading={busy} onClick={() => void start()} data-plan-review-start="" /></>;
 
   return (
-    <Modal open={open} onClose={onClose} title={t(usedUp ? r.usedUpTitle : r.entryTitle)} size={560} actions={actions}>
+    <Modal open={open} onClose={onClose} title={t(usedUp ? (quota?.reviewLimitReason === "ai_budget" ? r.aiBudgetTitle : r.usedUpTitle) : r.entryTitle)} size={560} actions={actions}>
       {failed ? <PlanErrorNotice view={{ op: "other", tone: "failure" }} t={t} />
         : !quota ? <Skeleton lines={4} />
         : usedUp ? <UsedUpNote quota={quota} t={t} language={language} />

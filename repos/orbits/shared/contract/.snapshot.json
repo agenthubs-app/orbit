@@ -8092,6 +8092,13 @@
         }
       }
     },
+    "plan-v2.ts::PlanReviewLimitReason": {
+      "kind": "enum",
+      "values": [
+        "'ai_budget'",
+        "'monthly'"
+      ]
+    },
     "plan-v2.ts::PlanQuotaView": {
       "kind": "object",
       "members": {
@@ -8104,6 +8111,11 @@
           "optional": false,
           "kind": "text",
           "type": "number"
+        },
+        "reviewLimitReason": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanReviewLimitReason"
         },
         "manualEditAvailable": {
           "optional": false,
@@ -9084,6 +9096,36 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "slotState": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanDraftSlotState[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanDraftSlotState": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "earned": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "metCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -10375,6 +10417,11 @@
           "kind": "text",
           "type": "number"
         },
+        "reviewLimitReason": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanReviewLimitReason"
+        },
         "resetsAt": {
           "optional": false,
           "kind": "text",
@@ -10475,6 +10522,11 @@
           "optional": false,
           "kind": "text",
           "type": "number"
+        },
+        "reviewLimitReason": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanReviewLimitReason"
         },
         "resetsAt": {
           "optional": false,
@@ -13393,7 +13445,7 @@
             "frequency": {
               "optional": false,
               "kind": "text",
-              "type": "'daily' | 'monthly' | 'weekly'"
+              "type": "'monthly' | 'daily' | 'weekly'"
             },
             "until": {
               "optional": true,

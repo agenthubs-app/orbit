@@ -33,20 +33,27 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
   const [done, setDone] = useState<PlanAchievementView | null>(null);
   const [failed, setFailed] = useState(false);
   const [next, setNext] = useState<PlanNextGoalsResponse | null>(null);
+  const [asked, setAsked] = useState(false);
   const [quota, setQuota] = useState<PlanQuotaResponse | null>(null);
 
   const load = useCallback(async () => {
     setFailed(false);
-    const result = await planApi<PlanAchievementView>(`/v2/${encodeURIComponent(planId)}/achievement`, { language });
-    if (!result.ok) { setFailed(true); return; }
-    setDone(result.data);
-    const [goals, limits] = await Promise.all([
-      planApi<PlanNextGoalsResponse>(`/v2/${encodeURIComponent(planId)}/next-goals`, { language }),
+    const [result, limits] = await Promise.all([
+      planApi<PlanAchievementView>(`/v2/${encodeURIComponent(planId)}/achievement`, { language }),
       planApi<PlanQuotaResponse>("/v2/quota", { language }),
     ]);
+    if (!result.ok) { setFailed(true); return; }
+    setDone(result.data);
+    setQuota(limits.ok ? limits.data : null);
+  }, [planId, language]);
+
+  // R25 复核 m3 (DESIGN §2.9): the next-goal ideas (C10) are asked for only when the person
+  // presses 「次の目標を決める」 — looking back at a finished goal costs nothing.
+  const askNext = useCallback(async () => {
+    setAsked(true);
+    const goals = await planApi<PlanNextGoalsResponse>(`/v2/${encodeURIComponent(planId)}/next-goals`, { language });
     // C10 unavailable → only 「自分で決める」.
     setNext(goals.ok ? goals.data : { candidates: [], source: "none" });
-    setQuota(limits.ok ? limits.data : null);
   }, [planId, language]);
 
   useEffect(() => { void load(); }, [load]);
@@ -61,7 +68,7 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
           : (
             <div className={styles.columns} data-plan-done={done.planId}>
               <Recap done={done} t={t} />
-              <NextGoals planId={planId} next={next} quota={quota} t={t} language={language} />
+              {asked ? <NextGoals planId={planId} next={next} quota={quota} t={t} language={language} /> : <NextIntro onDecide={() => void askNext()} t={t} />}
             </div>
           )}
       </ToastProvider>
@@ -94,6 +101,24 @@ function Recap({ done, t }: { done: PlanAchievementView; t: Translate }) {
         </section>
       ) : null}
       {done.skippedAreas.length ? <p className={styles.skipped} data-plan-done-skipped="">{t(r.skippedAreas, { list: done.skippedAreas.join(" · ") })}</p> : null}
+    </div>
+  );
+}
+
+/** Before asking: what comes next, 「次の目標を決める」 and a way back. */
+function NextIntro({ onDecide, t }: { onDecide: () => void; t: Translate }) {
+  const router = useRouter();
+  return (
+    <div className={styles.column}>
+      <Card data-plan-next-intro="">
+        <div className={styles.rowBetween}><b>{t(r.nextTitle)}</b><span className={styles.label}>{t(r.nextNote)}</span></div>
+        <p className={styles.body}>{t(r.nextIntro)}</p>
+        <div className={styles.actionsRow}>
+          <Button variant="ghost" label={t(r.later)} onClick={() => router.push(planTaskSegmentHref("web"))} data-plan-next-later="" />
+          <span className={styles.push} />
+          <Button variant="primary" icon="sparkle" label={t(r.nextDecide)} onClick={onDecide} data-plan-next-decide="" />
+        </div>
+      </Card>
     </div>
   );
 }

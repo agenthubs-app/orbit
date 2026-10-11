@@ -7,13 +7,13 @@
 // R25: the same page edits a review draft (kind review: after a 見直し, or opened by
 // 「手動で編集」 on the overview): the review's 3-step progress, 「保存して確定」, and on
 // success Task › プラン with 「方案を更新しました」; back returns to where it came from.
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 
 import type { PlanDraftView } from "../../api/contract/plan-v2";
 import { PLAN_ALLOCATION_TOTAL, PLAN_EVENT_TARGET_MAX, PLAN_TYPE_TARGET_MAX, type PlanAllocationMove } from "../../api/compute/plan-allocation";
-import { planTaskSegmentHref } from "../../api/compute/plan-href";
+import { planReviewHref, planTaskSegmentHref } from "../../api/compute/plan-href";
 import { PLAN_SHORT_NAME_COPY, planCopy } from "../../api/compute/plan-template-copy";
 import { PLAN_EVENT_SLOT } from "../../api/compute/plan-templates";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -35,6 +35,7 @@ import {
   manualEditReady,
   manualEditRequest,
   manualEditStateOf,
+  canRemoveType,
   moveStep,
   newIdempotencyKey,
   PLAN_EVENT_EMOJI,
@@ -46,6 +47,16 @@ import {
 } from "./plan-model";
 import { ReviewProgress } from "./plan-review-ui";
 import { FailureNote, InlineProblem, PlanFrame, Tag, usePlanStyles } from "./plan-ui";
+
+// The reflow's refusals in words (R25 review S1 adds earned / skipped / counted / has points).
+const MANUAL_ERROR_KEYS: Record<string, "plan.manual.errorStep" | "plan.manual.errorRange" | "plan.manual.errorBelowEarned" | "plan.manual.errorSkipped" | "plan.manual.errorBelowMet" | "plan.manual.errorHasPoints"> = {
+  below_earned: "plan.manual.errorBelowEarned",
+  cannot_remove_with_points: "plan.manual.errorHasPoints",
+  not_multiple_of_step: "plan.manual.errorStep",
+  skipped_locked: "plan.manual.errorSkipped",
+  target_below_met: "plan.manual.errorBelowMet",
+  target_out_of_range: "plan.manual.errorRange",
+};
 
 export function PlanManualEditScreen({ draftId }: { draftId: string }) {
   const api = usePlanApi();
@@ -82,7 +93,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
     }
     if (!result.ok) return setLoadFailure(result.failure);
     setDraft(result.data);
-    setState(manualEditStateOf(result.data.content));
+    setState(manualEditStateOf(result.data.content, result.data.slotState));
     setInputs({});
     setNotice(null);
   }, [api, draftId]);
@@ -93,7 +104,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
   }, [auth.ready, read, server.ready]);
 
   const kind = draft && isKnownGoalKind(draft.goalKind) ? draft.goalKind : null;
-  const origin = useMemo(() => (draft ? manualEditStateOf(draft.content) : null), [draft]);
+  const origin = useMemo(() => (draft ? manualEditStateOf(draft.content, draft.slotState) : null), [draft]);
   const originAllocation = useMemo(() => new Map([...(origin?.types ?? []).map((type) => [type.key, type.allocation] as const), [PLAN_EVENT_SLOT, origin?.event.allocation ?? 0]]), [origin]);
   const letters = typeLetters(state?.types ?? []);
   const labelOf = (key: string) => key === PLAN_EVENT_SLOT ? t("plan.draft.event") : `${letters.get(key) ?? ""} ${state?.types.find((type) => type.key === key)?.shortLabel ?? ""}`.trim();
@@ -113,7 +124,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
     }));
   };
 
-  const errorText = (error: string) => t(error === "not_multiple_of_step" ? "plan.manual.errorStep" : error === "target_out_of_range" ? "plan.manual.errorRange" : "plan.manual.errorNoRoom");
+  const errorText = (error: string) => t(MANUAL_ERROR_KEYS[error] ?? "plan.manual.errorNoRoom");
 
   const commitAllocation = (key: string) => {
     if (!state) return;
@@ -153,6 +164,18 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
     setSaveFailure(result.failure);
   };
 
+  // R25 review: the plan changed meanwhile and this review draft was discarded (STALE) →
+  // start a review on the latest plan and continue there (no review is used by opening).
+  const [reopening, setReopening] = useState(false);
+  const reopenLatest = async () => {
+    if (!draft?.planId || reopening) return;
+    setReopening(true);
+    const result = await api.startReview(draft.planId, newIdempotencyKey("review-start"));
+    setReopening(false);
+    if (!result.ok) return setSaveFailure(result.failure);
+    router.replace(planReviewHref("app", draft.planId) as Href);
+  };
+
   const total = state ? allocationTotal(state) : 0;
   const changes = state && origin ? changeCount(origin, state) : 0;
   const review = draft?.kind === "review";
@@ -168,7 +191,12 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
       footer={state && editable ? (
         <View style={styles.footer}>
           <UiText style={shared.caption}>{t("plan.manual.totals", { count: changes, total })}</UiText>
-          {saveFailure ? saveFailure.kind === "used" ? <InlineProblem text={t("plan.manual.used")} /> : <FailureNote failure={saveFailure} onReload={() => { setSaveFailure(null); void read(); }} /> : null}
+          {saveFailure && review && saveFailure.kind === "stale" ? (
+            <View accessibilityRole="alert" style={styles.stale} testID="manual-stale">
+              <UiText style={styles.staleText}>{t("plan.review.staleBody")}</UiText>
+              <Button label={t("plan.review.loadLatest")} loading={reopening} onPress={() => void reopenLatest()} size="sm" variant="secondary" />
+            </View>
+          ) : saveFailure ? saveFailure.kind === "used" ? <InlineProblem text={t("plan.manual.used")} /> : <FailureNote failure={saveFailure} onReload={() => { setSaveFailure(null); void read(); }} /> : null}
           <Button block disabled={!manualEditReady(state)} label={t(review ? "plan.manual.reviewSave" : "plan.manual.start")} loading={saving} onPress={() => void save()} variant="primary" />
         </View>
       ) : undefined}
@@ -233,8 +261,8 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
             </View>
             <UiText style={shared.caption}>{t("plan.manual.typesHint")}</UiText>
             {notice ? <UiText accessibilityRole="alert" style={shared.body2}>{notice}</UiText> : null}
-            {[...state.types.map((type) => ({ key: type.key, emoji: type.emoji, title: `${letters.get(type.key)} ${type.shortLabel}`, sub: type.roleSituation, allocation: type.allocation, count: type.targetCount, event: false })),
-              { key: PLAN_EVENT_SLOT, emoji: PLAN_EVENT_EMOJI, title: t("plan.draft.event"), sub: "", allocation: state.event.allocation, count: state.event.targetCount, event: true }].map((row) => {
+            {[...state.types.map((type) => ({ key: type.key, slot: type.slot, emoji: type.emoji, title: `${letters.get(type.key)} ${type.shortLabel}`, sub: type.roleSituation, allocation: type.allocation, count: type.targetCount, event: false })),
+              { key: PLAN_EVENT_SLOT, slot: PLAN_EVENT_SLOT, emoji: PLAN_EVENT_EMOJI, title: t("plan.draft.event"), sub: "", allocation: state.event.allocation, count: state.event.targetCount, event: true }].map((row) => {
               const before = originAllocation.get(row.key);
               const max = row.event ? PLAN_EVENT_TARGET_MAX : PLAN_TYPE_TARGET_MAX;
               return (
@@ -245,7 +273,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
                       <UiText style={shared.title}>{row.title}</UiText>
                       {row.sub ? <UiText numberOfLines={2} style={shared.caption}>{row.sub}</UiText> : null}
                     </View>
-                    {!row.event ? <IconButton icon="x" accessibilityLabel={t("plan.manual.removeType", { label: row.title })} disabled={state.types.length <= 1} onPress={() => setRemoving(row.key)} size={34} /> : null}
+                    {!row.event ? <IconButton icon="x" accessibilityLabel={t("plan.manual.removeType", { label: row.title })} disabled={state.types.length <= 1 || !canRemoveType(state, row.slot)} onPress={() => setRemoving(row.key)} size={34} /> : null}
                   </View>
                   <View style={shared.row}>
                     <UiText style={shared.label}>{t(row.event ? "plan.manual.times" : "plan.manual.people")}</UiText>
@@ -354,4 +382,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   points: { width: 64, textAlign: "center", minHeight: 40, paddingVertical: 6 },
   delta: { color: colors.accentText, fontSize: 12, fontWeight: "700", alignSelf: "flex-end" },
   sheet: { gap: 10, borderRadius: radius.lg },
+  stale: { backgroundColor: colors.macApricot, borderRadius: radius.md, padding: 12, gap: 8 },
+  staleText: { color: colors.macApricotText, fontSize: 13, lineHeight: 20, fontWeight: "600" },
 }));

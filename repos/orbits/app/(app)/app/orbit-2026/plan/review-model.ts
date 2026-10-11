@@ -131,3 +131,15 @@ export function markEvidence(mark: PlanPremiseMark, language: OrbitLanguage): st
   if (mark.evidence?.length) return mark.evidence.slice(0, 2).map((item) => { const day = monthDay(item.at, language); return day ? `${item.text}（${day}）` : item.text; }).join(" · ");
   return mark.reason ?? null;
 }
+
+/**
+ * R25 复核 m1: does the review draft change anything? Any change still accepted in any
+ * turn, or a premise row whose value differs from the plan's. Without the plan's premise
+ * (read failed) only the turns count.
+ */
+export function draftHasChanges(turns: readonly PlanDraftTurn[], premise: readonly PlanPremiseRow[], planPremise: readonly PlanPremiseRow[] | null): boolean {
+  if (turnHasChanges(turns)) return true;
+  if (!planPremise) return false;
+  const before = new Map(planPremise.map((row) => [row.key, row.value]));
+  return premise.some((row) => before.has(row.key) && before.get(row.key) !== row.value);
+}

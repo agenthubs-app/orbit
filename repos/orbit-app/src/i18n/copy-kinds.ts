@@ -458,6 +458,15 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["plan.mail.open", "button"],
   ["plan.mail.noSend", "label"],
   ["plan.mail.openFailed", "toast"],
+  // R25 review fixes (App).
+  ["plan.manual.errorBelowEarned", "sentence"],
+  ["plan.manual.errorSkipped", "sentence"],
+  ["plan.manual.errorBelowMet", "sentence"],
+  ["plan.manual.errorHasPoints", "sentence"],
+  ["plan.review.aiBudgetTitle", "label"],
+  ["plan.review.aiBudgetMeta", "label"],
+  ["plan.review.aiBudgetShort", "label"],
+  ["plan.done.decide", "fullButton"],
   // R24 review fixes (App).
   ["plan.pending.memoNoPoints", "label"],
   ["plan.pending.memoNoNameNoPoints", "label"],

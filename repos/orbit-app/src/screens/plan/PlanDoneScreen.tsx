@@ -1,7 +1,8 @@
 // R25 達成 → 完了 → 次の目標 (App `/plans/<planId>/done`, b4 A5 ②③). Restrained: an
 // emoji tile and three big numbers (スコア · 話した人 · イベント; count-up, a plain
 // number with 「減らす動き」), no confetti; いちばん効いたこと with its basis; the
-// skipped areas on their own line. 次の目標: up to two candidates from GET
+// skipped areas on their own line. 次の目標: only after 「次の目標を決める」 (R25 review
+// m3: just looking back never triggers the paid C10 call) — up to two candidates from GET
 // …/next-goals (single choice, basis under the chosen one) + 「自分で決める」; a
 // candidate starts the same generation flow as the first goal (POST …/intakes with
 // source next_goal), 「自分で決める」 opens the goal input. With two active goals the
@@ -40,6 +41,7 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
   const copy = useStandardCopy();
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const [next, setNext] = useState<PlanNextGoalsResponse | null>(null);
+  const [asking, setAsking] = useState(false);
   const [nextFailed, setNextFailed] = useState(false);
   const [quota, setQuota] = useState<PlanQuotaResponse | null>(null);
   const [choice, setChoice] = useState<string | null>(null);
@@ -50,15 +52,22 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
 
   const read = useCallback(async () => {
     const run = (sequence.current += 1);
-    const [done, goals, limits] = await Promise.all([api.achievement(planId), api.nextGoals(planId), api.quota()]);
+    const [done, limits] = await Promise.all([api.achievement(planId), api.quota()]);
     if (run !== sequence.current) return;
     if (!done.ok) return setLoad({ failure: done.failure, kind: "failed" });
     setLoad({ done: done.data, kind: "ready" });
-    // Candidates failing (AI off, busy) leave only 「自分で決める」.
-    setNext(goals.ok ? goals.data : { candidates: [], source: "none" });
-    setNextFailed(!goals.ok);
     setQuota(limits.ok ? limits.data : null);
   }, [api, planId]);
+
+  /** 次の目標を決める: asks for the candidates once; failing (AI off, busy) leaves only 「自分で決める」. */
+  const decideNext = async () => {
+    if (asking || next) return;
+    setAsking(true);
+    const goals = await api.nextGoals(planId);
+    setAsking(false);
+    setNext(goals.ok ? goals.data : { candidates: [], source: "none" });
+    setNextFailed(!goals.ok);
+  };
 
   useEffect(() => {
     if (!auth.ready || !server.ready) return;
@@ -132,41 +141,48 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
             </View>
           ) : null}
 
-          <View style={shared.card} testID="next-goals">
-            <UiText accessibilityRole="header" style={shared.heading}>{t("plan.done.nextTitle")}</UiText>
-            <UiText style={shared.caption}>{candidates.length ? t("plan.done.nextNote", { count: candidates.length }) : t("plan.done.nextNoteNone")}</UiText>
-            {nextFailed ? <UiText style={shared.caption}>{t("plan.done.nextFailed")}</UiText> : null}
-            <View accessibilityRole="radiogroup" accessibilityLabel={t("plan.done.nextTitle")} style={styles.choices}>
-              {candidates.map((candidate, index) => (
-                <CandidateCard key={`${candidate.goalText}-${index}`} candidate={candidate} language={language} selected={selected === String(index)} disabled={blocked} onSelect={() => setChoice(String(index))} />
-              ))}
-              <UiPressable
-                accessibilityRole="radio"
-                accessibilityLabel={t("plan.done.self")}
-                accessibilityState={{ checked: selected === SELF, disabled: blocked, selected: selected === SELF }}
-                aria-checked={selected === SELF}
-                disabled={blocked}
-                onPress={() => setChoice(SELF)}
-                style={[styles.choice, selected === SELF && styles.choiceOn, blocked && styles.disabled]}
-                testID="next-self"
-              >
-                <View style={shared.row}>
-                  <UiText style={shared.emoji}>✏️</UiText>
-                  <View style={shared.grow}>
-                    <UiText style={shared.title}>{t("plan.done.self")}</UiText>
-                    <UiText style={shared.caption}>{t("plan.done.selfNote")}</UiText>
+          {next ? (
+            <View style={shared.card} testID="next-goals">
+              <UiText accessibilityRole="header" style={shared.heading}>{t("plan.done.nextTitle")}</UiText>
+              <UiText style={shared.caption}>{candidates.length ? t("plan.done.nextNote", { count: candidates.length }) : t("plan.done.nextNoteNone")}</UiText>
+              {nextFailed ? <UiText style={shared.caption}>{t("plan.done.nextFailed")}</UiText> : null}
+              <View accessibilityRole="radiogroup" accessibilityLabel={t("plan.done.nextTitle")} style={styles.choices}>
+                {candidates.map((candidate, index) => (
+                  <CandidateCard key={`${candidate.goalText}-${index}`} candidate={candidate} language={language} selected={selected === String(index)} disabled={blocked} onSelect={() => setChoice(String(index))} />
+                ))}
+                <UiPressable
+                  accessibilityRole="radio"
+                  accessibilityLabel={t("plan.done.self")}
+                  accessibilityState={{ checked: selected === SELF, disabled: blocked, selected: selected === SELF }}
+                  aria-checked={selected === SELF}
+                  disabled={blocked}
+                  onPress={() => setChoice(SELF)}
+                  style={[styles.choice, selected === SELF && styles.choiceOn, blocked && styles.disabled]}
+                  testID="next-self"
+                >
+                  <View style={shared.row}>
+                    <UiText style={shared.emoji}>✏️</UiText>
+                    <View style={shared.grow}>
+                      <UiText style={shared.title}>{t("plan.done.self")}</UiText>
+                      <UiText style={shared.caption}>{t("plan.done.selfNote")}</UiText>
+                    </View>
+                    <Radio selected={selected === SELF} onSelect={() => !blocked && setChoice(SELF)} accessibilityLabel={t("plan.done.self")} />
                   </View>
-                  <Radio selected={selected === SELF} onSelect={() => !blocked && setChoice(SELF)} accessibilityLabel={t("plan.done.self")} />
-                </View>
-              </UiPressable>
+                </UiPressable>
+              </View>
+              {full ? <LimitNote failure={{ kind: "goalLimit" }} /> : monthlyOut ? <LimitNote failure={{ kind: "goalMonthlyLimit" }} /> : null}
+              <UiText style={shared.caption}>{t("plan.done.noDeadline")}</UiText>
+              {failure ? isLimitFailure(failure) ? <LimitNote failure={failure} /> : <FailureNote failure={failure} onReload={() => void read()} /> : null}
+              <Button block disabled={blocked} label={t("plan.done.start")} loading={creating} onPress={() => void go()} variant="primary" />
+              <UiText style={[shared.caption, styles.center]}>{t("plan.done.startNote")}</UiText>
+              <Button block label={t("plan.done.later")} onPress={later} variant="ghost" />
             </View>
-            {full ? <LimitNote failure={{ kind: "goalLimit" }} /> : monthlyOut ? <LimitNote failure={{ kind: "goalMonthlyLimit" }} /> : null}
-            <UiText style={shared.caption}>{t("plan.done.noDeadline")}</UiText>
-            {failure ? isLimitFailure(failure) ? <LimitNote failure={failure} /> : <FailureNote failure={failure} onReload={() => void read()} /> : null}
-            <Button block disabled={blocked} label={t("plan.done.start")} loading={creating} onPress={() => void go()} variant="primary" />
-            <UiText style={[shared.caption, styles.center]}>{t("plan.done.startNote")}</UiText>
-            <Button block label={t("plan.done.later")} onPress={later} variant="ghost" />
-          </View>
+          ) : (
+            <View style={shared.card} testID="next-ask">
+              <Button block label={t("plan.done.decide")} loading={asking} onPress={() => void decideNext()} variant="primary" />
+              <Button block label={t("plan.done.later")} onPress={later} variant="ghost" />
+            </View>
+          )}
         </>
       ) : null}
     </PlanFrame>

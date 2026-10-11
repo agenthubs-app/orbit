@@ -168,9 +168,18 @@ export interface PlanPremiseRow {
   guessed: boolean;
 }
 
+/**
+ * R25 复核 M1：见直次数为 0 的原因。`monthly` = 本月 3 次已用完；`ai_budget` = 本月的 AI 成本上限先用完了
+ * （失败的送出不扣次数，但占成本上限）。还有剩余时不出现。
+ */
+export type PlanReviewLimitReason = "monthly" | "ai_budget";
+
 export interface PlanQuotaView {
+  /** R25 复核 M1：= min(本月次数剩余, AI 成本上限剩余)。 */
   reviewLeftThisMonth: number;
   reviewMonthlyLimit: number;
+  /** R25 复核 M1：`reviewLeftThisMonth` 为 0 时的原因（可选）。 */
+  reviewLimitReason?: PlanReviewLimitReason;
   manualEditAvailable: boolean;
   activeGoals: number;
   activeGoalLimit: number;
@@ -456,6 +465,21 @@ export interface PlanDraftView {
   /** 乐观并发的令牌（手动编辑带回）。 */
   revision: string;
   updatedAt: string;
+  /**
+   * R25 复核 S1（只读，可选）：見直し / 确定后手动编辑的草稿（`kind: "review"`）才有。每个配点槽此刻的状态，
+   * `key` 与配点槽一致（人物类型的 `slot`；イベント枠 = `"event"`）：`earned` = 已得的 base 分（不含跳过记的分），
+   * `metCount` = 已计入的人数（イベント = 已计分的活动数），`skipped` = 已跳过（配点锁定、不参与回流）。
+   * 界面把它填进配点槽的 `earnedBase` / `metCount` / `skipped`，联动就会避开已得分与跳过的类型。草稿里新加、计划里还没有的类型不在这里（按 0 / false）。
+   */
+  slotState?: readonly PlanDraftSlotState[];
+}
+
+/** R25 复核 S1：配点槽的已得分 / 已计入人数 / 跳过状态（见 `PlanDraftView.slotState`）。 */
+export interface PlanDraftSlotState {
+  key: string;
+  earned: number;
+  metCount: number;
+  skipped: boolean;
 }
 
 /** 确定之后：新计划与 Task › プラン 的地址。 */
@@ -805,8 +829,11 @@ export interface PlanPremiseMark {
 export interface PlanReviewView {
   draft: PlanDraftView;
   premiseMarks: readonly PlanPremiseMark[];
+  /** R25 复核 M1：= min(本月次数剩余, AI 成本上限剩余)。 */
   reviewLeftThisMonth: number;
   reviewMonthlyLimit: number;
+  /** R25 复核 M1：`reviewLeftThisMonth` 为 0 时的原因（可选）。 */
+  reviewLimitReason?: PlanReviewLimitReason;
   /** 下次恢复（下个月 1 日 0 点，东京）。 */
   resetsAt: string;
   /** 这次见直参考的数据（确定以来的记录数）。 */
@@ -831,8 +858,11 @@ export interface PlanReviewToggleRequest {
 
 /** `GET /api/agent/plans/v2/quota`。 */
 export interface PlanQuotaResponse {
+  /** R25 复核 M1：= min(本月次数剩余, AI 成本上限剩余)。 */
   reviewLeftThisMonth: number;
   reviewMonthlyLimit: number;
+  /** R25 复核 M1：`reviewLeftThisMonth` 为 0 时的原因（可选）。 */
+  reviewLimitReason?: PlanReviewLimitReason;
   resetsAt: string;
   activeGoals: number;
   activeGoalLimit: number;

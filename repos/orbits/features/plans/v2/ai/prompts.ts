@@ -8,8 +8,10 @@ import type { PlanCopyLanguage } from "../../../../shared/compute/plan-template-
  * v2（R23 本机验证后）：初版 / 修正写明人物类型的全部字段，并强调「没有 ① 的句子不写数字」。
  * v3（R23 本机验证第 3 次初版被拒：删了一个枠却没补配点、Step 还引用它）：要求保留全部枠、默认照抄模板配点；
  * 修正时用户要求的改动在前提允许范围内就照做。v3 还没有真实调用验证（C6 本机 5 次已用完，见 R23 REPORT）。
+ * v4（R25）：C9 加「升 N 就降 N、先加总」。
+ * v5（R25 复核 M4）：C8 / C10 的记录换成短别名 R1…（联系人 C1…），并带面谈メモ摘要（kind memo）；依据只能用输入里的 R 别名。
  */
-export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-11-v4";
+export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-11-v5";
 
 const LANGUAGE: Record<PlanCopyLanguage, string> = { en: "English", ja: "Japanese (natural, polite です・ます)", zh: "Simplified Chinese" };
 
@@ -68,8 +70,9 @@ export const TASKS = {
     'Output: {"revised": <the full plan in the same shape as the input "current">, "reasons": [{"path": "steps.1.doneCriteria", "reason": "..."}], "unchanged": ["short labels of what stayed the same"], "noChangeReason": null}',
   ].join("\n"),
   reviewMarks: [
-    "The user is reviewing a confirmed plan. Given the confirmed premise rows and the records since then (talks, events, completed steps, memos), mark only the premise rows that may have changed.",
-    "For each marked row give the evidence record ids (from the input only), a suggested new value if the records say it, and a one-sentence reason. Mark nothing when nothing changed.",
+    "The user is reviewing a confirmed plan. Given the confirmed premise rows and the records since then (talks, events, completed steps, and memo summaries of meetings), mark only the premise rows that may have changed.",
+    "Each record has an id alias (R1, R2, ...), a kind (talked, event, step, memo), a short text and the contact alias (C1, ...) or null. Memo texts summarise what was discussed and are the main evidence for facts.",
+    "For each marked row give the evidence record ids (only R aliases from the input), a suggested new value if the records say it, and a one-sentence reason. Mark nothing when nothing changed.",
     'Output: {"marks": [{"key": "<premise row key>", "evidenceIds": ["..."], "suggested": "..." | null, "reason": "..."}]}',
   ].join("\n"),
   reviewFix: [
@@ -81,6 +84,7 @@ export const TASKS = {
   ].join("\n"),
   nextGoals: [
     "The user achieved a goal. From the summary and the records, propose at most 2 natural next goals (one sentence each, in the user's words style) with a goal kind from: launch, fundraising, sales, hiring, partnership, career; give the record ids that support each.",
+    "Records have id aliases (R1, R2, ...), a kind (talked, event, step, memo), a short text and a contact alias (C1, ...) or null; memo texts summarise meetings. Use only R aliases from the input as evidence ids.",
     'Output: {"candidates": [{"goalText": "...", "goalKind": "...", "evidenceIds": ["..."]}]}',
   ].join("\n"),
 } as const;
