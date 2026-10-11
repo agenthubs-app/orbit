@@ -101,6 +101,7 @@
     - **请求严出**：请求体 schema 保持 `.strict()`、枚举封闭；服务端写入校验同样严格。
     - **检查器**：响应字段放宽为 `| null`、`| unknown`、`| any`，或给必填字段加 `| undefined`，仍判为破坏（`scripts/contract-snapshot.mjs`）。
     - **`minSupportedAppVersion`（契约 11）在首次正式发布之后才启用**：正式发布前没有需要兼容的已装版本，契约可以直接改（走 `BREAKING.md` 登记），App 重新发布即可；正式发布后，旧版本读不了的变更必须先发一版能读的 App，或同时抬高 `minSupportedAppVersion`。
+11. **逐像素还原设计稿**（RD-16 修订，**用户决定 2026-10-11：适用于以后所有 Sprint，甲乙都一样**，包括 R12–R16 及之后全部功能 Sprint）：每个画面都要过逐像素门禁（Web 1440 / 1024 / 390 × 浅 / 深，App 模拟器浅 / 深；整屏 raw ≤0.02，`--grid` 超阈值带只能归因为 `[data]`），并提交归因文件 `repos/orbits/scripts/visual/attribution-redesign-<Sprint>.json`；不允许在「自定决定」里改动或省略设计稿，偏离先请用户拍板。做法见 [HOW-TO 第 8 节](HOW-TO-START-A-FEATURE-SPRINT.md#8-截图对照页与像素门禁)。
 
 ## 合回 `chat-agent` 前总验收（R09 写入；全部打勾才合回，RD-03 / RD-24）
 
@@ -127,6 +128,9 @@
 - [ ] staging 的 `VERCEL_ENV` / 展示页开关核对（R06 复核 m9：`/showcase` 只在非生产可见）。
 - [ ] 真机：触感反馈（R02–R04 只在模拟器验证）、真推送落地（R05）、Dynamic Type 最大字号走查。
 - [ ] 本地与 staging 都配置 `ORBIT_SYNC_CURSOR_SECRET`（R09 走查 A1：缺了它 App 的待办、人脈同步全部 503）。
+
+**还原设计稿（RD-16 修订，用户决定 2026-10-11）**
+- [ ] 两端每个画面都通过逐像素门禁（Web 三宽度 × 浅 / 深、App 浅 / 深），每个 Sprint 的归因文件 `attribution-redesign-<Sprint>.json` 已提交且超阈值带全部是 `[data]`；[2026-10-11 盘点](maintenance/2026-10-11-pixel-audit.md) 列出的不通过画面、「请用户拍板」条目和「设计稿无」画面全部处理完。
 
 **验收**
 - [ ] 两端全量对照 R09 基线零新增失败（orbits 6940 / 0、App 4172 / 仅 `/start`，之后各 Sprint 只增不减）。

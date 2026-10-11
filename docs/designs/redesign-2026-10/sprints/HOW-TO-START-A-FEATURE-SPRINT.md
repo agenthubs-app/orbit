@@ -121,6 +121,10 @@ render(body.data);
 - **门禁**：整屏 raw ≤0.02；`--grid` 逐带比对，超阈值的带必须在归因文件（`repos/orbits/scripts/visual/attribution-redesign-<Sprint>.json`）里具名，且只能归因为 `[data]`（数据文字不同）；有一条带写不出 `[data]` 理由，就是缺陷，修完再跑。不过门禁的画面不得标 done。
 - 对照页 `compare.html`：左边设计稿画板，中间实现，右边 diff，浅色 / 深色各一行，附 raw 与超阈值带数；放在证据目录，REPORT 里写路径和总表。
 - 用法细节见 `repos/orbits/scripts/visual/README-redesign.md`。
+- **适用范围**：以后所有 Sprint（甲乙都一样，含 R12–R16），不再有「先按自己理解做、事后对照」的做法。
+- **PLANNER**：验收契约（SC）必须为**每个画面写一条像素 SC**，写明对应的设计稿文件 + 画板标题（或 `--list` 的画板序号）、宽度（Web 1440 / 1024 / 390；App 模拟器）和主题（浅 / 深），以及到达该状态的 URL / 操作步骤；设计稿没有的宽度或状态写「设计稿无」并注明用户拍板结论。
+- **REPORT**：必须附门禁结果——每个画面 × 宽度 × 主题的 raw、超阈值带数、归因文件路径、证据目录；有未通过的画面不得标 done。
+- **独立复核**：REVIEW 必须**自己重跑门禁**（同一套命令、同一归因文件），逐条核对超阈值带的 `[data]` 理由是否属实；不能只看 REPORT 附的截图或对照页。
 
 ## 9. 改契约、改热点文件
 
@@ -132,4 +136,4 @@ render(body.data);
 1. 两端全量、typecheck、lint，对照基线零新增失败（失败的单独重跑确认是否不稳定）。`npm run lint` 只检查一份固定清单；新文件靠 `npm run typecheck` / `typecheck:app` 和各门禁测试把关。
 2. 先 `node .gitnexus/run.cjs analyze --index-only`，再 `node .gitnexus/run.cjs detect-changes --scope all --repo .`，结果写进 REPORT（索引落后时它只看得到少数文件，结论不可信）。
 3. 写 `REPORT.md`（做了什么、SC 对照、**像素门禁总表**、自定决定（只限工程决定，偏离设计稿的必须先请用户拍板，RD-16）、基线 → 收口、GitNexus、交接、已知例外），登记表改「done，待复核」，提交并 push。
-4. 独立 AI 复核写 `REVIEW.md`；修完 M 级和能修的 m 级，追加「处理记录」，登记表改「done，已复核，问题已修」。
+4. 独立 AI 复核写 `REVIEW.md`（**必须重跑像素门禁**，见第 8 节）；修完 M 级和能修的 m 级，追加「处理记录」，登记表改「done，已复核，问题已修」。
