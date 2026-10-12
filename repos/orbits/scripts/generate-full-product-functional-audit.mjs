@@ -1474,12 +1474,12 @@ const LIVE_PROFILE_INTERACTION_EVIDENCE = new Map(
       "One profile record was updated in place; a hard re-entry showed the same values and no duplicate record.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-shell.tsx:117",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-shell.tsx:119",
       "取消 in the persona / basic / settings save bar navigates to /app/profile with a full page load and discards the unsaved draft (no reload GET, no in-place view flip); the overview shows only the last saved values.",
       "Cancel performed no PUT and preserved the previously saved profile.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-shell.tsx:118",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-shell.tsx:120",
       "保存修改 in the basic / settings save bar submits the basic scope through the actor-scoped PUT and GET readback chain and shows the shell notice 基础资料已保存并完成复读核验。 (amber 基础资料已保存，但还需填写：… variant while onboarding stays incomplete); on persona it saves the matching scope and returns to the overview with the 修改已保存 toast.",
       "Repeated reads returned the same actor-owned profile; cleanup updated that record back to its original values.",
     ],

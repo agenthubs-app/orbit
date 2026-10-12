@@ -8,7 +8,9 @@ import { createContext, useCallback, useContext, useEffect, useId, useMemo, useS
 //   left / right     — buttons either side of the title;
 //   demoPill         — the sample-mode pill (ShellDemoPill), shown next to the title;
 //   rightRail        — the rail content (≥1280; 768–1279 the shell adds a 次の一手
-//                      button after `right` that opens it as a drawer; `false` hides the rail).
+//                      button after `right` that opens it as a drawer; `false` hides the rail);
+//   phoneFold        — the page draws its own heading below 768 (b6 / b8 390: home, Task),
+//                      so the shell keeps only the demo pill there; other pages keep the row.
 // Shell-drawn header buttons for the slots: ShellSearchButton (🔍 → ⌘K) and
 // ShellBellButton (🔔 → 受信箱, unread dot).
 // Node slots render inside the shell, not inside the page: anything they need
@@ -22,6 +24,7 @@ export type ShellSlots = {
   right?: ReactNode;
   demoPill?: ReactNode;
   rightRail?: ReactNode | false;
+  phoneFold?: boolean;
 };
 
 type SetSlots = (id: string, slots: ShellSlots | null) => void;
@@ -31,7 +34,7 @@ const SlotsContext = createContext<ShellSlots | null>(null);
 // re-render (and re-run its effect) every time the slots change.
 const SetSlotsContext = createContext<SetSlots | null>(null);
 
-const SLOT_KEYS = ["title", "subtitle", "left", "right", "demoPill", "rightRail"] as const;
+const SLOT_KEYS = ["title", "subtitle", "left", "right", "demoPill", "rightRail", "phoneFold"] as const;
 const sameSlots = (a: ShellSlots, b: ShellSlots) => SLOT_KEYS.every((key) => Object.is(a[key], b[key]));
 
 export function ShellSlotsProvider({ children }: { children: ReactNode }) {
@@ -70,11 +73,11 @@ export function useInShell(): boolean {
 export function ShellPage(props: ShellSlots) {
   const id = useId();
   const set = useContext(SetSlotsContext);
-  const { title, subtitle, left, right, demoPill, rightRail } = props;
+  const { title, subtitle, left, right, demoPill, rightRail, phoneFold } = props;
   useEffect(() => {
     if (!set) return;
-    set(id, { title, subtitle, left, right, demoPill, rightRail });
-  }, [set, id, title, subtitle, left, right, demoPill, rightRail]);
+    set(id, { title, subtitle, left, right, demoPill, rightRail, phoneFold });
+  }, [set, id, title, subtitle, left, right, demoPill, rightRail, phoneFold]);
   useEffect(() => (set ? () => set(id, null) : undefined), [set, id]);
   return null;
 }

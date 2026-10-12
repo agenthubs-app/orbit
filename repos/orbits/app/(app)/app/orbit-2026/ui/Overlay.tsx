@@ -131,7 +131,7 @@ export function Drawer({ open, onClose, title, size = "lg", children, footer, fu
   const copy = useStandardCopy();
   if (!open) return null;
   return (
-    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.drawerScrim}`} className={`${styles.drawer} ${styles[`drawer_${size}`]}${fullOnPhone ? ` ${styles.drawerFullPhone}` : ""}`}>
+    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.drawerScrim}`} className={`${styles.drawer} ${styles[`drawer_${size}`]}${fullOnPhone ? ` ${styles.drawerFullPhone}` : ""}${bare ? ` ${styles.drawerBareFrame}` : ""}`}>
       {bare ? <h2 id={`${id}-title`} className={styles.srOnly}>{title}</h2> : (
         <div className={styles.drawerHead}>
           <h2 id={`${id}-title`} className={styles.drawerTitle}>{title}</h2>

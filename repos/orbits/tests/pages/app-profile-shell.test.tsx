@@ -83,13 +83,15 @@ test("shell renders breadcrumb, title and the three design tabs as route links",
   assert.match(html, /个人中心/);
   assert.match(html, /个人资料 \/ 编辑商务画像/);
   assert.match(html, /<h1[^>]*>编辑商务画像<\/h1>/);
-  // 三页签：个人资料（profile/persona/basic 高亮）/ iOrbit 设置 / 连接，都是链接
+  // 页签：个人资料（profile/persona/basic 高亮）/ iOrbit 设置 / 连接，都是链接
   assert.match(html, /href="\/app\/profile"[^>]*aria-current="page"[^>]*>个人资料</);
   assert.match(html, /href="\/app\/settings"[^>]*>iOrbit 设置</);
   assert.match(html, /href="\/app\/profile\?view=connect"[^>]*>连接</);
   assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1);
   assert.match(html, /class="pc-tab pc-tab-on"/);
-  assert.equal((html.match(/class="pc-tab pc-tab-off"/g) ?? []).length, 2);
+  // 第四个是 主办（b12 W-R07-07b：手机上主办经マイページ进入），离开本页，不高亮
+  assert.match(html, /href="\/app\/events\/center"[^>]*>主办</);
+  assert.equal((html.match(/class="pc-tab pc-tab-off"/g) ?? []).length, 3);
   assert.match(html, /data-profile-view="persona"/);
   // 没有保存栏时不渲染 取消 / 保存修改
   assert.doesNotMatch(html, /保存修改/);

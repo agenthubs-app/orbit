@@ -71,7 +71,7 @@ function ShellFrame({ language, pathname, children }: { language: OrbitLanguage;
           <ToastProvider>
             <ShellMobileTop active={active} dot={dot} />
             {hasHeader ? (
-              <header className={styles.mainhead} data-orbit-2026-mainhead="">
+              <header className={`${styles.mainhead} ${slots.phoneFold ? styles.mainheadFold : ""}`} data-orbit-2026-mainhead="">
                 <div className={styles.headSide}>{slots.left}{slots.demoPill ? <span className={styles.demoSlot}>{slots.demoPill}</span> : null}</div>
                 <div className={styles.headTitle}>
                   {slots.title ? <h1 className={styles.title}>{slots.title}</h1> : null}
@@ -136,9 +136,11 @@ export function ShellSearchButton() {
 export function ShellBellButton() {
   const chrome = useContext(ShellChromeContext);
   const copy = useStandardCopy();
+  const { language } = useOrbitLanguage();
   if (!chrome) return null;
+  const label = chrome.inboxDot ? `${copy.nav.inbox} · ${pickCopy(shellCopy.inboxUnread, language)}` : copy.nav.inbox;
   return (
-    <Link href="/app/inbox" className={styles.rbtn} aria-label={copy.nav.inbox}>
+    <Link href="/app/inbox" className={styles.rbtn} aria-label={label}>
       <Icon name="bell" size={20} />{chrome.inboxDot ? <i className={styles.rdot} aria-hidden /> : null}
     </Link>
   );
@@ -153,7 +155,7 @@ function ShellRailButton({ count, open }: { count?: number; open: boolean }) {
   const { language } = useOrbitLanguage();
   if (!chrome?.rail) return null;
   return (
-    <button type="button" className={`btn ${styles.railButton} ${open ? styles.railButtonOn : ""}`} onClick={chrome.openRail} aria-label={pickCopy(shellCopy.railOpen, language)} data-orbit-2026-rail-button="">
+    <button type="button" className={`btn ${styles.railButton} ${open ? styles.railButtonOn : ""}`} onClick={chrome.openRail} aria-label={pickCopy(shellCopy.railOpen, language)} aria-haspopup="dialog" aria-expanded={open} data-orbit-2026-rail-button="">
       <Icon name="sparkle" size={16} />
       <span aria-hidden>{pickCopy(shellCopy.railNextTitle, language)}</span>
       {count ? <span className={styles.cnum} aria-hidden>{count}</span> : null}
@@ -218,7 +220,7 @@ function ShellSidebar({ active, dot }: { active: ShellNavKey | null; dot: boolea
 }
 
 // Under 768 (b6 mwHead): the 「O Orbit」 wordmark, 受信箱 as a round button with
-// the unread dot, and the avatar menu (which then also lists 設定 and 主催).
+// the unread dot, and the avatar menu (a bottom sheet; 設定 / 主催 are reached via マイページ).
 function ShellMobileTop({ active, dot }: { active: ShellNavKey | null; dot: boolean }) {
   const copy = useStandardCopy();
   return (

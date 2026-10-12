@@ -49,6 +49,8 @@ node scripts/visual/compare-redesign.mjs \
 - **主题**：设计侧把画框的 `data-theme` 设成 `--theme`（kit 的 token 按 `[data-theme]` 级联，深色画板与浅色画板是同一份结构）；实现侧只用 Playwright `colorScheme`（清掉 `localStorage["orbit-theme"]`，让实现处于默认「自動」，与设计稿头像菜单的「外観：自動」一致）。
 - **完整页面**：设计侧把画框内部滚动区（`.main` / `.rail` / `.scroll`）展开成自然高度；实现侧**不用** Playwright 的 fullPage，而是取两侧自然高度的最大值 H，把实现的视口直接设成 `宽 × H`、把设计画框高度设成 H 再截——实现的左栏是 sticky + 100vh，fullPage 截图里它只盖住第一屏，「同一块高屏幕」才可比。`--viewport-only` 关掉展开，只比第一屏。
 - **画框外壳**：设计侧先把画框搬到页面左上角（外面套一层与原祖先同名类的空壳，保留按分组写的嵌套样式；其余内容隐藏；不滚动就能截——画框原位在文档深处时，带 `backdrop-filter` 的右栏在滚动偏移下文字会错 1px 行，2026-10-12 R07 返工实测），再去掉画框圆角、阴影、注释针（`body.no-pins`）；`mweb390` 另去掉状态栏、Safari 地址栏和 Home 指示条（浏览器 / 系统外壳），并把为 Safari 底栏抬高的胶囊导航放回「视口底边之上同样间距」的位置。实现侧隐藏 Next dev 指示器。
+  - **基线不可直接比较**：2026-10-12 起（R07 返工）的门禁数字与此前的 run-01 不可直接比较（搬画框只去掉滚动造成的栅格差，但会改变带底色 / 模糊效果区域的数字）。空壳只复制祖先的 `className`，祖先上的 id、`data-*`、内联 CSS 变量、`:nth-child` 依赖会丢：新 Sprint 首次用某份画板时，先抽一张与旧基线对比，确认画板没有依赖这些。
+  - **局部视图用细带**：`--region` 视图建议 `--grid 30`（R07 复核 M6：整块只算一条带时，白底上缺一整块控件 raw 也可能 <0.02）；每个「通过」都要人看过 triptych。
 - **登录**：`--login <email>`，密码只从 `--password-env`（默认 `ORBIT_PRIMARY_TEST_ACCOUNT_PASSWORD`）/ `.env.local` 读，不接受命令行明文、不打印。`--storage <文件>` 复用登录态（连续跑几十屏不撞登录限流）；该文件含会话 cookie，放 scratchpad，不要提交。
 - **局部**：`--region "x,y,w,h"` 只比一块（例：1440 左栏 `0,0,84,960`、右栏 `1080,0,360,960`），用于导航壳分件验收；画面是否通过仍以整屏数字为准。
 - **交互**：`--steps '<JSON 数组>'` 按顺序执行实现侧操作（`{"click":sel}` / `{"keys":"Meta+k"}` / `{"type":"文字"}` / `{"fill":[sel,文字]}` / `{"upload":[sel,文件]}` / `{"hover":sel}` / `{"wait":ms}` / `{"waitFor":sel}`）；`--click "<选择器>"`（可重复，实现侧先点开抽屉 / 弹层）、`--design-click "<画框内选择器>"`（设计侧）、`--wait-for "<选择器>"`、`--design-remove` / `--app-remove`（**只用于临时归因调查，正式数字不许用**）。

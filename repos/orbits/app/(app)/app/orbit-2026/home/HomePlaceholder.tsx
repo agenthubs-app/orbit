@@ -17,7 +17,7 @@ export function HomePlaceholder() {
   const { month, range } = monthHeading(language);
   return (
     <>
-      <ShellPage title={month} subtitle={range} left={<ShellSearchButton />} right={<HomeHeaderActions />} rightRail />
+      <ShellPage title={month} subtitle={range} left={<ShellSearchButton />} right={<HomeHeaderActions />} rightRail phoneFold />
       <Orbit2026Scope language={language} className={styles.body}>
         <EmptyState title={pickCopy(shellCopy.homeEmptyTitle, language)} message={pickCopy(shellCopy.homeEmptyBody, language)} ghostRows={3} />
       </Orbit2026Scope>

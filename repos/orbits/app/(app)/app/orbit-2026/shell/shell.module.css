@@ -35,7 +35,7 @@
   display: grid;
   place-items: center;
   font-weight: var(--fw-black);
-  font-size: var(--fs-dialog-title);
+  font-size: var(--fs-logo);
   margin-bottom: var(--space-18);
   flex: none;
 }
@@ -113,6 +113,8 @@
   overflow-y: auto;
 }
 .railBody { display: flex; flex-direction: column; gap: var(--space-14); min-height: 100%; }
+/* In the drawer the body sits under drawerHead and fills the rest (drawerRail > :last-child). */
+.drawerRail .railBody { min-height: 0; }
 .railTitle { font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); display: flex; align-items: center; gap: 8px; line-height: 1.5; }
 /* kit .emo.sm.lav */
 .emo { width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; font-size: var(--fs-emoji-sm); flex: none; background: var(--mac-lav); }
@@ -121,8 +123,13 @@
 .railCard p { margin-top: 6px; font-size: var(--fs-control); line-height: 1.7; color: var(--ink-2); }
 .railLabel { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); line-height: 1.5; }
 .prompts { display: grid; gap: 8px; }
-/* Two classes: beat the [data-orbit-real-page] button reset like the other controls here. */
+/* Two classes: beat the legacy global `.btn` (44 high, 15px, radius 10, nowrap) on old pages,
+   restating every property it sets — the rail and its drawer render there too. */
 .railBody .prompt {
+  display: block;
+  height: auto;
+  border: 0;
+  white-space: normal;
   padding: 9px 13px;
   border-radius: var(--r-md);
   background: var(--surface-2);
@@ -138,6 +145,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  height: auto;
+  border: 0;
+  font-weight: var(--fw-regular);
   padding: 12px 14px;
   border-radius: var(--r-bubble);
   background: var(--surface);
@@ -152,7 +162,7 @@
 /* The page's own header buttons (kit .btn, 40 high): restated over the legacy `.btn`. */
 .mainhead :global(.btn) { height: 40px; padding: 0 16px; gap: 6px; border: 0; border-radius: var(--r-pill); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
 /* kit .rbtn: a 40 round button (🔍 / 🔔 / 受信箱) with the coral unread dot. */
-.rbtn, .mainhead .rbtn, .mobileTop .rbtn {
+.rbtn, .mainhead .rbtn, .mobileTop .rbtn, .drawerRail .rbtn {
   position: relative;
   width: 40px;
   height: 40px;
@@ -170,6 +180,7 @@
 /* b6 .rail-btn: kit .btn (40, surface-2, 13 / 700) with a coral count. */
 .headScope .railButton {
   display: none;
+  border: 0;
   align-items: center;
   gap: 6px;
   height: 40px;
@@ -210,8 +221,8 @@
 .menuLabel { display: block; font-size: var(--fs-nav); font-weight: var(--fw-bold); color: var(--ink-3); padding: 6px 10px; letter-spacing: 0.04em; line-height: 1.5; }
 .menuSeg { margin: 0 6px 6px; }
 /* kit .seg buttons (6 / 13, 12 / 600) — the menu's segmented controls are the plain kit size. */
-.menuSeg [role="tablist"] [role="tab"] { min-height: 0; padding: 6px 13px; font-size: var(--fs-meta); font-weight: 600; line-height: 1.5; }
-.menu .menuOut { justify-content: flex-start; padding: 0 10px; margin-top: 2px; }
+.menuSeg [role="tablist"] [role="tab"] { min-height: 0; height: auto; border: 0; border-radius: var(--r-pill); padding: 6px 13px; font-size: var(--fs-meta); font-weight: 600; line-height: 1.5; }
+.menu .menuOut { justify-content: flex-start; height: 40px; gap: 6px; padding: 0 10px; margin-top: 2px; border: 0; border-radius: var(--r-pill); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
 /* b12 .sheet.amenu (390): bigger rows and segments for touch. */
 .menuCompact .menuRow { padding: 11px 10px; font-size: var(--fs-card-title); }
 .menuCompact .menuSeg [role="tablist"] [role="tab"] { padding: 8px 0; font-size: var(--fs-control); }
@@ -263,7 +274,8 @@
 .mobileLogo {
   width: 34px;
   height: 34px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-logo-sm);
+  line-height: 1.5;
   background: var(--ink);
   color: var(--bg);
   display: grid;
@@ -316,9 +328,10 @@
   .bottomScope { display: block; }
   .mobileTop { display: flex; }
   .content { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
-  /* b6 / b8 390: no main header row — the page's title folds into its own content.
-     Only the sample-mode pill stays (it is the way out of the demo). */
-  .mainhead { display: flex; justify-content: flex-start; padding: 0 var(--space-18); margin-bottom: 0; }
-  .mainhead:not(:has(.demoSlot)) { display: none; }
-  .headTitle, .headSide > :not(.demoSlot) { display: none; }
+  .mainhead { padding: var(--space-16) var(--space-18) 0; }
+  /* b6 / b8 390: pages that fold their title into their own content (phoneFold) lose the
+     header row; only the sample-mode pill stays (it is the way out of the demo). */
+  .mainheadFold { display: flex; justify-content: flex-start; padding: 0 var(--space-18); margin-bottom: 0; }
+  .mainheadFold:not(:has(.demoSlot)) { display: none; }
+  .mainheadFold .headTitle, .mainheadFold .headSide > :not(.demoSlot) { display: none; }
 }

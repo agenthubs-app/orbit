@@ -69,7 +69,7 @@ export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref 
     : tab === "calendar" || tab === "todo" ? <TaskAddButton label={pickCopy(tab === "calendar" ? shellCopy.taskAddEvent : shellCopy.taskAddTodo, language)} onSelect={startSlotAdd} /> : undefined;
   return (
     <>
-      <ShellPage title={pickCopy(shellCopy.taskTitle, language)} subtitle={monthHeading(language).range} left={tabs} right={add} rightRail />
+      <ShellPage title={pickCopy(shellCopy.taskTitle, language)} subtitle={monthHeading(language).range} left={tabs} right={add} rightRail phoneFold />
       {/* Outside the shell (a page on its own) there is no header: the tabs stay on the page. */}
       <Orbit2026Scope language={language} className={inShell ? styles.bar : styles.barAlone}>
         <div data-task-bar="" className={styles.mobileTabs}>

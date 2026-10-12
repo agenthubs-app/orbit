@@ -54,5 +54,6 @@ export const shellCopy = {
   railOpen: { ja: "次の一手を開く", zh: "打开下一步", en: "Open next steps", kind: "label" },
   // After the 「Esc」 key cap in the 1024 rail drawer (b12 N07b).
   railCloseHint: { ja: "で閉じる", zh: "关闭", en: "to close", kind: "label" },
+  inboxUnread: { ja: "未読あり", zh: "有未读", en: "unread", kind: "label" },
   searchAndAsk: { ja: "検索 · iOrbit に聞く", zh: "搜索 · 问 iOrbit", en: "Search or ask iOrbit", kind: "label" },
 } satisfies OrbitCopyTable;

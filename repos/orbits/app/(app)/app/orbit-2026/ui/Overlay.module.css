@@ -80,6 +80,11 @@
 @media (prefers-color-scheme: dark) {
   :global(:root:not([data-theme="light"])) .drawer { border: 1px solid var(--line); }
 }
+/* bare (the shell's rail drawer, b12 N07b): no hairline in dark, as on the board. */
+:global(:root[data-theme="dark"]) .drawer.drawerBareFrame { border: 0; }
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .drawer.drawerBareFrame { border: 0; }
+}
 .drawer:focus { outline: none; }
 .drawer_lg { width: min(600px, calc(100vw - 28px)); }
 .drawer_md { width: min(520px, calc(100vw - 28px)); }

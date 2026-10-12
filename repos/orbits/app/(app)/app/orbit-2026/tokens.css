@@ -71,6 +71,7 @@
   --r-menu: 18px;
   --r-tile: 16px;
   --r-row: 12px;
+  --r-logo-sm: 11px;
   --r-tag: 6px;
   --gap: 14px;
   --space-4: 4px;
@@ -101,6 +102,7 @@
   --fs-nav: 10.5px;
   --fs-tab: 10px;
   --fs-emoji-sm: 17px;
+  --fs-logo: 17px;
   --fs-row: 13.5px;
   --fs-dialog-title: 16px;
   --fs-control: 12.5px;

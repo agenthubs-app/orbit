@@ -12,7 +12,7 @@ import type { ProfileEditorSession } from "./use-profile-editor-session";
 
 export type ProfileView = "profile" | "persona" | "basic" | "settings" | "connect";
 
-type Copy = { zh: string; en: string };
+type Copy = { zh: string; en: string; ja?: string };
 
 // 设计稿 renderVals().titles：[title, sub, crumb]；basic 屏设计无，文案由实现者补。
 const TITLES: Record<ProfileView, { title: Copy; sub: Copy; crumb: Copy }> = {
@@ -44,10 +44,12 @@ const TITLES: Record<ProfileView, { title: Copy; sub: Copy; crumb: Copy }> = {
 };
 
 // 设计稿 tabs：个人资料（profile/persona/basic 高亮）/ iOrbit 设置 / 连接；页签为路由链接。
-const TABS: { key: "profile" | "settings" | "connect"; href: string; label: Copy; active: readonly ProfileView[] }[] = [
+// 主办（过渡）：头像菜单按 b12 W-R07-07b 定稿不再列主办，手机上经マイページ进入（用户 2026-10-12 拍板）；离开本页、不高亮。正式版由 R18 账户改版按设计稿重做。
+const TABS: { key: "profile" | "settings" | "connect" | "host"; href: string; label: Copy; active: readonly ProfileView[] }[] = [
   { key: "profile", href: "/app/profile", label: { zh: "个人资料", en: "Profile" }, active: ["profile", "persona", "basic"] },
   { key: "settings", href: "/app/settings", label: { zh: "iOrbit 设置", en: "iOrbit settings" }, active: ["settings"] },
   { key: "connect", href: "/app/profile?view=connect", label: { zh: "连接", en: "Connections" }, active: ["connect"] },
+  { key: "host", href: "/app/events/center", label: { ja: "主催", zh: "主办", en: "Host" }, active: [] },
 ];
 
 export interface ProfileOnboardingQuery {

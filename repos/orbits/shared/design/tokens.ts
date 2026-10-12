@@ -176,6 +176,7 @@ export const designRadius = {
   menu: 18,
   tile: 16,
   row: 12,
+  logoSm: 11,
   tag: 6
 } as const;
 
@@ -204,6 +205,7 @@ export const designFont = {
     nav: 10.5,
     tab: 10,
     emojiSm: 17,
+    logo: 17,
     row: 13.5,
     dialogTitle: 16,
     control: 12.5,

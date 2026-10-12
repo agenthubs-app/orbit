@@ -33,7 +33,7 @@
 | [R04](R04-app-components/GOAL.md) | App 组件库（5 类）+ 展示页 + 基础设施改用新组件；旧写法只减不增门禁 | R01、R02、R03 | H | done，已复核，问题已修（模拟器走查已做，只剩触感需真机确认；[REPORT](R04-app-components/REPORT.md)、[REVIEW](R04-app-components/REVIEW.md) 末尾「处理记录」） |
 | [R05](R05-app-shell/GOAL.md) | App 导航壳：NAV-V3 底栏、Task 容器、二级页规则 | R04 | H | done，已复核，问题已修（M1–M3、m1–m5 已修，m6 底栏随转场的观感请产品负责人在模拟器确认；R01 m3 冷启动闪主题已在本 Sprint 处理；[REPORT](R05-app-shell/REPORT.md)、[REVIEW](R05-app-shell/REVIEW.md) 末尾「处理记录」） |
 | [R06](R06-web-components/GOAL.md) | Web 组件库（5 类，CSS Modules，新作用域） | R01、R02、R03 | H | done，已复核，问题已修（M1–M4、m1–m6、m10 已修；m9 staging 的 `VERCEL_ENV` 需人确认；[REPORT](R06-web-components/REPORT.md)、[REVIEW](R06-web-components/REVIEW.md) 末尾「处理记录」） |
-| [R07](R07-web-shell/GOAL.md) | Web 导航壳：左栏、主标题区、右栏、⌘K，全站一次切换 | R06 | H | done，已复核，问题已修（M5 已按产品决定 (a) 落实；R03 M2、R01 m4 在此处理；[REPORT](R07-web-shell/REPORT.md)、[REVIEW](R07-web-shell/REVIEW.md) 末尾「处理记录」） |
+| [R07](R07-web-shell/GOAL.md) | Web 导航壳：左栏、主标题区、右栏、⌘K，全站一次切换 | R06 | H | done（像素返工已过门禁，2026-10-12：壳的局部视图三宽度 × 浅 / 深全过，超阈带只剩 `[data]`；返工已独立复核、问题已修，[REWORK-REPORT](R07-web-shell/REWORK-REPORT.md)、[REWORK-REVIEW](R07-web-shell/REWORK-REVIEW.md) 末尾「处理记录」）。留给功能 Sprint：メモ「＋ メモを追加」（R20）、1024 抽屉 / 右栏的建议内容与计数（R10）、⌘K 面板本体 W-R07-05 / 06（待开 Sprint）、マイページ主催入口正式版（R18）。第一轮：done，已复核，问题已修（M5 已按产品决定 (a) 落实；R03 M2、R01 m4 在此处理；[REPORT](R07-web-shell/REPORT.md)、[REVIEW](R07-web-shell/REVIEW.md) 末尾「处理记录」） |
 | [R08](R08-contracts-and-mocks/GOAL.md) | 12 个契约 + 校验 + mock 接口 + 统一演示世界 + 「只加不改」检查 | R01 | H | done，已复核，问题已修（M3 口径产品负责人已确认并落实，见通用规则 10；[REPORT](R08-contracts-and-mocks/REPORT.md)、[REVIEW](R08-contracts-and-mocks/REVIEW.md) 末尾「处理记录」） |
 | [R09](R09-skeleton-acceptance/GOAL.md) | 骨架验收：规则入库、开发说明、全流程走查、截图集、基线对照 | R01–R08 | H | done，已复核，问题已修（热点文件归属已定稿、App `AGENTS.md` 贴规则已完成（2026-10-10）；SC-06 拍板由小雨负责；[REPORT](R09-skeleton-acceptance/REPORT.md)、[REVIEW](R09-skeleton-acceptance/REVIEW.md) 末尾「处理记录」、[截图集](https://claude.ai/artifact/S8PXMfqVrY9nusMFtfdCHY)） |
 
@@ -63,7 +63,7 @@
 | RD-02 | 导航用 **NAV-V3**：App 底栏 ホーム / 人脈 / iOrbit / イベント / Task；「我的」从首页左上头像进入，收件箱从首页右上 🔔 进入（只显示红点）；Web 左栏 ホーム / 人脈 / iOrbit / イベント / Task / 受信箱，底部 主催 / 設定。替代 2026-10-04 人脉方案的导航（其内容想法放进各功能 Sprint） | R05、R07 |
 | RD-03 | 在 `redesign` 分支开发；所有功能完成并整体验收后一次合并回 `chat-agent`；**改版期间 `chat-agent` 冻结** | 全部 |
 | RD-04 | 骨架由小雨一人做完；时间不作为约束；验收 = 产品负责人看截图集并在模拟器 / 浏览器试用 + 独立 AI 复核（`REVIEW.md`） | R01–R09 |
-| RD-05 | **新 token 值直接覆盖旧 token**；文字用加深版颜色，所有「文字 × 底色」组合 ≥4.5:1，设计原值只用于图形、装饰和 ≥18px 粗体；两端默认主题跟随系统，设置里提供 自动 / 浅色 / 深色。**例外（用户决定 2026-10-12）**：Web 左栏未选中项的图标与文字照设计稿用 `--ink-3`（对标 iOS 标签栏未选中项的浅灰，靠图标与选中态区分） | R01、R07 |
+| RD-05 | **新 token 值直接覆盖旧 token**；文字用加深版颜色，所有「文字 × 底色」组合 ≥4.5:1，设计原值只用于图形、装饰和 ≥18px 粗体；两端默认主题跟随系统，设置里提供 自动 / 浅色 / 深色。**例外（用户决定 2026-10-12）**：Web 左栏未选中项的图标与文字照设计稿用 `--ink-3`（对标 iOS 标签栏未选中项的浅灰，靠图标与选中态区分）；**扩大（用户决定 2026-10-12，R07 复核 M1）**：Web 导航壳内的次要说明文字（标题区日期、右栏「こんなことを聞けます」与输入框占位、抽屉「Esc で閉じる」、头像菜单邮箱与「言語 / 外観」、390 胶囊标签）同样照设计稿用 `--ink-3`，示例药丸照设计稿杏色（对标 iOS / macOS 次要说明文字的浅灰） | R01、R07 |
 | RD-06 | **一律改用设计稿的命名**（ink、surface、plum、rose、mac、coral、ok …）；App 和 Web 引用旧名字的地方一次改完，不保留旧名字或别名 | R01 |
 | RD-07 | 「旧颜色 → 新颜色」对照表由执行人出好，**先给产品负责人确认再应用** | R01 |
 | RD-08 | `shared/design`、`shared/copy` 加进 App 同步白名单（`AGENTS.md` 相应修改） | R01、R03 |
@@ -123,6 +123,7 @@
 - [ ] Web `AgentDock` 按主区居中（R07 复核 M3 附带，R10）。
 - [ ] 产品负责人事后确认：R04 复核 M5（注销确认改为动作表、焦点在安全项）、R05 复核 m6（底栏不随页面转场滑动）。
 - [ ] R09 走查留给功能 Sprint 的两条：W3 开发模式水合警告（`/app/events`、`/app/contacts`，R26 / R11）、A2 登录确认画面已显示底栏（R18）。
+- [ ] Web マイページ「主催」入口按设计稿重做（R18 账户改版）：R07 返工期间为了手机 Web 能进主催页，在旧マイページ页签栏临时加了「主催」链接（用户拍板 2026-10-12，R07 复核 M3；头像菜单按 b12 W-R07-07b 不列主催）。
 
 **上线前的环境与真机**
 - [ ] staging 的 `VERCEL_ENV` / 展示页开关核对（R06 复核 m9：`/showcase` 只在非生产可见）。
