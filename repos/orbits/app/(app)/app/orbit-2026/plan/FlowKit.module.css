@@ -577,3 +577,4 @@ ol.v22flow { margin: 0; padding: 0; list-style: none; }
 }
 .chipOnFlat { flex: none; }
 .foptOnFlat { cursor: default; }
+.btnOff.btnOff { opacity: .5; cursor: default; }

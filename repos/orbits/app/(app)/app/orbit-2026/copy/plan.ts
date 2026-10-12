@@ -342,7 +342,7 @@ export const planFlowCopy = {
   limitFixSub: { ja: "修正の回数は減っていません。手動で編集するか、この内容で確定できます。", zh: "修改次数没有减少。可以手动编辑，或按现在的内容确定。", en: "No revision was used. Edit by hand or confirm as is.", kind: "sentence" },
   limitDraftSub: { ja: "前提は保存されています。{date}から初版をつくれます。", zh: "前提已保存。{date}起可以生成初稿。", en: "Your premises are saved. You can make the first draft from {date}.", kind: "sentence" },
   limitBackgroundSub: { ja: "下書きなしで、自分で選べます", zh: "不用草稿，也可以自己选", en: "You can choose without a draft", kind: "label" },
-  moveHint: { ja: "Step {n} を並べ替え（ドラッグ · Alt + ↑↓）", zh: "调整 Step {n}的顺序（拖动 · Alt + ↑↓）", en: "Reorder step {n} (drag · Alt + ↑↓)", kind: "label" },
+  moveHint: { ja: "Step {n} を並べ替え（ドラッグ · ↑↓）", zh: "调整 Step {n}的顺序（拖动 · ↑↓）", en: "Reorder step {n} (drag · ↑↓)", kind: "label" },
   peopleUnit: { ja: "人", zh: "位", en: "ppl", kind: "label" },
   timesUnit: { ja: "回", zh: "次", en: "×", kind: "label" },
   plannedRailTitle: { ja: "確定した方案", zh: "已确定的方案", en: "Confirmed plan", kind: "label" },
@@ -386,9 +386,6 @@ export const planFlowCopy = {
   limitActiveGoalsSub: { ja: "目標を達成にするか、目標の切り替えから 1つを終えると追加できます", zh: "把一个目标标为达成，或在目标切换里结束一个，就能新增", en: "Mark a goal achieved or end one from the goal switcher to add another", kind: "label" },
   activeGoalLine: { ja: "スコア {score}", zh: "得分{score}", en: "Score {score}", kind: "label" },
   activeGoalPeople: { ja: "話した人 {count}", zh: "聊过的人{count}", en: "{count} talked to", kind: "label" },
-  sampleShortVc: { ja: "VC", zh: "VC", en: "VC", kind: "label" },
-  sampleShortFounder: { ja: "起業家", zh: "创业者", en: "Founder", kind: "label" },
-  sampleShortCvc: { ja: "CVC", zh: "CVC", en: "CVC", kind: "label" },
   sampleFounder: { ja: "この 3年以内にシリーズA を調達した、B2B SaaS の起業家", zh: "近3年内完成 A 轮融资的 B2B SaaS 创业者", en: "A B2B SaaS founder who raised a Series A in the last 3 years", kind: "label" },
 } as const satisfies OrbitCopyTable;
 

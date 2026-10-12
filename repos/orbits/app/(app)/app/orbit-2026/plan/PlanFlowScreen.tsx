@@ -299,7 +299,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
             <dl className={k.known}>{intake.reading.map((item) => <div key={item.kind}><dt className={k.lbl}>{t(READING[item.kind])}</dt><dd>{item.detail}</dd></div>)}</dl>
           </div>
         </div>
-        <div className={k.actRow}><span className={k.lbl}>{t(planFlowCopy.draftingHint)}</span><button type="button" className={`btn ${k.btn} ${k.primary}`} disabled>{t(planFlowCopy.draftingButton)}</button></div>
+        <div className={k.actRow}><span className={k.lbl}>{t(planFlowCopy.draftingHint)}</span>{/* A status, not a control: it reads as the disabled kit button (b12 W-R23-03). */}<span role="status" className={`${k.btn} ${k.primary} ${k.btnOff}`}>{t(planFlowCopy.draftingButton)}</span></div>
       </>
     );
   } else if (intake.status === "background") {

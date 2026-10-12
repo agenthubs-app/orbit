@@ -254,9 +254,9 @@ function SampleTypes({ t }: { t: Translate }) {
   const standard = useStandardCopy();
   // b12 goalWeb / b10 ① (newer than web.html, Q2): b10's types A · B · C (上市・収益化) at 0 points.
   const samples = [
-    { cand: 2, emoji: "🎪", events: 2, letter: "A", routes: 1, short: planFlowCopy.sampleShortA, slot: "first_payer", steps: "1・2・4", target: 5, text: planFlowCopy.sampleTypeA, tone: k.emoLav, units: planFlowCopy.sampleUnitsA, weight: 20 },
-    { cand: 0, emoji: "🎨", events: 3, letter: "B", routes: 1, short: planFlowCopy.sampleShortB, slot: "brand_pr", steps: "1・3・4", target: 2, text: planFlowCopy.sampleTypeB, tone: k.emoPink, units: planFlowCopy.sampleUnitsB, weight: 20 },
-    { cand: 0, emoji: "📇", events: 2, letter: "C", routes: 2, short: planFlowCopy.sampleShortC, slot: "prior_product", steps: "2・5", target: 2, text: planFlowCopy.sampleTypeC, tone: k.emoTeal, units: planFlowCopy.sampleUnitsC, weight: 15 },
+    { cand: 2, emoji: "🎪", events: 2, letter: "A", routes: 1, short: planFlowCopy.sampleShortA, slot: "first_payer", steps: [1, 2, 4], target: 5, text: planFlowCopy.sampleTypeA, tone: k.emoLav, units: planFlowCopy.sampleUnitsA, weight: 20 },
+    { cand: 0, emoji: "🎨", events: 3, letter: "B", routes: 1, short: planFlowCopy.sampleShortB, slot: "brand_pr", steps: [1, 3, 4], target: 2, text: planFlowCopy.sampleTypeB, tone: k.emoPink, units: planFlowCopy.sampleUnitsB, weight: 20 },
+    { cand: 0, emoji: "📇", events: 2, letter: "C", routes: 2, short: planFlowCopy.sampleShortC, slot: "prior_product", steps: [2, 5], target: 2, text: planFlowCopy.sampleTypeC, tone: k.emoTeal, units: planFlowCopy.sampleUnitsC, weight: 15 },
   ];
 
   return (
@@ -273,7 +273,7 @@ function SampleTypes({ t }: { t: Translate }) {
               <div className={k.row} style={{ alignItems: "flex-start" }}>
                 <span className={`${k.emo} ${sample.tone}`}>{sample.emoji}</span>
                 <div className={k.grow}>
-                  <div className={k.tk}>{t(planFlowCopy.sampleKickerType, { letter: sample.letter, short, steps: sample.steps })}</div>
+                  <div className={k.tk}>{t(planFlowCopy.sampleKickerType, { letter: sample.letter, short, steps: sample.steps.join(t(planFlowCopy.listSeparator)) })}</div>
                   <b className={k.tn}>{t(sample.text)}</b>
                 </div>
                 <div className={k.pp}>0<small> / {sample.weight}</small></div>

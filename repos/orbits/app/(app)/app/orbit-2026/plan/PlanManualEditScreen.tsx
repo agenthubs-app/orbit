@@ -336,7 +336,12 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
                       if (event.key === "ArrowUp" && index > 0) { event.preventDefault(); moveStep(step.uid, index - 1); }
                       if (event.key === "ArrowDown" && index < steps.length - 1) { event.preventDefault(); moveStep(step.uid, index + 1); }
                     }}>
-                    <button type="button" className={`btn ${k.grip}`} aria-label={t(planFlowCopy.moveHint, { n: index + 1 })} />
+                    <button type="button" className={`btn ${k.grip}`} aria-label={t(planFlowCopy.moveHint, { n: index + 1 })}
+                      onKeyDown={(event) => {
+                        // The grip is also the keyboard way to reorder: ↑ / ↓ move this step.
+                        if (event.key === "ArrowUp" && index > 0) { event.preventDefault(); moveStep(step.uid, index - 1); }
+                        if (event.key === "ArrowDown" && index < steps.length - 1) { event.preventDefault(); moveStep(step.uid, index + 1); }
+                      }} />
                     <span className={k.v2snum}>{index + 1}</span>
                     <div className={k.em}>
                       {open ? (
@@ -468,7 +473,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
                   })}
                   <div className={k.trow}><div className={k.tm}><b>{t(planFlowCopy.total)}</b></div><span className={k.ba}><b>{totalOf(removing.slots)}</b></span></div>
                 </div>
-                <div className={`${k.lbl} ${k.delNote}`}>{inSteps.length ? t(planFlowCopy.removeNote, { letter: item?.letter ?? "", steps: inSteps.join("・") }) : t(planFlowCopy.removeNoteNoStep, { letter: item?.letter ?? "" })}</div>
+                <div className={`${k.lbl} ${k.delNote}`}>{inSteps.length ? t(planFlowCopy.removeNote, { letter: item?.letter ?? "", steps: inSteps.join(t(planFlowCopy.listSeparator)) }) : t(planFlowCopy.removeNoteNoStep, { letter: item?.letter ?? "" })}</div>
                 <DialogActs hint={std.action.cancel}>
                   <button type="button" className={`btn ${k.btn} ${k.btnFocus}`} data-autofocus="" onClick={() => setRemoving(null)}>{std.action.cancel}</button>
                   <button type="button" className={`btn ${k.btn} ${k.primary} ${k.btnRose}`} onClick={confirmRemove}>{t(planFlowCopy.removeConfirm)}</button>
