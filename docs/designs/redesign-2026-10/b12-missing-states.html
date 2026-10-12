@@ -4183,7 +4183,7 @@ const TD22 = {
     q: ['優先清算・希薄化防止で、シリーズA の相場から外れた条項はどれですか？', '種類株式の設計で、次のラウンドに響くところは？', 'タームシートの段階で、こちらから入れておくべき条項は？'] },
 };
 const CVC_PER = [['いまの立場', '製造業・商社・通信の大手で、CVC の投資担当か新規事業室の室長'], ['関心ごと', '本業とのシナジー · PoC から始められるか · 事業提携つきの出資'], ['判断の流れ', '現場の PoC → 事業部の評価 → 投資委員会（3〜6か月）']];
-const CVC_EV = [['CVC Meetup Tokyo #12', '10月22日（木）· 大手町', 79, 14, '¥3,000'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 9, '無料'], ['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 4, '¥15,000']];
+const CVC_EV = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 4, '¥15,000'], ['CVC Meetup Tokyo #12', '10月22日（木）· 大手町', 79, 14, '¥3,000'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 9, '無料']];
 const evRing22 = (sc, sz = 44) => ring(sz, 5, [{ v: sc, c: sc >= 70 ? 'var(--plum-700)' : sc >= 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:12px">${sc}</span>`);
 /* 活动 5 项（照抄 b10 ev5；固定基准 45 / 15 / 20 / 10 / 10）· est = 带「推定」的项 */
 const E5 = ['会える人の適合', '推定の確度', '時間とコスト', '既存のつながり', '交流の形式'];
@@ -5347,7 +5347,7 @@ const PER = {
   cfo: { n: 'CFO 経験者', s: 'CFO', emo: '📊', c: 'teal', w: 10, tgt: 1, unit: 10, step: 1, cand: 1 },
   ent: { n: '調達経験のある起業家', s: '起業家', emo: '🚀', c: 'apricot', w: 15, tgt: 5, unit: 3, step: 2, cand: 2 },
   ang: { n: 'エンジェル投資家', s: 'エンジェル', emo: '🪽', c: 'pink', w: 10, tgt: 2, unit: 5, step: 2, cand: 1 },
-  vc: { n: 'VC パートナー', s: 'VC', emo: '💼', c: 'lav', w: 30, tgt: 3, unit: 10, step: 3, cand: 4 },
+  vc: { n: 'VC', s: 'VC', emo: '💼', c: 'lav', w: 30, tgt: 3, unit: 10, step: 3, cand: 4 },
   cvc: { n: 'CVC 担当者', s: 'CVC', emo: '🏢', c: 'blue', w: 15, tgt: 3, unit: 5, step: 3, cand: 0 },
   law: { n: '弁護士（投資契約）', s: '弁護士', emo: '⚖️', c: 'teal', w: 10, tgt: 1, unit: 10, step: 4, cand: 1 },
   ev: { n: 'イベント', s: 'イベント', emo: '🎟️', c: 'apricot', w: 10, tgt: 2, unit: 5, step: 0, cand: 3, ev: true },
@@ -5492,7 +5492,7 @@ const proposeSheet = `<div class="sheet-scrim"></div><div class="sheet k-psheet"
   ${draftNote}</div>`;
 /* ② 人脈にいない · CVC（人物像 · 開口一番 · 会える活動 · 紹介ルート） */
 const CVC_PER = [['いまの立場', '製造業・商社・通信の大手で、CVC の投資担当か新規事業室の室長'], ['関心ごと', '本業とのシナジー · PoC から始められるか · 事業提携つきの出資'], ['判断の流れ', '現場の PoC → 事業部の評価 → 投資委員会（3〜6か月）']];
-const CVC_EV = [['CVC Meetup Tokyo #12', '10月22日（木）· 大手町', 79, 14, '¥3,000'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 9, '無料'], ['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 4, '¥15,000']];
+const CVC_EV = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 4, '¥15,000'], ['CVC Meetup Tokyo #12', '10月22日（木）· 大手町', 79, 14, '¥3,000'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 9, '無料']];
 const evRing22 = (sc, sz = 44) => ring(sz, 5, [{ v: sc, c: sc >= 70 ? 'var(--plum-700)' : sc >= 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:12px">${sc}</span>`);
 const KOB = C.find(c => c.n === '小林 誠') || C[5];
 function typeNone(o = {}) {
