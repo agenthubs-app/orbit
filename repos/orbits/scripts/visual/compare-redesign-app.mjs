@@ -15,96 +15,178 @@
 //   系统外壳：默认去掉设计画框的灵动岛与 Home 指示条，并把两侧顶部 50pt 状态栏涂成同色不计差异（--keep-system 关闭）。
 //   选项：--scale 3（截图像素 / 点，默认按设计宽 390 自动推算）；--design-click "<画框内选择器>"（先在画板里点开抽屉 / 弹层）；
 //         --design-remove "<画框内选择器>"；--attribution <json> --grid-view <key>（同 Web 版，只认 [data]）。
+//   批量（门禁提速，2026-10-12）：--suite scripts/visual/views/app-<Sprint>.json [--only a,b] [--changed [ref]] --simulator booted --out <dir>
+//         清单每张：{ id, design, board / board-index, themes?, url?（深链，先 simctl openurl 再截）, wait?（ms）, shot?（已有截图）}；
+//         设计稿截图走缓存并按 --workers 并行预取，模拟器截图串行（一台模拟器同一时刻只显示一个画面）；主题用 simctl ui appearance 切。
 // 退出码同 compare-redesign.mjs。
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { chromium } from "playwright";
-import { compareImages, listBoardsInPage, many, parseArgs, readPng, resize, writePng } from "./redesign-pixel-lib.mjs";
+import { APP_DESIGN_FONT_FIX, appDesignFontFix, changedFiles, compareImages, designCache, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, pool, printSummary, readPng, resize, selectChanged, selectOnly, writePng } from "./redesign-pixel-lib.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const designBase = args["design-base"] ?? "http://localhost:3320/redesign-2026-10/";
 const designUrl = (file) => (/^https?:/.test(file) ? file : designBase + encodeURI(file));
-if (!args.design || !args.out || (!args.shot && !args.simulator)) {
-  console.error("usage error: --design、--out 必填，另需 --shot <png> 或 --simulator <udid|booted>");
+const REPO_ROOT = resolve(dirname(new URL(import.meta.url).pathname), "../../../..");
+const DESIGN_DIR = resolve(args["design-dir"] ?? join(REPO_ROOT, "docs/designs/redesign-2026-10"));
+const home = (p) => resolve(String(p).replace(/^~(?=\/)/, process.env.HOME));
+if (!args.out || (!args.suite && (!args.design || (!args.shot && !args.simulator)))) {
+  console.error("usage error: --out 必填；单张另需 --design 与 --shot <png> 或 --simulator <udid|booted>；批量用 --suite <清单> --simulator <udid|booted>");
   process.exit(2);
 }
-const theme = args.theme === "dark" ? "dark" : "light";
-const out = resolve(args.out.replace(/^~(?=\/)/, process.env.HOME));
-mkdirSync(out, { recursive: true });
+const useCache = !(args["no-cache"] || args.cache === "false");
 
-// ---------- 模拟器截图 ----------
-let shotFile = args.shot ? resolve(args.shot) : join(out, "simulator-raw.png");
-if (args.simulator) {
-  execFileSync("xcrun", ["simctl", "io", args.simulator, "screenshot", "--type=png", shotFile], { stdio: ["ignore", "ignore", "inherit"] });
-}
-const shot = readPng(shotFile);
-
-// ---------- 设计稿画板 ----------
-const browser = await chromium.launch({ channel: args.channel ?? "chrome" });
-let designPng;
-let board;
-try {
+// ---------- 设计稿画板（带缓存）----------
+let browser;
+async function designFor(v) {
+  const hash = !/^https?:/.test(v.design) && useCache ? designInputsHash(DESIGN_DIR, v.design) : null;
+  const cache = hash ? designCache({ v: 1, app: true, font: APP_DESIGN_FONT_FIX, hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? "phone", nth: v["board-nth"] ?? null, theme: v.theme, click: many(v["design-click"]), remove: many(v["design-remove"]), keepSystem: v["keep-system"] === "true" }) : null;
+  const meta = cache?.meta();
+  const hit = meta && cache.png("frame");
+  if (hit) return { png: hit, board: meta.board, cached: true };
+  browser ??= await chromium.launch({ channel: args.channel ?? "chrome" });
   const ctx = await browser.newContext({ viewport: { width: 1700, height: 1100 }, deviceScaleFactor: 1, locale: "ja-JP" });
-  const page = await ctx.newPage();
-  await page.goto(designUrl(args.design), { waitUntil: "load" });
-  await page.evaluate(() => document.fonts?.ready);
-  await page.evaluate(() => document.body.classList.add("no-pins"));
-  await page.waitForTimeout(Number(args["design-wait"] ?? 1600));
-  const boards = (await page.evaluate(listBoardsInPage));
-  if (args["board-index"] !== undefined) board = boards[Number(args["board-index"])];
-  else if (args.board) {
-    const hits = boards.filter((b) => b.label.includes(args.board) && b.kind === (args["board-kind"] ?? "phone"));
-    board = hits[Number(args["board-nth"] ?? 0)];
-    if (hits.length > 1 && args["board-nth"] === undefined) console.warn(`warn: --board "${args.board}" 命中 ${hits.length} 块，取 #${hits[0].index}`);
+  try {
+    const page = await ctx.newPage();
+    await page.goto(designUrl(v.design), { waitUntil: "load" });
+    await page.evaluate(() => document.fonts?.ready);
+    await page.evaluate(() => document.body.classList.add("no-pins"));
+    // 英文、数字按 iOS 走 SF（见 redesign-pixel-lib 的 appDesignFontFix）；--keep-design-font 保留原样（排查用）。
+    if (v["keep-design-font"] !== "true") await page.evaluate(appDesignFontFix);
+    await page.waitForTimeout(Number(v["design-wait"] ?? 1600));
+    let board;
+    for (let attempt = 0; attempt < 3 && !board; attempt++) {
+      if (attempt) await page.waitForTimeout(1500);
+      const boards = await page.evaluate(listBoardsInPage);
+      if (v["board-index"] !== undefined) board = boards[Number(v["board-index"])];
+      else if (v.board) {
+        const hits = boards.filter((b) => b.label.includes(v.board) && b.kind === (v["board-kind"] ?? "phone"));
+        board = hits[Number(v["board-nth"] ?? 0)];
+        if (hits.length > 1 && v["board-nth"] === undefined) console.warn(`warn: [${v.key}] --board "${v.board}" 命中 ${hits.length} 块，取 #${hits[0].index}`);
+      }
+    }
+    if (!board) throw Object.assign(new Error(`design board not found（先用 compare-redesign.mjs --list --design ${v.design} 看画板）`), { code: 3 });
+    const frames = [];
+    for (const h of await page.$$(".web, .phone")) if (!(await h.evaluate((f) => !!f.parentElement.closest(".web, .phone")))) frames.push(h);
+    const frame = frames[board.index];
+    for (const sel of many(v["design-click"])) { await frame.$(sel).then((el) => el?.click()); await page.waitForTimeout(300); }
+    await frame.evaluate((f, { theme, removes, keepSystem }) => {
+      f.setAttribute("data-theme", theme);
+      f.style.borderRadius = "0";
+      f.style.boxShadow = "none";
+      for (const sel of removes) for (const el of f.querySelectorAll(sel)) el.remove();
+      // 灵动岛 / 刘海与 Home 指示条是硬件和系统画的，模拟器截图里没有（或不受 App 控制），不算 App 画面。
+      if (!keepSystem) for (const el of f.querySelectorAll(":scope > .status .island, :scope > .home-ind")) el.remove();
+    }, { theme: v.theme, removes: many(v["design-remove"]), keepSystem: v["keep-system"] === "true" });
+    await page.waitForTimeout(300);
+    mkdirSync(v.out, { recursive: true });
+    const file = join(v.out, "design.png");
+    await frame.screenshot({ path: file, animations: "disabled" });
+    if (cache) { cache.saveMeta({ board }); cache.savePng("frame", file); }
+    return { png: readPng(file), board, cached: false };
+  } finally {
+    await ctx.close();
   }
-  if (!board) { console.error(`design board not found（先用 compare-redesign.mjs --list --design ${args.design} 看画板）`); await browser.close(); process.exit(3); }
-  const frames = [];
-  for (const h of await page.$$(".web, .phone")) if (!(await h.evaluate((f) => !!f.parentElement.closest(".web, .phone")))) frames.push(h);
-  const frame = frames[board.index];
-  for (const sel of many(args["design-click"])) { await frame.$(sel).then((el) => el?.click()); await page.waitForTimeout(300); }
-  await frame.evaluate((f, { theme, removes, keepSystem }) => {
-    f.setAttribute("data-theme", theme);
-    f.style.borderRadius = "0";
-    f.style.boxShadow = "none";
-    for (const sel of removes) for (const el of f.querySelectorAll(sel)) el.remove();
-    // 灵动岛 / 刘海与 Home 指示条是硬件和系统画的，模拟器截图里没有（或不受 App 控制），不算 App 画面。
-    if (!keepSystem) for (const el of f.querySelectorAll(":scope > .status .island, :scope > .home-ind")) el.remove();
-  }, { theme, removes: many(args["design-remove"]), keepSystem: args["keep-system"] === "true" });
-  await page.waitForTimeout(300);
-  await frame.screenshot({ path: join(out, "design.png"), animations: "disabled" });
-  designPng = readPng(join(out, "design.png"));
-  await ctx.close();
-} finally {
-  await browser.close();
 }
 
-// ---------- 按点宽缩放对齐 ----------
-// 截图是 @Nx 像素：先换算成设备点（宽 / scale），再等比缩到设计画框宽（390pt）。
-const scale = Number(args.scale ?? 0) || shot.width / Math.round(shot.width / 3);
-const points = [Math.round(shot.width / scale), Math.round(shot.height / scale)];
-const targetW = designPng.width;
-const targetH = Math.round(shot.height * (targetW / shot.width));
-const app = resize(shot, targetW, targetH);
-// 状态栏（时间、信号、电池）由 iOS 绘制，App 只能决定浅 / 深色字：默认把两侧顶部 50pt 涂成同一灰色，不计入差异。
-// 要检查状态栏字色时加 --keep-system。
-const statusPt = args["keep-system"] === "true" ? 0 : Number(args["status-height"] ?? 50);
-for (const png of [designPng, app]) for (let y = 0; y < Math.min(statusPt, png.height); y++) png.data.fill(0x80, y * png.width * 4, (y + 1) * png.width * 4);
-writePng(join(out, "app.png"), app);
-writePng(join(out, "design.png"), designPng);
+// ---------- 模拟器截图（串行）----------
+const sim = (...a) => execFileSync("xcrun", ["simctl", ...a], { stdio: ["ignore", "ignore", "inherit"] });
+async function shotFor(v) {
+  if (v.shot) return resolve(v.shot);
+  const file = join(v.out, "simulator-raw.png");
+  if (v.suite) {
+    // 批量：先切外观，再开深链（没有深链就截当前画面），等界面稳定。
+    try { sim("ui", v.simulator, "appearance", v.theme); } catch { console.warn(`warn: [${v.key}] simctl ui appearance 失败，按当前外观截`); }
+    if (v.url) sim("openurl", v.simulator, v.url);
+    await new Promise((r) => setTimeout(r, Number(v.wait ?? 2500)));
+  }
+  sim("io", v.simulator, "screenshot", "--type=png", file);
+  return file;
+}
 
-const viewKey = args["grid-view"] ?? `${args.board ?? args["board-index"]}-app-${theme}`;
-const result = compareImages({
-  design: designPng,
-  app,
-  out,
-  grid: args.grid && args.grid !== "false" ? (args.grid === "true" ? 100 : Number(args.grid)) : 0,
-  gridDy: Number(args["grid-dy"] ?? 12),
-  threshold: Number(args["grid-threshold"] ?? 0.02),
-  attributionPath: args.attribution,
-  viewKey,
-  meta: { view: viewKey, design: args.design, board, shot: shotFile, devicePoints: points, alignedTo: [targetW, targetH], theme, triptychScale: 1 },
-});
-writeFileSync(join(out, "board.json"), `${JSON.stringify(board, null, 2)}\n`);
-console.log(`raw=${result.raw} design=${result.designSize.join("x")} app=${result.appSize.join("x")} (device ${points.join("x")}pt)` + (result.band ? ` bands=${result.cells} over=${result.overBands} unattributed=${result.unattributed}` : "") + ` ${result.pass ? "PASS" : "FAIL"} out=${out}`);
-process.exit(result.exitCode);
+// ---------- 按点宽缩放对齐 + 比对 ----------
+function compareShot(v, designPng, board, shotFile) {
+  const shot = readPng(shotFile);
+  // 截图是 @Nx 像素：先换算成设备点（宽 / scale），再等比缩到设计画框宽（390pt）。
+  const scale = Number(v.scale ?? 0) || shot.width / Math.round(shot.width / 3);
+  const points = [Math.round(shot.width / scale), Math.round(shot.height / scale)];
+  const targetW = designPng.width;
+  const targetH = Math.round(shot.height * (targetW / shot.width));
+  const app = resize(shot, targetW, targetH);
+  // 状态栏（时间、信号、电池）由 iOS 绘制，App 只能决定浅 / 深色字：默认把两侧顶部 50pt 涂成同一灰色，不计入差异。
+  // 要检查状态栏字色时加 --keep-system。
+  const statusPt = v["keep-system"] === "true" ? 0 : Number(v["status-height"] ?? 50);
+  const design = { ...designPng, data: Buffer.from(designPng.data) };
+  for (const png of [design, app]) for (let y = 0; y < Math.min(statusPt, png.height); y++) png.data.fill(0x80, y * png.width * 4, (y + 1) * png.width * 4);
+  writePng(join(v.out, "app.png"), app);
+  writePng(join(v.out, "design.png"), design);
+  const result = compareImages({
+    design,
+    app,
+    out: v.out,
+    grid: v.grid && v.grid !== "false" ? (v.grid === "true" || v.grid === true ? 100 : Number(v.grid)) : 0,
+    gridDy: Number(v["grid-dy"] ?? 12),
+    threshold: Number(v["grid-threshold"] ?? 0.02),
+    attributionPath: v.attribution,
+    viewKey: v.key,
+    meta: { view: v.key, design: v.design, board, shot: shotFile, devicePoints: points, alignedTo: [targetW, targetH], theme: v.theme, triptychScale: 1 },
+  });
+  writeFileSync(join(v.out, "board.json"), `${JSON.stringify(board, null, 2)}\n`);
+  return { ...result, key: v.key, triptych: join(v.out, "triptych.png"), out: v.out, devicePoints: points };
+}
+
+let code = 0;
+try {
+  if (!args.suite) {
+    const v = { ...args, theme: args.theme === "dark" ? "dark" : "light", out: home(args.out) };
+    v.key = args["grid-view"] ?? `${args.board ?? args["board-index"]}-app-${v.theme}`;
+    mkdirSync(v.out, { recursive: true });
+    const shotFile = await shotFor(v);
+    const d = await designFor(v);
+    const r = compareShot(v, d.png, d.board, shotFile);
+    console.log(`raw=${r.raw} design=${r.designSize.join("x")} app=${r.appSize.join("x")} (device ${r.devicePoints.join("x")}pt)` + (r.band ? ` bands=${r.cells} over=${r.overBands} unattributed=${r.unattributed}` : "") + (r.missing.length ? ` missing=${r.missing.length}` : "") + ` ${r.pass ? "PASS" : "FAIL"}${d.cached ? " (design cached)" : ""} out=${v.out}`);
+    for (const m of r.missing.slice(0, 5)) console.warn(`warn: ⚠ 缺块 x=${m.x} y=${m.y} ${m.w}x${m.h}：设计稿这块有内容、实现是空的（raw 低也要看 triptych）`);
+    code = r.exitCode;
+  } else {
+    let runs = loadSuite(resolve(args.suite));
+    const total = runs.length;
+    if (args.only) runs = selectOnly(runs, args.only);
+    if (args.changed) {
+      const files = changedFiles(args.changed, REPO_ROOT);
+      runs = selectChanged(runs, files, relative(REPO_ROOT, DESIGN_DIR));
+      console.log(`--changed：改动 ${files.length} 个文件，命中 ${runs.length} / ${total} 张`);
+    }
+    const outRoot = home(args.out);
+    const globals = Object.fromEntries(Object.entries(args).filter(([k]) => !["suite", "only", "changed", "out", "workers", "no-cache", "cache"].includes(k)));
+    const views = runs.map(({ key, sources, themes, id, ...rest }) => ({ ...rest, ...globals, key, suite: true, out: join(outRoot, key) }));
+    if (!views.length) console.log("没有要跑的画面（--only / --changed 没命中）");
+    const t0 = Date.now();
+    // 设计稿截图并行预取（走缓存），模拟器截图严格串行。
+    const designs = await pool(views, Number(args.workers ?? 3), async (v) => { mkdirSync(v.out, { recursive: true }); try { return await designFor(v); } catch (error) { return { error }; } });
+    const results = [];
+    for (const [i, v] of views.entries()) {
+      const t1 = Date.now();
+      try {
+        if (designs[i].error) throw designs[i].error;
+        const r = compareShot(v, designs[i].png, designs[i].board, await shotFor(v));
+        results.push({ ...r, ms: Date.now() - t1 });
+        console.log(`${v.key} ${r.pass ? "PASS" : "FAIL"} raw=${r.raw}` + (r.band ? ` over=${r.overBands} unattributed=${r.unattributed}` : "") + (r.missing.length ? ` ⚠缺块=${r.missing.length}` : ""));
+      } catch (error) {
+        console.error(`${v.key} ERROR ${error.message}`);
+        results.push({ key: v.key, pass: false, error: String(error.message).split("\n")[0], exitCode: error.code ?? 1, ms: Date.now() - t1 });
+      }
+    }
+    if (views.length) {
+      printSummary(results, { file: join(outRoot, "summary.json") });
+      console.log(`总耗时 ${((Date.now() - t0) / 1000).toFixed(1)}s；摘要 ${join(outRoot, "summary.json")}`);
+    }
+    code = Math.max(0, ...results.map((r) => r.exitCode ?? 0));
+  }
+} catch (error) {
+  console.error(error.message ?? error);
+  code = error.code ?? 1;
+} finally {
+  await browser?.close();
+}
+process.exit(code);

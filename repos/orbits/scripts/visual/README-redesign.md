@@ -6,7 +6,8 @@
 | --- | --- |
 | `compare-redesign.mjs` | Web：按画板定位设计稿 `.web` / `.phone.mweb` 画框截图，同宽同主题截实现的完整页面（含导航壳），整屏 raw + `--grid` 逐带比对 + 归因门禁 |
 | `compare-redesign-app.mjs` | App：iOS 模拟器真实截图（不用 react-native-web）↔ 设计稿 App 画板（`.phone` 390×844pt），按点宽缩放对齐后同样比对 |
-| `redesign-pixel-lib.mjs` | 两者共用：参数解析、读密码、PNG 缩放 / 裁剪、比对与门禁、三联图 |
+| `redesign-pixel-lib.mjs` | 两者共用：参数解析、读密码、PNG 缩放 / 裁剪、比对与门禁、三联图、缺块检测、设计稿缓存、画面清单与筛选、终端摘要 |
+| `views/<端>-<Sprint>.json` | 画面清单（批量门禁）：每个画面的参数 + 它依赖的源文件（`--changed` 用）；键 `<id>-<width>-<theme>` 与归因文件一致 |
 
 0918 新 UI 的 `compare-0918.mjs` 原样保留（只认 `Orbit_0918/*.dc.html`），两套比对口径相同：单通道差 ≥24 记一个不一致像素；逐带 ±12px 上下搜索取最小值。
 
@@ -32,6 +33,48 @@ node scripts/visual/compare-redesign.mjs --list --design b8-responsive.html
 画板 = 页面里每个顶层 `.web` / `.phone` 画框（标签取所在 `.board` 的 `.board-label`，状态标签如「大量数据」会粘在后面）。类型：`web`（1440×960）、`web1024`（1024×880，b6 / b8）、`mweb390`（390 手机浏览器，b6 / b8）、`phone`（App 390×844）。`--json` 输出结构化清单。
 
 选画板：`--board "<标签子串>"`（多块命中时取第 0 块并警告），`--board-nth N` / `--board-kind web|web1024|mweb390|phone` 消歧，或直接 `--board-index N`。
+
+## 提速：画面清单、只跑相关画面、缓存与并行（2026-10-12）
+
+**迭代时只跑当前画面，收口时才跑全量**（HOW-TO 第 8 节「快慢两档」）。一个 Sprint 的画面写成清单 `views/<端>-<Sprint>.json`（样例：`views/web-R07.json`，由 R07 的 gate.py 转来）：
+
+```json
+{
+  "defaults": { "app-origin": "http://localhost:3000", "login": "qa@orbit.test", "grid": 100, "attribution": "scripts/visual/attribution-redesign-R07.json" },
+  "sources": ["repos/orbits/app/(app)/app/orbit-2026/shell/**"],
+  "views": [
+    { "id": "W-R07-01L", "app": "/app/home", "design": "web.html", "board-index": 0, "width": 1440, "region": "0,0,84,960", "grid": 30 },
+    { "id": "W-R07-03DF", "app": "/app/home", "design": "b12-missing-states.html", "board-index": 88, "width": 1024, "region": "630,786,380,80", "grid": 30, "click": "[data-orbit-2026-rail-button]", "sources": ["repos/orbits/app/(app)/app/orbit-2026/home/**"] }
+  ]
+}
+```
+
+每个画面的字段就是单张模式的命令行参数（去掉 `--`；`viewport: true` = `--viewport-only`；`steps` 可直接写数组）；`themes` 默认 `["light", "dark"]`。`sources` 是相对仓库根的 glob（`**` / `*`），清单顶层的 `sources` 对所有画面生效；画面用到的设计稿文件和 `kit/` 自动算进去。
+
+```bash
+# 只跑指定画面（前缀匹配：W-R07-01L 命中它的所有宽度和主题；W-R07-01L-1024 只命中 1024；逗号分隔）
+node scripts/visual/compare-redesign.mjs --suite scripts/visual/views/web-R07.json --only W-R07-01L,W-R07-03DF --out ~/orbit-sprint-evidence/redesign/R07/run-03
+# 只跑和当前改动相关的画面（工作区改动 + 未跟踪文件；带 ref 时再加上 ref...HEAD 的改动）
+node scripts/visual/compare-redesign.mjs --suite scripts/visual/views/web-R07.json --changed --out <dir>
+node scripts/visual/compare-redesign.mjs --suite scripts/visual/views/web-R07.json --changed origin/redesign --out <dir>
+# 收口：全量（不带 --only / --changed）
+node scripts/visual/compare-redesign.mjs --suite scripts/visual/views/web-R07.json --out <dir> --workers 3
+```
+
+- **并行**：`--workers N`（默认 3）——一个浏览器进程里同时开 N 个上下文。dev server 是开发模式，太高会拖慢每张、反而更慢；机器忙时用 2。
+- **登录只做一次**：一轮里先验证 / 登录一次，存成 Playwright `storageState`（默认 `~/orbit-sprint-evidence/redesign/.auth/<账号>.json`，权限 600，在仓库外，**不要提交**；`--storage` 可另指），之后每张直接带上。
+- **设计稿缓存**：`~/orbit-sprint-evidence/redesign/.design-cache/`。键 = 画板 + 设计文件与 `kit/` 全部文件的内容哈希 + 宽度 + 主题 + 截图参数（点击、移除、展开）+ 渲染高度。设计稿没改就不开设计稿页面（每张省掉页面加载、字体和 1.6 秒动画等待）。设计稿一改，哈希变，自动重截；怀疑缓存时加 `--no-cache`，或直接删目录。
+- **终端摘要**：每张一行（结果、raw、超阈带、未归因带、缺块、耗时、triptych 路径），末尾合计；同样内容写进 `<out>/summary.json`。退出码取各张最大值。
+- **缺块警告**：按 24×24 小块找「设计稿有内容（与该块主色差 ≥24 的像素 ≥6%）、实现几乎为空（≤1%）、且两边真不一致的像素 ≥10%」的地方，合并成矩形报出来，**raw 低也报**（R07 复核 M6：1024 抽屉尾整块缺失时 raw 只有 0.013）。只报警、不改退出码——看到 ⚠ 一定要打开 triptych。用 R07 证据验证：第一轮假通过的 03DF 报出，修复后通过的局部视图除真缺块（1024 建议计数、メモ「＋」、抽屉中间建议）外零误报。
+- **App 版**同样支持 `--suite / --only / --changed / --no-cache` 和摘要：清单每张 `{ id, design, board-index | board, themes?, url?, wait?, shot? }`；设计稿截图按 `--workers` 并行预取（走同一缓存），模拟器部分严格串行：`simctl ui <sim> appearance <theme>` 切主题 → 有 `url` 就 `simctl openurl` 深链 → 等 `wait`（默认 2500ms）→ 截图。键为 `<id>-app-<theme>`。
+
+**字体（2026-10-12，R05 发现）**：kit 的字体栈以 `-apple-system` 开头，这是 Safari / iOS 专用名，**Chrome 不认**，所以在 Playwright Chrome 里设计稿的英文和数字整个退到 Hiragino Sans（CDP：`CSS.getPlatformFontsForNode` 显示「CFO Night Tokyo」= `HiraginoSans-W6`）。iOS 真机同一个栈英文、数字走 SF，同样 17px 的「Task」设计图宽 47px、真机约 35px，含英文数字的带全部超阈。
+- **App 门禁**：`compare-redesign-app.mjs` 渲染设计稿时在 `--font` / `--font-num` 的 `-apple-system` 前插入 Chrome 的同义名 `BlinkMacSystemFont`（macOS 系统 SF）。CDP 核实：英文变 `.SFNS-*`，假名仍是 `HiraginoSans-*`，与 iOS 一致。「SF Pro Rounded」本机没有，数字退到 SF。映射版本 `sf-latin-1` 进缓存键，旧截图自动作废；排查时 `--keep-design-font true` 看原样。R05 `it1-task-cal-light` 验证：「Task」标题块的差异从 12.9% 降到 6.6%（字宽对齐，剩下的是 Chrome 1× 与 iOS 3× 缩小的栅格化差），标题带从 0.0372 降到 0.0235，剩下的是日期数据不同（设计「10月7日（水）」/ 真机当天日期）。
+- **Web 门禁不注入**：设计稿和实现都在 Chrome 里渲染、用同一个栈，CDP 核实两边英文都是 `HiraginoSans-W6`，比对有效。但这也意味着 **Mac 上的 Chrome 用户看到的英文数字是 Hiragino，不是拍板①想要的 SF**（Safari 用户是 SF）；要改得在实现的日文栈里加 `BlinkMacSystemFont`，同时 Web 设计侧也要注入同样的映射，待产品负责人决定后一起改。
+
+**耗时（同一台机器、同一 dev server，R07 全部 76 张）**：见下表；新旧两种跑法逐张数字一致（raw、超阈带、未归因带）。
+
+（测量中：旧脚本基线与新脚本冷 / 热缓存三轮正在同一负载下跑，结果补在下一次提交。单张实测：Web 一张 9.8s → 设计稿缓存命中 4.4s；App 一张 3.9s → 0.4s。）
 
 ## Web：`compare-redesign.mjs`
 

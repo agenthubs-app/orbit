@@ -1,0 +1,456 @@
+{
+ "_note": "R07 Web 导航壳的像素门禁画面清单（由 run-02 gate.py 转来）。键 = <id>-<width>-<theme>，与 attribution-redesign-R07.json 一致。sources 相对仓库根，--changed 用它判断哪些画面受改动影响；设计稿文件与 kit/ 自动算进去。",
+ "defaults": {
+  "app-origin": "http://localhost:3000",
+  "login": "qa@orbit.test",
+  "grid": 100,
+  "attribution": "scripts/visual/attribution-redesign-R07.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/shell/**",
+  "repos/orbits/app/(app)/app/orbit-2026/ui/**",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/shell.ts",
+  "repos/orbits/app/(app)/app/orbit-2026/tokens.css",
+  "repos/orbits/shared/design/tokens.json",
+  "repos/orbits/app/(app)/app/layout.tsx",
+  "repos/orbits/app/(app)/layout.tsx",
+  "repos/orbits/scripts/visual/compare-redesign.mjs",
+  "repos/orbits/scripts/visual/redesign-pixel-lib.mjs"
+ ],
+ "views": [
+  {
+   "id": "W-R07-01",
+   "app": "/app/home",
+   "design": "web.html",
+   "board-index": 0,
+   "width": 1440,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/home/**",
+    "repos/orbits/app/(app)/app/home/**"
+   ],
+   "note": "首页整屏（web.html #0 新用户空状态）；正文归 R10"
+  },
+  {
+   "id": "W-R07-01L",
+   "app": "/app/home",
+   "design": "web.html",
+   "board-index": 0,
+   "width": 1440,
+   "region": "0,0,84,960",
+   "grid": 30
+  },
+  {
+   "id": "W-R07-01H",
+   "app": "/app/home",
+   "design": "web.html",
+   "board-index": 0,
+   "width": 1440,
+   "region": "84,0,996,90",
+   "grid": 30,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/home/**",
+    "repos/orbits/app/(app)/app/home/**"
+   ]
+  },
+  {
+   "id": "W-R07-01R",
+   "app": "/app/home",
+   "design": "web.html",
+   "board-index": 0,
+   "width": 1440,
+   "region": "1080,0,360,960",
+   "grid": 30
+  },
+  {
+   "id": "W-R07-01",
+   "app": "/app/home",
+   "design": "b12-missing-states.html",
+   "board-index": 86,
+   "width": 1024,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/home/**",
+    "repos/orbits/app/(app)/app/home/**"
+   ],
+   "note": "b12 N07 #86（比 b6 #34 新，Q2）"
+  },
+  {
+   "id": "W-R07-01L",
+   "app": "/app/home",
+   "design": "b12-missing-states.html",
+   "board-index": 86,
+   "width": 1024,
+   "region": "0,0,72,880",
+   "grid": 30
+  },
+  {
+   "id": "W-R07-01H",
+   "app": "/app/home",
+   "design": "b12-missing-states.html",
+   "board-index": 86,
+   "width": 1024,
+   "region": "72,0,952,90",
+   "grid": 30,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/home/**",
+    "repos/orbits/app/(app)/app/home/**"
+   ]
+  },
+  {
+   "id": "W-R07-03",
+   "app": "/app/home",
+   "design": "b12-missing-states.html",
+   "board-index": 88,
+   "width": 1024,
+   "click": "[data-orbit-2026-rail-button]",
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/home/**",
+    "repos/orbits/app/(app)/app/home/**"
+   ],
+   "note": "N07b #88 抽屉"
+  },
+  {
+   "id": "W-R07-03D",
+   "app": "/app/home",
+   "design": "b12-missing-states.html",
+   "board-index": 88,
+   "width": 1024,
+   "region": "630,14,380,852",
+   "grid": 30,
+   "click": "[data-orbit-2026-rail-button]"
+  },
+  {
+   "id": "W-R07-03DH",
+   "app": "/app/home",
+   "design": "b12-missing-states.html",
+   "board-index": 88,
+   "width": 1024,
+   "region": "630,14,380,80",
+   "grid": 30,
+   "click": "[data-orbit-2026-rail-button]"
+  },
+  {
+   "id": "W-R07-03DF",
+   "app": "/app/home",
+   "design": "b12-missing-states.html",
+   "board-index": 88,
+   "width": 1024,
+   "region": "630,786,380,80",
+   "grid": 30,
+   "click": "[data-orbit-2026-rail-button]"
+  },
+  {
+   "id": "W-R07-03DT",
+   "app": "/app/tasks?tab=todo",
+   "design": "b12-missing-states.html",
+   "board-index": 88,
+   "width": 1024,
+   "region": "630,14,380,852",
+   "grid": 30,
+   "click": "[data-orbit-2026-rail-button]",
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ],
+   "note": "复核 M2：旧页面上的抽屉"
+  },
+  {
+   "id": "W-R07-07MT",
+   "app": "/app/tasks?tab=todo",
+   "design": "b12-missing-states.html",
+   "board-index": 80,
+   "width": 1440,
+   "region": "92,627,340,315",
+   "grid": 30,
+   "click": "nav [aria-label=アカウント]",
+   "viewport": true,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ],
+   "note": "复核 M2：旧页面上的头像菜单"
+  },
+  {
+   "id": "W-R07-02L",
+   "app": "/app/home",
+   "design": "b6-host-polish.html",
+   "board-index": 34,
+   "width": 1024,
+   "region": "0,0,72,880",
+   "grid": 30,
+   "steps": [
+    {
+     "hover": "[data-orbit-2026-shell] nav a[href='/app/contacts']"
+    },
+    {
+     "wait": 300
+    }
+   ],
+   "note": "b6 #34 只取未作废的左栏部分（人脈 tooltip + 悬停底色）"
+  },
+  {
+   "id": "W-R07-07",
+   "app": "/app/home",
+   "design": "b12-missing-states.html",
+   "board-index": 80,
+   "width": 1440,
+   "click": "nav [aria-label=アカウント]",
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/home/**",
+    "repos/orbits/app/(app)/app/home/**"
+   ]
+  },
+  {
+   "id": "W-R07-07M",
+   "app": "/app/home",
+   "design": "b12-missing-states.html",
+   "board-index": 80,
+   "width": 1440,
+   "region": "92,627,340,315",
+   "grid": 30,
+   "click": "nav [aria-label=アカウント]"
+  },
+  {
+   "id": "W-R07-07b",
+   "app": "/app/home",
+   "design": "b12-missing-states.html",
+   "board-index": 82,
+   "width": 390,
+   "click": "[data-orbit-2026-mobile-top] [aria-label=アカウント]",
+   "viewport": true,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/home/**",
+    "repos/orbits/app/(app)/app/home/**"
+   ]
+  },
+  {
+   "id": "W-R07-07bM",
+   "app": "/app/home",
+   "design": "b12-missing-states.html",
+   "board-index": 82,
+   "width": 390,
+   "region": "8,478,374,358",
+   "grid": 30,
+   "click": "[data-orbit-2026-mobile-top] [aria-label=アカウント]",
+   "viewport": true
+  },
+  {
+   "id": "W-R07-01",
+   "app": "/app/home",
+   "design": "b6-host-polish.html",
+   "board-index": 37,
+   "width": 390,
+   "viewport": true,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/home/**",
+    "repos/orbits/app/(app)/app/home/**"
+   ]
+  },
+  {
+   "id": "W-R07-01T",
+   "app": "/app/home",
+   "design": "b6-host-polish.html",
+   "board-index": 37,
+   "width": 390,
+   "region": "0,0,390,60",
+   "grid": 30,
+   "viewport": true
+  },
+  {
+   "id": "W-R07-01B",
+   "app": "/app/home",
+   "design": "b6-host-polish.html",
+   "board-index": 37,
+   "width": 390,
+   "region": "0,764,390,72",
+   "grid": 30,
+   "viewport": true
+  },
+  {
+   "id": "W-R07-Tcalendar",
+   "app": "/app/tasks?tab=calendar",
+   "design": "web.html",
+   "board-index": 13,
+   "width": 1440,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ]
+  },
+  {
+   "id": "W-R07-TcalendarH",
+   "app": "/app/tasks?tab=calendar",
+   "design": "web.html",
+   "board-index": 13,
+   "width": 1440,
+   "region": "84,0,996,90",
+   "grid": 30,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ]
+  },
+  {
+   "id": "W-R07-TcalendarL",
+   "app": "/app/tasks?tab=calendar",
+   "design": "web.html",
+   "board-index": 13,
+   "width": 1440,
+   "region": "0,0,84,960",
+   "grid": 30
+  },
+  {
+   "id": "W-R07-Ttodo",
+   "app": "/app/tasks?tab=todo",
+   "design": "web.html",
+   "board-index": 14,
+   "width": 1440,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ]
+  },
+  {
+   "id": "W-R07-TtodoH",
+   "app": "/app/tasks?tab=todo",
+   "design": "web.html",
+   "board-index": 14,
+   "width": 1440,
+   "region": "84,0,996,90",
+   "grid": 30,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ]
+  },
+  {
+   "id": "W-R07-TtodoL",
+   "app": "/app/tasks?tab=todo",
+   "design": "web.html",
+   "board-index": 14,
+   "width": 1440,
+   "region": "0,0,84,960",
+   "grid": 30
+  },
+  {
+   "id": "W-R07-Tmemo",
+   "app": "/app/tasks?tab=memo",
+   "design": "web.html",
+   "board-index": 19,
+   "width": 1440,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ]
+  },
+  {
+   "id": "W-R07-TmemoH",
+   "app": "/app/tasks?tab=memo",
+   "design": "web.html",
+   "board-index": 19,
+   "width": 1440,
+   "region": "84,0,996,90",
+   "grid": 30,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ]
+  },
+  {
+   "id": "W-R07-TmemoL",
+   "app": "/app/tasks?tab=memo",
+   "design": "web.html",
+   "board-index": 19,
+   "width": 1440,
+   "region": "0,0,84,960",
+   "grid": 30
+  },
+  {
+   "id": "W-R07-Tplan",
+   "app": "/app/tasks?tab=plan",
+   "design": "web.html",
+   "board-index": 15,
+   "width": 1440,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ]
+  },
+  {
+   "id": "W-R07-TplanH",
+   "app": "/app/tasks?tab=plan",
+   "design": "web.html",
+   "board-index": 15,
+   "width": 1440,
+   "region": "84,0,996,90",
+   "grid": 30,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ]
+  },
+  {
+   "id": "W-R07-Tplan",
+   "app": "/app/tasks?tab=plan",
+   "design": "b8-responsive.html",
+   "board-index": 7,
+   "width": 390,
+   "viewport": true,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ]
+  },
+  {
+   "id": "W-R07-TplanT",
+   "app": "/app/tasks?tab=plan",
+   "design": "b8-responsive.html",
+   "board-index": 7,
+   "width": 390,
+   "region": "0,0,390,110",
+   "grid": 30,
+   "viewport": true,
+   "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/tasks/**"
+   ]
+  },
+  {
+   "id": "W-R07-11",
+   "app": "/app/inbox",
+   "design": "b11-nav-v3.html",
+   "board-index": 27,
+   "width": 1440,
+   "sources": [
+    "repos/orbits/app/(app)/app/inbox/**"
+   ]
+  },
+  {
+   "id": "W-R07-11L",
+   "app": "/app/inbox",
+   "design": "b11-nav-v3.html",
+   "board-index": 27,
+   "width": 1440,
+   "region": "0,0,84,960",
+   "grid": 30
+  },
+  {
+   "id": "W-R07-12",
+   "app": "/app/agent",
+   "design": "web.html",
+   "board-index": 8,
+   "width": 1440,
+   "sources": [
+    "repos/orbits/app/(app)/app/agent/**"
+   ]
+  },
+  {
+   "id": "W-R07-12L",
+   "app": "/app/agent",
+   "design": "web.html",
+   "board-index": 8,
+   "width": 1440,
+   "region": "0,0,84,960",
+   "grid": 30
+  }
+ ]
+}
