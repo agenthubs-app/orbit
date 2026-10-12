@@ -3736,6 +3736,15 @@ g += WPm('W-R23-02c 目標入力 · 目標 2つ（N15）', 'state', { nav: 4, bo
   ['.k-wgnext', 0, '主按钮禁用'],
 ], 'web.html Task · プラン（目標入力）· b4 目標の切替');
 
+/* Web 390 目標入力（2026-10-12 补画：D41 作废 b8 390 目標入力、以 b10 ① 为准；b10 ① 只有 App 版 → 照 goalApp2 版式放进 b8 / b12 的手机浏览器画框；顶部 = mwHead + Task 分段（Task 声明 phoneFold，<768 不出标题行，同 b8 390 プラン）） */
+const goalM390 = () => goalApp2().replace(taskHead(2, '目標を決めると、話すべき人が見えます'), mwHead + tsegH(2, 'k-mtseg').replace('<div class="tseg k-mtseg">', '<div class="tseg k-mtseg" style="margin-bottom:12px">'));
+g += WPm('W-R23-01-390 目標入力 · Web 390（プラン空状態）', 'empty', { tab: 4, body: goalM390() }, [
+  ['.k-mtseg', 0, '手机浏览器（<768）：Task 不出标题行（phoneFold），顶部 = Orbit 条（受信箱 + 头像）+ 4 段分段，同 b8「Task › プラン · 390」'],
+  ['.k-gin', 0, '正文照 b10 ①（App 版）：引导卡「何を達成したいですか？」+ 输入框 + 目标类型 chip + 黑色主按钮「iOrbit と具体化する」+ 流程一行；D41：b8 390 目標入力作废，以此为准'],
+  ['.k-gsample', 0, 'サンプル卡（人物类型示例，淡化）同 App；底部胶囊导航 Task 选中，抬高到 Safari 底栏之上'],
+  ['.k-gnext', 0, '主按钮「iOrbit と具体化する」= 全宽黑色胶囊（同 b10 ①），点后进生成流程（全屏 iOrbit）'],
+], 'b10 ① 目標を入力（App）· b8 Task › プラン · 390 · 2026-10-12 补画，待用户过目', 390);
+
 g += sec('g3 · 2 · 背景：下書き中 / メンバー追加 / 下書き失敗 / 階段 1段（R23 · N17）', 'Web 版照 b10 ②「背景の下書き」(App) 与「② 背景確認 · Web」改画；メンバー追加 = App BottomSheet 的同一内容放进 Web 520 居中模态；下書き失敗按 01-system ⑧「AI 降级」灰卡');
 g += WPm('W-R23-03 生成流程 · 背景下書き中', '', { nav: 2, body: draftingWeb(), rail: knownPending }, [
   ['.k-wfm', 0, '对话顶部 5 段进度，当前「背景」'],
