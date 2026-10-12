@@ -1,7 +1,8 @@
 /**
  * 子任务 C 的设计稿示例 fixture（键 = fixture 名，建议用画板编号，如 "b4-11-type-candidates"）。只补数据，不改画面结构。
  */
-import type { PlanLegacyDetail, PlanPremiseRow } from "../../../../shared/contract/plan-v2";
+import type { PlanLegacyDetail, PlanNextGoalsResponse, PlanPremiseRow } from "../../../../shared/contract/plan-v2";
+import type { MemoryPlanV2State } from "../repository";
 import type { PlanDesignEventFacts, PlanDesignFixture } from "./base";
 import { fromDemo } from "./base";
 
@@ -45,6 +46,22 @@ const LEGACY_SERIES_A: PlanLegacyDetail = {
   status: "active",
 };
 
+/** c-review / c-done 共用：前提 7 行、开始日、Step 3 的目安照画板示例。 */
+function reviewPlan(state: Partial<MemoryPlanV2State>) {
+  for (const plan of state.plans ?? []) {
+    plan.premise = structuredClone(REVIEW_PREMISE);
+    plan.startsOn = "2026-07-11";
+    const step3 = plan.steps[2];
+    if (step3) step3.doneCriteria = "リード候補 3社と 1回目の面談を終え、1社が DD に進む";
+  }
+}
+
+/** b4「Web 達成 → 次の目標」的两个候选（🤝 / 🧑‍💼；副标题与依据照画板）。 */
+const NEXT_GOALS: PlanNextGoalsResponse["candidates"] = [
+  { basis: [{ kind: "record", label: "話した CVC 担当者 3人のうち 2社が PoC に関心（面談メモ 9/24・10/2）", ref: "design-memo-cvc" }], goalKind: "sales", goalText: "大手製造業との事業提携", subtitle: "CVC 担当者経由で 2社と PoC を始める" },
+  { basis: [{ kind: "record", label: "話した起業家 7人中 4人が「調達後はまず営業責任者」と回答（面談メモ）", ref: "design-memo-founders" }], goalKind: "hiring", goalText: "営業責任者の採用", subtitle: "シリーズA 後の体制づくり" },
+];
+
 export const fixturesC: Record<string, PlanDesignFixture> = {
   /** 目標を編集（b4 #31）：背景（任意）/ ひとこと（重点）照画板（存在 plans.analysis）。 */
   "c-edit": fromDemo((state) => {
@@ -53,11 +70,15 @@ export const fixturesC: Record<string, PlanDesignFixture> = {
     }
   }),
   /** 見直し（b4 #18 · b12 #254 #256）：前提 7 行照画板；先送 2 回 / 用完由门禁前的接口调用造出。 */
-  "c-review": fromDemo((state) => {
-    for (const plan of state.plans ?? []) {
-      plan.premise = structuredClone(REVIEW_PREMISE);
-      plan.startsOn = "2026-07-11";
-    }
+  "c-review": fromDemo(reviewPlan),
+  /** 完了 → 次の目標（b4 #27）：达成于 10月7日；C10 的候选按画板示例放进每计划一次的缓存回执（不调 AI）。 */
+  "c-done": fromDemo((state) => {
+    reviewPlan(state);
+    const plan = state.plans?.[0];
+    if (!plan) return;
+    plan.achievedAt = "2026-10-07T03:00:00.000Z";
+    const response: PlanNextGoalsResponse = { candidates: NEXT_GOALS, source: "ai" };
+    state.receipts = [...(state.receipts ?? []), { createdAt: "2026-10-07T03:00:00.000Z", draftId: null, fingerprint: "design-fixture", idempotencyKey: `next-goal:${plan.id}`, intakeId: null, kind: "next_goals", outcome: "applied", planId: plan.id, response: response as unknown as Record<string, unknown> }];
   }),
   /** 以前のプラン（b12 #280 卡 · #282 詳細）：没有 v2 目标，只有一个 v1 计划。 */
   "c-legacy": fromDemo((state) => {

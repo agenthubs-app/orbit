@@ -63,7 +63,7 @@
    "design": "b4-plan-iorbit.html",
    "board-index": 18,
    "width": 1440,
-   "note": "setup 03：前提 2 行 + 文字送出 1 回；fixture c-review",
+   "note": "fixture c-review + setup 03（前提 2 行 + 含「青葉ベンチャーズ」的一句送出 1 回，mock 照示例给 2 条差分）",
    "steps": [
     {
      "waitFor": "[data-plan-review] [data-plan-review-premise]"
@@ -143,7 +143,7 @@
      "wait": 1500
     }
    ],
-   "note": "fixture c-review + 接口达成（setup achieve）；打开即读候选"
+   "note": "fixture c-done（达成 10/7、C10 候选在缓存回执里）；打开即读候选"
   },
   {
    "id": "W-R25-09",

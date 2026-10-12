@@ -113,6 +113,25 @@ export function createMockPlanFlowAi(): PlanFlowAi {
         };
         return ok(output);
       }
+      // 计划页像素返工（主会话 2026-10-12 同意，只在 mock）：设计稿 b4「見直し · Web」的示例对话（提到青葉ベンチャーズ、
+      // CVC 並行）→ 照示例给两条差分（Step 3 / Step 4 的目安），其余输入行为不变。
+      if (/青葉ベンチャーズ/u.test(input.request) && input.current.steps.length >= 4) {
+        const design: Tri[] = [
+          { en: "Meet three VCs including Aoba Ventures and one CVC in parallel; one moves to DD", ja: "青葉ベンチャーズを含む VC 3社と CVC 1社に並行で会い、1社が DD に進む", zh: "同时接触包括青叶创投在内的 3 家 VC 和 1 家 CVC，其中 1 家进入尽调" },
+          { en: "Ask one corporate CVC for its PoC terms and compare them with Aoba Ventures' terms", ja: "事業会社の CVC 1社に PoC の条件を聞き、青葉ベンチャーズの条件と並べて比べる", zh: "向 1 家企业 CVC 了解 PoC 条件，并与青叶创投的条件对比" },
+        ];
+        const steps = input.current.steps.map((step, index) => (index === 2 || index === 3 ? { ...step, doneCriteria: pick(design[index - 2]!, context.language) } : step));
+        const reason = pick({ en: "Reflects the premises you corrected and running VCs and CVCs in parallel.", ja: "直した前提（ARR 1億円見込み · リード候補 1社）と、CVC も並行という修正を反映しました。", zh: "按你改正的前提和「CVC 也同时推进」做了调整。" }, context.language);
+        return ok({
+          noChangeReason: null,
+          reasons: [{ path: "steps.2.doneCriteria", reason }, { path: "steps.3.doneCriteria", reason }],
+          revised: { ...input.current, steps },
+          unchanged: [
+            pick({ en: "Conclusion", ja: "進め方の結論", zh: "推进的结论" }, context.language),
+            pick({ en: "Step order", ja: "Step の順番", zh: "Step 的顺序" }, context.language),
+          ],
+        });
+      }
       const note = input.request.replace(/\s+/g, " ").slice(0, 40);
       const steps = input.current.steps.map((step, index) => (index === 0 ? { ...step, doneCriteria: `${step.doneCriteria}（${note}）` } : step));
       return ok({
