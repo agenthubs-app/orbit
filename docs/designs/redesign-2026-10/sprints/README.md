@@ -20,7 +20,7 @@
 | 阶段 | 甲 · 小雨 | 乙 · 产品负责人 |
 | --- | --- | --- |
 | 骨架 R01–R09 | **全部**（RD-04） | 验收（看截图、试用） |
-| 功能 | 计划 v2.2（R22–R25）、加人与邀请（R12、R15、R16）、活动（R26、R27）、主办（R17） | iOrbit（R21）、首页（R10）、Task（R20）、收件箱 · 秘书 · 推送（R13、R14）、人脈（R11）、账户（R18）、iOS 小组件（R19） |
+| 功能 | 计划 v2.2（R22–R25）、加人与邀请（R12、R15、R16）、活动（R26、R27）、主办（R17）、搜索（R30，2026-10-12 新开） | iOrbit（R21）、首页（R10）、Task（R20）、收件箱 · 秘书 · 推送（R13、R14）、人脈（R11）、账户（R18）、iOS 小组件（R19） |
 
 功能 Sprint 的文档在骨架验收后另写。两端每个现有页面由哪个功能 Sprint 重写（按屏替换、旧屏删除），见 [旧屏归属表](screen-ownership.md)；表里补出两个新功能 Sprint：R28 引导、R29 运营后台换新（负责人待定）。分工流程图：https://claude.ai/artifact/7qGcsrWQj2EeLbkdC5hXas
 
@@ -53,6 +53,7 @@
 | [R12](R12-add-cards-and-manual/GOAL.md) | 加人：「人脈を追加」入口、名刺スキャン（拍 / 传含表裏 → 读完自动进人脈 → まとめて確認 → 完成）、手入力（查重与名片同一规则 + 同名提示、逐字段合并、撤销）、待确认草稿页；删除 App 7 个旧加人屏 | R09 | H | 甲 | 服务端完成、已复核（[REPORT](R12-add-cards-and-manual/REPORT.md)、[REVIEW](R12-add-cards-and-manual/REVIEW.md)）；界面待导航壳返工与用户拍板（D19–D29）后按像素标准做（已写的 Web / App 界面保留，按盘点第 5 位返工） |
 | [R15](R15-invite-codes/GOAL.md) | 加人：招待コード（迁移、发码 / 兑换 / 历史 / 同步 / 解除、公开预览限流与防枚举、发出方两端、接收方 `/i/<code>`）；删除两端旧邀请页 | R12 | H | 甲 | 服务端完成、已复核（[REPORT](R15-invite-codes/REPORT.md)、[REVIEW](R15-invite-codes/REVIEW.md)）；界面待导航壳返工与用户拍板（D30–D32、DESIGN §10 #7）后按像素标准做 |
 | [R16](R16-import-and-completion/GOAL.md) | 加人：導入（連絡先 / LinkedIn / CSV / イベントから → まとめて確認）与「每天一问」live（规则、零 AI）；删除 Web 旧导入页 | R12 | H | 甲 | 服务端完成、已复核（[REPORT](R16-import-and-completion/REPORT.md)、[REVIEW](R16-import-and-completion/REVIEW.md)）；界面未写，待导航壳返工与用户拍板后按像素标准做 |
+| R30 | 全局搜索（两端）：Web ⌘K 面板本体（W-R07-05 / 06）+ App 全局搜索；做完后 App Task 左上 🔍 改接全局搜索（[交接表 R30](HANDOFF-TO-FEATURE-SPRINTS.md#r30-搜索新甲--小雨2026-10-12-用户定)） | R07；活动与会话的搜索接口（R26、R21） | H | 甲 | 未开始（2026-10-12 用户决定新开） |
 
 计划 v2.2 的整体设计、AI 调用清单、需要用户拍板的事项见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md)，复核见 [plan-v2.2/REVIEW.md](plan-v2.2/REVIEW.md)。加人与邀请（R12、R15、R16）见 [add-and-invite/DESIGN.md](add-and-invite/DESIGN.md)，复核见 [add-and-invite/REVIEW.md](add-and-invite/REVIEW.md)。
 

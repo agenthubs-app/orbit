@@ -1150,7 +1150,7 @@ function invRcvForm() {
       <div class="lbl" style="margin-top:8px;font-weight:700">求めていること</div><div style="font-size:13px">顧客の紹介、協業先</div>
       <div class="card flat row" style="gap:8px;margin-top:10px;padding:10px 12px;align-items:flex-start"><span>🤝</span><div class="lbl" style="line-height:1.6;color:var(--ink-2)">登録すると、お互いの人脈に追加されます。あなたが選んだ項目だけが相手に届きます。</div></div></div>
     <div class="lbl k-ircode" style="margin:12px 4px 0">7QKM-H4TR · 10/14 まで有効</div>
-    <div style="display:grid;gap:8px;margin-top:14px"><button class="btn primary block xl k-irgo">無料で登録してつながる</button><button class="btn block xl k-irlogin">ログインしてつながる</button><div class="lbl center">登録は1分 · クレジットカード不要 · アプリは不要</div></div>`
+    <div style="display:grid;gap:8px;margin-top:14px"><button class="btn primary block xl k-irgo">無料で登録してつながる</button><button class="btn block xl k-irlogin">ログインしてつながる</button><div class="lbl center">登録は1分 · クレジットカード不要</div></div>`
     + `<div class="urlbar">${ic('link', 'sm')}orbit.app/i/7QKM-H4TR</div>`;
 }
 function invRcvDone() {
@@ -1548,6 +1548,7 @@ h += boards([
     ['.k-ircode', 0, '码与期限一行：8 位 XXXX-XXXX（D30）· ○/○ まで有効；从链接打开即带码，也可在 /i 手输'],
     ['.k-irgo', 0, '「無料で登録してつながる」→ 现有注册（メール + パスワード / Google）→ 回到本页 → 简短资料（名前必須 · 会社 · 役職 · 提供できること · 求めていること）→ 共有する項目（メール・電話 默认关）→ ⑤'],
     ['.k-irlogin', 0, '已有账号 →「ログインしてつながる」→ ⑦（只问要不要つながる）'],
+    ['.k-irgo', 0, '2026-10-12 用户定稿（R15 P2）：App 接收页按钮下小字去掉「アプリは不要」，只留「登録は1分 · クレジットカード不要」（同 App 字典 add.inviteIn.signupNote）；Web 接收页（b9「招待 ② 好友」）保留，属用户认可的例外'],
   ]),
   AP('⑤ 受け取った側 · 完了', 'ok', { body: invRcvDone() }, [
     ['.k-irdtitle', 0, '完成：两个头像叠放 +「佐藤さんとつながりました」'],

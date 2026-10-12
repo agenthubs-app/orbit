@@ -50,6 +50,7 @@
 | G20 | **旧屏三份允许清单** | Ionicons、写死文字、旧写法只减不增 | 重写一个旧屏就把它从清单删掉；旧组件（如 `NeedsNetworkState`，14 个旧屏在用）使用点归零时删文件；合回前清单为空 | README RD-24、合回前 |
 | G21 | **Web 新页面作用域** | — | 外层 `<Orbit2026Scope>` + `ToastProvider`，与旧页面是兄弟不嵌套；CSS 只用 `var(--…)`；弹层用现成组件或 `useLayer`；减少动效两处都写 | `R06-web-components/REPORT.md`:76–81 |
 | G22 | **语言** | Web 以 cookie `orbit-lang` 为准 | 链接不拼 `?lang=`；字体按 RD-09 修订（系统字体优先） | `R07-web-shell/REVIEW.md`:207；README RD-09 |
+| G24 | **App 日文粗体字形**（2026-10-12 定，选 (b)） | App 日文走系统默认字体 | App 日文统一显式使用 Hiragino Sans 各字重：R01 token 加 `font.family.ja`，由 R05 会话实现；先确认 iOS 上 W8 是否可用；各功能 Sprint 用 token，不自己写字体名 | DEC §9-9；README RD-09 |
 | G23 | **组件库遗留（乙负责组件库时处理）** | 调用方各自绕开 | `Toast` 点按先关再回调；`BottomSheet` / `ActionSheet` 页面失焦自动关；确认 sheet 支持不可拖关；Web Modal 加 380 档（D42）；`Kbd` 字色、`MacTile` 小号 emoji、非壳抽屉深色细边等逐件对齐 kit（Q1 组件逐件比） | `R12-add-cards-and-manual/REVIEW.md`:150；`R15-invite-codes/REVIEW.md`:78,148,153；DEC D42 Q1；R07-RW REWORK-REPORT:113,174 |
 
 ---
@@ -115,7 +116,7 @@
 | R18-01 | **Web マイページ「主催」入口** | R07 返工时在旧マイページ页签栏**临时**加「主催」链接到 `/app/events/center`（不高亮），为手机 Web 能进主催页 | 按设计稿重做マイページ时做正式入口；头像菜单按 b12 W-R07-07b 只留 マイページ / 言語 / 外観 / ログアウト，設定和主催从マイページ进 | DEC D18（2026-10-12 更正）；README 合回前；R07-RW REWORK-REVIEW:171 |
 | R18-02 | App マイページ（A-R05-11） | 不用 `AppScreen`，只加 `ShellBackBar` 和「受信箱」次入口 | 「← 白圆 · マイページ +『プロフィール 60%』· ⚙ 白圆」整屏重写 | PA L684–692；`R05-app-shell/REPORT.md`:18,61 |
 | R18-03 | App 启动「正在确认登录状态…」显示了底栏（R09 走查 A2） | 外观问题 | 启动 / 认证态不显示底栏 | README 合回前 |
-| R18-04 | 公开页（落地页、登录页背景） | 旧顶栏 | **冲突先核对**：D14 说照 b1 A1 / A2 改，归属表写落地页「不重画、只换 token」——开工前请用户确认 | PA D14；归属表 |
+| R18-04 | 公开页（落地页、登录页背景） | 旧顶栏 | **已定（2026-10-12）**：照 b1 A1 / A2 设计稿重画（不再是「只换 token」），过像素门禁；归属表已改 | PA D14；DEC §9-2；归属表 |
 | R18-05 | ご利用プラン | 不做 | 本期不做付费；b4 两块画板作废；見直し用完不出「ご利用プランを見る」 | DEC D55 D56 |
 | R18-06 | 契约 11（导出、退会、`/api/app/version`） | mock / 503 | 做 live；首次正式发布时启用 `minSupportedAppVersion` 启动检查 | `R08-contracts-and-mocks/REPORT.md`:23,61；README 合回前 |
 | R18-07 | 注册回跳与マイページ「招待コード」入口 | `profileContinuationPath` 已追加 `next=/i/<码>` 直接回去 | 知悉；マイページ「招待コード」链到 `contacts/new/invite`；注册走旧英文弹窗、不跟深色的问题随 D31 / D14 一起改 | `R15-invite-codes/REPORT.md`:81；`R15-invite-codes/REVIEW.md`:115 |
@@ -132,7 +133,7 @@
 
 | # | 是什么 | 现在的临时做法 | 接手时必须做到 | 依据 |
 | --- | --- | --- | --- | --- |
-| R20-01 | **App Task 左上 🔍** | 临时接人脉搜索（跳 `/contacts/list`）：App 还没有全局搜索；Web 的 🔍 打开 ⌘K | 正式全局搜索归属**未定**（见「未定归属 U01」）；R20 重写 Task 时保留这个 🔍 落点，等全局搜索上线后改接 | `repos/orbit-app/src/screens/task/TaskScreen.tsx`:103–107 |
+| R20-01 | **App Task 左上 🔍** | 临时接人脉搜索（跳 `/contacts/list`）：App 还没有全局搜索；Web 的 🔍 打开 ⌘K | **已定（2026-10-12）**：正式全局搜索归新开的 **R30 搜索**（甲）；R20 重写 Task 时保留这个 🔍，R30 做完后改接全局搜索 | `repos/orbit-app/src/screens/task/TaskScreen.tsx`:103–107 |
 | R20-02 | **Web メモ标题区「＋ メモを追加」** | メモ段是「まもなく」空态，标题区缺按钮，W-R07-TmemoH 不过门禁 | 做出 Web メモ（左列表 + 右详情），补按钮并过门禁；不改页签、键盘和 `?tab=` | README R07 行；R07-RW REWORK-REPORT:12,67,110 |
 | R20-03 | 四段内容（A-R05-04/05/07、W-R07-08/09/10） | App：calendar = `ScheduleScreen`、todo = `TaskQuickAdd` + `TasksScreen`、memo = `NotesScreen`；Web：カレンダー是旧个人日程、To-do 是旧英文页 | 照 app.html / web.html 与 b11 E 整屏重写：To-do 顶部直接是「判断待ち」；メモ段不要页内大标题；右上主按钮「＋ 予定 / To-do / メモを追加」 | PA D03 D10 D11；`R05-app-shell/REPORT.md`:12,89 |
 | R20-04 | Task 默认段 | 记住上次那一段 | 保留（01-system ⑳ 已补规则） | DEC D04 |
@@ -173,7 +174,7 @@
 | R26-04 | 工作人员代签没接 v2 计分 | — | 签到时调 `recordEventAttendanceForPlans` | `R24-plan-overview-and-types/REPORT.md`:100 |
 | R26-05 | 活动用的计划接口 | `addEventToPlan`、`planRemainingTargets`、`event_assessment` 已就绪；契约 8 权重 45 / 15 / 20 / 10 / 10 | 复用，不另起形状；契约 8 / 9 做 live | `R22-plan-data-and-score/REPORT.md`:97；`R08-contracts-and-mocks/REPORT.md`:20–21 |
 | R26-06 | 手入力「出会った場所」活动候选 | 用过去 30 天内已开始的活动 | 有「我参加过 / 将参加」接口后替换 | `R12-add-cards-and-manual/REPORT.md`:67 |
-| R26-07 | 每天一问的活动选项来源 | 用联系人 `metEventId` + 最早录入时间 | **待用户拍板**：推荐 R26 后改「参加记录 + 活动开始时间」 | `R16-import-and-completion/REPORT.md`:32–36 |
+| R26-07 | 每天一问的活动选项来源 | 用联系人 `metEventId` + 最早录入时间 | **已定（2026-10-12）**：R26 完成后改用参加记录 + 活动开始时间 | `R16-import-and-completion/REPORT.md`:32–36 |
 | R26-08 | 未登录活动列表 / 详情公开顶栏 | 旧顶栏 | 照 b1 公开页 | PA D14 |
 | R26-09 | `/app/events` 1440 水合警告、`/live` 403 控制台噪音 | 旧页 | 重写时消除 | README 合回前（R09 走查 W3、W5） |
 
@@ -204,12 +205,12 @@
 | R12-06 | 招待、連絡先、LinkedIn 入口 | 隐藏；Web「その他」进旧导入页 | R15 / R16 上线时打开，5 个门都显示 | DEC §3 D21 |
 | R12-07 | 未截 W-R12-07～10 | 会调付费 OCR | 固定识别结果补截 | DEC Q4 |
 | R15-01 | 发出方 / 接收方逐像素返工 | 40 张比对 0 通过 | 按 `R15-invite-codes/REVIEW.md`:96–121 列的结构偏离逐条改；码 8 位不带姓名（示例 `7QKM-H4TR`）；受邀注册按新画板；双方推送 | DEC D30–D32；`R15-invite-codes/REVIEW.md`:96–121 |
-| R15-02 | **待用户拍板** | 按实现先做 | P1「変更」直接改共享项目还是重新发码；P2 App 接收页去掉「アプリは不要」；DESIGN §10 #7 兑换只记「可能同一人」 | `R15-invite-codes/REPORT.md`:70–77 |
+| R15-02 | **已定（2026-10-12）** P1 / P2 | 按实现先做（P1 现在是重新发码） | P1 照稿做：补「修改当前招待码的分享内容」接口，码不变，由加人会话实现；P2 App 接收页去掉「アプリは不要」、Web 保留（用户认可的例外，b11「④ 受け取った側 · 登録」画板已改）；DESIGN §10 #7 兑换只记「可能同一人」仍按 add-and-invite DESIGN | DEC §9-3、§9-4；`R15-invite-codes/REPORT.md`:70–77 |
 | R15-03 | App「コピー」 | 弹系统分享面板 | 用 `expo-clipboard` 直接复制（R24 同） | DEC D44 |
 | R15-04 | 门禁没跑成的画面（期限切れ / 满员、注册后资料页、App 说明页、App 日语） | 本机没数据 | 造数据补跑 | `R15-invite-codes/REVIEW.md`:123 |
 | R16-01 | 两端导入界面全部没写 | Web「その他」四门进旧 `NetworkImport`（`?method=csv|contacts|event` 是临时落点） | 按像素标准一次写完；`?method=…` / `?import=` 重定向到新地址；删旧组件、允许清单 4 行、审计脚本引用；选门页、vCard、汎用 CSV、イベントから没有画板，先请用户拍板 | `R16-import-and-completion/REPORT.md`:5,40；`PLANNER.md`:57,83–101 |
 | R16-02 | 每天一问题型 | 两种 | 本期两种；b9「字段冲突 · 転職」下一期，不进门禁 | DEC D34 |
-| R16-03 | **待用户拍板** | 现做法见左 | LinkedIn 导入的人用 `connectedOn` 还是导入时间作加入时间（推荐 `connectedOn`）；当天导入后当天能否出题（现可以）；活动选项来源见 R26-07 | `R16-import-and-completion/REPORT.md`:32–36 |
+| R16-03 | **已定（2026-10-12）** | 现做法见左 | LinkedIn 导入的人用 `connectedOn` 作加入时间；当天导入后当天可以出题（维持现状）；活动选项来源见 R26-07 | DEC §9-5、§9-6；`R16-import-and-completion/REPORT.md`:32–36 |
 
 ## R22–R25 计划 v2.2 的界面返工与遗留
 
@@ -225,8 +226,9 @@
 | R24-03 | 前提を見る、Step 完成卡 | 只读；模板文案 | 保留；照 b12 W-R24-03 / A-R24-05；完成卡「「{Step 名}」は完了しましたか？」 | DEC D49 D50 |
 | R25-01 | 目標を編集 | 可编辑目标文，两个出口 | 只改说明直接保存（契约加「背景説明」字段）；其余照 PA L572–588 | DEC D59；`R25-plan-review-goals-cleanup/REPORT.md`:215 |
 | R25-02 | 目标切换、完了页、見直し页 | sheet；简版完了页 | App 改 popover；Web 完了页大达成卡 +「次の目標」候选（若要新 AI 调用先拍板）；見直し右栏、AI 修正卡标本月次数 | DEC D58 X07 X10 |
-| R25-03 | 以前のプラン两端用词不同（Web「見るだけ / 進行中」、App「閲覧のみ / 未完了」） | 未拍板 | 先问用户是否统一 | b12 复核 L6 |
+| R25-03 | 以前のプラン两端用词不同（Web「見るだけ / 進行中」、App「閲覧のみ / 未完了」） | 两端不同 | **已定（2026-10-12）**：两端统一，以设计稿画板上的用词为准；由计划页会话实现 | DEC §9-8；b12 复核 L6 |
 | R25-04 | 旧计划链接换新、删兼容跳转 | **已完成**（2026-10-11，`tests/audits/no-legacy-plan-links.test.ts` 锁住） | 不要再生成旧地址；新链接一律用 `shared/compute/plan-href.ts` | README 合回前；`R25-plan-review-goals-cleanup/REPORT.md`:144–163 |
+| R24-04 | **照设计稿去掉三个现有功能**（2026-10-12 定） | 实现里有：候补每行的 ✓ / ✕、「話した人」逐条取り消す、1024 宽度下的「前提を見る / 手動で編集」 | 三项都去掉，照设计稿；由计划页会话实现 | DEC §9-10 |
 | R22-01 | 未截画面（A-R23-03/06/07/12～19 等） | 本机 App 初版生成失败；达成不能撤回 | 先查清本机 live「初版をつくれませんでした」原因，再用只读 mock（:3002）补截 | PA §4.2；DEC Q4 |
 | R22-02 | **待授权（生产）** | 只在本机 | 迁移 `plans-v2-model`、`ai-usage-plan-v2-purposes` 必须先迁移再部署；`ORBIT_PLAN_V2_AI=ai` 开关；staging / 生产付费 AI C1–C12；月上限（`plan_background` 10→20、`plan_review` 3→6、C1 是否拆用途）待用户拍板 | `R22-plan-data-and-score/REPORT.md`:99–103；`R23-plan-generation/REPORT.md`:118–121；`R25-plan-review-goals-cleanup/REPORT.md`:197 |
 | R22-03 | 遗留小项 | 未做 | 生成流程「放弃」入口与 `abandoned` 状态；只剩已达成目标的人进不了完了页；候补被记录又撤销后不回候补表；v2 类型 `status` 口径；`review_used` 按月查、`exists` 预查 | `R23-plan-generation/REVIEW.md`:265；`R25-plan-review-goals-cleanup/REPORT.md`:216；`R24-plan-overview-and-types/REPORT.md`:83；`R22-plan-data-and-score/REPORT.md`:107–108 |
@@ -237,13 +239,19 @@
 
 | # | 是什么 | 现在的临时做法 | 接手时必须做到 | 依据 |
 | --- | --- | --- | --- | --- |
-| U01 | **全局搜索与 ⌘K 面板本体**（W-R07-05 / 06：分组结果、类型 chip、「近い条件なら」） | Web 用旧面板（已去隐私说明行）；App 没有全局搜索，Task 🔍 临时接人脉搜索（R20-01） | 需要活动和会话的搜索接口。**推荐**：两端搜索合成一个小 Sprint（对标 Slack / Linear：一个搜索服务、两端同一入口），做完后 App Task 🔍 改接全局搜索 | README R07 行「待开 Sprint」；R07-RW REWORK-REPORT:13,112 |
+| U01 | **全局搜索与 ⌘K 面板本体**（W-R07-05 / 06：分组结果、类型 chip、「近い条件なら」） | Web 用旧面板（已去隐私说明行）；App 没有全局搜索，Task 🔍 临时接人脉搜索（R20-01） | **已定（2026-10-12）→ 移交 R30 搜索（甲）**，见下方「R30 搜索」一节 | DEC §9-1；README 功能登记表 R30 |
 | U02 | 组件库逐件对照（Q1） | 展示页没整屏画板 | 按 01-system 规格格 ↔ 展示页同名小节逐件比；工具待扩展 | DEC Q1 |
 | U03 | Expo SDK 57 补丁升级（`expo-font` 缺失、Hermes 内存回归、RN 0.86.0 锁定） | 暂不升级 | 单独做一次升级并重建开发包 | `R04-app-components/REPORT.md`:58,117 |
 | U04 | 长期保留的兼容层（App `batch2` / `batch` / `import` 旧链接翻译、`[...legacy]`；Web `?job=`、`?method=scan`；`/app/invitations/…` 转手输码页） | 有意保留，没写删除时间 | 合回前决定去留 | `R12-add-cards-and-manual/REPORT.md`:30；`R15-invite-codes/REVIEW.md`:152 |
 | U05 | v1 计划服务端（`bootstrap` / `reanalyze` / `POST /api/agent/plans` 永久 409，`PlanService`） | 保留 | 定下线时间 | `R25-plan-review-goals-cleanup/REPORT.md`:58,120 |
 | U06 | 连库后暴露的 8 条既有失败（通知发现 worker 3、活动访问 2、联系人详情 / party live / 名片 schema 各 1） | 基线同样失败 | 另开任务修 | `R25-plan-review-goals-cleanup/REPORT.md`:228 |
 | U07 | 字典里不再使用的键（每语言 84 个） | 保留 | 统一做一次字典整理 | `R25-plan-review-goals-cleanup/REPORT.md`:62 |
+
+## R30 搜索（新，甲 · 小雨；2026-10-12 用户定）
+
+| # | 是什么 | 现在的临时做法 | 接手时必须做到 | 依据 |
+| --- | --- | --- | --- | --- |
+| R30-01 | 两端全局搜索：Web ⌘K 面板本体（W-R07-05 / 06：无框搜索行 + 类型 chip すべて / 人 / イベント / 会話、结果分组 + 状态 chip + 命中高亮、无结果「近い条件なら」「ほかの方法」、底部「Tab 種類を切替 / 意味検索 ON」）+ App 全局搜索 | Web 旧面板；App Task 左上 🔍 跳人脉列表 | 依赖活动和会话的搜索接口（R26 / R21）；一套搜索服务两端同用；做完后 App Task 左上 🔍 改接全局搜索（R20-01）；过像素门禁 | DEC §9-1；PA L256–274；README R07 行 |
 
 ## 合回前与真机（不归某个功能 Sprint，列在 README 合回前清单）
 
