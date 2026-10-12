@@ -70,11 +70,11 @@ test("a missing block is reported even when the whole picture barely differs; sa
 test("the band report says how far a band moved and whether a side is empty", () => {
   const glyph = (dx: number) => (x: number, y: number) => x >= 40 + dx && x < 90 + dx && y >= 10 && y < 20;
   const cells = [{ band: 0, y0: 0, y1: 30, mismatch: 0.1 }];
-  const [moved] = bandReport({ design: png(200, 30, glyph(0)), app: png(200, 30, glyph(3)), cells, threshold: 0.02, attribution: { 0: "[data] 名前" } });
+  const [moved] = bandReport({ design: png(200, 30, glyph(0)), app: png(200, 30, glyph(3)), cells, threshold: 0.02, attribution: { 0: "[data] 名前" }, out: undefined });
   assert.equal(moved.dx, 3);
   assert.equal(moved.dy, 0);
   assert.equal(moved.status, "[data]");
-  const [empty] = bandReport({ design: png(200, 30, glyph(0)), app: png(200, 30), cells, threshold: 0.02 });
+  const [empty] = bandReport({ design: png(200, 30, glyph(0)), app: png(200, 30), cells, threshold: 0.02, out: undefined });
   assert.equal(empty.dx, "缺内容");
   assert.equal(empty.status, "未归因");
 });
