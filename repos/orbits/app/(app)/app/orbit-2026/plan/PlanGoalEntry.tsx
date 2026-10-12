@@ -122,7 +122,7 @@ function GoalInput({ t }: { t: Translate }) {
   return (
     <div className={k.wgrid}>
       {/* b12 W-R23-01-1440 / 02a–c: the goal input's rail is the plan's iOrbit rail (ask about this plan, recent chats). */}
-      <ShellPage rightRail={<GoalRail t={t} recent={list?.intakes ?? []} />} />
+      <ShellPage rightRail={<GoalRail t={t} />} />
       {inProgress ? (
         <div className={k.span12} data-plan-resume="">
           <div className={`${k.card} ${k.resumeCard}`}>
@@ -203,16 +203,36 @@ function GoalInput({ t }: { t: Translate }) {
   );
 }
 
-/** b12 goalRail: ✨ iOrbit · 「このプランについて質問」 · 最近の会話 · iOrbit に聞く… ⌘K. */
-function GoalRail({ t, recent }: { t: Translate; recent: PlanIntakeListResponse["intakes"] }) {
+type RecentChat = { id: string; title: string };
+
+/** iOrbit's recent conversations (the same list as iOrbit's history; read only). */
+async function readRecentChats(): Promise<RecentChat[]> {
+  try {
+    const response = await fetch("/api/ai/conversations/sessions", { cache: "no-store" });
+    if (!response.ok) return [];
+    const body = (await response.json().catch(() => null)) as { success?: boolean; data?: { items?: { id?: string; title?: string }[] } } | null;
+    return (body?.success ? body.data?.items ?? [] : []).filter((item) => item.id && item.title).slice(0, 2).map((item) => ({ id: item.id!, title: item.title! }));
+  } catch {
+    return [];
+  }
+}
+
+/** b12 goalRail: ✨ iOrbit · 「このプランについて質問」 · 最近の会話 (iOrbit history) · iOrbit に聞く… ⌘K. */
+function GoalRail({ t }: { t: Translate }) {
   const { language } = useOrbitLanguage();
+  const [recent, setRecent] = useState<RecentChat[]>([]);
+  useEffect(() => {
+    let alive = true;
+    void readRecentChats().then((items) => { if (alive) setRecent(items); });
+    return () => { alive = false; };
+  }, []);
   return (
     <div className={k.rail} data-plan-rail="goal">
       <h4 className={k.railH}><span className={`${k.emo} ${k.emoLav}`} aria-hidden>✨</span>{t(planFlowCopy.iorbitTitle)}</h4>
       <Link href="/app/agent" className={k.assistBox}><Icon name="sparkle" size={16} />{t(planReviewCopy.askAboutPlan)}</Link>
-      <div className={`${k.lbl} ${k.recentHead}`}>{t(planFlowCopy.recentChats)}</div>
-      {recent.slice(0, 2).map((item) => (
-        <Link key={item.intakeId} href={item.href} className={k.recentRow}><Icon name="clock" size={16} /><span className={k.ell}>{t(planFlowCopy.flowSubtitle, { flow: t(planFlowCopy.flowPageTitle), stage: item.goal })}</span></Link>
+      {recent.length ? <div className={`${k.lbl} ${k.recentHead}`}>{t(planFlowCopy.recentChats)}</div> : null}
+      {recent.map((item) => (
+        <Link key={item.id} href={`/app/agent?session=${encodeURIComponent(item.id)}`} className={k.recentRow} data-plan-recent-chat=""><Icon name="clock" size={16} /><span className={k.ell}>{item.title}</span></Link>
       ))}
       <span className={k.grow} />
       <Link href="/app/agent" className={k.assistBox}><Icon name="sparkle" size={16} />{pickCopy(shellCopy.railAskPlaceholder, language)}<span className={k.assistKey}>⌘K</span></Link>
