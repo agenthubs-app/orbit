@@ -213,6 +213,13 @@ export interface PlanV2Detail {
   pending?: readonly PlanPendingItem[];
   /** R25：確定以来の記録（見直し入口弹层「話した N 人 · イベント N 回 · Step 完了 N」；口径同 `PlanReviewView.sinceConfirmed`）。 */
   sinceConfirmed?: { talkedPeople: number; events: number; stepsDone: number };
+  /**
+   * 计划页像素返工（D59 目標を編集）：「背景説明」——用户给目标补的背景（自由文本，≤1000 字）。
+   * 存在 `plans.analysis.goalBackground`；没写过（含旧计划）为 null。用 `PlanGoalEditRequest.goalBackground` 改。
+   */
+  goalBackground?: string | null;
+  /** 计划页像素返工（D59）：「ひとこと（重点）」——一句话重点（≤200 字）。存在 `plans.analysis.goalNote`；没写过为 null。 */
+  goalNote?: string | null;
 }
 
 /** 记一次「话过了」（有名字 / 无名字）。 */
@@ -428,6 +435,11 @@ export interface PlanDraftTurn {
   /** AI 判断不改时的理由（「今回は変更しません」；这次也计 1 次）。 */
   noChangeReason: string | null;
   at: string;
+  /**
+   * 计划页像素返工：見直し这一轮用户自己写的那句话（原话，不含前提改动摘要；`input` 不变，仍是「前提改动摘要 + 原话」）。
+   * 只改了前提、没写话为 null；这个字段加上之前写入的轮次（旧数据）为 null。初版草稿的修正轮不带这个字段。
+   */
+  userText?: string | null;
 }
 
 /** 方案引用的一条业界现状（已解析，界面直接显示）。 */
@@ -530,6 +542,36 @@ export type PlanIntakeMembersRequest =
       alsoAddToNetwork: boolean;
       idempotencyKey: string;
     };
+
+/**
+ * 计划页像素返工（「人脈から選ぶ」默认候补）：`GET /api/agent/plans/intakes/[intakeId]/member-candidates` 的一人。
+ * 只读、不调 AI；选中后仍走 `POST …/members`（mode network，C3 推定能力）。
+ */
+export interface PlanMemberCandidate {
+  contactId: string;
+  name: string;
+  organization: string | null;
+  role: string | null;
+  /** 职位 / 标签里写着共同創業者（排在最前）。 */
+  cofounder: boolean;
+  /** 「できること」近似（能力 id，`plan-templates` 该类 8 项之内）：规则 = `shared/compute/plan-member-candidates.ts`。 */
+  capabilities: readonly string[];
+  /** 其中补得上当前团队「空き」的（按 intake 已存的团队算；界面改了勾选可用同一个纯函数本地重算）。 */
+  fills: readonly string[];
+}
+
+export interface PlanMemberCandidatesResponse {
+  /** 最近 / 与目标相关的本人联系人（共同創業者候补 + 初版用的联系人，去掉已在团队里的；最多 20 人，已排序）。 */
+  candidates: readonly PlanMemberCandidate[];
+  /** 当前团队的「空き」（能力 id；solo 时只看本人）。 */
+  gaps: readonly string[];
+}
+
+/** 计划页像素返工（D38）：`POST /api/agent/plans/intakes/[intakeId]/background/reopen`——出题后重新打开背景。 */
+export interface PlanIntakeReopenRequest {
+  expectedUpdatedAt: string;
+  idempotencyKey: string;
+}
 
 export interface PlanIntakeLadderRequest {
   wants: string;
@@ -858,6 +900,11 @@ export interface PlanReviewView {
   resetsAt: string;
   /** 这次见直参考的数据（确定以来的记录数）。 */
   sinceConfirmed: { talked: number; events: number; stepsCompleted: number };
+  /**
+   * 计划页像素返工：这份计划上一次「确定」的时刻（ISO）。= 最近一次見直し / 手动编辑确定（`plan_revisions` 里 source 为
+   * review / manual_edit 的最新一行的 created_at）；从没见直过就是计划本身确定（创建）的时刻。目标文编辑（goal_edit）不算确定。
+   */
+  lastConfirmedAt?: string | null;
 }
 
 export interface PlanReviewStartRequest {
@@ -907,12 +954,16 @@ export interface PlanAchievementView {
   bestMove: { text: string; basis: readonly PlanBasisRef[] } | null;
   skippedAreas: readonly string[];
   sample?: true;
+  /** 计划页像素返工：计划开始日（YYYY-MM-DD，东京日期；同 `PlanV2Detail.startsOn`）。 */
+  startsOn?: string | null;
 }
 
 export interface PlanNextGoalCandidate {
   goalText: string;
   goalKind: PlanGoalKind;
   basis: readonly PlanBasisRef[];
+  /** 计划页像素返工（C10 v7）：候选下面的一行副标题（一句、依据记录，≤80 字）；旧缓存 / 模型没给为 null。 */
+  subtitle?: string | null;
 }
 
 /** `GET /api/agent/plans/v2/[planId]/next-goals`（C10，每计划一次，缓存）。 */
@@ -926,6 +977,13 @@ export interface PlanNextGoalsResponse {
 export interface PlanGoalEditRequest {
   goalText?: string;
   goalKind?: PlanGoalKind;
+  /**
+   * 计划页像素返工（D59）：「背景説明」（≤1000 字）。不传 = 不改；null 或空串 = 清空。
+   * 只改这两项（目标文 / 类型不变）时用 `save_only` 直接保存即可（不需要作り直し）。
+   */
+  goalBackground?: string | null;
+  /** 计划页像素返工（D59）：「ひとこと（重点）」（≤200 字）。不传 = 不改；null 或空串 = 清空。 */
+  goalNote?: string | null;
   mode: "save_only" | "save_and_rebuild";
   expectedRevision: number;
   idempotencyKey: string;
@@ -948,6 +1006,19 @@ export interface PlanLegacyItem {
   needs: number;
   actionsDone: number;
   actionsTotal: number;
+  /**
+   * 计划页像素返工（N29「開始 … · フェーズ 1」）：v1 计划所处的阶段。来自 v1 `plans.phases`（各阶段的起止周），
+   * 生效中的计划按今天（东京）所在周、已归档的按归档那天所在周取阶段（落在空档取之前最近一段，超出最后一周取最后一段）。
+   * `number` 从 1 起（界面显示「フェーズ {number}」，不显示内部代号 p1）；没有阶段数据为 null。
+   */
+  phase?: PlanLegacyPhase | null;
+}
+
+export interface PlanLegacyPhase {
+  number: number;
+  total: number;
+  /** v1 阶段标题（AI / 模板写的，可能为 null）。 */
+  title: string | null;
 }
 
 export interface PlanLegacyListResponse {
@@ -957,5 +1028,21 @@ export interface PlanLegacyListResponse {
 /** `GET /api/agent/plans/legacy/[planId]`：以前のプラン（只读）。 */
 export interface PlanLegacyDetail extends PlanLegacyItem {
   analysisSummary: string | null;
-  items: readonly { kind: "action" | "network_need" | "info" | "event"; title: string; status: string; phase: string | null }[];
+  items: readonly {
+    kind: "action" | "network_need" | "info" | "event";
+    title: string;
+    status: string;
+    /** v1 内部阶段代号（如 p1）。 */
+    phase: string | null;
+    /** 计划页像素返工：所属阶段的序号（从 1 起，按 v1 `plans.phases` 的顺序；对不上为 null）。 */
+    phaseNumber?: number | null;
+    /** 计划页像素返工（只 network_need）：说明（v1 `plan_items.detail`，没有时取 `criteria.description`；都没有为 null）。 */
+    detail?: string | null;
+    /**
+     * 计划页像素返工（只 network_need）：对上的联系人（v1 `plan_items.contact_links` 里优先已建立关系的、否则第一个）的
+     * 名字与公司（本人联系人的 displayName / organization）；没对上、联系人已删或不是本人的为 null（界面显示「まだ人脈にいません」）。
+     */
+    contactName?: string | null;
+    organization?: string | null;
+  }[];
 }

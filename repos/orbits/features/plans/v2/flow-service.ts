@@ -48,6 +48,8 @@ import type {
   PlanIntakeListResponse,
   PlanIntakeMembersRequest,
   PlanIntakeView,
+  PlanIntakeReopenRequest,
+  PlanMemberCandidatesResponse,
   PlanPremiseRow,
   PlanPremiseSource,
   PlanReadingItem,
@@ -72,6 +74,7 @@ import type { PlanFlowContact, PlanFlowContextSource, PlanFlowMemo } from "./flo
 import { emptyIntakeAiSteps, emptyStep } from "./repository";
 import { PLAN_V2_GOAL_LIMIT, type PlanDraftContent, type PlanDraftPersonType, type PlanDraftRow, type PlanFlowStepRecord, type PlanIntakeRow, type PlanV2Repository, type PlanV2Scope, type PlanV2Transaction } from "./types";
 import { allocationSlotsOf } from "./validate-content";
+import { rankPlanMemberCandidates } from "../../../shared/compute/plan-member-candidates";
 import { activeAwards, PLAN_REVIEW_MONTHLY_LIMIT, planReviewQuota, planSinceConfirmed, type PlanReviewBudgetReader, type PlanV2Service } from "./service";
 import type { PlanV2LogEntry, PlanV2Row, PlanV2TypeItem } from "./types";
 
@@ -84,6 +87,8 @@ export const PLAN_LADDER_LIMIT = 3;
 /** C7 每份草稿上限。 */
 export const PLAN_AI_FIX_LIMIT = 3;
 export const PLAN_TEAM_MEMBER_LIMIT = 12;
+/** 计划页像素返工：「人脈から選ぶ」默认候补的人数上限。 */
+export const PLAN_MEMBER_CANDIDATE_LIMIT = 20;
 const GOAL_KIND_MIN_LENGTH = 6;
 /** R25 复核 M4：C8 / C10 输入里面谈メモ摘要的条数与每条字数上限。 */
 export const PLAN_REVIEW_MEMO_LIMIT = 20;
@@ -164,6 +169,10 @@ export interface PlanFlowService {
   retryBackground(intakeId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanIntakeView>;
   confirmBlock(intakeId: string, request: PlanIntakeBlockRequest, context: PlanFlowRequestContext): Promise<PlanIntakeView>;
   addMembers(intakeId: string, request: PlanIntakeMembersRequest, context: PlanFlowRequestContext): Promise<PlanIntakeView>;
+  /** 计划页像素返工：「人脈から選ぶ」打开时的默认候补（只读、不调 AI；规则 = shared/compute/plan-member-candidates）。 */
+  memberCandidates(intakeId: string, context: PlanFlowRequestContext): Promise<PlanMemberCandidatesResponse>;
+  /** 计划页像素返工（D38）：出题后重新打开背景——作废问题、回答、前提与初版草稿，回到背景确认。 */
+  reopenBackground(intakeId: string, request: PlanIntakeReopenRequest, context: PlanFlowRequestContext): Promise<PlanIntakeView>;
   recomputeLadder(intakeId: string, request: { wants: string; idempotencyKey: string }, context: PlanFlowRequestContext): Promise<PlanIntakeView>;
   chooseQuestions(intakeId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanIntakeView>;
   submitAnswers(intakeId: string, request: { answers: readonly { questionId: string; values: readonly string[]; text: string | null }[]; idempotencyKey: string }, context: PlanFlowRequestContext): Promise<PlanIntakeView>;
@@ -847,7 +856,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     return used;
   }
 
-  async function reviewView(reader: Pick<PlanV2Transaction, "plan" | "goalPlans" | "log" | "flowReceipt" | "typeItems">, draft: PlanDraftRow, context: PlanFlowRequestContext): Promise<PlanReviewView> {
+  async function reviewView(reader: Pick<PlanV2Transaction, "plan" | "goalPlans" | "log" | "flowReceipt" | "typeItems" | "latestRevisionAt">, draft: PlanDraftRow, context: PlanFlowRequestContext): Promise<PlanReviewView> {
     const plan = await reader.plan(draft.planId ?? "");
     const quota = await reviewQuotaNow(reader);
     const marks = plan ? await reader.flowReceipt(`review-mark:${plan.id}:${tokyoUsageMonth(nowDate())}:${tokyoDayStart(nowDate()).slice(0, 10)}`) : null;
@@ -873,7 +882,10 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       }),
     });
     return {
-      draft: { ...base, goal: plan?.goalText ?? "", goalKind: plan?.goalKind ?? "unknown", purposeText: plan?.purposeText ?? null, turns: base.turns.map(({ base: _base, revised: _revised, ...turn }: StoredTurn) => turn), ...(plan ? { slotState: await slotStateOf(reader, plan.id) } : {}) },
+      // 计划页像素返工：每轮带用户原话 userText（这个字段之前写入的轮次为 null）。
+      draft: { ...base, goal: plan?.goalText ?? "", goalKind: plan?.goalKind ?? "unknown", purposeText: plan?.purposeText ?? null, turns: base.turns.map(({ base: _base, revised: _revised, ...turn }: StoredTurn) => ({ ...turn, userText: turn.userText ?? null })), ...(plan ? { slotState: await slotStateOf(reader, plan.id) } : {}) },
+      // 计划页像素返工：上一次确定 = 最近一次見直し / 手动编辑确定（plan_revisions），没有就是计划确定（创建）的时刻。
+      lastConfirmedAt: plan ? (await reader.latestRevisionAt(plan.id, ["review", "manual_edit"])) ?? plan.createdAt : null,
       premiseMarks: ((marks?.response as { marks?: PlanReviewView["premiseMarks"] } | undefined)?.marks ?? []).map(withEvidence),
       resetsAt: nextTokyoMonthStart(nowDate()),
       reviewLeftThisMonth: quota.left,
@@ -1228,6 +1240,63 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       return repository.read(scope, (reader) => intakeView(reader, intake, context));
     },
 
+    async memberCandidates(intakeId, context) {
+      void context;
+      const intake = await repository.read(scope, (reader) => requireIntake(reader, intakeId));
+      const team = intake.background.team?.value ?? { members: [], mode: "solo" as const };
+      const members = team.mode === "solo" ? team.members.filter((member) => member.isSelf) : team.members;
+      const gaps = planCapabilityGaps(intake.goalKind, members);
+      const inTeam = new Set(team.members.map((member) => member.contactId).filter((id): id is string => Boolean(id)));
+      // 共同創業者候补（C2 同一读取，≤5）在前，再接初版用的联系人（≤200，v1 同口径：与目标相关、最近互动）；去重、去掉已在团队里的。
+      const pool = [...(await source.teamCandidates(scope.actorId)), ...(await source.draftContacts(scope.actorId, intake.goalText, nowDate()))];
+      const seen = new Set<string>();
+      const contacts = pool.filter((contact) => {
+        if (inTeam.has(contact.id) || seen.has(contact.id)) return false;
+        seen.add(contact.id);
+        return true;
+      });
+      const ranked = rankPlanMemberCandidates(contacts.map((contact) => ({ contact, context: [...contact.tags, contact.notes ?? ""].join(" "), role: contact.role })), intake.goalKind, gaps);
+      return {
+        candidates: ranked.slice(0, PLAN_MEMBER_CANDIDATE_LIMIT).map(({ capabilities, cofounder, contact, fills }) => ({ capabilities, cofounder, contactId: contact.id, fills, name: contact.name, organization: contact.organization, role: contact.role })),
+        gaps,
+      };
+    },
+
+    async reopenBackground(intakeId, request, context) {
+      const body = { expectedUpdatedAt: request.expectedUpdatedAt };
+      const intake = await repository.transact(scope, async (tx) => {
+        const prior = await replayed<{ intakeId: string }>(tx, request.idempotencyKey, "intake_reopen", body);
+        const current = await requireIntake(tx, intakeId);
+        if (prior) return current;
+        if (current.status === "planned" || current.status === "abandoned") throw new PlanFlowError("BACKGROUND_LOCKED", "This flow is finished.");
+        if (current.status === "background" || current.status === "drafting") return current; // 背景已经开着（含连点第二次）：什么都不做。
+        if (current.updatedAt !== request.expectedUpdatedAt) throw new PlanFlowError("STALE", "This flow was changed on another device.");
+        const at = now();
+        // 初版草稿作废（确定过的不会走到这里：intake 已是 planned）。
+        if (current.aiSteps.draftId) {
+          const draft = await tx.draft(current.aiSteps.draftId);
+          if (draft && draft.status === "open") await tx.updateDraft({ ...draft, status: "discarded", updatedAt: at });
+        }
+        const unconfirm = <T>(block: { value: T; confirmedAt: string | null } | null) => (block ? { ...block, confirmedAt: null } : null);
+        const next: PlanIntakeRow = {
+          ...current,
+          // 背景的内容保留、三块都回到「未确认」；问题、回答、前提作废。premiseVersion 不归零（下次回答 +1，初版的账本键不会撞上旧的）；
+          // 选题的尝试次数保留（账本键不重复）。
+          aiSteps: { ...current.aiSteps, draft: emptyStep(), draftId: null, questions: { ...emptyStep(), attempts: current.aiSteps.questions.attempts } },
+          answers: null,
+          background: { ...current.background, me: unconfirm(current.background.me), purpose: unconfirm(current.background.purpose), team: unconfirm(current.background.team) },
+          premise: null,
+          questions: null,
+          status: "background",
+          updatedAt: at,
+        };
+        await tx.updateIntake(next);
+        await writeReceipt(tx, { body, intakeId, key: request.idempotencyKey, kind: "intake_reopen", response: { intakeId } });
+        return next;
+      });
+      return repository.read(scope, (reader) => intakeView(reader, intake, context));
+    },
+
     async recomputeLadder(intakeId, request, context) {
       const wants = request.wants.trim();
       const replay = await repository.read(scope, async (reader) => ({ intake: await requireIntake(reader, intakeId), prior: await replayed<{ intakeId: string }>(reader, request.idempotencyKey, "intake_ladder", { wants }) }));
@@ -1332,7 +1401,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
           return { guessed: true, questionId: question.id, text: question.guess?.text ?? null, values: [...(question.guess?.values ?? [])] };
         });
         const at = now();
-        const next: PlanIntakeRow = { ...current, aiSteps: { ...current.aiSteps, premiseVersion: 1 }, answers, premise: buildPremise(current, answers, context.language), status: "premise", updatedAt: at };
+        // 计划页像素返工（D38）：背景重开过的流程 premiseVersion 继续 +1（新流程仍是 0 → 1），初版账本键不撞旧的。
+        const next: PlanIntakeRow = { ...current, aiSteps: { ...current.aiSteps, premiseVersion: current.aiSteps.premiseVersion + 1 }, answers, premise: buildPremise(current, answers, context.language), status: "premise", updatedAt: at };
         await tx.updateIntake(next);
         await writeReceipt(tx, { body, intakeId, key: request.idempotencyKey, kind: "intake_answers", response: { intakeId } });
         return next;
@@ -1764,6 +1834,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
           changes,
           input: [premiseNote, request.text ?? ""].filter(Boolean).join("\n"),
           n,
+          // 计划页像素返工：用户原话单独存（input 仍是「前提改动摘要 + 原话」，给 AI 的上下文不变）。
+          userText: request.text?.trim() || null,
           noChangeReason: changes.length === 0 ? outcome.value.noChangeReason ?? tri(context.language, { en: "Nothing needed to change.", ja: "今回は変更しません。", zh: "这次不做修改。" }) : null,
           revised,
           unchanged: outcome.value.unchanged,
@@ -1846,7 +1918,11 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       // 每计划只调一次（授权口径）：换语言沿用第一次的候选（复核 m3 的按语言分缓存会增加付费调用，未采用）。
       const key = `next-goal:${planId}`;
       const cached = await repository.read(scope, (reader) => reader.flowReceipt(key));
-      if (cached?.kind === "next_goals") return cached.response as unknown as PlanNextGoalsResponse;
+      if (cached?.kind === "next_goals") {
+        // 计划页像素返工：v7 之前缓存的候选没有副标题，读成 null。
+        const response = cached.response as unknown as PlanNextGoalsResponse;
+        return { ...response, candidates: response.candidates.map((candidate) => ({ ...candidate, subtitle: candidate.subtitle ?? null })) };
+      }
       const plan = await repository.read(scope, async (reader) => {
         const row = await reader.plan(planId);
         if (!row || !row.achievedAt) throw new PlanFlowError("PLAN_NOT_FOUND", "Plan not found.");
@@ -1862,7 +1938,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         return record ? [{ kind: "record" as const, label: record.text || record.id, ref: record.id }] : [];
       });
       const result: PlanNextGoalsResponse = outcome.ok === true
-        ? { candidates: outcome.value.candidates.map((candidate) => ({ basis: basisOf(candidate.evidenceIds), goalKind: candidate.goalKind, goalText: candidate.goalText })), source: "ai" }
+        ? { candidates: outcome.value.candidates.map((candidate) => ({ basis: basisOf(candidate.evidenceIds), goalKind: candidate.goalKind, goalText: candidate.goalText, subtitle: candidate.subtitle ?? null })), source: "ai" }
         : { candidates: [], source: "none" };
       await repository.transact(scope, async (tx) => {
         if (await tx.flowReceipt(key)) return;
@@ -1880,10 +1956,19 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         const at = now();
         const goalText = request.goalText?.trim() || plan.goalText;
         const goalKind = request.goalKind ?? plan.goalKind;
+        // 计划页像素返工（D59）：背景説明 / ひとこと存在 plans.analysis（不加列）；不传 = 不改，null / 空串 = 清空。
+        // 只改这两项时 save_only 直接保存（不要求作り直し）；它们不属于方案内容，见直草稿也不带。
+        const noteValue = (value: string | null | undefined, current: string | null | undefined, max: number) =>
+          value === undefined ? current ?? null : value === null ? null : value.trim().slice(0, max) || null;
+        const goalBackground = noteValue(request.goalBackground, plan.analysis.goalBackground, 1000);
+        const goalNote = noteValue(request.goalNote, plan.analysis.goalNote, 200);
+        const { goalBackground: _background, goalNote: _note, ...analysisRest } = plan.analysis;
+        const analysis = { ...analysisRest, ...(goalBackground ? { goalBackground } : {}), ...(goalNote ? { goalNote } : {}) };
         // 只改目标字段，不动配点（save_only）；save_and_rebuild 再开一份见直草稿，前提的目的行换成新目标。
-        const next: PlanV2Row = { ...plan, goalKind, goalText, revision: plan.revision + 1, updatedAt: at };
+        const next: PlanV2Row = { ...plan, analysis, goalKind, goalText, revision: plan.revision + 1, updatedAt: at };
         await tx.updatePlan(next);
-        await tx.insertRevision({ after: { goalKind, goalText }, before: { goalKind: plan.goalKind, goalText: plan.goalText }, changes: [], createdAt: at, draftId: null, fromRevision: plan.revision, id: `prev_${newId()}`, planId: plan.id, source: "goal_edit", toRevision: plan.revision + 1 });
+        const notesOf = (background: string | null | undefined, note: string | null | undefined) => ({ ...(background ? { goalBackground: background } : {}), ...(note ? { goalNote: note } : {}) });
+        await tx.insertRevision({ after: { goalKind, goalText, ...notesOf(goalBackground, goalNote) }, before: { goalKind: plan.goalKind, goalText: plan.goalText, ...notesOf(plan.analysis.goalBackground, plan.analysis.goalNote) }, changes: [], createdAt: at, draftId: null, fromRevision: plan.revision, id: `prev_${newId()}`, planId: plan.id, source: "goal_edit", toRevision: plan.revision + 1 });
         let reviewDraftId: string | null = null;
         // 复核 M3：两种模式都作废进行中的见直草稿（基线 revision 已过期；与确定后手动编辑、达成一致）。
         const open = await tx.openReviewDraft(plan.id);
@@ -1896,7 +1981,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
           reviewDraftId = created.id;
         }
         const response: PlanGoalEditResult = { planId: plan.id, reviewDraftId, revision: next.revision };
-        await writeReceipt(tx, { body: { goalKind: request.goalKind ?? null, goalText: request.goalText ?? null, mode: request.mode }, key: request.idempotencyKey, kind: "goal_edit", planId: plan.id, response: response as unknown as Record<string, unknown> });
+        await writeReceipt(tx, { body: { goalKind: request.goalKind ?? null, goalText: request.goalText ?? null, mode: request.mode, ...(request.goalBackground !== undefined ? { goalBackground: request.goalBackground } : {}), ...(request.goalNote !== undefined ? { goalNote: request.goalNote } : {}) }, key: request.idempotencyKey, kind: "goal_edit", planId: plan.id, response: response as unknown as Record<string, unknown> });
         return response;
       });
       void context;

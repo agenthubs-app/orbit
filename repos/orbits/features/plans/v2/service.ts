@@ -49,6 +49,7 @@ import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../shared/co
 import { AppError, type AppErrorCode } from "../../../shared/errors/app-error";
 import type { PlanContactLink, PlanReferenceValidator } from "../contract";
 import { needStatus } from "./repository";
+import { planPhaseIndexForWeek, planWeekAt } from "../week";
 import {
   PLAN_V2_GOAL_LIMIT,
   type PlanAwardPayload,
@@ -56,6 +57,7 @@ import {
   type PlanV2LogEntry,
   type PlanV2Reader,
   type PlanV2Repository,
+  type PlanV2LegacyRow,
   type PlanV2Row,
   type PlanV2Scope,
   type PlanV2ContactView,
@@ -482,6 +484,9 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       score,
       sinceConfirmed: { events: since.events, stepsDone: since.stepsCompleted, talkedPeople: since.talked },
       startsOn: plan.startsOn,
+      // 计划页像素返工（D59）：背景説明 / ひとこと（存在 plans.analysis；旧计划没有就不出现）。
+      ...(plan.analysis.goalBackground ? { goalBackground: plan.analysis.goalBackground } : {}),
+      ...(plan.analysis.goalNote ? { goalNote: plan.analysis.goalNote } : {}),
       ...(options.sample ? { sample: true as const } : {}),
     };
   }
@@ -1026,6 +1031,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           goalKind: plan.goalKind,
           planId: plan.id,
           skippedAreas: score.segments.filter((segment) => segment.skipped).map((segment) => segment.shortLabel),
+          startsOn: plan.startsOn,
           talkedPeople: talkedPeople(log),
           total: score.total,
           ...(options.sample ? { sample: true as const } : {}),
@@ -1035,13 +1041,14 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
 
     async legacyList() {
       const plans = await repository.read(scope, (reader) => reader.legacyPlans());
-      return { plans: plans.map(({ analysisSummary: _summary, items: _items, ...item }) => item) };
+      return { plans: plans.map((row) => legacyView(row, now())).map(({ analysisSummary: _summary, items: _items, ...item }) => item) };
     },
 
     async legacyDetail(planId) {
       const id = requiredId(planId, "planId");
       const plans = await repository.read(scope, (reader) => reader.legacyPlans());
-      return plans.find((plan) => plan.planId === id) ?? null;
+      const row = plans.find((plan) => plan.planId === id);
+      return row ? legacyView(row, now()) : null;
     },
 
     async overview(planId, view = {}) {
@@ -1307,6 +1314,30 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
 }
 
 /** 东京自然日（YYYY-MM-DD）。 */
+/**
+ * 以前のプラン（只读）：按 v1 `plans.phases` 的起止周算计划所处的阶段与每条的阶段序号（计划页像素返工，N29）。
+ * 生效中的按 `at`（今天）、已归档的按归档那天所在周（东京）；落在空档取之前最近一段、超出最后一周取最后一段（同 v1 `planPhaseIndexForWeek`）。
+ * 没有 `phaseSpans`（测试 / 设计稿种子）时沿用行里已有的值。
+ */
+export function legacyView(row: PlanV2LegacyRow, at: string): PlanLegacyDetail {
+  const { phaseSpans, ...detail } = row;
+  if (!phaseSpans) return detail;
+  if (phaseSpans.length === 0) return { ...detail, items: detail.items.map((item) => ({ ...item, phaseNumber: null })), phase: null };
+  const when = row.status === "archived" && row.archivedAt ? row.archivedAt : at;
+  let index = -1;
+  try {
+    index = planPhaseIndexForWeek(phaseSpans, planWeekAt(row.startsOn, new Date(when)));
+  } catch {
+    index = -1; // startsOn 读不懂：不给阶段。
+  }
+  const numberOf = new Map(phaseSpans.map((phase, position) => [phase.key, position + 1]));
+  return {
+    ...detail,
+    items: detail.items.map((item) => ({ ...item, phaseNumber: item.phase ? numberOf.get(item.phase) ?? null : null })),
+    phase: index < 0 ? null : { number: index + 1, title: phaseSpans[index]!.title, total: phaseSpans.length },
+  };
+}
+
 function tokyoDate(iso: string): string {
   return new Date(Date.parse(iso) + 9 * 3_600_000).toISOString().slice(0, 10);
 }

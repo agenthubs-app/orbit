@@ -218,7 +218,8 @@ export interface NextGoalsInput {
 }
 
 export interface NextGoalsOutput {
-  candidates: Array<{ goalText: string; goalKind: PlanGoalKind; evidenceIds: string[] }>;
+  /** v7：`subtitle` = 候选下面一行副标题（一句、依据记录；校验后 ≤80 字，没给为 null）。 */
+  candidates: Array<{ goalText: string; goalKind: PlanGoalKind; evidenceIds: string[]; subtitle?: string | null }>;
 }
 
 export interface PlanFlowAi {

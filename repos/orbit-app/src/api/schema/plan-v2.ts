@@ -22,6 +22,8 @@ import type {
   PlanIntakeBlockRequest,
   PlanIntakeCreateRequest,
   PlanIntakeLadderRequest,
+  PlanIntakeReopenRequest,
+  PlanMemberCandidatesResponse,
   PlanIntakeListResponse,
   PlanIntakeMembersRequest,
   PlanIntakePremiseRequest,
@@ -207,6 +209,9 @@ export const planV2DetailObject = z.object({
   })).optional(),
   pending: z.lazy(() => readableItems(pendingItem)).optional(),
   sinceConfirmed: z.object({ talkedPeople: count, events: count, stepsDone: count }).optional().catch(undefined),
+  // 计划页像素返工（D59）：背景説明 / ひとこと（读不懂按 null）。
+  goalBackground: z.string().nullable().optional().catch(null),
+  goalNote: z.string().nullable().optional().catch(null),
 });
 export const planV2DetailSchema = planV2DetailObject as z.ZodType<PlanV2Detail>;
 
@@ -370,6 +375,8 @@ export const planDraftViewObject = z.object({
     unchanged: z.array(z.string()),
     noChangeReason: z.string().nullable(),
     at: z.string(),
+    // 计划页像素返工：見直し这一轮用户的原话（旧数据为 null）。
+    userText: z.string().nullable().optional().catch(null),
   })),
   fix: aiStep,
   revision: z.string().min(1),
@@ -434,6 +441,23 @@ export const planIntakeMembersRequestObject = z.discriminatedUnion("mode", [
 ]);
 export const planIntakeMembersRequestSchema = planIntakeMembersRequestObject as z.ZodType<PlanIntakeMembersRequest>;
 
+// 计划页像素返工：「人脈から選ぶ」默认候补（宽进：读不懂的人整条跳过，能力 id 读不懂按空）。
+export const planMemberCandidatesResponseObject = z.object({
+  candidates: readableItems(z.object({
+    contactId: z.string().min(1),
+    name: z.string().min(1),
+    organization: z.string().nullable(),
+    role: z.string().nullable(),
+    cofounder: z.boolean(),
+    capabilities: z.array(z.string()).catch([]),
+    fills: z.array(z.string()).catch([]),
+  })),
+  gaps: z.array(z.string()).catch([]),
+});
+export const planMemberCandidatesResponseSchema = planMemberCandidatesResponseObject as z.ZodType<PlanMemberCandidatesResponse>;
+// 计划页像素返工（D38）：重新打开背景。
+export const planIntakeReopenRequestObject = z.object({ expectedUpdatedAt: z.string().min(1), idempotencyKey }).strict();
+export const planIntakeReopenRequestSchema = planIntakeReopenRequestObject as z.ZodType<PlanIntakeReopenRequest>;
 export const planIntakeLadderRequestObject = z.object({ wants: z.string().trim().min(1).max(300), idempotencyKey }).strict();
 export const planIntakeLadderRequestSchema = planIntakeLadderRequestObject as z.ZodType<PlanIntakeLadderRequest>;
 
@@ -659,6 +683,8 @@ export const planReviewViewObject = z.object({
   reviewLimitReason: reviewLimitReason.optional(),
   resetsAt: z.string(),
   sinceConfirmed: z.object({ talked: count, events: count, stepsCompleted: count }),
+  // 计划页像素返工：上一次确定的时刻（读不懂按 null）。
+  lastConfirmedAt: z.string().nullable().optional().catch(null),
 });
 export const planReviewViewSchema = planReviewViewObject as unknown as z.ZodType<PlanReviewView>;
 
@@ -689,12 +715,15 @@ export const planAchievementViewObject = z.object({
   bestMove: z.object({ text: z.string(), basis: readableItems(basisRef) }).nullable(),
   skippedAreas: z.array(z.string()),
   sample: z.literal(true).optional(),
+  // 计划页像素返工：计划开始日。
+  startsOn: z.string().nullable().optional().catch(null),
 });
 export const planAchievementViewSchema = planAchievementViewObject as z.ZodType<PlanAchievementView>;
 
 export const planNextGoalsResponseObject = z.object({
   // 候选的类型决定进哪本题库：未知类型的候选整条跳过。
-  candidates: readableItems(z.object({ goalText: z.string().min(1), goalKind: z.enum(STRICT_GOAL_KINDS), basis: readableItems(basisRef) })),
+  // 计划页像素返工（C10 v7）：subtitle 宽进，读不懂按 null（候选本身照常显示）。
+  candidates: readableItems(z.object({ goalText: z.string().min(1), goalKind: z.enum(STRICT_GOAL_KINDS), basis: readableItems(basisRef), subtitle: z.string().nullable().optional().catch(null) })),
   source: tolerantEnum(["ai", "none"], "none"),
 });
 export const planNextGoalsResponseSchema = planNextGoalsResponseObject as z.ZodType<PlanNextGoalsResponse>;
@@ -702,6 +731,9 @@ export const planNextGoalsResponseSchema = planNextGoalsResponseObject as z.ZodT
 export const planGoalEditRequestObject = z.object({
   goalText: z.string().trim().min(1).max(2000).optional(),
   goalKind: z.enum(STRICT_GOAL_KINDS).optional(),
+  // 计划页像素返工（D59）：背景説明 / ひとこと；null 或空串 = 清空。
+  goalBackground: z.string().trim().max(1000).nullable().optional(),
+  goalNote: z.string().trim().max(200).nullable().optional(),
   mode: z.enum(["save_only", "save_and_rebuild"]),
   expectedRevision: z.number().int().min(1),
   idempotencyKey,
@@ -719,11 +751,23 @@ const legacyItem = z.object({
   needs: count,
   actionsDone: count,
   actionsTotal: count,
+  // 计划页像素返工（N29）：v1 计划所处的阶段（读不懂按 null）。
+  phase: z.object({ number: z.number().int().min(1), total: z.number().int().min(1), title: z.string().nullable() }).nullable().optional().catch(null),
 });
 export const planLegacyListResponseObject = z.object({ plans: readableItems(legacyItem) });
 export const planLegacyListResponseSchema = planLegacyListResponseObject as z.ZodType<PlanLegacyListResponse>;
 export const planLegacyDetailObject = legacyItem.extend({
   analysisSummary: z.string().nullable(),
-  items: readableItems(z.object({ kind: z.enum(["action", "network_need", "info", "event"]), title: z.string(), status: z.string(), phase: z.string().nullable() })),
+  items: readableItems(z.object({
+    kind: z.enum(["action", "network_need", "info", "event"]),
+    title: z.string(),
+    status: z.string(),
+    phase: z.string().nullable(),
+    // 计划页像素返工：阶段序号；会いたい人的说明 / 对上的联系人名与公司（读不懂按 null）。
+    phaseNumber: z.number().int().min(1).nullable().optional().catch(null),
+    detail: z.string().nullable().optional().catch(null),
+    contactName: z.string().nullable().optional().catch(null),
+    organization: z.string().nullable().optional().catch(null),
+  })),
 });
 export const planLegacyDetailSchema = planLegacyDetailObject as z.ZodType<PlanLegacyDetail>;

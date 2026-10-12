@@ -12,8 +12,11 @@ import type { PlanCopyLanguage } from "../../../../shared/compute/plan-template-
  * v5（R25 复核 M4）：C8 / C10 的记录换成短别名 R1…（联系人 C1…），并带面谈メモ摘要（kind memo）；依据只能用输入里的 R 别名。
  * v6（真实跑通，2026-10-11）：C7 / C9 写明 `revised` 就是方案本体（与输入 `current` 同形状、不要回显输入）；
  *     配合服务端规整（ai/normalize.ts：配点算术、Step 引用、不许改字段还原）。
+ * v7（计划页像素返工，2026-10-12）：C10 每个候选多输出一行 `subtitle`（一句、简短、依据记录；校验器 ≤80 字、单行，
+ *     不合格只把副标题置 null，不放宽其他校验）。其余任务的提示词不变。v7 只用 mock 测过，
+ *     **上 staging 前须用真实调用验证 ≤5 次**（看副标题是否一句、是否只说记录里的事实）。
  */
-export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-10-v6";
+export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-10-v7";
 
 const LANGUAGE: Record<PlanCopyLanguage, string> = { en: "English", ja: "Japanese (natural, polite です・ます)", zh: "Simplified Chinese" };
 
@@ -91,7 +94,8 @@ export const TASKS = {
   nextGoals: [
     "The user achieved a goal. From the summary and the records, propose at most 2 natural next goals (one sentence each, in the user's words style) with a goal kind from: launch, fundraising, sales, hiring, partnership, career; give the record ids that support each.",
     "Records have id aliases (R1, R2, ...), a kind (talked, event, step, memo), a short text and a contact alias (C1, ...) or null; memo texts summarise meetings. Use only R aliases from the input as evidence ids.",
-    'Output: {"candidates": [{"goalText": "...", "goalKind": "...", "evidenceIds": ["..."]}]}',
+    "For each candidate also write subtitle: one short sentence (at most 60 characters, one line) saying why this goal follows, based only on the records (for example who the user met or what was completed). No digits unless they appear in the records.",
+    'Output: {"candidates": [{"goalText": "...", "goalKind": "...", "subtitle": "...", "evidenceIds": ["..."]}]}',
   ].join("\n"),
 } as const;
 

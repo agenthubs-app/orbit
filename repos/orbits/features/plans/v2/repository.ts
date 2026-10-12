@@ -5,7 +5,6 @@
  *   所有读写都带 `workspace_id + actor_id`，并且只看 `model_version = 2` 的计划（v1 的仓储反过来只看 v1）。
  * - 内存（mock / 测试）：每个人一条 promise 链串行；事务在副本上执行，成功才替换。
  */
-import type { PlanLegacyDetail } from "../../../shared/contract/plan-v2";
 import type { PlanContactLink } from "../contract";
 import { planActorLockKey, type PlanPoolLike, type PlanQueryClient } from "../repository";
 import type {
@@ -20,6 +19,7 @@ import type {
   PlanV2ContactView,
   PlanV2MatchCandidate,
   PlanV2EventItem,
+  PlanV2LegacyRow,
   PlanV2LogEntry,
   PlanV2LogEvent,
   PlanV2PersonTypeMeta,
@@ -270,7 +270,7 @@ function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Read
       const plans = await rows(
         // 复核 m8：v1 每次重新分析都留一个归档版本（新版本的 previous_plan_id 指向旧版、目标快照相同）。
         // 同一系列只列最新一版：被同目标的新版本接替的旧版本不列；换了目标的「下一份计划」另算一条。
-        `select p.id, p.goal_snapshot, p.status, p.starts_on::text as starts_on, p.archived_at, p.analysis->>'summary' as summary from plans p
+        `select p.id, p.goal_snapshot, p.status, p.starts_on::text as starts_on, p.archived_at, p.analysis->>'summary' as summary, p.phases from plans p
          where p.workspace_id = $1 and p.actor_id = $2 and coalesce(p.model_version, 1) = 1
            and not exists (
              select 1 from plans n
@@ -282,11 +282,29 @@ function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Read
       );
       if (plans.length === 0) return [];
       const items = await rows(
-        `select plan_id, kind, title, status, phase from plan_items where workspace_id = $1 and actor_id = $2 and plan_id = any($3::text[]) order by sort_key, id`,
+        `select plan_id, kind, title, status, phase, detail, criteria, contact_links from plan_items where workspace_id = $1 and actor_id = $2 and plan_id = any($3::text[]) order by sort_key, id`,
         [ws, actor, plans.map((row) => String(row.id))],
       );
-      return plans.map((row) => {
-        const own = items.filter((item) => String(item.plan_id) === String(row.id)).map((item) => ({ kind: item.kind as "action" | "network_need" | "info" | "event", phase: item.phase == null ? null : String(item.phase), status: String(item.status), title: String(item.title) }));
+      // 计划页像素返工：会いたい人对上的联系人（优先已建立关系的，否则第一个）→ 本人联系人的名字与公司（同 contactViews 的归属谓词）。
+      const linkedOf = (item: Row) => {
+        if (item.kind !== "network_need") return null;
+        const links = json<PlanContactLink[]>(item.contact_links, []);
+        return (links.find((link) => link.state === "established") ?? links[0])?.contactId ?? null;
+      };
+      const linkedIds = [...new Set(items.map(linkedOf).filter((id): id is string => Boolean(id)))].slice(0, 200);
+      const contacts = new Map(linkedIds.length > 0
+        ? (await rows(`${CONTACT_VIEW_SELECT} and c.record_id = any($3::text[])`, [ws, actor, linkedIds])).map(contactViewFromRow).map((contact) => [contact.id, contact] as const)
+        : []);
+      return plans.map((row): PlanV2LegacyRow => {
+        const own = items.filter((item) => String(item.plan_id) === String(row.id)).map((item) => {
+          const base = { kind: item.kind as "action" | "network_need" | "info" | "event", phase: item.phase == null ? null : String(item.phase), status: String(item.status), title: String(item.title) };
+          if (item.kind !== "network_need") return base;
+          const criteria = json<{ description?: unknown }>(item.criteria, {});
+          const contactId = linkedOf(item);
+          const contact = contactId ? contacts.get(contactId) ?? null : null;
+          const detail = textOrNull(item.detail)?.trim() || (typeof criteria.description === "string" ? criteria.description.trim() : "") || null;
+          return { ...base, contactName: contact?.name || null, detail, organization: contact?.organization ?? null };
+        });
         const actions = own.filter((item) => item.kind === "action");
         return {
           actionsDone: actions.filter((item) => item.status === "done").length,
@@ -296,11 +314,22 @@ function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Read
           goal: String(row.goal_snapshot),
           items: own,
           needs: own.filter((item) => item.kind === "network_need").length,
+          phaseSpans: json<Array<{ key?: unknown; title?: unknown; startWeek?: unknown; endWeek?: unknown }>>(row.phases, [])
+            .filter((phase) => typeof phase?.key === "string" && Number.isFinite(Number(phase.startWeek)))
+            .map((phase) => ({ endWeek: Number(phase.endWeek ?? phase.startWeek), key: String(phase.key), startWeek: Number(phase.startWeek), title: typeof phase.title === "string" ? phase.title : null })),
           planId: String(row.id),
           startsOn: String(row.starts_on),
           status: row.status === "active" ? "active" as const : "archived" as const,
         };
       });
+    },
+    async latestRevisionAt(planId, sources) {
+      if (sources.length === 0) return null;
+      const [row] = await rows(
+        `select max(created_at) as at from plan_revisions where workspace_id = $1 and actor_id = $2 and plan_id = $3 and source = any($4::text[])`,
+        [ws, actor, planId, [...sources]],
+      );
+      return isoOrNull(row?.at);
     },
     async activeV1PlanId() {
       const [row] = await rows(`select id from plans where workspace_id = $1 and actor_id = $2 and model_version = 1 and status = 'active'`, [ws, actor]);
@@ -626,7 +655,7 @@ export interface MemoryPlanV2State {
   /** 生效中的 v1 计划 id（测试用；内存实现不保存 v1 的行）。 */
   activeV1PlanId: string | null;
   /** R25：v1 计划只读摘要（测试种子）。 */
-  legacy: PlanLegacyDetail[];
+  legacy: PlanV2LegacyRow[];
   /** 本人用过的最大版本号（含 v1）。 */
   maxVersion: number;
 }
@@ -647,6 +676,10 @@ function memoryReader(state: MemoryPlanV2State): PlanV2Reader {
     async activePlans() { return structuredClone(sortPlans(state.plans.filter((plan) => plan.status === "active"))); },
     async activeV1PlanId() { return state.activeV1PlanId; },
     async legacyPlans() { return structuredClone(state.legacy); },
+    async latestRevisionAt(planId, sources) {
+      const times = state.revisions.filter((revision) => revision.planId === planId && sources.includes(revision.source)).map((revision) => revision.createdAt).sort();
+      return times[times.length - 1] ?? null;
+    },
     async eventItems(planId) { return structuredClone(state.eventItems.filter((item) => item.planId === planId).sort((a, b) => a.sortKey - b.sortKey)); },
     async flowReceipt(key) { return structuredClone(state.receipts.find((receipt) => receipt.idempotencyKey === key) ?? null); },
     async contactViews(ids) { return structuredClone(state.contacts.filter((contact) => ids.includes(contact.id))); },

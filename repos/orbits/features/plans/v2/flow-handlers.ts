@@ -22,6 +22,8 @@ import {
   planIntakeMembersRequestSchema,
   planIntakePremiseRequestSchema,
   planIntakeViewSchema,
+  planIntakeReopenRequestSchema,
+  planMemberCandidatesResponseSchema,
   planAchieveRequestSchema,
   planGoalEditRequestSchema,
   planGoalEditResultSchema,
@@ -121,6 +123,10 @@ export function createPlanFlowHandlers(dependencies: PlanFlowRouteDependencies =
     retryBackground: flowRoute(planIntakeViewSchema, async (service, request, params, context) => ({ data: await service.retryBackground(params.intakeId ?? "", (await body(request, planFlowStepRequestSchema)).idempotencyKey, context) }), dependencies),
     /** POST …/members：加成员（人脈から C3 / 自分で書く）。 */
     addMembers: flowRoute(planIntakeViewSchema, async (service, request, params, context) => ({ data: await service.addMembers(params.intakeId ?? "", await body(request, planIntakeMembersRequestSchema), context) }), dependencies),
+    /** GET …/member-candidates：「人脈から選ぶ」默认候补（只读、不调 AI）。 */
+    memberCandidates: flowRoute(planMemberCandidatesResponseSchema, async (service, _request, params, context) => ({ data: await service.memberCandidates(params.intakeId ?? "", context) }), dependencies),
+    /** POST …/background/reopen：出题后重新打开背景（D38）。 */
+    reopenBackground: flowRoute(planIntakeViewSchema, async (service, request, params, context) => ({ data: await service.reopenBackground(params.intakeId ?? "", await body(request, planIntakeReopenRequestSchema), context) }), dependencies),
     /** POST …/ladder：改「やりたいこと」后重算阶梯（C4）。 */
     ladder: flowRoute(planIntakeViewSchema, async (service, request, params, context) => ({ data: await service.recomputeLadder(params.intakeId ?? "", await body(request, planIntakeLadderRequestSchema), context) }), dependencies),
     /** POST …/questions：选题（C5）。 */

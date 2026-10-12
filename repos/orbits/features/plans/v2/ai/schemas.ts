@@ -214,9 +214,22 @@ export function checkReviewFix(raw: unknown, input: ContentCheckInput, current: 
   return issues.length > 0 ? { issues, ok: false } : checked;
 }
 
-/** C10：≤2 个候选，类型 ∈ 6 类，依据 ∈ 输入。 */
+/** C10 副标题的长度上限（字数，按码点）。 */
+export const NEXT_GOAL_SUBTITLE_MAX = 80;
+
+/**
+ * C10 副标题（v7）：宽进——缺、不是字符串、空、或多于一行 / 超过 80 字都按 null（候选本身照常保留，不因副标题重试）。
+ */
+const nextGoalSubtitle = z.unknown().optional().transform((value) => {
+  if (typeof value !== "string") return null;
+  const line = value.trim();
+  if (!line || /[\r\n]/u.test(line) || [...line].length > NEXT_GOAL_SUBTITLE_MAX) return null;
+  return line;
+});
+
+/** C10：≤2 个候选，类型 ∈ 6 类，依据 ∈ 输入；副标题见 `nextGoalSubtitle`。 */
 export function checkNextGoals(raw: unknown, input: NextGoalsInput): Checked<NextGoalsOutput> {
-  const parsed = parse(z.object({ candidates: z.array(z.object({ goalText: text(200).pipe(z.string().min(1)), goalKind: z.enum(PLAN_GOAL_KINDS), evidenceIds: z.array(z.string()).max(5).catch([]) })).max(4) }), raw);
+  const parsed = parse(z.object({ candidates: z.array(z.object({ goalText: text(200).pipe(z.string().min(1)), goalKind: z.enum(PLAN_GOAL_KINDS), evidenceIds: z.array(z.string()).max(5).catch([]), subtitle: nextGoalSubtitle })).max(4) }), raw);
   if (parsed.ok === false) return { issues: parsed.issues, ok: false };
   const ids = new Set(input.records.map((record) => record.id));
   return { ok: true, value: { candidates: parsed.value.candidates.slice(0, 2).map((candidate) => ({ ...candidate, evidenceIds: (candidate.evidenceIds ?? []).filter((id) => ids.has(id)) })) as NextGoalsOutput["candidates"] } };

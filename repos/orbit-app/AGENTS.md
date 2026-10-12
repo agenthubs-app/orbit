@@ -82,7 +82,7 @@ This directory is the iOS-first Orbit mobile app.
   - **快慢两档**（`--only` + 设计稿缓存）：迭代时只跑当前画面的门禁（`--suite views/<端>-<Sprint>.json --only <画面>`，或 `--changed` 只跑和改动相关的画面）和相关测试；收口时各跑一次全量门禁（不带 `--only`）和两端全量测试。
   - **复核**：只重跑没通过的画面和改动过的画面，另抽查至少 20% 的已通过画面；每张都要看 triptych，不能只看 raw（摘要里标 ⚠ 缺块的必看）。
   - **不阻塞**：子会话不用 AskUserQuestion 弹窗等人回答；需要拍板的事用 SendMessage 发给主会话，那个画面先跳过，接着做别的。
-  - **并行**：按文件归属分工，最多同时 3 个会话；每个会话用自己的 dev server 端口、`distDir` 和测试库。
+  - **并行**（用户 2026-10-12 决定，降低额度消耗）：按文件归属分工，**最多同时 2 个会话**（一个重活加一个轻活，比如一个返工加一个文档或画板）；每个会话同时最多 1 个子任务，独立复核在其他子任务结束后再起；每个会话用自己的 dev server 端口、`distDir` 和测试库。
   - **短会话**：一个返工组 / 一组画面一个会话，做完写交接。
   - 工具用法（画面清单、`--only` / `--changed`、设计稿缓存、`--workers`、缺块警告）见 `repos/orbits/scripts/visual/README-redesign.md`「提速」一节。
 - **交接表**（2026-10-12）：骨架与返工留给各功能 Sprint 的事项和临时规定集中在 [`HANDOFF-TO-FEATURE-SPRINTS.md`](../../docs/designs/redesign-2026-10/sprints/HANDOFF-TO-FEATURE-SPRINTS.md)。功能 Sprint 开工前先读本 Sprint 那一节和「通用口径」，把其中每条写进 PLANNER 的验收契约；新的交接事项一律追加到这份文件。

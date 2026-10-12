@@ -153,7 +153,11 @@ export function createMockPlanFlowAi(): PlanFlowAi {
       const order: PlanGoalKind[] = ["sales", "hiring", "partnership", "fundraising", "launch", "career"];
       const kinds = order.filter((kind) => kind !== input.goalKind).slice(0, 2);
       const field = (kind: PlanGoalKind) => planCopy(PLAN_GOAL_KIND_COPY[kind], context.language);
-      return ok({ candidates: kinds.map((kind) => ({ evidenceIds: input.records.slice(0, 1).map((record) => record.id), goalKind: kind, goalText: pick({ en: `Next: ${field(kind)}`, ja: `次は${field(kind)}に取り組む`, zh: `接下来做${field(kind)}` }, context.language) })) });
+      // v7：示例副标题（一句、依据记录：有记录时说「記録から」，没有时说「この目標の流れから」）。
+      const subtitle = input.records.length > 0
+        ? pick({ en: "Builds on the people you met for this goal.", ja: "この目標で会った人とのつながりを活かせます。", zh: "可以接着用这个目标里认识的人。" }, context.language)
+        : pick({ en: "A natural next step after this goal.", ja: "この目標の次に進みやすい目標です。", zh: "这个目标之后顺势可做的下一步。" }, context.language);
+      return ok({ candidates: kinds.map((kind) => ({ evidenceIds: input.records.slice(0, 1).map((record) => record.id), goalKind: kind, goalText: pick({ en: `Next: ${field(kind)}`, ja: `次は${field(kind)}に取り組む`, zh: `接下来做${field(kind)}` }, context.language), subtitle })) });
     },
   };
   return ai;

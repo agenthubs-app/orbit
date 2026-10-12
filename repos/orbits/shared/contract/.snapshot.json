@@ -9622,6 +9622,16 @@
               "type": "number"
             }
           }
+        },
+        "goalBackground": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "goalNote": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -10326,6 +10336,11 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "userText": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -10670,6 +10685,76 @@
     "plan-v2.ts::PlanIntakeMembersRequest": {
       "kind": "alias",
       "type": "PlanIntakeMembersRequest"
+    },
+    "plan-v2.ts::PlanMemberCandidate": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "organization": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "cofounder": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "capabilities": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "fills": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanMemberCandidatesResponse": {
+      "kind": "object",
+      "members": {
+        "candidates": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanMemberCandidate[]"
+        },
+        "gaps": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanIntakeReopenRequest": {
+      "kind": "object",
+      "members": {
+        "expectedUpdatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
     },
     "plan-v2.ts::PlanIntakeLadderRequest": {
       "kind": "object",
@@ -11882,6 +11967,11 @@
               "type": "number"
             }
           }
+        },
+        "lastConfirmedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -12052,6 +12142,11 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "startsOn": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -12072,6 +12167,11 @@
           "optional": false,
           "kind": "text",
           "type": "readonly PlanBasisRef[]"
+        },
+        "subtitle": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -12102,6 +12202,16 @@
           "optional": true,
           "kind": "text",
           "type": "PlanGoalKind"
+        },
+        "goalBackground": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "goalNote": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         },
         "mode": {
           "optional": false,
@@ -12182,6 +12292,31 @@
           "optional": false,
           "kind": "text",
           "type": "number"
+        },
+        "phase": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanLegacyPhase | null"
+        }
+      }
+    },
+    "plan-v2.ts::PlanLegacyPhase": {
+      "kind": "object",
+      "members": {
+        "number": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -12229,6 +12364,26 @@
                 "optional": false,
                 "kind": "text",
                 "type": "string | null"
+              },
+              "phaseNumber": {
+                "optional": true,
+                "kind": "text",
+                "type": "number | null"
+              },
+              "detail": {
+                "optional": true,
+                "kind": "text",
+                "type": "string | null"
+              },
+              "contactName": {
+                "optional": true,
+                "kind": "text",
+                "type": "string | null"
+              },
+              "organization": {
+                "optional": true,
+                "kind": "text",
+                "type": "string | null"
               }
             }
           }
@@ -12272,6 +12427,11 @@
           "optional": false,
           "kind": "text",
           "type": "number"
+        },
+        "phase": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanLegacyPhase | null"
         }
       }
     },

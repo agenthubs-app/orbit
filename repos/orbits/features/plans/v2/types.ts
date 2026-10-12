@@ -64,6 +64,9 @@ export interface PlanV2Analysis {
   allocationReasons: string[];
   basis: PlanBasisRef[];
   sample?: true;
+  /** 计划页像素返工（D59）：「背景説明」「ひとこと（重点）」（目標を編集里写；不属于方案内容，不进 revision 差分）。 */
+  goalBackground?: string | null;
+  goalNote?: string | null;
 }
 
 export interface PlanV2Row {
@@ -214,7 +217,9 @@ export interface PlanV2Reader {
   /** 本人生效中的 v1 计划 id（没有为 null）。 */
   activeV1PlanId(): Promise<string | null>;
   /** R25：本人的 v1 计划只读摘要（新的在前，含条目）。 */
-  legacyPlans(): Promise<PlanLegacyDetail[]>;
+  legacyPlans(): Promise<PlanV2LegacyRow[]>;
+  /** 计划页像素返工：这份计划最近一次某些来源的 `plan_revisions` 时刻（没有为 null）。 */
+  latestRevisionAt(planId: string, sources: readonly PlanV2RevisionRow["source"][]): Promise<string | null>;
 }
 
 export interface PlanV2Transaction extends PlanV2Reader {
@@ -357,6 +362,14 @@ export interface PlanV2ContactView {
   lastInteractionAt: string | null;
   /** 对方也是 Orbit 用户（联系人关联了账户）。 */
   isOrbitUser: boolean;
+}
+
+/**
+ * 以前のプラン的仓储行：契约形状 + v1 `plans.phases` 的阶段起止（服务层据此按时钟算 `phase` / `phaseNumber` 后去掉）。
+ * 没有 `phaseSpans` 时（测试 / 设计稿种子）沿用行里已有的 `phase` / `phaseNumber`。
+ */
+export interface PlanV2LegacyRow extends PlanLegacyDetail {
+  phaseSpans?: Array<{ key: string; title: string | null; startWeek: number; endWeek: number }>;
 }
 
 /** R25：`plan_revisions` 一行。 */
