@@ -355,3 +355,25 @@ export const appDesignFontFix = () => {
   style.textContent = `:root, [data-theme] { ${css} }`;
   document.head.append(style);
 };
+
+// 在设计稿页面里执行（frame.evaluate）：把画框搬到页面左上角 (0, 0) 再截。
+// 画框原位的页面坐标常是小数（app.html .phone 的 top = 367.75 / 1563.5…），截出来 390×845、底部元素整体低 1px；
+// 搬到原点后坐标是整数（R07 返工 Web 同类问题，2026-10-12 R05 在 App 画板上发现）。b12 等按分组类名写嵌套样式，
+// 所以用「同名类的空壳」复刻祖先链包住画框（只留类名，布局、边距、背景清掉）；其余内容隐藏。
+export const moveFrameToTop = (f) => {
+  const chain = [];
+  for (let el = f.parentElement; el && el !== document.body; el = el.parentElement) chain.push(el.className);
+  let wrapped = f;
+  f.replaceWith(document.createElement("div"));
+  for (const cls of chain) {
+    const shell = document.createElement("div");
+    shell.className = cls;
+    Object.assign(shell.style, { display: "block", padding: "0", margin: "0", gap: "0", border: "0", minWidth: "0", background: "none" });
+    shell.append(wrapped);
+    wrapped = shell;
+  }
+  document.body.prepend(wrapped);
+  Object.assign(document.body.style, { padding: "0", margin: "0" });
+  for (const el of document.body.children) if (el !== wrapped && !["SCRIPT", "STYLE", "LINK", "TEMPLATE"].includes(el.tagName)) el.style.display = "none";
+  window.scrollTo(0, 0);
+};

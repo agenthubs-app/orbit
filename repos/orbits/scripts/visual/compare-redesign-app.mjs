@@ -23,7 +23,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { chromium } from "playwright";
-import { APP_DESIGN_FONT_FIX, appDesignFontFix, changedFiles, compareImages, designCache, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, pool, printSummary, readPng, resize, selectChanged, selectOnly, writePng } from "./redesign-pixel-lib.mjs";
+import { APP_DESIGN_FONT_FIX, appDesignFontFix, changedFiles, compareImages, moveFrameToTop, designCache, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, pool, printSummary, readPng, resize, selectChanged, selectOnly, writePng } from "./redesign-pixel-lib.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const designBase = args["design-base"] ?? "http://localhost:3320/redesign-2026-10/";
@@ -41,7 +41,7 @@ const useCache = !(args["no-cache"] || args.cache === "false");
 let browser;
 async function designFor(v) {
   const hash = !/^https?:/.test(v.design) && useCache ? designInputsHash(DESIGN_DIR, v.design) : null;
-  const cache = hash ? designCache({ v: 1, app: true, font: APP_DESIGN_FONT_FIX, hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? "phone", nth: v["board-nth"] ?? null, theme: v.theme, click: many(v["design-click"]), remove: many(v["design-remove"]), keepSystem: v["keep-system"] === "true" }) : null;
+  const cache = hash ? designCache({ v: 2, app: true, font: APP_DESIGN_FONT_FIX, frame: "top", hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? "phone", nth: v["board-nth"] ?? null, theme: v.theme, click: many(v["design-click"]), remove: many(v["design-remove"]), keepSystem: v["keep-system"] === "true" }) : null;
   const meta = cache?.meta();
   const hit = meta && cache.png("frame");
   if (hit) return { png: hit, board: meta.board, cached: true };
@@ -71,6 +71,8 @@ async function designFor(v) {
     for (const h of await page.$$(".web, .phone")) if (!(await h.evaluate((f) => !!f.parentElement.closest(".web, .phone")))) frames.push(h);
     const frame = frames[board.index];
     for (const sel of many(v["design-click"])) { await frame.$(sel).then((el) => el?.click()); await page.waitForTimeout(300); }
+    // 画框原位的 y 常是小数（367.75…），截出 390×845、底栏低 1px：先搬到左上角整数坐标（见 lib moveFrameToTop）。
+    await frame.evaluate(moveFrameToTop);
     await frame.evaluate((f, { theme, removes, keepSystem }) => {
       f.setAttribute("data-theme", theme);
       f.style.borderRadius = "0";
