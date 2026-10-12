@@ -343,6 +343,8 @@ export type {
   InviteCodeCreateInput, InviteCodeFailureReason, InviteCodeHistoryItem, InviteCodeHistoryJoined, InviteCodeHistoryResponse, InviteCodeHistoryStatus,
   InviteCodeRedeemInput, InviteConnectionView, InviteSharedFieldKey, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult,
 } from "./invite-codes";
+// R15 P1：改当前码的共享项目（PUT /api/invite-codes/current/share）。
+export type { InviteCodeShareUpdateInput } from "./invite-codes";
 export type {
   EventAssessmentContract,
   EventAssessmentCreateInput,

@@ -165,3 +165,18 @@ export interface InviteMergeSuggestion {
 export interface InviteMergeInput {
   idempotencyKey: string;
 }
+
+// ── R15 P1（用户 2026-10-12 拍板「照设计稿」：b11 A2 ②「相手に届くあなたの情報 [変更]」）：只加不改。Owner: 甲 (R15).
+// Used by: 发出方共享页（两端；界面等加人界面返工时接）。
+
+/**
+ * PUT /api/invite-codes/current/share：改**当前码**共享哪些项目（码、链接、期限、人数、已用人数都不变）。
+ * 响应是当前码（`InviteCodeContract`，`shared` 按新键从我的资料重新读出）。只影响之后打开预览 / 兑换的人；
+ * 已经连上的人各自按连接上的共享项目（改那边用 `…/connections/[contactId]/share`）。
+ * 没有可用的当前码（没发过 / 已作废 / 已过期 / 被新码替换）→ 404；资料没名字 → 409 `PROFILE_REQUIRED`。
+ */
+export interface InviteCodeShareUpdateInput {
+  /** 与发码同一套校验：每项在枚举里、不重复（名字总是共享，不在里面）。 */
+  sharedKeys: InviteSharedFieldKey[];
+  idempotencyKey: string;
+}

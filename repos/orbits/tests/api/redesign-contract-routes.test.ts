@@ -29,6 +29,7 @@ const CASES: Case[] = [
   { file: "invite-codes", method: "GET" },
   { file: "invite-codes/connections/[contactId]", method: "GET", params: { contactId: "demo-person-takahashi" } },
   { file: "invite-codes/connections/[contactId]/share", method: "PUT", params: { contactId: "demo-person-takahashi" }, body: { sharedKeys: ["organization", "email"], ...key } },
+  { file: "invite-codes/current/share", method: "PUT", body: { sharedKeys: ["organization", "offering"], ...key } },
   { file: "invite-codes/connections/[contactId]/unlink", method: "POST", params: { contactId: "demo-person-takahashi" }, body: { keepAsContact: true, ...key } },
   { file: "invite-codes/[code]/revoke", method: "POST", params: { code: "K7QX-2M9P" } },
   { file: "invite-codes", method: "POST", body: { shared: { displayName: "Orbit デモ" }, maxUses: 5, ...key }, status: 201 },
@@ -339,6 +340,29 @@ test("R15 mock: share update changes what I share; unknown contact is 404; bad b
     assert.equal((await put("demo-person-watanabe", { sharedKeys: [], idempotencyKey: "s-2" })).status, 404, "not an invite connection");
     assert.equal((await put("demo-person-takahashi", { sharedKeys: ["email", "email"], idempotencyKey: "s-3" })).status, 400);
     assert.equal((await call({ file: "invite-codes/connections/[contactId]/unlink", method: "POST", params: { contactId: "demo-person-takahashi" }, body: { idempotencyKey: "u" } })).status, 400);
+  });
+  redesignMock.reset();
+});
+
+test("R15 P1 mock: PUT /current/share changes what the current code shares; the code stays; previews follow; no current code is 404", async () => {
+  redesignMock.reset();
+  await withMode("mock", async () => {
+    const put = (body: unknown) => call({ file: "invite-codes/current/share", method: "PUT", body });
+    const current = (await (await call({ file: "invite-codes/current", method: "GET" })).json()).data;
+    const updated = await put({ sharedKeys: ["seeking", "email"], idempotencyKey: "cs-1" });
+    assert.equal(updated.status, 200);
+    const body = (await updated.json()).data;
+    const { shared, ...rest } = body;
+    const { shared: _before, ...sameCode } = current;
+    assert.deepEqual(rest, sameCode, "code, link, expiry and uses do not change");
+    assert.deepEqual(shared, { displayName: "Orbit デモ", seeking: ["シリーズA の投資家"], email: "demo@example.com" });
+    assert.deepEqual((await (await call({ file: "invite-codes/current", method: "GET" })).json()).data, body);
+    assert.deepEqual((await (await put({ sharedKeys: ["seeking", "email"], idempotencyKey: "cs-1" })).json()).data, body, "the same key replays");
+    assert.deepEqual((await preview("K7QX-2M9P")).body.data.shared, { displayName: "Orbit デモ", seeking: ["シリーズA の投資家"] }, "the preview follows, never with contacts");
+    assert.equal((await put({ sharedKeys: ["email", "email"], idempotencyKey: "cs-2" })).status, 400);
+    assert.equal((await put({ sharedKeys: [], idempotencyKey: "cs-2", shared: { displayName: "x" } })).status, 400, "strict body");
+    await call({ file: "invite-codes/[code]/revoke", method: "POST", params: { code: "K7QX-2M9P" } });
+    assert.equal((await put({ sharedKeys: [], idempotencyKey: "cs-3" })).status, 404, "no current code");
   });
   redesignMock.reset();
 });

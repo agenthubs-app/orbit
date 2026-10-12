@@ -8,7 +8,7 @@ import { eventAssessmentAddToPlanResultSchema, eventAssessmentCreateInputSchema,
 import { eventRecommendationDismissInputSchema, eventRecommendationDismissResultSchema } from "../../shared/api-schema/event-recommendation-feedback";
 import { homeLayoutSchema, homeLayoutUpdateInputSchema } from "../../shared/api-schema/home-layout";
 import {
-  inviteCodeCreateInputSchema, inviteCodeHistoryResponseSchema, inviteCodePreviewSchema, inviteCodeRedeemInputSchema, inviteCodeRedeemResultSchema, inviteCodeSchema,
+  inviteCodeCreateInputSchema, inviteCodeHistoryResponseSchema, inviteCodePreviewSchema, inviteCodeRedeemInputSchema, inviteCodeRedeemResultSchema, inviteCodeSchema, inviteCodeShareUpdateInputSchema,
   inviteConnectionViewSchema, inviteMergeInputSchema, inviteShareUpdateInputSchema, inviteUnlinkInputSchema, inviteUnlinkResultSchema,
 } from "../../shared/api-schema/invite-codes";
 import { AppError } from "../../shared/errors/app-error";
@@ -71,6 +71,13 @@ export const getCurrentInviteCode = redesignContractRoute("invite-codes", invite
 export const revokeInviteCode = redesignContractRoute("invite-codes", inviteCodeSchema, (_request, params) => {
   const revoked = redesignMock.revokeInvite(params.code ?? "");
   return revoked ? { data: revoked } : notFound();
+});
+// R15 P1：改当前码的共享项目；没有当前码 404（与 live 同形）。
+export const updateCurrentInviteShare = redesignContractRoute("invite-codes", inviteCodeSchema, async (request) => {
+  const body = await readBody(request, inviteCodeShareUpdateInputSchema);
+  if (body.ok === false) return body.reply;
+  const updated = redesignMock.updateCurrentInviteShare(body.value);
+  return updated ? { data: updated } : { error: new AppError("NOT_FOUND", "There is no current invite code.") };
 });
 // R15：失败与 live 同形——不可用一律 404 + reason INVITE_UNAVAILABLE（防枚举），过期 / 满员 / 自己的码是 409 + 各自的 reason。
 const inviteFailure = (failed: InviteFailure): ContractReply => failed.failure === "unavailable"

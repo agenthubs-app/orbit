@@ -262,6 +262,64 @@ function suite(name: string, options: TestOptions, withHarness: (run: (harness: 
       assert.equal((await service.linkedContactIds(ALICE)).length, 1);
     });
   });
+
+  test(`${name}: P1 — the owner changes what the current code shares; the code stays the same, later previews and redemptions read the new keys, existing connections keep theirs`, options, async () => {
+    await withHarness(async (harness) => {
+      for (const actor of [ALICE, BOB, CAROL]) await harness.setProfile(profile(actor));
+      const { advance, service } = setup(harness);
+      const created = await service.create(ALICE, { maxUses: 5, shared: { displayName: "a" }, sharedKeys: ["organization", "email"], ...key("c") });
+      const bob = await service.redeem(BOB, created.code, { sharedKeys: [], ...key("r-bob") });
+      advance(1000);
+
+      const updated = await service.updateCurrentShare(ALICE, { sharedKeys: ["seeking", "offering", "phone"], ...key("s-1") });
+      const { shared: _old, ...sameCode } = { ...created, usedCount: 1 };
+      const { shared, ...rest } = updated;
+      assert.deepEqual(rest, sameCode, "code, link, expiry, uses and creation time do not change");
+      assert.deepEqual(shared, { displayName: "Alice Example", offering: ["alice offers advice"], phone: "090-1234-5678", seeking: ["alice seeks investors"] }, "values come from the profile by the new keys");
+      assert.deepEqual(await service.current(ALICE), updated);
+      assert.deepEqual(await service.updateCurrentShare(ALICE, { sharedKeys: ["seeking", "offering", "phone"], ...key("s-1") }), updated, "the same request again gives the same answer");
+      assert.deepEqual((await service.history(ALICE)).items.map((item) => [item.code, item.status, item.usedCount]), [[created.code, "active", 1]], "no new code");
+
+      const preview = await service.preview(created.code, null);
+      assert.deepEqual(preview.shared, { displayName: "Alice Example", offering: ["alice offers advice"], seeking: ["alice seeks investors"] }, "the preview reads the new keys and still never shows contacts");
+
+      const carol = await service.redeem(CAROL, created.code, { sharedKeys: [], ...key("r-carol") });
+      assert.deepEqual(carol.peer, shared, "a later redemption gets the new keys");
+      assert.deepEqual((await service.connection(CAROL, carol.contactId)).sharedByPeer, ["offering", "seeking", "phone"]);
+      assert.deepEqual((await service.connection(BOB, bob.contactId)).sharedByPeer, ["organization", "email"], "an existing connection keeps what it was given");
+      assert.deepEqual((await contact(harness, bob.contactId))?.payload.primaryEmail, "alice@example.invalid");
+
+      await expectError(service.updateCurrentShare(BOB, { sharedKeys: ["email"], ...key("s-bob") }), "NOT_FOUND");
+      await expectError(service.updateCurrentShare(ALICE, { sharedKeys: [], idempotencyKey: " " }), "INVALID");
+      assert.deepEqual((await service.updateCurrentShare(ALICE, { sharedKeys: [], ...key("s-2") })).shared, { displayName: "Alice Example" }, "only the name");
+    });
+  });
+
+  test(`${name}: P1 — no current code (revoked, expired, replaced by a new one) is a 404; no profile name is PROFILE_REQUIRED`, options, async () => {
+    await withHarness(async (harness) => {
+      await harness.setProfile(profile(ALICE));
+      const { advance, service } = setup(harness);
+      await expectError(service.updateCurrentShare(ALICE, { sharedKeys: ["email"], ...key("none") }), "NOT_FOUND");
+
+      const first = await service.create(ALICE, { maxUses: 5, shared: { displayName: "a" }, ...key("c-1") });
+      advance(1000);
+      const second = await service.create(ALICE, { maxUses: 5, shared: { displayName: "a" }, ...key("c-2") });
+      await service.updateCurrentShare(ALICE, { sharedKeys: ["email"], ...key("s-1") });
+      assert.equal((await service.current(ALICE))?.code, second.code, "only the current code changes");
+      await expectError(service.preview(first.code, null), "UNAVAILABLE");
+
+      await harness.removeProfile(ALICE);
+      await expectError(service.updateCurrentShare(ALICE, { sharedKeys: ["organization"], ...key("s-2") }), "PROFILE_REQUIRED");
+      await harness.setProfile(profile(ALICE));
+
+      await service.revoke(ALICE, second.code);
+      await expectError(service.updateCurrentShare(ALICE, { sharedKeys: ["organization"], ...key("s-3") }), "NOT_FOUND");
+
+      await service.create(ALICE, { maxUses: 5, shared: { displayName: "a" }, ...key("c-3") });
+      advance(8 * DAY);
+      await expectError(service.updateCurrentShare(ALICE, { sharedKeys: ["organization"], ...key("s-4") }), "NOT_FOUND");
+    });
+  });
 }
 
 suite("memory", {}, async (run) => {

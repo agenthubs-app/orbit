@@ -10,7 +10,7 @@ import type { EventRecommendationDismissReason, EventRecommendationDismissResult
 import type { HomeLayoutContract, HomeLayoutUpdateInput } from "../../shared/contract/home-layout";
 import type {
   InviteCodeContract, InviteCodeCreateInput, InviteCodeFailureReason, InviteCodeHistoryItem, InviteCodeHistoryJoined, InviteCodePreview, InviteCodeRedeemInput,
-  InviteCodeRedeemResult, InviteConnectionView, InviteMergeInput, InviteSharedFieldKey, InviteSharedFields, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult,
+  InviteCodeRedeemResult, InviteCodeShareUpdateInput, InviteConnectionView, InviteMergeInput, InviteSharedFieldKey, InviteSharedFields, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult,
 } from "../../shared/contract/invite-codes";
 import { formatInviteCode, INVITE_CODE_ALPHABET, INVITE_DEFAULT_SHARED_KEYS, normalizeInviteCode } from "../../shared/compute/invite-code-format";
 import { COMPLETION_OPTION_LABELS, resolveCompletionAnswer, type CompletionOption } from "../../shared/compute/completion-question-rules";
@@ -122,6 +122,7 @@ function freshInviteState() {
     connections: new Map<string, InviteConnectionView>([[demoInviteConnection.contactId, demoInviteConnection]]),
     redeems: new Map<string, { code: string; result: InviteCodeRedeemResult | InviteFailure }>(),
     shares: new Map<string, InviteConnectionView>(),
+    currentShares: new Map<string, InviteCodeContract>(),
     unlinks: new Map<string, InviteUnlinkResult>(),
     merges: new Map<string, InviteConnectionView>(),
   };
@@ -228,6 +229,16 @@ export const redesignMock = {
     state.invite.mine.unshift({ contract: created, joined: [] });
     state.invite.creates.set(input.idempotencyKey, created);
     return created;
+  },
+  /** R15 P1: what the current code shares, from now on (same code, link, expiry and uses); null when there is no current code. */
+  updateCurrentInviteShare(input: InviteCodeShareUpdateInput): InviteCodeContract | null {
+    const replay = state.invite.currentShares.get(input.idempotencyKey);
+    if (replay) return replay;
+    if (!redesignMock.currentInvite()) return null;
+    const current = state.invite.mine[0]!;
+    current.contract = { ...current.contract, shared: pickShared(DEMO_PROFILE, input.sharedKeys) };
+    state.invite.currentShares.set(input.idempotencyKey, current.contract);
+    return current.contract;
   },
   /** Only my code that is still standing can be revoked (again: the same answer). */
   revokeInvite(code: string): InviteCodeContract | null {

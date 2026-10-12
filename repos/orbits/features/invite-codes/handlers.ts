@@ -20,6 +20,7 @@ import {
   inviteCodeRedeemInputSchema,
   inviteCodeRedeemResultSchema,
   inviteCodeSchema,
+  inviteCodeShareUpdateInputSchema,
   inviteConnectionViewSchema,
   inviteMergeInputSchema,
   inviteShareUpdateInputSchema,
@@ -160,6 +161,12 @@ export function createInviteCodeLiveHandlers(deps: InviteCodeLiveDeps = {}) {
     current: authed(false, async ({ actorId, service }) => okResponse(inviteCodeSchema.nullable(), await service.current(actorId))),
     /** POST /api/invite-codes/[code]/revoke（只能作废自己的码；别人的 / 不存在 404） */
     revoke: authed(true, async ({ actorId, params, service }) => okResponse(inviteCodeSchema, await service.revoke(actorId, params.code ?? ""))),
+    /** PUT /api/invite-codes/current/share（R15 P1：改当前码共享哪些项目，码不变；没有当前码 404） */
+    shareCurrent: authed(true, async ({ actorId, request, service }) => {
+      const parsed = inviteCodeShareUpdateInputSchema.safeParse(await readJson(request));
+      if (!parsed.success) return errorResponse(new AppError("VALIDATION_ERROR", "The request body is not valid."));
+      return okResponse(inviteCodeSchema, await service.updateCurrentShare(actorId, parsed.data));
+    }),
     /** GET /api/invite-codes/connections/[contactId] */
     connection: authed(false, async ({ actorId, params, service }) => okResponse(inviteConnectionViewSchema, await service.connection(actorId, params.contactId ?? ""))),
     /** PUT /api/invite-codes/connections/[contactId]/share */
@@ -255,6 +262,7 @@ export const createInviteCode = inviteCodeRoute(mock.createInviteCode, (live) =>
 export const listInviteCodeHistory = inviteCodeRoute(mock.listInviteCodeHistory, (live) => live.history);
 export const getCurrentInviteCode = inviteCodeRoute(mock.getCurrentInviteCode, (live) => live.current);
 export const revokeInviteCode = inviteCodeRoute(mock.revokeInviteCode, (live) => live.revoke);
+export const updateCurrentInviteShare = inviteCodeRoute(mock.updateCurrentInviteShare, (live) => live.shareCurrent);
 export const previewInviteCode = inviteCodeRoute(mock.previewInviteCode, (live) => live.preview);
 export const redeemInviteCode = inviteCodeRoute(mock.redeemInviteCode, (live) => live.redeem);
 export const getInviteConnection = inviteCodeRoute(mock.getInviteConnection, (live) => live.connection);

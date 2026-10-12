@@ -41,6 +41,8 @@ export interface InviteCodeRepository {
   listActorCodes(actorId: string, limit: number): Promise<InviteCodeRow[]>;
   /** 占用一个名额：未作废、未替换、未过期、未满才 +1；否则 null。 */
   claimUse(codeId: string, now: string): Promise<InviteCodeRow | null>;
+  /** R15 P1：改本人这个未作废、未替换的码共享哪些项目（码本身不变）；不是本人的 / 已作废 / 已替换返回 null。 */
+  updateUsableCodeSharedKeys(actorId: string, codeId: string, keys: InviteSharedFieldKey[]): Promise<InviteCodeRow | null>;
 
   findConnectionByRedeemKey(redeemerActorId: string, key: string): Promise<InviteConnectionRow | null>;
   findActiveConnectionBetween(left: string, right: string): Promise<InviteConnectionRow | null>;
@@ -235,6 +237,15 @@ export function createPostgresInviteCodeRepository(tx: TransactionalSqlExecutor,
       );
       return row ? codeFromRow(row) : null;
     },
+    async updateUsableCodeSharedKeys(actorId, codeId, keys) {
+      const row = await one(
+        `update invite_codes set shared_keys = $4::text[]
+         where workspace_id = $1 and actor_id = $2 and id = $3 and revoked_at is null and superseded_at is null
+         returning *`,
+        [workspaceId, actorId, codeId, keys],
+      );
+      return row ? codeFromRow(row) : null;
+    },
 
     async findConnectionByRedeemKey(redeemerActorId, key) {
       const row = await one(`${CONNECTION_SELECT} where c.workspace_id = $1 and c.redeemer_actor_id = $2 and c.redeemer_idempotency_key = $3`, [workspaceId, redeemerActorId, key]);
@@ -399,6 +410,12 @@ export function createMemoryInviteCodeRepository(tables: MemoryInviteCodeTables)
       const row = tables.codes.find((item) => item.id === codeId);
       if (!row || !isUsable(row) || row.usedCount >= row.maxUses || Date.parse(row.expiresAt) <= Date.parse(now)) return null;
       row.usedCount += 1;
+      return clone(row);
+    },
+    async updateUsableCodeSharedKeys(actorId, codeId, keys) {
+      const row = tables.codes.find((item) => item.id === codeId && item.actorId === actorId);
+      if (!row || !isUsable(row)) return null;
+      row.sharedKeys = [...keys];
       return clone(row);
     },
 

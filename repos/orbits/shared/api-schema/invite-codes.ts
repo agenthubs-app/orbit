@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { knownValues, readableItems, tolerantEnum } from "./tolerant";
 import type {
-  InviteCodeContract, InviteCodeCreateInput, InviteCodeHistoryItem, InviteCodeHistoryResponse, InviteCodePreview, InviteCodeRedeemInput, InviteCodeRedeemResult,
+  InviteCodeContract, InviteCodeCreateInput, InviteCodeShareUpdateInput, InviteCodeHistoryItem, InviteCodeHistoryResponse, InviteCodePreview, InviteCodeRedeemInput, InviteCodeRedeemResult,
   InviteConnectionView, InviteMergeInput, InviteMergeMatchReason, InviteSharedFieldKey, InviteShareUpdateInput, InviteUnlinkInput, InviteUnlinkResult,
 } from "../contract/invite-codes";
 
@@ -96,3 +96,6 @@ export const inviteUnlinkResultSchema = inviteUnlinkResultObject as z.ZodType<In
 // R15 复核 S1：确认统合 / 不是同一人。
 export const inviteMergeInputObject = z.object({ idempotencyKey }).strict();
 export const inviteMergeInputSchema = inviteMergeInputObject as z.ZodType<InviteMergeInput>;
+// R15 P1：改当前码的共享项目（PUT /api/invite-codes/current/share；响应用 inviteCodeSchema）。
+export const inviteCodeShareUpdateInputObject = z.object({ sharedKeys: sharedKeysInput, idempotencyKey }).strict();
+export const inviteCodeShareUpdateInputSchema = inviteCodeShareUpdateInputObject as z.ZodType<InviteCodeShareUpdateInput>;

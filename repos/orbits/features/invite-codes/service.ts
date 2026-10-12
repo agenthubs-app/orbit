@@ -5,6 +5,7 @@
  * - 发码：同一个写单元里先给本人未作废、未替换的码写 `superseded_at` 再建新码；码用 `crypto.randomInt` 从字母表生成，
  *   全局唯一冲突重试 ≤5；只认 `sharedKeys`（缺省 = 会社・役職 / 提供できること / 求めていること），忽略客户端传来的
  *   `shared` 值，响应里的 `shared` 由服务端从本人资料读；`maxUses` 1–10；有效 7 天；同一个幂等键重放第一次的码。
+ * - 改当前码的共享项目（R15 P1）：只改码行上的 `shared_keys`，码 / 链接 / 期限 / 人数不变；之后的预览与兑换读新键，已有连接各自的共享项目不动。
  * - 预览：不存在 / 作废 / 被替换 / 过期超过 30 天 → `UNAVAILABLE`（路由统一 404）；过期 30 天内与满员返回带 status 的预览；
  *   永不返回邮箱电话；登录时算 `inviterAlreadyConnected`、`isOwnCode`。
  * - 兑换：一个写单元（live = 一个数据库事务）里：校验 → 同一对人已有生效连接则 `already_connected`（不占用量）→
@@ -27,6 +28,7 @@ import type {
   InviteCodePreview,
   InviteCodeRedeemInput,
   InviteCodeRedeemResult,
+  InviteCodeShareUpdateInput,
   InviteConnectionView,
   InviteMergeInput,
   InviteMergeSuggestion,
@@ -114,6 +116,11 @@ export interface InviteCodeService {
   current(actorId: string): Promise<InviteCodeContract | null>;
   history(actorId: string): Promise<InviteCodeHistoryResponse>;
   revoke(actorId: string, code: string): Promise<InviteCodeContract>;
+  /**
+   * R15 P1：改当前码共享哪些项目（码、链接、期限、人数都不变；之后的预览 / 兑换读新键，已有连接不受影响）。
+   * 没有可用的当前码 → NOT_FOUND；资料没名字 → PROFILE_REQUIRED。PUT 语义：同样的请求再来一次得到同样的结果。
+   */
+  updateCurrentShare(actorId: string, input: InviteCodeShareUpdateInput): Promise<InviteCodeContract>;
   preview(code: string, viewerActorId: string | null): Promise<InviteCodePreview>;
   redeem(actorId: string, code: string, input: InviteCodeRedeemInput): Promise<InviteCodeRedeemResult>;
   connection(actorId: string, contactId: string): Promise<InviteConnectionView>;
@@ -398,6 +405,24 @@ export function createInviteCodeService({
         const row = await unit.repo.revokeCode(actorId, normalized, now().toISOString());
         if (!row) throw new InviteCodeError("NOT_FOUND", "The invite code was not found.");
         return contractOf(row, await unit.profiles.read(actorId));
+      });
+    },
+
+    async updateCurrentShare(actorId, input) {
+      if (!input.idempotencyKey.trim()) throw new InviteCodeError("INVALID", "idempotencyKey is required.");
+      const keys = canonicalKeys(input.sharedKeys);
+      return storage.write(async (unit) => {
+        // 与发码 / 作废同一把锁：不会和「发新码」交错（改到刚被替换的旧码上）。
+        await unit.repo.lockActor(actorId);
+        const row = await unit.repo.findUsableCode(actorId);
+        // 与 `current` 同一口径：过期的码不算当前码。
+        if (!row || Date.parse(row.expiresAt) <= now().getTime()) throw new InviteCodeError("NOT_FOUND", "There is no current invite code.");
+        const profile = await unit.profiles.read(actorId);
+        if (!profile) throw new InviteCodeError("PROFILE_REQUIRED", "Add your name to your profile before sharing an invite code.");
+        if (row.sharedKeys.join(",") === keys.join(",")) return contractOf(row, profile);
+        const updated = await unit.repo.updateUsableCodeSharedKeys(actorId, row.id, keys);
+        if (!updated) throw new InviteCodeError("NOT_FOUND", "There is no current invite code.");
+        return contractOf(updated, profile);
       });
     },
 

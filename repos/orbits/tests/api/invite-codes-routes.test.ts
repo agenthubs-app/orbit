@@ -68,6 +68,7 @@ function liveSuite(name: string, options: TestOptions, withHarness: (run: (harne
         [live.revoke, request(`/${code.code}/revoke`, "POST"), { code: code.code }],
         [live.connection, request("/connections/c"), { contactId: "c" }],
         [live.share, request("/connections/c/share", "PUT", { idempotencyKey: "s", sharedKeys: [] }), { contactId: "c" }],
+        [live.shareCurrent, request("/current/share", "PUT", { idempotencyKey: "cs", sharedKeys: [] }), {}],
         [live.unlink, request("/connections/c/unlink", "POST", { idempotencyKey: "u", keepAsContact: true }), { contactId: "c" }],
         [live.merge, request("/connections/c/merge", "POST", { idempotencyKey: "m" }), { contactId: "c" }],
         [live.dismissMerge, request("/connections/c/merge/dismiss", "POST", { idempotencyKey: "d" }), { contactId: "c" }],
@@ -101,6 +102,41 @@ function liveSuite(name: string, options: TestOptions, withHarness: (run: (harne
       as(null);
       const gone = await call(live.preview, request(`/${code.code}/preview`), { code: code.code });
       assert.deepEqual([gone.status, (await gone.json()).error.context.reason], [404, "INVITE_UNAVAILABLE"]);
+    });
+  });
+
+  test(`${name}: P1 — PUT /current/share changes what the current code shares without changing the code`, options, async () => {
+    await withHarness(async (harness) => {
+      const { as, live, service } = await liveWorld(harness);
+      const put = (body: unknown, headers: Record<string, string> = {}) => call(live.shareCurrent, request("/current/share", "PUT", body, headers));
+      const none = await put({ idempotencyKey: "s-0", sharedKeys: ["email"] });
+      assert.equal(none.status, 404, "no current code yet");
+      const created = await service.create(ALICE, { idempotencyKey: "c", maxUses: 5, shared: { displayName: "a" } });
+
+      const updated = await put({ idempotencyKey: "s-1", sharedKeys: ["phone", "organization"] });
+      assert.equal(updated.status, 200);
+      assert.equal(updated.headers.get("X-Orbit-Feature-Mode"), "live");
+      const body = inviteCodeSchema.parse((await updated.json()).data);
+      assert.deepEqual([body.code, body.link, body.expiresAt, body.maxUses, body.usedCount], [created.code, created.link, created.expiresAt, created.maxUses, created.usedCount]);
+      assert.deepEqual(body.shared, { displayName: "Alice Example", organization: "alice Inc", phone: "090-1234-5678", role: "CEO" });
+
+      for (const bad of [
+        { idempotencyKey: "s-2", sharedKeys: ["password"] },
+        { idempotencyKey: "s-2", sharedKeys: ["email", "email"] },
+        { idempotencyKey: "s-2", sharedKeys: ["email"], shared: { displayName: "spoof" } },
+        { sharedKeys: ["email"] },
+      ]) assert.equal((await put(bad)).status, 400, JSON.stringify(bad));
+      assert.deepEqual([(await put({ idempotencyKey: "s-3", sharedKeys: [] }, { "x-orbit-sample": "1" })).status], [403], "sample writes are blocked");
+
+      as(null);
+      const preview = inviteCodePreviewSchema.parse((await (await call(live.preview, request(`/${created.code}/preview`), { code: created.code })).json()).data);
+      assert.deepEqual(preview.shared, { displayName: "Alice Example", organization: "alice Inc", role: "CEO" }, "the public preview follows the new keys, never contacts");
+      as(BOB);
+      assert.equal((await put({ idempotencyKey: "s-bob", sharedKeys: [] })).status, 404, "Bob has no code of his own");
+      await harness.removeProfile(ALICE);
+      as(ALICE);
+      const noProfile = await put({ idempotencyKey: "s-4", sharedKeys: [] });
+      assert.deepEqual([noProfile.status, (await noProfile.json()).error.context.reason], [409, "PROFILE_REQUIRED"]);
     });
   });
 

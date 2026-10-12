@@ -6417,6 +6417,7 @@
         "InviteCodePreview",
         "InviteCodeRedeemInput",
         "InviteCodeRedeemResult",
+        "InviteCodeShareUpdateInput",
         "InviteConnectionView",
         "InviteShareUpdateInput",
         "InviteSharedFieldKey",
@@ -7298,6 +7299,21 @@
     "invite-codes.ts::InviteMergeInput": {
       "kind": "object",
       "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "invite-codes.ts::InviteCodeShareUpdateInput": {
+      "kind": "object",
+      "members": {
+        "sharedKeys": {
+          "optional": false,
+          "kind": "text",
+          "type": "InviteSharedFieldKey[]"
+        },
         "idempotencyKey": {
           "optional": false,
           "kind": "text",
