@@ -1,0 +1,80 @@
+/* R25 見直し页（b4「見直し · Web（前提 + 差分 · 右栏配额）」+ b12 W-R25-05 / 06a / 06b / 06c）。
+   数值照 b4-plan-iorbit.html 的 .v22x 私有类（.wchat .fm .prem .dl .chgtag .same-line .revbig .dots3）。 */
+
+/* .v22x .wchat（max-width:none） */
+.wchat { display: grid; gap: 12px; }
+
+/* .v22x .fm：三段进度 */
+.fm { display: flex; gap: 4px; margin: 2px 0; padding: 0; list-style: none; }
+.fm li { flex: 1; min-width: 0; text-align: center; font-size: var(--fs-tab); font-weight: var(--fw-heavy); color: var(--ink-4); padding-top: 7px; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fm li::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; border-radius: var(--r-hair); background: var(--surface-3); }
+.fm li.done { color: var(--ink-3); }
+.fm li.done::before { background: var(--plum-300); }
+.fm li.on { color: var(--ink); }
+.fm li.on::before { background: var(--plum-700); }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 14px; align-items: start; }
+.stack { display: grid; gap: 12px; }
+@media (max-width: 767px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* 確定した前提 */
+.premCard { padding: 12px 16px; }
+.premHead { gap: 8px; margin: 2px 0 4px; }
+.premTitle { font-size: var(--fs-body); font-weight: var(--fw-bold); flex: 1; }
+.prem { display: grid; grid-template-columns: 84px 1fr auto; gap: 8px; padding: 8px 0; font-size: var(--fs-control); line-height: 1.55; align-items: start; }
+.prem + .prem { border-top: 1px solid var(--line); }
+.flag { background: color-mix(in srgb, var(--mac-apricot) 60%, transparent); border-radius: var(--r-row); padding: 8px; margin: 2px -8px; }
+.flag + .prem, .prem + .flag { border-top-color: transparent; }
+.psrc { font-size: var(--fs-tab); font-weight: var(--fw-heavy); color: var(--ink-3); background: var(--surface-2); border-radius: var(--r-tag); padding: 1px 6px; white-space: nowrap; }
+.pflag { display: flex; width: fit-content; align-items: center; gap: 4px; margin-top: 4px; font-size: var(--fs-tiny); font-weight: var(--fw-heavy); color: var(--mac-apricot-ink); background: var(--surface); border-radius: var(--r-tag); padding: 1px 6px; }
+.pflag svg { width: 11px; height: 11px; }
+.pold { color: var(--ink-4); }
+.pnew { background: var(--mac-lav); border-radius: var(--r-tag); padding: 0 4px; font-weight: var(--fw-bold); }
+/* 就地改：值本身是按钮（无底、继承字号），点开变输入框 */
+.pvalue.pvalue { display: block; width: 100%; height: auto; padding: 0; margin: 0; border: 0; border-radius: var(--r-hair); background: none; color: inherit; font: inherit; line-height: inherit; text-align: left; white-space: normal; cursor: text; }
+.pvalue.pvalue:disabled { cursor: default; }
+.pinput { width: 100%; font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--plum-700); border-radius: var(--r-tag); padding: 0 4px; outline: none; }
+.premc { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.v2go.v2go { display: flex; align-items: center; gap: 4px; margin: 0; padding: 0; height: auto; border: 0; background: none; font-size: var(--fs-meta); font-weight: var(--fw-bold); color: var(--ink-2); cursor: pointer; }
+
+/* 差分卡（.v22x .dl / .chgtag / .same-line） */
+.turnCard { padding: 14px 16px; }
+.turnTitle { display: block; font-size: var(--fs-card-title); font-weight: var(--fw-bold); }
+.diff { margin-top: 6px; }
+.dl { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; padding: 9px 0; font-size: var(--fs-control); line-height: 1.55; }
+.dl + .dl { border-top: 1px solid var(--line); }
+.dl > .dlLabel { grid-column: 2; }
+.dl > s { color: var(--ink-3); grid-column: 2; }
+.nw { grid-column: 2; font-weight: var(--fw-heavy); background: var(--mac-lav); color: var(--ink); border-radius: var(--r-sm); padding: 2px 6px; justify-self: start; }
+.chgtag { grid-row: span 3; align-self: start; font-size: var(--fs-tab); font-weight: var(--fw-heavy); padding: 2px 7px; border-radius: var(--r-tag); background: var(--mac-lav); color: var(--mac-lav-ink); white-space: nowrap; }
+.toggles { display: flex; align-items: center; gap: 6px; grid-column: 3; grid-row: 1 / span 3; align-self: center; }
+.toggle.toggle { width: 36px; height: 36px; color: var(--ink-3); }
+.toggleOn.toggleOn { background: var(--plum-700); color: var(--on-accent); }
+.off > :not(.toggles) { opacity: .45; }
+.sameLine { margin-top: 8px; padding: 8px 10px; border-radius: var(--r-row); background: var(--surface-2); font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.6; }
+.noChange { margin-top: 10px; }
+.turnFoot { gap: 8px; margin-top: 12px; }
+.turnFoot > :last-child { margin-left: auto; }
+
+/* 失败卡 */
+.ngTitle { display: block; font-size: var(--fs-row); font-weight: var(--fw-bold); }
+.staleBody { line-height: 1.5; }
+.staleTitle { display: block; color: var(--ink); font-weight: var(--fw-bold); }
+
+/* 右栏（kit .rail：flex column gap 14） */
+.rail { display: flex; flex-direction: column; gap: var(--space-14); }
+.railH { font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); display: flex; align-items: center; gap: 8px; line-height: 1.5; margin: 0; }
+.quota { padding: 16px; }
+.revbig { display: flex; align-items: baseline; gap: 6px; }
+.revbig em { font-style: normal; font-family: var(--font-num); font-size: var(--fs-display-md); font-weight: var(--fw-black); line-height: 1; }
+.dots3 { display: flex; gap: 5px; margin-top: 8px; }
+.dots3 i { flex: 1; height: 6px; border-radius: var(--r-bar); background: var(--plum-700); }
+.dots3 i.used { background: var(--surface-3); }
+.railNote { margin-top: 10px; line-height: 1.6; }
+.railIn { margin-top: 10px; background: var(--surface-2); }
+.railIn input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; color: var(--ink); padding: 0; }
+.railIn input::placeholder { color: var(--ink-3); opacity: 1; }
+.railIn input:disabled { color: var(--ink-3); }
+.send.send { margin-left: auto; background: var(--ink); color: var(--bg); }
+.sendNote { text-align: center; }
+.manualNote { padding: 14px; font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.65; }

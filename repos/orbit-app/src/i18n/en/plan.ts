@@ -554,7 +554,7 @@ export const plan = {
   "plan.legacy.title": "Earlier plan",
   "plan.legacy.phase": "Phase {n}",
   "plan.legacy.readOnly": "Read only",
-  "plan.legacy.cardBody": "This plan uses the earlier format. You can read it, but not edit or re-analyse it. A new plan starts from a goal.",
+  "plan.legacy.cardBody": "This plan uses the earlier format. You can look at it but not edit or re-analyse it.",
   "plan.legacy.open": "Open {goal} (earlier plan)",
   "plan.legacy.started": "Started {month}/{day}/{year}",
   "plan.legacy.ended": "Ended {month}/{day}/{year}",
@@ -572,7 +572,7 @@ export const plan = {
   "plan.legacy.statusDone": "Done",
   "plan.legacy.statusSkipped": "Skipped",
   "plan.legacy.statusDismissed": "Dropped",
-  "plan.legacy.statusOpen": "Open",
+  "plan.legacy.statusOpen": "Not started",
   "plan.legacy.empty": "This plan has no items.",
   // R24 review fixes (App).
   "plan.pending.memoNoPoints": "In your meeting with {name} you covered {count} of 3 questions · add points?",

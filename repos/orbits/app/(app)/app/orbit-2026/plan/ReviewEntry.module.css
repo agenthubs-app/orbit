@@ -1,0 +1,11 @@
+/* R25 見直し入口弹窗（b12 W-R25-01 / 02 / 02b · 参照 b4「Web 使い切り（モーダル）」）。 */
+.title { font-size: var(--fs-title-xs); font-weight: var(--fw-bold); }
+.lead { margin: 4px 0 14px; }
+.quota { padding: 14px; }
+.quotaTitle { font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
+.dots { margin-top: 10px; }
+.rules { margin-top: 8px; line-height: 1.6; }
+.dataTitle { margin: 14px 0 6px; }
+.usedDots { margin: 16px 0 4px; }
+.usedBody { padding: 14px; margin-top: 12px; font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.7; }
+.usedActs { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }

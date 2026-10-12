@@ -2,29 +2,31 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import type { PlanGoalEditResult, PlanGoalKind, PlanGoalKindRead, PlanGoalListItem, PlanLegacyListResponse, PlanOpenResult } from "../../../../../shared/contract/plan-v2";
+import type { PlanGoalEditResult, PlanGoalKindRead, PlanGoalListItem, PlanLegacyListResponse, PlanOpenResult, PlanV2Detail } from "../../../../../shared/contract/plan-v2";
 import { planDoneHref, planLegacyHref, planNewGoalHref, planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
-import { PLAN_GOAL_KIND_COPY, planCopy } from "../../../../../shared/compute/plan-template-copy";
-import { PLAN_GOAL_KINDS, PLAN_GOAL_TEMPLATES } from "../../../../../shared/compute/plan-templates";
+import { PLAN_GOAL_TEMPLATES } from "../../../../../shared/compute/plan-templates";
 import { planReviewCopy as r } from "../copy/plan";
-import { Button, Chip, FilterOption, Icon, MacTile, Modal, Popover, useStandardCopy, useToast } from "../ui";
+import { Icon, useStandardCopy, useToast } from "../ui";
 import { newActionKey, planApi } from "./plan-api";
 import { isGoalKind, planErrorView, type PlanErrorView } from "./plan-model";
 import { PlanErrorNotice, type Translate } from "./PlanParts";
 import { reviewPageHref } from "./PlanReviewEntry";
-import { achievedGoalsOf, activeGoalsOf } from "./review-model";
-import styles from "./review.module.css";
+import { ReviewDialog } from "./ReviewDialog";
+import { achievedGoalsOf, activeGoalsOf, goalTone, joinGoalAmount, splitGoalAmount } from "./review-model";
+import k from "./ReviewKit.module.css";
+import g from "./GoalDialogs.module.css";
 
 const goalEmoji = (kind: PlanGoalKindRead) => (isGoalKind(kind) ? PLAN_GOAL_TEMPLATES[kind].emoji : "🎯");
+const toneClass = (kind: PlanGoalKindRead) => k[goalTone(kind)];
 
 /**
- * 目標の切替（b4 A6 ①, Web: the goal row's dropdown). Active goals with score and
- * people talked to (current one ticked; picking another calls `open`), finished goals
- * (→ 完了), 以前のプラン (only when there is one), 「＋ 目標を追加」 (off at 2 with the
- * reason, no paywall) and 「目標を編集」.
+ * 目標の切替（b4 A6 · b12 W-R25-09, Web: the goal row's dropdown）. 進めている目標 with score
+ * and people talked to (current one ticked; picking another calls `open`), 完了した目標
+ * (→ 完了), 以前のプラン (only when there is one, 閲覧のみ), 目標を追加 (off at 2 with the
+ * reason, no paywall) and 目標を編集.
  */
 export function GoalSwitcher({ currentPlanId, currentGoal, currentKind, goals, activeGoalLimit, t, language, onEdit }: {
   currentPlanId: string | null;
@@ -39,12 +41,13 @@ export function GoalSwitcher({ currentPlanId, currentGoal, currentKind, goals, a
   const router = useRouter();
   const toast = useToast();
   const anchor = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [place, setPlace] = useState<{ left: number; top: number } | null>(null);
   const [legacy, setLegacy] = useState<PlanLegacyListResponse["plans"] | null>(null);
   const [switching, setSwitching] = useState<string | null>(null);
   const active = activeGoalsOf(goals);
   const achieved = achievedGoalsOf(goals);
-  const position = currentPlanId ? active.findIndex((goal) => goal.planId === currentPlanId) + 1 : 0;
   const full = active.length >= activeGoalLimit;
 
   useEffect(() => {
@@ -53,6 +56,26 @@ export function GoalSwitcher({ currentPlanId, currentGoal, currentKind, goals, a
     void planApi<PlanLegacyListResponse>("/legacy", { language }).then((result) => { if (alive) setLegacy(result.ok ? result.data.plans : []); });
     return () => { alive = false; };
   }, [open, legacy, language]);
+
+  // b12 W-R25-09: the panel's left edge 2 right of the button's, its top 5 under it.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const at = () => { const box = anchor.current?.getBoundingClientRect(); if (box) setPlace({ left: Math.min(box.left + 2, window.innerWidth - 356), top: box.bottom + 5 }); };
+    at();
+    window.addEventListener("resize", at);
+    window.addEventListener("scroll", at, true);
+    return () => { window.removeEventListener("resize", at); window.removeEventListener("scroll", at, true); };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    panel.current?.focus();
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") { setOpen(false); anchor.current?.focus(); } };
+    const onDown = (event: MouseEvent) => { const target = event.target as Node; if (!panel.current?.contains(target) && !anchor.current?.contains(target)) setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onDown);
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("mousedown", onDown); };
+  }, [open]);
 
   const pick = async (planId: string) => {
     if (planId === currentPlanId) { setOpen(false); return; }
@@ -67,58 +90,69 @@ export function GoalSwitcher({ currentPlanId, currentGoal, currentKind, goals, a
 
   return (
     <>
-      <button ref={anchor} type="button" className={`btn ${styles.switcher}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(!open)} data-plan-goal-switcher="">
-        <span aria-hidden>{goalEmoji(currentKind)}</span>
-        <span className={styles.switcherText} data-plan-goal="">{currentGoal ?? t(r.switchLabel)}</span>
+      <button ref={anchor} type="button" className={`btn ${k.btn} ${g.switcher}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(!open)} data-plan-goal-switcher="">
+        <span className={g.switcherText} data-plan-goal="">{goalEmoji(currentKind)} {currentGoal ?? t(r.switchLabel)}</span>
         <Icon name="down" size={16} />
       </button>
-      {position > 0 ? <Chip label={t(r.goalPosition, { n: position, total: active.length })} /> : null}
-      <Popover open={open} onClose={() => setOpen(false)} anchor={anchor} label={t(r.switchLabel)} width={400}>
-        <div className={styles.menu} data-plan-goal-menu="">
-          <span className={styles.menuHead}>{t(r.activeGoals)}</span>
+      {open ? (
+        <div ref={panel} role="dialog" aria-label={t(r.switchLabel)} tabIndex={-1} className={g.gmenu} style={place ?? { left: -9999, top: -9999 }} data-plan-goal-menu="">
+          <div className={`${k.lbl} ${g.ghead}`}>{t(r.activeGoals)}</div>
           {active.map((goal) => (
-            <button key={goal.planId} type="button" className={`btn ${styles.menuRow}`} aria-current={goal.planId === currentPlanId ? "true" : undefined} disabled={switching !== null}
+            <button key={goal.planId} type="button" className={`btn ${g.gi} ${goal.planId === currentPlanId ? g.on : ""}`} aria-current={goal.planId === currentPlanId ? "true" : undefined} disabled={switching !== null}
               onClick={() => void pick(goal.planId)} data-plan-goal-option={goal.planId}>
-              <MacTile emoji={goalEmoji(goal.goalKind)} size="sm" />
-              <span className={styles.grow}>
-                <b className={styles.menuTitle}>{goal.goal}</b>
-                <span className={styles.label}>{t(r.goalStats, { n: goal.talkedPeople, score: goal.total })}</span>
-              </span>
+              <span className={`${k.emo} ${k.emoSm} ${toneClass(goal.goalKind)}`} aria-hidden>{goalEmoji(goal.goalKind)}</span>
+              <span className={k.grow}><b>{goal.goal}</b><span className={k.lbl}>{t(r.goalStats, { n: goal.talkedPeople, score: goal.total })}</span></span>
               {goal.planId === currentPlanId ? <Icon name="check" size={16} /> : null}
             </button>
           ))}
-          {achieved.length ? <span className={styles.menuHead}>{t(r.doneGoals)}</span> : null}
-          {achieved.map((goal) => (
-            <Link key={goal.planId} href={planDoneHref("web", goal.planId)} className={styles.menuRow} data-plan-goal-done={goal.planId}>
-              <MacTile emoji="🏁" size="sm" />
-              <span className={styles.grow}>
-                <b className={styles.menuTitle}>{goal.goal}</b>
-                <span className={styles.label}>{t(r.doneGoalStats, { score: goal.total })}</span>
-              </span>
-            </Link>
-          ))}
-          {legacy && legacy.length ? <span className={styles.menuHead}>{t(r.legacyPlans)}</span> : null}
-          {(legacy ?? []).map((plan) => (
-            <Link key={plan.planId} href={planLegacyHref("web", plan.planId)} className={styles.menuRow} data-plan-goal-legacy={plan.planId}>
-              <MacTile emoji="🗂️" size="sm" tone="apricot" />
-              <span className={styles.grow}><b className={styles.menuTitle}>{plan.goal}</b></span>
-            </Link>
-          ))}
-          <div className={styles.menuFoot}>
-            <Button size="sm" icon="plus" label={t(r.addGoal)} disabled={full} onClick={() => router.push(planNewGoalHref("web"))} data-plan-add-goal="" />
-            {onEdit ? <Button size="sm" variant="ghost" icon="edit" label={t(r.editGoal)} onClick={() => { setOpen(false); onEdit(); }} data-plan-edit-goal="" /> : null}
-          </div>
-          {full ? <p className={styles.label} data-plan-goal-limit="">{t(r.goalLimit)}</p> : null}
+          {achieved.length ? (
+            <>
+              <div className={g.gsep} />
+              <div className={`${k.lbl} ${g.ghead}`}>{t(r.doneGoals)}</div>
+              {achieved.map((goal) => (
+                <Link key={goal.planId} href={planDoneHref("web", goal.planId)} className={`btn ${g.gi}`} data-plan-goal-done={goal.planId}>
+                  <span className={`${k.emo} ${k.emoSm} ${g.emoMuted}`} aria-hidden>🏁</span>
+                  <span className={k.grow}><b>{goal.goal}</b><span className={k.lbl}>{t(r.doneGoalStats, { score: goal.total })}</span></span>
+                  <Icon name="right" size={16} />
+                </Link>
+              ))}
+            </>
+          ) : null}
+          {legacy && legacy.length ? (
+            <>
+              <div className={g.gsep} />
+              {legacy.map((plan) => (
+                <Link key={plan.planId} href={planLegacyHref("web", plan.planId)} className={`btn ${g.gi}`} data-plan-goal-legacy={plan.planId}>
+                  <span className={`${k.emo} ${k.emoSm} ${g.emoMuted}`} aria-hidden>🗂️</span>
+                  <span className={k.grow}><b className={g.legacyName}>{t(r.legacyPlans)}</b><span className={k.lbl}>{t(r.legacyMenuSub, { goal: plan.goal })}</span></span>
+                  <Icon name="right" size={16} />
+                </Link>
+              ))}
+            </>
+          ) : null}
+          <div className={g.gsep} />
+          <button type="button" className={`btn ${g.gi}`} disabled={full} onClick={() => router.push(planNewGoalHref("web"))} data-plan-add-goal="">
+            <span className={`${k.lbtn} ${g.lbtn32}`} aria-hidden><Icon name="plus" size={16} /></span>
+            <span className={k.grow}><b>{t(r.addGoal)}</b>{full ? <span className={k.lbl} data-plan-goal-limit="">{t(r.goalLimit)}</span> : null}</span>
+          </button>
+          {onEdit ? (
+            <button type="button" className={`btn ${g.gi}`} onClick={() => { setOpen(false); onEdit(); }} data-plan-edit-goal="">
+              <span className={`${k.lbtn} ${g.lbtn32}`} aria-hidden><Icon name="edit" size={16} /></span>
+              <span className={k.grow}><b>{t(r.editGoal)}</b></span>
+            </button>
+          ) : null}
         </div>
-      </Popover>
+      ) : null}
     </>
   );
 }
 
 /**
- * 目標を編集（b4 A6 ② ③, Web modal). Only the goal text and type can change (契約
- * `PlanGoalEditRequest`); 保存 with nothing changed just closes. Any change offers three exits: 保存して作り直す (→ 見直し, a
- * send still uses one), 目標だけ保存 (points unchanged) and キャンセル.
+ * 目標を編集（b4「Web 目標の切替 + 編集」, 600 wide）. 目標 / 金額 come from the goal text
+ * (「…（3億円）」); 背景（任意）/ ひとこと（重点）are `goalBackground` / `goalNote` (read from the
+ * plan when the modal opens). Changing only those two saves directly (D59). A change to the goal
+ * or amount offers three exits: 保存して作り直す (→ 見直し; a send still uses one), 目標だけ保存
+ * (points unchanged) and キャンセル.
  */
 export function GoalEditModal({ open, onClose, planId, goal, goalKind, revision, reviewLeft, t, language, onSaved }: {
   open: boolean;
@@ -134,31 +168,51 @@ export function GoalEditModal({ open, onClose, planId, goal, goalKind, revision,
 }) {
   const router = useRouter();
   const copy = useStandardCopy();
-  const inputId = useId();
-  const [text, setText] = useState(goal);
-  const [kind, setKind] = useState<PlanGoalKind | null>(isGoalKind(goalKind) ? goalKind : null);
+  const ids = useId();
+  const initial = splitGoalAmount(goal);
+  const [base, setBase] = useState(initial.base);
+  const [amount, setAmount] = useState(initial.amount ?? "");
+  const [notes, setNotes] = useState<{ background: string; note: string } | null>(null);
+  const [background, setBackground] = useState("");
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState<"save_only" | "save_and_rebuild" | null>(null);
   const [error, setError] = useState<PlanErrorView | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setText(goal);
-    setKind(isGoalKind(goalKind) ? goalKind : null);
+    const parts = splitGoalAmount(goal);
+    setBase(parts.base);
+    setAmount(parts.amount ?? "");
     setError(null);
-  }, [open, goal, goalKind]);
+    setNotes(null);
+    let alive = true;
+    void planApi<PlanV2Detail>(`/v2/${encodeURIComponent(planId)}`, { language }).then((result) => {
+      if (!alive) return;
+      const read = { background: result.ok ? result.data.goalBackground ?? "" : "", note: result.ok ? result.data.goalNote ?? "" : "" };
+      setNotes(read);
+      setBackground(read.background);
+      setNote(read.note);
+    });
+    return () => { alive = false; };
+  }, [open, goal, planId, language]);
 
-  const trimmed = text.trim();
-  const textChanged = trimmed !== "" && trimmed !== goal;
-  const kindChanged = kind !== null && kind !== goalKind;
-  const changed = textChanged || kindChanged;
-  const kindName = (value: PlanGoalKindRead) => (isGoalKind(value) ? planCopy(PLAN_GOAL_KIND_COPY[value], language) : "");
+  const next = joinGoalAmount(base, amount);
+  const baseChanged = base.trim() !== "" && base.trim() !== initial.base;
+  const amountChanged = amount.trim() !== (initial.amount ?? "");
+  const changed = base.trim() !== "" && next !== goal.trim();
+  const notesChanged = notes !== null && (background.trim() !== notes.background.trim() || note.trim() !== notes.note.trim());
 
   const save = async (mode: "save_only" | "save_and_rebuild") => {
-    if (!changed || busy) return;
+    if ((!changed && !notesChanged) || busy) return;
     setBusy(mode);
     setError(null);
     const result = await planApi<PlanGoalEditResult>(`/v2/${encodeURIComponent(planId)}/goal`, {
-      body: { expectedRevision: revision, idempotencyKey: newActionKey(), mode, ...(textChanged ? { goalText: trimmed } : {}), ...(kindChanged ? { goalKind: kind } : {}) },
+      body: {
+        expectedRevision: revision, idempotencyKey: newActionKey(), mode,
+        ...(changed ? { goalText: next } : {}),
+        ...(notesChanged && notes && background.trim() !== notes.background.trim() ? { goalBackground: background.trim() || null } : {}),
+        ...(notesChanged && notes && note.trim() !== notes.note.trim() ? { goalNote: note.trim() || null } : {}),
+      },
       language,
       method: "PATCH",
     });
@@ -171,47 +225,69 @@ export function GoalEditModal({ open, onClose, planId, goal, goalKind, revision,
     onSaved();
   };
 
-  const actions = changed
-    ? <>
-        <Button variant="ghost" label={copy.action.cancel} onClick={onClose} data-plan-goal-cancel="" />
-        <Button label={t(r.saveOnly)} loading={busy === "save_only"} disabled={busy !== null} onClick={() => void save("save_only")} data-plan-goal-save-only="" />
-        <Button variant="primary" icon="refresh" label={t(r.saveAndRebuild)} loading={busy === "save_and_rebuild"} disabled={busy !== null} onClick={() => void save("save_and_rebuild")} data-plan-goal-rebuild="" />
-      </>
-    : <><Button variant="ghost" label={copy.action.cancel} onClick={onClose} data-plan-goal-cancel="" /><Button variant="primary" label={copy.action.save} onClick={onClose} data-plan-goal-save="" /></>;
-
   return (
-    <Modal open={open} onClose={onClose} title={t(r.editTitle)} size={560} actions={actions}>
-      <div className={styles.form} data-plan-goal-edit="">
-        <label className={styles.label} htmlFor={inputId}>{t(r.editGoalLabel)}</label>
-        <input id={inputId} className={styles.input} value={text} maxLength={2000} onChange={(event) => setText(event.target.value)} />
-        {textChanged ? (
-          <p className={styles.fromTo} data-plan-goal-diff="text"><Chip label={t(r.editChanged)} tone="lav" /><span className={styles.before}>{goal}</span><span className={styles.after}>{trimmed}</span></p>
-        ) : null}
-        <span className={styles.label}>{t(r.editKindLabel)}</span>
-        <div className={styles.kinds} role="group" aria-label={t(r.editKindLabel)}>
-          {PLAN_GOAL_KINDS.map((key) => (
-            <FilterOption key={key} selected={kind === key} label={`${PLAN_GOAL_TEMPLATES[key].emoji} ${planCopy(PLAN_GOAL_KIND_COPY[key], language)}`} onToggle={() => setKind(key)} />
-          ))}
-        </div>
-        {kindChanged ? <p className={styles.fromTo} data-plan-goal-diff="kind"><Chip label={t(r.editChanged)} tone="lav" />{t(r.editFromTo, { from: kindName(goalKind), to: kindName(kind!) })}</p> : null}
-        <p className={styles.label}>{t(r.editNoDeadline)}</p>
-        {changed ? (
-          <section className={styles.rebuild} data-plan-goal-rebuild-note="">
-            <div className={styles.row}><span aria-hidden>🔄</span><b>{t(r.rebuildTitle)}</b></div>
-            <ul className={styles.dots}>
-              <li>{t(r.rebuildKeep)}</li>
-              <li>{t(r.rebuildHow)}</li>
-              <li>{t(r.rebuildCost, { n: reviewLeft })}</li>
-            </ul>
-          </section>
-        ) : null}
-        {error ? <PlanErrorNotice view={error} t={t} onReload={() => { onClose(); onSaved(); }} /> : null}
+    <ReviewDialog open={open} onClose={onClose} width={600} labelledBy={`${ids}-t`} data={{ "data-plan-goal-edit": "" }}>
+      <div className={`${k.row} ${k.between} ${g.head}`}>
+        <b id={`${ids}-t`} className={g.title}>{t(r.editTitle)}</b>
+        <button type="button" className={`btn ${k.lbtn}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={16} /></button>
       </div>
-    </Modal>
+      <div className={`${g.gfld} ${baseChanged ? g.chg : ""}`}>
+        <label className={k.lbl} htmlFor={`${ids}-g`}>{t(r.editGoalLabel)}</label>
+        <div className={g.v}>
+          <span className={`${k.emo} ${k.emoSm} ${toneClass(goalKind)}`} aria-hidden>{goalEmoji(goalKind)}</span>
+          <input id={`${ids}-g`} value={base} maxLength={2000} onChange={(event) => setBase(event.target.value)} data-plan-goal-input="" />
+        </div>
+      </div>
+      <div className={`${k.grid2} ${g.pair}`}>
+        <div className={`${g.gfld} ${amountChanged ? g.chg : ""}`} data-plan-goal-diff={amountChanged ? "amount" : undefined}>
+          <label className={k.lbl} htmlFor={`${ids}-a`}>{t(r.editAmountLabel)}</label>
+          <div className={g.v}>
+            {amountChanged && initial.amount ? <span className={g.old}>{initial.amount}</span> : null}
+            {amountChanged && initial.amount ? <span className={g.arrow} aria-hidden>{"→ "}</span> : null}
+            <input id={`${ids}-a`} value={amount} maxLength={40} placeholder="—" onChange={(event) => setAmount(event.target.value)} data-plan-goal-amount="" />
+          </div>
+        </div>
+        <div className={g.gfld}>
+          <label className={k.lbl} htmlFor={`${ids}-b`}>{t(r.editBackgroundLabel)}</label>
+          <div className={`${g.v} ${g.vSmall}`}><input id={`${ids}-b`} value={background} maxLength={1000} placeholder="—" disabled={notes === null} onChange={(event) => setBackground(event.target.value)} data-plan-goal-background="" /></div>
+        </div>
+      </div>
+      <div className={g.gfld}>
+        <label className={k.lbl} htmlFor={`${ids}-n`}>{t(r.editFocusLabel)}</label>
+        <div className={`${g.v} ${g.vSmall}`}><input id={`${ids}-n`} value={note} maxLength={200} placeholder="—" disabled={notes === null} onChange={(event) => setNote(event.target.value)} data-plan-goal-focus="" /></div>
+      </div>
+      {changed ? (
+        <section className={`${k.card} ${k.flat} ${g.rebuild}`} data-plan-goal-rebuild-note="">
+          <div className={k.row} style={{ gap: 10 }}>
+            <span className={`${k.emo} ${k.emoSm} ${k.lav}`} aria-hidden>🔄</span>
+            <b className={k.grow}>{t(amountChanged && !baseChanged ? r.rebuildTitleAmount : r.rebuildTitle)}</b>
+            <span className={`${k.qchip} ${reviewLeft <= 0 ? k.qchipOut : ""}`}><i />{t(r.quotaLeft, { n: reviewLeft })}</span>
+          </div>
+          <div className={g.effList}>
+            <div className={g.eff}><Icon name="check" size={16} />{t(r.rebuildKeep)}</div>
+            <div className={g.eff}><Icon name="check" size={16} />{t(r.rebuildHow)}</div>
+            <div className={g.eff}><Icon name="refresh" size={16} />{t(r.rebuildCost, { n: reviewLeft, to: Math.max(0, reviewLeft - 1) })}</div>
+          </div>
+        </section>
+      ) : null}
+      {error ? <PlanErrorNotice view={error} t={t} onReload={() => { onClose(); onSaved(); }} /> : null}
+      <div className={g.buttons}>
+        <button type="button" className={`btn ${k.btn} ${k.ghost}`} onClick={onClose} data-plan-goal-cancel="">{copy.action.cancel}</button>
+        {changed ? (
+          <>
+            <button type="button" className={`btn ${k.btn}`} disabled={busy !== null} aria-busy={busy === "save_only" || undefined} onClick={() => void save("save_only")} data-plan-goal-save-only="">{t(r.saveOnly)}</button>
+            <button type="button" className={`btn ${k.btn} ${k.primary}`} disabled={busy !== null} aria-busy={busy === "save_and_rebuild" || undefined} onClick={() => void save("save_and_rebuild")} data-plan-goal-rebuild="">{t(r.saveAndRebuild)}</button>
+          </>
+        ) : notesChanged ? (
+          // D59: only the background / focus changed → save directly, no rebuild.
+          <button type="button" className={`btn ${k.btn} ${k.primary}`} disabled={busy !== null} aria-busy={busy === "save_only" || undefined} onClick={() => void save("save_only")} data-plan-goal-save="">{copy.action.save}</button>
+        ) : <button type="button" className={`btn ${k.btn} ${k.primary}`} onClick={onClose} data-plan-goal-save="">{copy.action.save}</button>}
+      </div>
+    </ReviewDialog>
   );
 }
 
-/** 達成 ①（b4 A5）: score and people talked to; the score stops growing once achieved. */
+/** 達成確認（b12 W-R25-07, 480 wide）: score and people talked to; the score stops growing once achieved. */
 export function AchieveDialog({ open, onClose, planId, revision, score, talkedPeople, t, language, onStale }: {
   open: boolean;
   onClose: () => void;
@@ -225,6 +301,7 @@ export function AchieveDialog({ open, onClose, planId, revision, score, talkedPe
 }) {
   const router = useRouter();
   const copy = useStandardCopy();
+  const ids = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<PlanErrorView | null>(null);
   useEffect(() => { if (open) setError(null); }, [open]);
@@ -238,14 +315,23 @@ export function AchieveDialog({ open, onClose, planId, revision, score, talkedPe
     router.push(planDoneHref("web", planId));
   };
   return (
-    <Modal open={open} onClose={onClose} title={t(r.achieveTitle)} size={420}
-      actions={<><Button label={copy.action.cancel} onClick={onClose} data-plan-achieve-cancel="" /><Button variant="primary" icon="flag" label={t(r.achieveConfirm)} loading={busy} onClick={() => void achieve()} data-plan-achieve-confirm="" /></>}>
-      <div className={styles.achieve} data-plan-achieve="">
-        <MacTile emoji="🏁" />
-        <b className={styles.strong} data-plan-achieve-stats="">{talkedPeople === null ? `${score}` : t(r.achieveStats, { n: talkedPeople, score })}</b>
-        <p className={styles.body}>{t(r.achieveBody, { score })}</p>
-        {error ? <PlanErrorNotice view={error} t={t} onReload={() => { onClose(); onStale(); }} /> : null}
+    <ReviewDialog open={open} onClose={onClose} width={480} labelledBy={`${ids}-t`} data={{ "data-plan-achieve": "" }}>
+      <div className={`${k.row} ${g.achRow}`}>
+        <div className={g.achIcon} aria-hidden>🏁</div>
+        <div style={{ minWidth: 0 }}>
+          <b id={`${ids}-t`} className={g.achTitle}>{t(r.achieveTitle)}</b>
+          <div className={`${k.sub} ${g.achBody}`}>{t(r.achieveBody, { score })}</div>
+          <div className={`${k.row} ${g.achStats}`}>
+            <span className={`${k.chip} ${g.chipLav}`} data-plan-achieve-stats="">{talkedPeople === null ? t(r.achieveScoreOnly, { score }) : t(r.achieveStats, { n: talkedPeople, score })}</span>
+          </div>
+        </div>
       </div>
-    </Modal>
+      {error ? <PlanErrorNotice view={error} t={t} onReload={() => { onClose(); onStale(); }} /> : null}
+      <div className={k.macts}>
+        <span className={`${k.lbl} ${k.hint}`}><kbd className={g.kbd}>Esc</kbd>{copy.action.cancel}</span>
+        <button type="button" className={`btn ${k.btn}`} onClick={onClose} data-plan-achieve-cancel="">{copy.action.cancel}</button>
+        <button type="button" className={`btn ${k.btn} ${k.primary}`} disabled={busy} aria-busy={busy || undefined} onClick={() => void achieve()} data-plan-achieve-confirm="">{t(r.achieveConfirm)}</button>
+      </div>
+    </ReviewDialog>
   );
 }

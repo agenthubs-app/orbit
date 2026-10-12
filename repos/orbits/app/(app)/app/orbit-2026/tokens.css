@@ -79,6 +79,7 @@
   --r-chip: 8px;
   --r-input-sm: 9px;
   --r-emo: 13px;
+  --r-dot: 4px;
   --gap: 14px;
   --space-4: 4px;
   --space-8: 8px;
@@ -120,6 +121,9 @@
   --fs-section: 19px;
   --fs-display-md: 44px;
   --fs-display-xl: 64px;
+  --fs-emoji-md: 21px;
+  --fs-emoji-lg: 28px;
+  --fs-number-lg: 32px;
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-bold: 700;

@@ -1,0 +1,34 @@
+/* R25 完了页（b4「Web 達成 → 次の目標」+ b12 W-R25-08b）。数值照 b4-plan-iorbit.html 的
+   .cele / .stat3 / .opt / .radio / .hatchbg 与 kit .wgrid / .big。 */
+
+/* kit .wgrid（12 列 · 18） */
+.wgrid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.span7 { grid-column: span 7; }
+.span5 { grid-column: span 5; display: flex; flex-direction: column; gap: 12px; }
+@media (max-width: 1023px) { .span7, .span5 { grid-column: span 12; } }
+
+/* b4 .cele：右上淡紫 + 粉的晕染 */
+.cele { display: flex; flex-direction: column; padding: 28px; background: radial-gradient(260px 180px at 50% 0%, var(--mac-lav), transparent 75%), radial-gradient(200px 140px at 85% 30%, var(--mac-pink), transparent 75%), var(--surface); }
+.flag { width: 56px; height: 56px; font-size: 28px; border-radius: var(--r-bubble); }
+.headline { font-size: var(--fs-title); font-weight: var(--fw-heavy); margin-top: 14px; }
+.stat3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 20px; }
+.stat3 > div { background: var(--surface-2); border-radius: var(--r-tile); padding: 12px; }
+/* kit .big（.stat3 内 32） */
+.big { font-family: var(--font-num); font-size: 32px; font-weight: var(--fw-heavy); letter-spacing: -.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.big small { font-size: var(--fs-emph); font-weight: var(--fw-bold); color: var(--ink-3); margin-left: 3px; letter-spacing: 0; }
+.best { margin-top: 18px; }
+.bestText { flex: 1; font-weight: var(--fw-bold); }
+.skipped { gap: 10px; margin-top: 12px; }
+.hatch { width: 22px; height: 14px; border-radius: var(--r-bar); flex: none; background: repeating-linear-gradient(135deg, var(--plum-300) 0 2px, var(--plum-100) 2px 6px); }
+
+.nextHead { font-size: var(--fs-emph); font-weight: var(--fw-bold); }
+/* b4 .opt / .radio */
+.opt.opt { display: flex; gap: 12px; align-items: flex-start; width: 100%; height: auto; margin: 0; padding: 14px; border-radius: var(--r-lg); background: var(--surface); border: 2px solid transparent; color: var(--ink); font: inherit; font-weight: inherit; line-height: inherit; text-align: left; white-space: normal; cursor: pointer; }
+.opt.on { border-color: var(--plum-500); }
+.radio { width: 20px; height: 20px; border-radius: var(--r-pill); border: 2px solid var(--ink-4); flex: none; margin-top: 2px; }
+.on .radio { border: 6px solid var(--plum-700); }
+.optTitle { flex: 1; font-weight: var(--fw-bold); }
+.optSub { margin-top: 4px; }
+.foot { gap: 10px; margin-top: auto; }
+.foot > button { margin-left: auto; }
+.note { margin: 0; padding: 12px 14px; border-radius: var(--r-md); background: var(--mac-apricot); color: var(--mac-apricot-text); font-size: var(--fs-body-sm); line-height: 1.55; }

@@ -1,0 +1,342 @@
+{
+ "_note": "R23–R25 计划页像素返工 · 子任务 C（見直し / 完了 / 目標の切替・編集 / 以前のプラン）。mock 服务器 :3203（ORBIT_REDESIGN_MOCK=plan-v2-summary）；見直し类画面需先用 setup 造状态（见 REPORT），1024 / 390 设计稿无画板。",
+ "defaults": {
+  "app-origin": "http://localhost:3203",
+  "login": "qa@orbit.test",
+  "grid": 100,
+  "attribution": "scripts/visual/attribution-redesign-R23-25-C.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanReview*",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanDone*",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalDialogs.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanLegacy.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/Review*",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/Done*",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/Goal*",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/Legacy*",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/review-model.ts",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/plan.ts"
+ ],
+ "views": [
+  {
+   "id": "W-R25-01",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-action=review] >> visible=true"
+    },
+    {
+     "waitFor": "[data-plan-review-entry], [data-plan-review-used-up]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "見直し入口 Modal；背景是 A 的概要",
+   "board": "W-R25-01 見直し入口 Modal"
+  },
+  {
+   "id": "W-R25-02",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-action=review] >> visible=true"
+    },
+    {
+     "waitFor": "[data-plan-review-entry], [data-plan-review-used-up]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "setup used：本月 3 回用完",
+   "board": "W-R25-02 見直し入口 · 使い切り"
+  },
+  {
+   "id": "W-R25-03",
+   "app": "/app/plans/demo-plan-series-a/review",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 18,
+   "width": 1440,
+   "note": "setup 03：前提 2 行 + 文字送出 1 回；fixture c-review",
+   "steps": [
+    {
+     "waitFor": "[data-plan-review] [data-plan-review-premise]"
+    },
+    {
+     "wait": 3000
+    },
+    {
+     "waitFor": "[data-plan-review] [data-plan-review-premise]"
+    }
+   ]
+  },
+  {
+   "id": "W-R25-05",
+   "app": "/app/plans/demo-plan-series-a/review",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "note": "setup 05：第 3 回送「そのまま」→ 変更なし；fixture c-review",
+   "steps": [
+    {
+     "waitFor": "[data-turn]"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "board": "W-R25-05 見直し页 · 変更なし"
+  },
+  {
+   "id": "W-R25-06a",
+   "app": "/app/plans/demo-plan-series-a/review",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "note": "setup 06a：用完后再开见直し；fixture c-review",
+   "steps": [
+    {
+     "waitFor": "[data-plan-review] [data-plan-review-premise]"
+    },
+    {
+     "wait": 3000
+    },
+    {
+     "waitFor": "[data-plan-review] [data-plan-review-premise]"
+    }
+   ],
+   "board": "W-R25-06a 見直し页 · 用完"
+  },
+  {
+   "id": "W-R25-07",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-action=achieve] >> visible=true"
+    },
+    {
+     "waitFor": "[data-plan-achieve]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "board": "W-R25-07 達成確認框"
+  },
+  {
+   "id": "W-R25-08",
+   "app": "/app/plans/demo-plan-series-a/done",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 27,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-next-own]"
+    },
+    {
+     "wait": 1500
+    }
+   ],
+   "note": "fixture c-review + 接口达成（setup achieve）；打开即读候选"
+  },
+  {
+   "id": "W-R25-09",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-goal-switcher] >> visible=true"
+    },
+    {
+     "waitFor": "[data-plan-goal-menu]"
+    },
+    {
+     "wait": 1500
+    }
+   ],
+   "note": "；fixture c-goals",
+   "board": "W-R25-09 目標切替 Popover"
+  },
+  {
+   "id": "W-R25-10",
+   "app": "/app/tasks?tab=plan",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 31,
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-goal-switcher] >> visible=true"
+    },
+    {
+     "click": "[data-plan-edit-goal]"
+    },
+    {
+     "waitFor": "[data-plan-goal-background]:not([disabled])"
+    },
+    {
+     "fill": [
+      "[data-plan-goal-amount]",
+      "5億円"
+     ]
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "fixture c-edit"
+  },
+  {
+   "id": "W-R25-01M",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-action=review] >> visible=true"
+    },
+    {
+     "waitFor": "[data-plan-review-entry], [data-plan-review-used-up]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "弹层本体局部视图；region 按整屏高度 H 居中算（A 概要页现在 H=2599，用完态 H=2889；A 页面高度变了要重算 y = H/2 − 弹层高/2）",
+   "region": "480,1118,480,363",
+   "grid": 30,
+   "board": "W-R25-01 見直し入口 Modal"
+  },
+  {
+   "id": "W-R25-02M",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-action=review] >> visible=true"
+    },
+    {
+     "waitFor": "[data-plan-review-entry], [data-plan-review-used-up]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "弹层本体局部视图；region 按整屏高度 H 居中算（A 概要页现在 H=2599，用完态 H=2889；A 页面高度变了要重算 y = H/2 − 弹层高/2）",
+   "region": "480,1315,480,258",
+   "grid": 30,
+   "board": "W-R25-02 見直し入口 · 使い切り"
+  },
+  {
+   "id": "W-R25-07M",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-action=achieve] >> visible=true"
+    },
+    {
+     "waitFor": "[data-plan-achieve]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "region": "480,1183,480,234",
+   "grid": 30,
+   "note": "弹层本体局部视图；region 按整屏高度 H 居中算（A 概要页现在 H=2599，用完态 H=2889；A 页面高度变了要重算 y = H/2 − 弹层高/2）",
+   "board": "W-R25-07 達成確認框"
+  },
+  {
+   "id": "W-R25-09M",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-goal-switcher] >> visible=true"
+    },
+    {
+     "waitFor": "[data-plan-goal-menu]"
+    },
+    {
+     "wait": 1500
+    }
+   ],
+   "region": "120,138,340,452",
+   "grid": 30,
+   "note": "弹层本体局部视图（背景是 A 的概要页，整屏数字另看）；region 按整屏高度 H 居中算：01/07/09/10 H=1673、02 H=1770（mock 当前数据）；fixture c-goals",
+   "board": "W-R25-09 目標切替 Popover"
+  },
+  {
+   "id": "W-R25-10M",
+   "app": "/app/tasks?tab=plan",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 31,
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-goal-switcher] >> visible=true"
+    },
+    {
+     "click": "[data-plan-edit-goal]"
+    },
+    {
+     "waitFor": "[data-plan-goal-background]:not([disabled])"
+    },
+    {
+     "fill": [
+      "[data-plan-goal-amount]",
+      "5億円"
+     ]
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "region": "420,1040,600,519",
+   "grid": 30,
+   "note": "弹层本体局部视图；region 按整屏高度 H 居中算（A 概要页现在 H=2599，用完态 H=2889；A 页面高度变了要重算 y = H/2 − 弹层高/2）；fixture c-edit"
+  },
+  {
+   "id": "W-R25-12",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "note": "fixture c-legacy（无 v2、有 v1）；Task 页头与右栏是 A / 壳的",
+   "steps": [
+    {
+     "waitFor": "[data-plan-legacy-card]"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "board": "W-R25-12 以前のプラン 卡"
+  },
+  {
+   "id": "W-R25-13",
+   "app": "/app/plans/legacy/design-legacy-series-a",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "note": "fixture c-legacy",
+   "steps": [
+    {
+     "waitFor": "[data-plan-legacy]"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "board": "W-R25-13 以前のプラン 詳細"
+  }
+ ]
+}

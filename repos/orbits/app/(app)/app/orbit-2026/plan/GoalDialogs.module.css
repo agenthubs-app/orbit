@@ -1,0 +1,50 @@
+/* R25 目標の切替 / 編集 / 達成確認（b4「Web 目標の切替 + 編集」A6 · b12 W-R25-07 / W-R25-09）。
+   数值照 b4-plan-iorbit.html 的 .gmenu / .gi / .gfld / .eff 与 b12 的 .k-wach。 */
+
+/* 目标下拉按钮（kit .btn + 文字 + ▾） */
+.switcher.switcher { max-width: 100%; }
+.switcherText { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* b4 .gmenu（Web：left 120 · top 138 · 340 宽） */
+.gmenu { position: fixed; z-index: var(--z-modal); width: 340px; max-width: calc(100vw - 32px); max-height: calc(100vh - 24px); overflow: auto; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-float); padding: 8px; color: var(--ink); font-size: var(--fs-body); line-height: 1.5; }
+.gmenu:focus { outline: none; }
+.ghead { padding: 6px 10px 2px; font-weight: var(--fw-heavy); }
+.gi.gi { display: flex; align-items: center; gap: 10px; width: 100%; height: auto; margin: 0; padding: 10px; border: 0; border-radius: var(--r-tile); background: none; color: var(--ink); font: inherit; font-weight: inherit; line-height: inherit; text-align: left; white-space: normal; cursor: pointer; }
+.gi.gi:hover { background: var(--surface-2); }
+.gi.on { background: var(--surface-2); }
+.gi b { font-size: var(--fs-row); display: block; font-weight: var(--fw-bold); }
+.gi:disabled { cursor: default; opacity: .55; }
+.gi:disabled:hover { background: none; }
+.gsep { height: 1px; background: var(--line); margin: 4px 10px; }
+.emoMuted { background: var(--surface-2); }
+.legacyName { color: var(--ink-3); }
+.lbtn32.lbtn32 { width: 32px; height: 32px; }
+
+/* 目標を編集：b4 .gfld */
+.head { margin-bottom: 0; }
+.title { font-size: var(--fs-title-xs); font-weight: var(--fw-bold); }
+.gfld { padding: 11px 0; border-bottom: 1px solid var(--line); }
+.gfld > :first-child { display: block; margin-bottom: 4px; }
+.v { font-size: var(--fs-body); font-weight: var(--fw-bold); display: flex; align-items: center; gap: 8px; }
+.chg .v { color: var(--plum-900); }
+.vSmall { font-weight: 600; font-size: var(--fs-body-sm); }
+.v input { flex: 1; min-width: 0; height: 21px; border: 0; outline: none; background: none; padding: 0; margin: 0; font: inherit; line-height: 21px; color: inherit; }
+.old { color: var(--ink-3); text-decoration: line-through; font-weight: 600; }
+.pair { gap: 18px; }
+.rebuild { margin-top: 16px; padding: 16px; }
+.eff { display: flex; gap: 8px; font-size: var(--fs-control); color: var(--ink-2); padding: 5px 0; align-items: flex-start; }
+.eff svg { margin-top: 2px; flex: none; }
+.effList { margin-top: 8px; }
+.buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+
+/* 達成確認（b12 .k-wach） */
+.achRow { gap: 14px; align-items: flex-start; }
+.achIcon { width: 48px; height: 48px; border-radius: var(--r-tile); background: var(--mac-apricot); color: var(--mac-apricot-ink); font-size: var(--fs-title); display: grid; place-items: center; flex: none; }
+.achTitle { font-size: var(--fs-logo); font-weight: var(--fw-bold); }
+.achBody { margin-top: 6px; line-height: 1.65; }
+.achStats { gap: 6px; margin-top: 10px; }
+.chipLav { background: var(--mac-lav); color: var(--mac-lav-ink); }
+.kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; margin-right: 2px; border-radius: var(--r-tag); background: var(--surface-2); color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-bold); font-family: var(--font-num); line-height: 1; white-space: nowrap; vertical-align: middle; }
+.vSmall input { height: 19.5px; line-height: 19.5px; }
+/* b4：「→ 5億円」是一段文字（箭头后是空格，不是 gap 8） */
+.arrow { white-space: pre; margin-right: -8px; }

@@ -1,0 +1,96 @@
+/* R25 像素返工：见直し / 达成 / 目标编辑 / 以前のプラン 共用的 kit 搬运层。
+   数值照 docs/designs/redesign-2026-10/kit/ui.css 与 b4-plan-iorbit.html（.v22x 私有类）、
+   b12-missing-states.html；颜色、圆角、字号用 orbit-2026/tokens.css 的 token。 */
+
+/* kit .main: 26 34 40（标题区由壳画；这里是标题区下面的内容） */
+.page { display: block; padding: 0 var(--space-34) 40px; font-size: var(--fs-body); line-height: 1.5; }
+@media (max-width: 1279px) { .page { padding-left: var(--space-26); padding-right: var(--space-26); } }
+@media (max-width: 767px) { .page { padding-left: var(--space-18); padding-right: var(--space-18); padding-bottom: 120px; } }
+
+.row { display: flex; align-items: center; gap: 10px; }
+.between { justify-content: space-between; }
+.lbl { font-size: var(--fs-label); color: var(--ink-3); font-weight: var(--fw-medium); }
+.sub { color: var(--ink-2); font-size: var(--fs-control); }
+.grow { flex: 1; min-width: 0; }
+
+/* kit .card（.web 内：圆角 22、内距 20） */
+.card { background: var(--surface); border-radius: var(--r-card-web); padding: var(--space-20); position: relative; }
+.flat { background: var(--surface-2); }
+
+/* kit .emo */
+.emo { width: 40px; height: 40px; border-radius: var(--r-emo); display: grid; place-items: center; font-size: 21px; flex: none; }
+.emoSm { width: 32px; height: 32px; border-radius: var(--r-sm); font-size: var(--fs-emoji-sm); }
+.teal { background: var(--mac-teal); }
+.apricot { background: var(--mac-apricot); }
+.lav { background: var(--mac-lav); }
+.pink { background: var(--mac-pink); }
+.blue { background: var(--mac-blue); }
+
+/* kit .chip */
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: var(--r-pill); font-size: var(--fs-caption); font-weight: var(--fw-bold); background: var(--surface-2); color: var(--ink-2); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* kit .why / .why-body */
+.why.why { gap: 0; display: inline-flex; width: 18px; height: 18px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-3); align-items: center; justify-content: center; font-size: var(--fs-tiny); font-weight: var(--fw-heavy); cursor: pointer; flex: none; padding: 0; border: 0; }
+.whyBody { margin-top: 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.65; text-align: left; }
+
+/* kit .btn（全局旧 .btn 会改高度 / 圆角：双类写回 kit 值） */
+.btn.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 16px; border: 0; border-radius: var(--r-pill); font-weight: var(--fw-bold); font-size: var(--fs-body-sm); line-height: 1.5; background: var(--surface-2); color: var(--ink); white-space: nowrap; cursor: pointer; transition: transform var(--dur-press) var(--ease), background var(--dur-press), filter var(--dur-press); }
+.btn.btn:active:not(:disabled) { transform: scale(.96); filter: brightness(.96); }
+.btn.btn:disabled { cursor: default; }
+.btn.primary { background: var(--ink); color: var(--bg); }
+.btn.ghost { background: transparent; color: var(--ink-2); }
+.btn.sm { height: 32px; padding: 0 12px; font-size: var(--fs-meta); }
+.btn.block { width: 100%; }
+.btn.onSurface { background: var(--surface); }
+/* kit .lbtn */
+.lbtn.lbtn { gap: 0; width: 34px; height: 34px; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); flex: none; padding: 0; border: 0; cursor: pointer; transition: transform var(--dur-press) var(--ease); }
+.lbtn.lbtn:active:not(:disabled) { transform: scale(.9); }
+/* kit .rbtn（标题区左侧 ≡） */
+.rbtn.rbtn { gap: 0; width: 40px; height: 40px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink-2); display: grid; place-items: center; flex: none; padding: 0; border: 0; cursor: pointer; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* kit .bubble */
+.bubble { padding: 11px 14px; border-radius: var(--r-bubble); font-size: var(--fs-body-sm); max-width: 86%; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+.bubbleMe { background: var(--ink); color: var(--bg); margin-left: auto; border-bottom-right-radius: var(--r-tag); }
+.bubbleAi { background: var(--surface); border-bottom-left-radius: var(--r-tag); }
+
+/* kit .assist-in */
+.assistIn { background: var(--surface); border-radius: var(--r-bubble); padding: 12px 14px; font-size: var(--fs-body-sm); color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
+
+/* kit .ng-card */
+.ngCard { border-radius: var(--r-lg); padding: 14px; background: var(--coral-soft); }
+.ngMark { width: 24px; height: 24px; border-radius: var(--r-pill); background: var(--surface); color: var(--coral); display: grid; place-items: center; flex: none; }
+
+/* b12 .degrade */
+.degrade { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: var(--r-bubble); background: var(--surface-2); font-size: var(--fs-meta); color: var(--ink-2); }
+.dim { opacity: .55; }
+
+/* b4 .qchip / .qdots */
+.qchip { font-size: var(--fs-caption); font-weight: var(--fw-bold); padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.qchip i { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--plum-500); }
+.qchipOut i { background: var(--coral); }
+.qdots { display: flex; gap: 5px; }
+.qdots i { width: 26px; height: 8px; border-radius: 4px; background: var(--plum-500); }
+.qdots i.u { background: var(--surface-3); }
+
+/* kit .wmodal（自带遮罩：kit .overlay = --scrim-web） */
+.overlay { position: fixed; inset: 0; background: var(--scrim-web); z-index: var(--z-modal); }
+.wmodal { position: fixed; left: 50%; top: 50%; width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; transform: translate(-50%, -50%); z-index: var(--z-modal); background: var(--surface); border-radius: var(--r-dialog); padding: var(--space-24); box-shadow: var(--shadow-float); color: var(--ink); font-size: var(--fs-body); line-height: 1.5; }
+.wmodal:focus { outline: none; }
+.w480 { width: min(480px, calc(100vw - 32px)); }
+.w600 { width: min(600px, calc(100vw - 32px)); }
+.macts { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: var(--space-20); }
+.macts .hint { margin-right: auto; }
+/* kit .dialog（居中确认框，296 宽） */
+.dialog { position: fixed; left: 50%; top: 50%; width: 296px; transform: translate(-50%, -50%); z-index: var(--z-modal); background: var(--surface); border-radius: var(--r-dialog); padding: 22px 18px 16px; text-align: center; box-shadow: var(--shadow-float); color: var(--ink); font-size: var(--fs-body); line-height: 1.5; }
+.dialog:focus { outline: none; }
+.dic { width: 48px; height: 48px; border-radius: var(--r-tile); background: var(--mac-apricot); color: var(--mac-apricot-ink); display: grid; place-items: center; margin: 0 auto 10px; font-size: var(--fs-title); }
+.dt { display: block; font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: 1.4; }
+.dd { font-size: var(--fs-control); color: var(--ink-2); margin: 6px 0 16px; line-height: 1.6; }
+.dacts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* kit .rail 内容（flex column · 14）与 .rail h4 */
+.railStack { display: flex; flex-direction: column; gap: var(--space-14); }
+.railH { font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); display: flex; align-items: center; gap: 8px; line-height: 1.5; margin: 0; }
+.railNote { padding: 14px; font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.65; }

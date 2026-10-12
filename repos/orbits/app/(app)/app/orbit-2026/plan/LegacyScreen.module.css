@@ -1,0 +1,62 @@
+/* R25 以前のプラン（b12 W-R25-12 卡 · W-R25-13 詳細）。数值照 kit .wgrid / .card-h / .list / .li / .bar。 */
+.slot { display: block; padding: 0 var(--space-34) 40px; font-size: var(--fs-body); line-height: 1.5; }
+@media (max-width: 1279px) { .slot { padding-left: var(--space-26); padding-right: var(--space-26); } }
+@media (max-width: 767px) { .slot { padding-left: var(--space-18); padding-right: var(--space-18); } }
+.wgrid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.wgrid > section { display: flex; flex-direction: column; }
+.span7 { grid-column: span 7; }
+.span5 { grid-column: span 5; }
+.span6 { grid-column: span 6; }
+.span12 { grid-column: span 12; }
+@media (max-width: 1023px) { .span7, .span5, .span6 { grid-column: span 12; } }
+
+.lg { padding: 24px; }
+.chipRow { gap: 6px; }
+.chipEnd { margin-left: auto; }
+.chipTeal { background: var(--mac-teal); color: var(--mac-teal-ink); }
+.chipLav { background: var(--mac-lav); color: var(--mac-lav-ink); }
+.goal { font-size: var(--fs-number); font-weight: var(--fw-heavy); margin-top: 12px; }
+.stats { gap: 24px; margin-top: 18px; }
+.statHead { font-size: var(--fs-control); }
+.num { color: var(--ink); font-family: var(--font-num); }
+.muted { color: var(--ink-3); }
+/* kit .bar */
+.bar { height: 6px; border-radius: var(--r-tag); background: var(--surface-3); position: relative; margin: 8px 0 4px; }
+.bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--r-tag); background: linear-gradient(90deg, var(--plum-300), var(--plum-700)); }
+.bar > i::after { content: ""; position: absolute; right: -7px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: var(--r-pill); background: var(--surface); border: 3px solid var(--plum-700); box-sizing: border-box; }
+.lead { margin-top: 18px; line-height: 1.65; }
+.acts { gap: 10px; margin-top: 18px; }
+.acts > span:last-child { flex: 1; min-width: 0; }
+
+/* スコアのしくみ（kit .card-h） */
+.cardH { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.cardH h3 { font-size: var(--fs-card-title); font-weight: var(--fw-heavy); display: flex; align-items: center; gap: 8px; margin: 0; }
+.howRow { gap: 12px; padding: 10px 0; }
+.howRow b { font-size: var(--fs-body-sm); }
+
+/* 詳細 */
+.headRow { gap: 28px; align-items: flex-start; }
+.summaryLbl { font-weight: var(--fw-heavy); }
+.summary { line-height: 1.7; margin-top: 4px; font-size: var(--fs-row); }
+.side { width: 220px; flex: none; }
+.side2 { margin-top: 12px; }
+.phase { margin: 8px 0 0; font-weight: var(--fw-heavy); }
+.list > .li { display: flex; align-items: center; gap: 12px; padding: 9px 0; position: relative; }
+.list > .li + .li::before { content: ""; position: absolute; top: 0; left: 50px; right: 0; height: 1px; background: var(--line); }
+.meta { flex: 1; min-width: 0; }
+.meta b { display: block; font-size: var(--fs-body-sm); font-weight: var(--fw-bold); white-space: normal; }
+.emoGap { margin-right: 6px; }
+.needsTop { align-self: start; }
+
+/* kit .av.sm（30）· .v2avs（重叠 -8，白描边 2） */
+.av { width: 30px; height: 30px; border-radius: var(--r-pill); display: grid; place-items: center; font-weight: var(--fw-heavy); font-size: var(--fs-label); flex: none; }
+.av_lav { background: var(--mac-lav); color: var(--mac-lav-ink); }
+.av_pink { background: var(--mac-pink); color: var(--mac-pink-ink); }
+.av_blue { background: var(--mac-blue); color: var(--mac-blue-ink); }
+.av_teal { background: var(--mac-teal); color: var(--mac-teal-ink); }
+.av_apricot { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+.avNone { background: var(--surface-2); color: var(--ink-3); }
+.avs { display: flex; align-items: center; }
+.avs .av { border: 2px solid var(--surface); margin-left: -8px; }
+.avs .av:first-child { margin-left: 0; }
+.meta span { display: block; font-size: var(--fs-meta); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

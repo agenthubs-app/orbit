@@ -533,7 +533,7 @@ test("以前のプラン: the card replaces the goal input for a v1 user; the pa
   const card = page.getByTestId("legacy-card");
   await card.waitFor();
   await card.getByText(LEGACY.goal).waitFor();
-  await card.getByText("2026年6月2日 開始").waitFor();
+  await card.getByText("開始 2026年6月2日").waitFor();
   await card.getByText("Step 3 / 7").waitFor();
   await card.getByText("会いたい人 4").waitFor();
   assert.equal(await page.getByText("何を達成したいですか？").count(), 0);
@@ -547,13 +547,13 @@ test("以前のプラン: the card replaces the goal input for a v1 user; the pa
   assert.equal(await groups.count(), 4);
   for (const label of ["行動", "会いたい人", "情報", "イベント"]) await page.getByRole("heading", { name: label }).waitFor();
   await groups.first().getByText("完了", { exact: true }).waitFor();
-  await groups.first().getByText("未完了", { exact: true }).waitFor();
+  await groups.first().getByText("未着手", { exact: true }).waitFor();
   // 模拟器走查：旧计划的阶段 id「p2」显示成「フェーズ 2」，其他写法原样。
   await groups.first().getByText("フェーズ 2", { exact: true }).waitFor();
   await groups.first().getByText("準備", { exact: true }).waitFor();
   assert.equal(await groups.first().getByText("p2", { exact: true }).count(), 0);
   await page.getByText(LEGACY.analysisSummary!).waitFor();
-  await page.getByText("以前のプランは閲覧のみです。編集や再分析はできません。").waitFor();
+  await page.getByText("以前のプランは見るだけです。編集や再分析はできません。").waitFor();
   assert.equal(await page.locator("input, textarea").count(), 0, "nothing to edit");
   assert.equal(await page.getByRole("button", { name: /編集|再分析|見直/ }).count(), 0);
   assert.deepEqual(writes(calls), []);

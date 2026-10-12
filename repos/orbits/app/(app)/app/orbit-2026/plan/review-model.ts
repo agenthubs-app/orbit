@@ -143,3 +143,39 @@ export function draftHasChanges(turns: readonly PlanDraftTurn[], premise: readon
   const before = new Map(planPremise.map((row) => [row.key, row.value]));
   return premise.some((row) => before.has(row.key) && before.get(row.key) !== row.value);
 }
+
+/** The emoji tile colour of a goal kind (b4 A6 / A5：💰 pink · 🏭 / 🧑‍💼 blue · 🤝 teal). */
+export function goalTone(kind: string): "pink" | "blue" | "teal" | "lav" | "apricot" {
+  switch (kind) {
+    case "fundraising": return "pink";
+    case "sales": case "hiring": return "blue";
+    case "partnership": return "teal";
+    case "career": return "apricot";
+    default: return "lav";
+  }
+}
+
+/** 「シリーズA 資金調達（3億円）」→ goal 「シリーズA 資金調達」 + amount 「3億円」（目標を編集の 金額 行）. */
+export function splitGoalAmount(goal: string): { base: string; amount: string | null } {
+  const match = /^(.*?)[（(]([^（）()]*\d[^（）()]*)[）)]\s*$/u.exec(goal.trim());
+  return match ? { amount: match[2]!.trim(), base: match[1]!.trim() } : { amount: null, base: goal.trim() };
+}
+
+export function joinGoalAmount(base: string, amount: string): string {
+  const a = amount.trim();
+  return a ? `${base.trim()}（${a}）` : base.trim();
+}
+
+/** 「2026年6月2日」（Tokyo，long）— 以前のプラン 的開始日。 */
+export function longDate(value: string, language: OrbitLanguage): string {
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/u.test(value) ? `${value}T00:00:00+09:00` : value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(language === "en" ? "en" : language === "zh" ? "zh-CN" : "ja-JP", { dateStyle: "long", timeZone: "Asia/Tokyo" }).format(date);
+}
+
+/** b4 見直し：改过的前提只删掉旧值里新值没有的那几段（「 · 」分段），全不同时整段删。 */
+export function struckPart(before: string, after: string): string {
+  const parts = before.split(/\s*·\s*/u).filter((part) => part !== "");
+  const gone = parts.filter((part) => !after.includes(part));
+  return gone.length > 0 && gone.length < parts.length ? gone.join(" · ") : before;
+}
