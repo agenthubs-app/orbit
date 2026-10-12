@@ -15,6 +15,8 @@
 
 导入 parity 6/6、纯函数（修复后预选 45 条等）、每天一问服务（内存 + 本机 Postgres）、路由（mock 与 live 同一组断言）全部通过；修复后相关 138 条 0 失败；两端类型检查、lint、`copy:qa` 0。两端全量未在本轮重跑（工作区有另一个会话未提交的导航壳改动，会混入无关结果），界面开工时一起跑。
 
+**2026-10-12 全量（R15 P1 + R16 connectedOn 之后，`~/orbit-sprint-evidence/redesign/R16/run-02/full-*.log`）**：orbits 7526 条，失败 11——9 条来自另一个会话未提交的计划页文件（`plan/**` 的写死文案、CSS 非 token、计划页渲染、产品面清单新 P0），2 条连库并发测试（招待码 20 并发兑换、W0048b）在高负载下超时、单独重跑通过；本轮新增失败 0。App 3967 条、0 失败（`notification-registration-races` 负载下超时取消，单独重跑 16/16）。
+
 ## GitNexus
 
 `applyContactFieldValues` HIGH：不改，只新增调用方；导入 handler MEDIUM：行为未动；其余 LOW / UNKNOWN（grep 确认）。detect-changes 记录在证据目录（混有另一会话的未提交文件，已在日志里区分）。
