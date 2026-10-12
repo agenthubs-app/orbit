@@ -3118,8 +3118,8 @@ const PURPOSE = 'Orbit をブランドとして確立し、事業にする';
 /* w0/t0 = AI 初版（テンプレート「上市・収益化」から 2件調整）· w/tgt = 手動編集後（最終）· s = テンプレートの固定短名 */
 const T = {
   A: { n: '月1回以上・50〜200名規模の交流会を主催するコミュニティ運営者', s: '交流会の主催者', slot: '最初に払う人', emo: '🎪', c: 'lav', w0: 25, t0: 5, w: 20, tgt: 5, st: [1, 2, 4], st0: [1, 2, 5], cand: 2, ev: 2, route: 1 },
-  B: { n: '0→1 で SaaS や D2C のブランドを立ち上げたブランド・PR 責任者', s: 'ブランドづくりの経験者', slot: 'ブランド・PR', emo: '🎨', c: 'pink', w0: 20, t0: 2, w: 20, tgt: 2, st: [1, 3, 4], st0: [1, 3, 5], cand: 0, ev: 3, route: 1 },
-  C: { n: 'Eight・Sansan など名刺／CRM SaaS で法人営業か PdM をしていた人', s: '名刺 SaaS の経験者', slot: '先行プロダクト経験', emo: '📇', c: 'teal', w0: 15, t0: 2, w: 15, tgt: 2, st: [2, 5], st0: [2, 4], cand: 0, ev: 2, route: 2 },
+  B: { n: '0→1 で SaaS や D2C のブランドを立ち上げた、ブランドと PR の責任者', s: 'ブランドづくりの経験者', slot: 'ブランド・PR', emo: '🎨', c: 'pink', w0: 20, t0: 2, w: 20, tgt: 2, st: [1, 3, 4], st0: [1, 3, 5], cand: 0, ev: 3, route: 1 },
+  C: { n: 'Eight や Sansan など名刺 / CRM の SaaS で法人営業か PdM をしていた人', s: '名刺 SaaS の経験者', slot: '先行プロダクト経験', emo: '📇', c: 'teal', w0: 15, t0: 2, w: 15, tgt: 2, st: [2, 5], st0: [2, 4], cand: 0, ev: 2, route: 2 },
   D: { n: 'エンジニア出身で、自分で事業を立ち上げた創業者', s: 'エンジニア出身の起業家', slot: '同じ道を通った創業者', emo: '🛠️', c: 'apricot', w0: 15, t0: 3, w: 15, tgt: 2, st: [2, 3], st0: [2, 3], cand: 1, ev: 1, route: 1 },
   E: { n: '業務 SaaS の UX を改善してきたプロダクトデザイナー', s: 'プロダクトデザイナー', slot: '足りない専門', emo: '🖌️', c: 'blue', w0: 10, t0: 2, w: 15, tgt: 2, st: [3], st0: [3], cand: 0, ev: 2, route: 1 },
   EV: { n: '主催者とつくり手が集まる場へ行く', s: 'イベント', slot: 'イベント', emo: '🎟️', c: '', w0: 15, t0: 3, w: 15, tgt: 3, st: [1, 4], st0: [1, 5], ev: 3, isEv: true },
@@ -3924,6 +3924,7 @@ g += WPm('N20b 流程页 · 方案を読み込めませんでした', 'state', {
   ['.k-wdrerr .sub', 0, '第二行「背景と前提は保存されています」= 文案待定'],
 ], '01-system ⑧ + b10 ④ AI 初版 · Web');
 
+window.B12X = Object.assign(window.B12X || {}, { goalWeb, goalRail });
 h += group('g3', g);
 
 }
@@ -4352,10 +4353,10 @@ g += WP('W-R24-04b 確認待ち · 手動で 3 問を選ぶ（N25）', 'state', 
   ['.k-wpmanual', 0, 'AI 判定不可用时的手动卡：「聞けた問いを選んでください。2 つ以上で +10点になります。」（Web 字典 memoManual）'],
   ['.k-wpmanual .k-pqhint', 0, '不足 2 问时主按钮置灰 +「2 つ以上選ぶと確定できます」'],
 ], 'web.html Task › プラン 概要 · ui.css .cbx');
-g += WP('W-R24-04c 確認待ち · Step 完了の提案（D50）', 'state', () => ({ nav: 4, body: wPlan('s56c', { noInlineOk: true, pending: pendWrapW(2, stepCard('k-wpstep') + candCard(CANDP[0], true)) }), rail: planRail() }), [
-  ['.k-wpstep', 0, '模板文案「「ピッチと事業計画を固める」の目安に届いたかもしれません。完了にしますか？」（D50 请用户拍板；Web 字典现为「「{title}」は完了しましたか？」，需按拍板结果统一）'],
-  ['.k-wsteps', 0, '左列 Step 不再放行内确认卡（设计稿 web.html k-wstepok 的位置）'],
-], 'web.html 概要（進行中 46）k-wstepok');
+g += WP('W-R24-04c 確認待ち · Step 完了の提案（D50）', 'state', () => ({ nav: 4, body: wPlan('s46', { pending: pendWrapW(1, candCard(CANDP[0], true)) }), rail: planRail() }), [
+  ['.k-wsteps .confirm-card', 0, '2026-10-12 用户定稿：Step 完成卡的位置以 web.html「Task · プラン 概要（進行中 46）」（#17）为准——放在左列该 Step 的目安下面（行内虚线卡），不进上方「確認待ち」；文案「「{Step 名}」は完了しましたか？」（D50）；只在目安人数达标时出（示例 VC 3 / 3人）'],
+  ['.k-wpend', 0, '上方「確認待ち」只放候补等其他待确认项'],
+], 'web.html 概要（進行中 46）#17 k-wstepok');
 g += WP('W-R24-04d 確認待ち · 加点はありません（N24）', 'state', () => ({ nav: 4, body: wPlan('s56c', { noInlineOk: true, pending: pendWrapW(1, candCard(CANDP[0], true)) }), rail: planRail(), ov: wToast('加点はありません', 'この人は記録済みです（点数は 1 回だけ）', { cls: 'info', icon: 'lic:i-alert', act: false, bar: false }) }), [
   ['.toast', 0, '确认后没加分 → 右下 info Toast「加点はありません」+ 原因（Web 字典 reasonAlready 等）；不画「+10」'],
 ], 'b3 Toast 规格（Web toast-stack）');
@@ -6162,6 +6163,13 @@ h += group('g5', sec('g5 · R25 見直し · 達成 · 目標 · 以前のプラ
 );
 
 }
+/* ===================== 2026-10-12 追加（新画板一律加在文件末尾，保持既有序号） ===================== */
+h += group('g3', sec('追加 · 目標入力 1440（2026-10-12）', 'web.html「Task · プラン（目標入力）」(#15) 作废，以 b12 为准：chip 顺序同 b12 02a–c（上市・収益化 在首位），サンプル卡 = b10 的 A / B / C；版式 = W-R23-02a–c 的默认状态') +
+  WP('W-R23-01-1440 目標入力 · Web 1440（プラン空状態）', 'empty', () => ({ nav: 4, body: B12X.goalWeb(), rail: B12X.goalRail }), [
+    ['.k-wgkind', 0, '目标类型 chip：上市・収益化 在首位并预选（同 b12 W-R23-02a–c、b10 ①）'],
+    ['.k-wpsample', 0, 'サンプル卡 = b10 的 タイプ A / B / C（淡化）；说明句与类型名照字典 sampleNote / sampleTypeA–C（拉丁词与日文之间半角空格）'],
+    ['.k-wgnext', 0, '黑色主按钮「iOrbit と具体化する」→ 生成流程（iOrbit 页）'],
+  ], 'b12 W-R23-02a–c · b10 ① · web.html #15（作废）'));
 /* ===================== 出力 ===================== */
 document.getElementById('out').innerHTML = `<div class="card" style="margin-bottom:8px"><h3>画板索引（${INDEX.length}）</h3><div class="idx">${INDEX.map(([id, t]) => `<a href="#b-${id}"><b>${id}</b>${t}</a>`).join('')}</div></div>` + h;
 docNav('b12-missing-states'); orbitChrome();
