@@ -1,10 +1,10 @@
 {
- "_note": "计划页像素返工子任务 A（概要 + 人物类型详情）。mock 服务器 :3201（ORBIT_REDESIGN_MOCK=plan-v2-summary）。键 = <id>-<width>-<theme>，与 attribution-redesign-R23-25-A.json 一致。 每张画面的 `fixture` = 先用 features/plans/v2/design-fixtures/switch.mjs 切到的设计稿示例数据（scratchpad 的 run-a.sh 按它分组跑）。",
+ "_note": "计划页像素返工子任务 A（概要 + 人物类型详情）。mock 服务器 :3201（ORBIT_REDESIGN_MOCK=plan-v2-summary）。键 = <id>-<width>-<theme>，与 attribution-redesign-R23-25.json 一致。 每张画面的 `fixture` = 先用 features/plans/v2/design-fixtures/switch.mjs 切到的设计稿示例数据（scratchpad 的 run-a.sh 按它分组跑）。",
  "defaults": {
   "app-origin": "http://localhost:3201",
   "login": "qa@orbit.test",
   "grid": 100,
-  "attribution": "scripts/visual/attribution-redesign-R23-25-A.json"
+  "attribution": "scripts/visual/attribution-redesign-R23-25.json"
  },
  "sources": [
   "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
