@@ -123,6 +123,14 @@ render(body.data);
 - **门禁**：整屏 raw ≤0.02；`--grid` 逐带比对，超阈值的带必须在归因文件（`repos/orbits/scripts/visual/attribution-redesign-<Sprint>.json`）里具名，且只能归因为 `[data]`（数据文字不同）；有一条带写不出 `[data]` 理由，就是缺陷，修完再跑。不过门禁的画面不得标 done。
 - 对照页 `compare.html`：左边设计稿画板，中间实现，右边 diff，浅色 / 深色各一行，附 raw 与超阈值带数；放在证据目录，REPORT 里写路径和总表。
 - 用法细节见 `repos/orbits/scripts/visual/README-redesign.md`。
+- **UI 对齐的默认流程**（**试行中，2026-10-12**；等 R05 和 Web 计划页两组的用时对比出来后转为定稿）。以后所有 UI 对齐、像素返工和功能 Sprint 的界面部分都按这个流程做：
+  - **照源码搬，不对着截图画**：Web 把画板的 DOM 结构和 CSS 数值直接照 `kit/ui.css`、`kit/kit.js` 和画板 HTML 源码搬进 CSS Modules（数值换成 token）；App 把 kit 里的数值一次性翻译成 token 和组件参数。
+  - **快慢两档**（`--only` + 设计稿缓存）：迭代时只跑当前画面的门禁（`--suite views/<端>-<Sprint>.json --only <画面>`，或 `--changed` 只跑和改动相关的画面）和相关测试；收口时各跑一次全量门禁（不带 `--only`）和两端全量测试。
+  - **复核**：只重跑没通过的画面和改动过的画面，另抽查至少 20% 的已通过画面；每张都要看 triptych，不能只看 raw（摘要里标 ⚠ 缺块的必看）。
+  - **不阻塞**：子会话不用 AskUserQuestion 弹窗等人回答；需要拍板的事用 SendMessage 发给主会话，那个画面先跳过，接着做别的。
+  - **并行**：按文件归属分工，最多同时 3 个会话；每个会话用自己的 dev server 端口、`distDir` 和测试库。
+  - **短会话**：一个返工组 / 一组画面一个会话，做完写交接。
+  - 工具用法（画面清单、`--only` / `--changed`、设计稿缓存、`--workers`、缺块警告）见 `repos/orbits/scripts/visual/README-redesign.md`「提速」一节。
 - **适用范围**：以后所有 Sprint（甲乙都一样，含 R12–R16），不再有「先按自己理解做、事后对照」的做法。
 - **PLANNER**：验收契约（SC）必须为**每个画面写一条像素 SC**，写明对应的设计稿文件 + 画板标题（或 `--list` 的画板序号）、宽度（Web 1440 / 1024 / 390；App 模拟器）和主题（浅 / 深），以及到达该状态的 URL / 操作步骤；设计稿没有的宽度或状态写「设计稿无」并注明用户拍板结论。
 - **REPORT**：必须附门禁结果——每个画面 × 宽度 × 主题的 raw、超阈值带数、归因文件路径、证据目录；有未通过的画面不得标 done。
