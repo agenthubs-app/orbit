@@ -22,3 +22,6 @@ export function fromDemo(edit: (state: Partial<MemoryPlanV2State>) => void): Pla
     return state;
   };
 }
+
+/** 同名 fixture 在概要上要出「完了しましたか？」的 Step key（示例数据不必真的达标；只在 mock 由 service-factory 加上）。 */
+export type PlanDesignStepSuggestions = readonly string[];

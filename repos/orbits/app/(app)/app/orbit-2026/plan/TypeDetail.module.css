@@ -202,7 +202,7 @@
 @media (prefers-reduced-motion: reduce) { .part { animation: none; } .floatPlus { animation: fadeInOut 1.2s linear both; } }
 
 /* ===== 2026-10-12 pixel rework: 人物タイプ詳細 (b4 typeWeb · b12 wTypeVC / wTypeCVC / wTypeLaw · typeRail) ===== */
-.pageV2 { display: block; padding: 0 var(--space-34) 40px; line-height: 1.5; }
+.pageV2 { display: block; padding: 0 var(--space-34) 40px; }
 @media (max-width: 1279px) { .pageV2 { padding-left: var(--space-26); padding-right: var(--space-26); } }
 @media (max-width: 767px) { .pageV2 { padding: 0 18px 120px; } }
 .headRow { display: flex; align-items: center; gap: 16px; }

@@ -130,18 +130,6 @@ const S46: Award[] = [
   { at: jst("2026-09-15"), contactId: "demo-person-aoki", key: "funded_founder", points: 3 },
 ];
 
-/**
- * 96d711679：web.html #17 の Step 3「VC と接点を持つ」は目安人数に達して「完了しましたか？」が出る（chip「VC 3 / 3人」）。
- * サーバーは Step の全タイプが目標に達したときだけ確認卡を出すので、VC 3人 · CVC 3人 · イベント 2回 を記録する。
- */
-const S46_STEP3: Award[] = [
-  ...S46,
-  { at: jst("2026-10-08"), contactId: "fx-a-yamaguchi", key: "vc_partner", points: 10 },
-  { at: jst("2026-10-02"), contactId: "demo-person-suzuki", key: "cvc", points: 5 },
-  { at: jst("2026-09-25"), contactId: "demo-person-matsui", key: "cvc", points: 5 },
-  { at: jst("2026-09-24"), basis: "self_report", key: "cvc", points: 5 },
-];
-
 type Options = { awards: Award[]; candidates: Candidate[]; startsOn?: string; manualEditAvailable?: boolean; extraLog?: PlanV2LogEntry[] };
 
 function seriesA(options: Options): (state: State) => void {
@@ -203,11 +191,12 @@ const ALL_CANDIDATES = [...OTHER_CANDIDATES, ...VC_CANDIDATES];
 const OVERVIEW_CANDIDATES: Candidate[] = [{ contactId: "demo-person-sasaki", key: "vc_partner", reason: "シード中心で、A はフォローで入る方針", strength: "candidate", tier: "ai" }];
 
 export const fixturesA: Record<string, PlanDesignFixture> = {
-  "w17-overview-many": fromDemo(seriesA({ awards: S46_STEP3, candidates: OVERVIEW_CANDIDATES, extraLog: [dismissStep4] })),
+  "w17-overview-many": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, extraLog: [dismissStep4], manualEditAvailable: true })),
   // b8 #6 / #7（plan1024 / plan390）は Step の完了確認を描いていない：s46 のまま（VC 2 / 3人）。
-  "b8-overview-many": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, extraLog: [dismissStep4] })),
+  "b8-overview-many": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, extraLog: [dismissStep4], manualEditAvailable: true })),
   "w16-overview-few": fromDemo((state) => seriesA({ awards: [], candidates: OVERVIEW_CANDIDATES, manualEditAvailable: true, startsOn: today() })(state)),
   "b12-208-pending": fromDemo(seriesA({
+    manualEditAvailable: true,
     awards: [{ at: jst("2026-10-09"), contactId: "demo-person-ito", key: "cfo", points: 10 }, ...S46],
     candidates: [
       { contactId: "demo-person-sasaki", key: "vc_partner", reason: "シード中心で、A はフォローで入る方針", strength: "candidate", tier: "ai" },
@@ -215,7 +204,7 @@ export const fixturesA: Record<string, PlanDesignFixture> = {
     ],
     extraLog: [dismissStep1, dismissStep4, memoYamamoto],
   })),
-  "b12-206-premise": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
+  "b12-206-premise": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, extraLog: [dismissStep4], manualEditAvailable: true })),
   "b4-11-type-vc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
   "b4-13-type-cvc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
   "b12-222-law-skipped": fromDemo(seriesA({ awards: S46.map((award) => (award.key === "lawyer" ? { ...award, at: jst("2026-10-07") } : award)), candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
@@ -232,8 +221,9 @@ function fact(eventId: string, title: string, startsAt: string, venue: string, f
  * 让类型卡的「会える活動」= CFO 1 · 起業家 2 · エンジェル 1 · VC 2 · CVC 1 · 弁護士 0（同 web.html PER.evn）。
  */
 const SERIES_A_EVENTS = (): PlanEventFact[] => [
-  fact("fx-a-ev-saas-summit", "Japan SaaS Summit 2026 秋", jst("2026-10-16"), "東京国際フォーラム", { attendeeSource: "speakers", exchangeCorner: true, expected: { funded_founder: 12, vc_partner: 5 }, fee: 15000, firstDegree: 2, networkingMinutes: 45, travelMinutes: 30 }),
-  fact("fx-a-ev-cfo-night", "CFO Night Tokyo vol.18", `${today()}T19:00:00+09:00`, "渋谷ストリーム", { expected: { cfo: 10, vc_partner: 2 }, fee: 3000, firstDegree: 2, nameTags: true, networkingMinutes: 60, travelMinutes: 25 }),
+  // 顺序照 web.html EVREC（SaaS Summit 82 > CFO Night 74 > 大阪 68）：分数由规则算，只把事实调到这个顺序。
+  fact("fx-a-ev-saas-summit", "Japan SaaS Summit 2026 秋", jst("2026-10-16"), "東京国際フォーラム", { exchangeCorner: true, expected: { cvc: 4, funded_founder: 12, vc_partner: 5 }, fee: 15000, firstDegree: 2, matching: true, nameTags: true, networkingMinutes: 45, travelMinutes: 30 }),
+  fact("fx-a-ev-cfo-night", "CFO Night Tokyo vol.18", `${today()}T19:00:00+09:00`, "渋谷ストリーム", { expected: { cfo: 10, vc_partner: 2 }, fee: 3000, firstDegree: 1, nameTags: true, networkingMinutes: 60, travelMinutes: 25 }),
   fact("fx-a-ev-dx-osaka", "製造業DXカンファレンス 大阪", jst("2026-10-23"), "グランフロント大阪", { attendeeSource: "organizer", expected: { cvc: 3 }, fee: 0, networkingMinutes: 30, travelMinutes: 150 }),
   fact("fx-a-ev-founders", "SaaS 創業者ミートアップ", jst("2026-10-20", "19:00"), "渋谷", { attendeeSource: "past", expected: { angel: 2, funded_founder: 6 }, fee: 0, firstDegree: 1, networkingMinutes: 60, travelMinutes: 20 }),
 ];
@@ -256,4 +246,12 @@ export const eventFactsA: Record<string, PlanDesignEventFacts> = {
   "w16-overview-few": SERIES_A_EVENTS,
   "b8-overview-many": SERIES_A_EVENTS,
   "w17-overview-many": SERIES_A_EVENTS,
+};
+
+/**
+ * 同名 fixture 在概要上要出「完了しましたか？」的 Step（web.html #17 / b12 W-R24-04c：Step 3，示例分数仍是 46，
+ * 规则上 VC 2 / 3 还没达标——只在 mock 由 service-factory 补上，见 `withMockStepSuggestions`）。
+ */
+export const stepSuggestionsA: Record<string, readonly string[]> = {
+  "w17-overview-many": ["demo-step-3"],
 };

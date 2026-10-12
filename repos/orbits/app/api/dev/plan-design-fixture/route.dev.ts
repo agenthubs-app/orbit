@@ -9,7 +9,7 @@
 import { NextResponse } from "next/server";
 
 import { redesignContractMode } from "../../../../features/redesign-contracts/route";
-import { PLAN_DESIGN_EVENT_FACTS, PLAN_DESIGN_FIXTURES } from "../../../../features/plans/v2/design-fixtures";
+import { PLAN_DESIGN_EVENT_FACTS, PLAN_DESIGN_FIXTURES, PLAN_DESIGN_STEP_SUGGESTIONS } from "../../../../features/plans/v2/design-fixtures";
 import { overridePlansV2MockSeed } from "../../../../features/plans/v2/service-factory";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +38,6 @@ export async function POST(request: Request) {
   if (typeof name !== "string" || !PLAN_DESIGN_FIXTURES[name]) {
     return NextResponse.json({ error: "unknown_fixture", names: Object.keys(PLAN_DESIGN_FIXTURES).sort() }, { headers: HEADERS, status: 400 });
   }
-  overridePlansV2MockSeed(PLAN_DESIGN_FIXTURES[name]!(), PLAN_DESIGN_EVENT_FACTS[name]?.() ?? null);
+  overridePlansV2MockSeed(PLAN_DESIGN_FIXTURES[name]!(), PLAN_DESIGN_EVENT_FACTS[name]?.() ?? null, PLAN_DESIGN_STEP_SUGGESTIONS[name] ?? null);
   return NextResponse.json({ name }, { headers: HEADERS });
 }

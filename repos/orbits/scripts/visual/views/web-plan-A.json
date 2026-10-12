@@ -107,6 +107,9 @@
      "click": "tr[data-candidate]:nth-child(2) button[role=checkbox]"
     },
     {
+     "click": "tr[data-candidate]:nth-child(1) td:last-child button[aria-expanded]"
+    },
+    {
      "wait": 400
     }
    ],
@@ -129,6 +132,9 @@
     },
     {
      "click": "tr[data-candidate]:nth-child(2) button[role=checkbox]"
+    },
+    {
+     "click": "tr[data-candidate]:nth-child(1) td:last-child button[aria-expanded]"
     },
     {
      "click": "[data-plan-propose]"

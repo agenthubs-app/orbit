@@ -768,7 +768,7 @@ function StepCarousel({ detail, t, actions }: { detail: PlanV2Detail; t: Transla
             </div>
             <b>{step.title}</b>
             <div className={styles.stpEmos}>
-              {types.length ? types.map(({ card, index: k }) => <MacTile key={card.type.key} emoji={card.type.emoji} size="sm" tone={typeTone(k)} />) : <span className={styles.lbl}>{t(c.noNewPeopleShort)}</span>}
+              {types.length ? types.map(({ card, index: k }) => <span key={card.type.key} className={cx(styles.emo, styles.emoSm, styles[`tone_${typeTone(k)}`])} aria-hidden>{card.type.emoji}</span>) : <span className={styles.lbl}>{t(c.noNewPeopleShort)}</span>}
               {allocation ? <span className={styles.v2pp}>{earned}<small> / {allocation}</small></span> : null}
             </div>
           </div>

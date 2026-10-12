@@ -2,8 +2,7 @@
    (1440), b8 plan1024() / plan390() and b12 W-R24-03/04 (kit ui.css .wgrid .card .v2* .v22*).
    Tokens where the kit value has one; the remaining literals are kit sizes with no token yet. */
 
-.slot { display: block; padding: 0 var(--space-34) 40px; line-height: 1.5; }
-/* kit body line-height is 1.5 (ui.css body); the scope default is --lh-body 1.55. */
+.slot { display: block; padding: 0 var(--space-34) 40px; }
 @media (max-width: 1279px) { .slot { padding-left: var(--space-26); padding-right: var(--space-26); } }
 @media (max-width: 767px) { .slot { padding: 0 18px 120px; } }
 
@@ -20,7 +19,7 @@
 /* kit .btn — restated with two classes so the legacy global `.btn` on old pages cannot change it */
 .slot .btn, .rail .btn, .btn.btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; min-height: 0; padding: 0 16px;
-  border: 0; border-radius: var(--r-pill); font-weight: var(--fw-bold); font-size: var(--fs-body-sm); line-height: 1.5;
+  border: 0; border-radius: var(--r-pill); font-weight: var(--fw-bold); font-size: var(--fs-body-sm); line-height: var(--lh-body);
   background: var(--surface-2); color: var(--ink); white-space: nowrap; text-decoration: none; cursor: pointer;
   transition: transform var(--dur-press) var(--ease), background var(--dur-press), filter var(--dur-press);
 }
@@ -61,7 +60,7 @@
 .flat { background: var(--surface-2); }
 @media (max-width: 767px) { .card { border-radius: var(--r-xl); padding: 18px; } .card + .card { margin-top: var(--gap); } }
 .cardH { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); margin-bottom: var(--space-12); }
-.cardH h3 { margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); display: flex; align-items: center; gap: var(--space-8); line-height: 1.5; }
+.cardH h3 { margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); display: flex; align-items: center; gap: var(--space-8); line-height: var(--lh-body); }
 .more { font-size: var(--fs-meta); color: var(--ink-3); font-weight: 600; display: flex; align-items: center; gap: 2px; }
 
 /* goal row */
@@ -146,7 +145,7 @@
 .v22tc:focus-visible { outline: 2px solid var(--plum-500); outline-offset: 2px; }
 .tcHead { display: flex; align-items: flex-start; gap: 10px; }
 .v22tk { font-size: var(--fs-tiny); font-weight: var(--fw-heavy); color: var(--ink-3); letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.v22tn { display: block; font-size: var(--fs-row); font-weight: var(--fw-heavy); line-height: 1.5; }
+.v22tn { display: block; font-size: var(--fs-row); font-weight: var(--fw-heavy); line-height: var(--lh-body); }
 .v22m3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
 .v22m3 > div { background: var(--surface); border-radius: var(--r-row); padding: 6px 8px; min-width: 0; }
 .v22m3 b { font-family: var(--font-num); font-size: var(--fs-emoji-sm); font-weight: var(--fw-heavy); display: block; line-height: 1.2; }
@@ -167,9 +166,9 @@
 .evBlock b { font-size: var(--fs-row); }
 
 /* rail (kit .rail h4 / .assist-in / .card) */
-.rail { display: flex; flex-direction: column; gap: var(--space-14); line-height: 1.5; }
-.railH { margin: 0; font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); display: flex; align-items: center; gap: var(--space-8); line-height: 1.5; }
-.assistIn.assistIn { height: auto; min-height: 0; border: 0; width: 100%; background: var(--surface); border-radius: var(--r-menu); padding: 12px 14px; font-size: var(--fs-body-sm); font-weight: var(--fw-regular); color: var(--ink-3); display: flex; align-items: center; justify-content: flex-start; gap: var(--space-8); cursor: text; line-height: 1.5; }
+.rail { display: flex; flex-direction: column; gap: var(--space-14); }
+.railH { margin: 0; font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); display: flex; align-items: center; gap: var(--space-8); line-height: var(--lh-body); }
+.assistIn.assistIn { height: auto; min-height: 0; border: 0; width: 100%; background: var(--surface); border-radius: var(--r-menu); padding: 12px 14px; font-size: var(--fs-body-sm); font-weight: var(--fw-regular); color: var(--ink-3); display: flex; align-items: center; justify-content: flex-start; gap: var(--space-8); cursor: text; line-height: var(--lh-body); }
 .todayCard { background: linear-gradient(135deg, var(--mac-lav), var(--surface) 70%); }
 .todayCard b { font-size: var(--fs-body-sm); }
 .todayText { font-size: var(--fs-body); font-weight: var(--fw-bold); line-height: 1.6; margin-top: var(--space-8); }
