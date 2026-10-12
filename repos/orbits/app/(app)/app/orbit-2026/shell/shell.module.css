@@ -36,6 +36,7 @@
   place-items: center;
   font-weight: var(--fw-black);
   font-size: var(--fs-logo);
+  line-height: 1.5;
   margin-bottom: var(--space-18);
   flex: none;
 }
@@ -160,7 +161,7 @@
 .railKey { font-size: var(--fs-body-sm); }
 
 /* The page's own header buttons (kit .btn, 40 high): restated over the legacy `.btn`. */
-.mainhead :global(.btn) { height: 40px; padding: 0 16px; gap: 6px; border: 0; border-radius: var(--r-pill); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
+.mainhead :global(.btn) { height: 40px; padding: 0 16px; gap: 6px; border: 0; border-radius: var(--r-pill); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); line-height: 1.5; }
 /* kit .rbtn: a 40 round button (🔍 / 🔔 / 受信箱) with the coral unread dot. */
 .rbtn, .mainhead .rbtn, .mobileTop .rbtn, .drawerRail .rbtn {
   position: relative;

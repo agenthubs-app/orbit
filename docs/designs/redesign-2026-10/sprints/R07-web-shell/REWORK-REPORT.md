@@ -176,3 +176,10 @@
 | m6 | 同 M6（logo 字号、圆角、行高已修） | — |
 | m7 | gate.py 注释写明 b6 #34 只取未作废的左栏部分 | `gate.py` |
 | m8 | 第 5 节点名受信箱 / iOrbit / Task 右栏 / 首页编辑提示条的归属 Sprint | 第 5 节 |
+
+## 10. 2026-10-12 style-diff 补修：logo 与标题区按钮行高 1.55 → 1.5
+
+- 起因：门禁新加的 `--style-diff` 查出两处像素门禁没报的差异——左栏 logo「O」、标题区按钮（`.mainhead .btn`）文字继承 body 的 `--lh-body` 1.55，kit 是 1.5。
+- 改法：`shell.module.css` 的 `.logo` 与 `.mainhead :global(.btn)` 各加 `line-height: 1.5`（壳内其它文字都是写死 1.5，没有 1.5 的 token；`--lh-body` 1.55 全站在用，未动）。两处盒子高度固定（42 / 40），不影响布局。
+- 验证（`:3005` / `.next-gate`）：`run-lh15-final*/` W-R07-01L、01H、TplanH 1440/1024 × 浅/深全部 PASS，style-diff 这两处行高 0 项；全套 `run-lh15-all/` + `run-lh15-retry/` 壳区域视图 43/50 过，未过的 03D / 03DT（1024 抽屉）、TmemoH 在撤掉本改动的基线 `run-lh15-base/` 数字完全相同，属原有问题；整页视图大量超阈来自页面内容（计划页返工进行中等），不属本项。`tests/ui/orbit-2026-shell.test.tsx` 18/18。
+- 遗留：01H-1024 的「次の一手」按钮宽 130/106 来自建议计数徽标（数据，已归因）；TplanH 页签 style-diff 报 `gap` normal/0 与当前页签 `box-shadow` 差异，未修，待看。
