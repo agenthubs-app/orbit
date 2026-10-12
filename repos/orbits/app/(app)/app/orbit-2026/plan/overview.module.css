@@ -181,7 +181,8 @@
 
 /* 確認待ち (b12 pendWrapW) */
 .pendGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-12); align-items: start; }
-@media (max-width: 1279px) { .pendGrid { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); } }
+/* b8 #6 (1024) keeps kit .grid3; only the phone (b8 #7) stacks the pending cards. */
+@media (max-width: 767px) { .pendGrid { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); } }
 .pendCard { padding: 12px 14px; }
 .pendCard .row { align-items: flex-start; gap: 10px; }
 .pendText { font-size: var(--fs-control); line-height: 1.6; font-weight: var(--fw-bold); }
