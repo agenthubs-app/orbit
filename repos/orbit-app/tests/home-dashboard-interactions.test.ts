@@ -236,7 +236,9 @@ for (const change of [{ actorId: "foreign" }, { dueWindow: undefined }, { dueWin
 
 test("real home route reads actual sections, shows named skeletons and never redirects or writes on mount", async t => {
   const p = await open(t);
-  assert.equal(await p.getByRole("textbox", { name: "搜索人脉" }).count(), 1);
+  // R05 rework: kit .hhead has no search field (people search lives on 人脈); 🔔 and 編集 stay.
+  assert.equal(await p.getByRole("textbox", { name: "搜索人脉" }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "收件箱" }).count(), 1);
   assert.equal(await p.getByRole("progressbar", { name: "正在读取日程" }).count(), 1);
   assert.doesNotMatch(await p.locator("body").innerText(), /\/ai|3 条未读|今日有 5/);
   await hydrate(p);
@@ -250,13 +252,11 @@ test("real home route reads actual sections, shows named skeletons and never red
   assert.deepEqual(await writes(p), []);
 });
 
-test("search, shortcuts, inbox and real record destinations work without implicit writes", async t => {
+test("shortcuts, inbox and real record destinations work without implicit writes", async t => {
   const p = await open(t); await hydrate(p);
-  const search = p.getByRole("textbox", { name: "搜索人脉" });
-  await search.fill(" 林 悦 "); await search.press("Enter"); await settle(p);
   for (const name of ["收件箱", "扫名片", "查看日程", "新建待办", "笔记", "查看待办：发送项目介绍", "查看日程：设计分享会", "查看活动：周末产品交流会"]) await press(p, name);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), [
-    "/contacts/list?q=%E6%9E%97%20%E6%82%A6", "/inbox", "/contacts/new/scan", "/task?seg=calendar", "/task?seg=todo", "/task?seg=memo",
+    "/inbox", "/contacts/new/scan", "/task?seg=calendar", "/task?seg=todo", "/task?seg=memo",
     "/tasks/task%3A%2Fone", "/events/event%3A%2Fone", "/events/event%3A%2Fone"
   ]);
   assert.equal(await p.getByRole("button", { name: "联系跟进", exact: true }).count(), 0);

@@ -50,7 +50,12 @@ export function AppScreen({
 }: AppScreenProps) {
   const { colors, styles } = useStyles();
   const router = useRouter();
-  const pathname = usePathname();
+  const currentPath = usePathname();
+  // R05 rework M1: the path is global, so a tab page left under a pushed page would
+  // briefly read the new path and grow a back bar. A page mounted as a tab page stays one.
+  const ownPath = useRef(currentPath);
+  if (mainTabForPath(ownPath.current) === null) ownPath.current = currentPath;
+  const pathname = ownPath.current;
   const viewport = useMobileViewport();
   const canGoBack = router.canGoBack();
   const mainTab = mainTabForPath(pathname);

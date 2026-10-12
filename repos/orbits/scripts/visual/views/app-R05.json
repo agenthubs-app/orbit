@@ -1,0 +1,81 @@
+{
+ "_note": "R05 App 导航壳返工的门禁画面清单。整屏数字因正文旧屏不过；壳的局部（Task 顶栏 0,50,390,128、マイページ 顶栏 0,50,390,64、首页 .hhead 0,50,390,64、底栏胶囊 14,756,362,62，--grid 30）用 ~/orbit-sprint-evidence/redesign/R05/rework/region.mjs 在本清单输出上切。",
+ "defaults": {
+  "grid": 30,
+  "wait": 7000,
+  "attribution": "scripts/visual/attribution-redesign-R05.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/components/AppScreen.tsx",
+  "repos/orbit-app/src/components/OrbitTabBar.tsx",
+  "repos/orbit-app/src/components/Shell*.tsx",
+  "repos/orbit-app/src/components/shell-*.ts",
+  "repos/orbit-app/src/components/ui/**",
+  "repos/orbit-app/src/screens/task/**",
+  "repos/orbit-app/src/design/**",
+  "repos/orbit-app/src/api/design/**"
+ ],
+ "views": [
+  {
+   "id": "A-R05-01",
+   "design": "app.html",
+   "board-index": 2,
+   "url": "orbit://home",
+   "note": "ホーム：底栏胶囊 + 首页顶栏 .hhead（正文归 R10）",
+   "sources": [
+    "repos/orbit-app/src/screens/home/**"
+   ]
+  },
+  {
+   "id": "A-R05-02",
+   "design": "app.html",
+   "board-index": 8,
+   "url": "orbit://contacts",
+   "note": "人脈：底栏胶囊 + 背景（顶栏与正文归 R11）",
+   "sources": [
+    "repos/orbit-app/src/screens/contacts/**"
+   ]
+  },
+  {
+   "id": "A-R05-03",
+   "design": "app.html",
+   "board-index": 15,
+   "url": "orbit://events",
+   "note": "イベント：底栏胶囊 + 背景（顶栏与正文归 R26）",
+   "sources": [
+    "repos/orbit-app/src/screens/events/**"
+   ]
+  },
+  {
+   "id": "A-R05-04",
+   "design": "app.html",
+   "board-index": 16,
+   "url": "orbit://task?seg=calendar",
+   "note": "Task · カレンダー：顶栏三段式 + .tseg + 底栏（正文归 R20）"
+  },
+  {
+   "id": "A-R05-05",
+   "design": "app.html",
+   "board-index": 17,
+   "url": "orbit://task?seg=todo",
+   "note": "Task · To-do：同上"
+  },
+  {
+   "id": "A-R05-07",
+   "design": "app.html",
+   "board-index": 26,
+   "url": "orbit://task?seg=memo",
+   "note": "Task · メモ：同上"
+  },
+  {
+   "id": "A-R05-11",
+   "design": "b5-me-inbox.html",
+   "board-index": 15,
+   "url": "orbit://profile",
+   "note": "マイページ：二级页顶栏（正文归 R18）",
+   "sources": [
+    "repos/orbit-app/src/screens/profile/**"
+   ]
+  }
+ ]
+}

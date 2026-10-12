@@ -5,8 +5,10 @@
 // dialogTitle, confirmTitle, banner, label, sentence, menu (scripts/copy-qa/README.md).
 export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[] = [
   ["shell.parent.*", "label"],
+  ["shell.home.*", "label"],
   ["shell.task.headerDate", "label"],
   ["shell.me.completeness", "label"],
+  ["shell.me.complete", "label"],
   ["shell.task.addCalendar", "button"],
   ["shell.task.addTodo", "button"],
   ["shell.task.addMemo", "button"],

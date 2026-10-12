@@ -8,6 +8,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { serverReachability } from "../../api/server-reachability";
 import { AppScreenEmbeddingProvider } from "../../components/AppScreenEmbedding";
 import { ShellBackground } from "../../components/ShellBackground";
+import { shellHeaderDate } from "../../components/shell-date";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../components/ShellTopBar";
 import { IconButton } from "../../components/ui/IconButton";
 import { SwipeSegments } from "../../components/ui/Segmented";
@@ -94,7 +95,7 @@ export function TaskScreen() {
     else if (segment === "todo") quickAdd.current?.focus();
     else if (segment === "memo") router.push("/notes/new" as Href);
   };
-  const today = taskHeaderDate(new Date(), locale.language, timeZone, locale.t);
+  const today = shellHeaderDate(new Date(), locale.language, timeZone, locale.t);
   const topGap = useShellTopGap();
 
   return (
@@ -118,14 +119,6 @@ export function TaskScreen() {
       />
     </SafeAreaView>
   );
-}
-
-/** kit D.today.date 「10月7日（水）」: the pattern is per language (Japanese full-width brackets). */
-export function taskHeaderDate(date: Date, language: string, timeZone: string, t: (key: "shell.task.headerDate", values: Record<string, string>) => string): string {
-  const locale = language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US";
-  const parts = new Intl.DateTimeFormat(locale, { month: language === "en" ? "long" : "numeric", day: "numeric", weekday: "short", timeZone }).formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
-  return t("shell.task.headerDate", { month: part("month"), day: part("day"), weekday: part("weekday") });
 }
 
 function useServerUnreachable(): boolean {

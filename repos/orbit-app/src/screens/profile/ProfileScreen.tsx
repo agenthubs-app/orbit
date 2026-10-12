@@ -442,7 +442,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]}>
       <ShellBackground />
       <ShellBackBar title={locale.t("profile.title")}
-        subtitle={auth.signedIn && data ? locale.t("shell.me.completeness", { score: data.completeness.score }) : undefined}
+        subtitle={auth.signedIn && data ? (data.completeness.score >= 100 ? locale.t("shell.me.complete") : locale.t("shell.me.completeness", { score: data.completeness.score })) : undefined}
         right={<IconButton icon="settings" accessibilityLabel={locale.t("profile.settings")} onPress={() => { if (current()) router.push("/settings" as Href); }} />} />
       <ScrollView contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
         refreshControl={

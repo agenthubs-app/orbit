@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { useState, type ReactNode } from "react";
+import { Platform, StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import * as SafeArea from "react-native-safe-area-context";
 
 import { createThemedStyles } from "../design/theme";
@@ -23,23 +23,35 @@ export function useShellTopGap(): number {
 // 11.5/500 subtitle, a 40pt round button (IconButton) at the start of each side cell.
 // The page gives the 18pt gutter. Either side may be empty; the title stays centred
 // and wraps like the kit's (no nowrap on .topbar), so long titles and large text grow.
+// A side wider than 44 (a text action such as 保存) widens both sides equally, like a
+// UINavigationBar, so the title stays centred and the action is never clipped.
+const SIDE = 44;
+
 export function ShellTopBar({ title, subtitle, left, right }: { title: string; subtitle?: string | undefined; left?: ReactNode; right?: ReactNode }) {
   const { styles } = useStyles();
+  const [widths, setWidths] = useState({ left: 0, right: 0 });
+  const side = Math.max(SIDE, widths.left, widths.right);
+  const measure = (key: "left" | "right") => (event: LayoutChangeEvent) => {
+    const width = Math.ceil(event.nativeEvent.layout.width);
+    setWidths((current) => current[key] === width ? current : { ...current, [key]: width });
+  };
   return (
     <View style={styles.bar}>
-      <View style={styles.side}>{left}</View>
+      <View style={[styles.side, { width: side }]}><View style={styles.content} onLayout={measure("left")}>{left}</View></View>
       <View style={styles.center}>
         {title ? <UiText accessibilityRole="header" style={[styles.title, cjkLift(title, -1, -2)]}>{title}</UiText> : null}
         {subtitle ? <UiText style={[styles.subtitle, cjkLift(subtitle, -0.5, -1)]}>{subtitle}</UiText> : null}
       </View>
-      <View style={styles.side}>{right}</View>
+      <View style={[styles.side, { width: side }, side > SIDE && styles.sideEnd]}><View style={styles.content} onLayout={measure("right")}>{right}</View></View>
     </View>
   );
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bar: { flexDirection: "row", alignItems: "center", paddingTop: 6, paddingBottom: 14 },
-  side: { width: 44, alignItems: "flex-start" },
+  side: { alignItems: "flex-start" },
+  sideEnd: { alignItems: "flex-end" },
+  content: { flexDirection: "row", alignItems: "center" },
   center: { flex: 1, minWidth: 0, alignItems: "center" },
   // body line-height 1.5 (ui.css:9) → 25.5 / 17.25
   title: { color: colors.ink, fontSize: 17, lineHeight: 25.5, fontWeight: "800", letterSpacing: 0.17, textAlign: "center" },

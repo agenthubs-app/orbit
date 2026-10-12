@@ -2,15 +2,17 @@ import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, AppState, Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, AppState, Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { eventValueRecommendationsPath, ORBIT_API_ENDPOINTS, taskPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
-import { Avatar } from "../../components/ui/Avatar";
-import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
+import { IconButton } from "../../components/ui/IconButton";
+import { UiText } from "../../components/ui/Text";
+import { cjkLift } from "../../components/ui/cjk-lift";
+import { shellGreeting, shellHeaderDate } from "../../components/shell-date";
 import { UiPressable } from "../../components/ui/Pressable";
 import { useToast } from "../../components/ui/Toast";
 import { useStandardCopy } from "../../i18n/standard-copy";
@@ -84,10 +86,12 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
   const wideQuickActions = fontScale >= 1.5 || width < 360;
   const [active, setActive] = useState(false);
   const [inboxReadVersion, setInboxReadVersion] = useState(0);
-  const [query, setQuery] = useState("");
   const [now, setNow] = useState(() => new Date());
   const [selected, setSelected] = useState<string>();
   const date = homeDateView(now, selected, timeZone, locale.language);
+  const headerDate = shellHeaderDate(now, locale.language, timeZone, locale.t);
+  const userName = useOrbitAuthSession().user?.name;
+  const greeting = shellGreeting(now, timeZone, userName, locale.t);
   const selectedDate = useRef(date.selectedDateKey);
   selectedDate.current = date.selectedDateKey;
   const [resources, setResources] = useState<Resources>(loading);
@@ -288,21 +292,15 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     </Pressable>;
   }
   return <AppScreen title={locale.t("home.title")} refreshControl={<RefreshControl onRefresh={refresh} refreshing={sections.some(section => resources[section].kind === "loading")} tintColor={colors.accentText} />}
-    header={<View style={[styles.header, singleColumn && styles.headerWrap]}>
-      {/* R05 NAV-V3: マイページ opens from the avatar (b5-me-inbox.html:178). */}
+    header={<View style={styles.header}>
+      {/* kit .hhead (app.html:435): avatar · date + greeting · 🔔 · 編集. マイページ opens from the
+          avatar (b5-me-inbox.html:178); people search lives on 人脈. */}
       <HomeAvatarButton onPress={() => navigate("/profile")} />
-      <View style={[styles.search, singleColumn && styles.largeHeaderControl]}>
-        <View pointerEvents="none" style={styles.searchSurface} />
-        <HomeIcon name="search" color={colors.ink3Text} size={16} />
-        <TextInput accessibilityLabel={locale.t("home.searchPeople")} placeholder={locale.t("home.searchPeople")} placeholderTextColor={colors.ink3Text}
-          value={query} onChangeText={setQuery} onSubmitEditing={() => { const value = query.trim(); if (value) navigate("/contacts/list?q=" + encodeURIComponent(value)); }}
-          returnKeyType="search" style={styles.searchInput} />
+      <View style={styles.headerText}>
+        <UiText accessibilityRole="header" numberOfLines={1} style={[styles.headerDate, cjkLift(headerDate, -1, -2)]}>{headerDate}</UiText>
+        <UiText numberOfLines={1} style={[styles.headerGreeting, cjkLift(greeting, -0.5, -1)]}>{greeting}</UiText>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.inbox")} onPress={() => navigate("/inbox")} style={[styles.inbox, singleColumn && styles.largeHeaderControl]}>
-        <View pointerEvents="none" style={styles.inboxSurface} />
-        <Icon name="bell" color={colors.ink} size={20} />
-        {active ? <HomeInboxBadge scopeKey={JSON.stringify([scope.key, inboxReadVersion])} /> : null}
-      </Pressable>
+      {active ? <HomeBell scopeKey={JSON.stringify([scope.key, inboxReadVersion])} onPress={() => navigate("/inbox")} /> : <IconButton icon="bell" accessibilityLabel={locale.t("home.inbox")} onPress={() => navigate("/inbox")} />}
       <HomeEditButton />
     </View>}>
     {offline ? <OfflineNotice lastSyncedAt={asOf} reason={offlineReason} /> : null}
@@ -379,25 +377,32 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
 }
 
 // R05 (RD-21): 編集 is shown and says it is coming soon; R10 wires the home editor.
+// kit .hhead .hedit: a 36pt surface pill, 12.5 / 800 (D01: hit area 44).
 function HomeEditButton() {
+  const { styles } = useStyles();
   const copy = useStandardCopy();
   const toast = useToast();
-  return <Button label={copy.homeEdit.edit} size="sm" variant="ghost" onPress={() => toast.info(copy.homeEdit.comingSoon)} />;
-}
-
-function HomeAvatarButton({ onPress }: { onPress: () => void }) {
-  const copy = useStandardCopy();
-  const auth = useOrbitAuthSession();
-  const name = auth.user?.name?.trim() || auth.user?.email?.trim() || copy.nav.me;
-  return <UiPressable accessibilityRole="button" accessibilityLabel={copy.nav.me} hitSlop={4} onPress={onPress}>
-    <Avatar name={name} size="md" />
+  return <UiPressable accessibilityRole="button" accessibilityLabel={copy.homeEdit.edit} hitSlop={4} onPress={() => toast.info(copy.homeEdit.comingSoon)} style={styles.edit}>
+    <UiText numberOfLines={1} maxFontSizeMultiplier={1.4} style={[styles.editLabel, cjkLift(copy.homeEdit.edit, -0.5, -1)]}>{copy.homeEdit.edit}</UiText>
   </UiPressable>;
 }
 
-function HomeInboxBadge({ scopeKey }: { scopeKey: string }) {
+// kit .avatar-btn: 40pt lavender circle with the first letter of the name.
+function HomeAvatarButton({ onPress }: { onPress: () => void }) {
   const { styles } = useStyles();
+  const copy = useStandardCopy();
+  const auth = useOrbitAuthSession();
+  const name = auth.user?.name?.trim() || auth.user?.email?.trim() || copy.nav.me;
+  return <UiPressable accessibilityRole="button" accessibilityLabel={copy.nav.me} hitSlop={2} onPress={onPress} style={styles.avatar}>
+    <UiText maxFontSizeMultiplier={1} style={[styles.avatarText, cjkLift(name.slice(0, 1), -0.5, -1)]}>{Array.from(name)[0]?.toUpperCase()}</UiText>
+  </UiPressable>;
+}
+
+/** 🔔 with the coral unread dot (kit .rbtn.k-bell .dot). */
+function HomeBell({ scopeKey, onPress }: { scopeKey: string; onPress: () => void }) {
+  const locale = useOrbitLocale();
   const count = useRelationshipInboxBadgeCount(scopeKey);
-  return count === undefined ? null : <View testID="home-inbox-badge" style={[styles.badge, { minWidth: 8, minHeight: 8, width: 8, height: 8, paddingHorizontal: 0 }]} />;
+  return <View testID={count === undefined ? undefined : "home-inbox-badge"}><IconButton icon="bell" dot={count !== undefined} accessibilityLabel={locale.t("home.inbox")} onPress={onPress} /></View>;
 }
 
 function HomeIcon({ name, size, color }: { name: "search" | "inbox" | "scan" | "calendar" | "task" | "notes"; size: number; color: string }) {
@@ -415,15 +420,17 @@ function HomeIcon({ name, size, color }: { name: "search" | "inbox" | "scan" | "
 }
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: -9 },
-  headerWrap: { flexWrap: "wrap" },
+  // kit .hhead: gap 10, padding 6 0 12 inside the 18pt gutter (AppScreen gives 16 / 12 / gap 16).
+  header: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: -6, marginBottom: -4, marginHorizontal: 2 },
+  headerText: { flex: 1, minWidth: 0 },
+  headerDate: { color: colors.ink, fontSize: 17, lineHeight: 25.5, fontWeight: "800" },
+  // RD-05 shell exception (user 2026-10-12, Web M1): secondary shell text keeps --ink-3.
+  headerGreeting: { color: colors.ink3, fontSize: 11.5, lineHeight: 17.25, fontWeight: "500", marginTop: 1 },
+  avatar: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.macLav },
+  avatarText: { color: colors.macLavInk, fontSize: 14, lineHeight: 21, fontWeight: "800" },
+  edit: { height: 36, paddingHorizontal: 13, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface },
+  editLabel: { color: colors.ink2, fontSize: 12.5, lineHeight: 18.75, fontWeight: "800" },
   signal: { color: colors.accentText },
-  search: { flex: 1, minWidth: 110, minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12 },
-  searchSurface: { position: "absolute", zIndex: -1, top: 3, bottom: 3, left: 0, right: 0, borderRadius: 10, backgroundColor: colors.surface2 },
-  searchInput: { flex: 1, minWidth: 0, minHeight: 44, padding: 0, color: colors.ink, fontFamily: homeFont, fontSize: 14, lineHeight: 20 },
-  largeHeaderControl: { minHeight: 50 },
-  inbox: { width: 44, minHeight: 44, marginHorizontal: -3, alignItems: "center", justifyContent: "center" },
-  inboxSurface: { position: "absolute", zIndex: -1, top: 3, bottom: 3, left: 3, right: 3, borderRadius: 10, borderWidth: 1, borderColor: colors.line },
   badge: { position: "absolute", top: 9, right: 10, minWidth: 16, minHeight: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: colors.coral, borderWidth: 1.5, borderColor: colors.surface, alignItems: "center", justifyContent: "center" },
   badgeText: { color: colors.onAccent, fontFamily: homeFont, fontSize: 10, fontWeight: "700" },
   dateRow: { flexDirection: "row", alignItems: "baseline", flexWrap: "wrap", columnGap: 10, rowGap: 4 },
