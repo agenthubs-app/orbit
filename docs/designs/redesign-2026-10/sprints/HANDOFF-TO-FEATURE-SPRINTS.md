@@ -52,6 +52,7 @@
 | G22 | **语言** | Web 以 cookie `orbit-lang` 为准 | 链接不拼 `?lang=`；字体按 RD-09 修订（系统字体优先） | `R07-web-shell/REVIEW.md`:207；README RD-09 |
 | G24 | **App 日文粗体字形**（用户 2026-10-12 选 (b)） | 已做（R05 返工）：`UiText` 在 iOS 日文界面把假名 / 汉字 / 全角符号设成 Hiragino Sans 显式字重，英文数字仍是 SF；token `font.face.ja`（`font.family.ja` 是 Web 的 CSS 字体栈，未改） | 新文字一律用 `UiText`（旧屏的 RN `Text` 仍走系统回退，重写时换掉）；不要自己写字体名。iOS 自带 W3–W8 全部可用；字重按门禁实测的 Chrome 落档映射 400 W3 / 500 W4 / 600 W5 / 700 W6 / 800 W7 / 900 W8 | DEC §9-9；README RD-09；`R05-app-shell/REWORK-REPORT.md` §10 |
 | G23 | **组件库遗留（乙负责组件库时处理）** | 调用方各自绕开 | `Toast` 点按先关再回调；`BottomSheet` / `ActionSheet` 页面失焦自动关；确认 sheet 支持不可拖关；Web Modal 加 380 档（D42）；`Kbd` 字色、`MacTile` 小号 emoji、非壳抽屉深色细边等逐件对齐 kit（Q1 组件逐件比） | `R12-add-cards-and-manual/REVIEW.md`:150；`R15-invite-codes/REVIEW.md`:78,148,153；DEC D42 Q1；R07-RW REWORK-REPORT:113,174 |
+| G25 | **省额度做法（用户 2026-10-12 决定）** | — | 门禁先看文字结论（Web 先跑 `--style-diff` 逐元素样式 / 位置比对，像素门禁只做最后确认；App 看数字结论），图片只在数字说不清时看裁剪块；设计稿用 `--extract-board` 只抽单个画板；HANDOFF / 决定表只读相关段落；测试只看摘要；同一画面最多改 3 轮，不过就列「未过」报主会话；每个会话只做几个画面，上下文变长就写交接、推送、开新对话；提交前查暂存区。**细节以 HOW-TO 第 8 节为准** | README 通用规则 12 |
 
 ---
 
