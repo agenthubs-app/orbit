@@ -504,6 +504,10 @@ function events(s) {
 const KINDS = [['💰', '資金調達'], ['🚀', '上市・収益化'], ['🤝', '新規開拓'], ['🧑‍💼', '採用'], ['🔗', '事業提携'], ['🧭', 'キャリア']];
 const kindChips = (on = 0) => KINDS.map(([e, t], k) => `<span class="fopt ${k === on ? 'on' : ''}">${e} ${t}</span>`).join('');
 const FLOW5 = [['背景の確認', 'わたし · チーム · 目的を AI がまとめて下書き → 順に確認'], ['質問 5つまで', '背景でわからないことだけ、一度に聞きます'], ['AI の初版', 'ステップ · 話すべき人のタイプ · 業界の現状'], ['AI 修正 3回まで', '変更点だけを表示 · 変更なしも 1回'], ['手動編集 1回', '名前 · 順番 · 人数と配点（合計 100）']];
+/* 確認待ち候补卡（2026-10-12 用户定稿 Q2：以 b12 W-R24-04 为准——有候补人时概要必出「確認待ち」，同 b12 pendWrapW + candCard；来源：Web 计划页返工 A 组） */
+const PEND_CAND = { n: '佐々木 遼', i: '佐', c: 'c3', co: '湾岸グロース・パートナーズ', role: 'パートナー', t: 'VC' };
+const pendCandRow = p => `<div class="row k-wpcand" style="gap:10px;padding:10px 12px;border-radius:16px;background:var(--surface-2)"><div class="av sm ${p.c}">${p.i}</div><div style="flex:1;min-width:0"><b style="font-size:12.5px;display:block">${p.n}さんが「${p.t}」の候補です</b><div class="lbl">${p.co} · ${p.role}</div></div>${ic('right', 'sm')}</div>`;
+const pendWrapW = (n, inner, cls = 'span12') => `<div class="card ${cls} k-wpend"><div class="card-h"><h3>確認待ち <span class="chip coral">${n}</span></h3><span class="lbl">あなたが選ぶまで点は入りません</span></div><div class="grid3" style="gap:12px;align-items:start">${inner}</div></div>`;
 function plan(s) {
   const V = V2;
   if (s === 'empty') return wTaskHead(2) + `<div class="wgrid">
@@ -519,6 +523,7 @@ function plan(s) {
     <div class="card span12 rise k-whero"><div class="row" style="gap:28px;align-items:flex-end"><div style="flex:none"><div class="lbl">スコア</div><div class="big" style="font-size:64px">${num(tt)}</div><div class="lbl">満点 100 · 上限なし</div></div>
       <div style="flex:1;min-width:0;padding-bottom:4px">${V.sbar(S, { labels: true, cls: 'k-wsbar' })}${V.legend(false)}</div>
       <div style="flex:none;text-align:right;padding-bottom:6px;width:190px">${few ? '<span class="chip lav">今日つくったプラン</span><div class="lbl" style="margin-top:6px">話した人のタイプで加点</div>' : `<span class="chip lav">あと ${100 - tt} で満点</span><div class="lbl" style="margin-top:6px">話して ${V.talkOf(S)} · スキップ ${V.skipOf(S)}</div>`}</div></div></div>
+    ${pendWrapW(1, pendCandRow(PEND_CAND))}
     <div class="card span4 k-wsteps"><div class="card-h"><h3>ステップ</h3><span class="lbl">順番は目安</span></div>${V.STEPS.map((st, i) => V.step22(st, S, { short: true, mcls: i === 0 ? 'k-wmey1' : '', okcls: 'k-wstepok' })).join('')}</div>
     <div class="card span8 k-wtypes" data-why-box><div class="card-h" style="margin-bottom:4px"><h3>話すべき人のタイプ</h3><div class="row" style="gap:8px"><span class="lbl">「資金調達」テンプレートのまま</span><span class="why k-wtplwhy">?</span></div></div><div class="why-body" hidden style="margin:0 0 10px">根拠：「💰 資金調達」テンプレートの既定（CFO 経験者 10 / 調達経験のある起業家 15 / エンジェル投資家 10 / VC パートナー 30 / CVC 担当者 15 / 弁護士（投資契約）10 / イベント 10）。前提が既定と合っていたので、AI は配点を調整していません</div><div class="lbl" style="margin-bottom:10px">役割 × 状況 · 点はタイプごと · 同じ人は同じタイプで 1回</div>
       <div class="v22tgrid">${V.ORDER.filter(k => k !== 'ev').map(k => V.tcard(k, S, { cls: 'k-wtc-' + k })).join('')}</div></div>
