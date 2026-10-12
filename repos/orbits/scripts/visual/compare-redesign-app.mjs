@@ -23,7 +23,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { chromium } from "playwright";
-import { APP_DESIGN_FONT_FIX, appDesignFontFix, changedFiles, compareImages, moveFrameToTop, designCache, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, pool, printSummary, readPng, resize, selectChanged, selectOnly, writePng } from "./redesign-pixel-lib.mjs";
+import { APP_DESIGN_FONT_FIX, appDesignFontFix, changedFiles, compareImages, formatBandReport, moveFrameToTop, designCache, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, pool, printSummary, readPng, resize, selectChanged, selectOnly, writePng } from "./redesign-pixel-lib.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const designBase = args["design-base"] ?? "http://localhost:3320/redesign-2026-10/";
@@ -60,7 +60,7 @@ async function designFor(v) {
     if (v["keep-design-font"] !== "true") await page.evaluate(appDesignFontFix);
     await page.waitForTimeout(Number(v["design-wait"] ?? 1600));
     let board;
-    for (let attempt = 0; attempt < 20 && !board; attempt++) {
+    for (let attempt = 0; attempt < 45 && !board; attempt++) {
       if (attempt) await page.waitForTimeout(1000);
       const boards = await page.evaluate(listBoardsInPage);
       if (v["board-index"] !== undefined) board = boards[Number(v["board-index"])];
@@ -138,7 +138,7 @@ function compareShot(v, designPng, board, shotFile) {
     threshold: Number(v["grid-threshold"] ?? 0.02),
     attributionPath: v.attribution,
     viewKey: v.key,
-    meta: { view: v.key, design: v.design, board, shot: shotFile, devicePoints: points, alignedTo: [targetW, targetH], theme: v.theme, triptychScale: 1 },
+    meta: { crop: Boolean(args.crop) || v.crop === true, view: v.key, design: v.design, board, shot: shotFile, devicePoints: points, alignedTo: [targetW, targetH], theme: v.theme, triptychScale: 1 },
   });
   writeFileSync(join(v.out, "board.json"), `${JSON.stringify(board, null, 2)}\n`);
   return { ...result, key: v.key, triptych: join(v.out, "triptych.png"), out: v.out, devicePoints: points };
@@ -155,6 +155,7 @@ try {
     const r = compareShot(v, d.png, d.board, shotFile);
     console.log(`raw=${r.raw} design=${r.designSize.join("x")} app=${r.appSize.join("x")} (device ${r.devicePoints.join("x")}pt)` + (r.band ? ` bands=${r.cells} over=${r.overBands} unattributed=${r.unattributed}` : "") + (r.missing.length ? ` missing=${r.missing.length}` : "") + ` ${r.pass ? "PASS" : "FAIL"}${d.cached ? " (design cached)" : ""} out=${v.out}`);
     for (const m of r.missing.slice(0, 5)) console.warn(`warn: ⚠ 缺块 x=${m.x} y=${m.y} ${m.w}x${m.h}：设计稿这块有内容、实现是空的（raw 低也要看 triptych）`);
+    if (r.bandsReport) console.log(formatBandReport(v.key, r.bandsReport));
     code = r.exitCode;
   } else {
     let runs = loadSuite(resolve(args.suite));
@@ -166,7 +167,7 @@ try {
       console.log(`--changed：改动 ${files.length} 个文件，命中 ${runs.length} / ${total} 张`);
     }
     const outRoot = home(args.out);
-    const globals = Object.fromEntries(Object.entries(args).filter(([k]) => !["suite", "only", "changed", "out", "workers", "no-cache", "cache"].includes(k)));
+    const globals = Object.fromEntries(Object.entries(args).filter(([k]) => !["suite", "only", "changed", "out", "workers", "no-cache", "cache", "crop"].includes(k)));
     const views = runs.map(({ key, sources, themes, id, ...rest }) => ({ ...rest, ...globals, key, suite: true, out: join(outRoot, key) }));
     if (!views.length) console.log("没有要跑的画面（--only / --changed 没命中）");
     const t0 = Date.now();
@@ -187,6 +188,7 @@ try {
     }
     if (views.length) {
       printSummary(results, { file: join(outRoot, "summary.json") });
+      for (const r of results) if (r.bandsReport?.length) console.log(`\n${formatBandReport(r.key, r.bandsReport)}`);
       console.log(`总耗时 ${((Date.now() - t0) / 1000).toFixed(1)}s；摘要 ${join(outRoot, "summary.json")}`);
     }
     code = Math.max(0, ...results.map((r) => r.exitCode ?? 0));

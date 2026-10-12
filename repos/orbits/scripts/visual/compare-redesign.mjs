@@ -11,6 +11,8 @@
 //                 --out ~/orbit-sprint-evidence/redesign/R07/run-01/home-1440-light --grid 100
 //   带归因：    ... --attribution scripts/visual/attribution-redesign-R07.json --grid-view home-1440-light
 //
+//   省额度（2026-10-12）：每张跑完打印超阈带文字表（带号、y、mismatch、偏移 dx/dy、主色 ΔE、归因）；--crop 只把超阈带裁成小图；
+//               --style-diff 逐元素比计算样式与位置；--extract-board <文件> <画板序号或标题> [--to <文件>] 抽出单个画板的源码。
 //   批量（门禁提速，2026-10-12）：
 //               node scripts/visual/compare-redesign.mjs --suite scripts/visual/views/web-R07.json --only W-R07-01L,W-R07-01H \
 //                 --out ~/orbit-sprint-evidence/redesign/R07/run-03 [--changed [ref]] [--workers 3] [--no-cache]
@@ -19,7 +21,7 @@
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { chromium } from "playwright";
-import { changedFiles, compareImages, crop, designCache, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, pool, printSummary, readPng, readSecret, selectChanged, selectOnly, writePng } from "./redesign-pixel-lib.mjs";
+import { STYLE_PROPS, changedFiles, collectStyles, compareImages, crop, designCache, diffStyles, extractBoardSource, formatBandReport, formatStyleDiff, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, pool, printSummary, readPng, readSecret, selectChanged, selectOnly, writePng } from "./redesign-pixel-lib.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const designBase = args["design-base"] ?? "http://localhost:3320/redesign-2026-10/";
@@ -29,6 +31,13 @@ const REPO_ROOT = resolve(dirname(new URL(import.meta.url).pathname), "../../../
 const DESIGN_DIR = resolve(args["design-dir"] ?? join(REPO_ROOT, "docs/designs/redesign-2026-10"));
 const home = (p) => resolve(String(p).replace(/^~(?=\/)/, process.env.HOME));
 
+// --extract-board <文件> <画板序号或标题>：第二个值是位置参数，parseArgs 不收，这里直接从 argv 取。
+const xb = process.argv.indexOf("--extract-board");
+if (xb !== -1) {
+  args.design = process.argv[xb + 1];
+  const sel = process.argv[xb + 2];
+  if (sel && !sel.startsWith("--")) { if (/^\d+$/.test(sel)) args["board-index"] = sel; else args.board = sel; }
+}
 if (!args.design && !args.suite) {
   console.error("usage error: --design <web.html | b8-responsive.html | 完整 URL> 或 --suite <清单> 必填");
   process.exit(2);
@@ -50,6 +59,16 @@ async function openDesign(v, viewportWidth) {
   return { ctx, page };
 }
 
+if (xb !== -1) {
+  const v = { ...args, width: Number(args.width ?? 1440), theme: args.theme === "dark" ? "dark" : "light", fullPage: false, key: "extract" };
+  const d = await shootDesign(v).catch(async (error) => { console.error(error.message); await exit(error.code ?? 1); });
+  const html = await d.frame.evaluate(extractBoardSource);
+  await d.ctx.close();
+  if (args.to) { writeFileSync(home(args.to), html); console.log(`#${d.board.index} ${d.board.label}（${d.board.kind}）→ ${home(args.to)}（${html.length} 字符）`); }
+  else process.stdout.write(html);
+  await exit(0);
+}
+
 if (args.list) {
   const { page } = await openDesign(args, 1700);
   const boards = await page.evaluate(listBoardsInPage);
@@ -62,9 +81,9 @@ if (args.list) {
 async function shootDesign(v) {
   const { width, theme, fullPage } = v;
   const { ctx, page } = await openDesign(v, Math.max(1700, width + 200));
-  // 画板由 kit.js 渲染；并行加载、机器忙时可能还没画完：找不到目标就每秒重列一次（最多 20 秒）。
+  // 画板由 kit.js 渲染；并行加载、机器忙时可能还没画完：找不到目标就每秒重列一次（最多 45 秒；b12 近 300 块画板，机器忙时加载慢）。
   let target;
-  for (let attempt = 0; attempt < 20 && !target; attempt++) {
+  for (let attempt = 0; attempt < 45 && !target; attempt++) {
     if (attempt) await page.waitForTimeout(1000);
     const boards = await page.evaluate(listBoardsInPage);
     if (v["board-index"] !== undefined) target = boards[Number(v["board-index"])];
@@ -138,6 +157,8 @@ async function shootDesign(v) {
   return { ctx, page, frame, board: target, naturalHeight };
 }
 
+const designStylesOf = (v, d) => d.frame.evaluate((f, [src, o]) => (0, eval)(`(${src})`)(f, o), [collectStyles.toString(), { props: STYLE_PROPS, region: v.regionBox }]);
+
 async function finishDesign(v, d, height) {
   if (v.fullPage) {
     await d.frame.evaluate((f, h) => {
@@ -148,6 +169,8 @@ async function finishDesign(v, d, height) {
     await d.page.waitForTimeout(200);
   }
   const file = join(v.out, "design.png");
+  // --style-diff：在画框定高之后、截图之前取样式（定高前底部对齐的元素位置还不对）。
+  if (v.styleDiff) d.styles = await designStylesOf(v, d);
   await d.frame.screenshot({ path: file, animations: "disabled" });
   await d.ctx.close();
   return readPng(file);
@@ -252,11 +275,13 @@ async function finishApp(v, a, height) {
     await a.page.setViewportSize({ width: v.width, height });
     await a.page.waitForTimeout(Number(v["app-wait"] ?? 800));
   }
+  // 字符串表达式走 CDP Runtime.evaluate，不受页面 CSP 限制。
+  if (v.styleDiff) a.styles = await a.page.evaluate(`(${collectStyles})(document.body, ${JSON.stringify({ props: STYLE_PROPS, region: v.regionBox })})`).catch((e) => { console.warn(`warn: [${v.key}] style-diff 实现侧取样失败：${e.message.split("\n")[0]}`); return null; });
   const file = join(v.out, "app.png");
   await a.page.screenshot({ path: file, animations: "disabled" });
   const finalUrl = a.page.url();
   await a.ctx.close();
-  return { png: readPng(file), finalUrl };
+  return { png: readPng(file), finalUrl, styles: a.styles ?? null };
 }
 
 const VIEWPORT_H = { web: 960, web1024: 880, phone: 844, mweb390: 844 };
@@ -270,17 +295,21 @@ async function runView(v) {
   const hash = local ? designInputsHash(DESIGN_DIR, v.design) : null;
   const cache = hash ? designCache({ v: 1, hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? null, nth: v["board-nth"] ?? null, width: v.width, theme: v.theme, fullPage: v.fullPage, click: many(v["design-click"]), remove: many(v["design-remove"]), unroll: v["design-unroll"] ?? null }) : null;
   const meta = cache?.meta();
-  let d = null, board, designNatural, designPng = null, cached = false;
-  if (meta) ({ board, naturalHeight: designNatural } = meta);
+  let d = null, board, designNatural, designPng = null, cached = false, designStyles = null;
+  v.regionBox = v.region ? String(v.region).split(",").map(Number) : null;
+  // --style-diff 要在设计稿页面里取样式：命中缓存也得开一次设计稿（截图仍可用缓存）。
+  if (meta && !v.styleDiff) ({ board, naturalHeight: designNatural } = meta);
   else { d = await shootDesign(v); board = d.board; designNatural = d.naturalHeight; }
+
   const viewportH = VIEWPORT_H[board.kind] ?? 900;
   const a = await shootApp(v, viewportH);
   const tall = v.fullPage ? Math.max(designNatural, a.naturalHeight, viewportH) : "vp";
   if (!d) designPng = cache.png(tall);
-  if (designPng) { cached = true; writePng(join(v.out, "design.png"), designPng); }
+  if (designPng && !v.styleDiff) { cached = true; writePng(join(v.out, "design.png"), designPng); }
   else {
     d ??= await shootDesign(v);
     designPng = await finishDesign(v, d, tall);
+    designStyles = d.styles ?? null;
     if (cache) { cache.saveMeta({ board, naturalHeight: designNatural }); cache.savePng(tall, join(v.out, "design.png")); }
   }
   if (designPng.width !== v.width) console.warn(`warn: [${v.key}] 画板宽 ${designPng.width} ≠ --width ${v.width}（${board.kind}）；比对只取两者较窄的宽度`);
@@ -302,10 +331,15 @@ async function runView(v) {
     threshold: Number(v["grid-threshold"] ?? 0.02),
     attributionPath: v.attribution,
     viewKey: v.key,
-    meta: { view: v.key, design: v.design, board, app: v.app, finalUrl: app.finalUrl, width: v.width, theme: v.theme, fullPage: v.fullPage, region: v.region ?? null, naturalHeight: { design: designNatural, app: a.naturalHeight }, renderHeight: tall, designCached: cached },
+    meta: { crop: v.crop === true || v.crop === "true", view: v.key, design: v.design, board, app: v.app, finalUrl: app.finalUrl, width: v.width, theme: v.theme, fullPage: v.fullPage, region: v.region ?? null, naturalHeight: { design: designNatural, app: a.naturalHeight }, renderHeight: tall, designCached: cached },
   });
   writeFileSync(join(v.out, "board.json"), `${JSON.stringify(board, null, 2)}\n`);
-  return { ...result, key: v.key, triptych: join(v.out, "triptych.png"), out: v.out, ms: Date.now() - t0 };
+  let styleDiff = null;
+  if (v.styleDiff && designStyles && app.styles) {
+    styleDiff = diffStyles(designStyles, app.styles);
+    writeFileSync(join(v.out, "style-diff.json"), `${JSON.stringify(styleDiff, null, 2)}\n`);
+  }
+  return { ...result, styleDiff, key: v.key, triptych: join(v.out, "triptych.png"), out: v.out, ms: Date.now() - t0 };
 }
 
 // 单张：命令行参数就是这一张的全部参数。批量：清单里每张的参数 + 命令行的全局参数（命令行优先，如 --app-origin / --attribution）。
@@ -315,6 +349,8 @@ function viewFrom(base, extra = {}) {
   v.theme = v.theme === "dark" ? "dark" : "light";
   v.fullPage = !(v["viewport-only"] === "true" || v["viewport-only"] === true || v.viewport === true);
   v.cache = !(args["no-cache"] || args.cache === "false");
+  v.styleDiff = Boolean(args["style-diff"]) || v["style-diff"] === true;
+  v.crop = Boolean(args.crop) || v.crop === true;
   if (v["app-origin"] && v.app?.startsWith("/")) v.app = new URL(v.app, v["app-origin"]).href;
   return v;
 }
@@ -328,6 +364,8 @@ try {
     const r = await runView(v);
     console.log(`raw=${r.raw} design=${r.designSize.join("x")} app=${r.appSize.join("x")}` + (r.band ? ` bands=${r.cells} over=${r.overBands} unattributed=${r.unattributed}` : "") + (r.missing.length ? ` missing=${r.missing.length}` : "") + ` ${r.pass ? "PASS" : "FAIL"}${r.designCached ? " (design cached)" : ""} out=${v.out}`);
     for (const m of r.missing.slice(0, 5)) console.warn(`warn: ⚠ 缺块 x=${m.x} y=${m.y} ${m.w}x${m.h}：设计稿这块有内容、实现是空的（raw 低也要看 triptych）`);
+    if (r.bandsReport) console.log(formatBandReport(v.key, r.bandsReport));
+    if (r.styleDiff) console.log(formatStyleDiff(v.key, r.styleDiff));
     await exit(r.exitCode);
   }
   if (!args.out) { console.error("usage error: --out 必填（每张图写到 <out>/<画面键>/）"); await exit(2); }
@@ -342,7 +380,7 @@ try {
   }
   if (!runs.length) { console.log("没有要跑的画面（--only / --changed 没命中）"); await exit(0); }
   const outRoot = home(args.out);
-  const globals = Object.fromEntries(Object.entries(args).filter(([k]) => !["suite", "only", "changed", "out", "workers", "no-cache", "cache", "summary"].includes(k)));
+  const globals = Object.fromEntries(Object.entries(args).filter(([k]) => !["suite", "only", "changed", "out", "workers", "no-cache", "cache", "summary", "style-diff", "crop"].includes(k)));
   const workers = Number(args.workers ?? 3);
   const t0 = Date.now();
   console.log(`跑 ${runs.length} / ${total} 张，并行 ${workers}`);
@@ -361,6 +399,10 @@ try {
     }
   });
   printSummary(results, { file: join(outRoot, "summary.json") });
+  for (const r of results) {
+    if (r.bandsReport?.length) console.log(`\n${formatBandReport(r.key, r.bandsReport)}`);
+    if (r.styleDiff && (r.styleDiff.rows.length || r.styleDiff.unmatched.length)) console.log(`\n${formatStyleDiff(r.key, r.styleDiff)}`);
+  }
   console.log(`总耗时 ${((Date.now() - t0) / 1000).toFixed(1)}s；摘要 ${join(outRoot, "summary.json")}`);
   await exit(Math.max(0, ...results.map((r) => r.exitCode ?? 0)));
 } catch (error) {

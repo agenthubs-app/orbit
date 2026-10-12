@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { PNG } from "pngjs";
 
-import { loadSuite, matchesAny, missingBlocks, selectChanged, selectOnly } from "../../scripts/visual/redesign-pixel-lib.mjs";
+import { bandReport, diffStyles, loadSuite, matchesAny, missingBlocks, selectChanged, selectOnly } from "../../scripts/visual/redesign-pixel-lib.mjs";
 
 // 门禁提速（2026-10-12）：画面清单展开、--only 前缀、--changed 的 glob、缺块检测。
 function suiteFile() {
@@ -65,4 +65,25 @@ test("a missing block is reported even when the whole picture barely differs; sa
   assert.ok(missing.length >= 1);
   assert.ok(missing[0].x <= 48 && missing[0].x + missing[0].w >= 200, JSON.stringify(missing));
   assert.deepEqual(missingBlocks(png(380, 80, text), png(380, 80, text)), []);
+});
+
+test("the band report says how far a band moved and whether a side is empty", () => {
+  const glyph = (dx: number) => (x: number, y: number) => x >= 40 + dx && x < 90 + dx && y >= 10 && y < 20;
+  const cells = [{ band: 0, y0: 0, y1: 30, mismatch: 0.1 }];
+  const [moved] = bandReport({ design: png(200, 30, glyph(0)), app: png(200, 30, glyph(3)), cells, threshold: 0.02, attribution: { 0: "[data] 名前" } });
+  assert.equal(moved.dx, 3);
+  assert.equal(moved.dy, 0);
+  assert.equal(moved.status, "[data]");
+  const [empty] = bandReport({ design: png(200, 30, glyph(0)), app: png(200, 30), cells, threshold: 0.02 });
+  assert.equal(empty.dx, "缺内容");
+  assert.equal(empty.status, "未归因");
+});
+
+test("style diff pairs elements by key and reports only real differences", () => {
+  const el = (key: string, box: number[], style: Record<string, string>) => ({ key, tag: "a", box, style });
+  const design = [el('"ホーム"', [10, 10, 30, 16], { "font-size": "10.5px", color: "rgb(0, 0, 0)" }), el('"佐"', [10, 900, 40, 40], {})];
+  const app = [el('"ホーム"', [10.6, 13, 30, 16], { "font-size": "10.8px", color: "rgb(0, 0, 0)" })];
+  const diff = diffStyles(design, app);
+  assert.deepEqual(diff.rows.map((r: { prop: string }) => r.prop), ["box.y"], "0.6px position and 0.3px size are within tolerance; 3px is not");
+  assert.deepEqual(diff.unmatched, ['"佐"']);
 });

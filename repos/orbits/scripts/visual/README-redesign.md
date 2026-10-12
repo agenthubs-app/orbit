@@ -87,6 +87,39 @@ node scripts/visual/compare-redesign.mjs --suite scripts/visual/views/web-R07.js
 
 机器很忙时（其他会话在跑全量测试，负载平均值 40–60）：旧脚本 16 张用了 1217s，其中 6 张超时失败；新脚本同样负载下热缓存 124s、无失败（登录验证与登录页等待已放宽，画板未渲染完时会轮询）。证据：`~/orbit-sprint-evidence/redesign/gate-speed/ab2/`（`timing.log` 含每轮开始时的负载）。
 
+## 省额度：先看文字结论，图按需看（2026-10-12，用户决定）
+
+**超阈带文字表**（Web / App 都有，默认开）：每张跑完打印每条超阈值带的带号、y 范围、mismatch、**偏移估计**（实现相对设计，墨迹的行 / 列投影互相关，±12px 内）、**底色与字色**（设计 / 实现的 hex 与 ΔE）、墨迹像素数和归因状态。一侧几乎没有墨迹时偏移标「缺内容」、字色标「无」。同样内容在 `result.json` 的 `bandsReport`。
+```
+W-R07-01H-1024-light：超阈值带 1 条
+  带  y范围      mismatch  dx  dy  底色                    字色 / 图形色            墨迹px(设计/实现)  归因
+  1   30-60      0.0589      0   0  #f4ecf4/#f4ecf4 ΔE0     #1c1c24/#1c1c24 ΔE0      1729/1475          [data]
+```
+读法：dx / dy 非 0 → 位置偏了，先查间距和对齐；ΔE 大 → 颜色 token 用错；墨迹数差很多 → 缺或多了内容（看 ⚠缺块）。三联图、diff 等整图照常写进证据目录，摘要只列目录不列图；**只有文字说不清时才打开图**。
+- `--crop`：把每条超阈带裁成「设计 / 实现 / diff」竖排小图（`<out>/bands/band-<n>.png`），要看图时只看这几张小图。
+
+**`--style-diff`（Web）**：在设计稿画板和实现页上逐元素取计算样式和位置，按配对键比，打印不一致项（元素、属性、设计值、实现值），全表在 `<out>/style-diff.json`。
+- 分两层：**文字层**（键 = 文字内容）比字体、字号、字重、行高、字距、颜色，位置用文字本身的包围盒（与 DOM 结构无关）；**控件层**（键 = 文字 + `⇡`）是文字所在的最近交互元素（a / button / label / li / role=tab…，没有就是元素本身），比位置大小、背景、内边距、间距、边框、圆角、阴影。
+- 没有文字的元素用 `aria-label` 或 `data-design-id` 当键；纯容器（卡片外框等）要比就在设计稿和实现上加同名 `data-design-id`。
+- 容差：位置 1px、数值 0.5px。设计稿里有、实现里配不上的键单列（多半是数据文字不同）。
+- 配合 `--region` 只比这一块里的元素；配合 `--suite … --only <画面>` 用。开了 `--style-diff` 会打开设计稿页面取样式（截图仍可用缓存）。
+```
+node scripts/visual/compare-redesign.mjs --suite scripts/visual/views/web-R07.json --only W-R07-01H-1024-light --style-diff --out <dir>
+W-R07-01H-1024-light：样式比对 配对 8 / 设计侧 9 个有键元素，不一致 7 项；实现里没找到 1 个："3"
+  "編集" <button/span>                               line-height        设计 19.5px     实现 20.15px
+  "次の一手" ⇡ <button/button>                         box.w              设计 130        实现 106
+```
+（R07 验证时它查出了像素门禁没报的两处真差异：左栏 logo 与标题区按钮文字的行高 1.55 ≠ kit 1.5。）
+
+**`--extract-board <文件> <画板序号或标题> [--to <文件>]`**：只抽出单个画板的源码——画框的 `outerHTML` + 命中画框内元素的 CSS 规则（含 `:root` / `[data-theme]` 的 token 变量；`@media` 与按分组写的嵌套规则保留外层）。照它搬 DOM 和 CSS，不读整个设计稿文件。
+```
+node scripts/visual/compare-redesign.mjs --extract-board b12-missing-states.html 88 --to /tmp/n07b.html
+node scripts/visual/compare-redesign.mjs --extract-board web.html "ホーム新用户空状态"      # 不带 --to 直接打印
+```
+标题按包含匹配（同 `--board`）；序号见 `--list`。设计稿是普通 HTML + `kit/`，这里用浏览器渲染后抽取，所以 `dist/` 里自解压的合并版同样适用。
+
+**App**：文字表与 `--crop` 同 Web；不做样式比对（模拟器里没有 DOM）。
+
 ## Web：`compare-redesign.mjs`
 
 ```bash

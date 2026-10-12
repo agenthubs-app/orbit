@@ -32,6 +32,23 @@
         "docs/designs"
       ],
       "port": 3320
+    },
+    {
+      "name": "orbits-gate",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "repos/orbits",
+        "--",
+        "--port",
+        "3005"
+      ],
+      "port": 3005,
+      "env": {
+        "ORBIT_NEXT_DIST_DIR": ".next-gate"
+      }
     }
   ]
 }

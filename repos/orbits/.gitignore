@@ -1,6 +1,7 @@
 node_modules
 .next
 .next-verify
+.next-gate
 dist
 build
 npm-debug.log*
