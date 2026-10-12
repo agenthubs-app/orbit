@@ -114,7 +114,7 @@ C 组的局部视图（01M / 02M / 07M / 09M / 10M）改成只比第一屏（vie
 1. **通过画面上的缺块**：W-R23-10（4）、W-R23-19（3）、N17b（5）。C 组的汇总脚本不显示 ⚠ 列，要用 `summary.json` 查。按主会话规定，先用 fixture 补数据让块出现，补了仍缺就修实现。
 2. **C 组超阈值带的归因核对**：C 组通过画面里超过 0.02 的带（03 b5、05 b2/b3、06a b1/b4/b5、08 b3、09M b2/b4），要确认归因文件都有对应 `[data]` 条目。C 组汇总脚本没显示归因状态。
 3. **A 组重比**：design-decisions 发出 #17 口径的序号后，单独重比 W-R24-02（1440 / 1024 / 390）、04c、06、08（13 若有视图也一起）。
-4. **两端全量测试**：已在后台跑，结果写进 §7。
+4. **两端全量测试**：修复后再跑一次两端全量，对照基线零新增（见 §7）。
 5. **独立复核**：只起 1 个子任务，写 `REWORK-REVIEW-web.md`。要求重跑未过和有改动的画面，另抽查 ≥20%，并看 triptych。
 6. **工作区收尾**：`repos/orbits/tsconfig.json` / `next-env.d.ts` 里的独立 distDir 改动不要提交，mock 服务器停掉后还原。
 7. **C 组造状态的脚本收进仓库**：`setup.py` / `all.sh` / `suite.sh` 现在在会话 scratchpad，见交接表 R25-05。
@@ -142,7 +142,7 @@ C 组的局部视图（01M / 02M / 07M / 09M / 10M）改成只比第一屏（vie
   | C 补数据 | `tests/plans` + review 180 / 180 |
 
 - **类型检查**：0 新错误。只有 `tests/scripts/redesign-pixel-lib.test.ts` 有 2 处既有错误，属于门禁工具自己的测试。
-- **两端全量**：待补（后台在跑）。
+- **两端全量**（23:10，修复前）：App 3967 条 0 失败；orbits 7569 条 8 失败。计划页相关 6 条（写死的「・」、ja 纯英文「CVC」、两条控件行为证据 / manifest）已在 a8f772cf 修好，相关 6 个测试文件 218 / 218。剩 2 条不归本返工：`tests/scripts/redesign-pixel-lib.test.ts` 的 2 个类型错误（门禁工具自己的测试）与「saved cloud facts drain」。修复后全量未重跑，接手会话收口时再跑一次两端全量对照基线。
 - **impact 中 HIGH / CRITICAL 的项**：
   - `service-factory`：CRITICAL，只加了 mock 分支。
   - `createMockPlanFlowAi`：CRITICAL，只新增一个由示例词触发的分支。
