@@ -15,6 +15,7 @@ import type {
   PlanPersonTypeDetail,
   PlanRecentAward,
   PlanStepProgress,
+  PlanStepProgressPart,
   PlanStepSuggestion,
   PlanTalkedView,
   PlanTodayChance,
@@ -152,7 +153,7 @@ export function eventsFor(input: OverviewInput, type: PlanV2TypeItem | null): Pl
     .filter((event) => !type || (event.facts.expected[type.personType.key] ?? 0) > 0)
     .map((event) => {
       const result = scoreEvent({ facts: event.facts, types });
-      return { eventId: event.eventId, expectedCount: type ? event.facts.expected[type.personType.key] ?? null : null, score: eventScoreView(result, event, input.language), startsAt: event.startsAt, title: event.title, venue: event.venue };
+      return { eventId: event.eventId, expectedCount: type ? event.facts.expected[type.personType.key] ?? null : null, fee: event.facts.fee ?? null, score: eventScoreView(result, event, input.language), startsAt: event.startsAt, title: event.title, venue: event.venue };
     })
     .sort((a, b) => b.score.total - a.score.total || a.startsAt.localeCompare(b.startsAt));
 }
@@ -172,20 +173,20 @@ function attendedEvents(input: Pick<OverviewInput, "awards">): number {
 
 export function stepProgress(input: OverviewInput): PlanStepProgress[] {
   return input.plan.steps.map((step) => {
-    let done = 0;
-    let total = 0;
+    const parts: PlanStepProgressPart[] = [];
     for (const key of step.personTypeKeys) {
       if (key === PLAN_EVENT_SEGMENT_KEY) {
-        total += input.plan.eventTargetCount;
-        done += Math.min(input.plan.eventTargetCount, attendedEvents(input));
+        parts.push({ done: Math.min(input.plan.eventTargetCount, attendedEvents(input)), emoji: "🎟️", key, shortLabel: tri(input.language, { en: "Events", ja: "イベント", zh: "活动" }), skipped: false, total: input.plan.eventTargetCount, unit: "events" });
         continue;
       }
       const type = input.types.find((item) => item.personType.key === key);
       if (!type) continue;
-      total += type.targetCount;
-      done += type.skippedAt ? type.targetCount : Math.min(type.targetCount, metCount(input.awards, key));
+      const skipped = Boolean(type.skippedAt);
+      parts.push({ done: skipped ? type.targetCount : Math.min(type.targetCount, metCount(input.awards, key)), emoji: type.personType.emoji, key, shortLabel: type.shortLabel, skipped, total: type.targetCount, unit: "people" });
     }
-    return { done, label: `${done} / ${total}`, stepKey: step.key, total };
+    const done = parts.reduce((sum, part) => sum + part.done, 0);
+    const total = parts.reduce((sum, part) => sum + part.total, 0);
+    return { done, label: `${done} / ${total}`, parts, stepKey: step.key, total };
   });
 }
 
@@ -303,7 +304,9 @@ export function pendingItems(input: OverviewInput, now: string): PlanPendingItem
     id: `candidate:${candidate.candidateId}`,
     itemId: type.id,
     kind: "candidate" as const,
+    organization: candidate.company ?? null,
     planId: input.plan.id,
+    role: candidate.role ?? null,
     title: type.shortLabel,
   })));
   return [...memo, ...steps, ...candidates];

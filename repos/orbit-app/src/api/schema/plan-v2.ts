@@ -184,7 +184,14 @@ export const planV2DetailObject = z.object({
   // R24：概要的可选字段（读不懂的整条跳过）。
   todayChance: z.object({ label: z.string().min(1), points: count, href: z.string().min(1) }).nullable().optional().catch(null),
   typeStats: readableItems(z.object({ itemId: z.string().min(1), candidates: count, events: count, introRoutes: count })).optional(),
-  stepProgress: readableItems(z.object({ stepKey: z.string().min(1), label: z.string(), done: count, total: count })).optional(),
+  stepProgress: readableItems(z.object({
+    stepKey: z.string().min(1),
+    label: z.string(),
+    done: count,
+    total: count,
+    // 宽进：读不懂的拆分整组忽略（界面退回 label）。
+    parts: z.array(z.object({ key: z.string().min(1), shortLabel: z.string(), emoji: z.string(), unit: z.enum(["people", "events"]), done: count, total: count, skipped: z.boolean() })).optional().catch(undefined),
+  })).optional(),
   stepSuggestions: readableItems(z.object({ stepKey: z.string().min(1), question: z.string(), evidenceIds: z.array(z.string()) })).optional(),
   recentAwards: readableItems(z.object({
     awardLogId: z.string().min(1),
@@ -485,6 +492,8 @@ const pendingItem = z.object({
   manual: z.boolean().optional(),
   href: z.string().optional(),
   points: z.number().int().min(0).optional(),
+  organization: z.string().nullable().optional().catch(null),
+  role: z.string().nullable().optional().catch(null),
   createdAt: z.string(),
 });
 
@@ -561,6 +570,7 @@ export const planPersonTypeDetailObject = z.object({
     startsAt: z.string(),
     venue: z.string().nullable(),
     expectedCount: count.nullable(),
+    fee: count.nullable().optional().catch(null),
     score: eventScore,
   })),
   tasks: readableItems(z.object({ taskId: z.string().min(1), title: z.string(), dueDate: z.string().nullable() })),

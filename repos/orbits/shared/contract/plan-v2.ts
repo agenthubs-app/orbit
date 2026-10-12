@@ -582,6 +582,21 @@ export interface PlanStepProgress {
   label: string;
   done: number;
   total: number;
+  /**
+   * 按关联类型拆开的进度（计划页像素返工：Step 卡 chip「VC 2 / 3人」「イベント 1 / 2」）；顺序同 Step 的 `personTypeKeys`。
+   * `unit`：people = 人物类型（人数），events = イベント枠（参加场数）。
+   */
+  parts?: readonly PlanStepProgressPart[];
+}
+
+export interface PlanStepProgressPart {
+  key: string;
+  shortLabel: string;
+  emoji: string;
+  unit: "people" | "events";
+  done: number;
+  total: number;
+  skipped: boolean;
 }
 
 export interface PlanStepSuggestion {
@@ -623,6 +638,9 @@ export interface PlanPendingItem {
   href?: string;
   /** memo 卡：确认后会得的分（服务端用 `nextAward` 算；这个人已计过、类型已跳过为 0）。 */
   points?: number;
+  /** 候补卡第二行（计划页像素返工，b12 W-R24-04 candCard）：联系人的公司与职位，没有为 null。 */
+  organization?: string | null;
+  role?: string | null;
   createdAt: string;
 }
 
@@ -685,6 +703,8 @@ export interface PlanEventOption {
   venue: string | null;
   /** 这类人预计到场人数（事实；没有为 null）。 */
   expectedCount: number | null;
+  /** 参加費（円；事实，没有为 null；计划页像素返工：会える活動表的参加費列）。 */
+  fee?: number | null;
   score: PlanEventScore;
 }
 

@@ -10904,6 +10904,51 @@
           "optional": false,
           "kind": "text",
           "type": "number"
+        },
+        "parts": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanStepProgressPart[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanStepProgressPart": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "shortLabel": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "unit": {
+          "optional": false,
+          "kind": "text",
+          "type": "'events' | 'people'"
+        },
+        "done": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -11047,6 +11092,16 @@
           "optional": true,
           "kind": "text",
           "type": "number"
+        },
+        "organization": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         },
         "createdAt": {
           "optional": false,
@@ -11255,6 +11310,11 @@
         },
         "expectedCount": {
           "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "fee": {
+          "optional": true,
           "kind": "text",
           "type": "number | null"
         },

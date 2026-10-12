@@ -142,3 +142,29 @@ test("step suggestions appear only when every linked type is met, and need confi
   await service.decidePending({ decision: "accept", id: `step:${PLAN}:demo-step-1`, idempotencyKey: "s2" });
   assert.ok((await service.overview(PLAN))!.content.steps.find((step) => step.key === "demo-step-1")!.completedAt);
 });
+
+// 计划页像素返工（主会话 2026-10-12 同意，只加可选字段）：Step 进度按类型拆开、候补待确认带公司 · 职位、会える活動带参加費。
+test("step progress is split per linked type; candidate pending items carry company and role; event options carry the fee", async () => {
+  const { service } = world();
+  const overview = planV2DetailSchema.parse(await service.overview(PLAN, { language: "ja", platform: "web" }));
+  const steps = overview.stepProgress ?? [];
+  assert.ok(steps.length > 0);
+  for (const step of steps) {
+    const parts = step.parts ?? [];
+    assert.equal(parts.reduce((sum, part) => sum + part.done, 0), step.done, "parts add up to the step");
+    assert.equal(parts.reduce((sum, part) => sum + part.total, 0), step.total);
+    for (const part of parts) assert.ok(part.unit === "people" || part.unit === "events");
+  }
+  assert.ok(steps.some((step) => (step.parts ?? []).some((part) => part.unit === "people" && part.shortLabel.length > 0)));
+
+  const pending = await service.pending({ language: "ja", platform: "web" });
+  const candidate = pending.find((item) => item.kind === "candidate");
+  if (candidate) {
+    assert.ok("organization" in candidate && "role" in candidate, "candidate cards carry the second line");
+  }
+
+  const vc = await itemId(service, "vc_partner");
+  const detail = planPersonTypeDetailSchema.parse(await service.typeDetail(PLAN, vc, { language: "ja", platform: "web" }));
+  for (const option of detail.events) assert.ok(option.fee === null || typeof option.fee === "number");
+  assert.ok(detail.events.some((option) => typeof option.fee === "number"), "demo facts have fees");
+});
