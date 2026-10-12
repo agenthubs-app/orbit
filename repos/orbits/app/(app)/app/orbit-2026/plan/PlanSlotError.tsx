@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { planFlowCopy } from "../copy/plan";
+import { planFlowCopy, planOverviewCopy } from "../copy/plan";
 import { Orbit2026Scope, RetryCard } from "../ui";
 import { translator } from "./PlanParts";
 import styles from "./plan.module.css";
@@ -21,7 +21,7 @@ export function PlanSlotError() {
   return (
     <Orbit2026Scope language={language} className={styles.slot}>
       <div data-plan-slot-error="">
-        <RetryCard title={t(planFlowCopy.slotLoadFailed)} retrying={retrying} onRetry={() => { setRetrying(true); router.refresh(); window.setTimeout(() => setRetrying(false), 1500); }} />
+        <RetryCard title={t(planFlowCopy.slotLoadFailed)} message={t(planOverviewCopy.slotErrorBody)} retrying={retrying} onRetry={() => { setRetrying(true); router.refresh(); window.setTimeout(() => setRetrying(false), 1500); }} />
       </div>
     </Orbit2026Scope>
   );

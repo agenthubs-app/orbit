@@ -180,3 +180,10 @@ export function slotIso(slot: { date: string; time: string }): string | null {
 export function mailtoHref(draft: { subject: string; body: string }): string {
   return `mailto:?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`;
 }
+
+/** Macaron tone of a person type's tile and chip, by its place in the plan (web.html PER.c order: teal · apricot · pink · lav · blue). */
+const TYPE_TONES = ["teal", "apricot", "pink", "lav", "blue"] as const;
+export type TypeTone = (typeof TYPE_TONES)[number];
+export function typeTone(index: number): TypeTone {
+  return TYPE_TONES[((index % TYPE_TONES.length) + TYPE_TONES.length) % TYPE_TONES.length]!;
+}

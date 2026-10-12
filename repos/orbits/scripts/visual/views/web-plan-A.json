@@ -1,0 +1,241 @@
+{
+ "_note": "计划页像素返工子任务 A（概要 + 人物类型详情）。mock 服务器 :3201（ORBIT_REDESIGN_MOCK=plan-v2-summary）。键 = <id>-<width>-<theme>，与 attribution-redesign-R23-25-A.json 一致。 每张画面的 `fixture` = 先用 features/plans/v2/design-fixtures/switch.mjs 切到的设计稿示例数据（scratchpad 的 run-a.sh 按它分组跑）。",
+ "defaults": {
+  "app-origin": "http://localhost:3201",
+  "login": "qa@orbit.test",
+  "grid": 100,
+  "attribution": "scripts/visual/attribution-redesign-R23-25-A.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/overview*",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanType*",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/TypeDetail*",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/plan.ts",
+  "repos/orbits/app/(app)/app/orbit-2026/shell/**",
+  "repos/orbits/app/(app)/app/orbit-2026/ui/**"
+ ],
+ "views": [
+  {
+   "id": "W-R24-02",
+   "app": "/app/tasks?tab=plan",
+   "design": "web.html",
+   "board-index": 17,
+   "width": 1440,
+   "note": "概要大量（mock 有 確認待ち 4 件，设计稿此板无）",
+   "wait-for": "[data-plan-overview]",
+   "fixture": "w17-overview-many"
+  },
+  {
+   "id": "W-R24-02",
+   "app": "/app/tasks?tab=plan",
+   "design": "b8-responsive.html",
+   "board-index": 6,
+   "width": 1024,
+   "wait-for": "[data-plan-overview]",
+   "note": "",
+   "fixture": "b8-overview-many"
+  },
+  {
+   "id": "W-R24-02",
+   "app": "/app/tasks?tab=plan",
+   "design": "b8-responsive.html",
+   "board-index": 7,
+   "width": 390,
+   "wait-for": "[data-plan-overview]",
+   "note": "",
+   "fixture": "b8-overview-many"
+  },
+  {
+   "id": "W-R24-01",
+   "app": "/app/tasks?tab=plan",
+   "design": "web.html",
+   "board-index": 16,
+   "width": 1440,
+   "note": "概要少量（0 分新计划）；mock 是进行中的计划，状态不同",
+   "wait-for": "[data-plan-overview]",
+   "fixture": "w16-overview-few"
+  },
+  {
+   "id": "W-R24-04a",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "note": "確認待ち（memo 提议 + 候补）；mock 为 Step 完了提议 + 候补 3",
+   "wait-for": "[data-plan-overview]",
+   "fixture": "b12-208-pending",
+   "board": "W-R24-04a 確認待ち",
+   "board-kind": "web"
+  },
+  {
+   "id": "W-R24-04c",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "board": "W-R24-04c 確認待ち",
+   "board-kind": "web",
+   "width": 1440,
+   "wait-for": "[data-plan-overview]",
+   "fixture": "w17-overview-many",
+   "note": "5d30ac68 改画：Step 完成卡在左列 Step 3 行内；確認待ち只放候补 1 条（s46）"
+  },
+  {
+   "id": "W-R24-03",
+   "app": "/app/tasks?tab=plan",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "click": "[data-plan-action=premise]",
+   "note": "前提を見る（D49 只读）",
+   "wait-for": "[data-plan-overview]",
+   "fixture": "b12-206-premise",
+   "board": "W-R24-03 前提を見る",
+   "board-kind": "web"
+  },
+  {
+   "id": "W-R24-05",
+   "app": "/app/plans/demo-plan-series-a/types/demo-plan-item-vc_partner",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 11,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "tr[data-candidate]"
+    },
+    {
+     "click": "tr[data-candidate]:nth-child(1) button[role=checkbox]"
+    },
+    {
+     "click": "tr[data-candidate]:nth-child(2) button[role=checkbox]"
+    },
+    {
+     "wait": 400
+    }
+   ],
+   "wait-for": "[data-plan-type]",
+   "note": "",
+   "fixture": "b4-11-type-vc"
+  },
+  {
+   "id": "W-R24-12",
+   "app": "/app/plans/demo-plan-series-a/types/demo-plan-item-vc_partner",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 12,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "tr[data-candidate]"
+    },
+    {
+     "click": "tr[data-candidate]:nth-child(1) button[role=checkbox]"
+    },
+    {
+     "click": "tr[data-candidate]:nth-child(2) button[role=checkbox]"
+    },
+    {
+     "click": "[data-plan-propose]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "wait-for": "[data-plan-type]",
+   "note": "",
+   "fixture": "b4-11-type-vc"
+  },
+  {
+   "id": "W-R24-06",
+   "app": "/app/plans/demo-plan-series-a/types/demo-plan-item-cvc",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 13,
+   "width": 1440,
+   "note": "人脈にいない（mock 里 調達経験のある起業家 无候补）",
+   "wait-for": "[data-plan-type]",
+   "fixture": "b4-13-type-cvc"
+  },
+  {
+   "id": "W-R24-07",
+   "app": "/app/plans/demo-plan-series-a/types/demo-plan-item-lawyer",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "wait-for": "[data-plan-type]",
+   "note": "",
+   "fixture": "b12-222-law-skipped",
+   "board": "W-R24-07 人物タイプ詳細",
+   "board-kind": "web"
+  },
+  {
+   "id": "W-R24-11",
+   "app": "/app/plans/demo-plan-series-a/types/demo-plan-item-lawyer",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-skip]"
+    },
+    {
+     "wait": 600
+    }
+   ],
+   "wait-for": "[data-plan-type]",
+   "note": "",
+   "fixture": "b12-244-law",
+   "board": "W-R24-11 スキップ確認",
+   "board-kind": "web"
+  },
+  {
+   "id": "W-R24-09b",
+   "app": "/app/plans/demo-plan-series-a/types/demo-plan-item-vc_partner",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "click": "[data-plan-record-offline]"
+    },
+    {
+     "waitFor": "[role=dialog] input"
+    },
+    {
+     "fill": [
+      "[role=dialog] input",
+      "森 恭平"
+     ]
+    },
+    {
+     "click": "[role=dialog] button:has-text(\"記録する\")"
+    },
+    {
+     "waitFor": "[data-plan-matches]"
+    },
+    {
+     "wait": 600
+    }
+   ],
+   "wait-for": "[data-plan-type]",
+   "note": "",
+   "fixture": "b4-11-type-vc",
+   "board": "W-R24-09b 記録",
+   "board-kind": "web"
+  },
+  {
+   "id": "W-R24-08",
+   "app": "/app/plans/demo-plan-series-a/types/demo-plan-item-cvc",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "wait-for": "[data-plan-type]",
+   "fixture": "b4-13-type-cvc",
+   "steps": [
+    {
+     "waitFor": "[data-plan-event-option] button[aria-expanded]"
+    },
+    {
+     "click": "[data-plan-event-option] button[aria-expanded]"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "人脈にいない + 会える活動 内訳展开（typeRail，与拍板一致）",
+   "board": "W-R24-08 会える活動",
+   "board-kind": "web"
+  }
+ ]
+}

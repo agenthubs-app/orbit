@@ -148,7 +148,7 @@ test("overview: the demo plan's score is the summary's; fields, segments, chance
   await page.locator('[data-type-card="lawyer"]').getByText("習熟済み · スキップ（満額）").waitFor();
   await page.locator('[data-type-card="funded_founder"] [data-cell="candidates"]').getByText("人脈にいない").waitFor();
   assert.equal(await page.locator('[data-type-card="vc_partner"]').getAttribute("href"), `/app/plans/${PLAN}/types/${VC}`);
-  await page.locator("[data-plan-event]").getByText("1 / 2回 · 1回 5点").waitFor();
+  await page.locator("[data-plan-event]").getByText("参加 1回 +5 · 2回まで満額、以降は半分 · 1 / 2回").waitFor();
   await page.locator("[data-plan-footnote]").getByText("Orbit は目標の達成を保証しません。", { exact: false }).waitFor();
   // 前提を見る: read-only rows; 「見直しで変える」 opens the R25 見直し entry (reads only).
   await page.getByRole("button", { name: "前提を見る" }).click();
@@ -171,11 +171,12 @@ test("segment bar: solid earned, striped skip, red-bean overflow after the scale
   const kinds = await page.locator("[data-plan-bar] [data-seg-kind]").evaluateAll((nodes) => nodes.map((node) => `${node.closest("[data-seg]")!.getAttribute("data-seg")}:${node.getAttribute("data-seg-kind")}`));
   assert.ok(kinds.includes("cfo:earned"), kinds.join());
   assert.ok(kinds.includes("lawyer:skipped"));
-  assert.ok(kinds.includes("overflow-cfo:overflow"), "overflow drawn after the scale");
-  assert.ok(kinds.includes("vc_partner:earned") && kinds.includes("vc_partner:rest"));
+  // web.html V2.sbar: one rose segment for all the half points, after the 満点 100 mark; the grey rest is the segment's own track.
+  assert.ok(kinds.includes("overflow:overflow"), "overflow drawn after the scale");
+  assert.ok(kinds.includes("vc_partner:earned"));
   assert.equal(await page.locator('[data-seg="event"]').evaluate((node) => node.tagName), "SPAN", "no event type page");
   assert.equal(await page.locator('[data-seg="cvc"]').evaluate((node) => node.tagName), "A");
-  await page.getByText("目標超えの分（半分）").waitFor();
+  await page.locator("[data-plan-bar]").getByText("満点 100").waitFor();
 });
 
 test("reduced motion: the score shows its value at once and the bar does not grow; without it the number counts up", async (t) => {
@@ -222,7 +223,7 @@ test("1024: score across, step-grouped type rows on the left; today's chance, re
   await page.locator('[data-tier="medium"]').waitFor();
   const recent = page.locator("[data-plan-recent]");
   await recent.getByText("最近の加点").waitFor();
-  assert.equal(await recent.locator("li").count(), base.detail.recentAwards!.length);
+  assert.equal(await recent.locator("[data-plan-recent-row]").count(), base.detail.recentAwards!.length);
   await recent.getByText("山本 彩", { exact: false }).waitFor();
   assert.equal(await page.locator("[data-type-row]").count(), base.detail.content.personTypes.length);
   await page.locator("[data-plan-event]").waitFor();
@@ -283,8 +284,9 @@ test("type detail: candidates / not in network / skipped are three different pag
   await vc.locator('[data-plan-type][data-state="candidates"]').waitFor();
   await vc.locator("[data-plan-candidates]").getByText("岡田 紗希").waitFor();
   await vc.getByText("あなたの人脈の候補").waitFor();
-  await vc.getByText("1人 10点", { exact: false }).first().waitFor();
-  await vc.locator("[data-plan-overflow-note]").getByText("4人目からは半分（+5）ずつ、上限なし").waitFor();
+  // b4 head card: 「/ 30点 · n / 3人」; the half-point rule is in 話せたの判定.
+  await vc.locator("[data-plan-type-head]").getByText(`/ 30点 · ${base.types[VC]!.metCount} / 3人`).waitFor();
+  await vc.locator("[data-plan-count]").getByText("3人目を超えた分は半分ずつ", { exact: false }).waitFor();
 
   const none = clone(base.types[FOUNDER]!);
   none.persona = "30〜40代。技術系スタートアップでシリーズ A を経験した創業者";
@@ -292,10 +294,11 @@ test("type detail: candidates / not in network / skipped are three different pag
   none.introRoutes = [{ viaContactId: "demo-person-ito", viaName: "伊藤 直子", why: "起業家コミュニティで創業者と面識がある" }];
   const founder = await screen(t, { handlers: [typeRead(none), detailRead(base.detail)], itemId: FOUNDER, planId: PLAN, view: "type" });
   await founder.locator('[data-plan-type][data-state="none"]').waitFor();
-  await founder.locator('[data-plan-banner="none"]').getByText("人脈にまだいません").waitFor();
+  // b4 「② 人脈にいない · Web」: no banner — the head cell says 人脈にいない and the subtitle 人脈にまだいません.
+  await founder.locator('[data-plan-type-head] [data-cell="candidates"]').getByText("人脈にいない").waitFor();
   await founder.locator("[data-plan-persona]").getByText(none.persona).waitFor();
   await founder.locator("[data-plan-opener]").getByText(none.opener).waitFor();
-  await founder.locator('[data-plan-route="demo-person-ito"]').getByText("伊藤 直子さん経由").waitFor();
+  await founder.locator('[data-plan-route="demo-person-ito"]').getByText("伊藤 直子").waitFor();
   assert.equal(await founder.locator("[data-plan-events] [data-plan-event-option]").count(), none.events.length);
 
   const lawyer = await screen(t, { handlers: [typeRead(base.types[LAWYER]!), detailRead(base.detail)], itemId: LAWYER, planId: PLAN, view: "type" });
@@ -307,19 +310,22 @@ test("type detail: candidates / not in network / skipped are three different pag
 });
 
 test("events: the score ring is toned by threshold and 内訳 opens the five items with facts and 推定", async (t) => {
-  const type = clone(base.types[VC]!);
+  // b4 / b12 W-R24-08: the 会える活動 table is on the 「人脈にいない」 page (with candidates the events sit in the rail).
+  const type = clone(base.types[FOUNDER]!);
+  type.events = clone(base.types[VC]!.events);
   (type.events[0]!.score.scoreBreakdown[1] as { estimated: boolean }).estimated = true;
-  const page = await screen(t, { handlers: [typeRead(type), detailRead(base.detail)], itemId: VC, planId: PLAN, view: "type" });
+  const page = await screen(t, { handlers: [typeRead(type), detailRead(base.detail)], itemId: FOUNDER, planId: PLAN, view: "type" });
   const row = page.locator(`[data-plan-event-option="${type.events[0]!.eventId}"]`);
   await row.waitFor();
   assert.equal(await row.locator("[data-ring]").getAttribute("data-ring"), "mid", "57 → mid plum");
-  assert.equal(await row.locator("[data-plan-breakdown]").count(), 0);
+  assert.equal(await page.locator("[data-plan-breakdown]").count(), 0);
   await row.getByRole("button", { name: "内訳" }).click();
-  const items = row.locator("[data-criterion]");
+  const breakdown = page.locator(`[data-plan-breakdown="${type.events[0]!.eventId}"]`);
+  const items = breakdown.locator("[data-criterion]");
   assert.equal(await items.count(), 5);
-  await row.locator('[data-criterion="fit"]').getByText(`${type.events[0]!.score.scoreBreakdown[0]!.score} / 45`).waitFor();
-  await row.locator('[data-criterion="confidence"][data-estimated]').getByText("推定").waitFor();
-  await row.getByText(type.events[0]!.score.scoreBreakdown[0]!.facts[0]!, { exact: false }).waitFor();
+  await breakdown.locator('[data-criterion="fit"]').getByText(`${type.events[0]!.score.scoreBreakdown[0]!.score} / 45`).waitFor();
+  assert.equal(await breakdown.locator('[data-criterion="confidence"][data-estimated]').count(), 1, "推定 is marked on the item");
+  await breakdown.getByText(type.events[0]!.score.scoreBreakdown[0]!.facts[0]!, { exact: false }).waitFor();
   assert.deepEqual(await writes(page), []);
 });
 
@@ -383,11 +389,16 @@ test("offline with a name: 「この人ですか？」 first; picking one record
   await dialog.getByLabel("相手の名前（任意）").fill("渡辺");
   await dialog.getByRole("button", { name: "記録する" }).click();
   await dialog.getByText("この人ですか？").waitFor();
-  await dialog.getByRole("button", { name: "新しく登録" }).waitFor();
-  await dialog.getByRole("button", { name: /渡辺 翔/u }).click();
+  await dialog.getByRole("radio", { name: /新しく登録/u }).waitFor();
+  // b12 W-R24-09b: the matches are radio cards (first one picked), 記録する records it; 昨日 sends `at`.
+  assert.equal(await dialog.getByRole("radio", { name: /渡辺 翔/u }).getAttribute("aria-checked"), "true");
+  await dialog.locator('[data-plan-when="yesterday"]').click();
+  await dialog.getByRole("button", { name: "記録する" }).click();
   await page.getByRole("status").filter({ hasText: "+5点" }).waitFor();
   const posts = (await fetches(page)).filter((item) => item.method === "POST").map((item) => ({ ...item.body, idempotencyKey: undefined }));
-  assert.deepEqual(posts, [{ idempotencyKey: undefined, name: "渡辺" }, { contactId: "demo-person-watanabe", idempotencyKey: undefined }]);
+  assert.equal(typeof posts[1]!.at, "string", "昨日 → at");
+  assert.ok(Date.now() - Date.parse(posts[1]!.at) > 20 * 3_600_000, "about a day ago");
+  assert.deepEqual(posts.map((item) => ({ ...item, at: undefined })), [{ at: undefined, idempotencyKey: undefined, name: "渡辺" }, { at: undefined, contactId: "demo-person-watanabe", idempotencyKey: undefined }]);
 });
 
 test("skip: the confirmation focuses the primary button; skipping records full points with 元に戻す (DELETE skip)", async (t) => {
@@ -410,7 +421,8 @@ test("skip: the confirmation focuses the primary button; skipping records full p
   assert.deepEqual(await writes(page), [`POST /v2/${PLAN}/types/${VC}/skip`, `DELETE /v2/${PLAN}/types/${VC}/skip`]);
 });
 
-test("candidates: ✓ only links (one decision request), multi-select shows the bar and records each person", async (t) => {
+test("candidates: sorted by 推薦度, Orbit chip; selecting shows 「n人を選択中」 and すでに話した records each person", async (t) => {
+  // User decision 2026-10-12 (照 b4): no per-row ✓ / ✕ — tick the people, then the header's すでに話した.
   const type = clone(base.types[VC]!);
   type.candidates = [
     { ...type.candidates[0]!, recommendScore: 65 },
@@ -418,22 +430,19 @@ test("candidates: ✓ only links (one decision request), multi-select shows the 
   ];
   const page = await screen(t, { handlers: [
     typeRead(type), detailRead(base.detail),
-    { method: "POST", replies: [ok({ candidateId: "c-2", replayed: false, status: "accepted" })], url: "/decision$" },
     { method: "POST", replies: [ok(award(10, "base", { awardLogId: "l1" }), 201), ok(award(10, "base", { awardLogId: "l2" }), 201)], url: `/types/${VC}/awards$` },
   ], itemId: VC, planId: PLAN, view: "type" });
   const rows = page.locator("[data-candidate]");
   await rows.first().waitFor();
   assert.deepEqual(await rows.evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-candidate"))), ["p-2", "demo-person-okada"], "by 推薦度, highest first");
-  await page.locator('[data-candidate="p-2"]').getByText("Orbit 利用中").waitFor();
-  await page.locator('[data-candidate="p-2"]').getByRole("button", { name: "プランの候補にする" }).click();
-  await page.getByText("候補にしました").waitFor();
-  assert.deepEqual(await writes(page), [`POST /v2/${PLAN}/types/${VC}/candidates/p-2/decision`]);
-  assert.equal((await fetches(page)).find((item) => item.url.endsWith("/decision"))!.body.decision, "accept");
+  await page.locator('[data-candidate="p-2"]').getByText("Orbit", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "プランの候補にする" }).count(), 0, "no per-row ✓ (b4)");
+  assert.equal(await page.locator("[data-plan-select-bar]").count(), 0, "the bar shows only with a selection");
   await page.getByRole("checkbox", { name: "山口 大樹さんを選ぶ" }).click();
   await page.getByRole("checkbox", { name: "岡田 紗希さんを選ぶ" }).click();
   const bar = page.locator("[data-plan-select-bar]");
-  await bar.getByText("2人を選択中").waitFor();
-  await bar.getByRole("button", { name: "2人を記録" }).click();
+  await bar.getByText("2人", { exact: true }).waitFor();
+  await bar.getByRole("button", { name: "すでに話した" }).click();
   await page.getByRole("status").filter({ hasText: "2人 · +20点" }).waitFor();
   const awards = (await fetches(page)).filter((item) => item.url.endsWith("/awards"));
   assert.deepEqual(awards.map((item) => item.body.contactId), ["p-2", "demo-person-okada"]);
@@ -446,7 +455,7 @@ test("紹介ルート: the request is a draft with コピー and メールアプ
     typeRead(type), detailRead(base.detail),
     { method: "POST", replies: [ok({ body: "伊藤さん、いつもありがとうございます。", subject: "ご紹介のお願い", viaName: "伊藤 直子" })], url: "/intro-drafts$" },
   ], itemId: FOUNDER, planId: PLAN, view: "type" });
-  await page.locator('[data-plan-route="demo-person-ito"]').getByRole("button", { name: "依頼文をつくる" }).click();
+  await page.locator('[data-plan-route="demo-person-ito"]').getByRole("button", { name: "依頼文を下書き" }).click();
   const drawer = page.getByRole("dialog", { name: "紹介の依頼文" });
   await drawer.getByText("ご紹介のお願い").waitFor();
   await drawer.getByText("送信はしません · 送信はあなたが行います").waitFor();
@@ -534,13 +543,14 @@ test("mock end to end: plan → type → record → undo → skip → unskip →
 
 const fail = (status: number, reason: string): Reply => ({ body: { error: { code: status === 409 ? "CONFLICT" : "SERVICE_UNAVAILABLE", context: { reason }, message: reason }, success: false }, status });
 
-test("M6: a failed undo never says 「取り消しました」; withdraw buttons are off while a write runs", async (t) => {
+test("M6: a failed undo never says 「取り消しました」", async (t) => {
+  // User decision 2026-10-12 (照 b4): 話した人 is one line, no per-person withdraw; the undo is the toast's 元に戻す.
   const type = clone(base.types[VC]!);
-  assert.ok(type.talked.length, "the demo VC type has a talked person");
-  const page = await screen(t, { handlers: [typeRead(type), detailRead(base.detail), { method: "POST", replies: [fail(503, "DOWN")], url: "/undo$" }], itemId: VC, planId: PLAN, view: "type" });
-  await page.locator("[data-plan-talked] button").first().click();
-  const row = page.locator("[data-plan-talked-row]").first();
-  await row.getByRole("button", { name: "取り消す" }).click();
+  const page = await screen(t, { handlers: [typeRead(type), detailRead(base.detail), { method: "POST", replies: [ok(award(10, "base", { awardLogId: "log-m6" }), 201)], url: `/types/${VC}/awards$` }, { method: "POST", replies: [fail(503, "DOWN")], url: "/undo$" }], itemId: VC, planId: PLAN, view: "type" });
+  assert.equal(await page.locator("[data-plan-talked-row]").count(), 0, "no per-person list");
+  await page.getByRole("checkbox", { name: `${type.candidates[0]!.name}さんを選ぶ` }).click();
+  await page.locator("[data-plan-select-bar]").getByRole("button", { name: "すでに話した" }).click();
+  await page.getByRole("status").filter({ hasText: "+10点" }).getByRole("button", { name: "元に戻す" }).click();
   await page.getByText("保存できませんでした").waitFor();
   await page.waitForTimeout(300);
   assert.equal(await page.getByText("取り消しました").count(), 0, "no success toast when the undo failed");
@@ -555,14 +565,16 @@ test("m4: today's chance with 0 points draws no 「+0」 chip", async (t) => {
   assert.equal(await chance.getByText("+0").count(), 0);
 });
 
-test("m7: each candidate row has 「すでに話した」 (one talked award); the toolbar opens 名前で記録", async (t) => {
+test("m7: 「すでに話した」 on a selected person records one talked award; the toolbar opens 名前で記録", async (t) => {
+  // User decision 2026-10-12 (照 b4): すでに話した sits in the table header; a double click still sends once.
   const type = base.types[VC]!;
   const page = await screen(t, { handlers: [typeRead(type), detailRead(base.detail), { method: "POST", replies: [ok(award(10, "base", { awardLogId: "log-row" }), 201)], url: `/types/${VC}/awards$` }], itemId: VC, planId: PLAN, view: "type" });
   await page.getByRole("button", { name: "オフラインで話した" }).click();
   await page.locator('[data-plan-record="offline"]').waitFor();
   await page.getByRole("dialog").getByRole("button", { name: "キャンセル" }).click();
   const first = type.candidates[0]!;
-  await page.locator(`[data-plan-already-talked="${first.contactId}"]`).dblclick();
+  await page.getByRole("checkbox", { name: `${first.name}さんを選ぶ` }).click();
+  await page.locator("[data-plan-select-bar]").getByRole("button", { name: "すでに話した" }).dblclick();
   await page.getByRole("status").filter({ hasText: "+10点" }).waitFor();
   const posts = await writes(page);
   assert.deepEqual(posts, [`POST /v2/${PLAN}/types/${VC}/awards`], "one click → one award");
@@ -583,13 +595,14 @@ function stepsDetail(): PlanV2Detail {
   return detail;
 }
 
-test("m8 1024: every step shows (also one with no type), a type can sit under two steps; ✓ opens 完了を取り消す first", async (t) => {
+test("m8 1024: steps with types show (b8 plan1024 leaves out a step with no type), a type can sit under two steps; ✓ opens 完了を取り消す first", async (t) => {
   const detail = stepsDetail();
   const firstKey = detail.content.steps[0]!.key;
   const shared = detail.content.steps[0]!.personTypeKeys[0]!;
   const page = await screen(t, { handlers: [detailRead(detail), { method: "DELETE", replies: [ok({ completedAt: null, replayed: false, score: detail.score })], url: "/complete$" }], planId: PLAN, view: "overview" }, { width: 1024 });
   await page.locator('[data-tier="medium"]').waitFor();
-  await page.locator('[data-plan-step="step-empty"]').getByText("社内の準備").waitFor();
+  await page.locator(`[data-plan-step="${firstKey}"]`).waitFor();
+  assert.equal(await page.locator('[data-plan-step="step-empty"]').count(), 0, "b8: only steps with types");
   assert.equal(await page.locator(`[data-type-row="${shared}"]`).count(), 2, "the shared type shows under both steps");
   await page.locator(`[data-step-done-mark="${firstKey}"]`).click();
   assert.deepEqual(await writes(page), [], "the ✓ only opens the choice");
@@ -629,7 +642,8 @@ test("m9: the memo card shows the server's points only; no contact → no 「さ
 test("m10: with reduced motion the +N only fades in and out (no float)", async (t) => {
   const type = base.types[VC]!;
   const page = await screen(t, { handlers: [typeRead(type), detailRead(base.detail), { method: "POST", replies: [ok(award(10, "base", { awardLogId: "log-r" }), 201)], url: `/types/${VC}/awards$` }], itemId: VC, planId: PLAN, view: "type" }, { reducedMotion: true });
-  await page.locator(`[data-plan-already-talked="${type.candidates[0]!.contactId}"]`).click();
+  await page.getByRole("checkbox", { name: `${type.candidates[0]!.name}さんを選ぶ` }).click();
+  await page.locator("[data-plan-select-bar]").getByRole("button", { name: "すでに話した" }).click();
   const plus = page.locator('[data-plan-type-head] [aria-hidden]').filter({ hasText: "+10" });
   await plus.waitFor();
   assert.match(await plus.evaluate((node) => getComputedStyle(node).animationName), /fadeInOut/u);
@@ -649,18 +663,20 @@ test("m11: after 「この人ですか？」 another mode still has 記録する
   await dialog.getByRole("tab", { name: "名前なし" }).click();
   await dialog.getByRole("button", { name: "記録する" }).waitFor();
   await dialog.getByRole("tab", { name: "名前で記録" }).click();
-  await dialog.getByRole("button", { name: "新しく登録" }).click();
+  // b12 W-R24-09b / 09d: 新しく登録 is a radio card, 記録する sends it; on failure the ng card shows and the primary becomes 名前なしで記録.
+  await dialog.getByRole("radio", { name: /新しく登録/u }).click();
+  await dialog.getByRole("button", { name: "記録する" }).click();
   const failed = dialog.locator("[data-plan-create-failed]");
   await failed.getByText("登録できませんでした · 名前なしで記録しますか？").waitFor();
   assert.equal(await page.getByText("保存できませんでした").count(), 0);
-  await failed.getByRole("button", { name: "名前なしで記録" }).click();
+  await dialog.getByRole("button", { name: "名前なしで記録" }).click();
   await page.getByRole("status").filter({ hasText: "+5点" }).waitFor();
   const posts = (await fetches(page)).filter((item) => item.method === "POST");
   assert.deepEqual(posts.map((item) => ({ ...item.body, idempotencyKey: undefined })), [{ idempotencyKey: undefined, name: "渡辺" }, { createContact: true, idempotencyKey: undefined, name: "渡辺" }, { anonymous: true, idempotencyKey: undefined }]);
   assert.notEqual(posts[1]!.body.idempotencyKey, posts[2]!.body.idempotencyKey);
 });
 
-test("m11: a multi-record toast marks the half part; a proposal answered as a request says so; the button reads 達成にする", async (t) => {
+test("m11: a multi-record toast marks the half part; a proposal answered as a request says so; the button reads 目標を達成した", async (t) => {
   const type = clone(base.types[VC]!);
   type.candidates = [type.candidates[0]!, { ...type.candidates[0]!, candidateId: "c-2", contactId: "p-2", isOrbitUser: true, name: "山口 大樹" }];
   const page = await screen(t, { handlers: [
@@ -675,10 +691,10 @@ test("m11: a multi-record toast marks the half part; a proposal answered as a re
   await drawer.locator('[data-plan-proposal-requested="p-2"]').getByText("Orbit 上で面談を依頼しました").waitFor();
   await page.keyboard.press("Escape");
   await page.getByRole("checkbox", { name: "岡田 紗希さんを選ぶ" }).click();
-  await page.locator("[data-plan-select-bar]").getByRole("button", { name: "2人を記録" }).click();
+  await page.locator("[data-plan-select-bar]").getByRole("button", { name: "すでに話した" }).click();
   await page.getByRole("status").filter({ hasText: "2人 · +15点（一部は半分）" }).waitFor();
 
   const overview = await screen(t, { handlers: [detailRead(base.detail)], planId: PLAN, view: "overview" });
-  await overview.getByRole("button", { name: "達成にする" }).waitFor();
-  assert.equal(await overview.getByText("目標を達成した").count(), 0);
+  await overview.getByRole("button", { name: "目標を達成した" }).waitFor();
+  assert.equal(await overview.getByText("達成にする").count(), 0, "web.html V2.acts wording");
 });
