@@ -111,5 +111,5 @@ test("マイページ and イベント no longer draw their own tab bar; the roo
   }
   const layout = readFileSync(join(root, "app/_layout.tsx"), "utf8");
   assert.match(layout, /<ShellTabBar \/>/u);
-  assert.match(readFileSync(join(root, "src/screens/profile/ProfileScreen.tsx"), "utf8"), /<ShellBackBar \/>[\s\S]*<ShellInboxRow \/>/u, "マイページ has a back bar and keeps the 受信箱 row");
+  assert.match(readFileSync(join(root, "src/screens/profile/ProfileScreen.tsx"), "utf8"), /<ShellBackBar[\s\S]*<ShellInboxRow \/>/u, "マイページ has a back bar and keeps the 受信箱 row");
 });

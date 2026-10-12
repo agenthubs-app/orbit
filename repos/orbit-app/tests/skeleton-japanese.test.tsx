@@ -4,7 +4,7 @@ import test from "node:test";
 import React from "react";
 import { PixelRatio } from "react-native";
 
-import { renderedText } from "./helpers/render";
+import { renderedText, renderToHtml } from "./helpers/render";
 
 // R03 review M3: the skeleton (navigation shell, back bar, the language chain used
 // above the locale provider) checked in the product default, Japanese. The legacy
@@ -32,14 +32,16 @@ test("without a provider the tab bar speaks Japanese", async () => {
   for (const label of ["ホーム", "人脈", "iOrbit", "イベント", "Task"]) assert.ok(text.includes(label), label);
 });
 
-test("the back bar names the parent at 1× and says 戻る at large text sizes", async (t) => {
+// R05 rework: the back control is the kit's round ‹ button (icon only), so the
+// parent's name lives in its accessible label at every text size.
+test("the round back button names the parent in its accessible label at any text size", async (t) => {
   const { AppScreen } = await load();
-  const screen = () => renderedText(<AppScreen title="言語"><></></AppScreen>);
-  t.mock.method(PixelRatio, "getFontScale", () => 1);
-  assert.match(screen(), /設定/);
-  t.mock.method(PixelRatio, "getFontScale", () => 2);
-  assert.match(screen(), /戻る/);
-  assert.doesNotMatch(screen(), /設定/);
+  for (const scale of [1, 2]) {
+    t.mock.method(PixelRatio, "getFontScale", () => scale);
+    const html = renderToHtml(<AppScreen title="言語"><></></AppScreen>);
+    assert.match(html, /aria-label="[^"]*設定[^"]*"/u);
+    assert.doesNotMatch(renderedText(<AppScreen title="言語"><></></AppScreen>), /設定|戻る/u);
+  }
 });
 
 test("code above the provider follows the published language, Japanese until one is published", async () => {

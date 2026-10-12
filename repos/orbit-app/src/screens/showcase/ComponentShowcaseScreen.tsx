@@ -136,7 +136,7 @@ export function ComponentShowcaseScreen() {
               <Checkbox checked onChange={() => undefined} accessibilityLabel="checkbox" />
               <Radio selected onSelect={() => undefined} accessibilityLabel="radio" />
             </View>
-            <Segmented segments={[{ key: "calendar", label: copy.taskSegments.calendar }, { key: "todo", label: copy.taskSegments.todo }, { key: "plan", label: copy.taskSegments.plan }, { key: "notes", label: copy.taskSegments.notes }]} value={segment} onChange={setSegment} accessibilityLabel={copy.nav.task} />
+            <Segmented variant="tseg" segments={[{ key: "calendar", label: copy.taskSegments.calendar }, { key: "todo", label: copy.taskSegments.todo }, { key: "plan", label: copy.taskSegments.plan }, { key: "notes", label: copy.taskSegments.notes }]} value={segment} onChange={setSegment} accessibilityLabel={copy.nav.task} />
             <View style={styles.row}><FilterOption label={copy.chip.going} selected count={12} onToggle={() => undefined} /><FilterOption label={copy.chip.inReview} selected={false} onToggle={() => undefined} /><Button label={copy.filter.clear} variant="ghost" size="sm" onPress={() => undefined} /></View>
             <CategoryTabs options={[{ key: "all", label: copy.nav.inbox, count: 28 }, { key: "push", label: copy.push.openTarget }]} value="all" onChange={() => undefined} accessibilityLabel="category" />
             <ProgressBar value={0.62} accessibilityLabel="progress" />

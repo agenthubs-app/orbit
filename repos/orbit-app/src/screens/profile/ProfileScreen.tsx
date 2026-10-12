@@ -26,6 +26,9 @@ import { profileDetailSchema, profileExtractionReceiptSchema, profileSaveReceipt
   type AcceptedProfileSuggestion, type ProfileDetail, type ProfileExtraction, type ProfileSaveRequest, type ProfileSuggestions } from "../../api/profile-detail-contract";
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { ShellBackBar, ShellInboxRow } from "../../components/ShellBackBar";
+import { ShellBackground } from "../../components/ShellBackground";
+import { useShellTopGap } from "../../components/ShellTopBar";
+import { IconButton } from "../../components/ui/IconButton";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -207,6 +210,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
   const locale = useOrbitLocale();
   const router = useRouter();
   const auth = useOrbitAuthSession();
+  const topGap = useShellTopGap();
   const mounted = useRef(true);
   const parentScope = useRef(isScopeCurrent);
   parentScope.current = isScopeCurrent;
@@ -435,8 +439,11 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
   }
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.page}>
-      <ShellBackBar />
+    <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]}>
+      <ShellBackground />
+      <ShellBackBar title={locale.t("profile.title")}
+        subtitle={auth.signedIn && data ? locale.t("shell.me.completeness", { score: data.completeness.score }) : undefined}
+        right={<IconButton icon="settings" accessibilityLabel={locale.t("profile.settings")} onPress={() => { if (current()) router.push("/settings" as Href); }} />} />
       <ScrollView contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
         refreshControl={
         <RefreshControl
@@ -457,12 +464,6 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
         />
         }
       >
-      <View style={styles.pageHeader}>
-        <Text accessibilityRole="header" style={styles.pageTitle}>{locale.t("profile.title")}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.settings")} onPress={() => { if (current()) router.push("/settings" as Href); }} style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}>
-          <Ionicons name="sunny-outline" size={20} color={colors.ink} />
-        </Pressable>
-      </View>
       {auth.signedIn ? <ShellInboxRow /> : null}
       {!auth.ready ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
       {auth.ready && !auth.signedIn ? (
@@ -1546,7 +1547,7 @@ function ProfileTagSection({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  page: { flex: 1, backgroundColor: colors.surface },
+  page: { flex: 1, backgroundColor: colors.bg },
   pageContent: { alignSelf: "center", width: "100%", maxWidth: 820, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 140 },
   pageHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 44 },
   pageTitle: { color: colors.ink, fontSize: 30, lineHeight: 38, fontWeight: "900", letterSpacing: -0.6, flexShrink: 1 },

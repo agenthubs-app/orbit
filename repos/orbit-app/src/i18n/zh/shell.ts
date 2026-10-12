@@ -23,6 +23,8 @@ export const shell = {
   "shell.noErrorDetails": "没有更多信息。",
   "shell.parent.notes": "笔记",
   "shell.parent.plan": "计划",
+  "shell.task.headerDate": "{month}月{day}日 {weekday}",
+  "shell.me.completeness": "资料 {score}%",
   "shell.task.addCalendar": "添加日程",
   "shell.task.addTodo": "添加待办",
   "shell.task.addMemo": "添加笔记",

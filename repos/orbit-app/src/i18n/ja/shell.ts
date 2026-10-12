@@ -23,6 +23,8 @@ export const shell = {
   "shell.noErrorDetails": "詳しい情報はありません。",
   "shell.parent.notes": "メモ",
   "shell.parent.plan": "プラン",
+  "shell.task.headerDate": "{month}月{day}日（{weekday}）",
+  "shell.me.completeness": "プロフィール {score}%",
   "shell.task.addCalendar": "予定を追加",
   "shell.task.addTodo": "To-do を追加",
   "shell.task.addMemo": "メモを追加",

@@ -3,12 +3,11 @@ import { fillCopy, useStandardCopy } from "../i18n/standard-copy";
 import { useRouter, usePathname, type Href } from "expo-router";
 import { useRef, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
 import {
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  type RefreshControlProps, PixelRatio } from "react-native";
+  type RefreshControlProps } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { layout, spacing, textStyles } from "../design/tokens";
 import { createThemedStyles } from "../design/theme";
@@ -16,8 +15,10 @@ import { useMobileViewport } from "../platform/use-mobile-viewport";
 import { mainTabForPath, parentForPath } from "../view-models/app-navigation";
 import { rememberScroll, rememberedScroll, shellScrollKey } from "../view-models/shell-state";
 import { useAppScreenEmbedding } from "./AppScreenEmbedding";
+import { ShellBackground } from "./ShellBackground";
+import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "./ShellTopBar";
 import { TAB_BAR_CLEARANCE } from "./shell-metrics";
-import { Icon } from "./ui/Icon";
+import { IconButton } from "./ui/IconButton";
 
 interface AppScreenProps extends PropsWithChildren {
   backAccessibilityLabel?: string;
@@ -56,15 +57,13 @@ export function AppScreen({
   const locale = useOrbitLocale();
   const copy = useStandardCopy();
   const parent = parentForPath(pathname, locale.t);
-  // Like iOS: when the destination name would not fit (large text, long name), the
-  // back button says just 戻る / 返回 / Back; the accessibility label keeps the name.
-  const genericBack = canGoBack || PixelRatio.getFontScale() >= 1.5 || parent.label.length > 12;
   const navVisible = showBack ?? (!mainTab && pathname !== "/ai");
   // R05: the shell draws the tab bar (root layout). A tab page — or a Task segment —
   // remembers its scroll offset so coming back to it lands where the user left.
   const embedded = useAppScreenEmbedding();
   const scrollKey = embedded ? shellScrollKey("/task", embedded.segment) : mainTab ? shellScrollKey(pathname) : null;
   const scroll = useScrollMemory(scrollKey);
+  const topGap = useShellTopGap();
 
   if (embedded) {
     return (
@@ -86,21 +85,21 @@ export function AppScreen({
       edges={["top"]}
       style={[
         styles.safeArea,
+        { paddingTop: topGap },
         viewport.visibleHeight === null
           ? null
           : { height: viewport.visibleHeight, maxHeight: viewport.visibleHeight }
       ]}
     >
+      <ShellBackground />
       {navVisible ? (
+        // kit .topbar on secondary pages: ‹ round button · centred title · actions (R05 rework).
+        // The back button is icon-only like the design; VoiceOver reads where it goes.
         <View style={styles.navigation}>
-          <Pressable accessibilityLabel={backAccessibilityLabel ?? (canGoBack ? copy.nav.back : fillCopy(copy.nav.backTo, { label: parent.label }))} accessibilityRole="button"
-            onPress={onBack ?? (() => canGoBack ? router.back() : router.replace(parent.href as Href))}
-            style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}>
-            <Icon color={colors.accentText} name="left" size={20} />
-            <Text numberOfLines={1} style={styles.backLabel}>{backLabel ?? (genericBack ? copy.nav.back : parent.label)}</Text>
-          </Pressable>
-          <Text accessibilityRole="header" style={styles.navigationTitle}>{title}</Text>
-          <View style={styles.navigationActions}>{headerActions}</View>
+          <ShellTopBar title={title}
+            left={<IconButton icon="left" accessibilityLabel={backAccessibilityLabel ?? backLabel ?? (canGoBack ? copy.nav.back : fillCopy(copy.nav.backTo, { label: parent.label }))}
+              onPress={onBack ?? (() => canGoBack ? router.back() : router.replace(parent.href as Href))} />}
+            right={headerActions ? <View style={styles.navigationActions}>{headerActions}</View> : null} />
         </View>
       ) : null}
       <ScrollView
@@ -159,21 +158,8 @@ function useScrollMemory(key: string | null) {
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  backButton: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexShrink: 1,
-    minHeight: layout.toolbar,
-    justifyContent: "center",
-    minWidth: layout.toolbar
-  },
-  backLabel: { color: colors.accentText, fontSize: 14, lineHeight: 20, flexShrink: 1 },
-  navigation: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, paddingHorizontal: 16, paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: colors.line },
-  navigationTitle: { flex: 1, color: colors.ink, fontSize: 16, lineHeight: 22, fontWeight: "800", textAlign: "center" },
-  navigationActions: { minWidth: 44, maxWidth: "30%", flexShrink: 1 },
-  backButtonPressed: {
-    opacity: 0.72
-  },
+  navigation: { paddingHorizontal: SHELL_GUTTER },
+  navigationActions: { flexDirection: "row", alignItems: "center" },
   body: {
     gap: spacing.lg
   },
@@ -199,7 +185,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerActions: { marginLeft: "auto", flexDirection: "row", flexShrink: 0 },
   safeArea: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bg,
     flex: 1
   },
   title: {

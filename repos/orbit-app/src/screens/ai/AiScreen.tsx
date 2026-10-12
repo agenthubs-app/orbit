@@ -21,6 +21,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets
 } from "react-native-safe-area-context";
+import { ShellBackground } from "../../components/ShellBackground";
 import {
   ORBIT_API_ENDPOINTS,
   aiConversationSessionPath
@@ -710,6 +711,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
 
   return (
     <SafeAreaView edges={["bottom", "top"]} style={styles.safeArea}>
+      <ShellBackground />
       <View {...drawerPanResponder.panHandlers} style={styles.chatRoot}>
         <ChatTopBar
           onHome={() => openCapability("/home" as Href)}
@@ -1718,7 +1720,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   chatRoot: {
     flex: 1,
-    backgroundColor: colors.surface,
     maxWidth: layout.contentMax,
     width: "100%",
     alignSelf: "center"
@@ -2078,7 +2079,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: colors.surface
+    backgroundColor: colors.bg
   },
   sheetPanel: {
     backgroundColor: colors.surface,

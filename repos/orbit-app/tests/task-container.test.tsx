@@ -199,7 +199,8 @@ test("320pt and 2× text: four segments stay inside the screen", async (t) => {
   await page.addStyleTag({ content: '[role="tab"] [dir="auto"] { font-size: 25px !important; }' });
   for (const tab of await page.getByRole("tab").all()) {
     const box = (await tab.boundingBox())!;
-    assert.ok(box.x >= 0 && box.x + box.width <= 320 && box.height >= 38);
+    // kit .tseg button: padding 7 0 around a 12.5 × 1.5 line = 32.75 (the hit area adds 4 each side).
+    assert.ok(box.x >= 0 && box.x + box.width <= 320 && box.height >= 32);
   }
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= 320));
 });

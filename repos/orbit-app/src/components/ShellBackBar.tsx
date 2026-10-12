@@ -1,4 +1,5 @@
 import { usePathname, useRouter, type Href } from "expo-router";
+import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { createThemedStyles } from "../design/theme";
@@ -6,15 +7,15 @@ import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
 import { fillCopy, useStandardCopy } from "../i18n/standard-copy";
 import { parentForPath } from "../view-models/app-navigation";
 import { ListRow } from "./ui/ListRow";
+import { SHELL_GUTTER, ShellTopBar } from "./ShellTopBar";
 import { Icon } from "./ui/Icon";
-import { UiPressable } from "./ui/Pressable";
-import { UiText } from "./ui/Text";
+import { IconButton } from "./ui/IconButton";
 
 // R05 secondary-page rule for the pages that draw their own layout instead of
-// AppScreen (マイページ): a ← that goes back in history, or — opened directly —
-// to the page it belongs to, named like AppScreen's back button.
-export function ShellBackBar() {
-  const { colors, styles } = useStyles();
+// AppScreen (マイページ): kit .topbar with a ‹ round button that goes back in
+// history, or — opened directly — to the page it belongs to (VoiceOver names it).
+export function ShellBackBar({ title = "", subtitle, right }: { title?: string; subtitle?: string | undefined; right?: ReactNode }) {
+  const { styles } = useStyles();
   const router = useRouter();
   const locale = useOrbitLocale();
   const copy = useStandardCopy();
@@ -22,11 +23,9 @@ export function ShellBackBar() {
   const canGoBack = router.canGoBack();
   return (
     <View style={styles.bar}>
-      <UiPressable accessibilityRole="button" accessibilityLabel={canGoBack ? copy.nav.back : fillCopy(copy.nav.backTo, { label: parent.label })}
-        onPress={() => canGoBack ? router.back() : router.replace(parent.href as Href)} style={styles.back}>
-        <Icon name="left" size={20} color={colors.accentText} />
-        <UiText numberOfLines={1} style={styles.label}>{canGoBack ? copy.nav.back : parent.label}</UiText>
-      </UiPressable>
+      <ShellTopBar title={title} subtitle={subtitle} right={right}
+        left={<IconButton icon="left" accessibilityLabel={canGoBack ? copy.nav.back : fillCopy(copy.nav.backTo, { label: parent.label })}
+          onPress={() => canGoBack ? router.back() : router.replace(parent.href as Href)} />} />
     </View>
   );
 }
@@ -40,8 +39,6 @@ export function ShellInboxRow() {
     trailing={<Icon name="right" size={16} color={colors.ink3Text} />} onPress={() => router.push("/inbox" as Href)} />;
 }
 
-const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  bar: { flexDirection: "row", alignItems: "center", minHeight: 44, paddingHorizontal: 8 },
-  back: { flexDirection: "row", alignItems: "center", gap: 2, minHeight: 44, minWidth: 44, paddingHorizontal: 6 },
-  label: { color: colors.accentText, fontSize: 14, lineHeight: 20 },
+const useStyles = createThemedStyles(() => StyleSheet.create({
+  bar: { paddingHorizontal: SHELL_GUTTER },
 }));

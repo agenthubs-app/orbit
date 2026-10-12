@@ -23,6 +23,8 @@ export const shell = {
   "shell.noErrorDetails": "No more details.",
   "shell.parent.notes": "Notes",
   "shell.parent.plan": "Plan",
+  "shell.task.headerDate": "{weekday}, {month} {day}",
+  "shell.me.completeness": "Profile {score}%",
   "shell.task.addCalendar": "Add event",
   "shell.task.addTodo": "Add to-do",
   "shell.task.addMemo": "Add note",

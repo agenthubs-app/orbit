@@ -62,7 +62,7 @@ async function confirm(page: Page, text: string) { await page.evaluate(text => (
 test("operations uses the compact source header and real four-column metric strip before navigation", async t => {
   const page = await open(t);
   const heading = page.getByRole("heading", { name: "活动运营", exact: true }); await heading.waitFor();
-  assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "16px");
+  assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "17px", "kit .topbar title");
   const labels = ["已报名", "已签到", "名片申请", "已同意"];
   const boxes = await Promise.all(labels.map(name => page.getByText(name, { exact: true }).locator("..").boundingBox()));
   assert.ok(boxes.every(box => box && box.y === boxes[0]!.y), "all four metrics share a normal-size row");

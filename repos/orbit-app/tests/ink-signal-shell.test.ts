@@ -162,7 +162,8 @@ test("マイページ, iOrbit and the old Task addresses have no tab bar", async
 test("secondary page has no tabs, prefers history and has a meaningful direct-open fallback", async t => {
   const history = await open(t, "/settings/api", "history");
   assert.equal(await history.getByRole("tab").count(), 0);
-  assert.equal(await history.getByRole("button", { name: "返回", exact: true }).textContent(), "返回", "history navigation must not promise an unrelated fallback destination");
+  // R05 rework: the round ‹ button is icon-only; in history its name says just 返回.
+  assert.equal(await history.getByRole("button", { name: "返回", exact: true }).count(), 1, "history navigation must not promise an unrelated fallback destination");
   await history.getByRole("button", { name: "返回", exact: true }).click();
   assert.deepEqual(await history.evaluate(() => (window as any).fixture.navigation), [{ method: "back" }]);
   const direct = await open(t, "/settings/api");
@@ -170,10 +171,10 @@ test("secondary page has no tabs, prefers history and has a meaningful direct-op
   assert.deepEqual(await direct.evaluate(() => (window as any).fixture.navigation), [{ method: "replace", href: "/settings" }]);
 });
 
-test("a secondary page can localize its visible and accessible back labels without changing navigation", async t => {
+test("a secondary page can localize its back label without changing navigation", async t => {
   const page = await open(t, "/contacts/pipeline", "history&localizedBack");
   const back = page.getByRole("button", { name: "Back to People", exact: true });
-  assert.equal(await back.textContent(), "People");
+  assert.equal(await back.textContent(), "", "R05 rework: the kit's round ‹ button shows no text");
   await back.click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [{ method: "back" }]);
 });
@@ -191,7 +192,7 @@ test("direct-open login and permissions return to their public account parent", 
 test("compact secondary title grows without clipping at narrow widths and doubled text", async t => {
   const page = await open(t, "/contacts/one", "long", 320);
   const heading = page.getByRole("heading");
-  assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "16px");
+  assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "17px", "kit .topbar title");
   await page.addStyleTag({ content: '[role="heading"] { font-size: 32px !important; line-height: 42px !important; }' });
   const box = (await heading.boundingBox())!;
   assert.ok(box.x >= 0 && box.x + box.width <= 320);

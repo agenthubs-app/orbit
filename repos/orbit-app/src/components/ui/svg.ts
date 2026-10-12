@@ -1,5 +1,5 @@
 import { createElement, type ComponentType, type ReactNode } from "react";
-import type { CircleProps, PathProps, RectProps, SvgProps } from "react-native-svg";
+import type { CircleProps, PathProps, RadialGradientProps, RectProps, StopProps, SvgProps } from "react-native-svg";
 
 // R04: on the web an icon is a plain DOM <svg> (what react-native-svg's own web
 // build renders too); native builds resolve svg.native.ts. React Native-only
@@ -16,4 +16,7 @@ const Svg = dom("svg") as unknown as ComponentType<SvgProps>;
 export const Circle = dom("circle") as unknown as ComponentType<CircleProps>;
 export const Path = dom("path") as unknown as ComponentType<PathProps>;
 export const Rect = dom("rect") as unknown as ComponentType<RectProps>;
+export const Defs = dom("defs") as unknown as ComponentType<{ children?: ReactNode }>;
+export const RadialGradient = dom("radialGradient") as unknown as ComponentType<RadialGradientProps>;
+export const Stop = dom("stop") as unknown as ComponentType<StopProps>;
 export default Svg;

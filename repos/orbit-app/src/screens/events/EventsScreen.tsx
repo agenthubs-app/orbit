@@ -16,6 +16,7 @@ import {
   useWindowDimensions
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ShellBackground } from "../../components/ShellBackground";
 import { z } from "zod";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import {
@@ -584,6 +585,7 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
 
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
+    <ShellBackground />
     <ScrollView contentContainerStyle={styles.pageContent} automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic" keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled"
       refreshControl={
         <RefreshControl
@@ -1042,7 +1044,7 @@ function EventValueRecommendationAcceptedCard({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.surface },
+  safeArea: { flex: 1, backgroundColor: colors.bg },
   pageContent: { alignSelf: "center", width: "100%", maxWidth: layout.contentMax, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 140 },
   pageHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14 },
   pageTitle: { color: colors.ink, fontFamily: eventFont, fontSize: 30, fontWeight: "900", letterSpacing: -0.6, lineHeight: 38, flexShrink: 1 },

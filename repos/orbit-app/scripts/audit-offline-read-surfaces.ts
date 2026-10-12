@@ -25,7 +25,7 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/inbox/RelationshipInboxScreen.tsx:1309': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:1500': ['/api/chat/relationship-inbox'],
   'src/screens/profile/ProfileMoreScreen.tsx:78': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
-  'src/screens/profile/ProfileScreen.tsx:348': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
+  'src/screens/profile/ProfileScreen.tsx:352': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
   'src/screens/tasks/TaskDetailScreen.tsx:90': ['/api/tasks/:id'],
   'src/screens/tasks/TaskDetailScreen.tsx:91': ['/api/tasks/:id/activities'],
   'src/screens/tasks/TaskDetailScreen.tsx:92': ['/api/reminders'],

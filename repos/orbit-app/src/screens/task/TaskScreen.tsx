@@ -7,9 +7,10 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { serverReachability } from "../../api/server-reachability";
 import { AppScreenEmbeddingProvider } from "../../components/AppScreenEmbedding";
+import { ShellBackground } from "../../components/ShellBackground";
+import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../components/ShellTopBar";
 import { IconButton } from "../../components/ui/IconButton";
 import { SwipeSegments } from "../../components/ui/Segmented";
-import { UiText } from "../../components/ui/Text";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useStandardCopy } from "../../i18n/standard-copy";
@@ -93,16 +94,18 @@ export function TaskScreen() {
     else if (segment === "todo") quickAdd.current?.focus();
     else if (segment === "memo") router.push("/notes/new" as Href);
   };
-  const today = new Intl.DateTimeFormat(locale.language === "ja" ? "ja-JP" : locale.language === "zh" ? "zh-CN" : "en-US", { month: "long", day: "numeric", weekday: "short", timeZone }).format(new Date());
+  const today = taskHeaderDate(new Date(), locale.language, timeZone, locale.t);
+  const topGap = useShellTopGap();
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.page}>
+    <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]}>
+      <ShellBackground />
+      {/* kit taskHead (app.html:633): 🔍 · Task + date · ＋. The App has no global
+          search yet, so 🔍 opens people search (the Web 🔍 opens ⌘K, people first). */}
       <View style={styles.header}>
-        <View style={styles.titleBlock}>
-          <UiText accessibilityRole="header" style={styles.title}>{copy.nav.task}</UiText>
-          <UiText style={styles.subtitle}>{today}</UiText>
-        </View>
-        {addLabel ? <IconButton icon="plus" accessibilityLabel={addLabel} onPress={add} disabled={addDisabled} /> : <View style={styles.headerSpacer} />}
+        <ShellTopBar title={copy.nav.task} subtitle={today}
+          left={<IconButton icon="search" accessibilityLabel={locale.t("home.searchPeople")} onPress={() => router.push("/contacts/list" as Href)} />}
+          right={addLabel ? <IconButton icon="plus" accessibilityLabel={addLabel} onPress={add} disabled={addDisabled} /> : null} />
       </View>
       <SwipeSegments
         segments={segments}
@@ -115,6 +118,14 @@ export function TaskScreen() {
       />
     </SafeAreaView>
   );
+}
+
+/** kit D.today.date 「10月7日（水）」: the pattern is per language (Japanese full-width brackets). */
+export function taskHeaderDate(date: Date, language: string, timeZone: string, t: (key: "shell.task.headerDate", values: Record<string, string>) => string): string {
+  const locale = language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US";
+  const parts = new Intl.DateTimeFormat(locale, { month: language === "en" ? "long" : "numeric", day: "numeric", weekday: "short", timeZone }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return t("shell.task.headerDate", { month: part("month"), day: part("day"), weekday: part("weekday") });
 }
 
 function useServerUnreachable(): boolean {
@@ -140,9 +151,5 @@ function MemoSlot() {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10 },
-  titleBlock: { flex: 1, minWidth: 0 },
-  title: { color: colors.ink, fontSize: 26, lineHeight: 32, fontWeight: "800", letterSpacing: -0.5 },
-  subtitle: { color: colors.ink3Text, fontSize: 13, lineHeight: 18 },
-  headerSpacer: { width: 40, height: 40 },
+  header: { paddingHorizontal: SHELL_GUTTER },
 }));

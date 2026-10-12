@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { createThemedStyles } from "../../design/theme";
+import { shadows } from "../../design/tokens";
+import { cjkLift } from "./cjk-lift";
 import { useReducedMotion } from "./motion";
 import { UiPressable } from "./Pressable";
 import { UiText } from "./Text";
@@ -10,16 +12,17 @@ export type Segment<Key extends string> = { key: Key; label: string };
 
 // kit .seg: a surface-2 pill holding equal options; the selected one sits on surface.
 // It replaces the hand-written accessibilityRole="tablist" rows in old screens.
-export function Segmented<Key extends string>({ segments, value, onChange, accessibilityLabel }: { segments: Segment<Key>[]; value: Key; onChange: (key: Key) => void; accessibilityLabel: string }) {
+export function Segmented<Key extends string>({ segments, value, onChange, accessibilityLabel, variant = "seg" }: { segments: Segment<Key>[]; value: Key; onChange: (key: Key) => void; accessibilityLabel: string; variant?: "seg" | "tseg" }) {
   const { styles } = useStyles();
+  const task = variant === "tseg";
   return (
     <View accessibilityRole="tablist" accessibilityLabel={accessibilityLabel} style={styles.track}>
       {segments.map((segment) => {
         const selected = segment.key === value;
         return (
-          <UiPressable key={segment.key} accessibilityRole="tab" accessibilityLabel={segment.label} accessibilityState={{ selected }} aria-selected={selected} hitSlop={4} onPress={() => onChange(segment.key)} pressedScale={0.97} style={[styles.option, selected && styles.selected]}>
+          <UiPressable key={segment.key} accessibilityRole="tab" accessibilityLabel={segment.label} accessibilityState={{ selected }} aria-selected={selected} hitSlop={4} onPress={() => onChange(segment.key)} pressedScale={0.97} style={[styles.option, task && styles.taskOption, selected && styles.selected, selected && task && styles.taskSelected]}>
             {/* Like UISegmentedControl: equal fixed widths, so text size is capped (1.4×) and shrinks to fit; the full label stays in accessibilityLabel. */}
-            <UiText adjustsFontSizeToFit maxFontSizeMultiplier={1.4} minimumFontScale={0.75} numberOfLines={1} style={[styles.label, selected && styles.labelSelected]}>{segment.label}</UiText>
+            <UiText adjustsFontSizeToFit maxFontSizeMultiplier={1.4} minimumFontScale={0.75} numberOfLines={1} style={[styles.label, task && styles.taskLabel, task && cjkLift(segment.label, -1, -1.5), selected && styles.labelSelected]}>{segment.label}</UiText>
           </UiPressable>
         );
       })}
@@ -72,7 +75,7 @@ export function SwipeSegments<Key extends string>({ segments, value, onChange, a
         pager.current?.scrollTo({ x: shown.current * next, animated: false });
       }
     }}>
-      <View style={styles.segmentsInset}><Segmented segments={segments} value={value} onChange={select} accessibilityLabel={accessibilityLabel} /></View>
+      <View style={styles.segmentsInset}><Segmented variant="tseg" segments={segments} value={value} onChange={select} accessibilityLabel={accessibilityLabel} /></View>
       <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={styles.dots}>
         {segments.map((segment) => <View key={segment.key} style={[styles.dot, segment.key === value && styles.dotOn]} />)}
       </View>
@@ -103,8 +106,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   selected: { backgroundColor: colors.surface },
   label: { color: colors.ink2, fontSize: 12.5, fontWeight: "600", textAlign: "center" },
   labelSelected: { color: colors.ink, fontWeight: "700" },
-  segmentsInset: { paddingHorizontal: 16 },
-  dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 8, marginBottom: 4 },
+  // kit .tseg (ui.css:722): buttons padding 7 0, 12.5/700 at line-height 1.5; the selected one lifts by 0 1px 2px.
+  taskOption: { minHeight: 0, paddingVertical: 7, paddingHorizontal: 0 },
+  taskSelected: shadows.segment,
+  taskLabel: { fontWeight: "700", lineHeight: 18.75 },
+  segmentsInset: { paddingHorizontal: 18 },
+  // kit .tswipe: margin 8 0 12
+  dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 8, marginBottom: 12 },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.surface3 },
   dotOn: { width: 16, backgroundColor: colors.ink3 },
 }));

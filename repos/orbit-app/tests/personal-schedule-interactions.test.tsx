@@ -355,6 +355,8 @@ test("editor reference date is localized without changing its saved date or time
   assert.deepEqual(await writes(p), []);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.item), item);
   await p.getByRole("button", { name: "林悦", exact: true }).waitFor();
+  // R05 rework: the kit top bar is 60pt (was 49), so the row may need a scroll; it must never sit under the panel.
+  await p.getByLabel("备注", { exact: true }).evaluate(el => { for (let node = el.parentElement; node; node = node.parentElement) if (node.scrollHeight > node.clientHeight + 1 && getComputedStyle(node).overflowY !== "visible") { node.scrollTop = node.scrollHeight; break; } });
   const remark = await p.getByLabel("备注", { exact: true }).boundingBox();
   const save = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
   assert.ok(remark && save && remark.y + remark.height <= save.y - 12, `reference rows remain above the save panel: ${JSON.stringify({ remark, save })}`);

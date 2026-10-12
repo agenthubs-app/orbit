@@ -176,7 +176,8 @@ for (const theme of ["light", "dark"] as const) {
       }
       return "transparent";
     });
-    assert.equal(identityBackground, theme === "light" ? "rgb(255, 255, 255)" : "rgb(36, 35, 40)");
+    // R05 rework: マイページ sits on the kit page background (--bg under the fog), not on --surface.
+    assert.equal(identityBackground, theme === "light" ? "rgb(247, 245, 247)" : "rgb(25, 24, 28)");
     assert.equal(await name.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1), true, "long identity remains readable");
     await page.getByRole("button", { name: "编辑资料", exact: true }).click();
     const input = page.getByRole("textbox", { name: "名字", exact: true }); await fits(input); await input.fill("保留未保存名字");
