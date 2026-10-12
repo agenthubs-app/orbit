@@ -82,6 +82,7 @@
 - **乙（R11）**：`inviteLinkedContactIds` → `sourceChip = 'self'`；`InviteShareSheet` / `InviteUnlinkSheet`（展示页）挂到联系人详情；`publicProfile.offering / seeking` 与 `fieldHistory`；同步暂停字段 `pausedFields`。
 - **乙（R13 / R14）**：「邀请被接受」通知用现有 `contact` / `source`；App 推送白名单需要 `/contacts/*`。
 - **合回前授权**：生产迁移 `invite-codes-core` v1 + v2（先迁移后部署；只读预检三张表不存在）、确认生产由平台写入 `x-real-ip`（复核 m2）、`ORBIT_INVITE_RATE_SECRET`、邀请链接正式域名（`ORBIT_PUBLIC_ORIGIN`）、通用链接关联文件、App 新原生依赖（`expo-clipboard`）的 TestFlight 构建。
+- **加人界面返工跑像素门禁时核对（2026-10-12，design-decisions 转来）**：b11「④ 受け取った側 · 登録」App 画板按钮下小字的「アプリは不要」已删（P2）；同一画板标题区副文「アプリなしで登録できます」App 字典里没有（只 Web 有），按 P2 口径 App 端也应去掉。实现与画板不一致就请 design-decisions 改画板，并在 HANDOFF 记一笔。
 - 本机库留有走查数据：QA 的码 `EVPE-N93F` 与它和 `verify-event` 的连接，以及子任务 C 端到端建的两个一次性账号 `r15-e2e-*@orbit.test`。
 
 ## 复核修复（2026-10-11）
