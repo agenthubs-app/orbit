@@ -18,7 +18,7 @@
 .flat { background: var(--surface-2); }
 
 /* kit .emo */
-.emo { width: 40px; height: 40px; border-radius: var(--r-emo); display: grid; place-items: center; font-size: 21px; flex: none; }
+.emo { width: 40px; height: 40px; border-radius: var(--r-emo); display: grid; place-items: center; font-size: var(--fs-emoji-md); flex: none; }
 .emoSm { width: 32px; height: 32px; border-radius: var(--r-sm); font-size: var(--fs-emoji-sm); }
 .teal { background: var(--mac-teal); }
 .apricot { background: var(--mac-apricot); }
@@ -71,7 +71,7 @@
 .qchip i { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--plum-500); }
 .qchipOut i { background: var(--coral); }
 .qdots { display: flex; gap: 5px; }
-.qdots i { width: 26px; height: 8px; border-radius: 4px; background: var(--plum-500); }
+.qdots i { width: 26px; height: 8px; border-radius: var(--r-dot); background: var(--plum-500); }
 .qdots i.u { background: var(--surface-3); }
 
 /* kit .wmodal（自带遮罩：kit .overlay = --scrim-web） */

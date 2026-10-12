@@ -156,7 +156,8 @@ test("overview: the demo plan's score is the summary's; fields, segments, chance
   await dialog.getByText(base.detail.premise[0]!.value).waitFor();
   assert.equal(await dialog.locator("input, textarea, select").count(), 0, "premises are read-only");
   await dialog.getByRole("button", { name: "見直しで変える" }).click();
-  await page.getByRole("dialog", { name: "方案を見直しますか？" }).waitFor();
+  // R25 (C) reads /v2/quota before the entry shows its title; here only that the entry opens.
+  await page.locator("[data-plan-review-modal]").waitFor();
   assert.equal(await page.getByText("まもなく使えます").count(), 0, "R25: no まもなく placeholder is left");
   assert.deepEqual(await writes(page), [], "opening, the premise card and the review entry write nothing");
 });
@@ -238,7 +239,8 @@ test("390: steps become a horizontal snap carousel and 見直し is the ↻ icon
   assert.equal(await carousel.locator("[data-plan-step]").count(), base.detail.content.steps.length);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "no page-level horizontal scroll");
   await page.getByRole("button", { name: "方案を見直す" }).first().click();
-  await page.getByRole("dialog", { name: "方案を見直しますか？" }).waitFor();
+  // R25 (C) reads /v2/quota before the entry shows its title; here only that the entry opens.
+  await page.locator("[data-plan-review-modal]").waitFor();
 });
 
 test("memo coverage: a proposal card adds only on 加点する; the manual card needs two ticks; the award toast can undo", async (t) => {

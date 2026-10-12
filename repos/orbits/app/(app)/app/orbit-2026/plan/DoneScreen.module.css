@@ -9,12 +9,12 @@
 
 /* b4 .cele：右上淡紫 + 粉的晕染 */
 .cele { display: flex; flex-direction: column; padding: 28px; background: radial-gradient(260px 180px at 50% 0%, var(--mac-lav), transparent 75%), radial-gradient(200px 140px at 85% 30%, var(--mac-pink), transparent 75%), var(--surface); }
-.flag { width: 56px; height: 56px; font-size: 28px; border-radius: var(--r-bubble); }
+.flag { width: 56px; height: 56px; font-size: var(--fs-emoji-lg); border-radius: var(--r-bubble); }
 .headline { font-size: var(--fs-title); font-weight: var(--fw-heavy); margin-top: 14px; }
 .stat3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 20px; }
 .stat3 > div { background: var(--surface-2); border-radius: var(--r-tile); padding: 12px; }
 /* kit .big（.stat3 内 32） */
-.big { font-family: var(--font-num); font-size: 32px; font-weight: var(--fw-heavy); letter-spacing: -.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.big { font-family: var(--font-num); font-size: var(--fs-number-lg); font-weight: var(--fw-heavy); letter-spacing: -.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .big small { font-size: var(--fs-emph); font-weight: var(--fw-bold); color: var(--ink-3); margin-left: 3px; letter-spacing: 0; }
 .best { margin-top: 18px; }
 .bestText { flex: 1; font-weight: var(--fw-bold); }
