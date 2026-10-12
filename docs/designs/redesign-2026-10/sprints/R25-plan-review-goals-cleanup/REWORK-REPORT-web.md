@@ -59,7 +59,7 @@ C 组的局部视图（01M / 02M / 07M / 09M / 10M）改成只比第一屏（vie
 |---|---|---|
 | W-R24-01 1440 | 0.035 / 0.035 | 待 R26（10-13 重比 0.0347，不变） |
 | W-R24-02 1440 | 0.031 / 0.032 | 待 R26；#17 口径 A 已落实（Step 3 chip VC 2 / 3 已配对、不出卡） |
-| W-R24-02 1024 | 0.059 / 0.061 | 待 R26；壳「目標を追加」已在 280dbbb2 去掉（标题区 0–400 带无超阈） |
+| W-R24-02 1024 | 0.022 / 0.024 | 確認待ち 1024 改回三列（问题 1）；剩类型卡「人脈の候補」口径（待拍板）；壳「目標を追加」已去掉；「次の一手」数字徽标未显示（待壳） |
 | W-R24-02 390 | 0.078 / 0.081 | 横滑 Step 卡高度；画板口径已定（不出卡） |
 | W-R24-04a | 0.054 / 0.052 | 数据：memo 提议 + 2 候补 |
 | W-R24-04c | 0.025 / 0.024 | 待 R26；#17 口径 A：新 fixture b12-214-step-done，Step 1 卡由规则出、样式比对配对无差异 |
@@ -89,7 +89,7 @@ C 组的局部视图（01M / 02M / 07M / 09M / 10M）改成只比第一屏（vie
   - 生产隔离：`next.config.js` 的 `pageExtensions` 在生产不收 `*.dev.*`。
   - 只在 mock 生效的数据：
     - mock 見直し修正：输入里含示例词才给两条差分。
-    - `withMockStepSuggestions`：在概要上补出 Step 完成卡。
+    - ~~`withMockStepSuggestions`：在概要上补出 Step 完成卡。~~ 10-13 已删（#17 口径 A，完成卡一律按规则出，见 §10）。
   - 测试守护：`tests/plans/plan-design-fixtures.test.ts`、`plan-mock-design-a.test.ts`、`plan-mock-design-c.test.ts`。
 - **本机测试会话**：`seed-local-chats.mjs` 给本机 qa 账号写 2 条 iOrbit 会话，供目標入力右栏「最近の会話」用。只写 localhost 库，可重复执行，不调 AI。
 - **壳导航**：`shellNavKeyFor` 把 `/app/plans/flow`、`/app/plans/<id>/review` 归到 iOrbit；drafts 仍归 task（b10 #21）。
@@ -121,7 +121,7 @@ C 组的局部视图（01M / 02M / 07M / 09M / 10M）改成只比第一屏（vie
 
 ## 6. 复跑命令
 
-在 `repos/orbits` 下执行。三台 mock 服务器：A :3201、B :3202、C :3203，起法：`ORBIT_REDESIGN_MOCK=plan-v2-summary ORBIT_NEXT_DIST_DIR=.next-rework-x npx next dev --webpack --port 320x`。
+在 `repos/orbits` 下执行。三台 mock 服务器：A :3201（10-13 接手后实际用 :3206，`.next-gate-plan`）、B :3202、C :3203，起法：`ORBIT_REDESIGN_MOCK=plan-v2-summary ORBIT_NEXT_DIST_DIR=.next-rework-x npx next dev --webpack --port 320x`。
 
 - 一键串行：`<scratchpad>/rework/fullgate.sh`。
 - 单组：
@@ -171,3 +171,8 @@ d77115ac、95e82990、6ab3e559、9c8a999d（B）；4a2cd45c（误带）+ bebb1d4
 - **重比**（证据 `~/orbit-sprint-evidence/redesign/plan-rework-A2/`）：数字见 §2 A 组表。W-R24-13 没有门禁视图。剩余超阈都在类型卡区与 Step 2 目安换行导致的 38px 下移，原记「待 R26」，未改（3 轮上限）。
 - **两端全量**：orbits 7570 条 0 失败（966 skipped）、App 3967 条 0 失败。类型检查 0 错误（74d263d9 已修 pixel-lib 测试）。
 - **独立复核**：见 `REWORK-REVIEW-web.md`。
+- **复核处理**（[REWORK-REVIEW-web](REWORK-REVIEW-web.md) 结论「不通过」，12 条）：
+  - 已修：问题 1（1024 確認待ち被拉满一行 → `overview.module.css` 照 b8 #6 保持三列、只在 ≤767 单列，W-R24-02-1024 0.060 → 0.022 / 0.024，71beb2cd）；问题 8 补 W-R25-07M b2 / b4 的 `[data]` 归因——但门禁还要求整体 raw ≤ 0.02，07M 是 480×234 小区域，两处数字（128 / 21）就有 0.027，要靠一个「128 分 · 話した 21 人」的 fixture 才能过，未做；问题 10、11 的报告错误已改（§3、§6、§2）。
+  - **待用户拍板**（口径冲突，不是实现能自己定的）：问题 2 类型卡「人脈の候補」——实现与確認待ち同源（未确认的候补），种子里大多已确认所以显示 0 / 「人脈にいない」，设计稿是 1–4 人；问题 3 会える活動最后一列「詳細」深色按钮（b4 #13）还是「内訳 ›」（b10 ⑧），两张画板冲突；问题 4 弁護士详情右栏「このタイプに会えるイベント」画板一边写 0 场一边列 2 场。
+  - **未做，留给下一轮**：问题 5（390 「話すべき人」排序与 1024 / 390 类型名长短）、问题 6（04c 底部多一条イベント——先确认 b12 #214 是否截断；Step 2 chip「紹介 2件」vs「起業家 2 / 5人」）、问题 7（W-R23-06 门禁不勾选候补、mock 候补来自写死的演示联系人）、问题 9（W-R23-19、W-R25-06a 缺块先用 fixture 补；N17b 归因补「体制」行）。
+  - 问题 12（偶发「找不到画板」/ 超时）单张重跑即可。
