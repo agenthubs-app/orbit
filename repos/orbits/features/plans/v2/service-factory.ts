@@ -10,13 +10,21 @@ import { resolvePlanBackend } from "../service-factory";
 import { demoPlanV2State } from "./mock-seed";
 import { demoPlanEventFacts, livePlanEventFacts } from "./event-facts";
 import { createLivePlanFlowContext } from "./flow-context";
-import { createMemoryPlanV2Repository, createPostgresPlanV2Repository, type MemoryPlanV2Repository } from "./repository";
+import { createMemoryPlanV2Repository, createPostgresPlanV2Repository, type MemoryPlanV2Repository, type MemoryPlanV2State } from "./repository";
 import { createPlanV2Service, ledgerReviewBudget, type PlanReviewBudgetReader, type PlanV2Service } from "./service";
+import type { PlanEventFact } from "./overview";
 import type { PlanV2Repository } from "./types";
 
 interface PlansV2Global {
   __orbitPlansV2MockRepository?: MemoryPlanV2Repository;
   __orbitPlansV2MockSeeded?: Set<string>;
+  /**
+   * 像素门禁的「设计稿示例 fixture」（只在本机 mock 模式，由开发接口 `app/api/dev/plan-design-fixture/route.dev.ts` 写入；
+   * 生产构建不收录那个接口，fixture 数据模块也只被它引用）。有值时 mock 仓储用它代替演示世界灌数。
+   */
+  __orbitPlansV2MockSeedOverride?: Partial<MemoryPlanV2State> | null;
+  /** 同上：会える活動的活动事实（mock 写死在 `mock-event-facts.ts`，fixture 可以按画板换）。 */
+  __orbitPlansV2MockEventsOverride?: PlanEventFact[] | null;
   __orbitPlansV2LiveRepository?: { pool: unknown; repository: PlanV2Repository };
 }
 
@@ -61,7 +69,7 @@ export function resolvePlanV2Service(input: { actorId: string; mode?: ModuleMode
     plansV2Global.__orbitPlansV2MockSeeded ??= new Set();
     const repository = plansV2Global.__orbitPlansV2MockRepository;
     if (!plansV2Global.__orbitPlansV2MockSeeded.has(input.actorId)) {
-      repository.seed(scope, demoPlanV2State());
+      repository.seed(scope, plansV2Global.__orbitPlansV2MockSeedOverride ?? demoPlanV2State());
       plansV2Global.__orbitPlansV2MockSeeded.add(input.actorId);
     }
     // 演示世界的「新しく登録」：在内存里加一张联系人卡（mock 不写库；复核 M2 之后建不了联系人会报错，不再静默匿名）。
@@ -71,7 +79,7 @@ export function resolvePlanV2Service(input: { actorId: string; mode?: ModuleMode
       repository.seed(scope, { ...state, contacts: [...state.contacts, { id, isOrbitUser: false, lastInteractionAt: null, name, organization: null, role: null }] });
       return id;
     };
-    return { mode: backend.mode, service: createPlanV2Service({ createContact, events: demoPlanEventFacts, now: input.now, references: referencesFor(input.actorId), repository, sample: true, scope }), success: true };
+    return { mode: backend.mode, service: createPlanV2Service({ createContact, events: async () => plansV2Global.__orbitPlansV2MockEventsOverride ?? demoPlanEventFacts(), now: input.now, references: referencesFor(input.actorId), repository, sample: true, scope }), success: true };
   }
   if (plansV2Global.__orbitPlansV2LiveRepository?.pool !== pool) {
     plansV2Global.__orbitPlansV2LiveRepository = { pool, repository: createPostgresPlanV2Repository({ pool }) };
@@ -92,6 +100,17 @@ export function resolvePlanV2Service(input: { actorId: string; mode?: ModuleMode
 }
 
 export function resetPlansV2MockRepositoryForTests(): void {
+  delete plansV2Global.__orbitPlansV2MockRepository;
+  delete plansV2Global.__orbitPlansV2MockSeeded;
+}
+
+/**
+ * 像素门禁用：换掉 mock 仓储里的演示计划（`null` = 回到演示世界）。清空内存仓储后，下一次读取按新数据灌。
+ * 只由开发接口 `app/api/dev/plan-design-fixture/route.dev.ts` 调用（生产构建不收录）；live（有库）时不生效。
+ */
+export function overridePlansV2MockSeed(state: Partial<MemoryPlanV2State> | null, events: PlanEventFact[] | null = null): void {
+  plansV2Global.__orbitPlansV2MockSeedOverride = state;
+  plansV2Global.__orbitPlansV2MockEventsOverride = events;
   delete plansV2Global.__orbitPlansV2MockRepository;
   delete plansV2Global.__orbitPlansV2MockSeeded;
 }

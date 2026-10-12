@@ -129,19 +129,22 @@ test("goal input: no new goals left this month is said up front and the button i
   await page.getByText("今月はこれ以上新しい目標を作れません。").waitFor();
   await page.getByLabel("目標", { exact: true }).fill("何か新しいことを始めたい");
   assert.equal(await page.getByRole("button", { name: "iOrbit と具体化する" }).isDisabled(), true);
-  await page.getByText("作りかけのプラン：Old goal").waitFor();
+  // b12 W-R23-02a: the resume card says 作りかけのプラン over the goal (its label reads the whole line).
+  await page.locator("[data-plan-resume]").getByLabel("作りかけのプラン：Old goal").waitFor();
   await page.getByRole("button", { name: "続ける" }).click();
   assert.deepEqual(await calls(page), [{ push: "/app/plans/flow/old" }]);
 });
 
 /* ---------- ② 背景 ---------- */
 
-test("background: わたし → チーム → 目的 in order; current open, later dashed with the draft", async (t) => {
+test("background: one screen — わたし folded, チーム and 目的 open, one button to the questions", async (t) => {
   const page = await screen(t, { handlers: [{ method: "GET", replies: [ok(intakeFixture())], url: "/intakes/in-1$" }], id: "in-1", view: "flow" });
   await page.locator("[data-plan-background]").waitFor();
   const blocks = await page.locator("[data-plan-block]").evaluateAll((nodes) => nodes.map((node) => `${node.getAttribute("data-plan-block")}:${node.getAttribute("data-state")}`));
-  assert.deepEqual(blocks, ["me:current", "team:later", "purpose:later"]);
-  await page.getByText("下書き：Build the service into a brand and a business").waitFor();
+  // R23 pixel rework (b10 「② 背景確認 · Web」): one screen — わたし drafted with a role folds with ✎,
+  // チーム and 目的 are open side by side, one button under them confirms all three.
+  assert.deepEqual(blocks, ["me:done", "team:current", "purpose:current"]);
+  await page.getByRole("button", { name: "この背景で質問へ（5問まで）" }).waitFor();
   assert.equal(await page.locator("[aria-current='step']").textContent(), "背景");
 });
 
@@ -157,7 +160,7 @@ test("team: ticking a capability updates 空き at once with zero requests", asy
   await row.getByRole("button", { name: "Hana Yamada · デザイン" }).click();
   assert.equal(await row.locator("[data-plan-cover]").textContent(), "空き");
   // Solo: only your own column counts.
-  await page.getByRole("tab", { name: "一人" }).click();
+  await page.getByRole("radio", { name: "一人" }).click();
   assert.equal(await page.locator("tr[data-capability='ops_infra'] [data-plan-cover]").textContent(), "空き");
   assert.equal((await fetches(page)).length, before, "ticks and the solo switch are local");
 });
@@ -166,16 +169,19 @@ test("team confirm sends every member's ticks with the version it read; a stale 
   const intake = confirmed(intakeFixture(), ["me"]);
   const page = await screen(t, { handlers: [
     { method: "GET", replies: [ok(intake)], url: "/intakes/in-1$" },
-    { method: "PATCH", replies: [fail(409, "STALE")], url: "/intakes/in-1$" },
+    { method: "PATCH", replies: [ok({ ...intake, updatedAt: "2026-10-10T00:09:00.000Z" }), fail(409, "STALE")], url: "/intakes/in-1$" },
   ], id: "in-1", view: "flow" });
   await page.locator("tr[data-capability='brand']").getByRole("button", { name: "Ken Mori · ブランド" }).click();
-  await page.getByRole("button", { name: "チームを確定 → 目的へ" }).click();
+  // One button confirms わたし → チーム → 目的 in order (the server keeps the order); each write carries the version it read.
+  await page.getByRole("button", { name: "この背景で質問へ（5問まで）" }).click();
   await page.locator("[data-plan-notice='stale']").waitFor();
-  const patch = (await fetches(page)).find((call) => call.method === "PATCH")!;
-  assert.equal(patch.body.block, "team");
-  assert.equal(patch.body.expectedUpdatedAt, intake.updatedAt);
+  const patches = (await fetches(page)).filter((call) => call.method === "PATCH");
+  assert.deepEqual(patches.map((call) => call.body.block), ["me", "team"], "stops at the stale write");
+  const patch = patches[1]!;
+  assert.equal(patches[0]!.body.expectedUpdatedAt, intake.updatedAt);
+  assert.equal(patch.body.expectedUpdatedAt, "2026-10-10T00:09:00.000Z");
   assert.deepEqual(patch.body.team.members.find((member: any) => member.memberId === "contact:c-1").capabilities, ["product", "ops_infra", "brand"]);
-  await page.getByRole("button", { name: "読み直す" }).click();
+  await page.getByRole("button", { name: "最新を読み込む" }).click();
   await page.waitForFunction(() => (window as any).shellFixture.fetches.filter((call: any) => call.method === "GET").length === 2);
 });
 
@@ -186,9 +192,12 @@ test("わたし: a changed 「やりたいこと」 rebuilds the ladder first, t
     { method: "POST", replies: [ok(after)], url: "/ladder$" },
     { method: "PATCH", replies: [ok(confirmed(after, ["me"]))], url: "/intakes/in-1$" },
   ], id: "in-1", view: "flow" });
-  await page.getByLabel("やりたいこと").fill("Make it a brand");
-  await page.getByRole("button", { name: "わたしを確定 → チームへ" }).click();
-  await page.locator("[data-plan-block='team'][data-state='current']").waitFor();
+  await page.getByRole("button", { name: "わたしを直す" }).click();
+  await page.getByRole("textbox", { name: "やりたいこと" }).fill("Make it a brand");
+  await page.getByRole("button", { name: "この背景で質問へ（5問まで）" }).click();
+  // The stair is redrawn for the new words: confirm わたし and stop so the person can pick a rung again.
+  await page.waitForFunction(() => (window as any).shellFixture.fetches.filter((call: any) => call.method !== "GET").length === 2);
+  await page.locator("[data-plan-block='me'][data-state='done']").waitFor();
   const writes = (await fetches(page)).filter((call) => call.method !== "GET");
   assert.deepEqual(writes.map((call) => `${call.method} ${path(call)}`), ["POST /intakes/in-1/ladder", "PATCH /intakes/in-1"]);
   assert.equal(writes[0]!.body.wants, "Make it a brand");
@@ -204,7 +213,8 @@ test("questions: one submit for all, a double click sends once; untouched blanks
     { method: "POST", replies: [ok(premiseIntake())], url: "/answers$" },
   ], id: "in-1", view: "flow" });
   await page.locator("[data-plan-questions]").waitFor();
-  assert.equal(await page.locator("[data-question='R1']").getByText("推測").count(), 1, "the guess is preselected and marked");
+  // b10 「③ 5 問 · Web」: the guess is preselected (it is still sent as untouched → the server marks it 推測).
+  assert.equal(await page.locator("[data-question='R1'] button[aria-pressed='true']").count(), 1, "the guess is preselected");
   const before = (await fetches(page)).length;
   await page.locator("[data-question='R2']").getByRole("button", { name: "法人" }).click();
   await page.locator("[data-question='R7']").getByRole("button", { name: "仲間に入れる" }).click();
@@ -227,13 +237,13 @@ test("premise: a row is changed in place with the question's options", async (t)
     { method: "PATCH", replies: [ok(premiseIntake({ premiseVersion: 2 }))], url: "/premise$" },
   ], id: "in-1", view: "flow" });
   await page.locator("[data-premise='R1']").click();
-  await page.getByLabel("選択肢").selectOption("paying");
-  await page.getByLabel("内容", { exact: true }).fill("48 users");
-  await page.getByRole("button", { name: "保存" }).click();
+  // b12 W-R23-15: a question row is changed by its options, then 「この内容にする」.
+  await page.locator("[data-premise-edit='R1']").getByRole("button", { name: "有料あり" }).click();
+  await page.getByRole("button", { name: "この内容にする" }).click();
   await page.locator("[data-premise='R1']").waitFor();
   const patch = (await fetches(page)).find((call) => call.method === "PATCH")!;
   assert.equal(patch.body.key, "R1");
-  assert.equal(patch.body.value, "有料あり · 48 users");
+  assert.equal(patch.body.value.startsWith("有料あり"), true);
   await page.getByRole("button", { name: "この前提で初版をつくる" }).waitFor();
 });
 
@@ -267,7 +277,8 @@ test("fix bar: shows what is left; at 0 the input is off and only edit / confirm
   await page.locator("[data-plan-fixbar]").waitFor();
   assert.equal(await page.locator("[data-plan-fix-left]").textContent(), "2");
   assert.equal(await page.locator("[aria-current='step']").textContent(), "AI 修正");
-  await page.getByText("AI 修正 1 / 3 を反映 · 方案を更新しました").waitFor();
+  await page.locator("[data-turn='1']").getByText("AI 修正 1 / 3 を反映").waitFor();
+  await page.locator("[data-turn='1']").getByText("方案を更新しました").waitFor();
   await page.locator("[data-change='steps.0.title']").getByText("New name").waitFor();
   assert.equal(await page.getByRole("button", { name: "修正する" }).isDisabled(), true, "empty text cannot be sent");
 
@@ -288,19 +299,30 @@ test("AI limit shows the limit text, not the failure card; AI failure shows the 
   const page = await screen(t, { handlers: [
     { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
     { method: "GET", replies: [ok(draftFixture())], url: "/drafts/dr-1$" },
-    { method: "POST", replies: [fail(409, "AI_LIMIT", { limit: "daily", retryOn: "2026-10-11" }), { body: { error: { code: "SERVICE_UNAVAILABLE", context: { reason: "AI_FAILED" }, message: "x" }, success: false }, status: 503 }, ok(draftFixture({ aiFixUsed: 1 }))], url: "/fix$" },
+    { method: "POST", replies: [fail(409, "AI_LIMIT", { limit: "daily", retryOn: "2026-10-11" })], url: "/fix$" },
   ], id: "in-1", view: "flow" });
   await page.getByLabel("修正したいことを入力").fill("Design partner first");
   await page.getByRole("button", { name: "修正する" }).click();
   await page.locator("[data-plan-limit='daily']").getByText("今日はここまでです · 明日また使えます。").waitFor();
   assert.equal(await page.locator("[data-plan-failure]").count(), 0, "a limit is not a failure");
-  await page.getByRole("button", { name: "修正する" }).click();
-  await page.locator("[data-plan-failure='fix']").getByText("回数は減っていません。").waitFor();
-  assert.equal(await page.locator("[data-plan-limit]").count(), 0);
-  await page.getByRole("button", { name: "もう一度" }).click();
-  await page.locator("[data-plan-fix-left]").filter({ hasText: "2" }).waitFor();
-  const keys = (await fetches(page)).filter((call) => path(call).endsWith("/fix")).map((call) => call.body.idempotencyKey);
-  assert.equal(new Set(keys).size, 3, "each try is a new action with its own key");
+  // b12 W-R23-16c: the input is off with 「明日また使えます」 until the page is read again.
+  assert.equal(await page.getByLabel("修正したいことを入力").isDisabled(), true);
+  await page.getByPlaceholder("明日また使えます").waitFor();
+
+  const failing = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftFixture())], url: "/drafts/dr-1$" },
+    { method: "POST", replies: [{ body: { error: { code: "SERVICE_UNAVAILABLE", context: { reason: "AI_FAILED" }, message: "x" }, success: false }, status: 503 }, ok(draftFixture({ aiFixUsed: 1 }))], url: "/fix$" },
+  ], id: "in-1", view: "flow" });
+  await failing.getByLabel("修正したいことを入力").fill("Design partner first");
+  await failing.getByRole("button", { name: "修正する" }).click();
+  await failing.locator("[data-plan-failure='fix']").getByText("回数は減っていません。").waitFor();
+  assert.equal(await failing.locator("[data-plan-limit]").count(), 0);
+  await failing.getByRole("button", { name: "もう一度" }).click();
+  await failing.locator("[data-plan-fix-left]").filter({ hasText: "2" }).waitFor();
+  const keys = (await fetches(failing)).filter((call) => path(call).endsWith("/fix")).map((call) => call.body.idempotencyKey);
+  assert.equal(new Set(keys).size, 2, "each try is a new action with its own key");
+  assert.equal((await fetches(page)).filter((call) => path(call).endsWith("/fix")).length, 1, "the limited page sent once");
 });
 
 /* ---------- ③ 手動編集 ---------- */
@@ -324,7 +346,8 @@ test("manual edit: points move 5 at a time from the highest type, the total stay
   await page.getByRole("button", { name: "A First payerを減らす" }).click();
   await page.getByRole("button", { name: "A First payerを減らす" }).click();
   await page.getByRole("button", { name: "A First payerを減らす" }).click();
-  await page.locator("[data-plan-totalbar]").getByText("合計 100 / 100 · 変更 3件 · 手動編集は 1回だけ").waitFor();
+  // b10 「⑥ 手動編集 · Web」: the total sits in the rail card (合計 / 100 · 変更 n件 · 手動編集は 1回だけ).
+  await page.locator("[data-plan-totalbar]").getByText("変更 3件 · 手動編集は 1回だけ").waitFor();
   assert.equal((await fetches(page)).length, before, "editing is local until 「このプランで始める」");
 });
 
@@ -336,14 +359,17 @@ test("manual edit: removing a type redistributes its points after a confirmation
   await page.getByRole("button", { name: "C Prior productを外す" }).click();
   const dialog = page.locator("[data-plan-remove]");
   await dialog.getByText("20点を 5点ずつ、配点の高いタイプから順に配り直します。").waitFor();
-  assert.deepEqual(await dialog.locator("li").allTextContents(), ["A First payer 30 → 35", "B Brand builder 25 → 30", "D Founder 10 → 15", "イベント 15 → 20"]);
+  // b12 W-R23-18: every remaining type is listed; the ones that take points show 旧 → 新.
+  assert.deepEqual(await dialog.locator("[data-move]").evaluateAll((nodes) => nodes.map((node) => `${node.querySelector("b")!.textContent} ${node.lastElementChild!.textContent}`)), ["A First payer 30 → 35", "B Brand builder 25 → 30", "D Founder 10 → 15", "イベント 15 → 20"]);
   await page.getByRole("button", { name: "外す", exact: true }).click();
   assert.equal(await page.locator("tr[data-slot='prior_product']").count(), 0);
   assert.equal(await page.locator("[data-plan-total]").textContent(), "100");
   await page.locator("[data-plan-reset]").click();
   assert.equal(await page.locator("tr[data-slot='prior_product']").count(), 1);
   // Rename a step and start: one request with the revision and the whole edit.
-  await page.getByLabel("Step の名前").first().fill("Say it in one line");
+  // A step's name opens for editing on click (b10: 名前と目安はクリックで編集).
+  await page.getByRole("button", { name: "Step の名前 · Say who it is for" }).click();
+  await page.getByRole("textbox", { name: "Step の名前" }).fill("Say it in one line");
   await page.getByText("元：Say who it is for").waitFor();
   await page.getByRole("button", { name: "このプランで始める" }).dblclick();
   await page.waitForFunction(() => (window as any).shellFixture.calls.length > 0);
@@ -357,7 +383,7 @@ test("manual edit: removing a type redistributes its points after a confirmation
 
 test("Chinese UI: the flow speaks Chinese and sends x-orbit-lang: zh", async (t) => {
   const page = await screen(t, { handlers: [{ method: "GET", replies: [ok(intakeFixture())], url: "/intakes/in-1$" }], id: "in-1", lang: "zh", view: "flow" });
-  await page.getByRole("button", { name: "确认我 → 团队" }).waitFor();
+  await page.getByRole("button", { name: "按这个背景提问（最多5题）" }).waitFor();
   assert.equal((await fetches(page))[0]!.lang, "zh");
 });
 
@@ -417,14 +443,9 @@ test("mock end to end: goal input → background → questions → premise → d
 
   // ② 背景 → ≤5 問 → 前提 → 初版 → 確定.
   const page = await screen(t, { bridge: true, handlers: [], id: intakeId, view: "flow" }, bridge);
-  await page.locator("[data-plan-block='me'][data-state='current']").waitFor();
-  const stance = page.getByRole("group", { name: "立場" }).getByRole("button", { pressed: true });
-  if (await stance.count() === 0) await page.getByRole("button", { name: "代表・オーナー" }).click();
-  await page.getByRole("button", { name: "わたしを確定 → チームへ" }).click();
-  await page.locator("[data-plan-block='team'][data-state='current']").waitFor();
-  await page.getByRole("button", { name: "チームを確定 → 目的へ" }).click();
-  await page.locator("[data-plan-block='purpose'][data-state='current']").waitFor();
-  await page.getByRole("button", { name: "目的を確定" }).click();
+  await page.locator("[data-plan-background]").waitFor();
+  // わたし opens only when the draft has no role yet.
+  if (await page.locator("[data-plan-block='me'][data-state='current']").count()) await page.getByRole("button", { name: "代表・オーナー" }).click();
   await page.getByRole("button", { name: "この背景で質問へ（5問まで）" }).click();
   await page.locator("[data-plan-questions]").waitFor();
   await page.getByRole("button", { name: /^まとめて回答する/u }).click();
@@ -449,7 +470,8 @@ test("mock end to end: goal input → background → questions → premise → d
   assert.ok(pickActiveV2Plan(summary.data), "an active plan → the overview, not the goal input");
   assert.ok(card);
   const view = await screen(t, { bridge: true, handlers: [], id: card.planId, view: "overview" }, bridge);
-  await view.locator("[data-plan-goal]").getByText("シリーズA の資金調達をしたい", { exact: true }).waitFor();
+  // The goal switcher (web.html .k-wgoal) now reads 「💰 goal」 in one span, so the goal text is a substring.
+  await view.locator("[data-plan-goal]").getByText("シリーズA の資金調達をしたい").waitFor();
   assert.equal(await view.locator("[data-plan-score]").getAttribute("data-plan-score"), String(card.total));
   assert.deepEqual((await fetches(view)).map((call) => `${call.method} ${path(call)}`), [`GET /v2/${encodeURIComponent(card.planId)}`, "GET /v2"], "the overview only reads (R25: the plan and the goal list behind the switcher)");
 });
@@ -484,18 +506,19 @@ test("m16: after AI revisions, changing a premise asks first; cancel sends nothi
     { method: "GET", replies: [ok(withTurn)], url: "/drafts/dr-1$" },
     { method: "PATCH", replies: [ok(premiseIntake({ premiseVersion: 2 }))], url: "/premise$" },
   ], id: "in-1", view: "flow" });
-  await page.getByRole("button", { name: "すべて見る" }).click();
+  // b12 W-R23-15: after revisions the premises open from the rail's 「前提を直す」.
+  await page.locator("[data-plan-premise-open]").click();
   const edit = async () => {
     await page.locator("[data-premise='R2']").click();
-    await page.getByLabel("内容", { exact: true }).fill("Organisers and guests");
-    await page.getByRole("button", { name: "保存" }).click();
+    await page.locator("[data-premise-edit='R2']").getByRole("button").first().click();
+    await page.getByRole("button", { name: "この内容にする" }).click();
   };
   await edit();
   const dialog = page.getByRole("alertdialog", { name: "この案と修正履歴を破棄しますか？" });
   await dialog.waitFor();
   await dialog.getByRole("button", { name: "キャンセル" }).click();
   assert.equal((await fetches(page)).filter((call) => call.method === "PATCH").length, 0, "cancel sends nothing");
-  await page.getByRole("button", { name: "保存" }).click();
+  await page.getByRole("button", { name: "この内容にする" }).click();
   await dialog.getByRole("button", { name: "破棄して直す" }).click();
   await page.getByRole("button", { name: "この前提で初版をつくる" }).waitFor();
   const patches = (await fetches(page)).filter((call) => call.method === "PATCH");
@@ -512,8 +535,8 @@ test("m16: without revisions a premise change is sent straight away", async (t) 
   ], id: "in-1", view: "flow" });
   await page.getByRole("button", { name: "すべて見る" }).click();
   await page.locator("[data-premise='R2']").click();
-  await page.getByLabel("内容", { exact: true }).fill("Organisers");
-  await page.getByRole("button", { name: "保存" }).click();
+  await page.locator("[data-premise-edit='R2']").getByRole("button").first().click();
+  await page.getByRole("button", { name: "この内容にする" }).click();
   await page.getByRole("button", { name: "この前提で初版をつくる" }).waitFor();
   assert.equal(await page.getByRole("alertdialog").count(), 0);
   assert.equal((await fetches(page)).filter((call) => call.method === "PATCH").length, 1);
@@ -534,4 +557,45 @@ test("AI_BUSY: not a failure — 「処理中です」 and the intake and draft 
   await page.waitForTimeout(2500);
   const reads = (await fetches(page)).filter((call) => call.method === "GET").map(path);
   assert.deepEqual(reads, ["/intakes/in-1", "/drafts/dr-1", "/intakes/in-1", "/drafts/dr-1"], "exactly one re-read");
+});
+
+/* ---------- R23 pixel rework: D38 回改背景 · 「人脈から選ぶ」 default list ---------- */
+
+test("D38: 背景を見る → 背景を直す asks first; confirm reopens once with the version read, a stale write offers the latest", async (t) => {
+  const reopened = intakeFixture();
+  const page = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(questionsIntake())], url: "/intakes/in-1$" },
+    { method: "POST", replies: [fail(409, "STALE"), ok(reopened)], url: "/background/reopen$" },
+  ], id: "in-1", view: "flow" });
+  await page.getByRole("button", { name: "背景を見る" }).click();
+  await page.locator("[data-plan-reopen-open]").click();
+  const dialog = page.getByRole("alertdialog", { name: "背景を直しますか？" });
+  await dialog.waitFor();
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+  assert.equal((await fetches(page)).filter((call) => path(call).endsWith("/reopen")).length, 0, "cancel sends nothing");
+  await page.getByRole("button", { name: "背景を見る" }).click();
+  await page.locator("[data-plan-reopen-open]").click();
+  await dialog.getByRole("button", { name: "背景を直す" }).click();
+  await page.locator("[data-plan-notice='stale']").waitFor();
+  await page.getByRole("button", { name: "背景を見る" }).click();
+  await page.locator("[data-plan-reopen-open]").click();
+  await dialog.getByRole("button", { name: "背景を直す" }).click();
+  await page.locator("[data-plan-background]").waitFor();
+  const sent = (await fetches(page)).filter((call) => path(call).endsWith("/reopen"));
+  assert.equal(sent.length, 2);
+  assert.equal(sent[1]!.body.expectedUpdatedAt, questionsIntake().updatedAt);
+  assert.notEqual(sent[0]!.body.idempotencyKey, sent[1]!.body.idempotencyKey);
+});
+
+test("人脈から選ぶ: the default list comes from member-candidates (no query); picking one previews what they can do", async (t) => {
+  const page = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(confirmed(intakeFixture(), ["me"]))], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok({ candidates: [{ capabilities: ["design"], cofounder: false, contactId: "c-9", fills: ["design"], name: "Mio Mori", organization: "Studio M", role: "UI designer" }], gaps: ["design"] })], url: "/member-candidates$" },
+  ], id: "in-1", view: "flow" });
+  await page.getByRole("button", { name: "メンバーを追加" }).click();
+  await page.locator("[data-plan-add='network']").getByText("Mio Mori").waitFor();
+  assert.equal((await fetches(page)).filter((call) => path(call).endsWith("/member-candidates")).length, 1);
+  await page.getByRole("checkbox", { name: "Mio Mori" }).click();
+  await page.locator("[data-plan-add-preview]").getByText("Mio Moriさんの「できること」").waitFor();
+  assert.equal(await page.getByRole("button", { name: "1名を追加" }).isDisabled(), false);
 });

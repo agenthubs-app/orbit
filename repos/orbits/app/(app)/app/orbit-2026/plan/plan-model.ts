@@ -130,7 +130,8 @@ export function flowSummary(input: {
   const gaps = teamGaps(intake.goalKind, input.team, self?.memberId ?? null).map((id) => capabilityLabel(id, language));
   const names = members.map((member) => membersById.get(member.memberId)?.name ?? "").filter(Boolean).join(" · ");
   const rung = intake.background.purpose.value.rungs.find((item) => item.level === input.purposeLevel);
-  const premise = intake.premise ? intake.premise.map((row) => ({ label: row.label, value: row.value })) : input.answers;
+  // b10 knownRail('q'): the rows the questions added (目的 / チーム are already above).
+  const premise = intake.premise ? intake.premise.filter((row) => row.source !== "background" && row.source !== "record").map((row) => ({ label: row.label, value: row.value })) : input.answers;
   return [
     { key: "me", value: [me.headline, input.stanceLabel].filter(Boolean).join(" · ") || me.name || null },
     { key: "wants", value: input.wants.trim() || null },
@@ -345,4 +346,11 @@ export function changedTypeKeys(draft: Pick<PlanDraftView, "turns">): Set<string
 export function turnPreview(text: string): string {
   const chars = [...text.trim()];
   return chars.length > 12 ? `${chars.slice(0, 12).join("")}…` : chars.join("");
+}
+
+/* ---------- R23 像素返工：类型的马卡龙色（与概要同一顺序 web.html PER.c：teal · apricot · pink · lav · blue） ---------- */
+
+const FLOW_TYPE_TONES = ["teal", "apricot", "pink", "lav", "blue"] as const;
+export function flowTypeTone(index: number): (typeof FLOW_TYPE_TONES)[number] {
+  return FLOW_TYPE_TONES[((index % FLOW_TYPE_TONES.length) + FLOW_TYPE_TONES.length) % FLOW_TYPE_TONES.length]!;
 }

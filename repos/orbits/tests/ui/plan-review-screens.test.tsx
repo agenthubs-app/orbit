@@ -457,13 +457,15 @@ test("goal edit: unchanged → 保存 just closes; a change offers three exits �
 
 /* ---------- new=1 / 以前のプラン ---------- */
 
-test("new=1: the goal input with a way back; at 2 active goals it explains the limit instead", async (t) => {
+test("new=1: the goal input; at 2 active goals it explains the limit instead", async (t) => {
   const page = await screen(t, { backHref: `/app/tasks?tab=plan&plan=${PLAN}`, handlers: [{ method: "GET", replies: [ok({ activeGoalLimit: 2, activeGoals: 2, intakes: [], newGoalsLeftThisMonth: 9 })], url: "/intakes$" }], view: "goal" });
   await page.locator("[data-plan-notice='activeGoals']").getByText("同時に進められる目標は 2 つまでです。").waitFor();
   assert.equal(await page.getByRole("button", { name: "iOrbit と具体化する" }).isDisabled(), true);
   assert.doesNotMatch(await page.locator("body").innerText(), PAID);
-  await page.locator("[data-plan-entry-back]").click();
-  assert.deepEqual(await pushes(page), [`/app/tasks?tab=plan&plan=${PLAN}`]);
+  // R23 pixel rework (web.html 「Task · プラン（目標入力）」, b12 W-R23-02c): no back link on the page — the
+  // Task › プラン tab in the header leads back to the open goal; the limit card lists the active goals instead.
+  assert.equal(await page.locator("[data-plan-entry-back]").count(), 0);
+  assert.deepEqual(await pushes(page), []);
 });
 
 const legacyDetail: PlanLegacyDetail = {

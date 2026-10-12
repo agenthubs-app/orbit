@@ -34,7 +34,9 @@ export function shellNavKeyFor(pathname: string): ShellNavKey | null {
   if (matches(path, "/app/events/center") || /^\/app\/events\/[^/]+\/(operations|analytics|live)(\/|$)/u.test(path)) return "host";
   if (matches(path, "/app/events")) return "events";
   if (matches(path, "/app/tasks")) return "task";
-  // R23: plan pages belong to Task › プラン (DESIGN §7).
+  // 计划页像素返工（2026-10-12，主会话拍板）：生成流程与見直し在设计稿里是 iOrbit 页内的对话，左栏高亮 iOrbit；
+  // 其余计划页（概要、人物类型、手動編集草稿——b10 #21 左栏高亮 Task、完了、以前のプラン）属于 Task › プラン（DESIGN §7）。
+  if (matches(path, "/app/plans/flow") || /^\/app\/plans\/[^/]+\/review(\/|$)/u.test(path)) return "iorbit";
   if (matches(path, "/app/plans")) return "task";
   if (matches(path, "/app/inbox")) return "inbox";
   if (matches(path, "/app/settings")) return "settings";

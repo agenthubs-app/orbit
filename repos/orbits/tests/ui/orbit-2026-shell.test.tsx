@@ -41,6 +41,9 @@ test("route rules: every signed-in product page gets the shell; public, sign-in,
   assert.equal(shellNavKeyFor("/app/contacts/c1"), "network");
   assert.equal(shellNavKeyFor("/app/events/e1/operations"), "host");
   assert.equal(shellNavKeyFor("/app/events/e1"), "events");
+  // 计划页像素返工：生成流程、見直し在 iOrbit 里（设计稿左栏高亮 iOrbit）；概要、人物类型、手動編集（b10 #21 高亮 Task）、完了、以前のプラン 仍属 Task。
+  for (const path of ["/app/plans/flow/intake_1", "/app/plans/plan_1/review"]) assert.equal(shellNavKeyFor(path), "iorbit", path);
+  for (const path of ["/app/plans/drafts/draft_1/edit", "/app/plans/plan_1/types/item_1", "/app/plans/plan_1/done", "/app/plans/legacy/v1", "/app/plans/review"]) assert.equal(shellNavKeyFor(path), "task", path);
   assert.equal(shellShowsRail("/app/agent/actions"), false);
   assert.deepEqual([ORBIT_2026_SIDEBAR, ORBIT_2026_SIDEBAR_COMPACT, ORBIT_2026_RAIL, ORBIT_2026_HISTORY, ORBIT_LEFT_SIDEBAR_WIDTH], [84, 72, 360, 260, 212]);
 });

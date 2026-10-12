@@ -1,222 +1,213 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import type { PlanDraftView } from "../../../../../shared/contract/plan-v2";
+import type { PlanDraftView, PlanV2Content } from "../../../../../shared/contract/plan-v2";
 import { PLAN_EVENT_COPY, planCopy } from "../../../../../shared/compute/plan-template-copy";
 import { PLAN_EVENT_SLOT } from "../../../../../shared/compute/plan-templates";
 import { planFlowCopy } from "../copy/plan";
-import { Button, Card, Chip, Icon } from "../ui";
-import { changedStepIndexes, changedTypeKeys, turnPreview, typeLetters } from "./plan-model";
+import { Icon } from "../ui";
+import { changedStepIndexes, flowTypeTone, typeLetters } from "./plan-model";
 import type { Translate } from "./PlanParts";
-import styles from "./plan.module.css";
+import k from "./FlowKit.module.css";
 
-/** Type chips of a step: letters A/B/C… in the plan's order, 🎟️ for the event block. */
-function TypeChips({ keys, letters, emojis }: { keys: readonly string[]; letters: Map<string, string>; emojis: Map<string, string> }) {
-  return (
-    <span className={styles.letterChips}>
-      {keys.map((key) => <Chip key={key} label={key === PLAN_EVENT_SLOT ? "🎟️" : `${emojis.get(key) ?? ""} ${letters.get(key) ?? ""}`.trim()} />)}
-    </span>
-  );
+const TONE_CLASS: Record<string, string> = { apricot: k.emoApricot!, blue: k.emoBlue!, lav: k.emoLav!, pink: k.emoPink!, teal: k.emoTeal! };
+
+export function typeTileClass(index: number): string {
+  return `${k.emo} ${TONE_CLASS[flowTypeTone(index)]}`;
 }
 
-/** 初版 / 方案 card (b10 ④ · Web: left 見立て + 結論 + 業界の現状, right Steps + types). */
-export function DraftCard({ draft, t, language }: { draft: PlanDraftView; t: Translate; language: OrbitLanguage }) {
-  const [why, setWhy] = useState(false);
-  const [allocationWhy, setAllocationWhy] = useState(false);
-  // Web opens the citations by default (wide screens have room; UI-SPEC ②).
-  const [citationsOpen, setCitationsOpen] = useState(true);
-  const citationsId = useId();
-  const content = draft.content;
+/** b10 stepsMini: numbered steps with 目安 (changed ones in lavender) and type chips. */
+export function StepsMini({ content, t, chips, highlight }: { content: Pick<PlanV2Content, "steps" | "personTypes">; t: Translate; chips?: boolean; highlight?: ReadonlySet<number> }) {
   const letters = typeLetters(content);
   const emojis = new Map(content.personTypes.map((type) => [type.key, type.emoji]));
-  const changedSteps = changedStepIndexes(draft);
-  const changedTypes = changedTypeKeys(draft);
   return (
-    <Card data-plan-draft="">
-      <div className={`${styles.row} ${styles.between}`}>
-        <span className={styles.row}><span aria-hidden>🧭</span><b className={styles.h3}>{t(planFlowCopy.draftTitle)}</b></span>
-        <button type="button" className={`btn ${styles.iconButton}`} aria-expanded={why} aria-label={t(planFlowCopy.draftTitle)} onClick={() => setWhy(!why)}>?</button>
-      </div>
-      <p className={styles.title}>{draft.purposeText ?? draft.goal}</p>
-      {why ? <div className={styles.whyBox}><ul>{content.basis.map((item) => <li key={`${item.kind}:${item.ref}`}>{item.label}</li>)}</ul></div> : null}
-      <div className={`${styles.draftGrid} ${styles.field}`}>
-        <div className={styles.stack}>
-          <section className={styles.section}>
-            <b className={styles.h3}>{t(planFlowCopy.diagnosis)}</b>
-            <p className={styles.para}>{content.diagnosis}</p>
-          </section>
-          <section className={styles.section}>
-            <b className={styles.h3}>{t(planFlowCopy.conclusion)}</b>
-            <p className={styles.conclusion}>{content.conclusion}</p>
-            {content.flow?.length ? (
-              <div className={styles.flowCells}>
-                {content.flow.map((cell) => <div key={`${cell.label}:${cell.note}`} className={styles.flowCell}><span aria-hidden>{cell.emoji}</span><b>{cell.label}</b><span>{cell.note}</span></div>)}
+    <ol className={k.libl}>
+      {content.steps.map((step, index) => (
+        <li key={step.key} className={k.pst} data-step={step.key}>
+          <span className={k.v2snum}>{index + 1}</span>
+          <div>
+            <b>{step.title}</b>
+            {step.doneCriteria ? (
+              <span className={k.lbl}>{highlight?.has(index)
+                ? <>{t(planFlowCopy.doneCriteria, { text: "" })}<span className={k.nw}>{step.doneCriteria}</span></>
+                : t(planFlowCopy.doneCriteria, { text: step.doneCriteria })}</span>
+            ) : null}
+            {chips ? (
+              <div className={`${k.chips} ${k.pstChips}`}>
+                {step.personTypeKeys.map((key) => <span key={key} className={k.chip}>{key === PLAN_EVENT_SLOT ? "🎟️" : `${emojis.get(key) ?? ""} ${letters.get(key) ?? ""}`.trim()}</span>)}
               </div>
             ) : null}
-          </section>
-          {draft.citations.length ? (
-            <section className={styles.section} data-plan-citations={citationsOpen ? "open" : "closed"}>
-              <button type="button" className={`btn ${styles.disclosureButton}`} aria-expanded={citationsOpen} aria-controls={citationsId} onClick={() => setCitationsOpen(!citationsOpen)}>
-                <span>{t(planFlowCopy.citationsTitle, { count: draft.citations.length })}</span>
-                <Icon name={citationsOpen ? "up" : "down"} size={16} />
-              </button>
-              {citationsOpen ? (
-                <div id={citationsId} className={styles.stack}>
-                  <ol className={styles.citations}>
-                    {draft.citations.map((citation, index) => (
-                      <li key={`${citation.id}@${citation.version}`} className={styles.citation}>
-                        <span className={styles.num}>{index + 1}</span>
-                        <div className={styles.citationBody}>
-                          <b>{citation.title}</b>
-                          <span>{citation.summary}</span>
-                          <span className={styles.citationMeta}>
-                            <span>{citation.id}</span>
-                            <span>{t(planFlowCopy.citationVersion, { date: citation.updatedOn, version: citation.version })}</span>
-                            <a className={styles.link} href={citation.sourceUrl} target="_blank" rel="noopener noreferrer">{t(planFlowCopy.citationSource, { label: citation.sourceLabel })}</a>
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                  <p className={styles.label}>{t(planFlowCopy.citationsNote)}</p>
-                </div>
-              ) : null}
-            </section>
-          ) : null}
-        </div>
-        <div className={styles.stack}>
-          <section className={styles.section}>
-            <b className={styles.h3}>{t(planFlowCopy.stepsTitle)}</b>
-            <ol className={styles.citations}>
-              {content.steps.map((step, index) => (
-                <li key={step.key} className={`${styles.planStep} ${changedSteps.has(index) ? styles.changed : ""}`} data-step={step.key}>
-                  <span className={styles.num}>{index + 1}</span>
-                  <div className={styles.planStepBody}>
-                    <span className={styles.planStepTitle}>{step.title}</span>
-                    {step.doneCriteria ? <span className={styles.muted}>{t(planFlowCopy.doneCriteria, { text: step.doneCriteria })}</span> : null}
-                    <TypeChips keys={step.personTypeKeys} letters={letters} emojis={emojis} />
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </section>
-          <section className={styles.section}>
-            <div className={`${styles.row} ${styles.between}`}>
-              <b className={styles.h3}>{t(planFlowCopy.typesTitle)}</b>
-              {content.allocationReasons.length ? <button type="button" className={`btn ${styles.iconButton}`} aria-expanded={allocationWhy} aria-label={t(planFlowCopy.allocationWhy)} onClick={() => setAllocationWhy(!allocationWhy)}>?</button> : null}
-            </div>
-            {allocationWhy ? <div className={styles.whyBox}><ul>{content.allocationReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul></div> : null}
-            <div>
-              {content.personTypes.map((type) => (
-                <div key={type.key} className={`${styles.typeRow} ${changedTypes.has(type.key) ? styles.changed : ""}`} data-type={type.key}>
-                  <span className={styles.emoji} aria-hidden>{type.emoji}</span>
-                  <div className={styles.typeBody}>
-                    <b className={styles.typeName}>{letters.get(type.key)} {type.shortLabel}</b>
-                    <span className={styles.muted}>{type.roleSituation}</span>
-                  </div>
-                  <span className={styles.points}>{t(planFlowCopy.typePoints, { count: type.targetCount, points: type.allocation })}</span>
-                </div>
-              ))}
-              <div className={styles.typeRow} data-type={PLAN_EVENT_SLOT}>
-                <span className={styles.emoji} aria-hidden>🎟️</span>
-                <div className={styles.typeBody}><b className={styles.typeName}>{planCopy(PLAN_EVENT_COPY, language)}</b></div>
-                <span className={styles.points}>{t(planFlowCopy.eventPoints, { count: content.event.targetCount, points: content.event.allocation })}</span>
-              </div>
-            </div>
-          </section>
-        </div>
-      </div>
-    </Card>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
 
-/** Each AI revision: what the person wrote, then only the changes (b10 ⑤). */
-export function DraftTurns({ draft, t }: { draft: PlanDraftView; t: Translate }) {
-  if (!draft.turns.length) return null;
-  const jump = (n: number) => document.getElementById(`plan-turn-${n}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+/** The draft's name: the purpose the person picked, else the goal. */
+export function draftName(draft: Pick<PlanDraftView, "purposeText" | "goal">): string {
+  return draft.purposeText ?? draft.goal;
+}
+
+function FlowCells({ content }: { content: Pick<PlanV2Content, "flow"> }) {
+  if (!content.flow?.length) return null;
   return (
-    <div className={styles.stack} data-plan-turns="">
-      {draft.turns.length > 1 ? (
-        <nav className={styles.history} aria-label={t(planFlowCopy.historyLabel)}>
-          <span className={styles.label}>{t(planFlowCopy.historyLabel)}</span>
-          {draft.turns.map((turn) => <button key={turn.n} type="button" className={`btn ${styles.historyChip}`} onClick={() => jump(turn.n)}>{t(planFlowCopy.turnChip, { n: turn.n, text: turnPreview(turn.input) })}</button>)}
-        </nav>
-      ) : null}
-      {draft.turns.map((turn) => (
-        <section key={turn.n} id={`plan-turn-${turn.n}`} className={styles.turn} data-turn={turn.n}>
-          <p className={styles.bubble} aria-label={t(planFlowCopy.yourMessage)}>{turn.input}</p>
-          <Card>
-            <div className={styles.row}><span aria-hidden>🧭</span><b className={styles.h3}>{t(planFlowCopy.turnTitle, { limit: draft.aiFixLimit, n: turn.n })}</b></div>
-            {turn.changes.length === 0 ? (
-              <p className={styles.muted}><b>{t(planFlowCopy.noChange)}</b>{turn.noChangeReason ? ` · ${turn.noChangeReason}` : ""}</p>
-            ) : (
-              <div>
-                {turn.changes.map((change) => (
-                  <div key={change.path} className={styles.change} data-change={change.path}>
-                    <span className={styles.row}><Chip label={t(planFlowCopy.changedTag)} tone="lav" /><b>{change.label}</b></span>
-                    {change.before ? <span className={styles.before}>{change.before}</span> : null}
-                    {change.after ? <span><span className={styles.after}>{change.after}</span></span> : null}
-                  </div>
-                ))}
-              </div>
-            )}
-            {turn.unchanged.length ? <p className={styles.label}>{t(planFlowCopy.unchanged, { list: turn.unchanged.join(" · ") })}</p> : null}
-          </Card>
-        </section>
-      ))}
+    <div className={k.flow}>
+      {content.flow.flatMap((cell, index) => [
+        index > 0 ? <div key={`ar${index}`} className={k.ar} aria-hidden><Icon name="right" size={16} /></div> : null,
+        <div key={`${cell.label}:${index}`} className={index === 0 ? k.pay : undefined}><span className={k.e} aria-hidden>{cell.emoji}</span><b>{cell.label}</b><span className={k.lbl}>{cell.note}</span></div>,
+      ])}
     </div>
   );
 }
 
-/** 「AI 修正 あと N 回」 above the input; used up → input off, only manual edit / confirm (b10 ④⑤). */
-export function FixBar({ draft, t, busy, onFix, onManual, onConfirm }: {
-  draft: PlanDraftView;
-  t: Translate;
-  busy: string | null;
-  onFix: (text: string) => Promise<boolean>;
-  onManual: () => void;
-  onConfirm: () => void;
-}) {
-  const [text, setText] = useState("");
-  const sending = useRef(false);
-  const inputId = useId();
-  const left = Math.max(0, draft.aiFixLimit - draft.aiFixUsed);
-  const usedUp = left === 0;
-  const send = async () => {
-    const value = text.trim();
-    if (!value || usedUp || sending.current) return;
-    sending.current = true;
-    const ok = await onFix(value);
-    sending.current = false;
-    if (ok) setText("");
-  };
+/**
+ * 初版 / 方案 card — `full` = b10 firstWebCard (left 見立て + 結論 + 業界の現状, right Steps +
+ * types); `mini` = firstCard({ top, clamp }) (見立て 4 lines + 結論) used once AI 修正 is used up.
+ */
+export function DraftCard({ draft, t, language, mini }: { draft: PlanDraftView; t: Translate; language: OrbitLanguage; mini?: boolean }) {
+  const [why, setWhy] = useState(false);
+  const [full, setFull] = useState(false);
+  // Web opens the citations by default (wide screens have room; UI-SPEC ②).
+  const [citationsOpen, setCitationsOpen] = useState(true);
+  const citationsId = useId();
+  const whyId = useId();
+  const content = draft.content;
+  const letters = typeLetters(content);
+  const head = (
+    <div className={`${k.row} ${k.firstHead}`}>
+      <span className={`${k.emo} ${k.emoTeal}`} aria-hidden>🧭</span>
+      <div className={k.grow}><div className={k.lbl}>{t(planFlowCopy.draftTitle)}</div><b>{draftName(draft)}</b></div>
+      <button type="button" className={`btn ${k.why}`} aria-expanded={why} aria-controls={whyId} aria-label={t(planFlowCopy.draftTitle)} onClick={() => setWhy(!why)}>?</button>
+    </div>
+  );
+  const whyBody = why ? <div id={whyId} className={k.whyBody}>{content.basis.map((item) => item.label).join(" · ")}</div> : null;
+  const mitate = (clamp: boolean) => (
+    <div className={k.jsec}>
+      <span className={k.lbl}>{t(planFlowCopy.diagnosis)}</span>
+      {clamp ? <><span className={k.clamp4}>{content.diagnosis}</span><button type="button" className={`btn ${k.v2go} ${k.readMore}`} onClick={() => setFull(true)}>{t(planFlowCopy.readMore)}<Icon name="down" size={16} /></button></> : content.diagnosis}
+    </div>
+  );
+  const ketsu = (
+    <div className={`${k.jsec} ${k.ketsu}`}>
+      <span className={k.lbl}>{t(planFlowCopy.conclusion)}</span>
+      <b>{content.conclusion}</b>
+      <FlowCells content={content} />
+    </div>
+  );
+  if (mini) {
+    return (
+      <div className={`${k.card} ${k.firstMini}`} data-plan-draft="mini">
+        {head}
+        {mitate(!full)}
+        {whyBody}
+        {ketsu}
+      </div>
+    );
+  }
   return (
-    <section className={styles.fixBar} data-plan-fixbar="" data-left={left}>
-      <div className={`${styles.row} ${styles.between}`}>
-        <span className={styles.fixCount}>
-          <span className={styles.h3}>{t(planFlowCopy.fixLeftBefore)}</span>
-          <b className={styles.fixNumber} data-plan-fix-left="">{left}</b>
-          <span className={styles.label}>{t(planFlowCopy.fixLeftAfter, { limit: draft.aiFixLimit })}</span>
-        </span>
-        <span className={styles.label}>{t(planFlowCopy.fixFreeNote)}</span>
+    <div className={`${k.card} ${k.firstCard}`} data-plan-draft="">
+      {head}
+      {whyBody}
+      <div className={k.firstGrid}>
+        <div>
+          {mitate(false)}
+          {ketsu}
+          {draft.citations.length ? (
+            <div className={`${k.acc} ${citationsOpen ? k.accOpen : ""}`} data-plan-citations={citationsOpen ? "open" : "closed"}>
+              <button type="button" className={`btn ${k.accH}`} aria-expanded={citationsOpen} aria-controls={citationsId} onClick={() => setCitationsOpen(!citationsOpen)}>
+                <Icon name="book" size={16} /><b>{t(planFlowCopy.citationsHead)}</b><span className={k.chip}>{t(planFlowCopy.citationsCount, { count: draft.citations.length })}</span>
+                <span className={k.chev}><Icon name="down" size={16} /></span>
+              </button>
+              {citationsOpen ? (
+                <div id={citationsId}>
+                  <ol className={k.libl}>
+                    {draft.citations.map((citation, index) => (
+                      <li key={`${citation.id}@${citation.version}`} className={k.lib}>
+                        <span className={k.ln}>{index + 1}</span>
+                        <div className={k.lm}>
+                          <b>{citation.title}</b>{citation.summary}
+                          <div className={k.meta3}>
+                            <span>{citation.id}</span>
+                            <span>{t(planFlowCopy.citationVersion, { date: citation.updatedOn.slice(0, 7), version: citation.version })}</span>
+                            <a href={citation.sourceUrl} target="_blank" rel="noopener noreferrer">{t(planFlowCopy.citationSource, { label: citation.sourceLabel })}</a>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                  <div className={k.fact}><Icon name="book" size={16} />{t(planFlowCopy.citationsNote)}</div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <div>
+          <div className={`${k.fsec} ${k.fsecTop}`}><span className={k.lbl}>{t(planFlowCopy.stepsTitle)}</span><StepsMini content={content} t={t} chips /></div>
+          <div className={k.fsec}>
+            <span className={k.lbl}>{content.allocationReasons.length ? t(planFlowCopy.typesTitleAdjusted, { count: content.allocationReasons.length }) : t(planFlowCopy.typesTitle)}</span>
+            {content.personTypes.map((type, index) => (
+              <div key={type.key} className={k.trow} data-type={type.key}>
+                <span className={typeTileClass(index)} aria-hidden>{type.emoji}</span>
+                <div className={k.tm}><b>{letters.get(type.key)} {type.shortLabel}</b><span className={k.lbl}>{type.roleSituation}</span></div>
+                <span className={k.pt}>{type.allocation}<small> {t(planFlowCopy.typePoints, { count: type.targetCount, points: "" }).trim()}</small></span>
+              </div>
+            ))}
+            <div className={k.trow} data-type={PLAN_EVENT_SLOT}>
+              <span className={`${k.emo} ${k.emoApricot}`} aria-hidden>🎟️</span>
+              <div className={k.tm}><b>{planCopy(PLAN_EVENT_COPY, language)}</b><span className={k.lbl}>{t(planFlowCopy.eventRole)}</span></div>
+              <span className={k.pt}>{content.event.allocation}<small> {t(planFlowCopy.eventPoints, { count: content.event.targetCount, points: "" }).trim()}</small></span>
+            </div>
+          </div>
+        </div>
       </div>
-      {usedUp ? (
-        <p className={styles.muted} data-plan-fix-usedup="">{t(planFlowCopy.fixUsedUp)} {t(planFlowCopy.fixCountsNote)}</p>
-      ) : (
-        <p className={styles.label}>{t(planFlowCopy.fixTip)} {t(planFlowCopy.fixExample)}</p>
-      )}
-      <label className={styles.label} htmlFor={inputId}>{t(planFlowCopy.fixPlaceholder)}</label>
-      <textarea id={inputId} className={styles.textInput} value={text} placeholder={t(planFlowCopy.fixPlaceholder)} maxLength={1000} disabled={usedUp || Boolean(busy)}
-        onChange={(event) => setText(event.target.value)} />
-      <div className={styles.row}>
-        <Button variant="primary" icon="sparkle" label={t(planFlowCopy.fixSend)} loading={busy === "fix"} disabled={usedUp || !text.trim() || Boolean(busy)} onClick={() => void send()} />
-        <span className={styles.push} />
-        <Button label={t(planFlowCopy.manualEdit)} disabled={!draft.manualEditAvailable || Boolean(busy)} onClick={onManual} />
-        <Button variant="accent" label={t(planFlowCopy.confirmPlan)} loading={busy === "confirm"} disabled={Boolean(busy)} onClick={onConfirm} />
+    </div>
+  );
+}
+
+/** Each AI revision: what the person wrote, then the update card (b10 updCard, ⑤). */
+export function DraftTurns({ draft, t, only }: { draft: PlanDraftView; t: Translate; only?: number }) {
+  if (!draft.turns.length) return null;
+  const turns = only ? draft.turns.filter((turn) => turn.n === only) : draft.turns;
+  return (
+    <>
+      {turns.map((turn) => <TurnBlock key={turn.n} turn={turn} limit={draft.aiFixLimit} t={t} />)}
+    </>
+  );
+}
+
+function TurnBlock({ turn, limit, t }: { turn: PlanDraftView["turns"][number]; limit: number; t: Translate }) {
+  const [why, setWhy] = useState(false);
+  return (
+    <>
+      <p id={`plan-turn-${turn.n}`} className={`${k.bubble} ${k.bubbleMe}`} aria-label={t(planFlowCopy.yourMessage)} data-turn-say={turn.n}>{turn.input}</p>
+      <div className={`${k.card} ${k.qCard}`} data-turn={turn.n}>
+        <div className={k.row} style={{ gap: 8 }}>
+          <span className={`${k.emo} ${k.emoTeal}`} aria-hidden>🧭</span>
+          <div className={k.grow}><div className={k.lbl}>{t(planFlowCopy.turnKicker, { limit, n: turn.n })}</div><b className={k.turnTitle}>{t(turn.changes.length ? planFlowCopy.turnUpdated : planFlowCopy.noChange)}</b></div>
+          <button type="button" className={`btn ${k.why}`} aria-expanded={why} aria-label={t(planFlowCopy.turnKicker, { limit, n: turn.n })} onClick={() => setWhy(!why)}>?</button>
+        </div>
+        {turn.changes.length ? (
+          <>
+            <div className={k.diff}>
+              {turn.changes.map((change) => (
+                <div key={change.path} className={k.dl} data-change={change.path}>
+                  <span className={k.chgtag}>{t(planFlowCopy.changedTag)}</span>
+                  <span className={k.lbl}>{change.label}</span>
+                  {change.before ? <s>{change.before}</s> : null}
+                  {change.after ? <span className={k.dlNew}>{change.after}</span> : null}
+                </div>
+              ))}
+            </div>
+            {turn.unchanged.length ? <div className={k.sameLine}>{t(planFlowCopy.unchanged, { list: turn.unchanged.join(" · ") })}</div> : null}
+          </>
+        ) : (
+          <div className={`${k.sameLine} ${k.sameLineGap}`}>{turn.noChangeReason ?? t(planFlowCopy.noChange)}</div>
+        )}
+        {why && turn.changes.some((change) => change.reason) ? <div className={k.whyBody}>{turn.changes.map((change) => change.reason).filter(Boolean).join(" · ")}</div> : null}
       </div>
-      {!usedUp ? <p className={styles.label}>{t(planFlowCopy.fixCountsNote)}</p> : null}
-    </section>
+    </>
   );
 }

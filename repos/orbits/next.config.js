@@ -80,6 +80,10 @@ const nextConfig = {
     ];
   },
   poweredByHeader: false,
+  // 像素门禁的开发接口（如 `app/api/dev/plan-design-fixture/route.dev.ts`）只在非生产当作路由；生产构建只认默认扩展名，
+  // 不收录 `*.dev.ts`，它们引用的设计稿示例 fixture 也就不会被打包（tests/plans/plan-design-fixtures.test.ts 守）。
+  pageExtensions:
+    process.env.NODE_ENV === "production" ? ["tsx", "ts", "jsx", "js"] : ["dev.tsx", "dev.ts", "tsx", "ts", "jsx", "js"],
   // 批量名片导入的 PDF 拆页/HEIC 转码依赖原生二进制；必须留在 Node 运行时
   // 由 require 加载，不能进 webpack bundle。
   serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist", "heic-convert", "sharp"],

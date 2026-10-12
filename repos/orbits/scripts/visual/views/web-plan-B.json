@@ -1,0 +1,401 @@
+{
+ "_note": "子任务 B（R23 生成流程 + 手動編集）像素门禁画面清单。先 `node features/plans/v2/design-fixtures/switch.mjs --origin http://localhost:3202 --storage <qa-storage-B> --name b10-flow`（W-R23-01 用 --name null）。键 = <id>-<width>-<theme>。",
+ "defaults": {
+  "app-origin": "http://localhost:3202",
+  "login": "qa@orbit.test",
+  "grid": 100,
+  "attribution": "scripts/visual/attribution-redesign-R23-25-B.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/plan/FlowKit.module.css",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/FlowParts.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanFlowScreen.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/BackgroundBlocks.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/IntakeCards.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/DraftCard.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/FlowRail.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanManualEditScreen.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanGoalEntry.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/plan.ts",
+  "repos/orbits/features/plans/v2/design-fixtures/b.ts"
+ ],
+ "views": [
+  {
+   "id": "W-R23-01",
+   "app": "/app/tasks?tab=plan&new=1",
+   "design": "web.html",
+   "board-index": 15,
+   "width": 1440,
+   "steps": [
+    {
+     "fill": [
+      "input[aria-label=\"目標\"]",
+      "シリーズA で 3億円を調達したい"
+     ]
+    },
+    {
+     "wait": 2500
+    }
+   ],
+   "note": "fixture null（作りかけがない演示世界）"
+  },
+  {
+   "id": "W-R23-04",
+   "app": "/app/plans/flow/intake_b10_bg",
+   "design": "b10-plan-example.html",
+   "board-index": 7,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    }
+   ],
+   "note": "fixture b10-flow；W-R23-05 / 08 同一画板同一屏（Web 一屏 3 块）"
+  },
+  {
+   "id": "W-R23-06",
+   "app": "/app/plans/flow/intake_b10_bg",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    },
+    {
+     "click": "button[aria-label=\"メンバーを追加\"]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "board": "W-R23-06 "
+  },
+  {
+   "id": "W-R23-10",
+   "app": "/app/plans/flow/intake_b10_q",
+   "design": "b10-plan-example.html",
+   "board-index": 10,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    }
+   ]
+  },
+  {
+   "id": "W-R23-11",
+   "app": "/app/plans/flow/intake_b10_premise",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    }
+   ],
+   "board": "W-R23-11 "
+  },
+  {
+   "id": "W-R23-12",
+   "app": "/app/plans/flow/intake_b10_draft",
+   "design": "b10-plan-example.html",
+   "board-index": 14,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    }
+   ]
+  },
+  {
+   "id": "W-R23-13",
+   "app": "/app/plans/flow/intake_b10_fix1",
+   "design": "b10-plan-example.html",
+   "board-index": 17,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    }
+   ]
+  },
+  {
+   "id": "W-R23-14",
+   "app": "/app/plans/flow/intake_b10_fix3",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    }
+   ],
+   "board": "W-R23-14 "
+  },
+  {
+   "id": "W-R23-17",
+   "app": "/app/plans/drafts/draft_b10_fix3/edit",
+   "design": "b10-plan-example.html",
+   "board-index": 21,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-edit]"
+    },
+    {
+     "wait": 2000
+    }
+   ],
+   "note": "画板是编辑中（改名 / 拖动 / 改配点）的状态，实现截的是刚打开"
+  },
+  {
+   "id": "W-R23-18",
+   "app": "/app/plans/drafts/draft_b10_fix3/edit",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-edit]"
+    },
+    {
+     "wait": 2000
+    },
+    {
+     "click": "button[aria-label=\"C 名刺 SaaS の経験者を外す\"]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "board": "W-R23-18 "
+  },
+  {
+   "id": "W-R23-03",
+   "app": "/app/plans/flow/intake_b10_drafting",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    }
+   ],
+   "board": "W-R23-03 "
+  },
+  {
+   "id": "W-R23-09",
+   "app": "/app/plans/flow/intake_b10_fallback",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    }
+   ],
+   "board": "W-R23-09 "
+  },
+  {
+   "id": "N17b",
+   "app": "/app/plans/flow/intake_b10_onerung",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    }
+   ],
+   "board": "N17b "
+  },
+  {
+   "id": "W-R23-19",
+   "app": "/app/plans/flow/intake_b10_planned",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-diag]"
+    },
+    {
+     "wait": 1500
+    }
+   ],
+   "board": "W-R23-19 "
+  },
+  {
+   "id": "W-R23-07",
+   "app": "/app/plans/flow/intake_b10_bg",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    },
+    {
+     "click": "button[aria-label=\"メンバーを追加\"]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "button[role=tab]:has-text(\"自分で書く\")"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "fill": [
+      "[data-plan-add='manual'] input",
+      "田中さん（友人のマーケター）"
+     ]
+    },
+    {
+     "click": "[data-plan-add='manual'] button:has-text(\"アドバイザー\")"
+    },
+    {
+     "click": "[data-plan-add='manual'] button:has-text(\"マーケ\")"
+    },
+    {
+     "click": "[data-plan-add='manual'] input"
+    },
+    {
+     "wait": 400
+    }
+   ],
+   "board": "W-R23-07 "
+  },
+  {
+   "id": "W-R23-01-390",
+   "app": "/app/tasks?tab=plan&new=1",
+   "design": "b12-missing-states.html",
+   "board": "W-R23-01-390",
+   "width": 390,
+   "steps": [
+    {
+     "fill": [
+      "input[aria-label=\"目標\"]",
+      "Orbit を落地して黒字化したい"
+     ]
+    },
+    {
+     "wait": 2500
+    }
+   ],
+   "note": "fixture null"
+  },
+  {
+   "id": "W-R23-02a",
+   "app": "/app/tasks?tab=plan&new=1",
+   "design": "b12-missing-states.html",
+   "board": "W-R23-02a",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-resume]"
+    },
+    {
+     "wait": 1500
+    }
+   ],
+   "note": "fixture b12-goal-resume"
+  },
+  {
+   "id": "W-R23-02b",
+   "app": "/app/tasks?tab=plan&new=1",
+   "design": "b12-missing-states.html",
+   "board": "W-R23-02b",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-notice='goalsMonth']"
+    },
+    {
+     "wait": 1500
+    }
+   ],
+   "note": "fixture b12-goal-month"
+  },
+  {
+   "id": "W-R23-02c",
+   "app": "/app/tasks?tab=plan&new=1",
+   "design": "b12-missing-states.html",
+   "board": "W-R23-02c",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-active-goals]"
+    },
+    {
+     "wait": 1500
+    }
+   ],
+   "note": "fixture b12-goal-two"
+  },
+  {
+   "id": "W-R23-15",
+   "app": "/app/plans/flow/intake_b10_fix1",
+   "design": "b12-missing-states.html",
+   "board": "W-R23-15 ",
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-plan-flow]"
+    },
+    {
+     "wait": 2000
+    },
+    {
+     "click": "[data-plan-premise-open]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "click": "[data-premise='R3']"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "click": "[data-premise-edit='R3'] button:has-text(\"案がある\")"
+    },
+    {
+     "click": "button:has-text(\"この内容にする\")"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "fixture b10-flow"
+  }
+ ]
+}

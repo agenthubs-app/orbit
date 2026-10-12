@@ -11,3 +11,4 @@ tsconfig.tsbuildinfo
 .orbit-batch-uploads/
 .vercel
 tsconfig.build.tsbuildinfo
+.next-rework-*
