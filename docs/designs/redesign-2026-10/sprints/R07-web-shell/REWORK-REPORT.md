@@ -183,3 +183,5 @@
 - 改法：`shell.module.css` 的 `.logo` 与 `.mainhead :global(.btn)` 各加 `line-height: 1.5`（壳内其它文字都是写死 1.5，没有 1.5 的 token；`--lh-body` 1.55 全站在用，未动）。两处盒子高度固定（42 / 40），不影响布局。
 - 验证（`:3005` / `.next-gate`）：`run-lh15-final*/` W-R07-01L、01H、TplanH 1440/1024 × 浅/深全部 PASS，style-diff 这两处行高 0 项；全套 `run-lh15-all/` + `run-lh15-retry/` 壳区域视图 43/50 过，未过的 03D / 03DT（1024 抽屉）、TmemoH 在撤掉本改动的基线 `run-lh15-base/` 数字完全相同，属原有问题；整页视图大量超阈来自页面内容（计划页返工进行中等），不属本项。`tests/ui/orbit-2026-shell.test.tsx` 18/18。
 - 遗留：01H-1024 的「次の一手」按钮宽 130/106 来自建议计数徽标（数据，已归因）；TplanH 页签 style-diff 报 `gap` normal/0 与当前页签 `box-shadow` 差异，未修，待看。
+
+- **2026-10-12 追记（R05 会话）**：token `font.line-height.body`（`--lh-body`）照 kit `body` 由 1.55 改为 1.5，全站 orbit-2026 作用域默认行高随之对齐设计稿；壳内 7aa6682b 的两处显式 1.5 现已与默认值相同。R07 全套门禁复跑（run-lhbody15，偶发项单独重跑）与改前基线逐张一致，无退步；03D / 03DT / TmemoH 仍是原有问题。

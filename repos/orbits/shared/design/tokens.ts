@@ -252,7 +252,7 @@ export const designFont = {
   lineHeight: {
     display: 1.05,
     title: 1.35,
-    body: 1.55,
+    body: 1.5,
     label: 1.4
   }
 } as const;
