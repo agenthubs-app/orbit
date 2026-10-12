@@ -23,21 +23,24 @@
   {
    "id": "W-R23-01",
    "app": "/app/tasks?tab=plan&new=1",
-   "design": "web.html",
-   "board-index": 15,
+   "design": "b12-missing-states.html",
    "width": 1440,
    "steps": [
     {
+     "waitFor": "[data-plan-goal-card]"
+    },
+    {
      "fill": [
       "input[aria-label=\"目標\"]",
-      "シリーズA で 3億円を調達したい"
+      "Orbit を落地して黒字化したい"
      ]
     },
     {
      "wait": 2500
     }
    ],
-   "note": "fixture null（作りかけがない演示世界）"
+   "note": "fixture null；b12 W-R23-01-1440（02a–c 的默认状态，web.html #15 已作废）",
+   "board": "W-R23-01-1440"
   },
   {
    "id": "W-R23-04",

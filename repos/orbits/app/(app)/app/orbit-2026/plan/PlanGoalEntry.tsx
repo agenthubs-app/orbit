@@ -121,8 +121,8 @@ function GoalInput({ t }: { t: Translate }) {
 
   return (
     <div className={k.wgrid}>
-      {/* b12 W-R23-02a/b/c: with an unfinished flow or a limit, the rail is the plan's iOrbit rail (ask about this plan, recent chats). */}
-      {inProgress || blocked ? <ShellPage rightRail={<GoalRail t={t} recent={list?.intakes ?? []} />} /> : null}
+      {/* b12 W-R23-01-1440 / 02a–c: the goal input's rail is the plan's iOrbit rail (ask about this plan, recent chats). */}
+      <ShellPage rightRail={<GoalRail t={t} recent={list?.intakes ?? []} />} />
       {inProgress ? (
         <div className={k.span12} data-plan-resume="">
           <div className={`${k.card} ${k.resumeCard}`}>
