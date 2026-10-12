@@ -75,8 +75,8 @@
    "board-kind": "web",
    "width": 1440,
    "wait-for": "[data-plan-overview]",
-   "fixture": "w17-overview-many",
-   "note": "5d30ac68 改画：Step 完成卡在左列 Step 3 行内；確認待ち只放候补 1 条（s46）"
+   "fixture": "b12-214-step-done",
+   "note": "1981a0aa（用户选 A）：s56c，Step 1「CFO 1 / 1人」达标，规则在 Step 1 下出行内完成卡；Step 3 VC 2 / 3人不出；確認待ち只放候补 1 条"
   },
   {
    "id": "W-R24-03",

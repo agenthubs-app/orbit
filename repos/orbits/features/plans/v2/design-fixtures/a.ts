@@ -9,6 +9,7 @@
  * - "w17-overview-many"：web.html #17 / b8 #6 #7（s46：起業家 2 · VC 2 · 弁護士 スキップ · イベント 2 = 46）
  * - "w16-overview-few"：web.html #16（s0：今日つくったプラン，0 分）
  * - "b12-208-pending"：b12 W-R24-04a（s56c：CFO 1 · memo 提议 山本 彩 + 候补 佐々木 / 鈴木）
+ * - "b12-214-step-done"：b12 W-R24-04c（s56c：CFO 1 / 1 达标，规则在 Step 1 下出「完了しましたか？」· 確認待ち只有候补 佐々木）
  * - "b12-206-premise"：b12 W-R24-03（s46，前提 6 件 · 9月14日に確定）
  * - "b4-11-type-vc"：b4 ① VC（候补 4 · 話した人 2 · 伊藤さん経由）；W-R24-12 / W-R24-09b 也用它
  * - "b4-13-type-cvc"：b4 ② CVC（人脈にいない · 人物像 · 開口一番 · 小林さん経由）
@@ -204,6 +205,13 @@ export const fixturesA: Record<string, PlanDesignFixture> = {
     ],
     extraLog: [dismissStep1, dismissStep4, memoYamamoto],
   })),
+  // 1981a0aa（用户 2026-10-12 选 A）：Step 1「CFO 1 / 1人」达标、没驳回 → 规则自己在 Step 1 下出完成卡；Step 3 仍是 VC 2 / 3人。
+  "b12-214-step-done": fromDemo(seriesA({
+    manualEditAvailable: true,
+    awards: [{ at: jst("2026-10-09"), contactId: "demo-person-ito", key: "cfo", points: 10 }, ...S46],
+    candidates: OVERVIEW_CANDIDATES,
+    extraLog: [dismissStep4],
+  })),
   "b12-206-premise": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, extraLog: [dismissStep4], manualEditAvailable: true })),
   "b4-11-type-vc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
   "b4-13-type-cvc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
@@ -239,6 +247,7 @@ const CVC_EVENTS = (): PlanEventFact[] => [
 export const eventFactsA: Record<string, PlanDesignEventFacts> = {
   "b12-206-premise": SERIES_A_EVENTS,
   "b12-208-pending": SERIES_A_EVENTS,
+  "b12-214-step-done": SERIES_A_EVENTS,
   "b12-222-law-skipped": SERIES_A_EVENTS,
   "b12-244-law": SERIES_A_EVENTS,
   "b4-11-type-vc": SERIES_A_EVENTS,
@@ -246,12 +255,4 @@ export const eventFactsA: Record<string, PlanDesignEventFacts> = {
   "w16-overview-few": SERIES_A_EVENTS,
   "b8-overview-many": SERIES_A_EVENTS,
   "w17-overview-many": SERIES_A_EVENTS,
-};
-
-/**
- * 同名 fixture 在概要上要出「完了しましたか？」的 Step（web.html #17 / b12 W-R24-04c：Step 3，示例分数仍是 46，
- * 规则上 VC 2 / 3 还没达标——只在 mock 由 service-factory 补上，见 `withMockStepSuggestions`）。
- */
-export const stepSuggestionsA: Record<string, readonly string[]> = {
-  "w17-overview-many": ["demo-step-3"],
 };
