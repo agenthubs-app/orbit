@@ -96,8 +96,15 @@ test("the TS output carries the one contrast list, camelCased, for the App's con
 
 test("radius, type and motion scales are the ones the plan fixed", () => {
   // R06 added menu 18 (context menu), tile 16 (mac tiles, steps) and tag 6 (key caps, sample tags);
-  // the R07 pixel rework added row 12 (b12 account-menu rows).
-  assert.deepEqual(tokens.radius, { xl: 24, lg: 20, md: 14, sm: 10, sheet: 34, dialog: 28, "card-web": 22, bubble: 18, pill: 999, menu: 18, tile: 16, row: 12, "logo-sm": 11, tag: 6 });
+  // the R07 pixel rework added row 12 (b12 account-menu rows); the plan-page rework found the kit's
+  // hair 2 / bar 3 / seg 5 / chip 8 / input-sm 9 / emo 13 and the type sizes below without tokens.
+  assert.deepEqual(tokens.radius, { xl: 24, lg: 20, md: 14, sm: 10, sheet: 34, dialog: 28, "card-web": 22, bubble: 18, pill: 999, menu: 18, tile: 16, row: 12, "logo-sm": 11, tag: 6, hair: 2, bar: 3, seg: 5, chip: 8, "input-sm": 9, emo: 13 });
+  assert.deepEqual(
+    { micro: 9.5, tiny: 10.5, emph: 15, "title-xs": 18, section: 19, "display-md": 44, "display-xl": 64 },
+    Object.fromEntries(["micro", "tiny", "emph", "title-xs", "section", "display-md", "display-xl"].map((key) => [key, tokens.font.size[key]]))
+  );
+  // The kit's --font exactly: no Hiragino Kaku Gothic ProN before Noto (it took ✓ at bold weights from SF).
+  assert.equal(tokens.font.family.ja, '-apple-system, "SF Pro Display", "SF Pro Text", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif');
   assert.deepEqual(Object.keys(tokens.font.family), ["ja", "zh", "en", "num"]);
   assert.ok(!JSON.stringify(tokens.font.family).includes("Serif"), "no serif face in any stack (RD-09)");
   // RD-09 revised (user, 2026-10-12): Japanese starts with the system font like the kit's --font; Hiragino for kana / kanji.

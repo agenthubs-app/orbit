@@ -177,7 +177,13 @@ export const designRadius = {
   tile: 16,
   row: 12,
   logoSm: 11,
-  tag: 6
+  tag: 6,
+  hair: 2,
+  bar: 3,
+  seg: 5,
+  chip: 8,
+  inputSm: 9,
+  emo: 13
 } as const;
 
 export const designSpace = {
@@ -187,7 +193,7 @@ export const designSpace = {
 
 export const designFont = {
   family: {
-    ja: "-apple-system, \"SF Pro Display\", \"SF Pro Text\", \"Hiragino Sans\", \"Hiragino Kaku Gothic ProN\", \"Noto Sans JP\", system-ui, sans-serif",
+    ja: "-apple-system, \"SF Pro Display\", \"SF Pro Text\", \"Hiragino Sans\", \"Noto Sans JP\", system-ui, sans-serif",
     zh: "\"PingFang SC\", \"Noto Sans SC\", \"Hiragino Sans GB\", -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
     en: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Segoe UI\", system-ui, sans-serif",
     num: "\"SF Pro Rounded\", -apple-system, \"SF Pro Display\", \"Noto Sans JP\", sans-serif"
@@ -219,7 +225,14 @@ export const designFont = {
     row: 13.5,
     dialogTitle: 16,
     control: 12.5,
-    meta: 12
+    meta: 12,
+    micro: 9.5,
+    tiny: 10.5,
+    emph: 15,
+    titleXs: 18,
+    section: 19,
+    displayMd: 44,
+    displayXl: 64
   },
   weight: {
     regular: 400,

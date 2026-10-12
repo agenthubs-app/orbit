@@ -140,3 +140,11 @@
 | 底栏胶囊 | 0.023–0.037 | **0.016–0.019**（浅色 6 张中 5 张、深色 Task 2 张 ≤ 0.02）；深色首页 0.026、イベント 0.025、メモ 0.030 | 第 0 带（图标行）0.022–0.040：图标亚像素 + 深色玻璃透出旧正文 |
 | 只框底栏标签行 | 0.040–0.046 | 0.028 | 栅格化 |
 | 首页 `.hhead` | 0.089 / 0.091 | 0.078 / 0.079 | 头像首字、日期、问候是数据；「編集」宽度已对齐 |
+
+## 11. 字体栈顺序与缺失 token（主会话 2026-10-12 追加）
+
+- **`--font-ja`**：去掉 `"Hiragino Kaku Gothic ProN"`，与 kit `--font` 逐字一致。CDP 实测（`CSS.getPlatformFontsForNode`）：Chrome 未解析到 SF 时，原栈在 700 / 900 把 ✓ 交给 HiraKakuProN-W6，kit 栈是 SF Bold；其余常用符号两栈相同。注：kit 自己也是 Hiragino 在 Noto 前，「Hiragino 排在 Noto 前」不是差异来源，差异只来自多出的 ProN。
+- **R07 拍板① 对照（英文数字 SF、假名汉字 Hiragino、符号按设计稿）**：门禁同款字体修正下逐字查设计稿用哪个字体，再用 CoreText 读 iOS 26.1 运行时的 SFUI 字符表——iOS SF 有 ✓ → … × · — ① ●（设计稿也是 SF，App 留在 SF）；没有 ― ‥ ※ ─ ⑩ ⑳ ◆ ◎ ☀ ♪（设计稿是 Hiragino Sans，iOS 会回退到较窄的 .HiraKakuInterface）。`UiText` 的 Hiragino 段因此并入这些符号（`src/components/ui/Text.tsx`）。✕ 两端都是 Zapf Dingbats 级回退，未动。
+- **缺失 token**（清单来自计划页会话的共享笔记）：字号 `micro` 9.5 / `tiny` 10.5 / `emph` 15 / `title-xs` 18 / `section` 19 / `display-md` 44 / `display-xl` 64；圆角 `hair` 2 / `bar` 3 / `seg` 5 / `chip` 8 / `input-sm` 9 / `emo` 13。两端生成并同步，`design-tokens-generated` 测试同步更新。替换计划页写死值由计划页会话做。
+- **影响面**：GitNexus 对 `UiText` 给 CRITICAL（所有 App 文字都经过它；索引过期，解析到错误文件）；本次只让上述符号改走 Hiragino 字面，其余字符不变；R05 门禁区域里没有这些符号，门禁数字不受影响。
+

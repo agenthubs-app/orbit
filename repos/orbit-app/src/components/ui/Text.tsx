@@ -30,7 +30,10 @@ export function UiText({ lineBreakStrategyIOS = "standard", children, ...props }
   );
 }
 
-const CJK = "[\\u3000-\\u30ff\\u3400-\\u9fff\\uf900-\\ufaff\\uff00-\\uffef]+";
+// Kana, kanji and full-width forms, plus the symbols the design draws in Hiragino Sans
+// because SF lacks them (CDP-checked on the kit stack: ― ‥ ※, box lines, ⑩–⑳, ◆◇◉◎◯,
+// ☀–☃ ☎ ♪). Symbols SF has (✓ → … × · — ① ●) stay in SF, as in the design.
+const CJK = "[\\u3000-\\u30ff\\u3400-\\u9fff\\uf900-\\ufaff\\uff00-\\uffef\\u2015\\u2025\\u203b\\u2500-\\u254b\\u2469-\\u2471\\u2473\\u25c6\\u25c7\\u25c9\\u25ce\\u25ef\\u2600-\\u2603\\u260e\\u266a]+";
 const HAS_CJK = new RegExp(CJK, "u");
 const FACES: Readonly<Record<string, string>> = designFont.face.ja;
 
