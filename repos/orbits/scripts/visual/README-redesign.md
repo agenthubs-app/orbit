@@ -71,11 +71,21 @@ node scripts/visual/compare-redesign.mjs --suite scripts/visual/views/web-R07.js
 **字体（2026-10-12，R05 发现）**：kit 的字体栈以 `-apple-system` 开头，这是 Safari / iOS 专用名，**Chrome 不认**，所以在 Playwright Chrome 里设计稿的英文和数字整个退到 Hiragino Sans（CDP：`CSS.getPlatformFontsForNode` 显示「CFO Night Tokyo」= `HiraginoSans-W6`）。iOS 真机同一个栈英文、数字走 SF，同样 17px 的「Task」设计图宽 47px、真机约 35px，含英文数字的带全部超阈。
 - **App 门禁**：`compare-redesign-app.mjs` 渲染设计稿时在 `--font` / `--font-num` 的 `-apple-system` 前插入 Chrome 的同义名 `BlinkMacSystemFont`（macOS 系统 SF）。CDP 核实：英文变 `.SFNS-*`，假名仍是 `HiraginoSans-*`，与 iOS 一致。「SF Pro Rounded」本机没有，数字退到 SF。映射版本 `sf-latin-1` 进缓存键，旧截图自动作废；排查时 `--keep-design-font true` 看原样。R05 `it1-task-cal-light` 验证：「Task」标题块的差异从 12.9% 降到 6.6%（字宽对齐，剩下的是 Chrome 1× 与 iOS 3× 缩小的栅格化差），标题带从 0.0372 降到 0.0235，剩下的是日期数据不同（设计「10月7日（水）」/ 真机当天日期）。
 - **App 画框半像素偏移（2026-10-12，R05 发现）**：`app.html` 里 `.phone` 画框的页面 y 常是小数（367.75、1563.5…），截出 390×845，底栏胶囊和图标整体低 1px，底栏那条带一直判不一致。App 版现在截图前也把画框搬到左上角整数坐标（lib `moveFrameToTop`，与 Web 版同一做法）；缓存键升到 v2，旧截图自动作废。R05 `it1-task-cal-light` 验证：设计图 390×844，胶囊下边缘与真机同在第 814–815 行（改前 815–816）。
+- **App 设计侧按 3x 渲染再缩到 1x（2026-10-12，R05 发现）**：1x 渲染时 Chrome 把 SVG 图标边对齐到整像素（324.5 → 325），真机是 3x 渲染后缩小、保留 0.5px 的灰边，只框住图标的细带也差 0.025–0.03。App 版现在设计侧 `deviceScaleFactor: 3`，截图后用和真机截图同一个面积平均缩放（lib `resize`）缩到 1x，两边走同一条栅格化路径；`--design-scale 1` 回到旧做法；缓存键 v3，旧截图作废。R05 `it1-task-cal-light` 验证：顶栏 🔍 图标块（两边形状相同）差异 0.0010 → 0；底栏图标块仍差 11–14%（±2px 搜索后），是那张旧截图里图标本身与设计稿不同，不是栅格化。Web 门禁不受影响（两边都是 Chrome 1x）。
 - **Web 门禁不注入**：设计稿和实现都在 Chrome 里渲染、用同一个栈，CDP 核实两边英文都是 `HiraginoSans-W6`，比对有效。但这也意味着 **Mac 上的 Chrome 用户看到的英文数字是 Hiragino，不是拍板①想要的 SF**（Safari 用户是 SF）；要改得在实现的日文栈里加 `BlinkMacSystemFont`，同时 Web 设计侧也要注入同样的映射，待产品负责人决定后一起改。
 
-**耗时（同一台机器、同一 dev server，R07 全部 76 张）**：见下表；新旧两种跑法逐张数字一致（raw、超阈带、未归因带）。
+**耗时（同一台机器、同一 dev server，新旧交替跑两轮取负载相近的一组）**：新旧两种跑法逐张数字一致（16 张 × 冷 / 热各两轮，raw、超阈带、未归因带完全相同）。
 
-（测量中：旧脚本基线与新脚本冷 / 热缓存三轮正在同一负载下跑，结果补在下一次提交。单张实测：Web 一张 9.8s → 设计稿缓存命中 4.4s；App 一张 3.9s → 0.4s。）
+| 跑法（R07 清单里 16 张：整屏 + 局部、1440 / 1024 / 390、含点击与悬停，负载平均值 10–12） | 用时 | 每张 |
+| --- | --- | --- |
+| 旧：gate.py 每张起一个 node 进程、串行、每张重开设计稿并探一次登录 | 138.8s | 8.7s |
+| 新：`--suite --only`，设计稿冷缓存，`--workers 3` | 82–83s | 5.2s |
+| 新：设计稿热缓存（设计稿没改），`--workers 3` | 36s | 2.3s |
+| 新：迭代时只跑当前一张（`--only W-R07-01L-1440-light`，热缓存，含启动与登录验证） | 15s | — |
+
+按每张折算，R07 全量 76 张：旧约 11 分钟 → 新冷缓存约 6.6 分钟、热缓存约 3 分钟；迭代时只跑当前画面约 15 秒一张。App 版设计稿一侧：单张 3.9s → 缓存命中 0.4s（模拟器截图仍串行，取决于深链跳转与等待）。
+
+机器很忙时（其他会话在跑全量测试，负载平均值 40–60）：旧脚本 16 张用了 1217s，其中 6 张超时失败；新脚本同样负载下热缓存 124s、无失败（登录验证与登录页等待已放宽，画板未渲染完时会轮询）。证据：`~/orbit-sprint-evidence/redesign/gate-speed/ab2/`（`timing.log` 含每轮开始时的负载）。
 
 ## Web：`compare-redesign.mjs`
 

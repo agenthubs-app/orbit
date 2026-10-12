@@ -62,10 +62,10 @@ if (args.list) {
 async function shootDesign(v) {
   const { width, theme, fullPage } = v;
   const { ctx, page } = await openDesign(v, Math.max(1700, width + 200));
-  // 画板由 kit.js 渲染；并行加载、机器忙时可能还没画完：找不到目标就等一会儿重列（最多 3 次）。
+  // 画板由 kit.js 渲染；并行加载、机器忙时可能还没画完：找不到目标就每秒重列一次（最多 20 秒）。
   let target;
-  for (let attempt = 0; attempt < 3 && !target; attempt++) {
-    if (attempt) await page.waitForTimeout(1500);
+  for (let attempt = 0; attempt < 20 && !target; attempt++) {
+    if (attempt) await page.waitForTimeout(1000);
     const boards = await page.evaluate(listBoardsInPage);
     if (v["board-index"] !== undefined) target = boards[Number(v["board-index"])];
     else if (v.board) {
@@ -166,21 +166,26 @@ async function ensureLogin(v) {
     mkdirSync(dirname(storage), { recursive: true });
     const ctx = await browser.newContext(existsSync(storage) ? { storageState: storage } : {});
     try {
+      // dev server 忙（其他会话在跑测试 / 编译）时探针和登录页都会很慢：探针失败重试一次，登录页等到输入框出现为止（2 分钟）。
       if (existsSync(storage)) {
-        const probe = await ctx.newPage();
-        const res = await probe.goto(`${origin}/api/auth/session`, { waitUntil: "domcontentloaded", timeout: 60000 }).catch(() => null);
-        const body = res ? await res.text().catch(() => "") : "";
-        await probe.close();
-        if (body.includes(v.login)) return storage;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const probe = await ctx.newPage();
+          const res = await probe.goto(`${origin}/api/auth/session`, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => null);
+          const body = res ? await res.text().catch(() => "") : "";
+          await probe.close();
+          if (body.includes(v.login)) return storage;
+          if (res) break;
+        }
       }
       const password = readSecret(v["password-env"] ?? "ORBIT_PRIMARY_TEST_ACCOUNT_PASSWORD", v["env-file"] ?? ".env.local");
       if (!password) throw new Stop(2, "login: 找不到密码（--password-env / .env.local）");
       const lp = await ctx.newPage();
-      await lp.goto(`${origin}/app/account/login`, { waitUntil: "networkidle" }).catch(() => {});
+      await lp.goto(`${origin}/app/account/login`, { waitUntil: "domcontentloaded", timeout: 120000 }).catch(() => {});
+      await lp.locator('input[type="email"]').first().waitFor({ timeout: 120000 });
       await lp.locator('input[type="email"]').first().fill(v.login);
       await lp.locator('input[type="password"]').first().fill(password);
       await lp.locator('form button[type="submit"]').first().click();
-      const deadline = Date.now() + 25000;
+      const deadline = Date.now() + 90000;
       while (Date.now() < deadline && new URL(lp.url()).pathname.startsWith("/app/account/login")) await lp.waitForTimeout(250);
       if (new URL(lp.url()).pathname.startsWith("/app/account/login")) {
         const msg = await lp.locator('[role="alert"], .au-error, [aria-live]').allInnerTexts().catch(() => []);
@@ -193,7 +198,8 @@ async function ensureLogin(v) {
       await ctx.close();
     }
   })());
-  return authState.get(key);
+  // 登录失败不缓存：下一张再试（一轮里 dev server 可能刚编译完就好了）。
+  return authState.get(key).catch((error) => { authState.delete(key); throw error; });
 }
 
 async function shootApp(v, designHeight) {
