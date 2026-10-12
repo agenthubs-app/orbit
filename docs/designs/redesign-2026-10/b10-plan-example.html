@@ -468,7 +468,7 @@ const STEPS0 = [
 /* 修正 2回後（＝手動編集の出発点） */
 const STEPS2 = STEPS0.map(s => s.slice());
 STEPS2[1][2] = STEPS[1][2]; STEPS2[2][2] = STEPS[2][2]; STEPS2[4][2] = STEPS[3][2];
-const STAT = { 1: ['2 / 3人', 'lav'], 2: ['無料 1回目', 'lav'], 3: ['確認待ち', 'apricot'], 4: ['事例 0 / 3', ''], 5: ['まだ', ''] };
+const STAT = { 1: ['2 / 3人', 'lav'], 2: ['無料 1回目', 'lav'], 3: ['B 1 / 2人', 'lav'], 4: ['事例 0 / 3', ''], 5: ['まだ', ''] };
 /* 業界の現状ライブラリ（後台で管理 · 版・更新日・出典つき · AI は引用のみ） */
 const LIB = [
   ['L-012', '名刺・人脈管理', 'Eight は個人無料、Sansan は法人中心。個人向けの有料名刺管理は伸びにくい', 'v3', '2026-09', '各社の公開資料・料金ページ'],
@@ -532,7 +532,7 @@ const stepBlock = (st, s, o = {}) => {
   const [n, t, goal, ks, why, w] = st, many = s === 's38', S = STAT[n];
   return `<div class="v2step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
     <div class="mey ${o.mcls || ''}">${ic('flag', 'sm')}<div class="mt"><small>完了の目安</small>${goal}</div>${many && S ? `<span class="chip ${S[1]}">${S[0]}</span>` : ''}</div>
-    ${many && n === 3 ? `<div class="confirm-card in-row k-stepok" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">「デザインとブランドの仲間を見つける」は完了しましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
+    ${many && o.okStep === n ? `<div class="confirm-card in-row k-stepok" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">「デザインとブランドの仲間を見つける」は完了しましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
     <div class="chips">${ks.map(k => tchip(k)).join('')}</div></div>`;
 };
 const me = (t, cls = '') => `<div class="bubble me ${cls}">${t}</div>`;
@@ -1212,7 +1212,7 @@ h += boards([
   ]),
   AP('⑦ プラン概要（進行中 38 · ステップ）', 'many', { body: planApp('many', 'steps'), tab: 4 }, [
     ['.k-mey1 .chip', 0, 'Step 目安显示进度（2 / 3人）；进度 chip 与目安同一行'],
-    ['.k-stepok', 0, '2026-10-12 用户定稿 D50：保留现在——Step 3 目安可能已达成 → 虚线确认卡，规则出卡，模板文案「「{Step 名}」は完了しましたか？」（两端字典 stepSuggestion，不让 AI 读目安）；只有用户点「完了にする」才算完成（定稿），点「まだ」卡片收起'],
+    ['.k-steps', 0, '2026-10-12 用户定稿（A）：Step 完成确认卡只在 Step 关联类型都达到目标人数时出（规则出卡，文案「「{Step 名}」は完了しましたか？」）；本例没有达标的 Step（Step 3 = B 1 / 2人 · D 2 / 2人 · E 0 / 2人），所以不出卡；chip 人数口径与类型卡一致'],
   ]),
 ]);
 h += WB('⑦ プラン概要 · Web', 'few', { nav: 4, body: planWeb('few'), rail: planRail('few') }, [

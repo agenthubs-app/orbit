@@ -3152,7 +3152,7 @@ const STEPS0 = [
 /* 修正 2回後（＝手動編集の出発点） */
 const STEPS2 = STEPS0.map(s => s.slice());
 STEPS2[1][2] = STEPS[1][2]; STEPS2[2][2] = STEPS[2][2]; STEPS2[4][2] = STEPS[3][2];
-const STAT = { 1: ['2 / 3人', 'lav'], 2: ['無料 1回目', 'lav'], 3: ['確認待ち', 'apricot'], 4: ['事例 0 / 3', ''], 5: ['まだ', ''] };
+const STAT = { 1: ['2 / 3人', 'lav'], 2: ['無料 1回目', 'lav'], 3: ['B 1 / 2人', 'lav'], 4: ['事例 0 / 3', ''], 5: ['まだ', ''] };
 /* 業界の現状ライブラリ（後台で管理 · 版・更新日・出典つき · AI は引用のみ） */
 const LIB = [
   ['L-012', '名刺・人脈管理', 'Eight は個人無料、Sansan は法人中心。個人向けの有料名刺管理は伸びにくい', 'v3', '2026-09', '各社の公開資料・料金ページ'],
@@ -3216,7 +3216,7 @@ const stepBlock = (st, s, o = {}) => {
   const [n, t, goal, ks, why, w] = st, many = s === 's38', S = STAT[n];
   return `<div class="v2step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
     <div class="mey ${o.mcls || ''}">${ic('flag', 'sm')}<div class="mt"><small>完了の目安</small>${goal}</div>${many && S ? `<span class="chip ${S[1]}">${S[0]}</span>` : ''}</div>
-    ${many && n === 3 ? `<div class="confirm-card in-row k-stepok" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">森田 葵さん（ブランド・PR）と、継続の協力は決まりましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
+    ${many && o.okStep === n ? `<div class="confirm-card in-row k-stepok" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">森田 葵さん（ブランド・PR）と、継続の協力は決まりましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
     <div class="chips">${ks.map(k => tchip(k)).join('')}</div></div>`;
 };
 const me = (t, cls = '') => `<div class="bubble me ${cls}">${t}</div>`;
@@ -4153,7 +4153,7 @@ const manualCard = (web, cls = 'k-pmanual') => `<div class="confirm-card ${cls}"
   <div class="k-pq" style="margin-top:8px">${VCQ.map((q, k) => `<div class="row" style="gap:10px;align-items:flex-start;padding:7px 0;${k ? 'border-top:1px solid var(--line)' : ''}"><span class="cbx ${k === 0 ? 'on' : ''}">${ic('check')}</span><span style="font-size:12px;line-height:1.55;flex:1"><b style="font-family:var(--font-num)">${web ? '問 ' : 'Q'}${k + 1}</b>　${q}</span></div>`).join('')}</div>
   <div class="row" style="gap:6px;margin-top:8px"><span class="lbl k-pqhint" style="flex:1">2 つ以上選ぶと確定できます</span><button class="btn sm ghost">加点しない</button><button class="btn sm primary" style="opacity:.4" aria-disabled="true">加点する</button></div></div>`;
 /* Step 完成建议（D50）：规则出卡、模板文案；依据列出计入的人 */
-const stepCard = (cls = 'k-pstep') => `<div class="confirm-card ${cls}" style="padding:12px 14px" data-why-box><div class="row" style="gap:10px;align-items:flex-start"><span class="v2snum" style="width:26px;height:26px;font-size:12px">1</span><div style="flex:1;min-width:0"><div class="k-psteptxt" style="font-size:12.5px;line-height:1.6;font-weight:700">「ピッチと事業計画を固める」の目安に届いたかもしれません。完了にしますか？</div><div class="lbl" style="margin-top:2px">${ic('flag', 'sm').replace('class="i sm"', 'class="i sm" style="width:12px;height:12px;vertical-align:-2px"')} 目安：CFO 経験者 1人に数字を見てもらう</div></div><span class="why">?</span></div>
+const stepCard = (cls = 'k-pstep') => `<div class="confirm-card ${cls}" style="padding:12px 14px" data-why-box><div class="row" style="gap:10px;align-items:flex-start"><span class="v2snum" style="width:26px;height:26px;font-size:12px">1</span><div style="flex:1;min-width:0"><div class="k-psteptxt" style="font-size:12.5px;line-height:1.6;font-weight:700">「ピッチと事業計画を固める」は完了しましたか？</div><div class="lbl" style="margin-top:2px">${ic('flag', 'sm').replace('class="i sm"', 'class="i sm" style="width:12px;height:12px;vertical-align:-2px"')} 目安：CFO 経験者 1人に数字を見てもらう</div></div><span class="why">?</span></div>
   <div class="why-body" hidden>根拠：Step 1 のタイプ「CFO」が目標人数に達しました（1 / 1人 · 伊藤 直子さん 10/9 面談）</div>
   <div class="row" style="gap:6px;margin-top:10px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>`;
 /* 候补卡（最多 3 张，点进类型详情） */
@@ -4330,9 +4330,9 @@ g += boards([
   ], 'app.html Task › プラン 概要 · ui.css .cbx'),
   PB('A-R24-06c 確認待ち · Step 完了の提案（D50）', 'state', () => ({ body: aPlan('s56c', { mark: 'today', noInlineOk: true, pending: pendWrapA(2, stepCard() + candCard(CANDP[0], false)) }), tab: 4 }), [
     ['.k-pstep', 0, '规则出卡（不调 AI）：Step 关联的类型都达到目标人数（或已跳过）时出现。本例 Step 1 的 CFO 1 / 1 人'],
-    ['.k-pstep .k-psteptxt', 0, '模板文案「「Step 名」の目安に届いたかもしれません。完了にしますか？」——设计稿是「高橋さんと DD に進みましたか？」这种按目安具体问法，要 AI 读目安（新增付费 AI），D50 请用户拍板'],
+    ['.k-pstep .k-psteptxt', 0, '2026-10-12 字典文案「「{Step 名}」は完了しましたか？」（D50）；旧注：模板文案「「Step 名」の目安に届いたかもしれません。完了にしますか？」——设计稿是「高橋さんと DD に進みましたか？」这种按目安具体问法，要 AI 读目安（新增付费 AI），D50 请用户拍板'],
     ['.k-pstep .btn.primary', 0, '「完了にする」才算完成；「まだ」收起。完成后 Step 打勾，点开可「完了を取り消す」'],
-    ['.k-steps', 0, '设计稿把这张卡放在 Step 3 行内（app.html k-stepok）；实现收进「確認待ち」块，Step 行内不再重复'],
+    ['.k-steps', 0, '2026-10-12 用户定稿（A）：App 照 App 自己的画法把完成卡放在「確認待ち」里（不搬成 Web 的左列行内）；只展示已达标的 Step（本例 Step 1 CFO 1 / 1人），人数口径与类型卡一致'],
   ], 'app.html 概要（進行中 · ステップ）k-stepok'),
   PB('A-R24-06d 確認待ち · 加点はありません（N24）', 'state', () => ({ body: aPlan('s56c', { mark: 'today', noInlineOk: true, pending: pendWrapA(1, candCard(CANDP[0], false)) }), tab: 4, overlay: toast('加点はありません', 'この人は記録済みです。点数は 1 回だけです。', { cls: 'info', icon: 'lic:i-alert', act: false, bar: false, notab: false }) }), [
     ['.toast', 0, 'memo 卡点「加点する」但服务端没加分（同一人同类型已记过 / 名前なし超额 / 类型スキップ中）→ info Toast「加点はありません」+ 小字原因（App 字典 award.noPoints + 原因键）'],
