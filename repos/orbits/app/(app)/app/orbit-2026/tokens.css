@@ -80,6 +80,8 @@
   --r-input-sm: 9px;
   --r-emo: 13px;
   --r-dot: 4px;
+  --r-check: 7px;
+  --r-tick: 1px;
   --gap: 14px;
   --space-4: 4px;
   --space-8: 8px;
@@ -124,6 +126,8 @@
   --fs-emoji-md: 21px;
   --fs-emoji-lg: 28px;
   --fs-number-lg: 32px;
+  --fs-display-lg: 56px;
+  --fs-display-sm: 48px;
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-bold: 700;

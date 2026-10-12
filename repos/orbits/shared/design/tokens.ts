@@ -184,7 +184,9 @@ export const designRadius = {
   chip: 8,
   inputSm: 9,
   emo: 13,
-  dot: 4
+  dot: 4,
+  check: 7,
+  tick: 1
 } as const;
 
 export const designSpace = {
@@ -236,7 +238,9 @@ export const designFont = {
     displayXl: 64,
     emojiMd: 21,
     emojiLg: 28,
-    numberLg: 32
+    numberLg: 32,
+    displayLg: 56,
+    displaySm: 48
   },
   weight: {
     regular: 400,
