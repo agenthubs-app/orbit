@@ -65,7 +65,8 @@ export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref 
   }, []);
   const inShell = useInShell();
   const tabs = <div data-task-bar="" className={styles.tabs}><TaskTabs tab={tab} onChange={choose} /></div>;
-  const add = tab === "plan" ? <TaskAddButton label={pickCopy(shellCopy.taskAddGoal, language)} onSelect={() => router.push(`${pathname}?tab=plan&new=1`)} />
+  // プラン: 「目標を追加」 only at ≥1280; b8 #6 / #16 (1024) keep just 「次の一手」 on the right.
+  const add = tab === "plan" ? <TaskAddButton label={pickCopy(shellCopy.taskAddGoal, language)} onSelect={() => router.push(`${pathname}?tab=plan&new=1`)} className={styles.addWide} />
     : tab === "calendar" || tab === "todo" ? <TaskAddButton label={pickCopy(tab === "calendar" ? shellCopy.taskAddEvent : shellCopy.taskAddTodo, language)} onSelect={startSlotAdd} /> : undefined;
   return (
     <>
@@ -88,8 +89,8 @@ export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref 
 }
 
 // kit .btn.accent with ＋ (web.html k-wtadd).
-function TaskAddButton({ label, onSelect }: { label: string; onSelect: () => void }) {
-  return <Button label={label} variant="accent" icon="plus" onClick={onSelect} />;
+function TaskAddButton({ label, onSelect, className }: { label: string; onSelect: () => void; className?: string }) {
+  return <Button label={label} variant="accent" icon="plus" onClick={onSelect} className={className} />;
 }
 
 // カレンダー / To-do: the slot's own add flow, marked `data-task-add` (the schedule's
