@@ -234,6 +234,12 @@
 | R22-01 | 未截画面（A-R23-03/06/07/12～19 等） | 本机 App 初版生成失败；达成不能撤回 | 先查清本机 live「初版をつくれませんでした」原因，再用只读 mock（:3002）补截 | PA §4.2；DEC Q4 |
 | R22-02 | **待授权（生产）** | 只在本机 | 迁移 `plans-v2-model`、`ai-usage-plan-v2-purposes` 必须先迁移再部署；`ORBIT_PLAN_V2_AI=ai` 开关；staging / 生产付费 AI C1–C12；月上限（`plan_background` 10→20、`plan_review` 3→6、C1 是否拆用途）待用户拍板 | `R22-plan-data-and-score/REPORT.md`:99–103；`R23-plan-generation/REPORT.md`:118–121；`R25-plan-review-goals-cleanup/REPORT.md`:197 |
 | R22-03 | 遗留小项 | 未做 | 生成流程「放弃」入口与 `abandoned` 状态；只剩已达成目标的人进不了完了页；候补被记录又撤销后不回候补表；v2 类型 `status` 口径；`review_used` 按月查、`exists` 预查 | `R23-plan-generation/REVIEW.md`:265；`R25-plan-review-goals-cleanup/REPORT.md`:216；`R24-plan-overview-and-types/REPORT.md`:83；`R22-plan-data-and-score/REPORT.md`:107–108 |
+| R23-06 | **计划页像素返工（2026-10-12）未过的生成流程画面** | W-R23-11～15、17、18 未过：引用只能取真实库、题库文字（D35）、方案名由数据推出，长度不同整体下移；17 / 18 画板是改到一半的状态；W-R23-06 mock 候补来自 `mock-flow-context` 写死的演示联系人（最多 20 人，画板 3 人且已勾选一人） | 结构已逐块对齐；要过线需让 mock 候补读 fixture 联系人（服务端 mock 文件，先 impact），或由用户确认这几张按数据差异放行 | `R25-plan-review-goals-cleanup/REWORK-REPORT-web.md` |
+| R24-05 | **待组件库**（计划页返工发现，R04 / R06 组件库轮做） | 调用方用现有 Modal / Drawer | Web Modal 加 380 宽一档、标题左侧可放图标块、可不带 ✕（W-R24-03 / 09b / 11）；Drawer 的 ✕ 白色圆底、标题下副标题（W-R24-12）；Chip 字色 kit 用 `-ink`，实现用 `-text` | REWORK-REPORT-web |
+| R24-06 | **待 R26**：概要イベント卡推荐活动行（D53）及概要服务端小项 | イベント卡无推荐行 | 概要推荐活动列表；Step ↔ 活动；「最近の加点」含スキップ；今日のチャンス依据与按钮文案；最终接点相对时间；依頼文两种语气由服务端给；记录弹窗「いつ」传 at（服务端已支持，界面待接）；見分け方分类与人物像键值行 | DEC D53；REWORK-REPORT-web |
+| R24-07 | **待壳**：Task 1024 标题区多出「目標を追加」 | TaskContainer 自加的按钮（b8 只有「次の一手」） | 去掉；另一会话在改 `orbit-2026/task/TaskContainer.tsx` | REWORK-REPORT-web |
+| R24-08 | **待画板口径**（2026-10-12 已转用户） | 实现取类型卡口径 / 服务端排序 / 短名 | b8 類型名长短（確認待ち「VC」vs 話すべき人「VC パートナー」）；CVC 页活动顺序（画板 79 / 68 / 82，服务端按分数降序）；#17 Step 3 chip「3 / 3人」vs 类型卡「2 / 3人」。定后 design-decisions 改画板，计划页会话单独重比 W-R24-02 / 04c / 06 | REWORK-REPORT-web |
+| R25-05 | **像素门禁的设计稿示例 fixture** | `features/plans/v2/design-fixtures`（只在非生产、mock 下由 `route.dev.ts` 切换）；B 组门禁前跑 `seed-local-chats.mjs`（只写本机库 qa 账号）；C 组造見直し状态的脚本还在会话 scratchpad | fixture 只能补数据、不能改画面结构；C 组的状态脚本（setup.py / all.sh）收进 `scripts/visual/` 再供复跑 | REWORK-REPORT-web |
 
 ---
 
