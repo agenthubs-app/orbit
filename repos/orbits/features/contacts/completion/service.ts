@@ -110,7 +110,8 @@ export function completionSourceChip(row: Pick<CompletionContactRow, "sourceType
 
 function contactFacts(row: CompletionContactRow, strong: boolean): CompletionContactFacts {
   return {
-    addedAt: row.createdAt,
+    // R16 #2：加入时间 = LinkedIn 连接日期与录入时间里较早的（`repository.ts` 的 `completionAddedAt`）。
+    addedAt: row.addedAt,
     contactId: row.contactId,
     displayName: row.displayName,
     emails: row.email ? [row.email] : [],
@@ -200,7 +201,8 @@ export function createContactCompletionService({
     const window = COMPLETION_EVENT_WINDOW_DAYS + 2;
     const [others, events] = await Promise.all([
       source.peers(actorId, { domains, excludeContactId: row.contactId, organizationKey: completionOrganizationKey(row.organization) }),
-      target.kind === "met_where" ? source.events(actorId, { from: shiftDays(row.createdAt, -window), to: shiftDays(row.createdAt, window) }) : Promise.resolve([]),
+      // 活动窗口围绕加入时间（R16 #2：LinkedIn 导入的人是连接日期，不是导入那天）。
+      target.kind === "met_where" ? source.events(actorId, { from: shiftDays(row.addedAt, -window), to: shiftDays(row.addedAt, window) }) : Promise.resolve([]),
     ]);
     const options = buildCompletionOptions({ contact: facts, events, kind: target.kind, others });
     const name = row.displayName || row.contactId;

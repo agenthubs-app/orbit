@@ -12,12 +12,17 @@
  *   - `addedSince`：某个时间之后有没有新加的人（「今天没有可问的人」之后又导入了人时用，复核 m6）。
  *   PostgreSQL 版本直接查 `orbit_records`（归属谓词与 `ownedByActor` 一致）；内存版本在 `LiveRecordStoreLike` 上过滤（测试用）。
  *   往来信号读候选人的 `contact_detail_states`（按 record id 精确读，只读候选人）。
+ * - R16 #2（2026-10-12 用户拍板）：「加入时间」`addedAt` = LinkedIn 连接日期与录入时间里较早的（`earliestAddedAt`）。
+ *   连接日期先读导入写的结构化字段 `linkedinConnectedAt`；旧数据（这项改动之前导入的）只有备注行「LinkedIn 连接日期: …」，
+ *   只对 CSV 导入新建的人（`source.type = external_contacts` 且 `source.label = CSV 导入`）退而解析备注行——别的来源的人
+ *   备注里出现这一行，是后来合并 LinkedIn 导入时追加的，不能改他的加入时间。录入时间（`createdAt`）本身不变。
  * - 内存与 PostgreSQL 都走 `LiveRecordStoreLike`（同一套代码，两种存储都有测试）。
  */
 import { createHash } from "node:crypto";
 
 import type { ContactCompletionQuestionKind } from "../../../shared/contract/contact-completion";
 import { completionOrganizationKey, hasMeetingNote, type CompletionEventFact, type CompletionOption, type CompletionPeerFacts } from "../../../shared/compute/completion-question-rules";
+import { earliestAddedAt, linkedinConnectedOnFromNotes, parseLinkedinConnectedOn } from "../../../shared/compute/linkedin-connected-on";
 import { emailDomain } from "../../../shared/compute/work-contact-likelihood";
 import type { LiveRecord, LiveRecordStoreLike } from "../../../shared/storage/live-record-store";
 import { ownedByActor } from "../business-card-contact-match";
@@ -138,6 +143,7 @@ export async function saveCompletionQuestion(store: Store, workspaceId: string, 
 /** 出题需要的联系人字段（内存版本的 payload 投影）。 */
 const CONTACT_FIELDS = [
   "id", "accountId", "displayName", "organization", "role", "primaryEmail", "primaryPhone", "notes", "metEventId", "metEventTitle", "source", "createdAt",
+  "linkedinConnectedAt",
 ] as const;
 
 export interface CompletionContactRow {
@@ -155,7 +161,22 @@ export interface CompletionContactRow {
   metEventTitle: string;
   sourceType: string;
   sourceLabel: string;
+  /** 录入时间（payload.createdAt，缺了用记录时间）。 */
   createdAt: string;
+  /** 加入人脈的时间（R16 #2）：LinkedIn 连接日期与 `createdAt` 里较早的；每天一问的 30 天窗口与 ±14 天活动窗口用它。 */
+  addedAt: string;
+}
+
+/** 旧数据退而解析备注行的条件：CSV 导入新建的人（导入写的 `source.label`，见 `features/contacts/import/service.ts`）。 */
+const CSV_IMPORT_SOURCE_LABEL = "CSV 导入";
+
+/** 加入时间（见文件头 R16 #2）。`structured` = payload.linkedinConnectedAt；`legacyRaw` = 备注行里的原文。 */
+export function completionAddedAt(input: { createdAt: string; structured: string; legacyRaw: string | null; sourceType: string; sourceLabel: string }): string {
+  const structured = input.structured ? parseLinkedinConnectedOn(input.structured.slice(0, 10)) : null;
+  const legacy = !input.structured && input.sourceType === "external_contacts" && input.sourceLabel === CSV_IMPORT_SOURCE_LABEL
+    ? parseLinkedinConnectedOn(input.legacyRaw)
+    : null;
+  return earliestAddedAt(input.createdAt, structured ?? legacy);
 }
 
 function text(value: unknown): string {
@@ -170,9 +191,13 @@ function toContactRow(record: LiveRecord<Record<string, unknown>>): CompletionCo
   const payload = record.payload;
   const source = (typeof payload.source === "object" && payload.source !== null ? payload.source : {}) as Record<string, unknown>;
   const notes = typeof payload.notes === "string" ? payload.notes : "";
+  const createdAt = text(payload.createdAt) || record.createdAt;
+  const sourceLabel = text(source.label);
+  const sourceType = text(source.type) || text(record.sourceType);
   return {
+    addedAt: completionAddedAt({ createdAt, legacyRaw: linkedinConnectedOnFromNotes(notes), sourceLabel, sourceType, structured: text(payload.linkedinConnectedAt) }),
     contactId: record.recordId,
-    createdAt: text(payload.createdAt) || record.createdAt,
+    createdAt,
     displayName: text(payload.displayName),
     email: text(payload.primaryEmail),
     hasLinkedinNote: hasLinkedinLine(notes),
@@ -182,8 +207,8 @@ function toContactRow(record: LiveRecord<Record<string, unknown>>): CompletionCo
     organization: text(payload.organization),
     phone: text(payload.primaryPhone),
     role: text(payload.role),
-    sourceLabel: text(source.label),
-    sourceType: text(source.type) || text(record.sourceType),
+    sourceLabel,
+    sourceType,
   };
 }
 
@@ -211,7 +236,7 @@ function shiftDays(iso: string, days: number): string {
 
 /** 内存 / 任意 `LiveRecordStoreLike` 上的实现（读本人全部联系人再过滤；只用于测试与内存存储）。 */
 export function createStoreCompletionContactSource(store: Store, workspaceId: string): CompletionContactSource {
-  async function all(actorId: string): Promise<{ row: CompletionContactRow; recordCreatedAt: string }[]> {
+  async function all(actorId: string): Promise<{ row: CompletionContactRow; recordCreatedAt: string; connectedAt: string }[]> {
     const records = await store.listRecords({
       collectionName: "contacts",
       lifecycleState: "active",
@@ -221,7 +246,7 @@ export function createStoreCompletionContactSource(store: Store, workspaceId: st
       userId: actorId,
       workspaceId,
     });
-    return records.filter((record) => ownedByActor(record, actorId)).map((record) => ({ recordCreatedAt: record.createdAt, row: toContactRow(record) }));
+    return records.filter((record) => ownedByActor(record, actorId)).map((record) => ({ connectedAt: text(record.payload.linkedinConnectedAt), recordCreatedAt: record.createdAt, row: toContactRow(record) }));
   }
   return {
     async addedSince(actorId, since) {
@@ -247,7 +272,8 @@ export function createStoreCompletionContactSource(store: Store, workspaceId: st
     async recentContacts(actorId, since) {
       const floor = shiftDays(since, -PREFILTER_MARGIN_DAYS);
       return (await all(actorId))
-        .filter(({ recordCreatedAt, row }) => row.createdAt >= floor.slice(0, 10) || recordCreatedAt >= floor)
+        // 与 SQL 同一个预筛（见 COMPLETION_RECENT_CONTACTS_SQL 的注释）。
+        .filter(({ connectedAt, recordCreatedAt, row }) => (row.createdAt >= floor.slice(0, 10) || recordCreatedAt >= floor) && (!connectedAt || connectedAt >= floor.slice(0, 10)))
         .sort((left, right) => (left.row.createdAt < right.row.createdAt ? 1 : left.row.createdAt > right.row.createdAt ? -1 : 0))
         .slice(0, COMPLETION_RECENT_READ_LIMIT)
         .map(({ row }) => row);
@@ -266,6 +292,13 @@ const OWNED_CONTACTS = `c.workspace_id = $1
    and c.user_id = $2
    and (c.payload->'accountId' is null or c.payload->'accountId' = 'null'::jsonb or c.payload->'accountId' = to_jsonb($2::text))`;
 
+/**
+ * 近期加入的人（预筛，精确判断在纯函数里）。$3 / $4 = 窗口下沿（时间 / 东京日字符串，已留余量）。
+ * R16 #2：加入时间 = min(LinkedIn 连接日期, 录入时间) ≤ 录入时间，所以「录入时间 ≥ 下沿」仍是能被问的人的超集，不必放宽；
+ * 反过来连接日期早于下沿的人一定不会被问，这里直接排除（结构化字段是规范 ISO，可按字典序与 `YYYY-MM-DD` 比），
+ * 免得一次导入几百个早就连接的人把真正新加的人挤出 $5 的读取上限。旧数据只有备注行的，SQL 只取出那一行原文，
+ * 由 `completionAddedAt` 判断（这类人 30 天后自然出窗口）。
+ */
 export const COMPLETION_RECENT_CONTACTS_SQL = `select c.record_id,
        c.created_at,
        c.source_type,
@@ -277,6 +310,8 @@ export const COMPLETION_RECENT_CONTACTS_SQL = `select c.record_id,
        c.payload->>'primaryPhone' as phone,
        c.payload->>'metEventId' as met_event_id,
        c.payload->>'metEventTitle' as met_event_title,
+       c.payload->>'linkedinConnectedAt' as linkedin_connected_at,
+       substring(coalesce(c.payload->>'notes', '') from '(?:^|\n)[[:space:]]*LinkedIn 连接日期: ([^\n]*)') as linkedin_connected_note,
        case when jsonb_typeof(c.payload->'source') = 'object' then c.payload->'source'->>'type' end as payload_source_type,
        case when jsonb_typeof(c.payload->'source') = 'object' then c.payload->'source'->>'label' end as payload_source_label,
        coalesce(c.payload->>'notes', '') ~ '(^|\n)[[:space:]　]*出会い[[:space:]　]*[：:]' as has_meeting_note,
@@ -284,6 +319,7 @@ export const COMPLETION_RECENT_CONTACTS_SQL = `select c.record_id,
   from orbit_records c
  where ${OWNED_CONTACTS}
    and (c.created_at >= $3::timestamptz or coalesce(c.payload->>'createdAt', '') >= $4)
+   and (coalesce(c.payload->>'linkedinConnectedAt', '') = '' or c.payload->>'linkedinConnectedAt' >= $4)
  order by coalesce(c.payload->>'createdAt', '') desc, c.created_at desc
  limit $5`;
 
@@ -328,6 +364,8 @@ interface RecentRow {
   phone: string | null;
   met_event_id: string | null;
   met_event_title: string | null;
+  linkedin_connected_at: string | null;
+  linkedin_connected_note: string | null;
   payload_source_type: string | null;
   payload_source_label: string | null;
   has_meeting_note: boolean | null;
@@ -358,21 +396,27 @@ export function createPostgresCompletionContactSource(client: CompletionSqlClien
     async recentContacts(actorId, since) {
       const floor = shiftDays(since, -PREFILTER_MARGIN_DAYS);
       const result = await client.query<RecentRow>(COMPLETION_RECENT_CONTACTS_SQL, [workspaceId, actorId, floor, floor.slice(0, 10), COMPLETION_RECENT_READ_LIMIT]);
-      return result.rows.map((row) => ({
-        contactId: row.record_id,
-        createdAt: text(row.payload_created_at) || isoOf(row.created_at),
-        displayName: text(row.display_name),
-        email: text(row.email),
-        hasLinkedinNote: row.has_linkedin_note === true,
-        hasMeetingNote: row.has_meeting_note === true,
-        metEventId: text(row.met_event_id),
-        metEventTitle: text(row.met_event_title),
-        organization: text(row.organization),
-        phone: text(row.phone),
-        role: text(row.role),
-        sourceLabel: text(row.payload_source_label),
-        sourceType: text(row.payload_source_type) || text(row.source_type),
-      }));
+      return result.rows.map((row) => {
+        const createdAt = text(row.payload_created_at) || isoOf(row.created_at);
+        const sourceLabel = text(row.payload_source_label);
+        const sourceType = text(row.payload_source_type) || text(row.source_type);
+        return {
+          addedAt: completionAddedAt({ createdAt, legacyRaw: row.linkedin_connected_note ? text(row.linkedin_connected_note) : null, sourceLabel, sourceType, structured: text(row.linkedin_connected_at) }),
+          contactId: row.record_id,
+          createdAt,
+          displayName: text(row.display_name),
+          email: text(row.email),
+          hasLinkedinNote: row.has_linkedin_note === true,
+          hasMeetingNote: row.has_meeting_note === true,
+          metEventId: text(row.met_event_id),
+          metEventTitle: text(row.met_event_title),
+          organization: text(row.organization),
+          phone: text(row.phone),
+          role: text(row.role),
+          sourceLabel,
+          sourceType,
+        };
+      });
     },
   };
 }

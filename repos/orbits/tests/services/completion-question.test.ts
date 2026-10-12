@@ -318,6 +318,66 @@ for (const backend of BACKENDS) {
   });
 }
 
+// R16 #2（2026-10-12 用户拍板）：LinkedIn 导入的人「加入时间」用连接日期（connectedOn）——30 天窗口与 ±14 天活动窗口都围绕它。
+for (const backend of BACKENDS) {
+  const run = backend.name === "postgres" ? databaseTest : {};
+  const LINKEDIN_SOURCE = { id: "batch:li", label: "CSV 导入", type: "external_contacts" };
+
+  test(`[${backend.name}] #2: imported today but connected a year ago → not asked (structured field and legacy note line alike)`, run, async () => {
+    const { storage, store } = await backend.storage();
+    const ws = storage.workspaceId;
+    await seedContact(store, ws, ALICE, "contact:import:old-li", { createdAt: "2026-10-12T00:30:00.000Z", displayName: "昔 つながり", linkedinConnectedAt: "2025-10-01T03:00:00.000Z", notes: "LinkedIn 连接日期: 01 Oct 2025", organization: "Old Co", source: LINKEDIN_SOURCE });
+    await seedContact(store, ws, ALICE, "contact:import:legacy-li", { createdAt: "2026-10-12T00:30:00.000Z", displayName: "旧 データ", notes: "LinkedIn: https://www.linkedin.com/in/x\nLinkedIn 连接日期: 01 Oct 2025", organization: "Legacy Co", source: LINKEDIN_SOURCE });
+    const service = createContactCompletionService({ log: () => undefined, now: () => new Date("2026-10-12T01:00:00.000Z"), storage });
+    assert.equal(await service.today(ALICE), null, "connected long ago → not a new person");
+  });
+
+  test(`[${backend.name}] #2: a merge never moves an existing person's added-at (the note line on a manual contact is ignored)`, run, async () => {
+    const { storage, store } = await backend.storage();
+    const ws = storage.workspaceId;
+    await seedContact(store, ws, ALICE, "c:manual", { createdAt: "2026-10-07T03:00:00.000Z", displayName: "手入力 さん", notes: "LinkedIn 连接日期: 01 Oct 2020" });
+    const service = createContactCompletionService({ log: () => undefined, now: () => new Date("2026-10-12T01:00:00.000Z"), storage });
+    assert.equal((await service.today(ALICE))?.contactId, "c:manual");
+  });
+
+  test(`[${backend.name}] #2: connected 10 days ago → asked; the event choices are around the connection day, not the import day`, run, async () => {
+    const { storage, store } = await backend.storage();
+    const ws = storage.workspaceId;
+    // 连接日（10/02）前 12 天的活动：围绕导入日（10/12）是 22 天，不该出；围绕连接日是 12 天，该出。
+    await seedContact(store, ws, ALICE, "c:near-connected", { createdAt: "2026-09-20T03:00:00.000Z", displayName: "会場 一", metEventId: "event:sep", metEventTitle: "September Meetup", organization: "A", primaryEmail: "a@a.example" });
+    // 导入日前 1 天的活动：围绕连接日是 9 天，也该出（两场都在窗口里，最近的在前）。
+    await seedContact(store, ws, ALICE, "c:near-import", { createdAt: "2026-10-11T03:00:00.000Z", displayName: "会場 二", metEventId: "event:oct", metEventTitle: "October Night", organization: "B", primaryEmail: "b@b.example" });
+    // 连接日后 15 天以上的活动不该出：没有这种（今天是 10/12），所以另放一场 9/15（连接日前 17 天）验证窗口下沿。
+    await seedContact(store, ws, ALICE, "c:too-early", { createdAt: "2026-09-15T03:00:00.000Z", displayName: "会場 三", metEventId: "event:early", metEventTitle: "Too Early", organization: "C", primaryEmail: "c@c.example" });
+    await seedContact(store, ws, ALICE, "contact:import:recent-li", { createdAt: "2026-10-12T00:30:00.000Z", displayName: "最近 つながり", linkedinConnectedAt: "2026-10-02T03:00:00.000Z", organization: "New Co", source: LINKEDIN_SOURCE });
+    const service = createContactCompletionService({ log: () => undefined, now: () => new Date("2026-10-12T01:00:00.000Z"), storage });
+    const question = (await service.today(ALICE))!;
+    assert.equal(question.contactId, "contact:import:recent-li");
+    assert.equal(question.kind, "met_where");
+    assert.ok(question.options.includes("September Meetup"), `options: ${question.options.join(" / ")}`);
+    assert.ok(!question.options.includes("Too Early"), `options: ${question.options.join(" / ")}`);
+  });
+}
+
+// R16 #2：一次导入几百个「很早就连接」的人，不能把近期真正新加的人挤出预筛的读取上限（SQL 预筛按连接日期排除）。
+test("[postgres] #2: hundreds of long-connected imports do not crowd out a recent person", databaseTest, async () => {
+  assert.ok(pool && databaseUrl);
+  const workspaceId = `${WS}:${randomUUID()}`;
+  const client = createTransactionalPostgresClient({ connectionString: databaseUrl, pool: pool as unknown as TransactionalPostgresPool });
+  await pool.query(
+    `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, evidence_ids, lifecycle_state, payload, created_at, updated_at)
+     select $1, 'contacts', 'contact:import:bulk-' || n, $2, 'external_contacts', 'batch:bulk', '{}'::text[], 'active',
+            jsonb_build_object('id', 'contact:import:bulk-' || n, 'displayName', '一括 ' || n, 'createdAt', '2026-10-12T00:30:00.000Z',
+                               'linkedinConnectedAt', '2019-05-01T03:00:00.000Z', 'source', jsonb_build_object('id', 'batch:bulk', 'label', 'CSV 导入', 'type', 'external_contacts')),
+            '2026-10-12T00:30:00Z', '2026-10-12T00:30:00Z'
+       from generate_series(1, 600) n`,
+    [workspaceId, ALICE],
+  );
+  await seedContact(createPostgresLiveRecordStore<Record<string, unknown>>({ client }), workspaceId, ALICE, "c:recent", { createdAt: "2026-10-08T03:00:00.000Z", displayName: "最近 の人" });
+  const service = createContactCompletionService({ log: () => undefined, now: () => new Date("2026-10-12T01:00:00.000Z"), storage: createPostgresContactCompletionStorage({ client, workspaceId }) });
+  assert.equal((await service.today(ALICE))?.contactId, "c:recent");
+});
+
 // R16 复核 M4：每天第一次取题不全量读人脈（不读备注全文、只读近 30 天加入的人、选项按条件查）。
 test("[postgres] M4: the first question of the day reads a handful of rows however big the network is", databaseTest, async (t) => {
   assert.ok(pool && databaseUrl);

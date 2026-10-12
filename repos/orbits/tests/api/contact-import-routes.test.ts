@@ -255,6 +255,10 @@ test("SC-02 same file twice: second batch pre-selects merge for every row (ident
     assert.equal(avery.displayName, "Avery Lin");
     assert.deepEqual(avery.source, { id: first.batch.id, label: "CSV 导入", type: "external_contacts" });
     assert.match(avery.notes, /LinkedIn: https:\/\/www\.linkedin\.com\/in\/avery-lin-example/);
+    // R16 #2：连接日期另存成结构化字段（那个东京日的正午 JST），备注行照旧保留。
+    assert.equal(avery.linkedinConnectedAt, "2024-01-05T03:00:00.000Z");
+    assert.match(avery.notes, /\nLinkedIn 连接日期: 05 Jan 2024$/);
+    assert.equal((await contactPayload(h.pool, importContactId(ALICE, first.batch.id, 2))).linkedinConnectedAt, "2023-03-12T03:00:00.000Z");
 
     const second = await upload(h, ALICE, fixture("linkedin-connections.csv"));
     assert.equal(second.batch.review.merge, 3);
@@ -279,6 +283,33 @@ test("SC-02 same file twice: second batch pre-selects merge for every row (ident
     assert.equal(merged.status, 200);
     assert.deepEqual(merged.body.data.batch.counts, { created: 0, failed: 1, merged: 3, skipped: 0 });
     assert.equal(await contactCount(h.pool, ALICE), 3, "0 new contacts");
+    const averyAfter = await contactPayload(h.pool, importContactId(ALICE, first.batch.id, 1));
+    assert.equal(averyAfter.linkedinConnectedAt, "2024-01-05T03:00:00.000Z", "a merge leaves the existing added-at alone");
+    assert.equal(averyAfter.createdAt, avery.createdAt);
+  });
+});
+
+test("R16 #2: merging into an existing contact never sets its connection date; a future or unreadable date is not stored", databaseTest, async () => {
+  await withDatabase(async (h) => {
+    await seedContact(h.pool, ALICE, "contact:existing-avery", { displayName: "Avery Lin", organization: "Northwind Labs", primaryEmail: "avery.lin@example.com" });
+    const csv = "First Name,Last Name,URL,Email Address,Company,Position,Connected On\n"
+      + "Avery,Lin,https://www.linkedin.com/in/avery-lin-example,avery.lin@example.com,Northwind Labs,Head of Partnerships,05 Jan 2024\n"
+      + "Future,Person,,future@example.com,Acme,PM,01 Jan 2030\n"
+      + "Odd,Date,,odd@example.com,Acme,PM,someday\n";
+    const batch = (await upload(h, ALICE, utf8(csv))).batch;
+    assert.equal(batch.format, "linkedin");
+    const listed = await rows(h, ALICE, batch.id);
+    const decided = listed[0].decision === "merge"
+      ? batch.review.mergeConfirmations
+      : (await body(await h.as(ALICE).decide(jsonRequest("PATCH", { decisions: [{ decision: "merge", seq: 1 }] }), params(batch.id)))).data.batch.review.mergeConfirmations;
+    const done = await commit(h, ALICE, batch.id, decided);
+    assert.equal(done.status, 200);
+    assert.deepEqual(done.body.data.batch.counts, { created: 2, failed: 0, merged: 1, skipped: 0 });
+    const existing = await contactPayload(h.pool, "contact:existing-avery");
+    assert.equal(existing.linkedinConnectedAt, undefined, "an existing person keeps their own added-at");
+    assert.match(existing.notes, /LinkedIn 连接日期: 05 Jan 2024/, "the note line is still appended as before");
+    assert.equal((await contactPayload(h.pool, importContactId(ALICE, batch.id, 2))).linkedinConnectedAt, undefined, "future date ignored");
+    assert.equal((await contactPayload(h.pool, importContactId(ALICE, batch.id, 3))).linkedinConnectedAt, undefined, "unreadable date ignored");
   });
 });
 

@@ -12,6 +12,7 @@
  */
 import { createHash, randomUUID } from "node:crypto";
 
+import { LINKEDIN_CONNECTED_NOTE_PREFIX, linkedinConnectedAtFor } from "../../../shared/compute/linkedin-connected-on";
 import type { ContactDTO } from "../../../shared/domain/contracts";
 import { normalizeRegion } from "../../../shared/domain/regions";
 import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
@@ -141,7 +142,7 @@ function importNoteLines(fields: ContactImportFields): string[] {
   return [
     ...fields.notes.split(/\r?\n/).map((line) => line.trim()).filter(Boolean),
     ...(fields.linkedinUrl ? [`LinkedIn: ${fields.linkedinUrl}`] : []),
-    ...(fields.connectedOn ? [`LinkedIn 连接日期: ${fields.connectedOn}`] : []),
+    ...(fields.connectedOn ? [`${LINKEDIN_CONNECTED_NOTE_PREFIX}${fields.connectedOn}`] : []),
   ];
 }
 
@@ -155,8 +156,12 @@ function cardRegionValues(fields: ContactImportFields): EnrichedValue[] {
 function contactFromRow(input: { actorId: string; batch: ContactImportBatchRecord; row: ContactImportRowRecord; at: string }): ContactDTO {
   const { fields } = input.row;
   const notes = importNoteLines(fields).join("\n");
+  // R16 #2：连接日期另存成结构化字段（每天一问的「加入时间」用它）；认不出 / 晚于导入日的不存，备注行照旧。
+  // 只在新建时写——合并进已有联系人（`mergeCardIntoContact`）不碰这个字段，已有人的加入时间不变。
+  const linkedinConnectedAt = linkedinConnectedAtFor(fields.connectedOn, input.at);
   const contact: ContactDTO = {
     createdAt: input.at,
+    ...(linkedinConnectedAt ? { linkedinConnectedAt } : {}),
     displayName: fields.displayName.trim(),
     evidenceIds: [`evidence:contact-import:${input.batch.id}:${input.row.seq}`],
     id: importContactId(input.actorId, input.batch.id, input.row.seq),

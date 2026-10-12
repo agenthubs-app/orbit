@@ -160,6 +160,12 @@ export interface ContactDTO {
   metEventTitle?: string;
   /** W0045：规范地区（ISO 国家码 + 规范英文城市名）；原始 `location` 文字保留不改。 */
   region?: ContactRegionDTO;
+  /**
+   * R16 #2（2026-10-12）：LinkedIn 导入新建这个人时，导出里的连接日期（`Connected On`）规范成那个东京日正午（JST）的 ISO
+   * 时间（`shared/compute/linkedin-connected-on.ts`）。每天一问把「加入时间」取它与 `createdAt` 较早的。只在导入新建时写；
+   * 合并进已有联系人不写（不改已有人的加入时间）。服务端内部字段，不进跨端契约。
+   */
+  linkedinConnectedAt?: IsoDateTimeString;
   /** W0045：补全值的来源（值本身在各自字段：行业、`publicProfile.seniorityLevel`、`region`…）。 */
   enrichment?: ContactEnrichmentDTO;
   customTags?: readonly string[];
