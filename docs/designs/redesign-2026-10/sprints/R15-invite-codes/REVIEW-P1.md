@@ -63,3 +63,18 @@
 - 位置：`service.ts:418-421`
 - 说明：先判 404 再判 409，资料被删且码已过期时返回 404（不提示补资料）。与 `current()` 一致，可接受；只是界面接的时候要知道：409 只在「有当前码但资料没名字」时出现。
 - 建议：不改代码；界面接入时在 copy 里两种都处理。
+
+## 处理记录（执行人，2026-10-12）
+
+全部在 `52081e81`。
+
+| 条目 | 处理 |
+| --- | --- |
+| m1 | 不改代码，`service.ts` create 的重放分支写了例外注释。成熟做法（Stripe 式：按键存原请求指纹、只与原请求比）要给 `invite_codes` 加列 = 生产迁移，不算低成本；只比 `maxUses` 又会放过「同键换内容」的误用。两端界面发码失败后都清键重试，现实碰不到；409 是安全一侧。以后若要加列，和下一次招待码迁移一起做。 |
+| m2 | 已修：mock 去掉 `currentShares` 重放表，与 live 同为 PUT 语义（同键换内容按新内容改；码作废后旧键也是 404）；契约 `InviteCodeShareUpdateInput.idempotencyKey` 注释写明「只为同形、按 PUT 语义」（只改注释，快照无变化，App 副本已同步）。mock 路由用例更新。 |
+| m3 | 已修：mock 发码重放返回这张码现在的 contract（改过共享就是改后的值，与 `GET /current` 一致）；注释写明 live 另有 409 比对、演示世界不做。新增 mock 用例。 |
+| m4 | 已补（服务层，内存 + PG）：「改码 vs 6 人并发兑换」——每个兑换的 `peer` 要么全旧要么全新，连接上的 `sharedByPeer` 与之一致；「改码 vs 发码并发 ×4 轮」——改动只落在那一刻的当前码上，PG 直接查 `invite_codes` 断言被替换的旧码不会拿到新键、新码的键是发码时的或改后的。 |
+| m5 | 已补：DESIGN §2.4 追加「[変更]」口径一行、§4.2 追加 `InviteCodeShareUpdateInput` 一行；R15 PLANNER 接口表追加 `PUT /api/invite-codes/current/share` 一行。 |
+| m6 | 不改代码。给界面接入的说明：`PUT /current/share` 先判「有没有当前码」（404）再判资料（409 `PROFILE_REQUIRED`），所以 409 只在「有当前码但资料没名字」时出现；界面两种都要处理——404 回到「コードをつくる」，409 引导去补资料。 |
+
+验证：`invite-codes-service` 25/25、`invite-codes-routes`、`redesign-contract-routes` 18/18、`invite-codes-r15-schema`、`redesign-schema-parity`、`demo-world-consistency`、`contract-append-only`，连同 R16 相关共 120/120（PG 用例实际执行）；`typecheck`、`typecheck:app`、`lint`、App `tsc --noEmit`、App `contract-sync` 3/3 通过。

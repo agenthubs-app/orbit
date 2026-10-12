@@ -71,3 +71,18 @@
 
 - 位置：`R16-import-and-completion/PLANNER.md` 没有 `linkedinConnectedAt` 字段与「加入时间」口径；`REPORT.md` 只记了拍板结果
 - 建议：PLANNER 每天一问一节补一句「加入时间 = min(连接日期, 录入时间)，连接日期来自导入新建时的 `linkedinConnectedAt`」，并写明 M1 的退路边界。
+
+## 处理记录（执行人，2026-10-12）
+
+全部在 `52081e81`。
+
+| 条目 | 处理 |
+| --- | --- |
+| M1 | 已修（采用建议的第二种，且不依赖部署日）：`linkedinConnectedOnFromNotes` 只读备注**第一段**（第一个空行之前），且这一段首行不能是合并追加段的标题「… · YYYY-MM-DD」（覆盖「备注原本为空、合并后只有追加段」的情况）。导入新建时备注各行用单个换行连起来，合并追加段一定在空行之后或带标题行，所以合并带来的连接日期不再改加入时间；认不出时退回录入时间（安全一侧）。没选「上线日截止」：它挡不住上线前建的 CSV 联系人在上线后被合并。先写的失败用例：`completion-question` 「#2 M1」内存 + PG（两种备注形状），纯函数「a line appended by a later merge」。 |
+| m1 | 已修：点分隔三段一律「日.月.年」（`05.01.2024` → 1 月 5 日）；`01.13.2024` 认不出返回 null；补用例。 |
+| m2 | 不改行为：斜线两段都 ≤ 12 维持「月/日」，代码注释写明理由（这一列来自 LinkedIn `Connected On`，英文导出是美式；日本 Excel 是年在前，不受影响）。批次级判定留给导入预览返工时再看。 |
+| m3 | 已补：「预筛下沿当天留、前一天排除」（直接测 `recentContacts`）与服务层「29 天前问、31 天前不问」，内存 + PG 各一。 |
+| m4 | 已修：SQL 不再用正则抽行，只在备注含「LinkedIn 连接日期:」时带出备注原文，由同一个 JS 函数判断（`trim()` 含全角空格），两种存储同一口径；补全角缩进用例（内存 + PG）。 |
+| m5 | 已补：R16 PLANNER 接口表下追加「加入时间口径（2026-10-12 用户拍板）」与旧数据退路边界。 |
+
+验证：`linkedin-connected-on` / `completion-question` / `contact-import-routes` 48/48；连同 R15 相关与契约门禁共 120/120（PG 用例实际执行）；`typecheck`、`typecheck:app`、`lint`、App `tsc --noEmit`、App `contract-sync` 3/3 通过。
