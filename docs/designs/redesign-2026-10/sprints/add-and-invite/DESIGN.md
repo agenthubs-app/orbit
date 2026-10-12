@@ -85,6 +85,7 @@
 - **はじめて**（⑪ A2 ①）：说明「相手が自分で入力して、お互いの人脈に入ります」+ 3 步 + FAQ 三条（对方已在 Orbit？期限和人数？Orbit 会代发吗？）+「コードをつくる」。第二次起直接进共享页。
 - **共享**（⑪ A2 ②）：大 QR + 8 位码（`K7QX-2M9P` 形式，不含姓名，§9 #15）+ 链接；按钮「QR を表示」（全屏放大，当面给人扫）/「リンクをコピー」/「メッセージで送る」。下方「有効期限 10/14 まで · あと 7日」「使える人数 残り 9 / 10人 · 登録済み 1人」；「相手に届くあなたの情報 [変更]」：会社・役職 / 提供できること / 求めていること（默认开）、連絡先（默认关），值来自我的资料；底部「Orbit からは送信しません · 共有はあなたの端末から」+「無効にする」（确认后立即作废）。
   - 同一时间每人只有 1 个有效码；再点「コードをつくる」或过期后「新しいコードを発行」= 旧码作废、发新码（IMPLEMENTATION-PLAN D-13）。
+  - 「[変更]」（R15 P1，2026-10-12 用户拍板「照设计稿」）：改的是**当前码**共享哪些项目——码、链接、期限、人数都不变，只影响之后打开预览 / 兑换的人；已经连上的人按各自连接上的共享项目（在联系人详情里改，`…/connections/[contactId]/share`）。接口 `PUT /api/invite-codes/current/share`（§4.2）。
 - **メッセージの下書き**（⑪ A2 ③）：底部 sheet，语气 [ていねい][カジュアル][英語] 三套**固定模板**（填入对方不需要的部分：我的名字、链接、期限），不调 AI；按钮 [コピー][LINE で開く][メールで開く]，常驻「Orbit は送信しません」。
 - **履历**（b5 E6 是唯一画过的履历画板）：共享页下方「これまでのコード」：每个码一行（作成日、状态 有効 / 期限切れ / 無効 / 上限、登録した人的名字），点人名进联系人详情。⑪ ⑧ 的「期限切れ → 1 タップで再発行」放在这里。
 - **成功**（⑪ A2 ⑥ + ⑨ A5 ③）：有人用码连上后，邀请人收到一条站内通知 + 推送（计入全 App 每天 3 件，R14 的频控）：「高橋 美咲さんが招待から登録しました · お互いの人脈に追加」，点开进对方的联系人详情。
@@ -212,6 +213,7 @@
   - `InviteCodeRedeemResult` 加可选 `peer?: InviteSharedFields`（对方共享给我的，完成页用）；
   - `InviteCodeHistoryItem { code; createdAt; expiresAt; status: 'active' | 'expired' | 'revoked' | 'superseded' | 'full'; usedCount; maxUses; joined: { contactId; displayName; joinedAt }[] }`（`status` 宽进兜底 `'expired'`）与 `InviteCodeHistoryResponse { items }`（`GET /api/invite-codes`）；
   - `InviteConnectionView { contactId; connectedAt; via: { code }; sharedByMe: InviteSharedFieldKey[]; sharedByPeer: InviteSharedFieldKey[]; pausedFields: InviteSharedFieldKey[] }`（`GET /api/invite-codes/connections/[contactId]`，不是招待连接时 404）、`InviteShareUpdateInput { sharedKeys; idempotencyKey }`（`PUT …/share`，strict）、`InviteUnlinkInput { keepAsContact: boolean; idempotencyKey }`（strict）→ `InviteUnlinkResult { outcome: 'unlinked'; keptContactId? }`（`POST …/unlink`）。
+  - （R15 P1，2026-10-12 追加）`InviteCodeShareUpdateInput { sharedKeys; idempotencyKey }`（strict，`sharedKeys` 与发码 / 兑换同一套校验）→ 响应复用 `InviteCodeContract`（`PUT /api/invite-codes/current/share`）：改当前码共享的项目，码不变、只影响之后的人；没有当前码 404、资料没名字 409 `PROFILE_REQUIRED`；`idempotencyKey` 只为同形，按 PUT 语义处理（mock 与 live 一致）；示例模式拦截。
 - **不改** `SourceTypeCode`（复核 S1）：招待来的联系人 `sourceType = 'referral'`，联系人 payload 记 `acquisition.via = 'invite_code'`；「本人入力」由 `inviteLinkedContactIds` 判断，R11 把它映射成已有的 `sourceChip = 'self'`。
 - 收件箱：用**已有**的 `InboxSourceKind = 'contact'`、`kind = 'update'`、`target.kind = 'source'`（href 指向联系人详情），不加枚举值（§8 R13 行、§9 #22）。
 - mock：`mock-service.ts` 的 redeem 改为真正递增 `usedCount`、检查过期 / 上限、返回 `already_connected`；演示世界加 2 条历史与 1 个 `already_connected` 场景。

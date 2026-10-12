@@ -56,6 +56,7 @@
 | `GET /api/invite-codes/connections/[contactId]` | 这条联系人是不是招待连接、双方各共享了什么、哪些字段因我改过而暂停同步 |
 | `PUT /api/invite-codes/connections/[contactId]/share` | 改我共享给对方的项目（下一轮同步生效） |
 | `POST /api/invite-codes/connections/[contactId]/unlink` | 解除（DESIGN §2.6）；不通知对方 |
+| `PUT /api/invite-codes/current/share`（P1，2026-10-12 追加） | `InviteCodeShareUpdateInput`；改**当前码**共享的项目（码、链接、期限、人数不变，只影响之后预览 / 兑换的人）；与发码 / 作废同一把锁；没有当前码 404、资料没名字 409；PUT 语义（键只为同形）；示例模式拦截 |
 
 导出给 R11 的服务端函数：`inviteLinkedContactIds(actorId)`。
 

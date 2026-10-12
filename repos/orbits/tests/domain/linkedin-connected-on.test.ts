@@ -27,6 +27,9 @@ test("common export formats → noon (JST) of that Tokyo day", () => {
     ["１/５/２０２４", "2024-01-05T03:00:00.000Z"],
     ["1/5/2024", "2024-01-05T03:00:00.000Z"],
     ["25/12/2023", "2023-12-25T03:00:00.000Z"],
+    // 复核 m1：点分隔三段一律「日.月.年」（德 / 俄等地区的写法），不按斜线的「月/日」猜。
+    ["05.01.2024", "2024-01-05T03:00:00.000Z"],
+    ["25.12.2023", "2023-12-25T03:00:00.000Z"],
     ["  29 Feb 2024 ", "2024-02-29T03:00:00.000Z"],
   ];
   for (const [raw, expected] of cases) assert.equal(parseLinkedinConnectedOn(raw), expected, raw);
@@ -34,7 +37,7 @@ test("common export formats → noon (JST) of that Tokyo day", () => {
 });
 
 test("unreadable or impossible dates count as missing", () => {
-  for (const raw of ["", "   ", "yesterday", "05 Foo 2024", "30 Feb 2024", "29 Feb 2023", "2024-13-01", "13/13/2024", "2024", "05 Jan", null, undefined]) {
+  for (const raw of ["", "   ", "yesterday", "05 Foo 2024", "30 Feb 2024", "29 Feb 2023", "2024-13-01", "13/13/2024", "01.13.2024", "2024", "05 Jan", null, undefined]) {
     assert.equal(parseLinkedinConnectedOn(raw as string | null | undefined), null, String(raw));
   }
 });
@@ -53,6 +56,17 @@ test("legacy notes: the import's 「LinkedIn 连接日期: …」 line", () => {
   assert.equal(linkedinConnectedOnFromNotes("メモ\n  LinkedIn 连接日期: 1/5/2024  \nLinkedIn 连接日期: 02 Feb 2025"), "1/5/2024", "first line wins");
   assert.equal(linkedinConnectedOnFromNotes("LinkedIn: https://www.linkedin.com/in/x"), null);
   assert.equal(linkedinConnectedOnFromNotes(undefined), null);
+  // 复核 m4：行首全角空格缩进也认（SQL 不再自己抽行，两种存储同一个口径）。
+  assert.equal(linkedinConnectedOnFromNotes("メモ\n\u3000LinkedIn 连接日期: 05 Jan 2024"), "05 Jan 2024");
+});
+
+// 复核 M1：只认导入新建时写的那一段（第一段）；合并时追加的「导入补充 · 日期」段里的连接日期不算（已有人的加入时间不变）。
+test("legacy notes: a line appended by a later merge is not the person's connection date", () => {
+  const merged = "LinkedIn: https://www.linkedin.com/in/x\n\n导入补充 · 2026-10-08\nLinkedIn 连接日期: 15 Mar 2015";
+  assert.equal(linkedinConnectedOnFromNotes(merged), null, "merge block after the first paragraph");
+  assert.equal(linkedinConnectedOnFromNotes("导入补充 · 2026-10-08\nLinkedIn 连接日期: 15 Mar 2015"), null, "merge block into empty notes");
+  assert.equal(linkedinConnectedOnFromNotes("名片补充 · 2026-10-08\nLinkedIn 连接日期: 15 Mar 2015"), null);
+  assert.equal(linkedinConnectedOnFromNotes("LinkedIn 连接日期: 01 Oct 2025\n\n导入补充 · 2026-10-08\nLinkedIn 连接日期: 15 Mar 2015"), "01 Oct 2025", "the import's own line is still read");
 });
 
 test("added-at = the earlier of connected and created", () => {

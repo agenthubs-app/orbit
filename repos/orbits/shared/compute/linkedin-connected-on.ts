@@ -5,7 +5,8 @@
  *
  * - 认得的写法（LinkedIn 各语言 / 各年代的导出与用户自己整理的表）：`05 Jan 2024`、`5-Jan-2024`、`Jan 5, 2024`、
  *   `2024-01-05`、`2024/1/5`、`2024年1月5日`、`1/5/2024`（斜线三段：LinkedIn 英文导出是「月/日/年」，
- *   第一段 > 12 时按「日/月/年」）。认不出、日期不存在（2/30）都当没有（返回 null），不猜。
+ *   第一段 > 12 时按「日/月/年」）、`05.01.2024`（点分隔三段一律「日.月.年」）。认不出、日期不存在（2/30）都当没有
+ *   （返回 null），不猜。
  * - 规范成「那个东京日的 12:00（JST）」，即 UTC 03:00，写成 ISO（`2024-01-05T03:00:00.000Z`）。取正午：
  *   连接日期只有「日」，取一天正中，换算 UTC / 东京日都落在同一天，按东京日比较（30 天窗口、±14 天活动窗口）不会差一天；
  *   ISO 字符串也能直接按字典序与 `YYYY-MM-DD` 比较（SQL 预筛用）。
@@ -59,11 +60,16 @@ export function parseLinkedinConnectedOn(raw: string | null | undefined): string
   }
   match = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(value) ?? /^(\d{4})年(\d{1,2})月(\d{1,2})日$/.exec(value);
   if (match) return noonOf(Number(match[1]), Number(match[2]), Number(match[3]));
-  match = /^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/.exec(value);
+  // 复核 m1：点分隔是德 / 俄等地区的写法，几乎总是「日.月.年」；不按斜线的「月/日」猜。
+  match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value);
+  if (match) return noonOf(Number(match[3]), Number(match[2]), Number(match[1]));
+  match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
   if (match) {
     const first = Number(match[1]);
     const second = Number(match[2]);
-    // LinkedIn 英文导出是「月/日/年」；第一段 > 12 只能是「日/月/年」。
+    // LinkedIn 英文导出是「月/日/年」（美式）；第一段 > 12 只能是「日/月/年」。
+    // 复核 m2：两段都 ≤ 12（`05/01/2024`）时维持「月/日」——这一列来自 LinkedIn 的 `Connected On`，英文导出就是美式；
+    // 日本用户的 Excel 写成 `2024/01/05`（年在前，走上面的分支），不受影响。欧洲用户手改过的表只能猜错这一种，接受。
     return first > 12 ? noonOf(Number(match[3]), second, first) : noonOf(Number(match[3]), first, second);
   }
   return null;
@@ -79,11 +85,29 @@ export function linkedinConnectedAtFor(raw: string | null | undefined, importedA
   return days !== null && days <= 0 ? connectedAt : null;
 }
 
-/** 旧数据：备注里导入写的「LinkedIn 连接日期: …」那一行（取第一行）→ 原文；没有返回 null。 */
+/** 之后合并追加的段的标题行（`mergeCardIntoContact`：「导入补充 · 2026-10-08」「名片补充 · …」）。 */
+const APPENDED_BLOCK_HEADER = /^\S.* · \d{4}-\d{2}-\d{2}$/u;
+
+/**
+ * 旧数据：备注里导入**新建时**写的「LinkedIn 连接日期: …」那一行（取第一行）→ 原文；没有返回 null。
+ *
+ * 复核 M1：只看备注的第一段（第一个空行之前），且这一段不能是合并追加的段（标题行「… · YYYY-MM-DD」）。
+ * 导入新建时备注各行用单个换行连起来（`importNoteLines`，空行已滤掉）；之后合并进来的信息是「空行 + 标题行 + 内容」
+ * 追加在后面，备注原来是空的时候就只有「标题行 + 内容」。合并带来的连接日期不是这个人加入的时间
+ * （「合并不改已有人的加入时间」），所以都不认。对标成熟做法：只信创建时落下的数据，不从后来的自由文本里反推身份属性；
+ * 认不出时退回录入时间（安全一侧：最多多问一次，不会把人挤出窗口）。
+ * 行首空白（含全角空格）用 `trim()` 去掉；SQL 侧只取备注原文、由这里统一判断，两种存储同一口径（复核 m4）。
+ */
 export function linkedinConnectedOnFromNotes(notes: string | null | undefined): string | null {
   if (typeof notes !== "string") return null;
+  const lines: string[] = [];
   for (const line of notes.split(/\r?\n/u)) {
     const trimmed = line.trim();
+    if (!trimmed) break;
+    lines.push(trimmed);
+  }
+  if (lines.length > 0 && APPENDED_BLOCK_HEADER.test(lines[0]!)) return null;
+  for (const trimmed of lines) {
     if (trimmed.startsWith(LINKEDIN_CONNECTED_NOTE_PREFIX)) return trimmed.slice(LINKEDIN_CONNECTED_NOTE_PREFIX.length).trim() || null;
   }
   return null;

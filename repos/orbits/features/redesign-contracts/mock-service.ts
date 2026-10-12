@@ -122,7 +122,6 @@ function freshInviteState() {
     connections: new Map<string, InviteConnectionView>([[demoInviteConnection.contactId, demoInviteConnection]]),
     redeems: new Map<string, { code: string; result: InviteCodeRedeemResult | InviteFailure }>(),
     shares: new Map<string, InviteConnectionView>(),
-    currentShares: new Map<string, InviteCodeContract>(),
     unlinks: new Map<string, InviteUnlinkResult>(),
     merges: new Map<string, InviteConnectionView>(),
   };
@@ -215,8 +214,11 @@ export const redesignMock = {
   },
   /** A new code replaces every code of mine still standing (superseded); values come from my profile by the chosen keys. */
   createInvite(input: InviteCodeCreateInput): InviteCodeContract {
+    // 复核 m3：重放返回这张码现在的样子（之后改过共享项目就是改后的值，与 `GET /current` 一致），不是发码那一刻的快照。
+    // live 在重放时还会比对内容（maxUses / sharedKeys 与这张码不同 → 409，见 `features/invite-codes/service.ts` 的 create）；
+    // 演示世界不做冲突判断。
     const replay = state.invite.creates.get(input.idempotencyKey);
-    if (replay) return replay;
+    if (replay) return state.invite.mine.find((item) => item.contract.code === replay.code)?.contract ?? replay;
     const now = inviteNow();
     const at = new Date(now).toISOString();
     // 还在用的（有效 / 满员）都被替换；已过期、已作废的保持各自的状态。
@@ -231,13 +233,11 @@ export const redesignMock = {
     return created;
   },
   /** R15 P1: what the current code shares, from now on (same code, link, expiry and uses); null when there is no current code. */
+  // 复核 m2：与 live 同一个 PUT 语义——不按键重放：每次都按当前码应用，没有当前码 → null（404）。
   updateCurrentInviteShare(input: InviteCodeShareUpdateInput): InviteCodeContract | null {
-    const replay = state.invite.currentShares.get(input.idempotencyKey);
-    if (replay) return replay;
     if (!redesignMock.currentInvite()) return null;
     const current = state.invite.mine[0]!;
     current.contract = { ...current.contract, shared: pickShared(DEMO_PROFILE, input.sharedKeys) };
-    state.invite.currentShares.set(input.idempotencyKey, current.contract);
     return current.contract;
   },
   /** Only my code that is still standing can be revoked (again: the same answer). */

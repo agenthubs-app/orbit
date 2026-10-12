@@ -178,5 +178,9 @@ export interface InviteMergeInput {
 export interface InviteCodeShareUpdateInput {
   /** 与发码同一套校验：每项在枚举里、不重复（名字总是共享，不在里面）。 */
   sharedKeys: InviteSharedFieldKey[];
+  /**
+   * 复核 m2：只为与其他写接口同形（必填、非空）；服务端按 PUT 语义处理——同一份内容重发结果相同，
+   * 不按键重放（同一个键换了内容就按新内容改；没有当前码时 404，mock 与 live 一致）。
+   */
   idempotencyKey: string;
 }

@@ -167,7 +167,10 @@ export interface CompletionContactRow {
   addedAt: string;
 }
 
-/** 旧数据退而解析备注行的条件：CSV 导入新建的人（导入写的 `source.label`，见 `features/contacts/import/service.ts`）。 */
+/**
+ * 旧数据退而解析备注行的条件：CSV 导入新建的人（导入写的 `source.label`，见 `features/contacts/import/service.ts`），
+ * 且备注行在导入新建时写的第一段里（`linkedinConnectedOnFromNotes`，复核 M1：合并追加的连接日期不算）。
+ */
 const CSV_IMPORT_SOURCE_LABEL = "CSV 导入";
 
 /** 加入时间（见文件头 R16 #2）。`structured` = payload.linkedinConnectedAt；`legacyRaw` = 备注行里的原文。 */
@@ -296,8 +299,9 @@ const OWNED_CONTACTS = `c.workspace_id = $1
  * 近期加入的人（预筛，精确判断在纯函数里）。$3 / $4 = 窗口下沿（时间 / 东京日字符串，已留余量）。
  * R16 #2：加入时间 = min(LinkedIn 连接日期, 录入时间) ≤ 录入时间，所以「录入时间 ≥ 下沿」仍是能被问的人的超集，不必放宽；
  * 反过来连接日期早于下沿的人一定不会被问，这里直接排除（结构化字段是规范 ISO，可按字典序与 `YYYY-MM-DD` 比），
- * 免得一次导入几百个早就连接的人把真正新加的人挤出 $5 的读取上限。旧数据只有备注行的，SQL 只取出那一行原文，
- * 由 `completionAddedAt` 判断（这类人 30 天后自然出窗口）。
+ * 免得一次导入几百个早就连接的人把真正新加的人挤出 $5 的读取上限。旧数据只有备注行的，SQL 只在备注里出现那一行前缀时
+ * 带出备注原文，由 `linkedinConnectedOnFromNotes`（只认导入新建时的第一段，复核 M1）+ `completionAddedAt` 判断，
+ * 内存实现走同一个函数，空白口径一致（复核 m4；这类人 30 天后自然出窗口）。
  */
 export const COMPLETION_RECENT_CONTACTS_SQL = `select c.record_id,
        c.created_at,
@@ -311,7 +315,7 @@ export const COMPLETION_RECENT_CONTACTS_SQL = `select c.record_id,
        c.payload->>'metEventId' as met_event_id,
        c.payload->>'metEventTitle' as met_event_title,
        c.payload->>'linkedinConnectedAt' as linkedin_connected_at,
-       substring(coalesce(c.payload->>'notes', '') from '(?:^|\n)[[:space:]]*LinkedIn 连接日期: ([^\n]*)') as linkedin_connected_note,
+       case when strpos(coalesce(c.payload->>'notes', ''), 'LinkedIn 连接日期:') > 0 then c.payload->>'notes' end as linkedin_legacy_notes,
        case when jsonb_typeof(c.payload->'source') = 'object' then c.payload->'source'->>'type' end as payload_source_type,
        case when jsonb_typeof(c.payload->'source') = 'object' then c.payload->'source'->>'label' end as payload_source_label,
        coalesce(c.payload->>'notes', '') ~ '(^|\n)[[:space:]　]*出会い[[:space:]　]*[：:]' as has_meeting_note,
@@ -365,7 +369,7 @@ interface RecentRow {
   met_event_id: string | null;
   met_event_title: string | null;
   linkedin_connected_at: string | null;
-  linkedin_connected_note: string | null;
+  linkedin_legacy_notes: string | null;
   payload_source_type: string | null;
   payload_source_label: string | null;
   has_meeting_note: boolean | null;
@@ -401,7 +405,7 @@ export function createPostgresCompletionContactSource(client: CompletionSqlClien
         const sourceLabel = text(row.payload_source_label);
         const sourceType = text(row.payload_source_type) || text(row.source_type);
         return {
-          addedAt: completionAddedAt({ createdAt, legacyRaw: row.linkedin_connected_note ? text(row.linkedin_connected_note) : null, sourceLabel, sourceType, structured: text(row.linkedin_connected_at) }),
+          addedAt: completionAddedAt({ createdAt, legacyRaw: linkedinConnectedOnFromNotes(row.linkedin_legacy_notes), sourceLabel, sourceType, structured: text(row.linkedin_connected_at) }),
           contactId: row.record_id,
           createdAt,
           displayName: text(row.display_name),

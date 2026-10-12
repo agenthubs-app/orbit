@@ -48,6 +48,8 @@
 | `POST /api/contacts/completion-question/[id]/answer`（live） | 按 DESIGN §2.8 写：活动 → `metEventId`；紹介 / 前職の同僚 → 联系人备注「出会い：…」一行；公司 → `organization`（`applyContactFieldValues`，旧值进历史）；覚えていない → 只记在问题上；返回按 D-10 重算的 `densityAfter`、`next = null`（一天一题） |
 | `POST /api/contacts/completion-question/[id]/skip`（live） | `skipCount + 1`；同一人连续 3 次后不再出；今天不再出题 |
 
+- **加入时间口径（R16 #2，2026-10-12 用户拍板）**：每天一问的「最近 30 个东京日内加入」与 ±14 天活动选项窗口都围绕「加入时间」= min(LinkedIn 连接日期, 录入时间)。连接日期来自 LinkedIn 导入**新建**联系人时写的结构化字段 `linkedinConnectedAt`（`shared/compute/linkedin-connected-on.ts`，东京日正午）；合并进已有联系人不写，已有人的加入时间不变。本功能之前导入的旧数据退而读备注里的「LinkedIn 连接日期: …」行，只认 CSV 导入新建的人、且只认导入时写的第一段（合并追加的「导入补充 · 日期」段不算，复核 M1）。
+
 ## 范围与文件
 
 - **新建（服务端）**：`features/contacts/completion/{service,repository,configured}.ts`（集合 `contactCompletionQuestions`，规则见 DESIGN §2.8）；`redesign-contracts/service-factory.ts` 加 live。

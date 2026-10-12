@@ -344,6 +344,21 @@ test("R15 mock: share update changes what I share; unknown contact is 404; bad b
   redesignMock.reset();
 });
 
+// R15 P1 复核 m3：发码后改了共享项目，用同一个键重放发码拿到的是这张码现在的样子（与 GET /current 一致），不是旧快照。
+test("R15 P1 mock: replaying the create key after a share change returns the code as it is now", async () => {
+  redesignMock.reset();
+  await withMode("mock", async () => {
+    const create = () => call({ file: "invite-codes", method: "POST", body: { shared: { displayName: "x" }, maxUses: 3, sharedKeys: ["organization"], idempotencyKey: "c-replay" } });
+    const created = (await (await create()).json()).data;
+    const changed = (await (await call({ file: "invite-codes/current/share", method: "PUT", body: { sharedKeys: ["seeking"], idempotencyKey: "cs-replay" } })).json()).data;
+    assert.equal(changed.code, created.code);
+    const replayed = (await (await create()).json()).data;
+    assert.deepEqual(replayed, changed, "the replay shows the current shared values");
+    assert.deepEqual((await (await call({ file: "invite-codes/current", method: "GET" })).json()).data, changed);
+  });
+  redesignMock.reset();
+});
+
 test("R15 P1 mock: PUT /current/share changes what the current code shares; the code stays; previews follow; no current code is 404", async () => {
   redesignMock.reset();
   await withMode("mock", async () => {
@@ -357,12 +372,17 @@ test("R15 P1 mock: PUT /current/share changes what the current code shares; the 
     assert.deepEqual(rest, sameCode, "code, link, expiry and uses do not change");
     assert.deepEqual(shared, { displayName: "Orbit デモ", seeking: ["シリーズA の投資家"], email: "demo@example.com" });
     assert.deepEqual((await (await call({ file: "invite-codes/current", method: "GET" })).json()).data, body);
-    assert.deepEqual((await (await put({ sharedKeys: ["seeking", "email"], idempotencyKey: "cs-1" })).json()).data, body, "the same key replays");
+    assert.deepEqual((await (await put({ sharedKeys: ["seeking", "email"], idempotencyKey: "cs-1" })).json()).data, body, "the same body again → the same result");
+    // 复核 m2：与 live 同一个 PUT 语义——同一个键换了内容就按新内容改（不重放旧结果）。
+    const reused = (await (await put({ sharedKeys: ["organization"], idempotencyKey: "cs-1" })).json()).data;
+    assert.ok(reused.shared.organization && !reused.shared.seeking && !reused.shared.email, "the new content is applied");
+    assert.deepEqual((await put({ sharedKeys: ["seeking", "email"], idempotencyKey: "cs-1" })).status, 200);
     assert.deepEqual((await preview("K7QX-2M9P")).body.data.shared, { displayName: "Orbit デモ", seeking: ["シリーズA の投資家"] }, "the preview follows, never with contacts");
     assert.equal((await put({ sharedKeys: ["email", "email"], idempotencyKey: "cs-2" })).status, 400);
     assert.equal((await put({ sharedKeys: [], idempotencyKey: "cs-2", shared: { displayName: "x" } })).status, 400, "strict body");
     await call({ file: "invite-codes/[code]/revoke", method: "POST", params: { code: "K7QX-2M9P" } });
     assert.equal((await put({ sharedKeys: [], idempotencyKey: "cs-3" })).status, 404, "no current code");
+    assert.equal((await put({ sharedKeys: ["seeking", "email"], idempotencyKey: "cs-1" })).status, 404, "an old key does not replay once the code is gone (same as live)");
   });
   redesignMock.reset();
 });

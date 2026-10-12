@@ -12,7 +12,7 @@ import { after, before, test } from "node:test";
 import { Pool } from "pg";
 
 import { createMemoryContactCompletionStorage, createPostgresContactCompletionStorage } from "../../features/contacts/completion/configured";
-import { COMPLETION_QUESTION_COLLECTION } from "../../features/contacts/completion/repository";
+import { COMPLETION_QUESTION_COLLECTION, createPostgresCompletionContactSource, createStoreCompletionContactSource } from "../../features/contacts/completion/repository";
 import { ContactCompletionError, createContactCompletionService, type ContactCompletionStorage } from "../../features/contacts/completion/service";
 import { contactCompletionQuestionSchema, contactCompletionResultSchema } from "../../shared/api-schema/contact-completion";
 import type { LiveRecordStoreLike } from "../../shared/storage/live-record-store";
@@ -356,6 +356,60 @@ for (const backend of BACKENDS) {
     assert.equal(question.kind, "met_where");
     assert.ok(question.options.includes("September Meetup"), `options: ${question.options.join(" / ")}`);
     assert.ok(!question.options.includes("Too Early"), `options: ${question.options.join(" / ")}`);
+  });
+}
+
+// R16 #2 复核 M1：CSV 导入新建（当时没有连接日期）→ 之后合并一份 LinkedIn CSV，备注末尾追加「导入补充 · …\nLinkedIn 连接日期: …」。
+// 合并不改已有人的加入时间：仍按录入时间算，照样会被问。备注形状与 `mergeCardIntoContact` 写的一致。
+// 复核 m4：导入那一行行首是全角空格时两种存储同样认得。
+for (const backend of BACKENDS) {
+  const run = backend.name === "postgres" ? databaseTest : {};
+  const CSV_SOURCE = { id: "batch:csv", label: "CSV 导入", type: "external_contacts" };
+
+  test(`[${backend.name}] #2 M1: a LinkedIn date appended by a later merge never moves a CSV-imported person's added-at`, run, async () => {
+    const { storage, store } = await backend.storage();
+    const ws = storage.workspaceId;
+    await seedContact(store, ws, ALICE, "contact:import:csv-merged", { createdAt: "2026-10-05T03:00:00.000Z", displayName: "合併 さん", notes: "LinkedIn: https://www.linkedin.com/in/x\n\n导入补充 · 2026-10-08\nLinkedIn 连接日期: 15 Mar 2015", organization: "Merge Co", source: CSV_SOURCE });
+    await seedContact(store, ws, ALICE, "contact:import:csv-empty-merged", { createdAt: "2026-10-04T03:00:00.000Z", displayName: "空欄 さん", notes: "导入补充 · 2026-10-08\nLinkedIn 连接日期: 15 Mar 2015", organization: "Empty Co", source: CSV_SOURCE });
+    const service = createContactCompletionService({ log: () => undefined, now: () => new Date("2026-10-12T01:00:00.000Z"), storage });
+    assert.equal((await service.today(ALICE))?.contactId, "contact:import:csv-merged", "still a recent person (newest first)");
+    const source = backend.name === "postgres" ? createPostgresCompletionContactSource(pool!, ws) : createStoreCompletionContactSource(store, ws);
+    const rows = await source.recentContacts(ALICE, "2026-09-11T01:00:00.000Z");
+    assert.deepEqual(rows.map((row) => [row.contactId, row.addedAt.slice(0, 10)]).sort(), [
+      ["contact:import:csv-empty-merged", "2026-10-04"],
+      ["contact:import:csv-merged", "2026-10-05"],
+    ]);
+  });
+
+  test(`[${backend.name}] #2 m4: a full-width indented import line is read the same way by both stores`, run, async () => {
+    const { storage, store } = await backend.storage();
+    const ws = storage.workspaceId;
+    await seedContact(store, ws, ALICE, "contact:import:fullwidth", { createdAt: "2026-10-12T00:30:00.000Z", displayName: "全角 さん", notes: "メモ\n\u3000LinkedIn 连接日期: 01 Oct 2025", organization: "Wide Co", source: CSV_SOURCE });
+    const service = createContactCompletionService({ log: () => undefined, now: () => new Date("2026-10-12T01:00:00.000Z"), storage });
+    assert.equal(await service.today(ALICE), null, "connected a year ago → not a new person");
+  });
+
+  // 复核 m3：SQL / 内存预筛的下沿是「since − 2 天」的 UTC 日期，结构化连接日期按字典序比。钉住边界：
+  // 下沿当天连接的留下（之后由纯函数按 30 个东京日判断），前一天的排除；服务层 29 天前问、31 天前不问。
+  test(`[${backend.name}] #2 m3: the prefilter floor on the connection day (floor day kept, the day before dropped)`, run, async () => {
+    const { storage, store } = await backend.storage();
+    const ws = storage.workspaceId;
+    const since = "2026-09-10T01:00:00.000Z"; // floor = 2026-09-08T01:00Z → 东京日字符串 "2026-09-08"
+    await seedContact(store, ws, ALICE, "contact:import:floor-day", { createdAt: "2026-10-12T00:30:00.000Z", displayName: "下沿 当日", linkedinConnectedAt: "2026-09-08T03:00:00.000Z", source: CSV_SOURCE });
+    await seedContact(store, ws, ALICE, "contact:import:floor-before", { createdAt: "2026-10-12T00:30:00.000Z", displayName: "下沿 前日", linkedinConnectedAt: "2026-09-07T03:00:00.000Z", source: CSV_SOURCE });
+    const source = backend.name === "postgres" ? createPostgresCompletionContactSource(pool!, ws) : createStoreCompletionContactSource(store, ws);
+    assert.deepEqual((await source.recentContacts(ALICE, since)).map((row) => row.contactId), ["contact:import:floor-day"]);
+  });
+
+  test(`[${backend.name}] #2 m3: connected 29 Tokyo days ago → asked; 31 days ago → not asked`, run, async () => {
+    for (const [days, asked] of [[29, true], [31, false]] as const) {
+      const { storage, store } = await backend.storage();
+      const ws = storage.workspaceId;
+      const connectedAt = new Date(Date.parse("2026-10-12T03:00:00.000Z") - days * 86_400_000).toISOString();
+      await seedContact(store, ws, ALICE, `contact:import:age-${days}`, { createdAt: "2026-10-12T00:30:00.000Z", displayName: `${days} 日前`, linkedinConnectedAt: connectedAt, organization: "Age Co", source: CSV_SOURCE });
+      const service = createContactCompletionService({ log: () => undefined, now: () => new Date("2026-10-12T01:00:00.000Z"), storage });
+      assert.equal((await service.today(ALICE))?.contactId ?? null, asked ? `contact:import:age-${days}` : null, `${days} days`);
+    }
   });
 }
 

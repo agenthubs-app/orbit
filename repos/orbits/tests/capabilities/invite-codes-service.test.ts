@@ -295,6 +295,68 @@ function suite(name: string, options: TestOptions, withHarness: (run: (harness: 
     });
   });
 
+  // 复核 m4：改码与兑换并发——兑换要么整份拿旧键、要么整份拿新键；连接上记的共享项目与拿到的 peer 一致。
+  test(`${name}: P1 — changing the share while people redeem: each redemption gets either all-old or all-new keys, and its connection records exactly those`, options, async () => {
+    await withHarness(async (harness) => {
+      await harness.setProfile(profile(ALICE));
+      const { service } = setup(harness);
+      const OLD = ["organization", "email"] as const;
+      const NEW = ["seeking", "phone"] as const;
+      const created = await service.create(ALICE, { maxUses: 10, shared: { displayName: "a" }, sharedKeys: [...OLD], ...key("c") });
+      const oldShared = created.shared;
+      const redeemers = Array.from({ length: 6 }, (_, index) => `actor:race${index}`);
+      for (const actor of redeemers) await harness.setProfile(profile(actor));
+      const [updated, ...results] = await Promise.all([
+        service.updateCurrentShare(ALICE, { sharedKeys: [...NEW], ...key("s-race") }),
+        ...redeemers.map((actor) => service.redeem(actor, created.code, { sharedKeys: [], ...key(`r-${actor}`) })),
+      ]);
+      assert.equal(updated.code, created.code);
+      for (const [index, result] of results.entries()) {
+        const isOld = JSON.stringify(result.peer) === JSON.stringify(oldShared);
+        const isNew = JSON.stringify(result.peer) === JSON.stringify(updated.shared);
+        assert.ok(isOld !== isNew, `peer is exactly one version: ${JSON.stringify(result.peer)}`);
+        const { sharedByPeer } = await service.connection(redeemers[index]!, result.contactId);
+        assert.deepEqual([...sharedByPeer].sort(), [...(isOld ? OLD : NEW)].sort(), "the connection records what the peer got");
+      }
+      assert.equal((await service.current(ALICE))?.usedCount, redeemers.length);
+      assert.deepEqual(await service.current(ALICE), { ...updated, usedCount: redeemers.length });
+    });
+  });
+
+  // 复核 m4：改码与发码并发——改动只落在「那一刻的当前码」上：要么旧码先改了再被替换（新码是发码时的键），
+  // 要么新码先发出来、改动落在新码上（旧码保持原样）；绝不会改到已被替换的旧码，也不会让新码带上别的键。
+  test(`${name}: P1 — changing the share while a new code is issued touches only the code that was current at that moment`, options, async () => {
+    await withHarness(async (harness) => {
+      await harness.setProfile(profile(ALICE));
+      const { advance, service } = setup(harness);
+      for (let round = 0; round < 4; round += 1) {
+        const old = await service.create(ALICE, { maxUses: 5, shared: { displayName: "a" }, sharedKeys: ["organization"], ...key(`old-${round}`) });
+        advance(1000);
+        const [updated, fresh] = await Promise.all([
+          service.updateCurrentShare(ALICE, { sharedKeys: ["phone"], ...key(`s-${round}`) }),
+          service.create(ALICE, { maxUses: 5, shared: { displayName: "a" }, sharedKeys: ["email"], ...key(`new-${round}`) }),
+        ]);
+        assert.notEqual(fresh.code, old.code);
+        assert.ok([old.code, fresh.code].includes(updated.code), "the change lands on one of the two codes");
+        const current = (await service.current(ALICE))!;
+        assert.equal(current.code, fresh.code, "the new code is the current one");
+        if (updated.code === old.code) {
+          assert.deepEqual(Object.keys(fresh.shared).sort(), ["displayName", "email"], "the new code keeps the keys it was issued with");
+          assert.deepEqual(current, fresh);
+        } else {
+          assert.deepEqual(Object.keys(current.shared).sort(), ["displayName", "phone"], "the change applied to the new current code");
+        }
+        if (harness.pool) {
+          const rows = (await harness.pool.query<{ code: string; shared_keys: string[] }>("select code, shared_keys from invite_codes where actor_id = $1 and code = any($2::text[])", [ALICE, [old.code, fresh.code].map((code) => code.replaceAll("-", ""))])).rows;
+          const keysOf = (code: string) => rows.find((row) => row.code === code.replaceAll("-", ""))?.shared_keys;
+          assert.deepEqual(keysOf(old.code), updated.code === old.code ? ["phone"] : ["organization"], "the replaced code never gets keys after it was replaced");
+          assert.deepEqual(keysOf(fresh.code), updated.code === old.code ? ["email"] : ["phone"]);
+        }
+        advance(1000);
+      }
+    });
+  });
+
   test(`${name}: P1 — no current code (revoked, expired, replaced by a new one) is a 404; no profile name is PROFILE_REQUIRED`, options, async () => {
     await withHarness(async (harness) => {
       await harness.setProfile(profile(ALICE));

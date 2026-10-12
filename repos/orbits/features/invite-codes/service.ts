@@ -323,6 +323,10 @@ export function createInviteCodeService({
         const profile = await unit.profiles.read(actorId);
         const replay = await unit.repo.findCodeByIdempotencyKey(actorId, key);
         if (replay) {
+          // R15 P1 复核 m1（已知例外，不改）：比对的是这张码**现在**的 sharedKeys。发码后用 `PUT /current/share` 改过共享项目，
+          // 再用同一个键重放发码会得到 409（而不是原样重放）。成熟做法（按键存原请求指纹再比）要给 invite_codes 加列 =
+          // 生产迁移；两端界面在发码失败后都会清掉键、重试用新键（InviteCodeModal / InviteSenderScreen），现实中碰不到，
+          // 409 也是安全一侧（不会悄悄返回与请求不同的码）。mock 的重放返回码现在的样子，不做冲突判断。
           if (replay.maxUses !== maxUses || replay.sharedKeys.join(",") !== keys.join(",")) {
             throw new InviteCodeError("IDEMPOTENCY_CONFLICT", "The idempotency key was already used with different content.");
           }
