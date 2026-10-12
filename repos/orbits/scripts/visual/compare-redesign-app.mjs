@@ -38,15 +38,19 @@ if (!args.out || (!args.suite && (!args.design || (!args.shot && !args.simulator
 const useCache = !(args["no-cache"] || args.cache === "false");
 
 // ---------- 设计稿画板（带缓存）----------
+const designScale = (v) => Number(v["design-scale"] ?? 3);
 let browser;
 async function designFor(v) {
   const hash = !/^https?:/.test(v.design) && useCache ? designInputsHash(DESIGN_DIR, v.design) : null;
-  const cache = hash ? designCache({ v: 2, app: true, font: APP_DESIGN_FONT_FIX, frame: "top", hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? "phone", nth: v["board-nth"] ?? null, theme: v.theme, click: many(v["design-click"]), remove: many(v["design-remove"]), keepSystem: v["keep-system"] === "true" }) : null;
+  const cache = hash ? designCache({ v: 3, app: true, font: APP_DESIGN_FONT_FIX, frame: "top", scale: designScale(v), hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? "phone", nth: v["board-nth"] ?? null, theme: v.theme, click: many(v["design-click"]), remove: many(v["design-remove"]), keepSystem: v["keep-system"] === "true" }) : null;
   const meta = cache?.meta();
   const hit = meta && cache.png("frame");
   if (hit) return { png: hit, board: meta.board, cached: true };
   browser ??= await chromium.launch({ channel: args.channel ?? "chrome" });
-  const ctx = await browser.newContext({ viewport: { width: 1700, height: 1100 }, deviceScaleFactor: 1, locale: "ja-JP" });
+  // 设计侧按 3x 渲染、再用与真机截图相同的面积平均缩到 1x（R05 发现：1x 时 Chrome 把 SVG 图标边对齐到整像素，
+  // 324.5 → 325，而真机是 3x 渲染后缩小、保留 0.5px 的灰边，只框住图标的细带也差 0.025–0.03）。--design-scale 1 回到旧做法。
+  const scale = designScale(v);
+  const ctx = await browser.newContext({ viewport: { width: 1700, height: 1100 }, deviceScaleFactor: scale, locale: "ja-JP" });
   try {
     const page = await ctx.newPage();
     await page.goto(designUrl(v.design), { waitUntil: "load" });
@@ -56,8 +60,8 @@ async function designFor(v) {
     if (v["keep-design-font"] !== "true") await page.evaluate(appDesignFontFix);
     await page.waitForTimeout(Number(v["design-wait"] ?? 1600));
     let board;
-    for (let attempt = 0; attempt < 3 && !board; attempt++) {
-      if (attempt) await page.waitForTimeout(1500);
+    for (let attempt = 0; attempt < 20 && !board; attempt++) {
+      if (attempt) await page.waitForTimeout(1000);
       const boards = await page.evaluate(listBoardsInPage);
       if (v["board-index"] !== undefined) board = boards[Number(v["board-index"])];
       else if (v.board) {
@@ -85,8 +89,10 @@ async function designFor(v) {
     mkdirSync(v.out, { recursive: true });
     const file = join(v.out, "design.png");
     await frame.screenshot({ path: file, animations: "disabled" });
+    let png = readPng(file);
+    if (scale !== 1) { png = resize(png, Math.round(png.width / scale), Math.round(png.height / scale)); writePng(file, png); }
     if (cache) { cache.saveMeta({ board }); cache.savePng("frame", file); }
-    return { png: readPng(file), board, cached: false };
+    return { png, board, cached: false };
   } finally {
     await ctx.close();
   }
