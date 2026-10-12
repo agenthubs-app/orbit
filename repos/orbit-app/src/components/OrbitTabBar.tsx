@@ -1,6 +1,7 @@
 import { usePathname, useRootNavigationState, useRouter, type Href } from "expo-router";
-import { Platform, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useCoveredTab } from "./tab-bar-cover";
+import { cjkLift } from "./ui/cjk-lift";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createThemedStyles } from "../design/theme";
 import { darkColors, floatShadow } from "../design/tokens";
@@ -51,7 +52,7 @@ export function OrbitTabBar({ active }: { active: MainTab }) {
                 style={[styles.tab, selected && styles.selected]}>
                 <OrbitNavigationIcon name={tab.id} color={selected ? styles.labelSelected.color : styles.label.color} />
                 {/* One line at a fixed size like iOS tab bars; VoiceOver reads the full label. */}
-                <UiText maxFontSizeMultiplier={1} numberOfLines={1} style={[styles.label, selected && styles.labelSelected]}>{label}</UiText>
+                <UiText maxFontSizeMultiplier={1} numberOfLines={1} style={[styles.label, cjkLift(label, -0.33, 0), selected && styles.labelSelected]}>{label}</UiText>
               </UiPressable>
             );
           })}
@@ -83,7 +84,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   tab: { flex: 1, minWidth: 44, minHeight: 44, borderRadius: 999, alignItems: "center", justifyContent: "center", gap: 2 },
   selected: { backgroundColor: colors === darkColors ? colors.surface3 : colors.surface },
   // RD-05 shell exception (like the Web capsule labels): unselected items keep the design's --ink-3.
-  // kit 10px at line-height 1.5; on iOS lifted 2px@3x like other shell text (ui/cjk-lift).
-  label: { color: colors.ink3, fontSize: 10, lineHeight: 15, fontWeight: "700", textAlign: "center", maxWidth: "100%", ...(Platform.OS === "ios" ? { transform: [{ translateY: -0.67 }] } : null) },
+  // kit 10px at line-height 1.5 (iOS baseline nudge per label: ui/cjk-lift).
+  label: { color: colors.ink3, fontSize: 10, lineHeight: 15, fontWeight: "700", textAlign: "center", maxWidth: "100%" },
   labelSelected: { color: colors.ink }
 }));

@@ -88,7 +88,7 @@
   --font-ja: -apple-system, "SF Pro Display", "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
   --font-zh: "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-en: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
-  --font-num: "SF Pro Rounded", -apple-system, "SF Pro Display", system-ui, sans-serif;
+  --font-num: "SF Pro Rounded", -apple-system, "SF Pro Display", "Noto Sans JP", sans-serif;
   --font: var(--font-ja);
   --fs-display: 38px;
   --fs-number: 22px;

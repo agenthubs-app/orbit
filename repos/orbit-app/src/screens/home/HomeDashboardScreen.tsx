@@ -297,8 +297,8 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
           avatar (b5-me-inbox.html:178); people search lives on 人脈. */}
       <HomeAvatarButton onPress={() => navigate("/profile")} />
       <View style={styles.headerText}>
-        <UiText accessibilityRole="header" numberOfLines={1} style={[styles.headerDate, cjkLift(headerDate, -1, -2)]}>{headerDate}</UiText>
-        <UiText numberOfLines={1} style={[styles.headerGreeting, cjkLift(greeting, -0.5, -1)]}>{greeting}</UiText>
+        <UiText accessibilityRole="header" numberOfLines={1} style={[styles.headerDate, cjkLift(headerDate, -1, -1)]}>{headerDate}</UiText>
+        <UiText numberOfLines={1} style={[styles.headerGreeting, cjkLift(greeting, -0.5, 0)]}>{greeting}</UiText>
       </View>
       {active ? <HomeBell scopeKey={JSON.stringify([scope.key, inboxReadVersion])} onPress={() => navigate("/inbox")} /> : <IconButton icon="bell" accessibilityLabel={locale.t("home.inbox")} onPress={() => navigate("/inbox")} />}
       <HomeEditButton />

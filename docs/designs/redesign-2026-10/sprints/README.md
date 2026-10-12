@@ -69,7 +69,7 @@
 | RD-06 | **一律改用设计稿的命名**（ink、surface、plum、rose、mac、coral、ok …）；App 和 Web 引用旧名字的地方一次改完，不保留旧名字或别名 | R01 |
 | RD-07 | 「旧颜色 → 新颜色」对照表由执行人出好，**先给产品负责人确认再应用** | R01 |
 | RD-08 | `shared/design`、`shared/copy` 加进 App 同步白名单（`AGENTS.md` 相应修改） | R01、R03 |
-| RD-09 | 字体按界面语言切换：日文 Hiragino Sans / Noto Sans JP，中文 PingFang SC / Noto Sans SC，英文系统字体；去掉 Noto Serif SC → **修订（用户决定 2026-10-12，R07 像素返工）**：日文改用设计稿 kit 的 `--font`——系统字体优先（英文、数字为 SF），假名汉字仍是 Hiragino Sans / Noto Sans JP；中文、英文不变 | R01、R07 |
+| RD-09 | 字体按界面语言切换：日文 Hiragino Sans / Noto Sans JP，中文 PingFang SC / Noto Sans SC，英文系统字体；去掉 Noto Serif SC → **修订（用户决定 2026-10-12，R07 像素返工）**：日文改用设计稿 kit 的 `--font`——系统字体优先（英文、数字为 SF），假名汉字仍是 Hiragino Sans / Noto Sans JP；中文、英文不变。**App（用户 2026-10-12 选 (b)，R05 返工）**：日文界面在 iOS 上把假名汉字显式设成 Hiragino Sans 各字重（token `font.face.ja`，按设计稿渲染实测 400 / 500 / 600 / 700 / 800 → W3 / W4 / W5 / W6 / W7），英文数字仍是 SF；`--font-num` 回退照设计稿改为 Noto Sans JP | R01、R07、R05 |
 | RD-10 | ~~图标在骨架里一次换完：App 全部 Ionicons 换成设计稿图标；最后移除 Ionicons 依赖~~ → **修订（2026-10-09）**：骨架建图标源、两端 `Icon` 和展示页，导航壳换新图标；设计稿没有的按同样风格一次补画齐，出「Ionicons → 新图标」对照表给功能 Sprint 用。旧屏的 Ionicons 原样保留，门禁保证新代码不用、旧用法只减不增；最后一个旧屏删除时移除依赖（RD-24） | R02 |
 | RD-11 | 语言：App 跟随设备、Web 跟随浏览器语言，不是中 / 日 / 英时回退**日语**；已手动选过语言的用户保持不变 | R03 |
 | RD-12 | 两端文案文件全部按功能拆开；~~两端旧页面里写死的文字在骨架里全部抽出并补齐日语~~ → **修订（2026-10-09）**：骨架只处理标准用词源、导航壳和保留组件的文案；旧屏写死的文字原样保留，门禁保证新代码零容忍、旧用法只减不增，由功能 Sprint 整屏重写时按术语表处理（RD-24）；三语标准用词由产品负责人在 R03 报告里审 | R03 |

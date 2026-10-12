@@ -43,14 +43,14 @@
 | G13 | **旧页面全局样式会漏进壳** | 旧全局 `.btn` 会改壳里按钮；壳用双类选择器写回 kit 值 | 新的壳级或弹层控件要在旧页面（如 Task 页）上复查；窄屏新写的底部固定控件 `bottom` 加 `var(--orbit-shell-bottom-inset, 0px)`；旧页面开对话框时壳降到 `--z-raised`，不逐个改旧页 `z-index` | R07-RW REWORK-REPORT:32,166；`R07-web-shell/REPORT.md`:100；`R09-skeleton-acceptance/REPORT.md`:90 |
 | G14 | **kiosk / 公开页** | kiosk（签到、入场审核）不挂壳、不注册 ⌘K；公开页保留 `OrbitTopNav` / `PublicTopNav` | 新路由沿用 `shellAppliesTo` + `allowsOrbitAsk` 排除规则；已登录页一律不挂旧导航 | `R07-web-shell/REVIEW.md`:202；`R07-web-shell/REPORT.md`:56,102 |
 | G15 | **App 壳规则** | 一级页固定 `/home` `/contacts` `/events` `/task`，用 `AppScreen`，不自画底栏；Task 四段在 `TASK_SLOTS` | 打开一级页走 `openMainTab()`；新二级页在 `parentForPath` 写返回目标；只改自己那一段 `TASK_SLOTS` 和 `add()` 自己那一支；旧路由跳转表保留，重写旧屏时改成新地址 | `R05-app-shell/REPORT.md`:58–93；`R05-app-shell/REVIEW.md`:182 |
-| G16 | **App 底栏转场** | 底栏按路径瞬间出现 / 消失 | 照 iOS 惯例跟着页面一起滑走（R05 返工；功能 Sprint 的二级页按此验收） | DEC D07 |
-| G17 | **App 页面背景与顶栏** | 旧屏纯色背景 | 新屏一律用雾面渐变 `--fog-a/b`、三段顶栏、分段控件高 34pt 半透明轨道 | PA X06 X12 X13 |
+| G16 | **App 底栏转场** | 已做（R05 返工）：被盖住的一级页自己画底栏（`TabPageBar`），随原生转场被二级页盖住、返回转场结束后交回根部底栏 | 新一级页用 `AppScreen`（自动带）或在页面根视图最后放 `<TabPageBar tab=…/>`；二级页按此验收；页面代码不要直接 import `OrbitTabBar` | DEC D07；`R05-app-shell/REWORK-REPORT.md` §9 |
+| G17 | **App 页面背景与顶栏** | 壳已提供：`ShellBackground`（雾面）、`ShellTopBar`（三段顶栏）、`AppScreen` 二级页顶栏、Task `.tseg`；旧一级页正文仍是旧屏 | 新屏一律用这些组件（不自画背景 / 顶栏）；分段控件用 `Segmented variant="tseg"`（高 32.75，kit 值）；壳内文字的 iOS 基线微调用 `cjkLift` | PA X06 X12 X13；R05 返工 |
 | G18 | **「尚未实现」与演示世界** | live 返回 503 `NOT_IMPLEMENTED` | 界面不报错：有默认值用默认、没有就隐藏那一块（`whenNotImplemented`）；fixture 只从演示世界取人和事、带 `sample: true`；做 live 实现时在 `capability-registry` 登记；契约只加不改，破坏性改动先登记 `BREAKING.md` | HOW-TO 第 3–4、9 节；`R08-contracts-and-mocks/REPORT.md`:58–99 |
 | G19 | **契约响应宽进** | App 有几处 strict 读取（`src/api/inbox-notifications.ts`、`NotificationDeliverySettings.tsx`） | 给契约加枚举值 / 字段前，先把对应 App 读取改宽进，或抬高 `minSupportedAppVersion` | README 通用规则 10；`R08-contracts-and-mocks/REPORT.md`:80,95 |
 | G20 | **旧屏三份允许清单** | Ionicons、写死文字、旧写法只减不增 | 重写一个旧屏就把它从清单删掉；旧组件（如 `NeedsNetworkState`，14 个旧屏在用）使用点归零时删文件；合回前清单为空 | README RD-24、合回前 |
 | G21 | **Web 新页面作用域** | — | 外层 `<Orbit2026Scope>` + `ToastProvider`，与旧页面是兄弟不嵌套；CSS 只用 `var(--…)`；弹层用现成组件或 `useLayer`；减少动效两处都写 | `R06-web-components/REPORT.md`:76–81 |
 | G22 | **语言** | Web 以 cookie `orbit-lang` 为准 | 链接不拼 `?lang=`；字体按 RD-09 修订（系统字体优先） | `R07-web-shell/REVIEW.md`:207；README RD-09 |
-| G24 | **App 日文粗体字形**（2026-10-12 定，选 (b)） | App 日文走系统默认字体 | App 日文统一显式使用 Hiragino Sans 各字重：R01 token 加 `font.family.ja`，由 R05 会话实现；先确认 iOS 上 W8 是否可用；各功能 Sprint 用 token，不自己写字体名 | DEC §9-9；README RD-09 |
+| G24 | **App 日文粗体字形**（用户 2026-10-12 选 (b)） | 已做（R05 返工）：`UiText` 在 iOS 日文界面把假名 / 汉字 / 全角符号设成 Hiragino Sans 显式字重，英文数字仍是 SF；token `font.face.ja`（`font.family.ja` 是 Web 的 CSS 字体栈，未改） | 新文字一律用 `UiText`（旧屏的 RN `Text` 仍走系统回退，重写时换掉）；不要自己写字体名。iOS 自带 W3–W8 全部可用；字重按门禁实测的 Chrome 落档映射 400 W3 / 500 W4 / 600 W5 / 700 W6 / 800 W7 / 900 W8 | DEC §9-9；README RD-09；`R05-app-shell/REWORK-REPORT.md` §10 |
 | G23 | **组件库遗留（乙负责组件库时处理）** | 调用方各自绕开 | `Toast` 点按先关再回调；`BottomSheet` / `ActionSheet` 页面失焦自动关；确认 sheet 支持不可拖关；Web Modal 加 380 档（D42）；`Kbd` 字色、`MacTile` 小号 emoji、非壳抽屉深色细边等逐件对齐 kit（Q1 组件逐件比） | `R12-add-cards-and-manual/REVIEW.md`:150；`R15-invite-codes/REVIEW.md`:78,148,153；DEC D42 Q1；R07-RW REWORK-REPORT:113,174 |
 
 ---

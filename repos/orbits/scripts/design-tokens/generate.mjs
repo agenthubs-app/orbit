@@ -103,6 +103,8 @@ function renderTs(tokens) {
     "",
     `export const designFont = ${tsObject([
       ["family", tsMap(tokens.font.family, quote, 1)],
+      // App only: the Hiragino Sans face per CSS weight for kana / kanji (user 2026-10-12, R05 (b)).
+      ["face", tsObject(Object.entries(tokens.font.face).map(([lang, faces]) => [lang, tsMap(faces, quote, 2)]), 1)],
       ["size", tsMap(tokens.font.size, num, 1)],
       ["weight", tsMap(tokens.font.weight, num, 1)],
       ["lineHeight", tsMap(tokens.font["line-height"], num, 1)],
