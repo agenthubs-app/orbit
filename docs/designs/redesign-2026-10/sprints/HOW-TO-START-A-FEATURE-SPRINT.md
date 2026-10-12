@@ -6,6 +6,8 @@
 
 1. 在 `redesign` 上开个人分支：`git switch -c redesign-R26-event-assessment redesign`。分支名全用连字符：仓库里已有 `redesign` 分支，git 不允许再建 `redesign/…`。`chat-agent` 冻结，不往那里合。
 2. 读本 Sprint 的 `GOAL.md` / `PLANNER.md`，和 [`screen-ownership.md`](screen-ownership.md) 里归你这一行的旧屏。
+   - **必须先读 [交接表](HANDOFF-TO-FEATURE-SPRINTS.md) 里本 Sprint 那一节和「通用口径」**（骨架、导航壳返工、加人、计划 v2.2 和 2026-10-12 拍板留给你的事项与临时规定），把其中每一条写进自己 PLANNER 的验收契约（SC），写明交接表编号；收口 REPORT 逐条写处理结果。
+   - 以后出现新的交接事项（留给别的 Sprint 的事、临时做法），**一律追加到交接表**对应 Sprint 的节，不只写在自己的 REPORT 里。
 3. 记录基线：
    - orbits：`cd repos/orbits && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npm test`、`npm run typecheck`、`npm run typecheck:app`、`npm run lint`；
    - App：`cd repos/orbit-app && npm test`、`npx tsc --noEmit`。
@@ -81,7 +83,7 @@ render(body.data);
 - 先接 mock 接口开发；
 - 正式环境遇到「尚未实现」按第 4 步隐藏或给默认值；
 - 屏上需要占位时用 `States` 的空态（App `src/components/ui/States.tsx`，Web `orbit-2026/ui` 的 `EmptyState`），文字写「まだありません」这类普通说法，不写「开发中」「Coming soon」以外的内部用语；
-- 在 REPORT「交接」写清楚依赖哪一个 Sprint、接上之后要删什么。
+- 在 REPORT「交接」写清楚依赖哪一个 Sprint、接上之后要删什么，并同时追加到 [交接表](HANDOFF-TO-FEATURE-SPRINTS.md) 对方 Sprint 的节。
 
 ## 6. 文案
 

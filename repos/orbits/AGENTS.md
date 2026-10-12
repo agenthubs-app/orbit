@@ -153,6 +153,7 @@ workspace root for implementation work.
   - 新接口在 live 实现之前返回 `NOT_IMPLEMENTED`，界面用 `whenNotImplemented` 隐藏入口或用默认值，不显示错误。
 - **还原设计稿**（RD-16 修订，用户决定 2026-10-11，取代「展示页 + 并排截图、不做逐像素门禁」）：每个画面必须和设计稿画板**一模一样**，只允许测试数据与设计稿示例数据的**文字内容**不同（人名、数字、日期）；排版、颜色、间距、字号、字重、圆角、阴影、图标、元素有无和顺序都必须一致。设计稿里有的不许自己改、不许省略，做不到或不该做的**先请用户拍板**；REPORT「自定决定」里不得再出现偏离设计的条目（以前的全部作废，见 [pixel-audit](../../docs/designs/redesign-2026-10/sprints/maintenance/2026-10-11-pixel-audit.md)）。验收靠逐像素门禁：整屏 raw ≤0.02，`--grid` 逐带比对，超阈值的带必须在归因文件里具名且只能是 `[data]`（数据文字不同）。Web 1440 / 1024 / 390 × 浅色 / 深色、截完整页面含导航壳（`repos/orbits/scripts/visual/compare-redesign.mjs`）；App 用内置 iOS 模拟器截真实画面、不用 react-native-web，浅色 / 深色（`compare-redesign-app.mjs`）。用法见 `repos/orbits/scripts/visual/README-redesign.md`；不过门禁的画面不得标 done。
 - **不许改动或省略设计稿**（RD-16 修订，用户决定 2026-10-11，适用于所有 Sprint，甲乙都一样）：「自定决定」只能写和设计稿无关的工程决定；任何改动、省略或增加设计稿元素的做法，都必须**先由用户拍板**再实现，并记进 README 决定表。PLANNER 每个画面一条像素 SC，REPORT 附门禁结果，独立复核重跑门禁（HOW-TO 第 8 节）。
+- **交接表**（2026-10-12）：骨架与返工留给各功能 Sprint 的事项和临时规定集中在 [`HANDOFF-TO-FEATURE-SPRINTS.md`](../../docs/designs/redesign-2026-10/sprints/HANDOFF-TO-FEATURE-SPRINTS.md)。功能 Sprint 开工前先读本 Sprint 那一节和「通用口径」，把其中每条写进 PLANNER 的验收契约；新的交接事项一律追加到这份文件。
 - **旧屏**（RD-24）：旧屏按 [`screen-ownership.md`](../../docs/designs/redesign-2026-10/sprints/screen-ownership.md) 由对应功能 Sprint 整屏重写；三份允许清单（Ionicons、写死文字、旧写法）只减不增，重写一个屏就把它从清单里删掉。
 - **热点文件归属**（定稿，2026-10-10 确认；以后变更改在这里，两端同步）。非负责人要改热点文件时，先向负责人提需求，由负责人改：
 

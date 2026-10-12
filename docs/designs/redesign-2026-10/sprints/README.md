@@ -3,6 +3,7 @@
 **运行状态：ACTIVE（2026-10-09）。** 本目录管理 Orbit 2026-10 改版的全部 Sprint，统一用 `R` 编号。每个 Sprint 同时涉及后端、Web（`repos/orbits`）和 App（`repos/orbit-app`），所以不再分别放进两端的 `docs/sprints/`；两端登记表各有一行指向这里。
 
 - 设计依据：本目录上一级的设计稿（`index.html`「待確認項決定」、`01-system.html`、`b11-nav-v3.html`、`kit/`）和 [`IMPLEMENTATION-PLAN.md`](../IMPLEMENTATION-PLAN.md)。**两者与本目录冲突时，以本目录「用户决定」表为准。**
+- **必读（功能 Sprint）**：[交接表 HANDOFF-TO-FEATURE-SPRINTS.md](HANDOFF-TO-FEATURE-SPRINTS.md)——骨架与返工留给各功能 Sprint 的事项和临时规定（按 Sprint 分节 + 通用口径）。开工前读自己那一节并写进 PLANNER 的验收契约；新的交接事项一律追加到这份文件。
 - 每个 Sprint 一个目录：`GOAL.md`（易读目标）+ `PLANNER.md`（唯一契约）；执行结束写 `REPORT.md`，独立复核写 `REVIEW.md`。
 
 ## 分支
@@ -113,6 +114,7 @@
 - [ ] Web 旧页面的深色模式（R01 复核 m4）、日文（R03 允许清单）随重写全部到位。
 
 **骨架留下的待办**
+- [ ] [交接表](HANDOFF-TO-FEATURE-SPRINTS.md) 每一条都已处理，或在对应 Sprint 的 REPORT 写明保留理由；「未定归属」各条已由用户指定 Sprint 或明确放弃。
 - [x] Web Task「プラン」段按产品决定 (a) 放现有计划界面（R07 复核 M5，2026-10-10）；`/app/agent/plan` 保留为兼容跳转。（R25 已换成计划 v2 插槽，兼容跳转已删除，2026-10-11。）
 - [x] R25 重写プラン段时：把旧界面和服务端产生的计划链接（`features/**` 的 href、活动跟进的 `taskHref`）统一换成新地址，删除兼容跳转。（2026-10-11：Web 与服务端已换，`tests/audits/no-legacy-plan-links.test.ts` 锁住两端源码；`taskHref` 改动登记在 `shared/contract/BREAKING.md`。）
 - [x] 契约演进口径（通用规则 10）产品负责人已确认（2026-10-10）；App 的两个 strict 读取点已改成宽进读取（R08 复核修复）。
