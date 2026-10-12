@@ -1,5 +1,5 @@
 {
- "_note": "R05 App 导航壳返工的门禁画面清单。整屏数字因正文旧屏不过；壳的局部（Task 顶栏 0,50,390,128、マイページ 顶栏 0,50,390,64、首页 .hhead 0,50,390,64、底栏胶囊 14,756,362,62，--grid 30）用 ~/orbit-sprint-evidence/redesign/R05/rework/region.mjs 在本清单输出上切。",
+ "_note": "R05 App 导航壳返工的门禁画面清单。整屏数字因正文旧屏不过；壳的局部（Task 顶栏 0,50,390,128、マイページ 顶栏 0,50,390,64、首页 .hhead 0,50,390,58、底栏胶囊 14,756,362,62，--grid 30）用 ~/orbit-sprint-evidence/redesign/R05/rework/region.mjs 在本清单输出上切。",
  "defaults": {
   "grid": 30,
   "wait": 7000,
@@ -70,9 +70,9 @@
   {
    "id": "A-R05-11",
    "design": "b5-me-inbox.html",
-   "board-index": 15,
+   "board-index": 16,
    "url": "orbit://profile",
-   "note": "マイページ：二级页顶栏（正文归 R18）",
+   "note": "マイページ：二级页顶栏（完成度 100% 画板；正文归 R18）",
    "sources": [
     "repos/orbit-app/src/screens/profile/**"
    ]

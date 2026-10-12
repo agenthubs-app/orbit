@@ -16,6 +16,7 @@ import {
   useWindowDimensions
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { TabPageBar } from "../../components/TabPageBar";
 import { ShellBackground } from "../../components/ShellBackground";
 import { z } from "zod";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -680,6 +681,7 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
       ) : null}
       </> : null}
     </ScrollView>
+    <TabPageBar tab="events" />
     </SafeAreaView>
   );
 }

@@ -7,6 +7,7 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { serverReachability } from "../../api/server-reachability";
 import { AppScreenEmbeddingProvider } from "../../components/AppScreenEmbedding";
+import { TabPageBar } from "../../components/TabPageBar";
 import { ShellBackground } from "../../components/ShellBackground";
 import { shellHeaderDate } from "../../components/shell-date";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../components/ShellTopBar";
@@ -117,6 +118,7 @@ export function TaskScreen() {
           ? <AppScreenEmbeddingProvider segment={key}>{TASK_SLOTS[key]({ quickAdd, revision, onCreated })}</AppScreenEmbeddingProvider>
           : null}
       />
+      <TabPageBar tab="task" />
     </SafeAreaView>
   );
 }

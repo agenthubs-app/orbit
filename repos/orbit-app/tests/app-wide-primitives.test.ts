@@ -138,9 +138,11 @@ function contrast(foreground: string, background: string) {
 test("shared header grows for long titles and retains unframed 44pt back and direct-open fallback", async t => {
   const page = await openScreen(t);
   const back = page.getByRole("button", { name: "返回", exact: true });
-  // D01: the kit's round button is 40pt; hitSlop extends the touch area to 44 (not in the DOM box).
-  await fits(back, 320, 40);
-  assert.ok((await back.boundingBox())!.width >= 40);
+  // D01: the pressable is a real 44pt box (pulled back by a negative margin); the circle drawn inside is the kit's 40.
+  await fits(back, 320, 44);
+  assert.ok((await back.boundingBox())!.width >= 44);
+  const circle = (await back.locator("div").first().boundingBox())!;
+  assert.ok(Math.abs(circle.width - 40) < 0.5 && Math.abs(circle.height - 40) < 0.5, JSON.stringify(circle));
   await back.click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["back"]);
   await fits(page.getByText(title, { exact: true }));

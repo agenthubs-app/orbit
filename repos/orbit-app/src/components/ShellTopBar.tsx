@@ -37,19 +37,20 @@ export function ShellTopBar({ title, subtitle, left, right }: { title: string; s
   };
   return (
     <View style={styles.bar}>
-      <View style={[styles.side, { width: side }]}><View style={styles.content} onLayout={measure("left")}>{left}</View></View>
+      <View style={[styles.side, { minWidth: side }]}><View style={styles.content} onLayout={measure("left")}>{left}</View></View>
       <View style={styles.center}>
         {title ? <UiText accessibilityRole="header" style={[styles.title, cjkLift(title, -1, -2)]}>{title}</UiText> : null}
         {subtitle ? <UiText style={[styles.subtitle, cjkLift(subtitle, -0.5, -1)]}>{subtitle}</UiText> : null}
       </View>
-      <View style={[styles.side, { width: side }, side > SIDE && styles.sideEnd]}><View style={styles.content} onLayout={measure("right")}>{right}</View></View>
+      <View style={[styles.side, { minWidth: side }, side > SIDE && styles.sideEnd]}><View style={styles.content} onLayout={measure("right")}>{right}</View></View>
     </View>
   );
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bar: { flexDirection: "row", alignItems: "center", paddingTop: 6, paddingBottom: 14 },
-  side: { alignItems: "flex-start" },
+  // Sides keep their natural width (never shrink); the inner row reports it.
+  side: { flexShrink: 0, alignItems: "flex-start" },
   sideEnd: { alignItems: "flex-end" },
   content: { flexDirection: "row", alignItems: "center" },
   center: { flex: 1, minWidth: 0, alignItems: "center" },

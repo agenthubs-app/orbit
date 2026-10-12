@@ -15,6 +15,7 @@ import { useMobileViewport } from "../platform/use-mobile-viewport";
 import { mainTabForPath, parentForPath } from "../view-models/app-navigation";
 import { rememberScroll, rememberedScroll, shellScrollKey } from "../view-models/shell-state";
 import { useAppScreenEmbedding } from "./AppScreenEmbedding";
+import { TabPageBar } from "./TabPageBar";
 import { ShellBackground } from "./ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "./ShellTopBar";
 import { TAB_BAR_CLEARANCE } from "./shell-metrics";
@@ -23,6 +24,8 @@ import { IconButton } from "./ui/IconButton";
 interface AppScreenProps extends PropsWithChildren {
   backAccessibilityLabel?: string;
   backLabel?: string;
+  /** "x" for a form that cancels (kit 手入力: ✕ top-left); the default ‹ goes back. */
+  backIcon?: "left" | "x";
   eyebrow?: string;
   header?: ReactNode;
   headerActions?: ReactNode;
@@ -37,6 +40,7 @@ interface AppScreenProps extends PropsWithChildren {
 export function AppScreen({
   backAccessibilityLabel,
   backLabel,
+  backIcon = "left",
   children,
   eyebrow,
   header,
@@ -102,7 +106,7 @@ export function AppScreen({
         // The back button is icon-only like the design; VoiceOver reads where it goes.
         <View style={styles.navigation}>
           <ShellTopBar title={title}
-            left={<IconButton icon="left" accessibilityLabel={backAccessibilityLabel ?? backLabel ?? (canGoBack ? copy.nav.back : fillCopy(copy.nav.backTo, { label: parent.label }))}
+            left={<IconButton icon={backIcon} accessibilityLabel={backAccessibilityLabel ?? backLabel ?? (canGoBack ? copy.nav.back : fillCopy(copy.nav.backTo, { label: parent.label }))}
               onPress={onBack ?? (() => canGoBack ? router.back() : router.replace(parent.href as Href))} />}
             right={headerActions ? <View style={styles.navigationActions}>{headerActions}</View> : null} />
         </View>
@@ -128,6 +132,7 @@ export function AppScreen({
         </View> : eyebrow && eyebrow.trim().toLowerCase() !== "orbit" ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null)}
         <View style={styles.body}>{children}</View>
       </ScrollView>
+      {mainTab ? <TabPageBar tab={mainTab} /> : null}
     </SafeAreaView>
   );
 }
