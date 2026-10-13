@@ -69,6 +69,7 @@
   },
   {
    "id": "W-R24-04c",
+   "region": "0,0,1440,960",
    "app": "/app/tasks?tab=plan",
    "design": "b12-missing-states.html",
    "board": "W-R24-04c 確認待ち",
