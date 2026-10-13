@@ -1,0 +1,163 @@
+{
+ "_note": "R23–25 App 计划页像素返工 · B 组（目標入力 / 生成流程 / 手動編集）。fixture b10-flow 的 intake：intake_b10_bg / _q / _premise / _draft / _fix1 / _fix3 / _drafting / _fallback / _onerung / _planned，草稿 draft_b10_fix3。",
+ "defaults": {
+  "grid": 30,
+  "wait": 12000,
+  "attribution": "scripts/visual/attribution-redesign-R23-25-app.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/plan/plan-ui.tsx",
+  "repos/orbit-app/src/screens/plan/plan-model.ts",
+  "repos/orbit-app/src/i18n/ja/plan.ts",
+  "repos/orbit-app/src/components/ui/**",
+  "repos/orbit-app/src/components/AppScreen.tsx",
+  "repos/orbit-app/src/components/Shell*.tsx",
+  "repos/orbit-app/src/screens/plan/PlanGoalInput.tsx",
+  "repos/orbit-app/src/screens/plan/PlanFlowScreen.tsx",
+  "repos/orbit-app/src/screens/plan/PlanBackground.tsx",
+  "repos/orbit-app/src/screens/plan/PlanQuestions.tsx",
+  "repos/orbit-app/src/screens/plan/PlanDraft.tsx",
+  "repos/orbit-app/src/screens/plan/PlanAddMemberSheet.tsx",
+  "repos/orbit-app/src/screens/plan/PlanManualEditScreen.tsx"
+ ],
+ "views": [
+  {
+   "id": "A-R23-01",
+   "design": "b10-plan-example.html",
+   "board-index": 0,
+   "url": "orbit://task?seg=plan&new=1",
+   "fixture": null,
+   "note": "目標入力（app.html #19 同）"
+  },
+  {
+   "id": "A-R23-02a",
+   "design": "b12-missing-states.html",
+   "board-index": 124,
+   "url": "orbit://task?seg=plan&new=1",
+   "fixture": "b12-goal-resume",
+   "note": "作りかけのプラン"
+  },
+  {
+   "id": "A-R23-02b",
+   "design": "b12-missing-states.html",
+   "board-index": 126,
+   "url": "orbit://task?seg=plan&new=1",
+   "fixture": "b12-goal-month",
+   "note": "今月の上限"
+  },
+  {
+   "id": "A-R23-02c",
+   "design": "b12-missing-states.html",
+   "board-index": 128,
+   "url": "orbit://task?seg=plan&new=1",
+   "fixture": "b12-goal-two",
+   "note": "目標 2つ"
+  },
+  {
+   "id": "A-R23-03",
+   "design": "b10-plan-example.html",
+   "board-index": 1,
+   "url": "orbit://plans/flow/intake_b10_drafting",
+   "fixture": "b10-flow",
+   "note": "背景の下書き中"
+  },
+  {
+   "id": "A-R23-04",
+   "design": "b10-plan-example.html",
+   "board-index": 2,
+   "url": "orbit://plans/flow/intake_b10_bg",
+   "fixture": "b10-flow",
+   "note": "背景確認 1/3 · わたし"
+  },
+  {
+   "id": "A-R23-05",
+   "design": "b10-plan-example.html",
+   "board-index": 3,
+   "url": "orbit://plans/flow/intake_b10_bg",
+   "fixture": "b10-flow",
+   "note": "2/3 · チーム",
+   "taps": "わたしを確定"
+  },
+  {
+   "id": "A-R23-08",
+   "design": "b10-plan-example.html",
+   "board-index": 6,
+   "url": "orbit://plans/flow/intake_b10_bg",
+   "fixture": "b10-flow",
+   "note": "3/3 · 目的",
+   "taps": "わたし→チーム確定"
+  },
+  {
+   "id": "A-R23-09a",
+   "design": "b12-missing-states.html",
+   "board-index": 146,
+   "url": "orbit://plans/flow/intake_b10_fallback",
+   "fixture": "b10-flow",
+   "note": "背景下書き失敗"
+  },
+  {
+   "id": "N17a",
+   "design": "b12-missing-states.html",
+   "board-index": 156,
+   "url": "orbit://plans/flow/intake_b10_onerung",
+   "fixture": "b10-flow",
+   "note": "目的の階段 · 1段だけ"
+  },
+  {
+   "id": "A-R23-10",
+   "design": "b10-plan-example.html",
+   "board-index": 8,
+   "url": "orbit://plans/flow/intake_b10_q",
+   "fixture": "b10-flow",
+   "note": "5 問"
+  },
+  {
+   "id": "A-R23-11",
+   "design": "b10-plan-example.html",
+   "board-index": 9,
+   "url": "orbit://plans/flow/intake_b10_premise",
+   "fixture": "b10-flow",
+   "note": "確定した前提"
+  },
+  {
+   "id": "A-R23-12",
+   "design": "b10-plan-example.html",
+   "board-index": 11,
+   "url": "orbit://plans/flow/intake_b10_draft",
+   "fixture": "b10-flow",
+   "note": "AI 初版（見立て・結論）"
+  },
+  {
+   "id": "A-R23-15",
+   "design": "b10-plan-example.html",
+   "board-index": 15,
+   "url": "orbit://plans/flow/intake_b10_fix1",
+   "fixture": "b10-flow",
+   "note": "AI 修正 1 回後"
+  },
+  {
+   "id": "A-R23-16",
+   "design": "b10-plan-example.html",
+   "board-index": 16,
+   "url": "orbit://plans/flow/intake_b10_fix3",
+   "fixture": "b10-flow",
+   "note": "AI 修正を使い切った"
+  },
+  {
+   "id": "A-R23-17",
+   "design": "b10-plan-example.html",
+   "board-index": 18,
+   "url": "orbit://plans/drafts/draft_b10_fix3/edit",
+   "fixture": "b10-flow",
+   "note": "手動編集（ステップ）"
+  },
+  {
+   "id": "A-R23-20a",
+   "design": "b12-missing-states.html",
+   "board-index": 186,
+   "url": "orbit://plans/flow/intake_b10_planned",
+   "fixture": "b10-flow",
+   "note": "確定済み intake"
+  }
+ ]
+}

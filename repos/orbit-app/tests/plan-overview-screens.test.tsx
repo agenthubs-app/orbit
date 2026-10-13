@@ -190,11 +190,19 @@ test("overview: every field from GET /v2/[planId], the score equal to the home s
   assert.equal(await page.getByTestId("type-card").count(), detail.content.personTypes.length);
   assert.equal(await page.getByTestId("plan-step").count(), detail.content.steps.length);
   await page.getByTestId("event-card").waitFor();
-  await page.getByText("プランは達成を保証しません。").waitFor();
+  // RD-16 像素返工：app.html 概要 #23–#25 画板里没有这条脚注（Web 的同句在右栏，App 无右栏）。
+  assert.equal(await page.getByText("プランは達成を保証しません。").count(), 0);
   // Progress chips (a step waiting for confirmation shows 確認待ち instead).
   const waiting = new Set((detail.pending ?? []).filter((entry) => entry.kind === "step_suggestion").map((entry) => entry.id.split(":").pop()));
-  for (const progress of (detail.stepProgress ?? []).filter((entry) => !waiting.has(entry.stepKey))) assert.ok(await page.getByText(progress.label, { exact: true }).count() > 0, progress.label);
-  await page.getByTestId("plan-step").nth(4).getByText("確認待ち", { exact: true }).waitFor();
+  // RD-16（app.html #23 / Web StepProgressChip 同口径）：有按类型拆开的进度时 chip 写「短名 n / m人」，全部习熟写「習熟済み」。
+  for (const progress of (detail.stepProgress ?? []).filter((entry) => !waiting.has(entry.stepKey))) {
+    const parts = progress.parts ?? [];
+    const part = parts.find((item) => !item.skipped && item.done < item.total) ?? parts.find((item) => !item.skipped);
+    const text = parts.length && parts.every((item) => item.skipped) ? "習熟済み" : part ? `${part.shortLabel} ${part.done} / ${part.total}${part.unit === "events" ? "回" : "人"}` : progress.total > 0 ? progress.label : "まだ";
+    assert.ok(await page.getByText(text, { exact: true }).count() > 0, text);
+  }
+  // 决定表 §13：App 的 Step 完成提议留在「確認待ち」里（A-R24-06c），不在 Step 行内。
+  if (waiting.size) await page.getByTestId("step-suggestion").first().waitFor();
   // Three cells per type come from typeStats.
   const cfo = page.getByTestId("type-card").first();
   const stats = detail.typeStats!.find((entry) => entry.itemId === item("cfo"))!;

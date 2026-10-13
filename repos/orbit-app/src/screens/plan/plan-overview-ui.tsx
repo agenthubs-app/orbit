@@ -226,7 +226,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendSwatch: { width: 14, height: 10, borderRadius: 3, overflow: "hidden" },
   legendLabel: { color: colors.ink2, fontSize: 11, fontWeight: "600" },
-  score: { color: colors.ink, fontSize: 52, lineHeight: 58, fontWeight: "800" },
+  // kit .big（font-size 52 内联）：line-height 1.05、letter-spacing −0.02em、等宽数字。
+  score: { color: colors.ink, fontSize: 52, lineHeight: 54.6, fontWeight: "800", letterSpacing: -1.04, fontVariant: ["tabular-nums"] },
   cells: { flexDirection: "row", gap: 6 },
   cell: { flex: 1, backgroundColor: colors.surface2, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8, gap: 2 },
   cellValue: { color: colors.ink, fontSize: 16, fontWeight: "800" },

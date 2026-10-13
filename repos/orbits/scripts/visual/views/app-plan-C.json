@@ -1,0 +1,109 @@
+{
+ "_note": "R23–25 App 计划页像素返工 · C 组（見直し / 完了 / 目標の切替・編集 / 以前のプラン）。見直し类按 Web C 组 setup 造状态。",
+ "defaults": {
+  "grid": 30,
+  "wait": 12000,
+  "attribution": "scripts/visual/attribution-redesign-R23-25-app.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/plan/plan-ui.tsx",
+  "repos/orbit-app/src/screens/plan/plan-model.ts",
+  "repos/orbit-app/src/i18n/ja/plan.ts",
+  "repos/orbit-app/src/components/ui/**",
+  "repos/orbit-app/src/components/AppScreen.tsx",
+  "repos/orbit-app/src/components/Shell*.tsx",
+  "repos/orbit-app/src/screens/plan/PlanReview*.tsx",
+  "repos/orbit-app/src/screens/plan/plan-review-*.ts*",
+  "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
+  "repos/orbit-app/src/screens/plan/PlanGoalSwitcher.tsx",
+  "repos/orbit-app/src/screens/plan/PlanLegacy.tsx"
+ ],
+ "views": [
+  {
+   "id": "A-R25-01",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 19,
+   "url": "orbit://task?seg=plan",
+   "fixture": "c-review",
+   "note": "作り直しの確認（見直し入口 sheet）",
+   "taps": "方案を見直す"
+  },
+  {
+   "id": "A-R25-03",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 14,
+   "url": "orbit://plans/demo-plan-series-a/review",
+   "fixture": "c-review",
+   "note": "見直し ① 前提を確かめる"
+  },
+  {
+   "id": "A-R25-05",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 16,
+   "url": "orbit://plans/demo-plan-series-a/review",
+   "fixture": "c-review",
+   "note": "見直し ③ AI 修正（差分）",
+   "taps": "送出"
+  },
+  {
+   "id": "A-R25-08",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 24,
+   "url": "orbit://task?seg=plan",
+   "fixture": "c-goals",
+   "note": "達成 ① 確認",
+   "taps": "目標を達成した"
+  },
+  {
+   "id": "A-R25-09",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 25,
+   "url": "orbit://plans/demo-plan-series-a/done",
+   "fixture": "c-done",
+   "note": "達成 ② 完了"
+  },
+  {
+   "id": "A-R25-10",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 26,
+   "url": "orbit://plans/demo-plan-series-a/done",
+   "fixture": "c-done",
+   "note": "③ 次の目標の提案（完了页下滑）",
+   "taps": "scroll"
+  },
+  {
+   "id": "A-R25-11",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 28,
+   "url": "orbit://task?seg=plan",
+   "fixture": "c-goals",
+   "note": "タイトルから目標を切替（popover）",
+   "taps": "目標名 ▾"
+  },
+  {
+   "id": "A-R25-12",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 29,
+   "url": "orbit://task?seg=plan",
+   "fixture": "c-edit",
+   "note": "目標を編集",
+   "taps": "▾ → この目標を編集"
+  },
+  {
+   "id": "A-R25-15",
+   "design": "b12-missing-states.html",
+   "board-index": 286,
+   "url": "orbit://task?seg=plan",
+   "fixture": "c-legacy",
+   "note": "以前のプラン 卡（无 v2 · 有 v1）"
+  },
+  {
+   "id": "A-R25-16",
+   "design": "b12-missing-states.html",
+   "board-index": 288,
+   "url": "orbit://plans/legacy/design-legacy-series-a",
+   "fixture": "c-legacy",
+   "note": "以前のプラン 詳細"
+  }
+ ]
+}

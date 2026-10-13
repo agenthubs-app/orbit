@@ -1,0 +1,118 @@
+{
+ "_note": "R23–25 App 计划页像素返工 · A 组（概要 + 人物タイプ詳細）。App 连只读 mock 服务器（ORBIT_REDESIGN_MOCK=plan-v2-summary，端口见 REWORK-REPORT-app），每张先用 features/plans/v2/design-fixtures/switch.mjs 切到 `fixture`；`taps` 非空的画面要先在模拟器里点到该状态再用 --shot / 单张模式截。键 = <id>-app-<theme>。",
+ "defaults": {
+  "grid": 30,
+  "wait": 12000,
+  "attribution": "scripts/visual/attribution-redesign-R23-25-app.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/plan/plan-ui.tsx",
+  "repos/orbit-app/src/screens/plan/plan-model.ts",
+  "repos/orbit-app/src/i18n/ja/plan.ts",
+  "repos/orbit-app/src/components/ui/**",
+  "repos/orbit-app/src/components/AppScreen.tsx",
+  "repos/orbit-app/src/components/Shell*.tsx",
+  "repos/orbit-app/src/screens/plan/PlanOverview.tsx",
+  "repos/orbit-app/src/screens/plan/plan-overview-*.ts*",
+  "repos/orbit-app/src/screens/plan/PlanSegment.tsx",
+  "repos/orbit-app/src/screens/plan/PlanTypeScreen.tsx",
+  "repos/orbit-app/src/screens/plan/PlanRecordSheet.tsx",
+  "repos/orbit-app/src/screens/plan/PlanProposalSheet.tsx"
+ ],
+ "views": [
+  {
+   "id": "A-R24-01",
+   "design": "app.html",
+   "board-index": 20,
+   "url": "orbit://task?seg=plan",
+   "fixture": "w16-overview-few",
+   "note": "概要（上）少量"
+  },
+  {
+   "id": "A-R24-04",
+   "design": "app.html",
+   "board-index": 23,
+   "url": "orbit://task?seg=plan",
+   "fixture": "w17-overview-many",
+   "note": "概要（進行中 46）大量；#24 #25 为滚动后，见 taps"
+  },
+  {
+   "id": "A-R24-06a",
+   "design": "b12-missing-states.html",
+   "board-index": 200,
+   "url": "orbit://task?seg=plan",
+   "fixture": "b12-208-pending",
+   "note": "確認待ち · memo 加点提案 + 候補（需滚到確認待ち）",
+   "taps": "scroll-to:確認待ち"
+  },
+  {
+   "id": "A-R24-06c",
+   "design": "b12-missing-states.html",
+   "board-index": 204,
+   "url": "orbit://task?seg=plan",
+   "fixture": "b12-214-step-done",
+   "note": "確認待ち · Step 完了の提案（D50；§13 App 画法留在確認待ち）",
+   "taps": "scroll-to:確認待ち"
+  },
+  {
+   "id": "A-R24-05",
+   "design": "b12-missing-states.html",
+   "board-index": 198,
+   "url": "orbit://task?seg=plan",
+   "fixture": "b12-206-premise",
+   "note": "前提を見る sheet（D49）",
+   "taps": "前提を見る"
+  },
+  {
+   "id": "A-R24-07",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 4,
+   "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-vc_partner",
+   "fixture": "b4-11-type-vc",
+   "note": "人物タイプ詳細 · 人脈にいる · VC（app.html #27 为少量版）"
+  },
+  {
+   "id": "A-R24-09",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 7,
+   "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-cvc",
+   "fixture": "b4-13-type-cvc",
+   "note": "人脈にいない · CVC"
+  },
+  {
+   "id": "A-R24-12b",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 10,
+   "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-lawyer",
+   "fixture": "b12-222-law-skipped",
+   "note": "スキップ ② 記録後（弁護士）"
+  },
+  {
+   "id": "A-R24-12",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 9,
+   "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-lawyer",
+   "fixture": "b12-244-law",
+   "note": "スキップ ① 確認",
+   "taps": "この分野はもう詳しい"
+  },
+  {
+   "id": "A-R24-13",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 0,
+   "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-vc_partner",
+   "fixture": "b4-11-type-vc",
+   "note": "加点 ① 面談を記録 sheet",
+   "taps": "すでに話した / 話したを記録"
+  },
+  {
+   "id": "A-R24-16",
+   "design": "b4-plan-iorbit.html",
+   "board-index": 6,
+   "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-vc_partner",
+   "fixture": "b4-11-type-vc",
+   "note": "面談を提案 sheet",
+   "taps": "候補を選ぶ → 面談を提案"
+  }
+ ]
+}

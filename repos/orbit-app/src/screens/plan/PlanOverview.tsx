@@ -19,21 +19,19 @@ import {
   Chip,
   ConfirmDialog,
   Icon,
-  IconButton,
-  SampleTag,
   UiPressable,
   UiText,
   useToast,
-  WhyDisclosure,
 } from "../../components/ui";
-import { createThemedStyles, useOrbitTheme } from "../../design/theme";
+import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi } from "./plan-api";
-import { goalKindLabel, newIdempotencyKey, PLAN_EVENT_EMOJI } from "./plan-model";
-import { canConfirmManualMemo, groupPending, pendingPoints, segmentKinds, stepNumbers, typeLetterOf, typePace } from "./plan-overview-model";
-import { LegendItem, ScoreBar, ScoreNumber, Section, StatCells, Stripes, usePlanOverviewStyles } from "./plan-overview-ui";
-import { PlanGoalEditSheet, PlanGoalSwitcher, PlanGoalTitle } from "./PlanGoalSwitcher";
+import { newIdempotencyKey } from "./plan-model";
+import { canConfirmManualMemo, groupPending, pendingPoints } from "./plan-overview-model";
+import { ScoreNumber, Section, usePlanOverviewStyles } from "./plan-overview-ui";
+import { DiagCard, EventsCard, GoalRow, HeroCard, StepsCard, TodayCard, TypesCard, typeCards } from "./plan-overview-kit";
+import { PlanGoalEditSheet, PlanGoalSwitcher } from "./PlanGoalSwitcher";
 import { PlanReviewEntrySheet } from "./PlanReviewEntrySheet";
 import { sinceConfirmedOf } from "./plan-review-model";
 import { InlineProblem, useFailureText } from "./plan-ui";
@@ -42,7 +40,7 @@ import { usePlanAwardToast } from "./usePlanAwardToast";
 export function PlanOverview({ plan, reload, goals = [], onAddGoal }: { plan: PlanV2Detail; reload: () => Promise<void>; goals?: readonly PlanGoalListItem[]; onAddGoal?: () => void }) {
   const shared = usePlanOverviewStyles().styles;
   const { styles } = useStyles();
-  const { t, language } = useOrbitLocale();
+  const { t } = useOrbitLocale();
   const copy = useStandardCopy();
   const toast = useToast();
   const router = useRouter();
@@ -50,7 +48,6 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal }: { plan: Pl
   const failureText = useFailureText();
   const showAward = usePlanAwardToast(plan.planId, () => void reload());
   const [premiseOpen, setPremiseOpen] = useState(false);
-  const [diagnosisOpen, setDiagnosisOpen] = useState(false);
   const [reopen, setReopen] = useState<{ key: string; number: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -59,16 +56,12 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal }: { plan: Pl
   const [achieveOpen, setAchieveOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const kind = goalKindLabel(plan.goalKind, language);
   const score = plan.score;
-  const kinds = segmentKinds(score.segments);
   const pending = groupPending(plan.pending ?? []);
   const activeGoals = goals.filter((goal) => goal.status === "active");
   const goalIndex = activeGoals.findIndex((goal) => goal.planId === plan.planId);
   const talkedPeople = goals.find((goal) => goal.planId === plan.planId)?.talkedPeople ?? 0;
   const openType = (itemId: string) => router.push(planTypeHref("app", plan.planId, itemId) as Href);
-  const typeByKey = new Map(plan.content.personTypes.map((type) => [type.key, type]));
-  const segmentLabel = (key: string) => (key === "event" ? t("plan.event.title") : typeByKey.get(key)?.shortLabel ?? key);
 
   // One write at a time (R24 review m11: a second tap while a request runs does nothing).
   const running = useRef(false);
@@ -116,94 +109,41 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal }: { plan: Pl
     await reload();
   });
 
+  const cards = typeCards(plan);
+  const suggestionFor = (step: { key: string; completedAt?: string | null }) => (step.completedAt ? undefined : pending.steps.get(step.key));
   return (
     <View style={styles.page} testID="plan-overview">
-      <View style={shared.between}>
-        <View style={shared.grow}>
-          <PlanGoalTitle goal={plan.goal} goalKind={plan.goalKind} index={goalIndex + 1} count={goalIndex >= 0 ? plan.quota.activeGoalLimit : 0} onPress={() => setSwitcherOpen(true)} />
-        </View>
-        <IconButton icon="refresh" size={34} accessibilityLabel={t("plan.overview.review")} onPress={() => setReviewOpen(true)} />
-      </View>
-      {kind || plan.sample ? (
-        <View style={shared.row}>
-          {kind ? <Chip label={kind} tone="lav" /> : null}
-          {plan.sample ? <SampleTag /> : null}
-        </View>
-      ) : null}
-
-      <View style={shared.card} testID="score-head">
-        <View style={shared.between}>
-          <UiText style={shared.eyebrow}>{t("plan.overview.scoreLabel")}</UiText>
-          <View style={shared.row}>
-            {score.todayDelta > 0 ? <Chip label={t("plan.overview.today", { points: score.todayDelta })} tone="ok" /> : null}
-            {score.remainingToFull > 0 ? <UiText style={styles.toFull}>{t("plan.overview.toFull", { points: score.remainingToFull })}</UiText> : null}
-          </View>
-        </View>
-        <View style={shared.between}>
-          <ScoreNumber value={score.total} accessibilityLabel={t("plan.overview.scoreA11y", { total: score.total })} />
-          <UiText style={shared.meta}>{t("plan.overview.breakdown", { skipped: score.skipped, talked: score.talked })}</UiText>
-        </View>
-        <UiText style={shared.meta}>{t("plan.overview.scoreOf")}</UiText>
-        <ScoreBar
-          segments={score.segments}
-          label={(segment) => t("plan.overview.segmentA11y", { allocation: segment.allocation, earned: segment.earned + segment.overflow, label: segmentLabel(segment.key) })}
-          onOpen={(key) => { const type = typeByKey.get(key); if (type) openType(type.itemId); }}
-        />
-        <View style={styles.legend}>
-          <LegendItem kind="solid" label={t("plan.overview.legendTalked")} />
-          <LegendItem kind="striped" label={t("plan.overview.legendSkipped")} />
-          {kinds.overflow ? <LegendItem kind="overflow" label={t("plan.overview.legendOverflow")} /> : null}
-          <LegendItem kind="rest" label={t("plan.overview.legendRest")} />
-        </View>
-      </View>
-
-      <View style={shared.card} testID="plan-card">
-        <View style={shared.between}>
-          <View style={shared.row}>
-            <Icon name="target" size={20} color={styles.accent.color} />
-            <UiText style={shared.title}>{t("plan.overview.planTitle")}</UiText>
-          </View>
-          {plan.content.basis.length > 0 ? <WhyDisclosure reason={plan.content.basis.map((item) => item.label).join(" · ")} /> : null}
-        </View>
-        <UiText style={shared.eyebrow}>{t("plan.overview.diagnosis")}</UiText>
-        <UiText numberOfLines={diagnosisOpen ? undefined : 2} style={shared.body}>{plan.content.diagnosis}</UiText>
-        <UiPressable accessibilityRole="button" accessibilityState={{ expanded: diagnosisOpen }} hitSlop={8} onPress={() => setDiagnosisOpen((value) => !value)} style={styles.link}>
-          <UiText style={styles.linkText}>{diagnosisOpen ? t("plan.overview.collapse") : t("plan.overview.fullText")}</UiText>
-        </UiPressable>
-        <UiText style={shared.eyebrow}>{t("plan.overview.conclusion")}</UiText>
-        <UiText style={shared.strong}>{plan.content.conclusion}</UiText>
-        <View style={styles.buttons}>
-          <View style={styles.buttonCell}><Button block icon="layers" label={t("plan.overview.premise")} onPress={() => setPremiseOpen(true)} variant="secondary" /></View>
-          <View style={styles.buttonCell}><Button block icon="refresh" label={t("plan.overview.review")} onPress={() => setReviewOpen(true)} variant="secondary" /></View>
-          <View style={styles.buttonCell}><Button block icon="pen" label={t("plan.overview.manualEdit")} onPress={openManualEdit} disabled={busy || !plan.quota.manualEditAvailable} variant="secondary" /></View>
-          <View style={styles.buttonCell}><Button block icon="flag" label={t("plan.overview.achieve")} onPress={() => setAchieveOpen(true)} disabled={busy} variant="secondary" /></View>
-        </View>
-        {!plan.quota.manualEditAvailable ? <UiText style={shared.meta}>{t("plan.overview.manualLocked")}</UiText> : null}
-        <UiText style={shared.meta}>{t("plan.overview.reviewNote", { left: plan.quota.reviewLeftThisMonth, limit: plan.quota.reviewMonthlyLimit })}</UiText>
-        {cardProblem ? <InlineProblem text={cardProblem} /> : null}
-      </View>
-
-      {plan.todayChance ? (
-        <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.overview.chanceOpen", { label: plan.todayChance.label })} onPress={() => router.push(plan.todayChance!.href as Href)} style={[shared.card, styles.chance]} testID="today-chance">
-          <View style={shared.between}>
-            <View style={shared.row}>
-              <Icon name="sparkle" size={20} color={styles.accent.color} />
-              <UiText style={shared.title}>{t("plan.overview.chanceTitle")}</UiText>
-            </View>
-            {plan.todayChance.points > 0 ? <Chip label={t("plan.overview.chancePoints", { points: plan.todayChance.points })} tone="lav" /> : null}
-          </View>
-          <View style={shared.between}>
-            <UiText style={[shared.body, shared.grow]}>{plan.todayChance.label}</UiText>
-            <Icon name="right" size={16} color={styles.muted.color} />
-          </View>
-        </UiPressable>
-      ) : null}
-
-      {pending.memo.length > 0 || pending.candidates.length > 0 ? (
+      <GoalRow plan={plan} index={goalIndex + 1} count={goalIndex >= 0 ? plan.quota.activeGoalLimit : 0} onOpen={() => setSwitcherOpen(true)} />
+      <HeroCard plan={plan} onOpenType={openType} score={<ScoreNumber value={score.total} accessibilityLabel={t("plan.overview.scoreA11y", { total: score.total })} />} />
+      <DiagCard
+        plan={plan}
+        busy={busy}
+        onPremise={() => setPremiseOpen(true)}
+        onReview={() => setReviewOpen(true)}
+        onManual={openManualEdit}
+        onAchieve={() => setAchieveOpen(true)}
+        onConversation={() => router.push("/agent" as Href)}
+        problem={cardProblem ? <InlineProblem text={cardProblem} /> : null}
+      />
+      <TodayCard plan={plan} cards={cards} onGo={() => router.push(plan.todayChance!.href as Href)} />
+      {pending.memo.length > 0 || pending.candidates.length > 0 || pending.steps.size > 0 ? (
         <Section title={t("plan.overview.pendingTitle")}>
           {pending.memo.map((item) => (
             <MemoCard key={item.id} item={item} plan={plan} busy={busy} onDecide={(accept, answered) => decidePending(item, accept, answered)} />
           ))}
+          {plan.content.steps.map((step) => {
+            const suggestion = suggestionFor(step);
+            return suggestion ? (
+              <View key={step.key} style={shared.dashedCard} testID="step-suggestion">
+                <UiText style={shared.strong}>{t("plan.step.suggestion", { title: step.title })}</UiText>
+                <View style={shared.between}>
+                  <UiText style={[shared.meta, shared.grow]}>{t("plan.step.suggestionNote")}</UiText>
+                  <Button size="sm" label={t("plan.step.notYet")} onPress={() => decidePending(suggestion, false)} variant="ghost" disabled={busy} />
+                  <Button size="sm" label={copy.action.complete} onPress={() => decidePending(suggestion, true)} variant="primary" disabled={busy} />
+                </View>
+              </View>
+            ) : null;
+          })}
           {pending.candidates.map((item) => (
             <UiPressable key={item.id} accessibilityRole="button" accessibilityLabel={t("plan.pending.candidateOpen", { name: item.detail ?? "", type: item.title })} onPress={() => item.itemId && openType(item.itemId)} style={[shared.cardSoft, shared.between]} testID="pending-candidate">
               <UiText style={[shared.body, shared.grow]}>{t("plan.pending.candidate", { name: item.detail ?? "", type: item.title })}</UiText>
@@ -213,63 +153,9 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal }: { plan: Pl
         </Section>
       ) : null}
       {problem ? <InlineProblem text={problem} /> : null}
-
-      <Section title={t("plan.step.title")} note={t("plan.step.note")}>
-        {plan.content.steps.map((step, index) => {
-          const number = index + 1;
-          const progress = plan.stepProgress?.find((item) => item.stepKey === step.key);
-          const suggestion = step.completedAt ? undefined : pending.steps.get(step.key);
-          return (
-            <View key={step.key} style={styles.step} testID="plan-step">
-              <View style={shared.row}>
-                <View style={shared.numberDot}><UiText style={shared.numberDotText}>{String(number)}</UiText></View>
-                <UiText style={[shared.title, shared.grow]}>{step.title}</UiText>
-                {step.completedAt ? (
-                  <IconButton icon="check-circle" size={34} soft accessibilityLabel={t("plan.step.done", { number })} onPress={() => setReopen({ key: step.key, number })} />
-                ) : step.why ? <WhyDisclosure reason={step.why} /> : null}
-              </View>
-              <View style={shared.cardSoft}>
-                <View style={shared.between}>
-                  <View style={[shared.row, shared.grow]}>
-                    <Icon name="flag" size={16} color={styles.muted.color} />
-                    <UiText style={shared.eyebrow}>{t("plan.step.criteria")}</UiText>
-                  </View>
-                  {suggestion ? <Chip label={copy.chip.awaitingConfirmation} tone="apricot" /> : step.completedAt ? <Chip label={copy.chip.completed} tone="ok" /> : progress ? <Chip label={progress.label} tone="lav" /> : null}
-                </View>
-                <UiText style={shared.body}>{step.doneCriteria}</UiText>
-              </View>
-              {suggestion ? (
-                <View style={shared.dashedCard} testID="step-suggestion">
-                  <UiText style={shared.strong}>{t("plan.step.suggestion", { title: step.title })}</UiText>
-                  <View style={shared.between}>
-                    <UiText style={[shared.meta, shared.grow]}>{t("plan.step.suggestionNote")}</UiText>
-                    <Button size="sm" label={t("plan.step.notYet")} onPress={() => decidePending(suggestion, false)} variant="ghost" disabled={busy} />
-                    <Button size="sm" label={copy.action.complete} onPress={() => decidePending(suggestion, true)} variant="primary" disabled={busy} />
-                  </View>
-                </View>
-              ) : null}
-              <View style={shared.row}>
-                {step.personTypeKeys.map((key) => {
-                  const type = typeByKey.get(key);
-                  const label = type ? `${type.emoji} ${typeLetterOf(plan.content.personTypes, key)} ${type.shortLabel}` : `${PLAN_EVENT_EMOJI} ${t("plan.event.title")}`;
-                  return type ? (
-                    <UiPressable key={key} accessibilityRole="link" accessibilityLabel={t("plan.types.open", { label: type.shortLabel })} onPress={() => openType(type.itemId)} style={styles.typeChip}>
-                      <UiText style={styles.typeChipText}>{label}</UiText>
-                    </UiPressable>
-                  ) : <View key={key} style={styles.typeChip}><UiText style={styles.typeChipText}>{label}</UiText></View>;
-                })}
-              </View>
-            </View>
-          );
-        })}
-      </Section>
-
-      <Section title={t("plan.types.title")} note={t("plan.types.note")}>
-        {plan.content.personTypes.map((type) => <TypeCard key={type.itemId} plan={plan} type={type} onOpen={() => openType(type.itemId)} />)}
-        <EventCard plan={plan} />
-      </Section>
-
-      <UiText style={styles.footnote}>{t("plan.overview.footnote")}</UiText>
+      <StepsCard plan={plan} cards={cards} onOpenType={openType} onDoneMark={(step, number) => setReopen({ key: step.key, number })} />
+      <TypesCard plan={plan} cards={cards} onOpenType={openType} />
+      <EventsCard plan={plan} />
 
       <BottomSheet visible={premiseOpen} onClose={() => setPremiseOpen(false)} accessibilityLabel={t("plan.overview.premiseTitle")}>
         <View style={styles.sheet} testID="premise-sheet">
@@ -369,77 +255,10 @@ function MemoCard({ item, plan, busy, onDecide }: { item: PlanPendingItem; plan:
   );
 }
 
-function TypeCard({ plan, type, onOpen }: { plan: PlanV2Detail; type: PlanV2PersonType; onOpen: () => void }) {
-  const shared = usePlanOverviewStyles().styles;
-  const { styles } = useStyles();
-  const { colors } = useOrbitTheme();
-  const { t } = useOrbitLocale();
-  const segment = plan.score.segments.find((entry) => entry.key === type.key);
-  const earned = segment?.earned ?? 0;
-  const skipped = segment?.skipped ?? type.skipped;
-  const pace = typePace(type.allocation, type.targetCount, earned, skipped);
-  const stats = plan.typeStats?.find((entry) => entry.itemId === type.itemId);
-  const steps = stepNumbers(plan.content.steps, type.key, t("plan.types.stepSeparator"));
-  const letter = typeLetterOf(plan.content.personTypes, type.key);
-  const paceText = t(pace.firstUnit === pace.lastUnit ? "plan.types.pace" : "plan.types.paceLast", { last: pace.lastUnit, met: pace.met, target: pace.target, unit: pace.firstUnit });
-  return (
-    <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.types.open", { label: type.shortLabel })} onPress={onOpen} style={shared.cardSoft} testID="type-card">
-      <View style={shared.rowTop}>
-        <View style={shared.emojiTile}><UiText style={shared.emoji}>{type.emoji}</UiText></View>
-        <View style={shared.grow}>
-          <UiText style={shared.eyebrow}>{steps ? t("plan.types.eyebrow", { label: type.shortLabel, letter, steps }) : t("plan.types.eyebrowNoStep", { label: type.shortLabel, letter })}</UiText>
-          <UiText style={shared.strong}>{type.roleSituation}</UiText>
-        </View>
-        <View style={styles.typePoints}>
-          <UiText style={shared.points}>{t("plan.types.points", { allocation: type.allocation, earned: earned + (segment?.overflow ?? 0) })}</UiText>
-          {skipped ? <Chip label={t("plan.types.skipped")} tone="neutral" /> : null}
-        </View>
-      </View>
-      {stats ? <StatCells candidates={stats.candidates} events={stats.events} routes={stats.introRoutes} /> : null}
-      <View style={shared.row}>
-        <UiText style={shared.meta}>{skipped ? t("plan.types.skipped") : paceText}</UiText>
-        <View style={[shared.track, shared.grow]}>
-          {earned > 0 ? <View style={{ flex: Math.min(type.allocation, earned), backgroundColor: colors.plum700 }}>{skipped ? <Stripes background={colors.plum300} color={colors.plum700} /> : null}</View> : null}
-          {type.allocation - earned > 0 ? <View style={{ flex: type.allocation - earned }} /> : null}
-        </View>
-      </View>
-    </UiPressable>
-  );
-}
-
-function EventCard({ plan }: { plan: PlanV2Detail }) {
-  const shared = usePlanOverviewStyles().styles;
-  const { colors } = useOrbitTheme();
-  const { t } = useOrbitLocale();
-  const segment = plan.score.segments.find((entry) => entry.key === "event");
-  const event = plan.content.event;
-  if (event.allocation <= 0) return null;
-  const earned = segment?.earned ?? 0;
-  const pace = typePace(event.allocation, event.targetCount, earned, false);
-  const steps = stepNumbers(plan.content.steps, "event", t("plan.types.stepSeparator"));
-  return (
-    <View style={shared.cardSoft} testID="event-card">
-      <View style={shared.rowTop}>
-        <View style={shared.emojiTile}><UiText style={shared.emoji}>{PLAN_EVENT_EMOJI}</UiText></View>
-        <View style={shared.grow}>
-          <UiText style={shared.eyebrow}>{steps ? t("plan.event.eyebrow", { steps }) : t("plan.event.title")}</UiText>
-          <UiText style={shared.strong}>{t("plan.event.title")}</UiText>
-        </View>
-        <UiText style={shared.points}>{t("plan.types.points", { allocation: event.allocation, earned: earned + (segment?.overflow ?? 0) })}</UiText>
-      </View>
-      <View style={shared.row}>
-        <UiText style={shared.meta}>{t("plan.event.pace", { done: pace.met, target: pace.target, unit: pace.firstUnit })}</UiText>
-        <View style={[shared.track, shared.grow]}>
-          {earned > 0 ? <View style={{ flex: Math.min(event.allocation, earned), backgroundColor: colors.plum700 }} /> : null}
-          {event.allocation - earned > 0 ? <View style={{ flex: event.allocation - earned }} /> : null}
-        </View>
-      </View>
-    </View>
-  );
-}
-
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  page: { gap: 14 },
+  // 嵌在 Task 段里的 AppScreen：顶部多了 spacing.md（12，与 kit .tswipe 的 margin-bottom 12 重复），
+  // 左右是 layout.pageInset 16（kit .scroll 是 18）。壳归乙（热点文件），已提请改 AppScreen embedded，在那之前计划页先抵消。
+  page: { gap: 14, marginTop: -12, marginHorizontal: 2 },
   toFull: { color: colors.macLavText, fontSize: 12, fontWeight: "700" },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   accent: { color: colors.accentText },
