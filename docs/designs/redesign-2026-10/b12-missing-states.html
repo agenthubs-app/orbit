@@ -679,7 +679,7 @@
   .tqadd.idle .in { color: var(--ink-4); }
 
   /* 人脈を追加：5 门弹窗（web.html 注释「5 门弹窗」+ `.wmodal .door` 预置规则；门卡 = DOORS doorTile） */
-  .wmodal .d3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .wmodal .k-wadd3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .wmodal .door { padding: 14px; }
   .wmodal .door .gets { font-size: 11.5px; }
   .wmodal .gl, .addpg .gl { font-size: 12px; font-weight: 800; color: var(--ink-2); margin: 16px 2px 8px; }
@@ -2994,9 +2994,8 @@ const doneWeb = mainhead('名刺の読み取り', '人脈を追加 › 名刺', 
   <div class="card span7 k-wdmain" style="padding:26px"><div class="center"><div style="font-size:46px;line-height:1">🎉</div><div class="h1 k-wdtitle" style="margin-top:8px">17人を人脈に追加しました</div><div class="sub" style="margin-top:4px">名刺 17枚 · 10月7日 · CFO Night Tokyo vol.18</div></div>
     <div class="bignum3 k-wdnum" style="margin-top:18px"><div><b>${num(14)}</b><span class="lbl">新しく追加</span></div><div><b>${num(2)}</b><span class="lbl">既存と統合</span></div><div><b style="color:var(--coral)">${num(1)}</b><span class="lbl">読み取れず</span></div></div>
     <div class="lbl" style="margin-top:14px">情報の濃さ</div><div class="stack3"><i style="flex:2;background:var(--plum-300)"></i><i style="flex:13;background:var(--plum-500)"></i><i style="flex:1;background:var(--plum-700)"></i></div>
-    <div class="row" style="gap:12px;margin-top:8px;font-size:11px;color:var(--ink-3)">${dn(1)}身元だけ 2人 ${dn(2)}名刺レベル 13人 ${dn(3)}よく知っている 1人</div></div>
+    <div class="row" style="gap:12px;margin-top:8px;font-size:11px;color:var(--ink-3)">${dn(1)}身元だけ 2人 ${dn(2)}名刺レベル 13人 ${dn(3)}関係まで 1人</div></div>
   <div class="card span5 k-wdnext" style="padding:8px 20px"><div class="card-h" style="margin:12px 0 2px"><h3>次にやるといいこと</h3></div>
-    <div class="nx"><span class="emo sm pink">💌</span><div class="meta"><b>お礼を送る 3人</b><span>今日の一手に入りました · 下書きまで</span></div><span class="muted">${ic('right', 'sm')}</span></div>
     <div class="nx"><span class="emo sm lav">🎯</span><div class="meta"><b>プランに関係しそうな人</b><span>プランで候補を確認できます</span></div><button class="btn sm">プランで見る</button></div>
     <div class="nx k-wdfail"><span class="emo sm apricot">🧩</span><div class="meta"><b>読み取れなかった名刺 1枚</b><span>撮り直す / 手入力で補う</span></div><span class="muted">${ic('right', 'sm')}</span></div></div>
   <div class="span12 row k-wdacts" style="gap:10px"><button class="btn primary" style="height:44px">${ic('users', 'sm')}人脈で見る</button><button class="btn ghost" style="height:44px">${ic('scan', 'sm')}続けて撮る</button></div></div>`;
@@ -3013,7 +3012,7 @@ h += group('g2', sec('g2 · Web 手入力保存后 · 名刺批次 完成 / 异�
   + WP('W-R12-11 名刺 完成（17人を人脈に追加しました）', '', t => ({ nav: 1, body: doneWeb }), [
     ['.k-wdtitle', 0, '标题人数 = 新しく追加 + 既存と統合（读不出的不算）；副行 = 张数 · 日期 · 会った場所（有才写）'],
     ['.k-wdnum', 0, '三格计数 count-up：新しく追加 / 既存と統合 / 読み取れず（>0 时珊瑚色）；下方浓度构成条'],
-    ['.k-wdnext', 0, '次にやるといいこと（b11 ④ 同三条）。现实现没有「お礼を送る」一行（需按批次查今日の一手，接口未做）——照稿保留，待 R20 接'],
+    ['.k-wdnext', 0, '次にやるといいこと（b11 ④ 同三条）。2026-10-13 定：删掉「お礼を送る N人 · 今日の一手に入りました」一行（没有数据来源）'],
     ['.k-wdacts', 0, '「人脈で見る」→ 人脈（最近追加在前）；「続けて撮る」→ 上传页。手机版对应 b11 ④ 完成（暗色 b11 #46）'],
   ], 'b11 ④ 完成（App）· 暗 b11 #46')
   + WP('W-R12-12a 名刺批次 · 開けない（期限切れの可能性）', 'state', t => ({ nav: 1, body: errWeb(lic('alert', 'lg'), 'この読み取りを開けませんでした', '期限切れの可能性があります。<br>人脈に入った人はそのまま残っています。', '人脈で見る') }), [

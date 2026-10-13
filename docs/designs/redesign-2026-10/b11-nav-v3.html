@@ -1097,7 +1097,6 @@ function scanDone() {
       <div class="lbl" style="margin-top:12px">情報の濃さ</div><div class="stack3 k-sdstack"><i style="flex:2;background:var(--plum-300)"></i><i style="flex:13;background:var(--plum-500)"></i><i style="flex:1;background:var(--plum-700)"></i></div>
       <div class="row" style="gap:12px;margin-top:8px;font-size:11px;color:var(--ink-3)">${dn(1)}2人 ${dn(2)}13人 ${dn(3)}1人</div></div>
     <div class="card k-sdnext" style="padding:6px 16px"><div class="card-h" style="margin:10px 0 2px"><h3>次にやるといいこと</h3></div>
-      <div class="nx"><span class="emo sm pink">💌</span><div class="meta"><b>お礼を送る 3人</b><span>今日の一手に入りました · 下書きまで</span></div><span class="muted">${ic('right', 'sm')}</span></div>
       <div class="nx"><span class="emo sm lav">🎯</span><div class="meta"><b>プランに関係する人 2人</b><span>VC パートナー · CVC 担当者</span></div><span class="muted">${ic('right', 'sm')}</span></div>
       <div class="nx"><span class="emo sm apricot">🧩</span><div class="meta"><b>読み取れなかった 1枚</b><span>撮り直す / 手入力で補う</span></div><span class="muted">${ic('right', 'sm')}</span></div></div>`
     + foot(`<button class="btn primary block xl k-sdgo">${ic('users', 'sm')}人脈で見る</button><button class="btn ghost block">続けて撮る</button>`);
@@ -1114,7 +1113,7 @@ function scanWeb() {
       ${[['ok', '高山 亮', 'ミライ精機 · 経営企画部 部長'], ['guess', '松本 千尋', '関西テクノ電機 · 役職を推測'], ['run', '22枚目を読み取り中', '表＋裏']].map(scanRow).join('')}
       <div class="prow2 k-wsng"><div class="tp ng" style="width:44px"></div><div class="meta"><b>画像を読み取れませんでした</b><span>IMG_2041.HEIC</span></div><button class="btn sm">差し替える</button><button class="btn sm ghost">手入力で補う</button></div></div>
     <div class="card span4 k-wsguide"><div class="card-h"><h3>はじめての方へ</h3></div>
-      <div class="tip4" style="grid-template-columns:1fr">${[['☀️', '明るく、反射なしで', 'スマホで撮った写真で十分です'], ['⬜', '1枚に 1名刺', '並べて撮った写真は分けて読みます（最大 8枚）'], ['🔁', '裏は任意', '裏の写真は「前の名刺の裏にする」でペアに']].map(([e, t, d]) => `<div><span>${e}</span><div style="min-width:0"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>
+      <div class="tip4" style="grid-template-columns:1fr">${[['☀️', '明るく、反射なしで', 'スマホで撮った写真で十分です'], ['⬜', '1枚に 1名刺', '四隅が写るように撮ります'], ['🔁', '裏は任意', '裏の写真は「前の名刺の裏にする」でペアに']].map(([e, t, d]) => `<div><span>${e}</span><div style="min-width:0"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>
       <div class="lbl" style="margin:14px 0 6px;font-weight:800">撮ったあと</div>${st3([['🤖', '読み取り'], ['✅', '例外だけ確認'], ['👥', '全員 人脈へ']])}
       <div class="card flat k-wspriv" style="margin-top:14px;padding:12px 14px;font-size:12px;color:var(--ink-2);line-height:1.6">🔒 画像と内容はあなただけ。AI の学習には使いません。</div></div></div>`;
 }
@@ -1234,8 +1233,8 @@ const handDrawer = `<div class="overlay"></div><div class="drawer k-whdrawer" st
   <div class="fld"><label>会社</label><div class="in" style="background:var(--surface)"><span>ミライ精機株式会社</span></div></div>
   <div class="fld"><label>出会った場所</label><div class="row" style="gap:6px;flex-wrap:wrap"><span class="fopt on">🥂 CFO Night Tokyo（10/7）</span><span class="fopt">🏯 製造業DX 大阪</span><span class="fopt">紹介</span></div></div>
   <div class="fld"><label>メモ</label><div class="in" style="background:var(--surface);min-height:70px;align-items:flex-start;padding-top:12px"><span style="white-space:normal;line-height:1.6;font-size:13px">工場の自動化に関心。@鈴木 大輔 さんと同じ案件</span></div></div>
-  <div class="card flat k-whpaste" style="margin-top:14px;padding:12px 14px;font-size:12px;color:var(--ink-2);line-height:1.6">📋 メールの署名を貼り付けると、項目に分けます（⑨ A4 と同じ）</div>
-  <div class="row" style="gap:8px;margin-top:18px;justify-content:flex-end"><span class="lbl" style="margin-right:auto">保存すると ${dn(2)} · 出どころ「手入力」</span><button class="btn">キャンセル</button><button class="btn primary">保存 <span class="kbd" style="margin-left:4px">⌘↵</span></button></div></div>`;
+  <div class="card flat k-whpaste" style="margin-top:14px;padding:12px 14px;font-size:12px;color:var(--ink-2);line-height:1.6">📋 メールの署名を貼り付けると、項目に分けます</div>
+  <div class="row" style="gap:8px;margin-top:18px;justify-content:flex-end"><span class="lbl" style="margin-right:auto">保存すると ${dn(1)} · 出どころ「手入力」</span><button class="btn">キャンセル</button><button class="btn primary">保存 <span class="kbd" style="margin-left:4px">⌘↵</span></button></div></div>`;
 
 /* ===================== B · ホーム 編集 ===================== */
 const lift = (h) => h.replace('class="hw ', 'class="hw lift ');
