@@ -4,6 +4,7 @@
 
 - 设计依据：本目录上一级的设计稿（`index.html`「待確認項決定」、`01-system.html`、`b11-nav-v3.html`、`kit/`）和 [`IMPLEMENTATION-PLAN.md`](../IMPLEMENTATION-PLAN.md)。**两者与本目录冲突时，以本目录「用户决定」表为准。**
 - **必读（功能 Sprint）**：[交接表 HANDOFF-TO-FEATURE-SPRINTS.md](HANDOFF-TO-FEATURE-SPRINTS.md)——骨架与返工留给各功能 Sprint 的事项和临时规定（按 Sprint 分节 + 通用口径）。开工前读自己那一节并写进 PLANNER 的验收契约；新的交接事项一律追加到这份文件。
+- **乙（同事）开工**：先读 [COLLEAGUE-START.md](COLLEAGUE-START.md)（2026-10-13：推荐顺序组件库像素轮 → R11 / R18 → R20 → R21 / R13 / R14 → R10 → R19；两人协作规矩；甲的排期）。
 - 每个 Sprint 一个目录：`GOAL.md`（易读目标）+ `PLANNER.md`（唯一契约）；执行结束写 `REPORT.md`，独立复核写 `REVIEW.md`。
 
 ## 分支
