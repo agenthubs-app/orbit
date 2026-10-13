@@ -17,7 +17,7 @@ export const PLAN_GOAL_KIND_COPY: Readonly<Record<PlanGoalKind, PlanTriText>> = 
 };
 
 export const PLAN_CAPABILITY_COPY: Readonly<Record<string, PlanTriText>> = {
-  ai_data: { en: "AI & data", ja: "AI とデータ", zh: "AI 与数据" },
+  ai_data: { en: "AI & data", ja: "AI・データ", zh: "AI 与数据" },
   brand: { en: "Brand", ja: "ブランド", zh: "品牌" },
   business_dev: { en: "Business development", ja: "事業開発", zh: "业务拓展" },
   certification: { en: "Certifications", ja: "資格", zh: "资格证书" },

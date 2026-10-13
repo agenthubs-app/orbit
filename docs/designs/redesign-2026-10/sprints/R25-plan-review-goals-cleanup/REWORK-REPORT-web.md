@@ -61,7 +61,7 @@ C 组的局部视图（01M / 02M / 07M / 09M / 10M）改成只比第一屏（vie
 | W-R24-02 1440 | 0.031 / 0.032 | 待 R26；#17 口径 A 已落实（Step 3 chip VC 2 / 3 已配对、不出卡） |
 | W-R24-02 1024 | 0.021 / 0.023 | 確認待ち 1024 改回三列（问题 1）；剩类型卡「人脈の候補」口径（待拍板）；壳「目標を追加」已去掉；「次の一手」数字徽标未显示（待壳） |
 | W-R24-02 390 | 0.078 / 0.081 | 横滑 Step 卡高度；画板口径已定（不出卡） |
-| W-R24-04a | 0.054 / 0.052 | 数据：memo 提议 + 2 候补 |
+| W-R24-04a | 0.0145 / 0.0168 | **待 R26**（10-13 第 4 轮：右栏「今日のチャンス」+ イベント卡的推荐活动，D53） |
 | W-R24-04c | 0.024 / 0.023 | 待 R26；#17 口径 A：新 fixture b12-214-step-done，Step 1 卡由规则出、样式比对配对无差异 |
 | W-R24-03 | 0.056 / 0.046 | 待组件库（Modal） |
 | W-R24-05 | 0.039 / 0.037 | 数据：活动分数按规则算 |
@@ -212,3 +212,9 @@ d77115ac、95e82990、6ab3e559、9c8a999d（B）；4a2cd45c（误带）+ bebb1d4
   3. W-R24-04a：画板 #210 底部没有 イベント 得分卡、Step 5 写死说明半句——按画板改实现，还是改画板？
 - **仍等待**：右栏「今日のチャンス」（R26，影响 01 / 02 / 04a / 04c）；组件库 Modal / Drawer（03 / 09b / 11 / 12）。
 - **测试**：orbits 全量 7575 条，0 失败，966 跳过（第 4 轮改动后）；typecheck 0 错误（不含 `.next` 残留）。GitNexus：`createMockPlanFlowContext` / `resolvePlanFlowService` impact 为 CRITICAL（流程服务被 144 条流程引用），对策是只加可选参数、不传参行为不变、live 分支不动，加测试守；`MemoCard` 是文件内函数，文本搜索确认只有一处使用；detect-changes 低风险，只动到 `resolvePlanFlowService`。
+
+### 第 4 轮续（2026-10-13，主会话按推荐定了 3 项，画板 ee2c4919 / 决定表 §16）
+
+- **能力名「AI・データ」**：`shared/compute/plan-template-copy.ts` 的 `ai_data` ja 改为「AI・データ」，App 跑 `sync:contract` 带上副本 `src/api/compute/plan-template-copy.ts`，App 测试夹具 `tests/fixtures/plan-flow-mock.json` 里 7 处同步（该文件是服务端回答的录制）。GitNexus `PLAN_CAPABILITY_COPY` 为 UNKNOWN，文本搜索确认只有这三处。已知会 App 计划页会话。
+- **重截重比**（`~/orbit-sprint-evidence/redesign/plan-rework-R7/`，`--no-cache`）：W-R23-06 **0.0175 / 0.0157**（画板去掉「＋ その他」与関わり方后）——band 4 是数据文字（成员 headline、「デザイン / デザイナー」），band 2 弹窗整体约 3px 位移未归因，已到 3 轮上限，记未过；W-R24-04a **0.0145 / 0.0168**，剩右栏「今日のチャンス」与画板新加的イベント卡里的推荐活动列表，两者都是 D53 / R26（`EventCard` 注释：推荐活动 R26 上线后显示）→ 标**待 R26**。W-R23-04 0.0036 / 0.0035、W-R23-07 0.0025 / 0.0022 通过（能力名改后无退步，07 略好）。
+- **App 测试**：3967 条，2 失败——`plan-overview-screens`「overview: every field…」可复现，但把能力名改动临时还原后照样失败，原因是 App 计划页会话正在改、尚未提交的 `src/screens/plan/PlanOverview.tsx` 等；另一条 `narrow-double` 单跑通过（负载偶发）。App `tsc` 0 错误。
