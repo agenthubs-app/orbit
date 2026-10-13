@@ -47,6 +47,17 @@ describe("A: step suggestions on the design samples come from the rule", () => {
     assert.equal(overview.quota.manualEditAvailable, true, "手動で編集 is available in the sample");
   });
 
+  test("W-R24-07 (弁護士): 会える活動 count = the rows the rail lists (2); W-R25-07 sample: 128 points, +38 over full, by the score rule", async () => {
+    const law = await serviceFor("b12-222-law-skipped").typeDetail(PLAN, "demo-plan-item-lawyer");
+    assert.deepEqual(law?.events.map((event) => event.title), ["Japan SaaS Summit 2026 秋", "CFO Night Tokyo vol.18"]);
+    const lawStats = (await serviceFor("b12-222-law-skipped").overview(PLAN))?.typeStats?.find((stats) => stats.itemId === "demo-plan-item-lawyer");
+    assert.equal(lawStats?.events, 2);
+    const achieve = await serviceFor("b12-270-achieve").overview(PLAN);
+    assert.equal(achieve?.score.total, 128);
+    assert.equal(achieve?.score.overflow, 38);
+    assert.deepEqual(achieve?.stepSuggestions ?? [], [], "steps 1–4 were already answered on the board");
+  });
+
   test("resolvePlanV2Service (mock) serves the plain rule: the same card through the route's service", async () => {
     resetPlansV2MockRepositoryForTests();
     overridePlansV2MockSeed(fixturesA["b12-214-step-done"]!(), eventFactsA["b12-214-step-done"]!());

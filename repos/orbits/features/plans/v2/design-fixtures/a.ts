@@ -92,7 +92,7 @@ const PEOPLE: PlanV2ContactView[] = [
 ];
 
 type Candidate = { contactId: string; key: Key; reason: string; tier: PlanV2MatchCandidate["tier"]; strength: PlanV2MatchCandidate["strength"] };
-type Award = { key: Key | typeof PLAN_EVENT_SEGMENT_KEY; at: string; points: number; contactId?: string | null; basis?: PlanAwardPayload["basis"]; eventId?: string | null };
+type Award = { key: Key | typeof PLAN_EVENT_SEGMENT_KEY; at: string; points: number; contactId?: string | null; basis?: PlanAwardPayload["basis"]; eventId?: string | null; part?: PlanAwardPayload["part"] };
 
 /** b4 VCC（VC 候补 4 人，理由 = 画板文字）。 */
 const VC_CANDIDATES: Candidate[] = [
@@ -173,7 +173,7 @@ function seriesA(options: Options): (state: State) => void {
     state.eventItems = [];
     state.log = [
       ...options.awards.map((award, index): PlanV2LogEntry => {
-        const payload: PlanAwardPayload = { anonymous: !award.contactId && award.basis === "self_report", basis: award.basis ?? (award.key === PLAN_EVENT_SEGMENT_KEY ? "event" : "talked"), contactId: award.contactId ?? null, eventId: award.eventId ?? null, part: "base", points: award.points, typeKey: award.key };
+        const payload: PlanAwardPayload = { anonymous: !award.contactId && award.basis === "self_report", basis: award.basis ?? (award.key === PLAN_EVENT_SEGMENT_KEY ? "event" : "talked"), contactId: award.contactId ?? null, eventId: award.eventId ?? null, part: award.part ?? "base", points: award.points, typeKey: award.key };
         return { author: "user", body: `${award.key}：+${award.points}`, createdAt: award.at, event: "score_awarded", id: `fx-a-award-${index + 1}`, idempotencyKey: `fx-a:award:${index + 1}`, itemId: award.key === PLAN_EVENT_SEGMENT_KEY ? null : item(award.key), linkedContactIds: award.contactId ? [award.contactId] : [], linkedEventId: award.eventId ?? null, payload: payload as unknown as Record<string, unknown>, planId: PLAN_ID };
       }),
       ...(options.extraLog ?? []),
@@ -202,6 +202,32 @@ const ALL_CANDIDATES = [...OTHER_CANDIDATES, ...VC_CANDIDATES];
 const OVERVIEW_LINKED: Candidate[] = [...OTHER_CANDIDATES, ...VC_CANDIDATES.slice(0, 3)];
 const OVERVIEW_CANDIDATES: Candidate[] = [{ contactId: "demo-person-sasaki", key: "vc_partner", reason: "シード中心で、A はフォローで入る方針", strength: "candidate", tier: "ai" }];
 
+/**
+ * b12 W-R25-07 達成確認框（#270）：128 分 · 話した 21 人（話して 80 · スキップ 10 · 上乗せ +38）。
+ * 照画板逐类：CFO 3 · 起業家 7（其中 2 次是不记名的自报）· エンジェル 2 · VC 6 · CVC 1 · 弁護士 スキップ · イベント 6；
+ * 分数、上乗せ由规则算。Step 1–4 的完成确认已处理过（画板上没有完成卡）。
+ */
+// 与 shared/compute/plan-score 的 nextAward 同一规则：目标人数内每人 配点 / 目标人数（base），超过后每人记一半（overflow）。
+// 不记名的自报超过目标不加分，所以那 2 次放在目标人数之内。
+const met = (key: Key | typeof PLAN_EVENT_SEGMENT_KEY, n: number, allocation: number, target: number, day: string, anonymous = 0): Award[] =>
+  Array.from({ length: n }, (_, index) => {
+    const part = index < target ? ("base" as const) : ("overflow" as const);
+    const points = part === "base" ? allocation / target : allocation / target / 2;
+    if (key === PLAN_EVENT_SEGMENT_KEY) return { at: jst(day, "19:00"), eventId: `fx-a-met-event-${index + 1}`, key, part, points };
+    return index < anonymous ? { at: jst(day), basis: "self_report" as const, key, part, points } : { at: jst(day), contactId: `fx-a-met-${key}-${index + 1}`, key, part, points };
+  });
+const S128: Award[] = [
+  ...met("cfo", 3, 10, 1, "2026-09-25"),
+  ...met("funded_founder", 7, 15, 5, "2026-09-28", 2),
+  ...met("angel", 2, 10, 2, "2026-10-01"),
+  ...met("vc_partner", 6, 30, 3, "2026-10-04"),
+  ...met("cvc", 1, 15, 3, "2026-10-06"),
+  { at: jst("2026-09-20"), basis: "skip", key: "lawyer", points: 10 },
+  ...met(PLAN_EVENT_SEGMENT_KEY, 6, 10, 2, "2026-10-02"),
+];
+const MET_PEOPLE: PlanV2ContactView[] = S128.filter((award) => award.contactId).map((award, index) => ({ id: award.contactId!, isOrbitUser: false, lastInteractionAt: award.at, name: `話した人 ${index + 1}`, organization: null, role: null }));
+const dismissSteps = (keys: string[]): PlanV2LogEntry[] => keys.map((key) => ({ ...dismissStep1, id: `fx-a-dismiss-${key}`, idempotencyKey: `fx-a:dismiss:${key}`, payload: { kind: "step_suggestion", pendingId: `step:${PLAN_ID}:${key}`, stepKey: key } }));
+
 export const fixturesA: Record<string, PlanDesignFixture> = {
   "w17-overview-many": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, linked: OVERVIEW_LINKED, extraLog: [dismissStep4], manualEditAvailable: true })),
   // b8 #6 / #7（plan1024 / plan390）は Step の完了確認を描いていない：s46 のまま（VC 2 / 3人）。
@@ -224,6 +250,10 @@ export const fixturesA: Record<string, PlanDesignFixture> = {
     candidates: OVERVIEW_CANDIDATES, linked: OVERVIEW_LINKED,
     extraLog: [dismissStep4],
   })),
+  "b12-270-achieve": fromDemo((state) => {
+    seriesA({ awards: S128, candidates: [], extraLog: dismissSteps(["demo-step-1", "demo-step-2", "demo-step-3", "demo-step-4"]), linked: OVERVIEW_LINKED, manualEditAvailable: true })(state);
+    state.contacts = [...state.contacts!, ...MET_PEOPLE];
+  }),
   "b12-206-premise": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, linked: OVERVIEW_LINKED, extraLog: [dismissStep4], manualEditAvailable: true })),
   "b4-11-type-vc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
   "b4-13-type-cvc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
@@ -248,6 +278,12 @@ const SERIES_A_EVENTS = (): PlanEventFact[] => [
   fact("fx-a-ev-founders", "SaaS 創業者ミートアップ", jst("2026-10-20", "19:00"), "渋谷", { attendeeSource: "past", expected: { angel: 2, funded_founder: 6 }, fee: 0, firstDegree: 1, networkingMinutes: 60, travelMinutes: 20 }),
 ];
 
+/**
+ * b12 W-R24-07（弁護士 · スキップ中）：右栏「このタイプに会えるイベント」列 Summit / CFO Night 2 场，类型统计「会える活動 2」
+ * （用户 2026-10-13：标题数字 = 列出的行数）。只在这两场的事实里补弁護士的预计人数，其余同 SERIES_A_EVENTS。
+ */
+const LAW_EVENTS = (): PlanEventFact[] => SERIES_A_EVENTS().map((event) => (event.eventId === "fx-a-ev-saas-summit" || event.eventId === "fx-a-ev-cfo-night" ? { ...event, facts: { ...event.facts, expected: { ...event.facts.expected, lawyer: 1 } } } : event));
+
 /** b4 CVC_EV / b12 CVC_E5（CVC Meetup Tokyo #12 · 製造業DXカンファレンス 大阪 · Japan SaaS Summit 2026 秋）。 */
 const CVC_EVENTS = (): PlanEventFact[] => [
   fact("fx-a-ev-cvc-meetup", "CVC Meetup Tokyo #12", jst("2026-10-22", "19:00"), "大手町", { attendeeSource: "organizer", expected: { cvc: 14 }, fee: 3000, firstDegree: 1, nameTags: true, networkingMinutes: 60, travelMinutes: 20 }),
@@ -260,7 +296,8 @@ export const eventFactsA: Record<string, PlanDesignEventFacts> = {
   "b12-206-premise": SERIES_A_EVENTS,
   "b12-208-pending": SERIES_A_EVENTS,
   "b12-214-step-done": SERIES_A_EVENTS,
-  "b12-222-law-skipped": SERIES_A_EVENTS,
+  "b12-222-law-skipped": LAW_EVENTS,
+  "b12-270-achieve": SERIES_A_EVENTS,
   "b12-244-law": SERIES_A_EVENTS,
   "b4-11-type-vc": SERIES_A_EVENTS,
   "b4-13-type-cvc": CVC_EVENTS,

@@ -113,6 +113,7 @@
   },
   {
    "id": "W-R25-07",
+   "fixture": "b12-270-achieve",
    "app": "/app/tasks?tab=plan",
    "design": "b12-missing-states.html",
    "width": 1440,
@@ -208,7 +209,7 @@
      "wait": 800
     }
    ],
-   "note": "弹层本体局部视图：只比第一屏（viewport 960，设计画框也是 960），弹层按视口居中 / 下拉按按钮定位，所以不依赖概要页高度；region 取设计稿画板里弹层的位置；演示世界（fixture null）",
+   "note": "弹层本体局部视图：只比第一屏（viewport 960，设计画框也是 960），弹层按视口居中 / 下拉按按钮定位，所以不依赖概要页高度；region 取设计稿画板里弹层的位置；fixture b12-270-achieve（128 分；画板表格合计 19 人，弹窗写 21 与表格矛盾，待画板）",
    "region": "480,298,480,364",
    "grid": 30,
    "board": "W-R25-01 見直し入口 Modal",
@@ -238,6 +239,7 @@
   },
   {
    "id": "W-R25-07M",
+   "fixture": "b12-270-achieve",
    "app": "/app/tasks?tab=plan",
    "design": "b12-missing-states.html",
    "width": 1440,
@@ -254,7 +256,7 @@
    ],
    "region": "480,363,480,234",
    "grid": 30,
-   "note": "弹层本体局部视图：只比第一屏（viewport 960，设计画框也是 960），弹层按视口居中 / 下拉按按钮定位，所以不依赖概要页高度；region 取设计稿画板里弹层的位置；演示世界（fixture null）",
+   "note": "弹层本体局部视图：只比第一屏（viewport 960，设计画框也是 960），弹层按视口居中 / 下拉按按钮定位，所以不依赖概要页高度；region 取设计稿画板里弹层的位置；fixture b12-270-achieve（128 分；画板表格合计 19 人，弹窗写 21 与表格矛盾，待画板）",
    "board": "W-R25-07 達成確認框",
    "viewport": true
   },
