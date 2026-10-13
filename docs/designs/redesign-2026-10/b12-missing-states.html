@@ -5702,7 +5702,7 @@ function wDone() {
 /* ---- A6 目標の切替と編集（v2：期限なし · スコア表示） ---- */
 const gswTitle = (t = 'シリーズA 資金調達') => `<span class="gsw">${t}${ic('down')}</span>`;
 const goalMenu = `<div class="sheet-scrim"></div><div class="gmenu">
-  <div class="gi on"><span class="emo sm pink">💰</span><div style="flex:1"><b>シリーズA 資金調達</b><span class="lbl">スコア 128 · 話した人 21</span></div>${ic('check', 'sm')}</div>
+  <div class="gi on"><span class="emo sm pink">💰</span><div style="flex:1"><b>シリーズA 資金調達</b><span class="lbl">スコア 128 · 話した人 19</span></div>${ic('check', 'sm')}</div>
   <div class="gi"><span class="emo sm blue">🏭</span><div style="flex:1"><b>製造業の新規顧客開拓</b><span class="lbl">スコア 72 · 話した人 14</span></div></div>
   <div style="height:1px;background:var(--line);margin:4px 10px"></div>
   <div class="gi"><span class="emo sm" style="background:var(--surface-2)">🏁</span><div style="flex:1"><b style="color:var(--ink-3)">完了した目標</b><span class="lbl">1件</span></div>${ic('right', 'sm')}</div>
@@ -5945,7 +5945,7 @@ const wAchieve = `<div class="overlay"></div><div class="wdlg wmodal w480 k-wach
 /* ---------- 目標切替 Popover（内容 = b4 A6 ① goalMenu 的 .gmenu .gi；Web 贴在目标下拉按钮下方，不加遮罩） ---------- */
 const gDiv = '<div style="height:1px;background:var(--line);margin:4px 10px"></div>';
 const gLbl = t => `<div class="lbl" style="padding:6px 10px 2px;font-weight:800">${t}</div>`;
-const gmenuItems = (o = {}) => `${o.noActive ? '' : gLbl('進めている目標') + `<div class="gi on"><span class="emo sm pink">💰</span><div style="flex:1"><b>シリーズA 資金調達</b><span class="lbl">スコア 128 · 話した人 21</span></div>${ic('check', 'sm')}</div>
+const gmenuItems = (o = {}) => `${o.noActive ? '' : gLbl('進めている目標') + `<div class="gi on"><span class="emo sm pink">💰</span><div style="flex:1"><b>シリーズA 資金調達</b><span class="lbl">スコア 128 · 話した人 19</span></div>${ic('check', 'sm')}</div>
   <div class="gi"><span class="emo sm blue">🏭</span><div style="flex:1"><b>製造業の新規顧客開拓</b><span class="lbl">スコア 72 · 話した人 14</span></div></div>` + gDiv}
   ${gLbl('完了した目標')}<div class="gi k-gdone"><span class="emo sm" style="background:var(--surface-2)">🏁</span><div style="flex:1"><b>${o.noActive ? 'シリーズA 資金調達（3億円）' : 'シード調達（8,000万円）'}</b><span class="lbl">達成 · スコア ${o.noActive ? 128 : 104}</span></div>${ic('right', 'sm')}</div>
   ${o.legacy === false ? '' : gDiv + `<div class="gi k-glegacy"><span class="emo sm" style="background:var(--surface-2)">🗂️</span><div style="flex:1"><b style="color:var(--ink-3)">以前のプラン</b><span class="lbl">展示会で代理店を見つける · 閲覧のみ</span></div>${ic('right', 'sm')}</div>`}
@@ -6090,7 +6090,7 @@ h += group('g5', sec('g5 · R25 見直し · 達成 · 目標 · 以前のプラ
   WP('W-R25-07 達成確認框（スコア · 話した人 · これ以上増えません）', '', t => ({ nav: 4, body: planWeb('many'), rail: planRail('many'), ov: wAchieve }), [
     ['.k-wach', 0, '点概要的「達成にする」出现；内容照 App b4 A5 ①（🏁 emoji 方块 + 标题 + 说明），外形照 b4 Web 履歴「削除の確認」居中框（wmodal + 左 dic + macts）'],
     ['.k-wach .sub', 0, '说明句用 Web 字典 achieveBody：分数确定、「達成にすると点数はこれ以上増えません」、可回看'],
-    ['.k-wachst', 0, '「スコア 128 · 話した人 21人」（字典 achieveStats）——Web 说明句里没有人数，单独一行 chip'],
+    ['.k-wachst', 0, '「スコア 128 · 話した人 19人」（字典 achieveStats）——Web 说明句里没有人数，单独一行 chip'],
     ['.k-wach .btn.primary', 0, '非破坏确认：主按钮「達成を記録」默认焦点 → 完了页（b4「Web 達成 → 次の目標」）'],
   ], 'b4 A5 ① 確認 + Web 削除の確認') +
   WP('W-R25-08b 完了页 · 次の目標 · 目標 2つ（N32）', 'state', t => ({ nav: 4, body: wDoneFull(), rail: '' }), [
