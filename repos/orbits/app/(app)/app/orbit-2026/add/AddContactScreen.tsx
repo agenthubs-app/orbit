@@ -1,17 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { addDoorsCopy as d } from "../copy/add";
-import { ShellPage } from "../shell/slots";
 import { Orbit2026Scope, ToastProvider } from "../ui";
-import { AddContactDoors } from "./AddContactDoors";
-import { InviteCodeModal, InviteRailCard } from "./invite/InviteCodeModal";
+import { AddContactDialog } from "./AddContactDoors";
+import { InviteCodeModal } from "./invite/InviteCodeModal";
 import { ManualContactDrawer } from "./ManualContactDrawer";
-import { translator } from "./add-parts";
-import styles from "./add.module.css";
 import inviteStyles from "./invite/invite.module.css";
 
 export type AddPanel = "manual" | "invite" | null;
@@ -30,14 +26,13 @@ export function addSearchFor(search: string, panel: boolean | AddPanel): string 
 }
 
 /**
- * `/app/contacts/new` — 人脈を追加 (R12, DESIGN §2.1 Web): the doors in the shell (左栏
- * 「人脈」), the 手入力 drawer on `?add=manual`, the 招待コード dialog on `?add=invite` (R15) and
- * the right rail いちばん早い方法 (招待コードを 3人に送る).
+ * `/app/contacts/new` — 人脈を追加 over 人脈 (R12, D20 / b12 W-R12-01): the five-door dialog, the
+ * 手入力 drawer on `?add=manual` (b11 A3 Web) and the 招待コード dialog on `?add=invite` (R15),
+ * each over the 人脈 page the route renders underneath. Closing goes back to 人脈.
  */
 export function AddContactScreen({ manualOpen = false, inviteOpen = false }: { manualOpen?: boolean; inviteOpen?: boolean }) {
   const { language, preserveHref } = useOrbitLanguage();
   const router = useRouter();
-  const t = translator(language);
   const [panel, setPanelState] = useState<AddPanel>(manualOpen ? "manual" : inviteOpen ? "invite" : null);
   const setPanel = useCallback((next: AddPanel) => {
     setPanelState(next);
@@ -47,16 +42,13 @@ export function AddContactScreen({ manualOpen = false, inviteOpen = false }: { m
       // The address is a convenience (reload keeps the panel); the panel itself works without it.
     }
   }, []);
-  const rail = useMemo(() => <InviteRailCard language={language} onCreate={() => setPanel("invite")} />, [language, setPanel]);
+  const close = useCallback(() => router.replace(preserveHref("/app/contacts")), [router, preserveHref]);
   return (
-    <Orbit2026Scope language={language} className={`${styles.page} ${inviteStyles.scope}`}>
+    <Orbit2026Scope language={language} className={inviteStyles.scope}>
       <ToastProvider>
-        <ShellPage title={t(d.pageTitle)} subtitle={t(d.pageSubtitle)} rightRail={rail} />
-        <div className={styles.fade} data-add-page="">
-          <AddContactDoors language={language} href={preserveHref} onManual={() => setPanel("manual")} onInvite={() => setPanel("invite")} />
-        </div>
-        <ManualContactDrawer open={panel === "manual"} onClose={() => setPanel(null)} navigate={(href) => router.push(preserveHref(href))} />
-        <InviteCodeModal open={panel === "invite"} onClose={() => setPanel(null)} language={language} />
+        <AddContactDialog open={panel === null} onClose={close} language={language} href={preserveHref} onManual={() => setPanel("manual")} onInvite={() => setPanel("invite")} />
+        <ManualContactDrawer open={panel === "manual"} onClose={close} navigate={(href) => router.push(preserveHref(href))} />
+        <InviteCodeModal open={panel === "invite"} onClose={close} language={language} />
       </ToastProvider>
     </Orbit2026Scope>
   );

@@ -217,17 +217,11 @@ test("no profile name: コードをつくる explains what to do instead of fail
   assert.equal(await page.locator('[data-invite-notice="profile"] a').getAttribute("href"), "/app/profile");
 });
 
-test("the door and the right rail open the dialog", async (t) => {
+test("the 招待コード door of 人脈を追加 opens the dialog (b12 W-R12-01 → b11 A2 Web)", async (t) => {
   const page = await screen(t, { guideSeen: true, open: false, handlers: [CURRENT, PROFILE_GET, HISTORY_GET] });
   await page.locator('[data-add-door="invite"]').click();
   await page.locator("[data-invite-code-card]").waitFor();
-  await page.keyboard.press("Escape");
-  await page.locator("[data-invite-code-card]").waitFor({ state: "detached" });
-  const rail = page.locator("[data-invite-rail]");
-  await rail.waitFor();
-  for (const text of ["いちばん早い方法", "招待コードを 3人に送る", "相手が自分で入力するので、最初から ●●● で入ります。"]) assert.equal(await rail.getByText(text).count(), 1, text);
-  await page.locator("[data-invite-rail-create]").click();
-  await page.locator("[data-invite-code-card]").waitFor();
+  assert.equal(await page.locator("[data-add-doors]").count(), 0, "the doors dialog gives way to the invite dialog");
 });
 
 test("390: the dialog is a bottom sheet; 1024: a centred 560 dialog", async (t) => {

@@ -58,6 +58,13 @@
   animation: spin 0.8s linear infinite;
 }
 
+/* Old pages load an unscoped legacy `.btn` (44 high, padding 0 20, 15 / 550, radius 10, 1px border; HANDOFF G13).
+   A dialog or drawer over such a page (人脈を追加 over 人脈) would inherit it: two classes restate the kit values. */
+.button:global(.btn) { gap: 6px; height: 40px; padding: 0 16px; border: 0; border-radius: var(--r-pill); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); letter-spacing: normal; }
+.sm:global(.btn) { height: 32px; padding: 0 12px; font-size: var(--fs-meta); }
+.icon:global(.btn) { gap: 0; width: 40px; height: 40px; padding: 0; border: 0; border-radius: var(--r-pill); }
+.iconSm:global(.btn) { width: 34px; height: 34px; }
+
 .icon {
   position: relative;
   display: inline-grid;

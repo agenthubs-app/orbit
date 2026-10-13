@@ -50,13 +50,11 @@ test("old links: ?job= and ?method=scan go to the new scan pages; その他 keep
   assert.deepEqual(resolveAddContactRoute({ method: "unknown" }), { kind: "doors", manual: false, invite: false });
 });
 
-test("doors: 招待コード open since R15; the four その他 doors point at the old import", () => {
+test("doors: 招待コード open since R15; その他 is 連絡先 and LinkedIn (b12 W-R12-01: five doors), still the old import", () => {
   assert.equal(ADD_INVITE_DOOR_ENABLED, true);
   assert.deepEqual(ADD_OTHER_DOORS.map((door) => door.href), [
     "/app/contacts/new?method=contacts",
     "/app/contacts/new?method=csv",
-    "/app/contacts/new?method=csv",
-    "/app/contacts/new?method=event",
   ]);
   assert.equal(addSearchFor("?lang=en", true), "?lang=en&add=manual");
   assert.equal(addSearchFor("?lang=en&add=manual", false), "?lang=en");

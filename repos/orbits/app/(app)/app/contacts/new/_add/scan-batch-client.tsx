@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import { ScanBatchScreen } from "../../../orbit-2026/add/ScanBatchScreen";
+import { startScanBatch } from "./start-scan-batch";
 import type { ScanBatchActions } from "../../../orbit-2026/add/scan-types";
 import { useOrbitLanguage } from "../../../orbit-language-context";
 import { useCardBatch } from "../../card-batch-0918/use-card-batch";
@@ -54,5 +55,5 @@ export function ScanBatchClient({ batchId }: { batchId: string }) {
     reattach: (files) => void latest.current.reattach(files),
   }), [batchId]);
 
-  return <ScanBatchScreen view={view} actions={actions} />;
+  return <ScanBatchScreen view={view} actions={actions} onStart={startScanBatch} />;
 }

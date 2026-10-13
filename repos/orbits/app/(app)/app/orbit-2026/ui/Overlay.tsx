@@ -52,10 +52,12 @@ function DialogFrame({ onClose, closeOnScrim = true, labelledBy, describedBy, cl
 
 // kit .wmodal: centred dialog 420 / 480 / 560 (680 for the ⌘K panel), radius 28, padding 24; `top` sits 96
 // from the top (⌘K); `form` uses --bg so cards inside keep their layer.
-export function Modal({ open, onClose, title, description, size = 420, top = false, form = false, actions, hint, initialFocus, children }: {
+export function Modal({ open, onClose, title, header, description, size = 420, top = false, form = false, actions, hint, initialFocus, children }: {
   open: boolean;
   onClose: () => void;
   title: string;
+  /** Replaces the default title row when a board composes its own head (e.g. b12 W-R12-01: 18px title + subtitle + 40 round ✕); `title` still names the dialog. */
+  header?: ReactNode;
   description?: string;
   size?: 420 | 480 | 560 | 680;
   top?: boolean;
@@ -71,10 +73,14 @@ export function Modal({ open, onClose, title, description, size = 420, top = fal
   return (
     <DialogFrame onClose={onClose} initialFocus={initialFocus} labelledBy={`${id}-title`} describedBy={description ? `${id}-desc` : undefined} scrimClassName={styles.scrim}
       className={[styles.modal, styles[`w${size}`], top ? styles.top : "", form ? styles.form : ""].filter(Boolean).join(" ")}>
-      <div className={styles.modalHead}>
-        <h2 id={`${id}-title`} className={styles.modalTitle}>{title}</h2>
-        <button type="button" className={`btn ${styles.close}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={20} /></button>
-      </div>
+      {header ? (
+        <><span id={`${id}-title`} hidden>{title}</span>{header}</>
+      ) : (
+        <div className={styles.modalHead}>
+          <h2 id={`${id}-title`} className={styles.modalTitle}>{title}</h2>
+          <button type="button" className={`btn ${styles.close}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={20} /></button>
+        </div>
+      )}
       {description ? <p id={`${id}-desc`} className={styles.modalText}>{description}</p> : null}
       {children}
       {actions || hint ? <div className={styles.actions}>{hint ? <span className={styles.hint}>{hint}</span> : null}{actions}</div> : null}

@@ -18,6 +18,7 @@ export function Button({
   block = false,
   icon,
   loading = false,
+  trailing,
   className,
   type = "button",
   ...rest
@@ -28,12 +29,15 @@ export function Button({
   block?: boolean;
   icon?: IconName;
   loading?: boolean;
+  /** After the label, e.g. a key cap inside the button (b11 A3 Web「保存 ⌘↵」). */
+  trailing?: ReactNode;
 }) {
   const classes = [styles.button, styles[variant], size === "sm" ? styles.sm : "", block ? styles.block : "", className ?? ""].filter(Boolean).join(" ");
   return (
     <button {...rest} type={type} className={`btn ${classes}`} aria-busy={loading || undefined} disabled={rest.disabled || loading}>
       {loading ? <span className={styles.spinner} aria-hidden /> : icon ? <Icon name={icon} size={16} /> : null}
       <span className={styles.label}>{label}</span>
+      {trailing}
     </button>
   );
 }

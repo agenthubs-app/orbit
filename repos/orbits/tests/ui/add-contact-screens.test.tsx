@@ -84,10 +84,12 @@ const settles = (page: Page, selector: string, value: number) => page.waitForFun
 
 /* ---------- 入口 ---------- */
 
-test("doors: 名刺, 招待コード (R15) and 手入力 up front, その他 four go to the old import; the shell title is 人脈を追加", async (t) => {
-  const page = await screen(t, { view: "doors" });
+test("doors (b12 W-R12-01): a 560 dialog 人脈を追加 with 名刺 / 招待コード / 手入力 and その他 連絡先 · LinkedIn (old import until R16)", async (t) => {
+  const page = await screen(t, { view: "doors" }, { width: 1440 });
   await page.locator("[data-add-doors]").waitFor();
-  assert.equal(await page.locator("[data-orbit-2026-mainhead] h1").textContent(), "人脈を追加");
+  const dialog = page.getByRole("dialog", { name: "人脈を追加" });
+  await dialog.waitFor();
+  assert.ok(Math.abs((await dialog.boundingBox())!.width - 560) <= 20, "kit .wmodal.w560");
   const doors = await page.locator("[data-add-door]").evaluateAll((nodes) => nodes.map((node) => [node.getAttribute("data-add-door"), node.getAttribute("href")]));
   assert.deepEqual(doors, [
     ["scan", "/app/contacts/new/scan"],
@@ -95,10 +97,9 @@ test("doors: 名刺, 招待コード (R15) and 手入力 up front, その他 fou
     ["manual", null],
     ["contacts", "/app/contacts/new?method=contacts"],
     ["linkedin", "/app/contacts/new?method=csv"],
-    ["csv", "/app/contacts/new?method=csv"],
-    ["event", "/app/contacts/new?method=event"],
   ]);
   assert.equal(await page.locator('[data-add-door="invite"]').getByText("招待コード").count(), 1);
+  assert.match(await dialog.innerText(), /関係まで/);
 });
 
 test("doors: 1024 is the same layout; 390 is one column", async (t) => {
@@ -141,10 +142,9 @@ test("手入力: only a name is enough for the instant check (400 ms); 統合 li
   const checks = (await fetches(page)).filter((call) => call.url === "/api/contacts/manual/duplicates");
   assert.deepEqual(checks.map((call) => call.body), [{ displayName: "石川 洋介" }], "one debounced check, name only");
   await page.locator('[data-manual-field="organization"]').fill("ミライ精機株式会社");
-  await page.locator('[data-manual-field="role"]').fill("部長");
   await page.locator('[data-manual-merge="c-9"]').click();
   const fields = await page.locator("[data-merge-field]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-merge-field")));
-  assert.deepEqual(fields, ["organization"], "same name and same role are not asked");
+  assert.deepEqual(fields, ["organization"], "same name is not asked; an empty field is only filled");
   await page.locator('[data-merge-field="organization"] [role="radio"]').first().click();
   await name.focus();
   await page.keyboard.press("Meta+Enter");
@@ -190,16 +190,19 @@ test("手入力: an empty name cannot be saved; a duplicate_review answer shows 
   await page.locator("[data-manual-separate]").waitFor();
 });
 
-test("手入力: a pasted signature is marked in place and split into the fields", async (t) => {
+test("手入力 (b9 A4 Web): a pasted signature is coloured where it was split, listed by item, and becomes the form", async (t) => {
   const page = await screen(t, { view: "manual", handlers: [EVENTS, { method: "POST", url: "^/api/contacts/manual/duplicates$", replies: [ok({ candidates: [] })] }] });
-  await page.locator("[data-manual-signature]").fill("石川 陽介\n石川デザイン事務所 代表\nTEL 03-1234-5678\nyosuke@ishikawa-design.example");
+  await page.locator("[data-manual-paste-open]").click();
+  await page.locator("[data-manual-signature]").fill("石川 陽介\n石川デザイン事務所　代表\n〒150-0001 東京都渋谷区神宮前 2-x-x\nTEL 03-1234-5678\nyosuke@ishikawa-design.example");
+  await page.locator("[data-manual-form] b").first().click();
   const marks = await page.locator("[data-manual-signature-preview] mark").evaluateAll((nodes) => nodes.map((node) => [node.getAttribute("data-span"), node.textContent]));
   assert.deepEqual(marks.find(([field]) => field === "email"), ["email", "yosuke@ishikawa-design.example"]);
-  assert.deepEqual(marks.find(([field]) => field === "phone"), ["phone", "03-1234-5678"]);
-  await page.locator("[data-manual-signature-apply]").click();
+  assert.deepEqual(marks.find(([field]) => field === "role"), ["role", "代表"]);
+  assert.equal(marks.some(([field]) => field === "address"), false, "an address is a guess: listed as 推定, not coloured");
+  assert.match(await page.locator('[data-paste-row="address"]').innerText(), /推定/);
+  await page.locator('[data-paste-row="displayName"]').click();
   assert.equal(await page.locator('[data-manual-field="displayName"]').inputValue(), "石川 陽介");
-  assert.equal(await page.locator('[data-manual-field="email"]').inputValue(), "yosuke@ishikawa-design.example");
-  assert.equal(await page.locator('[data-manual-field="phone"]').inputValue(), "03-1234-5678");
+  assert.equal(await page.locator('[data-manual-field="organization"]').inputValue(), "石川デザイン事務所");
 });
 
 /* ---------- 名刺 · アップロード ---------- */
@@ -274,60 +277,58 @@ function batchView(stage: "review" | "done", completed = false, serverMerged = f
   });
 }
 
-test("まとめて確認: three tiles, one 会った場所 for the batch, 重複 side by side, 要確認 by issue, three buttons on an unreadable card", async (t) => {
+test("まとめて確認 (b9 ④ Web 统一): three tiles, 重複 as checked rows, 要確認 by reason, 会った場所 and unreadable cards below", async (t) => {
   const page = await screen(t, { view: "batch", batch: batchView("review") });
-  await page.locator("[data-scan-review]").waitFor();
-  await settles(page, '[data-scan-tile="duplicate"]', 1);
-  await settles(page, '[data-scan-tile="review"]', 1);
-  await settles(page, '[data-scan-tile="asIs"]', 2); // 1 already added + 1 held for 会った場所
+  await page.locator("[data-unified-review]").waitFor();
+  await settles(page, '[data-review-tile="duplicate"] b', 1);
+  await settles(page, '[data-review-tile="review"] b', 1);
+  await settles(page, '[data-review-tile="asIs"] b', 2); // 1 already added + 1 held for 会った場所
+  assert.match(await page.locator('[data-review-duplicate="c-dup"]').innerText(), /高橋 美咲 · 青葉VC[\s\S]*高橋 美咲 · 青葉ベンチャーズ/);
+  assert.equal(await page.locator('[data-review-duplicate="c-dup"] [role="checkbox"]').getAttribute("aria-checked"), "true");
+  await page.locator('[data-review-group="orgSuffix"]').waitFor();
   await page.locator("[data-scan-met]").getByRole("button", { name: "付けない" }).click();
   assert.deepEqual((await calls(page)).filter((c) => "chooseEvent" in c), [{ chooseEvent: null }]);
-  const differs = await page.locator('[data-duplicate-card="c-dup"] [data-differs]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-compare-field")));
-  assert.deepEqual(differs, ["organization", "role"]);
-  await page.locator('[data-scan-group="orgSuffix"] [data-review-card="c-guess"]').waitFor();
   for (const button of ["retake", "manual", "skip"]) await page.locator(`[data-failed-${button}="c-fail"]`).waitFor();
-  await page.locator('[data-failed-manual="c-fail"]').click();
-  await page.locator('[data-field-editor="c-fail"]').waitFor();
+  // 1件ずつ見る opens the cards of 要確認 to edit.
+  await page.locator("[data-review-one-by-one]").click();
   await page.locator('[data-review-edit="c-guess"]').click();
   await page.locator('[data-field-editor="c-guess"] input').first().fill("松本 千尋さん");
   assert.ok((await calls(page)).some((c) => c.setDraft === "c-guess" && c.name === "松本 千尋さん"));
-  // 「N人を人脈に追加」: duplicates (統合 by default), 要確認 and the held one — not the unreadable card.
-  assert.equal(await page.locator("[data-scan-add-all]").getAttribute("data-scan-add-all"), "3");
-  await page.locator("[data-scan-add-all]").click();
+  // 「N人を人脈に追加」: duplicates (統合 when checked), 要確認 and the held one — not the unreadable card.
+  assert.equal(await page.locator("[data-review-add-all]").getAttribute("data-review-add-all"), "3");
+  await page.locator("[data-review-add-all]").click();
   await page.waitForFunction(() => (window as any).shellFixture.calls.some((c: any) => c.refresh));
   assert.deepEqual((await calls(page)).filter((c) => c.settle).map((c) => c.settle), [["c-dup", "merge"], ["c-guess", "confirm"], ["c-held", "confirm"]]);
 });
 
-test("まとめて確認 (R12 review M2 / m5): a duplicate card has one choice (統合する / 別人として追加) and only スキップ; the button counts new and merged apart", async (t) => {
+test("まとめて確認: 選んだ N件を統合 merges the checked rows; unchecked ones are added as someone else; 提案どおりに直す confirms 要確認", async (t) => {
   const page = await screen(t, { view: "batch", batch: batchView("review") });
-  await page.locator("[data-scan-review]").waitFor();
-  const card = page.locator('[data-duplicate-card="c-dup"]');
-  assert.equal(await card.getByText("統合する", { exact: true }).count(), 1, "統合する appears once (the choice), not again as a second button");
-  assert.equal(await card.locator("[data-duplicate-confirm]").count(), 0);
-  assert.deepEqual(await card.locator("button").evaluateAll((nodes) => nodes.map((node) => node.textContent?.trim())), ["統合する", "別人として追加", "スキップ"]);
-  const addAll = page.locator("[data-scan-add-all]");
-  assert.equal(await addAll.textContent(), "2人を追加 · 1人を統合");
-  await card.getByRole("button", { name: "別人として追加" }).click();
-  assert.equal(await addAll.textContent(), "3人を人脈に追加");
+  await page.locator("[data-unified-review]").waitFor();
+  assert.equal(await page.locator("[data-review-merge]").textContent(), "選んだ 1件を統合");
+  await page.locator("[data-review-merge]").click();
+  await page.waitForFunction(() => (window as any).shellFixture.calls.some((c: any) => c.settle));
+  await page.locator("[data-review-apply]").click();
+  await page.waitForFunction(() => (window as any).shellFixture.calls.filter((c: any) => c.settle).length >= 2);
+  assert.deepEqual((await calls(page)).filter((c) => c.settle).map((c) => c.settle), [["c-dup", "merge"], ["c-guess", "confirm"]]);
 });
 
-test("まとめて確認 keyboard: → moves to the next card, S skips it, ↵ confirms (別人として追加 when chosen)", async (t) => {
+test("まとめて確認 keyboard (1件ずつ): → moves to the next card, S skips it, ↵ confirms", async (t) => {
   const page = await screen(t, { view: "batch", batch: batchView("review") });
-  await page.locator("[data-scan-review]").waitFor();
-  await page.locator('[data-duplicate-card="c-dup"]').getByRole("button", { name: "別人として追加" }).click();
+  await page.locator("[data-unified-review]").waitFor();
+  await page.locator("[data-review-one-by-one]").click();
   await page.locator("body").click({ position: { x: 5, y: 5 } });
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => (window as any).shellFixture.calls.some((c: any) => c.settle));
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("s");
   await page.waitForFunction(() => (window as any).shellFixture.calls.filter((c: any) => c.settle).length >= 2);
-  assert.deepEqual((await calls(page)).filter((c) => c.settle).map((c) => c.settle), [["c-dup", "confirm"], ["c-guess", "skip"]]);
+  assert.deepEqual((await calls(page)).filter((c) => c.settle).map((c) => c.settle).slice(0, 1), [["c-guess", "confirm"]]);
 });
 
 test("完成: new / merged / unreadable (unreadable not counted as added); plan line waits for the batch to complete", async (t) => {
   const page = await screen(t, { view: "batch", batch: batchView("done") });
   await page.locator("[data-scan-done]").waitFor();
-  assert.equal(await page.locator("[data-orbit-2026-mainhead] h1").textContent(), "3人を人脈に追加しました");
+  assert.equal(await page.locator("[data-scan-done] h2").textContent(), "3人を人脈に追加しました");
   await settles(page, '[data-done-tile="created"]', 2);
   await settles(page, '[data-done-tile="merged"]', 1);
   await settles(page, '[data-done-tile="unreadable"]', 1);
@@ -342,7 +343,7 @@ test("完成: new / merged / unreadable (unreadable not counted as added); plan 
 test("完成 (R12 review m4 / m11): merged comes from the server, not this device; the density bar counts the new people", async (t) => {
   const page = await screen(t, { view: "batch", batch: batchView("done", false, true) });
   await page.locator("[data-scan-done]").waitFor();
-  assert.equal(await page.locator("[data-orbit-2026-mainhead] h1").textContent(), "4人を人脈に追加しました");
+  assert.equal(await page.locator("[data-scan-done] h2").textContent(), "4人を人脈に追加しました");
   await settles(page, '[data-done-tile="created"]', 3);
   await settles(page, '[data-done-tile="merged"]', 1);
   // 高山 / 松本: name only (●○○); 伊達: email + 会った場所 (●●○). The merged one is not counted.
@@ -354,40 +355,26 @@ test("完成 (R12 review m4 / m11): merged comes from the server, not this devic
   assert.equal(await old.locator("[data-done-density]").count(), 0);
 });
 
-test("手入力 (R12 review M1): the save bar is the drawer footer, outside the scrolling body; 390 is full screen without the shortcut", async (t) => {
+test("手入力 (b11 A3 Web): a 520 drawer, the save row follows the fields (保存 ⌘↵); 390 is full screen without the shortcut", async (t) => {
   for (const width of [1440, 1024]) {
     const page = await screen(t, { view: "manual", handlers: [EVENTS] }, { width });
     await page.locator("[data-manual-form]").waitFor();
+    const box = await page.locator('[role="dialog"]').boundingBox();
+    assert.equal(Math.round(box!.width), 520, `${width}: 520 wide`);
     const layout = await page.evaluate(() => {
       const save = document.querySelector("[data-manual-save]") as HTMLButtonElement;
-      const footer = document.querySelector("[data-manual-footer]")!;
       const form = document.querySelector("[data-manual-form]") as HTMLFormElement;
-      const body = form.parentElement!;
-      return {
-        bodyBottom: body.getBoundingClientRect().bottom,
-        bodyScrolls: getComputedStyle(body).overflowY,
-        footerOutsideBody: !body.contains(footer),
-        footerTop: footer.getBoundingClientRect().top,
-        inFooter: footer.contains(save),
-        inForm: form.contains(save),
-        linked: Boolean(form.id) && save.form === form,
-        kbdWraps: (() => { const kbd = footer.querySelector("kbd"); return kbd ? kbd.getBoundingClientRect().height > 40 : null; })(),
-      };
+      return { linked: save.form === form, kbdInSave: Boolean(save.querySelector("kbd")) };
     });
-    assert.equal(layout.inFooter, true, `${width}: save is in the footer`);
-    assert.equal(layout.inForm, false);
-    assert.equal(layout.linked, true, `${width}: the footer button still submits the form`);
-    assert.equal(layout.footerOutsideBody, true);
-    assert.ok(layout.bodyBottom <= layout.footerTop + 0.5, `${width}: nothing scrolls under the save bar`);
-    assert.equal(layout.kbdWraps, false);
+    assert.equal(layout.linked, true, `${width}: the save button submits the form`);
+    assert.equal(layout.kbdInSave, true, `${width}: ⌘↵ sits inside 保存`);
   }
   const narrow = await screen(t, { view: "manual", handlers: [EVENTS] }, { width: 390 });
   await narrow.locator("[data-manual-form]").waitFor();
   await narrow.locator('[role="dialog"]').evaluate((node) => Promise.all(node.getAnimations().map((animation) => animation.finished)));
   const box = await narrow.locator('[role="dialog"]').boundingBox();
   assert.deepEqual(box && [box.x, box.y, box.width, box.height], [0, 0, 390, 900], "full screen at 390");
-  assert.equal(await narrow.locator('[role="dialog"]').evaluate((node) => getComputedStyle(node).borderTopLeftRadius), "0px", "square corners");
-  assert.equal(await narrow.locator("[data-manual-footer] kbd").isVisible(), false, "no keyboard shortcut on a phone");
+  assert.equal(await narrow.locator("[data-manual-save] kbd").isVisible(), false, "no keyboard shortcut on a phone");
   await narrow.locator('[data-manual-field="displayName"]').fill("山田 太郎");
   await narrow.locator("[data-manual-save]").click();
   await narrow.waitForFunction(() => (window as any).shellFixture.fetches.some((c: any) => c.url === "/api/contacts/manual" && c.method === "POST"));
@@ -395,7 +382,7 @@ test("手入力 (R12 review M1): the save bar is the drawer footer, outside the 
 
 test("dark mode and 390 render without errors", async (t) => {
   const dark = await screen(t, { view: "batch", batch: batchView("review") }, { dark: true });
-  await dark.locator("[data-scan-review]").waitFor();
+  await dark.locator("[data-unified-review]").waitFor();
   const narrow = await screen(t, { view: "manual", handlers: [EVENTS] }, { width: 390 });
   await narrow.locator("[data-manual-form]").waitFor();
 });

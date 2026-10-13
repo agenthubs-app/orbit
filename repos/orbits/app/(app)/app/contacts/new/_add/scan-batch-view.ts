@@ -80,6 +80,8 @@ export function buildScanBatchView(batch: BatchState): ScanBatchView {
   const queueIds = new Set(batch.queue.map((card) => card.cardId));
   const cards: ScanCardView[] = batch.cards.map((card) => {
     const draft = batch.drafts[card.cardId] ?? null;
+    // Cards added before this page opened have no draft here: show what was read.
+    const shown = draft ?? (card.items.some((item) => item.extraction) ? initialCardDraft(card) : null);
     const flagged = draft ? [...flaggedFields(card, draft)] : [];
     const needsLook = Boolean(draft) && !isAutoImportEligible(card, draft!);
     let section: ScanSection | null = null;
@@ -89,9 +91,9 @@ export function buildScanBatchView(batch: BatchState): ScanBatchView {
     return {
       cardId: card.cardId,
       kind: kindFor(card, batch, needsLook),
-      name: draft?.fields.displayName.trim() ?? "",
-      organization: draft?.fields.organization.trim() ?? "",
-      role: draft?.fields.role.trim() ?? "",
+      name: shown?.fields.displayName.trim() ?? "",
+      organization: shown?.fields.organization.trim() ?? "",
+      role: shown?.fields.role.trim() ?? "",
       twoSided: card.isTwoSided,
       fileName: card.items[0]?.sourceFileName ?? "",
       section,

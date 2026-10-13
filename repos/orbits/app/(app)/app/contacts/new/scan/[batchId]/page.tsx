@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../../../auth";
 import { ScanBatchClient } from "../../_add/scan-batch-client";
+import { isScanDesignFixture, scanDesignFixturesEnabled } from "../../_add/scan-design-fixture-gate";
+import { ScanDesignFixtureClient } from "../../_add/scan-design-fixtures";
 
 export const dynamic = "force-dynamic";
 
@@ -10,5 +12,7 @@ export default async function AppContactsScanBatchPage({ params }: { params: Pro
   const { batchId } = await params;
   const session = await auth();
   if (!session?.user?.id) redirect(`/app/account/login?${new URLSearchParams({ next: `/app/contacts/new/scan/${encodeURIComponent(batchId)}` })}`);
+  // 本机像素门禁的只读演示（scan-design-fixtures）；生产环境永远走真实批次。
+  if (scanDesignFixturesEnabled() && isScanDesignFixture(batchId)) return <ScanDesignFixtureClient name={batchId} />;
   return <ScanBatchClient batchId={batchId} />;
 }

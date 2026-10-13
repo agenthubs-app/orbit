@@ -1,0 +1,242 @@
+{
+ "_note": "R12 加人 Web 像素返工。设计稿只有 1440 画板（b6 / b8 / b12 都没有加人的 1024 / 390），所以只比 1440 × 浅 / 深。键 = <id>-<width>-<theme>，与 attribution-redesign-R12.json 一致。弹窗 / 抽屉压在「人脈」页上（R11，乙）：整屏数字含背景，背景差异记「待 R11」，另用 region 只比弹层本身。",
+ "defaults": {
+  "app-origin": "http://localhost:3000",
+  "login": "qa@orbit.test",
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-redesign-R12.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/add/**",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/add.ts",
+  "repos/orbits/app/(app)/app/contacts/new/**",
+  "repos/orbits/app/(app)/app/orbit-2026/shell/**",
+  "repos/orbits/app/(app)/app/orbit-2026/ui/**"
+ ],
+ "views": [
+  {
+   "id": "W-R12-01",
+   "app": "/app/contacts/new",
+   "design": "b12-missing-states.html",
+   "board-index": 96,
+   "width": 1440,
+   "wait-for": "[data-add-doors]",
+   "note": "5 门弹窗压在人脈页上（背景 = R11）",
+   "viewport": true
+  },
+  {
+   "id": "W-R12-01m",
+   "app": "/app/contacts/new",
+   "design": "b12-missing-states.html",
+   "board-index": 96,
+   "width": 1440,
+   "region": "440,248,560,464",
+   "wait-for": "[data-add-doors]",
+   "note": "只比弹窗本身",
+   "viewport": true
+  },
+  {
+   "id": "W-R12-04",
+   "app": "/app/contacts/new?add=manual",
+   "design": "b11-nav-v3.html",
+   "board-index": 19,
+   "width": 1440,
+   "note": "手入力抽屉 + 重複の候補（输入同名）",
+   "viewport": true,
+   "steps": [
+    {
+     "waitFor": "[data-manual-form]"
+    },
+    {
+     "fill": [
+      "[data-manual-field=displayName]",
+      "石川 洋介"
+     ]
+    },
+    {
+     "fill": [
+      "[data-manual-field=organization]",
+      "ミライ精機株式会社"
+     ]
+    },
+    {
+     "fill": [
+      "[data-manual-field=note]",
+      "工場の自動化に関心。@鈴木 大輔 さんと同じ案件"
+     ]
+    },
+    {
+     "waitFor": "[data-manual-met] button:nth-child(2)"
+    },
+    {
+     "click": "[data-manual-met] button:first-child"
+    },
+    {
+     "waitFor": "[data-manual-candidate]"
+    },
+    {
+     "click": "[data-manual-form] b"
+    },
+    {
+     "wait": 400
+    }
+   ],
+   "region-note": "抽屉 906–1426",
+   "region": "906,14,520,932"
+  },
+  {
+   "id": "W-R12-03",
+   "app": "/app/contacts/new?add=manual",
+   "design": "b9-import-plan-v2.html",
+   "board": "手入力 · Web 右侧抽屉",
+   "width": 1440,
+   "note": "手入力抽屉 · 署名を貼り付け（600 宽，region 826,0,614,960）",
+   "viewport": true,
+   "steps": [
+    {
+     "waitFor": "[data-manual-form]"
+    },
+    {
+     "click": "[data-manual-paste-open]"
+    },
+    {
+     "fill": [
+      "[data-manual-signature]",
+      "石川 陽介\n石川デザイン事務所　代表\n〒150-0001 東京都渋谷区神宮前 2-x-x\nTEL 03-5555-0198　Mail ishikawa@ishikawa-d.example"
+     ]
+    },
+    {
+     "click": "[data-manual-form] b"
+    },
+    {
+     "wait": 400
+    }
+   ],
+   "region": "826,14,600,932"
+  },
+  {
+   "id": "W-R12-06",
+   "app": "/app/contacts/new/scan",
+   "design": "b11-nav-v3.html",
+   "board-index": 5,
+   "width": 1440,
+   "note": "名刺をスキャン 空态：b11 #5 去掉「アップロード中」部分（该部分在 W-R12-08 比）",
+   "region": "84,0,1356,330"
+  },
+  {
+   "id": "W-R12-08",
+   "app": "/app/contacts/new/scan/design-reading",
+   "app-origin": "http://localhost:3207",
+   "design": "b11-nav-v3.html",
+   "board-index": 5,
+   "width": 1440,
+   "wait-for": "[data-scan-reading]",
+   "note": "读取中 = b11 #5 整屏（mock 示例 add-scan）"
+  },
+  {
+   "id": "W-R12-11",
+   "app": "/app/contacts/new/scan/design-done",
+   "app-origin": "http://localhost:3207",
+   "design": "b12-missing-states.html",
+   "board-index": 102,
+   "width": 1440,
+   "wait-for": "[data-scan-phase=done]",
+   "note": "完成（mock）"
+  },
+  {
+   "id": "W-R12-12a",
+   "app": "/app/contacts/new/scan/design-missing",
+   "app-origin": "http://localhost:3207",
+   "design": "b12-missing-states.html",
+   "board-index": 104,
+   "width": 1440,
+   "wait-for": "[data-scan-phase=missing]"
+  },
+  {
+   "id": "W-R12-12b",
+   "app": "/app/contacts/new/scan/design-expired",
+   "app-origin": "http://localhost:3207",
+   "design": "b12-missing-states.html",
+   "board-index": 106,
+   "width": 1440,
+   "wait-for": "[data-scan-phase=expired]"
+  },
+  {
+   "id": "W-R12-12c",
+   "app": "/app/contacts/new/scan/design-cancelled",
+   "app-origin": "http://localhost:3207",
+   "design": "b12-missing-states.html",
+   "board-index": 108,
+   "width": 1440,
+   "wait-for": "[data-scan-phase=cancelled]"
+  },
+  {
+   "id": "W-R12-09",
+   "app": "/app/contacts/new/scan/design-review",
+   "app-origin": "http://localhost:3207",
+   "design": "b9-import-plan-v2.html",
+   "board": "LinkedIn ④ まとめて確認 · Web（统一）",
+   "width": 1440,
+   "wait-for": "[data-unified-review]",
+   "note": "まとめて確認（统一）· 名刺数据（mock）"
+  },
+  {
+   "id": "W-R12-07",
+   "app": "/app/contacts/new/scan",
+   "design": "b1-onboarding-cards.html",
+   "board-index": 45,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-scan-input]"
+    },
+    {
+     "upload": [
+      "[data-scan-input]",
+      "/private/tmp/claude-501/-Users-li-work-orbit/bc4b2fc3-1f57-4b68-807a-d4b0434c092e/scratchpad/cards/IMG_2400.jpg"
+     ]
+    },
+    {
+     "upload": [
+      "[data-scan-input]",
+      "/private/tmp/claude-501/-Users-li-work-orbit/bc4b2fc3-1f57-4b68-807a-d4b0434c092e/scratchpad/cards/IMG_2401.jpg"
+     ]
+    },
+    {
+     "upload": [
+      "[data-scan-input]",
+      "/private/tmp/claude-501/-Users-li-work-orbit/bc4b2fc3-1f57-4b68-807a-d4b0434c092e/scratchpad/cards/IMG_2402.jpg"
+     ]
+    },
+    {
+     "upload": [
+      "[data-scan-input]",
+      "/private/tmp/claude-501/-Users-li-work-orbit/bc4b2fc3-1f57-4b68-807a-d4b0434c092e/scratchpad/cards/IMG_2403.jpg"
+     ]
+    },
+    {
+     "upload": [
+      "[data-scan-input]",
+      "/private/tmp/claude-501/-Users-li-work-orbit/bc4b2fc3-1f57-4b68-807a-d4b0434c092e/scratchpad/cards/IMG_2404.jpg"
+     ]
+    },
+    {
+     "upload": [
+      "[data-scan-input]",
+      "/private/tmp/claude-501/-Users-li-work-orbit/bc4b2fc3-1f57-4b68-807a-d4b0434c092e/scratchpad/cards/IMG_2405.jpg"
+     ]
+    },
+    {
+     "waitFor": "[data-scan-tray]"
+    },
+    {
+     "click": "[data-staged-pair]"
+    },
+    {
+     "wait": 300
+    }
+   ],
+   "note": "已选托盘（照片是数据；去掉「ぼやけ / 要確認」= D22 同口径，待画板改）"
+  }
+ ]
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
@@ -23,12 +23,17 @@ import {
   type IngestV2CardDraft,
   type IngestV2Field,
 } from "../../contacts/ingest-v2/ingest-v2-route-view-model";
+import { INGEST_V2_MAX_ITEMS, INGEST_V2_MAX_RAW_BYTES } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { addBatchCopy as b, addScanCopy as s } from "../copy/add";
+import { addBatchCopy as b, addDoorsCopy, addScanCopy as s } from "../copy/add";
 import type { OrbitCopyEntry } from "../copy/types";
 import { ShellPage } from "../shell/slots";
 import { Button, Card, Chip, CountUp, FilterOption, Icon, IconButton, Kbd, MacTile, Orbit2026Scope, ProgressBar, Skeleton, TextField, ToastProvider } from "../ui";
-import { DensityBar, translator, type Translate } from "./add-parts";
+import { DensityDots, translator, type Translate } from "./add-parts";
+import { ReviewRail, UnifiedReview, type ReviewDuplicateRow, type ReviewGroupRow } from "./UnifiedReview";
+import { ManualContactDrawer } from "./ManualContactDrawer";
+import { DropZone, ScanGuide, useStagedCards, type ScanStartResult } from "./ScanUploadScreen";
+import type { StagedCard } from "./upload-model";
 import type { ScanBatchActions, ScanBatchView, ScanCardKind, ScanCardView, ScanIssueGroup, ScanSettleResult } from "./scan-types";
 import styles from "./add.module.css";
 
@@ -51,6 +56,16 @@ const GROUP_COPY: Record<ScanIssueGroup, OrbitCopyEntry> = {
   enrichment: b.groupEnrichment,
   format: b.groupFormat,
   other: b.groupOther,
+};
+/** 要確認 row labels (b9 ④ .frow 84px key). */
+const GROUP_SHORT: Record<ScanIssueGroup, OrbitCopyEntry> = {
+  name: b.shortName,
+  orgSuffix: b.shortOrgSuffix,
+  misread: b.shortMisread,
+  sides: b.shortSides,
+  enrichment: b.shortEnrichment,
+  format: b.shortFormat,
+  other: b.shortOther,
 };
 const GROUP_ORDER: readonly ScanIssueGroup[] = ["name", "sides", "misread", "orgSuffix", "format", "enrichment", "other"];
 
@@ -100,29 +115,23 @@ function dayLabel(iso: string | null, language: OrbitLanguage): string {
  * 読み取れず with 撮り直す / 手入力で補う / スキップ) → 完成 (new / merged / unreadable).
  * Keyboard: ↵ confirm · → next card · S skip.
  */
-export function ScanBatchScreen({ view, actions }: { view: ScanBatchView; actions: ScanBatchActions }) {
+export function ScanBatchScreen({ view, actions, onStart }: { view: ScanBatchView; actions: ScanBatchActions; onStart?: (cards: readonly StagedCard[]) => Promise<ScanStartResult> }) {
   const { language, preserveHref } = useOrbitLanguage();
   const router = useRouter();
   const t = translator(language);
   const go = (href: string) => router.push(preserveHref(href));
-  const added = view.counts.created + view.counts.merged;
-  const title = view.phase === "done" ? t(b.doneTitle, { n: added }) : t(b.pageTitle);
-  const back = <IconButton icon="left" label={t(s.back)} soft onClick={() => go("/app/contacts/new")} />;
+  const reading = view.phase === "uploading" || view.phase === "reading" || view.phase === "importing";
+  const title = reading ? t(s.pageTitle) : view.phase === "review" ? t(b.reviewPageTitle) : t(b.pageTitle);
+  const subtitle = view.phase === "review" ? t(b.reviewPageSub, { n: view.cards.length }) : t(s.pageSubtitle);
+  const back = <IconButton icon="left" label={t(s.back)} onClick={() => go("/app/contacts/new")} />;
   return (
     <Orbit2026Scope language={language} className={styles.page}>
       <ToastProvider>
-        <ShellPage title={title} subtitle={t(s.pageSubtitle)} left={back} />
+        <ShellPage title={title} subtitle={subtitle} left={back} rightRail={view.phase === "review" ? <ReviewRail t={t} emoji="📇" tone="apricot" title={t(b.railTitle)} body={t(b.railBody)} level={1} levelNote={t(b.railLevelNote)} /> : undefined} />
         <div className={styles.fade} data-scan-batch={view.batchId} data-scan-phase={view.phase}>
           {view.phase === "loading" ? <Skeleton lines={6} /> : null}
-          {view.phase === "missing" || view.phase === "expired" || view.phase === "cancelled" ? (
-            <Card>
-              <div className={styles.stack}>
-                <p className={styles.body} role="alert">{t(view.phase === "missing" ? b.loadFailed : view.phase === "expired" ? b.expired : b.cancelled)}</p>
-                <span><Button variant="primary" icon="scan" label={t(b.scanAgain)} onClick={() => go("/app/contacts/new/scan")} /></span>
-              </div>
-            </Card>
-          ) : null}
-          {view.phase === "uploading" || view.phase === "reading" || view.phase === "importing" ? <ReadingPanel view={view} actions={actions} t={t} /> : null}
+          {view.phase === "missing" || view.phase === "expired" || view.phase === "cancelled" ? <BatchErrorCard phase={view.phase} t={t} go={go} /> : null}
+          {view.phase === "uploading" || view.phase === "reading" || view.phase === "importing" ? <ReadingPanel view={view} actions={actions} t={t} onStart={onStart} onStarted={(id) => go(`/app/contacts/new/scan/${encodeURIComponent(id)}`)} onNavigate={go} /> : null}
           {view.phase === "review" ? <ReviewPanel view={view} actions={actions} t={t} language={language} onLater={() => go("/app/contacts")} /> : null}
           {view.phase === "done" ? <DonePanel view={view} t={t} language={language} go={go} /> : null}
         </div>
@@ -149,39 +158,81 @@ function CardRow({ card, t, trailing }: { card: ScanCardView; t: Translate; trai
   );
 }
 
-function ReadingPanel({ view, actions, t }: { view: ScanBatchView; actions: ScanBatchActions; t: Translate }) {
+/**
+ * 読み取り中 (b11 A1 Web, the same page as the drop zone): 📇 drop zone (more photos start a new batch),
+ * アップロード中 N枚 · M枚 読み取り済み with one row per card (✓ / 推測あり / 重複 / N枚目を読み取り中 /
+ * 画像を読み取れませんでした with 差し替える · 手入力で補う), はじめての方へ on the right.
+ */
+function ReadingPanel({ view, actions, t, onStart, onStarted, onNavigate }: { view: ScanBatchView; actions: ScanBatchActions; t: Translate; onStart?: (cards: readonly StagedCard[]) => Promise<ScanStartResult>; onStarted: (batchId: string) => void; onNavigate: (href: string) => void }) {
   const reattach = useRef<HTMLInputElement | null>(null);
+  const [manual, setManual] = useState(false);
+  const stage = useStagedCards(t, INGEST_V2_MAX_ITEMS, INGEST_V2_MAX_RAW_BYTES);
+  const started = useRef(0);
+  // Photos dropped here start their own batch straight away (this one keeps reading).
+  useEffect(() => {
+    if (!onStart || !stage.cards.length || stage.starting || started.current === stage.cards.length) return;
+    started.current = stage.cards.length;
+    void stage.start(onStart).then((batchId) => { if (batchId) { stage.clear(); onStarted(batchId); } });
+  }, [onStart, onStarted, stage]);
   const total = view.cards.length;
-  const head = view.phase === "uploading"
-    ? t(b.uploadingTitle, { done: view.uploaded, n: view.photos })
-    : view.phase === "importing" ? t(b.importing) : t(b.readingTitle, { n: total });
-  const percent = view.phase === "uploading" ? (view.photos ? view.uploaded / view.photos : 0) * 30 : view.phase === "importing" ? 96 : 30 + (total ? view.settled / total : 0) * 66;
+  const settled = view.phase === "uploading" ? 0 : view.settled;
   return (
-    <div className={styles.columns}>
-      <Card data-scan-reading="">
-        <div className={styles.stack}>
-          <div className={styles.rowBetween}>
-            <h2 className={styles.title} aria-live="polite">{head}</h2>
-            {view.phase === "reading" ? <span className={styles.label}>{t(b.readProgress, { done: view.settled, n: total })}</span> : null}
-          </div>
-          <ProgressBar value={Math.round(percent)} label={head} />
-          <p className={styles.body}>{t(b.readingLead)}</p>
-          {view.uploadFailed ? (
-            <p className={styles.notice} role="alert"><Icon name="alert" size={16} /><span>{t(b.uploadFailed)}</span><Button size="sm" label={t(b.retryUpload)} onClick={actions.retryUpload} /></p>
-          ) : null}
-          {view.missingFiles > 0 ? (
-            <p className={styles.notice} data-scan-missing={view.missingFiles}>
-              <Icon name="info" size={16} /><span>{t(b.missingFiles, { n: view.missingFiles })}</span>
-              <Button size="sm" label={t(b.reselect)} onClick={() => reattach.current?.click()} />
-              <input ref={reattach} className={styles.srOnly} type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" tabIndex={-1} aria-hidden onChange={(event) => { actions.reattach(event.target.files); event.target.value = ""; }} />
-            </p>
-          ) : null}
-          <ul className={styles.list}>
-            {view.cards.map((card) => <CardRow key={card.cardId} card={card} t={t} />)}
-          </ul>
+    <div className={styles.wgrid}>
+      <Card className={`${styles.span8} ${styles.uploadCard}`} data-scan-reading="">
+        <DropZone t={t} stage={stage} maxPhotos={INGEST_V2_MAX_ITEMS} />
+        {stage.input}
+        <div className={styles.cardH}>
+          <h3 aria-live="polite">{view.phase === "importing" ? t(b.importing) : t(b.uploadHead)} <span className={styles.cardHMeta}>{t(b.uploadMeta, { n: view.photos || total, done: settled })}</span></h3>
+          <span className={styles.cardHNote}>{t(b.keepGoing)}</span>
         </div>
+        {view.uploadFailed ? (
+          <p className={styles.notice} role="alert"><Icon name="alert" size={16} /><span>{t(b.uploadFailed)}</span><Button size="sm" label={t(b.retryUpload)} onClick={actions.retryUpload} /></p>
+        ) : null}
+        {view.missingFiles > 0 ? (
+          <p className={styles.notice} data-scan-missing={view.missingFiles}>
+            <Icon name="info" size={16} /><span>{t(b.missingFiles, { n: view.missingFiles })}</span>
+            <Button size="sm" label={t(b.reselect)} onClick={() => reattach.current?.click()} />
+            <input ref={reattach} className={styles.srOnly} type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" tabIndex={-1} aria-hidden onChange={(event) => { actions.reattach(event.target.files); event.target.value = ""; }} />
+          </p>
+        ) : null}
+        <div>{view.cards.map((card, index) => <UploadRow key={card.cardId} card={card} index={index} t={t} actions={actions} onManual={() => setManual(true)} />)}</div>
       </Card>
-      <AfterCard t={t} />
+      {/* 手入力で補う while reading: add the person by hand; the unreadable card stays to skip in まとめて確認. */}
+      <ManualContactDrawer open={manual} onClose={() => setManual(false)} navigate={onNavigate} />
+      <ScanGuide t={t} className={styles.span4} />
+    </div>
+  );
+}
+
+function UploadRow({ card, index, t, actions, onManual }: { card: ScanCardView; index: number; t: Translate; actions: ScanBatchActions; onManual: () => void }) {
+  const file = useRef<HTMLInputElement | null>(null);
+  const [replaceFailed, setReplaceFailed] = useState(false);
+  const pending = card.kind === "uploading" || card.kind === "queued" || card.kind === "reading";
+  const failed = card.kind === "failed";
+  const sub = pending ? t(card.twoSided ? b.sideBoth : b.sideFront) : failed ? card.fileName : [card.organization, card.role].filter(Boolean).join(" · ") || card.fileName;
+  // N枚目 = the photo number in the batch (its first photo), not the row.
+  const title = pending ? t(b.readingNth, { n: Math.min(...card.card.items.map((entry) => entry.seq)) || index + 1 }) : failed ? t(card.failure === "busy" ? b.failedBusy : b.failedImage) : card.name || t(b.noName);
+  return (
+    <div className={styles.prow} data-scan-card={card.cardId} data-scan-kind={card.kind}>
+      <span className={`${styles.tp} ${failed ? styles.tpNg : ""}`} aria-hidden />
+      <div className={styles.prowMeta}><b>{title}</b><span>{sub}</span></div>
+      {pending ? <span className={styles.spin} aria-hidden /> : null}
+      {card.kind === "guess" ? <Chip label={t(b.stateGuess)} tone="apricot" /> : null}
+      {card.kind === "duplicate" ? <Chip label={t(b.stateDuplicate)} tone="lav" /> : null}
+      {card.kind === "skipped" ? <Chip label={t(b.stateSkipped)} /> : null}
+      {card.kind === "ready" || card.kind === "added" ? <span className={styles.okd} aria-label={t(b.stateAdded)}><Icon name="check" size={16} /></span> : null}
+      {failed ? (
+        <>
+          <Button size="sm" label={t(b.replace)} onClick={() => file.current?.click()} data-failed-retake={card.cardId} />
+          <input ref={file} className={styles.srOnly} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" tabIndex={-1} aria-hidden onChange={(event) => {
+            const picked = event.target.files?.[0];
+            event.target.value = "";
+            if (picked) void actions.replace(card.cardId, picked).then((ok) => setReplaceFailed(!ok));
+          }} />
+          <Button size="sm" variant="ghost" label={t(b.typeIn)} onClick={onManual} data-failed-manual={card.cardId} />
+        </>
+      ) : null}
+      {replaceFailed ? <span className={styles.error} role="alert">{t(b.replaceFailed)}</span> : null}
     </div>
   );
 }
@@ -208,12 +259,14 @@ function ReviewPanel({ view, actions, t, language, onLater }: { view: ScanBatchV
   const [focused, setFocused] = useState<string | null>(null);
   const [problems, setProblems] = useState<Record<string, ScanSettleResult>>({});
   const [busy, setBusy] = useState(false);
+  const [oneByOne, setOneByOne] = useState(false);
   const pending = useMemo(() => view.cards.filter((card) => card.section !== null), [view.cards]);
   const dups = pending.filter((card) => card.section === "duplicate");
   const reviews = pending.filter((card) => card.section === "review");
   const ready = pending.filter((card) => card.section === "ready");
   const failed = pending.filter((card) => card.section === "failed");
-  const order = [...dups, ...reviews, ...ready, ...failed];
+  // Keyboard (↵ / → / S) walks the cards shown one by one: 要確認 and 読み取れなかった (重複 are rows in the table).
+  const order = [...reviews, ...failed];
   const addable = [...dups, ...reviews, ...ready];
   // R12 review m5: 統合 is not 追加 — the button counts them apart.
   const merging = dups.filter((card) => (choices[card.cardId] ?? "merge") === "merge").length;
@@ -279,100 +332,105 @@ function ReviewPanel({ view, actions, t, language, onLater }: { view: ScanBatchV
     onSkip: () => void skipOne(card),
   });
 
+  // 重複: checked = 統合 (default), unchecked = 別人として追加 (b9 A2 / A3 ④ table).
+  const duplicateRows: ReviewDuplicateRow[] = dups.flatMap((card) => {
+    const candidate = card.candidate;
+    if (!candidate) return [];
+    const incoming = [card.name || t(b.noName), card.organization].filter(Boolean).join(" · ");
+    const existing = [candidate.displayName, candidate.organization].filter(Boolean).join(" · ");
+    const moved = Boolean(candidate.organization && card.organization && normalizedText(candidate.organization) !== normalizedText(card.organization) && normalizedText(candidate.displayName) === normalizedText(card.name));
+    return [{ id: card.cardId, existing, incoming, difference: moved ? t(b.diffMoved) : differenceLabel(card, t), warn: moved, selected: (choices[card.cardId] ?? "merge") === "merge" }];
+  });
+  const settleMany = (cards: readonly ScanCardView[], kind: "merge" | "confirm") => run(async () => {
+    for (const card of cards) {
+      const result = await actions.settle(card.cardId, kind);
+      setProblems((current) => { const next = { ...current }; if (result === "created" || result === "merged" || result === "skipped") delete next[card.cardId]; else next[card.cardId] = result; return next; });
+    }
+  });
+  const selectedDups = dups.filter((card) => (choices[card.cardId] ?? "merge") === "merge");
+  const reviewGroups: ReviewGroupRow[] = groups.map(([group, cards]) => ({
+    key: group,
+    label: t(GROUP_SHORT[group]),
+    example: [cards[0]!.name || t(b.noName), cards[0]!.organization].filter(Boolean).join(" · "),
+    tone: group === "name" || group === "misread" ? "lo" : "mid",
+    count: cards.length,
+  }));
+
   return (
-    <div className={styles.columns}>
-      <div className={styles.stack} data-scan-review="">
-        <Card>
+    <div data-scan-review="">
+      <UnifiedReview
+        t={t}
+        tiles={{
+          duplicate: { count: view.counts.duplicate, sub: t(b.tileDuplicateSub) },
+          review: { count: view.counts.review, sub: reviewGroups[0]?.label ?? t(b.tileReviewNone) },
+          asIs: { count: view.counts.asIs, sub: t(b.tileAsIsSub) },
+        }}
+        onTile={(key) => scrollTo(key === "duplicate" ? SECTION_ID.duplicate : key === "review" ? SECTION_ID.review : SECTION_ID.ready)}
+        sourceLabel={t(b.incomingCards)}
+        autoMerged={view.counts.merged}
+        autoMergedLabel={t(b.autoMergedCards, { n: view.counts.merged })}
+        duplicates={duplicateRows}
+        onToggleDuplicate={(id) => setChoices((current) => ({ ...current, [id]: (current[id] ?? "merge") === "merge" ? "separate" : "merge" }))}
+        onSeparate={() => void settleMany(selectedDups, "confirm")}
+        onMergeSelected={() => void settleMany(selectedDups, "merge")}
+        groups={reviewGroups}
+        onOneByOne={() => setOneByOne((value) => !value)}
+        onApplySuggestions={() => void settleMany(reviews, "confirm")}
+        note={t(b.reviewNote)}
+        onLater={onLater}
+        addCount={addable.length}
+        onAddAll={() => void addAll()}
+        busy={busy}
+        extra={(view.events.length || failed.length || oneByOne) ? (
           <div className={styles.stack}>
-            <h2 className={styles.title}>{t(b.reviewTitle, { n: view.cards.length })}</h2>
-            <p className={styles.body}>{t(b.reviewLead)}</p>
-            <div className={styles.tiles}>
-              <button type="button" className={`btn ${styles.tile} ${styles.rise}`} onClick={() => scrollTo(SECTION_ID.duplicate)} data-scan-tile="duplicate">
-                <CountUp value={view.counts.duplicate} className={styles.tileNumber} /><span className={styles.label}>{t(b.tileDuplicate)}</span>
-              </button>
-              <button type="button" className={`btn ${styles.tile} ${styles.rise}`} onClick={() => scrollTo(SECTION_ID.review)} data-scan-tile="review">
-                <CountUp value={view.counts.review} className={styles.tileNumber} /><span className={styles.label}>{t(b.tileReview)}</span>
-              </button>
-              <button type="button" className={`btn ${styles.tile} ${styles.rise}`} onClick={() => scrollTo(SECTION_ID.ready)} data-scan-tile="asIs">
-                <CountUp value={view.counts.asIs} className={styles.tileNumber} /><span className={styles.label}>{t(b.tileAsIs)}</span>
-              </button>
-            </div>
-          </div>
-        </Card>
-
-        {view.events.length ? (
-          <Card data-scan-met="">
-            <div className={styles.stack}>
-              <div className={styles.row}><span aria-hidden>📍</span><b>{t(b.metTitle)}</b><Chip label={t(b.metEstimated)} tone="apricot" /></div>
-              <div className={styles.row} role="group" aria-label={t(b.metTitle)}>
-                {view.events.map((event) => (
-                  <FilterOption key={event.eventId} label={`${dayLabel(event.startsAt, language)} · ${event.title}`} selected={view.selectedEventId === event.eventId} onToggle={() => actions.chooseEvent(event.eventId)} />
+            {view.events.length ? (
+              <Card data-scan-met="">
+                <div className={styles.stack}>
+                  <div className={styles.row}><span aria-hidden>📍</span><b>{t(b.metTitle)}</b><Chip label={t(b.metEstimated)} tone="apricot" /></div>
+                  <div className={styles.row} role="group" aria-label={t(b.metTitle)}>
+                    {view.events.map((event) => (
+                      <FilterOption key={event.eventId} label={`${dayLabel(event.startsAt, language)} · ${event.title}`} selected={view.selectedEventId === event.eventId} onToggle={() => actions.chooseEvent(event.eventId)} />
+                    ))}
+                    <FilterOption label={t(b.metNone)} selected={view.selectedEventId === null} onToggle={() => actions.chooseEvent(null)} />
+                  </div>
+                  <p className={styles.label}>{t(b.metLead)}</p>
+                </div>
+              </Card>
+            ) : null}
+            {oneByOne && groups.length ? (
+              <section id={SECTION_ID.review} className={styles.section} data-scan-section="review">
+                {groups.map(([group, cards]) => (
+                  <div key={group} className={styles.stack} data-scan-group={group}>
+                    <span className={styles.label}>{t(GROUP_COPY[group])} · {cards.length}</span>
+                    {cards.map((card) => <ReviewCard key={card.cardId} {...cardProps(card)} />)}
+                  </div>
                 ))}
-                <FilterOption label={t(b.metNone)} selected={view.selectedEventId === null} onToggle={() => actions.chooseEvent(null)} />
-              </div>
-              <p className={styles.label}>{t(b.metLead)}</p>
-            </div>
-          </Card>
-        ) : null}
-
-        {dups.length ? (
-          <section id={SECTION_ID.duplicate} className={styles.section} data-scan-section="duplicate">
-            <h3 className={styles.sectionTitle}>{t(b.sectionDuplicate)}</h3>
-            {dups.map((card) => (
-              <DuplicateCard key={card.cardId} {...cardProps(card)} choice={choices[card.cardId] ?? "merge"} onChoose={(choice) => setChoices((current) => ({ ...current, [card.cardId]: choice }))} />
-            ))}
-          </section>
-        ) : null}
-
-        {groups.length ? (
-          <section id={SECTION_ID.review} className={styles.section} data-scan-section="review">
-            <h3 className={styles.sectionTitle}>{t(b.sectionReview)}</h3>
-            {groups.map(([group, cards]) => (
-              <div key={group} className={styles.stack} data-scan-group={group}>
-                <span className={styles.label}>{t(GROUP_COPY[group])} · {cards.length}</span>
-                {cards.map((card) => <ReviewCard key={card.cardId} {...cardProps(card)} />)}
-              </div>
-            ))}
-          </section>
-        ) : null}
-
-        <section id={SECTION_ID.ready} className={styles.section} data-scan-section="ready">
-          <h3 className={styles.sectionTitle}>{t(b.sectionAsIs)}</h3>
-          {view.counts.autoAdded ? <p className={styles.body} data-scan-auto-added={view.counts.autoAdded}>{t(b.asIsAuto, { n: view.counts.autoAdded })}</p> : null}
-          {ready.length ? (
-            <Card>
-              <p className={styles.label}>{t(b.asIsHeld)}</p>
-              <ul className={styles.list}>{ready.map((card) => <CardRow key={card.cardId} card={card} t={t} />)}</ul>
-            </Card>
-          ) : null}
-        </section>
-
-        {failed.length ? (
-          <section id={SECTION_ID.failed} className={styles.section} data-scan-section="failed">
-            <h3 className={styles.sectionTitle}>{t(b.sectionFailed)}</h3>
-            {failed.map((card) => <FailedCard key={card.cardId} {...cardProps(card)} />)}
-          </section>
-        ) : null}
-
-        <div className={styles.footer} data-scan-footer="">
-          <Button variant="primary" icon="user-plus" label={!merging ? t(b.addAll, { n: adding }) : adding ? t(b.addAllWithMerge, { n: adding, m: merging }) : t(b.mergeAll, { m: merging })} disabled={!addable.length} loading={busy} onClick={() => void addAll()} data-scan-add-all={addable.length} />
-          <Button variant="ghost" label={t(b.later)} onClick={onLater} data-scan-later="" />
-          <span className={styles.label}>{t(b.laterNote)}</span>
-        </div>
-      </div>
-      <div className={styles.stack}>
-        <Card variant="flat" className={styles.keysCard} data-scan-keys="">
-          <div className={styles.kbd}>
-            <span className={styles.sectionTitle}>{t(b.keyboardTitle)}</span>
-            <span className={styles.row}><Kbd>↵</Kbd><span className={styles.label}>{t(b.keyConfirm)}</span></span>
-            <span className={styles.row}><Kbd>→</Kbd><span className={styles.label}>{t(b.keyNext)}</span></span>
-            <span className={styles.row}><Kbd>S</Kbd><span className={styles.label}>{t(b.keySkip)}</span></span>
+              </section>
+            ) : null}
+            {failed.length ? (
+              <section id={SECTION_ID.failed} className={styles.section} data-scan-section="failed">
+                <h3 className={styles.sectionTitle}>{t(b.sectionFailed)}</h3>
+                {failed.map((card) => <FailedCard key={card.cardId} {...cardProps(card)} />)}
+              </section>
+            ) : null}
           </div>
-        </Card>
-        <AfterCard t={t} />
-      </div>
+        ) : null}
+      />
     </div>
   );
+}
+
+function normalizedText(value: string): string {
+  return value.normalize("NFKC").replace(/\s+/g, "").toLowerCase();
+}
+
+/** 違い: the fields that read differently from the person already in 人脈. */
+function differenceLabel(card: ScanCardView, t: Translate): string {
+  const candidate = card.candidate;
+  if (!candidate) return "";
+  const fields = ([["displayName", b.diffName], ["organization", b.diffOrganization], ["role", b.diffRole]] as const)
+    .filter(([field]) => (candidate[field] ?? "").trim() && (card[field === "displayName" ? "name" : field] ?? "").trim() && normalizedText(candidate[field]) !== normalizedText(card[field === "displayName" ? "name" : field]));
+  return fields.length ? fields.map(([, copy]) => t(copy)).join(" · ") : t(b.diffSame);
 }
 
 type CardProps = {
@@ -401,48 +459,6 @@ function problemCopy(card: ScanCardView, problem: ScanSettleResult | null): Orbi
 
 function cardClass(focused: boolean, problem: ScanSettleResult | null): string {
   return [styles.reviewCard, styles.fade, focused ? styles.reviewCardFocus : "", problem === "blocked" || problem === "failed" ? styles.reviewCardError : ""].filter(Boolean).join(" ");
-}
-
-function DuplicateCard({ card, t, busy, focused, problem, onFocus, onSkip, choice, onChoose }: CardProps & { choice: Choice; onChoose: (choice: Choice) => void }) {
-  const candidate = card.candidate;
-  const message = problemCopy(card, problem);
-  if (!candidate) return null;
-  const rows = (["displayName", "organization", "role", "email", "phone"] as const).filter((field) => (candidate[field] ?? "").trim() || (card.draft?.fields[field] ?? "").trim());
-  return (
-    <div className={cardClass(focused, problem)} onFocusCapture={onFocus} onMouseDown={onFocus} data-review-card={card.cardId} data-duplicate-card={card.cardId}>
-      <div className={styles.row}>
-        <b className={styles.grow}>{card.name || t(b.noName)}</b>
-        {candidate.matchedOn.map((match) => (MATCH_COPY[match] ? <Chip key={match} label={t(MATCH_COPY[match]!)} tone="lav" /> : null))}
-      </div>
-      <div className={styles.compare} data-compare="">
-        <span />
-        <span className={styles.compareHead}>{t(b.existing)}</span>
-        <span className={styles.compareHead}>{t(b.incoming)}</span>
-        {rows.map((field) => {
-          const existing = candidate[field] ?? "";
-          const incoming = card.draft?.fields[field] ?? "";
-          const differs = existing.trim() !== incoming.trim();
-          return (
-            <span key={field} className={styles.contents} data-compare-field={field} data-differs={differs || undefined}>
-              <span className={styles.label}>{t(FIELD_COPY[field])}</span>
-              <span>{existing || "—"}</span>
-              <span className={differs ? styles.compareDiff : undefined}>{incoming || "—"}</span>
-            </span>
-          );
-        })}
-      </div>
-      <div className={styles.choiceRow} role="radiogroup" aria-label={card.name || t(b.noName)}>
-        <FilterOption label={t(b.merge)} selected={choice === "merge"} onToggle={() => onChoose("merge")} />
-        <FilterOption label={t(b.separate)} selected={choice === "separate"} onToggle={() => onChoose("separate")} />
-        <span className={styles.label}>{t(b.mergeNote)}</span>
-      </div>
-      {message ? <p className={styles.error} role="alert"><Icon name="alert" size={16} />{t(message)}</p> : null}
-      {/* R12 review M2: the choice above is the only 統合する; 「N人を追加」 (or ↵) carries it out. */}
-      <div className={styles.row}>
-        <Button size="sm" variant="ghost" label={t(b.skip)} disabled={busy} onClick={onSkip} data-duplicate-skip={card.cardId} />
-      </div>
-    </div>
-  );
 }
 
 function ReviewCard(props: CardProps) {
@@ -575,41 +591,76 @@ function EnrichmentChoice({ label, t, options, onClear }: { label: string; t: Tr
 function DonePanel({ view, t, language, go }: { view: ScanBatchView; t: Translate; language: OrbitLanguage; go: (href: string) => void }) {
   const eventTitle = view.events.find((event) => view.writtenEventIds.includes(event.eventId))?.title;
   const scene = [t(b.doneScene, { n: view.cards.length, date: dayLabel(view.createdAt, language) }), eventTitle].filter(Boolean).join(" · ");
+  const density = view.density;
   return (
-    <div className={styles.columns}>
-      <div className={styles.stack} data-scan-done="">
-        <Card>
-          <div className={styles.doneHead}>
-            <MacTile emoji="🎉" />
-            <h2 className={styles.bigTitle}>{t(b.doneTitle, { n: view.counts.created + view.counts.merged })}</h2>
-            <p className={styles.label}>{scene}</p>
-          </div>
-          <div className={`${styles.tiles} ${styles.tilesSpaced}`}>
-            <div className={`${styles.tile} ${styles.rise}`} data-done-tile="created"><CountUp value={view.counts.created} className={styles.tileNumber} /><span className={styles.label}>{t(b.doneNew)}</span></div>
-            <div className={`${styles.tile} ${styles.rise}`} data-done-tile="merged"><CountUp value={view.counts.merged} className={styles.tileNumber} /><span className={styles.label}>{t(b.doneMerged)}</span></div>
-            <div className={`${styles.tile} ${styles.rise} ${view.counts.unreadable ? styles.tileWarn : ""}`} data-done-tile="unreadable"><CountUp value={view.counts.unreadable} className={styles.tileNumber} /><span className={styles.label}>{t(b.doneFailed)}</span></div>
-          </div>
-          {view.density ? <DensityBar counts={view.density} t={t} countCopy={b.doneDensityLevel} /> : null}
-        </Card>
-        <Card title={t(b.nextTitle)}>
-          <div className={styles.next} data-done-plan={view.completed ? "ready" : "pending"}>
-            <MacTile emoji="🎯" size="sm" />
-            <span className={styles.grow}><b>{t(b.nextPlan)}</b><span className={styles.label}>{t(view.completed ? b.nextPlanReady : b.nextPlanPending)}</span></span>
-            {view.completed ? <Button size="sm" label={t(b.nextPlanOpen)} onClick={() => go(planTaskSegmentHref("web"))} /> : null}
-          </div>
-          {view.counts.unreadable ? (
-            <div className={styles.next} data-done-unreadable={view.counts.unreadable}>
-              <MacTile emoji="🧩" size="sm" tone="apricot" />
-              <span className={styles.grow}><b>{t(b.nextFailed, { n: view.counts.unreadable })}</b><span className={styles.label}>{t(b.nextFailedBody)}</span></span>
-            </div>
-          ) : null}
-        </Card>
-        <div className={styles.row}>
-          <Button variant="primary" icon="users" label={t(b.viewNetwork)} onClick={() => go("/app/contacts")} data-done-network="" />
-          <Button variant="ghost" icon="scan" label={t(b.scanMore)} onClick={() => go("/app/contacts/new/scan")} data-done-more="" />
+    <div className={styles.wgrid} data-scan-done="">
+      <Card className={`${styles.span7} ${styles.doneMain}`}>
+        <div className={styles.doneCenter}>
+          <div className={styles.doneEmoji} aria-hidden>🎉</div>
+          <h2 className={styles.doneTitle}>{t(b.doneTitle, { n: view.counts.created + view.counts.merged })}</h2>
+          <p className={styles.doneSub}>{scene}</p>
         </div>
+        <div className={styles.bignum3}>
+          <div data-done-tile="created"><b><CountUp value={view.counts.created} /></b><span className={styles.bigLabel}>{t(b.doneNew)}</span></div>
+          <div data-done-tile="merged"><b><CountUp value={view.counts.merged} /></b><span className={styles.bigLabel}>{t(b.doneMerged)}</span></div>
+          <div data-done-tile="unreadable"><b className={view.counts.unreadable ? styles.bigWarn : ""}><CountUp value={view.counts.unreadable} /></b><span className={styles.bigLabel}>{t(b.doneFailed)}</span></div>
+        </div>
+        {density ? (
+          <div data-done-density={[1, 2, 3].map((level) => density[level as 1 | 2 | 3]).join(",")}>
+            <div className={styles.densityLabel}>{t(addDoorsCopy.densityNote)}</div>
+            <div className={styles.stack3} aria-hidden>
+              {([1, 2, 3] as const).map((level) => (density[level] ? <i key={level} className={styles[`stack3_${level}`]} style={{ flexGrow: density[level] }} /> : null))}
+            </div>
+            <div className={styles.stack3Legend}>
+              {([1, 2, 3] as const).map((level) => (
+                <span key={level} className={styles.stack3Item}><DensityDots level={level} t={t} />{t(b.doneDensityLevel, { label: densityName(level, t), n: density[level] })}</span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </Card>
+      <Card className={`${styles.span5} ${styles.doneNext}`}>
+        <div className={styles.doneNextHead}><h3>{t(b.nextTitle)}</h3></div>
+        <div className={styles.nx} data-done-plan={view.completed ? "ready" : "pending"}>
+          <MacTile emoji="🎯" size="sm" tone="lav" />
+          <div className={styles.nxMeta}><b>{t(b.nextPlan)}</b><span>{t(view.completed ? b.nextPlanReady : b.nextPlanPending)}</span></div>
+          {view.completed ? <Button size="sm" label={t(b.nextPlanOpen)} onClick={() => go(planTaskSegmentHref("web"))} /> : null}
+        </div>
+        {view.counts.unreadable ? (
+          <div className={styles.nx} data-done-unreadable={view.counts.unreadable}>
+            <MacTile emoji="🧩" size="sm" tone="apricot" />
+            <div className={styles.nxMeta}><b>{t(b.nextFailed, { n: view.counts.unreadable })}</b><span>{t(b.nextFailedBody)}</span></div>
+            <span className={styles.nxArrow} aria-hidden><Icon name="right" size={16} /></span>
+          </div>
+        ) : null}
+      </Card>
+      <div className={`${styles.span12} ${styles.doneActs}`}>
+        <Button variant="primary" icon="users" className={styles.h44} label={t(b.viewNetwork)} onClick={() => go("/app/contacts")} data-done-network="" />
+        <Button variant="ghost" icon="scan" className={styles.h44} label={t(b.scanMore)} onClick={() => go("/app/contacts/new/scan")} data-done-more="" />
       </div>
-      <AfterCard t={t} />
+    </div>
+  );
+}
+
+function densityName(level: 1 | 2 | 3, t: Translate): string {
+  return t(level === 1 ? addDoorsCopy.density1 : level === 2 ? addDoorsCopy.density2 : addDoorsCopy.density3);
+}
+
+/** W-R12-12a～c: この読み取りを開けませんでした / 期限切れ / 取り消されました (01-system ⑧ 重试卡). */
+function BatchErrorCard({ phase, t, go }: { phase: "missing" | "expired" | "cancelled"; t: Translate; go: (href: string) => void }) {
+  const title = phase === "missing" ? b.errorMissingTitle : phase === "expired" ? b.errorExpiredTitle : b.errorCancelledTitle;
+  const lines = phase === "missing" ? [b.errorMissingBody, b.errorKept] : phase === "expired" ? [b.errorKept] : [b.errorCancelledBody];
+  return (
+    <div className={styles.wgrid}>
+      <Card className={styles.errCard} role="alert" data-scan-error-card={phase}>
+        <div className={styles.errIc}><Icon name="alert" size={24} /></div>
+        <b className={styles.errTitle}>{t(title)}</b>
+        <div className={styles.errSub}>{lines.map((line, index) => <Fragment key={index}>{index ? <br /> : null}{t(line)}</Fragment>)}</div>
+        <div className={styles.errActs}>
+          <Button variant="primary" icon="scan" label={t(b.scanAgain)} onClick={() => go("/app/contacts/new/scan")} />
+          {phase === "cancelled" ? null : <Button variant="ghost" label={t(b.viewNetwork)} onClick={() => go("/app/contacts")} />}
+        </div>
+      </Card>
     </div>
   );
 }
