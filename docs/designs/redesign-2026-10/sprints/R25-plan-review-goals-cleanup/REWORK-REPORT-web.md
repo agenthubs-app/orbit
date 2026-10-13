@@ -218,3 +218,5 @@ d77115ac、95e82990、6ab3e559、9c8a999d（B）；4a2cd45c（误带）+ bebb1d4
 - **能力名「AI・データ」**：`shared/compute/plan-template-copy.ts` 的 `ai_data` ja 改为「AI・データ」，App 跑 `sync:contract` 带上副本 `src/api/compute/plan-template-copy.ts`，App 测试夹具 `tests/fixtures/plan-flow-mock.json` 里 7 处同步（该文件是服务端回答的录制）。GitNexus `PLAN_CAPABILITY_COPY` 为 UNKNOWN，文本搜索确认只有这三处。已知会 App 计划页会话。
 - **重截重比**（`~/orbit-sprint-evidence/redesign/plan-rework-R7/`，`--no-cache`）：W-R23-06 **0.0175 / 0.0157**（画板去掉「＋ その他」与関わり方后）——band 4 是数据文字（成员 headline、「デザイン / デザイナー」），band 2 弹窗整体约 3px 位移未归因，已到 3 轮上限，记未过；W-R24-04a **0.0145 / 0.0168**，剩右栏「今日のチャンス」与画板新加的イベント卡里的推荐活动列表，两者都是 D53 / R26（`EventCard` 注释：推荐活动 R26 上线后显示）→ 标**待 R26**。W-R23-04 0.0036 / 0.0035、W-R23-07 0.0025 / 0.0022 通过（能力名改后无退步，07 略好）。
 - **App 测试**：3967 条，2 失败——`plan-overview-screens`「overview: every field…」可复现，但把能力名改动临时还原后照样失败，原因是 App 计划页会话正在改、尚未提交的 `src/screens/plan/PlanOverview.tsx` 等；另一条 `narrow-double` 单跑通过（负载偶发）。App `tsc` 0 错误。
+- **收尾（主会话定）**：W-R23-06 band 2 是弹窗定位约 3px，归**待组件库**（HANDOFF R24-05b / G23）；04a 待 R26（R24-06b）。README 登记表 R25 行已改为第 4 轮 done 并列出剩余画面。
+- **orbits 全量（改名后）**：7575 条，0 失败，966 跳过。
