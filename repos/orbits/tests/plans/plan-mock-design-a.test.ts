@@ -34,6 +34,8 @@ describe("A: step suggestions on the design samples come from the rule", () => {
     const vc = progress.get("demo-step-3")?.parts.find((part) => part.key === "vc_partner");
     assert.deepEqual([vc?.done, vc?.total], [2, 3], "Step 3 stays VC 2 / 3");
     assert.equal(overview.pending?.filter((item) => item.kind === "candidate").length, 1, "確認待ち: one candidate (佐々木)");
+    const network = Object.fromEntries(overview.content.personTypes.map((type) => [type.key, overview.typeStats?.find((stats) => stats.itemId === type.itemId)?.candidates]));
+    assert.deepEqual(network, { angel: 1, cfo: 1, cvc: 0, funded_founder: 2, lawyer: 1, vc_partner: 4 }, "人脈の候補 = confirmed + unconfirmed, as the board's type cards");
     assert.ok(planV2DetailSchema.parse(overview));
   });
 

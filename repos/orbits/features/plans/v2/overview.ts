@@ -158,9 +158,21 @@ export function eventsFor(input: OverviewInput, type: PlanV2TypeItem | null): Pl
     .sort((a, b) => b.score.total - a.score.total || a.startsAt.localeCompare(b.startsAt));
 }
 
-export function typeStats(input: OverviewInput, now: string): PlanTypeStats[] {
+/**
+ * 「人脈の候補」的人数：人脈里符合这一类的人，已确认（接受后挂在类型上的 contactLinks）+ 未确认（待定候补，聊没聊过都算），
+ * 按人去重；驳回的不算（用户 2026-10-13 定）。確認待ち的列表仍只放未确认、没聊过的候补（candidatesFor）。
+ */
+function networkMatches(input: OverviewInput, type: PlanV2TypeItem): number {
+  const ids = new Set(type.contactLinks.map((link) => link.contactId));
+  for (const candidate of input.candidates) {
+    if (candidate.needItemId === type.id && candidate.status === "pending" && input.contacts.has(candidate.contactId)) ids.add(candidate.contactId);
+  }
+  return ids.size;
+}
+
+export function typeStats(input: OverviewInput, _now: string): PlanTypeStats[] {
   return input.types.map((type) => ({
-    candidates: candidatesFor(input, type, now).length,
+    candidates: networkMatches(input, type),
     events: input.events.filter((event) => (event.facts.expected[type.personType.key] ?? 0) > 0).length,
     introRoutes: type.personType.introRoutes.filter((route) => input.contacts.has(route.viaContactId)).length,
     itemId: type.id,

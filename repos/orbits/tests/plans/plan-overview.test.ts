@@ -168,3 +168,25 @@ test("step progress is split per linked type; candidate pending items carry comp
   for (const option of detail.events) assert.ok(option.fee === null || typeof option.fee === "number");
   assert.ok(detail.events.some((option) => typeof option.fee === "number"), "demo facts have fees");
 });
+
+test("「人脈の候補」 counts the network matches of a type: confirmed (accepted → linked) + still pending; dismissed drop out (2026-10-13)", async () => {
+  const { repository, service } = world();
+  const count = async (key: string) => {
+    const overview = await service.overview(PLAN, { language: "ja", platform: "web" });
+    const id = overview!.content.personTypes.find((type) => type.key === key)!.itemId;
+    return overview!.typeStats!.find((stats) => stats.itemId === id)!.candidates;
+  };
+  const pendingOf = (key: string, id: string) => repository.dump(SCOPE).candidates.filter((candidate) => candidate.needItemId === id && candidate.status === "pending");
+  const key = "cvc";
+  const id = await itemId(service, key);
+  const before = await count(key);
+  const [first] = pendingOf(key, id);
+  assert.ok(first, "the demo world has a pending CVC candidate");
+  await service.decideCandidateById({ candidateId: first.id, decision: "accept" });
+  assert.equal(await count(key), before, "accepting moves the person from unconfirmed to confirmed: still counted once");
+  const [next] = pendingOf(key, id);
+  if (next) {
+    await service.decideCandidateById({ candidateId: next.id, decision: "dismiss" });
+    assert.equal(await count(key), before - 1, "a dismissed candidate is not a match");
+  }
+});

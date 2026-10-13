@@ -131,7 +131,7 @@ const S46: Award[] = [
   { at: jst("2026-09-15"), contactId: "demo-person-aoki", key: "funded_founder", points: 3 },
 ];
 
-type Options = { awards: Award[]; candidates: Candidate[]; startsOn?: string; manualEditAvailable?: boolean; extraLog?: PlanV2LogEntry[] };
+type Options = { awards: Award[]; candidates: Candidate[]; linked?: Candidate[]; startsOn?: string; manualEditAvailable?: boolean; extraLog?: PlanV2LogEntry[] };
 
 function seriesA(options: Options): (state: State) => void {
   return (state) => {
@@ -164,6 +164,12 @@ function seriesA(options: Options): (state: State) => void {
     const known = new Set(state.contacts!.map((contact) => contact.id));
     state.contacts = [...state.contacts!, ...PEOPLE.filter((person) => !known.has(person.id))];
     state.candidates = options.candidates.map((candidate, index) => ({ contactId: candidate.contactId, createdAt: jst("2026-10-05", "09:00"), id: `fx-a-candidate-${index + 1}`, needItemId: item(candidate.key), reason: candidate.reason, status: "pending" as const, strength: candidate.strength, tier: candidate.tier }));
+    // 已确认的人脈の候補：和真实「接受」写入的一样——候补记为 accepted，人挂到类型的 contactLinks。
+    for (const [index, candidate] of (options.linked ?? []).entries()) {
+      state.candidates.push({ contactId: candidate.contactId, createdAt: jst("2026-10-05", "09:00"), id: `fx-a-linked-${index + 1}`, needItemId: item(candidate.key), reason: candidate.reason, status: "accepted" as const, strength: candidate.strength, tier: candidate.tier });
+      const type = typeOf(candidate.key);
+      type.contactLinks = [...type.contactLinks, { contactId: candidate.contactId, establishedAt: null, linkedAt: jst("2026-10-06", "09:00"), state: "linked" }];
+    }
     state.eventItems = [];
     state.log = [
       ...options.awards.map((award, index): PlanV2LogEntry => {
@@ -188,14 +194,19 @@ const dismissStep4: PlanV2LogEntry = { ...dismissStep1, id: "fx-a-dismiss-step-4
 const memoYamamoto: PlanV2LogEntry = { author: "system", body: "memo coverage", createdAt: jst("2026-10-09", "18:00"), event: "memo_coverage_proposed", id: "fx-a-memo-yamamoto", idempotencyKey: "fx-a:memo:yamamoto", itemId: item("vc_partner"), linkedContactIds: ["demo-person-yamamoto"], linkedEventId: null, payload: { answered: [0, 2], contactId: "demo-person-yamamoto" }, planId: PLAN_ID };
 
 const ALL_CANDIDATES = [...OTHER_CANDIDATES, ...VC_CANDIDATES];
-/** 概要画板（e1500b529 补画）的確認待ち：候补正好 1 人 = 佐々木 遼さん（VC）。 */
+/**
+ * 概要画板（e1500b529 补画）的確認待ち：候补正好 1 人 = 佐々木 遼さん（VC）。
+ * 类型卡「人脈の候補」= 已确认 + 未确认（用户 2026-10-13）：CFO 1 · 起業家 2 · エンジェル 1 · VC 4（含佐々木）· CVC 0 · 弁護士 1，
+ * 其余 7 人是已确认的（OVERVIEW_LINKED）。
+ */
+const OVERVIEW_LINKED: Candidate[] = [...OTHER_CANDIDATES, ...VC_CANDIDATES.slice(0, 3)];
 const OVERVIEW_CANDIDATES: Candidate[] = [{ contactId: "demo-person-sasaki", key: "vc_partner", reason: "シード中心で、A はフォローで入る方針", strength: "candidate", tier: "ai" }];
 
 export const fixturesA: Record<string, PlanDesignFixture> = {
-  "w17-overview-many": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, extraLog: [dismissStep4], manualEditAvailable: true })),
+  "w17-overview-many": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, linked: OVERVIEW_LINKED, extraLog: [dismissStep4], manualEditAvailable: true })),
   // b8 #6 / #7（plan1024 / plan390）は Step の完了確認を描いていない：s46 のまま（VC 2 / 3人）。
-  "b8-overview-many": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, extraLog: [dismissStep4], manualEditAvailable: true })),
-  "w16-overview-few": fromDemo((state) => seriesA({ awards: [], candidates: OVERVIEW_CANDIDATES, manualEditAvailable: true, startsOn: today() })(state)),
+  "b8-overview-many": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, linked: OVERVIEW_LINKED, extraLog: [dismissStep4], manualEditAvailable: true })),
+  "w16-overview-few": fromDemo((state) => seriesA({ awards: [], candidates: OVERVIEW_CANDIDATES, linked: OVERVIEW_LINKED, manualEditAvailable: true, startsOn: today() })(state)),
   "b12-208-pending": fromDemo(seriesA({
     manualEditAvailable: true,
     awards: [{ at: jst("2026-10-09"), contactId: "demo-person-ito", key: "cfo", points: 10 }, ...S46],
@@ -203,16 +214,17 @@ export const fixturesA: Record<string, PlanDesignFixture> = {
       { contactId: "demo-person-sasaki", key: "vc_partner", reason: "シード中心で、A はフォローで入る方針", strength: "candidate", tier: "ai" },
       { contactId: "demo-person-suzuki", key: "cvc", reason: "北辰製作所の DX推進室 室長", strength: "candidate", tier: "ai" },
     ],
+    linked: OVERVIEW_LINKED,
     extraLog: [dismissStep1, dismissStep4, memoYamamoto],
   })),
   // 1981a0aa（用户 2026-10-12 选 A）：Step 1「CFO 1 / 1人」达标、没驳回 → 规则自己在 Step 1 下出完成卡；Step 3 仍是 VC 2 / 3人。
   "b12-214-step-done": fromDemo(seriesA({
     manualEditAvailable: true,
     awards: [{ at: jst("2026-10-09"), contactId: "demo-person-ito", key: "cfo", points: 10 }, ...S46],
-    candidates: OVERVIEW_CANDIDATES,
+    candidates: OVERVIEW_CANDIDATES, linked: OVERVIEW_LINKED,
     extraLog: [dismissStep4],
   })),
-  "b12-206-premise": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, extraLog: [dismissStep4], manualEditAvailable: true })),
+  "b12-206-premise": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, linked: OVERVIEW_LINKED, extraLog: [dismissStep4], manualEditAvailable: true })),
   "b4-11-type-vc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
   "b4-13-type-cvc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
   "b12-222-law-skipped": fromDemo(seriesA({ awards: S46.map((award) => (award.key === "lawyer" ? { ...award, at: jst("2026-10-07") } : award)), candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
