@@ -649,6 +649,8 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["add.doors.density2", "chip"],
   ["add.doors.density3", "chip"],
   ["add.doors.sheetLabel", "label"],
+  ["add.doors.pendingTitle", "label"],
+  ["add.doors.close", "button"],
   ["add.scan.title", "label"],
   ["add.scan.help", "label"],
   ["add.scan.legacyNotice", "sentence"],
