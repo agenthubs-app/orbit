@@ -436,12 +436,17 @@ function MemoCard({ item, detail, t, actions, language }: { item: PlanPendingIte
   const busy = actions.busy !== null;
   const date = new Intl.DateTimeFormat(language, { day: "numeric", month: "numeric" }).format(new Date(item.createdAt));
   const meta = item.manual ? t(c.pendingManualMeta) : t(c.pendingMemoMeta, { date, questions: answered.map((n) => n + 1).join(t(planFlowCopy.listSeparator)), type: type?.shortLabel ?? item.title });
+  // b12 W-R24-04a: the proposal's 「?」 = which memo and which questions it answered (the manual card lists the questions itself).
+  const basis = item.manual || !answered.length ? null : t(c.pendingMemoBasis, { date, questions: answered.map((n) => t(c.pendingMemoBasisQuestion, { n: n + 1, question: type?.questions?.[n] ?? "" })).join("") });
+  const why = useWhy();
   return (
     <div className={`${styles.confirmCard} ${styles.pendCard}`} data-plan-memo={item.id} data-manual={item.manual ? "" : undefined}>
       <div className={styles.row}>
         <MacTile emoji={type?.emoji ?? "💼"} size="sm" tone={typeTone(index)} />
         <div className={styles.grow}><div className={styles.pendText}>{item.manual ? manualText : proposalText}</div><span className={styles.lbl}>{meta}</span></div>
+        {basis ? why.button : null}
       </div>
+      {why.open && basis ? <div className={styles.whyBody}>{why.text(basis)}</div> : null}
       {item.manual ? (
         <div className={styles.pq}>
           {(type?.questions ?? []).map((question, q) => {

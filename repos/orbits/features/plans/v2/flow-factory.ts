@@ -45,7 +45,7 @@ export function resolvePlanFlowService(input: { actorId: string; mode?: ModuleMo
     service: createPlanFlowService({
       afterConfirmed: live ? (job) => enqueuePlanSourceMatchAfterSave(job) : undefined,
       ai: input.ai ?? (live ? configuredPlanFlowAi() : createMockPlanFlowAi()),
-      context: live ? createLivePlanFlowContext({ mode: "live", pool: pool as PlanPoolLike, workspaceId: scope.workspaceId }) : createMockPlanFlowContext(),
+      context: live ? createLivePlanFlowContext({ mode: "live", pool: pool as PlanPoolLike, workspaceId: scope.workspaceId }) : createMockPlanFlowContext(() => repository.read(scope, (reader) => reader.findContactsByName("", 200))),
       now: input.now,
       planService: service,
       repository,

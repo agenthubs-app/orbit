@@ -2,6 +2,7 @@
  * 子任务 C 的设计稿示例 fixture（键 = fixture 名，建议用画板编号，如 "b4-11-type-candidates"）。只补数据，不改画面结构。
  */
 import type { PlanLegacyDetail, PlanNextGoalsResponse, PlanPremiseRow } from "../../../../shared/contract/plan-v2";
+import { nextTokyoMidnight, tokyoUsageMonth } from "../../../ai-quota/constants";
 import type { MemoryPlanV2State } from "../repository";
 import type { PlanDesignEventFacts, PlanDesignFixture } from "./base";
 import { fromDemo } from "./base";
@@ -70,7 +71,24 @@ export const fixturesC: Record<string, PlanDesignFixture> = {
     }
   }),
   /** 見直し（b4 #18 · b12 #254 #256）：前提 7 行照画板；先送 2 回 / 用完由门禁前的接口调用造出。 */
-  "c-review": fromDemo(reviewPlan),
+  "c-review": fromDemo((state) => {
+    reviewPlan(state);
+    // b12 #258 W-R25-06a 等：AI 预标「直近の数字」「既存株主」两行（C8 每计划每东京日缓存一次的回执，键同 flow-service startReview；
+    // 切换 fixture 的当天有效）。依据是面談メモ摘要（不在 plan_log 里）。
+    const plan = state.plans?.[0];
+    if (!plan) return;
+    const now = new Date();
+    const day = new Date(Date.parse(nextTokyoMidnight(now)) - 86_400_000).toISOString().slice(0, 10);
+    const memos = [
+      { at: "2026-10-05T10:00:00+09:00", id: "design-memo-arr", text: "面談メモ「ARR 1億円の見込み」" },
+      { at: "2026-10-09T10:00:00+09:00", id: "design-memo-vc", text: "VC 2人と面談済み · 高橋さんがリード候補に" },
+    ];
+    const marks = [
+      { evidenceIds: ["design-memo-arr"], key: "F1", reason: "最近の面談メモで変わったかもしれません。", suggested: null },
+      { evidenceIds: ["design-memo-vc"], key: "F2", reason: "最近の面談メモで変わったかもしれません。", suggested: null },
+    ];
+    state.receipts = [...(state.receipts ?? []), { createdAt: now.toISOString(), draftId: null, fingerprint: "design-fixture", idempotencyKey: `review-mark:${plan.id}:${tokyoUsageMonth(now)}:${day}`, intakeId: null, kind: "review_marks", outcome: "applied", planId: plan.id, response: { marks, memos } as unknown as Record<string, unknown> }];
+  }),
   /** 完了 → 次の目標（b4 #27）：达成于 10月7日；C10 的候选按画板示例放进每计划一次的缓存回执（不调 AI）。 */
   "c-done": fromDemo((state) => {
     reviewPlan(state);

@@ -74,10 +74,18 @@
      "click": "button[aria-label=\"メンバーを追加\"]"
     },
     {
-     "wait": 800
+     "wait": 1200
+    },
+    {
+     "click": "button[role=\"checkbox\"][aria-label=\"森 美咲\"]"
+    },
+    {
+     "wait": 600
     }
    ],
-   "board": "W-R23-06 "
+   "board": "W-R23-06 ",
+   "fixture": "b12-140-add-member",
+   "note": "10-13：fixture b12-140-add-member（画板候补 森 / 小林），勾选森（复核 7）"
   },
   {
    "id": "W-R23-10",

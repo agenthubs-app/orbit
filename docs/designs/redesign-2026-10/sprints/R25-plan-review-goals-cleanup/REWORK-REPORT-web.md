@@ -196,3 +196,19 @@ d77115ac、95e82990、6ab3e559、9c8a999d（B）；4a2cd45c（误带）+ bebb1d4
 - **复核 9**：N17b 归因补「体制」行（6c7c0ad7）。复核 7 与 W-R23-19 / W-R25-06a 缺块补 fixture 仍未做；C 组 05 / 06a–c 新画板未重比（要 setup 造见直し状态）。交接见 side-session-notes `R23-25-web-plan-round2-handoff.md`。
 - **测试**：orbits 全量 7572 条 0 失败（390 排序改动前）；改动后相关 28 / 28。
 
+
+### 第 4 轮（2026-10-13，接手会话，画板 916b9f6b / 9c82c4ec / df856a20 之后 `--no-cache` 重截）
+
+证据：`~/orbit-sprint-evidence/redesign/plan-rework-R5/`（A 组新画板重截）、`plan-rework-R6/`（改动后重比）。服务器 :3207（`ORBIT_REDESIGN_MOCK=plan-v2-summary`，distDir `.next-rework-r3`），单路。
+
+- **A 组新画板重截**（第 1 轮，不改代码）：02 1440 0.0188 / 0.021、1024 0.0184 / 0.0206、390 0.070 / 0.074；01 0.034 / 0.035；03 0.054 / 0.045；04c 0.0201 / 0.0196；06 0.035；07 0.029 / 0.028；08 0.059 / 0.058——与第 3 轮完全一致，无退步。
+- **W-R24-04a 变差查明**：不是画板 CVC 改 1 造成的。確認待ち的 memo 提议卡缺画板行末的「?」根拠按钮，文字列宽 216（画板 188），换行少一行，下面整页上移。补上「?」与根拠（`PlanOverview` `MemoCard`：面談メモ日期 + 聞けた問い的题目，文案 `pendingMemoBasis` / `pendingMemoBasisQuestion`，只在非手动的提议卡）→ **0.060 / 0.058 → 0.014 / 0.0138**。剩下的超阈带：右栏「今日のチャンス」（待 R26，同 02 / 04c）；画板 #210 的 wPlan 不带 イベント 得分卡（evBlock），实现概要底部总有；Step 5「新しく会う人はいません」画板后面跟着该 Step 的说明半句（画板写死）。
+- **复核 7（W-R23-06）**：`createMockPlanFlowContext` 加可选的联系人读取函数，mock 服务器传 mock 仓储里本人的联系人（`flow-factory` mock 分支用 `findContactsByName("", 200)`）；不传时仍是演示世界（测试照旧）。新 fixture `b12-140-add-member`（b10-flow + 画板候补 森 美咲 / 小林 翔，高木 悠已在团队）；`web-plan-B.json` W-R23-06 加 fixture 与「勾选森」一步。「人脈から選ぶ」默认列表顶部补出已在团队的成员（「メンバー」chip，不可勾选，画板 #140）。**0.101 / 0.091 → 0.033 / 0.029**，未过，剩下的要拍板（见下）。测试 `tests/plans/mock-flow-context-fixture-contacts.test.ts`。
+- **复核 9**：W-R23-19 的「この会話の記録」补「AI 修正 N回」chip（文案 `logFixes` 原来就有、没渲染；数据 = 确定时草稿的 `aiFixUsed`），fixture 给 planned intake 挂一份已确认、修正 3 回、手动编辑过的草稿 → **通过 0.0103 / 0.0101，缺块 3 → 2**。W-R25-06a 第二行 AI 预标（既存株主）：`c-review` fixture 预置当天的 C8 预标回执（直近の数字、既存株主两行，依据是面談メモ摘要）→ **0.012 / 0.018 → 0.006 / 0.0059**。
+- **C 组重比**：07M 0.0025 / 0.0023、09M 0.0086 / 0.0085、05 0.0077 / 0.0078、06a 0.006 / 0.0059 通过；03 0.0065 / 0.0079 通过（c-review 改动后复查）；02M 浅色仍差 1px（0.0028，1 条带）。07 / 09 整屏 0.050 / 0.040、0.038 / 0.040 只因背景是 A 组概要页。06b / 06c、04b / 04d、N13-W 没有门禁视图。
+- **待拍板（已发主会话）**：
+  1. W-R23-06「できること」预览：画板有「＋ その他」与「関わり方：業務委託 · 変更は ✎」，实现从人脉选的成员没有「关わり方」选择、也不能补其它能力——要做功能，还是画板去掉？
+  2. 能力名：画板「AI・データ」，两端共用文案 `shared/compute/plan-template-copy.ts` 是「AI とデータ」（改了 App 也跟着变）。
+  3. W-R24-04a：画板 #210 底部没有 イベント 得分卡、Step 5 写死说明半句——按画板改实现，还是改画板？
+- **仍等待**：右栏「今日のチャンス」（R26，影响 01 / 02 / 04a / 04c）；组件库 Modal / Drawer（03 / 09b / 11 / 12）。
+- **测试**：orbits 全量 7575 条，0 失败，966 跳过（第 4 轮改动后）；typecheck 0 错误（不含 `.next` 残留）。GitNexus：`createMockPlanFlowContext` / `resolvePlanFlowService` impact 为 CRITICAL（流程服务被 144 条流程引用），对策是只加可选参数、不传参行为不变、live 分支不动，加测试守；`MemoCard` 是文件内函数，文本搜索确认只有一处使用；detect-changes 低风险，只动到 `resolvePlanFlowService`。

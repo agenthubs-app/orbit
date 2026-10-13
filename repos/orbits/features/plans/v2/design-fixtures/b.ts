@@ -24,6 +24,7 @@ export const B_FLOW_IDS = {
   fallback: "intake_b10_fallback",
   oneRung: "intake_b10_onerung",
   planned: "intake_b10_planned",
+  draftPlanned: "draft_b10_planned",
 } as const;
 
 const AT = "2026-10-08T01:00:00.000Z";
@@ -226,15 +227,32 @@ export const fixturesB: Record<string, PlanDesignFixture> = {
       { ...intake(B_FLOW_IDS.drafting, "drafting", null), aiSteps: { ...intake(B_FLOW_IDS.drafting, "background", null).aiSteps, background: step("none") }, background: { me: null, purpose: null, reading: background(false).reading, team: null }, questions: null },
       fallbackIntake(),
       oneRungIntake(),
-      { ...intake(B_FLOW_IDS.planned, "planned", null), planId: "demo-plan-series-a" },
+      // W-R23-19「この会話の記録」：AI 修正 3回 · 手動編集 1回 → 确定时用的草稿（修正 3 回、手动编辑过）。
+      { ...intake(B_FLOW_IDS.planned, "planned", B_FLOW_IDS.draftPlanned), planId: "demo-plan-series-a" },
     ];
     state.drafts = [
       ...(state.drafts ?? []),
       draft(B_FLOW_IDS.draftInitial, B_FLOW_IDS.drafted, STEPS0.map((item) => ({ ...item })), []),
       draft(B_FLOW_IDS.draftFix1, B_FLOW_IDS.fixed1, withDone({ 1: DONE2, 2: DONE3 }), [TURN1]),
       draft(B_FLOW_IDS.draftUsedUp, B_FLOW_IDS.usedUp, withDone({ 1: DONE2, 2: DONE3, 4: DONE5 }), [TURN1, TURN2, TURN3]),
+      { ...draft(B_FLOW_IDS.draftPlanned, B_FLOW_IDS.planned, withDone({ 1: DONE2, 2: DONE3, 4: DONE5 }), [TURN1, TURN2, TURN3]), confirmedAt: AT, manualEditUsed: true, planId: "demo-plan-series-a", status: "confirmed" },
     ];
   }),
+  /**
+   * W-R23-06（b12 #140 メンバー追加 · 人脈から選ぶ）：b10-flow + 画板的候补联系人。高木 悠（演示世界 aoki，已在团队里）保留，
+   * 再放 森 美咲（空き：デザイン）、小林 翔（空き：営業）两位；别的演示联系人去掉，候补只剩这两人（mock 生成流程读本人联系人，
+   * 复核 REWORK-REVIEW-web 问题 7）。森的职位写「UI デザイン」：「空き」匹配按能力名子串（デザイン），画板写的是「デザイナー」。
+   */
+  "b12-140-add-member": () => {
+    const state = fixturesB["b10-flow"]!();
+    const aoki = (state.contacts ?? []).find((contact) => contact.id === "demo-person-aoki");
+    state.contacts = [
+      ...(aoki ? [{ ...aoki, name: "高木 悠" }] : []),
+      { id: "design-person-mori", isOrbitUser: false, lastInteractionAt: null, name: "森 美咲", organization: null, role: "UI デザイン · 副業可" },
+      { id: "design-person-kobayashi", isOrbitUser: false, lastInteractionAt: null, name: "小林 翔", organization: null, role: "元 SaaS 営業 · アドバイザー" },
+    ];
+    return state;
+  },
 };
 
 /** 同名 fixture 的会える活動事实（可选；键与上面的 fixture 名一致）。 */

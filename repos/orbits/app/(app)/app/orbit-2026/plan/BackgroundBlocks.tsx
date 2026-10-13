@@ -347,6 +347,8 @@ function AddMemberModal({ open, onClose, intake, t, language, onAddMembers, gaps
     ? searched.map((candidate) => ({ ...candidate, capabilities: [] }))
     : (defaults ?? []).filter((candidate) => !existing.has(candidate.contactId)).map((candidate) => ({ ...candidate, capabilities: [...candidate.capabilities], fills: candidate.fills.map((id) => capabilityLabel(id, language)) }));
   const pickedPerson = ranked.find((candidate) => candidate.contactId === picked[picked.length - 1]) ?? null;
+  // b12 #140: the default list opens with the people already in the team (「メンバー」, not pickable), then the candidates.
+  const members = searching ? [] : intake.background.team.value.members.filter((member) => !member.isSelf);
   return (
     <FlowDialog open={open} onClose={onClose} width={520} label={t(planFlowCopy.addMemberTitle)} data={{ "data-plan-add-modal": tab }}>
       <div className={k.row}>
@@ -362,7 +364,16 @@ function AddMemberModal({ open, onClose, intake, t, language, onAddMembers, gaps
         <div data-plan-add="network">
           <label className={k.input}><Icon name="search" size={16} /><input aria-label={t(planFlowCopy.searchPlaceholder)} placeholder={t(planFlowCopy.searchPlaceholder)} value={query} onChange={(event) => setQuery(event.target.value)} data-autofocus="" /></label>
           <div className={`${k.lbl} ${k.addHint}`}>{searching && results === null ? t(planFlowCopy.searchEmpty) : ranked.length === 0 ? t(searching ? planFlowCopy.searchNone : planFlowCopy.searchEmpty) : t(planFlowCopy.candidatesHint)}</div>
-          {ranked.map((candidate, index) => {
+          {members.map((member, index) => (
+            <div key={member.memberId} className={k.mem} data-plan-add-member={member.memberId}>
+              <span className={`${k.av} ${AV_TONES[(index + 1) % AV_TONES.length]}`} aria-hidden>{[...member.name][0] ?? ""}</span>
+              <div className={k.grow}><b className={k.memName}>{member.name}</b>{member.headline ? <div className={k.lbl}>{member.headline}</div> : null}</div>
+              <span className={`${k.chip} ${k.chipLav}`}>{t(planFlowCopy.memberChip)}</span>
+              <span className={k.ckr} aria-hidden><Icon name="check" size={16} /></span>
+            </div>
+          ))}
+          {ranked.map((candidate, rank) => {
+            const index = rank + members.length;
             const on = picked.includes(candidate.contactId);
             const fill = candidate.fills[0];
             return (

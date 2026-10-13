@@ -274,6 +274,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
             <div className={k.hist}>
               {intake.background.purpose.value.selectedLevel ? <span className={k.chip}>{t(planFlowCopy.logBackground, { level: intake.background.purpose.value.selectedLevel })}</span> : null}
               {intake.questions?.length ? <span className={k.chip}>{t(planFlowCopy.logQuestions, { count: intake.questions.length })}</span> : null}
+              {draft?.aiFixUsed ? <span className={k.chip}>{t(planFlowCopy.logFixes, { count: draft.aiFixUsed })}</span> : null}
               {plan && !plan.quota.manualEditAvailable ? <span className={k.chip}>{t(planFlowCopy.logManual)}</span> : null}
             </div>
           </div>
