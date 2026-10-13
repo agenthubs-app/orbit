@@ -9,17 +9,18 @@
 //   (元に戻す = the server's undo: within 10 minutes and untouched only).
 // The sample account cannot save (403 SAMPLE_READ_ONLY): the page says so.
 import { type Href, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
 
 import type { IngestContactCandidateContract } from "../../api/contract/business-card-batch";
 import type { ManualContactFieldChoice, ManualContactMergeField, ManualContactOrganizationSuggestion } from "../../api/contract/manual-contact";
 import { AppScreen } from "../../components/AppScreen";
-import { Button, Card, Chip, FilterOption, ListRow, Radio, TextField, UiText, useToast } from "../../components/ui";
+import { BottomSheet, Button, FilterOption, Icon, MacTile, Radio, UiPressable, UiText, useToast } from "../../components/ui";
+import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 import { useAddApi } from "./add-api";
-import { Body, Caption, DensityDots, FadeIn, SectionTitle, useAddStyles } from "./add-ui";
+import { Caption, DensityDots, FadeIn } from "./add-ui";
 import {
   createBody,
   defaultChoices,
@@ -57,7 +58,8 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
   const api = useAddApi();
   const toast = useToast();
   const { t } = useOrbitLocale();
-  const { styles } = useAddStyles();
+  const { colors, m } = useManualStyles();
+  const [dismissed, setDismissed] = useState<string | null>(null);
   const [form, setForm] = useState<ManualForm>(EMPTY_MANUAL_FORM);
   const [open, setOpen] = useState<Set<Extra>>(() => new Set());
   const [candidates, setCandidates] = useState<IngestContactCandidateContract[]>([]);
@@ -180,166 +182,255 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
     toast.info(t("add.manual.undoneToast"));
   }
 
-  const saveLabel = decision.kind === "merge" ? t("add.manual.saveMerge") : t("add.manual.save");
   const problemKey: MessageKey | null = problem === "name" ? "add.manual.nameMissing" : problem === "review" ? "add.manual.reviewNeeded" : problem === "sample" ? "add.manual.sampleBlocked" : problem === "failed" ? "add.manual.saveFailed" : null;
+  const anyOpen = open.size > 0;
+  const showSuggestions = open.has("organization") && orgFocused && Boolean(orgQuery);
+  const sheetOpen = Boolean(candidate) && decision.kind === "none" && dismissed !== candidate?.contactId;
   return (
-    <AppScreen title={t("add.manual.title")} headerActions={<Button size="sm" variant="primary" label={t("add.manual.save")} disabled={!form.displayName.trim() || saving} onPress={() => void save()} />}>
+    <AppScreen title={t("add.manual.title")} backIcon="x"
+      headerActions={<Button size="sm" variant="primary" label={t("add.manual.save")} disabled={!form.displayName.trim() || saving} onPress={() => void save()} />}>
       <FadeIn testID="add-manual">
-        <View style={styles.stack}>
-          <Caption>{t("add.manual.lead")}</Caption>
-          <View style={styles.tightStack}>
-            <View style={styles.row}>
-              <Chip label={t("add.manual.required")} tone="coral" />
-            </View>
-            <TextField label={t("add.manual.name")} value={form.displayName} onChangeText={(value) => set("displayName", value)} autoFocus returnKeyType="done" testID="add-manual-name" />
-            <Caption>{t("add.manual.nameHint")}</Caption>
+        <Field label={t("add.manual.name")} required={t("add.manual.required")} hint={anyOpen ? undefined : t("add.manual.nameHint")} first>
+          <FieldInput value={form.displayName} onChangeText={(value) => set("displayName", value)} autoFocus returnKeyType="done" accessibilityLabel={t("add.manual.name")} testID="add-manual-name" />
+        </Field>
+
+        {candidate && decision.kind === "none" && dismissed === candidate.contactId ? (
+          <UiPressable accessibilityRole="button" onPress={() => setDismissed(null)} style={m.dupLine} testID="add-manual-duplicate">
+            <UiText style={m.lbl}>{t("add.manual.dupTitle", { name: candidate.displayName })}</UiText>
+          </UiPressable>
+        ) : null}
+        {candidate && decision.kind === "separate" ? (
+          <View style={m.dupLine} testID="add-manual-separated">
+            <UiText style={m.lbl}>{t("add.manual.dupSeparated")}</UiText>
+            <Button size="sm" variant="ghost" label={t("add.manual.dupUndoSeparate")} onPress={() => setDecision({ kind: "none" })} />
           </View>
+        ) : null}
+        {candidate && decision.kind === "merge" ? (
+          <MergeChoices candidate={candidate} form={form} decision={decision} differing={differing}
+            onReset={() => setDecision({ kind: "none" })}
+            onChoose={(field, choice) => setDecision((current) => (current.kind === "merge" ? { ...current, choices: { ...current.choices, [field]: choice } } : current))} />
+        ) : null}
 
-          {candidate ? (
-            <DuplicateCandidate
-              candidate={candidate}
-              form={form}
-              decision={decision}
-              differing={differing}
-              onMerge={() => setDecision({ choices: defaultChoices(differing), contactId: candidate.contactId, kind: "merge" })}
-              onSeparate={() => setDecision({ kind: "separate" })}
-              onReset={() => setDecision({ kind: "none" })}
-              onChoose={(field, choice) => setDecision((current) => (current.kind === "merge" ? { ...current, choices: { ...current.choices, [field]: choice } } : current))}
-            />
-          ) : null}
+        {open.has("organization") ? (
+          <Field label={t("add.manual.organization")}>
+            <FieldInput value={form.organization} onChangeText={(value) => set("organization", value)} accessibilityLabel={t("add.manual.organization")}
+              onFocus={() => setOrgFocused(true)} onBlur={() => setTimeout(() => { if (mounted.current) setOrgFocused(false); }, 150)} testID="add-manual-organization" />
+            {showSuggestions ? (
+              <View style={m.sugg} testID="add-manual-org-suggestions">
+                {organizations.map((entry, index) => (
+                  <UiPressable key={entry.name} accessibilityRole="button" onPress={() => { set("organization", entry.name); setOrganizations([]); }} style={[m.suggRow, index === 0 ? m.suggOn : null]}>
+                    <View style={[m.suggTile, { backgroundColor: colors.macBlue }]}><UiText style={m.suggEmoji}>🏭</UiText></View>
+                    <UiText style={m.suggText}>{entry.name} <UiText style={m.lbl}>{t("add.manual.orgCount", { n: entry.contactCount })}</UiText></UiText>
+                  </UiPressable>
+                ))}
+                <UiPressable accessibilityRole="button" onPress={() => setOrganizations([])} style={[m.suggRow, organizations.length ? null : m.suggOn]}>
+                  <View style={[m.suggTile, { backgroundColor: colors.surface2 }]}><UiText style={m.suggEmoji}>＋</UiText></View>
+                  <UiText style={m.suggText}>{t("add.manual.orgNew", { name: orgQuery })}</UiText>
+                </UiPressable>
+              </View>
+            ) : null}
+          </Field>
+        ) : null}
 
-          <SectionTitle>{t("add.manual.optionalTitle")}</SectionTitle>
-          <View style={styles.row} testID="add-manual-chips">
+        {open.has("met") ? (
+          <Field label={t("add.manual.met")} hint={t("add.manual.metHint")} testID="add-manual-met">
+            <View style={m.chips}>
+              {events.map((event) => (
+                <FilterOption key={event.eventId} label={t("add.manual.metEventChip", { date: monthDay(event.startsAt), title: event.title })} selected={form.met?.kind === "event" && form.met.eventId === event.eventId} onToggle={() => set("met", form.met?.eventId === event.eventId ? null : { eventId: event.eventId, kind: "event", label: event.title })} />
+              ))}
+              <FilterOption label={t("add.manual.metIntro")} selected={form.met?.kind === "intro"} onToggle={() => set("met", form.met?.kind === "intro" ? null : { kind: "intro" })} />
+              <FilterOption label={t("add.manual.metOther")} selected={form.met?.kind === "other"} onToggle={() => set("met", form.met?.kind === "other" ? null : { kind: "other" })} />
+            </View>
+            {form.met?.kind === "intro" || form.met?.kind === "other" ? (
+              <View style={m.gap}><FieldInput value={form.met.label ?? ""} placeholder={t(form.met.kind === "intro" ? "add.manual.metIntroLabel" : "add.manual.metOtherLabel")} accessibilityLabel={t(form.met.kind === "intro" ? "add.manual.metIntroLabel" : "add.manual.metOtherLabel")} onChangeText={(value) => set("met", { ...form.met!, label: value })} /></View>
+            ) : null}
+          </Field>
+        ) : null}
+
+        {open.has("note") ? (
+          <Field label={t("add.manual.note")}>
+            <FieldInput value={form.note} multiline onChangeText={(value) => set("note", value)} accessibilityLabel={t("add.manual.note")} testID="add-manual-note" />
+          </Field>
+        ) : null}
+
+        {open.has("contact") ? (
+          <>
+            <Field label={t("add.manual.email")}><FieldInput value={form.email} keyboardType="email-address" autoCapitalize="none" onChangeText={(value) => set("email", value)} accessibilityLabel={t("add.manual.email")} /></Field>
+            <Field label={t("add.manual.phone")}><FieldInput value={form.phone} keyboardType="phone-pad" onChangeText={(value) => set("phone", value)} accessibilityLabel={t("add.manual.phone")} /></Field>
+          </>
+        ) : null}
+
+        {/* b11 A3 ②: once a field is open the heading and the merge note go; the chips not opened yet stay
+            (decision §18: 連絡先 must stay reachable — the board's ② omitted it). */}
+        {anyOpen ? null : <UiText style={m.more}>{t("add.manual.optionalTitle")} <UiText style={m.moreNote}>{t("add.manual.optionalNote")}</UiText></UiText>}
+        {open.size < 4 ? (
+          <View style={[m.chips, anyOpen ? m.chipsAfter : null]} testID="add-manual-chips">
             {(["organization", "met", "note", "contact"] as const).filter((extra) => !open.has(extra)).map((extra) => (
-              <Button key={extra} size="sm" variant="secondary" icon="plus" label={t(extra === "organization" ? "add.manual.chipOrganization" : extra === "met" ? "add.manual.chipMet" : extra === "note" ? "add.manual.chipNote" : "add.manual.chipContact")} onPress={() => toggle(extra)} />
+              <UiPressable key={extra} accessibilityRole="button" onPress={() => toggle(extra)} style={[m.addf, extra === "contact" ? m.addfQuiet : null]} testID={`add-manual-chip-${extra}`}>
+                <Icon name="plus" size={16} color={extra === "contact" ? colors.ink3 : colors.plum700} />
+                <UiText style={[m.addfText, extra === "contact" ? m.addfQuietText : null]}>{t(extra === "organization" ? "add.manual.chipOrganization" : extra === "met" ? "add.manual.chipMet" : extra === "note" ? "add.manual.chipNote" : "add.manual.chipContact")}</UiText>
+              </UiPressable>
             ))}
           </View>
-
-          {open.has("organization") ? (
-            <Card>
-              <View style={styles.stack}>
-                <TextField label={t("add.manual.organization")} value={form.organization} onChangeText={(value) => set("organization", value)} onFocus={() => setOrgFocused(true)} onBlur={() => setTimeout(() => { if (mounted.current) setOrgFocused(false); }, 150)} testID="add-manual-organization" />
-                {organizations.length ? (
-                  <View testID="add-manual-org-suggestions">
-                    {organizations.map((entry) => <ListRow key={entry.name} title={t("add.manual.orgSuggestion", { n: entry.contactCount, name: entry.name })} onPress={() => { set("organization", entry.name); setOrganizations([]); }} />)}
-                  </View>
-                ) : null}
-                <TextField label={t("add.manual.role")} value={form.role} onChangeText={(value) => set("role", value)} />
-              </View>
-            </Card>
-          ) : null}
-
-          {open.has("met") ? (
-            <Card>
-              <View style={styles.stack} testID="add-manual-met">
-                <UiText style={styles.strong}>{t("add.manual.met")}</UiText>
-                <Caption>{t("add.manual.metHint")}</Caption>
-                <View style={styles.row}>
-                  {events.map((event) => (
-                    <FilterOption key={event.eventId} label={t("add.manual.metEventChip", { date: monthDay(event.startsAt), title: event.title })} selected={form.met?.kind === "event" && form.met.eventId === event.eventId} onToggle={() => set("met", form.met?.eventId === event.eventId ? null : { eventId: event.eventId, kind: "event", label: event.title })} />
-                  ))}
-                  <FilterOption label={t("add.manual.metIntro")} selected={form.met?.kind === "intro"} onToggle={() => set("met", form.met?.kind === "intro" ? null : { kind: "intro" })} />
-                  <FilterOption label={t("add.manual.metOther")} selected={form.met?.kind === "other"} onToggle={() => set("met", form.met?.kind === "other" ? null : { kind: "other" })} />
-                </View>
-                {form.met?.kind === "intro" || form.met?.kind === "other" ? (
-                  <TextField label={t(form.met.kind === "intro" ? "add.manual.metIntroLabel" : "add.manual.metOtherLabel")} value={form.met.label ?? ""} onChangeText={(value) => set("met", { ...form.met!, label: value })} />
-                ) : null}
-              </View>
-            </Card>
-          ) : null}
-
-          {open.has("note") ? (
-            <TextField label={t("add.manual.note")} placeholder={t("add.manual.notePlaceholder")} value={form.note} multiline onChangeText={(value) => set("note", value)} />
-          ) : null}
-
-          {open.has("contact") ? (
-            <Card>
-              <View style={styles.stack}>
-                <TextField label={t("add.manual.email")} value={form.email} keyboardType="email-address" autoCapitalize="none" onChangeText={(value) => set("email", value)} />
-                <TextField label={t("add.manual.phone")} value={form.phone} keyboardType="phone-pad" onChangeText={(value) => set("phone", value)} />
-              </View>
-            </Card>
-          ) : null}
-
-          <View style={styles.row} testID={`add-manual-density-${density}`}>
-            <DensityDots level={density} />
-            <Caption>{t("add.manual.densityPreview", { level: t(DENSITY_KEY[density]) })}</Caption>
+        ) : null}
+        {anyOpen ? null : (
+          <View style={[m.flat, m.mergeNote]}>
+            <UiText style={m.mergeEmoji}>📇</UiText>
+            <UiText style={m.mergeText}>{t("add.manual.cardLaterBefore")}<UiText style={m.mergeStrong}>{t("add.manual.cardLaterStrong")}</UiText>{t("add.manual.cardLaterAfter")}</UiText>
           </View>
-          <Card variant="flat">
-            <Body>{t("add.manual.cardLater")}</Body>
-          </Card>
-          {problemKey ? <Caption tone="error">{t(problemKey)}</Caption> : null}
-          <Button variant="primary" block icon="check" label={saving ? t("add.manual.saving") : saveLabel} loading={saving} disabled={!form.displayName.trim()} onPress={() => void save()} />
+        )}
+
+        <View style={[m.flat, anyOpen ? m.densGapOpen : m.densGap]} testID={`add-manual-density-${density}`}>
+          <View style={m.between}>
+            <UiText style={m.lbl}>{t(anyOpen ? "add.manual.densitySave" : "add.manual.densityAsIs")}</UiText>
+            <DensityDots level={density} />
+          </View>
+          <UiText style={[m.lbl, m.densLine]}>{t(density === 1 ? "add.manual.densityLine1" : "add.manual.densityLine2", { level: t(DENSITY_KEY[density]) })}</UiText>
         </View>
+        {problemKey ? <View style={m.gap}><Caption tone="error">{t(problemKey)}</Caption></View> : null}
       </FadeIn>
+
+      <BottomSheet visible={sheetOpen} onClose={() => setDismissed(candidate?.contactId ?? null)} accessibilityLabel={t("add.manual.dupSheetTitle")}>
+        {candidate ? (
+          <View testID="add-manual-dup-sheet">
+            <View style={m.sheetHead}>
+              <MacTile emoji="🔍" tone="apricot" />
+              <View style={m.grow}>
+                <UiText style={m.sheetTitle}>{t("add.manual.dupSheetTitle")}</UiText>
+                <UiText style={m.lbl}>{t(candidate.matchedOn.includes("name") && candidate.matchedOn.length === 1 ? "add.manual.dupSheetLeadName" : "add.manual.dupSheetLead")}</UiText>
+              </View>
+            </View>
+            <View style={m.cmp2}>
+              <View style={m.cmpBox}>
+                <UiText style={m.lbl}>{t("add.manual.dupIncoming")}</UiText>
+                <UiText style={m.cmpName}>{form.displayName.trim()}</UiText>
+                {form.organization.trim() ? <UiText style={m.cmpText}>{form.organization.trim()}</UiText> : null}
+                <UiText style={m.lbl}>{[t("add.manual.sourceManual"), form.met?.label].filter(Boolean).join(" · ")}</UiText>
+              </View>
+              <View style={[m.cmpBox, m.cmpExisting]}>
+                <UiText style={m.lbl}>{t("add.manual.dupExisting")}</UiText>
+                <UiText style={m.cmpName}>{candidate.displayName}</UiText>
+                {candidate.organization || candidate.role ? <UiText style={m.cmpText}>{[candidate.organization, candidate.role].filter(Boolean).join(" · ")}</UiText> : null}
+              </View>
+            </View>
+            <UiText style={[m.lbl, m.rule]}>{differing.length ? t("add.manual.dupRule", { fields: differing.map((field) => t(FIELD_KEY[field])).join("・") }) : t("add.manual.dupRuleSame")}</UiText>
+            <View style={m.sheetActs}>
+              <Button variant="primary" block label={t("add.manual.dupMerge")} onPress={() => setDecision({ choices: defaultChoices(differing), contactId: candidate.contactId, kind: "merge" })} />
+              <Button block label={t("add.manual.dupSeparate")} onPress={() => setDecision({ kind: "separate" })} />
+            </View>
+          </View>
+        ) : null}
+      </BottomSheet>
     </AppScreen>
   );
 }
 
-function DuplicateCandidate({ candidate, form, decision, differing, onMerge, onSeparate, onReset, onChoose }: {
+/** kit .fld: label (12 / 700, 必須 coral 10 / 800), the field, a grey line under it. */
+function Field({ label, required, hint, first = false, testID, children }: { label: string; required?: string | undefined; hint?: string | undefined; first?: boolean; testID?: string | undefined; children: ReactNode }) {
+  const { m } = useManualStyles();
+  return (
+    <View style={first ? m.fldFirst : m.fld} testID={testID}>
+      <View style={m.label}><UiText style={m.labelText}>{label}</UiText>{required ? <UiText style={m.req}>{required}</UiText> : null}</View>
+      {children}
+      {hint ? <UiText style={[m.lbl, m.msg]}>{hint}</UiText> : null}
+    </View>
+  );
+}
+
+/** kit .fld .in: 46 high, radius 14, surface, plum-500 border when focused. */
+function FieldInput({ multiline = false, onFocus, onBlur, ...input }: TextInputProps) {
+  const { colors, m } = useManualStyles();
+  const [focused, setFocused] = useState(false);
+  return (
+    <TextInput {...input} multiline={multiline} placeholderTextColor={colors.ink3Text}
+      onFocus={(event) => { setFocused(true); onFocus?.(event); }} onBlur={(event) => { setFocused(false); onBlur?.(event); }}
+      style={[m.in, multiline ? m.inMulti : null, focused ? m.inFocus : null]} />
+  );
+}
+
+function MergeChoices({ candidate, form, decision, differing, onReset, onChoose }: {
   candidate: IngestContactCandidateContract;
   form: ManualForm;
-  decision: ManualDecision;
+  decision: Extract<ManualDecision, { kind: "merge" }>;
   differing: ManualContactMergeField[];
-  onMerge: () => void;
-  onSeparate: () => void;
   onReset: () => void;
   onChoose: (field: ManualContactMergeField, choice: ManualContactFieldChoice) => void;
 }) {
   const { t } = useOrbitLocale();
-  const { styles } = useAddStyles();
-  const incoming = [form.displayName, form.organization].map((value) => value.trim()).filter(Boolean).join(" · ");
-  const existing = [candidate.displayName, candidate.organization, candidate.role].filter(Boolean).join(" · ");
+  const { m } = useManualStyles();
   return (
-    <Card>
-      <View style={styles.stack} testID="add-manual-duplicate">
-        <UiText style={styles.strong}>{t("add.manual.dupTitle", { name: candidate.displayName })}</UiText>
-        <View style={styles.row}>
-          <View style={styles.grow}>
-            <Caption>{t("add.manual.dupIncoming")}</Caption>
-            <Body>{incoming}</Body>
+    <View style={[m.flat, m.mergePanel]} testID="add-manual-merge">
+      <UiText style={m.cmpName}>{t("add.manual.mergeTitle", { name: candidate.displayName })}</UiText>
+      <UiText style={m.lbl}>{differing.length ? t("add.manual.mergeLead") : t("add.manual.mergeNoDiff")}</UiText>
+      {differing.map((field) => (
+        <View key={field} style={m.mergeField} testID={`add-manual-merge-${field}`}>
+          <UiText style={m.lbl}>{t(FIELD_KEY[field])}</UiText>
+          <View style={m.between}>
+            <Radio selected={decision.choices[field] === "existing"} onSelect={() => onChoose(field, "existing")} accessibilityLabel={`${t("add.manual.dupExisting")} ${candidate[field]}`} />
+            <UiText style={m.grow}>{candidate[field]}</UiText>
           </View>
-          <View style={styles.grow}>
-            <Caption>{t("add.manual.dupExisting")}</Caption>
-            <Body>{existing}</Body>
+          <View style={m.between}>
+            <Radio selected={decision.choices[field] !== "existing"} onSelect={() => onChoose(field, "incoming")} accessibilityLabel={`${t("add.manual.dupIncoming")} ${form[field]}`} />
+            <UiText style={m.grow}>{form[field]}</UiText>
           </View>
         </View>
-        {decision.kind === "none" ? (
-          <>
-            <Caption>{t("add.manual.dupLead")}</Caption>
-            <View style={styles.row}>
-              <Button size="sm" variant="primary" label={t("add.manual.dupMerge")} onPress={onMerge} />
-              <Button size="sm" variant="secondary" label={t("add.manual.dupSeparate")} onPress={onSeparate} />
-            </View>
-          </>
-        ) : null}
-        {decision.kind === "separate" ? (
-          <View style={styles.row} testID="add-manual-separated">
-            <Caption>{t("add.manual.dupSeparated")}</Caption>
-            <Button size="sm" variant="ghost" label={t("add.manual.dupUndoSeparate")} onPress={onReset} />
-          </View>
-        ) : null}
-        {decision.kind === "merge" ? (
-          <View style={styles.stack} testID="add-manual-merge">
-            <UiText style={styles.strong}>{t("add.manual.mergeTitle", { name: candidate.displayName })}</UiText>
-            <Caption>{differing.length ? t("add.manual.mergeLead") : t("add.manual.mergeNoDiff")}</Caption>
-            {differing.map((field) => (
-              <View key={field} style={styles.tightStack} testID={`add-manual-merge-${field}`}>
-                <Caption>{t(FIELD_KEY[field])}</Caption>
-                <View style={styles.row}>
-                  <Radio selected={decision.choices[field] === "existing"} onSelect={() => onChoose(field, "existing")} accessibilityLabel={`${t("add.manual.dupExisting")} ${candidate[field]}`} />
-                  <Body>{candidate[field]}</Body>
-                </View>
-                <View style={styles.row}>
-                  <Radio selected={decision.choices[field] !== "existing"} onSelect={() => onChoose(field, "incoming")} accessibilityLabel={`${t("add.manual.dupIncoming")} ${form[field]}`} />
-                  <Body>{form[field]}</Body>
-                </View>
-              </View>
-            ))}
-            <Button size="sm" variant="ghost" label={t("add.manual.mergeCancel")} onPress={onReset} />
-          </View>
-        ) : null}
-      </View>
-    </Card>
+      ))}
+      <Button size="sm" variant="ghost" label={t("add.manual.mergeCancel")} onPress={onReset} />
+    </View>
   );
 }
+
+const useManualStyles = () => {
+  const { colors, styles } = useStyles();
+  return { colors, m: styles };
+};
+
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  fldFirst: { marginTop: 4 },
+  fld: { marginTop: 12 },
+  label: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
+  labelText: { fontSize: 12, fontWeight: "700", color: colors.ink2, lineHeight: 18 },
+  req: { fontSize: 10, fontWeight: "800", color: colors.coral, lineHeight: 15 },
+  in: { minHeight: 46, borderRadius: 14, backgroundColor: colors.surface, paddingHorizontal: 14, fontSize: 14, color: colors.ink, borderWidth: 1.5, borderColor: "transparent" },
+  inMulti: { minHeight: 64, paddingTop: 10, paddingBottom: 10, fontSize: 13, lineHeight: 20.8, textAlignVertical: "top" },
+  inFocus: { borderColor: colors.plum500 },
+  msg: { marginTop: 6 },
+  lbl: { fontSize: 11.5, fontWeight: "500", color: colors.ink3, lineHeight: 17.25 },
+  more: { marginTop: 18, marginBottom: 8, marginHorizontal: 4, fontSize: 11.5, fontWeight: "800", color: colors.ink2, lineHeight: 17.25 },
+  moreNote: { fontWeight: "600" },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chipsAfter: { marginTop: 12 },
+  addf: { flexDirection: "row", alignItems: "center", gap: 4, height: 34, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.plum300 },
+  addfQuiet: { borderColor: colors.surface3 },
+  addfText: { fontSize: 12, fontWeight: "800", color: colors.plum700 },
+  addfQuietText: { color: colors.ink3 },
+  flat: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
+  mergeNote: { marginTop: 16, flexDirection: "row", gap: 10, alignItems: "flex-start" },
+  mergeEmoji: { fontSize: 18 },
+  mergeText: { flex: 1, fontSize: 11.5, fontWeight: "500", color: colors.ink2, lineHeight: 18.4 },
+  mergeStrong: { fontWeight: "700", color: colors.ink },
+  densGap: { marginTop: 10 },
+  densGapOpen: { marginTop: 12 },
+  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  densLine: { marginTop: 4 },
+  gap: { marginTop: 8 },
+  dupLine: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 8 },
+  sugg: { marginTop: 6, borderRadius: 14, backgroundColor: colors.surface, padding: 4, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  suggRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10 },
+  suggOn: { backgroundColor: colors.surface2 },
+  suggTile: { width: 26, height: 26, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  suggEmoji: { fontSize: 13 },
+  suggText: { flex: 1, fontSize: 12.5, color: colors.ink },
+  grow: { flex: 1, minWidth: 0 },
+  sheetHead: { flexDirection: "row", alignItems: "center", gap: 10 },
+  sheetTitle: { fontSize: 16, fontWeight: "700", color: colors.ink, lineHeight: 24 },
+  cmp2: { marginTop: 14, flexDirection: "row", gap: 8 },
+  cmpBox: { flex: 1, minWidth: 0, backgroundColor: colors.surface2, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12 },
+  cmpExisting: { borderWidth: 1.5, borderColor: colors.plum300 },
+  cmpName: { fontSize: 13, fontWeight: "700", color: colors.ink, lineHeight: 18.4 },
+  cmpText: { fontSize: 11.5, color: colors.ink, lineHeight: 18.4 },
+  rule: { marginTop: 10, lineHeight: 18.4 },
+  sheetActs: { marginTop: 14, gap: 8 },
+  mergePanel: { marginTop: 8, gap: 8 },
+  mergeField: { gap: 4 },
+}));

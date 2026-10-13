@@ -510,21 +510,25 @@ test("手入力: a name alone finds a 同名 candidate; 統合 asks only the dif
   const { page, server } = await open(t, "/contacts/new/manual", { people });
   await page.getByTestId("add-manual").waitFor();
   await page.getByRole("textbox", { name: "名前" }).fill("石川 陽介");
-  await page.getByTestId("add-manual-duplicate").waitFor();
+  // b11 A3 ③: the candidate opens as a sheet (いま入力中 / 人脈にいる人).
+  await page.getByTestId("add-manual-dup-sheet").waitFor();
   assert.ok(server.calls.some((call) => call.path === "/api/contacts/manual/duplicates" && JSON.stringify(call.body) === JSON.stringify({ displayName: "石川 陽介" })), "only the name was sent");
-  // Saving without choosing asks first.
-  await page.getByRole("button", { name: "保存" }).last().click();
+  // Closing the sheet without choosing leaves a line to open it again; saving asks first.
+  await page.mouse.click(195, 60); // the scrim above the sheet
+  await page.getByTestId("add-manual-duplicate").waitFor();
+  await page.getByRole("button", { name: "保存" }).first().click();
   await page.getByText("保存の前に、同じ人かどうか選んでください。").waitFor();
   assert.equal(server.writes().filter((write) => write === "POST /api/contacts/manual").length, 0);
   // 統合: company differs → only that field, one choice.
-  await page.getByRole("button", { name: "会社" }).click();
+  await page.getByTestId("add-manual-chip-organization").click();
   await page.getByTestId("add-manual-organization").fill("ミライ精機株式会社");
+  await page.getByTestId("add-manual-duplicate").click();
   await page.getByRole("button", { name: "統合する（おすすめ）" }).click();
   await page.getByTestId("add-manual-merge").waitFor();
   assert.equal(await page.getByTestId("add-manual-merge-organization").count(), 1);
   assert.equal(await page.getByTestId("add-manual-merge-displayName").count(), 0, "the same name is not asked");
   await page.getByTestId("add-manual-merge-organization").getByRole("radio").first().click();
-  await page.getByRole("button", { name: "統合して保存" }).click();
+  await page.getByRole("button", { name: "保存" }).first().click();
   await page.waitForFunction(() => (window as unknown as { addNav: { stack: string[] } }).addNav.stack.at(-1) === "/contacts/contact-ishikawa");
   const merge = server.calls.find((call) => call.path === "/api/contacts/manual" && call.method === "POST")!.body as Record<string, unknown>;
   assert.deepEqual(merge.fieldChoices, { organization: "existing" });
@@ -537,13 +541,13 @@ test("手入力: 保存 opens the person with 「人脈に追加しました · 
   const { page, server } = await open(t, "/contacts/new/manual", { setup: (s) => { s.events = [{ id: "event-cfo", startsAt: "2026-10-07T10:00:00Z", title: "CFO Night Tokyo" }]; } });
   await page.getByRole("textbox", { name: "名前" }).fill("新井 光");
   await page.getByTestId("add-manual-density-1").waitFor();
-  await page.getByRole("button", { name: "出会った場所" }).click();
+  await page.getByTestId("add-manual-chip-met").click();
   await page.getByRole("checkbox", { name: "CFO Night Tokyo（10/7）" }).click();
-  await page.getByRole("button", { name: "連絡先" }).click();
+  await page.getByTestId("add-manual-chip-contact").click();
   await page.getByRole("textbox", { name: "メール" }).fill("arai@example.jp");
   await page.getByTestId("add-manual-density-2").waitFor();
   await page.waitForTimeout(500);
-  await page.getByRole("button", { name: "保存" }).last().click();
+  await page.getByRole("button", { name: "保存" }).first().click();
   await page.waitForFunction(() => (window as unknown as { addNav: { stack: string[] } }).addNav.stack.at(-1)!.startsWith("/contacts/contact-manual"));
   const created = server.calls.find((call) => call.path === "/api/contacts/manual" && call.method === "POST")!.body as Record<string, unknown>;
   assert.deepEqual(created.metContext, { eventId: "event-cfo", kind: "event", label: "CFO Night Tokyo" });
@@ -562,7 +566,7 @@ test("模拟器走查: 元に戻す says it is working at once, waits for the se
   const { page, server } = await open(t, "/contacts/new/manual", { stack: ["/contacts/new", "/contacts/new/manual"], setup: (s) => { s.undoGate = new Promise((resolve) => { release = resolve; }); } });
   await page.getByRole("textbox", { name: "名前" }).fill("遅延 太郎");
   await page.waitForTimeout(500);
-  await page.getByRole("button", { name: "保存" }).last().click();
+  await page.getByRole("button", { name: "保存" }).first().click();
   await page.getByText("人脈に追加しました").waitFor();
   await page.getByRole("button", { name: "元に戻す" }).click();
   await page.getByText("元に戻しています…").waitFor();
@@ -580,7 +584,7 @@ test("模拟器走查: 元に戻す too late (409 UNDO_EXPIRED) says so and keep
   const { page, server } = await open(t, "/contacts/new/manual");
   await page.getByRole("textbox", { name: "名前" }).fill("期限 花子");
   await page.waitForTimeout(500);
-  await page.getByRole("button", { name: "保存" }).last().click();
+  await page.getByRole("button", { name: "保存" }).first().click();
   await page.getByText("人脈に追加しました").waitFor();
   server.undoExpired = true;
   await page.getByRole("button", { name: "元に戻す" }).click();
@@ -593,7 +597,7 @@ test("手入力: the sample account cannot save (403 SAMPLE_READ_ONLY) and the p
   const { page, server } = await open(t, "/contacts/new/manual", { setup: (s) => { s.sample = true; } });
   await page.getByRole("textbox", { name: "名前" }).fill("見本 太郎");
   await page.waitForTimeout(500);
-  await page.getByRole("button", { name: "保存" }).last().click();
+  await page.getByRole("button", { name: "保存" }).first().click();
   await page.getByText("サンプル表示中は保存できません。").waitFor();
   assert.equal(server.people.length, 0);
   assert.equal((await nav(page)).stack.at(-1), "/contacts/new/manual");

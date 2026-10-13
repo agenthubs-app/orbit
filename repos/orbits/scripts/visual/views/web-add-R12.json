@@ -18,22 +18,24 @@
    "id": "W-R12-01",
    "app": "/app/contacts/new",
    "design": "b12-missing-states.html",
-   "board-index": 96,
    "width": 1440,
    "wait-for": "[data-add-doors]",
    "note": "5 门弹窗压在人脈页上（背景 = R11）",
-   "viewport": true
+   "viewport": true,
+   "board": "W-R12-01 人脈を追加 · 5 门弹窗",
+   "board-kind": "web"
   },
   {
    "id": "W-R12-01m",
    "app": "/app/contacts/new",
    "design": "b12-missing-states.html",
-   "board-index": 96,
    "width": 1440,
    "region": "440,248,560,464",
    "wait-for": "[data-add-doors]",
    "note": "只比弹窗本身",
-   "viewport": true
+   "viewport": true,
+   "board": "W-R12-01 人脈を追加 · 5 门弹窗",
+   "board-kind": "web"
   },
   {
    "id": "W-R12-04",
@@ -138,37 +140,41 @@
    "app": "/app/contacts/new/scan/design-done",
    "app-origin": "http://localhost:3207",
    "design": "b12-missing-states.html",
-   "board-index": 102,
    "width": 1440,
    "wait-for": "[data-scan-phase=done]",
-   "note": "完成（mock）"
+   "note": "完成（mock）",
+   "board": "W-R12-11 名刺 完成",
+   "board-kind": "web"
   },
   {
    "id": "W-R12-12a",
    "app": "/app/contacts/new/scan/design-missing",
    "app-origin": "http://localhost:3207",
    "design": "b12-missing-states.html",
-   "board-index": 104,
    "width": 1440,
-   "wait-for": "[data-scan-phase=missing]"
+   "wait-for": "[data-scan-phase=missing]",
+   "board": "W-R12-12a",
+   "board-kind": "web"
   },
   {
    "id": "W-R12-12b",
    "app": "/app/contacts/new/scan/design-expired",
    "app-origin": "http://localhost:3207",
    "design": "b12-missing-states.html",
-   "board-index": 106,
    "width": 1440,
-   "wait-for": "[data-scan-phase=expired]"
+   "wait-for": "[data-scan-phase=expired]",
+   "board": "W-R12-12b",
+   "board-kind": "web"
   },
   {
    "id": "W-R12-12c",
    "app": "/app/contacts/new/scan/design-cancelled",
    "app-origin": "http://localhost:3207",
    "design": "b12-missing-states.html",
-   "board-index": 108,
    "width": 1440,
-   "wait-for": "[data-scan-phase=cancelled]"
+   "wait-for": "[data-scan-phase=cancelled]",
+   "board": "W-R12-12c",
+   "board-kind": "web"
   },
   {
    "id": "W-R12-09",
