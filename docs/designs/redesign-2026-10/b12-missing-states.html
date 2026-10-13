@@ -2197,7 +2197,7 @@ const V2 = (() => {
   const SEV = { 2: 1, 3: 1 };
   const chipsOf = n => { const st = STEPS.find(x => x[0] === n); return st[3].concat(SEV[n] ? ['ev'] : []); };
   const stepsOf = k => STEPS.filter(st => chipsOf(st[0]).includes(k)).map(st => st[0]);
-  const STAT = { s46: { 1: ['CFO 0 / 1人', ''], 2: ['紹介 2件', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] } };
+  const STAT = { s46: { 1: ['CFO 0 / 1人', ''], 2: ['起業家 2 / 5人', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] } };
   const tchip = (k, cls = '') => { const p = PER[k]; return `<span class="chip ${p.ev ? '' : p.c} ${cls}">${p.emo} ${p.s}</span>`; };
   const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
     return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
@@ -4015,7 +4015,7 @@ const V2 = (() => {
   const SEV = { 2: 1, 3: 1 };
   const chipsOf = n => { const st = STEPS.find(x => x[0] === n); return st[3].concat(SEV[n] ? ['ev'] : []); };
   const stepsOf = k => STEPS.filter(st => chipsOf(st[0]).includes(k)).map(st => st[0]);
-  const STAT = { s46: { 1: ['CFO 0 / 1人', ''], 2: ['紹介 2件', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] } };
+  const STAT = { s46: { 1: ['CFO 0 / 1人', ''], 2: ['起業家 2 / 5人', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] } };
   const tchip = (k, cls = '') => { const p = PER[k]; return `<span class="chip ${p.ev ? '' : p.c} ${cls}">${p.emo} ${p.s}</span>`; };
   const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
     return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
@@ -4068,7 +4068,7 @@ const V2 = (() => {
 V2.ST.s56c = { cfo: 1, ent: 2, ang: 0, vc: 2, cvc: 0, law: 'skip', ev: 2 };
 V2.ST.s56 = { cfo: 0, ent: 2, ang: 0, vc: 3, cvc: 0, law: 'skip', ev: 2 };
 V2.ST.s61 = { cfo: 0, ent: 2, ang: 0, vc: 4, cvc: 0, law: 'skip', ev: 2 };
-V2.STAT.s56c = { 1: ['CFO 1 / 1人', 'teal'], 2: ['紹介 2件', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] };
+V2.STAT.s56c = { 1: ['CFO 1 / 1人', 'teal'], 2: ['起業家 2 / 5人', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] };
 const V = V2, PER = V2.PER;
 
 /* ===================== 共通（照抄 app.html / web.html / b4 / b10） ===================== */
@@ -4344,7 +4344,9 @@ g += WP('W-R24-03 前提を見る · 只读モーダル（D49）', 'state', () =
   ['.k-wpremdlg .prem', 0, '6 条确定的前提（行样式同 b4 A3「確定した前提」），右侧来源小签；AI 推测的行带「推測」'],
   ['.k-wpremgo', 0, '右下主按钮「見直しで変える」→ 方案を見直す（iOrbit）；左侧 Esc 关闭。只读、不可逐行改（D49 请用户拍板：设计稿注释写可以逐行改）'],
 ], 'web.html Task › プラン 概要（進行中 46）· b4 A3 確定した前提');
-g += WP('W-R24-04a 確認待ち · memo の加点提案 + 候補', 'state', () => ({ nav: 4, body: wPlan('s56c', { noInlineOk: true, pending: pendWrapW(3, memoCard(true, 'k-wpmemo') + candCard(CANDP[0], true, 'k-wpcand') + candCard(CANDP[1], true)) }), rail: planRail() }), [
+/* 2026-10-13 用户定（§15-2）：类型卡「人脈の候補」= 已确认 + 待确认候补；本板確認待ち有 CVC 候补 鈴木 → CVC 卡 0 → 1 */
+const cvcCand1 = h => { const i = h.indexOf('k-wtc-cvc'); return h.slice(0, i) + h.slice(i).replace('<div class="z"><b>0<small>人</small></b><span>人脈にいない</span></div>', '<div class=""><b>1<small>人</small></b><span>人脈の候補</span></div>'); };
+g += WP('W-R24-04a 確認待ち · memo の加点提案 + 候補', 'state', () => ({ nav: 4, body: cvcCand1(wPlan('s56c', { noInlineOk: true, pending: pendWrapW(3, memoCard(true, 'k-wpmemo') + candCard(CANDP[0], true, 'k-wpcand') + candCard(CANDP[1], true)) })), rail: planRail() }), [
   ['.k-wpend h3', 0, '「確認待ち」放在分数卡下方整宽一行（12 列），最多 3 张并排；没有待确认项时整行不出现。说明句「あなたが選ぶまで点は入りません」为本稿撰写（文案待定）'],
   ['.k-wpmemo', 0, 'memo 计分提议：「山本 彩さんとの面談で 3 問中 2 問を話せました · +10点にしますか？」（Web 字典 memoProposal）；✓ 加点する / ✕ 加点しない'],
   ['.k-wpcand', 0, '候补卡：「佐々木 遼さんが「VC」の候補です」（Web 字典 candidateFound）；点 → 人物タイプ詳細'],
@@ -4534,7 +4536,7 @@ const V2 = (() => {
   const SEV = { 2: 1, 3: 1 };
   const chipsOf = n => { const st = STEPS.find(x => x[0] === n); return st[3].concat(SEV[n] ? ['ev'] : []); };
   const stepsOf = k => STEPS.filter(st => chipsOf(st[0]).includes(k)).map(st => st[0]);
-  const STAT = { s46: { 1: ['CFO 0 / 1人', ''], 2: ['紹介 2件', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] } };
+  const STAT = { s46: { 1: ['CFO 0 / 1人', ''], 2: ['起業家 2 / 5人', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] } };
   const tchip = (k, cls = '') => { const p = PER[k]; return `<span class="chip ${p.ev ? '' : p.c} ${cls}">${p.emo} ${p.s}</span>`; };
   const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
     return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
@@ -5557,7 +5559,7 @@ function achieved() {
 
 /* ---- 方案を見直す（v2.2）：iOrbit 対話 →「確定した前提」（AI が変わったかもしれない行に印）→ 前提を直して送る → AI 修正の差分（月3回の枠を 1回 · 変更なしでも 1回）→ 手動編集 1回（見直すたびに 1回） ---- */
 const F = V22F;
-const RPREM = F.PREM.concat([['進み具合', 'Step 2 紹介 2件 · Step 3 VC 2 / 3人と面談', '記録']]);
+const RPREM = F.PREM.concat([['進み具合', 'Step 2 起業家 2 / 5人 · Step 3 VC 2 / 3人と面談', '記録']]);
 const RFLAG = { 2: '面談メモ 10/5「ARR 1億円の見込み」', 3: 'VC 2人と面談済み · 高橋さんがリード候補に', 6: 'プランの記録から自動' };
 const RPREM2 = RPREM.map(r => r.slice());
 RPREM2[2] = ['直近の数字', 'ARR 1億円の見込み（年内）· 前年比 2.4倍', 'Q1', 'ARR 8,000万円'];
@@ -5937,7 +5939,7 @@ const sendFoot = st => foot(st === 'sending'
 
 /* ---------- 達成確認（Web Modal：内容 = b4 A5 ① achieveDialog；外形 = b4 Web 削除確認 delDlg(true)） ---------- */
 const wAchieve = `<div class="overlay"></div><div class="wdlg wmodal w480 k-wach"><div class="row" style="gap:14px;align-items:flex-start"><div class="dic" style="background:var(--mac-apricot);color:var(--mac-apricot-ink);font-size:24px">🏁</div><div style="min-width:0"><b style="font-size:17px">目標を達成として記録しますか？</b><div class="sub" style="margin-top:6px;line-height:1.65">スコア 128 で確定し、このプランを完了にします。達成にすると点数はこれ以上増えません。完了したプランはいつでも見返せます。</div>
-  <div class="row k-wachst" style="gap:6px;margin-top:10px"><span class="chip lav">スコア 128 · 話した人 21人</span></div></div></div>
+  <div class="row k-wachst" style="gap:6px;margin-top:10px"><span class="chip lav">スコア 128 · 話した人 19人</span></div></div></div>
   <div class="macts"><span class="lbl hint"><span class="kbd">Esc</span> キャンセル</span><button class="btn">キャンセル</button><button class="btn primary">達成を記録</button></div></div>`;
 
 /* ---------- 目標切替 Popover（内容 = b4 A6 ① goalMenu 的 .gmenu .gi；Web 贴在目标下拉按钮下方，不加遮罩） ---------- */

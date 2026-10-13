@@ -292,7 +292,7 @@ const V2 = (() => {
   const SEV = { 2: 1, 3: 1 };
   const chipsOf = n => { const st = STEPS.find(x => x[0] === n); return st[3].concat(SEV[n] ? ['ev'] : []); };
   const stepsOf = k => STEPS.filter(st => chipsOf(st[0]).includes(k)).map(st => st[0]);
-  const STAT = { s46: { 1: ['CFO 0 / 1人', ''], 2: ['紹介 2件', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] } };
+  const STAT = { s46: { 1: ['CFO 0 / 1人', ''], 2: ['起業家 2 / 5人', 'teal'], 3: ['VC 2 / 3人', 'lav'], 4: ['習熟済み', ''], 5: ['まだ', ''] } };
   const tchip = (k, cls = '') => { const p = PER[k]; return `<span class="chip ${p.ev ? '' : p.c} ${cls}">${p.emo} ${p.s}</span>`; };
   const step22 = (st, s, o = {}) => { const [n, t, why, ks, w] = st, S = (STAT[s] || {})[n], ch = chipsOf(n);
     return `<div class="v2step v22step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
@@ -1003,7 +1003,7 @@ const V2 = (() => {
     if (r.n < p.tgt) a.push(p.cand ? `<span class="chip lav">${p.ev ? `おすすめ ${p.cand}件` : `候補 ${p.cand}人`}</span>` : '<span class="chip">人脈にいません</span>');
     return a.join('');
   };
-  const prow = (k, s, cls = '') => { const p = PER[k], r = pts(k, ST[s][k]); return `<div class="v2prow ${cls}"><span class="emo sm ${p.c}">${p.emo}</span><div class="pm"><b>${p.n}</b><div class="chips">${pchips(k, s)}</div></div><div class="pe"><div class="v2pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></div>${mbar(k, s)}</div></div>`; };
+  const prow = (k, s, cls = '') => { const p = PER[k], r = pts(k, ST[s][k]); return `<div class="v2prow ${cls}"><span class="emo sm ${p.c}">${p.emo}</span><div class="pm"><b>${p.s}</b><div class="chips">${pchips(k, s)}</div></div><div class="pe"><div class="v2pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></div>${mbar(k, s)}</div></div>`; };
   const stepBlock = (st, s, o = {}) => { const [n, t, why, ks, w] = st;
     return `<div class="v2step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
       ${ks.length ? ks.map(k => { const p = PER[k], r = pts(k, ST[s][k]); return `<div class="v2pcard ${o.pk === k ? o.pkc : ''}"><div class="row" style="gap:10px"><span class="emo sm ${p.c}">${p.emo}</span><b style="flex:1;min-width:0" class="v2ell">${p.n}</b>${r.skip ? '<span class="chip">習熟済み</span>' : p.cand ? `<span class="chip lav">人脈に ${p.cand}人</span>` : '<span class="chip">人脈にいません</span>'}</div>
@@ -1176,7 +1176,7 @@ function plan390(s) {
       <div class="row" style="gap:4px;margin-top:8px">${st[3].length ? st[3].map(k => `<span class="emo sm ${V2.PER[k].c}" style="width:26px;height:26px;font-size:14px">${V2.PER[k].emo}</span>`).join('') : '<span class="lbl">新しく会う人なし</span>'}${w ? `<span class="v2pp" style="margin-left:auto;font-size:13px">${V2.fmt(g)}<small> / ${w}</small></span>` : ''}</div></div>`; }).join('')}</div>
     <div class="dots" style="margin-top:8px"><i></i><i></i><i class="on"></i><i></i><i></i></div>
     ${todayCard('r8todaycard')}
-    <div class="card"><div class="card-h" style="margin-bottom:4px"><h3>話すべき人</h3><span class="more">ステップ順${ic('right', 'sm')}</span></div>${['vc', 'cvc', 'ent', 'law', 'cfo', 'ang'].map(k => V2.prow(k, S8)).join('')}${V2.prow('ev', S8)}</div>`;
+    <div class="card"><div class="card-h" style="margin-bottom:4px"><h3>話すべき人</h3><span class="more">ステップ順${ic('right', 'sm')}</span></div>${['cfo', 'ent', 'ang', 'vc', 'cvc', 'law'].map(k => V2.prow(k, S8)).join('')}${V2.prow('ev', S8)}</div>`;
 }
 
 /* ============ 3 · iOrbit 対話 ============ */
