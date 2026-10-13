@@ -3610,7 +3610,7 @@ const addModalPick = `<div class="overlay"></div><div class="wmodal k-waddm" sty
   <div class="input k-waddsearch" style="margin-top:12px">${ic('search', 'sm')}名前・会社・タグで検索</div>
   <div class="lbl" style="margin:10px 2px 4px">候補（タグ「共同創業者」· 空きの力を持つ人を上に）</div>
   ${CONTACTS.map(([n, i, c, r, t], k) => `<div class="mem ${k === 1 ? 'k-waddc2' : ''}"><div class="av sm ${c}">${i}</div><div class="mm"><b>${n}</b><div class="lbl">${r}</div></div><span class="chip ${k ? 'pink' : 'lav'}">${k ? '空き：' + t : 'メンバー'}</span><span class="ckr ${k === 1 ? 'on' : ''}">${ic('check')}</span></div>`).join('')}
-  <div class="card flat k-waddprev" style="padding:10px 12px;margin-top:8px"><div class="row" style="gap:6px"><b style="font-size:12px;flex:1">森 美咲さんの「できること」</b><span class="chip">名刺・面談メモから</span></div>${capPick(['デザイン'])}<div class="lbl" style="margin-top:8px">関わり方：<b>業務委託</b> · 変更は ✎</div></div>
+  <div class="card flat k-waddprev" style="padding:10px 12px;margin-top:8px"><div class="row" style="gap:6px"><b style="font-size:12px;flex:1">森 美咲さんの「できること」</b><span class="chip">名刺・面談メモから</span></div>${capPick(['デザイン']).replace(/<span class="fopt" style="border:1.5px dashed[^"]*">＋ その他<\/span>/, '')}</div>
   <div class="macts"><span class="lbl hint">${kbdE} 閉じる</span><button class="btn">キャンセル</button><button class="btn primary k-waddgo">1名を追加</button></div></div>`;
 const addModalWrite = `<div class="overlay"></div><div class="wmodal k-waddm2" style="width:520px">${mHead(1)}
   <div class="fld focus k-wwname"><label>名前か呼び名</label><div class="in" style="background:var(--surface-2)"><span>田中さん（友人のマーケター）</span><i class="caret"></i></div></div>
@@ -3757,7 +3757,7 @@ g += WPm('W-R23-06 メンバー追加 Modal · 人脈から選ぶ', '', { nav: 2
   ['.k-waddm', 0, '团队表列头「＋追加」→ 居中模态 520（Web 一律居中模态；内容与 App BottomSheet 完全相同）'],
   ['.k-waddtab', 0, '两个页签：人脈から選ぶ / 自分で書く；标题下「Orbit に登録していなくても OK」'],
   ['.k-waddc2', 0, '候选：标「共同創業者」的在前，其次能补「空き」的人（chip 写补哪项）；可多选'],
-  ['.k-waddprev', 0, '选中后展开「できること」（名刺・面談メモから预勾，可改）'],
+  ['.k-waddprev', 0, '选中后展开「できること」（名刺・面談メモから预勾，可改）。2026-10-13 定：不画「＋ その他」和「関わり方：業務委託 · 変更は ✎」——这两个功能现在不存在（要改数据模型与契约，超出本轮范围），只画真实存在的；以后做了再加回'],
   ['.k-waddgo', 0, '右下「N名を追加」；左下 Esc 提示（kbd）'],
 ], 'b10 ② メンバー追加 · 人脈から選ぶ（App）');
 g += WPm('W-R23-07 メンバー追加 Modal · 自分で書く', '', { nav: 2, body: bgWeb(), rail: knownRail('bg'), ov: addModalWrite }, [
@@ -4111,6 +4111,7 @@ function aPlan(S, o = {}) {
 function wPlan(S, o = {}) {
   const tt = V.total(S);
   let steps = V.STEPS.map((st, i) => V.step22(st, S, { short: true, mcls: i === 0 ? 'k-wmey1' : '', okStep: o.okStep })).join('');
+  if (o.implStep5) steps = steps.replace('新しく会う人はいません · Step 3・4 の相手と着地させます', '新しく会う人はいません');
   if (o.noInlineOk) steps = steps.replace(/<div class="confirm-card in-row[\s\S]*?完了にする<\/button><\/div><\/div>/g, '');
   return wTaskHead(2) + `<div class="row between" style="margin:-6px 0 18px;gap:12px"><button class="btn k-wgoal">💰 シリーズA 資金調達 ${ic('down', 'sm')}</button><div class="row k-wacts" style="gap:8px">${V.acts({ pre: 'w' })}</div></div><div class="wgrid">
     <div class="card span12 rise k-whero"><div class="row" style="gap:28px;align-items:flex-end"><div style="flex:none"><div class="lbl">スコア</div><div class="row" style="gap:12px;align-items:center"><div class="big" style="font-size:64px">${num(tt)}</div>${o.today !== undefined ? todayChip(o.today, 'k-wtoday-d') : ''}</div><div class="lbl">満点 100 · 上限なし</div></div>
@@ -4119,7 +4120,7 @@ function wPlan(S, o = {}) {
     ${o.pending || ''}
     <div class="card span4 k-wsteps"><div class="card-h"><h3>ステップ</h3><span class="lbl">順番は目安</span></div>${steps}</div>
     <div class="card span8 k-wtypes"><div class="card-h" style="margin-bottom:4px"><h3>話すべき人のタイプ</h3><span class="lbl">「資金調達」テンプレートのまま</span></div><div class="lbl" style="margin-bottom:10px">役割 × 状況 · 点はタイプごと · 同じ人は同じタイプで 1回</div>
-      <div class="v22tgrid">${V.ORDER.filter(k => k !== 'ev').map(k => V.tcard(k, S, { cls: 'k-wtc-' + k })).join('')}</div></div></div>`;
+      <div class="v22tgrid">${V.ORDER.filter(k => k !== 'ev').map(k => V.tcard(k, S, { cls: 'k-wtc-' + k })).join('')}</div></div>${o.evCard ? V.evCard22(S, { cls: 'span12 k-wevs', grid: true }) : ''}</div>`;
 }
 const planRail = () => { const T = V.TODAY.s46; return `<h4>${ic('sparkle', 'sm')}iOrbit</h4><div class="assist-in">${ic('sparkle', 'sm')}このプランについて質問</div>
   <h4>次の一手</h4><div class="card k-wtoday" data-why-box style="background:linear-gradient(135deg,var(--mac-lav),var(--surface) 70%)"><div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px">今日 +${T.plus} のチャンス</b><span class="why" style="margin-left:auto">?</span></div>
@@ -4346,7 +4347,7 @@ g += WP('W-R24-03 前提を見る · 只读モーダル（D49）', 'state', () =
 ], 'web.html Task › プラン 概要（進行中 46）· b4 A3 確定した前提');
 /* 2026-10-13 用户定（§15-2）：类型卡「人脈の候補」= 已确认 + 待确认候补；本板確認待ち有 CVC 候补 鈴木 → CVC 卡 0 → 1 */
 const cvcCand1 = h => { const i = h.indexOf('k-wtc-cvc'); return h.slice(0, i) + h.slice(i).replace('<div class="z"><b>0<small>人</small></b><span>人脈にいない</span></div>', '<div class=""><b>1<small>人</small></b><span>人脈の候補</span></div>'); };
-g += WP('W-R24-04a 確認待ち · memo の加点提案 + 候補', 'state', () => ({ nav: 4, body: cvcCand1(wPlan('s56c', { noInlineOk: true, pending: pendWrapW(3, memoCard(true, 'k-wpmemo') + candCard(CANDP[0], true, 'k-wpcand') + candCard(CANDP[1], true)) })), rail: planRail() }), [
+g += WP('W-R24-04a 確認待ち · memo の加点提案 + 候補', 'state', () => ({ nav: 4, body: cvcCand1(wPlan('s56c', { noInlineOk: true, evCard: true, implStep5: true, pending: pendWrapW(3, memoCard(true, 'k-wpmemo') + candCard(CANDP[0], true, 'k-wpcand') + candCard(CANDP[1], true)) })), rail: planRail() }), [
   ['.k-wpend h3', 0, '「確認待ち」放在分数卡下方整宽一行（12 列），最多 3 张并排；没有待确认项时整行不出现。说明句「あなたが選ぶまで点は入りません」为本稿撰写（文案待定）'],
   ['.k-wpmemo', 0, 'memo 计分提议：「山本 彩さんとの面談で 3 問中 2 問を話せました · +10点にしますか？」（Web 字典 memoProposal）；✓ 加点する / ✕ 加点しない'],
   ['.k-wpcand', 0, '候补卡：「佐々木 遼さんが「VC」の候補です」（Web 字典 candidateFound）；点 → 人物タイプ詳細'],
