@@ -16,6 +16,15 @@ function fields(spans: readonly SignatureSpan[]): Expected {
 }
 
 const cases: readonly [string, string, Expected][] = [
+  ["ja board (b9 A4 Web): a bare 代表 after the company on the same line is the role", [
+    "石川 陽介",
+    "石川デザイン事務所　代表",
+    "〒150-0001 東京都渋谷区神宮前 2-x-x",
+    "TEL 03-5555-0198　Mail ishikawa@ishikawa-d.example",
+  ].join("\n"), {
+    displayName: "石川 陽介", organization: "石川デザイン事務所", role: "代表", postalCode: "150-0001",
+    address: "東京都渋谷区神宮前 2-x-x", phone: "03-5555-0198", email: "ishikawa@ishikawa-d.example",
+  }],
   ["ja 1: full Japanese signature with reading, department, 〒, fax", [
     "--",
     "山田 太郎（やまだ たろう）",

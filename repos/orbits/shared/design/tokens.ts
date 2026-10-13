@@ -56,7 +56,14 @@ export const designColors = {
     onImage: "#FFFFFF",
     onImageBadge: "#1E1A24",
     scrim: "rgba(30, 20, 40, 0.28)",
-    scrimWeb: "rgba(30, 20, 40, 0.22)"
+    scrimWeb: "rgba(30, 20, 40, 0.22)",
+    paper: "#FFFFFF",
+    paper2: "#F3F0EB",
+    paperInk: "#25222B",
+    paperInk2: "#8B8692",
+    cam: "#0F0E12",
+    cam2: "#24222A",
+    camInk: "#FFFFFF"
   },
   dark: {
     bg: "#19181C",
@@ -112,7 +119,14 @@ export const designColors = {
     onImage: "#FFFFFF",
     onImageBadge: "#1E1A24",
     scrim: "rgba(0, 0, 0, 0.55)",
-    scrimWeb: "rgba(0, 0, 0, 0.55)"
+    scrimWeb: "rgba(0, 0, 0, 0.55)",
+    paper: "#FFFFFF",
+    paper2: "#F3F0EB",
+    paperInk: "#25222B",
+    paperInk2: "#8B8692",
+    cam: "#0F0E12",
+    cam2: "#24222A",
+    camInk: "#FFFFFF"
   }
 } as const;
 
