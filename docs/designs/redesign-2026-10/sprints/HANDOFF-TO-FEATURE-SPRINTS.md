@@ -240,6 +240,7 @@
 | R24-07 | **待壳**：Task 1024 标题区多出「目標を追加」 | TaskContainer 自加的按钮（b8 只有「次の一手」） | 去掉；另一会话在改 `orbit-2026/task/TaskContainer.tsx` | REWORK-REPORT-web |
 | R24-08 | **待画板口径**（2026-10-12 已转用户） | 实现取类型卡口径 / 服务端排序 / 短名 | b8 類型名长短（確認待ち「VC」vs 話すべき人「VC パートナー」）；CVC 页活动顺序（画板 79 / 68 / 82，服务端按分数降序）；#17 Step 3 chip「3 / 3人」vs 类型卡「2 / 3人」。定后 design-decisions 改画板，计划页会话单独重比 W-R24-02 / 04c / 06 | REWORK-REPORT-web |
 | R25-05 | **像素门禁的设计稿示例 fixture** | `features/plans/v2/design-fixtures`（只在非生产、mock 下由 `route.dev.ts` 切换）；B 组门禁前跑 `seed-local-chats.mjs`（只写本机库 qa 账号）；C 组造見直し状态的脚本还在会话 scratchpad | fixture 只能补数据、不能改画面结构；C 组的状态脚本（setup.py / all.sh）收进 `scripts/visual/` 再供复跑 | REWORK-REPORT-web |
+| R24-09 | **App 计划概要画板的弁護士卡已变**（916b9f6b：共享数据里弁護士 会える活動 0 → 2；Web 端已在 2026-10-13 重比） | App 计划页门禁还用旧图 | App 计划页那一轮清缓存、重新截图后再比概要画面 | 916b9f6b；`R25-plan-review-goals-cleanup/REWORK-REPORT-web.md` §10 |
 
 ---
 
