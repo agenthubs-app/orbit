@@ -1,7 +1,7 @@
 // R12 添加人脉（入口、扫描名片、读取 / 批量确认 / 完成、手动输入、待确认草稿）。措辞与 Web copy/add.ts 一致。
 export const add = {
   "add.doors.title": "添加人脉",
-  "add.doors.lead": "无论用哪种方式，最后都只需确认例外",
+  "add.doors.lead": "无论用哪种方式，最后都进入同一个「统一确认」",
   "add.doors.recommended": "推荐",
   "add.doors.scanTitle": "扫描名片",
   "add.doors.scanBody": "拍下即可读取公司、职位和联系方式。一次最多100张",
@@ -19,7 +19,9 @@ export const add = {
   "add.doors.densityTitle": "信息浓度",
   "add.doors.density1": "只有身份",
   "add.doors.density2": "名片程度",
-  "add.doors.density3": "很了解",
+  "add.doors.density3": "了解关系",
+  "add.doors.pendingTitle": "待确认",
+  "add.doors.close": "关闭",
   "add.doors.sheetLabel": "添加人脉的方式",
   "add.scan.title": "扫描名片",
   "add.scan.help": "拍摄技巧",

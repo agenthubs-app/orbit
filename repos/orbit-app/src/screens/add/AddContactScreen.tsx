@@ -32,7 +32,7 @@ export function AddContactScreen() {
   return (
     <AppScreen title={t("add.doors.title")}>
       <FadeIn testID="add-contact-page">
-        <AddContactDoors draftCount={draftCount} onOpen={(href) => router.push(href as Href)} />
+        <AddContactDoors header={false} draftCount={draftCount} onOpen={(href) => router.push(href as Href)} />
       </FadeIn>
     </AppScreen>
   );

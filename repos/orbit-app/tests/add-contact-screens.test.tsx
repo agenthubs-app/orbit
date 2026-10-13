@@ -192,8 +192,8 @@ test("入口: 名刺をスキャン, 招待コード (R15) and 手入力 (その
   for (const id of ["add-door-contacts", "add-door-linkedin"]) assert.equal(await page.getByTestId(id).count(), 0, `${id} is hidden, not greyed`);
   await page.getByText("確認待ちの下書き 2件").waitFor();
   await page.getByTestId("add-density-legend").waitFor();
-  for (const label of ["身元だけ", "名刺レベル", "よく知っている"]) await page.getByText(label, { exact: true }).waitFor();
-  await page.getByTestId("add-door-scan").getByRole("button").click();
+  for (const label of ["身元だけ", "名刺レベル", "関係まで"]) await page.getByText(label, { exact: true }).waitFor();
+  await page.getByTestId("add-door-scan").click();
   assert.deepEqual((await nav(page)).navigation.at(-1), { href: "/contacts/new/scan", method: "push" });
   assert.deepEqual(server.writes(), [], "opening the page writes nothing");
   // No drafts: no 下書き door.
@@ -209,7 +209,7 @@ test("AddContactSheet: the same doors in the R04 bottom sheet; choosing one clos
   await sheet.waitFor();
   await sheet.getByText("確認待ちの下書き 3件").waitFor();
   assert.equal(await sheet.getByTestId("add-door-invite").count(), 1);
-  await sheet.getByTestId("add-door-manual").getByRole("button").click();
+  await sheet.getByTestId("add-door-manual").click();
   assert.deepEqual((await nav(page)).navigation, [{ method: "closeSheet" }, { href: "/contacts/new/manual", method: "push" }]);
 });
 

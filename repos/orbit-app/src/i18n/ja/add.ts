@@ -2,10 +2,10 @@
 // Web と同じ言い方（orbits app/(app)/app/orbit-2026/copy/add.ts）。kind は src/i18n/copy-kinds.ts。
 export const add = {
   "add.doors.title": "人脈を追加",
-  "add.doors.lead": "どの方法でも、最後は同じ確認で例外だけを見ます",
+  "add.doors.lead": "どの方法でも、最後は同じ「まとめて確認」へ",
   "add.doors.recommended": "おすすめ",
   "add.doors.scanTitle": "名刺をスキャン",
-  "add.doors.scanBody": "撮るだけで会社・役職・連絡先を読み取り。まとめて最大 100枚",
+  "add.doors.scanBody": "撮るだけで会社・役職・連絡先を読み取り。まとめて最大100枚",
   "add.doors.inviteTitle": "招待コード",
   "add.doors.inviteBody": "相手が自分で入力 → お互いの人脈に自動で追加",
   "add.doors.manualTitle": "手入力",
@@ -20,7 +20,9 @@ export const add = {
   "add.doors.densityTitle": "情報の濃さ",
   "add.doors.density1": "身元だけ",
   "add.doors.density2": "名刺レベル",
-  "add.doors.density3": "よく知っている",
+  "add.doors.density3": "関係まで",
+  "add.doors.pendingTitle": "確認待ち",
+  "add.doors.close": "閉じる",
   "add.doors.sheetLabel": "人脈を追加する方法",
   "add.scan.title": "名刺をスキャン",
   "add.scan.help": "撮り方のコツ",

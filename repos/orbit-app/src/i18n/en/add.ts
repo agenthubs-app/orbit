@@ -1,7 +1,7 @@
 // R12 Add people (doors, scan cards, reading / review / done, type it in, drafts). Same wording as Web copy/add.ts.
 export const add = {
   "add.doors.title": "Add people",
-  "add.doors.lead": "Whichever way you add people, you only check the exceptions",
+  "add.doors.lead": "Every way ends in the same “Check together”",
   "add.doors.recommended": "Recommended",
   "add.doors.scanTitle": "Scan business cards",
   "add.doors.scanBody": "Photos are read for company, title and contact details · up to 100 at once",
@@ -19,7 +19,9 @@ export const add = {
   "add.doors.densityTitle": "How much you know",
   "add.doors.density1": "Identity only",
   "add.doors.density2": "Card level",
-  "add.doors.density3": "Well known",
+  "add.doors.density3": "Relationship known",
+  "add.doors.pendingTitle": "Waiting for a check",
+  "add.doors.close": "Close",
   "add.doors.sheetLabel": "Ways to add people",
   "add.scan.title": "Scan business cards",
   "add.scan.help": "Photo tips",
