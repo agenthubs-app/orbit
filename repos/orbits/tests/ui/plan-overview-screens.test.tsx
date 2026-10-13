@@ -146,7 +146,9 @@ test("overview: the demo plan's score is the summary's; fields, segments, chance
   await page.locator('[data-plan-step="demo-step-3"]').getByText("2 / 3").waitFor();
   assert.equal(await page.locator("[data-type-card]").count(), base.detail.content.personTypes.length);
   await page.locator('[data-type-card="lawyer"]').getByText("習熟済み · スキップ（満額）").waitFor();
-  await page.locator('[data-type-card="funded_founder"] [data-cell="candidates"]').getByText("人脈にいない").waitFor();
+  // 「人脈の候補」= confirmed (2 linked founders in the demo world) + unconfirmed (user 2026-10-13), not only the pending ones.
+  await page.locator('[data-type-card="funded_founder"] [data-cell="candidates"]').getByText("人脈の候補").waitFor();
+  assert.match(await page.locator('[data-type-card="funded_founder"] [data-cell="candidates"]').innerText(), /2/);
   assert.equal(await page.locator('[data-type-card="vc_partner"]').getAttribute("href"), `/app/plans/${PLAN}/types/${VC}`);
   await page.locator("[data-plan-event]").getByText("参加 1回 +5 · 2回まで満額、以降は半分 · 1 / 2回").waitFor();
   await page.locator("[data-plan-footnote]").getByText("Orbit は目標の達成を保証しません。", { exact: false }).waitFor();
