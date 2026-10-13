@@ -12,7 +12,7 @@ import { planFlowCopy, planOverviewCopy as c, planReviewCopy as r } from "../cop
 import { goalKindLabel } from "./plan-model";
 import { Avatar, CountUp, Icon, Kbd, MacTile, Modal, Orbit2026Scope, RetryCard, Skeleton, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
 import { ShellPage, useInShell } from "../shell/slots";
-import { PLAN_EVENT_SEGMENT_KEY, eventView, overflowParts, stepGroups, typeCards, typeTone, unitsOf, type TypeCardView } from "./overview-model";
+import { PLAN_EVENT_SEGMENT_KEY, eventView, overflowParts, stepGroups, stepOrderedCards, typeCards, typeTone, unitsOf, type TypeCardView } from "./overview-model";
 import { planApi } from "./plan-api";
 import { takePlanFlash } from "./plan-flash";
 import { AchieveDialog, GoalEditModal, GoalSwitcher } from "./PlanGoalDialogs";
@@ -174,7 +174,7 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
           <TodayCard detail={detail} t={t} />
           <section className={styles.card} aria-label={t(c.peopleTitle)}>
             <div className={styles.cardH} style={{ marginBottom: 4 }}><h3>{t(c.peopleTitle)}</h3><span className={styles.more}>{t(c.peopleOrder)}<Icon name="right" size={16} /></span></div>
-            {typeCards(detail).map((card) => <PersonRow key={card.type.key} planId={detail.planId} card={card} t={t} />)}
+            {stepOrderedCards(detail).map((card) => <PersonRow key={card.type.key} planId={detail.planId} card={card} t={t} />)}
             <EventRow detail={detail} t={t} />
           </section>
         </div>

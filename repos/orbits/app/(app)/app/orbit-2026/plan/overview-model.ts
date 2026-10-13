@@ -119,6 +119,12 @@ export function stepGroups(detail: Pick<PlanV2Detail, "content" | "score" | "typ
   return [...groups, ...(rest.length ? [{ n: 0, stepKey: null, title: "", types: rest }] : [])];
 }
 
+/** 390「話すべき人 · ステップ順」: the type rows in step order (a type under two steps once, at its first step), then types under no step. */
+export function stepOrderedCards(detail: Pick<PlanV2Detail, "content" | "score" | "typeStats">): TypeCardView[] {
+  const seen = new Set<string>();
+  return stepGroups(detail).flatMap((group) => group.types).filter((card) => !seen.has(card.type.key) && Boolean(seen.add(card.type.key)));
+}
+
 /** The event block: visits counted from its earned base points. */
 export function eventView(detail: Pick<PlanV2Detail, "content" | "score">) {
   const segment = segmentOf(detail, PLAN_EVENT_SEGMENT_KEY);
