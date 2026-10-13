@@ -257,7 +257,7 @@ export const designFont = {
     displaySm: 48,
     emojiXl: 40,
     emojiHero: 30,
-    emoji2xl: 46,
+    emojiJumbo: 46,
     numberMd: 26
   },
   weight: {
