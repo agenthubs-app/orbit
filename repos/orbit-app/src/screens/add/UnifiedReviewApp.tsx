@@ -93,7 +93,8 @@ export function UnifiedReviewApp({ tiles, active, duplicateTitle, exceptionsOnly
               </View>
             </View>
           ) : null}
-          {duplicates.length ? <UiText style={[styles.lbl, styles.similar]}>{similarLabel}</UiText> : null}
+          {/* 「名前が似ているだけの N件」 only contrasts with the auto-merged block above (b9 #4); without it the rows stand alone (b11 #4). */}
+          {autoMergedLabel && duplicates.length ? <UiText style={[styles.lbl, styles.similar]}>{similarLabel}</UiText> : null}
           {duplicates.map((row, index) => (
             <View key={row.id} style={index > 0 ? styles.xrowLine : null}>
             <UiPressable accessibilityRole="checkbox" accessibilityLabel={toggleLabel(row)} accessibilityState={{ checked: row.selected }} onPress={() => onToggle(row.id)}

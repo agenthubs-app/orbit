@@ -249,7 +249,7 @@
 | R24-05c | 组件库轮做完后重比（App 计划页像素门禁） | 未比，待组件库 | 重跑 `app-plan-A.json` 的 A-R24-05 / 12 / 13 / 16 与 `app-plan-C.json` 的 A-R25-01 / 08 / 11 / 12（Sheet / Dialog / Popover，均需手点到状态后 `shot.py`） | REWORK-REPORT-app §4-10 |
 | R24-06c | R26 做完后重比（App 计划页像素门禁） | 未过，待 R26 | 重跑 `app-plan-A.json` 的 A-R24-01 / 04（概要推荐活动行）；同时把 R24-09 的弁護士卡新图一起清缓存重比 | REWORK-REPORT-app §2 A 组 |
 | R24-10 | App 排版全局口径 | **已定并落实（2026-10-14）**：§19（折行 / 字形 1–3px 记 `[raster]`、标点挤压 UiText 做一次（2c514420 / 4eff02e49 / 0c4c2f722 补「·」）、输入栏去「＋ / 🎤」）、§20（App 按「全部带已归因」判通过，脚本已改）、§24（≤5 問去底部输入栏） | 剩下的是各画面自身的差，见 REWORK-REPORT-app §8 | REWORK-REPORT-app §8 |
-| R12-11 | b11 #4 背景再改后重比（App 加人像素门禁，待画板） | 未过，待画板：§26 后 sheet 本体全 `[raster]`，但背景仍是「一张卡里列 重複 / 推測あり / ✓ / 読み取れません 行」的示意，实现的统一页是三格 + 分区（重複 N件 / 要確認 N件 收起 / 会った場所）+ 底部读不出的卡（同 b9 #4 App） | 背景照 b9 #4 App 统一页上半 + 底部「読み取れませんでした」行重画后，重跑 `app-add-R12.json` 的 A-R12-04；fixture `design-failed` 届时补成画板计数。N10 / N10d / 18 已于 2026-10-14 重比通过 | R12 REWORK-REPORT-app §10 |
+| R12-11 | b11 #4 一处文字口径（App 加人像素门禁，待画板） | 04 深 PASS；04 浅只剩 1 条带：画板重複行「今回：高橋 美咲（青葉ベンチャーズ）」与既存同社仍写社名，实现照 b9 #4（「今回：Sho Watanabe」同社不重复写） | b11 #4 该行改为「今回：高橋 美咲」后重跑 `app-add-R12.json` 的 A-R12-04 浅；fixture `design-failed` 已照画板（17件 · 2 / 1 / 13，sheet 自动打开）。N10 / N10d / 18 已通过 | R12 REWORK-REPORT-app §10 |
 | R12-12 | 待 R20 / 待组件库的加人画面 | 未过，暂缓 | A-R12-16（メモ @人 token，R20）；A-R12-N09（ConfirmDialog 无图标位，组件库 G23）；做完后重跑 `app-add-R12.json` 对应 id | R12 REWORK-REPORT-app §10 |
 | R12-13 | 加人手入力 / 草稿的演示数据 fixture | 未做：会社候补、重複候补、活动 chip、草稿、样本账号都读真实库 | 补 add-scan 同类的只读 fixture 后重跑 A-R12-17 / 18（数据部分）/ N08b / N12；A-R12-b9-04 由 A-R16-04 覆盖，不再单独比 | R12 REWORK-REPORT-app §10 |
 

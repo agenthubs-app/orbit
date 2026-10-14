@@ -418,6 +418,7 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
         {view.phase === "review" ? (
           <ReviewPanel
             view={view}
+            initialSheet={batchId === "design-failed" ? view.cards.find((entry) => entry.section === "failed")?.cardId ?? null : null}
             language={language}
             selectedEventId={selectedEventId ?? null}
             onChooseEvent={setSelectedEventId}
@@ -632,7 +633,7 @@ const GROUP_SHORT: Record<ScanIssueGroup, MessageKey> = {
  *     then 会った場所 and 読み取れなかった名刺 (a row opens b11 A1 ⑤'s sheet: 撮り直す / 手入力で補う / スキップ).
  * The bottom buttons are the page's (KitFoot), handed up through onFoot.
  */
-function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChooseEvent, settle, reload, setDraft, setEnrichment, onRetake, onRetry, onFoot }: {
+function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChooseEvent, settle, reload, setDraft, setEnrichment, onRetake, onRetry, onFoot, initialSheet = null }: {
   view: ScanBatchView;
   stage: ReviewStage;
   onStage: (stage: ReviewStage) => void;
@@ -646,6 +647,8 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
   onRetake: (cardId: string) => void;
   onRetry: (cardId: string) => Promise<void>;
   onFoot: (foot: ReviewFoot) => void;
+  /** Gate demo only (design-failed): open this unreadable card's sheet over the top of the page, as b11 #4 draws it. */
+  initialSheet?: string | null;
 }) {
   const { t } = useOrbitLocale();
   const { styles: k } = useScanKitStyles();
@@ -654,7 +657,7 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
   const [choices, setChoices] = useState<Record<string, Choice>>({});
   const [open, setOpen] = useState<string | null>(null);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<string | null>(initialSheet);
   const [rowMenu, setRowMenu] = useState<string | null>(null);
   const [problems, setProblems] = useState<Record<string, SettleResult>>({});
   const [busy, setBusy] = useState(false);

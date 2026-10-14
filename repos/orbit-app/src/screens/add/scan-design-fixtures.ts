@@ -86,9 +86,11 @@ function reviewDesign(kind: "bridge" | "review" | "failed"): ScanDesign {
     pending(4, "review", S.shinonome[0], S.shinonome[1], issue("name")),
     ...[5, 6, 7, 8, 9, 10].map((seq) => pending(seq, "ready", "", "")),
   ] : [
-    card(1, "added", ...S.takayama),
-    card(2, "added", ...S.date),
-    card(3, "added", ...S.morita),
+    // b11 #4 background = top of the unified page (名刺 · 17件: 重複 2 / 要確認 1 / そのまま追加 13) with the unreadable card's sheet open.
+    pending(1, "duplicate", S.takahashi[0], S.takahashi[1], { candidate: candidate(S.takahashi[0], S.takahashi[1]) }),
+    pending(2, "duplicate", S.suzuki[0], S.suzuki[1], { candidate: candidate(S.suzukiExisting[0], S.suzukiExisting[1]) }),
+    pending(3, "review", S.aoki[0], S.aoki[1], issue("orgSuffix")),
+    ...[4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17].map((seq) => pending(seq, "ready", "", "")),
     pending(16, "failed", S.partial[0], S.partial[1], { failure: "image" }),
   ];
   const count = (section: ScanSection) => cards.filter((entry) => entry.section === section).length;
@@ -96,7 +98,7 @@ function reviewDesign(kind: "bridge" | "review" | "failed"): ScanDesign {
     dateLabel: "", eventTitle: null, selectedEventId: CFO_NIGHT.eventId, total: cards.length,
     view: {
       cards, completed: false, counts: { ...COUNTS, asIs: count("ready"), duplicate: count("duplicate"), failed: count("failed"), merged: kind === "review" ? 4 : 0, review: count("review") },
-      createdAt: CFO_NIGHT.startsAt, density: null, events: kind === "failed" ? [] : [CFO_NIGHT], phase: "review", photos: cards.length, settled: cards.length, uploaded: cards.length,
+      createdAt: CFO_NIGHT.startsAt, density: null, events: [CFO_NIGHT], phase: "review", photos: cards.length, settled: cards.length, uploaded: cards.length,
     },
   };
 }
