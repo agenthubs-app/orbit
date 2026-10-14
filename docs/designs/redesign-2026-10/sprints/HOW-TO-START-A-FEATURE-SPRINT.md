@@ -129,6 +129,7 @@ render(body.data);
   3. **token 齐**：用 `--style-diff` 或 `--extract-board` 列出画板用到的字号、行高、圆角、间距、颜色，和 token 源比对，缺的先补 token（R01 流程），**实现里不许出现手抄的近似值**（20 vs 21、14 vs 13、6 vs 7、行高 1.55 vs 1.5 都是这样来的）。
   4. **组件对齐 kit**：画面用到的组件（Modal / Drawer / Chip / Segmented / MacTile / Button 等）先查交接表 G23 / G23b 有没有已知差；有差就等组件库轮或标「待组件库」，不在页面里各自打补丁；新组件只加不改，并防旧页全局样式（如 `.btn`）漏进来。
   5. **演示数据照画板造**：先做「设计稿示例 fixture」，让人名长度、条数、分数、邮箱长度都和画板一样，再截第一张图；画板画的中途状态（展开中、toast、只填一半）在画面清单里写好怎么进到那个状态（深链 / fixture / 脚本步骤）。断点（1440 / 1024 / 390）各读一遍画板，不要自己推断响应式布局。
+  - **用工具跑**：`cd repos/orbits && node scripts/visual/board-preflight.mjs --suite scripts/visual/views/<端>-<Sprint>.json --md <PLANNER 目录>/preflight-checklist.md`（或 `--design <文件> --board <标题>`）——自动查第 1 项（数字自洽）、第 3 项（缺 token / 近似但不等），列出第 2 项的数据来源清单和疑似无功能元素、第 5 项的宽度 / 主题 / 中途状态；结论贴进 PLANNER 预检表。用法见 `repos/orbits/scripts/visual/README-redesign.md`「画板预检工具」。
 - **边写边比**：每做完一个区块就跑一次 `--only <画面>` + `--style-diff`，按元素修到 0 差再做下一块；不要整页写完才第一次比。App 端字形与折行按决定表 §19 / §20 处理（`UiText` 已统一标点挤压，日文显式 Hiragino）。
 - **UI 对齐的默认流程**（**试行中，2026-10-12**；等 R05 和 Web 计划页两组的用时对比出来后转为定稿）。以后所有 UI 对齐、像素返工和功能 Sprint 的界面部分都按这个流程做：
   - **照源码搬，不对着截图画**：Web 把画板的 DOM 结构和 CSS 数值直接照 `kit/ui.css`、`kit/kit.js` 和画板 HTML 源码搬进 CSS Modules（数值换成 token）；App 把 kit 里的数值一次性翻译成 token 和组件参数。

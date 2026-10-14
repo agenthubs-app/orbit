@@ -23,7 +23,7 @@
 
 每个 Sprint 照 HOW-TO 先写 `GOAL.md` / `PLANNER.md`（目录 `sprints/Rxx-<名字>/`），独立复核后再实施。
 
-**开工必读补充（2026-10-14）**：写界面前先做 HOW-TO 第 8 节的「画板预检」五项（画板自洽 / 数据来源 / token 齐 / 组件对齐 / 演示数据照画板造），并「边写边比」——甲这边的返工大多来自这五类，提前查能省掉大部分返工。
+**开工必读补充（2026-10-14）**：写界面前先做 HOW-TO 第 8 节的「画板预检」五项（画板自洽 / 数据来源 / token 齐 / 组件对齐 / 演示数据照画板造），并「边写边比」——甲这边的返工大多来自这五类，提前查能省掉大部分返工。开工时先跑 `node scripts/visual/board-preflight.mjs`（在 `repos/orbits` 下，`--suite views/<端>-<Sprint>.json` 或 `--design <文件> --board <标题>`），它自动查画板自洽和 token 缺口、列出数据来源清单，结果贴进 PLANNER（用法见 `scripts/visual/README-redesign.md`「画板预检工具」）。
 
 ## 3. 两人协作规矩
 

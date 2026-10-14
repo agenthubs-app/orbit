@@ -7,6 +7,7 @@
 | `compare-redesign.mjs` | Web：按画板定位设计稿 `.web` / `.phone.mweb` 画框截图，同宽同主题截实现的完整页面（含导航壳），整屏 raw + `--grid` 逐带比对 + 归因门禁 |
 | `compare-redesign-app.mjs` | App：iOS 模拟器真实截图（不用 react-native-web）↔ 设计稿 App 画板（`.phone` 390×844pt），按点宽缩放对齐后同样比对 |
 | `redesign-pixel-lib.mjs` | 两者共用：参数解析、读密码、PNG 缩放 / 裁剪、比对与门禁、三联图、缺块检测、设计稿缓存、画面清单与筛选、终端摘要 |
+| `board-preflight.mjs` + `board-preflight-lib.mjs` | 画板预检：写界面前读画板，列 token 缺口 / 近似值、画板数字不自洽、数据来源清单、宽度与主题、中途状态（见「画板预检工具」） |
 | `views/<端>-<Sprint>.json` | 画面清单（批量门禁）：每个画面的参数 + 它依赖的源文件（`--changed` 用）；键 `<id>-<width>-<theme>` 与归因文件一致 |
 
 0918 新 UI 的 `compare-0918.mjs` 原样保留（只认 `Orbit_0918/*.dc.html`），两套比对口径相同：单通道差 ≥24 记一个不一致像素；逐带 ±12px 上下搜索取最小值。
@@ -119,6 +120,25 @@ node scripts/visual/compare-redesign.mjs --extract-board web.html "ホーム新�
 标题按包含匹配（同 `--board`）；序号见 `--list`。设计稿是普通 HTML + `kit/`，这里用浏览器渲染后抽取，所以 `dist/` 里自解压的合并版同样适用。
 
 **App**：文字表与 `--crop` 同 Web；不做样式比对（模拟器里没有 DOM）。
+
+## 画板预检工具：`board-preflight.mjs`（2026-10-14）
+
+新页面**写界面之前**先跑（HOW-TO §8「画板预检」）：读设计稿画板的 DOM 与计算样式，把以后会变成返工的问题先列出来。直接 `file://` 渲染设计稿，不需要设计稿服务和 dev server；只读，不改任何文件。纯函数在 `board-preflight-lib.mjs`，单测 `tests/scripts/board-preflight.test.ts`。
+
+```bash
+node scripts/visual/board-preflight.mjs --design b12-missing-states.html --board W-R25-07
+node scripts/visual/board-preflight.mjs --design web.html --board-index 17,21 --md /tmp/checklist.md --json /tmp/preflight.json
+node scripts/visual/board-preflight.mjs --suite scripts/visual/views/web-plan-A.json --only W-R24-02
+node scripts/visual/board-preflight.mjs --design b9-import-plan-v2.html --board-index 8 --rev 19624d5e1~1   # 旧版画板
+```
+
+输出四段文字结论（每块画板一组），最后一行小结；`--json` 存全部结果，`--md` 存可填写的数据来源清单：
+1. **token 覆盖**（第 3 项）：画板可见元素用到的字号、行高（按比值）、字距（em）、圆角、内外边距与 gap、文字 / 背景 / 边框色、阴影，逐值对 token 源 `shared/design/tokens.json`（Web `--fs-*` / `--lh-*` / `--r-*` / `--space-*` / 颜色变量，App `designFont` / `designRadius` / `designSpace` / `designColors`）。列「**近似但不等**」（字号 ±1px、行高 ±0.06、圆角 ±1px、颜色 RGB 距离 ≤14：如行高 1.55 vs `--lh-body` 1.5）和「**缺 token**」（间距不在 `--space-*` 刻度上的单独一行），每项带出现次数、最近 token 和位置。颜色只有另一主题有同值时标「主题串色」。
+2. **画板自洽**（第 1 项，提示不是失败）：「選んだ n件」vs 同卡片勾选行数；标题「n人 / n件」vs 画出的行数（n ≤ 12、无「すべて / もっと」入口）；「合計 / 話した人 / 人脈…」总数 vs 重复元素里的分项合计；同一画板同一标签不同数字（列表每行各自的数字不算）。另列同文件其他画板同一标签的不同数字（不同状态可能本来就不同，`--no-bundle` 关掉）。
+3. **数据来源清单**（辅助第 2 项）：文字、按钮、图标、输入框逐行（design-id `k-*` / 类名 / 文字），`--md` 写成表格让实现者在 PLANNER 里逐行填契约字段或接口；标出「疑似无功能」：🎤 / 语音、＋ 入口、自由输入框、emoji chip。导航壳默认不列（`--with-shell` 才列）。
+4. **状态与断点**（第 5 项）：扫全部设计稿的画板清单（按文件内容哈希缓存在设计稿缓存目录），列同画面的宽度（web / web1024 / mweb390 / phone）和浅 / 深，缺的写「设计稿无」；识别中途状态（toast、弹层 / 抽屉 / 菜单打开、展开中、加载中、表单只填一半、标题含「送信中」等），提示在画面清单写明怎么进到这个状态。`--no-variants` 跳过扫描。
+
+验证（2026-10-14）：b12 W-R25-07 旧版（`--rev 9c82c4ec~1`）报「話した人 21人 ≠ 分项合计 19人」；b9 #8 旧版（`--rev 19624d5e1~1`）报「選んだ 4件 但勾选 3 行」；web.html #17 报行高 1.55 ×15 近似 `--lh-body` 1.5。三处修后版本均不再报自洽问题。单块画板约 5–10 秒（b12 近 300 块画板要多几秒）；首次扫全部设计稿的画板清单多十几秒，之后走缓存。
 
 ## Web：`compare-redesign.mjs`
 
