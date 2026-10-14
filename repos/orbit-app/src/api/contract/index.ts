@@ -354,8 +354,22 @@ export type {
   EventAssessmentScoreItem,
   EventAssessmentSourceKind,
   EventAssessmentStatus,
-  EventAssessmentVerdict
+  EventAssessmentVerdict,
+  // R26
+  EventAssessmentAgendaItem,
+  EventAssessmentAvailability,
+  EventAssessmentCaution,
+  EventAssessmentDismissResult,
+  EventAssessmentDisplay,
+  EventAssessmentDisplayValue,
+  EventAssessmentFactBasis,
+  EventAssessmentFailureReason,
+  EventAssessmentFormat,
+  EventAssessmentMeetCandidate,
+  EventAssessmentPageCandidate,
+  EventAssessmentSpeaker
 } from "./event-assessment";
+export type { MyEventItem, MyEventStatus, MyEventsRange, MyEventsResponse } from "./events-mine";
 export type { EventRecommendationDismissInput, EventRecommendationDismissReason, EventRecommendationDismissResult } from "./event-recommendation-feedback";
 export type { AccountDeletionRequestContract, AccountExportContract, AccountExportScope, AppVersionContract } from "./account";
 export type {

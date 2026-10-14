@@ -4304,8 +4304,10 @@
     "event-assessment.ts::EventAssessmentSourceKind": {
       "kind": "enum",
       "values": [
+        "'manual'",
         "'orbit_event'",
         "'poster'",
+        "'text'",
         "'url'"
       ]
     },
@@ -4365,6 +4367,234 @@
           "type": "string"
         },
         "url": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "area": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "speakers": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventAssessmentSpeaker[]"
+        },
+        "exhibitorCount": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "expectedAttendees": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "format": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventAssessmentFormat"
+        },
+        "agenda": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventAssessmentAgendaItem[]"
+        }
+      }
+    },
+    "event-assessment.ts::EventAssessmentSpeaker": {
+      "kind": "object",
+      "members": {
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "role": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "event-assessment.ts::EventAssessmentFormat": {
+      "kind": "object",
+      "members": {
+        "networking": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "tableTalk": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "matching": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "event-assessment.ts::EventAssessmentAgendaItem": {
+      "kind": "object",
+      "members": {
+        "at": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "minutes": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "event-assessment.ts::EventAssessmentFactBasis": {
+      "kind": "enum",
+      "values": [
+        "'guessed'",
+        "'read'",
+        "'rule'",
+        "'user'"
+      ]
+    },
+    "event-assessment.ts::EventAssessmentFailureReason": {
+      "kind": "enum",
+      "values": [
+        "'ai_unavailable'",
+        "'blocked_host'",
+        "'fetch_failed'",
+        "'login_required'",
+        "'not_event_page'",
+        "'quota_exceeded'",
+        "'timeout'",
+        "'too_large'",
+        "'unreadable'"
+      ]
+    },
+    "event-assessment.ts::EventAssessmentDisplayValue": {
+      "kind": "object",
+      "members": {
+        "value": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "min": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "max": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "reason": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "event-assessment.ts::EventAssessmentDisplay": {
+      "kind": "object",
+      "members": {
+        "goalFit": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventAssessmentDisplayValue"
+        },
+        "people": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventAssessmentDisplayValue"
+        },
+        "timeCost": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventAssessmentDisplayValue"
+        }
+      }
+    },
+    "event-assessment.ts::EventAssessmentMeetCandidate": {
+      "kind": "object",
+      "members": {
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "count": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "basis": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "event-assessment.ts::EventAssessmentCaution": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'other' | 'fee' | 'off_target_session' | 'calendar' | 'travel'"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "detail": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "event-assessment.ts::EventAssessmentPageCandidate": {
+      "kind": "object",
+      "members": {
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "url": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
           "optional": true,
           "kind": "text",
           "type": "string"
@@ -4463,6 +4693,204 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "factBasis": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "url": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "format": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "title": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "startsAt": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "venue": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "organizer": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "price": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "endsAt": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "area": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "speakers": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "exhibitorCount": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "expectedAttendees": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
+            "agenda": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            }
+          }
+        },
+        "display": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventAssessmentDisplay"
+        },
+        "scoreRange": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "min": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "max": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "meetCandidates": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventAssessmentMeetCandidate[]"
+        },
+        "knownAttendees": {
+          "optional": true,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "contactId": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "name": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "cautions": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventAssessmentCaution[]"
+        },
+        "partialAttendanceHint": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "window": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "timeCostAfter": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "failureReason": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventAssessmentFailureReason"
+        },
+        "pageCandidates": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventAssessmentPageCandidate[]"
+        },
+        "userFilledFields": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly (keyof EventAssessmentFacts)[]"
+        },
+        "userDecision": {
+          "optional": true,
+          "kind": "text",
+          "type": "'added' | 'dismissed'"
+        },
+        "eventId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "assessedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "goalLabel": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "sourceLabel": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "readSeconds": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "basisLines": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "planItemId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "recomputeOnAttendeeList": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -4477,6 +4905,11 @@
           "optional": false,
           "kind": "text",
           "type": "EventAssessmentFacts"
+        },
+        "unknownFields": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly ('startsAt' | 'venue' | 'price')[]"
         }
       }
     },
@@ -4492,6 +4925,56 @@
           "optional": false,
           "kind": "text",
           "type": "true"
+        },
+        "planId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "planItemId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "event-assessment.ts::EventAssessmentDismissResult": {
+      "kind": "object",
+      "members": {
+        "assessmentId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "userDecision": {
+          "optional": false,
+          "kind": "text",
+          "type": "'dismissed'"
+        }
+      }
+    },
+    "event-assessment.ts::EventAssessmentAvailability": {
+      "kind": "object",
+      "members": {
+        "monthlyLeft": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "monthlyLimit": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "dailyLeft": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "aiReadAvailable": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -5181,6 +5664,115 @@
           "optional": true,
           "kind": "text",
           "type": "PortraitRegistrationSource | null"
+        }
+      }
+    },
+    "events-mine.ts::MyEventStatus": {
+      "kind": "enum",
+      "values": [
+        "'attended'",
+        "'cancelled'",
+        "'pending_review'",
+        "'planned'",
+        "'registered'",
+        "'rejected'",
+        "'waitlisted'"
+      ]
+    },
+    "events-mine.ts::MyEventsRange": {
+      "kind": "enum",
+      "values": [
+        "'past'",
+        "'upcoming'"
+      ]
+    },
+    "events-mine.ts::MyEventItem": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "venue": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "MyEventStatus"
+        },
+        "meetCount": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "meetInitials": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "assessmentId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "score": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "events-mine.ts::MyEventsResponse": {
+      "kind": "object",
+      "members": {
+        "range": {
+          "optional": false,
+          "kind": "text",
+          "type": "MyEventsRange"
+        },
+        "items": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly MyEventItem[]"
+        },
+        "upcomingCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
         }
       }
     },
@@ -6344,13 +6936,25 @@
         "DomainManifest",
         "DomainManifestEntry",
         "DomainPage",
+        "EventAssessmentAgendaItem",
+        "EventAssessmentAvailability",
+        "EventAssessmentCaution",
         "EventAssessmentContract",
         "EventAssessmentCreateInput",
         "EventAssessmentCriterion",
+        "EventAssessmentDismissResult",
+        "EventAssessmentDisplay",
+        "EventAssessmentDisplayValue",
+        "EventAssessmentFactBasis",
         "EventAssessmentFacts",
+        "EventAssessmentFailureReason",
+        "EventAssessmentFormat",
+        "EventAssessmentMeetCandidate",
+        "EventAssessmentPageCandidate",
         "EventAssessmentPatchInput",
         "EventAssessmentScoreItem",
         "EventAssessmentSourceKind",
+        "EventAssessmentSpeaker",
         "EventAssessmentStatus",
         "EventAssessmentVerdict",
         "EventCaptureMethodCode",
@@ -6454,6 +7058,10 @@
         "MutationOperation",
         "MutationPolicy",
         "MutationResult",
+        "MyEventItem",
+        "MyEventStatus",
+        "MyEventsRange",
+        "MyEventsResponse",
         "NoteContract",
         "NoteDetailContract",
         "NoteTaskCardContract",
@@ -9344,6 +9952,31 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "kind": {
+          "optional": true,
+          "kind": "text",
+          "type": "'event' | 'candidate'"
+        },
+        "basis": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "actionLabel": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "progressLabel": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "eventId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -9637,6 +10270,11 @@
           "optional": true,
           "kind": "text",
           "type": "string | null"
+        },
+        "recommendedEvents": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanEventOption[]"
         }
       }
     },
@@ -10570,7 +11208,7 @@
         "source": {
           "optional": false,
           "kind": "text",
-          "type": "'ai' | 'rule'"
+          "type": "'rule' | 'ai'"
         }
       }
     },
@@ -11412,6 +12050,26 @@
           "optional": false,
           "kind": "text",
           "type": "PlanEventScore"
+        },
+        "emoji": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "fitLabel": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "assessmentHref": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "display": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventAssessmentDisplay"
         }
       }
     },
@@ -13521,7 +14179,7 @@
               "status": {
                 "optional": false,
                 "kind": "text",
-                "type": "'completed' | 'open' | 'dismissed' | 'scheduled'"
+                "type": "'completed' | 'dismissed' | 'open' | 'scheduled'"
               },
               "purpose": {
                 "optional": false,
@@ -13618,7 +14276,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'completed' | 'open' | 'dismissed' | 'scheduled'"
+          "type": "'completed' | 'dismissed' | 'open' | 'scheduled'"
         },
         "dueAt": {
           "optional": false,
@@ -13680,7 +14338,7 @@
               "status": {
                 "optional": false,
                 "kind": "text",
-                "type": "'completed' | 'open' | 'dismissed' | 'scheduled'"
+                "type": "'completed' | 'dismissed' | 'open' | 'scheduled'"
               },
               "dueAt": {
                 "optional": false,

@@ -85,12 +85,24 @@ export const planScoreViewObject = z.object({
   segments: readableItems(segment),
 });
 
+// R26：今日のチャンス加了 kind / basis / actionLabel / progressLabel / eventId（可选，读不懂按缺省）。
+const todayChance = z.object({
+  label: z.string().min(1),
+  points: count,
+  href: z.string().min(1),
+  kind: z.enum(["candidate", "event"]).optional().catch(undefined),
+  basis: z.string().nullable().optional().catch(null),
+  actionLabel: z.string().nullable().optional().catch(null),
+  progressLabel: z.string().nullable().optional().catch(null),
+  eventId: z.string().nullable().optional().catch(null),
+});
+
 const homeSummary = z.object({
   planId: z.string().min(1),
   goal: z.string().min(1),
   goalKind,
   score: planScoreViewObject,
-  todayChance: z.object({ label: z.string().min(1), points: count, href: z.string().min(1) }).nullable().optional(),
+  todayChance: todayChance.nullable().optional(),
   sample: z.literal(true).optional(),
 });
 
@@ -184,7 +196,7 @@ export const planV2DetailObject = z.object({
   achievedAt: z.string().nullable(),
   sample: z.literal(true).optional(),
   // R24：概要的可选字段（读不懂的整条跳过）。
-  todayChance: z.object({ label: z.string().min(1), points: count, href: z.string().min(1) }).nullable().optional().catch(null),
+  todayChance: todayChance.nullable().optional().catch(null),
   typeStats: readableItems(z.object({ itemId: z.string().min(1), candidates: count, events: count, introRoutes: count })).optional(),
   stepProgress: readableItems(z.object({
     stepKey: z.string().min(1),
@@ -212,6 +224,8 @@ export const planV2DetailObject = z.object({
   // 计划页像素返工（D59）：背景説明 / ひとこと（读不懂按 null）。
   goalBackground: z.string().nullable().optional().catch(null),
   goalNote: z.string().nullable().optional().catch(null),
+  // R26（D53）：概要推荐活动（与类型详情 events 同形状）。
+  recommendedEvents: z.lazy(() => readableItems(planEventOption)).optional(),
 });
 export const planV2DetailSchema = planV2DetailObject as z.ZodType<PlanV2Detail>;
 
@@ -538,6 +552,21 @@ const eventScore = z.object({
   scoreBreakdown: readableItems(scoreItem),
   rubricVersion: z.string().min(1),
 });
+const displayValue = z.object({ value: count, min: count.optional(), max: count.optional(), reason: z.string().optional() });
+const planEventOption = z.object({
+  eventId: z.string().min(1),
+  title: z.string(),
+  startsAt: z.string(),
+  venue: z.string().nullable(),
+  expectedCount: count.nullable(),
+  fee: count.nullable().optional().catch(null),
+  score: eventScore,
+  // R26 additions.
+  emoji: z.string().optional(),
+  fitLabel: z.string().nullable().optional().catch(null),
+  assessmentHref: z.string().nullable().optional().catch(null),
+  display: z.object({ goalFit: displayValue, people: displayValue, timeCost: displayValue }).optional().catch(undefined),
+});
 const awardPart = z.enum(["base", "overflow"]);
 const awardBasis = z.enum(["talked", "self_report", "memo", "event", "skip"]);
 
@@ -589,15 +618,7 @@ export const planPersonTypeDetailObject = z.object({
     basis: awardBasis,
   })),
   introRoutes: readableItems(z.object({ viaContactId: z.string().min(1), viaName: z.string(), why: z.string() })),
-  events: readableItems(z.object({
-    eventId: z.string().min(1),
-    title: z.string(),
-    startsAt: z.string(),
-    venue: z.string().nullable(),
-    expectedCount: count.nullable(),
-    fee: count.nullable().optional().catch(null),
-    score: eventScore,
-  })),
+  events: readableItems(planEventOption),
   tasks: readableItems(z.object({ taskId: z.string().min(1), title: z.string(), dueDate: z.string().nullable() })),
   sample: z.literal(true).optional(),
 });

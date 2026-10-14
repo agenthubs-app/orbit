@@ -10,7 +10,8 @@ import type { z } from "zod";
 
 import type { AccountDeletionRequestContract, AccountExportContract, AccountExportCreateInput, AppVersionContract } from "../../shared/contract/account";
 import type { ContactCompletionAnswerInput, ContactCompletionQuestion, ContactCompletionResult } from "../../shared/contract/contact-completion";
-import type { EventAssessmentAddToPlanResult, EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentPatchInput } from "../../shared/contract/event-assessment";
+import type { EventAssessmentAddToPlanResult, EventAssessmentAvailability, EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentDismissResult, EventAssessmentPatchInput } from "../../shared/contract/event-assessment";
+import type { MyEventsResponse } from "../../shared/contract/events-mine";
 import type { EventRecommendationDismissInput, EventRecommendationDismissResult } from "../../shared/contract/event-recommendation-feedback";
 import type { HomeLayoutContract, HomeLayoutUpdateInput } from "../../shared/contract/home-layout";
 import type { IngestContactCandidateContract } from "../../shared/contract/business-card-batch";
@@ -21,7 +22,8 @@ import type { ContactImportBatchListResponse, ContactImportBatchResponse, Contac
 import type { contactImportBatchListResponseObject, contactImportBatchResponseObject, contactImportBatchResultObject, contactImportBatchViewObject, contactImportCommitInputObject, contactImportDecisionsResultObject, contactImportEventInputObject, contactImportEventListResponseObject, contactImportEventSummaryObject, contactImportMappingInputObject, contactImportRowDecisionInputObject, contactImportRowViewObject, contactImportRowsPageObject } from "../../shared/api-schema/contact-import";
 import type { accountDeletionRequestObject, accountExportCreateInputObject, accountExportObject, appVersionObject } from "../../shared/api-schema/account";
 import type { contactCompletionAnswerInputObject, contactCompletionQuestionObject, contactCompletionResultObject } from "../../shared/api-schema/contact-completion";
-import type { eventAssessmentAddToPlanResultObject, eventAssessmentCreateInputObject, eventAssessmentObject, eventAssessmentPatchInputObject } from "../../shared/api-schema/event-assessment";
+import type { eventAssessmentAddToPlanResultObject, eventAssessmentAvailabilityObject, eventAssessmentCreateInputObject, eventAssessmentDismissResultObject, eventAssessmentObject, eventAssessmentPatchInputObject } from "../../shared/api-schema/event-assessment";
+import type { myEventsResponseObject } from "../../shared/api-schema/events-mine";
 import type { eventRecommendationDismissInputObject, eventRecommendationDismissResultObject } from "../../shared/api-schema/event-recommendation-feedback";
 import type { homeLayoutObject, homeLayoutUpdateInputObject } from "../../shared/api-schema/home-layout";
 import type { ingestContactCandidateObject } from "../../shared/api-schema/business-card-batch";
@@ -59,6 +61,10 @@ expectParity<Parity<EventAssessmentContract, typeof eventAssessmentObject>>();
 expectParity<Parity<EventAssessmentCreateInput, typeof eventAssessmentCreateInputObject>>();
 expectParity<Parity<EventAssessmentPatchInput, typeof eventAssessmentPatchInputObject>>();
 expectParity<Parity<EventAssessmentAddToPlanResult, typeof eventAssessmentAddToPlanResultObject>>();
+// R26
+expectParity<Parity<EventAssessmentDismissResult, typeof eventAssessmentDismissResultObject>>();
+expectParity<Parity<EventAssessmentAvailability, typeof eventAssessmentAvailabilityObject>>();
+expectParity<Parity<MyEventsResponse, typeof myEventsResponseObject>>();
 expectParity<Parity<EventRecommendationDismissInput, typeof eventRecommendationDismissInputObject>>();
 expectParity<Parity<EventRecommendationDismissResult, typeof eventRecommendationDismissResultObject>>();
 expectParity<Parity<AccountExportContract, typeof accountExportObject>>();

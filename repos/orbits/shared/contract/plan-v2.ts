@@ -5,7 +5,7 @@
  * 只加不改（README 通用规则 10；破坏性改动先在 BREAKING.md 登记）。
  */
 
-import type { EventAssessmentScoreItem } from "./event-assessment";
+import type { EventAssessmentDisplay, EventAssessmentScoreItem } from "./event-assessment";
 
 export type PlanGoalKind = "launch" | "fundraising" | "sales" | "hiring" | "partnership" | "career";
 /** 读取时未知的目标类型落到 `unknown`：界面只显示目标文，不显示类型名和 emoji。 */
@@ -130,6 +130,16 @@ export interface PlanTodayChance {
   label: string;
   points: number;
   href: string;
+  /** R26：候补（人）还是活动。 */
+  kind?: "candidate" | "event";
+  /** R26：「根拠：…」一行（服务端给）。 */
+  basis?: string | null;
+  /** R26：按钮文案（「会う準備をする」/「イベントを見る」/「話す準備をする」）。 */
+  actionLabel?: string | null;
+  /** R26：按钮旁的进度（「VC パートナー · 2 / 3人」）。 */
+  progressLabel?: string | null;
+  /** R26：活动候选的活动 id（库内活动或 `assessment:<id>`）。 */
+  eventId?: string | null;
 }
 
 /** 首页「プラン スコア」组件用的当前目标。 */
@@ -220,6 +230,8 @@ export interface PlanV2Detail {
   goalBackground?: string | null;
   /** 计划页像素返工（D59）：「ひとこと（重点）」——一句话重点（≤200 字）。存在 `plans.analysis.goalNote`；没写过为 null。 */
   goalNote?: string | null;
+  /** R26（D53）：概要「🎟 イベント」卡的推荐活动（按 `scoreEvent` 降序，≤3）。 */
+  recommendedEvents?: readonly PlanEventOption[];
 }
 
 /** 记一次「话过了」（有名字 / 无名字）。 */
@@ -748,6 +760,14 @@ export interface PlanEventOption {
   /** 参加費（円；事实，没有为 null；计划页像素返工：会える活動表的参加費列）。 */
   fee?: number | null;
   score: PlanEventScore;
+  /** R26：活动 emoji（`shared/compute/event-emoji.ts`）。 */
+  emoji?: string;
+  /** R26：适配 chip（「VC 約5名 · 起業家 約12名」，服务端按计划人物类型生成）。 */
+  fitLabel?: string | null;
+  /** R26：评估结果页链接（有评估记录时）。 */
+  assessmentHref?: string | null;
+  /** R26：3 维显示值（与评估页同一换算）。 */
+  display?: EventAssessmentDisplay;
 }
 
 /** 与契约 8 同形状的分数（R26 不再改形状）。 */
