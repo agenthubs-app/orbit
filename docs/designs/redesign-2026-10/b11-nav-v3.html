@@ -109,6 +109,11 @@
   .prow2 { display: flex; gap: 10px; align-items: center; padding: 9px 0; }
   /* 统一页三格（照抄 b9 .bq；§26-1） */
   .bq { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .xrow { display: flex; gap: 10px; align-items: center; padding: 10px 0; }
+  .xrow + .xrow { border-top: 1px solid var(--line); }
+  .xrow .meta { flex: 1; min-width: 0; }
+  .xrow .meta b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .xrow .meta span { display: block; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bq > div { border-radius: 16px; padding: 10px 12px; background: var(--surface); }
   .bq b { font-family: var(--font-num); font-size: 24px; font-weight: 800; display: block; line-height: 1.15; }
   .bq > div.on { box-shadow: inset 0 0 0 1.5px var(--plum-500); }
@@ -1118,9 +1123,17 @@ const scanFailSheet = `<div class="sheet-scrim"></div><div class="sheet k-sfshee
   <div class="row" style="gap:12px;align-items:flex-start"><div style="position:relative">${MC({ cls: 'blur', style: 'width:120px;padding:8px 9px' })}</div><div style="flex:1;min-width:0"><b style="font-size:16px">この 1枚は読み取れませんでした</b><div class="row k-sfwhy" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="chip coral">画像を読み取れませんでした</span></div></div></div>
   <div class="card flat k-sfpart" style="margin-top:12px;padding:10px 12px"><div class="lbl">読めたところ</div><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><span class="chip apricot">会社：東邦テクノ…（推測）</span><span class="chip" style="opacity:.55">名前：—</span><span class="chip" style="opacity:.55">連絡先：—</span></div></div>
   <div style="display:grid;gap:8px;margin-top:14px"><button class="btn primary block k-sfre">${ic('scan', 'sm')}この 1枚を撮り直す</button><button class="btn block k-sfhand">${ic('pen', 'sm')}手入力で補う（読めた所は入力済み）</button><button class="btn ghost block k-sfskip">スキップ</button></div></div>`;
-/* 2026-10-14（§26-1，§18-9 流程）：背景 = 统一页「まとめて確認（名刺 · N件）」（同 b9 #4 App 版），读不出的卡在页底一行 */
-function scanFailBg() { return topbar('まとめて確認', '名刺 · 17件', back) + `<div class="bq k-bq"><div class="on"><span class="lbl">重複</span><b>${num(2)}</b></div><div><span class="lbl">要確認</span><b>${num(1)}</b></div><div><span class="lbl">そのまま追加</span><b>${num(13)}</b></div></div>
-    <div class="card" style="margin-top:12px;padding:4px 16px">${[['dup', '高橋 美咲', '青葉ベンチャーズ · すでに人脈にいます'], ['guess', '松本 千尋', '関西テクノ電機 · 役職を推測'], ['ok', '高山 亮', 'ミライ精機 · 経営企画部 部長']].map(scanRow).join('')}<div class="prow2"><div class="tp ng" style="width:44px"></div><div class="meta"><b>読み取れませんでした</b><span>16枚目</span></div><span class="ngd">!</span></div></div>`; }
+/* 2026-10-14（§26-1 / 追记，§18-9 流程）：背景 = b9 #4 App 统一页「まとめて確認」的上半：三格 + 重複 N件 + 要確認 N件（折叠）+ 会った場所，读不出的卡在页底 */
+function scanFailBg() { return topbar('まとめて確認', '名刺 · 17件', back) + `
+    <div class="bq k-bq"><div class="on"><span class="lbl">重複</span><b>${num(2)}</b></div><div><span class="lbl">要確認</span><b>${num(1)}</b></div><div><span class="lbl">そのまま追加</span><b>${num(13)}</b></div></div>
+    <div class="card k-dup" style="margin-top:12px">
+      <div class="card-h"><h3>重複 2件</h3><span class="lbl">例外だけ表示</span></div>
+      ${[['高', 'c2', '高橋 美咲', '既存：青葉ベンチャーズ', '今回：高橋 美咲（青葉ベンチャーズ）'], ['鈴', 'c3', '鈴木 大輔', '既存：北辰製作所', '今回：鈴木 大輔（会社なし）']].map(([i, c, n, a, b]) => `<div class="xrow"><span class="cbx on">${ic('check')}</span><div class="avs"><div class="av sm ${c}">${i}</div><div class="av sm ${c}">${i}</div></div><div class="meta"><b>${n}</b><span>${a}</span><span>${b}</span></div></div>`).join('')}
+      <div class="row" style="gap:8px;margin-top:10px"><button class="btn sm primary">選んだ 2件を統合</button><button class="btn sm">別人として追加</button></div></div>
+    <div class="card acc"><div class="row between"><h3 style="font-size:14.5px">要確認 1件</h3><span class="row" style="gap:6px"><span class="lbl">読み取りが不確か</span><span class="chev">${ic('down', 'sm')}</span></span></div></div>
+    <div class="card k-when"><div class="row" style="gap:10px"><span class="emo sm apricot">📍</span><div style="flex:1;min-width:0"><b style="font-size:13px">会った場所と日付をつけます</b><div class="lbl">10月7日（火）· CFO Night Tokyo</div></div><span class="chip apricot">推定</span></div>
+      <div class="lbl" style="margin-top:8px">撮影時刻と、参加予定のイベントから。このまとまり全員に付けます</div></div>
+    <div class="card" style="padding:4px 16px"><div class="prow2"><div class="tp ng" style="width:44px"></div><div class="meta"><b>読み取れませんでした</b><span>16枚目</span></div><span class="ngd">!</span></div></div>`; }
 function scanWeb() {
   return mainhead('名刺をスキャン', '人脈を追加 › 名刺', back, '') + `<div class="wgrid">
     <div class="card span8 k-wsdrop" style="padding:22px"><div class="drop"><div><div style="font-size:40px;line-height:1">📇</div><b style="font-size:17px;display:block;margin-top:8px">名刺の写真をここにドロップ</b><div class="lbl" style="margin-top:4px">JPG · PNG · HEIC · 一度に最大 100枚 · 表と裏はペアにできます</div><button class="btn primary" style="margin-top:14px">${ic('image', 'sm')}ファイルを選ぶ</button></div></div>
