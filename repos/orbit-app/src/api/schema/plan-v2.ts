@@ -556,6 +556,7 @@ export const planPersonTypeDetailObject = z.object({
   overflow: count,
   metCount: count,
   skipped: z.boolean(),
+  skippedAt: z.string().nullable().optional(),
   stepKeys: z.array(z.string()),
   why: z.string(),
   questions: z.array(z.string()),

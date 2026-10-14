@@ -205,7 +205,7 @@ export function SegFull<K extends string>({ value, options, onChange, label }: {
       {options.map((option) => {
         const on = option.key === value;
         return (
-          <UiPressable key={option.key} accessibilityRole="radio" accessibilityState={{ checked: on, selected: on }} aria-checked={on} onPress={() => onChange(option.key)} style={[styles.segBtn, on && styles.segBtnOn]}>
+          <UiPressable key={option.key} hitSlop={7} accessibilityRole="radio" accessibilityState={{ checked: on, selected: on }} aria-checked={on} onPress={() => onChange(option.key)} style={[styles.segBtn, on && styles.segBtnOn]}>
             <UiText style={[styles.segText, on && styles.segTextOn]}>{option.label}</UiText>
           </UiPressable>
         );

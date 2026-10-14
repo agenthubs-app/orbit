@@ -31,6 +31,13 @@ export function KitChip({ label, tone = "neutral", style }: { label: string; ton
   );
 }
 
+/** kit .sample-tag（9.5px 800、圆角 6、apricot）：示例数据必须标出（「处处有据」）。 */
+export function KitSampleTag({ style }: { style?: StyleProp<ViewStyle> }) {
+  const { styles } = useKitStyles();
+  const copy = useStandardCopy();
+  return <View style={[styles.sampleTag, style]}><UiText style={styles.sampleTagText}>{copy.sample.tag}</UiText></View>;
+}
+
 /** .emo（40 / 圆角 13 / 21px）与 .emo.sm（32 / 10 / 17px）。 */
 export function KitEmo({ emoji, tone = "lav", sm = false }: { emoji: string; tone?: Exclude<KitTone, "neutral" | "coral" | "ok">; sm?: boolean }) {
   const { styles } = useKitStyles();
@@ -223,6 +230,8 @@ export const useKitStyles = createThemedStyles((colors) => StyleSheet.create({
   btnBadge: { backgroundColor: colors.accentSoft, borderRadius: 6, paddingVertical: 1, paddingHorizontal: 4 },
   btnBadgeText: { color: colors.plum700, ...kitText(9.5, "800", 1.5, -0.02) },
 
+  sampleTag: { alignSelf: "flex-start", paddingVertical: 1, paddingHorizontal: 6, borderRadius: 6, backgroundColor: colors.macApricot },
+  sampleTagText: { color: colors.macApricotInk, ...kitText(9.5, "800") },
   fm: { flexDirection: "row", gap: 4 },
   fmItem: { flex: 1, minWidth: 0, alignItems: "center", paddingTop: 7 },
   fmBar: { position: "absolute", left: 0, right: 0, top: 0, height: 4, borderRadius: 2, backgroundColor: colors.surface3 },

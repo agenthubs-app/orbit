@@ -153,7 +153,7 @@ export function DraftUsedUp({ draft, onManual, onConfirm, confirming, onTurn }: 
       <UiText style={[kit.lbl, styles.usedBody]}>{t("plan.fix.allUsedBody")}</UiText>
       <View style={styles.hist}>
         {draft.turns.map((turn) => (
-          <UiPressable key={turn.n} accessibilityRole="button" onPress={() => onTurn(turn.n)}>
+          <UiPressable key={turn.n} accessibilityRole="button" hitSlop={11} onPress={() => onTurn(turn.n)}>
             <KitChip label={t("plan.turn.chip", { n: turn.n, text: turn.changes.length === 0 || turn.noChangeReason ? t("plan.turn.noChangeChip") : turnChipText(turn.input) })} />
           </UiPressable>
         ))}

@@ -260,7 +260,7 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
   const copyQuestions = () => shareText(detail.questions.map((question, n) => `${n + 1}. ${question}`).join("\n"));
 
   const candidates = detail.candidates.length > 0 ? (
-    <CandidatesCard detail={detail} selected={selected} faded={detail.skipped} onToggle={toggle} onMenu={setRowMenu} talkedOpen={talkedOpen} onTalkedToggle={() => setTalkedOpen((open) => !open)} />
+    <CandidatesCard detail={detail} selected={selected} faded={detail.skipped} onToggle={toggle} onMenu={setRowMenu} onAction={(person, key) => { if (key === "talked") { if (!detail.skipped) talked(person.contactId, person.name); } else decide(person.contactId, person.name, key); }} talkedOpen={talkedOpen} onTalkedToggle={() => setTalkedOpen((open) => !open)} />
   ) : null;
   const talkedList = talkedOpen && detail.talked.length > 0 ? (
     <KitCard style={styles.talkedList} testID="talked-list">

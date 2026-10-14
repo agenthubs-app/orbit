@@ -191,6 +191,8 @@ async function rowAction(page: Page, name: string, option: string) {
   await page.getByRole("button", { name: option, exact: true }).last().click();
 }
 async function moreAction(page: Page, option: string) {
+  // The previous dialog / sheet fades out (~300 ms) and its scrim takes taps until it is gone.
+  await page.waitForTimeout(600);
   await page.getByRole("button", { name: "その他の操作" }).click();
   await page.getByRole("button", { name: option, exact: true }).last().click();
 }
@@ -363,6 +365,8 @@ test("skip: the confirm focuses the main button; full points striped; 元に戻�
   await moreAction(page, "この分野はもう詳しい");
   await page.getByRole("button", { name: "スキップする" }).click();
   await page.getByTestId("type-skipped").waitFor();
+  // skippedAt 通过 schema 传到界面：「10月14日 · 話した人の点とは分けて表示します」。
+  await page.getByTestId("type-skipped").getByText(/^\d+月\d+日 · 話した人の点とは分けて表示します$/).waitFor();
   await moreAction(page, "スキップを取り消す");
   await page.getByTestId("type-skip").waitFor();
   assert.equal(writes(calls).length, 6, "skip / unskip three times, one request each");

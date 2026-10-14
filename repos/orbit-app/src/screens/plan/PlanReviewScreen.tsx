@@ -51,7 +51,8 @@ const REVIEW_STAGE_KEYS = ["plan.review.stagePremise", "plan.review.stageFix", "
 function sinceText(confirmedAt: string, t: ReturnType<typeof useOrbitLocale>["t"]): string {
   const at = new Date(confirmedAt);
   const days = Math.max(0, Math.round((Date.now() - at.getTime()) / 86_400_000));
-  const date = `${at.getMonth() + 1}/${at.getDate()}`;
+  // 日期按东京（计划日期都是东京日期），不跟设备时区走。
+  const date = at.toLocaleDateString("en-US", { day: "numeric", month: "numeric", timeZone: "Asia/Tokyo" });
   return days >= 14 ? t("plan.review.sinceWeeks", { date, weeks: Math.round(days / 7) }) : t("plan.review.sinceDays", { date, days });
 }
 

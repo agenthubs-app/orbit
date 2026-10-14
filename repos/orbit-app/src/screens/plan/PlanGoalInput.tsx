@@ -13,6 +13,8 @@ import { StyleSheet, TextInput, View } from "react-native";
 import type { PlanGoalKind, PlanGoalListItem, PlanIntakeListItem, PlanIntakeListResponse } from "../../api/contract/plan-v2";
 import { PLAN_GOAL_KIND_COPY, PLAN_SHORT_NAME_COPY, planCopy } from "../../api/compute/plan-template-copy";
 import { guessGoalKindByKeywords, PLAN_GOAL_KINDS, PLAN_GOAL_TEMPLATES } from "../../api/compute/plan-templates";
+import { planTaskSegmentHref } from "../../api/compute/plan-href";
+import { openMainTab } from "../../components/shell-navigation";
 import { Icon, UiPressable, UiText } from "../../components/ui";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "../../components/ui/svg";
 import { createThemedStyles } from "../../design/theme";
@@ -198,7 +200,7 @@ function LimitCard({ kind, goals = [] }: { kind: "monthly" | "active"; goals?: r
       {kind === "active" && goals.length > 0 ? (
         <View style={[styles.flat, styles.goalList]}>
           {goals.map((goal, index) => (
-            <UiPressable key={goal.planId} accessibilityRole="link" onPress={() => router.setParams({ new: undefined })} style={[styles.sumrow, index > 0 && styles.line]}>
+            <UiPressable key={goal.planId} accessibilityRole="link" onPress={() => openMainTab(router, planTaskSegmentHref("app", goal.planId))} style={[styles.sumrow, index > 0 && styles.line]}>
               <View style={[styles.sumEmo, index % 2 === 1 && styles.sumEmoPink]}><UiText style={styles.sumEmoText}>{goalKindLabel(goal.goalKind, language)?.split(" ")[0] ?? "🎯"}</UiText></View>
               <View style={kit.grow}>
                 <UiText numberOfLines={1} style={styles.sumTitle}>{goal.goal}</UiText>

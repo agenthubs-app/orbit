@@ -26,7 +26,7 @@ import { usePlanApi, type PlanFailure } from "./plan-api";
 import { goalKindLabel, newIdempotencyKey } from "./plan-model";
 import { dateParts } from "./plan-review-ui";
 import { FailureNote, isLimitFailure, LimitNote, usePlanStyles } from "./plan-ui";
-import { KitButton, KitCard, KitEmo, KitHatch, kitText, useKitStyles, useKitWhy } from "./plan-kit";
+import { KitButton, KitCard, KitEmo, KitHatch, KitSampleTag, kitText, useKitStyles, useKitWhy } from "./plan-kit";
 import { FlowFoot, FootFade, PlanChatFrame } from "./plan-flow-kit";
 
 type Load = { kind: "loading" } | { kind: "failed"; failure: PlanFailure } | { kind: "ready"; done: PlanAchievementView };
@@ -116,6 +116,7 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
       {load.kind === "ready" ? (
         <>
           <View style={styles.hero} testID="done-hero">
+            {load.done.sample ? <KitSampleTag style={styles.sample} /> : null}
             <View style={styles.tile}><UiText style={styles.tileEmoji}>🏁</UiText></View>
             <UiText accessibilityRole="header" style={styles.heroTitle}>{t("plan.done.achieved", { goal: load.done.goal })}</UiText>
             <UiText style={styles.heroSub}>{load.done.startsOn ? t("plan.done.dateRange", { end: shortDay(load.done.achievedAt, language), start: longDay(load.done.startsOn, language) }) : t("plan.done.date", dateParts(load.done.achievedAt))}</UiText>
@@ -255,6 +256,7 @@ function CandidateCard({ candidate, language, selected, disabled, onSelect }: { 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   row8: { flexDirection: "row", alignItems: "center", gap: 8 },
   hero: { alignItems: "center", marginTop: 16 },
+  sample: { position: "absolute", right: 0, top: 0 },
   tile: { width: 96, height: 96, borderRadius: 32, alignItems: "center", justifyContent: "center", backgroundColor: colors.macTeal },
   tileEmoji: { fontSize: 46, lineHeight: 69 },
   heroTitle: { color: colors.ink, ...kitText(23, "900", 1.35), textAlign: "center", marginTop: 16 },

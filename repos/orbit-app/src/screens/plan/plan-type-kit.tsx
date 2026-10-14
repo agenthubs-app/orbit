@@ -13,7 +13,7 @@ import Svg, { Circle } from "../../components/ui/svg";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useStandardCopy } from "../../i18n/standard-copy";
-import { KitButton, KitCard, KitCardHead, KitChip, KitEmo, KitGradient, KitHatch, kitText, useKitStyles, useKitWhy } from "./plan-kit";
+import { KitButton, KitCard, KitCardHead, KitChip, KitEmo, KitGradient, KitHatch, KitSampleTag, kitText, useKitStyles, useKitWhy } from "./plan-kit";
 import type { TypeTone } from "./plan-overview-kit";
 
 type T = ReturnType<typeof useOrbitLocale>["t"];
@@ -80,6 +80,7 @@ export function TypeHeadCard({ detail, tone, kicker, events, busy, onUnskip }: {
           <UiText accessibilityRole="header" style={styles.tn}>{detail.roleSituation}</UiText>
         </View>
         {detail.skipped ? <KitChip label={t("plan.type.skippedChip")} /> : null}
+        {detail.sample ? <KitSampleTag /> : null}
       </View>
       <View style={styles.scoreRow}>
         <UiText style={styles.mid}>{String(points)}</UiText>
@@ -126,12 +127,14 @@ function Cell({ value, small, label }: { value: number; small?: string; label: s
 
 /* ---------- あなたの人脈の候補 .v22cand ---------- */
 
-export function CandidatesCard({ detail, selected, faded, onToggle, onMenu, talkedOpen, onTalkedToggle }: {
+export function CandidatesCard({ detail, selected, faded, onToggle, onMenu, onAction, talkedOpen, onTalkedToggle }: {
   detail: PlanPersonTypeDetail;
   selected: readonly string[];
   faded: boolean;
   onToggle: (contactId: string) => void;
   onMenu: (candidate: PlanCandidateView) => void;
+  /** 读屏：长按菜单的三项也作为无障碍操作（VoiceOver 上下滑选择）。 */
+  onAction: (candidate: PlanCandidateView, key: "accept" | "talked" | "dismiss") => void;
   talkedOpen: boolean;
   onTalkedToggle: () => void;
 }) {
@@ -144,7 +147,7 @@ export function CandidatesCard({ detail, selected, faded, onToggle, onMenu, talk
     <KitCard style={[styles.candCard, faded && styles.faded]} testID="type-candidates">
       <KitCardHead style={styles.candHead} title={t("plan.type.candidatesTitle")} right={many ? t("plan.type.candidatesNote", { count: candidates.length }) : t("plan.type.peopleCount", { count: candidates.length })} />
       {candidates.map((candidate, index) => (
-        <CandidateRow key={candidate.candidateId} candidate={candidate} first={index === 0} on={selected.includes(candidate.contactId)} disabled={faded} onToggle={() => onToggle(candidate.contactId)} onMenu={() => onMenu(candidate)} />
+        <CandidateRow key={candidate.candidateId} candidate={candidate} first={index === 0} on={selected.includes(candidate.contactId)} disabled={faded} onToggle={() => onToggle(candidate.contactId)} onMenu={() => onMenu(candidate)} onAction={(key) => onAction(candidate, key)} />
       ))}
       {detail.talked.length > 0 ? (
         <>
@@ -164,7 +167,7 @@ function talkedLine(talked: readonly PlanTalkedView[], t: T): string {
   return talked.length > 1 ? t("plan.type.talkedLineMany", { count: talked.length, name: first }) : t("plan.type.talkedLineOne", { name: first });
 }
 
-function CandidateRow({ candidate, first, on, disabled, onToggle, onMenu }: { candidate: PlanCandidateView; first: boolean; on: boolean; disabled: boolean; onToggle: () => void; onMenu: () => void }) {
+function CandidateRow({ candidate, first, on, disabled, onToggle, onMenu, onAction }: { candidate: PlanCandidateView; first: boolean; on: boolean; disabled: boolean; onToggle: () => void; onMenu: () => void; onAction: (key: "accept" | "talked" | "dismiss") => void }) {
   const { styles } = useStyles();
   const kit = useKitStyles().styles;
   const { t, language } = useOrbitLocale();
@@ -177,7 +180,13 @@ function CandidateRow({ candidate, first, on, disabled, onToggle, onMenu }: { ca
       <View style={[styles.cand, !first && styles.candLine]}>
         <Checkbox checked={on} onChange={onToggle} accessibilityLabel={t("plan.type.select", { name: candidate.name })} />
         <Avatar name={candidate.name} size="sm" />
-        <View style={kit.grow}>
+        <View
+          accessible
+          accessibilityLabel={[candidate.name, [candidate.company, candidate.role].filter(Boolean).join(" · ")].filter(Boolean).join("、")}
+          accessibilityActions={disabled ? [] : [{ name: "accept", label: t("plan.type.accept") }, { name: "talked", label: t("plan.type.alreadyTalked") }, { name: "dismiss", label: t("plan.type.dismiss") }]}
+          onAccessibilityAction={(event) => { const name = event.nativeEvent.actionName; if (name === "accept" || name === "talked" || name === "dismiss") onAction(name); }}
+          style={kit.grow}
+        >
           <View style={styles.nameRow}>
             <UiText numberOfLines={1} style={styles.candName}>{candidate.name}</UiText>
             {candidate.isOrbitUser ? <KitChip label={t("plan.type.orbitUser")} tone="teal" /> : null}
