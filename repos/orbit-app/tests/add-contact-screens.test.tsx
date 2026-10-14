@@ -227,7 +227,7 @@ test("「視差効果を減らす」: the add pages only fade in (no translate o
 test("はじめての方へ: the first three visits only; 次回から表示しない; 「?」 opens it again", async (t) => {
   const { page } = await open(t, "/contacts/new/scan", { camera: { canAskAgain: true, granted: true } });
   await page.getByTestId("add-scan-guide").waitFor();
-  for (const text of ["はじめての方へ", "明るい場所で", "平らに置く", "四隅を枠に", "表と裏", "撮ったあと"]) await page.getByText(text, { exact: true }).first().waitFor();
+  for (const text of ["はじめての方へ · 30秒", "うまく撮るコツ", "明るい場所で", "平らに置く", "四隅を枠に", "表と裏", "撮ったあと"]) await page.getByText(text, { exact: true }).first().waitFor();
   assert.deepEqual(JSON.parse((await page.evaluate(() => (window as unknown as { deviceStore: Record<string, string> }).deviceStore))["orbit:add:scan-guide:v1"]!), { hidden: false, shown: 1 });
   // 4th visit (shown 3 times): straight to the camera; 「?」 brings the guide back.
   const fourth = await open(t, "/contacts/new/scan", { deviceStore: GUIDE_DONE });
@@ -236,7 +236,7 @@ test("はじめての方へ: the first three visits only; 次回から表示し�
   await fourth.page.getByRole("button", { name: "撮り方のコツ" }).click();
   await fourth.page.getByTestId("add-scan-guide").waitFor();
   // 次回から表示しない hides it for good and opens the camera.
-  await page.getByRole("button", { name: "次回から表示しない" }).click();
+  await page.getByRole("checkbox", { name: "次回から表示しない" }).click();
   await page.getByTestId("add-scan-camera").waitFor();
   assert.equal(JSON.parse((await page.evaluate(() => (window as unknown as { deviceStore: Record<string, string> }).deviceStore))["orbit:add:scan-guide:v1"]!).hidden, true);
 });

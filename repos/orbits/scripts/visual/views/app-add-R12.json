@@ -92,6 +92,53 @@
    "url": "orbit://contacts/new/scan/design-failed",
    "taps": "点「読み取れませんでした」行开 sheet",
    "note": "名刺 ⑤ 読み取れなかった 1枚"
+  },
+  {
+   "id": "A-R12-00",
+   "design": "b11-nav-v3.html",
+   "board-index": 0,
+   "url": "orbit://contacts/new/scan",
+   "note": "名刺 ① はじめての方へ（第一次；看过后用顶栏 ? 再开）"
+  },
+  {
+   "id": "A-R12-N10",
+   "design": "b12-missing-states.html",
+   "board-index": 116,
+   "themes": [
+    "light"
+   ],
+   "url": "orbit://contacts/new/scan?from=legacy",
+   "note": "N10 旧リンクから"
+  },
+  {
+   "id": "A-R12-N10d",
+   "design": "b12-missing-states.html",
+   "board-index": 117,
+   "themes": [
+    "dark"
+   ],
+   "url": "orbit://contacts/new/scan?from=legacy",
+   "note": "N10 暗"
+  },
+  {
+   "id": "A-R12-N11",
+   "design": "b12-missing-states.html",
+   "board-index": 118,
+   "themes": [
+    "light"
+   ],
+   "url": "orbit://contacts/new/scan/design-stopped",
+   "note": "N11 アップロードが途中で止まりました"
+  },
+  {
+   "id": "A-R12-N11d",
+   "design": "b12-missing-states.html",
+   "board-index": 119,
+   "themes": [
+    "dark"
+   ],
+   "url": "orbit://contacts/new/scan/design-stopped",
+   "note": "N11 暗"
   }
  ]
 }

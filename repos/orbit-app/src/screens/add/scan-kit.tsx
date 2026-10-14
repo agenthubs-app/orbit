@@ -157,6 +157,19 @@ export function KitDensityStack({ counts, accessibilityLabel }: { counts: Readon
   );
 }
 
+/** .err-card（01-system ⑧，b12 N11）：54 圆角 18 的珊瑚色图标块、16 号标题、.sub、竖排按钮（间距 8）。 */
+export function KitErrCard({ title, sub, children, testID }: { title: string; sub: string; children: ReactNode; testID?: string }) {
+  const { colors, styles } = useStyles();
+  return (
+    <View accessibilityRole="alert" style={styles.err} testID={testID}>
+      <View style={styles.errIc}><Icon name="alert" size={24} color={colors.coral} /></View>
+      <UiText accessibilityRole="header" style={styles.errTitle}>{title}</UiText>
+      <UiText style={styles.errSub}>{sub}</UiText>
+      <View style={styles.errActs}>{children}</View>
+    </View>
+  );
+}
+
 export const useScanKitStyles = () => useStyles();
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
@@ -190,4 +203,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   dn: { flexDirection: "row", gap: 3, alignItems: "center" },
   dnDot: { width: 7, height: 7, borderRadius: 3.5 },
   legendText: { fontSize: 11, lineHeight: 16.5, color: colors.ink3 },
+  err: { marginTop: 8, backgroundColor: colors.surface, borderRadius: 24, paddingVertical: 26, paddingHorizontal: 22, alignItems: "center" },
+  errIc: { width: 54, height: 54, borderRadius: 18, backgroundColor: colors.coralSoft, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  errTitle: { fontSize: 16, fontWeight: "700", lineHeight: 24, color: colors.ink, textAlign: "center" },
+  errSub: { marginTop: 6, marginBottom: 16, fontSize: 12.5, lineHeight: 20.6, color: colors.ink2, textAlign: "center" },
+  errActs: { alignSelf: "stretch", gap: 8 },
 }));

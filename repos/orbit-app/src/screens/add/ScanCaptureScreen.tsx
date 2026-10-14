@@ -9,21 +9,24 @@
 //   runs in scan-upload-queue (R12 review m7): leaving this page does not stop it.
 // No live frame hints and no auto-capture (§9 #6).
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Image, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import type { PreparedBatchImage } from "../../api/batch-images";
 import { AppScreen } from "../../components/AppScreen";
-import { Button, Card, Chip, ConfirmDialog, IconButton, MacTile, ProgressBar, Segmented, Skeleton, UiPressable, UiText } from "../../components/ui";
+import { Button, Card, Chip, ConfirmDialog, Icon, IconButton, MacTile, ProgressBar, Segmented, Skeleton, UiPressable, UiText } from "../../components/ui";
+import Svg, { Defs, RadialGradient, Rect, Stop } from "../../components/ui/svg";
 import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { creationAttempt, type CreationAttempt, type IngestCardImage } from "../../view-models/business-card-ingest";
 import { useAddApi } from "./add-api";
 import { hideScanGuide, readScanGuide, recordScanGuideShown, shouldAutoShowGuide, type ScanGuideState } from "./add-storage";
-import { Body, Caption, FadeIn, useAddStyles } from "./add-ui";
+import { Body, Caption, FadeIn, KIT_PAGE_INSET, useAddStyles } from "./add-ui";
+import { KitChip } from "../plan/plan-kit";
+import { KIT_FOOT_SPACE, KitFoot } from "./scan-kit";
 import { newAddKey } from "./manual-model";
 import { addFronts, addShot, canShootBack, cardCount, chooseSide, EMPTY_TRAY, remainingShots, removeShot, SCAN_MAX_PHOTOS, skipBack, trayImages, type ShotSide, type ShotTray } from "./scan-capture-model";
 import { CardCamera, openAppSettings, pickCardImages, prepareCameraShot, uploadNative, useCameraAccess, type CardCameraHandle } from "./scan-media";
@@ -154,17 +157,14 @@ export function ScanCaptureScreen() {
     );
   }
 
+  const guideOn = mode === "guide";
   return (
-    <AppScreen title={t("add.scan.title")} headerActions={mode === "guide" ? undefined : helpButton}>
-      {fromLegacy ? <View style={styles.notice}><Body>{t("add.scan.legacyNotice")}</Body></View> : null}
+    <View style={{ flex: 1 }}>
+    <AppScreen title={t("add.scan.title")} subtitle={guideOn ? t("add.scan.guideSub") : undefined} backIcon={guideOn ? "x" : "left"} headerActions={guideOn ? undefined : helpButton}>
+      {fromLegacy && !guideOn ? <View style={styles.notice}><Body>{t("add.scan.legacyNotice")}</Body></View> : null}
       {mode === "loading" ? <Skeleton lines={4} /> : null}
       {mode === "guide" ? (
-        <ScanGuide
-          notice={notice}
-          onCamera={() => setMode("camera")}
-          onPick={() => void pickPhotos(false)}
-          onHide={guide && !guide.hidden ? () => { void hideScanGuide(guide).then(setGuide); setMode("camera"); } : null}
-        />
+        <ScanGuide notice={notice} legacy={fromLegacy} />
       ) : null}
       {mode === "upload" ? (
         <FadeIn testID="add-scan-upload">
@@ -186,12 +186,22 @@ export function ScanCaptureScreen() {
         </FadeIn>
       ) : null}
     </AppScreen>
+    {guideOn ? (
+      <GuideFoot onCamera={() => setMode("camera")} onPick={() => void pickPhotos(false)} hidden={Boolean(guide?.hidden)}
+        onHide={guide && !guide.hidden ? () => { void hideScanGuide(guide).then(setGuide); setMode("camera"); } : null} />
+    ) : null}
+    </View>
   );
 }
 
-function ScanGuide({ notice, onCamera, onPick, onHide }: { notice: "limit" | "pick" | "camera" | null; onCamera: () => void; onPick: () => void; onHide: (() => void) | null }) {
+/**
+ * はじめての方へ (b11 A1 ①, App; 旧リンク N10 adds the teal note on top): a sample card in the camera frame,
+ * うまく撮るコツ (4 tips, 連写 OK · 一度に最大 N枚), 撮ったあと (3 steps), the privacy note; カメラを開く,
+ * 写真から選ぶ and 次回から表示しない sit in the bottom bar (GuideFoot, outside the scroll).
+ */
+function ScanGuide({ notice, legacy }: { notice: "limit" | "pick" | "camera" | null; legacy: boolean }) {
   const { t } = useOrbitLocale();
-  const { styles } = useAddStyles();
+  const { colors, styles: g } = useGuideStyles();
   const tips: [string, string, string][] = [
     ["☀️", t("add.scan.tipLightTitle"), t("add.scan.tipLightBody")],
     ["📄", t("add.scan.tipFlatTitle"), t("add.scan.tipFlatBody")],
@@ -199,53 +209,159 @@ function ScanGuide({ notice, onCamera, onPick, onHide }: { notice: "limit" | "pi
     ["🔁", t("add.scan.tipBackTitle"), t("add.scan.tipBackBody")],
   ];
   return (
-    <FadeIn testID="add-scan-guide">
-      <View style={styles.stack}>
-        <View style={styles.tightStack}>
-          <UiText accessibilityRole="header" style={styles.title}>{t("add.scan.guideTitle")}</UiText>
-          <Caption>{t("add.scan.guideLead")}</Caption>
+    <FadeIn testID="add-scan-guide" style={KIT_PAGE_INSET}>
+      {legacy ? (
+        <View style={g.mybar} testID="add-scan-legacy">
+          <Icon name="check" size={16} color={colors.macTealText} />
+          <UiText style={g.mybarText}>{t("add.scan.legacyNotice")}</UiText>
         </View>
-        <Card>
-          <View style={styles.stack}>
-            <Chip label={t("add.scan.guideLimit", { max: SCAN_MAX_PHOTOS })} tone="lav" />
-            {tips.map(([emoji, title, body]) => (
-              <View key={title} style={styles.row}>
-                <MacTile emoji={emoji} size="sm" tone="apricot" />
-                <View style={styles.grow}>
-                  <UiText style={styles.strong}>{title}</UiText>
-                  <Caption>{body}</Caption>
-                </View>
-              </View>
-            ))}
-          </View>
-        </Card>
-        <AfterSteps />
-        {notice ? <Caption tone="error">{t(notice === "limit" ? "add.scan.limitReached" : notice === "pick" ? "add.scan.pickFailed" : "add.scan.cameraFailed", { max: SCAN_MAX_PHOTOS })}</Caption> : null}
-        <Button variant="primary" block icon="camera" label={t("add.scan.openCamera")} onPress={onCamera} />
-        <Button variant="secondary" block icon="images" label={t("add.scan.pickPhotos")} onPress={onPick} />
-        {onHide ? <Button variant="ghost" label={t("add.scan.dontShow")} onPress={onHide} /> : null}
+      ) : null}
+      <View style={g.frame}>
+        <Svg style={StyleSheet.absoluteFill} width="100%" height={168}>
+          <Defs>
+            <RadialGradient id="scan-guide-frame" cx="50%" cy="50%" rx="260" ry="160" gradientUnits="userSpaceOnUse" fx="50%" fy="50%">
+              <Stop offset={0} stopColor={colors.cam2} />
+              <Stop offset={1} stopColor={colors.cam} />
+            </RadialGradient>
+          </Defs>
+          <Rect x={0} y={0} width="100%" height={168} rx={22} fill="url(#scan-guide-frame)" />
+        </Svg>
+        <View style={g.mcard}>
+          <UiText style={g.pCo}>{t("add.scan.sampleCompany")}</UiText>
+          <UiText style={g.pR}>{t("add.scan.sampleRole")}</UiText>
+          <UiText style={g.pN}>{t("add.scan.sampleName")}</UiText>
+          <UiText style={g.pM}>{t("add.scan.sampleContact")}</UiText>
+        </View>
+        <View style={[g.corner, g.c1]} /><View style={[g.corner, g.c2]} /><View style={[g.corner, g.c3]} /><View style={[g.corner, g.c4]} />
       </View>
+      <View style={g.card}>
+        <View style={g.cardH}>
+          <UiText accessibilityRole="header" style={g.h3}>{t("add.scan.tipsTitle")}</UiText>
+          <KitChip label={t("add.scan.guideLimit", { max: SCAN_MAX_PHOTOS })} tone="lav" />
+        </View>
+        <View style={g.tip4}>
+          {tips.map(([emoji, title, body]) => (
+            <View key={title} style={g.tip}>
+              <UiText style={g.tipEmoji}>{emoji}</UiText>
+              <View style={g.grow}>
+                <UiText style={g.tipTitle}>{title}</UiText>
+                <UiText style={g.tipBody}>{body}</UiText>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+      <AfterSteps />
+      <View style={g.priv}>
+        <UiText style={g.privEmoji}>🔒</UiText>
+        <UiText style={g.privText}>{t("add.scan.privacyBefore")}<UiText style={g.privStrong}>{t("add.scan.privacyStrong")}</UiText>{t("add.scan.privacyAfter")}</UiText>
+      </View>
+      {notice ? <View style={g.noticeGap}><Caption tone="error">{t(notice === "limit" ? "add.scan.limitReached" : notice === "pick" ? "add.scan.pickFailed" : "add.scan.cameraFailed", { max: SCAN_MAX_PHOTOS })}</Caption></View> : null}
+      <View style={{ height: KIT_FOOT_SPACE }} />
     </FadeIn>
   );
 }
 
-export function AfterSteps() {
+/** The guide's bottom bar: カメラを開く (xl), then 写真から選ぶ (link) · 次回から表示しない (check). */
+function GuideFoot({ onCamera, onPick, hidden, onHide }: { onCamera: () => void; onPick: () => void; hidden: boolean; onHide: (() => void) | null }) {
   const { t } = useOrbitLocale();
-  const { styles } = useAddStyles();
+  const { colors, styles: g } = useGuideStyles();
   return (
-    <Card variant="flat">
-      <View style={styles.tightStack}>
-        <UiText style={styles.strong}>{t("add.scan.afterTitle")}</UiText>
-        <View style={styles.row}>
-          <Chip label={t("add.scan.afterRead")} />
-          <Chip label={t("add.scan.afterCheck")} />
-          <Chip label={t("add.scan.afterAdd")} tone="ok" />
-        </View>
-        <Caption>{t("add.scan.privacy")}</Caption>
+    <KitFoot>
+      <UiPressable accessibilityRole="button" accessibilityLabel={t("add.scan.openCamera")} onPress={onCamera} style={g.xl} testID="add-scan-open-camera">
+        <Icon name="scan" size={16} color={colors.bg} />
+        <UiText style={g.xlText}>{t("add.scan.openCamera")}</UiText>
+      </UiPressable>
+      <View style={g.footRow}>
+        <UiPressable accessibilityRole="button" accessibilityLabel={t("add.scan.pickPhotos")} hitSlop={12} onPress={onPick} style={g.lnkRow} testID="add-scan-pick">
+          <Icon name="images" size={16} color={colors.accent} />
+          <UiText style={g.lnk}>{t("add.scan.pickPhotos")}</UiText>
+        </UiPressable>
+        {onHide || hidden ? (
+          <UiPressable accessibilityRole="checkbox" accessibilityLabel={t("add.scan.dontShow")} accessibilityState={{ checked: hidden }} hitSlop={12} disabled={!onHide} onPress={onHide ?? undefined} style={g.chk} testID="add-scan-dont-show">
+            <View style={[g.chkBox, hidden && { backgroundColor: colors.plum700, borderColor: colors.plum700 }]}>{hidden ? <Icon name="check" size={16} color={colors.surface} /> : null}</View>
+            <UiText style={g.chkText}>{t("add.scan.dontShow")}</UiText>
+          </UiPressable>
+        ) : null}
       </View>
-    </Card>
+    </KitFoot>
   );
 }
+
+/** 撮ったあと (b11 A1 ①): AI が読み取る → 例外だけ確認 → 全員 人脈へ (kit .st3). */
+export function AfterSteps() {
+  const { t } = useOrbitLocale();
+  const { colors, styles: g } = useGuideStyles();
+  const steps: [string, string, string][] = [
+    ["🤖", t("add.scan.afterRead"), t("add.scan.afterReadSub")],
+    ["✅", t("add.scan.afterCheck"), t("add.scan.afterCheckSub")],
+    ["👥", t("add.scan.afterAdd"), t("add.scan.afterAddSub")],
+  ];
+  return (
+    <View style={[g.card, g.cardNext]} testID="add-scan-after">
+      <View style={g.cardH}><UiText style={g.h3}>{t("add.scan.afterTitle")}</UiText></View>
+      <View style={g.st3}>
+        {steps.map(([emoji, title, sub], index) => (
+          <Fragment key={title}>
+            {index ? <View style={g.ar}><Icon name="right" size={16} color={colors.ink4} /></View> : null}
+            <View style={g.step}>
+              <UiText style={g.stepEmoji}>{emoji}</UiText>
+              <UiText numberOfLines={1} style={g.stepTitle}>{title}</UiText>
+              <UiText numberOfLines={1} style={g.stepSub}>{sub}</UiText>
+            </View>
+          </Fragment>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// kit 数值（b11 #0 / b12 N10）：.sg-frame / .mcard / .card / .tip4 / .st3 / .card.flat 隐私 / .mybar / .foot。
+const useGuideStyles = createThemedStyles((colors) => StyleSheet.create({
+  mybar: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 14, backgroundColor: colors.macTeal, marginBottom: 12 },
+  mybarText: { flex: 1, fontSize: 12, fontWeight: "700", lineHeight: 17.4, color: colors.macTealText },
+  frame: { height: 168, borderRadius: 22, overflow: "hidden", alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  mcard: { width: 220, height: 220 * 55 / 91, backgroundColor: colors.paper, borderRadius: 5, paddingVertical: 13, paddingHorizontal: 15, transform: [{ rotate: "-3deg" }, { scale: 0.9 }], shadowColor: "#0F0E12", shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 10 } },
+  pCo: { fontSize: 8.5, fontWeight: "700", letterSpacing: 0.34, color: colors.paperInk2, lineHeight: 12.75 },
+  pR: { marginTop: "auto", fontSize: 7.5, color: colors.paperInk2, lineHeight: 11.25 },
+  pN: { fontSize: 17, fontWeight: "800", letterSpacing: 1.02, fontFamily: "Hiragino Mincho ProN", color: colors.paperInk, lineHeight: 25.5 },
+  pM: { marginTop: 7, fontSize: 7, lineHeight: 10.5, color: colors.paperInk2 },
+  corner: { position: "absolute", width: 20, height: 20, borderColor: colors.camInk },
+  c1: { left: 58, top: 22, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 7 },
+  c2: { right: 58, top: 22, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 7 },
+  c3: { left: 58, bottom: 22, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 7 },
+  c4: { right: 58, bottom: 22, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 7 },
+  card: { backgroundColor: colors.surface, borderRadius: 24, padding: 14 },
+  cardNext: { marginTop: 12 },
+  cardH: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 },
+  h3: { fontSize: 14.5, fontWeight: "800", lineHeight: 21.75, color: colors.ink },
+  tip4: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tip: { width: "48.5%", flexGrow: 1, flexBasis: "45%", flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 9, paddingHorizontal: 10, borderRadius: 14, backgroundColor: colors.surface2 },
+  tipEmoji: { fontSize: 17, lineHeight: 20.4 },
+  grow: { flex: 1, minWidth: 0 },
+  tipTitle: { fontSize: 12, fontWeight: "700", lineHeight: 18, color: colors.ink },
+  tipBody: { fontSize: 10.5, lineHeight: 14.7, color: colors.ink3 },
+  st3: { flexDirection: "row", alignItems: "center", gap: 2 },
+  step: { flex: 1, minWidth: 0, backgroundColor: colors.surface2, borderRadius: 14, paddingVertical: 9, paddingHorizontal: 4, alignItems: "center" },
+  stepEmoji: { fontSize: 18, lineHeight: 23.4 },
+  stepTitle: { fontSize: 11.5, fontWeight: "700", lineHeight: 15.5, color: colors.ink, textAlign: "center" },
+  stepSub: { marginTop: 2, fontSize: 10, lineHeight: 13.5, color: colors.ink3, textAlign: "center" },
+  ar: { width: 16, alignItems: "center" },
+  priv: { marginTop: 12, flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 24, backgroundColor: colors.surface2 },
+  privEmoji: { fontSize: 18, width: 21 },
+  privText: { flex: 1, fontSize: 11.5, fontWeight: "500", lineHeight: 18.4, color: colors.ink2 },
+  privStrong: { fontWeight: "700", color: colors.ink },
+  noticeGap: { marginTop: 12 },
+  xl: { height: 50, borderRadius: 999, backgroundColor: colors.ink, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center" },
+  xlText: { fontSize: 14.5, fontWeight: "700", lineHeight: 21.75, color: colors.bg },
+  footRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4 },
+  lnk: { fontSize: 13, fontWeight: "700", lineHeight: 19.5, color: colors.accent },
+  // kit 有两条 .chk：后一条改成行内、间距 6，前一条的上下 padding 10 仍在。
+  chk: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10 },
+  lnkRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  chkBox: { width: 16, height: 16, borderRadius: 5, borderWidth: 1.6, borderColor: colors.ink4, alignItems: "center", justifyContent: "center" },
+  chkText: { fontSize: 12, fontWeight: "600", lineHeight: 18, color: colors.ink2 },
+}));
 
 /** Explain first, then ask; turned off: the way to Settings (b1 B1 ①②). */
 export function CameraPermissionPanel({ access, onAllow, onPick }: { access: "unknown" | "ask" | "denied"; onAllow: () => void; onPick: () => void }) {

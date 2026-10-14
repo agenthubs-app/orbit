@@ -7,7 +7,7 @@ import { addDesignMock } from "./add-design-mock";
 import type { IngestContactCandidateContract } from "../../api/contract/business-card-batch";
 import type { ScanBatchView, ScanCardKind, ScanCardView, ScanIssueGroup, ScanSection } from "./scan-batch-model";
 
-export const SCAN_DESIGN_FIXTURES = ["design-reading", "design-done", "design-bridge", "design-review", "design-failed"] as const;
+export const SCAN_DESIGN_FIXTURES = ["design-reading", "design-done", "design-bridge", "design-review", "design-failed", "design-stopped"] as const;
 export type ScanDesignFixture = (typeof SCAN_DESIGN_FIXTURES)[number];
 /** `total`: the card count the page states (the board lists only some of the read cards). */
 export interface ScanDesign { view: ScanBatchView; eventTitle: string | null; dateLabel: string; total: number; selectedEventId?: string }
@@ -17,6 +17,7 @@ export function scanDesignFor(batchId: string, enabled: boolean = addDesignMock(
   if (!enabled || !(SCAN_DESIGN_FIXTURES as readonly string[]).includes(batchId)) return null;
   if (batchId === "design-reading") return readingDesign();
   if (batchId === "design-done") return doneDesign();
+  if (batchId === "design-stopped") return stoppedDesign();
   return reviewDesign(batchId === "design-bridge" ? "bridge" : batchId === "design-review" ? "review" : "failed");
 }
 
@@ -94,4 +95,10 @@ function reviewDesign(kind: "bridge" | "review" | "failed"): ScanDesign {
       createdAt: CFO_NIGHT.startsAt, density: null, events: kind === "failed" ? [] : [CFO_NIGHT], phase: "review", photos: cards.length, settled: cards.length, uploaded: cards.length,
     },
   };
+}
+
+/** b12 N11：12枚 · アップロードが途中で止まりました（写真が端末に残っていない）. */
+function stoppedDesign(): ScanDesign {
+  const cards = Array.from({ length: 12 }, (_, index) => card(index + 1, "uploading"));
+  return { dateLabel: "", eventTitle: null, total: 12, view: { cards, completed: false, counts: COUNTS, createdAt: null, density: null, events: [], phase: "uploading", photos: 12, settled: 0, uploaded: 3 } };
 }

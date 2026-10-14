@@ -31,7 +31,7 @@ import { EMPTY_LEDGER, readScanLedger, writeScanLedger, type ScanLedger } from "
 import { Body, Caption, CountTiles, DensityBar, FadeIn, KIT_PAGE_INSET, SectionTitle, useAddStyles } from "./add-ui";
 import { KitChip, KitEmo } from "../plan/plan-kit";
 import { UnifiedReviewApp, type ReviewTileKey } from "./UnifiedReviewApp";
-import { KIT_FOOT_SPACE, KitBar, KitBigNums, KitCardRow, KitDensityStack, KitFoot, KitNg, KitOk, KitSpin, useScanKitStyles } from "./scan-kit";
+import { KIT_FOOT_SPACE, KitBar, KitBigNums, KitCardRow, KitDensityStack, KitErrCard, KitFoot, KitNg, KitOk, KitSpin, useScanKitStyles } from "./scan-kit";
 import { newAddKey } from "./manual-model";
 import { AfterSteps, CameraPermissionPanel, CardCameraPane } from "./ScanCaptureScreen";
 import {
@@ -108,6 +108,7 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
   // 本机像素门禁的只读演示（scan-design-fixtures）：开发包 + 开关下 design-* 用示例数据，不读服务器。
   const design = useMemo(() => scanDesignFor(batchId), [batchId]);
   const { styles: kitStyles } = useScanKitStyles();
+  const { styles: rs } = useReadStyles();
   const api = useAddApi();
   const router = useRouter();
   const { t, language } = useOrbitLocale();
@@ -359,9 +360,10 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
   const reading = view.phase === "reading" || view.phase === "importing";
   const readStyles = doneBarStyles;
   const reviewing = view.phase === "review";
+  const stopped = (view.phase === "uploading" && !(upload && !upload.finished)) || view.phase === "expired" || view.phase === "cancelled";
   const reviewEvent = view.events.find((event) => event.eventId === selectedEventId)?.title ?? null;
-  const title = reading ? t("add.batch.readingTop") : reviewing ? t(stage === "bridge" ? "add.batch.bridgeTop" : "add.batch.reviewTop") : view.phase === "done" ? "" : t("add.batch.title");
-  const subtitle = reading ? t("add.batch.readingTopSub", { n: design?.total ?? view.cards.length })
+  const title = stopped ? t("add.batch.title") : reading ? t("add.batch.readingTop") : reviewing ? t(stage === "bridge" ? "add.batch.bridgeTop" : "add.batch.reviewTop") : view.phase === "done" ? "" : t("add.batch.title");
+  const subtitle = stopped ? (view.cards.length ? t("add.batch.readingTopSub", { n: view.cards.length }) : undefined) : reading ? t("add.batch.readingTopSub", { n: design?.total ?? view.cards.length })
     : reviewing ? (stage === "bridge" ? [reviewEvent, t("add.batch.readingTopSub", { n: view.cards.length })].filter(Boolean).join(" · ") : t("add.batch.reviewTopSub", { n: view.cards.length }))
     : undefined;
   const close = () => router.replace("/contacts" as Href);
@@ -400,13 +402,16 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
             </View>
           </Card>
         ) : null}
-        {(view.phase === "uploading" && !(upload && !upload.finished)) || view.phase === "expired" || view.phase === "cancelled" ? (
-          <Card>
-            <View style={styles.stack}>
-              <Body>{t(view.phase === "uploading" ? "add.batch.notUploaded" : view.phase === "expired" ? "add.batch.expired" : "add.batch.cancelled")}</Body>
-              <Button variant="primary" icon="scan" label={t("add.batch.scanAgain")} onPress={() => router.replace("/contacts/new/scan" as Href)} />
-            </View>
-          </Card>
+        {stopped ? (
+          <>
+            {/* b12 N11 (アップロードが途中で止まりました) and the same card for 期限切れ / 取り消し済み. */}
+            <KitErrCard title={t(view.phase === "uploading" ? "add.batch.uploadStoppedTitle" : view.phase === "expired" ? "add.batch.expiredTitle" : "add.batch.cancelledTitle")}
+              sub={t(view.phase === "uploading" ? "add.batch.uploadStoppedBody" : view.phase === "expired" ? "add.batch.expiredBody" : "add.batch.cancelledBody")} testID="add-batch-stopped">
+              <FootButton icon="scan" label={t("add.batch.scanAgain")} onPress={() => router.replace("/contacts/new/scan" as Href)} testID="add-batch-scan-again" />
+              <FootGhost label={t("add.batch.viewNetwork")} onPress={close} />
+            </KitErrCard>
+            {view.phase === "uploading" ? <View style={rs.nextCard}><UiText style={rs.nextText}>{t("add.batch.uploadStoppedWhy")}</UiText></View> : null}
+          </>
         ) : null}
         {view.phase === "reading" || view.phase === "importing" ? <ReadingPanel view={view} total={design?.total ?? view.cards.length} /> : null}
         {view.phase === "review" && replaceFailed ? <Caption tone="error">{t("add.batch.replaceFailed")}</Caption> : null}
@@ -1167,7 +1172,7 @@ function DonePanel({ view, eventTitle, dateLabel, onPlan, onFailed }: { view: Sc
 }
 
 /** .btn.block.xl（高 50、14.5px）：primary 或读取中的等待态（surface-3 底、ink-3 字、转圈）。 */
-function FootButton({ label, onPress, waiting = false, disabled = false, icon, testID }: { label: string; onPress?: () => void; waiting?: boolean; disabled?: boolean; icon?: "users"; testID?: string }) {
+function FootButton({ label, onPress, waiting = false, disabled = false, icon, testID }: { label: string; onPress?: () => void; waiting?: boolean; disabled?: boolean; icon?: "users" | "scan"; testID?: string }) {
   const { colors } = useScanKitStyles();
   const { styles } = useReadStyles();
   return (
