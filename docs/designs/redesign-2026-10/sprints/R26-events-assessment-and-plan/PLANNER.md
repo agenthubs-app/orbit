@@ -15,7 +15,7 @@
 **基线:** 开工时的 `redesign` HEAD。
 **进入条件:**
 - DESIGN 已复核（[REVIEW](../events/REVIEW.md)）；
-- §10 A1（付费 AI）有答复前，先做 mock + 规则路径，真实调用等授权；
+- 默认路径是「规则 + 门控」（DESIGN §10 决定表，2026-10-14）：E1 / E2 可选，授权前 live 按 G18 隐藏 URL / 海报入口，只做 mock 与规则路径，未授权**不阻塞收口**；授权后再打开并真实验证；
 - §10 C 组 token 第一天补齐。
 
 **分支:** 一人做，可直接在 `redesign` 上提交；与乙并行改到同一批文件时开 `redesign-R26-events-assessment`（README「分支」）。

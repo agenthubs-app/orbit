@@ -11,7 +11,7 @@
 **基线:** R26 收口后的 `redesign` HEAD。
 **进入条件:**
 - R26 done（`scoreEvent` 区间、`events-mine`、`event-emoji`、评估记录与吸顶条数据）；
-- DESIGN §10 A2 / A3 / A5 / A6 / A7、B3 / B4 / B5 有答复。没答复的画面先跳过、做别的（规则 12「不阻塞」）。
+- DESIGN §10 已定（2026-10-14）：A2 做轻量 `organizerFollows`；A3 去掉現在地；A5 接账本（迁移只在本机）；A7 Web 会場 390 引导到 App。A6（E3 / E4）可选，默认走规则退路，未授权不阻塞收口。B3 / B4 / B5 画板由 design-decisions 会话补（决定表 §28），没到的画面先跳过（规则 12「不阻塞」）。
 
 **分支:** 同 R26。
 

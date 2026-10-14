@@ -150,6 +150,7 @@
 **上线前的环境与真机**
 - [ ] staging 的 `VERCEL_ENV` / 展示页开关核对（R06 复核 m9：`/showcase` 只在非生产可见）。
 - [ ] 真机：触感反馈（R02–R04 只在模拟器验证）、真推送落地（R05）、Dynamic Type 最大字号走查。
+- [ ] 活动生产迁移（R26 / R27，等授权，[events/DESIGN.md](events/DESIGN.md) §10 A4 / A5、§11）：`event-assessments-core`（`event_assessments` 表）、`ai-usage-event-purposes`（账本 CHECK 加 `event_registration_interview`、`event_post_summary`）；先只读预检、先迁移再部署。活动付费 AI E1–E4 在用户授权前保持隐藏 / 规则退路。
 - [ ] 本地与 staging 都配置 `ORBIT_SYNC_CURSOR_SECRET`（R09 走查 A1：缺了它 App 的待办、人脈同步全部 503）。
 
 **还原设计稿（RD-16 修订，用户决定 2026-10-11）**
