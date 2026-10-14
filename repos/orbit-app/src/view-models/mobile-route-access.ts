@@ -138,7 +138,8 @@ export function isPrivateMobileRoute(pathname: string): boolean {
   if (matchesPrefix(route, "/events")) {
     // The catalogue and one public event detail are discovery surfaces.
     // Every deeper event workspace reads or writes actor-owned records.
-    return route === "/events/center" || !/^\/events(?:\/[^/]+)?$/u.test(route);
+    // R26: /events/assess (イベント評価の入力) reads and writes the person's own assessments.
+    return route === "/events/center" || route === "/events/assess" || !/^\/events(?:\/[^/]+)?$/u.test(route);
   }
 
   return PRIVATE_ROUTE_PREFIXES.some((prefix) =>

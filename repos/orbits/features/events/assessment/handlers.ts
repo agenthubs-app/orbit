@@ -99,6 +99,11 @@ export function createEventAssessmentLiveHandlers(deps: EventAssessmentLiveDeps 
     }),
     dismiss: run(true, async ({ actorId, params, service }) => ((await service.dismiss(actorId, params.id ?? "")) ? { data: { assessmentId: params.id, userDecision: "dismissed" } } : notFound())),
     uploadPoster: run(true, async ({ actorId, request, service }) => {
+      // The App sends the image bytes as the body (content-type image/*); the Web sends multipart form data.
+      const type = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
+      if (type.startsWith("image/")) {
+        return { data: await service.uploadPoster(actorId, { bytes: Buffer.from(await request.arrayBuffer()), mimeType: type }), status: 201 };
+      }
       const form = await request.formData().catch(() => null);
       const file = form?.get("file");
       if (!file || typeof file === "string") return { context: { reason: "INVALID" }, error: new AppError("VALIDATION_ERROR", "Attach an image file.") };

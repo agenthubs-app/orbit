@@ -10,7 +10,8 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { planFlowCopy, planOverviewCopy as c, planReviewCopy as r } from "../copy/plan";
 import { goalKindLabel } from "./plan-model";
-import { Avatar, CountUp, Icon, Kbd, MacTile, Modal, Orbit2026Scope, RetryCard, Skeleton, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
+import { Avatar, CountUp, Icon, Kbd, MacTile, Modal, Orbit2026Scope, RetryCard, RingChart, Skeleton, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
+import { eventDate } from "../events/events-model";
 import { ShellPage, useInShell } from "../shell/slots";
 import { PLAN_EVENT_SEGMENT_KEY, eventView, overflowParts, stepGroups, stepOrderedCards, typeCards, typeTone, unitsOf, type TypeCardView } from "./overview-model";
 import { planApi } from "./plan-api";
@@ -339,19 +340,22 @@ function OverviewRail({ detail, t, language }: { detail: PlanV2Detail; t: Transl
   );
 }
 
-/** 今日 +N のチャンス (web.html .k-wtoday / b8 todayCard). */
+/** 今日 +N のチャンス (web.html .k-wtoday / b8 todayCard). R26: the server gives the basis (「?」), the button wording and the progress chip. */
 function TodayCard({ detail, t }: { detail: PlanV2Detail; t: Translate }) {
   const chance = detail.todayChance;
+  const why = useWhy();
   if (!chance) return null;
   const itemId = chance.href.split("/types/")[1]?.split(/[?#]/)[0] ?? null;
   const card = itemId ? typeCards(detail).find((item) => item.type.itemId === decodeURIComponent(itemId)) ?? null : null;
+  const progress = chance.progressLabel ?? (card ? t(c.chanceTag, { label: card.type.shortLabel, met: card.met, target: card.type.targetCount }) : null);
   return (
     <section className={`${styles.card} ${styles.todayCard}`} data-plan-chance="">
-      <div className={styles.row}><MacTile emoji="✨" size="sm" /><b>{chance.points > 0 ? t(c.chanceTitlePoints, { n: chance.points }) : t(c.chanceTitle)}</b></div>
+      <div className={styles.row}><MacTile emoji="✨" size="sm" /><b>{chance.points > 0 ? t(c.chanceTitlePoints, { n: chance.points }) : t(c.chanceTitle)}</b>{chance.basis ? <span style={{ marginLeft: "auto" }}>{why.button}</span> : null}</div>
       <div className={styles.todayText}>{chance.label}</div>
+      {why.open && chance.basis ? <div className={styles.whyBody}>{why.text(chance.basis)}</div> : null}
       <div className={`${styles.row} ${styles.todayActs}`}>
-        <Link href={chance.href} className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`}>{t(c.chanceGo)}</Link>
-        {card ? <span className={styles.chip}>{t(c.chanceTag, { label: card.type.shortLabel, met: card.met, target: card.type.targetCount })}</span> : null}
+        <Link href={chance.href} className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`}>{chance.actionLabel ?? t(c.chanceGo)}</Link>
+        {progress ? <span className={styles.chip}>{progress}</span> : null}
       </div>
     </section>
   );
@@ -649,8 +653,40 @@ function EventCard({ detail, t }: { detail: PlanV2Detail; t: Translate }) {
       </div>
       <div className={styles.lbl}>{t(c.eventRule, { count: event.count, target: event.targetCount, unit: event.unit })}</div>
       <MiniBar allocation={event.allocation} earned={event.earned} overflow={event.overflow} skipped={false} />
-      {/* D53: the recommended events (fixed 5-item score) show here once R26 is live. */}
+      <RecommendedEvents detail={detail} t={t} />
     </section>
+  );
+}
+
+/** R26（D53）: the recommended events under the 🎟 イベント card (web.html V2.evCard22 .v22evg: three, by score). */
+function RecommendedEvents({ detail, t }: { detail: PlanV2Detail; t: Translate }) {
+  const { language } = useOrbitLanguage();
+  const events = detail.recommendedEvents ?? [];
+  if (events.length === 0) return null;
+  const when = (iso: string) => {
+    const time = Date.parse(iso);
+    const today = new Date();
+    const start = new Date(time);
+    const sameDay = start.toDateString() === today.toDateString();
+    const clock = `${start.getHours()}:${String(start.getMinutes()).padStart(2, "0")}`;
+    return sameDay && start.getHours() >= 17 ? t(c.eventTonight, { time: clock }) : eventDate(iso, language);
+  };
+  return (
+    <div className={styles.v22evg} data-plan-recommended-events="">
+      {events.slice(0, 3).map((event) => (
+        <Link key={event.eventId} href={event.assessmentHref ?? `/app/events/${encodeURIComponent(event.eventId)}`} className={styles.v22ev}>
+          <span className={styles.evRing}>
+            <RingChart size={42} stroke={5} segments={[{ color: event.score.total >= 70 ? "var(--plum-700)" : event.score.total >= 50 ? "var(--plum-500)" : "var(--rose-500)", value: event.score.total / 100 }]} label={`${event.score.total}`} />
+            <span className={styles.evRingNum}>{event.score.total}</span>
+          </span>
+          <span className={styles.evMeta}>
+            <b>{event.title}</b>
+            <span className={styles.lbl}>{[when(event.startsAt), event.venue].filter(Boolean).join("· ")}</span>
+            {event.fitLabel ? <span className={`${styles.chip} ${styles.chip_lav}`} style={{ marginTop: 4 }}>{event.fitLabel}</span> : null}
+          </span>
+        </Link>
+      ))}
+    </div>
   );
 }
 

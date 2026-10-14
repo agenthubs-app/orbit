@@ -16,9 +16,9 @@
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 13 |
 | └ 由 Sprint 0137 实现 | 1 |
-| 只能在线 | 42 |
+| 只能在线 | 44 |
 | 不读账号数据（布局、跳转、本机设置） | 22 |
-| 合计（路由文件） | 104 |
+| 合计（路由文件） | 106 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -91,6 +91,8 @@
 | `/events/:id/analytics` | 活动数据分析 | 主办方实时运营：主办方统计，服务器实时聚合 | /api/events/:id/analytics/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/register` | 报名问卷 | 付费 AI：报名是写入；问卷题目由付费 AI 生成并在服务器缓存 | /api/events/public/:id、/api/events/:id/registration | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new` | 人脈を追加（名刺をスキャン、手入力、確認待ちの下書き件数；R12） | 名片识别（上传图片、OCR）：下書き件数和各入口的后续操作都在服务器进行 | /api/contact-drafts | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/events/assess` | イベント評価の入力（URL / ポスター / 3項目 / 参加コード；R26） | 名片识别（上传图片、OCR）：读取页面与评分在服务器进行 | /api/events/assessments、/api/events/assessments/posters | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/events/assessments/[id]` | 評価結果 / 読み取れない時（R26） | 名片识别（上传图片、OCR）：分数按当前计划在服务器重算 | /api/events/assessments/[id] | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new/manual` | 手入力（名字即可保存，即时查重与统合，5 秒撤销；R12） | 名片识别（上传图片、OCR）：保存联系人与查重是服务器写入 / 查询 | /api/contacts/manual、/api/contacts/manual/duplicates、/api/contacts/manual/organizations、/api/events | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new/scan` | 名刺をスキャン（はじめての方へ、相机权限、表 / 裏连拍、相册多选，建 v2 批次上传；R12） | 名片识别（上传图片、OCR）：名片识别要上传图片在服务器读取 | /api/contact-drafts/business-card/batches/v2 | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new/scan/:batchId` | 名刺の読み取り → 自動で人脈へ → まとめて確認 → 完成（R12） | 名片识别（上传图片、OCR）：读取在服务器进行，确认是写入 | /api/contact-drafts/business-card/batches/v2/:id、/api/agent/event-attribution/candidates | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -198,6 +200,8 @@
 | `app/events/[id]/operations/roles.tsx` | `/events/:id/operations/roles` | online-only |
 | `app/events/[id]/participants/[participantId].tsx` | `/events/:id/participants/:participantId` | device-only |
 | `app/events/[id]/register.tsx` | `/events/:id/register` | online-only |
+| `app/events/assess.tsx` | `/events/assess` | online-only |
+| `app/events/assessments/[id].tsx` | `/events/assessments/[id]` | online-only |
 | `app/events/center.tsx` | `/events/center` | online-only |
 | `app/followups.tsx` | `/followups` | device-only |
 | `app/home.tsx` | `/home` | local-first (0131) |

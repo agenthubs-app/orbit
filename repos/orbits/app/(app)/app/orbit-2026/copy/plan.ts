@@ -597,6 +597,8 @@ export const planOverviewCopy = {
   railNext: { ja: "次の一手", zh: "下一步", en: "Next move", kind: "label" },
   chanceTitlePoints: { ja: "今日 +{n} のチャンス", zh: "今天+{n}的机会", en: "Today's +{n} chance", kind: "label" },
   chanceGo: { ja: "会う準備をする", zh: "准备见面", en: "Get ready to meet", kind: "button" },
+  // R26（D53）: the recommended events row under the イベント card.
+  eventTonight: { ja: "今夜 {time} ", zh: "今晚{time} ", en: "Tonight {time} ", kind: "label" },
   chanceTag: { ja: "{label} · {met} / {target}人", zh: "{label} · {met}/{target}人", en: "{label} · {met} / {target}", kind: "label" },
   planStatusToday: { ja: "今日確定", zh: "今天确定", en: "Confirmed today", kind: "chip" },
   planStatusDate: { ja: "{date}に確定", zh: "{date}确定", en: "Confirmed {date}", kind: "chip" },

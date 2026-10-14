@@ -190,6 +190,9 @@ const integratedFeatureRoutes = [
   "/contacts/new/scan/[batchId]",
   // Web /app/start opens the App guide (redirect to /profile/onboarding).
   "/start",
+  // R26 イベント評価: input (URL / poster / 3 items / 参加コード) and the result / failure screens.
+  "/events/assess",
+  "/events/assessments/[id]",
   "/events/[id]/live",
   "/events/[id]/operations/experience",
   "/events/[id]/participants/[participantId]",

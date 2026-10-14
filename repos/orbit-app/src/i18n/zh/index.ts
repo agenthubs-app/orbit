@@ -52,6 +52,7 @@ import { onboarding } from "./onboarding";
 import { contactAdd } from "./contactAdd";
 import { plan } from "./plan";
 import { add } from "./add";
+import { eventsV2 } from "./eventsV2";
 
 export const zh = {
   ...inbox,
@@ -106,4 +107,5 @@ export const zh = {
   ...contactAdd,
   ...plan,
   ...add,
+  ...eventsV2,
 } as const;

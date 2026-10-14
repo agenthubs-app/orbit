@@ -254,3 +254,13 @@
 .inlineRail { margin-top: 18px; }
 .candCard .lbl { display: block; }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* R26（D53）: recommended events under the イベント card (web.html .v22evg / .v22ev). */
+.v22evg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 20px; }
+.v22ev { display: flex; gap: 10px; align-items: center; padding: 10px 0; color: inherit; text-decoration: none; min-width: 0; }
+.evRing { position: relative; display: grid; place-items: center; flex: none; width: 42px; height: 42px; }
+.evRingNum { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-num); font-weight: var(--fw-heavy); font-size: var(--fs-meta); }
+.evMeta { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.evMeta > b { display: block; max-width: 100%; font-size: var(--fs-body-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evMeta > .lbl { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1279px) { .v22evg { grid-template-columns: 1fr; } .v22ev + .v22ev { border-top: 1px solid var(--line); } }

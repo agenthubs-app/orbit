@@ -174,13 +174,14 @@ export function eventScoreView(result: EventScoreResult, fact: PlanEventFact, la
   };
 }
 
-/** R26：适配 chip（「VC 約5名 · 起業家 約12名」）：还没满的人物类型里预计人数最多的两类；报名者标签公开时不写「約」。 */
+/** R26：适配 chip（「VC 約5名 · 起業家 約12名」）：还没满的人物类型里配点最高的两类；报名者标签公开时不写「約」。 */
 export function fitLabel(input: Pick<OverviewInput, "types" | "awards" | "language">, event: PlanEventFact): string | null {
   const exact = event.facts.attendeeSource === "registrants";
   const parts = input.types
     .filter((type) => !type.skippedAt && metCount(input.awards, type.personType.key) < type.targetCount && (event.facts.expected[type.personType.key] ?? 0) > 0)
-    .map((type) => ({ count: event.facts.expected[type.personType.key]!, label: type.shortLabel }))
-    .sort((a, b) => b.count - a.count)
+    .map((type) => ({ allocation: type.allocation, count: event.facts.expected[type.personType.key]!, label: type.shortLabel }))
+    // 画板 web.html #17：配点高的类型在前（「VC 約5名 · 起業家 約12名」「VC 2名 · CFO 約10名」）。
+    .sort((a, b) => b.allocation - a.allocation || b.count - a.count)
     .slice(0, 2)
     .map((item) => tri(input.language, exact
       ? { en: `${item.label} ${item.count}`, ja: `${item.label} ${item.count}名`, zh: `${item.label} ${item.count} 位` }
@@ -315,14 +316,19 @@ export function chanceWhen(startsAt: string, now: string, language: PlanCopyLang
 }
 
 /**
- * R26 活动候选：未来 14 天内、能见到「还差人数最多」的类型的活动（同分取更近的）。依据文本与按钮文案由服务端给（DESIGN §6.2-3）。
+ * R26 活动候选：未来 14 天内、最早的一场能见到「还没满的类型」的活动（画板 web.html #17：今夜の CFO Night）；
+ * 同一场里挑这次能加分最多的类型（分值 → 配点 → 还差人数）。依据文本与按钮文案由服务端给（DESIGN §6.2-3）。
  */
 export function eventChance(input: OverviewInput, now: string): PlanTodayChance | null {
   const nowMs = Date.parse(now);
   let best: { event: PlanEventFact; type: PlanV2TypeItem; remaining: number; met: number; points: number; expected: number } | null = null;
-  for (const event of input.events) {
-    const start = Date.parse(event.startsAt);
-    if (!Number.isFinite(start) || start < nowMs - 3 * 3_600_000 || start > nowMs + TODAY_CHANCE_EVENT_DAYS * 86_400_000) continue;
+  const upcoming = input.events
+    .filter((event) => {
+      const start = Date.parse(event.startsAt);
+      return Number.isFinite(start) && start >= nowMs - 3 * 3_600_000 && start <= nowMs + TODAY_CHANCE_EVENT_DAYS * 86_400_000;
+    })
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  for (const event of upcoming) {
     for (const type of input.types) {
       if (type.skippedAt) continue;
       const expected = event.facts.expected[type.personType.key] ?? 0;
@@ -333,9 +339,10 @@ export function eventChance(input: OverviewInput, now: string): PlanTodayChance 
       const mine = input.awards.filter((entry) => entry.award.typeKey === type.personType.key).map((entry) => entry.award);
       const next = nextAward({ allocation: type.allocation, anonymous: false, awards: mine, skipped: false, targetCount: type.targetCount });
       if (next.part !== "base") continue;
-      const better = !best || remaining > best.remaining || (remaining === best.remaining && start < Date.parse(best.event.startsAt));
+      const better = !best || next.points > best.points || (next.points === best.points && (type.allocation > best.type.allocation || (type.allocation === best.type.allocation && remaining > best.remaining)));
       if (better) best = { event, expected, met, points: next.points, remaining, type };
     }
+    if (best) break;
   }
   if (!best) return null;
   const { event, type, expected, met, points } = best;

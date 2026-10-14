@@ -2,7 +2,7 @@ import { useIsFocused } from "expo-router";
 import { useCallback, useMemo, useRef } from "react";
 import { useOrbitAuthSession } from "../../src/api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../src/api/ApiBaseUrlProvider";
-import { EventsScreen } from "../../src/screens/events/EventsScreen";
+import { EventsHome } from "../../src/screens/events/v2/EventsHome";
 
 export default function EventsRoute() {
   const focused = useIsFocused();
@@ -14,5 +14,7 @@ export default function EventsRoute() {
   const latest = useRef(scope);
   latest.current = scope;
   const isScopeCurrent = useCallback(() => latest.current === scope && scope.enabled, [scope]);
-  return enabled ? <EventsScreen key={scope.key} scopeKey={scope.key} isScopeCurrent={isScopeCurrent} /> : null;
+  // R26: the new イベント page (評価 / 参加予定 / 探す); 探す still shows the existing list until R27.
+  void isScopeCurrent;
+  return enabled ? <EventsHome key={scope.key} scopeKey={scope.key} /> : null;
 }

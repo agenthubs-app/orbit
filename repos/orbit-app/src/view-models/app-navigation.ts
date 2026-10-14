@@ -66,6 +66,8 @@ export function parentForPath(pathname: string, t: OrbitTranslator = currentTran
       if (parts[1] === "analysis") return { href: "/contacts/dashboard", label: t("shell.parent.networkAnalysis") };
       return { href: "/contacts", label: t("shell.parent.network") };
     case "events":
+      // R26: 評価結果 / 評価の入力 go back to the イベント page (not to an event detail).
+      if (parts[1] === "assessments" || parts[1] === "assess") return { href: "/events", label: t("shell.parent.events") };
       if (parts[2] === "operations" && parts.length > 3) return { href: "/events/" + parts[1] + "/operations", label: t("shell.parent.eventOperations") };
       if (parts.length > 2) return { href: "/events/" + parts[1], label: t("shell.parent.eventDetail") };
       return { href: "/events", label: t("shell.parent.events") };
