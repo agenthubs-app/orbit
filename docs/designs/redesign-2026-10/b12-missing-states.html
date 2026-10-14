@@ -1688,6 +1688,27 @@
 
 }
 
+
+  /* ---- g6 · 补画 2026-10-14：R16 导入（照抄 b9 A2 / A3 的 .gstep .ill .drop .file .map .dn .door 规则） ---- */
+  .g6 {
+    .dn { display: inline-flex; gap: 3px; align-items: center; flex: none; }
+    .dn i { width: 7px; height: 7px; border-radius: 50%; background: var(--surface-3); }
+    .dn.d1 i:nth-child(1), .dn.d2 i:nth-child(-n+2), .dn.d3 i { background: var(--plum-700); }
+    .dn.lg i { width: 9px; height: 9px; }
+    .rend { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: none; }
+    .ill { border-radius: 14px; background: var(--surface-2); padding: 10px; font-size: 10.5px; color: var(--ink-2); display: grid; gap: 4px; }
+    .ill .mi { padding: 5px 8px; border-radius: 8px; background: var(--surface); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+    .ill .mi.hl { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--plum-500); color: var(--ink); font-weight: 700; }
+    .gstep { display: grid; grid-template-columns: 28px 1fr; gap: 10px; }
+    .gstep + .gstep { margin-top: 12px; }
+    .gstep .n { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-size: 12px; font-weight: 800; font-family: var(--font-num); }
+    .gstep b { font-size: 13.5px; display: block; margin: 3px 0 6px; }
+    .file { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--surface); }
+    .file .fi { width: 34px; height: 40px; border-radius: 7px; background: var(--mac-teal); color: var(--mac-teal-ink); display: grid; place-items: center; font-size: 9.5px; font-weight: 900; flex: none; }
+    .map td .arrow { color: var(--ink-4); }
+    .map td.ex { color: var(--ink-3); font-size: 12px; }
+    .drop { border: 1.6px dashed var(--plum-300); border-radius: 18px; padding: 16px; text-align: center; background: color-mix(in srgb, var(--accent-soft) 60%, transparent); }
+  }
 </style>
 </head>
 <body>
@@ -6172,6 +6193,79 @@ h += group('g3', sec('追加 · 目標入力 1440（2026-10-12）', 'web.html「
     ['.k-wpsample', 0, 'サンプル卡 = b10 的 タイプ A / B / C（淡化）；说明句与类型名照字典 sampleNote / sampleTypeA–C（拉丁词与日文之间半角空格）'],
     ['.k-wgnext', 0, '黑色主按钮「iOrbit と具体化する」→ 生成流程（iOrbit 页）'],
   ], 'b12 W-R23-02a–c · b10 ① · web.html #15（作废）'));
+
+/* ===================== 补画 · 2026-10-14：R16 导入 4 页（决定表 §23-2；照 b9 A2 / A3 与 kit 画法，新画板一律加在末尾） ===================== */
+{
+const dn = (d, cls = '') => `<span class="dn d${d} ${cls}" title="情報の濃さ"><i></i><i></i><i></i></span>`;
+const SRC = { tel: ['phone', '連絡先'], li: ['link', 'LinkedIn'], csv: ['file', 'CSV'], ev: ['calendar', 'イベント'] };
+const src = k => `<span class="chip src">${ic(SRC[k][0])}${SRC[k][1]}</span>`;
+const nrow = (n, i, c, co, role, k) => `<div class="li"><div class="av ${c}">${i}</div><div class="meta"><b>${n}</b><span>${co ? `${co} · ${role}` : '<i style="font-style:normal;color:var(--ink-4)">会社・役職 未登録</i>'}</span></div><div class="rend">${dn(1)}${src(k)}</div></div>`;
+const back = `<button class="rbtn">${ic('left')}</button>`;
+const railOf = (emo, c, t, body, after) => `<h4><span class="emo sm ${c}">${emo}</span>${t}</h4><div class="card" style="padding:16px;font-size:12.5px;color:var(--ink-2);line-height:1.7">${body}</div><div class="card" style="padding:16px"><div class="lbl">取り込み後の濃さ</div><div class="row" style="gap:8px;margin-top:6px">${dn(1, 'lg')}<b style="font-size:13px">身元だけ</b></div><div class="lbl" style="margin-top:6px">${after}</div></div>`;
+const OTHER = [['tel', '📱', 'blue', '連絡先（vCard）', 'iPhone や Google の連絡先から'], ['li', '🔗', 'teal', 'LinkedIn から', '書き出した CSV ファイルを読み込みます'], ['csv', '📄', 'lav', 'CSV ファイル', 'Eight や表計算ソフトから'], ['ev', '🎟️', 'apricot', 'イベントから', 'イベントで名刺を交換した人']];
+/* ① 选门页：web.html 人脈空态四张门卡同构（card span3 + emo + 濃さ + 标题 + 说明） */
+const pickWeb = () => mainhead('ほかの方法で取り込む', '人脈を追加 › その他', back, '') + `<div class="wgrid">
+  ${OTHER.map(([k, e, c, t, g], j) => `<div class="card span3 ${j === 0 ? 'k-imdoor' : ''}"><div class="row between"><span class="emo ${c}">${e}</span>${dn(1)}</div><b style="margin-top:10px;display:block">${t}</b><div class="lbl" style="line-height:1.6">${g}</div></div>`).join('')}
+  <div class="card span12 k-imflow"><div class="card-h"><h3>どの方法でも</h3><span class="lbl">最後は同じ「まとめて確認」で、例外だけを見ます</span></div>
+    <div class="row" style="gap:10px;align-items:center;font-size:13px">${[['📂', 'ファイルを選ぶ'], ['🔁', '列の対応を確認'], ['✅', 'まとめて確認'], ['👥', '人脈に追加']].map(([e, t], j) => `${j ? `<span style="color:var(--ink-4)">${ic('right', 'sm')}</span>` : ''}<span class="chip" style="height:32px;padding:0 12px">${e} ${t}</span>`).join('')}</div></div></div>`;
+/* ② vCard 上传：LinkedIn ② アップロード · Web 同构 */
+const vcardWeb = () => mainhead('連絡先（vCard）から取り込む', '人脈を追加 › 連絡先', back, '') + `<div class="wgrid">
+  <div class="card span5 k-vsteps"><div class="card-h"><h3>書き出しの手順</h3><span class="lbl">連絡先とは連携しません</span></div>
+    <div class="gstep"><span class="n">1</span><div><b>iPhone：連絡先 › リスト › 書き出す</b><div class="ill"><div class="mi hl">${ic('out', 'sm')}すべての連絡先を書き出す（.vcf）</div></div></div></div>
+    <div class="gstep"><span class="n">2</span><div><b>Google：連絡先 › エクスポート</b><div class="ill"><div class="mi hl"><span class="cbx on" style="width:14px;height:14px;border-radius:4px">${ic('check')}</span>vCard（iOS の連絡先用）</div></div></div></div>
+    <div class="gstep"><span class="n">3</span><div><b>できた .vcf ファイルをここへ</b><div class="lbl">取り込む人は、次の「まとめて確認」で選べます</div></div></div></div>
+  <div class="card span7"><div class="card-h"><h3>ファイル</h3></div>
+    <div class="drop k-vdrop" style="padding:30px"><div style="font-size:30px">📇</div><b style="display:block;margin-top:6px">.vcf ファイルをドロップ</b><div class="lbl">またはクリックして選ぶ · 複数の人が入った 1ファイルで OK</div></div>
+    <div class="file k-vfile" style="margin-top:14px;background:var(--surface-2)"><span class="fi">VCF</span><div style="flex:1;min-width:0"><b style="font-size:13px">contacts.vcf</b><div class="lbl">412人 · 96 KB · 読み込み完了</div></div><span class="chip teal">${ic('check')}OK</span><button class="lbtn" style="background:var(--surface)">${ic('x', 'sm')}</button></div>
+    <div class="row push" style="justify-content:flex-end;gap:10px;margin-top:18px"><button class="btn">キャンセル</button><button class="btn primary k-vgo">まとめて確認へ</button></div></div></div>`;
+/* ③ 汎用 CSV：LinkedIn ③ 列の対応を確認 · Web 同构 */
+const CSVROWS = [['氏名', '名前', '高山 亮', 1], ['フリガナ', 'ふりがな', 'タカヤマ リョウ', 1], ['会社名', '会社', 'ミライ精機株式会社', 1], ['役職', '役職', '経営企画部 部長', 1], ['E-mail', 'メール', 'ryo.takayama@…', 1], ['電話番号', '電話', '06-5555-0182', 1], ['名刺交換日', '使わない', '2025/11/14', 2]];
+const csvWeb = () => mainhead('列の対応を確認', 'CSV · eight_export.csv · 128行', back, `<span class="lbl">ステップ 2 / 3</span>`) + `<div class="wgrid">
+  <div class="card span8 k-cmap"><div class="card-h"><h3>CSV の列 → Orbit の項目</h3><span class="lbl">自動で対応づけました · 変更できます</span></div>
+    <table class="table map"><thead><tr><th>CSV の列</th><th></th><th>Orbit の項目</th><th>1行目の例</th><th></th></tr></thead><tbody>
+    ${CSVROWS.map(([a, b, ex, st], k) => `<tr ${k === 6 ? 'class="k-cskip"' : ''}><td><b>${a}</b></td><td class="arrow">${ic('right', 'sm')}</td><td><span class="chip ${st === 2 ? '' : 'lav'}">${b}</span></td><td class="ex">${ex}</td><td>${st === 2 ? '<span class="lbl">—</span>' : '<i class="dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok)"></i>'}</td></tr>`).join('')}
+    </tbody></table></div>
+  <div class="card span4"><div class="card-h"><h3>取り込み後のイメージ</h3></div>
+    <div class="list k-cpreview">${nrow('高山 亮', '高', 'c4', 'ミライ精機', '経営企画部 部長', 'csv')}${nrow('松本 千尋', '松', 'c2', '関西テクノ電機', '営業部', 'csv')}${nrow('伊達 修平', '伊', 'c5', '北辰製作所', '経営企画', 'csv')}</div>
+    <div class="mac lav push" style="margin-top:12px;font-size:12px;line-height:1.6"><b>全員 ●○○ で入ります。</b>どこで知り合ったか・目標との関係は、あとから 1日1問で補えます。</div></div>
+  <div class="span12 row" style="justify-content:flex-end;gap:10px"><button class="btn">戻る</button><button class="btn primary xl k-ctonext" style="height:46px">まとめて確認へ（例外 6件）</button></div></div>`;
+/* ④ イベントから：选活动（左）→ 交换过名片的人（右，勾选）→ 同一「まとめて確認」 */
+const EVS = [['CFO Night Tokyo', '10月7日（火）· 渋谷', 17, 1], ['製造業DX カンファレンス 大阪', '9月26日（金）· グランフロント大阪', 9, 0], ['SaaS Summit 2026', '9月12日（金）· 東京国際フォーラム', 6, 0]];
+const EVPPL = [['高山 亮', '高', 'c4', 'ミライ精機', '経営企画部 部長', 1], ['伊達 修平', '伊', 'c5', '北辰製作所', '経営企画', 1], ['松本 千尋', '松', 'c2', '関西テクノ電機', '営業部', 1], ['高橋 美咲', '高', 'c1', '青葉ベンチャーズ', 'パートナー', 0]];
+const evWeb = () => mainhead('イベントから取り込む', '人脈を追加 › イベントから', back, '') + `<div class="wgrid">
+  <div class="card span5 k-evlist"><div class="card-h"><h3>イベントを選ぶ</h3><span class="lbl">参加したイベント</span></div>
+    <div class="list">${EVS.map(([n, d, m, on]) => `<div class="li" ${on ? 'style="background:var(--surface-2);margin:0 -10px;padding:11px 10px;border-radius:14px"' : ''}><span class="emo sm apricot">🎟️</span><div class="meta"><b>${n}</b><span>${d}</span></div><div class="end">名刺 ${m}人</div></div>`).join('')}</div></div>
+  <div class="card span7 k-evppl"><div class="card-h"><h3>CFO Night Tokyo で名刺を交換した人</h3><span class="lbl">17人 · すでに人脈 1人</span></div>
+    <div class="list">${EVPPL.map(([n, i, c, co, role, add]) => `<div class="li"><span class="cbx ${add ? 'on' : ''}">${ic('check')}</span><div class="av ${c}">${i}</div><div class="meta"><b>${n}</b><span>${co} · ${role}</span></div><div class="rend">${add ? src('ev') : '<span class="chip">すでに人脈</span>'}</div></div>`).join('')}</div>
+    <div class="row push" style="justify-content:flex-end;gap:10px;margin-top:16px"><button class="btn">キャンセル</button><button class="btn primary k-evgo">まとめて確認へ（16人）</button></div></div></div>`;
+const RAIL_PICK = railOf('🧭', 'lav', '取り込みについて', 'どの方法でも、取り込んだ人はまず「身元だけ」で人脈に入ります。会社や関係は、名刺や面談、1日1問で少しずつ濃くなります。', '名刺や面談で会うと ●●○ 以上になります');
+const RAIL_V = railOf('📱', 'blue', '連絡先のデータについて', '氏名・電話番号・メールが中心です。会社や役職は、登録してある人だけ入ります。家族やお店は「まとめて確認」で外せます。', '名刺や面談で会うと ●●○ 以上になります');
+const RAIL_C = railOf('📄', 'lav', 'CSV のデータについて', '1行目を見出しとして読み、列の対応を自動でつけます。対応しない列は「使わない」にできます。', '名刺や面談で会うと ●●○ 以上になります');
+const RAIL_E = railOf('🎟️', 'apricot', 'イベントのデータについて', 'そのイベントで名刺を交換した人だけが出ます。すでに人脈にいる人は選べません。', '取り込むと出会った場所に、このイベントが付きます');
+h += group('g6', sec('补画 · 2026-10-14 · R16 取り込み（Web）', '決定表 §23-2：導入選門頁 / vCard / 汎用 CSV / イベントから は设计稿无 → 照 b9 A2 / A3（LinkedIn ② アップロード · ③ 列の対応）与 kit 画法补画；都进入同一「まとめて確認」（b9 A3 ④）。App 端：連絡先 / LinkedIn 走 b9 A2 / A3 已有画板，App 没有这 4 页') +
+  WP('W-R16-10 取り込み · 方法を選ぶ（选门页）', '', () => ({ nav: 1, body: pickWeb(), rail: RAIL_PICK }), [
+    ['.k-imdoor', 0, '/app/contacts/new/import：四张门卡同 web.html 人脈空态门卡画法（emo + 濃さ + 标题 + 说明），文案取 Web 字典 add.other*'],
+    ['.k-imflow', 0, '下方一行说明四种方法的共同流程：选文件 → 列对应 → まとめて確認 → 人脈'],
+  ], 'b9 A3 LinkedIn ② · web.html 人脈空态门卡 · 补画 2026-10-14')
+  + WP('W-R16-11a 取り込み · 連絡先（vCard）アップロード', '', () => ({ nav: 1, body: vcardWeb(), rail: RAIL_V }), [
+    ['.k-vsteps', 0, '左：iPhone / Google 两种书き出し手順（同 LinkedIn ② 的 3 步 + 迷你界面高亮）；不做 Google OAuth（vCard 文件代替）'],
+    ['.k-vdrop', 0, '拖放 .vcf（多人的一个文件即可）'],
+    ['.k-vfile', 0, '读完显示人数与「OK」；错误文件原位红字说明（同 LinkedIn）'],
+    ['.k-vgo', 0, 'vCard 列固定，不经列对应，直接进「まとめて確認」'],
+  ], 'b9 A3 LinkedIn ② アップロード · Web · 补画 2026-10-14')
+  + WP('W-R16-11b 取り込み · 汎用 CSV 列の対応を確認', '', () => ({ nav: 1, body: csvWeb(), rail: RAIL_C }), [
+    ['.k-cmap', 0, '上传页同 vCard / LinkedIn ②（换成 .csv）；本页 = 列对应：自动映射 + 第 1 行示例，可下拉改'],
+    ['.k-cskip', 0, '对应不上的列标「使わない」（Eight 的「名刺交換日」等）'],
+    ['.k-cpreview', 0, '右侧即时预览：全部 ●○○ + CSV 来源 chip'],
+    ['.k-ctonext', 0, '按钮写出例外数 → まとめて確認（b9 A3 ④ 同构）'],
+  ], 'b9 A3 LinkedIn ③ 列の対応を確認 · 补画 2026-10-14')
+  + WP('W-R16-11c 取り込み · イベントから（参加者を選ぶ）', '', () => ({ nav: 1, body: evWeb(), rail: RAIL_E }), [
+    ['.k-evlist', 0, '左：参加过的活动列表（选中行浅底），右侧数字 = 在该活动交换名片的人数'],
+    ['.k-evppl', 0, '右：该活动交换过名片的人，默认全选；已在人脈的人不可选（「すでに人脈」chip）'],
+    ['.k-evgo', 0, '按钮写人数 → 同一「まとめて確認」；取り込むと出会った場所に这个活动'],
+  ], 'b9 A3 ④ まとめて確認 前段 · 补画 2026-10-14')
+);
+}
 /* ===================== 出力 ===================== */
 document.getElementById('out').innerHTML = `<div class="card" style="margin-bottom:8px"><h3>画板索引（${INDEX.length}）</h3><div class="idx">${INDEX.map(([id, t]) => `<a href="#b-${id}"><b>${id}</b>${t}</a>`).join('')}</div></div>` + h;
 docNav('b12-missing-states'); orbitChrome();
