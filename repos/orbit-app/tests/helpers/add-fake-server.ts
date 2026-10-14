@@ -193,6 +193,12 @@ export class FakeAddServer {
       return ok({ contactDrafts: added });
     }
     if (call.method === "GET" && path === "/api/events") return ok({ events: this.events });
+    // R26-06：手入力「出会った場所」候选读 /api/events/mine（过去 + 未来两次）；这里把 events 全放在 past。
+    if (call.method === "GET" && path === "/api/events/mine") {
+      const past = call.path.includes("range=past");
+      const items = past ? this.events.map((event) => ({ eventId: event.id, startsAt: event.startsAt, status: "registered", title: event.title })) : [];
+      return ok({ items, range: past ? "past" : "upcoming", upcomingCount: 0 });
+    }
 
     // ── 手入力 ──
     if (call.method === "POST" && path === "/api/contacts/manual/duplicates") {

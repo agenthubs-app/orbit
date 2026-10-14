@@ -38,9 +38,9 @@ const listSchema = { safeParse: (value: unknown) => (Array.isArray(value) ? { da
 
 export interface EventsApi {
   list(): Promise<EventsResult<EventAssessmentContract[]>>;
-  get(id: string): Promise<EventsResult<EventAssessmentContract>>;
+  detail(id: string): Promise<EventsResult<EventAssessmentContract>>;
   create(input: EventAssessmentCreateInput): Promise<EventsResult<EventAssessmentContract>>;
-  patch(id: string, input: EventAssessmentPatchInput): Promise<EventsResult<EventAssessmentContract>>;
+  fill(id: string, input: EventAssessmentPatchInput): Promise<EventsResult<EventAssessmentContract>>;
   addToPlan(id: string): Promise<EventsResult<unknown>>;
   dismiss(id: string): Promise<EventsResult<unknown>>;
   availability(): Promise<EventsResult<EventAssessmentAvailability>>;
@@ -52,9 +52,9 @@ export function createEventsApi(client: OrbitApiClient): EventsApi {
   const id = (value: string) => encodeURIComponent(value);
   return {
     list: () => read(client.get<unknown>(BASE), listSchema),
-    get: (value) => read(client.get<unknown>(`${BASE}/${id(value)}`), eventAssessmentSchema),
+    detail: (value) => read(client.get<unknown>(`${BASE}/${id(value)}`), eventAssessmentSchema),
     create: (input) => read(client.post<unknown>(BASE, { body: input }), eventAssessmentSchema),
-    patch: (value, input) => read(client.patch<unknown>(`${BASE}/${id(value)}`, { body: input }), eventAssessmentSchema),
+    fill: (value, input) => read(client.patch<unknown>(`${BASE}/${id(value)}`, { body: input }), eventAssessmentSchema),
     addToPlan: (value) => read(client.post<unknown>(`${BASE}/${id(value)}/add-to-plan`, { body: {} }), eventAssessmentAddToPlanResultSchema as ZodType<unknown>),
     dismiss: (value) => read(client.post<unknown>(`${BASE}/${id(value)}/dismiss`, { body: {} }), eventAssessmentDismissResultSchema as ZodType<unknown>),
     availability: () => read(client.get<unknown>(`${BASE}/availability`), eventAssessmentAvailabilitySchema as ZodType<EventAssessmentAvailability>),

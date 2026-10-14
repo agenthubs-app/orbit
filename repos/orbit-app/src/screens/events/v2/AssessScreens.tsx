@@ -22,7 +22,7 @@ async function poll(api: EventsApi, id: string, live: () => boolean): Promise<Ev
   const started = Date.now();
   while (live() && Date.now() - started < POLL_LIMIT_MS) {
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-    const result = await api.get(id);
+    const result = await api.detail(id);
     if (result.ok && result.data.status !== "reading") return result.data;
   }
   return null;
@@ -143,7 +143,7 @@ export function AssessmentResultScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [item, setItem] = useState<EventAssessmentContract | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { let live = true; void api.get(id ?? "").then((result) => { if (live && result.ok) setItem(result.data); }); return () => { live = false; }; }, [api, id]);
+  useEffect(() => { let live = true; void api.detail(id ?? "").then((result) => { if (live && result.ok) setItem(result.data); }); return () => { live = false; }; }, [api, id]);
 
   if (!item) return <AppScreen title={t("eventsV2.assessTitleShort")}><View /></AppScreen>;
   const decide = async (decision: "add" | "skip") => {
@@ -160,7 +160,7 @@ export function AssessmentResultScreen() {
     return (
       <AppScreen title={t("eventsV2.assessTitleShort")}>
         <FillThree item={item} onSubmit={async (facts, unknown) => {
-          const patched = await api.patch(item.id, { facts, unknownFields: unknown });
+          const patched = await api.fill(item.id, { facts, unknownFields: unknown });
           if (patched.ok) setItem(patched.data); else toast.error(t("eventsV2.genericError"));
         }} />
       </AppScreen>

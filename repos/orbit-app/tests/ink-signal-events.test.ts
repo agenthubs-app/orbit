@@ -57,9 +57,10 @@ export const readSnapshot = async () => null;
 export const writeSnapshot = async () => {};
 `;
 
+// R26：イベント route 换成新页（EventsHome，評価 / 参加予定 / 探す）；旧列表仍是「探す」页签的内容，本测试照旧把它挂在原来的 route 包装里测。
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/(app)/events"; import { useFixture } from "fixture"; import { ShellTabBar } from "./src/components/OrbitTabBar"; function App() { const s = useFixture(); return s.mounted ? <><Route /><ShellTabBar /></> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { useIsFocused } from "expo-router"; import { useCallback, useMemo, useRef } from "react"; import { useOrbitAuthSession } from "./src/api/AuthSessionProvider"; import { useOrbitApiBaseUrl } from "./src/api/ApiBaseUrlProvider"; import { EventsScreen } from "./src/screens/events/EventsScreen"; function Route() { const focused = useIsFocused(); const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const enabled = focused && auth.ready && server.ready; const sequence = useRef(0); const scope = useMemo(() => ({ key: String(++sequence.current), enabled }), [enabled, auth.signedIn, auth.user?.id, auth.cookieHeader, server.baseUrl]); const latest = useRef(scope); latest.current = scope; const isScopeCurrent = useCallback(() => latest.current === scope && scope.enabled, [scope]); return enabled ? <EventsScreen key={scope.key} scopeKey={scope.key} isScopeCurrent={isScopeCurrent} /> : null; } import { useFixture } from "fixture"; import { ShellTabBar } from "./src/components/OrbitTabBar"; function App() { const s = useFixture(); return s.mounted ? <><Route /><ShellTabBar /></> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "ink-events-boundaries", setup(plugin) {
