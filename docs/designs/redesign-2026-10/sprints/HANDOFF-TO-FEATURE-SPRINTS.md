@@ -233,7 +233,7 @@
 | R25-04 | 旧计划链接换新、删兼容跳转 | **已完成**（2026-10-11，`tests/audits/no-legacy-plan-links.test.ts` 锁住） | 不要再生成旧地址；新链接一律用 `shared/compute/plan-href.ts` | README 合回前；`R25-plan-review-goals-cleanup/REPORT.md`:144–163 |
 | R24-04 | **照设计稿去掉三个现有功能**（2026-10-12 定） | 实现里有：候补每行的 ✓ / ✕、「話した人」逐条取り消す、1024 宽度下的「前提を見る / 手動で編集」 | 三项都去掉，照设计稿；由计划页会话实现 | DEC §9-10 |
 | R22-04 | **成员関わり方 / 追加能力**（今后功能，2026-10-13 定） | 不存在：メンバー追加的「できること」预览里不画「＋ その他」与「関わり方：業務委託 · 変更は ✎」（b12 W-R23-06 已去掉） | 将来要做时需改数据模型与契约；做了之后画板加回这两处 | DEC §16-1 |
-| R22-05 | **自由回答を各問に振り分け**（今后功能，2026-10-14 定） | App ≤5 問画板去掉底部输入栏（「まとめて書いても OK です」+ 发送）：没有接口，回答按题提交 | 将来做「一段自由文字自动拆到各题」需要付费 AI 与新接口；做了之后画板加回输入栏 | DEC §24 |
+| R22-05 | **自由回答を各問に振り分け**（今后功能，2026-10-14 定） | App ≤5 問画板去掉底部输入栏（「まとめて書いても OK です」+ 发送）：没有接口，回答按题提交；「確定した前提」画板同样去掉底部「前提について補足する」输入栏（§27-1），前提只能逐行改 | 将来做「一段自由文字自动拆到各题」需要付费 AI 与新接口；做了之后画板加回输入栏 | DEC §24 |
 | R22-01 | 未截画面（A-R23-03/06/07/12～19 等） | 本机 App 初版生成失败；达成不能撤回 | 先查清本机 live「初版をつくれませんでした」原因，再用只读 mock（:3002）补截 | PA §4.2；DEC Q4 |
 | R22-02 | **待授权（生产）** | 只在本机 | 迁移 `plans-v2-model`、`ai-usage-plan-v2-purposes` 必须先迁移再部署；`ORBIT_PLAN_V2_AI=ai` 开关；staging / 生产付费 AI C1–C12；月上限（`plan_background` 10→20、`plan_review` 3→6、C1 是否拆用途）待用户拍板 | `R22-plan-data-and-score/REPORT.md`:99–103；`R23-plan-generation/REPORT.md`:118–121；`R25-plan-review-goals-cleanup/REPORT.md`:197 |
 | R22-03 | 遗留小项 | 未做 | 生成流程「放弃」入口与 `abandoned` 状态；只剩已达成目标的人进不了完了页；候补被记录又撤销后不回候补表；v2 类型 `status` 口径；`review_used` 按月查、`exists` 预查 | `R23-plan-generation/REVIEW.md`:265；`R25-plan-review-goals-cleanup/REPORT.md`:216；`R24-plan-overview-and-types/REPORT.md`:83；`R22-plan-data-and-score/REPORT.md`:107–108 |

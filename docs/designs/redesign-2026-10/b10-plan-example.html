@@ -660,7 +660,7 @@ function qApp(stage) {
   const head = chatTop('プランを作る · 質問');
   const pre = me(`目標：${GOAL}`) + `<div class="ok-card" style="padding:10px 14px"><div class="row" style="gap:8px"><span class="okmark">${ic('check')}</span><b style="font-size:12.5px;flex:1">背景を確認しました</b><span class="lbl">目的：3段目</span></div></div>`;
   if (stage === 'q') return { body: head + `<div class="chat">${fmBar(1)}${pre}${ai('背景の空白から、プランを分ける 5つだけ聞かせてください。まとめて答えられます。')}${SCRC}${qCard(false)}</div>` };
-  return { body: head + `<div class="chat">${fmBar(1)}${pre}${me(ANS, 'k-ans')}${SCRC}${ai('ありがとうございます。前提をまとめました。違うところがあれば、ここで直してください。')}${premCard({ cls: 'k-prem', act: true })}</div>`, overlay: composer('前提について補足する') };
+  return { body: head + `<div class="chat">${fmBar(1)}${pre}${me(ANS, 'k-ans')}${SCRC}${ai('ありがとうございます。前提をまとめました。違うところがあれば、ここで直してください。')}${premCard({ cls: 'k-prem', act: true })}</div>` };
 }
 function qWeb() {
   return wTop('プランを作る · 質問') + `<div class="wchat" style="max-width:none">${fmBar(1)}${me(`目標：${GOAL}`)}<div class="ok-card" style="padding:10px 14px"><div class="row" style="gap:8px"><span class="okmark">${ic('check')}</span><b style="font-size:12.5px;flex:1">背景を確認しました · 目的：${PURPOSE}</b><button class="btn sm ghost">背景を見る</button></div></div>
@@ -735,8 +735,10 @@ const editTop = () => topbar('プランを手動で編集', '1回だけ · 保�
 const lockNote = (cls = '') => `<div class="lock ${cls}">${ic('pen', 'sm')}<span>保存したあとは、AI がこのプランを自動で書き換えることはありません。見直したいときは、プラン画面の「方案を見直す」から変更案を作り、1件ずつ ✓ / ✕ で決めます。</span></div>`;
 const EORD = [0, 1, 2, 4, 3]; /* 編集中の並び：Step 5 を 4番目へドラッグ中 */
 const eStepRow = (i, pos, o = {}) => {
-  const s = STEPS2[i], rename = i === 2, lift = i === 4;
-  return `<div class="erow ${lift ? 'lift k-lift' : ''} ${rename ? 'k-rename' : ''}"><span class="grip"></span><span class="v2snum">${pos + 1}</span><div class="em">${rename ? `<div class="ein"><span>デザインとブランドの仲間を見つける</span><i class="caret"></i></div><span class="lbl" style="margin-top:3px">元：${s[1]}</span>` : `<b>${s[1]}</b><span class="lbl">目安：${s[2]}</span>`}</div>${lift ? '<span class="mv">5 → 4</span>' : ''}<span class="del">${ic('x', 'sm')}</span></div>`;
+  const s = STEPS2[i], rename = i === 2, lift = i === 4 && !o.static;
+  /* o.static（2026-10-14 §27-2）：编辑后的静止状态——改名已生效、无拖动阴影 / 无键盘，可截图 */
+  if (o.static && rename) return `<div class="erow k-rename"><span class="grip"></span><span class="v2snum">${pos + 1}</span><div class="em"><b>デザインとブランドの仲間を見つける</b><span class="lbl">元：${s[1]}</span></div><span class="del">${ic('x', 'sm')}</span></div>`;
+  return `<div class="erow ${lift ? 'lift k-lift' : ''} ${o.static && i === 4 ? 'k-moved' : ''} ${rename ? 'k-rename' : ''}"><span class="grip"></span><span class="v2snum">${pos + 1}</span><div class="em">${rename ? `<div class="ein"><span>デザインとブランドの仲間を見つける</span><i class="caret"></i></div><span class="lbl" style="margin-top:3px">元：${s[1]}</span>` : `<b>${s[1]}</b><span class="lbl">目安：${s[2]}</span>`}</div>${lift ? '<span class="mv">5 → 4</span>' : ''}<span class="del">${ic('x', 'sm')}</span></div>`;
 };
 const eTypeRow = (k, o = {}) => {
   const p = T[k], foc = k === 'E';
@@ -753,7 +755,7 @@ function editApp(part) {
       <div class="ghost-row" style="margin-top:8px;height:40px">${ic('plus', 'sm')}タイプを追加（テンプレートの枠から選ぶ）</div></div>${lockNote('k-lock')}`, overlay: ft };
   if (part === 3) return { body: editTop() + fmBar(4) + `<div class="card k-etypes" style="margin-top:10px;padding:12px 16px"><div class="card-h" style="margin:2px 0 6px"><h3>人物タイプと配点</h3></div>${ORD.map(k => eTypeRow(k)).join('')}</div>`, overlay: ft + delSheet };
   return { body: editTop() + fmBar(4, 'k-efm') + `<div class="card flat k-eintro" style="margin-top:10px;padding:12px 14px;font-size:12.5px;line-height:1.6">AI 修正 3回のあとの方案です。名前・順番・目安・人数・配点を直せます。</div>
-    <div class="card k-esteps" style="padding:12px 16px"><div class="card-h" style="margin:2px 0 6px"><h3>ステップ</h3><span class="lbl">長押しで並べ替え</span></div>${EORD.map((i, pos) => eStepRow(i, pos)).join('')}
+    <div class="card k-esteps" style="padding:12px 16px"><div class="card-h" style="margin:2px 0 6px"><h3>ステップ</h3><span class="lbl">長押しで並べ替え</span></div>${EORD.map((i, pos) => eStepRow(i, pos, { static: true })).join('')}
       <div class="ghost-row k-eadd" style="margin-top:8px;height:40px">${ic('plus', 'sm')}Step を追加</div></div>
     <div class="card" style="padding:12px 16px"><div class="card-h" style="margin:2px 0 6px"><h3>人物タイプと配点</h3><span class="lbl">合計 100</span></div>${ORD.slice(0, 2).map(k => eTypeRow(k)).join('')}</div>`, overlay: ft };
 }
@@ -1162,8 +1164,8 @@ const e1 = editApp(1), e2 = editApp(2), e3 = editApp(3);
 h += boards([
   AP('⑥ 手動編集（ステップ）', '', { body: e1.body, overlay: e1.overlay }, [
     ['.k-efm', 0, '进度条走到「手動編集」；顶栏副标题「1回だけ · 保存すると確定」，右上「元に戻す」恢复到 AI 方案'],
-    ['.k-rename .ein', 0, '点 Step 名称 → 就地输入框（深紫描边 + 光标），下方灰字保留「元：…」'],
-    ['.k-lift', 0, '长按左侧点阵手柄拖动排序：本图把「ブランドとして広げる」从 5 拖到 4（卡片抬起 + 阴影，右侧「5 → 4」）'],
+    ['.k-rename', 0, '2026-10-14（§27-2）画编辑后的静止状态：改名已生效（下方灰字保留「元：…」）。交互：点 Step 名称 → 就地输入框（深紫描边 + 光标）'],
+    ['.k-moved', 0, '「ブランドとして広げる」已从 5 移到 4。交互：长按左侧点阵手柄拖动排序（拖动中卡片抬起 + 阴影，右侧显示「5 → 4」）——动态过程不入画板'],
     ['.k-esteps .del', 0, '每行 × 删除 Step（删后 Step 下的人物类型 chip 保留在其他 Step）'],
     ['.k-eadd', 0, '虚线「Step を追加」：新 Step 只有名称和目安，人物类型可从已有类型里挑'],
     ['.k-start', 0, '底部固定栏：合計 100 / 100 · 変更 4件 +「このプランで始める」→ ⑦'],

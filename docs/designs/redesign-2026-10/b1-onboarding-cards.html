@@ -1816,7 +1816,7 @@ const A5 = (() => {
   const bgOk = () => F.me(`目標：${F.GOAL}`) + F.okLine('背景を確認しました', '<span class="lbl">空き 2 · 目的：2段目</span>');
   function qApp(stage) {
     if (stage === 'q') return { body: head('質問') + `<div class="chat">${F.fmBar(F.FM, 1)}${bgOk()}${F.ai('背景の空きから、プランを分ける 4つだけ聞かせてください。まとめて答えられます。')}<i class="scrollto" data-off="8"></i>${F.qCard(false)}</div>` };
-    return { body: head('質問') + `<div class="chat">${F.fmBar(F.FM, 1)}${bgOk()}${F.me(F.ANS, 'k-ans')}<i class="scrollto" data-off="8"></i>${F.ai('ありがとうございます。前提をまとめました。違うところがあれば、ここで直してください。')}${F.premCard({ cls: 'k-prem', act: true, kcls: { 2: 'k-prem3' } })}</div>`, overlay: F.composer('前提について補足する') };
+    return { body: head('質問') + `<div class="chat">${F.fmBar(F.FM, 1)}${bgOk()}${F.me(F.ANS, 'k-ans')}<i class="scrollto" data-off="8"></i>${F.ai('ありがとうございます。前提をまとめました。違うところがあれば、ここで直してください。')}${F.premCard({ cls: 'k-prem', act: true, kcls: { 2: 'k-prem3' } })}</div>` };
   }
   /* 初版の下：AI 修正 / 手動編集 は入口と説明のみ（詳細は ⑩ b10）→「このプランで始める」 */
   const firstAct = `<div class="row" style="gap:8px;margin-top:12px">${F.leftChip('AI 修正 あと 3 回', true, 'k-left')}<span class="lbl" style="margin-left:auto">初版は回数に含みません</span></div>

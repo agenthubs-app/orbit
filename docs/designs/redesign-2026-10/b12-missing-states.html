@@ -3366,7 +3366,7 @@ function qApp(stage) {
   const head = chatTop('プランを作る · 質問');
   const pre = me(`目標：${GOAL}`) + `<div class="ok-card" style="padding:10px 14px"><div class="row" style="gap:8px"><span class="okmark">${ic('check')}</span><b style="font-size:12.5px;flex:1">背景を確認しました</b><span class="lbl">目的：3段目</span></div></div>`;
   if (stage === 'q') return { body: head + `<div class="chat">${fmBar(1)}${pre}${ai('背景の空白から、プランを分ける 5つだけ聞かせてください。まとめて答えられます。')}${SCRC}${qCard(false)}</div>` };
-  return { body: head + `<div class="chat">${fmBar(1)}${pre}${me(ANS, 'k-ans')}${SCRC}${ai('ありがとうございます。前提をまとめました。違うところがあれば、ここで直してください。')}${premCard({ cls: 'k-prem', act: true })}</div>`, overlay: composer('前提について補足する') };
+  return { body: head + `<div class="chat">${fmBar(1)}${pre}${me(ANS, 'k-ans')}${SCRC}${ai('ありがとうございます。前提をまとめました。違うところがあれば、ここで直してください。')}${premCard({ cls: 'k-prem', act: true })}</div>` };
 }
 function qWeb() {
   return wTop('プランを作る · 質問') + `<div class="wchat" style="max-width:none">${fmBar(1)}${me(`目標：${GOAL}`)}<div class="ok-card" style="padding:10px 14px"><div class="row" style="gap:8px"><span class="okmark">${ic('check')}</span><b style="font-size:12.5px;flex:1">背景を確認しました · 目的：${PURPOSE}</b><button class="btn sm ghost">背景を見る</button></div></div>
@@ -3807,7 +3807,7 @@ g += boards([
     ['.k-bglim .lbl', 0, '第二行「下書きなしで、自分で選べます」= 文案待定（字典只有失败版「自分で選べます」）'],
     ['.bstack', 0, '下面三块与失败时相同（规则下书），流程不中断'],
   ], 'b10 ② 背景確認 1/3 + b4 ⏳'),
-  PBm('A-R23-09c 初版をつくれませんでした（AI 失败卡）', 'state', { body: chatTop('プランを作る · 質問') + `<div class="chat">${fmBar(1)}${me(`目標：${GOAL}`)}<div class="ok-card" style="padding:10px 14px"><div class="row" style="gap:8px"><span class="okmark">${ic('check')}</span><b style="font-size:12.5px;flex:1">背景を確認しました</b><span class="lbl">目的：3段目</span></div></div>${me(ANS)}${SCRC}${premCard({ cls: 'k-prem', act: true })}${ngCard('初版をつくれませんでした', '何も保存していません。', 'k-ng')}</div>`, overlay: composer('前提について補足する') }, [
+  PBm('A-R23-09c 初版をつくれませんでした（AI 失败卡）', 'state', { body: chatTop('プランを作る · 質問') + `<div class="chat">${fmBar(1)}${me(`目標：${GOAL}`)}<div class="ok-card" style="padding:10px 14px"><div class="row" style="gap:8px"><span class="okmark">${ic('check')}</span><b style="font-size:12.5px;flex:1">背景を確認しました</b><span class="lbl">目的：3段目</span></div></div>${me(ANS)}${SCRC}${premCard({ cls: 'k-prem', act: true })}${ngCard('初版をつくれませんでした', '何も保存していません。', 'k-ng')}</div>` }, [
     ['.k-ng', 0, 'AI_FAILED（503）：珊瑚失败卡紧跟在触发它的按钮下面；第一句说什么失败，第二句保证「何も保存していません。」'],
     ['.k-ng .btn', 0, '「もう一度」= 同一操作、新的幂等键重试'],
     ['.k-premgo', 0, '「この前提で初版をつくる」恢复可点；前提不丢'],
