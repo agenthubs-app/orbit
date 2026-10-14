@@ -67,8 +67,13 @@ export async function recomputeAssessments(deps: {
     if (!row.eventId) continue;
     summary.examined += 1;
     const context = await deps.plan.context(row.actorId, "ja");
-    const orbit = await deps.orbitEvents.facts(row.actorId, row.eventId, context);
-    if (!orbit || orbit.attendeeSignature === row.attendeeSignature) continue;
+    const orbit = await deps.orbitEvents.facts(row.actorId, row.eventId, context).catch(() => null);
+    if (!orbit) continue;
+    if (orbit.attendeeSignature === row.attendeeSignature) {
+      // 复核 M5：没变化也记下检查时间，候选按检查时间轮转，第 101 条以后也轮得到。
+      await deps.repository.update(row.actorId, row.id, { factsRefreshedAt: now.toISOString() });
+      continue;
+    }
     const judged = judgeEvent({ context, eventId: row.eventId, facts: orbit.facts, orbit: orbit.extras });
     const at = now.toISOString();
     await deps.repository.update(row.actorId, row.id, {

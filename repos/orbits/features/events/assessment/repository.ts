@@ -52,7 +52,7 @@ export interface AssessmentRow {
   factsRefreshedAt: string | null;
 }
 
-export type AssessmentPatch = Partial<Omit<AssessmentRow, "id" | "actorId" | "createdAt" | "idempotencyKey" | "sourceKind" | "sourceDigest">>;
+export type AssessmentPatch = Partial<Omit<AssessmentRow, "id" | "actorId" | "createdAt" | "idempotencyKey" | "sourceKind">>;
 
 export interface PosterAsset {
   id: string;
@@ -71,10 +71,11 @@ export interface EventAssessmentRepository {
   insert(row: AssessmentRow): Promise<{ row: AssessmentRow; created: boolean }>;
   get(actorId: string, id: string): Promise<AssessmentRow | null>;
   list(actorId: string, limit: number): Promise<AssessmentRow[]>;
-  update(actorId: string, id: string, patch: AssessmentPatch): Promise<AssessmentRow | null>;
+  /** `guard` 给定时只在行仍是 `reading` 且租约等于认领时的值才写（复核 S2：被回收 / 被别的执行者认领后不再覆盖）。 */
+  update(actorId: string, id: string, patch: AssessmentPatch, guard?: { leaseUntil: string | null }): Promise<AssessmentRow | null>;
   /** 认领 `reading` 且租约为空 / 过期的行（`attempts + 1`）；`id` 给定时只认领这一行。 */
   claimReading(input: { now: string; leaseMs: number; limit: number; id?: string }): Promise<AssessmentRow[]>;
-  /** `reading` 超过 `olderThan` 的行（回收为 timeout）。 */
+  /** `reading` 且租约（没认领过就按创建时间）早于 `olderThan` 的行（回收为 timeout）。 */
   listStaleReading(input: { olderThan: string; limit: number }): Promise<AssessmentRow[]>;
   /** 最近 `since` 之后 URL 评估的条数（每人 / 每主机限速）。 */
   countUrlFetchesSince(input: { since: string; actorId?: string; host?: string }): Promise<number>;
@@ -119,9 +120,10 @@ export function createMemoryEventAssessmentRepository(): EventAssessmentReposito
     async list(actorId, limit) {
       return [...rows.values()].filter((row) => row.actorId === actorId).sort((a, b) => b.total - a.total || b.createdAt.localeCompare(a.createdAt)).slice(0, limit).map(clone);
     },
-    async update(actorId, id, patch) {
+    async update(actorId, id, patch, guard) {
       const row = rows.get(id);
       if (!row || row.actorId !== actorId) return null;
+      if (guard && (row.status !== "reading" || row.leaseUntil !== guard.leaseUntil)) return null;
       const next = { ...row, ...structuredClone(patch) } as AssessmentRow;
       rows.set(id, next);
       return clone(next);
@@ -139,7 +141,7 @@ export function createMemoryEventAssessmentRepository(): EventAssessmentReposito
       return out;
     },
     async listStaleReading({ olderThan, limit }) {
-      return [...rows.values()].filter((row) => row.status === "reading" && row.createdAt < olderThan).slice(0, limit).map(clone);
+      return [...rows.values()].filter((row) => row.status === "reading" && (row.leaseUntil ?? row.createdAt) < olderThan).slice(0, limit).map(clone);
     },
     async countUrlFetchesSince({ since, actorId, host }) {
       return [...rows.values()].filter((row) => row.sourceKind === "url" && row.createdAt >= since && (!actorId || row.actorId === actorId) && (!host || row.sourceHost === host)).length;
@@ -150,7 +152,8 @@ export function createMemoryEventAssessmentRepository(): EventAssessmentReposito
         .sort((a, b) => startsAt(a).localeCompare(startsAt(b))).slice(0, limit).map(clone);
     },
     async listRecomputeCandidates({ from, until, limit }) {
-      return [...rows.values()].filter((row) => row.status === "ready" && row.eventId !== null && startsAt(row) >= from && startsAt(row) < until).slice(0, limit).map(clone);
+      return [...rows.values()].filter((row) => row.status === "ready" && row.eventId !== null && startsAt(row) >= from && startsAt(row) < until)
+        .sort((a, b) => (a.factsRefreshedAt ?? "").localeCompare(b.factsRefreshedAt ?? "")).slice(0, limit).map(clone);
     },
     async putPoster(asset) { posters.set(asset.id, { ...asset }); },
     async getPosters(actorId, ids) { return ids.flatMap((id) => { const asset = posters.get(id); return asset && asset.actorId === actorId ? [asset] : []; }); },
@@ -226,6 +229,7 @@ const COLUMNS: Record<keyof AssessmentPatch, [string, "json" | "plain"]> = {
   readMs: ["read_ms", "plain"],
   rubricVersion: ["rubric_version", "plain"],
   scoreBreakdown: ["score_breakdown", "json"],
+  sourceDigest: ["source_digest", "plain"],
   sourceHost: ["source_host", "plain"],
   sourceUrl: ["source_url", "plain"],
   status: ["status", "plain"],
@@ -273,7 +277,7 @@ export function createPostgresEventAssessmentRepository(input: { client: Transac
     async list(actorId, limit) {
       return (await q("select * from event_assessments where workspace_id = $1 and actor_id = $2 order by total desc, created_at desc limit $3", [workspaceId, actorId, limit])).rows.map(fromDb);
     },
-    async update(actorId, id, patch) {
+    async update(actorId, id, patch, guard) {
       const sets: string[] = [];
       const values: unknown[] = [workspaceId, actorId, id];
       for (const [key, value] of Object.entries(patch) as [keyof AssessmentPatch, unknown][]) {
@@ -283,7 +287,12 @@ export function createPostgresEventAssessmentRepository(input: { client: Transac
         sets.push(`${column[0]} = $${values.length}${column[1] === "json" ? "::jsonb" : ""}`);
       }
       if (!("updatedAt" in patch)) sets.push("updated_at = now()");
-      return one(`update event_assessments set ${sets.join(", ")} where workspace_id = $1 and actor_id = $2 and id = $3 returning *`, values);
+      let where = "workspace_id = $1 and actor_id = $2 and id = $3";
+      if (guard) {
+        values.push(guard.leaseUntil);
+        where += ` and status = 'reading' and lease_until is not distinct from $${values.length}::timestamptz`;
+      }
+      return one(`update event_assessments set ${sets.join(", ")} where ${where} returning *`, values);
     },
     async claimReading({ now, leaseMs, limit, id }) {
       const result = await q(
@@ -298,7 +307,7 @@ export function createPostgresEventAssessmentRepository(input: { client: Transac
       return result.rows.map(fromDb);
     },
     async listStaleReading({ olderThan, limit }) {
-      return (await q("select * from event_assessments where workspace_id = $1 and status = 'reading' and created_at < $2::timestamptz order by created_at limit $3", [workspaceId, olderThan, limit])).rows.map(fromDb);
+      return (await q("select * from event_assessments where workspace_id = $1 and status = 'reading' and coalesce(lease_until, created_at) < $2::timestamptz order by created_at limit $3", [workspaceId, olderThan, limit])).rows.map(fromDb);
     },
     async countUrlFetchesSince({ since, actorId, host }) {
       const row = (await q(
@@ -317,7 +326,7 @@ export function createPostgresEventAssessmentRepository(input: { client: Transac
     async listRecomputeCandidates({ from, until, limit }) {
       return (await q(
         `select * from event_assessments where workspace_id = $1 and status = 'ready' and event_id is not null
-           and (facts->>'startsAt') >= $2 and (facts->>'startsAt') < $3 order by updated_at limit $4`,
+           and (facts->>'startsAt') >= $2 and (facts->>'startsAt') < $3 order by facts_refreshed_at nulls first, created_at limit $4`,
         [workspaceId, from, until, limit],
       )).rows.map(fromDb);
     },

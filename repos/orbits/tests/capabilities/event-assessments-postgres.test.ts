@@ -66,7 +66,12 @@ test("仓储：幂等键 / 同一来源冲突返回已有行；按人隔离；�
     assert.equal(claimed.length, 1);
     assert.equal(claimed[0]!.attempts, 1);
     assert.equal((await repo.claimReading({ leaseMs: 60_000, limit: 5, now: "2026-10-07T01:00:20.000Z" })).length, 0, "leased");
-    assert.equal((await repo.claimReading({ leaseMs: 60_000, limit: 5, now: "2026-10-07T01:02:00.000Z" })).length, 1, "lease expired");
+    const reclaimed = await repo.claimReading({ leaseMs: 60_000, limit: 5, now: "2026-10-07T01:02:00.000Z" });
+    assert.equal(reclaimed.length, 1, "lease expired");
+    // 复核 S2：旧租约的执行者不能再写；新租约的可以。
+    assert.equal(await repo.update("actor:a", first.row.id, { readMs: 1 }, { leaseUntil: claimed[0]!.leaseUntil }), null);
+    assert.equal((await repo.update("actor:a", first.row.id, { readMs: 2 }, { leaseUntil: reclaimed[0]!.leaseUntil }))?.readMs, 2);
+    assert.equal((await repo.listStaleReading({ limit: 5, olderThan: "2026-10-07T01:02:30.000Z" })).length, 0, "lease still live → not stale");
     assert.equal(await repo.countUrlFetchesSince({ actorId: "actor:a", since: "2026-10-07T00:59:00.000Z" }), 1);
     assert.equal(await repo.countUrlFetchesSince({ host: "x.jp", since: "2026-10-07T00:59:00.000Z" }), 1);
     const updated = await repo.update("actor:a", first.row.id, { facts: { title: "Summit 2" }, status: "ready", total: 82, userDecision: "added", verdict: "recommend" });

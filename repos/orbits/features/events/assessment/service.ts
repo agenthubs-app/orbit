@@ -30,9 +30,17 @@ import { extractEventPage } from "./page-extract";
 import type { AssessmentRow, EventAssessmentRepository, PosterAsset } from "./repository";
 import { normalizeUrl, type UrlFetchResult } from "./url-fetch";
 
-export const ASSESSMENT_LEASE_MS = 60_000;
-/** `reading` 超过 2 分钟回收为 timeout（DESIGN §5）。 */
+/** 租约 ≥ 最坏处理时长（E1 两次 60 秒 ≈ 125 秒、E2 ≤ 90 秒；路由 maxDuration 120 秒），复核 S2。 */
+export const ASSESSMENT_LEASE_MS = 180_000;
+/** 租约过期后再过 2 分钟仍是 `reading` → 回收为 timeout（没认领过的按创建时间，DESIGN §5）。 */
 export const ASSESSMENT_STALE_MS = 120_000;
+
+/** 处理期间行被回收或被别的执行者认领：这次结果作废，不再写库。 */
+class AssessmentLeaseLost extends Error {
+  constructor() { super("lease lost"); this.name = "AssessmentLeaseLost"; }
+}
+const RETRYABLE_FAILURES: ReadonlySet<string> = new Set(["fetch_failed", "timeout", "quota_exceeded", "ai_unavailable"]);
+const leaseGuard = (row: AssessmentRow) => (row.status === "reading" ? { leaseUntil: row.leaseUntil } : undefined);
 export const URL_FETCH_PER_ACTOR_PER_MINUTE = 10;
 export const URL_FETCH_PER_HOST_PER_MINUTE = 30;
 export const ASSESSMENT_LIST_LIMIT = 100;
@@ -118,6 +126,12 @@ function mergeFacts(primary: EventAssessmentFacts, secondary: EventAssessmentFac
   return out;
 }
 
+/** 库内活动：只留用户手填的项（其余以实时事实为准，复核 M3）。 */
+function userFilledFacts(facts: EventAssessmentFacts, filled: readonly string[]): EventAssessmentFacts {
+  const keys = new Set(filled);
+  return Object.fromEntries(Object.entries(facts).filter(([key]) => keys.has(key))) as EventAssessmentFacts;
+}
+
 export interface EventAssessmentService {
   create(actorId: string, input: EventAssessmentCreateInput, language: PlanCopyLanguage): Promise<EventAssessmentContract>;
   list(actorId: string, language: PlanCopyLanguage): Promise<EventAssessmentContract[]>;
@@ -169,7 +183,7 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
     };
     if (row.status !== "ready" && row.status !== "needs_input") return base;
     const orbit = row.eventId ? await deps.orbitEvents.facts(row.actorId, row.eventId, context) : null;
-    const facts = orbit ? mergeFacts(row.facts, orbit.facts) : row.facts;
+    const facts = orbit ? mergeFacts(userFilledFacts(row.facts, row.userFilledFields), orbit.facts) : row.facts;
     const judged = judgeEvent({ context, eventId: row.eventId, facts, orbit: orbit?.extras ?? null });
     return {
       ...base,
@@ -193,7 +207,9 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
   async function settle(row: AssessmentRow, facts: EventAssessmentFacts, factBasis: AssessmentRow["factBasis"], extra: Partial<AssessmentRow>, unknown: readonly string[] = []): Promise<AssessmentRow> {
     const context = await deps.plan.context(row.actorId, "ja");
     const orbit = row.eventId ? await deps.orbitEvents.facts(row.actorId, row.eventId, context) : null;
-    const merged = orbit ? mergeFacts(facts, orbit.facts) : facts;
+    // 复核 M3：库内活动以实时事实为准（主办方改了时间 / 会场 / 费用要跟上），只有用户手填的项覆盖。
+    const userFacts = userFilledFacts(facts, [...row.userFilledFields, ...(extra.userFilledFields ?? [])]);
+    const merged = orbit ? mergeFacts(userFacts, orbit.facts) : facts;
     const missing = missingRequiredFields(merged, unknown);
     // 判定必须的日时与场所缺失 → 补 3 项；只缺参加費时直接出区间（url / orbit_event）。海报 / 正文 3 项缺一即补。
     const needsInput = row.sourceKind === "poster" || row.sourceKind === "text"
@@ -218,14 +234,17 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
       updatedAt: at,
       verdict: judged.verdict,
       ...extra,
-    });
-    if (!updated) throw new EventAssessmentError("NOT_FOUND", "Assessment not found.");
+    }, leaseGuard(row));
+    if (!updated) {
+      if (leaseGuard(row)) throw new AssessmentLeaseLost();
+      throw new EventAssessmentError("NOT_FOUND", "Assessment not found.");
+    }
     return updated;
   }
 
   async function fail(row: AssessmentRow, reason: EventAssessmentFailureReason, extra: Partial<AssessmentRow> = {}): Promise<AssessmentRow> {
     const at = now().toISOString();
-    return (await deps.repository.update(row.actorId, row.id, { failureReason: reason, leaseUntil: null, status: extra.status ?? "failed", updatedAt: at, ...extra })) ?? row;
+    return (await deps.repository.update(row.actorId, row.id, { failureReason: reason, leaseUntil: null, status: extra.status ?? "failed", updatedAt: at, ...extra }, leaseGuard(row))) ?? row;
   }
 
   async function withAi(row: AssessmentRow, run: (meter: { begin(model: string): Promise<string>; end(callId: string, usage: { inputTokens: number; outputTokens: number } | null): Promise<void> }) => Promise<EventFactsExtraction>): Promise<EventFactsExtraction | EventAssessmentFailureReason> {
@@ -233,7 +252,7 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
     const reservation = await deps.ai.gate.reserve({ actorId: row.actorId, idempotencyKey: `event-assessment:${row.id}`, now: now(), pool: "user", purpose: "event_assessment", takeover: true, trigger: "manual" });
     if (reservation.ok === false) return reservation.reason === "disabled" ? "ai_unavailable" : "quota_exceeded";
     if (!reservation.owner) return "ai_unavailable";
-    await deps.repository.update(row.actorId, row.id, { aiOperationId: reservation.operationId });
+    if (!(await deps.repository.update(row.actorId, row.id, { aiOperationId: reservation.operationId }, leaseGuard(row)))) throw new AssessmentLeaseLost();
     const meter = {
       begin: async (model: string) => (await deps.ai.gate.beginCall(reservation.operationId, { model, provider: "deepseek" })).callId,
       end: (callId: string, usage: { inputTokens: number; outputTokens: number } | null) => deps.ai.gate.endCall(callId, usage),
@@ -327,7 +346,10 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
       if (replay) return viewOf(replay, await deps.plan.context(actorId, language));
       const source = digestOf(input);
       const sameSource = await deps.repository.findBySource(actorId, source.digest, EVENT_SCORE_RUBRIC_VERSION);
-      if (sameSource) return viewOf(sameSource, await deps.plan.context(actorId, language));
+      if (sameSource && sameSource.status === "failed" && RETRYABLE_FAILURES.has(sameSource.failureReason ?? "")) {
+        // 复核 M1：一时的失败（抓取失败 / 超时 / 额度 / AI 不可用）不挡住同一来源：旧行让出来源键、沉到底部，这次重新评估。
+        await deps.repository.update(actorId, sameSource.id, { sourceDigest: `${sameSource.sourceDigest}#retired:${sameSource.id}`, userDecision: "dismissed" });
+      } else if (sameSource) return viewOf(sameSource, await deps.plan.context(actorId, language));
       if ((input.sourceKind === "url" || input.sourceKind === "poster" || input.sourceKind === "text") && !deps.ai.available() && input.sourceKind !== "url") {
         throw new EventAssessmentError("UNAVAILABLE", "Reading posters and pasted text is not available.");
       }
@@ -410,6 +432,7 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
         try {
           await processRow(row);
         } catch (error) {
+          if (error instanceof AssessmentLeaseLost) continue;
           console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_assessment_process_failed", id: row.id }));
           await fail(row, "fetch_failed").catch(() => undefined);
         }
@@ -418,6 +441,7 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
     },
     async reclaimStale(input = {}) {
       const olderThan = new Date(now().getTime() - ASSESSMENT_STALE_MS).toISOString();
+      // 租约还没过期的行不在 olderThan 之前，不会被回收（复核 S2）。
       const stale = await deps.repository.listStaleReading({ limit: input.limit ?? 50, olderThan });
       for (const row of stale) {
         if (row.aiOperationId) await deps.ai.gate.finish(row.aiOperationId, "failed").catch(() => undefined);

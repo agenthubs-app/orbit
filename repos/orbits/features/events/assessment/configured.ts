@@ -121,7 +121,11 @@ export function createLiveOrbitEventReaders(): OrbitEventReaders {
       return { description: event.description, endsAt: event.endsAt, eventId: event.eventId, sourcePayload: event.sourcePayload, startsAt: event.startsAt, title: event.title, venue: event.venue };
     },
     async registrants(eventId) {
-      const entries = await listRuntimeEventRosterEntries({ eventId, fields: "attendees" }).catch(() => []);
+      // 复核：读失败不能当成「0 人」（之后读成功会误发「参加者リストが公開されました」）；记日志并抛出，由调用方跳过这一场。
+      const entries = await listRuntimeEventRosterEntries({ eventId, fields: "attendees" }).catch((error: unknown) => {
+        console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_assessment_roster_read_failed", eventId }));
+        throw error;
+      });
       return entries
         .filter((entry) => entry.status !== "cancelled" && entry.status !== "withdrawn")
         .map((entry) => ({ name: entry.participantProfile?.displayName ?? null, org: entry.participantProfile?.answers.industry ?? null, role: entry.participantProfile?.answers.positioning ?? null }));

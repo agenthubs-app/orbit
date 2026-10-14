@@ -57,7 +57,8 @@ export interface RawResponse {
 
 const IPV4_BLOCKS: readonly [string, number][] = [
   ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12],
-  ["192.0.0.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["224.0.0.0", 4], ["240.0.0.0", 4],
+  ["192.0.0.0", 24], ["192.0.2.0", 24], ["192.88.99.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24],
+  ["203.0.113.0", 24], ["224.0.0.0", 4], ["240.0.0.0", 4],
 ];
 
 function ipv4ToInt(address: string): number | null {
@@ -116,6 +117,8 @@ export function isPublicAddress(address: string): boolean {
   if ((g[0]! & 0xff00) === 0xff00) return false; // ff00::/8
   if (g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every((group) => group === 0)) return false; // 64:ff9b::/96
   if (g[0] === 0x2002) return false; // 2002::/16
+  if (g[0] === 0x64 && g[1] === 0xff9b && g[2] === 1) return false; // 64:ff9b:1::/48
+  if (g[0] === 0x2001 && (g[1] === 0 || g[1] === 0xdb8)) return false; // 2001::/32 Teredo、2001:db8::/32 文档段
   if (g.slice(0, 5).every((group) => group === 0) && g[5] === 0xffff) {
     // ::ffff:0:0/96 → 按映射出的 IPv4 再判。
     const v4 = `${g[6]! >> 8}.${g[6]! & 0xff}.${g[7]! >> 8}.${g[7]! & 0xff}`;
@@ -214,6 +217,9 @@ function nodeRequest(target: PinnedRequest): Promise<RawResponse> {
       },
     );
     req.on("timeout", () => req.destroy(new Error("timeout")));
+    // 复核 M2：`timeout` 只是 socket 空闲超时；再加一个按剩余时间的总计时器，慢速滴流也会在到点时断开。
+    const total = setTimeout(() => req.destroy(new Error("timeout")), target.timeoutMs);
+    req.on("close", () => clearTimeout(total));
     req.on("error", reject);
     req.end();
   });
@@ -244,7 +250,9 @@ export async function fetchEventPage(rawUrl: string, options: UrlFetchOptions = 
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.location;
       if (!location) return { finalUrl: url.toString(), ok: false, reason: "fetch_failed", status: response.status };
-      const next = checkUrlShape(new URL(location, url).toString());
+      let resolved: string;
+      try { resolved = new URL(location, url).toString(); } catch { return { finalUrl: url.toString(), ok: false, reason: "fetch_failed", status: response.status }; }
+      const next = checkUrlShape(resolved);
       if (!next) return { finalUrl: url.toString(), ok: false, reason: "blocked_host" };
       url = next;
       continue;

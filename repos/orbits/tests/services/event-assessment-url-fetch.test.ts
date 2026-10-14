@@ -102,3 +102,16 @@ test("E1 / E2 输出宽进：空列表写成 \"\" / null / \"a, b\" 都读成数
   const parsed = extractionOutputSchema.parse({ events: null, facts: { title: "x" }, guessed: "", isEventPage: true, unreadable: "startsAt, price" });
   assert.deepEqual([parsed.guessed, parsed.unreadable, parsed.events], [[], ["startsAt", "price"], []]);
 });
+
+test("复核 S1：AI 给的「19:00+09:00」「19:00Z」不带秒也规范化成合法时间；认不出的丢掉", async () => {
+  const { toContractFacts } = await import("../../features/events/assessment/extract-provider");
+  const base = { events: [], guessed: [], isEventPage: true, unreadable: [] };
+  assert.equal(toContractFacts({ ...base, facts: { startsAt: "2026-10-20T19:00+09:00" } } as never).startsAt, "2026-10-20T19:00:00+09:00");
+  assert.equal(toContractFacts({ ...base, facts: { startsAt: "2026-10-20T19:00Z" } } as never).startsAt, "2026-10-20T19:00:00Z");
+  assert.equal(toContractFacts({ ...base, facts: { startsAt: "2026-10-20T19:00" } } as never).startsAt, "2026-10-20T19:00:00+09:00");
+  assert.equal(toContractFacts({ ...base, facts: { startsAt: "2026-10-20T19時" } } as never).startsAt, undefined);
+});
+
+test("复核：文档段 / 6to4 中继 / Teredo / NAT64 本地段也拒绝", () => {
+  for (const address of ["192.0.2.1", "198.51.100.7", "203.0.113.9", "192.88.99.1", "2001::1", "2001:db8::1", "64:ff9b:1::1"]) assert.equal(isPublicAddress(address), false, address);
+});

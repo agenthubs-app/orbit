@@ -14,6 +14,14 @@ import type { PlanEventFact } from "../../plans/v2/overview";
 import { createPostgresMyEventsReader } from "../mine/service";
 import { getConfiguredEventAssessmentRuntime, listContactsForAssessment, readPreferencesForAssessment } from "./configured";
 
+/** 读失败时计划页少显示活动而不是报错；但要留日志（复核：不能静默）。 */
+function logged<T>(event: string, fallback: T): (error: unknown) => T {
+  return (error) => {
+    console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event }));
+    return fallback;
+  };
+}
+
 export async function createLivePlanEventSources(actorId: string): Promise<LivePlanEventSources | null> {
   const runtime = getConfiguredEventAssessmentRuntime();
   if (!runtime) return null;
@@ -27,7 +35,7 @@ export async function createLivePlanEventSources(actorId: string): Promise<LiveP
   };
   return {
     async myExternal(window) {
-      const rows = await runtime.repository.listAddedExternal(actorId, window).catch(() => []);
+      const rows = await runtime.repository.listAddedExternal(actorId, window).catch(logged("plan_event_sources_external_failed", [] as Awaited<ReturnType<typeof runtime.repository.listAddedExternal>>));
       if (rows.length === 0) return [];
       const { contacts, homeArea } = await personFacts();
       return rows.flatMap((row): PlanEventFact[] => {
@@ -49,20 +57,20 @@ export async function createLivePlanEventSources(actorId: string): Promise<LiveP
     },
     async myEventIds(window) {
       const reader = createPostgresMyEventsReader({ query, workspaceId: runtime.workspaceId });
-      const rows = await reader.rows(actorId, window).catch(() => []);
+      const rows = await reader.rows(actorId, window).catch(logged("plan_event_sources_mine_failed", [] as Awaited<ReturnType<typeof reader.rows>>));
       return [...new Set(rows.filter((row) => !row.external && row.status !== "cancelled" && row.status !== "rejected").map((row) => row.eventId))];
     },
     async orbitFacts(events) {
       const person = await personFacts();
       const out: PlanEventFact[] = [];
       for (const event of events) {
-        const fact = await runtime.orbitEvents.planEventFact(event.eventId, person).catch(() => null);
+        const fact = await runtime.orbitEvents.planEventFact(event.eventId, person).catch(logged("plan_event_sources_fact_failed", null));
         if (fact) out.push(fact);
       }
       // 评估过的库内活动带评估链接。
       const ids = out.map((fact) => fact.eventId);
       if (ids.length) {
-        const rows = await query(`select id, event_id from event_assessments where workspace_id = $1 and actor_id = $2 and event_id = any($3::text[])`, [runtime.workspaceId, actorId, ids]).catch(() => ({ rows: [] as Array<Record<string, unknown>> }));
+        const rows = await query(`select id, event_id from event_assessments where workspace_id = $1 and actor_id = $2 and event_id = any($3::text[])`, [runtime.workspaceId, actorId, ids]).catch(logged("plan_event_sources_scores_failed", { rows: [] as Array<Record<string, unknown>> }));
         const byEvent = new Map(rows.rows.map((row) => [String(row.event_id), String(row.id)]));
         for (const fact of out) fact.assessmentId = byEvent.get(fact.eventId) ?? null;
       }

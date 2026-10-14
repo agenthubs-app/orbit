@@ -228,6 +228,8 @@ test("处理器：同键重试不重复入队；租约内不被再次认领；>2
   assert.equal(await service.processReading({ limit: 5 }), 0, "leased rows are not claimed again");
   repository.rows.get(created.id)!.aiOperationId = "op-stale";
   advance(121_000);
+  assert.equal(await service.reclaimStale(), 0, "lease not yet expired + 2 min → not reclaimed (复核 S2)");
+  advance(60_000);
   assert.equal(await service.reclaimStale(), 1);
   const reclaimed = await service.get(ALICE, created.id, "ja");
   assert.equal(reclaimed?.failureReason, "timeout");
@@ -236,4 +238,35 @@ test("处理器：同键重试不重复入队；租约内不被再次认领；>2
 test("availability：AI 开关与本月 / 今天剩余", async () => {
   const { service } = setup();
   assert.deepEqual(await service.availability(ALICE), { aiReadAvailable: true, dailyLeft: 4, monthlyLeft: 7, monthlyLimit: 10 });
+});
+
+test("复核 S2：处理途中被回收（租约变了）→ 这次结果不再写库，timeout 不会被改回 ready", async () => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  const scheduled: Array<() => Promise<void>> = [];
+  const { service, repository, advance } = setup({
+    fetchPage: async () => { await held; return { contentType: "text/html", finalUrl: "https://saas-summit.jp/2026", html: summitHtml, ok: true, status: 200 }; },
+    schedule: (job) => { scheduled.push(job); },
+  });
+  const created = await service.create(ALICE, { idempotencyKey: "k-race", sourceKind: "url", url: "https://saas-summit.jp/2026" }, "ja");
+  const running = scheduled[0]!();
+  await flush();
+  advance(180_000 + 121_000);
+  assert.equal(await service.reclaimStale(), 1);
+  release();
+  await running;
+  assert.equal(repository.rows.get(created.id)?.status, "failed");
+  assert.equal(repository.rows.get(created.id)?.failureReason, "timeout");
+});
+
+test("复核 M1：同一来源一时失败后再贴 → 重新评估（旧行让出来源键）；要登录这类确定的失败照旧返回原记录", async () => {
+  let page: UrlFetchResult = { finalUrl: "https://x.jp/e/1", ok: false, reason: "fetch_failed" };
+  const { service, repository } = setup({ fetchPage: async () => page });
+  const first = await service.create(ALICE, { idempotencyKey: "m1-a", sourceKind: "url", url: "https://x.jp/e/1" }, "ja");
+  await flush(); await flush();
+  assert.equal(repository.rows.get(first.id)?.failureReason, "fetch_failed");
+  page = { contentType: "text/html", finalUrl: "https://saas-summit.jp/2026", html: summitHtml, ok: true, status: 200 };
+  const second = await service.create(ALICE, { idempotencyKey: "m1-b", sourceKind: "url", url: "https://x.jp/e/1" }, "ja");
+  assert.notEqual(second.id, first.id);
+  assert.equal(repository.rows.get(first.id)?.userDecision, "dismissed");
 });

@@ -11,6 +11,7 @@
 import { z } from "zod";
 
 import type { EventAssessmentFacts, EventAssessmentPageCandidate } from "../../../shared/contract/event-assessment";
+import { normalizeEventDate } from "./page-extract";
 
 export const EVENT_FACTS_PROMPT_VERSION = "event-facts-2026-10-v1";
 export const EVENT_POSTER_PROMPT_VERSION = "event-poster-2026-10-v1";
@@ -166,8 +167,11 @@ export function toContractFacts(output: ExtractionOutput): EventAssessmentFacts 
   const facts: EventAssessmentFacts = {};
   const f = output.facts;
   if (f.title) facts.title = f.title;
-  if (f.startsAt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(f.startsAt)) facts.startsAt = withZone(f.startsAt);
-  if (f.endsAt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(f.endsAt)) facts.endsAt = withZone(f.endsAt);
+  // 复核 S1：「19:00+09:00」「19:00Z」这类不带秒的写法也要规范化；解析不了就丢掉，不让坏值进库（响应 schema 要合法 datetime）。
+  const startsAt = f.startsAt && /T\d{2}:\d{2}/.test(f.startsAt) ? normalizeEventDate(f.startsAt) : undefined;
+  const endsAt = f.endsAt && /T\d{2}:\d{2}/.test(f.endsAt) ? normalizeEventDate(f.endsAt) : undefined;
+  if (startsAt) facts.startsAt = startsAt;
+  if (endsAt) facts.endsAt = endsAt;
   if (f.venue) facts.venue = f.venue;
   if (f.area) facts.area = f.area;
   if (f.organizer) facts.organizer = f.organizer;
@@ -178,12 +182,6 @@ export function toContractFacts(output: ExtractionOutput): EventAssessmentFacts 
   if (f.format) facts.format = { networking: f.format.networking, ...(typeof f.format.tableTalk === "boolean" ? { tableTalk: f.format.tableTalk } : {}), ...(typeof f.format.matching === "boolean" ? { matching: f.format.matching } : {}) };
   if (f.agenda?.length) facts.agenda = f.agenda.map((a) => ({ at: a.at, title: a.title, ...(typeof a.minutes === "number" ? { minutes: a.minutes } : {}) }));
   return facts;
-}
-
-function withZone(value: string): string {
-  const base = value.length === 16 ? `${value}:00` : value.slice(0, 19);
-  const zone = /(Z|[+-]\d{2}:\d{2})$/.exec(value)?.[1];
-  return `${base}${zone ?? "+09:00"}`;
 }
 
 function parseOutput(content: string): ExtractionOutput | null {

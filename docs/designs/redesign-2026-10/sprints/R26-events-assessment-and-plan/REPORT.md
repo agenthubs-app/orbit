@@ -1,0 +1,142 @@
+# Sprint R26 — REPORT（活动：评估、一级页与计划接线）
+
+**执行人：** 小雨（甲）的执行会话，2026-10-14。**分支：** 直接在 `redesign` 上提交（无 PR、无 worktree）。
+**依据：** [PLANNER](PLANNER.md)、[events/DESIGN.md](../events/DESIGN.md)、README 规则 11 / 12、HOW-TO §0 / §8、HANDOFF「R26 / R27 活动」+「通用口径」、决定表 §20 / §23 / §28。
+**证据目录：** `~/orbit-sprint-evidence/redesign/R26/run-01/`（`impact-R26.md`、`detect-changes-*.log`、`gate/`、`plan/`、`real-ai-run-*.log`、`web-test-full.log`、`app-test-full.log`）。
+**没有做的事：** 没连 Neon、没部署、没做生产迁移；付费 AI 只在本机（回环测试库里的临时 schema）按授权调用。
+
+## 提交
+
+| 提交 | 内容 |
+| --- | --- |
+| `019c8dfa1` | 第一天：补活动画板缺的 12 个 C 组 token（行高 tight / snug / body-relaxed / prose / prose-lg / quote / letter；字距 `--track-*`；`radius.cta`；4 个字号；间距刻度补齐；4 个阴影），按 R01 流程生成两端 |
+| `51d524672` | 契约（只加）：契约 8 `event-assessment` 扩充、新契约 `events-mine`、`plan-v2` 推荐活动与今日のチャンス字段；快照 + App 同步 |
+| `cbb839096` | 服务端：迁移 `event_assessments` / `event_assessment_posters`（本机）、SSRF 安全抓取、页面抽取、E1 / E2、账本 `event_assessment`、评估服务与路由、维护任务 |
+| `2cbb1faba` | `GET /api/events/mine`；计划 live 事实打开（`PLAN_LIVE_EVENT_FACTS_READY = true`，有界）；概要推荐活动与今日のチャンス活动候选；工作人员代签计分 + 对账；R26-06 / 07 换取数 |
+| `5836bbcab` | Web イベント一级页（評価 / 参加予定 / 探す）、评估结果页、设计稿 fixture 与开发路由、门禁清单 `web-R26.json` |
+| `4ddf7f2ea` / `cc5efc233` | App イベント一级页与评估屏、i18n `eventsV2`、路由登记；Web 计划概要推荐活动行（`cc5efc233` 实际只含 `scripts/r26/*`，提交信息误沿用上一条） |
+| `f1b75af05` | 真实 AI 验证后修 E1 / E2 输出解析与正文截取 |
+| `9b798ea68` | 评估重算任务（SC-R26-16）+ `event_pick` 收件箱提醒 |
+| `712cc7716` | 路由与审计收口（`/app/events/assessments` 进登录前缀、路由传输审计、外部评估隐私测试、按钮棘轮、审计重新生成） |
+| `be43e9314` | App 全量测试收口（离线清单、旧列表测试、加人假服务端） |
+
+## SC 对照
+
+| SC | 结论 | 证据 |
+| --- | --- | --- |
+| 01 一级页 | ✅（像素未过，见下） | 两端：顶栏 + 評価 / 参加予定 N / 探す 三段；🔍 → 探す。Web `r26-design-fixtures`，App `events-v2-model` |
+| 02 评估 live | ✅ | URL / 海报（≤3 张一次请求）/ 正文 / 3 项四种输入 → 判定中三步（2 秒轮询）→ 结果。服务测试 `event-assessment-service`；真实验证见下表 |
+| 03 异常态 | ✅ | 要登录（不调 AI，贴正文 / 截图 / 手填三条退路）、不是活动页（列出页内活动，可逐个评估）、海报不清（补 3 项、「不明」→ 区间）。服务测试 + 两端画面 |
+| 04 安全 | ✅ | `event-assessment-url-fetch`：SSRF 表驱动（私网 / 环回 / 元数据 / IPv6 ULA / 映射地址）、钉住 IP、每跳重验、>2MB、非 HTML；不存页面全文（正文只在内存交给处理器） |
+| 05 AI 与账本 | ✅ | 账本 `event_assessment` 独立计数、`promptVersion` 入账；每次 ≤2 次调用（含一次修复）；月 10 / 日 5（东京）；超限 429；示例账号 403 `SAMPLE_READ_ONLY` |
+| 06 参加予定 | ✅（像素无设计稿，B2） | `events-mine` 五种状态合并取最强；两端参加予定页签；首页可用 `/api/events/mine` |
+| 07 会える活動 | ✅ | live 事实（我的外部评估 → 我的活动 → 公开补足，≤20 场 / 60 天）；概要推荐活动 3 场；类型详情会える活動；今日のチャンス活动候选。评估页与计划页同一规则同分（`resolveTypedEvents`）；「参加予定」卡上的分数是写库时的分（复核 M4，未改，见下） |
+| 08 R24-06 小项 | ⚠ 部分 | 已做：推荐活动行、今日のチャンス依据「?」/ 按钮文案 / 进度。**未做**：Step ↔ 活动、「最近の加点」含スキップ、最终接点相对时间、依頼文两种语气、记录弹窗「いつ」传 `at`、見分け方分类与人物像键值行 → 交接表 R24-06（保留「部分完成」） |
+| 09 代签计分 | ✅ | `event-operations-service`：代签成功 → `markPlanEventAttendedForActor`；幂等；无账号不报错；对账任务补「已签到未记分」 |
+| 10 换取数 | ✅ | `r26-manual-event-source`：手入力候选 = 我的活动；每天一问活动选项 = 参加记录；两端界面不变（App `add-contact-screens` 20 / 20） |
+| 11 参加コード | ✅（Modal 待组件库） | 空态「参加コードをお持ちですか？」→ 输码 → `/app/register/<code>`；活动报名码处无「招待コード」 |
+| 12 水合 | ✅ | 「已结束」等由服务端算好传入；开发时钟只在设计稿 fixture 下生效 |
+| 13 重比计划页 | ⚠ 部分 | 见「计划页重比」 |
+| 14 旧屏 | ⚠ 偏离 | **两端旧列表未删**：「探す」页签内容归 R27，R27 前它还是旧目录列表（Web `events-list`、App `EventsScreen` 作为 探す 的内容保留）；`home/events` 跳新页签未做（R10） |
+| 15 通用口径 | ✅ | G18：URL / 海报入口在 AI 不可用时隐藏、只留 3 项（`availability.aiReadAvailable`）；G19 响应宽进（`tolerantEnum` / `readableItems`），请求严格；G26 token；G24 App 文案走 `UiText` |
+| 16 重算与通知 | ✅ | `event-assessment-recompute`：有界（30 天、≤100）、只规则、名单签名不变不算；变化 ≥10 或名单首次公开写 `event_pick`（三语） |
+| 17 外部活动隐私 | ✅ | `external-assessment-privacy`：计划引用 `assessment:<id>`、不碰活动表、他人读不到；全仓只有评估模块与「我的活动」读 `event_assessments`，且都按 `actor_id` |
+
+## 付费 AI 调用记录（本机，用户 2026-10-14 授权：E1 ≤15、E2 ≤10、合计 ≤ $0.3）
+
+脚本 `scripts/r26/real-ai-verify.ts`（回环库临时 schema，外包一层次数 / 费用硬上限，结束删 schema）。合计 **E1 12 次、E2 2 次，估算约 $0.02**。
+
+| 用例 | 结果 |
+| --- | --- |
+| connpass（devsumi） | ready，30 分 |
+| 主办方官网（IVS） | ready，23 分 |
+| Peatix | needs_input（页面由 JS 渲染，正文里没有日期）→ 补 3 项流程 |
+| 会员页（GitHub settings） | login_required，**没调 AI** |
+| 模糊海报 | needs_input，读到会场，其余逐项补 |
+| 贴正文 | ready，39 分 |
+
+第一次跑发现模型把空的 `guessed` / `unreadable` 写成 `""` / `null` / `"a, b"`，Peatix 正文被导航挤掉；`f1b75af05` 修后复跑通过。G18 据此可打开（生产开关 `ORBIT_EVENT_ASSESSMENT_AI=ai` + `DEEPSEEK_API_KEY`，未部署）。
+
+## 自定决定
+
+| # | 事项 | 决定 | 理由 / 对标 |
+| --- | --- | --- | --- |
+| 1 | 「探す」页签 | R27 前沿用旧目录列表；登录后默认評価页签，旧列表只在 `tab=discover` | 页签内容归 R27；不留空页签。对标 Eventbrite「Browse」入口先指向既有目录 |
+| 2 | AI 路径开关 | 新环境变量 `ORBIT_EVENT_ASSESSMENT_AI=ai`（再加 `DEEPSEEK_API_KEY`）才走 E1 / E2；否则只有规则 + 3 项 | 生产打开属于授权项；默认关闭即 G18 |
+| 3 | 评估结果页登录 | `/app/events/assessments` 进登录前缀；イベント列表本身仍公开 | 评估是个人数据 |
+| 4 | 外部评估离线 | App 离线清单把评估 / 我的活动接口归 events 域（读可缓存、写只联网），屏幕本身 `withOnlineOnlyRoute` | 与活动域其他读一致 |
+| 5 | 日历提醒「気をつける点」 | 隐藏 | 日历接入未做（无数据就不显示，不编造） |
+| 6 | R12 名片归属 chip | 维持「已开始的活动」，未加 +7 天 | 改动属于 R12 范围，记交接 |
+| 7 | 参加コード弹窗 | Web 先用现有 Modal（380） | Modal 定位属组件库遗留，像素记「待组件库」 |
+| 8 | 重算通知文案 | 「参加者リストが公開されました · 旧 → 新」/「スコアが変わりました」三语 | 对标 TripIt 行程变更提醒：只在实质变化时提醒 |
+
+## 像素门禁（规则 11）
+
+### Web R26（`scripts/visual/views/web-R26.json`，服务器 :3026 `.next-r26`）
+
+| 画面 | 1440 浅 / 深 | 1024 浅 / 深 | 390 浅 / 深 | 轮次 |
+| --- | --- | --- | --- | --- |
+| W-R26-10 評価 · 空 | — / 0.0068 | 0.041 / 0.026 | 0.116 / 0.142 | 1 |
+| W-R26-11 評価 · 少量 | 0.018 / 0.016 | 0.057 / 0.052 | 0.134 / 0.148 | 1 |
+| W-R26-12 評価 · 大量 | 0.022 / 0.018（剩余为数据带） | 0.045 / 0.034（约 8px 偏移） | **0.0056 / 0.0056** | 4（1024 用完） |
+| W-R26-30 評価結果 | 0.038 / — | **0.0079 / 0.0077** | 0.165 / 0.180 | 1 |
+
+**通过 0**（1440 / 390 大量与 1024 结果单页 raw 已低于 0.01，但还有未归因的数据带；归因文件 `attribution-redesign-R26.json` 只有结构）。W-R26-10 / 11 / 30 的 390 与 1024 只跑了 1 轮，还有 2 轮可用；P06 / P08（要登录 / 海报补 3 项）与 P10 / P11 没跑。
+
+### App R26
+
+**未跑。** 模拟器在本 Sprint 期间被 App 计划页第 3 轮会话占用（同时最多 2 个会话），App 画面 `app-R26.json` 未建。
+
+### 计划页重比（SC-R26-13）
+
+| 画面 | 结果 | 说明 |
+| --- | --- | --- |
+| W-R24-04c 1440 浅 / 深 | ✅ 0.0039 | 推荐活动行 + 今日のチャンス接上后通过 |
+| W-R24-02 1440 | ✗ 0.016（1 带） | 规则算分，第 3 场活动与稿不同；イベント卡缺「VC と起業家…」前缀（非 R26） |
+| W-R24-02 1024 / 390 | ✗ 0.011（2 带）/ 0.11 | |
+| W-R24-04a 1440 | ✗ 0.0067（2 带） | |
+| W-R24-01 1440 | ✗ 0.029 | |
+| W-R24-05 | ✗ 截图超时 | 步骤点击候补 checkbox 超时（mock 候补行未出现），待查 |
+| W-R24-06 / 07 / 08 1440 | ✗ 0.031 / 0.025–0.028 / 0.054 | 主因数据：稿上分数 82 / 79 / 68，规则算出 58 / 53 / 34（同一 fixture 本机复算）；稿与右栏所列活动不一致 |
+| C 组 W-R25-01 / 02 / 07 / 09 / 10、App A-R24-01 / 04 | 未跑 | |
+
+R25 登记行相应更新为「04c 已过，其余仍待」。
+
+## 测试
+
+- Web 全量：6646 通过 / 16 失败（本 Sprint 引起的 12 条已修：活动列表测试、示例世界文案、开发路由边界、按钮棘轮、路由传输审计、审计 P1）。剩余与 R26 无关：`plan-design-fixtures`（R12 扫描 fixture 文件未登记）、`product-surface-manifest` P1 = 2（`ManualContactDrawer.tsx:267`）、`add-contact-screens` / `add-scan-flow`（加人会话在改）。
+- App 全量：3886 通过 / 87 失败 → 本 Sprint 引起的 85 条已修（`ink-signal-events` 83、`offline-read-inventory`、`add-contact-screens`）；剩余 `app-performance-wiring` 是别的会话未提交的 `app/_layout.tsx`（`LogBox`）。
+- 两端 `tsc` 通过。
+
+## GitNexus
+
+开工 impact 见 `impact-R26.md`；每次提交前 `detect-changes`（日志在证据目录），风险均为 low。`be43e9314` 的 detect-changes 是提交后补跑的（low）。
+
+## 独立复核（1 个子代理，只读）与处理
+
+| # | 问题 | 处理 |
+| --- | --- | --- |
+| S1 | AI 给「19:00+09:00」不带秒时被拼成坏时间，响应 schema 校验失败，整个評価列表 500 | 改用 `normalizeEventDate`，认不出就丢掉；测试补 4 种写法 |
+| S2 | 租约 60 秒短于最坏处理时长（E1 ≈ 125 秒），维护任务会重复认领、互相覆盖，已回收成 timeout 的行又被改回 ready | 租约 180 秒；处理期写库带「仍是 reading 且租约未变」条件，丢了租约就作废这次结果；回收改按租约到期（没认领过按创建时间）。服务测试 + Postgres 测试 |
+| M1 | 一时失败的评估永久挡住同一来源 | 抓取失败 / 超时 / 额度 / AI 不可用时，旧行让出来源键并沉底，这次重新评估（不加迁移）；要登录 / 不是活动页照旧返回原记录 |
+| M2 | 抓取只有空闲超时，慢速滴流可拖到函数被杀 | 每跳加按剩余时间的总计时器；非法 Location 就地返回 `fetch_failed` |
+| M3 | 库内活动的事实快照压过实时数据 | 库内活动以实时事实为准，只有用户手填项覆盖（结果与重算两处） |
+| M4 | 「参加予定」显示写库时的分 | **未改**：参加予定卡显示的是评估当时的分，打开评估页按当前计划现算；记 R27 处理 |
+| M5 | 重算候选按 `updated_at` 取前 100，后面的永远轮不到 | 改按 `facts_refreshed_at nulls first`，没变化也记检查时间 |
+| m | 名单读取失败被当成 0 人 → 误发「名单公开」 | 读失败记日志并抛出，重算跳过这一场 |
+| m | 计划来源吞错无日志 | 4 处都记 `console.warn` 后返回空 |
+| m | 地址黑名单缺 TEST-NET / 6to4 中继 / Teredo / NAT64 本地段 | 补上并加测试 |
+| m | 海报路由注释写「读后删除」 | 改为「保留 7 天后由维护任务清理」 |
+| m | 没有计划时「参加予定に追加」也记 added | 维持：它就是本人的参加予定，计划条目可以以后再加 |
+| m | 时间文本直接比较（Z / +09:00 混用）、贴正文只在进程内存、海报无每人上限 | 未改，记交接（R27 / 上线前） |
+
+## 交接
+
+- R24-06：上表 SC-08 未做的 6 项。
+- R24-06b / 06c：计划页 Web 01 / 02 / 04a / 05–08、C 组，App A-R24-01 / 04 重比。
+- R26 像素：Web 10 / 11 / 30 的第 2–3 轮、P06 / P08 / P10 / P11、归因文件；App 全部。
+- R27：「探す」页签内容替换旧列表，届时删 Web `events-list` 与 App `EventsScreen`（SC-R26-14）。
+- R10：首页「下一场活动」读 `/api/events/mine?range=upcoming&limit=1`。
+- R13：`event_pick` 由重算任务写入（`features/events/assessment/recompute-job.ts`）。
+- 复核遗留：M4（参加予定分数）、时间文本比较、贴正文跨实例、海报每人上限。
+- 授权项：生产迁移 `event_assessments` / `event_assessment_posters`、`ORBIT_EVENT_ASSESSMENT_AI=ai`。
