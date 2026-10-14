@@ -96,3 +96,9 @@ test("登录页三条规则：密码框；路径含 login / members 且正文短
   assert.equal(isLoginPage({ finalUrl: "https://x.jp/members/event", html: "<div></div>", text: "あ".repeat(800) }), false);
   assert.equal(extractEventPage("<html><body><form><input type='password'></form></body></html>", "https://x.jp/signin").loginRequired, true);
 });
+
+test("E1 / E2 输出宽进：空列表写成 \"\" / null / \"a, b\" 都读成数组（真实验证 2026-10-14 发现）", async () => {
+  const { extractionOutputSchema } = await import("../../features/events/assessment/extract-provider");
+  const parsed = extractionOutputSchema.parse({ events: null, facts: { title: "x" }, guessed: "", isEventPage: true, unreadable: "startsAt, price" });
+  assert.deepEqual([parsed.guessed, parsed.unreadable, parsed.events], [[], ["startsAt", "price"], []]);
+});

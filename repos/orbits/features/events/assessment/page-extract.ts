@@ -178,10 +178,12 @@ function jsonLdBlocks(html: string): unknown[] {
 
 function mainHtml(html: string): string {
   const main = /<main\b[\s\S]*?<\/main>/i.exec(html)?.[0];
+  // 没有 main / article 时去掉导航、页头、页脚（Peatix 等页面正文被站点导航挤出 12k 截断，真实验证发现）。
+  const withoutChrome = (source: string) => source.replace(/<(nav|header|footer|aside)\b[\s\S]*?<\/\1>/gi, " ");
   if (main) return main;
   const articles = [...html.matchAll(/<article\b[\s\S]*?<\/article>/gi)].map((match) => match[0]);
   if (articles.length) return articles.join("\n");
-  return /<body\b[\s\S]*<\/body>/i.exec(html)?.[0] ?? html;
+  return withoutChrome(/<body\b[\s\S]*<\/body>/i.exec(html)?.[0] ?? html);
 }
 
 export function isLoginPage(input: { finalUrl: string; html: string; text: string }): boolean {

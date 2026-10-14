@@ -38,12 +38,16 @@ const factValue = {
 };
 const FIELD_NAMES = Object.keys(factValue) as (keyof typeof factValue)[];
 
+const fieldList = z.union([z.array(z.string()).max(20), z.string().max(400), z.null()]).optional()
+  .transform((value) => (Array.isArray(value) ? value : typeof value === "string" ? value.split(/[,、\s]+/).map((item) => item.trim()).filter(Boolean) : []));
+
 export const extractionOutputSchema = z.object({
   isEventPage: z.boolean(),
   facts: z.object(factValue),
-  guessed: z.array(z.string()).max(20).default([]),
-  unreadable: z.array(z.string()).max(20).default([]),
-  events: z.array(z.object({ title: z.string().min(1).max(200), url: z.string().max(2048).nullish(), startsAt: z.string().max(40).nullish() })).max(5).default([]),
+  // 真实验证（2026-10-14）：模型会把空列表写成 "" 或 null，也会写 "a, b"——都读成数组（不算 schema 失败）。
+  guessed: fieldList,
+  unreadable: fieldList,
+  events: z.array(z.object({ title: z.string().min(1).max(200), url: z.string().max(2048).nullish(), startsAt: z.string().max(40).nullish() })).max(5).nullish().transform((value) => value ?? []),
 });
 export type ExtractionOutput = z.infer<typeof extractionOutputSchema>;
 
@@ -58,9 +62,9 @@ const SCHEMA_TEXT = JSON.stringify({
     format: "{networking: boolean (a networking / 交流 / 懇親会 slot exists), tableTalk, matching}|null",
     agenda: "[{at: 'HH:MM', title, minutes}]|null",
   },
-  guessed: "field names you inferred instead of reading verbatim",
-  unreadable: "field names present on the page/poster but not legible",
-  events: "when isEventPage is false: up to 5 events listed on the page [{title, url, startsAt}]",
+  guessed: "array of field names you inferred instead of reading verbatim, [] when none",
+  unreadable: "array of field names present on the page/poster but not legible, [] when none",
+  events: "array; when isEventPage is false: up to 5 events listed on the page [{title, url, startsAt}], otherwise []",
 });
 
 export function eventFactsPrompt(): string {
