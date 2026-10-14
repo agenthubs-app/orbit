@@ -9,6 +9,10 @@ import {
   Popover, ProgressBar, QuotaChip, Radio, RetryCard, RingChart, RowChevron, SampleBar, SampleTag, SearchField, Segmented, Skeleton,
   Table, TextField, Toggle, ToastProvider, WhyDisclosure, useStandardCopy, useToast,
 } from "../../(app)/app/orbit-2026/ui";
+import { useScopeLanguage } from "../../(app)/app/orbit-2026/ui";
+import { translator } from "../../(app)/app/orbit-2026/add/add-parts";
+import { CompletionQuestionCard } from "../../(app)/app/orbit-2026/add/CompletionQuestionCard";
+import { demoCompletionOrganizationQuestion, demoCompletionQuestion } from "../../../shared/mock/demo-world/fixtures";
 import styles from "./components.module.css";
 
 // Developer surface: section names are identifiers (English), sample text is the
@@ -49,6 +53,20 @@ function Section({ name, children }: { name: string; children: ReactNode }) {
       <h2 id={`sc-${name}`} className={styles.sectionName}>{name}</h2>
       <div className={styles.row}>{children}</div>
     </section>
+  );
+}
+
+/** 今日の 1問 with the demo-world questions (どこで？ lifts to ●●○ / 会社は？ with 自分で入力). Answers are no-ops. */
+function CompletionSamples() {
+  const t = translator(useScopeLanguage());
+  return (
+    <>
+      {[demoCompletionQuestion, demoCompletionOrganizationQuestion].map((question) => (
+        <div key={question.id} className={styles.column} style={{ flex: "1 1 260px", minWidth: 0, maxWidth: 342 }} data-showcase-completion={question.id}>
+          <CompletionQuestionCard question={question} t={t} onAnswer={() => undefined} onSkip={() => undefined} />
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -157,6 +175,9 @@ function Sections() {
         <div className={styles.column}><ProgressBar value={0.62} label="62%" /><ProgressBar value={0.9} tone="coral" thin label="90%" /></div>
         <RingChart label="72%" center="72" segments={[{ value: 0.5, color: "var(--plum-700)" }, { value: 0.22, color: "var(--rose-500)" }]} />
         <CountUp value={247} className={styles.number} />
+      </Section>
+      <Section name="CompletionQuestionCard (R16 · b9 A7)">
+        <CompletionSamples />
       </Section>
       <Section name="States">
         <EmptyState title={copy.nav.task} message={copy.error.checkConnection} steps={[{ label: copy.action.add, state: "done" }, { label: copy.action.edit, state: "now" }, { label: copy.action.save, state: "later" }]} ghostRows={2} action={{ label: copy.action.add, onSelect: () => undefined }} />

@@ -84,7 +84,7 @@ const settles = (page: Page, selector: string, value: number) => page.waitForFun
 
 /* ---------- 入口 ---------- */
 
-test("doors (b12 W-R12-01): a 560 dialog 人脈を追加 with 名刺 / 招待コード / 手入力 and その他 連絡先 · LinkedIn (old import until R16)", async (t) => {
+test("doors (b12 W-R12-01): a 560 dialog 人脈を追加 with 名刺 / 招待コード / 手入力 and その他 連絡先 · LinkedIn (R16 import pages)", async (t) => {
   const page = await screen(t, { view: "doors" }, { width: 1440 });
   await page.locator("[data-add-doors]").waitFor();
   const dialog = page.getByRole("dialog", { name: "人脈を追加" });
@@ -95,8 +95,8 @@ test("doors (b12 W-R12-01): a 560 dialog 人脈を追加 with 名刺 / 招待コ
     ["scan", "/app/contacts/new/scan"],
     ["invite", null],
     ["manual", null],
-    ["contacts", "/app/contacts/new?method=contacts"],
-    ["linkedin", "/app/contacts/new?method=csv"],
+    ["contacts", "/app/contacts/new/import?method=contacts"],
+    ["linkedin", "/app/contacts/new/import?method=linkedin"],
   ]);
   assert.equal(await page.locator('[data-add-door="invite"]').getByText("招待コード").count(), 1);
   assert.match(await dialog.innerText(), /関係まで/);

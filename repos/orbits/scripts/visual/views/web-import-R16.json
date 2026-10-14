@@ -1,0 +1,27 @@
+{
+ "_note": "R16 取り込み Web 像素门禁。设计稿只有 1440 画板（b9 A3 ②③④、b12 W-R16-10 / 11a～c；深色由设计侧切 data-theme），所以只比 1440 × 浅 / 深。design-* = 本机只读演示（ORBIT_REDESIGN_MOCK=add-scan|add-import，画板示例数据）。键 = <id>-<width>-<theme>，与 attribution-redesign-R16.json 一致。",
+ "defaults": {
+  "app-origin": "http://localhost:3207",
+  "login": "qa@orbit.test",
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-redesign-R16.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/add/**",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/add-import.ts",
+  "repos/orbits/app/(app)/app/contacts/new/import/**",
+  "repos/orbits/app/(app)/app/contacts/new/_add/import-design-*",
+  "repos/orbits/features/contacts/import/design-samples.ts",
+  "repos/orbits/app/(app)/app/orbit-2026/shell/**",
+  "repos/orbits/app/(app)/app/orbit-2026/ui/**"
+ ],
+ "views": [
+  { "id": "W-R16-10", "app": "/app/contacts/new/import", "design": "b12-missing-states.html", "board-index": 298, "width": 1440, "wait-for": "[data-import-doors]", "viewport": true },
+  { "id": "W-R16-06", "app": "/app/contacts/new/import/design-linkedin-upload", "design": "b9-import-plan-v2.html", "board-index": 6, "width": 1440, "wait-for": "[data-import-upload]", "viewport": true },
+  { "id": "W-R16-11a", "app": "/app/contacts/new/import/design-vcard-upload", "design": "b12-missing-states.html", "board-index": 300, "width": 1440, "wait-for": "[data-import-upload]", "viewport": true },
+  { "id": "W-R16-07", "app": "/app/contacts/new/import/design-linkedin-mapping", "design": "b9-import-plan-v2.html", "board-index": 7, "width": 1440, "wait-for": "[data-import-mapping]", "viewport": true },
+  { "id": "W-R16-11b", "app": "/app/contacts/new/import/design-csv-mapping", "design": "b12-missing-states.html", "board-index": 302, "width": 1440, "wait-for": "[data-import-mapping]", "viewport": true },
+  { "id": "W-R16-08", "app": "/app/contacts/new/import/design-linkedin-review", "design": "b9-import-plan-v2.html", "board-index": 8, "width": 1440, "wait-for": "[data-unified-review]", "viewport": true },
+  { "id": "W-R16-11c", "app": "/app/contacts/new/import/design-event", "design": "b12-missing-states.html", "board-index": 304, "width": 1440, "wait-for": "[data-import-event]", "viewport": true }
+ ]
+}

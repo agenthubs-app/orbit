@@ -1,0 +1,12 @@
+{
+ "_note": "R16 取り込み App 像素门禁（b9 A2 ①–④、A3 ①）。模拟器 iPhone 16e (add)；design-* = 开发包 + EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=add-scan 的只读演示（画板人数与人名）。①権限要求通讯录权限未决定（模拟器不要点「許可」）。键 = <id>-app-<theme>，归因 attribution-redesign-R16-app.json（决定表 §20：超阈值带全部 [data] / [raster] 即通过）。",
+ "defaults": { "grid": 30, "wait": 9000, "attribution": "scripts/visual/attribution-redesign-R16-app.json" },
+ "sources": ["repos/orbit-app/src/screens/add/**", "repos/orbit-app/app/contacts/new/import/**", "repos/orbit-app/src/i18n/*/add.ts"],
+ "views": [
+  { "id": "A-R16-01", "design": "b9-import-plan-v2.html", "board-index": 1, "url": "orbit://contacts/new/import?kind=contacts", "note": "連絡先 ① 権限（未授权）" },
+  { "id": "A-R16-02", "design": "b9-import-plan-v2.html", "board-index": 2, "url": "orbit://contacts/new/import/design-pick", "note": "連絡先 ② 選ぶ（画板 1,284 件）" },
+  { "id": "A-R16-03", "design": "b9-import-plan-v2.html", "board-index": 3, "url": "orbit://contacts/new/import/design-organizing", "note": "連絡先 ③ 取り込み中" },
+  { "id": "A-R16-04", "design": "b9-import-plan-v2.html", "board-index": 4, "url": "orbit://contacts/new/import/design-review", "note": "連絡先 ④ まとめて確認" },
+  { "id": "A-R16-05", "design": "b9-import-plan-v2.html", "board-index": 5, "url": "orbit://contacts/new/import?kind=linkedin", "note": "LinkedIn ① 3 ステップ" }
+ ]
+}

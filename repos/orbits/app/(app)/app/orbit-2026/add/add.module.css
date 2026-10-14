@@ -324,7 +324,7 @@ b.frowNone { color: var(--ink-4); font-weight: var(--fw-medium); }
 .groupRow { display: grid; grid-template-columns: 84px 8px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: var(--fs-body-sm); line-height: 1.5; }
 .groupRow b { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: var(--fw-bold); }
 .frowDotLo { background: var(--coral); }
-.groupActs { display: flex; justify-content: flex-end; gap: var(--space-8); margin-top: auto; padding-top: var(--space-12); }
+.groupActs { display: flex; align-items: center; gap: var(--space-8); margin-top: var(--space-12); }
 .reviewFoot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
 .reviewFoot > .footNote { margin-right: auto; }
 .h46:global(.btn) { height: 46px; }

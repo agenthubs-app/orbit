@@ -15,13 +15,12 @@ import styles from "./add.module.css";
 export const ADD_INVITE_DOOR_ENABLED = true;
 
 /**
- * その他 (b12 W-R12-01: 連絡先（vCard）and LinkedIn — the dialog has five doors, D21). Until R16
- * builds the new import pages they go to the old import screen (`/app/contacts/new?method=…`,
- * still rendered by NetworkImport); R16 points them at the new pages.
+ * その他 (b12 W-R12-01: 連絡先（vCard）and LinkedIn — the dialog has five doors, D21): the R16
+ * import pages. CSV and イベントから are on the import door page (W-R16-10).
  */
 export const ADD_OTHER_DOORS = [
-  { key: "contacts", emoji: "📱", tone: "blue", title: d.otherContacts, body: d.otherContactsBody, href: "/app/contacts/new?method=contacts" },
-  { key: "linkedin", emoji: "🔗", tone: "teal", title: d.otherLinkedIn, body: d.otherLinkedInBody, href: "/app/contacts/new?method=csv" },
+  { key: "contacts", emoji: "📱", tone: "blue", title: d.otherContacts, body: d.otherContactsBody, href: "/app/contacts/new/import?method=contacts" },
+  { key: "linkedin", emoji: "🔗", tone: "teal", title: d.otherLinkedIn, body: d.otherLinkedInBody, href: "/app/contacts/new/import?method=linkedin" },
 ] as const;
 
 export const ADD_SCAN_HREF = "/app/contacts/new/scan";

@@ -34,15 +34,16 @@ import type { IngestContactCandidateContract } from "../../shared/contract/busin
 // R12 Web 人脈を追加: the pure rules behind the doors page, the 手入力 drawer, the scan
 // upload and the batch view (DESIGN §2.1–§2.3, §7).
 
-test("old links: ?job= and ?method=scan go to the new scan pages; その他 keeps the old import until R16", () => {
+test("old links: ?job= and ?method=scan go to the new scan pages; その他 (?method= / ?import=) opens the R16 import pages", () => {
   assert.deepEqual(resolveAddContactRoute({ job: "batch-9" }), { kind: "redirect", href: "/app/contacts/new/scan/batch-9" });
   assert.deepEqual(resolveAddContactRoute({ job: "batch-9", lang: "en" }), { kind: "redirect", href: "/app/contacts/new/scan/batch-9?lang=en" });
   assert.deepEqual(resolveAddContactRoute({ method: "scan" }), { kind: "redirect", href: "/app/contacts/new/scan" });
   assert.deepEqual(resolveAddContactRoute({ method: "scan", job: "b1" }), { kind: "redirect", href: "/app/contacts/new/scan/b1" });
-  assert.deepEqual(resolveAddContactRoute({ method: "csv" }), { kind: "legacy", method: "csv" });
-  assert.deepEqual(resolveAddContactRoute({ method: "contacts", import: "imp-1" }), { kind: "legacy", method: "contacts", importId: "imp-1" });
-  assert.deepEqual(resolveAddContactRoute({ method: "event" }), { kind: "legacy", method: "event" });
-  assert.deepEqual(resolveAddContactRoute({ import: "imp-2" }), { kind: "legacy", method: "csv", importId: "imp-2" });
+  // R16: the old その他 links open the new import pages.
+  assert.deepEqual(resolveAddContactRoute({ method: "csv" }), { kind: "redirect", href: "/app/contacts/new/import?method=csv" });
+  assert.deepEqual(resolveAddContactRoute({ method: "contacts", import: "imp-1" }), { kind: "redirect", href: "/app/contacts/new/import/imp-1" });
+  assert.deepEqual(resolveAddContactRoute({ method: "event", lang: "en" }), { kind: "redirect", href: "/app/contacts/new/import?method=event&lang=en" });
+  assert.deepEqual(resolveAddContactRoute({ import: "imp/2" }), { kind: "redirect", href: "/app/contacts/new/import/imp%2F2" });
   assert.deepEqual(resolveAddContactRoute({}), { kind: "doors", manual: false, invite: false });
   assert.deepEqual(resolveAddContactRoute({ add: "manual" }), { kind: "doors", manual: true, invite: false });
   // R15: ?add=invite opens the 招待コード dialog.
@@ -50,11 +51,11 @@ test("old links: ?job= and ?method=scan go to the new scan pages; その他 keep
   assert.deepEqual(resolveAddContactRoute({ method: "unknown" }), { kind: "doors", manual: false, invite: false });
 });
 
-test("doors: 招待コード open since R15; その他 is 連絡先 and LinkedIn (b12 W-R12-01: five doors), still the old import", () => {
+test("doors: 招待コード open since R15; その他 is 連絡先 and LinkedIn (b12 W-R12-01: five doors) on the R16 import pages", () => {
   assert.equal(ADD_INVITE_DOOR_ENABLED, true);
   assert.deepEqual(ADD_OTHER_DOORS.map((door) => door.href), [
-    "/app/contacts/new?method=contacts",
-    "/app/contacts/new?method=csv",
+    "/app/contacts/new/import?method=contacts",
+    "/app/contacts/new/import?method=linkedin",
   ]);
   assert.equal(addSearchFor("?lang=en", true), "?lang=en&add=manual");
   assert.equal(addSearchFor("?lang=en&add=manual", false), "?lang=en");

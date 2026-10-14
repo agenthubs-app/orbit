@@ -2582,6 +2582,11 @@
           "optional": true,
           "kind": "text",
           "type": "ContactCompletionQuestionKind"
+        },
+        "densityIfAnswered": {
+          "optional": true,
+          "kind": "text",
+          "type": "1 | 2 | 3"
         }
       }
     },
@@ -11527,6 +11532,11 @@
           "optional": false,
           "kind": "text",
           "type": "boolean"
+        },
+        "skippedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         },
         "stepKeys": {
           "optional": false,

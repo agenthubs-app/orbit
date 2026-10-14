@@ -62,6 +62,8 @@ export interface CompletionQuestionRecord extends Record<string, unknown> {
   contactName?: string;
   contactSubtitle?: string;
   sourceChip?: "meishi" | "linkedin" | "phone" | "manual" | "self";
+  /** D-10 density once answered (computed when the question is made). */
+  densityIfAnswered?: 1 | 2 | 3;
   answer?: string;
   answeredAt?: string;
   answerKey?: string;

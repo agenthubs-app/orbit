@@ -1,0 +1,108 @@
+/* R16 取り込み (b9 A3 ② ③ · W-R16-10 / 11a–c, kit .gstep .ill .drop .file .table.map .list .li). Tokens only.
+   Layout (wgrid, rails, まとめて確認) comes from ../add.module.css. */
+
+.card { display: flex; flex-direction: column; min-width: 0; }
+.span3 { grid-column: span 3; }
+.span5 { grid-column: span 5; }
+.span7 { grid-column: span 7; }
+.span8 { grid-column: span 8; }
+.span4 { grid-column: span 4; }
+.span12 { grid-column: span 12; }
+@media (max-width: 1023px) { .span3 { grid-column: span 6; } .span5, .span7, .span8, .span4 { grid-column: span 12; } }
+@media (max-width: 559px) { .span3 { grid-column: span 12; } }
+
+.cardH { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); margin-bottom: var(--space-12); line-height: 1.5; }
+.cardH h3 { display: flex; align-items: center; gap: var(--space-8); margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
+.lbl { color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-medium); line-height: 1.5; }
+.push { margin-top: auto; }
+
+/* ── W-R16-10 方法を選ぶ ── */
+.door { display: flex; flex-direction: column; color: var(--ink); text-decoration: none; line-height: 1.5; transition: box-shadow var(--dur-press) var(--ease); }
+.door:hover { box-shadow: 0 0 0 1.5px var(--plum-300); }
+.door:focus-visible { outline: 2px solid var(--plum-700); outline-offset: 2px; }
+.doorTop { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+.doorTitle { display: block; margin-top: 10px; font-size: var(--fs-body); }
+.doorBody { line-height: 1.6; }
+.flow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; font-size: var(--fs-body-sm); line-height: 1.5; }
+.flowChip { display: inline-flex; align-items: center; gap: var(--space-4); height: 32px; padding: 0 var(--space-12); border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-caption); font-weight: var(--fw-bold); white-space: nowrap; }
+.flowArrow { display: inline-flex; color: var(--ink-4); }
+
+/* ── 書き出しの手順 (.gstep / .ill .mi) ── */
+.gstep { display: grid; grid-template-columns: 28px 1fr; gap: 10px; line-height: 1.5; }
+.gstep + .gstep { margin-top: var(--space-12); }
+.gstepN { display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--r-pill); background: var(--ink); color: var(--bg); font-family: var(--font-num); font-size: var(--fs-meta); font-weight: var(--fw-heavy); }
+.gstep b { display: block; margin: 3px 0 6px; font-size: var(--fs-row); }
+.ill { display: grid; gap: var(--space-4); padding: 10px; border-radius: var(--r-md); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-tiny); }
+.mi { display: flex; align-items: center; gap: 6px; overflow: hidden; padding: 5px var(--space-8); border-radius: var(--r-chip); background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--plum-500); color: var(--ink); font-weight: var(--fw-bold); white-space: nowrap; }
+.mi svg { width: 16px; height: 16px; }
+.miBox { display: inline-grid; place-items: center; flex: none; width: 14px; height: 14px; border-radius: var(--r-dot); background: var(--plum-700); color: var(--surface); }
+.miBox svg { width: 13px; height: 13px; stroke-width: 2.4; }
+.stepsButton { align-self: flex-start; margin-top: var(--space-16); }
+
+/* ── ファイル (.drop / .file) ── */
+.drop { display: block; width: 100%; padding: 30px; border: 1.6px dashed var(--plum-300); border-radius: var(--r-bubble); background: color-mix(in srgb, var(--accent-soft) 60%, transparent); color: var(--ink); font: inherit; text-align: center; line-height: 1.5; cursor: pointer; }
+.drop:focus-visible { outline: 2px solid var(--plum-700); outline-offset: 2px; }
+.dropOn { border-color: var(--plum-700); background: var(--accent-soft); }
+.dropEmoji { font-size: var(--fs-emoji-hero); }
+.dropTitle { display: block; margin-top: 6px; font-size: var(--fs-body); }
+.file { display: flex; align-items: center; gap: 10px; margin-top: var(--space-14); padding: 10px var(--space-12); border-radius: var(--r-md); background: var(--surface-2); line-height: 1.5; }
+.fileIcon { display: grid; place-items: center; flex: none; width: 34px; height: 40px; border-radius: var(--r-check); background: var(--mac-teal); color: var(--mac-teal-ink); font-size: var(--fs-micro); font-weight: var(--fw-black); }
+.fileMeta { flex: 1; min-width: 0; }
+.fileMeta b { display: block; overflow: hidden; font-size: var(--fs-body-sm); white-space: nowrap; text-overflow: ellipsis; }
+.fileOk { display: inline-flex; align-items: center; gap: var(--space-4); padding: 3px 9px; border-radius: var(--r-pill); background: var(--mac-teal); color: var(--mac-teal-ink); font-size: var(--fs-caption); font-weight: var(--fw-bold); white-space: nowrap; line-height: 1.5; }
+.fileOk svg { width: 12px; height: 12px; }
+.fileRemove:global(.btn) { background: var(--surface); }
+.acts { display: flex; justify-content: flex-end; gap: 10px; margin-top: var(--space-18); }
+.actsEnd { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.error { display: flex; align-items: center; gap: var(--space-8); margin: var(--space-12) 0 0; color: var(--coral-text); font-size: var(--fs-meta); line-height: 1.5; }
+
+/* ── 列の対応 (.table.map) ── */
+.map { width: 100%; border-collapse: collapse; font-size: var(--fs-body-sm); line-height: 1.5; }
+.map th { padding: 0 10px 10px; color: var(--ink-3); font-size: var(--fs-label); font-weight: 600; text-align: left; }
+.map td { padding: 11px 10px; border-top: 1px solid var(--line); vertical-align: middle; }
+.map tbody tr { transition: background .15s; }
+.map tbody tr:hover { background: var(--surface-2); }
+.mapArrow { color: var(--ink); }
+.mapArrow svg { width: 16px; height: 16px; }
+.mapEx { color: var(--ink-3); font-size: var(--fs-meta); }
+.mapField { position: relative; display: inline-flex; }
+.mapSelect { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font: inherit; }
+.mapSelect:focus-visible + span { outline: 2px solid var(--plum-700); outline-offset: 2px; }
+.okDot { display: inline-block; width: 7px; height: 7px; border-radius: var(--r-pill); background: var(--ok); }
+
+/* ── 人の行 (.list > .li) ── */
+.list { display: flex; flex-direction: column; }
+.li { position: relative; display: flex; align-items: center; gap: var(--space-12); padding: 11px 0; line-height: 1.5; }
+.li + .li::before { content: ""; position: absolute; top: 0; left: 50px; right: 0; height: 1px; background: var(--line); }
+.liOn { margin: 0 -10px; padding: 11px 10px; border-radius: var(--r-md); background: var(--surface-2); }
+.liOn + .li::before, .liOn::before { display: none; }
+.liButton { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.liButton.liOn { width: calc(100% + 20px); background: var(--surface-2); }
+.meta { flex: 1; min-width: 0; }
+.meta b { display: block; overflow: hidden; font-size: var(--fs-body); font-weight: var(--fw-bold); white-space: nowrap; text-overflow: ellipsis; }
+.meta span { display: block; overflow: hidden; color: var(--ink-3); font-size: var(--fs-meta); white-space: nowrap; text-overflow: ellipsis; }
+.rend { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: none; }
+.end { flex: none; color: var(--ink-3); font-size: var(--fs-meta); text-align: right; }
+.av { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: var(--r-pill); font-size: var(--fs-row); font-weight: var(--fw-heavy); }
+.av_lav { background: var(--mac-lav); color: var(--mac-lav-ink); }
+.av_pink { background: var(--mac-pink); color: var(--mac-pink-ink); }
+.av_blue { background: var(--mac-blue); color: var(--mac-blue-ink); }
+.av_teal { background: var(--mac-teal); color: var(--mac-teal-ink); }
+.av_apricot { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+.src { display: inline-flex; align-items: center; gap: var(--space-4); max-width: 100%; overflow: hidden; padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-caption); font-weight: var(--fw-bold); white-space: nowrap; text-overflow: ellipsis; }
+.src svg { width: 12px; height: 12px; }
+.srcLav { background: var(--mac-lav); color: var(--mac-lav-ink); }
+.srcApricot { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+.cbx { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; padding: 0; border: 1.8px solid var(--ink-4); border-radius: var(--r-check); background: none; color: var(--surface); cursor: pointer; }
+.cbx svg { width: 13px; height: 13px; stroke-width: 2.4; }
+.cbxOn { border-color: var(--plum-700); background: var(--plum-700); }
+.cbx[aria-disabled="true"] { cursor: default; }
+.cbx:focus-visible { outline: 2px solid var(--plum-700); outline-offset: 2px; }
+.macNote { margin-top: var(--space-12); padding: var(--space-12); border-radius: var(--r-tile); background: var(--mac-lav); font-size: var(--fs-meta); line-height: 1.6; }
+.next:global(.btn) { height: 46px; font-size: var(--fs-card-title); }
+
+/* ── 1件ずつ見る (import rows under まとめて確認) ── */
+.rows { display: flex; flex-direction: column; gap: var(--space-8); }
+.rowLine { display: flex; align-items: center; gap: var(--space-12); padding: 10px var(--space-14); border-radius: var(--r-md); background: var(--surface); line-height: 1.5; }
+.rowSkipped { opacity: .55; }
+.dotsLg i { width: 9px; height: 9px; }

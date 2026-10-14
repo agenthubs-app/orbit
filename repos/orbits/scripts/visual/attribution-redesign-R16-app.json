@@ -1,0 +1,13 @@
+{
+ "_schema": "\"<grid-view>\": { \"<band>\": \"[data] / [raster] 看过该带三联图后写的具体理由\" }",
+ "A-R16-01-app-dark": {},
+ "A-R16-01-app-light": {},
+ "A-R16-03-app-dark": {},
+ "A-R16-03-app-light": {},
+ "A-R16-04-app-dark": {},
+ "A-R16-04-app-light": {
+  "15": "[data] 450-480 渡辺 翔 行的两个头像配色（按姓名算的色调，画板 apricot / 实现 teal）"
+ },
+ "A-R16-05-app-dark": {},
+ "A-R16-05-app-light": {}
+}

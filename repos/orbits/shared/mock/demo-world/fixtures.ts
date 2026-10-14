@@ -102,6 +102,7 @@ export const demoCompletionQuestion: ContactCompletionQuestion = {
   contactSubtitle: `${completionPerson.company} · ${completionPerson.role}`,
   sourceChip: completionPerson.source,
   kind: "met_where",
+  densityIfAnswered: 2,
 };
 
 // R16 复核 M5：「会社は？」的样例。电话里只存了名字和邮箱的人（演示世界里她的公司是株式会社ハルモニア）；

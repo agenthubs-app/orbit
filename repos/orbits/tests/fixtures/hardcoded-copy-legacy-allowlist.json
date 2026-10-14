@@ -313,22 +313,6 @@
       "hardcoded": 2,
       "missingJa": 17
     },
-    "app/(app)/app/contacts/network-0918/network-import-event.tsx": {
-      "hardcoded": 0,
-      "missingJa": 11
-    },
-    "app/(app)/app/contacts/network-0918/network-import-file.tsx": {
-      "hardcoded": 0,
-      "missingJa": 81
-    },
-    "app/(app)/app/contacts/network-0918/network-import-styles.ts": {
-      "hardcoded": 1,
-      "missingJa": 0
-    },
-    "app/(app)/app/contacts/network-0918/network-import.tsx": {
-      "hardcoded": 0,
-      "missingJa": 58
-    },
     "app/(app)/app/contacts/network-0918/network-insight-copy.ts": {
       "hardcoded": 0,
       "missingJa": 23

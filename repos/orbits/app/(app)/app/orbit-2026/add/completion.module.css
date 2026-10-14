@@ -1,0 +1,26 @@
+/* 今日の 1問 (b9 A7 .card.flat padding 14 · .av.sm · .fopt · .dn.up). Tokens only. */
+.card { min-width: 0; max-width: 100%; padding: var(--space-14); border-radius: var(--r-xl); background: var(--surface-2); line-height: 1.5; }
+.head { display: flex; align-items: center; gap: 10px; }
+.av { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: var(--r-pill); font-size: var(--fs-label); font-weight: var(--fw-heavy); }
+.av_lav { background: var(--mac-lav); color: var(--mac-lav-ink); }
+.av_pink { background: var(--mac-pink); color: var(--mac-pink-ink); }
+.av_blue { background: var(--mac-blue); color: var(--mac-blue-ink); }
+.av_teal { background: var(--mac-teal); color: var(--mac-teal-ink); }
+.av_apricot { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+.meta { flex: 1; min-width: 0; }
+.title { display: block; font-size: var(--fs-row); overflow-wrap: anywhere; }
+.sub { overflow: hidden; color: var(--ink-3-text); font-size: var(--fs-label); font-weight: var(--fw-medium); white-space: nowrap; text-overflow: ellipsis; }
+.options { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--space-12); }
+.options :global(.btn) { max-width: 100%; padding: 7px var(--space-12); }
+.options :global(.btn) > * { overflow: hidden; text-overflow: ellipsis; }
+.typeIn { display: flex; align-items: flex-end; gap: var(--space-8); margin-top: 10px; }
+.typeIn > :first-child { flex: 1; min-width: 0; }
+.foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.lbl { color: var(--ink-3-text); font-size: var(--fs-label); font-weight: var(--fw-medium); }
+.skip { padding: 0; border: 0; background: none; color: var(--ink-3-text); font: inherit; font-size: var(--fs-label); font-weight: var(--fw-bold); cursor: pointer; }
+.skip[aria-disabled="true"] { cursor: default; opacity: .6; }
+.skip:focus-visible { outline: 2px solid var(--plum-700); outline-offset: 2px; border-radius: var(--r-dot); }
+@keyframes dotUp { 0%, 30% { background: var(--surface-3); } 55%, 100% { background: var(--plum-700); } }
+.up i:nth-child(2) { animation: dotUp 2.6s var(--ease) infinite; }
+:global([data-motion="reduce"]) .up i:nth-child(2) { animation: none; }
+@media (prefers-reduced-motion: reduce) { .up i:nth-child(2) { animation: none; } }

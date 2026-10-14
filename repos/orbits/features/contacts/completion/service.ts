@@ -161,6 +161,7 @@ function toView(question: CompletionQuestionRecord): ContactCompletionQuestion {
     ...(question.contactSubtitle ? { contactSubtitle: question.contactSubtitle } : {}),
     ...(question.sourceChip ? { sourceChip: question.sourceChip } : {}),
     ...(question.kind ? { kind: question.kind } : {}),
+    ...(question.densityIfAnswered ? { densityIfAnswered: question.densityIfAnswered } : {}),
   };
 }
 
@@ -211,6 +212,8 @@ export function createContactCompletionService({
       ...base,
       contactId: row.contactId,
       contactName: clip(name, CONTACT_NAME_MAX),
+      // 答了之后的浓度：相遇场合 / 公司补上一项，其余照旧（D-10；联系方式不会因为回答而出现）。
+      densityIfAnswered: completionDensityFacts({ ...facts, hasMetContext: facts.hasMetContext || target.kind === "met_where", organization: target.kind === "organization" ? facts.organization || "answered" : facts.organization }).level,
       ...(subtitle ? { contactSubtitle: clip(subtitle, SUBTITLE_MAX) } : {}),
       kind: target.kind,
       options,

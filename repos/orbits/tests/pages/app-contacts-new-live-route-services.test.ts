@@ -10,21 +10,22 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
-test("/app/contacts/new renders 人脈を追加 (R12) and keeps the legacy import only behind ?method=, without preflight side effects", async () => {
+test("/app/contacts/new renders 人脈を追加 (R12); ?method= / ?import= go to the R16 import pages; no preflight side effects", async () => {
   const pageSource = source("app/(app)/app/contacts/new/page.tsx");
-  const legacySource = source("app/(app)/app/contacts/new/_add/legacy-network-import.tsx");
+  const importSource = source("app/(app)/app/contacts/new/import/page.tsx");
+  const batchSource = source("app/(app)/app/contacts/new/import/[importId]/page.tsx");
 
   assert.match(pageSource, /await auth\(\)/);
   assert.match(pageSource, /session\?\.user\?\.id/);
   assert.match(pageSource, /redirect\("\/app\/account\/login\?next=/);
   assert.match(pageSource, /AddContactScreen/);
   assert.match(pageSource, /resolveAddContactRoute/);
-  // R12：旧 NetworkImport 只作为「その他」的临时落点，在单独的文件里渲染（新旧作用域不同文件）。
-  assert.match(legacySource, /NetworkImport/);
-  assert.match(legacySource, /resolveBusinessCardCaptureAvailability/);
+  // R16：旧 NetworkImport 已删除；导入页只鉴权，批次数据由客户端拉取。
+  assert.doesNotMatch(pageSource, /NetworkImport|LegacyNetworkImport/);
+  for (const text of [importSource, batchSource]) assert.match(text, /await auth\(\)/);
   assert.doesNotMatch(pageSource, /data-orbit-real-page/);
   // R07: the page mounts no nav itself; Orbit2026Shell (layout) provides it.
-  for (const text of [pageSource, legacySource]) {
+  for (const text of [pageSource, importSource, batchSource]) {
     assert.doesNotMatch(text, /AccountTopNav|OrbitTopNav|PublicTopNav/);
     assert.doesNotMatch(text, /OrbitRealCardsImport/);
     // 页面加载不得触发任何 live 服务预检：只读配置可用性，批次数据由客户端按需拉取。
