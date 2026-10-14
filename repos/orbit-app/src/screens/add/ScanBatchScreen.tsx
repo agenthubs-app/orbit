@@ -524,10 +524,10 @@ function ReadingRow({ card, first }: { card: ScanCardView; first: boolean }) {
   }
   const title = card.name || t("add.batch.noName");
   if (card.kind === "duplicate") {
-    return <KitCardRow first={first} title={title} sub={[card.organization, t("add.batch.alreadyInNetwork")].filter(Boolean).join(" · ")} trailing={<KitChip label={t("add.batch.stateDuplicate")} tone="lav" />} testID="add-card-duplicate" />;
+    return <KitCardRow first={first} title={title} sub={[card.organization, t("add.batch.alreadyInNetwork")].filter(Boolean).join(" · ")} trailing={<KitChip label={t("add.batch.stateDuplicate")} tone="lav" style={rowChipStyles.rowChip} />} testID="add-card-duplicate" />;
   }
   if (card.kind === "guess") {
-    return <KitCardRow first={first} title={title} sub={orgRole || card.fileName} trailing={<KitChip label={t("add.batch.stateGuess")} tone="apricot" />} testID="add-card-guess" />;
+    return <KitCardRow first={first} title={title} sub={orgRole || card.fileName} trailing={<KitChip label={t("add.batch.stateGuess")} tone="apricot" style={rowChipStyles.rowChip} />} testID="add-card-guess" />;
   }
   if (card.kind === "skipped") {
     return <KitCardRow first={first} title={title} sub={orgRole || card.fileName} trailing={<KitChip label={t("add.batch.stateSkipped")} />} testID="add-card-skipped" />;
@@ -536,9 +536,13 @@ function ReadingRow({ card, first }: { card: ScanCardView; first: boolean }) {
 }
 
 const readNote = StyleSheet.create({ note: { textAlign: "center" } });
+// plan-kit KitChip sits at flex-start; in .prow2 (align-items: center) the chip is centred on the two-line meta.
+const rowChipStyles = StyleSheet.create({ rowChip: { alignSelf: "center" } });
 const doneBarStyles = StyleSheet.create({
   // marginTop −12: AppScreen's content starts 12 lower than kit .scroll without a nav bar too (see KIT_PAGE_INSET).
-  doneBar: { flexDirection: "row", justifyContent: "flex-end", marginTop: -12, paddingTop: 6, paddingBottom: 14, paddingRight: 4, marginHorizontal: 2 },
+  // marginBottom −4: AppScreen's 16 gap after the header slot minus the panel's KIT_PAGE_INSET −12 leaves 4 more
+  // than kit (.topbar padding-bottom 14 straight into .center margin-top 6), which put 🎉 / h1 and all below 4pt low.
+  doneBar: { flexDirection: "row", justifyContent: "flex-end", marginTop: -12, marginBottom: -4, paddingTop: 6, paddingBottom: 14, paddingRight: 4, marginHorizontal: 2 },
 });
 
 // kit 数值（b11 #2）：.card.k-spbar padding 14 / 16；.card.k-splist padding 4 / 16；.card.flat.k-spnext padding 12 / 14。
@@ -571,7 +575,9 @@ const useReadStyles = createThemedStyles((colors) => StyleSheet.create({
   bridgeHead: { alignItems: "center", marginTop: 12 },
   bridgeEmo: { width: 84, height: 84, borderRadius: 28, backgroundColor: colors.macTeal, alignItems: "center", justifyContent: "center" },
   bridgeEmoText: { fontSize: 40, lineHeight: 48 },
-  bridgeTitle: { marginTop: 14 },
+  // b9 overrides .h1 to 23px (line-height 1.35); its .sub has no margin-top (the done page's sub keeps 4).
+  bridgeTitle: { marginTop: 14, fontSize: 23, lineHeight: 31.05, letterSpacing: -0.23 },
+  bridgeSub: { marginTop: 0 },
   bq: { flexDirection: "row", gap: 8, marginTop: 20 },
   bqTile: { flex: 1, minWidth: 0, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: colors.surface },
   bqNum: { fontSize: 24, fontWeight: "800", lineHeight: 27.6, color: colors.ink, fontVariant: ["tabular-nums"] },
@@ -759,7 +765,7 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
         <View style={r.bridgeHead}>
           <View style={r.bridgeEmo}><UiText style={r.bridgeEmoText}>📇</UiText></View>
           <UiText accessibilityRole="header" style={[r.h1, r.bridgeTitle]}>{t("add.batch.reviewTitle", { n: view.cards.length })}</UiText>
-          <UiText style={r.sub}>{`${t("add.batch.bridgeLead1")}\n${t("add.batch.bridgeLead2")}`}</UiText>
+          <UiText style={[r.sub, r.bridgeSub]}>{`${t("add.batch.bridgeLead1")}\n${t("add.batch.bridgeLead2")}`}</UiText>
         </View>
         <View style={r.bq}>
           {tiles.map((entry) => (

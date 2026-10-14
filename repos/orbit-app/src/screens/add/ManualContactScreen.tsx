@@ -295,12 +295,13 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
           </View>
         )}
 
+        {/* b11 #15 (nothing opened): このまま保存すると · 毎日の 1問で少しずつ補えます; #16 / #17 (a field opened): 保存すると · 出どころは「手入力」. */}
         <View style={[m.flat, anyOpen ? m.densGapOpen : m.densGap]} testID={`add-manual-density-${density}`}>
           <View style={m.between}>
             <UiText style={m.lbl}>{t(anyOpen ? "add.manual.densitySave" : "add.manual.densityAsIs")}</UiText>
             <DensityDots level={density} />
           </View>
-          <UiText style={[m.lbl, m.densLine]}>{t(density === 1 ? "add.manual.densityLine1" : "add.manual.densityLine2", { level: t(DENSITY_KEY[density]) })}</UiText>
+          <UiText style={[m.lbl, m.densLine]}>{t(anyOpen ? "add.manual.densityLine2" : "add.manual.densityLine1", { level: t(DENSITY_KEY[density]) })}</UiText>
         </View>
         {problemKey ? <View style={m.gap}><Caption tone="error">{t(problemKey)}</Caption></View> : null}
         {/* b12 N12 サンプル表示中は保存できません: the dialog (サンプルを見続ける / ガイドを続ける); no step count in the App (§17-12). */}
