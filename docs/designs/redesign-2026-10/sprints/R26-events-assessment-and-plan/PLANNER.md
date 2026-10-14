@@ -15,7 +15,7 @@
 **基线:** 开工时的 `redesign` HEAD。
 **进入条件:**
 - DESIGN 已复核（[REVIEW](../events/REVIEW.md)）；
-- 默认路径是「规则 + 门控」（DESIGN §10 决定表，2026-10-14）：E1 / E2 可选，授权前 live 按 G18 隐藏 URL / 海报入口，只做 mock 与规则路径，未授权**不阻塞收口**；授权后再打开并真实验证；
+- E1 / E2 **已授权**（用户 2026-10-14，只限本机真实验证：E1 ≤15 次、E2 ≤10 次，合计 ≤ $0.3；生产开启等合回授权），是主路径；规则路径（3 项手入力 + 库内活动规则评分）作为降级路径保留。真实调用验证通过前，live 按 G18 隐藏 URL / 海报入口，验证通过后打开；
 - §10 C 组 token 第一天补齐。
 
 **分支:** 一人做，可直接在 `redesign` 上提交；与乙并行改到同一批文件时开 `redesign-R26-events-assessment`（README「分支」）。
@@ -239,7 +239,7 @@
 
 ## 失败与交接
 
-- A1 未授权：E1 / E2 只走 fixture；live 下按 G18 隐藏评估卡的 URL / 海报两个入口（服务端仍防御性返回 `ai_unavailable`），只留「3 项手入力」与库内活动的规则评分，**不新造文案**（复核 M11，与 DESIGN §10 A1 一致）。REPORT 写明。
+- E1 / E2 降级（AI 不可用、超限、真实验证未通过）：服务端返回 `ai_unavailable` / `quota_exceeded`；live 下按 G18 隐藏评估卡的 URL / 海报两个入口，只留「3 项手入力」与库内活动的规则评分，**不新造文案**（复核 M11）。REPORT 写明真实验证的次数与花费（上限：E1 15 次、E2 10 次、$0.3）。
 - B 组画板未到：对应画面按规则 11 暂缓，登记交接表（R26 节）重比清单，不耗轮次。
 - 交接给 R27：`event_assessments` / `scoreEvent` 区间 / `events-mine` / `event-emoji` 的用法；未登录详情、探す内容、旧屏其余路由。
 - 交接给 R10：`events/mine?range=upcoming&limit=1` 的形状与 mock。
