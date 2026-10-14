@@ -489,7 +489,7 @@ function events(s) {
   if (s === 'empty') return head + evaluator(true) + `
     <div class="card" style="margin-top:14px"><div class="card-h"><h3>判定の例 <span class="sample-tag">サンプル</span></h3></div>
       <div class="faded">${evCard(E[0]).replace('class="ev-card"', 'class="ev-card" style="width:auto;padding:0"')}</div></div>
-    <div class="card flat"><div class="row"><span class="emo sm teal">🗓️</span><div><b style="font-size:13px">招待されたイベント</b><div class="lbl">招待コードがあればここから参加登録</div></div><button class="btn sm" style="margin-left:auto">入力</button></div></div>`;
+    <div class="card flat"><div class="row"><span class="emo sm teal">🗓️</span><div><b style="font-size:13px">招待されたイベント</b><div class="lbl">参加コードがあればここから参加登録</div></div><button class="btn sm" style="margin-left:auto">入力</button></div></div>`;
   const many = s === 'many';
   return head + evaluator(false) + `
     <div style="margin-top:20px"><div class="card-h"><h3>参加予定</h3><span class="more">${many ? 3 : 1}件</span></div>

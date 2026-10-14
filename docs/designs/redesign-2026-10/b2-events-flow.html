@@ -279,7 +279,7 @@ const recCard = (e, w = 260) => `<div class="ev-card" style="width:${w}px"><div 
   <div data-why-box style="margin-top:10px"><div class="row" style="gap:6px"><span class="chip lav ell" style="flex:1;max-width:none">🎯 ${e.why}</span><span class="why">?</span></div><div class="why-body" hidden>プラン「シリーズA 資金調達」で今月会うべき「VC パートナー」「CFO 経験者」と重なるため。根拠：公式の登壇者リスト。</div></div>
   <div class="row" style="gap:6px"><span class="chip">${e.fee}</span><button class="btn sm" style="margin-left:auto">詳細</button></div></div>`;
 const commCard = () => `<div class="card p-comm" style="padding:14px 16px;margin-top:14px"><div class="card-h" style="margin-bottom:4px"><h3>📌 あなたのコミュニティ</h3><span class="more">2件</span></div>
-  <div class="list">${[[[10, 21], '丸の内イノベーションラボ 定例会 #43', '小林さん主宰 · 丸の内', 'lav', 'メンバー限定'], [[11, 4], 'CFO Night Tokyo vol.19', '渋谷 · 前回参加', 'teal', '先行申込']].map(([md, t, d, c, ch]) => `<div class="li">${datebox(md)}<div class="meta"><b>${t}</b><span>${d}</span></div><span class="chip ${c}">${ch}</span></div>`).join('')}</div></div>`;
+  <div class="list">${[[[10, 21], '丸の内イノベーションラボ 定例会 #43', '丸の内 · フォロー中', 'lav', 'メンバー限定'], [[11, 4], 'CFO Night Tokyo vol.19', '渋谷 · 前回参加', 'teal', '先行申込']].map(([md, t, d, c, ch]) => `<div class="li">${datebox(md)}<div class="meta"><b>${t}</b><span>${d}</span></div><span class="chip ${c}">${ch}</span></div>`).join('')}</div></div>`;
 const allRow = (e) => `<div class="li">${datebox(e.md)}<div class="meta"><b>${e.n}</b><span>${e.place} · ${e.fee}</span></div>${mring(e.score, 36, 4, 11)}</div>`;
 function discover(s) {
   const head = topbar('イベント', s === 'empty' ? 'あなた向けのイベントを探す' : s === 'few' ? '条件に合うイベント 3件' : '今月 28件 · プランに効く 6件', `<button class="rbtn">${ic('search')}</button>`, `<button class="rbtn">${ic('calendar')}</button>`) + segTop(2); /* 审计：顶栏与 app.html イベント 一致（🔍 / 📅），不另设 🔔 */
@@ -288,7 +288,7 @@ function discover(s) {
       <div style="font-size:19px;font-weight:800;line-height:1.4;margin:4px 0">目標を決めると、<br>会うべき人が来るイベントが上に並びます</div>
       <div class="sub" style="margin-bottom:14px">今は「人気順」で表示しています。約1分で設定できます。</div>
       <button class="btn primary block tap-demo" style="height:46px">${ic('target', 'sm')}目標を設定する</button></div>
-    <div class="grid3" style="margin-top:14px">${[['🔗', 'blue', 'URLで評価'], ['🎟️', 'teal', '招待コード'], ['👥', 'pink', 'コミュニティ']].map(([e, c, t]) => `<button class="card" style="margin:0;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11.5px;font-weight:700"><span class="emo ${c}">${e}</span>${t}</button>`).join('')}</div>
+    <div class="grid3" style="margin-top:14px">${[['🔗', 'blue', 'URLで評価'], ['🎟️', 'teal', '参加コード'], ['👥', 'pink', 'コミュニティ']].map(([e, c, t]) => `<button class="card" style="margin:0;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11.5px;font-weight:700"><span class="emo ${c}">${e}</span>${t}</button>`).join('')}</div>
     <div class="card" style="margin-top:14px"><div class="card-h"><h3>プランができると ${sample}</h3></div>
       <div class="faded">${recCard(REC[0], 300).replace('class="ev-card"', 'class="ev-card" style="padding:0;width:auto"')}</div>
       <div class="ghost-row" style="margin-top:12px"><i></i>あなたのコミュニティの先行案内</div><div class="ghost-row"><i></i>知り合いが参加するイベント</div></div>`;
@@ -297,7 +297,7 @@ function discover(s) {
     <div class="card" style="margin-top:14px;padding:6px 16px"><div class="list">${[{ ...REC[1], n: '製造業 × SaaS ナイト', md: [10, 9], place: '日本橋', fee: '¥2,000', score: 64 }, { n: 'スマートファクトリー EXPO 内覧', md: [10, 8], place: '有明', fee: '無料', score: 55 }, { n: 'IoT 実装もくもく会', md: [10, 10], place: '五反田', fee: '¥500', score: 38 }].map(allRow).join('')}</div></div>
     <div class="card flat p-widen"><div class="row" style="gap:8px"><span class="emo sm apricot">💡</span><b style="font-size:13px">条件を広げると、もっと見つかります</b></div>
       <div style="display:grid;gap:8px;margin-top:10px">${[['期間を「今月」に', '+9件'], ['場所に「大阪」を追加', '+2件'], ['テーマに「資金調達」を追加', '+6件']].map(([t, n]) => `<button class="row between" style="padding:10px 12px;border-radius:14px;background:var(--surface);font-size:12.5px;font-weight:700">${t}<span class="chip teal">${n}</span></button>`).join('')}</div></div>
-    <div class="mac lav" style="margin-top:14px;font-size:12px">👥 コミュニティに参加すると、メンバー限定のイベントがここに先に届きます</div>`;
+    <div class="mac lav" style="margin-top:14px;font-size:12px">👥 参加した・フォローした主催のイベントが、ここに先に届きます</div>`;
   return head + searchRow(2) + `
     <div class="chips" style="margin:10px 0 0"><span class="chip lav">今月 ✕</span><span class="chip lav">東京 ✕</span><span class="chip">テーマ ${ic('down', 'sm')}</span><span class="chip">参加費 ${ic('down', 'sm')}</span></div>
     ${commCard()}
@@ -307,7 +307,7 @@ function discover(s) {
       <div class="list">${[...REC, ...MORE].sort((a, b) => a.md[0] * 40 + a.md[1] - b.md[0] * 40 - b.md[1]).slice(0, 6).map(allRow).join('')}</div></div>`;
 }
 const filterSheet = `<div class="sheet-scrim"></div><div class="sheet p-fsheet"><div class="grab"></div><div class="row between" style="margin-bottom:12px"><b style="font-size:16px">絞り込み</b><button class="btn sm ghost">クリア</button></div>
-  ${[['時期', ['今週', '今月*', '来月', '📅 日付を指定']], ['場所', ['オンライン', '東京*', '大阪', '名古屋', '📍 現在地から5km']], ['テーマ', ['資金調達*', 'SaaS*', '製造業DX', '採用', '経営管理']], ['形式', ['登壇あり', '交流会*', '少人数（〜30名）']]].map(([g, os]) => `<div class="fgrp"><span class="lbl">${g}</span><div class="chips">${os.map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div></div>`).join('')}
+  ${[['時期', ['今週', '今月*', '来月', '📅 日付を指定']], ['場所', ['オンライン', '東京*', '大阪', '名古屋']], ['テーマ', ['資金調達*', 'SaaS*', '製造業DX', '採用', '経営管理']], ['形式', ['登壇あり', '交流会*', '少人数（〜30名）']]].map(([g, os]) => `<div class="fgrp"><span class="lbl">${g}</span><div class="chips">${os.map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div></div>`).join('')}
   <div class="row between" style="margin-top:14px;font-size:13px;font-weight:700">無料のみ<span class="tgl"></span></div>
   <div class="row between" style="margin-top:10px;font-size:13px;font-weight:700">プランに合うものを優先<span class="tgl on"></span></div>
   <button class="btn primary block p-fshow" style="height:48px;margin-top:16px">28件を表示</button></div>`;
@@ -337,7 +337,7 @@ function wDiscover(s) {
   const head = mainhead('イベント', s === 'many' ? '今月 28件 · プランに効く 6件' : s === 'few' ? '条件に合う 3件' : 'あなた向けのイベントを探す', `<button class="rbtn">${ic('search')}</button>`, evalSeg(2)); /* 审计：左上与 web.html イベント 一致（🔍） */
   if (s === 'empty') return head + `<div class="wgrid">${wFilters(0)}
     <div class="card span12 guide p-wguide" style="padding:28px"><div class="row" style="gap:24px;align-items:center"><div style="flex:1"><div class="lbl">まだプランがありません</div><div style="font-size:22px;font-weight:800;margin:4px 0">目標を決めると、会うべき人が来るイベントが上に並びます</div><div class="sub">今は「人気順」で表示しています。設定は約1分です。</div></div><button class="btn primary" style="height:48px">${ic('target', 'sm')}目標を設定する</button></div>
-      <div class="grid3" style="margin-top:18px">${[['🔗', 'URL で評価', '気になる告知ページを判定'], ['🎟️', '招待コード', '主催者からのコードで参加登録'], ['👥', 'コミュニティに参加', '限定イベントの先行案内']].map(([e, t, d]) => `<div class="mac apricot row" style="gap:10px"><span style="font-size:22px">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div></div>
+      <div class="grid3" style="margin-top:18px">${[['🔗', 'URL で評価', '気になる告知ページを判定'], ['🎟️', '参加コード', '主催者からのコードで参加登録'], ['👥', 'コミュニティ', '参加した・フォローした主催のイベント']].map(([e, t, d]) => `<div class="mac apricot row" style="gap:10px"><span style="font-size:22px">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div></div>
     <div class="span12 card-h" style="margin:8px 0 -6px"><h3>プランができると ${sample}</h3></div>
     ${REC.map((e, k) => `<div class="span4 faded" style="display:flex">${wEvc(e, 1).replace('evc span4', 'evc').replace('class="evc', 'style="flex:1" class="evc')}</div>`).join('')}</div>`;
   if (s === 'few') return head + `<div class="wgrid">${wFilters(3)}
@@ -345,8 +345,8 @@ function wDiscover(s) {
     ${[{ ...REC[1], n: '製造業 × SaaS ナイト', d: '10/9（金）19:00', place: '日本橋', fee: '¥2,000', score: 64, v: '条件付き', vc: 'apricot', why: '製造業の DX 責任者 15名' }, { ...REC[2], n: 'スマートファクトリー EXPO 内覧', d: '10/8（木）', place: '有明', score: 55, v: '条件付き', vc: 'apricot', why: '出展 40社 · 決裁者は少なめ', emo: '🏭' }, { ...REC[0], n: 'IoT 実装もくもく会', d: '10/10（土）', place: '五反田', score: 38, fee: '¥500', v: '見送り推奨', vc: 'pink', why: 'エンジニア中心 · 決裁者なし', emo: '🛠️' }].map(wEvc).join('')}
     <div class="card span12 flat p-wwiden"><div class="row" style="gap:12px"><span class="emo apricot">💡</span><div style="flex:1"><b>条件を広げると、もっと見つかります</b><div class="lbl">ワンクリックで条件を変更します</div></div>${[['期間を「今月」に', '+9'], ['「大阪」を追加', '+2'], ['「資金調達」を追加', '+6']].map(([t, n]) => `<button class="btn sm">${t}<span class="chip teal">${n}件</span></button>`).join('')}</div></div></div>`;
   return head + `<div class="wgrid">${wFilters(3)}
-    <div class="card span12 p-wcomm" style="padding:16px 20px"><div class="card-h" style="margin-bottom:8px"><h3>📌 あなたのコミュニティ</h3><span class="lbl">メンバー限定・先行申込はここに先に届きます</span></div>
-      <div class="grid2">${[[[10, 21], '丸の内イノベーションラボ 定例会 #43', '小林さん主宰 · 丸の内', 'lav', 'メンバー限定'], [[11, 4], 'CFO Night Tokyo vol.19', '渋谷 · 前回参加', 'teal', '先行申込']].map(([md, t, d, c, ch]) => `<div class="row" style="gap:12px;background:var(--surface-2);border-radius:16px;padding:10px 12px">${datebox(md).replace('datebox"', 'datebox" style="background:var(--surface)"')}<div style="flex:1;min-width:0"><b class="ell" style="display:block">${t}</b><div class="lbl">${d}</div></div><span class="chip ${c}">${ch}</span></div>`).join('')}</div></div>
+    <div class="card span12 p-wcomm" style="padding:16px 20px"><div class="card-h" style="margin-bottom:8px"><h3>📌 あなたのコミュニティ</h3><span class="lbl">参加した・フォローした主催のイベント</span></div>
+      <div class="grid2">${[[[10, 21], '丸の内イノベーションラボ 定例会 #43', '丸の内 · フォロー中', 'lav', 'メンバー限定'], [[11, 4], 'CFO Night Tokyo vol.19', '渋谷 · 前回参加', 'teal', '先行申込']].map(([md, t, d, c, ch]) => `<div class="row" style="gap:12px;background:var(--surface-2);border-radius:16px;padding:10px 12px">${datebox(md).replace('datebox"', 'datebox" style="background:var(--surface)"')}<div style="flex:1;min-width:0"><b class="ell" style="display:block">${t}</b><div class="lbl">${d}</div></div><span class="chip ${c}">${ch}</span></div>`).join('')}</div></div>
     <div class="span12 card-h" style="margin:8px 0 -6px"><h3>プランに効くイベント</h3><span class="more">6件 ${ic('right', 'sm')}</span></div>
     ${REC.map(wEvc).join('')}
     <div class="card span12"><div class="card-h"><h3>すべて · 28件</h3><span class="more">日付順 ${ic('down', 'sm')}</span></div>
@@ -615,12 +615,12 @@ const personSheet = `<div class="sheet-scrim"></div><div class="sheet p-psheet">
   <div class="row p-memo" style="gap:8px"><div class="input" style="flex:1">一言メモ：例）11月にオフィス訪問</div><button class="lbtn" style="width:44px;height:44px;background:var(--accent-soft);color:var(--ink)">${ic('mic', 'sm')}</button></div>
   <div class="lbl" style="margin-top:6px">音声はあなたの声だけを短く記録し、文字にします（会場の録音はしません）</div>
   <button class="btn block p-meetbtn" style="margin-top:14px;height:44px">${ic('calendar', 'sm')}面談を提案する</button></div>`;
+/* 2026-10-14（§28 B3，D46）：照 R24 面談提案草稿画法（b4 proposeSheet）——默认时段可调、只出草稿，不再「相手が選ぶと確定」 */
 const meetSheet = `<div class="sheet-scrim"></div><div class="sheet p-msheet"><div class="grab"></div>
-  <div class="row" style="gap:10px"><button class="lbtn">${ic('left', 'sm')}</button><div style="flex:1"><b style="font-size:16px">清水さんに面談を提案</b><div class="lbl">あなたのカレンダーの空きから候補を選びました</div></div></div>
-  <div class="seg full" style="margin:14px 0 12px"><button class="on">オンライン 30分</button><button>対面 60分</button></div>
-  <div class="slots p-slots">${[['10/9（金）', '10:00–10:30', 1], ['10/12（月）', '15:00–15:30', 1], ['10/13（火）', '9:30–10:00', 1], ['10/14（水）', '17:00–17:30', 0], ['10/15（木）', '11:00–11:30', 0]].map(([d, t, on]) => `<div class="slot ${on ? 'on' : ''}"><span class="lbl">${d}</span><b>${t}</b></div>`).join('')}<div class="slot" style="display:grid;place-items:center;color:var(--ink-3);font-weight:700">＋ 別の日時</div></div>
-  <div class="lbl" style="margin-top:12px">3件選択中 · 相手が 1つ選ぶと確定し、双方のカレンダーに入ります</div>
-  <button class="btn primary block" style="margin-top:14px;height:48px">この3枠で提案する</button><div class="lbl" style="text-align:center;margin-top:6px">メッセージは添えません · あとから取り消せます</div></div>`;
+  <div class="row" style="gap:10px"><button class="lbtn">${ic('left', 'sm')}</button><div style="flex:1"><b style="font-size:16px">清水さんに面談を提案</b><div class="lbl">日時の候補を 3つ選びます · 30分</div></div></div>
+  <div class="p-slots">${[['10/9(金)', '10:00'], ['10/12(月)', '15:00'], ['10/13(火)', '09:30']].map(([d, t], n) => `<div class="row" style="gap:8px;flex-wrap:wrap;background:var(--surface-2);border-radius:12px;padding:8px;margin-top:8px"><span class="lbl" style="font-weight:700;color:var(--ink-2);min-width:52px">候補 ${n + 1}</span><span class="row" style="gap:4px"><span class="lbtn" style="background:var(--surface)">${ic('left', 'sm')}</span><b style="font-size:14px;min-width:64px;text-align:center">${d}</b><span class="lbtn" style="background:var(--surface)">${ic('right', 'sm')}</span></span><span class="row" style="gap:4px"><span class="lbtn" style="background:var(--surface)"><b style="font-size:16px">−</b></span><b style="font-size:14px;min-width:64px;text-align:center">${t}</b><span class="lbtn" style="background:var(--surface)">${ic('plus', 'sm')}</span></span></div>`).join('')}</div>
+  <div style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px"><div class="row" style="gap:8px"><div class="av sm c1">清</div><b style="font-size:14px;flex:1">清水 玲奈</b><span class="chip teal">Orbit</span></div>
+    <div class="lbl" style="margin-top:8px">Orbit 利用中 · いまは下書きだけつくれます</div><button class="btn primary block" style="margin-top:8px">${ic('pen', 'sm')}下書きをつくる</button></div></div>`;
 const toast = `<div class="toast pos p-toast"><span class="tk">${ic('check')}</span><span class="tmsg">清水 玲奈さんと交換しました<small>人脈に追加 · 会いたい人 3 / 4</small></span><button class="undo"><span class="lic sm i-undo"></span>元に戻す</button><i class="tbar"></i></div>`;
 /* Web 会場 */
 function wLive() {
@@ -642,7 +642,7 @@ const wPersonRail = () => `<h4>${ic('user', 'sm')}参加者の詳細</h4>
   <div class="card p-wreq" style="padding:14px"><div class="row" style="gap:8px"><span class="emo sm lav">📇</span><b style="font-size:13px;flex:1">名刺交換の申請が届いています</b></div><div class="row" style="gap:8px;margin-top:10px"><button class="btn primary sm" style="flex:1">承認して交換</button><button class="btn sm" style="flex:1">無視</button></div></div>
   <div class="card" data-why-box style="padding:14px"><div class="row" style="gap:6px"><b style="font-size:13px;flex:1">あなたとの接点</b><span class="why">?</span></div><div class="sub" style="margin-top:6px">シリーズA・B2B SaaS に注力。高橋さんと共通の知り合い</div><div class="why-body" hidden>申込内容「探している投資先：B2B SaaS」とあなたの「会いたい人：VC」が一致。</div></div>
   <div class="card p-wmemo" style="padding:14px"><div class="lbl" style="margin-bottom:6px">メモ（自分だけ）</div><div class="row" style="gap:8px"><div class="input" style="flex:1">一言メモ</div><button class="lbtn">${ic('mic', 'sm')}</button></div></div>
-  <div class="card p-wslots" style="padding:14px"><div class="lbl" style="margin-bottom:8px">面談を提案 · 空きから候補</div><div class="slots">${[['10/9（金）', '10:00', 1], ['10/12（月）', '15:00', 1], ['10/13（火）', '9:30', 1], ['10/14（水）', '17:00', 0]].map(([d, t, on]) => `<div class="slot ${on ? 'on' : ''}"><span class="lbl">${d}</span><b>${t}</b></div>`).join('')}</div><button class="btn block sm" style="margin-top:10px">3枠で提案する</button><div class="lbl" style="margin-top:6px">相手が選ぶと確定 · メッセージは添えません</div></div>`;
+  <div class="card p-wslots" style="padding:14px"><div class="lbl" style="margin-bottom:8px">面談を提案 · 日時の候補 3つ · 30分</div>${[['10/9(金)', '10:00'], ['10/12(月)', '15:00'], ['10/13(火)', '09:30']].map(([d, t], n) => `<div class="row" style="gap:8px;background:var(--surface-2);border-radius:12px;padding:8px;margin-top:6px"><span class="lbl" style="font-weight:700;color:var(--ink-2);min-width:46px">候補 ${n + 1}</span><b style="font-size:13px;flex:1">${d}</b><b style="font-size:13px">${t}</b></div>`).join('')}<button class="btn block sm" style="margin-top:10px">${ic('pen', 'sm')}下書きをつくる</button><div class="lbl" style="margin-top:6px">Orbit 利用中 · いまは下書きだけつくれます（D46）</div></div>`;
 
 /* ============================================================
    ⑦ 会後
@@ -781,7 +781,7 @@ h += boards([
   ['⑥ 関係マップ', '', phone({ body: liveMap(), tab: -1, overlay: liveBar(2), pins: pin(1, '.p-map') + pin(2, '.p-legend') }), ['单色系点线图：你在中心；实线深紫=已交换，浅紫=旧识，虚线=想见，灰=其他', '点节点 → ⑧ 弹层；双指缩放；只显示已签到的参会者']],
   ['⑦ アジェンダ', '', phone({ body: liveAgenda(), tab: -1, overlay: liveBar(4), pins: pin(1, '.p-agenda') + pin(2, '.p-focus') }), ['时间轴：已过变淡，当前珊瑚点 +「いま」，每轮注明你的桌号', '「注目」卡给出一个最值得做的动作 + 依据']],
   ['⑧ 参加者シート', '弹层', phone({ body: liveList(), tab: -1, overlay: personSheet, pins: pin(1, '.p-req') + pin(2, '.p-memo') + pin(3, '.p-meetbtn') }), ['收到交换申请：承認して交換 / 無視（无视不通知对方）；承认 → ⑩ 轻提示', '一句话或语音 memo（只录自己的短语音，转文字；不做全场录音）', '「面談を提案」→ ⑨，弹层内推入下一层']],
-  ['⑨ 面談を提案', '弹层', phone({ body: liveList(), tab: -1, overlay: meetSheet, pins: pin(1, '.p-slots') }), ['从你日历空闲中给 5 个候选，默认选 3 个；对方选 1 个即双方确定（对标 Calendly / TimeRex）；不附带消息']],
+  ['⑨ 面談を提案', '弹层', phone({ body: liveList(), tab: -1, overlay: meetSheet, pins: pin(1, '.p-slots') }), ['2026-10-14（§28 B3，D46）：只出草稿——3 个候补时段默认接下来的工作日，按天 ‹ › / 按 30 分 − ＋ 调；对方是 Orbit 用户也只出「下書きをつくる」（コピー / メールアプリで開く），不直接确定日程']],
   ['⑩ 交換成功', '轻提示', phone({ body: liveHome(), tab: -1, overlay: liveBar(0) + toast, pins: pin(1, '.p-toast') }), ['标准 Toast（01-system ①）：会场横条上方 12px 自下滑入，5 秒倒计时线；「元に戻す」5 秒内撤销。NFC 碰一下交换另用 24 小时「取り消す」撤销条（见 b6 NFC ②），并推送告知对方']],
 ]);
 h += wb('Web 会場モード', '', webFrame({ nav: 3, head: '', body: wLive(), rail: wPersonRail(), pins: pin(1, '.p-wseat') + pin(2, '.p-wpsel') + pin(3, '.p-wreq') + pin(4, '.p-wslots') + pin(5, '.p-wmap') }), ['Web 版供会场外的同事/助理或平板查看：一屏汇总 桌号·当前环节·破冰', '点推荐卡 → 卡片描边选中，右栏显示参会者详情（主从，不弹窗）', '右栏：交換申請の 承認 / 無視', '面談を提案 候选时段 chip 多选', '关系图与 App 同一套单色系图例']);

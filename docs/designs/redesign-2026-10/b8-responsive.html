@@ -526,7 +526,7 @@ function events(s) {
   if (s === 'empty') return head + evaluator(true) + `
     <div class="card" style="margin-top:14px"><div class="card-h"><h3>判定の例 <span class="sample-tag">サンプル</span></h3></div>
       <div class="faded">${evCard(E[0]).replace('class="ev-card"', 'class="ev-card" style="width:auto;padding:0"')}</div></div>
-    <div class="card flat"><div class="row"><span class="emo sm teal">🗓️</span><div><b style="font-size:13px">招待されたイベント</b><div class="lbl">招待コードがあればここから参加登録</div></div><button class="btn sm" style="margin-left:auto">入力</button></div></div>`;
+    <div class="card flat"><div class="row"><span class="emo sm teal">🗓️</span><div><b style="font-size:13px">招待されたイベント</b><div class="lbl">参加コードがあればここから参加登録</div></div><button class="btn sm" style="margin-left:auto">入力</button></div></div>`;
   const many = s === 'many';
   return head + evaluator(false) + `
     <div style="margin-top:20px"><div class="card-h"><h3>参加予定</h3><span class="more">${many ? 3 : 1}件</span></div>
@@ -819,7 +819,7 @@ function events(s) {
     <div class="drop" style="margin-top:10px">${ic('image', 'sm')}ポスター・チラシの画像をドロップ</div>
     ${big ? `<div class="grid3" style="margin-top:18px">${[['🎯', '目標との一致', 'シリーズA調達に効くか'], ['🤝', '会える人', 'プランが求める人が来るか'], ['⏱️', '時間対効果', '移動・参加費・平日夜の負担']].map(([e, t, d]) => `<div class="mac apricot row" style="gap:10px"><span style="font-size:22px">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div>` : ''}</div>`;
   if (s === 'empty') return head + `<div class="wgrid">${evaluator(true)}<div class="card span6"><div class="card-h"><h3>判定の例 <span class="sample-tag">サンプル</span></h3></div><div class="faded row" style="gap:16px">${ring(90, 9, [{ v: 82, c: 'var(--plum-700)', max: 100 }], '<b class="score" style="font-size:22px">82</b>')}<div><b>Japan SaaS Summit 2026 秋</b><div class="lbl">参加をおすすめ · VC 3名が登壇</div></div></div></div>
-    <div class="card span6 flat row" style="gap:12px"><span class="emo teal">🎟️</span><div style="flex:1"><b>招待コードをお持ちですか？</b><div class="lbl">主催者からのコードで参加登録できます</div></div><button class="btn">入力する</button></div></div>`;
+    <div class="card span6 flat row" style="gap:12px"><span class="emo teal">🎟️</span><div style="flex:1"><b>参加コードをお持ちですか？</b><div class="lbl">主催者からのコードで参加登録できます</div></div><button class="btn">入力する</button></div></div>`;
   const many = s === 'many', list = many ? E : E.slice(0, 2);
   return head + `<div class="wgrid">${evaluator(false)}
     <div class="card span4" style="background:linear-gradient(160deg,var(--mac-lav),var(--surface) 65%)"><div class="row between"><span class="lbl">次の参加予定</span><span class="chip apricot">今夜</span></div><b style="display:block;font-size:17px;margin-top:8px">${E[1].n}</b><div class="lbl">${E[1].d} · ${E[1].place}</div><div class="row" style="margin-top:14px"><div class="avs">${C.slice(0, 4).map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div><span class="lbl">会いたい人 ${E[1].meet}名</span></div><button class="btn sm primary" style="margin-top:12px">会う準備をする</button></div>
@@ -1110,7 +1110,7 @@ function events390(s) {
       <div class="input" style="height:46px">${ic('link', 'sm')}https://</div>
       <button class="btn primary block" style="margin-top:10px;height:46px">判定する</button>
       <div style="margin-top:14px;display:grid;gap:6px">${[['🎯', '目標との一致'], ['🤝', '会える人'], ['⏱️', '時間対効果']].map(([e, t]) => `<div class="row" style="gap:8px;font-size:12.5px;color:var(--ink-2)"><span>${e}</span>${t}</div>`).join('')}</div></div>
-    <div class="grid3 r8macs" style="margin-top:12px;gap:8px">${[['📷', 'blue', 'ポスターを撮る'], ['🖼️', 'pink', '写真から'], ['🎟️', 'teal', '招待コード']].map(([e, c, t]) => `<div class="mac ${c}" style="text-align:center;padding:12px 6px"><div style="font-size:22px">${e}</div><b style="font-size:11.5px;display:block;margin-top:4px">${t}</b></div>`).join('')}</div>
+    <div class="grid3 r8macs" style="margin-top:12px;gap:8px">${[['📷', 'blue', 'ポスターを撮る'], ['🖼️', 'pink', '写真から'], ['🎟️', 'teal', '参加コード']].map(([e, c, t]) => `<div class="mac ${c}" style="text-align:center;padding:12px 6px"><div style="font-size:22px">${e}</div><b style="font-size:11.5px;display:block;margin-top:4px">${t}</b></div>`).join('')}</div>
     <div class="card r8sample" style="margin-top:12px"><div class="card-h"><h3>判定の例 ${sample}</h3></div><div class="faded row" style="gap:12px">${mring(82, 56, 6, 15)}<div style="min-width:0"><b style="font-size:13.5px">Japan SaaS Summit 2026 秋</b><div class="lbl">参加をおすすめ · VC 3名が登壇</div></div></div>
       <div class="ghost-row" style="margin-top:12px"><i></i>判定したイベントがここに並びます</div><div class="ghost-row"><i></i>参加予定は「参加予定」タブへ</div></div>`;
   return top + `
