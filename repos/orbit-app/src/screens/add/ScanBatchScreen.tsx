@@ -20,7 +20,7 @@ import type { IngestBatchDetailContract, IngestContactCandidateContract } from "
 import type { SecondaryIndustryIdCode } from "../../api/contract/industries";
 import { industryLabel, isIndustryIdCode, secondaryIndustryLabel } from "../../api/domain/industries";
 import { AppScreen } from "../../components/AppScreen";
-import { Button, Card, Chip, FilterOption, Icon, IconButton, MacTile, ProgressBar, RetryCard, Skeleton, TextField, UiPressable, UiText } from "../../components/ui";
+import { BottomSheet, Button, Card, Chip, FilterOption, Icon, IconButton, MacTile, ProgressBar, RetryCard, Skeleton, TextField, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
@@ -30,6 +30,7 @@ import { EMPTY_ATTRIBUTION, useAddApi, type BatchAttribution } from "./add-api";
 import { EMPTY_LEDGER, readScanLedger, writeScanLedger, type ScanLedger } from "./add-storage";
 import { Body, Caption, CountTiles, DensityBar, FadeIn, KIT_PAGE_INSET, SectionTitle, useAddStyles } from "./add-ui";
 import { KitChip, KitEmo } from "../plan/plan-kit";
+import { UnifiedReviewApp, type ReviewTileKey } from "./UnifiedReviewApp";
 import { KIT_FOOT_SPACE, KitBar, KitBigNums, KitCardRow, KitDensityStack, KitFoot, KitNg, KitOk, KitSpin, useScanKitStyles } from "./scan-kit";
 import { newAddKey } from "./manual-model";
 import { AfterSteps, CameraPermissionPanel, CardCameraPane } from "./ScanCaptureScreen";
@@ -106,6 +107,7 @@ const activeCard = (card: IngestCard) => card.items.some((item) => ["extracted",
 export function ScanBatchScreen({ batchId }: { batchId: string }) {
   // 本机像素门禁的只读演示（scan-design-fixtures）：开发包 + 开关下 design-* 用示例数据，不读服务器。
   const design = useMemo(() => scanDesignFor(batchId), [batchId]);
+  const { styles: kitStyles } = useScanKitStyles();
   const api = useAddApi();
   const router = useRouter();
   const { t, language } = useOrbitLocale();
@@ -121,7 +123,7 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
   // R12 review m9: cards whose duplicate lookup failed — never added automatically.
   const lookupFailed = useRef(new Set<string>());
   const [attribution, setAttribution] = useState<BatchAttribution | null>(null);
-  const [selectedEventId, setSelectedEventId] = useState<string | null | undefined>(undefined);
+  const [selectedEventId, setSelectedEventId] = useState<string | null | undefined>(design?.selectedEventId);
   const [ledger, setLedger] = useState<ScanLedger>(EMPTY_LEDGER);
   const ledgerRef = useRef<ScanLedger>(EMPTY_LEDGER);
   const autoAttempted = useRef(new Set<string>());
@@ -131,6 +133,8 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
   const [now, setNow] = useState(() => Date.now());
   const [retake, setRetake] = useState<string | null>(null);
   const [replaceFailed, setReplaceFailed] = useState(false);
+  const [stage, setStage] = useState<ReviewStage>(batchId === "design-review" || batchId === "design-failed" ? "review" : "bridge");
+  const [reviewFoot, setReviewFoot] = useState<ReviewFoot | null>(null);
   const mounted = useRef(true);
   const loading = useRef(false);
   useEffect(() => () => { mounted.current = false; }, []);
@@ -354,11 +358,21 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
 
   const reading = view.phase === "reading" || view.phase === "importing";
   const readStyles = doneBarStyles;
-  const title = reading ? t("add.batch.readingTop") : view.phase === "done" ? "" : t("add.batch.title");
-  const subtitle = reading ? t("add.batch.readingTopSub", { n: design?.total ?? view.cards.length }) : undefined;
+  const reviewing = view.phase === "review";
+  const reviewEvent = view.events.find((event) => event.eventId === selectedEventId)?.title ?? null;
+  const title = reading ? t("add.batch.readingTop") : reviewing ? t(stage === "bridge" ? "add.batch.bridgeTop" : "add.batch.reviewTop") : view.phase === "done" ? "" : t("add.batch.title");
+  const subtitle = reading ? t("add.batch.readingTopSub", { n: design?.total ?? view.cards.length })
+    : reviewing ? (stage === "bridge" ? [reviewEvent, t("add.batch.readingTopSub", { n: view.cards.length })].filter(Boolean).join(" · ") : t("add.batch.reviewTopSub", { n: view.cards.length }))
+    : undefined;
   const close = () => router.replace("/contacts" as Href);
   const foot = reading ? (
     <KitFoot><FootButton waiting label={t("add.batch.readingWait")} testID="add-batch-wait" /></KitFoot>
+  ) : reviewing && reviewFoot ? (
+    <KitFoot>
+      <FootButton label={reviewFoot.primary} onPress={reviewFoot.onPrimary} waiting={reviewFoot.busy} disabled={reviewFoot.disabled} testID="add-batch-primary" />
+      {reviewFoot.ghost && reviewFoot.onGhost ? <FootGhost label={reviewFoot.ghost} onPress={reviewFoot.onGhost} /> : null}
+      {reviewFoot.note ? <UiText style={[kitStyles.lbl, readNote.note]}>{reviewFoot.note}</UiText> : null}
+    </KitFoot>
   ) : view.phase === "done" ? (
     <KitFoot>
       <FootButton icon="users" label={t("add.batch.viewNetwork")} onPress={close} testID="add-batch-network" />
@@ -367,7 +381,7 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
   ) : null;
   return (
     <View style={{ flex: 1 }}>
-    <AppScreen title={title} subtitle={subtitle} backIcon="x" onBack={close} showBack={view.phase !== "done"}
+    <AppScreen title={title} subtitle={subtitle} backIcon={reviewing && stage === "review" ? "left" : "x"} onBack={reviewing && stage === "review" ? () => setStage("bridge") : close} showBack={view.phase !== "done"}
       header={view.phase === "done" ? (
         // b11 #3: the top bar has only ✕ on the right (kit .topbar 6 / 14, 44 cells), inside the scroll like kit.
         <View style={readStyles.doneBar}><IconButton icon="x" accessibilityLabel={t("add.batch.viewNetwork")} onPress={close} /></View>
@@ -413,7 +427,9 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
               if (target) await api.retryItem(batchId, target.id);
               await load();
             }}
-            onLater={() => router.replace("/contacts" as Href)}
+            stage={stage}
+            onStage={setStage}
+            onFoot={setReviewFoot}
           />
         ) : null}
         {view.phase === "done" ? (
@@ -514,6 +530,7 @@ function ReadingRow({ card, first }: { card: ScanCardView; first: boolean }) {
   return <KitCardRow first={first} title={title} sub={orgRole || card.fileName} trailing={<KitOk />} testID={`add-card-${card.kind}`} />;
 }
 
+const readNote = StyleSheet.create({ note: { textAlign: "center" } });
 const doneBarStyles = StyleSheet.create({
   // marginTop −12: AppScreen's content starts 12 lower than kit .scroll without a nav bar too (see KIT_PAGE_INSET).
   doneBar: { flexDirection: "row", justifyContent: "flex-end", marginTop: -12, paddingTop: 6, paddingBottom: 14, paddingRight: 4, marginHorizontal: 2 },
@@ -545,9 +562,43 @@ const useReadStyles = createThemedStyles((colors) => StyleSheet.create({
   nxMeta: { flex: 1, minWidth: 0 },
   nxTitle: { fontSize: 13, fontWeight: "700", lineHeight: 19.5, color: colors.ink },
   nxSub: { fontSize: 11.5, lineHeight: 17.25, color: colors.ink3 },
+  // b9 A1 ① 衔接：.emo.teal 84（圆角 28、40px）、.h1 margin-top 14、.bq（label / 数字 + 件）margin-top 20、.card.k-when margin-top 12。
+  bridgeHead: { alignItems: "center", marginTop: 12 },
+  bridgeEmo: { width: 84, height: 84, borderRadius: 28, backgroundColor: colors.macTeal, alignItems: "center", justifyContent: "center" },
+  bridgeEmoText: { fontSize: 40, lineHeight: 48 },
+  bridgeTitle: { marginTop: 14 },
+  bq: { flexDirection: "row", gap: 8, marginTop: 20 },
+  bqTile: { flex: 1, minWidth: 0, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: colors.surface },
+  bqNum: { fontSize: 24, fontWeight: "800", lineHeight: 27.6, color: colors.ink, fontVariant: ["tabular-nums"] },
+  // .bq 里的 span.lbl 是行内元素：行盒取父级 14px × 1.5 = 21。
+  bqLbl: { lineHeight: 21 },
+  metCard: { marginTop: 12, backgroundColor: colors.surface, borderRadius: 24, padding: 18 },
+  metRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  metTitle: { fontSize: 13, fontWeight: "700", lineHeight: 19.5, color: colors.ink },
+  metChoices: { marginTop: 10, flexWrap: "wrap" },
+  metLead: { marginTop: 8 },
+  extraGap: { marginTop: 0 },
+  // b11 A1 ⑤ sheet：模糊名刺 120 宽、标题 16、.chip.coral、.card.flat 读めたところ、按钮列间距 8。
+  sheetHead: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  blurCard: { width: 120, height: 120 * 55 / 91, borderRadius: 5, backgroundColor: colors.paper, opacity: 0.85, shadowColor: "#0F0E12", shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 6 } },
+  blurLine1: { position: "absolute", left: 9, top: 9, width: 54, height: 5, borderRadius: 3, backgroundColor: colors.paperInk2, opacity: 0.35 },
+  blurLine2: { position: "absolute", left: 9, top: 30, width: 70, height: 9, borderRadius: 4, backgroundColor: colors.paperInk, opacity: 0.35 },
+  blurLine3: { position: "absolute", left: 9, bottom: 10, width: 80, height: 4, borderRadius: 2, backgroundColor: colors.paperInk2, opacity: 0.3 },
+  sheetTitle: { fontSize: 16, fontWeight: "700", lineHeight: 24, color: colors.ink },
+  why: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
+  partCard: { marginTop: 12, backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 10, paddingHorizontal: 12 },
+  parts: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
+  partUnknown: { opacity: 0.55 },
+  sheetActs: { gap: 8, marginTop: 14 },
+  block: { height: 40, borderRadius: 999, backgroundColor: colors.surface2, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
+  blockPrimary: { backgroundColor: colors.ink },
+  blockGhost: { backgroundColor: "transparent" },
+  blockOff: { opacity: 0.4 },
+  blockText: { fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
   xl: { height: 50, borderRadius: 999, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 },
   xlPrimary: { backgroundColor: colors.ink },
   xlWait: { backgroundColor: colors.surface3 },
+  xlOff: { opacity: 0.4 },
   xlText: { fontSize: 14.5, fontWeight: "700", lineHeight: 21.75 },
   ghost: { height: 40, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   ghostText: { fontSize: 13, fontWeight: "700", lineHeight: 19.5, color: colors.ink2 },
@@ -555,8 +606,25 @@ const useReadStyles = createThemedStyles((colors) => StyleSheet.create({
 
 type Choice = "merge" | "separate";
 
-function ReviewPanel({ view, language, selectedEventId, onChooseEvent, settle, reload, setDraft, setEnrichment, onRetake, onRetry, onLater }: {
+export type ReviewStage = "bridge" | "review";
+export type ReviewFoot = { primary: string; onPrimary: () => void; ghost: string | null; onGhost: (() => void) | null; note: string | null; disabled: boolean; busy: boolean };
+
+const GROUP_SHORT: Record<ScanIssueGroup, MessageKey> = {
+  enrichment: "add.batch.shortEnrichment", format: "add.batch.shortFormat", misread: "add.batch.shortMisread", name: "add.batch.shortName",
+  orgSuffix: "add.batch.shortOrgSuffix", other: "add.batch.shortOther", sides: "add.batch.shortSides",
+};
+
+/**
+ * Reading is over and some cards wait for the person (DESIGN §2.2 step 6):
+ *   bridge (b9 A1 ①): 📇 N枚を読み取りました, the three tiles, 会った場所と日付 (推定) → まとめて確認へ / 確認せずに追加;
+ *   review (b9 A2 ④ App, 統一 — UnifiedReviewApp): 重複 rows (checked = 統合), 要確認 by reason (a row opens its cards),
+ *     then 会った場所 and 読み取れなかった名刺 (a row opens b11 A1 ⑤'s sheet: 撮り直す / 手入力で補う / スキップ).
+ * The bottom buttons are the page's (KitFoot), handed up through onFoot.
+ */
+function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChooseEvent, settle, reload, setDraft, setEnrichment, onRetake, onRetry, onFoot }: {
   view: ScanBatchView;
+  stage: ReviewStage;
+  onStage: (stage: ReviewStage) => void;
   language: string;
   selectedEventId: string | null;
   onChooseEvent: (eventId: string | null) => void;
@@ -566,12 +634,17 @@ function ReviewPanel({ view, language, selectedEventId, onChooseEvent, settle, r
   setEnrichment: (cardId: string, enrichment: EnrichmentDraft) => void;
   onRetake: (cardId: string) => void;
   onRetry: (cardId: string) => Promise<void>;
-  onLater: () => void;
+  onFoot: (foot: ReviewFoot) => void;
 }) {
   const { t } = useOrbitLocale();
+  const { styles: k } = useScanKitStyles();
+  const { styles: r } = useReadStyles();
   const { styles } = useAddStyles();
   const [choices, setChoices] = useState<Record<string, Choice>>({});
   const [open, setOpen] = useState<string | null>(null);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<string | null>(null);
+  const [tile, setTile] = useState<ReviewTileKey>("duplicate");
   const [problems, setProblems] = useState<Record<string, SettleResult>>({});
   const [busy, setBusy] = useState(false);
   // A card the person opened stays where it was while they edit it (fixing the name of a
@@ -588,15 +661,16 @@ function ReviewPanel({ view, language, selectedEventId, onChooseEvent, settle, r
   const adding = addable.length - merging;
   const addLabel = !merging ? t("add.batch.addAll", { n: adding }) : adding ? t("add.batch.addAllWithMerge", { m: merging, n: adding }) : t("add.batch.mergeAll", { m: merging });
 
+  const record = (cardId: string, result: SettleResult) => setProblems((current) => {
+    const next = { ...current };
+    if (result === "created" || result === "merged" || result === "skipped") delete next[cardId];
+    else next[cardId] = result;
+    return next;
+  });
   const settleOne = async (card: ScanCardView): Promise<SettleResult> => {
     const kind = card.section === "duplicate" ? ((choices[card.cardId] ?? "merge") === "merge" ? "merge" : "separate") : "confirm";
     const result = await settle(card.cardId, kind);
-    setProblems((current) => {
-      const next = { ...current };
-      if (result === "created" || result === "merged" || result === "skipped") delete next[card.cardId];
-      else next[card.cardId] = result;
-      return next;
-    });
+    record(card.cardId, result);
     return result;
   };
   const run = async (work: () => Promise<void>) => {
@@ -605,8 +679,12 @@ function ReviewPanel({ view, language, selectedEventId, onChooseEvent, settle, r
     try { await work(); } finally { await reload(); setBusy(false); }
   };
   const addAll = () => run(async () => { for (const card of addable) await settleOne(card); });
+  const settleMany = (cards: readonly ScanCardView[], kind: "merge" | "separate") => run(async () => {
+    for (const card of cards) record(card.cardId, await settle(card.cardId, kind));
+  });
   const confirmOne = (card: ScanCardView) => run(async () => { await settleOne(card); });
   const skipOne = (card: ScanCardView) => run(async () => { await settle(card.cardId, "skip"); });
+  const selectedDups = dups.filter((card) => (choices[card.cardId] ?? "merge") === "merge");
   const groups = ISSUE_GROUP_ORDER.map((group) => [group, reviews.filter((card) => card.issueGroup === group)] as const).filter(([, cards]) => cards.length);
   const cardProps = (card: ScanCardView) => ({
     busy,
@@ -623,83 +701,192 @@ function ReviewPanel({ view, language, selectedEventId, onChooseEvent, settle, r
     setDraft,
     setEnrichment,
   });
+  const needs = dups.length + reviews.length + failed.length;
 
-  return (
-    <View style={styles.stack} testID="add-batch-review">
-      <Card>
-        <View style={styles.stack}>
-          <UiText style={styles.title}>{t("add.batch.reviewTitle", { n: view.cards.length })}</UiText>
-          <Body>{t("add.batch.reviewLead")}</Body>
-          <CountTiles tiles={[
-            { key: "duplicate", label: t("add.batch.tileDuplicate"), value: view.counts.duplicate },
-            { key: "review", label: t("add.batch.tileReview"), value: view.counts.review },
-            { key: "asIs", label: t("add.batch.tileAsIs"), value: view.counts.asIs },
-          ]} />
+  // The page's bottom bar (KitFoot) — handed up whenever what it shows changes.
+  const latest = useRef({ addAll, onStage });
+  latest.current = { addAll, onStage };
+  useEffect(() => {
+    onFoot(stage === "bridge"
+      ? { busy, disabled: false, ghost: addable.length ? t("add.batch.addWithoutReview", { n: addable.length }) : null, note: null, onGhost: () => void latest.current.addAll(), onPrimary: () => latest.current.onStage("review"), primary: t("add.batch.toReview", { n: needs }) }
+      : { busy, disabled: !addable.length, ghost: null, note: t("add.batch.reviewFootNote"), onGhost: null, onPrimary: () => void latest.current.addAll(), primary: addLabel });
+  }, [stage, busy, addable.length, needs, addLabel]);
+
+  const event = view.events.find((entry) => entry.eventId === selectedEventId) ?? null;
+  const metCard = view.events.length ? (
+    <View style={r.metCard} testID="add-batch-met">
+      <View style={r.metRow}>
+        <KitEmo emoji="📍" tone="apricot" sm />
+        <View style={r.nxMeta}>
+          <UiText style={r.metTitle}>{t("add.batch.bridgeMetTitle")}</UiText>
+          <UiText numberOfLines={1} style={k.lbl}>{event ? `${longDate(event.startsAt, language)}${language === "ja" ? "· " : " · "}${event.title}` : t("add.batch.metNone")}</UiText>
         </View>
-      </Card>
-
-      {view.events.length ? (
-        <Card>
-          <View style={styles.stack} testID="add-batch-met">
-            <View style={styles.row}>
-              <UiText style={styles.strong}>{t("add.batch.metTitle")}</UiText>
-              <Chip label={t("add.batch.metEstimated")} tone="apricot" />
-            </View>
-            <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel={t("add.batch.metTitle")}>
-              {view.events.map((event) => (
-                <FilterOption key={event.eventId} label={`${shortDate(event.startsAt, language)} · ${event.title}`} selected={selectedEventId === event.eventId} onToggle={() => onChooseEvent(event.eventId)} />
-              ))}
-              <FilterOption label={t("add.batch.metNone")} selected={selectedEventId === null} onToggle={() => onChooseEvent(null)} />
-            </View>
-            <Caption>{t("add.batch.metLead")}</Caption>
-          </View>
-        </Card>
-      ) : null}
-
-      {dups.length ? (
-        <View style={styles.stack} testID="add-section-duplicate">
-          <SectionTitle>{t("add.batch.sectionDuplicate")}</SectionTitle>
-          {dups.map((card) => <DuplicateCard key={card.cardId} {...cardProps(card)} choice={choices[card.cardId] ?? "merge"} onChoose={(choice) => setChoices((current) => ({ ...current, [card.cardId]: choice }))} />)}
+        <KitChip label={t("add.batch.metEstimated")} tone="apricot" />
+      </View>
+      {stage === "review" ? (
+        <View style={[styles.row, r.metChoices]} accessibilityRole="radiogroup" accessibilityLabel={t("add.batch.metTitle")}>
+          {view.events.map((entry) => (
+            <FilterOption key={entry.eventId} label={`${shortDate(entry.startsAt, language)} · ${entry.title}`} selected={selectedEventId === entry.eventId} onToggle={() => onChooseEvent(entry.eventId)} />
+          ))}
+          <FilterOption label={t("add.batch.metNone")} selected={selectedEventId === null} onToggle={() => onChooseEvent(null)} />
         </View>
       ) : null}
+      <UiText style={[k.lbl, r.metLead]}>{t("add.batch.bridgeMetLead")}</UiText>
+    </View>
+  ) : null;
 
-      {groups.length ? (
-        <View style={styles.stack} testID="add-section-review">
-          <SectionTitle>{t("add.batch.sectionReview")}</SectionTitle>
-          {groups.map(([group, list]) => (
-            <View key={group} style={styles.stack} testID={`add-group-${group}`}>
-              <Caption>{t("add.batch.groupCount", { label: t(GROUP_KEY[group]), n: list.length })}</Caption>
-              {list.map((card) => <ReviewCard key={card.cardId} {...cardProps(card)} />)}
+  const tiles = [
+    { count: view.counts.duplicate, key: "duplicate" as const, label: t("add.batch.tileDuplicate") },
+    { count: view.counts.review, key: "review" as const, label: t("add.batch.tileReview") },
+    { count: view.counts.asIs, key: "asIs" as const, label: t("add.batch.tileAsIs") },
+  ];
+
+  if (stage === "bridge") {
+    return (
+      <View testID="add-batch-bridge">
+        <View style={r.bridgeHead}>
+          <View style={r.bridgeEmo}><UiText style={r.bridgeEmoText}>📇</UiText></View>
+          <UiText accessibilityRole="header" style={[r.h1, r.bridgeTitle]}>{t("add.batch.reviewTitle", { n: view.cards.length })}</UiText>
+          <UiText style={r.sub}>{`${t("add.batch.bridgeLead1")}\n${t("add.batch.bridgeLead2")}`}</UiText>
+        </View>
+        <View style={r.bq}>
+          {tiles.map((entry) => (
+            <View key={entry.key} accessible accessibilityLabel={t("add.batch.tileLabel", { label: entry.label, n: entry.count })} style={r.bqTile} testID={`add-tile-${entry.key}`}>
+              <UiText numberOfLines={1} style={[k.lbl, r.bqLbl]}>{entry.label}</UiText>
+              <UiText style={r.bqNum}>{entry.count}</UiText>
+              <UiText style={[k.lbl, r.bqLbl]}>{t("add.batch.tileUnit")}</UiText>
             </View>
           ))}
         </View>
-      ) : null}
-
-      <View style={styles.stack} testID="add-section-ready">
-        <SectionTitle>{t("add.batch.sectionAsIs")}</SectionTitle>
-        {view.counts.autoAdded ? <Body>{t("add.batch.asIsAuto", { n: view.counts.autoAdded })}</Body> : null}
-        {ready.length ? (
-          <Card>
-            <Caption>{t("add.batch.asIsHeld")}</Caption>
-            {ready.map((card) => <CardRow key={card.cardId} card={card} />)}
-          </Card>
-        ) : null}
+        {metCard}
+        <View style={{ height: KIT_FOOT_SPACE }} />
       </View>
+    );
+  }
 
-      {failed.length ? (
-        <View style={styles.stack} testID="add-section-failed">
-          <SectionTitle>{t("add.batch.sectionFailed")}</SectionTitle>
-          {failed.map((card) => <FailedCard key={card.cardId} {...cardProps(card)} onRetake={() => onRetake(card.cardId)} onRetry={() => void run(() => onRetry(card.cardId))} />)}
+  const failedSheet = failed.find((card) => card.cardId === sheet) ?? null;
+  return (
+    <>
+      <UnifiedReviewApp
+        tiles={tiles}
+        active={tile}
+        onTile={setTile}
+        duplicateTitle={t("add.batch.duplicateTitle", { n: dups.length })}
+        exceptionsOnly={t("add.batch.exceptionsOnly")}
+        autoMergedLabel={view.counts.merged ? t("add.batch.autoMergedCards", { n: view.counts.merged }) : null}
+        autoMergedNote={t("add.batch.autoMergedNote")}
+        similarLabel={t("add.batch.similarOnly", { n: dups.length })}
+        duplicates={dups.flatMap((card) => {
+          const candidate = card.candidate;
+          if (!candidate) return [];
+          const name = card.name || t("add.batch.noName");
+          const company = card.organization ? (candidate.organization && candidate.organization === card.organization ? "" : ` · ${card.organization}`) : t("add.batch.noCompany");
+          return [{
+            existingLine: t("add.batch.existingLine", { value: [candidate.organization, candidate.role].filter(Boolean).join(" · ") || candidate.displayName }),
+            existingName: candidate.displayName, id: card.cardId,
+            incomingLine: t("add.batch.incomingLine", { value: `${name}${company}` }),
+            name, selected: (choices[card.cardId] ?? "merge") === "merge",
+          }];
+        })}
+        onToggle={(id) => setChoices((current) => ({ ...current, [id]: (current[id] ?? "merge") === "merge" ? "separate" : "merge" }))}
+        toggleLabel={(row) => t("add.batch.selectRow", { name: row.name })}
+        mergeLabel={t("add.batch.mergeSelected", { n: selectedDups.length })}
+        separateLabel={t("add.batch.separate")}
+        onMergeSelected={() => void settleMany(selectedDups, "merge")}
+        onSeparate={() => void settleMany(selectedDups, "separate")}
+        reviewTitle={t("add.batch.reviewTitleN", { n: reviews.length })}
+        reviewNote={t("add.batch.reviewNote")}
+        estimated={t("add.batch.metEstimated")}
+        groups={groups.map(([group, list]) => ({
+          count: list.length,
+          example: [list[0]!.name || t("add.batch.noName"), list[0]!.organization].filter(Boolean).join(" · "),
+          key: group, label: t(GROUP_SHORT[group]), open: openGroup === group,
+          tone: group === "name" || group === "misread" ? "lo" as const : "mid" as const,
+        }))}
+        onGroup={(key) => setOpenGroup((value) => (value === key ? null : key))}
+        groupBody={(key) => reviews.filter((card) => card.issueGroup === key).map((card) => <ReviewCard key={card.cardId} {...cardProps(card)} />)}
+        busy={busy}
+      >
+        {metCard ? <View style={r.extraGap}>{metCard}</View> : null}
+        {failed.length ? (
+          <View style={r.listCard} testID="add-section-failed">
+            {failed.map((card, index) => (
+              <UiPressable key={card.cardId} accessibilityRole="button" onPress={() => setSheet(card.cardId)} testID={`add-failed-row-${card.cardId}`}>
+                <KitCardRow first={index === 0} failed title={t(card.failure === "busy" ? "add.batch.failedBusy" : "add.batch.failedTitle")} sub={t("add.batch.photoNth", { n: Math.min(...card.card.items.map((item) => item.seq)) })} trailing={<KitNg />} />
+              </UiPressable>
+            ))}
+          </View>
+        ) : null}
+        {failed.filter((card) => card.cardId === open).map((card) => (
+          <View key={card.cardId} style={r.extraGap}><FailedCard {...cardProps(card)} onRetake={() => onRetake(card.cardId)} onRetry={() => void run(() => onRetry(card.cardId))} /></View>
+        ))}
+        <View style={{ height: KIT_FOOT_SPACE }} />
+      </UnifiedReviewApp>
+      <BottomSheet visible={Boolean(failedSheet)} onClose={() => setSheet(null)} accessibilityLabel={t("add.batch.failedSheetTitle")}>
+        {failedSheet ? (
+          <FailedSheet card={failedSheet} busy={busy}
+            onRetake={() => { setSheet(null); onRetake(failedSheet.cardId); }}
+            onRetry={failedSheet.failure === "busy" ? () => { setSheet(null); void run(() => onRetry(failedSheet.cardId)); } : null}
+            onTypeIn={() => { setSheet(null); setOpen(failedSheet.cardId); }}
+            onSkip={() => { setSheet(null); void skipOne(failedSheet); }} />
+        ) : null}
+      </BottomSheet>
+    </>
+  );
+}
+
+/** b11 A1 ⑤ 読み取れなかった 1枚: the card (blurred), why, what could be read, then 撮り直す / 手入力で補う / スキップ. */
+function FailedSheet({ card, busy, onRetake, onRetry, onTypeIn, onSkip }: { card: ScanCardView; busy: boolean; onRetake: () => void; onRetry: (() => void) | null; onTypeIn: () => void; onSkip: () => void }) {
+  const { t } = useOrbitLocale();
+  const { styles: k } = useScanKitStyles();
+  const { styles: r } = useReadStyles();
+  const parts = [
+    { key: "org", label: t("add.batch.partOrg", { value: card.organization ? `${card.organization}${t("add.batch.partGuess")}` : "—" }), known: Boolean(card.organization) },
+    { key: "name", label: t("add.batch.partName", { value: card.name || "—" }), known: Boolean(card.name) },
+    { key: "contact", label: t("add.batch.partContact", { value: card.draft?.fields.email || card.draft?.fields.phone || "—" }), known: Boolean(card.draft?.fields.email || card.draft?.fields.phone) },
+  ];
+  return (
+    <View testID="add-failed-sheet">
+      <View style={r.sheetHead}>
+        <View style={r.blurCard}><View style={r.blurLine1} /><View style={r.blurLine2} /><View style={r.blurLine3} /></View>
+        <View style={r.nxMeta}>
+          <UiText style={r.sheetTitle}>{t("add.batch.failedSheetTitle")}</UiText>
+          <View style={r.why}><KitChip label={t(card.failure === "busy" ? "add.batch.failedBusy" : "add.batch.failedImage")} tone="coral" /></View>
         </View>
-      ) : null}
-
-      <View style={styles.stack}>
-        <Button variant="primary" block icon="user-plus" label={addLabel} disabled={!addable.length} loading={busy} onPress={() => void addAll()} />
-        <Button variant="ghost" label={t("add.batch.later")} onPress={onLater} />
-        <Caption>{t("add.batch.laterNote")}</Caption>
+      </View>
+      <View style={r.partCard}>
+        <UiText style={k.lbl}>{t("add.batch.readPart")}</UiText>
+        <View style={r.parts}>
+          {parts.map((part) => <KitChip key={part.key} label={part.label} tone={part.known ? "apricot" : "neutral"} style={part.known ? undefined : r.partUnknown} />)}
+        </View>
+      </View>
+      <View style={r.sheetActs}>
+        {onRetry ? <SheetButton primary label={t("add.batch.retryRead")} disabled={busy} onPress={onRetry} /> : null}
+        <SheetButton primary={!onRetry} icon="scan" label={t("add.batch.retakeOne")} disabled={busy} onPress={onRetake} testID="add-failed-retake" />
+        <SheetButton icon="pen" label={t("add.batch.typeInPartial")} disabled={busy} onPress={onTypeIn} testID="add-failed-typein" />
+        <SheetButton ghost label={t("add.batch.skip")} disabled={busy} onPress={onSkip} testID="add-failed-skip" />
       </View>
     </View>
   );
+}
+
+/** .btn.block（高 40、13px 700）/ .primary / .ghost。 */
+function SheetButton({ label, onPress, primary = false, ghost = false, disabled = false, icon, testID }: { label: string; onPress: () => void; primary?: boolean; ghost?: boolean; disabled?: boolean; icon?: "scan" | "pen"; testID?: string }) {
+  const { colors } = useScanKitStyles();
+  const { styles: r } = useReadStyles();
+  return (
+    <UiPressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} hitSlop={2} onPress={onPress}
+      style={[r.block, primary ? r.blockPrimary : ghost ? r.blockGhost : null, disabled ? r.blockOff : null]} testID={testID}>
+      {icon ? <Icon name={icon} size={16} color={primary ? colors.bg : colors.ink} /> : null}
+      <UiText numberOfLines={1} style={[r.blockText, { color: primary ? colors.bg : ghost ? colors.ink2 : colors.ink }]}>{label}</UiText>
+    </UiPressable>
+  );
+}
+
+function longDate(iso: string, language: string): string {
+  const date = new Date(iso);
+  if (language === "ja") return `${date.getMonth() + 1}月${date.getDate()}日（${"日月火水木金土"[date.getDay()]}）`;
+  return date.toLocaleDateString(language === "zh" ? "zh-CN" : "en-US", { day: "numeric", month: "long", weekday: "short" });
 }
 
 function shortDate(iso: string, language: string): string {
@@ -980,12 +1167,12 @@ function DonePanel({ view, eventTitle, dateLabel, onPlan, onFailed }: { view: Sc
 }
 
 /** .btn.block.xl（高 50、14.5px）：primary 或读取中的等待态（surface-3 底、ink-3 字、转圈）。 */
-function FootButton({ label, onPress, waiting = false, icon, testID }: { label: string; onPress?: () => void; waiting?: boolean; icon?: "users"; testID?: string }) {
+function FootButton({ label, onPress, waiting = false, disabled = false, icon, testID }: { label: string; onPress?: () => void; waiting?: boolean; disabled?: boolean; icon?: "users"; testID?: string }) {
   const { colors } = useScanKitStyles();
   const { styles } = useReadStyles();
   return (
-    <UiPressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: waiting, busy: waiting }} disabled={waiting} onPress={onPress}
-      style={[styles.xl, waiting ? styles.xlWait : styles.xlPrimary]} testID={testID}>
+    <UiPressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: waiting || disabled, busy: waiting }} disabled={waiting || disabled} onPress={onPress}
+      style={[styles.xl, waiting ? styles.xlWait : styles.xlPrimary, disabled && !waiting ? styles.xlOff : null]} testID={testID}>
       {waiting ? <KitSpin tone="muted" /> : null}
       {icon ? <Icon name={icon} size={16} color={colors.bg} /> : null}
       <UiText numberOfLines={1} style={[styles.xlText, { color: waiting ? colors.ink3 : colors.bg }]}>{label}</UiText>

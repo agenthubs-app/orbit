@@ -70,6 +70,28 @@
    ],
    "url": "orbit://contacts/new/scan/design-done",
    "note": "名刺 ④ 完成 暗"
+  },
+  {
+   "id": "A-R12-b9-00",
+   "design": "b9-import-plan-v2.html",
+   "board-index": 0,
+   "url": "orbit://contacts/new/scan/design-bridge",
+   "note": "名刺 ① 読み取り完了 → 衔接（mock design-bridge）"
+  },
+  {
+   "id": "A-R12-b9-04",
+   "design": "b9-import-plan-v2.html",
+   "board-index": 4,
+   "url": "orbit://contacts/new/scan/design-review",
+   "note": "まとめて確認 统一 App 版（画板为連絡先，名刺版数据不同）"
+  },
+  {
+   "id": "A-R12-04",
+   "design": "b11-nav-v3.html",
+   "board-index": 4,
+   "url": "orbit://contacts/new/scan/design-failed",
+   "taps": "点「読み取れませんでした」行开 sheet",
+   "note": "名刺 ⑤ 読み取れなかった 1枚"
   }
  ]
 }

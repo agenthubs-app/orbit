@@ -4,17 +4,20 @@
 import type { IngestItemContract } from "../../api/contract/business-card-batch";
 import type { IngestCard } from "../../view-models/business-card-ingest";
 import { addDesignMock } from "./add-design-mock";
-import type { ScanBatchView, ScanCardKind, ScanCardView } from "./scan-batch-model";
+import type { IngestContactCandidateContract } from "../../api/contract/business-card-batch";
+import type { ScanBatchView, ScanCardKind, ScanCardView, ScanIssueGroup, ScanSection } from "./scan-batch-model";
 
-export const SCAN_DESIGN_FIXTURES = ["design-reading", "design-done"] as const;
+export const SCAN_DESIGN_FIXTURES = ["design-reading", "design-done", "design-bridge", "design-review", "design-failed"] as const;
 export type ScanDesignFixture = (typeof SCAN_DESIGN_FIXTURES)[number];
 /** `total`: the card count the page states (the board lists only some of the read cards). */
-export interface ScanDesign { view: ScanBatchView; eventTitle: string | null; dateLabel: string; total: number }
+export interface ScanDesign { view: ScanBatchView; eventTitle: string | null; dateLabel: string; total: number; selectedEventId?: string }
 
 /** The fixture for this batch id, or null (not a design id, or the switch is off). */
 export function scanDesignFor(batchId: string, enabled: boolean = addDesignMock("add-scan")): ScanDesign | null {
   if (!enabled || !(SCAN_DESIGN_FIXTURES as readonly string[]).includes(batchId)) return null;
-  return batchId === "design-reading" ? readingDesign() : doneDesign();
+  if (batchId === "design-reading") return readingDesign();
+  if (batchId === "design-done") return doneDesign();
+  return reviewDesign(batchId === "design-bridge" ? "bridge" : batchId === "design-review" ? "review" : "failed");
 }
 
 function card(seq: number, kind: ScanCardKind, name = "", organization = "", role = "", twoSided = false): ScanCardView {
@@ -47,5 +50,48 @@ function doneDesign(): ScanDesign {
   return {
     dateLabel: "10月7日", eventTitle: "CFO Night Tokyo", total: 17,
     view: { cards, completed: true, counts: { ...COUNTS, created: 14, merged: 2, unreadable: 1 }, createdAt: "2026-10-07T10:00:00+09:00", density: { 1: 2, 2: 13, 3: 1 }, events: [], phase: "done", photos: 17, settled: 17, uploaded: 17 },
+  };
+}
+
+function pending(seq: number, section: ScanSection, name: string, organization: string, extra: Partial<ScanCardView> = {}): ScanCardView {
+  return { ...card(seq, section === "failed" ? "failed" : section === "duplicate" ? "duplicate" : section === "review" ? "guess" : "ready", name, organization), section, ...extra };
+}
+
+function candidate(displayName: string, organization: string): IngestContactCandidateContract {
+  return { address: "", contactId: `contact-${displayName}`, displayName, email: "", identical: false, matchedOn: ["name"], organization, phone: "", role: "" } as unknown as IngestContactCandidateContract;
+}
+
+const CFO_NIGHT = { eventId: "event-cfo", startsAt: "2026-10-07T19:00:00+09:00", title: "CFO Night Tokyo vol.18" };
+
+/**
+ * まとめて確認 (b9 A1 ① 衔接 12枚 · 重複 1 / 要確認 2 / そのまま追加 9; b9 A2 ④ 統一 · 鈴木 大輔 / 渡辺 翔 + 4件 自動統合;
+ * b11 A1 ⑤ 読み取れなかった 1枚). Names from the boards (Web design-fixtures の名刺版と同じ人).
+ */
+function reviewDesign(kind: "bridge" | "review" | "failed"): ScanDesign {
+  const issue = (group: ScanIssueGroup) => ({ issueGroup: group });
+  const cards = kind === "bridge" ? [
+    pending(1, "duplicate", "鈴木 大輔", "", { candidate: candidate("鈴木 大輔", "北辰製作所") }),
+    pending(2, "review", "青木 里奈", "Kanade AI", issue("orgSuffix")),
+    pending(3, "review", "", "東雲キャピタル", issue("name")),
+    ...[4, 5, 6, 7, 8, 9, 10, 11, 12].map((seq) => pending(seq, "ready", "", "")),
+  ] : kind === "review" ? [
+    pending(1, "duplicate", "鈴木 大輔", "", { candidate: candidate("鈴木 大輔", "北辰製作所") }),
+    pending(2, "duplicate", "Sho Watanabe", "Nexa Robotics", { candidate: candidate("渡辺 翔", "Nexa Robotics") }),
+    pending(3, "review", "青木 里奈", "Kanade AI", issue("orgSuffix")),
+    pending(4, "review", "", "東雲キャピタル", issue("name")),
+    ...[5, 6, 7, 8, 9, 10].map((seq) => pending(seq, "ready", "", "")),
+  ] : [
+    card(1, "added", "高山 亮", "ミライ精機", "経営企画部 部長"),
+    card(2, "added", "伊達 修平", "北辰製作所", "経営企画"),
+    card(3, "added", "森田 拓也", "東邦テクノロジーズ", "事業開発部"),
+    pending(16, "failed", "", "東邦テクノ…", { failure: "image" }),
+  ];
+  const count = (section: ScanSection) => cards.filter((entry) => entry.section === section).length;
+  return {
+    dateLabel: "", eventTitle: null, selectedEventId: CFO_NIGHT.eventId, total: cards.length,
+    view: {
+      cards, completed: false, counts: { ...COUNTS, asIs: count("ready"), duplicate: count("duplicate"), failed: count("failed"), merged: kind === "review" ? 4 : 0, review: count("review") },
+      createdAt: CFO_NIGHT.startsAt, density: null, events: kind === "failed" ? [] : [CFO_NIGHT], phase: "review", photos: cards.length, settled: cards.length, uploaded: cards.length,
+    },
   };
 }

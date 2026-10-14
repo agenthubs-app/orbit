@@ -340,30 +340,35 @@ test("読み取り中 → 自動で人脈へ → まとめて確認 → 完成: 
   await page.getByTestId("add-batch-wait").waitFor();
   server.completeReading(batchId);
   // The automatic pass: the identical card merges, the clean two-sided card is created — once each.
-  await page.getByTestId("add-batch-review").waitFor({ timeout: 10000 });
+  await page.getByTestId("add-batch-bridge").waitFor({ timeout: 10000 });
   const confirms = server.calls.filter((call) => /\/(confirm|manual-entry)$/.test(call.path));
   assert.equal(confirms.length, 2, "the similar and the unreadable card are not added automatically");
   assert.equal((confirms[0]!.body as { mergeIntoContactId?: string }).mergeIntoContactId, "contact-sato");
   assert.equal(server.people.length, before + 1);
-  // まとめて確認: three tiles, the similar card side by side, the unreadable card's three ways.
+  // 衔接 (b9 A1 ①): the three tiles, then まとめて確認へ (重複 1 + 読み取れず 1).
   assert.equal(await page.getByTestId("add-tile-duplicate").getAttribute("aria-label"), "重複 1件");
   assert.equal(await page.getByTestId("add-tile-review").getAttribute("aria-label"), "要確認 0件");
   assert.equal(await page.getByTestId("add-tile-asIs").getAttribute("aria-label"), "そのまま追加 2件");
-  await page.getByText("2人はもう人脈に入っています。").waitFor();
+  await page.getByRole("button", { name: "まとめて確認へ（2件）" }).waitFor();
+  await openReview(page);
+  // まとめて確認 (b9 A2 ④): the identical card merged by itself, the similar one as a checked row.
+  await page.getByText("1件は同じ内容だったので自動で統合しました").waitFor();
   const duplicate = page.getByTestId("add-section-duplicate");
-  for (const text of ["既存", "今回", "同じ名前", "統合する", "別人として追加"]) await duplicate.getByText(text, { exact: true }).first().waitFor();
-  assert.equal(await duplicate.getByTestId("add-compare-diff-organization").count(), 1, "東邦テクノ differs from the existing empty company");
-  const failed = page.getByTestId("add-section-failed");
-  await failed.getByText("画像を読み取れませんでした").waitFor();
-  for (const label of ["撮り直す", "手入力で補う", "スキップ"]) await failed.getByRole("button", { name: label }).waitFor();
-  // R12 review M2: 統合する is only the choice (no second 統合する button); the card itself only has スキップ.
-  assert.equal(await duplicate.getByText("統合する", { exact: true }).count(), 1);
-  assert.deepEqual(await duplicate.getByRole("button").allInnerTexts(), ["スキップ"]);
+  await duplicate.getByText(/^既存：/).first().waitFor();
+  await duplicate.getByText(/^今回：/).first().waitFor();
+  assert.deepEqual(await duplicate.getByRole("button").allInnerTexts(), ["選んだ 1件を統合", "別人として追加"]);
   // R12 review m5: 統合 is counted apart from 追加.
   await page.getByRole("button", { name: "1人を統合" }).waitFor();
-  // 別人として追加 for the similar card, スキップ for the unreadable one, then 「N人を人脈に追加」.
-  await duplicate.getByRole("checkbox", { name: "別人として追加" }).click();
-  await failed.getByRole("button", { name: "スキップ" }).click();
+  // The unreadable card opens its sheet (b11 A1 ⑤): why, 撮り直す / 手入力で補う / スキップ.
+  const failed = page.getByTestId("add-section-failed");
+  await failed.getByText("読み取れませんでした").waitFor();
+  await failed.locator("[data-testid^=add-failed-row-]").first().click();
+  const sheet = page.getByTestId("add-failed-sheet");
+  await sheet.getByText("画像を読み取れませんでした").waitFor();
+  for (const label of ["この 1枚を撮り直す", "手入力で補う（読めた所は入力済み）", "スキップ"]) await sheet.getByRole("button", { name: label }).waitFor();
+  // Unchecked = 別人として追加 for the similar card, スキップ for the unreadable one, then 「N人を人脈に追加」.
+  await sheet.getByRole("button", { name: "スキップ" }).click();
+  await duplicate.getByRole("checkbox").first().click();
   await page.getByRole("button", { name: "1人を人脈に追加" }).click();
   await page.getByTestId("add-batch-done-panel").waitFor({ timeout: 10000 });
   const separate = server.calls.filter((call) => /\/confirm$/.test(call.path)).at(-1)!;
@@ -394,7 +399,7 @@ test("R12 review m9: when the duplicate lookup fails nothing is added automatica
     setup: (s) => { s.duplicatesFail = true; },
   });
   server.completeReading(batchId);
-  await page.getByTestId("add-batch-review").waitFor({ timeout: 10000 });
+  await openReview(page);
   assert.equal(server.calls.filter((call) => /\/confirm$/.test(call.path)).length, 0, "nothing was added behind the person's back");
   await page.getByRole("button", { name: "2人を人脈に追加" }).waitFor();
 });
@@ -437,9 +442,9 @@ test("W0015: cards with an event candidate wait in そのまま追加; the batch
     },
   });
   server.completeReading(batchId);
-  await page.getByTestId("add-batch-review").waitFor({ timeout: 10000 });
+  await openReview(page);
   assert.equal(server.calls.filter((call) => /\/confirm$/.test(call.path)).length, 0, "nothing was added without the person");
-  await page.getByTestId("add-batch-met").getByText("CFO Night Tokyo", { exact: false }).waitFor();
+  await page.getByTestId("add-batch-met").getByText("CFO Night Tokyo", { exact: false }).first().waitFor();
   await page.getByRole("button", { name: "2人を人脈に追加" }).click();
   await page.getByTestId("add-batch-done-panel").waitFor({ timeout: 10000 });
   const bodies = server.calls.filter((call) => /\/confirm$/.test(call.path)).map((call) => (call.body as { metEventId?: string }).metEventId);
@@ -461,9 +466,12 @@ test("付けない: no 会った場所 is written; 要確認 opens the fields; a
     },
   });
   server.completeReading(batchId);
-  await page.getByTestId("add-batch-review").waitFor({ timeout: 10000 });
+  await openReview(page);
+  // 要確認 is folded (b9 ④); each reason is a row that opens its cards.
+  await page.getByTestId("add-review-toggle").click();
   await page.getByTestId("add-group-orgSuffix").waitFor();
   await page.getByTestId("add-group-name").waitFor();
+  await page.getByTestId("add-group-name").getByRole("button").first().click();
   await page.getByRole("checkbox", { name: "付けない" }).click();
   // The nameless card: 項目を直す → name → この内容で追加 (the card leaves the 名前 group once it has one).
   const namelessId = await page.getByTestId("add-group-name").locator("[data-testid^=add-review-]").getAttribute("data-testid");
@@ -485,21 +493,28 @@ test("付けない: no 会った場所 is written; 要確認 opens the fields; a
 test("読み取れず: 手入力で補う pre-fills what was read and confirms through manual-entry; 撮り直す replaces the photo", async (t) => {
   const { page, server, batchId } = await batchPage(t, 2, { readings: [{ code: "OCR_PROVIDER_FAILED", kind: "fail" }, { code: "IMAGE_INVALID", kind: "fail" }] });
   server.completeReading(batchId);
-  await page.getByTestId("add-section-failed").waitFor({ timeout: 10000 });
+  await openReview(page);
   const cards = page.getByTestId("add-section-failed");
-  await cards.getByText("混み合っていて失敗しました").waitFor();
-  await cards.getByRole("button", { name: "もう一度読み取る" }).waitFor();
-  // 手入力で補う on the image failure.
-  const imageId = await page.locator("[data-testid^=add-failed-]").filter({ hasText: "画像を読み取れませんでした" }).getAttribute("data-testid");
-  const imageCard = page.getByTestId(imageId!);
-  await imageCard.getByRole("button", { name: "手入力で補う" }).click();
+  // The busy failure: its sheet offers もう一度読み取る.
+  await cards.locator("[data-testid^=add-failed-row-]").filter({ hasText: "混み合っていて失敗しました" }).click();
+  await page.getByTestId("add-failed-sheet").getByRole("button", { name: "もう一度読み取る" }).waitFor();
+  await page.getByTestId("add-failed-sheet").getByRole("button", { name: "スキップ" }).waitFor();
+  await page.mouse.click(5, 5);
+  await page.getByTestId("add-failed-sheet").waitFor({ state: "detached" });
+  // 手入力で補う on the image failure: the sheet closes and the card opens with what was read.
+  const imageRow = cards.locator("[data-testid^=add-failed-row-]").filter({ hasText: "読み取れませんでした" });
+  const imageId = (await imageRow.getAttribute("data-testid"))!.replace("add-failed-row-", "add-failed-");
+  await imageRow.click();
+  await page.getByTestId("add-failed-sheet").getByRole("button", { name: "手入力で補う（読めた所は入力済み）" }).click();
+  const imageCard = page.getByTestId(imageId);
   await imageCard.getByText("読めたところは入力済みです").waitFor();
   await imageCard.getByRole("textbox", { name: "名前" }).fill("小林 恵");
   await imageCard.getByRole("button", { name: "この内容で追加" }).click();
   await imageCard.waitFor({ state: "detached", timeout: 10000 });
   assert.ok(server.calls.some((call) => call.path.endsWith("/manual-entry") && (call.body as { displayName: string }).displayName === "小林 恵"));
   // 撮り直す opens the camera in single-shot mode; the photo replaces the failed side.
-  await page.getByRole("button", { name: "撮り直す" }).click();
+  await cards.locator("[data-testid^=add-failed-row-]").first().click();
+  await page.getByTestId("add-failed-sheet").getByRole("button", { name: "この 1枚を撮り直す" }).click();
   await page.getByTestId("add-scan-camera").waitFor();
   assert.equal(await page.getByRole("tab", { name: "裏面" }).count(), 0, "no sides in single-shot mode");
   await page.getByRole("button", { name: "撮影する" }).click();
@@ -639,3 +654,10 @@ test("dark appearance: the add pages render with no page errors", async (t) => {
     await page.waitForTimeout(100);
   }
 });
+
+/** Reading is over: the 衔接 page (b9 A1 ①) comes first; まとめて確認へ opens the unified review (b9 A2 ④). */
+async function openReview(page: Page): Promise<void> {
+  await page.getByTestId("add-batch-bridge").waitFor({ timeout: 10000 });
+  await page.getByTestId("add-batch-primary").click();
+  await page.getByTestId("add-batch-review").waitFor({ timeout: 10000 });
+}
