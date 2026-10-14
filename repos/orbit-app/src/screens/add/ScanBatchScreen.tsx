@@ -20,7 +20,7 @@ import type { IngestBatchDetailContract, IngestContactCandidateContract } from "
 import type { SecondaryIndustryIdCode } from "../../api/contract/industries";
 import { industryLabel, isIndustryIdCode, secondaryIndustryLabel } from "../../api/domain/industries";
 import { AppScreen } from "../../components/AppScreen";
-import { BottomSheet, Button, Card, Chip, FilterOption, Icon, IconButton, MacTile, ProgressBar, RetryCard, Skeleton, TextField, UiPressable, UiText } from "../../components/ui";
+import { ActionSheet, BottomSheet, Button, Card, Chip, FilterOption, Icon, IconButton, MacTile, ProgressBar, RetryCard, Skeleton, TextField, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
@@ -30,7 +30,7 @@ import { EMPTY_ATTRIBUTION, useAddApi, type BatchAttribution } from "./add-api";
 import { EMPTY_LEDGER, readScanLedger, writeScanLedger, type ScanLedger } from "./add-storage";
 import { Body, Caption, CountTiles, DensityBar, FadeIn, KIT_PAGE_INSET, SectionTitle, useAddStyles } from "./add-ui";
 import { KitChip, KitEmo } from "../plan/plan-kit";
-import { UnifiedReviewApp, type ReviewTileKey } from "./UnifiedReviewApp";
+import { UnifiedReviewApp } from "./UnifiedReviewApp";
 import { KIT_FOOT_SPACE, KitBar, KitBigNums, KitCardRow, KitDensityStack, KitErrCard, KitFoot, KitNg, KitOk, KitSpin, useScanKitStyles } from "./scan-kit";
 import { newAddKey } from "./manual-model";
 import { AfterSteps, CameraPermissionPanel, CardCameraPane } from "./ScanCaptureScreen";
@@ -585,7 +585,7 @@ const useReadStyles = createThemedStyles((colors) => StyleSheet.create({
   extraGap: { marginTop: 0 },
   // b11 A1 ⑤ sheet：模糊名刺 120 宽、标题 16、.chip.coral、.card.flat 读めたところ、按钮列间距 8。
   sheetHead: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  blurCard: { width: 120, height: 120 * 55 / 91, borderRadius: 5, backgroundColor: colors.paper, opacity: 0.85, shadowColor: "#0F0E12", shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 6 } },
+  blurCard: { width: 120, height: 120 * 55 / 91, borderRadius: 5, backgroundColor: colors.paper, opacity: 0.85, shadowColor: colors.cam, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 6 } },
   blurLine1: { position: "absolute", left: 9, top: 9, width: 54, height: 5, borderRadius: 3, backgroundColor: colors.paperInk2, opacity: 0.35 },
   blurLine2: { position: "absolute", left: 9, top: 30, width: 70, height: 9, borderRadius: 4, backgroundColor: colors.paperInk, opacity: 0.35 },
   blurLine3: { position: "absolute", left: 9, bottom: 10, width: 80, height: 4, borderRadius: 2, backgroundColor: colors.paperInk2, opacity: 0.3 },
@@ -649,7 +649,7 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
   const [open, setOpen] = useState<string | null>(null);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [sheet, setSheet] = useState<string | null>(null);
-  const [tile, setTile] = useState<ReviewTileKey>("duplicate");
+  const [rowMenu, setRowMenu] = useState<string | null>(null);
   const [problems, setProblems] = useState<Record<string, SettleResult>>({});
   const [busy, setBusy] = useState(false);
   // A card the person opened stays where it was while they edit it (fixing the name of a
@@ -672,6 +672,10 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
     else next[cardId] = result;
     return next;
   });
+  const problemText = (card: ScanCardView): string | null => {
+    const key = problemKey(card, problems[card.cardId] ?? null);
+    return key ? t(key) : null;
+  };
   const settleOne = async (card: ScanCardView): Promise<SettleResult> => {
     const kind = card.section === "duplicate" ? ((choices[card.cardId] ?? "merge") === "merge" ? "merge" : "separate") : "confirm";
     const result = await settle(card.cardId, kind);
@@ -684,6 +688,9 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
     try { await work(); } finally { await reload(); setBusy(false); }
   };
   const addAll = () => run(async () => { for (const card of addable) await settleOne(card); });
+  // 衔接「確認せずに N人を追加」: everything but 重複 (never merged unseen, R12 m9 / m5); the rest waits in まとめて確認.
+  const quiet = [...reviews, ...ready];
+  const addQuietly = () => run(async () => { for (const card of quiet) await settleOne(card); }).then(() => onStage("review"));
   const settleMany = (cards: readonly ScanCardView[], kind: "merge" | "separate") => run(async () => {
     for (const card of cards) record(card.cardId, await settle(card.cardId, kind));
   });
@@ -709,13 +716,13 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
   const needs = dups.length + reviews.length + failed.length;
 
   // The page's bottom bar (KitFoot) — handed up whenever what it shows changes.
-  const latest = useRef({ addAll, onStage });
-  latest.current = { addAll, onStage };
+  const latest = useRef({ addAll, addQuietly, onStage });
+  latest.current = { addAll, addQuietly, onStage };
   useEffect(() => {
     onFoot(stage === "bridge"
-      ? { busy, disabled: false, ghost: addable.length ? t("add.batch.addWithoutReview", { n: addable.length }) : null, note: null, onGhost: () => void latest.current.addAll(), onPrimary: () => latest.current.onStage("review"), primary: t("add.batch.toReview", { n: needs }) }
+      ? { busy, disabled: false, ghost: quiet.length ? t("add.batch.addWithoutReview", { n: quiet.length }) : null, note: null, onGhost: () => void latest.current.addQuietly(), onPrimary: () => latest.current.onStage("review"), primary: t("add.batch.toReview", { n: needs }) }
       : { busy, disabled: !addable.length, ghost: null, note: t("add.batch.reviewFootNote"), onGhost: null, onPrimary: () => void latest.current.addAll(), primary: addLabel });
-  }, [stage, busy, addable.length, needs, addLabel]);
+  }, [stage, busy, addable.length, quiet.length, needs, addLabel, t]);
 
   const event = view.events.find((entry) => entry.eventId === selectedEventId) ?? null;
   const metCard = view.events.length ? (
@@ -724,7 +731,7 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
         <KitEmo emoji="📍" tone="apricot" sm />
         <View style={r.nxMeta}>
           <UiText style={r.metTitle}>{t("add.batch.bridgeMetTitle")}</UiText>
-          <UiText numberOfLines={1} style={k.lbl}>{event ? `${longDate(event.startsAt, language)}${language === "ja" ? "· " : " · "}${event.title}` : t("add.batch.metNone")}</UiText>
+          <UiText numberOfLines={1} style={k.lbl}>{event ? t("add.batch.metDateEvent", { date: longDate(event.startsAt, language, t), event: event.title }) : t("add.batch.metNone")}</UiText>
         </View>
         <KitChip label={t("add.batch.metEstimated")} tone="apricot" />
       </View>
@@ -774,8 +781,7 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
     <>
       <UnifiedReviewApp
         tiles={tiles}
-        active={tile}
-        onTile={setTile}
+        active="duplicate"
         duplicateTitle={t("add.batch.duplicateTitle", { n: dups.length })}
         exceptionsOnly={t("add.batch.exceptionsOnly")}
         autoMergedLabel={view.counts.merged ? t("add.batch.autoMergedCards", { n: view.counts.merged }) : null}
@@ -790,13 +796,15 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
             existingLine: t("add.batch.existingLine", { value: [candidate.organization, candidate.role].filter(Boolean).join(" · ") || candidate.displayName }),
             existingName: candidate.displayName, id: card.cardId,
             incomingLine: t("add.batch.incomingLine", { value: `${name}${company}` }),
-            name, selected: (choices[card.cardId] ?? "merge") === "merge",
+            name, problem: problemText(card), selected: (choices[card.cardId] ?? "merge") === "merge",
           }];
         })}
         onToggle={(id) => setChoices((current) => ({ ...current, [id]: (current[id] ?? "merge") === "merge" ? "separate" : "merge" }))}
+        onRowMenu={setRowMenu}
         toggleLabel={(row) => t("add.batch.selectRow", { name: row.name })}
         mergeLabel={t("add.batch.mergeSelected", { n: selectedDups.length })}
         separateLabel={t("add.batch.separate")}
+        skipLabel={t("add.batch.skip")}
         onMergeSelected={() => void settleMany(selectedDups, "merge")}
         onSeparate={() => void settleMany(selectedDups, "separate")}
         reviewTitle={t("add.batch.reviewTitleN", { n: reviews.length })}
@@ -805,14 +813,26 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
         groups={groups.map(([group, list]) => ({
           count: list.length,
           example: [list[0]!.name || t("add.batch.noName"), list[0]!.organization].filter(Boolean).join(" · "),
-          key: group, label: t(GROUP_SHORT[group]), open: openGroup === group,
+          key: group, label: t(GROUP_SHORT[group]), open: openGroup === group || list.some((card) => problemText(card) !== null),
           tone: group === "name" || group === "misread" ? "lo" as const : "mid" as const,
         }))}
         onGroup={(key) => setOpenGroup((value) => (value === key ? null : key))}
         groupBody={(key) => reviews.filter((card) => card.issueGroup === key).map((card) => <ReviewCard key={card.cardId} {...cardProps(card)} />)}
+        reviewAttention={reviews.some((card) => problemText(card) !== null)}
         busy={busy}
       >
         {metCard ? <View style={r.extraGap}>{metCard}</View> : null}
+        {/* そのまま追加 cards that could not be added say why (R12 review: a failed settle must never be silent). */}
+        {ready.some((card) => problemText(card) !== null) ? (
+          <View style={r.listCard} testID="add-section-ready">
+            {ready.filter((card) => problemText(card) !== null).map((card, index) => (
+              <View key={card.cardId}>
+                <KitCardRow first={index === 0} title={card.name || t("add.batch.noName")} sub={[card.organization, card.role].filter(Boolean).join(" · ") || card.fileName} />
+                <Caption tone="error">{problemText(card)!}</Caption>
+              </View>
+            ))}
+          </View>
+        ) : null}
         {failed.length ? (
           <View style={r.listCard} testID="add-section-failed">
             {failed.map((card, index) => (
@@ -827,6 +847,8 @@ function ReviewPanel({ view, stage, onStage, language, selectedEventId, onChoose
         ))}
         <View style={{ height: KIT_FOOT_SPACE }} />
       </UnifiedReviewApp>
+      <ActionSheet visible={rowMenu !== null} title={dups.find((card) => card.cardId === rowMenu)?.name ?? ""} options={[{ key: "skip", label: t("add.batch.skip") }]}
+        onSelect={() => { const card = dups.find((entry) => entry.cardId === rowMenu); setRowMenu(null); if (card) void skipOne(card); }} onClose={() => setRowMenu(null)} />
       <BottomSheet visible={Boolean(failedSheet)} onClose={() => setSheet(null)} accessibilityLabel={t("add.batch.failedSheetTitle")}>
         {failedSheet ? (
           <FailedSheet card={failedSheet} busy={busy}
@@ -888,10 +910,11 @@ function SheetButton({ label, onPress, primary = false, ghost = false, disabled 
   );
 }
 
-function longDate(iso: string, language: string): string {
+/** 10月7日（水）: the month, day and weekday from Intl, the shape from the dictionary. */
+function longDate(iso: string, language: string, t: (key: "add.batch.metDate", values: { m: number; d: number; w: string }) => string): string {
   const date = new Date(iso);
-  if (language === "ja") return `${date.getMonth() + 1}月${date.getDate()}日（${"日月火水木金土"[date.getDay()]}）`;
-  return date.toLocaleDateString(language === "zh" ? "zh-CN" : "en-US", { day: "numeric", month: "long", weekday: "short" });
+  const weekday = date.toLocaleDateString(language === "en" ? "en-US" : language === "zh" ? "zh-CN" : "ja-JP", { weekday: "short" });
+  return t("add.batch.metDate", { d: date.getDate(), m: date.getMonth() + 1, w: weekday });
 }
 
 function shortDate(iso: string, language: string): string {
@@ -924,54 +947,6 @@ function Problem({ card, problem }: { card: ScanCardView; problem: SettleResult 
   const { t } = useOrbitLocale();
   const key = problemKey(card, problem);
   return key ? <Caption tone="error">{t(key)}</Caption> : null;
-}
-
-function DuplicateCard({ card, busy, problem, onSkip, choice, onChoose }: CardProps & { choice: Choice; onChoose: (choice: Choice) => void }) {
-  const { t } = useOrbitLocale();
-  const { styles } = useAddStyles();
-  const candidate = card.candidate;
-  if (!candidate) return null;
-  const rows = EDIT_FIELDS.filter((field) => (candidate[field] ?? "").trim() || (card.draft?.fields[field] ?? "").trim());
-  return (
-    <Card>
-      <View style={styles.stack} testID={`add-duplicate-${card.cardId}`}>
-        <View style={styles.row}>
-          <UiText style={[styles.strong, styles.grow]}>{card.name || t("add.batch.noName")}</UiText>
-          {candidate.matchedOn.map((match) => (MATCH_KEY[match] ? <Chip key={match} label={t(MATCH_KEY[match]!)} tone="lav" /> : null))}
-        </View>
-        <View style={styles.tightStack}>
-          <View style={styles.row}>
-            <View style={styles.compareLabel} />
-            <Caption>{t("add.batch.existing")}</Caption>
-            <View style={styles.grow} />
-            <Caption>{t("add.batch.incoming")}</Caption>
-          </View>
-          {rows.map((field) => {
-            const existing = candidate[field] ?? "";
-            const incoming = card.draft?.fields[field] ?? "";
-            const differs = existing.trim() !== incoming.trim();
-            return (
-              <View key={field} style={styles.row} testID={differs ? `add-compare-diff-${field}` : `add-compare-same-${field}`}>
-                <View style={styles.compareLabel}><Caption>{t(FIELD_KEY[field])}</Caption></View>
-                <UiText style={[styles.body, styles.grow]}>{existing || "—"}</UiText>
-                <UiText style={[styles.body, styles.grow, differs ? styles.strong : null]}>{incoming || "—"}</UiText>
-              </View>
-            );
-          })}
-        </View>
-        <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel={card.name || t("add.batch.noName")}>
-          <FilterOption label={t("add.batch.merge")} selected={choice === "merge"} onToggle={() => onChoose("merge")} />
-          <FilterOption label={t("add.batch.separate")} selected={choice === "separate"} onToggle={() => onChoose("separate")} />
-        </View>
-        <Caption>{t("add.batch.mergeNote")}</Caption>
-        <Problem card={card} problem={problem} />
-        {/* R12 review M2: the choice above is the only 統合する; 「N人を追加」 carries it out. */}
-        <View style={styles.row}>
-          <Button size="sm" variant="ghost" label={t("add.batch.skip")} disabled={busy} onPress={onSkip} />
-        </View>
-      </View>
-    </Card>
-  );
 }
 
 function ReviewCard(props: CardProps) {
@@ -1148,7 +1123,7 @@ function DonePanel({ view, eventTitle, dateLabel, onPlan, onFailed }: { view: Sc
         {view.density ? (
           <>
             <UiText style={[k.lbl, styles.densLbl]}>{t("add.doors.densityTitle")}</UiText>
-            <KitDensityStack counts={view.density} accessibilityLabel={([1, 2, 3] as const).map((level) => t("add.batch.doneDensityLevel", { label: t(DENSITY_LABEL[level]), n: view.density![level] })).join(" · ")} />
+            <KitDensityStack counts={view.density} countLabel={(n) => t("add.batch.peopleN", { n })} accessibilityLabel={([1, 2, 3] as const).map((level) => t("add.batch.doneDensityLevel", { label: t(DENSITY_LABEL[level]), n: view.density![level] })).join(" · ")} />
           </>
         ) : null}
       </View>

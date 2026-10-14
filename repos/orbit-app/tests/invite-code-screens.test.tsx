@@ -248,7 +248,7 @@ test("入口: the 招待コード door is open now and leads to contacts/new/inv
   const { page } = await open(t, "/contacts/new");
   await page.getByTestId("add-door-invite").waitFor();
   await page.getByText("相手が自分で入力 → お互いの人脈に自動で追加").waitFor();
-  await page.getByTestId("add-door-invite").getByRole("button").click();
+  await page.getByTestId("add-door-invite").click();
   assert.deepEqual((await state(page, "addNav")).navigation.at(-1), { href: "/contacts/new/invite", method: "push" });
 });
 

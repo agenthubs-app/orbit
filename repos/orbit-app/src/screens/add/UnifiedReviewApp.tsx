@@ -20,6 +20,8 @@ export interface AppReviewDuplicateRow {
   /** 今回：鈴木 大輔（会社なし） */
   incomingLine: string;
   selected: boolean;
+  /** Why the last settle did not go through (保存できませんでした …), under the row. */
+  problem: string | null;
 }
 
 export interface AppReviewGroupRow {
@@ -31,10 +33,9 @@ export interface AppReviewGroupRow {
   open: boolean;
 }
 
-export function UnifiedReviewApp({ tiles, active, onTile, duplicateTitle, exceptionsOnly, autoMergedLabel, autoMergedNote, similarLabel, duplicates, onToggle, toggleLabel, mergeLabel, separateLabel, onMergeSelected, onSeparate, reviewTitle, reviewNote, estimated, groups, onGroup, groupBody, busy, children }: {
+export function UnifiedReviewApp({ tiles, active, duplicateTitle, exceptionsOnly, autoMergedLabel, autoMergedNote, similarLabel, duplicates, onToggle, onRowMenu, toggleLabel, mergeLabel, separateLabel, skipLabel, onMergeSelected, onSeparate, reviewTitle, reviewNote, estimated, groups, onGroup, groupBody, reviewAttention, busy, children }: {
   tiles: readonly { key: ReviewTileKey; label: string; count: number }[];
   active: ReviewTileKey;
-  onTile: (key: ReviewTileKey) => void;
   duplicateTitle: string;
   exceptionsOnly: string;
   autoMergedLabel: string | null;
@@ -42,9 +43,12 @@ export function UnifiedReviewApp({ tiles, active, onTile, duplicateTitle, except
   similarLabel: string;
   duplicates: readonly AppReviewDuplicateRow[];
   onToggle: (id: string) => void;
+  /** Long press on a row: スキップ (not added, not merged). */
+  onRowMenu: (id: string) => void;
   toggleLabel: (row: AppReviewDuplicateRow) => string;
   mergeLabel: string;
   separateLabel: string;
+  skipLabel: string;
   onMergeSelected: () => void;
   onSeparate: () => void;
   reviewTitle: string;
@@ -54,21 +58,23 @@ export function UnifiedReviewApp({ tiles, active, onTile, duplicateTitle, except
   onGroup: (key: string) => void;
   /** The cards of an opened group (edited one by one). */
   groupBody: (key: string) => ReactNode;
+  /** Opens 要確認 by itself (a card there could not be added and says why). */
+  reviewAttention: boolean;
   busy: boolean;
   children?: ReactNode;
 }) {
   const { colors, styles } = useStyles();
-  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewToggled, setReviewOpen] = useState(false);
+  const reviewOpen = reviewToggled || reviewAttention;
   const selected = duplicates.filter((row) => row.selected).length;
   return (
     <View testID="add-batch-review">
       <View style={styles.bq}>
         {tiles.map((tile) => (
-          <UiPressable key={tile.key} accessibilityRole="button" accessibilityLabel={`${tile.label} ${tile.count}`} accessibilityState={{ selected: active === tile.key }} onPress={() => onTile(tile.key)}
-            style={[styles.bqTile, active === tile.key && styles.bqOn]} testID={`add-tile-${tile.key}`}>
+          <View key={tile.key} accessible accessibilityLabel={`${tile.label} ${tile.count}`} style={[styles.bqTile, active === tile.key && styles.bqOn]} testID={`add-tile-${tile.key}`}>
             <UiText numberOfLines={1} style={[styles.lbl, styles.bqLbl]}>{tile.label}</UiText>
             <UiText style={styles.bqNum}>{tile.count}</UiText>
-          </UiPressable>
+          </View>
         ))}
       </View>
 
@@ -89,8 +95,10 @@ export function UnifiedReviewApp({ tiles, active, onTile, duplicateTitle, except
           ) : null}
           {duplicates.length ? <UiText style={[styles.lbl, styles.similar]}>{similarLabel}</UiText> : null}
           {duplicates.map((row, index) => (
-            <UiPressable key={row.id} accessibilityRole="checkbox" accessibilityLabel={toggleLabel(row)} accessibilityState={{ checked: row.selected }} onPress={() => onToggle(row.id)}
-              style={[styles.xrow, index > 0 && styles.xrowLine]} testID={`add-dup-${row.id}`}>
+            <View key={row.id} style={index > 0 ? styles.xrowLine : null}>
+            <UiPressable accessibilityRole="checkbox" accessibilityLabel={toggleLabel(row)} accessibilityState={{ checked: row.selected }} onPress={() => onToggle(row.id)}
+              onLongPress={() => onRowMenu(row.id)} accessibilityActions={[{ name: "longpress", label: skipLabel }]} onAccessibilityAction={() => onRowMenu(row.id)}
+              style={styles.xrow} testID={`add-dup-${row.id}`}>
               <View style={[styles.cbx, row.selected && styles.cbxOn]}>{row.selected ? <Icon name="check" size={16} color={colors.surface} /> : null}</View>
               <View style={styles.avs}>
                 <Avatar name={row.existingName} size="sm" />
@@ -102,6 +110,8 @@ export function UnifiedReviewApp({ tiles, active, onTile, duplicateTitle, except
                 <UiText numberOfLines={1} style={styles.metaSub}>{row.incomingLine}</UiText>
               </View>
             </UiPressable>
+            {row.problem ? <UiText style={styles.problem}>{row.problem}</UiText> : null}
+            </View>
           ))}
           {duplicates.length ? (
             <View style={styles.acts}>
@@ -126,7 +136,7 @@ export function UnifiedReviewApp({ tiles, active, onTile, duplicateTitle, except
               <View key={group.key} testID={`add-group-${group.key}`}>
                 <UiPressable accessibilityRole="button" accessibilityState={{ expanded: group.open }} accessibilityLabel={`${group.label} ${group.example} ${group.count}`} onPress={() => onGroup(group.key)}
                   style={[styles.frow, index < groups.length - 1 || group.open ? styles.frowLine : null]}>
-                  <UiText numberOfLines={1} style={styles.frowKey}>{group.label}</UiText>
+                  <UiText numberOfLines={2} style={styles.frowKey}>{group.label}</UiText>
                   <View style={[styles.dot, { backgroundColor: group.tone === "lo" ? colors.coral : colors.plum300 }]} />
                   <UiText numberOfLines={1} style={styles.frowText}>{group.example}</UiText>
                   <KitChip label={estimated} tone="apricot" />
@@ -143,11 +153,11 @@ export function UnifiedReviewApp({ tiles, active, onTile, duplicateTitle, except
 }
 
 /** .btn.sm（高 32、左右 12、12px 700）/ .primary。可点范围补到 44。 */
-export function SmallButton({ label, onPress, primary = false, ghost = false, disabled = false, testID }: { label: string; onPress: () => void; primary?: boolean; ghost?: boolean; disabled?: boolean; testID?: string }) {
+export function SmallButton({ label, onPress, primary = false, ghost = false, disabled = false, busy = false, testID }: { label: string; onPress: () => void; primary?: boolean; ghost?: boolean; disabled?: boolean; busy?: boolean; testID?: string }) {
   const { colors, styles } = useStyles();
   return (
-    <UiPressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} hitSlop={6} onPress={onPress}
-      style={[styles.sm, primary ? styles.smPrimary : ghost ? styles.smGhost : null, disabled ? styles.smOff : null]} testID={testID}>
+    <UiPressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: disabled || busy, busy }} disabled={disabled || busy} hitSlop={6} onPress={onPress}
+      style={[styles.sm, busy ? styles.smBusy : null, primary ? styles.smPrimary : ghost ? styles.smGhost : null, disabled ? styles.smOff : null]} testID={testID}>
       <UiText numberOfLines={1} style={[styles.smText, { color: primary ? colors.bg : ghost ? colors.ink2 : colors.ink }]}>{label}</UiText>
     </UiPressable>
   );
@@ -186,6 +196,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   smPrimary: { backgroundColor: colors.ink },
   smGhost: { backgroundColor: "transparent" },
   smOff: { opacity: 0.4 },
+  smBusy: { opacity: 0.6 },
   smText: { fontSize: 12, fontWeight: "700", lineHeight: 18 },
   accHead: { flexDirection: "row", alignItems: "center", gap: 6 },
   chevOpen: { transform: [{ rotate: "180deg" }] },
@@ -193,6 +204,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   frow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
   frowLine: { borderBottomWidth: 1, borderBottomColor: colors.line },
   frowKey: { width: 62, fontSize: 11.5, lineHeight: 17.25, color: colors.ink3 },
+  problem: { marginBottom: 8, marginLeft: 30, fontSize: 11.5, lineHeight: 17.25, color: colors.coralText },
   dot: { width: 7, height: 7, borderRadius: 3.5 },
   frowText: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: "700", lineHeight: 19.5, color: colors.ink },
   groupBody: { paddingVertical: 8, gap: 8 },

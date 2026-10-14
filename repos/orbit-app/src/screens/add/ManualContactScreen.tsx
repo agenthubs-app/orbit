@@ -17,6 +17,7 @@ import type { ManualContactFieldChoice, ManualContactMergeField, ManualContactOr
 import { AppScreen } from "../../components/AppScreen";
 import { BottomSheet, Button, ConfirmDialog, FilterOption, Icon, MacTile, Radio, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
+import { floatShadow } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 import { useAddApi } from "./add-api";
@@ -331,7 +332,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
                 {candidate.organization || candidate.role ? <UiText numberOfLines={1} style={m.cmpText}>{[candidate.organization, candidate.role].filter(Boolean).join(" · ")}</UiText> : null}
               </View>
             </View>
-            <UiText style={[m.lbl, m.rule]}>{differing.length ? t("add.manual.dupRule", { fields: differing.map((field) => t(FIELD_KEY[field])).join("・") }) : t("add.manual.dupRuleSame")}</UiText>
+            <UiText style={[m.lbl, m.rule]}>{differing.length ? t("add.manual.dupRule", { fields: differing.map((field) => t(FIELD_KEY[field])).join(t("add.manual.fieldJoin")) }) : t("add.manual.dupRuleSame")}</UiText>
             <View style={m.sheetActs}>
               <Button variant="primary" block label={t("add.manual.dupMerge")} onPress={() => setDecision({ choices: defaultChoices(differing), contactId: candidate.contactId, kind: "merge" })} />
               <Button block label={t("add.manual.dupSeparate")} onPress={() => setDecision({ kind: "separate" })} />
@@ -436,7 +437,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   densLine: { marginTop: 4 },
   gap: { marginTop: 8 },
   dupLine: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 8 },
-  sugg: { marginTop: 6, borderRadius: 14, backgroundColor: colors.surface, padding: 4, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  sugg: { marginTop: 6, borderRadius: 14, backgroundColor: colors.surface, padding: 4, ...floatShadow(colors) },
   suggRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10 },
   suggOn: { backgroundColor: colors.surface2 },
   suggTile: { width: 26, height: 26, borderRadius: 10, alignItems: "center", justifyContent: "center" },

@@ -4,6 +4,10 @@
 import type { IngestItemContract } from "../../api/contract/business-card-batch";
 import type { IngestCard } from "../../view-models/business-card-ingest";
 import { addDesignMock } from "./add-design-mock";
+import samples from "./scan-design-samples.json";
+
+// The board names (data, not copy) live in scan-design-samples.json.
+const S = samples as unknown as Record<"takayama" | "date" | "matsumoto" | "takahashi" | "morita" | "suzuki" | "suzukiExisting" | "watanabe" | "watanabeExisting" | "aoki" | "shinonome" | "partial", [string, string, string]> & { doneDate: string };
 import type { IngestContactCandidateContract } from "../../api/contract/business-card-batch";
 import type { ScanBatchView, ScanCardKind, ScanCardView, ScanIssueGroup, ScanSection } from "./scan-batch-model";
 
@@ -35,10 +39,10 @@ const COUNTS = { asIs: 0, autoAdded: 0, created: 0, duplicate: 0, failed: 0, hel
 /** b11 A1 ③：17枚、12枚 読み取り済み · 高山 亮 ✓ / 伊達 修平 ✓ / 松本 千尋 推測あり / 高橋 美咲 重複 / 12枚目 表＋裏 / 残り 5枚. */
 function readingDesign(): ScanDesign {
   const cards = [
-    card(1, "added", "高山 亮", "ミライ精機", "経営企画部 部長"),
-    card(2, "added", "伊達 修平", "北辰製作所", "経営企画"),
-    card(3, "guess", "松本 千尋", "関西テクノ電機", "役職を推測"),
-    card(4, "duplicate", "高橋 美咲", "青葉ベンチャーズ"),
+    card(1, "added", ...S.takayama),
+    card(2, "added", ...S.date),
+    card(3, "guess", ...S.matsumoto),
+    card(4, "duplicate", ...S.takahashi),
     card(12, "reading", "", "", "", true),
     ...[13, 14, 15, 16, 17].map((seq) => card(seq, "queued")),
   ];
@@ -49,7 +53,7 @@ function readingDesign(): ScanDesign {
 function doneDesign(): ScanDesign {
   const cards = Array.from({ length: 17 }, (_, index) => card(index + 1, index === 16 ? "skipped" : "added"));
   return {
-    dateLabel: "10月7日", eventTitle: "CFO Night Tokyo", total: 17,
+    dateLabel: S.doneDate, eventTitle: "CFO Night Tokyo", total: 17,
     view: { cards, completed: true, counts: { ...COUNTS, created: 14, merged: 2, unreadable: 1 }, createdAt: "2026-10-07T10:00:00+09:00", density: { 1: 2, 2: 13, 3: 1 }, events: [], phase: "done", photos: 17, settled: 17, uploaded: 17 },
   };
 }
@@ -71,21 +75,21 @@ const CFO_NIGHT = { eventId: "event-cfo", startsAt: "2026-10-07T19:00:00+09:00",
 function reviewDesign(kind: "bridge" | "review" | "failed"): ScanDesign {
   const issue = (group: ScanIssueGroup) => ({ issueGroup: group });
   const cards = kind === "bridge" ? [
-    pending(1, "duplicate", "鈴木 大輔", "", { candidate: candidate("鈴木 大輔", "北辰製作所") }),
-    pending(2, "review", "青木 里奈", "Kanade AI", issue("orgSuffix")),
-    pending(3, "review", "", "東雲キャピタル", issue("name")),
+    pending(1, "duplicate", S.suzuki[0], S.suzuki[1], { candidate: candidate(S.suzukiExisting[0], S.suzukiExisting[1]) }),
+    pending(2, "review", S.aoki[0], S.aoki[1], issue("orgSuffix")),
+    pending(3, "review", S.shinonome[0], S.shinonome[1], issue("name")),
     ...[4, 5, 6, 7, 8, 9, 10, 11, 12].map((seq) => pending(seq, "ready", "", "")),
   ] : kind === "review" ? [
-    pending(1, "duplicate", "鈴木 大輔", "", { candidate: candidate("鈴木 大輔", "北辰製作所") }),
-    pending(2, "duplicate", "Sho Watanabe", "Nexa Robotics", { candidate: candidate("渡辺 翔", "Nexa Robotics") }),
-    pending(3, "review", "青木 里奈", "Kanade AI", issue("orgSuffix")),
-    pending(4, "review", "", "東雲キャピタル", issue("name")),
+    pending(1, "duplicate", S.suzuki[0], S.suzuki[1], { candidate: candidate(S.suzukiExisting[0], S.suzukiExisting[1]) }),
+    pending(2, "duplicate", S.watanabe[0], S.watanabe[1], { candidate: candidate(S.watanabeExisting[0], S.watanabeExisting[1]) }),
+    pending(3, "review", S.aoki[0], S.aoki[1], issue("orgSuffix")),
+    pending(4, "review", S.shinonome[0], S.shinonome[1], issue("name")),
     ...[5, 6, 7, 8, 9, 10].map((seq) => pending(seq, "ready", "", "")),
   ] : [
-    card(1, "added", "高山 亮", "ミライ精機", "経営企画部 部長"),
-    card(2, "added", "伊達 修平", "北辰製作所", "経営企画"),
-    card(3, "added", "森田 拓也", "東邦テクノロジーズ", "事業開発部"),
-    pending(16, "failed", "", "東邦テクノ…", { failure: "image" }),
+    card(1, "added", ...S.takayama),
+    card(2, "added", ...S.date),
+    card(3, "added", ...S.morita),
+    pending(16, "failed", S.partial[0], S.partial[1], { failure: "image" }),
   ];
   const count = (section: ScanSection) => cards.filter((entry) => entry.section === section).length;
   return {

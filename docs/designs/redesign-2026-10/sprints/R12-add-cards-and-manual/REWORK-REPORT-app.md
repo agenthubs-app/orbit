@@ -63,5 +63,9 @@
 
 ## 6. 测试
 
-- `tests/add-contact-screens.test.tsx` 19 / 19、`tests/add-design-mock.test.ts` 2 / 2；`tsc` 0；`copy:qa` 加人 0 条。
-- App 全量：见交接笔记（本报告写完时在跑）。
+- `tests/add-contact-screens.test.tsx` 20 / 20（新增「衔接 確認せずに追加 不碰重複、失败说原因」）、`tests/add-design-mock.test.ts` 2 / 2；`tsc` 0；`copy:qa` 加人 0 条。
+- App 全量 3970 条：3969 过、1 条偶发（`app-wide-account` 的 profile 反馈，单跑 28 / 28 过，与加人无关）。顺带修了前任门列改动后没同步的 `invite-code-screens`「入口」一条。
+
+## 7. 独立复核（子代理，2026-10-14）与处理
+
+无 hook 顺序问题、演示数据不会进正式包。中 2 条、小 6 条，全部已改：衔接页「確認せずに N人を追加」只确认 要確認 + そのまま追加（重複不再被默认统合、计数不混）；重複行显示失败原因、长按 = スキップ；要確認有失败时自动展开、そのまま追加 失败的卡列出原因；三格改为不可点；「次回から表示しない」role=button；撮ったあと / 原因行允许两行（英文不截断）；底栏在键盘弹出时隐藏、底部留白 150；草稿按钮 busy 态。另：分隔符、日期格式、「N人」改走字典，示例人名挪到 `scan-design-samples.json`（硬编码文字审计），阴影色改 token（颜色审计）。

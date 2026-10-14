@@ -1,7 +1,7 @@
 // R12 名刺（App）像素返工：b11 A1 ③④⑤ / b9 ① 画板里名刺批次页用到的 kit 类，按原数值翻成 RN 小件。
 // 规则同 plan-kit：字号 / 字重 / 行高 / 间距 / 圆角照抄，颜色只用 token；通用组件仍用 components/ui。
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Animated, Easing, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { Animated, Easing, Keyboard, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
 import type { ContactDensityLevel } from "../../api/compute/contact-density";
 import { Icon, UiText } from "../../components/ui";
@@ -99,6 +99,14 @@ export function KitCardRow({ title, sub, trailing, failed = false, first = false
 export function KitFoot({ children }: { children: ReactNode }) {
   const { colors, styles } = useStyles();
   const [height, setHeight] = useState(0);
+  // The bar stays at the bottom of the screen: while the keyboard is up it would cover the field being typed in.
+  const [keyboard, setKeyboard] = useState(false);
+  useEffect(() => {
+    const shown = Keyboard.addListener("keyboardDidShow", () => setKeyboard(true));
+    const hidden = Keyboard.addListener("keyboardDidHide", () => setKeyboard(false));
+    return () => { shown.remove(); hidden.remove(); };
+  }, []);
+  if (keyboard) return null;
   return (
     <View pointerEvents="box-none" style={styles.foot} onLayout={(event) => setHeight(event.nativeEvent.layout.height)}>
       {height ? (
@@ -117,8 +125,8 @@ export function KitFoot({ children }: { children: ReactNode }) {
     </View>
   );
 }
-/** kit `.scroll` padding-bottom 130：内容不被 KitFoot 盖住。 */
-export const KIT_FOOT_SPACE = 130;
+/** 内容区底部留白：kit `.scroll` padding-bottom 130，两个按钮的底栏约 150——取 150，内容不被 KitFoot 盖住。 */
+export const KIT_FOOT_SPACE = 150;
 
 /** .bignum3：三格（surface-2、圆角 16、padding 10 / 12），数字 26 / 800 / 行高 1.15，下方 .lbl。 */
 export function KitBigNums({ items }: { items: readonly { key: string; value: number; label: string; accessibilityLabel: string; tone?: "coral" }[] }) {
@@ -136,7 +144,7 @@ export function KitBigNums({ items }: { items: readonly { key: string; value: nu
 }
 
 /** .stack3（高 12、圆角 6、段间 2）+ 图例行（●●○ 点 + 「N人」，间距 12，11px ink-3）。 */
-export function KitDensityStack({ counts, accessibilityLabel }: { counts: Readonly<Record<ContactDensityLevel, number>>; accessibilityLabel: string }) {
+export function KitDensityStack({ counts, countLabel, accessibilityLabel }: { counts: Readonly<Record<ContactDensityLevel, number>>; countLabel: (n: number) => string; accessibilityLabel: string }) {
   const { colors, styles } = useStyles();
   const tone: Record<ContactDensityLevel, string> = { 1: colors.plum300, 2: colors.plum500, 3: colors.plum700 };
   const levels = ([1, 2, 3] as const).filter((level) => counts[level] > 0);
@@ -149,7 +157,7 @@ export function KitDensityStack({ counts, accessibilityLabel }: { counts: Readon
         {([1, 2, 3] as const).map((level) => (
           <View key={level} style={styles.legendItem}>
             <View style={styles.dn}>{[1, 2, 3].map((dot) => <View key={dot} style={[styles.dnDot, { backgroundColor: dot <= level ? colors.plum700 : colors.surface3 }]} />)}</View>
-            <UiText style={styles.legendText}>{`${counts[level]}人`}</UiText>
+            <UiText style={styles.legendText}>{countLabel(counts[level])}</UiText>
           </View>
         ))}
       </View>
@@ -175,7 +183,7 @@ export const useScanKitStyles = () => useStyles();
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   tpRing: { padding: 0 },
   tpNgRing: { margin: -3, padding: 1, borderWidth: 2, borderColor: colors.coral, borderRadius: 7 },
-  tp: { width: 44, height: 44 * 55 / 91, borderRadius: 4, backgroundColor: colors.paper, shadowColor: "#0F0E12", shadowOpacity: 0.3, shadowRadius: 2, shadowOffset: { width: 0, height: 2 } },
+  tp: { width: 44, height: 44 * 55 / 91, borderRadius: 4, backgroundColor: colors.paper, shadowColor: colors.cam, shadowOpacity: 0.3, shadowRadius: 2, shadowOffset: { width: 0, height: 2 } },
   tpLine1: { position: "absolute", left: 6, top: 6, width: 22, height: 3, borderRadius: 2, backgroundColor: colors.paperInk2, opacity: 0.5 },
   tpLine2: { position: "absolute", left: 6, bottom: 7, width: 30, height: 5, borderRadius: 2, backgroundColor: colors.paperInk, opacity: 0.7 },
   okd: { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.ok, alignItems: "center", justifyContent: "center", transform: [{ scale: 1 }] },

@@ -278,7 +278,7 @@ function GuideFoot({ onCamera, onPick, hidden, onHide }: { onCamera: () => void;
           <UiText style={g.lnk}>{t("add.scan.pickPhotos")}</UiText>
         </UiPressable>
         {onHide || hidden ? (
-          <UiPressable accessibilityRole="checkbox" accessibilityLabel={t("add.scan.dontShow")} accessibilityState={{ checked: hidden }} hitSlop={12} disabled={!onHide} onPress={onHide ?? undefined} style={g.chk} testID="add-scan-dont-show">
+          <UiPressable accessibilityRole="button" accessibilityLabel={t("add.scan.dontShow")} accessibilityState={{ selected: hidden, disabled: !onHide }} hitSlop={12} disabled={!onHide} onPress={onHide ?? undefined} style={g.chk} testID="add-scan-dont-show">
             <View style={[g.chkBox, hidden && { backgroundColor: colors.plum700, borderColor: colors.plum700 }]}>{hidden ? <Icon name="check" size={16} color={colors.surface} /> : null}</View>
             <UiText style={g.chkText}>{t("add.scan.dontShow")}</UiText>
           </UiPressable>
@@ -306,8 +306,8 @@ export function AfterSteps() {
             {index ? <View style={g.ar}><Icon name="right" size={16} color={colors.ink4} /></View> : null}
             <View style={g.step}>
               <UiText style={g.stepEmoji}>{emoji}</UiText>
-              <UiText numberOfLines={1} style={g.stepTitle}>{title}</UiText>
-              <UiText numberOfLines={1} style={g.stepSub}>{sub}</UiText>
+              <UiText numberOfLines={2} style={g.stepTitle}>{title}</UiText>
+              <UiText numberOfLines={2} style={g.stepSub}>{sub}</UiText>
             </View>
           </Fragment>
         ))}
@@ -321,7 +321,7 @@ const useGuideStyles = createThemedStyles((colors) => StyleSheet.create({
   mybar: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 14, backgroundColor: colors.macTeal, marginBottom: 12 },
   mybarText: { flex: 1, fontSize: 12, fontWeight: "700", lineHeight: 17.4, color: colors.macTealText },
   frame: { height: 168, borderRadius: 22, overflow: "hidden", alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  mcard: { width: 220, height: 220 * 55 / 91, backgroundColor: colors.paper, borderRadius: 5, paddingVertical: 13, paddingHorizontal: 15, transform: [{ rotate: "-3deg" }, { scale: 0.9 }], shadowColor: "#0F0E12", shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 10 } },
+  mcard: { width: 220, height: 220 * 55 / 91, backgroundColor: colors.paper, borderRadius: 5, paddingVertical: 13, paddingHorizontal: 15, transform: [{ rotate: "-3deg" }, { scale: 0.9 }], shadowColor: colors.cam, shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 10 } },
   pCo: { fontSize: 8.5, fontWeight: "700", letterSpacing: 0.34, color: colors.paperInk2, lineHeight: 12.75 },
   pR: { marginTop: "auto", fontSize: 7.5, color: colors.paperInk2, lineHeight: 11.25 },
   pN: { fontSize: 17, fontWeight: "800", letterSpacing: 1.02, fontFamily: "Hiragino Mincho ProN", color: colors.paperInk, lineHeight: 25.5 },

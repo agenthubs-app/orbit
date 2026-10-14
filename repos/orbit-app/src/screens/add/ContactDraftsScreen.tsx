@@ -87,7 +87,7 @@ export function ContactDraftsScreen({ eventId }: { eventId: string | null }) {
                 <UiText style={d.lbl}>{t("add.drafts.importBody")}</UiText>
               </View>
             </View>
-            <View style={d.importAct}><SmallButton primary label={t("add.drafts.importButton")} disabled={Boolean(busy)} onPress={() => void importAttendees()} testID="add-drafts-import-go" /></View>
+            <View style={d.importAct}><SmallButton primary label={t("add.drafts.importButton")} busy={busy === "import"} disabled={Boolean(busy)} onPress={() => void importAttendees()} testID="add-drafts-import-go" /></View>
           </View>
         ) : null}
         {state.kind === "loading" ? <Skeleton lines={4} /> : null}
@@ -107,7 +107,7 @@ export function ContactDraftsScreen({ eventId }: { eventId: string | null }) {
                 </View>
                 {draft.sourceLabel ? <View style={d.chips}><KitChip label={t("add.drafts.from", { label: draft.sourceLabel })} /></View> : null}
                 <View style={d.acts}>
-                  <View style={d.act}><SmallButton label={t("add.drafts.confirm")} disabled={Boolean(busy)} onPress={() => void confirm(draft)} testID={`add-draft-confirm-${draft.id}`} /></View>
+                  <View style={d.act}><SmallButton label={t("add.drafts.confirm")} busy={busy === draft.id} disabled={Boolean(busy)} onPress={() => void confirm(draft)} testID={`add-draft-confirm-${draft.id}`} /></View>
                   <View style={d.act}><SmallButton ghost label={t("add.drafts.discard")} disabled={Boolean(busy)} onPress={() => setDiscarding(draft)} testID={`add-draft-discard-${draft.id}`} /></View>
                 </View>
               </View>

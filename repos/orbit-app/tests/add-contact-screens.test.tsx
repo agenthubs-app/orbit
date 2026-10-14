@@ -236,7 +236,7 @@ test("はじめての方へ: the first three visits only; 次回から表示し�
   await fourth.page.getByRole("button", { name: "撮り方のコツ" }).click();
   await fourth.page.getByTestId("add-scan-guide").waitFor();
   // 次回から表示しない hides it for good and opens the camera.
-  await page.getByRole("checkbox", { name: "次回から表示しない" }).click();
+  await page.getByRole("button", { name: "次回から表示しない" }).click();
   await page.getByTestId("add-scan-camera").waitFor();
   assert.equal(JSON.parse((await page.evaluate(() => (window as unknown as { deviceStore: Record<string, string> }).deviceStore))["orbit:add:scan-guide:v1"]!).hidden, true);
 });
@@ -388,6 +388,27 @@ test("読み取り中 → 自動で人脈へ → まとめて確認 → 完成: 
   // Every card was confirmed at most once.
   const confirmedItems = server.calls.filter((call) => /\/(confirm|manual-entry)$/.test(call.path) && call.method === "POST").map((call) => call.path);
   assert.equal(new Set(confirmedItems).size, confirmedItems.length, "no card was confirmed twice");
+});
+
+test("衔接 確認せずに N人を追加: never merges a 重複 unseen; a card it could not add says why in まとめて確認", async (t) => {
+  const people = [{ displayName: "高橋 美咲", email: "", id: "contact-takahashi", organization: "", phone: "", role: "" }];
+  const { page, server, batchId } = await batchPage(t, 2, {
+    people,
+    readings: [
+      { fields: { name: "高橋 美咲", organization: "東邦テクノ" }, kind: "read" },
+      { fields: { organization: "星野" }, kind: "read" },
+    ],
+  });
+  server.completeReading(batchId);
+  await page.getByTestId("add-batch-bridge").waitFor({ timeout: 10000 });
+  // Only the 要確認 card counts (the 重複 waits for the person).
+  await page.getByRole("button", { name: "確認せずに 1人を追加" }).click();
+  await page.getByTestId("add-batch-review").waitFor({ timeout: 10000 });
+  const merges = server.calls.filter((call) => /\/confirm$/.test(call.path) && (call.body as { mergeIntoContactId?: string }).mergeIntoContactId);
+  assert.equal(merges.length, 0, "the similar card was not merged behind the person's back");
+  // The nameless card was blocked: 要確認 opens by itself and says why.
+  await page.getByTestId("add-group-name").getByText("名前を入れてから追加してください。").waitFor();
+  await page.getByTestId("add-section-duplicate").waitFor();
 });
 
 test("R12 review m9: when the duplicate lookup fails nothing is added automatically", async (t) => {
