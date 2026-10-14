@@ -572,7 +572,7 @@ export const plan = {
   "plan.legacy.statusDone": "完了",
   "plan.legacy.statusSkipped": "スキップ",
   "plan.legacy.statusDismissed": "見送り",
-  "plan.legacy.statusOpen": "未着手",
+  "plan.legacy.statusOpen": "未完了",
   "plan.legacy.empty": "このプランには項目がありません。",
   // R24 review fixes (App).
   "plan.pending.memoNoPoints": "{name}さんとの面談で 3 問中 {count} 問を話せました · 加点しますか？",
@@ -699,4 +699,12 @@ export const plan = {
   "plan.review.fromBubble": "プランの「方案を見直す」から",
   "plan.review.sinceWeeks": "前回の確定（{date}）から {weeks}週間です。",
   "plan.review.sinceDays": "前回の確定（{date}）から {days}日です。",
+  "plan.legacy.viewOnly": "閲覧のみ",
+  "plan.legacy.startedV2": "{date} 開始",
+  "plan.legacy.stepLabel": "Step",
+  "plan.legacy.cardBodyV2": "以前の形式のプランです。見ることはできますが、編集や再分析はできません。新しいプランは目標から作ります。",
+  "plan.legacy.details": "詳しく見る",
+  "plan.legacy.newNote": "新しいプランでは、目標から話すべき人のタイプと配点を一緒に決めます。",
+  "plan.legacy.readOnlyNoteV2": "以前のプランは閲覧のみです。編集や再分析はできません。",
+  "plan.legacy.notInNetwork": "まだ人脈にいません",
 } as const;

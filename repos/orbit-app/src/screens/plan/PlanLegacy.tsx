@@ -12,7 +12,8 @@ import { planLegacyHref, planTaskSegmentHref } from "../../api/compute/plan-href
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { openMainTab } from "../../components/shell-navigation";
-import { Button, Chip, type ChipTone, Icon, RetryCard, Skeleton, UiPressable, UiText } from "../../components/ui";
+import { AppScreen } from "../../components/AppScreen";
+import { Avatar, Icon, RetryCard, Skeleton, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import type { OrbitTranslator } from "../../i18n/messages";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -20,7 +21,7 @@ import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi, type PlanFailure } from "./plan-api";
 import { legacyGroups, legacyStatus, type LegacyKind, type LegacyStatus } from "./plan-review-model";
 import { dateParts } from "./plan-review-ui";
-import { PlanFrame, usePlanStyles } from "./plan-ui";
+import { KitButton, KitCard, KitChip, KitEmo, kitText, useKitStyles, type KitTone } from "./plan-kit";
 
 const KIND_KEYS: Record<LegacyKind, "plan.legacy.kindAction" | "plan.legacy.kindNeed" | "plan.legacy.kindInfo" | "plan.legacy.kindEvent"> = {
   action: "plan.legacy.kindAction",
@@ -28,45 +29,57 @@ const KIND_KEYS: Record<LegacyKind, "plan.legacy.kindAction" | "plan.legacy.kind
   info: "plan.legacy.kindInfo",
   network_need: "plan.legacy.kindNeed",
 };
-const STATUS: Record<LegacyStatus, { key: "plan.legacy.statusDone" | "plan.legacy.statusSkipped" | "plan.legacy.statusDismissed" | "plan.legacy.statusOpen"; tone: ChipTone }> = {
+const STATUS: Record<LegacyStatus, { key: "plan.legacy.statusDone" | "plan.legacy.statusSkipped" | "plan.legacy.statusDismissed" | "plan.legacy.statusOpen"; tone: KitTone }> = {
   dismissed: { key: "plan.legacy.statusDismissed", tone: "neutral" },
-  done: { key: "plan.legacy.statusDone", tone: "ok" },
-  open: { key: "plan.legacy.statusOpen", tone: "lav" },
+  done: { key: "plan.legacy.statusDone", tone: "teal" },
+  open: { key: "plan.legacy.statusOpen", tone: "neutral" },
   skipped: { key: "plan.legacy.statusSkipped", tone: "neutral" },
 };
 
-/** 「以前のプラン」 card(s) + 「新しいプランを作る」. */
+/** 「以前のプラン」 card(s) + 「新しいプランを作る」（b12 A-R25-15 .k-alg）。 */
 export function PlanLegacyCard({ plans, onCreate }: { plans: readonly PlanLegacyItem[]; onCreate: () => void }) {
-  const shared = usePlanStyles().styles;
   const { styles, colors } = useStyles();
+  const kit = useKitStyles().styles;
   const router = useRouter();
-  const { t } = useOrbitLocale();
+  const { t, language } = useOrbitLocale();
   return (
     <View style={styles.page} testID="legacy-card">
-      <View style={shared.card}>
-        <View style={shared.row}>
-          <Icon name="archive" size={20} color={colors.ink3Text} />
-          <UiText accessibilityRole="header" style={[shared.title, shared.grow]}>{t("plan.legacy.title")}</UiText>
-          <Chip label={t("plan.legacy.readOnly")} tone="neutral" />
-        </View>
-        <UiText style={shared.body2}>{t("plan.legacy.cardBody")}</UiText>
-        {plans.map((plan) => (
-          <UiPressable key={plan.planId} accessibilityRole="link" accessibilityLabel={t("plan.legacy.open", { goal: plan.goal })} onPress={() => router.push(planLegacyHref("app", plan.planId) as Href)} style={shared.softCard} testID="legacy-row">
-            <View style={shared.row}>
-              <UiText numberOfLines={2} style={[shared.title, shared.grow]}>{plan.goal}</UiText>
-              <Icon name="right" size={16} color={colors.ink3Text} />
+      {plans.map((plan) => (
+        <KitCard key={plan.planId} testID="legacy-row">
+          <View style={styles.chips}>
+            <KitChip label={t("plan.legacy.title")} />
+            <KitChip label={t("plan.legacy.viewOnly")} />
+            <KitChip label={t(plan.status === "active" ? "plan.legacy.active" : "plan.legacy.archived")} tone={plan.status === "active" ? "teal" : "neutral"} style={styles.chipRight} />
+          </View>
+          <UiText accessibilityRole="header" style={styles.goal}>{plan.goal}</UiText>
+          <UiText style={kit.lbl}>{[t("plan.legacy.startedV2", { date: longDay(plan.startsOn, language) }), plan.phase ? t("plan.legacy.phase", { n: plan.phase.number }) : null].filter(Boolean).join(" · ")}</UiText>
+          <View style={styles.grid2}>
+            <View style={styles.cell}>
+              <View style={styles.between}><UiText style={kit.lbl}>{t("plan.legacy.stepLabel")}</UiText><UiText style={styles.num}>{`${plan.actionsDone} / ${plan.actionsTotal}`}</UiText></View>
+              <View style={styles.bar}>
+                <View style={[styles.barFill, { width: `${plan.actionsTotal ? (plan.actionsDone / plan.actionsTotal) * 100 : 0}%` }]} />
+                <View style={[styles.barDot, { left: `${plan.actionsTotal ? (plan.actionsDone / plan.actionsTotal) * 100 : 0}%` }]} />
+              </View>
             </View>
-            <UiText style={shared.caption}>{t("plan.legacy.started", dateParts(plan.startsOn))}</UiText>
-            <View style={shared.wrap}>
-              <Chip label={t("plan.legacy.steps", { done: plan.actionsDone, total: plan.actionsTotal })} tone="lav" />
-              <Chip label={t("plan.legacy.needs", { count: plan.needs })} tone="neutral" />
+            <View style={styles.cell}>
+              <View style={styles.between}><UiText style={kit.lbl}>{t("plan.legacy.kindNeed")}</UiText><UiText style={styles.num}>{String(plan.needs)}</UiText></View>
             </View>
+          </View>
+          <UiText style={styles.sub}>{t("plan.legacy.cardBodyV2")}</UiText>
+          <UiPressable accessibilityRole="link" accessibilityLabel={t("plan.legacy.open", { goal: plan.goal })} onPress={() => router.push(planLegacyHref("app", plan.planId) as Href)} style={styles.open}>
+            <UiText style={styles.openText}>{t("plan.legacy.details")}</UiText>
+            <Icon name="right" size={16} color={colors.ink} />
           </UiPressable>
-        ))}
-        <Button block icon="plus" label={t("plan.legacy.create")} onPress={onCreate} variant="primary" />
-      </View>
+        </KitCard>
+      ))}
+      <KitButton primary icon="sparkle" label={t("plan.legacy.create")} onPress={onCreate} style={styles.create} testID="legacy-create" />
+      <UiText style={[kit.lbl, styles.center]}>{t("plan.legacy.newNote")}</UiText>
     </View>
   );
+}
+
+function longDay(day: string, language: string): string {
+  return new Date(`${day.slice(0, 10)}T00:00:00+09:00`).toLocaleDateString(language === "en" ? "en-US" : language === "zh" ? "zh-CN" : "ja-JP", { day: "numeric", month: "long", timeZone: "Asia/Tokyo", year: "numeric" });
 }
 
 type Load = { kind: "loading" } | { kind: "failed"; failure: PlanFailure } | { kind: "ready"; plan: PlanLegacyDetail };
@@ -76,9 +89,9 @@ export function PlanLegacyScreen({ planId }: { planId: string }) {
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
-  const shared = usePlanStyles().styles;
   const { styles } = useStyles();
-  const { t } = useOrbitLocale();
+  const kit = useKitStyles().styles;
+  const { t, language } = useOrbitLocale();
   const copy = useStandardCopy();
   const [load, setLoad] = useState<Load>({ kind: "loading" });
 
@@ -95,7 +108,8 @@ export function PlanLegacyScreen({ planId }: { planId: string }) {
   const close = () => (router.canGoBack() ? router.back() : openMainTab(router, planTaskSegmentHref("app")));
 
   return (
-    <PlanFrame title={t("plan.legacy.title")} subtitle={load.kind === "ready" ? load.plan.goal : undefined} stage={null} onClose={close}>
+    <View style={styles.fill}>
+    <AppScreen title={t("plan.legacy.title")} subtitle={t("plan.legacy.viewOnly")} onBack={close}>
       {load.kind === "loading" ? <Skeleton lines={6} /> : null}
       {load.kind === "failed" ? (
         <RetryCard
@@ -105,53 +119,93 @@ export function PlanLegacyScreen({ planId }: { planId: string }) {
         />
       ) : null}
       {load.kind === "ready" ? (
-        <View style={styles.page} testID="legacy-detail">
-          <View style={shared.card}>
-            <View style={shared.row}>
-              <UiText accessibilityRole="header" style={[shared.heading, shared.grow]}>{load.plan.goal}</UiText>
-              <Chip label={t(load.plan.status === "active" ? "plan.legacy.active" : "plan.legacy.archived")} tone="neutral" />
+        <View style={styles.detail} testID="legacy-detail">
+          <KitCard>
+            <View style={styles.chips}>
+              <KitChip label={t("plan.legacy.viewOnly")} />
+              <KitChip label={t(load.plan.status === "active" ? "plan.legacy.active" : "plan.legacy.archived")} tone={load.plan.status === "active" ? "teal" : "neutral"} />
             </View>
-            <UiText style={shared.caption}>{t("plan.legacy.started", dateParts(load.plan.startsOn))}</UiText>
-            {load.plan.archivedAt ? <UiText style={shared.caption}>{t("plan.legacy.ended", dateParts(load.plan.archivedAt))}</UiText> : null}
-            <View style={shared.wrap}>
-              <Chip label={t("plan.legacy.steps", { done: load.plan.actionsDone, total: load.plan.actionsTotal })} tone="lav" />
-              <Chip label={t("plan.legacy.needs", { count: load.plan.needs })} tone="neutral" />
-            </View>
+            <UiText accessibilityRole="header" style={[styles.goal, styles.goalDetail]}>{load.plan.goal}</UiText>
+            <UiText style={kit.lbl}>{[t("plan.legacy.startedV2", { date: longDay(load.plan.startsOn, language) }), t("plan.legacy.steps", { done: load.plan.actionsDone, total: load.plan.actionsTotal }), load.plan.archivedAt ? t("plan.legacy.ended", dateParts(load.plan.archivedAt)) : null].filter(Boolean).join(" · ")}</UiText>
             {load.plan.analysisSummary ? (
               <>
-                <UiText style={shared.label}>{t("plan.legacy.summary")}</UiText>
-                <UiText style={shared.body}>{load.plan.analysisSummary}</UiText>
+                <UiText style={[kit.lbl, styles.summaryLabel]}>{t("plan.legacy.summary")}</UiText>
+                <UiText style={styles.summary}>{load.plan.analysisSummary}</UiText>
               </>
             ) : null}
-            <UiText style={shared.caption}>{t("plan.legacy.readOnlyNote")}</UiText>
-          </View>
-          {legacyGroups(load.plan.items).map((group) => (
-            <View key={group.kind} style={shared.card} testID="legacy-group">
-              <UiText accessibilityRole="header" style={shared.title}>{t(KIND_KEYS[group.kind])}</UiText>
-              {group.items.map((item, index) => {
-                const status = STATUS[legacyStatus(item.status)];
-                return (
-                  <View key={`${item.title}-${index}`} style={styles.item}>
-                    <View style={shared.grow}>
-                      <UiText style={shared.body}>{item.title}</UiText>
-                      {item.phase ? <UiText style={shared.caption}>{legacyPhaseLabel(item.phase, t)}</UiText> : null}
-                    </View>
-                    <Chip label={t(status.key)} tone={status.tone} />
+          </KitCard>
+          <View style={styles.note}><UiText style={styles.noteText}>{t("plan.legacy.readOnlyNoteV2")}</UiText></View>
+          {legacyGroups(load.plan.items).map((group) => {
+            const phaseOf = (item: PlanLegacyDetail["items"][number]) => (item.phaseNumber != null ? t("plan.legacy.phase", { n: item.phaseNumber }) : item.phase ? legacyPhaseLabel(item.phase, t) : null);
+            const phases = group.kind === "action" ? [...new Set(group.items.map(phaseOf))] : [null];
+            return (
+              <KitCard key={group.kind} testID="legacy-group">
+                <View style={styles.groupHead}>
+                  <KitEmo emoji={group.kind === "action" ? "✅" : group.kind === "network_need" ? "👥" : group.kind === "event" ? "🎟️" : "📄"} tone={group.kind === "network_need" ? "lav" : "teal"} sm />
+                  <UiText accessibilityRole="header" style={kit.h3}>{t(KIND_KEYS[group.kind])}</UiText>
+                </View>
+                {phases.map((phase) => (
+                  <View key={String(phase)}>
+                    {phase !== null ? <UiText style={[kit.lbl, styles.phase]}>{phase}</UiText> : null}
+                    {group.items.filter((item) => group.kind !== "action" || phaseOf(item) === phase).map((item, index) => {
+                      const status = STATUS[legacyStatus(item.status)];
+                      return (
+                        <View key={`${item.title}-${index}`} style={[styles.li, index > 0 && styles.line]}>
+                          {group.kind === "network_need" ? (item.contactName ? <Avatar name={item.contactName} size="sm" /> : <View style={styles.unknown}><UiText style={styles.unknownText}>?</UiText></View>) : null}
+                          <View style={kit.grow}>
+                            <UiText style={styles.liTitle}>{group.kind === "network_need" && item.contactName ? item.contactName : item.title}</UiText>
+                            {group.kind === "network_need" ? <UiText style={styles.liSub}>{item.contactName ? [item.organization, item.title].filter(Boolean).join(" · ") : t("plan.legacy.notInNetwork")}</UiText> : null}
+                          </View>
+                          <KitChip label={t(status.key)} tone={status.tone} />
+                        </View>
+                      );
+                    })}
                   </View>
-                );
-              })}
-            </View>
-          ))}
-          {load.plan.items.length === 0 ? <UiText style={shared.caption}>{t("plan.legacy.empty")}</UiText> : null}
+                ))}
+              </KitCard>
+            );
+          })}
+          {load.plan.items.length === 0 ? <UiText style={kit.lbl}>{t("plan.legacy.empty")}</UiText> : null}
         </View>
       ) : null}
-    </PlanFrame>
+    </AppScreen>
+    </View>
   );
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  page: { gap: 14 },
-  item: { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
+  fill: { flex: 1 },
+  // AppScreen 内容区多 12 上边距、左右 16（kit 18）：同计划其他页先在页内抵消。
+  page: { marginTop: -12, marginHorizontal: 2 },
+  detail: { gap: 14, marginTop: -12, marginHorizontal: 2 },
+  chips: { flexDirection: "row", alignItems: "center", gap: 6 },
+  chipRight: { marginLeft: "auto" },
+  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  goal: { color: colors.ink, ...kitText(17, "800", 1.4), marginTop: 12 },
+  goalDetail: { marginTop: 10 },
+  grid2: { flexDirection: "row", gap: 10, marginTop: 14 },
+  cell: { flex: 1, minWidth: 0 },
+  num: { color: colors.ink, ...kitText(14, "700") },
+  bar: { height: 6, borderRadius: 3, backgroundColor: colors.surface3, marginTop: 8, justifyContent: "center" },
+  barFill: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 3, backgroundColor: colors.plum300 },
+  barDot: { position: "absolute", width: 12, height: 12, marginLeft: -6, borderRadius: 6, backgroundColor: colors.plum700, borderWidth: 2, borderColor: colors.surface },
+  sub: { color: colors.ink2, ...kitText(12.5, "400", 1.6), marginTop: 14 },
+  open: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 40, borderRadius: 999, backgroundColor: colors.surface2, marginTop: 12 },
+  openText: { color: colors.ink, ...kitText(13, "700") },
+  create: { height: 50, marginTop: 18 },
+  center: { textAlign: "center", marginTop: 8 },
+  summaryLabel: { marginTop: 12, fontWeight: "800" },
+  summary: { color: colors.ink2, ...kitText(12.5, "400", 1.65), marginTop: 2 },
+  note: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
+  noteText: { color: colors.ink2, ...kitText(12, "400", 1.6) },
+  groupHead: { flexDirection: "row", alignItems: "center", gap: 6 },
+  phase: { marginTop: 8, fontWeight: "800" },
+  li: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
+  line: { borderTopWidth: 1, borderTopColor: colors.line },
+  liTitle: { color: colors.ink, ...kitText(13, "700") },
+  liSub: { color: colors.ink3, ...kitText(11.5, "500") },
+  unknown: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
+  unknownText: { color: colors.ink3, ...kitText(11.5, "800") },
 }));
 
 /** 旧计划的阶段 id 是 p1 / p2…（模拟器走查：直接显示内部代号用户看不懂）→「阶段 1」；其他格式原样。 */

@@ -699,4 +699,12 @@ export const plan = {
   "plan.review.fromBubble": "From 「Review the plan」 on the plan",
   "plan.review.sinceWeeks": "{weeks} weeks since the last confirm ({date}). ",
   "plan.review.sinceDays": "{days} days since the last confirm ({date}). ",
+  "plan.legacy.viewOnly": "View only",
+  "plan.legacy.startedV2": "Started {date}",
+  "plan.legacy.stepLabel": "Steps",
+  "plan.legacy.cardBodyV2": "This plan uses the earlier format. You can look at it but not edit or re-analyse it. A new plan starts from a goal.",
+  "plan.legacy.details": "See details",
+  "plan.legacy.newNote": "A new plan sets the types of people to talk to and their points from your goal.",
+  "plan.legacy.readOnlyNoteV2": "Earlier plans are view only. They cannot be edited or re-analysed.",
+  "plan.legacy.notInNetwork": "Not in your network yet",
 } as const;

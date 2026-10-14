@@ -699,4 +699,12 @@ export const plan = {
   "plan.review.fromBubble": "从计划的「重新审视方案」进入",
   "plan.review.sinceWeeks": "距上次确定（{date}）已经 {weeks} 周。",
   "plan.review.sinceDays": "距上次确定（{date}）已经 {days} 天。",
+  "plan.legacy.viewOnly": "只读",
+  "plan.legacy.startedV2": "{date} 开始",
+  "plan.legacy.stepLabel": "Step",
+  "plan.legacy.cardBodyV2": "这是旧格式的计划。可以查看，但不能编辑或重新分析。新计划从目标开始做。",
+  "plan.legacy.details": "查看详情",
+  "plan.legacy.newNote": "新计划会根据目标，一起定下该聊的人的类型和配分。",
+  "plan.legacy.readOnlyNoteV2": "旧计划只能查看，不能编辑或重新分析。",
+  "plan.legacy.notInNetwork": "还不在人脉里",
 } as const;

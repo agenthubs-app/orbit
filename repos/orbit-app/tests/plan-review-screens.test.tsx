@@ -536,27 +536,29 @@ test("以前のプラン: the card replaces the goal input for a v1 user; the pa
   const card = page.getByTestId("legacy-card");
   await card.waitFor();
   await card.getByText(LEGACY.goal).waitFor();
-  await card.getByText("開始 2026年6月2日").waitFor();
-  await card.getByText("Step 3 / 7").waitFor();
-  await card.getByText("会いたい人 4").waitFor();
+  // b12 A-R25-15：「2026年6月2日 開始」、Step と 会いたい人 は数字を右に分けて表示。
+  await card.getByText("2026年6月2日 開始", { exact: false }).waitFor();
+  await card.getByText("3 / 7", { exact: true }).waitFor();
+  await card.getByText("会いたい人", { exact: true }).waitFor();
+  await card.getByText("4", { exact: true }).waitFor();
   assert.equal(await page.getByText("何を達成したいですか？").count(), 0);
   await card.getByRole("button", { name: "新しいプランを作る" }).click();
   await page.getByText("何を達成したいですか？").waitFor();
   await page.getByRole("button", { name: "プランに戻る" }).click();
-  await page.getByTestId("legacy-row").click();
+  await page.getByRole("link", { name: `${LEGACY.goal}（以前のプラン）を見る` }).click();
   await page.getByTestId("legacy-detail").waitFor();
   assert.deepEqual((await navigation(page)).navigation.at(-1), { href: "/plans/legacy/v1-plan-1", method: "push" });
   const groups = page.getByTestId("legacy-group");
   assert.equal(await groups.count(), 4);
   for (const label of ["行動", "会いたい人", "情報", "イベント"]) await page.getByRole("heading", { name: label }).waitFor();
   await groups.first().getByText("完了", { exact: true }).waitFor();
-  await groups.first().getByText("未着手", { exact: true }).waitFor();
+  await groups.first().getByText("未完了", { exact: true }).first().waitFor();
   // 模拟器走查：旧计划的阶段 id「p2」显示成「フェーズ 2」，其他写法原样。
   await groups.first().getByText("フェーズ 2", { exact: true }).waitFor();
   await groups.first().getByText("準備", { exact: true }).waitFor();
   assert.equal(await groups.first().getByText("p2", { exact: true }).count(), 0);
   await page.getByText(LEGACY.analysisSummary!).waitFor();
-  await page.getByText("以前のプランは見るだけです。編集や再分析はできません。").waitFor();
+  await page.getByText("以前のプランは閲覧のみです。編集や再分析はできません。").waitFor();
   assert.equal(await page.locator("input, textarea").count(), 0, "nothing to edit");
   assert.equal(await page.getByRole("button", { name: /編集|再分析|見直/ }).count(), 0);
   assert.deepEqual(writes(calls), []);
