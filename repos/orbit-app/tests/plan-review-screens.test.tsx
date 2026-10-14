@@ -543,7 +543,8 @@ test("new=1 opens the goal input directly; with two active goals it explains the
   await full.page.getByTestId("goal-limit-active").waitFor();
   await full.page.getByText("同時に進められる目標は 2 つまでです。").waitFor();
   assert.equal(await full.page.getByTestId("goal-start").isDisabled(), true, "no third goal at the limit");
-  assert.equal(await full.page.getByText(PAID).count(), 0);
+  // 占位例句「…有料にして黒字化したい」是自画文字，只查上限说明卡里没有付费字样。
+  assert.equal(await full.page.getByTestId("goal-limit-active").getByText(PAID).count(), 0);
 });
 
 test("以前のプラン: the card replaces the goal input for a v1 user; the page is read only", async (t) => {

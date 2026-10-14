@@ -9,7 +9,7 @@
 // the read-only 「以前のプラン」 card and 「新しいプランを作る」; the overview gets the goal
 // list for the switcher, and achieved goals stay reachable when no goal is active.
 import { useIsFocused, useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import type { PlanGoalListItem, PlanIntakeListResponse, PlanLegacyItem, PlanV2Detail, PlanV2HomeSummary } from "../../api/contract/plan-v2";
@@ -25,6 +25,7 @@ import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi } from "./plan-api";
 import { goalKindLabel } from "./plan-model";
 import { PlanGoalInput } from "./PlanGoalInput";
+import { PlanGoalInputShown } from "./plan-goal-input-shown";
 import { PlanLegacyCard } from "./PlanLegacy";
 import { PlanOverview } from "./PlanOverview";
 import { LimitNote } from "./plan-ui";
@@ -50,6 +51,11 @@ export function PlanSegment() {
   const [adding, setAdding] = useState(newParam === "1");
   const sequence = useRef(0);
   const ready = auth.ready && server.ready;
+  const reportGoalInput = useContext(PlanGoalInputShown);
+  const goalInputShown = state.kind === "ready" && (adding || (!state.current && state.legacy.length === 0 && Boolean(state.intakes)));
+  useEffect(() => {
+    reportGoalInput?.(goalInputShown);
+  }, [reportGoalInput, goalInputShown]);
 
   useEffect(() => {
     if (newParam === "1") setAdding(true);

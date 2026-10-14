@@ -88,7 +88,8 @@ export function PlanQuestions({ intake, kind, api, onIntake, onReload }: { intak
                 })}
               </View>
               <View style={styles.qin}>
-                <Icon name="pen" size={16} color={colors.ink3} />
+                {/* kit .qin：笔随文字色——有字 ink、空着 ink-4（.qin.ph）。 */}
+                <Icon name="pen" size={16} color={answer.text ? colors.ink : colors.ink4} />
                 <TextInput
                   accessibilityLabel={t("plan.questions.freeLabel", { number: index + 1 })}
                   onChangeText={(text) => setAnswers((current) => ({ ...current, [question.id]: { ...answer, text, touched: true } }))}
@@ -259,7 +260,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   qidText: { color: colors.ink3, ...kitText(10, "800") },
   opts: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
   fopt: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 9, borderRadius: 999, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: "transparent" },
-  foptOn: { borderColor: colors.plum500, backgroundColor: colors.accentSoft },
+  // iOS 量出的选中 chip 比 kit 宽 2.5pt（✓ 与文字两段并排时右侧多留白），右内边距抵消，否则「有料あり」被挤到第二行（A-R23-10 第 3 轮）。
+  foptOn: { borderColor: colors.plum500, backgroundColor: colors.accentSoft, paddingRight: 6.5 },
   foptCheck: { color: colors.plum700, ...kitText(11.5, "900") },
   foptText: { color: colors.ink2, ...kitText(11.5, "700") },
   foptTextOn: { color: colors.ink },

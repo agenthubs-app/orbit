@@ -63,7 +63,7 @@ export function PlanChatFrame({ title = "iOrbit", subtitle, stage, stageKeys, on
             {stage === null ? null : <KitStages stage={stage} style={styles.fm} {...(stageKeys ? { keys: stageKeys } : {})} />}
           </View>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.fill}>
-            <ScrollView ref={ref} contentContainerStyle={[styles.scroll, stage === null && styles.scrollNoStages]} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled">
+            <ScrollView ref={ref} style={stage === null ? null : styles.scrollTop} contentContainerStyle={styles.scroll} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled">
               <View style={styles.chat}>{children}</View>
             </ScrollView>
             {foot ? <View pointerEvents="box-none" style={styles.foot}>{foot}</View> : null}
@@ -252,9 +252,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   fill: { flex: 1 },
   grow: { flex: 1, minWidth: 0 },
   header: { paddingHorizontal: SHELL_GUTTER },
-  // .fm margin 2 + .chat gap 10 = 第一格离进度条 12。
-  scroll: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 190 },
-  scrollNoStages: { paddingTop: 0 },
+  // .fm margin 2 + .chat gap 10 = 第一格离进度条 12。放在滚动区外面：滚到 ChatMark 时它上面的卡片
+  // （如「背景を確認しました」的下边框）不会从这 12 里露出来，同设计稿「chat tall」。
+  scrollTop: { marginTop: 12 },
+  scroll: { paddingHorizontal: 18, paddingBottom: 190 },
   chat: { gap: 10 },
   fm: { marginTop: 2 },
   foot: { position: "absolute", left: 0, right: 0, bottom: 0 },

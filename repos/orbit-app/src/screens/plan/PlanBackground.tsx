@@ -247,7 +247,7 @@ export function PlanBackground({ intake, kind, api, onIntake, onReload }: Props)
                         </View>
                       ))}
                     </View>
-                    {mode === "team" ? <View style={styles.addMem}><GhostRow height={40} icon="user-plus" label={t("plan.team.addLong")} onPress={() => setAdding(true)} /></View> : null}
+                    {mode === "team" ? <View style={styles.addMem}><GhostRow height={40} icon="plus" label={t("plan.team.addLong")} onPress={() => setAdding(true)} /></View> : null}
                     <CapabilityBox kind={kind} shown={shown} teamDraft={teamDraft} gaps={gaps} onToggle={(memberId, capability) => setTeamDraft((draft) => toggleCapability(draft, memberId, capability))} />
                     <PlanAddMemberSheet
                       visible={adding}
@@ -274,7 +274,14 @@ export function PlanBackground({ intake, kind, api, onIntake, onReload }: Props)
                         return <StairRow key={rung.level} index={n} level={rung.level} text={rung.text} small={tag ? null : small} tag={tag} tagTone={tag === t("plan.purpose.original") ? "blue" : "lav"} on={level === rung.level} onPress={() => setLevel(rung.level)} />;
                       })}
                     </View>
-                    {purpose.value.reason ? <AiSay text={purpose.value.reason} why={t("plan.purpose.why")} /> : null}
+                    {purpose.value.reason && rungs.length > 1 ? <AiSay text={purpose.value.reason} why={t("plan.purpose.why")} /> : null}
+                    {/* b12 N17（k-st1say）：只有一级时说明为什么只有它、怎么出上下的段。 */}
+                    {rungs.length === 1 ? (
+                      <View style={styles.aisay}>
+                        <View style={[kit.emoSm, styles.noteEmo]}><UiText maxFontSizeMultiplier={1.2} style={kit.emoTextSm}>📝</UiText></View>
+                        <UiText style={styles.aisayText}>{t("plan.purpose.oneRungNote")}</UiText>
+                      </View>
+                    ) : null}
                   </>
                 ) : null}
               </BlockSection>
@@ -408,5 +415,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   stair: { gap: 6, marginTop: 4 },
   aisay: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 10 },
   aisayText: { flex: 1, color: colors.ink2, ...kitText(12, "400", 1.6) },
+  noteEmo: { backgroundColor: colors.surface2 },
   aisayWhy: { marginTop: 1 },
 }));

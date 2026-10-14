@@ -8,7 +8,7 @@
 // 作りかけ卡（.fm 五段进度）、上限卡（.card.flat ⏳）与「目標 2つ」列表、faded サンプル类型卡。
 import { useRouter, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, TextInput, View } from "react-native";
+import { Platform, StyleSheet, TextInput, View } from "react-native";
 
 import type { PlanGoalKind, PlanGoalListItem, PlanIntakeListItem, PlanIntakeListResponse } from "../../api/contract/plan-v2";
 import { PLAN_GOAL_KIND_COPY, PLAN_SHORT_NAME_COPY, planCopy } from "../../api/compute/plan-template-copy";
@@ -17,6 +17,7 @@ import { planTaskSegmentHref } from "../../api/compute/plan-href";
 import { openMainTab } from "../../components/shell-navigation";
 import { Icon, UiPressable, UiText } from "../../components/ui";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "../../components/ui/svg";
+import { faceFor } from "../../components/ui/Text";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { usePlanApi, type PlanFailure } from "./plan-api";
@@ -36,6 +37,7 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
   const [focused, setFocused] = useState(false);
   const [creating, setCreating] = useState(false);
   const [failure, setFailure] = useState<PlanFailure | null>(null);
+  const input = useRef<TextInput>(null);
   const asked = useRef<string | null>(null);
   const latest = useRef({ picked, text });
   latest.current = { picked, text };
@@ -89,33 +91,38 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
         <UiText style={styles.sub}>{t("plan.goal.body")}</UiText>
         <View style={[styles.field, focused && styles.fieldFocus]}>
           <TextInput
+            ref={input}
             accessibilityLabel={t("plan.goal.inputLabel")}
             editable={!creating}
             onBlur={() => setFocused(false)}
             onChangeText={setText}
             onFocus={() => setFocused(true)}
-            placeholder={t("plan.goal.placeholder")}
-            placeholderTextColor={colors.ink4}
+            accessibilityHint={t("plan.goal.placeholder")}
             returnKeyType="done"
             selectionColor={colors.plum700}
-            style={styles.input}
+            // 输入框不经 UiText：日文 iOS 下占位文字会落到系统的窄 CJK 字形（比 kit 窄约 19pt、不出省略号），这里同 UiText 用 Hiragino。
+            style={[styles.input, Platform.OS === "ios" && language === "ja" ? { fontFamily: faceFor("400") } : null]}
             value={text}
           />
+          {/* 占位文字自己画：iOS 的 placeholder 放不下时直接裁掉，kit（Chrome）是单行省略号。 */}
+          {text ? null : <UiText pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no" numberOfLines={1} style={styles.placeholder}>{t("plan.goal.placeholder")}</UiText>}
         </View>
         <View accessibilityRole="radiogroup" accessibilityLabel={t("plan.goal.kindLabel")} style={styles.kinds}>
           {PLAN_GOAL_KINDS.map((item) => {
             const on = kind === item;
-            const label = `${PLAN_GOAL_TEMPLATES[item].emoji} ${planCopy(PLAN_GOAL_KIND_COPY[item], language)}`;
+            const name = planCopy(PLAN_GOAL_KIND_COPY[item], language);
+            const label = `${PLAN_GOAL_TEMPLATES[item].emoji} ${name}`;
             return (
               <UiPressable key={item} accessibilityRole="radio" accessibilityLabel={label} aria-checked={on} accessibilityState={{ checked: on, selected: on }} hitSlop={5} onPress={() => { setKind(item); setPicked(true); }} style={[styles.fopt, on && styles.foptOn]}>
                 {on ? <UiText style={styles.foptCheck}>✓</UiText> : null}
-                <UiText style={[styles.foptText, on && styles.foptTextOn]}>{label}</UiText>
+                <UiText style={[styles.foptText, on && styles.foptTextOn]}><UiText style={styles.foptEmoji}>{PLAN_GOAL_TEMPLATES[item].emoji}</UiText>{` ${name}`}</UiText>
               </UiPressable>
             );
           })}
         </View>
         {monthlyOut ? <LimitCard kind="monthly" /> : activeOut ? <LimitCard kind="active" goals={active} /> : null}
-        <KitButton xl primary icon="sparkle" label={t("plan.goal.start")} disabled={blocked || !text.trim() || creating} onPress={() => void create()} style={[styles.start, blocked && styles.startAfterLimit]} testID="goal-start" />
+        {/* 空着也画成可按（b12 A-R23-02a）：按下把焦点给输入框，有字才建。 */}
+        <KitButton xl primary icon="sparkle" label={t("plan.goal.start")} disabled={blocked || creating} onPress={() => (text.trim() ? void create() : input.current?.focus())} style={[styles.start, blocked && styles.startAfterLimit]} testID="goal-start" />
         {failure ? isLimitFailure(failure) ? <LimitNote failure={failure} /> : <InlineProblem text={failureText(failure)} /> : null}
         <UiText style={styles.steps}>{`${t("plan.goal.previewFirst")}\n${t("plan.goal.previewSecond")}`}</UiText>
       </View>
@@ -129,7 +136,8 @@ function Glow({ color }: { color: string }) {
   return (
     <Svg width={220} height={220}>
       <Defs>
-        <RadialGradient id="goal-glow" cx="50%" cy="50%" r="50%">
+        {/* CSS radial-gradient(circle) 默认半径到最远角（220 方块 → 155.6 = 70.71%），70% 处透明 ≈ 109，正好到圆边。 */}
+        <RadialGradient id="goal-glow" cx="50%" cy="50%" r="70.71%">
           <Stop offset={0} stopColor={color} stopOpacity={1} />
           <Stop offset={0.7} stopColor={color} stopOpacity={0} />
         </RadialGradient>
@@ -206,7 +214,7 @@ function LimitCard({ kind, goals = [] }: { kind: "monthly" | "active"; goals?: r
                 <UiText numberOfLines={1} style={styles.sumTitle}>{goal.goal}</UiText>
                 <UiText style={kit.lbl}>{t("plan.goal.activeLine", { talked: goal.talkedPeople, total: goal.total })}</UiText>
               </View>
-              <Icon name="right" size={16} color={colors.ink3} />
+              <Icon name="right" size={16} color={colors.ink} />
             </UiPressable>
           ))}
         </View>
@@ -275,12 +283,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   field: { minHeight: 46, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: "transparent", justifyContent: "center", paddingHorizontal: 14 },
   fieldFocus: { borderColor: colors.plum500 },
   input: { color: colors.ink, fontSize: 14, lineHeight: 21, padding: 0, minHeight: 21 },
+  placeholder: { position: "absolute", left: 14, right: 14, color: colors.ink4, fontSize: 14 },
   kinds: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
-  fopt: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: "transparent" },
+  // kit 实测 chip 高 34.8（padding 7 + 行盒 17.8），iOS 行盒 18.75 → 上下各 6.5。
+  fopt: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6.5, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: "transparent" },
   foptOn: { borderColor: colors.plum500, backgroundColor: colors.accentSoft },
   foptCheck: { color: colors.plum700, ...kitText(12.5, "900") },
   foptText: { color: colors.ink2, ...kitText(12.5, "700") },
   foptTextOn: { color: colors.ink },
+  // iOS 的 Apple Color Emoji 在 12.5 号比 kit（Chrome）画得大约 2pt、chip 宽 2.5pt，第二行 chip 逐个右移；按实测比例缩到 11。
+  foptEmoji: { fontSize: 11 },
   start: { height: 50, marginTop: 14 },
   startAfterLimit: { marginTop: 10 },
   steps: { color: colors.ink3, ...kitText(11.5, "500", 1.6), textAlign: "center", marginTop: 8 },

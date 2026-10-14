@@ -21,6 +21,7 @@ import { TASK_SEGMENTS, type TaskSegment } from "../../view-models/app-navigatio
 import { initialTaskSegment, rememberTaskSegment } from "../../view-models/shell-state";
 import { NotesScreen } from "../notes/NotesScreen";
 import { PlanSegment } from "../plan/PlanSegment";
+import { PlanGoalInputShown } from "../plan/plan-goal-input-shown";
 import { ScheduleScreen } from "../schedule/ScheduleScreen";
 import { TasksScreen } from "../tasks/TasksScreen";
 import { TaskQuickAdd, type TaskQuickAddHandle } from "./TaskQuickAdd";
@@ -99,6 +100,10 @@ export function TaskScreen() {
     else router.setParams({ new: "1", seg: "plan" });
   };
   const today = shellHeaderDate(new Date(), locale.language, timeZone, locale.t);
+  // 目標入力（新用户空状态、`new=1`、概要的「目標を追加」、旧计划的「新しいプランを作る」）时副标题是一句说明，
+  // 不是日期（b10 ①、b12 A-R23-02a～c）；PlanSegment 通过 PlanGoalInputShown 报上来。
+  const [planGoalInput, setPlanGoalInput] = useState(false);
+  const goalInput = segment === "plan" && planGoalInput;
   const topGap = useShellTopGap();
 
   return (
@@ -107,7 +112,7 @@ export function TaskScreen() {
       {/* kit taskHead (app.html:633): 🔍 · Task + date · ＋. The App has no global
           search yet, so 🔍 opens people search (the Web 🔍 opens ⌘K, people first). */}
       <View style={styles.header}>
-        <ShellTopBar title={copy.nav.task} subtitle={today}
+        <ShellTopBar title={copy.nav.task} subtitle={goalInput ? locale.t("plan.goal.headerHint") : today}
           left={<IconButton icon="search" accessibilityLabel={locale.t("home.searchPeople")} onPress={() => router.push("/contacts/list" as Href)} />}
           right={addLabel ? <IconButton icon="plus" accessibilityLabel={addLabel} onPress={add} disabled={addDisabled} /> : null} />
       </View>
@@ -117,7 +122,7 @@ export function TaskScreen() {
         onChange={choose}
         accessibilityLabel={copy.nav.task}
         renderPage={(key) => visited.has(key)
-          ? <AppScreenEmbeddingProvider segment={key}>{TASK_SLOTS[key]({ quickAdd, revision, onCreated })}</AppScreenEmbeddingProvider>
+          ? <AppScreenEmbeddingProvider segment={key}><PlanGoalInputShown.Provider value={setPlanGoalInput}>{TASK_SLOTS[key]({ quickAdd, revision, onCreated })}</PlanGoalInputShown.Provider></AppScreenEmbeddingProvider>
           : null}
       />
       <TabPageBar tab="task" />

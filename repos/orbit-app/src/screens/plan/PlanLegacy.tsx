@@ -21,7 +21,7 @@ import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi, type PlanFailure } from "./plan-api";
 import { legacyGroups, legacyStatus, type LegacyKind, type LegacyStatus } from "./plan-review-model";
 import { dateParts } from "./plan-review-ui";
-import { KitButton, KitCard, KitChip, KitEmo, kitText, useKitStyles, type KitTone } from "./plan-kit";
+import { KitButton, KitCard, KitChip, KitEmo, KitGradient, kitText, useKitStyles, type KitTone } from "./plan-kit";
 
 const KIND_KEYS: Record<LegacyKind, "plan.legacy.kindAction" | "plan.legacy.kindNeed" | "plan.legacy.kindInfo" | "plan.legacy.kindEvent"> = {
   action: "plan.legacy.kindAction",
@@ -57,7 +57,9 @@ export function PlanLegacyCard({ plans, onCreate }: { plans: readonly PlanLegacy
             <View style={styles.cell}>
               <View style={styles.between}><UiText style={kit.lbl}>{t("plan.legacy.stepLabel")}</UiText><UiText style={styles.num}>{`${plan.actionsDone} / ${plan.actionsTotal}`}</UiText></View>
               <View style={styles.bar}>
-                <View style={[styles.barFill, { width: `${plan.actionsTotal ? (plan.actionsDone / plan.actionsTotal) * 100 : 0}%` }]} />
+                <View style={[styles.barFill, { width: `${plan.actionsTotal ? (plan.actionsDone / plan.actionsTotal) * 100 : 0}%` }]}>
+                  <KitGradient id="legacy-bar" from={colors.plum300} to={colors.plum700} />
+                </View>
                 <View style={[styles.barDot, { left: `${plan.actionsTotal ? (plan.actionsDone / plan.actionsTotal) * 100 : 0}%` }]} />
               </View>
             </View>
@@ -145,18 +147,19 @@ export function PlanLegacyScreen({ planId }: { planId: string }) {
                   <UiText accessibilityRole="header" style={kit.h3}>{t(KIND_KEYS[group.kind])}</UiText>
                 </View>
                 {phases.map((phase) => (
-                  <View key={String(phase)}>
+                  <View key={String(phase)} style={phase === null ? styles.noPhase : undefined}>
                     {phase !== null ? <UiText style={[kit.lbl, styles.phase]}>{phase}</UiText> : null}
                     {group.items.filter((item) => group.kind !== "action" || phaseOf(item) === phase).map((item, index) => {
                       const status = STATUS[legacyStatus(item.status)];
                       return (
-                        <View key={`${item.title}-${index}`} style={[styles.li, index > 0 && styles.line]}>
+                        <View key={`${item.title}-${index}`} style={styles.li}>
+                          {index > 0 ? <View style={styles.liSep} /> : null}
                           {group.kind === "network_need" ? (item.contactName ? <Avatar name={item.contactName} size="sm" /> : <View style={styles.unknown}><UiText style={styles.unknownText}>?</UiText></View>) : null}
                           <View style={kit.grow}>
                             <UiText style={styles.liTitle}>{group.kind === "network_need" && item.contactName ? item.contactName : item.title}</UiText>
                             {group.kind === "network_need" ? <UiText style={styles.liSub}>{item.contactName ? [item.organization, item.title].filter(Boolean).join(" · ") : t("plan.legacy.notInNetwork")}</UiText> : null}
                           </View>
-                          <KitChip label={t(status.key)} tone={status.tone} />
+                          <KitChip label={t(status.key)} tone={status.tone} style={styles.liChip} />
                         </View>
                       );
                     })}
@@ -186,9 +189,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   grid2: { flexDirection: "row", gap: 10, marginTop: 14 },
   cell: { flex: 1, minWidth: 0 },
   num: { color: colors.ink, ...kitText(14, "700") },
-  bar: { height: 6, borderRadius: 3, backgroundColor: colors.surface3, marginTop: 8, justifyContent: "center" },
-  barFill: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 3, backgroundColor: colors.plum300 },
-  barDot: { position: "absolute", width: 12, height: 12, marginLeft: -6, borderRadius: 6, backgroundColor: colors.plum700, borderWidth: 2, borderColor: colors.surface },
+  // kit .bar（margin 8 0 4）：6 高、plum-300→700 渐变、末端 14 圆钮（白底、3px plum-700 边）。
+  bar: { height: 6, borderRadius: 6, backgroundColor: colors.surface3, marginTop: 8, marginBottom: 4, justifyContent: "center" },
+  barFill: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 6, overflow: "hidden" },
+  barDot: { position: "absolute", width: 14, height: 14, marginLeft: -7, borderRadius: 7, backgroundColor: colors.surface, borderWidth: 3, borderColor: colors.plum700 },
   sub: { color: colors.ink2, ...kitText(12.5, "400", 1.6), marginTop: 14 },
   open: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 40, borderRadius: 999, backgroundColor: colors.surface2, marginTop: 12 },
   openText: { color: colors.ink, ...kitText(13, "700") },
@@ -198,12 +202,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   summary: { color: colors.ink2, ...kitText(12.5, "400", 1.65), marginTop: 2 },
   note: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
   noteText: { color: colors.ink2, ...kitText(12, "400", 1.6) },
-  groupHead: { flexDirection: "row", alignItems: "center", gap: 6 },
+  groupHead: { flexDirection: "row", alignItems: "center", gap: 14 },
   phase: { marginTop: 8, fontWeight: "800" },
-  li: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
-  line: { borderTopWidth: 1, borderTopColor: colors.line },
+  // 没有フェーズ标签的组（会いたい人 等）：第一行离组标题同样 12（标签的 8 + 卡片 gap 4）。
+  noPhase: { marginTop: 8 },
+  li: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 9 }, // kit .li gap 12
+  liChip: { alignSelf: "center" },
+  // kit `.li + .li::before`：分隔线从左 50 起（有没有头像都一样）。
+  liSep: { position: "absolute", top: 0, left: 50, right: 0, height: 1, backgroundColor: colors.line },
   liTitle: { color: colors.ink, ...kitText(13, "700") },
-  liSub: { color: colors.ink3, ...kitText(11.5, "500") },
+  liSub: { color: colors.ink3, ...kitText(12, "400") }, // kit .li .meta span
   unknown: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
   unknownText: { color: colors.ink3, ...kitText(11.5, "800") },
 }));
