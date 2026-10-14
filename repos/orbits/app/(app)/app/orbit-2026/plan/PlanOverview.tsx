@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 
 import type { PlanCommandResult, PlanDraftView, PlanGoalListItem, PlanGoalListResponse, PlanPendingDecisionResult, PlanPendingItem, PlanStepProgress, PlanV2Detail, PlanV2Step } from "../../../../../shared/contract/plan-v2";
 import { planDraftEditHref, planTypeHref } from "../../../../../shared/compute/plan-href";
+import { closingStepNumbers, eventGatherTypeKeys, jaLatinGlue, stepChipsVisible } from "../../../../../shared/compute/plan-overview-labels";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { planFlowCopy, planOverviewCopy as c, planReviewCopy as r } from "../copy/plan";
@@ -406,7 +407,7 @@ function PendingCard({ detail, t, actions, language, tier }: { detail: PlanV2Det
   }).filter((item): item is { n: number; step: PlanV2Step } => item !== null && !item.step.completedAt);
   const count = memos.length + steps.length + candidates.length;
   return (
-    <section className={`${styles.card} ${styles.span12}`} aria-label={t(c.pendingTitle)} data-plan-pending="">
+    <section className={`${styles.card} ${styles.span12} ${styles.pendSection}`} aria-label={t(c.pendingTitle)} data-plan-pending="">
       <div className={styles.cardH}><h3>{t(c.pendingTitle)} <span className={`${styles.chip} ${styles.chip_coral}`}>{count}</span></h3>{tier === "narrow" ? null : <span className={styles.lbl}>{t(c.pendingNote)}</span>}</div>
       <div className={styles.pendGrid}>
         {memos.map((item) => <MemoCard key={item.id} item={item} detail={detail} t={t} actions={actions} language={language} />)}
@@ -500,7 +501,7 @@ function RecentAwards({ detail, t, language }: { detail: PlanV2Detail; t: Transl
       <div className={styles.cardH}><h3>{t(c.recentTitle)}</h3></div>
       {awards.length === 0 ? <p className={styles.lbl}>{t(c.recentEmpty)}</p> : awards.map((award) => (
         <div key={award.awardLogId} className={styles.recentRow} data-plan-recent-row="">
-          <span className={styles.clamp1}><b>{award.shortLabel}</b> <span className={styles.lbl}>{[award.contactName ? t(c.contactSan, { name: award.contactName }) : null, day.format(new Date(award.at))].filter(Boolean).join(" · ")}</span></span>
+          <span className={styles.clamp1}><b>{award.shortLabel}</b> <span className={styles.lbl}>{[award.basis === "skip" ? t(c.recentKnown) : award.contactName ? t(c.contactSan, { name: award.contactName }) : award.eventTitle ?? null, day.format(new Date(award.at))].filter(Boolean).join(" · ")}</span></span>
           <b style={award.part === "overflow" ? { color: "var(--rose-700)" } : undefined}>{award.basis === "skip" ? t(c.recentSkip) : `+${award.points}`}</b>
         </div>
       ))}
@@ -519,17 +520,18 @@ function StepList({ detail, t, actions, inline }: { detail: PlanV2Detail; t: Tra
   const progress = new Map((detail.stepProgress ?? []).map((item) => [item.stepKey, item]));
   const suggestions = new Set((detail.stepSuggestions ?? []).map((item) => item.stepKey));
   const cards = new Map(typeCards(detail).map((card, index) => [card.type.key, { card, index }]));
+  const chips = stepChipsVisible(detail.score.total, detail.content.steps);
   return (
     <div>
       {detail.content.steps.map((step, index) => (
-        <StepItem key={step.key} n={index + 1} step={step} planId={detail.planId} progress={progress.get(step.key) ?? null} suggest={inline && suggestions.has(step.key)}
+        <StepItem key={step.key} n={index + 1} step={step} planId={detail.planId} progress={progress.get(step.key) ?? null} suggest={inline && suggestions.has(step.key)} closing={closingStepNumbers(detail.content.steps, index, PLAN_EVENT_SEGMENT_KEY)} chips={chips}
           types={step.personTypeKeys.map((key) => cards.get(key)).filter((item): item is { card: TypeCardView; index: number } => Boolean(item))} t={t} actions={actions} />
       ))}
     </div>
   );
 }
 
-function StepItem({ n, step, planId, progress, suggest, types, t, actions }: { n: number; step: PlanV2Step; planId: string; progress: PlanStepProgress | null; suggest: boolean; types: { card: TypeCardView; index: number }[]; t: Translate; actions: Actions }) {
+function StepItem({ n, step, planId, progress, suggest, closing, chips, types, t, actions }: { n: number; step: PlanV2Step; planId: string; progress: PlanStepProgress | null; suggest: boolean; closing: number[]; chips: boolean; types: { card: TypeCardView; index: number }[]; t: Translate; actions: Actions }) {
   const [open, setOpen] = useState(false);
   const why = useWhy();
   const done = Boolean(step.completedAt);
@@ -548,7 +550,7 @@ function StepItem({ n, step, planId, progress, suggest, types, t, actions }: { n
       <div className={styles.mey}>
         <Icon name="flag" size={16} />
         <div className={styles.mt}><small>{t(c.doneCriteria)}</small>{step.doneCriteria}</div>
-        <StepProgressChip progress={progress} done={done} t={t} />
+        {chips ? <StepProgressChip progress={progress} done={done} t={t} /> : null}
       </div>
       {suggest && !done ? (
         <div className={`${styles.confirmCard} ${styles.inRow}`} data-plan-step-suggestion={step.key}>
@@ -565,7 +567,7 @@ function StepItem({ n, step, planId, progress, suggest, types, t, actions }: { n
           {types.map(({ card, index }) => <Link key={card.type.key} href={planTypeHref("web", planId, card.type.itemId)} className={cx(styles.chip, styles[`chip_${typeTone(index)}`])}>{card.type.emoji} {card.type.shortLabel}</Link>)}
           {hasEvent ? <span className={styles.chip}>🎟️ {t(c.eventTitle)}</span> : null}
         </div>
-      ) : hasEvent ? <div className={`${styles.chips} ${styles.stepChips}`}><span className={styles.chip}>🎟️ {t(c.eventTitle)}</span></div> : <span className={`${styles.lbl} ${styles.stepLbl}`}>{t(c.noNewPeople)}</span>}
+      ) : hasEvent ? <div className={`${styles.chips} ${styles.stepChips}`}><span className={styles.chip}>🎟️ {t(c.eventTitle)}</span></div> : <span className={`${styles.lbl} ${styles.stepLbl}`}>{closing.length ? t(c.noNewPeopleClosing, { steps: closing.join("・") }) : t(c.noNewPeople)}</span>}
     </div>
   );
 }
@@ -644,14 +646,19 @@ function TypeCard({ planId, card, index, t }: { planId: string; card: TypeCardVi
 
 function EventCard({ detail, t }: { detail: PlanV2Detail; t: Translate }) {
   const event = eventView(detail);
+  const { language } = useOrbitLanguage();
   if (event.allocation <= 0) return null;
+  const labels = new Map(detail.content.personTypes.map((type) => [type.key, type.shortLabel]));
+  const names = eventGatherTypeKeys(detail.content.personTypes).map((key) => labels.get(key) ?? key);
+  const joined = language === "ja" ? jaLatinGlue(names.flatMap((name, k) => (k ? [t(c.eventGatherJoin), name] : [name]))) : names.join(t(c.eventGatherJoin));
+  const gather = names.length ? (language === "ja" ? jaLatinGlue([joined, t(c.eventGather, { types: "" })]) : t(c.eventGather, { types: joined })) : "";
   return (
     <section className={`${styles.card} ${styles.span12}`} data-plan-event="" aria-label={t(c.eventTitle)}>
       <div className={styles.cardH} style={{ marginBottom: 2 }}>
         <h3><span className={styles.evEmo}><MacTile emoji="🎟️" size="sm" tone="apricot" /></span>{t(c.eventTitle)}</h3>
         <div className={styles.v2pp}>{event.earned + event.overflow}<small> / {event.allocation}</small></div>
       </div>
-      <div className={styles.lbl}>{t(c.eventRule, { count: event.count, target: event.targetCount, unit: event.unit })}</div>
+      <div className={styles.lbl}>{[gather, t(c.eventRule, { count: event.count, target: event.targetCount, unit: event.unit })].filter(Boolean).join(" · ")}</div>
       <MiniBar allocation={event.allocation} earned={event.earned} overflow={event.overflow} skipped={false} />
       <RecommendedEvents detail={detail} t={t} />
     </section>
@@ -708,7 +715,7 @@ function EventBlock({ detail, t }: { detail: PlanV2Detail; t: Translate }) {
 
 function personChips(card: TypeCardView, t: Translate): ReactNode {
   const { type } = card;
-  if (type.skipped) return <span className={styles.chip}>{t(c.typeSkipped)}</span>;
+  if (type.skipped) return <span className={styles.chip}>{t(c.typeSkippedChip)}</span>;
   const met = card.met >= type.targetCount;
   return (
     <>

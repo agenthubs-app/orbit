@@ -11778,6 +11778,11 @@
           "kind": "text",
           "type": "string | null"
         },
+        "eventTitle": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
         "at": {
           "optional": false,
           "kind": "text",
@@ -12489,6 +12494,16 @@
         },
         "body": {
           "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "shortSubject": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "shortBody": {
+          "optional": true,
           "kind": "text",
           "type": "string"
         }

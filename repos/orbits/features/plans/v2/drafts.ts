@@ -41,6 +41,13 @@ export const INTRO_DRAFT_REASON: Record<PlanCopyLanguage, string> = {
   zh: "听听有这方面经验的人怎么说，对我决定下一步会很有帮助。",
 };
 
+/** 「短く」语气（R24-06：两种语气都由服务端给）。 */
+export function introDraftShortText(input: { viaName: string; roleSituation: string; language: PlanCopyLanguage }): { shortSubject: string; shortBody: string } {
+  if (input.language === "en") return { shortBody: `Hi ${input.viaName}, if you know someone who is ${input.roleSituation.toLowerCase()}, could you introduce us? Thank you.`, shortSubject: "A quick intro?" };
+  if (input.language === "zh") return { shortBody: `${input.viaName}您好，如果您认识「${input.roleSituation}」这样的人，能帮忙介绍一下吗？谢谢。`, shortSubject: "想请您帮忙介绍" };
+  return { shortBody: `${input.viaName}さん、「${input.roleSituation}」にあたる方をご存じでしたら、ご紹介いただけないでしょうか。よろしくお願いします。`, shortSubject: "ご紹介のお願い" };
+}
+
 export function introDraftText(input: { viaName: string; goal: string; typeLabel: string; roleSituation: string; language: PlanCopyLanguage }): { subject: string; body: string } {
   const reason = INTRO_DRAFT_REASON[input.language] ?? INTRO_DRAFT_REASON.ja;
   if (input.language === "en") {

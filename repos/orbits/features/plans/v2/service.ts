@@ -18,7 +18,7 @@ import { AI_QUOTA_MONTHLY_LIMITS, tokyoUsageMonth } from "../../ai-quota/constan
 import type { PlanHrefPlatform } from "../../../shared/compute/plan-href";
 import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
 import { candidatesFor, eventsFor, pendingItems, recommendScore, recentAwards, resolveTypedEvents, stepProgress, stepSuggestions, todayChance, typeDetail as buildTypeDetail, typeStats, type OverviewInput, type PlanEventFact } from "./overview";
-import { introDraftText, proposalDraftText } from "./drafts";
+import { introDraftShortText, introDraftText, proposalDraftText } from "./drafts";
 import type {
   PlanAchievementView,
   PlanLegacyDetail,
@@ -524,8 +524,10 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     for (const type of types) for (const route of type.personType.introRoutes) contactIds.add(route.viaContactId);
     for (const entry of log) if (entry.event === "memo_coverage_proposed" && typeof entry.payload.contactId === "string") contactIds.add(entry.payload.contactId);
     const contacts = new Map((await reader.contactViews([...contactIds])).map((contact) => [contact.id, contact]));
+    // 「最近の加点」的活动名：这份计划记下的参加活动（eventItems.title）。
+    const eventTitles = new Map((await reader.eventItems(plan.id)).map((item) => [item.eventId, item.title]));
     // R26：有原始参加者事实的活动按这份计划的人物类型补每类预计人数（与评估页同一规则）。
-    return { awards, candidates, contacts, events: resolveTypedEvents(events, types), language: view.language ?? "ja", log, plan, platform: view.platform ?? "web", types };
+    return { awards, candidates, contacts, eventTitles, events: resolveTypedEvents(events, types), language: view.language ?? "ja", log, plan, platform: view.platform ?? "web", types };
   }
 
   /** 把联系人关联到类型（linked；已 established 的不降级）。 */
@@ -1181,7 +1183,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
         if (!route) throw new PlanV2Error("REFERENCE_NOT_FOUND", "Introduction route not found.");
         const [via] = await reader.contactViews([viaContactId]);
         if (!via) throw new PlanV2Error("REFERENCE_NOT_FOUND", "Contact not found.");
-        return { viaName: via.name, ...introDraftText({ goal: plan.goalText, language, roleSituation: type.roleSituation, typeLabel: type.shortLabel, viaName: via.name }) };
+        return { viaName: via.name, ...introDraftText({ goal: plan.goalText, language, roleSituation: type.roleSituation, typeLabel: type.shortLabel, viaName: via.name }), ...introDraftShortText({ language, roleSituation: type.roleSituation, viaName: via.name }) };
       });
     },
 

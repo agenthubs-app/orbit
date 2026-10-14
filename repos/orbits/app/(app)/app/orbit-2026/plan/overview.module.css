@@ -76,6 +76,16 @@
 .col5 { grid-column: span 5; display: grid; gap: 18px; align-content: start; }
 .narrow { display: flex; flex-direction: column; }
 .narrow > .card + .card, .narrow > * + .card { margin-top: var(--gap); }
+/* b8 #7 .k-pend：390 的確認待ち卡更紧（padding 14 16 · 上距 12 · 标题下 10）。 */
+@media (max-width: 767px) {
+  .narrow > .pendSection.card { margin-top: var(--space-12); padding: 14px 16px; }
+  .narrow > .pendSection .cardH { margin-bottom: 10px; }
+  /* b8 #7：步骤轮播的圆点之后紧接今日のチャンス卡（圆点自带上距 8，卡片不再加间距）。 */
+  .narrow > .dots + .card { margin-top: 0; }
+  /* b8 #7 .r8goal：390 的目标下拉是白底胶囊（padding 0 14）；右侧两个圆钮图标 ink-2（kit .rbtn）。 */
+  .goalRow > :first-child :global(button[data-plan-goal-switcher]) { height: 40px; padding: 0 14px; background: var(--surface); }
+  .goalRow .rbtn.rbtn { color: var(--ink-2); }
+}
 
 /* hero */
 .heroRow { display: flex; align-items: flex-end; gap: 28px; }
@@ -128,7 +138,7 @@
 .mey > svg { color: var(--plum-700); margin-top: 1px; flex: none; }
 .mt { flex: 1; min-width: 0; }
 .mt small { display: block; font-size: var(--fs-tiny); color: var(--ink-3); font-weight: var(--fw-bold); }
-.mey .chip { flex: none; }
+.mey .chip { flex: none; max-width: 50%; } /* 类型短名很长时 chip 省略号截断，不把「完了の目安」挤成一字一行。 */
 .stepChips { margin-top: var(--space-8); }
 .stepLbl { display: block; margin-top: var(--space-8); }
 .reopen { margin-top: var(--space-8); }

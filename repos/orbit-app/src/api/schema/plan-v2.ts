@@ -217,6 +217,7 @@ export const planV2DetailObject = z.object({
     part: z.enum(["base", "overflow"]),
     basis: z.enum(["talked", "self_report", "memo", "event", "skip"]),
     contactName: z.string().nullable(),
+    eventTitle: z.string().nullable().optional().catch(null),
     at: z.string(),
   })).optional(),
   pending: z.lazy(() => readableItems(pendingItem)).optional(),
@@ -656,7 +657,7 @@ export const planProposalResultSchema = planProposalResultObject as z.ZodType<Pl
 
 export const planIntroDraftRequestObject = z.object({ viaContactId: z.string().min(1).max(200), idempotencyKey }).strict();
 export const planIntroDraftRequestSchema = planIntroDraftRequestObject as z.ZodType<PlanIntroDraftRequest>;
-export const planIntroDraftResultObject = z.object({ viaName: z.string(), subject: z.string(), body: z.string() });
+export const planIntroDraftResultObject = z.object({ viaName: z.string(), subject: z.string(), body: z.string(), shortSubject: z.string().optional(), shortBody: z.string().optional() });
 export const planIntroDraftResultSchema = planIntroDraftResultObject as z.ZodType<PlanIntroDraftResult>;
 
 export const planPendingDecisionRequestObject = z.object({ idempotencyKey, answered: z.array(z.number().int().min(0).max(2)).max(3).optional() }).strict();

@@ -155,7 +155,7 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal }: { plan: Pl
       {problem ? <InlineProblem text={problem} /> : null}
       <StepsCard plan={plan} cards={cards} onOpenType={openType} onDoneMark={(step, number) => setReopen({ key: step.key, number })} />
       <TypesCard plan={plan} cards={cards} onOpenType={openType} />
-      <EventsCard plan={plan} />
+      <EventsCard plan={plan} onOpenEvent={(event) => router.push((event.assessmentHref ?? `/events/${encodeURIComponent(event.eventId)}`) as Href)} />
 
       <BottomSheet visible={premiseOpen} onClose={() => setPremiseOpen(false)} accessibilityLabel={t("plan.overview.premiseTitle")}>
         <View style={styles.sheet} testID="premise-sheet">

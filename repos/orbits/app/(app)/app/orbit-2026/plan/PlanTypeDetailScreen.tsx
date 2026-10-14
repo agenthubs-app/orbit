@@ -300,6 +300,14 @@ function labelledLines(text: string): { label: string | null; value: string }[] 
   });
 }
 
+/** 最終接点：8 周内写相对时间（「2週間前」，b4 #11 VCC 第 3 行），更早写日期（同 App relativeDays）。 */
+function agoText(at: string, language: OrbitLanguage, t: Translate): string {
+  const days = Math.max(0, Math.round((Date.now() - new Date(at).getTime()) / 86_400_000));
+  if (days < 14) return t(c.daysAgo, { count: days });
+  if (days < 56) return t(c.weeksAgo, { count: Math.round(days / 7) });
+  return shortDay(at, language);
+}
+
 function shortDay(at: string, language: OrbitLanguage): string {
   return new Intl.DateTimeFormat(language, { day: "numeric", month: "numeric" }).format(new Date(at));
 }
@@ -356,7 +364,7 @@ function HeadCard({ detail, plan, plus, tone, t, busy, onUnskip, language }: { d
       {detail.skipped ? (
         <div className={styles.skipRow} data-plan-banner="skipped">
           <i className={styles.hatch} aria-hidden />
-          <div className={k.grow}><b>{t(c.skippedBanner)}</b><div className={k.lbl}>{t(c.skippedNote)}</div></div>
+          <div className={k.grow}><b>{t(c.skippedBanner)}</b><div className={k.lbl}>{[detail.skippedAt ? new Intl.DateTimeFormat(language, { day: "numeric", month: "long" }).format(new Date(detail.skippedAt)) : null, t(c.skippedNote)].filter(Boolean).join(" · ")}</div></div>
           <button type="button" className={`btn ${k.btn} ${k.sm}`} disabled={busy !== null} aria-busy={busy === "unskip" || undefined} onClick={onUnskip} data-plan-unskip="">{t(c.unskip)}</button>
         </div>
       ) : null}
@@ -440,8 +448,8 @@ function CandidateRow({ candidate, on, disabled, language, t, onToggle }: { cand
         </div>
       </td>
       <td className={styles.reasonCell}>
-        <div className={k.row}><span style={{ flex: 1 }}>{candidate.reason ?? ""}</span>{basis ? why.button : null}</div>
-        {candidate.opener ? <div className={styles.opLine}>💬 <b>{t(c.quoteMarks, { text: candidate.opener })}</b> <span className={k.lbl}>· {candidate.lastContactAt ? t(c.lastContactOn, { date: shortDay(candidate.lastContactAt, language) }) : t(c.noContact)}</span></div> : null}
+        <div className={k.row} style={{ alignItems: "flex-start" }}><span style={{ flex: 1 }}>{candidate.reason ?? ""}</span>{basis ? why.button : null}</div>
+        {candidate.opener ? <div className={styles.opLine}>💬 <b>{t(c.quoteMarks, { text: candidate.opener })}</b> <span className={k.lbl}>· {candidate.lastContactAt ? t(c.lastContactOn, { date: agoText(candidate.lastContactAt, language, t) }) : t(c.noContact)}</span></div> : null}
         {why.open ? <div className={k.whyBody}>{why.text(basis)}</div> : null}
       </td>
     </tr>
@@ -458,6 +466,18 @@ function EventRing({ score, label }: { score: number; label: string }) {
       <span className={styles.ringNum} aria-hidden>{score}</span>
     </span>
   );
+}
+
+/**
+ * 右栏活动行的「日时 · 会場」（同概要 RecommendedEvents / b4 #11 右栏）：当天 17 点后写「今夜 19:00」；
+ * 日文日期以全角括号结尾，「· 」前不再空格（「10月16日（金）· 東京国際フォーラム」）。
+ */
+function eventWhereLine(startsAt: string, venue: string | null, language: OrbitLanguage, t: Translate): string {
+  const start = new Date(startsAt);
+  const tonight = start.toDateString() === new Date().toDateString() && start.getHours() >= 17;
+  const when = tonight ? t(c.eventTonight, { time: `${start.getHours()}:${String(start.getMinutes()).padStart(2, "0")}` }) : eventDay(startsAt, language);
+  if (!venue) return when.trimEnd();
+  return `${when}${when.endsWith(" ") || when.endsWith("）") ? "" : " "}· ${venue}`;
 }
 
 /** 「10月16日（金）」 in Japanese (full-width brackets as in the design); the platform's format elsewhere. */
@@ -487,7 +507,7 @@ function EventTable({ events, language, t }: { events: readonly PlanEventOption[
             <Fragment key={option.eventId}>
               <tr data-plan-event-option={option.eventId} data-selected={on ? "" : undefined}>
                 <td><span data-ring={ringTone(option.score.total)} style={{ display: "inline-block" }}><EventRing score={option.score.total} label={t(c.colEventScore)} /></span></td>
-                <td><b>{option.title}</b><div className={k.lbl}>{[eventDay(option.startsAt, language), option.venue].filter(Boolean).join(" · ")}</div></td>
+                <td><b>{option.title}</b><div className={k.lbl}>{eventWhereLine(option.startsAt, option.venue, language, t)}</div></td>
                 <td>{option.expectedCount !== null ? <span className={`${k.chip} ${k.chip_lav}`}>{t(c.expectedV2, { n: option.expectedCount })}</span> : <span className={k.lbl}>—</span>}</td>
                 <td className={k.lbl}>{option.fee === undefined || option.fee === null ? "—" : option.fee === 0 ? t(c.feeFree) : `¥${option.fee.toLocaleString("ja-JP")}`}</td>
                 <td style={{ textAlign: "right" }}><button type="button" className={`btn ${styles.evtg}`} aria-expanded={on} onClick={() => setOpen(on ? null : option.eventId)}>{t(c.breakdown)}<Icon name={on ? "down" : "right"} size={16} /></button></td>
@@ -532,8 +552,8 @@ function TypeRail({ detail, t, language }: { detail: PlanPersonTypeDetail; t: Tr
                 <EventRing score={option.score.total} label={t(c.colEventScore)} />
                 <div className={styles.evMeta}>
                   <b>{option.title}</b>
-                  <span className={k.lbl}>{[eventDay(option.startsAt, language), option.venue].filter(Boolean).join(" · ")}</span>
-                  {option.expectedCount !== null ? <span className={`${k.chip} ${k.chip_lav}`}>{t(c.expectedV2, { n: option.expectedCount })}</span> : null}
+                  <span className={k.lbl}>{eventWhereLine(option.startsAt, option.venue, language, t)}</span>
+                  {option.fitLabel ? <span className={`${k.chip} ${k.chip_lav}`}>{option.fitLabel}</span> : option.expectedCount !== null ? <span className={`${k.chip} ${k.chip_lav}`}>{t(c.expectedV2, { n: option.expectedCount })}</span> : null}
                 </div>
               </div>
             ))}

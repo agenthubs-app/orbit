@@ -86,7 +86,8 @@ const PEOPLE: PlanV2ContactView[] = [
   { id: "fx-a-mori", isOrbitUser: false, lastInteractionAt: null, name: "森 恭平", organization: "東雲キャピタル", role: "プリンシパル" },
   { id: "fx-a-inoue", isOrbitUser: false, lastInteractionAt: null, name: "井上 拓海", organization: "シードキャピタル東京", role: "アソシエイト" },
   { id: "fx-a-hasegawa", isOrbitUser: false, lastInteractionAt: null, name: "長谷川 亮", organization: "湾岸グロース・パートナーズ", role: "パートナー" },
-  { id: "fx-a-nakamura", isOrbitUser: false, lastInteractionAt: null, name: "中村 由紀", organization: "光が丘法律事務所", role: "弁護士" },
+  // 最終接点「3週間前」（b4 #11 / b12 W-R24-07 弁護士行）：相对今天 21 天。
+  { id: "fx-a-nakamura", isOrbitUser: false, lastInteractionAt: new Date(Date.now() - 21 * 86_400_000).toISOString(), name: "中村 由紀", organization: "光が丘法律事務所", role: "弁護士" },
   { id: "fx-a-ishida", isOrbitUser: false, lastInteractionAt: null, name: "石田 恵", organization: "Kanade AI", role: "代表取締役" },
   { id: "fx-a-fujii", isOrbitUser: false, lastInteractionAt: null, name: "藤井 学", organization: "ネクストエンジェルズ", role: "エンジェル投資家" },
 ];
@@ -170,7 +171,9 @@ function seriesA(options: Options): (state: State) => void {
       const type = typeOf(candidate.key);
       type.contactLinks = [...type.contactLinks, { contactId: candidate.contactId, establishedAt: null, linkedAt: jst("2026-10-06", "09:00"), state: "linked" }];
     }
-    state.eventItems = [];
+    // 「最近の加点」的活动名（b8 #6「SaaS Summit · 10/3」）：参加过的活动记进计划的 eventItems（只加数据）。
+    const EVENT_TITLES: Record<string, string> = { "demo-event-cfo-night": "CFO Night", "demo-event-saas-summit": "SaaS Summit" };
+    state.eventItems = options.awards.flatMap((award, index) => (award.eventId && EVENT_TITLES[award.eventId] ? [{ createdAt: award.at, eventId: award.eventId, id: `fx-a-event-item-${index + 1}`, planId: PLAN_ID, sortKey: 1000 + index, status: "attended" as const, title: EVENT_TITLES[award.eventId]!, updatedAt: award.at }] : []));
     state.log = [
       ...options.awards.map((award, index): PlanV2LogEntry => {
         const payload: PlanAwardPayload = { anonymous: !award.contactId && award.basis === "self_report", basis: award.basis ?? (award.key === PLAN_EVENT_SEGMENT_KEY ? "event" : "talked"), contactId: award.contactId ?? null, eventId: award.eventId ?? null, part: award.part ?? "base", points: award.points, typeKey: award.key };
@@ -274,7 +277,8 @@ const SERIES_A_EVENTS = (): PlanEventFact[] => [
   // 顺序照 web.html EVREC（SaaS Summit 82 > CFO Night 74 > 大阪 68）：分数由规则算，只把事实调到这个顺序。
   fact("fx-a-ev-saas-summit", "Japan SaaS Summit 2026 秋", jst("2026-10-16"), "東京国際フォーラム", { exchangeCorner: true, expected: { cvc: 4, funded_founder: 12, vc_partner: 5 }, fee: 15000, firstDegree: 2, matching: true, nameTags: true, networkingMinutes: 45, travelMinutes: 30 }),
   fact("fx-a-ev-cfo-night", "CFO Night Tokyo vol.18", `${today()}T19:00:00+09:00`, "渋谷ストリーム", { expected: { cfo: 10, vc_partner: 2 }, fee: 3000, firstDegree: 1, nameTags: true, networkingMinutes: 60, travelMinutes: 25 }),
-  fact("fx-a-ev-dx-osaka", "製造業DXカンファレンス 大阪", jst("2026-10-23"), "グランフロント大阪", { attendeeSource: "organizer", expected: { cvc: 3 }, fee: 0, networkingMinutes: 30, travelMinutes: 150 }),
+  // 大阪：画板上只露出日期 / 会場 / CVC 约 3 名，其余事实（夜场、申込者タグ、人脈 2 名、名札、移動）只为让它排第 3（规则分 50，同稿 68 的「条件付き」档）。
+  fact("fx-a-ev-dx-osaka", "製造業DXカンファレンス 大阪", jst("2026-10-23", "18:30"), "グランフロント大阪", { expected: { cvc: 3 }, fee: 0, firstDegree: 2, nameTags: true, networkingMinutes: 30, travelMinutes: 100 }),
   fact("fx-a-ev-founders", "SaaS 創業者ミートアップ", jst("2026-10-20", "19:00"), "渋谷", { attendeeSource: "past", expected: { angel: 2, funded_founder: 6 }, fee: 0, firstDegree: 1, networkingMinutes: 60, travelMinutes: 20 }),
 ];
 

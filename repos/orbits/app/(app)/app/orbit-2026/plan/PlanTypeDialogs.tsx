@@ -209,8 +209,9 @@ export function IntroDraftDrawer({ draft, typeLabel, roleSituation, t, onClose }
   const toast = useToast();
   const [tone, setTone] = useState<"formal" | "short">("formal");
   useEffect(() => { if (draft) setTone("formal"); }, [draft]);
-  const body = draft ? (tone === "formal" ? draft.body : t(c.introShortBody, { name: draft.viaName, role: roleSituation })) : "";
-  const subject = draft ? (tone === "formal" ? draft.subject : t(c.introShortSubject)) : "";
+  // 两种语气都由服务端给；旧服务端没有 short* 时退回字典模板。
+  const body = draft ? (tone === "formal" ? draft.body : draft.shortBody ?? t(c.introShortBody, { name: draft.viaName, role: roleSituation })) : "";
+  const subject = draft ? (tone === "formal" ? draft.subject : draft.shortSubject ?? t(c.introShortSubject)) : "";
   return (
     <Drawer open={Boolean(draft)} onClose={onClose} title={t(c.introTitle)} size="md">
       {draft ? (

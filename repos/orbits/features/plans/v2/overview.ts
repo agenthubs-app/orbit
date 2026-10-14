@@ -70,6 +70,8 @@ export interface OverviewInput {
   candidates: readonly PlanV2MatchCandidate[];
   contacts: ReadonlyMap<string, PlanV2ContactView>;
   events: readonly PlanEventFact[];
+  /** 计划里记下的参加活动名（eventId → title；「最近の加点」用）。 */
+  eventTitles?: ReadonlyMap<string, string>;
   language: PlanCopyLanguage;
   platform: PlanHrefPlatform;
 }
@@ -276,11 +278,13 @@ export function stepSuggestions(input: OverviewInput): PlanStepSuggestion[] {
   });
 }
 
+/** 「最近の加点」：最近 4 条（b8 #6 / #7：含スキップ「習熟済み」行、活动行写活动名）。 */
+export const RECENT_AWARDS_LIMIT = 4;
+
 export function recentAwards(input: OverviewInput): PlanRecentAward[] {
   return [...input.awards]
-    .filter((entry) => entry.award.basis !== "skip")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 5)
+    .slice(0, RECENT_AWARDS_LIMIT)
     .map((entry) => {
       const type = input.types.find((item) => item.personType.key === entry.award.typeKey);
       return {
@@ -289,6 +293,7 @@ export function recentAwards(input: OverviewInput): PlanRecentAward[] {
         basis: entry.award.basis,
         contactName: entry.award.contactId ? input.contacts.get(entry.award.contactId)?.name ?? null : null,
         emoji: type?.personType.emoji ?? "🎟️",
+        eventTitle: entry.award.eventId ? input.eventTitles?.get(entry.award.eventId) ?? input.events.find((event) => event.eventId === entry.award.eventId)?.title ?? null : null,
         itemId: type?.id ?? null,
         part: entry.award.part,
         points: entry.award.points,

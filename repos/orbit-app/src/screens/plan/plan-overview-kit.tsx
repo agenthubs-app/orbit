@@ -4,13 +4,15 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 
-import type { PlanStepProgress, PlanV2Detail, PlanV2PersonType, PlanV2Step } from "../../api/contract/plan-v2";
+import type { PlanEventOption, PlanStepProgress, PlanV2Detail, PlanV2PersonType, PlanV2Step } from "../../api/contract/plan-v2";
 import { unitPoints } from "../../api/compute/plan-allocation";
 import { Icon, UiPressable, UiText } from "../../components/ui";
 import { cjkLift } from "../../components/ui/cjk-lift";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { closingStepNumbers, eventGatherTypeKeys, jaLatinGlue, stepChipsVisible } from "../../api/compute/plan-overview-labels";
 import { goalKindLabel, PLAN_EVENT_EMOJI } from "./plan-model";
+import { eventDay, KitRing } from "./plan-type-kit";
 import { KitButton, KitCard, KitCardHead, KitChip, KitEmo, KitGradient, KitHatch, kitText, useKitStyles, useKitWhy, type KitTone } from "./plan-kit";
 
 const TYPE_TONES = ["teal", "apricot", "pink", "lav", "blue"] as const;
@@ -247,20 +249,21 @@ export function StepsCard({ plan, cards, onOpenType, onDoneMark, suggestion }: {
   const progress = new Map((plan.stepProgress ?? []).map((item) => [item.stepKey, item]));
   const byKey = new Map(cards.map((card) => [card.type.key, card]));
   const steps = plan.content.steps;
+  const chips = stepChipsVisible(plan.score.total, steps);
   return (
     <KitCard>
       <KitCardHead title={t("plan.step.title")} right={t("plan.step.note")} />
       {steps.map((step, index) => (
-        <StepItem key={step.key} n={index + 1} last={index === steps.length - 1} step={step} chip={stepChip(progress.get(step.key), Boolean(step.completedAt), t)}
-          types={step.personTypeKeys.flatMap((key) => (byKey.get(key) ? [byKey.get(key)!] : []))} hasEvent={step.personTypeKeys.includes("event")}
+        <StepItem key={step.key} n={index + 1} last={index === steps.length - 1} step={step} chip={chips ? stepChip(progress.get(step.key), Boolean(step.completedAt), t) : null}
+          types={step.personTypeKeys.flatMap((key) => (byKey.get(key) ? [byKey.get(key)!] : []))} hasEvent={step.personTypeKeys.includes("event")} closing={closingStepNumbers(steps, index, "event")}
           onOpenType={onOpenType} onDoneMark={() => onDoneMark(step, index + 1)} extra={suggestion?.(step)} kit={kit} styles={styles} />
       ))}
     </KitCard>
   );
 }
 
-function StepItem({ n, last, step, chip, types, hasEvent, onOpenType, onDoneMark, extra, kit, styles }: {
-  n: number; last: boolean; step: PlanV2Step; chip: { label: string; tone: KitTone } | null; types: TypeCardView[]; hasEvent: boolean;
+function StepItem({ n, last, step, chip, types, hasEvent, closing, onOpenType, onDoneMark, extra, kit, styles }: {
+  n: number; last: boolean; step: PlanV2Step; chip: { label: string; tone: KitTone } | null; types: TypeCardView[]; hasEvent: boolean; closing: number[];
   onOpenType: (itemId: string) => void; onDoneMark: () => void; extra?: ReactNode; kit: ReturnType<typeof useKitStyles>["styles"]; styles: ReturnType<typeof useStyles>["styles"];
 }) {
   const { colors } = useOrbitTheme();
@@ -296,7 +299,7 @@ function StepItem({ n, last, step, chip, types, hasEvent, onOpenType, onDoneMark
           ))}
           {hasEvent ? <KitChip label={`${PLAN_EVENT_EMOJI} ${t("plan.event.title")}`} /> : null}
         </View>
-      ) : <UiText style={[kit.lbl, styles.stepLbl]}>{t("plan.step.noNewPeople")}</UiText>}
+      ) : <UiText style={[kit.lbl, styles.stepLbl]}>{closing.length ? t("plan.step.noNewPeopleClosing", { steps: closing.join("・") }) : t("plan.step.noNewPeople")}</UiText>}
     </View>
   );
 }
@@ -365,12 +368,23 @@ function TypeCard({ card, first, onOpen }: { card: TypeCardView; first: boolean;
 
 /* ---------- イベント .k-evs ---------- */
 
-export function EventsCard({ plan }: { plan: PlanV2Detail }) {
+export function EventsCard({ plan, onOpenEvent }: { plan: PlanV2Detail; onOpenEvent?: (event: PlanEventOption) => void }) {
   const { styles } = useStyles();
+  const { colors } = useOrbitTheme();
   const kit = useKitStyles().styles;
-  const { t } = useOrbitLocale();
+  const { t, language } = useOrbitLocale();
   const event = plan.content.event;
   if (event.allocation <= 0) return null;
+  const labels = new Map(plan.content.personTypes.map((type) => [type.key, type.shortLabel]));
+  const names = eventGatherTypeKeys(plan.content.personTypes).map((key) => labels.get(key) ?? key);
+  const joined = language === "ja" ? jaLatinGlue(names.flatMap((name, k) => (k ? [t("plan.event.gatherJoin"), name] : [name]))) : names.join(t("plan.event.gatherJoin"));
+  const gather = names.length ? (language === "ja" ? jaLatinGlue([joined, t("plan.event.gather", { types: "" })]) : t("plan.event.gather", { types: joined })) : "";
+  // 「今夜 19:00」：当天 17 点后的活动（同 Web RecommendedEvents）。
+  const when = (iso: string) => {
+    const start = new Date(iso);
+    if (start.toDateString() === new Date().toDateString() && start.getHours() >= 17) return t("plan.event.tonight", { time: `${start.getHours()}:${String(start.getMinutes()).padStart(2, "0")}` });
+    return eventDay(iso, language);
+  };
   const segment = plan.score.segments.find((entry) => entry.key === "event");
   const earned = segment?.earned ?? 0;
   const count = metCountOf(event.allocation, event.targetCount, earned);
@@ -385,9 +399,19 @@ export function EventsCard({ plan }: { plan: PlanV2Detail }) {
         </View>
         <UiText style={styles.pp}>{String(earned + (segment?.overflow ?? 0))}<UiText style={styles.ppSmall}>{` / ${event.allocation}`}</UiText></UiText>
       </View>
-      <UiText style={kit.lbl}>{t("plan.event.rule", { count, target: event.targetCount, unit })}</UiText>
+      <UiText style={kit.lbl}>{[gather, t("plan.event.rule", { count, target: event.targetCount, unit })].filter(Boolean).join(" · ")}</UiText>
       <View style={[styles.mb, styles.evBar]}><View style={[styles.mbFill, { width: `${fill}%` }]} /></View>
-      {/* D53：推荐活动（固定 5 项分数）等 R26 活动事实上线后在这里列出（同 Web）。 */}
+      {/* R26（D53）：推荐活动（app.html V2.evCard22 · EVREC 3 行，按规则分降序）。 */}
+      {(plan.recommendedEvents ?? []).slice(0, 3).map((item, index) => (
+        <UiPressable key={item.eventId} accessibilityRole="button" accessibilityLabel={t("plan.type.eventScoreA11y", { score: item.score.total, title: item.title })} disabled={!onOpenEvent} onPress={() => onOpenEvent?.(item)} pressedScale={0.99} style={[styles.evRow, index > 0 && styles.evRowNext]} testID="plan-recommended-event">
+          <KitRing size={42} score={item.score.total} color={item.score.total >= 70 ? colors.plum700 : item.score.total >= 50 ? colors.plum500 : colors.rose500} />
+          <View style={kit.grow}>
+            <UiText numberOfLines={1} style={styles.evRowTitle}>{item.title}</UiText>
+            <UiText numberOfLines={1} style={kit.lbl}>{[when(item.startsAt), item.venue].filter(Boolean).join("· ")}</UiText>
+            {item.fitLabel ? <KitChip label={item.fitLabel} tone="lav" style={styles.evRowChip} /> : null}
+          </View>
+        </UiPressable>
+      ))}
     </KitCard>
   );
 }
@@ -468,4 +492,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   evHead: { marginBottom: 2 },
   evTitle: { flexDirection: "row", alignItems: "center", gap: 6 },
   evBar: { flex: 0, marginTop: 4 },
+  evRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
+  evRowNext: { borderTopWidth: 1, borderTopColor: colors.line },
+  evRowTitle: { color: colors.ink, ...kitText(13, "700") },
+  evRowChip: { marginTop: 4, alignSelf: "flex-start" },
 }));

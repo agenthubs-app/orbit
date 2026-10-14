@@ -670,6 +670,8 @@ export interface PlanRecentAward {
   part: PlanAwardPart;
   basis: PlanAwardBasis;
   contactName: string | null;
+  /** R26：活动加分的活动名（计划里记下的参加活动；没有为 null）。 */
+  eventTitle?: string | null;
   at: string;
 }
 
@@ -874,6 +876,9 @@ export interface PlanIntroDraftResult {
   viaName: string;
   subject: string;
   body: string;
+  /** R26（R24-06）：「短く」语气的件名与正文，也由服务端给（「丁寧に」= subject / body）。 */
+  shortSubject?: string;
+  shortBody?: string;
 }
 
 export type PlanContactFitStatus = "candidate" | "linked" | "talked";

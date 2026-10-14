@@ -270,7 +270,9 @@
 .railEvents { padding: 6px 14px; }
 .railEvents .evRow + .evRow { border-top: 1px solid var(--line); }
 .evRow { display: flex; gap: 10px; align-items: center; padding: 10px 0; }
-.evMeta { flex: 1; min-width: 0; }
+/* 标题 / 日时 / chip 各占一行（kit .v22ev .meta；chip 不跟在日时后面）。 */
+.evMeta { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.evMeta > * { max-width: 100%; }
 .evMeta b { display: block; font-size: var(--fs-body-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .evMeta .lbl { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .evMeta > span:last-child { margin-top: 4px; }

@@ -399,7 +399,7 @@ export function EventsListCard({ events, ring, bonus, onOpen }: { events: readon
 }
 
 /** kit .ring：底圈 surface-3、分数弧 round cap（score / 100），中间 12px 800 数字。 */
-function KitRing({ size, score, color }: { size: number; score: number; color: string }) {
+export function KitRing({ size, score, color }: { size: number; score: number; color: string }) {
   const { styles, colors } = useStyles();
   const r = (size - 5) / 2;
   const length = 2 * Math.PI * r;
@@ -415,7 +415,7 @@ function KitRing({ size, score, color }: { size: number; score: number; color: s
 }
 
 /** 「10月16日（金）」 in Japanese (full-width brackets as in the design); the platform's format elsewhere (same as Web). */
-function eventDay(startsAt: string, language: string): string {
+export function eventDay(startsAt: string, language: string): string {
   const date = new Date(startsAt);
   if (language !== "ja") return date.toLocaleDateString(language === "zh" ? "zh-CN" : "en-US", { day: "numeric", month: "long", weekday: "short" });
   return `${date.toLocaleDateString("ja-JP", { day: "numeric", month: "long" })}（${date.toLocaleDateString("ja-JP", { weekday: "short" })}）`;
