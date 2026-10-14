@@ -54,9 +54,11 @@
 | [R12](R12-add-cards-and-manual/GOAL.md) | 加人：「人脈を追加」入口、名刺スキャン（拍 / 传含表裏 → 读完自动进人脈 → まとめて確認 → 完成）、手入力（查重与名片同一规则 + 同名提示、逐字段合并、撤销）、待确认草稿页；删除 App 7 个旧加人屏 | R09 | H | 甲 | **done**（2026-10-14，README 规则 11 收口）：Web 界面像素返工 done（余待组件库 / 待 R11）；App 按 §20 通过 16 张（02 / 03 / 46 / b9-00 / 00 / 15 / N11 浅深、N10 浅、N10d、18 深、04 深）。暂缓（登记交接表 R12-11～13）：04 浅待画板一行文字；16 待 R20；N09 待组件库；17、N08b、N12 待演示数据 fixture；b9-04 由 A-R16-04 覆盖（[REWORK-REPORT-app](R12-add-cards-and-manual/REWORK-REPORT-app.md) §10） |
 | [R15](R15-invite-codes/GOAL.md) | 加人：招待コード（迁移、发码 / 兑换 / 历史 / 同步 / 解除、公开预览限流与防枚举、发出方两端、接收方 `/i/<code>`）；删除两端旧邀请页 | R12 | H | 甲 | 界面像素返工 done（剩余画面待组件库 / 待 R11）：App 13/13 按 §20 通过；Web 接收方 09/10/13 通过，14m / 12 按 §23-1 算通过（[REWORK-REPORT](R15-invite-codes/REWORK-REPORT.md)） |
 | [R16](R16-import-and-completion/GOAL.md) | 加人：導入（連絡先 / LinkedIn / CSV / イベントから → まとめて確認）与「每天一问」live（规则、零 AI）；删除 Web 旧导入页 | R12 | H | 甲 | 界面像素返工 done（剩余画面待组件库 / 待 R11）：服务端 + 两端界面已复核（[REPORT](R16-import-and-completion/REPORT.md)；Web 13/14、App 8/10，余 W-R16-08 浅 G23b、A-R16-02 G23） |
-| R30 | 全局搜索（两端）：Web ⌘K 面板本体（W-R07-05 / 06）+ App 全局搜索；做完后 App Task 左上 🔍 改接全局搜索（[交接表 R30](HANDOFF-TO-FEATURE-SPRINTS.md#r30-搜索新甲--小雨2026-10-12-用户定)） | R07；活动与会话的搜索接口（R26、R21） | H | 甲 | 未开始（2026-10-12 用户决定新开） |
+| [R26](R26-events-assessment-and-plan/GOAL.md) | 活动：评估与计划接线（契约 8 live：URL 抓取 + SSRF、海报、正文、3 项、异常态；`event_assessments` 迁移；`events/mine`；两端イベント一级页 評価 / 参加予定；活动事实 live（D53）、概要推荐活动行、今日のチャンス、会える活動、R24-06 小项；代签计分；重比计划页 12 个暂缓画面；删两端旧一级页） | R24、R25 | H | 甲 | **文档完成、已复核，待实施**（2026-10-14；[整体设计](events/DESIGN.md)、[复核](events/REVIEW.md)；开工前待拍板见 DESIGN §10 A1 / A4 与 B1 / B2 / B6） |
+| [R27](R27-events-journey/GOAL.md) | 活动：从找到活动到会后（探す、コミュニティ、絞り込み、検索（给 R30）、興味なし契约 9 live；詳細（含未登录列表 / 详情）、参加登録 / 参加コード / 取消；会う準備；会場モード；会後のふりかえり；删两端旧详情 / 报名 / 会场屏） | R26 | H | 甲 | **文档完成、已复核，待实施**（2026-10-14；开工前待拍板见 DESIGN §10 A2 / A3 / A5–A7 与 B3–B5） |
+| R30 | 全局搜索（两端）：Web ⌘K 面板本体（W-R07-05 / 06）+ App 全局搜索；做完后 App Task 左上 🔍 改接全局搜索（[交接表 R30](HANDOFF-TO-FEATURE-SPRINTS.md#r30-搜索新甲--小雨2026-10-12-用户定)） | R07；活动与会话的搜索接口（R27、R21） | H | 甲 | 未开始（2026-10-12 用户决定新开） |
 
-计划 v2.2 的整体设计、AI 调用清单、需要用户拍板的事项见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md)，复核见 [plan-v2.2/REVIEW.md](plan-v2.2/REVIEW.md)。加人与邀请（R12、R15、R16）见 [add-and-invite/DESIGN.md](add-and-invite/DESIGN.md)，复核见 [add-and-invite/REVIEW.md](add-and-invite/REVIEW.md)。
+计划 v2.2 的整体设计、AI 调用清单、需要用户拍板的事项见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md)，复核见 [plan-v2.2/REVIEW.md](plan-v2.2/REVIEW.md)。加人与邀请（R12、R15、R16）见 [add-and-invite/DESIGN.md](add-and-invite/DESIGN.md)，复核见 [add-and-invite/REVIEW.md](add-and-invite/REVIEW.md)。活动（R26、R27）见 [events/DESIGN.md](events/DESIGN.md)，复核见 [events/REVIEW.md](events/REVIEW.md)。
 
 ## 用户决定（2026-10-09）
 
