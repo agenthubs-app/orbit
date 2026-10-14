@@ -659,7 +659,7 @@ const ANS = '① β 運用中（48名 · 有料 0）② 主催者 ③ イベン�
 function qApp(stage) {
   const head = chatTop('プランを作る · 質問');
   const pre = me(`目標：${GOAL}`) + `<div class="ok-card" style="padding:10px 14px"><div class="row" style="gap:8px"><span class="okmark">${ic('check')}</span><b style="font-size:12.5px;flex:1">背景を確認しました</b><span class="lbl">目的：3段目</span></div></div>`;
-  if (stage === 'q') return { body: head + `<div class="chat">${fmBar(1)}${pre}${ai('背景の空白から、プランを分ける 5つだけ聞かせてください。まとめて答えられます。')}${SCRC}${qCard(false)}</div>`, overlay: composer('まとめて書いても OK です') };
+  if (stage === 'q') return { body: head + `<div class="chat">${fmBar(1)}${pre}${ai('背景の空白から、プランを分ける 5つだけ聞かせてください。まとめて答えられます。')}${SCRC}${qCard(false)}</div>` };
   return { body: head + `<div class="chat">${fmBar(1)}${pre}${me(ANS, 'k-ans')}${SCRC}${ai('ありがとうございます。前提をまとめました。違うところがあれば、ここで直してください。')}${premCard({ cls: 'k-prem', act: true })}</div>`, overlay: composer('前提について補足する') };
 }
 function qWeb() {
@@ -1090,7 +1090,7 @@ h += boards([
     ['.k-qwhy', 0, '「?」展开选题理由：题库 8 问里选「背景也不知道 × 最影响分岔」的 5 问；R4 价格放到 Step 里验证、R5 竞品由业界现状补'],
     ['.k-q3 .qid', 0, '每题右上标题库编号（R3 ブランドの一言），同类目标同背景 → 同样的问题、同样的顺序'],
     ['.k-q3', 0, '选项 chip（单选题选一个；R7 可多选）+ 每题一行自由入力（灰字 = 可留空）'],
-    ['.composer', 0, '卡底「まとめて回答する（5問）」一次提交（滚到卡底）；也可以直接在输入框用文字一次答完；空着的题按推测处理并在依据里写「推測」'],
+    ['.k-qsend', 0, '卡底「まとめて回答する（5問）」一次提交（滚到卡底）；空着的题按推测处理并在依据里写「推測」。2026-10-14 定（§24）：底部输入栏（「まとめて書いても OK です」+ 发送）去掉——没有接口，自由文字拆到各题要付费 AI'],
   ]),
   AP('③ 確定した前提', '', { body: q2.body, overlay: q2.overlay }, [
     ['.k-prem .src', 0, '每行右侧小签标出处（背景 / Q1–Q5）；上方 5 问回答已压成一条用户消息'],

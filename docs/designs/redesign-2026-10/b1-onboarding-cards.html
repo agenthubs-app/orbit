@@ -1815,7 +1815,7 @@ const A5 = (() => {
   }
   const bgOk = () => F.me(`目標：${F.GOAL}`) + F.okLine('背景を確認しました', '<span class="lbl">空き 2 · 目的：2段目</span>');
   function qApp(stage) {
-    if (stage === 'q') return { body: head('質問') + `<div class="chat">${F.fmBar(F.FM, 1)}${bgOk()}${F.ai('背景の空きから、プランを分ける 4つだけ聞かせてください。まとめて答えられます。')}<i class="scrollto" data-off="8"></i>${F.qCard(false)}</div>`, overlay: F.composer('まとめて書いても OK です') };
+    if (stage === 'q') return { body: head('質問') + `<div class="chat">${F.fmBar(F.FM, 1)}${bgOk()}${F.ai('背景の空きから、プランを分ける 4つだけ聞かせてください。まとめて答えられます。')}<i class="scrollto" data-off="8"></i>${F.qCard(false)}</div>` };
     return { body: head('質問') + `<div class="chat">${F.fmBar(F.FM, 1)}${bgOk()}${F.me(F.ANS, 'k-ans')}<i class="scrollto" data-off="8"></i>${F.ai('ありがとうございます。前提をまとめました。違うところがあれば、ここで直してください。')}${F.premCard({ cls: 'k-prem', act: true, kcls: { 2: 'k-prem3' } })}</div>`, overlay: F.composer('前提について補足する') };
   }
   /* 初版の下：AI 修正 / 手動編集 は入口と説明のみ（詳細は ⑩ b10）→「このプランで始める」 */
@@ -2145,7 +2145,7 @@ h += '<div class="v22x">' + boards([
     ['.k-qwhy', 0, '「?」展开选题理由：题库「資金調達」7 问里，选背景也不知道 × 最影响分岔的 4 问；F1 金额从目标文、F4 调达经验从资料可知，F6 CVC 在初版里作为选项给出'],
     ['.k-q2 .qid', 0, '每题右上标题库编号（F3 既存株主・リード候補），同类目标同背景 → 同样的问题、同样的顺序'],
     ['.k-q2', 0, '选项 chip（可多选的题可多选）+ 每题一行自由入力；空着的题按推测处理并在依据里写「推測」'],
-    ['.composer', 0, '卡底「まとめて回答する（4問）」一次提交；也可以在输入框用文字一次答完'],
+    ['.k-qsend', 0, '卡底「まとめて回答する（4問）」一次提交；底部输入栏已去掉（2026-10-14 §24）'],
   ]),
   A5P('③ 確定した前提', { body: a5q2.body, overlay: a5q2.overlay }, [
     ['.k-ans', 0, '4 问回答压成一条用户消息'],

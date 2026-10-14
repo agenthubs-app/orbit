@@ -3363,7 +3363,7 @@ const ANS = '① β 運用中（48名 · 有料 0）② 主催者 ③ イベン�
 function qApp(stage) {
   const head = chatTop('プランを作る · 質問');
   const pre = me(`目標：${GOAL}`) + `<div class="ok-card" style="padding:10px 14px"><div class="row" style="gap:8px"><span class="okmark">${ic('check')}</span><b style="font-size:12.5px;flex:1">背景を確認しました</b><span class="lbl">目的：3段目</span></div></div>`;
-  if (stage === 'q') return { body: head + `<div class="chat">${fmBar(1)}${pre}${ai('背景の空白から、プランを分ける 5つだけ聞かせてください。まとめて答えられます。')}${SCRC}${qCard(false)}</div>`, overlay: composer('まとめて書いても OK です') };
+  if (stage === 'q') return { body: head + `<div class="chat">${fmBar(1)}${pre}${ai('背景の空白から、プランを分ける 5つだけ聞かせてください。まとめて答えられます。')}${SCRC}${qCard(false)}</div>` };
   return { body: head + `<div class="chat">${fmBar(1)}${pre}${me(ANS, 'k-ans')}${SCRC}${ai('ありがとうございます。前提をまとめました。違うところがあれば、ここで直してください。')}${premCard({ cls: 'k-prem', act: true })}</div>`, overlay: composer('前提について補足する') };
 }
 function qWeb() {
