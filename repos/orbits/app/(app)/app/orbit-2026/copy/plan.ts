@@ -593,6 +593,7 @@ export const planOverviewCopy = {
   typeCellPeople: { ja: "人", zh: "名", en: " ppl", kind: "label" },
   noNewPeople: { ja: "新しく会う人はいません", zh: "没有要新认识的人", en: "No one new to meet", kind: "label" },
   noNewPeopleClosing: { ja: "新しく会う人はいません · Step {steps} の相手と着地させます", zh: "没有要新认识的人 · 和 Step {steps} 的人把事情落地", en: "No one new to meet · land it with the people from Step {steps}", kind: "label" },
+  stepSep: { ja: "・", zh: "、", en: ", ", kind: "label" },
   eventGather: { ja: "{types}が集まる場へ行く", zh: "去{types}聚集的场合", en: "Go where {types} gather", kind: "label" },
   eventGatherJoin: { ja: "と", zh: "和", en: " and ", kind: "label" },
   eventRule: { ja: "参加 1回 +{unit} · {target}回まで満額、以降は半分 · {count} / {target}回", zh: "参加1次 +{unit} · {target}次内满额，之后减半 · {count}/{target}次", en: "+{unit} per visit · full up to {target}, then half · {count} / {target}", kind: "label" },

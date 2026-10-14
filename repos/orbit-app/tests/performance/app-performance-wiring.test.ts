@@ -201,6 +201,7 @@ test("RootLayout records first commit and auth restoration after assigning the a
     export function mainTabForPath() { return "home"; }
     export function AppErrorScreen() { return null; }
     export function OrbitRouteAccessBoundary() { return null; }
+    export function DevOpenPath() { return null; }
     export function OrbitNotificationsCoordinator() { return null; }
     export function OrbitNotificationLifecycle() { return null; }
     export function StatusBar() { return null; }

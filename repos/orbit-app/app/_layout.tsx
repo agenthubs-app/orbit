@@ -28,6 +28,7 @@ import { ShellTabBar } from "../src/components/OrbitTabBar";
 import { mainTabForPath } from "../src/view-models/app-navigation";
 import { useMobileViewport } from "../src/platform/use-mobile-viewport";
 import { useEffect, useRef } from "react";
+import { DevOpenPath } from "../src/screens/add/dev-open-path";
 import {
   appPerformanceInput,
   isAppPerformanceEnabled,
@@ -127,6 +128,7 @@ export default function RootLayout() {
                   <OrbitNotificationsCoordinator />
                   <OrbitNotificationLifecycle />
                   <OrbitRouteAccessBoundary />
+                  <DevOpenPath />
                   <StatusBar style={scheme === "dark" ? "light" : "dark"} />
                 </UiRoot>
               </OrbitTimeZoneProvider>

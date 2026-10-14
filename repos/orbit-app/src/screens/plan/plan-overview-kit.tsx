@@ -299,7 +299,7 @@ function StepItem({ n, last, step, chip, types, hasEvent, closing, onOpenType, o
           ))}
           {hasEvent ? <UiPressable accessibilityRole="link" accessibilityLabel={t("plan.event.title")} hitSlop={6} disabled={!onOpenEvents} onPress={() => onOpenEvents?.()}><KitChip label={`${PLAN_EVENT_EMOJI} ${t("plan.event.title")}`} /></UiPressable> : null}
         </View>
-      ) : <UiText style={[kit.lbl, styles.stepLbl]}>{closing.length ? t("plan.step.noNewPeopleClosing", { steps: closing.join("・") }) : t("plan.step.noNewPeople")}</UiText>}
+      ) : <UiText style={[kit.lbl, styles.stepLbl]}>{closing.length ? t("plan.step.noNewPeopleClosing", { steps: closing.join(t("plan.step.stepSep")) }) : t("plan.step.noNewPeople")}</UiText>}
     </View>
   );
 }

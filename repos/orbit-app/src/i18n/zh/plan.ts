@@ -624,6 +624,7 @@ export const plan = {
   "plan.step.partEvents": "{label} {done}/{total}次",
   "plan.step.noNewPeople": "没有要新认识的人",
   "plan.step.noNewPeopleClosing": "没有要新认识的人 · 和 Step {steps} 的人把事情落地",
+  "plan.step.stepSep": "、",
   "plan.event.gather": "去{types}聚集的场合",
   "plan.event.gatherJoin": "和",
   "plan.event.tonight": "今晚 {time}",

@@ -33,12 +33,15 @@ export function Segmented<Key extends string>({ segments, value, onChange, acces
 // kit .tseg (Task 四段) + .tswipe page dots: equal segments over pages the user can
 // also swipe between. Segment positions are frozen (RD-20); the parent owns which
 // page is shown — a value set from outside (a link, restored state) moves the pager.
-export function SwipeSegments<Key extends string>({ segments, value, onChange, accessibilityLabel, renderPage }: {
+export function SwipeSegments<Key extends string>({ segments, value, onChange, accessibilityLabel, renderPage, variant = "tseg", dots = true }: {
   segments: Segment<Key>[];
   value: Key;
   onChange: (key: Key) => void;
   accessibilityLabel: string;
   renderPage: (key: Key) => ReactNode;
+  /** R26：イベント页用 kit `.seg`（app.html #13–#15），下方无页点、只留 14 的间距。默认同 Task（tseg + 页点）。 */
+  variant?: "seg" | "tseg";
+  dots?: boolean;
 }) {
   const { styles } = useStyles();
   const { width } = useWindowDimensions();
@@ -75,10 +78,12 @@ export function SwipeSegments<Key extends string>({ segments, value, onChange, a
         pager.current?.scrollTo({ x: shown.current * next, animated: false });
       }
     }}>
-      <View style={styles.segmentsInset}><Segmented variant="tseg" segments={segments} value={value} onChange={select} accessibilityLabel={accessibilityLabel} /></View>
-      <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={styles.dots}>
-        {segments.map((segment) => <View key={segment.key} style={[styles.dot, segment.key === value && styles.dotOn]} />)}
-      </View>
+      <View style={[styles.segmentsInset, !dots && styles.segmentsGap]}><Segmented variant={variant} segments={segments} value={value} onChange={select} accessibilityLabel={accessibilityLabel} /></View>
+      {dots ? (
+        <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={styles.dots}>
+          {segments.map((segment) => <View key={segment.key} style={[styles.dot, segment.key === value && styles.dotOn]} />)}
+        </View>
+      ) : null}
       <ScrollView
         ref={pager}
         horizontal
@@ -111,6 +116,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   taskSelected: shadows.segment,
   taskLabel: { fontWeight: "700", lineHeight: 18.75 },
   segmentsInset: { paddingHorizontal: 18 },
+  segmentsGap: { marginBottom: 14 },
   // kit .tswipe: margin 8 0 12
   dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 8, marginBottom: 12 },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.surface3 },

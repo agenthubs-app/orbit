@@ -624,6 +624,7 @@ export const plan = {
   "plan.step.partEvents": "{label} {done} / {total}回",
   "plan.step.noNewPeople": "新しく会う人はいません",
   "plan.step.noNewPeopleClosing": "新しく会う人はいません · Step {steps} の相手と着地させます",
+  "plan.step.stepSep": "・",
   "plan.event.gather": "{types}が集まる場へ行く",
   "plan.event.gatherJoin": "と",
   "plan.event.tonight": "今夜 {time}",

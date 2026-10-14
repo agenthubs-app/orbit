@@ -68,6 +68,8 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
           right={<IconButton icon="calendar" accessibilityLabel={t("eventsV2.calendar")} onPress={() => router.push("/task?seg=calendar" as Href)} />} />
       </View>
       <SwipeSegments
+        variant="seg"
+        dots={false}
         segments={segments}
         value={tab}
         onChange={setTab}

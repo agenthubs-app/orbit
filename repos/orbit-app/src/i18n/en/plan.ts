@@ -624,6 +624,7 @@ export const plan = {
   "plan.step.partEvents": "{label} {done} / {total}",
   "plan.step.noNewPeople": "No one new to meet",
   "plan.step.noNewPeopleClosing": "No one new to meet · land it with the people from Step {steps}",
+  "plan.step.stepSep": ", ",
   "plan.event.gather": "Go where {types} gather",
   "plan.event.gatherJoin": " and ",
   "plan.event.tonight": "Tonight {time}",
