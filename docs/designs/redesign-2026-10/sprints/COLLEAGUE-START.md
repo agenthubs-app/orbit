@@ -23,6 +23,8 @@
 
 每个 Sprint 照 HOW-TO 先写 `GOAL.md` / `PLANNER.md`（目录 `sprints/Rxx-<名字>/`），独立复核后再实施。
 
+**开工必读补充（2026-10-14）**：写界面前先做 HOW-TO 第 8 节的「画板预检」五项（画板自洽 / 数据来源 / token 齐 / 组件对齐 / 演示数据照画板造），并「边写边比」——甲这边的返工大多来自这五类，提前查能省掉大部分返工。
+
 ## 3. 两人协作规矩
 
 - **分支**：照 HOW-TO 第 0 节开个人分支（如 `redesign-R11-network`，全用连字符），做完合回 `redesign`。甲在 `redesign` 上直接提交，你合回前先 `git pull --rebase` 或合并 `redesign`。
