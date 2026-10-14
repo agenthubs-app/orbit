@@ -139,4 +139,4 @@ R25 登记行相应更新为「04c 已过，其余仍待」。
 - R10：首页「下一场活动」读 `/api/events/mine?range=upcoming&limit=1`。
 - R13：`event_pick` 由重算任务写入（`features/events/assessment/recompute-job.ts`）。
 - 复核遗留：M4（参加予定分数）、时间文本比较、贴正文跨实例、海报每人上限。
-- 授权项：生产迁移 `event_assessments` / `event_assessment_posters`、`ORBIT_EVENT_ASSESSMENT_AI=ai`。
+- 授权项（用户 2026-10-15 授权，已执行）：生产 Neon `orbit-production-20260924` 先在临时分支 `r26-migration-dryrun-20261015` 试跑，再用项目迁移函数导出的原 SQL（带 checksum 校验）执行 `network-analysis` v3 `ai-usage-plan-v2-purposes`（计划 v2.2 也要这一条，已一并完成）与 `event-assessments-core` v1；核对：迁移记录齐、账本 10 行完好、`event_assessments` 0 行。Vercel `orbit-staging-20260917` 生产环境加 `ORBIT_EVENT_ASSESSMENT_AI=ai`（`DEEPSEEK_API_KEY` 已有）。**未部署**：开关在下次生产部署（含 R26 代码）后生效；临时分支待删除。
