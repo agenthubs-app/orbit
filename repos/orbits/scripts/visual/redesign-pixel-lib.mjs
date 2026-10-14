@@ -2,7 +2,8 @@
 // 2026-10 改版像素门禁（RD-16 修订，用户决定 2026-10-11）的共用部分：
 // 参数解析、从 .env.local 读密码、PNG 缩放、整屏 raw + --grid 逐带比对 + 归因门禁。
 // 比对口径与 compare-0918.mjs 完全一致（单通道差 ≥24 记一个不一致像素；逐带 ±dy 搜索取最小值），
-// 区别只在归因：改版只认 `[data]`（数据文字不同）一类理由，其余前缀一律视为未归因。
+// 区别只在归因：改版只认 `[data]`（数据文字不同）与 `[raster]`（iOS 3x / Chrome 的字形、图标栅格化残差与 1–3px 折行偏移，
+// 用户 2026-10-12 定、2026-10-14 进脚本）两类理由，其余前缀一律视为未归因。
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -108,6 +109,13 @@ const differs = (a, ai, b, bi) =>
 
 // 整屏 raw + 可选 --grid 逐带比对 + 归因门禁。
 // 返回 { raw, height, overBands, unattributed, cells, exitCode }；diff.png / cells.json / result.json 写进 out。
+/** The accepted attribution prefix of a band reason (`[data]` / `[raster]`), or null. */
+export function acceptedReason(reason) {
+  if (typeof reason !== "string") return null;
+  const text = reason.trim();
+  return text.startsWith("[data]") ? "[data]" : text.startsWith("[raster]") ? "[raster]" : null;
+}
+
 export function compareImages({ design, app, out, grid, gridDy = 12, threshold = 0.02, rawThreshold = 0.02, attributionPath, viewKey, meta = {} }) {
   const width = Math.min(design.width, app.width);
   const h = Math.min(design.height, app.height);
@@ -166,8 +174,8 @@ export function compareImages({ design, app, out, grid, gridDy = 12, threshold =
       const all = JSON.parse(readFileSync(attributionPath, "utf8"));
       attribution = all[viewKey] ?? {};
     }
-    // RD-16 修订：只有 `[data]` 开头的理由算数；`[recorded]` / `[shared]` 这类 0918 时代的放行理由一律不认。
-    const isData = (reason) => typeof reason === "string" && reason.trim().startsWith("[data]");
+    // RD-16 修订：只有 `[data]` / `[raster]` 开头的理由算数；`[recorded]` / `[shared]` 这类 0918 时代的放行理由一律不认。
+    const isData = (reason) => acceptedReason(reason) !== null;
     const over = cells.filter((c) => c.mismatch > threshold);
     const unattributed = over.filter((c) => !isData(attribution[String(c.band)]));
     const sorted = [...cells].sort((a, b) => b.mismatch - a.mismatch);
@@ -427,7 +435,7 @@ function bestShift(a, b, max = 12) {
 
 export function bandReport({ design, app, cells, threshold, attribution = {}, out, crop = false }) {
   const width = Math.min(design.width, app.width);
-  const isData = (reason) => typeof reason === "string" && reason.trim().startsWith("[data]");
+  const isData = (reason) => acceptedReason(reason) !== null;
   const rows = [];
   for (const c of [...cells].filter((c) => c.mismatch > threshold).sort((a, b) => a.band - b.band)) {
     const d = dominant(design, c.y0, c.y1, width), a = dominant(app, c.y0, c.y1, width);
@@ -437,7 +445,7 @@ export function bandReport({ design, app, cells, threshold, attribution = {}, ou
     // 一侧几乎没墨迹（内容缺失 / 多出）时投影对齐没有意义：偏移标「缺内容」，没墨迹那侧的字色标「无」。
     const lopsided = Math.min(inkD, inkA) * 5 < Math.max(inkD, inkA);
     const inkHex = (dom, n) => (n ? hex(dom.ink) : "无");
-    const row = { band: c.band, y: `${c.y0}-${c.y1}`, mismatch: c.mismatch, dx: lopsided ? "缺内容" : bestShift(pd.cols, pa.cols), dy: lopsided ? "" : bestShift(pd.rows, pa.rows), bg: `${hex(d.bg)}/${hex(a.bg)} ΔE${deltaE(d.bg, a.bg)}`, ink: `${inkHex(d, inkD)}/${inkHex(a, inkA)}${inkD && inkA ? ` ΔE${deltaE(d.ink, a.ink)}` : ""}`, inkPx: `${inkD}/${inkA}`, status: reason === undefined ? "未归因" : isData(reason) ? "[data]" : "理由无效" };
+    const row = { band: c.band, y: `${c.y0}-${c.y1}`, mismatch: c.mismatch, dx: lopsided ? "缺内容" : bestShift(pd.cols, pa.cols), dy: lopsided ? "" : bestShift(pd.rows, pa.rows), bg: `${hex(d.bg)}/${hex(a.bg)} ΔE${deltaE(d.bg, a.bg)}`, ink: `${inkHex(d, inkD)}/${inkHex(a, inkA)}${inkD && inkA ? ` ΔE${deltaE(d.ink, a.ink)}` : ""}`, inkPx: `${inkD}/${inkA}`, status: reason === undefined ? "未归因" : acceptedReason(reason) ?? "理由无效" };
     if (crop && out) {
       const h = c.y1 - c.y0, png = new PNG({ width, height: h * 3 + 4 });
       png.data.fill(0x88);

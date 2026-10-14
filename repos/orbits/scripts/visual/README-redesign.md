@@ -165,7 +165,7 @@ node scripts/visual/compare-redesign-app.mjs --simulator <16e-udid> \
 ## 门禁与归因
 
 - **整屏 raw ≤ 0.02**。两侧高度不同时，多出来的那一截按全部不一致计入（0918 只比较短的一侧，会让「实现少了一整段」的屏数字反而好看）；带同样按设计稿高度切，设计稿有而实现没有的那一截判 1。
-- **`--grid [带高，默认 100]`**：整宽带逐带比对，写 `<out>/cells.json`；超 `--grid-threshold`（默认 0.02）的带必须在 `--attribution` 文件的 `--grid-view` 键下具名，**且理由必须以 `[data]` 开头**（数据文字不同）。0918 的 `[recorded]` / `[shared]` 放行理由在改版里一律不认。
+- **`--grid [带高，默认 100]`**：整宽带逐带比对，写 `<out>/cells.json`；超 `--grid-threshold`（默认 0.02）的带必须在 `--attribution` 文件的 `--grid-view` 键下具名，**且理由必须以 `[data]`（数据文字不同）或 `[raster]` 开头**（iOS 3x / Chrome 的字形、图标栅格化残差与 1–3px 折行偏移——位置、字号、字重一致，只是像素不同；用户 2026-10-12 定，2026-10-14 进脚本）。0918 的 `[recorded]` / `[shared]` 放行理由在改版里一律不认。
 - 归因文件放 `scripts/visual/attribution-redesign-<Sprint>.json`，格式：
 
   ```json

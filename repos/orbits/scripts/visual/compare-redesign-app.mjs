@@ -14,7 +14,7 @@
 //     node scripts/visual/compare-redesign-app.mjs --shot <png> --design app.html --board-index 20 --theme dark --out <dir> --grid 100
 //   系统外壳：默认去掉设计画框的灵动岛与 Home 指示条，并把两侧顶部 50pt 状态栏涂成同色不计差异（--keep-system 关闭）。
 //   选项：--scale 3（截图像素 / 点，默认按设计宽 390 自动推算）；--design-click "<画框内选择器>"（先在画板里点开抽屉 / 弹层）；
-//         --design-remove "<画框内选择器>"；--attribution <json> --grid-view <key>（同 Web 版，只认 [data]）。
+//         --design-remove "<画框内选择器>"；--attribution <json> --grid-view <key>（同 Web 版，只认 [data] / [raster]）。
 //   批量（门禁提速，2026-10-12）：--suite scripts/visual/views/app-<Sprint>.json [--only a,b] [--changed [ref]] --simulator booted --out <dir>
 //         清单每张：{ id, design, board / board-index, themes?, url?（深链，先 simctl openurl 再截）, wait?（ms）, shot?（已有截图）}；
 //         设计稿截图走缓存并按 --workers 并行预取，模拟器截图串行（一台模拟器同一时刻只显示一个画面）；主题用 simctl ui appearance 切。

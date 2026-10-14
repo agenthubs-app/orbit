@@ -17,7 +17,7 @@
 //               node scripts/visual/compare-redesign.mjs --suite scripts/visual/views/web-R07.json --only W-R07-01L,W-R07-01H \
 //                 --out ~/orbit-sprint-evidence/redesign/R07/run-03 [--changed [ref]] [--workers 3] [--no-cache]
 //
-// 退出码：0 通过；2 用法错误；3 画板 / 元素找不到；5 有超阈值带未以 [data] 归因；6 整屏 raw > 0.02（批量取各张最大值）。
+// 退出码：0 通过；2 用法错误；3 画板 / 元素找不到；5 有超阈值带未以 [data] / [raster] 归因；6 整屏 raw > 0.02（批量取各张最大值）。
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { chromium } from "playwright";
