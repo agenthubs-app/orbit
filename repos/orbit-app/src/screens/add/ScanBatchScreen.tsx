@@ -11,7 +11,7 @@
 // Closing the app keeps reading on the server; the automatic pass runs when this page opens again (§9 #8).
 import { type Href, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import type { PreparedBatchImage } from "../../api/batch-images";
@@ -20,14 +20,17 @@ import type { IngestBatchDetailContract, IngestContactCandidateContract } from "
 import type { SecondaryIndustryIdCode } from "../../api/contract/industries";
 import { industryLabel, isIndustryIdCode, secondaryIndustryLabel } from "../../api/domain/industries";
 import { AppScreen } from "../../components/AppScreen";
-import { Button, Card, Chip, FilterOption, MacTile, ProgressBar, RetryCard, Skeleton, TextField, UiText } from "../../components/ui";
+import { Button, Card, Chip, FilterOption, Icon, IconButton, MacTile, ProgressBar, RetryCard, Skeleton, TextField, UiPressable, UiText } from "../../components/ui";
+import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 import { reconcileBusinessCardReviewCard, type BusinessCardConflictField, type BusinessCardReviewCardDraft, type BusinessCardReviewFields } from "../../view-models/business-card-batch";
 import { ingestCards, type IngestCard } from "../../view-models/business-card-ingest";
 import { EMPTY_ATTRIBUTION, useAddApi, type BatchAttribution } from "./add-api";
 import { EMPTY_LEDGER, readScanLedger, writeScanLedger, type ScanLedger } from "./add-storage";
-import { Body, Caption, CountTiles, DensityBar, FadeIn, SectionTitle, useAddStyles } from "./add-ui";
+import { Body, Caption, CountTiles, DensityBar, FadeIn, KIT_PAGE_INSET, SectionTitle, useAddStyles } from "./add-ui";
+import { KitChip, KitEmo } from "../plan/plan-kit";
+import { KIT_FOOT_SPACE, KitBar, KitBigNums, KitCardRow, KitDensityStack, KitFoot, KitNg, KitOk, KitSpin, useScanKitStyles } from "./scan-kit";
 import { newAddKey } from "./manual-model";
 import { AfterSteps, CameraPermissionPanel, CardCameraPane } from "./ScanCaptureScreen";
 import {
@@ -51,10 +54,12 @@ import {
   type ScanIssueGroup,
 } from "./scan-batch-model";
 import { EMPTY_TRAY } from "./scan-capture-model";
+import { scanDesignFor } from "./scan-design-fixtures";
 import { forgetScanUpload, runScanUpload, scanUploadState, subscribeScanUpload, type ScanUploadState } from "./scan-upload-queue";
 import { pickCardImages, preparedImageBytes, useCameraAccess } from "./scan-media";
 
 const POLL_MS = 3000;
+const DENSITY_LABEL = { 1: "add.doors.density1", 2: "add.doors.density2", 3: "add.doors.density3" } as const;
 const LOOKUP_DEBOUNCE_MS = 350;
 
 type SettleResult = "created" | "merged" | "duplicate" | "blocked" | "failed" | "skipped";
@@ -99,6 +104,8 @@ const EDIT_FIELDS = ["displayName", "organization", "role", "email", "phone"] as
 const activeCard = (card: IngestCard) => card.items.some((item) => ["extracted", "terminal_failed", "queued", "processing"].includes(item.status));
 
 export function ScanBatchScreen({ batchId }: { batchId: string }) {
+  // 本机像素门禁的只读演示（scan-design-fixtures）：开发包 + 开关下 design-* 用示例数据，不读服务器。
+  const design = useMemo(() => scanDesignFor(batchId), [batchId]);
   const api = useAddApi();
   const router = useRouter();
   const { t, language } = useOrbitLocale();
@@ -131,6 +138,7 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
   const again = useRef(false);
   const load = useCallback(async (): Promise<void> => {
     // One read at a time; a read asked for meanwhile runs right after (never dropped).
+    if (design) return;
     if (loading.current) { again.current = true; return; }
     loading.current = true;
     try {
@@ -159,7 +167,7 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
         await load();
       }
     }
-  }, [api, batchId, ownerId]);
+  }, [api, batchId, design, ownerId]);
 
   useEffect(() => {
     void load();
@@ -279,7 +287,7 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
   }, [api, batchId, drafts, enrichment, remember]);
 
   const input = { attribution, autoAttempted: autoAttempted.current, autoRunning, detail, drafts, enrichment, ledger, loadFailed, lookupFailed: lookupFailed.current, matches, matchesReady, now, selectedEventId: selectedEventId ?? null };
-  const view = buildScanView(input);
+  const view = design?.view ?? buildScanView(input);
 
   // 自動で人脈へ: when reading is over and the lookups are known, every card waiting at that
   // moment is decided once by the shared rule; the eligible ones go through the same confirm
@@ -344,10 +352,27 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
     return <RetakeCamera onClose={() => setRetake(null)} onShot={async (image) => { const cardId = retake; setRetake(null); const ok = await replaceWith(cardId, image); if (mounted.current) setReplaceFailed(!ok); return ok; }} />;
   }
 
-  const title = view.phase === "done" ? t("add.batch.doneTitle", { n: view.counts.created + view.counts.merged }) : t("add.batch.title");
+  const reading = view.phase === "reading" || view.phase === "importing";
+  const readStyles = doneBarStyles;
+  const title = reading ? t("add.batch.readingTop") : view.phase === "done" ? "" : t("add.batch.title");
+  const subtitle = reading ? t("add.batch.readingTopSub", { n: design?.total ?? view.cards.length }) : undefined;
+  const close = () => router.replace("/contacts" as Href);
+  const foot = reading ? (
+    <KitFoot><FootButton waiting label={t("add.batch.readingWait")} testID="add-batch-wait" /></KitFoot>
+  ) : view.phase === "done" ? (
+    <KitFoot>
+      <FootButton icon="users" label={t("add.batch.viewNetwork")} onPress={close} testID="add-batch-network" />
+      <FootGhost label={t("add.batch.scanMore")} onPress={() => router.replace("/contacts/new/scan" as Href)} />
+    </KitFoot>
+  ) : null;
   return (
-    <AppScreen title={title}>
-      <FadeIn testID={`add-batch-phase-${view.phase}`}>
+    <View style={{ flex: 1 }}>
+    <AppScreen title={title} subtitle={subtitle} backIcon="x" onBack={close} showBack={view.phase !== "done"}
+      header={view.phase === "done" ? (
+        // b11 #3: the top bar has only ✕ on the right (kit .topbar 6 / 14, 44 cells), inside the scroll like kit.
+        <View style={readStyles.doneBar}><IconButton icon="x" accessibilityLabel={t("add.batch.viewNetwork")} onPress={close} /></View>
+      ) : undefined}>
+      <FadeIn testID={`add-batch-phase-${view.phase}`} style={KIT_PAGE_INSET}>
         {view.phase === "loading" ? <Skeleton lines={6} /> : null}
         {view.phase === "missing" ? <RetryCard title={t("add.batch.loadFailed")} onRetry={() => void load()} /> : null}
         {view.phase === "uploading" && upload && !upload.finished ? (
@@ -369,7 +394,7 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
             </View>
           </Card>
         ) : null}
-        {view.phase === "reading" || view.phase === "importing" ? <ReadingPanel view={view} /> : null}
+        {view.phase === "reading" || view.phase === "importing" ? <ReadingPanel view={view} total={design?.total ?? view.cards.length} /> : null}
         {view.phase === "review" && replaceFailed ? <Caption tone="error">{t("add.batch.replaceFailed")}</Caption> : null}
         {view.phase === "review" ? (
           <ReviewPanel
@@ -394,15 +419,16 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
         {view.phase === "done" ? (
           <DonePanel
             view={view}
-            eventTitle={attribution?.events.find((event) => writtenEvents.includes(event.eventId))?.title ?? null}
-            dateLabel={view.createdAt ? new Date(view.createdAt).toLocaleDateString(language === "en" ? "en-US" : language === "zh" ? "zh-CN" : "ja-JP", { day: "numeric", month: "long" }) : ""}
+            eventTitle={design ? design.eventTitle : attribution?.events.find((event) => writtenEvents.includes(event.eventId))?.title ?? null}
+            dateLabel={design ? design.dateLabel : view.createdAt ? new Date(view.createdAt).toLocaleDateString(language === "en" ? "en-US" : language === "zh" ? "zh-CN" : "ja-JP", { day: "numeric", month: "long" }) : ""}
             onPlan={() => router.push(planTaskSegmentHref("app") as Href)}
-            onNetwork={() => router.replace("/contacts" as Href)}
-            onMore={() => router.replace("/contacts/new/scan" as Href)}
+            onFailed={() => router.push("/contacts/new/manual" as Href)}
           />
         ) : null}
       </FadeIn>
     </AppScreen>
+    {foot}
+    </View>
   );
 }
 
@@ -425,27 +451,107 @@ function CardRow({ card }: { card: ScanCardView }) {
   );
 }
 
-function ReadingPanel({ view }: { view: ScanBatchView }) {
+/**
+ * 読み取り中 (b11 A1 ③, App): N / M枚 · 閉じても続きます with the bar, one row per card (✓ added /
+ * 推測あり / 重複 / N枚目を読み取り中 · 表＋裏 / 読み取れませんでした), the waiting photos as one 残り N枚 row,
+ * and what happens when reading ends. The bottom button waits (KitFoot in the screen).
+ */
+function ReadingPanel({ view, total }: { view: ScanBatchView; total: number }) {
   const { t } = useOrbitLocale();
-  const { styles } = useAddStyles();
-  const total = view.cards.length;
-  const head = view.phase === "importing" ? t("add.batch.importing") : t("add.batch.readingTitle", { n: total });
-  const percent = view.phase === "importing" ? 96 : 10 + (total ? view.settled / total : 0) * 86;
+  const { colors, styles: k } = useScanKitStyles();
+  const { styles } = useReadStyles();
+  const percent = view.phase === "importing" ? 96 : total ? (view.settled / total) * 100 : 0;
+  const waiting = view.cards.filter((card) => card.kind === "queued" || card.kind === "uploading");
+  const shown = view.cards.filter((card) => card.kind !== "queued" && card.kind !== "uploading");
   return (
-    <View style={styles.stack} testID="add-batch-reading">
-      <Card>
-        <View style={styles.stack}>
-          <UiText accessibilityLiveRegion="polite" style={styles.title}>{head}</UiText>
-          {view.phase === "reading" ? <Caption>{t("add.batch.readProgress", { done: view.settled, n: total })}</Caption> : null}
-          <ProgressBar value={Math.round(percent)} accessibilityLabel={head} />
-          <Body>{t("add.batch.readingLead")}</Body>
-          <View>{view.cards.map((card) => <CardRow key={card.cardId} card={card} />)}</View>
+    <View testID="add-batch-reading">
+      <View style={styles.barCard}>
+        <View style={styles.between}>
+          <UiText accessibilityLiveRegion="polite" style={styles.count}>
+            {view.phase === "importing" ? t("add.batch.importing") : <><UiText style={styles.countNum}>{view.settled}</UiText>{t("add.batch.readCountOf", { n: total })}</>}
+          </UiText>
+          <UiText style={k.lbl}>{t("add.batch.keepGoing")}</UiText>
         </View>
-      </Card>
-      <AfterSteps />
+        <KitBar percent={percent} />
+        <UiText style={[k.lbl, styles.barNote]}>{t("add.batch.notifyLead")}</UiText>
+      </View>
+      <View style={styles.listCard}>
+        {shown.map((card, index) => <ReadingRow key={card.cardId} card={card} first={index === 0} />)}
+        {waiting.length ? (
+          <KitCardRow first={!shown.length} title={t("add.batch.restCount", { n: waiting.length })} sub={t("add.batch.stateQueued")} trailing={<UiText style={k.lbl}>…</UiText>} testID="add-card-queued" />
+        ) : null}
+      </View>
+      <View style={styles.nextCard}>
+        <UiText style={styles.nextText}>
+          {t("add.batch.nextLead1")}<UiText style={styles.nextStrong}>{t("add.batch.nextLead2")}</UiText>{t("add.batch.nextLead3")}<UiText style={styles.nextStrong}>{t("add.batch.stateDuplicate")}</UiText>{t("add.batch.nextLead4")}<UiText style={styles.nextStrong}>{t("add.batch.stateGuess")}</UiText>{t("add.batch.nextLead5")}
+        </UiText>
+      </View>
+      <View style={{ height: KIT_FOOT_SPACE }} />
     </View>
   );
 }
+
+function ReadingRow({ card, first }: { card: ScanCardView; first: boolean }) {
+  const { t } = useOrbitLocale();
+  const seq = Math.min(...card.card.items.map((item) => item.seq));
+  const orgRole = [card.organization, card.role].filter(Boolean).join(" · ");
+  if (card.kind === "reading") {
+    return <KitCardRow first={first} title={t("add.batch.readingNth", { n: seq })} sub={t(card.twoSided ? "add.batch.sideBoth" : "add.batch.sideFront")} trailing={<KitSpin />} testID="add-card-reading" />;
+  }
+  if (card.kind === "failed") {
+    return <KitCardRow first={first} failed title={t("add.batch.failedTitle")} sub={t("add.batch.photoNth", { n: seq })} trailing={<KitNg />} testID="add-card-failed" />;
+  }
+  const title = card.name || t("add.batch.noName");
+  if (card.kind === "duplicate") {
+    return <KitCardRow first={first} title={title} sub={[card.organization, t("add.batch.alreadyInNetwork")].filter(Boolean).join(" · ")} trailing={<KitChip label={t("add.batch.stateDuplicate")} tone="lav" />} testID="add-card-duplicate" />;
+  }
+  if (card.kind === "guess") {
+    return <KitCardRow first={first} title={title} sub={orgRole || card.fileName} trailing={<KitChip label={t("add.batch.stateGuess")} tone="apricot" />} testID="add-card-guess" />;
+  }
+  if (card.kind === "skipped") {
+    return <KitCardRow first={first} title={title} sub={orgRole || card.fileName} trailing={<KitChip label={t("add.batch.stateSkipped")} />} testID="add-card-skipped" />;
+  }
+  return <KitCardRow first={first} title={title} sub={orgRole || card.fileName} trailing={<KitOk />} testID={`add-card-${card.kind}`} />;
+}
+
+const doneBarStyles = StyleSheet.create({
+  // marginTop −12: AppScreen's content starts 12 lower than kit .scroll without a nav bar too (see KIT_PAGE_INSET).
+  doneBar: { flexDirection: "row", justifyContent: "flex-end", marginTop: -12, paddingTop: 6, paddingBottom: 14, paddingRight: 4, marginHorizontal: 2 },
+});
+
+// kit 数值（b11 #2）：.card.k-spbar padding 14 / 16；.card.k-splist padding 4 / 16；.card.flat.k-spnext padding 12 / 14。
+const useReadStyles = createThemedStyles((colors) => StyleSheet.create({
+  barCard: { backgroundColor: colors.surface, borderRadius: 24, paddingVertical: 14, paddingHorizontal: 16 },
+  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  count: { fontSize: 15, fontWeight: "700", lineHeight: 22.5, color: colors.ink },
+  countNum: { fontWeight: "800", fontVariant: ["tabular-nums"] },
+  // .bar margin-bottom 4 and the note's margin-top 4 collapse into one 4 in CSS.
+  barNote: { marginTop: 0 },
+  listCard: { marginTop: 12, backgroundColor: colors.surface, borderRadius: 24, paddingVertical: 4, paddingHorizontal: 16 },
+  nextCard: { marginTop: 12, backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
+  nextText: { fontSize: 11.5, fontWeight: "500", lineHeight: 18.4, color: colors.ink2 },
+  nextStrong: { fontWeight: "700", color: colors.ink },
+  center: { alignItems: "center", marginTop: 6 },
+  hero: { fontSize: 46, lineHeight: 46 },
+  h1: { marginTop: 8, fontSize: 22, fontWeight: "900", lineHeight: 29.7, letterSpacing: -0.22, color: colors.ink, textAlign: "center" },
+  sub: { marginTop: 4, fontSize: 12.5, lineHeight: 18.75, color: colors.ink2, textAlign: "center" },
+  numCard: { marginTop: 14, backgroundColor: colors.surface, borderRadius: 24, padding: 14 },
+  densLbl: { marginTop: 12 },
+  nxCard: { marginTop: 12, backgroundColor: colors.surface, borderRadius: 24, paddingVertical: 6, paddingHorizontal: 16 },
+  cardH: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10, marginBottom: 2 },
+  h3: { fontSize: 14.5, fontWeight: "800", lineHeight: 21.75, color: colors.ink },
+  nx: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
+  nxLine: { borderTopWidth: 1, borderTopColor: colors.line },
+  nxMeta: { flex: 1, minWidth: 0 },
+  nxTitle: { fontSize: 13, fontWeight: "700", lineHeight: 19.5, color: colors.ink },
+  nxSub: { fontSize: 11.5, lineHeight: 17.25, color: colors.ink3 },
+  xl: { height: 50, borderRadius: 999, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 },
+  xlPrimary: { backgroundColor: colors.ink },
+  xlWait: { backgroundColor: colors.surface3 },
+  xlText: { fontSize: 14.5, fontWeight: "700", lineHeight: 21.75 },
+  ghost: { height: 40, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  ghostText: { fontSize: 13, fontWeight: "700", lineHeight: 19.5, color: colors.ink2 },
+}));
 
 type Choice = "merge" | "separate";
 
@@ -820,52 +926,79 @@ function EnrichmentChoice({ label, options, onClear }: { label: string; options:
   );
 }
 
-function DonePanel({ view, eventTitle, dateLabel, onPlan, onNetwork, onMore }: { view: ScanBatchView; eventTitle: string | null; dateLabel: string; onPlan: () => void; onNetwork: () => void; onMore: () => void }) {
+/**
+ * 完成 (b11 A1 ④, App; 暗 #46): 🎉 N人を人脈に追加しました, 名刺 N枚 · date · event, 新しく追加 / 既存と統合 /
+ * 読み取れず (never counted as added), 情報の濃さ, then 次にやるといいこと (プラン, 読み取れなかった N枚).
+ * 人脈で見る / 続けて撮る sit in the bottom bar (KitFoot in the screen).
+ */
+function DonePanel({ view, eventTitle, dateLabel, onPlan, onFailed }: { view: ScanBatchView; eventTitle: string | null; dateLabel: string; onPlan: () => void; onFailed: () => void }) {
   const { t } = useOrbitLocale();
-  const { styles } = useAddStyles();
-  const scene = [t("add.batch.doneScene", { date: dateLabel, n: view.cards.length }), eventTitle].filter(Boolean).join(" · ");
+  const { colors, styles: k } = useScanKitStyles();
+  const { styles } = useReadStyles();
+  const scene = [t("add.batch.doneScene", { date: dateLabel, n: view.cards.length }), eventTitle].filter(Boolean).join(" ");
+  const rows = [
+    { key: "plan", emoji: "🎯", tone: "lav" as const, title: t("add.batch.nextPlan"), sub: t(view.completed ? "add.batch.nextPlanReady" : "add.batch.nextPlanPending"), onPress: view.completed ? onPlan : null, testID: view.completed ? "add-done-plan-ready" : "add-done-plan-pending" },
+    ...(view.counts.unreadable ? [{ key: "failed", emoji: "🧩", tone: "apricot" as const, title: t("add.batch.nextFailed", { n: view.counts.unreadable }), sub: t("add.batch.nextFailedBody"), onPress: onFailed, testID: "add-done-failed" }] : []),
+  ];
   return (
-    <View style={styles.stack} testID="add-batch-done-panel">
-      <Card>
-        <View style={[styles.stack, styles.centered]}>
-          <MacTile emoji="🎉" />
-          <UiText accessibilityRole="header" style={styles.bigTitle}>{t("add.batch.doneTitle", { n: view.counts.created + view.counts.merged })}</UiText>
-          <Caption>{scene}</Caption>
-        </View>
-        <View style={styles.spaced}>
-          <CountTiles tiles={[
-            { key: "created", label: t("add.batch.doneNew"), value: view.counts.created },
-            { key: "merged", label: t("add.batch.doneMerged"), value: view.counts.merged },
-            { key: "unreadable", label: t("add.batch.doneFailed"), tone: "warn", value: view.counts.unreadable },
-          ]} />
-        </View>
-        {view.density ? <View style={styles.spaced}><DensityBar counts={view.density} /></View> : null}
-      </Card>
-      <Card>
-        <View style={styles.stack}>
-          <UiText style={styles.strong}>{t("add.batch.nextTitle")}</UiText>
-          <View style={styles.row} testID={view.completed ? "add-done-plan-ready" : "add-done-plan-pending"}>
-            <MacTile emoji="🎯" size="sm" />
-            <View style={styles.grow}>
-              <UiText style={styles.strong}>{t("add.batch.nextPlan")}</UiText>
-              <Caption>{t(view.completed ? "add.batch.nextPlanReady" : "add.batch.nextPlanPending")}</Caption>
+    <View testID="add-batch-done-panel">
+      <View style={styles.center}>
+        <UiText style={styles.hero}>🎉</UiText>
+        <UiText accessibilityRole="header" style={styles.h1}>{t("add.batch.doneTitle", { n: view.counts.created + view.counts.merged })}</UiText>
+        <UiText style={styles.sub}>{scene}</UiText>
+      </View>
+      <View style={styles.numCard}>
+        <KitBigNums items={[
+          { key: "created", label: t("add.batch.doneNew"), value: view.counts.created },
+          { key: "merged", label: t("add.batch.doneMerged"), value: view.counts.merged },
+          { key: "unreadable", label: t("add.batch.doneFailed"), tone: "coral" as const, value: view.counts.unreadable },
+        ].map((item) => ({ ...item, accessibilityLabel: t("add.batch.tileLabel", { label: item.label, n: item.value }) }))} />
+        {view.density ? (
+          <>
+            <UiText style={[k.lbl, styles.densLbl]}>{t("add.doors.densityTitle")}</UiText>
+            <KitDensityStack counts={view.density} accessibilityLabel={([1, 2, 3] as const).map((level) => t("add.batch.doneDensityLevel", { label: t(DENSITY_LABEL[level]), n: view.density![level] })).join(" · ")} />
+          </>
+        ) : null}
+      </View>
+      <View style={styles.nxCard}>
+        <View style={styles.cardH}><UiText style={styles.h3}>{t("add.batch.nextTitle")}</UiText></View>
+        {rows.map((row, index) => (
+          <UiPressable key={row.key} accessibilityRole={row.onPress ? "button" : "text"} disabled={!row.onPress} onPress={row.onPress ?? undefined}
+            style={[styles.nx, index > 0 && styles.nxLine]} testID={row.testID}>
+            <KitEmo emoji={row.emoji} tone={row.tone} sm />
+            <View style={styles.nxMeta}>
+              <UiText numberOfLines={1} style={styles.nxTitle}>{row.title}</UiText>
+              <UiText numberOfLines={1} style={styles.nxSub}>{row.sub}</UiText>
             </View>
-            {view.completed ? <Button size="sm" label={t("add.batch.nextPlanOpen")} onPress={onPlan} /> : null}
-          </View>
-          {view.counts.unreadable ? (
-            <View style={styles.row}>
-              <MacTile emoji="🧩" size="sm" tone="apricot" />
-              <View style={styles.grow}>
-                <UiText style={styles.strong}>{t("add.batch.nextFailed", { n: view.counts.unreadable })}</UiText>
-                <Caption>{t("add.batch.nextFailedBody")}</Caption>
-              </View>
-            </View>
-          ) : null}
-        </View>
-      </Card>
-      <Button variant="primary" block icon="users" label={t("add.batch.viewNetwork")} onPress={onNetwork} />
-      <Button variant="ghost" icon="scan" label={t("add.batch.scanMore")} onPress={onMore} />
+            <Icon name="right" size={16} color={colors.ink3} />
+          </UiPressable>
+        ))}
+      </View>
+      <View style={{ height: KIT_FOOT_SPACE }} />
     </View>
+  );
+}
+
+/** .btn.block.xl（高 50、14.5px）：primary 或读取中的等待态（surface-3 底、ink-3 字、转圈）。 */
+function FootButton({ label, onPress, waiting = false, icon, testID }: { label: string; onPress?: () => void; waiting?: boolean; icon?: "users"; testID?: string }) {
+  const { colors } = useScanKitStyles();
+  const { styles } = useReadStyles();
+  return (
+    <UiPressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: waiting, busy: waiting }} disabled={waiting} onPress={onPress}
+      style={[styles.xl, waiting ? styles.xlWait : styles.xlPrimary]} testID={testID}>
+      {waiting ? <KitSpin tone="muted" /> : null}
+      {icon ? <Icon name={icon} size={16} color={colors.bg} /> : null}
+      <UiText numberOfLines={1} style={[styles.xlText, { color: waiting ? colors.ink3 : colors.bg }]}>{label}</UiText>
+    </UiPressable>
+  );
+}
+
+function FootGhost({ label, onPress }: { label: string; onPress: () => void }) {
+  const { styles } = useReadStyles();
+  return (
+    <UiPressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.ghost}>
+      <UiText style={styles.ghostText}>{label}</UiText>
+    </UiPressable>
   );
 }
 

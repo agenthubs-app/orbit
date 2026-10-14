@@ -333,9 +333,11 @@ test("読み取り中 → 自動で人脈へ → まとめて確認 → 完成: 
     twoSidedAt: 5,
   });
   const before = server.people.length;
-  // 読み取り中: each card is listed while the server reads.
-  await page.getByText("読み取り中 4枚 · 閉じても続きます").waitFor();
-  assert.equal(await page.getByTestId("add-card-queued").count(), 4);
+  // 読み取り中 (b11 #2): the waiting photos are one 「残り N枚 · 順番待ち」 row; the bottom button waits.
+  await page.getByText("閉じても続きます").waitFor();
+  assert.equal(await page.getByTestId("add-card-queued").count(), 1);
+  await page.getByText("残り 4枚").waitFor();
+  await page.getByTestId("add-batch-wait").waitFor();
   server.completeReading(batchId);
   // The automatic pass: the identical card merges, the clean two-sided card is created — once each.
   await page.getByTestId("add-batch-review").waitFor({ timeout: 10000 });
@@ -374,9 +376,9 @@ test("読み取り中 → 自動で人脈へ → まとめて確認 → 完成: 
   assert.equal(server.people.length - before, 2);
   assert.equal(server.people.find((person) => person.id === "contact-sato")!.merged, 1);
   // R12 review m11: the two new people are both 身元だけ (no email / phone, no 会った場所).
-  assert.match(await page.getByTestId("add-done-density").innerText(), /身元だけ\s*2人/);
+  assert.match((await page.getByTestId("add-done-density").getAttribute("aria-label"))!, /身元だけ 2人/);
   // The batch is completed, so the plan line offers プランで見る.
-  await page.getByTestId("add-done-plan-ready").getByRole("button", { name: "プランで見る" }).click();
+  await page.getByTestId("add-done-plan-ready").click();
   assert.deepEqual((await nav(page)).navigation.at(-1), { href: "/task?seg=plan", method: "push" });
   // Every card was confirmed at most once.
   const confirmedItems = server.calls.filter((call) => /\/(confirm|manual-entry)$/.test(call.path) && call.method === "POST").map((call) => call.path);

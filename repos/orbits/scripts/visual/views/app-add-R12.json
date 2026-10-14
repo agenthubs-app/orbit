@@ -13,9 +13,63 @@
   "repos/orbit-app/src/components/ShellTopBar.tsx"
  ],
  "views": [
-  { "id": "A-R12-15", "design": "b11-nav-v3.html", "board-index": 15, "url": "orbit://contacts/new/manual", "note": "手入力 ① 名前だけ" },
-  { "id": "A-R12-16", "design": "b11-nav-v3.html", "board-index": 16, "url": "orbit://contacts/new/manual", "taps": "名前「高山 亮」→ ＋会社「ミライ」（候補下拉）→ ＋出会った場所", "note": "手入力 ② あるといいもの" },
-  { "id": "A-R12-17", "design": "b11-nav-v3.html", "board-index": 17, "url": "orbit://contacts/new/manual", "taps": "名前输入已有联系人 → 重複 sheet", "note": "手入力 ③ 重複の候補" },
-  { "id": "A-R12-18", "design": "b11-nav-v3.html", "board-index": 18, "url": "orbit://contacts/new/manual", "taps": "保存后", "note": "手入力 ④ 保存したあと" }
+  {
+   "id": "A-R12-15",
+   "design": "b11-nav-v3.html",
+   "board-index": 15,
+   "url": "orbit://contacts/new/manual",
+   "note": "手入力 ① 名前だけ"
+  },
+  {
+   "id": "A-R12-16",
+   "design": "b11-nav-v3.html",
+   "board-index": 16,
+   "url": "orbit://contacts/new/manual",
+   "taps": "名前「高山 亮」→ ＋会社「ミライ」（候補下拉）→ ＋出会った場所",
+   "note": "手入力 ② あるといいもの"
+  },
+  {
+   "id": "A-R12-17",
+   "design": "b11-nav-v3.html",
+   "board-index": 17,
+   "url": "orbit://contacts/new/manual",
+   "taps": "名前输入已有联系人 → 重複 sheet",
+   "note": "手入力 ③ 重複の候補"
+  },
+  {
+   "id": "A-R12-18",
+   "design": "b11-nav-v3.html",
+   "board-index": 18,
+   "url": "orbit://contacts/new/manual",
+   "taps": "保存后",
+   "note": "手入力 ④ 保存したあと"
+  },
+  {
+   "id": "A-R12-02",
+   "design": "b11-nav-v3.html",
+   "board-index": 2,
+   "url": "orbit://contacts/new/scan/design-reading",
+   "note": "名刺 ③ 読み取り中（mock design-reading）"
+  },
+  {
+   "id": "A-R12-03",
+   "design": "b11-nav-v3.html",
+   "board-index": 3,
+   "themes": [
+    "light"
+   ],
+   "url": "orbit://contacts/new/scan/design-done",
+   "note": "名刺 ④ 完成（mock design-done）"
+  },
+  {
+   "id": "A-R12-46",
+   "design": "b11-nav-v3.html",
+   "board-index": 46,
+   "themes": [
+    "dark"
+   ],
+   "url": "orbit://contacts/new/scan/design-done",
+   "note": "名刺 ④ 完成 暗"
+  }
  ]
 }
