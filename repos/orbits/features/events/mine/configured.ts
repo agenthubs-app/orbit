@@ -15,6 +15,7 @@ import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/st
 import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../../app/api/_shared/authenticated-actor";
 import { redesignContractMode } from "../../redesign-contracts/route";
 import { getConfiguredEventAssessmentRuntime } from "../assessment/configured";
+import { designFixtureNow } from "../dev-clock";
 import { createMyEventsService, createPostgresMyEventsReader, type MyEventSourceRow, type MyEventsReader } from "./service";
 
 const holder = globalThis as typeof globalThis & { __orbitMyEventsMockRows?: MyEventSourceRow[] | null };
@@ -74,7 +75,8 @@ export function createMyEventsRoute(deps: { resolveActor?: ResolveAuthenticatedA
     const sample = !actor || actor.id === DEMO_ACTOR_ID || request.headers.get("x-orbit-sample") === "1";
     const reader = deps.reader ? deps.reader() : mode === "live" && !sample ? liveReader() : mockMyEventsReader();
     if (!reader) return NextResponse.json(failure(new AppError("SERVICE_UNAVAILABLE", "Events require a configured live database."), { reason: "EVENTS_MINE_UNCONFIGURED" }), { headers, status: getHttpStatusForAppErrorCode("SERVICE_UNAVAILABLE") });
-    const data: MyEventsResponse = await createMyEventsService({ reader }).list(actor?.id ?? DEMO_ACTOR_ID, { limit: parsed.data.limit, platform, range: parsed.data.range });
+    const fixtureNow = mode === "live" && !sample ? null : designFixtureNow();
+    const data: MyEventsResponse = await createMyEventsService({ reader, ...(fixtureNow ? { now: () => new Date(fixtureNow) } : {}) }).list(actor?.id ?? DEMO_ACTOR_ID, { limit: parsed.data.limit, platform, range: parsed.data.range });
     const checked = myEventsResponseSchema.safeParse(data);
     if (!checked.success) return NextResponse.json(failure(new AppError("INTERNAL_ERROR", "An unexpected error occurred.")), { headers, status: 500 });
     return NextResponse.json(success(mode === "live" && !sample ? checked.data : { ...checked.data, items: checked.data.items.map((item) => ({ ...item, sample: true as const })) }), { headers, status: 200 });

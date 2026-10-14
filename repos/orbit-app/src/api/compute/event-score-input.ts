@@ -9,6 +9,10 @@ import { parseTimestamp } from "./compute-text";
 
 const FULL_WIDTH_DIGITS = /[０-９]/g;
 
+/** The fact values the clients write when the person picks 無料 / オンライン (stored as facts, not UI text). */
+export const EVENT_PRICE_FREE = "無料";
+export const EVENT_AREA_ONLINE = "オンライン";
+
 /**
  * 参加費字符串 → 日元（取上限）：「無料 / 0円 / Free」→ 0；「¥15,000 / 15000円 / 1.5万円」→ 15000；
  * 「3,000〜5,000円」→ 5000；「不明 / 未定 / 空」→ null（评分出区间）。

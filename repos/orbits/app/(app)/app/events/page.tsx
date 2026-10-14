@@ -15,6 +15,8 @@ import { PublicTopNav } from "../orbit-public-shell";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import { EventsList } from "./events-0918/events-list";
+import { EventsScreen } from "../orbit-2026/events/EventsScreen";
+import { designFixtureNow } from "../../../../features/events/dev-clock";
 
 function publicListEvent(
   event: OrbitLandingEventView,
@@ -54,14 +56,20 @@ function publicListEvent(
 export default async function AppEventsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ scope?: string | string[] }>;
+  searchParams?: Promise<{ scope?: string | string[]; tab?: string | string[] }>;
 }) {
   const [session, language, resolvedSearchParams] = await Promise.all([
     auth(),
     getOrbitServerLanguage(),
     searchParams ??
-      Promise.resolve<{ scope?: string | string[] }>({}),
+      Promise.resolve<{ scope?: string | string[]; tab?: string | string[] }>({}),
   ]);
+  // R26（events DESIGN §2.1 / §7）：已登录 = 新的イベント一级页（評価 / 参加予定 / 探す）。探す页签的内容 R27 才做，
+  // 这期仍是原来的目录列表（作为兄弟节点渲染，不嵌进新作用域，G21）；评估 / 参加予定页签不读目录（也就没有旧列表的水合差异，SC-R26-12）。
+  const nowIso = designFixtureNow() ?? new Date().toISOString();
+  if (session?.user?.id && resolvedSearchParams.tab !== "discover") {
+    return <EventsScreen language={language} nowIso={nowIso} />;
+  }
   const canonicalCatalogue = createConfiguredCanonicalPublicEventCatalogue();
   if (!canonicalCatalogue) {
     throw new Error("Canonical Event Core catalogue is not configured.");
@@ -112,6 +120,7 @@ export default async function AppEventsPage({
 
   return (
     <>
+      {authenticated ? <EventsScreen language={language} nowIso={nowIso} discover={<span hidden />} /> : null}
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。

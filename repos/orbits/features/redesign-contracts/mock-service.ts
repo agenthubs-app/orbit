@@ -144,6 +144,11 @@ function freshState() {
   };
 }
 let state = freshState();
+const assessmentGlobal = globalThis as typeof globalThis & { __orbitR26MockAssessments?: Map<string, EventAssessmentContract> };
+/** R26: the mock assessments (a design-board fixture override on globalThis wins). */
+function assessMap(): Map<string, EventAssessmentContract> {
+  return assessmentGlobal.__orbitR26MockAssessments ?? state.assessments;
+}
 const nowIso = () => new Date().toISOString();
 const inviteNow = () => Date.parse(state.invite.clock ?? DEMO_PLAN_NOW);
 const UNAVAILABLE: InviteFailure = { failure: "unavailable", reason: "INVITE_UNAVAILABLE" };
@@ -333,56 +338,57 @@ export const redesignMock = {
   invitePeerUsage: (code: string) => state.invite.peers.get(normalizeInviteCode(code) ?? "")?.usedCount ?? -1,
   /** Tests only. */
   setInvitePeerUsage(code: string, usedCount: number) { const peer = state.invite.peers.get(normalizeInviteCode(code) ?? ""); if (peer) peer.usedCount = usedCount; },
-  assessments: () => [...state.assessments.values()].sort((a, b) => Number(a.userDecision === "dismissed") - Number(b.userDecision === "dismissed") || b.total - a.total),
+  assessments: () => [...assessMap().values()].sort((a, b) => Number(a.userDecision === "dismissed") - Number(b.userDecision === "dismissed") || b.total - a.total),
   assessment(id: string) {
-    const found = state.assessments.get(id);
+    const found = assessMap().get(id);
     if (!found) return null;
     if (found.status !== "reading" || !id.startsWith("demo-assessment-new-")) return found;
     const reads = (state.assessmentReads.get(id) ?? 0) + 1;
     state.assessmentReads.set(id, reads);
     if (reads < 2) return found;
     const ready: EventAssessmentContract = { ...demoEventAssessment, id, sourceKind: found.sourceKind, facts: { ...demoEventAssessment.facts, ...found.facts }, createdAt: found.createdAt };
-    state.assessments.set(id, ready);
+    assessMap().set(id, ready);
     return ready;
   },
   createAssessment(input: EventAssessmentCreateInput): EventAssessmentContract {
     const replay = state.assessmentCreates.get(input.idempotencyKey);
     if (replay) return replay;
     const facts: EventAssessmentFacts = input.sourceKind === "url" ? { url: input.url } : input.sourceKind === "manual" ? input.facts : {};
-    const created: EventAssessmentContract = { ...demoEventAssessment, id: `demo-assessment-new-${state.assessments.size + 1}`, sourceKind: input.sourceKind, status: "reading", facts, scoreBreakdown: [], total: 0, verdict: "conditional", missingFields: ["startsAt"], createdAt: nowIso() };
-    state.assessments.set(created.id, created);
+    const created: EventAssessmentContract = { ...demoEventAssessment, id: `demo-assessment-new-${assessMap().size + 1}`, sourceKind: input.sourceKind, status: "reading", facts, scoreBreakdown: [], total: 0, verdict: "conditional", missingFields: ["startsAt"], createdAt: nowIso() };
+    assessMap().set(created.id, created);
     state.assessmentCreates.set(input.idempotencyKey, created);
     return created;
   },
   patchAssessment(id: string, facts: EventAssessmentFacts, unknownFields: readonly string[] = []): EventAssessmentContract | null {
-    const found = state.assessments.get(id);
+    const found = assessMap().get(id);
     if (!found) return null;
     const filled = [...new Set([...(found.userFilledFields ?? []), ...(Object.keys(facts) as (keyof EventAssessmentFacts)[]), ...(unknownFields as (keyof EventAssessmentFacts)[])])];
     const missingFields = found.missingFields.filter((field) => !(field in facts) && !unknownFields.includes(field));
     const next: EventAssessmentContract = found.id === demoEventAssessmentNeedsInput.id && missingFields.length === 0
       ? { ...demoEventAssessmentRange, id: found.id, facts: { ...demoEventAssessmentRange.facts, ...facts }, userFilledFields: filled }
       : { ...found, facts: { ...found.facts, ...facts }, missingFields, userFilledFields: filled };
-    state.assessments.set(id, next);
+    assessMap().set(id, next);
     return next;
   },
   addAssessmentToPlan(id: string): boolean {
-    const found = state.assessments.get(id);
+    const found = assessMap().get(id);
     if (!found) return false;
-    state.assessments.set(id, { ...found, userDecision: "added" });
+    assessMap().set(id, { ...found, userDecision: "added" });
     return true;
   },
   dismissAssessment(id: string): boolean {
-    const found = state.assessments.get(id);
+    const found = assessMap().get(id);
     if (!found) return false;
-    state.assessments.set(id, { ...found, userDecision: "dismissed" });
+    assessMap().set(id, { ...found, userDecision: "dismissed" });
     return true;
   },
   /** Mock: the AI entries are shown (sample data; no AI is called). */
   assessmentAvailability: () => ({ aiReadAvailable: true, dailyLeft: 5, monthlyLeft: 10, monthlyLimit: 10 }),
   /** R26 design-board fixtures (dev route only): replace the mock assessments; `null` restores the demo world. */
   overrideAssessments(items: readonly EventAssessmentContract[] | null) {
-    const list = items ?? [demoEventAssessment, demoEventAssessmentLoginRequired, demoEventAssessmentNotEventPage, demoEventAssessmentNeedsInput, demoEventAssessmentRange];
-    state.assessments = new Map(list.map((item) => [item.id, item]));
+    // Next dev bundles each route separately: the override lives on globalThis so every route sees it (as the plan fixtures do).
+    if (items === null) delete assessmentGlobal.__orbitR26MockAssessments;
+    else assessmentGlobal.__orbitR26MockAssessments = new Map(items.map((item) => [item.id, item]));
     state.assessmentCreates = new Map();
     state.assessmentReads = new Map();
   },
@@ -406,5 +412,5 @@ export const redesignMock = {
   cancelDeletion() { state.deletion = state.deletion ? { ...state.deletion, cancelledAt: state.deletion.cancelledAt ?? nowIso() } : null; return state.deletion; },
   appVersion: () => demoAppVersion,
   /** Tests only. */
-  reset() { state = freshState(); },
+  reset() { state = freshState(); delete assessmentGlobal.__orbitR26MockAssessments; },
 };

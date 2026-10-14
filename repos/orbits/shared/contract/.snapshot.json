@@ -4558,6 +4558,16 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "source": {
+          "optional": true,
+          "kind": "text",
+          "type": "'speakers' | 'exhibitors' | 'registrants' | 'known'"
+        },
+        "names": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
         }
       }
     },
@@ -4718,6 +4728,11 @@
               "kind": "text",
               "type": "EventAssessmentFactBasis | undefined"
             },
+            "speakers": {
+              "optional": true,
+              "kind": "text",
+              "type": "EventAssessmentFactBasis | undefined"
+            },
             "title": {
               "optional": true,
               "kind": "text",
@@ -4749,11 +4764,6 @@
               "type": "EventAssessmentFactBasis | undefined"
             },
             "area": {
-              "optional": true,
-              "kind": "text",
-              "type": "EventAssessmentFactBasis | undefined"
-            },
-            "speakers": {
               "optional": true,
               "kind": "text",
               "type": "EventAssessmentFactBasis | undefined"

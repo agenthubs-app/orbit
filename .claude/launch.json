@@ -49,6 +49,24 @@
       "env": {
         "ORBIT_NEXT_DIST_DIR": ".next-gate"
       }
+    },
+    {
+      "name": "orbits-r26",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "repos/orbits",
+        "--",
+        "--port",
+        "3026"
+      ],
+      "port": 3026,
+      "env": {
+        "ORBIT_NEXT_DIST_DIR": ".next-r26",
+        "ORBIT_REDESIGN_MOCK": "event-assessment,plan-v2-summary"
+      }
     }
   ]
 }

@@ -85,6 +85,10 @@ export interface EventAssessmentMeetCandidate {
   label: string;
   count?: number;
   basis: string;
+  /** Where the estimate comes from (speakers / exhibitors / registrants / people you know); lets each client word it like its board. */
+  source?: "speakers" | "exhibitors" | "registrants" | "known";
+  /** Known people's short names (「高橋」「加藤」) for `source: "known"`. */
+  names?: readonly string[];
 }
 
 export interface EventAssessmentCaution {

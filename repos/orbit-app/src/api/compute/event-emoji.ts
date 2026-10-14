@@ -8,9 +8,9 @@ export const EVENT_EMOJI_FALLBACK = "🎟️";
 
 /** 按顺序匹配，先命中先用（更具体的放前面）。 */
 const EMOJI_RULES: readonly (readonly [string, readonly string[]])[] = [
+  ["🔧", ["ピッチ", "pitch", "デモデイ", "demo day", "路演"]],
   ["🏭", ["製造", "工場", "ものづくり", "manufactur", "factory", "制造"]],
   ["☕", ["朝会", "モーニング", "朝活", "breakfast", "morning", "早餐"]],
-  ["🔧", ["ピッチ", "pitch", "デモデイ", "demo day", "路演"]],
   ["📚", ["勉強会", "読書会", "ハンズオン", "ワークショップ", "study", "workshop", "hands-on", "学习会"]],
   ["🥂", ["交流会", "ナイト", "懇親会", "パーティ", "night", "party", "mixer", "networking", "交流"]],
   ["🎤", ["登壇", "カンファレンス", "サミット", "フォーラム", "シンポジウム", "conference", "summit", "forum", "symposium", "峰会", "大会"]],

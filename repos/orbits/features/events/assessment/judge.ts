@@ -134,11 +134,12 @@ export function judgeEvent(input: { facts: EventAssessmentFacts; orbit?: OrbitEv
           ? tri(language, { en: `${breakdown.exhibitors} exhibitors`, ja: `展示 ${breakdown.exhibitors}社`, zh: `展商 ${breakdown.exhibitors} 家` })
           : tri(language, { en: `${breakdown.registrants} registered`, ja: `申込 ${breakdown.registrants}名`, zh: `报名 ${breakdown.registrants} 位` })
       : tri(language, { en: `about ${count} expected`, ja: `約${count}名`, zh: `约 ${count} 位` });
-    return { basis, count, emoji: type.emoji, label: type.shortLabel };
+    const source = breakdown ? (breakdown.speakers > 0 ? "speakers" : breakdown.exhibitors > 0 ? "exhibitors" : "registrants") : undefined;
+    return { basis, count: breakdown ? (breakdown.speakers || breakdown.exhibitors || breakdown.registrants) : count, emoji: type.emoji, label: type.shortLabel, ...(source ? { source: source as "speakers" | "exhibitors" | "registrants" } : {}) };
   });
   if (connections.known.length) {
     const names = connections.known.slice(0, 2).map((person) => tri(language, { en: person.name, ja: `${person.name.split(/\s+/)[0]}さん`, zh: person.name })).join(tri(language, { en: ", ", ja: "・", zh: "、" }));
-    meetCandidates.push({ basis: tri(language, { en: `${names} going`, ja: `${names} 参加予定`, zh: `${names} 会参加` }), count: connections.known.length, emoji: "👋", label: tri(language, { en: "People you know", ja: "既存のつながり", zh: "已有的人脉" }) });
+    meetCandidates.push({ basis: tri(language, { en: `${names} going`, ja: `${names} 参加予定`, zh: `${names} 会参加` }), count: connections.known.length, emoji: "👋", label: tri(language, { en: "People you know", ja: "既存のつながり", zh: "已有的人脉" }), names: connections.known.slice(0, 6).map((person) => person.name.split(/\s+/)[0] ?? person.name), source: "known" });
   }
 
   // 気をつける点（规则）。
