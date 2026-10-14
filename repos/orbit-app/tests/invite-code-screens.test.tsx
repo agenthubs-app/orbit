@@ -190,6 +190,10 @@ class FakeInviteServer {
       return ok(this.current, 201);
     }
     const revoke = /^\/api\/invite-codes\/([^/]+)\/revoke$/u.exec(path);
+    if (method === "PUT" && path === "/api/invite-codes/current/share") {
+      this.current = { ...this.current!, shared: { displayName: "佐藤 健一", organization: "株式会社ミナトリンク", ...(body?.sharedKeys?.includes("email") ? { email: "kenichi@minato.example" } : {}) } };
+      return ok(this.current);
+    }
     if (method === "POST" && revoke) {
       const revoked = { ...this.current!, revokedAt: "2026-10-11T10:00:00+09:00" };
       this.current = null;
@@ -255,11 +259,11 @@ test("入口: the 招待コード door is open now and leads to contacts/new/inv
 test("説明: shown the first time (3 steps, 3 questions); コードをつくる makes a code with the default keys and remembers; the second visit opens on 共有", async (t) => {
   const { page, server } = await open(t, "/contacts/new/invite", { setup: (s) => { s.current = null; } });
   await page.getByTestId("invite-intro").waitFor();
-  for (const text of ["相手が自分で入力して、お互いの人脈に入ります", "3ステップ", "コードを見せる · 送る", "相手が登録・入力", "お互いの人脈に", "相手がもう Orbit を使っていたら？", "期限と回数は？", "Orbit から相手に送られますか？", "送りません。共有はあなたの端末から行います。"]) {
+  for (const text of ["相手が自分で入力して、", "お互いの人脈に入ります", "3ステップ", "コードを見せる · 送る", "相手が登録・入力", "お互いの人脈に", "相手がもう Orbit を使っていたら？", "期限と回数は？", "Orbit から相手に送られますか？", "送りません。共有はあなたの端末から行います"]) {
     await page.getByText(text, { exact: false }).first().waitFor();
   }
   assert.deepEqual(server.writes(), [], "opening writes nothing");
-  await page.getByTestId("invite-start").getByRole("button").click();
+  await page.getByTestId("invite-start").click();
   await page.getByTestId("invite-code-card").waitFor();
   const created = server.writes().find((call) => call.path === "/api/invite-codes")!;
   assert.deepEqual(created.body?.sharedKeys, ["organization", "offering", "seeking"], "連絡先 (e-mail / phone) off by default");
@@ -288,29 +292,28 @@ test("共有: big QR (drawn), the 8-character code and link, 有効期限 · あ
   const chips = await page.getByTestId("invite-share-chips").innerText();
   for (const label of ["会社・役職", "提供できること", "連絡先（オフ）"]) assert.ok(chips.includes(label), label);
   // QR を表示: the full sheet with a larger code to scan face to face.
-  await page.getByTestId("invite-show-qr").getByRole("button").click();
+  await page.getByTestId("invite-show-qr").click();
   await page.getByTestId("invite-qr-sheet").waitFor();
-  assert.equal(await page.getByTestId("invite-qr-large").locator("svg").getAttribute("width"), "280");
+  assert.equal(await page.getByTestId("invite-qr-large").locator("svg").getAttribute("width"), "264", "280 square with the 8pt frame");
   await noSendButton(page);
 });
 
 test("リンクをコピー: the link goes to the clipboard with 「コピーしました」; a refused clipboard says so", async (t) => {
   const { page } = await open(t, "/contacts/new/invite", { deviceStore: SEEN });
-  await page.getByTestId("invite-copy-link").getByRole("button").click();
+  await page.getByTestId("invite-copy-link").click();
   await page.getByText("コピーしました", { exact: true }).waitFor();
   assert.equal(await state(page, "clipboard"), "https://orbitailink.com/i/K7QX-2M9P");
   await page.evaluate(() => { (window as unknown as { clipboardFails: boolean }).clipboardFails = true; });
-  await page.getByTestId("invite-copy-link").getByRole("button").click();
+  await page.getByTestId("invite-copy-link").click();
   await page.getByText("コピーできませんでした").waitFor();
 });
 
 test("メッセージで送る: three fixed tones (ていねい / カジュアル / 英語), コピー / LINE で開く / メールで開く, 「Orbit は送信しません」, no send button", async (t) => {
   const { page, server } = await open(t, "/contacts/new/invite", { deviceStore: SEEN });
-  await page.getByTestId("invite-message").getByRole("button").click();
+  await page.getByTestId("invite-message").click();
   const sheet = page.getByTestId("invite-draft-sheet");
   await sheet.waitFor();
   await sheet.getByText("あなたのアプリから送ります · Orbit は送信しません").waitFor();
-  await sheet.getByText("Orbit は送信しません", { exact: true }).waitFor();
   const polite = await page.getByTestId("invite-draft-text").innerText();
   assert.ok(polite.startsWith("先日はありがとうございました。"), polite);
   assert.ok(polite.includes("https://orbitailink.com/i/K7QX-2M9P（10/18 まで）"), polite);
@@ -325,9 +328,9 @@ test("メッセージで送る: three fixed tones (ていねい / カジュア�
   assert.ok(english.startsWith("Thank you for the other day."), english);
   assert.ok(english.includes("(until Oct 18)"), english);
   await noSendButton(page);
-  await page.getByTestId("invite-draft-line").getByRole("button").click();
-  await page.getByTestId("invite-draft-mail").getByRole("button").click();
-  await page.getByTestId("invite-draft-copy").getByRole("button").click();
+  await page.getByTestId("invite-draft-line").click();
+  await page.getByTestId("invite-draft-mail").click();
+  await page.getByTestId("invite-draft-copy").click();
   assert.equal(await state(page, "clipboard"), english);
   const opened = await state(page, "opened");
   assert.equal(opened![0], `https://line.me/R/share?text=${encodeURIComponent(english)}`);
@@ -335,20 +338,20 @@ test("メッセージで送る: three fixed tones (ていねい / カジュア�
   assert.deepEqual(server.writes(), [], "a draft writes nothing");
   // No app for the link: a toast, nothing else.
   const failing = await open(t, "/contacts/new/invite", { deviceStore: SEEN, openFails: true });
-  await failing.page.getByTestId("invite-message").getByRole("button").click();
-  await failing.page.getByTestId("invite-draft-line").getByRole("button").click();
+  await failing.page.getByTestId("invite-message").click();
+  await failing.page.getByTestId("invite-draft-line").click();
   await failing.page.getByText("アプリを開けませんでした").waitFor();
 });
 
 test("無効にする: an action sheet with the consequences, focus on キャンセル; キャンセル keeps the code, 無効にする turns it off", async (t) => {
   const { page, server } = await open(t, "/contacts/new/invite", { deviceStore: SEEN });
-  await page.getByTestId("invite-revoke").getByRole("button").click();
+  await page.getByTestId("invite-revoke").click();
   await page.getByText("このコードを無効にしますか？").waitFor();
   await page.getByText("コードとリンクはすぐに使えなくなります。").waitFor();
   await page.getByText("登録済みの人とのつながりはそのままです。").waitFor();
   await page.getByRole("button", { name: "キャンセル" }).click();
   assert.deepEqual(server.writes(), []);
-  await page.getByTestId("invite-revoke").getByRole("button").click();
+  await page.getByTestId("invite-revoke").click();
   await page.getByRole("button", { name: "無効にする" }).last().click();
   await page.getByText("コードを無効にしました").waitFor();
   await page.getByTestId("invite-nocode").waitFor();
@@ -364,6 +367,11 @@ test("これまでのコード: five states, joined people open their contact, �
     { code: "W5BX-3FGH", createdAt: "2026-09-10T09:00:00+09:00", expiresAt: "2026-09-17T09:00:00+09:00", joined: [], maxUses: 10, status: "full", usedCount: 10 },
   ];
   const { page, server } = await open(t, "/contacts/new/invite", { deviceStore: SEEN, setup: (s) => { s.history = history; } });
+  // A code stands: これまでのコード opens from ⋯.
+  await page.getByTestId("invite-code-card").waitFor();
+  assert.equal(await page.getByTestId("invite-history").count(), 0, "out of the way while a code stands");
+  await page.getByTestId("invite-more").getByRole("button").click();
+  await page.getByRole("button", { name: "これまでのコード" }).click();
   const list = page.getByTestId("invite-history");
   await list.getByText("P3XA-7RTV").waitFor();
   for (const [status, label] of [["active", "有効"], ["expired", "期限切れ"], ["revoked", "無効"], ["superseded", "置き換え"], ["full", "上限"]]) {
@@ -379,24 +387,28 @@ test("これまでのコード: five states, joined people open their contact, �
   assert.deepEqual(reissued.body?.sharedKeys, ["organization", "offering"], "the same keys as the current code");
 });
 
-test("相手に届くあなたの情報 [変更]: switches show my profile values (連絡先 off); この内容で作り直す makes a new code with the keys only", async (t) => {
+test("相手に届くあなたの情報 [変更]: switches show my profile values (連絡先 off); この内容で保存 keeps the code and sends the keys only (R15 P1)", async (t) => {
   const { page, server } = await open(t, "/contacts/new/invite", { deviceStore: SEEN });
-  await page.getByTestId("invite-share-edit").getByRole("button").click();
-  await page.getByText("変えると新しいコードになり、今のコードとリンクは使えなくなります。").waitFor();
+  await page.getByTestId("invite-share-edit").click();
+  await page.getByText("これからコードを開く人に届く情報が変わります。コードとリンクはそのままです。").waitFor();
   await page.getByTestId("invite-switch-organization").getByText("株式会社ミナトリンク · 代表取締役").waitFor();
   assert.equal(await page.getByTestId("invite-switch-phone").count(), 0, "no phone in the profile → no switch");
   await page.getByTestId("invite-switch-email").getByRole("switch").click();
   await page.getByTestId("invite-switch-offering").getByRole("switch").click();
   await page.getByTestId("invite-share-apply").getByRole("button").click();
+  await page.getByText("相手に届く情報を変更しました").waitFor();
   await page.getByTestId("invite-share-chips").waitFor();
-  const body = server.writes().find((call) => call.path === "/api/invite-codes")!.body!;
-  assert.deepEqual(body.sharedKeys, ["organization", "email"]);
-  assert.deepEqual(body.shared, { displayName: "佐藤 健一" }, "values are never sent, only keys");
+  const [write, ...rest] = server.writes();
+  assert.equal(rest.length, 0);
+  assert.equal(`${write!.method} ${write!.path}`, "PUT /api/invite-codes/current/share");
+  assert.deepEqual(Object.keys(write!.body!).sort(), ["idempotencyKey", "sharedKeys"], "values are never sent, only keys");
+  assert.deepEqual(write!.body!.sharedKeys, ["organization", "email"]);
+  assert.equal(await page.getByTestId("invite-code").innerText(), "K7QX-2M9P", "the code stays the same");
 });
 
 test("PROFILE_REQUIRED: no name in the profile → a notice with プロフィールへ (profile/edit); SAMPLE_READ_ONLY → its own line", async (t) => {
   const { page } = await open(t, "/contacts/new/invite", { setup: (s) => { s.current = null; s.profile = null; s.createReason = "PROFILE_REQUIRED"; } });
-  await page.getByTestId("invite-start").getByRole("button").click();
+  await page.getByTestId("invite-start").click();
   await page.getByTestId("invite-notice-profile").waitFor();
   await page.getByText("コードを作る前に、プロフィールに名前を入れてください。").waitFor();
   await page.getByRole("button", { name: "プロフィールへ" }).click();
@@ -414,10 +426,10 @@ test("i/<code> signed out: the inviter's card (no e-mail or phone), 登録 / ロ
   for (const text of ["招待が届いています", "佐藤 健一 さん", "株式会社ミナトリンク · 代表取締役CEO", "製造業 SaaS の導入知見", "投資家の紹介", "K7QX-2M9P · 10/14 まで有効", "登録すると、お互いの人脈に追加されます。あなたが選んだ項目だけが相手に届きます。"]) await page.getByText(text, { exact: true }).waitFor();
   assert.equal(await page.getByText("leak@example.jp").count(), 0, "a preview never shows e-mail");
   assert.equal(server.calls[0]!.path, "/api/invite-codes/K7QX-2M9P/preview", "the code is tidied before asking");
-  await page.getByTestId("invite-login").getByRole("button").click();
+  await page.getByTestId("invite-login").click();
   assert.deepEqual((await state(page, "addNav")).navigation.at(-1), { href: "/account/login?next=%2Fi%2FK7QX-2M9P", method: "push" });
   await page.evaluate(() => { const w = window as unknown as { addNav: { stack: string[]; render?: () => void } }; w.addNav.stack.pop(); w.addNav.render?.(); });
-  await page.getByTestId("invite-signup").getByRole("button").click();
+  await page.getByTestId("invite-signup").click();
   assert.deepEqual((await state(page, "addNav")).navigation.at(-1), { href: "/account/signup?next=%2Fi%2FK7QX-2M9P", method: "push" });
   assert.deepEqual(server.writes(), []);
 });
@@ -446,27 +458,32 @@ test("i/<code> signed in: 共有する項目 defaults (名前 always; 会社・�
   const { page, server } = await open(t, "/i/K7QX-2M9P", { setup: (s) => { s.duplicates = [{ contactId: "contact-sato-card", matchedOn: ["email"] }]; } });
   await page.getByTestId("invite-confirm").waitFor();
   await page.getByText("佐藤 健一さんとつながりますか？").waitFor();
-  await page.getByText("新しいアカウントは作りません。お互いの人脈に追加されます。").waitFor();
+  await page.getByText(/新しいアカウントは作りません。\s*お互いの人脈に追加されます。/u).waitFor();
+  await page.getByText("佐藤さんに見せる情報").waitFor();
+  const chips = await page.getByTestId("invite-share-chips").innerText();
+  for (const label of ["会社・役職", "提供できること", "求めていること", "連絡先（オフ）"]) assert.ok(chips.includes(label), label);
+  await page.getByTestId("invite-share-edit").click();
   assert.equal(await page.getByTestId("invite-switch-displayName").getByRole("switch").isDisabled(), true, "名前 cannot be turned off");
   // R15 复核 S1: the page no longer guesses 「すでにあなたの人脈にいます」 (the server never merges on its own now).
   await page.getByTestId("invite-same-later").getByText("つながったあと、同じ人かどうか確認できます。").waitFor();
   assert.equal(await page.getByTestId("invite-known").count(), 0);
   assert.equal(server.calls.some((call) => call.path === "/api/contacts/manual/duplicates"), false, "no client-side duplicate lookup");
   await page.getByTestId("invite-switch-seeking").getByRole("switch").click();
-  await page.getByTestId("invite-connect").getByRole("button").click();
+  await page.getByTestId("invite-connect").click();
   await page.getByTestId("invite-done-connected").waitFor();
-  await page.getByText("佐藤 健一さんとつながりました").waitFor();
+  await page.getByText("佐藤さんとつながりました").waitFor();
+  await page.getByText("つながりました", { exact: true }).waitFor();
   await page.getByText("お互いの人脈に追加されました").waitFor();
   const toPeer = await page.getByTestId("invite-to-peer").innerText();
   assert.ok(toPeer.includes("会社・役職") && toPeer.includes("提供できること") && !toPeer.includes("求めていること"), toPeer);
   const redeem = server.writes().find((call) => call.path.endsWith("/redeem"))!;
   assert.deepEqual(Object.keys(redeem.body!).sort(), ["idempotencyKey", "sharedKeys"]);
   assert.deepEqual(redeem.body!.sharedKeys, ["organization", "offering"]);
-  await page.getByTestId("invite-view-contact").getByRole("button").click();
+  await page.getByTestId("invite-view-contact").click();
   assert.deepEqual((await state(page, "addNav")).navigation.at(-1), { href: "/contacts/contact-sato", method: "replace" });
   // 今はしない leaves no trace.
   const later = await open(t, "/i/K7QX-2M9P");
-  await later.page.getByTestId("invite-not-now").getByRole("button").click();
+  await later.page.getByTestId("invite-not-now").click();
   assert.deepEqual((await state(later.page, "addNav")).navigation.at(-1), { href: "/home", method: "replace" });
   assert.deepEqual(later.server.writes(), []);
 });
@@ -476,13 +493,14 @@ test("i/<code> exceptions: expired / full (resend draft, no send button), alread
   await expired.page.getByTestId("invite-expired").waitFor();
   await expired.page.getByText("この招待コードは期限切れです").waitFor();
   await expired.page.getByText("佐藤 健一さんのコード（10/4 まで）· 有効期限は 7日間です").waitFor();
-  await expired.page.getByText("佐藤 健一さんに新しいコードを頼む").waitFor();
+  await expired.page.getByText("佐藤さんに新しいコードを頼む").waitFor();
+  await expired.page.getByTestId("invite-sender-note").waitFor();
   await expired.page.getByText("Orbit からは送信しません", { exact: true }).waitFor();
   const draft = await expired.page.getByTestId("invite-ask-text").innerText();
-  assert.ok(draft.startsWith("佐藤 健一さん、Orbit の招待リンクの期限が切れていました。"), draft);
-  await expired.page.getByTestId("invite-ask-copy").getByRole("button").click();
+  assert.ok(draft.startsWith("佐藤さん、Orbit の招待リンクの期限が切れていました。"), draft);
+  await expired.page.getByTestId("invite-ask-copy").click();
   assert.equal(await state(expired.page, "clipboard"), draft);
-  await expired.page.getByTestId("invite-ask-line").getByRole("button").click();
+  await expired.page.getByTestId("invite-ask-line").click();
   assert.ok((await state(expired.page, "opened"))![0]!.startsWith("https://line.me/R/share?text="));
   await noSendButton(expired.page);
   assert.deepEqual(expired.server.writes(), []);
@@ -518,20 +536,20 @@ test("i/<code> exceptions: expired / full (resend draft, no send button), alread
 
 test("i/<code> redeem answers: 409 INVITE_FULL → 上限, already_connected → すでにつながっています, merged → 完了, other failure → error line", async (t) => {
   const full = await open(t, "/i/K7QX-2M9P", { setup: (s) => { s.redeem = fail(409, "CONFLICT", "INVITE_FULL"); } });
-  await full.page.getByTestId("invite-connect").getByRole("button").click();
+  await full.page.getByTestId("invite-connect").click();
   await full.page.getByTestId("invite-full").waitFor();
   const already = await open(t, "/i/K7QX-2M9P", { setup: (s) => { s.redeem = ok({ contactId: "contact-sato", outcome: "already_connected" }); } });
-  await already.page.getByTestId("invite-connect").getByRole("button").click();
+  await already.page.getByTestId("invite-connect").click();
   await already.page.getByTestId("invite-already").waitFor();
   const merged = await open(t, "/i/K7QX-2M9P", { setup: (s) => { s.redeem = ok({ contactId: "contact-sato", outcome: "merged", peer: INVITER }); } });
-  await merged.page.getByTestId("invite-connect").getByRole("button").click();
+  await merged.page.getByTestId("invite-connect").click();
   await merged.page.getByTestId("invite-done-merged").waitFor();
   const broken = await open(t, "/i/K7QX-2M9P", { setup: (s) => { s.redeem = fail(500, "INTERNAL"); } });
-  await broken.page.getByTestId("invite-connect").getByRole("button").click();
+  await broken.page.getByTestId("invite-connect").click();
   await broken.page.getByTestId("invite-connect-failed").waitFor();
   await broken.page.getByText("つながれませんでした。もう一度お試しください。").waitFor();
   // A retry is the same request (one idempotency key per visit).
-  await broken.page.getByTestId("invite-connect").getByRole("button").click();
+  await broken.page.getByTestId("invite-connect").click();
   await broken.page.waitForFunction(() => true);
   await broken.page.getByTestId("invite-connect-failed").waitFor();
   const keys = broken.server.writes().filter((call) => call.path.endsWith("/redeem")).map((call) => call.body?.idempotencyKey);
@@ -673,13 +691,13 @@ test("S1 InviteShareSheet: 「同じ人かも」 with 統合する / 別の人; 
 
 test("M3: leaving the sender page closes its sheets — the draft or the QR does not float over the next page", async (t) => {
   const { page } = await open(t, "/contacts/new/invite", { deviceStore: SEEN });
-  await page.getByTestId("invite-message").getByRole("button").click();
+  await page.getByTestId("invite-message").click();
   await page.getByTestId("invite-draft-sheet").waitFor();
   await page.evaluate(() => (window as unknown as { inviteRouter: { push: (href: string) => void } }).inviteRouter.push("/i/K7QX-2M9P"));
   await page.getByTestId("invite-confirm").waitFor();
   assert.equal(await page.getByTestId("invite-draft-sheet").count(), 0, "the draft sheet closed on blur");
   const qr = await open(t, "/contacts/new/invite", { deviceStore: SEEN });
-  await qr.page.getByTestId("invite-show-qr").getByRole("button").click();
+  await qr.page.getByTestId("invite-show-qr").click();
   await qr.page.getByTestId("invite-qr-sheet").waitFor();
   await qr.page.evaluate(() => (window as unknown as { inviteRouter: { push: (href: string) => void } }).inviteRouter.push("/contacts/contact-x"));
   await qr.page.getByTestId("elsewhere").waitFor();

@@ -171,6 +171,7 @@ const SHOWCASE_INVITE_API: InviteApi = {
   profile: async () => ({ data: { profile: { displayName: "Ken Sato", handles: { email: "ken@example.com" }, offering: ["Hiring advice"], organization: "Minato Link", role: "CEO", seeking: ["Investor intros"] } }, ok: true }),
   redeem: showcaseNotUsed,
   revoke: showcaseNotUsed,
+  updateCurrentShare: showcaseNotUsed,
   saveShortProfile: showcaseNotUsed,
   unlink: async () => ({ data: { outcome: "unlinked" }, ok: true }),
   updateShare: async (_contactId, input) => ({ data: { ...SHOWCASE_CONNECTION, sharedByMe: input.sharedKeys }, ok: true }),

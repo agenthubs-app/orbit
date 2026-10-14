@@ -69,7 +69,8 @@
 .xlButton:focus-visible, .smButton:focus-visible, .textButton:focus-visible, .tag:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* 共有する項目（b11 #12） */
-.withFoot { display: flex; flex-direction: column; }
+/* The pinned foot is ~150 high plus the home indicator: keep the last line clear of it (复核 M1). */
+.withFoot { display: flex; flex-direction: column; padding-bottom: calc(var(--space-20) + env(safe-area-inset-bottom)); }
 .chip { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-caption); font-weight: var(--fw-bold); line-height: var(--lh-body); white-space: nowrap; }
 .chipTeal { background: var(--mac-teal); color: var(--mac-teal-ink); }
 .chipOff { opacity: .5; }

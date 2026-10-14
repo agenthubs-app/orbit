@@ -33,6 +33,7 @@ export type InviteApiResult<T> = { ok: true; data: T } | { ok: false; status: nu
 
 export const INVITE_CODES_PATH = "/api/invite-codes";
 export const INVITE_CURRENT_PATH = "/api/invite-codes/current";
+export const INVITE_CURRENT_SHARE_PATH = "/api/invite-codes/current/share";
 const INVITE_CONNECTIONS_PATH = "/api/invite-codes/connections";
 export function inviteRevokePath(code: string): string { return INVITE_CODES_PATH + "/" + encodeURIComponent(code) + "/revoke"; }
 export function invitePreviewPath(code: string): string { return INVITE_CODES_PATH + "/" + encodeURIComponent(code) + "/preview"; }
@@ -50,6 +51,8 @@ export interface InviteApi {
   current(): Promise<InviteApiResult<InviteCodeContract | null>>;
   create(input: { displayName: string; sharedKeys: InviteSharedFieldKey[]; idempotencyKey: string }): Promise<InviteApiResult<InviteCodeContract>>;
   revoke(code: string): Promise<InviteApiResult<InviteCodeContract>>;
+  /** R15 P1: what the current code shares from now on (code, link, expiry and uses stay the same). */
+  updateCurrentShare(input: { sharedKeys: InviteSharedFieldKey[]; idempotencyKey: string }): Promise<InviteApiResult<InviteCodeContract>>;
   history(): Promise<InviteApiResult<InviteCodeHistoryResponse>>;
   preview(code: string): Promise<InviteApiResult<InviteCodePreview>>;
   redeem(code: string, input: { idempotencyKey: string; sharedKeys: InviteSharedFieldKey[] }): Promise<InviteApiResult<InviteCodeRedeemResult>>;
@@ -89,6 +92,7 @@ export function createInviteApi(client: OrbitApiClient): InviteApi {
       body: { idempotencyKey: input.idempotencyKey, maxUses: 10, shared: { displayName: input.displayName.trim().slice(0, 80) || "Orbit" }, sharedKeys: input.sharedKeys },
     }), inviteCodeSchema),
     revoke: (code) => read(client.post<unknown>(inviteRevokePath(code), { body: {} }), inviteCodeSchema),
+    updateCurrentShare: (input) => read(client.put<unknown>(INVITE_CURRENT_SHARE_PATH, { body: { idempotencyKey: input.idempotencyKey, sharedKeys: input.sharedKeys } }), inviteCodeSchema),
     history: () => read(client.get<unknown>(INVITE_CODES_PATH), inviteCodeHistoryResponseSchema),
     preview: (code) => read(client.get<unknown>(invitePreviewPath(code)), inviteCodePreviewSchema),
     redeem: (code, input) => read(client.post<unknown>(inviteRedeemPath(code), { body: input }), inviteCodeRedeemResultSchema),

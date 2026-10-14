@@ -122,6 +122,8 @@ export function InviteCodeModal({ open, onClose, language }: { open: boolean; on
       void loadHistory();
       return;
     }
+    // The notice only shows on 共有: a failed first code from 説明 moves there too (复核 M3).
+    setPhase("share");
     failNotice(result.reason, c.createFailed);
   }, [profile, loadHistory, failNotice]);
 

@@ -148,7 +148,6 @@ export function inviteAppLink(code: string): string {
   return `orbit://i/${encodeURIComponent(code)}`;
 }
 
-/** The link without the scheme, as the design shows it (orbit.app/i/XXXX-XXXX). */
 /**
  * How the pages address the inviter in running text (b11 #10 / #12 / #13: 「佐藤さんに見せる情報」「佐藤さんとつながりました」):
  * the family name when the name is written 「姓 名」 with a space, otherwise the whole name. Headings that introduce
@@ -159,6 +158,7 @@ export function inviteCallName(name: string): string {
   return parts.length > 1 && parts[0] ? parts[0] : name.trim();
 }
 
+/** The link without the scheme, as the design shows it (orbit.app/i/XXXX-XXXX). */
 export function inviteLinkLabel(link: string): string {
   return link.replace(/^https?:\/\//u, "");
 }

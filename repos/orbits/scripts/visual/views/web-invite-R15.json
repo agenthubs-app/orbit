@@ -30,7 +30,7 @@
    "design": "b11-nav-v3.html",
    "board-index": 14,
    "width": 1440,
-   "region": "440,226,560,508",
+   "region": "440,183,560,594",
    "wait-for": "[data-invite-code]",
    "viewport": true,
    "note": "只比弹窗本身"

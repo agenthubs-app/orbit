@@ -133,6 +133,15 @@ export function mailDraftUrl(subject: string, body: string): string {
   return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+/**
+ * How the pages address the inviter in running text (b11 #10 / #12 / #13: 「佐藤さんに見せる情報」「佐藤さんとつながりました」):
+ * the family name when the name is written 「姓 名」 with a space, otherwise the whole name (same as the Web).
+ */
+export function inviteCallName(name: string): string {
+  const parts = name.trim().split(/[\s\u3000]+/u);
+  return parts.length > 1 && parts[0] ? parts[0] : name.trim();
+}
+
 /** The link without the scheme, as the design shows it (orbitailink.com/i/XXXX-XXXX). */
 export function inviteLinkLabel(link: string): string {
   return link.replace(/^https?:\/\//u, "");

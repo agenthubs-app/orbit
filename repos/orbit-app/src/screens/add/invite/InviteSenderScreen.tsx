@@ -1,10 +1,11 @@
-// R15 `contacts/new/invite` 招待コード · 発出方 (DESIGN add-and-invite §2.4; b11 A2 ①②③, b9 A5 ①, b5 E6):
-// the first time 説明 (🤝, 3 steps, 3 questions, コードをつくる; remembered on this device); after that 共有 —
-// a big QR, the 8-character code and the link, [QR を表示] (full sheet to scan face to face), [リンクをコピー],
-// [メッセージで送る] (draft sheet: three fixed tones, コピー / LINE で開く / メールで開く — Orbit never sends),
-// 有効期限 · あと N日, 使える人数 残り N / 10人 · 登録済み N人, 相手に届くあなたの情報 [変更] (changing it makes a
-// new code; the server takes keys only), 無効にする (action sheet, focus on キャンセル), and これまでのコード
-// (a joined person who may be someone already in my network shows 「同じ人かも」 with 統合する / 別の人 — R15 复核 S1).
+// R15 `contacts/new/invite` 招待コード · 発出方 (DESIGN add-and-invite §2.4; b11 A2 #6 説明 / #7 共有 / #8 下書き —
+// 2026-10-14 pixel rework): the first time 説明 (🤝 guide, 3 steps, 3 questions, コードをつくる at the foot; remembered
+// on this device); after that 共有 — the QR card (QR 196 with the 「O」, code, link), three big buttons [QR を表示]
+// (full sheet to scan face to face) [リンクをコピー] [メッセージで送る] (draft sheet: three fixed tones, コピー /
+// LINE で開く / メールで開く — Orbit never sends), 有効期限 · あと N日, 使える人数 · 登録済み N人, 相手に届くあなたの
+// 情報 [変更] (R15 P1: the same code shares the new keys), 無効にする (action sheet, focus on キャンセル). ⋯ opens
+// これまでのコード (a joined person who may be someone already in my network shows 「同じ人かも」 with 統合する /
+// 別の人 — R15 复核 S1); it also shows by itself when no code stands or such a question waits.
 // Leaving the page (another page pushed on top) closes any open sheet: they render in the root portal (复核 M3).
 import * as Clipboard from "expo-clipboard";
 import { type Href, useFocusEffect, useRouter } from "expo-router";
@@ -14,14 +15,17 @@ import { Linking, StyleSheet, View } from "react-native";
 import type { InviteCodeContract, InviteCodeHistoryItem, InviteCodeHistoryJoined, InviteSharedFieldKey, InviteSharedFields } from "../../../api/contract/invite-codes";
 import { inviteMessageText, type InviteMessageTone } from "../../../api/compute/invite-message-templates";
 import { AppScreen } from "../../../components/AppScreen";
-import { ActionSheet, BottomSheet, Button, Card, Chip, Icon, MacTile, RetryCard, Segmented, Skeleton, Toggle, UiPressable, UiText, useToast } from "../../../components/ui";
+import { ActionSheet, BottomSheet, Button, Card, Chip, Icon, IconButton, RetryCard, Segmented, Skeleton, Toggle, UiPressable, UiText, useToast } from "../../../components/ui";
+import { cjkLift } from "../../../components/ui/cjk-lift";
 import { createThemedStyles } from "../../../design/theme";
 import { radius } from "../../../design/tokens";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { createTranslator, type OrbitTranslator } from "../../../i18n/messages";
 import { fillCopy, useStandardCopy } from "../../../i18n/standard-copy";
 import { markInviteGuideSeen, readInviteGuideSeen } from "../add-storage";
-import { Caption, DensityDots, FadeIn, SectionTitle, useAddColors, useAddStyles } from "../add-ui";
+import { Caption, DensityDots, FadeIn, KIT_PAGE_INSET, SectionTitle, useAddColors, useAddStyles } from "../add-ui";
+import { KIT_FOOT_SPACE, KitFoot } from "../scan-kit";
+import { KitChip, KitGuide, KitLink, KitXl, useInviteKit } from "./invite-kit";
 import { useInviteApi, type InviteApi } from "./invite-api";
 import {
   INVITE_HISTORY_STATUS_COPY,
@@ -79,10 +83,12 @@ export function InviteSenderScreen({ api: injected, now = Date.now }: { api?: In
   const [history, setHistory] = useState<InviteCodeHistoryItem[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
-  const [sheet, setSheet] = useState<"qr" | "draft" | "revoke" | null>(null);
+  const [sheet, setSheet] = useState<"qr" | "draft" | "revoke" | "menu" | null>(null);
   const [editing, setEditing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [draftKeys, setDraftKeys] = useState<InviteSharedFieldKey[]>([]);
   const createKey = useRef<string | null>(null);
+  const shareKey = useRef<string | null>(null);
 
   const loadHistory = useCallback(async () => {
     const result = await api.history();
@@ -115,6 +121,15 @@ export function InviteSenderScreen({ api: injected, now = Date.now }: { api?: In
 
   const available = useMemo(() => inviteKeysWithValues(profile), [profile]);
   const currentKeys = useMemo(() => (current ? inviteKeysWithValues(current.shared) : []), [current]);
+  const pendingMerges = useMemo(() => (history ?? []).some((item) => item.joined.some((person) => person.mergeSuggestion)), [history]);
+  // A 「同じ人かも」 question opens これまでのコード, and it stays open after it is answered.
+  useEffect(() => { if (pendingMerges) setShowHistory(true); }, [pendingMerges]);
+
+  const failNotice = useCallback((reason: string | null, fallback: "add.invite.createFailed" | "add.invite.shareFailed") => {
+    if (reason === "PROFILE_REQUIRED") setNotice("profile");
+    else if (reason === "SAMPLE_READ_ONLY") setNotice("sample");
+    else toast.error(t(fallback));
+  }, [toast, t]);
 
   const create = useCallback(async (keys: InviteSharedFieldKey[]) => {
     setBusy(true);
@@ -131,10 +146,25 @@ export function InviteSenderScreen({ api: injected, now = Date.now }: { api?: In
       return;
     }
     setPhase("share");
-    if (result.reason === "PROFILE_REQUIRED") setNotice("profile");
-    else if (result.reason === "SAMPLE_READ_ONLY") setNotice("sample");
-    else toast.error(t("add.invite.createFailed"));
-  }, [api, profile, loadHistory, toast, t]);
+    failNotice(result.reason, "add.invite.createFailed");
+  }, [api, profile, loadHistory, failNotice]);
+
+  /** R15 P1: the same code shares the new set from now on (people already connected keep theirs). */
+  const applyShare = async () => {
+    setBusy(true);
+    setNotice(null);
+    shareKey.current ??= newInviteKey("invite-share");
+    const result = await api.updateCurrentShare({ idempotencyKey: shareKey.current, sharedKeys: orderedInviteKeys(draftKeys) });
+    setBusy(false);
+    shareKey.current = null;
+    if (result.ok) {
+      setCurrent(result.data);
+      setEditing(false);
+      toast.success(t("add.invite.shareSaved"));
+      return;
+    }
+    failNotice(result.reason, "add.invite.shareFailed");
+  };
 
   const startFromIntro = () => {
     void markInviteGuideSeen();
@@ -163,61 +193,77 @@ export function InviteSenderScreen({ api: injected, now = Date.now }: { api?: In
   };
 
   const reissueKeys = current ? currentKeys : inviteDefaultKeys(available);
+  const historyOpen = phase === "share" && (!current || showHistory);
+  const intro = phase === "intro";
 
   return (
-    <AppScreen title={t("add.invite.title")}>
-      <FadeIn testID="invite-sender">
-        <View style={styles.stack} testID={`invite-phase-${phase}`}>
-          {phase === "loading" ? <Skeleton lines={4} /> : null}
-          {phase === "failed" ? <RetryCard title={t("add.invite.loadFailed")} onRetry={() => void load()} /> : null}
-          {phase === "intro" ? <InviteIntro busy={busy} onStart={startFromIntro} /> : null}
-          {phase === "share" ? (
-            <>
-              <Caption>{t("add.invite.shareSub")}</Caption>
-              {notice ? <NoticeLine notice={notice} onProfile={() => router.push("/profile/edit" as Href)} /> : null}
-              {current ? (
-                <>
-                  <CodeCard code={current} onShowQr={() => setSheet("qr")} onCopy={() => void copy(current.link)} onMessage={() => setSheet("draft")} />
-                  <Quota code={current} now={now} />
-                  <ShareKeys
-                    keys={currentKeys}
-                    profile={profile}
-                    available={available}
-                    editing={editing}
-                    draftKeys={draftKeys}
+    <View style={styles.grow}>
+      <AppScreen title={t("add.invite.title")} subtitle={t(intro ? "add.invite.introSub" : "add.invite.shareSub")}
+        headerActions={phase === "share" ? <View testID="invite-more"><IconButton icon="more" accessibilityLabel={t("add.invite.more")} onPress={() => setSheet("menu")} /></View> : undefined}>
+        <FadeIn testID="invite-sender" style={KIT_PAGE_INSET}>
+          <View testID={`invite-phase-${phase}`} style={intro ? { paddingBottom: KIT_FOOT_SPACE } : null}>
+            {phase === "loading" ? <Skeleton lines={4} /> : null}
+            {phase === "failed" ? <RetryCard title={t("add.invite.loadFailed")} onRetry={() => void load()} /> : null}
+            {intro ? <InviteIntro /> : null}
+            {phase === "share" ? (
+              <View style={styles.stack}>
+                {notice ? <NoticeLine notice={notice} onProfile={() => router.push("/profile/edit" as Href)} /> : null}
+                {current ? (
+                  <View>
+                    <CodeCard code={current} onShowQr={() => setSheet("qr")} onCopy={() => void copy(current.link)} onMessage={() => setSheet("draft")} />
+                    <Quota code={current} now={now} />
+                    <ShareKeys
+                      keys={currentKeys}
+                      profile={profile}
+                      available={available}
+                      editing={editing}
+                      draftKeys={draftKeys}
+                      busy={busy}
+                      onEdit={() => { setDraftKeys(currentKeys); setEditing(true); }}
+                      onToggle={(key, on) => setDraftKeys((keys) => toggleInviteKey(keys, key, on))}
+                      onCancel={() => setEditing(false)}
+                      onApply={() => void applyShare()}
+                    />
+                    <OffRow busy={busy} onRevoke={() => setSheet("revoke")} />
+                  </View>
+                ) : (
+                  <Card variant="flat">
+                    <View style={styles.stack} testID="invite-nocode">
+                      <UiText style={styles.strong}>{t("add.invite.noCodeTitle")}</UiText>
+                      <Caption>{t("add.invite.noCodeBody")}</Caption>
+                      <Button label={t("add.invite.create")} variant="primary" block loading={busy} onPress={() => void create(reissueKeys)} />
+                    </View>
+                  </Card>
+                )}
+                {historyOpen ? (
+                  <History
+                    items={history}
                     busy={busy}
-                    onEdit={() => { setDraftKeys(currentKeys); setEditing(true); }}
-                    onToggle={(key, on) => setDraftKeys((keys) => toggleInviteKey(keys, key, on))}
-                    onCancel={() => setEditing(false)}
-                    onApply={() => void create(draftKeys)}
+                    mergingId={merging.busyId}
+                    onReissue={() => void create(reissueKeys)}
+                    onOpenPerson={(contactId) => router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)}
+                    onMerge={(contactId) => void settleSuggestion("merge", contactId)}
+                    onDismiss={(contactId) => void settleSuggestion("dismiss", contactId)}
                   />
-                  <View style={styles.rowBetween}>
-                    <View style={styles.grow}><Caption>{t("add.invite.noSend")}</Caption></View>
-                    <View testID="invite-revoke"><Button label={t("add.invite.revoke")} variant="dangerGhost" size="sm" disabled={busy} onPress={() => setSheet("revoke")} /></View>
-                  </View>
-                </>
-              ) : (
-                <Card variant="flat">
-                  <View style={styles.stack} testID="invite-nocode">
-                    <UiText style={styles.strong}>{t("add.invite.noCodeTitle")}</UiText>
-                    <Caption>{t("add.invite.noCodeBody")}</Caption>
-                    <Button label={t("add.invite.create")} variant="primary" block loading={busy} onPress={() => void create(reissueKeys)} />
-                  </View>
-                </Card>
-              )}
-              <History
-                items={history}
-                busy={busy}
-                mergingId={merging.busyId}
-                onReissue={() => void create(reissueKeys)}
-                onOpenPerson={(contactId) => router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)}
-                onMerge={(contactId) => void settleSuggestion("merge", contactId)}
-                onDismiss={(contactId) => void settleSuggestion("dismiss", contactId)}
-              />
-            </>
-          ) : null}
-        </View>
-      </FadeIn>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        </FadeIn>
+      </AppScreen>
+      {intro ? <KitFoot><KitXl label={t("add.invite.create")} busy={busy} onPress={startFromIntro} testID="invite-start" /></KitFoot> : null}
+      <ActionSheet
+        visible={sheet === "menu"}
+        title={t("add.invite.title")}
+        options={[{ key: "history", label: t("add.invite.historyTitle") }, { key: "guide", label: t("add.invite.guideOpen") }, { key: "cancel", label: standard.action.cancel }]}
+        defaultFocusKey="cancel"
+        onSelect={(key) => {
+          setSheet(null);
+          if (key === "history") setShowHistory(true);
+          if (key === "guide") setPhase("intro");
+        }}
+        onClose={() => setSheet(null)}
+      />
       {current ? (
         <>
           <BottomSheet visible={sheet === "qr"} onClose={() => setSheet(null)} accessibilityLabel={t("add.invite.qrTitle")}>
@@ -240,7 +286,7 @@ export function InviteSenderScreen({ api: injected, now = Date.now }: { api?: In
           />
         </>
       ) : null}
-    </AppScreen>
+    </View>
   );
 }
 
@@ -259,102 +305,105 @@ function NoticeLine({ notice, onProfile }: { notice: Exclude<Notice, null>; onPr
   );
 }
 
-function InviteIntro({ busy, onStart }: { busy: boolean; onStart: () => void }) {
+/** b11 #6: the 🤝 guide, 3ステップ (three tiles with arrows) and the three questions; コードをつくる sits in the foot. */
+function InviteIntro() {
   const { t } = useOrbitLocale();
-  const { styles } = useAddStyles();
+  const { colors, styles: kit } = useInviteKit();
   const local = useStyles().styles;
   const steps = [["📲", "add.invite.step1Title", "add.invite.step1Body"], ["✍️", "add.invite.step2Title", "add.invite.step2Body"], ["👥", "add.invite.step3Title", "add.invite.step3Body"]] as const;
   const faq = [["add.invite.faq1Q", "add.invite.faq1A"], ["add.invite.faq2Q", "add.invite.faq2A"], ["add.invite.faq3Q", "add.invite.faq3A"]] as const;
   return (
-    <View style={styles.stack} testID="invite-intro">
-      <Caption>{t("add.invite.introSub")}</Caption>
-      <View style={[styles.stack, styles.centered]}>
-        <MacTile emoji="🤝" tone="pink" />
-        <UiText accessibilityRole="header" style={styles.bigTitle}>{t("add.invite.introHero")}</UiText>
-        <UiText style={[styles.body, local.center]}>{t("add.invite.introBody")}</UiText>
-        <View style={styles.row}>
-          <Chip label={t("add.invite.selfChip")} tone="teal" />
+    <View testID="invite-intro">
+      <KitGuide>
+        <View style={local.emo}><UiText style={local.emoText} importantForAccessibility="no" accessibilityElementsHidden>🤝</UiText></View>
+        <UiText accessibilityRole="header" style={[local.h1, cjkLift(t("add.invite.introHero"), 0, H1_LIFT)]}>{t("add.invite.introHero")}</UiText>
+        <UiText style={[kit.sub, local.heroSub]}>{t("add.invite.introBodyLead")}<UiText style={local.strong}>{t("add.invite.introBodyStrong")}</UiText>{t("add.invite.introBodyTail")}</UiText>
+        <View style={local.heroRow}>
+          <KitChip label={t("add.invite.selfChip")} tone="teal" icon={<View style={local.chipIcon}><Icon name="check" size={16} color={colors.macTealInk} /></View>} />
           <DensityDots level={3} />
-          <Caption>{t("add.invite.introDensity")}</Caption>
+          <UiText style={kit.lbl}>{t("add.invite.introDensity")}</UiText>
+        </View>
+      </KitGuide>
+      <View style={[kit.card, local.steps]}>
+        <UiText accessibilityRole="header" style={local.h3}>{t("add.invite.stepsTitle")}</UiText>
+        <View style={local.st3}>
+          {steps.map(([emoji, title, body], index) => [
+            index > 0 ? <View key={`${title}-arrow`} style={local.st3Arrow}><Icon name="right" size={16} color={colors.ink4} /></View> : null,
+            <View key={title} style={local.st3Cell}>
+              <UiText importantForAccessibility="no" accessibilityElementsHidden style={local.st3Emoji}>{emoji}</UiText>
+              <UiText style={local.st3Title}>{t(title)}</UiText>
+              <UiText style={local.st3Small}>{t(body)}</UiText>
+            </View>,
+          ])}
         </View>
       </View>
-      <SectionTitle>{t("add.invite.stepsTitle")}</SectionTitle>
-      <Card variant="flat">
-        <View style={styles.stack}>
-          {steps.map(([emoji, title, body], index) => (
-            <View key={title} style={styles.row}>
-              <UiText style={local.stepNumber}>{index + 1}</UiText>
-              <UiText importantForAccessibility="no" accessibilityElementsHidden style={local.emoji}>{emoji}</UiText>
-              <View style={styles.grow}>
-                <UiText style={styles.strong}>{t(title)}</UiText>
-                <Caption>{t(body)}</Caption>
-              </View>
+      <View style={[kit.card, local.faq]}>
+        {faq.map(([question, answer], index) => (
+          <View key={question} style={[local.nx, index > 0 ? local.nxLine : null]}>
+            <View style={local.why}><UiText style={local.whyText}>?</UiText></View>
+            <View style={local.meta}>
+              <UiText style={local.metaTitle}>{t(question)}</UiText>
+              <UiText style={local.metaBody}>{t(answer)}</UiText>
             </View>
-          ))}
-        </View>
-      </Card>
-      <SectionTitle>{t("add.invite.faqTitle")}</SectionTitle>
-      <Card variant="flat">
-        <View style={styles.stack}>
-          {faq.map(([question, answer]) => (
-            <View key={question} style={styles.tightStack}>
-              <UiText style={styles.strong}>{`? ${t(question)}`}</UiText>
-              <UiText style={styles.body}>{t(answer)}</UiText>
-            </View>
-          ))}
-        </View>
-      </Card>
-      <View testID="invite-start"><Button label={t("add.invite.create")} variant="primary" block loading={busy} onPress={onStart} /></View>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
 
+/** b11 #7 .k-isqr + .k-isshare: QR 196 / code / link on a white card, then three tall buttons. */
 function CodeCard({ code, onShowQr, onCopy, onMessage }: { code: InviteCodeContract; onShowQr: () => void; onCopy: () => void; onMessage: () => void }) {
   const { t } = useOrbitLocale();
-  const { styles } = useAddStyles();
+  const { colors, styles: kit } = useInviteKit();
   const local = useStyles().styles;
+  const buttons = [
+    { icon: "grid" as const, label: t("add.invite.showQr"), onPress: onShowQr, testID: "invite-show-qr" },
+    { icon: "copy" as const, label: t("add.invite.copyLink"), onPress: onCopy, testID: "invite-copy-link" },
+    { icon: "mail" as const, label: t("add.invite.sendMessage"), onPress: onMessage, testID: "invite-message" },
+  ];
   return (
-    <Card>
-      <View style={[styles.stack, styles.centered]} testID="invite-code-card">
-        <InviteQr text={code.link} label={t("add.invite.qrAlt")} size={184} testID="invite-qr" />
-        <View style={[styles.tightStack, styles.centered]}>
-          <Caption>{t("add.invite.codeLabel")}</Caption>
-          <UiText selectable style={local.code} testID="invite-code">{code.code}</UiText>
-          <Caption>{t("add.invite.linkLabel")}</Caption>
-          <UiText selectable style={styles.body} testID="invite-link">{inviteLinkLabel(code.link)}</UiText>
-        </View>
-        <View style={local.actions}>
-          <View testID="invite-show-qr"><Button label={t("add.invite.showQr")} icon="grid" size="sm" onPress={onShowQr} /></View>
-          <View testID="invite-copy-link"><Button label={t("add.invite.copyLink")} icon="copy" size="sm" variant="primary" onPress={onCopy} /></View>
-          <View testID="invite-message"><Button label={t("add.invite.sendMessage")} icon="chat" size="sm" onPress={onMessage} /></View>
-        </View>
+    <View testID="invite-code-card">
+      <View style={local.qrCard}>
+        <InviteQr text={code.link} label={t("add.invite.qrAlt")} size={196} testID="invite-qr" />
+        <UiText selectable style={local.code} testID="invite-code">{code.code}</UiText>
+        <UiText selectable style={kit.lbl} testID="invite-link">{inviteLinkLabel(code.link)}</UiText>
       </View>
-    </Card>
+      <View style={local.share3}>
+        {buttons.map((button) => (
+          <UiPressable key={button.testID} accessibilityRole="button" accessibilityLabel={button.label} onPress={button.onPress} style={local.share3Btn} testID={button.testID}>
+            <Icon name={button.icon} size={16} color={colors.ink} />
+            <UiText numberOfLines={1} style={local.share3Text}>{button.label}</UiText>
+          </UiPressable>
+        ))}
+      </View>
+    </View>
   );
 }
 
 function Quota({ code, now }: { code: InviteCodeContract; now: () => number }) {
   const { language, t } = useOrbitLocale();
   const copy = useStandardCopy();
-  const { styles } = useAddStyles();
+  const { styles: kit } = useInviteKit();
   const local = useStyles().styles;
   const days = inviteDaysLeft(code.expiresAt, now());
   return (
     <View style={local.quota} testID="invite-quota">
-      <View style={[local.quotaCell, styles.tightStack]}>
-        <Caption>{t("add.invite.expiresLabel")}</Caption>
-        <UiText style={styles.strong} testID="invite-expires">{t("add.invite.expiresValue", { date: inviteDate(code.expiresAt, language, t) })}</UiText>
-        <Caption>{fillCopy(copy.chip.daysLeft, { count: days })}</Caption>
+      <View style={local.quotaCell}>
+        <UiText style={kit.lbl}>{t("add.invite.expiresLabel")}</UiText>
+        <UiText style={local.quotaValue} testID="invite-expires">{t("add.invite.expiresValue", { date: inviteDate(code.expiresAt, language, t) })}</UiText>
+        <UiText style={kit.lbl}>{fillCopy(copy.chip.daysLeft, { count: days })}</UiText>
       </View>
-      <View style={[local.quotaCell, styles.tightStack]}>
-        <Caption>{t("add.invite.usesLabel")}</Caption>
-        <UiText style={styles.strong} testID="invite-uses">{t("add.invite.usesValue", { left: Math.max(0, code.maxUses - code.usedCount), max: code.maxUses })}</UiText>
-        <Caption>{t("add.invite.joinedValue", { count: code.usedCount })}</Caption>
+      <View style={local.quotaCell}>
+        <UiText style={kit.lbl}>{t("add.invite.usesLabel")}</UiText>
+        <UiText style={local.quotaValue} testID="invite-uses">{t("add.invite.usesValue", { left: Math.max(0, code.maxUses - code.usedCount), max: code.maxUses })}</UiText>
+        <UiText style={kit.lbl}>{t("add.invite.joinedValue", { count: code.usedCount })}</UiText>
       </View>
     </View>
   );
 }
 
+/** b11 #7 .k-isinfo: 相手に届くあなたの情報 [変更]; 変更 opens the switches (R15 P1: the code stays). */
 function ShareKeys({ keys, profile, available, editing, draftKeys, busy, onEdit, onToggle, onCancel, onApply }: {
   keys: InviteSharedFieldKey[];
   profile: InviteSharedFields | null;
@@ -370,34 +419,47 @@ function ShareKeys({ keys, profile, available, editing, draftKeys, busy, onEdit,
   const { t } = useOrbitLocale();
   const copy = useStandardCopy();
   const { styles } = useAddStyles();
+  const { styles: kit } = useInviteKit();
+  const local = useStyles().styles;
   const offContact = !keys.includes("email") && !keys.includes("phone");
   return (
-    <Card variant="flat">
-      <View style={styles.stack} testID="invite-share">
-        <View style={styles.rowBetween}>
-          <UiText style={styles.strong}>{t("add.invite.shareTitle")}</UiText>
-          {editing ? null : <View testID="invite-share-edit"><Button label={t("add.invite.shareChange")} size="sm" variant="ghost" onPress={onEdit} /></View>}
-        </View>
-        {editing ? (
-          <View style={styles.stack}>
-            <InviteKeySwitches name={profile?.displayName ?? ""} fields={profile} available={available} keys={draftKeys} onToggle={onToggle} />
-            {available.length === 0 ? <Caption>{t("add.invite.shareNone")}</Caption> : null}
-            <Caption>{t("add.invite.shareEditHint")}</Caption>
-            <View style={styles.row}>
-              <Button label={copy.action.cancel} size="sm" onPress={onCancel} />
-              <View testID="invite-share-apply"><Button label={t("add.invite.shareApply")} size="sm" variant="primary" loading={busy} onPress={onApply} /></View>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.row} testID="invite-share-chips">
-            {keys.filter((key) => key !== "email" && key !== "phone").map((key) => <Chip key={key} label={t(INVITE_KEY_COPY[key])} tone="lav" />)}
-            {keys.includes("email") ? <Chip label={t("add.invite.keyEmail")} tone="lav" /> : null}
-            {keys.includes("phone") ? <Chip label={t("add.invite.keyPhone")} tone="lav" /> : null}
-            {offContact ? <Chip label={t("add.invite.shareOff", { label: t("add.invite.keyContact") })} /> : null}
-          </View>
-        )}
+    <View style={[kit.flat, local.gap12]} testID="invite-share">
+      <View style={kit.rowBetween}>
+        <UiText style={kit.infoTitle}>{t("add.invite.shareTitle")}</UiText>
+        {editing ? null : <KitLink label={t("add.invite.shareChange")} onPress={onEdit} testID="invite-share-edit" />}
       </View>
-    </Card>
+      {editing ? (
+        <View style={[styles.stack, local.gap12]}>
+          <InviteKeySwitches name={profile?.displayName ?? ""} fields={profile} available={available} keys={draftKeys} onToggle={onToggle} />
+          {available.length === 0 ? <Caption>{t("add.invite.shareNone")}</Caption> : null}
+          <Caption>{t("add.invite.shareEditHint")}</Caption>
+          <View style={styles.row}>
+            <Button label={copy.action.cancel} size="sm" onPress={onCancel} />
+            <View testID="invite-share-apply"><Button label={t("add.invite.shareApply")} size="sm" variant="primary" loading={busy} onPress={onApply} /></View>
+          </View>
+        </View>
+      ) : (
+        <View style={kit.chips} testID="invite-share-chips">
+          {keys.filter((key) => key !== "email" && key !== "phone").map((key) => <KitChip key={key} label={t(INVITE_KEY_COPY[key])} />)}
+          {keys.includes("email") ? <KitChip label={t("add.invite.keyEmail")} /> : null}
+          {keys.includes("phone") ? <KitChip label={t("add.invite.keyPhone")} /> : null}
+          {offContact ? <KitChip label={t("add.invite.shareOff", { label: t("add.invite.keyContact") })} off /> : null}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** b11 #7 .k-isoff: 「Orbit からは送信しません · 共有はあなたの端末から」 and 無効にする. */
+function OffRow({ busy, onRevoke }: { busy: boolean; onRevoke: () => void }) {
+  const { t } = useOrbitLocale();
+  const { styles: kit } = useInviteKit();
+  const local = useStyles().styles;
+  return (
+    <View style={[kit.rowBetween, local.offRow]}>
+      <UiText style={[kit.lbl, local.grow]}>{t("add.invite.noSend")}</UiText>
+      <KitLink label={t("add.invite.revoke")} danger disabled={busy} onPress={onRevoke} testID="invite-revoke" />
+    </View>
   );
 }
 
@@ -439,11 +501,12 @@ export function InviteKeySwitches({ name, fields, available, keys, onToggle, t: 
 const TONES: readonly InviteMessageTone[] = ["polite", "casual", "english"];
 const TONE_COPY = { casual: "add.invite.toneCasual", english: "add.invite.toneEnglish", polite: "add.invite.tonePolite" } as const;
 
+/** b11 #8: title + ✕, the tone pills, the draft box (link in bold), three tall buttons — Orbit never sends. */
 function MessageDraftSheet({ visible, code, name, onClose, onCopy }: { visible: boolean; code: InviteCodeContract; name: string; onClose: () => void; onCopy: (text: string) => void }) {
   const { language, t } = useOrbitLocale();
   const copy = useStandardCopy();
   const toast = useToast();
-  const { styles } = useAddStyles();
+  const { colors, styles: kit } = useInviteKit();
   const local = useStyles().styles;
   const [tone, setTone] = useState<InviteMessageTone>("polite");
   // The English draft writes its date in English whatever the screen language (「Oct 14」).
@@ -452,21 +515,47 @@ function MessageDraftSheet({ visible, code, name, onClose, onCopy }: { visible: 
   const open = async (url: string) => {
     if (!(await openInviteDraft(url))) toast.error(t("add.invite.openFailed"));
   };
+  const apps = [
+    { key: "copy", icon: <Icon name="copy" size={16} color={colors.ink} />, label: copy.action.copy, onPress: () => onCopy(text), testID: "invite-draft-copy" },
+    { key: "line", icon: null, label: `💬${t("add.invite.openLine")}`, onPress: () => void open(lineShareUrl(text)), testID: "invite-draft-line" },
+    { key: "mail", icon: <Icon name="mail" size={16} color={colors.ink} />, label: t("add.invite.openMail"), onPress: () => void open(mailDraftUrl(t("add.invite.mailSubject"), text)), testID: "invite-draft-mail" },
+  ];
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={t("add.invite.draftTitle")}>
-      <View style={styles.stack} testID="invite-draft-sheet">
-        <UiText accessibilityRole="header" style={styles.title}>{t("add.invite.draftTitle")}</UiText>
-        <Caption>{t("add.invite.draftSub")}</Caption>
-        <Segmented accessibilityLabel={t("add.invite.toneLabel")} segments={TONES.map((key) => ({ key, label: t(TONE_COPY[key]) }))} value={tone} onChange={setTone} />
-        <View style={local.draftBox}><UiText selectable style={styles.body} testID="invite-draft-text">{text}</UiText></View>
-        <View style={local.actions}>
-          <View testID="invite-draft-copy"><Button label={copy.action.copy} icon="copy" variant="primary" size="sm" onPress={() => onCopy(text)} /></View>
-          <View testID="invite-draft-line"><Button label={t("add.invite.openLine")} icon="chat" size="sm" onPress={() => void open(lineShareUrl(text))} /></View>
-          <View testID="invite-draft-mail"><Button label={t("add.invite.openMail")} icon="mail" size="sm" onPress={() => void open(mailDraftUrl(t("add.invite.mailSubject"), text))} /></View>
+      <View testID="invite-draft-sheet">
+        <View style={kit.rowBetween}>
+          <View style={local.grow}>
+            <UiText accessibilityRole="header" style={local.sheetTitle}>{t("add.invite.draftTitle")}</UiText>
+            <UiText style={kit.lbl}>{t("add.invite.draftSub")}</UiText>
+          </View>
+          <IconButton icon="x" size={34} accessibilityLabel={copy.action.close} onPress={onClose} />
         </View>
-        <Caption>{t("add.invite.draftNoSend")}</Caption>
+        <View style={local.toneRow}>
+          <Segmented accessibilityLabel={t("add.invite.toneLabel")} segments={TONES.map((key) => ({ key, label: t(TONE_COPY[key]) }))} value={tone} onChange={setTone} />
+        </View>
+        <View style={local.draftBox}><DraftText text={text} link={code.link} /></View>
+        <View style={local.apps}>
+          {apps.map((app) => (
+            <UiPressable key={app.key} accessibilityRole="button" accessibilityLabel={app.label} onPress={app.onPress} style={local.appBtn} testID={app.testID}>
+              {app.icon}
+              <UiText numberOfLines={1} style={local.appText}>{app.label}</UiText>
+            </UiPressable>
+          ))}
+        </View>
       </View>
     </BottomSheet>
+  );
+}
+
+/** The draft as one selectable text; the link line is bold (b11 #8 .draftbox b). */
+function DraftText({ text, link }: { text: string; link: string }) {
+  const local = useStyles().styles;
+  const at = text.indexOf(link);
+  if (at < 0) return <UiText selectable style={local.draftText} testID="invite-draft-text">{text}</UiText>;
+  return (
+    <UiText selectable style={local.draftText} testID="invite-draft-text">
+      {text.slice(0, at)}<UiText style={local.draftLink}>{link}</UiText>{text.slice(at + link.length)}
+    </UiText>
   );
 }
 
@@ -533,17 +622,56 @@ function History({ items, busy, mergingId, onReissue, onOpenPerson, onMerge, onD
 }
 
 const ENGLISH = createTranslator("en");
+/** kit .h1 (22 / 900 / 1.35): iOS sets the Japanese glyphs 4pt lower in the line box than the browser (measured, R15). */
+export const H1_LIFT = -4;
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  center: { textAlign: "center" },
-  code: { color: colors.ink, fontSize: 26, fontWeight: "800", letterSpacing: 2 },
+  grow: { flex: 1, minWidth: 0 },
+  gap12: { marginTop: 12 },
+  strong: { color: colors.ink, fontWeight: "700" },
   mono: { color: colors.ink, fontSize: 14, fontWeight: "700", letterSpacing: 1 },
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
-  quota: { flexDirection: "row", gap: 8 },
-  quotaCell: { backgroundColor: colors.surface2, borderRadius: radius.md, flex: 1, padding: 12 },
-  stepNumber: { color: colors.accentText, fontSize: 14, fontWeight: "800", width: 18 },
-  emoji: { fontSize: 20 },
-  draftBox: { backgroundColor: colors.surface2, borderRadius: radius.md, padding: 12 },
   link: { minHeight: 32, justifyContent: "center" },
   linkText: { color: colors.accentText, fontSize: 13.5, fontWeight: "700", textDecorationLine: "underline" },
+  // 説明（b11 #6）
+  emo: { alignItems: "center", backgroundColor: colors.macPink, borderRadius: 13, height: 40, justifyContent: "center", width: 40 },
+  emoText: { fontSize: 21, lineHeight: 26 },
+  h1: { color: colors.ink, fontSize: 22, fontWeight: "900", letterSpacing: -0.22, lineHeight: 29.7, marginTop: 10 },
+  heroSub: { lineHeight: 20, marginTop: 6 },
+  heroRow: { alignItems: "center", flexDirection: "row", gap: 8, marginTop: 10 },
+  chipIcon: { alignItems: "center", height: 12, justifyContent: "center", transform: [{ scale: 0.75 }], width: 12 },
+  steps: { padding: 14 },
+  h3: { color: colors.ink, fontSize: 14.5, fontWeight: "800", lineHeight: 21.75, marginBottom: 10 },
+  st3: { alignItems: "center", flexDirection: "row", gap: 2 },
+  st3Arrow: { alignItems: "center", transform: [{ scale: 0.875 }], width: 16 },
+  st3Cell: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 14, flex: 1, minWidth: 0, paddingHorizontal: 4, paddingVertical: 9 },
+  st3Emoji: { fontSize: 18, lineHeight: 23.4 },
+  st3Title: { color: colors.ink, fontSize: 11.5, fontWeight: "700", lineHeight: 15.5, textAlign: "center" },
+  st3Small: { color: colors.ink3, fontSize: 10, lineHeight: 13.5, marginTop: 2, textAlign: "center" },
+  faq: { marginTop: 14, paddingHorizontal: 16, paddingVertical: 6 },
+  nx: { alignItems: "center", flexDirection: "row", gap: 10, paddingVertical: 10 },
+  nxLine: { borderTopColor: colors.line, borderTopWidth: 1 },
+  why: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 11, height: 22, justifyContent: "center", width: 22 },
+  whyText: { color: colors.ink3, fontSize: 10.5, fontWeight: "800", lineHeight: 15.75 },
+  meta: { flex: 1, minWidth: 0 },
+  metaTitle: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  metaBody: { color: colors.ink3, fontSize: 11.5, lineHeight: 17.25 },
+  // 共有（b11 #7）
+  qrCard: { alignItems: "center", backgroundColor: colors.surface, borderRadius: 24, padding: 18 },
+  code: { color: colors.ink, fontSize: 22, fontVariant: ["tabular-nums"], fontWeight: "800", letterSpacing: 2.64, lineHeight: 33, marginTop: 12 },
+  share3: { flexDirection: "row", gap: 8 },
+  share3Btn: { alignItems: "center", backgroundColor: colors.surface, borderRadius: 999, flex: 1, gap: 3, height: 64, justifyContent: "center", paddingHorizontal: 4 },
+  share3Text: { color: colors.ink, fontSize: 11.5, fontWeight: "700", lineHeight: 17.25 },
+  quota: { flexDirection: "row", gap: 8, marginTop: 12 },
+  quotaCell: { backgroundColor: colors.surface2, borderRadius: 14, flex: 1, minWidth: 0, paddingHorizontal: 12, paddingVertical: 9 },
+  quotaValue: { color: colors.ink, fontSize: 16, fontVariant: ["tabular-nums"], fontWeight: "800", lineHeight: 24 },
+  offRow: { marginTop: 12, paddingHorizontal: 4 },
+  // 下書き（b11 #8）
+  sheetTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25.5 },
+  toneRow: { alignItems: "flex-start", marginTop: 12 },
+  draftBox: { backgroundColor: colors.surface2, borderRadius: 16, marginTop: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  draftText: { color: colors.ink, fontSize: 12.5, lineHeight: 21.9 },
+  draftLink: { fontWeight: "700" },
+  apps: { flexDirection: "row", gap: 8, marginTop: 12 },
+  appBtn: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 999, flex: 1, gap: 3, height: 60, justifyContent: "center", paddingHorizontal: 4 },
+  appText: { color: colors.ink, fontSize: 11.5, fontWeight: "700", lineHeight: 17.25 },
 }));

@@ -1,0 +1,66 @@
+{
+ "_note": "R15 招待コード App 像素返工（2026-10-14）。App 连只读 mock 服务器 :3207（ORBIT_REDESIGN_MOCK=add-scan,invite-codes），模拟器「iPhone 16e (add)」。发出方 = b11 #6 説明 / #7 共有 / #8 下書き sheet；接收方 App 永远已登录 = #12 确认 / #10 完了 / #13 期限切れ。用 tools/shot.sh <id> <light|dark> <目录> 单张比。键 = <id>-app-<theme>。",
+ "defaults": {
+  "grid": 30,
+  "wait": 9000,
+  "attribution": "scripts/visual/attribution-redesign-R15-app.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/add/invite/**",
+  "repos/orbit-app/src/i18n/ja/add.ts",
+  "repos/orbit-app/src/components/ui/**"
+ ],
+ "views": [
+  {
+   "id": "A-R15-06",
+   "design": "b11-nav-v3.html",
+   "board-index": 6,
+   "url": "orbit://contacts/new/invite",
+   "taps": "首次（未看过说明、无当前码）",
+   "note": "説明（はじめて）"
+  },
+  {
+   "id": "A-R15-07",
+   "design": "b11-nav-v3.html",
+   "board-index": 7,
+   "url": "orbit://contacts/new/invite",
+   "note": "共有"
+  },
+  {
+   "id": "A-R15-47",
+   "design": "b11-nav-v3.html",
+   "board-index": 47,
+   "url": "orbit://contacts/new/invite",
+   "note": "共有 · 深色（b11 #47，只比 dark）"
+  },
+  {
+   "id": "A-R15-08",
+   "design": "b11-nav-v3.html",
+   "board-index": 8,
+   "url": "orbit://contacts/new/invite",
+   "taps": "メッセージで送る",
+   "note": "下書き sheet"
+  },
+  {
+   "id": "A-R15-12",
+   "design": "b11-nav-v3.html",
+   "board-index": 12,
+   "url": "orbit://i/H8MW-4QZT",
+   "note": "接收方 · 确认"
+  },
+  {
+   "id": "A-R15-10",
+   "design": "b11-nav-v3.html",
+   "board-index": 10,
+   "url": "orbit://i/H8MW-4QZT?design=done",
+   "note": "接收方 · 完了（演示）"
+  },
+  {
+   "id": "A-R15-13",
+   "design": "b11-nav-v3.html",
+   "board-index": 13,
+   "url": "orbit://i/T6EX-9KPA",
+   "note": "接收方 · 期限切れ"
+  }
+ ]
+}
