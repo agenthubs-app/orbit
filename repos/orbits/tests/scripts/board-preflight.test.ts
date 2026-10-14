@@ -85,14 +85,14 @@ test("checkConsistency: 标题 n件 与画出的行数、同标签不同数字�
   assert.ok(!rules.some((r) => r.includes("候補")), rules.join("\n"));
 });
 
-test("nearestToken / matchTokens: 21 vs 20、行高 1.55 vs 1.5 = 近似但不等；14 = 精确；7px 圆角 = 精确（check）", () => {
+test("nearestToken / matchTokens: 21 vs 20、行高 1.52 vs 1.5 = 近似但不等；14 = 精确；7px 圆角 = 精确（check）", () => {
   assert.equal(nearestToken(index.fontSize, 14).exact?.web, "--fs-body");
   const values = [
     { cat: "fontSize", value: 20.5, count: 1, props: [], where: [] },
-    { cat: "lineHeight", value: 1.55, count: 3, props: [], where: [] },
-    { cat: "lineHeight", value: 1.65, count: 1, props: [], where: [] },
+    { cat: "lineHeight", value: 1.52, count: 3, props: [], where: [] },
+    { cat: "lineHeight", value: 2.2, count: 1, props: [], where: [] },
     { cat: "radius", value: 7, count: 1, props: [], where: [] },
-    { cat: "space", value: 13, count: 1, props: [], where: [] },
+    { cat: "space", value: 15, count: 1, props: [], where: [] }, // R26 补了 1–13 的小值，15 仍不在刻度
   ];
   const [fs, lh, lh2, r, sp] = matchTokens(values, index, "light");
   assert.equal(fs.status, "near");

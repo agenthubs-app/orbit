@@ -90,7 +90,7 @@ export const shadows = {
   },
   // kit .seg / .tseg selected option (ui.css:36, :724): a 1px lift, same in both themes.
   segment: {
-    boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.06)"
+    boxShadow: designShadow.seg.light
   },
   // The design's only shadow, for floating layers (sheets, popovers).
   float: {

@@ -200,12 +200,13 @@ export const designRadius = {
   emo: 13,
   dot: 4,
   check: 7,
-  tick: 1
+  tick: 1,
+  cta: 26
 } as const;
 
 export const designSpace = {
   gap: 14,
-  scale: [4, 8, 12, 14, 16, 18, 20, 22, 24, 26, 34]
+  scale: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 26, 28, 34, 40, 48]
 } as const;
 
 export const designFont = {
@@ -258,7 +259,11 @@ export const designFont = {
     emojiXl: 40,
     emojiHero: 30,
     emojiJumbo: 46,
-    numberMd: 26
+    numberMd: 26,
+    displayCompact: 36,
+    numberXl: 34,
+    displayBig: 52,
+    displayHuge: 60
   },
   weight: {
     regular: 400,
@@ -271,7 +276,19 @@ export const designFont = {
     display: 1.05,
     title: 1.35,
     body: 1.5,
-    label: 1.4
+    label: 1.4,
+    tight: 1.1,
+    snug: 1.2,
+    bodyRelaxed: 1.55,
+    prose: 1.6,
+    proseLg: 1.7,
+    quote: 1.75,
+    letter: 1.8
+  },
+  tracking: {
+    tight: -0.02,
+    snug: -0.01,
+    title: 0.01
   }
 } as const;
 
@@ -279,6 +296,22 @@ export const designShadow = {
   float: {
     light: "0 10px 30px -12px rgba(60, 40, 90, 0.22)",
     dark: "0 12px 30px -10px rgba(0, 0, 0, 0.6)"
+  },
+  seg: {
+    light: "0 1px 2px rgba(0, 0, 0, 0.06)",
+    dark: "0 1px 2px rgba(0, 0, 0, 0.06)"
+  },
+  ringSelect: {
+    light: "0 0 0 2px #8E82A9",
+    dark: "0 0 0 2px #A79BC4"
+  },
+  ringDot: {
+    light: "0 0 0 4px rgba(185, 137, 149, 0.25)",
+    dark: "0 0 0 4px rgba(212, 163, 175, 0.25)"
+  },
+  ringError: {
+    light: "inset 0 0 0 1.5px #E58A76",
+    dark: "inset 0 0 0 1.5px #F29C88"
   }
 } as const;
 

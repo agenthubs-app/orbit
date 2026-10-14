@@ -108,6 +108,8 @@ function renderTs(tokens) {
       ["size", tsMap(tokens.font.size, num, 1)],
       ["weight", tsMap(tokens.font.weight, num, 1)],
       ["lineHeight", tsMap(tokens.font["line-height"], num, 1)],
+      // Letter spacing in em (the App multiplies by the font size; RN letterSpacing is in points).
+      ["tracking", tsMap(tokens.font.tracking, num, 1)],
     ], 0)} as const;`,
     "",
     `export const designShadow = ${tsObject(Object.entries(tokens.shadow).map(([key, value]) => [camelTokenName(key), tsMap(value, quote, 1)]), 0)} as const;`,
@@ -145,6 +147,7 @@ function renderCss(tokens) {
     ...Object.entries(tokens.font.size).map(([name, value]) => `--fs-${name}: ${px(value)};`),
     ...Object.entries(tokens.font.weight).map(([name, value]) => `--fw-${name}: ${value};`),
     ...Object.entries(tokens.font["line-height"]).map(([name, value]) => `--lh-${name}: ${value};`),
+    ...Object.entries(tokens.font.tracking).map(([name, value]) => `--track-${name}: ${value}em;`),
     `--ease: ${tokens.motion.ease};`,
     ...Object.entries(tokens.motion.duration).map(([name, value]) => `--dur-${name}: ${value}ms;`),
   ];

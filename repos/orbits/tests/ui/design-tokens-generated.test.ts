@@ -98,11 +98,17 @@ test("radius, type and motion scales are the ones the plan fixed", () => {
   // R06 added menu 18 (context menu), tile 16 (mac tiles, steps) and tag 6 (key caps, sample tags);
   // the R07 pixel rework added row 12 (b12 account-menu rows); the plan-page rework found the kit's
   // hair 2 / bar 3 / seg 5 / chip 8 / input-sm 9 / emo 13 / dot 4 / check 7 / tick 1 and the type sizes below without tokens.
-  assert.deepEqual(tokens.radius, { xl: 24, lg: 20, md: 14, sm: 10, sheet: 34, dialog: 28, "card-web": 22, bubble: 18, pill: 999, menu: 18, tile: 16, row: 12, "logo-sm": 11, tag: 6, hair: 2, bar: 3, seg: 5, chip: 8, "input-sm": 9, emo: 13, dot: 4, check: 7, tick: 1 });
+  assert.deepEqual(tokens.radius, { xl: 24, lg: 20, md: 14, sm: 10, sheet: 34, dialog: 28, "card-web": 22, bubble: 18, pill: 999, menu: 18, tile: 16, row: 12, "logo-sm": 11, tag: 6, hair: 2, bar: 3, seg: 5, chip: 8, "input-sm": 9, emo: 13, dot: 4, check: 7, tick: 1, cta: 26 });
   assert.deepEqual(
     { micro: 9.5, tiny: 10.5, emph: 15, "title-xs": 18, section: 19, "display-md": 44, "display-xl": 64, "emoji-md": 21, "emoji-lg": 28, "number-lg": 32, "display-lg": 56, "display-sm": 48 },
     Object.fromEntries(["micro", "tiny", "emph", "title-xs", "section", "display-md", "display-xl", "emoji-md", "emoji-lg", "number-lg", "display-lg", "display-sm"].map((key) => [key, tokens.font.size[key]]))
   );
+  // R26 day one (events DESIGN §10 C1–C11): the event boards' line heights, letter spacing, cta radius,
+  // the off-scale gaps and the segment / selection / dot / error-field rings.
+  assert.deepEqual(tokens.font["line-height"], { display: 1.05, title: 1.35, body: 1.5, label: 1.4, tight: 1.1, snug: 1.2, "body-relaxed": 1.55, prose: 1.6, "prose-lg": 1.7, quote: 1.75, letter: 1.8 });
+  assert.deepEqual(tokens.font.tracking, { tight: -0.02, snug: -0.01, title: 0.01 });
+  assert.deepEqual(tokens.space.scale, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 26, 28, 34, 40, 48]);
+  assert.deepEqual(Object.keys(tokens.shadow), ["float", "seg", "ring-select", "ring-dot", "ring-error"]);
   // The kit's --font exactly: no Hiragino Kaku Gothic ProN before Noto (it took ✓ at bold weights from SF).
   assert.equal(tokens.font.family.ja, '-apple-system, "SF Pro Display", "SF Pro Text", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif');
   assert.deepEqual(Object.keys(tokens.font.family), ["ja", "zh", "en", "num"]);

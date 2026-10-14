@@ -66,6 +66,10 @@
   --cam-2: #24222A;
   --cam-ink: #FFFFFF;
   --shadow-float: 0 10px 30px -12px rgba(60, 40, 90, 0.22);
+  --shadow-seg: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-ring-select: 0 0 0 2px #8E82A9;
+  --shadow-ring-dot: 0 0 0 4px rgba(185, 137, 149, 0.25);
+  --shadow-ring-error: inset 0 0 0 1.5px #E58A76;
   --r-xl: 24px;
   --r-lg: 20px;
   --r-md: 14px;
@@ -89,10 +93,21 @@
   --r-dot: 4px;
   --r-check: 7px;
   --r-tick: 1px;
+  --r-cta: 26px;
   --gap: 14px;
+  --space-1: 1px;
+  --space-2: 2px;
+  --space-3: 3px;
   --space-4: 4px;
+  --space-5: 5px;
+  --space-6: 6px;
+  --space-7: 7px;
   --space-8: 8px;
+  --space-9: 9px;
+  --space-10: 10px;
+  --space-11: 11px;
   --space-12: 12px;
+  --space-13: 13px;
   --space-14: 14px;
   --space-16: 16px;
   --space-18: 18px;
@@ -100,7 +115,10 @@
   --space-22: 22px;
   --space-24: 24px;
   --space-26: 26px;
+  --space-28: 28px;
   --space-34: 34px;
+  --space-40: 40px;
+  --space-48: 48px;
   --font-ja: -apple-system, "SF Pro Display", "SF Pro Text", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   --font-zh: "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-en: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
@@ -139,6 +157,10 @@
   --fs-emoji-hero: 30px;
   --fs-emoji-jumbo: 46px;
   --fs-number-md: 26px;
+  --fs-display-compact: 36px;
+  --fs-number-xl: 34px;
+  --fs-display-big: 52px;
+  --fs-display-huge: 60px;
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-bold: 700;
@@ -148,6 +170,16 @@
   --lh-title: 1.35;
   --lh-body: 1.5;
   --lh-label: 1.4;
+  --lh-tight: 1.1;
+  --lh-snug: 1.2;
+  --lh-body-relaxed: 1.55;
+  --lh-prose: 1.6;
+  --lh-prose-lg: 1.7;
+  --lh-quote: 1.75;
+  --lh-letter: 1.8;
+  --track-tight: -0.02em;
+  --track-snug: -0.01em;
+  --track-title: 0.01em;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-press: 150ms;
   --dur-swipe: 300ms;
@@ -235,6 +267,10 @@
     --cam-2: #24222A;
     --cam-ink: #FFFFFF;
     --shadow-float: 0 12px 30px -10px rgba(0, 0, 0, 0.6);
+    --shadow-seg: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-ring-select: 0 0 0 2px #A79BC4;
+    --shadow-ring-dot: 0 0 0 4px rgba(212, 163, 175, 0.25);
+    --shadow-ring-error: inset 0 0 0 1.5px #F29C88;
   }
 }
 
@@ -302,4 +338,8 @@
   --cam-2: #24222A;
   --cam-ink: #FFFFFF;
   --shadow-float: 0 12px 30px -10px rgba(0, 0, 0, 0.6);
+  --shadow-seg: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-ring-select: 0 0 0 2px #A79BC4;
+  --shadow-ring-dot: 0 0 0 4px rgba(212, 163, 175, 0.25);
+  --shadow-ring-error: inset 0 0 0 1.5px #F29C88;
 }
