@@ -3066,7 +3066,8 @@ const scanGuideLegacy = () => topbar('名刺をスキャン', 'はじめての�
     <div class="sg-frame">${MC({ style: 'transform:rotate(-3deg) scale(.9)' })}<i></i><i></i><i></i><i></i></div>
     <div class="card" style="padding:14px"><div class="card-h" style="margin-bottom:10px"><h3>うまく撮るコツ</h3><span class="chip lav">連写 OK · 一度に最大 100枚</span></div>
       <div class="tip4">${[['☀️', '明るい場所で', '影と反射を避ける'], ['📄', '平らに置く', '机の上がいちばん'], ['⬜', '四隅を枠に', '名刺全体が写るように撮ります'], ['🔁', '表と裏', '裏は任意 · 自動でペア']].map(([e, t, d]) => `<div><span>${e}</span><div style="min-width:0"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div></div>
-    <div class="card" style="padding:14px"><div class="card-h" style="margin-bottom:10px"><h3>撮ったあと</h3></div>${st3([['🤖', 'AI が読み取る', 'バックグラウンド'], ['✅', '例外だけ確認', '重複 · 推測あり'], ['👥', '全員 人脈へ', '濃さ ●●○ から']])}</div>`
+    <div class="card" style="padding:14px"><div class="card-h" style="margin-bottom:10px"><h3>撮ったあと</h3></div>${st3([['🤖', 'AI が読み取る', 'バックグラウンド'], ['✅', '例外だけ確認', '重複 · 推測あり'], ['👥', '全員 人脈へ', '濃さ ●●○ から']])}</div>
+    <div class="card flat row k-sgpriv" style="gap:10px;padding:12px 14px;align-items:flex-start"><span style="font-size:18px">🔒</span><div class="lbl" style="line-height:1.6;color:var(--ink-2)">名刺の画像と内容は<b style="color:var(--ink)">あなただけ</b>が見られます。AI の学習には使いません。</div></div>`
   + foot(`<button class="btn primary block xl">${ic('scan', 'sm')}カメラを開く</button><div class="row between" style="padding:0 4px"><span class="lnk" style="font-size:13px">${ic('image', 'sm')} 写真から選ぶ</span><span class="chk"><i></i>次回から表示しない</span></div>`);
 const stoppedApp = () => topbar('名刺の読み取り', '12枚', xBtn) + `
     <div class="card err-card k-nuerr" style="margin-top:8px"><div class="err-ic">${lic('alert', 'lg')}</div><b style="font-size:16px">アップロードが途中で止まりました</b><div class="sub">もう一度撮影してください。</div>
