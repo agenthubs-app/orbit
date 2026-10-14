@@ -111,7 +111,7 @@ export function PlanQuestions({ intake, kind, api, onIntake, onReload }: { intak
 }
 
 /** 折叠后的 chip 只写第一段（「 · 」或「（」之前），同 b10 ④ premc。 */
-function shortPremise(value: string): string {
+export function shortPremise(value: string): string {
   return value.split(/\s·\s|（/u)[0]!.trim() || value;
 }
 
@@ -264,7 +264,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   foptText: { color: colors.ink2, ...kitText(11.5, "700") },
   foptTextOn: { color: colors.ink },
   qin: { marginTop: 8, height: 38, borderRadius: 12, backgroundColor: colors.surface2, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12 },
-  qinInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 12.5, lineHeight: 18.75, padding: 0 },
+  qinInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 12.5, padding: 0 },
   send: { marginTop: 12, alignSelf: "stretch" },
   note: { marginTop: 6 },
   premCard: { paddingVertical: 12, paddingHorizontal: 16 },

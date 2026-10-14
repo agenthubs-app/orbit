@@ -168,7 +168,7 @@ export function DraftUsedUp({ draft, onManual, onConfirm, confirming, onTurn }: 
 
 /**
  * 底部（kit .revbar + .composer）：「AI 修正 あと N 回」+ 提示与例句，下面是输入栏（送信）。0 回时变灰、不可输入。
- * 设计里的「＋」（添付）与 🎤 没有对应功能，先不画（见 REWORK-REPORT-app 待拍板）。
+ * 画板已去掉「＋」（添付）与 🎤（决定表 §19-1）。
  */
 export function PlanFixBar({ draft, text, onText, onSend, sending }: {
   draft: PlanDraftView;
@@ -177,34 +177,74 @@ export function PlanFixBar({ draft, text, onText, onSend, sending }: {
   onSend: () => void;
   sending: boolean;
 }) {
-  const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
   const left = Math.max(0, draft.aiFixLimit - draft.aiFixUsed);
   const out = left === 0;
   return (
+    <RevComposer
+      label={t("plan.fix.label")}
+      left={left}
+      leftLabel={t("plan.fix.leftLabel", { count: left })}
+      hint={out ? t("plan.fix.usedUp") : t("plan.fix.hint")}
+      example={out ? t("plan.fix.countsNoChange") : t("plan.fix.example")}
+      placeholder={out ? t("plan.fix.usedUpShort") : t("plan.fix.placeholder")}
+      inputLabel={t("plan.fix.inputLabel")}
+      sendLabel={t("plan.fix.send")}
+      text={text}
+      onText={onText}
+      onSend={onSend}
+      sending={sending}
+    />
+  );
+}
+
+/** kit .revbar（回数 + 说明 + 一行规则）+ .composer（输入 + 送信）；生成流程的 AI 修正与見直し共用。left = 0 时变灰、不可输入。 */
+export function RevComposer({ label, left, leftLabel, hint, example, placeholder, inputLabel, sendLabel, text, onText, onSend, sending, canSend = Boolean(text.trim()), above }: {
+  label: string;
+  left: number;
+  leftLabel: string;
+  hint: string;
+  example: string;
+  placeholder: string;
+  inputLabel: string;
+  sendLabel: string;
+  text: string;
+  onText: (text: string) => void;
+  onSend: () => void;
+  sending: boolean;
+  /** 默认 = 输入栏有字；見直し改了前提也能送。 */
+  canSend?: boolean;
+  /** 发送中 / 失败的提示：放在送信钮上方，点了就看得到。 */
+  above?: ReactNode;
+}) {
+  const { styles, colors } = useStyles();
+  const { t } = useOrbitLocale();
+  const out = left === 0;
+  return (
     <View pointerEvents="box-none" style={styles.bar}>
+      {above}
       <View style={styles.revbar}>
-        <View accessibilityLabel={t("plan.fix.leftLabel", { count: left })} style={[styles.rvn, out && styles.rvnZero]}>
-          <UiText style={[styles.rvnSmall, out && styles.rvnSmallZero]}>{t("plan.fix.label")}</UiText>
+        <View accessibilityLabel={leftLabel} style={[styles.rvn, out && styles.rvnZero]}>
+          <UiText style={[styles.rvnSmall, out && styles.rvnSmallZero]}>{label}</UiText>
           <UiText style={styles.rvnB}>{t("plan.fix.leftPre")}<UiText style={styles.rvnEm}>{String(left)}</UiText>{t("plan.fix.leftPost")}</UiText>
         </View>
         <View style={styles.rvt}>
-          <UiText style={styles.rvtText}>{out ? t("plan.fix.usedUp") : t("plan.fix.hint")}</UiText>
-          <UiText numberOfLines={1} style={styles.ex}>{out ? t("plan.fix.countsNoChange") : t("plan.fix.example")}</UiText>
+          <UiText style={styles.rvtText}>{hint}</UiText>
+          <UiText numberOfLines={1} style={styles.ex}>{example}</UiText>
         </View>
       </View>
       <View style={[styles.composer, out && styles.composerOff]}>
         <TextInput
-          accessibilityLabel={t("plan.fix.inputLabel")}
+          accessibilityLabel={inputLabel}
           editable={!out && !sending}
           onChangeText={onText}
-          placeholder={out ? t("plan.fix.usedUpShort") : t("plan.fix.placeholder")}
+          placeholder={placeholder}
           placeholderTextColor={colors.ink3}
           selectionColor={colors.plum700}
           style={styles.composerInput}
           value={text}
         />
-        <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.fix.send")} disabled={out || sending || !text.trim()} hitSlop={5} onPress={onSend} style={styles.send}>
+        <UiPressable accessibilityRole="button" accessibilityLabel={sendLabel} disabled={out || sending || !canSend} hitSlop={5} onPress={onSend} style={styles.send}>
           <Icon name="up" size={16} color={colors.bg} />
         </UiPressable>
       </View>

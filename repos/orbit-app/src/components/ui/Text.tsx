@@ -52,15 +52,15 @@ export function faceFor(weight: string | number | undefined): string {
 // Adjacent full-width punctuation is trimmed by half an em, as Chrome's default
 // text-spacing-trim does in the design (R23–25 App rework round 2, decision §19-3; pairs
 // CDP-measured with the kit font stack): an opening bracket after an opening bracket,
-// closing bracket, comma / full stop, ：；・ or ideographic space loses its leading half;
+// closing bracket, comma / full stop, ：；・· or ideographic space loses its leading half;
 // a closing bracket or comma / full stop before any of those (or an opening bracket)
 // loses its trailing half. Each pair trims once, so either way the first character of the
 // pair takes a −½em letter spacing. Pairs split across nested Text children are not seen.
 // The sets are built from code points so no CJK string literal sits in this skeleton file (R03 D).
 const OPENING = String.fromCharCode(0x300c, 0x300e, 0xff08, 0x3010, 0x3014, 0xff3b, 0xff5b, 0x3008, 0x300a); // 「『（【〔［｛〈《
 const CLOSING = String.fromCharCode(0x300d, 0x300f, 0xff09, 0x3011, 0x3015, 0xff3d, 0xff5d, 0x3009, 0x300b, 0x3001, 0x3002, 0xff0c, 0xff0e); // 」』）】〕］｝〉》、。，．
-const BEFORE_OPENING = OPENING + CLOSING + String.fromCharCode(0x201c, 0x2018, 0xff1a, 0xff1b, 0x30fb, 0x3000); // “‘：；・ + ideographic space
-const AFTER_CLOSING = OPENING + CLOSING + String.fromCharCode(0x201d, 0x2019, 0xff1a, 0xff1b, 0x30fb, 0x3000); // ”’：；・ + ideographic space
+const BEFORE_OPENING = OPENING + CLOSING + String.fromCharCode(0x201c, 0x2018, 0xff1a, 0xff1b, 0x30fb, 0x00b7, 0x3000); // “‘：；・· + ideographic space
+const AFTER_CLOSING = OPENING + CLOSING + String.fromCharCode(0x201d, 0x2019, 0xff1a, 0xff1b, 0x30fb, 0x00b7, 0x3000); // ”’：；・· + ideographic space
 
 /** Indexes whose character is the first of a trimmed pair. */
 export function trimmedPunctuation(text: string): Set<number> {

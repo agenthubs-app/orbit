@@ -9,6 +9,8 @@ test("trims the first character of adjacent full-width punctuation pairs", () =>
   assert.deepEqual([...trimmedPunctuation("（「A」）")], [0, 3]);
   assert.deepEqual([...trimmedPunctuation("あ、「い」・う")], [1, 4]);
   assert.deepEqual([...trimmedPunctuation("“「x」”")], [0, 3]);
+  // The Latin middle dot counts as middle-dot punctuation on the design's Japanese page.
+  assert.deepEqual([...trimmedPunctuation("3回）· 見直す")], [2]);
 });
 
 test("leaves single punctuation and colon before text alone", () => {

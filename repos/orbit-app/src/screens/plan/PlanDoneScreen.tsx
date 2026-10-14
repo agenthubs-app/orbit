@@ -174,7 +174,7 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
             <FlowFoot>
               <View style={styles.foot} testID="next-ask">
                 <FootFade />
-                <KitButton primary label={t("plan.done.decide")} disabled={asking} onPress={() => void decideNext()} style={styles.xl} testID="next-decide" />
+                <KitButton xl primary label={t("plan.done.decide")} disabled={asking} onPress={() => void decideNext()} style={styles.xl} testID="next-decide" />
                 <KitButton label={t("plan.done.later")} onPress={later} style={styles.ghost} />
               </View>
             </FlowFoot>

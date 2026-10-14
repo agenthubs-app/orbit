@@ -272,24 +272,27 @@ test("review: AI marks, edit in place, send uses one (3 → 2); ✕ sends exactl
   await page.getByRole("progressbar", { name: "進み具合：前提" }).waitFor();
   const marked = page.getByTestId("premise-marked");
   assert.equal(await marked.count(), 1);
-  await marked.getByText("変わったかも", { exact: true }).waitFor();
-  await marked.getByText("最近の記録で変わったかもしれません。").waitFor();
-  await marked.getByText("根拠：調達経験のある起業家：+5").waitFor();
+  // b4 #14：印の行は値の下に根拠を一行（.pflag）。根拠の要約があればそれ、なければ理由／件数。
+  await marked.getByText("調達経験のある起業家：+5", { exact: true }).waitFor();
   assert.deepEqual(writes(calls), [], "opening the page writes nothing");
   // Edit a row in place: the old value is struck through, the new one shown.
   await page.getByRole("button", { name: "直近の数字を直す" }).click();
   const input = page.getByLabel("直近の数字の新しい内容");
+  // The row's pressable is disabled while it edits, so the input inherits aria-disabled (see report); force skips that check.
   await input.fill("ARR 1億円の見込み（年内）· 前年比 2.4倍");
   await page.getByLabel("ほかに変わったこと（任意）").click();
   await card.getByText("1行を直しました").waitFor();
   await card.getByText("ARR 8,000万円 · 前年比 2.4倍").waitFor();
-  await page.getByText("見直し 今月あと 3 → 2回 · 変更がなくても 1回").waitFor();
+  // The revbar says what sending uses: 「見直し · 今月 あと 3 回」 + 「送ると 1回使います（変更がなくても 1回）…」.
+  await page.getByLabel("今月の見直し あと 3 回").waitFor();
+  await page.getByText("送ると 1回使います（変更がなくても 1回）· 月3回 · 毎月1日に戻ります").waitFor();
   await page.getByLabel("ほかに変わったこと（任意）").fill("CVC にも並行で当たりたい");
   await page.getByRole("button", { name: "前提を送って修正案をつくる" }).click();
   const turn = page.getByTestId("review-turn");
   await turn.waitFor();
   await turn.getByText("見直し · AI 修正を反映（今月 1 / 3 回目）").waitFor();
-  await page.getByText("あと 2 回").first().waitFor();
+  await page.getByLabel("今月の見直し あと 2 回").waitFor();
+  await turn.getByText("見直し 今月あと 2 回", { exact: true }).waitFor();
   const fix = calls.find((call) => call.path.endsWith("/review/fix"))!.body as { premise: { key: string; value: string }[]; text: string };
   assert.deepEqual(fix.premise, [{ key: "F2", value: "ARR 1億円の見込み（年内）· 前年比 2.4倍" }]);
   assert.equal(fix.text, "CVC にも並行で当たりたい");
@@ -315,8 +318,14 @@ test("used up: the input is grey, 「わかりました」, what still works —
   await page.getByText("⏳ 今月の見直しは使い切りました").waitFor();
   await page.getByText("面談の記録・加点・スキップは、これまでどおり使えます。獲得済みの点も、そのまま増え続けます。").waitFor();
   await page.getByText(/^3 \/ 3 回 · \d+月\d+日に戻ります（あと \d+日）$/).waitFor();
-  assert.equal(await page.getByLabel("ほかに変わったこと（任意）").count(), 0, "no input once used up");
-  assert.equal(await page.getByRole("button", { name: /前提を送って|もう一度直す/ }).count(), 0);
+  // The composer stays drawn but greyed: the input cannot be typed in and send cannot be pressed.
+  const usedInput = page.getByLabel("ほかに変わったこと（任意）");
+  assert.equal(await usedInput.isEditable(), false, "no typing once used up");
+  assert.equal(await usedInput.getAttribute("placeholder"), "今月の見直しは使い切りました");
+  await page.getByLabel("今月の見直し あと 0 回").waitFor();
+  const usedSend = page.getByRole("button", { name: /前提を送って|もう一度直す/ });
+  assert.equal(await usedSend.count(), 1);
+  assert.equal(await usedSend.isDisabled(), true, "no send once used up");
   await page.getByText("今月 3 / 3 回目").first().waitFor();
   await page.getByRole("button", { name: "このままにする" }).waitFor();
   assert.equal(await page.getByText(PAID).count(), 0);
@@ -363,9 +372,13 @@ test("AI failure: 「もう一度」 and the count is not used", async (t) => {
   await page.getByTestId("premise-card").waitFor();
   await page.getByLabel("ほかに変わったこと（任意）").fill("CVC も");
   await page.getByRole("button", { name: "前提を送って修正案をつくる" }).click();
-  // 模拟器走查：失败提示在发送按钮旁（底部栏里），不在正文底部。
-  await page.getByTestId("review-footer").getByText("修正案をつくれませんでした").waitFor();
-  await page.getByTestId("review-footer").getByText("見直しの回数は減っていません。もう一度お試しください。").waitFor();
+  // 模拟器走查：失败提示在发送按钮旁（底部栏里、输入栏上方），不在正文底部。
+  const failed = page.getByTestId("review-ai-failed");
+  await failed.getByText("修正案をつくれませんでした").waitFor();
+  await failed.getByText("見直しの回数は減っていません。もう一度お試しください。").waitFor();
+  const failedBox = (await failed.boundingBox())!;
+  const composerBox = (await page.getByLabel("ほかに変わったこと（任意）").boundingBox())!;
+  assert.ok(failedBox.y + failedBox.height <= composerBox.y && composerBox.y - (failedBox.y + failedBox.height) < 160, "the failure sits just above the composer");
   assert.equal((await direct<PlanQuotaResponse>(server, "GET", "/api/agent/plans/v2/quota")).data.reviewLeftThisMonth, 3);
   await page.getByRole("button", { name: "もう一度" }).click();
   await page.getByTestId("review-turn").waitFor();
@@ -616,7 +629,7 @@ test("optional server field: evidence summaries under a mark replace the bare co
       return { ...reply, body };
     },
   });
-  await review.page.getByTestId("premise-marked").getByText("根拠：10/5 面談メモ「ARR 1億円の見込み」").waitFor();
+  await review.page.getByTestId("premise-marked").getByText("10/5 面談メモ「ARR 1億円の見込み」", { exact: true }).waitFor();
   assert.equal(await review.page.getByText(/確定以降の記録 \d+件/).count(), 0, "summaries replace the bare count");
 });
 

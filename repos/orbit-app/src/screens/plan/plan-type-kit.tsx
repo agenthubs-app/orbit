@@ -80,7 +80,8 @@ export function TypeHeadCard({ detail, tone, kicker, events, busy, onUnskip }: {
           <UiText accessibilityRole="header" style={styles.tn}>{detail.roleSituation}</UiText>
         </View>
         {detail.skipped ? <KitChip label={t("plan.type.skippedChip")} /> : null}
-        {detail.sample ? <KitSampleTag /> : null}
+        {/* 示例标不占标题宽度（标题折行与画板一致）；スキップ済み chip 在时并排。 */}
+        {detail.sample ? <KitSampleTag style={detail.skipped ? undefined : styles.sampleCorner} /> : null}
       </View>
       <View style={styles.scoreRow}>
         <UiText style={styles.mid}>{String(points)}</UiText>
@@ -500,13 +501,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   flat: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 16 },
   flatRow: { flexDirection: "row", alignItems: "center", gap: 10 },
 
+  sampleCorner: { position: "absolute", top: 0, right: 0 },
   headRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   tk: { color: colors.ink3, ...kitText(10.5, "800", 1.5, 0.04) },
   tn: { color: colors.ink2, ...kitText(16.5, "600", 1.5), marginTop: 12 },
   scoreRow: { flexDirection: "row", alignItems: "baseline", gap: 10, marginTop: 12 },
   mid: { color: colors.ink, ...kitText(22, "800", 1.5, -0.01) },
   scoreLbl: { flexShrink: 1 },
-  chipRight: { marginLeft: "auto", alignSelf: "center" },
+  chipRight: { marginLeft: "auto", alignSelf: "baseline" },
   mb: { height: 5, borderRadius: 3, backgroundColor: colors.surface3, marginTop: 4, overflow: "hidden", flexDirection: "row" },
   mbFill: { height: "100%", backgroundColor: colors.plum700 },
   m3: { flexDirection: "row", gap: 6, marginTop: 10 },
@@ -583,7 +585,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   personaWhy: { marginBottom: 8, marginTop: -10 },
   // .v22x .kv：78px 标签列、上下 9。
   kv: { flexDirection: "row", gap: 10, paddingVertical: 9 },
-  kvLabel: { width: 78, paddingTop: 1, lineHeight: 18.4 },
+  kvLabel: { width: 78, marginTop: -2, lineHeight: 18.4 },
   kvValue: { color: colors.ink, ...kitText(12.5, "400", 1.6) },
   quote: { marginTop: 8, paddingVertical: 4, paddingLeft: 12, borderLeftWidth: 3, borderLeftColor: colors.plum300 },
   quoteText: { color: colors.ink, ...kitText(15, "800", 1.6) },

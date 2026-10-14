@@ -72,7 +72,7 @@ export function PlanLegacyCard({ plans, onCreate }: { plans: readonly PlanLegacy
           </UiPressable>
         </KitCard>
       ))}
-      <KitButton primary icon="sparkle" label={t("plan.legacy.create")} onPress={onCreate} style={styles.create} testID="legacy-create" />
+      <KitButton xl primary icon="sparkle" label={t("plan.legacy.create")} onPress={onCreate} style={styles.create} testID="legacy-create" />
       <UiText style={[kit.lbl, styles.center]}>{t("plan.legacy.newNote")}</UiText>
     </View>
   );

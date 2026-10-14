@@ -374,8 +374,8 @@ test("manual edit: an allocation change keeps the total at 100, removing a type 
   await points.press("Enter");
   await page.getByText("10 → 15", { exact: true }).waitFor();
   await page.getByText("25 → 20", { exact: true }).waitFor();
-  assert.equal(await page.getByText("100 / 100", { exact: true }).count(), 1);
-  await page.getByText("合計 100 / 100 · 変更 2件 · 手動編集は 1回だけ").waitFor();
+  assert.equal(await page.getByText("合計 100 / 100", { exact: true }).count(), 1);
+  await page.getByText("変更 2件 · 手動編集は 1回だけ").waitFor();
   // Not a multiple of 5: refused with a note, nothing moves.
   await points.fill("17");
   await points.press("Enter");
@@ -386,7 +386,7 @@ test("manual edit: an allocation change keeps the total at 100, removing a type 
   await page.getByText("15点を 5点ずつ、配点の高いタイプから順に配り直します。").waitFor();
   await page.getByRole("button", { name: "外す", exact: true }).click();
   await page.getByText("タイプ C を外しますか？").waitFor({ state: "detached" });
-  assert.equal(await page.getByText("100 / 100", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("合計 100 / 100", { exact: true }).count(), 1);
   assert.equal(await page.getByLabel("C 先行プロダクト経験の配点").count(), 0);
   // 元に戻す: back to the AI plan, locally.
   await page.getByRole("button", { name: "元に戻す" }).click();

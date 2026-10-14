@@ -115,7 +115,7 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
           })}
         </View>
         {monthlyOut ? <LimitCard kind="monthly" /> : activeOut ? <LimitCard kind="active" goals={active} /> : null}
-        <KitButton primary icon="sparkle" label={t("plan.goal.start")} disabled={blocked || !text.trim() || creating} onPress={() => void create()} style={[styles.start, blocked && styles.startAfterLimit]} testID="goal-start" />
+        <KitButton xl primary icon="sparkle" label={t("plan.goal.start")} disabled={blocked || !text.trim() || creating} onPress={() => void create()} style={[styles.start, blocked && styles.startAfterLimit]} testID="goal-start" />
         {failure ? isLimitFailure(failure) ? <LimitNote failure={failure} /> : <InlineProblem text={failureText(failure)} /> : null}
         <UiText style={styles.steps}>{`${t("plan.goal.previewFirst")}\n${t("plan.goal.previewSecond")}`}</UiText>
       </View>

@@ -9,14 +9,14 @@
 // (no review used). Opening the page only reads; writes happen on the user's taps.
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { StyleSheet, TextInput, View } from "react-native";
+import { StyleSheet, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 
 import type { PlanDraftChange, PlanDraftTurn, PlanPremiseRow, PlanReviewView, PlanV2Detail } from "../../api/contract/plan-v2";
 import { planDraftEditHref, planTaskSegmentHref } from "../../api/compute/plan-href";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { openMainTab } from "../../components/shell-navigation";
-import { Button, Chip, Icon, RetryCard, Skeleton, UiPressable, UiText, useToast, WhyDisclosure } from "../../components/ui";
+import { Button, Icon, RetryCard, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -24,9 +24,12 @@ import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi, type PlanFailure } from "./plan-api";
 import { newIdempotencyKey } from "./plan-model";
 import { canSendReview, hasReviewInput, markEvidenceTexts, markOf, premiseEdits, reviewHasChanges, reviewStage, turnOrdinal } from "./plan-review-model";
-import { QuotaBar, ReviewProgress, ReviewUsedUpNote } from "./plan-review-ui";
-import { FailureNote, InlineProblem, Tag, usePlanStyles } from "./plan-ui";
-import { Bubble, FlowFoot, PlanChatFrame } from "./plan-flow-kit";
+import { ReviewUsedUpNote } from "./plan-review-ui";
+import { FailureNote, InlineProblem, usePlanStyles } from "./plan-ui";
+import { Bubble, ChatMark, FlowFoot, PlanChatFrame } from "./plan-flow-kit";
+import { KitButton, KitCard, KitChip, KitEmo, kitText, useKitStyles, useKitWhy } from "./plan-kit";
+import { RevComposer } from "./PlanDraft";
+import { shortPremise } from "./PlanQuestions";
 
 type Load =
   | { kind: "loading" }
@@ -197,19 +200,16 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
           onText={setText}
           busy={busy}
           onSend={() => void send()}
-          onManual={() => draft && router.push(planDraftEditHref("app", draft.draftId) as Href)}
-          onConfirm={() => void confirm()}
-          onKeep={() => openMainTab(router, planTaskSegmentHref("app", planId))}
-          changed={reviewHasChanges(view.draft, plan?.premise ?? null)}
           canSend={hasReviewInput(premiseEdits(view.draft.premise, edits).length, text)}
-          onClose={close}
           failure={
             // 模拟器走查（2026-10-11）：发送中 / 发送失败放在发送按钮旁边——放在正文底部时，点了发送看不到任何反应。
-            <>
-              {busy === "send" ? <UiText style={shared.caption}>{t("plan.review.sending")}</UiText> : null}
-              {failureView("send")}
-              {failureView("confirm")}
-            </>
+            busy === "send" || failure?.op === "send" || failure?.op === "confirm" ? (
+              <View style={styles.footNote}>
+                {busy === "send" ? <UiText style={shared.caption}>{t("plan.review.sending")}</UiText> : null}
+                {failureView("send")}
+                {failureView("confirm")}
+              </View>
+            ) : null
           }
         />
       )}</FlowFoot> : null}
@@ -253,22 +253,38 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
             onEdit={setEditing}
             onChange={(key, value) => setEdits((current) => ({ ...current, [key]: value }))}
           />
-          {draft.turns.map((turn) => (
-            <ReviewTurn
-              key={turn.n}
-              turn={turn}
-              ordinal={turnOrdinal(view, turn.n)}
-              limit={limit}
-              earned={plan?.score.total ?? null}
-              latest={turn.n === lastTurn?.n && open}
-              busy={busy !== null}
-              onToggle={(change, accepted) => void toggle(change, accepted)}
-            />
-          ))}
+          {draft.turns.map((turn) => {
+            const latest = turn.n === lastTurn?.n && open;
+            return (
+              <ReviewTurn
+                key={turn.n}
+                turn={turn}
+                ordinal={turnOrdinal(view, turn.n)}
+                limit={limit}
+                earned={plan?.score.total ?? null}
+                latest={latest}
+                busy={busy !== null}
+                onToggle={(change, accepted) => void toggle(change, accepted)}
+                footer={latest ? (
+                  <TurnActions
+                    left={sendable ? left : 0}
+                    earned={plan?.score.total ?? null}
+                    manualAvailable={draft.manualEditAvailable && busy === null}
+                    changed={reviewHasChanges(draft, plan?.premise ?? null)}
+                    confirming={busy === "confirm"}
+                    disabled={busy !== null}
+                    onManual={() => router.push(planDraftEditHref("app", draft.draftId) as Href)}
+                    onConfirm={() => void confirm()}
+                    onKeep={() => openMainTab(router, planTaskSegmentHref("app", planId))}
+                  />
+                ) : null}
+              />
+            );
+          })}
           {failureView("toggle")}
           {!sendable && open ? <ReviewUsedUpNote limit={limit} resetsAt={view.resetsAt} reason={view.reviewLimitReason} /> : null}
+          {!sendable && open && draft.turns.length === 0 ? <KitButton primary label={t("plan.review.understood")} onPress={close} /> : null}
           {!open ? <InlineProblem text={t("plan.review.closed")} /> : null}
-          {left > 0 && sendable && draft.turns.length > 0 ? <UiText style={[shared.caption, styles.center]}>{t("plan.review.leftNote", { count: left })}</UiText> : null}
         </>
       ) : null}
       {view && !open ? <Button label={t("plan.common.back")} onPress={close} variant="secondary" /> : null}
@@ -276,7 +292,10 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
   );
 }
 
-/** 「確定した前提」: each row with its source; AI marks in 豆沙; tap a row to change it in place. */
+/**
+ * 「確定した前提」（b4 A3 ① #14 kit .prem）：标签 84 | 值 | 来源；AI 印的行铺豆沙底、值下面一行依据（.pflag）。
+ * 点一行就地改（旧值划掉）。有修正之后折叠成 chip（每行第一段）+「すべて見る」（#16 .premc）。
+ */
 function PremiseCard({ rows, view, edits, editing, editable, compact, onEdit, onChange }: {
   rows: readonly PlanPremiseRow[];
   view: PlanReviewView;
@@ -287,92 +306,103 @@ function PremiseCard({ rows, view, edits, editing, editable, compact, onEdit, on
   onEdit: (key: string | null) => void;
   onChange: (key: string, value: string) => void;
 }) {
-  const shared = usePlanStyles().styles;
   const { styles, colors } = useStyles();
+  const kit = useKitStyles().styles;
   const { t } = useOrbitLocale();
   const [all, setAll] = useState(false);
   const changed = premiseEdits(rows, edits).length;
+  const head = (legend: string | null) => (
+    <View accessibilityLabel={t("plan.review.premiseTitle")} style={styles.premHead}>
+      <KitEmo emoji="📌" tone="teal" sm />
+      <UiText accessibilityRole="header" style={styles.premTitle}>{t("plan.review.premiseTitle")}</UiText>
+      {legend ? <UiText style={kit.lbl}>{legend}</UiText> : null}
+    </View>
+  );
   if (compact && !all) {
     return (
-      <View style={shared.card} testID="premise-card">
-        <View style={shared.row}>
-          <UiText style={shared.emoji}>📌</UiText>
-          <UiText accessibilityRole="header" style={[shared.title, shared.grow]}>{t("plan.review.premiseTitle")}</UiText>
+      <KitCard style={styles.premCard} testID="premise-card">
+        {head(null)}
+        <View style={styles.premc}>
+          {rows.map((row) => <KitChip key={row.key} label={t("plan.review.premiseLine", { label: row.label, value: shortPremise(edits[row.key]?.trim() || row.value) })} style={styles.chipMax} />)}
+          <UiPressable accessibilityRole="button" hitSlop={8} onPress={() => setAll(true)} style={styles.v2go}>
+            <UiText style={styles.v2goText}>{t("plan.review.premiseAll")}</UiText>
+            <Icon name="down" size={16} color={colors.ink2} />
+          </UiPressable>
         </View>
-        {rows.map((row) => <UiText key={row.key} numberOfLines={1} style={shared.body2}>{t("plan.review.premiseLine", { label: row.label, value: edits[row.key]?.trim() || row.value })}</UiText>)}
-        <UiPressable accessibilityRole="button" hitSlop={8} onPress={() => setAll(true)} style={styles.link}>
-          <UiText style={styles.linkText}>{t("plan.review.premiseAll")}</UiText>
-        </UiPressable>
-      </View>
+      </KitCard>
     );
   }
+  const flagged = rows.map((row) => {
+    const value = edits[row.key];
+    const isEdited = value !== undefined && value.trim() !== "" && value.trim() !== row.value;
+    return Boolean(markOf(view.premiseMarks, row.key)) && !isEdited;
+  });
   return (
-    <View style={shared.card} testID="premise-card">
-      <View style={shared.row}>
-        <UiText style={shared.emoji}>📌</UiText>
-        <UiText accessibilityRole="header" style={[shared.title, shared.grow]}>{t("plan.review.premiseTitle")}</UiText>
-        <UiText style={shared.caption}>{changed ? t("plan.review.premiseChanged", { count: changed }) : view.premiseMarks.length ? t("plan.review.premiseMarkLegend") : ""}</UiText>
-      </View>
-      {rows.map((row) => {
+    <KitCard style={styles.premCard} testID="premise-card">
+      {head(changed ? t("plan.review.premiseChanged", { count: changed }) : view.premiseMarks.length ? t("plan.review.premiseMarkLegend") : null)}
+      {rows.map((row, index) => {
         const mark = markOf(view.premiseMarks, row.key);
         const value = edits[row.key];
         const isEdited = value !== undefined && value.trim() !== "" && value.trim() !== row.value;
         const isEditing = editing === row.key;
+        const flag = flagged[index]!;
+        const evidence = mark ? markEvidenceTexts(mark) : [];
+        const basis = evidence.length ? evidence.join(" · ") : mark?.reason || (mark?.evidenceIds.length ? t("plan.review.markEvidence", { count: mark.evidenceIds.length }) : null);
         return (
-          <View key={row.key} style={[styles.premiseRow, mark && !isEdited && styles.premiseMarked]} testID={mark ? "premise-marked" : "premise-row"}>
-            <UiPressable
-              accessibilityRole="button"
-              accessibilityLabel={t("plan.review.premiseEdit", { label: row.label })}
-              disabled={!editable || isEditing}
-              onPress={() => onEdit(row.key)}
-              style={styles.premiseHead}
-            >
-              <View style={[shared.row, shared.grow]}>
-                <UiText style={shared.label}>{row.label}</UiText>
-                {mark && !isEdited ? <Chip label={t("plan.review.markChip")} tone="pink" /> : null}
-              </View>
-              <Tag label={t(SOURCE_KEYS[row.source])} />
-            </UiPressable>
-            {isEditing ? (
-              <TextInput
-                accessibilityLabel={t("plan.review.premiseInput", { label: row.label })}
-                autoFocus
-                multiline
-                onBlur={() => onEdit(null)}
-                onChangeText={(next) => onChange(row.key, next)}
-                placeholderTextColor={colors.ink3Text}
-                style={[shared.input, styles.inputActive]}
-                value={value ?? row.value}
-              />
-            ) : isEdited ? (
-              <View style={styles.editedValue}>
-                <UiText style={shared.strike}>{row.value}</UiText>
-                <UiText style={shared.after}>{value!.trim()}</UiText>
-              </View>
-            ) : (
-              <UiText style={shared.body}>{row.value}</UiText>
-            )}
-            {mark && !isEdited ? (
-              <View style={styles.markBody}>
-                {mark.reason ? <UiText style={styles.markText}>{mark.reason}</UiText> : null}
-                {markEvidenceTexts(mark).map((text, index) => <UiText key={index} style={styles.markText}>{t("plan.review.markEvidenceLine", { text })}</UiText>)}
-                {mark.evidenceIds.length && markEvidenceTexts(mark).length === 0 ? <UiText style={styles.markText}>{t("plan.review.markEvidence", { count: mark.evidenceIds.length })}</UiText> : null}
-                {mark.suggested && editable ? (
-                  <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.review.useSuggested", { value: mark.suggested })} onPress={() => onChange(row.key, mark.suggested!)} style={styles.suggested}>
-                    <UiText style={styles.suggestedText}>{t("plan.review.useSuggested", { value: mark.suggested })}</UiText>
-                  </UiPressable>
+          <View key={row.key} style={[styles.prem, flag ? styles.premFlag : index > 0 && !flagged[index - 1] ? styles.line : null]} testID={flag ? "premise-marked" : "premise-row"}>
+            {flag ? <View pointerEvents="none" style={styles.flagBg} /> : null}
+            {/* 编辑中这一行不是按钮：输入框不能嵌在（禁用的）按钮里，读屏进不去。 */}
+            <PremiseRowShell editing={isEditing} label={t("plan.review.premiseEdit", { label: row.label })} disabled={!editable} onPress={() => onEdit(row.key)} style={styles.premRow}>
+              <UiText style={[kit.lbl, styles.premLabel]}>{row.label}</UiText>
+              <View style={styles.premMid}>
+                {isEditing ? (
+                  <TextInput
+                    accessibilityLabel={t("plan.review.premiseInput", { label: row.label })}
+                    autoFocus
+                    multiline
+                    onBlur={() => onEdit(null)}
+                    onChangeText={(next) => onChange(row.key, next)}
+                    placeholderTextColor={colors.ink3Text}
+                    selectionColor={colors.plum700}
+                    style={styles.premInput}
+                    value={value ?? row.value}
+                  />
+                ) : isEdited ? (
+                  <>
+                    <UiText style={styles.premStrike}>{row.value}</UiText>
+                    <View style={styles.nw}><UiText style={styles.nwText}>{value!.trim()}</UiText></View>
+                  </>
+                ) : (
+                  <UiText style={styles.premValue}>{row.value}</UiText>
+                )}
+                {flag && basis ? (
+                  <View style={styles.pflag}>
+                    <View style={styles.pflagIcon}><Icon name="refresh" size={16} color={colors.macApricotInk} /></View>
+                    <UiText style={styles.pflagText}>{basis}</UiText>
+                  </View>
                 ) : null}
               </View>
+              <View style={styles.psrc}><UiText style={styles.psrcText}>{t(SOURCE_KEYS[row.source])}</UiText></View>
+            </PremiseRowShell>
+            {flag && mark?.suggested && editable ? (
+              <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.review.useSuggested", { value: mark.suggested })} hitSlop={6} onPress={() => onChange(row.key, mark.suggested!)} style={styles.suggested}>
+                <UiText style={styles.suggestedText}>{t("plan.review.useSuggested", { value: mark.suggested })}</UiText>
+              </UiPressable>
             ) : null}
           </View>
         );
       })}
-    </View>
+    </KitCard>
   );
 }
 
-/** One revision: the user's words, then only the changes (✓ / ✕ on the latest), or 「今回は変更しません」. */
-function ReviewTurn({ turn, ordinal, limit, earned, latest, busy, onToggle }: {
+function PremiseRowShell({ editing, label, disabled, onPress, style, children }: { editing: boolean; label: string; disabled: boolean; onPress: () => void; style: StyleProp<ViewStyle>; children: ReactNode }) {
+  if (editing) return <View style={style}>{children}</View>;
+  return <UiPressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={style}>{children}</UiPressable>;
+}
+
+/** One revision (b4 A3 ② #16 .k-rupd): the user's words, then only the changes with ✓ / ✕ on the latest, or 「今回は変更しません」. */
+function ReviewTurn({ turn, ordinal, limit, earned, latest, busy, onToggle, footer }: {
   turn: PlanDraftTurn;
   ordinal: number;
   limit: number;
@@ -380,57 +410,97 @@ function ReviewTurn({ turn, ordinal, limit, earned, latest, busy, onToggle }: {
   latest: boolean;
   busy: boolean;
   onToggle: (change: PlanDraftChange, accepted: boolean) => void;
+  footer: ReactNode;
 }) {
-  const shared = usePlanStyles().styles;
   const { styles } = useStyles();
+  const kit = useKitStyles().styles;
   const { t } = useOrbitLocale();
   const changed = turn.changes.length > 0 && !turn.noChangeReason;
+  const why = useKitWhy(turn.changes.map((change) => change.reason).filter(Boolean).join("\n") || null);
+  const same = [...turn.unchanged, ...(earned !== null ? [t("plan.review.unchangedEarned", { points: earned })] : [])];
   return (
-    <View style={styles.turn} testID="review-turn">
-      {turn.input ? <View style={shared.bubble}><UiText style={shared.bubbleText}>{turn.input}</UiText></View> : null}
-      <View style={shared.card}>
-        <View style={shared.row}>
-          <UiText style={shared.emoji}>🧭</UiText>
-          <View style={shared.grow}>
-            <UiText style={shared.title}>{t(changed ? "plan.review.turnTitle" : "plan.review.turnTitleNoChange", { k: ordinal, limit })}</UiText>
-            <UiText style={shared.caption}>{changed ? t("plan.turn.updated") : t("plan.turn.unchangedTitle")}</UiText>
+    <>
+      {turn.input ? <Bubble me>{turn.input}</Bubble> : null}
+      {/* 画板 #16：打开即滚到最新的修正卡（scrollto data-off 64）。 */}
+      {latest ? <ChatMark scroll shift={6} /> : null}
+      <KitCard style={styles.updCard} testID="review-turn">
+        <View style={styles.updHead}>
+          <KitEmo emoji="🧭" tone="teal" sm />
+          <View style={kit.grow}>
+            <UiText style={kit.lbl}>{t(changed ? "plan.review.turnTitle" : "plan.review.turnTitleNoChange", { k: ordinal, limit })}</UiText>
+            <UiText accessibilityRole="header" style={styles.updName}>{changed ? t("plan.turn.updated") : t("plan.turn.unchangedTitle")}</UiText>
           </View>
+          {why.button ?? <View style={styles.whySpace} />}
         </View>
-        {changed ? turn.changes.map((change) => {
-          const accepted = change.accepted !== false;
-          return (
-            <View key={change.id ?? change.path} style={styles.change} testID="review-change">
-              <View style={shared.row}>
-                <Tag label={t("plan.turn.changed")} tone="accent" />
-                <UiText style={[shared.label, shared.grow]}>{change.label}</UiText>
-                {change.reason ? <WhyDisclosure reason={change.reason} /> : null}
-              </View>
-              <View style={shared.rowTop}>
-                <View style={[shared.grow, styles.changeBody, !accepted && styles.rejected]}>
-                  {change.before ? <UiText style={shared.strike}>{change.before}</UiText> : null}
-                  {change.after ? <UiText style={shared.after}>{change.after}</UiText> : null}
-                </View>
-                {latest && change.id ? (
-                  <View accessibilityRole="radiogroup" accessibilityLabel={change.label} style={styles.toggle}>
-                    <ToggleCell icon="check" selected={accepted} disabled={busy} label={t("plan.review.accept", { label: change.label })} onPress={() => onToggle(change, true)} />
-                    <ToggleCell icon="x" selected={!accepted} disabled={busy} label={t("plan.review.reject", { label: change.label })} onPress={() => onToggle(change, false)} />
+        {changed ? (
+          <View style={styles.diff}>
+            {turn.changes.map((change, index) => {
+              const accepted = change.accepted !== false;
+              return (
+                <View key={change.id ?? change.path} style={[styles.dl, index > 0 && styles.line]} testID="review-change">
+                  <View style={styles.chgtag}><UiText style={styles.chgtagText}>{t("plan.turn.changed")}</UiText></View>
+                  <View style={[kit.grow, !accepted && styles.rejected]}>
+                    <UiText style={kit.lbl}>{change.label}</UiText>
+                    {change.before ? <UiText style={styles.before}>{change.before}</UiText> : null}
+                    {change.after ? <View style={styles.nw}><UiText style={styles.nwText}>{change.after}</UiText></View> : null}
                   </View>
-                ) : (
-                  <Chip label={t(accepted ? "plan.review.accepted" : "plan.review.rejected")} tone={accepted ? "lav" : "neutral"} />
-                )}
-              </View>
-            </View>
-          );
-        }) : (
+                  {latest && change.id ? (
+                    <View accessibilityRole="radiogroup" accessibilityLabel={change.label} style={styles.toggle}>
+                      <ToggleCell icon="check" selected={accepted} disabled={busy} label={t("plan.review.accept", { label: change.label })} onPress={() => onToggle(change, true)} />
+                      <ToggleCell icon="x" selected={!accepted} disabled={busy} label={t("plan.review.reject", { label: change.label })} onPress={() => onToggle(change, false)} />
+                    </View>
+                  ) : (
+                    <KitChip label={t(accepted ? "plan.review.accepted" : "plan.review.rejected")} tone={accepted ? "lav" : "neutral"} style={styles.toggle} />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
+        {changed && same.length ? <View style={styles.sameLine}><UiText style={styles.sameText}>{t("plan.turn.unchanged", { items: same.join(" · ") })}</UiText></View> : null}
+        {!changed ? (
           <>
-            <UiText style={shared.body2}>{turn.noChangeReason ?? t("plan.turn.unchangedTitle")}</UiText>
-            <Chip label={t("plan.review.countsNoChange")} tone="neutral" />
+            <View style={[styles.sameLine, styles.noChange]}><UiText style={styles.sameText}>{turn.noChangeReason ?? t("plan.turn.unchangedTitle")}</UiText></View>
+            <KitChip label={t("plan.review.countsNoChange")} style={styles.countsChip} />
           </>
-        )}
-        {turn.unchanged.length ? <UiText style={shared.caption}>{t("plan.turn.unchanged", { items: turn.unchanged.join(" · ") })}</UiText> : null}
-        {earned !== null ? <UiText style={shared.caption}>{t("plan.review.earned", { points: earned })}</UiText> : null}
+        ) : null}
+        {why.body}
+        {footer}
+      </KitCard>
+    </>
+  );
+}
+
+/** 最新修正卡的底部：「見直し 今月あと N 回」+ 獲得済み、手動で編集（1回）/ この内容で確定（没改就「このままにする」）、说明一行。 */
+function TurnActions({ left, earned, manualAvailable, changed, confirming, disabled, onManual, onConfirm, onKeep }: {
+  left: number;
+  earned: number | null;
+  manualAvailable: boolean;
+  changed: boolean;
+  confirming: boolean;
+  disabled: boolean;
+  onManual: () => void;
+  onConfirm: () => void;
+  /** 「このままにする」: back to the overview, nothing confirmed. */
+  onKeep: () => void;
+}) {
+  const { styles } = useStyles();
+  const kit = useKitStyles().styles;
+  const { t } = useOrbitLocale();
+  return (
+    <>
+      <View style={styles.leftRow}>
+        <KitChip label={t("plan.review.chipLeft", { count: left })} tone="lav" />
+        {earned !== null ? <UiText style={[kit.lbl, styles.leftNote]}>{t("plan.review.earnedShort", { after: earned, before: earned })}</UiText> : null}
       </View>
-    </View>
+      <View style={styles.grid2}>
+        <KitButton sm icon="pen" label={t("plan.review.manual")} onPress={onManual} disabled={!manualAvailable} style={styles.grid2Btn} testID="review-manual" />
+        {changed
+          ? <KitButton sm primary label={t("plan.review.confirm")} onPress={onConfirm} disabled={disabled || confirming} style={styles.grid2Btn} testID="review-confirm" />
+          : <KitButton sm primary label={t("plan.review.keep")} onPress={onKeep} disabled={disabled} style={styles.grid2Btn} testID="review-keep" />}
+      </View>
+      {left > 0 ? <UiText style={[kit.lbl, styles.manualNote]}>{t("plan.review.manualNote", { count: left })}</UiText> : null}
+    </>
   );
 }
 
@@ -447,108 +517,97 @@ function ToggleCell({ icon, selected, disabled, label, onPress }: { icon: "check
       onPress={onPress}
       style={[styles.toggleCell, selected && (icon === "check" ? styles.toggleOn : styles.toggleOff)]}
     >
-      <Icon name={icon} size={16} color={selected ? (icon === "check" ? colors.onAccent : colors.ink) : colors.ink3Text} />
+      <Icon name={icon} size={16} color={selected ? (icon === "check" ? colors.onAccent : colors.ink) : colors.ink3} />
     </UiPressable>
   );
 }
 
-/** The fixed bottom: the quota line, 「ほかに変わったこと」, send; after a revision, 手動編集 / 確定. */
-function ReviewFooter({ view, text, onText, busy, onSend, onManual, onConfirm, onKeep, changed, canSend, onClose, failure }: {
+/** 底部（kit .revbar + .composer）：「見直し · 今月 あと N 回」+ 规则，输入「ほかに変わったこと」/「もう一度直す」+ 送信。用完变灰。 */
+function ReviewFooter({ view, text, onText, busy, onSend, canSend, failure }: {
   view: PlanReviewView;
   text: string;
   onText: (text: string) => void;
   busy: Op | null;
   onSend: () => void;
-  onManual: () => void;
-  onConfirm: () => void;
-  /** 「このままにする」: back to the overview, nothing confirmed. */
-  onKeep: () => void;
-  changed: boolean;
   canSend: boolean;
-  onClose: () => void;
   failure: ReactNode;
 }) {
-  const shared = usePlanStyles().styles;
-  const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
-  const left = view.reviewLeftThisMonth;
-  const limit = view.reviewMonthlyLimit;
   const sendable = canSendReview(view);
-  const turns = view.draft.turns;
+  const left = sendable ? view.reviewLeftThisMonth : 0;
+  const turns = view.draft.turns.length;
+  const outText = t(view.reviewLimitReason === "ai_budget" ? "plan.review.aiBudgetShort" : "plan.review.usedUpShort");
   return (
-    <View style={styles.footer} testID="review-footer">
-      <View style={shared.row}>
-        <UiText style={shared.label}>{t("plan.review.thisMonth")}</UiText>
-        <UiText accessibilityLabel={t("plan.review.leftA11y", { count: left })} style={[shared.bigNumber, left === 0 && shared.bigNumberOut]}>{t("plan.review.left", { count: left })}</UiText>
-        <View style={shared.grow}><QuotaBar left={left} limit={limit} /></View>
-      </View>
-      {sendable ? (
-        <>
-          <UiText style={shared.caption}>{t("plan.review.sendRules", { limit })}</UiText>
-          <TextInput
-            accessibilityLabel={t("plan.review.otherLabel")}
-            editable={busy === null}
-            multiline
-            onChangeText={onText}
-            placeholder={t("plan.review.otherPlaceholder")}
-            placeholderTextColor={colors.ink3Text}
-            style={[shared.input, styles.field]}
-            value={text}
-          />
-          <Button
-            block
-            label={turns.length ? t("plan.review.again", { count: left }) : t("plan.review.send")}
-            loading={busy === "send"}
-            disabled={!canSend || (busy !== null && busy !== "send")}
-            onPress={onSend}
-            variant={turns.length ? "secondary" : "primary"}
-          />
-          <UiText style={[shared.caption, styles.center]}>{t("plan.review.sendNote", { after: left - 1, before: left })}</UiText>
-        </>
-      ) : (
-        <View style={[shared.input, styles.fieldOff]}>
-          <UiText style={shared.caption}>{t(view.reviewLimitReason === "ai_budget" ? "plan.review.aiBudgetShort" : "plan.review.usedUpShort")}</UiText>
-        </View>
-      )}
-      {failure}
-      {turns.length ? (
-        <View style={shared.footerRow}>
-          <View style={shared.grow}><Button block disabled={!view.draft.manualEditAvailable || busy !== null} label={t("plan.review.manual")} onPress={onManual} variant="secondary" /></View>
-          <View style={shared.grow}>{changed
-            ? <Button block label={t("plan.review.confirm")} loading={busy === "confirm"} disabled={busy !== null && busy !== "confirm"} onPress={onConfirm} variant="primary" />
-            : <Button block label={t("plan.review.keep")} disabled={busy !== null} onPress={onKeep} variant="primary" />}</View>
-        </View>
-      ) : !sendable ? (
-        <Button block label={t("plan.review.understood")} onPress={onClose} variant="primary" />
-      ) : null}
-    </View>
+    <RevComposer
+      label={t("plan.review.thisMonth")}
+      left={left}
+      leftLabel={t("plan.review.leftA11y", { count: left })}
+      hint={sendable ? t("plan.review.barHint") : outText}
+      example={t("plan.review.sendRules", { limit: view.reviewMonthlyLimit })}
+      placeholder={!sendable ? outText : turns ? t("plan.review.composerAgain", { count: left }) : t("plan.review.otherLabel")}
+      inputLabel={t("plan.review.otherLabel")}
+      sendLabel={turns ? t("plan.review.again", { count: left }) : t("plan.review.send")}
+      text={text}
+      onText={onText}
+      onSend={onSend}
+      sending={busy !== null}
+      canSend={canSend}
+      above={failure}
+    />
   );
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  center: { textAlign: "center" },
-  link: { alignSelf: "flex-start", minHeight: 24, justifyContent: "center" },
-  linkText: { color: colors.accentText, fontSize: 12, fontWeight: "700" },
-  premiseRow: { gap: 6, padding: 10, marginHorizontal: -6, borderRadius: radius.md },
-  premiseMarked: { backgroundColor: colors.macPink },
-  premiseHead: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 28 },
-  inputActive: { borderColor: colors.plum700, borderWidth: 2, minHeight: 56, textAlignVertical: "top" },
-  editedValue: { gap: 4, alignItems: "flex-start" },
-  markBody: { gap: 4 },
-  markText: { color: colors.macPinkText, fontSize: 12, lineHeight: 17, fontWeight: "600" },
-  suggested: { alignSelf: "flex-start", minHeight: 32, justifyContent: "center", paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
-  suggestedText: { color: colors.accentText, fontSize: 12, fontWeight: "700" },
-  turn: { gap: 8 },
-  change: { gap: 6, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.line },
-  changeBody: { gap: 4 },
+  footNote: { gap: 6, paddingHorizontal: 6 },
+  line: { borderTopWidth: 1, borderTopColor: colors.line },
+  premCard: { paddingVertical: 12, paddingHorizontal: 16 },
+  premHead: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2, marginBottom: 4 },
+  premTitle: { flex: 1, color: colors.ink, ...kitText(14, "700") },
+  premc: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6, alignItems: "center" },
+  chipMax: { maxWidth: "100%" },
+  v2go: { flexDirection: "row", alignItems: "center", gap: 4 },
+  v2goText: { color: colors.ink2, ...kitText(12, "700") },
+  prem: { paddingVertical: 8 },
+  premFlag: { padding: 8, marginHorizontal: -8, marginVertical: 2, borderRadius: 12 },
+  flagBg: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, borderRadius: 12, backgroundColor: colors.macApricot, opacity: 0.6 },
+  premRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  premLabel: { width: 84, lineHeight: 19.38 },
+  premMid: { flex: 1, minWidth: 0, alignItems: "flex-start" },
+  premValue: { color: colors.ink, ...kitText(12.5, "400", 1.55) },
+  premStrike: { color: colors.ink3, ...kitText(12.5, "400", 1.55), textDecorationLine: "line-through" },
+  premInput: { alignSelf: "stretch", minHeight: 40, borderRadius: 12, borderWidth: 2, borderColor: colors.plum700, backgroundColor: colors.surface, paddingHorizontal: 10, paddingVertical: 6, color: colors.ink, fontSize: 12.5, lineHeight: 19.38, textAlignVertical: "top" },
+  pflag: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingVertical: 1, paddingHorizontal: 6, borderRadius: 6, backgroundColor: colors.surface },
+  pflagIcon: { width: 11, height: 11, alignItems: "center", justifyContent: "center", transform: [{ scale: 11 / 16 }] },
+  pflagText: { flexShrink: 1, color: colors.macApricotInk, ...kitText(10.5, "800") },
+  psrc: { backgroundColor: colors.surface2, borderRadius: 6, paddingVertical: 1, paddingHorizontal: 6 },
+  psrcText: { color: colors.ink3, ...kitText(10, "800") },
+  suggested: { alignSelf: "flex-start", marginTop: 6, marginLeft: 92, minHeight: 28, justifyContent: "center", paddingHorizontal: 10, borderRadius: 999, backgroundColor: colors.surface },
+  suggestedText: { color: colors.accentText, ...kitText(11.5, "700") },
+  updCard: { paddingVertical: 14, paddingHorizontal: 16 },
+  updHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+  updName: { color: colors.ink, ...kitText(14.5, "700") },
+  whySpace: { width: 18 },
+  diff: { marginTop: 6 },
+  dl: { flexDirection: "row", gap: 10, paddingVertical: 9 },
+  chgtag: { alignSelf: "flex-start", paddingVertical: 2, paddingHorizontal: 7, borderRadius: 6, backgroundColor: colors.macLav },
+  chgtagText: { color: colors.macLavInk, ...kitText(10, "800") },
+  before: { color: colors.ink3, ...kitText(12.5, "400", 1.55), textDecorationLine: "line-through", marginTop: 4 },
+  nw: { alignSelf: "flex-start", marginTop: 4, backgroundColor: colors.macLav, borderRadius: 8, paddingVertical: 2, paddingHorizontal: 6 },
+  nwText: { color: colors.ink, ...kitText(12.5, "800", 1.55) },
   rejected: { opacity: 0.45 },
-  toggle: { flexDirection: "row", gap: 6 },
+  toggle: { flexDirection: "row", gap: 6, alignSelf: "center" },
   toggleCell: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 },
   toggleOn: { backgroundColor: colors.plum700 },
   toggleOff: { backgroundColor: colors.surface3 },
-  footer: { gap: 8 },
-  field: { minHeight: 44, maxHeight: 96, textAlignVertical: "top" },
-  fieldOff: { backgroundColor: colors.surface2, justifyContent: "center" },
+  sameLine: { marginTop: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, backgroundColor: colors.surface2 },
+  noChange: { marginTop: 10 },
+  sameText: { color: colors.ink2, ...kitText(12, "400", 1.6) },
+  countsChip: { alignSelf: "flex-start", marginTop: 8 },
+  leftRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 },
+  leftNote: { marginLeft: "auto" },
+  grid2: { flexDirection: "row", gap: 12, marginTop: 8 },
+  grid2Btn: { flex: 1 },
+  manualNote: { marginTop: 8, lineHeight: 18.4 },
   note: { backgroundColor: colors.macApricot, borderRadius: radius.md, padding: 12, gap: 8 },
   noteText: { color: colors.macApricotText, fontSize: 13, lineHeight: 20, fontWeight: "600" },
   noteTitle: { color: colors.macApricotText, fontSize: 14, lineHeight: 20, fontWeight: "800" },

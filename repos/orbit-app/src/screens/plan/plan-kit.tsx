@@ -63,12 +63,14 @@ export function useKitWhy(reason: string | null | undefined) {
 }
 
 /** .btn（高 40、圆角 999、13px 700、surface-2）/ .primary / .sm（高 32、12px）。可点范围补到 44。 */
-export function KitButton({ label, icon, onPress, primary = false, sm = false, disabled = false, badge, style, accessibilityLabel, testID }: {
+export function KitButton({ label, icon, onPress, primary = false, sm = false, xl = false, disabled = false, badge, style, accessibilityLabel, testID }: {
   label: string;
   icon?: DesignIconName;
   onPress: () => void;
   primary?: boolean;
   sm?: boolean;
+  /** .btn.xl：高 50、14.5px（底栏主按钮）。 */
+  xl?: boolean;
   disabled?: boolean;
   badge?: string;
   style?: StyleProp<ViewStyle>;
@@ -85,11 +87,11 @@ export function KitButton({ label, icon, onPress, primary = false, sm = false, d
       disabled={disabled}
       hitSlop={sm ? 6 : 2}
       onPress={onPress}
-      style={[styles.btn, sm && styles.btnSm, primary && styles.btnPrimary, disabled && styles.btnDisabled, style]}
+      style={[styles.btn, sm && styles.btnSm, xl && styles.btnXl, primary && styles.btnPrimary, disabled && styles.btnDisabled, style]}
       testID={testID}
     >
       {icon ? <Icon name={icon} size={16} color={color} /> : null}
-      <UiText numberOfLines={1} style={[sm ? styles.btnTextSm : styles.btnText, { color }]}>{label}</UiText>
+      <UiText numberOfLines={1} style={[sm ? styles.btnTextSm : xl ? styles.btnTextXl : styles.btnText, { color }]}>{label}</UiText>
       {badge ? <View style={styles.btnBadge}><UiText style={styles.btnBadgeText}>{badge}</UiText></View> : null}
     </UiPressable>
   );
@@ -226,6 +228,8 @@ export const useKitStyles = createThemedStyles((colors) => StyleSheet.create({
   btnPrimary: { backgroundColor: colors.ink },
   btnDisabled: { opacity: 0.45 },
   btnText: { ...kitText(13, "700") },
+  btnXl: { height: 50 },
+  btnTextXl: { ...kitText(14.5, "700") },
   btnTextSm: { ...kitText(12, "700") },
   btnBadge: { backgroundColor: colors.accentSoft, borderRadius: 6, paddingVertical: 1, paddingHorizontal: 4 },
   btnBadgeText: { color: colors.plum700, ...kitText(9.5, "800", 1.5, -0.02) },

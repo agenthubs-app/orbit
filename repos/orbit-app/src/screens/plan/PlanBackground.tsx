@@ -219,7 +219,7 @@ export function PlanBackground({ intake, kind, api, onIntake, onReload }: Props)
                         <UiText style={styles.name14}>{me.value.name}</UiText>
                         {me.value.headline ? <UiText style={kit.lbl}>{me.value.headline}</UiText> : null}
                       </View>
-                      <KitChip label={t("plan.me.fromProfile")} />
+                      <KitChip label={t("plan.me.fromProfile")} style={styles.memChip} />
                     </View>
                     <FieldLabel>{t("plan.me.stanceLabel")}</FieldLabel>
                     <FoptRow label={t("plan.me.stanceLabel")}>
@@ -384,7 +384,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   line: { borderTopWidth: 1, borderTopColor: colors.line },
   name14: { color: colors.ink, ...kitText(14, "700") },
   fld: { minHeight: 46, borderRadius: 14, backgroundColor: colors.surface2, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, borderWidth: 1.5, borderColor: "transparent" },
-  fldInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 14, lineHeight: 21, padding: 0 },
+  fldInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 14, padding: 0 },
   degrade: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 16, backgroundColor: colors.surface2 },
   degradeTitle: { color: colors.ink, ...kitText(12, "700") },
   degradeBtn: { alignSelf: "flex-start", marginTop: 8, backgroundColor: colors.surface },

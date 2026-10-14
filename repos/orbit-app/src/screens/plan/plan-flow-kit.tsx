@@ -22,7 +22,7 @@ const ScrollContext = createContext<((y: number) => void) | null>(null);
  * 生成流程 / 見直し 的整页框架（无 tab bar）：kit .topbar + 滚动的 .chat + 底部 .foot 槽。
  * 正文里任何位置放 <FlowFoot> 就把主按钮挂到底栏（渐隐盖在正文上，同 kit .phone .foot）。
  */
-export function PlanChatFrame({ title = "iOrbit", subtitle, stage, stageKeys, onClose, onMenu, scrollRef, children }: {
+export function PlanChatFrame({ title = "iOrbit", subtitle, stage, stageKeys, onClose, onMenu, right, scrollRef, children }: {
   /** 默认「iOrbit」（生成流程 / 見直し）；完了页等传自己的标题，并且不传 onMenu（✕ 在左）。 */
   title?: string;
   subtitle?: string;
@@ -31,6 +31,8 @@ export function PlanChatFrame({ title = "iOrbit", subtitle, stage, stageKeys, on
   stageKeys?: Parameters<typeof KitStages>[0]["keys"];
   onClose: () => void;
   onMenu?: () => void;
+  /** 顶栏右侧（不传 onMenu 时）：如手動編集的「元に戻す」。 */
+  right?: ReactNode;
   scrollRef?: RefObject<ScrollView | null>;
   children: ReactNode;
 }) {
@@ -56,7 +58,7 @@ export function PlanChatFrame({ title = "iOrbit", subtitle, stage, stageKeys, on
               left={onMenu
                 ? <IconButton icon="menu" accessibilityLabel={t("plan.flow.menu")} onPress={onMenu} />
                 : <IconButton icon="x" accessibilityLabel={t("plan.frame.close")} onPress={onClose} />}
-              right={onMenu ? <IconButton icon="x" accessibilityLabel={t("plan.frame.close")} onPress={onClose} /> : null} />
+              right={onMenu ? <IconButton icon="x" accessibilityLabel={t("plan.frame.close")} onPress={onClose} /> : right ?? null} />
             {/* kit：.fm 在 .chat 的第一格；会话往下长时它留在顶栏下（设计稿「chat tall」各板都从它下面接着画）。 */}
             {stage === null ? null : <KitStages stage={stage} style={styles.fm} {...(stageKeys ? { keys: stageKeys } : {})} />}
           </View>
@@ -76,9 +78,10 @@ export function PlanChatFrame({ title = "iOrbit", subtitle, stage, stageKeys, on
  * kit `<i class="scrollto">`：.chat 里一个空格子（前后各占一个 gap 10）。`scroll` 时打开页面就滚到这里
  * （它停在五段进度下 12px，后面的内容接在 22px 处，同设计稿）。
  */
-export function ChatMark({ scroll = false }: { scroll?: boolean }) {
+export function ChatMark({ scroll = false, shift = 0 }: { scroll?: boolean; shift?: number }) {
   const go = useContext(ScrollContext);
-  return <View pointerEvents="none" style={markStyle} onLayout={scroll && go ? (event) => go(event.nativeEvent.layout.y) : undefined} />;
+  // shift：画板 data-off 比默认 70 小多少（如 64 → 6），就多滚多少。
+  return <View pointerEvents="none" style={markStyle} onLayout={scroll && go ? (event) => go(event.nativeEvent.layout.y + shift) : undefined} />;
 }
 const markStyle = { height: 0 } as const;
 
@@ -102,7 +105,7 @@ export function FootButton({ label, onPress, disabled = false, primary = true, l
   return (
     <View style={styles.footInner}>
       <FootFade />
-      <KitButton primary={primary} label={label} onPress={onPress} disabled={disabled || loading} style={[styles.xl, !primary && styles.xlPlain]} {...(testID ? { testID } : {})} />
+      <KitButton xl primary={primary} label={label} onPress={onPress} disabled={disabled || loading} style={!primary ? styles.xlPlain : undefined} {...(testID ? { testID } : {})} />
     </View>
   );
 }
@@ -256,7 +259,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   fm: { marginTop: 2 },
   foot: { position: "absolute", left: 0, right: 0, bottom: 0 },
   footInner: { paddingTop: 22, paddingHorizontal: 18, paddingBottom: 30 },
-  xl: { height: 50 },
   xlPlain: { opacity: 0.5 },
 
   bubble: { paddingVertical: 11, paddingHorizontal: 14, borderRadius: 18, maxWidth: "86%" },
@@ -283,7 +285,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   fieldLabelText: { color: colors.ink2, ...kitText(11.5, "800") },
   fieldChip: { marginLeft: 4 },
   foptRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  fopt: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: "transparent" },
+  fopt: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: "transparent" },
   foptOn: { borderColor: colors.plum500, backgroundColor: colors.accentSoft },
   foptCheck: { color: colors.plum700, ...kitText(12.5, "900") },
   foptText: { color: colors.ink2, ...kitText(12.5, "700") },
