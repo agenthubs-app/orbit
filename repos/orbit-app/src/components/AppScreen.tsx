@@ -33,6 +33,8 @@ interface AppScreenProps extends PropsWithChildren {
   onBack?: () => void;
   refreshControl?: ReactElement<RefreshControlProps>;
   showBack?: boolean;
+  /** Secondary pages: small line under the centred title (kit .topbar .t small). */
+  subtitle?: string | undefined;
   title: string;
   titleAccessory?: ReactNode;
 }
@@ -49,6 +51,7 @@ export function AppScreen({
   onBack,
   refreshControl,
   showBack,
+  subtitle,
   title,
   titleAccessory
 }: AppScreenProps) {
@@ -105,7 +108,7 @@ export function AppScreen({
         // kit .topbar on secondary pages: ‹ round button · centred title · actions (R05 rework).
         // The back button is icon-only like the design; VoiceOver reads where it goes.
         <View style={styles.navigation}>
-          <ShellTopBar title={title}
+          <ShellTopBar title={title} subtitle={subtitle}
             left={<IconButton icon={backIcon} accessibilityLabel={backAccessibilityLabel ?? backLabel ?? (canGoBack ? copy.nav.back : fillCopy(copy.nav.backTo, { label: parent.label }))}
               onPress={onBack ?? (() => canGoBack ? router.back() : router.replace(parent.href as Href))} />}
             right={headerActions ? <View style={styles.navigationActions}>{headerActions}</View> : null} />
