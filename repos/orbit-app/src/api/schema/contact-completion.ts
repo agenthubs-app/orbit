@@ -16,6 +16,7 @@ export const contactCompletionQuestionObject = z.object({
   contactSubtitle: z.string().max(300).optional(),
   sourceChip: tolerantEnum(["meishi", "linkedin", "phone", "manual", "self"], "manual").optional(),
   kind: tolerantEnum(["met_where", "organization"], "met_where").optional(),
+  densityIfAnswered: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
 });
 export const contactCompletionQuestionSchema = contactCompletionQuestionObject as z.ZodType<ContactCompletionQuestion>;
 

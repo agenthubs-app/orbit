@@ -11,6 +11,9 @@ import { getAppearanceChoice, setAppearanceChoice } from "../../design/appearanc
 import { createThemedStyles } from "../../design/theme";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { AddContactSheet } from "../add/AddContactSheet";
+import { CompletionQuestionCard } from "../add/CompletionQuestionCard";
+import { COMPLETION_OPTION_LABELS } from "../../api/compute/completion-question-rules";
+import type { ContactCompletionQuestion } from "../../api/contract/contact-completion";
 import type { InviteApi } from "../add/invite/invite-api";
 import { InviteShareSheet, InviteUnlinkSheet } from "../add/invite/InviteConnectionSheets";
 
@@ -106,6 +109,11 @@ export function ComponentShowcaseScreen() {
             <AddContactSheet visible={addSheet} draftCount={2} onClose={() => setAddSheet(false)} onOpen={() => undefined} />
           </Section>
 
+          {/* R16: 今日の 1問 (b9 A7) — the card R20 / R11 / R10 mount; sample questions, answers are no-ops. */}
+          <Section name="completion question card">
+            {SHOWCASE_QUESTIONS.map((question) => <CompletionQuestionCard key={question.id} question={question} onAnswer={() => undefined} onSkip={() => undefined} />)}
+          </Section>
+
           {/* R15: the two sheets R11 mounts on an invite-connected contact's detail (「⋯ › 共有する項目」 / 「⋯ › つながりを解除」). Sample answers, nothing is written. */}
           <Section name="invite share sheet">
             <Button label="invite share sheet" onPress={() => setInviteSheet("share")} />
@@ -199,3 +207,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   number: { color: colors.ink, fontSize: 22, fontWeight: "800" },
   glass: { padding: 16 },
 }));
+
+// R16 showcase samples (dev surface): どこで？ that lifts to ●●○, and 会社は？ with 自分で入力.
+const SHOWCASE_QUESTIONS: ContactCompletionQuestion[] = [
+  { id: "showcase-q1", contactId: "showcase-contact", question: "", contactName: "Kyohei Mori", contactSubtitle: "Shinonome Capital · Principal", sourceChip: "linkedin", kind: "met_where",
+    options: [COMPLETION_OPTION_LABELS.formerColleague, "Japan Startup Night (2024/3)", COMPLETION_OPTION_LABELS.intro, COMPLETION_OPTION_LABELS.forgot], askedOn: "2026-10-07", skipCount: 0, sample: true, densityIfAnswered: 2 },
+  { id: "showcase-q2", contactId: "showcase-contact-2", question: "", contactName: "Naoko Ito", sourceChip: "phone", kind: "organization",
+    options: ["Harmonia Inc.", COMPLETION_OPTION_LABELS.typeIn, COMPLETION_OPTION_LABELS.forgot], askedOn: "2026-10-07", skipCount: 0, sample: true, densityIfAnswered: 1 },
+];

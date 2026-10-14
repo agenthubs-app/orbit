@@ -184,12 +184,12 @@ const nav = (page: Page) => page.evaluate(() => (window as unknown as { addNav: 
 const top = (page: Page) => page.getByTestId("top");
 const GUIDE_DONE = { "orbit:add:scan-guide:v1": JSON.stringify({ hidden: false, shown: 3 }) };
 
-test("入口: 名刺をスキャン, 招待コード (R15) and 手入力 (その他 hidden until R16), 下書き N件 when there are drafts", async (t) => {
+test("入口: 名刺をスキャン, 招待コード (R15), 手入力, その他 連絡先 / LinkedIn (R16), 下書き N件 when there are drafts", async (t) => {
   const { page, server } = await open(t, "/contacts/new", { setup: (s) => { s.drafts = [{ displayName: "林 悦", id: "d1", organization: "星野", role: "", source: { label: "CFO Night" }, status: "pending_confirmation" }, { displayName: "森", id: "d2", organization: "", role: "", source: { label: "" }, status: "pending_confirmation" }]; } });
   await page.getByTestId("add-doors").waitFor();
   await page.getByText("人脈を追加", { exact: true }).first().waitFor();
   for (const id of ["add-door-scan", "add-door-invite", "add-door-manual"]) assert.equal(await page.getByTestId(id).count(), 1, id);
-  for (const id of ["add-door-contacts", "add-door-linkedin"]) assert.equal(await page.getByTestId(id).count(), 0, `${id} is hidden, not greyed`);
+  for (const id of ["add-door-contacts", "add-door-linkedin"]) assert.equal(await page.getByTestId(id).count(), 1, id);
   await page.getByText("確認待ちの下書き 2件").waitFor();
   await page.getByTestId("add-density-legend").waitFor();
   for (const label of ["身元だけ", "名刺レベル", "関係まで"]) await page.getByText(label, { exact: true }).waitFor();

@@ -2,7 +2,7 @@
 // (apricot wash), 招待コード, 手入力, その他 (連絡先 / LinkedIn), 確認待ち 下書き N件 (only when
 // there are drafts, DESIGN §2.9) and the density legend. Kit values: `.addp` 13 / 14 padding,
 // radius 18, `.addo` cells radius 14 with a hairline, `.emo` 40 / 32.
-// 招待コード opened with R15; その他 waits for R16: hidden, not greyed (§9 #4).
+// 招待コード opened with R15; その他 (連絡先 / LinkedIn) with R16.
 import { StyleSheet, View } from "react-native";
 
 import type { ContactDensityLevel } from "../../api/compute/contact-density";
@@ -14,8 +14,8 @@ import { DensityDots } from "./add-ui";
 
 /** R15: the 招待コード door (`contacts/new/invite`) is open. */
 export const ADD_INVITE_DOOR_ENABLED = true;
-/** R16 turns this on (連絡先 / LinkedIn, `contacts/new/import`). */
-export const ADD_OTHER_DOORS_ENABLED = false;
+/** R16: 連絡先 / LinkedIn (`contacts/new/import`). */
+export const ADD_OTHER_DOORS_ENABLED = true;
 
 export const ADD_DOOR_HREFS = {
   scan: "/contacts/new/scan",

@@ -1,0 +1,93 @@
+{
+  "_note": "R16 像素门禁演示用的画板示例数据（b9 A2 ② ③ ④ 的人名、公司、人数；只在开发包 + EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=add-scan 时用；数据，不是界面文案）。",
+  "pick": [
+    {
+      "family": "青山",
+      "given": "和也",
+      "org": "株式会社リンクス",
+      "title": "営業部長"
+    },
+    {
+      "family": "阿部",
+      "given": "さくら",
+      "phone": "090-xxxx-2219"
+    },
+    {
+      "family": "石田",
+      "given": "剛",
+      "org": "Hikari Labs",
+      "title": "CTO"
+    },
+    {
+      "name": "母"
+    },
+    {
+      "family": "上田",
+      "given": "優子",
+      "org": "みなと銀行",
+      "title": "法人営業部"
+    },
+    {
+      "name": "クリーニング中村"
+    }
+  ],
+  "pickTotals": {
+    "total": 1284,
+    "likely": 238,
+    "excluded": 46,
+    "company": 214,
+    "workMail": 96
+  },
+  "fillers": {
+    "work": "取引先",
+    "workOrg": "サンプル商事",
+    "personal": "知人",
+    "shop": "カフェ",
+    "family": "父"
+  },
+  "organizing": {
+    "total": 238,
+    "matched": 6,
+    "normalized": 142
+  },
+  "review": {
+    "total": 238,
+    "auto": 4,
+    "asIs": 218,
+    "excluded": 46,
+    "duplicates": [
+      {
+        "name": "鈴木 大輔",
+        "org": "",
+        "existing": "鈴木 大輔",
+        "existingOrg": "北辰製作所"
+      },
+      {
+        "name": "Sho Watanabe",
+        "org": "Nexa Robotics",
+        "existing": "渡辺 翔",
+        "existingOrg": "Nexa Robotics"
+      }
+    ],
+    "groups": [
+      {
+        "key": "org",
+        "label": "会社名",
+        "example": "「ﾊﾙﾓﾆｱ」→ 株式会社ハルモニア",
+        "count": 6
+      },
+      {
+        "key": "name",
+        "label": "氏名の区切り",
+        "example": "「森恭平」→ 森 / 恭平",
+        "count": 5
+      },
+      {
+        "key": "self",
+        "label": "会社名",
+        "example": "「個人」「自宅」は会社にしない",
+        "count": 3
+      }
+    ]
+  }
+}

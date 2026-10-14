@@ -123,7 +123,7 @@ export function UnifiedReviewApp({ tiles, active, duplicateTitle, exceptionsOnly
       ) : null}
 
       {groups.length ? (
-        <View style={[styles.card, styles.cardNext]} testID="add-section-review">
+        <View style={[styles.card, styles.cardNext, !reviewOpen && styles.accClosed]} testID="add-section-review">
           <UiPressable accessibilityRole="button" accessibilityState={{ expanded: reviewOpen }} onPress={() => setReviewOpen((value) => !value)} style={styles.between} testID="add-review-toggle">
             <UiText style={styles.h3}>{reviewTitle}</UiText>
             <View style={styles.accHead}>
@@ -174,7 +174,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   lbl: { fontSize: 11.5, fontWeight: "500", lineHeight: 17.25, color: colors.ink3 },
   card: { backgroundColor: colors.surface, borderRadius: 24, padding: 18 },
   cardTop: { marginTop: 12 },
-  cardNext: { marginTop: 12 },
+  cardNext: { marginTop: 14 },
+  // kit .acc collapsed: the body keeps its padding-top 8 (grid 0fr), so the closed card is 8 taller.
+  accClosed: { paddingBottom: 26 },
   cardH: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   h3: { fontSize: 14.5, fontWeight: "800", lineHeight: 21.75, color: colors.ink },

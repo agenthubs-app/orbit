@@ -34,6 +34,11 @@ export interface ContactCompletionQuestion {
   sourceChip?: "meishi" | "linkedin" | "phone" | "manual" | "self";
   /** R16: 「どこで？」 or 「会社は？」 (unknown values read as `met_where`). */
   kind?: ContactCompletionQuestionKind;
+  /**
+   * R16（只加）：答了这一题之后按 D-10 会到的浓度（出题时算好；卡片据此写「答えると ●●○ に」，
+   * 不会升档时写「情報が 1つ増えます」——不说「答了一定升档」）。旧服务端没有这个字段。
+   */
+  densityIfAnswered?: 1 | 2 | 3;
 }
 
 export interface ContactCompletionAnswerInput {

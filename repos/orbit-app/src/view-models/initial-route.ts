@@ -79,6 +79,7 @@ const routeByKey: Record<string, InitialRoutePath> = {
   "contacts/new/batch2": "/contacts/new/scan",
   "contacts/new/drafts": "/contacts/new/drafts",
   // R15: 招待コード · 発出方.
+  "contacts/new/import": "/contacts/new/import",
   "contacts/new/invite": "/contacts/new/invite",
   "contacts/new/manual": "/contacts/new/manual",
   "contacts/new/scan": "/contacts/new/scan",

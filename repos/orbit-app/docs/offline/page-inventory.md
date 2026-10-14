@@ -16,9 +16,9 @@
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 13 |
 | └ 由 Sprint 0137 实现 | 1 |
-| 只能在线 | 40 |
+| 只能在线 | 42 |
 | 不读账号数据（布局、跳转、本机设置） | 22 |
-| 合计（路由文件） | 102 |
+| 合计（路由文件） | 104 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -95,6 +95,8 @@
 | `/contacts/new/scan` | 名刺をスキャン（はじめての方へ、相机权限、表 / 裏连拍、相册多选，建 v2 批次上传；R12） | 名片识别（上传图片、OCR）：名片识别要上传图片在服务器读取 | /api/contact-drafts/business-card/batches/v2 | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new/scan/:batchId` | 名刺の読み取り → 自動で人脈へ → まとめて確認 → 完成（R12） | 名片识别（上传图片、OCR）：读取在服务器进行，确认是写入 | /api/contact-drafts/business-card/batches/v2/:id、/api/agent/event-attribution/candidates | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new/drafts` | 確認待ちの下書き（确认 / 丢弃，?eventId= 参加者取り込み；R12） | 名片识别（上传图片、OCR）：草稿队列与确认在服务器 | /api/contact-drafts、/api/contact-drafts/event-attendees/import | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/contacts/new/import` | 取り込み（連絡先：説明 → 権限 → 選ぶ → 取り込み中；LinkedIn：3 ステップ → CSV / ZIP を選ぶ；R16） | 需要服务器实时计算：导入批次在服务器建立与查重；只上传选中的人 | /api/contacts/import | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/contacts/new/import/:importId` | 取り込み · まとめて確認 → 完成（R16） | 需要服务器实时计算：合并确认与提交是服务器写入 | /api/contacts/import/:id、/api/contacts/import/:id/rows、/api/contacts/import/:id/commit | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new/invite` | 招待コード · 発出方（説明、QR・コード・リンク、メッセージの下書き、共有する項目、無効にする、これまでのコード；R15） | 需要服务器验证链接或邀请码：发码、作废与履历都在服务器 | /api/invite-codes、/api/invite-codes/current、/api/invite-codes/:code/revoke、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/i/:code` | 招待コード · 受け取る側（公开：打开、登录回跳、简短资料、共享项目、つながる、各异常态；R15） | 需要服务器验证链接或邀请码：邀请码由服务器验证，连接是服务器写入 | /api/invite-codes/:code/preview、/api/invite-codes/:code/redeem、/api/profile、/api/contacts/manual/duplicates | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/i` | 招待コードを入力（公开，手输 8 位码后打开 /i/:code；R15） | 需要服务器验证链接或邀请码：输入的码要到服务器验证 | 同 /i/:code | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -177,6 +179,8 @@
 | `app/contacts/list.tsx` | `/contacts/list` | local-first (0116) |
 | `app/contacts/new.tsx` | `/contacts/new` | online-only |
 | `app/contacts/new/drafts.tsx` | `/contacts/new/drafts` | online-only |
+| `app/contacts/new/import/[importId].tsx` | `/contacts/new/import/:importId` | online-only |
+| `app/contacts/new/import/index.tsx` | `/contacts/new/import` | online-only |
 | `app/contacts/new/invite.tsx` | `/contacts/new/invite` | online-only |
 | `app/contacts/new/manual.tsx` | `/contacts/new/manual` | online-only |
 | `app/contacts/new/scan.tsx` | `/contacts/new/scan` | online-only |

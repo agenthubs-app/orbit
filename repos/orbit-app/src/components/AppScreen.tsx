@@ -25,7 +25,7 @@ interface AppScreenProps extends PropsWithChildren {
   backAccessibilityLabel?: string;
   backLabel?: string;
   /** "x" for a form that cancels (kit 手入力: ✕ top-left); the default ‹ goes back. */
-  backIcon?: "left" | "x";
+  backIcon?: "left" | "x" | "down";
   eyebrow?: string;
   header?: ReactNode;
   headerActions?: ReactNode;

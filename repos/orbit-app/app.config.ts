@@ -18,6 +18,7 @@ const config: ExpoConfig = {
     "expo-localization",
     "expo-notifications",
     "expo-web-browser",
+    ["expo-contacts", { contactsPermission: "读取你选中的联系人（姓名、公司、职位、电话、邮件），导入到人脈。" }],
     [
       "expo-image-picker",
       {
@@ -33,7 +34,9 @@ const config: ExpoConfig = {
       NSCameraUsageDescription:
         "扫描二维码和拍摄名片，用于生成待确认联系人候选。",
       NSPhotoLibraryUsageDescription:
-        "选择名片图片，用于生成待确认联系人候选。"
+        "选择名片图片，用于生成待确认联系人候选。",
+      NSContactsUsageDescription:
+        "读取你选中的联系人（姓名、公司、职位、电话、邮件），导入到人脈。"
     }
   },
   web: {
