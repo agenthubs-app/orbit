@@ -21,7 +21,7 @@ export interface PlanEventAttendanceV2Service {
 }
 
 export interface PlanEventAttendanceDeps {
-  repository: Pick<PlanMatchRepository, "listUnattendedAttributedEvents" | "listUnscoredAttributedEventsV2">;
+  repository: Pick<PlanMatchRepository, "listUnattendedAttributedEvents" | "listUnscoredAttributedEventsV2" | "listUnscoredCheckedInEventsV2">;
   planServiceFor: (actorId: string) => PlanService;
   /** R24 复核 M4：v2 计划的イベント枠对账；不给时按 actor 解析 live 的 v2 服务。 */
   planV2ServiceFor?: (actorId: string) => Promise<PlanEventAttendanceV2Service>;
@@ -85,7 +85,16 @@ export async function reconcileEventAttendanceBatch(
   // R24 复核 M4：v2 的イベント枠对账——每个东京日的第一批跑一次（查询只返回还没计过分的，自然推进；超过上限的留到明天）。
   // v1 的计划写入失败与 v2 互不影响：单个 actor 失败只记数。
   if (!input.cursor && deps.repository.listUnscoredAttributedEventsV2 && !stopped) {
-    const v2Pending = await deps.repository.listUnscoredAttributedEventsV2({ limit: input.limit });
+    // R26（R26-04）：加一路「已签到（本人 / 代签）未记分」，与名片归属一路共用上限（去重后最多 limit 组）。
+    const fromCards = await deps.repository.listUnscoredAttributedEventsV2({ limit: input.limit });
+    const fromCheckins = deps.repository.listUnscoredCheckedInEventsV2 ? await deps.repository.listUnscoredCheckedInEventsV2({ limit: input.limit }) : [];
+    const seenPairs = new Set<string>();
+    const v2Pending = [...fromCheckins, ...fromCards].filter((pair) => {
+      const key = `${pair.actorId}\u0000${pair.eventId}`;
+      if (seenPairs.has(key)) return false;
+      seenPairs.add(key);
+      return true;
+    }).slice(0, input.limit);
     const v2For = deps.planV2ServiceFor ?? liveV2ServiceFor;
     // 没有要补的 v2 时摘要形状不变（只在有事可做时出现 v2* 计数）。
     const v2 = { examined: 0, failed: 0, marked: 0 };

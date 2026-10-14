@@ -46,7 +46,7 @@ export function networkingMinutesFromAgenda(agenda: readonly EventAssessmentAgen
 }
 
 /** 交流形式的三个布尔：读到的 `format` 优先；没有就从议程关键词推；都没有为 null（未知）。 */
-export function formatFlags(input: { format?: EventAssessmentFormat | null; agenda?: readonly EventAssessmentAgendaItem[] | null; matchingEnabled?: boolean | null; nameTags?: boolean | null }): { nameTags: boolean | null; matching: boolean | null; exchangeCorner: boolean | null } {
+export function formatFlags(input: { format?: EventAssessmentFormat | null | undefined; agenda?: readonly EventAssessmentAgendaItem[] | null | undefined; matchingEnabled?: boolean | null | undefined; nameTags?: boolean | null | undefined }): { nameTags: boolean | null; matching: boolean | null; exchangeCorner: boolean | null } {
   const agendaText = (input.agenda ?? []).map((item) => item.title).join(" ");
   const exchange = agendaText ? contains(agendaText, EXCHANGE_WORDS) : null;
   return {

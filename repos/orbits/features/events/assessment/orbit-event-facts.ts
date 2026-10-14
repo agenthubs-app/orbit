@@ -10,7 +10,10 @@ import { typeAttendees } from "../../../shared/compute/event-attendee-typing";
 import { connectionCounts } from "../../../shared/compute/event-facts-derive";
 import { eventEmoji } from "../../../shared/compute/event-emoji";
 import { parsePriceYen } from "../../../shared/compute/event-score-input";
+import { toEventScoreFacts } from "../../../shared/compute/event-score-input";
+import { estimateTravelMinutes } from "../../../shared/compute/event-travel-estimate";
 import type { EventAssessmentAgendaItem, EventAssessmentFacts } from "../../../shared/contract/event-assessment";
+import type { PlanEventFact } from "../../plans/v2/overview";
 import type { JudgeContext, OrbitEventExtras } from "./judge";
 
 export interface OrbitEventBase {
@@ -39,6 +42,8 @@ export interface OrbitEventFactsResult {
   extras: OrbitEventExtras;
   attendeeSignature: string | null;
   emoji: string;
+  /** 会いたい人（计划人物类型匹配到的报名者显示名，≤4；参加予定卡的头像首字）。 */
+  meetNames?: string[];
 }
 
 export const ORBIT_EVENT_FACTS_TTL_MS = 6 * 3_600_000;
@@ -94,6 +99,29 @@ export function createOrbitEventFactsReader(readers: OrbitEventReaders, options:
 
   return {
     clear: () => cache.clear(),
+    /**
+     * 计划 live 事实用（`plans/v2/event-facts.ts` 的 `orbitFacts`）：活动级事实 + 人级事实（一度人脉、移动时间）；
+     * 每类预计人数留给概要按当前计划的人物类型现算（`typing`）。
+     */
+    async planEventFact(eventId: string, person: { contacts: readonly { id: string; name: string }[]; homeArea: string | null }): Promise<PlanEventFact | null> {
+      const loaded = await load(eventId);
+      if (!loaded) return null;
+      const { base, registrants } = loaded;
+      const payload = payloadFacts(base.sourcePayload);
+      const facts: EventAssessmentFacts = { startsAt: base.startsAt, title: base.title, ...(base.endsAt ? { endsAt: base.endsAt } : {}), ...(base.venue ? { venue: base.venue } : {}), ...(payload.agenda.length ? { agenda: payload.agenda } : {}) };
+      const names = registrants.map((entry) => entry.name).filter((name): name is string => Boolean(name));
+      const connections = registrants.length ? connectionCounts({ myContacts: person.contacts, speakerNames: names }) : { firstDegree: null, secondDegree: null };
+      const travel = estimateTravelMinutes({ event: payload.area ?? base.venue, home: person.homeArea });
+      return {
+        emoji: eventEmoji({ emoji: payload.emoji, title: base.title }),
+        eventId,
+        facts: toEventScoreFacts(facts, { attendeeSource: "none", expected: {}, feeYen: payload.feeYen, firstDegree: connections.firstDegree, matchingEnabled: payload.matching, nameTags: payload.nameTags, secondDegree: connections.secondDegree, travelMinutes: travel?.minutes ?? null }),
+        startsAt: base.startsAt,
+        title: base.title,
+        typing: { registrants: registrants.map((entry) => ({ name: entry.name, org: entry.org, role: entry.role })), text: [base.title, base.description, ...payload.agenda.map((item) => item.title)].filter(Boolean).join(" ") },
+        venue: base.venue,
+      };
+    },
     async facts(_actorId: string, eventId: string, context: JudgeContext): Promise<OrbitEventFactsResult | null> {
       const loaded = await load(eventId);
       if (!loaded) return null;
@@ -118,6 +146,7 @@ export function createOrbitEventFactsReader(readers: OrbitEventReaders, options:
       const connections = registrants.length ? connectionCounts({ myContacts: context.contacts, speakerNames: names }) : { firstDegree: null, known: [], secondDegree: null };
       return {
         attendeeSignature: `${registrants.length}`,
+        meetNames: Object.values(typing.breakdown).flatMap((entry) => entry.sampleNames).slice(0, 4),
         emoji: eventEmoji({ emoji: payload.emoji, title: base.title }),
         extras: {
           attendeeSource: typing.attendeeSource,

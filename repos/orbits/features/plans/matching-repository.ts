@@ -381,6 +381,8 @@ export interface PlanMatchRepository {
    * 但这份计划从没为这场活动计过分（被撤销过的也算计过：用户撤销的不自动补回）的 (actor, 活动)。按 (actor, 活动) 排序，有上限。
    */
   listUnscoredAttributedEventsV2?(input: { limit: number }): Promise<Array<{ actorId: string; eventId: string }>>;
+  /** R26（R26-04，DESIGN §6.3 复核 M7）：已签到（本人或代签）、参加者有 actor、但这份 v2 计划对这场活动还没计分的组合。 */
+  listUnscoredCheckedInEventsV2?(input: { limit: number }): Promise<Array<{ actorId: string; eventId: string }>>;
   /**
    * W0012 `plan-phase` 兜底：生效计划按东京周次已处在第 2 段及以后、而这一段还没有
    * 「进入新阶段」记录（`phase-entered:<plan>:<phase>`）的 actor。`today` 是东京日历日；有上限。
@@ -809,6 +811,31 @@ export function createPostgresPlanMatchRepository(options: {
         [workspaceId, Math.max(1, Math.min(500, limit))],
       );
       return result.rows.map((row) => ({ actorId: String(row.actor_id), eventId: String(row.event_id) }));
+    },
+
+    async listUnscoredCheckedInEventsV2({ limit }) {
+      try {
+        const result = await pool.query(
+          `/* plan-event-attendance:v2-checkins */
+           select distinct p.actor_id, k.event_id
+           from plans p
+           join event_ops_checkins k on k.workspace_id = p.workspace_id and k.actor_id = p.actor_id and k.checked_in_at >= p.created_at
+           where p.workspace_id = $1 and p.status = 'active' and p.model_version = 2 and p.achieved_at is null and p.event_allocation > 0
+             and not exists (
+               select 1 from plan_log l
+               where l.workspace_id = p.workspace_id and l.actor_id = p.actor_id and l.plan_id = p.id
+                 and l.event = 'score_awarded' and l.linked_event_id = k.event_id
+             )
+           order by 1, 2
+           limit $2`,
+          [workspaceId, Math.max(1, Math.min(500, limit))],
+        );
+        return result.rows.map((row) => ({ actorId: String(row.actor_id), eventId: String(row.event_id) }));
+      } catch (error) {
+        // 活动运营表还没迁移的环境：这一路为空。
+        if ((error as { code?: string })?.code === "42P01") return [];
+        throw error;
+      }
     },
 
     async listActorsEnteringPhase({ afterActorId = null, limit, today }) {

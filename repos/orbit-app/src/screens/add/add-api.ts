@@ -122,10 +122,18 @@ export function createAddApi(client: OrbitApiClient): AddApi {
       const drafts = record(result.data).contactDrafts;
       return { data: { count: Array.isArray(drafts) ? drafts.length : 0 }, ok: true };
     },
+    // R26-06: the person's own events (GET /api/events/mine, past + upcoming); the chips still keep only started ones (R12 review M3).
+    // External assessments (`assessment:<id>`) and cancelled ones are left out — the server only accepts an Orbit event as 会った場所.
     async listEvents() {
-      const result = await client.get<unknown>(ORBIT_API_ENDPOINTS.events);
-      const events = isHttpSuccess(result) ? record(result.data).events : null;
-      return Array.isArray(events) ? events as { id?: unknown; title?: unknown; startsAt?: unknown }[] : [];
+      const read = async (range: "past" | "upcoming") => {
+        const result = await client.get<unknown>(`${ORBIT_API_ENDPOINTS.eventsMine}?range=${range}&limit=20`);
+        const items = isHttpSuccess(result) ? record(result.data).items : null;
+        return Array.isArray(items) ? (items as { eventId?: unknown; title?: unknown; startsAt?: unknown; status?: unknown }[]) : [];
+      };
+      const [past, upcoming] = await Promise.all([read("past"), read("upcoming")]);
+      return [...past, ...upcoming]
+        .filter((item) => typeof item.eventId === "string" && !item.eventId.startsWith("assessment:") && item.status !== "cancelled" && item.status !== "rejected")
+        .map((item) => ({ id: item.eventId, startsAt: item.startsAt, title: item.title }));
     },
     saveManual: (input) => read(client.post<unknown>(manual, { body: input }), manualContactCreateResultSchema),
     checkManualDuplicates: (input, signal) => read(client.post<unknown>(`${manual}/duplicates`, { body: input, ...(signal ? { signal } : {}) }), manualContactDuplicateCheckResultSchema),

@@ -338,18 +338,21 @@ export const COMPLETION_PEERS_SQL = `select c.payload->>'organization' as organi
         or lower(substring(btrim(coalesce(c.payload->>'primaryEmail', '')) from '@([^@]+)$')) = any($5::text[]))
  limit $6`;
 
-export const COMPLETION_EVENTS_SQL = `select event_id, title, at
-  from (select distinct on (event_id) event_id, title, at
-          from (select btrim(c.payload->>'metEventId') as event_id,
-                       btrim(c.payload->>'metEventTitle') as title,
-                       coalesce(nullif(btrim(c.payload->>'createdAt'), ''), to_char(c.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) as at
-                  from orbit_records c
-                 where ${OWNED_CONTACTS}
-                   and coalesce(btrim(c.payload->>'metEventId'), '') <> ''
-                   and coalesce(btrim(c.payload->>'metEventTitle'), '') <> '') rows
-         order by event_id, at asc) firsts
- where at >= $3 and at <= $4
- order by at desc
+/**
+ * R26-07（交接表，2026-10-12 定）：每天一问的活动选项改用参加记录 + 活动开始时间（不再用联系人的 metEventId + 录入时间）：
+ * 本人报名中（rsvped）或已签到（本人 / 代签）、已发布、开始时间落在窗口里的活动，按开始时间降序。窗口（±14 天）不变。
+ */
+export const COMPLETION_EVENTS_SQL = `select e.event_id, e.title, to_char(e.starts_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as at
+  from event_ops_events e
+ where e.workspace_id = $1
+   and e.lifecycle_state_v2 = 'published'
+   and e.title is not null
+   and e.starts_at >= $3::timestamptz and e.starts_at <= $4::timestamptz
+   and (exists (select 1 from event_ops_membership_heads m
+                 where m.workspace_id = e.workspace_id and m.event_id = e.event_id and m.actor_id = $2 and m.status = 'rsvped')
+        or exists (select 1 from event_ops_checkins k
+                    where k.workspace_id = e.workspace_id and k.event_id = e.event_id and k.actor_id = $2))
+ order by e.starts_at desc
  limit $5`;
 
 export const COMPLETION_ADDED_SINCE_SQL = `select 1 as found
@@ -389,7 +392,9 @@ export function createPostgresCompletionContactSource(client: CompletionSqlClien
       return (await client.query(COMPLETION_ADDED_SINCE_SQL, [workspaceId, actorId, since])).rows.length > 0;
     },
     async events(actorId, { from, to }) {
-      const result = await client.query<{ event_id: string; title: string; at: string }>(COMPLETION_EVENTS_SQL, [workspaceId, actorId, from, to, COMPLETION_EVENT_READ_LIMIT]);
+      const result = await client.query<{ event_id: string; title: string; at: string }>(COMPLETION_EVENTS_SQL, [workspaceId, actorId, from, to, COMPLETION_EVENT_READ_LIMIT])
+        // 活动运营表还没迁移的环境：没有活动选项。
+        .catch((error: { code?: string }) => (error?.code === "42P01" ? { rows: [] as { event_id: string; title: string; at: string }[] } : Promise.reject(error)));
       return result.rows.map((row) => ({ at: row.at, eventId: row.event_id, title: row.title }));
     },
     async peers(actorId, { domains, excludeContactId, organizationKey }) {

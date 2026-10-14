@@ -17,7 +17,7 @@ import { PLAN_GOAL_KINDS } from "../../../shared/compute/plan-templates";
 import { AI_QUOTA_MONTHLY_LIMITS, tokyoUsageMonth } from "../../ai-quota/constants";
 import type { PlanHrefPlatform } from "../../../shared/compute/plan-href";
 import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
-import { candidatesFor, pendingItems, recommendScore, recentAwards, stepProgress, stepSuggestions, todayChance, typeDetail as buildTypeDetail, typeStats, type OverviewInput, type PlanEventFact } from "./overview";
+import { candidatesFor, eventsFor, pendingItems, recommendScore, recentAwards, resolveTypedEvents, stepProgress, stepSuggestions, todayChance, typeDetail as buildTypeDetail, typeStats, type OverviewInput, type PlanEventFact } from "./overview";
 import { introDraftText, proposalDraftText } from "./drafts";
 import type {
   PlanAchievementView,
@@ -524,7 +524,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     for (const type of types) for (const route of type.personType.introRoutes) contactIds.add(route.viaContactId);
     for (const entry of log) if (entry.event === "memo_coverage_proposed" && typeof entry.payload.contactId === "string") contactIds.add(entry.payload.contactId);
     const contacts = new Map((await reader.contactViews([...contactIds])).map((contact) => [contact.id, contact]));
-    return { awards, candidates, contacts, events, language: view.language ?? "ja", log, plan, platform: view.platform ?? "web", types };
+    // R26：有原始参加者事实的活动按这份计划的人物类型补每类预计人数（与评估页同一规则）。
+    return { awards, candidates, contacts, events: resolveTypedEvents(events, types), language: view.language ?? "ja", log, plan, platform: view.platform ?? "web", types };
   }
 
   /** 把联系人关联到类型（linked；已 established 的不降级）。 */
@@ -1088,6 +1089,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           stepSuggestions: stepSuggestions(input),
           todayChance: plan.status === "active" ? todayChance(input, at) : null,
           typeStats: typeStats(input, at),
+          // R26（D53）：概要「🎟 イベント」卡的推荐活动（分数降序 ≤3）。
+          recommendedEvents: plan.status === "active" ? eventsFor(input, null).slice(0, 3) : [],
         };
       });
     },

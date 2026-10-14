@@ -69,6 +69,8 @@ export const ORBIT_API_ENDPOINTS = {
   relationshipSearch: "/api/search/relationships",
   relationshipSearchSuggestions: "/api/search/suggestions",
   events: "/api/events",
+  // R26 events-mine (参加予定 / 出会った場所 chips).
+  eventsMine: "/api/events/mine",
   publicEvents: "/api/events/public",
   health: "/api/health",
   profile: "/api/profile",

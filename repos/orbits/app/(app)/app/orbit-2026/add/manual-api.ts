@@ -52,13 +52,23 @@ export function undoManualContact(contactId: string): Promise<ManualApiResult<Ma
   return call(`${MANUAL_API}/${encodeURIComponent(contactId)}/undo`, { method: "POST", body: "{}" }, manualContactUndoResultSchema);
 }
 
-/** GET /api/events (the person's events). Fails quietly: no chips, the form still works. */
+/**
+ * R26-06: the person's own events (`GET /api/events/mine`: registered / planned / attended, past and upcoming — the chips still only
+ * keep the ones that already started, R12 review M3). External assessments (`assessment:<id>`) and cancelled ones are left out:
+ * the server only accepts an Orbit event that started as 会った場所. Fails quietly: no chips, the form still works.
+ */
 export async function readEvents(signal?: AbortSignal): Promise<{ id?: unknown; title?: unknown; startsAt?: unknown }[]> {
-  try {
-    const response = await fetch("/api/events", { signal });
+  const read = async (range: "past" | "upcoming") => {
+    const response = await fetch(`/api/events/mine?range=${range}&limit=20`, { signal });
     if (!response.ok) return [];
-    const body = (await response.json()) as { data?: { events?: unknown } } | null;
-    return Array.isArray(body?.data?.events) ? (body.data.events as { id?: unknown; title?: unknown; startsAt?: unknown }[]) : [];
+    const body = (await response.json()) as { data?: { items?: unknown } } | null;
+    return Array.isArray(body?.data?.items) ? (body.data.items as { eventId?: unknown; title?: unknown; startsAt?: unknown; status?: unknown }[]) : [];
+  };
+  try {
+    const [past, upcoming] = await Promise.all([read("past"), read("upcoming")]);
+    return [...past, ...upcoming]
+      .filter((item) => typeof item.eventId === "string" && !item.eventId.startsWith("assessment:") && item.status !== "cancelled" && item.status !== "rejected")
+      .map((item) => ({ id: item.eventId, startsAt: item.startsAt, title: item.title }));
   } catch {
     return [];
   }

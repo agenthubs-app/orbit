@@ -36,7 +36,7 @@ const unusedAiProvider: EventOperationsAiProvider = {
   },
 };
 
-async function createHarness(extra: { onSelfCheckedIn?: (input: { actorId: string; eventId: string }) => Promise<void> } = {}) {
+async function createHarness(extra: { onSelfCheckedIn?: (input: { actorId: string; eventId: string }) => Promise<void>; onParticipantCheckedIn?: (input: { actorId: string; eventId: string; kind: "staff" }) => Promise<void> } = {}) {
   let timestamp = "2026-08-02T09:15:00.000Z";
   const capabilitiesByActor = new Map<string, Set<OperationsCapability>>([
     [
@@ -195,6 +195,7 @@ async function createHarness(extra: { onSelfCheckedIn?: (input: { actorId: strin
       workerWakeReasons.push(reason);
     },
     ...(extra.onSelfCheckedIn ? { onSelfCheckedIn: extra.onSelfCheckedIn } : {}),
+    ...(extra.onParticipantCheckedIn ? { onParticipantCheckedIn: extra.onParticipantCheckedIn } : {}),
     registrationService,
     repository: observedRepository,
   });
@@ -418,6 +419,28 @@ test("R24 review M4: a self check-in tells the plan (best effort); a failing pla
   const ok = await failing.service.checkIn({ actorId: "actor:akira", eventId });
   assert.equal(ok.actorId, "actor:akira");
   assert.equal(JSON.parse(errors[0]!).event, "event_operations_plan_attendance_failed");
+});
+
+// R26 staff-checkin-plan-score（R26-04，DESIGN §6.3）：代签成功 → 按参加者的 actor 通知计划（与本人签到同一函数）；
+// 计划侧失败不影响代签；返回值不变。重复代签由计划侧幂等（recordEventAttendanceForPlans 同场只记一次，见 plans 测试）。
+test("R26-04: a staff check-in tells the plan for the participant's actor; a failing plan hook never fails the check-in", async (t) => {
+  const seen: Array<{ actorId: string; eventId: string; kind: string }> = [];
+  const harness = await createHarness({ onParticipantCheckedIn: async (input) => { seen.push(input); } });
+  const workspace = await harness.service.adminWorkspace({ actorId: organizerActorId, eventId });
+  const mei = workspace.participants.find((participant) => participant.actorId === "actor:mei");
+  assert.ok(mei);
+  const result = await harness.service.checkInParticipant({ actorId: organizerActorId, eventId, participantId: mei.participantId });
+  assert.equal(result.actorId, "actor:mei");
+  assert.deepEqual(seen, [{ actorId: "actor:mei", eventId, kind: "staff" }]);
+
+  const errors: string[] = [];
+  t.mock.method(console, "error", (line: string) => errors.push(line));
+  const failing = await createHarness({ onParticipantCheckedIn: async () => { throw new Error("plans down"); } });
+  const failingWorkspace = await failing.service.adminWorkspace({ actorId: organizerActorId, eventId });
+  const target = failingWorkspace.participants.find((participant) => participant.actorId === "actor:mei")!;
+  const ok = await failing.service.checkInParticipant({ actorId: organizerActorId, eventId, participantId: target.participantId });
+  assert.equal(ok.actorId, "actor:mei");
+  assert.equal(JSON.parse(errors[0]!).kind, "staff");
 });
 
 test("authorized event staff can mark one participant arrived idempotently while attendees cannot", async () => {
@@ -846,4 +869,21 @@ test("a published attendee directory, me profile, and contact targets stay on th
     }),
     /must target one other registered participant/i,
   );
+});
+
+// R26-04 兜底（复核 M7）：对账任务的「已签到（本人 / 代签）未记分」一路——与名片归属一路去重、共用上限、按 skipIfEverScored 补记。
+test("R26-04: attendance reconcile also scores checked-in but unscored events (deduplicated with the card path)", async () => {
+  const { reconcileEventAttendanceBatch } = await import("../../features/plans/event-attendance-reconcile");
+  const recorded: Array<{ actorId: string; eventId: string; skip: boolean | undefined }> = [];
+  const result = await reconcileEventAttendanceBatch({
+    planServiceFor: () => ({ markEventAttended: async () => ({ changed: false }) }) as never,
+    planV2ServiceFor: async (actorId: string) => ({ recordEventAttendanceForPlans: async ({ eventId, skipIfEverScored }: { eventId: string; skipIfEverScored?: boolean }) => { recorded.push({ actorId, eventId, skip: skipIfEverScored }); return [{ part: "base", planId: "p", points: 5 }]; } }) as never,
+    repository: {
+      listUnattendedAttributedEvents: async () => [],
+      listUnscoredAttributedEventsV2: async () => [{ actorId: "actor:a", eventId: "event:1" }],
+      listUnscoredCheckedInEventsV2: async () => [{ actorId: "actor:a", eventId: "event:1" }, { actorId: "actor:b", eventId: "event:2" }],
+    },
+  } as never, { limit: 10 });
+  assert.deepEqual(recorded, [{ actorId: "actor:a", eventId: "event:1", skip: true }, { actorId: "actor:b", eventId: "event:2", skip: true }]);
+  assert.equal((result.summary as Record<string, number>).v2Marked, 2);
 });

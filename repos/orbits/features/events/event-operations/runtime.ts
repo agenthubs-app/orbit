@@ -65,8 +65,13 @@ export function createConfiguredEventOperationsService(): EventOperationsService
           });
         }
       : undefined,
-    // R24 复核 M4：本人签到 = 参加了这场活动 → 计划（v1 已参加 / v2 イベント枠）。工作人员代签的 actor 归属交给 R26 / R27。
+    // R24 复核 M4：本人签到 = 参加了这场活动 → 计划（v1 已参加 / v2 イベント枠）。工作人员代签见下面 onParticipantCheckedIn（R26-04）。
     async onSelfCheckedIn({ actorId, eventId }) {
+      const { markPlanEventAttendedForActor } = await import("../../plans/event-attribution-runtime");
+      await markPlanEventAttendedForActor({ actorId, eventId });
+    },
+    // R26-04：工作人员代签同样记分（同一函数；计划侧幂等）。
+    async onParticipantCheckedIn({ actorId, eventId }) {
       const { markPlanEventAttendedForActor } = await import("../../plans/event-attribution-runtime");
       await markPlanEventAttendedForActor({ actorId, eventId });
     },

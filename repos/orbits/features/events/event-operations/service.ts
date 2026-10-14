@@ -159,6 +159,11 @@ export interface EventOperationsServiceOptions {
    * 失败只记日志，不影响签到结果；计划侧幂等，名片归属与对账任务是兜底。
    */
   onSelfCheckedIn?: (input: { actorId: string; eventId: string }) => Promise<void>;
+  /**
+   * R26（R26-04，DESIGN §6.3）：工作人员代签成功之后，按参加者记录上的 actor 尽力而为地通知计划（与本人签到同一函数）。
+   * 失败只记结构化日志，不影响代签结果；计划侧幂等；对账任务的「已签到未记分」一路兜底。
+   */
+  onParticipantCheckedIn?: (input: { actorId: string; eventId: string; kind: "staff" }) => Promise<void>;
   registrationService: Pick<EventRegistrationService, "list">;
   repository: EventOperationsRepository;
 }
@@ -235,6 +240,7 @@ export function createEventOperationsService({
   now = () => new Date().toISOString(),
   notifyWorker,
   onSelfCheckedIn,
+  onParticipantCheckedIn,
   registrationService,
   repository,
 }: EventOperationsServiceOptions): EventOperationsService {
@@ -522,13 +528,27 @@ export function createEventOperationsService({
         requireConfiguration(await repository.getConfiguration(eventId)),
         actorId,
       );
-      return repository.checkInAtomically({
+      const checkIn = await repository.checkInAtomically({
         actorId,
         capability: "check_in.roster.write",
         eventId,
         kind: "staff",
         participantId,
       });
+      // R26-04：代签也给计划记分（参加者有 Orbit 账号才有 actor；没有就不记、只记日志）。返回值不变。
+      if (onParticipantCheckedIn) {
+        const participantActor = checkIn.actorId?.trim();
+        if (!participantActor) {
+          console.info(JSON.stringify({ event: "event_operations_staff_checkin_no_actor", eventId }));
+        } else {
+          try {
+            await onParticipantCheckedIn({ actorId: participantActor, eventId, kind: "staff" });
+          } catch (error) {
+            console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_operations_plan_attendance_failed", eventId, kind: "staff" }));
+          }
+        }
+      }
+      return checkIn;
     },
 
     async configure({ actorId, configuration }) {

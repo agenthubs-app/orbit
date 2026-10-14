@@ -26,7 +26,7 @@ export interface AttendeeTypingResult {
   expected: Record<string, number>;
   attendeeSource: EventAttendeeSource;
   /** 每类的来源人数（「登壇 3名」「展示 12社」「申込 5名」），说明用。 */
-  breakdown: Record<string, { speakers: number; exhibitors: number; registrants: number; sampleOrgs: string[] }>;
+  breakdown: Record<string, { speakers: number; exhibitors: number; registrants: number; sampleOrgs: string[]; sampleNames: string[] }>;
 }
 
 /** 模板槽位 → 关键词（职位 / 公司名里出现即算）。 */
@@ -76,19 +76,20 @@ export function typeAttendees(input: {
 }): AttendeeTypingResult {
   const expected: Record<string, number> = {};
   const breakdown: AttendeeTypingResult["breakdown"] = {};
-  const bump = (key: string, field: "speakers" | "exhibitors" | "registrants", count: number, org?: string | null) => {
+  const bump = (key: string, field: "speakers" | "exhibitors" | "registrants", count: number, org?: string | null, name?: string | null) => {
     expected[key] = (expected[key] ?? 0) + count;
-    const entry = (breakdown[key] ??= { exhibitors: 0, registrants: 0, sampleOrgs: [], speakers: 0 });
+    const entry = (breakdown[key] ??= { exhibitors: 0, registrants: 0, sampleNames: [], sampleOrgs: [], speakers: 0 });
     entry[field] += count;
     if (org && entry.sampleOrgs.length < 3 && !entry.sampleOrgs.includes(org)) entry.sampleOrgs.push(org);
+    if (name && entry.sampleNames.length < 4 && !entry.sampleNames.includes(name)) entry.sampleNames.push(name);
   };
   for (const person of input.registrants ?? []) {
     const key = typeOfPerson(person, input.types);
-    if (key) bump(key, "registrants", 1, person.org);
+    if (key) bump(key, "registrants", 1, person.org, person.name);
   }
   for (const person of input.speakers ?? []) {
     const key = typeOfPerson(person, input.types);
-    if (key) bump(key, "speakers", 1, person.org);
+    if (key) bump(key, "speakers", 1, person.org, person.name);
   }
   const exhibitors = Math.max(0, Math.floor(input.exhibitorCount ?? 0));
   if (exhibitors > 0 && input.text) {

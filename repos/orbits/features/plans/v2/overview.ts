@@ -6,7 +6,11 @@ import { unitPoints } from "../../../shared/compute/plan-allocation";
 import { planOverviewHref, planTypeHref, type PlanHrefPlatform } from "../../../shared/compute/plan-href";
 import { nextAward, PLAN_EVENT_SEGMENT_KEY } from "../../../shared/compute/plan-score";
 import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
-import { scoreEvent, type EventScoreFacts, type EventScoreResult, type EventScoreType } from "../../../shared/compute/event-score";
+import { scoreEvent, scoreEventRange, type EventScoreFacts, type EventScoreResult, type EventScoreType } from "../../../shared/compute/event-score";
+import { eventDisplayFromItems } from "../../../shared/compute/event-assessment-display";
+import { typeAttendees, type AttendeePerson } from "../../../shared/compute/event-attendee-typing";
+import { eventEmoji } from "../../../shared/compute/event-emoji";
+import { tokyoParts } from "../../../shared/compute/event-score-input";
 import type { EventAssessmentScoreItem } from "../../../shared/contract/event-assessment";
 import type {
   PlanCandidateView,
@@ -30,6 +34,30 @@ export interface PlanEventFact {
   startsAt: string;
   venue: string | null;
   facts: EventScoreFacts;
+  /** R26：活动 emoji（主办方设的或按关键词）。 */
+  emoji?: string;
+  /** R26：有评估记录时（外部活动 = 我的评估；库内活动 = 我评估过）→ 評価結果链接。 */
+  assessmentId?: string | null;
+  /**
+   * R26：报名者 / 登壇者 / 展示社的原始事实。有它时 `facts.expected` / `attendeeSource` 由概要按当前计划的人物类型现算
+   * （`resolveTypedEvents`，与评估页同一个 `typeAttendees`），所以三处分数一致。
+   */
+  typing?: { registrants?: readonly AttendeePerson[]; speakers?: readonly AttendeePerson[]; exhibitorCount?: number | null; text?: string | null };
+}
+
+/** R26：按这份计划的人物类型补上每类预计人数（有 `typing` 的活动）；没有 `typing` 的原样返回（mock / 旧事实）。 */
+export function resolveTypedEvents(events: readonly PlanEventFact[], types: readonly PlanV2TypeItem[]): PlanEventFact[] {
+  return events.map((event) => {
+    if (!event.typing) return event;
+    const typing = typeAttendees({
+      exhibitorCount: event.typing.exhibitorCount ?? null,
+      registrants: event.typing.registrants ?? null,
+      speakers: event.typing.speakers ?? null,
+      text: event.typing.text ?? event.title,
+      types: types.map((type) => ({ key: type.personType.key, roleSituation: type.roleSituation, shortLabel: type.shortLabel })),
+    });
+    return { ...event, facts: { ...event.facts, attendeeSource: typing.attendeeSource, expected: typing.expected } };
+  });
 }
 
 export type ActiveAward = PlanV2LogEntry & { award: PlanAwardPayload };
@@ -146,6 +174,20 @@ export function eventScoreView(result: EventScoreResult, fact: PlanEventFact, la
   };
 }
 
+/** R26：适配 chip（「VC 約5名 · 起業家 約12名」）：还没满的人物类型里预计人数最多的两类；报名者标签公开时不写「約」。 */
+export function fitLabel(input: Pick<OverviewInput, "types" | "awards" | "language">, event: PlanEventFact): string | null {
+  const exact = event.facts.attendeeSource === "registrants";
+  const parts = input.types
+    .filter((type) => !type.skippedAt && metCount(input.awards, type.personType.key) < type.targetCount && (event.facts.expected[type.personType.key] ?? 0) > 0)
+    .map((type) => ({ count: event.facts.expected[type.personType.key]!, label: type.shortLabel }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 2)
+    .map((item) => tri(input.language, exact
+      ? { en: `${item.label} ${item.count}`, ja: `${item.label} ${item.count}名`, zh: `${item.label} ${item.count} 位` }
+      : { en: `${item.label} ~${item.count}`, ja: `${item.label} 約${item.count}名`, zh: `${item.label} 约 ${item.count} 位` }));
+  return parts.length ? parts.join(" · ") : null;
+}
+
 /** 会える活動：这一类人预计会来的活动（分数按规则，高到低）。 */
 export function eventsFor(input: OverviewInput, type: PlanV2TypeItem | null): PlanEventOption[] {
   const types = scoreTypes(input);
@@ -153,7 +195,19 @@ export function eventsFor(input: OverviewInput, type: PlanV2TypeItem | null): Pl
     .filter((event) => !type || (event.facts.expected[type.personType.key] ?? 0) > 0)
     .map((event) => {
       const result = scoreEvent({ facts: event.facts, types });
-      return { eventId: event.eventId, expectedCount: type ? event.facts.expected[type.personType.key] ?? null : null, fee: event.facts.fee ?? null, score: eventScoreView(result, event, input.language), startsAt: event.startsAt, title: event.title, venue: event.venue };
+      return {
+        assessmentHref: event.assessmentId ? (input.platform === "app" ? `/events/assessments/${event.assessmentId}` : `/app/events/assessments/${event.assessmentId}`) : null,
+        display: eventDisplayFromItems(result.items, scoreEventRange(result, event.facts)),
+        emoji: event.emoji ?? eventEmoji({ title: event.title }),
+        eventId: event.eventId,
+        expectedCount: type ? event.facts.expected[type.personType.key] ?? null : null,
+        fee: event.facts.fee ?? null,
+        fitLabel: fitLabel(input, event),
+        score: eventScoreView(result, event, input.language),
+        startsAt: event.startsAt,
+        title: event.title,
+        venue: event.venue,
+      };
     })
     .sort((a, b) => b.score.total - a.score.total || a.startsAt.localeCompare(b.startsAt));
 }
@@ -243,8 +297,80 @@ export function recentAwards(input: OverviewInput): PlanRecentAward[] {
     });
 }
 
-/** 今日のチャンス：推薦度最高、类型还有剩余的候补；没有就挑分数最高的会える活動。 */
+/** R26：今日のチャンス的活动候选窗口（未来 14 天，DESIGN §6.2-3）。 */
+export const TODAY_CHANCE_EVENT_DAYS = 14;
+const WEEKDAYS: Record<PlanCopyLanguage, readonly string[]> = { en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], ja: ["日", "月", "火", "水", "木", "金", "土"], zh: ["日", "一", "二", "三", "四", "五", "六"] };
+
+/** 「今夜 / 今日 / 明日 / 10月16日（金）」（东京时间）。 */
+export function chanceWhen(startsAt: string, now: string, language: PlanCopyLanguage): string {
+  const start = tokyoParts(Date.parse(startsAt));
+  const today = tokyoParts(Date.parse(now));
+  if (start.dayIndex === today.dayIndex) return start.minute >= 18 * 60 ? tri(language, { en: "tonight", ja: "今夜", zh: "今晚" }) : tri(language, { en: "today", ja: "今日", zh: "今天" });
+  if (start.dayIndex === today.dayIndex + 1) return tri(language, { en: "tomorrow", ja: "明日", zh: "明天" });
+  const date = new Date(start.dayIndex * 86_400_000);
+  const month = date.getUTCMonth() + 1;
+  const day = date.getUTCDate();
+  const weekday = WEEKDAYS[language][start.day]!;
+  return tri(language, { en: `${weekday} ${month}/${day}`, ja: `${month}月${day}日（${weekday}）`, zh: `${month}月${day}日（周${weekday}）` });
+}
+
+/**
+ * R26 活动候选：未来 14 天内、能见到「还差人数最多」的类型的活动（同分取更近的）。依据文本与按钮文案由服务端给（DESIGN §6.2-3）。
+ */
+export function eventChance(input: OverviewInput, now: string): PlanTodayChance | null {
+  const nowMs = Date.parse(now);
+  let best: { event: PlanEventFact; type: PlanV2TypeItem; remaining: number; met: number; points: number; expected: number } | null = null;
+  for (const event of input.events) {
+    const start = Date.parse(event.startsAt);
+    if (!Number.isFinite(start) || start < nowMs - 3 * 3_600_000 || start > nowMs + TODAY_CHANCE_EVENT_DAYS * 86_400_000) continue;
+    for (const type of input.types) {
+      if (type.skippedAt) continue;
+      const expected = event.facts.expected[type.personType.key] ?? 0;
+      if (expected <= 0) continue;
+      const met = metCount(input.awards, type.personType.key);
+      const remaining = type.targetCount - met;
+      if (remaining <= 0) continue;
+      const mine = input.awards.filter((entry) => entry.award.typeKey === type.personType.key).map((entry) => entry.award);
+      const next = nextAward({ allocation: type.allocation, anonymous: false, awards: mine, skipped: false, targetCount: type.targetCount });
+      if (next.part !== "base") continue;
+      const better = !best || remaining > best.remaining || (remaining === best.remaining && start < Date.parse(best.event.startsAt));
+      if (better) best = { event, expected, met, points: next.points, remaining, type };
+    }
+  }
+  if (!best) return null;
+  const { event, type, expected, met, points } = best;
+  const when = chanceWhen(event.startsAt, now, input.language);
+  const source = event.facts.attendeeSource === "registrants"
+    ? tri(input.language, { en: `the attendee tag “${type.shortLabel}”: ${expected}`, ja: `参加者タグ「${type.shortLabel}」${expected}名`, zh: `参会者标签「${type.shortLabel}」${expected} 位` })
+    : tri(input.language, { en: `about ${expected} estimated from speakers and exhibitors`, ja: `登壇者・出展から推定 約${expected}名`, zh: `由演讲者与展商推测约 ${expected} 位` });
+  const unit = Math.round(type.allocation / Math.max(1, type.targetCount));
+  return {
+    actionLabel: tri(input.language, { en: "Get ready to meet", ja: "会う準備をする", zh: "准备见面" }),
+    basis: tri(input.language, {
+      en: `${event.title}: ${source} · ${type.shortLabel} is at ${met} / ${type.targetCount} (${unit} points each)`,
+      ja: `${event.title} の${source} · ${type.shortLabel} は ${met} / ${type.targetCount}人で未達（1人 ${unit}点）`,
+      zh: `${event.title} 的${source} · ${type.shortLabel} 还差人（${met} / ${type.targetCount}，每人 ${unit} 分）`,
+    }),
+    eventId: event.eventId,
+    href: planTypeHref(input.platform, input.plan.id, type.id),
+    kind: "event",
+    label: tri(input.language, {
+      en: `${expected} ${type.shortLabel} are coming to ${event.title} ${when}. Talk to one for +${points}.`,
+      ja: `${when}の ${event.title} に ${type.shortLabel} が ${expected}人来ます。1人と話せば +${points}。`,
+      zh: `${when}的 ${event.title} 会来 ${expected} 位 ${type.shortLabel}。聊一位就 +${points}。`,
+    }),
+    points,
+    progressLabel: tri(input.language, { en: `${type.shortLabel} · ${met} / ${type.targetCount}`, ja: `${type.shortLabel} · ${met} / ${type.targetCount}人`, zh: `${type.shortLabel} · ${met} / ${type.targetCount} 人` }),
+  };
+}
+
+/**
+ * 今日のチャンス（R26 改）：先看未来 14 天内能见到还差人的类型的活动（`eventChance`）；没有就推推薦度最高、类型还有剩余的候补；
+ * 再没有就挑分数最高的会える活動。
+ */
 export function todayChance(input: OverviewInput, now: string): PlanTodayChance | null {
+  const fromEvent = eventChance(input, now);
+  if (fromEvent) return fromEvent;
   let best: { candidate: PlanCandidateView; type: PlanV2TypeItem; points: number } | null = null;
   for (const type of input.types) {
     if (type.skippedAt) continue;
@@ -255,12 +381,12 @@ export function todayChance(input: OverviewInput, now: string): PlanTodayChance 
     if (top && (!best || top.recommendScore > best.candidate.recommendScore)) best = { candidate: top, points: next.points, type };
   }
   if (best) {
-    return { href: planTypeHref(input.platform, input.plan.id, best.type.id), label: tri(input.language, { en: `Talk to ${best.candidate.name} (${best.type.shortLabel})`, ja: `${best.candidate.name}さんと話す（${best.type.shortLabel}）`, zh: `和${best.candidate.name}聊聊（${best.type.shortLabel}）` }), points: best.points };
+    return { href: planTypeHref(input.platform, input.plan.id, best.type.id), kind: "candidate", label: tri(input.language, { en: `Talk to ${best.candidate.name} (${best.type.shortLabel})`, ja: `${best.candidate.name}さんと話す（${best.type.shortLabel}）`, zh: `和${best.candidate.name}聊聊（${best.type.shortLabel}）` }), points: best.points };
   }
   const event = eventsFor(input, null)[0];
   if (event && event.score.total >= 50) {
     const type = input.types.find((item) => (input.events.find((fact) => fact.eventId === event.eventId)?.facts.expected[item.personType.key] ?? 0) > 0);
-    return { href: type ? planTypeHref(input.platform, input.plan.id, type.id) : planTypeHref(input.platform, input.plan.id, input.types[0]?.id ?? ""), label: event.title, points: 0 };
+    return { eventId: event.eventId, href: type ? planTypeHref(input.platform, input.plan.id, type.id) : planTypeHref(input.platform, input.plan.id, input.types[0]?.id ?? ""), kind: "event", label: event.title, points: 0 };
   }
   return null;
 }

@@ -89,7 +89,8 @@ export function resolvePlanV2Service(input: { actorId: string; mode?: ModuleMode
     mode: backend.mode,
     service: createPlanV2Service({
       createContact: async ({ name }) => createLivePlanFlowContext({ mode: "live", pool: pool as never, workspaceId }).addContact(input.actorId, { name, relationLabel: "" }),
-      events: livePlanEventFacts(),
+      // R26：live 事实打开（我的外部评估 → 我的活动 → 公开活动，有界）；来源用动态 import，计划模块不直接依赖活动评估模块。
+      events: livePlanEventFacts({ actorId: input.actorId, sources: async () => (await import("../../events/assessment/plan-sources")).createLivePlanEventSources(input.actorId), workspaceId }),
       now: input.now,
       references: referencesFor(input.actorId),
       repository: plansV2Global.__orbitPlansV2LiveRepository.repository,

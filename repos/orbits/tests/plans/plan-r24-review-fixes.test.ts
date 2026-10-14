@@ -142,7 +142,8 @@ test("M3: live event facts read nothing until R26 (no event table read); when en
       },
     };
   };
-  assert.deepEqual(await livePlanEventFacts({ window: windowReader })(), []);
+  // R26：常量已改 true；回退（ready: false）时仍不读任何活动。
+  assert.deepEqual(await livePlanEventFacts({ ready: false, window: windowReader })(), []);
   assert.equal(opened, 0, "the live factory does not touch the events at all");
   const enabled = await livePlanEventFacts({ now: () => new Date("2026-10-11T00:00:00.000Z"), ready: true, window: windowReader })();
   assert.equal(opened, 1);

@@ -37,7 +37,7 @@ export function eventAssessmentAiEnabled(env: Record<string, string | undefined>
 type Query = (sql: string, values?: readonly unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
 
 /** 我的联系人（id + 名字，既存のつながり用；有界）。 */
-async function listContacts(query: Query, workspaceId: string, actorId: string) {
+export async function listContactsForAssessment(query: Query, workspaceId: string, actorId: string) {
   const result = await query(
     `select record_id, coalesce(payload->>'displayName', payload->>'name', '') as name from orbit_records
      where workspace_id = $1 and collection_name = 'contacts' and user_id = $2 and lifecycle_state <> 'deleted' limit $3`,
@@ -47,7 +47,7 @@ async function listContacts(query: Query, workspaceId: string, actorId: string) 
 }
 
 /** `eventPreferences` 集合（R18 做设置界面；现在只读、没有就缺省）。 */
-async function readPreferences(query: Query, workspaceId: string, actorId: string) {
+export async function readPreferencesForAssessment(query: Query, workspaceId: string, actorId: string) {
   try {
     const row = (await query(
       `select payload from orbit_records where workspace_id = $1 and collection_name = 'eventPreferences' and user_id = $2 and lifecycle_state <> 'deleted' order by updated_at desc limit 1`,
@@ -72,7 +72,7 @@ async function readPreferences(query: Query, workspaceId: string, actorId: strin
 export function createLivePlanPort(input: { query: Query; workspaceId: string }): AssessmentPlanPort {
   return {
     async context(actorId: string, language: PlanCopyLanguage): Promise<JudgeContext> {
-      const [contacts, prefs] = await Promise.all([listContacts(input.query, input.workspaceId, actorId), readPreferences(input.query, input.workspaceId, actorId)]);
+      const [contacts, prefs] = await Promise.all([listContactsForAssessment(input.query, input.workspaceId, actorId), readPreferencesForAssessment(input.query, input.workspaceId, actorId)]);
       const resolved = resolvePlanV2Service({ actorId });
       const base = { ...emptyJudgeContext(language, contacts, prefs.homeArea), preferences: prefs.preferences };
       if (!resolved.success) return base;
