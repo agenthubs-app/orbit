@@ -274,7 +274,7 @@ function GuideFoot({ onCamera, onPick, hidden, onHide }: { onCamera: () => void;
       </UiPressable>
       <View style={g.footRow}>
         <UiPressable accessibilityRole="button" accessibilityLabel={t("add.scan.pickPhotos")} hitSlop={12} onPress={onPick} style={g.lnkRow} testID="add-scan-pick">
-          <Icon name="images" size={16} color={colors.accent} />
+          <Icon name="image" size={16} color={colors.accent} />
           <UiText style={g.lnk}>{t("add.scan.pickPhotos")}</UiText>
         </UiPressable>
         {onHide || hidden ? (
@@ -337,7 +337,8 @@ const useGuideStyles = createThemedStyles((colors) => StyleSheet.create({
   h3: { fontSize: 14.5, fontWeight: "800", lineHeight: 21.75, color: colors.ink },
   tip4: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tip: { width: "48.5%", flexGrow: 1, flexBasis: "45%", flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 9, paddingHorizontal: 10, borderRadius: 14, backgroundColor: colors.surface2 },
-  tipEmoji: { fontSize: 17, lineHeight: 20.4 },
+  // iOS 的 Apple Color Emoji 比 Chrome 宽约 2pt：盒子定成 kit 的字宽。
+  tipEmoji: { fontSize: 17, lineHeight: 20.4, width: 21 },
   grow: { flex: 1, minWidth: 0 },
   tipTitle: { fontSize: 12, fontWeight: "700", lineHeight: 18, color: colors.ink },
   tipBody: { fontSize: 10.5, lineHeight: 14.7, color: colors.ink3 },
