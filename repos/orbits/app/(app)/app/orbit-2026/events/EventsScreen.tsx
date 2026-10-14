@@ -12,7 +12,7 @@ import type { MyEventItem } from "../../../../../shared/contract/events-mine";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage, useInShell } from "../shell/slots";
-import { Drawer, Icon, Modal, Orbit2026Scope, SampleTag, ToastProvider, useToast } from "../ui";
+import { Drawer, Icon, Kbd, Modal, Orbit2026Scope, SampleTag, ToastProvider, useStandardCopy, useToast } from "../ui";
 import { Assessing, FillThree, LoginRequired, NotEventPage, PasteText } from "./AssessFlow";
 import { AssessmentPage, AssessmentRail, ScoreRing, translator, verdictLabel, type Translate } from "./AssessmentDetail";
 import { eventsApi, newIdempotencyKey, pollAssessment } from "./events-api";
@@ -297,7 +297,7 @@ function AssessCard({ t, tier, big, url, setUrl, onAssessUrl, busy, availability
           </form>
           {/* b8 #0 `.fl`：卡片等高时把拖放区推到底。 */}
           {medium ? <i className={styles.fl} aria-hidden /> : null}
-          <label className={`${styles.drop} ${dragging ? styles.dropOn : ""}`} onDragOver={(event) => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); if (event.dataTransfer.files.length) onFiles(event.dataTransfer.files); }}>
+          <label className={`${styles.drop} ${big ? styles.dropBig : ""} ${dragging ? styles.dropOn : ""}`} onDragOver={(event) => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); if (event.dataTransfer.files.length) onFiles(event.dataTransfer.files); }}>
             <Icon name="image" size={16} />{t("drop")}
             {fileInput}
           </label>
@@ -458,8 +458,11 @@ function MyEvents({ language, upcoming, past, now, t }: { language: OrbitLanguag
 function ParticipationCodeModal({ open, onClose, t, onCode }: { open: boolean; onClose: () => void; t: Translate; onCode: (code: string) => void }) {
   const [code, setCode] = useState("");
   const valid = /^[A-Z0-9]{8}$/.test(code);
+  const std = useStandardCopy();
+  // b12 #320 W-R26-31：8 格（32×44）居中 · 「Esc 閉じる」· キャンセル / 開く。
   return (
-    <Modal open={open} onClose={onClose} title={t("codeDialogTitle")} description={t("codeDialogSub")} actions={<button type="button" className={`btn ${styles.btn} ${styles.primary} ${styles.full}`} disabled={!valid} onClick={() => onCode(code)}>{t("codeNext")}</button>}>
+    <Modal open={open} onClose={onClose} title={t("codeDialogTitle")} description={t("codeDialogSub")} hint={<><Kbd>Esc</Kbd> {std.action.close}</>}
+      actions={<><button type="button" className={`btn ${styles.btn}`} onClick={onClose}>{std.action.cancel}</button><button type="button" className={`btn ${styles.btn} ${styles.primary}`} disabled={!valid} onClick={() => onCode(code)}>{t("codeNext")}</button></>}>
       <div className={styles.codeBoxes} data-events-code-input="">
         {Array.from({ length: 9 }, (_, index) => (index === 4
           ? <span key="dash" className={styles.codeDash}>-</span>

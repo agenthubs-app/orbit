@@ -168,8 +168,8 @@ export const eventsCopy = {
   goingEmptyCta: { ja: "探す", zh: "发现", en: "Discover", kind: "button" },
   // 参加コード
   codeDialogTitle: { ja: "参加コードを入力", zh: "输入参加码", en: "Enter your entry code", kind: "dialogTitle" },
-  codeDialogSub: { ja: "主催者から届いた8桁のコード", zh: "主办方给的8位码", en: "The 8-character code from the organizer", kind: "label" },
-  codeNext: { ja: "参加登録へ進む", zh: "去报名", en: "Continue to register", kind: "fullButton" },
+  codeDialogSub: { ja: "主催者から届いた 8文字のコード", zh: "主办方给的8位码", en: "The 8-character code from the organizer", kind: "label" },
+  codeNext: { ja: "開く", zh: "打开", en: "Open", kind: "button" },
   codeInvalid: { ja: "8桁のコードを入力してください", zh: "请输入8位码", en: "Enter the 8-character code", kind: "error" },
   // 失敗の汎用
   aiOff: { ja: "URL とポスターの読み取りは準備中です", zh: "网址和海报读取还在准备中", en: "Reading links and posters is coming soon", kind: "label" },

@@ -1,25 +1,190 @@
 {
-  "_note": "R26 イベント Web（PLANNER 像素 SC P01–P12）。mock 服务器 :3026（ORBIT_REDESIGN_MOCK=event-assessment,plan-v2-summary，distDir .next-r26）。每组先切 fixture：curl -X POST http://localhost:3026/api/dev/event-design-fixture -H 'content-type: application/json' -d '{\"name\":\"<fixture>\"}'（fixture 写在每条的 note 里）；异常态用演示世界默认数据（name:null）。键 = <id>-<width>-<theme>。",
-  "defaults": { "app-origin": "http://localhost:3026", "login": "qa@orbit.test", "grid": 30, "attribution": "scripts/visual/attribution-redesign-R26.json" },
-  "sources": ["repos/orbits/app/(app)/app/orbit-2026/events/**", "repos/orbits/app/(app)/app/orbit-2026/copy/events.ts", "repos/orbits/app/(app)/app/events/**", "repos/orbits/app/(app)/app/orbit-2026/ui/**"],
-  "views": [
-    { "id": "W-R26-10", "app": "/app/events", "design": "web.html", "board-index": 10, "width": 1440, "wait-for": "[data-events-assess-card]", "note": "P01 評価 · 空（fixture assess-empty）" },
-    { "id": "W-R26-10-390", "app": "/app/events", "design": "b8-responsive.html", "board-index": 3, "width": 390, "wait-for": "[data-events-assess-card]", "note": "P01 390（fixture assess-empty）" },
-    { "id": "W-R26-10-1024", "app": "/app/events", "design": "b12-missing-states.html", "board-index": 332, "width": 1024, "wait-for": "[data-events-assess-card]", "note": "P01 1024 补画 #332（fixture assess-empty）" },
-    { "id": "W-R26-11", "app": "/app/events", "design": "web.html", "board-index": 11, "width": 1440, "wait-for": "[data-events-card]", "note": "P02 評価 · 少量（fixture assess-few）" },
-    { "id": "W-R26-11-1024", "app": "/app/events", "design": "b12-missing-states.html", "board-index": 334, "width": 1024, "wait-for": "[data-events-card]", "note": "P02 1024 补画 #334（fixture assess-few）" },
-    { "id": "W-R26-11-390", "app": "/app/events", "design": "b12-missing-states.html", "board-index": 336, "width": 390, "wait-for": "[data-events-card]", "note": "P02 390 补画 #336（fixture assess-few）" },
-    { "id": "W-R26-12", "app": "/app/events", "design": "web.html", "board-index": 12, "width": 1440, "wait-for": "[data-events-rail]", "note": "P03 評価 · 大量 + 右栏評価の詳細（fixture assess-many）" },
-    { "id": "W-R26-12-1024", "app": "/app/events", "design": "b8-responsive.html", "board-index": 0, "width": 1024, "wait-for": "[data-events-card]", "note": "P03 1024（fixture assess-many-6）" },
-    { "id": "W-R26-12-390", "app": "/app/events", "design": "b8-responsive.html", "board-index": 1, "width": 390, "wait-for": "[data-events-card]", "note": "P03 390（fixture assess-many）" },
-    { "id": "W-R26-P04-1024d", "app": "/app/events", "design": "b8-responsive.html", "board-index": 2, "width": 1024, "click": "[data-events-card='design-assessment-saas-summit']", "wait-for": "[data-events-result]", "note": "P04 1024 抽屉（fixture assess-many-6）" },
-    { "id": "W-R26-P04-1024", "app": "/app/events/assessments/design-assessment-saas-summit", "design": "b8-responsive.html", "board-index": 4, "width": 1024, "wait-for": "[data-events-result]", "note": "P04 1024 单页（fixture assess-many）" },
-    { "id": "W-R26-P04-390", "app": "/app/events/assessments/design-assessment-saas-summit", "design": "b8-responsive.html", "board-index": 5, "width": 390, "wait-for": "[data-events-result]", "note": "P04 390 全屏（fixture assess-many）" },
-    { "id": "W-R26-P06", "app": "/app/events/assessments/demo-assessment-login-required", "design": "b2-events-flow.html", "board-index": 4, "width": 1440, "wait-for": "[data-events-failure]", "note": "P06 要登录（演示世界默认）" },
-    { "id": "W-R26-P08", "app": "/app/events/assessments/demo-assessment-needs-input", "design": "b2-events-flow.html", "board-index": 5, "width": 1440, "wait-for": "[data-events-fill]", "note": "P08 海报补 3 项（演示世界默认）" },
-    { "id": "W-R26-30", "app": "/app/events?tab=going", "design": "b12-missing-states.html", "board-index": 310, "width": 1440, "wait-for": "[data-events-going]", "note": "P10 参加予定（fixture going）" },
-    { "id": "W-R26-30e", "app": "/app/events?tab=going", "design": "b12-missing-states.html", "board-index": 312, "width": 1440, "wait-for": "[data-events-going]", "note": "P10 参加予定 空（fixture going-empty）" },
-    { "id": "W-R26-30-1024", "app": "/app/events?tab=going", "design": "b12-missing-states.html", "board-index": 314, "width": 1024, "wait-for": "[data-events-going]", "note": "P10 1024（fixture going）" },
-    { "id": "W-R26-30-390", "app": "/app/events?tab=going", "design": "b12-missing-states.html", "board-index": 316, "width": 390, "wait-for": "[data-events-going]", "note": "P10 390（fixture going）" }
-  ]
+ "_note": "R26 イベント Web（PLANNER 像素 SC P01–P12）。mock 服务器 :3026（ORBIT_REDESIGN_MOCK=event-assessment,plan-v2-summary，distDir .next-r26）。每组先切 fixture：curl -X POST http://localhost:3026/api/dev/event-design-fixture -H 'content-type: application/json' -d '{\"name\":\"<fixture>\"}'（fixture 写在每条的 note 里）；异常态用演示世界默认数据（name:null）。键 = <id>-<width>-<theme>。",
+ "defaults": {
+  "app-origin": "http://localhost:3026",
+  "login": "qa@orbit.test",
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-redesign-R26.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/events/**",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/events.ts",
+  "repos/orbits/app/(app)/app/events/**",
+  "repos/orbits/app/(app)/app/orbit-2026/ui/**"
+ ],
+ "views": [
+  {
+   "id": "W-R26-10",
+   "app": "/app/events",
+   "design": "web.html",
+   "board-index": 10,
+   "width": 1440,
+   "wait-for": "[data-events-assess-card]",
+   "note": "P01 評価 · 空（fixture assess-empty）"
+  },
+  {
+   "id": "W-R26-10-390",
+   "app": "/app/events",
+   "design": "b8-responsive.html",
+   "board-index": 3,
+   "width": 390,
+   "wait-for": "[data-events-assess-card]",
+   "note": "P01 390（fixture assess-empty）"
+  },
+  {
+   "id": "W-R26-10-1024",
+   "app": "/app/events",
+   "design": "b12-missing-states.html",
+   "board-index": 332,
+   "width": 1024,
+   "wait-for": "[data-events-assess-card]",
+   "note": "P01 1024 补画 #332（fixture assess-empty）"
+  },
+  {
+   "id": "W-R26-11",
+   "app": "/app/events",
+   "design": "web.html",
+   "board-index": 11,
+   "width": 1440,
+   "wait-for": "[data-events-card]",
+   "note": "P02 評価 · 少量（fixture assess-few）"
+  },
+  {
+   "id": "W-R26-11-1024",
+   "app": "/app/events",
+   "design": "b12-missing-states.html",
+   "board-index": 334,
+   "width": 1024,
+   "wait-for": "[data-events-card]",
+   "note": "P02 1024 补画 #334（fixture assess-few）"
+  },
+  {
+   "id": "W-R26-11-390",
+   "app": "/app/events",
+   "design": "b12-missing-states.html",
+   "board-index": 336,
+   "width": 390,
+   "wait-for": "[data-events-card]",
+   "note": "P02 390 补画 #336（fixture assess-few）"
+  },
+  {
+   "id": "W-R26-12",
+   "app": "/app/events",
+   "design": "web.html",
+   "board-index": 12,
+   "width": 1440,
+   "wait-for": "[data-events-rail]",
+   "note": "P03 評価 · 大量 + 右栏評価の詳細（fixture assess-many）"
+  },
+  {
+   "id": "W-R26-12-1024",
+   "app": "/app/events",
+   "design": "b8-responsive.html",
+   "board-index": 0,
+   "width": 1024,
+   "wait-for": "[data-events-card]",
+   "note": "P03 1024（fixture assess-many-6）"
+  },
+  {
+   "id": "W-R26-12-390",
+   "app": "/app/events",
+   "design": "b8-responsive.html",
+   "board-index": 1,
+   "width": 390,
+   "wait-for": "[data-events-card]",
+   "note": "P03 390（fixture assess-many）"
+  },
+  {
+   "id": "W-R26-P04-1024d",
+   "app": "/app/events",
+   "design": "b8-responsive.html",
+   "board-index": 2,
+   "width": 1024,
+   "click": "[data-events-card='design-assessment-saas-summit']",
+   "wait-for": "[data-events-result]",
+   "note": "P04 1024 抽屉（fixture assess-many-6）"
+  },
+  {
+   "id": "W-R26-P04-1024",
+   "app": "/app/events/assessments/design-assessment-saas-summit",
+   "design": "b8-responsive.html",
+   "board-index": 4,
+   "width": 1024,
+   "wait-for": "[data-events-result]",
+   "note": "P04 1024 单页（fixture assess-many）"
+  },
+  {
+   "id": "W-R26-P04-390",
+   "app": "/app/events/assessments/design-assessment-saas-summit",
+   "design": "b8-responsive.html",
+   "board-index": 5,
+   "width": 390,
+   "wait-for": "[data-events-result]",
+   "note": "P04 390 全屏（fixture assess-many）"
+  },
+  {
+   "id": "W-R26-P06",
+   "app": "/app/events/assessments/demo-assessment-login-required",
+   "design": "b2-events-flow.html",
+   "board-index": 4,
+   "width": 1440,
+   "wait-for": "[data-events-failure]",
+   "note": "P06 要登录（演示世界默认）"
+  },
+  {
+   "id": "W-R26-P08",
+   "app": "/app/events/assessments/demo-assessment-needs-input",
+   "design": "b2-events-flow.html",
+   "board-index": 5,
+   "width": 1440,
+   "wait-for": "[data-events-fill]",
+   "note": "P08 海报补 3 项（演示世界默认）"
+  },
+  {
+   "id": "W-R26-30",
+   "app": "/app/events?tab=going",
+   "design": "b12-missing-states.html",
+   "board-index": 310,
+   "width": 1440,
+   "wait-for": "[data-events-going]",
+   "note": "P10 参加予定（fixture going）"
+  },
+  {
+   "id": "W-R26-30e",
+   "app": "/app/events?tab=going",
+   "design": "b12-missing-states.html",
+   "board-index": 312,
+   "width": 1440,
+   "wait-for": "[data-events-going]",
+   "note": "P10 参加予定 空（fixture going-empty）"
+  },
+  {
+   "id": "W-R26-30-1024",
+   "app": "/app/events?tab=going",
+   "design": "b12-missing-states.html",
+   "board-index": 314,
+   "width": 1024,
+   "wait-for": "[data-events-going]",
+   "note": "P10 1024（fixture going）"
+  },
+  {
+   "id": "W-R26-30-390",
+   "app": "/app/events?tab=going",
+   "design": "b12-missing-states.html",
+   "board-index": 316,
+   "width": 390,
+   "wait-for": "[data-events-going]",
+   "note": "P10 390（fixture going）"
+  },
+  {
+   "id": "W-R26-31",
+   "app": "/app/events",
+   "design": "b12-missing-states.html",
+   "board-index": 320,
+   "width": 1440,
+   "click": "[data-events-code] button",
+   "wait-for": "[role=dialog]",
+   "note": "参加コード入力 Modal 380（fixture assess-empty）；Modal 定位属组件库（自定决定 7）"
+  }
+ ]
 }

@@ -151,10 +151,10 @@
 .sectionLbl { margin: 18px 0 8px; }
 
 /* 参加コード */
-.codeBoxes { display: grid; grid-template-columns: repeat(4, 1fr) 10px repeat(4, 1fr); gap: 6px; margin: 14px 0; }
-.codeBox { height: 48px; border-radius: var(--r-input-sm); background: var(--surface-2); border: 1.5px solid transparent; text-align: center; font-family: var(--font-num); font-size: var(--fs-title-xs); font-weight: var(--fw-heavy); color: var(--ink); text-transform: uppercase; }
+.codeBoxes { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 14px; }
+.codeBox { width: 32px; height: 44px; padding: 0; border-radius: var(--r-sm); background: var(--surface-2); border: 1.5px solid transparent; text-align: center; font-family: var(--font-num); font-size: var(--fs-title-xs); font-weight: var(--fw-heavy); color: var(--ink); text-transform: uppercase; }
 .codeBox:focus { border-color: var(--plum-500); outline: 0; }
-.codeDash { align-self: center; text-align: center; color: var(--ink-3); }
+.codeDash { color: var(--ink-4); font-weight: var(--fw-heavy); }
 
 /* 1024: the result opens as a drawer (b8 #2); 390: single column (b8 #1 / #3 / #5). */
 @media (max-width: 1279px) {
@@ -162,6 +162,8 @@
   .listHead { margin: 6px 0 -6px; }
   /* b8 #0: the drop zone is one step smaller at 1024. */
   .drop { padding: 12px; gap: 8px; border-radius: var(--r-tile); font-size: var(--fs-control); }
+  /* b12 #332（評価 · 空 1024）：空态大卡里的拖放区仍是 1440 尺寸。 */
+  .drop.dropBig { padding: 16px; border-radius: var(--r-bubble); }
 }
 @media (max-width: 767px) {
   .page { padding: 0 18px 120px; }
