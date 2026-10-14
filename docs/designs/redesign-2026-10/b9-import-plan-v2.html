@@ -1313,36 +1313,36 @@ h += WB('手入力 · Web 右侧抽屉', '', { nav: 1, head: '', body: netWeb('f
 
 h += sec('A5 · 招待コード', '① 生成（复制/系统分享，Orbit 不代发）→ ② 好友侧手机浏览器 5 步 → ③ 发起方推送 + 本人入力满档卡 → ④ 资料同步 → ⑤ 任一方解除');
 h += boards([
-  AP('招待 ① コードを作る · App', '', { body: netApp('few'), tab: 1, overlay: inviteSheet }, [
+  AP('招待 ① コードを作る · App', '作废 · 以 b11 A2 为准（2026-10-14）', { body: netApp('few'), tab: 1, overlay: inviteSheet }, [
     ['.k-qr', 0, 'QR + 8 位码 + 链接三种形式；当面给 QR，线上给链接，口头念码'],
     ['.k-share', 0, '复制 / 系统共享表 / 保存 QR —— 全部从用户端发出，Orbit 不代发'],
     ['.k-myshare', 0, '先告诉用户「对方会收到你的哪些信息」，可改；連絡先默认关'],
   ]),
 ]);
-h += WB('招待 ① コードを作る · Web 弹窗', '', { nav: 1, head: '', body: netWeb('few'), rail: netRail('few'), ov: inviteModal }, [
+h += WB('招待 ① コードを作る · Web 弹窗', '作废 · 以 b11 A2 为准（2026-10-14）', { nav: 1, head: '', body: netWeb('few'), rail: netRail('few'), ov: inviteModal }, [
   ['.k-winv .qr', 0, 'Web 居中模态 560：QR + 链接复制；「今すぐ無効にする」可随时作废（有效期与 b5 E6 一致默认 7 天）'],
   ['.k-winv .macts', 0, '底部常驻「Orbit からは送信しません」'],
 ]);
 h += boards([
-  AP('招待 ② 好友：開く', '', { body: fOpen(), overlay: url('orbit.app/i/7Q2K') }, [
+  AP('招待 ② 好友：開く', '作废 · 以 b11 A2 为准（2026-10-14）', { body: fOpen(), overlay: url('orbit.app/i/7Q2K') }, [
     ['.k-fhost', 0, '先看清是谁邀请：佐藤的头像、公司、提供/需求（佐藤选择公开的项目）'],
     ['.k-fwhat', 0, '一句话讲清结果：登録すると、お互いの人脈に追加されます'],
     ['.k-fcta', 0, '手机浏览器直接完成，不要求装 App（Web 与手机同一响应式页，按定稿不单独画 1440）'],
   ]),
-  AP('招待 ② 好友：登録', '', { body: fSignup(), overlay: url('orbit.app/i/7Q2K') }, [
+  AP('招待 ② 好友：登録', '作废 · 以 b11 A2 为准（2026-10-14）', { body: fSignup(), overlay: url('orbit.app/i/7Q2K') }, [
     ['.k-fsso', 0, 'Apple / Google 一键优先，邮件注册兜底；3 步进度条'],
     ['.k-femail', 0, '只要邮箱 + 密码，不在这一步问资料'],
   ]),
-  AP('招待 ② 好友：プロフィール', '', { body: fProfile(), overlay: url('orbit.app/i/7Q2K') }, [
+  AP('招待 ② 好友：プロフィール', '受邀者简短资料，仍有效（2026-10-14）', { body: fProfile(), overlay: url('orbit.app/i/7Q2K') }, [
     ['.k-fscan', 0, '可拍自己的名片自动填（复用名片识别）'],
     ['.k-fgive', 0, '「提供できること / 求めていること」用多选 chip + 自由追加，这是满档 ●●● 的关键'],
   ]),
-  AP('招待 ② 好友：共有する項目', '', { body: fShare(), overlay: url('orbit.app/i/7Q2K') }, [
+  AP('招待 ② 好友：共有する項目', '作废 · 以 b11 A2 为准（2026-10-14）', { body: fShare(), overlay: url('orbit.app/i/7Q2K') }, [
     ['.k-fmutual', 0, '加入时明示「佐藤さんとお互いの人脈に追加されます」'],
     ['.k-fitems', 0, '默认开：会社・役職 / 提供できること / 求めていること；邮件与电话默认关（规格）'],
     ['.k-fgo', 0, '「つながる」→ 完成；下方注明可随时改项目、解除'],
   ]),
-  AP('招待 ② 好友：完了', '', { body: fDone(), overlay: url('orbit.app/i/7Q2K') }, [
+  AP('招待 ② 好友：完了', '作废 · 以 b11 A2 为准（2026-10-14）', { body: fDone(), overlay: url('orbit.app/i/7Q2K') }, [
     ['.k-fdone', 0, '双方头像 + 绿勾：完成即双向加入，并告知「佐藤さんにも通知」'],
     ['.k-fnext', 0, '好友这边也立刻有一位 ●●● 本人入力的人脉（佐藤）'],
     ['.k-fapp', 0, '下载 App 是可选的次要入口，「このまま Web で」并列'],
@@ -1384,7 +1384,7 @@ h += boards([
 h += sec('ダークモード', '連絡先のまとめて確認、招待（好友侧完了 + 发起方本人入力卡）、LinkedIn まとめて確認（Web）');
 h += boards([
   ['連絡先 ④ まとめて確認', '', phone({ body: batchApp('tel'), tab: -1, theme: 'dark' })],
-  ['招待 ② 好友：完了', '', phone({ body: fDone(), tab: -1, overlay: url('orbit.app/i/7Q2K'), theme: 'dark' })],
+  ['招待 ② 好友：完了', '作废 · 以 b11 A2 为准（2026-10-14）', phone({ body: fDone(), tab: -1, overlay: url('orbit.app/i/7Q2K'), theme: 'dark' })],
   ['招待 ③ 発起方：本人入力カード', '', phone({ body: hostCard(), tab: -1, theme: 'dark' })],
 ]);
 h += board('LinkedIn ④ まとめて確認 · Web', '', webFrame({ nav: 1, head: '', body: batchWeb(), rail: liRail, theme: 'dark' }));

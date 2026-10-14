@@ -1603,10 +1603,10 @@ h += board('絞り込み · Web', '', wf({ nav: 1, head: '', body: netWeb({ chip
 /* ---- E6 招待 ---- */
 h += sec('E6 · 招待・紹介', '与 ⑨ A5「招待コード」是同一功能（统一叫法 招待コード；互加模型：对方注册后双向加入人脈）。入口：マイページ「招待コード」/ 人脈右上「＋」› 招待コード（NAV-V3，指导屏见 ⑪）；① 生成（共有シート）→ ② 受邀方打开链接后的接受页（好友侧完整 5 步见 ⑨ A5）');
 h += boards([
-  ['① 招待リンク', '', phone({ body: myApp(100), tab: -1, overlay: inviteSheet, pins: P(1, '.qr') + P(2, '.share') }), ['QR + 链接 + 有效期限（7 日默认）；交换的名片字段可改', '共享走系统共享表 / 复制 / 邮件 App；Orbit 不代发']],
-  ['② 招待を受ける', '', phone({ body: acceptPage(), tab: -1, overlay: `<div class="urlbar">${ic('link', 'sm')}orbit.app/i/k7Q2-sato</div>`, pins: P(1, '.mac.lav') + P(2, '.acc-btn') }), ['受邀方看到双方会交换什么（对称说明）', '交换可撤销；未注册者可用 Apple / 邮件继续，无需先下载 App']],
+  ['① 招待リンク', '作废 · 以 b11 A2 为准（2026-10-14）', phone({ body: myApp(100), tab: -1, overlay: inviteSheet, pins: P(1, '.qr') + P(2, '.share') }), ['QR + 链接 + 有效期限（7 日默认）；交换的名片字段可改', '共享走系统共享表 / 复制 / 邮件 App；Orbit 不代发']],
+  ['② 招待を受ける', '作废 · 以 b11 A2 为准（2026-10-14）', phone({ body: acceptPage(), tab: -1, overlay: `<div class="urlbar">${ic('link', 'sm')}orbit.app/i/k7Q2-sato</div>`, pins: P(1, '.mac.lav') + P(2, '.acc-btn') }), ['受邀方看到双方会交换什么（对称说明）', '交换可撤销；未注册者可用 Apple / 邮件继续，无需先下载 App']],
 ]);
-h += board('招待 · Web', '', wf({ nav: 'settings', head: '', body: myWeb(100), rail: pubRail(100), pins: P(1, '.modal .hist') }, inviteModal), ['招待履歴：未承認可取り消す；期限切れ自动失效']);
+h += board('招待 · Web', '作废 · 以 b11 A2 为准（2026-10-14）', wf({ nav: 'settings', head: '', body: myWeb(100), rail: pubRail(100), pins: P(1, '.modal .hist') }, inviteModal), ['招待履歴：未承認可取り消す；期限切れ自动失效']);
 
 /* ---- ダーク ---- */
 h += sec('ダークモード', '受信箱 · マイページ · 設定 · 分析 · ⌘K');

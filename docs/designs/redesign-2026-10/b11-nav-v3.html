@@ -129,6 +129,9 @@
   .qr { width: 150px; height: 150px; border-radius: 16px; position: relative; flex: none; background: repeating-conic-gradient(var(--ink) 0 25%, var(--surface) 0 50%) 0 0 / 22px 22px; border: 8px solid var(--surface); box-shadow: 0 0 0 1px var(--line); }
   .qr::after { content: "O"; position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 10px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; box-shadow: 0 0 0 4px var(--surface); }
   .qr.lg { width: 196px; height: 196px; background-size: 28px 28px; }
+  /* 2026-10-14（§21-3）：深色下 QR 不反色——保持浅底深点，相机才读得出 */
+  [data-theme="dark"] .qr { background-image: repeating-conic-gradient(#1E1A24 0 25%, #FFFFFF 0 50%); border-color: #FFFFFF; }
+  [data-theme="dark"] .qr::after { background: #1E1A24; color: #FFFFFF; }
   .code { font-family: var(--font-num); font-weight: 800; font-size: 22px; letter-spacing: .12em; }
   .urlbar { position: absolute; left: 14px; right: 14px; bottom: 30px; height: 46px; border-radius: 18px; z-index: 30; background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-line); box-shadow: var(--shadow-float); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
   .share3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -1174,7 +1177,7 @@ function invAlready() {
     <div class="guide k-iaconnect" style="margin-top:12px;padding:18px;text-align:center"><div class="row" style="justify-content:center;gap:0"><div class="av lg c2" style="box-shadow:0 0 0 3px var(--surface)">高</div><div class="av lg c1" style="margin-left:-12px;box-shadow:0 0 0 3px var(--surface)">佐</div></div>
       <div style="font-size:18px;font-weight:800;margin-top:10px">佐藤 健一さんとつながりますか？</div><div class="sub" style="margin-top:4px;line-height:1.6">新しいアカウントは作りません。<br>お互いの人脈に追加されます。</div></div>
     <div class="card flat k-iashare" style="margin-top:12px;padding:12px 14px"><div class="row between"><b style="font-size:12.5px">佐藤さんに見せる情報</b><span class="lnk" style="font-size:12px">変更</span></div><div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="chip">会社・役職</span><span class="chip">提供できること</span><span class="chip" style="opacity:.5">連絡先（オフ）</span></div></div>
-    <div class="card flat row k-iaexist" style="gap:10px;margin-top:12px;padding:12px 14px"><span style="font-size:18px">📇</span><div class="lbl" style="line-height:1.6;color:var(--ink-2)">佐藤さんはすでにあなたの人脈にいます（名刺 · 9/18）。つながると<b style="color:var(--ink)">本人入力に統合</b>されます。</div></div>`
+    <div class="card flat row k-iaexist" style="gap:10px;margin-top:12px;padding:12px 14px"><span style="font-size:18px">📇</span><div class="lbl" style="line-height:1.6;color:var(--ink-2)">つながったあと、同じ人かどうか確認できます。</div></div>`
     + foot(`<button class="btn primary block xl k-iago">つながる</button><button class="btn ghost block">今はしない</button>`);
 }
 function invExpired() {
@@ -1189,6 +1192,7 @@ function invExpired() {
 const invWebModal = `<div class="overlay"></div><div class="wmodal w560 k-wimodal"><div class="row between"><div><b style="font-size:18px">招待コード</b><div class="lbl">相手が自分で入力 → お互いの人脈に追加（本人入力 ●●●）</div></div><button class="rbtn">${ic('x')}</button></div>
   <div class="row" style="gap:20px;margin-top:18px;align-items:center"><div class="qr"></div><div style="flex:1;min-width:0"><div class="lbl">コード</div><div class="code">7QKM-H4TR</div><div class="lbl" style="margin-top:10px">リンク</div><div class="row" style="gap:8px;margin-top:4px"><div class="input" style="flex:1;color:var(--ink);font-weight:700">orbit.app/i/7QKM-H4TR</div><button class="btn primary"><span class="lic i-copy sm"></span>コピー</button></div></div></div>
   <div class="quota k-wiquota" style="margin-top:16px"><div><span class="lbl">有効期限</span><b>10/14 まで</b></div><div><span class="lbl">使える人数</span><b>残り 9 / 10人</b></div></div>
+  <div class="card flat k-wiinfo" style="margin-top:12px;padding:12px 14px"><div class="row between"><b style="font-size:12.5px">相手に届くあなたの情報</b><span class="lnk" style="font-size:12px">変更</span></div><div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="chip">会社・役職</span><span class="chip">提供できること</span><span class="chip">求めていること</span><span class="chip" style="opacity:.5">連絡先（オフ）</span></div></div>
   <div class="card flat k-wimsg" style="margin-top:12px;padding:14px"><div class="row between"><b style="font-size:13px">メッセージの下書き</b><span class="lbl">ていねい ▾</span></div><div class="lbl" style="margin-top:6px;line-height:1.6;color:var(--ink-2)">先日はありがとうございました。Orbit で連絡先を交換できればと思います。下のリンクから 1分ほどで登録できます…</div></div>
   <div class="macts"><span class="lbl hint">Orbit からは送信しません · <span class="lnk" style="color:var(--coral-text)">無効にする</span></span><button class="btn"><span class="lic i-copy sm"></span>下書きをコピー</button></div></div>`;
 
@@ -1565,7 +1569,7 @@ h += boards([
     ['.k-iaacc', 0, '已登录用户打开链接 → 识别为现有账号，不新建'],
     ['.k-iaconnect', 0, '只问一件事：要不要和佐藤「つながる」'],
     ['.k-iashare', 0, '对方选择给佐藤看哪些信息'],
-    ['.k-iaexist', 0, '如果对方人脈里已有佐藤（名刺）→ つながる后合并为本人入力'],
+    ['.k-iaexist', 0, '2026-10-14（§21-2，S1 / DESIGN §10 #7）：浏览器端不猜「对方人脈里是不是已有此人」——只说「つながったあと、同じ人かどうか確認できます。」，由所有者在联系人上确认统合'],
     ['.k-iago', 0, '「つながる」= 双方互加；「今はしない」不留痕'],
   ]),
   AP('⑧ コードの期限切れ', 'err', { body: invExpired() }, [
