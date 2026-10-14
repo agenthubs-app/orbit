@@ -240,8 +240,8 @@ function stepChip(progress: PlanStepProgress | undefined, done: boolean, t: Retu
   return done ? null : { label: t("plan.step.notStarted"), tone: "neutral" };
 }
 
-export function StepsCard({ plan, cards, onOpenType, onDoneMark, suggestion }: {
-  plan: PlanV2Detail; cards: TypeCardView[]; onOpenType: (itemId: string) => void; onDoneMark: (step: PlanV2Step, n: number) => void; suggestion?: (step: PlanV2Step) => ReactNode;
+export function StepsCard({ plan, cards, onOpenType, onOpenEvents, onDoneMark, suggestion }: {
+  plan: PlanV2Detail; cards: TypeCardView[]; onOpenType: (itemId: string) => void; onOpenEvents?: (() => void) | undefined; onDoneMark: (step: PlanV2Step, n: number) => void; suggestion?: (step: PlanV2Step) => ReactNode;
 }) {
   const { styles } = useStyles();
   const kit = useKitStyles().styles;
@@ -256,15 +256,15 @@ export function StepsCard({ plan, cards, onOpenType, onDoneMark, suggestion }: {
       {steps.map((step, index) => (
         <StepItem key={step.key} n={index + 1} last={index === steps.length - 1} step={step} chip={chips ? stepChip(progress.get(step.key), Boolean(step.completedAt), t) : null}
           types={step.personTypeKeys.flatMap((key) => (byKey.get(key) ? [byKey.get(key)!] : []))} hasEvent={step.personTypeKeys.includes("event")} closing={closingStepNumbers(steps, index, "event")}
-          onOpenType={onOpenType} onDoneMark={() => onDoneMark(step, index + 1)} extra={suggestion?.(step)} kit={kit} styles={styles} />
+          onOpenType={onOpenType} onOpenEvents={onOpenEvents} onDoneMark={() => onDoneMark(step, index + 1)} extra={suggestion?.(step)} kit={kit} styles={styles} />
       ))}
     </KitCard>
   );
 }
 
-function StepItem({ n, last, step, chip, types, hasEvent, closing, onOpenType, onDoneMark, extra, kit, styles }: {
+function StepItem({ n, last, step, chip, types, hasEvent, closing, onOpenType, onOpenEvents, onDoneMark, extra, kit, styles }: {
   n: number; last: boolean; step: PlanV2Step; chip: { label: string; tone: KitTone } | null; types: TypeCardView[]; hasEvent: boolean; closing: number[];
-  onOpenType: (itemId: string) => void; onDoneMark: () => void; extra?: ReactNode; kit: ReturnType<typeof useKitStyles>["styles"]; styles: ReturnType<typeof useStyles>["styles"];
+  onOpenType: (itemId: string) => void; onOpenEvents?: (() => void) | undefined; onDoneMark: () => void; extra?: ReactNode; kit: ReturnType<typeof useKitStyles>["styles"]; styles: ReturnType<typeof useStyles>["styles"];
 }) {
   const { colors } = useOrbitTheme();
   const { t } = useOrbitLocale();
@@ -297,7 +297,7 @@ function StepItem({ n, last, step, chip, types, hasEvent, closing, onOpenType, o
               <KitChip label={`${card.type.emoji} ${card.type.shortLabel}`} tone={typeTone(card.index)} />
             </UiPressable>
           ))}
-          {hasEvent ? <KitChip label={`${PLAN_EVENT_EMOJI} ${t("plan.event.title")}`} /> : null}
+          {hasEvent ? <UiPressable accessibilityRole="link" accessibilityLabel={t("plan.event.title")} hitSlop={6} disabled={!onOpenEvents} onPress={() => onOpenEvents?.()}><KitChip label={`${PLAN_EVENT_EMOJI} ${t("plan.event.title")}`} /></UiPressable> : null}
         </View>
       ) : <UiText style={[kit.lbl, styles.stepLbl]}>{closing.length ? t("plan.step.noNewPeopleClosing", { steps: closing.join("・") }) : t("plan.step.noNewPeople")}</UiText>}
     </View>

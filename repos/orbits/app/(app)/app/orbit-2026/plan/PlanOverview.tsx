@@ -565,9 +565,9 @@ function StepItem({ n, step, planId, progress, suggest, closing, chips, types, t
       {types.length ? (
         <div className={`${styles.chips} ${styles.stepChips}`}>
           {types.map(({ card, index }) => <Link key={card.type.key} href={planTypeHref("web", planId, card.type.itemId)} className={cx(styles.chip, styles[`chip_${typeTone(index)}`])}>{card.type.emoji} {card.type.shortLabel}</Link>)}
-          {hasEvent ? <span className={styles.chip}>🎟️ {t(c.eventTitle)}</span> : null}
+          {hasEvent ? <Link href="/app/events" className={styles.chip} data-plan-step-events="">🎟️ {t(c.eventTitle)}</Link> : null}
         </div>
-      ) : hasEvent ? <div className={`${styles.chips} ${styles.stepChips}`}><span className={styles.chip}>🎟️ {t(c.eventTitle)}</span></div> : <span className={`${styles.lbl} ${styles.stepLbl}`}>{closing.length ? t(c.noNewPeopleClosing, { steps: closing.join("・") }) : t(c.noNewPeople)}</span>}
+      ) : hasEvent ? <div className={`${styles.chips} ${styles.stepChips}`}><Link href="/app/events" className={styles.chip} data-plan-step-events="">🎟️ {t(c.eventTitle)}</Link></div> : <span className={`${styles.lbl} ${styles.stepLbl}`}>{closing.length ? t(c.noNewPeopleClosing, { steps: closing.join("・") }) : t(c.noNewPeople)}</span>}
     </div>
   );
 }

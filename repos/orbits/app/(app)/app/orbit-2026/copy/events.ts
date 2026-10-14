@@ -74,7 +74,7 @@ export const eventsCopy = {
   meetTitle: { ja: "会えそうな人", zh: "可能见到的人", en: "Who you may meet", kind: "cardTitle" },
   meetBasis: { ja: "登壇者・過去参加者から推定", zh: "根据演讲者和往届参会者推测", en: "Estimated from speakers and past attendees", kind: "label" },
   meetSpeakers: { ja: "{label} {n}名（登壇）", zh: "{label}{n}位（演讲）", en: "{label} ×{n} (speaking)", kind: "label" },
-  meetExhibitors: { ja: "{label}（展示 {n}社）", zh: "{label}（展商{n}家）", en: "{label} ({n} exhibitors)", kind: "label" },
+  meetExhibitors: { ja: "{label}（展示{n}社）", zh: "{label}（展商{n}家）", en: "{label} ({n} exhibitors)", kind: "label" },
   meetRegistrants: { ja: "{label} {n}名（申込）", zh: "{label}{n}位（已报名）", en: "{label} ×{n} (registered)", kind: "label" },
   meetKnown: { ja: "{names}も参加予定", zh: "{names}也会参加", en: "{names} going too", kind: "label" },
   honorific: { ja: "{name}さん", zh: "{name}", en: "{name}", kind: "label" },
@@ -165,7 +165,7 @@ export const eventsCopy = {
   statusCancelled: { ja: "取り消し", zh: "已取消", en: "Cancelled", kind: "chip" },
   goingEmptyTitle: { ja: "参加予定はまだありません", zh: "还没有计划参加的活动", en: "Nothing planned yet", kind: "cardTitle" },
   goingEmptySub: { ja: "探すでイベントを見つける", zh: "去「发现」找活动", en: "Find events under Discover", kind: "label" },
-  goingEmptyCta: { ja: "イベントを探す", zh: "找活动", en: "Find events", kind: "button" },
+  goingEmptyCta: { ja: "探す", zh: "发现", en: "Discover", kind: "button" },
   // 参加コード
   codeDialogTitle: { ja: "参加コードを入力", zh: "输入参加码", en: "Enter your entry code", kind: "dialogTitle" },
   codeDialogSub: { ja: "主催者から届いた8桁のコード", zh: "主办方给的8位码", en: "The 8-character code from the organizer", kind: "label" },

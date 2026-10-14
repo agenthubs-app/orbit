@@ -106,7 +106,7 @@ export function AssessmentRail({ item, language, onSkip, onAdd, busy }: { item: 
           ))}
         </div>
       ) : null}
-      {cautionLine ? <div className={`${styles.mac} ${styles.macApricot} ${styles.caution}`}><Icon name="alert" size={16} /> {cautionLine}</div> : null}
+      {cautionLine ? <div className={`${styles.mac} ${styles.macApricot} ${styles.caution} ${styles.railCaution}`}><Icon name="alert" size={16} />{cautionLine}</div> : null}
       <div className={styles.grid2}>
         <button type="button" className={`btn ${styles.btn}`} onClick={onSkip} disabled={busy}>{t("skip")}</button>
         <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={onAdd} disabled={busy || item.userDecision === "added"}>{t("addToPlan")}</button>

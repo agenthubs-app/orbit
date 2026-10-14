@@ -1,0 +1,18 @@
+{
+ "_note": "R26 イベント App（PLANNER 像素 SC）。模拟器 iPhone 16e (r26) 连 mock 服务器 :3026（ORBIT_REDESIGN_MOCK=event-assessment,plan-v2-summary，distDir .next-r26）；每张先切 `fixture`（features/events/design-fixtures/switch.mjs；null = 演示世界默认），重启 App 后打开 `url` 再截。键 = <id>-app-<theme>。",
+ "defaults": { "grid": 30, "wait": 9000, "attribution": "scripts/visual/attribution-redesign-R26-app.json" },
+ "sources": ["repos/orbit-app/src/screens/events/v2/**", "repos/orbit-app/app/(app)/events.tsx", "repos/orbit-app/app/events/**", "repos/orbit-app/src/i18n/*/eventsV2.ts"],
+ "views": [
+  { "id": "A-R26-13", "design": "app.html", "board-index": 13, "url": "orbit://events", "fixture": "assess-empty", "note": "評価 · 空" },
+  { "id": "A-R26-14", "design": "app.html", "board-index": 14, "url": "orbit://events", "fixture": "assess-few", "note": "評価 · 少量" },
+  { "id": "A-R26-15", "design": "app.html", "board-index": 15, "url": "orbit://events", "fixture": "assess-many", "note": "評価 · 大量" },
+  { "id": "A-R26-20", "design": "app.html", "board-index": 30, "url": "orbit://events/assessments/design-assessment-saas-summit", "fixture": "assess-many", "note": "評価結果 ①（上）" },
+  { "id": "A-R26-20d", "design": "app.html", "board-index": 37, "themes": ["dark"], "url": "orbit://events/assessments/design-assessment-saas-summit", "fixture": "assess-many", "note": "評価結果 深色" },
+  { "id": "A-R26-21", "design": "b2-events-flow.html", "board-index": 0, "url": "orbit://events/assessments/demo-assessment-login-required", "fixture": "null", "note": "① ログインが必要" },
+  { "id": "A-R26-22", "design": "b2-events-flow.html", "board-index": 1, "url": "orbit://events/assessments/demo-assessment-not-event-page", "fixture": "null", "note": "② イベントページではない" },
+  { "id": "A-R26-23", "design": "b2-events-flow.html", "board-index": 2, "url": "orbit://events/assessments/demo-assessment-needs-input", "fixture": "null", "note": "③ ポスター不鮮明 → 3項目を補う" },
+  { "id": "A-R26-24", "design": "b2-events-flow.html", "board-index": 3, "url": "orbit://events/assessments/demo-assessment-range", "fixture": "null", "note": "④ 補完後の判定" },
+  { "id": "A-R26-30", "design": "b12-missing-states.html", "board-index": 306, "url": "orbit://events?tab=going", "fixture": "going", "note": "参加予定" },
+  { "id": "A-R26-30e", "design": "b12-missing-states.html", "board-index": 308, "url": "orbit://events?tab=going", "fixture": "going-empty", "note": "参加予定 · 空" }
+ ]
+}

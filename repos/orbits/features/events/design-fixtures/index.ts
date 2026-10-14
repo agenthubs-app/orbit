@@ -49,7 +49,7 @@ export function summit(now = new Date()): EventAssessmentContract {
     knownAttendees: [{ contactId: "design-takahashi", name: "高橋 美咲" }, { contactId: "design-kato", name: "加藤 健" }],
     meetCandidates: [
       { basis: "登壇 3名 · 青葉ベンチャーズ ほか", count: 3, emoji: "💼", label: "VC パートナー", source: "speakers" },
-      { basis: "展示 12社", count: 11, emoji: "🏭", label: "製造業 DX 責任者", source: "exhibitors" },
+      { basis: "展示 12社", count: 12, emoji: "🏭", label: "製造業 DX 責任者", source: "exhibitors" },
       { basis: "高橋さん・加藤さん 参加予定", count: 2, emoji: "👋", label: "既存のつながり", names: ["高橋", "加藤"], source: "known" },
     ],
     partialAttendanceHint: { timeCostAfter: 78, window: "午前のキーノートと VC セッション（10:00–12:30）" },
@@ -89,6 +89,15 @@ export interface EventDesignFixture {
   mine: (MyEventSourceRow & { meet?: { count: number; initials: string[] } })[];
 }
 
+/** b12 #310 右栏：画板把 #12 右栏的「評価の詳細」内容（来源 chip、3 维、会えそうな人、注意）套在 CFO Night 上；只换标题 / 日时 / 参加費 / 分数（5 项之和须等于总分）。 */
+const cfoNightRail = (now: Date): EventAssessmentContract => {
+  const base = summit(now);
+  const cfo = cfoNight(now);
+  return { ...base, facts: { ...base.facts, price: cfo.facts.price, startsAt: cfo.facts.startsAt, title: cfo.facts.title }, id: cfo.id, scoreBreakdown: cfo.scoreBreakdown, total: cfo.total, verdict: cfo.verdict };
+};
+
+const GOING_ASSESSMENT: Record<string, string> = { "design-event-cfo": "design-assessment-cfo-night", "design-event-dx": "design-assessment-dx-osaka", "design-event-saas": "design-assessment-saas-summit" };
+
 export const EVENT_DESIGN_FIXTURES: Readonly<Record<string, (now?: Date) => EventDesignFixture>> = {
   /** web.html #10 / app.html #13 / b8 #3：新用户空态。 */
   "assess-empty": () => ({ assessments: [], mine: [] }),
@@ -107,9 +116,10 @@ export const EVENT_DESIGN_FIXTURES: Readonly<Record<string, (now?: Date) => Even
   "assess-many-6": (now = new Date()) => ({ ...EVENT_DESIGN_FIXTURES["assess-many"]!(now), assessments: [summit(now), extraA(now), cfoNight(now), dxOsaka(now), extraB(now), asakai(now)] }),
   /** b12 W-R26-30：参加予定 3 + 過去 2。 */
   going: (now = new Date()) => ({
-    assessments: [summit(now), cfoNight(now), dxOsaka(now), asakai(now)],
+    assessments: [summit(now), cfoNightRail(now), dxOsaka(now), asakai(now)],
     mine: [
-      ...EVENT_DESIGN_FIXTURES["assess-many"]!(now).mine,
+      // 右栏「評価の詳細」= 下一场参加予定的评估（b12 #310）：参加予定行带上评估 id（只加数据）。
+      ...EVENT_DESIGN_FIXTURES["assess-many"]!(now).mine.map((row) => ({ ...row, assessmentId: GOING_ASSESSMENT[row.eventId] ?? null })),
       going("design-event-past-1", "SaaS Summit 2026", "2026-09-12T10:00:00+09:00", "東京国際フォーラム", 0, "attended", now),
       going("design-event-past-2", "製造業DX カンファレンス 大阪", "2026-09-26T10:00:00+09:00", "グランフロント大阪", 0, "registered", now),
     ],

@@ -153,7 +153,7 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal }: { plan: Pl
         </Section>
       ) : null}
       {problem ? <InlineProblem text={problem} /> : null}
-      <StepsCard plan={plan} cards={cards} onOpenType={openType} onDoneMark={(step, number) => setReopen({ key: step.key, number })} />
+      <StepsCard plan={plan} cards={cards} onOpenType={openType} onOpenEvents={() => router.push("/events" as Href)} onDoneMark={(step, number) => setReopen({ key: step.key, number })} />
       <TypesCard plan={plan} cards={cards} onOpenType={openType} />
       <EventsCard plan={plan} onOpenEvent={(event) => router.push((event.assessmentHref ?? `/events/${encodeURIComponent(event.eventId)}`) as Href)} />
 

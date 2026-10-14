@@ -191,8 +191,11 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   const empty = items !== null && ordered.length === 0 && upcoming.length === 0;
   // 1440: the selected assessment in the rail (web.html #12), the default iOrbit rail otherwise (#10).
   // 1024 / 390 (b8 #0 / #1): no rail button in the header — the result opens as a drawer / its own screen.
-  const rail = tier !== "wide" ? false : tab === "assess" && !empty && railItem
-    ? <AssessmentRail item={railItem} language={language} busy={busy} onAdd={() => void decide(railItem, "add")} onSkip={() => void decide(railItem, "skip")} />
+  // 参加予定页签（b12 #310）：右栏是下一场（有评估记录的）参加予定的「評価の詳細」。
+  const goingRailItem = tab === "going" ? upcoming.map((event) => (items ?? []).find((item) => item.id === event.assessmentId)).find((item) => item?.status === "ready") ?? null : null;
+  const shownRailItem = tab === "assess" && !empty ? railItem : goingRailItem;
+  const rail = tier !== "wide" ? false : shownRailItem
+    ? <AssessmentRail item={shownRailItem} language={language} busy={busy} onAdd={() => void decide(shownRailItem, "add")} onSkip={() => void decide(shownRailItem, "skip")} />
     : true;
 
   return (
@@ -292,6 +295,8 @@ function AssessCard({ t, tier, big, url, setUrl, onAssessUrl, busy, availability
             <label className={`${styles.input} ${medium ? styles.input46 : ""}`}><Icon name="link" size={16} /><input type="url" inputMode="url" value={url} placeholder={t("urlPlaceholder")} aria-label={t("urlLabel")} onChange={(event) => setUrl(event.target.value)} /></label>
             <button type="submit" className={`btn ${styles.btn} ${styles.primary} ${styles.tall}`} style={medium ? { height: 46 } : undefined} disabled={busy}>{t("judge")}</button>
           </form>
+          {/* b8 #0 `.fl`：卡片等高时把拖放区推到底。 */}
+          {medium ? <i className={styles.fl} aria-hidden /> : null}
           <label className={`${styles.drop} ${dragging ? styles.dropOn : ""}`} onDragOver={(event) => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); if (event.dataTransfer.files.length) onFiles(event.dataTransfer.files); }}>
             <Icon name="image" size={16} />{t("drop")}
             {fileInput}
@@ -408,11 +413,14 @@ function MyEvents({ language, upcoming, past, now, t }: { language: OrbitLanguag
   if (coming.length === 0 && past.length === 0) {
     return (
       <div className={styles.wgrid} data-events-going="empty">
-        <div className={`${styles.card} ${styles.span12} ${styles.guide}`} style={{ alignItems: "center", textAlign: "center" }}>
-          <span className={`${styles.emo} ${styles.t_lav}`}>🗓️</span>
-          <b className={styles.title16} style={{ marginTop: 10 }}>{t("goingEmptyTitle")}</b>
-          <div className={styles.lbl}>{t("goingEmptySub")}</div>
-          <a className={`${styles.btn} ${styles.primary}`} style={{ alignSelf: "center", marginTop: 14 }} href="/app/events?tab=discover">{t("goingEmptyCta")}</a>
+        {/* b12 #312 W-R26-30e：大 emoji · 22px 标题 + 副文 · 右侧「探す」主按钮（高 46）。 */}
+        <div className={`${styles.card} ${styles.span12} ${styles.guide} ${styles.goingEmpty}`}>
+          <div className={styles.goingEmptyEmoji} aria-hidden>🗓️</div>
+          <div className={styles.grow}>
+            <div className={styles.goingEmptyTitle}>{t("goingEmptyTitle")}</div>
+            <div className={styles.sub} style={{ marginTop: 4 }}>{t("goingEmptySub")}</div>
+          </div>
+          <a className={`${styles.btn} ${styles.primary} ${styles.goingEmptyBtn}`} href="/app/events?tab=discover"><Icon name="search" size={16} />{t("goingEmptyCta")}</a>
         </div>
       </div>
     );
