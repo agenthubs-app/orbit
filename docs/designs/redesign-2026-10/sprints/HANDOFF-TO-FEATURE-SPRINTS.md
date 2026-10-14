@@ -248,7 +248,7 @@
 | R24-09 | **App 计划概要画板的弁護士卡已变**（916b9f6b：共享数据里弁護士 会える活動 0 → 2；Web 端已在 2026-10-13 重比） | App 计划页门禁还用旧图 | App 计划页那一轮清缓存、重新截图后再比概要画面 | 916b9f6b；`R25-plan-review-goals-cleanup/REWORK-REPORT-web.md` §10 |
 | R24-05c | 组件库轮做完后重比（App 计划页像素门禁） | 未比，待组件库 | 重跑 `app-plan-A.json` 的 A-R24-05 / 12 / 13 / 16 与 `app-plan-C.json` 的 A-R25-01 / 08 / 11 / 12（Sheet / Dialog / Popover，均需手点到状态后 `shot.py`） | REWORK-REPORT-app §4-10 |
 | R24-06c | R26 做完后重比（App 计划页像素门禁） | 未过，待 R26 | 重跑 `app-plan-A.json` 的 A-R24-01 / 04（概要推荐活动行）；同时把 R24-09 的弁護士卡新图一起清缓存重比 | REWORK-REPORT-app §2 A 组 |
-| R24-10 | **App 排版全局口径（待主会话拍板）**：全角标点挤压（Chrome text-spacing-trim）、iOS 按词组折行、CJK 字形纵向 1–3px、composer「＋ / 🎤」无功能 | 计划页各画面因此 raw 停在 0.03–0.08；「·」行距已在 UiText 修 | 推荐：挤压在 UiText 统一做；折行与字形按 `[raster]` 计；画板去掉 composer 两个按钮 | REWORK-REPORT-app §4-1～5 |
+| R24-10 | App 排版全局口径 | **已定并落实（2026-10-14）**：§19（折行 / 字形 1–3px 记 `[raster]`、标点挤压 UiText 做一次（2c514420 / 4eff02e49 / 0c4c2f722 补「·」）、输入栏去「＋ / 🎤」）、§20（App 按「全部带已归因」判通过，脚本已改）、§24（≤5 問去底部输入栏） | 剩下的是各画面自身的差，见 REWORK-REPORT-app §8 | REWORK-REPORT-app §8 |
 
 ---
 

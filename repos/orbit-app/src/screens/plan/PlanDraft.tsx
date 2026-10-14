@@ -245,7 +245,7 @@ export function RevComposer({ label, left, leftLabel, hint, example, placeholder
           value={text}
         />
         <UiPressable accessibilityRole="button" accessibilityLabel={sendLabel} disabled={out || sending || !canSend} hitSlop={5} onPress={onSend} style={styles.send}>
-          <Icon name="up" size={16} color={colors.bg} />
+          <Icon name="send" size={16} color={colors.bg} />
         </UiPressable>
       </View>
     </View>
@@ -301,7 +301,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   rvnZero: { backgroundColor: colors.surface2 },
   rvnSmall: { color: colors.plum700, ...kitText(9.5, "800") },
   rvnSmallZero: { color: colors.ink3 },
-  rvnB: { color: colors.ink, ...kitText(12, "700") },
+  // kit .rvn b：12px 字里嵌 22px 的 em，行盒被撑到 33（em 的 line-height）。
+  rvnB: { color: colors.ink, ...kitText(12, "700"), lineHeight: 33 },
   rvnEm: { ...kitText(22, "900") },
   rvt: { flex: 1, minWidth: 0 },
   rvtText: { color: colors.ink, ...kitText(11.5, "700") },

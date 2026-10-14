@@ -585,7 +585,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   personaWhy: { marginBottom: 8, marginTop: -10 },
   // .v22x .kv：78px 标签列、上下 9。
   kv: { flexDirection: "row", gap: 10, paddingVertical: 9 },
-  kvLabel: { width: 78, marginTop: -2, lineHeight: 18.4 },
+  kvLabel: { width: 78, paddingTop: 1, lineHeight: 18.4, transform: [{ translateY: -3 }] },
   kvValue: { color: colors.ink, ...kitText(12.5, "400", 1.6) },
   quote: { marginTop: 8, paddingVertical: 4, paddingLeft: 12, borderLeftWidth: 3, borderLeftColor: colors.plum300 },
   quoteText: { color: colors.ink, ...kitText(15, "800", 1.6) },

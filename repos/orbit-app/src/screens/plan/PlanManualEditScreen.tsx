@@ -442,7 +442,7 @@ function StepRow({ index, count, title, criteria, original, moved, editing, onEd
       style={[styles.erow, index > 0 && styles.rowGap, lifted && styles.lift, lifted && { transform: [{ translateY: dy }, { rotate: "-1.2deg" }, { scale: 1.02 }] }]}
     >
       <UiPressable accessible={false} delayLongPress={300} onLongPress={() => { onEdit(null); setLifted(true); }} style={styles.erowPress}>
-        <View style={styles.grip}>{GRIP_DOTS.map((dot) => <View key={dot} style={styles.gripDot} />)}</View>
+        <View style={styles.grip}>{GRIP_COLUMNS.map((column) => <View key={column} style={styles.gripColumn}>{GRIP_ROWS.map((row) => <View key={row} style={styles.gripDot} />)}</View>)}</View>
         <View style={[styles.snum, lifted && styles.snumLift]}><UiText style={[styles.snumText, lifted && styles.snumTextLift]}>{String(number)}</UiText></View>
         <View style={kit.grow}>
           {editing === "title" ? (
@@ -469,13 +469,15 @@ function StepRow({ index, count, title, criteria, original, moved, editing, onEd
   );
 }
 
-const GRIP_DOTS = [0, 1, 2, 3, 4, 5];
+// kit .grip：12×18，radial-gradient 1.3px 点、6px 一格 → 2 列 × 3 行。
+const GRIP_COLUMNS = [0, 1];
+const GRIP_ROWS = [0, 1, 2];
 const TYPE_TONES = ["lav", "pink", "blue", "teal", "apricot"] as const;
 const REVIEW_STAGE_KEYS = ["plan.review.stagePremise", "plan.review.stageFix", "plan.review.stageManual"] as const;
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   undo: { backgroundColor: "transparent" },
-  stack: { gap: 14 },
+  stack: { gap: 14, marginTop: -4 },
   intro: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
   introText: { color: colors.ink, ...kitText(12.5, "400", 1.6) },
   back: { marginTop: 12, alignSelf: "flex-start" },
@@ -486,8 +488,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   erow: { borderRadius: 16, backgroundColor: colors.surface2 },
   erowPress: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 10 },
   lift: { backgroundColor: colors.surface, zIndex: 2, shadowColor: colors.plum900, shadowOpacity: 0.22, shadowRadius: 15, shadowOffset: { width: 0, height: 10 } },
-  grip: { width: 12, height: 18, flexDirection: "row", flexWrap: "wrap", alignContent: "space-between", justifyContent: "space-between", paddingVertical: 1.5, paddingHorizontal: 1.5 },
-  gripDot: { width: 2.6, height: 2.6, borderRadius: 1.3, backgroundColor: colors.ink4, marginHorizontal: 0.2 },
+  grip: { width: 12, height: 18, flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 1.7 },
+  gripColumn: { height: 18, justifyContent: "space-between", paddingVertical: 1.7 },
+  gripDot: { width: 2.6, height: 2.6, borderRadius: 1.3, backgroundColor: colors.ink4 },
   snum: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   snumLift: { backgroundColor: colors.plum700 },
   snumText: { color: colors.bg, ...kitText(11, "800") },

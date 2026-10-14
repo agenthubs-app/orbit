@@ -118,7 +118,7 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
           <View style={styles.hero} testID="done-hero">
             {load.done.sample ? <KitSampleTag style={styles.sample} /> : null}
             <View style={styles.tile}><UiText style={styles.tileEmoji}>🏁</UiText></View>
-            <UiText accessibilityRole="header" style={styles.heroTitle}>{t("plan.done.achieved", { goal: load.done.goal })}</UiText>
+            <UiText accessibilityRole="header" style={styles.heroTitle}>{t("plan.done.achieved", { goal: heroGoal(load.done.goal) })}</UiText>
             <UiText style={styles.heroSub}>{load.done.startsOn ? t("plan.done.dateRange", { end: shortDay(load.done.achievedAt, language), start: longDay(load.done.startsOn, language) }) : t("plan.done.date", dateParts(load.done.achievedAt))}</UiText>
           </View>
           <View style={styles.numbers} testID="done-numbers">
@@ -251,6 +251,12 @@ function CandidateCard({ candidate, language, selected, disabled, onSelect }: { 
       {selected && basis ? <UiText style={shared.caption}>{basis}</UiText> : null}
     </UiPressable>
   );
+}
+
+/** 完了の見出し：目標の末尾に「（…）」があればその前で改行する（b4 #25 の 2 行の切り方、Chrome の折り返し任せにしない）。 */
+function heroGoal(goal: string): string {
+  const at = goal.lastIndexOf("（");
+  return at > 0 && goal.endsWith("）") ? `${goal.slice(0, at)}\n${goal.slice(at)}` : goal;
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({

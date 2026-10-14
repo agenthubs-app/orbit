@@ -417,7 +417,9 @@ test("achieve: the question → 完了 (three numbers, best move, skipped) → n
   assert.deepEqual(writes(calls), [`POST /api/agent/plans/v2/${PLAN}/achieve`]);
   assert.equal((calls.find((call) => call.path.endsWith("/achieve"))!.body as { expectedRevision: number }).expectedRevision, (await direct<PlanV2Detail>(server, "GET", `/api/agent/plans/v2/${PLAN}`)).data.revision);
   const hero = page.getByTestId("done-hero");
-  await hero.getByText(`${goal.goal}を達成`).waitFor();
+  // 目標末尾の「（…）」の前で改行する（b4 #25）。
+  const heading = goal.goal.endsWith("）") && goal.goal.lastIndexOf("（") > 0 ? `${goal.goal.slice(0, goal.goal.lastIndexOf("（"))}\n${goal.goal.slice(goal.goal.lastIndexOf("（"))}` : goal.goal;
+  await hero.getByText(`${heading}を達成`).waitFor();
   // b4 #25：三格数字在 hero 下面单独一行。
   const numbers = page.getByTestId("done-numbers");
   await numbers.getByLabel(`スコア ${goal.total}`).waitFor();

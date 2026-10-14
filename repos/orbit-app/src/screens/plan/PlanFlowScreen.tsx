@@ -317,7 +317,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   flat: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 16 },
   knownTitle: { color: colors.ink, ...kitText(12, "800"), marginBottom: 6 },
   known: { flexDirection: "row", gap: 8, paddingVertical: 7 },
-  knownLabel: { width: 74, marginTop: -2, lineHeight: 17.25 },
+  knownLabel: { width: 74, paddingTop: 2, lineHeight: 18, transform: [{ translateY: -4 }] },
   knownValue: { flex: 1, minWidth: 0, color: colors.ink, ...kitText(12, "400") },
   historyCard: { paddingHorizontal: 14 },
   historyTitle: { marginBottom: 6 },
