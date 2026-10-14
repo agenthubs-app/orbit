@@ -58,7 +58,7 @@
 
 ## 像素门禁
 
-- **Web**（`views/web-import-R16.json`，1440 × 浅 / 深，归因 `attribution-redesign-R16.json`，证据 `~/orbit-sprint-evidence/redesign/R16/run-01/r9`，设计图 `--no-cache`，画板已含 19624d5e1）：**13 / 14 PASS**，raw 全部 ≤ 0.003（W-R16-10、06、07、08 深、11a、11b、11c；11b / 11c 的头像配色带 `[data]`）。**未过 1 张**：W-R16-08 浅（「会社が違う（転職？）」Chip 字色 apricot `-text` vs kit `-ink` = 组件库 G23b，乙；raw 0.0012）。设计稿只有 1440，没有 1024 / 390 画板，未比。
+- **Web**（`views/web-import-R16.json`，1440 × 浅 / 深，归因 `attribution-redesign-R16.json`，证据 `~/orbit-sprint-evidence/redesign/R16/run-01/r9`，设计图 `--no-cache`，画板已含 19624d5e1）：**13 / 14 PASS**，raw 全部 ≤ 0.003（W-R16-10、06、07、08 深、11a、11b、11c；11b / 11c 的头像配色带 `[data]`）。**待组件库 1 张**：W-R16-08 浅（「会社が違う（転職？）」Chip 字色 apricot `-text` vs kit `-ink` = 组件库 G23b，乙；raw 0.0012）。设计稿只有 1440，没有 1024 / 390 画板，未比。
 - **App**（`views/app-import-R16.json`，iPhone 16e (add) 浅 / 深，§20 口径，归因 `attribution-redesign-R16-app.json`，证据 `run-01/app-r5`）：**8 / 10 PASS**（全部超阈值带 `[raster]` / `[data]`；整屏 raw 参考：①権限 0.045 / 0.046、③ 0.025、④ 0.061 / 0.065、⑤ 0.050 / 0.051）。**未过**：A-R16-02 浅 / 深——组件库 `Segmented` 高 38（kit `.seg` 30），下面整页下移 4–7px；手写 tablist 不许进新代码（legacy-ui-ratchet），归组件库 G23（乙）。`[raster]` 抽查：①浅 #14 / #18、④浅 #22、⑤浅 #20 的裁剪图已核对（同位置字形 / 抗锯齿、位置 ≤ 3px）。
 - **今日の 1問**（b9 A7）：画板是 Task To-do 里的一张卡，展示页位置不同、整屏无法比；组件按 kit 搬（`.card.flat` 14、`.av.sm`、`.fopt`、`.dn.up`），未单独过门禁（挂进 To-do 时由 R20 比）。
 - 轮次：Web 07 / 08 / 11b / 11c 各 3 轮，其余 1 轮；App 01 / 03 / 04 / 05 各 3 轮内，02 停在第 3 轮（组件库）。
@@ -96,3 +96,4 @@ S 3 条、M 3 条、m 5 条，处理如下：
 - **Web 全量 7574：6604 过、4 失败，均非本组**——`add-scan-flow`「R12 review m9」「e2e upload 4 cards」（R12 名刺流程，等 `[data-scan-add-all]` / 区块顺序，与本次改动无关）、`product-surface-manifest` 的 P1 = `ManualContactDrawer.tsx:267` 的 `div role-button`（R12）、`plan-design-fixtures` 的 offenders = R12 `scan-design-fixture*`（本组文件已改名为 `import-design-gate` / `import-design-demo` / `design-samples`，不在名单里）。
 - **App 全量 3975：3970 过、3 失败**——`RootLayout records first commit`、`native consumers` 为已知偶发（R15 记录同样），`invite-code-screens` S1 单跑 19 / 19 过。
 - `tsc` 两端 0；`copy:qa` 本组 0 条；契约快照已写。
+- **补（f0ecdac5c）**：`expo-contacts` 改为打开連絡先时才 `require`（没有该原生模块的旧开发包启动不再红屏，缺失时提示「この機能はアプリの更新が必要です」）；选文件读取改用 `expo-file-system` `File.bytes()`；导入、今日の 1問、R15 `PUT /api/invite-codes/current/share` 登记进 offline-read 清单（online-only）——`offline-read-inventory` 的 native consumers 一条由此转绿；`invite-code-screens` S1 单跑与成组跑都过（全量里是负载下的 6s 超时，偶发）。
