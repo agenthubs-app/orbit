@@ -104,7 +104,7 @@
     - **请求严出**：请求体 schema 保持 `.strict()`、枚举封闭；服务端写入校验同样严格。
     - **检查器**：响应字段放宽为 `| null`、`| unknown`、`| any`，或给必填字段加 `| undefined`，仍判为破坏（`scripts/contract-snapshot.mjs`）。
     - **`minSupportedAppVersion`（契约 11）在首次正式发布之后才启用**：正式发布前没有需要兼容的已装版本，契约可以直接改（走 `BREAKING.md` 登记），App 重新发布即可；正式发布后，旧版本读不了的变更必须先发一版能读的 App，或同时抬高 `minSupportedAppVersion`。
-11. **逐像素还原设计稿**（RD-16 修订，**用户决定 2026-10-11：适用于以后所有 Sprint，甲乙都一样**，包括 R12–R16 及之后全部功能 Sprint）：每个画面都要过逐像素门禁（Web 1440 / 1024 / 390 × 浅 / 深，App 模拟器浅 / 深；整屏 raw ≤0.02，`--grid` 超阈值带只能归因为 `[data]`），并提交归因文件 `repos/orbits/scripts/visual/attribution-redesign-<Sprint>.json`；不允许在「自定决定」里改动或省略设计稿，偏离先请用户拍板。做法见 [HOW-TO 第 8 节](HOW-TO-START-A-FEATURE-SPRINT.md#8-截图对照页与像素门禁)。
+11. **逐像素还原设计稿**（RD-16 修订，**用户决定 2026-10-11：适用于以后所有 Sprint，甲乙都一样**，包括 R12–R16 及之后全部功能 Sprint）：每个画面都要过逐像素门禁（Web 1440 / 1024 / 390 × 浅 / 深，App 模拟器浅 / 深；整屏 raw ≤0.02，`--grid` 超阈值带只能归因为 `[data]`），（App 画面按[决定表 §20](maintenance/2026-10-12-decisions.md)：所有超阈值带都归因为 `[data]` / `[raster]` 即通过，整屏 raw 只作参考）并提交归因文件 `repos/orbits/scripts/visual/attribution-redesign-<Sprint>.json`；不允许在「自定决定」里改动或省略设计稿，偏离先请用户拍板。做法见 [HOW-TO 第 8 节](HOW-TO-START-A-FEATURE-SPRINT.md#8-截图对照页与像素门禁)。
 12. **UI 对齐的默认流程**（**试行中，2026-10-12**；等 R05 和 Web 计划页两组的用时对比出来后转为定稿；HOW-TO 第 8 节同步）。以后所有 UI 对齐、像素返工和功能 Sprint 的界面部分都按这个流程做：
     - **照源码搬，不对着截图画**：Web 把画板的 DOM 结构和 CSS 数值直接照 `kit/ui.css`、`kit/kit.js` 和画板 HTML 源码搬进 CSS Modules（数值换成 token）；App 把 kit 里的数值一次性翻译成 token 和组件参数。
     - **快慢两档**（`--only` + 设计稿缓存）：迭代时只跑当前画面的门禁（`--suite views/<端>-<Sprint>.json --only <画面>`，或 `--changed` 只跑和改动相关的画面）和相关测试；收口时各跑一次全量门禁（不带 `--only`）和两端全量测试。
