@@ -91,6 +91,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     || consumerFile.startsWith('src/screens/plan/')
     // R15: invite codes, previews and connections are online-only; a code or a preview is never kept on the device.
     || endpointTemplate.startsWith('/api/invite-codes')
+    // R16: import batches (the chosen people, merges to confirm) and the daily question are online-only; never kept on the device.
+    || endpointTemplate.startsWith('/api/contacts/import') || endpointTemplate.startsWith('/api/contacts/completion-question')
     // Bounded private readers have no proven revoke/version cache protocol yet.
     || (method === 'GET' && ([
       '/api/contacts/page','/api/contacts/summary','/api/contacts/labels','/api/inbox/summary',
@@ -528,6 +530,15 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/add/invite/invite-api.ts","POST","/api/invite-codes/connections/:id/merge/dismiss"],
   ["src/screens/add/invite/invite-api.ts","POST","/api/invite-codes/connections/:id/unlink"],
   ["src/screens/add/invite/invite-api.ts","PUT","/api/invite-codes/connections/:id/share"],
+  ["src/screens/add/invite/invite-api.ts","PUT","/api/invite-codes/current/share"],
+  // R16 取り込み (src/screens/add/import/import-api.ts) and 今日の 1問 (CompletionQuestionCard).
+  ["src/screens/add/import/import-api.ts","GET","/api/contacts/import/:id"],
+  ["src/screens/add/import/import-api.ts","PATCH","/api/contacts/import/:id"],
+  ["src/screens/add/import/import-api.ts","POST","/api/contacts/import"],
+  ["src/screens/add/import/import-api.ts","POST","/api/contacts/import/:id"],
+  ["src/screens/add/CompletionQuestionCard.tsx","GET","/api/contacts/completion-question"],
+  ["src/screens/add/CompletionQuestionCard.tsx","POST","/api/contacts/completion-question/:id/answer"],
+  ["src/screens/add/CompletionQuestionCard.tsx","POST","/api/contacts/completion-question/:id/skip"],
   ["src/screens/add/invite/invite-api.ts","PUT","/api/profile"],
   ["src/screens/admin/AdminScreen.tsx","GET","/api/dashboard"],
   ["src/screens/admin/AdminScreen.tsx","GET","/api/events"],

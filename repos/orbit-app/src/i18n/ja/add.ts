@@ -600,6 +600,7 @@ export const add = {
   "add.import.noName": "（名前なし）",
   "add.import.selectRow": "{name} を取り込む",
   "add.import.importN": "{n}人を取り込む",
+  "add.import.needsUpdate": "この機能はアプリの更新が必要です",
   "add.import.loadFailed": "連絡先を読み込めませんでした",
   "add.import.orgTitle": "取り込み中",
   "add.import.orgSub": "連絡先 · {n}人",

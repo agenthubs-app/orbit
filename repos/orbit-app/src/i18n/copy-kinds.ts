@@ -670,6 +670,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["add.import.noName", "label"],
   ["add.import.selectRow", "label"],
   ["add.import.importN", "fullButton"],
+  ["add.import.needsUpdate", "label"],
   ["add.import.loadFailed", "label"],
   ["add.import.orgTitle", "label"],
   ["add.import.orgSub", "label"],

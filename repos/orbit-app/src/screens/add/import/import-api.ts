@@ -30,8 +30,8 @@ function utf8(text: string): Uint8Array<ArrayBuffer> {
 
 export interface ImportApi {
   upload: (body: Uint8Array<ArrayBuffer>, fileName: string, kind: "csv" | "vcard", key: string) => Promise<AddResult<ContactImportBatchView>>;
-  get: (id: string) => Promise<AddResult<ContactImportBatchView>>;
-  rows: (id: string) => Promise<AddResult<ContactImportRowView[]>>;
+  readBatch: (id: string) => Promise<AddResult<ContactImportBatchView>>;
+  readRows: (id: string) => Promise<AddResult<ContactImportRowView[]>>;
   commit: (id: string, intent: string, decisions: readonly { seq: number; decision: "create" | "merge" | "skip" }[], confirmations: readonly ContactImportMergeConfirmation[]) => Promise<AddResult<ContactImportBatchView>>;
 }
 
@@ -55,11 +55,11 @@ export function createImportApi(client: OrbitApiClient): ImportApi {
       }), contactImportBatchResultSchema);
       return result.ok ? { ok: true, data: result.data.batch } : result;
     },
-    async get(id) {
+    async readBatch(id) {
       const result = await read(client.get<unknown>(batchPath(id)), contactImportBatchResponseSchema);
       return result.ok ? { ok: true, data: result.data.batch } : result;
     },
-    async rows(id) {
+    async readRows(id) {
       const rows: ContactImportRowView[] = [];
       let cursor: number | null = 0;
       while (cursor !== null) {

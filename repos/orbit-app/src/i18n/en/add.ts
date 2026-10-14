@@ -599,6 +599,7 @@ export const add = {
   "add.import.noName": "(no name)",
   "add.import.selectRow": "Import {name}",
   "add.import.importN": "Import {n}",
+  "add.import.needsUpdate": "This needs the latest version of the app",
   "add.import.loadFailed": "Could not read your contacts",
   "add.import.orgTitle": "Importing",
   "add.import.orgSub": "Contacts · {n}",

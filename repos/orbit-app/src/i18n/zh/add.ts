@@ -599,6 +599,7 @@ export const add = {
   "add.import.noName": "（无姓名）",
   "add.import.selectRow": "导入 {name}",
   "add.import.importN": "导入 {n} 人",
+  "add.import.needsUpdate": "此功能需要更新 App",
   "add.import.loadFailed": "未能读取通讯录",
   "add.import.orgTitle": "导入中",
   "add.import.orgSub": "通讯录 · {n} 人",

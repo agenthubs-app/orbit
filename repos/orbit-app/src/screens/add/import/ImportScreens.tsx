@@ -3,10 +3,11 @@
 // with its 根拠, filters, live count) → only the chosen people go up as vCard → 取り込み中 → まとめて確認
 // (UnifiedReviewApp) → 完成. LinkedIn: the 3 steps, then the CSV (or the ZIP) from ファイル.
 // Online-only: the batch lives on the server.
-import * as Contacts from "expo-contacts/legacy";
+import type * as ContactsModule from "expo-contacts/legacy";
 import * as DocumentPicker from "expo-document-picker";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { File } from "expo-file-system";
 import { Linking, StyleSheet, View } from "react-native";
 
 import { buildVcards } from "../../../api/compute/vcard-build";
@@ -27,11 +28,37 @@ import { prepareLinkedInFile, toDeviceEntry, toPickPerson, type PickPerson } fro
 
 export const IMPORT_HREF = "/contacts/new/import";
 const LINKEDIN_EXPORT_URL = "https://www.linkedin.com/mypreferences/d/download-my-data";
-const CONTACT_FIELDS = [
-  Contacts.Fields.Name, Contacts.Fields.FirstName, Contacts.Fields.LastName, Contacts.Fields.MiddleName,
-  Contacts.Fields.PhoneticFirstName, Contacts.Fields.PhoneticLastName, Contacts.Fields.Company, Contacts.Fields.JobTitle,
-  Contacts.Fields.Department, Contacts.Fields.Emails, Contacts.Fields.PhoneNumbers,
-];
+type Contacts = typeof ContactsModule;
+
+/** A file chosen in ファイル (copied to the cache by the picker), read on the device — not a network request. */
+async function readPickedFile(uri: string): Promise<Uint8Array<ArrayBuffer>> {
+  return (await new File(uri).bytes()) as Uint8Array<ArrayBuffer>;
+}
+
+/**
+ * expo-contacts is loaded only when 連絡先 is opened: a dev client / build without the native module
+ * (older builds) must not red-screen at launch — Expo Router loads every route. Missing → null → the page
+ * says the app needs an update instead of crashing.
+ */
+let contactsCache: Contacts | null | undefined;
+export function loadContactsModule(): Contacts | null {
+  if (contactsCache !== undefined) return contactsCache;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    contactsCache = require("expo-contacts/legacy") as Contacts;
+  } catch {
+    contactsCache = null;
+  }
+  return contactsCache;
+}
+
+function contactFields(Contacts: Contacts) {
+  return [
+    Contacts.Fields.Name, Contacts.Fields.FirstName, Contacts.Fields.LastName, Contacts.Fields.MiddleName,
+    Contacts.Fields.PhoneticFirstName, Contacts.Fields.PhoneticLastName, Contacts.Fields.Company, Contacts.Fields.JobTitle,
+    Contacts.Fields.Department, Contacts.Fields.Emails, Contacts.Fields.PhoneNumbers,
+  ];
+}
 
 type Translate = ReturnType<typeof useOrbitLocale>["t"];
 type MessageKey = Parameters<Translate>[0];
@@ -67,6 +94,8 @@ export function ContactsImportScreen({ design }: { design?: ImportDesignName }) 
   useEffect(() => {
     if (design) return;
     let live = true;
+    const Contacts = loadContactsModule();
+    if (!Contacts) { setError(t("add.import.needsUpdate")); setStage({ kind: "intro", denied: false }); return; }
     void Contacts.getPermissionsAsync().then((permission) => {
       if (!live) return;
       if (permission.status === "granted") void loadPeople();
@@ -77,7 +106,9 @@ export function ContactsImportScreen({ design }: { design?: ImportDesignName }) 
 
   const loadPeople = async () => {
     try {
-      const { data } = await Contacts.getContactsAsync({ fields: CONTACT_FIELDS, sort: Contacts.SortTypes.LastName });
+      const Contacts = loadContactsModule();
+      if (!Contacts) { setError(t("add.import.needsUpdate")); setStage({ kind: "intro", denied: false }); return; }
+      const { data } = await Contacts.getContactsAsync({ fields: contactFields(Contacts), sort: Contacts.SortTypes.LastName });
       setStage({ kind: "pick", people: data.map((contact, index) => toPickPerson(contact.id ?? `c${index}`, toDeviceEntry(contact), t)) });
     } catch {
       setError(t("add.import.loadFailed"));
@@ -86,6 +117,8 @@ export function ContactsImportScreen({ design }: { design?: ImportDesignName }) 
   };
   const allow = async () => {
     if (stage.kind === "intro" && stage.denied) { void Linking.openSettings(); return; }
+    const Contacts = loadContactsModule();
+    if (!Contacts) { setError(t("add.import.needsUpdate")); return; }
     const permission = await Contacts.requestPermissionsAsync().catch(() => null);
     // Denied: back to 人脈を追加, no second prompt from here (DESIGN §2.7).
     if (permission?.status !== "granted") { back(); return; }
@@ -98,7 +131,7 @@ export function ContactsImportScreen({ design }: { design?: ImportDesignName }) 
     const previous = stage;
     setStage({ kind: "organizing", count: 0, preview: [] });
     try {
-      const bytes = new Uint8Array(await (await fetch(asset.uri)).arrayBuffer()) as Uint8Array<ArrayBuffer>;
+      const bytes = await readPickedFile(asset.uri) as Uint8Array<ArrayBuffer>;
       await upload(api, bytes, asset.name || "contacts.vcf", "vcard", 0, previous);
     } catch {
       setError(t("add.import.uploadFailed"));
@@ -305,7 +338,7 @@ export function LinkedInImportScreen() {
     if (!asset) return;
     setBusy(true);
     try {
-      const raw = new Uint8Array(await (await fetch(asset.uri)).arrayBuffer());
+      const raw = await readPickedFile(asset.uri);
       const prepared = prepareLinkedInFile(raw, asset.name || "Connections.csv");
       if (prepared.ok === false) { setError(t(prepared.reason)); return; }
       const uploaded = await api.upload(prepared.bytes, prepared.name, "csv", newImportKey());
@@ -377,11 +410,11 @@ export function ImportBatchScreen({ batchId, excluded = 0, design }: { batchId: 
   const [problem, setProblem] = useState<string | null>(null);
   const intent = useRef(newImportKey());
   const load = async () => {
-    const batch = await api.get(batchId);
+    const batch = await api.readBatch(batchId);
     if (!batch.ok) { setState({ phase: "missing" }); return; }
     if (batch.data.status === "expired" || batch.data.status === "cancelled") { setState({ phase: "expired" }); return; }
     if (batch.data.status === "completed" || batch.data.status === "committing") { setState({ phase: "ready", batch: batch.data, rows: [] }); return; }
-    const rows = await api.rows(batchId);
+    const rows = await api.readRows(batchId);
     setState(rows.ok ? { phase: "ready", batch: batch.data, rows: rows.data } : { phase: "missing" });
   };
   useEffect(() => { if (!design) void load(); }, [batchId, design]); // eslint-disable-line react-hooks/exhaustive-deps
