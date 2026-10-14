@@ -204,7 +204,8 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
     const updated = await deps.repository.update(row.actorId, row.id, {
       attendeeSignature: orbit?.attendeeSignature ?? null,
       factBasis,
-      facts,
+      // 库内活动存合并后的规则事实（重算任务按开始时间挑候选、按报名人数签名判断变化）。
+      facts: orbit ? merged : facts,
       factsRefreshedAt: at,
       failureReason: null,
       leaseUntil: null,

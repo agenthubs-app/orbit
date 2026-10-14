@@ -37,6 +37,7 @@ import { getConfiguredInviteCodeRuntime } from "../../invite-codes/configured";
 import { createInviteAttemptsCleanupMaintenanceTask, createInviteProfileSyncMaintenanceTask } from "../../invite-codes/sync";
 import { getConfiguredEventAssessmentRuntime } from "../../events/assessment/configured";
 import { createEventAssessmentReadingMaintenanceTask } from "../../events/assessment/job";
+import { createEventAssessmentRecomputeMaintenanceTask, eventPickNotification } from "../../events/assessment/recompute-job";
 import type { MaintenanceTask } from "./pass";
 
 // The production task list. Each task checks its own configuration and reports
@@ -283,6 +284,24 @@ export function createConfiguredMaintenanceTasks({
     createInviteAttemptsCleanupMaintenanceTask({ resolve: () => getConfiguredInviteCodeRuntime()?.attempts ?? null }),
     // R26: event assessments — reclaim reads stuck over 2 minutes (→ timeout), pick up leases that expired (≤20), purge 7-day-old posters.
     createEventAssessmentReadingMaintenanceTask({ resolve: () => getConfiguredEventAssessmentRuntime() }),
+    // R26 (DESIGN §6.5): hourly, rule-only recompute of Orbit-event assessments whose attendee list changed (≤100); an
+    // event_pick inbox note when the score moves ≥10 or the list is first published.
+    createEventAssessmentRecomputeMaintenanceTask({
+      resolve: () => {
+        const runtime = getConfiguredEventAssessmentRuntime();
+        if (!runtime) return null;
+        return {
+          notify: async (notice) => {
+            const { createConfiguredInboxRuntime } = await import("../../notifications/inbox-record-service-factory");
+            const inbox = createConfiguredInboxRuntime();
+            if (inbox) await inbox.service.upsert(eventPickNotification(notice));
+          },
+          orbitEvents: runtime.orbitEvents,
+          plan: runtime.plan,
+          repository: runtime.repository,
+        };
+      },
+    }),
     // Monitoring O2/O3: daily read-cost rollup, Neon reconciliation, retention
     // and admin alerts. Days already final are skipped, so heartbeat passes are cheap.
     createReadCostMaintenanceTask({ env }),
