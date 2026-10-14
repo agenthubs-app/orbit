@@ -543,7 +543,7 @@ const chatTop = (sub = 'プランを作る') => topbar('iOrbit', sub, `<button c
 const flowDia = (cls = '') => `<div class="flow ${cls}"><div class="pay"><span class="e">🎪</span><b>主催者</b><span class="lbl">お金を払う<br>（1本目）</span></div><div class="ar">${ic('right')}</div><div><span class="e">🙋</span><b>参加者</b><span class="lbl">無料で体験<br>事後フォロー</span></div><div class="ar">${ic('right')}</div><div><span class="e">⭐</span><b>Pro</b><span class="lbl">個人課金<br>（2本目）</span></div></div>`;
 const HINT_EX = '例：「営業は当面 2人でやる。仲間はデザインを優先。主催者には最初の 1回は無料で試してほしい。」';
 const revBar = (n, cls = '') => `<div class="revbar ${n ? '' : 'zero'} ${cls}"><div class="rvn k-rvn"><small>AI 修正</small><b>あと <em>${n}</em> 回</b></div><div class="rvt">${n ? '現状と考えを、できるだけ一度にまとめて書いてください' : '修正は使い切りました。手動で編集するか、この内容で確定します'}<span class="ex">${n ? HINT_EX : '変更がなかった回も 1回と数えます'}</span></div></div>`;
-const composer = (ph = '修正したいことを入力', off = false) => `<div class="composer ${off ? 'off' : ''}"><button class="lbtn">${ic('plus', 'sm')}</button><span class="in">${ph}</span><button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
+const composer = (ph = '修正したいことを入力', off = false) => `<div class="composer ${off ? 'off' : ''}"><span class="in">${ph}</span><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
 const leftChip = (n, cls = '') => `<span class="chip ${n ? 'lav' : ''} ${cls}">AI 修正 あと ${n} 回</span>`;
 
 /* ===================== ① 目標入力 ===================== */

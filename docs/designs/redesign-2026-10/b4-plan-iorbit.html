@@ -1295,7 +1295,7 @@ const V22F = (() => {
   const FMR = ['前提', 'AI 修正', '手動編集'];
   const chatTop = sub => topbar('iOrbit', sub, `<button class="rbtn">${ic('menu')}</button>`, `<button class="rbtn">${ic('x')}</button>`);
   const wTop = sub => mainhead('iOrbit', sub, `<button class="rbtn">${ic('menu')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`);
-  const composer = (ph = '修正したいことを入力', off = false) => `<div class="composer ${off ? 'off' : ''}"><button class="lbtn">${ic('plus', 'sm')}</button><span class="in">${ph}</span><button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
+  const composer = (ph = '修正したいことを入力', off = false) => `<div class="composer ${off ? 'off' : ''}"><span class="in">${ph}</span><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
   const leftChip = (t, on = true, cls = '') => `<span class="chip ${on ? 'lav' : ''} ${cls}">${t}</span>`;
   /* revBar：o.top = 小字 · o.unit = 回 · o.t = 说明 · o.ex = 例 */
   const revBar = (n, o = {}) => `<div class="revbar ${n ? '' : 'zero'} ${o.cls || ''}"><div class="rvn k-rvn"><small>${o.top || 'AI 修正'}</small><b>あと <em>${n}</em> 回</b></div><div class="rvt">${o.t || '現状と考えを、できるだけ一度にまとめて書いてください'}<span class="ex">${o.ex || '例：「CFO 経験者は伊藤さんに頼めそう。CVC は後回しでいい。」'}</span></div></div>`;

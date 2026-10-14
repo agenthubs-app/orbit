@@ -3043,7 +3043,7 @@ const scanGuideLegacy = () => topbar('名刺をスキャン', 'はじめての�
     <div class="mybar k-legacy" style="background:var(--mac-teal);color:var(--mac-teal-ink);margin-bottom:12px">${ic('check', 'sm')}以前の読み取りは人脈に反映済みです。</div>
     <div class="sg-frame">${MC({ style: 'transform:rotate(-3deg) scale(.9)' })}<i></i><i></i><i></i><i></i></div>
     <div class="card" style="padding:14px"><div class="card-h" style="margin-bottom:10px"><h3>うまく撮るコツ</h3><span class="chip lav">連写 OK · 一度に最大 100枚</span></div>
-      <div class="tip4">${[['☀️', '明るい場所で', '影と反射を避ける'], ['📄', '平らに置く', '机の上がいちばん'], ['⬜', '四隅を枠に', '自動で切り抜きます'], ['🔁', '表と裏', '裏は任意 · 自動でペア']].map(([e, t, d]) => `<div><span>${e}</span><div style="min-width:0"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div></div>
+      <div class="tip4">${[['☀️', '明るい場所で', '影と反射を避ける'], ['📄', '平らに置く', '机の上がいちばん'], ['⬜', '四隅を枠に', '名刺全体が写るように撮ります'], ['🔁', '表と裏', '裏は任意 · 自動でペア']].map(([e, t, d]) => `<div><span>${e}</span><div style="min-width:0"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div></div>
     <div class="card" style="padding:14px"><div class="card-h" style="margin-bottom:10px"><h3>撮ったあと</h3></div>${st3([['🤖', 'AI が読み取る', 'バックグラウンド'], ['✅', '例外だけ確認', '重複 · 推測あり'], ['👥', '全員 人脈へ', '濃さ ●●○ から']])}</div>`
   + foot(`<button class="btn primary block xl">${ic('scan', 'sm')}カメラを開く</button><div class="row between" style="padding:0 4px"><span class="lnk" style="font-size:13px">${ic('image', 'sm')} 写真から選ぶ</span><span class="chk"><i></i>次回から表示しない</span></div>`);
 const stoppedApp = () => topbar('名刺の読み取り', '12枚', xBtn) + `
@@ -3226,7 +3226,7 @@ const chatTop = (sub = 'プランを作る') => topbar('iOrbit', sub, `<button c
 const flowDia = (cls = '') => `<div class="flow ${cls}"><div class="pay"><span class="e">🎪</span><b>主催者</b><span class="lbl">お金を払う<br>（1本目）</span></div><div class="ar">${ic('right')}</div><div><span class="e">🙋</span><b>参加者</b><span class="lbl">無料で体験<br>事後フォロー</span></div><div class="ar">${ic('right')}</div><div><span class="e">⭐</span><b>Pro</b><span class="lbl">個人課金<br>（2本目）</span></div></div>`;
 const HINT_EX = '例：「営業は当面 2人でやる。仲間はデザインを優先。主催者には最初の 1回は無料で試してほしい。」';
 const revBar = (n, cls = '') => `<div class="revbar ${n ? '' : 'zero'} ${cls}"><div class="rvn k-rvn"><small>AI 修正</small><b>あと <em>${n}</em> 回</b></div><div class="rvt">${n ? '現状と考えを、できるだけ一度にまとめて書いてください' : '修正は使い切りました。手動で編集するか、この内容で確定します'}<span class="ex">${n ? HINT_EX : '変更がなかった回も 1回と数えます'}</span></div></div>`;
-const composer = (ph = '修正したいことを入力', off = false) => `<div class="composer ${off ? 'off' : ''}"><button class="lbtn">${ic('plus', 'sm')}</button><span class="in">${ph}</span><button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
+const composer = (ph = '修正したいことを入力', off = false) => `<div class="composer ${off ? 'off' : ''}"><span class="in">${ph}</span><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
 const leftChip = (n, cls = '') => `<span class="chip ${n ? 'lav' : ''} ${cls}">AI 修正 あと ${n} 回</span>`;
 
 /* ===================== ① 目標入力 ===================== */
@@ -5212,7 +5212,7 @@ const V22F = (() => {
   const FMR = ['前提', 'AI 修正', '手動編集'];
   const chatTop = sub => topbar('iOrbit', sub, `<button class="rbtn">${ic('menu')}</button>`, `<button class="rbtn">${ic('x')}</button>`);
   const wTop = sub => mainhead('iOrbit', sub, `<button class="rbtn">${ic('menu')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`);
-  const composer = (ph = '修正したいことを入力', off = false) => `<div class="composer ${off ? 'off' : ''}"><button class="lbtn">${ic('plus', 'sm')}</button><span class="in">${ph}</span><button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
+  const composer = (ph = '修正したいことを入力', off = false) => `<div class="composer ${off ? 'off' : ''}"><span class="in">${ph}</span><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
   const leftChip = (t, on = true, cls = '') => `<span class="chip ${on ? 'lav' : ''} ${cls}">${t}</span>`;
   /* revBar：o.top = 小字 · o.unit = 回 · o.t = 说明 · o.ex = 例 */
   const revBar = (n, o = {}) => `<div class="revbar ${n ? '' : 'zero'} ${o.cls || ''}"><div class="rvn k-rvn"><small>${o.top || 'AI 修正'}</small><b>あと <em>${n}</em> 回</b></div><div class="rvt">${o.t || '現状と考えを、できるだけ一度にまとめて書いてください'}<span class="ex">${o.ex || '例：「CFO 経験者は伊藤さんに頼めそう。CVC は後回しでいい。」'}</span></div></div>`;

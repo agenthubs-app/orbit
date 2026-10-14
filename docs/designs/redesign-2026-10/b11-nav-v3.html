@@ -1069,7 +1069,7 @@ function scanGuide() {
       <div class="tip4">${[['☀️', '明るい場所で', '影と反射を避ける'], ['📄', '平らに置く', '机の上がいちばん'], ['⬜', '四隅を枠に', '名刺全体が写るように撮ります'], ['🔁', '表と裏', '裏は任意 · 自動でペア']].map(([e, t, d]) => `<div><span>${e}</span><div style="min-width:0"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div></div>
     <div class="card k-sgafter" style="padding:14px"><div class="card-h" style="margin-bottom:10px"><h3>撮ったあと</h3></div>
       ${st3([['🤖', 'AI が読み取る', 'バックグラウンド'], ['✅', '例外だけ確認', '重複 · 推測あり'], ['👥', '全員 人脈へ', '濃さ ●●○ から']])}</div>
-    <div class="card flat row k-sgpriv" style="gap:10px;padding:12px 14px;align-items:flex-start"><span style="font-size:18px">🔒</span><div class="lbl" style="line-height:1.6;color:var(--ink-2)">名刺の画像と内容は<b style="color:var(--ink)">あなただけ</b>が見られます。AI の学習には使いません。設定 › データ からいつでも削除できます。</div></div>
+    <div class="card flat row k-sgpriv" style="gap:10px;padding:12px 14px;align-items:flex-start"><span style="font-size:18px">🔒</span><div class="lbl" style="line-height:1.6;color:var(--ink-2)">名刺の画像と内容は<b style="color:var(--ink)">あなただけ</b>が見られます。AI の学習には使いません。</div></div>
   ` + foot(`<button class="btn primary block xl k-sggo">${ic('scan', 'sm')}カメラを開く</button><div class="row between" style="padding:0 4px"><span class="lnk k-sgpick" style="font-size:13px">${ic('image', 'sm')} 写真から選ぶ</span><span class="chk k-sgskip"><i></i>次回から表示しない</span></div>`);
 }
 const camHint = () => `<div class="cam">
@@ -1083,16 +1083,16 @@ const camHint = () => `<div class="cam">
 const SCANROWS = [['ok', '高山 亮', 'ミライ精機 · 経営企画部 部長'], ['ok', '伊達 修平', '北辰製作所 · 経営企画'], ['guess', '松本 千尋', '関西テクノ電機 · 役職を推測'], ['dup', '高橋 美咲', '青葉ベンチャーズ · すでに人脈にいます'], ['run', '12枚目を読み取り中', '表＋裏'], ['wait', '残り 5枚', '順番待ち']];
 const scanRow = ([k, t, d]) => `<div class="prow2 ${k === 'dup' ? 'k-sprow-dup' : k === 'guess' ? 'k-sprow-guess' : ''}"><div class="tp" style="width:44px"></div><div class="meta"><b>${t}</b><span>${d}</span></div>${k === 'ok' ? `<span class="okd">${ic('check')}</span>` : k === 'guess' ? '<span class="chip apricot">推測あり</span>' : k === 'dup' ? '<span class="chip lav">重複</span>' : k === 'run' ? '<span class="spin"></span>' : '<span class="lbl">…</span>'}</div>`;
 function scanProg() {
-  return topbar('読み取り中', '17枚 · 残り 約20秒', xBtn) + `
+  return topbar('読み取り中', '17枚', xBtn) + `
     <div class="card k-spbar" style="padding:14px 16px"><div class="row between"><b style="font-size:15px"><span class="count">12</span> / 17枚</b><span class="lbl">閉じても続きます</span></div>${bar(70)}
       <div class="lbl" style="margin-top:4px">終わったら通知します · 撮影は続けられます</div></div>
     <div class="card k-splist" style="padding:4px 16px">${SCANROWS.map(scanRow).join('')}</div>
-    <div class="card flat k-spnext" style="padding:12px 14px"><div class="lbl" style="line-height:1.6;color:var(--ink-2)">読み終わると<b style="color:var(--ink)">そのまま人脈に入ります</b>。確認が要るのは <b style="color:var(--ink)">重複</b> と <b style="color:var(--ink)">推測あり</b> だけ（⑨ と同じ「まとめて確認」）。</div></div>`
+    <div class="card flat k-spnext" style="padding:12px 14px"><div class="lbl" style="line-height:1.6;color:var(--ink-2)">読み終わると<b style="color:var(--ink)">そのまま人脈に入ります</b>。確認が要るのは <b style="color:var(--ink)">重複</b> と <b style="color:var(--ink)">推測あり</b> だけ。</div></div>`
     + foot(`<button class="btn block xl k-spgo" style="background:var(--surface-3);color:var(--ink-3)"><span class="spin"></span>読み取り中…（完了後に「まとめて確認」）</button>`);
 }
 function scanDone() {
   return topbar('', '', '<span></span>', xBtn) + `
-    <div class="center rise" style="margin-top:6px"><div style="font-size:46px;line-height:1">🎉</div><div class="h1 k-sdtitle" style="margin-top:8px">17人を人脈に追加しました</div><div class="sub" style="margin-top:4px">名刺 17枚 · 10月7日 CFO Night Tokyo</div></div>
+    <div class="center rise" style="margin-top:6px"><div style="font-size:46px;line-height:1">🎉</div><div class="h1 k-sdtitle" style="margin-top:8px">16人を人脈に追加しました</div><div class="sub" style="margin-top:4px">名刺 17枚 · 10月7日 CFO Night Tokyo</div></div>
     <div class="card k-sdnum" style="margin-top:14px;padding:14px"><div class="bignum3"><div><b>${num(14)}</b><span class="lbl">新しく追加</span></div><div><b>${num(2)}</b><span class="lbl">既存と統合</span></div><div><b style="color:var(--coral)">${num(1)}</b><span class="lbl">読み取れず</span></div></div>
       <div class="lbl" style="margin-top:12px">情報の濃さ</div><div class="stack3 k-sdstack"><i style="flex:2;background:var(--plum-300)"></i><i style="flex:13;background:var(--plum-500)"></i><i style="flex:1;background:var(--plum-700)"></i></div>
       <div class="row" style="gap:12px;margin-top:8px;font-size:11px;color:var(--ink-3)">${dn(1)}2人 ${dn(2)}13人 ${dn(3)}1人</div></div>
@@ -1104,7 +1104,7 @@ function scanDone() {
 const scanFailSheet = `<div class="sheet-scrim"></div><div class="sheet k-sfsheet"><div class="grab"></div>
   <div class="row" style="gap:12px;align-items:flex-start"><div style="position:relative">${MC({ cls: 'blur', style: 'width:120px;padding:8px 9px' })}</div><div style="flex:1;min-width:0"><b style="font-size:16px">この 1枚は読み取れませんでした</b><div class="row k-sfwhy" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="chip coral">画像を読み取れませんでした</span></div></div></div>
   <div class="card flat k-sfpart" style="margin-top:12px;padding:10px 12px"><div class="lbl">読めたところ</div><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><span class="chip apricot">会社：東邦テクノ…（推測）</span><span class="chip" style="opacity:.55">名前：—</span><span class="chip" style="opacity:.55">連絡先：—</span></div></div>
-  <div style="display:grid;gap:8px;margin-top:14px"><button class="btn primary block k-sfre">${ic('scan', 'sm')}この 1枚を撮り直す</button><button class="btn block k-sfhand">${ic('pen', 'sm')}手入力で補う（読めた所は入力済み）</button><button class="btn ghost block k-sfskip">スキップ（あとで 判断待ち に 1件）</button></div></div>`;
+  <div style="display:grid;gap:8px;margin-top:14px"><button class="btn primary block k-sfre">${ic('scan', 'sm')}この 1枚を撮り直す</button><button class="btn block k-sfhand">${ic('pen', 'sm')}手入力で補う（読めた所は入力済み）</button><button class="btn ghost block k-sfskip">スキップ</button></div></div>`;
 function scanFailBg() { return topbar('読み取り完了', '17枚中 16枚', xBtn) + `<div class="card" style="padding:4px 16px">${[['ok', '高山 亮', 'ミライ精機 · 経営企画部 部長'], ['ok', '伊達 修平', '北辰製作所 · 経営企画'], ['ok', '森田 拓也', '東邦テクノロジーズ · 事業開発部']].map(scanRow).join('')}<div class="prow2"><div class="tp ng" style="width:44px"></div><div class="meta"><b>読み取れませんでした</b><span>16枚目</span></div><span class="ngd">!</span></div></div>`; }
 function scanWeb() {
   return mainhead('名刺をスキャン', '人脈を追加 › 名刺', back, '') + `<div class="wgrid">
@@ -1202,14 +1202,15 @@ function handMin() {
     <div class="card flat row k-hmmerge" style="gap:10px;margin-top:16px;padding:12px 14px;align-items:flex-start"><span style="font-size:18px">📇</span><div class="lbl" style="line-height:1.6;color:var(--ink-2)">あとで名刺を撮ると、<b style="color:var(--ink)">上書きではなく統合</b>されます（手入力した項目は残り、違う所だけ確認）。</div></div>
     <div class="card flat k-hmdens" style="margin-top:10px;padding:12px 14px"><div class="row between"><span class="lbl">このまま保存すると</span>${dn(1)}</div><div class="lbl" style="margin-top:4px">身元だけ · 毎日の 1問で少しずつ補えます</div></div>`;
 }
-function handFull() {
+function handFull(o = {}) {
   return handHead(true) + `
     <div class="fld" style="margin-top:4px"><label>名前 <span class="req">必須</span></label><div class="in"><span>石川 陽介</span></div></div>
     <div class="fld focus k-hfco"><label>会社</label><div class="in"><span>ミライ<i class="caret"></i></span></div>
       <div class="sugg"><div class="on"><span class="emo sm blue" style="width:26px;height:26px;font-size:13px">🏭</span><span>ミライ精機株式会社 <span class="lbl">· 人脈に 3人</span></span></div><div><span class="emo sm" style="width:26px;height:26px;font-size:13px;background:var(--surface-2)">＋</span><span>「ミライ」で新しく登録</span></div></div></div>
-    <div class="fld k-hfwhere"><label>出会った場所</label><div class="row" style="gap:6px;flex-wrap:wrap"><span class="fopt on">🥂 CFO Night Tokyo（10/7）</span><span class="fopt">🏯 製造業DX 大阪</span><span class="fopt">紹介</span><span class="fopt">その他…</span></div><div class="msg">参加予定・最近のイベントから候補を出します</div></div>
+    <div class="fld k-hfwhere"><label>出会った場所</label><div class="row" style="gap:6px;flex-wrap:wrap"><span class="fopt on">CFO Night Tokyo（10/7）</span><span class="fopt">製造業DX 大阪</span><span class="fopt">紹介</span><span class="fopt">その他…</span></div><div class="msg">参加予定・最近のイベントから候補を出します</div></div>
     <div class="fld k-hfmemo"><label>メモ</label><div class="in" style="min-height:64px;align-items:flex-start;padding-top:10px;font-size:13px"><span style="white-space:normal;line-height:1.6">工場の自動化に関心。<span class="at"><span class="av c3">鈴</span>鈴木 大輔</span> さんと同じ案件</span></div></div>
-    <div class="card flat k-hfdens" style="margin-top:12px;padding:12px 14px"><div class="row between"><span class="lbl">保存すると</span>${dn(2)}</div><div class="lbl" style="margin-top:4px">名刺レベル · 出どころは「手入力」</div></div>`;
+    ${o.moreAdd ? `<div class="row k-hfmore" style="gap:8px;flex-wrap:wrap;margin-top:12px"><span class="addf" style="border-color:var(--surface-3);color:var(--ink-3)">${ic('plus', 'sm')}連絡先</span></div>` : ''}
+    <div class="card flat k-hfdens" style="margin-top:12px;padding:12px 14px"><div class="row between"><span class="lbl">保存すると</span>${dn(1)}</div><div class="lbl" style="margin-top:4px">身元だけ · 出どころは「手入力」</div></div>`;
 }
 const dupSheet = `<div class="sheet-scrim"></div><div class="sheet k-hdsheet"><div class="grab"></div>
   <div class="row" style="gap:10px"><span class="emo apricot">🔍</span><div><b style="font-size:16px">同じ人かもしれません</b><div class="lbl">名前と会社が近い人が人脈にいます</div></div></div>
@@ -1219,13 +1220,13 @@ const dupSheet = `<div class="sheet-scrim"></div><div class="sheet k-hdsheet"><d
 function handSaved() {
   return topbar('', '', back, moreBtn) + `
     <div class="center k-hscard" style="margin-top:2px"><div class="av lg c5" style="margin:0 auto">石</div><div style="font-size:20px;font-weight:800;margin-top:8px">石川 陽介</div><div class="lbl">ミライ精機株式会社</div>
-      <div class="row" style="justify-content:center;gap:8px;margin-top:8px">${dn(2)}${src('hand')}<span class="chip">🥂 CFO Night Tokyo</span></div></div>
+      <div class="row" style="justify-content:center;gap:8px;margin-top:8px">${dn(1)}${src('hand')}<span class="chip">CFO Night Tokyo</span></div></div>
     <div class="card k-hsnext" style="margin-top:14px;padding:6px 16px"><div class="card-h" style="margin:10px 0 2px"><h3>情報を濃くする</h3><span class="lbl">どれか 1つで OK</span></div>
-      <div class="nx"><span class="emo sm apricot">📇</span><div class="meta"><b>名刺を撮る</b><span>手入力の内容と統合 · ●●○ → ●●●</span></div><span class="muted">${ic('right', 'sm')}</span></div>
+      <div class="nx"><span class="emo sm apricot">📇</span><div class="meta"><b>名刺を撮る</b><span>手入力の内容と統合 · ●○○ → ●●○</span></div><span class="muted">${ic('right', 'sm')}</span></div>
       <div class="nx"><span class="emo sm pink">🤝</span><div class="meta"><b>招待コードを送る</b><span>本人が入力 · いつも最新</span></div><span class="muted">${ic('right', 'sm')}</span></div>
       <div class="nx"><span class="emo sm lav">📝</span><div class="meta"><b>面談のメモを書く</b><span>Task › メモ に入ります</span></div><span class="muted">${ic('right', 'sm')}</span></div></div>
     <div class="card flat k-hswhere" style="padding:12px 14px"><div class="lbl" style="line-height:1.6;color:var(--ink-2)">保存先：<b style="color:var(--ink)">人脈 › すべて</b> の先頭（最近追加）· 「情報が少ない人」にも入ります</div></div>`
-    + toastA('人脈に追加しました', '石川 陽介 · 手入力 · ●●○', { notab: true });
+    + toastA('人脈に追加しました', '石川 陽介 · 手入力 · ●○○', { notab: true });
 }
 const handDrawer = `<div class="overlay"></div><div class="drawer k-whdrawer" style="width:520px"><div class="row between"><div><b style="font-size:18px">手入力で追加</b><div class="lbl">名前だけで保存できます</div></div><button class="rbtn">${ic('x')}</button></div>
   <div class="fld"><label>名前 <span class="req">必須</span></label><div class="in" style="background:var(--surface)"><span>石川 陽介</span></div></div>
@@ -1499,7 +1500,7 @@ h += boards([
 ]);
 h += boards([
   AP('④ 完成', 'ok', { body: scanDone() }, [
-    ['.k-sdtitle', 0, '完成页标题直接说结果「17人を人脈に追加しました」+ 场合（时间 · 活动推定）'],
+    ['.k-sdtitle', 0, '完成页标题直接说结果「16人を人脈に追加しました」（新しく追加 14 + 既存と統合 2；读不出的不计）+ 场合（时间 · 活动推定）'],
     ['.k-sdnum', 0, '三格：新加 14 / 与已有合并 2 / 读不出 1（珊瑚色）'],
     ['.k-sdstack', 0, '浓度分布条 + 三点图例：名刺多为 ●●○；●○○ 的人以后每天 1 问补'],
     ['.k-sdnext', 0, '下一步建议（都可跳过）：お礼 3 人 → 今日の一手；与计划相关 2 人；读不出 1 张 → ⑤'],
@@ -1587,11 +1588,11 @@ h += boards([
     ['.k-hmmerge', 0, '提前说清：以后拍名片是合并、不是覆盖（手入力的字段保留，只确认不同处）'],
     ['.k-hmdens', 0, '保存后的浓度预告：只有名字 = ●○○，之后每天 1 问补'],
   ]),
-  AP('② あるといいもの（補足）', '', { body: handFull() }, [
+  AP('② あるといいもの（補足）', '', { body: handFull({ moreAdd: true }) }, [
     ['.k-hfco', 0, '会社：输入即联想人脈里已有的公司（「人脈に 3人」）'],
     ['.k-hfwhere', 0, '出会った場所：候选来自参加予定 / 最近的活动，一点即选'],
     ['.k-hfmemo', 0, 'メモ 可 @人（同 Task › メモ）；保存后同时进 Task › メモ'],
-    ['.k-hfdens', 0, '补了公司与场合 → ●●○；出处始终是「手入力」'],
+    ['.k-hfdens', 0, '2026-10-14 定（D-10）：没有联系方式 → ●○○（身元だけ）；出处始终是「手入力」；未展开的「＋ 連絡先」保留在下方；活动 chip 不带 emoji'],
   ]),
   AP('③ 重複の候補', 'err', { body: handFull(), overlay: dupSheet }, [
     ['.k-hdcmp', 0, '保存前发现相近的人：左右对照（输入中 / 人脈里），差异处是名字的汉字'],
@@ -1599,7 +1600,7 @@ h += boards([
     ['.k-hdmerge', 0, '推荐「統合する」；「別の人として保存」也一键完成'],
   ]),
   AP('④ 保存したあと', 'ok', { body: handSaved() }, [
-    ['.k-hscard', 0, '保存后进入联系人详情：浓度 ●●○ + 来源「手入力」+ 场合 chip'],
+    ['.k-hscard', 0, '保存后进入联系人详情：浓度 ●○○（无联系方式，D-10）+ 来源「手入力」+ 场合 chip（不带 emoji）'],
     ['.k-hsnext', 0, '「情報を濃くする」三条路：拍名片（合并）/ 发招待码（本人入力）/ 写面谈メモ'],
     ['.k-hswhere', 0, '保存去向：人脈「すべて」顶部（最近追加），并进入「情報が少ない人」'],
     ['.toast', 0, 'Toast「人脈に追加しました · 元に戻す」（5 秒）'],
