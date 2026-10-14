@@ -79,7 +79,7 @@ export function ManualSavedView({ saved }: { saved: ManualSaved }) {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   head: { alignItems: "center", marginTop: 2 },
   name: { marginTop: 8, fontSize: 20, fontWeight: "800", lineHeight: 30, color: colors.ink },
-  lbl: { fontSize: 11.5, fontWeight: "500", lineHeight: 17.25, color: colors.ink3Text },
+  lbl: { fontSize: 11.5, fontWeight: "500", lineHeight: 17.25, color: colors.ink3 },
   chips: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8 },
   src: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999, backgroundColor: colors.surface2 },
   srcText: { fontSize: 11, fontWeight: "700", lineHeight: 16.5, color: colors.ink2 },
@@ -90,7 +90,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   nxLine: { borderTopWidth: 1, borderTopColor: colors.line },
   meta: { flex: 1, minWidth: 0 },
   nxTitle: { fontSize: 13, fontWeight: "700", lineHeight: 19.5, color: colors.ink },
-  nxSub: { fontSize: 11.5, lineHeight: 17.25, color: colors.ink3Text },
+  nxSub: { fontSize: 11.5, lineHeight: 17.25, color: colors.ink3 },
   flat: { marginTop: 14, backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
   where: { fontSize: 11.5, fontWeight: "500", lineHeight: 18.4, color: colors.ink2 },
   whereStrong: { fontWeight: "700", color: colors.ink },
