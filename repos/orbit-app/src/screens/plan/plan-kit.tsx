@@ -11,6 +11,7 @@ import Svg, { Defs, Path, Rect, Stop } from "../../components/ui/svg";
 import type { DesignIconName } from "../../api/design/icons";
 import { createThemedStyles } from "../../design/theme";
 import { LinearGradient } from "./plan-svg";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useStandardCopy } from "../../i18n/standard-copy";
 
 /** kit 文字：字号、字重、行高倍数（默认 1.5）、字距（em）。 */
@@ -107,8 +108,9 @@ export function KitCardHead({ title, right, style }: { title: ReactNode; right?:
 /**
  * kit `linear-gradient(135deg, from, to stop%)` 铺满父容器（父容器要 overflow hidden + 圆角）。
  * CSS 的 135° 渐变线过中心、长度 = (w + h)·sin45°，这里按同一几何换成 userSpace 端点。
+ * `vertical`：`linear-gradient(to bottom, …)`（底栏 .foot 的淡出）；`fromOpacity` 0 = 从透明开始（kit `transparent`）。
  */
-export function KitGradient({ from, to, stop = 1, id }: { from: string; to: string; stop?: number; id: string }) {
+export function KitGradient({ from, to, stop = 1, id, vertical = false, fromOpacity = 1 }: { from: string; to: string; stop?: number; id: string; vertical?: boolean; fromOpacity?: number }) {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const half = size ? ((size.w + size.h) * Math.SQRT1_2) / 2 : 0;
   const cx = (size?.w ?? 0) / 2;
@@ -119,8 +121,8 @@ export function KitGradient({ from, to, stop = 1, id }: { from: string; to: stri
       {size ? (
         <Svg width={size.w} height={size.h}>
           <Defs>
-            <LinearGradient id={id} gradientUnits="userSpaceOnUse" x1={cx - d} y1={cy - d} x2={cx + d} y2={cy + d}>
-              <Stop offset={0} stopColor={from} />
+            <LinearGradient id={id} gradientUnits="userSpaceOnUse" x1={vertical ? 0 : cx - d} y1={vertical ? 0 : cy - d} x2={vertical ? 0 : cx + d} y2={vertical ? size.h : cy + d}>
+              <Stop offset={0} stopColor={from} stopOpacity={fromOpacity} />
               <Stop offset={stop} stopColor={to} />
             </LinearGradient>
           </Defs>
@@ -147,6 +149,24 @@ export function KitHatch({ line, base }: { line: string; base: string }) {
   return (
     <View pointerEvents="none" onLayout={(event) => setSize({ w: event.nativeEvent.layout.width, h: event.nativeEvent.layout.height })} style={[StyleSheet.absoluteFill, { backgroundColor: base }]}>
       {size ? <Svg width={size.w} height={size.h}><Path d={d} fill={line} /></Svg> : null}
+    </View>
+  );
+}
+
+const STAGE_KEYS = ["plan.stage.background", "plan.stage.questions", "plan.stage.draft", "plan.stage.fix", "plan.stage.manual"] as const;
+
+/** .fm 五段进度（背景 / 質問 / 初版 / AI 修正 / 手動編集）：每段顶上 4px 条，done = plum-300 + ink-3，on = plum-700 + ink；5 = 全部完成。 */
+export function KitStages({ stage, style, keys = STAGE_KEYS }: { stage: 0 | 1 | 2 | 3 | 4 | 5; style?: StyleProp<ViewStyle>; keys?: readonly (typeof STAGE_KEYS[number] | "plan.review.stagePremise" | "plan.review.stageFix" | "plan.review.stageManual")[] }) {
+  const { styles } = useKitStyles();
+  const { t } = useOrbitLocale();
+  return (
+    <View accessibilityRole="progressbar" accessibilityLabel={t("plan.stage.label", { stage: t(keys[Math.min(stage, keys.length - 1)]!) })} style={[styles.fm, style]}>
+      {keys.map((key, index) => (
+        <View key={key} style={styles.fmItem}>
+          <View style={[styles.fmBar, index < stage && styles.fmBarDone, index === stage && styles.fmBarOn]} />
+          <UiText numberOfLines={1} style={[styles.fmText, index < stage && styles.fmTextDone, index === stage && styles.fmTextOn]}>{t(key)}</UiText>
+        </View>
+      ))}
     </View>
   );
 }
@@ -202,4 +222,13 @@ export const useKitStyles = createThemedStyles((colors) => StyleSheet.create({
   btnTextSm: { ...kitText(12, "700") },
   btnBadge: { backgroundColor: colors.accentSoft, borderRadius: 6, paddingVertical: 1, paddingHorizontal: 4 },
   btnBadgeText: { color: colors.plum700, ...kitText(9.5, "800", 1.5, -0.02) },
+
+  fm: { flexDirection: "row", gap: 4 },
+  fmItem: { flex: 1, minWidth: 0, alignItems: "center", paddingTop: 7 },
+  fmBar: { position: "absolute", left: 0, right: 0, top: 0, height: 4, borderRadius: 2, backgroundColor: colors.surface3 },
+  fmBarDone: { backgroundColor: colors.plum300 },
+  fmBarOn: { backgroundColor: colors.plum700 },
+  fmText: { color: colors.ink4, ...kitText(10, "800") },
+  fmTextDone: { color: colors.ink3 },
+  fmTextOn: { color: colors.ink },
 }));

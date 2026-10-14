@@ -25,7 +25,8 @@ import { usePlanApi, type PlanFailure } from "./plan-api";
 import { newIdempotencyKey } from "./plan-model";
 import { canSendReview, hasReviewInput, markEvidenceTexts, markOf, premiseEdits, reviewHasChanges, reviewStage, turnOrdinal } from "./plan-review-model";
 import { QuotaBar, ReviewProgress, ReviewUsedUpNote } from "./plan-review-ui";
-import { FailureNote, InlineProblem, PlanFrame, Tag, usePlanStyles } from "./plan-ui";
+import { FailureNote, InlineProblem, Tag, usePlanStyles } from "./plan-ui";
+import { Bubble, FlowFoot, PlanChatFrame } from "./plan-flow-kit";
 
 type Load =
   | { kind: "loading" }
@@ -43,6 +44,16 @@ const SOURCE_KEYS = {
   q5: "plan.review.sourceQ5",
   record: "plan.review.sourceRecord",
 } as const;
+
+const REVIEW_STAGE_KEYS = ["plan.review.stagePremise", "plan.review.stageFix", "plan.review.stageManual"] as const;
+
+/** 「前回の確定（9/14）から 3週間です。」（确定日 = 计划开始日 startsOn）。 */
+function sinceText(confirmedAt: string, t: ReturnType<typeof useOrbitLocale>["t"]): string {
+  const at = new Date(confirmedAt);
+  const days = Math.max(0, Math.round((Date.now() - at.getTime()) / 86_400_000));
+  const date = `${at.getMonth() + 1}/${at.getDate()}`;
+  return days >= 14 ? t("plan.review.sinceWeeks", { date, weeks: Math.round(days / 7) }) : t("plan.review.sinceDays", { date, days });
+}
 
 export function PlanReviewScreen({ planId }: { planId: string }) {
   const api = usePlanApi();
@@ -171,13 +182,14 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
   const lastTurn = draft?.turns.at(-1) ?? null;
 
   return (
-    <PlanFrame
-      title={t("plan.review.title")}
-      subtitle={draft?.goal ?? plan?.goal}
-      stage={null}
-      progress={<ReviewProgress stage={stage} />}
+    <PlanChatFrame
+      subtitle={t("plan.review.subtitle", { goal: draft?.goal ?? plan?.goal ?? "" })}
+      stage={stage}
+      stageKeys={REVIEW_STAGE_KEYS}
       onClose={close}
-      footer={view && open ? (
+      onMenu={() => openMainTab(router, "/ai")}
+    >
+      {view && open ? <FlowFoot>{(
         <ReviewFooter
           view={view}
           text={text}
@@ -199,8 +211,7 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
             </>
           }
         />
-      ) : undefined}
-    >
+      )}</FlowFoot> : null}
       {load.kind === "loading" ? <Skeleton lines={6} /> : null}
       {load.kind === "failed" ? (
         <RetryCard
@@ -229,7 +240,8 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
       {view && draft && load.kind === "ready" ? (
         <>
           {failureView("start")}
-          <UiText style={shared.body2}>{view.premiseMarks.length ? t("plan.review.introMarked") : t("plan.review.intro")}</UiText>
+          <Bubble me>{t("plan.review.fromBubble")}</Bubble>
+          <Bubble>{[plan?.startsOn ? sinceText(`${plan.startsOn}T00:00:00+09:00`, t) : null, view.premiseMarks.length ? t("plan.review.introMarked") : t("plan.review.intro")].filter(Boolean).join("")}</Bubble>
           <PremiseCard
             rows={draft.premise}
             view={view}
@@ -259,7 +271,7 @@ export function PlanReviewScreen({ planId }: { planId: string }) {
         </>
       ) : null}
       {view && !open ? <Button label={t("plan.common.back")} onPress={close} variant="secondary" /> : null}
-    </PlanFrame>
+    </PlanChatFrame>
   );
 }
 

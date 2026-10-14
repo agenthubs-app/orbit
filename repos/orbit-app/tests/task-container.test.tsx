@@ -152,16 +152,19 @@ test("tapping segments in a row is not pulled back by the URL catching up a rend
   assert.equal(await page.getByRole("button", { name: "メモを追加" }).count(), 1);
 });
 
-test("the 「＋」 follows the segment: new event, focus the add box, none on プラン, new note", async (t) => {
+test("the 「＋」 follows the segment: new event, focus the add box, 目標を追加 (new=1) on プラン, new note", async (t) => {
   const page = await open(t, { seg: "calendar" });
   await page.getByRole("button", { name: "予定を追加" }).click();
   await page.getByRole("tab", { name: "To-do" }).click();
   await page.getByRole("button", { name: "To-do を追加" }).click();
   assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("aria-label")), "quick add");
   await page.getByRole("tab", { name: "プラン" }).click();
-  assert.equal(await page.getByRole("button", { name: /を追加$/ }).count(), 0);
+  // RD-16 (app.html #20 / #23, b10 ①): プラン has a 「＋」 too — 目標を追加, the same new=1 address as 「次の目標」.
+  assert.equal(await page.getByRole("button", { name: /を追加$/ }).count(), 1);
   await page.waitForTimeout(400);
   assert.equal(await visible(page, "PlanSegment page"), true, "the プラン slot shows PlanSegment (R23)");
+  await page.getByRole("button", { name: "目標を追加" }).click();
+  assert.ok((await navigation(page)).some((entry: { method: string; params?: Record<string, string> }) => entry.method === "setParams" && entry.params?.new === "1" && entry.params?.seg === "plan"), "＋ on プラン opens the goal input (new=1)");
   await page.getByRole("tab", { name: "メモ" }).click();
   await page.getByRole("button", { name: "メモを追加" }).click();
   const pushes = (await navigation(page)).filter((entry: { method: string }) => entry.method === "push");

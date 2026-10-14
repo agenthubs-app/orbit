@@ -783,6 +783,8 @@ export interface PlanPersonTypeDetail {
   /** 已计入 base 的人数（含无名字自报）。 */
   metCount: number;
   skipped: boolean;
+  /** スキップした日時（ISO；スキップ中だけ。「10月7日 · 話した人の点とは分けて表示します」，App 像素返工 2026-10-13 追加）。 */
+  skippedAt?: string | null;
   stepKeys: readonly string[];
   why: string;
   questions: readonly string[];

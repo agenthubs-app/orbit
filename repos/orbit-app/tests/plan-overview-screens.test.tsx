@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { build } from "esbuild";
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser, type Locator, type Page } from "playwright";
 
 import type { PlanPersonTypeDetail, PlanV2Detail, PlanV2SummaryResponse } from "../src/api/contract/plan-v2";
 import { nativeUiStubs } from "./helpers/native-ui-stubs";
@@ -174,6 +174,26 @@ const writes = (calls: Call[]) => calls.filter((call) => call.method !== "GET").
 const read = async <T,>(server: (call: Call) => Promise<Reply | null>, path: string): Promise<T> => ((await server({ body: null, headers: { "x-orbit-lang": "ja", "x-orbit-platform": "app" }, method: "GET", path }))!.body as { data: T }).data;
 const scoreText = (page: Page) => page.getByTestId("plan-score").getAttribute("aria-label");
 const navigation = (page: Page) => page.evaluate(() => (window as unknown as { planNav: { navigation: unknown[]; stack: string[] } }).planNav);
+// RD-16 rework: the type page draws no per-row buttons. A long press on a candidate row opens
+// 「プランの候補にする / すでに話した / 候補から外す」; 「話したを記録 / この分野はもう詳しい /
+// スキップを取り消す」 also sit under the top-right 「⋯」 (その他の操作).
+async function longPress(page: Page, row: Locator) {
+  await row.scrollIntoViewIfNeeded();
+  const box = (await row.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.55, box.y + Math.min(24, box.height / 2));
+  await page.mouse.down();
+  await page.waitForTimeout(500);
+  await page.mouse.up();
+}
+async function rowAction(page: Page, name: string, option: string) {
+  await longPress(page, page.getByTestId("candidate-row").filter({ hasText: name }).first());
+  await page.getByRole("heading", { name, exact: true }).last().waitFor();
+  await page.getByRole("button", { name: option, exact: true }).last().click();
+}
+async function moreAction(page: Page, option: string) {
+  await page.getByRole("button", { name: "その他の操作" }).click();
+  await page.getByRole("button", { name: option, exact: true }).last().click();
+}
 
 test("overview: every field from GET /v2/[planId], the score equal to the home summary, and opening writes nothing", async (t) => {
   const { page, calls, server } = await open(t, "/task?seg=plan");
@@ -278,7 +298,7 @@ test("record from the candidate list: preview, +X toast, 元に戻す reverses o
   await page.getByTestId("candidate-row").first().waitFor();
   await page.getByRole("checkbox", { name: "伊藤 直子を選ぶ" }).click();
   await page.getByTestId("selection-bar").getByText("1人を選択中").waitFor();
-  await page.getByRole("button", { name: "1人を記録" }).click();
+  await page.getByTestId("selection-record").click();
   await page.getByText("プランに反映：CFO 経験者 +10").waitFor();
   await page.getByTestId("record-sheet").getByRole("button", { name: "記録する" }).click();
   await page.getByText("+10 点", { exact: true }).waitFor();
@@ -294,12 +314,12 @@ test("record from the candidate list: preview, +X toast, 元に戻す reverses o
 
 test("anonymous self-report: counts up to the target, then says why it adds nothing", async (t) => {
   const { page } = await open(t, `/plans/${PLAN}/types/${item("cfo")}`);
-  await page.getByRole("button", { name: "話したを記録" }).click();
+  await moreAction(page, "話したを記録");
   await page.getByRole("tab", { name: "オフライン" }).click();
   await page.getByText("名前なしは目標人数（1人）まで加点されます").waitFor();
   await page.getByTestId("record-sheet").getByRole("button", { name: "記録する" }).click();
   await page.getByText("+10 点", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "話したを記録" }).click();
+  await moreAction(page, "話したを記録");
   await page.getByRole("tab", { name: "オフライン" }).click();
   await page.getByTestId("record-sheet").getByRole("button", { name: "記録する" }).click();
   await page.getByText("加点はありません").waitFor();
@@ -310,7 +330,7 @@ test("offline with a name: 「この人ですか？」 first, nothing is scored 
   const { page, calls } = await open(t, `/plans/${PLAN}/types/${item("cvc")}`, {
     rewrite: (call) => (call.path.endsWith("/talked-offline") && (call.body as { name?: string }).name ? ok({ matches: [{ company: "東邦重工", contactId: "demo-person-sasaki", name: "佐々木 遼" }] }) : undefined),
   });
-  await page.getByRole("button", { name: "話したを記録" }).click();
+  await moreAction(page, "話したを記録");
   await page.getByRole("tab", { name: "オフライン" }).click();
   await page.getByLabel("相手の名前（任意）").fill("佐々木");
   await page.getByTestId("record-sheet").getByRole("button", { name: "記録する" }).click();
@@ -339,6 +359,13 @@ test("skip: the confirm focuses the main button; full points striped; 元に戻�
   await page.getByRole("button", { name: "スキップする" }).click();
   await page.getByRole("button", { name: "スキップを取り消す" }).click();
   await page.getByRole("button", { name: "この分野はもう詳しい" }).waitFor();
+  // The same through the top-right 「⋯」 (RD-16).
+  await moreAction(page, "この分野はもう詳しい");
+  await page.getByRole("button", { name: "スキップする" }).click();
+  await page.getByTestId("type-skipped").waitFor();
+  await moreAction(page, "スキップを取り消す");
+  await page.getByTestId("type-skip").waitFor();
+  assert.equal(writes(calls).length, 6, "skip / unskip three times, one request each");
 });
 
 test("step suggestion: shown as a question, nothing completes until 完了にする; the tick can be undone", async (t) => {
@@ -460,13 +487,13 @@ function withTwoCandidates(extra: (detail: PlanPersonTypeDetail) => PlanPersonTy
   };
 }
 
-test("candidates: multi-select shows the bar; 2人を記録 records each person once", async (t) => {
+test("candidates: multi-select shows the bar; すでに話した (selection) records each person once", async (t) => {
   const { page, calls } = await open(t, `/plans/${PLAN}/types/${item("vc_partner")}`, { rewrite: withTwoCandidates() });
   const rows = page.getByTestId("candidate-row");
   await rows.nth(1).waitFor();
   for (let index = 0; index < 2; index += 1) await rows.nth(index).getByRole("checkbox").click();
   await page.getByText("2人を選択中").waitFor();
-  await page.getByRole("button", { name: "2人を記録" }).click();
+  await page.getByTestId("selection-record").click();
   await page.getByText("2人を記録します").waitFor();
   await page.getByTestId("record-sheet").getByRole("button", { name: "記録する" }).click();
   await page.getByText("+20 点", { exact: true }).waitFor();
@@ -476,9 +503,9 @@ test("candidates: multi-select shows the bar; 2人を記録 records each person 
   assert.equal(await page.getByTestId("selection-bar").count(), 0, "the selection clears after recording");
 });
 
-test("candidate ✓ only links (no action is created) and ✕ removes it", async (t) => {
+test("candidate long press › プランの候補にする only links (no action is created)", async (t) => {
   const { page, calls } = await open(t, `/plans/${PLAN}/types/${item("cfo")}`);
-  await page.getByRole("button", { name: "伊藤 直子をプランの候補にする" }).click();
+  await rowAction(page, "伊藤 直子", "プランの候補にする");
   await page.getByText("プランの候補にしました").waitFor();
   const decision = calls.find((call) => call.path.endsWith("/decision"))!;
   assert.equal((decision.body as { decision: string }).decision, "accept");
@@ -528,19 +555,22 @@ test("intro route: 依頼文をつくる opens the draft with コピー / メー
 test("three type states: candidates, not in the network (persona, events), skipped", async (t) => {
   const candidates = await open(t, `/plans/${PLAN}/types/${item("cfo")}`);
   await candidates.page.getByText("あなたの人脈の候補").waitFor();
-  assert.equal(await candidates.page.getByText("人脈にまだいません").count(), 0);
+  assert.equal(await candidates.page.getByTestId("type-none").count(), 0);
   const none = await open(t, `/plans/${PLAN}/types/${item("funded_founder")}`);
-  await none.page.getByText("人脈にまだいません").waitFor();
+  await none.page.getByTestId("type-none").getByText("人脈にまだいません").waitFor();
   await none.page.getByText("会える活動", { exact: true }).first().waitFor();
   assert.equal(await none.page.getByTestId("candidate-row").count(), 0);
   assert.ok(await none.page.getByTestId("event-row").count() > 0, "events still give a next step");
-  await none.page.getByRole("button", { name: /内訳$/ }).first().click();
+  await none.page.getByTestId("event-row").first().click();
   const breakdown = none.page.getByTestId("event-breakdown");
   await breakdown.waitFor();
   for (const label of ["会える人の適合", "推定の確度", "時間とコスト", "既存のつながり", "交流の形式"]) await breakdown.getByText(label).waitFor();
   const skipped = await open(t, `/plans/${PLAN}/types/${item("lawyer")}`);
-  await skipped.page.getByTestId("type-skipped").getByText("習熟済みとして満点を記録しています。話した人の点とは分けて表示します。").waitFor();
-  await skipped.page.getByRole("button", { name: "スキップを取り消す" }).waitFor();
+  // RD-16 design: the skipped row reads 「習熟済みとしてスキップ」 + 「(date ·) 話した人の点とは分けて表示します」.
+  const skippedRow = skipped.page.getByTestId("type-skipped");
+  await skippedRow.getByText("習熟済みとしてスキップ", { exact: true }).waitFor();
+  await skippedRow.getByText(/話した人の点とは分けて表示します$/).waitFor();
+  await skipped.page.getByTestId("type-unskip").waitFor();
   assert.equal(await skipped.page.getByRole("button", { name: "この分野はもう詳しい" }).count(), 0);
 });
 
@@ -557,7 +587,7 @@ test("several people, one fails midway: the sheet stays with both counts; 記録
   const rows = page.getByTestId("candidate-row");
   await rows.nth(1).waitFor();
   for (let index = 0; index < 2; index += 1) await rows.nth(index).getByRole("checkbox").click();
-  await page.getByRole("button", { name: "2人を記録" }).click();
+  await page.getByTestId("selection-record").click();
   const sheet = page.getByTestId("record-sheet");
   await sheet.getByRole("button", { name: "記録する" }).click();
   await sheet.getByText("1人を記録しました · 1人は記録できませんでした。残りの人はもう一度記録できます。").waitFor();
@@ -570,9 +600,9 @@ test("several people, one fails midway: the sheet stays with both counts; 記録
   assert.equal(awarded.filter((id) => id === "demo-person-nakamura").length, 2);
 });
 
-test("candidate row 「すでに話した」 records that person at once (m7)", async (t) => {
+test("candidate long press › 「すでに話した」 records that person at once (m7)", async (t) => {
   const { page, calls } = await open(t, `/plans/${PLAN}/types/${item("cfo")}`);
-  await page.getByRole("button", { name: "伊藤 直子とはすでに話した（記録する）" }).click();
+  await rowAction(page, "伊藤 直子", "すでに話した");
   await page.getByText("+10 点", { exact: true }).waitFor();
   const awards = calls.filter((call) => call.path.endsWith("/awards"));
   assert.equal(awards.length, 1);
@@ -592,7 +622,7 @@ test("「この人ですか？」 rows are disabled while recording; 新しく�
     },
   });
   const openOffline = async () => {
-    await page.getByRole("button", { name: "話したを記録" }).click();
+    await moreAction(page, "話したを記録");
     await page.getByRole("tab", { name: "オフライン" }).click();
     await page.getByLabel("相手の名前（任意）").fill("佐々木");
     await page.getByTestId("record-sheet").getByRole("button", { name: "記録する" }).click();
@@ -614,11 +644,12 @@ test("「この人ですか？」 rows are disabled while recording; 新しく�
 });
 
 test("skip confirm twice while the first runs sends one request; with the type skipped the bar cannot record; the bar reads the safe area (m11)", async (t) => {
-  const { page, calls } = await open(t, `/plans/${PLAN}/types/${item("cfo")}`, { delay: (call) => (call.path.endsWith("/skip") ? 800 : 0), insets: { bottom: 34 } });
+  const { page, calls } = await open(t, `/plans/${PLAN}/types/${item("cfo")}`, { delay: (call) => (call.path.endsWith("/skip") ? 800 : 0), insets: { bottom: 50 } });
   await page.getByRole("checkbox", { name: "伊藤 直子を選ぶ" }).click();
   const bar = page.getByTestId("selection-bar");
   await bar.waitFor();
-  assert.equal(await bar.evaluate((node) => getComputedStyle(node).paddingBottom), "42px", "home indicator (34) + 8");
+  // Design (kit .foot): padding-bottom 30, which already covers a 34 home indicator; a taller one wins (inset − 4).
+  assert.equal(await bar.evaluate((node) => getComputedStyle(node).paddingBottom), "46px", "home indicator (50) − 4");
   await page.getByRole("button", { name: "この分野はもう詳しい" }).click();
   await page.getByRole("button", { name: "スキップする" }).click();
   await page.getByRole("button", { name: "この分野はもう詳しい" }).click({ force: true, timeout: 500 }).catch(() => undefined);
@@ -626,7 +657,7 @@ test("skip confirm twice while the first runs sends one request; with the type s
   await page.getByTestId("type-skipped").waitFor();
   await page.waitForTimeout(900);
   assert.equal(writes(calls).filter((line) => line.endsWith("/skip")).length, 1);
-  assert.equal(await bar.getByRole("button", { name: "1人を記録" }).isDisabled(), true, "a skipped type cannot record");
+  assert.equal(await bar.getByTestId("selection-record").isDisabled(), true, "a skipped type cannot record");
 });
 
 test("proposal answered kind request: 「Orbit で依頼を届けました」 instead of a draft (m11)", async (t) => {
@@ -648,7 +679,7 @@ test("seed plan end to end: overview → type → record → undo → skip → u
   await page.getByRole("button", { name: "CVC 担当者の詳細を開く" }).click();
   await page.getByTestId("type-head").waitFor();
   await page.getByTestId("candidate-row").first().getByRole("checkbox").click();
-  await page.getByRole("button", { name: "1人を記録" }).click();
+  await page.getByTestId("selection-record").click();
   await page.getByTestId("record-sheet").getByRole("button", { name: "記録する" }).click();
   await page.getByText("+5 点", { exact: true }).waitFor();
   await page.getByRole("button", { name: "元に戻す" }).click();
@@ -706,12 +737,12 @@ test("screenshots", { skip: !process.env.R24_SHOTS }, async (t) => {
     ["type-candidates", `/plans/${PLAN}/types/${item("vc_partner")}`, async (page) => { await page.getByTestId("candidate-row").first().getByRole("checkbox").click(); }, { height: 1800, rewrite: withTwoCandidates() }],
     ["type-none", `/plans/${PLAN}/types/${item("funded_founder")}`, null, { height: 2200 }],
     ["type-skipped", `/plans/${PLAN}/types/${item("lawyer")}`, null, { height: 1400 }],
-    ["record-sheet", `/plans/${PLAN}/types/${item("cfo")}`, async (page) => { await page.getByRole("checkbox", { name: "伊藤 直子を選ぶ" }).click(); await page.getByRole("button", { name: "1人を記録" }).click(); await page.getByTestId("record-sheet").waitFor(); }, {}],
-    ["offline-match", `/plans/${PLAN}/types/${item("cvc")}`, async (page) => { await page.getByRole("button", { name: "話したを記録" }).click(); await page.getByRole("tab", { name: "オフライン" }).click(); await page.getByLabel("相手の名前（任意）").fill("佐々木"); await page.getByTestId("record-sheet").getByRole("button", { name: "記録する" }).click(); await page.getByText("この人ですか？").waitFor(); }, { rewrite: matches }],
+    ["record-sheet", `/plans/${PLAN}/types/${item("cfo")}`, async (page) => { await page.getByRole("checkbox", { name: "伊藤 直子を選ぶ" }).click(); await page.getByTestId("selection-record").click(); await page.getByTestId("record-sheet").waitFor(); }, {}],
+    ["offline-match", `/plans/${PLAN}/types/${item("cvc")}`, async (page) => { await moreAction(page, "話したを記録"); await page.getByRole("tab", { name: "オフライン" }).click(); await page.getByLabel("相手の名前（任意）").fill("佐々木"); await page.getByTestId("record-sheet").getByRole("button", { name: "記録する" }).click(); await page.getByText("この人ですか？").waitFor(); }, { rewrite: matches }],
     ["skip-confirm", `/plans/${PLAN}/types/${item("angel")}`, async (page) => { await page.getByRole("button", { name: "この分野はもう詳しい" }).click(); await page.getByText("この分野はもう詳しいですか？").waitFor(); }, {}],
     ["proposal-draft", `/plans/${PLAN}/types/${item("vc_partner")}`, async (page) => { await page.getByTestId("candidate-row").first().getByRole("checkbox").click(); await page.getByTestId("candidate-row").nth(1).getByRole("checkbox").click(); await page.getByRole("button", { name: "面談を提案" }).click(); await page.getByTestId("proposal-sheet").getByRole("button", { name: /さんへの下書きをつくる$/ }).first().click(); await page.getByTestId("mail-draft").waitFor(); }, { height: 1400, rewrite: withTwoCandidates() }],
     ["intro-draft", `/plans/${PLAN}/types/${item("funded_founder")}`, async (page) => { await page.getByRole("button", { name: "伊藤 直子さんへの依頼文をつくる" }).click(); await page.getByTestId("mail-draft").waitFor(); }, { rewrite: intro }],
-    ["event-breakdown", `/plans/${PLAN}/types/${item("funded_founder")}`, async (page) => { await page.getByRole("button", { name: /内訳$/ }).first().click(); await page.getByTestId("event-breakdown").scrollIntoViewIfNeeded(); }, {}],
+    ["event-breakdown", `/plans/${PLAN}/types/${item("funded_founder")}`, async (page) => { await page.getByTestId("event-row").first().click(); await page.getByTestId("event-breakdown").scrollIntoViewIfNeeded(); }, {}],
   ];
   for (const [name, path, act, options] of shots) {
     for (const dark of [false, true]) {

@@ -86,7 +86,8 @@ export function TaskScreen() {
   rememberTaskSegment(segment);
 
   const segments = useMemo(() => TASK_SEGMENTS.map((key) => ({ key, label: copy.taskSegments[key === "memo" ? "notes" : key] })), [copy]);
-  const addLabel = segment === "calendar" ? locale.t("shell.task.addCalendar") : segment === "todo" ? locale.t("shell.task.addTodo") : segment === "memo" ? locale.t("shell.task.addMemo") : null;
+  // プラン: 「＋」 = 目標を追加 (app.html #20 / #23, b10 ①), the same `new=1` address as 「次の目標」.
+  const addLabel = segment === "calendar" ? locale.t("shell.task.addCalendar") : segment === "todo" ? locale.t("shell.task.addTodo") : segment === "memo" ? locale.t("shell.task.addMemo") : locale.t("plan.goals.add");
   // A new note needs the server on the Web (the notes page disables its own 「＋」 the
   // same way, review m3); the device saves notes offline.
   const unreachable = useServerUnreachable();
@@ -95,6 +96,7 @@ export function TaskScreen() {
     if (segment === "calendar") router.push("/schedule/personal/new" as Href);
     else if (segment === "todo") quickAdd.current?.focus();
     else if (segment === "memo") router.push("/notes/new" as Href);
+    else router.setParams({ new: "1", seg: "plan" });
   };
   const today = shellHeaderDate(new Date(), locale.language, timeZone, locale.t);
   const topGap = useShellTopGap();

@@ -368,6 +368,7 @@ export function typeDetail(input: OverviewInput, type: PlanV2TypeItem, now: stri
     roleSituation: type.roleSituation,
     shortLabel: type.shortLabel,
     skipped: Boolean(type.skippedAt),
+    skippedAt: type.skippedAt ?? null,
     stepKeys: input.plan.steps.filter((step) => step.personTypeKeys.includes(type.personType.key)).map((step) => step.key),
     talked: talkedFor(input, type),
     targetCount: type.targetCount,

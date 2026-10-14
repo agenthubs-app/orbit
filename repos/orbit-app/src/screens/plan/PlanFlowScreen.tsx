@@ -11,16 +11,18 @@ import { planDraftEditHref, planTaskSegmentHref } from "../../api/compute/plan-h
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { openMainTab } from "../../components/shell-navigation";
-import { Button, RetryCard, Skeleton, UiPressable, UiText } from "../../components/ui";
+import { Icon, RetryCard, Skeleton, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi, type PlanFailure } from "./plan-api";
 import { flowStage, isKnownGoalKind, newIdempotencyKey, turnChipText } from "./plan-model";
 import { PlanBackground } from "./PlanBackground";
-import { PlanDraftCard, PlanFixBar, PlanTurn } from "./PlanDraft";
+import { DraftActions, DraftUsedUp, PlanDraftCard, PlanFixBar, PlanTurn } from "./PlanDraft";
 import { PlanPremiseCard, PlanQuestions } from "./PlanQuestions";
-import { FailureNote, LimitNote, PlanFrame, usePlanStyles } from "./plan-ui";
+import { FailureNote, LimitNote, usePlanStyles } from "./plan-ui";
+import { KitButton, KitChip, kitText, useKitStyles } from "./plan-kit";
+import { BlockNumber, Bubble, ChatScrollTarget, FlowFoot, FootButton, PlanChatFrame } from "./plan-flow-kit";
 
 const STAGE_TITLES = ["plan.flow.stageBackground", "plan.flow.stageQuestions", "plan.flow.stageDraft", "plan.flow.stageFix", "plan.flow.stageManual"] as const;
 
@@ -32,7 +34,8 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const shared = usePlanStyles().styles;
-  const { styles } = useStyles();
+  const { styles, colors } = useStyles();
+  const kit = useKitStyles().styles;
   const { t } = useOrbitLocale();
   const copy = useStandardCopy();
   const scrollRef = useRef<ScrollView>(null);
@@ -136,25 +139,16 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   };
 
 
+  const subtitle = intake?.status === "planned" ? t("plan.flow.title") : t("plan.flow.subtitle", { stage: t(STAGE_TITLES[stage]) });
+  const footFix = draft && draftOpen ? <PlanFixBar draft={draft} text={fixText} onText={setFixText} onSend={() => void sendFix()} sending={busy === "fix"} /> : null;
+
   return (
-    <PlanFrame
-      title={t("plan.flow.title")}
-      subtitle={t(STAGE_TITLES[stage])}
-      stage={stage}
+    <PlanChatFrame
+      subtitle={subtitle}
+      stage={intake?.status === "planned" ? 5 : stage}
       onClose={close}
+      onMenu={() => openMainTab(router, "/ai")}
       scrollRef={scrollRef}
-      footer={draft && draftOpen ? (
-        <PlanFixBar
-          draft={draft}
-          text={fixText}
-          onText={setFixText}
-          onSend={() => void sendFix()}
-          sending={busy === "fix"}
-          onManual={() => router.push(planDraftEditHref("app", draft.draftId) as Href)}
-          onConfirm={() => void confirm()}
-          confirming={busy === "confirm"}
-        />
-      ) : undefined}
     >
       {load.kind === "loading" ? <Skeleton lines={5} /> : null}
       {load.kind === "failed" ? (
@@ -164,33 +158,18 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
       ) : null}
       {load.kind === "ready" && intake ? (
         <>
-          <UiText style={shared.body2}>{t("plan.flow.goal", { goal: intake.goal })}</UiText>
-          {intake.status === "planned" ? (
-            <View style={shared.card}>
-              <UiText style={shared.heading}>{t("plan.flow.plannedTitle")}</UiText>
-              <UiText style={shared.body2}>{t("plan.flow.plannedBody")}</UiText>
-              <Button label={t("plan.confirmed.open")} onPress={() => openMainTab(router, planTaskSegmentHref("app", intake.planId))} variant="primary" />
-            </View>
-          ) : null}
-          {intake.status === "drafting" ? (
-            <View style={shared.card}>
-              <UiText style={shared.body2}>{t("plan.flow.drafting")}</UiText>
-              <Skeleton lines={3} />
-              <UiText style={shared.label}>{t("plan.flow.reading")}</UiText>
-              {intake.reading.map((item) => (
-                <View key={`${item.kind}-${item.detail}`} style={shared.row}>
-                  <UiText style={[shared.label, styles.readingKind]}>{t(item.kind === "profile" ? "plan.reading.profile" : item.kind === "goal" ? "plan.reading.goal" : item.kind === "network" ? "plan.reading.network" : "plan.reading.capabilities")}</UiText>
-                  <UiText style={[shared.body2, shared.grow]}>{item.detail}</UiText>
-                </View>
-              ))}
-              <Button label={t("plan.error.reload")} loading={reloading} onPress={() => void reload()} size="sm" variant="secondary" />
-            </View>
-          ) : null}
+          <Bubble me>{t("plan.flow.goal", { goal: intake.goal })}</Bubble>
+          {intake.status === "planned" ? <PlannedCards intake={intake} draft={draft} onOpen={() => openMainTab(router, planTaskSegmentHref("app", intake.planId))} /> : null}
+          {intake.status === "drafting" ? <DraftingCards intake={intake} reloading={reloading} onReload={() => void reload()} /> : null}
           {kind && intake.status === "background" ? <PlanBackground intake={intake} kind={kind} api={api} onIntake={onIntake} onReload={() => void reload()} /> : null}
           {kind && intake.status !== "background" && intake.status !== "drafting" && intake.status !== "planned" ? (
-            <View style={[shared.softCard]}>
-              <UiText style={shared.title}>{t("plan.flow.backgroundDone")}</UiText>
-              {intake.background.purpose.value.selectedLevel ? <UiText style={shared.caption}>{t("plan.flow.purposeLevel", { level: intake.background.purpose.value.selectedLevel })}</UiText> : null}
+            <View style={styles.okCard} testID="flow-background-done">
+              <View pointerEvents="none" style={styles.okBorder} />
+              <View style={styles.row8}>
+                <View style={styles.okmark}><Icon name="check" size={16} color={colors.surface} /></View>
+                <UiText style={styles.okTitle}>{t("plan.flow.backgroundDone")}</UiText>
+                {intake.background.purpose.value.selectedLevel ? <UiText style={kit.lbl}>{t("plan.flow.purposeLevel", { level: intake.background.purpose.value.selectedLevel })}</UiText> : null}
+              </View>
             </View>
           ) : null}
           {kind && intake.status === "questions" ? <PlanQuestions intake={intake} kind={kind} api={api} onIntake={onIntake} onReload={() => void reload()} /> : null}
@@ -206,49 +185,143 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
               draftAction={draft ? null : (
                 <View style={styles.draftAction}>
                   {failureView("draft")}
-                  <Button block label={t("plan.premise.makeDraft")} loading={busy === "draft"} onPress={() => void makeDraft()} variant="primary" />
-                  <UiText style={[shared.caption, styles.center]}>{busy === "draft" ? t("plan.premise.making") : t("plan.premise.makeNote")}</UiText>
+                  <KitButton primary icon="sparkle" label={t("plan.premise.makeDraft")} disabled={busy === "draft"} onPress={() => void makeDraft()} style={styles.makeDraft} testID="flow-make-draft" />
+                  <UiText style={[kit.lbl, styles.center]}>{busy === "draft" ? t("plan.premise.making") : t("plan.premise.makeNote")}</UiText>
                 </View>
               )}
             />
           ) : null}
-          {draft ? (
+          {draft && intake.status !== "planned" ? (
             <>
-              <PlanDraftCard draft={draft} />
-              {draft.turns.map((turn) => (
-                <View key={turn.n} onLayout={(event) => { turnOffsets.current[turn.n] = event.nativeEvent.layout.y; }}>
-                  <PlanTurn turn={turn} limit={draft.aiFixLimit} />
-                </View>
-              ))}
-              {busy === "fix" ? <UiText style={shared.caption}>{t("plan.fix.sending")}</UiText> : null}
-              {failureView("fix")}
-              {failureView("confirm")}
-              {draft.fix.state === "fallback" && draft.fix.limit ? <LimitNote failure={{ kind: "aiLimit", limit: draft.fix.limit, retryOn: draft.fix.retryOn ?? null }} /> : null}
-              {draft.turns.length ? (
-                <View style={shared.softCard}>
-                  {draft.aiFixUsed >= draft.aiFixLimit ? <UiText style={shared.title}>{t("plan.fix.allUsed")}</UiText> : null}
-                  {draft.aiFixUsed >= draft.aiFixLimit ? <UiText style={shared.body2}>{t("plan.fix.allUsedBody")}</UiText> : null}
-                  <View style={shared.wrap}>
-                    {draft.turns.map((turn) => (
-                      <UiPressable key={turn.n} accessibilityRole="button" onPress={() => scrollRef.current?.scrollTo({ animated: true, y: Math.max(0, (turnOffsets.current[turn.n] ?? 0) - 8) })} style={styles.historyChip}>
-                        <UiText numberOfLines={1} style={styles.historyText}>{t("plan.turn.chip", { n: turn.n, text: turn.changes.length === 0 || turn.noChangeReason ? t("plan.turn.noChangeChip") : turnChipText(turn.input) })}</UiText>
-                      </UiPressable>
+              {(() => {
+                const usedUp = draft.aiFixUsed >= draft.aiFixLimit;
+                const actions = (first: boolean) => draftOpen && !usedUp
+                  ? <DraftActions draft={draft} first={first} onManual={() => router.push(planDraftEditHref("app", draft.draftId) as Href)} onConfirm={() => void confirm()} confirming={busy === "confirm"} />
+                  : undefined;
+                const last = draft.turns.length - 1;
+                return (
+                  <>
+                    {!draft.turns.length ? <Bubble>{t("plan.draft.bubble")}</Bubble> : null}
+                    <ChatScrollTarget active={draft.turns.length > 0}>
+                      <PlanDraftCard draft={draft} clamp={draft.turns.length > 0} footer={draft.turns.length ? undefined : actions(true)} />
+                    </ChatScrollTarget>
+                    {draft.turns.map((turn, index) => (
+                      <View key={turn.n} style={styles.turn} onLayout={(event) => { turnOffsets.current[turn.n] = event.nativeEvent.layout.y; }}>
+                        <PlanTurn turn={turn} limit={draft.aiFixLimit} footer={index === last ? actions(false) : undefined} mark={index === last} />
+                      </View>
                     ))}
-                  </View>
-                </View>
-              ) : null}
+                    {busy === "fix" ? <UiText style={kit.lbl}>{t("plan.fix.sending")}</UiText> : null}
+                    {failureView("fix")}
+                    {failureView("confirm")}
+                    {draft.fix.state === "fallback" && draft.fix.limit ? <LimitNote failure={{ kind: "aiLimit", limit: draft.fix.limit, retryOn: draft.fix.retryOn ?? null }} /> : null}
+                    {usedUp && draftOpen ? <DraftUsedUp draft={draft} onManual={() => router.push(planDraftEditHref("app", draft.draftId) as Href)} onConfirm={() => void confirm()} confirming={busy === "confirm"} onTurn={(n) => scrollRef.current?.scrollTo({ animated: true, y: Math.max(0, (turnOffsets.current[n] ?? 0) - 8) })} /> : null}
+                  </>
+                );
+              })()}
+              {footFix ? <FlowFoot>{footFix}</FlowFoot> : null}
             </>
           ) : null}
         </>
       ) : null}
-    </PlanFrame>
+    </PlanChatFrame>
+  );
+}
+
+/** b10 ② 下書き中：AI 一言 + 三块骨架（.bsk）+ 「読んでいるもの」（.known）+ 底部「下書き中…」。 */
+function DraftingCards({ intake, reloading, onReload }: { intake: PlanIntakeView; reloading: boolean; onReload: () => void }) {
+  const { styles } = useStyles();
+  const kit = useKitStyles().styles;
+  const { t } = useOrbitLocale();
+  const blocks = [["plan.block.me", [0.8, 0.46]], ["plan.block.team", [0.62, 0.54]], ["plan.block.purpose", [0.7, 0.38]]] as const;
+  return (
+    <>
+      <Bubble>{t("plan.flow.draftingBubble")}</Bubble>
+      <View style={styles.draftCard} testID="flow-drafting">
+        {blocks.map(([key, widths], index) => (
+          <View key={key} style={[styles.bsk, index > 0 && styles.line]}>
+            <BlockNumber n={index + 1} state="draft" />
+            <UiText style={styles.bskTitle}>{t(key)}</UiText>
+            <View style={styles.bskLines}>{widths.map((width) => <View key={width} style={[styles.shimmer, { width: `${width * 100}%` }]} />)}</View>
+          </View>
+        ))}
+      </View>
+      <View style={styles.flat}>
+        <UiText style={styles.knownTitle}>{t("plan.flow.reading")}</UiText>
+        {intake.reading.map((item, index) => (
+          <View key={`${item.kind}-${item.detail}`} style={[styles.known, index > 0 && styles.line]}>
+            <UiText style={[kit.lbl, styles.knownLabel]}>{t(item.kind === "profile" ? "plan.reading.profile" : item.kind === "goal" ? "plan.reading.goal" : item.kind === "network" ? "plan.reading.network" : "plan.reading.capabilities")}</UiText>
+            <UiText style={styles.knownValue}>{item.detail}</UiText>
+          </View>
+        ))}
+      </View>
+      <FlowFoot><FootButton primary={false} disabled={reloading} label={t("plan.flow.draftingFoot")} onPress={onReload} testID="flow-drafting-reload" /></FlowFoot>
+    </>
+  );
+}
+
+/** b12 A-R23-20a 確定済み intake：ok-card（✓ · 確定済み · プランを見る）+ 「この会話の記録」。 */
+function PlannedCards({ intake, draft, onOpen }: { intake: PlanIntakeView; draft: PlanDraftView | null; onOpen: () => void }) {
+  const { styles, colors } = useStyles();
+  const kit = useKitStyles().styles;
+  const { t } = useOrbitLocale();
+  const level = intake.background.purpose.value.selectedLevel;
+  const history = [
+    level ? t("plan.flow.historyBackground", { level }) : t("plan.flow.historyBackgroundNone"),
+    t("plan.flow.historyQuestions", { count: intake.questions?.length ?? 0 }),
+    draft ? t("plan.flow.historyFix", { count: draft.aiFixUsed }) : null,
+    draft && !draft.manualEditAvailable ? t("plan.flow.historyManual", { count: 1 }) : null,
+  ].filter((item): item is string => Boolean(item));
+  return (
+    <>
+      <View style={[styles.okCard, styles.okCardPlanned]} testID="flow-planned">
+        <View pointerEvents="none" style={styles.okBorder} />
+        <View style={styles.row10}>
+          <View style={styles.okmark}><Icon name="check" size={16} color={colors.surface} /></View>
+          <View style={styles.grow}>
+            <UiText style={styles.okTitle14}>{t("plan.flow.plannedTitle")}</UiText>
+            <UiText style={kit.lbl}>{t("plan.flow.plannedBody")}</UiText>
+          </View>
+        </View>
+        <KitButton primary label={t("plan.flow.plannedOpen")} icon="right" onPress={onOpen} style={styles.plannedOpen} testID="flow-planned-open" />
+      </View>
+      <View style={[styles.flat, styles.historyCard]}>
+        <UiText style={[kit.lbl, styles.historyTitle]}>{t("plan.flow.historyTitle")}</UiText>
+        <View style={styles.hist}>{history.map((item) => <KitChip key={item} label={item} />)}</View>
+      </View>
+    </>
   );
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  readingKind: { width: 72 },
-  draftAction: { gap: 8 },
+  grow: { flex: 1, minWidth: 0 },
+  turn: { gap: 10 },
+  row8: { flexDirection: "row", alignItems: "center", gap: 8 },
+  row10: { flexDirection: "row", alignItems: "center", gap: 10 },
+  line: { borderTopWidth: 1, borderTopColor: colors.line },
+  draftAction: { gap: 6, marginTop: 10 },
+  makeDraft: { alignSelf: "stretch" },
   center: { textAlign: "center" },
+  okCard: { borderRadius: 20, paddingVertical: 10, paddingHorizontal: 14, backgroundColor: colors.surface },
+  // kit：border 1.5 color-mix(ok 45%, transparent)——叠一层 ok 色边框、不透明度 .45（不写 rgba）。
+  okBorder: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, borderRadius: 20, borderWidth: 1.5, borderColor: colors.ok, opacity: 0.45 },
+  okCardPlanned: { paddingVertical: 14, paddingHorizontal: 16 },
+  okmark: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.ok, alignItems: "center", justifyContent: "center" },
+  okTitle: { flex: 1, color: colors.ink, ...kitText(12.5, "700") },
+  okTitle14: { color: colors.ink, ...kitText(14, "700") },
+  plannedOpen: { marginTop: 12, alignSelf: "stretch", flexDirection: "row-reverse" },
+  draftCard: { backgroundColor: colors.surface, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 16 },
+  bsk: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
+  bskTitle: { width: 48, color: colors.ink, ...kitText(13, "700") },
+  bskLines: { flex: 1, gap: 5 },
+  shimmer: { height: 9, borderRadius: 8, backgroundColor: colors.surface2 },
+  flat: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 16 },
+  knownTitle: { color: colors.ink, ...kitText(12, "800"), marginBottom: 6 },
+  known: { flexDirection: "row", gap: 8, paddingVertical: 7 },
+  knownLabel: { width: 74, paddingTop: 1, lineHeight: 18 },
+  knownValue: { flex: 1, minWidth: 0, color: colors.ink, ...kitText(12, "400") },
+  historyCard: { paddingHorizontal: 14 },
+  historyTitle: { marginBottom: 6 },
+  hist: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   historyChip: { minHeight: 32, justifyContent: "center", paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
   historyText: { color: colors.ink2, fontSize: 12, fontWeight: "700" },
 }));

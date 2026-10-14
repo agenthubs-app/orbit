@@ -170,18 +170,21 @@ test("わたし: no stance from the AI → none pre-selected and the confirm but
   const intake = intakeAt("background");
   intake.background.me.value.stance = null;
   const { page } = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intake) : undefined);
-  const confirm = page.getByRole("button", { name: "わたしを確定 → チームへ" });
+  // RD-16: the confirm button sits in the bottom bar (FlowFoot), not inside the block.
+  const confirm = page.getByTestId("bg-confirm-me");
   await confirm.waitFor();
-  for (const name of ["代表・オーナー", "共同創業者", "社内の担当者", "個人として"]) assert.equal(await page.getByRole("radio", { name }).getAttribute("aria-checked"), "false", name);
+  assert.equal(await confirm.getAttribute("aria-label"), "わたしを確定 → チームへ");
+  const me = page.getByTestId("bg-me");
+  for (const name of ["代表・オーナー", "共同創業者", "社内の担当者", "個人として"]) assert.equal(await me.getByRole("radio", { name }).getAttribute("aria-checked"), "false", name);
   assert.equal(await confirm.getAttribute("aria-disabled"), "true");
-  await page.getByRole("radio", { name: "個人として" }).click();
+  await me.getByRole("radio", { name: "個人として" }).click();
   assert.equal(await confirm.getAttribute("aria-disabled"), null);
 });
 
 test("わたし: a stance from the AI is pre-selected", async (t) => {
   const { page } = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intakeAt("background")) : undefined);
-  await page.getByRole("button", { name: "わたしを確定 → チームへ" }).waitFor();
-  assert.equal(await page.getByRole("radio", { name: "共同創業者" }).getAttribute("aria-checked"), "true");
+  await page.getByTestId("bg-confirm-me").waitFor();
+  assert.equal(await page.getByTestId("bg-me").getByRole("radio", { name: "共同創業者" }).getAttribute("aria-checked"), "true");
 });
 
 test("premise after a draft: with AI revisions a change asks first (history is discarded); without revisions it opens directly (m16)", async (t) => {
@@ -206,7 +209,7 @@ test("AI_BUSY: no failure card — 「処理中です…」, then one more read 
     if (call.path === "/api/agent/plans/drafts/draft_f2/fix") return fail(409, "CONFLICT", { reason: "AI_BUSY" });
     return undefined;
   });
-  await page.getByText("あと 3 回").waitFor();
+  await page.getByLabel("AI 修正はあと 3 回").waitFor();
   const reads = () => calls.filter((call) => call.method === "GET").length;
   const before = reads();
   await page.getByLabel("AI に頼む修正").fill("営業は 2人で");
@@ -223,14 +226,14 @@ test("team: ticking a capability updates 空き at once and sends nothing", asyn
   const intake = intakeAt("background");
   intake.background.me.confirmedAt = "2026-10-07T01:00:06.000Z";
   const { page, calls } = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intake) : undefined);
-  await page.getByRole("button", { name: "チームを確定 → 目的へ" }).waitFor();
+  await page.getByTestId("bg-confirm-team").waitFor();
   const gaps = () => page.getByText("空き", { exact: true }).count();
   assert.equal(await gaps(), 4);
   const before = calls.length;
   await page.getByRole("checkbox", { name: "Orbit デモ · ブランド" }).click();
   assert.equal(await gaps(), 3);
   await page.getByRole("checkbox", { name: "Orbit デモ · ブランド" }).click();
-  await page.getByRole("tab", { name: "一人" }).click();
+  await page.getByRole("radio", { name: "一人", exact: true }).click();
   assert.equal(await gaps(), 5, "一人: the co-founder's product and design no longer count");
   assert.equal(calls.length, before, "ticks and the solo switch never send a request");
 });
@@ -244,12 +247,16 @@ test("questions: guesses are pre-selected, choices send nothing, and 「まと�
     if (call.path === "/api/agent/plans/intakes/intake_f1/answers") { answers += 1; return ok(intakeAt("premise")); }
     return undefined;
   });
-  await page.getByText("あと 5 つだけ、確認させてください").waitFor();
-  assert.equal(await page.getByRole("radio", { name: "完成・β 運用中 推測" }).getAttribute("aria-checked"), "true");
-  await page.getByRole("checkbox", { name: "仲間に入れる" }).click();
-  await page.getByRole("radio", { name: "法人" }).click();
+  const card = page.getByTestId("flow-questions");
+  await card.getByText("あと 5つだけ、確認させてください").waitFor();
+  // RD-16: the 「推測」 tag on a guessed chip was dropped by design; the guess is still pre-selected.
+  assert.equal(await card.getByRole("radio", { name: "完成・β 運用中" }).getAttribute("aria-checked"), "true");
+  assert.equal(await card.getByText("推測", { exact: true }).count(), 0);
+  await card.getByRole("checkbox", { name: "仲間に入れる", exact: true }).click();
+  await card.getByRole("radio", { name: "法人", exact: true }).click();
   assert.deepEqual(writes(calls), []);
-  const submit = page.getByRole("button", { name: "まとめて回答する（5問）" });
+  const submit = page.getByTestId("questions-send");
+  assert.equal(await submit.getAttribute("aria-label"), "まとめて回答する（5問）");
   await submit.dblclick();
   await page.getByText("確定した前提").waitFor();
   assert.equal(answers, 1);
@@ -309,18 +316,30 @@ test("first draft failing (AI_FAILED) shows the failure card with 再試行", as
 
 test("fix bar: shows the revisions left; at 0 the field is disabled and only edit / confirm remain", async (t) => {
   const left = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intakeAt("drafted")) : call.path === "/api/agent/plans/drafts/draft_f2" ? ok(draftWith(1)) : undefined);
-  await left.page.getByText("あと 2 回").waitFor();
+  await left.page.getByLabel("AI 修正はあと 2 回").waitFor();
+  await left.page.getByText("AI 修正 あと 2 回", { exact: true }).waitFor();
   assert.equal(await left.page.getByLabel("AI に頼む修正").isEditable(), true);
-  // The citations are collapsed on the App.
-  await left.page.getByRole("button", { name: "この案で参考にした業界の現状 2件" }).waitFor();
-  assert.equal(await left.page.getByText("L-103", { exact: true }).count(), 0);
+  // RD-16: edit / confirm sit under the last card, not in the bottom bar.
+  assert.equal(await left.page.getByTestId("draft-manual").getAttribute("aria-disabled"), null);
+  assert.equal(await left.page.getByTestId("draft-confirm").getAttribute("aria-disabled"), null);
+  assert.equal(await left.page.getByTestId("draft-used-up").count(), 0);
+  // The citations sit behind the plan card's 「?」 on the App.
+  const card = left.page.getByTestId("draft-card");
+  assert.equal(await card.getByRole("link").count(), 0);
+  assert.equal(await card.getByText("L-103", { exact: false }).count(), 0);
+  await card.getByRole("button", { name: "根拠を見る" }).click();
+  assert.equal(await card.getByRole("link").count(), 2, "both citations appear after 「?」");
+  await card.getByText("L-103 開業時の資金の集め方", { exact: false }).waitFor();
 
   const out = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intakeAt("drafted")) : call.path === "/api/agent/plans/drafts/draft_f2" ? ok(draftWith(3)) : undefined);
-  await out.page.getByText("あと 0 回").waitFor();
+  await out.page.getByLabel("AI 修正はあと 0 回").waitFor();
   await out.page.getByText("修正は使い切りました。手動で編集するか、この内容で確定します。").waitFor();
   assert.equal(await out.page.getByLabel("AI に頼む修正").isEditable(), false);
   assert.equal(await out.page.getByRole("button", { name: "修正を頼む" }).getAttribute("aria-disabled"), "true");
-  assert.equal(await out.page.getByRole("button", { name: "手動で編集" }).getAttribute("aria-disabled"), null);
+  const usedUp = out.page.getByTestId("draft-used-up");
+  await usedUp.getByText("AI 修正は 3回とも使いました").waitFor();
+  assert.equal(await usedUp.getByTestId("draft-manual").getAttribute("aria-disabled"), null);
+  assert.equal(await usedUp.getByTestId("draft-confirm").getAttribute("aria-disabled"), null);
 });
 
 test("fix: one revision sends the text once and shows only the diff", async (t) => {
@@ -331,15 +350,20 @@ test("fix: one revision sends the text once and shows only the diff", async (t) 
     if (call.path === "/api/agent/plans/drafts/draft_f2/fix") { fixes += 1; return ok(draftWith(1)); }
     return undefined;
   });
-  await page.getByText("あと 3 回").waitFor();
+  await page.getByLabel("AI 修正はあと 3 回").waitFor();
   await page.getByLabel("AI に頼む修正").fill("営業は当面 2人でやる");
   await page.getByRole("button", { name: "修正を頼む" }).click();
   await page.getByText("AI 修正 1 / 3 を反映").waitFor();
-  await page.getByText("あと 2 回").waitFor();
+  await page.getByLabel("AI 修正はあと 2 回").waitFor();
   assert.equal(fixes, 1);
   assert.equal((calls.find((call) => call.path.endsWith("/fix"))!.body as { text: string }).text, "営業は当面 2人でやる");
   await page.getByText("変わらない点：見立てと結論 · 人物タイプと配点").waitFor();
-  await page.getByRole("button", { name: "1：営業は当面 2人でやる" }).waitFor();
+  // RD-16: the request shows as the user's bubble above its turn card (the 「1：…」 history chips
+  // only appear once all revisions are used); edit / confirm move under the last card.
+  await page.getByText("営業は当面 2人でやる", { exact: true }).waitFor();
+  assert.equal(await page.getByTestId("draft-turn").count(), 1);
+  assert.equal(await page.getByTestId("draft-turn").getByTestId("draft-confirm").count(), 1);
+  assert.equal(await page.getByTestId("draft-card").getByTestId("draft-confirm").count(), 0);
 });
 
 test("manual edit: an allocation change keeps the total at 100, removing a type shows where its points go", async (t) => {
@@ -403,11 +427,11 @@ test("empty state → confirmed: goal, background, questions, premise, first dra
   await page.getByRole("button", { name: "iOrbit と具体化する" }).click();
   await page.getByRole("button", { name: "わたしを確定 → チームへ" }).click();
   await page.getByRole("button", { name: "チームを確定 → 目的へ" }).click();
-  await page.getByRole("button", { name: "目的を確定" }).click();
+  // RD-16: the purpose block is last, so one bottom button confirms it and then asks for the questions.
   await page.getByRole("button", { name: "この背景で質問へ（5問まで）" }).click();
-  await page.getByRole("button", { name: "まとめて回答する（5問）" }).click();
-  await page.getByRole("button", { name: "この前提で初版をつくる" }).click();
-  await page.getByRole("button", { name: "この内容で確定" }).click();
+  await page.getByTestId("questions-send").click();
+  await page.getByTestId("flow-make-draft").click();
+  await page.getByTestId("draft-confirm").click();
   await page.getByText("プランを確定しました。").waitFor();
   const navigation = await page.evaluate(() => (window as unknown as { planNav: { navigation: unknown[] } }).planNav.navigation);
   assert.deepEqual(navigation, [{ href: "/plans/flow/intake_f1", method: "push" }, { href: "/task?seg=plan&plan=plan_1", method: "replace" }]);

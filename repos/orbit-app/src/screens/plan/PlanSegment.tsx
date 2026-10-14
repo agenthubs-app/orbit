@@ -99,31 +99,24 @@ export function PlanSegment() {
       {state.kind === "loading" ? <Skeleton lines={4} /> : null}
       {state.kind === "offline" ? <EmptyState title={t("plan.segment.offlineTitle")} message={t("plan.segment.offlineBody")} action={{ label: copy.action.retry, onPress: () => void retry() }} /> : null}
       {state.kind === "failed" ? <RetryCard title={fillCopy(copy.error.loadFailed, { item: copy.taskSegments.plan })} onRetry={() => void retry()} retrying={reloading} /> : null}
-      {state.kind === "ready" && adding ? <NewGoal intakes={state.intakes} onCancel={state.current || state.legacy.length ? () => { setAdding(false); router.setParams({ new: undefined }); } : null} /> : null}
+      {state.kind === "ready" && adding ? <NewGoal intakes={state.intakes} goals={state.goals} onCancel={state.current || state.legacy.length ? () => { setAdding(false); router.setParams({ new: undefined }); } : null} /> : null}
       {state.kind === "ready" && !adding && state.current && state.overview ? <PlanOverview plan={state.overview} reload={load} goals={state.goals} onAddGoal={() => setAdding(true)} /> : null}
       {state.kind === "ready" && !adding && state.current && !state.overview ? <ConfirmedPlanCard plan={state.current} /> : null}
       {state.kind === "ready" && !adding && !state.current && state.legacy.length > 0 ? <PlanLegacyCard plans={state.legacy} onCreate={() => setAdding(true)} /> : null}
-      {state.kind === "ready" && !adding && !state.current && state.legacy.length === 0 && state.intakes ? <PlanGoalInput intakes={state.intakes} /> : null}
+      {state.kind === "ready" && !adding && !state.current && state.legacy.length === 0 && state.intakes ? <PlanGoalInput intakes={state.intakes} goals={state.goals} /> : null}
       {state.kind === "ready" && !adding && !state.current && state.legacy.length === 0 && !state.intakes ? <EmptyState title={t("shell.task.planEmptyTitle")} message={t("shell.task.planEmptyBody")} /> : null}
       {state.kind === "ready" && !state.current ? <AchievedGoals goals={state.goals} /> : null}
     </AppScreen>
   );
 }
 
-/** R25 `new=1` / 「＋ 目標を追加」: the R23 goal input, or the limit explained with two active goals. */
-function NewGoal({ intakes, onCancel }: { intakes: PlanIntakeListResponse | null; onCancel: (() => void) | null }) {
+/** R25 `new=1` / 「＋ 目標を追加」: the R23 goal input; with two active goals it explains the limit and lists them (b12 A-R23-02c). */
+function NewGoal({ intakes, goals, onCancel }: { intakes: PlanIntakeListResponse | null; goals: readonly PlanGoalListItem[]; onCancel: (() => void) | null }) {
   const { styles } = useStyles();
   const { t } = useOrbitLocale();
-  const full = Boolean(intakes && intakes.activeGoals >= intakes.activeGoalLimit);
   return (
     <View style={styles.page} testID="new-goal">
-      {full ? (
-        <View style={styles.card} testID="new-goal-full">
-          <UiText accessibilityRole="header" style={styles.goal}>{t("plan.goals.addTitle")}</UiText>
-          <LimitNote failure={{ kind: "goalLimit" }} />
-          <UiText style={styles.body}>{t("plan.goals.fullBody")}</UiText>
-        </View>
-      ) : intakes ? <PlanGoalInput intakes={intakes} /> : <EmptyState title={t("shell.task.planEmptyTitle")} message={t("shell.task.planEmptyBody")} />}
+      {intakes ? <PlanGoalInput intakes={intakes} goals={goals} /> : <EmptyState title={t("shell.task.planEmptyTitle")} message={t("shell.task.planEmptyBody")} />}
       {onCancel ? <Button label={t("plan.goals.backToPlan")} onPress={onCancel} variant="ghost" /> : null}
     </View>
   );

@@ -405,8 +405,10 @@ test("achieve: the question → 完了 (three numbers, best move, skipped) → n
   assert.equal((calls.find((call) => call.path.endsWith("/achieve"))!.body as { expectedRevision: number }).expectedRevision, (await direct<PlanV2Detail>(server, "GET", `/api/agent/plans/v2/${PLAN}`)).data.revision);
   const hero = page.getByTestId("done-hero");
   await hero.getByText(`${goal.goal}を達成`).waitFor();
-  await hero.getByLabel(`スコア ${goal.total}`).waitFor();
-  await hero.getByLabel(`話した人 ${goal.talkedPeople}`).waitFor();
+  // b4 #25：三格数字在 hero 下面单独一行。
+  const numbers = page.getByTestId("done-numbers");
+  await numbers.getByLabel(`スコア ${goal.total}`).waitFor();
+  await numbers.getByLabel(`話した人 ${goal.talkedPeople}`).waitFor();
   await page.getByTestId("best-move").getByText("VC パートナーとの対話（20 点）").waitFor();
   await page.getByTestId("skipped-areas").getByText("スキップした分野：弁護士（投資契約）").waitFor();
   // R25 review m3: looking back never asks for candidates; only 「次の目標を決める」 does.
@@ -514,7 +516,7 @@ test("goal edit: unchanged cannot be saved; a change asks 作り直す / 目標�
   assert.equal((await direct<PlanQuotaResponse>(server, "GET", "/api/agent/plans/v2/quota")).data.reviewLeftThisMonth, 3, "rebuilding opens a review; only sending uses one");
 });
 
-test("new=1 opens the goal input directly; with two active goals it explains the limit instead", async (t) => {
+test("new=1 opens the goal input directly; with two active goals it explains the limit and lists them", async (t) => {
   const { page, calls } = await open(t, "/task?seg=plan&new=1");
   await page.getByText("何を達成したいですか？").waitFor();
   assert.equal(await page.getByTestId("plan-overview").count(), 0);
@@ -522,9 +524,10 @@ test("new=1 opens the goal input directly; with two active goals it explains the
   await page.getByTestId("plan-overview").waitFor();
   assert.deepEqual(writes(calls), []);
   const full = await open(t, "/task?seg=plan&new=1", { rewrite: withGoals });
-  await full.page.getByTestId("new-goal-full").waitFor();
+  // b12 A-R23-02c: the input stays (as drawn) but 「iOrbit と具体化する」 cannot start a third goal.
+  await full.page.getByTestId("goal-limit-active").waitFor();
   await full.page.getByText("同時に進められる目標は 2 つまでです。").waitFor();
-  assert.equal(await full.page.getByLabel("目標", { exact: true }).count(), 0, "no input at the limit");
+  assert.equal(await full.page.getByTestId("goal-start").isDisabled(), true, "no third goal at the limit");
   assert.equal(await full.page.getByText(PAID).count(), 0);
 });
 

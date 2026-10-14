@@ -17,7 +17,7 @@ import { PLAN_GOAL_TEMPLATES } from "../../api/compute/plan-templates";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { openMainTab } from "../../components/shell-navigation";
-import { Button, Chip, CountUp, Radio, RetryCard, SampleTag, Skeleton, UiPressable, UiText, WhyDisclosure } from "../../components/ui";
+import { Button, Chip, CountUp, Radio, RetryCard, Skeleton, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -25,7 +25,9 @@ import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi, type PlanFailure } from "./plan-api";
 import { goalKindLabel, newIdempotencyKey } from "./plan-model";
 import { dateParts } from "./plan-review-ui";
-import { FailureNote, isLimitFailure, LimitNote, PlanFrame, usePlanStyles } from "./plan-ui";
+import { FailureNote, isLimitFailure, LimitNote, usePlanStyles } from "./plan-ui";
+import { KitButton, KitCard, KitEmo, KitHatch, kitText, useKitStyles, useKitWhy } from "./plan-kit";
+import { FlowFoot, FootFade, PlanChatFrame } from "./plan-flow-kit";
 
 type Load = { kind: "loading" } | { kind: "failed"; failure: PlanFailure } | { kind: "ready"; done: PlanAchievementView };
 const SELF = "self";
@@ -36,7 +38,7 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const shared = usePlanStyles().styles;
-  const { styles } = useStyles();
+  const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
   const copy = useStandardCopy();
   const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -102,7 +104,7 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
   };
 
   return (
-    <PlanFrame title={t("plan.done.title")} stage={null} onClose={later}>
+    <PlanChatFrame title={t("plan.done.title")} stage={null} onClose={later}>
       {load.kind === "loading" ? <Skeleton lines={6} /> : null}
       {load.kind === "failed" ? (
         <RetryCard
@@ -113,31 +115,21 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
       ) : null}
       {load.kind === "ready" ? (
         <>
-          <View style={[shared.card, styles.hero]} testID="done-hero">
-            {load.done.sample ? <View style={styles.sample}><SampleTag /></View> : null}
+          <View style={styles.hero} testID="done-hero">
             <View style={styles.tile}><UiText style={styles.tileEmoji}>🏁</UiText></View>
             <UiText accessibilityRole="header" style={styles.heroTitle}>{t("plan.done.achieved", { goal: load.done.goal })}</UiText>
-            <UiText style={shared.caption}>{t("plan.done.date", dateParts(load.done.achievedAt))}</UiText>
-            <View style={styles.numbers}>
-              <BigNumber label={t("plan.done.score")} value={load.done.total} />
-              <BigNumber label={t("plan.done.talked")} value={load.done.talkedPeople} />
-              <BigNumber label={t("plan.done.events")} value={load.done.events} />
-            </View>
-            <UiText style={shared.caption}>{t("plan.done.frozen", { total: load.done.total })}</UiText>
+            <UiText style={styles.heroSub}>{load.done.startsOn ? t("plan.done.dateRange", { end: shortDay(load.done.achievedAt, language), start: longDay(load.done.startsOn, language) }) : t("plan.done.date", dateParts(load.done.achievedAt))}</UiText>
           </View>
-          {load.done.bestMove ? (
-            <View style={shared.card} testID="best-move">
-              <View style={shared.row}>
-                <UiText style={shared.emoji}>✨</UiText>
-                <UiText style={[shared.label, shared.grow]}>{t("plan.done.bestMove")}</UiText>
-                {load.done.bestMove.basis.length ? <WhyDisclosure reason={load.done.bestMove.basis.map((item) => item.label).join("\n")} /> : null}
-              </View>
-              <UiText style={shared.title}>{load.done.bestMove.text}</UiText>
-            </View>
-          ) : null}
+          <View style={styles.numbers} testID="done-numbers">
+            <BigNumber label={t("plan.done.score")} value={load.done.total} />
+            <BigNumber label={t("plan.done.talked")} value={load.done.talkedPeople} />
+            <BigNumber label={t("plan.done.events")} value={load.done.events} />
+          </View>
+          {load.done.bestMove ? <BestMove move={load.done.bestMove} /> : null}
           {load.done.skippedAreas.length ? (
-            <View style={[shared.softCard, styles.skipped]} testID="skipped-areas">
-              <UiText style={shared.body2}>{t("plan.done.skipped", { areas: load.done.skippedAreas.join(t("plan.done.separator")) })}</UiText>
+            <View style={styles.skipped} testID="skipped-areas">
+              <View style={styles.sw}><KitHatch line={colors.plum300} base={colors.plum100} /></View>
+              <UiText style={styles.skippedText}>{t("plan.done.skipped", { areas: load.done.skippedAreas.join(t("plan.done.separator")) })}</UiText>
             </View>
           ) : null}
 
@@ -178,25 +170,57 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
               <Button block label={t("plan.done.later")} onPress={later} variant="ghost" />
             </View>
           ) : (
-            <View style={shared.card} testID="next-ask">
-              <Button block label={t("plan.done.decide")} loading={asking} onPress={() => void decideNext()} variant="primary" />
-              <Button block label={t("plan.done.later")} onPress={later} variant="ghost" />
-            </View>
+            <FlowFoot>
+              <View style={styles.foot} testID="next-ask">
+                <FootFade />
+                <KitButton primary label={t("plan.done.decide")} disabled={asking} onPress={() => void decideNext()} style={styles.xl} testID="next-decide" />
+                <KitButton label={t("plan.done.later")} onPress={later} style={styles.ghost} />
+              </View>
+            </FlowFoot>
           )}
         </>
       ) : null}
-    </PlanFrame>
+    </PlanChatFrame>
   );
 }
 
 function BigNumber({ label, value }: { label: string; value: number }) {
   const { styles } = useStyles();
+  const kit = useKitStyles().styles;
   return (
     <View accessibilityLabel={`${label} ${value}`} style={styles.number}>
-      <UiText style={styles.numberLabel}>{label}</UiText>
+      <UiText style={kit.lbl}>{label}</UiText>
       <CountUp value={value} style={styles.numberValue} />
     </View>
   );
+}
+
+/** いちばん効いたこと（b4 #25 .k-achbest）：✨ · 题 · 「?」（根拠）+ 一句。 */
+function BestMove({ move }: { move: NonNullable<PlanAchievementView["bestMove"]> }) {
+  const { styles } = useStyles();
+  const kit = useKitStyles().styles;
+  const { t } = useOrbitLocale();
+  const why = useKitWhy(move.basis.map((item) => item.label).join(" · ") || null);
+  return (
+    <KitCard testID="best-move" style={styles.best}>
+      <View style={styles.row8}>
+        <KitEmo emoji="✨" tone="lav" sm />
+        <UiText style={[styles.bestTitle, kit.grow]}>{t("plan.done.bestMove")}</UiText>
+        {why.button}
+      </View>
+      <UiText style={styles.bestText}>{move.text}</UiText>
+      {why.body}
+    </KitCard>
+  );
+}
+
+function longDay(day: string, language: string): string {
+  const date = new Date(`${day}T00:00:00+09:00`);
+  return date.toLocaleDateString(language === "en" ? "en-US" : language === "zh" ? "zh-CN" : "ja-JP", { day: "numeric", month: "long", timeZone: "Asia/Tokyo", year: "numeric" });
+}
+
+function shortDay(iso: string, language: string): string {
+  return new Date(iso).toLocaleDateString(language === "en" ? "en-US" : language === "zh" ? "zh-CN" : "ja-JP", { day: "numeric", month: "long", timeZone: "Asia/Tokyo" });
 }
 
 function CandidateCard({ candidate, language, selected, disabled, onSelect }: { candidate: PlanNextGoalCandidate; language: "ja" | "zh" | "en"; selected: boolean; disabled: boolean; onSelect: () => void }) {
@@ -229,16 +253,25 @@ function CandidateCard({ candidate, language, selected, disabled, onSelect }: { 
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  hero: { alignItems: "center" },
-  sample: { alignSelf: "flex-end" },
-  tile: { width: 56, height: 56, borderRadius: radius.lg, alignItems: "center", justifyContent: "center", backgroundColor: colors.accentSoft },
-  tileEmoji: { fontSize: 28, lineHeight: 34 },
-  heroTitle: { color: colors.ink, fontSize: 18, lineHeight: 26, fontWeight: "800", textAlign: "center" },
-  numbers: { flexDirection: "row", gap: 8, alignSelf: "stretch" },
-  number: { flex: 1, backgroundColor: colors.surface2, borderRadius: radius.md, paddingVertical: 12, alignItems: "center", gap: 2 },
-  numberLabel: { color: colors.ink3Text, fontSize: 11.5, fontWeight: "700" },
-  numberValue: { fontSize: 26, lineHeight: 32 },
-  skipped: { borderLeftWidth: 4, borderLeftColor: colors.plum300 },
+  row8: { flexDirection: "row", alignItems: "center", gap: 8 },
+  hero: { alignItems: "center", marginTop: 16 },
+  tile: { width: 96, height: 96, borderRadius: 32, alignItems: "center", justifyContent: "center", backgroundColor: colors.macTeal },
+  tileEmoji: { fontSize: 46, lineHeight: 69 },
+  heroTitle: { color: colors.ink, ...kitText(23, "900", 1.35), textAlign: "center", marginTop: 16 },
+  heroSub: { color: colors.ink2, ...kitText(12.5, "400"), textAlign: "center" },
+  numbers: { flexDirection: "row", gap: 8, marginTop: 10 },
+  number: { flex: 1, backgroundColor: colors.surface, borderRadius: 24, paddingVertical: 14, paddingHorizontal: 6, alignItems: "center" },
+  numberValue: { ...kitText(22, "800", 1.5, -0.01) },
+  // kit：.grid3 之后紧接 .card（只有 card + card 才隔 14），抵掉 chat 的 gap 10。
+  best: { marginTop: -10 },
+  bestTitle: { color: colors.ink, ...kitText(13.5, "700") },
+  bestText: { color: colors.ink, ...kitText(14, "700", 1.55), marginTop: 8 },
+  skipped: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 24, backgroundColor: colors.surface2, marginTop: 4 },
+  sw: { width: 22, height: 14, borderRadius: 3, overflow: "hidden" },
+  skippedText: { flex: 1, color: colors.ink2, ...kitText(12.5, "400") },
+  foot: { paddingTop: 22, paddingHorizontal: 18, paddingBottom: 30, gap: 8 },
+  xl: { height: 50 },
+  ghost: { backgroundColor: "transparent" },
   choices: { gap: 8 },
   choice: { borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.line, padding: 12, gap: 6, backgroundColor: colors.surface },
   choiceOn: { borderColor: colors.plum500, backgroundColor: colors.accentSoft },
