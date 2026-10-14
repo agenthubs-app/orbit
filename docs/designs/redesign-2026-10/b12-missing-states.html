@@ -1708,6 +1708,7 @@
     .map td .arrow { color: var(--ink-4); }
     .map td.ex { color: var(--ink-3); font-size: 12px; }
     .drop { border: 1.6px dashed var(--plum-300); border-radius: 18px; padding: 16px; text-align: center; background: color-mix(in srgb, var(--accent-soft) 60%, transparent); }
+    .btn.xl { height: 50px; font-size: 14.5px; }
   }
 </style>
 </head>
@@ -6219,25 +6220,25 @@ const vcardWeb = () => mainhead('連絡先（vCard）から取り込む', '人�
     <div class="file k-vfile" style="margin-top:14px;background:var(--surface-2)"><span class="fi">VCF</span><div style="flex:1;min-width:0"><b style="font-size:13px">contacts.vcf</b><div class="lbl">412人 · 96 KB · 読み込み完了</div></div><span class="chip teal">${ic('check')}OK</span><button class="lbtn" style="background:var(--surface)">${ic('x', 'sm')}</button></div>
     <div class="row push" style="justify-content:flex-end;gap:10px;margin-top:18px"><button class="btn">キャンセル</button><button class="btn primary k-vgo">まとめて確認へ</button></div></div></div>`;
 /* ③ 汎用 CSV：LinkedIn ③ 列の対応を確認 · Web 同构 */
-const CSVROWS = [['氏名', '名前', '高山 亮', 1], ['フリガナ', 'ふりがな', 'タカヤマ リョウ', 1], ['会社名', '会社', 'ミライ精機株式会社', 1], ['役職', '役職', '経営企画部 部長', 1], ['E-mail', 'メール', 'ryo.takayama@…', 1], ['電話番号', '電話', '06-5555-0182', 1], ['名刺交換日', '使わない', '2025/11/14', 2]];
+const CSVROWS = [['氏名', '名前', '高山 亮', 1], ['フリガナ', '使わない', '—', 2], ['会社名', '会社', 'ミライ精機株式会社', 1], ['役職', '役職', '経営企画部 部長', 1], ['E-mail', 'メール', 'ryo.takayama@…', 1], ['電話番号', '電話', '06-5555-0182', 1], ['名刺交換日', '使わない', '—', 2]];
 const csvWeb = () => mainhead('列の対応を確認', 'CSV · eight_export.csv · 128行', back, `<span class="lbl">ステップ 2 / 3</span>`) + `<div class="wgrid">
   <div class="card span8 k-cmap"><div class="card-h"><h3>CSV の列 → Orbit の項目</h3><span class="lbl">自動で対応づけました · 変更できます</span></div>
     <table class="table map"><thead><tr><th>CSV の列</th><th></th><th>Orbit の項目</th><th>1行目の例</th><th></th></tr></thead><tbody>
-    ${CSVROWS.map(([a, b, ex, st], k) => `<tr ${k === 6 ? 'class="k-cskip"' : ''}><td><b>${a}</b></td><td class="arrow">${ic('right', 'sm')}</td><td><span class="chip ${st === 2 ? '' : 'lav'}">${b}</span></td><td class="ex">${ex}</td><td>${st === 2 ? '<span class="lbl">—</span>' : '<i class="dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok)"></i>'}</td></tr>`).join('')}
+    ${CSVROWS.map(([a, b, ex, st], k) => `<tr ${k === 1 ? 'class="k-cskip"' : ''}><td><b>${a}</b></td><td class="arrow">${ic('right', 'sm')}</td><td><span class="chip ${st === 2 ? '' : 'lav'}">${b}</span></td><td class="ex">${ex}</td><td>${st === 2 ? '<span class="lbl">—</span>' : '<i class="dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok)"></i>'}</td></tr>`).join('')}
     </tbody></table></div>
   <div class="card span4"><div class="card-h"><h3>取り込み後のイメージ</h3></div>
     <div class="list k-cpreview">${nrow('高山 亮', '高', 'c4', 'ミライ精機', '経営企画部 部長', 'csv')}${nrow('松本 千尋', '松', 'c2', '関西テクノ電機', '営業部', 'csv')}${nrow('伊達 修平', '伊', 'c5', '北辰製作所', '経営企画', 'csv')}</div>
     <div class="mac lav push" style="margin-top:12px;font-size:12px;line-height:1.6"><b>全員 ●○○ で入ります。</b>どこで知り合ったか・目標との関係は、あとから 1日1問で補えます。</div></div>
   <div class="span12 row" style="justify-content:flex-end;gap:10px"><button class="btn">戻る</button><button class="btn primary xl k-ctonext" style="height:46px">まとめて確認へ（例外 6件）</button></div></div>`;
 /* ④ イベントから：选活动（左）→ 交换过名片的人（右，勾选）→ 同一「まとめて確認」 */
-const EVS = [['CFO Night Tokyo', '10月7日（火）· 渋谷', 17, 1], ['製造業DX カンファレンス 大阪', '9月26日（金）· グランフロント大阪', 9, 0], ['SaaS Summit 2026', '9月12日（金）· 東京国際フォーラム', 6, 0]];
+const EVS = [['CFO Night Tokyo', '10月7日（火）· 渋谷', 4, 1], ['製造業DX カンファレンス 大阪', '9月26日（金）· グランフロント大阪', 9, 0], ['SaaS Summit 2026', '9月12日（金）· 東京国際フォーラム', 6, 0]];
 const EVPPL = [['高山 亮', '高', 'c4', 'ミライ精機', '経営企画部 部長', 1], ['伊達 修平', '伊', 'c5', '北辰製作所', '経営企画', 1], ['松本 千尋', '松', 'c2', '関西テクノ電機', '営業部', 1], ['高橋 美咲', '高', 'c1', '青葉ベンチャーズ', 'パートナー', 0]];
 const evWeb = () => mainhead('イベントから取り込む', '人脈を追加 › イベントから', back, '') + `<div class="wgrid">
   <div class="card span5 k-evlist"><div class="card-h"><h3>イベントを選ぶ</h3><span class="lbl">参加したイベント</span></div>
     <div class="list">${EVS.map(([n, d, m, on]) => `<div class="li" ${on ? 'style="background:var(--surface-2);margin:0 -10px;padding:11px 10px;border-radius:14px"' : ''}><span class="emo sm apricot">🎟️</span><div class="meta"><b>${n}</b><span>${d}</span></div><div class="end">名刺 ${m}人</div></div>`).join('')}</div></div>
-  <div class="card span7 k-evppl"><div class="card-h"><h3>CFO Night Tokyo で名刺を交換した人</h3><span class="lbl">17人 · すでに人脈 1人</span></div>
+  <div class="card span7 k-evppl"><div class="card-h"><h3>CFO Night Tokyo で名刺を交換した人</h3><span class="lbl">4人 · すでに人脈 1人</span></div>
     <div class="list">${EVPPL.map(([n, i, c, co, role, add]) => `<div class="li"><span class="cbx ${add ? 'on' : ''}">${ic('check')}</span><div class="av ${c}">${i}</div><div class="meta"><b>${n}</b><span>${co} · ${role}</span></div><div class="rend">${add ? src('ev') : '<span class="chip">すでに人脈</span>'}</div></div>`).join('')}</div>
-    <div class="row push" style="justify-content:flex-end;gap:10px;margin-top:16px"><button class="btn">キャンセル</button><button class="btn primary k-evgo">まとめて確認へ（16人）</button></div></div></div>`;
+    <div class="row push" style="justify-content:flex-end;gap:10px;margin-top:16px"><button class="btn">キャンセル</button><button class="btn primary k-evgo">まとめて確認へ（3人）</button></div></div></div>`;
 const RAIL_PICK = railOf('🧭', 'lav', '取り込みについて', 'どの方法でも、取り込んだ人はまず「身元だけ」で人脈に入ります。会社や関係は、名刺や面談、1日1問で少しずつ濃くなります。', '名刺や面談で会うと ●●○ 以上になります');
 const RAIL_V = railOf('📱', 'blue', '連絡先のデータについて', '氏名・電話番号・メールが中心です。会社や役職は、登録してある人だけ入ります。家族やお店は「まとめて確認」で外せます。', '名刺や面談で会うと ●●○ 以上になります');
 const RAIL_C = railOf('📄', 'lav', 'CSV のデータについて', '1行目を見出しとして読み、列の対応を自動でつけます。対応しない列は「使わない」にできます。', '名刺や面談で会うと ●●○ 以上になります');
@@ -6255,7 +6256,7 @@ h += group('g6', sec('补画 · 2026-10-14 · R16 取り込み（Web）', '決�
   ], 'b9 A3 LinkedIn ② アップロード · Web · 补画 2026-10-14')
   + WP('W-R16-11b 取り込み · 汎用 CSV 列の対応を確認', '', () => ({ nav: 1, body: csvWeb(), rail: RAIL_C }), [
     ['.k-cmap', 0, '上传页同 vCard / LinkedIn ②（换成 .csv）；本页 = 列对应：自动映射 + 第 1 行示例，可下拉改'],
-    ['.k-cskip', 0, '对应不上的列标「使わない」（Eight 的「名刺交換日」等）'],
+    ['.k-cskip', 0, '对应不上的列标「使わない」（フリガナ、Eight 的「名刺交換日」等；Orbit 没有对应字段），「1行目の例」写「—」（服务端不返回原值）'],
     ['.k-cpreview', 0, '右侧即时预览：全部 ●○○ + CSV 来源 chip'],
     ['.k-ctonext', 0, '按钮写出例外数 → まとめて確認（b9 A3 ④ 同构）'],
   ], 'b9 A3 LinkedIn ③ 列の対応を確認 · 补画 2026-10-14')

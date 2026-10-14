@@ -987,7 +987,7 @@ function batchApp(kind = 'tel') {
       <div class="card-h"><h3>重複 ${T.dup}件</h3><span class="lbl">例外だけ表示</span></div>
       <div class="ok-card k-automerge" style="padding:10px 12px;display:flex;gap:10px;align-items:center"><span class="okmark">${ic('check')}</span><div style="flex:1;min-width:0;font-size:12.5px"><b>${T.auto}件は自動で統合しました</b><div class="lbl">メールか電話番号が一致 · あとで取り消せます</div></div></div>
       <div class="lbl" style="margin:12px 0 2px">名前が似ているだけの ${T.dup - T.auto}件</div>
-      ${[['鈴', 'c3', '鈴木 大輔', '既存：北辰製作所 · 名刺', '今回：鈴木 大輔（会社なし）'], ['渡', 'c5', '渡辺 翔', '既存：Nexa Robotics · 名刺', '今回：Sho Watanabe']].map(([i, c, n, a, b], k) => `<div class="xrow ${k === 0 ? 'k-duprow' : ''}"><span class="cbx on">${ic('check')}</span><div class="avs"><div class="av sm ${c}">${i}</div><div class="av sm ${c}">${i}</div></div><div class="meta"><b>${n}</b><span>${a}</span><span>${b}</span></div></div>`).join('')}
+      ${[['鈴', 'c3', '鈴木 大輔', '既存：北辰製作所', '今回：鈴木 大輔（会社なし）'], ['渡', 'c5', '渡辺 翔', '既存：Nexa Robotics', '今回：Sho Watanabe']].map(([i, c, n, a, b], k) => `<div class="xrow ${k === 0 ? 'k-duprow' : ''}"><span class="cbx on">${ic('check')}</span><div class="avs"><div class="av sm ${c}">${i}</div><div class="av sm ${c}">${i}</div></div><div class="meta"><b>${n}</b><span>${a}</span><span>${b}</span></div></div>`).join('')}
       <div class="row" style="gap:8px;margin-top:10px"><button class="btn sm primary k-mergeall">選んだ 2件を統合</button><button class="btn sm">別人として追加</button></div></div>
     <div class="card acc k-chk"><div class="row between" data-acc style="cursor:pointer"><h3 style="font-size:14.5px">要確認 ${T.chk}件</h3><span class="row" style="gap:6px"><span class="lbl">読み取りが不確か</span><span class="chev">${ic('down', 'sm')}</span></span></div>
       <div class="acc-b"><div style="padding-top:8px">${[['会社名', '「ﾊﾙﾓﾆｱ」→ 株式会社ハルモニア', 'mid'], ['氏名の区切り', '「森恭平」→ 森 / 恭平', 'mid'], ['会社名', '「個人」「自宅」は会社にしない', 'lo']].map(([k, v, c]) => `<div class="frow"><span class="k">${k}</span><i class="dot ${c}"></i><b>${v}</b><span class="chip apricot">推定</span></div>`).join('')}</div></div></div>
@@ -1008,7 +1008,7 @@ function telPick() {
     <div class="seg k-mode" style="width:100%;display:grid;grid-template-columns:1fr 1fr"><button>すべて</button><button class="on">選んで取り込む</button></div>
     <div class="card k-suggest" data-why-box style="margin-top:12px;padding:14px 16px"><div class="row" style="gap:10px"><span class="emo sm lav">✨</span><div style="flex:1;min-width:0"><b style="font-size:13px">仕事関係らしい 238人を選びました</b><div class="lbl">家族・お店らしい 46件は外してあります</div></div><span class="why">?</span></div>
       <div class="why-body" hidden>根拠：会社名・役職・会社ドメインのメールがある連絡先を選択。「母」「〜店」「病院」など個人用らしい名前は外しています。選び直せます。</div></div>
-    <div class="row" style="gap:6px;margin:12px 0 6px;flex-wrap:wrap"><span class="fopt on">会社名あり <small>214</small></span><span class="fopt">仕事のメール <small>96</small></span><span class="fopt">Orbit 未登録のみ</span></div>
+    <div class="row" style="gap:6px;margin:12px 0 6px;flex-wrap:wrap"><span class="fopt">会社名あり <small>214</small></span><span class="fopt">仕事のメール <small>96</small></span></div>
     <div class="card" style="padding:4px 16px">${L.map(([i, c, n, d, on], k) => `<div class="xrow ${k === 3 ? 'k-offrow' : ''}"><span class="cbx ${on ? 'on' : ''}">${ic('check')}</span><div class="av sm ${c}">${i}</div><div class="meta"><b>${n}</b><span>${d || '—'}</span></div></div>`).join('')}</div>` +
     foot(`<button class="btn primary block xl k-pickgo">238人を取り込む</button>`);
 }
@@ -1017,10 +1017,10 @@ function telProg() {
     <div class="orb"></div>
     <div class="center" style="margin-top:12px"><b style="font-size:17px">238人を整理しています</b><div class="lbl">1分ほど · 閉じても続きます</div></div>
     <div class="card k-gen" style="margin-top:16px;padding:6px 16px">
-      <div class="gen d"><span class="gi">${ic('check')}</span><span style="flex:1">連絡先を読み込む</span><span class="lbl">238</span></div>
-      <div class="gen d"><span class="gi">${ic('check')}</span><span style="flex:1">既存の人脈と照合（重複）</span><span class="lbl">6件</span></div>
-      <div class="gen n"><span class="gi"></span><span style="flex:1"><b>会社名の表記をそろえる</b></span><span class="lbl">142 / 238</span></div>
-      <div class="gen w"><span class="gi"></span><span style="flex:1">まとめて確認の準備</span></div></div>
+      <div class="gen d"><span class="gi">${ic('check')}</span><span style="flex:1">連絡先を読み込む</span></div>
+      <div class="gen d"><span class="gi">${ic('check')}</span><span style="flex:1">既存の人脈と照合（重複）</span></div>
+      <div class="gen n"><span class="gi"></span><span style="flex:1"><b>会社名の表記をそろえる</b></span><span class="lbl">照合中</span></div>
+      <div class="gen w"><span class="gi"></span><span style="flex:1">まとめて確認の準備</span><span class="lbl">待機</span></div></div>
     <div class="card"><div class="lbl" style="margin-bottom:8px">先にできた分</div><div class="list">${[['青', 'c5', '青山 和也', '株式会社リンクス'], ['石', 'c3', '石田 剛', 'Hikari Labs']].map(([i, c, n, d]) => `<div class="li"><div class="av sm ${c}">${i}</div><div class="meta"><b>${n}</b><span>${d}</span></div>${dn(1)}</div>`).join('')}<div class="li"><div class="shimmer" style="width:30px;height:30px;border-radius:50%"></div><div class="meta"><div class="shimmer" style="height:11px;width:60%"></div><div class="shimmer" style="height:9px;width:40%;margin-top:6px"></div></div></div></div></div>` +
     foot(`<button class="btn block xl k-closewait">閉じて待つ</button><div class="lbl center">終わったら通知でお知らせします</div>`);
 }
@@ -1057,14 +1057,14 @@ function liWebMap() {
       ${liRows.map(([a, b, ex, st], k) => `<tr ${k === 5 ? 'class="k-maprow"' : ''}><td><b>${a}</b></td><td class="arrow">${ic('right', 'sm')}</td><td><span class="chip ${st === 2 ? '' : 'lav'}">${b}</span></td><td class="ex">${ex}</td><td>${st === 2 ? '<span class="chip apricot">ほぼ空</span>' : '<i class="dot" style="display:inline-block"></i>'}</td></tr>`).join('')}
       </tbody></table></div>
     <div class="card span4"><div class="card-h"><h3>取り込み後のイメージ</h3></div>
-      <div class="list k-mappreview">${nrow(NP[4])}${nrow(NP[5])}${nrow(NP[6])}</div>
+      <div class="list k-mappreview">${nrow({ ...NP[4], rel: '' })}${nrow(NP[5])}${nrow(NP[6])}</div>
       <div class="mac lav push" style="margin-top:12px;font-size:12px;line-height:1.6"><b>全員 ●○○ で入ります。</b>どこで知り合ったか・目標との関係は、あとから 1日1問で補えます。</div></div>
     <div class="span12 row" style="justify-content:flex-end;gap:10px"><button class="btn">戻る</button><button class="btn primary xl k-maptonext" style="height:46px">まとめて確認へ（例外 32件）</button></div></div>`;
 }
 function batchWeb() {
   return mainhead('まとめて確認', 'LinkedIn · 341件 · 例外だけ表示', `<button class="rbtn">${ic('left')}</button>`, `<span class="lbl">ステップ 3 / 3</span>`) + `<div class="wgrid">
     <div class="span12 bq k-wbq" style="grid-template-columns:repeat(3,1fr);gap:18px">${[['重複', 9, '5件は自動で統合済み', 'on'], ['要確認', 23, '会社名・氏名の区切りが不確か', ''], ['そのまま追加', 309, '問題なし', '']].map(([l, v, d, on]) => `<div class="${on}" style="padding:16px 18px;border-radius:22px"><span class="lbl">${l}</span><b style="font-size:32px">${num(v)}</b><span class="lbl">${d}</span></div>`).join('')}</div>
-    <div class="card span7 k-wdup"><div class="card-h"><h3>重複 9件</h3><div class="row" style="gap:8px"><button class="btn sm">別人として追加</button><button class="btn sm primary">選んだ 4件を統合</button></div></div>
+    <div class="card span7 k-wdup"><div class="card-h"><h3>重複 9件</h3><div class="row" style="gap:8px"><button class="btn sm">別人として追加</button><button class="btn sm primary">選んだ 3件を統合</button></div></div>
       <div class="ok-card" style="padding:10px 12px;display:flex;gap:10px;align-items:center"><span class="okmark">${ic('check')}</span><span style="font-size:12.5px;flex:1"><b>5件はメール一致で自動統合しました</b><span class="lbl" style="margin-left:6px">取り消す場合は各人の履歴から</span></span></div>
       <table class="table" style="margin-top:8px"><thead><tr><th></th><th>既存</th><th>今回（LinkedIn）</th><th>違い</th></tr></thead><tbody>
       ${[['鈴木 大輔 · 北辰製作所', '鈴木 大輔 · Hokushin Mfg.', '会社名の表記'], ['山本 彩 · 東都キャピタル', '山本 彩 · Sakura Growth Partners', '会社が違う（転職？）'], ['渡辺 翔 · Nexa Robotics', 'Sho Watanabe · Nexa Robotics', 'ローマ字表記'], ['伊藤 直子 · ハルモニア', '伊藤 直子 · Harmonia Inc.', '会社名の表記']].map(([a, b, d], k) => `<tr><td><span class="cbx ${k === 1 ? '' : 'on'}">${ic('check')}</span></td><td>${a}</td><td>${b}</td><td>${k === 1 ? `<span class="chip apricot k-wjob">${d}</span>` : `<span class="lbl">${d}</span>`}</td></tr>`).join('')}</tbody></table></div>
@@ -1254,7 +1254,7 @@ h += boards([
     ['.k-pickgo', 0, '主按钮实时显示人数 →「取り込み中」'],
   ]),
   AP('連絡先 ③ 取り込み中', '', { body: telProg() }, [
-    ['.k-gen', 0, '分步清单（01-system ⑦）：完成 = 绿勾、当前 = 转圈 + 计数 142/238、未开始 = 灰'],
+    ['.k-gen', 0, '分步清单（01-system ⑦）：完成 = 绿勾、当前 = 转圈 +「照合中」、未开始 = 灰 +「待機」；不显示数字（2026-10-14 §25-8：实现只有状态）'],
     ['.k-closewait', 0, '可离开：「閉じて待つ」收起为进度胶囊，完成后推送 → 进入 ④'],
   ]),
   AP('連絡先 ④ まとめて確認（统一）', '', { body: batchApp('tel') }, [
