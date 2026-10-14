@@ -57,8 +57,9 @@ test("all dynamic Web routes have an explicit valid runtime sample", () => {
   // R25 清理：−2 页 /app/agent/plan（兼容跳转）、/app/agent/strategy（旧策略页）→ 61。
   // R12：+2 页 /app/contacts/new/scan、/app/contacts/new/scan/[batchId]（都要登录）→ 63。
   // R15：+2 个公开页 /i、/i/[code]（招待コード接收方，不在登录前缀里），−1 页 /app/invitations/[token]（旧关系邀请页删除）→ 64。
-  assert.equal(runtimePaths.length, 64);
-  assert.equal(new Set(runtimePaths).size, 64);
+  // R16：+2 页 /app/contacts/new/import、/app/contacts/new/import/[importId]（此前没登记）；R26：+1 页 /app/events/assessments/[id]（都要登录）→ 67。
+  assert.equal(runtimePaths.length, 67);
+  assert.equal(new Set(runtimePaths).size, 67);
   assert.equal(runtimePaths.includes("/app/events/EVT01"), true);
   assert.equal(
     runtimePaths.includes(
@@ -124,9 +125,10 @@ test("whole-Web transport verification reports every route and any mismatch", as
     // R25 清理：删掉 /app/agent/plan、/app/agent/strategy 两个要登录的页面 → 61 / 30 / 31。
     // R12：+2 个要登录的名刺页（/app/contacts/new/scan、/app/contacts/new/scan/[batchId]）→ 63 / 30 / 33。
     // R15：+2 个公开页 /i、/i/[code]，−1 个公开页 /app/invitations/[token]（不在登录前缀里，原来就是 200）→ 64 / 31 / 33。
-    routeSurfaces: 64,
+    // R16 取り込み 2 页 + R26 评估结果页（`/app/events/assessments` 进登录前缀）→ 67 / 31 / 36。
+    routeSurfaces: 67,
     okResponses: 31,
-    authRedirects: 33,
+    authRedirects: 36,
     failures: 0,
   });
   assert.equal(report.results.every((result) => result.conclusion === "pass"), true);
@@ -136,5 +138,5 @@ test("whole-Web transport verification reports every route and any mismatch", as
     fetchImplementation: async () =>
       new Response("<title>Failure</title>", { status: 500 }),
   });
-  assert.equal(failedReport.summary.failures, 64);
+  assert.equal(failedReport.summary.failures, 67);
 });

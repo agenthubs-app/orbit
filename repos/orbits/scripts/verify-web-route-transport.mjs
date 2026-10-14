@@ -30,6 +30,9 @@ const ROUTE_SAMPLES = new Map([
   ["/app/plans/[planId]/review", "/app/plans/plan_demo/review"],
   ["/app/plans/[planId]/done", "/app/plans/plan_demo/done"],
   ["/app/plans/legacy/[planId]", "/app/plans/legacy/plan_v1_demo"],
+  // R16：取り込み进度页；R26：评估结果页（都要登录）。
+  ["/app/contacts/new/import/[importId]", "/app/contacts/new/import/import_demo"],
+  ["/app/events/assessments/[id]", "/app/events/assessments/eva_demo"],
   ["/app/events/[id]", "/app/events/EVT01"],
   ["/app/events/[id]/analytics", "/app/events/EVT01/analytics"],
   ["/app/events/[id]/live", "/app/events/EVT01/live"],

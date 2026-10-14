@@ -43,10 +43,10 @@ export function LoginRequired({ item, language, onPaste, onShot, onManual, onOth
       <div className={styles.row} style={{ marginTop: 14 }}><span className={`${styles.emo} ${styles.t_apricot}`}>🔒</span><div><b>{t("loginTitle")}</b><div className={styles.lbl}>{t("loginSub")}</div></div></div>
       <div className={styles.lbl} style={{ margin: "16px 0 4px" }}>{t("otherWays")}</div>
       <div className={styles.lbl} style={{ marginBottom: 8 }}>{t("noProxyLogin")}</div>
-      <button type="button" className={styles.wayRow} onClick={onPaste}><span className={`${styles.emo} ${styles.emoSm} ${styles.t_lav}`}>📋</span><div className={styles.grow}><b>{t("wayPaste")}</b><div className={styles.lbl}>{t("wayPasteSub")}</div></div><Icon name="right" size={16} /></button>
-      <button type="button" className={styles.wayRow} onClick={onShot}><span className={`${styles.emo} ${styles.emoSm} ${styles.t_blue}`}>🖼️</span><div className={styles.grow}><b>{t("wayShot")}</b><div className={styles.lbl}>{t("wayShotSub")}</div></div><Icon name="right" size={16} /></button>
-      <button type="button" className={styles.wayRow} onClick={onManual}><span className={`${styles.emo} ${styles.emoSm} ${styles.t_apricot}`}>✍️</span><div className={styles.grow}><b>{t("wayManual")}</b><div className={styles.lbl}>{t("wayManualSub")}</div></div><Icon name="right" size={16} /></button>
-      <button type="button" className={`${styles.btn} ${styles.full}`} style={{ marginTop: 14 }} onClick={onOther}>{t("tryOtherUrl")}</button>
+      <button type="button" className={`btn ${styles.wayRow}`} onClick={onPaste}><span className={`${styles.emo} ${styles.emoSm} ${styles.t_lav}`}>📋</span><div className={styles.grow}><b>{t("wayPaste")}</b><div className={styles.lbl}>{t("wayPasteSub")}</div></div><Icon name="right" size={16} /></button>
+      <button type="button" className={`btn ${styles.wayRow}`} onClick={onShot}><span className={`${styles.emo} ${styles.emoSm} ${styles.t_blue}`}>🖼️</span><div className={styles.grow}><b>{t("wayShot")}</b><div className={styles.lbl}>{t("wayShotSub")}</div></div><Icon name="right" size={16} /></button>
+      <button type="button" className={`btn ${styles.wayRow}`} onClick={onManual}><span className={`${styles.emo} ${styles.emoSm} ${styles.t_apricot}`}>✍️</span><div className={styles.grow}><b>{t("wayManual")}</b><div className={styles.lbl}>{t("wayManualSub")}</div></div><Icon name="right" size={16} /></button>
+      <button type="button" className={`btn ${styles.btn} ${styles.full}`} style={{ marginTop: 14 }} onClick={onOther}>{t("tryOtherUrl")}</button>
     </div>
   );
 }
@@ -65,10 +65,10 @@ export function NotEventPage({ item, language, onAssess, onManual }: { item: Eve
       {candidates.map((candidate) => (
         <div key={candidate.title} className={styles.wayRow}>
           <div className={styles.grow}><b>{candidate.title}</b><div className={styles.lbl}>{[candidate.venue, candidate.startsAt ? eventDate(candidate.startsAt, language, { time: true }) : null, candidate.note].filter(Boolean).join(" · ")}</div></div>
-          <button type="button" className={`${styles.btn} ${styles.sm}`} onClick={() => onAssess(candidate.url, candidate.title)}>{t("assess")}</button>
+          <button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => onAssess(candidate.url, candidate.title)}>{t("assess")}</button>
         </div>
       ))}
-      <div className={styles.wayRow} style={{ marginTop: 10 }}><span>✍️</span><div className={styles.grow}><b>{t("noneOfThese")}</b><div className={styles.lbl}>{t("noneOfTheseSub")}</div></div><button type="button" className={`${styles.btn} ${styles.sm}`} onClick={onManual}>{t("manual")}</button></div>
+      <div className={styles.wayRow} style={{ marginTop: 10 }}><span>✍️</span><div className={styles.grow}><b>{t("noneOfThese")}</b><div className={styles.lbl}>{t("noneOfTheseSub")}</div></div><button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={onManual}>{t("manual")}</button></div>
     </div>
   );
 }
@@ -76,7 +76,7 @@ export function NotEventPage({ item, language, onAssess, onManual }: { item: Eve
 type FeeChoice = "free" | "paid" | "unknown" | null;
 
 /** ポスターの一部だけ読み取れました / 3 items by hand (b2 #5): fill 日時・場所・参加費 (「不明」 allowed) → rule-only re-score. */
-export function FillThree({ item, language, onSubmit, busy }: { item: EventAssessmentContract | null; language: OrbitLanguage; onSubmit: (facts: EventAssessmentFacts, unknown: ("startsAt" | "venue" | "price")[]) => void; busy?: boolean }) {
+export function FillThree({ item, language, onSave, busy }: { item: EventAssessmentContract | null; language: OrbitLanguage; onSave: (facts: EventAssessmentFacts, unknown: ("startsAt" | "venue" | "price")[]) => void; busy?: boolean }) {
   const t = translator(language);
   const facts = item?.facts ?? {};
   const basis = item?.factBasis ?? {};
@@ -102,7 +102,7 @@ export function FillThree({ item, language, onSubmit, busy }: { item: EventAsses
     if (fee === "free") next.price = EVENT_PRICE_FREE;
     else if (fee === "paid" && amount) next.price = `¥${Number(amount).toLocaleString("en-US")}`;
     else unknown.push("price");
-    onSubmit(next, unknown);
+    onSave(next, unknown);
   };
   return (
     <div className={`${styles.card} ${styles.span12}`} data-events-fill="">
@@ -127,23 +127,23 @@ export function FillThree({ item, language, onSubmit, busy }: { item: EventAsses
       <div className={styles.lbl}>{t("fieldWhere")}</div>
       <div className={styles.input} style={{ height: 40, margin: "4px 0 6px" }}><input value={where} placeholder={t("whereHint")} onChange={(event) => { setWhere(event.target.value); setOnline(false); }} aria-label={t("fieldWhere")} /></div>
       <div className={styles.optRow} style={{ marginBottom: 10 }}>
-        {facts.venue && basis.venue === "guessed" ? <button type="button" className={`${styles.opt} ${where === facts.venue ? styles.optOn : ""}`} onClick={() => { setWhere(facts.venue!); setOnline(false); }}>{t("useGuess", { value: facts.venue })}</button> : null}
-        <button type="button" className={`${styles.opt} ${online ? styles.optOn : ""}`} onClick={() => setOnline((value) => !value)}>{t("online")}</button>
+        {facts.venue && basis.venue === "guessed" ? <button type="button" className={`btn ${styles.opt} ${where === facts.venue ? styles.optOn : ""}`} onClick={() => { setWhere(facts.venue!); setOnline(false); }}>{t("useGuess", { value: facts.venue })}</button> : null}
+        <button type="button" className={`btn ${styles.opt} ${online ? styles.optOn : ""}`} onClick={() => setOnline((value) => !value)}>{t("online")}</button>
       </div>
       <div className={styles.lbl}>{t("fieldFee")}</div>
       <div className={styles.optRow} style={{ margin: "4px 0 6px" }}>
-        {(["free", "paid", "unknown"] as const).map((choice) => <button key={choice} type="button" className={`${styles.opt} ${fee === choice ? styles.optOn : ""}`} onClick={() => setFee(choice)}>{choice === "free" ? t("free") : choice === "paid" ? t("paid") : t("unknown")}</button>)}
+        {(["free", "paid", "unknown"] as const).map((choice) => <button key={choice} type="button" className={`btn ${styles.opt} ${fee === choice ? styles.optOn : ""}`} onClick={() => setFee(choice)}>{choice === "free" ? t("free") : choice === "paid" ? t("paid") : t("unknown")}</button>)}
       </div>
       {fee === "paid" ? <div className={styles.input} style={{ height: 40, marginBottom: 10 }}>¥<input inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^\d]/g, ""))} aria-label={t("fieldFee")} /></div> : null}
       {fee !== "free" && fee !== "paid" ? <div className={styles.lbl} style={{ marginBottom: 10 }}>{t("feeUnknownRange")}</div> : null}
-      <button type="button" className={`${styles.btn} ${styles.primary} ${styles.full}`} onClick={submit} disabled={busy}>{t("judgeWithThis")}</button>
+      <button type="button" className={`btn ${styles.btn} ${styles.primary} ${styles.full}`} onClick={submit} disabled={busy}>{t("judgeWithThis")}</button>
       <div className={styles.lbl} style={{ marginTop: 8, textAlign: "center" }}>{t("inputOnlyHere")}</div>
     </div>
   );
 }
 
 /** ページの本文を貼り付ける (b2 #0 / #4 way 1). */
-export function PasteText({ language, onSubmit, busy }: { language: OrbitLanguage; onSubmit: (text: string) => void; busy?: boolean }) {
+export function PasteText({ language, onAssessText, busy }: { language: OrbitLanguage; onAssessText: (text: string) => void; busy?: boolean }) {
   const t = translator(language);
   const [text, setText] = useState("");
   return (
@@ -151,7 +151,7 @@ export function PasteText({ language, onSubmit, busy }: { language: OrbitLanguag
       <b>{t("wayPaste")}</b>
       <div className={styles.lbl} style={{ margin: "4px 0 10px" }}>{t("wayPasteSub")}</div>
       <textarea className={styles.textArea} value={text} onChange={(event) => setText(event.target.value)} aria-label={t("wayPaste")} />
-      <button type="button" className={`${styles.btn} ${styles.primary}`} style={{ marginTop: 10 }} onClick={() => onSubmit(text)} disabled={busy || text.trim().length < 20}>{t("judge")}</button>
+      <button type="button" className={`btn ${styles.btn} ${styles.primary}`} style={{ marginTop: 10 }} onClick={() => onAssessText(text)} disabled={busy || text.trim().length < 20}>{t("judge")}</button>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { DESIGN_FIXTURE_NOW, EVENT_DESIGN_FIXTURES } from "../../../../features/events/design-fixtures";
 import { setDesignFixtureNow } from "../../../../features/events/dev-clock";
 import { overrideMyEventsMock } from "../../../../features/events/mine/configured";
-import { redesignMock } from "../../../../features/redesign-contracts/mock-service";
+import { overrideRedesignMockAssessments } from "../../../../features/redesign-contracts/service-factory";
 import { redesignContractMode } from "../../../../features/redesign-contracts/route";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   if (!available()) return notFound();
   const body = (await request.json().catch(() => null)) as { name?: unknown } | null;
   if (body?.name === null) {
-    redesignMock.overrideAssessments(null);
+    await overrideRedesignMockAssessments(null);
     overrideMyEventsMock(null);
     setDesignFixtureNow(null);
     return NextResponse.json({ name: null }, { headers: HEADERS });
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   if (!fixture) return NextResponse.json({ error: "unknown_fixture", names: Object.keys(EVENT_DESIGN_FIXTURES).sort() }, { headers: HEADERS, status: 400 });
   setDesignFixtureNow(DESIGN_FIXTURE_NOW);
   const data = fixture(new Date(DESIGN_FIXTURE_NOW));
-  redesignMock.overrideAssessments(data.assessments);
+  await overrideRedesignMockAssessments(data.assessments);
   overrideMyEventsMock(data.mine);
   return NextResponse.json({ name }, { headers: HEADERS });
 }

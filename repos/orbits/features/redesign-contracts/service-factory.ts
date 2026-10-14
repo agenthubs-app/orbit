@@ -38,3 +38,9 @@ export function resolveRedesignContract(capabilityId: RedesignContractCapability
     },
   }).create(mode);
 }
+
+/** Dev-only design-board fixtures (R26 `app/api/dev/event-design-fixture/route.dev.ts`): swap the mock assessment list, `null` restores the demo world. */
+export async function overrideRedesignMockAssessments(items: Parameters<typeof import("./mock-service").redesignMock.overrideAssessments>[0]): Promise<void> {
+  const { redesignMock } = await import("./mock-service");
+  redesignMock.overrideAssessments(items);
+}

@@ -4,6 +4,8 @@ const ORBIT_PRIVATE_APP_PREFIXES = [
   "/app/admin",
   "/app/agent",
   "/app/contacts",
+  // R26: assessment results belong to the signed-in person; the イベント list itself stays public.
+  "/app/events/assessments",
   "/app/home",
   // R07: the inbox became a page (it was a drawer); signed-out visitors go to sign-in.
   "/app/inbox",

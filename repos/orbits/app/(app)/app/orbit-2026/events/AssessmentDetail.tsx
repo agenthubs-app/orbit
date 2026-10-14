@@ -108,8 +108,8 @@ export function AssessmentRail({ item, language, onSkip, onAdd, busy }: { item: 
       ) : null}
       {cautionLine ? <div className={`${styles.mac} ${styles.macApricot} ${styles.caution}`}><Icon name="alert" size={16} /> {cautionLine}</div> : null}
       <div className={styles.grid2}>
-        <button type="button" className={styles.btn} onClick={onSkip} disabled={busy}>{t("skip")}</button>
-        <button type="button" className={`${styles.btn} ${styles.primary}`} onClick={onAdd} disabled={busy || item.userDecision === "added"}>{t("addToPlan")}</button>
+        <button type="button" className={`btn ${styles.btn}`} onClick={onSkip} disabled={busy}>{t("skip")}</button>
+        <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={onAdd} disabled={busy || item.userDecision === "added"}>{t("addToPlan")}</button>
       </div>
     </div>
   );
@@ -136,7 +136,7 @@ export function AssessmentPage({ item, language, onSkip, onAdd, busy, phone = fa
         </div>
         <div className={styles.row} style={{ gap: 6, justifyContent: "center" }}>
           <span className={`${styles.chip} ${styles[`c_${verdictTone(item.verdict)}`]} ${styles.verdictBig}`}>{verdictLabel(item, t)}</span>
-          {item.basisLines?.length ? <button type="button" className={styles.chip} onClick={() => setWhy((open) => !open)} aria-expanded={why} aria-label={t("why")}>?</button> : null}
+          {item.basisLines?.length ? <button type="button" className={`btn ${styles.chip}`} onClick={() => setWhy((open) => !open)} aria-expanded={why} aria-label={t("why")}>?</button> : null}
         </div>
         {why && item.basisLines?.length ? <div className={styles.basisText}>{t("basisPrefix")}{item.basisLines.join(" · ")}</div> : null}
       </div>
@@ -176,9 +176,9 @@ export function AssessmentPage({ item, language, onSkip, onAdd, busy, phone = fa
       ) : null}
       <div className={`${styles.card} ${styles.flat} ${styles.row}`} style={{ flexDirection: phone ? "column" : "row", gap: 12, gridColumn: phone ? undefined : "span 12", padding: "14px 18px", alignItems: phone ? "stretch" : "center" }}>
         {item.recomputeOnAttendeeList && item.assessedAt ? <span className={styles.lbl} style={{ flex: 1 }}>{t("recompute", { date: eventMonthDay(item.assessedAt, language) })}</span> : <span className={styles.lbl} style={{ flex: 1 }}>{item.goalLabel ? t("judgedFor", { goal: item.goalLabel }) : ""}</span>}
-        <button type="button" className={styles.btn} onClick={onSkip} disabled={busy}>{t("skip")}</button>
+        <button type="button" className={`btn ${styles.btn}`} onClick={onSkip} disabled={busy}>{t("skip")}</button>
         {detailHref ? <a className={styles.btn} href={detailHref} {...(item.eventId ? {} : { rel: "noreferrer", target: "_blank" })}><Icon name="right" size={16} />{t("eventDetail")}</a> : null}
-        <button type="button" className={`${styles.btn} ${styles.primary}`} onClick={onAdd} disabled={busy || item.userDecision === "added"}><Icon name="plus" size={16} />{t("addToPlan")}</button>
+        <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={onAdd} disabled={busy || item.userDecision === "added"}><Icon name="plus" size={16} />{t("addToPlan")}</button>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 # iOrbit Product Surface Risk Register
 
-Generated static candidates: 10 (10 P0, 0 P1). Each candidate remains open until code review or runtime evidence proves or fixes it.
+Generated static candidates: 12 (10 P0, 2 P1). Each candidate remains open until code review or runtime evidence proves or fixes it.
 
 | Priority | Route | Type | File | Trigger | User impact | Status | Next action |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -8,6 +8,8 @@ Generated static candidates: 10 (10 P0, 0 P1). Each candidate remains open until
 | P0 | `/app/account/login` | behavior-missing-static | `repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx:137` | button {label} | Visible control may not perform an action. | open-needs-runtime-verification | Verify DOM behavior; wire a real handler/href or explain unavailability. |
 | P0 | `/app/account/reset-password` | behavior-missing-static | `repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx:137` | button {label} | Visible control may not perform an action. | open-needs-runtime-verification | Verify DOM behavior; wire a real handler/href or explain unavailability. |
 | P0 | `/app/account/signup` | behavior-missing-static | `repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx:137` | button {label} | Visible control may not perform an action. | open-needs-runtime-verification | Verify DOM behavior; wire a real handler/href or explain unavailability. |
+| P1 | `/app/contacts/new` | accessible-name-unresolved | `repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx:267` | div role-button | Assistive technology may not expose a meaningful action name. | open-needs-runtime-verification | Inspect rendered accessible name and add a stable label if absent. |
+| P1 | `/app/contacts/new/scan/[batchId]` | accessible-name-unresolved | `repos/orbits/app/(app)/app/orbit-2026/add/ManualContactDrawer.tsx:267` | div role-button | Assistive technology may not expose a meaningful action name. | open-needs-runtime-verification | Inspect rendered accessible name and add a stable label if absent. |
 | P0 | `/app/profile/onboarding` | behavior-missing-static | `repos/orbits/app/(app)/app/profile/onboarding-0918/onboarding-previews.tsx:171` | button {t(item.cta)} | Visible control may not perform an action. | open-needs-runtime-verification | Verify DOM behavior; wire a real handler/href or explain unavailability. |
 | P0 | `/app/profile/onboarding` | behavior-missing-static | `repos/orbits/app/(app)/app/profile/onboarding-0918/onboarding-previews.tsx:187` | button Scan business cards | Visible control may not perform an action. | open-needs-runtime-verification | Verify DOM behavior; wire a real handler/href or explain unavailability. |
 | P0 | `/app/profile/onboarding` | behavior-missing-static | `repos/orbits/app/(app)/app/profile/onboarding-0918/onboarding-previews.tsx:201` | button Register | Visible control may not perform an action. | open-needs-runtime-verification | Verify DOM behavior; wire a real handler/href or explain unavailability. |

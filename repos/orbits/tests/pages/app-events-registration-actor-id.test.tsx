@@ -170,6 +170,8 @@ function loadPage(t: TestContext, scenario: Scenario) {
       }),
     },
   };
+  // R26：登录后 /app/events 默认是新イベント页（評価）；旧目录列表只在「探す」页签（tab=discover）。新页本身不在本测试范围，换成空组件（它带 CSS module）。
+  modules[join(root, "app/(app)/app/orbit-2026/events/EventsScreen.tsx")] = { EventsScreen: () => null };
   const pagePath = join(root, "app/(app)/app/events/page.tsx");
   const runtimePath = join(root, "features/events/registration/runtime.ts");
   const ids = [...Object.keys(modules), pagePath, runtimePath].map((id) => require.resolve(id));
@@ -194,7 +196,10 @@ function loadPage(t: TestContext, scenario: Scenario) {
     calls,
     communityReads,
     fullRowCalls,
-    page: require(pagePath).default as (props: {
+    page: ((props: { searchParams?: Promise<{ scope?: string }> }) => {
+      const page = require(pagePath).default as (props: { searchParams?: Promise<{ scope?: string; tab?: string }> }) => Promise<ReactElement>;
+      return page({ searchParams: (props.searchParams ?? Promise.resolve({})).then((params) => ({ ...params, tab: "discover" })) });
+    }) as (props: {
       searchParams?: Promise<{ scope?: string }>;
     }) => Promise<ReactElement>,
     registrationReads,
