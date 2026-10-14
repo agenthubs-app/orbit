@@ -4,15 +4,18 @@
 // 参加者から取り込む (the existing attendee import). Reached from 人脈を追加 (when there are
 // drafts) and from an event's 「去复核联系人」 (reviewQueueHref).
 import { useCallback, useEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
-import { Button, Card, ConfirmDialog, EmptyState, ListRow, RetryCard, Skeleton, useToast } from "../../components/ui";
+import { Avatar, ConfirmDialog, EmptyState, RetryCard, Skeleton, UiText, useToast } from "../../components/ui";
+import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useAddApi, type ContactDraftRow } from "./add-api";
 import { discardDraft, readDiscardedDrafts } from "./add-storage";
-import { Caption, FadeIn, useAddStyles } from "./add-ui";
+import { DensityDots, FadeIn, KIT_PAGE_INSET } from "./add-ui";
+import { KitChip, KitEmo, KitGradient } from "../plan/plan-kit";
+import { SmallButton } from "./UnifiedReviewApp";
 
 type State = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; drafts: ContactDraftRow[] };
 
@@ -20,7 +23,7 @@ export function ContactDraftsScreen({ eventId }: { eventId: string | null }) {
   const api = useAddApi();
   const toast = useToast();
   const { t } = useOrbitLocale();
-  const { styles } = useAddStyles();
+  const { colors, styles: d } = useDraftStyles();
   const accountId = useOrbitAuthSession().actorId ?? "";
   const [state, setState] = useState<State>({ kind: "loading" });
   const [busy, setBusy] = useState<string | null>(null);
@@ -68,42 +71,54 @@ export function ContactDraftsScreen({ eventId }: { eventId: string | null }) {
     await load();
   }
 
+  const count = state.kind === "ready" ? state.drafts.length : null;
   return (
-    <AppScreen title={t("add.drafts.title")}>
-      <FadeIn testID="add-drafts">
-        <View style={styles.stack}>
-          <Caption>{t("add.drafts.lead")}</Caption>
-          {eventId ? (
-            <Card variant="flat">
-              <View style={styles.stack} testID="add-drafts-import">
-                <ListRow title={t("add.drafts.importTitle")} subtitle={t("add.drafts.importBody")} />
-                <Button variant="primary" icon="users" label={t("add.drafts.importButton")} loading={busy === "import"} onPress={() => void importAttendees()} />
+    <AppScreen title={t("add.drafts.title")} subtitle={count === null ? undefined : t("add.drafts.count", { n: count })}>
+      <FadeIn testID="add-drafts" style={KIT_PAGE_INSET}>
+        <UiText style={d.lead}>{t("add.drafts.lead")}</UiText>
+        {eventId ? (
+          <View style={[d.card, d.importCard]} testID="add-drafts-import">
+            {/* .dimport: linear-gradient(135deg, mac-lav, surface 70%). */}
+            <KitGradient id="add-drafts-import" from={colors.macLav} to={colors.surface} stop={0.7} />
+            <View style={d.row}>
+              <KitEmo emoji="🥂" tone="lav" sm />
+              <View style={d.grow}>
+                <UiText style={d.importTitle}>{t("add.drafts.importTitle")}</UiText>
+                <UiText style={d.lbl}>{t("add.drafts.importBody")}</UiText>
               </View>
-            </Card>
-          ) : null}
-          {state.kind === "loading" ? <Skeleton lines={4} /> : null}
-          {state.kind === "failed" ? <RetryCard title={t("add.drafts.loadFailed")} onRetry={() => void load()} /> : null}
-          {state.kind === "ready" && !state.drafts.length ? <EmptyState title={t("add.drafts.emptyTitle")} message={t("add.drafts.emptyBody")} /> : null}
-          {state.kind === "ready" ? state.drafts.map((draft) => (
-            <Card key={draft.id}>
-              <View style={styles.stack} testID={`add-draft-${draft.id}`}>
-                <ListRow
-                  title={draft.displayName}
-                  subtitle={[[draft.organization, draft.role].filter(Boolean).join(" · "), draft.sourceLabel ? t("add.drafts.from", { label: draft.sourceLabel }) : ""].filter(Boolean).join(" · ")}
-                />
-                <View style={styles.row}>
-                  <Button size="sm" variant="primary" icon="user-plus" label={t("add.drafts.confirm")} loading={busy === draft.id} disabled={Boolean(busy)} onPress={() => void confirm(draft)} />
-                  <Button size="sm" variant="ghost" label={t("add.drafts.discard")} disabled={Boolean(busy)} onPress={() => setDiscarding(draft)} />
+            </View>
+            <View style={d.importAct}><SmallButton primary label={t("add.drafts.importButton")} disabled={Boolean(busy)} onPress={() => void importAttendees()} testID="add-drafts-import-go" /></View>
+          </View>
+        ) : null}
+        {state.kind === "loading" ? <Skeleton lines={4} /> : null}
+        {state.kind === "failed" ? <RetryCard title={t("add.drafts.loadFailed")} onRetry={() => void load()} /> : null}
+        {state.kind === "ready" && !state.drafts.length ? <EmptyState title={t("add.drafts.emptyTitle")} message={t("add.drafts.emptyBody")} /> : null}
+        {state.kind === "ready" && state.drafts.length ? (
+          <View style={d.list}>
+            {state.drafts.map((draft, index) => (
+              <View key={draft.id} style={[d.card, d.drf, index > 0 && d.drfNext]} testID={`add-draft-${draft.id}`}>
+                <View style={d.row}>
+                  <Avatar name={draft.displayName} />
+                  <View style={d.grow}>
+                    <UiText numberOfLines={1} style={d.name}>{draft.displayName}</UiText>
+                    <UiText numberOfLines={1} style={d.lbl}>{[draft.organization, draft.role].filter(Boolean).join(" · ")}</UiText>
+                  </View>
+                  <DensityDots level={1} />
+                </View>
+                {draft.sourceLabel ? <View style={d.chips}><KitChip label={t("add.drafts.from", { label: draft.sourceLabel })} /></View> : null}
+                <View style={d.acts}>
+                  <View style={d.act}><SmallButton label={t("add.drafts.confirm")} disabled={Boolean(busy)} onPress={() => void confirm(draft)} testID={`add-draft-confirm-${draft.id}`} /></View>
+                  <View style={d.act}><SmallButton ghost label={t("add.drafts.discard")} disabled={Boolean(busy)} onPress={() => setDiscarding(draft)} testID={`add-draft-discard-${draft.id}`} /></View>
                 </View>
               </View>
-            </Card>
-          )) : null}
-        </View>
+            ))}
+          </View>
+        ) : null}
       </FadeIn>
       <ConfirmDialog
         visible={discarding !== null}
         title={t("add.drafts.discardTitle")}
-        message={t("add.drafts.discardBody")}
+        message={discarding ? t("add.drafts.discardBodyName", { name: discarding.displayName }) : t("add.drafts.discardBody")}
         confirmLabel={t("add.drafts.discard")}
         destructive
         onConfirm={() => { if (discarding) void discard(discarding); }}
@@ -112,3 +127,23 @@ export function ContactDraftsScreen({ eventId }: { eventId: string | null }) {
     </AppScreen>
   );
 }
+
+// kit 数值（b12 N08b / N09）：.lbl 引导（margin 0 4 12、行高 1.6）、.card.dimport padding 14、.card.drf padding 14 + 间距 10、
+// .av 38、名字 14 / 700、.dn.d1、.chip 来源、.acts 两格（间距 8、margin-top 12）。
+const useDraftStyles = createThemedStyles((colors) => StyleSheet.create({
+  lead: { marginHorizontal: 4, marginBottom: 12, fontSize: 11.5, fontWeight: "500", lineHeight: 18.4, color: colors.ink2 },
+  card: { backgroundColor: colors.surface, borderRadius: 24, padding: 14 },
+  importCard: { marginBottom: 12, overflow: "hidden" },
+  row: { flexDirection: "row", alignItems: "center", gap: 10 },
+  grow: { flex: 1, minWidth: 0 },
+  importTitle: { fontSize: 13.5, fontWeight: "700", lineHeight: 20.25, color: colors.ink },
+  lbl: { fontSize: 11.5, fontWeight: "500", lineHeight: 17.25, color: colors.ink3 },
+  importAct: { marginTop: 10, flexDirection: "row" },
+  list: {},
+  drf: {},
+  drfNext: { marginTop: 10 },
+  name: { fontSize: 14, fontWeight: "700", lineHeight: 21, color: colors.ink },
+  chips: { flexDirection: "row", gap: 6, marginTop: 8 },
+  acts: { flexDirection: "row", gap: 8, marginTop: 12 },
+  act: { flex: 1 },
+}));

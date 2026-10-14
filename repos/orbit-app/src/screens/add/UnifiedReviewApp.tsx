@@ -143,12 +143,12 @@ export function UnifiedReviewApp({ tiles, active, onTile, duplicateTitle, except
 }
 
 /** .btn.sm（高 32、左右 12、12px 700）/ .primary。可点范围补到 44。 */
-export function SmallButton({ label, onPress, primary = false, disabled = false, testID }: { label: string; onPress: () => void; primary?: boolean; disabled?: boolean; testID?: string }) {
+export function SmallButton({ label, onPress, primary = false, ghost = false, disabled = false, testID }: { label: string; onPress: () => void; primary?: boolean; ghost?: boolean; disabled?: boolean; testID?: string }) {
   const { colors, styles } = useStyles();
   return (
     <UiPressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} hitSlop={6} onPress={onPress}
-      style={[styles.sm, primary ? styles.smPrimary : null, disabled ? styles.smOff : null]} testID={testID}>
-      <UiText numberOfLines={1} style={[styles.smText, { color: primary ? colors.bg : colors.ink }]}>{label}</UiText>
+      style={[styles.sm, primary ? styles.smPrimary : ghost ? styles.smGhost : null, disabled ? styles.smOff : null]} testID={testID}>
+      <UiText numberOfLines={1} style={[styles.smText, { color: primary ? colors.bg : ghost ? colors.ink2 : colors.ink }]}>{label}</UiText>
     </UiPressable>
   );
 }
@@ -184,6 +184,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   acts: { flexDirection: "row", gap: 8, marginTop: 10 },
   sm: { height: 32, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
   smPrimary: { backgroundColor: colors.ink },
+  smGhost: { backgroundColor: "transparent" },
   smOff: { opacity: 0.4 },
   smText: { fontSize: 12, fontWeight: "700", lineHeight: 18 },
   accHead: { flexDirection: "row", alignItems: "center", gap: 6 },

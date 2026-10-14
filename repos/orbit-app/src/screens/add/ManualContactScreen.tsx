@@ -15,7 +15,7 @@ import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
 import type { IngestContactCandidateContract } from "../../api/contract/business-card-batch";
 import type { ManualContactFieldChoice, ManualContactMergeField, ManualContactOrganizationSuggestion } from "../../api/contract/manual-contact";
 import { AppScreen } from "../../components/AppScreen";
-import { BottomSheet, Button, FilterOption, Icon, MacTile, Radio, UiPressable, UiText, useToast } from "../../components/ui";
+import { BottomSheet, Button, ConfirmDialog, FilterOption, Icon, MacTile, Radio, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
@@ -192,7 +192,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
     toast.info(t("add.manual.undoneToast"));
   }
 
-  const problemKey: MessageKey | null = problem === "name" ? "add.manual.nameMissing" : problem === "review" ? "add.manual.reviewNeeded" : problem === "sample" ? "add.manual.sampleBlocked" : problem === "failed" ? "add.manual.saveFailed" : null;
+  const problemKey: MessageKey | null = problem === "name" ? "add.manual.nameMissing" : problem === "review" ? "add.manual.reviewNeeded" : problem === "failed" ? "add.manual.saveFailed" : null;
   if (saved) return <ManualSavedView saved={saved} />;
   const anyOpen = open.size > 0;
   const showSuggestions = open.has("organization") && orgFocused && Boolean(orgQuery) && orgChosen !== orgQuery;
@@ -302,6 +302,10 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
           <UiText style={[m.lbl, m.densLine]}>{t(density === 1 ? "add.manual.densityLine1" : "add.manual.densityLine2", { level: t(DENSITY_KEY[density]) })}</UiText>
         </View>
         {problemKey ? <View style={m.gap}><Caption tone="error">{t(problemKey)}</Caption></View> : null}
+        {/* b12 N12 サンプル表示中は保存できません: the dialog (サンプルを見続ける / ガイドを続ける); no step count in the App (§17-12). */}
+        <ConfirmDialog visible={problem === "sample"} stacked title={t("add.manual.sampleTitle")} message={`${t("add.manual.sampleBlocked")}${t("add.manual.sampleAsk")}`}
+          confirmLabel={t("add.manual.sampleGuide")} cancelLabel={t("add.manual.sampleStay")}
+          onConfirm={() => { setProblem(null); router.push("/profile/onboarding" as Href); }} onCancel={() => setProblem(null)} />
       </FadeIn>
 
       <BottomSheet visible={sheetOpen} onClose={() => setDismissed(candidate?.contactId ?? null)} accessibilityLabel={t("add.manual.dupSheetTitle")}>

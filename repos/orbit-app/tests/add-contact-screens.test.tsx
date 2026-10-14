@@ -616,7 +616,11 @@ test("手入力: the sample account cannot save (403 SAMPLE_READ_ONLY) and the p
   await page.getByRole("textbox", { name: "名前" }).fill("見本 太郎");
   await page.waitForTimeout(500);
   await page.getByRole("button", { name: "保存" }).first().click();
-  await page.getByText("サンプル表示中は保存できません。").waitFor();
+  await page.getByText("サンプル表示中は保存できません。", { exact: false }).waitFor();
+  // b12 N12: 「これはサンプルです」 with サンプルを見続ける / ガイドを続ける.
+  await page.getByText("これはサンプルです").waitFor();
+  await page.getByRole("button", { name: "サンプルを見続ける" }).click();
+  await page.getByText("これはサンプルです").waitFor({ state: "detached" });
   assert.equal(server.people.length, 0);
   assert.equal((await nav(page)).stack.at(-1), "/contacts/new/manual");
 });
