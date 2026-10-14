@@ -1,5 +1,5 @@
 import { Children, useContext, type Context, type ReactNode } from "react";
-import { Platform, StyleSheet, Text as RNText, type TextProps } from "react-native";
+import { Platform, StyleSheet, Text as RNText, type TextProps, type TextStyle } from "react-native";
 
 import { designFont } from "../../api/design/tokens";
 import * as LocaleContextModule from "../../i18n/OrbitLocaleContext";
@@ -25,7 +25,7 @@ export function UiText({ lineBreakStrategyIOS = "standard", children, ...props }
   const japanese = Platform.OS === "ios" && (language ?? currentOrbitLanguage()) === "ja";
   return (
     <RNText lineBreakStrategyIOS={lineBreakStrategyIOS} {...props}>
-      {japanese ? withJapaneseFaces(children, faceFor(StyleSheet.flatten(props.style)?.fontWeight)) : children}
+      {japanese ? withJapaneseFaces(children, StyleSheet.flatten(props.style) ?? {}) : children}
     </RNText>
   );
 }
@@ -49,18 +49,54 @@ export function faceFor(weight: string | number | undefined): string {
   return FACES[String(chosen)]!;
 }
 
-function withJapaneseFaces(children: ReactNode, face: string): ReactNode {
+// Adjacent full-width punctuation is trimmed by half an em, as Chrome's default
+// text-spacing-trim does in the design (R23–25 App rework round 2, decision §19-3; pairs
+// CDP-measured with the kit font stack): an opening bracket after an opening bracket,
+// closing bracket, comma / full stop, ：；・ or ideographic space loses its leading half;
+// a closing bracket or comma / full stop before any of those (or an opening bracket)
+// loses its trailing half. Each pair trims once, so either way the first character of the
+// pair takes a −½em letter spacing. Pairs split across nested Text children are not seen.
+const OPENING = "「『（【〔［｛〈《";
+const CLOSING = "」』）】〕］｝〉》、。，．";
+const BEFORE_OPENING = OPENING + CLOSING + "“‘：；・\u3000";
+const AFTER_CLOSING = OPENING + CLOSING + "”’：；・\u3000";
+
+/** Indexes whose character is the first of a trimmed pair. */
+export function trimmedPunctuation(text: string): Set<number> {
+  const trimmed = new Set<number>();
+  for (let i = 0; i < text.length - 1; i += 1) {
+    const [here, next] = [text[i]!, text[i + 1]!];
+    if ((OPENING.includes(next) && BEFORE_OPENING.includes(here)) || (CLOSING.includes(here) && AFTER_CLOSING.includes(next))) trimmed.add(i);
+  }
+  return trimmed;
+}
+
+function withJapaneseFaces(children: ReactNode, style: TextStyle): ReactNode {
+  const face = faceFor(style.fontWeight);
+  // fontWeight normal: the face already carries the weight (no synthetic bold on top).
+  const faced = { fontFamily: face, fontWeight: "normal" } as const;
+  const trimSpacing = (style.letterSpacing ?? 0) - (style.fontSize ?? 14) / 2;
   return Children.map(children, (child) => {
     if (typeof child !== "string" || !HAS_CJK.test(child)) return child;
+    const trimmed = trimmedPunctuation(child);
     const parts: ReactNode[] = [];
+    const push = (text: string, at: number, cjk: boolean) => {
+      let from = 0;
+      for (let i = 0; i < text.length; i += 1) {
+        if (!trimmed.has(at + i)) continue;
+        if (i > from) parts.push(cjk ? <RNText key={at + from} style={faced}>{text.slice(from, i)}</RNText> : text.slice(from, i));
+        parts.push(<RNText key={`${at + i}t`} style={cjk ? [faced, { letterSpacing: trimSpacing }] : { letterSpacing: trimSpacing }}>{text[i]}</RNText>);
+        from = i + 1;
+      }
+      if (from < text.length) parts.push(cjk ? <RNText key={at + from} style={faced}>{text.slice(from)}</RNText> : text.slice(from));
+    };
     let last = 0;
     for (const match of child.matchAll(new RegExp(CJK, "gu"))) {
-      if (match.index > last) parts.push(child.slice(last, match.index));
-      // fontWeight normal: the face already carries the weight (no synthetic bold on top).
-      parts.push(<RNText key={match.index} style={{ fontFamily: face, fontWeight: "normal" }}>{match[0]}</RNText>);
+      if (match.index > last) push(child.slice(last, match.index), last, false);
+      push(match[0], match.index, true);
       last = match.index + match[0].length;
     }
-    if (last < child.length) parts.push(child.slice(last));
+    if (last < child.length) push(child.slice(last), last, false);
     return parts;
   });
 }
