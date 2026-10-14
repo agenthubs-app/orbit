@@ -136,6 +136,9 @@ function compareShot(v, designPng, board, shotFile) {
     grid: v.grid && v.grid !== "false" ? (v.grid === "true" || v.grid === true ? 100 : Number(v.grid)) : 0,
     gridDy: Number(v["grid-dy"] ?? 12),
     threshold: Number(v["grid-threshold"] ?? 0.02),
+    // 决定表 §20（2026-10-14）：App 通过 = 每条超阈值带都归因 [data] / [raster]；整屏 raw 只作参考（iOS 字形栅格化让字多的画面 raw ≥ 0.04）。
+    // --raw-threshold 0.02 可恢复旧卡法；Web 脚本不变。
+    rawThreshold: v["raw-threshold"] === undefined ? Infinity : Number(v["raw-threshold"]),
     attributionPath: v.attribution,
     viewKey: v.key,
     meta: { crop: Boolean(args.crop) || v.crop === true, view: v.key, design: v.design, board, shot: shotFile, devicePoints: points, alignedTo: [targetW, targetH], theme: v.theme, triptychScale: 1 },
