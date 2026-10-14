@@ -54,7 +54,7 @@ export const eventAssessmentObject = z.object({
   cautions: readableItems(z.object({ kind: tolerantEnum(["fee", "off_target_session", "calendar", "travel", "other"], "other"), text: z.string().max(200), detail: z.string().max(200).optional() })).optional(),
   partialAttendanceHint: z.object({ window: z.string().max(60), timeCostAfter: z.number().int().min(0).max(100) }).optional().catch(undefined),
   failureReason: tolerantEnum(FAILURE_REASONS, "unreadable").optional(),
-  pageCandidates: readableItems(z.object({ title: z.string().min(1).max(200), url: z.string().url().optional(), startsAt: z.string().optional() })).optional(),
+  pageCandidates: readableItems(z.object({ title: z.string().min(1).max(200), url: z.string().url().optional(), startsAt: z.string().optional(), venue: z.string().max(120).optional(), note: z.string().max(120).optional() })).optional(),
   userFilledFields: knownValues(FACT_KEYS).optional(),
   userDecision: z.enum(["added", "dismissed"]).optional().catch(undefined),
   eventId: z.string().min(1).optional(),
@@ -65,6 +65,8 @@ export const eventAssessmentObject = z.object({
   basisLines: z.array(z.string().max(300)).max(8).optional().catch(undefined),
   planItemId: z.string().min(1).optional(),
   recomputeOnAttendeeList: z.boolean().optional().catch(undefined),
+  posterAssetIds: z.array(z.string().min(1)).max(3).optional().catch(undefined),
+  readIssue: z.enum(["blurry"]).optional().catch(undefined),
 });
 export const eventAssessmentSchema = eventAssessmentObject.refine((value) => value.status !== "ready" || (value.scoreBreakdown.length === 5 && value.scoreBreakdown.reduce((sum, item) => sum + item.score, 0) === value.total), { message: "a ready assessment has the five criteria adding up to total" }) as unknown as z.ZodType<EventAssessmentContract>;
 

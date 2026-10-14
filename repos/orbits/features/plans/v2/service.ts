@@ -192,6 +192,11 @@ export interface PlanV2Service {
   setStepCompleted(input: { planId: string; stepKey: string; completed: boolean; idempotencyKey: string }): Promise<PlanCommandResult>;
   createPlanFromDraft(input: CreatePlanFromDraftInput): Promise<{ plan: PlanV2Detail; created: boolean; archivedV1PlanId: string | null }>;
   addEventToPlan(input: { planId?: string | null; eventId: string; title?: string }): Promise<{ planId: string; itemId: string; created: boolean } | null>;
+  /**
+   * R26（events DESIGN §2.1 / §9 #7，复核 S1）：外部活动的评估加入计划——不建活动，计划条目引用 `assessment:<id>`；
+   * 不查公开活动目录（评估记录的归属由评估服务按 actor 校验），只对本人可见。
+   */
+  addAssessmentToPlan(input: { planId?: string | null; assessmentId: string; title?: string }): Promise<{ planId: string; itemId: string; created: boolean } | null>;
   /** `skipIfEverScored`（对账任务用）：这份计划为这场活动计过分（含已撤销）就不再记——用户撤销的不自动补回。 */
   recordEventAttendanceForPlans(input: { eventId: string; title?: string; at?: string; skipIfEverScored?: boolean }): Promise<Array<{ planId: string; points: number; part: string }>>;
   planRemainingTargets(): Promise<PlanRemainingTargets[]>;
@@ -948,6 +953,21 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       });
     },
 
+    async addAssessmentToPlan({ planId, assessmentId, title }) {
+      const event = `assessment:${requiredId(assessmentId, "assessmentId")}`;
+      return repository.transact(scope, async (tx) => {
+        const active = await tx.activePlans();
+        const plan = planId ? active.find((item) => item.id === planId) : active[0];
+        if (!plan) return null;
+        const items = await tx.eventItems(plan.id);
+        const existing = items.find((item) => item.eventId === event);
+        if (existing) return { created: false, itemId: existing.id, planId: plan.id };
+        const at = now();
+        const item: PlanV2EventItem = { createdAt: at, eventId: event, id: `pitem_${newId()}`, planId: plan.id, sortKey: 1000 + items.length, status: "recommended", title: title?.trim() || "イベント", updatedAt: at };
+        await tx.insertEventItem(item);
+        return { created: true, itemId: item.id, planId: plan.id };
+      });
+    },
     async recordEventAttendanceForPlans({ eventId, title, at, skipIfEverScored }) {
       const event = requiredId(eventId, "eventId");
       return repository.transact(scope, async (tx) => {

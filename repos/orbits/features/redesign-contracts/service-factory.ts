@@ -26,7 +26,8 @@ export type RedesignLiveService = { readonly mode: "live" };
 export type RedesignContractService = RedesignMockService | RedesignLiveService;
 
 /** Capabilities with a live implementation (the rest answer NOT_IMPLEMENTED in live). */
-export const REDESIGN_CONTRACT_LIVE_CAPABILITIES: readonly RedesignContractCapability[] = ["contact-completion"];
+// R26: `event-assessment` has a live implementation (features/events/assessment).
+export const REDESIGN_CONTRACT_LIVE_CAPABILITIES: readonly RedesignContractCapability[] = ["contact-completion", "event-assessment"];
 
 export function resolveRedesignContract(capabilityId: RedesignContractCapability, mode?: ModuleMode | string): ServiceResolution<RedesignContractService> {
   return createModuleServiceFactory<RedesignContractService>({

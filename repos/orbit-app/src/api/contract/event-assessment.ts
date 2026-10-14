@@ -98,6 +98,10 @@ export interface EventAssessmentPageCandidate {
   title: string;
   url?: string;
   startsAt?: string;
+  /** 「渋谷」「オンライン」. */
+  venue?: string;
+  /** Where on the page it was found (「記事末尾のリンク」). */
+  note?: string;
 }
 
 export interface EventAssessmentScoreItem {
@@ -155,6 +159,10 @@ export interface EventAssessmentContract {
   planItemId?: string;
   /** Recompute will run when the attendee list is published (Orbit events only). */
   recomputeOnAttendeeList?: boolean;
+  /** Poster / screenshot uploads shown on the result (`GET /api/events/assessments/posters/[id]`). */
+  posterAssetIds?: readonly string[];
+  /** 「ブレを検出」: the poster read found blur. */
+  readIssue?: "blurry";
 }
 
 /** POST /api/events/assessments — one shape per source: a link, an uploaded poster, or an Orbit event. */

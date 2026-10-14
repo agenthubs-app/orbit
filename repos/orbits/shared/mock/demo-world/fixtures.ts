@@ -310,6 +310,84 @@ export const demoEventAssessment: EventAssessmentContract = {
   sample: true,
 };
 
+// R26 failure states (b2 #0–#3): the page needs a login, the page is not an event page, a poster read 1 of 3, and the
+// filled-in result with a range. `sample: true`; scores in the range fixture add up like any ready assessment.
+export const demoEventAssessmentLoginRequired: EventAssessmentContract = {
+  id: "demo-assessment-login-required",
+  sourceKind: "url",
+  status: "failed",
+  failureReason: "login_required",
+  facts: { url: "https://members.cfo-night.jp/events/18" },
+  sourceLabel: "members.cfo-night.jp/events/18",
+  scoreBreakdown: [],
+  total: 0,
+  verdict: "conditional",
+  missingFields: ["startsAt", "venue", "price"],
+  rubricVersion: "event-score-v2",
+  createdAt: at("09:40:00"),
+  sample: true,
+};
+
+export const demoEventAssessmentNotEventPage: EventAssessmentContract = {
+  id: "demo-assessment-not-event-page",
+  sourceKind: "url",
+  status: "failed",
+  failureReason: "not_event_page",
+  facts: { url: "https://note.example/cfo-yamada/n/series-a" },
+  sourceLabel: "note.example/cfo-yamada/n/series-a",
+  pageCandidates: [
+    { title: "CFO Night Tokyo vol.18", startsAt: "2026-10-07T19:00:00+09:00", venue: "渋谷", note: "記事末尾のリンク" },
+    { title: "シリーズA 実務勉強会", startsAt: "2026-11-12T19:00:00+09:00", venue: "オンライン", note: "本文中で紹介" },
+  ],
+  scoreBreakdown: [],
+  total: 0,
+  verdict: "conditional",
+  missingFields: [],
+  rubricVersion: "event-score-v2",
+  createdAt: at("09:41:00"),
+  sample: true,
+};
+
+export const demoEventAssessmentNeedsInput: EventAssessmentContract = {
+  id: "demo-assessment-needs-input",
+  sourceKind: "poster",
+  status: "needs_input",
+  readIssue: "blurry",
+  facts: { title: "製造業DX ナイトセミナー 名古屋", organizer: "中部ものづくりDX協議会", venue: "名古屋駅周辺" },
+  factBasis: { title: "read", organizer: "read", venue: "guessed" },
+  scoreBreakdown: [],
+  total: 0,
+  verdict: "conditional",
+  missingFields: ["startsAt", "price"],
+  rubricVersion: "event-score-v2",
+  createdAt: at("09:42:00"),
+  sample: true,
+};
+
+export const demoEventAssessmentRange: EventAssessmentContract = {
+  id: "demo-assessment-range",
+  sourceKind: "poster",
+  status: "ready",
+  facts: { title: "製造業DX ナイトセミナー 名古屋", startsAt: "2026-10-29T18:30:00+09:00", venue: "名古屋駅周辺", organizer: "中部ものづくりDX協議会" },
+  factBasis: { title: "read", organizer: "read", startsAt: "user", venue: "user" },
+  userFilledFields: ["startsAt", "venue", "price"],
+  scoreBreakdown: [
+    { criterion: "fit", score: 32, max: 45, reason: "会える人の適合", facts: ["製造業 DX 責任者 · 推定"], estimated: true },
+    { criterion: "confidence", score: 11, max: 15, reason: "推定の確度", facts: ["主催者の説明のみ"], estimated: false },
+    { criterion: "timeCost", score: 12, max: 20, reason: "時間とコスト", facts: ["参加費：推定"], estimated: true },
+    { criterion: "connections", score: 3, max: 10, reason: "既存のつながり", facts: ["推定"], estimated: true },
+    { criterion: "format", score: 5, max: 10, reason: "交流の形式", facts: ["交流タイム 30分"], estimated: false },
+  ],
+  total: 63,
+  scoreRange: { min: 59, max: 67 },
+  display: { goalFit: { value: 72 }, people: { value: 66 }, timeCost: { value: 62, min: 55, max: 70 } },
+  verdict: "conditional",
+  missingFields: [],
+  rubricVersion: "event-score-v2",
+  createdAt: at("09:43:00"),
+  sample: true,
+};
+
 // 9 recommendation feedback.
 export const demoDismissResult: EventRecommendationDismissResult = { eventId: "demo-event-robotics-meetup", reason: "schedule", dismissedAt: at("10:00:00") };
 

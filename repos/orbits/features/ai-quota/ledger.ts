@@ -22,6 +22,8 @@ import {
   AI_QUOTA_PURPOSE_POOLS,
   BACKGROUND_POOL_DAILY_LIMIT,
   INSTANT_INSIGHT_DAILY_LIMIT,
+  EVENT_ASSESSMENT_DAILY_LIMIT,
+  isEventAssessmentOperation,
   isInstantInsightOperation,
   isPlanFlowOperation,
   MANUAL_REANALYSIS_DAILY_LIMIT,
@@ -54,6 +56,8 @@ export interface AiQuotaUsageToday {
   background: number;
   /** R22：计划生成流程（背景、初版、AI 修正、見直し）当日已用次数（独立上限 15，不占用户池 10 次）。 */
   planFlow: number;
+  /** R26：活动评估当日已用次数（独立上限 5，不占用户池 10 次）。 */
+  eventAssessment: number;
 }
 
 export interface AiUsageOperationState {
@@ -91,7 +95,8 @@ function count(value: unknown): number {
 const PLAN_FLOW_SQL_LIST = PLAN_FLOW_PURPOSES.map((purpose) => `'${purpose}'`).join(", ");
 const USAGE_SQL = `/* ai-quota:usage-today */
   select
-    count(*) filter (where pool = 'user' and not (purpose = 'insight' and trigger = 'auto') and purpose not in (${PLAN_FLOW_SQL_LIST}))::int as user_used,
+    count(*) filter (where pool = 'user' and not (purpose = 'insight' and trigger = 'auto') and purpose not in (${PLAN_FLOW_SQL_LIST}) and purpose <> 'event_assessment')::int as user_used,
+    count(*) filter (where pool = 'user' and purpose = 'event_assessment')::int as event_assessment_used,
     count(*) filter (where pool = 'user' and purpose in (${PLAN_FLOW_SQL_LIST}))::int as plan_flow_used,
     count(*) filter (where pool = 'user' and purpose = 'insight' and trigger = 'auto')::int as instant_used,
     count(*) filter (where pool = 'user' and purpose = 'snapshot' and trigger = 'manual')::int as manual_used,
@@ -160,6 +165,9 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
       if (isPlanFlowOperation(request)) {
         // R22（DESIGN §5.3）：计划生成流程只受自己的日上限 15 约束，不占用户池 10 次总熔断。
         if (count(usage?.plan_flow_used) >= PLAN_FLOW_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "plan_flow" };
+      } else if (isEventAssessmentOperation(request)) {
+        // R26（events DESIGN §3.1）：活动评估只受自己的日上限 5 约束，不占用户池 10 次总熔断（月上限 10 在下面统一查）。
+        if (count(usage?.event_assessment_used) >= EVENT_ASSESSMENT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "event_assessment" };
       } else if (isInstantInsightOperation(request)) {
         // W0057（D62）：即时洞察生成只受自己的 20 次上限约束，不占用户池 10 次总熔断。
         if (count(usage?.instant_used) >= INSTANT_INSIGHT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "instant" };
@@ -280,9 +288,9 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
     async readUsageToday(actorId, now) {
       try {
         const row = (await client.query<Row>(USAGE_SQL, [workspaceId, actorId, tokyoUsageDay(now)])).rows[0];
-        return { background: count(row?.background_used), instant: count(row?.instant_used), manual: count(row?.manual_used), planFlow: count(row?.plan_flow_used), user: count(row?.user_used) };
+        return { background: count(row?.background_used), eventAssessment: count(row?.event_assessment_used), instant: count(row?.instant_used), manual: count(row?.manual_used), planFlow: count(row?.plan_flow_used), user: count(row?.user_used) };
       } catch (error) {
-        if (isUndefinedTable(error)) return { background: 0, instant: 0, manual: 0, planFlow: 0, user: 0 };
+        if (isUndefinedTable(error)) return { background: 0, eventAssessment: 0, instant: 0, manual: 0, planFlow: 0, user: 0 };
         throw error;
       }
     },

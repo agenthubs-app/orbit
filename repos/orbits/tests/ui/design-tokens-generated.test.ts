@@ -11,7 +11,9 @@ type Tokens = {
     contrast: [string, string][];
   };
   radius: Record<string, number>;
-  font: { family: Record<string, string>; size: Record<string, number> };
+  font: { family: Record<string, string>; size: Record<string, number>; "line-height": Record<string, number>; tracking: Record<string, number> };
+  space: { gap: number; scale: number[] };
+  shadow: Record<string, { light: string; dark: string }>;
   motion: { ease: string; duration: Record<string, number> };
 };
 

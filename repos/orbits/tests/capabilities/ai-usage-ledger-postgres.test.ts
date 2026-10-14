@@ -135,7 +135,7 @@ test("SC-04 user pool: manual 3/day, then the 10-operation fuse; pools never bor
     const eleventh = await ledger.reserve({ actorId: ALICE, idempotencyKey: "plan:x", now: NOW, pool: "user", purpose: "insight", trigger: "manual" });
     assert.deepEqual(eleventh, { limit: "user", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
     // R22：读数多了 planFlow（计划生成流程的独立计数），其余口径不变。
-    assert.deepEqual(await ledger.readUsageToday(ALICE, NOW), { background: 60, instant: 0, manual: 3, planFlow: 0, user: 10 });
+    assert.deepEqual(await ledger.readUsageToday(ALICE, NOW), { background: 60, eventAssessment: 0, instant: 0, manual: 3, planFlow: 0, user: 10 });
     // system 池不受任何用户额度约束。
     assert.equal((await ledger.reserve({ actorId: ALICE, idempotencyKey: "sys:more", now: NOW, pool: "system", purpose: "enrichment", trigger: "auto" })).ok, true);
     // 用户池满不影响 Bob，也不影响 Alice 的后台池第二天。
@@ -330,5 +330,28 @@ test("W0048b fix: 200 rounds of two parallel beginCalls (1 of 4 already used) �
       falseRefusals += pair.filter((result) => result.status === "rejected").length;
     }
     assert.equal(falseRefusals, 0);
+  });
+});
+
+// R26（events DESIGN §3.1）：活动评估日上限 5（不占用户池 10）、月上限 10（东京月：10/31 23:59 JST 与 11/1 00:00 JST）。
+test("event_assessment：日 5 次独立计数、不占用户池；月 10 次按东京自然月重置", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    const ledger = ledgerOf(harness);
+    const reserve = (key: string, now: Date) => ledger.reserve({ actorId: ALICE, idempotencyKey: key, now, pool: "user", purpose: "event_assessment", trigger: "manual" });
+    // 用户池先用满 10：评估仍可用。
+    await fill(ledger, { count: USER_POOL_DAILY_LIMIT, pool: "user", prefix: "plan", purpose: "plan", trigger: "plan" });
+    for (let n = 0; n < 5; n += 1) assert.equal((await reserve(`ea:d1:${n}`, NOW)).ok, true);
+    const sixth = await reserve("ea:d1:6", NOW);
+    assert.deepEqual(sixth, { limit: "event_assessment", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
+    assert.equal((await ledger.readUsageToday(ALICE, NOW)).eventAssessment, 5);
+    assert.equal((await ledger.readUsageToday(ALICE, NOW)).user, USER_POOL_DAILY_LIMIT);
+    // 同月另一天再 5 次 → 月 10 次用满；10/31 23:59 JST 仍是 10 月 → monthly_limit；11/1 00:00 JST 重置。
+    const day2 = new Date("2026-10-05T03:00:00.000Z");
+    for (let n = 0; n < 5; n += 1) assert.equal((await reserve(`ea:d2:${n}`, day2)).ok, true);
+    const lastMinute = new Date("2026-10-31T14:59:00.000Z");
+    const refused = await reserve("ea:oct-end", lastMinute);
+    assert.equal(refused.ok, false);
+    assert.equal(refused.ok === false && refused.reason, "monthly_limit");
+    assert.equal((await reserve("ea:nov-1", new Date("2026-10-31T15:00:00.000Z"))).ok, true);
   });
 });

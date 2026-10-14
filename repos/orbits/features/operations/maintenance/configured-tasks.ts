@@ -35,6 +35,8 @@ import { createContactImportMaintenanceTask } from "../../contacts/import/mainte
 import { getConfiguredContactImportMaintenance } from "../../contacts/import/runtime";
 import { getConfiguredInviteCodeRuntime } from "../../invite-codes/configured";
 import { createInviteAttemptsCleanupMaintenanceTask, createInviteProfileSyncMaintenanceTask } from "../../invite-codes/sync";
+import { getConfiguredEventAssessmentRuntime } from "../../events/assessment/configured";
+import { createEventAssessmentReadingMaintenanceTask } from "../../events/assessment/job";
 import type { MaintenanceTask } from "./pass";
 
 // The production task list. Each task checks its own configuration and reports
@@ -279,6 +281,8 @@ export function createConfiguredMaintenanceTasks({
     createInviteProfileSyncMaintenanceTask({ resolve: () => getConfiguredInviteCodeRuntime()?.storage ?? null }),
     // R15: drop invite preview / redeem rate-limit windows older than two days.
     createInviteAttemptsCleanupMaintenanceTask({ resolve: () => getConfiguredInviteCodeRuntime()?.attempts ?? null }),
+    // R26: event assessments — reclaim reads stuck over 2 minutes (→ timeout), pick up leases that expired (≤20), purge 7-day-old posters.
+    createEventAssessmentReadingMaintenanceTask({ resolve: () => getConfiguredEventAssessmentRuntime() }),
     // Monitoring O2/O3: daily read-cost rollup, Neon reconciliation, retention
     // and admin alerts. Days already final are skipped, so heartbeat passes are cheap.
     createReadCostMaintenanceTask({ env }),

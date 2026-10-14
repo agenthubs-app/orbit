@@ -62,8 +62,8 @@ export const AI_QUOTA_MAX_CALLS: Readonly<Record<AiQuotaPurpose, number>> = {
   plan_revise: 2,
   plan_review_mark: 1,
   plan_review: 2,
-  // R26 定（活动评估：抓取后抽取事实 1 次 + 修复 1 次）。
-  event_assessment: 2,
+  // R26（events DESIGN §3.1，复核 M3 / M4）：E1 抽取 + 修复；E2 vision 转录 + 结构化 + 修复 → 3。
+  event_assessment: 3,
 };
 
 /**
@@ -86,7 +86,18 @@ export const AI_QUOTA_MONTHLY_LIMITS: Readonly<Partial<Record<AiQuotaPurpose, nu
   plan_revise: 30,
   plan_review_mark: 20,
   plan_review: 3,
+  // R26（events DESIGN §3.1 / §9 #22）：活动评估免费每东京月 10 次（付费档上线时再加不限）。
+  event_assessment: 10,
 };
+
+/**
+ * R26（events DESIGN §3.1）：活动评估在用户主动池里单独计日数，**不占** `USER_POOL_DAILY_LIMIT`（照 `PLAN_FLOW_DAILY_LIMIT` 的写法）。
+ */
+export const EVENT_ASSESSMENT_DAILY_LIMIT = 5;
+
+export function isEventAssessmentOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose }): boolean {
+  return input.pool === "user" && input.purpose === "event_assessment";
+}
 
 /**
  * R22（复核 m11）：有月上限的新用途固定从一个池预留。月度计数在按池的锁下进行，固定池才不会有两个池并发各算各的。

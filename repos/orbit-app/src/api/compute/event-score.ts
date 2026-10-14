@@ -135,3 +135,20 @@ export function scoreEvent(input: { types: readonly EventScoreType[]; facts: Eve
 export function eventVerdict(total: number): EventScoreResult["verdict"] {
   return total >= EVENT_SCORE_RECOMMEND ? "recommend" : total >= EVENT_SCORE_CONDITIONAL ? "conditional" : "skip";
 }
+
+/**
+ * R26（events DESIGN §9 #4）：参加費 / 移动 / 时段缺失时的分数区间。只加不改 `scoreEvent`：
+ * `total` 仍是 `scoreEvent` 的值（缺失项按中间值），判定一律 `eventVerdict(total)`；区间只用于显示。
+ * 缺失项按最差 / 最好代入（费 0–8、移动 0–6、时段 3–6），其余各项不变。事实齐全时返回 null。
+ */
+export function scoreEventRange(result: EventScoreResult, facts: EventScoreFacts): { min: number; max: number; timeCostMin: number; timeCostMax: number } | null {
+  const feeMissing = facts.fee === null;
+  const travelMissing = facts.travelMinutes === null;
+  const slotMissing = facts.timeslot === null;
+  if (!feeMissing && !travelMissing && !slotMissing) return null;
+  const timeCost = result.items.find((item) => item.criterion === "timeCost")?.score ?? 0;
+  const known = timeCost - (feeMissing ? 4 : 0) - (travelMissing ? 3 : 0) - (slotMissing ? 3 : 0);
+  const timeCostMin = known + (slotMissing ? 3 : 0);
+  const timeCostMax = known + (feeMissing ? 8 : 0) + (travelMissing ? 6 : 0) + (slotMissing ? 6 : 0);
+  return { max: result.total - timeCost + timeCostMax, min: result.total - timeCost + timeCostMin, timeCostMax, timeCostMin };
+}

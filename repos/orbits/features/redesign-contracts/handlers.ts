@@ -1,10 +1,11 @@
 // R08 mock route handlers for the redesign contracts; each app/api/**/route.ts
 // re-exports one of these. See ./route.ts.
+import { after } from "next/server";
 import { z } from "zod";
 
 import { accountDeletionRequestSchema, accountExportCreateInputSchema, accountExportSchema, appVersionSchema } from "../../shared/api-schema/account";
 import { contactCompletionAnswerInputSchema, contactCompletionQuestionSchema, contactCompletionResultSchema } from "../../shared/api-schema/contact-completion";
-import { eventAssessmentAddToPlanResultSchema, eventAssessmentCreateInputSchema, eventAssessmentPatchInputSchema, eventAssessmentSchema } from "../../shared/api-schema/event-assessment";
+import { eventAssessmentAddToPlanResultSchema, eventAssessmentAvailabilitySchema, eventAssessmentCreateInputSchema, eventAssessmentDismissResultSchema, eventAssessmentPatchInputSchema, eventAssessmentSchema } from "../../shared/api-schema/event-assessment";
 import { eventRecommendationDismissInputSchema, eventRecommendationDismissResultSchema } from "../../shared/api-schema/event-recommendation-feedback";
 import { homeLayoutSchema, homeLayoutUpdateInputSchema } from "../../shared/api-schema/home-layout";
 import {
@@ -13,6 +14,7 @@ import {
 } from "../../shared/api-schema/invite-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { contactCompletionLiveHandlers } from "../contacts/completion/handlers";
+import { eventAssessmentLiveHandlers } from "../events/assessment/handlers";
 import { redesignMock, type CompletionMockResult, type InviteFailure } from "./mock-service";
 import { readBody, redesignContractRoute, type ContractReply } from "./route";
 
@@ -120,25 +122,56 @@ const resolveMerge = (action: "merge" | "dismiss") => redesignContractRoute("inv
 export const mergeInviteConnection = resolveMerge("merge");
 export const dismissInviteMerge = resolveMerge("dismiss");
 
-// 8 event assessment
-export const listAssessments = redesignContractRoute("event-assessment", z.array(eventAssessmentSchema), () => ({ data: redesignMock.assessments() }));
-export const createAssessment = redesignContractRoute("event-assessment", eventAssessmentSchema, async (request) => {
+// 8 event assessment — R26: live goes to features/events/assessment (registered live in service-factory.ts);
+// mock / hybrid answer from the demo world (incl. the R26 failure-state fixtures and the design-board fixtures).
+const scheduleAfter = (job: () => Promise<void>) => {
+  try {
+    after(job);
+  } catch {
+    // Outside a request scope (tests / scripts): run it now.
+    void job().catch(() => undefined);
+  }
+};
+const assessmentLive = () => eventAssessmentLiveHandlers(scheduleAfter);
+export const listAssessments = redesignContractRoute("event-assessment", z.array(eventAssessmentSchema), (request, params, { service }) => {
+  if (service.mode === "live") return assessmentLive().list(request, params);
+  return { data: redesignMock.assessments() };
+});
+export const createAssessment = redesignContractRoute("event-assessment", eventAssessmentSchema, async (request, params, { service }) => {
+  if (service.mode === "live") return assessmentLive().create(request, params);
   const body = await readBody(request, eventAssessmentCreateInputSchema);
   if (body.ok === false) return body.reply;
   return { data: redesignMock.createAssessment(body.value), status: 202 };
 });
-export const getAssessment = redesignContractRoute("event-assessment", eventAssessmentSchema, (_request, params) => {
+export const getAssessment = redesignContractRoute("event-assessment", eventAssessmentSchema, (request, params, { service }) => {
+  if (service.mode === "live") return assessmentLive().get(request, params);
   const found = redesignMock.assessment(params.id ?? "");
   return found ? { data: found } : notFound();
 });
-export const patchAssessment = redesignContractRoute("event-assessment", eventAssessmentSchema, async (request, params) => {
+export const patchAssessment = redesignContractRoute("event-assessment", eventAssessmentSchema, async (request, params, { service }) => {
+  if (service.mode === "live") return assessmentLive().patch(request, params);
   const body = await readBody(request, eventAssessmentPatchInputSchema);
   if (body.ok === false) return body.reply;
-  const patched = redesignMock.patchAssessment(params.id ?? "", body.value.facts);
+  const patched = redesignMock.patchAssessment(params.id ?? "", body.value.facts, body.value.unknownFields);
   return patched ? { data: patched } : notFound();
 });
-export const addAssessmentToPlan = redesignContractRoute("event-assessment", eventAssessmentAddToPlanResultSchema, (_request, params) =>
-  redesignMock.assessment(params.id ?? "") ? { data: { assessmentId: params.id, addedToPlan: true } } : notFound());
+export const addAssessmentToPlan = redesignContractRoute("event-assessment", eventAssessmentAddToPlanResultSchema, (request, params, { service }) => {
+  if (service.mode === "live") return assessmentLive().addToPlan(request, params);
+  return redesignMock.addAssessmentToPlan(params.id ?? "") ? { data: { assessmentId: params.id, addedToPlan: true, planId: null, planItemId: null } } : notFound();
+});
+// R26: 見送る、入口可用性、海报上传。
+export const dismissAssessment = redesignContractRoute("event-assessment", eventAssessmentDismissResultSchema, (request, params, { service }) => {
+  if (service.mode === "live") return assessmentLive().dismiss(request, params);
+  return redesignMock.dismissAssessment(params.id ?? "") ? { data: { assessmentId: params.id, userDecision: "dismissed" } } : notFound();
+});
+export const assessmentAvailability = redesignContractRoute("event-assessment", eventAssessmentAvailabilitySchema, (request, params, { service }) => {
+  if (service.mode === "live") return assessmentLive().availability(request, params);
+  return { data: redesignMock.assessmentAvailability() };
+});
+export const uploadAssessmentPoster = redesignContractRoute("event-assessment", z.object({ posterAssetId: z.string().min(1) }), (request, params, { service }) => {
+  if (service.mode === "live") return assessmentLive().uploadPoster(request, params);
+  return { data: { posterAssetId: `demo-poster-${Date.now().toString(36)}` }, status: 201 };
+});
 
 // 9 recommendation feedback
 export const dismissEventRecommendation = redesignContractRoute("event-recommendation-feedback", eventRecommendationDismissResultSchema, async (request, params) => {

@@ -13,7 +13,9 @@ import { resolveRedesignContract, type RedesignContractCapability, type Redesign
 // `service.mode === "live"`, and the handler calls the real implementation.
 // Responses are validated against the contract schema before they leave; a
 // response that fails its own schema is a 500 in the envelope, never sent.
-export type ContractReply = { data: unknown; status?: number } | { error: AppError; context?: Record<string, string> };
+// R26: an error reply may carry its own HTTP status (429 RATE_LIMITED for the event-page reader, DESIGN §5);
+// without it the status follows the AppError code as before.
+export type ContractReply = { data: unknown; status?: number } | { error: AppError; context?: Record<string, string>; status?: number };
 type Params = Record<string, string>;
 
 /**
@@ -47,7 +49,7 @@ export function redesignContractRoute<T>(capability: RedesignContractCapability,
       }), { headers, status: getHttpStatusForAppErrorCode("SERVICE_UNAVAILABLE") });
     }
     const reply = await handle(request, (await context?.params) ?? {}, { service: resolution.service });
-    if ("error" in reply) return NextResponse.json(failure(reply.error, reply.context), { headers, status: getHttpStatusForAppErrorCode(reply.error.code) });
+    if ("error" in reply) return NextResponse.json(failure(reply.error, reply.context), { headers, status: reply.status ?? getHttpStatusForAppErrorCode(reply.error.code) });
     if (!schema) return NextResponse.json(success(reply.data), { headers, status: reply.status ?? 200 });
     const checked = schema.safeParse(reply.data);
     if (!checked.success) {
