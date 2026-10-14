@@ -1,0 +1,21 @@
+{
+ "_note": "R12 App 加人像素返工（2026-10-14）。App 连只读 mock 服务器 :3207（ORBIT_REDESIGN_MOCK=add-scan,invite-codes），Metro 带 EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=add-scan（名刺批次 design-* 演示）。`taps` 非空的画面要先在模拟器里点到该状态再用 --shot 单张比。键 = <id>-app-<theme>。",
+ "defaults": {
+  "grid": 30,
+  "wait": 9000,
+  "attribution": "scripts/visual/attribution-redesign-R12-app.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/add/**",
+  "repos/orbit-app/src/i18n/ja/add.ts",
+  "repos/orbit-app/src/components/ui/**",
+  "repos/orbit-app/src/components/AppScreen.tsx",
+  "repos/orbit-app/src/components/ShellTopBar.tsx"
+ ],
+ "views": [
+  { "id": "A-R12-15", "design": "b11-nav-v3.html", "board-index": 15, "url": "orbit://contacts/new/manual", "note": "手入力 ① 名前だけ" },
+  { "id": "A-R12-16", "design": "b11-nav-v3.html", "board-index": 16, "url": "orbit://contacts/new/manual", "taps": "名前「高山 亮」→ ＋会社「ミライ」（候補下拉）→ ＋出会った場所", "note": "手入力 ② あるといいもの" },
+  { "id": "A-R12-17", "design": "b11-nav-v3.html", "board-index": 17, "url": "orbit://contacts/new/manual", "taps": "名前输入已有联系人 → 重複 sheet", "note": "手入力 ③ 重複の候補" },
+  { "id": "A-R12-18", "design": "b11-nav-v3.html", "board-index": 18, "url": "orbit://contacts/new/manual", "taps": "保存后", "note": "手入力 ④ 保存したあと" }
+ ]
+}

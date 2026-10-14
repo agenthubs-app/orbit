@@ -134,3 +134,8 @@ export function newAddKey(operation: string): string {
   sequence += 1;
   return `app:add:${operation}:${Date.now().toString(36)}:${sequence.toString(36)}:${Math.random().toString(36).slice(2, 10)}`;
 }
+
+/** ●●○ for a density line (the same marks as the dots; b11 #18 「●●○ → ●●●」 and the 保存 toast). */
+export function densityMarks(level: ContactDensityLevel): string {
+  return "●".repeat(level) + "○".repeat(3 - level);
+}

@@ -537,7 +537,7 @@ test("手入力: a name alone finds a 同名 candidate; 統合 asks only the dif
   await page.getByText("既存の人に統合しました").waitFor();
 });
 
-test("手入力: 保存 opens the person with 「人脈に追加しました · 手入力 [元に戻す]」; 元に戻す deletes it and returns to the form", async (t) => {
+test("手入力: 保存 shows 保存したあと (b11 #18) with 「人脈に追加しました · 手入力 · ●●○ [元に戻す]」; 元に戻す deletes it and returns to the form", async (t) => {
   const { page, server } = await open(t, "/contacts/new/manual", { setup: (s) => { s.events = [{ id: "event-cfo", startsAt: "2026-10-07T10:00:00Z", title: "CFO Night Tokyo" }]; } });
   await page.getByRole("textbox", { name: "名前" }).fill("新井 光");
   await page.getByTestId("add-manual-density-1").waitFor();
@@ -548,11 +548,13 @@ test("手入力: 保存 opens the person with 「人脈に追加しました · 
   await page.getByTestId("add-manual-density-2").waitFor();
   await page.waitForTimeout(500);
   await page.getByRole("button", { name: "保存" }).first().click();
-  await page.waitForFunction(() => (window as unknown as { addNav: { stack: string[] } }).addNav.stack.at(-1)!.startsWith("/contacts/contact-manual"));
+  await page.getByTestId("add-manual-saved").waitFor();
+  await page.getByText("情報を濃くする").waitFor();
+  await page.getByText("手入力の内容と統合 · ●●○ → ●●●").waitFor();
   const created = server.calls.find((call) => call.path === "/api/contacts/manual" && call.method === "POST")!.body as Record<string, unknown>;
   assert.deepEqual(created.metContext, { eventId: "event-cfo", kind: "event", label: "CFO Night Tokyo" });
   await page.getByText("人脈に追加しました").waitFor();
-  await page.getByText("新井 光 · 手入力").waitFor();
+  await page.getByText("新井 光 · 手入力 · ●●○").waitFor();
   await page.getByRole("button", { name: "元に戻す" }).click();
   await page.getByText("追加を取り消しました").waitFor();
   assert.equal(server.undone.length, 1);
@@ -571,8 +573,6 @@ test("模拟器走查: 元に戻す says it is working at once, waits for the se
   await page.getByRole("button", { name: "元に戻す" }).click();
   await page.getByText("元に戻しています…").waitFor();
   assert.ok(server.calls.some((call) => /\/api\/contacts\/manual\/[^/]+\/undo$/.test(call.path)), "元に戻す reached the server");
-  // The person goes back to the form by themselves while the answer is on its way.
-  await page.evaluate(() => { const w = window as unknown as { addNav: { stack: string[]; render?: () => void } }; w.addNav.stack.pop(); w.addNav.render?.(); });
   release();
   await page.getByText("追加を取り消しました").waitFor();
   assert.equal(server.people.length, 0);
@@ -580,7 +580,7 @@ test("模拟器走查: 元に戻す says it is working at once, waits for the se
   assert.equal(await page.getByRole("textbox", { name: "名前" }).inputValue(), "遅延 太郎", "with what was typed");
 });
 
-test("模拟器走查: 元に戻す too late (409 UNDO_EXPIRED) says so and keeps the person's page", async (t) => {
+test("模拟器走查: 元に戻す too late (409 UNDO_EXPIRED) says so and keeps 保存したあと", async (t) => {
   const { page, server } = await open(t, "/contacts/new/manual");
   await page.getByRole("textbox", { name: "名前" }).fill("期限 花子");
   await page.waitForTimeout(500);
@@ -590,7 +590,8 @@ test("模拟器走查: 元に戻す too late (409 UNDO_EXPIRED) says so and keep
   await page.getByRole("button", { name: "元に戻す" }).click();
   await page.getByText("取り消せる時間を過ぎました").waitFor();
   assert.equal(server.people.length, 1, "still in 人脈");
-  assert.match((await nav(page)).stack.at(-1)!, /^\/contacts\/contact-manual/, "the person's page stays");
+  await page.getByTestId("add-manual-saved").waitFor();
+  assert.equal((await nav(page)).stack.at(-1), "/contacts/new/manual", "保存したあと stays");
 });
 
 test("手入力: the sample account cannot save (403 SAMPLE_READ_ONLY) and the page says so", async (t) => {

@@ -20,7 +20,9 @@ import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 import { useAddApi } from "./add-api";
-import { Caption, DensityDots, FadeIn } from "./add-ui";
+import { addDesignMock } from "./add-design-mock";
+import { ManualSavedView, type ManualSaved } from "./ManualSavedView";
+import { Caption, DensityDots, FadeIn, KIT_PAGE_INSET, KitHeadAction } from "./add-ui";
 import {
   createBody,
   defaultChoices,
@@ -28,6 +30,7 @@ import {
   duplicateCheckBody,
   EMPTY_MANUAL_FORM,
   eventChips,
+  densityMarks,
   formDensity,
   formFingerprint,
   monthDay,
@@ -66,6 +69,9 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
   const [decision, setDecision] = useState<ManualDecision>({ kind: "none" });
   const [organizations, setOrganizations] = useState<ManualContactOrganizationSuggestion[]>([]);
   const [orgFocused, setOrgFocused] = useState(false);
+  // The company the person just chose (a suggestion or 「新しく登録」): the list stays closed until they edit it.
+  const [orgChosen, setOrgChosen] = useState<string | null>(null);
+  const [saved, setSaved] = useState<ManualSaved | null>(null);
   const [events, setEvents] = useState<EventChip[]>([]);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<"name" | "review" | "sample" | "failed" | null>(null);
@@ -105,7 +111,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
     const controller = new AbortController();
     const timer = setTimeout(() => {
       void api.suggestOrganizations(orgQuery, controller.signal).then((result) => {
-        if (mounted.current && !controller.signal.aborted) setOrganizations(result.ok ? result.data.organizations.filter((entry) => entry.name !== orgQuery).slice(0, 5) : []);
+        if (mounted.current && !controller.signal.aborted) setOrganizations(result.ok ? result.data.organizations.slice(0, 5) : []);
       });
     }, ORGANIZATION_DEBOUNCE_MS);
     return () => { clearTimeout(timer); controller.abort(); };
@@ -148,14 +154,17 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
     setCandidates([]);
     setDecision({ kind: "none" });
     key.current = null;
-    // Push (not replace): this page stays underneath, so 元に戻す keeps working on the person's page.
-    router.push(`/contacts/${encodeURIComponent(contactId)}` as Href);
     if (answer.outcome === "merged") {
+      // Push (not replace): this page stays underneath.
+      router.push(`/contacts/${encodeURIComponent(contactId)}` as Href);
       toast.success(t("add.manual.mergedToast"), { sub: t("add.manual.addedSub", { name: snapshot.displayName.trim() }) });
       return;
     }
+    // b11 #18 保存したあと: this page turns into the saved view (情報を濃くする), the toast keeps 元に戻す.
+    const level = formDensity(snapshot);
+    setSaved({ contactId, density: level, metLabel: snapshot.met?.label ?? null, name: snapshot.displayName.trim(), organization: snapshot.organization.trim() });
     toast.success(t("add.manual.addedToast"), {
-      sub: t("add.manual.addedSub", { name: snapshot.displayName.trim() }),
+      sub: t("add.manual.addedSubLevel", { dots: densityMarks(level), name: snapshot.displayName.trim() }),
       undo: () => void undoSaved(contactId, snapshot),
     });
   }
@@ -177,19 +186,21 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
     }
     if (mounted.current) {
       setForm(snapshot);
+      setSaved(null);
       router.dismissTo("/contacts/new/manual" as Href);
     }
     toast.info(t("add.manual.undoneToast"));
   }
 
   const problemKey: MessageKey | null = problem === "name" ? "add.manual.nameMissing" : problem === "review" ? "add.manual.reviewNeeded" : problem === "sample" ? "add.manual.sampleBlocked" : problem === "failed" ? "add.manual.saveFailed" : null;
+  if (saved) return <ManualSavedView saved={saved} />;
   const anyOpen = open.size > 0;
-  const showSuggestions = open.has("organization") && orgFocused && Boolean(orgQuery);
+  const showSuggestions = open.has("organization") && orgFocused && Boolean(orgQuery) && orgChosen !== orgQuery;
   const sheetOpen = Boolean(candidate) && decision.kind === "none" && dismissed !== candidate?.contactId;
   return (
-    <AppScreen title={t("add.manual.title")} backIcon="x"
-      headerActions={<Button size="sm" variant="primary" label={t("add.manual.save")} disabled={!form.displayName.trim() || saving} onPress={() => void save()} />}>
-      <FadeIn testID="add-manual">
+    <AppScreen title={t("add.manual.title")} subtitle={t("add.manual.lead")} backIcon="x"
+      headerActions={<KitHeadAction label={t("add.manual.save")} disabled={!form.displayName.trim() || saving} onPress={() => void save()} testID="add-manual-save" />}>
+      <FadeIn testID="add-manual" style={KIT_PAGE_INSET}>
         <Field label={t("add.manual.name")} required={t("add.manual.required")} hint={anyOpen ? undefined : t("add.manual.nameHint")} first>
           <FieldInput value={form.displayName} onChangeText={(value) => set("displayName", value)} autoFocus returnKeyType="done" accessibilityLabel={t("add.manual.name")} testID="add-manual-name" />
         </Field>
@@ -218,15 +229,18 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
             {showSuggestions ? (
               <View style={m.sugg} testID="add-manual-org-suggestions">
                 {organizations.map((entry, index) => (
-                  <UiPressable key={entry.name} accessibilityRole="button" onPress={() => { set("organization", entry.name); setOrganizations([]); }} style={[m.suggRow, index === 0 ? m.suggOn : null]}>
+                  <UiPressable key={entry.name} accessibilityRole="button" onPress={() => { set("organization", entry.name); setOrgChosen(entry.name); setOrganizations([]); }} style={[m.suggRow, index === 0 ? m.suggOn : null]}>
                     <View style={[m.suggTile, { backgroundColor: colors.macBlue }]}><UiText style={m.suggEmoji}>🏭</UiText></View>
                     <UiText style={m.suggText}>{entry.name} <UiText style={m.lbl}>{t("add.manual.orgCount", { n: entry.contactCount })}</UiText></UiText>
                   </UiPressable>
                 ))}
-                <UiPressable accessibilityRole="button" onPress={() => setOrganizations([])} style={[m.suggRow, organizations.length ? null : m.suggOn]}>
-                  <View style={[m.suggTile, { backgroundColor: colors.surface2 }]}><UiText style={m.suggEmoji}>＋</UiText></View>
-                  <UiText style={m.suggText}>{t("add.manual.orgNew", { name: orgQuery })}</UiText>
-                </UiPressable>
+                {/* 「新しく登録」 only when no company in the network has exactly this name. */}
+                {organizations.some((entry) => entry.name === orgQuery) ? null : (
+                  <UiPressable accessibilityRole="button" onPress={() => { setOrgChosen(orgQuery); setOrganizations([]); }} style={[m.suggRow, organizations.length ? null : m.suggOn]}>
+                    <View style={[m.suggTile, { backgroundColor: colors.surface2 }]}><UiText style={m.suggEmoji}>＋</UiText></View>
+                    <UiText style={m.suggText}>{t("add.manual.orgNew", { name: orgQuery })}</UiText>
+                  </UiPressable>
+                )}
               </View>
             ) : null}
           </Field>
@@ -234,7 +248,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
 
         {open.has("met") ? (
           <Field label={t("add.manual.met")} hint={t("add.manual.metHint")} testID="add-manual-met">
-            <View style={m.chips}>
+            <View style={[m.chips, m.metChips]}>
               {events.map((event) => (
                 <FilterOption key={event.eventId} label={t("add.manual.metEventChip", { date: monthDay(event.startsAt), title: event.title })} selected={form.met?.kind === "event" && form.met.eventId === event.eventId} onToggle={() => set("met", form.met?.eventId === event.eventId ? null : { eventId: event.eventId, kind: "event", label: event.title })} />
               ))}
@@ -303,14 +317,14 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
             <View style={m.cmp2}>
               <View style={m.cmpBox}>
                 <UiText style={m.lbl}>{t("add.manual.dupIncoming")}</UiText>
-                <UiText style={m.cmpName}>{form.displayName.trim()}</UiText>
-                {form.organization.trim() ? <UiText style={m.cmpText}>{form.organization.trim()}</UiText> : null}
-                <UiText style={m.lbl}>{[t("add.manual.sourceManual"), form.met?.label].filter(Boolean).join(" · ")}</UiText>
+                <UiText numberOfLines={1} style={m.cmpName}>{form.displayName.trim()}</UiText>
+                {form.organization.trim() ? <UiText numberOfLines={1} style={m.cmpText}>{form.organization.trim()}</UiText> : null}
+                <UiText numberOfLines={1} style={m.lbl}>{[t("add.manual.sourceManual"), form.met?.label].filter(Boolean).join(" · ")}</UiText>
               </View>
               <View style={[m.cmpBox, m.cmpExisting]}>
                 <UiText style={m.lbl}>{t("add.manual.dupExisting")}</UiText>
-                <UiText style={m.cmpName}>{candidate.displayName}</UiText>
-                {candidate.organization || candidate.role ? <UiText style={m.cmpText}>{[candidate.organization, candidate.role].filter(Boolean).join(" · ")}</UiText> : null}
+                <UiText numberOfLines={1} style={m.cmpName}>{candidate.displayName}</UiText>
+                {candidate.organization || candidate.role ? <UiText numberOfLines={1} style={m.cmpText}>{[candidate.organization, candidate.role].filter(Boolean).join(" · ")}</UiText> : null}
               </View>
             </View>
             <UiText style={[m.lbl, m.rule]}>{differing.length ? t("add.manual.dupRule", { fields: differing.map((field) => t(FIELD_KEY[field])).join("・") }) : t("add.manual.dupRuleSame")}</UiText>
@@ -342,7 +356,7 @@ function FieldInput({ multiline = false, onFocus, onBlur, ...input }: TextInputP
   const { colors, m } = useManualStyles();
   const [focused, setFocused] = useState(false);
   return (
-    <TextInput {...input} multiline={multiline} placeholderTextColor={colors.ink3Text}
+    <TextInput {...input} multiline={multiline} placeholderTextColor={colors.ink3Text} showSoftInputOnFocus={!addDesignMock("no-keyboard")}
       onFocus={(event) => { setFocused(true); onFocus?.(event); }} onBlur={(event) => { setFocused(false); onBlur?.(event); }}
       style={[m.in, multiline ? m.inMulti : null, focused ? m.inFocus : null]} />
   );
@@ -392,13 +406,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   labelText: { fontSize: 12, fontWeight: "700", color: colors.ink2, lineHeight: 18 },
   req: { fontSize: 10, fontWeight: "800", color: colors.coral, lineHeight: 15 },
   in: { minHeight: 46, borderRadius: 14, backgroundColor: colors.surface, paddingHorizontal: 14, fontSize: 14, color: colors.ink, borderWidth: 1.5, borderColor: "transparent" },
-  inMulti: { minHeight: 64, paddingTop: 10, paddingBottom: 10, fontSize: 13, lineHeight: 20.8, textAlignVertical: "top" },
+  // iOS puts a line's whole extra leading above the glyphs (CSS splits it): top 10 − ~3 lands the text where kit has it.
+  inMulti: { minHeight: 64, paddingTop: 7, paddingBottom: 10, fontSize: 13, lineHeight: 20.8, textAlignVertical: "top" },
   inFocus: { borderColor: colors.plum500 },
   msg: { marginTop: 6 },
   lbl: { fontSize: 11.5, fontWeight: "500", color: colors.ink3, lineHeight: 17.25 },
   more: { marginTop: 18, marginBottom: 8, marginHorizontal: 4, fontSize: 11.5, fontWeight: "800", color: colors.ink2, lineHeight: 17.25 },
   moreNote: { fontWeight: "600" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  metChips: { gap: 6 },
   chipsAfter: { marginTop: 12 },
   addf: { flexDirection: "row", alignItems: "center", gap: 4, height: 34, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.plum300 },
   addfQuiet: { borderColor: colors.surface3 },
@@ -406,7 +422,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   addfQuietText: { color: colors.ink3 },
   flat: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
   mergeNote: { marginTop: 16, flexDirection: "row", gap: 10, alignItems: "flex-start" },
-  mergeEmoji: { fontSize: 18 },
+  // iOS 的 Apple Color Emoji 字宽比 Chrome 大约 3pt：盒子固定成 kit 里的字宽，后面的文字才对齐。
+  mergeEmoji: { fontSize: 18, width: 21 },
   mergeText: { flex: 1, fontSize: 11.5, fontWeight: "500", color: colors.ink2, lineHeight: 18.4 },
   mergeStrong: { fontWeight: "700", color: colors.ink },
   densGap: { marginTop: 10 },

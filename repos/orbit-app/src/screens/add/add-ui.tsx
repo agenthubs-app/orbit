@@ -2,7 +2,7 @@
 // with 「視差効果を減らす」), the three-dot density marks and legend (D-10), the three
 // count tiles of まとめて確認 / 完成, and a section heading. Library components only.
 import { useEffect, useRef, type ReactNode } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import { Animated, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
 import type { ContactDensityLevel } from "../../api/compute/contact-density";
 import { CountUp, UiPressable, UiText } from "../../components/ui";
@@ -12,12 +12,18 @@ import { radius } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 /** Fades the content in. Nothing slides or scales, so 「視差効果を減らす」 changes nothing here. */
-export function FadeIn({ children, testID }: { children: ReactNode; testID?: string }) {
+/**
+ * AppScreen 的内容区比 kit `.scroll` 多出顶部 12、左右少 2（左右 16 vs 18）：加人各页先在页内抵消
+ * （同计划页 PlanOverview 的 `page`）；乙改壳后删掉这里（交接表 G23）。
+ */
+export const KIT_PAGE_INSET = { marginHorizontal: 2, marginTop: -12 } as const;
+
+export function FadeIn({ children, testID, style }: { children: ReactNode; testID?: string; style?: StyleProp<ViewStyle> }) {
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(opacity, { duration: durations.toastIn, toValue: 1, useNativeDriver: true }).start();
   }, [opacity]);
-  return <Animated.View testID={testID} style={{ opacity }}>{children}</Animated.View>;
+  return <Animated.View testID={testID} style={[{ opacity }, style]}>{children}</Animated.View>;
 }
 
 export function DensityDots({ level }: { level: ContactDensityLevel }) {
@@ -122,6 +128,25 @@ export function Body({ children }: { children: ReactNode }) {
   return <UiText style={styles.body}>{children}</UiText>;
 }
 
+/**
+ * kit 顶栏右侧的文字按钮（`.btn.sm.primary` 高 34、左右 12、12px 700）：放在 44 宽的格子里、向右溢出，
+ * 和设计稿一样不把两侧加宽（ShellTopBar 遇到宽于 44 的一侧会两侧同宽、靠右）。看得见的高 34，hitSlop 补到 44。
+ */
+export function KitHeadAction({ label, disabled = false, onPress, testID }: { label: string; disabled?: boolean; onPress: () => void; testID?: string }) {
+  const { colors, styles } = useStyles();
+  return (
+    <View style={styles.headSlot}>
+      {/* An explicit-width layer lets the button keep its own width past the 44 cell (Yoga caps children at the parent). */}
+      <View pointerEvents="box-none" style={styles.headLayer}>
+      <UiPressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} hitSlop={5} onPress={onPress}
+        style={[styles.headBtn, disabled && styles.headBtnOff]} testID={testID}>
+        <UiText numberOfLines={1} style={[styles.headBtnText, { color: colors.bg }]}>{label}</UiText>
+      </UiPressable>
+      </View>
+    </View>
+  );
+}
+
 export function useAddColors() {
   return useOrbitTheme().colors;
 }
@@ -147,6 +172,11 @@ export const useAddStyles = createThemedStyles((colors) => StyleSheet.create({
 }));
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  headSlot: { width: 44, height: 34 },
+  headLayer: { position: "absolute", left: 0, top: 0, width: 200, height: 34, flexDirection: "row" },
+  headBtn: { height: 34, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
+  headBtnOff: { opacity: 0.4 },
+  headBtnText: { fontSize: 12, fontWeight: "700", lineHeight: 18 },
   dots: { flexDirection: "row", gap: 3 },
   dot: { borderRadius: 4, height: 8, width: 8 },
   legend: { gap: 6, paddingVertical: 4 },

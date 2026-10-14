@@ -1,0 +1,4 @@
+{
+ "_schema": "\"<id>-app-<theme>\": { \"<band>\": \"[data] / [raster] 看过该带裁剪后写的具体理由\" }。band 按 --grid 30。",
+ "_rule": "RD-16：只认 [data]（数据文字不同）与 [raster]（iOS 3x 与 Chrome 的假名 / 图标栅格化残差，用户 2026-10-12 定）。"
+}
