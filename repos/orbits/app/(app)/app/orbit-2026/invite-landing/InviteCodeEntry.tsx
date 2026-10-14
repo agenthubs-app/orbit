@@ -42,7 +42,7 @@ export function InviteCodeEntry({ language, legacyLink = false, navigate = (href
       <div className={styles.column} data-invite-landing="entry">
         <header className={styles.head}>
           <span className={styles.appIcon} aria-hidden>O</span>
-          <span className={styles.headText}><b>{t(l.brand)}</b><span className={styles.label}>{t(l.headSub)}</span></span>
+          <span className={styles.headText}><b className={styles.brand}>{t(l.brand)}</b><span className={styles.lbl}>{t(l.headSub)}</span></span>
         </header>
         <form className={`${styles.stack} ${styles.fade}`} onSubmit={(event) => { event.preventDefault(); open(); }} data-invite-entry="">
           <div className={styles.titleBlock}>

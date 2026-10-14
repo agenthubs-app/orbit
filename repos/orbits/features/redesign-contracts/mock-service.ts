@@ -18,7 +18,7 @@ import { contactDensity } from "../../shared/compute/contact-density";
 import { DEMO_EVENTS } from "../../shared/mock/demo-world";
 import {
   demoAccountExport, demoAppVersion, demoCompletionOrganizationQuestion, demoCompletionQuestion, demoDeletionRequest, demoEventAssessment, demoHomeLayout,
-  demoInviteAlreadyConnected, demoInviteCode, demoInviteConnection, demoInviteFromPeer, demoInviteHistory, DEMO_PLAN_NOW, type DemoInvitePeerCode,
+  demoInviteAlreadyConnected, demoInviteCode, demoInviteConnection, demoInviteExpiredPeer, demoInviteFromPeer, demoInviteFullPeer, demoInviteHistory, DEMO_PLAN_NOW, type DemoInvitePeerCode,
 } from "../../shared/mock/demo-world/fixtures";
 
 // ── R16 每天一问（复核 M5：照 live 规则走）。演示世界一天一题：GET 给「どこで？」那题；答过 / 跳过后当天 GET 返回 null；
@@ -118,7 +118,7 @@ function freshInviteState() {
     clock: null as string | null,
     mine,
     creates: new Map<string, InviteCodeContract>(),
-    peers: new Map<string, PeerCode>([demoInviteFromPeer, demoInviteAlreadyConnected].map((peer) => [normalizeInviteCode(peer.preview.code)!, { ...peer }])),
+    peers: new Map<string, PeerCode>([demoInviteFromPeer, demoInviteAlreadyConnected, demoInviteExpiredPeer, demoInviteFullPeer].map((peer) => [normalizeInviteCode(peer.preview.code)!, { ...peer }])),
     connections: new Map<string, InviteConnectionView>([[demoInviteConnection.contactId, demoInviteConnection]]),
     redeems: new Map<string, { code: string; result: InviteCodeRedeemResult | InviteFailure }>(),
     shares: new Map<string, InviteConnectionView>(),

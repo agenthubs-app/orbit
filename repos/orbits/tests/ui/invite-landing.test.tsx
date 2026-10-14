@@ -119,13 +119,16 @@ test("signed in, no name yet: the short profile (name required, prefilled from t
   assert.match(put.body.mutationId, /^invite-profile-/);
 });
 
-test("signed in: つながりますか？ with switches — 名前 always (cannot be turned off), 会社 / 提供 / 求めている on, メール / 電話 off; つながる sends keys only and lands on 完了", async (t) => {
+test("signed in (b11 #12): つながりますか？, 佐藤さんに見せる情報 as chips; 変更 opens switches — 名前 always (cannot be turned off), 会社 / 提供 / 求めている on, メール / 電話 off; つながる sends keys only and lands on 完了", async (t) => {
   const page = await landing(t, { signedIn: true, handlers: [PROFILE_GET, { method: "POST", url: "^/api/invite-codes/H8MW-4QZT/redeem$", replies: [ok(REDEEMED)] }] });
   const confirm = page.locator("[data-invite-confirm]");
   await confirm.waitFor();
   assert.equal(await confirm.getByRole("heading", { name: "佐藤 健一さんとつながりますか？" }).count(), 1);
-  assert.equal(await confirm.getByText("新しいアカウントは作りません。お互いの人脈に追加されます。").count(), 1);
+  assert.equal(await confirm.getByText(/^新しいアカウントは作りません。\s*お互いの人脈に追加されます。$/u).count(), 1);
   assert.equal(await confirm.getByText("高橋 美咲 でログイン中").count(), 1);
+  assert.equal(await confirm.getByText("佐藤さんに見せる情報", { exact: true }).count(), 1, "running text calls the inviter by family name");
+  assert.deepEqual(await confirm.locator("[data-invite-share-chips] span").allTextContents(), ["会社・役職", "提供できること", "求めていること", "連絡先（オフ）"]);
+  await confirm.locator("[data-invite-share-edit]").click();
   const switches = await confirm.locator("[data-invite-switch]").evaluateAll((rows) => rows.map((row) => { const s = row.querySelector('[role="switch"]')!; return [row.getAttribute("data-invite-switch"), s.getAttribute("aria-checked"), (s as HTMLButtonElement).disabled]; }));
   assert.deepEqual(switches, [["displayName", "true", true], ["organization", "true", false], ["offering", "true", false], ["seeking", "true", false], ["email", "false", false], ["phone", "false", false]]);
   await confirm.locator('[data-invite-switch="seeking"] [role="switch"]').click();
@@ -139,19 +142,18 @@ test("signed in: つながりますか？ with switches — 名前 always (canno
   assert.equal(await state(page), "done");
 });
 
-test("完了: two avatars, what they shared with me (peer), what they got from me, あとから変える note, アプリで続ける = orbit://i/<code>", async (t) => {
+test("完了 (b11 #10): two avatars, what they got from me, あとから変える note, アプリで続ける = orbit://i/<code>", async (t) => {
   const page = await landing(t, { signedIn: true, handlers: [PROFILE_GET, { method: "POST", url: "/redeem$", replies: [ok(REDEEMED)] }] });
   await page.locator("[data-invite-connect]").click();
   const done = page.locator("[data-invite-done]");
   await done.waitFor();
-  assert.equal(await done.getByRole("heading", { name: "佐藤 健一さんとつながりました" }).count(), 1);
+  assert.equal(await done.getByRole("heading", { name: "佐藤さんとつながりました" }).count(), 1);
   assert.equal(await done.locator('[role="img"]').count() >= 2, true);
-  const fromPeer = page.locator("[data-invite-from-peer]");
-  for (const text of ["佐藤 健一さんから届いた情報", "株式会社ミナトリンク · 代表取締役CEO", "kenichi@minato.example", "製造業 SaaS の導入知見"]) assert.equal(await fromPeer.getByText(text).count(), 1, text);
-  assert.deepEqual(await page.locator("[data-invite-to-peer] span[title]").allTextContents(), ["名前", "会社・役職", "提供できること", "求めていること"]);
-  assert.equal(await page.getByText("あとから変えると、相手側も自動で更新されます。").count(), 1);
+  assert.equal(await page.locator("header").getByText("つながりました", { exact: true }).count(), 1, "an existing account did not sign up here");
+  assert.deepEqual(await page.locator("[data-invite-to-peer] span").allTextContents(), ["名前", "会社・役職", "提供できること", "求めていること"]);
+  assert.equal(await page.getByText("佐藤さんに届いたあなたの情報").count(), 1);
+  assert.equal(await page.getByText("あとから変えると、佐藤さん側も自動で更新されます（本人入力）").count(), 1);
   assert.equal(await page.locator("[data-invite-app]").getAttribute("href"), "orbit://i/H8MW-4QZT");
-  assert.equal(await page.locator("[data-invite-view-contact]").getAttribute("href"), "/app/contacts/contact%3Ainvite%3Aabc");
 });
 
 test("R15 复核 S1: the confirm step no longer guesses 「already in your network」 in the browser — one neutral line, and my network is not read", async (t) => {
@@ -159,7 +161,7 @@ test("R15 复核 S1: the confirm step no longer guesses 「already in your netwo
   const confirm = page.locator("[data-invite-confirm]");
   await confirm.waitFor();
   await page.waitForTimeout(150);
-  assert.equal(await page.locator("[data-invite-check-later]").textContent(), "つながったあと、同じ人かどうか確認できます。");
+  assert.equal(await page.locator("[data-invite-check-later] p").textContent(), "つながったあと、同じ人かどうか確認できます。");
   assert.doesNotMatch((await page.locator("body").textContent())!, /すでにあなたの人脈|統合されます/u);
   assert.deepEqual((await fetches(page)).map((call) => call.url), ["/api/profile"], "only my profile is read");
 });
@@ -206,8 +208,9 @@ test("期限切れ: the inviter's name and date, and a resend request draft (cop
   await notice.waitFor();
   assert.equal(await notice.getByRole("heading").textContent(), "この招待コードは期限切れです");
   assert.equal(await notice.getByText("佐藤 健一さんのコード（10/14 まで）· 有効期限は 7日間です").count(), 1);
-  assert.equal(await page.getByText("佐藤 健一さんに新しいコードを頼む").count(), 1);
-  const draft = "佐藤 健一さん、Orbit の招待リンクの期限が切れていました。お手数ですが、もう一度送っていただけますか？";
+  assert.equal(await page.getByText("佐藤さんに新しいコードを頼む").count(), 1);
+  assert.match((await page.locator("[data-invite-sender-note]").textContent())!, /再発行は 1タップ/u);
+  const draft = "佐藤さん、Orbit の招待リンクの期限が切れていました。お手数ですが、もう一度送っていただけますか？";
   assert.equal(await page.locator("[data-invite-ask-text]").textContent(), draft);
   assert.equal(await page.locator("[data-invite-ask-line]").getAttribute("href"), `https://line.me/R/share?text=${encodeURIComponent(draft)}`);
   await page.locator("[data-invite-ask-copy]").click();
@@ -282,7 +285,7 @@ test("m3: /i?expired=legacy (an old /app/invitations link) says the link no long
   assert.equal(await zh.locator("[data-invite-legacy]").textContent(), "这个链接已经不能用了。请输入邀请码。");
 });
 
-test("responsive: 390 fills the width (16 gutters); 1024 centres a 560 column; dark mode uses the dark tokens", async (t) => {
+test("responsive: 390 fills the width (18 gutters); 1024 centres a 560 column; dark mode uses the dark tokens", async (t) => {
   const phone = await landing(t, {}, { width: 390 });
   await phone.locator("[data-invite-open]").waitFor();
   const narrow = await phone.locator("[data-invite-landing]").evaluate((node) => { const r = node.getBoundingClientRect(); return { left: r.left, width: r.width }; });

@@ -5,7 +5,10 @@
  */
 import type { Metadata } from "next";
 
+import { inviteLinkLabel } from "../../(app)/app/orbit-2026/add/invite/invite-model";
 import { InviteLanding } from "../../(app)/app/orbit-2026/invite-landing/InviteLanding";
+import { inviteLinkOrigin } from "../../../features/invite-codes/configured";
+import { INVITE_DESIGN_SHARED_BY_ME, inviteDesignView } from "../_landing/design-fixture";
 import { inviteLandingLanguage, loadInviteLanding, readInviteLandingSession } from "../_landing/load-invite";
 import { inviteLandingMetadata } from "../_landing/landing-metadata";
 
@@ -23,9 +26,16 @@ function safeDecode(value: string): string {
   }
 }
 
-export default async function InviteCodePage({ params }: { params: Promise<{ code: string }> }) {
-  const { code } = await params;
+export default async function InviteCodePage({ params, searchParams }: { params: Promise<{ code: string }>; searchParams: Promise<{ design?: string | string[] }> }) {
+  const [{ code }, query] = await Promise.all([params, searchParams]);
   const [language, session] = await Promise.all([inviteLandingLanguage(), readInviteLandingSession()]);
   const initial = await loadInviteLanding(safeDecode(code), session.actorId);
-  return <InviteLanding language={language} initial={initial} signedIn={session.signedIn} accountName={session.accountName} accountEmail={session.accountEmail} />;
+  // The address as the browser shows it (b11 #13 heads the expired page with it); only for a code that was read.
+  const linkLabel = initial.kind === "preview" ? inviteLinkLabel(`${inviteLinkOrigin()}/i/${initial.preview.code}`) : undefined;
+  const design = typeof query.design === "string" ? query.design : undefined;
+  const initialView = inviteDesignView(design, initial);
+  return (
+    <InviteLanding language={language} initial={initial} signedIn={session.signedIn} accountName={session.accountName} accountEmail={session.accountEmail}
+      linkLabel={linkLabel} initialView={initialView} initialSharedByMe={initialView ? [...INVITE_DESIGN_SHARED_BY_ME] : undefined} />
+  );
 }

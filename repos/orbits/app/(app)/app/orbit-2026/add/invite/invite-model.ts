@@ -149,6 +149,16 @@ export function inviteAppLink(code: string): string {
 }
 
 /** The link without the scheme, as the design shows it (orbit.app/i/XXXX-XXXX). */
+/**
+ * How the pages address the inviter in running text (b11 #10 / #12 / #13: 「佐藤さんに見せる情報」「佐藤さんとつながりました」):
+ * the family name when the name is written 「姓 名」 with a space, otherwise the whole name. Headings that introduce
+ * the person keep the full name (「佐藤 健一さんとつながりますか？」).
+ */
+export function inviteCallName(name: string): string {
+  const parts = name.trim().split(/[\s\u3000]+/u);
+  return parts.length > 1 && parts[0] ? parts[0] : name.trim();
+}
+
 export function inviteLinkLabel(link: string): string {
   return link.replace(/^https?:\/\//u, "");
 }

@@ -5,10 +5,11 @@ import type { Browser, Page } from "playwright";
 import { bundle, errorsOf, launch, open } from "./support/orbit-2026-harness";
 import { SHELL_STUBS } from "./support/orbit-2026-shell-harness";
 
-// R15 招待コード · 発出方 on the Web (DESIGN §2.4, b11 A2 ①–③ / Web, b5 E6): 人脈を追加 › 招待コード
-// rendered for real inside the shell — 説明 the first time only, the QR card, the share switches and
-// their defaults, the three draft tones (no 「送信」 button anywhere), 無効にする with a confirmation,
-// これまでのコード with all five states, and the right rail. fetch is stubbed and every call recorded.
+// R15 招待コード · 発出方 on the Web (DESIGN §2.4, b11 #14 「招待コード · Web」; 2026-10-14 pixel rework): 人脈を追加 ›
+// 招待コード rendered for real inside the shell — 説明 the first time only, the QR card (with the 「O」 badge), 有効期限 /
+// 使える人数, 相手に届くあなたの情報 [変更] (R15 P1: same code, new keys), the draft card (「ていねい ▾」 tone menu, two-line
+// preview, 下書きをコピー — no 「送信」 button anywhere), 無効にする with a confirmation, and これまでのコード (shown when no
+// code stands, or when someone who joined may be a person I already have). fetch is stubbed and every call recorded.
 type Reply = { status: number; body: unknown };
 type Handler = { method: string; url: string; replies: Reply[] };
 type Fixture = { handlers?: Handler[]; guideSeen?: boolean; open?: boolean; lang?: string };
@@ -100,7 +101,7 @@ test("first time: 説明 (3 steps + 3 questions) → コードをつくる creat
   const page = await screen(t, { handlers: [NO_CURRENT, PROFILE_GET, HISTORY_GET, { method: "POST", url: "^/api/invite-codes$", replies: [ok(CODE, 201)] }] });
   const intro = page.locator("[data-invite-intro]");
   await intro.waitFor();
-  assert.equal(await page.getByRole("dialog").getByRole("heading", { level: 2 }).first().textContent(), "招待コード");
+  assert.equal(await page.getByRole("dialog").getAttribute("aria-labelledby").then((id) => page.locator(`[id="${id}"]`).textContent()), "招待コード");
   for (const text of ["相手が自分で入力して、お互いの人脈に入ります", "3ステップ", "コードを見せる · 送る", "相手が登録・入力", "お互いの人脈に", "相手がもう Orbit を使っていたら？", "期限と回数は？", "Orbit から相手に送られますか？"]) {
     assert.equal(await intro.getByText(text, { exact: true }).count(), 1, text);
   }
@@ -115,68 +116,71 @@ test("first time: 説明 (3 steps + 3 questions) → コードをつくる creat
   assert.equal(await page.evaluate(() => (window as any).guideStore.get("orbit.invite.guideSeen.v1")), "1");
 });
 
-test("second time: straight to 共有 — QR, 8-character code, link + コピー, QR を拡大, 有効期限 · あと N日, 残り N / 10人 · 登録済み N人", async (t) => {
+test("second time: straight to 共有 — QR with the O badge, 8-character code, link + コピー, 有効期限, 残り N / 10人 (b11 #14)", async (t) => {
   const page = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET, HISTORY_GET] });
   await page.locator("[data-invite-code-card]").waitFor();
   assert.equal(await page.locator("[data-invite-intro]").count(), 0, "説明 is skipped after the first time");
   assert.equal(await page.locator("[data-invite-code]").textContent(), "K7QX-2M9P");
   assert.equal(await page.locator("[data-invite-link]").textContent(), "orbitailink.com/i/K7QX-2M9P");
-  const qr = page.locator('[data-invite-code-card] [data-invite-qr="md"] svg');
+  const qr = page.locator("[data-invite-code-card] [data-invite-qr] svg");
   assert.equal(await qr.getAttribute("aria-label"), "招待リンクの QR コード");
   assert.ok((await qr.locator("path").getAttribute("d"))!.length > 200, "a real QR matrix");
   assert.match((await page.locator("[data-invite-expires]").textContent())!, /^\d{1,2}\/\d{1,2} まで$/);
-  assert.equal(await page.locator("[data-invite-days]").textContent(), "あと7日");
   assert.equal(await page.locator("[data-invite-uses]").textContent(), "残り 9 / 10人");
-  assert.equal(await page.locator("[data-invite-joined]").textContent(), "登録済み 1人");
+  assert.equal(await page.locator("[data-invite-code-card] [data-invite-qr]").getByText("O", { exact: true }).count(), 1, "the Orbit badge sits on the QR");
+  assert.equal(await page.locator("[data-invite-history]").count(), 0, "これまでのコード stays out of the way while a code stands");
   await page.locator("[data-invite-copy-link]").click();
   await page.getByText("リンクをコピーしました").waitFor();
   assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.copied), ["https://orbitailink.com/i/K7QX-2M9P"]);
-  await page.locator("[data-invite-enlarge]").click();
-  await page.locator('[data-invite-qr-big] [data-invite-qr="lg"]').waitFor();
-  const size = await page.locator('[data-invite-qr="lg"]').evaluate((node) => node.getBoundingClientRect().width);
-  assert.ok(size >= 300, `enlarged QR ${size}`);
-  assert.equal(await page.getByText("Orbit からは送信しません · 共有はあなたの端末から").count(), 1);
+  const box = await page.locator("[data-invite-code-card] [data-invite-qr]").evaluate((node) => node.getBoundingClientRect().width);
+  assert.equal(box, 150, "b11 .qr is 150 square");
+  assert.match((await page.locator("[data-invite-sheet]").textContent())!, /Orbit からは送信しません · 無効にする/u);
 });
 
-test("相手に届くあなたの情報: chips by default; 変更 shows switches with my values (only what the profile has), e-mail off; applying remakes the code with the keys", async (t) => {
-  const page = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET, HISTORY_GET, { method: "POST", url: "^/api/invite-codes$", replies: [ok(NEW_CODE, 201)] }] });
+test("相手に届くあなたの情報: chips by default; 変更 shows switches with my values (only what the profile has), e-mail off; applying keeps the code and sends the keys (R15 P1)", async (t) => {
+  const SHARED = { ...CODE, shared: { ...CODE.shared, email: "kenichi@minato.example" } };
+  const page = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET, HISTORY_GET, { method: "PUT", url: "^/api/invite-codes/current/share$", replies: [ok(SHARED)] }] });
   const share = page.locator("[data-invite-share]");
   await share.waitFor();
-  assert.deepEqual(await share.locator("[data-invite-share-chips] span[title]").allTextContents(), ["会社・役職", "提供できること", "求めていること", "連絡先（オフ）"]);
+  assert.deepEqual(await share.locator("[data-invite-share-chips] span").allTextContents(), ["会社・役職", "提供できること", "求めていること", "連絡先（オフ）"]);
   await page.locator("[data-invite-share-edit]").click();
   const switches = await share.locator("[data-invite-switch]").evaluateAll((rows) => rows.map((row) => [row.getAttribute("data-invite-switch"), row.querySelector('[role="switch"]')!.getAttribute("aria-checked")]));
   assert.deepEqual(switches, [["organization", "true"], ["offering", "true"], ["seeking", "true"], ["email", "false"]], "no 電話 switch: the profile has no phone");
   assert.equal(await share.locator('[data-invite-switch="organization"]').getByText("株式会社ミナトリンク · 代表取締役").count(), 1);
   assert.equal(await share.locator('[data-invite-switch="email"]').getByText("kenichi@minato.example").count(), 1);
-  assert.equal(await share.getByText("変えると新しいコードになり、今のコードとリンクは使えなくなります。").count(), 1);
+  assert.equal(await share.getByText("これからコードを開く人に届く情報が変わります。コードとリンクはそのままです。").count(), 1);
   await share.locator('[data-invite-switch="email"] [role="switch"]').click();
   await page.locator("[data-invite-share-apply]").click();
-  await page.locator('[data-invite-code]:text("P3XA-8HTC")').waitFor();
-  const [create] = await writes(page);
-  assert.deepEqual(create!.body.sharedKeys, ["organization", "offering", "seeking", "email"]);
+  await page.getByText("相手に届く情報を変更しました").waitFor();
+  const [update, ...rest] = await writes(page);
+  assert.equal(rest.length, 0);
+  assert.equal(update!.method, "PUT");
+  assert.equal(update!.url, "/api/invite-codes/current/share");
+  assert.deepEqual(update!.body.sharedKeys, ["organization", "offering", "seeking", "email"]);
+  assert.match(update!.body.idempotencyKey, /^invite-share-/u);
+  assert.equal(await page.locator("[data-invite-code]").textContent(), "K7QX-2M9P", "the code stays the same");
+  assert.deepEqual(await share.locator("[data-invite-share-chips] span").allTextContents(), ["会社・役職", "提供できること", "求めていること", "メール"]);
 });
 
-test("メッセージの下書き: three fixed tones, copy / LINE / mail only — no 「送信」 button anywhere in the dialog", async (t) => {
+test("メッセージの下書き: 「ていねい ▾」 picks one of three fixed tones, a two-line preview, 下書きをコピー — no 「送信」 button anywhere in the dialog", async (t) => {
   const page = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET, HISTORY_GET] });
   await page.locator("[data-invite-code-card]").waitFor();
-  await page.getByRole("button", { name: "メッセージの下書き" }).click();
   const draft = page.locator("[data-invite-draft-text]");
-  await draft.waitFor();
   assert.match((await draft.textContent())!, /^先日はありがとうございました。\n[^\n]+\nhttps:\/\/orbitailink\.com\/i\/K7QX-2M9P（\d{1,2}\/\d{1,2} まで）\n佐藤 健一$/u);
-  await page.getByRole("tab", { name: "カジュアル" }).click();
+  assert.equal(await draft.evaluate((node) => getComputedStyle(node).webkitLineClamp), "2", "the card shows two lines of it");
+  assert.equal(await page.locator("[data-invite-tone]").textContent(), "ていねい ▾");
+  await page.locator("[data-invite-tone]").click();
+  await page.getByRole("menuitem", { name: "カジュアル" }).click();
   assert.match((await draft.textContent())!, /^この前はありがとうございました！/u);
-  await page.getByRole("tab", { name: "英語" }).click();
+  await page.locator("[data-invite-tone]").click();
+  await page.getByRole("menuitem", { name: "英語" }).click();
   assert.match((await draft.textContent())!, /^Thank you for the other day\.\n[^\n]+\nhttps:\/\/orbitailink\.com\/i\/K7QX-2M9P \(until [A-Z][a-z]{2} \d{1,2}\)\n佐藤 健一$/u);
   const english = (await draft.textContent())!;
-  assert.match((await page.locator("[data-invite-draft-line]").getAttribute("href"))!, /^https:\/\/line\.me\/R\/share\?text=/);
-  assert.equal(await page.locator("[data-invite-draft-line]").getAttribute("href"), `https://line.me/R/share?text=${encodeURIComponent(english)}`);
-  assert.match((await page.locator("[data-invite-draft-mail]").getAttribute("href"))!, /^mailto:\?subject=Orbit%20%E3%81%B8%E3%81%AE%E6%8B%9B%E5%BE%85&body=/);
   await page.locator("[data-invite-draft-copy]").click();
   await page.getByText("下書きをコピーしました").waitFor();
   assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.copied), [english]);
   const controls = await page.getByRole("dialog").locator("button, a").allTextContents();
   assert.deepEqual(controls.filter((text) => /送信|^送る$|Send/u.test(text)), [], "Orbit never sends: no send button");
-  assert.equal(await page.getByText("あなたのアプリから送ります · Orbit は送信しません").count(), 1);
 });
 
 test("無効にする asks first (scrim does not dismiss); confirming turns the code off and offers a new one", async (t) => {
@@ -194,8 +198,8 @@ test("無効にする asks first (scrim does not dismiss); confirming turns the 
   assert.equal(await page.locator("[data-invite-code-card]").count(), 0);
 });
 
-test("これまでのコード: 有効 / 期限切れ / 無効 / 置き換え / 上限, joined people link to their page, 新しいコードを発行 on expired and replaced rows", async (t) => {
-  const page = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET, HISTORY_GET, { method: "POST", url: "^/api/invite-codes$", replies: [ok(NEW_CODE, 201)] }] });
+test("これまでのコード (no code standing): 有効 / 期限切れ / 無効 / 置き換え / 上限, joined people link to their page, 新しいコードを発行 on expired and replaced rows", async (t) => {
+  const page = await screen(t, { guideSeen: true, handlers: [NO_CURRENT, PROFILE_GET, HISTORY_GET, { method: "POST", url: "^/api/invite-codes$", replies: [ok(NEW_CODE, 201)] }] });
   const rows = page.locator("[data-invite-history-row]");
   await rows.first().waitFor();
   assert.deepEqual(await rows.evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-invite-history-row"))), ["active", "expired", "revoked", "superseded", "full"]);
@@ -207,7 +211,7 @@ test("これまでのコード: 有効 / 期限切れ / 無効 / 置き換え / 
   await rows.nth(1).locator("[data-invite-reissue]").click();
   await page.locator('[data-invite-code]:text("P3XA-8HTC")').waitFor();
   const [create] = await writes(page);
-  assert.deepEqual(create!.body.sharedKeys, ["organization", "offering", "seeking"], "the new code keeps the current keys");
+  assert.deepEqual(create!.body.sharedKeys, ["organization", "offering", "seeking"], "the new code shares the default keys");
 });
 
 test("no profile name: コードをつくる explains what to do instead of failing silently", async (t) => {
@@ -242,7 +246,7 @@ test("390: the dialog is a bottom sheet; 1024: a centred 560 dialog", async (t) 
 
 test("dark: the QR keeps dark modules on a light ground (cameras read it)", async (t) => {
   const page = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET, HISTORY_GET] }, { dark: true });
-  const qr = page.locator('[data-invite-code-card] [data-invite-qr="md"]');
+  const qr = page.locator("[data-invite-code-card] [data-invite-qr]");
   await qr.waitFor();
   const { fg, bg } = await qr.evaluate((node) => ({ fg: getComputedStyle(node).color, bg: getComputedStyle(node).backgroundColor }));
   const lum = (value: string) => { const [r, g, b] = (value.match(/[\d.]+/g) ?? []).map(Number); return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!; };
@@ -260,6 +264,9 @@ test("これまでのコード · 同じ人かも: 統合する posts merge for 
   const page = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET,
     { method: "GET", url: "^/api/invite-codes$", replies: [ok(HISTORY_SUGGEST), ok(HISTORY_MERGED)] },
     { method: "POST", url: "^/api/invite-codes/connections/c-invite-new/merge$", replies: [ok(CONNECTION("c-tanaka-old"))] }] });
+  await page.locator("[data-invite-merge-pending]").waitFor();
+  assert.match((await page.locator("[data-invite-merge-pending]").textContent())!, /同じ人かもしれない人がいます（1人）/u);
+  await page.locator("[data-invite-merge-review]").click();
   const suggestion = page.locator("[data-invite-merge]");
   await suggestion.waitFor();
   assert.equal(await suggestion.getByText("同じ人かも：田中 太郎", { exact: true }).count(), 1);
@@ -279,6 +286,7 @@ test("これまでのコード · 同じ人かも: 別の人 posts dismiss and t
   const page = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET,
     { method: "GET", url: "^/api/invite-codes$", replies: [ok(HISTORY_SUGGEST), ok(HISTORY_DISMISSED)] },
     { method: "POST", url: "^/api/invite-codes/connections/c-invite-new/merge/dismiss$", replies: [ok(CONNECTION("c-invite-new"))] }] });
+  await page.locator("[data-invite-merge-review]").click();
   await page.locator("[data-invite-merge]").getByRole("button", { name: "別の人" }).click();
   await page.locator("[data-invite-merge]").waitFor({ state: "detached" });
   assert.deepEqual((await writes(page)).map((call) => call.url), ["/api/invite-codes/connections/c-invite-new/merge/dismiss"]);
@@ -287,6 +295,7 @@ test("これまでのコード · 同じ人かも: 別の人 posts dismiss and t
   const broken = await screen(t, { guideSeen: true, handlers: [CURRENT, PROFILE_GET,
     { method: "GET", url: "^/api/invite-codes$", replies: [ok(HISTORY_SUGGEST)] },
     { method: "POST", url: "/merge$", replies: [fail(500, "INTERNAL_ERROR")] }] });
+  await broken.locator("[data-invite-merge-review]").click();
   const suggestion = broken.locator("[data-invite-merge]");
   await suggestion.getByRole("button", { name: "統合する" }).click();
   await broken.getByText("保存できませんでした").waitFor();

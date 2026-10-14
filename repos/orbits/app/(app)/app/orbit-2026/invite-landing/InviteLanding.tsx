@@ -7,11 +7,12 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { inviteResendRequestText } from "../../../../../shared/compute/invite-message-templates";
 import { inviteLandingCopy as l, inviteSenderCopy as c } from "../copy/invite";
 import { pickCopy, type OrbitCopyEntry } from "../copy/types";
-import { Avatar, Button, Card, Chip, Icon, Orbit2026Scope, TextField, Toggle, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
+import { Avatar, Button, Card, Icon, Orbit2026Scope, TextField, Toggle, ToastProvider, fillCopy, useStandardCopy, useToast } from "../ui";
 import { readMyProfile, redeemInviteCode, saveShortProfile, type InviteProfileRead } from "../add/invite/invite-api";
 import {
   INVITE_KEY_COPY,
   inviteAppLink,
+  inviteCallName,
   inviteDate,
   inviteDefaultKeys,
   inviteFieldsFromProfile,
@@ -55,6 +56,12 @@ export function InviteLanding(props: {
   accountName: string | null;
   /** The signed-in account's e-mail (「… でログイン中」); only shown to that account. */
   accountEmail?: string | null;
+  /** 「orbit.app/i/<code>」 as the address bar shows it (the expired page heads with it, b11 #13). */
+  linkLabel?: string;
+  /** Read-only design fixture (local mock only, R15 pixel gate): open straight on this view. */
+  initialView?: InviteLandingView;
+  /** With `initialView`: what that fixture says I shared. */
+  initialSharedByMe?: InviteSharedFieldKey[];
   /** Page navigation (tests stub it). */
   navigate?: (href: string) => void;
 }) {
@@ -67,14 +74,16 @@ export function InviteLanding(props: {
   );
 }
 
-function LandingBody({ language, initial, signedIn, accountName, accountEmail = null, navigate = (href) => window.location.assign(href) }: Parameters<typeof InviteLanding>[0]) {
+function LandingBody({ language, initial, signedIn, accountName, accountEmail = null, linkLabel, initialView, initialSharedByMe, navigate = (href) => window.location.assign(href) }: Parameters<typeof InviteLanding>[0]) {
   const t: T = useCallback((entry, values) => (values ? fillCopy(pickCopy(entry, language), values) : pickCopy(entry, language)), [language]);
   const toast = useToast();
   const preview = initial.kind === "preview" ? initial.preview : null;
-  const [view, setView] = useState<InviteLandingView>(() => initialLandingView(initial, signedIn));
+  const [view, setView] = useState<InviteLandingView>(() => initialView ?? initialLandingView(initial, signedIn));
+  // Whether this visit went through the short profile (a newcomer): the done page then says 登録が完了しました.
+  const [newcomer, setNewcomer] = useState(initialView?.view === "done");
   const [profile, setProfile] = useState<InviteProfileRead["profile"]>(null);
   const [profileFailed, setProfileFailed] = useState(false);
-  const [sharedByMe, setSharedByMe] = useState<InviteSharedFieldKey[]>([]);
+  const [sharedByMe, setSharedByMe] = useState<InviteSharedFieldKey[]>(initialSharedByMe ?? []);
 
   const loadProfile = useCallback(async () => {
     setProfileFailed(false);
@@ -92,28 +101,34 @@ function LandingBody({ language, initial, signedIn, accountName, accountEmail = 
     if (view.view === "checking") void loadProfile();
   }, [view.view, loadProfile]);
 
-  // 「アプリなしで登録できます」 is for a visitor who has not signed up yet (the signed-out open page only, m7);
-  // the code-less unavailable page keeps 「招待コードを入力」; signed-in steps carry no subtitle.
-  const head = view.view === "open" && !signedIn ? t(l.headSub) : preview ? null : t(l.manualTitle);
+  // The small head line under 「Orbit」 (b11 #9 / #12 / #10 / #13): signed out → 「アプリなしで登録できます」 (m7: never to a
+  // signed-in visitor); signed in → 「すでにアカウントがあります」; done → 登録が完了しました (newcomer) / つながりました;
+  // expired / full → the address; the code-less page keeps 「招待コードを入力」.
+  const head = !preview ? t(l.manualTitle)
+    : view.view === "open" && !signedIn ? t(l.headSub)
+    : view.view === "confirm" ? t(l.headHasAccount)
+    : view.view === "done" ? t(newcomer ? l.headDone : l.headConnected)
+    : (view.view === "expired" || view.view === "full") && linkLabel ? linkLabel
+    : null;
 
   return (
     <div className={styles.column} data-invite-landing={view.view}>
       <header className={styles.head}>
         <span className={styles.appIcon} aria-hidden>O</span>
-        <span className={styles.headText}><b>{t(l.brand)}</b>{head ? <span className={styles.label}>{head}</span> : null}</span>
+        <span className={styles.headText}><b className={styles.brand}>{t(l.brand)}</b>{head ? <span className={styles.lbl}>{head}</span> : null}</span>
       </header>
       <div className={styles.fade} key={view.view}>
         {view.view === "checking" ? (profileFailed ? <ProfileRetry t={t} onRetry={() => void loadProfile()} /> : <div className={styles.skeleton} aria-busy="true" />) : null}
         {view.view === "open" && preview ? <OpenView t={t} language={language} preview={preview} /> : null}
         {view.view === "profile" && preview ? (
-          <ProfileStep t={t} profile={profile} accountName={accountName} onSaved={() => { setView({ view: "checking" }); }} onError={(message) => toast.error(message)} />
+          <ProfileStep t={t} profile={profile} accountName={accountName} onSaved={() => { setNewcomer(true); setView({ view: "checking" }); }} onError={(message) => toast.error(message)} />
         ) : null}
         {view.view === "confirm" && preview ? (
           <ConfirmStep t={t} language={language} preview={preview} profile={profile} accountName={accountName} accountEmail={accountEmail}
             onResult={(next, keys) => { setSharedByMe(keys); if (next === "login") navigate(inviteAuthHref("login", preview.code)); else setView(next); }}
             onNotNow={() => navigate("/app/home")} />
         ) : null}
-        {view.view === "done" && preview ? <DoneView t={t} language={language} preview={preview} profile={profile} result={view.result} sharedByMe={sharedByMe} /> : null}
+        {view.view === "done" && preview ? <DoneView t={t} preview={preview} profile={profile} accountName={accountName} result={view.result} sharedByMe={sharedByMe} /> : null}
         {(view.view === "expired" || view.view === "full") && preview ? <ExpiredView t={t} language={language} preview={preview} full={view.view === "full"} onCopied={(ok) => (ok ? toast.success(t(c.draftCopied)) : toast.error(t(c.copyFailed)))} /> : null}
         {view.view === "already" ? <AlreadyView t={t} preview={preview} contactId={view.contactId} /> : null}
         {view.view === "own" ? <OwnView t={t} /> : null}
@@ -135,45 +150,39 @@ function ProfileRetry({ t, onRetry }: { t: T; onRetry: () => void }) {
   );
 }
 
-/** The inviter's card: name, 会社・役職, 提供できること, 求めていること (never e-mail or phone). */
+/** b11 #9 .k-irfrom: the inviter (avatar, 招待が届いています, name, 会社・役職), 提供 / 求めている, then the 🤝 line. */
 function InviterCard({ t, language, shared, children }: { t: T; language: OrbitLanguage; shared: InviteSharedFields; children?: ReactNode }) {
   const organization = inviteKeyValue("organization", shared, language);
   const offering = inviteKeyValue("offering", shared, language);
   const seeking = inviteKeyValue("seeking", shared, language);
   return (
-    <Card data-invite-inviter="">
-      <div className={styles.stack}>
-        <div className={styles.person}>
-          <Avatar name={shared.displayName} size="lg" />
-          <span className={styles.grow}>
-            <span className={styles.label}>{t(l.received)}</span>
-            <b className={styles.personName}>{t(l.inviterName, { name: shared.displayName })}</b>
-            {organization ? <span className={styles.label}>{organization}</span> : null}
-          </span>
+    <div className={styles.card} data-invite-inviter="">
+      <div className={styles.person}>
+        <Avatar name={shared.displayName} size="lg" />
+        <div className={styles.grow}>
+          <div className={styles.lbl}>{t(l.received)}</div>
+          <b className={styles.personName}>{t(l.inviterName, { name: shared.displayName })}</b>
+          {organization ? <div className={styles.lbl}>{organization}</div> : null}
         </div>
-        {offering || seeking ? (
-          <dl className={styles.facts}>
-            {offering ? <div><dt>{t(l.offeringLabel)}</dt><dd>{offering}</dd></div> : null}
-            {seeking ? <div><dt>{t(l.seekingLabel)}</dt><dd>{seeking}</dd></div> : null}
-          </dl>
-        ) : null}
-        {children}
       </div>
-    </Card>
+      {offering ? <><div className={`${styles.lbl} ${styles.factLabel}`}>{t(l.offeringLabel)}</div><div className={styles.fact}>{offering}</div></> : null}
+      {seeking ? <><div className={`${styles.lbl} ${styles.factLabel} ${offering ? styles.factNext : ""}`}>{t(l.seekingLabel)}</div><div className={styles.fact}>{seeking}</div></> : null}
+      {children}
+    </div>
   );
 }
 
 function OpenView({ t, language, preview }: { t: T; language: OrbitLanguage; preview: InviteCodePreview }) {
   return (
-    <div className={styles.stack} data-invite-open="">
+    <div data-invite-open="">
       <InviterCard t={t} language={language} shared={preview.shared}>
-        <p className={styles.explain}><span aria-hidden>🤝</span><span>{t(l.explain)}</span></p>
+        <div className={styles.explain}><span aria-hidden>🤝</span><p className={styles.explainText}>{t(l.explain)}</p></div>
       </InviterCard>
-      <p className={styles.codeLine} data-invite-code-line="">{t(l.codeLine, { code: preview.code, date: inviteDate(preview.expiresAt, language) })}</p>
-      <div className={styles.actions}>
-        <a className={`btn ${styles.primaryLink}`} href={inviteAuthHref("signup", preview.code)} data-invite-signup="">{t(l.signup)}</a>
-        <a className={`btn ${styles.secondaryLink}`} href={inviteAuthHref("login", preview.code)} data-invite-login="">{t(l.login)}</a>
-        <p className={styles.note}>{t(l.signupNote)}</p>
+      <p className={`${styles.lbl} ${styles.codeLine}`} data-invite-code-line="">{t(l.codeLine, { code: preview.code, date: inviteDate(preview.expiresAt, language) })}</p>
+      <div className={styles.openActions}>
+        <a className={`btn ${styles.xlButton} ${styles.primary}`} href={inviteAuthHref("signup", preview.code)} data-invite-signup="">{t(l.signup)}</a>
+        <a className={`btn ${styles.xlButton}`} href={inviteAuthHref("login", preview.code)} data-invite-login="">{t(l.login)}</a>
+        <p className={`${styles.lbl} ${styles.center}`}>{t(l.signupNote)}</p>
       </div>
     </div>
   );
@@ -276,10 +285,12 @@ function ConfirmStep({ t, language, preview, profile, accountName, accountEmail,
   const mine = useMemo(() => inviteFieldsFromProfile(profile), [profile]);
   const available = useMemo(() => inviteKeysWithValues(mine), [mine]);
   const [keys, setKeys] = useState<InviteSharedFieldKey[]>(() => inviteDefaultKeys(available));
+  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const redeemKey = useRef(newInviteKey("invite-redeem"));
   const inviter = preview.shared.displayName;
+  const callName = inviteCallName(inviter);
 
   const connect = async () => {
     setBusy(true);
@@ -298,90 +309,80 @@ function ConfirmStep({ t, language, preview, profile, accountName, accountEmail,
   };
 
   const me = mine?.displayName || accountName || "";
+  const contactOff = !keys.includes("email") && !keys.includes("phone");
   return (
-    <div className={styles.stack} data-invite-confirm="">
-      <Card>
+    <div className={styles.withFoot} data-invite-confirm="">
+      <div className={styles.card}>
         <div className={styles.person}>
           <Avatar name={me} />
-          <span className={styles.grow}><b>{me}</b><span className={styles.label}>{t(l.signedInAs, { name: accountEmail || me })}</span></span>
-          <Chip label={t(l.usingOrbit)} tone="teal" />
+          <div className={styles.grow}><b>{me}</b><div className={styles.lbl}>{t(l.signedInAs, { name: accountEmail || me })}</div></div>
+          <span className={`${styles.chip} ${styles.chipTeal}`}>{t(l.usingOrbit)}</span>
         </div>
-      </Card>
-      <div className={styles.connectHero}>
-        <span className={styles.pair}><Avatar name={me} size="lg" /><Avatar name={inviter} size="lg" /></span>
-        <h1 className={styles.title}>{t(l.confirmTitle, { name: inviter })}</h1>
-        <p className={styles.body}>{t(l.confirmSub)}</p>
       </div>
-      <Card variant="flat" data-invite-share-keys="">
-        <b className={styles.smallTitle}>{t(l.showTitle, { name: inviter })}</b>
-        <ul className={styles.switches}>
-          <li className={styles.switchRow} data-invite-switch="displayName">
-            <span className={styles.grow}><b>{t(c.keyName)}</b><span className={styles.label}>{me}</span></span>
-            <Chip label={t(l.required)} />
-            <Toggle checked disabled onChange={() => undefined} label={t(c.keyName)} />
-          </li>
-          {available.map((key) => (
-            <li key={key} className={styles.switchRow} data-invite-switch={key}>
-              <span className={styles.grow}><b>{t(INVITE_KEY_COPY[key])}</b><span className={styles.label}>{inviteKeyValue(key, mine, language)}</span></span>
-              <Toggle checked={keys.includes(key)} onChange={(on) => setKeys((current) => orderedInviteKeys(on ? [...current, key] : current.filter((item) => item !== key)))} label={t(INVITE_KEY_COPY[key])} />
+      <div className={`${styles.guide} ${styles.connectGuide}`}>
+        <span className={styles.pair}><Avatar name={me} size="lg" /><Avatar name={inviter} size="lg" /></span>
+        <h1 className={styles.guideTitle}>{t(l.confirmTitle, { name: inviter })}</h1>
+        <p className={`${styles.sub} ${styles.guideSub}`}>{t(l.confirmSub)}</p>
+      </div>
+      <div className={`${styles.flatCard} ${styles.gap12}`} data-invite-share-keys="">
+        <div className={styles.rowBetween}>
+          <b className={styles.infoTitle}>{t(l.showTitle, { name: callName })}</b>
+          {editing ? null : <button type="button" className={styles.textButton} onClick={() => setEditing(true)} data-invite-share-edit="">{t(c.shareChange)}</button>}
+        </div>
+        {editing ? (
+          <ul className={styles.switches}>
+            <li className={styles.switchRow} data-invite-switch="displayName">
+              <span className={styles.grow}><b>{t(c.keyName)}</b><span className={styles.lbl}>{me}</span></span>
+              <Toggle checked disabled onChange={() => undefined} label={t(c.keyName)} />
             </li>
-          ))}
-        </ul>
-        {available.includes("email") || available.includes("phone") ? <p className={styles.label}>{t(l.showHint)}</p> : null}
-      </Card>
+            {available.map((key) => (
+              <li key={key} className={styles.switchRow} data-invite-switch={key}>
+                <span className={styles.grow}><b>{t(INVITE_KEY_COPY[key])}</b><span className={styles.lbl}>{inviteKeyValue(key, mine, language)}</span></span>
+                <Toggle checked={keys.includes(key)} onChange={(on) => setKeys((current) => orderedInviteKeys(on ? [...current, key] : current.filter((item) => item !== key)))} label={t(INVITE_KEY_COPY[key])} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className={styles.chips} data-invite-share-chips="">
+            {keys.map((key) => <span key={key} className={styles.chip}>{t(INVITE_KEY_COPY[key])}</span>)}
+            {contactOff ? <span className={`${styles.chip} ${styles.chipOff}`}>{t(c.shareOff, { label: t(c.keyContact) })}</span> : null}
+          </div>
+        )}
+      </div>
       {/* Whether the inviter is someone I already have is decided after connecting, by me (R15 复核 S1) — never guessed here. */}
-      <p className={styles.checkLater} data-invite-check-later="">{t(l.checkLater)}</p>
-      {failed ? <p className={styles.error} role="alert"><Icon name="alert" size={16} />{t(l.connectFailed)}</p> : null}
-      <div className={styles.actions}>
-        <Button label={t(l.connect)} variant="primary" block loading={busy} onClick={() => void connect()} data-invite-connect="" />
+      <div className={`${styles.flatCard} ${styles.noteCard} ${styles.gap12}`} data-invite-check-later=""><span className={styles.noteEmoji} aria-hidden>📇</span><p className={styles.noteText}>{t(l.checkLater)}</p></div>
+      {failed ? <p className={`${styles.error} ${styles.gap12}`} role="alert"><Icon name="alert" size={16} />{t(l.connectFailed)}</p> : null}
+      <div className={styles.foot}>
+        <Button label={t(l.connect)} variant="primary" block loading={busy} onClick={() => void connect()} className={styles.xlSize} data-invite-connect="" />
         <Button label={t(l.notNow)} variant="ghost" block onClick={onNotNow} data-invite-not-now="" />
-        <p className={styles.note}>{t(l.changeLater)}</p>
       </div>
     </div>
   );
 }
 
-function DoneView({ t, language, preview, profile, result, sharedByMe }: { t: T; language: OrbitLanguage; preview: InviteCodePreview; profile: InviteProfileRead["profile"]; result: Extract<InviteLandingView, { view: "done" }>["result"]; sharedByMe: InviteSharedFieldKey[] }) {
-  const peer = result.peer ?? preview.shared;
-  const inviter = peer.displayName || preview.shared.displayName;
-  const mine = inviteFieldsFromProfile(profile);
-  const peerKeys = inviteKeysWithValues(peer);
+function DoneView({ t, preview, profile, accountName, result, sharedByMe }: { t: T; preview: InviteCodePreview; profile: InviteProfileRead["profile"]; accountName: string | null; result: Extract<InviteLandingView, { view: "done" }>["result"]; sharedByMe: InviteSharedFieldKey[] }) {
+  const inviter = inviteCallName(result.peer?.displayName || preview.shared.displayName);
+  const me = inviteFieldsFromProfile(profile)?.displayName || accountName || "?";
   return (
-    <div className={styles.stack} data-invite-done={result.outcome}>
-      <div className={styles.connectHero}>
-        <span className={styles.pair}><Avatar name={mine?.displayName || "?"} size="lg" /><Avatar name={inviter} size="lg" /></span>
-        <span className={styles.okMark}><Icon name="check" size={16} /></span>
-        <h1 className={styles.title}>{t(l.doneTitle, { name: inviter })}</h1>
-        <p className={styles.body}>{t(l.doneSub)}</p>
+    <div data-invite-done={result.outcome}>
+      <div className={styles.doneHero}>
+        <span className={`${styles.pair} ${styles.pairOnBg}`}><Avatar name={me} size="lg" /><Avatar name={inviter} size="lg" /></span>
+        <h1 className={styles.h1}>{t(l.doneTitle, { name: inviter })}</h1>
+        <p className={`${styles.sub} ${styles.doneSub}`}>{t(l.doneSub)}</p>
       </div>
-      <Card data-invite-from-peer="">
-        <div className={styles.stack}>
-          <b className={styles.smallTitle}>{t(l.fromPeer, { name: inviter })}</b>
-          <dl className={styles.facts}>
-            <div><dt>{t(c.keyName)}</dt><dd>{inviter}</dd></div>
-            {peerKeys.map((key) => <div key={key}><dt>{t(INVITE_KEY_COPY[key])}</dt><dd>{inviteKeyValue(key, peer, language)}</dd></div>)}
-          </dl>
-          <span><Chip label={t(c.selfChip)} tone="teal" /></span>
+      <div className={`${styles.card} ${styles.gap16}`} data-invite-to-peer="">
+        <div className={styles.lbl}>{t(l.toPeer, { name: inviter })}</div>
+        <div className={styles.chips}>
+          <span className={styles.chip}>{t(c.keyName)}</span>
+          {sharedByMe.map((key) => <span key={key} className={styles.chip}>{t(INVITE_KEY_COPY[key])}</span>)}
         </div>
-      </Card>
-      <Card data-invite-to-peer="">
-        <div className={styles.stack}>
-          <b className={styles.smallTitle}>{t(l.toPeer, { name: inviter })}</b>
-          <div className={styles.chipRow}>
-            <Chip label={t(c.keyName)} tone="lav" />
-            {sharedByMe.map((key) => <Chip key={key} label={t(INVITE_KEY_COPY[key])} tone="lav" />)}
-          </div>
-          <p className={styles.label}>{t(l.autoUpdate)}</p>
-        </div>
-      </Card>
-      <Card variant="flat">
-        <div className={styles.person}>
-          <span className={styles.appIcon} aria-hidden>O</span>
-          <span className={styles.grow}><b>{t(l.continueApp)}</b><span className={styles.label}>{t(l.continueAppBody)}</span></span>
-          <a className={`btn ${styles.smallLink}`} href={inviteAppLink(preview.code)} data-invite-app="">{t(l.openApp)}</a>
-        </div>
-      </Card>
-      <a className={`btn ${styles.secondaryLink}`} href={`/app/contacts/${encodeURIComponent(result.contactId)}`} data-invite-view-contact="">{t(l.viewInNetwork)}</a>
+        <div className={`${styles.lbl} ${styles.gap8}`}>{t(l.autoUpdate, { name: inviter })}</div>
+      </div>
+      <div className={`${styles.flatCard} ${styles.appCard}`}>
+        <span className={styles.appIcon} aria-hidden>O</span>
+        <div className={styles.grow}><b className={styles.appTitle}>{t(l.continueApp)}</b><div className={styles.lbl}>{t(l.continueAppBody)}</div></div>
+        <a className={`btn ${styles.smButton} ${styles.primary}`} href={inviteAppLink(preview.code)} data-invite-app="">{t(l.openApp)}</a>
+      </div>
     </div>
   );
 }
@@ -408,23 +409,29 @@ async function copyText(text: string): Promise<boolean> {
 function ExpiredView({ t, language, preview, full, onCopied }: { t: T; language: OrbitLanguage; preview: InviteCodePreview; full: boolean; onCopied: (ok: boolean) => void }) {
   const standard = useStandardCopy();
   const inviter = preview.shared.displayName;
-  const draft = inviteResendRequestText({ inviter, language });
+  const draft = inviteResendRequestText({ inviter: inviteCallName(inviter), language });
   return (
-    <div className={styles.stack}>
-      <Notice emoji="⌛" title={t(full ? l.fullTitle : l.expiredTitle)} data={full ? "full" : "expired"}>
-        <p className={styles.body}>{full ? t(l.fullBody, { name: inviter }) : t(l.expiredBody, { date: inviteDate(preview.expiresAt, language), name: inviter })}</p>
-      </Notice>
-      <Card data-invite-ask="">
-        <div className={styles.stack}>
-          <b className={styles.smallTitle}>{t(l.askTitle, { name: inviter })}</b>
-          <p className={styles.draftBox} data-invite-ask-text="">{draft}</p>
-          <div className={styles.row}>
-            <Button label={standard.action.copy} icon="copy" size="sm" variant="primary" onClick={() => void copyText(draft).then(onCopied)} data-invite-ask-copy="" />
-            <a className={`btn ${styles.smallLink}`} href={lineShareUrl(draft)} target="_blank" rel="noopener noreferrer" data-invite-ask-line="">{t(c.openLine)}</a>
-          </div>
-          <p className={styles.label}>{t(l.noSend)}</p>
+    <div>
+      <div className={`${styles.guide} ${styles.expiredGuide}`} data-invite-notice={full ? "full" : "expired"}>
+        <div className={styles.bigEmoji} aria-hidden>⌛</div>
+        <h1 className={styles.guideTitle}>{t(full ? l.fullTitle : l.expiredTitle)}</h1>
+        <p className={`${styles.sub} ${styles.expiredSub}`}>{full ? t(l.fullBody, { name: inviter }) : t(l.expiredBody, { date: inviteDate(preview.expiresAt, language), name: inviter })}</p>
+      </div>
+      <div className={`${styles.card} ${styles.gap12}`} data-invite-ask="">
+        <b className={styles.askTitle}>{t(l.askTitle, { name: inviteCallName(inviter) })}</b>
+        <p className={styles.draftBox} data-invite-ask-text="">{draft}</p>
+        <div className={styles.askActions}>
+          <Button label={standard.action.copy} icon="copy" size="sm" variant="primary" onClick={() => void copyText(draft).then(onCopied)} data-invite-ask-copy="" />
+          <a className={`btn ${styles.smButton}`} href={lineShareUrl(draft)} target="_blank" rel="noopener noreferrer" data-invite-ask-line="">{t(c.openLine)}</a>
         </div>
-      </Card>
+        <div className={`${styles.lbl} ${styles.gap8}`}>{t(l.noSend)}</div>
+      </div>
+      {full ? null : (
+        <div className={`${styles.flatCard} ${styles.noteCard} ${styles.gap12}`} data-invite-sender-note="">
+          <span className={styles.noteEmoji} aria-hidden>🔁</span>
+          <p className={styles.noteText}>{t(l.senderNoteLead)}<b className={styles.noteStrong}>{t(l.senderNoteStrong)}</b>{t(l.senderNoteTail)}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -435,7 +442,7 @@ function AlreadyView({ t, preview, contactId }: { t: T; preview: InviteCodePrevi
       <Notice emoji="🤝" title={t(l.alreadyTitle)} data="already">
         {preview ? <p className={styles.body}>{t(l.alreadyBody, { name: preview.shared.displayName })}</p> : null}
       </Notice>
-      <a className={`btn ${styles.primaryLink}`} href={contactId ? `/app/contacts/${encodeURIComponent(contactId)}` : "/app/contacts"} data-invite-view-network="">{t(l.viewInNetwork)}</a>
+      <a className={`btn ${styles.xlButton} ${styles.primary}`} href={contactId ? `/app/contacts/${encodeURIComponent(contactId)}` : "/app/contacts"} data-invite-view-network="">{t(l.viewInNetwork)}</a>
     </div>
   );
 }
@@ -444,7 +451,7 @@ function OwnView({ t }: { t: T }) {
   return (
     <div className={styles.stack}>
       <Notice emoji="🪪" title={t(l.ownTitle)} data="own"><p className={styles.body}>{t(l.ownBody)}</p></Notice>
-      <a className={`btn ${styles.primaryLink}`} href="/app/contacts/new?add=invite" data-invite-to-share="">{t(l.toShare)}</a>
+      <a className={`btn ${styles.xlButton} ${styles.primary}`} href="/app/contacts/new?add=invite" data-invite-to-share="">{t(l.toShare)}</a>
     </div>
   );
 }
@@ -456,7 +463,7 @@ function UnavailableView({ t, limited }: { t: T; limited: boolean }) {
         <p className={styles.body}>{t(l.unavailableBody)}</p>
         {limited ? <p className={styles.body} data-invite-limited="">{t(l.limitedBody)}</p> : null}
       </Notice>
-      <a className={`btn ${styles.secondaryLink}`} href="/i" data-invite-enter-another="">{t(l.enterAnother)}</a>
+      <a className={`btn ${styles.xlButton}`} href="/i" data-invite-enter-another="">{t(l.enterAnother)}</a>
     </div>
   );
 }

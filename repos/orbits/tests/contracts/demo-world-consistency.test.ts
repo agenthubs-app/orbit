@@ -43,7 +43,7 @@ test("every fixture parses with its contract schema", () => {
   inviteCodeRedeemResultSchema.parse(fixtures.demoInviteRedeem);
   // R15：履历、别人发给我的码（预览与兑换结果）、招待连接。
   assert.equal(inviteCodeHistoryResponseSchema.parse({ items: fixtures.demoInviteHistory }).items.length, fixtures.demoInviteHistory.length);
-  for (const peer of [fixtures.demoInviteFromPeer, fixtures.demoInviteAlreadyConnected]) {
+  for (const peer of [fixtures.demoInviteFromPeer, fixtures.demoInviteAlreadyConnected, fixtures.demoInviteExpiredPeer, fixtures.demoInviteFullPeer]) {
     inviteCodePreviewSchema.parse(peer.preview);
     inviteCodeRedeemResultSchema.parse(peer.redeem);
     assert.equal("email" in peer.preview.shared || "phone" in peer.preview.shared, false, "a preview never carries contact details");

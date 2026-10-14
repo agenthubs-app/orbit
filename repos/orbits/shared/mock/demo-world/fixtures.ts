@@ -184,6 +184,30 @@ export const demoInviteAlreadyConnected: DemoInvitePeerCode = {
   redeem: { outcome: "already_connected", contactId: "demo-person-takahashi", peer: takahashiShared },
 };
 
+const watanabeShared = peerShared("demo-person-watanabe", { offering: ["製造業の現場ネットワーク"], seeking: ["SaaS の販路"] });
+/** 渡辺さんのコード：10/5 で期限切れ（R15 返工：期限切れ画面の演示）。兑换 → INVITE_EXPIRED。 */
+export const demoInviteExpiredPeer: DemoInvitePeerCode = {
+  sample: true,
+  preview: { sample: true, code: "T6EX-9KPA", expiresAt: "2026-10-05T18:00:00+09:00", shared: previewShared(watanabeShared), status: "expired", inviterAlreadyConnected: false, isOwnCode: false },
+  sharedKeys: ["organization", "offering", "seeking"],
+  peer: watanabeShared,
+  usedCount: 2,
+  maxUses: 10,
+  redeem: { outcome: "connected", contactId: "demo-person-watanabe", peer: watanabeShared },
+};
+
+const yamamotoShared = peerShared("demo-person-yamamoto", { offering: ["補助金申請の知見"], seeking: ["資金調達の相談相手"] });
+/** 山本さんのコード：10人とも使い切り（R15 返工：満員画面の演示）。兑换 → INVITE_FULL。 */
+export const demoInviteFullPeer: DemoInvitePeerCode = {
+  sample: true,
+  preview: { sample: true, code: "F4QM-7NWD", expiresAt: "2026-10-12T18:00:00+09:00", shared: previewShared(yamamotoShared), status: "full", inviterAlreadyConnected: false, isOwnCode: false },
+  sharedKeys: ["organization", "offering", "seeking"],
+  peer: yamamotoShared,
+  usedCount: 10,
+  maxUses: 10,
+  redeem: { outcome: "connected", contactId: "demo-person-yamamoto", peer: yamamotoShared },
+};
+
 /** 高橋さんとの招待连接（她用我的 M3TB-6WQA 连上；我自己改过她的「会社・役職」，所以这一项暂停同步）。 */
 export const demoInviteConnection: InviteConnectionView = {
   sample: true,
@@ -430,7 +454,7 @@ export const demoPlanDetail: PlanV2Detail = {
 export const demoFixturePeopleRefs = {
   completion: [demoCompletionQuestion.contactId, demoCompletionOrganizationQuestion.contactId],
   invite: [
-    demoInviteRedeem.contactId, demoInviteFromPeer.redeem.contactId, demoInviteAlreadyConnected.redeem.contactId, demoInviteConnection.contactId,
+    demoInviteRedeem.contactId, demoInviteFromPeer.redeem.contactId, demoInviteAlreadyConnected.redeem.contactId, demoInviteExpiredPeer.redeem.contactId, demoInviteFullPeer.redeem.contactId, demoInviteConnection.contactId,
     ...demoInviteHistory.flatMap((item) => item.joined.map((person) => person.contactId)),
   ],
   notes: demoNotes.flatMap((note) => note.contactIds),

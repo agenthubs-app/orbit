@@ -22,12 +22,17 @@
   :global([data-motion="reduce"]).scope :global([role="dialog"]:has([data-invite-sheet])) { animation-name: fade; }
 }
 
-.sheetBody { display: flex; flex-direction: column; gap: var(--space-16); margin-top: var(--space-16); min-width: 0; }
+/* Values from b11 #14 (.wmodal / .qr / .code / .quota / .card.flat / .macts), tokens only. */
+.head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.headText { min-width: 0; }
+.headTitle { display: block; font-size: var(--fs-title-xs); font-weight: var(--fw-bold); line-height: var(--lh-body); }
+.sheetBody { display: flex; flex-direction: column; min-width: 0; }
+.sheetBody > * + * { margin-top: var(--space-12); }
 .stack { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
 .row { display: inline-flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; }
 .rowBetween { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
 .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
-.label { margin: 0; color: var(--ink-3-text); font-size: var(--fs-label); line-height: var(--lh-label); }
+.lbl { margin: 0; color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-medium); line-height: var(--lh-body); }
 .body { margin: 0; color: var(--ink-2); font-size: var(--fs-body-sm); line-height: var(--lh-body); }
 .title { color: var(--ink); font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
 .smallTitle { margin: 0; color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); }
@@ -36,7 +41,7 @@
 .notice > span { flex: 1; min-width: 0; }
 .link { color: var(--accent-text); font-weight: var(--fw-bold); font-size: var(--fs-body-sm); text-decoration: none; }
 .link:hover { text-decoration: underline; }
-.link:focus-visible, .textButton:focus-visible, .linkButton:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.link:focus-visible, .textButton:focus-visible, .toneButton:focus-visible, .revokeLink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .mono { font-family: var(--font-num); letter-spacing: .04em; }
 
 /* 説明 */
@@ -54,49 +59,61 @@
 .faqMark { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent-text); font-size: var(--fs-label); font-weight: var(--fw-heavy); }
 
 /* 共有：QR + コード + リンク */
+.sheetBody > .codeRow { margin-top: var(--space-18); }
 .codeRow { display: flex; align-items: center; gap: var(--space-20); }
 @media (max-width: 767px) { .codeRow { flex-direction: column; align-items: stretch; } }
-.codeSide { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); }
-.code { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-heavy); letter-spacing: .06em; line-height: 1.2; color: var(--ink); }
-.linkRow { display: flex; align-items: center; gap: var(--space-8); width: 100%; margin-bottom: var(--space-8); }
-.linkBox { flex: 1; min-width: 0; height: 40px; display: flex; align-items: center; padding: 0 var(--space-14); border-radius: var(--r-md); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.codeSide { flex: 1; min-width: 0; }
+.code { font-family: var(--font-num); font-size: var(--fs-number); font-weight: var(--fw-heavy); letter-spacing: .12em; line-height: var(--lh-body); color: var(--ink); }
+.linkLabel { margin-top: 10px; }
+.linkRow { display: flex; align-items: center; gap: var(--space-8); margin-top: var(--space-4); }
+.linkBox { flex: 1; min-width: 0; height: 44px; display: flex; align-items: center; padding: 0 var(--space-14); border-radius: var(--r-md); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
-/* QR: dark modules on a light quiet zone in both themes (cameras expect dark-on-light). */
-.qr { flex: none; display: block; width: 168px; height: 168px; padding: var(--space-8); border-radius: var(--r-lg); background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+/* QR (b11 .qr): 150 square, 8px frame, hairline ring, the Orbit 「O」 badge in the middle. Dark modules on a light
+   quiet zone in both themes (cameras expect dark-on-light), so the badge takes the module colour (currentColor). */
+.qr { --qr-paper: var(--surface); --qr-ink: var(--ink); position: relative; flex: none; display: block; width: 150px; height: 150px; border: 8px solid var(--qr-paper); border-radius: var(--r-tile); background: var(--qr-paper); color: var(--qr-ink); box-shadow: 0 0 0 1px var(--line); }
 @media (max-width: 767px) { .qr { align-self: center; } }
 .qr svg { display: block; width: 100%; height: 100%; }
-.qrLarge { width: min(360px, 72vw); height: min(360px, 72vw); }
-:global(:root[data-theme="dark"]) .qr { background: var(--ink); color: var(--on-accent); }
+.qrBadge { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: var(--r-sm); background: var(--qr-ink); color: var(--qr-paper); box-shadow: 0 0 0 4px var(--qr-paper); font-size: var(--fs-body); font-weight: var(--fw-black); line-height: 1; }
+:global(:root[data-theme="dark"]) .qr { --qr-paper: var(--ink); --qr-ink: var(--on-accent); }
 @media (prefers-color-scheme: dark) {
-  :global(:root:not([data-theme="light"])) .qr { background: var(--ink); color: var(--on-accent); }
+  :global(:root:not([data-theme="light"])) .qr { --qr-paper: var(--ink); --qr-ink: var(--on-accent); }
 }
-.qrBig { display: flex; flex-direction: column; align-items: center; gap: var(--space-12); margin-top: var(--space-16); }
 
-.quota { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-12); }
-.quota > div { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-12) var(--space-14); border-radius: var(--r-lg); background: var(--surface-2); }
-.quota b { font-size: var(--fs-body); }
+.sheetBody > .quota { margin-top: var(--space-16); }
+.quota { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); }
+.quota > div { min-width: 0; padding: 9px var(--space-12); border-radius: var(--r-md); background: var(--surface-2); }
+.quota b { display: block; font-family: var(--font-num); font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: var(--lh-body); }
 
-.textButton { padding: 0; border: 0; background: none; color: var(--accent-text); font: inherit; font-size: var(--fs-meta); font-weight: var(--fw-bold); cursor: pointer; }
-.chips { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; margin-top: var(--space-8); }
-.offChip { opacity: .55; }
+/* 相手に届くあなたの情報（b11 #7 .k-isinfo，R15 P1） */
+.infoCard { padding: var(--space-12) var(--space-14); border-radius: var(--r-card-web); background: var(--surface-2); }
+.infoTitle { font-size: var(--fs-control); font-weight: var(--fw-bold); }
+.textButton { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-meta); font-weight: var(--fw-bold); line-height: var(--lh-body); cursor: pointer; }
+.chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: var(--space-8); }
+.chip { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-caption); font-weight: var(--fw-bold); line-height: var(--lh-body); white-space: nowrap; }
+.chipOff { opacity: .5; }
 .switches { display: flex; flex-direction: column; margin: var(--space-8) 0 0; padding: 0; list-style: none; }
 .switchRow { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-8) 0; font-size: var(--fs-body-sm); }
 .switchRow + .switchRow { border-top: 1px solid var(--line); }
 
-.draftBox { margin: 0; padding: var(--space-12) var(--space-14); border-radius: var(--r-md); background: var(--surface); color: var(--ink); font-size: var(--fs-body-sm); line-height: var(--lh-body); white-space: pre-wrap; word-break: break-word; box-shadow: inset 0 0 0 1px var(--line); }
-.appButtons { display: flex; gap: var(--space-8); flex-wrap: wrap; }
-.linkButton { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 16px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-decoration: none; white-space: nowrap; }
-.linkButton:hover { background: var(--surface-3); }
-.footRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); flex-wrap: wrap; }
+/* メッセージの下書き（b11 #14 .k-wimsg） */
+.draftCard { padding: var(--space-14); border-radius: var(--r-card-web); background: var(--surface-2); }
+.draftTitle { font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
+.toneButton { padding: 0; border: 0; background: none; color: var(--ink-3); font: inherit; font-size: var(--fs-label); font-weight: var(--fw-medium); line-height: var(--lh-body); cursor: pointer; }
+.draftPreview { display: -webkit-box; margin: 6px 0 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--ink-2); font-size: var(--fs-label); font-weight: var(--fw-medium); line-height: 1.6; }
+.mergeNotice { display: flex; align-items: center; gap: var(--space-8); margin: 0; color: var(--ink-2); font-size: var(--fs-meta); line-height: var(--lh-body); }
+.mergeNotice > span { flex: 1; min-width: 0; }
+
+/* 足元（b11 .macts）：Orbit からは送信しません · 無効にする ｜ 下書きをコピー */
+.sheetBody > .foot { margin-top: var(--space-20); }
+.foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-8); }
+.footHint { margin-right: auto; }
+.revokeLink { padding: 0; border: 0; background: none; color: var(--coral-text); font: inherit; font-weight: var(--fw-bold); cursor: pointer; }
+.revokeLink:disabled { opacity: .5; cursor: default; }
 
 /* これまでのコード */
 .historyList { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
 .historyRow { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) 0; }
 .historyRow + .historyRow { border-top: 1px solid var(--line); }
-
-/* 右栏 */
-.rail { display: flex; flex-direction: column; gap: var(--space-12); animation: fade var(--dur-enter) var(--ease) both; }
-.railTitle { display: flex; align-items: center; gap: var(--space-8); margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
 
 /* これまでのコード · 同じ人かも（R15 复核 S1）：統合するかは本人が決める */
 .merge { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); margin-top: var(--space-4); padding: var(--space-12) var(--space-14); border-radius: var(--r-md); background: var(--surface-2); }

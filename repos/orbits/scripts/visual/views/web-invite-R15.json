@@ -1,0 +1,112 @@
+{
+ "_note": "R15 招待コード Web 像素返工（2026-10-14）。发出方弹窗 = b11 #14（较新，b9 #13 / b5 #64 旧版不比）；弹窗压在人脈页上（R11，乙）：整屏背景记「待 R11」，另用 region 只比弹窗。接收方 /i/<码> 只有手机画板（b11 #9 / #10 / #12 / #13，「Web 接受邀请页与手机浏览器同一张响应式页面」），只比 390；画框里的 Safari 地址栏 .urlbar 是浏览器外壳，去掉。mock 服务器 :3207（ORBIT_REDESIGN_MOCK=add-scan,invite-codes）。键 = <id>-<width>-<theme>。",
+ "defaults": {
+  "app-origin": "http://localhost:3207",
+  "login": "qa@orbit.test",
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-redesign-R15.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/add/invite/**",
+  "repos/orbits/app/(app)/app/orbit-2026/invite-landing/**",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/invite.ts",
+  "repos/orbits/app/i/**",
+  "repos/orbits/app/(app)/app/orbit-2026/ui/**"
+ ],
+ "views": [
+  {
+   "id": "W-R15-14",
+   "app": "/app/contacts/new?add=invite",
+   "design": "b11-nav-v3.html",
+   "board-index": 14,
+   "width": 1440,
+   "wait-for": "[data-invite-code]",
+   "viewport": true,
+   "note": "整屏（背景人脈页 = R11）"
+  },
+  {
+   "id": "W-R15-14m",
+   "app": "/app/contacts/new?add=invite",
+   "design": "b11-nav-v3.html",
+   "board-index": 14,
+   "width": 1440,
+   "region": "440,226,560,508",
+   "wait-for": "[data-invite-code]",
+   "viewport": true,
+   "note": "只比弹窗本身"
+  },
+  {
+   "id": "W-R15-09",
+   "app": "/i/H8MW-4QZT",
+   "login": "",
+   "design": "b11-nav-v3.html",
+   "board-index": 9,
+   "width": 390,
+   "design-remove": [
+    ".urlbar"
+   ],
+   "wait-for": "[data-invite-open]",
+   "viewport": true,
+   "note": "接收方 · 未登录打开",
+   "design-as-mweb": true
+  },
+  {
+   "id": "W-R15-12",
+   "app": "/i/H8MW-4QZT",
+   "design": "b11-nav-v3.html",
+   "board-index": 12,
+   "width": 390,
+   "design-remove": [
+    ".urlbar"
+   ],
+   "wait-for": "[data-invite-confirm]",
+   "viewport": true,
+   "note": "接收方 · 已登录确认",
+   "design-as-mweb": true
+  },
+  {
+   "id": "W-R15-10",
+   "app": "/i/H8MW-4QZT?design=done",
+   "design": "b11-nav-v3.html",
+   "board-index": 10,
+   "width": 390,
+   "design-remove": [
+    ".urlbar"
+   ],
+   "wait-for": "[data-invite-done]",
+   "viewport": true,
+   "note": "接收方 · 完了（mock 演示 ?design=done）",
+   "design-as-mweb": true
+  },
+  {
+   "id": "W-R15-13",
+   "app": "/i/T6EX-9KPA",
+   "login": "",
+   "design": "b11-nav-v3.html",
+   "board-index": 13,
+   "width": 390,
+   "design-remove": [
+    ".urlbar"
+   ],
+   "wait-for": "[data-invite-notice=expired]",
+   "viewport": true,
+   "note": "接收方 · 期限切れ（演示世界补的过期码）",
+   "design-as-mweb": true
+  },
+  {
+   "id": "W-R15-13f",
+   "app": "/i/F4QM-7NWD",
+   "login": "",
+   "design": "b11-nav-v3.html",
+   "board-index": 13,
+   "width": 390,
+   "design-as-mweb": true,
+   "design-remove": [
+    ".urlbar"
+   ],
+   "wait-for": "[data-invite-notice=full]",
+   "viewport": true,
+   "note": "接收方 · 満員（同 #13 版式，文字不同；演示世界补的满员码）"
+  }
+ ]
+}

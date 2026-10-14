@@ -7,22 +7,19 @@ import type { InviteCodeContract, InviteCodeHistoryItem, InviteSharedFieldKey, I
 import type { OrbitLanguage } from "../../../../../../shared/contract/language";
 import { inviteMessageText, type InviteMessageTone } from "../../../../../../shared/compute/invite-message-templates";
 import { inviteSenderCopy as c } from "../../copy/invite";
-import { Accordion, Button, Card, Chip, ConfirmDialog, Icon, MacTile, Modal, Segmented, Skeleton, Toggle, fillCopy, useStandardCopy, useToast } from "../../ui";
+import { Button, Card, Chip, ConfirmDialog, ContextMenu, Icon, IconButton, MacTile, Modal, Skeleton, Toggle, useStandardCopy, useToast } from "../../ui";
 import { DensityDots, translator, type Translate } from "../add-parts";
-import { createInviteCode, dismissInviteMerge, mergeInviteConnection, readCurrentInviteCode, readInviteHistory, readMyProfile, revokeInviteCode } from "./invite-api";
+import { createInviteCode, dismissInviteMerge, mergeInviteConnection, readCurrentInviteCode, readInviteHistory, readMyProfile, revokeInviteCode, updateCurrentInviteShare } from "./invite-api";
 import {
   INVITE_HISTORY_STATUS_COPY,
   INVITE_KEY_COPY,
   inviteDate,
-  inviteDaysLeft,
   inviteDefaultKeys,
   inviteFieldsFromProfile,
   inviteGuideSeen,
   inviteKeysWithValues,
   inviteKeyValue,
   inviteLinkLabel,
-  lineShareUrl,
-  mailDraftUrl,
   markInviteGuideSeen,
   newInviteKey,
   orderedInviteKeys,
@@ -44,12 +41,13 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 /**
- * 人脈を追加 › 招待コード (b11 A2 ①–③ / Web, b9 A5 ①, b5 E6; DESIGN §2.4): a 560 dialog (a bottom sheet
- * under 768). The first time it explains (3 steps + 3 questions); after that it opens on 共有 — QR, the
- * 8-character code, the link with コピー, QR を拡大, 有効期限 / 使える人数, 相手に届くあなたの情報 (changing it
- * makes a new code, the server only takes keys), メッセージの下書き (three fixed tones; copy / LINE / mail —
- * Orbit never sends), 無効にする (confirmed), and これまでのコード — where a person who joined and may already be
- * in my network asks 同じ人かも (統合する / 別の人; nothing is merged until I say so). Every write is one button press.
+ * 人脈を追加 › 招待コード (b11 #14「招待コード · Web」, the newer board; b9 A5 ① and b5 E6 are older drafts — DESIGN
+ * §2.4): a 560 dialog (a bottom sheet under 768). The first time it explains (3 steps + 3 questions); after that
+ * it opens on 共有 — QR, the 8-character code, the link with コピー, 有効期限 / 使える人数, 相手に届くあなたの情報
+ * [変更] (R15 P1: the current code keeps its code and link, only what it shares changes), the message draft (tone
+ * picked from 「ていねい ▾」, two-line preview, 下書きをコピー — Orbit never sends) and 無効にする (confirmed).
+ * これまでのコード shows when there is no code standing (expired / turned off → 再発行 one press), or when a person
+ * who joined may be someone already in my network (同じ人かも: 統合する / 別の人 — nothing merges until I say so).
  */
 export function InviteCodeModal({ open, onClose, language }: { open: boolean; onClose: () => void; language: OrbitLanguage }) {
   const t = translator(language);
@@ -62,11 +60,12 @@ export function InviteCodeModal({ open, onClose, language }: { open: boolean; on
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [confirmRevoke, setConfirmRevoke] = useState(false);
-  const [qrOpen, setQrOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [draftKeys, setDraftKeys] = useState<InviteSharedFieldKey[]>([]);
   const [tone, setTone] = useState<InviteMessageTone>("polite");
   const createKey = useRef<string | null>(null);
+  const shareKey = useRef<string | null>(null);
   const [deciding, setDeciding] = useState<string | null>(null);
   // One key per (choice, person) until it succeeds, so a retry after a lost answer is the same request.
   const decideKeys = useRef(new Map<string, string>());
@@ -94,13 +93,20 @@ export function InviteCodeModal({ open, onClose, language }: { open: boolean; on
     if (open) void load();
     else {
       setEditing(false);
-      setQrOpen(false);
+      setShowHistory(false);
       setConfirmRevoke(false);
     }
   }, [open, load]);
 
   const available = useMemo(() => inviteKeysWithValues(profile), [profile]);
   const currentKeys = useMemo(() => (current ? inviteKeysWithValues(current.shared) : []), [current]);
+  const pendingMerges = useMemo(() => (history ?? []).reduce((count, item) => count + item.joined.filter((person) => person.mergeSuggestion).length, 0), [history]);
+
+  const failNotice = useCallback((reason: string | null, fallback: typeof c.createFailed) => {
+    if (reason === "PROFILE_REQUIRED") setNotice("profile");
+    else if (reason === "SAMPLE_READ_ONLY") setNotice("sample");
+    else toast.error(t(fallback));
+  }, [toast, t]);
 
   const create = useCallback(async (keys: InviteSharedFieldKey[]) => {
     setBusy(true);
@@ -108,20 +114,33 @@ export function InviteCodeModal({ open, onClose, language }: { open: boolean; on
     createKey.current ??= newInviteKey("invite-create");
     const result = await createInviteCode({ displayName: profile?.displayName ?? "", idempotencyKey: createKey.current, sharedKeys: orderedInviteKeys(keys) });
     setBusy(false);
+    createKey.current = null;
     if (result.ok === true) {
-      createKey.current = null;
       setCurrent(result.data);
       setEditing(false);
       setPhase("share");
       void loadHistory();
       return;
     }
-    // A failed attempt keeps its key so a retry of the same press is the same request (idempotent).
-    if (result.reason === "PROFILE_REQUIRED") setNotice("profile");
-    else if (result.reason === "SAMPLE_READ_ONLY") setNotice("sample");
-    else toast.error(t(c.createFailed));
-    createKey.current = null;
-  }, [profile, loadHistory, toast, t]);
+    failNotice(result.reason, c.createFailed);
+  }, [profile, loadHistory, failNotice]);
+
+  /** R15 P1: the same code shares the new set from now on (people already connected keep theirs). */
+  const applyShare = async () => {
+    setBusy(true);
+    setNotice(null);
+    shareKey.current ??= newInviteKey("invite-share");
+    const result = await updateCurrentInviteShare({ idempotencyKey: shareKey.current, sharedKeys: orderedInviteKeys(draftKeys) });
+    setBusy(false);
+    shareKey.current = null;
+    if (result.ok === true) {
+      setCurrent(result.data);
+      setEditing(false);
+      toast.success(t(c.shareSaved));
+      return;
+    }
+    failNotice(result.reason, c.shareFailed);
+  };
 
   const startFromIntro = () => {
     markInviteGuideSeen();
@@ -166,10 +185,17 @@ export function InviteCodeModal({ open, onClose, language }: { open: boolean; on
   };
 
   const reissueKeys = current ? currentKeys : inviteDefaultKeys(available);
+  const draftText = current ? inviteMessageText({ language, link: current.link, name: profile?.displayName ?? "", tone, until: inviteDate(current.expiresAt, tone === "english" ? "en" : language) }) : "";
+  const historyOpen = !current || showHistory;
 
   return (
     <>
-      <Modal open={open} onClose={onClose} size={560} title={t(c.title)} description={t(c.subtitle)}>
+      <Modal open={open} onClose={onClose} size={560} title={t(c.title)} header={(
+        <div className={styles.head}>
+          <div className={styles.headText}><b className={styles.headTitle}>{t(c.title)}</b><p className={styles.lbl}>{t(c.subtitle)}</p></div>
+          <IconButton icon="x" label={standard.action.close} onClick={onClose} />
+        </div>
+      )}>
         <div className={styles.sheetBody} data-invite-sheet="" data-invite-phase={phase}>
           {phase === "loading" ? <Skeleton lines={4} /> : null}
           {phase === "failed" ? (
@@ -180,24 +206,26 @@ export function InviteCodeModal({ open, onClose, language }: { open: boolean; on
           ) : null}
           {phase === "intro" ? <InviteIntro t={t} busy={busy} onStart={startFromIntro} /> : null}
           {phase === "share" ? (
-            <div className={styles.stack}>
+            <>
               {notice ? <NoticeLine notice={notice} t={t} /> : null}
               {current ? (
                 <>
                   <div className={styles.codeRow} data-invite-code-card="">
                     <InviteQr text={current.link} label={t(c.qrAlt)} />
                     <div className={styles.codeSide}>
-                      <span className={styles.label}>{t(c.codeLabel)}</span>
-                      <span className={styles.code} data-invite-code="">{current.code}</span>
-                      <span className={styles.label}>{t(c.linkLabel)}</span>
+                      <div className={styles.lbl}>{t(c.codeLabel)}</div>
+                      <div className={styles.code} data-invite-code="">{current.code}</div>
+                      <div className={`${styles.lbl} ${styles.linkLabel}`}>{t(c.linkLabel)}</div>
                       <div className={styles.linkRow}>
                         <span className={styles.linkBox} data-invite-link="">{inviteLinkLabel(current.link)}</span>
                         <Button label={standard.action.copy} icon="copy" variant="primary" onClick={() => void copy(current.link, c.linkCopied)} data-invite-copy-link="" />
                       </div>
-                      <Button label={t(c.enlargeQr)} icon="grid" size="sm" onClick={() => setQrOpen(true)} data-invite-enlarge="" />
                     </div>
                   </div>
-                  <Quota code={current} language={language} t={t} />
+                  <div className={styles.quota} data-invite-quota="">
+                    <div><span className={styles.lbl}>{t(c.expiresLabel)}</span><b data-invite-expires="">{t(c.expiresValue, { date: inviteDate(current.expiresAt, language) })}</b></div>
+                    <div><span className={styles.lbl}>{t(c.usesLabel)}</span><b data-invite-uses="">{t(c.usesValue, { left: Math.max(0, current.maxUses - current.usedCount), max: current.maxUses })}</b></div>
+                  </div>
                   <ShareKeys
                     t={t}
                     language={language}
@@ -210,15 +238,15 @@ export function InviteCodeModal({ open, onClose, language }: { open: boolean; on
                     onEdit={() => { setDraftKeys(currentKeys); setEditing(true); }}
                     onToggle={(key, on) => setDraftKeys((keys) => orderedInviteKeys(on ? [...keys, key] : keys.filter((item) => item !== key)))}
                     onCancel={() => setEditing(false)}
-                    onApply={() => void create(draftKeys)}
+                    onApply={() => void applyShare()}
                   />
-                  <Accordion title={t(c.draftTitle)}>
-                    <MessageDraft code={current} name={profile?.displayName ?? ""} tone={tone} onTone={setTone} language={language} t={t} onCopy={(text) => void copy(text, c.draftCopied)} />
-                  </Accordion>
-                  <div className={styles.footRow}>
-                    <span className={styles.label}>{t(c.noSend)}</span>
-                    <Button label={t(c.revoke)} variant="dangerGhost" size="sm" onClick={() => setConfirmRevoke(true)} disabled={busy} data-invite-revoke="" />
-                  </div>
+                  <MessageDraft text={draftText} tone={tone} onTone={setTone} t={t} />
+                  {pendingMerges > 0 && !showHistory ? (
+                    <p className={styles.mergeNotice} data-invite-merge-pending="">
+                      <Icon name="info" size={16} /><span>{t(c.mergePending, { count: pendingMerges })}</span>
+                      <button type="button" className={styles.textButton} onClick={() => setShowHistory(true)} data-invite-merge-review="">{t(c.mergeReview)}</button>
+                    </p>
+                  ) : null}
                 </>
               ) : (
                 <Card variant="flat" data-invite-nocode="">
@@ -229,18 +257,18 @@ export function InviteCodeModal({ open, onClose, language }: { open: boolean; on
                   </div>
                 </Card>
               )}
-              <History items={history} language={language} t={t} busy={busy} deciding={deciding} onReissue={() => void create(reissueKeys)} onDecide={(contactId, choice) => void decide(contactId, choice)} />
-            </div>
+              {historyOpen ? <History items={history} language={language} t={t} busy={busy} deciding={deciding} onReissue={() => void create(reissueKeys)} onDecide={(contactId, choice) => void decide(contactId, choice)} /> : null}
+              {current ? (
+                <div className={styles.foot}>
+                  <span className={`${styles.lbl} ${styles.footHint}`}>
+                    {t(c.noSendShort)} · <button type="button" className={styles.revokeLink} onClick={() => setConfirmRevoke(true)} disabled={busy} data-invite-revoke="">{t(c.revoke)}</button>
+                  </span>
+                  <Button label={t(c.draftCopy)} icon="copy" onClick={() => void copy(draftText, c.draftCopied)} data-invite-draft-copy="" />
+                </div>
+              ) : null}
+            </>
           ) : null}
         </div>
-      </Modal>
-      <Modal open={open && qrOpen && Boolean(current)} onClose={() => setQrOpen(false)} size={560} title={t(c.qrTitle)} description={t(c.qrHint)}>
-        {current ? (
-          <div className={styles.qrBig} data-invite-qr-big="">
-            <InviteQr text={current.link} label={t(c.qrAlt)} size="lg" />
-            <span className={styles.code}>{current.code}</span>
-          </div>
-        ) : null}
       </Modal>
       <ConfirmDialog
         open={open && confirmRevoke}
@@ -274,12 +302,12 @@ function InviteIntro({ t, busy, onStart }: { t: Translate; busy: boolean; onStar
         <MacTile emoji="🤝" tone="pink" />
         <b className={styles.heroTitle}>{t(c.introHero)}</b>
         <p className={styles.body}>{t(c.introSub)}</p>
-        <span className={styles.row}><Chip label={t(c.selfChip)} tone="teal" /><DensityDots level={3} t={t} /><span className={styles.label}>{t(c.introDensity)}</span></span>
+        <span className={styles.row}><Chip label={t(c.selfChip)} tone="teal" /><DensityDots level={3} t={t} /><span className={styles.lbl}>{t(c.introDensity)}</span></span>
       </div>
       <Card variant="flat" title={t(c.stepsTitle)}>
         <ol className={styles.steps}>
           {steps.map(([emoji, title, body]) => (
-            <li key={title.ja} className={styles.step}><span className={styles.stepEmoji} aria-hidden>{emoji}</span><b>{t(title)}</b><span className={styles.label}>{t(body)}</span></li>
+            <li key={title.ja} className={styles.step}><span className={styles.stepEmoji} aria-hidden>{emoji}</span><b>{t(title)}</b><span className={styles.lbl}>{t(body)}</span></li>
           ))}
         </ol>
       </Card>
@@ -291,25 +319,6 @@ function InviteIntro({ t, busy, onStart }: { t: Translate; busy: boolean; onStar
         </dl>
       </Card>
       <Button label={t(c.create)} variant="primary" block loading={busy} onClick={onStart} data-invite-start="" />
-    </div>
-  );
-}
-
-function Quota({ code, language, t }: { code: InviteCodeContract; language: OrbitLanguage; t: Translate }) {
-  const standard = useStandardCopy();
-  const days = inviteDaysLeft(code.expiresAt, Date.now());
-  return (
-    <div className={styles.quota} data-invite-quota="">
-      <div>
-        <span className={styles.label}>{t(c.expiresLabel)}</span>
-        <b data-invite-expires="">{t(c.expiresValue, { date: inviteDate(code.expiresAt, language) })}</b>
-        <span className={styles.label} data-invite-days="">{fillCopy(standard.chip.daysLeft, { count: days })}</span>
-      </div>
-      <div>
-        <span className={styles.label}>{t(c.usesLabel)}</span>
-        <b data-invite-uses="">{t(c.usesValue, { left: Math.max(0, code.maxUses - code.usedCount), max: code.maxUses })}</b>
-        <span className={styles.label} data-invite-joined="">{t(c.joinedValue, { count: code.usedCount })}</span>
-      </div>
     </div>
   );
 }
@@ -329,29 +338,29 @@ function ShareKeys({ t, language, keys, profile, available, editing, draftKeys, 
   onApply: () => void;
 }) {
   const standard = useStandardCopy();
-  const offContact = !keys.includes("email") && !keys.includes("phone") && (available.includes("email") || available.includes("phone"));
+  const offContact = !keys.includes("email") && !keys.includes("phone");
   return (
-    <Card variant="flat" data-invite-share="">
+    <div className={styles.infoCard} data-invite-share="">
       <div className={styles.rowBetween}>
-        <b className={styles.smallTitle}>{t(c.shareTitle)}</b>
-        {editing ? null : <button type="button" className={`btn ${styles.textButton}`} onClick={onEdit} data-invite-share-edit="">{t(c.shareChange)}</button>}
+        <b className={styles.infoTitle}>{t(c.shareTitle)}</b>
+        {editing ? null : <button type="button" className={styles.textButton} onClick={onEdit} data-invite-share-edit="">{t(c.shareChange)}</button>}
       </div>
       {editing ? (
         <div className={styles.stack}>
           <ul className={styles.switches}>
             <li className={styles.switchRow}>
-              <span className={styles.grow}><b>{t(c.keyName)}</b><span className={styles.label}>{profile?.displayName}</span></span>
+              <span className={styles.grow}><b>{t(c.keyName)}</b><span className={styles.lbl}>{profile?.displayName}</span></span>
               <Chip label={t(c.required)} />
             </li>
             {available.map((key) => (
               <li key={key} className={styles.switchRow} data-invite-switch={key}>
-                <span className={styles.grow}><b>{t(INVITE_KEY_COPY[key])}</b><span className={styles.label}>{inviteKeyValue(key, profile, language)}</span></span>
+                <span className={styles.grow}><b>{t(INVITE_KEY_COPY[key])}</b><span className={styles.lbl}>{inviteKeyValue(key, profile, language)}</span></span>
                 <Toggle checked={draftKeys.includes(key)} onChange={(on) => onToggle(key, on)} label={t(INVITE_KEY_COPY[key])} />
               </li>
             ))}
           </ul>
-          {available.length === 0 ? <p className={styles.label}>{t(c.shareNone)}</p> : null}
-          <p className={styles.label}>{t(c.shareEditHint)}</p>
+          {available.length === 0 ? <p className={styles.lbl}>{t(c.shareNone)}</p> : null}
+          <p className={styles.lbl}>{t(c.shareEditHint)}</p>
           <div className={styles.row}>
             <Button label={standard.action.cancel} size="sm" onClick={onCancel} />
             <Button label={t(c.shareApply)} size="sm" variant="primary" loading={busy} onClick={onApply} data-invite-share-apply="" />
@@ -359,39 +368,34 @@ function ShareKeys({ t, language, keys, profile, available, editing, draftKeys, 
         </div>
       ) : (
         <div className={styles.chips} data-invite-share-chips="">
-          {keys.filter((key) => key !== "email" && key !== "phone").map((key) => <Chip key={key} label={t(INVITE_KEY_COPY[key])} tone="lav" />)}
-          {keys.includes("email") ? <Chip label={t(c.keyEmail)} tone="lav" /> : null}
-          {keys.includes("phone") ? <Chip label={t(c.keyPhone)} tone="lav" /> : null}
-          {offContact ? <span className={styles.offChip}><Chip label={t(c.shareOff, { label: t(c.keyContact) })} /></span> : null}
+          {keys.filter((key) => key !== "email" && key !== "phone").map((key) => <span key={key} className={styles.chip}>{t(INVITE_KEY_COPY[key])}</span>)}
+          {keys.includes("email") ? <span className={styles.chip}>{t(c.keyEmail)}</span> : null}
+          {keys.includes("phone") ? <span className={styles.chip}>{t(c.keyPhone)}</span> : null}
+          {offContact ? <span className={`${styles.chip} ${styles.chipOff}`}>{t(c.shareOff, { label: t(c.keyContact) })}</span> : null}
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
 const TONES: readonly InviteMessageTone[] = ["polite", "casual", "english"];
 const TONE_COPY = { polite: c.tonePolite, casual: c.toneCasual, english: c.toneEnglish } as const;
 
-function MessageDraft({ code, name, tone, onTone, language, t, onCopy }: {
-  code: InviteCodeContract;
-  name: string;
-  tone: InviteMessageTone;
-  onTone: (tone: InviteMessageTone) => void;
-  language: OrbitLanguage;
-  t: Translate;
-  onCopy: (text: string) => void;
-}) {
-  const text = inviteMessageText({ language, link: code.link, name, tone, until: inviteDate(code.expiresAt, tone === "english" ? "en" : language) });
+/** b11 #14 .k-wimsg: title + 「ていねい ▾」 (tone menu) and a two-line preview of the draft. */
+function MessageDraft({ text, tone, onTone, t }: { text: string; tone: InviteMessageTone; onTone: (tone: InviteMessageTone) => void; t: Translate }) {
+  const [menu, setMenu] = useState(false);
+  const anchor = useRef<HTMLButtonElement>(null);
   return (
-    <div className={styles.stack} data-invite-draft="">
-      <p className={styles.label}>{t(c.draftSub)}</p>
-      <Segmented label={t(c.toneLabel)} segments={TONES.map((key) => ({ key, label: t(TONE_COPY[key]) }))} value={tone} onChange={onTone} />
-      <p className={styles.draftBox} data-invite-draft-text="">{text}</p>
-      <div className={styles.appButtons}>
-        <Button label={t(c.draftCopy)} icon="copy" variant="primary" onClick={() => onCopy(text)} data-invite-draft-copy="" />
-        <a className={`btn ${styles.linkButton}`} href={lineShareUrl(text)} target="_blank" rel="noopener noreferrer" data-invite-draft-line="">{t(c.openLine)}</a>
-        <a className={`btn ${styles.linkButton}`} href={mailDraftUrl(t(c.mailSubject), text)} data-invite-draft-mail=""><Icon name="mail" size={16} />{t(c.openMail)}</a>
+    <div className={styles.draftCard} data-invite-draft="">
+      <div className={styles.rowBetween}>
+        <b className={styles.draftTitle}>{t(c.draftTitle)}</b>
+        <button ref={anchor} type="button" className={styles.toneButton} aria-haspopup="menu" aria-expanded={menu} aria-label={`${t(c.toneMenu)}: ${t(TONE_COPY[tone])}`} onClick={() => setMenu(true)} data-invite-tone={tone}>
+          {t(TONE_COPY[tone])} ▾
+        </button>
       </div>
+      <p className={styles.draftPreview} data-invite-draft-text="">{text}</p>
+      <ContextMenu open={menu} onClose={() => setMenu(false)} anchor={anchor} label={t(c.toneMenu)}
+        items={TONES.map((key) => ({ key, label: t(TONE_COPY[key]), icon: key === tone ? "check" : undefined, onSelect: () => { onTone(key); setMenu(false); } }))} />
     </div>
   );
 }
@@ -409,18 +413,18 @@ function History({ items, language, t, busy, deciding, onReissue, onDecide }: {
   return (
     <section className={styles.stack} data-invite-history="">
       <h3 className={styles.smallTitle}>{t(c.historyTitle)}</h3>
-      {items === null ? <Skeleton lines={2} /> : items.length === 0 ? <p className={styles.label}>{t(c.historyEmpty)}</p> : (
+      {items === null ? <Skeleton lines={2} /> : items.length === 0 ? <p className={styles.lbl}>{t(c.historyEmpty)}</p> : (
         <ul className={styles.historyList}>
           {items.map((item) => (
             <li key={item.code} className={styles.historyRow} data-invite-history-row={item.status}>
               <span className={styles.grow}>
                 <span className={styles.row}><b className={styles.mono}>{item.code}</b><Chip label={t(INVITE_HISTORY_STATUS_COPY[item.status])} tone={item.status === "active" ? "ok" : item.status === "full" ? "apricot" : "neutral"} /></span>
-                <span className={styles.label}>{t(c.historyCreated, { date: inviteDate(item.createdAt, language) })}</span>
+                <span className={styles.lbl}>{t(c.historyCreated, { date: inviteDate(item.createdAt, language) })}</span>
                 {item.joined.length ? (
                   <span className={styles.row}>
                     {item.joined.map((person) => <Link key={person.contactId} className={styles.link} href={`/app/contacts/${encodeURIComponent(person.contactId)}`} data-invite-joined-link="">{person.displayName}</Link>)}
                   </span>
-                ) : <span className={styles.label}>{t(c.historyNobody)}</span>}
+                ) : <span className={styles.lbl}>{t(c.historyNobody)}</span>}
                 {item.joined.map((person) => person.mergeSuggestion ? (
                   <span key={`merge-${person.contactId}`} className={styles.merge} data-invite-merge={person.contactId}>
                     <span className={styles.mergeText}><Icon name="info" size={16} />{t(c.mergeMaybe, { name: person.mergeSuggestion.displayName })}</span>
@@ -437,22 +441,5 @@ function History({ items, language, t, busy, deciding, onReissue, onDecide }: {
         </ul>
       )}
     </section>
-  );
-}
-
-/** Right rail on 人脈を追加 (b11 netRail): いちばん早い方法 → 招待コードを 3人に送る [コードを作る]. */
-export function InviteRailCard({ language, onCreate }: { language: OrbitLanguage; onCreate: () => void }) {
-  const t = translator(language);
-  return (
-    <div className={styles.rail} data-invite-rail="">
-      <h2 className={styles.railTitle}><MacTile emoji="🤝" tone="pink" size="sm" />{t(c.railTitle)}</h2>
-      <Card>
-        <div className={styles.stack}>
-          <b className={styles.smallTitle}>{t(c.railLead)}</b>
-          <p className={styles.label}>{t(c.railBody)}</p>
-          <span><Button label={t(c.railButton)} size="sm" variant="primary" onClick={onCreate} data-invite-rail-create="" /></span>
-        </div>
-      </Card>
-    </div>
   );
 }

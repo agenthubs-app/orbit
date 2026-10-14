@@ -148,11 +148,13 @@ test("A creates a code in the dialog; B opens /i/<code>, signs up, fills the sho
     await b2.locator('[data-invite-tag="投資家の紹介"]').click();
     await b2.locator("[data-invite-profile-next]").click();
     await b2.locator("[data-invite-confirm]").waitFor();
-    // 求めていること off: only 会社・役職 and 提供できること go to 佐藤さん.
+    // 求めていること off (変更 opens the switches): only 会社・役職 and 提供できること go to 佐藤さん.
+    await b2.locator("[data-invite-share-edit]").click();
     await b2.locator('[data-invite-switch="seeking"] [role="switch"]').click();
     await b2.locator("[data-invite-connect]").click();
     await b2.locator('[data-invite-done="connected"]').waitFor();
-    assert.equal(await b2.locator("[data-invite-from-peer]").getByText("株式会社ミナトリンク · 代表取締役").count(), 1);
+    assert.deepEqual(await b2.locator("[data-invite-to-peer] span").allTextContents(), ["名前", "会社・役職", "提供できること"]);
+    assert.equal(await b2.locator("header").getByText("登録が完了しました", { exact: true }).count(), 1, "a newcomer who filled the short profile");
 
     const aContacts = await listActorContactRecords(w.harness.contacts, INVITE_WS, ALICE);
     const bContacts = await listActorContactRecords(w.harness.contacts, INVITE_WS, BOB);

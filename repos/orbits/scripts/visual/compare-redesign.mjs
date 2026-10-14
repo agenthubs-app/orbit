@@ -104,7 +104,7 @@ async function shootDesign(v) {
     await frame.$(sel).then((el) => el?.click());
     await page.waitForTimeout(300);
   }
-  await frame.evaluate((f, { theme, unroll, kind, removes }) => {
+  await frame.evaluate((f, { theme, unroll, kind, removes, asMweb }) => {
     // 画框搬到页面最顶上 (0, 0)、其余内容隐藏，不用滚动就能截：画框原位在文档深处（web.html #0 的 top = 387.25），
     // 带 backdrop-filter 的合成层（.rail）在原位按另一套亚像素对齐栅格化文字，同一行字和实现差出整整 1px 行
     // （R07 返工实测：DOM 位置完全一致；原位清边距也不行，搬到顶部后差异为 0）。b12 等按分组类名用 CSS 嵌套
@@ -127,7 +127,8 @@ async function shootDesign(v) {
     f.style.borderRadius = "0";
     f.style.boxShadow = "none";
     for (const sel of removes) for (const el of f.querySelectorAll(sel)) el.remove();
-    if (kind === "mweb390") {
+    // --design-as-mweb：手机画框（.phone）里画的是手机浏览器网页（如 b11 招待コード接收方 /i/<码>），按 mweb390 同样去掉系统 / 浏览器外壳。
+    if (kind === "mweb390" || asMweb) {
       // 手机浏览器画框：状态栏、Safari 地址栏、Home 指示条是浏览器 / 系统外壳，不是网页内容。
       // 胶囊导航在画框里被抬到 Safari 底栏之上（bottom 100 = 底栏 92 + 间距 8）；真实浏览器视口不含 Safari 底栏，
       // 去掉底栏后把胶囊放回「底栏顶边之上同样间距」的位置。
@@ -151,7 +152,7 @@ async function shootDesign(v) {
         if (scroll) { scroll.style.position = "relative"; scroll.style.inset = "auto"; scroll.style.overflow = "visible"; scroll.style.minHeight = `${f.getBoundingClientRect().height}px`; }
       }
     }
-  }, { theme, unroll: fullPage && v["design-unroll"] !== "false", kind: target.kind, removes: many(v["design-remove"]) });
+  }, { theme, unroll: fullPage && v["design-unroll"] !== "false", kind: target.kind, removes: many(v["design-remove"]), asMweb: v["design-as-mweb"] === true || v["design-as-mweb"] === "true" });
   await page.waitForTimeout(300);
   const naturalHeight = await frame.evaluate((f) => Math.ceil(f.getBoundingClientRect().height));
   return { ctx, page, frame, board: target, naturalHeight };
@@ -293,7 +294,7 @@ async function runView(v) {
   mkdirSync(v.out, { recursive: true });
   const local = !/^https?:/.test(v.design) && v.cache !== false;
   const hash = local ? designInputsHash(DESIGN_DIR, v.design) : null;
-  const cache = hash ? designCache({ v: 1, hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? null, nth: v["board-nth"] ?? null, width: v.width, theme: v.theme, fullPage: v.fullPage, click: many(v["design-click"]), remove: many(v["design-remove"]), unroll: v["design-unroll"] ?? null }) : null;
+  const cache = hash ? designCache({ v: 1, hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? null, nth: v["board-nth"] ?? null, width: v.width, theme: v.theme, fullPage: v.fullPage, click: many(v["design-click"]), remove: many(v["design-remove"]), unroll: v["design-unroll"] ?? null, ...(v["design-as-mweb"] ? { asMweb: true } : {}) }) : null;
   const meta = cache?.meta();
   let d = null, board, designNatural, designPng = null, cached = false, designStyles = null;
   v.regionBox = v.region ? String(v.region).split(",").map(Number) : null;

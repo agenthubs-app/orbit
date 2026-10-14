@@ -50,6 +50,11 @@ export function createInviteCode(input: { displayName: string; sharedKeys: Invit
   return call("/api/invite-codes", { method: "POST", body: JSON.stringify(body) }, inviteCodeSchema);
 }
 
+/** R15 P1: what the current code shares from now on (the code, link, expiry and uses stay the same). */
+export function updateCurrentInviteShare(input: { sharedKeys: InviteSharedFieldKey[]; idempotencyKey: string }): Promise<InviteApiResult<InviteCodeContract>> {
+  return call("/api/invite-codes/current/share", { method: "PUT", body: JSON.stringify({ idempotencyKey: input.idempotencyKey, sharedKeys: input.sharedKeys }) }, inviteCodeSchema);
+}
+
 export function revokeInviteCode(code: string): Promise<InviteApiResult<InviteCodeContract>> {
   return call(`/api/invite-codes/${enc(code)}/revoke`, { method: "POST", body: "{}" }, inviteCodeSchema);
 }
