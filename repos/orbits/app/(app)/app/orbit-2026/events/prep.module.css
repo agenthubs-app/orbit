@@ -8,7 +8,7 @@
 .mapRail { stroke: var(--mac-blue-ink); stroke-width: 2.5; fill: none; opacity: 0.5; }
 .mapHalo { fill: var(--plum-100); }
 .mapPin { fill: var(--plum-700); }
-.mapText { font-size: 8px; fill: var(--ink-3); }
+.mapText { fill: var(--ink-3); }
 .mapBtn.mapBtn { margin-top: 10px; align-self: flex-start; }
 .cardsRow.cardsRow { display: flex; align-items: center; gap: 14px; border: 0; background: transparent; padding: 0; height: auto; min-height: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
 .cardsText b { display: block; }

@@ -132,7 +132,7 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
             <path d="M0 76 Q60 70 120 18" className={q.mapRail} />
             <circle cx="66" cy="44" r="12" className={q.mapHalo} />
             <circle cx="66" cy="44" r="5" className={q.mapPin} />
-            {data.access ? <text x="10" y="84" className={q.mapText}>{data.access.split(" ")[0]?.replace(/出口.*$/, "")}</text> : null}
+            {data.access ? <text x="10" y="84" fontSize={8} className={q.mapText}>{data.access.split(" ")[0]?.replace(/出口.*$/, "")}</text> : null}
           </svg>
           {data.mapUrl ? <a className={`btn ${styles.btn} ${styles.sm} ${q.mapBtn}`} href={data.mapUrl} target="_blank" rel="noreferrer"><Icon name="pin" size={16} />{t("mapOpen")}</a> : null}
         </div>
