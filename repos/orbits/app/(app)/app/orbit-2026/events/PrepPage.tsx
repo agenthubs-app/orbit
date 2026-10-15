@@ -165,7 +165,7 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
           {editingCards ? (
             <label className={q.cardsInput}>
               <span className={styles.lbl}>{t("cardsInputLabel")}</span>
-              <input type="number" min={0} max={500} autoFocus data-prep-cards-input="" defaultValue={cards ?? ""} onKeyDown={(event) => {
+              <input type="number" min={0} max={500} autoFocus data-prep-cards-input="" aria-label={t("cardsInputLabel")} defaultValue={cards ?? ""} onKeyDown={(event) => {
                 if (event.key !== "Enter") return;
                 const value = Math.max(0, Math.min(500, Number((event.target as HTMLInputElement).value) || 0));
                 writeCards(eventId, value); setCards(value); setEditingCards(false);
@@ -260,7 +260,7 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
           {editingCards ? (
             <label className={q.cardsInput}>
               <span className={styles.lbl}>{t("cardsInputLabel")}</span>
-              <input type="number" min={0} max={500} autoFocus data-prep-cards-input="" defaultValue={cards ?? ""} onKeyDown={(event) => {
+              <input type="number" min={0} max={500} autoFocus data-prep-cards-input="" aria-label={t("cardsInputLabel")} defaultValue={cards ?? ""} onKeyDown={(event) => {
                 if (event.key !== "Enter") return;
                 const value = Math.max(0, Math.min(500, Number((event.target as HTMLInputElement).value) || 0));
                 writeCards(eventId, value); setCards(value); setEditingCards(false);

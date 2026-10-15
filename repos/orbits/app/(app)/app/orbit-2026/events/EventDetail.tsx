@@ -114,6 +114,12 @@ export function usePhone(): boolean {
 }
 
 export function PhoneDetailBody({ data, language, t, onRegister }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; onRegister: () => void }) {
+  const toast = useToast();
+  // ★ 保存 = 记成 R26 的评估（出现在「評価」列表），同一活动重复保存由服务端按来源去重。
+  const save = async () => {
+    const created = await eventsApi.create({ eventId: data.eventId, idempotencyKey: newIdempotencyKey(), sourceKind: "orbit_event" });
+    if (created.ok) toast.success(t("savedToAssess")); else toast.error(assessTranslator(language)("genericError"));
+  };
   const at = assessTranslator(language);
   const [tab, setTab] = useState<"intro" | "agenda" | "host" | "people">("intro");
   const [filter, setFilter] = useState<"planFit" | "known" | "all">("planFit");
@@ -199,7 +205,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
       ) : null}
       {data.registration.status === "none" ? (
         <div className={x.ctabar} data-detail-cta="">
-          <button type="button" className={`btn ${x.ctaSave}`} aria-label={t("saveEvent")}><Icon name="star" size={20} /></button>
+          <button type="button" className={`btn ${x.ctaSave}`} aria-label={t("saveEvent")} onClick={() => void save()}><Icon name="star" size={20} /></button>
           <button type="button" className={`btn ${styles.btn} ${styles.primary} ${x.ctaMain}`} onClick={onRegister}>{t("ctaRegisterAi")}</button>
         </div>
       ) : null}
@@ -207,7 +213,8 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
   );
 }
 
-export function EventDetailBody({ data, language, t, signedOutAside }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; signedOutAside?: ReactNode }) {
+/** `onSeeAll`：「すべて見る」去取全部公开参加者（取过就不再显示按钮；其余人没有公开资料）。 */
+export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; signedOutAside?: ReactNode; onSeeAll?: () => void }) {
   const at = assessTranslator(language);
   const toast = useToast();
   const [tab, setTab] = useState<"intro" | "agenda" | "host" | "people">("intro");
@@ -302,7 +309,7 @@ export function EventDetailBody({ data, language, t, signedOutAside }: { data: E
                 <div key={person.attendeeId} className={x.pmini}><div className={`${x.av} ${avTone(index)}`}>{person.initial}</div><div className={x.meta}><b>{person.name}</b><span>{person.org}</span></div></div>
               ))}
             </div>
-            {data.attendeeCounts.all > data.attendees.length ? <button type="button" className={`btn ${styles.btn} ${styles.sm} ${x.moreBtn}`}>{t("seeAllPeople", { n: data.attendeeCounts.all })}</button> : null}
+            {onSeeAll && data.attendeeCounts.all > data.attendees.length ? <button type="button" className={`btn ${styles.btn} ${styles.sm} ${x.moreBtn}`} onClick={onSeeAll}>{t("seeAllPeople", { n: data.attendeeCounts.all })}</button> : null}
           </>
         )}
       </div>
@@ -332,6 +339,11 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
     void journeyApi.overview(eventId).then((result) => { if (result.ok) setData(result.data); else setMissing(true); });
   }, [eventId]);
   const register = () => window.location.assign(`/app/events/${encodeURIComponent(eventId)}/register`);
+  const [allLoaded, setAllLoaded] = useState(false);
+  const seeAll = async () => {
+    const res = await journeyApi.overview(eventId, true);
+    if (res.ok) { setData(res.data); setAllLoaded(true); } else toast.error(assessTranslator(language)("genericError"));
+  };
   // 参加の取り消し（b12 #374）：`?cancel=1` 打开确认框，只在已有报名时。
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
@@ -403,7 +415,7 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
         rightRail={wide && data ? <DetailRail data={data} t={t} onRegister={register} language={language} /> : false}
         phoneBare={phone}
       />
-      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} /> : <EventDetailBody data={data} language={language} t={t} />) : null}
+      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} /> : <EventDetailBody data={data} language={language} t={t} {...(allLoaded ? {} : { onSeeAll: () => void seeAll() })} />) : null}
       {data ? <CancelDialog open={cancelOpen} event={data} language={language} t={t} busy={cancelBusy} onKeep={closeCancel} onCancel={() => void confirmCancel()} /> : null}
     </>
   );

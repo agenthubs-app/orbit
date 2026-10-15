@@ -130,10 +130,11 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       if (!parsed.success) return { error: new AppError("VALIDATION_ERROR", "Invalid query.") };
       return service.search(actorId!, parsed.data.q, parsed.data.limit);
     }, deps),
-    overview: journeyRoute({ auth: "optional", schema: eventOverviewResponseSchema }, async ({ actorId, join, language, params, platform, service }) => {
+    overview: journeyRoute({ auth: "optional", schema: eventOverviewResponseSchema }, async ({ actorId, join, language, params, platform, request, service }) => {
       // 仮予定：审核结果出来后的改名 / 删除（读详情时顺带，失败只记日志，不影响页面）。
       if (actorId) void join().then((joinService) => joinService?.syncTentative(actorId, eventId(params), language)).catch((error: unknown) => console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_join_tentative_sync_failed" })));
-      return service.overview(actorId, eventId(params), language, platform);
+      const allAttendees = new URL(request.url).searchParams.get("attendees") === "all";
+      return service.overview(actorId, eventId(params), language, platform, allAttendees ? { allAttendees } : undefined);
     }, deps),
     prep: journeyRoute({ auth: "required", schema: eventPrepResponseSchema }, async ({ actorId, language, params, service }) => service.prep(actorId!, eventId(params), language), deps),
     patchChecklist: journeyRoute({ auth: "required", schema: eventPrepResponseSchema, write: true }, async ({ actorId, language, params, request, service }) => {

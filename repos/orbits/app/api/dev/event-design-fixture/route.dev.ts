@@ -11,9 +11,8 @@ import { NextResponse } from "next/server";
 import { DESIGN_FIXTURE_NOW, EVENT_DESIGN_FIXTURES } from "../../../../features/events/design-fixtures";
 import { setDesignFixtureNow } from "../../../../features/events/dev-clock";
 import { overrideMyEventsMock } from "../../../../features/events/mine/configured";
-import { overrideRedesignMockAssessments } from "../../../../features/redesign-contracts/service-factory";
+import { overrideRedesignMockAssessments, setJourneyMockState, type JourneyMockState } from "../../../../features/redesign-contracts/service-factory";
 import { redesignContractMode } from "../../../../features/redesign-contracts/route";
-import { setJourneyMockState, type JourneyMockState } from "../../../../features/events/journey/mock";
 
 export const dynamic = "force-dynamic";
 const HEADERS = { "Cache-Control": "no-store", "X-Orbit-Runtime-Boundary": "developer-local" } as const;

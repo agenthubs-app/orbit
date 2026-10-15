@@ -382,6 +382,7 @@ export const eventsJourneyCopy = {
   liveNotRegistered: { ja: "会場モードは参加登録した人だけが使えます", zh: "只有已报名的人可以使用会场模式", en: "Venue mode is for registered attendees", kind: "label" },
   liveBeforeCheckIn: { ja: "受付をすませると使えます · 受付番号 {n}", zh: "签到后就能使用 · 签到号{n}", en: "Available after check-in · No. {n}", kind: "label" },
   liveEnded: { ja: "イベントは終了しました", zh: "活动已结束", en: "This event has ended", kind: "label" },
+  savedToAssess: { ja: "評価リストに保存しました", zh: "已保存到评估列表", en: "Saved to your assessments", kind: "toast" },
   aEmptyTitle: { ja: "会った人を思い出して、\n次の一手につなげましょう", zh: "回想一下见过的人，\n把下一步接上", en: "Recall who you met\nand turn it into next steps", kind: "cardTitle" },
   aScanTitle: { ja: "名刺をスキャン", zh: "扫描名片", en: "Scan cards", kind: "cardTitle" },
   aScanSub: { ja: "もらった名刺をまとめて", zh: "把收到的名片一次扫完", en: "All the cards you got, at once", kind: "label" },

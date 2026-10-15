@@ -372,14 +372,19 @@ function AllTable({ rows, total, language, t, at, popular, onOpen, onSave, onDis
           {sorted.map((row) => {
             const tone = rowTone(row, recommendIndex.get(row.eventId) ?? 0);
             return (
-              <tr key={row.eventId} onClick={() => onOpen(row.href)} data-discover-row={row.eventId}>
+              <tr key={row.eventId} onClick={(event) => {
+                // 行内操作（☆ / ↗ 菜单，菜单在 portal 里）不打开详情。
+                const target = event.target as HTMLElement;
+                if (!event.currentTarget.contains(target) || target.closest("[data-row-actions]")) return;
+                onOpen(row.href);
+              }} data-discover-row={row.eventId}>
                 <td className={styles.score}>{monthDay(row.startsAt)}</td>
                 <td><b>{row.title}</b></td>
                 <td className={d.muted}>{row.venue}</td>
                 <td>{feeText(row.priceYen, t) ?? "—"}</td>
                 <td>{typeof row.score === "number" ? <Ring score={row.score} size={32} /> : "—"}</td>
                 <td>{row.verdict ? <span className={`${styles.chip} ${tone.chip ? toneClass(tone.chip) : ""}`}>{row.verdict === "recommend" ? at("verdictRecommend") : row.verdict === "conditional" ? at("verdictConditional") : at("verdictSkip")}</span> : null}</td>
-                <td onClick={(event) => event.stopPropagation()}>
+                <td data-row-actions="">
                   <div className={d.hovActs}>
                     <button type="button" className={`btn ${d.lbtn}`} aria-label={t("save")} onClick={() => onSave(row)}><Icon name="star" size={16} /></button>
                     <RowMenu label={t("notInterested")} items={[

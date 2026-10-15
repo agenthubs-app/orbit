@@ -28,6 +28,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/agent/retention/run-retention.ts": { policy: "non-sync", statements: 1, collections: "agent run sets deleted; orbit_agent_chat_requests link cleared (0111)" },
   "features/agent/storage/agent-runtime-live-record-provider.ts": { policy: "non-sync", statements: 2, collections: "orbit_agent_chat_requests and agent runtime collections" },
   "features/appointments/notification-projector.ts": { policy: "non-sync", statements: 2, collections: "notifications" },
+  "features/events/actor-records/store.ts": { policy: "non-sync", statements: 2, collections: "R27 per-person event records (eventRecommendationFeedback, organizerFollows, eventPrepChecklists, eventAfterConfirmations, eventTentativeSchedules, eventJoinIntros, eventVenueMemos); never synced, owner never changes" },
   "features/auth/password-reset-store.ts": { policy: "non-sync", statements: 4, collections: "auth_users" },
   "features/auth/storage/mobile-auth-exchange-provider.ts": { policy: "non-sync", statements: 1, collections: "mobile_auth_exchanges" },
   "features/dashboard/storage/dashboard-snapshot.ts": { policy: "non-sync", statements: 1, collections: "dashboard analysis snapshots" },

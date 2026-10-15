@@ -32,7 +32,8 @@ export interface JourneyService {
   discover(actorId: string | null, query: EventDiscoverParsedQuery, language: JourneyLanguage): Promise<EventDiscoverResponse>;
   search(actorId: string, query: string, limit: number): Promise<EventSearchResponse>;
   /** `platform`: which client asks (the sample world shows each board's own text; live ignores it). */
-  overview(actorId: string | null, eventId: string, language: JourneyLanguage, platform?: "web" | "app"): Promise<EventOverviewResponse | null>;
+  /** `allAttendees`：「すべて見る」—— 公开资料的参加者全部返回（上限 200），否则前 8 人。 */
+  overview(actorId: string | null, eventId: string, language: JourneyLanguage, platform?: "web" | "app", options?: { allAttendees?: boolean }): Promise<EventOverviewResponse | null>;
   prep(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventPrepResponse | null>;
   patchChecklist(actorId: string, eventId: string, items: readonly EventPrepChecklistItem[]): Promise<EventPrepChecklistItem[]>;
   venue(actorId: string, eventId: string, platform?: "web" | "app"): Promise<EventVenueResponse | null>;
@@ -132,7 +133,8 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       });
     },
 
-    async overview(actorId, eventId, language) {
+    async overview(actorId, eventId, language, _platform, options) {
+      const cap = options?.allAttendees ? 200 : 8;
       const event = await ports.event(eventId);
       if (!event) return null;
       const at = now();
@@ -158,7 +160,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         title: event.title,
         venue: event.venue,
       };
-      if (!actorId) return { ...base, attendees: roster.attendees.slice(0, 8).map((item) => ({ attendeeId: item.attendeeId, initial: item.name.trim().charAt(0), known: false, name: item.name, note: item.note, org: item.org, planFit: false, role: item.role, wanted: false })), signedOut: true };
+      if (!actorId) return { ...base, attendees: roster.attendees.slice(0, cap).map((item) => ({ attendeeId: item.attendeeId, initial: item.name.trim().charAt(0), known: false, name: item.name, note: item.note, org: item.org, planFit: false, role: item.role, wanted: false })), signedOut: true };
       const [mine, contacts, judged, types, followed] = await Promise.all([
         ports.myEvents(actorId),
         ports.contacts(actorId),
@@ -181,7 +183,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         assessment: result ? { assessmentId: result.assessmentId, basis: result.basis, display: result.display, score: result.score, verdict: result.verdict } : null,
         ...(result && roster.total === 0 ? { assessmentPeopleUnknown: true } : {}),
         attendeeCounts: { all: roster.total, known: known.length, planFit: attendees.filter((item) => item.planFit).length },
-        attendees: [...attendees].sort(order).slice(0, 8),
+        attendees: [...attendees].sort(order).slice(0, cap),
         knownAttendees: known.slice(0, 5).map((item) => ({ initial: item.name.trim().charAt(0), name: item.name.split(" ")[0] ?? item.name, speaker: item.speaker })),
         organizer: { ...base.organizer, following: event.organizerKey ? followed.has(event.organizerKey) : false, myAttendance: event.organizerKey ? mine.filter((item) => item.organizerKey === event.organizerKey && item.status === "attended").length : null },
         registration: { href: `/events/${eventId}/register`, status: mineRow && mineRow.status !== "planned" ? mineRow.status : "none" },

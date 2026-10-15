@@ -41,7 +41,7 @@ export function discoverQueryString(query: EventDiscoverQuery): string {
 export const journeyApi = {
   discover: (query: EventDiscoverQuery) => call(`/api/events/discover?${discoverQueryString(query)}`, undefined, eventDiscoverResponseSchema as ZodType<EventDiscoverResponse>),
   search: (q: string, limit = 5) => call(`/api/events/search?q=${encodeURIComponent(q)}&limit=${limit}`, undefined, eventSearchResponseSchema as ZodType<EventSearchResponse>),
-  overview: (eventId: string) => call(`/api/events/${id(eventId)}/overview`, undefined, eventOverviewResponseSchema as ZodType<EventOverviewResponse>),
+  overview: (eventId: string, allAttendees = false) => call(`/api/events/${id(eventId)}/overview${allAttendees ? "?attendees=all" : ""}`, undefined, eventOverviewResponseSchema as ZodType<EventOverviewResponse>),
   prep: (eventId: string) => call(`/api/events/${id(eventId)}/prep`, undefined, eventPrepResponseSchema as ZodType<EventPrepResponse>),
   checklist: (eventId: string, items: readonly EventPrepChecklistItem[]) => call(`/api/events/${id(eventId)}/prep/checklist`, { body: JSON.stringify({ items }), method: "PATCH" }, eventPrepResponseSchema as ZodType<EventPrepResponse>),
   venue: (eventId: string) => call(`/api/events/${id(eventId)}/venue`, undefined, eventVenueResponseSchema as ZodType<EventVenueResponse>),

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { registrationFieldVisibility } from "../../features/events/registration/interview-question-token.server";
 import test from "node:test";
 
 import {
@@ -44,7 +45,8 @@ function response(
     questionId: `question:${field}`,
     questionSource: "ai_adaptive",
     responseId: `response:${field}`,
-    visibility: "event_attendees",
+    // R27 公開範囲：与生产的 verifyInterviewResponseSubmissions 一样按字段给（参加目的 / 会いたい人 = matching_only）。
+    visibility: registrationFieldVisibility(field),
   };
 }
 

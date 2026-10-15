@@ -361,10 +361,6 @@
       "hardcoded": 1,
       "missingJa": 0
     },
-    "app/(app)/app/events/[id]/live/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts": {
-      "hardcoded": 0,
-      "missingJa": 29
-    },
     "app/(app)/app/events/[id]/operations/admission/event-admission-policy-panel.tsx": {
       "hardcoded": 37,
       "missingJa": 0
@@ -385,50 +381,6 @@
       "hardcoded": 0,
       "missingJa": 40
     },
-    "app/(app)/app/events/[id]/orbit-encounter-capture.tsx": {
-      "hardcoded": 0,
-      "missingJa": 18
-    },
-    "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx": {
-      "hardcoded": 1,
-      "missingJa": 65
-    },
-    "app/(app)/app/events/[id]/orbit-event-quick-signup.tsx": {
-      "hardcoded": 0,
-      "missingJa": 11
-    },
-    "app/(app)/app/events/[id]/orbit-post-event-center.tsx": {
-      "hardcoded": 0,
-      "missingJa": 59
-    },
-    "app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx": {
-      "hardcoded": 42,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/[id]/register/event-admission-status-card.tsx": {
-      "hardcoded": 6,
-      "missingJa": 4
-    },
-    "app/(app)/app/events/[id]/register/event-registration-workspace.tsx": {
-      "hardcoded": 3,
-      "missingJa": 102
-    },
-    "app/(app)/app/events/[id]/register/registration-portrait-recommendations.tsx": {
-      "hardcoded": 6,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/[id]/register/registration-portrait-workspace.tsx": {
-      "hardcoded": 63,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/[id]/register/registration-workspace-model.ts": {
-      "hardcoded": 0,
-      "missingJa": 8
-    },
-    "app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter.ts": {
-      "hardcoded": 1,
-      "missingJa": 0
-    },
     "app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts": {
       "hardcoded": 29,
       "missingJa": 0
@@ -441,41 +393,9 @@
       "hardcoded": 1,
       "missingJa": 19
     },
-    "app/(app)/app/events/events-0918/event-attendee-modal.tsx": {
-      "hardcoded": 0,
-      "missingJa": 20
-    },
-    "app/(app)/app/events/events-0918/event-contact-action.tsx": {
-      "hardcoded": 0,
-      "missingJa": 13
-    },
-    "app/(app)/app/events/events-0918/event-detail.tsx": {
-      "hardcoded": 0,
-      "missingJa": 68
-    },
-    "app/(app)/app/events/events-0918/event-exchange-modal.tsx": {
-      "hardcoded": 0,
-      "missingJa": 24
-    },
-    "app/(app)/app/events/events-0918/event-live.tsx": {
-      "hardcoded": 0,
-      "missingJa": 107
-    },
-    "app/(app)/app/events/events-0918/event-note-modal.tsx": {
-      "hardcoded": 0,
-      "missingJa": 24
-    },
     "app/(app)/app/events/events-0918/event-register-modal.tsx": {
       "hardcoded": 5,
       "missingJa": 0
-    },
-    "app/(app)/app/events/events-0918/event-schedule-modal.tsx": {
-      "hardcoded": 0,
-      "missingJa": 45
-    },
-    "app/(app)/app/events/events-0918/events-list.tsx": {
-      "hardcoded": 1,
-      "missingJa": 20
     },
     "app/(app)/app/events/events-0918/events-model.ts": {
       "hardcoded": 6,
@@ -484,10 +404,6 @@
     "app/(app)/app/events/events-0918/events-shell.tsx": {
       "hardcoded": 1,
       "missingJa": 8
-    },
-    "app/(app)/app/events/events-0918/live-controls.ts": {
-      "hardcoded": 0,
-      "missingJa": 2
     },
     "app/(app)/app/events/explore-model.ts": {
       "hardcoded": 28,

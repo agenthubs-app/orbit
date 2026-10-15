@@ -45,3 +45,6 @@ export async function overrideRedesignMockAssessments(items: Parameters<typeof i
   const { redesignMock } = await import("./mock-service");
   redesignMock.overrideAssessments(items);
 }
+
+// R27 设计稿门禁：切换 イベント参加者の動線 的示例变体（dev route 经由工厂拿 mock，不直接 import mock 模块）。
+export { setJourneyMockState, type JourneyMockState } from "../events/journey/mock";

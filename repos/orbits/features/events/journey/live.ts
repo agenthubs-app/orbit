@@ -5,6 +5,7 @@
  * - 可选读取（政策、人数、互动、计划、产物…）失败时记 `console.warn` JSON 并降级为空，从不静默吞掉。
  * - 只读别人的公开资料；关系只用我自己的联系人；主办方 actor id 只换成 `organizerKey`，从不外传。
  */
+import { myAssessmentIdsByEvent } from "../assessment/ids-by-event";
 import { typeOfPerson } from "../../../shared/compute/event-attendee-typing";
 import type { EventAfterConfirmResult } from "../../../shared/contract/event-after";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
@@ -237,11 +238,7 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const hasPlan = Boolean(context.planId) && context.types.length > 0;
       if (!hasPlan) return { goal: null, hasPlan: false, results: {} };
       const ids = [...new Set(eventIds.filter(Boolean))].slice(0, JUDGE_LIMIT);
-      const assessments = ids.length
-        ? await query(`select id, event_id from event_assessments where workspace_id = $1 and actor_id = $2 and event_id = any($3::text[]) limit $4`, [workspaceId, actorId, ids, ids.length])
-          .catch(warned("r27_journey_assessment_ids_failed", { rows: [] as Array<Record<string, unknown>> }))
-        : { rows: [] };
-      const assessmentByEvent = new Map(assessments.rows.map((row) => [String(row.event_id), String(row.id)]));
+      const assessmentByEvent = await myAssessmentIdsByEvent(query, workspaceId, actorId, ids).catch(warned("r27_journey_assessment_ids_failed", new Map<string, string>()));
       const results: Awaited<ReturnType<JourneyLivePorts["judge"]>>["results"] = {};
       await mapLimit(ids, 4, async (eventId) => {
         let loaded: Awaited<ReturnType<typeof runtime.orbitEvents.facts>>;

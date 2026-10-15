@@ -369,6 +369,7 @@ export const eventsJourney = {
   "eventsJourney.liveNotRegistered": "Venue mode is for registered attendees",
   "eventsJourney.liveBeforeCheckIn": "Available after check-in · No. {n}",
   "eventsJourney.liveEnded": "This event has ended",
+  "eventsJourney.savedToAssess": "Saved to your assessments",
   "eventsJourney.aEmptyTitle": "Recall who you met\nand turn it into next steps",
   "eventsJourney.aScanTitle": "Scan cards",
   "eventsJourney.aScanSub": "All the cards you got, at once",

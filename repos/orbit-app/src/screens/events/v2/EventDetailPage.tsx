@@ -17,6 +17,7 @@ import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { radius, shadows } from "../../../design/tokens";
 import { CancelSheet } from "./CancelSheet";
+import { newIdempotencyKey, useEventsApi } from "./events-api";
 import { useJourneyApi } from "./journey-api";
 import { eventRange, feeText, rowTone } from "./journey-model";
 import { ringColor, verdictKey } from "./events-model";
@@ -63,6 +64,7 @@ export function EventDetailPage() {
   const router = useRouter();
   const toast = useToast();
   const api = useJourneyApi();
+  const eventsApi = useEventsApi();
   const topGap = useShellTopGap();
   const params = useLocalSearchParams<{ id?: string; tab?: string }>();
   const eventId = String(params.id ?? "");
@@ -92,6 +94,11 @@ export function EventDetailPage() {
       if (result.ok) toast.success(t("calendarAdded")); else toast.error(t("cancelFailed"));
     } else if (key === "profile") router.push(`${base}/register` as Href);
     else if (key === "cancel") setCancelOpen(true);
+  };
+  // ★ 保存 / 公開されたら知らせる = 记成 R26 的评估（出现在「評価」列表；名单首次公开时由重算任务通知；同 Web）。
+  const save = async (done: "savedToAssess" | "notifyOn" = "savedToAssess") => {
+    const created = await eventsApi.create({ eventId, idempotencyKey: newIdempotencyKey(), sourceKind: "orbit_event" });
+    if (created.ok) toast.success(t(done)); else toast.error(locale.t("eventsV2.genericError"));
   };
   const confirmCancel = async () => {
     setBusy(true);
@@ -198,7 +205,7 @@ export function EventDetailPage() {
                 ))}
                 <View style={[styles.ghostRow, { marginTop: 6 }]}><View style={styles.ghostDot} /><UiText style={styles.ghostText}>{t("ghostMeet")}</UiText></View>
                 <View style={[styles.ghostRow, { marginTop: 8 }]}><View style={styles.ghostDot} /><UiText style={styles.ghostText}>{t("ghostKnown")}</UiText></View>
-                <UiPressable accessibilityRole="button" accessibilityLabel={t("notifyWhenPublic")} onPress={() => toast.success(t("notifyOn"))} style={styles.btnSm}><Icon name="bell" size={16} color={colors.ink} /><UiText style={styles.btnSmText}>{t("notifyWhenPublic")}</UiText></UiPressable>
+                <UiPressable accessibilityRole="button" accessibilityLabel={t("notifyWhenPublic")} onPress={() => void save("notifyOn")} style={styles.btnSm}><Icon name="bell" size={16} color={colors.ink} /><UiText style={styles.btnSmText}>{t("notifyWhenPublic")}</UiText></UiPressable>
               </View>
             ) : fit.length ? (
               <View style={[styles.card, styles.gap]} testID="events-detail-meet">
@@ -263,7 +270,7 @@ export function EventDetailPage() {
               </>
             ) : (
               <>
-                <UiPressable accessibilityRole="button" accessibilityLabel={t("saveEvent")} onPress={() => toast.success(t("saveEvent"))} style={styles.lbtn}><Icon name="star" size={20} color={colors.ink2} /></UiPressable>
+                <UiPressable accessibilityRole="button" accessibilityLabel={t("saveEvent")} onPress={() => void save()} style={styles.lbtn}><Icon name="star" size={20} color={colors.ink2} /></UiPressable>
                 <UiPressable accessibilityRole="button" accessibilityLabel={t("ctaRegisterAi")} onPress={() => router.push(`${base}/register` as Href)} style={styles.ctaMain} testID="events-detail-register"><UiText style={styles.ctaMainText}>{t("ctaRegisterAi")}</UiText></UiPressable>
               </>
             )}

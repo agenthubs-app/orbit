@@ -559,10 +559,10 @@ test("review fixtures retain unproven callbacks, explicit roles and actual custo
 
 test("review fixtures resolve production ProposalForm provenance without duplicate name findings", () => {
   const owners = allActions.filter((action) => action.tag === "ProposalForm");
-  // One per route that transitively mounts OrbitAppointmentNegotiation:
-  // /app/contacts/[id] and /app/events/[id]. The three /app/party* routes
-  // (deleted 2026-09-22) used to add three more.
-  assert.equal(owners.length, 2);
+  // One per route that transitively mounts OrbitAppointmentNegotiation: only
+  // /app/contacts/[id] now (R27 replaced the old /app/events/[id] detail; the
+  // three /app/party* routes were deleted 2026-09-22).
+  assert.equal(owners.length, 1);
   for (const owner of owners) {
     assert.equal(owner.kind, "component-container");
     assert.equal(owner.accessibleName, "not-applicable-container");

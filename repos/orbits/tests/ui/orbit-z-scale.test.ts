@@ -73,10 +73,8 @@ test("inline zIndex number literals in app/(app)/app stay within the documented 
   // routed through ORBIT_Z, because a single semantic tier can't express
   // them (each entry below needs justification in a comment here).
   //
-  // Currently empty — the one candidate case (map-pin active/inactive
-  // stacking in events/events-0918/events-list.tsx) is instead expressed
-  // as `ORBIT_Z.raised` / `ORBIT_Z.raised + 10`, so it shows up as a
-  // computed expression, not a bare literal, and needs no whitelist entry.
+  // Currently empty. (The one former candidate, map-pin stacking in the
+  // retired events/events-0918/events-list.tsx, was deleted in R27.)
   const WHITELIST_MAX = 2;
 
   const appDir = join(projectRoot, "app/(app)/app");

@@ -10,7 +10,7 @@ import {
   type EventInterviewResponseSubmission,
   type EventProfileResponseSnapshot,
 } from "../registration/interview-response-contract";
-import { verifyInterviewResponseSubmissions } from "../registration/interview-question-token.server";
+import { registrationFieldVisibility, verifyInterviewResponseSubmissions } from "../registration/interview-question-token.server";
 import type {
   EventAdmissionApplication,
   EventAdmissionPolicy,
@@ -112,7 +112,8 @@ function completeVerifiedProfile(input: {
       questionIds.has(response.questionId) ||
       response.questionSource !== "ai_adaptive" ||
       response.answerSource !== "participant" ||
-      response.visibility !== "event_attendees" ||
+      // R27 公開範囲：参加目的 / 会いたい人 只给主办（matching_only），其余字段给参加者看；必须与字段的规则一致。
+      response.visibility !== registrationFieldVisibility(response.field) ||
       !response.question ||
       !response.generation ||
       response.generation.method !== "orbit-agent-model-adaptive" ||

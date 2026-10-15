@@ -315,7 +315,7 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
 
   return (
     <>
-      <ShellPage title={data.title} subtitle={subtitle} left={exit} right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("checkInQr")}><Icon name="scan" size={20} /></button>} rightRail={wide ? rail : false} />
+      <ShellPage title={data.title} subtitle={subtitle} left={exit} right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("checkInQr")} onClick={() => toast.info(data.checkIn?.receptionNumber ? t("vReception", { n: data.checkIn.receptionNumber }) : t("checkInQr"))}><Icon name="scan" size={20} /></button>} rightRail={wide ? rail : false} />
       {!wide && rail ? <Drawer open={drawer} onClose={() => setDrawer(false)} title={t("detailTitle")} size="sm">{rail}</Drawer> : null}
       <div className={styles.wgrid} data-venue={eventId}>
         <div className={styles.span12}>

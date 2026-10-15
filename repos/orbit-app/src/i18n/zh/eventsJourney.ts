@@ -369,6 +369,7 @@ export const eventsJourney = {
   "eventsJourney.liveNotRegistered": "只有已报名的人可以使用会场模式",
   "eventsJourney.liveBeforeCheckIn": "签到后就能使用 · 签到号{n}",
   "eventsJourney.liveEnded": "活动已结束",
+  "eventsJourney.savedToAssess": "已保存到评估列表",
   "eventsJourney.aEmptyTitle": "回想一下见过的人，\n把下一步接上",
   "eventsJourney.aScanTitle": "扫描名片",
   "eventsJourney.aScanSub": "把收到的名片一次扫完",

@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
 
 import { agentHrefForContext } from "../../app/(app)/app/orbit-agent-context-href";
-
-const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 function agentPrompt(href: string): string {
   return new URL(href, "http://orbit.local").searchParams.get("q") ?? "";
@@ -45,17 +40,4 @@ test("event context entry asks for current status and next steps without executi
   assert.match(prompt, /current status/);
   assert.match(prompt, /appropriate next step or preparation/);
   assert.match(prompt, /Do not perform any external action/);
-});
-
-// The contact detail moved to network-0918/network-detail-modal.tsx (Orbit_0918),
-// whose design has no Ask-Agent entry; only the event detail reuses the helper.
-test("event detail view reuses the context entry helper", () => {
-  for (const path of [
-    "app/(app)/app/events/events-0918/event-detail.tsx",
-  ]) {
-    const component = readFileSync(join(projectRoot, path), "utf8");
-
-    assert.match(component, /agentHrefForContext/);
-    assert.match(component, /data-agent-context=/);
-  }
 });

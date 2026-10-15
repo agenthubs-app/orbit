@@ -6,7 +6,7 @@
 // 门禁开发开关 open-path 下另有 `meet=1`（面談シート）、`approve=<id>`（交換 toast 常驻）。
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -100,6 +100,9 @@ export function VenuePage() {
   const [memo, setMemo] = useState("");
   const [why, setWhy] = useState(false);
   const [openerShift, setOpenerShift] = useState(0);
+  // 面談候补（服务端给默认 3 个；这里只在本机调 ±1 天 / ±30 分，下书き用调整后的时间）。
+  const [slots, setSlots] = useState<string[] | null>(null);
+  const memoRef = useRef<TextInput | null>(null);
 
   const load = useCallback(() => api.venue(eventId).then((res) => { if (res.ok) setData(res.data); else setMissing(true); return res; }), [api, eventId]);
   useEffect(() => { void load(); }, [load]);
@@ -162,10 +165,12 @@ export function VenuePage() {
     toast.success(t("memoSaved"));
   };
   const slotParts = (iso: string) => { const p = tokyo(iso); return p ? { date: `${p.month}/${p.day}(${weekday(language, p.weekday)})`, time: `${String(p.hh).padStart(2, "0")}:${String(p.mm).padStart(2, "0")}` } : { date: "", time: "" }; };
+  const shownSlots = slots ?? [...(data?.meetingSlots ?? [])];
+  const shiftSlot = (index: number, minutes: number) => setSlots(shownSlots.map((slot, i) => (i === index ? new Date(Date.parse(slot) + minutes * 60_000).toISOString() : slot)));
   const draftMeeting = async () => {
-    if (!selected || !data?.meetingSlots?.length) return;
-    const slots = data.meetingSlots.map((slot) => { const s = slotParts(slot); return `${s.date} ${s.time}`; }).join(t("listSep"));
-    try { await Clipboard.setStringAsync(t("meetDraft", { name: surname(selected.name), slots })); toast.success(t("draftCopied")); } catch { genericError(); }
+    if (!selected || !shownSlots.length) return;
+    const text = shownSlots.map((slot) => { const s = slotParts(slot); return `${s.date} ${s.time}`; }).join(t("listSep"));
+    try { await Clipboard.setStringAsync(t("meetDraft", { name: surname(selected.name), slots: text })); toast.success(t("draftCopied")); } catch { genericError(); }
   };
   const toAfter = () => router.replace(`${base}/after` as Href);
 
@@ -237,8 +242,8 @@ export function VenuePage() {
             ) : null}
             <UiText style={[vs.lbl, { marginBottom: 6, marginTop: 14 }]}>{t("vMemoTitle")}</UiText>
             <View style={[vs.row, { gap: 8 }]}>
-              <TextInput value={memo} onChangeText={setMemo} onEndEditing={() => void saveMemo()} onSubmitEditing={() => void saveMemo()} placeholder={t("vMemoPh")} placeholderTextColor={colors.ink3} showSoftInputOnFocus={!noKeyboard} accessibilityLabel={t("memoTitle")} maxLength={200} style={styles.input} />
-              <UiPressable accessibilityRole="button" accessibilityLabel={t("voiceAnswer")} onPress={() => void saveMemo()} style={styles.mic}><Icon name="mic" size={16} color={colors.ink} /></UiPressable>
+              <TextInput ref={memoRef} value={memo} onChangeText={setMemo} onEndEditing={() => void saveMemo()} onSubmitEditing={() => void saveMemo()} placeholder={t("vMemoPh")} placeholderTextColor={colors.ink3} showSoftInputOnFocus={!noKeyboard} accessibilityLabel={t("memoTitle")} maxLength={200} style={styles.input} />
+              <UiPressable accessibilityRole="button" accessibilityLabel={t("voiceAnswer")} onPress={() => memoRef.current?.focus()} style={styles.mic}><Icon name="mic" size={16} color={colors.ink} /></UiPressable>
             </View>
             <UiText style={[vs.lbl, { marginTop: 6 }]}>{t("vVoiceNote")}</UiText>
             {data.meetingSlots?.length ? (
@@ -254,18 +259,18 @@ export function VenuePage() {
               <UiPressable accessibilityRole="button" accessibilityLabel={t("back")} onPress={() => setMeeting(false)} style={vs.lbtn}><Icon name="left" size={16} color={colors.ink2} /></UiPressable>
               <View style={vs.grow}><UiText style={styles.meetTitle}>{t("vMeetTitle", { name: surname(selected.name) })}</UiText><UiText style={vs.lbl}>{t("vMeetSub")}</UiText></View>
             </View>
-            {(data.meetingSlots ?? []).map((slot, index) => {
+            {shownSlots.map((slot, index) => {
               const s = slotParts(slot);
-              const step = (icon: IconName | "minus-text", label: string) => (
-                <UiPressable accessibilityRole="button" accessibilityLabel={label} onPress={() => undefined} style={[vs.lbtn, { backgroundColor: colors.surface }]}>
+              const step = (icon: IconName | "minus-text", label: string, minutes: number) => (
+                <UiPressable accessibilityRole="button" accessibilityLabel={label} onPress={() => shiftSlot(index, minutes)} style={[vs.lbtn, { backgroundColor: colors.surface }]}>
                   {icon === "minus-text" ? <UiText style={styles.minus}>−</UiText> : <Icon name={icon} size={16} color={colors.ink2} />}
                 </UiPressable>
               );
               return (
-                <View key={slot} style={styles.slot}>
+                <View key={`slot-${index}`} style={styles.slot}>
                   <UiText style={styles.slotLbl}>{t("slotN", { n: index + 1 })}</UiText>
-                  <View style={[vs.row, { gap: 4 }]}>{step("left", t("vPrevDay"))}<UiText style={styles.slotVal}>{s.date}</UiText>{step("right", t("vNextDay"))}</View>
-                  <View style={[vs.row, { gap: 4 }]}>{step("minus-text", t("vEarlier"))}<UiText style={styles.slotVal}>{s.time}</UiText>{step("plus", t("vLater"))}</View>
+                  <View style={[vs.row, { gap: 4 }]}>{step("left", t("vPrevDay"), -1440)}<UiText style={styles.slotVal}>{s.date}</UiText>{step("right", t("vNextDay"), 1440)}</View>
+                  <View style={[vs.row, { gap: 4 }]}>{step("minus-text", t("vEarlier"), -30)}<UiText style={styles.slotVal}>{s.time}</UiText>{step("plus", t("vLater"), 30)}</View>
                 </View>
               );
             })}

@@ -155,7 +155,6 @@ const CORE_FILES = [
   "app/(app)/app/agent/actions/orbit-today-decision-form.tsx",
   "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
   "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
-  "app/(app)/app/events/events-0918/events-list.tsx",
   "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
 ];
 
@@ -168,9 +167,6 @@ const EXEMPTIONS: {
   marker: string;
   reason: string;
 }[] = [
-  // Events 任务 1（2026-09-22）：events explore 迁入 events-0918/events-list.tsx 后所有按钮都是
-  // `.btn ev-*`（整段中和基类），该表面不再有豁免项。
-
   // iOrbit 收尾（2026-09-24）：`iorbit-rich-components.tsx` 是任务 6a 从
   // `orbit-real-agent.tsx` 逐字搬来的遗留富组件，跑在 `[data-orbit-real-page="agent"]`
   // 皮肤下。下面 7 枚控件各自有 console-styles.ts 里的专属 CSS，加 `.btn` 会改外观，

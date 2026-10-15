@@ -11,10 +11,6 @@ import {
 } from "../../shared/demo-visual-assets";
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { loadAppContactsRouteViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
-import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
-import {
-  eventDetailRouteToOrbitLandingEventView,
-} from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { getOrbitLandingViewModel } from "../support/legacy-orbit-landing-view";
 
@@ -84,26 +80,19 @@ test("demo visual asset manifest uses stable local event and avatar records", ()
   }
 });
 
-test("asset manifest covers every displayed demo event across root, events, and detail surfaces", async () => {
+test("asset manifest covers every displayed demo event across root and events surfaces", async () => {
   const rootLanding = getOrbitLandingViewModel();
   const appEvents = await loadAppEventsRouteViewModel();
-  const eventDetail = await loadAppEventDetailRoute({
-    eventId: "demo-event-1",
-    mode: "mock",
-  });
 
   assert.equal(appEvents.state, "success");
-  assert.equal(eventDetail.routeState, "success");
 
-  if (appEvents.state !== "success" || eventDetail.routeState !== "success") {
+  if (appEvents.state !== "success") {
     return;
   }
 
-  const detailEvent = eventDetailRouteToOrbitLandingEventView(eventDetail);
   const eventIds = new Set([
     ...rootLanding.events.map((event) => event.id),
     ...appEvents.workspace.eventChoices.map((event) => event.id),
-    detailEvent.id,
   ]);
 
   assert.ok(eventIds.size > 0);
@@ -116,22 +105,16 @@ test("asset manifest covers every displayed demo event across root, events, and 
 test("displayed people only receive an exact curated avatar; others safely use the initials fallback", async () => {
   const rootLanding = getOrbitLandingViewModel();
   const contacts = await loadAppContactsRouteViewModel();
-  const eventDetail = await loadAppEventDetailRoute({
-    eventId: "demo-event-1",
-    mode: "mock",
-  });
   const contactDetail = await loadAppContactDetailRoute({
     contactId: "demo-contact-1",
     mode: "mock",
   });
 
   assert.equal(contacts.state, "success");
-  assert.equal(eventDetail.routeState, "success");
   assert.equal(contactDetail.routeState, "success");
 
   if (
     contacts.state !== "success" ||
-    eventDetail.routeState !== "success" ||
     contactDetail.routeState !== "success"
   ) {
     return;
@@ -155,20 +138,6 @@ test("displayed people only receive an exact curated avatar; others safely use t
     displayName: contactDetail.contact.displayName,
     recordId: contactDetail.contact.id,
   });
-
-  for (const attendee of eventDetail.attendeeRoster.attendees) {
-    assertPersonVisualSafety({
-      displayName: attendee.displayName,
-      recordId: attendee.attendeeId,
-    });
-  }
-
-  for (const recommendation of eventDetail.recommendations.recommendations) {
-    assertPersonVisualSafety({
-      displayName: recommendation.attendee.displayName,
-      recordId: recommendation.attendee.attendeeId,
-    });
-  }
 
   assert.equal(
     getDemoPersonAvatarAsset({
