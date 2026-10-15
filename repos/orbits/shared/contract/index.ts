@@ -375,6 +375,9 @@ export type { EventDiscoverArea, EventDiscoverBadge, EventDiscoverCommunityReaso
 export type { EventSearchEventHit, EventSearchOrganizerHit, EventSearchPersonHit, EventSearchResponse } from "./event-search";
 export type { EventPrepAgendaItem, EventPrepChecklistItem, EventPrepChecklistKey, EventPrepChecklistPatch, EventPrepPerson, EventPrepRelation, EventPrepResponse } from "./event-prep";
 export type { OrganizerFollowResult } from "./organizer-follow";
+export type { EventOverviewAttendee, EventOverviewRegistrationStatus, EventOverviewResponse } from "./event-overview";
+export type { EventVenueExchangeState, EventVenuePerson, EventVenueRelation, EventVenueResponse, EventVenueState } from "./event-venue";
+export type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterHighlight, EventAfterNextStep, EventAfterResponse } from "./event-after";
 export type { AccountDeletionRequestContract, AccountExportContract, AccountExportScope, AppVersionContract } from "./account";
 export type {
   PlanAwardBasis,

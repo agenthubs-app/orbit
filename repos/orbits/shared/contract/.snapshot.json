@@ -4301,6 +4301,237 @@
         "TData"
       ]
     },
+    "event-after.ts::EventAfterHighlight": {
+      "kind": "object",
+      "members": {
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "detail": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "evidence": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "event-after.ts::EventAfterNextStep": {
+      "kind": "object",
+      "members": {
+        "attendeeId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "followupDate": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "planType": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ key: string; label: string; } | null"
+        },
+        "thanksDraft": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ subject: string; body: string; } | null"
+        }
+      }
+    },
+    "event-after.ts::EventAfterResponse": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "date": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "met": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "count": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "initials": {
+              "optional": false,
+              "kind": "text",
+              "type": "readonly string[]"
+            },
+            "exchanged": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "wantedMet": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "wantedTotal": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "meetings": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "highlights": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventAfterHighlight[]"
+        },
+        "summary": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "aiDraft": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "nextSteps": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventAfterNextStep[]"
+        },
+        "score": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ goal: string; before: number; after: number; detail: string; } | null"
+        },
+        "confirmedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "event-after.ts::EventAfterConfirmInput": {
+      "kind": "object",
+      "members": {
+        "items": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "attendeeId": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "followupDate": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "planTypeKey": {
+                "optional": true,
+                "kind": "text",
+                "type": "string | null"
+              }
+            }
+          }
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "event-after.ts::EventAfterConfirmResult": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "confirmed": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "tasksCreated": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "contactsLinked": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "scoreAfter": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "confirmedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
     "event-assessment.ts::EventAssessmentSourceKind": {
       "kind": "enum",
       "values": [
@@ -5494,6 +5725,296 @@
         }
       }
     },
+    "event-overview.ts::EventOverviewRegistrationStatus": {
+      "kind": "enum",
+      "values": [
+        "'attended'",
+        "'cancelled'",
+        "'none'",
+        "'pending_review'",
+        "'registered'",
+        "'rejected'",
+        "'waitlisted'"
+      ]
+    },
+    "event-overview.ts::EventOverviewAttendee": {
+      "kind": "object",
+      "members": {
+        "attendeeId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "note": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "planFit": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "known": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "wanted": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "event-overview.ts::EventOverviewResponse": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "venue": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "priceYen": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "capacity": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "remaining": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "review": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "deadlineSoon": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "description": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "agenda": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "at": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "title": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "detail": {
+                "optional": true,
+                "kind": "text",
+                "type": "string | null"
+              }
+            }
+          }
+        },
+        "organizer": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "organizerId": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null"
+            },
+            "name": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "emoji": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null"
+            },
+            "since": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null"
+            },
+            "monthly": {
+              "optional": true,
+              "kind": "text",
+              "type": "boolean"
+            },
+            "editions": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null"
+            },
+            "averageAttendance": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null"
+            },
+            "typeShare": {
+              "optional": true,
+              "kind": "text",
+              "type": "{ label: string; percent: number; } | null"
+            },
+            "myAttendance": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null"
+            },
+            "following": {
+              "optional": true,
+              "kind": "text",
+              "type": "boolean"
+            }
+          }
+        },
+        "assessment": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ score: number; verdict: EventAssessmentVerdict; display: { goalFit: number; people: number; timeCost: number; }; basis: string; assessmentId?: string | null | undefined; } | null"
+        },
+        "attendeeCounts": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "all": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "planFit": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "known": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "attendees": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventOverviewAttendee[]"
+        },
+        "knownAttendees": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "name": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "initial": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "speaker": {
+                "optional": true,
+                "kind": "text",
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "registration": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "status": {
+              "optional": false,
+              "kind": "text",
+              "type": "EventOverviewRegistrationStatus"
+            },
+            "href": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        },
+        "signedOut": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
     "event-prep.ts::EventPrepRelation": {
       "kind": "enum",
       "values": [
@@ -6358,6 +6879,309 @@
           "optional": false,
           "kind": "text",
           "type": "readonly EventSearchPersonHit[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "event-venue.ts::EventVenueState": {
+      "kind": "enum",
+      "values": [
+        "'before_check_in'",
+        "'checked_in'",
+        "'ended'",
+        "'not_registered'"
+      ]
+    },
+    "event-venue.ts::EventVenueExchangeState": {
+      "kind": "enum",
+      "values": [
+        "'exchanged'",
+        "'incoming'",
+        "'none'",
+        "'requested'"
+      ]
+    },
+    "event-venue.ts::EventVenueRelation": {
+      "kind": "enum",
+      "values": [
+        "'exchanged'",
+        "'known'",
+        "'other'",
+        "'wanted'"
+      ]
+    },
+    "event-venue.ts::EventVenuePerson": {
+      "kind": "object",
+      "members": {
+        "attendeeId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "participantId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "table": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "exchange": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventVenueExchangeState"
+        },
+        "requestId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "requestRevision": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "requestedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "wanted": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "relation": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventVenueRelation"
+        },
+        "why": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "whyDetail": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "isOrbitUser": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "event-venue.ts::EventVenueResponse": {
+      "kind": "object",
+      "members": {
+        "state": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventVenueState"
+        },
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "now": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "checkIn": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ displayName: string; receptionNumber?: string | null | undefined; qrPayload?: string | null | undefined; available: boolean; } | null"
+        },
+        "round": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ index: number; total: number; title: string; startsAt: string; endsAt: string; theme?: string | null | undefined; remainingMinutes: number; } | null"
+        },
+        "seats": {
+          "optional": true,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "round": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "table": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "mySeat": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ table: string; why?: string | null | undefined; whyDetail?: string | null | undefined; tablemates: readonly { attendeeId: string; name: string; initial: string; org?: string | null | undefined; role?: string | null | undefined; }[]; } | null"
+        },
+        "nextRound": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ at: string; round: number; table: string; names: string; } | null"
+        },
+        "openers": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "stats": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "exchanged": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "wantedMet": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "wantedTotal": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "incoming": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "recommendations": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventVenuePerson[]"
+        },
+        "nextOrder": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventVenuePerson[]"
+        },
+        "attendees": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventVenuePerson[]"
+        },
+        "attendeeTotal": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "groups": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ round: number; others: readonly { table: string; theme?: string | null | undefined; count: number; initials: readonly string[]; }[]; myTheme?: string | null | undefined; } | null"
+        },
+        "mutualHint": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ name: string; via: string; } | null"
+        },
+        "agenda": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "at": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "title": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "detail": {
+                "optional": true,
+                "kind": "text",
+                "type": "string | null"
+              },
+              "now": {
+                "optional": true,
+                "kind": "text",
+                "type": "boolean"
+              },
+              "myTable": {
+                "optional": true,
+                "kind": "text",
+                "type": "string | null"
+              }
+            }
+          }
+        },
+        "agendaTip": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ text: string; detail?: string | null | undefined; } | null"
+        },
+        "meetingSlots": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
         },
         "sample": {
           "optional": true,
@@ -7635,6 +8459,11 @@
         "DomainManifest",
         "DomainManifestEntry",
         "DomainPage",
+        "EventAfterConfirmInput",
+        "EventAfterConfirmResult",
+        "EventAfterHighlight",
+        "EventAfterNextStep",
+        "EventAfterResponse",
         "EventAssessmentAgendaItem",
         "EventAssessmentAvailability",
         "EventAssessmentCaution",
@@ -7677,6 +8506,9 @@
         "EventExperienceSnapshotContract",
         "EventExperienceVersionContract",
         "EventOriginContract",
+        "EventOverviewAttendee",
+        "EventOverviewRegistrationStatus",
+        "EventOverviewResponse",
         "EventPrepAgendaItem",
         "EventPrepChecklistItem",
         "EventPrepChecklistKey",
@@ -7693,6 +8525,11 @@
         "EventSearchPersonHit",
         "EventSearchResponse",
         "EventStatusCode",
+        "EventVenueExchangeState",
+        "EventVenuePerson",
+        "EventVenueRelation",
+        "EventVenueResponse",
+        "EventVenueState",
         "FollowupAuditContract",
         "FollowupPriorityCode",
         "FollowupSourceReferenceContract",
@@ -16426,7 +17263,7 @@
         "state": {
           "optional": false,
           "kind": "text",
-          "type": "'cancelled' | 'upcoming' | 'ongoing' | 'ended'"
+          "type": "'cancelled' | 'ended' | 'upcoming' | 'ongoing'"
         },
         "title": {
           "optional": false,
@@ -16557,7 +17394,7 @@
         "state": {
           "optional": false,
           "kind": "text",
-          "type": "'cancelled' | 'upcoming' | 'ongoing' | 'ended'"
+          "type": "'cancelled' | 'ended' | 'upcoming' | 'ongoing'"
         },
         "title": {
           "optional": false,
@@ -16736,7 +17573,7 @@
         "state": {
           "optional": false,
           "kind": "text",
-          "type": "'cancelled' | 'upcoming' | 'ongoing' | 'ended'"
+          "type": "'cancelled' | 'ended' | 'upcoming' | 'ongoing'"
         },
         "startsAt": {
           "optional": false,
