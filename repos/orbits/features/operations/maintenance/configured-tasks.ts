@@ -37,6 +37,7 @@ import { getConfiguredInviteCodeRuntime } from "../../invite-codes/configured";
 import { createInviteAttemptsCleanupMaintenanceTask, createInviteProfileSyncMaintenanceTask } from "../../invite-codes/sync";
 import { getConfiguredEventAssessmentRuntime } from "../../events/assessment/configured";
 import { createEventAssessmentReadingMaintenanceTask } from "../../events/assessment/job";
+import { createEventNotificationMaintenanceTask } from "../../events/journey/notification-job";
 import { createEventAssessmentRecomputeMaintenanceTask, eventPickNotification } from "../../events/assessment/recompute-job";
 import type { MaintenanceTask } from "./pass";
 
@@ -299,6 +300,23 @@ export function createConfiguredMaintenanceTasks({
           orbitEvents: runtime.orbitEvents,
           plan: runtime.plan,
           repository: runtime.repository,
+        };
+      },
+    }),
+    // R27 (SC-R27-13): event_deadline (48h before the deadline, planned-not-registered) / event_prep (event day 08:00, registered)
+    // inbox notes, idempotent per person × event × kind, ≤ dailyCap per person per day; at most every 10 minutes.
+    createEventNotificationMaintenanceTask({
+      resolve: () => {
+        const runtime = getConfiguredEventAssessmentRuntime();
+        if (!runtime) return null;
+        const query = (sql: string, values?: readonly unknown[]) => runtime.client.query(sql, values as unknown[]) as Promise<{ rows: Array<Record<string, unknown>> }>;
+        return {
+          query,
+          workspaceId: runtime.workspaceId,
+          write: async (actorId, item) => {
+            const { createJourneyLivePorts } = await import("../../events/journey/live");
+            return (await createJourneyLivePorts()?.upsertInbox(actorId, item)) ?? false;
+          },
         };
       },
     }),

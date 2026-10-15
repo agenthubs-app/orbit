@@ -79,11 +79,13 @@ async function processE3(
   const context = task.context!;
   const aliased = e3UserText(task, context);
   const ledgered = createLedgeredRunner({ actorId: task.attendeeActorId, gate: input.ledger ?? null, idempotencyKey: `${task.taskId}:a${task.attemptCount}`, purpose: "event_post_summary", runner: input.runModelText ?? runOrbitAgentModelText });
-  const first = await ledgered.run({ config: { ...input.config, jsonOutput: true }, systemInstruction: E3_SYSTEM_INSTRUCTION, userText: aliased.userText });
+  // 同 R26 E1/E2：DeepSeek 关思考、单次 60 秒（实测思考模式 20 秒内回不来）。
+  const config = { ...input.config, deepseekThinking: false, jsonOutput: true, requestTimeoutMs: 60_000 };
+  const first = await ledgered.run({ config, systemInstruction: E3_SYSTEM_INSTRUCTION, userText: aliased.userText });
   let parsed = first.success ? parseE3(first.text, aliased, context) : null;
   let last = first;
   if (first.success && parsed && parsed.ok === false) {
-    last = await ledgered.run({ config: { ...input.config, jsonOutput: true }, systemInstruction: e3RepairInstruction(parsed.reason), userText: `${aliased.userText}\n\nPrevious answer:\n${first.text.slice(0, 4000)}` });
+    last = await ledgered.run({ config, systemInstruction: e3RepairInstruction(parsed.reason), userText: `${aliased.userText}\n\nPrevious answer:\n${first.text.slice(0, 4000)}` });
     parsed = last.success ? parseE3(last.text, aliased, context) : null;
   }
   const finishedAt = now();

@@ -387,7 +387,9 @@ export async function generateEventPersona(
       language,
       transcript,
     });
-  let modelResult = await modelRunner({ config: input.modelConfig, systemInstruction, userText });
+  // R27 E4：同 R26 E1/E2，DeepSeek 关思考、单次 60 秒（思考模式 20 秒内回不来）；其他供应商忽略这两项。
+  const personaConfig = { ...(input.modelConfig ?? {}), deepseekThinking: false, jsonOutput: true, requestTimeoutMs: 60_000 };
+  let modelResult = await modelRunner({ config: personaConfig, systemInstruction, userText });
 
   if (modelResult.success !== true) {
     throw new AdaptiveInterviewGenerationError(
@@ -400,7 +402,7 @@ export async function generateEventPersona(
   let persona = readModelPersona(modelResult.text);
   if (!persona) {
     // R27 E4：不合格时带着原答案修复 1 次（DESIGN §5 共同规矩），还不过才失败。
-    const repaired = await modelRunner({ config: input.modelConfig, systemInstruction: `${systemInstruction}\nYour previous answer was rejected (invalid JSON or a field outside its limits). Return the corrected JSON object only.`, userText: `${userText}\n\nPrevious answer:\n${modelResult.text.slice(0, 4000)}` });
+    const repaired = await modelRunner({ config: personaConfig, systemInstruction: `${systemInstruction}\nYour previous answer was rejected (invalid JSON or a field outside its limits). Return the corrected JSON object only.`, userText: `${userText}\n\nPrevious answer:\n${modelResult.text.slice(0, 4000)}` });
     if (repaired.success === true) {
       modelResult = repaired;
       persona = readModelPersona(repaired.text);
