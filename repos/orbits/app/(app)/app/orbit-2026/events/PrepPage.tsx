@@ -12,7 +12,7 @@ import { ShellPage } from "../shell/slots";
 import { Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { journeyTranslator, type JourneyT } from "./DiscoverTab";
-import { avTone, eventRange, useWide } from "./EventDetail";
+import { avTone, eventRange, parts, usePhone, useWide } from "./EventDetail";
 import { newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
 import styles from "./events.module.css";
@@ -56,6 +56,8 @@ const CHECK_LABEL: Record<EventPrepChecklistItem["key"], "clCards" | "clIntro" |
 function PrepInner({ eventId, language }: { eventId: string; language: OrbitLanguage }) {
   // 1024：右栏收起（b12 #358 没有右栏）。
   const wide = useWide();
+  const phone = usePhone();
+  const [openPerson, setOpenPerson] = useState(0);
   const t = useMemo(() => journeyTranslator(language), [language]);
   const at = useMemo(() => assessTranslator(language), [language]);
   const toast = useToast();
@@ -112,6 +114,115 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
       {data.seatHint ? <div className={`${styles.mac} ${q.lav} ${q.hint}`}>💡 {data.seatHint}</div> : null}
     </div>
   );
+  const checkTitle = (item: EventPrepChecklistItem) => (item.key === "cards" ? t("clCards", { n: recommended }) : item.key === "materials" ? item.label || t("clMaterials") : t(CHECK_LABEL[item.key]));
+  const followRange = (() => {
+    const s = data.followupSuggestion ? parts(data.followupSuggestion.startsAt) : null;
+    const e = data.followupSuggestion ? parts(data.followupSuggestion.endsAt) : null;
+    if (!s || !e || !data.followupSuggestion) return "";
+    return t("followSlot", { date: eventRange(data.followupSuggestion.startsAt, null, language).replace(/\d{2}:\d{2}$/, ""), from: s.hm.replace(/^0/, ""), title: data.followupSuggestion.title, to: e.hm.replace(/^0/, "") });
+  })();
+
+  // 390（b12 #360）：App 式——倒计时卡（地図 · チェックイン）、名刺余量警示、会いたい人手风琴、準備リスト、明日のフォロー确认。
+  if (phone) {
+    return (
+      <>
+        <ShellPage
+          title={t("prepTitle")}
+          subtitle={t("prepSubtitle", { title: data.title.replace(/\s*(Tokyo|東京)?\s*vol\.?\s*\d+\s*$/i, "").trim() || data.title, when: prepWhen(data.startsAt, data.now, t) })}
+          left={<a className={`btn ${x.rbtn}`} href={`/app/events/${encodeURIComponent(eventId)}`} aria-label={t("back")}><Icon name="left" size={20} /></a>}
+          right={<a className={`btn ${x.rbtn}`} href={`/app/events/${encodeURIComponent(eventId)}/live`} aria-label={t("checkIn")}><Icon name="scan" size={20} /></a>}
+          rightRail={false}
+          phoneBare
+        />
+        <div className={q.phone} data-prep={eventId} data-prep-phone="">
+          <div className={`${styles.card} ${q.pWhen}`} data-prep-when="">
+            <div className={`${styles.row} ${q.pWhenRow}`}>
+              <div className={q.pGrow}>
+                <div className={styles.lbl}>{t("untilStart")}</div>
+                <div className={q.pBig}>{until.text}<small>{until.hours ? t("hoursUnit") : t("minutesUnit")}</small></div>
+                <div className={`${styles.lbl} ${q.pVenue}`}>{data.venue}{data.access ? <><br />{data.access}</> : null}</div>
+              </div>
+              <svg width="128" height="96" viewBox="0 0 120 90" className={q.pMap} aria-hidden>
+                <rect width="120" height="90" rx="14" className={q.mapBg} />
+                <path d="M0 58 L120 38 M30 0 L48 90 M82 0 L96 90" className={q.mapRoad} />
+                <path d="M0 76 Q60 70 120 18" className={q.mapRail} />
+                <circle cx="66" cy="44" r="12" className={q.mapHalo} />
+                <circle cx="66" cy="44" r="5" className={q.mapPin} />
+                {data.access ? <text x="10" y="84" fontSize={8} className={q.mapText}>{data.access.replace(/\s*出口.*$/, "")}</text> : null}
+              </svg>
+            </div>
+            <div className={`${styles.row} ${q.pActs}`}>
+              {data.mapUrl ? <a className={`btn ${styles.btn} ${styles.sm} ${q.pGrow}`} href={data.mapUrl} target="_blank" rel="noreferrer"><Icon name="pin" size={16} />{t("mapOpen")}</a> : null}
+              <a className={`btn ${styles.btn} ${styles.sm} ${q.pGrow}`} href={`/app/events/${encodeURIComponent(eventId)}/live`}><Icon name="ticket" size={16} />{t("checkIn")}</a>
+            </div>
+          </div>
+          {low ? (
+            <button type="button" className={`btn ${q.warnbar}`} data-prep-cards="" onClick={() => setEditingCards(true)}>
+              <span className={q.warnEmoji}>📇</span>
+              <div className={q.pGrow}>{t("cardsWarnA")} <b>{t("cardsN", { n: cards ?? 0 })}</b>{t("cardsWarnB", { p: data.people.length })} <b>{t("cardsN", { n: recommended })}</b> {t("cardsWarnC")}</div>
+            </button>
+          ) : null}
+          {editingCards ? (
+            <label className={q.cardsInput}>
+              <span className={styles.lbl}>{t("cardsInputLabel")}</span>
+              <input type="number" min={0} max={500} autoFocus data-prep-cards-input="" defaultValue={cards ?? ""} onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                const value = Math.max(0, Math.min(500, Number((event.target as HTMLInputElement).value) || 0));
+                writeCards(eventId, value); setCards(value); setEditingCards(false);
+              }} />
+            </label>
+          ) : null}
+          <div className={`${styles.card} ${q.pCard}`} data-prep-people="">
+            <div className={styles.cardH}><h3>{t("meetListTitle", { n: data.people.length })}</h3><span className={styles.lbl}>{t("meetListHint").split(" · ")[0]}</span></div>
+            {data.people.map((person, index) => {
+              const open = openPerson === index;
+              return (
+                <div key={person.attendeeId} className={q.acc}>
+                  <button type="button" className={`btn ${q.accH}`} aria-expanded={open} onClick={() => setOpenPerson(open ? -1 : index)}>
+                    <div className={`${x.av} ${avTone([0, 2, 2, 3][index % 4]!)}`}>{person.initial}</div>
+                    <div className={q.pGrow}><b className={q.accName}>{person.name}</b><span className={`${styles.lbl} ${d.ell} ${q.accOrg}`}>{[person.org, person.role].filter(Boolean).join(" · ")}</span></div>
+                    <span className={`${styles.chip} ${person.relation === "working" ? styles.c_teal : styles.c_lav}`}>{person.relation === "working" ? t("relWorking") : person.relation === "met" ? t("relMet") : t("relNone")}</span>
+                    <span className={`${q.chev} ${open ? q.chevOpen : ""}`}><Icon name="down" size={16} /></span>
+                  </button>
+                  {open ? (
+                    <div className={q.accIn}>
+                      <div className={q.kv}><span>{t("colWhy")}</span><span>{person.why}</span></div>
+                      <div className={q.kv}><span>{t("colOpener")}</span><div className={q.pQuote}>{person.opener}</div></div>
+                      <div className={q.kv}><span>{t("colHistory")}</span><span>{person.history}</span></div>
+                      <button type="button" className={`btn ${styles.btn} ${styles.sm} ${q.copyBtn}`} onClick={() => void copyOpener(person.opener)}><Icon name="pen" size={16} />{t("copy")}</button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <div className={`${styles.card} ${q.pCard}`} data-prep-checklist="">
+            <div className={styles.cardH}><h3>{t("checklistTitle")}</h3><span className={styles.lbl}>{t("countOf", { done, total: data.checklist.length })}</span></div>
+            {data.checklist.map((item) => {
+              const sub = item.key === "cards" ? (cards !== null ? t("clCardsLeft", { n: cards }) : null) : item.key === "intro" ? (data.selfIntro?.source === "registration_draft" ? t("clIntroAi") : data.selfIntro ? null : t("clIntroWrite")) : item.key === "materials" ? t("clMaterialsSub") : item.key === "qr" ? t("clQrSub") : t("clReturnSub", { time: hm(data.endsAt ?? data.startsAt).replace(/^0/, "") });
+              return (
+                <button key={item.key} type="button" role="checkbox" aria-checked={item.done} className={`btn ${q.chk} ${item.done ? q.done : ""}`} onClick={() => void toggle(item)} data-prep-check={item.key}>
+                  <span className={q.box}>{item.done ? <Icon name="check" size={16} /> : null}</span>
+                  <div><b>{checkTitle(item)}</b>{sub ? <span>{sub}</span> : null}</div>
+                </button>
+              );
+            })}
+          </div>
+          {data.followupSuggestion && !followDone ? (
+            <div className={`${styles.card} ${q.pFollow}`} data-prep-follow="">
+              <div className={styles.row} style={{ gap: 8 }}><span className={`${styles.emo} ${styles.t_lav} ${q.emoSm}`}>🗓️</span><b className={q.pFollowTitle}>{t("followAskShort")}</b></div>
+              <div className={`${styles.sub} ${q.pFollowSub}`}>{followRange}</div>
+              <div className={styles.row} style={{ gap: 8 }}>
+                <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} onClick={() => void addFollowup()}>{t("addIt")}</button>
+                <button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => setFollowDone("skipped")}>{t("notNow")}</button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <ShellPage

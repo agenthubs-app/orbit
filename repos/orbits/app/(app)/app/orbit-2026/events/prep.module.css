@@ -31,3 +31,34 @@
 .flowCard.flowCard { padding: 16px; }
 .lav { background: var(--mac-lav); }
 .hint { font-size: var(--fs-meta); }
+
+/* ---------- 390（b12 #360 App 式会う準備） ---------- */
+.phone { display: grid; grid-template-columns: minmax(0, 1fr); padding-bottom: 24px; }
+.pGrow { flex: 1; min-width: 0; }
+.pWhen.pWhen { margin: 0; padding: 18px; }
+.pWhenRow.pWhenRow { gap: 14px; align-items: stretch; }
+.pBig { font-family: var(--font-num); font-size: var(--fs-display); font-weight: var(--fw-heavy); letter-spacing: -0.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.pBig small { font-size: var(--fs-emph); font-weight: var(--fw-bold); color: var(--ink-3); margin-left: 3px; letter-spacing: 0; }
+.pVenue.pVenue { margin-top: 6px; }
+.pMap { display: block; border-radius: var(--r-md); flex: 0 0 auto; }
+.pActs.pActs { gap: 8px; margin-top: 12px; }
+.warnbar.warnbar { display: flex; gap: 10px; align-items: center; height: auto; min-height: 0; padding: 11px 14px; border: 0; border-radius: var(--r-tile); background: var(--coral-soft); color: var(--ink); font-size: var(--fs-control); font-weight: var(--fw-regular); text-align: left; margin-top: 14px; width: 100%; }
+.warnbar b { color: var(--coral); }
+.warnEmoji { font-size: var(--fs-emoji-sm); }
+.pCard.pCard { margin-top: 14px; padding: 18px; }
+.acc + .acc { border-top: 1px solid var(--line); }
+.accH.accH { display: flex; align-items: center; gap: 10px; width: 100%; height: auto; min-height: 0; padding: 10px 0; border: 0; background: transparent; color: inherit; font-weight: inherit; text-align: left; }
+.accName { font-size: var(--fs-row); display: block; }
+.accOrg.accOrg { display: block; }
+.chev { color: var(--ink); display: grid; }
+.chevOpen { transform: rotate(180deg); }
+.accIn { padding: 0 0 13px 48px; display: grid; gap: 8px; }
+.kv { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; font-size: var(--fs-control); line-height: 1.45; }
+.kv > span:first-child { color: var(--ink-3); font-size: var(--fs-label); padding-top: 1px; white-space: nowrap; }
+.pQuote { border-radius: var(--r-md); background: var(--surface-2); padding: 10px 12px; font-size: var(--fs-control); line-height: 1.6; }
+.copyBtn.copyBtn { justify-self: start; }
+.pFollow.pFollow { margin-top: 14px; padding: 18px; border: 1.5px dashed var(--plum-300); background: transparent; border-radius: var(--r-lg); }
+.emoSm.emoSm { width: 32px; height: 32px; border-radius: var(--r-sm); font-size: var(--fs-emoji-sm); }
+.pFollowTitle { font-size: var(--fs-body-sm); }
+.pFollowSub.pFollowSub { margin: 6px 0 10px; }
+.phone .box :global(svg) { color: var(--surface); stroke: var(--surface); }

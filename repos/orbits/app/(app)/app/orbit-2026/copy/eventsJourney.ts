@@ -446,4 +446,9 @@ export const eventsJourneyCopy = {
   regQ: { ja: "質問 {i}", zh: "问题{i}", en: "Question {i}", kind: "label" },
   regOfN: { ja: " / {n}", zh: " / {n}", en: " of {n}", kind: "label" },
   regRemain: { ja: "残り 約{m}分", zh: "约剩{m}分钟", en: "About {m} min left", kind: "label" },
+  cardsWarnA: { ja: "名刺の残りは", zh: "名片还剩", en: "You have", kind: "label" },
+  cardsN: { ja: "{n}枚", zh: "{n}张", en: "{n} cards", kind: "label" },
+  cardsWarnB: { ja: "。会いたい人 {p}名 + 予備で", zh: "。按想见的{p}人加备用，建议带", en: "left. For {p} people plus spares, bring", kind: "label" },
+  cardsWarnC: { ja: "がおすすめです", zh: "。", en: ".", kind: "label" },
+  followAskShort: { ja: "明日のフォロー時間を予定に入れますか？", zh: "把明天的跟进时间排进日程吗？", en: "Add tomorrow's follow-up time to your calendar?", kind: "label" },
 } satisfies OrbitCopyTable;

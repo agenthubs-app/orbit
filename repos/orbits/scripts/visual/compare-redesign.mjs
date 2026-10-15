@@ -252,6 +252,7 @@ async function shootApp(v, designHeight) {
   for (const sel of many(v.click)) { await page.locator(sel).first().click(); await page.waitForTimeout(400); }
   // --steps '<JSON 数组>'：按顺序执行的实现侧操作，适合「先按 ⌘K 再输入」「先填名字再等重复候选」这类多步状态。
   // 每步一个对象：{"click": sel} | {"keys": "Meta+k"} | {"type": "文字"} | {"fill": [sel, 文字]} | {"upload": [sel, 文件…]} | {"hover": sel} | {"wait": ms} | {"waitFor": sel}
+  //   | {"eval": "页面内 JS"}（如写 localStorage 里只存本机的状态）| {"reload": true}（重载后等原 wait-for）
   const steps = typeof v.steps === "string" ? JSON.parse(v.steps) : v.steps ?? [];
   for (const step of steps) {
     if (step.click) await page.locator(step.click).first().click();
@@ -261,6 +262,8 @@ async function shootApp(v, designHeight) {
     if (step.fill) await page.locator(step.fill[0]).first().fill(step.fill[1]);
     if (step.upload) await page.locator(step.upload[0]).first().setInputFiles(step.upload.slice(1).map((f) => resolve(f)));
     if (step.waitFor) await page.waitForSelector(step.waitFor, { timeout: 20000 }).catch(() => console.warn(`warn: [${v.key}] waitFor ${step.waitFor} 超时`));
+    if (step.eval) await page.evaluate(step.eval);
+    if (step.reload) { await page.reload(); if (v["wait-for"]) await page.waitForSelector(v["wait-for"], { timeout: 20000 }).catch(() => console.warn(`warn: [${v.key}] reload 后 wait-for 超时`)); }
     await page.waitForTimeout(step.wait ?? 400);
   }
   for (const sel of many(v["app-remove"])) await page.locator(sel).evaluateAll((els) => els.forEach((e) => e.remove()));

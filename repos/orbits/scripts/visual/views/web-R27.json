@@ -569,23 +569,17 @@
    "design": "b12-missing-states.html",
    "board-index": 360,
    "width": 390,
-   "wait-for": "[data-prep-people]",
+   "wait-for": "[data-prep-phone]",
    "journey": {},
    "steps": [
     {
-     "click": "[data-prep-cards] button"
+     "eval": "localStorage.setItem(\"orbit.events.cardsLeft.demo-event-cfo-night-18\",\"8\")"
     },
     {
-     "fill": [
-      "[data-prep-cards-input]",
-      "8"
-     ]
+     "reload": true
     },
     {
-     "keys": "Enter"
-    },
-    {
-     "wait": 300
+     "wait": 500
     }
    ],
    "note": "P11 会う準備（名刺の残り 8 只在本机，步骤里输入） · 390"
