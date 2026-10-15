@@ -63,3 +63,19 @@
 .tall.tall { height: 58px; }
 .span3.span3 { grid-column: span 3; }
 @media (max-width: 767px) { .span3.span3 { grid-column: auto; } }
+
+/* ---------- 390（b12 #368 App 式会後） ---------- */
+.phone { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding-bottom: 24px; }
+.pCard.pCard { margin: 0; padding: 18px; }
+.heroRow { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.pBig { font-family: var(--font-num); font-size: var(--fs-display-big); font-weight: var(--fw-heavy); letter-spacing: -0.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.pBig small { font-size: var(--fs-emph); font-weight: var(--fw-bold); color: var(--ink-3); margin-left: 3px; letter-spacing: 0; }
+.pBatch.pBatch { margin: 0; padding: 18px; border: 1.5px dashed var(--plum-300); background: transparent; border-radius: var(--r-lg); }
+.nx { padding: 12px 0; }
+.nx + .nx { border-top: 1px solid var(--line); }
+.nxOff { opacity: 0.45; }
+.nxName { font-size: var(--fs-row); }
+.nxActs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0 40px; }
+.pFoot.pFoot { gap: 8px; margin-top: 12px; }
+.pNote.pNote { text-align: center; margin-top: 8px; }
+.pNote :global(svg) { vertical-align: -3px; }

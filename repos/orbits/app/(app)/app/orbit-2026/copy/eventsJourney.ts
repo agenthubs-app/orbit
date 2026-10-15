@@ -451,4 +451,9 @@ export const eventsJourneyCopy = {
   cardsWarnB: { ja: "。会いたい人 {p}名 + 予備で", zh: "。按想见的{p}人加备用，建议带", en: "left. For {p} people plus spares, bring", kind: "label" },
   cardsWarnC: { ja: "がおすすめです", zh: "。", en: ".", kind: "label" },
   followAskShort: { ja: "明日のフォロー時間を予定に入れますか？", zh: "把明天的跟进时间排进日程吗？", en: "Add tomorrow's follow-up time to your calendar?", kind: "label" },
+  actThanks: { ja: "✉️ お礼の下書き", zh: "✉️ 感谢草稿", en: "✉️ Thank-you draft", kind: "label" },
+  actFollow: { ja: "📅 フォロー {date}", zh: "📅 {date}跟进", en: "📅 Follow up {date}", kind: "label" },
+  meetingsSet: { ja: "面談の約束", zh: "约好的面谈", en: "Meetings set", kind: "label" },
+  nextStepsHintPhone: { ja: "AI の提案 · 確認して確定", zh: "AI 的建议 · 确认后生效", en: "AI suggestions · confirm to apply", kind: "label" },
+  nextStepsHintPhoneRule: { ja: "確認して確定", zh: "确认后生效", en: "Confirm to apply", kind: "label" },
 } satisfies OrbitCopyTable;

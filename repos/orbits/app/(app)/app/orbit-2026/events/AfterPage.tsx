@@ -12,7 +12,7 @@ import { ShellPage } from "../shell/slots";
 import { Drawer, Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { DiscoverHelpRail, journeyTranslator, type JourneyT } from "./DiscoverTab";
-import { WEEK, parts, useWide } from "./EventDetail";
+import { WEEK, parts, usePhone, useWide } from "./EventDetail";
 import { journeyApi } from "./journey-api";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
@@ -72,6 +72,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
   const [busy, setBusy] = useState(false);
   // 1024：右栏收起（b12 #366 没有右栏），点「下書きを作成」在抽屉里看お礼。
   const wide = useWide();
+  const phone = usePhone();
   const [drawer, setDrawer] = useState(false);
 
   useEffect(() => { void journeyApi.after(eventId).then((res) => { if (res.ok) setData(res.data); else setMissing(true); }); }, [eventId]);
@@ -137,6 +138,91 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
     </div>
   ) : null;
   const rail = empty ? <DiscoverHelpRail language={language} /> : wide && draftPanel ? draftPanel : false;
+  const drawerEl = !wide && selected ? <Drawer open={drawer} onClose={() => setDrawer(false)} title={t("thanksTitle", { name: selected.name.split(/\s+/)[0] ?? selected.name })} size="sm">{draftPanel}</Drawer> : null;
+  const scoreCard = data.score && preview ? (
+    <div className={`${styles.card} ${phone ? a.pCard : a.fill}`} data-after-score="">
+      <div className={`${styles.row} ${styles.between}`} style={{ alignItems: "flex-start" }}>
+        <div>
+          <div className={styles.lbl}>{t("scoreLbl", { goal: data.score.goal })}</div>
+          <div className={`${styles.row} ${a.scoreRow}`}><span className={`${a.mid} ${styles.muted}`}>{preview.before}</span><span className={styles.muted}><Icon name="right" size={16} /></span><span className={a.big36}>{preview.after}</span></div>
+        </div>
+        {preview.after > preview.before ? <span className={a.delta}>+{preview.after - preview.before}</span> : null}
+      </div>
+      <div className={a.bar2}><i className={a.base} style={{ width: `${Math.min(100, preview.before)}%` }} /><i className={a.add} style={{ left: `${Math.min(100, preview.before)}%`, width: `${Math.max(0, Math.min(100, preview.after) - Math.min(100, preview.before))}%` }} /></div>
+      <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{data.confirmedAt ? t("confirmedState", { date: (parts(data.confirmedAt) ? `${parts(data.confirmedAt)!.month}/${parts(data.confirmedAt)!.day}` : "") }) : t("scoreHint")}</span>{data.score.detail ? <button type="button" className={`btn ${d.why}`} aria-expanded={Boolean(why.__score)} aria-label={t("whyLabel")} onClick={() => setWhy((all) => ({ ...all, __score: !all.__score }))}>?</button> : null}</div>
+      {why.__score && data.score.detail ? <div className={d.whyBody}>{data.score.detail}</div> : null}
+    </div>
+  ) : null;
+  const summaryBody = data.highlights?.length ? data.highlights.map((item, index) => (
+    <div key={item.title} className={a.sumi}>
+      <div className={styles.row} style={{ gap: 10, alignItems: "flex-start" }}>
+        <span className={`${styles.emo} ${styles[HL_TONES[index % HL_TONES.length]!]} ${a.emoSm}`}>{item.emoji}</span>
+        <div className={a.grow} contentEditable={data.aiDraft} suppressContentEditableWarning><b className={a.hlTitle}>{item.title}</b><div className={styles.lbl}>{item.detail}</div></div>
+        {item.evidence ? <button type="button" className={`btn ${d.why}`} aria-expanded={Boolean(why[item.title])} aria-label={t("whyLabel")} onClick={() => setWhy((all) => ({ ...all, [item.title]: !all[item.title] }))}>?</button> : null}
+      </div>
+      {why[item.title] ? <div className={d.whyBody}>{t("evidenceLbl", { text: item.evidence })}</div> : null}
+    </div>
+  )) : data.summary ? <div className={`${styles.sub} ${a.sumi}`}>{data.summary}</div> : null;
+
+  // 390（b12 #368）：App 式——会った人 hero（头像叠）· mini3 · まとめ · 次の一手卡片（✓ / ✕ + 三个动作 chip）· プラン スコア。
+  if (phone && !empty) {
+    return (
+      <>
+        <ShellPage title={t("afterTitle")} subtitle={`${data.title} · ${dateP ? `${dateP.month}/${dateP.day}` : data.date}`} left={back} right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void shareRecap()}><Icon name="share" size={20} /></button>} rightRail={false} phoneBare />
+        <div className={a.phone} data-after={eventId} data-after-phone="">
+          <div className={`${styles.card} ${a.pCard}`} data-after-met="">
+            <div className={a.heroRow}>
+              <div><div className={styles.lbl}>{t("metToday")}</div><div className={a.pBig}>{data.met.count}<small>{t("metUnit")}</small></div></div>
+              <div className={x.avs}>{data.met.initials.slice(0, 5).map((initial, index) => <div key={`${initial}-${index}`} className={`${x.av} ${a.avSm} ${x[ROW_TONES[[0, 2, 1, 3, 4][index % 5]!]!]}`}>{initial}</div>)}</div>
+            </div>
+            <div className={x.mini3}>
+              <div><span className={styles.lbl}>{t("statExchanged")}</span><b>{data.met.exchanged}</b></div>
+              <div><span className={styles.lbl}>{t("itemTarget")}</span><b>{data.met.wantedMet}<small className={styles.lbl}>/{data.met.wantedTotal}</small></b></div>
+              <div><span className={styles.lbl}>{t("meetingsSet")}</span><b>{data.met.meetings}</b></div>
+            </div>
+          </div>
+          <div className={`${styles.card} ${a.pCard}`} data-after-summary="">
+            <div className={styles.cardH}><h3>{t("summaryTitle")}</h3>{data.aiDraft ? <span className={styles.lbl}>{t("aiDraftEditable")}</span> : null}</div>
+            {summaryBody}
+          </div>
+          {steps.length ? (
+            <div className={`${styles.card} ${a.pBatch}`} data-after-steps="">
+              <div className={styles.cardH}><h3>{t("nextStepsTitle", { n: steps.length })}</h3><span className={styles.lbl}>{data.aiDraft ? t("nextStepsHintPhone") : t("nextStepsHintPhoneRule")}</span></div>
+              {steps.map((step, index) => {
+                const on = !excluded.has(step.attendeeId);
+                const date = dates[step.attendeeId] ?? step.followupDate;
+                return (
+                  <div key={step.attendeeId} className={`${a.nx} ${on ? "" : a.nxOff}`} data-after-step={step.attendeeId}>
+                    <div className={styles.row} style={{ gap: 10 }}>
+                      <div className={`${x.av} ${a.avSm} ${x[ROW_TONES[index % ROW_TONES.length]!]}`}>{step.initial}</div>
+                      <div className={a.grow}><b className={a.nxName}>{step.name}</b>{step.org ? <div className={`${styles.lbl} ${d.ell}`}>{step.org}</div> : null}</div>
+                      <button type="button" className={`btn ${a.yn} ${on ? a.ynOn : ""}`} aria-pressed={on} aria-label="✓" onClick={() => toggleRow(step, true)}>✓</button>
+                      <button type="button" className={`btn ${a.yn} ${on ? "" : a.ynOn}`} aria-pressed={!on} aria-label="✕" onClick={() => toggleRow(step, false)}>✕</button>
+                    </div>
+                    <div className={a.nxActs}>
+                      {step.thanksDraft ? <button type="button" className={`btn ${a.act} ${a.actOn} ${a.actPlain}`} onClick={() => { setSelectedId(step.attendeeId); setDrawer(true); }}>{t("actThanks")}</button> : null}
+                      <label className={`${a.act} ${a.actOn} ${a.actPlain} ${a.dateAct}`}>
+                        {t("actFollow", { date: dayLabel(date, language, t) })}
+                        <input type="date" className={a.dateInput} value={date} aria-label={t("colFollow")} onChange={(ev) => { const value = ev.target.value; if (value) setDates((all) => ({ ...all, [step.attendeeId]: value })); }} />
+                      </label>
+                      {step.planType ? <button type="button" className={`btn ${a.act} ${a.actPlain} ${unlinked.has(step.attendeeId) ? "" : a.actOn}`} aria-pressed={!unlinked.has(step.attendeeId)} onClick={() => togglePlan(step)}>{`🎯 ${step.planType.label}`}</button> : null}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className={`${styles.row} ${a.pFoot}`}>
+                <button type="button" className={`btn ${styles.btn} ${styles.primary} ${a.grow}`} disabled={busy || !checked.length || Boolean(data.confirmedAt)} onClick={() => void confirm()}>{t("confirmN", { n: checked.length })}</button>
+                <a className={`btn ${styles.btn} ${a.ghost}`} href={`/app/events/${id(eventId)}`}>{t("later")}</a>
+              </div>
+              <div className={`${styles.lbl} ${a.pNote}`}><Icon name="mail" size={16} /> {t("noSendNote")}</div>
+            </div>
+          ) : null}
+          {scoreCard}
+        </div>
+        {drawerEl}
+      </>
+    );
+  }
 
   return (
     <>

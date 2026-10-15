@@ -590,7 +590,7 @@
    "width": 390,
    "id": "W-R27-60-390",
    "board-index": 368,
-   "wait-for": "[data-after-steps]",
+   "wait-for": "[data-after-phone]",
    "journey": {
     "after": "many"
    },
