@@ -269,15 +269,19 @@ export function checkConsistency(elements) {
   const texts = elements.filter((e) => e.own);
   const nums = texts.flatMap((e) => extractNumbers(e.own).map((n) => ({ ...n, el: e })));
 
-  // R1 選んだ n件 ↔ 同一容器里勾选的行数
+  // R1 選んだ n件 ↔ 同一卡片 / 表格 / 弹层（没有就整个画框）里勾选的行数。和文字同在一条操作条里的勾选框
+  // （批量条的全选框）不算行：b6 #9「2名を選択中」的批量条自带一个全选框，行在下面的表格里。
+  const CONTAINER = /(^|\s)(card|panel|sheet|wdlg|wmodal|modal|dialog|drawer|list|table)(\s|$)/;
   for (const n of nums.filter((x) => x.kind === "select")) {
-    for (const a of ancestors(elements, n.el.i)) {
-      const boxes = descendants(elements, a).filter((d) => elements[d].checkbox);
-      if (!boxes.length) continue;
-      const checked = boxes.filter((d) => elements[d].checked).length;
-      if (checked !== n.value) hints.push({ rule: "select-vs-checked", message: `「${n.label} ${n.value}${n.unit}」但同一卡片里勾选了 ${checked} 行（共 ${boxes.length} 个勾选框）`, where: pos(n.el) });
-      break;
-    }
+    const up = ancestors(elements, n.el.i);
+    const k = up.findIndex((a) => elements[a].tag === "table" || CONTAINER.test(elements[a].cls));
+    const container = k >= 0 ? up[k] : up[up.length - 1];
+    if (container === undefined) continue;
+    const bar = new Set(k > 0 ? up.slice(0, k) : []);
+    const boxes = descendants(elements, container).filter((d) => elements[d].checkbox && !ancestors(elements, d).some((a) => bar.has(a)));
+    if (!boxes.length) continue;
+    const checked = boxes.filter((d) => elements[d].checked).length;
+    if (checked !== n.value) hints.push({ rule: "select-vs-checked", message: `「${n.label} ${n.value}${n.unit}」但同一卡片里勾选了 ${checked} 行（共 ${boxes.length} 个勾选框）`, where: pos(n.el) });
   }
 
   // R2 标题「n人 / n件」↔ 画出的列表行数（只在 n ≤ 12、没有「すべて / もっと / 他」入口时提示）

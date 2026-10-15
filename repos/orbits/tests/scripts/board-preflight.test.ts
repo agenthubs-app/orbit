@@ -61,6 +61,19 @@ test("checkConsistency: 選んだ n件 ≠ 勾选行数（b9 #8 旧版 選んだ
   assert.deepEqual(checkConsistency(els).filter((h) => h.rule === "select-vs-checked"), []);
 });
 
+test("checkConsistency: 批量条自带全选框时数卡片里表格的勾选行（b6 #9「2名を選択中」回归）", () => {
+  // b6 #9 结构：div.card > div.bulk（全选框 cbx on + 「2名を選択中」）+ 表格行（前 2 行勾选，其余未勾）
+  const rows: Array<[number, string, string, string?, Partial<El>?]> = [
+    [-1, "div", "web"], [0, "div", "card span9"],
+    [1, "div", "bulk"], [2, "span", "cbx on", "", { checkbox: true, checked: true }], [2, "b", "", "2名を選択中"],
+  ];
+  for (let r = 0; r < 4; r++) { rows.push([1, "div", "tr"]); rows.push([rows.length - 1, "span", r < 2 ? "cbx on" : "cbx", "", { checkbox: true, checked: r < 2 }]); }
+  assert.deepEqual(checkConsistency(tree(rows)).filter((h) => h.rule === "select-vs-checked"), []);
+  rows[rows.length - 1] = [rows.length - 2, "span", "cbx on", "", { checkbox: true, checked: true }]; // 勾 3 行 → 提示
+  const hint = checkConsistency(tree(rows)).find((h) => h.rule === "select-vs-checked");
+  assert.match(hint?.message ?? "", /2名.*3 行（共 4 个勾选框）/);
+});
+
 test("checkConsistency: 总数 ≠ 分项合计（W-R25-07 話した人 21人 vs 3+7+2+6+1）", () => {
   const rows: Array<[number, string, string, string?]> = [[-1, "div", "web"], [0, "span", "chip lav", "スコア 128 · 話した人 21人"]];
   for (const [n, of] of [[3, 1], [7, 5], [2, 2], [6, 3], [1, 3]]) { rows.push([0, "div", "v2step"]); rows.push([rows.length - 1, "span", "chip teal", `${n} / ${of}人 達成`]); }
