@@ -9,10 +9,10 @@ import type { EventAfterNextStep, EventAfterResponse } from "../../../../../shar
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { previewAfterScore } from "../../../../../features/events/journey/after-core";
 import { ShellPage } from "../shell/slots";
-import { Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { Drawer, Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { DiscoverHelpRail, journeyTranslator, type JourneyT } from "./DiscoverTab";
-import { WEEK, parts } from "./EventDetail";
+import { WEEK, parts, useWide } from "./EventDetail";
 import { journeyApi } from "./journey-api";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
@@ -70,6 +70,9 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
   const [drafts, setDrafts] = useState<Record<string, { subject: string; body: string }>>({});
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  // 1024：右栏收起（b12 #366 没有右栏），点「下書きを作成」在抽屉里看お礼。
+  const wide = useWide();
+  const [drawer, setDrawer] = useState(false);
 
   useEffect(() => { void journeyApi.after(eventId).then((res) => { if (res.ok) setData(res.data); else setMissing(true); }); }, [eventId]);
 
@@ -113,9 +116,9 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
   const subtitle = `${data.title} · ${dateP ? t("dateWeek", { d: dateP.day, m: dateP.month, wd: WEEK[language][dateP.wd] }) : data.date}`;
   const empty = data.met.count === 0 && steps.length === 0;
 
-  const rail = empty ? <DiscoverHelpRail language={language} /> : selected && draft ? (
+  const draftPanel = selected && draft ? (
     <div className={`${styles.rail} ${d.rail}`} data-after-draft={selected.attendeeId}>
-      <h4 className={`${styles.railH} ${d.railH}`}><Icon name="mail" size={16} />{t("thanksTitle", { name: selected.name.split(/\s+/)[0] ?? selected.name })}</h4>
+      {wide ? <h4 className={`${styles.railH} ${d.railH}`}><Icon name="mail" size={16} />{t("thanksTitle", { name: selected.name.split(/\s+/)[0] ?? selected.name })}</h4> : null}
       <div className={`${styles.card} ${a.draftCard}`}>
         <div className={styles.lbl}>{t("subjectLbl")}</div>
         {editing ? <input className={a.input} value={draft.subject} aria-label={t("subjectLbl")} onChange={(ev) => setDrafts((all) => ({ ...all, [selected.attendeeId]: { ...draft, subject: ev.target.value } }))} />
@@ -132,7 +135,8 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
       </div>
       <div className={`${styles.lbl} ${a.note}`}><Icon name="mail" size={16} /> {t("noSendNote")}</div>
     </div>
-  ) : false;
+  ) : null;
+  const rail = empty ? <DiscoverHelpRail language={language} /> : wide && draftPanel ? draftPanel : false;
 
   return (
     <>
@@ -140,7 +144,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
       <div className={styles.wgrid} data-after={eventId}>
         {empty ? <EmptyAfter eventId={eventId} t={t} /> : (
           <>
-            <div className={`${styles.card} ${styles.span3}`} data-after-met="">
+            <div className={`${styles.card} ${styles.span3} ${a.span3}`} data-after-met="">
               <div className={styles.lbl}>{t("metToday")}</div>
               <div className={a.big}>{data.met.count}<small>{t("metUnit")}</small></div>
               <div className={`${x.mini3} ${a.mini2}`}>
@@ -191,7 +195,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
                       return (
                         <tr key={step.attendeeId} className={`${selected?.attendeeId === step.attendeeId ? a.sel : ""} ${on ? "" : a.off}`} data-after-step={step.attendeeId} onClick={() => setSelectedId(step.attendeeId)}>
                           <td><div className={styles.row} style={{ gap: 8 }}><div className={`${x.av} ${x[ROW_TONES[index % ROW_TONES.length]!]} ${a.avSm}`}>{step.initial}</div><div><b className={a.name}>{step.name}</b>{step.org ? <div className={styles.lbl}>{step.org}</div> : null}</div></div></td>
-                          <td>{step.thanksDraft ? <button type="button" className={`btn ${a.act} ${a.actOn}`} onClick={(ev) => { ev.stopPropagation(); setSelectedId(step.attendeeId); }}>{t("makeThanks")}</button> : <span className={styles.lbl}>—</span>}</td>
+                          <td>{step.thanksDraft ? <button type="button" className={`btn ${a.act} ${a.actOn}`} onClick={(ev) => { ev.stopPropagation(); setSelectedId(step.attendeeId); if (!wide) setDrawer(true); }}>{t("makeThanks")}</button> : <span className={styles.lbl}>—</span>}</td>
                           <td>
                             <label className={`${a.act} ${a.actOn} ${a.dateAct}`} onClick={(ev) => ev.stopPropagation()}>
                               {dayLabel(date, language, t)}
@@ -218,6 +222,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
           </>
         )}
       </div>
+      {!wide && selected ? <Drawer open={drawer} onClose={() => setDrawer(false)} title={t("thanksTitle", { name: selected.name.split(/\s+/)[0] ?? selected.name })} size="sm">{draftPanel}</Drawer> : null}
     </>
   );
 }

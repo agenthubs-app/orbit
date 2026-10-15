@@ -12,7 +12,7 @@ import { ShellPage } from "../shell/slots";
 import { Icon, Orbit2026Scope, RingChart, ToastProvider, useToast } from "../ui";
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { journeyTranslator, type JourneyT } from "./DiscoverTab";
-import { eventRange, monthDaySlash, parts } from "./EventDetail";
+import { eventRange, monthDaySlash, parts, useWide } from "./EventDetail";
 import { eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
 import { eventJoinCancelResultSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
@@ -113,6 +113,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [why, setWhy] = useState(false);
   const freeRef = useRef<HTMLInputElement | null>(null);
   const Speech = useMemo(() => speechRecognition(), []);
+  // 1024：右栏收起（b12 #354 没有右栏）。
+  const wide = useWide();
 
   useEffect(() => {
     void journeyApi.overview(eventId).then((res) => { if (res.ok) setEvent(res.data); });
@@ -308,7 +310,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         subtitle={event?.title ?? ""}
         left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={16} /></a>}
         right={headRight ? <span className={styles.lbl}>{headRight}</span> : undefined}
-        rightRail={rail}
+        rightRail={wide ? rail : false}
       />
       <div className={styles.wgrid} data-join={eventId}>
         {done ?? (reviewing ? review : chat)}

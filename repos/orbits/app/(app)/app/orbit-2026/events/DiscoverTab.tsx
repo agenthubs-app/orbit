@@ -263,7 +263,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   }
   if (!data) return <div className={styles.wgrid} data-events-discover-tab="">{filters}</div>;
 
-  const card = (row: EventDiscoverRow, index: number) => <EventCard key={row.eventId} row={row} index={index} language={language} t={t} selected={tier === "wide" && railRow?.eventId === row.eventId} onSelect={() => setSelected(row.eventId)} onOpen={() => open(row.href)} />;
+  const card = (row: EventDiscoverRow, index: number) => <EventCard key={row.eventId} row={row} index={index} language={language} t={t} selected={tier !== "narrow" && railRow?.eventId === row.eventId} onSelect={() => setSelected(row.eventId)} onOpen={() => open(row.href)} />;
 
   return (
     <div className={styles.wgrid} data-events-discover-tab="">

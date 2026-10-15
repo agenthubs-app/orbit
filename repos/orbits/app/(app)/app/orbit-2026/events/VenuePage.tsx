@@ -10,10 +10,10 @@ import type { EventVenuePerson, EventVenueResponse } from "../../../../../shared
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { eventVenueMemoResultSchema } from "../../../../../shared/api-schema/event-venue";
 import { ShellPage } from "../shell/slots";
-import { Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { Drawer, Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { journeyTranslator, type JourneyT } from "./DiscoverTab";
-import { WEEK, parts } from "./EventDetail";
+import { WEEK, parts, useWide } from "./EventDetail";
 import { eventsCall } from "./events-api";
 import { journeyApi } from "./journey-api";
 import styles from "./events.module.css";
@@ -139,6 +139,9 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
   const [openerPage, setOpenerPage] = useState(0);
   const [phone, setPhone] = useState(false);
   const [webAnyway, setWebAnyway] = useState(false);
+  // 1024：右栏收起（b12 #362 没有右栏），点人在抽屉里看参加者の詳細。
+  const wide = useWide();
+  const [drawer, setDrawer] = useState(false);
 
   const load = () => journeyApi.venue(eventId).then((res) => { if (res.ok) setData(res.data); else setMissing(true); });
   useEffect(() => { void load(); }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -290,7 +293,7 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
   ) : false;
 
   const recCards = (list: readonly EventVenuePerson[]) => list.map((person, index) => (
-    <PersonCard key={person.attendeeId} person={person} index={index} selected={selected?.attendeeId === person.attendeeId} t={t} onSelect={() => setSelectedId(person.attendeeId)} onRequest={() => void requestSwap(person)} />
+    <PersonCard key={person.attendeeId} person={person} index={index} selected={selected?.attendeeId === person.attendeeId} t={t} onSelect={() => { setSelectedId(person.attendeeId); if (!wide) setDrawer(true); }} onRequest={() => void requestSwap(person)} />
   ));
   const agenda = (
     <div className={`${styles.card} ${tab === "agenda" ? styles.span12 : x.span5}`} data-venue-agenda="">
@@ -312,7 +315,8 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
 
   return (
     <>
-      <ShellPage title={data.title} subtitle={subtitle} left={exit} right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("checkInQr")}><Icon name="scan" size={20} /></button>} rightRail={rail} />
+      <ShellPage title={data.title} subtitle={subtitle} left={exit} right={<button type="button" className={`btn ${x.rbtn}`} aria-label={t("checkInQr")}><Icon name="scan" size={20} /></button>} rightRail={wide ? rail : false} />
+      {!wide && rail ? <Drawer open={drawer} onClose={() => setDrawer(false)} title={t("detailTitle")} size="sm">{rail}</Drawer> : null}
       <div className={styles.wgrid} data-venue={eventId}>
         <div className={styles.span12}>
           <div className={styles.seg} role="tablist">

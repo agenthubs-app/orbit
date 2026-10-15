@@ -61,3 +61,5 @@
 .tileTitle { font-size: var(--fs-body-sm); }
 .sampleTag { font-size: var(--fs-micro); font-weight: var(--fw-heavy); padding: 1px 6px; border-radius: var(--r-tag); background: var(--mac-apricot); color: var(--mac-apricot-ink); margin-left: 4px; vertical-align: 1px; white-space: nowrap; }
 .tall.tall { height: 58px; }
+.span3.span3 { grid-column: span 3; }
+@media (max-width: 767px) { .span3.span3 { grid-column: auto; } }

@@ -12,7 +12,7 @@ import { ShellPage } from "../shell/slots";
 import { Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { journeyTranslator, type JourneyT } from "./DiscoverTab";
-import { avTone, eventRange } from "./EventDetail";
+import { avTone, eventRange, useWide } from "./EventDetail";
 import { newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
 import styles from "./events.module.css";
@@ -54,6 +54,8 @@ export function countdown(startsAt: string, nowMs: number): { text: string; hour
 const CHECK_LABEL: Record<EventPrepChecklistItem["key"], "clCards" | "clIntro" | "clMaterials" | "clQr" | "clReturn"> = { cards: "clCards", intro: "clIntro", materials: "clMaterials", qr: "clQr", return: "clReturn" };
 
 function PrepInner({ eventId, language }: { eventId: string; language: OrbitLanguage }) {
+  // 1024：右栏收起（b12 #358 没有右栏）。
+  const wide = useWide();
   const t = useMemo(() => journeyTranslator(language), [language]);
   const at = useMemo(() => assessTranslator(language), [language]);
   const toast = useToast();
@@ -117,7 +119,7 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
         subtitle={t("prepSubtitle", { title: data.title, when: prepWhen(data.startsAt, data.now, t) })}
         left={<a className={`btn ${x.rbtn}`} href={`/app/events/${encodeURIComponent(eventId)}`} aria-label={t("back")}><Icon name="left" size={16} /></a>}
         right={<a className={`btn ${styles.btn}`} href={`/app/events/${encodeURIComponent(eventId)}/live`}><Icon name="ticket" size={16} />{t("checkIn")}</a>}
-        rightRail={rail}
+        rightRail={wide ? rail : false}
       />
       <div className={styles.wgrid} data-prep={eventId}>
         <div className={`${styles.card} ${styles.span4}`} data-prep-when="">

@@ -197,7 +197,7 @@ export function EventDetailBody({ data, language, t, signedOutAside }: { data: E
   );
 }
 
-function useWide(): boolean {
+export function useWide(): boolean {
   const [wide, setWide] = useState(true);
   useEffect(() => {
     const update = () => setWide(window.matchMedia("(min-width: 1280px)").matches);
