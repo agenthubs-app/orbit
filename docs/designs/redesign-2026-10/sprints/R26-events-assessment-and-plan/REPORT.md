@@ -182,3 +182,33 @@ R25 登记行相应更新为「04c 已过，其余仍待」。
 - 测试：App 全量 3977 条，本会话引起的 4 条失败已修（硬编码分隔符 → i18n、性能接线测试的 fixture 补 `DevOpenPath`），剩 `S1 これまでのコード`（加人会话的既有失败）；Web 见下方全量结果。
 - GitNexus：两次提交前 detect-changes 风险为 low / medium（日志 `~/orbit-sprint-evidence/redesign/R26/run-02/`）。impact：`MyEvents` 报 HIGH，原因是同名符号（App / Events / Plan）被一并算进来；实际只有 `/app/events` 页在用，改动只在空态分支。
 
+
+## App 像素返工（2026-10-15，第三个执行会话，`de9f32ac5`）
+
+**环境：** 模拟器 iPhone 16e (r26)（已含 orbit-text-leading）、mock `orbits-r26`、Metro :8126（`no-keyboard,open-path`）；门禁 `app-R26.json` + `attribution-redesign-R26-app.json`，证据 `~/orbit-sprint-evidence/redesign/R26/run-02/app/`（终版 g1 / g2；seg 临时补丁验证 c4 浅 / e1 深）、计划 `run-02/app-plan/g2`。画板预检 `run-02/app/preflight-app-R26.md`（近似 1 · 缺 token 72〔kit 原值直接照搬〕· 不自洽 0 · 疑似无功能 5〔emoji 误报〕）。没连 Neon、没部署、没调付费 AI。
+
+**门禁结果（§20：超阈带全部 `[data]` / `[raster]` 即通过；整屏 raw 参考）**
+
+| 画面 | 浅 / 深 raw | 结论 |
+| --- | --- | --- |
+| A-R26-20 評価結果（#31）/ 20d 深色（#37） | 0.043 / 0.042 / 0.042 | ✅ 3 张（清单原指 #30「判定中」，已改指 #31） |
+| A-R26-21 要登录 | 0.038 / 0.039 | ✅ |
+| A-R26-22 不是活动页 | 0.026 / 0.026 | ✅（第 2 场副文带时刻 `[data]`） |
+| A-R26-23 海报不清 → 补 3 项 | 0.050 / 0.051 | ✅（海报预览、演示数据空格、画板是已输入日时的中途态 `[data]`） |
+| A-R26-24 补完后的判定 | 0.038 / 0.037 | ✗ 1 带：「場所（推測を採用）」——契约没有「采用了推测」标记 → **待契约** |
+| A-R26-13 / 14 / 15 / 30 評価空·少量·大量 / 参加予定 | 0.08–0.13（seg 补丁下 0.036–0.054，全部归因） | **待组件库**：`Segmented` 高 38 vs kit `.seg` 30（G23），以下整页下移 8pt；其余区块全对齐 |
+| A-R26-30e 参加予定 · 空 | 0.025 / 0.043（补丁下 0.014） | **待组件库**（seg）；空态 🗓️ 字形 4pt 偏差已修，未在补丁下重截 |
+| A-R25-10 次の目標（独立页） | 0.044 / 0.044 | ✅（App 原为完了页内嵌段，改为 `/plans/<id>/next`） |
+| A-R25-15 以前のプラン 卡 | 0.041 / 0.039 | ✅（契约只加 `needNames`；头像色按名字散列 `[data]`，同 R24-07） |
+
+合计：**R26 通过 9 张（20 浅深、20d、21 浅深、22 浅深、23 浅深），计划页通过 4 张（A-R25-10 / 15 浅深）**；待组件库 10 张（13 / 14 / 15 / 30 / 30e 浅深，seg）；待契约 2 张（24 浅深）。
+
+**改了什么：** 见提交信息；要点——参加予定卡宽按内容宽（390 屏 = 354）、多张 300 横滑首张贴左（同 Chrome snap 落点）、160° 渐变；拖放区 Chrome 把 1.6 边框画成 4px（4/3pt）照抄；kit 行内 `<b>` 的行盒按外层 14px · 1.5；`.datebox` small 行高 15.4；`.opt-row b` 行高 19.5；区间分数「55–70」右对齐向左溢出；events-mine 只加 `asOf`，App 的「今夜」与「10月」用服务端时钟（fixture 固定时钟时与画板一致）。
+
+**独立复核（1 个子代理）与处理：** S1 补过项时只剩「詳細を見る」、加不了参加予定 → 幅时先展开说明再换回「参加予定に追加」，非幅直接显示加入；M2 读到的参加費被当「不明」→ 以读到值为初值、未改不提交；M3 卡宽写死 354 → 按窗口宽；M4 次の目標重读后选中项按序号漂移 → 按目標文记 + 读取序号守卫；次要：死代码清理、en 月份、头像 `accessible` + 名字去重、分享空文案隐藏 + catch、候补「評価」防连点、渐变 id 不含文案 / 区分两处。未改：`.seg` 选中项在渐变卡上只有阴影（照画板）、`plan.done.nextNote` 等旧文案键保留。
+
+**测试：** App 全量 3977 条，3966 过 / 3 失败——本次引起的 `design-legacy-names`（注释里的 `#286` 与 `rgba(`）已修并单跑通过；剩 `ink-signal-profile`（profile 抽取文案，单跑 227 秒超时）、`notification-registration-races`、`task-date-interactions` 与本次无关。Web 相关 27 条（计划路由 / 设计稿 fixture / 契约只加）通过，契约快照一致。`tsc` 只剩 R27 会话的 `EventRegistrationScreen.tsx:405`。
+
+**GitNexus：** 开工 impact——KitGradient MEDIUM（加可选参数，默认不变）、GoingCard HIGH（同名模块聚合，实际调用方只在 EventsHome）、其余 LOW / UNKNOWN（文本核对只在本文件）。提交前 detect-changes 报 critical，来自共用工作区里其他会话的文件（`bridge/handoffs.md`、Web `AppEventsPage`）；本次符号均为只加契约字段与叶子页面（日志 `run-02/app/detect-changes-app-rework.log`）。
+
+**交接（给主会话拍板）：** ① A-R26-24「（推測を採用）」要契约标记（建议 `factBasis` 补「guessed_confirmed」或只加 `adoptedGuessFields`），或画板去掉这半句；② b2 #3 主按钮「詳細を見る」的去处（现为展开说明后换回加入）；③ 23 / 24 演示数据「製造業 DX」与画板「製造業DX」空格不一（`shared/mock/demo-world`，未改）；④ G23 修 `Segmented` 后重跑 13 / 14 / 15 / 30 / 30e。
