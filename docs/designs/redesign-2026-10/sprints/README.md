@@ -56,6 +56,7 @@
 | [R16](R16-import-and-completion/GOAL.md) | 加人：導入（連絡先 / LinkedIn / CSV / イベントから → まとめて確認）与「每天一问」live（规则、零 AI）；删除 Web 旧导入页 | R12 | H | 甲 | 界面像素返工 done（剩余画面待组件库 / 待 R11）：服务端 + 两端界面已复核（[REPORT](R16-import-and-completion/REPORT.md)；Web 13/14、App 8/10，余 W-R16-08 浅 G23b、A-R16-02 G23） |
 | [R26](R26-events-assessment-and-plan/GOAL.md) | 活动：评估与计划接线（契约 8 live：URL 抓取 + SSRF、海报、正文、3 项、异常态；`event_assessments` 迁移；`events/mine`；两端イベント一级页 評価 / 参加予定；活动事实 live（D53）、概要推荐活动行、今日のチャンス、会える活動、R24-06 小项；代签计分；重比计划页 12 个暂缓画面；删两端旧一级页） | R24、R25 | H | 甲 | **done**（2026-10-15，规则 11 收口，[REPORT](R26-events-assessment-and-plan/REPORT.md)「收尾」）：SC 17 / 17（SC-08 R24-06 小项补齐、SC-13 必须项完成、SC-14 按主会话决定留至 R27）；已部署生产（`ORBIT_EVENT_ASSESSMENT_AI=ai`）。像素：Web R26 通过 16 张（10 / 11 / 12 1440、10 / 12-1024、30 1440 / 1024、30e，浅深），W-R26-31 Modal 待组件库，未过 11-1024、全部 390、P04 / P06 / P08；**App R26 像素返工 done（2026-10-15，`de9f32ac5`，规则 11 收口）：通过 11 张（20 浅深、20d、21 / 22 / 23 / 24 浅深）；待组件库 10 张（13 / 14 / 15 / 30 / 30e 浅深：`Segmented` 38 vs kit `.seg` 30，G23；临时补丁下全部通过）**，见 [REPORT](R26-events-assessment-and-plan/REPORT.md#app-像素返工2026-10-15第三个执行会话de9f32ac5)；参加予定卡分数（M4）→ R27 |
 | [R27](R27-events-journey/GOAL.md) | 活动：从找到活动到会后（探す、コミュニティ、絞り込み、検索（给 R30）、興味なし契约 9 live；詳細（含未登录列表 / 详情）、参加登録 / 参加コード / 取消；会う準備；会場モード；会後のふりかえり；删两端旧详情 / 报名 / 会场屏） | R26 | H | 甲 | **文档完成、已复核，待实施**（2026-10-14；开工前待拍板见 DESIGN §10 A2 / A3 / A5–A7 与 B3–B5） |
+| [R17](R17-host-operations/GOAL.md) | 主催：運営センター、建活动 / 发布 / 中止（参加コード、申込页）、申込設定、审核与定型通知、编组（现有 event-ops）、受付 kiosk（QR 签名令牌、受付番号、离线、多台）、レポート（<5 抑制）、共同運営者邀请、公开主办方页 `/o/[slug]`；删两端旧运营界面 | R27 | H | 甲 | **文档完成、已复核，待实施**（2026-10-16；[整体设计](host/DESIGN.md)、[复核](host/REVIEW.md)；开工前待拍板见 DESIGN §10 A1–A7，补画见 B1–B8） |
 | R30 | 全局搜索（两端）：Web ⌘K 面板本体（W-R07-05 / 06）+ App 全局搜索；做完后 App Task 左上 🔍 改接全局搜索（[交接表 R30](HANDOFF-TO-FEATURE-SPRINTS.md#r30-搜索新甲--小雨2026-10-12-用户定)） | R07；活动与会话的搜索接口（R27、R21） | H | 甲 | 未开始（2026-10-12 用户决定新开） |
 
 计划 v2.2 的整体设计、AI 调用清单、需要用户拍板的事项见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md)，复核见 [plan-v2.2/REVIEW.md](plan-v2.2/REVIEW.md)。加人与邀请（R12、R15、R16）见 [add-and-invite/DESIGN.md](add-and-invite/DESIGN.md)，复核见 [add-and-invite/REVIEW.md](add-and-invite/REVIEW.md)。活动（R26、R27）见 [events/DESIGN.md](events/DESIGN.md)，复核见 [events/REVIEW.md](events/REVIEW.md)。
@@ -150,6 +151,7 @@
 **上线前的环境与真机**
 - [ ] staging 的 `VERCEL_ENV` / 展示页开关核对（R06 复核 m9：`/showcase` 只在非生产可见）。
 - [ ] 真机：触感反馈（R02–R04 只在模拟器验证）、真推送落地（R05）、Dynamic Type 最大字号走查。
+- [ ] 主催生产迁移（R17，等授权，[host/DESIGN.md](host/DESIGN.md) §3.1、§11）：`host-core`（主办方资料、活动 slug / 参加コード、受付番号、共同运营邀请、定型通知记录与模板、kiosk 心跳）；A6 同意时另有 `ai-usage-event-matching`。先只读预检、先迁移再部署。
 - [ ] 活动生产迁移（R26 / R27，等授权，[events/DESIGN.md](events/DESIGN.md) §10 A4 / A5、§11）：`event-assessments-core`（`event_assessments` 表）、`ai-usage-event-purposes`（账本 CHECK 加 `event_registration_interview`、`event_post_summary`）；先只读预检、先迁移再部署。活动付费 AI E1–E4 在用户授权前保持隐藏 / 规则退路。
 - [ ] 本地与 staging 都配置 `ORBIT_SYNC_CURSOR_SECRET`（R09 走查 A1：缺了它 App 的待办、人脈同步全部 503）。
 
