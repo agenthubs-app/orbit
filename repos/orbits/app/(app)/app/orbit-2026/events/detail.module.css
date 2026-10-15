@@ -112,3 +112,13 @@
 .ctabar { position: fixed; left: 12px; right: 12px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: var(--z-sticky); border-radius: var(--r-cta); background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--glass-line); padding: 8px; display: flex; gap: 8px; align-items: center; box-shadow: var(--shadow-float); }
 .ctaSave.ctaSave { width: 46px; height: 46px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink-2); flex: 0 0 auto; }
 .ctaMain.ctaMain { flex: 1; height: 46px; }
+
+/* b12 #378 / #380（§31）：已报名 ⋯ 菜单（b11 .dmenu）与右栏参加予定卡。 */
+.goingLine.goingLine { margin: 4px 0 0; }
+.moreWrap { display: inline-flex; }
+.headRight.headRight { position: relative; }
+.dmenu { position: absolute; right: 0; top: calc(100% + 24px); z-index: var(--z-dropdown); width: 236px; border-radius: var(--r-tile); background: var(--surface); box-shadow: var(--shadow-float); padding: 6px; border: 1px solid var(--line); display: grid; }
+.mi.mi { display: flex; align-items: center; gap: 8px; justify-content: flex-start; width: 100%; height: auto; min-height: 0; padding: 8px 10px; border: 0; border-radius: var(--r-sm); background: transparent; font-size: var(--fs-body-sm); font-weight: 600; color: var(--ink); text-align: left; text-decoration: none; cursor: pointer; }
+.mi.mi:hover, .mi.mi:focus-visible { background: var(--surface-2); }
+.mi span { flex: 1; }
+.mi.miDanger { color: var(--coral-text); }

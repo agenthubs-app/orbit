@@ -595,6 +595,40 @@
     "after": "many"
    },
    "note": "P10 会後 · 多 · 390"
+  },
+  {
+   "app": "/app/events/demo-event-cfo-night-18",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "wait-for": "[data-detail-going]",
+   "journey": {
+    "overview": "few",
+    "registration": "registered"
+   },
+   "id": "W-R27-35",
+   "board-index": 378,
+   "note": "P06 詳細 · 参加済み（§31）"
+  },
+  {
+   "app": "/app/events/demo-event-cfo-night-18",
+   "design": "b12-missing-states.html",
+   "width": 1440,
+   "wait-for": "[data-detail-going]",
+   "journey": {
+    "overview": "few",
+    "registration": "registered"
+   },
+   "id": "W-R27-35b",
+   "board-index": 380,
+   "note": "P06 詳細 · 参加済み · ⋯ メニュー（§31）",
+   "steps": [
+    {
+     "click": "[data-detail-more]"
+    },
+    {
+     "wait": 300
+    }
+   ]
   }
  ]
 }

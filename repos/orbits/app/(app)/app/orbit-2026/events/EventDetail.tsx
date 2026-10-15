@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { EventOverviewAttendee, EventOverviewResponse } from "../../../../../shared/contract/event-overview";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import { eventJoinCancelResultSchema } from "../../../../../shared/api-schema/event-join";
+import { eventJoinCancelResultSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
 import { ShellPage } from "../shell/slots";
 import { Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
@@ -61,7 +61,7 @@ function Person({ person, index, note }: { person: EventOverviewAttendee | { nam
   );
 }
 
-export function DetailRail({ data, t, onRegister }: { data: EventOverviewResponse; t: JourneyT; onRegister: () => void }) {
+export function DetailRail({ data, t, onRegister, language = "ja" }: { data: EventOverviewResponse; t: JourneyT; onRegister: () => void; language?: OrbitLanguage }) {
   const fit = data.attendees.filter((item) => item.planFit && !item.known).slice(0, 5);
   return (
     <div className={`${styles.rail} ${d.rail} ${x.detailRail}`} data-detail-rail="">
@@ -87,6 +87,12 @@ export function DetailRail({ data, t, onRegister }: { data: EventOverviewRespons
           <b>{t("ctaTitle")}</b>
           <div className={`${styles.lbl} ${x.ctaSub}`}>{t("ctaSub")}</div>
           <button type="button" className={`btn ${styles.btn} ${styles.primary} ${x.block}`} onClick={onRegister}>{t("ctaStart")}</button>
+        </div>
+      ) : data.registration.status === "registered" || data.registration.status === "pending_review" ? (
+        /* b12 #378：已报名时右栏底部 = 参加予定状态卡（CTA 的位置）。 */
+        <div className={`${styles.card} ${x.cta}`} data-detail-going="">
+          <div className={`${styles.row} ${styles.between}`}><b>{t("goingCardTitle")}</b><span className={`${styles.chip} ${data.registration.status === "registered" ? styles.c_teal : styles.c_lav}`}>{data.registration.status === "registered" ? t("statusConfirmed") : t("statusReview")}</span></div>
+          <div className={`${styles.lbl} ${x.goingLine}`}>{t("goingCardLine", { venue: (data.venue ?? "").split(/\s+/)[0] ?? "", when: eventRange(data.startsAt, null, language) })}</div>
         </div>
       ) : null}
     </div>
@@ -333,6 +339,18 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
   useEffect(() => {
     if (holding && new URLSearchParams(window.location.search).get("cancel") === "1") setCancelOpen(true);
   }, [holding]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (event: MouseEvent | KeyboardEvent) => { if (event instanceof KeyboardEvent ? event.key === "Escape" : !(event.target as HTMLElement | null)?.closest("[data-detail-menu],[data-detail-more]")) setMenuOpen(false); };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", close); };
+  }, [menuOpen]);
+  const addCalendar = async () => {
+    const res = await eventsCall(`/api/events/${encodeURIComponent(eventId)}/join/tentative`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), method: "POST" }, eventJoinTentativeResultSchema);
+    if (res.ok) toast.success(t("calendarAdded")); else toast.error(assessTranslator(language)("genericError"));
+  };
   const closeCancel = () => {
     setCancelOpen(false);
     const url = new URL(window.location.href);
@@ -355,7 +373,20 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
   const statusLabel = status === "registered" ? t("stRegistered") : status === "pending_review" ? t("stPending") : status === "waitlisted" ? t("stWaitlisted") : status === "rejected" ? t("stRejected") : status === "cancelled" ? t("stCancelled") : status === "attended" ? t("stAttended") : null;
   const right = (
     <div className={x.headRight}>
-      <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void share()}><Icon name="share" size={16} /></button>
+      <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void share()}><Icon name="share" size={holding ? 20 : 16} /></button>
+      {holding ? (
+        /* b12 #378 / #380（§31）：已报名时「会う準備へ」左边的 ⋯，菜单 = カレンダーに追加 / 参加用プロフィールを編集 / 参加を取り消す。 */
+        <span className={x.moreWrap}>
+          <button type="button" className={`btn ${x.rbtn}`} aria-label={t("moreActions")} aria-haspopup="menu" aria-expanded={menuOpen} data-detail-more="" onClick={() => setMenuOpen((value) => !value)}><Icon name="more" size={16} /></button>
+          {menuOpen ? (
+            <div className={x.dmenu} role="menu" data-detail-menu="">
+              <button type="button" role="menuitem" className={`btn ${x.mi}`} onClick={() => { setMenuOpen(false); void addCalendar(); }}><Icon name="calendar" size={16} /><span>{t("addToCalendar")}</span></button>
+              <a role="menuitem" className={`btn ${x.mi}`} href={`/app/events/${encodeURIComponent(eventId)}/register`}><Icon name="pen" size={16} /><span>{t("editJoinProfile")}</span></a>
+              <button type="button" role="menuitem" className={`btn ${x.mi} ${x.miDanger}`} onClick={() => { setMenuOpen(false); setCancelOpen(true); }}><Icon name="x" size={16} /><span>{t("cancelDo")}</span></button>
+            </div>
+          ) : null}
+        </span>
+      ) : null}
       {status === "none" ? <button type="button" className={`btn ${styles.btn} ${x.accent}`} onClick={register}>{t("register")}</button>
         : status === "registered" || status === "pending_review" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/prep`}>{t("goPrep")}</a>
           : status === "attended" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/after`}>{t("goAfter")}</a>
@@ -369,7 +400,7 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
         subtitle={phone ? undefined : data?.organizer.name ?? ""}
         left={<a className={`btn ${x.rbtn}`} href="/app/events?tab=discover" aria-label={t("back")}><Icon name="left" size={16} /></a>}
         right={phone ? <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void share()}><Icon name="share" size={20} /></button> : right}
-        rightRail={wide && data ? <DetailRail data={data} t={t} onRegister={register} /> : false}
+        rightRail={wide && data ? <DetailRail data={data} t={t} onRegister={register} language={language} /> : false}
         phoneBare={phone}
       />
       {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} /> : <EventDetailBody data={data} language={language} t={t} />) : null}

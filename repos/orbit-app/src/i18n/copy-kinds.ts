@@ -1791,6 +1791,12 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsJourney.dSubtitleFewLong", "label"],
   ["eventsJourney.widenAddArea", "label"],
   ["eventsJourney.widenAddTheme", "label"],
+  ["eventsJourney.moreActions", "label"],
+  ["eventsJourney.addToCalendar", "menu"],
+  ["eventsJourney.editJoinProfile", "menu"],
+  ["eventsJourney.goingCardTitle", "label"],
+  ["eventsJourney.goingCardLine", "label"],
+  ["eventsJourney.calendarAdded", "toast"],
   // R26 イベント（eventsV2）。
   ["eventsV2.title", "pageTitle"],
   ["eventsV2.guessAdopted", "label"],
