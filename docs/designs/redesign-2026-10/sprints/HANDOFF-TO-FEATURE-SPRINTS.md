@@ -184,6 +184,11 @@
 | R26-11 | App R26 像素（app-R26.json 11 张） | **done（2026-10-15，`de9f32ac5`）**：通过 20 浅深、20d、21 / 22 / 23 / 24 浅深（11 张；24 由 `493b27ca0` 契约只加 `adoptedGuessFields` 解决）；**待组件库** 13 / 14 / 15 / 30 / 30e 浅深（`Segmented` 38 vs kit `.seg` 30，G23；临时补丁下 10 张全部通过） | G23 修 `Segmented` 后重跑 13 / 14 / 15 / 30 / 30e（`R26-app-agate.sh`，mock 端口以实际为准） | R26 REPORT「App 像素返工」 |
 | R26-12 | 「参加予定」卡分数（复核 M4） | 显示评估当时的分 | 按当前计划现算（需把计划类型接进「我的活动」读取） | R26 REPORT |
 | R26-13 | Web R26 余项 | 1024 的 10 / 11（b12 #332 / #334 与 b8 #0 截断口径不一）、全部 390、P04 / P06 / P08 未过 | 先统一画板口径再对齐 | R26 REPORT「收尾」 |
+| R27-01 | App `Segmented` 高 38 vs kit `.seg` 30 | A-R27-06 / 07 / 08 / 16 / 26 / 29 / 31 / 33 / 34 待组件库；seg 临时补丁下各带 dy ≤4 | G23 修后重跑这些视图（`scratchpad` 的 appgate 做法见 R27 REPORT；`views/app-R27.json`） | R27 REPORT §3；DEFERRED-A §1 |
+| R27-02 | App `FilterOption` / `Toggle`、`Toast`（带 ✕、不知道会场自带底栏） | A-R27-09 筛选弹层、A-R27-35 交換 toast 待组件库 | 组件库对齐后重跑 09 / 35 | DEFERRED-A §1 |
+| R27-03 | 受付「画面を明るくしました」与 メモ的设备端语音转文字 | 本轮没加原生模块：受付卡只写受付番号，🎙 聚焦输入框（系统键盘听写） | 懒加载 expo-brightness 与语音识别模块 + 权限文案 + 重建 dev client，再重跑 A-R27-26 / 33 | DEFERRED-A §3 |
+| R27-04 | `legacy-ui-ratchet` 三处手写件（DiscoverPage 全屏搜索 `<Modal>`、詳細 `.utabs`、会場 livebar） | 等主会话定是否进白名单 | 组件库补 UnderlineTabs / 可配置 TabBar / 全屏搜索页后替换并删白名单行 | R27 REPORT §6 |
+| R27-05 | App 新详情 / 会う準備 / 会場 / 会後是 online-only | 旧屏的离线副本随旧屏删除 | 产品定是否给新屏补离线副本（0115 / 0131 的做法） | R27 REPORT §6 |
 
 ## R28 引导
 
