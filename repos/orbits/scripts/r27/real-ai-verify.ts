@@ -26,7 +26,7 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 import { createTransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
 import { loadLocalEnv } from "../load-local-env";
 
-const CAP = 5;
+const CAP = Math.min(5, Number(process.env.R27_AI_CAP ?? 5)); // 剩余额度（已用的次数由调用方扣掉）
 const PRICE = { input: 0.6, output: 2.2 }; // 美元 / 百万 token（保守估算）
 const WS = "workspace:r27-real-ai";
 

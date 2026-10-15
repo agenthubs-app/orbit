@@ -73,3 +73,6 @@ export async function pollAssessment(id: string, onUpdate: (value: EventAssessme
   }
   return null;
 }
+
+/** R27：参加者动线的接口（journey-api.ts）共用同一个读取 / 失败归类。 */
+export { call as eventsCall };

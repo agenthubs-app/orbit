@@ -317,19 +317,25 @@ function ShellBottomBar({ active }: { active: ShellNavKey | null }) {
  * iOrbit), and 「iOrbit に聞く…」 at the foot opening ⌘K. R10 feeds 次の一手 and
  * 最近の会話 here once the home suggestions exist.
  */
-export function DefaultRail({ onOpenPalette }: { onOpenPalette?: () => void }) {
+export function DefaultRail({ onOpenPalette, intro, prompts: promptOverride }: {
+  onOpenPalette?: () => void;
+  /** R27：页面专用的开场卡（如探す「イベント選びを手伝います」）；不传 = 通用介绍。 */
+  intro?: { title: string; body: string };
+  /** R27：页面专用的提问示例；不传 = 通用三条。 */
+  prompts?: readonly string[];
+}) {
   const { language } = useOrbitLanguage();
   const pathname = usePathname() ?? "";
   const ask = useOrbitAsk();
   const t = (entry: (typeof shellCopy)[keyof typeof shellCopy]) => pickCopy(entry, language);
   const open = onOpenPalette ?? (() => window.dispatchEvent(new CustomEvent("orbit:open-palette")));
-  const prompts = [t(shellCopy.railPrompt1), t(shellCopy.railPrompt2), t(shellCopy.railPrompt3)];
+  const prompts = promptOverride ?? [t(shellCopy.railPrompt1), t(shellCopy.railPrompt2), t(shellCopy.railPrompt3)];
   return (
     <div className={styles.railBody}>
       <h2 className={styles.railTitle}><span className={styles.emo} aria-hidden>✨</span>iOrbit</h2>
       <div className={styles.railCard}>
-        <b>{t(shellCopy.railIntroTitle)}</b>
-        <p>{t(shellCopy.railIntroBody)}</p>
+        <b>{intro?.title ?? t(shellCopy.railIntroTitle)}</b>
+        <p>{intro?.body ?? t(shellCopy.railIntroBody)}</p>
       </div>
       <span className={styles.railLabel}>{t(shellCopy.railPromptsLabel)}</span>
       <div className={styles.prompts}>

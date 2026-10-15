@@ -67,6 +67,24 @@
         "ORBIT_NEXT_DIST_DIR": ".next-r26",
         "ORBIT_REDESIGN_MOCK": "event-assessment,plan-v2-summary"
       }
+    },
+    {
+      "name": "orbits-r27",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "repos/orbits",
+        "--",
+        "--port",
+        "3027"
+      ],
+      "port": 3027,
+      "env": {
+        "ORBIT_NEXT_DIST_DIR": ".next-r27",
+        "ORBIT_REDESIGN_MOCK": "event-assessment,plan-v2-summary,event-recommendation-feedback"
+      }
     }
   ]
 }

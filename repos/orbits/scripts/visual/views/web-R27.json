@@ -1,0 +1,62 @@
+{
+ "_note": "R27 イベント参加者動線 Web（PLANNER 像素 SC P01–P16）。mock 服务器 orbits-r27（ORBIT_REDESIGN_MOCK=event-assessment,plan-v2-summary,event-recommendation-feedback，distDir .next-r27）。每张先切 journey 变体（views 的 journey 字段；features/events/design-fixtures/switch.mjs --journey）。",
+ "defaults": {
+  "app-origin": "http://localhost:3026",
+  "login": "qa@orbit.test",
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-redesign-R26.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/events/**",
+  "repos/orbits/shared/mock/demo-world/events-journey.ts"
+ ],
+ "views": [
+  {
+   "id": "W-R27-11",
+   "app": "/app/events?tab=discover",
+   "design": "b2-events-flow.html",
+   "board-index": 11,
+   "width": 1440,
+   "wait-for": "[data-discover-empty]",
+   "journey": {
+    "discover": "empty"
+   },
+   "note": "P01 探す · 空（无计划）"
+  },
+  {
+   "id": "W-R27-12",
+   "app": "/app/events?tab=discover&period=this_week&areas=tokyo&themes=manufacturing_dx",
+   "design": "b2-events-flow.html",
+   "board-index": 12,
+   "width": 1440,
+   "wait-for": "[data-discover-card]",
+   "journey": {
+    "discover": "few"
+   },
+   "note": "P02 探す · 少量"
+  },
+  {
+   "id": "W-R27-13",
+   "app": "/app/events?tab=discover&themes=funding,saas",
+   "design": "b2-events-flow.html",
+   "board-index": 13,
+   "width": 1440,
+   "wait-for": "[data-discover-all]",
+   "journey": {
+    "discover": "many"
+   },
+   "note": "P04 探す · テーマ弹层（大量）",
+   "steps": [
+    {
+     "click": "[data-discover-filter=theme]"
+    },
+    {
+     "hover": "[data-discover-row]:nth-child(2)"
+    },
+    {
+     "wait": 400
+    }
+   ]
+  }
+ ]
+}

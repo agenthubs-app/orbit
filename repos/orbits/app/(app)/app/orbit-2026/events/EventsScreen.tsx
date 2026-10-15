@@ -2,7 +2,7 @@
 
 // R26 イベント (events DESIGN §2.1): the 評価 / 参加予定 / 探す page in the shell. 評価: the input card, 次の参加予定,
 // 評価したイベント (score order) and the selected assessment in the rail (1440) / a drawer (1024) / its own screen (390).
-// 参加予定: events/mine upcoming + past. 探す: R27 builds it; until then the existing catalogue list is shown (DESIGN §7).
+// 参加予定: events/mine upcoming + past. 探す: R27 `DiscoverTab`（コミュニティ / プランに効く / すべて，右栏「選択中のイベント」）。
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -15,6 +15,7 @@ import { ShellPage, useInShell } from "../shell/slots";
 import { Drawer, Icon, Kbd, Modal, Orbit2026Scope, SampleTag, ToastProvider, useStandardCopy, useToast } from "../ui";
 import { Assessing, FillThree, LoginRequired, NotEventPage, PasteText } from "./AssessFlow";
 import { AssessmentPage, AssessmentRail, ScoreRing, translator, verdictLabel, type Translate } from "./AssessmentDetail";
+import { DiscoverHelpRail, DiscoverRail, DiscoverTab, type DiscoverRailState } from "./DiscoverTab";
 import { eventsApi, newIdempotencyKey, pollAssessment } from "./events-api";
 import { cardLine, eventWhen, isShownInGrid, meetCount, monthOf, orderAssessed, relativeDay, tabOf, verdictTone } from "./events-model";
 import styles from "./events.module.css";
@@ -36,7 +37,7 @@ function useTier(): Tier {
 
 export interface EventsScreenProps {
   language: OrbitLanguage;
-  /** Server-rendered 探す content (the existing catalogue list until R27). */
+  /** Server-rendered 探す content override (tests); R27 renders `DiscoverTab` by default. */
   discover?: ReactNode;
   /** `/app/events/assessments/[id]`: open this assessment. */
   initialAssessmentId?: string | null;
@@ -75,6 +76,8 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   const [busy, setBusy] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [discoverRail, setDiscoverRail] = useState<DiscoverRailState>({ row: null, signedOut: false });
+  const [discoverSubtitle, setDiscoverSubtitle] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const abort = useRef<AbortController | null>(null);
 
@@ -173,7 +176,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
 
   const assessedCount = (items ?? []).filter((item) => item.status === "ready" || item.status === "needs_input").length;
   const month = monthOf(now);
-  const subtitle = tab === "going"
+  const subtitle = tab === "discover" && discoverSubtitle ? discoverSubtitle : tab === "going"
     ? t("subtitleGoing", { going: upcomingCount, month })
     : assessedCount === 0 && upcomingCount === 0 ? t("subtitleEmpty")
       : assessedCount >= 3 ? t("subtitle", { assessed: assessedCount, going: upcomingCount, month }) : t("subtitleGoing", { going: upcomingCount, month });
@@ -194,7 +197,9 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   // 参加予定页签（b12 #310）：右栏是下一场（有评估记录的）参加予定的「評価の詳細」。
   const goingRailItem = tab === "going" ? upcoming.map((event) => (items ?? []).find((item) => item.id === event.assessmentId)).find((item) => item?.status === "ready") ?? null : null;
   const shownRailItem = tab === "assess" && !empty ? railItem : goingRailItem;
-  const rail = tier !== "wide" ? false : shownRailItem
+  const rail = tier !== "wide" ? false : tab === "discover"
+    ? (discoverRail.row ? <DiscoverRail row={discoverRail.row} language={language} /> : <DiscoverHelpRail language={language} />)
+    : shownRailItem
     ? <AssessmentRail item={shownRailItem} language={language} busy={busy} onAdd={() => void decide(shownRailItem, "add")} onSkip={() => void decide(shownRailItem, "skip")} />
     : true;
 
@@ -207,7 +212,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
           {segmentFor(true)}
         </>
       ) : !inShell ? <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>{segment}</div> : null}
-      {tab === "discover" && discover ? <div data-events-discover="">{discover}</div> : null}
+      {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} />}</div> : null}
       {tab === "going" ? <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} /> : null}
       {tab === "assess" ? (
         <div className={tier === "narrow" ? styles.stack : styles.wgrid} data-events-assess="">

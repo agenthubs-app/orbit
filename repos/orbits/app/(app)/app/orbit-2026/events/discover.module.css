@@ -1,0 +1,64 @@
+/* R27 イベント › 探す（Web）：照 b2 #11–#13 的 kit 源码（ui.css .search / .wfilter / .datebox / .table / .why / .popover / .fopt）搬过来，数值换成 token。 */
+.filterRow { gap: 10px; }
+.search { flex: 1; height: 44px; border-radius: var(--r-pill); background: var(--surface); display: flex; align-items: center; gap: 8px; padding: 0 16px; color: var(--ink-3); font-size: var(--fs-row); }
+.search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; padding: 0; }
+.search input::placeholder { color: var(--ink-3); }
+.popWrap { position: relative; }
+.wfilter.wfilter { display: inline-flex; align-items: center; gap: 6px; height: 40px; min-height: 0; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: var(--surface); font-size: var(--fs-control); font-weight: var(--fw-bold); color: var(--ink-2); white-space: nowrap; cursor: pointer; }
+.wfilter.on { background: var(--accent-soft); color: var(--ink); }
+.wfilter svg { width: 14px; height: 14px; }
+.popover { position: absolute; top: calc(100% - 5px); left: 0; z-index: var(--z-raised); background: var(--surface); border-radius: var(--r-card-web); box-shadow: var(--shadow-float); padding: 18px; width: 400px; border: 1px solid var(--line); }
+.popRight { left: auto; right: 8px; }
+.optChips { margin-top: 12px; gap: 8px; }
+.fopt.fopt { height: 34px; min-height: 0; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-control); font-weight: var(--fw-bold); cursor: pointer; }
+.foptOn.foptOn { background: var(--ink); color: var(--bg); }
+.toggleRow { margin-top: 14px; font-size: var(--fs-control); font-weight: var(--fw-bold); }
+.popFoot { margin-top: 14px; gap: 8px; }
+.ghost.ghost { background: transparent; color: var(--ink-2); }
+.sectionHead { margin: 8px 0 -6px; }
+.evc { flex: 1; }
+.evcTitle { display: block; margin-top: 12px; font-size: var(--fs-body); font-weight: var(--fw-bold); }
+.push { margin-top: 12px; padding-top: 10px; }
+.detailBtn { margin-left: auto; }
+.whyBox { margin-top: 10px; }
+.reasonChip { flex: 1; max-width: none; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; }
+.why.why { display: inline-flex; width: 18px; height: 18px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-3); align-items: center; justify-content: center; font-size: var(--fs-tiny); font-weight: var(--fw-heavy); cursor: pointer; flex: 0 0 auto; }
+.whyBody { margin-top: 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); font-size: var(--fs-meta); color: var(--ink-2); line-height: var(--lh-prose); text-align: left; }
+.community { padding: 16px 20px; }
+.commRow.commRow { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 0; border-radius: var(--r-tile); padding: 10px 12px; min-height: 0; height: auto; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.datebox { width: 44px; flex: 0 0 auto; text-align: center; border-radius: var(--r-emo); background: var(--surface-2); padding: 5px 0; line-height: var(--lh-tight); }
+.datebox b { display: block; font-family: var(--font-num); font-size: var(--fs-emoji-sm); font-weight: var(--fw-heavy); }
+.datebox small { font-size: var(--fs-tab); color: var(--ink-3); font-weight: var(--fw-bold); }
+.grow { flex: 1; min-width: 0; }
+.ell { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.muted { color: var(--ink-3); }
+.table { width: 100%; border-collapse: collapse; font-size: var(--fs-body-sm); }
+.table th { text-align: left; font-size: var(--fs-label); font-weight: 600; color: var(--ink-3); padding: 0 10px 10px; }
+.table td { padding: 11px 10px; border-top: 1px solid var(--line); vertical-align: middle; }
+.table tr { transition: background 0.15s; cursor: pointer; }
+.table tbody tr:hover { background: var(--surface-2); }
+.hovActs { display: flex; gap: 6px; opacity: 0; transition: opacity 0.2s; justify-content: flex-end; }
+.table tr:hover .hovActs, .hovActs:focus-within { opacity: 1; }
+.lbtn.lbtn { width: 34px; height: 34px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); flex: 0 0 auto; cursor: pointer; }
+.lbtn svg { width: 16px; height: 16px; }
+.widenBtn { gap: 6px; }
+.guideTitle { font-size: var(--fs-number); font-weight: var(--fw-heavy); margin: 4px 0; }
+.signedOut { padding: 14px 20px; font-size: var(--fs-control); color: var(--ink-2); }
+.searchPanel { gap: 8px; }
+.searchRow.searchRow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 0; border: 0; border-radius: var(--r-row); background: transparent; min-height: 0; height: auto; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.groupLbl { margin-top: 14px; font-size: var(--fs-label); color: var(--ink-3); font-weight: 600; }
+.av { width: 32px; height: 32px; border-radius: var(--r-pill); display: grid; place-items: center; background: var(--mac-lav); color: var(--mac-lav-ink); font-weight: var(--fw-heavy); font-size: var(--fs-body-sm); flex: 0 0 auto; }
+.pasteRow { display: flex; align-items: center; gap: 10px; margin-top: 12px; color: inherit; text-decoration: none; }
+@media (prefers-reduced-motion: reduce) { .table tr, .hovActs { transition: none; } }
+.railHero.railHero { text-align: center; align-items: center; padding: 18px; }
+.railName { display: block; font-size: var(--fs-emph); }
+.railRing { width: 120px; margin: 14px auto 8px; }
+.railBig.railBig { font-size: var(--fs-number-xl); }
+.activeChip.activeChip { height: auto; min-height: 0; border: 0; cursor: pointer; }
+.c_blue { background: var(--mac-blue); color: var(--mac-blue-ink); }
+/* kit .rail：gap 14、h4 13px（b2 #12 / #13）。 */
+.rail.rail { gap: 14px; }
+.railH.railH { font-size: var(--fs-body-sm); }
+.railHero b { align-self: stretch; }
+/* kit .faded（b2 #6 / #11「プランができると」示例行）。 */
+.faded { opacity: 0.5; filter: saturate(0.7); pointer-events: none; }
