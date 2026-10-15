@@ -63,6 +63,36 @@
    "storage": {
     "orbit.events.recentSearches": "[\"VC 交流会\",\"製造業 名古屋\"]"
    }
+  },
+  {
+   "id": "A-R27-14",
+   "design": "b2-events-flow.html",
+   "board-index": 14,
+   "path": "/events/demo-event-cfo-night-18",
+   "journey": {
+    "overview": "empty"
+   },
+   "note": "P07 詳細 · 参加者 0（登壇者から推定）"
+  },
+  {
+   "id": "A-R27-15",
+   "design": "b2-events-flow.html",
+   "board-index": 15,
+   "path": "/events/demo-event-cfo-night-18",
+   "journey": {
+    "overview": "few"
+   },
+   "note": "P08 詳細 · 参加者 少"
+  },
+  {
+   "id": "A-R27-16",
+   "design": "b2-events-flow.html",
+   "board-index": 16,
+   "path": "/events/demo-event-cfo-night-18?tab=people",
+   "journey": {
+    "overview": "many"
+   },
+   "note": "P09 詳細 · 参加者 多（参加者 tab）"
   }
  ]
 }

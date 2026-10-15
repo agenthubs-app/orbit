@@ -20,7 +20,7 @@
 | R15（REWORK-REPORT） | 两端「待组件库」剩下的画面 | 重跑 R15 的门禁清单 |
 | W-R26-31 | Web Modal 380 宽和关闭钮 | 重跑 W-R26-31 |
 | W-R27-13 | FilterOption 上下差 7、Toggle 44×26 | 重跑 W-R27-13 |
-| R27（App） | App `Segmented` 高 38 vs kit `.seg` 30（同 R26-11） | 重跑 app-R27 的 A-R27-06 / 07 / 08（浅深）；seg 临时补丁下各带 dy ≤4、只差字形（证据 R27/run-01/app/a6、p1） |
+| R27（App） | App `Segmented` 高 38 vs kit `.seg` 30（同 R26-11） | 重跑 app-R27 的 A-R27-06 / 07 / 08 / 16（浅深）；seg 临时补丁下各带 dy ≤4、只差字形（证据 R27/run-01/app/a6、p1、d3） |
 | R27（App） | App `FilterOption` 上下内边距、`Toggle` 尺寸（同 W-R27-13） | 重跑 A-R27-09 筛选弹层 |
 
 ## 2. 待其他 Sprint（乙）
