@@ -2121,6 +2121,18 @@
     .dmenu > div { padding: 8px 10px; border-radius: 10px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
     .web.kiosk .camv { position: absolute; right: 24px; top: 96px; bottom: 24px; width: 440px; border-radius: 28px; background: #0F0E12; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: #F7F5F7; }
     .camv .vf { width: 240px; height: 240px; border-radius: 26px; box-shadow: 0 0 0 3px var(--plum-300); position: relative; }
+    /* 公开主办方页（照 b7 #33–#35） */
+    .pubweb { display: block !important; }
+    .pubweb > .main { height: 796px; padding: 30px 40px 60px; overflow: hidden; }
+    .pubtop { height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 32px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 55%, transparent); }
+    .logo-s { width: 32px; height: 32px; border-radius: 10px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; font-size: 14px; flex: none; }
+    .hostav { width: 92px; height: 92px; border-radius: 30px; font-size: 46px; display: grid; place-items: center; background: var(--mac-lav); flex: none; }
+    .stat { background: var(--surface-2); border-radius: 16px; padding: 10px 14px; }
+    .stat b { display: block; font-family: var(--font-num); font-size: 22px; font-weight: 800; line-height: 1.2; }
+    .past { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 18px; background: var(--surface); }
+    .pev { background: var(--surface); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; }
+    .pev .push { margin-top: auto; }
+    .pcguide { text-align: center; padding: 26px 20px; }
   }
 </style>
 </head>
@@ -8033,6 +8045,51 @@ g += WP('W-R17-50 運営センター · 下書き / 中止 / アーカイブ', '
 g += WP('W-R17-51 運営台 · 下書き', '', () => ({ nav: 'host', body: consoleState(0) }), [['.k-st', 0, '下書き横幅：基本情報を編集 / 公開する']], 'b6 概要 · 补画 2026-10-16');
 g += WP('W-R17-52 運営台 · 中止', '', () => ({ nav: 'host', body: consoleState(1) }), [['.k-st', 0, '中止横幅（珊瑚浅底）：已通知人数；可アーカイブ']], 'b6 概要 · 补画 2026-10-16');
 g += WP('W-R17-53 運営台 · アーカイブ', '', () => ({ nav: 'host', body: consoleState(2) }), [['.k-st', 0, 'アーカイブ：只读，数字卡淡化；可解除']], 'b6 概要 · 补画 2026-10-16');
+window.B12X.H6 = { center, overview, matching, participants, regForm, report, appCenter, appEvent, appCheckin, evForm, appReview, hostHead, HE, appCenterFew };
+__g8out(group('g8', g));
+})();
+
+/* ===================== 补画 · 2026-10-16（续）：主催 R17 · B1 / B3 的 1024 / 390 + B6 公开页 1024（§38 第 2 批）===================== */
+(() => {
+const X = B12X.H6, HV3 = B12X.HV3;
+const S8 = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+const W10 = (id, name, body, src) => WP(`${id} ${name} · 1024`, '', () => ({ nav: 'host', body }), null, src + ' · 补画 2026-10-16', 1024);
+const M39 = (id, name, body, src) => WP(`${id} ${name} · 390`, '', () => ({ body, tab: -1 }), null, src + ' · 补画 2026-10-16', 390);
+const pcGuide = (title, what) => topbar(title, X.HE[0].n, `<button class="rbtn">${ic('left')}</button>`, '<span></span>') + `<div class="card guide pcguide"><div style="font-size:44px;line-height:1">💻</div><b style="display:block;font-size:17px;margin-top:8px">${title}は PC で編集できます</b><div class="sub" style="margin:6px 0 16px">${what}</div><button class="btn primary block">PC で開くリンクを自分に送る</button><button class="btn ghost block" style="margin-top:6px">${ic('copy', 'sm')}リンクをコピー</button></div>`;
+/* 390 建活动：单列表单（同 1440 字段顺序） */
+const evForm390 = () => topbar('イベントを作成', '運営センター', `<button class="rbtn">${ic('x')}</button>`, '<button class="btn sm">下書き保存</button>') + `<div class="card">${[['イベント名 *', 'CFO Night Tokyo vol.19'], ['日時 *', '11月4日（水）19:00–21:30'], ['会場 *', '渋谷ストリーム 4F ホール'], ['定員', '150名'], ['参加費', '¥5,000']].map(([l, v]) => `<div style="padding:8px 0"><div class="lbl" style="font-weight:700;color:var(--ink-2)">${l}</div><div class="input" style="margin-top:6px;height:42px;color:var(--ink)">${v}</div></div>`).join('')}
+  <div style="padding:8px 0"><div class="lbl" style="font-weight:700;color:var(--ink-2)">所属する主催者ページ *</div><div class="input k-evorg" style="margin-top:6px;height:42px;color:var(--ink);justify-content:space-between">🥂 CFO Night 実行委員会${ic('down', 'sm')}</div></div></div>
+  <div class="card"><div class="card-h"><h3>説明文</h3><span class="lbl">200字まで</span></div><div class="ta">上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。<span class="counter">36 / 200</span></div></div>
+  <button class="btn primary block xl" style="margin-top:6px">公開へ進む</button>`;
+/* 公开主办方页 1024（照 b7 #34 结构，数字按 §2.11） */
+const HOSTP = { n: 'CFO Night 実行委員会', intro: '上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜を、毎月渋谷で開いています。キーノートのあと、テーブルトークを 3ラウンド。' };
+const UPP = [{ n: 'CFO Night Tokyo vol.19', d: '11月11日（水）19:00', p: '渋谷ストリーム 4F', fee: '¥5,000', left: '残り 32席', emo: '🥂', c: 'lav' }, { n: 'CFO Night 特別編：IPO 準備の実務', d: '12月9日（水）19:00', p: '大手町 Inspired.Lab', fee: '¥6,000', left: '申込受付前', emo: '📈', c: 'pink' }];
+const PASTP = [['vol.18', '10月7日', 128], ['vol.17', '9月9日', 140], ['vol.16', '8月5日', 136]];
+const pub1024 = (theme) => `<div class="web w1024 pubweb" ${theme ? `data-theme="${theme}"` : ''}><div class="pubtop"><span class="logo-s">O</span><b style="font-size:15px">Orbit</b><span style="flex:1"></span><button class="btn ghost">ログイン</button><button class="btn primary">Orbit をはじめる</button></div><section class="main">
+  <div class="card k-pubhead" style="padding:24px"><div class="row" style="gap:22px;align-items:center"><div class="hostav">🥂</div><div style="flex:1"><div class="lbl">主催者</div><div style="font-size:24px;font-weight:900">${HOSTP.n}</div><div class="sub" style="margin-top:6px;line-height:1.7">${HOSTP.intro}</div>
+    <div class="grid3" style="gap:8px;margin-top:12px;width:380px">${[['開催回数', 18, '回'], ['累計参加者', '2,140', '名'], ['フォロワー', 860, '']].map(([l, v, u]) => `<div class="stat"><span class="lbl">${l}</span><b>${v}<small style="font-size:12px;color:var(--ink-3)">${u}</small></b></div>`).join('')}</div></div>
+    <div style="align-self:flex-start;display:grid;gap:8px"><button class="btn primary xl">${ic('plus', 'sm')}フォローする</button></div></div></div>
+  <div class="wgrid" style="margin-top:18px"><div class="span12"><b style="font-size:15px">これからのイベント</b></div>${UPP.map(u => `<div class="pev span6"><div class="row between"><span class="emo ${u.c}">${u.emo}</span><span class="chip ${u.left.includes('残り') ? 'blue' : ''}">${u.left}</span></div><b style="font-size:16px;margin-top:12px;display:block">${u.n}</b><div class="lbl" style="margin-top:3px">${u.d} · ${u.p} · ${u.fee}</div><div class="row push" style="gap:8px;margin-top:14px"><button class="btn sm primary">詳細・申込</button><button class="btn sm ghost">${ic('share', 'sm')}共有</button></div></div>`).join('')}
+    <div class="span12 row between"><b style="font-size:15px">過去のイベント</b><span class="lbl">18件</span></div><div class="span12" style="display:grid;gap:10px;grid-template-columns:repeat(3,1fr)">${PASTP.map(([v, d, n]) => `<div class="past"><span class="emo sm lav">🥂</span><div style="flex:1;min-width:0"><b style="font-size:13px">CFO Night Tokyo ${v}</b><div class="lbl">${d} · 参加 ${n}名</div></div></div>`).join('')}</div></div></section></div>`;
+let g = '';
+g += S8('补画 · 2026-10-16 · 主催 R17 · B1 / B3 Web 1024', '1024 = b8 断点规范：左栏收为图标、右栏收起，主区同 1440');
+g += W10('W-R17-01-1024', 'イベントを作成', X.evForm(false), 'W-R17-01');
+g += W10('W-R17-60-1024', '運営センター', X.center('many'), 'b6 #2');
+g += W10('W-R17-61-1024', 'イベント運営 · 概要', X.overview(), 'web.html #20');
+g += W10('W-R17-62-1024', 'マッチング', X.matching('many'), 'b6 #5');
+g += W10('W-R17-63-1024', '参加者', X.participants('many'), 'b6 #9');
+g += W10('W-R17-64-1024', '申込設定', X.regForm('many'), 'b6 #15');
+g += W10('W-R17-65-1024', 'レポート', X.report('many'), 'b6 #18');
+g += S8('补画 · 2026-10-16 · 主催 R17 · B1 / B3 Web 390', '390：運営センター / 概要 / 参加者 照 App；申込設定 / マッチング / レポート 只放「PC で編集」引导；建活动单列表单');
+g += M39('W-R17-01-390', 'イベントを作成', evForm390(), 'W-R17-01');
+g += M39('W-R17-60-390', '運営センター', X.appCenter('many'), 'b6 #22');
+g += M39('W-R17-61-390', 'イベント運営 · 概要', X.appEvent(), 'b6 #23');
+g += M39('W-R17-63-390', '参加者', X.appReview(), 'A-R17-32');
+g += M39('W-R17-62-390', 'マッチング（PC で編集）', pcGuide('マッチング', 'テーブルの確認・入れ替え・公開は画面の広い PC で行えます。結果を見るだけなら App で。'), 'B3');
+g += M39('W-R17-64-390', '申込設定（PC で編集）', pcGuide('申込設定', '説明文・質問・お知らせの文面は PC で編集できます。'), 'B3');
+g += M39('W-R17-65-390', 'レポート（PC で詳細）', pcGuide('レポート', '申込推移・テーブル別・会後フォローの内訳は PC で見られます。'), 'B3');
+g += S8('补画 · 2026-10-16 · 主催 R17 · B6 公開ページ 1024', '照 b7 #35（大量）结构，宽度 1024；数字按 §2.11 口径');
+g += `<div class="board" style="margin-bottom:34px">${lab('W-R17-70 主催者の公開ページ · 1024', 'many', 'b7 #35 · 补画 2026-10-16')}<div class="pair col">${pub1024('')}${pub1024('dark')}</div><ul class="note-list"><li><b>1</b><span>公开顶栏 + 主办方卡（开催回数 / 累计参加者 = 受付人数 / 关注者）+ これから 2 列 + 過去 3 列</span></li></ul></div>`;
 __g8out(group('g8', g));
 })();
 /* ===================== 出力 ===================== */
