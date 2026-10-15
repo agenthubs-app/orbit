@@ -14,6 +14,7 @@ import { eventOverviewResponseSchema } from "../../../shared/api-schema/event-ov
 import { eventPrepChecklistPatchSchema, eventPrepResponseSchema } from "../../../shared/api-schema/event-prep";
 import { eventRecommendationDismissInputSchema, eventRecommendationDismissResultSchema } from "../../../shared/api-schema/event-recommendation-feedback";
 import { eventSearchQueryObject, eventSearchResponseSchema } from "../../../shared/api-schema/event-search";
+import { eventCodeResolveResponseSchema } from "../../../shared/api-schema/event-code";
 import { eventVenueMemoInputObject, eventVenueMemoResultSchema, eventVenueResponseSchema } from "../../../shared/api-schema/event-venue";
 import { organizerFollowResultSchema } from "../../../shared/api-schema/organizer-follow";
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
@@ -192,6 +193,12 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       const service = await join();
       if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
       return service.cancel(actorId!, eventId(params), language);
+    }, deps),
+    // 参加コード → 活动（App 的 /register/〈コード〉）；找不到不算错，eventId = null。
+    byCode: journeyRoute({ auth: "required", schema: eventCodeResolveResponseSchema }, async ({ params, service }) => {
+      const code = decodeURIComponent((params.code ?? "").trim()).toUpperCase();
+      if (!code || code.length > 32) return { error: new AppError("VALIDATION_ERROR", "Invalid code.") };
+      return { code, eventId: await service.eventIdByCode(code).catch(() => null) };
     }, deps),
     follow: journeyRoute({ auth: "required", schema: organizerFollowResultSchema, write: true }, async ({ actorId, params, service }) => service.follow(actorId!, (params.id ?? "").trim(), true), deps),
     unfollow: journeyRoute({ auth: "required", schema: organizerFollowResultSchema, write: true }, async ({ actorId, params, service }) => service.follow(actorId!, (params.id ?? "").trim(), false), deps),

@@ -14,6 +14,7 @@ import type { EventAssessmentAddToPlanResult, EventAssessmentAvailability, Event
 import type { MyEventsResponse } from "../../shared/contract/events-mine";
 import type { EventDiscoverResponse } from "../../shared/contract/event-discover";
 import type { EventSearchResponse } from "../../shared/contract/event-search";
+import type { EventCodeResolveResponse } from "../../shared/contract/event-code";
 import type { EventPrepChecklistPatch, EventPrepResponse } from "../../shared/contract/event-prep";
 import type { OrganizerFollowResult } from "../../shared/contract/organizer-follow";
 import type { EventOverviewResponse } from "../../shared/contract/event-overview";
@@ -34,6 +35,7 @@ import type { eventAssessmentAddToPlanResultObject, eventAssessmentAvailabilityO
 import type { myEventsResponseObject } from "../../shared/api-schema/events-mine";
 import type { eventDiscoverResponseObject } from "../../shared/api-schema/event-discover";
 import type { eventSearchResponseObject } from "../../shared/api-schema/event-search";
+import type { eventCodeResolveResponseObject } from "../../shared/api-schema/event-code";
 import type { eventPrepChecklistPatchObject, eventPrepResponseObject } from "../../shared/api-schema/event-prep";
 import type { organizerFollowResultObject } from "../../shared/api-schema/organizer-follow";
 import type { eventOverviewResponseObject } from "../../shared/api-schema/event-overview";
@@ -83,6 +85,7 @@ expectParity<Parity<EventAssessmentAvailability, typeof eventAssessmentAvailabil
 expectParity<Parity<MyEventsResponse, typeof myEventsResponseObject>>();
 expectParity<Parity<EventDiscoverResponse, typeof eventDiscoverResponseObject>>();
 expectParity<Parity<EventSearchResponse, typeof eventSearchResponseObject>>();
+expectParity<Parity<EventCodeResolveResponse, typeof eventCodeResolveResponseObject>>();
 expectParity<Parity<EventPrepResponse, typeof eventPrepResponseObject>>();
 expectParity<Parity<EventPrepChecklistPatch, typeof eventPrepChecklistPatchObject>>();
 expectParity<Parity<OrganizerFollowResult, typeof organizerFollowResultObject>>();

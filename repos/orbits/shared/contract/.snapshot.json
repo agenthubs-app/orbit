@@ -5289,6 +5289,26 @@
         }
       }
     },
+    "event-code.ts::EventCodeResolveResponse": {
+      "kind": "object",
+      "members": {
+        "code": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
     "event-discover.ts::EventDiscoverPeriod": {
       "kind": "enum",
       "values": [

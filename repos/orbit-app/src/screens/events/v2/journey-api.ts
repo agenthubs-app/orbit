@@ -5,6 +5,7 @@ import type { ZodType } from "zod";
 
 import type { OrbitApiClient } from "../../../api/client";
 import type { ApiResult } from "../../../api/types";
+import type { EventCodeResolveResponse } from "../../../api/contract/event-code";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../../api/contract/event-after";
 import type { EventDiscoverQuery, EventDiscoverResponse } from "../../../api/contract/event-discover";
 import type { EventJoinAnswer, EventJoinCancelResult, EventJoinProfile, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../api/contract/event-join";
@@ -15,6 +16,7 @@ import type { EventSearchResponse } from "../../../api/contract/event-search";
 import type { EventVenueMemoResult, EventVenueResponse } from "../../../api/contract/event-venue";
 import type { OrganizerFollowResult } from "../../../api/contract/organizer-follow";
 import { eventAfterConfirmResultSchema, eventAfterResponseSchema } from "../../../api/schema/event-after";
+import { eventCodeResolveResponseSchema } from "../../../api/schema/event-code";
 import { eventDiscoverResponseSchema } from "../../../api/schema/event-discover";
 import { eventJoinCancelResultSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../api/schema/event-join";
 import { eventOverviewResponseSchema } from "../../../api/schema/event-overview";
@@ -50,6 +52,7 @@ export function createJourneyApi(client: OrbitApiClient, read: Read) {
   return {
     discover: (query: EventDiscoverQuery) => read(client.get<unknown>(`/api/events/discover?${discoverQueryString(query)}`), eventDiscoverResponseSchema as ZodType<EventDiscoverResponse>),
     search: (q: string, limit = 5) => read(client.get<unknown>(`/api/events/search?q=${encodeURIComponent(q)}&limit=${limit}&platform=app`), eventSearchResponseSchema as ZodType<EventSearchResponse>),
+    byCode: (code: string) => read(client.get<unknown>(`/api/events/by-code/${id(code)}`), eventCodeResolveResponseSchema as ZodType<EventCodeResolveResponse>),
     overview: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/overview?platform=app`), eventOverviewResponseSchema as ZodType<EventOverviewResponse>),
     prep: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/prep?platform=app`), eventPrepResponseSchema as ZodType<EventPrepResponse>),
     checklist: (eventId: string, items: readonly EventPrepChecklistItem[]) => read(client.patch<unknown>(`/api/events/${id(eventId)}/prep/checklist`, { body: { items } }), eventPrepResponseSchema as ZodType<EventPrepResponse>),
