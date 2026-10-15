@@ -92,7 +92,7 @@
 .pGrow { flex: 1; min-width: 0; }
 .pCrit.pCrit { margin-top: 3px; }
 .pTabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); margin: 14px 0 12px; }
-.pTab.pTab { height: auto; min-height: 0; padding: 9px 0; border: 0; border-radius: 0; background: transparent; font-weight: var(--fw-bold); color: var(--ink-3); font-size: var(--fs-body-sm); position: relative; white-space: nowrap; }
+.pTab.pTab { height: auto; min-height: 0; padding: 9px 0; border: 0; background: transparent; font-weight: var(--fw-bold); color: var(--ink-3); font-size: var(--fs-body-sm); position: relative; white-space: nowrap; }
 .pTab.pTabOn { color: var(--ink); }
 .pTab.pTabOn::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2.5px; border-radius: var(--r-hair); background: var(--ink); }
 .pTab small { font-family: var(--font-num); color: var(--ink-3); margin-left: 3px; }
