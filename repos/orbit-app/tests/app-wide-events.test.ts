@@ -87,7 +87,6 @@ test.before(async () => {
   const result = await build({
     stdin: { contents: `import React, { useState } from "react"; import { createRoot } from "react-dom/client";
 import { AppScreen } from "./src/components/AppScreen";
-import { EventsScreen } from "./src/screens/events/EventsScreen";
 import { HomeScreen } from "./src/screens/home/HomeScreen";
 import { OrganizerPublicScreen } from "./src/screens/organizer/OrganizerPublicScreen";
 import { EventCenterScreen } from "./src/screens/events/EventCenterScreen";
@@ -117,7 +116,7 @@ function AdmissionFixture() {
 }
 const analytics = eventAnalyticsToView({ appointments: { awaitingResponse: 0, cancelled: 0, completed: 0, confirmed: 0, draft: 0, negotiating: 0, reschedulePending: 0 }, checkIns: { checkedIn: 2 }, contactRequests: { accepted: 1, awaitingTargetConsent: 0, declined: 0, withdrawn: 0 }, encounters: { captured: 1, projected: 0 }, eventId: "event:style", grouping: { published: false, roundOne: { assignedParticipants: 0, tables: 0 }, roundTwo: { assignedParticipants: 0, tables: 0 } }, kind: "organizer_aggregate", registrations: { active: 4, cancelled: 0 } });
 function AnalyticsFixture() { useFixture(); const [kind, setKind] = useState("organizer_aggregate"); return <AppScreen title="活动数据报告"><EventAnalyticsContent activeKind={kind} attendeeAvailable organizerAvailable={state.organizerAvailable !== false} onChangeKind={value => { state.navigation.push(value); setKind(value); }} state={{ kind: state.kind, message: "当前账号没有权限" }} view={analytics} /></AppScreen>; }
-const screens = { events: EventsScreen, home: () => <HomeScreen />, organizer: OrganizerPublicScreen, center: EventCenterScreen, rolesEditor: EventRolesScreen, admission: AdmissionFixture, analytics: AnalyticsFixture };
+const screens = { home: () => <HomeScreen />, organizer: OrganizerPublicScreen, center: EventCenterScreen, rolesEditor: EventRolesScreen, admission: AdmissionFixture, analytics: AnalyticsFixture };
 const Screen = screens[new URLSearchParams(location.search).get("screen")] || ContentFixture;
 createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -144,24 +143,6 @@ async function open(t: { after: (fn: () => Promise<void>) => void }, screen: str
 async function fits(control: Locator, minHeight = 44) { const box = (await control.boundingBox())!; assert.ok(box && box.height >= minHeight, `expected ${minHeight}pt target, got ${box?.height}`); assert.ok(box.x >= 0 && box.x + box.width <= 320, "control fits a 320pt phone"); }
 async function unclipped(text: Locator) { assert.equal(await text.evaluate(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1), false, "important title or value must remain fully readable"); }
 async function capture(page: Page, name: string) { if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-events-${name}.png`, fullPage: true }); }
-
-for (const scheme of ["light", "dark"] as const) {
-  test(`${scheme}: public event list preserves complete long title, date, venue and cover in open rows`, async t => {
-    const page = await open(t, "events", scheme); const name = page.getByText(title, { exact: true }); await name.waitFor();
-    await unclipped(name);
-    const event = page.getByRole("button", { name: new RegExp(title) }); await fits(event);
-    assert.equal(await event.locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px", "list has no enclosing card");
-    assert.ok(await event.locator('img[src*="meeting.jpg"]').count() > 0);
-    await unclipped(page.getByText(/东京国际交流中心三层/));
-    await page.getByRole("button", { name: "筛选活动主题", exact: true }).click();
-    const topic = page.getByRole("button", { name: "跨境商务", exact: true }); await fits(topic); await topic.click();
-    await page.getByRole("button", { name: "筛选活动主题", exact: true }).click();
-    assert.equal(await topic.getAttribute("aria-selected"), "true");
-    await capture(page, `list-${scheme}`); await event.click();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [{ pathname: "/events/[id]", params: { id: "event:style" } }]);
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-  });
-}
 
 test("operations uses open sections and a 50pt publication action with unchanged generation identity", async t => {
   const page = await open(t, "operations"); const publish = page.getByRole("button", { name: /发布/ }); await fits(publish, 50);
@@ -200,26 +181,6 @@ test("event actions and identity reflow under doubled browser text at 320pt", as
     if (screen === "roles") await unclipped(page.getByText(title, { exact: true }));
     await capture(page, `${screen}-large-dark`);
   }
-});
-
-test("signed-in event recommendations preserve real covers and horizontally reveal bounded actions", async t => {
-  const page = await open(t, "events&recommendations=true", "dark");
-  await page.getByRole("tab", { name: "推荐", exact: true }).click();
-  await page.getByText("为你推荐", { exact: true }).waitFor();
-  const first = page.getByRole("button", { name: "记下推荐", exact: true }).first();
-  const card = first.locator("..").locator("..").locator("..");
-  const box = (await card.boundingBox())!;
-  assert.ok(box.width <= 288 && box.x >= 0 && box.x + box.width <= 320);
-  await fits(first, 50); await unclipped(card.getByText(title, { exact: true }));
-  assert.ok(await card.locator('img[src*="meeting.jpg"]').count() > 0);
-  const rail = card.locator("..").locator("..");
-  assert.equal(await rail.evaluate(el => el.scrollWidth > el.clientWidth), true, "the second recommendation remains reachable by horizontal scrolling");
-  await rail.evaluate(el => { el.scrollLeft = el.scrollWidth; });
-  const last = page.getByRole("button", { name: "记下推荐", exact: true }).last();
-  await fits(last, 50); await last.click();
-  await page.getByText("暂时无法保存，请重试", { exact: true }).waitFor();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "POST", path: "/api/recommendations/events/event%3Asecond/accept", body: undefined }]);
-  await capture(page, "recommendations-dark");
 });
 
 test("personal event collection keeps long cover content and usable search and filters", async t => {

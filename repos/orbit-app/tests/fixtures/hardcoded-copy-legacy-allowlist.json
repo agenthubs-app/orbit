@@ -60,7 +60,6 @@
     "src/screens/events/EventOperationsScreen.tsx": 18,
     "src/screens/events/EventRolesContent.tsx": 11,
     "src/screens/events/EventRolesScreen.tsx": 29,
-    "src/screens/events/EventsScreen.tsx": 57,
     "src/screens/home/HomeScreen.tsx": 16,
     "src/screens/inbox/RelationshipInboxScreen.tsx": 2,
     "src/screens/notes/note-source-tasks-source.web.ts": 2,

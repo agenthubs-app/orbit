@@ -180,7 +180,7 @@
 | R26-07 | 每天一问的活动选项来源 | 用联系人 `metEventId` + 最早录入时间 | **已定（2026-10-12）**：R26 完成后改用参加记录 + 活动开始时间 | `R16-import-and-completion/REPORT.md`:32–36 |
 | R26-08 | 未登录活动列表 / 详情公开顶栏 | 旧顶栏 | 照 b1 公开页 | PA D14 |
 | R26-09 | `/app/events` 1440 水合警告、`/live` 403 控制台噪音 | 旧页 | 重写时消除 | README 合回前（R09 走查 W3、W5） |
-| R26-10 | 「探す」页签内容（SC-R26-14） | R27 前沿用旧目录列表（Web `events-list`、App `EventsScreen` 作为探す内容）；主会话 2026-10-15 定：不算 R26 未完成 | R27 换新「探す」后删 Web `events-list` 与 App `EventsScreen` | R26 REPORT SC-14 |
+| R26-10 | 「探す」页签内容（SC-R26-14） | **done（R27，2026-10-15）**：两端「探す」已换新（Web DiscoverTab、App DiscoverPage）；App `EventsScreen` 已删（`b220b6420` 之后一提交），Web `events-list` 随 R27 旧屏清理删除 | — | R26 REPORT SC-14 |
 | R26-11 | App R26 像素（app-R26.json 11 张） | **done（2026-10-15，`de9f32ac5`）**：通过 20 浅深、20d、21 / 22 / 23 / 24 浅深（11 张；24 由 `493b27ca0` 契约只加 `adoptedGuessFields` 解决）；**待组件库** 13 / 14 / 15 / 30 / 30e 浅深（`Segmented` 38 vs kit `.seg` 30，G23；临时补丁下 10 张全部通过） | G23 修 `Segmented` 后重跑 13 / 14 / 15 / 30 / 30e（`R26-app-agate.sh`，mock 端口以实际为准） | R26 REPORT「App 像素返工」 |
 | R26-12 | 「参加予定」卡分数（复核 M4） | 显示评估当时的分 | 按当前计划现算（需把计划类型接进「我的活动」读取） | R26 REPORT |
 | R26-13 | Web R26 余项 | 1024 的 10 / 11（b12 #332 / #334 与 b8 #0 截断口径不一）、全部 390、P04 / P06 / P08 未过 | 先统一画板口径再对齐 | R26 REPORT「收尾」 |

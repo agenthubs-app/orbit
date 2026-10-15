@@ -106,7 +106,7 @@ test("the shell remembers the Task segment and each scroll position for the sess
 });
 
 test("マイページ and イベント no longer draw their own tab bar; the root layout draws the one bar", () => {
-  for (const file of ["src/screens/profile/ProfileScreen.tsx", "src/screens/events/EventsScreen.tsx", "src/components/AppScreen.tsx"]) {
+  for (const file of ["src/screens/profile/ProfileScreen.tsx", "src/screens/events/v2/EventsHome.tsx", "src/components/AppScreen.tsx"]) {
     assert.doesNotMatch(readFileSync(join(root, file), "utf8"), /OrbitTabBar/u, file);
   }
   const layout = readFileSync(join(root, "app/_layout.tsx"), "utf8");

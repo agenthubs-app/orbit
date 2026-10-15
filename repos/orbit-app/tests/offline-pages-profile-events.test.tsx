@@ -20,7 +20,6 @@ let harness: Awaited<ReturnType<typeof startOfflinePageHarness>>;
 test.before(async () => {
   harness = await startOfflinePageHarness([
     { name: "meeting", importPath: "./src/screens/schedule/MeetingDetailScreen", exportName: "MeetingDetailScreen" },
-    { name: "events", importPath: "./src/screens/events/EventsScreen", exportName: "EventsScreen" },
     { name: "homeEvents", importPath: "./src/screens/home/HomeScreen", exportName: "HomeScreen" },
     { name: "preview", importPath: "./src/screens/schedule/ScheduleEventPreviewScreen", exportName: "ScheduleEventPreviewScreen" },
   ]);
@@ -38,21 +37,6 @@ test("a meeting's details: online saved per meeting; offline the copy with 截�
   assert.equal(await edit.isDisabled(), true);
   const never = await harness.open(t, { screen: "meeting", online: false, params: { id: "m2" } });
   await never.getByText("这项内容还没保存在这台设备上，联网打开一次后断网也能看。").waitFor();
-});
-
-test("the events tab offline shows the last seen public catalogue with 截至; recording a recommendation needs the network", async (t) => {
-  const catalogue = { events: [publicEvent("ev5", "AI 创业者晚宴"), publicEvent("ev6", "储能圆桌")] };
-  const page = await harness.open(t, { screen: "events", online: false, copies: { "public-events|main": copy(catalogue) } });
-  await page.getByText(OFFLINE_BANNER).first().waitFor();
-  await page.getByText("AI 创业者晚宴").first().waitFor();
-  assert.equal(await page.getByText("服务器连不上").count(), 0);
-  assert.deepEqual((await requestsOf(page)).filter((entry) => !entry.startsWith("get:") && !entry.startsWith("resource:")), []);
-});
-
-test("the events tab online saves the catalogue it read", async (t) => {
-  const page = await harness.open(t, { screen: "events", responses: { "/api/events/public": { events: [publicEvent("ev7", "服务器上的活动")] }, "/api/recommendations/events": { state: "empty", recommendations: [] } } });
-  await page.getByText("服务器上的活动").first().waitFor();
-  assert.ok((await fixtureValue<string[]>(page, "saves")).includes("public-events|main"));
 });
 
 test("the old events list reads the same catalogue copy offline", async (t) => {

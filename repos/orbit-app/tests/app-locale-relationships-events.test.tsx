@@ -10,7 +10,6 @@ const targetScreens = [
   "src/screens/contacts/ContactsScreen.tsx",
   "src/screens/contacts/ContactDetailScreen.tsx",
   "src/screens/add/ScanBatchScreen.tsx",
-  "src/screens/events/EventsScreen.tsx",
 ] as const;
 
 function translate(language: "en" | "ja" | "zh", key: string): string {

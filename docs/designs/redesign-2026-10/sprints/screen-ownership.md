@@ -36,9 +36,9 @@
 | 加人 | `invitations/[token]` | `RelationshipInvitationScreen` | A2 招待コード 受け取り側 | R12 / R15 / R16 | 重写 |
 | iOrbit | `(app)/ai`、`ai/[id]` | `AiScreen`、`AiConversationScreen` | iOrbit 起始屏 / 会話中 / 会話リスト（b4） | R21 | 重写 |
 | 活动 | `(app)/events` | `EventsScreen` | イベント 主页（評価 / 参加予定 / 探す）（b2） | R26 / R27 | 重写 |
-| 活动 | `events/[id]` | `EventDetailScreen` | イベント詳細 + 会う準備 | R26 / R27 | 重写 |
-| 活动 | `events/[id]/register`、`register`、`register/[code]` | `EventRegistrationScreen`、`RegisterInviteScreen` | 参加登録（AI 访谈式） | R26 / R27 | 重写 |
-| 活动 | `events/[id]/live`、`events/[id]/attendees`、`events/[id]/participants/[participantId]`、`party`、`party/checkin`、`party/graph` | `EventLiveScreen`（其余为跳转） | 会場モード | R26 / R27 | 重写；跳转路由随之处理 |
+| 活动 | `events/[id]`、`events/[id]/prep`、`events/[id]/after` | `EventDetailPage`、`PrepPage`、`AfterPage`（v2） | イベント詳細 + 会う準備 + 会後 | R26 / R27 | 已处理（R27：新屏 b2 #14–#16 / #24 / #37–#39；旧 `EventDetailScreen` 已删） |
+| 活动 | `events/[id]/register`、`register`、`register/[code]` | `RegisterPage`、`RegisterCodePage`（v2；`/register` 跳 R26 コード入力） | 参加登録（AI 访谈式） | R26 / R27 | 已处理（R27：b2 #20–#22、取り消し b3 #42；旧 `EventRegistrationScreen` / `RegisterInviteScreen` / `Registration7a*` 已删） |
+| 活动 | `events/[id]/live`、`events/[id]/attendees`、`events/[id]/participants/[participantId]`、`party`、`party/checkin`、`party/graph` | `VenuePage`（v2；其余跳 `live?tab=people` / `view=map`） | 会場モード | R26 / R27 | 已处理（R27：b2 #26–#35；旧 `EventLiveScreen` 已删，跳转改新参数） |
 | 主催 | `events/center` | `EventCenterScreen` | 運営センター（b6） | R17 | 重写 |
 | 主催 | `events/[id]/operations`、`…/admission`、`…/check-in`、`…/experience`、`…/roles`、`events/[id]/analytics` | 运营 5 屏 + `EventAnalyticsScreen` | イベント運営 6 页签 / 受付 / レポート / 共同運営者 | R17 | 重写 |
 | 主催 | `o/[slug]` | `OrganizerPublicScreen` | 主催者の公開ページ | R17 | 重写 |
@@ -69,8 +69,8 @@
 | 加人 | `/app/contacts/new` | `card-batch-0918`、network-import | 「＋」/ 名刺スキャン / 手入力 / 取り込み | R12 / R15 / R16 | 已处理（R12：名片与手入力；R16：その他 → `/app/contacts/new/import`（选门 / vCard / LinkedIn / CSV / イベントから → まとめて確認），旧 network-import 已删，`?method=` / `?import=` 重定向） |
 | 加人 | `/app/invitations/[token]`；新增 `/i/[code]` | 一对一邀请 | A2 招待コード 受け取り側（响应式） | R12 / R15 / R16 | 重写 + 新建 |
 | iOrbit | `/app/agent` | `iorbit-0918`（含星空首页、历史抽屉） | iOrbit 起始屏 / 会話中 / 会話リスト（b4） | R21 | 重写 |
-| 活动 | `/app/events`、`/app/events/[id]`、`/app/events/[id]/register`、`/app/register` | `events-0918`、报名工作台 | イベント 主页 / 詳細 / 参加登録（b2） | R26 / R27 | 重写 |
-| 活动 | `/app/events/[id]/live` | 会场页 | 会場モード | R26 / R27 | 重写 |
+| 活动 | `/app/events`、`/app/events/[id]`、`/app/events/[id]/register`、`/app/register`、`/app/register/[code]`、`/app/events/[id]/prep`、`/app/events/[id]/after` | `orbit-2026/events/*`（EventDetail · RegisterFlow · PrepPage · AfterPage · PublicEvents） | イベント 主页 / 詳細 / 参加登録 / 会う準備 / 会後（b2 / b12） | R26 / R27 | 已处理（R27；`events-0918` 详情 / 现场 / 列表与旧报名工作台已删，仍被运营用的 modal-frame 等保留） |
+| 活动 | `/app/events/[id]/live` | `orbit-2026/events/VenuePage` | 会場モード（390 = App で） | R26 / R27 | 已处理（R27） |
 | 主催 | `/app/events/center`、`/app/events/[id]/operations`、`…/admission`、`…/check-in`、`…/experience`、`/app/events/[id]/analytics` | `ops-0918` | 運営センター / イベント運営 / 受付 kiosk / レポート（b6） | R17 | 重写 |
 | 主催 | `/app/o/[slug]` | `orbit-real-organizer-public` | 主催者の公開ページ | R17 | 重写 |
 | Task | `/app/tasks`、`/app/tasks/[id]`、`/app/tasks/relationship/[id]`、`/app/agent/actions` | 任务页、Agent 决策 | Task › To-do | R20 | 重写 |

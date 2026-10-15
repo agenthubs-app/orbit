@@ -27,7 +27,6 @@
     "src/screens/events/EventOperationsContent.tsx",
     "src/screens/events/EventRolesContent.tsx",
     "src/screens/events/EventRolesScreen.tsx",
-    "src/screens/events/EventsScreen.tsx",
     "src/screens/home/HomeDashboardScreen.tsx",
     "src/screens/home/HomeScreen.tsx",
     "src/screens/inbox/NotificationDetailScreen.tsx",

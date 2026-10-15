@@ -48,7 +48,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
     consumer: "AllActionsAgentLedgerScreen",
     kind: "screen"
   },
-  { route: "/events", consumer: "EventsScreen", kind: "screen" },
+  { route: "/events", consumer: "EventsHome", kind: "screen" },
   { route: "/events/[id]", consumer: "EventDetailPage", kind: "screen" },
   {
     route: "/events/[id]/register",

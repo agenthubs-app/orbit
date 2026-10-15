@@ -108,11 +108,6 @@
       "controls": 1,
       "alert": 1
     },
-    "src/screens/events/EventsScreen.tsx": {
-      "oldComponent": 5,
-      "controls": 1,
-      "tablist": 1
-    },
     "src/screens/home/HomeDashboardScreen.tsx": {
       "oldComponent": 2
     },
