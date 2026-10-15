@@ -94,6 +94,113 @@ export function DetailRail({ data, t, onRegister }: { data: EventOverviewRespons
 }
 
 /** `signedOutAside`：未登录时右上卡片（默认「ログインして行く価値を判定」；/register/〈コード〉着地页换成参加コード卡）。 */
+/** < 768（b12 #352）：App 式詳細——封面卡（facts）· 评分条 · 下划线 tab · 参加者（プランに合う / 知り合い / 全員）· 底部 CTA。 */
+export function usePhone(): boolean {
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 767px)");
+    const update = () => setPhone(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return phone;
+}
+
+export function PhoneDetailBody({ data, language, t, onRegister }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; onRegister: () => void }) {
+  const at = assessTranslator(language);
+  const [tab, setTab] = useState<"intro" | "agenda" | "host" | "people">("intro");
+  const [filter, setFilter] = useState<"planFit" | "known" | "all">("planFit");
+  const [whyOpen, setWhyOpen] = useState(false);
+  const tone = data.assessment ? rowTone({ verdict: data.assessment.verdict }, 0) : null;
+  const people = data.attendees.filter((person) => (filter === "planFit" ? person.planFit : filter === "known" ? person.known : true));
+  const facts = [
+    { icon: "calendar" as const, text: eventRange(data.startsAt, data.endsAt, language) },
+    { icon: "pin" as const, text: data.venue ?? "—" },
+    { icon: "ticket" as const, text: [feeText(data.priceYen, t), data.capacity ? t("capacityN", { n: data.capacity }) : null, data.review ? t("reviewYes") : null].filter(Boolean).join(" · ") },
+  ];
+  const known = data.knownAttendees;
+  return (
+    <div className={x.phone} data-event-detail={data.eventId} data-detail-phone="">
+      <div className={`${styles.card} ${x.pCover}`}>
+        <div className={x.pCoverArt}>
+          <span className={`${styles.emo} ${x.pCoverEmo}`}>{data.emoji}</span>
+          {data.deadlineSoon && typeof data.remaining === "number" ? <span className={`${styles.chip} ${x.pDeadline}`}>{t("deadlineChip", { n: data.remaining })}</span> : null}
+        </div>
+        <div className={x.pCoverBody}>
+          <div className={styles.lbl}>{data.organizer.name}</div>
+          <b className={x.pTitle}>{data.title}</b>
+          <div className={x.pFacts}>{facts.map((fact) => <div key={fact.icon}><Icon name={fact.icon} size={16} />{fact.text}</div>)}</div>
+        </div>
+      </div>
+      {data.assessment && !data.signedOut ? (
+        <div className={x.pScore} data-why-box="">
+          <div className={x.pScoreRow}>
+            <ScoreRing score={data.assessment.score} size={50} stroke={5} label={String(data.assessment.score)}><span className={styles.score} style={{ fontSize: "var(--fs-emph)" }}>{data.assessment.score}</span></ScoreRing>
+            <div className={x.pGrow}>
+              <div className={styles.row} style={{ gap: 6 }}>
+                <span className={`${styles.chip} ${tone?.chip ? toneClass(tone.chip) : ""}`}>{data.assessment.verdict === "recommend" ? at("verdictRecommend") : data.assessment.verdict === "conditional" ? at("verdictConditional") : at("verdictSkip")}</span>
+                <button type="button" className={`btn ${d.why}`} aria-expanded={whyOpen} aria-label={t("why")} onClick={() => setWhyOpen((value) => !value)}>?</button>
+              </div>
+              <div className={`${styles.lbl} ${d.ell} ${x.pCrit}`}>{t("critLine", { g: data.assessment.display.goalFit, p: data.assessment.display.people, t: data.assessment.display.timeCost })}</div>
+            </div>
+            <Icon name="right" size={16} />
+          </div>
+          {whyOpen ? <div className={d.whyBody}>{data.assessment.basis}</div> : null}
+        </div>
+      ) : null}
+      <div className={x.pTabs} role="tablist">
+        {(["intro", "agenda", "host", "people"] as const).map((key) => (
+          <button key={key} type="button" role="tab" aria-selected={tab === key} className={`btn ${x.pTab} ${tab === key ? x.pTabOn : ""}`} data-detail-tab={key} onClick={() => setTab(key)}>
+            {t(key === "intro" ? "tabIntro" : key === "agenda" ? "tabAgenda" : key === "host" ? "tabHost" : "tabPeople")}{key === "people" ? <small>{data.attendeeCounts.all}</small> : null}
+          </button>
+        ))}
+      </div>
+      {tab === "intro" ? <div className={`${styles.card} ${styles.sub} ${x.pText}`}>{data.description}</div> : null}
+      {tab === "agenda" ? (
+        <div className={styles.card}>{data.agenda.map((item) => <div key={`${item.at}-${item.title}`} className={x.tline}><time>{item.at}</time><span className={x.dot} /><div><b>{item.title}</b>{item.detail ? <span className={styles.lbl}>{item.detail}</span> : null}</div></div>)}</div>
+      ) : null}
+      {tab === "host" ? (
+        <div className={styles.card}><div className={styles.row} style={{ gap: 12 }}><span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span><div><b>{data.organizer.name}</b><div className={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</div></div></div></div>
+      ) : null}
+      {tab === "people" ? (
+        <>
+          <div className={`${styles.seg} ${x.pSeg}`} role="tablist">
+            {([["planFit", t("segPlanFit", { n: data.attendeeCounts.planFit })], ["known", t("segKnown", { n: data.attendeeCounts.known })], ["all", t("segAll", { n: data.attendeeCounts.all })]] as const).map(([key, label]) => (
+              <button key={key} type="button" role="tab" aria-selected={filter === key} className={`btn ${styles.segBtn} ${filter === key ? styles.segOn : ""}`} onClick={() => setFilter(key)}>{label}</button>
+            ))}
+          </div>
+          {people.length ? (
+            <div className={`${styles.card} ${x.pPeople}`} data-detail-people="">
+              {people.map((person, index) => (
+                <div key={person.attendeeId} className={x.pLi}>
+                  <div className={`${x.av} ${avTone(index)}`}>{person.initial}</div>
+                  <div className={x.pMeta}><b>{person.name}</b><span>{[person.org, person.role].filter(Boolean).join(" · ")}</span>{person.note ? <span className={x.pNote}>{person.note}</span> : null}</div>
+                  {person.wanted ? <span className={`${styles.chip} ${styles.c_lav}`}>{t("legendWanted")}</span> : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {known.length ? (
+            <div className={`${styles.card} ${styles.flat} ${x.pKnown}`}>
+              <div className={styles.row} style={{ gap: 10 }}>
+                <div className={x.avs}>{known.slice(0, 3).map((person, index) => <div key={person.name} className={`${x.av} ${x.avSm} ${x[(["c2", "c4", "c3"] as const)[index % 3]!]}`}>{person.initial}</div>)}</div>
+                <div className={x.pGrow}><b className={x.pKnownTitle}>{t("knownAlsoN", { n: known.length })}</b><div className={styles.lbl}>{known.map((person) => `${t("honorific", { name: person.name.split(/\s+/)[0] ?? person.name })}${person.speaker ? t("speakerTag") : ""}`).reduce((line, item) => (line ? `${line}${/[）)]$/.test(line) ? "· " : " · "}${item}` : item), "")}</div></div>
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      {data.registration.status === "none" ? (
+        <div className={x.ctabar} data-detail-cta="">
+          <button type="button" className={`btn ${x.ctaSave}`} aria-label={t("saveEvent")}><Icon name="star" size={20} /></button>
+          <button type="button" className={`btn ${styles.btn} ${styles.primary} ${x.ctaMain}`} onClick={onRegister}>{t("ctaRegisterAi")}</button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function EventDetailBody({ data, language, t, signedOutAside }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; signedOutAside?: ReactNode }) {
   const at = assessTranslator(language);
   const toast = useToast();
@@ -212,6 +319,7 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
   const t = useMemo(() => journeyTranslator(language), [language]);
   const toast = useToast();
   const wide = useWide();
+  const phone = usePhone();
   const [data, setData] = useState<EventOverviewResponse | null>(null);
   const [missing, setMissing] = useState(false);
   useEffect(() => {
@@ -257,13 +365,14 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
   return (
     <>
       <ShellPage
-        title={data?.title ?? ""}
-        subtitle={data?.organizer.name ?? ""}
+        title={phone ? "" : data?.title ?? ""}
+        subtitle={phone ? undefined : data?.organizer.name ?? ""}
         left={<a className={`btn ${x.rbtn}`} href="/app/events?tab=discover" aria-label={t("back")}><Icon name="left" size={16} /></a>}
-        right={right}
+        right={phone ? <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void share()}><Icon name="share" size={20} /></button> : right}
         rightRail={wide && data ? <DetailRail data={data} t={t} onRegister={register} /> : false}
+        phoneBare={phone}
       />
-      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? <EventDetailBody data={data} language={language} t={t} /> : null}
+      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} /> : <EventDetailBody data={data} language={language} t={t} />) : null}
       {data ? <CancelDialog open={cancelOpen} event={data} language={language} t={t} busy={cancelBusy} onKeep={closeCancel} onCancel={() => void confirmCancel()} /> : null}
     </>
   );

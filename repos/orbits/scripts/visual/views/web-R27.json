@@ -508,11 +508,19 @@
    "design": "b12-missing-states.html",
    "board-index": 352,
    "width": 390,
-   "wait-for": "[data-detail-people]",
+   "wait-for": "[data-detail-phone]",
    "journey": {
     "overview": "many"
    },
-   "note": "P06 詳細 · 多（深色 = #47） · 390"
+   "note": "P06 詳細 · 多（深色 = #47） · 390",
+   "steps": [
+    {
+     "click": "[data-detail-tab=people]"
+    },
+    {
+     "wait": 400
+    }
+   ]
   },
   {
    "id": "W-R27-30-390",
