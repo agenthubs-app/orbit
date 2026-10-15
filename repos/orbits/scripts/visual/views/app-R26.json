@@ -6,7 +6,7 @@
   { "id": "A-R26-13", "design": "app.html", "board-index": 13, "url": "orbit://events", "fixture": "assess-empty", "note": "評価 · 空" },
   { "id": "A-R26-14", "design": "app.html", "board-index": 14, "url": "orbit://events", "fixture": "assess-few", "note": "評価 · 少量" },
   { "id": "A-R26-15", "design": "app.html", "board-index": 15, "url": "orbit://events", "fixture": "assess-many", "note": "評価 · 大量" },
-  { "id": "A-R26-20", "design": "app.html", "board-index": 30, "url": "orbit://events/assessments/design-assessment-saas-summit", "fixture": "assess-many", "note": "評価結果 ①（上）" },
+  { "id": "A-R26-20", "design": "app.html", "board-index": 31, "url": "orbit://events/assessments/design-assessment-saas-summit", "fixture": "assess-many", "note": "評価結果 ①（上）" },
   { "id": "A-R26-20d", "design": "app.html", "board-index": 37, "themes": ["dark"], "url": "orbit://events/assessments/design-assessment-saas-summit", "fixture": "assess-many", "note": "評価結果 深色" },
   { "id": "A-R26-21", "design": "b2-events-flow.html", "board-index": 0, "url": "orbit://events/assessments/demo-assessment-login-required", "fixture": "null", "note": "① ログインが必要" },
   { "id": "A-R26-22", "design": "b2-events-flow.html", "board-index": 1, "url": "orbit://events/assessments/demo-assessment-not-event-page", "fixture": "null", "note": "② イベントページではない" },

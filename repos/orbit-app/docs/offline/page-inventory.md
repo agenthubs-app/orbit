@@ -16,9 +16,9 @@
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 13 |
 | └ 由 Sprint 0137 实现 | 1 |
-| 只能在线 | 44 |
+| 只能在线 | 45 |
 | 不读账号数据（布局、跳转、本机设置） | 22 |
-| 合计（路由文件） | 106 |
+| 合计（路由文件） | 107 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -109,6 +109,7 @@
 | `/plans/:planId/types/:itemId` | 人物类型详情：候补、记录加分、跳过、面谈提案与依頼文草稿（R24） | 需要服务器实时计算：分数、候补和活动分由服务器按最新记录计算，记录与撤销要实时写入 | /api/agent/plans/v2/:planId/types/:itemId、/api/agent/plans/v2/:planId | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/plans/:planId/review` | 计划见直：确认前提、AI 修正（逐条 ✓/✕）、见直后的手动编辑与确定（R25） | 付费 AI：前提预标和修正案由付费 AI 在服务器生成，送出要扣本月配额，确定要和服务器上的计划版本核对 | /api/agent/plans/v2/:planId/reviews/current、/api/agent/plans/drafts/:id/review、/api/agent/plans/v2/:planId | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/plans/:planId/done` | 目标达成的完成页与下一目标候选（R25） | 需要服务器实时计算：完成页数字由服务器按定格的分数计算，下一目标候选由 AI 在服务器生成，选了要实时新建生成流程 | /api/agent/plans/v2/:planId/achievement、/api/agent/plans/v2/:planId/next-goals、/api/agent/plans/v2/quota | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/plans/:planId/next` | 下一目标候选（R25，b4 #26 独立页） | 需要服务器实时计算：下一目标候选由 AI 在服务器生成，选了要实时新建生成流程 | /api/agent/plans/v2/:planId/next-goals、/api/agent/plans/v2/quota | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/plans/legacy/:planId` | 以前的计划：v1 计划只读详情（R25） | 需要服务器实时计算：旧计划只在服务器保存，不存本机；只读，不提供编辑 | /api/agent/plans/legacy/:planId | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/platform` | 平台工作台（公开活动审核队列） | 管理员工具：平台运营工具：审核导入的公开活动 | /api/events/public | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/o/:slug` | 主办方公开页 | 公开访客页面（不属于账号）：给未登录访客看的公开页，不属于任何账号的本机副本 | /api/events/public | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -222,6 +223,7 @@
 | `app/party/checkin.tsx` | `/party/checkin` | device-only |
 | `app/party/graph.tsx` | `/party/graph` | device-only |
 | `app/plans/[planId]/done.tsx` | `/plans/:planId/done` | online-only |
+| `app/plans/[planId]/next.tsx` | `/plans/:planId/next` | online-only |
 | `app/plans/[planId]/review.tsx` | `/plans/:planId/review` | online-only |
 | `app/plans/[planId]/types/[itemId].tsx` | `/plans/:planId/types/:itemId` | online-only |
 | `app/plans/drafts/[draftId]/edit.tsx` | `/plans/drafts/:draftId/edit` | online-only |

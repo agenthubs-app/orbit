@@ -86,7 +86,7 @@ export function createMyEventsService(deps: { reader: MyEventsReader; now?: () =
         ...(typeof row.score === "number" ? { score: row.score } : {}),
         ...((meet as Record<string, { count: number; initials: string[] }>)[row.eventId] ? { meetCount: (meet as Record<string, { count: number; initials: string[] }>)[row.eventId]!.count, meetInitials: (meet as Record<string, { count: number; initials: string[] }>)[row.eventId]!.initials.slice(0, 4) } : {}),
       }));
-      return { items, range: input.range, upcomingCount };
+      return { asOf: at.toISOString(), items, range: input.range, upcomingCount };
     },
   };
 }

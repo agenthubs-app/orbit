@@ -1039,6 +1039,11 @@ export interface PlanLegacyItem {
    * `number` 从 1 起（界面显示「フェーズ {number}」，不显示内部代号 p1）；没有阶段数据为 null。
    */
   phase?: PlanLegacyPhase | null;
+  /**
+   * R26 App 像素返工（只加，A-R25-15）：会いたい人对上的联系人名字（按条目顺序，最多 4 个），卡片头像取首字。
+   * 没对上联系人的会いたい人不给名字；缺省 = 不画头像。
+   */
+  needNames?: readonly string[];
 }
 
 export interface PlanLegacyPhase {

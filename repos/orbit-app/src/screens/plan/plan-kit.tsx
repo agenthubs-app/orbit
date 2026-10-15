@@ -118,19 +118,22 @@ export function KitCardHead({ title, right, style }: { title: ReactNode; right?:
  * kit `linear-gradient(135deg, from, to stop%)` 铺满父容器（父容器要 overflow hidden + 圆角）。
  * CSS 的 135° 渐变线过中心、长度 = (w + h)·sin45°，这里按同一几何换成 userSpace 端点。
  * `vertical`：`linear-gradient(to bottom, …)`（底栏 .foot 的淡出）；`fromOpacity` 0 = 从透明开始（kit `transparent`）。
+ * `angle`：其他角度（R26 活动卡 160°），渐变线长 = |w·sinθ| + |h·cosθ|，默认 135 结果不变。
  */
-export function KitGradient({ from, to, stop = 1, id, vertical = false, fromOpacity = 1 }: { from: string; to: string; stop?: number; id: string; vertical?: boolean; fromOpacity?: number }) {
+export function KitGradient({ from, to, stop = 1, id, vertical = false, fromOpacity = 1, angle = 135 }: { from: string; to: string; stop?: number; id: string; vertical?: boolean; fromOpacity?: number; angle?: number }) {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  const half = size ? ((size.w + size.h) * Math.SQRT1_2) / 2 : 0;
+  const rad = (angle * Math.PI) / 180;
+  const dirX = Math.sin(rad);
+  const dirY = -Math.cos(rad);
+  const half = size ? (Math.abs(size.w * dirX) + Math.abs(size.h * dirY)) / 2 : 0;
   const cx = (size?.w ?? 0) / 2;
   const cy = (size?.h ?? 0) / 2;
-  const d = half * Math.SQRT1_2;
   return (
     <View pointerEvents="none" onLayout={(event) => setSize({ w: event.nativeEvent.layout.width, h: event.nativeEvent.layout.height })} style={StyleSheet.absoluteFill}>
       {size ? (
         <Svg width={size.w} height={size.h}>
           <Defs>
-            <LinearGradient id={id} gradientUnits="userSpaceOnUse" x1={vertical ? 0 : cx - d} y1={vertical ? 0 : cy - d} x2={vertical ? 0 : cx + d} y2={vertical ? size.h : cy + d}>
+            <LinearGradient id={id} gradientUnits="userSpaceOnUse" x1={vertical ? 0 : cx - dirX * half} y1={vertical ? 0 : cy - dirY * half} x2={vertical ? 0 : cx + dirX * half} y2={vertical ? size.h : cy + dirY * half}>
               <Stop offset={0} stopColor={from} stopOpacity={fromOpacity} />
               <Stop offset={stop} stopColor={to} />
             </LinearGradient>

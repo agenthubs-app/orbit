@@ -3,17 +3,19 @@
 // a URL / poster read polls every 2 seconds for up to 90 seconds (DESIGN §5). The poster picker loads lazily.
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Platform, Share, StyleSheet, TextInput, View } from "react-native";
 
 import { EVENT_AREA_ONLINE, EVENT_PRICE_FREE } from "../../../api/compute/event-score-input";
 import type { EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentDisplayValue, EventAssessmentFacts } from "../../../api/contract/event-assessment";
 import { AppScreen } from "../../../components/AppScreen";
-import { Icon, RingChart, UiPressable, UiText, useToast } from "../../../components/ui";
-import { createThemedStyles } from "../../../design/theme";
-import { radius } from "../../../design/tokens";
+import { Icon, IconButton, UiPressable, UiText, useToast } from "../../../components/ui";
+import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
+import { radius, shadows } from "../../../design/tokens";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { newIdempotencyKey, useEventsApi, type EventsApi } from "./events-api";
-import { appEventWhen, ringColor, verdictKey } from "./events-model";
+import { KitGradient } from "../../plan/plan-kit";
+import { appEventTime, appEventWhen, ringColor, tokyoDay, verdictKey } from "./events-model";
+import { ScoreRing } from "./ScoreRing";
 
 const POLL_MS = 2_000;
 const POLL_LIMIT_MS = 90_000;
@@ -122,19 +124,47 @@ export function AssessInputScreen() {
   );
 }
 
-function Crit({ label, value, rose }: { label: string; value: EventAssessmentDisplayValue; rose?: boolean }) {
+// .crit（grid 74 / 1fr / 30，gap 10，12px）：.bar 6 高、渐变填充 + 右端 14 的圆钮（rose 版用于时间对効果）。
+function Crit({ label, value, rose, gradientId }: { label: string; value: EventAssessmentDisplayValue; rose?: boolean; gradientId: string }) {
   const { styles, colors } = useStyles();
   const text = value.min !== undefined && value.max !== undefined && value.min !== value.max ? `${value.min}–${value.max}` : String(value.value);
+  const width = Math.max(0, Math.min(100, value.value));
   return (
     <View style={styles.crit}>
       <UiText style={styles.critLabel}>{label}</UiText>
-      <View style={styles.bar}><View style={[styles.barFill, { backgroundColor: rose ? colors.rose500 : colors.plum500, width: `${Math.min(100, value.max ?? value.value)}%` }]} /></View>
-      <UiText style={styles.critScore}>{text}</UiText>
+      <View style={styles.bar}>
+        <View style={[styles.barFill, { width: `${width}%` }]}>
+          <KitGradient id={`events-crit-${rose ? "rose" : "plum"}-${gradientId}`} from={rose ? colors.rose300 : colors.plum300} to={rose ? colors.rose700 : colors.plum700} angle={90} />
+        </View>
+        <View style={[styles.barKnob, { borderColor: rose ? colors.rose700 : colors.plum700, left: `${width}%` }]} />
+      </View>
+      {/* 30 宽的格子；「55–70」这类区间在 Chrome 里向左溢出、右对齐，不挤进度条。 */}
+      <View style={styles.critScoreCell}><UiText style={styles.critScore} numberOfLines={1}>{text}</UiText></View>
     </View>
   );
 }
 
-/** `/events/assessments/[id]`: the result (app.html #31) or the failure state for that assessment. */
+// .list > .li + .li::before：1px 线，从 50 起。
+function ListLine() {
+  const { styles } = useStyles();
+  return <View style={styles.liLine} />;
+}
+
+/** 来源 chip（.chip.lav + 图标 sm）：URL 的域名路径 / 「ポスター画像」。 */
+function SourceChip({ item }: { item: EventAssessmentContract }) {
+  const { styles, colors } = useStyles();
+  const { t } = useOrbitLocale();
+  const label = item.sourceKind === "poster" ? t("eventsV2.posterImage") : item.sourceLabel;
+  if (!label) return null;
+  return (
+    <View style={[styles.chip, styles.chipLav, { alignSelf: "center", gap: 4 }]}>
+      <Icon name={item.sourceKind === "poster" ? "image" : "link"} size={16} color={colors.macLavInk} />
+      <UiText style={[styles.chipText, { color: colors.macLavInk }]} numberOfLines={1}>{label}</UiText>
+    </View>
+  );
+}
+
+/** `/events/assessments/[id]`: the result (app.html #31 / b2 #3) or the failure state for that assessment. */
 export function AssessmentResultScreen() {
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
@@ -143,6 +173,7 @@ export function AssessmentResultScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [item, setItem] = useState<EventAssessmentContract | null>(null);
   const [busy, setBusy] = useState(false);
+  const [why, setWhy] = useState(false);
   useEffect(() => { let live = true; void api.detail(id ?? "").then((result) => { if (live && result.ok) setItem(result.data); }); return () => { live = false; }; }, [api, id]);
 
   if (!item) return <AppScreen title={t("eventsV2.assessTitleShort")}><View /></AppScreen>;
@@ -158,7 +189,7 @@ export function AssessmentResultScreen() {
   if (item.failureReason === "not_event_page") return <NotEventPageScreen item={item} />;
   if (item.status === "needs_input") {
     return (
-      <AppScreen title={t("eventsV2.assessTitleShort")}>
+      <AppScreen title={t("eventsV2.assessTitleShort")} subtitle={t("eventsV2.posterPartial")}>
         <FillThree item={item} onSubmit={async (facts, unknown) => {
           const patched = await api.fill(item.id, { facts, unknownFields: unknown });
           if (patched.ok) setItem(patched.data); else toast.error(t("eventsV2.genericError"));
@@ -167,58 +198,111 @@ export function AssessmentResultScreen() {
     );
   }
   const display = item.display;
-  const filled = item.userFilledFields ?? [];
+  // 补过的项（有值的）与仍是不明的项（补的时候选了「不明」）。
+  const userFields = item.userFilledFields ?? [];
+  const filled = userFields.filter((field) => Boolean(item.facts[field]));
+  const stillUnknown = userFields.filter((field) => !item.facts[field]);
+  const fieldLabel = (field: keyof EventAssessmentFacts) => t(field === "startsAt" ? "eventsV2.fieldWhen" : field === "price" ? "eventsV2.fieldFee" : field === "venue" || field === "area" ? "eventsV2.fieldWhere" : "eventsV2.fieldName");
   const source = item.sourceKind === "url" ? t("eventsV2.sourceUrl", { s: item.readSeconds ?? 1 }) : item.sourceKind === "poster" ? (filled.length ? t("eventsV2.sourcePosterManual") : t("eventsV2.sourcePoster")) : item.sourceKind === "manual" ? t("eventsV2.sourceManual") : t("eventsV2.sourceOrbit");
   const verdict = item.verdict === "conditional" && filled.length ? t("eventsV2.verdictConditionalLong") : t(`eventsV2.${verdictKey(item.verdict)}`);
+  const price = item.facts.price === EVENT_PRICE_FREE ? t("eventsV2.free") : item.facts.price ?? (stillUnknown.includes("price") ? t("eventsV2.feeUnknownLabel") : null);
+  const ranged = display ? [display.goalFit, display.people, display.timeCost].find((value) => value.min !== undefined && value.max !== undefined && value.min !== value.max) : undefined;
+  const hero = filled.length ? { pad: 20, ring: 130, stroke: 12, big: 40, gap: 16 } : { pad: 22, ring: 150, stroke: 13, big: 44, gap: 18 };
+  const shareText = [item.facts.title, item.facts.url].filter(Boolean).join("\n");
+  const share = () => { Share.share({ message: shareText }).catch(() => undefined); };
   return (
-    <AppScreen title={t("eventsV2.assessTitleShort")} subtitle={source}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }} testID="events-result">
-        {item.sourceLabel ? <View style={styles.urlChip}><UiText style={styles.lbl} numberOfLines={1}>{item.sourceLabel}</UiText></View> : null}
-        <View style={[styles.card, { alignItems: "center" }]}>
+    <AppScreen title={t("eventsV2.assessTitleShort")} subtitle={source}
+      headerActions={shareText ? <IconButton icon="share" accessibilityLabel={t("eventsV2.share")} onPress={share} /> : undefined}>
+      <View style={styles.page} testID="events-result">
+        <View style={[styles.card, { alignItems: "center", paddingHorizontal: 18, paddingVertical: hero.pad }]}>
+          <SourceChip item={item} />
           <UiText style={styles.title16}>{item.facts.title}</UiText>
-          <UiText style={styles.lbl}>{[appEventWhen(item.facts.startsAt, language), item.facts.venue ?? item.facts.area, item.facts.price === EVENT_PRICE_FREE ? t("eventsV2.free") : item.facts.price].filter(Boolean).join(" · ")}</UiText>
-          <View style={styles.heroRing}>
-            <RingChart size={120} stroke={11} segments={[{ color: colors[ringColor(item.total)], value: item.total / 100 }]} accessibilityLabel={`${item.total}`} />
-            <View style={styles.heroCenter}><UiText style={styles.big}>{item.total}</UiText><UiText style={styles.lbl}>{t("eventsV2.outOf100")}</UiText></View>
+          <UiText style={[styles.lbl, { textAlign: "center" }]}>{[appEventWhen(item.facts.startsAt, language), item.facts.venue ?? item.facts.area, price].filter(Boolean).join(" · ")}</UiText>
+          <View style={{ marginBottom: 6, marginTop: hero.gap }}>
+            <ScoreRing size={hero.ring} stroke={hero.stroke} value={item.total} color={colors[ringColor(item.total)]} label={String(item.total)} fontSize={hero.big}>
+              <View style={{ alignItems: "center" }}>
+                <UiText style={[styles.big, { fontSize: hero.big, lineHeight: hero.big * 1.05 * 1.1 }]}>{item.total}</UiText>
+                <UiText style={[styles.lbl, { lineHeight: 11.5 * 1.1 }]}>{t("eventsV2.outOf100")}</UiText>
+              </View>
+            </ScoreRing>
           </View>
           <View style={[styles.verdictChip, { backgroundColor: item.verdict === "recommend" ? colors.macTeal : item.verdict === "conditional" ? colors.macApricot : colors.surface2 }]}>
             <UiText style={[styles.verdictText, { color: item.verdict === "recommend" ? colors.macTealInk : item.verdict === "conditional" ? colors.macApricotInk : colors.ink2 }]}>{item.verdict === "recommend" ? `✓ ${verdict}` : verdict}</UiText>
           </View>
         </View>
-        {filled.length ? <View style={[styles.card, { marginTop: 14 }]}><UiText style={styles.cardTitle}>{`✍️ ${t("eventsV2.filledByYou", { n: filled.length })}`}</UiText></View> : null}
+        {filled.length ? (
+          <View style={styles.card} testID="events-result-filled">
+            <View style={[styles.row, { gap: 8 }]}>
+              <View style={[styles.emoSm, { backgroundColor: colors.macApricot }]}><UiText style={styles.emoTextSm}>✍️</UiText></View>
+              <View style={styles.grow}>
+                <UiText style={styles.title13}>{t("eventsV2.filledByYou", { n: filled.length })}</UiText>
+                <UiText style={styles.lbl}>{[...filled.map(fieldLabel), ...stillUnknown.map((field) => t("eventsV2.stillUnknown", { field: fieldLabel(field) }))].join(" · ")}</UiText>
+              </View>
+              {ranged ? <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.why")} onPress={() => setWhy((open) => !open)} style={styles.why}><UiText style={styles.whyText}>?</UiText></UiPressable> : null}
+            </View>
+            {why && ranged ? <View style={styles.whyBody}><UiText style={styles.whyBodyText}>{t("eventsV2.rangeNote", { range: `${ranged.min}〜${ranged.max}` })}</UiText></View> : null}
+          </View>
+        ) : null}
         {display ? (
-          <View style={[styles.card, { marginTop: 14 }]}>
-            <UiText style={[styles.cardTitle, { marginBottom: 10 }]}>{t("eventsV2.breakdownLong")}</UiText>
-            <Crit label={t("eventsV2.dimGoal")} value={display.goalFit} />
-            <Crit label={t("eventsV2.dimPeople")} value={display.people} />
-            <Crit label={t("eventsV2.dimTime")} value={display.timeCost} rose />
+          <View style={styles.card}>
+            <View style={styles.cardH}><UiText style={styles.cardTitle}>{t("eventsV2.breakdownLong")}</UiText></View>
+            <View style={{ gap: 6 }}>
+              <Crit label={t("eventsV2.dimGoal")} value={display.goalFit} gradientId="goal" />
+              <Crit label={t("eventsV2.dimPeople")} value={display.people} gradientId="people" />
+              <Crit label={t("eventsV2.dimTime")} value={display.timeCost} rose gradientId="time" />
+            </View>
           </View>
         ) : null}
         {item.meetCandidates?.length ? (
-          <View style={[styles.card, { marginTop: 14 }]}>
-            <UiText style={styles.cardTitle}>{t("eventsV2.meetTitle")}</UiText>
-            <UiText style={styles.lbl}>{t("eventsV2.meetBasis")}</UiText>
+          <View style={styles.card}>
+            <View style={styles.cardH}><UiText style={styles.cardTitle}>{t("eventsV2.meetTitle")}</UiText><UiText style={styles.lbl}>{t("eventsV2.meetBasis")}</UiText></View>
             {item.meetCandidates.map((meet, index) => (
-              <View key={`${meet.label}-${index}`} style={[styles.row, { marginTop: 10 }]}>
+              <View key={`${meet.label}-${index}`} style={styles.li}>
+                {index > 0 ? <ListLine /> : null}
                 <View style={[styles.emoSm, { backgroundColor: [colors.macLav, colors.macBlue, colors.macTeal][index % 3] }]}><UiText style={styles.emoTextSm}>{meet.emoji}</UiText></View>
-                <View style={{ flex: 1 }}><UiText style={styles.meetLabel}>{meet.label}</UiText><UiText style={styles.lbl}>{meet.basis}</UiText></View>
+                <View style={styles.grow}><UiText style={styles.metaTitle} numberOfLines={1}>{meet.label}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{meet.basis}</UiText></View>
               </View>
             ))}
           </View>
         ) : null}
         {item.cautions?.length ? (
-          <View style={[styles.card, { marginTop: 14 }]}>
-            <UiText style={styles.cardTitle}>{t("eventsV2.cautionsTitleShort")}</UiText>
-            <UiText style={[styles.lbl, { marginTop: 4 }]}>{item.cautions.map((caution) => caution.text).join(" · ")}</UiText>
+          <View style={[styles.card, styles.flat]}>
+            <View style={[styles.row, { alignItems: "flex-start", gap: 8 }]}>
+              <View style={{ marginTop: 1 }}><Icon name="alert" size={16} color={colors.coral} /></View>
+              <View style={styles.grow}>
+                <UiText style={styles.cautionTitle}>{t("eventsV2.cautionsTitleShort")}</UiText>
+                <UiText style={styles.cautionText}>{item.cautions.map((caution) => caution.text).join(" · ")}</UiText>
+              </View>
+            </View>
           </View>
         ) : null}
-      </ScrollView>
-      <View style={styles.ctaBar}>
-        <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.skip")} disabled={busy} onPress={() => void decide("skip")} style={[styles.btn, { flex: 1 }]}><UiText style={styles.btnText}>{t("eventsV2.skip")}</UiText></UiPressable>
-        <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.addToPlan")} disabled={busy || item.userDecision === "added"} onPress={() => void decide("add")} style={[styles.btnPrimary, { flex: 1.4, marginTop: 0 }]}><UiText style={styles.btnPrimaryText}>{t("eventsV2.addToPlan")}</UiText></UiPressable>
+        <View style={styles.grid2}>
+          <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.skip")} disabled={busy} onPress={() => void decide("skip")} style={[styles.btn, styles.grow]}><UiText style={styles.btnText}>{t("eventsV2.skip")}</UiText></UiPressable>
+          {filled.length && ranged && !why ? (
+            // b2 #3：补过项、分数是幅时主按钮是「詳細を見る」（展开幅的说明）；展开后换回「参加予定に追加」，不留死路。
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.seeDetails")} onPress={() => setWhy(true)} style={[styles.btnPrimary, styles.grow]}><UiText style={styles.btnPrimaryText}>{t("eventsV2.seeDetails")}</UiText></UiPressable>
+          ) : (
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.addToPlan")} disabled={busy || item.userDecision === "added"} onPress={() => void decide("add")} style={[styles.btnPrimary, styles.grow]}><UiText style={styles.btnPrimaryText}>{t("eventsV2.addToPlan")}</UiText></UiPressable>
+          )}
+        </View>
       </View>
       {busy ? null : <View testID="events-result-ready" />}
     </AppScreen>
+  );
+}
+
+/** 貼り付けた URL（.input.fill，读不到时 .err 珊瑚色内描边）。 */
+function PastedUrl({ item, error }: { item: EventAssessmentContract; error?: boolean }) {
+  const { styles, colors } = useStyles();
+  const { t } = useOrbitLocale();
+  return (
+    <>
+      <UiText style={styles.lbl}>{t("eventsV2.pastedUrl")}</UiText>
+      <View style={[styles.input, error ? styles.inputErr : null, { marginTop: 6 }]}>
+        <Icon name="link" size={16} color={colors.ink} />
+        <UiText style={styles.inputText} numberOfLines={1}>{item.facts.url ?? item.sourceLabel}</UiText>
+      </View>
+    </>
   );
 }
 
@@ -226,58 +310,121 @@ function LoginRequiredScreen({ item }: { item: EventAssessmentContract }) {
   const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
   const router = useRouter();
-  const way = (emoji: string, title: string, sub: string, onPress: () => void, testID: string) => (
-    <UiPressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={styles.wayRow} testID={testID}>
-      <UiText style={styles.emoText}>{emoji}</UiText>
-      <View style={{ flex: 1 }}><UiText style={styles.wayText}>{title}</UiText><UiText style={styles.lbl}>{sub}</UiText></View>
+  const way = (emoji: string, tone: string, title: string, sub: string, onPress: () => void, testID: string) => (
+    <UiPressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={styles.optRow} testID={testID}>
+      <View style={[styles.emoSm, { backgroundColor: tone }]}><UiText style={styles.emoTextSm}>{emoji}</UiText></View>
+      <View style={styles.grow}><UiText style={styles.optTitle}>{title}</UiText><UiText style={styles.optSub}>{sub}</UiText></View>
       <Icon name="right" size={16} color={colors.ink3} />
     </UiPressable>
   );
   return (
-    <AppScreen title={t("eventsV2.assessTitleShort")} subtitle={t("eventsV2.readFailed")}>
-      <View style={styles.card} testID="events-login-required">
-        <UiText style={styles.lbl}>{t("eventsV2.pastedUrl")}</UiText>
-        <View style={styles.inputRow}><UiText style={styles.urlText} numberOfLines={1}>{item.facts.url ?? item.sourceLabel}</UiText></View>
-        <View style={[styles.row, { marginTop: 14 }]}><View style={[styles.emo, { backgroundColor: colors.macApricot }]}><UiText style={styles.emoText}>🔒</UiText></View><View style={{ flex: 1 }}><UiText style={styles.cardTitle}>{t("eventsV2.loginTitle")}</UiText><UiText style={styles.lbl}>{t("eventsV2.loginSub")}</UiText></View></View>
+    <AppScreen title={t("eventsV2.assessTitleShort")} subtitle={t("eventsV2.readFailed")} backIcon="x">
+      <View style={styles.page} testID="events-login-required">
+        <View style={styles.card}>
+          <PastedUrl item={item} error />
+          <View style={[styles.row, { flexWrap: "wrap", gap: 6, marginTop: 10 }]}>
+            <View style={[styles.chip, { backgroundColor: colors.coralSoft }]}><UiText style={[styles.chipText, { color: colors.coral }]}>{t("eventsV2.loginTitle")}</UiText></View>
+            <UiText style={styles.lbl}>{t("eventsV2.loginSub")}</UiText>
+          </View>
+        </View>
+        <View style={styles.card}>
+          <View style={[styles.row, { alignItems: "flex-start" }]}>
+            <View style={[styles.emo, { backgroundColor: colors.macApricot }]}><UiText style={styles.emoText}>🔒</UiText></View>
+            <View style={styles.grow}><UiText style={styles.cardTitle}>{t("eventsV2.otherWays")}</UiText><UiText style={[styles.lbl, { marginTop: 2 }]}>{t("eventsV2.noProxyLogin")}</UiText></View>
+          </View>
+          {way("📋", colors.macPink, t("eventsV2.wayPaste"), t("eventsV2.wayPasteSub"), () => router.push("/events/assess?mode=url" as Href), "events-way-paste")}
+          {way("🖼️", colors.macBlue, t("eventsV2.wayShot"), t("eventsV2.wayShotSub"), () => router.push("/events/assess?mode=poster" as Href), "events-way-shot")}
+          {way("✍️", colors.macTeal, t("eventsV2.wayManual"), t("eventsV2.wayManualSub"), () => router.push("/events/assess?mode=manual" as Href), "events-way-manual")}
+        </View>
+        <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.tryOtherUrl")} onPress={() => router.replace("/events/assess?mode=url" as Href)} style={[styles.btn, styles.btnGhost, { marginTop: -14 }]}>
+          <Icon name="refresh" size={16} color={colors.ink2} /><UiText style={[styles.btnText, { color: colors.ink2 }]}>{t("eventsV2.tryOtherUrl")}</UiText>
+        </UiPressable>
       </View>
-      <UiText style={[styles.lbl, { marginTop: 16 }]}>{t("eventsV2.otherWays")}</UiText>
-      <UiText style={[styles.lbl, { marginBottom: 8 }]}>{t("eventsV2.noProxyLogin")}</UiText>
-      {way("📋", t("eventsV2.wayPaste"), t("eventsV2.wayPasteSub"), () => router.push("/events/assess?mode=url" as Href), "events-way-paste")}
-      {way("🖼️", t("eventsV2.wayShot"), t("eventsV2.wayShotSub"), () => router.push("/events/assess?mode=poster" as Href), "events-way-shot")}
-      {way("✍️", t("eventsV2.wayManual"), t("eventsV2.wayManualSub"), () => router.push("/events/assess?mode=manual" as Href), "events-way-manual")}
-      <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.tryOtherUrl")} onPress={() => router.replace("/events/assess?mode=url" as Href)} style={[styles.btn, { marginTop: 14 }]}><UiText style={styles.btnText}>{t("eventsV2.tryOtherUrl")}</UiText></UiPressable>
     </AppScreen>
   );
 }
 
 function NotEventPageScreen({ item }: { item: EventAssessmentContract }) {
-  const { styles } = useStyles();
+  const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
   const router = useRouter();
   const api = useEventsApi();
   const candidates = item.pageCandidates ?? [];
+  const [creating, setCreating] = useState(false);
+  const assessCandidate = (url: string) => {
+    if (creating) return;
+    setCreating(true);
+    void api.create({ idempotencyKey: newIdempotencyKey(), sourceKind: "url", url }).then((created) => {
+      setCreating(false);
+      if (created.ok) router.replace(`/events/assessments/${encodeURIComponent(created.data.id)}` as Href);
+    });
+  };
   return (
-    <AppScreen title={t("eventsV2.assessTitleShort")} subtitle={t("eventsV2.notEventTitle")}>
-      <View style={styles.card} testID="events-not-event-page">
-        <UiText style={styles.lbl}>{t("eventsV2.pastedUrl")}</UiText>
-        <View style={styles.inputRow}><UiText style={styles.urlText} numberOfLines={1}>{item.facts.url ?? item.sourceLabel}</UiText></View>
-        <View style={[styles.row, { marginTop: 10 }]}><View style={styles.chip}><UiText style={styles.chipText}>{t("eventsV2.articlePage")}</UiText></View><UiText style={styles.lbl}>{t("eventsV2.notEventSub")}</UiText></View>
-      </View>
-      <View style={[styles.row, { marginBottom: 8, marginTop: 16 }]}><UiText>🔎</UiText><UiText style={styles.cardTitle}>{t("eventsV2.eventsOnPage")}</UiText><UiText style={styles.lbl}>{t("eventsV2.countItems", { n: candidates.length })}</UiText></View>
-      {candidates.map((candidate) => (
-        <View key={candidate.title} style={styles.wayRow}>
-          <View style={{ flex: 1 }}><UiText style={styles.wayText}>{candidate.title}</UiText><UiText style={styles.lbl}>{[candidate.venue, candidate.startsAt ? appEventWhen(candidate.startsAt, language) : null, candidate.note].filter(Boolean).join(" · ")}</UiText></View>
-          <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.assess")} onPress={() => { if (candidate.url) void api.create({ idempotencyKey: newIdempotencyKey(), sourceKind: "url", url: candidate.url }).then((created) => { if (created.ok) router.replace(`/events/assessments/${encodeURIComponent(created.data.id)}` as Href); }); else router.push("/events/assess?mode=manual" as Href); }} style={styles.btnSm}>
-            <UiText style={styles.btnText}>{t("eventsV2.assess")}</UiText>
-          </UiPressable>
+    <AppScreen title={t("eventsV2.assessTitleShort")} subtitle={t("eventsV2.notEventTitle")} backIcon="x">
+      <View style={styles.page} testID="events-not-event-page">
+        <View style={styles.card}>
+          <PastedUrl item={item} />
+          <View style={[styles.row, { gap: 6, marginTop: 10 }]}>
+            <View style={[styles.chip, { backgroundColor: colors.macApricot }]}><UiText style={[styles.chipText, { color: colors.macApricotInk }]}>{t("eventsV2.articlePage")}</UiText></View>
+            <UiText style={styles.lbl}>{t("eventsV2.notEventSub")}</UiText>
+          </View>
         </View>
-      ))}
-      <View style={[styles.wayRow, { marginTop: 10 }]}>
-        <UiText style={styles.emoText}>✍️</UiText>
-        <View style={{ flex: 1 }}><UiText style={styles.wayText}>{t("eventsV2.noneOfThese")}</UiText><UiText style={styles.lbl}>{t("eventsV2.noneOfTheseSub")}</UiText></View>
-        <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.manual")} onPress={() => router.push("/events/assess?mode=manual" as Href)} style={styles.btnSm}><UiText style={styles.btnText}>{t("eventsV2.manual")}</UiText></UiPressable>
+        <View style={styles.card}>
+          <View style={styles.cardH}>
+            <View style={[styles.row, { gap: 8 }]}><View style={[styles.emoSm, { backgroundColor: colors.macLav }]}><UiText style={styles.emoTextSm}>🔎</UiText></View><UiText style={styles.cardTitle}>{t("eventsV2.eventsOnPage")}</UiText></View>
+            <UiText style={styles.lbl}>{t("eventsV2.countItems", { n: candidates.length })}</UiText>
+          </View>
+          {candidates.map((candidate, index) => {
+            const day = candidate.startsAt ? tokyoDay(candidate.startsAt) : null;
+            return (
+              <View key={candidate.title} style={styles.li}>
+                {index > 0 ? <ListLine /> : null}
+                <View style={styles.datebox}>
+                  <UiText style={styles.dateDay}>{day ? String(day.day) : "—"}</UiText>
+                  <UiText style={styles.dateMonth}>{day ? t("eventsV2.monthShort", { month: day.month }) : ""}</UiText>
+                </View>
+                <View style={styles.grow}><UiText style={styles.metaTitle} numberOfLines={1}>{candidate.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[candidate.venue, candidate.startsAt ? appEventTime(candidate.startsAt, language) : null, candidate.note].filter(Boolean).join(" · ")}</UiText></View>
+                <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.assess")} disabled={creating} onPress={() => { if (candidate.url) assessCandidate(candidate.url); else router.push("/events/assess?mode=manual" as Href); }} style={styles.btnSm}>
+                  <UiText style={styles.btnSmText}>{t("eventsV2.assess")}</UiText>
+                </UiPressable>
+              </View>
+            );
+          })}
+        </View>
+        <View style={[styles.card, styles.flat]}>
+          <View style={styles.row}>
+            <View style={[styles.emoSm, { backgroundColor: colors.macTeal }]}><UiText style={styles.emoTextSm}>✍️</UiText></View>
+            <View style={styles.grow}><UiText style={styles.title13}>{t("eventsV2.noneOfThese")}</UiText><UiText style={styles.lbl}>{t("eventsV2.noneOfTheseSub")}</UiText></View>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.manual")} onPress={() => router.push("/events/assess?mode=manual" as Href)} style={styles.btnSm}><UiText style={styles.btnSmText}>{t("eventsV2.manual")}</UiText></UiPressable>
+          </View>
+        </View>
       </View>
     </AppScreen>
+  );
+}
+
+/** 读取状态点 .cf（7px）：读到 ok / 推测 guess / 读不到 ng。 */
+function FactDot({ tone }: { tone: "ok" | "guess" | "ng" }) {
+  const { colors } = useOrbitTheme();
+  return <View style={{ backgroundColor: tone === "ok" ? colors.ok : tone === "guess" ? colors.macApricotInk : colors.coral, borderRadius: 3.5, height: 7, width: 7 }} />;
+}
+
+/** ポスター（b2 #2 .poster 130 高）：用户的海报图片暂不回显，画渐变底 + 读到的名称（ブレを検出时加 chip）。 */
+function PosterPreview({ item }: { item: EventAssessmentContract }) {
+  const { styles, colors } = useStyles();
+  const { t } = useOrbitLocale();
+  return (
+    <View style={[styles.card, { padding: 10 }]}>
+      <View style={styles.poster}>
+        <KitGradient id="events-poster-bg" from={colors.macBlue} to={colors.macLav} />
+        {/* 画板里 chip 在海报纸片下面（.tagb 先于 .pz）。 */}
+        {item.readIssue === "blurry" ? <View style={[styles.chip, styles.posterTag, { backgroundColor: colors.coralSoft }]}><UiText style={[styles.chipText, { color: colors.coral }]}>{t("eventsV2.blurDetected")}</UiText></View> : null}
+        <View style={styles.posterSheet}>
+          <UiText style={styles.posterTitle} numberOfLines={2}>{item.facts.title ?? ""}</UiText>
+          <View style={styles.posterLine} /><View style={[styles.posterLine, { width: "60%" }]} /><View style={[styles.posterLine, { width: "80%" }]} />
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -289,79 +436,118 @@ function FillThree({ item, onSubmit }: { item: EventAssessmentContract | null; o
   const basis = item?.factBasis ?? {};
   const [title, setTitle] = useState(facts.title ?? "");
   const [when, setWhen] = useState(facts.startsAt ? facts.startsAt.slice(0, 16).replace("T", " ") : "");
-  const [where, setWhere] = useState(facts.venue ?? "");
+  const [where, setWhere] = useState(facts.venue && basis.venue !== "guessed" ? facts.venue : "");
   const [online, setOnline] = useState(false);
-  const [fee, setFee] = useState<"free" | "paid" | "unknown" | null>(null);
-  const [amount, setAmount] = useState("");
-  const known = [facts.startsAt, facts.venue && basis.venue !== "guessed" ? facts.venue : null, facts.price].filter(Boolean).length;
-  const status = (field: "startsAt" | "venue" | "price") => basis[field] === "guessed" ? [t("eventsV2.guessed"), colors.macApricot, colors.macApricotInk] : facts[field] ? ["✓", colors.macTeal, colors.macTealInk] : [t("eventsV2.unreadable"), colors.macPink, colors.macPinkInk];
+  // 海报读到了参加費就从读到的值开始（不算「不明」，也不当作用户补的）。
+  const readFee = facts.price === EVENT_PRICE_FREE ? "free" : facts.price ? "paid" : "unknown";
+  const [fee, setFee] = useState<"free" | "paid" | "unknown">(readFee);
+  const [amount, setAmount] = useState(facts.price && facts.price !== EVENT_PRICE_FREE ? facts.price.replace(/[^\d]/g, "") : "");
+  const parsedWhen = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})$/.exec(when.trim());
+  const known = [parsedWhen, online || where.trim(), fee !== "unknown"].filter(Boolean).length;
   const submit = () => {
     const unknown: ("startsAt" | "venue" | "price")[] = [];
     const next: EventAssessmentFacts = {};
     if (!item && title.trim()) next.title = title.trim();
-    const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})$/.exec(when.trim());
-    if (match) next.startsAt = `${match[1]}-${match[2]}-${match[3]}T${match[4]!.padStart(2, "0")}:${match[5]}:00+09:00`; else unknown.push("startsAt");
+    if (parsedWhen) next.startsAt = `${parsedWhen[1]}-${parsedWhen[2]}-${parsedWhen[3]}T${parsedWhen[4]!.padStart(2, "0")}:${parsedWhen[5]}:00+09:00`; else unknown.push("startsAt");
     if (online) next.area = EVENT_AREA_ONLINE; else if (where.trim()) next.venue = where.trim(); else unknown.push("venue");
-    if (fee === "free") next.price = EVENT_PRICE_FREE; else if (fee === "paid" && amount) next.price = `¥${Number(amount).toLocaleString("en-US")}`; else unknown.push("price");
+    const feeUnchanged = item !== null && readFee !== "unknown" && fee === readFee && (fee === "free" || amount === (facts.price ?? "").replace(/[^\d]/g, ""));
+    if (feeUnchanged) { /* 读到的参加費原样保留，不提交 */ } else if (fee === "free") next.price = EVENT_PRICE_FREE; else if (fee === "paid" && amount) next.price = `¥${Number(amount).toLocaleString("en-US")}`; else unknown.push("price");
     onSubmit(next, unknown);
   };
-  const option = (label: string, on: boolean, onPress: () => void) => (
-    <UiPressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[styles.opt, on ? styles.optOn : null]}><UiText style={styles.optText}>{label}</UiText></UiPressable>
-  );
+  const tone = (field: keyof EventAssessmentFacts): "ok" | "guess" | "ng" => basis[field] === "guessed" ? "guess" : facts[field] ? "ok" : "ng";
+  const rows = ([["fieldName", "title", facts.title], ["fieldOrganizer", "organizer", facts.organizer], ["fieldWhen", "startsAt", facts.startsAt ? appEventWhen(facts.startsAt, language) : null], ["fieldWhere", "venue", facts.venue ? `${facts.venue}${basis.venue === "guessed" ? "？" : ""}` : null], ["fieldFee", "price", facts.price]] as const);
   return (
-    <View testID="events-fill">
+    <View style={styles.page} testID="events-fill">
       {item ? (
-        <View style={styles.card}>
-          <View style={styles.row}><UiText style={[styles.cardTitle, { flex: 1 }]}>{t("eventsV2.posterPartial")}</UiText>{item.readIssue === "blurry" ? <View style={[styles.chip, { backgroundColor: colors.macApricot }]}><UiText style={[styles.chipText, { color: colors.macApricotInk }]}>{t("eventsV2.blurDetected")}</UiText></View> : null}</View>
-          {([["fieldName", facts.title, null], ["fieldOrganizer", facts.organizer, null], ["fieldWhen", facts.startsAt ? appEventWhen(facts.startsAt, language) : null, "startsAt"], ["fieldWhere", facts.venue ? `${facts.venue}${basis.venue === "guessed" ? "?" : ""}` : null, "venue"], ["fieldFee", facts.price, "price"]] as const).map(([label, value, field]) => (
-            <View key={label} style={[styles.row, { marginTop: 8 }]}>
-              <UiText style={[styles.lbl, { width: 56 }]}>{t(`eventsV2.${label}`)}</UiText>
-              <UiText style={[styles.wayText, { flex: 1 }]}>{value ?? "—"}</UiText>
-              {field ? <View style={[styles.chip, { backgroundColor: status(field)[1] }]}><UiText style={[styles.chipText, { color: status(field)[2] }]}>{status(field)[0]}</UiText></View> : null}
-            </View>
+        <>
+          <PosterPreview item={item} />
+          <View style={[styles.card, { paddingHorizontal: 16, paddingVertical: 6 }]}>
+            {rows.map(([label, field, value], index) => (
+              <View key={label} style={[styles.frow, index > 0 ? styles.frowLine : null]}>
+                <UiText style={[styles.lbl, { width: 52 }]}>{t(`eventsV2.${label}`)}</UiText>
+                <View style={{ width: 8 }}><FactDot tone={tone(field)} /></View>
+                <UiText style={[styles.frowValue, value ? null : { color: colors.ink3 }]} numberOfLines={1}>{value ?? "—"}</UiText>
+                {tone(field) === "ng" ? <View style={[styles.chip, { backgroundColor: colors.coralSoft }]}><UiText style={[styles.chipText, { color: colors.coral }]}>{t("eventsV2.unreadable")}</UiText></View>
+                  : tone(field) === "guess" ? <View style={[styles.chip, { backgroundColor: colors.macApricot }]}><UiText style={[styles.chipText, { color: colors.macApricotInk }]}>{t("eventsV2.guessed")}</UiText></View> : null}
+              </View>
+            ))}
+          </View>
+        </>
+      ) : (
+        <View style={styles.card}><UiText style={styles.lbl}>{t("eventsV2.fieldName")}</UiText><TextInput value={title} onChangeText={setTitle} style={[styles.input, styles.inputText, { marginTop: 4 }]} accessibilityLabel={t("eventsV2.fieldName")} /></View>
+      )}
+      <View style={[styles.card, { overflow: "hidden" }]}>
+        <KitGradient id="events-fill-bg" from={colors.macLav} to={colors.surface} stop={0.6} angle={150} />
+        <View style={[styles.row, { justifyContent: "space-between" }]}>
+          <UiText style={styles.cardTitle}>{t("eventsV2.requiredThree")}</UiText>
+          <View style={[styles.chip, styles.chipLav]}><UiText style={[styles.chipText, { color: colors.macLavInk }]}>{`${known} / 3`}</UiText></View>
+        </View>
+        <UiText style={[styles.lbl, { marginBottom: 12, marginTop: 2 }]}>{t("eventsV2.requiredHint")}</UiText>
+        <UiText style={styles.lbl}>{t("eventsV2.fieldWhen")}</UiText>
+        <View style={[styles.input, styles.inputOnCard, { marginTop: 4 }]}>
+          <Icon name="calendar" size={16} color={colors.ink3} />
+          <TextInput value={when} onChangeText={setWhen} placeholder="2026-10-29 18:30" placeholderTextColor={colors.ink3} style={styles.inputField} accessibilityLabel={t("eventsV2.fieldWhen")} testID="events-fill-when" />
+        </View>
+        <UiText style={[styles.lbl, { marginTop: 10 }]}>{t("eventsV2.fieldWhere")}</UiText>
+        <View style={[styles.input, styles.inputOnCard, { marginTop: 4 }]}>
+          <Icon name="pin" size={16} color={colors.ink3} />
+          <TextInput value={where} onChangeText={(value) => { setWhere(value); setOnline(false); }} placeholder={t("eventsV2.whereHint")} placeholderTextColor={colors.ink3} style={styles.inputField} accessibilityLabel={t("eventsV2.fieldWhere")} />
+        </View>
+        <View style={[styles.row, { flexWrap: "wrap", gap: 6, marginTop: 6 }]}>
+          {facts.venue && basis.venue === "guessed" ? (
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.useGuess", { value: facts.venue })} onPress={() => { setWhere(facts.venue!); setOnline(false); }} style={[styles.chip, { backgroundColor: colors.macApricot }]}>
+              <UiText style={[styles.chipText, { color: colors.macApricotInk }]}>{t("eventsV2.useGuess", { value: facts.venue })}</UiText>
+            </UiPressable>
+          ) : null}
+          <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.online")} accessibilityState={{ selected: online }} onPress={() => setOnline((value) => !value)} style={[styles.chip, online ? { backgroundColor: colors.macLav } : null]}>
+            <UiText style={[styles.chipText, online ? { color: colors.macLavInk } : null]}>{t("eventsV2.online")}</UiText>
+          </UiPressable>
+        </View>
+        <UiText style={[styles.lbl, { marginTop: 10 }]}>{t("eventsV2.fieldFee")}</UiText>
+        <View style={[styles.seg, { marginTop: 4 }]}>
+          {(["free", "paid", "unknown"] as const).map((key) => (
+            <UiPressable key={key} accessibilityRole="button" accessibilityLabel={t(`eventsV2.${key}`)} accessibilityState={{ selected: fee === key }} onPress={() => setFee(key)} style={[styles.segOpt, fee === key ? styles.segOn : null]}>
+              <UiText style={[styles.segText, fee === key ? { color: colors.ink } : null]}>{t(`eventsV2.${key}`)}</UiText>
+            </UiPressable>
           ))}
         </View>
-      ) : (
-        <View style={styles.card}><UiText style={styles.lbl}>{t("eventsV2.fieldName")}</UiText><TextInput value={title} onChangeText={setTitle} style={styles.field} accessibilityLabel={t("eventsV2.fieldName")} /></View>
-      )}
-      <View style={[styles.card, { marginTop: 14 }]}>
-        <View style={styles.row}><UiText style={[styles.cardTitle, { flex: 1 }]}>{t("eventsV2.requiredThree")}</UiText><UiText style={styles.lbl}>{`${known} / 3`}</UiText></View>
-        <UiText style={[styles.lbl, { marginBottom: 10 }]}>{t("eventsV2.requiredHint")}</UiText>
-        <UiText style={styles.lbl}>{t("eventsV2.fieldWhen")}</UiText>
-        <TextInput value={when} onChangeText={setWhen} placeholder="2026-10-29 18:30" placeholderTextColor={colors.ink3} style={styles.field} accessibilityLabel={t("eventsV2.fieldWhen")} testID="events-fill-when" />
-        <UiText style={styles.lbl}>{t("eventsV2.fieldWhere")}</UiText>
-        <TextInput value={where} onChangeText={(value) => { setWhere(value); setOnline(false); }} placeholder={t("eventsV2.whereHint")} placeholderTextColor={colors.ink3} style={styles.field} accessibilityLabel={t("eventsV2.fieldWhere")} />
-        <View style={styles.optRow}>
-          {facts.venue && basis.venue === "guessed" ? option(t("eventsV2.useGuess", { value: facts.venue }), where === facts.venue, () => { setWhere(facts.venue!); setOnline(false); }) : null}
-          {option(t("eventsV2.online"), online, () => setOnline((value) => !value))}
-        </View>
-        <UiText style={styles.lbl}>{t("eventsV2.fieldFee")}</UiText>
-        <View style={styles.optRow}>
-          {option(t("eventsV2.free"), fee === "free", () => setFee("free"))}
-          {option(t("eventsV2.paid"), fee === "paid", () => setFee("paid"))}
-          {option(t("eventsV2.unknown"), fee === "unknown", () => setFee("unknown"))}
-        </View>
-        {fee === "paid" ? <TextInput value={amount} onChangeText={(value) => setAmount(value.replace(/[^\d]/g, ""))} keyboardType="number-pad" placeholder="¥" placeholderTextColor={colors.ink3} style={styles.field} accessibilityLabel={t("eventsV2.fieldFee")} /> : null}
-        {fee !== "free" && fee !== "paid" ? <UiText style={styles.lbl}>{t("eventsV2.feeUnknownRange")}</UiText> : null}
-        <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.judgeWithThis")} onPress={submit} style={styles.btnPrimary} testID="events-fill-submit"><UiText style={styles.btnPrimaryText}>{t("eventsV2.judgeWithThis")}</UiText></UiPressable>
+        {fee === "paid" ? <View style={[styles.input, styles.inputOnCard, { marginTop: 6 }]}><TextInput value={amount} onChangeText={(value) => setAmount(value.replace(/[^\d]/g, ""))} keyboardType="number-pad" placeholder="¥" placeholderTextColor={colors.ink3} style={styles.inputField} accessibilityLabel={t("eventsV2.fieldFee")} /></View> : null}
+      </View>
+      <View>
+        <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.judgeWithThis")} onPress={submit} style={[styles.btnPrimary, { height: 46 }]} testID="events-fill-submit"><UiText style={styles.btnPrimaryText}>{t("eventsV2.judgeWithThis")}</UiText></UiPressable>
         <UiText style={[styles.lbl, { marginTop: 8, textAlign: "center" }]}>{t("eventsV2.inputOnlyHere")}</UiText>
       </View>
     </View>
   );
 }
 
+// kit 数值（app.html #31、b2 #0–#3）：.card 18 / r24、卡间 14、.input 44 / r14、.opt-row、.frow、.crit、.datebox、.seg。
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 18 },
+  page: { gap: 14, marginHorizontal: 2, marginTop: -12 },
+  card: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 18 },
+  flat: { backgroundColor: colors.surface2 },
   row: { alignItems: "center", flexDirection: "row", gap: 10 },
-  lbl: { color: colors.ink3, fontSize: 11.5, fontWeight: "500", lineHeight: 17 },
-  title16: { color: colors.ink, fontSize: 16, fontWeight: "800", lineHeight: 22, textAlign: "center" },
-  cardTitle: { color: colors.ink, fontSize: 14.5, fontWeight: "800", lineHeight: 21 },
-  inputRow: { backgroundColor: colors.surface2, borderRadius: radius.md, marginTop: 6, minHeight: 44, justifyContent: "center", paddingHorizontal: 14 },
+  grow: { flex: 1, minWidth: 0 },
+  lbl: { color: colors.ink3, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
+  title16: { color: colors.ink, fontSize: 16, fontWeight: "800", lineHeight: 24, marginBottom: 2, marginTop: 10, textAlign: "center" },
+  // 行内 b（13px）在 14px · 1.5 的行盒里。
+  title13: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 21 },
+  cardTitle: { color: colors.ink, fontSize: 14.5, fontWeight: "800", lineHeight: 21.75 },
+  cardH: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between", marginBottom: 12 },
+  input: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.md, flexDirection: "row", gap: 8, height: 44, paddingHorizontal: 14 },
+  inputErr: { borderColor: colors.coral, borderWidth: 1.5 },
+  inputOnCard: { backgroundColor: colors.surface },
+  inputText: { color: colors.ink, flex: 1, fontSize: 13, lineHeight: 19.5 },
+  inputField: { color: colors.ink, flex: 1, fontSize: 13, height: 44 },
   urlInput: { color: colors.ink, fontSize: 13, minHeight: 44 },
-  urlText: { color: colors.ink2, fontSize: 13, lineHeight: 18 },
+  inputRow: { backgroundColor: colors.surface2, borderRadius: radius.md, marginTop: 6, minHeight: 44, justifyContent: "center", paddingHorizontal: 14 },
   codeInput: { backgroundColor: colors.surface2, borderRadius: radius.md, color: colors.ink, fontSize: 22, fontWeight: "800", height: 56, letterSpacing: 4, textAlign: "center" },
   wayRow: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.md, flexDirection: "row", gap: 12, marginTop: 8, padding: 12 },
   wayText: { color: colors.ink, fontSize: 13.5, fontWeight: "700", lineHeight: 19 },
+  optRow: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 16, flexDirection: "row", gap: 10, marginTop: 8, paddingHorizontal: 12, paddingVertical: 11 },
+  // .opt-row b：块级、13px，行高按 1.5 继承 = 19.5。
+  optTitle: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  optSub: { color: colors.ink3, fontSize: 12, lineHeight: 18 },
   emo: { alignItems: "center", borderRadius: 13, height: 40, justifyContent: "center", width: 40 },
   emoSm: { alignItems: "center", borderRadius: 10, height: 32, justifyContent: "center", width: 32 },
   emoText: { fontSize: 21, lineHeight: 26 },
@@ -369,29 +555,51 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   stepDot: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 22, justifyContent: "center", width: 22 },
   stepNum: { color: colors.ink3, fontSize: 11, fontWeight: "700", lineHeight: 15 },
   stepText: { color: colors.ink3, fontSize: 13, lineHeight: 18 },
-  urlChip: { alignSelf: "center", backgroundColor: colors.macLav, borderRadius: radius.pill, marginBottom: 10, paddingHorizontal: 10, paddingVertical: 3 },
-  heroRing: { alignItems: "center", height: 120, justifyContent: "center", marginBottom: 10, marginTop: 14, width: 120 },
-  heroCenter: { alignItems: "center", position: "absolute" },
-  big: { color: colors.ink, fontSize: 38, fontWeight: "800", letterSpacing: -0.76, lineHeight: 40 },
+  big: { color: colors.ink, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontWeight: "800", letterSpacing: -0.88 },
   verdictChip: { borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
-  verdictText: { fontSize: 12, fontWeight: "700", lineHeight: 18 },
-  crit: { alignItems: "center", flexDirection: "row", gap: 10, marginTop: 8 },
-  critLabel: { color: colors.ink3, fontSize: 12.5, lineHeight: 18, width: 84 },
-  bar: { backgroundColor: colors.surface3, borderRadius: radius.tag, flex: 1, height: 6, overflow: "hidden" },
-  barFill: { borderRadius: radius.tag, height: 6 },
-  critScore: { color: colors.ink, fontSize: 12.5, fontWeight: "800", lineHeight: 18, textAlign: "right", width: 40 },
-  meetLabel: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 18 },
-  ctaBar: { backgroundColor: colors.bg, bottom: 0, flexDirection: "row", gap: 10, left: 0, paddingBottom: 34, paddingHorizontal: 18, paddingTop: 10, position: "absolute", right: 0 },
-  btn: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 44, justifyContent: "center" },
-  btnText: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19 },
+  verdictText: { fontSize: 12.5, fontWeight: "700", lineHeight: 18.75 },
+  crit: { alignItems: "center", flexDirection: "row", gap: 10, height: 18 },
+  critLabel: { color: colors.ink3, fontSize: 12, lineHeight: 18, width: 74 },
+  bar: { backgroundColor: colors.surface3, borderRadius: 6, flex: 1, height: 6 },
+  barFill: { borderRadius: 6, bottom: 0, left: 0, overflow: "hidden", position: "absolute", top: 0 },
+  barKnob: { backgroundColor: colors.surface, borderRadius: 7, borderWidth: 3, height: 14, marginLeft: -7, position: "absolute", top: -4, width: 14 },
+  critScoreCell: { height: 18, width: 30 },
+  critScore: { color: colors.ink, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 12, fontWeight: "800", lineHeight: 18, position: "absolute", right: 0, textAlign: "right", top: 0 },
+  li: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 11 },
+  liLine: { backgroundColor: colors.line, height: 1, left: 50, position: "absolute", right: 0, top: 0 },
+  metaTitle: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
+  metaSub: { color: colors.ink3, fontSize: 12, lineHeight: 18 },
+  cautionTitle: { color: colors.ink, fontSize: 12.5, fontWeight: "700", lineHeight: 18.75 },
+  cautionText: { color: colors.ink3, fontSize: 12.5, lineHeight: 18.75 },
+  grid2: { flexDirection: "row", gap: 12 },
+  btn: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, flexDirection: "row", gap: 6, height: 40, justifyContent: "center", paddingHorizontal: 16 },
+  btnGhost: { backgroundColor: "transparent" },
+  btnText: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
   btnSm: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 32, justifyContent: "center", paddingHorizontal: 12 },
-  btnPrimary: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, height: 44, justifyContent: "center", marginTop: 14 },
-  btnPrimaryText: { color: colors.bg, fontSize: 13, fontWeight: "700", lineHeight: 19 },
-  chip: { backgroundColor: colors.surface2, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 3 },
-  chipText: { color: colors.ink2, fontSize: 11, fontWeight: "700", lineHeight: 16 },
-  field: { backgroundColor: colors.surface2, borderRadius: radius.md, color: colors.ink, fontSize: 13, height: 40, marginBottom: 10, marginTop: 4, paddingHorizontal: 14 },
-  optRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10, marginTop: 4 },
-  opt: { alignItems: "center", backgroundColor: colors.surface2, borderColor: "transparent", borderRadius: radius.pill, borderWidth: 1.5, height: 32, justifyContent: "center", paddingHorizontal: 12 },
-  optOn: { backgroundColor: colors.surface, borderColor: colors.plum500 },
-  optText: { color: colors.ink2, fontSize: 12, fontWeight: "700", lineHeight: 18 },
+  btnSmText: { color: colors.ink, fontSize: 12, fontWeight: "700", lineHeight: 18 },
+  btnPrimary: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, height: 40, justifyContent: "center", paddingHorizontal: 16 },
+  btnPrimaryText: { color: colors.bg, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  chip: { alignItems: "center", alignSelf: "flex-start", backgroundColor: colors.surface2, borderRadius: radius.pill, flexDirection: "row", paddingHorizontal: 9, paddingVertical: 3 },
+  chipLav: { backgroundColor: colors.macLav },
+  chipText: { color: colors.ink2, fontSize: 11, fontWeight: "700", lineHeight: 16.5 },
+  why: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 9, height: 18, justifyContent: "center", width: 18 },
+  whyText: { color: colors.ink3, fontSize: 10.5, fontWeight: "800", lineHeight: 14 },
+  whyBody: { backgroundColor: colors.surface2, borderRadius: radius.md, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  whyBodyText: { color: colors.ink2, fontSize: 12, lineHeight: 19.8 },
+  datebox: { backgroundColor: colors.surface2, borderRadius: 13, paddingVertical: 5, width: 44 },
+  dateDay: { color: colors.ink, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 17, fontWeight: "800", lineHeight: 18.7, textAlign: "center" },
+  // .datebox line-height 1.1：small 落在外层 14px 的行盒里（15.4）。
+  dateMonth: { color: colors.ink3, fontSize: 10, fontWeight: "700", lineHeight: 15.4, textAlign: "center" },
+  frow: { alignItems: "center", flexDirection: "row", gap: 8, paddingVertical: 9 },
+  frowLine: { borderTopColor: colors.line, borderTopWidth: 1 },
+  frowValue: { color: colors.ink, flex: 1, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  poster: { alignItems: "center", borderRadius: 16, height: 130, justifyContent: "center", overflow: "hidden" },
+  posterSheet: { backgroundColor: colors.surface, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12, transform: [{ rotate: "-3deg" }], width: "62%" },
+  posterTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 18, marginBottom: 8, marginTop: 4 },
+  posterLine: { backgroundColor: colors.surface3, borderRadius: 3, height: 5, marginTop: 4 },
+  posterTag: { left: 10, position: "absolute", top: 10 },
+  seg: { backgroundColor: colors.surface, borderRadius: radius.pill, flexDirection: "row", gap: 2, padding: 3 },
+  segOpt: { alignItems: "center", borderRadius: radius.pill, flex: 1, paddingHorizontal: 13, paddingVertical: 6 },
+  segOn: { backgroundColor: colors.surface, ...shadows.segment },
+  segText: { color: colors.ink2, fontSize: 12, fontWeight: "600", lineHeight: 18 },
 }));

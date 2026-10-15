@@ -46,6 +46,7 @@ import { createRoot } from "react-dom/client";
 import { PlanSegment } from "./src/screens/plan/PlanSegment";
 import { PlanReviewScreen } from "./src/screens/plan/PlanReviewScreen";
 import { PlanDoneScreen } from "./src/screens/plan/PlanDoneScreen";
+import { PlanNextGoalScreen } from "./src/screens/plan/PlanNextGoalScreen";
 import { PlanLegacyScreen } from "./src/screens/plan/PlanLegacy";
 import { PlanManualEditScreen } from "./src/screens/plan/PlanManualEditScreen";
 import { ToastProvider, UiPortalHost } from "./src/components/ui";
@@ -54,11 +55,13 @@ function Root() {
   window.planNav.setPath = setPath;
   const review = path.match(/^\\/plans\\/([^/?]+)\\/review/);
   const done = path.match(/^\\/plans\\/([^/?]+)\\/done/);
+  const next = path.match(/^\\/plans\\/([^/?]+)\\/next/);
   const legacy = path.match(/^\\/plans\\/legacy\\/([^/?]+)/);
   const edit = path.match(/^\\/plans\\/drafts\\/([^/?]+)\\/edit/);
   const screen = legacy ? <PlanLegacyScreen key={path} planId={decodeURIComponent(legacy[1])} />
     : review ? <PlanReviewScreen key={path} planId={decodeURIComponent(review[1])} />
     : done ? <PlanDoneScreen key={path} planId={decodeURIComponent(done[1])} />
+    : next ? <PlanNextGoalScreen key={path} planId={decodeURIComponent(next[1])} />
     : edit ? <PlanManualEditScreen key={path} draftId={decodeURIComponent(edit[1])} />
     : path.startsWith("/task") ? <PlanSegment key={path} />
     : <div data-testid="elsewhere">{path}</div>;
@@ -429,6 +432,8 @@ test("achieve: the question → 完了 (three numbers, best move, skipped) → n
   // R25 review m3: looking back never asks for candidates; only 「次の目標を決める」 does.
   assert.equal(calls.filter((call) => call.path.endsWith("/next-goals")).length, 0);
   await page.getByRole("button", { name: "次の目標を決める" }).click();
+  // b4 #26：次の目標 is its own page.
+  assert.equal((await navigation(page)).stack.at(-1), `/plans/${PLAN}/next`);
   const candidates = page.getByTestId("next-candidate");
   await candidates.first().waitFor();
   assert.equal(calls.filter((call) => call.path.endsWith("/next-goals")).length, 1);

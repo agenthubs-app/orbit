@@ -41,6 +41,8 @@ const LEGACY_SERIES_A: PlanLegacyDetail = {
     { kind: "event", phase: null, status: "recommended", title: "製造業DXカンファレンス 大阪" },
   ],
   needs: 4,
+  // b12 #286 会いたい人头像 伊 · 高 · 渡 · 鈴（后两位是 v1 里另两条会いたい人对上的人，详情页不列）。
+  needNames: ["伊藤 直子", "高橋 美咲", "渡辺 健", "鈴木 一郎"],
   phase: { number: 1, title: "数字と資料を固める", total: 2 },
   planId: "design-legacy-series-a",
   startsOn: "2026-06-02",

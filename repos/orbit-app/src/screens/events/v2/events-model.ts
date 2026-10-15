@@ -66,3 +66,18 @@ export function orderAssessed(items: readonly EventAssessmentContract[]): EventA
   const rank = (item: EventAssessmentContract) => (item.status === "reading" ? 0 : item.userDecision === "dismissed" ? 2 : 1);
   return [...items].sort((a, b) => rank(a) - rank(b) || b.total - a.total || b.createdAt.localeCompare(a.createdAt));
 }
+
+/** 「7」/「10」（.datebox：東京の日と月）。 */
+export function tokyoDay(iso: string): { day: number; month: number } | null {
+  const p = parts(iso);
+  if (!p) return null;
+  const date = new Date(p.time + TOKYO);
+  return { day: date.getUTCDate(), month: date.getUTCMonth() + 1 };
+}
+
+/** 「19:00」（ページ内のイベント行；0:00 = 時刻なし）。 */
+export function appEventTime(iso: string, _language: string): string | null {
+  const p = parts(iso);
+  if (!p || (p.hh === 0 && p.mm === 0)) return null;
+  return `${p.hh}:${String(p.mm).padStart(2, "0")}`;
+}

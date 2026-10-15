@@ -1345,7 +1345,10 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
  * 没有 `phaseSpans`（测试 / 设计稿种子）时沿用行里已有的值。
  */
 export function legacyView(row: PlanV2LegacyRow, at: string): PlanLegacyDetail {
-  const { phaseSpans, ...detail } = row;
+  const { phaseSpans, ...rest } = row;
+  // A-R25-15：会いたい人头像——对上联系人的名字（按条目顺序，≤4）；行里已有（设计稿种子）就沿用。
+  const needNames = rest.needNames ?? [...new Set(rest.items.flatMap((item) => (item.kind === "network_need" && item.contactName ? [item.contactName] : [])))].slice(0, 4);
+  const detail = needNames.length > 0 ? { ...rest, needNames } : rest;
   if (!phaseSpans) return detail;
   if (phaseSpans.length === 0) return { ...detail, items: detail.items.map((item) => ({ ...item, phaseNumber: null })), phase: null };
   const when = row.status === "archived" && row.archivedAt ? row.archivedAt : at;

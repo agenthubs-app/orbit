@@ -25,6 +25,8 @@ export const myEventsResponseObject = z.object({
   range: tolerantEnum(["upcoming", "past"], "upcoming"),
   items: readableItems(myEventItemObject),
   upcomingCount: z.number().int().min(0),
+  // R26 App 像素返工（只加）：服务端时钟；读不懂按缺省（客户端退回本机时间）。
+  asOf: z.string().optional().catch(undefined),
 });
 export const myEventsResponseSchema = myEventsResponseObject as unknown as z.ZodType<MyEventsResponse>;
 

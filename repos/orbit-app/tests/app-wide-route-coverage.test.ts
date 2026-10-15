@@ -171,6 +171,7 @@ const integratedFeatureRoutes = [
   "/plans/[planId]/types/[itemId]",
   "/plans/[planId]/review",
   "/plans/[planId]/done",
+  "/plans/[planId]/next",
   "/plans/legacy/[planId]",
   "/agent/actions",
   "/inbox/notifications/[id]",

@@ -33,7 +33,7 @@ export const eventsV2 = {
   "eventsV2.guideTimeSub": "Travel, fee and weekday evenings",
   "eventsV2.exampleTitle": "Example",
   "eventsV2.exampleName": "Japan SaaS Summit 2026 Autumn",
-  "eventsV2.exampleSub": "Recommended · 3 VCs speaking",
+  "eventsV2.exampleSub": "Fri, Oct 16 · Tokyo International Forum",
   "eventsV2.codeTitle": "Have an entry code?",
   "eventsV2.codeSub": "Register with the code from the organizer",
   "eventsV2.codeEnter": "Enter",
@@ -178,4 +178,9 @@ export const eventsV2 = {
   "eventsV2.calendar": "Calendar",
   "eventsV2.searchEvents": "Find events",
   "eventsV2.sample": "Sample",
+  "eventsV2.feeUnknownLabel": "Fee unknown",
+  "eventsV2.share": "Share",
+  "eventsV2.stillUnknown": "{field} still unknown",
+  "eventsV2.seeDetails": "See details",
+  "eventsV2.monthShort": "M{month}",
 };

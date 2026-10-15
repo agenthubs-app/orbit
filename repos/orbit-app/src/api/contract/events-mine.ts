@@ -36,4 +36,9 @@ export interface MyEventsResponse {
   items: readonly MyEventItem[];
   /** Upcoming count (the 「参加予定 N件」 badge), independent of `limit`. */
   upcomingCount: number;
+  /**
+   * R26 App 像素返工（只加）：the server clock the response was computed at (ISO). Clients date relative labels
+   * (今夜 / 今日 / 明日, 「10月」) from it so they agree with the upcoming / past split (design fixtures pin it).
+   */
+  asOf?: string;
 }

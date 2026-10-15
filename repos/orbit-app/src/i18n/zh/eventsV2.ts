@@ -33,7 +33,7 @@ export const eventsV2 = {
   "eventsV2.guideTimeSub": "路程、费用、工作日晚上的负担",
   "eventsV2.exampleTitle": "判断示例",
   "eventsV2.exampleName": "Japan SaaS Summit 2026秋",
-  "eventsV2.exampleSub": "推荐参加 · 3位VC 演讲",
+  "eventsV2.exampleSub": "10月16日（周五） · 东京国际论坛",
   "eventsV2.codeTitle": "有参加码吗？",
   "eventsV2.codeSub": "用主办方给的码报名",
   "eventsV2.codeEnter": "输入",
@@ -178,4 +178,9 @@ export const eventsV2 = {
   "eventsV2.calendar": "日历",
   "eventsV2.searchEvents": "找活动",
   "eventsV2.sample": "示例",
+  "eventsV2.feeUnknownLabel": "费用 不明",
+  "eventsV2.share": "分享",
+  "eventsV2.stillUnknown": "{field}仍不明",
+  "eventsV2.seeDetails": "查看详情",
+  "eventsV2.monthShort": "{month}月",
 };

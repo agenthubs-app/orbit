@@ -66,10 +66,9 @@
    "id": "A-R25-10",
    "design": "b4-plan-iorbit.html",
    "board-index": 26,
-   "url": "orbit://plans/demo-plan-series-a/done",
+   "url": "orbit://plans/demo-plan-series-a/next",
    "fixture": "c-done",
-   "note": "③ 次の目標の提案（完了页下滑）",
-   "taps": "scroll"
+   "note": "③ 次の目標の提案（独立页 /plans/<id>/next）"
   },
   {
    "id": "A-R25-11",

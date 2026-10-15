@@ -776,6 +776,8 @@ const legacyItem = z.object({
   actionsTotal: count,
   // 计划页像素返工（N29）：v1 计划所处的阶段（读不懂按 null）。
   phase: z.object({ number: z.number().int().min(1), total: z.number().int().min(1), title: z.string().nullable() }).nullable().optional().catch(null),
+  // R26 App 像素返工（只加，A-R25-15）：会いたい人对上的联系人名字（≤4；读不懂按缺省）。
+  needNames: z.array(z.string()).max(4).optional().catch(undefined),
 });
 export const planLegacyListResponseObject = z.object({ plans: readableItems(legacyItem) });
 export const planLegacyListResponseSchema = planLegacyListResponseObject as z.ZodType<PlanLegacyListResponse>;

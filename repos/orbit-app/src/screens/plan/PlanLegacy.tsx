@@ -14,6 +14,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { openMainTab } from "../../components/shell-navigation";
 import { AppScreen } from "../../components/AppScreen";
 import { Avatar, Icon, RetryCard, Skeleton, UiPressable, UiText } from "../../components/ui";
+import { avatarTone, initials } from "../../components/ui/Avatar";
 import { createThemedStyles } from "../../design/theme";
 import type { OrbitTranslator } from "../../i18n/messages";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -65,6 +66,8 @@ export function PlanLegacyCard({ plans, onCreate }: { plans: readonly PlanLegacy
             </View>
             <View style={styles.cell}>
               <View style={styles.between}><UiText style={kit.lbl}>{t("plan.legacy.kindNeed")}</UiText><UiText style={styles.num}>{String(plan.needs)}</UiText></View>
+              {/* b12 画板 286 .v2avs：会いたい人对上的联系人（契约 needNames，≤4）。 */}
+              {plan.needNames?.length ? <NeedAvatars names={plan.needNames} /> : null}
             </View>
           </View>
           <UiText style={styles.sub}>{t("plan.legacy.cardBodyV2")}</UiText>
@@ -176,10 +179,27 @@ export function PlanLegacyScreen({ planId }: { planId: string }) {
   );
 }
 
+function NeedAvatars({ names }: { names: readonly string[] }) {
+  const { styles, colors } = useStyles();
+  const tones = { apricot: [colors.macApricot, colors.macApricotText], blue: [colors.macBlue, colors.macBlueText], lav: [colors.macLav, colors.macLavText], pink: [colors.macPink, colors.macPinkText], teal: [colors.macTeal, colors.macTealText] } as const;
+  return (
+    <View accessible accessibilityRole="image" accessibilityLabel={names.join("、")} style={styles.needAvs}>
+      {names.slice(0, 4).map((name, index) => {
+        const [background, ink] = tones[avatarTone(name)];
+        return <View key={`${name}-${index}`} style={[styles.needAv, { backgroundColor: background }, index > 0 ? { marginLeft: -8 } : null]}><UiText maxFontSizeMultiplier={1} style={[styles.needAvText, { color: ink }]}>{initials(name)}</UiText></View>;
+      })}
+    </View>
+  );
+}
+
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   fill: { flex: 1 },
   // AppScreen 内容区多 12 上边距、左右 16（kit 18）：同计划其他页先在页内抵消。
   page: { marginTop: -12, marginHorizontal: 2 },
+  // .v2avs .av.sm：30（含 2px surface 边，border-box）、相互压 8。
+  needAvs: { flexDirection: "row", marginTop: 6 },
+  needAv: { alignItems: "center", borderColor: colors.surface, borderRadius: 15, borderWidth: 2, height: 30, justifyContent: "center", width: 30 },
+  needAvText: { ...kitText(11.5, "800", 1.2) },
   detail: { gap: 14, marginTop: -12, marginHorizontal: 2 },
   chips: { flexDirection: "row", alignItems: "center", gap: 6 },
   chipRight: { marginLeft: "auto" },
@@ -196,7 +216,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sub: { color: colors.ink2, ...kitText(12.5, "400", 1.6), marginTop: 14 },
   open: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 40, borderRadius: 999, backgroundColor: colors.surface2, marginTop: 12 },
   openText: { color: colors.ink, ...kitText(13, "700") },
-  create: { height: 50, marginTop: 18 },
+  create: { height: 50, marginTop: 4 },
   center: { textAlign: "center", marginTop: 8 },
   summaryLabel: { marginTop: 12, fontWeight: "800" },
   summary: { color: colors.ink2, ...kitText(12.5, "400", 1.65), marginTop: 2 },
