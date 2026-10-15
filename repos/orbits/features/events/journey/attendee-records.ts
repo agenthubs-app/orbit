@@ -4,6 +4,7 @@
  * - 興味なし：一人一场一条（record id = 人 × 活动）；同一幂等键重放返回第一次的结果，不重复写；换理由 = 覆盖。
  * - 关注：一人一主办一条；POST / DELETE 都幂等。
  * - 清单：固定 5 项模板；只存勾选与「資料」一项的文字；名刺余量从不进服务端。
+ * - 会場メモ（自分だけ）：一人一场一条，存 参加者 id → 一行メモ（`eventVenueMemos`）。
  */
 import { createHash } from "node:crypto";
 
@@ -111,6 +112,31 @@ export function createPrepChecklistService(deps: { store: ActorRecordStore; now?
       const at = now().toISOString();
       await deps.store.put("eventPrepChecklists", actorId, recordId(actorId, eventId), { eventId, items: merged }, at);
       return merged;
+    },
+  };
+}
+
+interface VenueMemoPayload extends Record<string, unknown> {
+  eventId: string;
+  memos: Record<string, string>;
+}
+
+export function createVenueMemoService(deps: { store: ActorRecordStore; now?: () => Date }) {
+  const now = deps.now ?? (() => new Date());
+  const recordId = (actorId: string, eventId: string) => `evm:${digest(actorId, eventId)}`;
+  const read = async (actorId: string, eventId: string): Promise<Record<string, string>> => {
+    const row = await deps.store.get<VenueMemoPayload>("eventVenueMemos", actorId, recordId(actorId, eventId));
+    return row && !row.deleted ? { ...row.payload.memos } : {};
+  };
+  return {
+    read,
+    /** Empty text clears the memo. */
+    async put(actorId: string, eventId: string, attendeeId: string, text: string): Promise<string | null> {
+      const memos = await read(actorId, eventId);
+      const value = text.trim();
+      if (value) memos[attendeeId] = value; else delete memos[attendeeId];
+      await deps.store.put("eventVenueMemos", actorId, recordId(actorId, eventId), { eventId, memos }, now().toISOString());
+      return value || null;
     },
   };
 }

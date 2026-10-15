@@ -19,8 +19,8 @@ import {
 import type { EventVenueState } from "../../../shared/contract/event-venue";
 import { previewAfterScore } from "./after-core";
 import { createMemoryActorRecordStore } from "../actor-records/store";
-import { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService } from "./attendee-records";
-import type { JourneyService } from "./service";
+import { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService, createVenueMemoService } from "./attendee-records";
+import { withVenueMemos, type JourneyService } from "./service";
 
 export interface JourneyMockState {
   discover: EventJourneyVariant;
@@ -62,6 +62,7 @@ export function createJourneyMockService(): JourneyService {
   const feedback = createEventFeedbackService({ store });
   const follows = createOrganizerFollowService({ store });
   const checklist = createPrepChecklistService({ store });
+  const memos = createVenueMemoService({ store });
   const state = () => mockHolder().state;
   return {
     async discover(actorId) {
@@ -94,9 +95,13 @@ export function createJourneyMockService(): JourneyService {
     patchChecklist(actorId, _eventId, items) {
       return checklist.patch(actorId, JOURNEY_EVENT_ID, items);
     },
-    async venue(_actorId, eventId) {
+    async venue(_actorId, eventId, platform) {
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
-      return journeyVenue(state().venue);
+      return withVenueMemos(journeyVenue(state().venue, platform ?? "web"), await memos.read(_actorId, JOURNEY_EVENT_ID));
+    },
+    async saveVenueMemo(actorId, eventId, attendeeId, text) {
+      if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
+      return { attendeeId, memo: await memos.put(actorId, JOURNEY_EVENT_ID, attendeeId, text) };
     },
     async after(_actorId, eventId) {
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;

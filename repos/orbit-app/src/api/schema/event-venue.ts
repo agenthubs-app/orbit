@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { readableItems, tolerantEnum } from "./tolerant";
-import type { EventVenueResponse } from "../contract/event-venue";
+import type { EventVenueMemoResult, EventVenueResponse } from "../contract/event-venue";
 
 // R27 会場モード. Responses tolerant: an unknown `state` falls back to `not_registered` (never shows the venue by guess).
 const person = z.object({
@@ -21,6 +21,7 @@ const person = z.object({
   whyDetail: z.string().nullable().optional(),
   contactId: z.string().nullable().optional(),
   isOrbitUser: z.boolean().optional(),
+  memo: z.string().nullable().optional(),
 });
 export const eventVenuePersonObject = person;
 const mate = z.object({ attendeeId: z.string().min(1), name: z.string(), initial: z.string().max(4), org: z.string().nullable().optional(), role: z.string().nullable().optional() });
@@ -51,3 +52,7 @@ export const eventVenueResponseObject = z.object({
   sample: z.literal(true).optional(),
 });
 export const eventVenueResponseSchema = eventVenueResponseObject as unknown as z.ZodType<EventVenueResponse>;
+
+export const eventVenueMemoInputObject = z.object({ attendeeId: z.string().min(1).max(200), text: z.string().trim().max(200) }).strict();
+export const eventVenueMemoResultObject = z.object({ attendeeId: z.string().min(1), memo: z.string().nullable() });
+export const eventVenueMemoResultSchema = eventVenueMemoResultObject as z.ZodType<EventVenueMemoResult>;

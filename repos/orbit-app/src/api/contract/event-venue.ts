@@ -31,6 +31,14 @@ export interface EventVenuePerson {
   /** Contact id when they are (or became) my contact. */
   contactId?: string | null;
   isOrbitUser?: boolean;
+  /** My private one-line memo about them (「メモ（自分だけ）」). */
+  memo?: string | null;
+}
+
+/** `POST /api/events/[id]/venue/memo` — save (or clear with an empty text) my private memo about an attendee. */
+export interface EventVenueMemoResult {
+  attendeeId: string;
+  memo: string | null;
 }
 
 export interface EventVenueResponse {

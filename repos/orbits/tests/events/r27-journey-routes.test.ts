@@ -14,7 +14,7 @@ import { eventVenueResponseSchema } from "../../shared/api-schema/event-venue";
 import { DEMO_ACTOR_ID } from "../../shared/mock/demo-world/fixtures";
 import { JOURNEY_EVENT_ID } from "../../shared/mock/demo-world/events-journey";
 import { createMemoryActorRecordStore } from "../../features/events/actor-records/store";
-import { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService } from "../../features/events/journey/attendee-records";
+import { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService, createVenueMemoService } from "../../features/events/journey/attendee-records";
 import { createEventJourneyRoutes, resolveEventCode } from "../../features/events/journey/handlers";
 import { setJourneyMockState } from "../../features/events/journey/mock";
 import type { JourneyEvent, JourneyLivePorts } from "../../features/events/journey/ports";
@@ -114,7 +114,7 @@ function fakePorts(overrides: Partial<JourneyLivePorts> = {}): { ports: JourneyL
 
 function liveRoutes(ports: JourneyLivePorts) {
   const store = createMemoryActorRecordStore();
-  const service = createJourneyService({ now: () => new Date("2026-10-07T13:00:00.000Z"), ports, records: { checklist: createPrepChecklistService({ store }), feedback: createEventFeedbackService({ store }), follows: createOrganizerFollowService({ store }) } });
+  const service = createJourneyService({ now: () => new Date("2026-10-07T13:00:00.000Z"), ports, records: { checklist: createPrepChecklistService({ store }), feedback: createEventFeedbackService({ store }), follows: createOrganizerFollowService({ store }), memos: createVenueMemoService({ store }) } });
   return createEventJourneyRoutes({ liveService: async () => service, resolveActor: actor("actor:a"), resolveMode: () => "live" });
 }
 
@@ -139,4 +139,16 @@ test("live 会後: rule fallback (no AI) — follow-up dates by business day, �
   assert.equal(confirmed.status, 200);
   assert.ok(calls.includes("confirm:p1"));
   assert.equal((await routes.confirmAfter(post("/x", { idempotencyKey: "k", items: [] }), params("ev1"))).status, 400, "nothing checked → nothing to confirm");
+});
+
+test("会場メモ（自分だけ）: saved per attendee, read back on the venue, cleared with an empty text", async () => {
+  const routes = createEventJourneyRoutes({ resolveActor: actor("actor:memo"), resolveMode: () => "mock" });
+  const params = { params: Promise.resolve({ id: JOURNEY_EVENT_ID }) };
+  const saved = await (await routes.venueMemo(post("/x", { attendeeId: "jp-shimizu", text: "11月にオフィスへ" }), params)).json();
+  assert.deepEqual([saved.data.attendeeId, saved.data.memo], ["jp-shimizu", "11月にオフィスへ"]);
+  const venue = await (await routes.venue(new Request("http://localhost/x"), params)).json();
+  assert.equal(venue.data.attendees.find((item: { attendeeId: string }) => item.attendeeId === "jp-shimizu").memo, "11月にオフィスへ");
+  const cleared = await (await routes.venueMemo(post("/x", { attendeeId: "jp-shimizu", text: "" }), params)).json();
+  assert.equal(cleared.data.memo, null);
+  assert.equal((await routes.venueMemo(post("/x", { attendeeId: "jp-shimizu", text: "x".repeat(201) }), params)).status, 400);
 });

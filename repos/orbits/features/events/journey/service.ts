@@ -10,11 +10,11 @@ import type { EventDiscoverResponse } from "../../../shared/contract/event-disco
 import type { EventOverviewResponse } from "../../../shared/contract/event-overview";
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../shared/contract/event-prep";
 import type { EventSearchResponse } from "../../../shared/contract/event-search";
-import type { EventVenueResponse } from "../../../shared/contract/event-venue";
+import type { EventVenueMemoResult, EventVenueResponse } from "../../../shared/contract/event-venue";
 import type { OrganizerFollowResult } from "../../../shared/contract/organizer-follow";
 import type { EventDiscoverParsedQuery } from "../../../shared/api-schema/event-discover";
 import { buildAfter } from "./after-core";
-import type { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService } from "./attendee-records";
+import type { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService, createVenueMemoService } from "./attendee-records";
 import { buildDiscover, eventArea, eventThemes, type DiscoverCandidate } from "./discover-core";
 import type { JourneyContact, JourneyEvent, JourneyLivePorts } from "./ports";
 import { buildPrep, type JourneyLanguage, type PrepAttendee } from "./prep-core";
@@ -25,6 +25,7 @@ export interface JourneyRecords {
   feedback: ReturnType<typeof createEventFeedbackService>;
   follows: ReturnType<typeof createOrganizerFollowService>;
   checklist: ReturnType<typeof createPrepChecklistService>;
+  memos: ReturnType<typeof createVenueMemoService>;
 }
 
 export interface JourneyService {
@@ -34,7 +35,8 @@ export interface JourneyService {
   overview(actorId: string | null, eventId: string, language: JourneyLanguage, platform?: "web" | "app"): Promise<EventOverviewResponse | null>;
   prep(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventPrepResponse | null>;
   patchChecklist(actorId: string, eventId: string, items: readonly EventPrepChecklistItem[]): Promise<EventPrepChecklistItem[]>;
-  venue(actorId: string, eventId: string): Promise<EventVenueResponse | null>;
+  venue(actorId: string, eventId: string, platform?: "web" | "app"): Promise<EventVenueResponse | null>;
+  saveVenueMemo(actorId: string, eventId: string, attendeeId: string, text: string): Promise<EventVenueMemoResult | null>;
   after(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventAfterResponse | null>;
   confirmAfter(actorId: string, eventId: string, input: EventAfterConfirmInput): Promise<EventAfterConfirmResult | null>;
   dismiss(actorId: string, eventId: string, input: { reason: EventRecommendationDismissReason; idempotencyKey: string }): Promise<EventRecommendationDismissResult | null>;
@@ -236,7 +238,12 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       const wanted = new Set(directory.filter((item) => types[item.participantId]).map((item) => item.participantId));
       const at = now();
       const slots = [1, 2, 3].map((n) => new Date(Date.parse(event.startsAt) + n * 86_400_000 + 15 * 3_600_000).toISOString());
-      return buildVenue({ agenda: event.agenda, event, meetingSlots: slots, myContacts: contacts, now: at, registered: true, wantedParticipantIds: wanted, workspace });
+      return withVenueMemos(buildVenue({ agenda: event.agenda, event, meetingSlots: slots, myContacts: contacts, now: at, registered: true, wantedParticipantIds: wanted, workspace }), await records.memos.read(actorId, eventId));
+    },
+
+    async saveVenueMemo(actorId, eventId, attendeeId, text) {
+      if (!(await ports.event(eventId)) || !(await ports.registered(actorId, eventId))) return null;
+      return { attendeeId, memo: await records.memos.put(actorId, eventId, attendeeId, text) };
     },
 
     async after(actorId, eventId, language) {
@@ -269,4 +276,11 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       return ports.eventIdByCode(code);
     },
   };
+}
+
+/** 会場メモ（自分だけ）贴到每个人身上（推荐 / 次に話す順 / 参加者）。 */
+export function withVenueMemos(venue: EventVenueResponse, memos: Record<string, string>): EventVenueResponse {
+  if (!Object.keys(memos).length) return venue;
+  const attach = <T extends { attendeeId: string }>(person: T) => (memos[person.attendeeId] ? { ...person, memo: memos[person.attendeeId] } : person);
+  return { ...venue, attendees: venue.attendees.map(attach), nextOrder: venue.nextOrder.map(attach), recommendations: venue.recommendations.map(attach) };
 }

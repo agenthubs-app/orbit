@@ -31,7 +31,8 @@ export function shellNavKeyFor(pathname: string): ShellNavKey | null {
   if (matches(path, "/app/home")) return "home";
   if (matches(path, "/app/contacts")) return "network";
   if (matches(path, "/app/agent")) return "iorbit";
-  if (matches(path, "/app/events/center") || /^\/app\/events\/[^/]+\/(operations|analytics|live)(\/|$)/u.test(path)) return "host";
+  // R27：会場モード（/live）是参加者自己的页面，左栏高亮イベント（b2 #36）；主催侧仍是 operations / analytics。
+  if (matches(path, "/app/events/center") || /^\/app\/events\/[^/]+\/(operations|analytics)(\/|$)/u.test(path)) return "host";
   if (matches(path, "/app/events")) return "events";
   if (matches(path, "/app/tasks")) return "task";
   // 计划页像素返工（2026-10-12，主会话拍板）：生成流程与見直し在设计稿里是 iOrbit 页内的对话，左栏高亮 iOrbit；

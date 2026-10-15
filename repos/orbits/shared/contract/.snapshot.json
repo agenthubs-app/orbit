@@ -7356,6 +7356,26 @@
           "optional": true,
           "kind": "text",
           "type": "boolean"
+        },
+        "memo": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "event-venue.ts::EventVenueMemoResult": {
+      "kind": "object",
+      "members": {
+        "attendeeId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "memo": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },

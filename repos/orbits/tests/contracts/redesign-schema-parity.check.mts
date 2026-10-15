@@ -17,7 +17,7 @@ import type { EventSearchResponse } from "../../shared/contract/event-search";
 import type { EventPrepChecklistPatch, EventPrepResponse } from "../../shared/contract/event-prep";
 import type { OrganizerFollowResult } from "../../shared/contract/organizer-follow";
 import type { EventOverviewResponse } from "../../shared/contract/event-overview";
-import type { EventVenueResponse } from "../../shared/contract/event-venue";
+import type { EventVenueMemoResult, EventVenueResponse } from "../../shared/contract/event-venue";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../shared/contract/event-after";
 import type { EventJoinProfile, EventJoinResult, EventJoinStep, EventJoinCancelResult, EventJoinTentativeResult } from "../../shared/contract/event-join";
 import type { EventRecommendationDismissInput, EventRecommendationDismissResult } from "../../shared/contract/event-recommendation-feedback";
@@ -37,7 +37,7 @@ import type { eventSearchResponseObject } from "../../shared/api-schema/event-se
 import type { eventPrepChecklistPatchObject, eventPrepResponseObject } from "../../shared/api-schema/event-prep";
 import type { organizerFollowResultObject } from "../../shared/api-schema/organizer-follow";
 import type { eventOverviewResponseObject } from "../../shared/api-schema/event-overview";
-import type { eventVenueResponseObject } from "../../shared/api-schema/event-venue";
+import type { eventVenueMemoResultObject, eventVenueResponseObject } from "../../shared/api-schema/event-venue";
 import type { eventAfterConfirmInputObject, eventAfterConfirmResultObject, eventAfterResponseObject } from "../../shared/api-schema/event-after";
 import type { eventJoinProfileObject, eventJoinResultObject, eventJoinStepObject, eventJoinCancelResultObject, eventJoinTentativeResultObject } from "../../shared/api-schema/event-join";
 import type { eventRecommendationDismissInputObject, eventRecommendationDismissResultObject } from "../../shared/api-schema/event-recommendation-feedback";
@@ -88,6 +88,7 @@ expectParity<Parity<EventPrepChecklistPatch, typeof eventPrepChecklistPatchObjec
 expectParity<Parity<OrganizerFollowResult, typeof organizerFollowResultObject>>();
 expectParity<Parity<EventOverviewResponse, typeof eventOverviewResponseObject>>();
 expectParity<Parity<EventVenueResponse, typeof eventVenueResponseObject>>();
+expectParity<Parity<EventVenueMemoResult, typeof eventVenueMemoResultObject>>();
 expectParity<Parity<EventAfterResponse, typeof eventAfterResponseObject>>();
 expectParity<Parity<EventAfterConfirmInput, typeof eventAfterConfirmInputObject>>();
 expectParity<Parity<EventAfterConfirmResult, typeof eventAfterConfirmResultObject>>();

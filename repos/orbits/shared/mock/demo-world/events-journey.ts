@@ -272,20 +272,24 @@ function venuePerson(id: string, exchange: EventVenuePerson["exchange"], extra: 
   };
 }
 
-export function journeyVenue(state: EventVenueResponse["state"] = "checked_in"): EventVenueResponse {
+/** `platform`：Web 画板 b2 #36 与 App 画板文字不同（推荐卡带交换状态、关系图有伊藤さん、席の理由更短）。 */
+export function journeyVenue(state: EventVenueResponse["state"] = "checked_in", platform: "web" | "app" = "app"): EventVenueResponse {
+  const web = platform === "web";
   const base = { endsAt: CFO_NIGHT_BASE.endsAt, eventId: JOURNEY_EVENT_ID, now: JOURNEY_NOW.venue, sample: true as const, startsAt: CFO_NIGHT_BASE.startsAt, title: CFO_NIGHT_BASE.title };
   const empty = { agenda: [], attendeeTotal: 0, attendees: [], nextOrder: [], openers: [], recommendations: [], stats: { exchanged: 0, incoming: 0, wantedMet: 0, wantedTotal: 0 } };
   if (state === "not_registered") return { ...base, ...empty, state };
   if (state === "before_check_in") {
     return { ...base, ...empty, checkIn: { available: true, displayName: JOURNEY_ME.name, qrPayload: "orbit-checkin:demo-event-cfo-night-18:A-042", receptionNumber: "A-042" }, now: "2026-10-07T18:55:00+09:00", state };
   }
-  const shimizu = venuePerson("jp-shimizu", "incoming", { contactId: null });
-  const attendees = [shimizu, venuePerson("jp-mori", "exchanged"), venuePerson("jp-inoue", "exchanged"), venuePerson("jp-kimura", "requested"), venuePerson("jp-hayashi", "none"), venuePerson("jp-matsumoto", "none"), venuePerson("jp-takahashi", "none"), venuePerson("jp-kato", "none")];
-  const recommendations = [
-    { ...shimizu, exchange: "none" as const, table: "C-2", why: person("jp-shimizu").why },
-    venuePerson("jp-kimura", "none"),
-    venuePerson("jp-hayashi", "none"),
-  ];
+  const shimizu = venuePerson("jp-shimizu", "incoming", { contactId: null, ...(web ? { whyDetail: "申込内容「探している投資先：B2B SaaS」とあなたの「会いたい人：VC」が一致。" } : {}) });
+  const attendees = [shimizu, venuePerson("jp-mori", "exchanged"), venuePerson("jp-inoue", "exchanged"), venuePerson("jp-kimura", "requested"), venuePerson("jp-hayashi", "none"), venuePerson("jp-matsumoto", "none"), venuePerson("jp-takahashi", "none"), venuePerson(web ? "jp-ito" : "jp-kato", "none")];
+  const recommendations = web
+    ? [{ ...shimizu, table: "C-2" }, venuePerson("jp-kimura", "requested"), venuePerson("jp-hayashi", "none")]
+    : [
+      { ...shimizu, exchange: "none" as const, table: "C-2", why: person("jp-shimizu").why },
+      venuePerson("jp-kimura", "none"),
+      venuePerson("jp-hayashi", "none"),
+    ];
   const order = [shimizu, venuePerson("jp-kimura", "requested"), venuePerson("jp-hayashi", "none"), venuePerson("jp-matsumoto", "none")];
   const mate = (id: string) => { const p = person(id); return { attendeeId: id, initial: initial(p.name), name: p.name, org: p.company, role: p.role }; };
   return {
@@ -310,8 +314,8 @@ export function journeyVenue(state: EventVenueResponse["state"] = "checked_in"):
     mySeat: {
       table: "B-4",
       tablemates: [mate("jp-inoue"), mate("jp-mori"), mate("jp-okada"), mate("jp-nishimura")],
-      why: "同席の 2名があなたの話題と重なります",
-      whyDetail: "井上さん（ノードワークス CFO）は昨年シリーズAで 4億円を調達。森さん（ブルーム証券）は資本政策の担当。どちらも申込時の「会いたい人：上場企業の CFO・金融」に一致。",
+      why: web ? "井上さん・森さんと話題が重なります" : "同席の 2名があなたの話題と重なります",
+      whyDetail: web ? "申込時の「会いたい人：上場企業の CFO・金融」に一致する 2名が同席。" : "井上さん（ノードワークス CFO）は昨年シリーズAで 4億円を調達。森さん（ブルーム証券）は資本政策の担当。どちらも申込時の「会いたい人：上場企業の CFO・金融」に一致。",
     },
     nextOrder: order,
     nextRound: { at: "20:40", names: "木村さん（東邦銀行）· 林さん（クオリス）", round: 3, table: "D-1" },

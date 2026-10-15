@@ -3,7 +3,7 @@
  * `organizerFollows`（DESIGN §10 A2）、`eventPrepChecklists`（会う準備）、`eventAfterConfirmations`（会後の確定，幂等回执 + 逐行去重）。Owner: 甲 (R27).
  * 每条记录只属于一个人（`user_id`），写入时 `on conflict` 只更新同一个人的行，从不改 owner（sync owner guard）。
  */
-export type ActorRecordCollection = "eventRecommendationFeedback" | "organizerFollows" | "eventPrepChecklists" | "eventAfterConfirmations" | "eventTentativeSchedules" | "eventJoinIntros";
+export type ActorRecordCollection = "eventRecommendationFeedback" | "organizerFollows" | "eventPrepChecklists" | "eventAfterConfirmations" | "eventTentativeSchedules" | "eventJoinIntros" | "eventVenueMemos";
 
 export interface ActorRecord<T> {
   recordId: string;

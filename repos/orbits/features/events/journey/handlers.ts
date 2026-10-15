@@ -14,7 +14,7 @@ import { eventOverviewResponseSchema } from "../../../shared/api-schema/event-ov
 import { eventPrepChecklistPatchSchema, eventPrepResponseSchema } from "../../../shared/api-schema/event-prep";
 import { eventRecommendationDismissInputSchema, eventRecommendationDismissResultSchema } from "../../../shared/api-schema/event-recommendation-feedback";
 import { eventSearchQueryObject, eventSearchResponseSchema } from "../../../shared/api-schema/event-search";
-import { eventVenueResponseSchema } from "../../../shared/api-schema/event-venue";
+import { eventVenueMemoInputObject, eventVenueMemoResultSchema, eventVenueResponseSchema } from "../../../shared/api-schema/event-venue";
 import { organizerFollowResultSchema } from "../../../shared/api-schema/organizer-follow";
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
@@ -25,7 +25,7 @@ import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from 
 import { requestContext } from "../../plans/v2/flow-handlers";
 import { redesignContractMode } from "../../redesign-contracts/route";
 import { createPostgresActorRecordStore } from "../actor-records/store";
-import { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService } from "./attendee-records";
+import { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService, createVenueMemoService } from "./attendee-records";
 import { createJourneyMockService } from "./mock";
 import type { JourneyLanguage } from "./prep-core";
 import { createJourneyService, type JourneyService } from "./service";
@@ -55,7 +55,7 @@ async function configuredLiveService(): Promise<JourneyService | null> {
   const ports = createJourneyLivePorts();
   if (!ports) return null;
   const store = createPostgresActorRecordStore({ query: (sql, values) => runtime.client.query(sql, values as unknown[]) as Promise<{ rows: Array<Record<string, unknown>> }>, workspaceId: runtime.workspaceId });
-  return createJourneyService({ ports, records: { checklist: createPrepChecklistService({ store }), feedback: createEventFeedbackService({ store }), follows: createOrganizerFollowService({ store }) } });
+  return createJourneyService({ ports, records: { checklist: createPrepChecklistService({ store }), feedback: createEventFeedbackService({ store }), follows: createOrganizerFollowService({ store }), memos: createVenueMemoService({ store }) } });
 }
 
 async function configuredJoinService(): Promise<JoinService | null> {
@@ -141,7 +141,12 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       await service.patchChecklist(actorId!, eventId(params), parsed.value.items);
       return service.prep(actorId!, eventId(params), language);
     }, deps),
-    venue: journeyRoute({ auth: "required", schema: eventVenueResponseSchema }, async ({ actorId, params, service }) => service.venue(actorId!, eventId(params)), deps),
+    venue: journeyRoute({ auth: "required", schema: eventVenueResponseSchema }, async ({ actorId, params, platform, service }) => service.venue(actorId!, eventId(params), platform), deps),
+    venueMemo: journeyRoute({ auth: "required", schema: eventVenueMemoResultSchema, write: true }, async ({ actorId, params, request, service }) => {
+      const parsed = await body(request, eventVenueMemoInputObject);
+      if (parsed.ok === false) return parsed.reply;
+      return service.saveVenueMemo(actorId!, eventId(params), parsed.value.attendeeId, parsed.value.text);
+    }, deps),
     after: journeyRoute({ auth: "required", schema: eventAfterResponseSchema }, async ({ actorId, language, params, service }) => service.after(actorId!, eventId(params), language), deps),
     confirmAfter: journeyRoute({ auth: "required", schema: eventAfterConfirmResultSchema, write: true }, async ({ actorId, params, request, service }) => {
       const parsed = await body(request, eventAfterConfirmInputSchema);
