@@ -265,6 +265,9 @@ test("the old signed-in top bar and the floating ask are gone, with no reference
   }
   assert.deepEqual(offenders, []);
   // Public pages keep the public top bar; signed-in pages never mount it themselves.
-  for (const file of [`${A}/events/page.tsx`, `${A}/events/[id]/page.tsx`]) assert.match(readFileSync(file, "utf8"), /\{authenticated \? null : <PublicTopNav active="events" \/>\}/u, file);
+  // R27（R26-08，b12 #324 / #326）：活动列表 / 详情的未登录版改用 b1 公开顶栏（PublicEvents 的 PublicNav）；已登录只走壳内新页。
+  for (const [file, component] of [[`${A}/events/page.tsx`, "PublicEventList"], [`${A}/events/[id]/page.tsx`, "PublicEventDetail"]] as const) {
+    assert.match(readFileSync(file, "utf8"), new RegExp(`if \\(!session\\?\\.user\\?\\.id\\) return <${component}\\b`, "u"), file);
+  }
   assert.match(readFileSync(`${A}/layout.tsx`, "utf8"), /<Orbit2026Shell language=\{language\} signedIn=\{Boolean\(session\?\.user\)\}>/u);
 });

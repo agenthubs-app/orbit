@@ -57,6 +57,66 @@
      "wait": 400
     }
    ]
+  },
+  {
+   "id": "W-R27-17",
+   "app": "/app/events/demo-event-cfo-night-18",
+   "design": "b2-events-flow.html",
+   "board-index": 17,
+   "width": 1440,
+   "wait-for": "[data-detail-people]",
+   "journey": {
+    "overview": "empty"
+   },
+   "note": "P06 詳細 · 参加者 0"
+  },
+  {
+   "id": "W-R27-18",
+   "app": "/app/events/demo-event-cfo-night-18",
+   "design": "b2-events-flow.html",
+   "board-index": 18,
+   "width": 1440,
+   "wait-for": "[data-detail-people]",
+   "journey": {
+    "overview": "few"
+   },
+   "note": "P06 詳細 · 少"
+  },
+  {
+   "id": "W-R27-19",
+   "app": "/app/events/demo-event-cfo-night-18",
+   "design": "b2-events-flow.html",
+   "board-index": 19,
+   "width": 1440,
+   "wait-for": "[data-detail-people]",
+   "journey": {
+    "overview": "many"
+   },
+   "note": "P06 詳細 · 多（深色 = #47）"
+  },
+  {
+   "id": "W-R27-P40",
+   "app": "/app/events",
+   "design": "b12-missing-states.html",
+   "board-index": 324,
+   "width": 1440,
+   "login": "",
+   "wait-for": "[data-public-card]",
+   "journey": {},
+   "note": "P07 未登录一覧（W-R26-40）"
+  },
+  {
+   "id": "W-R27-P41",
+   "app": "/app/events/demo-event-cfo-night-18",
+   "design": "b12-missing-states.html",
+   "board-index": 326,
+   "width": 1440,
+   "login": "",
+   "wait-for": "[data-detail-people]",
+   "journey": {
+    "overview": "few"
+   },
+   "note": "P07 未登录詳細（W-R26-41）"
   }
  ]
 }

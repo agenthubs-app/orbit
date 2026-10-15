@@ -55,7 +55,7 @@ async function configuredLiveService(): Promise<JourneyService | null> {
 
 const notFound = <T>(): Reply<T> => ({ context: { reason: "NOT_FOUND" }, error: new AppError("NOT_FOUND", "Not found.") });
 
-function journeyRoute<T>(options: { auth: "required" | "optional"; write?: boolean; schema: ZodType<T> }, handle: (input: { request: Request; params: Params; service: JourneyService; actorId: string | null; language: JourneyLanguage }) => Promise<Reply<T> | T | null>, deps: JourneyRouteDeps = {}) {
+function journeyRoute<T>(options: { auth: "required" | "optional"; write?: boolean; schema: ZodType<T> }, handle: (input: { request: Request; params: Params; service: JourneyService; actorId: string | null; language: JourneyLanguage; platform: "web" | "app" }) => Promise<Reply<T> | T | null>, deps: JourneyRouteDeps = {}) {
   return async function route(request: Request, routeContext?: RouteContext): Promise<Response> {
     const mode = (deps.resolveMode ?? (() => redesignContractMode("event-recommendation-feedback")))();
     const headers = { ...runtimeBoundaryHeaders(mode), "cache-control": "private, no-store" };
@@ -71,7 +71,8 @@ function journeyRoute<T>(options: { auth: "required" | "optional"; write?: boole
       if (!service) return fail(new AppError("SERVICE_UNAVAILABLE", "Events require a configured live database."), { reason: "EVENT_JOURNEY_UNCONFIGURED" });
       const params = (await routeContext?.params) ?? {};
       const actorId = actor?.id ?? (options.auth === "required" ? DEMO_ACTOR_ID : null);
-      const result = await handle({ actorId, language: requestContext(request).language, params, request, service });
+      const context = requestContext(request);
+      const result = await handle({ actorId, language: context.language, params, platform: context.platform === "app" ? "app" : "web", request, service });
       if (result === null) return fail(new AppError("NOT_FOUND", "Not found."), { reason: "NOT_FOUND" });
       const normalized = (typeof result === "object" && result !== null && ("data" in result || "error" in result) ? result : { data: result }) as Reply<T>;
       if ("error" in normalized) return fail(normalized.error, normalized.context);
@@ -112,7 +113,7 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       if (!parsed.success) return { error: new AppError("VALIDATION_ERROR", "Invalid query.") };
       return service.search(actorId!, parsed.data.q, parsed.data.limit);
     }, deps),
-    overview: journeyRoute({ auth: "optional", schema: eventOverviewResponseSchema }, async ({ actorId, language, params, service }) => service.overview(actorId, eventId(params), language), deps),
+    overview: journeyRoute({ auth: "optional", schema: eventOverviewResponseSchema }, async ({ actorId, language, params, platform, service }) => service.overview(actorId, eventId(params), language, platform), deps),
     prep: journeyRoute({ auth: "required", schema: eventPrepResponseSchema }, async ({ actorId, language, params, service }) => service.prep(actorId!, eventId(params), language), deps),
     patchChecklist: journeyRoute({ auth: "required", schema: eventPrepResponseSchema, write: true }, async ({ actorId, language, params, request, service }) => {
       const parsed = await body(request, eventPrepChecklistPatchSchema);

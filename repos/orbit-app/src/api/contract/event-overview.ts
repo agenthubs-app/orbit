@@ -64,6 +64,8 @@ export interface EventOverviewResponse {
   speakerCandidates?: readonly { emoji: string; name: string; label: string; note: string }[];
   /** One line about a known person (「伊藤さんがキーノートに登壇 · 9/24 にメールでやりとり」). */
   knownNote?: { text: string; detail?: string | null } | null;
+  /** When attendees become public (「申込者の公開は 9/25 から」); only while none are public yet. */
+  attendeesPublicAt?: string | null;
   attendeeCounts: { all: number; planFit: number; known: number };
   /** Only people who made their registration profile public; capped (`attendeeCounts.all` is the real total). */
   attendees: readonly EventOverviewAttendee[];

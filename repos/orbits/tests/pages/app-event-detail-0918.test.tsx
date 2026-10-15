@@ -230,18 +230,6 @@ test("registered recap exposes private tabs and keeps 「生成总结」 as the 
   }
 });
 
-test("page wiring: events-0918 wrapper, nav by auth, view=recap passthrough, loaders untouched", () => {
-  const page = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/page.tsx"), "utf8");
-  assert.match(page, /data-orbit-real-page="events-0918"/);
-  // R07: signed in, Orbit2026Shell provides nav; the public top bar only when signed out.
-  assert.match(page, /\{authenticated \? null : <PublicTopNav active="events" \/>\}/);
-  assert.doesNotMatch(page, /AccountTopNav/);
-  assert.match(page, /readSearchParam\(query, "view"\) === "recap"/);
-  assert.match(page, /canOpenOperations=\{resolution\.canOpenOperations\}/);
-  assert.match(page, /resolveConfiguredCanonicalEventDetailView/);
-  assert.doesNotMatch(page, /orbit-real-event-detail/);
-});
-
 // ── Task 5: 详情参会者页签 / 回顾态精选参会者 → Orbit_0918 参会者弹窗 ──
 test("Task 5: recap people avatars open a reduced attendee modal; directory participants map to a reduced OrbitPartyPersonView", async () => {
   const base = await baseEvent();

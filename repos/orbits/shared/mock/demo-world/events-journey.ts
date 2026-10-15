@@ -127,6 +127,12 @@ export function journeyDiscover(variant: EventJourneyVariant): EventDiscoverResp
   };
 }
 
+/** 未登录的公开列表（b12 #324）：只有「すべて」，没有分数 / 依据 / 主办 id。 */
+export function journeyPublicDiscover(): EventDiscoverResponse {
+  const strip = (row: EventDiscoverRow): EventDiscoverRow => ({ area: row.area ?? null, emoji: row.emoji, eventId: row.eventId, href: row.href, organizerId: null, organizerName: row.organizerName ?? null, priceYen: row.priceYen ?? null, sample: true, startsAt: row.startsAt, title: row.title, venue: row.venue ?? null });
+  return { all: [SUMMIT, CVC, SERIES_A, COMMUNITY[1]!].map(strip), community: [], planFit: [], planFitTotal: 0, popularityFallback: true, signedOut: true, total: 4 };
+}
+
 // ---------- 検索（「CFO」） ----------
 
 export function journeySearch(query: string): EventSearchResponse {
@@ -153,14 +159,17 @@ function attendee(id: string, wanted: boolean): EventOverviewAttendee {
   return { attendeeId: id, initial: initial(p.name), known, name: p.name, note: known ? null : p.why, org: p.company, planFit: !known, role: p.role, wanted };
 }
 
-export function journeyOverview(variant: EventJourneyVariant): EventOverviewResponse {
+export function journeyOverview(variant: EventJourneyVariant, platform: "web" | "app" = "app"): EventOverviewResponse {
+  // Web 画板（#17–#19）写「渋谷ストリーム 4F」，App 画板（#14–#16）写「渋谷ストリーム 4F ホール」：各端照自己的画板。
+  const venue = platform === "web" ? "渋谷ストリーム 4F" : CFO_NIGHT_BASE.venue;
   const organizer = { editions: 18, emoji: "🥂", following: true, monthly: true, myAttendance: 2, name: "CFO Night 実行委員会", organizerId: "org-cfo-night", since: "2023-01-01", averageAttendance: 112, typeShare: { label: "CFO", percent: 41 } };
-  const base = { ...CFO_NIGHT_BASE, agenda: JOURNEY_AGENDA.slice(0, 5).map((item) => ({ ...item })), capacity: 150, organizer, priceYen: 5000, registration: { href: `/events/${JOURNEY_EVENT_ID}/register`, status: "none" as const }, review: true, sample: true as const };
+  const base = { ...CFO_NIGHT_BASE, venue, agenda: JOURNEY_AGENDA.slice(0, 5).map((item) => ({ ...item })), capacity: 150, organizer, priceYen: 5000, registration: { href: `/events/${JOURNEY_EVENT_ID}/register`, status: "none" as const }, review: true, sample: true as const };
   if (variant === "empty") {
     return {
       ...base,
       assessment: { basis: "参加者が未公開のため「会える人」は登壇者のみで算出。公開されたら再計算して通知します。", display: { goalFit: 80, people: 0, timeCost: 66 }, score: 74, verdict: "recommend" },
       assessmentPeopleUnknown: true,
+      attendeesPublicAt: "2026-09-25T00:00:00+09:00",
       attendeeCounts: { all: 0, known: 0, planFit: 0 },
       attendees: [],
       deadlineSoon: false,
@@ -168,7 +177,7 @@ export function journeyOverview(variant: EventJourneyVariant): EventOverviewResp
       remaining: 150,
       speakerCandidates: [
         { emoji: "🎤", label: "キーノート", name: "伊藤 直子", note: "ハルモニア CFO · あなたのつながり" },
-        { emoji: "🏦", label: "パネル", name: "森 拓也", note: "ブルーム証券 · IPO 準備の資本政策" },
+        { emoji: "🏦", label: "パネル", name: "森 拓也", note: platform === "web" ? "IPO 準備の資本政策" : "ブルーム証券 · IPO 準備の資本政策" },
       ],
     };
   }
@@ -177,7 +186,8 @@ export function journeyOverview(variant: EventJourneyVariant): EventOverviewResp
       ...base,
       assessment: { basis: `根拠：プラン「${JOURNEY_GOAL}」· 登壇者 3名 · 参加者のうちプランに合う人 3名 · 平日夜 2.5時間 · ¥5,000`, display: { goalFit: 80, people: 70, timeCost: 66 }, score: 74, verdict: "recommend" },
       attendeeCounts: { all: 12, known: 1, planFit: 3 },
-      attendees: ["jp-shimizu", "jp-mori", "jp-inoue"].map((id) => attendee(id, false)),
+      // Web #18 的参加者格子有 4 人（含木村），App #15 的「会えそうな人」列 3 人。
+      attendees: (platform === "web" ? ["jp-shimizu", "jp-mori", "jp-inoue", "jp-kimura"] : ["jp-shimizu", "jp-mori", "jp-inoue"]).map((id) => ({ ...attendee(id, false), ...(id === "jp-kimura" ? { planFit: false } : {}) })),
       deadlineSoon: false,
       knownAttendees: [{ initial: "伊", name: "伊藤", speaker: true }],
       knownNote: { detail: "9/24 にメールでやりとり", text: "伊藤さんがキーノートに登壇" },

@@ -302,12 +302,3 @@ test("copy falls back to selecting the ID when the clipboard is refused or missi
   }
 });
 
-test("both pages read the join state on the server before rendering", () => {
-  const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
-  const events = read("app/(app)/app/events/page.tsx");
-  assert.match(events, /readCommunityJoinedForActor\(\{\s*actorId: communityActor\?\.id,?\s*\}\)/);
-  assert.match(events, /community=\{\{\s*joined: communityJoined,/);
-  const agent = read("app/(app)/app/agent/page.tsx");
-  assert.match(agent, /readCommunityJoinedForActor\(\{ actorId \}\)/);
-  assert.match(agent, /communityJoined=\{communityJoined\}/);
-});

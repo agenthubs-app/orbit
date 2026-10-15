@@ -9,6 +9,7 @@ import {
   journeyAfter,
   journeyDiscover,
   journeyEventIds,
+  journeyPublicDiscover,
   journeyOverview,
   journeyPrep,
   journeySearch,
@@ -63,7 +64,7 @@ export function createJourneyMockService(): JourneyService {
   return {
     async discover(actorId) {
       const data = journeyDiscover(state().discover);
-      if (!actorId) return { all: [...data.all, ...data.planFit].filter((row, index, list) => list.findIndex((item) => item.eventId === row.eventId) === index).map(({ score: _score, verdict: _verdict, reason: _reason, reasonDetail: _detail, organizerId: _org, ...row }) => ({ ...row, organizerId: null })), community: [], planFit: [], planFitTotal: 0, popularityFallback: true, signedOut: true, total: data.total };
+      if (!actorId) return journeyPublicDiscover();
       const dismissed = new Set((await feedback.entries(actorId)).map((entry) => entry.eventId));
       const followed = await follows.followed(actorId);
       const community = data.community.filter((row) => !dismissed.has(row.eventId)).map((row) => (row.organizerId && followed.has(row.organizerId) ? { ...row, communityReason: "following" as const } : row));
@@ -73,9 +74,9 @@ export function createJourneyMockService(): JourneyService {
     async search(_actorId, query) {
       return journeySearch(query);
     },
-    async overview(actorId, eventId) {
+    async overview(actorId, eventId, _language, platform) {
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
-      const data = { ...journeyOverview(state().overview), eventId: JOURNEY_EVENT_ID };
+      const data = { ...journeyOverview(state().overview, platform ?? "web"), eventId: JOURNEY_EVENT_ID };
       if (!actorId) {
         const { assessment: _assessment, ...rest } = data;
         return { ...rest, attendees: data.attendees.map((item) => ({ ...item, known: false, planFit: false, wanted: false })), knownAttendees: [], organizer: { ...data.organizer, following: false, myAttendance: null, organizerId: null }, signedOut: true };

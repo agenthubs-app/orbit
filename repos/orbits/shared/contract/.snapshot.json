@@ -6026,6 +6026,11 @@
           "kind": "text",
           "type": "{ text: string; detail?: string | null | undefined; } | null"
         },
+        "attendeesPublicAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
         "attendeeCounts": {
           "optional": false,
           "kind": "object",

@@ -30,7 +30,8 @@ export interface JourneyRecords {
 export interface JourneyService {
   discover(actorId: string | null, query: EventDiscoverParsedQuery, language: JourneyLanguage): Promise<EventDiscoverResponse>;
   search(actorId: string, query: string, limit: number): Promise<EventSearchResponse>;
-  overview(actorId: string | null, eventId: string, language: JourneyLanguage): Promise<EventOverviewResponse | null>;
+  /** `platform`: which client asks (the sample world shows each board's own text; live ignores it). */
+  overview(actorId: string | null, eventId: string, language: JourneyLanguage, platform?: "web" | "app"): Promise<EventOverviewResponse | null>;
   prep(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventPrepResponse | null>;
   patchChecklist(actorId: string, eventId: string, items: readonly EventPrepChecklistItem[]): Promise<EventPrepChecklistItem[]>;
   venue(actorId: string, eventId: string): Promise<EventVenueResponse | null>;
