@@ -38,7 +38,7 @@
 
 ## 4. 测试
 
-- App：3579 条 → 4 失败：`i18n-domain-split`（历史基线，键数 2253 快照）、`invite-code-screens` S1 与 `tasks-unification-interactions`（偶发，单跑通过）、`legacy-ui-ratchet`（3 处组件库缺件，已请主会话定是否进白名单）。删旧屏前为 280 失败（旧屏测试打新路由）。
+- App：3579 条 → 4 失败：`i18n-domain-split`（历史基线，键数 2253 快照）、`invite-code-screens` S1 与 `tasks-unification-interactions`（偶发，单跑通过）、`legacy-ui-ratchet` 已按主会话决定记入 `legacy-ui-deferred.json` 后通过。删旧屏前为 280 失败（旧屏测试打新路由）。
 - Web：见收尾时的全量结果（本轮修了 R27 引起的：契约出口、lint 脚本死路径、dev 路由经工厂取 mock、隐私守卫〔评估 id 查询挪进评估模块〕、同步写锁登记、审核制报名的公開範囲校验〔**真 bug**：R27 把参加目的 / 会いたい人改成 matching_only 后，审核制活动的申请在 live 会全部被拒〕、产品面审计的 3 个无处理按钮〔保存 ★ / すべて見る / 受付 QR〕与 2 个可访问名）。
 - 新增：`tests/r27-journey-routes.test.ts`、`tests/r27-event-redirects.test.ts`（App）。
 
@@ -51,5 +51,5 @@
 全部登记在 `DEFERRED-A.md`（§1 组件库：seg / FilterOption·Toggle / Toast；§3 原生模块亮度 + 语音、Web 390 两屏；§4 E3/E4 已 done）。新的跟进：
 
 1. 详情 / 会う準備 / 会場 / 会後 在 App 改为 online-only（新数据按当前计划在服务端算），旧屏的离线副本（0115 / 0131）随旧屏删除——要不要给新屏补离线副本是产品取舍。
-2. `legacy-ui-ratchet`：DiscoverPage 全屏搜索 `<Modal>`、详情 `.utabs`、会場 livebar 三处手写件，待组件库补 UnderlineTabs / 可配置 TabBar / 全屏搜索页。
+2. `legacy-ui-ratchet`：DiscoverPage 全屏搜索 `<Modal>`、详情 `.utabs`、会場 livebar 三处手写件记入 `tests/fixtures/legacy-ui-deferred.json`（主会话 10-15 定），待组件库补 UnderlineTabs / 可配置 TabBar / 全屏搜索页后替换删行（HANDOFF G23）。
 3. Web `FormField`、`agentHrefForContext` 删旧屏后已无生产调用（未在本次删除清单）。

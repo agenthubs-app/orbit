@@ -23,6 +23,7 @@
 | R27（App） | App `Segmented` 高 38 vs kit `.seg` 30（同 R26-11） | 重跑 app-R27 的 A-R27-06 / 07 / 08 / 16 / 29 / 31 / 33 / 34（浅深）；seg 临时补丁下各带 dy ≤4、只差字形（证据 R27/run-01/app/a6、p1、d3、v2seg） |
 | R27（App） | App `FilterOption` 上下内边距、`Toggle` 尺寸（同 W-R27-13） | 重跑 A-R27-09 筛选弹层 |
 | R27（App） | App `Toast`：带关闭 ✕（标题被挤成两行），位置不知道页面自带的会场 5 tab 底栏；kit `.toast.pos` 无 ✕、bottom 100 | 重跑 A-R27-35 交換成功 toast（开发回放 `approve=` 常驻） |
+| R27（App） | `src/components/ui` 缺 UnderlineTabs、可配置 TabBar（会場玻璃底栏）、全屏搜索页容器：App 探す搜索页用 RN `<Modal>`、詳細 `.utabs` 与会場 livebar 手写 tablist（主会话 10-15 定：记入 `tests/fixtures/legacy-ui-deferred.json`，注释「R27 · 待组件库 · DEFERRED-A §1」，不去掉 tablist 角色） | 乙的组件库轮补件后替换这 3 处并删掉 legacy-ui-deferred.json 对应行（测试要求条数与实际一致，替换后不删行会失败） |
 
 ## 2. 待其他 Sprint（乙）
 

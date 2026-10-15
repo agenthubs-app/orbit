@@ -37,6 +37,9 @@ const ZERO = [
 ];
 
 const allowlist = (JSON.parse(readFileSync(join(appRoot, ALLOWLIST), "utf8")) as { files: Record<string, LegacyCounts> }).files;
+// 新屏里组件库还没有对应件的手写处（主会话 2026-10-15 定）：单独一份，条数必须等于实际，替换后删行。
+const DEFERRED = "tests/fixtures/legacy-ui-deferred.json";
+const deferred = (JSON.parse(readFileSync(join(appRoot, DEFERRED), "utf8")) as { files: Record<string, LegacyCounts & { note?: string }> }).files;
 const openingText = readFileSync(join(appRoot, OPENING), "utf8");
 const opening = JSON.parse(openingText) as Record<string, LegacyCounts>;
 
@@ -48,11 +51,22 @@ test("no file uses an old UI pattern more than the allow list grants", () => {
   const over: string[] = [];
   for (const [path, counts] of Object.entries(legacyByFile(appRoot))) {
     for (const kind of LEGACY_KINDS) {
-      const allowed = allowlist[path]?.[kind] ?? 0;
+      const allowed = (allowlist[path]?.[kind] ?? 0) + (deferred[path]?.[kind] ?? 0);
       if ((counts[kind] ?? 0) > allowed) over.push(`${path}: ${kind} ${counts[kind]} > ${allowed}`);
     }
   }
   assert.deepEqual(over, [], "use src/components/ui (ConfirmDialog, ActionSheet, BottomSheet, Segmented, EmptyState, RetryCard …)");
+});
+
+test("deferred new-screen entries are annotated, exact, and never on files that already have an allow-list row", () => {
+  const actual = legacyByFile(appRoot);
+  const problems: string[] = [];
+  for (const [path, counts] of Object.entries(deferred)) {
+    if (!counts.note?.includes("DEFERRED-A")) problems.push(`${path}: missing a DEFERRED-A note`);
+    if (allowlist[path]) problems.push(`${path}: already in the legacy allow list`);
+    for (const kind of LEGACY_KINDS) if ((counts[kind] ?? 0) !== (actual[path]?.[kind] ?? 0)) problems.push(`${path}: ${kind} deferred ${counts[kind] ?? 0} but actual ${actual[path]?.[kind] ?? 0} — replace with src/components/ui and delete the row`);
+  }
+  assert.deepEqual(problems, []);
 });
 
 test("the allow list only shrinks: within the opening snapshot, lowered as files improve", () => {

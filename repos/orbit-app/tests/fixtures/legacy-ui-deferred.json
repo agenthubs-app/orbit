@@ -1,0 +1,8 @@
+{
+  "_comment": "新屏里暂时只能手写的件：src/components/ui 还没有对应组件（主会话 2026-10-15 定：记入白名单，不去掉 tablist 角色绕开棘轮）。与 legacy-ui-allowlist.json 分开，因为那份受开局快照与历史版本只减锁。每行条数必须与实际完全一致；组件库补件后替换并删行。见 DEFERRED-A §1、HANDOFF G23 / R27-04。",
+  "files": {
+    "src/screens/events/v2/DiscoverPage.tsx": { "modal": 1, "note": "R27 · 待组件库（全屏搜索页）· DEFERRED-A §1" },
+    "src/screens/events/v2/EventDetailPage.tsx": { "tablist": 1, "note": "R27 · 待组件库（UnderlineTabs）· DEFERRED-A §1" },
+    "src/screens/events/v2/VenuePage.tsx": { "tablist": 1, "note": "R27 · 待组件库（可配置 TabBar：会場玻璃底栏）· DEFERRED-A §1" }
+  }
+}
