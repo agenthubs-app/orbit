@@ -5,6 +5,7 @@ import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-
 import type { AttendeePostEventAiArtifact } from "./contract";
 import { ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION } from "./live-record-reader";
 import { postEventEvidenceHash } from "./evidence-version";
+import type { AttendeePostEventAiContext } from "./e3";
 
 export interface AttendeePostEventEvidenceSnapshot {
   commitments: readonly string[];
@@ -21,6 +22,8 @@ export interface AttendeePostEventAiTaskPayload extends Record<string, unknown> 
   attendeeActorId: string;
   attendeeDisplayName?: string;
   attemptCount: number;
+  /** R27 E3（prompt v3）：名字、计划人物类型、活动日期；旧任务没有。 */
+  context?: AttendeePostEventAiContext;
   error: { at: string; code: string; retryable: boolean } | null;
   eventId: string;
   evidenceHash: string;
@@ -51,6 +54,7 @@ export interface AttendeePostEventAiTaskRepository {
   request(input: {
     attendeeActorId: string;
     attendeeDisplayName: string;
+    context?: AttendeePostEventAiContext;
     eventId: string;
     evidenceSnapshot: readonly AttendeePostEventEvidenceSnapshot[];
     evidenceWhitelist: readonly string[];

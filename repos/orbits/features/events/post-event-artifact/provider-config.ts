@@ -7,7 +7,8 @@ import {
   type OrbitAgentModelProvider,
 } from "../../orbit-ai/gemini-provider";
 
-export const ATTENDEE_POST_EVENT_AI_PROMPT_VERSION = 2;
+// R27 E3：v3 = まとめ 3 条 + 逐人的次の一手（features/events/post-event-artifact/e3.ts）。
+export const ATTENDEE_POST_EVENT_AI_PROMPT_VERSION = 3;
 
 export interface AttendeePostEventAiProviderConfiguration {
   config: GeminiOrbitAgentProviderConfig;

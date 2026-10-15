@@ -41,6 +41,24 @@ function evidenceIds(value: unknown): readonly string[] | null {
   return [...new Set(value.map((item) => item.trim()))];
 }
 
+// R27 E3：v3 产物的两项（逐条校验，读不了的条目丢掉；旧产物没有这两项）。
+function highlights(value: unknown): AttendeePostEventAiArtifact["highlights"] {
+  if (!Array.isArray(value)) return undefined;
+  const items = value.flatMap((item) => (isRecord(item) && text(item.emoji) && text(item.title) && text(item.detail) && text(item.evidence) ? [{ detail: text(item.detail)!, emoji: text(item.emoji)!, evidence: text(item.evidence)!, title: text(item.title)! }] : []));
+  return items.length ? items.slice(0, 3) : undefined;
+}
+
+function nextSteps(value: unknown): AttendeePostEventAiArtifact["nextSteps"] {
+  if (!Array.isArray(value)) return undefined;
+  const items = value.flatMap((item) => {
+    if (!isRecord(item) || !isRecord(item.thanksDraft)) return [];
+    const attendeeId = text(item.attendeeId); const followupDate = text(item.followupDate); const subject = text(item.thanksDraft.subject); const body = text(item.thanksDraft.body);
+    if (!attendeeId || !followupDate || !/^\d{4}-\d{2}-\d{2}$/.test(followupDate) || !subject || !body) return [];
+    return [{ attendeeId, followupDate, planTypeSuggestion: text(item.planTypeSuggestion), thanksDraft: { body, subject } }];
+  });
+  return items.length ? items : undefined;
+}
+
 function readyArtifact(
   payload: Record<string, unknown>,
   permittedEvidenceIds: readonly string[],
@@ -71,6 +89,8 @@ function readyArtifact(
     promptVersion,
     summary,
     version,
+    ...(highlights(payload.artifact.highlights) ? { highlights: highlights(payload.artifact.highlights) } : {}),
+    ...(nextSteps(payload.artifact.nextSteps) ? { nextSteps: nextSteps(payload.artifact.nextSteps) } : {}),
   };
 }
 

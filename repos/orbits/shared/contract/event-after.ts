@@ -21,6 +21,18 @@ export interface EventAfterNextStep {
   /** Plan person type to link (only keys from my plan); absent → 「—」. */
   planType?: { key: string; label: string } | null;
   thanksDraft?: { subject: string; body: string } | null;
+  /** This person already counts for `planType` (same person × same type scores once): the row adds 0. */
+  alreadyCounted?: boolean;
+}
+
+/** One plan person-type slot, so the client previews the score with the shared `nextAward` for the checked rows. */
+export interface EventAfterScoreSlot {
+  key: string;
+  allocation: number;
+  targetCount: number;
+  earnedCount: number;
+  earnedPoints: number;
+  skipped: boolean;
 }
 
 export interface EventAfterResponse {
@@ -37,6 +49,7 @@ export interface EventAfterResponse {
   nextSteps: readonly EventAfterNextStep[];
   /** Plan score now and after confirming every proposed step (the client recomputes for the checked rows). */
   score?: { goal: string; before: number; after: number; detail: string } | null;
+  scoreSlots?: readonly EventAfterScoreSlot[];
   /** Already confirmed for this event (the 「確定」 button turns into a done state). */
   confirmedAt?: string | null;
   sample?: true;

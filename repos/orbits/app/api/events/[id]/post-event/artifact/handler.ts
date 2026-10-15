@@ -7,6 +7,9 @@ import { ATTENDEE_POST_EVENT_AI_PROMPT_VERSION, resolveAttendeePostEventAiProvid
 import { createConfiguredAttendeePostEventAiArtifactReader, createConfiguredAttendeePostEventAiTaskRepository } from "../../../../../../features/events/post-event-artifact/runtime";
 import type { AttendeePostEventAiTaskRepository } from "../../../../../../features/events/post-event-artifact/task-repository";
 import { success } from "../../../../../../shared/api/envelope";
+import { readPostEventAiContext } from "../../../../../../features/events/journey/e3-context";
+import type { AttendeePostEventAiContext } from "../../../../../../features/events/post-event-artifact/e3";
+import { requestContext } from "../../../../../../features/plans/v2/flow-handlers";
 import {
   withRegisteredEventAccess,
   type RegisteredEventAccessDependencies,
@@ -22,6 +25,8 @@ interface Dependencies extends RegisteredEventAccessDependencies {
   now?: () => string;
   providerConfiguration?: ReturnType<typeof resolveAttendeePostEventAiProviderConfiguration>;
   taskRepository?: AttendeePostEventAiTaskRepository | null;
+  /** R27 E3：入队时的上下文（名字 / 计划类型 / 日期）；测试注入，缺省读本人联系人与当前计划。 */
+  readContext?: typeof readPostEventAiContext;
 }
 
 function eventHasEnded(endsAt: string, now: string): boolean {
@@ -33,7 +38,7 @@ export function createAttendeePostEventAiArtifactPostHandler(
   dependencies: Dependencies = {},
 ) {
   return withRegisteredEventAccess(async function requestAttendeePostEventAiArtifact(
-    _request: Request,
+    request: Request,
     _context: Context,
     access,
   ): Promise<Response> {
@@ -71,9 +76,17 @@ export function createAttendeePostEventAiArtifactPostHandler(
       return NextResponse.json(success({ artifact: null, eventId: access.eventId, failureCode: "AI_EVIDENCE_REQUIRED", status: "failed", updatedAt: null }), { status: 200 });
     }
     const requestedAt = now;
+    const context: AttendeePostEventAiContext | null = await (dependencies.readContext ?? readPostEventAiContext)({
+      actorId: access.actor.id,
+      contactIds: [...new Set(evidenceSnapshot.map((evidence) => evidence.contactId))],
+      eventStartsAt: access.event.startsAt,
+      eventTitle: access.event.title,
+      language: requestContext(request).language,
+    }).catch(() => null);
     const task = await repository.request({
       attendeeActorId: access.actor.id,
       attendeeDisplayName: access.actor.name,
+      ...(context ? { context } : {}),
       eventId: access.eventId,
       evidenceSnapshot,
       evidenceWhitelist: evidenceSnapshot.map((evidence) => evidence.evidenceId),

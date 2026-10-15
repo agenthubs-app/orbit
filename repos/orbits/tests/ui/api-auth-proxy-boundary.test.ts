@@ -64,3 +64,13 @@ test("registration preview allowlist regex matches exactly one anonymous path", 
     assert.equal(previewPattern.test(path), false, `expected deny: ${path}`);
   }
 });
+
+test("R27 (R26-08): the signed-out event list and detail read models are the only new anonymous event paths", () => {
+  assert.match(proxySource, /pathname === "\/api\/events\/discover"/);
+  const overviewPattern = /^\/api\/events\/[^/]+\/overview$/u;
+  assert.match(proxySource, /\^\\\/api\\\/events\\\/\[\^\/\]\+\\\/overview\$/);
+  assert.equal(overviewPattern.test("/api/events/demo-event-cfo-night-18/overview"), true);
+  for (const path of ["/api/events/x/overview/", "/api/events/a/b/overview", "/api/events//overview", "/api/events/x/prep", "/api/events/x/venue", "/api/events/x/after", "/api/events/search"]) {
+    assert.equal(overviewPattern.test(path) || path === "/api/events/discover", false, `expected deny: ${path}`);
+  }
+});

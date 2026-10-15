@@ -4368,6 +4368,46 @@
           "optional": true,
           "kind": "text",
           "type": "{ subject: string; body: string; } | null"
+        },
+        "alreadyCounted": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "event-after.ts::EventAfterScoreSlot": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "allocation": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "targetCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "earnedCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "earnedPoints": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -4449,6 +4489,11 @@
           "optional": true,
           "kind": "text",
           "type": "{ goal: string; before: number; after: number; detail: string; } | null"
+        },
+        "scoreSlots": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventAfterScoreSlot[]"
         },
         "confirmedAt": {
           "optional": true,
@@ -5936,6 +5981,46 @@
           "kind": "text",
           "type": "{ score: number; verdict: EventAssessmentVerdict; display: { goalFit: number; people: number; timeCost: number; }; basis: string; assessmentId?: string | null | undefined; } | null"
         },
+        "assessmentPeopleUnknown": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "speakerCandidates": {
+          "optional": true,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "emoji": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "name": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "label": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "note": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "knownNote": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ text: string; detail?: string | null | undefined; } | null"
+        },
         "attendeeCounts": {
           "optional": false,
           "kind": "object",
@@ -7296,6 +7381,11 @@
           "optional": false,
           "kind": "text",
           "type": "number"
+        },
+        "asOf": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
@@ -8464,6 +8554,7 @@
         "EventAfterHighlight",
         "EventAfterNextStep",
         "EventAfterResponse",
+        "EventAfterScoreSlot",
         "EventAssessmentAgendaItem",
         "EventAssessmentAvailability",
         "EventAssessmentCaution",
@@ -14559,6 +14650,11 @@
           "optional": true,
           "kind": "text",
           "type": "PlanLegacyPhase | null"
+        },
+        "needNames": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
         }
       }
     },
@@ -14694,6 +14790,11 @@
           "optional": true,
           "kind": "text",
           "type": "PlanLegacyPhase | null"
+        },
+        "needNames": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
         }
       }
     },

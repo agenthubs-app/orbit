@@ -1,3 +1,5 @@
-// R08 redesign contract (mock until its feature Sprint; live answers NOT_IMPLEMENTED).
-export { dismissEventRecommendation as POST } from "../../../../../../features/redesign-contracts/handlers";
+// R08 contract 9 「興味なし」— R27: live (features/events/journey; mock / hybrid answer from the demo world).
+import { createEventJourneyRoutes } from "../../../../../../features/events/journey/handlers";
+
 export const dynamic = "force-dynamic";
+export const POST = createEventJourneyRoutes().dismiss;

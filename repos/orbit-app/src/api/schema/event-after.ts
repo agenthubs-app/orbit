@@ -14,7 +14,9 @@ export const eventAfterNextStepObject = z.object({
   followupDate: date,
   planType: z.object({ key: z.string().min(1), label: z.string() }).nullable().optional().catch(null),
   thanksDraft: z.object({ subject: z.string(), body: z.string() }).nullable().optional().catch(null),
+  alreadyCounted: z.boolean().optional(),
 });
+export const eventAfterScoreSlotObject = z.object({ key: z.string().min(1), allocation: z.number().int().min(0), targetCount: z.number().int().min(0), earnedCount: z.number().int().min(0), earnedPoints: z.number().int().min(0), skipped: z.boolean() });
 
 export const eventAfterResponseObject = z.object({
   eventId: z.string().min(1),
@@ -26,6 +28,7 @@ export const eventAfterResponseObject = z.object({
   aiDraft: z.boolean(),
   nextSteps: readableItems(eventAfterNextStepObject),
   score: z.object({ goal: z.string(), before: z.number().int().min(0).max(100), after: z.number().int().min(0).max(100), detail: z.string() }).nullable().optional().catch(null),
+  scoreSlots: readableItems(eventAfterScoreSlotObject).optional().catch(undefined),
   confirmedAt: z.string().nullable().optional(),
   sample: z.literal(true).optional(),
 });

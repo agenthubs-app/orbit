@@ -58,6 +58,12 @@ export interface EventOverviewResponse {
     basis: string;
     assessmentId?: string | null;
   } | null;
+  /** Attendees not public yet: the assessment's 「会える人」 shows 「—」 and its `basis` explains why. */
+  assessmentPeopleUnknown?: boolean;
+  /** Attendees not public yet: people I can likely meet, estimated from the speakers. */
+  speakerCandidates?: readonly { emoji: string; name: string; label: string; note: string }[];
+  /** One line about a known person (「伊藤さんがキーノートに登壇 · 9/24 にメールでやりとり」). */
+  knownNote?: { text: string; detail?: string | null } | null;
   attendeeCounts: { all: number; planFit: number; known: number };
   /** Only people who made their registration profile public; capped (`attendeeCounts.all` is the real total). */
   attendees: readonly EventOverviewAttendee[];

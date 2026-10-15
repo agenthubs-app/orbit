@@ -19,13 +19,17 @@ export type AiQuotaPurpose =
   | "plan_revise"
   | "plan_review_mark"
   | "plan_review"
-  | "event_assessment";
+  | "event_assessment"
+  // R27（events DESIGN §3.4 / §10 A5）：报名访谈（含 E4 自己紹介）、会後まとめ（E3）——只记账，不设月上限。
+  | "event_registration_interview"
+  | "event_post_summary";
 export type AiQuotaTrigger = "auto" | "manual" | "plan";
 
 export const AI_QUOTA_POOLS: readonly AiQuotaPool[] = ["user", "background", "system"];
 export const AI_QUOTA_PURPOSES: readonly AiQuotaPurpose[] = [
   "plan", "plan_refine", "snapshot", "memo_extraction", "insight", "enrichment",
   "plan_intake", "plan_background", "plan_draft", "plan_revise", "plan_review_mark", "plan_review", "event_assessment",
+  "event_registration_interview", "event_post_summary",
 ];
 export const AI_QUOTA_TRIGGERS: readonly AiQuotaTrigger[] = ["auto", "manual", "plan"];
 
@@ -64,6 +68,9 @@ export const AI_QUOTA_MAX_CALLS: Readonly<Record<AiQuotaPurpose, number>> = {
   plan_review: 2,
   // R26（events DESIGN §3.1，复核 M3 / M4）：E1 抽取 + 修复；E2 vision 转录 + 结构化 + 修复 → 3。
   event_assessment: 3,
+  // R27：一次报名访谈提问 = 1 次；persona / 自己紹介 = 生成 + 修复；会後まとめ = 生成 + 修复。
+  event_registration_interview: 2,
+  event_post_summary: 2,
 };
 
 /**

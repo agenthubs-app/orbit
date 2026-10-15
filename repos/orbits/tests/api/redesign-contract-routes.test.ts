@@ -87,7 +87,8 @@ test("live (and so production): every route answers 503 NOT_IMPLEMENTED with no 
     // R15：招待コード已有 live 实现（features/invite-codes，测试见 tests/api/invite-codes-routes.test.ts），不再是 NOT_IMPLEMENTED。
     // R16：每天一问已有 live 实现（features/contacts/completion，测试见 tests/api/completion-question-routes.test.ts）。
     // R26：活动评估已有 live 实现（features/events/assessment，测试见 tests/api/event-assessment-routes.test.ts）。
-    for (const item of CASES.filter((entry) => !entry.file.startsWith("invite-codes") && !entry.file.startsWith("contacts/completion-question") && !entry.file.startsWith("events/assessments"))) {
+    // R27：興味なし（契约 9）已有 live 实现（features/events/journey，测试见 tests/events/r27-journey-routes.test.ts）。
+    for (const item of CASES.filter((entry) => !entry.file.startsWith("invite-codes") && !entry.file.startsWith("contacts/completion-question") && !entry.file.startsWith("events/assessments") && !entry.file.startsWith("recommendations/events"))) {
       const response = await call(item);
       const text = await response.text();
       const body = JSON.parse(text);

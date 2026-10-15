@@ -48,6 +48,9 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
     if(source.sourceKind==='read_cost_alert')return readCostAlertSourceState(client,{actorId,sourceId:source.sourceId,sourceRevision:source.sourceRevision,isAdmin:id=>isReadCostAdmin(id)});
     // Business-card exchange (0129): the request row and the recipient's exchange contact decide.
     if(source.sourceKind==='event_contact_request')return eventContactRequestSourceState(client,input.workspaceId,actorId,source);
+    // R27：活动通知（申込締切 / 当日の準備 / R26 おすすめ）指向公开活动或本人的评估，没有需要逐条授权的私有源；
+    // 过时靠通知自己的 expiresAt 收起（之前落到下面的 collections 查表，一律读成 unavailable）。
+    if(source.sourceKind==='event_deadline'||source.sourceKind==='event_prep'||source.sourceKind==='event_pick')return 'available';
     if(source.objectId==='discovery') {
       const adapters=createDiscoverySourceAdapters({client,store:storeFor(tx),workspaceId:input.workspaceId,now,preferences:actor=>createDiscoveryRepository({...input,client:{...input.client,query:client.query}}).preferences(actor)});
       return await adapters.read(actorId,{kind:source.sourceKind,id:source.sourceId,revision:source.sourceRevision,at:source.occurredAt,key:source.sourceKind+':'+source.sourceId},false)?'available':'unavailable';
