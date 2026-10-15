@@ -122,29 +122,6 @@ test("modal source wires Esc / × through the leave guard, drops overlay-click c
   }
 });
 
-test("register page wraps the unchanged workspace in the modal shell without new data imports", () => {
-  const source = readFileSync(
-    join(projectRoot, "app/(app)/app/events/[id]/register/page.tsx"),
-    "utf8",
-  );
-  const workspaceSource = readFileSync(
-    join(projectRoot, "app/(app)/app/events/[id]/register/event-registration-workspace.tsx"),
-    "utf8",
-  );
-
-  assert.match(source, /import \{ EventRegisterModal \} from "\.\.\/\.\.\/events-0918\/event-register-modal";/);
-  assert.match(source, /<div data-orbit-real-page="events-0918"[^>]*>\s*<EventRegisterModal/);
-  // 与工作区自己的「活动」链接同口径：保留 ?language=<已解析语言>。
-  assert.match(source, /closeHref=\{`\/app\/events\/\$\{encodeURIComponent\(localizedEvent\.id\)\}\?language=\$\{language\}`\}/);
-  assert.match(source, /eventName=\{localizedEvent\.title\}/);
-  assert.match(source, /<EventRegisterModal[\s\S]*?<EventRegistrationWorkspace[\s\S]*?\/>\s*<\/EventRegisterModal>/);
-  // 本页无顶栏；弹窗盖住静态底。
-  assert.doesNotMatch(source, /AccountTopNav|PublicTopNav/);
-  // 工作区文件零改动的旁证：壳所依赖的钩子仍在工作区里。
-  assert.match(workspaceSource, /data-orbit-registration-profile-guide="register"/);
-  assert.match(workspaceSource, /RegistrationPortraitWorkspace/);
-});
-
 test("hasRegistrationInput: non-empty textarea / text input or an aria-pressed=true option counts as in-progress input", () => {
   type Node = { getAttribute?: (name: string) => string | null; type?: string; value?: unknown };
   const root = (fields: Node[], pressed: Node[] = []) => ({

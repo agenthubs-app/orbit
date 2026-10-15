@@ -25,6 +25,9 @@ const ORBIT_PRIVATE_APP_PREFIXES = [
   "/app/tasks",
 ] as const;
 
+// R27: an event's own pages for the signed-in attendee (参加登録 / 会う準備 / 会場モード / 会後); the detail itself stays public.
+const ORBIT_PRIVATE_EVENT_SUBPAGE = /^\/app\/events\/[^/]+\/(register|prep|live|after)(\/|$)/;
+
 const ORBIT_AUTH_ENTRY_PREFIX = "/app/account";
 const ORBIT_PUBLIC_ADMIN_ENTRY_PATHS = new Set([
   "/app/admin/access",
@@ -41,7 +44,7 @@ export function isOrbitPrivateAppPath(pathname: string): boolean {
     return false;
   }
 
-  return ORBIT_PRIVATE_APP_PREFIXES.some((prefix) =>
+  return ORBIT_PRIVATE_EVENT_SUBPAGE.test(pathname) || ORBIT_PRIVATE_APP_PREFIXES.some((prefix) =>
     matchesRoutePrefix(pathname, prefix),
   );
 }

@@ -413,10 +413,6 @@
       "hardcoded": 3,
       "missingJa": 102
     },
-    "app/(app)/app/events/[id]/register/page.tsx": {
-      "hardcoded": 19,
-      "missingJa": 0
-    },
     "app/(app)/app/events/[id]/register/registration-portrait-recommendations.tsx": {
       "hardcoded": 6,
       "missingJa": 0

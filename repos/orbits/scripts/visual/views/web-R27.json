@@ -95,6 +95,47 @@
    "note": "P06 詳細 · 多（深色 = #47）"
   },
   {
+   "id": "W-R27-23",
+   "app": "/app/events/demo-event-cfo-night-18/register",
+   "design": "b2-events-flow.html",
+   "board-index": 23,
+   "width": 1440,
+   "wait-for": "[data-join-chat] button",
+   "note": "P07 参加登録 ① 質問 3/5（②③ 无 Web 画板，不进门禁）",
+   "steps": [
+    {
+     "click": "[data-join-chat] button:has-text(\"資金調達の相談相手を見つけたい\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"次へ\")"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"シリーズAの資本政策\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"CFO 採用\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"次へ\")"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"VC・CVC\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"上場企業の CFO\")"
+    },
+    {
+     "wait": 400
+    }
+   ]
+  },
+  {
    "id": "W-R27-P40",
    "app": "/app/events",
    "design": "b12-missing-states.html",

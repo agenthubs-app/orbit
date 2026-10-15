@@ -26,12 +26,12 @@ test("questions: 会いたい人 is multi-select, 話したいテーマ at most 
   assert.equal((await routes.joinNext(post({ answers: [...five, answer("industry", "x", 6)] }), params)).status, 400, "a sixth answer is rejected");
 });
 
-test("profile coverage is a rule (company 30 + 14 each) and the AI persona only runs for the draft", async () => {
+test("profile coverage is a rule (company 44 + 14 each) and the AI persona only runs for the draft", async () => {
   const three = [answer("desiredOutcome", "資金調達", 1), answer("experienceHighlight", "シリーズAの資本政策 · CFO 採用", 2)];
   const profile = profileFromAnswers(three, { review: true });
-  assert.equal(profile.coverage, 58);
+  assert.equal(profile.coverage, 72);
   assert.deepEqual(profile.topics, ["シリーズAの資本政策", "CFO 採用"]);
-  assert.equal(profileFromAnswers([...three, answer("targetAttendees", "VC・CVC", 3)], { review: true }).coverage, 72);
+  assert.equal(profileFromAnswers([...three, answer("targetAttendees", "VC・CVC", 3)], { review: true }).coverage, 86);
   let personaCalls = 0;
   const ports = fakePorts({ persona: async () => { personaCalls += 1; return { selfIntroDraft: "製造業向け SaaS の代表です。資本政策の話を伺いたいです。", tags: [] }; } });
   const service = createJoinService({ ports });

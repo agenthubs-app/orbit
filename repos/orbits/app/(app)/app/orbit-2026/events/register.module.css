@@ -1,0 +1,48 @@
+/* R27 参加登録（Web）：照 b2 #23 的 kit 源码（.bubble / .opts-wrap / .opt / ring 92 / shimmer / tline 编号）。 */
+.chat.chat { background: var(--surface-2); display: flex; flex-direction: column; }
+.progress { padding-top: 8px; margin-bottom: 18px; }
+.chatcol { display: grid; gap: 10px; }
+.pair { display: grid; gap: 10px; }
+.bubble { padding: 11px 14px; border-radius: var(--r-bubble); font-size: var(--fs-body-sm); max-width: 86%; line-height: 1.6; }
+.ai { background: var(--surface); border-bottom-left-radius: var(--r-tag); }
+.me { background: var(--ink); color: var(--bg); margin-left: auto; border-bottom-right-radius: var(--r-tag); }
+.help { margin-top: 3px; }
+.opts { display: flex; flex-wrap: wrap; gap: 7px; }
+.opt.opt { padding: 8px 13px; min-height: 0; height: auto; border-radius: var(--r-pill); background: var(--surface); font-size: var(--fs-control); font-weight: var(--fw-bold); border: 1.5px solid transparent; color: var(--ink-2); cursor: pointer; }
+.opt.on { border-color: var(--plum-500); background: var(--accent-soft); color: var(--ink); }
+.answerRow.answerRow { margin-top: auto; padding-top: 18px; gap: 8px; }
+.input { flex: 1; height: 44px; border-radius: var(--r-md); background: var(--surface); border: 0; padding: 0 14px; font: inherit; font-size: var(--fs-body-sm); color: var(--ink); }
+.mic.mic { width: 44px; height: 44px; background: var(--surface); }
+.nextBtn.nextBtn { height: 44px; }
+.review { display: grid; gap: 8px; margin-top: 6px; }
+.visRow { display: grid; gap: 2px; padding: 10px 12px; border-radius: var(--r-row); background: var(--surface); font-size: var(--fs-body-sm); }
+.center { text-align: center; }
+.done { display: grid; align-content: start; }
+.doneTitle { font-size: var(--fs-title-xs); }
+.doneSub { margin-top: 8px; }
+.confirm.confirm { margin-top: 16px; padding: 14px 16px; }
+.confirmTitle { font-size: var(--fs-body-sm); display: block; margin-bottom: 2px; }
+.editBtn.editBtn { justify-self: start; margin-top: 16px; }
+
+.persona { display: flex; flex-direction: column; }
+.cov.cov { font-size: var(--fs-emoji-md); line-height: 1; }
+.cov small { font-size: var(--fs-caption); }
+.covLbl.covLbl { font-size: var(--fs-micro); }
+.items { flex: 1; display: grid; gap: 5px; }
+.ring { position: relative; width: 92px; height: 92px; flex: 0 0 auto; }
+.ringC { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.item.item { gap: 6px; font-size: var(--fs-control); }
+.ok { color: var(--ok); font-weight: var(--fw-heavy); width: 12px; }
+.todo { color: var(--ink-4); font-weight: var(--fw-heavy); width: 12px; }
+.sectionLbl.sectionLbl { margin-top: 16px; }
+.chips.chips { gap: 6px; margin-top: 6px; }
+.intro.intro { margin-top: 8px; font-size: var(--fs-body-sm); line-height: 1.6; }
+.shimmer { height: 12px; margin-top: 8px; border-radius: var(--r-chip); background: linear-gradient(90deg, var(--surface-3), var(--surface-2), var(--surface-3)); background-size: 200% 100%; }
+.foot.foot { margin-top: 16px; }
+
+.railCard.railCard { padding: 16px; }
+.railName { font-size: var(--fs-row); display: block; }
+.flowLbl.flowLbl { margin-bottom: 10px; }
+.now > span { background: var(--coral); box-shadow: 0 0 0 4px var(--coral-soft); }
+.lav.lav { background: var(--mac-lav); }
+.note.note { font-size: var(--fs-meta); line-height: 1.6; }

@@ -25,6 +25,11 @@ test("personal app route trees are private", () => {
     "/app/tasks/personal",
     "/app/tasks/task%3Aone",
     "/app/tasks/relationship/connection%3A1",
+    // R27：活动自己的参加者页面要登录（详情本身公开）。
+    "/app/events/demo-event/register",
+    "/app/events/demo-event/prep",
+    "/app/events/demo-event/live",
+    "/app/events/demo-event/after",
   ]) {
     assert.equal(isOrbitPrivateAppPath(pathname), true, pathname);
   }
@@ -47,6 +52,7 @@ test("public discovery, account, organizer, registration, and admin entry routes
     "/app/admin/access",
     "/app/events",
     "/app/events/demo-event",
+    "/app/events/demo-event-registered",
     "/app/login-admin",
     "/app/o/orbit",
     "/app/register",

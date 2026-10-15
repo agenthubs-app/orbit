@@ -12,9 +12,9 @@ export const JOIN_TOTAL = 5;
 /** 每题约 20 秒（「残り 約1分」）。 */
 const SECONDS_PER_QUESTION = 20;
 
-/** 字段 → 资料项（カバー率：会社・役職 30 + 其余各 14；画板 72 % / 86 % / 100 %）。 */
+/** 字段 → 资料项（カバー率：会社・役職 44 + 其余各 14；画板 72 % / 86 % / 100 %）。 */
 const ITEM_OF_FIELD: Readonly<Record<string, EventJoinProfileItemKey>> = { desiredOutcome: "purpose", experienceHighlight: "topics", targetAttendees: "target", valueOffered: "offer" };
-const ITEM_WEIGHT: Readonly<Record<EventJoinProfileItemKey, number>> = { company: 30, offer: 14, purpose: 14, target: 14, topics: 14 };
+const ITEM_WEIGHT: Readonly<Record<EventJoinProfileItemKey, number>> = { company: 44, offer: 14, purpose: 14, target: 14, topics: 14 };
 const ITEMS: readonly EventJoinProfileItemKey[] = ["company", "purpose", "topics", "target", "offer"];
 
 const tri = (language: JourneyLanguage, ja: string, zh: string, en: string) => (language === "zh" ? zh : language === "en" ? en : ja);
