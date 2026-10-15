@@ -16,6 +16,7 @@ import { LinearGradient } from "../../plan/plan-svg";
 import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { radius, shadows } from "../../../design/tokens";
+import { CancelSheet } from "./CancelSheet";
 import { useJourneyApi } from "./journey-api";
 import { eventRange, feeText, rowTone } from "./journey-model";
 import { ringColor, verdictKey } from "./events-model";
@@ -72,6 +73,7 @@ export function EventDetailPage() {
   const [whyOpen, setWhyOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     let live = true;
     void api.overview(eventId).then((result) => { if (!live) return; if (result.ok) setData(result.data); else setMissing(true); });
@@ -92,7 +94,9 @@ export function EventDetailPage() {
     else if (key === "cancel") setCancelOpen(true);
   };
   const confirmCancel = async () => {
+    setBusy(true);
     const result = await api.joinCancel(eventId);
+    setBusy(false);
     setCancelOpen(false);
     if (!result.ok) { toast.error(t("cancelFailed")); return; }
     setData((current) => (current ? { ...current, registration: { ...current.registration, status: "cancelled" } } : current));
@@ -268,9 +272,7 @@ export function EventDetailPage() {
       ) : null}
       <ActionSheet visible={menuOpen} title={data.title} onClose={() => setMenuOpen(false)} onSelect={(key) => void menu(key)}
         options={[{ key: "calendar", label: t("addToCalendar") }, { key: "profile", label: t("editJoinProfile") }, { key: "cancel", label: t("cancelDo"), destructive: true }]} />
-      <ActionSheet visible={cancelOpen} title={t("cancelTitle", { title: data.title })} onClose={() => setCancelOpen(false)} onSelect={(key) => (key === "cancel" ? void confirmCancel() : setCancelOpen(false))}
-        effects={[{ icon: "bell", text: t("cancelNotify") }, ...(data.priceYen ? [{ icon: "ticket" as const, text: t("cancelFee", { fee: data.priceYen.toLocaleString("en-US") }) }] : []), { icon: "heart", text: t("cancelKeep", { n: data.attendees.filter((person) => person.wanted).length }) }]}
-        options={[{ destructive: true, key: "cancel", label: t("cancelDo") }, { key: "keep", label: t("cancelKeepGoing") }]} defaultFocusKey="keep" />
+      <CancelSheet visible={cancelOpen} event={data} t={t} language={language} busy={busy} onKeep={() => setCancelOpen(false)} onCancel={() => void confirmCancel()} />
     </SafeAreaView>
   );
 }

@@ -1,6 +1,10 @@
-import { EventRegistrationScreen } from "../../../src/screens/events/EventRegistrationScreen";
-import { withOrbitPrivateRoute } from "../../../src/components/OrbitRouteAccessBoundary";
 import { withOnlineOnlyRoute } from "../../../src/components/OnlineOnlyBoundary";
+import { withOrbitPrivateRoute } from "../../../src/components/OrbitRouteAccessBoundary";
+import { RegisterPage } from "../../../src/screens/events/v2/RegisterPage";
 
-// Sprint 0131: online-only page (docs/offline/page-inventory.md); offline it shows 「需要联网」, not an error page.
-export default withOrbitPrivateRoute(withOnlineOnlyRoute(EventRegistrationScreen));
+// R27 参加登録（b2 #20–#22）。Online-only: questions and the attendee profile come from the server.
+function EventRegisterRoute() {
+  return <RegisterPage />;
+}
+
+export default withOrbitPrivateRoute(withOnlineOnlyRoute(EventRegisterRoute));

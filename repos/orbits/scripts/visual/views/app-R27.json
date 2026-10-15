@@ -93,6 +93,36 @@
     "overview": "many"
    },
    "note": "P09 詳細 · 参加者 多（参加者 tab）"
+  },
+  {
+   "id": "A-R27-20",
+   "design": "b2-events-flow.html",
+   "board-index": 20,
+   "path": "/events/demo-event-cfo-night-18/register?replay=%E8%B3%87%E9%87%91%E8%AA%BF%E9%81%94%E3%81%AE%E7%9B%B8%E8%AB%87%E7%9B%B8%E6%89%8B%E3%82%92%E8%A6%8B%E3%81%A4%E3%81%91%E3%81%9F%E3%81%84%7C%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BAA%E3%81%AE%E8%B3%87%E6%9C%AC%E6%94%BF%E7%AD%96%2CCFO%20%E6%8E%A1%E7%94%A8%7CVC%E3%83%BBCVC%2C%E4%B8%8A%E5%A0%B4%E4%BC%81%E6%A5%AD%E3%81%AE%20CFO&to=select",
+   "journey": {
+    "registration": "none"
+   },
+   "note": "P10 参加登録 ① 質問 3/5（开发回放答到第 3 问并选中 2 项）"
+  },
+  {
+   "id": "A-R27-21",
+   "design": "b2-events-flow.html",
+   "board-index": 21,
+   "path": "/events/demo-event-cfo-night-18/register?replay=%E8%B3%87%E9%87%91%E8%AA%BF%E9%81%94%E3%81%AE%E7%9B%B8%E8%AB%87%E7%9B%B8%E6%89%8B%E3%82%92%E8%A6%8B%E3%81%A4%E3%81%91%E3%81%9F%E3%81%84%7C%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BAA%E3%81%AE%E8%B3%87%E6%9C%AC%E6%94%BF%E7%AD%96%2CCFO%20%E6%8E%A1%E7%94%A8%7CVC%E3%83%BBCVC%2C%E4%B8%8A%E5%A0%B4%E4%BC%81%E6%A5%AD%E3%81%AE%20CFO&to=review",
+   "journey": {
+    "registration": "none"
+   },
+   "note": "P11 参加登録 ② 参加用プロフィール確認"
+  },
+  {
+   "id": "A-R27-22",
+   "design": "b2-events-flow.html",
+   "board-index": 22,
+   "path": "/events/demo-event-cfo-night-18/register?replay=%E8%B3%87%E9%87%91%E8%AA%BF%E9%81%94%E3%81%AE%E7%9B%B8%E8%AB%87%E7%9B%B8%E6%89%8B%E3%82%92%E8%A6%8B%E3%81%A4%E3%81%91%E3%81%9F%E3%81%84%7C%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BAA%E3%81%AE%E8%B3%87%E6%9C%AC%E6%94%BF%E7%AD%96%2CCFO%20%E6%8E%A1%E7%94%A8%7CVC%E3%83%BBCVC%2C%E4%B8%8A%E5%A0%B4%E4%BC%81%E6%A5%AD%E3%81%AE%20CFO&to=done",
+   "journey": {
+    "registration": "none"
+   },
+   "note": "P12 参加登録 ③ 申込完了 · 仮予定"
   }
  ]
 }
