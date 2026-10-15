@@ -1,9 +1,6 @@
 {
   "_comment": "R04 / RD-14（修订）/ RD-24：旧屏里的旧写法（Alert.alert、直接 <Modal>、手写 accessibilityRole=\"tablist\"、旧公用组件、design/controls），文件 → 各类条数。只减不增：重写旧屏时改用 src/components/ui 并把条数改小或删行；不得新增文件或调大。规则见 tests/legacy-ui-ratchet.test.ts。",
   "files": {
-    "src/platform/confirm-event-cancellation.ts": {
-      "alert": 1
-    },
     "src/screens/admin/AdminLoginScreen.tsx": {
       "oldComponent": 2,
       "controls": 1
@@ -73,9 +70,6 @@
       "oldComponent": 5,
       "controls": 1
     },
-    "src/screens/events/CanonicalEventDetailModules.tsx": {
-      "oldComponent": 2
-    },
     "src/screens/events/EventAdmissionReviewContent.tsx": {
       "oldComponent": 3,
       "controls": 1,
@@ -96,10 +90,6 @@
       "oldComponent": 3,
       "controls": 1
     },
-    "src/screens/events/EventDetailScreen.tsx": {
-      "oldComponent": 5,
-      "controls": 1
-    },
     "src/screens/events/EventExperienceScreen.tsx": {
       "alert": 1
     },
@@ -109,11 +99,6 @@
     },
     "src/screens/events/EventOperationsScreen.tsx": {
       "alert": 2
-    },
-    "src/screens/events/EventRegistrationScreen.tsx": {
-      "oldComponent": 4,
-      "controls": 1,
-      "alert": 1
     },
     "src/screens/events/EventRolesContent.tsx": {
       "oldComponent": 3,
@@ -127,18 +112,6 @@
       "oldComponent": 5,
       "controls": 1,
       "tablist": 1
-    },
-    "src/screens/events/live/EventLiveScreen.tsx": {
-      "controls": 1,
-      "oldComponent": 1,
-      "tablist": 1
-    },
-    "src/screens/events/live/LiveEntryCard.tsx": {
-      "controls": 1
-    },
-    "src/screens/events/live/LivePersonSheet.tsx": {
-      "controls": 1,
-      "modal": 1
     },
     "src/screens/home/HomeDashboardScreen.tsx": {
       "oldComponent": 2
@@ -205,10 +178,6 @@
     "src/screens/profile/onboarding/ProfileOnboardingScreen.tsx": {
       "oldComponent": 1,
       "alert": 1
-    },
-    "src/screens/register/RegisterInviteScreen.tsx": {
-      "oldComponent": 5,
-      "controls": 1
     },
     "src/screens/schedule/MeetingDetailScreen.tsx": {
       "oldComponent": 3,

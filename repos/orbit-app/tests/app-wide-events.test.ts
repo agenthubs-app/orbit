@@ -88,12 +88,8 @@ test.before(async () => {
     stdin: { contents: `import React, { useState } from "react"; import { createRoot } from "react-dom/client";
 import { AppScreen } from "./src/components/AppScreen";
 import { EventsScreen } from "./src/screens/events/EventsScreen";
-import { EventDetailScreen } from "./src/screens/events/EventDetailScreen";
-import { EventRegistrationScreen } from "./src/screens/events/EventRegistrationScreen";
 import { HomeScreen } from "./src/screens/home/HomeScreen";
 import { OrganizerPublicScreen } from "./src/screens/organizer/OrganizerPublicScreen";
-import { RegisterInviteScreen } from "./src/screens/register/RegisterInviteScreen";
-import { EventLiveScreen } from "./src/screens/events/live/EventLiveScreen";
 import { EventCenterScreen } from "./src/screens/events/EventCenterScreen";
 import { EventRolesScreen } from "./src/screens/events/EventRolesScreen";
 import { EventAdmissionReviewContent } from "./src/screens/events/EventAdmissionReviewContent";
@@ -121,7 +117,7 @@ function AdmissionFixture() {
 }
 const analytics = eventAnalyticsToView({ appointments: { awaitingResponse: 0, cancelled: 0, completed: 0, confirmed: 0, draft: 0, negotiating: 0, reschedulePending: 0 }, checkIns: { checkedIn: 2 }, contactRequests: { accepted: 1, awaitingTargetConsent: 0, declined: 0, withdrawn: 0 }, encounters: { captured: 1, projected: 0 }, eventId: "event:style", grouping: { published: false, roundOne: { assignedParticipants: 0, tables: 0 }, roundTwo: { assignedParticipants: 0, tables: 0 } }, kind: "organizer_aggregate", registrations: { active: 4, cancelled: 0 } });
 function AnalyticsFixture() { useFixture(); const [kind, setKind] = useState("organizer_aggregate"); return <AppScreen title="活动数据报告"><EventAnalyticsContent activeKind={kind} attendeeAvailable organizerAvailable={state.organizerAvailable !== false} onChangeKind={value => { state.navigation.push(value); setKind(value); }} state={{ kind: state.kind, message: "当前账号没有权限" }} view={analytics} /></AppScreen>; }
-const screens = { events: EventsScreen, detail: EventDetailScreen, registration: EventRegistrationScreen, home: () => <HomeScreen />, organizer: OrganizerPublicScreen, invite: RegisterInviteScreen, attendees: EventLiveScreen, center: EventCenterScreen, rolesEditor: EventRolesScreen, admission: AdmissionFixture, analytics: AnalyticsFixture };
+const screens = { events: EventsScreen, home: () => <HomeScreen />, organizer: OrganizerPublicScreen, center: EventCenterScreen, rolesEditor: EventRolesScreen, admission: AdmissionFixture, analytics: AnalyticsFixture };
 const Screen = screens[new URLSearchParams(location.search).get("screen")] || ContentFixture;
 createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -150,50 +146,6 @@ async function unclipped(text: Locator) { assert.equal(await text.evaluate(el =>
 async function capture(page: Page, name: string) { if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-events-${name}.png`, fullPage: true }); }
 
 for (const scheme of ["light", "dark"] as const) {
-  test(`${scheme}: final inset event readiness, suggestion, opener and follow-up draft retain their boundaries`, async t => {
-    const page = await open(t, "detail&insets=true", scheme);
-    const panels = [
-      page.getByText("认识东京采购负责人", { exact: true }).first().locator("..").locator(".."),
-      page.getByRole("button", { name: /先了解采购需求/ }),
-      page.getByText("贵团队今年有哪些采购计划？", { exact: true }).locator("..").locator(".."),
-      page.getByText("很高兴现场讨论采购合作。", { exact: true }).locator("..")
-    ];
-    const radii = []; for (const panel of panels) { await panel.waitFor(); radii.push(await panel.evaluate(el => getComputedStyle(el).borderRadius)); }
-    await page.getByRole("button", { name: /先了解采购需求/ }).click();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-    assert.deepEqual(radii, ["24px", "24px", "24px", "24px"], "readinessGoal, goalSuggestionCard, openingLineBox, postEventDraftBox");
-  });
-  test(`${scheme}: canonical attendee search and identity render without preview encounter writes`, async t => {
-    const page = await open(t, "attendees&insets=true", scheme);
-    await page.getByRole("tab", { name: "参会者", exact: true }).click();
-    const input = page.getByRole("textbox", { name: "搜索参会者", exact: true });
-    await input.fill("佐藤"); await fits(input);
-    await page.getByRole("button", { name: "佐藤 葵", exact: true }).last().click();
-    await page.getByRole("button", { name: "关闭", exact: true }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "保存现场记录", exact: true }).count(), 0);
-    const requests = await page.evaluate(() => (window as any).fixture.requests);
-    assert.equal(requests.some((r: any) => r.method !== "GET"), false);
-    assert.deepEqual(requests.map((r: any) => r.path).filter((path: string) => path.includes("/operations")).slice(0, 1), ["/api/events/event%3Astyle/operations"]);
-    assert.ok(requests.some((r: any) => r.path === "/api/events/event%3Astyle/operations/participants/p_other"));
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), []);
-  });
-  test(`${scheme}: 7a persona preview follows the controlled interview without registering`, async t => {
-    const page = await open(t, "registration&insets=true", scheme);
-    await page.getByRole("button", { name: "采购渠道引荐", exact: true }).click();
-    await page.getByRole("button", { name: "补充画像", exact: true }).click();
-    await page.getByRole("button", { name: "下一题", exact: true }).click();
-    await page.getByText("你想认识哪类采购伙伴？", { exact: true }).waitFor();
-    await page.getByPlaceholder("写一句具体的补充。").last().fill("希望认识东京采购负责人");
-    await page.getByRole("button", { name: "生成画像", exact: true }).click();
-    const persona = page.getByText("连接东京采购合作伙伴", { exact: true }).locator(".."); await persona.waitFor();
-    const requests = await page.evaluate(() => (window as any).fixture.requests);
-    assert.deepEqual(requests.map((r: any) => [r.method, r.path]), [["POST", "/api/events/event%3Astyle/registration/interview"], ["POST", "/api/events/event%3Astyle/registration/persona"]]);
-    assert.deepEqual(requests[1].body, { mode: "portrait-preview", language: "zh", responses: [{ kind: "registration_question", portraitQuestionToken: "synthetic-formal:value", answer: "采购渠道引荐" }, { kind: "signed_question", questionToken: "synthetic-signed:target", portraitAdaptiveToken: "synthetic-workspace:target", answer: "希望认识东京采购负责人" }] });
-    assert.equal(await persona.evaluate(el => getComputedStyle(el).borderRadius), "0px", "7a uses an open result header, not an inset card");
-  });
-}
-
-for (const scheme of ["light", "dark"] as const) {
   test(`${scheme}: public event list preserves complete long title, date, venue and cover in open rows`, async t => {
     const page = await open(t, "events", scheme); const name = page.getByText(title, { exact: true }); await name.waitFor();
     await unclipped(name);
@@ -209,28 +161,7 @@ for (const scheme of ["light", "dark"] as const) {
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [{ pathname: "/events/[id]", params: { id: "event:style" } }]);
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   });
-  test(`${scheme}: public event detail grows its cover title and keeps all destination actions accessible`, async t => {
-    const page = await open(t, "detail", scheme); const name = page.getByText(title, { exact: true }); await name.waitFor(); await unclipped(name);
-    const register = page.getByRole("button", { name: "报名参加", exact: true }); await fits(register, 50);
-    assert.equal(await register.locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px", "registration summary is open");
-    assert.ok(await page.locator('img[src*="meeting.jpg"]').count() > 0);
-    assert.equal(await page.getByRole("button", { name: "查看参会者", exact: true }).count(), 0, "public signed-out detail does not authorize the private roster");
-    await register.click();
-    assert.equal(await page.getByRole("button", { name: "进入现场" }).count(), 0, "signed-out detail has no live entry");
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/events/event%3Astyle/register"]);
-    await capture(page, `detail-${scheme}`);
-  });
 }
-
-test("registration options have full touch targets and failed submission preserves the selected answer", async t => {
-  const page = await open(t, "registration", "dark"); const option = page.getByRole("button", { name: "日本本地 SaaS 买方", exact: true }); await fits(option);
-  const inactive = await option.evaluate(el => getComputedStyle(el).backgroundColor); await option.click();
-  const active = await option.evaluate(el => getComputedStyle(el).backgroundColor); assert.notEqual(active, inactive);
-  const input = page.getByPlaceholder("写一句具体的补充。"); assert.equal(await input.count(), 0);
-  const submit = page.getByRole("button", { name: "确认报名", exact: true }); await fits(submit, 50); await capture(page, "registration-dark"); await submit.click();
-  await page.getByText("暂时无法保存，请重试", { exact: true }).waitFor(); assert.equal(await input.count(), 0); assert.equal(await option.evaluate(el => getComputedStyle(el).backgroundColor), active);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "POST", path: "/api/events/event%3Astyle/registration", body: { answers: { targetAttendees: "日本本地 SaaS 买方" }, intent: "register", expectedRegistrationVersion: null } }]);
-});
 
 test("operations uses open sections and a 50pt publication action with unchanged generation identity", async t => {
   const page = await open(t, "operations"); const publish = page.getByRole("button", { name: /发布/ }); await fits(publish, 50);
@@ -262,11 +193,11 @@ test("check-in keeps filters, search and a bounded primary action without reopen
 });
 
 test("event actions and identity reflow under doubled browser text at 320pt", async t => {
-  for (const screen of ["detail", "registration", "roles", "check-in", "operations"]) {
+  for (const screen of ["roles", "check-in", "operations"]) {
     const page = await open(t, screen, "dark"); await page.getByRole("button").first().waitFor();
     await page.evaluate(() => document.querySelectorAll("[dir='auto'],input,textarea").forEach(node => { const el = node as HTMLElement, s = getComputedStyle(el); el.style.fontSize = `${parseFloat(s.fontSize) * 2}px`; el.style.lineHeight = `${parseFloat(s.lineHeight) * 2}px`; }));
     for (const action of await page.getByRole("button").all()) { await fits(action); for (const label of await action.locator("[dir='auto']").all()) await unclipped(label); }
-    if (screen === "detail" || screen === "roles") await unclipped(page.getByText(title, { exact: true }));
+    if (screen === "roles") await unclipped(page.getByText(title, { exact: true }));
     await capture(page, `${screen}-large-dark`);
   }
 });
@@ -310,21 +241,10 @@ test("personal event collection renders its page identity once, without a duplic
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.resourcePaths), ["/api/events/public"]);
 });
 
-test("organizer public cover and invite preparation preserve destinations without a registration write", async t => {
+test("organizer public cover preserves destinations without a registration write", async t => {
   const organizer = await open(t, "organizer"); await organizer.getByText(title, { exact: true }).waitFor(); await unclipped(organizer.getByText(title, { exact: true }));
   for (const action of await organizer.getByRole("button").all()) await fits(action);
   await organizer.getByText(title, { exact: true }).click(); assert.deepEqual(await organizer.evaluate(() => (window as any).fixture.navigation), ["/events/event%3Astyle"]); await capture(organizer, "organizer");
-  const invite = await open(t, "invite", "dark"); await invite.getByText(title, { exact: true }).waitFor();
-  for (const action of await invite.getByRole("button").all()) await fits(action);
-  assert.deepEqual(await invite.evaluate(() => (window as any).fixture.requests), []); await capture(invite, "invite-dark");
-});
-
-test("the live page keeps real identity and full-size tab and action targets", async t => {
-  const page = await open(t, "attendees", "dark"); await page.getByText("1 号桌", { exact: true }).waitFor();
-  for (const action of await page.getByRole("tab").all()) await fits(action);
-  for (const action of await page.getByRole("button").all()) await fits(action);
-  assert.equal((await page.evaluate(() => (window as any).fixture.requests)).some((r: any) => r.method !== "GET"), false);
-  await capture(page, "live");
 });
 
 test("event center gives the phase action its own row and keeps all secondary destinations readable", async t => {

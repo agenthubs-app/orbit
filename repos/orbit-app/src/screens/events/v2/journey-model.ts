@@ -3,7 +3,6 @@ import type { EventDiscoverArea, EventDiscoverPeriod, EventDiscoverRow, EventDis
 
 export type JourneyTone = "teal" | "lav" | "blue" | "apricot" | "pink";
 const RECOMMEND_TONES: readonly JourneyTone[] = ["teal", "lav", "blue"];
-const WEEKDAYS: Record<string, readonly string[]> = { en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], ja: ["日", "月", "火", "水", "木", "金", "土"], zh: ["日", "一", "二", "三", "四", "五", "六"] };
 
 export function tokyo(iso: string | null | undefined): { year: number; month: number; day: number; weekday: number; hh: number; mm: number } | null {
   const time = iso ? Date.parse(iso) : Number.NaN;
@@ -11,7 +10,8 @@ export function tokyo(iso: string | null | undefined): { year: number; month: nu
   const d = new Date(time + 9 * 3_600_000);
   return { day: d.getUTCDate(), hh: d.getUTCHours(), mm: d.getUTCMinutes(), month: d.getUTCMonth() + 1, weekday: d.getUTCDay(), year: d.getUTCFullYear() };
 }
-export const weekday = (language: string, index: number) => (WEEKDAYS[language] ?? WEEKDAYS.ja!)[index]!;
+/** 曜日の一文字（ja「水」/ zh「三」/ en「Wed」，同 Web WEEK）：由 Intl 按语言给出；2023-01-01 是星期日。 */
+export const weekday = (language: string, index: number) => new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : language === "en" ? "en-US" : "ja-JP", { timeZone: "UTC", weekday: language === "en" ? "short" : "narrow" }).format(new Date(Date.UTC(2023, 0, 1 + index)));
 export const hm = (iso: string | null | undefined) => { const p = tokyo(iso); return p ? `${p.hh}:${String(p.mm).padStart(2, "0")}` : ""; };
 
 /** 「10/16（金）」/ 晚上的场次带时刻「10/27（火）19:00」。 */

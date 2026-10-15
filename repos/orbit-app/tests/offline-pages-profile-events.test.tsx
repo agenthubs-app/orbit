@@ -4,7 +4,7 @@ import { OFFLINE_BANNER, UNAVAILABLE_BANNER, fixtureValue, requestsOf, startOffl
 
 // Sprint 0131: the own profile (and its preview), a meeting's details, the
 // events tab (public catalogue + recommendations), the old events list, the
-// calendar preview and the event detail's 404 / 5xx / removed states.
+// calendar preview (the R27 event detail is online-only; its old offline states went with it).
 const A = "account:one";
 const copy = (data: unknown) => ({ data, syncedAt: "2026-09-28T01:10:00.000Z" });
 const meeting = { appointmentId: "m1", confirmed: { durationMinutes: 30, medium: { kind: "in_person", location: "丸之内咖啡" }, startsAtUtc: "2026-10-02T02:00:00.000Z", timezone: "Asia/Tokyo" },
@@ -23,7 +23,6 @@ test.before(async () => {
     { name: "events", importPath: "./src/screens/events/EventsScreen", exportName: "EventsScreen" },
     { name: "homeEvents", importPath: "./src/screens/home/HomeScreen", exportName: "HomeScreen" },
     { name: "preview", importPath: "./src/screens/schedule/ScheduleEventPreviewScreen", exportName: "ScheduleEventPreviewScreen" },
-    { name: "detail", importPath: "./src/screens/events/EventDetailScreen", exportName: "EventDetailScreen" },
   ]);
 });
 test.after(async () => { await harness?.close(); });
@@ -67,20 +66,6 @@ test("the calendar preview of a registered event opens its detail page", async (
   assert.deepEqual(await fixtureValue<string[]>(page, "navigation"), ["redirect:/events/ev1"]);
   const other = await harness.open(t, { screen: "preview", online: false, params: { id: "ev9" } });
   await other.getByText("这个页面要连上 Orbit 服务器才能使用。联网后点「重试」。").waitFor();
-});
-
-test("event detail: a 5xx keeps the device copy with 服务暂时不可用; a 404 says the event is gone; a removed registration is a neutral note", async (t) => {
-  const records = { registered_event: [registered], event_registration: [{ eventId: "ev1", membershipStatus: "rsvped", admissionStatus: null }] };
-  const unavailable = await harness.open(t, { screen: "detail", params: { id: "ev1" }, status5xx: true, records });
-  await unavailable.getByText(UNAVAILABLE_BANNER).waitFor();
-  await unavailable.getByText("储能论坛").first().waitFor();
-  const gone = await harness.open(t, { screen: "detail", params: { id: "ev1" }, records, responses: { "/api/events/public/ev1": { __status: 404, __code: "NOT_FOUND", __message: "not found" } } });
-  await gone.getByText("这场活动已不存在，可能已被主办方删除。").waitFor();
-  assert.equal(await gone.getByText("储能论坛").count(), 0, "a deleted event is not shown from the device copy");
-  const removed = await harness.open(t, { screen: "detail", online: false, params: { id: "ev1" }, records: { event_registration: [{ eventId: "ev1", membershipStatus: "cancelled", admissionStatus: null }] } });
-  await removed.getByText(/报名已取消 · 这场活动的资料已从本机移除/).waitFor();
-  assert.equal(await removed.getByText("暂时取不到活动详情").count(), 0, "no red error box next to the removal note");
-  await removed.getByRole("button", { name: "返回" }).last().waitFor();
 });
 
 test("the own profile offline shows its copy with 截至, device counts, and editing needs the network; the preview reads the same copy", async (t) => {

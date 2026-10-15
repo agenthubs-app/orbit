@@ -49,15 +49,15 @@ const expectedRoutes: readonly ExpectedRoute[] = [
     kind: "screen"
   },
   { route: "/events", consumer: "EventsScreen", kind: "screen" },
-  { route: "/events/[id]", consumer: "EventDetailScreen", kind: "screen" },
+  { route: "/events/[id]", consumer: "EventDetailPage", kind: "screen" },
   {
     route: "/events/[id]/register",
-    consumer: "EventRegistrationScreen",
+    consumer: "RegisterPage",
     kind: "screen"
   },
   {
     route: "/events/[id]/attendees",
-    consumer: "EventAttendeesRedirect → /events/[id]/live?tab=all",
+    consumer: "EventAttendeesRedirect → /events/[id]/live?tab=people",
     kind: "redirect"
   },
   { route: "/events/center", consumer: "EventCenterScreen", kind: "screen" },
@@ -138,15 +138,15 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { route: "/login-admin", consumer: "AdminLoginScreen", kind: "screen" },
   { route: "/platform", consumer: "PlatformScreen", kind: "screen" },
   { route: "/o/[slug]", consumer: "OrganizerPublicScreen", kind: "screen" },
-  { route: "/register", consumer: "RegisterInviteScreen", kind: "screen" },
-  { route: "/register/[code]", consumer: "RegisterInviteScreen", kind: "screen" },
+  { route: "/register", consumer: "RegisterRoute → /events/assess?mode=code", kind: "redirect" },
+  { route: "/register/[code]", consumer: "RegisterCodePage", kind: "screen" },
   { route: "/party", consumer: "PartyOverviewRedirect → /events/[id]/live", kind: "redirect" },
   {
     route: "/party/checkin",
     consumer: "PartyCheckinRedirect → /events/[id]/live",
     kind: "redirect"
   },
-  { route: "/party/graph", consumer: "PartyGraphRedirect → /events/[id]/live?tab=agenda", kind: "redirect" },
+  { route: "/party/graph", consumer: "PartyGraphRedirect → /events/[id]/live?tab=people&view=map", kind: "redirect" },
   { route: "/home/events", consumer: "HomeScreen (events)", kind: "screen" },
   { route: "/dashboard", consumer: "DashboardScreen", kind: "screen" },
   { route: "/", consumer: "IndexRoute → resolveInitialRouteHref", kind: "redirect" },
@@ -195,6 +195,9 @@ const integratedFeatureRoutes = [
   "/events/assess",
   "/events/assessments/[id]",
   "/events/[id]/live",
+  // R27 会う準備 / 会後のふりかえり.
+  "/events/[id]/prep",
+  "/events/[id]/after",
   "/events/[id]/operations/experience",
   "/events/[id]/participants/[participantId]",
   "/schedule/meetings/[id]",

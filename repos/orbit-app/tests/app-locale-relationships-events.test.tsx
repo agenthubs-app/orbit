@@ -5,15 +5,12 @@ import test from "node:test";
 import { createTranslator, type MessageKey } from "../src/i18n/messages";
 import { contactDetailToSummary, contactSearchFilterSections, contactsSearchToView, contactsToSummaries } from "../src/view-models/contacts";
 import { relationshipSearchToView } from "../src/view-models/relationship-search";
-import { eventRegistrationToView } from "../src/view-models/event-registration";
 
 const targetScreens = [
   "src/screens/contacts/ContactsScreen.tsx",
   "src/screens/contacts/ContactDetailScreen.tsx",
   "src/screens/add/ScanBatchScreen.tsx",
   "src/screens/events/EventsScreen.tsx",
-  "src/screens/events/EventDetailScreen.tsx",
-  "src/screens/events/EventRegistrationScreen.tsx",
 ] as const;
 
 function translate(language: "en" | "ja" | "zh", key: string): string {
@@ -199,37 +196,3 @@ test("contact and relationship search localize product chrome while preserving l
   assert.equal(relationship.emptyText, "No suitable people found. Try another phrasing or clear the filters.");
 });
 
-test("registration state localizes while server questions and saved answers remain literal", () => {
-  const payload = {
-    eligibility: {
-      allowedActions: ["update", "cancel"],
-      applicationVersion: null,
-      evaluatedAt: "2026-09-15T01:00:00.000Z",
-      reason: "registered",
-      registrationVersion: "2026-09-13T00:00:00Z",
-      state: "registered",
-    },
-    registration: {
-      status: "rsvped",
-      participantProfile: { answers: { targetAttendees: "日本の産業パートナー / Climate founders" } },
-    },
-    questionSet: {
-      questionSetHash: "a".repeat(64),
-      questionSetVersion: 1,
-      questions: [{ id: "target", participantProfileField: "targetAttendees", prompt: "Who would you like to meet?", options: [], required: true }],
-    },
-  };
-
-  const japanese = eventRegistrationToView(payload, "ja");
-  assert.equal(japanese.statusLabel, "登録済み");
-  assert.equal(japanese.confirmLabel, "登録情報を更新");
-  assert.equal(japanese.cancelLabel, "参加登録をキャンセル");
-  assert.equal(japanese.questions[0]?.prompt, "Who would you like to meet?");
-  assert.equal(japanese.questions[0]?.answer, "日本の産業パートナー / Climate founders");
-
-  const english = eventRegistrationToView(payload, "en");
-  assert.equal(english.statusLabel, "Registered");
-  assert.equal(english.confirmLabel, "Update registration");
-  assert.equal(english.cancelLabel, "Cancel registration");
-  assert.equal(english.questions[0]?.answer, "日本の産業パートナー / Climate founders");
-});

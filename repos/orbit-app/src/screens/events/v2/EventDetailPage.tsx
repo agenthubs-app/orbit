@@ -1,6 +1,6 @@
 // R27 イベント詳細（App；b2 #14 参加者 0 / #15 少 / #16 多 · 参加者 tab）：封面卡（facts）· 评分条（吸顶）· 下划线 tab ·
 // 紹介（会えそうな人：未公开时按登壇者推定）/ 参加者（プランに合う / 知り合い / 全員）· 底部 CTA。
-// 已报名时 CTA 位置换成 ⋯（カレンダーに追加 / 参加用プロフィールを編集 / 参加を取り消す，与 Web b12 #378–#381 §31 同位置）+ 会う準備へ。
+// 已报名时 CTA 位置换成 ⋯（カレンダーに追加 / 参加用プロフィールを編集 / 参加を取り消す，与 Web b12 378–381 §31 同位置）+ 会う準備へ。
 // 数据：GET /api/events/[id]/overview（规则评估，不调 AI）。
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";

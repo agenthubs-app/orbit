@@ -1,5 +1,5 @@
 // R27 会う準備（App；b2 #24）：倒计时卡（地図アプリで開く · チェックイン）· 名刺余量警示 · 会いたい人手风琴（なぜ / 話しかけ方 / これまで · コピー）·
-// 準備リスト（5 项，PATCH 保存）· 明日のフォロー确认卡。数据：GET /api/events/[id]/prep（规则，不调 AI）。与 Web PrepPage 390（b12 #360）同口径。
+// 準備リスト（5 项，PATCH 保存）· 明日のフォロー确认卡。数据：GET /api/events/[id]/prep（规则，不调 AI）。与 Web PrepPage 390（b12 360）同口径。
 // 名刺の残り只存这台设备（AsyncStorage），从不发给服务端（DESIGN §2.5）。
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";

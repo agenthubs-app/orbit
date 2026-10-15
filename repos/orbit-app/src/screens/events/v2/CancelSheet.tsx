@@ -1,5 +1,5 @@
 // R27 参加の取り消し（App；b3 #42 kit .sheet.actsheet）：🥂 + 「〈标题〉の参加を取り消しますか？」+ 日時 · 会場，后果 3 行，
-// 珊瑚「参加を取り消す」在上、「参加を続ける」在下（读屏焦点从「続ける」开始，同 ActionSheet）。Web 同内容为居中确认框（b12 #374）。
+// 珊瑚「参加を取り消す」在上、「参加を続ける」在下（读屏焦点从「続ける」开始，同 ActionSheet）。Web 同内容为居中确认框（b12 374）。
 import { StyleSheet, View } from "react-native";
 
 import type { EventOverviewResponse } from "../../../api/contract/event-overview";

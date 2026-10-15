@@ -48,7 +48,6 @@ export function discoverQueryString(query: EventDiscoverQuery): string {
 
 export function createJourneyApi(client: OrbitApiClient, read: Read) {
   const id = (value: string) => encodeURIComponent(value);
-  const post = <T>(path: string, body: unknown, schema: ZodType<T>) => read(client.post<unknown>(path, { body }), schema);
   return {
     discover: (query: EventDiscoverQuery) => read(client.get<unknown>(`/api/events/discover?${discoverQueryString(query)}`), eventDiscoverResponseSchema as ZodType<EventDiscoverResponse>),
     search: (q: string, limit = 5) => read(client.get<unknown>(`/api/events/search?q=${encodeURIComponent(q)}&limit=${limit}&platform=app`), eventSearchResponseSchema as ZodType<EventSearchResponse>),
@@ -57,16 +56,16 @@ export function createJourneyApi(client: OrbitApiClient, read: Read) {
     prep: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/prep?platform=app`), eventPrepResponseSchema as ZodType<EventPrepResponse>),
     checklist: (eventId: string, items: readonly EventPrepChecklistItem[]) => read(client.patch<unknown>(`/api/events/${id(eventId)}/prep/checklist`, { body: { items } }), eventPrepResponseSchema as ZodType<EventPrepResponse>),
     venue: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/venue?platform=app`), eventVenueResponseSchema as ZodType<EventVenueResponse>),
-    venueMemo: (eventId: string, attendeeId: string, text: string) => post(`/api/events/${id(eventId)}/venue/memo`, { attendeeId, text }, eventVenueMemoResultSchema as ZodType<EventVenueMemoResult>),
+    venueMemo: (eventId: string, attendeeId: string, text: string) => read(client.post<unknown>(`/api/events/${id(eventId)}/venue/memo`, { body: { attendeeId, text } }), eventVenueMemoResultSchema as ZodType<EventVenueMemoResult>),
     after: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/after?platform=app`), eventAfterResponseSchema as ZodType<EventAfterResponse>),
-    confirmAfter: (eventId: string, items: EventAfterConfirmInput["items"]) => post(`/api/events/${id(eventId)}/after/confirm`, { idempotencyKey: newIdempotencyKey(), items }, eventAfterConfirmResultSchema as ZodType<EventAfterConfirmResult>),
-    dismiss: (eventId: string, reason: EventRecommendationDismissReason) => post(`/api/recommendations/events/${id(eventId)}/dismiss`, { idempotencyKey: newIdempotencyKey(), reason }, eventRecommendationDismissResultSchema as ZodType<unknown>),
+    confirmAfter: (eventId: string, items: EventAfterConfirmInput["items"]) => read(client.post<unknown>(`/api/events/${id(eventId)}/after/confirm`, { body: { idempotencyKey: newIdempotencyKey(), items } }), eventAfterConfirmResultSchema as ZodType<EventAfterConfirmResult>),
+    dismiss: (eventId: string, reason: EventRecommendationDismissReason) => read(client.post<unknown>(`/api/recommendations/events/${id(eventId)}/dismiss`, { body: { idempotencyKey: newIdempotencyKey(), reason } }), eventRecommendationDismissResultSchema as ZodType<unknown>),
     follow: (organizerId: string, following: boolean) => read(following ? client.post<unknown>(`/api/organizers/${id(organizerId)}/follow`, { body: {} }) : client.delete<unknown>(`/api/organizers/${id(organizerId)}/follow`), organizerFollowResultSchema as ZodType<OrganizerFollowResult>),
-    joinNext: (eventId: string, answers: readonly EventJoinAnswer[], more = false) => post(`/api/events/${id(eventId)}/join/next`, { answers, more }, eventJoinStepSchema as ZodType<EventJoinStep>),
-    joinProfile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean) => post(`/api/events/${id(eventId)}/join/profile`, { answers, draft }, eventJoinProfileSchema as ZodType<EventJoinProfile>),
-    joinSubmit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string) => post(`/api/events/${id(eventId)}/join/submit`, { answers, idempotencyKey: newIdempotencyKey(), ...(selfIntro ? { selfIntro } : {}) }, eventJoinResultSchema as ZodType<EventJoinResult>),
-    joinTentative: (eventId: string) => post(`/api/events/${id(eventId)}/join/tentative`, { idempotencyKey: newIdempotencyKey() }, eventJoinTentativeResultSchema as ZodType<EventJoinTentativeResult>),
-    joinCancel: (eventId: string) => post(`/api/events/${id(eventId)}/join/cancel`, { idempotencyKey: newIdempotencyKey() }, eventJoinCancelResultSchema as ZodType<EventJoinCancelResult>),
+    joinNext: (eventId: string, answers: readonly EventJoinAnswer[], more = false) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/next`, { body: { answers, more } }), eventJoinStepSchema as ZodType<EventJoinStep>),
+    joinProfile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/profile`, { body: { answers, draft } }), eventJoinProfileSchema as ZodType<EventJoinProfile>),
+    joinSubmit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/submit`, { body: { answers, idempotencyKey: newIdempotencyKey(), ...(selfIntro ? { selfIntro } : {}) } }), eventJoinResultSchema as ZodType<EventJoinResult>),
+    joinTentative: (eventId: string) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/tentative`, { body: { idempotencyKey: newIdempotencyKey() } }), eventJoinTentativeResultSchema as ZodType<EventJoinTentativeResult>),
+    joinCancel: (eventId: string) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/cancel`, { body: { idempotencyKey: newIdempotencyKey() } }), eventJoinCancelResultSchema as ZodType<EventJoinCancelResult>),
   };
 }
 export type JourneyApi = ReturnType<typeof createJourneyApi>;

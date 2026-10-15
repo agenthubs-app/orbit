@@ -2,7 +2,8 @@
 // 現場 · おすすめ · 参加者 · グループ · 予定），⑧ 参加者シート（申請の承認 / 無視 · 依据 · 自分だけのメモ · 面談を提案）、
 // ⑨ 面談を提案シート（候补 3 个 · 只做下书き，D46）、⑩ 交換成功 toast。数据：GET /api/events/[id]/venue（只读）；
 // 名刺交換走现有 /operations/contact-requests*，メモ走 /venue/memo。示例世界（sample）只改本地状态。
-// 门禁开发开关 open-path 下：`?tab=now|recs|people|groups|agenda&view=map&person=<id>&meet=1&approve=<id>` 直接到达各画板状态。
+// 链接参数 `?tab=now|recs|people|groups|agenda&view=map&person=<id>`（旧 attendees / participants / party 跳转也用）；
+// 门禁开发开关 open-path 下另有 `meet=1`（面談シート）、`approve=<id>`（交換 toast 常驻）。
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -94,7 +95,7 @@ export function VenuePage() {
   const [missing, setMissing] = useState(false);
   const [tab, setTab] = useState<Tab>(isTab(params.tab) ? params.tab : "now");
   const [view, setView] = useState<"list" | "map">(params.view === "map" ? "map" : "list");
-  const [selectedId, setSelectedId] = useState<string | null>(dev && params.person ? params.person : null);
+  const [selectedId, setSelectedId] = useState<string | null>(params.person ?? null);
   const [meeting, setMeeting] = useState(dev && params.meet === "1");
   const [memo, setMemo] = useState("");
   const [why, setWhy] = useState(false);

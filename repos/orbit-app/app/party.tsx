@@ -1,6 +1,6 @@
 import { type Href, Redirect, useLocalSearchParams } from "expo-router";
 import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
-import { partyRedirectHref } from "../src/view-models/event-live";
+import { partyRedirectHref } from "../src/screens/events/v2/venue-links";
 
 // Sprint 0107: the legacy party mode was removed; old links open the event live page.
 function PartyOverviewRedirect() {

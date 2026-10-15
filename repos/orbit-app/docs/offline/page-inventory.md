@@ -7,18 +7,17 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 40 |
+| 能断网看（本地优先） | 38 |
 | └ 由 Sprint 0108 实现 | 8 |
-| └ 由 Sprint 0115 实现 | 2 |
 | └ 由 Sprint 0116 实现 | 3 |
 | └ 由 Sprint 0117 实现 | 4 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 13 |
 | └ 由 Sprint 0137 实现 | 1 |
-| 只能在线 | 45 |
+| 只能在线 | 49 |
 | 不读账号数据（布局、跳转、本机设置） | 22 |
-| 合计（路由文件） | 107 |
+| 合计（路由文件） | 109 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -42,8 +41,6 @@
 | `/contacts/dashboard` | 联系人分析 | 0117 | 域 dashboard-graph；AI 报告读 /api/mobile/contacts-dashboard?view=analysis | 「截至」；去 AI 分析需要联网 |
 | `/contacts/graph` | 联系人分析（结构分段） | 0117 | 域 dashboard-graph | 「截至」 |
 | `/contacts/analysis/:dimension/:bucketId` | 分组详情 | 0117 | 域 dashboard-graph，本机计算（非 ASCII 分组编号只解码一次，0131） | 「截至」 |
-| `/events/:id` | 活动详情 | 0115 | 域 registered-events / event-registrations / event-published-results；未报名的活动读 /api/events/public/:id | 「截至」；404 显示「活动已不存在」，5xx 显示「服务暂时不可用」（0131）；取消或被拒后显示中性说明和返回按钮（0131）；报名、签到需要联网 |
-| `/events/:id/live` | 活动现场页 | 0115 | 域 event-published-results 等 | 「截至」；签到、交换名片、记笔记、约时间需要联网 |
 | `/schedule/personal/:id` | 个人日程详情 | 0108 | 域 personal-schedule | 「截至」；编辑、改期需要联网 |
 | `/schedule/personal/:id/edit` | 编辑个人日程 | 0108 | 域 personal-schedule | 表单显示本机内容；保存需要联网 |
 | `/schedule/personal/new` | 新建个人日程 | 0108 | 域 personal-schedule（关联选项读本机联系人、笔记） | 保存需要联网 |
@@ -72,6 +69,8 @@
 
 | 路由 | 页面 | 原因 | 读取 | 断网时 |
 | --- | --- | --- | --- | --- |
+| `/events/:id` | イベント詳細（R27） | 需要服务器实时计算：评估分数与「会えそうな人」按当前计划在服务器计算 | /api/events/:id/overview | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/events/:id/live` | 会場モード（R27） | 需要服务器实时计算：席・ラウンド・推荐由主办方发布的结果在服务器组合；名刺交換是写入 | /api/events/:id/venue | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account` | 账号与会话 | 涉及凭据或会话：账号、登录会话和退出都在服务器上确认 | /api/account/me | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/login` | 登录 | 涉及凭据或会话：提交密码需要服务器验证 | /api/auth/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/signup` | 注册 | 涉及凭据或会话：建账号需要服务器 | /api/auth/register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -89,7 +88,9 @@
 | `/events/:id/operations/experience` | 活动体验配置 | 主办方实时运营：主办方配置 | /api/events/:id/experience | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/operations/roles` | 活动角色与权限 | 主办方实时运营：主办方权限管理 | /api/events/:id/access/roles | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/analytics` | 活动数据分析 | 主办方实时运营：主办方统计，服务器实时聚合 | /api/events/:id/analytics/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/events/:id/register` | 报名问卷 | 付费 AI：报名是写入；问卷题目由付费 AI 生成并在服务器缓存 | /api/events/public/:id、/api/events/:id/registration | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/events/:id/prep` | 会う準備（R27） | 需要服务器实时计算：会いたい人与话しかけ方由规则在服务器计算；名刺の残り只存本机 | /api/events/:id/prep | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/events/:id/after` | 会後のふりかえり（R27） | 需要服务器实时计算：まとめ与次の一手由服务器生成；确定是写入 | /api/events/:id/after | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/events/:id/register` | 参加登録（R27） | 付费 AI：报名是写入；问题来自 AI 访谈（≤5 问），自己紹介草稿由 AI 生成 | /api/events/:id/join/*、/api/events/:id/overview | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new` | 人脈を追加（名刺をスキャン、手入力、確認待ちの下書き件数；R12） | 名片识别（上传图片、OCR）：下書き件数和各入口的后续操作都在服务器进行 | /api/contact-drafts | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/assess` | イベント評価の入力（URL / ポスター / 3項目 / 参加コード；R26） | 名片识别（上传图片、OCR）：读取页面与评分在服务器进行 | /api/events/assessments、/api/events/assessments/posters | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/assessments/[id]` | 評価結果 / 読み取れない時（R26） | 名片识别（上传图片、OCR）：分数按当前计划在服务器重算 | /api/events/assessments/[id] | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -102,8 +103,8 @@
 | `/contacts/new/invite` | 招待コード · 発出方（説明、QR・コード・リンク、メッセージの下書き、共有する項目、無効にする、これまでのコード；R15） | 需要服务器验证链接或邀请码：发码、作废与履历都在服务器 | /api/invite-codes、/api/invite-codes/current、/api/invite-codes/:code/revoke、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/i/:code` | 招待コード · 受け取る側（公开：打开、登录回跳、简短资料、共享项目、つながる、各异常态；R15） | 需要服务器验证链接或邀请码：邀请码由服务器验证，连接是服务器写入 | /api/invite-codes/:code/preview、/api/invite-codes/:code/redeem、/api/profile、/api/contacts/manual/duplicates | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/i` | 招待コードを入力（公开，手输 8 位码后打开 /i/:code；R15） | 需要服务器验证链接或邀请码：输入的码要到服务器验证 | 同 /i/:code | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/register` | 邀请注册 | 需要服务器验证链接或邀请码：邀请码由服务器验证 | /api/events/public/:id、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/register/:code` | 邀请注册（带邀请码） | 需要服务器验证链接或邀请码：邀请码由服务器验证 | 同 /register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/register` | 参加コード入力へ（R27 跳转） | 需要服务器验证链接或邀请码：跳到参加コード入力；コード由服务器验证 | — | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/register/:code` | 参加コード着地（R27） | 需要服务器验证链接或邀请码：参加コード由服务器解析 | /api/events/by-code/:code | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/plans/flow/:intakeId` | 计划生成流程：背景确认、≤5 问、前提、初版、AI 修正（R23） | 付费 AI：背景下书、选题、初版和修正由付费 AI 在服务器生成，每一步都要实时写入 | /api/agent/plans/intakes/:id、/api/agent/plans/drafts/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/plans/drafts/:draftId/edit` | 计划手动编辑（1 次，保存即确定，R23） | 需要服务器实时计算：保存即确定计划，要和服务器上的草稿版本核对 | /api/agent/plans/drafts/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/plans/:planId/types/:itemId` | 人物类型详情：候补、记录加分、跳过、面谈提案与依頼文草稿（R24） | 需要服务器实时计算：分数、候补和活动分由服务器按最新记录计算，记录与撤销要实时写入 | /api/agent/plans/v2/:planId/types/:itemId、/api/agent/plans/v2/:planId | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -190,16 +191,18 @@
 | `app/contacts/new/scan/[batchId].tsx` | `/contacts/new/scan/:batchId` | online-only |
 | `app/contacts/pipeline.tsx` | `/contacts/pipeline` | local-first (0137) |
 | `app/dashboard.tsx` | `/dashboard` | local-first (0117) |
-| `app/events/[id].tsx` | `/events/:id` | local-first (0115) |
+| `app/events/[id].tsx` | `/events/:id` | online-only |
+| `app/events/[id]/after.tsx` | `/events/:id/after` | online-only |
 | `app/events/[id]/analytics.tsx` | `/events/:id/analytics` | online-only |
 | `app/events/[id]/attendees.tsx` | `/events/:id/attendees` | device-only |
-| `app/events/[id]/live.tsx` | `/events/:id/live` | local-first (0115) |
+| `app/events/[id]/live.tsx` | `/events/:id/live` | online-only |
 | `app/events/[id]/operations.tsx` | `/events/:id/operations` | online-only |
 | `app/events/[id]/operations/admission.tsx` | `/events/:id/operations/admission` | online-only |
 | `app/events/[id]/operations/check-in.tsx` | `/events/:id/operations/check-in` | online-only |
 | `app/events/[id]/operations/experience.tsx` | `/events/:id/operations/experience` | online-only |
 | `app/events/[id]/operations/roles.tsx` | `/events/:id/operations/roles` | online-only |
 | `app/events/[id]/participants/[participantId].tsx` | `/events/:id/participants/:participantId` | device-only |
+| `app/events/[id]/prep.tsx` | `/events/:id/prep` | online-only |
 | `app/events/[id]/register.tsx` | `/events/:id/register` | online-only |
 | `app/events/assess.tsx` | `/events/assess` | online-only |
 | `app/events/assessments/[id].tsx` | `/events/assessments/[id]` | online-only |
