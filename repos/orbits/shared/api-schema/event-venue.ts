@@ -37,6 +37,7 @@ export const eventVenueResponseObject = z.object({
   round: z.object({ index: z.number().int().min(1), total: z.number().int().min(1), title: z.string(), startsAt: z.string(), endsAt: z.string(), theme: z.string().nullable().optional(), remainingMinutes: z.number().int().min(0) }).nullable().optional().catch(null),
   seats: readableItems(z.object({ round: z.number().int().min(1), table: z.string() })).optional().catch(undefined),
   mySeat: z.object({ table: z.string(), why: z.string().nullable().optional(), whyDetail: z.string().nullable().optional(), tablemates: readableItems(mate) }).nullable().optional().catch(null),
+  me: z.object({ name: z.string(), initial: z.string().max(4), org: z.string().nullable().optional(), role: z.string().nullable().optional() }).nullable().optional().catch(null),
   nextRound: z.object({ at: z.string(), round: z.number().int().min(1), table: z.string(), names: z.string() }).nullable().optional().catch(null),
   openers: z.array(z.string()).max(10),
   stats: z.object({ exchanged: z.number().int().min(0), wantedMet: z.number().int().min(0), wantedTotal: z.number().int().min(0), incoming: z.number().int().min(0) }),

@@ -7447,6 +7447,11 @@
           "kind": "text",
           "type": "{ table: string; why?: string | null | undefined; whyDetail?: string | null | undefined; tablemates: readonly { attendeeId: string; name: string; initial: string; org?: string | null | undefined; role?: string | null | undefined; }[]; } | null"
         },
+        "me": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ name: string; initial: string; org?: string | null | undefined; role?: string | null | undefined; } | null"
+        },
         "nextRound": {
           "optional": true,
           "kind": "text",

@@ -136,6 +136,149 @@
     "orbit.events.cardsLeft.demo-event-cfo-night-18": "8"
    },
    "note": "P13 会う準備（名刺の残り 8 枚＝本机 AsyncStorage）"
+  },
+  {
+   "id": "A-R27-26",
+   "design": "b2-events-flow.html",
+   "board-index": 26,
+   "path": "/events/demo-event-cfo-night-18/live",
+   "journey": {
+    "venue": "before_check_in",
+    "registration": "registered"
+   },
+   "note": "P14 会場 ① チェックイン（受付前）"
+  },
+  {
+   "id": "A-R27-27",
+   "design": "b2-events-flow.html",
+   "board-index": 27,
+   "path": "/events/demo-event-cfo-night-18/live?tab=now",
+   "journey": {
+    "venue": "checked_in",
+    "registration": "registered"
+   },
+   "note": "P15 会場 ② 現場"
+  },
+  {
+   "id": "A-R27-28",
+   "design": "b2-events-flow.html",
+   "board-index": 28,
+   "path": "/events/demo-event-cfo-night-18/live?tab=recs",
+   "journey": {
+    "venue": "checked_in",
+    "registration": "registered"
+   },
+   "note": "P16 会場 ③ おすすめ"
+  },
+  {
+   "id": "A-R27-29",
+   "design": "b2-events-flow.html",
+   "board-index": 29,
+   "path": "/events/demo-event-cfo-night-18/live?tab=people",
+   "journey": {
+    "venue": "checked_in",
+    "registration": "registered"
+   },
+   "note": "P17 会場 ④ 参加者 一覧"
+  },
+  {
+   "id": "A-R27-30",
+   "design": "b2-events-flow.html",
+   "board-index": 30,
+   "path": "/events/demo-event-cfo-night-18/live?tab=groups",
+   "journey": {
+    "venue": "checked_in",
+    "registration": "registered"
+   },
+   "note": "P18 会場 ⑤ グループ"
+  },
+  {
+   "id": "A-R27-31",
+   "design": "b2-events-flow.html",
+   "board-index": 31,
+   "path": "/events/demo-event-cfo-night-18/live?tab=people&view=map",
+   "journey": {
+    "venue": "checked_in",
+    "registration": "registered"
+   },
+   "note": "P19 会場 ⑥ 関係マップ"
+  },
+  {
+   "id": "A-R27-32",
+   "design": "b2-events-flow.html",
+   "board-index": 32,
+   "path": "/events/demo-event-cfo-night-18/live?tab=agenda",
+   "journey": {
+    "venue": "checked_in",
+    "registration": "registered"
+   },
+   "note": "P20 会場 ⑦ 予定"
+  },
+  {
+   "id": "A-R27-33",
+   "design": "b2-events-flow.html",
+   "board-index": 33,
+   "path": "/events/demo-event-cfo-night-18/live?tab=people&person=jp-shimizu",
+   "journey": {
+    "venue": "checked_in",
+    "registration": "registered"
+   },
+   "note": "P21 会場 ⑧ 参加者シート（清水さん・申請が届いています）"
+  },
+  {
+   "id": "A-R27-34",
+   "design": "b2-events-flow.html",
+   "board-index": 34,
+   "path": "/events/demo-event-cfo-night-18/live?tab=people&person=jp-shimizu&meet=1",
+   "journey": {
+    "venue": "checked_in",
+    "registration": "registered"
+   },
+   "note": "P22 会場 ⑨ 面談を提案（下書きのみ，D46 重画后）"
+  },
+  {
+   "id": "A-R27-35",
+   "design": "b2-events-flow.html",
+   "board-index": 35,
+   "path": "/events/demo-event-cfo-night-18/live?tab=now&approve=jp-shimizu",
+   "journey": {
+    "venue": "checked_in",
+    "registration": "registered"
+   },
+   "note": "P23 会場 ⑩ 交換成功 toast（开发回放常驻）"
+  },
+  {
+   "id": "A-R27-37",
+   "design": "b2-events-flow.html",
+   "board-index": 37,
+   "path": "/events/demo-event-cfo-night-18/after",
+   "journey": {
+    "after": "empty",
+    "registration": "registered"
+   },
+   "note": "P24 会後 · 空（新用户）"
+  },
+  {
+   "id": "A-R27-38",
+   "design": "b2-events-flow.html",
+   "board-index": 38,
+   "path": "/events/demo-event-cfo-night-18/after",
+   "journey": {
+    "after": "few",
+    "registration": "registered"
+   },
+   "note": "P25 会後 · 少量"
+  },
+  {
+   "id": "A-R27-39",
+   "design": "b2-events-flow.html",
+   "board-index": 39,
+   "path": "/events/demo-event-cfo-night-18/after",
+   "journey": {
+    "after": "many",
+    "registration": "registered"
+   },
+   "note": "P26 会後 · 大量"
   }
  ]
 }

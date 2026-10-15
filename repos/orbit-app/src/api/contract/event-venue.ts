@@ -53,6 +53,8 @@ export interface EventVenueResponse {
   round?: { index: number; total: number; title: string; startsAt: string; endsAt: string; theme?: string | null; remainingMinutes: number } | null;
   seats?: readonly { round: number; table: string }[];
   mySeat?: { table: string; why?: string | null; whyDetail?: string | null; tablemates: readonly { attendeeId: string; name: string; initial: string; org?: string | null; role?: string | null }[] } | null;
+  /** Me, for my table's member list (「佐藤 健一（あなた）· ミナトリンク · CEO」). */
+  me?: { name: string; initial: string; org?: string | null; role?: string | null } | null;
   nextRound?: { at: string; round: number; table: string; names: string } | null;
   openers: readonly string[];
   stats: { exchanged: number; wantedMet: number; wantedTotal: number; incoming: number };

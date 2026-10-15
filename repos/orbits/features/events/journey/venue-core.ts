@@ -153,6 +153,7 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
     meetingSlots: input.meetingSlots ? [...input.meetingSlots] : [],
     // 共通の知り合い：只能用「我的联系人里同时认识两人」的记录（§9 #17）；现有数据里没有这条关系 → 隐藏那一行（G18）。
     mutualHint: null,
+    me: { initial: ws.me.displayName.trim().charAt(0), name: ws.me.displayName, org: ws.me.company, role: ws.me.role },
     mySeat: currentTable && myCurrent ? { table: myCurrent, tablemates: mateOf(currentTable), why: currentTable.rationale || null, whyDetail: currentTable.memberRationales[meId] ?? null } : null,
     nextOrder,
     nextRound: nextTable && roundTwoStart !== null ? { at: new Date(roundTwoStart).toISOString(), names: nextMates.map((mate) => `${familyOf(mate.name)}さん（${mate.org ?? ""}）`).join("· "), round: 2, table: tableOf(meId, nextTable) ?? letter(nextTable.tableNumber) } : null,

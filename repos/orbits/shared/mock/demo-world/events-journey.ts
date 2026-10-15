@@ -311,6 +311,7 @@ export function journeyVenue(state: EventVenueResponse["state"] = "checked_in", 
     },
     meetingSlots: ["2026-10-09T10:00:00+09:00", "2026-10-12T15:00:00+09:00", "2026-10-13T09:30:00+09:00"],
     mutualHint: { name: "清水", via: "高橋" },
+    me: { initial: JOURNEY_ME.name.charAt(0), name: JOURNEY_ME.name, org: JOURNEY_ME.company, role: JOURNEY_ME.role },
     mySeat: {
       table: "B-4",
       tablemates: [mate("jp-inoue"), mate("jp-mori"), mate("jp-okada"), mate("jp-nishimura")],
