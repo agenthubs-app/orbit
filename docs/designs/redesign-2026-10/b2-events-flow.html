@@ -536,7 +536,7 @@ function qr(px) {
   return `<svg width="${px}" height="${px}" viewBox="-1 -1 27 27" shape-rendering="crispEdges" style="fill:var(--ink);display:block;margin:0 auto">${r}${f(0, 0)}${f(n - 7, 0)}${f(0, n - 7)}</svg>`;
 }
 function checkin() {
-  return topbar('チェックイン', EV.n, close) + ` /* 审计：参加者侧改称 チェックイン，与主办侧「受付」（⑥ A App）区分屏幕身份 */<div class="seg full p-cseg" style="margin-bottom:14px"><button class="on">QR で受付</button><button>名前で受付</button></div>
+  return topbar('チェックイン', EV.n, close) + `<!-- 审计：参加者侧改称 チェックイン，与主办侧「受付」（⑥ A App）区分屏幕身份 --><div class="seg full p-cseg" style="margin-bottom:14px"><button class="on">QR で受付</button><button>名前で受付</button></div>
   <div class="card rise p-qr" style="text-align:center;padding:24px 18px"><div style="padding:14px;border-radius:20px;background:var(--surface);display:inline-block;box-shadow:0 0 0 1px var(--line)">${qr(196)}</div>
     <b style="display:block;font-size:15px;margin-top:14px">受付でこの画面を見せてください</b><div class="lbl">画面を明るくしました · 受付番号 A-042</div></div>
   <div class="card flat"><div class="row" style="gap:10px"><span class="emo sm apricot">🙋</span><div style="flex:1"><b style="font-size:13px">QR が読めないときは</b><div class="lbl">「佐藤 健一」と名前をお伝えください</div></div></div></div>

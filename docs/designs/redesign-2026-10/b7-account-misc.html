@@ -1063,7 +1063,7 @@ const IND2 = ['自動車・輸送機器', '電機・電子部品', '産業機械
 const casc = (w) => `<div class="casc"><div class="c1">${IND1.slice(0, w ? 7 : 9).map((t, k) => `<div class="${k === 1 ? 'on' : ''}">${t}${ic('right', 'sm')}</div>`).join('')}</div><div class="c2">${IND2.map((t, k) => `<div class="pick ${k === 1 ? 'on' : ''}">${t}<span class="ck">${k === 1 ? ic('check', 'sm') : ''}</span></div>`).join('')}</div></div>`;
 
 function newApp() {
-  return topbar('手入力', 'すべての項目を入力', closeB, `<button class="btn sm ghost">保存</button>`) + ` /* 审计：与 ⑨ A4 手入力 同一屏（标题 / ✕ / 保存 一致），此为展开全部项目的状态 */
+  return topbar('手入力', 'すべての項目を入力', closeB, `<button class="btn sm ghost">保存</button>`) + `<!-- 审计：与 ⑨ A4 手入力 同一屏（标题 / ✕ / 保存 一致），此为展开全部项目的状态 -->
     <div class="mac lav row k-scan" style="gap:10px;font-size:12px;padding:10px 12px"><span style="font-size:18px">📇</span><span style="flex:1">名刺があれば、スキャンのほうが速く正確です</span><button class="btn sm" style="background:var(--surface)">${ic('scan', 'sm')}スキャン</button></div>
     <div class="card" style="margin-top:12px">
       <div class="grid2" style="gap:10px">${fld('氏名', NEWC.n + '<i class="caret"></i>', 'focus', 1)}${fld('ふりがな', `<span class="ell">${NEWC.k}</span><span class="chip" style="margin-left:auto;font-size:10px;padding:1px 6px">自動</span>`)}</div>
@@ -1317,7 +1317,7 @@ function expApp1() {
     foot(`<button class="btn primary block xl k-xgo">3項目を書き出す</button>`);
 }
 function expApp2() {
-  return topbar('データの書き出し', '準備しています', back, '<span></span>') + ` /* 审计：准备在后台继续，左上统一为 ‹ 返回 */
+  return topbar('データの書き出し', '準備しています', back, '<span></span>') + `<!-- 审计：准备在后台继续，左上统一为 ‹ 返回 -->
     <div class="card center rise k-prog" style="padding:26px 18px">${ring(150, 13, [{ v: 64, c: 'var(--plum-700)', max: 100 }], `<div class="big" style="font-size:36px">${num(64)}<small>%</small></div><div class="lbl">あと 約1分</div>`)}</div>
     <div class="card k-items">${[['人脈 286人', 'ok'], ['メモ 148件', 'ok'], ['プラン・ログ', 'run']].map(([t, s]) => `<div class="row between" style="padding:10px 0;border-top:1px solid var(--line);font-size:13px"><b>${t}</b>${s === 'ok' ? `<span class="chip teal">${ic('check', 'sm')}完了</span>` : '<span class="chip lav">処理中</span>'}</div>`).join('')}</div>
     <div class="mac blue" style="font-size:12.5px;line-height:1.7;margin-top:14px">この画面を閉じても大丈夫です。準備ができたら通知でお知らせします。</div>`;
