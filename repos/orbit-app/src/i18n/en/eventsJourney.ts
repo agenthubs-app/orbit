@@ -443,4 +443,8 @@ export const eventsJourney = {
   "eventsJourney.meetingsSet": "Meetings set",
   "eventsJourney.nextStepsHintPhone": "AI suggestions · confirm to apply",
   "eventsJourney.nextStepsHintPhoneRule": "Confirm to apply",
+  "eventsJourney.communityNote": "👥 Events from organizers you joined or follow show up here first",
+  "eventsJourney.dSubtitleFewLong": "{n} events match",
+  "eventsJourney.widenAddArea": "Add {v} to places",
+  "eventsJourney.widenAddTheme": "Add {v} to themes",
 } as const;

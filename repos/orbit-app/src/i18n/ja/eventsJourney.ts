@@ -443,4 +443,8 @@ export const eventsJourney = {
   "eventsJourney.meetingsSet": "面談の約束",
   "eventsJourney.nextStepsHintPhone": "AI の提案 · 確認して確定",
   "eventsJourney.nextStepsHintPhoneRule": "確認して確定",
+  "eventsJourney.communityNote": "👥 参加した・フォローした主催のイベントが、ここに先に届きます",
+  "eventsJourney.dSubtitleFewLong": "条件に合うイベント {n}件",
+  "eventsJourney.widenAddArea": "場所に「{v}」を追加",
+  "eventsJourney.widenAddTheme": "テーマに「{v}」を追加",
 } as const;

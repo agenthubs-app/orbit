@@ -456,4 +456,8 @@ export const eventsJourneyCopy = {
   meetingsSet: { ja: "面談の約束", zh: "约好的面谈", en: "Meetings set", kind: "label" },
   nextStepsHintPhone: { ja: "AI の提案 · 確認して確定", zh: "AI 的建议 · 确认后生效", en: "AI suggestions · confirm to apply", kind: "label" },
   nextStepsHintPhoneRule: { ja: "確認して確定", zh: "确认后生效", en: "Confirm to apply", kind: "label" },
+  communityNote: { ja: "👥 参加した・フォローした主催のイベントが、ここに先に届きます", zh: "👥 参加过、关注过的主办方的活动，会先出现在这里", en: "👥 Events from organizers you joined or follow show up here first", kind: "label" },
+  dSubtitleFewLong: { ja: "条件に合うイベント {n}件", zh: "符合条件的活动{n}场", en: "{n} events match", kind: "label" },
+  widenAddArea: { ja: "場所に「{v}」を追加", zh: "地点加上「{v}」", en: "Add {v} to places", kind: "label" },
+  widenAddTheme: { ja: "テーマに「{v}」を追加", zh: "主题加上「{v}」", en: "Add {v} to themes", kind: "label" },
 } satisfies OrbitCopyTable;

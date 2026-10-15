@@ -20,7 +20,7 @@ import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/sv
 import { createThemedStyles } from "../../../design/theme";
 import { radius } from "../../../design/tokens";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
-import { DiscoverPage } from "./DiscoverPage";
+import { DiscoverPage, discoverQueryFromParams } from "./DiscoverPage";
 import { useEventsApi } from "./events-api";
 import { ScoreRing } from "./ScoreRing";
 import { appCardLine, appEventWhen, monthOf, orderAssessed, relativeDay, ringColor, verdictKey, verdictTone } from "./events-model";
@@ -31,7 +31,9 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
   const { styles } = useStyles();
   const { t, language } = useOrbitLocale();
   const router = useRouter();
-  const params = useGlobalSearchParams<{ tab?: string }>();
+  const params = useGlobalSearchParams<{ tab?: string; period?: string; areas?: string; themes?: string; q?: string; filters?: string }>();
+  // 探す 的条件也走路由参数（可分享；门禁用来打开筛选弹层 / 搜索中）。
+  const discoverQuery = useMemo(() => discoverQueryFromParams(params), [params.period, params.areas, params.themes]); // eslint-disable-line react-hooks/exhaustive-deps
   const api = useEventsApi();
   const topGap = useShellTopGap();
   const [tab, setTab] = useState<Tab>(params.tab === "going" || params.tab === "discover" ? params.tab : "assess");
@@ -88,7 +90,7 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
         renderPage={(key) => key === "assess"
           ? <AssessPage items={ordered} upcoming={upcoming} empty={empty} now={now} language={language} />
           : key === "going" ? <GoingPage upcoming={upcoming} past={past} now={now} language={language} onDiscover={() => setTab("discover")} />
-            : <DiscoverPage onSubtitle={setDiscoverSubtitle} />}
+            : <DiscoverPage onSubtitle={setDiscoverSubtitle} initialQuery={discoverQuery} initialSearch={typeof params.q === "string" ? params.q : ""} openFilters={params.filters === "1"} />}
       />
       <TabPageBar tab="events" />
     </SafeAreaView>

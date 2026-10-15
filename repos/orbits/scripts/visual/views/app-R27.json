@@ -1,8 +1,65 @@
 {
  "_note": "R27 イベント参加者の動線 App（PLANNER 像素 SC）。模拟器 iPhone 16e (r27) 连 mock 服务器 :3027（orbits-r27，ORBIT_REDESIGN_MOCK 含 event-recommendation-feedback），Metro :8127（no-keyboard,open-path）。每张先用 switch.mjs --journey 切示例变体，再把 path 写进 AsyncStorage orbit.dev.openPath 并重启 App（代替深链，避免系统确认框）后截图（scratchpad appgate.sh）。键 = <id>-app-<theme>。",
- "defaults": { "grid": 30, "wait": 20000, "attribution": "scripts/visual/attribution-redesign-R27-app.json" },
- "sources": ["repos/orbit-app/src/screens/events/v2/**", "repos/orbit-app/app/events/**", "repos/orbit-app/src/i18n/*/eventsJourney.ts"],
+ "defaults": {
+  "grid": 30,
+  "wait": 20000,
+  "attribution": "scripts/visual/attribution-redesign-R27-app.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/events/v2/**",
+  "repos/orbit-app/app/events/**",
+  "repos/orbit-app/src/i18n/*/eventsJourney.ts"
+ ],
  "views": [
-  { "id": "A-R27-08", "design": "b2-events-flow.html", "board-index": 8, "path": "/events?tab=discover", "journey": { "discover": "many" }, "note": "P03 探す · 大量" }
+  {
+   "id": "A-R27-06",
+   "design": "b2-events-flow.html",
+   "board-index": 6,
+   "path": "/events?tab=discover",
+   "journey": {
+    "discover": "empty"
+   },
+   "note": "P01 探す · 空（无计划）"
+  },
+  {
+   "id": "A-R27-07",
+   "design": "b2-events-flow.html",
+   "board-index": 7,
+   "path": "/events?tab=discover&period=this_week&areas=tokyo&themes=manufacturing_dx",
+   "journey": {
+    "discover": "few"
+   },
+   "note": "P02 探す · 少量"
+  },
+  {
+   "id": "A-R27-08",
+   "design": "b2-events-flow.html",
+   "board-index": 8,
+   "path": "/events?tab=discover",
+   "journey": {
+    "discover": "many"
+   },
+   "note": "P03 探す · 大量"
+  },
+  {
+   "id": "A-R27-09",
+   "design": "b2-events-flow.html",
+   "board-index": 9,
+   "path": "/events?tab=discover&filters=1",
+   "journey": {
+    "discover": "many"
+   },
+   "note": "P04 絞り込み弹层"
+  },
+  {
+   "id": "A-R27-10",
+   "design": "b2-events-flow.html",
+   "board-index": 10,
+   "path": "/events?tab=discover&q=CFO",
+   "journey": {
+    "discover": "many"
+   },
+   "note": "P05 検索中「CFO」"
+  }
  ]
 }

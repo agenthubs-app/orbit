@@ -1787,6 +1787,10 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsJourney.meetingsSet", "label"],
   ["eventsJourney.nextStepsHintPhone", "label"],
   ["eventsJourney.nextStepsHintPhoneRule", "label"],
+  ["eventsJourney.communityNote", "label"],
+  ["eventsJourney.dSubtitleFewLong", "label"],
+  ["eventsJourney.widenAddArea", "label"],
+  ["eventsJourney.widenAddTheme", "label"],
   // R26 イベント（eventsV2）。
   ["eventsV2.title", "pageTitle"],
   ["eventsV2.guessAdopted", "label"],

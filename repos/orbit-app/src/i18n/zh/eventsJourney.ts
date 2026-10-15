@@ -443,4 +443,8 @@ export const eventsJourney = {
   "eventsJourney.meetingsSet": "约好的面谈",
   "eventsJourney.nextStepsHintPhone": "AI 的建议 · 确认后生效",
   "eventsJourney.nextStepsHintPhoneRule": "确认后生效",
+  "eventsJourney.communityNote": "👥 参加过、关注过的主办方的活动，会先出现在这里",
+  "eventsJourney.dSubtitleFewLong": "符合条件的活动{n}场",
+  "eventsJourney.widenAddArea": "地点加上「{v}」",
+  "eventsJourney.widenAddTheme": "主题加上「{v}」",
 } as const;
