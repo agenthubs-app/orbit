@@ -70,7 +70,9 @@
   .evm .meta { flex: 1; min-width: 0; }
   .evm .meta b { font-size: 14px; line-height: 1.4; }
   .evm .meta .lbl { display: block; }
-  .mcta { position: absolute; left: 12px; right: 12px; bottom: 102px; z-index: 33; border-radius: 26px; background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-line); padding: 8px; display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; box-shadow: var(--shadow-float); }
+  /* §32（2026-10-15）：底部操作条距视口底边 8px；有 Safari 底栏时抬到其上方 8px */
+  .mweb:has(> .sbar) > .mcta { bottom: 100px; }
+  .mcta { position: absolute; left: 12px; right: 12px; bottom: 8px; z-index: 33; border-radius: 26px; background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-line); padding: 8px; display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; box-shadow: var(--shadow-float); }
   .mcta .btn { height: 46px; }
   .mcomp { position: absolute; left: 12px; right: 12px; bottom: 100px; z-index: 33; }
   .mcomp .bx { background: var(--surface); border-radius: 22px; padding: 8px 8px 8px 14px; display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow-float); font-size: 13px; color: var(--ink-3); }

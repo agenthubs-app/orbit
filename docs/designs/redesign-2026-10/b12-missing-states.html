@@ -1844,8 +1844,9 @@
     .lp-logo { width: 36px; height: 36px; border-radius: 12px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
     .lp-links { gap: 30px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
     .pubmain { padding: 4px 40px 40px; }
-    .mweb .ctabar { bottom: 104px; }
-    .mweb .composer { bottom: 104px; }
+    /* §32（2026-10-15）：390 底部操作条与胶囊导航同口径——距视口底边 8px（无 Safari 底栏时）；画板里有 Safari 底栏时抬到其上方 8px（92 + 8） */
+    .mweb > .ctabar, .mweb > .composer { bottom: 8px; }
+    .mweb:has(> .sbar) > .ctabar, .mweb:has(> .sbar) > .composer { bottom: 100px; }
     /* 下拉菜单：照 b11 .dmenu（2026-10-15 §31） */
     .dmenu { position: absolute; z-index: 6; width: 200px; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-float); padding: 6px; border: 1px solid var(--line); }
     .dmenu > div { padding: 8px 10px; border-radius: 10px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
