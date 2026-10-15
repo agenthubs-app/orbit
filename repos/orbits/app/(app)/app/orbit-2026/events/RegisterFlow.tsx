@@ -1,7 +1,7 @@
 "use client";
 
 // R27 参加登録（Web 1440：b2 #23 ① 質問 + 実時間の参加用プロフィール；1024 / 390：b12 #354 / #356）。
-// ② 確認 / ③ 申込完了 在 Web 没有画板：内容与顺序照 App b2 #21 / #22，放进同一张左卡（门禁登记「设计稿无」）。
+// ② 確認 / ③ 申込完了：b12 #370 / #372（§30 补画，版式照 #23：左卡换内容、右侧参加用プロフィール常驻）。
 // 数据：/api/events/[id]/join/*（问题 = 现有 AI 访谈 ≤5 问；资料规则实时更新，只有确认时才生成自己紹介草稿）。
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -12,10 +12,10 @@ import { ShellPage } from "../shell/slots";
 import { Icon, Orbit2026Scope, RingChart, ToastProvider, useToast } from "../ui";
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { journeyTranslator, type JourneyT } from "./DiscoverTab";
-import { eventRange, monthDaySlash } from "./EventDetail";
+import { eventRange, monthDaySlash, parts } from "./EventDetail";
 import { eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
-import { eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
+import { eventJoinCancelResultSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
 import type { ZodType } from "zod";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
@@ -24,9 +24,10 @@ import r from "./register.module.css";
 
 const id = (value: string) => encodeURIComponent(value);
 const joinApi = {
-  next: (eventId: string, answers: readonly EventJoinAnswer[]) => eventsCall(`/api/events/${id(eventId)}/join/next`, { body: JSON.stringify({ answers }), method: "POST" }, eventJoinStepSchema as ZodType<EventJoinStep>),
+  next: (eventId: string, answers: readonly EventJoinAnswer[], more = false) => eventsCall(`/api/events/${id(eventId)}/join/next`, { body: JSON.stringify({ answers, more }), method: "POST" }, eventJoinStepSchema as ZodType<EventJoinStep>),
   profile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean) => eventsCall(`/api/events/${id(eventId)}/join/profile`, { body: JSON.stringify({ answers, draft }), method: "POST" }, eventJoinProfileSchema as ZodType<EventJoinProfile>),
-  submit: (eventId: string, answers: readonly EventJoinAnswer[]) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey() }), method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
+  submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(selfIntro ? { selfIntro } : {}) }), method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
+  cancel: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/cancel`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), method: "POST" }, eventJoinCancelResultSchema),
   tentative: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/tentative`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), method: "POST" }, eventJoinTentativeResultSchema),
 };
 export { joinApi };
@@ -46,10 +47,24 @@ function speechRecognition(): SpeechCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-export function ProfileCard({ profile, t, live }: { profile: EventJoinProfile | null; t: JourneyT; live: boolean }) {
+/** 「9月20日 14:32」 */
+function dateTimeLong(iso: string, t: JourneyT): string {
+  const p = parts(iso);
+  return p ? t("dateTimeLong", { d: p.day, hm: p.hm, m: p.month }) : "";
+}
+
+type ProfileMode = "live" | "review" | "applied";
+
+export function ProfileCard({ profile, t, mode }: { profile: EventJoinProfile | null; t: JourneyT; mode: ProfileMode }) {
+  const drafting = mode === "live";
   return (
-    <div className={`${styles.card} ${styles.span5} ${r.persona}`} data-join-profile="">
-      <div className={styles.cardH}><h3>{t("profileTitle")}</h3>{live ? <span className={`${styles.chip} ${styles.c_lav}`}>{t("updatingLive")}</span> : null}</div>
+    <div className={`${styles.card} ${styles.span5} ${r.persona}`} data-join-profile={mode}>
+      <div className={styles.cardH}>
+        <h3>{t("profileTitle")}</h3>
+        {mode === "applied"
+          ? <span className={`${styles.chip} ${styles.c_teal}`}>{t("appliedEditable", { date: monthDaySlash(profile?.editableUntil) })}</span>
+          : <span className={`${styles.chip} ${styles.c_lav}`}>{t("updatingLive")}</span>}
+      </div>
       <div className={styles.row} style={{ gap: 16 }}>
         <div className={r.ring}>
           <RingChart size={92} stroke={9} segments={[{ color: "var(--plum-700)", value: Math.max(0, Math.min(1, (profile?.coverage ?? 0) / 100)) }]} label={`${profile?.coverage ?? 0}%`} />
@@ -61,7 +76,7 @@ export function ProfileCard({ profile, t, live }: { profile: EventJoinProfile | 
         <div className={r.items}>
           {(profile?.items ?? []).map((item) => (
             <div key={item.key} className={`${styles.row} ${r.item}`}>
-              <span className={item.done ? r.ok : r.todo}>{item.done ? "✓" : "○"}</span>
+              <span className={item.done ? r.ok : drafting ? r.todo : r.missing}>{item.done ? "✓" : drafting ? "○" : "△"}</span>
               <span className={item.done ? "" : styles.muted}>{t(ITEM_LABEL[item.key])}</span>
             </div>
           ))}
@@ -69,13 +84,13 @@ export function ProfileCard({ profile, t, live }: { profile: EventJoinProfile | 
       </div>
       <div className={`${styles.lbl} ${r.sectionLbl}`}>{t("topicsLbl")}</div>
       <div className={`${styles.chips} ${r.chips}`}>{(profile?.topics ?? []).map((topic) => <span key={topic} className={`${styles.chip} ${styles.c_lav}`}>{topic}</span>)}</div>
-      <div className={`${styles.lbl} ${r.sectionLbl}`}>{t("introDraftLbl")}</div>
-      {profile?.selfIntro ? <div className={`${styles.sub} ${r.intro}`}>{profile.selfIntro.text}</div> : (
+      <div className={`${styles.lbl} ${r.sectionLbl}`}>{t(drafting ? "introDraftLbl" : "introLbl")}</div>
+      {profile?.selfIntro ? <div className={drafting ? `${styles.sub} ${r.intro}` : r.introSide}>{profile.selfIntro.text}</div> : drafting ? (
         <>
           <div className={r.shimmer} /><div className={r.shimmer} style={{ width: "85%" }} /><div className={r.shimmer} style={{ width: "60%" }} />
         </>
-      )}
-      <div className={`${styles.lbl} ${r.foot}`}>{t("reviewBeforeSubmit")}</div>
+      ) : null}
+      {drafting ? <div className={`${styles.lbl} ${r.foot}`}>{t("reviewBeforeSubmit")}</div> : null}
     </div>
   );
 }
@@ -93,6 +108,9 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<EventJoinResult | null>(null);
   const [calendar, setCalendar] = useState<"asked" | "added" | "declined">("asked");
+  const [intro, setIntro] = useState<string | null>(null);
+  const [editingIntro, setEditingIntro] = useState(false);
+  const [why, setWhy] = useState(false);
   const freeRef = useRef<HTMLInputElement | null>(null);
   const Speech = useMemo(() => speechRecognition(), []);
 
@@ -104,6 +122,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
 
   const question = step?.question ?? null;
   const reviewing = Boolean(step?.done) && !result;
+  const total = step?.total ?? 5;
   const toggle = (option: string) => {
     if (!question) return;
     if (!question.multi) { setSelected([option]); return; }
@@ -121,13 +140,21 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     if (nextProfile.ok) setProfile(nextProfile.data);
     if (nextStep.ok && nextStep.data.done) {
       const drafted = await joinApi.profile(eventId, next, true);
-      if (drafted.ok) setProfile(drafted.data);
+      if (drafted.ok) { setProfile(drafted.data); setIntro((current) => current ?? drafted.data.selfIntro?.text ?? null); }
     }
     setBusy(false);
   };
+  // 「追加」/「質問に戻る」：访谈认为够了也再问一题（live 由 AI 决定，可能仍然结束 → 留在确认页）。
+  const askMore = async () => {
+    setBusy(true);
+    const res = await joinApi.next(eventId, answers, true);
+    setBusy(false);
+    if (res.ok) setStep(res.data); else toast.error(at("genericError"));
+  };
   const apply = async () => {
     setBusy(true);
-    const res = await joinApi.submit(eventId, answers);
+    const edited = intro && intro !== profile?.selfIntro?.text ? intro : undefined;
+    const res = await joinApi.submit(eventId, answers, edited);
     setBusy(false);
     if (res.ok) setResult(res.data); else toast.error(t("submitFailed"));
   };
@@ -144,9 +171,10 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     recognition.start();
   };
 
-  const total = step?.total ?? 5;
-  const progressText = step && !step.done ? t("regProgress", { i: step.index, m: step.remainingMinutes, n: total }) : null;
   const reviewUntil = profile?.reviewUntil ?? result?.reviewUntil ?? null;
+  const headRight = result ? t("doneTitle") : reviewing ? t("reviewStep", { i: Math.min(total, answers.length + 1), n: total }) : step ? t("regProgress", { i: step.index, m: step.remainingMinutes, n: total }) : null;
+  const shownIntro = intro ?? profile?.selfIntro?.text ?? "";
+  const detailHref = `/app/events/${id(eventId)}`;
 
   const rail = (
     <div className={`${styles.rail} ${d.rail}`} data-join-rail="">
@@ -169,72 +197,122 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     </div>
   );
 
+  const chat = (
+    <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-chat="">
+      <div className={r.progress}><div className={x.bar}><i style={{ width: `${Math.round((Math.max(0, step?.index ?? 1) / total) * 100)}%` }} /></div></div>
+      <div className={r.chatcol}>
+        {answers.map((item, index) => (
+          <div key={`${item.field}-${index}`} className={r.pair}><div className={`${r.bubble} ${r.ai}`}>{item.prompt}</div><div className={`${r.bubble} ${r.me}`}>{item.answer}</div></div>
+        ))}
+        {question ? (
+          <>
+            <div className={`${r.bubble} ${r.ai}`}><b>{question.prompt}</b>{question.help ? <div className={`${styles.lbl} ${r.help}`}>{question.help}</div> : null}</div>
+            <div className={r.opts}>
+              {question.options.map((option) => <button key={option} type="button" aria-pressed={selected.includes(option)} className={`btn ${r.opt} ${selected.includes(option) ? r.on : ""}`} onClick={() => toggle(option)}>{option}</button>)}
+              {question.allowCustom ? <button type="button" className={`btn ${r.opt}`} onClick={() => freeRef.current?.focus()}>{t("otherOption")}</button> : null}
+            </div>
+          </>
+        ) : null}
+      </div>
+      {question ? (
+        <div className={`${styles.row} ${r.answerRow}`}>
+          <input ref={freeRef} className={r.input} value={free} onChange={(ev) => setFree(ev.target.value)} placeholder={t("freeAnswer")} aria-label={t("freeAnswer")} onKeyDown={(ev) => { if (ev.key === "Enter") void submitAnswer(); }} />
+          {Speech ? <button type="button" className={`btn ${d.lbtn} ${r.mic}`} aria-label={t("voiceAnswer")} onClick={dictate}><Icon name="mic" size={16} /></button> : null}
+          <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.nextBtn}`} disabled={busy || (!selected.length && !free.trim())} onClick={() => void submitAnswer()}>{t("next")}</button>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const missing = (profile?.items ?? []).filter((item) => !item.done);
+  const review = (
+    <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-review="">
+      <div className={`${styles.card} ${r.inner}`}>
+        <div className={styles.cardH}><h3>{t("coverageTitle", { n: profile?.coverage ?? 0 })}</h3><span className={styles.lbl}>{t("coverageAddable")}</span></div>
+        {(profile?.items ?? []).map((item) => (
+          <div key={item.key} className={`${styles.row} ${r.covRow}`}>
+            <span className={item.done ? r.ok : r.missing}>{item.done ? "✓" : "△"}</span>
+            <span className={item.done ? r.grow : `${r.grow} ${styles.muted}`}>{t(ITEM_LABEL[item.key])}</span>
+            {item.done ? null : <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} onClick={() => void askMore()}>{t("add")}</button>}
+          </div>
+        ))}
+        {missing.some((item) => item.key === "offer") ? <div className={`${styles.lbl} ${r.hint}`}>{t("offerHint")}</div> : null}
+      </div>
+      <div className={`${styles.card} ${r.inner} ${r.gap}`}>
+        <div className={styles.cardH}>
+          <h3>{t("introLbl")} <span className={`${styles.lbl} ${r.introTag}`}>{t("introShown")}</span></h3>
+          <div className={styles.row} style={{ gap: 6 }}>
+            {profile?.selfIntroBasis ? <button type="button" className={`btn ${r.why}`} aria-expanded={why} aria-label={t("introWhy")} onClick={() => setWhy((v) => !v)}>?</button> : null}
+            <button type="button" className={`btn ${d.lbtn}`} aria-label={t("edit")} onClick={() => setEditingIntro((v) => !v)}><Icon name="pen" size={16} /></button>
+          </div>
+        </div>
+        {editingIntro ? (
+          <div className={r.editIntro}>
+            <textarea className={r.textarea} value={shownIntro} maxLength={400} onChange={(ev) => setIntro(ev.target.value)} aria-label={t("introLbl")} />
+            <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} onClick={() => setEditingIntro(false)}>{t("saveIntro")}</button>
+          </div>
+        ) : <div className={r.introText}>{shownIntro}</div>}
+        {why && profile?.selfIntroBasis ? <div className={r.whyBody}>{profile.selfIntroBasis}</div> : null}
+      </div>
+      <div className={`${styles.card} ${r.inner} ${r.gap} ${r.scope}`}>
+        <div className={`${styles.lbl} ${r.scopeLbl}`}>{t("visibilityTitle")}</div>
+        <div className={`${styles.row} ${r.scopeRow}`}><span className={`${styles.chip} ${styles.c_teal}`}>{t("visAll")}</span><span className={styles.sub}>{t("visAllFields")}</span></div>
+        <div className={`${styles.row} ${r.scopeRow} ${r.scopeRow2}`}><span className={styles.chip}>{t("visOrg")}</span><span className={styles.sub}>{t("visOrgFields")}</span></div>
+      </div>
+      <div className={`${styles.row} ${r.go}`}>
+        <span className={`${styles.lbl} ${r.grow}`}>{profile?.editableUntil ? t("editableUntil", { date: monthDaySlash(profile.editableUntil) }) : null}</span>
+        <button type="button" className={`btn ${styles.btn}`} disabled={busy} onClick={() => void askMore()}>{t("backToQuestions")}</button>
+        <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.nextBtn}`} disabled={busy} onClick={() => void apply()}>{t("applyNow")}</button>
+      </div>
+    </div>
+  );
+
+  const done = result ? (
+    <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-done="">
+      <div className={`${styles.card} ${r.inner} ${r.check}`}>
+        <div className={r.popcheck}><Icon name="check" size={24} /></div>
+        <div className={r.doneTitle}>{t("received")}</div>
+        <div className={styles.lbl}>{`${event?.title ?? ""} · ${dateTimeLong(result.submittedAt, t)}`}</div>
+      </div>
+      <div className={`${styles.card} ${r.inner} ${r.gap}`}>
+        <div className={`${styles.row} ${styles.between}`}><b className={r.statusTitle}>{t("statusNow")}</b><span className={`${styles.chip} ${result.status === "registered" ? styles.c_teal : styles.c_lav}`}>{result.status === "registered" ? t("statusConfirmed") : t("statusReview")}</span></div>
+        <div className={r.steps4}>
+          <div className={r.stepDone}>{t("flowApply")}<br />{monthDaySlash(result.submittedAt)}</div>
+          {result.status === "pending_review" ? <div className={r.stepNow}>{t("flowReview")}<br />{reviewUntil ? t("reviewBy", { date: monthDaySlash(reviewUntil) }) : null}</div> : <div className={r.stepDone}>{t("flowReview")}</div>}
+          <div className={result.status === "registered" ? r.stepNow : undefined}>{t("flowResult")}</div>
+          <div>{t("flowDay")}<br />{monthDaySlash(result.startsAt)}</div>
+        </div>
+        {result.status === "pending_review" ? <div className={`${styles.sub} ${r.doneSub}`}>{t("reviewWait")}</div> : null}
+      </div>
+      {result.tentative && calendar === "asked" ? (
+        <div className={`${styles.card} ${r.confirm}`} data-join-calendar="">
+          <div className={styles.row} style={{ gap: 8 }}><span className={`${styles.emo} ${styles.t_lav} ${r.emoSm}`}>📅</span><b className={r.confirmTitle}>{t("calAsk")}</b></div>
+          <div className={`${styles.sub} ${r.confirmSub}`}>{t("calendarLine", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: result.tentative.title })}</div>
+          <div className={styles.row} style={{ gap: 8 }}>
+            <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} onClick={() => void addTentative()}>{t("addIt")}</button>
+            <button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => setCalendar("declined")}>{t("noNeed")}</button>
+          </div>
+        </div>
+      ) : null}
+      <div className={`${styles.row} ${r.doneGo}`}>
+        <a className={`btn ${styles.btn}`} href="/app/profile">{t("editProfile")}</a>
+        <a className={`btn ${styles.btn} ${styles.primary}`} href={detailHref}>{t("toDetail")}</a>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <>
       <ShellPage
-        title={result ? t("doneTitle") : t("regTitle")}
+        title={t("regTitle")}
         subtitle={event?.title ?? ""}
-        left={<a className={`btn ${x.rbtn}`} href={`/app/events/${id(eventId)}`} aria-label={t("close")}><Icon name="x" size={16} /></a>}
-        right={progressText ? <span className={styles.lbl}>{progressText}</span> : undefined}
+        left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={16} /></a>}
+        right={headRight ? <span className={styles.lbl}>{headRight}</span> : undefined}
         rightRail={rail}
       />
       <div className={styles.wgrid} data-join={eventId}>
-        <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-chat="">
-          {!result ? <div className={r.progress}><div className={x.bar}><i style={{ width: `${Math.round(((reviewing ? total : Math.max(0, (step?.index ?? 1))) / total) * 100)}%` }} /></div></div> : null}
-          {result ? (
-            <div className={r.done} data-join-done="">
-              <b className={r.doneTitle}>{t("received")}</b>
-              <div className={styles.lbl}>{`${event?.title ?? ""} · ${monthDaySlash(result.submittedAt)}`}</div>
-              <div className={styles.row} style={{ gap: 8, marginTop: 14 }}><span className={styles.lbl}>{t("statusNow")}</span><span className={`${styles.chip} ${result.status === "registered" ? styles.c_teal : styles.c_apricot}`}>{result.status === "registered" ? t("statusConfirmed") : t("statusReview")}</span></div>
-              {result.status === "pending_review" ? <div className={`${styles.sub} ${r.doneSub}`}>{t("reviewWait")}</div> : null}
-              {result.tentative && calendar === "asked" ? (
-                <div className={`${styles.card} ${r.confirm}`} data-join-calendar="">
-                  <b className={r.confirmTitle}>{t("calendarAsk")}</b>
-                  <div className={styles.lbl}>{t("calendarLine", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: result.tentative.title })}</div>
-                  <div className={styles.row} style={{ gap: 8, marginTop: 10 }}>
-                    <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} onClick={() => void addTentative()}>{t("addIt")}</button>
-                    <button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => setCalendar("declined")}>{t("noNeed")}</button>
-                  </div>
-                </div>
-              ) : null}
-              <a className={`btn ${styles.btn} ${styles.sm} ${r.editBtn}`} href={`/app/events/${id(eventId)}`}>{t("editProfile")}</a>
-            </div>
-          ) : (
-            <>
-              <div className={r.chatcol}>
-                {answers.map((item, index) => (
-                  <div key={`${item.field}-${index}`} className={r.pair}><div className={`${r.bubble} ${r.ai}`}>{item.prompt}</div><div className={`${r.bubble} ${r.me}`}>{item.answer}</div></div>
-                ))}
-                {question ? (
-                  <>
-                    <div className={`${r.bubble} ${r.ai}`}><b>{question.prompt}</b>{question.help ? <div className={`${styles.lbl} ${r.help}`}>{question.help}</div> : null}</div>
-                    <div className={r.opts}>
-                      {question.options.map((option) => <button key={option} type="button" aria-pressed={selected.includes(option)} className={`btn ${r.opt} ${selected.includes(option) ? r.on : ""}`} onClick={() => toggle(option)}>{option}</button>)}
-                      {question.allowCustom ? <button type="button" className={`btn ${r.opt}`} onClick={() => freeRef.current?.focus()}>{t("otherOption")}</button> : null}
-                    </div>
-                  </>
-                ) : null}
-                {reviewing ? (
-                  <div className={r.review} data-join-review="">
-                    <div className={styles.lbl}>{t("visibilityTitle")}</div>
-                    <div className={r.visRow}><b>{t("visAll")}</b><span className={styles.lbl}>{t("visAllFields")}</span></div>
-                    <div className={r.visRow}><b>{t("visOrg")}</b><span className={styles.lbl}>{t("visOrgFields")}</span></div>
-                    <button type="button" className={`btn ${styles.btn} ${styles.primary} ${x.block}`} disabled={busy} onClick={() => void apply()}>{t("applyNow")}</button>
-                    {profile?.editableUntil ? <div className={`${styles.lbl} ${r.center}`}>{t("editableUntil", { date: monthDaySlash(profile.editableUntil) })}</div> : null}
-                  </div>
-                ) : null}
-              </div>
-              {question ? (
-                <div className={`${styles.row} ${r.answerRow}`}>
-                  <input ref={freeRef} className={r.input} value={free} onChange={(ev) => setFree(ev.target.value)} placeholder={t("freeAnswer")} aria-label={t("freeAnswer")} onKeyDown={(ev) => { if (ev.key === "Enter") void submitAnswer(); }} />
-                  {Speech ? <button type="button" className={`btn ${d.lbtn} ${r.mic}`} aria-label={t("voiceAnswer")} onClick={dictate}><Icon name="mic" size={16} /></button> : null}
-                  <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.nextBtn}`} disabled={busy || (!selected.length && !free.trim())} onClick={() => void submitAnswer()}>{t("next")}</button>
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
-        <ProfileCard profile={profile} t={t} live={!reviewing && !result} />
+        {done ?? (reviewing ? review : chat)}
+        <ProfileCard profile={profile ? { ...profile, selfIntro: profile.selfIntro && intro ? { ...profile.selfIntro, text: intro } : profile.selfIntro } : null} t={t} mode={result ? "applied" : reviewing ? "review" : "live"} />
       </div>
     </>
   );

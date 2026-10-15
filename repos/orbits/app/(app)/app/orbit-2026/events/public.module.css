@@ -22,3 +22,9 @@
 .r { justify-content: flex-end; }
 @media (max-width: 767px) { .lpNav { padding: 0 16px; } .links { display: none; } .pubmain { padding: 4px 16px 32px; } }
 .scope { display: block; line-height: var(--lh-body); }
+
+/* /register/〈コード〉着地页的参加コード卡（b12 #376）。 */
+.codeCard.codeCard { background: linear-gradient(160deg, var(--mac-lav), var(--surface) 65%); }
+.code { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-heavy); letter-spacing: .04em; margin: 6px 0 2px; }
+.codeActions { display: grid; gap: 8px; margin-top: 14px; }
+.codeNote.codeNote { margin-top: 8px; }

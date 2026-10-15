@@ -27,9 +27,11 @@ export interface JourneyMockState {
   overview: EventJourneyVariant;
   after: EventJourneyVariant;
   venue: EventVenueState;
+  /** 详情的报名状态（取消确认框 b12 #374 需要「已报名」）。 */
+  registration: "none" | "registered" | "pending_review";
 }
 
-const DEFAULT_STATE: JourneyMockState = { after: "many", discover: "many", overview: "many", venue: "checked_in" };
+const DEFAULT_STATE: JourneyMockState = { after: "many", discover: "many", overview: "many", registration: "none", venue: "checked_in" };
 const holder = globalThis as typeof globalThis & { __orbitR27JourneyMock?: { state: JourneyMockState; store: ReturnType<typeof createMemoryActorRecordStore> } };
 
 function mockHolder() {
@@ -76,7 +78,8 @@ export function createJourneyMockService(): JourneyService {
     },
     async overview(actorId, eventId, _language, platform) {
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;
-      const data = { ...journeyOverview(state().overview, platform ?? "web"), eventId: JOURNEY_EVENT_ID };
+      const base = journeyOverview(state().overview, platform ?? "web");
+      const data = { ...base, eventId: JOURNEY_EVENT_ID, registration: { ...base.registration, status: actorId ? state().registration : "none" as const } };
       if (!actorId) {
         const { assessment: _assessment, ...rest } = data;
         return { ...rest, attendees: data.attendees.map((item) => ({ ...item, known: false, planFit: false, wanted: false })), knownAttendees: [], organizer: { ...data.organizer, following: false, myAttendance: null, organizerId: null }, signedOut: true };

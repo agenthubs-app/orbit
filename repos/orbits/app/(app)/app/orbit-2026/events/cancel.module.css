@@ -1,0 +1,8 @@
+/* R27 参加の取り消し（b12 #374 kit .wmodal .dic / 后果列表）。 */
+.head.head { gap: 14px; align-items: flex-start; }
+.dic { width: 48px; height: 48px; border-radius: var(--r-tile); background: var(--coral-soft); color: var(--coral-text); display: grid; place-items: center; flex: 0 0 auto; }
+.body { min-width: 0; }
+.title { font-size: var(--fs-logo); }
+.when.when { margin-top: 2px; }
+.list { display: grid; gap: 8px; margin-top: 14px; font-size: var(--fs-control); }
+.item.item { gap: 8px; align-items: flex-start; }

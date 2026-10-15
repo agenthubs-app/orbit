@@ -136,6 +136,134 @@
    ]
   },
   {
+   "id": "W-R27-31",
+   "app": "/app/events/demo-event-cfo-night-18/register",
+   "design": "b12-missing-states.html",
+   "board-index": 370,
+   "width": 1440,
+   "wait-for": "[data-join-chat] button",
+   "note": "P07 参加登録 ② 参加用プロフィール（§30 补画）",
+   "steps": [
+    {
+     "click": "[data-join-chat] button:has-text(\"資金調達の相談相手を見つけたい\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"次へ\")"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"シリーズAの資本政策\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"CFO 採用\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"次へ\")"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"VC・CVC\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"上場企業の CFO\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"次へ\")"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "W-R27-32",
+   "app": "/app/events/demo-event-cfo-night-18/register",
+   "design": "b12-missing-states.html",
+   "board-index": 372,
+   "width": 1440,
+   "wait-for": "[data-join-chat] button",
+   "note": "P07 参加登録 ③ 申込完了 · 仮予定（§30 补画）",
+   "steps": [
+    {
+     "click": "[data-join-chat] button:has-text(\"資金調達の相談相手を見つけたい\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"次へ\")"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"シリーズAの資本政策\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"CFO 採用\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"次へ\")"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"VC・CVC\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"上場企業の CFO\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"次へ\")"
+    },
+    {
+     "wait": 1200
+    },
+    {
+     "wait": 2000
+    },
+    {
+     "click": "[data-join-review] button:has-text(\"この内容で申し込む\")"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "W-R27-33",
+   "app": "/app/events/demo-event-cfo-night-18?cancel=1",
+   "design": "b12-missing-states.html",
+   "board-index": 374,
+   "width": 1440,
+   "wait-for": "[data-join-cancel]",
+   "journey": {
+    "overview": "few",
+    "registration": "pending_review"
+   },
+   "note": "P06 参加の取り消し · Web 確認（§30 补画；背景详情为已报名状态）",
+   "steps": [
+    {
+     "wait": 600
+    }
+   ]
+  },
+  {
+   "id": "W-R27-34",
+   "app": "/app/register/7QKM-H4TR",
+   "design": "b12-missing-states.html",
+   "board-index": 376,
+   "width": 1440,
+   "login": "",
+   "wait-for": "[data-public-invite]",
+   "journey": {
+    "overview": "few"
+   },
+   "note": "参加登録 · /register/〈コード〉着地页（§30 补画）"
+  },
+  {
    "id": "W-R27-P40",
    "app": "/app/events",
    "design": "b12-missing-states.html",

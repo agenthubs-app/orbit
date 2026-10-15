@@ -2,23 +2,25 @@
 
 // R27 イベント詳細（Web 1440：b2 #17 参加者 0 / #18 少 / #19 多，深色 #47；1024 / 390：b12 #350 / #352）。
 // 数据：GET /api/events/[id]/overview（规则评估、主办统计、只公开资料的参加者）。评估吸顶的分数与计划页同一套。
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { EventOverviewAttendee, EventOverviewResponse } from "../../../../../shared/contract/event-overview";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { eventJoinCancelResultSchema } from "../../../../../shared/api-schema/event-join";
 import { ShellPage } from "../shell/slots";
 import { Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { feeText, journeyTranslator, rowTone, toneClass, type JourneyT } from "./DiscoverTab";
-import { eventsApi, newIdempotencyKey } from "./events-api";
+import { CancelDialog } from "./CancelDialog";
+import { eventsApi, eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
 import { LoginAssessCard } from "./PublicEvents";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
 import x from "./detail.module.css";
 
-const WEEK: Record<OrbitLanguage, readonly string[]> = { en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], ja: ["日", "月", "火", "水", "木", "金", "土"], zh: ["日", "一", "二", "三", "四", "五", "六"] };
-function parts(iso: string | null | undefined) {
+export const WEEK: Record<OrbitLanguage, readonly string[]> = { en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], ja: ["日", "月", "火", "水", "木", "金", "土"], zh: ["日", "一", "二", "三", "四", "五", "六"] };
+export function parts(iso: string | null | undefined) {
   const time = iso ? Date.parse(iso) : NaN;
   if (!Number.isFinite(time)) return null;
   const t = new Date(time + 9 * 3_600_000);
@@ -91,7 +93,8 @@ export function DetailRail({ data, t, onRegister }: { data: EventOverviewRespons
   );
 }
 
-export function EventDetailBody({ data, language, t }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT }) {
+/** `signedOutAside`：未登录时右上卡片（默认「ログインして行く価値を判定」；/register/〈コード〉着地页换成参加コード卡）。 */
+export function EventDetailBody({ data, language, t, signedOutAside }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; signedOutAside?: ReactNode }) {
   const at = assessTranslator(language);
   const toast = useToast();
   const [tab, setTab] = useState<"intro" | "agenda" | "host" | "people">("intro");
@@ -132,7 +135,7 @@ export function EventDetailBody({ data, language, t }: { data: EventOverviewResp
           <div className={`${styles.sub} ${x.intro}`}>{data.description}</div>
         </div>
       </div>
-      {data.signedOut ? <LoginAssessCard t={t} language={language} span="span4" /> : data.assessment ? (
+      {data.signedOut ? (signedOutAside ?? <LoginAssessCard t={t} language={language} span="span4" />) : data.assessment ? (
         <div className={`${styles.card} ${styles.span4} ${x.scoreCard}`} data-why-box="">
           <div className={styles.lbl}>{t("yourAssessment")}</div>
           <div className={x.scoreRing}>
@@ -215,6 +218,28 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
     void journeyApi.overview(eventId).then((result) => { if (result.ok) setData(result.data); else setMissing(true); });
   }, [eventId]);
   const register = () => window.location.assign(`/app/events/${encodeURIComponent(eventId)}/register`);
+  // 参加の取り消し（b12 #374）：`?cancel=1` 打开确认框，只在已有报名时。
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const holding = data?.registration.status === "registered" || data?.registration.status === "pending_review" || data?.registration.status === "waitlisted";
+  useEffect(() => {
+    if (holding && new URLSearchParams(window.location.search).get("cancel") === "1") setCancelOpen(true);
+  }, [holding]);
+  const closeCancel = () => {
+    setCancelOpen(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("cancel");
+    window.history.replaceState(null, "", url);
+  };
+  const confirmCancel = async () => {
+    setCancelBusy(true);
+    const res = await eventsCall(`/api/events/${encodeURIComponent(eventId)}/join/cancel`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), method: "POST" }, eventJoinCancelResultSchema);
+    setCancelBusy(false);
+    if (!res.ok) { toast.error(t("cancelFailed")); return; }
+    setData((current) => (current ? { ...current, registration: { ...current.registration, status: "cancelled" } } : current));
+    closeCancel();
+    toast.success(t("cancelled"));
+  };
   const share = async () => {
     try { await navigator.clipboard.writeText(window.location.href); toast.success(t("shareCopied")); } catch { /* clipboard blocked: nothing to do */ }
   };
@@ -239,6 +264,7 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
         rightRail={wide && data ? <DetailRail data={data} t={t} onRegister={register} /> : false}
       />
       {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? <EventDetailBody data={data} language={language} t={t} /> : null}
+      {data ? <CancelDialog open={cancelOpen} event={data} language={language} t={t} busy={cancelBusy} onKeep={closeCancel} onCancel={() => void confirmCancel()} /> : null}
     </>
   );
 }
