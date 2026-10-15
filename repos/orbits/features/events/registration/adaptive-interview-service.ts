@@ -57,9 +57,16 @@ export interface EventPersona {
   seeking: string;
   tagline: string;
   tags: readonly string[];
+  /** R27 E4：参加用「自己紹介（下書き）」（≤200 字、第一人称）；旧版本 / 模型没给时缺省。 */
+  selfIntroDraft?: string;
+  promptVersion?: string;
 }
 
 export const ADAPTIVE_INTERVIEW_MAX_TURNS = 8;
+/** R27（DESIGN §2.4）：报名访谈最多问 5 题（会社・役職・業界来自资料，不再问）。 */
+export const ADAPTIVE_INTERVIEW_QUESTION_LIMIT = 5;
+/** R27 E4：persona 提示词版本（加了 selfIntroDraft 与日文）。 */
+export const EVENT_PERSONA_PROMPT_VERSION = "event-persona-2026-10-v2";
 
 export class AdaptiveInterviewGenerationError extends Error {
   constructor(
@@ -107,7 +114,7 @@ const sensitivePattern =
 
 interface AdaptiveInterviewInput {
   event: EventRecord;
-  language?: "en" | "zh";
+  language?: "en" | "zh" | "ja";
   modelConfig?: GeminiOrbitAgentProviderConfig;
   modelRunner?: AdaptiveInterviewModelRunner;
   transcript: readonly AdaptiveInterviewTurn[];
@@ -204,7 +211,8 @@ export async function nextAdaptiveInterviewQuestion(
 
   if (
     remainingFields.length === 0 ||
-    transcript.length >= ADAPTIVE_INTERVIEW_MAX_TURNS
+    transcript.length >= ADAPTIVE_INTERVIEW_MAX_TURNS ||
+    transcript.length >= ADAPTIVE_INTERVIEW_QUESTION_LIMIT
   ) {
     return { done: true, question: null };
   }
@@ -339,7 +347,10 @@ function readModelPersona(text: string): Omit<EventPersona, "provenance"> | null
     return null;
   }
 
-  return { energyStyle, industryTags, offering, openers, seeking, tagline, tags };
+  // R27 E4：可选字段；给了就校验长度，不合格只丢掉这一项（不让整份画像失败）。
+  const selfIntroDraft = typeof parsed.selfIntroDraft === "string" ? parsed.selfIntroDraft.trim() : "";
+  const intro = selfIntroDraft.length >= 10 && selfIntroDraft.length <= 200 && !sensitivePattern.test(selfIntroDraft) ? { selfIntroDraft } : {};
+  return { energyStyle, industryTags, offering, openers, seeking, tagline, tags, ...intro };
 }
 
 /**
@@ -349,15 +360,14 @@ function readModelPersona(text: string): Omit<EventPersona, "provenance"> | null
 export async function generateEventPersona(
   input: AdaptiveInterviewInput,
 ): Promise<EventPersona> {
-  const language = input.language === "en" ? "en" : "zh";
+  const language = input.language === "en" ? "en" : input.language === "ja" ? "ja" : "zh";
   const transcript = input.transcript.slice(0, ADAPTIVE_INTERVIEW_MAX_TURNS);
   const modelRunner = input.modelRunner ?? runOrbitAgentModelText;
-  const modelResult = await modelRunner({
-    config: input.modelConfig,
-    systemInstruction: [
+  const systemInstruction = [
       "You write an event-facing attendee persona from an interview transcript. It powers attendee matching, so every dimension matters.",
-      "Return strict JSON only: {\"tagline\", \"tags\", \"industryTags\", \"energyStyle\", \"seeking\", \"offering\", \"openers\"}.",
-      `Write everything in ${language === "zh" ? "Chinese" : "English"}.`,
+      "Return strict JSON only: {\"tagline\", \"tags\", \"industryTags\", \"energyStyle\", \"seeking\", \"offering\", \"openers\", \"selfIntroDraft\"}.",
+      `Write everything in ${language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English"}.`,
+      "selfIntroDraft: a first-person self-introduction for other attendees (60-200 chars): who I am, what I want to talk about at THIS event, what I can offer. No revenue or other numbers unless they appear in the transcript.",
       "tagline: one line (<=60 chars) positioning this person for THIS event.",
       "tags: 3-5 short labels (<=16 chars each) covering their strongest matching signals.",
       "industryTags: 1-3 industry labels (<=16 chars each).",
@@ -366,8 +376,8 @@ export async function generateEventPersona(
       "offering: one sentence — what they can offer people they meet (<=140 chars).",
       "openers: 2-3 conversation openers others could use with this person (<=90 chars each).",
       "Ground every statement ONLY in the transcript and event context. Do not invent facts.",
-    ].join("\n"),
-    userText: JSON.stringify({
+    ].join("\n");
+  const userText = JSON.stringify({
       event: {
         description: input.event.description,
         relationshipContext: input.event.relationshipContext,
@@ -376,8 +386,8 @@ export async function generateEventPersona(
       },
       language,
       transcript,
-    }),
-  });
+    });
+  let modelResult = await modelRunner({ config: input.modelConfig, systemInstruction, userText });
 
   if (modelResult.success !== true) {
     throw new AdaptiveInterviewGenerationError(
@@ -387,7 +397,15 @@ export async function generateEventPersona(
     );
   }
 
-  const persona = readModelPersona(modelResult.text);
+  let persona = readModelPersona(modelResult.text);
+  if (!persona) {
+    // R27 E4：不合格时带着原答案修复 1 次（DESIGN §5 共同规矩），还不过才失败。
+    const repaired = await modelRunner({ config: input.modelConfig, systemInstruction: `${systemInstruction}\nYour previous answer was rejected (invalid JSON or a field outside its limits). Return the corrected JSON object only.`, userText: `${userText}\n\nPrevious answer:\n${modelResult.text.slice(0, 4000)}` });
+    if (repaired.success === true) {
+      modelResult = repaired;
+      persona = readModelPersona(repaired.text);
+    }
+  }
 
   if (!persona) {
     throw new AdaptiveInterviewGenerationError(
@@ -399,6 +417,7 @@ export async function generateEventPersona(
 
   return {
     ...persona,
+    promptVersion: EVENT_PERSONA_PROMPT_VERSION,
     provenance: {
       fallbackReason: null,
       generationMethod: "orbit-agent-model-adaptive",

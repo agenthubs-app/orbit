@@ -39,6 +39,10 @@ export interface PortraitPersona {
     model: string;
     provider: string;
   };
+  /** R27 E4：参加用「自己紹介（下書き）」（≤200 字）；旧画像没有。 */
+  selfIntroDraft?: string;
+  /** R27 E4：生成画像的提示词版本。 */
+  promptVersion?: string;
 }
 
 export interface PortraitGeneration {

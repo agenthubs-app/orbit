@@ -23,6 +23,8 @@ import { runEventOperationsMigrations } from "../features/events/event-operation
 import { createEventOperationsWorker } from "../features/events/event-operations/worker";
 import { createEventRegistrationLiveRecordProvider } from "../features/events/registration/storage/live-record-provider";
 import { createConfiguredPostgresLiveRecordStore } from "../shared/storage/configured-live-record-store";
+import { createPostgresAiUsageLedger } from "../features/ai-quota/ledger";
+import { createConfiguredTransactionalPostgresRuntime } from "../shared/storage/transactional-postgres";
 import { abortableWait } from "./abortable-wait";
 import { loadLocalEnv } from "./load-local-env";
 
@@ -137,6 +139,9 @@ async function main(): Promise<void> {
   const appointmentProjector = createPostgresAppointmentNotificationProjector(runtime);
   const encounterRepository = createPostgresHumanEncounterProjectionRepository(runtime);
   const postEventProvider = resolveAttendeePostEventAiProviderConfiguration();
+  // R27（A5）：会後まとめ（E3）进 AI 账本（只记账）。
+  const postEventTransactional = createConfiguredTransactionalPostgresRuntime();
+  const postEventLedger = postEventTransactional ? createPostgresAiUsageLedger({ client: postEventTransactional.client, workspaceId: postEventTransactional.workspaceId }) : null;
   const postEventRepository = createAttendeePostEventAiTaskRepository({ client: liveRecords.client, store: liveRecords.store, workspaceId: liveRecords.workspaceId });
 
   let stopping = false;
@@ -209,7 +214,7 @@ async function main(): Promise<void> {
         return { ...result, errors: [], workClaimed: result.completed + result.failed + result.retried + result.leaseLost };
       }),
       ...(postEventProvider ? [runDrainLoop("post_event_ai", async () => {
-        const outcome = await processAttendeePostEventAiTask({ config: postEventProvider.config, repository: postEventRepository, workerId: `${workerId}:post-event-ai` });
+        const outcome = await processAttendeePostEventAiTask({ config: postEventProvider.config, ledger: postEventLedger, repository: postEventRepository, workerId: `${workerId}:post-event-ai` });
         return { errors: [], workClaimed: outcome === "empty" ? 0 : 1 };
       })] : []),
     ]);

@@ -6549,6 +6549,16 @@
               "type": "string"
             }
           }
+        },
+        "selfIntroDraft": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "promptVersion": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },

@@ -21,7 +21,7 @@ export const portraitAnswerProofSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
-export const portraitPreviewInputSchema = z.strictObject({ mode: z.literal("portrait-preview"), language: z.enum(["en", "zh"]).default("zh"), responses: z.array(portraitAnswerProofSchema).min(2).max(8).readonly() });
+export const portraitPreviewInputSchema = z.strictObject({ mode: z.literal("portrait-preview"), language: z.enum(["en", "zh", "ja"]).default("zh"), responses: z.array(portraitAnswerProofSchema).min(2).max(8).readonly() });
 export const portraitRenewInputSchema = z.strictObject({ mode: z.literal("renew-stored-question"), source: z.enum(["registration", "portrait"]), responseId: nonempty.max(256), sourceVersion: nonempty.max(128) });
 
 const field = z.enum(["positioning", "industry", "targetAttendees", "valueOffered", "desiredOutcome", "energyStyle", "experienceHighlight", "followUpPreference"]);
@@ -47,6 +47,9 @@ export const portraitPersonaSchema = z.strictObject({
   offering: nonempty.max(1_000), openers: z.array(nonempty.max(1_000)).min(1).max(8).readonly(),
   seeking: nonempty.max(1_000), tagline: nonempty.max(1_000), tags: z.array(nonempty.max(120)).min(1).max(8).readonly(),
   provenance: z.strictObject({ generationMethod: z.literal("orbit-agent-model-adaptive"), fallbackReason: z.null(), model: nonempty.max(256), provider: nonempty.max(128) }),
+  // R27 E4：参加用「自己紹介（下書き）」与生成它的提示词版本（旧画像没有）。
+  selfIntroDraft: nonempty.max(400).optional(),
+  promptVersion: nonempty.max(64).optional(),
 });
 export const portraitGenerationSchema = z.strictObject({
   sourceRegistrationFingerprint: z.string().regex(/^[a-f0-9]{64}$/).nullable().optional(),

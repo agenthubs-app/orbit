@@ -4,6 +4,8 @@ import { processAttendeePostEventAiTask } from "../features/events/post-event-ar
 import { resolveAttendeePostEventAiProviderConfiguration } from "../features/events/post-event-artifact/provider-config";
 import { createAttendeePostEventAiTaskRepository } from "../features/events/post-event-artifact/task-repository";
 import { createConfiguredPostgresLiveRecordStore } from "../shared/storage/configured-live-record-store";
+import { createPostgresAiUsageLedger } from "../features/ai-quota/ledger";
+import { createConfiguredTransactionalPostgresRuntime } from "../shared/storage/transactional-postgres";
 import { loadLocalEnv } from "./load-local-env";
 import { abortableWait } from "./abortable-wait";
 
@@ -13,6 +15,9 @@ async function main(): Promise<void> {
   const configured = createConfiguredPostgresLiveRecordStore<Record<string, unknown>>();
   if (!provider || !configured) throw new Error("Attendee post-event AI worker is unconfigured: database and a real model provider key are required.");
   const repository = createAttendeePostEventAiTaskRepository({ client: configured.client, store: configured.store, workspaceId: configured.workspaceId });
+  // R27（A5）：会後まとめ（E3）进 AI 账本（只记账）。
+  const transactional = createConfiguredTransactionalPostgresRuntime();
+  const ledger = transactional ? createPostgresAiUsageLedger({ client: transactional.client, workspaceId: transactional.workspaceId }) : null;
   const workerId = `attendee-post-event-ai:${randomUUID()}`;
   const pollMs = Math.max(250, Number.parseInt(process.env.ORBIT_POST_EVENT_AI_POLL_MS ?? "2000", 10) || 2_000);
   let stopping = false;
@@ -29,7 +34,7 @@ async function main(): Promise<void> {
   try {
     while (!stopping) {
       try {
-        const outcome = await processAttendeePostEventAiTask({ config: provider.config, repository, workerId });
+        const outcome = await processAttendeePostEventAiTask({ config: provider.config, ledger, repository, workerId });
         consecutiveFailures = 0;
         if (outcome !== "empty") process.stdout.write(`${JSON.stringify({ event: "attendee_post_event_ai_worker_task", outcome, workerId })}\n`);
         await abortableWait(outcome === "empty" ? pollMs : Math.min(25, pollMs), stopController.signal);

@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
 import type { PortraitAnswerProof, PortraitPreviewResult, PortraitReadResult, PortraitSaveBody } from "../../../../shared/contract/event-registration-portrait";
+import type { AiQuotaGate } from "../../../ai-quota/gate";
+import { runOrbitAgentModelText } from "../../../orbit-ai/gemini-provider";
+import { createLedgeredRunner } from "../../journey/ledgered-runner";
 import { portraitPersonaSchema, portraitSaveInputSchema } from "../../../../shared/api-schema/event-registration-portrait";
 import { generateEventPersona, type AdaptiveInterviewModelRunner } from "../adaptive-interview-service";
 import type { EventRecord } from "../../event-crud-and-import/contract";
@@ -14,7 +17,7 @@ export function portraitAnswersVersion(answers: readonly unknown[]): string {
   return createHash("sha256").update(JSON.stringify(answers)).digest("hex");
 }
 
-export function createEventRegistrationPortraitService(input: { repository: PortraitRepository; workspaceId: string; secret?: string; now?: () => number; modelRunner?: AdaptiveInterviewModelRunner }) {
+export function createEventRegistrationPortraitService(input: { repository: PortraitRepository; workspaceId: string; secret?: string; now?: () => number; modelRunner?: AdaptiveInterviewModelRunner; ledger?: AiQuotaGate | null }) {
   return {
     async prepareInterview(request: { actorId: string; event: EventRecord }) {
       const { snapshot } = await input.repository.readSources({ actorId: request.actorId, eventId: request.event.id });
@@ -35,12 +38,23 @@ export function createEventRegistrationPortraitService(input: { repository: Port
       if (!response) throw new PortraitError(422, "PORTRAIT_INPUT_INVALID", "The stored response does not exist.");
       return { source: request.source, sourceVersion: request.sourceVersion, responseId: response.responseId, field: response.field, answer: response.answer, question: response.question, generation: response.generation };
     },
-    async preview(request: { actorId: string; event: EventRecord; language: "en" | "zh"; responses: readonly PortraitAnswerProof[] }): Promise<PortraitPreviewResult> {
+    async preview(request: { actorId: string; event: EventRecord; language: "en" | "zh" | "ja"; responses: readonly PortraitAnswerProof[] }): Promise<PortraitPreviewResult> {
+      // R27 E4：日文界面 → 画像（含自己紹介）用日文写；题目标签 / 活动名只有中英两版，日文沿用中文版。
+      const labelLanguage = request.language === "en" ? "en" : "zh";
       const { snapshot, portrait } = await input.repository.readSources({ actorId: request.actorId, eventId: request.event.id });
       if (!snapshot.eventVersion || request.event.sourceMetadata.id !== `event-core-postgres:${request.event.id}:v${snapshot.eventVersion}`) throw new PortraitError(409, "PORTRAIT_SOURCE_CHANGED", "The event context changed. Read the current event before generating.");
       const sourceAnswers = readPortraitAnswerProofs({ workspaceId: input.workspaceId, actorId: request.actorId, eventId: request.event.id, responses: request.responses, snapshot, portrait, secret: input.secret, now: input.now });
       // The source transaction has ended before any provider work begins.
-      const persona = await generateEventPersona({ event: { ...request.event, title: localizedEventTitle(request.event, request.language), venue: bilingualSegment(request.event.venue, request.language) }, language: request.language, transcript: sourceAnswers.map((answer) => ({ field: answer.field, answer: answer.answer, prompt: answer.question?.prompt ?? answer.label[request.language] })), modelRunner: input.modelRunner });
+      // R27（A5）：账本只记账（purpose event_registration_interview）；账本不可用时照常调用。
+      const ledgered = createLedgeredRunner({ actorId: request.actorId, gate: input.ledger ?? null, idempotencyKey: `event-persona:${request.event.id}:${portraitAnswersVersion(sourceAnswers).slice(0, 16)}:${Date.now()}`, purpose: "event_registration_interview", runner: input.modelRunner ?? runOrbitAgentModelText });
+      let persona: Awaited<ReturnType<typeof generateEventPersona>>;
+      try {
+        persona = await generateEventPersona({ event: { ...request.event, title: localizedEventTitle(request.event, labelLanguage), venue: bilingualSegment(request.event.venue, labelLanguage) }, language: request.language, transcript: sourceAnswers.map((answer) => ({ field: answer.field, answer: answer.answer, prompt: answer.question?.prompt ?? answer.label[labelLanguage] })), modelRunner: ledgered.run });
+        await ledgered.finish("succeeded");
+      } catch (error) {
+        await ledgered.finish("failed");
+        throw error;
+      }
       const validated = portraitPersonaSchema.safeParse(persona);
       if (!validated.success) throw new PortraitError(503, "PORTRAIT_GENERATION_INVALID", "The model did not return a validated portrait.");
       const generation = { persona: validated.data, sourceAnswers, answersVersion: portraitAnswersVersion(sourceAnswers), sourceEventVersion: request.event.sourceMetadata.id, sourceQuestionSetHash: snapshot.questionSetHash ?? null, sourceQuestionSetVersion: snapshot.questionSetVersion ?? null, sourceRegistrationVersion: snapshot.sourceRegistrationVersion, sourceRegistrationFingerprint: snapshot.sourceRegistrationFingerprint ?? null, generatedAt: new Date((input.now ?? Date.now)()).toISOString() };
