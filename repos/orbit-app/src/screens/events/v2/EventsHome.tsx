@@ -1,7 +1,7 @@
 // R26 イベント (App; events DESIGN §2.1, app.html #13 / #14 / #15): 🔍 · イベント + 「10月 · 参加予定 N件」 · 📅, then
 // 評価 / 参加予定 N / 探す. 評価: 「このイベント、行く価値ある？」 (URL / poster), the 参加予定 carousel and 評価したイベント
-// (score order); empty: the three angles, a sample and the 参加コード card. 参加予定: events/mine. 探す: R27 builds it —
-// until then the existing list is shown. Scores come from the server (rule-based); nothing here calls AI.
+// (score order); empty: the three angles, a sample and the 参加コード card. 参加予定: events/mine. 探す: R27 DiscoverPage
+// (b2 #8). Scores come from the server (rule-based); nothing here calls AI.
 import { useFocusEffect, useGlobalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
@@ -20,7 +20,7 @@ import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/sv
 import { createThemedStyles } from "../../../design/theme";
 import { radius } from "../../../design/tokens";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
-import { EventsScreen as LegacyEventsList } from "../EventsScreen";
+import { DiscoverPage } from "./DiscoverPage";
 import { useEventsApi } from "./events-api";
 import { ScoreRing } from "./ScoreRing";
 import { appCardLine, appEventWhen, monthOf, orderAssessed, relativeDay, ringColor, verdictKey, verdictTone } from "./events-model";
@@ -41,6 +41,7 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
   const [goingCount, setGoingCount] = useState(0);
   // 服务端时钟（events-mine `asOf`）：今夜 / 「10月」与参加予定的划分一致（设计稿 fixture 固定时钟）。
   const [now, setNow] = useState(() => new Date());
+  const [discoverSubtitle, setDiscoverSubtitle] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => {
     let live = true;
@@ -62,12 +63,12 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
   const empty = items !== null && ordered.length === 0 && upcoming.length === 0;
   const month = monthOf(now);
   // app.html #13 空：判定说明；b12 画板 308 有评估但没参加予定：「参加予定はまだありません」。
-  const subtitle = empty ? t("eventsV2.subtitleEmpty") : goingCount === 0 ? t("eventsV2.goingEmptyTitle") : t("eventsV2.subtitleGoing", { going: goingCount, month });
+  const subtitle = tab === "discover" && discoverSubtitle ? discoverSubtitle : empty ? t("eventsV2.subtitleEmpty") : goingCount === 0 ? t("eventsV2.goingEmptyTitle") : t("eventsV2.subtitleGoing", { going: goingCount, month });
   const segments = useMemo(() => [
     { key: "assess" as const, label: t("eventsV2.tabAssess") },
-    { key: "going" as const, label: goingCount > 0 ? t("eventsV2.tabGoingCount", { n: goingCount }) : t("eventsV2.tabGoing") },
+    { key: "going" as const, label: goingCount > 0 && tab !== "discover" ? t("eventsV2.tabGoingCount", { n: goingCount }) : t("eventsV2.tabGoing") },
     { key: "discover" as const, label: t("eventsV2.tabDiscover") },
-  ], [t, goingCount]);
+  ], [t, goingCount, tab]);
 
   return (
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-home">
@@ -87,7 +88,7 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
         renderPage={(key) => key === "assess"
           ? <AssessPage items={ordered} upcoming={upcoming} empty={empty} now={now} language={language} />
           : key === "going" ? <GoingPage upcoming={upcoming} past={past} now={now} language={language} onDiscover={() => setTab("discover")} />
-            : <LegacyEventsList />}
+            : <DiscoverPage onSubtitle={setDiscoverSubtitle} />}
       />
       <TabPageBar tab="events" />
     </SafeAreaView>

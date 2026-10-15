@@ -27,7 +27,7 @@ function failureOf(result: ApiResult<unknown>): EventsFailure {
   return "unavailable";
 }
 
-async function read<T>(call: Promise<ApiResult<unknown>>, schema: ZodType<T>): Promise<EventsResult<T>> {
+export async function read<T>(call: Promise<ApiResult<unknown>>, schema: ZodType<T>): Promise<EventsResult<T>> {
   const result = await call;
   if (!result.success) return { ok: false, reason: failureOf(result) };
   const parsed = schema.safeParse(result.data);

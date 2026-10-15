@@ -52,6 +52,7 @@ import { contactAdd } from "./contactAdd";
 import { plan } from "./plan";
 import { add } from "./add";
 import { eventsV2 } from "./eventsV2";
+import { eventsJourney } from "./eventsJourney";
 
 export const en = {
   ...inbox,
@@ -107,4 +108,5 @@ export const en = {
   ...plan,
   ...add,
   ...eventsV2,
+  ...eventsJourney,
 } as const satisfies MessageDictionary;

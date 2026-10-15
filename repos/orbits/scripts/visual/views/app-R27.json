@@ -1,0 +1,8 @@
+{
+ "_note": "R27 イベント参加者の動線 App（PLANNER 像素 SC）。模拟器 iPhone 16e (r27) 连 mock 服务器 :3027（orbits-r27，ORBIT_REDESIGN_MOCK 含 event-recommendation-feedback），Metro :8127（no-keyboard,open-path）。每张先用 switch.mjs --journey 切示例变体，再把 path 写进 AsyncStorage orbit.dev.openPath 并重启 App（代替深链，避免系统确认框）后截图（scratchpad appgate.sh）。键 = <id>-app-<theme>。",
+ "defaults": { "grid": 30, "wait": 20000, "attribution": "scripts/visual/attribution-redesign-R27-app.json" },
+ "sources": ["repos/orbit-app/src/screens/events/v2/**", "repos/orbit-app/app/events/**", "repos/orbit-app/src/i18n/*/eventsJourney.ts"],
+ "views": [
+  { "id": "A-R27-08", "design": "b2-events-flow.html", "board-index": 8, "path": "/events?tab=discover", "journey": { "discover": "many" }, "note": "P03 探す · 大量" }
+ ]
+}
