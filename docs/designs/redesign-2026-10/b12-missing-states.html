@@ -7017,7 +7017,9 @@ const judgeA = () => topbar('イベント評価', '', `<button class="rbtn">${ic
     <div class="card">${judgeSteps}</div>`;
 /* 未登录：b1 公开顶栏 + 列表 / 详情；评估换成「ログインして行く価値を判定」 */
 const pubNav = `<nav class="lp-nav"><div class="row" style="gap:10px"><span class="lp-logo">O</span><b style="font-size:18px">Orbit</b></div><div class="row lp-links"><a>機能</a><a>使い方</a><a>イベント</a></div><div class="row" style="gap:8px"><button class="btn ghost">ログイン</button><button class="btn primary">無料で始める</button></div></nav>`;
-const pub = (body, theme) => `<div class="web no-rail bare" ${theme ? `data-theme="${theme}"` : ''}>${pubNav}<div class="pubmain">${body}</div></div>`;
+/* §36（2026-10-16）：未登录没有「あなた」——主催卡去掉「あなた N回」（只留主办方公开信息，对标 connpass / Peatix / Luma） */
+const noYou = body => body.replace(/<div><span class="lbl">あなた<\/span>[\s\S]*?<\/b><\/div>/, '').replace('<div class="mini3">', '<div class="mini3" style="grid-template-columns:repeat(2,1fr)">');
+const pub = (body, theme) => `<div class="web no-rail bare" ${theme ? `data-theme="${theme}"` : ''}>${pubNav}<div class="pubmain">${noYou(body)}</div></div>`;
 const loginJudge = (cls) => `<div class="card ${cls} k-plogin" style="background:linear-gradient(160deg,var(--mac-lav),var(--surface) 65%)"><div class="row" style="gap:12px"><span class="emo lav">🔍</span><div style="flex:1"><b style="font-size:15px">このイベント、行く価値ある？</b><div class="lbl">あなたの目標と人脈で判定します</div></div><button class="btn primary">ログインして行く価値を判定</button></div></div>`;
 const pubList = () => `<div class="card-h" style="margin:6px 0 14px"><h3 style="font-size:24px">イベント</h3><span class="lbl">公開イベント · 10月</span></div><div class="wgrid">${loginJudge('span12')}
     ${REC.concat(REC.slice(0, 1).map(e => ({ ...e, n: 'CFO Night Tokyo vol.19', d: '11/4（水）19:00', place: '渋谷' }))).map((e, k) => `<div class="evc span3 ${k === 0 ? 'k-pevc' : ''}"><div class="row between"><span class="emo ${e.vc}">${e.emo}</span><span class="chip">ログインで判定</span></div><b style="display:block;margin-top:12px">${e.n}</b><div class="lbl">${e.d} · ${e.place}</div></div>`).join('')}</div>`;
