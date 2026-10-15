@@ -136,3 +136,4 @@
 .railGate b { font-size: var(--fs-row); }
 .railGate .lbl, .railGate > div { margin-top: 4px; }
 .pGateCard.pGateCard { padding: 18px; }
+.mini3.mini2 { grid-template-columns: repeat(2, 1fr); }

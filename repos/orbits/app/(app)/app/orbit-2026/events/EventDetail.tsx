@@ -309,7 +309,8 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
           <span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span>
           <div><b>{data.organizer.name}</b><div className={styles.lbl}>{since && data.organizer.monthly ? t("hostMonthlySince", { n: data.organizer.editions ?? 0, y: since.year }) : t("hostEditions", { n: data.organizer.editions ?? 0 })}</div></div>
         </div>
-        <div className={x.mini3}>
+        {/* 未登录只剩主办方公开的两格（§36），排两列。 */}
+        <div className={`${x.mini3} ${data.signedOut ? x.mini2 : ""}`}>
           <div><span className={styles.lbl}>{t("avgAttend")}</span><b>{data.organizer.averageAttendance ?? "—"}</b></div>
           {data.organizer.typeShare ? <div><span className={styles.lbl}>{t("typeShare", { label: data.organizer.typeShare.label })}</span><b>{data.organizer.typeShare.percent}<small>{t("percentUnit")}</small></b></div> : null}
           {/* 「あなた N回」是个人数据：未登录（服务端不给）时不显示（主会话 10-16 / §36）。 */}
