@@ -185,7 +185,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
     <div className={`${styles.seg} ${full ? styles.segFull : ""}`} role="tablist" aria-label={t("tabsLabel")} data-events-tabs="">
       {(["assess", "going", "discover"] as const).map((key) => (
         <button key={key} type="button" role="tab" aria-selected={tab === key} className={`btn ${styles.segBtn} ${tab === key ? styles.segOn : ""}`} onClick={() => choose(key)}>
-          {key === "assess" ? t("tabAssess") : key === "going" ? (tier === "wide" || upcomingCount === 0 ? t("tabGoing") : t("tabGoingCount", { n: upcomingCount })) : t("tabDiscover")}
+          {key === "assess" ? t("tabAssess") : key === "going" ? (tier === "wide" || upcomingCount === 0 || (tier === "narrow" && tab === "discover") ? t("tabGoing") : t("tabGoingCount", { n: upcomingCount })) : t("tabDiscover")}
         </button>
       ))}
     </div>
@@ -206,7 +206,17 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   return (
     <>
       <ShellPage title={t("title")} subtitle={subtitle} left={<ShellSearchButton />} right={segment} rightRail={rail} phoneFold={tier === "narrow"} />
-      {tier === "narrow" ? (
+      {tier === "narrow" && tab === "discover" ? (
+        <>
+          {/* b12 #348（探す 390）：App 式 topbar（🔍 · イベント + 件数 · 📅）+ 全宽 seg。 */}
+          <div className={styles.ptop} data-events-phone-top="">
+            <ShellSearchButton />
+            <div className={styles.ptopT}><b>{t("title")}</b>{discoverSubtitle ? <small>{discoverSubtitle}</small> : null}</div>
+            <a className={`btn ${styles.ptopBtn}`} href="/app/events?tab=going" aria-label={t("tabGoing")}><Icon name="calendar" size={20} /></a>
+          </div>
+          {segmentFor(true)}
+        </>
+      ) : tier === "narrow" ? (
         <>
           <div className={styles.r8ttl}>{t("title")}{assessedCount > 0 ? <span className={styles.lbl}>{t("assessedCount", { n: assessedCount })}</span> : null}</div>
           {segmentFor(true)}

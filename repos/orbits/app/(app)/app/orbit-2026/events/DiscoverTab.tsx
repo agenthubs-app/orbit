@@ -13,7 +13,7 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { eventsJourneyCopy as jc } from "../copy/eventsJourney";
 import { DefaultRail } from "../shell/Orbit2026Shell";
 import { pickCopy } from "../copy/types";
-import { ContextMenu, FilterOption, Icon, Kbd, SampleTag, Toggle, useToast, type MenuItem } from "../ui";
+import { BottomSheet, ContextMenu, FilterOption, Icon, Kbd, SampleTag, Toggle, useToast, type MenuItem } from "../ui";
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { eventsApi, newIdempotencyKey } from "./events-api";
 import { ringColor } from "./events-model";
@@ -263,6 +263,10 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   }
   if (!data) return <div className={styles.wgrid} data-events-discover-tab="">{filters}</div>;
 
+  if (tier === "narrow" && !data.popularityFallback && !flat && !data.signedOut) {
+    return <PhoneDiscover data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return next; })} onOpen={open} />;
+  }
+
   const card = (row: EventDiscoverRow, index: number) => <EventCard key={row.eventId} row={row} index={index} language={language} t={t} selected={tier !== "narrow" && railRow?.eventId === row.eventId} onSelect={() => setSelected(row.eventId)} onOpen={() => open(row.href)} />;
 
   return (
@@ -442,6 +446,94 @@ export function DiscoverRail({ row, language }: { row: EventDiscoverRow; languag
 }
 
 /** 探す 没有选中活动时的右栏（b2 #11）：iOrbit 的探す专用开场与两条提问。 */
+// ---------- 390（b12 #348）：App 式探す——搜索 + 筛选按钮（件数）、已选 chip、コミュニティ列表、プランに効く横滑卡、すべて列表 ----------
+function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, onClear, onOpen }: { data: EventDiscoverResponse; query: EventDiscoverQuery; language: OrbitLanguage; t: JourneyT; search: string; onSearch: (value: string) => void; onQuery: (patch: Partial<EventDiscoverQuery>) => void; onClear: (key: keyof EventDiscoverQuery) => void; onOpen: (href: string) => void }) {
+  const [sheet, setSheet] = useState(false);
+  const [page, setPage] = useState(0);
+  const count = (query.period ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
+  const rows = query.sort === "recommended" ? data.all : [...data.all].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  const datebox = (iso: string) => { const dm = dayMonth(iso, t); return <div className={d.pDate}><b>{dm.day}</b><small>{dm.month}</small></div>; };
+  return (
+    <div data-events-discover-tab="" data-discover-phone="">
+      <div className={`${styles.row} ${d.pSearchRow}`}>
+        <label className={d.pSearch}><Icon name="search" size={16} /><input value={search} onChange={(event) => onSearch(event.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} /></label>
+        <button type="button" className={`btn ${d.pFilter}`} aria-label={t("filtersLbl")} onClick={() => setSheet(true)}><Icon name="sliders" size={20} />{count ? <span className={d.pBadge}>{count}</span> : null}</button>
+      </div>
+      <div className={`${styles.chips} ${d.pChips}`} data-discover-active="">
+        {query.period ? <button type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onClear("period")}>{periodLabel(query.period, t)} ✕</button> : null}
+        {(query.areas ?? []).map((a) => <button key={a} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onQuery({ areas: (query.areas ?? []).filter((x) => x !== a) })}>{areaLabel(a, t)} ✕</button>)}
+        {(query.themes ?? []).map((x) => <button key={x} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onQuery({ themes: (query.themes ?? []).filter((v) => v !== x) })}>{themeLabel(x, t)} ✕</button>)}
+        {query.freeOnly ? <button type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onClear("freeOnly")}>{t("freeOnly")} ✕</button> : null}
+        {query.themes?.length ? null : <button type="button" className={`btn ${styles.chip} ${d.activeChip}`} onClick={() => setSheet(true)}>{t("filterTheme")} <Icon name="down" size={16} /></button>}
+        {query.freeOnly ? null : <button type="button" className={`btn ${styles.chip} ${d.activeChip}`} onClick={() => setSheet(true)}>{t("feeLbl")} <Icon name="down" size={16} /></button>}
+      </div>
+      {data.community.length ? (
+        <div className={`${styles.card} ${d.pComm}`} data-discover-community="">
+          <div className={`${styles.cardH} ${d.pCardH}`}><h3>{t("communityTitle")}</h3><span className={d.pMore}>{t("countN", { n: data.community.length })}</span></div>
+          <div className={d.pList}>
+            {data.community.map((row) => {
+              const badge = row.badges?.includes("members_only") ? "members_only" : row.badges?.includes("early_access") ? "early_access" : null;
+              return (
+                <button key={row.eventId} type="button" className={`btn ${d.pLi}`} onClick={() => onOpen(row.href)}>
+                  {datebox(row.startsAt)}
+                  <div className={d.pMeta}><b>{row.title}</b><span>{[row.venue, row.communityReason === "following" ? t("following") : t("attended")].filter(Boolean).join(" · ")}</span></div>
+                  {badge ? <span className={`${styles.chip} ${badge === "members_only" ? styles.c_lav : styles.c_teal}`}>{badge === "members_only" ? t("badgeMembers") : t("badgeEarly")}</span> : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+      {data.planFit.length ? (
+        <div className={d.pSection} data-discover-planfit="">
+          <div className={styles.cardH}><h3>{t("planFitTitle")}</h3><span className={d.pMore}>{t("countN", { n: data.planFitTotal })}</span></div>
+          <div className={d.pCarousel} onScroll={(event) => { const el = event.currentTarget; setPage(Math.round(el.scrollLeft / 272)); }}>
+            {data.planFit.map((row, index) => (
+              <div key={row.eventId} className={d.pCard} role="button" tabIndex={0} data-discover-card={row.eventId} onClick={() => onOpen(row.href)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(row.href); }}>
+                <div className={`${styles.row} ${styles.between}`}>
+                  <span className={`${styles.emo} ${styles[`t_${rowTone(row, index).emo}`]}`}>{row.emoji}</span>
+                  {typeof row.score === "number" ? <ScoreRing score={row.score} size={46} stroke={5} label={String(row.score)}><span className={styles.score} style={{ fontSize: "var(--fs-body-sm)" }}>{row.score}</span></ScoreRing> : null}
+                </div>
+                <b className={d.pCardTitle}>{row.title}</b>
+                <div className={`${styles.lbl} ${d.pCardMeta}`}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</div>
+                {row.reason ? <div className={`${styles.row} ${d.pReason}`}><span className={`${styles.chip} ${styles.c_lav} ${d.ell} ${d.pReasonChip}`}>{`🎯 ${row.reason}`}</span></div> : null}
+                <div className={`${styles.row} ${d.pCardFoot}`}>{feeText(row.priceYen, t) ? <span className={styles.chip}>{feeText(row.priceYen, t)}</span> : null}<button type="button" className={`btn ${styles.btn} ${styles.sm} ${d.pDetail}`} onClick={(event) => { event.stopPropagation(); onOpen(row.href); }}>{t("detailsBtn")}</button></div>
+              </div>
+            ))}
+          </div>
+          <div className={d.pDots}>{data.planFit.map((row, index) => <i key={row.eventId} className={index === Math.min(page, data.planFit.length - 1) ? d.pDotOn : undefined} />)}</div>
+        </div>
+      ) : null}
+      {rows.length ? (
+        <div className={`${styles.card} ${d.pAll}`} data-discover-all="">
+          <div className={`${styles.cardH} ${d.pAllH}`}><h3>{t("allPlain")}</h3><button type="button" className={`btn ${d.pMore}`} onClick={() => onQuery({ sort: query.sort === "recommended" ? "date" : "recommended" })}>{query.sort === "recommended" ? t("sortRecommended").split("：").pop() : t("byDate")} <Icon name="down" size={16} /></button></div>
+          <div className={d.pList}>
+            {rows.map((row) => (
+              <button key={row.eventId} type="button" className={`btn ${d.pLi}`} data-discover-row="" onClick={() => onOpen(row.href)}>
+                {datebox(row.startsAt)}
+                <div className={d.pMeta}><b>{row.title}</b><span>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</span></div>
+                {typeof row.score === "number" ? <ScoreRing score={row.score} size={36} stroke={4} label={String(row.score)}><span className={styles.score} style={{ fontSize: "var(--fs-caption)" }}>{row.score}</span></ScoreRing> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <BottomSheet open={sheet} onClose={() => setSheet(false)} label={t("filtersLbl")}>
+        <div className={d.pSheet}>
+          <b>{t("periodLbl")}</b>
+          <div className={`${styles.chips} ${d.optChips}`}>{PERIODS.map((p) => <FilterOption key={p} label={periodLabel(p, t)} selected={query.period === p} onToggle={() => onQuery({ period: p })} />)}</div>
+          <b>{t("areaLbl")}</b>
+          <div className={`${styles.chips} ${d.optChips}`}>{AREAS.map((a) => <FilterOption key={a} label={areaLabel(a, t)} selected={query.areas?.includes(a)} onToggle={() => onQuery({ areas: query.areas?.includes(a) ? query.areas.filter((x) => x !== a) : [...(query.areas ?? []), a] })} />)}</div>
+          <b>{t("themeLbl")}</b>
+          <div className={`${styles.chips} ${d.optChips}`}>{THEMES.map((x) => <FilterOption key={x} label={themeLabel(x, t)} selected={query.themes?.includes(x)} onToggle={() => onQuery({ themes: query.themes?.includes(x) ? query.themes.filter((v) => v !== x) : [...(query.themes ?? []), x] })} />)}</div>
+          <b>{t("feeLbl")}</b>
+          <div className={`${styles.chips} ${d.optChips}`}><FilterOption label={t("feeAny")} selected={!query.freeOnly} onToggle={() => onQuery({ freeOnly: false })} /><FilterOption label={t("freeOnly")} selected={Boolean(query.freeOnly)} onToggle={() => onQuery({ freeOnly: true })} /></div>
+        </div>
+      </BottomSheet>
+    </div>
+  );
+}
+
 export function DiscoverHelpRail({ language }: { language: OrbitLanguage }) {
   const t = journeyTranslator(language);
   return <DefaultRail intro={{ body: t("railHelpBody"), title: t("railHelpTitle") }} prompts={[t("railPromptVc"), t("railPromptEvening")]} />;

@@ -62,3 +62,40 @@
 .railHero b { align-self: stretch; }
 /* kit .faded（b2 #6 / #11「プランができると」示例行）。 */
 .faded { opacity: 0.5; filter: saturate(0.7); pointer-events: none; }
+
+/* ---------- 390（b12 #348 App 式探す） ---------- */
+.pSearchRow.pSearchRow { gap: 8px; margin-top: 12px; }
+.pSearch { flex: 1; height: 44px; border-radius: var(--r-pill); background: var(--surface); display: flex; align-items: center; gap: 8px; padding: 0 16px; color: var(--ink-3); font-size: var(--fs-row); }
+.pSearch input { flex: 1; min-width: 0; border: 0; padding: 0; background: transparent; font: inherit; color: var(--ink); }
+.pFilter.pFilter { position: relative; width: 40px; height: 40px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink-2); }
+.pBadge { position: absolute; top: -2px; right: -2px; min-width: 17px; height: 17px; border-radius: var(--r-sm); background: var(--ink); color: var(--bg); font-size: var(--fs-tab); font-weight: var(--fw-heavy); display: grid; place-items: center; padding: 0 4px; }
+.pChips.pChips { margin: 10px 0 0; }
+.pChips :global(svg) { width: 12px; height: 12px; }
+.pComm.pComm { padding: 14px 16px; margin-top: 14px; }
+.pCardH.pCardH { margin-bottom: 4px; }
+.pMore.pMore { font-size: var(--fs-meta); color: var(--ink-3); font-weight: 600; display: flex; align-items: center; gap: 2px; height: auto; min-height: 0; padding: 0; border: 0; background: transparent; }
+.pMore :global(svg) { width: 16px; height: 16px; }
+.pList > .pLi { display: flex; align-items: center; gap: 12px; padding: 11px 0; position: relative; width: 100%; height: auto; min-height: 0; border: 0; border-radius: 0; background: transparent; text-align: left; color: inherit; font-weight: inherit; }
+.pList > .pLi + .pLi::before { content: ""; position: absolute; top: 0; left: 50px; right: 0; height: 1px; background: var(--line); }
+.pDate { width: 44px; flex: none; text-align: center; border-radius: var(--r-emo); background: var(--surface-2); padding: 5px 0; line-height: 1.1; }
+.pDate b { display: block; font-family: var(--font-num); font-size: var(--fs-logo); font-weight: var(--fw-heavy); }
+.pDate small { font-size: var(--fs-tab); color: var(--ink-3); font-weight: var(--fw-bold); }
+.pMeta { flex: 1 1 0%; min-width: 0; }
+.pMeta b { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pMeta span { display: block; font-size: var(--fs-meta); color: var(--ink-3); font-weight: var(--fw-regular); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pSection { margin-top: 18px; }
+.pCarousel { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -18px; padding: 2px 18px 4px; scrollbar-width: none; }
+.pCarousel::-webkit-scrollbar { display: none; }
+.pCard { scroll-snap-align: start; flex: 0 0 auto; width: 260px; border-radius: var(--r-card-web); background: var(--surface); padding: 16px; display: flex; flex-direction: column; cursor: pointer; }
+.pCardTitle { display: block; margin-top: 12px; font-size: var(--fs-body); line-height: 1.35; }
+.pCardMeta.pCardMeta { margin-top: 3px; }
+.pReason.pReason { gap: 6px; margin-top: 10px; }
+.pReasonChip.pReasonChip { flex: 1; max-width: none; }
+.pCardFoot.pCardFoot { gap: 6px; margin-top: auto; padding-top: 10px; }
+.pDetail.pDetail { margin-left: auto; }
+.pDots { display: flex; gap: 5px; justify-content: center; margin-top: 10px; }
+.pDots i { width: 6px; height: 6px; border-radius: var(--r-bar); background: var(--ink-4); }
+.pDots .pDotOn { width: 18px; background: var(--ink-2); }
+.pAll.pAll { margin-top: 16px; padding: 8px 16px; }
+.pAllH.pAllH { margin: 8px 0 0; }
+.pSheet { display: grid; gap: 10px; padding-bottom: 8px; }

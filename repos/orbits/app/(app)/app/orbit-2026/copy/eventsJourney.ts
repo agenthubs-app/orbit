@@ -426,4 +426,9 @@ export const eventsJourneyCopy = {
   sampleTag: { ja: "サンプル", zh: "示例", en: "Sample", kind: "chip" },
   ghostAfter1: { ja: "清水 玲奈 · お礼の下書き · フォロー 10/9 · プランに紐づけ", zh: "清水 玲奈 · 感谢草稿 · 10/9跟进 · 关联计划", en: "Rena Shimizu · thank-you draft · follow up 10/9 · link to plan", kind: "label" },
   ghostAfter2: { ja: "プラン スコア 46 → 56", zh: "计划分数46 → 56", en: "Plan score 46 → 56", kind: "label" },
+  allPlain: { ja: "すべて", zh: "全部", en: "All", kind: "cardTitle" },
+  feeLbl: { ja: "参加費", zh: "参加费", en: "Fee", kind: "chip" },
+  filtersLbl: { ja: "絞り込み", zh: "筛选", en: "Filters", kind: "label" },
+  detailsBtn: { ja: "詳細", zh: "详情", en: "Details", kind: "button" },
+  feeAny: { ja: "指定なし", zh: "不限", en: "Any", kind: "chip" },
 } satisfies OrbitCopyTable;

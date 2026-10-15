@@ -223,3 +223,10 @@
 .btn.goingEmptyBtn { height: 46px; align-self: center; }
 @media (max-width: 767px) { .goingEmpty { flex-direction: column; align-items: flex-start; } }
 .fl { display: block; flex: 1 0 0px; }
+
+/* b12 #348 探す 390：topbar（44 · 1fr · 44；6 / 14 padding；标题 17 / 小字 11.5）。 */
+.ptop { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 6px 0 14px; }
+.ptopT { text-align: center; }
+.ptopT b { display: block; font-size: var(--fs-logo); font-weight: var(--fw-heavy); letter-spacing: 0.01em; }
+.ptopT small { display: block; font-size: var(--fs-label); color: var(--ink-3); font-weight: var(--fw-medium); margin-top: 1px; }
+.ptopBtn.ptopBtn { width: 40px; height: 40px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink-2); }

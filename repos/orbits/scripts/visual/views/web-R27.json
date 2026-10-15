@@ -489,6 +489,110 @@
     "after": "many"
    },
    "note": "P10 会後 · 多 · 1024"
+  },
+  {
+   "id": "W-R27-10-390",
+   "app": "/app/events?tab=discover&period=this_month&areas=tokyo&sort=date",
+   "design": "b12-missing-states.html",
+   "board-index": 348,
+   "width": 390,
+   "wait-for": "[data-discover-phone]",
+   "journey": {
+    "discover": "many"
+   },
+   "note": "P02 探す · 少量 · 390"
+  },
+  {
+   "id": "W-R27-20-390",
+   "app": "/app/events/demo-event-cfo-night-18",
+   "design": "b12-missing-states.html",
+   "board-index": 352,
+   "width": 390,
+   "wait-for": "[data-detail-people]",
+   "journey": {
+    "overview": "many"
+   },
+   "note": "P06 詳細 · 多（深色 = #47） · 390"
+  },
+  {
+   "id": "W-R27-30-390",
+   "app": "/app/events/demo-event-cfo-night-18/register",
+   "design": "b12-missing-states.html",
+   "board-index": 356,
+   "width": 390,
+   "wait-for": "[data-join-chat] button",
+   "note": "P07 参加登録 ① 質問 3/5（②③ 无 Web 画板，不进门禁） · 390",
+   "steps": [
+    {
+     "click": "[data-join-chat] button:has-text(\"資金調達の相談相手を見つけたい\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"次へ\")"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"シリーズAの資本政策\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"CFO 採用\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"次へ\")"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"VC・CVC\")"
+    },
+    {
+     "click": "[data-join-chat] button:has-text(\"上場企業の CFO\")"
+    },
+    {
+     "wait": 400
+    }
+   ]
+  },
+  {
+   "id": "W-R27-40-390",
+   "app": "/app/events/demo-event-cfo-night-18/prep",
+   "design": "b12-missing-states.html",
+   "board-index": 360,
+   "width": 390,
+   "wait-for": "[data-prep-people]",
+   "journey": {},
+   "steps": [
+    {
+     "click": "[data-prep-cards] button"
+    },
+    {
+     "fill": [
+      "[data-prep-cards-input]",
+      "8"
+     ]
+    },
+    {
+     "keys": "Enter"
+    },
+    {
+     "wait": 300
+    }
+   ],
+   "note": "P11 会う準備（名刺の残り 8 只在本机，步骤里输入） · 390"
+  },
+  {
+   "app": "/app/events/demo-event-cfo-night-18/after",
+   "design": "b12-missing-states.html",
+   "width": 390,
+   "id": "W-R27-60-390",
+   "board-index": 368,
+   "wait-for": "[data-after-steps]",
+   "journey": {
+    "after": "many"
+   },
+   "note": "P10 会後 · 多 · 390"
   }
  ]
 }
