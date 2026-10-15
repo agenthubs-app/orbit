@@ -116,7 +116,7 @@ export function createJourneyMockService(): JourneyService {
       return following ? follows.follow(actorId, organizerKey) : follows.unfollow(actorId, organizerKey);
     },
     async eventIdByCode(code) {
-      return code.trim().toUpperCase() === "CFO18NGT" ? JOURNEY_EVENT_ID : null;
+      return ["CFO18NGT", "7QKM-H4TR"].includes(code.trim().toUpperCase()) ? JOURNEY_EVENT_ID : null;
     },
   };
 }

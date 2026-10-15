@@ -68,6 +68,14 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
       }
       throw Object.assign(new Error("registration failed"), { status: registered.status });
     },
+    async cancel(eventId) {
+      const { POST } = await import("../../../app/api/events/[id]/registration/cancel/route");
+      const { status } = await callHandler(POST as Handler, eventId, "registration/cancel", { expectedRegistrationVersion: null, intent: "cancel" });
+      if (status >= 300) throw Object.assign(new Error("registration cancel failed"), { status });
+    },
+    async saveIntro(actorId, eventId, text) {
+      await store.put("eventJoinIntros", actorId, tentativeId(actorId, eventId), { eventId, text }, new Date().toISOString());
+    },
     async createSchedule(actorId, value) {
       const service = await schedule();
       const created = await service.create(actorId, { endsAt: value.endsAt, idempotencyKey: value.idempotencyKey, startsAt: value.startsAt, timeZone: "Asia/Tokyo", title: value.title });

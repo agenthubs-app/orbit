@@ -66,6 +66,8 @@ export interface EventOverviewResponse {
   knownNote?: { text: string; detail?: string | null } | null;
   /** When attendees become public (「申込者の公開は 9/25 から」); only while none are public yet. */
   attendeesPublicAt?: string | null;
+  /** When registration closes (the invite-code card shows 「10/3 まで有効」). */
+  registrationClosesAt?: string | null;
   attendeeCounts: { all: number; planFit: number; known: number };
   /** Only people who made their registration profile public; capped (`attendeeCounts.all` is the real total). */
   attendees: readonly EventOverviewAttendee[];

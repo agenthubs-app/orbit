@@ -19,7 +19,7 @@ import type { OrganizerFollowResult } from "../../shared/contract/organizer-foll
 import type { EventOverviewResponse } from "../../shared/contract/event-overview";
 import type { EventVenueResponse } from "../../shared/contract/event-venue";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../shared/contract/event-after";
-import type { EventJoinProfile, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../shared/contract/event-join";
+import type { EventJoinProfile, EventJoinResult, EventJoinStep, EventJoinCancelResult, EventJoinTentativeResult } from "../../shared/contract/event-join";
 import type { EventRecommendationDismissInput, EventRecommendationDismissResult } from "../../shared/contract/event-recommendation-feedback";
 import type { HomeLayoutContract, HomeLayoutUpdateInput } from "../../shared/contract/home-layout";
 import type { IngestContactCandidateContract } from "../../shared/contract/business-card-batch";
@@ -39,7 +39,7 @@ import type { organizerFollowResultObject } from "../../shared/api-schema/organi
 import type { eventOverviewResponseObject } from "../../shared/api-schema/event-overview";
 import type { eventVenueResponseObject } from "../../shared/api-schema/event-venue";
 import type { eventAfterConfirmInputObject, eventAfterConfirmResultObject, eventAfterResponseObject } from "../../shared/api-schema/event-after";
-import type { eventJoinProfileObject, eventJoinResultObject, eventJoinStepObject, eventJoinTentativeResultObject } from "../../shared/api-schema/event-join";
+import type { eventJoinProfileObject, eventJoinResultObject, eventJoinStepObject, eventJoinCancelResultObject, eventJoinTentativeResultObject } from "../../shared/api-schema/event-join";
 import type { eventRecommendationDismissInputObject, eventRecommendationDismissResultObject } from "../../shared/api-schema/event-recommendation-feedback";
 import type { homeLayoutObject, homeLayoutUpdateInputObject } from "../../shared/api-schema/home-layout";
 import type { ingestContactCandidateObject } from "../../shared/api-schema/business-card-batch";
@@ -95,6 +95,7 @@ expectParity<Parity<EventJoinStep, typeof eventJoinStepObject>>();
 expectParity<Parity<EventJoinProfile, typeof eventJoinProfileObject>>();
 expectParity<Parity<EventJoinResult, typeof eventJoinResultObject>>();
 expectParity<Parity<EventJoinTentativeResult, typeof eventJoinTentativeResultObject>>();
+expectParity<Parity<EventJoinCancelResult, typeof eventJoinCancelResultObject>>();
 expectParity<Parity<EventRecommendationDismissInput, typeof eventRecommendationDismissInputObject>>();
 expectParity<Parity<EventRecommendationDismissResult, typeof eventRecommendationDismissResultObject>>();
 expectParity<Parity<AccountExportContract, typeof accountExportObject>>();

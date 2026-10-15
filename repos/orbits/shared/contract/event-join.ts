@@ -63,6 +63,12 @@ export interface EventJoinResult {
   tentative?: { startsAt: string; endsAt: string; title: string } | null;
 }
 
+/** `POST /api/events/[id]/join/cancel` — 「参加を取り消す」; the tentative calendar entry is removed too. */
+export interface EventJoinCancelResult {
+  eventId: string;
+  status: "cancelled";
+}
+
 /** `POST /api/events/[id]/join/tentative` — the tentative calendar entry; renamed / removed when the review result arrives. */
 export interface EventJoinTentativeResult {
   eventId: string;

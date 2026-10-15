@@ -5,7 +5,7 @@
  * - 提交：先走普通报名；活动开了审核（409 admission）就走审核申请。公開範囲按字段由服务端定（registrationFieldVisibility）。
  * - 仮予定：用户确认后才写进日历；审核结果出来后（下次读详情时）改名为正式 / 被拒时删除（syncTentative）。
  */
-import type { EventJoinAnswer, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
+import type { EventJoinAnswer, EventJoinCancelResult, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
 import type { JourneyLanguage } from "./prep-core";
 
 export const JOIN_TOTAL = 5;
@@ -63,10 +63,15 @@ export function tentativeTitle(title: string, language: JourneyLanguage, final =
 
 export interface JoinPorts {
   event(eventId: string): Promise<{ title: string; startsAt: string; endsAt: string | null; review: boolean; registrationClosesAt: string | null } | null>;
-  next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage): Promise<Omit<EventJoinQuestion, "multi" | "max" | "help"> | null>;
+  /** `more`：用户在确认页点了「追加 / 質問に戻る」，即使访谈认为够了也再问一题（live 由 AI 自己决定，可能仍然结束）。 */
+  next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more?: boolean): Promise<Omit<EventJoinQuestion, "multi" | "max" | "help"> | null>;
   persona(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage): Promise<{ selfIntroDraft?: string | null; tags?: readonly string[] } | null>;
   profileIntro(actorId: string): Promise<string | null>;
   submit(eventId: string, answers: readonly EventJoinAnswer[]): Promise<{ status: "registered" | "pending_review"; submittedAt: string }>;
+  /** 确认页改过的自己紹介，跟这次报名一起留存。 */
+  saveIntro(actorId: string, eventId: string, text: string): Promise<void>;
+  /** 取消报名（现有取消路由）；之后由 syncTentative 删掉仮予定。 */
+  cancel(eventId: string): Promise<void>;
   createSchedule(actorId: string, input: { title: string; startsAt: string; endsAt: string; idempotencyKey: string }): Promise<string>;
   readTentative(actorId: string, eventId: string): Promise<{ scheduleItemId: string; final: boolean } | null>;
   saveTentative(actorId: string, eventId: string, record: { scheduleItemId: string; final: boolean }): Promise<void>;
@@ -77,11 +82,11 @@ export interface JoinPorts {
 
 export function createJoinService(deps: { ports: JoinPorts }) {
   const { ports } = deps;
-  return {
-    async next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage): Promise<EventJoinStep | null> {
+  const service = {
+    async next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more = false): Promise<EventJoinStep | null> {
       if (!(await ports.event(eventId))) return null;
       if (answers.length >= JOIN_TOTAL) return joinStep(answers.length, null, language);
-      return joinStep(answers.length, await ports.next(eventId, answers, language), language);
+      return joinStep(answers.length, await ports.next(eventId, answers, language, more), language);
     },
     async profile(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, language: JourneyLanguage): Promise<EventJoinProfile | null> {
       const event = await ports.event(eventId);
@@ -92,10 +97,11 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const editableUntil = new Date(Date.parse(event.startsAt) - 86_400_000).toISOString();
       return profileFromAnswers(answers, { editableUntil, personaTopics: persona?.tags ?? [], review: event.review, reviewUntil: event.review ? event.registrationClosesAt : null, selfIntro: intro, selfIntroBasis: basis });
     },
-    async submit(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage): Promise<EventJoinResult | null> {
+    async submit(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, selfIntro?: string): Promise<EventJoinResult | null> {
       const event = await ports.event(eventId);
       if (!event) return null;
       const outcome = await ports.submit(eventId, answers);
+      if (selfIntro) await ports.saveIntro(actorId, eventId, selfIntro);
       const endsAt = event.endsAt ?? new Date(Date.parse(event.startsAt) + 2 * 3_600_000).toISOString();
       return {
         endsAt: event.endsAt,
@@ -120,6 +126,12 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       await ports.saveTentative(actorId, eventId, { final, scheduleItemId });
       return { eventId, scheduleItemId, title };
     },
+    async cancel(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventJoinCancelResult | null> {
+      if (!(await ports.event(eventId))) return null;
+      await ports.cancel(eventId);
+      await service.syncTentative(actorId, eventId, language).catch(() => undefined);
+      return { eventId, status: "cancelled" };
+    },
     /** 审核结果出来后：通过 → 去掉「仮：」；被拒 / 取消 → 删掉这条日程。读详情时顺带调用，失败不影响页面。 */
     async syncTentative(actorId: string, eventId: string, language: JourneyLanguage): Promise<void> {
       const record = await ports.readTentative(actorId, eventId);
@@ -136,5 +148,6 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       }
     },
   };
+  return service;
 }
 export type JoinService = ReturnType<typeof createJoinService>;

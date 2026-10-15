@@ -10,13 +10,17 @@ export function createJoinMockPorts(): JoinPorts {
   const tentative = new Map<string, { scheduleItemId: string; final: boolean }>();
   return {
     async event(eventId) { return eventId === JOURNEY_EVENT_ID ? EVENT : null; },
-    async next(_eventId, answers) {
+    // 示例访谈问到「会いたい人」（第 3 问）就认为够了；确认页点「追加」（more）再问下一题（画板 #370：86 % · 提供できること △）。
+    async next(_eventId, answers, _language, more) {
+      if (answers.length >= 3 && !more) return null;
       const question = JOURNEY_JOIN_QUESTIONS[answers.length];
       return question ? { allowCustom: true, field: question.field, options: [...question.options], prompt: question.prompt, questionToken: `sample-question-${answers.length + 1}` } : null;
     },
     async persona() { return { selfIntroDraft: JOURNEY_JOIN_SELF_INTRO, tags: ["SaaS の KPI 開示"] }; },
     async profileIntro() { return null; },
     async submit() { return { status: "pending_review", submittedAt: JOURNEY_JOIN_SUBMITTED_AT }; },
+    async saveIntro() { /* sample: nothing is written */ },
+    async cancel() { /* sample: nothing is written */ },
     async createSchedule(_actorId, input) { return `sample-schedule-${input.idempotencyKey.slice(0, 8)}`; },
     async readTentative(actorId, eventId) { return tentative.get(`${actorId}:${eventId}`) ?? null; },
     async saveTentative(actorId, eventId, record) { tentative.set(`${actorId}:${eventId}`, record); },

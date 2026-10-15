@@ -140,6 +140,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         attendeeCounts: { all: roster.total, known: 0, planFit: 0 },
         attendees: [],
         capacity: event.capacity,
+        registrationClosesAt: event.registrationClosesAt ?? null,
         deadlineSoon: Boolean(event.registrationClosesAt && Date.parse(event.registrationClosesAt) - at.getTime() <= DEADLINE_SOON_MS && Date.parse(event.registrationClosesAt) > at.getTime()),
         description: event.description,
         emoji: event.emoji,

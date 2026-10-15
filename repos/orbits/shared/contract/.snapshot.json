@@ -5985,6 +5985,21 @@
         }
       }
     },
+    "event-join.ts::EventJoinCancelResult": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'cancelled'"
+        }
+      }
+    },
     "event-join.ts::EventJoinTentativeResult": {
       "kind": "object",
       "members": {
@@ -6257,6 +6272,11 @@
           "type": "{ text: string; detail?: string | null | undefined; } | null"
         },
         "attendeesPublicAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "registrationClosesAt": {
           "optional": true,
           "kind": "text",
           "type": "string | null"

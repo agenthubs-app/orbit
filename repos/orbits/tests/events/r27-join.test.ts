@@ -1,5 +1,5 @@
 /**
- * R27 SC-R27-06 参加登録 facade：≤5 问、多选 / 上限按字段、カバー率规则（30 + 14×4）、只在 draft 时调 persona、
+ * R27 SC-R27-06 参加登録 facade：≤5 问、多选 / 上限按字段、カバー率规则（44 + 14×4）、确认页「追加」再问一题、改过的自己紹介随报名留存、只在 draft 时调 persona、
  * 审核制活动 409 → 审核申请、仮予定确认后才写 + 结果出来后改名 / 删除、示例模式不写库；公開範囲按字段（服务端策略）。
  */
 import assert from "node:assert/strict";
@@ -24,6 +24,11 @@ test("questions: 会いたい人 is multi-select, 話したいテーマ at most 
   const done = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: five }), params)).json()).data);
   assert.deepEqual([done.done, done.question ?? null], [true, null]);
   assert.equal((await routes.joinNext(post({ answers: [...five, answer("industry", "x", 6)] }), params)).status, 400, "a sixth answer is rejected");
+  const three = five.slice(0, 3);
+  const enough = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: three }), params)).json()).data);
+  assert.deepEqual([enough.done, enough.index], [true, 3], "the sample interview judges 3 answers enough (review shows 提供できること △)");
+  const more = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: three, more: true }), params)).json()).data);
+  assert.deepEqual([more.done, more.question?.field], [false, "valueOffered"], "「追加」 asks one more question");
 });
 
 test("profile coverage is a rule (company 44 + 14 each) and the AI persona only runs for the draft", async () => {
@@ -44,6 +49,7 @@ test("profile coverage is a rule (company 44 + 14 each) and the AI persona only 
 
 test("submit: a screened event (409) becomes a review application; the tentative entry is written only on confirm and renamed / removed when the result arrives", async () => {
   const calls: string[] = [];
+  const intros: string[] = [];
   let status: "pending_review" | "registered" | "rejected" = "pending_review";
   const store = new Map<string, { scheduleItemId: string; final: boolean }>();
   const service = createJoinService({ ports: fakePorts({
@@ -52,10 +58,12 @@ test("submit: a screened event (409) becomes a review application; the tentative
     registrationStatus: async () => status,
     removeSchedule: async () => { calls.push("remove"); },
     renameSchedule: async (_actor, _id, title) => { calls.push(`rename:${title}`); },
+    saveIntro: async (actor, event, text) => { intros.push(`${actor}:${event}:${text}`); },
     saveTentative: async (actor, event, record) => { store.set(`${actor}:${event}`, record); },
     submit: async () => ({ status: "pending_review", submittedAt: "2026-09-20T05:32:00.000Z" }),
   }) });
-  const result = await service.submit("ev", [answer("targetAttendees", "VC", 1)], "ja");
+  const result = await service.submit("actor:a", "ev", [answer("targetAttendees", "VC", 1)], "ja", "編集した自己紹介");
+  assert.deepEqual(intros, ["actor:a:ev:編集した自己紹介"], "the edited self-introduction is kept with the registration");
   assert.equal(result?.status, "pending_review");
   assert.equal(result?.tentative?.title, "仮：CFO Night");
   assert.deepEqual(calls, [], "nothing is written to the calendar before the user confirms");
@@ -86,6 +94,7 @@ test("公開範囲 is a per-field server policy: 参加目的 / 会いたい人 
 
 function fakePorts(overrides: Partial<JoinPorts> = {}): JoinPorts {
   return {
+    cancel: async () => undefined,
     createSchedule: async () => "sch",
     event: async () => ({ endsAt: "2026-10-07T12:30:00.000Z", registrationClosesAt: "2026-10-03T14:59:00.000Z", review: true, startsAt: "2026-10-07T10:00:00.000Z", title: "CFO Night Tokyo vol.18" }),
     next: async () => null,
@@ -95,8 +104,24 @@ function fakePorts(overrides: Partial<JoinPorts> = {}): JoinPorts {
     registrationStatus: async () => "none",
     removeSchedule: async () => undefined,
     renameSchedule: async () => undefined,
+    saveIntro: async () => undefined,
     saveTentative: async () => undefined,
     submit: async () => ({ status: "registered", submittedAt: "2026-09-20T05:32:00.000Z" }),
     ...overrides,
   };
 }
+
+test("cancel: the registration is cancelled and the tentative calendar entry goes with it", async () => {
+  const calls: string[] = [];
+  let status: "pending_review" | "cancelled" = "pending_review";
+  const service = createJoinService({ ports: fakePorts({
+    cancel: async () => { calls.push("cancel"); status = "cancelled"; },
+    readTentative: async () => ({ final: false, scheduleItemId: "sch1" }),
+    registrationStatus: async () => status,
+    removeSchedule: async (_actor, id) => { calls.push(`remove:${id}`); },
+  }) });
+  assert.deepEqual(await service.cancel("actor:a", "ev", "ja"), { eventId: "ev", status: "cancelled" });
+  assert.deepEqual(calls, ["cancel", "remove:sch1"]);
+  const routes = createEventJourneyRoutes({ resolveActor: async () => ({ id: "actor:a" }) as never, resolveMode: () => "mock" });
+  assert.equal((await (await routes.joinCancel(post({ idempotencyKey: "k" }), params)).json()).data.status, "cancelled");
+});

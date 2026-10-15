@@ -57,7 +57,7 @@ import { Registration7aViews } from "./Registration7aViews";
 import { Registration7aRecommendations } from "./Registration7aRecommendationsResource";
 import { appendPortraitAnswer, createPortraitSession, editPortraitHistory, restartUnstoredPortraitQuestions, portraitPreviewBody, portraitReceiptMatches, portraitToView, seedPortraitHistory, type PortraitSession } from "../../view-models/event-registration-portrait";
 import { portraitPersonaSchema, portraitReadResultSchema } from "../../api/schema/event-registration-portrait";
-import type { PortraitField, PortraitPreviewResult, PortraitRegistrationSource, PortraitSaveBody } from "../../api/contract/event-registration-portrait";
+import type { PortraitField, PortraitPersona, PortraitPreviewResult, PortraitRegistrationSource, PortraitSaveBody } from "../../api/contract/event-registration-portrait";
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -402,7 +402,7 @@ export function EventRegistrationScreen() {
       if (!validatedPersona.success || typeof preview?.generationToken !== "string" || !preview.generationToken || typeof preview.answersVersion !== "string" || !/^[a-f0-9]{64}$/.test(preview.answersVersion)) { setAdaptiveError(locale.t("registration.reasonTemporary")); finishRequest(controller); return; }
       editRevision.current++;
       pendingPortraitSave.current = null;
-      setPortraitSession({ ...nextSession, view: "result", preview: { ...preview, persona: validatedPersona.data }, saveState: "idle" });
+      setPortraitSession({ ...nextSession, view: "result", preview: { ...preview, persona: validatedPersona.data as PortraitPersona }, saveState: "idle" });
       setAdaptiveTurns(turns);
       setAdaptiveAnswer("");
       setAdaptiveQuestion(null);
