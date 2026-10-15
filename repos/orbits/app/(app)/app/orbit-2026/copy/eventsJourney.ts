@@ -443,4 +443,7 @@ export const eventsJourneyCopy = {
   speakerTag: { ja: "（登壇）", zh: "（演讲）", en: " (speaker)", kind: "label" },
   ctaRegisterAi: { ja: "参加登録 · AI が5問だけ質問", zh: "报名 · AI 只问5个问题", en: "Register · 5 questions", kind: "fullButton" },
   saveEvent: { ja: "保存", zh: "收藏", en: "Save", kind: "label" },
+  regQ: { ja: "質問 {i}", zh: "问题{i}", en: "Question {i}", kind: "label" },
+  regOfN: { ja: " / {n}", zh: " / {n}", en: " of {n}", kind: "label" },
+  regRemain: { ja: "残り 約{m}分", zh: "约剩{m}分钟", en: "About {m} min left", kind: "label" },
 } satisfies OrbitCopyTable;

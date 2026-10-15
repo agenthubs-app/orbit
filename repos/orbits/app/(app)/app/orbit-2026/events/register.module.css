@@ -72,3 +72,13 @@
 .doneGo.doneGo { justify-content: flex-end; gap: 10px; margin-top: 16px; }
 .doneTitle { font-size: var(--fs-title-xs); font-weight: var(--fw-heavy); margin-top: 14px; }
 .popcheck svg { width: 38px; height: 38px; stroke-width: 2.2; }
+
+/* 390（b12 #356 App 式） */
+.pChat { padding-bottom: 96px; }
+.pProg .pQ { color: var(--ink); }
+.pBar.pBar { margin: 8px 0 4px; }
+.pPrefill.pPrefill { background: var(--mac-teal); font-size: var(--fs-meta); margin: 14px 0; }
+.pOpt.pOpt { background: var(--surface); }
+.pOpt.pOpt.on { background: var(--accent-soft); }
+.composer { position: fixed; left: 12px; right: 12px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: var(--z-sticky); border-radius: var(--r-cta); background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--glass-line); padding: 8px; display: flex; gap: 6px; align-items: center; box-shadow: var(--shadow-float); }
+.pIn { flex: 1 1 0%; min-width: 0; border: 0; padding: 0 0 0 6px; background: transparent; font: inherit; font-size: var(--fs-body-sm); color: var(--ink); }

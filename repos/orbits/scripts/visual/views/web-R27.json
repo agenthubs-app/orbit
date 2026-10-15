@@ -528,7 +528,7 @@
    "design": "b12-missing-states.html",
    "board-index": 356,
    "width": 390,
-   "wait-for": "[data-join-chat] button",
+   "wait-for": "[data-join-phone] button",
    "note": "P07 参加登録 ① 質問 3/5（②③ 无 Web 画板，不进门禁） · 390",
    "steps": [
     {

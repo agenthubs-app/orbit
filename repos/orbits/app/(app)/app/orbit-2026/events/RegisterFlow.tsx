@@ -12,7 +12,7 @@ import { ShellPage } from "../shell/slots";
 import { Icon, Orbit2026Scope, RingChart, ToastProvider, useToast } from "../ui";
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { journeyTranslator, type JourneyT } from "./DiscoverTab";
-import { eventRange, monthDaySlash, parts, useWide } from "./EventDetail";
+import { eventRange, monthDaySlash, parts, usePhone, useWide } from "./EventDetail";
 import { eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
 import { eventJoinCancelResultSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
@@ -115,6 +115,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const Speech = useMemo(() => speechRecognition(), []);
   // 1024：右栏收起（b12 #354 没有右栏）。
   const wide = useWide();
+  const phone = usePhone();
 
   useEffect(() => {
     void journeyApi.overview(eventId).then((res) => { if (res.ok) setEvent(res.data); });
@@ -226,6 +227,40 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     </div>
   );
 
+  // 390（b12 #356）：App 式——进度条 + 预填说明 + 对话 + 底部 composer（自由回答 · 🎙 · 次へ（n つ選択））。
+  const phoneChat = (
+    <div className={r.pChat} data-join-chat="" data-join-phone="">
+      {step ? (
+        <div className={r.pProg}>
+          <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}><b className={r.pQ}>{t("regQ", { i: step.index })}</b>{t("regOfN", { n: total })}</span><span className={styles.lbl}>{t("regRemain", { m: step.remainingMinutes })}</span></div>
+          <div className={`${x.bar} ${r.pBar}`}><i style={{ width: `${Math.round((Math.max(0, step.index) / total) * 100)}%` }} /></div>
+        </div>
+      ) : null}
+      <div className={`${styles.mac} ${r.pPrefill}`}>{t("regPrefilledLine")}</div>
+      <div className={r.chatcol}>
+        {answers.map((item, index) => (
+          <div key={`${item.field}-${index}`} className={r.pair}><div className={`${r.bubble} ${r.ai}`}>{item.prompt}</div><div className={`${r.bubble} ${r.me}`}>{item.answer}</div></div>
+        ))}
+        {question ? (
+          <>
+            <div className={`${r.bubble} ${r.ai}`}><b>{question.prompt}</b>{question.help ? <div className={`${styles.lbl} ${r.help}`}>{question.help}</div> : null}</div>
+            <div className={r.opts}>
+              {question.options.map((option) => <button key={option} type="button" aria-pressed={selected.includes(option)} className={`btn ${r.opt} ${r.pOpt} ${selected.includes(option) ? r.on : ""}`} onClick={() => toggle(option)}>{option}</button>)}
+              {question.allowCustom ? <button type="button" className={`btn ${r.opt} ${r.pOpt}`} onClick={() => freeRef.current?.focus()}>{t("otherOption")}</button> : null}
+            </div>
+          </>
+        ) : null}
+      </div>
+      {question ? (
+        <div className={r.composer}>
+          <input ref={freeRef} className={r.pIn} value={free} onChange={(ev) => setFree(ev.target.value)} placeholder={t("freeAnswer")} aria-label={t("freeAnswer")} onKeyDown={(ev) => { if (ev.key === "Enter") void submitAnswer(); }} />
+          <button type="button" className={`btn ${d.lbtn}`} aria-label={t("voiceAnswer")} onClick={dictate}><Icon name="mic" size={16} /></button>
+          <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} disabled={busy || (!selected.length && !free.trim())} onClick={() => void submitAnswer()}>{selected.length > 1 ? t("nextChosen", { n: selected.length }) : t("next")}</button>
+        </div>
+      ) : null}
+    </div>
+  );
+
   const missing = (profile?.items ?? []).filter((item) => !item.done);
   const review = (
     <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-review="">
@@ -305,6 +340,12 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
 
   return (
     <>
+      {phone && !reviewing && !result ? (
+        <>
+          <ShellPage title={t("regTitle")} subtitle={event?.title ?? ""} left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={20} /></a>} rightRail={false} phoneBare />
+          {phoneChat}
+        </>
+      ) : <>
       <ShellPage
         title={t("regTitle")}
         subtitle={event?.title ?? ""}
@@ -316,6 +357,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         {done ?? (reviewing ? review : chat)}
         <ProfileCard profile={profile ? { ...profile, selfIntro: profile.selfIntro && intro ? { ...profile.selfIntro, text: intro } : profile.selfIntro } : null} t={t} mode={result ? "applied" : reviewing ? "review" : "live"} />
       </div>
+      </>}
     </>
   );
 }
