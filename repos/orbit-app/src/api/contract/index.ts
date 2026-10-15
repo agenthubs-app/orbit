@@ -371,6 +371,10 @@ export type {
 } from "./event-assessment";
 export type { MyEventItem, MyEventStatus, MyEventsRange, MyEventsResponse } from "./events-mine";
 export type { EventRecommendationDismissInput, EventRecommendationDismissReason, EventRecommendationDismissResult } from "./event-recommendation-feedback";
+export type { EventDiscoverArea, EventDiscoverBadge, EventDiscoverCommunityReason, EventDiscoverFormat, EventDiscoverPeriod, EventDiscoverQuery, EventDiscoverResponse, EventDiscoverRow, EventDiscoverSort, EventDiscoverTheme, EventDiscoverWidenSuggestion } from "./event-discover";
+export type { EventSearchEventHit, EventSearchOrganizerHit, EventSearchPersonHit, EventSearchResponse } from "./event-search";
+export type { EventPrepAgendaItem, EventPrepChecklistItem, EventPrepChecklistKey, EventPrepChecklistPatch, EventPrepPerson, EventPrepRelation, EventPrepResponse } from "./event-prep";
+export type { OrganizerFollowResult } from "./organizer-follow";
 export type { AccountDeletionRequestContract, AccountExportContract, AccountExportScope, AppVersionContract } from "./account";
 export type {
   PlanAwardBasis,

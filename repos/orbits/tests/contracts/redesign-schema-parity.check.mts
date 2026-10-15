@@ -12,6 +12,10 @@ import type { AccountDeletionRequestContract, AccountExportContract, AccountExpo
 import type { ContactCompletionAnswerInput, ContactCompletionQuestion, ContactCompletionResult } from "../../shared/contract/contact-completion";
 import type { EventAssessmentAddToPlanResult, EventAssessmentAvailability, EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentDismissResult, EventAssessmentPatchInput } from "../../shared/contract/event-assessment";
 import type { MyEventsResponse } from "../../shared/contract/events-mine";
+import type { EventDiscoverResponse } from "../../shared/contract/event-discover";
+import type { EventSearchResponse } from "../../shared/contract/event-search";
+import type { EventPrepChecklistPatch, EventPrepResponse } from "../../shared/contract/event-prep";
+import type { OrganizerFollowResult } from "../../shared/contract/organizer-follow";
 import type { EventRecommendationDismissInput, EventRecommendationDismissResult } from "../../shared/contract/event-recommendation-feedback";
 import type { HomeLayoutContract, HomeLayoutUpdateInput } from "../../shared/contract/home-layout";
 import type { IngestContactCandidateContract } from "../../shared/contract/business-card-batch";
@@ -24,6 +28,10 @@ import type { accountDeletionRequestObject, accountExportCreateInputObject, acco
 import type { contactCompletionAnswerInputObject, contactCompletionQuestionObject, contactCompletionResultObject } from "../../shared/api-schema/contact-completion";
 import type { eventAssessmentAddToPlanResultObject, eventAssessmentAvailabilityObject, eventAssessmentCreateInputObject, eventAssessmentDismissResultObject, eventAssessmentObject, eventAssessmentPatchInputObject } from "../../shared/api-schema/event-assessment";
 import type { myEventsResponseObject } from "../../shared/api-schema/events-mine";
+import type { eventDiscoverResponseObject } from "../../shared/api-schema/event-discover";
+import type { eventSearchResponseObject } from "../../shared/api-schema/event-search";
+import type { eventPrepChecklistPatchObject, eventPrepResponseObject } from "../../shared/api-schema/event-prep";
+import type { organizerFollowResultObject } from "../../shared/api-schema/organizer-follow";
 import type { eventRecommendationDismissInputObject, eventRecommendationDismissResultObject } from "../../shared/api-schema/event-recommendation-feedback";
 import type { homeLayoutObject, homeLayoutUpdateInputObject } from "../../shared/api-schema/home-layout";
 import type { ingestContactCandidateObject } from "../../shared/api-schema/business-card-batch";
@@ -65,6 +73,11 @@ expectParity<Parity<EventAssessmentAddToPlanResult, typeof eventAssessmentAddToP
 expectParity<Parity<EventAssessmentDismissResult, typeof eventAssessmentDismissResultObject>>();
 expectParity<Parity<EventAssessmentAvailability, typeof eventAssessmentAvailabilityObject>>();
 expectParity<Parity<MyEventsResponse, typeof myEventsResponseObject>>();
+expectParity<Parity<EventDiscoverResponse, typeof eventDiscoverResponseObject>>();
+expectParity<Parity<EventSearchResponse, typeof eventSearchResponseObject>>();
+expectParity<Parity<EventPrepResponse, typeof eventPrepResponseObject>>();
+expectParity<Parity<EventPrepChecklistPatch, typeof eventPrepChecklistPatchObject>>();
+expectParity<Parity<OrganizerFollowResult, typeof organizerFollowResultObject>>();
 expectParity<Parity<EventRecommendationDismissInput, typeof eventRecommendationDismissInputObject>>();
 expectParity<Parity<EventRecommendationDismissResult, typeof eventRecommendationDismissResultObject>>();
 expectParity<Parity<AccountExportContract, typeof accountExportObject>>();

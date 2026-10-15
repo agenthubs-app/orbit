@@ -5008,6 +5008,312 @@
         }
       }
     },
+    "event-discover.ts::EventDiscoverPeriod": {
+      "kind": "enum",
+      "values": [
+        "'custom'",
+        "'next_month'",
+        "'this_month'",
+        "'this_week'"
+      ]
+    },
+    "event-discover.ts::EventDiscoverArea": {
+      "kind": "enum",
+      "values": [
+        "'nagoya'",
+        "'online'",
+        "'osaka'",
+        "'tokyo'"
+      ]
+    },
+    "event-discover.ts::EventDiscoverTheme": {
+      "kind": "enum",
+      "values": [
+        "'funding'",
+        "'global'",
+        "'hiring'",
+        "'ipo'",
+        "'management'",
+        "'manufacturing_dx'",
+        "'networking'",
+        "'saas'"
+      ]
+    },
+    "event-discover.ts::EventDiscoverFormat": {
+      "kind": "enum",
+      "values": [
+        "'networking'",
+        "'small'",
+        "'speakers'"
+      ]
+    },
+    "event-discover.ts::EventDiscoverSort": {
+      "kind": "enum",
+      "values": [
+        "'date'",
+        "'recommended'"
+      ]
+    },
+    "event-discover.ts::EventDiscoverBadge": {
+      "kind": "enum",
+      "values": [
+        "'early_access'",
+        "'last_time'",
+        "'members_only'"
+      ]
+    },
+    "event-discover.ts::EventDiscoverCommunityReason": {
+      "kind": "enum",
+      "values": [
+        "'attended'",
+        "'following'"
+      ]
+    },
+    "event-discover.ts::EventDiscoverRow": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "venue": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "area": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventDiscoverArea | null"
+        },
+        "priceYen": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "organizerId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "organizerName": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "score": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "verdict": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventAssessmentVerdict | null"
+        },
+        "reason": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "reasonDetail": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "badges": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventDiscoverBadge[]"
+        },
+        "communityReason": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventDiscoverCommunityReason | null"
+        },
+        "meetCandidates": {
+          "optional": true,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "emoji": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "label": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "knownAttendees": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "registrationCount": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "event-discover.ts::EventDiscoverWidenSuggestion": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'area' | 'period' | 'theme'"
+        },
+        "value": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "extra": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "event-discover.ts::EventDiscoverResponse": {
+      "kind": "object",
+      "members": {
+        "community": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventDiscoverRow[]"
+        },
+        "planFit": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventDiscoverRow[]"
+        },
+        "all": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventDiscoverRow[]"
+        },
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "planFitTotal": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "popularityFallback": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "planGoal": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "widen": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventDiscoverWidenSuggestion[]"
+        },
+        "signedOut": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "event-discover.ts::EventDiscoverQuery": {
+      "kind": "object",
+      "members": {
+        "period": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventDiscoverPeriod"
+        },
+        "from": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "to": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "areas": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventDiscoverArea[]"
+        },
+        "themes": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventDiscoverTheme[]"
+        },
+        "formats": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventDiscoverFormat[]"
+        },
+        "freeOnly": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "planFirst": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "sort": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventDiscoverSort"
+        }
+      }
+    },
     "event-experience.ts::EventExperienceQuestionContract": {
       "kind": "object",
       "members": {
@@ -5185,6 +5491,214 @@
           "optional": false,
           "kind": "text",
           "type": "EventExperienceVersionContract"
+        }
+      }
+    },
+    "event-prep.ts::EventPrepRelation": {
+      "kind": "enum",
+      "values": [
+        "'met'",
+        "'none'",
+        "'working'"
+      ]
+    },
+    "event-prep.ts::EventPrepPerson": {
+      "kind": "object",
+      "members": {
+        "attendeeId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "relation": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventPrepRelation"
+        },
+        "why": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "opener": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "history": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "event-prep.ts::EventPrepChecklistKey": {
+      "kind": "enum",
+      "values": [
+        "'cards'",
+        "'intro'",
+        "'materials'",
+        "'qr'",
+        "'return'"
+      ]
+    },
+    "event-prep.ts::EventPrepChecklistItem": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "EventPrepChecklistKey"
+        },
+        "label": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "done": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "event-prep.ts::EventPrepAgendaItem": {
+      "kind": "object",
+      "members": {
+        "at": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "detail": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "event-prep.ts::EventPrepResponse": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "venue": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "access": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "mapUrl": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "now": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "people": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventPrepPerson[]"
+        },
+        "cardsRecommended": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "checklist": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventPrepChecklistItem[]"
+        },
+        "selfIntro": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ text: string; source: 'registration_draft' | 'profile'; } | null"
+        },
+        "followupSuggestion": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ startsAt: string; endsAt: string; title: string; } | null"
+        },
+        "agenda": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventPrepAgendaItem[]"
+        },
+        "seatHint": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "event-prep.ts::EventPrepChecklistPatch": {
+      "kind": "object",
+      "members": {
+        "items": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventPrepChecklistItem[]"
         }
       }
     },
@@ -5694,6 +6208,161 @@
           "optional": true,
           "kind": "text",
           "type": "PortraitRegistrationSource | null"
+        }
+      }
+    },
+    "event-search.ts::EventSearchEventHit": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "venue": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "priceYen": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "myStatus": {
+          "optional": true,
+          "kind": "text",
+          "type": "'attended' | 'registered' | 'pending_review' | 'planned' | null"
+        },
+        "badges": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly ('members_only' | 'early_access')[]"
+        },
+        "score": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "event-search.ts::EventSearchOrganizerHit": {
+      "kind": "object",
+      "members": {
+        "organizerId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "following": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "event-search.ts::EventSearchPersonHit": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "eventCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "event-search.ts::EventSearchResponse": {
+      "kind": "object",
+      "members": {
+        "query": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "events": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventSearchEventHit[]"
+        },
+        "eventsTotal": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "organizers": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventSearchOrganizerHit[]"
+        },
+        "people": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly EventSearchPersonHit[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
         }
       }
     },
@@ -6988,6 +7657,17 @@
         "EventAssessmentStatus",
         "EventAssessmentVerdict",
         "EventCaptureMethodCode",
+        "EventDiscoverArea",
+        "EventDiscoverBadge",
+        "EventDiscoverCommunityReason",
+        "EventDiscoverFormat",
+        "EventDiscoverPeriod",
+        "EventDiscoverQuery",
+        "EventDiscoverResponse",
+        "EventDiscoverRow",
+        "EventDiscoverSort",
+        "EventDiscoverTheme",
+        "EventDiscoverWidenSuggestion",
         "EventEvidenceContract",
         "EventExperienceConfigurationContract",
         "EventExperienceHeadContract",
@@ -6997,10 +7677,21 @@
         "EventExperienceSnapshotContract",
         "EventExperienceVersionContract",
         "EventOriginContract",
+        "EventPrepAgendaItem",
+        "EventPrepChecklistItem",
+        "EventPrepChecklistKey",
+        "EventPrepChecklistPatch",
+        "EventPrepPerson",
+        "EventPrepRelation",
+        "EventPrepResponse",
         "EventRecommendationDismissInput",
         "EventRecommendationDismissReason",
         "EventRecommendationDismissResult",
         "EventRecordContract",
+        "EventSearchEventHit",
+        "EventSearchOrganizerHit",
+        "EventSearchPersonHit",
+        "EventSearchResponse",
         "EventStatusCode",
         "FollowupAuditContract",
         "FollowupPriorityCode",
@@ -7116,6 +7807,7 @@
         "OrbitAiToolFamilyCode",
         "OrbitLanguage",
         "OrbitLanguagePreferenceContract",
+        "OrganizerFollowResult",
         "PasswordResetResponse",
         "PersonalScheduleAssociationKind",
         "PersonalScheduleAssociationOption",
@@ -9480,6 +10172,26 @@
         }
       }
     },
+    "organizer-follow.ts::OrganizerFollowResult": {
+      "kind": "object",
+      "members": {
+        "organizerId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "following": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "followedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
     "password-reset.ts::PasswordResetResponse": {
       "kind": "object",
       "members": {
@@ -10676,7 +11388,7 @@
         "kind": {
           "optional": false,
           "kind": "text",
-          "type": "'network' | 'goal' | 'profile' | 'capabilities'"
+          "type": "'profile' | 'network' | 'goal' | 'capabilities'"
         },
         "detail": {
           "optional": false,
