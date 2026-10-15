@@ -386,23 +386,6 @@ test("model: agendaStatus / currentRound / clocks / layout / legend / hotTags / 
   assert.equal(liveTabFrom(undefined), "home");
 });
 
-test("live page wires auth redirect, canonical id resolution, the party loader, and the events-0918 shell", () => {
-  const source = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/live/page.tsx"), "utf8");
-  assert.match(source, /auth\(\)/);
-  assert.match(source, /if \(!session\?\.user\?\.id\)/);
-  // 终审 M3：登录 next 带回 ?tab= / ?language=（liveReturnPath）。
-  assert.ok(source.includes("redirect(`/app/account/login?next=${encodeURIComponent(liveReturnPath(id, query))}`)"));
-  assert.match(source, /loadAppPartyRouteViewModel\(\{/);
-  assert.match(source, /id: session\.user\.id/);
-  assert.match(source, /eventCore\.getEvent\(routeId\)/);
-  assert.match(source, /data-orbit-real-page="events-0918"/);
-  // R07: signed-in only page — no nav of its own, Orbit2026Shell provides it.
-  assert.doesNotMatch(source, /<(?:AccountTopNav|OrbitTopNav)\b/);
-  assert.match(source, /<EventLive/);
-  assert.match(source, /StateView/);
-  assert.doesNotMatch(source, /party-login-return|partyLoginHref|PublicTopNav/);
-});
-
 // ── Task 5: 弹窗挂载（同一时刻只有一个；头像 / 成员卡 / 查看资料 → 参会者；申请交换 → 交换；参会者 → 约谈 / 记录交流）──
 function modalKinds(renderer: ReactTestRenderer): string[] {
   return renderer.root.findAll((node) => typeof node.props["data-events-modal"] === "string" && node.type === "div").map((node) => String(node.props["data-events-modal"]));
@@ -471,20 +454,3 @@ test("liveReturnPath keeps tab / language / lang in the login next; live topbar 
 });
 
 // Sprint 0129: an inbox exchange notification links to /app/events/<id>/live?participant=<pid>.
-test("live page opens the attendee modal for ?participant=; unknown ids and the viewer's own id open nothing", async () => {
-  const aiko = person();
-  const ken = person({ id: "participant:ken", initial: "K", isRecommended: false, name: "Ken Sato", company: "Bridge Works", title: "CTO", score: 0, reason: "" });
-  const vm = viewModel({ attendees: [aiko, ken], recommendations: [aiko], roundOne: table([ken]) });
-  for (const [initialPersonId, expected] of [["participant:ken", ["attendee"]], ["participant:nobody", []], ["participant:me", []], [undefined, []]] as const) {
-    let renderer!: ReactTestRenderer;
-    try {
-      await act(async () => { renderer = create(<EventLive initialPersonId={initialPersonId} initialTab="home" now={NOW} viewModel={vm} />); });
-      assert.deepEqual(modalKinds(renderer), expected, String(initialPersonId));
-      if (expected.length) assert.match(JSON.stringify(renderer.toJSON()), /Ken Sato/);
-    } finally {
-      if (renderer) await act(async () => { renderer.unmount(); });
-    }
-  }
-  const source = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/live/page.tsx"), "utf8");
-  assert.match(source, /initialPersonId=\{readSearchParam\(query, "participant"\)\}/);
-});

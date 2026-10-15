@@ -62,7 +62,7 @@ function ShellFrame({ language, pathname, children }: { language: OrbitLanguage;
   useEffect(() => { setRailDrawer(false); }, [pathname]);
   return (
     <ShellChromeContext.Provider value={chrome}>
-    <div className={styles.frame} data-orbit-2026-shell="" data-rail={rail ? "true" : "false"}>
+    <div className={styles.frame} data-orbit-2026-shell="" data-rail={rail ? "true" : "false"} data-phone-bare={slots.phoneBare ? "true" : undefined}>
       <Orbit2026Scope language={language} className={styles.sideScope}>
         <ShellSidebar active={active} dot={dot} />
       </Orbit2026Scope>

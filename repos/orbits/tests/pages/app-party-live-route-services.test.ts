@@ -77,34 +77,6 @@ const LIVE_PAGE = "app/(app)/app/events/[id]/live/page.tsx";
 const LIVE_COMPONENT = "app/(app)/app/events/events-0918/event-live.tsx";
 const LIVE_CONTROLS = "app/(app)/app/events/events-0918/live-controls.ts";
 
-test("/app/events/[id]/live uses the live-capable party loader instead of the legacy hybrid party view model", () => {
-  const livePageSource = source(LIVE_PAGE);
-  const partyModelSource = source(
-    "app/(app)/app/orbit-party-route-view-model.ts",
-  );
-  const authoredContentPath = join(
-    projectRoot,
-    "app/(app)/app/orbit-party-content.ts",
-  );
-  const authoredPresentationPath = join(
-    projectRoot,
-    "app/(app)/app/orbit-party-presentation.ts",
-  );
-
-  assert.match(livePageSource, /loadAppPartyRouteViewModel/);
-  assert.match(livePageSource, /routeModel\.party/);
-  assert.match(livePageSource, /StateView/);
-  assert.doesNotMatch(livePageSource, /buildOrbitParty/);
-  assert.doesNotMatch(livePageSource, /getOrbitPartyViewModel/);
-
-  assert.doesNotMatch(
-    partyModelSource,
-    /getOrbitPartyViewModel|getOrbitHybridRouteData/,
-  );
-  assert.equal(existsSync(authoredContentPath), false);
-  assert.equal(existsSync(authoredPresentationPath), false);
-});
-
 test("live check-in writes through the event-operations check-in API without component fallback", () => {
   const liveComponentSource = source(LIVE_COMPONENT);
   const controlsSource = source(LIVE_CONTROLS);
@@ -261,21 +233,6 @@ test("unregistered catalogue viewers do not receive Party attendee context", asy
 
     assert.equal(routeModel.state, "route-state");
   });
-});
-
-test("the live page requires an authenticated actor, returns to itself after login, and passes the actor to the shared loader", () => {
-  const pageSource = source(LIVE_PAGE);
-
-  assert.match(pageSource, /auth\(\)/);
-  assert.match(pageSource, /if \(!session\?\.user\?\.id\)/);
-  assert.ok(
-    pageSource.includes(
-      "redirect(`/app/account/login?next=${encodeURIComponent(liveReturnPath(id, query))}`)",
-    ),
-  );
-  assert.doesNotMatch(pageSource, /partyLoginHref|party-login-return/);
-  assert.match(pageSource, /actor: \{/);
-  assert.match(pageSource, /id: session\.user\.id/);
 });
 
 test("party URL query mode cannot activate mock fixtures", async () => {

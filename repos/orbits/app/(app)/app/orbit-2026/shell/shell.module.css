@@ -335,4 +335,10 @@
   .mainheadFold { display: flex; justify-content: flex-start; padding: 0 var(--space-18); margin-bottom: 0; }
   .mainheadFold:not(:has(.demoSlot)) { display: none; }
   .mainheadFold .headTitle, .mainheadFold .headSide > :not(.demoSlot) { display: none; }
+  /* phoneBare（R27 会場モード 390）：全屏，没有品牌栏和底部胶囊。 */
+  .frame[data-phone-bare="true"] .mobileTop, .frame[data-phone-bare="true"] .bottomScope { display: none; }
+  .frame[data-phone-bare="true"] .content { padding-bottom: 0; }
+  .frame[data-phone-bare="true"] .mainhead { padding-top: 6px; margin-bottom: 14px; }
+  .frame[data-phone-bare="true"] .title { font-size: var(--fs-logo); letter-spacing: 0.01em; }
+  .frame[data-phone-bare="true"] .headTitle .subtitle { display: block; font-size: var(--fs-label); margin-top: 1px; }
 }

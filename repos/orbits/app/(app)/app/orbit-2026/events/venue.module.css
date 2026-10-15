@@ -1,0 +1,62 @@
+/* R27 会場モード（Web）：照 b2 #36 kit 源码（.big / .rdots / .ice / .mini3 / .bar.thin / .livedot / .evc.sel / 関係マップ）与 b12 #364（.guide）。 */
+.grow { flex: 1; min-width: 0; }
+.livedot { display: inline-flex; align-items: center; gap: 4px; color: var(--coral); font-weight: var(--fw-heavy); }
+.livedot::before { content: ""; width: 7px; height: 7px; border-radius: var(--r-pill); background: var(--coral); }
+.seat.seat { background: linear-gradient(150deg, var(--mac-lav), var(--surface) 65%); }
+.big { font-family: var(--font-num); font-size: var(--fs-display-big); font-weight: var(--fw-heavy); letter-spacing: -0.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.rdots { display: flex; gap: 6px; margin-top: 10px; }
+.rdots > div { flex: 1 1 0%; border-radius: var(--r-row); padding: 7px 4px; text-align: center; background: var(--surface-2); font-size: var(--fs-tiny); color: var(--ink-3); font-weight: var(--fw-bold); }
+.rdots > div b { display: block; font-family: var(--font-num); font-size: var(--fs-body); color: var(--ink-2); }
+.rdots > .rdPast { opacity: 0.7; }
+.rdots > .rdNow { background: var(--ink); color: var(--bg); }
+.rdots > .rdNow b { color: var(--bg); }
+.seatWhy.seatWhy { gap: 6px; margin-top: 12px; }
+.roundTitle { font-size: var(--fs-dialog-title); margin-top: 4px; display: block; }
+.thin.thin { height: 4px; margin-top: 8px; margin-bottom: 4px; }
+.thin.thin > i::after { display: none; }
+.ice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; font-size: var(--fs-body-sm); line-height: 1.55; }
+.ice + .ice { border-top: 1px solid var(--line); }
+.recsHead.recsHead { margin: 8px 0 -6px; }
+.pcard.pcard { display: flex; flex-direction: column; gap: 10px; }
+.av46.av46 { width: 46px; height: 46px; }
+.pfoot.pfoot { gap: 6px; margin-top: auto; padding-top: 10px; }
+.tchip :global(svg) { width: 12px; height: 12px; }
+.req.req { margin-left: auto; }
+.mapcard.mapcard { display: flex; flex-direction: column; }
+.legend.legend { gap: 14px; flex-wrap: wrap; font-size: var(--fs-label); color: var(--ink-2); }
+.legend > span { gap: 5px; }
+.mapWrap { display: grid; place-items: center; }
+.map { display: block; }
+.past b { color: var(--ink-3); }
+.dotPast.dotPast { background: var(--plum-300); }
+.dotNow.dotNow { background: var(--coral); box-shadow: 0 0 0 4px var(--coral-soft); }
+.groupAvs.groupAvs { margin-top: 12px; }
+
+.avLg.avLg { width: 56px; height: 56px; font-size: var(--fs-emoji-sm); }
+.detailName { font-size: var(--fs-dialog-title); }
+.rcard.rcard { padding: 14px; }
+.emoSm.emoSm { width: 32px; height: 32px; border-radius: var(--r-sm); font-size: var(--fs-emoji-sm); }
+.rtitle { font-size: var(--fs-body-sm); flex: 1; }
+.ractions.ractions { gap: 8px; margin-top: 10px; }
+.touch.touch { margin-top: 6px; }
+.memoLbl.memoLbl { margin-bottom: 6px; }
+.input { flex: 1; min-width: 0; height: 44px; border: 0; border-radius: var(--r-md); background: var(--surface-2); padding: 0 14px; font: inherit; font-size: var(--fs-body-sm); color: var(--ink); }
+.slotsLbl.slotsLbl { margin-bottom: 8px; }
+.slot.slot { gap: 8px; background: var(--surface-2); border-radius: var(--r-row); padding: 8px; margin-top: 6px; font-size: var(--fs-body-sm); }
+.slotN.slotN { font-weight: var(--fw-bold); color: var(--ink-2); min-width: 46px; }
+.draft.draft { width: 100%; margin-top: 10px; }
+.draftNote.draftNote { margin-top: 6px; }
+.stateAct { margin-top: 12px; }
+
+/* 390：会場モードは App で（b12 #364 .guide） */
+.appOnly.appOnly { text-align: center; padding: 26px 20px; margin-top: 10px; position: relative; overflow: hidden; display: grid; }
+.appOnly::before { content: ""; position: absolute; width: 220px; height: 220px; border-radius: var(--r-pill); right: -80px; top: -90px; background: radial-gradient(circle, var(--mac-lav), transparent 70%); opacity: 0.9; }
+.appOnly > * { position: relative; }
+.appEmoji { font-size: var(--fs-display-md); line-height: 1; }
+.appTitle { display: block; font-size: var(--fs-logo); margin-top: 8px; }
+.appSub.appSub { margin: 6px 0 16px; line-height: 1.5; }
+.xl.xl { width: 100%; }
+.ghost.ghost { width: 100%; margin-top: 8px; background: transparent; color: var(--ink-2); }
+.nameCol { min-width: 0; }
+.req[aria-disabled="true"] { cursor: default; }
+.slotsLbl + .slot { margin-top: 0; }

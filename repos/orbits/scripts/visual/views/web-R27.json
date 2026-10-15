@@ -264,6 +264,30 @@
    "note": "参加登録 · /register/〈コード〉着地页（§30 补画）"
   },
   {
+   "id": "W-R27-36",
+   "app": "/app/events/demo-event-cfo-night-18/live",
+   "design": "b2-events-flow.html",
+   "board-index": 36,
+   "width": 1440,
+   "wait-for": "[data-venue-seat]",
+   "journey": {
+    "venue": "checked_in"
+   },
+   "note": "P09 会場モード（現場）"
+  },
+  {
+   "id": "W-R27-36-390",
+   "app": "/app/events/demo-event-cfo-night-18/live",
+   "design": "b12-missing-states.html",
+   "board-index": 364,
+   "width": 390,
+   "wait-for": "[data-venue-app-only]",
+   "journey": {
+    "venue": "checked_in"
+   },
+   "note": "会場モード 390：会場モードは App で（§10 A7）"
+  },
+  {
    "id": "W-R27-P40",
    "app": "/app/events",
    "design": "b12-missing-states.html",
