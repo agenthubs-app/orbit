@@ -1846,6 +1846,11 @@
     .pubmain { padding: 4px 40px 40px; }
     .mweb .ctabar { bottom: 104px; }
     .mweb .composer { bottom: 104px; }
+    /* 下拉菜单：照 b11 .dmenu（2026-10-15 §31） */
+    .dmenu { position: absolute; z-index: 6; width: 200px; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-float); padding: 6px; border: 1px solid var(--line); }
+    .dmenu > div { padding: 8px 10px; border-radius: 10px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .dmenu > div.on { background: var(--surface-2); }
+    .dmenu small { color: var(--ink-3); font-weight: 600; font-size: 11px; }
   }
 </style>
 </head>
@@ -7097,6 +7102,14 @@ g += WP('W-R27-31 参加登録 ② 参加用プロフィール · Web 1440', '',
 g += WP('W-R27-32 参加登録 ③ 申込完了 · 仮予定 · Web 1440', '', () => ({ nav: 3, body: wReg3(), rail: wRegRail() }), [['.k-wdstatus', 0, '左卡 = App #22 内容：受付完了 → いまの状況（審査中 4 段）→ カレンダーに仮で入れますか？（追加する / 不要）'], ['.p-wpersona', 0, '右侧改为「申込済み · 10/6 まで編集可」']], 'b2 #23 · b2 #22 · 补画 2026-10-15');
 g += WP('W-R27-33 参加の取り消し · Web 確認', '', () => ({ nav: 3, body: wDetail('few'), rail: wDetailRail('few'), ov: cancelDlg }), [['.k-wcancel', 0, 'App b3 #42 的底部弹层 → Web 居中确认框（01-system ②，480）：后果 3 行 + 「参加を続ける」/ 珊瑚「参加を取り消す」']], 'b3 #42 · 01-system ② · 补画 2026-10-15');
 g += pubBoard('W-R27-34 参加登録 · /register/〈コード〉着地页 · 1440', pub(regLanding()) + pub(regLanding(), 'dark'), ['未登录详情（W-R26-41）的框：公开顶栏 + 活动详情；右侧换成「参加コードで招待されています」卡（码 · 发出方 · 期限）', '「ログインして参加登録」/「無料で登録して参加登録」→ 登录后直接进参加登録 ①']);
+
+/* ===== 补画 · 2026-10-15：已报名状态的活动详情 + ⋯ 菜单「参加を取り消す」（§31，对标 Luma / Peatix）===== */
+const wDetailReg = () => wDetail('few').replace('<button class="btn accent">参加登録</button>', `<button class="rbtn k-wmore">${ic('more')}</button><button class="btn accent k-wprep">会う準備へ</button>`);
+const wRailReg = () => wDetailRail('few').replace(/<div class="card p-wcta"[\s\S]*$/, `<div class="card k-wregst" style="padding:16px"><div class="row between"><b>参加予定</b><span class="chip teal">✓ 参加確定</span></div><div class="lbl" style="margin:4px 0 0">10/7（水）19:00 · 渋谷ストリーム · 受付 QR は当日ここに表示されます</div></div>`);
+const regMenu = `<div class="dmenu k-wregmenu" style="right:396px;top:96px;width:236px"><div>${ic('calendar', 'sm')}<span style="flex:1">カレンダーに追加</span></div><div>${ic('pen', 'sm')}<span style="flex:1">参加用プロフィールを編集</span></div><div style="color:var(--coral-text)">${ic('x', 'sm')}<span style="flex:1">参加を取り消す</span></div></div>`;
+g += S10('补画 · 2026-10-15 · ⑥ 参加済みのイベント詳細 · 取り消し入口（§31）', '已报名：顶栏「会う準備へ」左侧加 ⋯ 菜单（对标 Luma / Peatix 的「Manage registration」）；菜单最后一项「参加を取り消す」珊瑚色 → W-R27-33（#374）确认框');
+g += WP('W-R27-35 イベント詳細 · 参加済み · Web 1440', '', () => ({ nav: 3, body: wDetailReg(), rail: wRailReg() }), [['.k-wprep', 0, '已报名：主按钮由「参加登録」变成「会う準備へ」'], ['.k-wmore', 0, '左侧 ⋯：报名相关的次要操作收在菜单里（见下一块）']], 'b2 #18 · Luma / Peatix · 补画 2026-10-15');
+g += WP('W-R27-35b イベント詳細 · 参加済み · ⋯ メニュー · Web 1440', '', () => ({ nav: 3, body: wDetailReg(), rail: wRailReg(), ov: regMenu }), [['.k-wregmenu', 0, '下拉菜单（b11 .dmenu 样式）：カレンダーに追加 / 参加用プロフィールを編集 / 参加を取り消す（珊瑚，最后一项）；点「参加を取り消す」→ W-R27-33（#374）确认框']], 'b11 .dmenu · 补画 2026-10-15');
 __g7out(group('g7', g));
 })();
 /* ===================== 出力 ===================== */
