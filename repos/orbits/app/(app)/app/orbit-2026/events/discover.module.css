@@ -75,7 +75,7 @@
 .pCardH.pCardH { margin-bottom: 4px; }
 .pMore.pMore { font-size: var(--fs-meta); color: var(--ink-3); font-weight: 600; display: flex; align-items: center; gap: 2px; height: auto; min-height: 0; padding: 0; border: 0; background: transparent; }
 .pMore :global(svg) { width: 16px; height: 16px; }
-.pList > .pLi { display: flex; align-items: center; gap: 12px; padding: 11px 0; position: relative; width: 100%; height: auto; min-height: 0; border: 0; border-radius: 0; background: transparent; text-align: left; color: inherit; font-weight: inherit; }
+.pList > .pLi { display: flex; align-items: center; gap: 12px; padding: 11px 0; position: relative; width: 100%; height: auto; min-height: 0; border: 0; background: transparent; text-align: left; color: inherit; font-weight: inherit; }
 .pList > .pLi + .pLi::before { content: ""; position: absolute; top: 0; left: 50px; right: 0; height: 1px; background: var(--line); }
 .pDate { width: 44px; flex: none; text-align: center; border-radius: var(--r-emo); background: var(--surface-2); padding: 5px 0; line-height: 1.1; }
 .pDate b { display: block; font-family: var(--font-num); font-size: var(--fs-logo); font-weight: var(--fw-heavy); }
