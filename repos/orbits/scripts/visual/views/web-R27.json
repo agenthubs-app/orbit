@@ -71,28 +71,30 @@
    "note": "P06 詳細 · 参加者 0"
   },
   {
-   "id": "W-R27-18",
+   "id": "W-R27-18u",
    "app": "/app/events/demo-event-cfo-night-18",
-   "design": "b2-events-flow.html",
-   "board-index": 18,
+   "design": "b12-missing-states.html",
+   "board-index": 386,
    "width": 1440,
    "wait-for": "[data-detail-people]",
    "journey": {
-    "overview": "few"
+    "overview": "few",
+    "registration": "none"
    },
-   "note": "P06 詳細 · 少"
+   "note": "P06 詳細 · 少 · 未登録（roster-policy A，用户 10-15 确认；b12 #386 取代 b2 #18）"
   },
   {
-   "id": "W-R27-19",
+   "id": "W-R27-19u",
    "app": "/app/events/demo-event-cfo-night-18",
-   "design": "b2-events-flow.html",
-   "board-index": 19,
+   "design": "b12-missing-states.html",
+   "board-index": 388,
    "width": 1440,
    "wait-for": "[data-detail-people]",
    "journey": {
-    "overview": "many"
+    "overview": "many",
+    "registration": "none"
    },
-   "note": "P06 詳細 · 多（深色 = #47）"
+   "note": "P06 詳細 · 多 · 未登録（roster-policy A；b12 #388 取代 b2 #19）"
   },
   {
    "id": "W-R27-23",

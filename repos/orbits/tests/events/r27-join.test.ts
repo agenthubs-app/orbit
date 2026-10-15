@@ -154,3 +154,27 @@ test("signed-out overview never lists attendee names (counts only)", async () =>
   assert.deepEqual(body.data.attendees, []);
   assert.deepEqual(body.data.knownAttendees, []);
 });
+
+test("roster policy A: a signed-in user sees names only after registering; counts are always there", async () => {
+  const { setJourneyMockState } = await import("../../features/events/journey/mock");
+  const { canSeeRoster } = await import("../../features/events/journey/roster-policy");
+  const routes = createEventJourneyRoutes({ resolveActor: async () => ({ id: "actor:a" }) as never, resolveMode: () => "mock" });
+  const read = async () => (await (await routes.overview(new Request(`http://orbit.test/api/events/${JOURNEY_EVENT_ID}/overview`), { params: Promise.resolve({ id: JOURNEY_EVENT_ID }) })).json()).data;
+  try {
+    setJourneyMockState({ overview: "many", registration: "none" });
+    const locked = await read();
+    assert.equal(locked.rosterLocked, true);
+    assert.deepEqual(locked.attendees, []);
+    assert.deepEqual(locked.knownAttendees, []);
+    assert.ok(locked.attendeeCounts.all > 0 && locked.attendeeCounts.known > 0, "counts stay");
+    setJourneyMockState({ registration: "registered" });
+    const open = await read();
+    assert.equal(open.rosterLocked, undefined);
+    assert.ok(open.attendees.length > 0);
+  } finally {
+    setJourneyMockState({ registration: "none" });
+  }
+  assert.equal(canSeeRoster({ registrationStatus: "pending_review", signedIn: true }), false, "pending review is not an attendee yet");
+  assert.equal(canSeeRoster({ signedIn: true }, "signed_in"), true, "the alternative switch opens it to any signed-in user");
+  assert.equal(canSeeRoster({ signedIn: false }, "signed_in"), false);
+});

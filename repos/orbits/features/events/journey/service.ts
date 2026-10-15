@@ -4,6 +4,7 @@
  * - 外部评估（R26 私有）不在公共目录里，所以探す / 搜索天然读不到别人的。
  * - 会場：先查报名状态，未报名直接 `not_registered`，不读运营数据。
  */
+import { canSeeRoster } from "./roster-policy";
 import type { EventRecommendationDismissReason, EventRecommendationDismissResult } from "../../../shared/contract/event-recommendation-feedback";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../../shared/contract/event-after";
 import type { EventDiscoverResponse } from "../../../shared/contract/event-discover";
@@ -114,7 +115,8 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       for (const event of events) if (event.organizerKey) editions[event.organizerKey] = (editions[event.organizerKey] ?? 0) + 1;
       const myStatus = Object.fromEntries(mine.flatMap((item) => (item.status === "registered" || item.status === "pending_review" || item.status === "attended" || item.status === "planned" ? [[item.eventId, item.status]] : [])));
       // 人：只在 upcoming 活动的公开参加者里找我的联系人（有界：最近 20 场）。
-      const upcoming = events.filter((event) => Date.parse(event.startsAt) >= at.getTime()).slice(0, 20);
+      // roster-policy：只在我能看名单的活动（A：已报名确定）里找联系人；其余活动不透露谁参加。
+      const upcoming = events.filter((event) => Date.parse(event.startsAt) >= at.getTime() && canSeeRoster({ registrationStatus: myStatus[event.eventId] ?? "none", signedIn: true })).slice(0, 20);
       const people = new Map<string, string[]>();
       await Promise.all(upcoming.map(async (event) => {
         const roster = await ports.publicAttendees(event.eventId).catch(() => ({ attendees: [], total: 0 }));
@@ -161,7 +163,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         venue: event.venue,
       };
       // 未登录只给人数：报名资料的「参加者に表示」是给同场参加者看的，不给匿名访客（旧的公开预览也只有聚合桶）。
-      if (!actorId) return { ...base, attendees: [], signedOut: true };
+      if (!actorId) return { ...base, attendees: [], rosterLocked: !canSeeRoster({ signedIn: false }), signedOut: true };
       const [mine, contacts, judged, types, followed] = await Promise.all([
         ports.myEvents(actorId),
         ports.contacts(actorId),
@@ -179,15 +181,19 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       const known = roster.attendees.filter((item) => contactNames.has(item.name.replace(/\s+/g, "")));
       const mineRow = mine.find((item) => item.eventId === eventId);
       const result = judged.results[eventId];
+      const status = mineRow && mineRow.status !== "planned" ? mineRow.status : "none";
+      // 名单可见性只看 roster-policy 这一处（A：报名确定后才看名单，之前只给人数与知り合い人数）。
+      const rosterVisible = canSeeRoster({ registrationStatus: status, signedIn: true });
       return {
         ...base,
         assessment: result ? { assessmentId: result.assessmentId, basis: result.basis, display: result.display, score: result.score, verdict: result.verdict } : null,
         ...(result && roster.total === 0 ? { assessmentPeopleUnknown: true } : {}),
         attendeeCounts: { all: roster.total, known: known.length, planFit: attendees.filter((item) => item.planFit).length },
-        attendees: [...attendees].sort(order).slice(0, cap),
-        knownAttendees: known.slice(0, 5).map((item) => ({ initial: item.name.trim().charAt(0), name: item.name.split(" ")[0] ?? item.name, speaker: item.speaker })),
+        attendees: rosterVisible ? [...attendees].sort(order).slice(0, cap) : [],
+        knownAttendees: rosterVisible ? known.slice(0, 5).map((item) => ({ initial: item.name.trim().charAt(0), name: item.name.split(" ")[0] ?? item.name, speaker: item.speaker })) : [],
+        ...(rosterVisible ? {} : { rosterLocked: true }),
         organizer: { ...base.organizer, following: event.organizerKey ? followed.has(event.organizerKey) : false, myAttendance: event.organizerKey ? mine.filter((item) => item.organizerKey === event.organizerKey && item.status === "attended").length : null },
-        registration: { href: `/events/${eventId}/register`, status: mineRow && mineRow.status !== "planned" ? mineRow.status : "none" },
+        registration: { href: `/events/${eventId}/register`, status },
       };
     },
 

@@ -3,6 +3,7 @@
  * - 不写库、不调 AI：興味なし / 关注 / 清单进进程内存（同一语义，重启即清）；会後確定只返回结果、什么都不写。
  * - 变体（空 / 少 / 多、会場状态）挂在 globalThis 上，由开发接口 `app/api/dev/event-design-fixture/route.dev.ts` 切换（Next dev 各路由包各一份模块，所以不用模块变量）。
  */
+import { canSeeRoster } from "./roster-policy";
 import { DEMO_EVENTS } from "../../../shared/mock/demo-world";
 import {
   JOURNEY_EVENT_ID,
@@ -83,7 +84,11 @@ export function createJourneyMockService(): JourneyService {
       const data = { ...base, eventId: JOURNEY_EVENT_ID, registration: { ...base.registration, status: actorId ? state().registration : "none" as const } };
       if (!actorId) {
         const { assessment: _assessment, ...rest } = data;
-        return { ...rest, attendees: [], knownAttendees: [], organizer: { ...data.organizer, following: false, myAttendance: null, organizerId: null }, signedOut: true };
+        return { ...rest, attendees: [], knownAttendees: [], rosterLocked: true, organizer: { ...data.organizer, following: false, myAttendance: null, organizerId: null }, signedOut: true };
+      }
+      // 同 roster-policy：没报名确定只给人数与知り合い人数（示例世界的 registration 变体决定）。
+      if (!canSeeRoster({ registrationStatus: data.registration.status, signedIn: true })) {
+        return { ...data, attendees: [], knownAttendees: [], knownNote: null, rosterLocked: true };
       }
       return data;
     },

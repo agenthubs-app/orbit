@@ -69,6 +69,8 @@ export interface EventOverviewResponse {
   /** When registration closes (the invite-code card shows 「10/3 まで有効」). */
   registrationClosesAt?: string | null;
   attendeeCounts: { all: number; planFit: number; known: number };
+  /** Names are hidden from me (not registered yet, or signed out): show the counts and 「参加登録すると参加者が見られます」 (R27 roster policy A). */
+  rosterLocked?: boolean;
   /** Only people who made their registration profile public; capped (`attendeeCounts.all` is the real total). */
   attendees: readonly EventOverviewAttendee[];
   knownAttendees: readonly { name: string; initial: string; speaker?: boolean }[];

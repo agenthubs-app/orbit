@@ -103,7 +103,7 @@ function DetailInner({ eventId, language, inviteCode }: { eventId: string; langu
             <a className={`btn ${styles.btn} ${x.accent}`} href={`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`}>{t("loginRegister")}</a>
           </div>
         </div>
-        {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? <EventDetailBody data={data} language={language} t={t} signedOutAside={inviteCode ? <InviteCodeCard code={inviteCode} data={data} t={t} /> : undefined} /> : null}
+        {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? <EventDetailBody data={data} language={language} t={t} onRegister={() => window.location.assign(`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`)} signedOutAside={inviteCode ? <InviteCodeCard code={inviteCode} data={data} t={t} /> : undefined} /> : null}
       </div>
     </div>
   );

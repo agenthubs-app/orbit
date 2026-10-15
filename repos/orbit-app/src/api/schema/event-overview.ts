@@ -56,6 +56,7 @@ export const eventOverviewResponseObject = z.object({
   attendeesPublicAt: z.string().nullable().optional(),
   registrationClosesAt: z.string().nullable().optional(),
   attendeeCounts: z.object({ all: z.number().int().min(0), planFit: z.number().int().min(0), known: z.number().int().min(0) }),
+  rosterLocked: z.boolean().optional(),
   attendees: readableItems(eventOverviewAttendeeObject),
   knownAttendees: readableItems(z.object({ name: z.string(), initial: z.string().max(4), speaker: z.boolean().optional() })),
   registration: z.object({ status: tolerantEnum(STATUSES, "none"), href: z.string().min(1) }),

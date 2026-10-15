@@ -61,11 +61,29 @@ function Person({ person, index, note }: { person: EventOverviewAttendee | { nam
   );
 }
 
+/** 名单锁着（roster-policy A：报名确定前）：人数 · 知り合い人数 + 「参加登録すると…」（b12 #382–#389）。 */
+function RosterGate({ data, t, onRegister, wide }: { data: EventOverviewResponse; t: JourneyT; onRegister?: () => void; wide?: boolean }) {
+  return (
+    <>
+      <div className={styles.cardH}><h3>{t("tabPeople")}</h3><span className={styles.lbl}>{t("rosterCounts", { k: data.attendeeCounts.known, n: data.attendeeCounts.all })}</span></div>
+      <div className={`${x.gate} ${wide ? x.gateWide : ""}`} data-roster-gate="">
+        <div className={x.gateEmoji}>👥</div>
+        <b className={x.gateTitle}>{t("rosterGateBody")}</b>
+        <div className={`${styles.lbl} ${x.gateNote}`}>{t("rosterGateNote")}</div>
+        {onRegister ? <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={onRegister}>{t("rosterGateCta")}</button> : null}
+      </div>
+    </>
+  );
+}
+
 export function DetailRail({ data, t, onRegister, language = "ja" }: { data: EventOverviewResponse; t: JourneyT; onRegister: () => void; language?: OrbitLanguage }) {
   const fit = data.attendees.filter((item) => item.planFit && !item.known).slice(0, 5);
   return (
     <div className={`${styles.rail} ${d.rail} ${x.detailRail}`} data-detail-rail="">
       <h4 className={`${styles.railH} ${d.railH}`}><Icon name="sparkle" size={16} />{t("meetTitle")}</h4>
+      {data.rosterLocked && data.attendeeCounts.all > 0 ? (
+        <div className={`${styles.card} ${x.railGate}`} data-rail-gate=""><b>{t("railGateTitle", { n: data.attendeeCounts.planFit })}</b><div className={styles.lbl}>{t("railGateBody")}</div></div>
+      ) : <>
       <div className={`${styles.card} ${x.railList}`}>
         <div className={x.list}>
           {fit.length ? fit.map((person, index) => <Person key={person.attendeeId} person={person} index={index} note={person.note} />)
@@ -81,6 +99,7 @@ export function DetailRail({ data, t, onRegister, language = "ja" }: { data: Eve
           </div>
         </div>
       ) : null}
+      </>}
       <div className={x.spacer} />
       {data.registration.status === "none" ? (
         <div className={`${styles.card} ${x.cta}`}>
@@ -175,7 +194,8 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
       {tab === "host" ? (
         <div className={styles.card}><div className={styles.row} style={{ gap: 12 }}><span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span><div><b>{data.organizer.name}</b><div className={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</div></div></div></div>
       ) : null}
-      {tab === "people" ? (
+      {tab === "people" && data.rosterLocked && data.attendeeCounts.all > 0 ? <div className={styles.card}><RosterGate data={data} t={t} onRegister={onRegister} /></div> : null}
+      {tab === "people" && !(data.rosterLocked && data.attendeeCounts.all > 0) ? (
         <>
           <div className={`${styles.seg} ${x.pSeg}`} role="tablist">
             {([["planFit", t("segPlanFit", { n: data.attendeeCounts.planFit })], ["known", t("segKnown", { n: data.attendeeCounts.known })], ["all", t("segAll", { n: data.attendeeCounts.all })]] as const).map(([key, label]) => (
@@ -214,7 +234,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
 }
 
 /** `onSeeAll`：「すべて見る」去取全部公开参加者（取过就不再显示按钮；其余人没有公开资料）。 */
-export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; signedOutAside?: ReactNode; onSeeAll?: () => void }) {
+export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, onRegister }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; signedOutAside?: ReactNode; onSeeAll?: () => void; onRegister?: () => void }) {
   const at = assessTranslator(language);
   const toast = useToast();
   const [tab, setTab] = useState<"intro" | "agenda" | "host" | "people">("intro");
@@ -294,6 +314,11 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll }:
           <div><span className={styles.lbl}>{t("youAttended")}</span><b>{data.organizer.myAttendance ?? 0}<small>{t("timesUnit")}</small></b></div>
         </div>
       </div>
+      {data.rosterLocked && data.attendeeCounts.all > 0 ? (
+        <div ref={peopleRef} className={`${styles.card} ${styles.span12}`} data-detail-people="">
+          <RosterGate data={data} t={t} onRegister={onRegister} wide />
+        </div>
+      ) : (
       <div ref={peopleRef} className={`${styles.card} ${styles.span12}`} data-detail-people="">
         <div className={styles.cardH}><h3>{t("peopleTitle", { n: data.attendeeCounts.all })}</h3><span className={styles.lbl}>{data.attendeeCounts.all === 0 && data.attendeesPublicAt ? t("publicFrom", { date: monthDaySlash(data.attendeesPublicAt) }) : t("publicOnly")}</span></div>
         {data.attendeeCounts.all === 0 ? (
@@ -313,6 +338,7 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll }:
           </>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -415,7 +441,7 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
         rightRail={wide && data ? <DetailRail data={data} t={t} onRegister={register} language={language} /> : false}
         phoneBare={phone}
       />
-      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} /> : <EventDetailBody data={data} language={language} t={t} {...(allLoaded ? {} : { onSeeAll: () => void seeAll() })} />) : null}
+      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} /> : <EventDetailBody data={data} language={language} t={t} onRegister={register} {...(allLoaded ? {} : { onSeeAll: () => void seeAll() })} />) : null}
       {data ? <CancelDialog open={cancelOpen} event={data} language={language} t={t} busy={cancelBusy} onKeep={closeCancel} onCancel={() => void confirmCancel()} /> : null}
     </>
   );

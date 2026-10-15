@@ -11,7 +11,7 @@ import type { EventOverviewResponse } from "../../../api/contract/event-overview
 import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
 import { ActionSheet, GlassSurface, Icon, IconButton, Segmented, UiPressable, UiText, useToast, type IconName } from "../../../components/ui";
-import Svg, { Defs, Rect, Stop } from "../../../components/ui/svg";
+import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { LinearGradient } from "../../plan/plan-svg";
 import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
@@ -150,6 +150,22 @@ export function EventDetailPage() {
     </View>
   );
 
+  // 名单锁着（roster-policy A：报名确定前）：只给人数 · 知り合い人数 + 「参加登録すると…」（b12 #382 / #384）。
+  const rosterGate = (
+    <View style={[styles.card, tab === "intro" ? styles.gap : null]} testID="events-detail-roster-gate">
+      <View style={styles.cardH}><UiText style={styles.h3}>{t("tabPeople")}</UiText><UiText style={styles.lbl}>{t("rosterCounts", { k: data.attendeeCounts.known, n: data.attendeeCounts.all })}</UiText></View>
+      <View style={styles.gate}>
+        <Svg width={220} height={220} style={styles.gateGlow}>
+          <Defs><RadialGradient id="rosterGlow" cx="50%" cy="50%" r="50%"><Stop offset={0} stopColor={colors.macLav} /><Stop offset={0.7} stopColor={colors.macLav} stopOpacity={0} /></RadialGradient></Defs>
+          <Rect x={0} y={0} width={220} height={220} fill="url(#rosterGlow)" opacity={0.9} />
+        </Svg>
+        <UiText style={styles.gateEmoji}>👥</UiText>
+        <UiText style={styles.gateTitle}>{t("rosterGateBody")}</UiText>
+        <UiText style={[styles.lbl, styles.gateNote]}>{t("rosterGateNote")}</UiText>
+        <UiPressable accessibilityRole="button" accessibilityLabel={t("rosterGateCta")} onPress={() => router.push(`${base}/register` as Href)} style={styles.gateBtn}><UiText style={styles.gateBtnText}>{t("rosterGateCta")}</UiText></UiPressable>
+      </View>
+    </View>
+  );
   return (
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-detail">
       <ShellBackground />
@@ -207,7 +223,7 @@ export function EventDetailPage() {
                 <View style={[styles.ghostRow, { marginTop: 8 }]}><View style={styles.ghostDot} /><UiText style={styles.ghostText}>{t("ghostKnown")}</UiText></View>
                 <UiPressable accessibilityRole="button" accessibilityLabel={t("notifyWhenPublic")} onPress={() => void save("notifyOn")} style={styles.btnSm}><Icon name="bell" size={16} color={colors.ink} /><UiText style={styles.btnSmText}>{t("notifyWhenPublic")}</UiText></UiPressable>
               </View>
-            ) : fit.length ? (
+            ) : data.rosterLocked && data.attendeeCounts.all > 0 ? rosterGate : fit.length ? (
               <View style={[styles.card, styles.gap]} testID="events-detail-meet">
                 <View style={styles.cardH}><UiText style={styles.h3}>{t("meetTitle")}</UiText><UiText style={styles.lbl}>{t("meetFromAttendees", { n: data.attendeeCounts.all })}</UiText></View>
                 {fit.map((person, index) => (
@@ -219,7 +235,7 @@ export function EventDetailPage() {
                 ))}
               </View>
             ) : null}
-            {data.knownNote ? knownCard(data.knownNote.text, data.knownNote.detail ?? "", known.slice(0, 1), ["teal"]) : null}
+            {data.knownNote && !data.rosterLocked ? knownCard(data.knownNote.text, data.knownNote.detail ?? "", known.slice(0, 1), ["teal"]) : null}
           </>
         ) : null}
         {tab === "agenda" ? (
@@ -236,7 +252,8 @@ export function EventDetailPage() {
             <View style={styles.grow}><UiText style={styles.metaTitle}>{data.organizer.name}</UiText><UiText style={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</UiText></View>
           </View></View>
         ) : null}
-        {tab === "people" ? (
+        {tab === "people" && data.rosterLocked ? rosterGate : null}
+        {tab === "people" && !data.rosterLocked ? (
           <>
             <Segmented<Filter> accessibilityLabel={t("tabPeople")} value={filter} onChange={setFilter}
               segments={[{ key: "planFit", label: t("segPlanFit", { n: data.attendeeCounts.planFit }) }, { key: "known", label: t("segKnown", { n: data.attendeeCounts.known }) }, { key: "all", label: t("segAll", { n: data.attendeeCounts.all }) }]} />
@@ -344,6 +361,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   btnSmText: { color: colors.ink, fontSize: 12, fontWeight: "700", lineHeight: 18 },
   peopleCard: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 6 },
   agendaAt: { color: colors.ink3, fontSize: 12, fontWeight: "700", lineHeight: 21, width: 44 },
+  // kit .guide（b12 #382）：surface-2 r18 18/14 居中 + 右上 220 lav 光晕。
+  gate: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 18, overflow: "hidden", paddingHorizontal: 14, paddingVertical: 18 },
+  gateGlow: { position: "absolute", right: -80, top: -90 },
+  gateEmoji: { fontSize: 34, lineHeight: 34 },
+  gateTitle: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21, marginTop: 8, textAlign: "center" },
+  gateNote: { marginBottom: 12, marginTop: 4, textAlign: "center" },
+  gateBtn: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, height: 40, justifyContent: "center", paddingHorizontal: 16 },
+  gateBtnText: { color: colors.bg, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
   ctabar: { borderRadius: 28, bottom: 26, left: 12, position: "absolute", right: 12 },
   ctaGlass: { alignItems: "center", flexDirection: "row", gap: 8, padding: 8 },
   lbtn: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, height: 46, justifyContent: "center", width: 46 },

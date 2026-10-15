@@ -122,3 +122,16 @@
 .mi.mi:hover, .mi.mi:focus-visible { background: var(--surface-2); }
 .mi span { flex: 1; }
 .mi.miDanger { color: var(--coral-text); }
+
+/* 名单锁着（roster-policy A，b12 #382–#389）：kit .guide 居中卡 + 右上 lav 光晕；右栏只写人数。 */
+.gate { position: relative; overflow: hidden; text-align: center; padding: 18px 14px; border-radius: var(--r-menu); background: var(--surface-2); }
+.gate::before { content: ""; position: absolute; width: 220px; height: 220px; border-radius: var(--r-pill); right: -80px; top: -90px; background: radial-gradient(circle, var(--mac-lav), transparent 70%); opacity: 0.9; }
+.gate > * { position: relative; }
+.gateWide.gateWide { padding: 22px 20px; }
+.gateEmoji { font-size: var(--fs-number-xl); line-height: 1; }
+.gateTitle { display: block; font-size: var(--fs-body); margin-top: 8px; }
+.gateWide .gateTitle { font-size: var(--fs-emph); }
+.gateNote.gateNote { margin: 4px 0 12px; }
+.railGate.railGate { padding: 14px 16px; }
+.railGate b { font-size: var(--fs-row); }
+.railGate .lbl, .railGate > div { margin-top: 4px; }

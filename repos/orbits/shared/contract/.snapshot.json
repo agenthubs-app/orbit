@@ -6322,6 +6322,11 @@
             }
           }
         },
+        "rosterLocked": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
         "attendees": {
           "optional": false,
           "kind": "text",

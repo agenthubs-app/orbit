@@ -75,24 +75,26 @@
    "note": "P07 詳細 · 参加者 0（登壇者から推定）"
   },
   {
-   "id": "A-R27-15",
-   "design": "b2-events-flow.html",
-   "board-index": 15,
+   "id": "A-R27-15u",
+   "design": "b12-missing-states.html",
+   "board-index": 382,
    "path": "/events/demo-event-cfo-night-18",
    "journey": {
-    "overview": "few"
+    "overview": "few",
+    "registration": "none"
    },
-   "note": "P08 詳細 · 参加者 少"
+   "note": "P08 詳細 · 参加者 少 · 未登録（roster-policy A；b12 #382 取代 b2 #15）"
   },
   {
-   "id": "A-R27-16",
-   "design": "b2-events-flow.html",
-   "board-index": 16,
+   "id": "A-R27-16u",
+   "design": "b12-missing-states.html",
+   "board-index": 384,
    "path": "/events/demo-event-cfo-night-18?tab=people",
    "journey": {
-    "overview": "many"
+    "overview": "many",
+    "registration": "none"
    },
-   "note": "P09 詳細 · 参加者 多（参加者 tab）"
+   "note": "P09 詳細 · 参加者 多 · 未登録（参加者 tab；b12 #384 取代 b2 #16）"
   },
   {
    "id": "A-R27-20",
