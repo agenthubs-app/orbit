@@ -1346,7 +1346,8 @@ function expWeb(st = 'sel') {
 const HOST = { n: 'CFO Night 実行委員会', intro: '上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜を、毎月渋谷で開いています。キーノートのあと、テーブルトークを 3ラウンド。' };
 const UP = [{ n: 'CFO Night Tokyo vol.19', d: '11月11日（水）19:00', p: '渋谷ストリーム 4F', fee: '¥5,000', left: '残り 32席', emo: '🥂', c: 'lav' }, { n: 'CFO Night 特別編：IPO 準備の実務', d: '12月9日（水）19:00', p: '大手町 Inspired.Lab', fee: '¥6,000', left: '申込受付前', emo: '📈', c: 'pink' }];
 const PAST = [['vol.18', '10月7日', 128], ['vol.17', '9月9日', 140], ['vol.16', '8月5日', 136], ['vol.15', '7月8日', 121], ['vol.14', '6月10日', 118], ['vol.13', '5月13日', 109]];
-const HS = { empty: [0, 0, 12], few: [2, 86, 140], many: [18, '2,140', 860] };
+/* §39 B9（2026-10-16）：開催回数 = 已结束场次；累計参加者 = 这些场次的受付人数合计（few：过去 1 场 vol.18 受付 128 名） */
+const HS = { empty: [0, 0, 12], few: [1, 128, 140], many: [18, '2,140', 860] };
 const upCard = (u, w) => `<div class="pev ${w ? 'span6' : ''}" ${w ? '' : 'style="margin-top:10px"'}><div class="row between"><span class="emo ${u.c}">${u.emo}</span><span class="chip ${u.left.includes('残り') ? 'blue' : ''}">${u.left}</span></div><b style="font-size:${w ? 17 : 15}px;margin-top:12px;display:block">${u.n}</b><div class="lbl" style="margin-top:3px">${u.d} · ${u.p} · ${u.fee}</div><div class="row push" style="gap:8px;margin-top:14px"><button class="btn sm primary">詳細・申込</button><button class="btn sm ghost">${ic('share', 'sm')}共有</button></div></div>`;
 const pastCard = ([v, d, n]) => `<div class="past"><span class="emo sm lav">🥂</span><div style="flex:1;min-width:0"><b style="font-size:13px">CFO Night Tokyo ${v}</b><div class="lbl">${d} · 参加 ${n}名</div></div></div>`;
 function hostPub(s, web) {
@@ -1654,7 +1655,7 @@ h += sec('E · 主催者の公開ページ', '任何人可访问的公开页（�
 ['empty', 'few', 'many'].forEach(s => {
   h += BB('公開ページ · Web 1440', s, { body: hostPub(s, 1) }, s === 'empty' ? [['.k-none', 0, '无活动时：说明 + 「フォローしてお知らせを受け取る」+ 虚线幽灵行预告卡片内容'], ['.k-follow', 0, 'フォローする：未登录 → 登录弹窗（Apple/Google/メール）；已登录 → 变「フォロー中」']] : s === 'many' ? [['.k-stat', 0, '三个统计数字（开催回数 / 累计参加者 / 关注者）'], ['.pev', 0, '即将开始的活动卡：残席 chip + 「詳細・申込」进入 b2 活动详情'], ['.past', 0, '过去活动 3 列，最多 6 张 + 「すべて見る」']] : null);
 });
-h += boards(['empty', 'few', 'many'].map(s => AP('公開ページ · 手机浏览器', s, { body: hostPub(s, 0), overlay: urlbar('orbit.example/h/cfo-night') }, s === 'few' ? [['.k-follow', 0, '手机版主按钮在简介下方全宽；底部为 Safari 地址栏']] : null)));
+h += boards(['empty', 'few', 'many'].map(s => AP('公開ページ · 手机浏览器', s, { body: hostPub(s, 0), overlay: urlbar('orbit.example/o/cfo-night') }, s === 'few' ? [['.k-follow', 0, '手机版主按钮在简介下方全宽；底部为 Safari 地址栏']] : null)));
 h += boards([AP('フォロー · 未ログイン', '', { body: hostPub('few', 0), overlay: followSheet }, [['.k-fsheet', 0, '未登录点「フォローする」→ 底部登录弹层，文案「登録は1分 · クレジットカード不要」']])]);
 
 /* ---- F ---- */

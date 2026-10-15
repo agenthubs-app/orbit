@@ -1853,6 +1853,275 @@
     .dmenu > div.on { background: var(--surface-2); }
     .dmenu small { color: var(--ink-3); font-weight: 600; font-size: 11px; }
   }
+
+  /* ---- g8 · 补画 2026-10-16：主催 R17（b6-host-polish.html 样式原样副本，嵌套在 .g8 下）---- */
+  @keyframes blink { 50% { opacity: .25; } }
+  @keyframes jig { from { transform: rotate(-1.2deg); } to { transform: rotate(1.2deg); } }
+  @keyframes ripple { 0% { transform: scale(.35); opacity: .9; } 100% { transform: scale(1); opacity: 0; } }
+  @keyframes bob { 50% { transform: translateY(-6px); } }
+  @keyframes pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.08); } }
+  @keyframes v2grow { from { width: 0; } }
+  .g8 {
+    .doc { min-width: 1520px; }
+    /* ---- 从 web.html 复制的页面私有样式 ---- */
+    .kpi .lbl { white-space: nowrap; }
+    .kpi b { font-family: var(--font-num); font-size: 24px; font-weight: 800; display: block; line-height: 1.15; }
+    .tl { display: grid; grid-template-columns: 50px 1fr; gap: 12px; align-items: start; }
+    .tl + .tl { margin-top: 10px; }
+    .tl time { font-family: var(--font-num); font-weight: 800; font-size: 13px; padding-top: 10px; }
+    .tl .blk { border-radius: 16px; padding: 10px 14px; }
+    .score { font-family: var(--font-num); font-weight: 800; }
+    .hov-acts { display: flex; gap: 6px; opacity: 0; transition: opacity .2s; }
+    .table tr:hover .hov-acts, .hov-acts.show { opacity: 1; }
+    .sugg { background: var(--surface); border-radius: 18px; padding: 14px; transition: transform .15s var(--ease); cursor: pointer; }
+    .ghost-tr td { color: var(--ink-4); }
+    .ghost-tr i { display: inline-block; height: 10px; border-radius: 5px; background: var(--surface-2); }
+    .bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; }
+    .bars i { flex: 1; border-radius: 8px 8px 4px 4px; background: var(--plum-300); position: relative; }
+    .bars i.hi { background: var(--plum-700); }
+    .bars i.mk::after { content: attr(data-mk); position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: var(--rose-700); white-space: nowrap; font-style: normal; }
+    .axis { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--ink-3); margin-top: 6px; }
+  
+    /* ---- 主催 ---- */
+    .htabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: -8px 0 20px; }
+    .htabs button { padding: 10px 16px 12px; font-size: 13px; font-weight: 700; color: var(--ink-3); position: relative; }
+    .htabs button.on { color: var(--ink); }
+    .htabs button.on::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 3px; border-radius: 3px; background: var(--plum-700); }
+    .htabs .cnt-b { font-size: 10.5px; padding: 1px 6px; border-radius: 999px; background: var(--coral-soft); color: var(--coral); margin-left: 4px; }
+    .hc { background: var(--surface); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 4px; transition: transform .2s var(--ease), box-shadow .2s; cursor: pointer; min-width: 0; }
+    .hc:hover { transform: translateY(-3px); box-shadow: var(--shadow-float); }
+    .hc-t { font-size: 15px; font-weight: 800; margin-top: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .cnt3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .cnt3 > div { background: var(--surface-2); border-radius: 14px; padding: 9px 11px; }
+    .cnt3 b { font-family: var(--font-num); font-size: 20px; font-weight: 800; display: block; line-height: 1.2; }
+    .cnt3 b small { font-size: 11px; color: var(--ink-3); font-weight: 700; margin-left: 1px; }
+    .live { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: blink 1.4s ease-in-out infinite; }
+    .tno { width: 38px; height: 38px; border-radius: 13px; display: grid; place-items: center; background: var(--plum-100); color: var(--plum-900); font-family: var(--font-num); font-weight: 900; font-size: 17px; flex: none; }
+    .mrow { display: flex; align-items: center; gap: 10px; padding: 7px 0; min-width: 0; }
+    .mrow + .mrow { border-top: 1px solid var(--line); }
+    .mrow .meta { flex: 1; min-width: 0; }
+    .mrow .meta b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mrow .meta span { display: block; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mrow.drag { background: var(--surface-2); border-radius: 12px; padding: 7px 8px; margin: 0 -8px; box-shadow: var(--shadow-float); transform: rotate(-1deg); }
+    .bulk { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: var(--accent-soft); margin-bottom: 10px; font-size: 13px; }
+    .qcard { background: var(--surface-2); border-radius: 18px; padding: 14px 16px; }
+    .qcard + .qcard { margin-top: 10px; }
+    .qcard.edit { background: var(--surface); box-shadow: 0 0 0 2px var(--plum-300); }
+    .qopt { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: var(--surface-2); font-size: 13px; }
+    .qopt + .qopt { margin-top: 6px; }
+    .handle { color: var(--ink-4); cursor: grab; letter-spacing: -2px; font-weight: 900; }
+    .ta { border-radius: 16px; background: var(--surface-2); padding: 14px 16px; font-size: 13px; line-height: 1.75; color: var(--ink); min-height: 110px; position: relative; }
+    .ta .counter { position: absolute; right: 14px; bottom: 10px; font-size: 11px; font-weight: 700; color: var(--ink-3); font-family: var(--font-num); }
+    .ta.ph { color: var(--ink-4); }
+    .pv { background: var(--surface-2); border-radius: 22px; padding: 18px; }
+    .pv .pq { background: var(--surface); border-radius: 16px; padding: 12px 14px; margin-top: 10px; font-size: 12.5px; }
+    .pv .pq .o { display: flex; align-items: center; gap: 8px; margin-top: 7px; color: var(--ink-2); }
+    .fun { display: grid; gap: 8px; }
+    .fun .f { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font-size: 12.5px; }
+    .fun .f .bar { grid-column: 1 / -1; margin: 0; }
+    .hbar { display: grid; grid-template-columns: 30px 1fr 36px; gap: 10px; align-items: center; font-size: 12px; }
+    .hbar + .hbar { margin-top: 7px; }
+    .hbar .bar { margin: 0; }
+  
+    /* ---- 受付 kiosk（iPad 横） ---- */
+    .web.kiosk { width: 1180px; height: 820px; border-radius: 40px; display: flex; flex-direction: column; padding: 24px 30px; gap: 18px;
+      box-shadow: 0 0 0 12px #111014, 0 0 0 13px #2a2830, 0 30px 60px -20px rgba(40, 20, 70, .35); }
+    .k-top { display: flex; align-items: center; gap: 14px; }
+    .k-top .logo { width: 44px; height: 44px; border-radius: 15px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; font-size: 18px; }
+    .k-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
+    .k-search { height: 78px; border-radius: 26px; background: var(--surface); display: flex; align-items: center; gap: 14px; padding: 0 26px; font-size: 26px; font-weight: 700; color: var(--ink); }
+    .k-search.ph { color: var(--ink-4); font-weight: 500; }
+    .k-search .caret { width: 2px; height: 32px; background: var(--plum-700); animation: blink 1s steps(1) infinite; margin-left: -10px; }
+    .k-res { background: var(--surface); border-radius: 24px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; }
+    .k-res + .k-res { margin-top: 10px; }
+    .k-res .nm { font-size: 22px; font-weight: 800; }
+    .k-arrive { height: 60px; padding: 0 30px; border-radius: 999px; background: var(--ink); color: var(--bg); font-size: 18px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; margin-left: auto; transition: transform .15s var(--ease); }
+    .k-arrive:active { transform: scale(.95); }
+    .k-stream { background: color-mix(in srgb, var(--surface) 60%, transparent); border-radius: 28px; padding: 18px; overflow: hidden; display: flex; flex-direction: column; }
+    .k-row { display: flex; align-items: center; gap: 12px; padding: 10px 6px; }
+    .k-row + .k-row { border-top: 1px solid var(--line); }
+    .k-row time { font-family: var(--font-num); font-weight: 800; font-size: 14px; width: 46px; color: var(--ink-2); }
+    .k-row.new { background: var(--accent-soft); border-radius: 16px; padding: 10px 10px; animation: rise .6s var(--ease) both; }
+    .k-banner { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 20px; background: var(--coral-soft); color: var(--ink); }
+  
+    /* ---- 小组件（沿用 widgets.html 毛玻璃） ---- */
+    .wall { position: absolute; inset: 0; background:
+        radial-gradient(260px 260px at 15% 20%, #d9c9f2, transparent 70%),
+        radial-gradient(300px 300px at 90% 35%, #f6cbd8, transparent 70%),
+        radial-gradient(320px 320px at 40% 85%, #c9dcf4, transparent 70%),
+        linear-gradient(160deg, #efe7f6, #f8e9ee 50%, #e5edf8); }
+    [data-theme="dark"] .wall { background:
+        radial-gradient(260px 260px at 15% 20%, #4b3d6b, transparent 70%),
+        radial-gradient(300px 300px at 90% 35%, #5e3646, transparent 70%),
+        radial-gradient(320px 320px at 40% 85%, #2c3f5e, transparent 70%),
+        linear-gradient(160deg, #1d1a26, #241b22 50%, #161c27); }
+    .hs { position: absolute; inset: 64px 13px 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px 0; align-content: start; }
+    .w { border-radius: 24px; padding: 15px; color: #2a2433; position: relative;
+         background: rgba(255,255,255,.42); backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5);
+         border: 1px solid rgba(255,255,255,.55); box-shadow: 0 8px 24px -14px rgba(60,40,90,.35); }
+    [data-theme="dark"] .w { background: rgba(40,36,48,.45); border-color: rgba(255,255,255,.1); color: #f1edf5; }
+    .w .lb { font-size: 11px; font-weight: 700; opacity: .62; }
+    .w { overflow: hidden; } /* 审计：与 widgets.html 同源的迷你轨道需要裁切 */
+    /* NAV-V3：小组件与 widgets.html 同源（今日やること / 人脈 + 最近の人 / 秘書から），不再画轨道 */
+    .wck { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .45; flex: none; }
+    .wppl { display: flex; gap: 6px; margin-top: 10px; }
+    .wppl > div { flex: 1; min-width: 0; text-align: center; font-size: 10.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .wppl .av { margin: 0 auto 3px; width: 30px; height: 30px; font-size: 12px; }
+    .wsec { display: flex; gap: 9px; align-items: flex-start; font-size: 12px; line-height: 1.45; }
+    .wsec + .wsec { margin-top: 9px; padding-top: 9px; border-top: 1px solid rgba(120,100,150,.16); }
+    .wsec small { display: block; font-size: 10.5px; opacity: .65; }
+    .w.s { grid-column: span 2; width: 170px; height: 170px; justify-self: center; }
+    .w.m { grid-column: span 4; width: 364px; height: 170px; justify-self: center; }
+    .w .n { font-family: var(--font-num); font-weight: 800; letter-spacing: -.02em; }
+    .w .bar { background: rgba(120,100,150,.18); }
+    .happ { grid-column: span 1; display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 11px; color: #2a2433; font-weight: 500; }
+    [data-theme="dark"] .happ { color: #eee; }
+    .happ i { width: 62px; height: 62px; border-radius: 16px; display: grid; place-items: center; font-size: 28px; font-style: normal; background: rgba(255,255,255,.7); }
+    .dock { position: absolute; left: 12px; right: 12px; bottom: 22px; height: 92px; border-radius: 34px; background: rgba(255,255,255,.35); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); display: flex; justify-content: space-around; align-items: center; }
+    [data-theme="dark"] .dock { background: rgba(50,46,58,.4); }
+    .dock i { width: 62px; height: 62px; border-radius: 16px; display: grid; place-items: center; font-size: 28px; font-style: normal; background: rgba(255,255,255,.7); }
+    .wrow { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .jig { animation: jig .28s ease-in-out infinite alternate; }
+    .jig:nth-child(2n) { animation-delay: .14s; }
+    .minus { position: absolute; top: -7px; left: -7px; width: 22px; height: 22px; border-radius: 50%; background: rgba(120,115,130,.75); color: #fff; display: grid; place-items: center; font-weight: 900; font-size: 15px; line-height: 1; z-index: 3; }
+    .blurred { filter: blur(6px); opacity: .55; }
+    .ctx { position: absolute; z-index: 10; width: 250px; border-radius: 16px; overflow: hidden; background: rgba(250,248,252,.78); backdrop-filter: blur(30px) saturate(1.6); -webkit-backdrop-filter: blur(30px) saturate(1.6); color: #2a2433; box-shadow: 0 20px 40px -16px rgba(40,20,70,.4); }
+    [data-theme="dark"] .ctx { background: rgba(48,44,56,.78); color: #f1edf5; }
+    .ctx div { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; font-size: 15px; }
+    .ctx div + div { border-top: .5px solid rgba(120,100,150,.25); }
+    .ctx .del { color: var(--coral-text); }
+    .wcfg { position: absolute; left: 24px; right: 24px; z-index: 10; border-radius: 26px; padding: 16px; background: rgba(250,248,252,.8); backdrop-filter: blur(30px) saturate(1.6); -webkit-backdrop-filter: blur(30px) saturate(1.6); color: #2a2433; }
+    [data-theme="dark"] .wcfg { background: rgba(44,40,52,.8); color: #f1edf5; }
+    .wcfg .grp { background: rgba(255,255,255,.6); border-radius: 14px; overflow: hidden; margin-top: 6px; }
+    [data-theme="dark"] .wcfg .grp { background: rgba(255,255,255,.06); }
+    .wcfg .opt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-size: 14px; }
+    .wcfg .opt + .opt { border-top: .5px solid rgba(120,100,150,.2); }
+    .wcfg .opt.dis { opacity: .4; }
+    .wcfg .ck { margin-left: auto; color: var(--plum-700); }
+    .wcfg .gh { font-size: 11.5px; font-weight: 700; opacity: .6; margin: 12px 4px 0; }
+    .lock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; color: #2a2433; }
+    [data-theme="dark"] .lock { color: #f1edf5; }
+    .lock .date { font-size: 18px; font-weight: 700; opacity: .8; }
+    .lock .time { font-family: var(--font-num); font-size: 92px; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
+    .notif { position: absolute; left: 12px; right: 12px; display: flex; gap: 10px; font-size: 12.5px; }   /* 外观来自 kit .pn */
+    .nacts { position: absolute; left: 12px; right: 12px; border-radius: 16px; overflow: hidden; background: var(--glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid var(--glass-line); color: var(--ink); }
+    .nacts div { padding: 12px 16px; font-size: 14.5px; display: flex; justify-content: space-between; }
+    .nacts div + div { border-top: 1px solid var(--line); }
+  
+    /* ---- NFC ---- */
+    .nfc-wave { position: relative; width: 230px; height: 230px; margin: 26px auto 10px; display: grid; place-items: center; }
+    .nfc-wave i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--plum-300); animation: ripple 2.4s var(--ease) infinite; opacity: 0; }
+    .nfc-wave i:nth-child(2) { animation-delay: .8s; } .nfc-wave i:nth-child(3) { animation-delay: 1.6s; }
+    .nfc-wave .core { width: 100px; height: 100px; border-radius: 32px; background: var(--surface); display: grid; place-items: center; font-size: 46px; position: relative; z-index: 1; box-shadow: var(--shadow-float); animation: bob 2.4s ease-in-out infinite; }
+    .okc { width: 64px; height: 64px; border-radius: 50%; background: var(--mac-teal); color: var(--mac-teal-ink); display: grid; place-items: center; margin: 6px auto 0; animation: pop .6s var(--ease) both; }
+    .okc svg.i { width: 32px; height: 32px; stroke-width: 2.4; }
+    .setrow { display: flex; align-items: center; gap: 12px; padding: 13px 0; }
+    .setrow + .setrow { border-top: 1px solid var(--line); }
+  
+    /* ---- 响应式画框 ---- */
+    .web.w1024 { width: 1024px; height: 880px; grid-template-columns: 72px 1fr; }
+    .w1024 .side a { width: 48px; padding: 12px 0; font-size: 0; gap: 0; }
+    .w1024 .side .logo { margin-bottom: 14px; }
+    .w1024 .main { padding: 22px 26px 40px; }
+    .w1024 .rdrawer { width: 380px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .w1024 .rdrawer h4 { font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .side a.hov { background: var(--surface-2); color: var(--ink-2); } /* 2026-10-12 用户拍板：tooltip 画板补上悬停态（同 kit .side a:hover） */
+    .side-tip { position: absolute; left: 66px; top: 0; padding: 5px 10px; border-radius: 9px; background: var(--ink); color: var(--bg); font-size: 11.5px; font-weight: 700; white-space: nowrap; z-index: 5; }
+    .cnum { min-width: 18px; height: 18px; border-radius: 9px; background: var(--coral); color: var(--surface); font-size: 10.5px; font-weight: 800; display: inline-grid; place-items: center; padding: 0 5px; }
+    .mweb .scroll { padding-bottom: 200px; }
+    .mweb .tabbar { bottom: 100px; }
+    .sbar { position: absolute; left: 0; right: 0; bottom: 0; height: 92px; z-index: 34; background: var(--glass); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border-top: 1px solid var(--line); padding: 10px 14px 0; display: flex; gap: 10px; align-items: flex-start; }
+    .sbar .url { flex: 1; height: 42px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+    .sbar .ub { width: 42px; height: 42px; display: grid; place-items: center; color: var(--ink-2); font-size: 14px; font-weight: 700; }
+    .mw-head { display: flex; align-items: center; gap: 8px; padding: 6px 0 14px; }
+    .mw-head .logo { width: 34px; height: 34px; border-radius: 11px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+  
+    /* ---- 长文案规范 ---- */
+    .web.spec { height: auto; display: block; padding: 30px; width: 1440px; }
+    .clamp1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .jp { word-break: auto-phrase; line-break: strict; }
+    .ng { position: relative; }
+    .okng { font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
+    .okng.ok { background: var(--mac-teal); color: var(--mac-teal-ink); } .okng.bad { background: var(--coral-soft); color: var(--coral); }
+    .tipw { position: relative; display: inline-flex; max-width: 100%; }
+    .tip-b { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 6; width: max-content; max-width: 280px; padding: 8px 11px; border-radius: 11px; background: var(--ink); color: var(--bg); font-size: 11.5px; font-weight: 600; line-height: 1.55; white-space: normal; display: none; }
+    .tip-b::after { content: ""; position: absolute; left: 18px; top: 100%; border: 6px solid transparent; border-top-color: var(--ink); }
+    .tipw:hover .tip-b, .tip-b.show { display: block; }
+    .rule th, .rule td { font-size: 12.5px; }
+    .dyn .scroll { font-size: 17px; }
+    .dyn-tab button { font-size: 0; gap: 0; }
+    .dyn-tab button svg.i { width: 26px; height: 26px; }
+    /* V2KIT-CSS-BEGIN */
+    /* ===== プラン v2 口径（2026-10-07）：视觉与数字与 b9-import-plan-v2.html 一致；类名加 v2 前缀避免与本页私有类冲突 ===== */
+    .v2bar { display: flex; gap: 3px; height: 14px; position: relative; margin-top: 18px; }
+    .v2bar.thin { height: 8px; gap: 2px; margin-top: 12px; }
+    .v2bar .sg { position: relative; border-radius: 5px; background: var(--surface-3); overflow: hidden; min-width: 6px; }
+    .v2bar.thin .sg { border-radius: 3px; min-width: 3px; }
+    .v2bar .sg > b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--plum-700); animation: v2grow 1.2s var(--ease) both; }
+    .v2bar .sg.sk, .v2sw.hatch, .v2mb.sk { background: repeating-linear-gradient(135deg, var(--plum-300) 0 2px, var(--plum-100) 2px 6px); }
+    .v2bar .sg.bonus { background: var(--rose-500); }
+    .v2bar .m100 { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; background: var(--ink-2); border-radius: 1px; z-index: 2; }
+    .v2bar .m100 em { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 9.5px; font-weight: 800; color: var(--ink-2); font-family: var(--font-num); white-space: nowrap; }
+    .v2slbl { display: flex; gap: 3px; margin-top: 6px; }
+    .v2slbl span { font-size: 10px; color: var(--ink-3); font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 6px; }
+    .v2lg { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 12px; font-size: 11px; color: var(--ink-2); font-weight: 600; }
+    .v2lg span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+    .v2sw { width: 14px; height: 9px; border-radius: 3px; background: var(--surface-3); display: inline-block; flex: none; }
+    .v2sw.solid { background: var(--plum-700); } .v2sw.bonus { background: var(--rose-500); }
+    /* 人物类型行 */
+    .v2prow { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+    .v2prow + .v2prow { border-top: 1px solid var(--line); }
+    .v2prow .pm { flex: 1; min-width: 0; }
+    .v2prow .pm b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .v2prow .pm .chips { margin-top: 4px; flex-wrap: nowrap; overflow: hidden; }
+    .v2prow .pe { width: 76px; flex: none; text-align: right; }
+    .v2pp { font-family: var(--font-num); font-weight: 800; font-size: 15px; white-space: nowrap; }
+    .v2pp small { font-size: 11px; color: var(--ink-3); font-weight: 700; }
+    .v2mb { height: 5px; border-radius: 3px; background: var(--surface-3); margin-top: 4px; overflow: hidden; position: relative; display: flex; }
+    .v2mb > b { height: 100%; background: var(--plum-700); animation: v2grow 1.2s var(--ease) both; }
+    .v2mb > b.bo { background: var(--rose-500); }
+    /* Step 竖排 + 人物类型卡 */
+    .v2step { position: relative; padding-left: 40px; }
+    .v2step + .v2step { margin-top: 16px; }
+    .v2step::before { content: ""; position: absolute; left: 13px; top: 32px; bottom: -16px; width: 2px; background: var(--surface-3); border-radius: 1px; }
+    .v2step:last-child::before { display: none; }
+    .v2step .sn { position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 800; font-size: 12.5px; font-family: var(--font-num); }
+    .v2step .st { font-size: 14.5px; font-weight: 800; line-height: 1.4; padding-top: 4px; display: flex; gap: 8px; align-items: flex-start; }
+    .v2step .st > span:first-child { flex: 1; }
+    .v2pcard { background: var(--surface); border-radius: 18px; padding: 12px 14px; margin-top: 8px; }
+    .card .v2pcard { background: var(--surface-2); } .card .v2pcard .pts > div { background: var(--surface); }
+    .v2pcard .row b { font-size: 13.5px; }
+    .v2pcard .pts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+    .v2pcard .pts > div { background: var(--surface-2); border-radius: 12px; padding: 6px 8px; }
+    .v2pcard .pts b { font-family: var(--font-num); font-size: 16px; font-weight: 800; display: block; line-height: 1.2; }
+    .v2snum { width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 800; font-size: 12.5px; font-family: var(--font-num); flex: none; }
+    .v2ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* 首页：人脉首卡 */
+    .v2avs { display: flex; align-items: center; }
+    .v2avs .av { border: 2px solid var(--surface); margin-left: -8px; } .v2avs .av:first-child { margin-left: 0; }
+    .v2avs .more { margin-left: 6px; font-family: var(--font-num); font-weight: 800; font-size: 12px; color: var(--ink-2); background: var(--surface-2); border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
+    .v2split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .v2split > div { background: var(--surface-2); border-radius: 14px; padding: 9px 11px; min-width: 0; }
+    .v2split b { font-family: var(--font-num); font-size: 19px; font-weight: 800; display: block; line-height: 1.2; }
+    .v2split .bar { margin: 6px 0 0; }
+    .v2spark { display: block; overflow: visible; }
+    .v2spark .ln { fill: none; stroke: var(--plum-700); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .v2spark .ar { fill: var(--plum-100); opacity: .8; stroke: none; }
+    .v2spark .pt { fill: var(--plum-700); }
+    .v2go { display: flex; align-items: center; gap: 4px; margin-top: 12px; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+    .v2chance { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--mac-lav); color: var(--mac-lav-ink); font-size: 11.5px; font-weight: 800; white-space: nowrap; }
+    .v2today { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 16px; background: var(--surface-2); }
+    .v2today .meta { flex: 1; min-width: 0; }
+    .v2today .meta b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .v2today .meta span { display: block; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .v2plus { font-family: var(--font-num); font-weight: 900; font-size: 15px; color: var(--plum-700); white-space: nowrap; flex: none; }
+    /* V2KIT-CSS-END */
+    .dmenu { position: absolute; z-index: 6; width: 220px; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-float); padding: 6px; border: 1px solid var(--line); }
+    .dmenu > div { padding: 8px 10px; border-radius: 10px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .web.kiosk .camv { position: absolute; right: 24px; top: 96px; bottom: 24px; width: 440px; border-radius: 28px; background: #0F0E12; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: #F7F5F7; }
+    .camv .vf { width: 240px; height: 240px; border-radius: 26px; box-shadow: 0 0 0 3px var(--plum-300); position: relative; }
+  }
 </style>
 </head>
 <body>
@@ -7140,6 +7409,631 @@ g += WP('W-R27-20u-1024 イベント詳細 · 未登録 · 参加者 多 · 1024
 g += WP('W-R27-20u-390 イベント詳細 · 未登録 · 参加者 多 · 390', 'many', () => ({ body: detailUnregA('many'), ov: ctaBar }), [['.k-pgate', 0, '同 A-R27-16u：参加者页签只给人数 + 占位卡；二级页无胶囊，底部操作条在 Safari 栏之上（§32）']], 'A-R27-16u · W-R27-20-390 · 补画 2026-10-16', 390);
 g += pubBoard('W-R26-41u 未ログイン · イベント詳細 · 参加者 · 1440', pub(pubDetailU()) + pub(pubDetailU(), 'dark'), ['未登录详情（W-R26-41）的参加者区：只给「参加予定 128人」（未登录不显示知り合い），名单换成占位卡，按钮「ログインして参加登録」']);
 __g7out(group('g7', g));
+})();
+
+/* ===================== 补画 · 2026-10-16：主催 R17（sprints/host/DESIGN.md §10 B，决定表 §38）=====================
+   b6-host-polish.html 的 helper 原样副本包在 IIFE 里；新画板只加在文件末尾。 */
+const __g8out = s => { h += s; };
+(() => {
+const h = '';
+const HV3 = B12X.HV3;
+/* V2KIT-JS-BEGIN */
+/* ===== プラン v2 口径（2026-10-07）：数据与计分与 b9-import-plan-v2.html 相同（满点 100 · 不封顶 · 跳过=满额斜纹 · 超目标半分）===== */
+const V2 = (() => {
+  const PER = {
+    cfo: { n: 'CFO 経験者', s: 'CFO', emo: '📊', c: 'teal', w: 10, tgt: 1, unit: 10, step: 1, cand: 1 },
+    ent: { n: '調達経験のある起業家', s: '起業家', emo: '🚀', c: 'apricot', w: 15, tgt: 5, unit: 3, step: 2, cand: 2 },
+    ang: { n: 'エンジェル投資家', s: 'エンジェル', emo: '🪽', c: 'pink', w: 10, tgt: 2, unit: 5, step: 2, cand: 1 },
+    vc: { n: 'VC', s: 'VC', emo: '💼', c: 'lav', w: 30, tgt: 3, unit: 10, step: 3, cand: 4 },
+    cvc: { n: 'CVC 担当者', s: 'CVC', emo: '🏢', c: 'blue', w: 15, tgt: 3, unit: 5, step: 3, cand: 0 },
+    law: { n: '弁護士（投資契約）', s: '弁護士', emo: '⚖️', c: 'teal', w: 10, tgt: 1, unit: 10, step: 4, cand: 1 },
+    ev: { n: 'イベント', s: 'イベント', emo: '🎟️', c: 'apricot', w: 10, tgt: 2, unit: 5, step: 0, cand: 3, ev: true },
+  };
+  const ORDER = ['cfo', 'ent', 'ang', 'vc', 'cvc', 'law', 'ev'];
+  const ST = {
+    s0: { cfo: 0, ent: 0, ang: 0, vc: 0, cvc: 0, law: 0, ev: 0 },
+    s46: { cfo: 0, ent: 2, ang: 0, vc: 2, cvc: 0, law: 'skip', ev: 2 },
+  };
+  const STEPS = [
+    [1, 'ピッチと事業計画を固める', '投資家に会う前に、数字と物語の穴を潰しておくと、1回の面談で進む距離が伸びます。', ['cfo'], '同規模のシリーズA 事例 · あなたの目標「3億円」から逆算'],
+    [2, '調達経験のある先輩・エンジェルに相談', '最近同じ規模を調達した人から、VC の選び方・相場観・紹介ルートを得られます。', ['ent', 'ang'], '紹介経由の面談は進みやすい傾向（一般的な調達の進め方）'],
+    [3, 'VC と接点を持つ', 'リード候補を 3 社以上、並行で。事業会社の CVC は条件の選択肢を増やします。', ['vc', 'cvc'], 'シリーズA の典型的な投資家構成 · あなたの業種（製造業向け SaaS）'],
+    [4, 'DD・条件交渉', '投資契約・種類株式の条件は後から変えにくいので、署名前に専門家の目を入れます。', ['law'], '投資契約で論点になりやすい条項（優先清算・希薄化防止）'],
+    [5, 'クロージング', '新しく会う人はいません。Step 3・4 の相手と着地させます。', [], ''],
+  ];
+  const pts = (k, n) => { const p = PER[k]; if (n === 'skip') return { base: p.w, bonus: 0, skip: true, n: 0 }; return { base: Math.min(n, p.tgt) * p.unit, bonus: Math.max(0, n - p.tgt) * p.unit / 2, skip: false, n }; };
+  const total = s => ORDER.reduce((a, k) => { const r = pts(k, ST[s][k]); return a + r.base + r.bonus; }, 0);
+  const bonusOf = s => ORDER.reduce((a, k) => a + pts(k, ST[s][k]).bonus, 0);
+  const skipOf = s => ORDER.reduce((a, k) => { const r = pts(k, ST[s][k]); return a + (r.skip ? r.base : 0); }, 0);
+  const talkOf = s => total(s) - bonusOf(s) - skipOf(s);
+  const fmt = v => Number.isInteger(v) ? v : v.toFixed(1);
+  /* 分数构成条：实色 = 话出来的分 · 斜纹 = 习熟跳过 · 豆沙 = 超目标后的半分；o.thin 细条（首页/小组件），o.labels 类型名 */
+  const sbar = (s, o = {}) => {
+    const bon = bonusOf(s), scale = Math.max(100, 100 + bon);
+    const segs = ORDER.map(k => { const p = PER[k], r = pts(k, ST[s][k]); return `<div class="sg ${r.skip ? 'sk' : ''}" style="flex:${p.w}">${r.skip ? '' : `<b style="width:${r.base / p.w * 100}%"></b>`}</div>`; }).join('') + (bon ? `<div class="sg bonus" style="flex:${bon}"></div>` : '');
+    const mark = bon ? `<span class="m100" style="left:${100 / scale * 100}%"><em>満点 100</em></span>` : '';
+    const lbls = o.labels ? `<div class="v2slbl">${ORDER.map(k => `<span style="flex:${PER[k].w}">${PER[k].s}</span>`).join('')}${bon ? `<span style="flex:${bon};color:var(--rose-700)">+${fmt(bon)}</span>` : ''}</div>` : '';
+    return `<div class="v2bar ${o.thin ? 'thin' : ''} ${o.cls || ''}" ${o.style ? `style="${o.style}"` : ''}>${segs}${mark}</div>${lbls}`;
+  };
+  const legend = (full = true, cls = '') => `<div class="v2lg ${cls}"><span><i class="v2sw solid"></i>話して得た点</span><span><i class="v2sw hatch"></i>習熟済み（スキップ）</span>${full ? '<span><i class="v2sw bonus"></i>目標超えの加点（半分）</span>' : ''}<span><i class="v2sw"></i>まだの点</span></div>`;
+  const mbar = (k, s) => { const p = PER[k], r = pts(k, ST[s][k]); if (r.skip) return '<div class="v2mb sk"></div>'; const tot = p.w + r.bonus; return `<div class="v2mb"><b style="width:${r.base / tot * 100}%"></b>${r.bonus ? `<b class="bo" style="width:${r.bonus / tot * 100}%;margin-left:2px"></b>` : ''}</div>`; };
+  const pchips = (k, s) => {
+    const p = PER[k], r = pts(k, ST[s][k]), u = p.ev ? '回' : '人';
+    if (r.skip) return '<span class="chip">習熟済み · スキップ</span>';
+    const a = [`<span class="chip ${r.n >= p.tgt ? 'teal' : ''}">${r.n} / ${p.tgt}${u}${r.n >= p.tgt ? ' 達成' : ''}</span>`];
+    if (r.n < p.tgt) a.push(p.cand ? `<span class="chip lav">${p.ev ? `おすすめ ${p.cand}件` : `候補 ${p.cand}人`}</span>` : '<span class="chip">人脈にいません</span>');
+    return a.join('');
+  };
+  const prow = (k, s, cls = '') => { const p = PER[k], r = pts(k, ST[s][k]); return `<div class="v2prow ${cls}"><span class="emo sm ${p.c}">${p.emo}</span><div class="pm"><b>${p.n}</b><div class="chips">${pchips(k, s)}</div></div><div class="pe"><div class="v2pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></div>${mbar(k, s)}</div></div>`; };
+  const stepBlock = (st, s, o = {}) => { const [n, t, why, ks, w] = st;
+    return `<div class="v2step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
+      ${ks.length ? ks.map(k => { const p = PER[k], r = pts(k, ST[s][k]); return `<div class="v2pcard ${o.pk === k ? o.pkc : ''}"><div class="row" style="gap:10px"><span class="emo sm ${p.c}">${p.emo}</span><b style="flex:1;min-width:0" class="v2ell">${p.n}</b>${r.skip ? '<span class="chip">習熟済み</span>' : p.cand ? `<span class="chip lav">人脈に ${p.cand}人</span>` : '<span class="chip">人脈にいません</span>'}</div>
+        <div class="pts"><div><span class="lbl">配点</span><b>${p.w}</b></div><div><span class="lbl">獲得</span><b>${fmt(r.base + r.bonus)}</b></div><div><span class="lbl">目標</span><b>${p.tgt}<small style="font-size:11px;color:var(--ink-3)">人</small></b></div></div></div>`; }).join('') : '<div class="ghost-row" style="margin-top:8px">新しく会う人はいません</div>'}</div>`; };
+  const evBlock = (s, cls = '') => { const r = pts('ev', ST[s].ev); return `<div class="card ${cls}" style="background:linear-gradient(135deg,var(--mac-apricot),var(--surface) 70%)"><div class="row" style="gap:10px"><span class="emo sm apricot">🎟️</span><div style="flex:1;min-width:0"><b style="font-size:13.5px">イベント</b><div class="lbl">おすすめに参加 1回 +5 · 2回まで満額、以降は半分</div></div><div class="v2pp">${fmt(r.base + r.bonus)}<small> / 10</small></div></div></div>`; };
+  /* 今日のチャンス（首页第二卡 / 计划页 / 小组件共用文案） */
+  const TODAY = {
+    s0: { plus: 10, t: 'CFO 経験者と話す', d: '伊藤 直子さん（ハルモニア CFO）に、事業計画の壁打ちを提案', tag: 'CFO 経験者 · Step 1', btn: '面談を提案', why: '根拠：伊藤さんは名刺で「CFO」· 面談メモ 2件（関係が近い）· CFO 経験者は 1人で満額 10点' },
+    s46: { plus: 10, t: 'VC パートナーと話す', d: '今夜の CFO Night Tokyo に VC パートナーが 2人来ます', tag: 'VC パートナー · 2 / 3人', btn: '会う準備をする', why: '根拠：CFO Night Tokyo vol.18 の参加者タグ「VC」2名 · VC パートナーは 2 / 3人で未達（1人 10点）' },
+  };
+  /* 首页：头像排 + 每周新增折线（灰紫单色） */
+  const avs = (list, more, size = 'sm') => `<div class="v2avs">${list.map(c => `<div class="av ${size} ${c.c}">${c.i}</div>`).join('')}${more ? `<span class="more">+${more}</span>` : ''}</div>`;
+  const spark = (vals, w = 112, h = 40) => {
+    const mx = Math.max(...vals, 1), st = w / (vals.length - 1);
+    const P = vals.map((v, i) => [+(i * st).toFixed(1), +(h - 3 - (v / mx) * (h - 8)).toFixed(1)]);
+    const d = P.map((p, i) => `${i ? 'L' : 'M'}${p[0]} ${p[1]}`).join(' ');
+    const L = P[P.length - 1];
+    return `<svg class="v2spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path class="ar" d="${d} L${w} ${h} L0 ${h} Z"/><path class="ln" d="${d}"/><circle class="pt" cx="${L[0]}" cy="${L[1]}" r="3.2"/></svg>`;
+  };
+  return { PER, ORDER, ST, STEPS, pts, total, bonusOf, skipOf, talkOf, fmt, sbar, legend, mbar, pchips, prow, stepBlock, evBlock, TODAY, avs, spark };
+})();
+/* V2KIT-JS-END */
+const C = D.contacts, E = D.events, G = D.goals;
+
+/* ============ 示例数据（虚构） ============ */
+const HE = [
+  { n: 'CFO Night Tokyo vol.18', d: '10月7日（水）19:00', place: '渋谷ストリーム', st: '開催中', emo: '🥂', c: 'lav', app: 128, cap: 150, match: 112, chk: 86, note: '受付中 · 残り 42名' },
+  { n: '製造業DX 朝会 #3', d: '10月21日（水）8:00', place: 'ミナトリンク 品川オフィス', st: '開催前', emo: '🏭', c: 'blue', app: 42, cap: 60, match: 0, chk: 0, note: 'マッチング未生成' },
+  { n: '資金調達 実践ラウンドテーブル', d: '11月5日（木）18:30', place: '大手町 Inspired.Lab', st: '開催前', emo: '💰', c: 'pink', app: 18, cap: 30, match: 0, chk: 0, note: '審査待ち 3名' },
+  { n: 'CFO Night Tokyo vol.17', d: '9月9日（水）19:00', place: '渋谷ストリーム', st: '終了', emo: '🥂', c: 'lav', app: 140, cap: 150, match: 131, chk: 118, note: '会後フォロー 61%' },
+  { n: 'Founders Lunch 渋谷 #11', d: '8月27日（木）12:00', place: '渋谷サクラステージ', st: '終了', emo: '🍱', c: 'apricot', app: 24, cap: 24, match: 24, chk: 22, note: '会後フォロー 73%' },
+  { n: '製造業DX 朝会 #2', d: '7月15日（水）8:00', place: 'ミナトリンク 品川オフィス', st: '終了', emo: '🏭', c: 'blue', app: 38, cap: 60, match: 34, chk: 31, note: '会後フォロー 48%' },
+];
+const PP = [
+  ['森田 拓也', '森', 'c3', '東邦テクノロジーズ', '事業開発部 部長', '事業会社'],
+  ['青木 里奈', '青', 'c2', 'グロースリンク・キャピタル', 'プリンシパル', '投資家'],
+  ['松本 隆', '松', 'c5', '松本精機株式会社', '代表取締役', '経営者'],
+  ['井上 さやか', '井', 'c4', 'クラウドレジ株式会社', 'CFO', 'CFO'],
+  ['木村 洋平', '木', 'c1', 'みずほ台ベンチャーズ', 'パートナー', '投資家'],
+  ['林 美穂', '林', 'c2', 'ナレッジフロー株式会社', '経営企画部長', 'CFO'],
+  ['清水 健', '清', 'c3', '東海プレス工業', 'DX推進課 課長', '事業会社'],
+  ['山口 恵', '山', 'c4', '山口会計事務所', '公認会計士', '士業'],
+  ['斎藤 亮', '斎', 'c5', 'Fintory株式会社', '取締役CFO', 'CFO'],
+  ['岡田 真理子', '岡', 'c1', '白金キャピタル', 'ベンチャーパートナー', '投資家'],
+  ['前田 悠', '前', 'c2', 'ロジレス・テック', '代表取締役CEO', '経営者'],
+  ['藤井 誠一', '藤', 'c3', '中京電装株式会社', '経営企画室 室長', '事業会社'],
+  ['後藤 久美', '後', 'c4', '後藤・水野法律事務所', '弁護士', '士業'],
+  ['長谷川 翼', '長', 'c5', 'Seedline株式会社', 'CFO', 'CFO'],
+  ['石川 洋子', '石', 'c1', 'あおば信用金庫', '法人営業部 次長', '金融'],
+  ['近藤 大地', '近', 'c2', 'Kanata Health', 'COO', '経営者'],
+  ['村上 祐介', '村', 'c3', 'オリオン・グロース・パートナーズ', 'アソシエイト', '投資家'],
+  ['坂本 葵', '坂', 'c4', 'リーフラボ株式会社', '管理部長', 'CFO'],
+  ['遠藤 修', '遠', 'c5', '遠藤化成工業', '専務取締役', '事業会社'],
+  ['原田 ひとみ', '原', 'c1', 'ミライ証券', 'IPO支援部', '金融'],
+];
+const TC = { '投資家': 'lav', 'CFO': 'blue', '事業会社': 'teal', '経営者': 'apricot', '士業': 'pink', '金融': '' };
+const STC = { '開催中': 'teal', '開催前': 'blue', '終了': '', '下書き': 'apricot' };
+const av = (p, cls = 'sm') => `<div class="av ${cls} ${p[2]}">${p[1]}</div>`;
+const searchBtn = `<button class="rbtn">${ic('search')}</button>`;
+const backBtn = `<button class="rbtn">${ic('left')}</button>`;
+
+/* ============ 文档壳 ============ */
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+const TAGS = { empty: '新用户空状态', few: '少量数据', many: '大量数据' };
+const board = (label, tag, html, notes, w = 390) => `<div class="board" style="margin-bottom:30px"><div class="board-label">${label}${tag ? `<span class="tag ${TAGS[tag] ? tag : ''}">${TAGS[tag] || tag}</span>` : ''}</div>${html}${notes ? `<ul class="note-list" style="max-width:${w}px;${w > 600 ? 'display:grid;grid-template-columns:repeat(3,1fr)' : ''}">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : ''}</div>`;
+const boards = (arr) => `<div class="boards">${arr.join('')}</div>`;
+
+/* ============ A1 運営センター（Web） ============ */
+const hcard = (e, span = 'span4', anim = true) => { const live = e.st === '開催中', n = v => anim ? num(v) : v;
+  return `<div class="hc ${span}"><div class="row between"><span class="emo ${e.c}">${e.emo}</span><span class="chip ${STC[e.st]}">${live ? '<i class="live"></i>' : ''}${e.st}</span></div>
+  <b class="hc-t">${e.n}</b><div class="lbl clamp1">${e.d} · ${e.place}</div>
+  <div class="cnt3"><div><span class="lbl">申込</span><b>${n(e.app)}<small>/${e.cap}</small></b></div><div><span class="lbl">マッチ</span><b>${e.match ? n(e.match) : '—'}</b></div><div><span class="lbl">受付</span><b>${e.chk ? n(e.chk) : '—'}</b></div></div>
+  ${bar(Math.round(e.app / e.cap * 100), 'thin')}
+  <div class="row between" style="margin-top:auto;padding-top:8px"><span class="lbl">${e.note}</span><button class="btn sm ${live ? 'primary' : ''}">${live ? ic('check', 'sm') + '受付を開く' : '運営画面へ'}</button></div></div>`; };
+function center(s) {
+  const head = mainhead('運営センター', s === 'empty' ? '主催するイベントを、申込から会後まで' : s === 'few' ? '主催イベント 1件' : '主催イベント 6件 · 今月の申込 188名', searchBtn, `<button class="btn">${ic('ticket', 'sm')}共同運営に参加</button><button class="btn accent">${ic('plus', 'sm')}イベントを作成</button>`);
+  if (s === 'empty') return head + `<div class="wgrid">
+    <div class="card span8 guide" style="padding:28px"><div class="lbl">主催者の方へ</div><div style="font-size:24px;font-weight:800;margin:6px 0">最初のイベントを主催しましょう</div><div class="sub">申込フォーム・参加者の審査・テーブル編成・当日受付・会後レポートまで、ここで完結します。</div>
+      <div class="grid3" style="margin-top:20px">${[['1', '申込フォームを作る', '説明文と質問 2〜5問', 'now', '📝'], ['2', '参加者を承認', '先着順 または 審査制', '', '✅'], ['3', 'テーブルを組む', '回答から AI が提案 → あなたが確定', '', '🪑']].map(([n, t, d, st, em]) => `<div class="step ${st}" style="flex-direction:column;align-items:flex-start;margin:0;padding:16px"><div class="row" style="width:100%"><span class="n">${n}</span><span style="margin-left:auto;font-size:22px">${em}</span></div><b style="font-size:14px;margin-top:6px">${t}</b><span class="lbl">${d}</span></div>`).join('')}</div>
+      <div class="row" style="margin-top:20px;gap:10px"><button class="btn primary" style="height:46px">${ic('plus', 'sm')}イベントを作成</button><button class="btn ghost">テンプレートを見る</button></div></div>
+    <div class="span4" style="display:grid;gap:18px">${[['📋', 'apricot', 'テンプレートから', '交流会・勉強会・ラウンドテーブル'], ['🗂️', 'pink', '過去の参加者を取り込む', 'Peatix・connpass の CSV'], ['🎟️', 'teal', '共同運営者として参加', '招待コードを入力']].map(([e, c, t, d]) => `<div class="card row" style="gap:12px;padding:16px"><span class="emo ${c}">${e}</span><div style="min-width:0"><b style="font-size:14px">${t}</b><div class="lbl">${d}</div></div><span style="margin-left:auto" class="muted">${ic('right', 'sm')}</span></div>`).join('')}</div>
+    <div class="span12 card-h" style="margin:6px 0 -6px"><h3>作成するとこう並びます <span class="sample-tag">サンプル</span></h3></div>
+    <div class="span12 wgrid faded">${hcard(HE[0], 'span4', false)}${hcard(HE[1], 'span4', false)}${hcard(HE[3], 'span4', false)}</div></div>`;
+  const many = s === 'many', list = many ? HE : [HE[2]];
+  const kpis = many ? [['開催予定', 3, '今月 2件', ''], ['今月の申込', 188, '+42 先月比', 'd'], ['平均受付率', 84, '%', ''], ['会後フォロー率', 61, '%', 'w']] : [['開催予定', 1, '11月5日', ''], ['申込', 18, '定員 30', ''], ['審査待ち', 3, '名', 'c'], ['共同運営者', 1, '名', '']];
+  return head + `<div class="wgrid">
+    ${kpis.map(([l, v, d, f]) => `<div class="card span3 ${f === 'w' ? '' : ''}" ${f === 'w' ? 'data-why-box' : ''}><div class="row between"><span class="lbl">${l}</span>${f === 'w' ? '<span class="why">?</span>' : ''}</div><div class="big" style="margin-top:8px;${f === 'c' ? 'color:var(--coral)' : ''}">${num(v)}${d === '%' || d === '名' ? `<small>${d}</small>` : ''}</div>${f === 'd' ? `<span class="delta">${d}</span>` : d === '%' || d === '名' ? '' : `<div class="lbl">${d}</div>`}${f === 'w' ? '<div class="why-body" hidden>参加者が Orbit で「フォロー済み」を記録した割合（終了 3件の平均）。送信内容は集計しません。</div>' : ''}</div>`).join('')}
+    ${many ? `<div class="card span12 flat"><div class="row" style="gap:14px;flex-wrap:wrap"><b style="font-size:13.5px">対応が必要なこと</b>${[['🧾', 'apricot', '審査待ち 12名', 'CFO Night vol.18'], ['🪑', 'blue', 'マッチング未生成', '製造業DX 朝会 #3 · あと 14日'], ['🙋', 'pink', 'プロフィール未完了 16名', '定型のお知らせを確認後に通知']].map(([e, c, t, d]) => `<div class="row" style="gap:10px;background:var(--surface);border-radius:16px;padding:10px 14px;flex:1;min-width:240px"><span class="emo sm ${c}">${e}</span><div style="min-width:0"><b style="font-size:13px">${t}</b><div class="lbl clamp1">${d}</div></div><span class="muted" style="margin-left:auto">${ic('right', 'sm')}</span></div>`).join('')}</div></div>` : ''}
+    <div class="span12 row between" style="margin-top:4px"><div class="seg"><button class="on">すべて ${list.length}</button><button>開催前 ${many ? 2 : 1}</button><button>開催中 ${many ? 1 : 0}</button><button>終了 ${many ? 3 : 0}</button></div><div class="row" style="gap:8px"><div class="input" style="width:260px;height:38px">${ic('search', 'sm')}イベント名・会場</div><button class="btn sm">開催日順 ${ic('down', 'sm')}</button></div></div>
+    ${list.map(e => hcard(e)).join('')}
+    ${many ? '' : `<div class="card span8 flat"><div class="card-h"><h3>次にやること</h3><span class="lbl">資金調達 実践ラウンドテーブル</span></div>${[['申込フォームを公開', '10月1日 公開済み', 1], ['審査待ちの 3名を確認', '承認・キャンセル待ち・見送り', 0], ['申込 20名を超えたらマッチングを生成', '現在 18名', 0]].map(([t, d, done]) => `<div class="chk ${done ? 'done' : ''}"><span class="box">${done ? ic('check', 'sm') : ''}</span><div style="flex:1"><b>${t}</b><span>${d}</span></div></div>`).join('')}</div>`}
+  </div>`;
+}
+
+/* ============ 単一イベント運営ヘッダ ============ */
+const coAvs = `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div>`;
+const hostHead = (ev, sub, on, extra = '') => mainhead(ev, sub, backBtn, `${coAvs}<button class="btn">${ic('users', 'sm')}共同運営者</button>${extra}`) +
+  `<div class="htabs">${['概要', 'マッチング', '参加者', '受付', '申込設定', 'レポート'].map(t => `<button class="${t === on ? 'on' : ''}">${t}${t === '参加者' && on !== '参加者' ? '<span class="cnt-b">12</span>' : ''}</button>`).join('')}</div>`;
+function overview() {
+  return hostHead(HE[0].n, '主催 · 本日 19:00 · 渋谷ストリーム', '概要') + `<div class="wgrid">
+    ${[['申込', 128, '定員 150', 'lav'], ['マッチ可能', 112, 'プロフィール完了', 'blue'], ['受付済み', 86, '到着率 67%', 'teal'], ['審査待ち', 12, '当日枠の判断', 'apricot']].map(([l, v, d, c]) => `<div class="card span3"><span class="chip ${c}">${l}</span><div class="big" style="margin-top:10px">${num(v)}</div><div class="lbl">${d}</div></div>`).join('')}
+    <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">直近14日</span></div><div class="bars">${[4, 6, 5, 9, 7, 12, 8, 6, 10, 14, 9, 11, 16, 11].map((h, k) => `<i class="${k === 12 ? 'hi' : ''}" style="height:${h * 6}px"></i>`).join('')}</div></div>
+    <div class="card span4"><div class="card-h"><h3>運営の進捗</h3></div>${[['申込受付', 1], ['マッチング生成', 1], ['グループ確認', 1], ['結果を公開', 0], ['当日受付', 0]].map(([t, d]) => `<div class="chk ${d ? 'done' : ''}"><span class="box">${d ? ic('check', 'sm') : ''}</span><div style="flex:1"><b>${t}</b></div></div>`).join('')}</div></div>`;
+}
+
+/* ============ A2 マッチング ============ */
+const TH = ['資本政策 × 投資家', '製造業DX × 資金調達', '財務チームづくり', '上場準備の実務', 'CVC との協業', '地域金融 × スタートアップ'];
+const members = (k, n = 5) => Array.from({ length: n }, (_, j) => PP[(k * 3 + j * 4) % 20]);
+const tcard = (k, { open = false, warn = false, drag = false, n = 5, span = 'span4' } = {}) => `<div class="card ${span} tcard" data-why-box><div class="row between"><div class="row" style="gap:10px;min-width:0"><span class="tno">${'ABCDEF'[k]}</span><div style="min-width:0"><b class="clamp1" style="display:block">${TH[k]}</b><div class="lbl">テーブル ${'ABCDEF'[k]} · ${n}名</div></div></div><div class="row" style="gap:6px">${warn ? '<span class="chip coral">欠席連絡 1名</span>' : ''}<button class="lbtn">${ic('more', 'sm')}</button></div></div>
+  <div style="margin-top:8px">${members(k, n).map((p, j) => `<div class="mrow ${drag && j === 2 ? 'drag' : ''}"><span class="handle">⋮⋮</span>${av(p)}<div class="meta"><b>${p[0]}</b><span>${p[3]} · ${p[4]}</span></div><span class="chip ${TC[p[5]]}">${p[5]}</span></div>`).join('')}</div>
+  <div class="row" style="margin-top:auto;padding-top:10px;gap:6px"><span class="lbl">なぜ同じテーブル？</span><span class="why">?</span><span class="lbl" style="margin-left:auto">${ic('refresh', 'sm')}</span></div>
+  <div class="why-body" ${open ? '' : 'hidden'}>申込回答で 5名中 4名が「${TH[k].split(' × ')[0]}」を選択。投資家 1名・CFO 2名・事業会社 1名で立場が偏らない構成です。第1ラウンドで同席した組み合わせはありません。</div></div>`;
+function matching(s) {
+  const ev = s === 'few' ? HE[2] : s === 'empty' ? HE[1] : HE[0];
+  const head = hostHead(ev.n, `主催 · ${ev.d} · ${ev.place}`, 'マッチング');
+  if (s === 'empty') return head + `<div class="wgrid">
+    <div class="card span8 guide" style="padding:28px"><div class="row" style="gap:16px"><span class="emo lav" style="width:56px;height:56px;font-size:28px">🪑</span><div><div style="font-size:22px;font-weight:800">まだマッチングを生成していません</div><div class="sub">申込回答とプロフィールから、テーブルとラウンドの案を作ります。公開するまで参加者には表示されません。</div></div></div>
+      <div style="margin-top:18px">${[['申込 42名', '生成に必要な 20名を超えています', 1], ['プロフィール完了 30 / 42名', '未完了の 12名は「その他」枠で配置されます', 0], ['条件の確認', '下のカードで変更できます', 1]].map(([t, d, ok]) => `<div class="chk ${ok ? '' : ''}"><span class="box" style="${ok ? 'background:var(--ok);border-color:var(--ok)' : 'border-color:var(--coral)'}">${ok ? ic('check', 'sm') : ''}</span><div style="flex:1"><b>${t}</b><span>${d}</span></div>${ok ? '' : '<button class="btn sm">リマインドを確認</button>'}</div>`).join('')}</div>
+      <div class="row" style="margin-top:16px;gap:10px"><button class="btn primary" style="height:46px">${ic('sparkle', 'sm')}マッチングを生成</button><span class="lbl">生成は 1イベント 3回まで · 所要 約30秒</span></div></div>
+    <div class="card span4"><div class="card-h"><h3>編成の条件</h3></div>${[['1テーブルの人数', '5名'], ['ラウンド数', '2'], ['同じ会社は別テーブル', 'tg'], ['前回同席した人は避ける', 'tg'], ['各テーブルに投資家 1名以上', 'tg0']].map(([l, v]) => `<div class="setrow"><span style="flex:1;font-size:13px">${l}</span>${v.startsWith('tg') ? `<span class="tgl ${v === 'tg' ? 'on' : ''}"></span>` : `<span class="chip">${v}</span>`}</div>`).join('')}</div>
+    <div class="span12 card-h" style="margin:4px 0 -6px"><h3>生成されるとこう見えます <span class="sample-tag">サンプル</span></h3></div>
+    <div class="span12 wgrid faded">${tcard(0)}${tcard(1)}${tcard(2)}</div></div>`;
+  const many = s === 'many';
+  return head + `<div class="wgrid">
+    <div class="card span12" style="padding:16px 20px"><div class="row" style="gap:14px;flex-wrap:wrap">
+      <div class="seg"><button class="on">第1ラウンド 19:20–19:50</button><button>第2ラウンド 20:00–20:30</button></div>
+      <span class="chip apricot">下書き · 未公開</span>
+      <span class="lbl">${many ? '112名 · 22テーブル · 1卓 5名' : '18名 · 4テーブル · 1卓 4〜5名'}</span>
+      <div class="row" style="margin-left:auto;gap:8px"><button class="btn sm">${ic('sliders', 'sm')}条件</button><button class="btn sm">${ic('refresh', 'sm')}再生成<span class="lbl" style="margin-left:2px">残り 2回</span></button><button class="btn sm primary">${ic('share', 'sm')}公開する</button></div></div>
+      <div class="chips" style="margin-top:12px"><span class="chip">同じ会社は別テーブル</span><span class="chip">ラウンド間で同席なし</span><span class="chip">各卓に投資家 1名以上</span>${many ? '<span class="chip coral">未配置 3名</span>' : ''}</div></div>
+    ${many ? `${tcard(0, { open: true })}${tcard(1, { warn: true, drag: true })}${tcard(2)}${tcard(3)}${tcard(4)}${tcard(5)}
+      <div class="card span12 flat row" style="gap:12px"><span class="emo apricot">🧩</span><div style="flex:1"><b>未配置の 3名</b><div class="lbl">昨日以降に承認した方です。空きのあるテーブルへ入れるか、当日受付で割り当てます</div></div><button class="btn">空き席に入れる</button><button class="btn ghost">残り 16テーブルを表示</button></div>`
+      : `${tcard(0, { n: 5, span: 'span6' })}${tcard(1, { n: 5, span: 'span6', open: true })}${tcard(2, { n: 4, span: 'span6' })}${tcard(3, { n: 4, span: 'span6' })}`}</div>`;
+}
+const publishModal = `<div class="overlay"></div><div class="modal wmodal w480">
+  <span class="emo lav">📣</span><div style="font-size:19px;font-weight:800;margin-top:12px">マッチング結果を公開しますか？</div>
+  <div class="sub" style="margin-top:6px;line-height:1.7">公開すると、参加者 112名のアプリにテーブル番号と同席者が表示され、通知が届きます。</div>
+  <div style="margin-top:14px">${[['第1ラウンド', '22テーブル · 109名', 'ok'], ['第2ラウンド', '22テーブル · 109名', 'ok'], ['未配置', '3名 · 当日受付で割り当て', 'w']].map(([l, v, st]) => `<div class="setrow"><span class="${st === 'ok' ? 'chip teal' : 'chip coral'}">${st === 'ok' ? ic('check', 'sm') : '!'}</span><b style="font-size:13px">${l}</b><span class="lbl" style="margin-left:auto">${v}</span></div>`).join('')}</div>
+  <div class="mac apricot" style="font-size:12px;margin-top:10px">公開後にテーブルを変更すると、影響を受ける参加者にだけ再通知されます。</div>
+  <div class="row" style="gap:10px;margin-top:14px;font-size:12.5px"><span class="cbx on">${ic('check', 'sm')}</span>共同運営者（3名）にも公開を知らせる</div>
+  <div class="row" style="gap:10px;margin-top:20px;justify-content:flex-end"><button class="btn">キャンセル</button><button class="btn primary">公開する</button></div></div>`;
+
+/* ============ A3 参加者 ============ */
+const ANS = ['シリーズA前後の資本政策を、投資家側の視点も含めて議論したい', '製造業向け SaaS への投資を検討中。現場の DX 事例を聞きたい', '財務チームの立ち上げ。最初の 2人目をどう採用したか知りたい', '来期の上場準備に向けて、監査法人選びの経験談を伺いたい', 'CVC として協業先を探しています', '地域の金融機関としてスタートアップ支援の接点を増やしたい', '初参加です。CFO の方と幅広くつながりたい', '前回のテーブルが有意義だったので再参加します'];
+function participants(s) {
+  const ev = s === 'empty' ? HE[1] : s === 'few' ? HE[2] : HE[0];
+  const head = hostHead(ev.n, `主催 · ${ev.d}`, '参加者');
+  if (s === 'empty') return head + `<div class="wgrid">
+    <div class="card span8 guide" style="padding:26px"><div style="font-size:22px;font-weight:800">まだ申込はありません</div><div class="sub" style="margin-top:4px">申込ページを共有すると、ここに審査待ちとして並びます。</div>
+      <div class="row" style="gap:10px;margin-top:16px"><div class="input" style="flex:1;height:46px">${ic('link', 'sm')}orbit.app/e/mfg-dx-asakai-3</div><button class="btn primary" style="height:46px">${ic('link', 'sm')}リンクをコピー</button><button class="btn" style="height:46px">QR コード</button></div></div>
+    <div class="span4" style="display:grid;gap:18px">${[['📝', 'apricot', '申込設定を確認', '質問 3問 · 審査制'], ['🗂️', 'pink', '招待者リストを取り込む', 'CSV · 過去の参加者']].map(([e, c, t, d]) => `<div class="card row" style="gap:12px;padding:16px"><span class="emo ${c}">${e}</span><div><b style="font-size:14px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div>
+    <div class="card span12"><table class="table"><thead><tr><th></th><th>申込者</th><th>申込回答</th><th>プロフィール</th><th>申込日</th><th></th></tr></thead><tbody>${[1, 2, 3].map(() => `<tr class="ghost-tr"><td style="width:30px"><i style="width:18px"></i></td><td><i style="width:140px"></i></td><td><i style="width:280px"></i></td><td><i style="width:60px"></i></td><td><i style="width:50px"></i></td><td><i style="width:150px"></i></td></tr>`).join('')}</tbody></table></div></div>`;
+  const many = s === 'many', rows = many ? PP.slice(0, 8) : PP.slice(4, 7);
+  const comp = [92, 100, 45, 80, 100, 64, 30, 88];
+  return head + `<div class="wgrid">
+    <div class="card span9"><div class="row between" style="margin-bottom:12px;gap:10px"><div class="seg"><button class="on">審査待ち ${many ? 12 : 3}</button><button>承認済み ${many ? 104 : 15}</button><button>キャンセル待ち ${many ? 8 : 0}</button><button>見送り ${many ? 4 : 0}</button></div><div class="row" style="gap:8px"><div class="input" style="width:230px;height:38px">${ic('search', 'sm')}名前・会社・回答</div><button class="btn sm">${ic('filter', 'sm')}プロフィール未完了</button></div></div>
+      ${many ? `<div class="bulk"><span class="cbx on">${ic('check', 'sm')}</span><b>2名を選択中</b><button class="btn sm primary" style="margin-left:auto">${ic('check', 'sm')}まとめて承認</button><button class="btn sm">キャンセル待ちへ</button><button class="btn sm ghost">見送り</button></div>` : ''}
+      <table class="table" style="table-layout:fixed"><thead><tr><th style="width:40px"></th><th style="width:230px">申込者</th><th>申込回答「いちばん話したいこと」</th><th style="width:110px">プロフィール</th><th style="width:70px">参加歴</th><th style="width:230px"></th></tr></thead><tbody>${rows.map((p, k) => { const cp = comp[k % 8]; return `<tr><td style="width:30px"><span class="cbx ${many && k < 2 ? 'on' : ''}">${many && k < 2 ? ic('check', 'sm') : ''}</span></td><td style="max-width:220px"><div class="row" style="gap:10px">${av(p)}<div style="min-width:0"><b class="clamp1" style="display:block">${p[0]}</b><div class="lbl clamp1">${p[3]} · ${p[4]}</div></div></div></td><td style="max-width:300px"><div class="clamp2" style="font-size:12.5px;color:var(--ink-2)">${ANS[k % 8]}</div></td><td><div class="row" style="gap:8px">${ring(34, 4, [{ v: cp, c: cp < 50 ? 'var(--coral)' : 'var(--plum-500)', max: 100 }], `<span class="score" style="font-size:9.5px">${cp}</span>`)}${cp < 50 ? '<span class="lbl" style="color:var(--coral)">未完了</span>' : ''}</div></td><td class="muted">${['初参加', '2回', '初参加', '5回', '1回', '初参加', '初参加', '3回'][k % 8]}</td><td><div class="row" style="gap:6px;justify-content:flex-end"><button class="btn sm ghost">見送り</button><button class="btn sm">待ち</button><button class="btn sm primary">承認</button></div></td></tr>`; }).join('')}</tbody></table>
+      ${many ? '<div class="row" style="justify-content:center;margin-top:12px"><button class="btn sm">さらに表示（4名）</button></div>' : ''}</div>
+    <div class="span3" style="display:grid;gap:18px;align-content:start">
+      <div class="card" style="text-align:center">${ring(130, 12, [{ v: many ? 104 : 15, c: 'var(--plum-700)', max: many ? 150 : 30 }], `<div class="big" style="font-size:32px">${num(many ? 104 : 15)}</div><div class="lbl">/ ${many ? 150 : 30} 名</div>`)}<div class="lbl" style="margin-top:8px">承認済み · 残り枠 ${many ? 46 : 15}</div></div>
+      <div class="card flat"><b style="font-size:13px">審査について</b><div class="sub" style="margin-top:6px;line-height:1.7">承認・見送りは申込者に Orbit から自動でお知らせします（文面は申込設定で編集）。理由は相手に表示されません。</div></div></div></div>`;
+}
+
+/* ============ A4 受付 kiosk ============ */
+const ARR = [['19:46', 4, 'B'], ['19:45', 11, 'F'], ['19:45', 2, 'C'], ['19:44', 15, 'A'], ['19:43', 8, 'D'], ['19:42', 19, 'E'], ['19:41', 6, 'B'], ['19:40', 13, 'C']];
+function kiosk(s, theme = '', pins = '') {
+  const err = s === 'error', empty = s === 'empty';
+  const cnt = empty ? 0 : 86;
+  const top = `<div class="k-top"><div class="logo">O</div><div><b style="font-size:18px">${HE[0].n} · 受付</b><div class="lbl">担当 伊藤 直子（受付）· 渋谷ストリーム 4F</div></div>
+    <span class="chip ${err ? 'coral' : 'teal'}" style="margin-left:14px">${err ? 'オフライン' : '<i class="live"></i>オンライン'}</span>
+    <div class="row" style="margin-left:auto;gap:10px"><span class="score" style="font-size:20px">${empty ? '18:46' : '19:46'}</span><button class="btn">${ic('scan', 'sm')}QR を読み取る</button><button class="rbtn">${ic('x')}</button></div></div>`;
+  const left = `<div style="display:flex;flex-direction:column;gap:14px;min-height:0">
+    <div class="row" style="gap:20px;background:var(--surface);border-radius:26px;padding:16px 22px">${ring(92, 10, [{ v: cnt, c: 'var(--plum-700)', max: 128 }], `<b class="score" style="font-size:20px">${empty ? 0 : 67}<small style="font-size:11px">%</small></b>`)}
+      <div><div class="lbl">到着</div><div class="big" style="font-size:46px">${num(cnt)}<small>/ 128名</small></div></div>
+      <div style="margin-left:auto;text-align:right"><div class="lbl">未到着</div><div class="mid">${128 - cnt}</div></div></div>
+    ${err ? `<div class="k-banner"><span class="emo sm" style="background:var(--surface)">📡</span><div style="flex:1"><b>ネットワークに接続できません</b><div class="lbl" style="color:var(--ink-2)">受付はこの端末に保存しています。復帰後に自動で送信します（未送信 3件）</div></div><button class="btn primary">${ic('refresh', 'sm')}再試行</button></div>` : ''}
+    <div class="k-search ${empty ? 'ph' : ''}">${ic('search', 'lg')}${empty ? 'お名前・会社名で検索（ひらがな可）' : 'もり<span class="caret"></span>'}</div>
+    ${empty ? `<div class="card" style="text-align:center;padding:30px"><div style="font-size:44px">🚪</div><b style="font-size:20px;display:block;margin-top:8px">開場まで あと 14分</b><div class="sub" style="margin-top:6px">来場者の QR を読み取るか、名前で検索して「到着にする」をタップします</div><button class="k-arrive" style="margin:18px auto 0;display:inline-flex">${ic('scan')}QR を読み取る</button></div>` :
+      `<div style="overflow:hidden">${[[PP[0], 'none', '未到着'], [['森 由香', '森', 'c2', 'アークス商会', '経営企画'], 'done', '受付済み 19:12 · テーブル C'], [['森川 恵太', '森', 'c4', 'ブルーオーシャン・パートナーズ', 'アナリスト'], 'wait', 'キャンセル待ち']].map(([p, st, lb], k) => `<div class="k-res">${av(p, 'lg')}<div style="min-width:0"><div class="nm">${p[0]}</div><div class="sub clamp1">${p[3]} · ${p[4]}</div><span class="chip ${st === 'done' ? 'teal' : st === 'wait' ? 'apricot' : ''}" style="margin-top:6px">${lb}</span></div>${st === 'done' ? '<button class="btn" style="margin-left:auto;height:52px">取り消す</button>' : st === 'wait' ? '<button class="btn" style="margin-left:auto;height:52px">当日枠で受付</button>' : `<button class="k-arrive">${ic('check')}${err ? '到着にする' : '到着にする'}</button>`}</div>`).join('')}</div>`}</div>`;
+  const right = `<div class="k-stream"><div class="row between" style="margin-bottom:8px"><b style="font-size:15px">最新の受付</b><span class="lbl">${empty ? '' : '自動更新 · 3台で受付中'}</span></div>
+    ${empty ? `<div class="sub" style="margin-bottom:10px">最初の受付がここに流れます</div>${[1, 2, 3, 4].map(() => '<div class="ghost-row"><i></i>— : —</div>').join('')}` :
+      ARR.map(([t, i, tb], k) => { const p = PP[i], pend = err && k < 3; return `<div class="k-row ${k === 0 && !err ? 'new' : ''}"><time>${t}</time>${av(p)}<div style="flex:1;min-width:0"><b class="clamp1" style="display:block;font-size:14px">${p[0]}</b><div class="lbl clamp1">${p[3]}</div></div>${pend ? `<span class="chip coral">未送信</span><button class="lbtn">${ic('refresh', 'sm')}</button>` : `<span class="chip lav">テーブル ${tb}</span>`}</div>`; }).join('')}</div>`;
+  return `<div class="web kiosk" ${theme ? `data-theme="${theme}"` : ''}>${top}<div class="k-body">${left}${right}</div>${pins}</div>`;
+}
+
+/* ============ A5 申込設定 ============ */
+const DESC = 'CFO Night Tokyo は、スタートアップの CFO・財務責任者と投資家が、肩書きを越えて語り合う交流会です。第18回のテーマは「シリーズA前後の資本政策」。前半はパネルディスカッション、後半は申込回答をもとに組んだテーブルで 2ラウンドの少人数交流を行います。回答はテーブル編成にのみ使用し、ほかの参加者には公開しません。';
+const QS = [
+  ['あなたの立場に近いものを選んでください', '単一選択', ['スタートアップの経営者・CFO', '投資家（VC・CVC・エンジェル）', '事業会社', '士業・支援機関'], 1],
+  ['今回いちばん話したいテーマ（2つまで）', '複数選択', ['資本政策', '投資家との関係づくり', '財務チームの採用', '上場準備'], 1],
+  ['会いたい人の条件があれば教えてください', '自由記述', [], 0],
+  ['CFO Night への参加は何回目ですか？', '単一選択', ['初めて', '2〜3回目', '4回以上'], 1],
+  ['食事の配慮が必要な場合はご記入ください', '自由記述', [], 0],
+];
+const qEdit = (q, k) => `<div class="qcard edit"><div class="row" style="gap:10px"><span class="handle">⋮⋮</span><span class="chip lav">Q${k + 1}</span><div class="input" style="flex:1;height:40px;background:var(--surface-2);color:var(--ink);font-weight:700">${q[0]}</div><button class="lbtn">${ic('x', 'sm')}</button></div>
+  <div class="row" style="gap:10px;margin-top:12px"><div class="seg">${['単一選択', '複数選択', '自由記述'].map(t => `<button class="${t === q[1] ? 'on' : ''}">${t}</button>`).join('')}</div><span class="lbl" style="margin-left:auto">必須</span><span class="tgl ${q[3] ? 'on' : ''}"></span></div>
+  <div style="margin-top:12px">${q[2].map(o => `<div class="qopt"><span class="handle">⋮⋮</span><span class="${q[1] === '複数選択' ? 'cbx' : 'rad'}"></span>${o}<span class="muted" style="margin-left:auto">${ic('x', 'sm')}</span></div>`).join('')}<div class="qopt" style="background:transparent;border:1.5px dashed var(--surface-3);color:var(--ink-3)">${ic('plus', 'sm')}選択肢を追加</div></div></div>`;
+const qRow = (q, k) => `<div class="qcard row" style="gap:10px"><span class="handle">⋮⋮</span><span class="chip">Q${k + 1}</span><b class="clamp1" style="flex:1;font-size:13px">${q[0]}</b><span class="chip ${q[1] === '自由記述' ? 'apricot' : q[1] === '複数選択' ? 'blue' : 'lav'}">${q[1]}</span>${q[3] ? '<span class="chip coral">必須</span>' : '<span class="lbl">任意</span>'}<button class="lbtn">${ic('pen', 'sm')}</button></div>`;
+const preview = (qs, desc) => `<div class="pv"><div class="row between"><b style="font-size:13px">プレビュー · 申込者の画面</b><div class="seg"><button class="on">スマホ</button><button>PC</button></div></div>
+  <div style="max-width:340px;margin:14px auto 0"><span class="emo lav">🥂</span><b style="display:block;font-size:16px;margin-top:8px">${HE[0].n}</b><div class="lbl">${HE[0].d} · ${HE[0].place}</div>
+  <div class="sub clamp2" style="margin-top:8px;font-size:12px">${desc || '（説明文を入力するとここに表示されます）'}</div>
+  ${qs.map((q, k) => `<div class="pq"><b>${q[0]}${q[3] ? ' <span style="color:var(--coral)">*</span>' : ''}</b>${q[2].length ? q[2].slice(0, 3).map((o, j) => `<div class="o"><span class="${q[1] === '複数選択' ? 'cbx' : 'rad'} ${j === 0 && k === 0 ? 'on' : ''}">${q[1] === '複数選択' ? '' : ''}</span>${o}</div>`).join('') : '<div class="ghost-row" style="height:38px;margin-top:8px">自由に入力</div>'}</div>`).join('')}
+  <button class="btn primary block" style="margin-top:12px">申し込む</button></div></div>`;
+function regForm(s) {
+  const head = hostHead(s === 'empty' ? HE[1].n : HE[0].n, s === 'empty' ? '主催 · 申込フォーム未公開' : '主催 · 申込フォーム公開中', '申込設定');
+  const settings = `<div class="card span5"><div class="card-h"><h3>受付の設定</h3></div>${[['定員', '150名'], ['申込締切', '10月6日（火）23:59'], ['承認方式', 'seg'], ['申込ページ', 'orbit.app/e/cfo-night-18']].map(([l, v]) => `<div class="setrow"><span class="lbl" style="width:84px">${l}</span>${v === 'seg' ? '<div class="seg"><button>先着順</button><button class="on">審査制</button></div>' : `<b style="font-size:13px" class="clamp1">${v}</b>`}</div>`).join('')}</div>`;
+  if (s === 'empty') return head + `<div class="wgrid">
+    <div class="span7" style="display:grid;gap:18px;align-content:start">
+      <div class="card"><div class="card-h"><h3>説明文</h3><span class="lbl">200字まで</span></div><div class="ta ph">どんな人が集まり、何が得られる会かを書きましょう。例：製造業の DX 担当者とスタートアップが、現場の課題を持ち寄る朝会です。<span class="counter">0 / 200</span></div></div>
+      <div class="card"><div class="card-h"><h3>テンプレートから始める</h3></div><div class="grid2">${[['🥂', 'lav', '交流会', '立場・話したいテーマ・会いたい人'], ['📚', 'blue', '勉強会', '経験レベル・関心トピック'], ['🪑', 'pink', 'ラウンドテーブル', '課題・事前に共有したいこと'], ['📄', 'apricot', '白紙から', '質問を自分で作る']].map(([e, c, t, d]) => `<div class="mac ${c} row" style="gap:10px;cursor:pointer"><span style="font-size:22px">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div></div>
+      <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b>質問案を 3つ追加しますか？</b><div class="lbl">「製造業DX 朝会」の過去 2回の回答傾向から作成しました</div></div><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div></div>
+    <div class="span5" style="display:grid;gap:18px;align-content:start">${preview([], '')}${settings.replace('span5', '')}</div></div>`;
+  const many = s === 'many', qs = many ? QS : QS.slice(0, 2);
+  return head + `<div class="wgrid">
+    <div class="span7" style="display:grid;gap:18px;align-content:start">
+      <div class="card"><div class="card-h"><h3>説明文</h3><span class="lbl">200字まで</span></div><div class="ta">${many ? DESC : DESC.slice(0, 64)}<span class="counter" style="${many && DESC.length > 180 ? 'color:var(--coral)' : ''}">${many ? DESC.length : 64} / 200</span></div></div>
+      <div class="card"><div class="card-h"><h3>質問 <span class="lbl" style="font-weight:500">${qs.length}問 · ドラッグで並べ替え</span></h3><span class="lbl">回答はテーブル編成に使われます</span></div>
+        ${qs.map((q, k) => (many ? k === 1 : k === 0) ? qEdit(q, k) : qRow(q, k)).join('')}
+        <div class="row" style="gap:8px;margin-top:12px"><span class="lbl">質問を追加</span>${['単一選択', '複数選択', '自由記述'].map(t => `<button class="btn sm">${ic('plus', 'sm')}${t}</button>`).join('')}</div></div>
+      <div class="card row" style="gap:12px;padding:14px 20px"><span class="chip ${many ? 'teal' : 'apricot'}">${many ? '公開中' : '下書き'}</span><span class="lbl">${many ? '未公開の変更 2件 · 2分前に自動保存' : '2分前に自動保存'}</span><button class="btn" style="margin-left:auto">下書き保存</button><button class="btn primary">${many ? '変更を公開' : '公開する'}</button></div></div>
+    <div class="span5" style="display:grid;gap:18px;align-content:start">${preview(qs.slice(0, 3), many ? DESC : DESC.slice(0, 64))}${many ? '' : settings.replace('span5', '')}</div></div>`;
+}
+
+/* ============ A6 レポート ============ */
+function report(s, view = 'all') {
+  const ev = s === 'few' ? HE[4] : s === 'empty' ? HE[1] : HE[3];
+  const head = hostHead(ev.n, `主催 · ${ev.d} · ${s === 'empty' ? '開催前' : '終了'}`, 'レポート', `<div class="seg"><button class="${view === 'all' ? 'on' : ''}">全体</button><button class="${view === 'me' ? 'on' : ''}">自分の視点</button></div>`);
+  if (s === 'empty') return head + `<div class="wgrid">
+    <div class="card span8 guide" style="padding:26px"><div class="row" style="gap:16px"><span class="emo lav" style="width:56px;height:56px;font-size:28px">📊</span><div><div style="font-size:22px;font-weight:800">レポートは開催後に表示されます</div><div class="sub">受付率・名刺交換・会後フォローは当日と翌日以降に集まります。いまは申込の推移だけ確認できます。</div></div></div></div>
+    <div class="card span4"><div class="lbl">申込</div><div class="big">${num(42)}<small>/ 60名</small></div>${bar(70)}<div class="lbl">開催まで 14日</div></div>
+    <div class="card span12"><div class="card-h"><h3>申込の推移</h3><span class="lbl">公開から 9日</span></div><div class="bars" style="height:90px">${[3, 5, 8, 4, 6, 2, 5, 4, 5].map(h => `<i style="height:${h * 9}px"></i>`).join('')}${Array(12).fill('<i style="background:var(--surface-2);height:12px"></i>').join('')}</div></div>
+    <div class="span12 card-h" style="margin:4px 0 -6px"><h3>開催後はこう見えます <span class="sample-tag">サンプル</span></h3></div>
+    <div class="span12 wgrid faded">${[['受付率', '84%'], ['名刺交換', '312組'], ['交換率', '91%'], ['会後フォロー', '52名']].map(([l, v]) => `<div class="card span3"><div class="lbl">${l}</div><div class="big">${v}</div></div>`).join('')}</div></div>`;
+  const few = s === 'few';
+  if (view === 'me') return head + `<div class="wgrid">
+    ${[['会った人', 11, '名'], ['名刺交換', 9, '名'], ['フォロー済み', 4, '/ 9']].map(([l, v, u]) => `<div class="card span3"><div class="lbl">${l}</div><div class="big" style="margin-top:6px">${num(v)}<small>${u}</small></div></div>`).join('')}
+    <div class="card span3" style="background:linear-gradient(150deg,var(--mac-pink),var(--surface) 75%)" data-why-box><div class="row between"><span class="lbl">プランへの貢献</span><span class="why">?</span></div><b style="display:block;font-size:15px;margin-top:6px">VC パートナー +2名</b>${bar(67, 'rose')}<div class="lbl">スコア +20（2 / 3人）· シリーズA 資金調達</div><div class="why-body" hidden>木村さん（みずほ台ベンチャーズ）・岡田さん（白金キャピタル）と名刺交換し、プランの「VC パートナー」に紐づけ済み（あなたが確認済み）。</div></div>
+    <div class="card span8"><div class="card-h"><h3>まだフォローしていない人</h3><span class="lbl">5名 · 交換から 28日</span></div>${[PP[4], PP[9], PP[3], PP[11], PP[16]].map((p, k) => `<div class="mrow" style="padding:10px 0">${av(p)}<div class="meta"><b>${p[0]}</b><span>${p[3]} · ${p[4]} · テーブル ${'ACBDA'[k]}</span></div><span class="chip ${TC[p[5]]}">${p[5]}</span><button class="btn sm ${k === 0 ? 'primary' : ''}">${ic('mail', 'sm')}下書きを作成</button></div>`).join('')}<div class="lbl" style="margin-top:8px">${ic('mail', 'sm')} 送信はしません · 送信はあなたが行います</div></div>
+    <div class="span4" style="display:grid;gap:18px;align-content:start"><div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><b style="flex:1">進捗ログに記録しますか？</b></div><div class="sub" style="margin-top:6px">「CFO Night vol.17 で VC パートナー 2名と名刺交換」をプランの進捗ログへ</div><div class="row" style="gap:8px;margin-top:12px"><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div>
+      <div class="card flat"><div class="lbl">主催者として</div><div class="sub" style="margin-top:4px">自分の視点は、主催者のあなた個人の人脈とプランだけを集計します。参加者の個別データは含みません。</div></div></div></div>`;
+  const k = few ? { app: 24, chk: 22, ex: 48, per: 2.2, rate: 95, fol: 16, folp: 73 } : { app: 140, chk: 118, ex: 312, per: 2.6, rate: 91, fol: 52, folp: 61 };
+  const rr = Math.round(k.chk / k.app * 100);
+  return head + `<div class="wgrid">
+    <div class="card span3"><div class="row" style="gap:14px">${ring(88, 10, [{ v: rr, c: 'var(--plum-700)', max: 100 }], `<b class="score" style="font-size:18px">${rr}<small style="font-size:10px">%</small></b>`)}<div><div class="lbl">受付率</div><div class="mid">${k.chk}<small class="lbl"> / ${k.app}</small></div></div></div></div>
+    <div class="card span3"><div class="lbl">名刺交換</div><div class="big" style="margin-top:6px">${num(k.ex)}<small>組</small></div><div class="lbl">1人あたり ${k.per}名</div></div>
+    <div class="card span3" data-why-box><div class="row between"><span class="lbl">交換率</span><span class="why">?</span></div><div class="big" style="margin-top:6px">${num(k.rate)}<small>%</small></div><div class="lbl">1人以上と交換した参加者</div><div class="why-body" hidden>受付済み ${k.chk}名のうち、Orbit の名刺交換（NFC・QR・名刺スキャン）が 1件以上記録された人の割合。</div></div>
+    <div class="card span3"><div class="lbl">会後フォロー</div><div class="big" style="margin-top:6px">${num(k.fol)}<small>名</small></div><span class="delta">${k.folp}% · 7日以内</span></div>
+    <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">告知から開催まで 21日</span></div><div class="bars">${(few ? [1, 2, 1, 3, 0, 1, 2, 1, 0, 2, 1, 1, 0, 1, 2, 1, 0, 1, 2, 1, 1] : [3, 5, 4, 11, 7, 6, 5, 4, 6, 9, 5, 4, 7, 12, 8, 6, 5, 7, 10, 4, 2]).map((h, j) => `<i class="${j === 3 || j === 13 ? 'hi mk' : ''}" data-mk="${j === 3 ? '告知メール' : j === 13 ? '登壇者発表' : ''}" style="height:${h * (few ? 28 : 8)}px"></i>`).join('')}</div><div class="axis"><span>8月20日</span><span>8月27日</span><span>9月3日</span><span>9月9日</span></div></div>
+    <div class="card span4"><div class="card-h"><h3>会後のフォロー</h3><span class="lbl">参加者が記録</span></div><div class="fun">${[['名刺交換した人', few ? 21 : 107, 100], ['フォローの下書きを作成', few ? 18 : 74, few ? 86 : 69], ['フォロー済み（本人が記録）', k.fol, Math.round(k.fol / (few ? 21 : 107) * 100)], ['面談を設定', few ? 6 : 19, few ? 29 : 18]].map(([l, v, p], j) => `<div class="f"><span>${l}</span><b class="score">${v}</b>${bar(p, j > 1 ? 'rose' : '')}</div>`).join('')}</div></div>
+    <div class="card span6"><div class="card-h"><h3>テーブル別の名刺交換</h3><span class="lbl">第1ラウンド</span></div>${(few ? [['A', 14], ['B', 12], ['C', 11], ['D', 11]] : [['A', 19], ['B', 17], ['C', 16], ['D', 15], ['E', 9], ['F', 14]]).map(([t, v]) => `<div class="hbar"><span class="tno" style="width:26px;height:26px;font-size:12px;border-radius:9px">${t}</span>${bar(v / 20 * 100, v < 10 ? 'warn' : 'thin')}<b class="score" style="text-align:right">${v}</b></div>`).join('')}${few ? '' : '<div class="mac pink" style="font-size:12px;margin-top:12px">テーブル E は欠席 2名で 3名卓に。次回は当日の再配置を検討</div>'}</div>
+    <div class="card span6"><div class="card-h"><h3>参加者の立場</h3><span class="lbl">申込回答 Q1</span></div>${[['スタートアップの経営者・CFO', 46], ['投資家', 28], ['事業会社', 17], ['士業・支援機関', 9]].map(([l, p], j) => `<div class="row between" style="font-size:12.5px;margin-top:${j ? 8 : 0}px"><span>${l}</span><span class="muted">${p}%</span></div>${bar(p, j % 2 ? 'rose' : '')}`).join('')}</div></div>`;
+}
+
+/* ============ A7 共同運営者 抽屉 ============ */
+const cohostDrawer = `<div class="overlay"></div><div class="drawer" style="width:540px">
+  <div class="row between"><div><div style="font-size:20px;font-weight:800">共同運営者</div><div class="lbl">${HE[0].n} · 4名</div></div><button class="rbtn">${ic('x')}</button></div>
+  <div class="card" style="margin-top:16px;padding:16px"><b style="font-size:13px">招待する</b><div class="row" style="gap:8px;margin-top:10px"><div class="input" style="flex:1;height:42px">${ic('mail', 'sm')}メールアドレス または Orbit ID</div><div class="seg"><button>管理者</button><button class="on">受付</button><button>閲覧</button></div></div>
+    <div class="row" style="margin-top:10px;gap:8px"><span class="lbl">招待リンクは 7日間有効です。Orbit ユーザーにはアプリ内でお知らせします</span><button class="btn sm primary" style="margin-left:auto">招待リンクを発行</button></div></div>
+  <div class="card" style="margin-top:14px;padding:6px 16px">${[[D.me.short, 'c1', D.me.name + '（あなた）', D.me.co, 'オーナー'], [C[2].i, C[2].c, C[2].n, C[2].co, '管理者'], [C[5].i, C[5].c, C[5].n, C[5].co, '受付', 'edit'], [C[4].i, C[4].c, C[4].n, C[4].co, '閲覧']].map(([i, c, n, co, r, ed]) => `<div style="padding:12px 0;border-top:${n.includes('あなた') ? '0' : '1px solid var(--line)'}"><div class="row" style="gap:10px"><div class="av sm ${c}">${i}</div><div style="flex:1;min-width:0"><b style="font-size:13.5px">${n}</b><div class="lbl clamp1">${co}</div></div>${r === 'オーナー' ? '<span class="chip">オーナー · 変更不可</span>' : ed ? `<span class="chip">受付</span>${ic('right', 'sm')}<span class="chip lav">管理者</span>` : `<span class="chip ${r === '管理者' ? 'lav' : ''}">${r}</span><button class="lbtn">${ic('more', 'sm')}</button>`}</div>
+    ${ed ? `<div class="mac lav" style="margin-top:10px;padding:12px"><div class="row" style="gap:8px;font-size:12.5px"><b>受付</b>${ic('right', 'sm')}<b>管理者</b><span class="lbl" style="margin-left:auto">マッチングの公開・参加者の審査ができるようになります</span></div>
+      <div class="lbl" style="margin-top:10px;font-weight:700;color:var(--ink-2)">変更理由（必須）</div><div class="ta ph" style="min-height:62px;margin-top:6px;background:var(--surface);box-shadow:0 0 0 1.5px var(--coral)">例：当日の受付責任者として審査も担当するため<span class="counter">0 / 100</span></div>
+      <div class="row" style="margin-top:8px;gap:8px"><span class="lbl" style="color:var(--coral)">理由を入力すると保存できます</span><button class="btn sm" style="margin-left:auto">キャンセル</button><button class="btn sm primary" disabled style="opacity:.4">変更を保存</button></div></div>` : ''}</div>`).join('')}</div>
+  <div class="card" style="margin-top:14px;padding:16px"><b style="font-size:13px">役割でできること</b><table class="table rule" style="margin-top:8px"><thead><tr><th></th><th>管理者</th><th>受付</th><th>閲覧</th></tr></thead><tbody>${[['申込設定・公開', '✓', '—', '—'], ['参加者の審査', '✓', '—', '—'], ['マッチングの公開', '✓', '—', '—'], ['当日受付', '✓', '✓', '—'], ['レポート閲覧', '✓', '✓', '✓']].map(r => `<tr>${r.map((c, j) => `<td style="${j ? 'text-align:center;' : ''}${c === '✓' ? 'color:var(--ok);font-weight:800' : j ? 'color:var(--ink-4)' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+  <div class="card flat" style="margin-top:14px;padding:16px"><b style="font-size:13px">変更履歴</b>${[['10/5', '伊藤 直子 を管理者に', '理由：申込審査を分担するため · 佐藤'], ['10/1', '渡辺 翔 を招待（閲覧）', '理由：次回共催の検討 · 佐藤']].map(([d, t, m]) => `<div class="tl" style="margin-top:8px"><time style="font-size:12px;padding-top:2px">${d}</time><div><b style="font-size:12.5px">${t}</b><div class="lbl">${m}</div></div></div>`).join('')}</div></div>`;
+
+/* ============ App 主催 ============ */
+const appCenter = (s) => topbar('運営センター', 'マイ › 主催', `<button class="rbtn">${ic('left')}</button>`, `<button class="rbtn">${ic('plus')}</button>`) + (s === 'empty' ? `
+  <div class="guide rise"><div style="font-size:19px;font-weight:800;line-height:1.4">最初のイベントを<br>主催しましょう</div><div class="sub" style="margin:6px 0 14px">申込・審査・テーブル編成・当日受付まで。作成と申込フォームの編集は PC が便利です。</div>
+    <button class="btn primary block" style="height:46px">${ic('plus', 'sm')}イベントを作成</button><button class="btn ghost block" style="margin-top:6px">PC で開くリンクを自分に送る</button></div>
+  <div class="grid3" style="margin-top:14px">${[['📋', 'apricot', 'テンプレート'], ['🎟️', 'teal', '共同運営に参加'], ['📷', 'blue', '受付だけ担当']].map(([e, c, t]) => `<div class="mac ${c}" style="text-align:center"><div style="font-size:22px">${e}</div><b style="font-size:11.5px;display:block;margin-top:4px">${t}</b></div>`).join('')}</div>
+  <div class="card" style="margin-top:14px"><div class="card-h"><h3>作成するとこう並びます <span class="sample-tag">サンプル</span></h3></div><div class="faded">${hcard(HE[0], '', false)}</div></div>` : `
+  <div class="seg" style="width:100%;display:grid;grid-template-columns:repeat(4,1fr)"><button class="on">すべて</button><button>開催前</button><button>開催中</button><button>終了</button></div>
+  <div style="display:grid;gap:12px;margin-top:14px">${HE.slice(0, 4).map(e => hcard(e, '')).join('')}</div>`);
+const appEvent = () => topbar('CFO Night Tokyo vol.18', '本日 19:00 · 開催中', `<button class="rbtn">${ic('left')}</button>`, `<button class="rbtn">${ic('users')}</button>`) + `
+  <div class="carousel" style="gap:6px;margin-bottom:12px">${['概要', 'マッチング', '参加者', '受付', 'レポート'].map((t, k) => `<button class="chip" style="padding:7px 14px;font-size:12.5px;${k === 0 ? 'background:var(--ink);color:var(--bg)' : ''}">${t}${t === '参加者' ? ' 12' : ''}</button>`).join('')}</div>
+  <div class="card rise"><div class="cnt3" style="margin-top:0">${[['申込', 128], ['マッチ', 112], ['受付', 86]].map(([l, v]) => `<div><span class="lbl">${l}</span><b>${num(v)}</b></div>`).join('')}</div>${bar(67)}<div class="lbl">到着 86 / 128 · 67%</div>
+    <button class="btn primary block" style="margin-top:12px;height:46px">${ic('check', 'sm')}受付を開く</button></div>
+  <div class="card"><div class="row between"><div><div class="lbl">マッチング</div><b style="font-size:14.5px">2ラウンド · 22テーブル</b></div><span class="chip apricot">下書き</span></div>
+    <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm">結果を見る</button><button class="btn sm primary">${ic('share', 'sm')}公開する</button><span class="lbl" style="margin-left:auto">未配置 3名</span></div></div>
+  <div class="card"><div class="card-h"><h3>要対応</h3></div>${[['🧾', 'apricot', '審査待ち 12名', '当日枠 8名分'], ['🙋', 'pink', 'プロフィール未完了 16名', '定型のお知らせを確認後に通知']].map(([e, c, t, d]) => `<div class="row" style="gap:10px;padding:8px 0"><span class="emo sm ${c}">${e}</span><div style="flex:1"><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div><span class="muted">${ic('right', 'sm')}</span></div>`).join('')}</div>
+  <div class="card flat row" style="gap:10px"><span class="emo sm blue">💻</span><div class="lbl" style="flex:1">申込設定とレポートの詳細は PC で編集できます</div></div>`;
+const appCheckin = () => topbar('受付', HE[0].n, `<button class="rbtn">${ic('left')}</button>`, `<button class="rbtn">${ic('scan')}</button>`) + `
+  <div class="card rise"><div class="row between"><div><div class="lbl">到着</div><div class="big">${num(86)}<small>/ 128名</small></div></div>${ring(84, 9, [{ v: 86, c: 'var(--plum-700)', max: 128 }], '<b class="score" style="font-size:17px">67<small style="font-size:10px">%</small></b>')}</div></div>
+  <div class="search" style="margin-top:14px;color:var(--ink);font-weight:700">${ic('search', 'sm')}もり<span style="width:2px;height:18px;background:var(--plum-700);animation:blink 1s steps(1) infinite"></span></div>
+  <div class="card" style="margin-top:12px;padding:6px 16px"><div class="list">
+    <div class="li">${av(PP[0], '')}<div class="meta"><b>${PP[0][0]}</b><span>${PP[0][3]}</span></div><button class="btn sm primary">${ic('check', 'sm')}到着</button></div>
+    <div class="li"><div class="av c2">森</div><div class="meta"><b>森 由香</b><span>アークス商会 · 19:12 受付</span></div><span class="chip teal">テーブル C</span></div>
+    <div class="li"><div class="av c4">森</div><div class="meta"><b>森川 恵太</b><span>ブルーオーシャン・パートナーズ</span></div><span class="chip apricot">キャンセル待ち</span></div></div></div>
+  <div class="card-h" style="margin-top:18px"><h3>最新の受付</h3><span class="lbl">3台で受付中</span></div>
+  <div class="card" style="padding:6px 16px"><div class="list">
+    <div class="li" style="background:var(--coral-soft);margin:6px -10px;padding:10px;border-radius:14px">${av(PP[4])}<div class="meta"><b>${PP[4][0]}</b><span>19:46 · 送信できませんでした</span></div><button class="btn sm">${ic('refresh', 'sm')}再試行</button></div>
+    ${ARR.slice(1, 5).map(([t, i, tb]) => `<div class="li">${av(PP[i])}<div class="meta"><b>${PP[i][0]}</b><span>${t} · ${PP[i][3]}</span></div><span class="chip lav">${tb}</span></div>`).join('')}</div></div>`;
+
+/* ============ B 小组件配置 ============ */
+const wsb = `<div style="height:50px;padding:16px 30px 0 34px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;position:relative;z-index:5;color:#2a2433"><span>9:41</span><span style="position:absolute;left:50%;top:11px;width:120px;height:34px;margin-left:-60px;background:#000;border-radius:20px"></span><span style="font-size:12px">5G ▮</span></div>`;
+const wNext = (cls = '') => `<div class="w s ${cls} k-wnext"><div class="row between"><span class="lb">今日やること</span><span class="lb">5件</span></div>
+  ${[['高橋さんへ面談のお礼', ''], ['山本さんに資料を再送', 'var(--coral)'], ['10:00 伊藤さんと面談', '']].map(([t, c], k) => `<div class="wrow" style="margin-top:${k ? 7 : 12}px"><span class="wck" ${c ? `style="color:${c};opacity:.9"` : ''}></span><span style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</span></div>`).join('')}</div>`;
+/* 小组件预览与 widgets.html 同源（NAV-V3 2026-10-08：今日やること · 人脈 + 最近の人 · 秘書から，不再画轨道） */
+const wNum = (cls = '') => `<div class="w s ${cls} k-wnum"><span class="lb">人脈</span><div class="row" style="gap:6px;align-items:baseline;margin-top:2px"><div class="n" style="font-size:38px;line-height:1.1">${num(286)}</div><span class="delta" style="background:rgba(94,158,134,.18)">+24</span></div>
+  <div class="wppl k-wppl">${[C[0], C[2], C[1]].map(c => `<div><div class="av sm ${c.c}">${c.i}</div>${c.n.split(' ')[0]}</div>`).join('')}</div></div>`;
+/* 计划 v2 口径：小组件显示「プラン スコア」（满点 100 · 不封顶）+ 细分数构成条（实色 / 斜纹跳过），与 ⑨ 同口径 */
+const MFG = [[30, 20], [20, 'skip'], [15, 6], [15, 12], [10, 0], [10, 0]]; /* 決裁者 / 現場責任者（習熟済み）/ 商社 / 既存顧客 / 業界団体 / イベント → 58 */
+const mfgBar = `<div class="v2bar thin">${MFG.map(([w, g]) => `<div class="sg ${g === 'skip' ? 'sk' : ''}" style="flex:${w}">${g === 'skip' ? '' : `<b style="width:${g / w * 100}%"></b>`}</div>`).join('')}</div>`;
+const wPlanMfg = (cls = '') => `<div class="w s ${cls}"><div class="row between"><span class="lb">プラン スコア</span><span>🏭</span></div><div class="row" style="gap:8px;align-items:baseline;margin-top:4px"><b class="n" style="font-size:40px;line-height:1.05">58</b><span style="font-size:10px;opacity:.6;font-weight:700;line-height:1.3">満点 100<br>上限なし</span></div><b style="font-size:12px;line-height:1.35;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">製造業の新規顧客開拓</b>${mfgBar}<div class="lb" style="margin-top:8px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">今日 +5 · 商社と話す</div></div>`;
+const wMed = (cls = '') => `<div class="w m ${cls} k-wmed"><div class="row between"><span class="lb">秘書から · 10月7日（水）</span><span class="lb">3件</span></div>
+  <div style="margin-top:10px">${[['📨', '高橋さんから返信：「DD 資料は 10/20 までに」', 'メール要約 · あなただけに表示'], ['⏰', 'SaaS Summit の早割は明後日まで', '参加予定 · まだ申し込んでいません']].map(([e, t, d]) => `<div class="wsec"><span style="font-size:15px">${e}</span><div style="min-width:0;flex:1"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</b><small>${d}</small></div></div>`).join('')}</div></div>`;
+const apps = (cls = '') => `<div class="happ ${cls}"><i>📷</i>カメラ</div><div class="happ ${cls}"><i>🗓️</i>カレンダー</div><div class="happ ${cls}"><i style="background:#2a2433;color:#fff;font-weight:900;font-size:24px">O</i>Orbit</div><div class="happ ${cls}"><i>✉️</i>メール</div>`;
+const wallPhone = (inner, theme = '', pins = '') => `<div class="phone" ${theme ? `data-theme="${theme}"` : ''}><div class="wall"></div>${wsb}${inner}<div class="home-ind"></div>${pins}</div>`;
+const widget1 = () => wallPhone(`<div class="hs"><div style="grid-column:span 2;justify-self:center;position:relative;transform:scale(1.04);z-index:9">${wNext()}</div><div style="grid-column:span 2;justify-self:center" class="blurred">${wNum()}</div><div class="blurred" style="grid-column:span 4;justify-self:center">${wMed()}</div>${apps('blurred')}</div>
+  <div class="ctx" style="left:22px;top:250px"><div>ウィジェットを編集${ic('pen', 'sm')}</div><div>ホーム画面を編集${ic('grid', 'sm')}</div><div class="del">ウィジェットを削除${ic('x', 'sm')}</div></div>
+  <div class="dock blurred"><i>📞</i><i>🧭</i><i>💬</i><i>🎵</i></div>`, '', pin(1, '.ctx div') + pin(2, '.ctx .del'));
+const cfgOpt = (e, t, on, dis) => `<div class="opt ${dis ? 'dis' : ''}"><span style="font-size:17px">${e}</span>${t}${on ? `<span class="ck">${ic('check', 'sm')}</span>` : ''}</div>`;
+const widget2 = (theme = '') => wallPhone(`<div class="hs blurred"><div style="grid-column:span 4;height:170px"></div>${wMed()}${apps()}</div>
+  <div style="position:absolute;left:50%;top:84px;margin-left:-85px;z-index:10">${wPlanMfg()}</div>
+  <div class="wcfg" style="top:272px"><div class="row" style="gap:8px"><span class="emo sm" style="background:#2a2433;color:#fff;font-weight:900;width:28px;height:28px;font-size:13px;border-radius:8px">O</span><b style="font-size:15px">Orbit</b><span style="font-size:12px;opacity:.6;margin-left:auto">小サイズ</span></div>
+    <div class="gh">表示する内容</div><div class="grp">${cfgOpt('✅', '今日やること')}${cfgOpt('👥', '人脈')}${cfgOpt('🎯', 'プラン', 1)}${cfgOpt('📮', '秘書から')}</div>
+    <div class="gh">目標を選ぶ（プランのとき）</div><div class="grp">${cfgOpt('💰', 'シリーズA 資金調達')}${cfgOpt('🏭', '製造業の新規顧客開拓', 1)}</div>
+    <div style="font-size:11px;opacity:.6;margin:10px 4px 0">タップすると Task › プラン が開きます</div></div>`, theme, pin(1, '.wcfg .grp') + pin(2, '.wcfg .grp', 1) + pin(3, '.w.s'));
+const widget3 = () => wallPhone(`<div class="hs">${wPlanMfg()}${wNum()}${wMed()}${apps()}</div><div class="dock"><i>📞</i><i>🧭</i><i>💬</i><i>🎵</i></div>`, '', pin(1, '.w.s'));
+
+/* ============ C NFC ============ */
+const NP = ['森田 拓也', '森', 'c3', '東邦テクノロジーズ株式会社', '事業開発部 部長'];
+const nfc1 = () => topbar('名刺を交換', 'CFO Night Tokyo vol.18', `<button class="rbtn">${ic('x')}</button>`, `<button class="rbtn">${ic('settings')}</button>`) + `
+  <div class="nfc-wave"><i></i><i></i><i></i><div class="core">📱</div></div>
+  <div style="text-align:center"><div style="font-size:21px;font-weight:800">相手の Orbit カードにかざしてください</div><div class="sub" style="margin-top:6px;line-height:1.7">活動の NFC 名札、または相手の Orbit 名刺カードに<br>かざします。相手がアプリを入れていなくても交換できます</div></div>
+  <div class="card" style="margin-top:20px"><div class="row between"><span class="lbl">相手に渡す名刺</span><span class="more" style="font-size:12px;color:var(--ink-3)">項目を編集${ic('right', 'sm')}</span></div>
+    <div class="row" style="gap:12px;margin-top:10px"><div class="av lg c1">${D.me.short}</div><div style="min-width:0"><b style="font-size:15px">${D.me.name}</b><div class="lbl">${D.me.co}</div><div class="lbl">${D.me.role}</div></div></div>
+    <div class="chips" style="margin-top:10px"><span class="chip">${ic('mail', 'sm')}メール</span><span class="chip">${ic('phone', 'sm')}電話</span><span class="chip" style="opacity:.5">SNS（非公開）</span></div></div>
+  <div class="lbl" style="text-align:center;margin-top:16px">カードや名札がないときは <span style="text-decoration:underline">QR で交換</span></div>`;
+const nfc2 = () => topbar('名刺を交換', 'CFO Night Tokyo vol.18', `<button class="rbtn">${ic('x')}</button>`, '') + `
+  <div class="okc">${ic('check')}</div><div style="text-align:center;font-size:21px;font-weight:800;margin-top:10px">つながりました</div>
+  <div class="lbl" style="text-align:center;margin-top:2px">19:42 · CFO Night Tokyo vol.18 で交換</div>
+  <div class="card rise" style="margin-top:16px;background:linear-gradient(150deg,var(--mac-blue),var(--surface) 70%)"><div class="row" style="gap:14px"><div class="av lg ${NP[2]}">${NP[1]}</div><div style="min-width:0"><div style="font-size:19px;font-weight:800">${NP[0]}</div><div class="sub clamp1">${NP[3]}</div><div class="lbl">${NP[4]}</div></div></div>
+    <div class="chips" style="margin-top:12px"><span class="chip teal">事業会社</span><span class="chip">製造業</span><span class="chip">名古屋</span></div>
+    <div class="mac lav row" style="margin-top:12px;gap:8px;font-size:12px"><span>🔔</span><span>相手にも「佐藤さんとつながりました」と通知しました</span></div></div>
+  <div class="grid2" style="margin-top:12px"><button class="btn">${ic('pen', 'sm')}メモを追加</button><button class="btn">${ic('mic', 'sm')}ひとこと録音</button></div>
+  <div class="lbl" style="text-align:center;margin-top:10px">ひとこと録音は自分のメモ用（押している間・最大 15秒）。会場の会話は録音しません</div>`;
+const undoBar = `<div class="toast keep info pos notab"><span class="tk"><span class="lic sm i-undo"></span></span><span class="tmsg">24時間以内なら取り消せます<small>相手の人脈からも削除 · 10/8 19:42 まで</small></span><button class="undo">取り消す</button></div>`;
+const nfc3 = () => wallPhone(`<div class="lock"><div class="date">10月7日 水曜日</div><div class="time">19:42</div></div>
+  <div class="pn notif" style="top:330px"><span class="emo sm" style="background:var(--ink);color:var(--bg);font-weight:900">O</span><div style="flex:1"><div class="row between"><b>Orbit</b><span style="opacity:.55">今</span></div><div style="margin-top:2px"><b>佐藤 健一さん</b>（株式会社ミナトリンク）とつながりました。</div><div style="opacity:.65;margin-top:2px">CFO Night Tokyo vol.18 · 24時間以内なら取り消せます</div></div></div>
+  <div class="nacts" style="top:452px"><div>名刺を見る${ic('user', 'sm')}</div><div>メモを追加${ic('pen', 'sm')}</div><div style="color:var(--coral-text)">つながりを取り消す${ic('x', 'sm')}</div></div>`, '', pin(1, '.notif') + pin(2, '.nacts div', 2));
+const nfc4 = () => phone({ tab: -1, body: nfc2(), overlay: `<div class="sheet-scrim"></div><div class="sheet actsheet"><div class="grab"></div><div style="text-align:center"><span class="emo" style="display:inline-grid;background:var(--coral-soft);color:var(--coral)"><span class="lic i-undo"></span></span><div style="font-size:18px;font-weight:800;margin-top:10px">つながりを取り消しますか？</div><div class="sub" style="margin-top:6px;line-height:1.7">森田さんの名刺はあなたの人脈から、<br>あなたの名刺は森田さんの人脈から削除されます。<br>相手には「交換が取り消されました」とだけ通知されます。</div></div>
+    <div class="lbl" style="text-align:center;margin-top:10px">取り消せる期限：10月8日（木）19:42 まで</div>
+    <button class="btn danger block" style="margin-top:14px">取り消す</button><button class="btn block">このままにする</button></div>`, pins: pin(1, '.sheet .btn') });
+const nfc5 = (on = false) => topbar('名刺交換の設定', 'マイ › 設定', `<button class="rbtn">${ic('left')}</button>`, '') + `
+  <div class="card"><div class="setrow" style="padding-top:2px"><div style="flex:1"><b style="font-size:14px">承認制に切り替える</b><div class="lbl">交換のたびに、あなたが承認します</div></div><span class="tgl ${on ? 'on' : ''}"></span></div>
+    <div class="grid2" style="gap:8px;margin-top:4px"><div class="mac ${on ? '' : 'lav'}" style="${on ? 'background:var(--surface-2)' : ''}"><b style="font-size:12.5px">オフ（標準）</b><div class="lbl" style="margin-top:4px;line-height:1.6">かざした瞬間に名刺が交換され、相手に通知されます。24時間以内なら取り消せます</div></div><div class="mac ${on ? 'lav' : ''}" style="${on ? '' : 'background:var(--surface-2)'}"><b style="font-size:12.5px">オン</b><div class="lbl" style="margin-top:4px;line-height:1.6">相手には「承認待ち」と表示され、あなたが承認するまで名刺は渡りません</div></div></div></div>
+  <div class="card"><div class="card-h"><h3>相手に渡す項目</h3></div>${[['メールアドレス', 1], ['電話番号', 1], ['SNS・Web サイト', 0], ['「力になれること」の一文', 1]].map(([l, v]) => `<div class="setrow"><span style="flex:1;font-size:13.5px">${l}</span><span class="tgl ${v ? 'on' : ''}"></span></div>`).join('')}</div>
+  ${on ? `<div class="card"><div class="card-h"><h3>承認待ち</h3><span class="chip lav">1</span></div><div class="row" style="gap:10px">${av(PP[1], '')}<div style="flex:1;min-width:0"><b style="font-size:13.5px">${PP[1][0]}</b><div class="lbl clamp1">${PP[1][3]} · 19:44 に交換しました</div></div></div><div class="grid2" style="margin-top:12px"><button class="btn">見送る</button><button class="btn primary">${ic('check', 'sm')}承認する</button></div><div class="lbl" style="margin-top:8px">見送っても相手には通知されません（「承認待ち」のまま 24時間で消えます）</div></div>` :
+    `<div class="card flat"><div class="lbl">交換の履歴</div><div class="sub" style="margin-top:4px">今月 9件 · 取り消し 0件</div></div>`}`;
+
+/* ============ D 响应式 ============ */
+const assist = `<h4><span class="emo sm lav">✨</span>次の一手 <span class="lbl" style="margin-left:auto;font-weight:500">ホームから</span></h4>
+  ${[['💌', 'pink', '高橋さんへお礼メール', '昨日の面談 · 下書き済み', '下書きを開く'], ['🙋', 'teal', '渡辺さんに投資家紹介を依頼', '紹介可能 2名', '依頼文を作る'], ['🥂', 'lav', '今夜の CFO Night の準備', '会いたい人 6名', '準備リスト']].map(([e, c, t, d, a]) => `<div class="sugg"><div class="row" style="gap:10px"><span class="emo sm ${c}">${e}</span><div style="flex:1"><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div><div class="row" style="margin-top:10px;gap:6px"><button class="btn sm primary">${a}</button><button class="btn sm ghost">あとで</button></div></div>`).join('')}
+  <div class="lbl" style="margin-top:6px">最近の会話</div>${['CVC担当者に会う方法', 'ピッチ資料の市場規模'].map(t => `<div class="row" style="font-size:12.5px;gap:8px;color:var(--ink-2)">${ic('clock', 'sm')}${t}</div>`).join('')}
+  <div style="flex:1"></div><div class="assist-in">${ic('sparkle', 'sm')}iOrbit に聞く…<span style="margin-left:auto">⌘K</span></div>`;
+const railBtn = `<button class="btn rail-btn">${ic('sparkle', 'sm')}次の一手 <span class="cnum">3</span></button>`;
+/* 1024 首页 = web.html ホーム 同源（HV3.W.home1024：NAV-V3 组件网格），标题区多一个「次の一手」按钮代替右栏 */
+function rHome1024() {
+  return HV3.W.home1024('many').replace('<button class="btn k-wedit"', railBtn + '<button class="btn k-wedit"');
+}
+/* 1024 人脈 = web.html 人脈 同源（濃さ三点 + 出どころ chip），表格去掉「最終接点」列；右栏收为「次の一手」按钮 */
+function rNet1024() {
+  return HV3.W.net1024('many').replace('<button class="btn accent k-waddbtn"', railBtn + '<button class="btn accent k-waddbtn"');
+}
+const w1024 = (nav, body, extra = '', pins = '') => webFrame({ nav, head: '', body, pins }).replace('class="web ', 'class="web w1024 ').replace('</section>', '</section>' + extra);
+/* NAV-V3：与 App 底栏同构 5 项（ホーム / 人脈 / iOrbit / イベント / Task），无浮动「＋追加」 */
+const mwebNav = (on) => `<nav class="tabbar">${[['home', 'ホーム'], ['users', '人脈'], ['sparkle', 'iOrbit'], ['calendar', 'イベント'], ['task', 'Task']].map(([i, l], k) => `<button class="${k === on ? 'on' : ''}">${ic(i)}${l}</button>`).join('')}</nav>
+  <div class="sbar"><span class="ub">aA</span><div class="url">${ic('search', 'sm')}orbit.app</div><span class="ub">${ic('refresh', 'sm')}</span></div>`;
+const mwHead = `<div class="mw-head"><div class="logo">O</div><b style="font-size:16px">Orbit</b><div style="flex:1"></div><button class="rbtn">${ic('inbox')}<span class="dot"></span></button><button class="avatar-btn">${D.me.short}</button></div>`;
+/* 390 手机浏览器：正文与 App 首页 / 人脈 完全同构（HV3.A.*Body = app.html 去掉顶栏），顶栏换成手机网页头 */
+const mHome = () => mwHead + HV3.A.homeBody('many');
+const mNet = () => mwHead + `<div style="font-size:22px;font-weight:800;margin-bottom:10px">人脈 <span class="lbl" style="font-size:12px">286人 · 今月 +24</span></div>` + HV3.A.netBody('many');
+const mweb = (body, on, pins) => phone({ tab: -1, body, overlay: mwebNav(on), pins }).replace('class="phone"', 'class="phone mweb"');
+
+/* ============ E 长文案 ============ */
+const LCO = '株式会社ノースブリッジ・インダストリアル・ソリューションズ';
+const LROLE = '執行役員 兼 グローバル事業開発本部 本部長';
+const LEV = '第12回 日本製造業デジタルトランスフォーメーション推進フォーラム 2026 秋季大会 〜現場から始める AI 活用〜';
+const specBoard = () => `<div class="web spec"><div class="row between"><div><div style="font-size:22px;font-weight:800">日本語の長い文字列 · 截断与换行规则</div><div class="sub">示例：会社名 ${LCO.length}字 / 役職 ${LROLE.length}字 / イベント名 ${LEV.length}字。悬停 Web、长按 App 看全文。</div></div><span class="chip lav">适用两端</span></div>
+  <div class="wgrid" style="margin-top:20px">
+    <div class="card span4 flat"><div class="row between"><b>① 列表行</b><span class="okng ok">1 行省略</span></div><div class="lbl" style="margin:4px 0 10px">姓名不截断；会社・役職合并一行，末尾「…」</div>
+      <div class="card" style="padding:6px 14px"><div class="list"><div class="li"><div class="av c3">北</div><div class="meta"><b>北村 恭介</b><span>${LCO} · ${LROLE}</span></div><span class="chip blue">関係構築</span></div><div class="li"><div class="av c2">高</div><div class="meta"><b>高橋 美咲</b><span>青葉ベンチャーズ · パートナー</span></div><span class="chip lav">推進中</span></div></div></div>
+      <div class="row" style="margin-top:12px;gap:6px"><span class="okng bad">NG</span><span class="lbl">折行导致行高不齐 ↓</span></div>
+      <div class="card ng" style="padding:10px 14px;margin-top:6px"><div class="row" style="align-items:flex-start;gap:12px"><div class="av c3">北</div><div style="font-size:12px;color:var(--ink-3)"><b style="font-size:14px;color:var(--ink)">北村 恭介</b><br>${LCO} · ${LROLE}</div></div></div></div>
+    <div class="card span4 flat"><div class="row between"><b>② 卡片标题</b><span class="okng ok">2 行截断</span></div><div class="lbl" style="margin:4px 0 10px">活动名最多 2 行；日期·会場 1 行；数字永不截断</div>
+      <div class="hc" style="cursor:default"><div class="row between"><span class="emo blue">🏭</span><span class="chip blue">開催前</span></div><b class="hc-t jp">${LEV}</b><div class="lbl clamp1">10月28日（水）10:00 · パシフィコ横浜 ノース G301–G304</div><div class="cnt3"><div><span class="lbl">申込</span><b>1,248<small>/1,500</small></b></div><div><span class="lbl">マッチ</span><b>—</b></div><div><span class="lbl">受付</span><b>—</b></div></div></div>
+      <div class="lbl" style="margin-top:10px">换行用 <code>word-break: auto-phrase</code> 按文节断行，避免「フォーラ / ム」式断词</div></div>
+    <div class="card span4 flat"><div class="row between"><b>③ chip / 标签</b><span class="okng ok">最大宽 + tooltip</span></div><div class="lbl" style="margin:4px 0 10px">chip 最大 160px，超出「…」；悬停/长按显示全文气泡</div>
+      <div class="card" style="padding:16px"><div class="chips" style="margin-top:44px"><span class="tipw"><span class="chip lav" style="max-width:160px">${LROLE}</span><span class="tip-b show">${LROLE}</span></span><span class="chip teal" style="max-width:160px">${LCO}</span><span class="chip">製造業</span></div></div>
+      <div class="row" style="margin-top:12px;gap:6px"><span class="okng bad">NG</span><span class="lbl">chip 撑出卡片 ↓</span></div><div class="card" style="padding:12px;overflow:hidden;margin-top:6px"><span class="chip lav" style="max-width:none;overflow:visible">${LROLE}</span></div></div>
+    <div class="card span8"><div class="row between"><b>④ 表格</b><span class="okng ok">会社 2 行 · 役職 1 行 · 名前不截断</span></div>
+      <table class="table" style="margin-top:12px;table-layout:fixed"><thead><tr><th style="width:130px">名前</th><th style="width:220px">会社</th><th style="width:190px">役職</th><th>参加イベント</th><th style="width:80px">最終接点</th></tr></thead><tbody>
+        <tr><td style="white-space:nowrap"><div class="row"><div class="av sm c3">北</div><b>北村 恭介</b></div></td><td><span class="clamp2 jp">${LCO}</span></td><td><span class="tipw" style="display:block"><span class="clamp1" style="display:block">${LROLE}</span><span class="tip-b show">${LROLE}</span></span></td><td><span class="clamp1" style="display:block">${LEV}</span></td><td class="muted">3日前</td></tr>
+        <tr><td style="white-space:nowrap"><div class="row"><div class="av sm c4">長</div><b>長谷川 翼</b></div></td><td><span class="clamp2">Seedline株式会社</span></td><td>CFO</td><td>CFO Night Tokyo vol.18</td><td class="muted">今日</td></tr></tbody></table></div>
+    <div class="card span4 flat"><b>⑤ 规则一览</b><table class="table rule" style="margin-top:8px"><thead><tr><th>元素</th><th>最大</th><th>全文</th></tr></thead><tbody>${[['姓名', '不截断', '—'], ['会社（行内）', '1 行', 'tooltip / 详情'], ['会社（表格）', '2 行', 'tooltip'], ['役職', '1 行', 'tooltip'], ['活动名（卡片）', '2 行', '详情页'], ['chip', '160px', 'tooltip / 长按'], ['数字・日付', '不截断', '—']].map(r => `<tr>${r.map((c, j) => `<td style="${j === 0 ? 'font-weight:700' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      <div class="lbl" style="margin-top:8px;line-height:1.6">法人格「株式会社」不缩写为（株），以免与名片原文不一致；省略号永远在末尾。</div></div></div>${pin(1, '.li .meta span') + pin(2, '.hc-t') + pin(3, '.tip-b') + pin(4, '.table .clamp2')}</div>`;
+/* AX3 大字号：首页组件按大字号重排（NAV-V3：人脈组件 = 人数 + 最近の人 纵排；今週ストリップ收成「今日」列表；今日の一手 只露 1 张 + 「次へ」） */
+const dynHome = () => topbar(D.today.month, D.today.date, `<button class="avatar-btn">${D.me.short}</button>`, `<button class="rbtn">${ic('bell')}<span class="dot"></span></button>`) + `
+  <div class="card k-dorb"><div class="lbl" style="font-size:16px">人脈</div><div class="row" style="gap:10px;align-items:baseline;flex-wrap:wrap"><div class="big" style="font-size:58px">${num(286)}<small style="font-size:22px">人</small></div><span class="delta" style="font-size:15px">+24 今月</span></div>
+    <div class="dppl" style="margin-top:12px;display:grid;gap:8px">${HV3.NET_MANY.slice(0, 3).map(p => `<div class="row" style="gap:12px;background:var(--surface-2);border-radius:14px;padding:10px 14px"><div class="av ${p.c}" style="width:40px;height:40px;font-size:17px">${p.i}</div><div style="min-width:0"><b style="display:block;font-size:18px">${p.n}</b><span style="font-size:15px;color:var(--ink-3)">${p.co}</span></div></div>`).join('')}</div></div>
+  <div class="card k-dweek"><div class="row between"><b style="font-size:18px">今日 · 10月7日（水）</b><span class="more" style="font-size:15px">今週${ic('right', 'sm')}</span></div>
+    ${HV3.TODAY_TL(true).map(([t, c, n, d]) => `<div class="mac ${c}" style="border-radius:16px;padding:10px 14px;margin-top:8px"><b style="font-family:var(--font-num);font-size:17px">${t}</b><div style="font-size:17px;font-weight:700;line-height:1.45">${n}</div><div style="font-size:15px;color:var(--ink-3)">${d}</div></div>`).join('')}</div>
+  <div class="card k-dnext" style="background:linear-gradient(135deg,var(--mac-lav),var(--surface) 70%)"><div class="row between"><div style="font-size:16px;font-weight:800">✨ 今日の一手</div><span class="nst-n" style="font-size:15px">1 / 3</span></div><div style="font-size:20px;font-weight:700;line-height:1.55;margin-top:6px">高橋さんへ昨日の面談のお礼を。</div><button class="btn primary block" style="margin-top:12px;height:54px;font-size:17px">${ic('mail')}下書きを開く</button><button class="btn block" style="margin-top:8px;height:50px;font-size:16px">次へ</button><div style="font-size:14px;color:var(--ink-3);text-align:center;margin-top:8px">送信はあなたが行います</div></div>
+  <div class="card k-dscore"><div class="lbl" style="font-size:16px">プラン スコア</div><div class="row" style="gap:10px;align-items:baseline;flex-wrap:wrap"><div class="big" style="font-size:52px">${num(46)}</div><span style="font-size:15px;color:var(--ink-3)">満点 100 · 上限なし</span></div>${HV3.V2.sbar('s46')}
+    <div class="row between" style="margin-top:12px;background:var(--surface-2);border-radius:14px;padding:10px 14px"><span style="font-size:17px;font-weight:700">今日 +10 のチャンス</span><b class="score" style="font-size:22px;color:var(--plum-700)">+10</b></div></div>
+  <div class="card"><div class="row between" style="margin-bottom:6px"><span style="font-size:18px;font-weight:800">あなたの判断待ち</span><span class="more" style="font-size:15px">すべて (4)</span></div><div style="font-size:18px;font-weight:700;line-height:1.45">山本 彩さんに資料を再送</div><div style="font-size:15px;color:var(--ink-3);line-height:1.5">東都キャピタル<br>24日間 未連絡</div><span class="chip coral" style="font-size:14px;margin-top:8px">期限超過</span></div>`;
+const dynPhone = () => phone({ tab: 0, body: dynHome(), pins: pin(1, '.k-dorb .big') + pin(2, '.k-dorb .dppl') + pin(3, '.k-dweek') + pin(4, '.k-dnext .btn', 1) + pin(5, '.tabbar') }).replace('class="phone"', 'class="phone dyn"').replace('<nav class="tabbar">', '<nav class="tabbar dyn-tab">');
+
+/* ============ F 深色（与 web.html 同构的简化版） ============ */
+/* 与 web.html 同源（HV3）：人脈 濃さ + 出どころ */
+function wNetwork() { return HV3.W.network('many', { sel: 0 }); }
+const wContactDrawer = () => HV3.W.contactDrawer();
+function wPlan() { return HV3.W.plan('many'); }
+const wChat = () => mainhead('iOrbit', '人脈・イベント・予定を知っている秘書', `<button class="rbtn">${ic('menu')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`) + `<div style="max-width:760px;margin:0 auto;display:grid;gap:12px">
+    <div class="bubble me">CVC の担当者に会うには、どうすればいい？</div>
+    <div class="bubble ai">今のつながりに CVC 担当者はいません（プランの目標は 3人）。近道は2つあります。</div>
+    <div class="grid2"><div class="card"><div class="lbl">紹介を頼める人</div><div class="row" style="gap:10px;margin-top:8px"><div class="av ${C[5].c}">${C[5].i}</div><div style="flex:1"><b>${C[5].n}</b><div class="lbl">${C[5].co} · 大企業の新規事業担当 300名</div></div></div><button class="btn sm" style="margin-top:12px">${ic('mail', 'sm')}依頼文を下書き</button></div>
+      <div class="card"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${ring(48, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:12px">68</span>')}<div><b>製造業DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定 · 10/23</div></div></div><button class="btn sm" style="margin-top:12px">${ic('calendar', 'sm')}予定を押さえる</button></div></div>
+    <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b>プランに追加しますか？</b><div class="lbl">「小林さんに CVC 担当者の紹介を依頼」を「CVC 担当者」のやることに</div></div><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div>
+    <div class="chips"><span class="prompt">依頼文を作って</span><span class="prompt">大阪の日程を押さえて</span><span class="prompt">他に CVC に近い人は？</span></div>
+    <div class="assist-in" style="margin-top:20px;height:56px;box-shadow:var(--shadow-float)">${ic('plus', 'sm')}質問・依頼を入力　@で人やイベントを指定<button class="lbtn" style="margin-left:auto;background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div></div>`;
+const wChatRail = `<h4>${ic('layers', 'sm')}参照しているもの</h4>
+  <div class="card" style="padding:14px"><div class="lbl">プラン</div><b style="font-size:13px">シリーズA 資金調達 · スコア 46</b>${V2.sbar('s46', { thin: true })}</div>
+  <div class="card" style="padding:14px"><div class="lbl">人脈 3名</div><div class="avs" style="margin-top:8px">${[C[5], C[0], C[2]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div></div>
+  <div class="card" style="padding:14px"><div class="lbl">イベント 1件</div><b style="font-size:13px">製造業DXカンファレンス 大阪</b></div>
+  <div class="mac lav" style="font-size:12px">メール・メッセージは下書きまで。送信はあなたが行います。</div>`;
+
+/* ============ 出力 ============ */
+const W = 1440, wf = (o) => webFrame(o), withOver = (html, extra) => html.replace('</section>', '</section>' + extra);
+const S8 = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+const setr = (l, v, cls = '') => `<div class="setrow ${cls}"><span class="lbl" style="width:132px">${l}</span>${v}</div>`;
+const inp = (t, w = '100%') => `<div class="input" style="flex:1;height:40px;max-width:${w};color:var(--ink)">${t}</div>`;
+const dlg = (inner) => `<div class="overlay"></div><div class="modal wmodal w480">${inner}</div>`;
+const btnRow = (a, b) => `<div class="row" style="gap:10px;margin-top:20px;justify-content:flex-end">${a}${b}</div>`;
+/* ---------- B1 建活动 / 编辑基本情報（照 b6 #13 左表单 + 右预览）---------- */
+const evForm = (edit) => mainhead(edit ? '基本情報を編集' : 'イベントを作成', edit ? HE[0].n + ' · 主催' : '運営センター › 新しいイベント', backBtn, `<button class="btn">下書き保存</button><button class="btn accent">${edit ? '変更を保存' : '公開へ進む'}</button>`) + `<div class="wgrid">
+  <div class="span7" style="display:grid;gap:18px;align-content:start">
+    <div class="card k-evform"><div class="card-h"><h3>基本情報</h3><span class="lbl">* は必須</span></div>
+      ${setr('イベント名 *', inp(edit ? HE[0].n : 'CFO Night Tokyo vol.19'))}${setr('日時 *', inp(edit ? '10月7日（水）19:00–21:30' : '11月4日（水）19:00–21:30'))}${setr('会場 *', inp('渋谷ストリーム 4F ホール'))}${setr('定員', inp('150名', '160px'))}${setr('参加費', inp('¥5,000', '160px'))}
+      ${setr('所属する主催者ページ *', `<div class="input k-evorg" style="flex:1;height:40px;color:var(--ink);justify-content:space-between">🥂 CFO Night 実行委員会${ic('down', 'sm')}</div>`)}
+      <div class="lbl" style="margin:6px 0 0 132px">公開ページ orbit.example/o/cfo-night の「これからのイベント」に並びます · 主催者ページは複数持てます</div></div>
+    <div class="card"><div class="card-h"><h3>説明文</h3><span class="lbl">200字まで</span></div><div class="ta">上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。キーノートのあと、テーブルトークを 3ラウンド。<span class="counter">58 / 200</span></div></div></div>
+  <div class="card span5 k-evprev"><div class="card-h"><h3>プレビュー</h3><span class="lbl">申込ページの見え方</span></div>
+    <div style="border-radius:20px;overflow:hidden;background:var(--surface-2)"><div style="height:96px;background:linear-gradient(135deg,var(--mac-lav),var(--mac-pink))"></div>
+      <div style="padding:16px"><div class="lbl">🥂 CFO Night 実行委員会</div><b style="display:block;font-size:17px;margin-top:4px">${edit ? HE[0].n : 'CFO Night Tokyo vol.19'}</b><div class="lbl" style="margin-top:6px">${edit ? '10/7（水）19:00' : '11/4（水）19:00'} · 渋谷ストリーム · ¥5,000</div><div class="sub" style="margin-top:10px;line-height:1.7">上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。</div><button class="btn primary block" style="margin-top:14px">参加登録</button></div></div></div></div>`;
+/* ---------- B2 确认框（01-system 480）---------- */
+const pubDlg = dlg(`<span class="emo lav">📣</span><div style="font-size:19px;font-weight:800;margin-top:12px">イベントを公開しますか？</div>
+  <div class="sub" style="margin-top:6px;line-height:1.7">公開すると申込ページが開き、主催者ページ「CFO Night 実行委員会」のフォロワー 140名にお知らせが届きます。</div>
+  <div style="margin-top:14px">${[['日時', '11月4日（水）19:00'], ['定員', '150名 · 審査制'], ['申込締切', '11月3日（火）23:59']].map(([l, v]) => `<div class="setrow"><span class="chip teal">${ic('check', 'sm')}</span><b style="font-size:13px">${l}</b><span class="lbl" style="margin-left:auto">${v}</span></div>`).join('')}</div>
+  ${btnRow('<button class="btn">キャンセル</button>', '<button class="btn primary">公開する</button>')}`);
+const stopDlg = dlg(`<div class="row" style="gap:14px;align-items:flex-start"><div class="dic"><span class="lic i-alert"></span></div><div><div style="font-size:18px;font-weight:800">「CFO Night Tokyo vol.18」を中止しますか？</div><div class="sub" style="margin-top:6px;line-height:1.7">中止すると申込を締め切り、申込済みの 128名にお知らせします。元に戻せません。</div></div></div>
+  <div style="margin-top:14px;display:grid;gap:8px;font-size:12.5px">${[['bell', '申込済み 128名 · キャンセル待ち 8名に通知'], ['ticket', '参加費の返金は主催者の規定によります'], ['users', '共同運営者 3名にも知らせます']].map(([i, t]) => `<div class="row" style="gap:8px">${ic(i, 'sm')}<span>${t}</span></div>`).join('')}</div>
+  <div class="lbl" style="margin-top:12px;font-weight:700;color:var(--ink-2)">参加者へのひとこと（任意）</div><div class="ta ph" style="min-height:56px;margin-top:6px">例：会場の都合により中止となりました。<span class="counter">0 / 140</span></div>
+  ${btnRow('<button class="btn">やめる</button>', '<button class="btn danger">中止する</button>')}`);
+const chgDlg = dlg(`<span class="emo blue">🗓️</span><div style="font-size:19px;font-weight:800;margin-top:12px">日時と会場の変更を参加者に知らせますか？</div>
+  <div style="margin-top:14px">${[['日時', '10月7日（水）19:00', '10月8日（木）19:00'], ['会場', '渋谷ストリーム 4F', '渋谷ストリーム 6F ホール B']].map(([l, a, b]) => `<div class="setrow"><b style="font-size:13px;width:44px">${l}</b><span class="lbl" style="text-decoration:line-through">${a}</span>${ic('right', 'sm')}<b style="font-size:13px">${b}</b></div>`).join('')}</div>
+  <div class="mac apricot" style="font-size:12px;margin-top:10px">申込済み・承認済みの 104名とキャンセル待ち 8名に、変更内容をお知らせします。</div>
+  <div class="row" style="gap:10px;margin-top:14px;font-size:12.5px"><span class="cbx on">${ic('check', 'sm')}</span>参加者のカレンダーの予定も更新する</div>
+  ${btnRow('<button class="btn">知らせずに保存</button>', '<button class="btn primary">保存して知らせる</button>')}`);
+/* ---------- B5 お知らせの文面 + 定型通知确认 ---------- */
+const TPL = [['承認', 'CFO Night Tokyo vol.18 への参加が承認されました。当日は受付で QR を表示してください。', 1], ['見送り', '今回は定員の都合により、ご参加をお見送りさせていただきます。', 0], ['キャンセル待ち', 'キャンセル待ちとして受け付けました。空きが出たらお知らせします。', 0], ['繰り上げ', 'キャンセルが出たため、参加が確定しました。', 0], ['テーブル公開', 'テーブル編成を公開しました。アプリで同席者を確認できます。', 0], ['プロフィール未完了', 'マッチングのためにプロフィールを完成させてください（所要 2分）。', 0]];
+const noticeW = () => hostHead(HE[0].n, '主催 · 申込フォーム公開中', '申込設定') + `<div class="wgrid">
+  <div class="card span7 k-ntpl"><div class="card-h"><h3>お知らせの文面</h3><span class="lbl">定型 6種 · 自動で送信</span></div>
+    ${TPL.map(([t, b, on]) => `<div class="setrow" style="${on ? 'background:var(--surface-2);border-radius:14px;padding:10px 12px' : ''}"><b style="font-size:13px;width:120px">${t}</b><span class="lbl clamp1" style="flex:1">${b}</span>${ic(on ? 'down' : 'right', 'sm')}</div>${on ? `<div class="k-nnote" style="margin:4px 0 10px 12px"><div class="lbl" style="font-weight:700;color:var(--ink-2)">主催者からのひとこと（任意）</div><div class="ta" style="min-height:62px;margin-top:6px">当日は 18:45 から受付を開始します。名刺を 20枚ほどお持ちください。<span class="counter">36 / 140</span></div><div class="lbl" style="margin-top:6px">定型文は変更できません · ひとことは定型文のあとに表示されます</div></div>` : ''}`).join('')}</div>
+  <div class="card span5 k-nprev"><div class="card-h"><h3>プレビュー</h3><span class="lbl">参加者のアプリ · メール</span></div>
+    <div style="border-radius:18px;background:var(--surface-2);padding:14px"><div class="row" style="gap:10px"><span class="emo sm lav">🥂</span><div style="flex:1;min-width:0"><b style="font-size:13px">参加が承認されました</b><div class="lbl">CFO Night 実行委員会 · いま</div></div></div>
+      <div class="sub" style="margin-top:10px;line-height:1.7">CFO Night Tokyo vol.18 への参加が承認されました。当日は受付で QR を表示してください。</div>
+      <div class="mac lav" style="font-size:12.5px;margin-top:10px;line-height:1.6"><b>主催者より：</b>当日は 18:45 から受付を開始します。名刺を 20枚ほどお持ちください。</div></div></div></div>`;
+const notifyDlg = dlg(`<span class="emo pink">🙋</span><div style="font-size:19px;font-weight:800;margin-top:12px">プロフィール未完了の 16名にお知らせを送りますか？</div>
+  <div class="sub" style="margin-top:6px;line-height:1.7">マッチングに必要なプロフィールの入力をお願いする定型のお知らせです。</div>
+  <div style="border-radius:16px;background:var(--surface-2);padding:12px 14px;margin-top:12px"><b style="font-size:13px">プロフィールを完成させてください</b><div class="sub" style="margin-top:6px;line-height:1.6">マッチングのためにプロフィールを完成させてください（所要 2分）。</div></div>
+  <div class="lbl" style="margin-top:10px">送信先 16名 · アプリ通知とメール · 同じ人には 1日 1回まで</div>
+  ${btnRow('<button class="btn">キャンセル</button>', '<button class="btn primary">16名に送る</button>')}`);
+/* ---------- B6 主办方资料 列表 + 编辑（照 b7 #34 左表单 + 右预览）/ 共同運営に参加 ---------- */
+const orgEdit = () => mainhead('主催者ページ', '運営センター › 主催者ページ', backBtn, `<button class="btn">${ic('out', 'sm')}公開ページを見る</button><button class="btn accent">保存</button>`) + `<div class="wgrid">
+  <div class="card span3 k-orglist" style="padding:10px"><div class="lbl" style="padding:6px 8px">あなたの主催者ページ</div>${[['🥂', 'lav', 'CFO Night 実行委員会', 'イベント 18件', 1], ['🏭', 'blue', '製造業DX 朝会', 'イベント 3件', 0]].map(([e, c, n, d, on]) => `<div class="row" style="gap:10px;padding:10px;border-radius:14px;${on ? 'background:var(--surface-2)' : ''}"><span class="emo sm ${c}">${e}</span><div style="min-width:0"><b style="font-size:13px" class="clamp1">${n}</b><div class="lbl">${d}</div></div></div>`).join('')}<button class="btn ghost block" style="margin-top:8px">${ic('plus', 'sm')}主催者ページを追加</button></div>
+  <div class="card span5 k-orgform"><div class="card-h"><h3>プロフィール</h3></div>${setr('名前 *', inp('CFO Night 実行委員会'))}${setr('URL', inp('orbit.example/o/cfo-night'))}${setr('アイコン', '<span class="emo lav">🥂</span><button class="btn sm">変更</button>')}
+    <div class="lbl" style="margin-top:10px;font-weight:700;color:var(--ink-2)">紹介文</div><div class="ta" style="min-height:90px;margin-top:6px">スタートアップの CFO と投資家が、毎月渋谷で本音を話す会です。<span class="counter">30 / 200</span></div>
+    ${setr('公開範囲', '<div class="seg"><button class="on">公開</button><button>リンクを知っている人</button></div>')}</div>
+  <div class="card span4 k-orgprev"><div class="card-h"><h3>プレビュー</h3><span class="lbl">公開ページの見え方</span></div>
+    <div style="text-align:center;padding:12px"><span class="emo lav" style="width:64px;height:64px;font-size:30px;border-radius:22px;margin:0 auto">🥂</span><div class="lbl" style="margin-top:10px">主催者</div><b style="font-size:18px">CFO Night 実行委員会</b><div class="sub" style="margin-top:6px;line-height:1.7">スタートアップの CFO と投資家が、毎月渋谷で本音を話す会です。</div>
+      <div class="grid3" style="gap:8px;margin-top:12px">${[['開催回数', '18回'], ['累計参加者', '2,140名'], ['フォロワー', '860']].map(([l, v]) => `<div style="background:var(--surface-2);border-radius:14px;padding:8px"><div class="lbl">${l}</div><b style="font-size:14px">${v}</b></div>`).join('')}</div></div></div></div>`;
+const joinCard = (cls) => `<div class="card ${cls} k-join" style="background:linear-gradient(160deg,var(--mac-lav),var(--surface) 65%)"><div class="lbl">共同運営への招待</div><b style="display:block;font-size:18px;margin-top:6px">${HE[0].n}</b><div class="lbl">CFO Night 実行委員会 · 佐藤 健一 さんから</div>
+  <div class="row" style="gap:8px;margin-top:12px"><span class="chip lav">役割：受付</span><span class="lbl">当日の受付と到着の記録ができます</span></div>
+  <div style="display:grid;gap:8px;margin-top:16px"><button class="btn primary">ログインして参加する</button><button class="btn">コードを入力する</button></div><div class="lbl" style="margin-top:8px">招待は 7日間有効 · 10/14 まで</div></div>`;
+const joinPub = () => `<div class="web no-rail bare" style="display:block"><nav class="row" style="height:84px;justify-content:space-between;padding:0 40px"><div class="row" style="gap:10px"><span class="emo" style="background:var(--ink);color:var(--bg);font-weight:900">O</span><b style="font-size:18px">Orbit</b></div><div class="row" style="gap:8px"><button class="btn ghost">ログイン</button><button class="btn primary">無料で始める</button></div></nav><div style="max-width:520px;margin:40px auto 0">${joinCard('')}</div></div>`;
+const joinCodeSheet = `<div class="sheet-scrim"></div><div class="sheet k-jcode"><div class="grab"></div><b style="font-size:17px">共同運営に参加</b><div class="lbl" style="margin-top:4px">主催者から届いた 8文字のコード</div><div class="row" style="gap:6px;justify-content:center;margin-top:14px">${'H7KQM2TR'.split('').map((c, k) => `${k === 4 ? '<span style="color:var(--ink-4);font-weight:800">-</span>' : ''}<span style="width:32px;height:44px;border-radius:10px;background:var(--surface-2);display:grid;place-items:center;font-family:var(--font-num);font-size:18px;font-weight:800">${c}</span>`).join('')}</div><button class="btn primary block xl" style="margin-top:16px">参加する</button></div>`;
+const joinApp = () => topbar('共同運営への招待', '', `<button class="rbtn">${ic('x')}</button>`, '<span></span>') + joinCard('').replace('ログインして参加する', '参加する');
+/* ---------- B8 kiosk ---------- */
+const kioskQR = () => kiosk('many').replace(/<\/div>$/, `<div class="camv k-kqr"><div class="vf"></div><b style="font-size:18px">QR をかざしてください</b><span style="font-size:13px;opacity:.7">読み取り中… · 参加者のアプリの「受付 QR」</span><button class="btn" style="background:rgba(255,255,255,.12);color:#F7F5F7">名前で探す</button></div></div>`);
+const kioskDlg = (inner) => kiosk('many').replace(/<\/div>$/, `<div class="overlay"></div><div class="modal wmodal w480" style="z-index:40">${inner}</div></div>`);
+const overDlg = kioskDlg(`<span class="emo apricot">🙋</span><div style="font-size:19px;font-weight:800;margin-top:12px">定員を超えています。受付しますか？</div><div class="sub" style="margin-top:6px;line-height:1.7">当日枠 8名はすべて使われています（受付 150 / 定員 150）。受付するとテーブル外の参加になります。</div><div class="setrow" style="margin-top:12px"><div class="av sm c3">林</div><b style="font-size:13px">林 美穂</b><span class="lbl" style="margin-left:auto">当日参加 · 未申込</span></div>${btnRow('<button class="btn">受付しない</button>', '<button class="btn primary">定員を超えて受付</button>')}`);
+const undoDlg = kioskDlg(`<div class="row" style="gap:14px;align-items:flex-start"><div class="dic"><span class="lic i-alert"></span></div><div><div style="font-size:18px;font-weight:800">森 拓也さんの受付を取り消しますか？</div><div class="sub" style="margin-top:6px;line-height:1.7">19:42 の受付と、テーブル B-4 の割り当てを取り消します。</div></div></div>${btnRow('<button class="btn">やめる</button>', '<button class="btn danger">受付を取り消す</button>')}`);
+/* ---------- B10 App レポート段摘要 ---------- */
+const appReport = () => topbar(HE[0].n, '本日 19:00 · 開催中', `<button class="rbtn">${ic('left')}</button>`, `<button class="rbtn">${ic('users')}</button>`) + `
+  <div class="carousel" style="gap:6px;margin-bottom:12px">${['概要', 'マッチング', '参加者', '受付', 'レポート'].map((t, k) => `<button class="chip" style="padding:7px 14px;font-size:12.5px;${k === 4 ? 'background:var(--ink);color:var(--bg)' : ''}">${t}</button>`).join('')}</div>
+  <div class="card rise k-arep"><div class="cnt3" style="margin-top:0">${[['受付率', '67', '%'], ['交換率', '58', '%'], ['会後フォロー', '41', '%']].map(([l, v, u]) => `<div><span class="lbl">${l}</span><b>${v}<small style="font-size:12px">${u}</small></b></div>`).join('')}</div><div class="lbl" style="margin-top:8px">到着 86 / 128名 · 名刺交換 312件 · 本日 21:40 時点</div></div>
+  <div class="card flat row k-arpc" style="gap:10px"><span class="emo sm blue">💻</span><div style="flex:1"><b style="font-size:13px">詳しいレポートは PC で</b><div class="lbl">申込推移・テーブル別・会後フォローの内訳</div></div><button class="btn sm">PC で詳細</button></div>`;
+/* ---------- B4 App ---------- */
+const appCenterFew = () => appCenter('many').replace(/<div class="seg"[\s\S]*$/, `<div style="display:grid;gap:12px;margin-top:4px">${hcard(HE[2], '')}</div><div class="card flat row" style="gap:10px;margin-top:12px"><span class="emo sm blue">💻</span><div class="lbl" style="flex:1">作成と申込フォームの編集は PC が便利です</div></div>`);
+const appMatchView = () => topbar('マッチング結果', HE[0].n + ' · 第1ラウンド', `<button class="rbtn">${ic('left')}</button>`, '<span></span>') + `
+  <div class="seg" style="width:100%;display:grid;grid-template-columns:1fr 1fr;margin-bottom:12px"><button class="on">第1ラウンド</button><button>第2ラウンド</button></div>
+  <div class="card flat row" style="gap:10px"><span class="emo sm lav">👀</span><div class="lbl" style="flex:1">見るだけです。テーブルの入れ替えは PC で行えます</div></div>
+  ${['A-1', 'A-2', 'B-4'].map((t, k) => `<div class="card k-amtab"><div class="row between"><b style="font-size:14px">テーブル ${t}</b><span class="lbl">${[5, 5, 4][k]}名</span></div><div class="list" style="margin-top:6px">${PP.slice(k * 2, k * 2 + 3).map(p => `<div class="li">${av(p)}<div class="meta"><b>${p[0]}</b><span>${p[3]}</span></div></div>`).join('')}</div></div>`).join('')}`;
+const appReview = () => topbar('参加者', HE[0].n + ' · 審査待ち 12名', `<button class="rbtn">${ic('left')}</button>`, `<button class="rbtn">${ic('search')}</button>`) + `
+  <div class="seg" style="width:100%;display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:12px"><button class="on">審査待ち 12</button><button>承認済み 104</button><button>見送り 4</button></div>
+  <div class="card k-arev" style="padding:6px 16px"><div class="list">${PP.slice(0, 6).map((p, k) => `<div class="li">${av(p)}<div class="meta"><b>${p[0]}</b><span>${p[3]}</span><span style="color:var(--ink-2)" class="clamp1">${ANS[k]}</span></div><button class="btn sm primary">承認</button></div>`).join('')}</div></div>
+  <div class="lbl center" style="margin-top:8px">まとめて審査・見送りの理由メモは PC で</div>`;
+const tplSheet = `<div class="sheet-scrim"></div><div class="sheet k-atpl"><div class="grab"></div><b style="font-size:17px">テンプレートから作成</b><div class="lbl" style="margin:4px 0 12px">形式と質問が入った状態で始められます</div>${[['🥂', 'lav', '交流会', '質問 3問 · テーブル 3ラウンド'], ['📚', 'blue', '勉強会', '質問 2問 · 座席なし'], ['🪑', 'pink', 'ラウンドテーブル', '質問 4問 · 審査制']].map(([e, c, t, d]) => `<div class="row" style="gap:12px;padding:10px 0"><span class="emo ${c}">${e}</span><div style="flex:1"><b style="font-size:14px">${t}</b><div class="lbl">${d}</div></div><span class="muted">${ic('right', 'sm')}</span></div>`).join('')}<div class="lbl center" style="margin-top:8px">細かい編集は PC で続けられます</div></div>`;
+const desk = (ov) => ({ body: appCenter('empty'), tab: -1, overlay: ov });
+const appQR = () => appCheckin() + `<div class="sheet-scrim"></div><div class="sheet k-aqr" style="background:#0F0E12;color:#F7F5F7"><div class="grab"></div><div style="width:220px;height:220px;border-radius:24px;margin:10px auto;box-shadow:0 0 0 3px var(--plum-300)"></div><b style="display:block;text-align:center;font-size:16px">QR をかざしてください</b><div style="text-align:center;font-size:12.5px;opacity:.7;margin-top:4px">読み取り中…</div><button class="btn block" style="margin-top:14px;background:rgba(255,255,255,.12);color:#F7F5F7">名前で探す</button></div>`;
+/* ---------- B11 下書き / 中止 / アーカイブ ---------- */
+STC['中止'] = 'coral'; STC['アーカイブ'] = '';
+const HE11 = [{ ...HE[2], st: '下書き', note: '未公開 · 申込ページは閉じています', app: 0, match: 0, chk: 0 }, { ...HE[1], st: '中止', note: '10/14 中止 · 42名に通知済み' }, { ...HE[5], st: 'アーカイブ', note: '閲覧のみ · レポートは見られます' }];
+const centerStates = () => mainhead('運営センター', '主催イベント 9件', searchBtn, `<button class="btn">${ic('ticket', 'sm')}共同運営に参加</button><button class="btn accent">${ic('plus', 'sm')}イベントを作成</button>`) + `<div class="wgrid">
+  <div class="span12 row" style="gap:6px"><div class="seg"><button>すべて</button><button>開催前</button><button>開催中</button><button>終了</button><button class="on">下書き · 中止 · アーカイブ</button></div></div>
+  ${HE11.map(e => hcard(e, 'span4', false)).join('')}</div>`;
+const consoleState = (k) => { const e = HE11[k]; const ban = [`<div class="card span12 k-st" style="background:var(--mac-apricot)"><div class="row" style="gap:12px"><span class="emo apricot">📝</span><div style="flex:1"><b>下書き · まだ公開していません</b><div class="lbl">公開すると申込ページが開きます</div></div><button class="btn">基本情報を編集</button><button class="btn primary">公開する</button></div></div>`, `<div class="card span12 k-st" style="background:var(--coral-soft)"><div class="row" style="gap:12px"><span class="emo" style="background:var(--surface)">⛔</span><div style="flex:1"><b>このイベントは中止しました（10/14）</b><div class="lbl">申込済みの 42名にお知らせ済み · 申込ページは「中止」と表示されます</div></div><button class="btn">アーカイブする</button></div></div>`, `<div class="card span12 k-st"><div class="row" style="gap:12px"><span class="emo" style="background:var(--surface-2)">🗄️</span><div style="flex:1"><b>アーカイブ済み · 閲覧のみ</b><div class="lbl">編集・受付はできません。レポートと参加者一覧は見られます</div></div><button class="btn">アーカイブを解除</button></div></div>`][k];
+  return hostHead(e.n, `主催 · ${e.d} · ${e.st}`, k === 2 ? 'レポート' : '概要') + `<div class="wgrid">${ban}${[['申込', e.app || 0, '定員 ' + e.cap, 'lav'], ['マッチ可能', e.match || 0, 'プロフィール完了', 'blue'], ['受付済み', e.chk || 0, '', 'teal'], ['審査待ち', 0, '', 'apricot']].map(([l, v, d, c]) => `<div class="card span3 ${k === 2 ? 'faded' : ''}"><span class="chip ${c}">${l}</span><div class="big" style="margin-top:10px">${num(v)}</div><div class="lbl">${d}</div></div>`).join('')}</div>`; };
+/* ---------- B12 定型邮件 / 收件箱通知卡 ---------- */
+const mailW = () => mainhead('お知らせの見え方', '定型メール · 受信箱の通知', backBtn, '') + `<div class="wgrid">
+  <div class="card span7 k-mail"><div class="card-h"><h3>メール</h3><span class="lbl">no-reply@orbit.example</span></div>
+    <div style="border-radius:18px;background:var(--surface-2);padding:18px"><div class="lbl">件名</div><b style="font-size:15px">【CFO Night Tokyo vol.18】参加が承認されました</b><div class="lbl" style="margin-top:12px">差出人 · CFO Night 実行委員会（Orbit 経由）</div>
+      <div class="sub" style="margin-top:14px;line-height:1.8">佐藤 健一 様<br><br>CFO Night Tokyo vol.18 への参加が承認されました。当日は受付で QR を表示してください。<br><br><b>主催者より：</b>当日は 18:45 から受付を開始します。</div>
+      <button class="btn primary" style="margin-top:14px">イベントを見る</button><div class="lbl" style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">10月7日（水）19:00 · 渋谷ストリーム 4F · 配信停止はアプリの設定から</div></div></div>
+  <div class="card span5 k-inbox"><div class="card-h"><h3>受信箱 · 通知</h3><span class="lbl">アプリ / Web 共通</span></div>
+    ${[['🥂', 'lav', '参加が承認されました', 'CFO Night Tokyo vol.18 · いま', 1], ['🪑', 'blue', 'テーブル編成が公開されました', '第1ラウンド テーブル B-4 · 2時間前', 0], ['⛔', '', '製造業DX 朝会 #3 は中止になりました', '主催者より · 昨日', 0]].map(([e, c, t, d, n]) => `<div class="row" style="gap:10px;padding:12px;border-radius:14px;${n ? 'background:var(--surface-2)' : ''}"><span class="emo sm ${c}" ${c ? '' : 'style="background:var(--surface-2)"'}>${e}</span><div style="flex:1;min-width:0"><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div>${n ? '<span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--coral)"></span>' : ''}</div>`).join('')}</div></div>`;
+let g = '';
+const N = (arr) => arr.map(([s, n, t]) => [s, n, t]);
+g += S8('补画 · 2026-10-16 · 主催 R17 · B1 / B2 建活动与确认', 'DESIGN §10 B1 / B2：左表单 + 右预览（照 b6 #13）、含「所属する主催者ページ」；确认框 01-system 480，中止主按钮 --coral-text');
+g += WP('W-R17-01 イベントを作成 · 1440', '', () => ({ nav: 'host', body: evForm(false) }), [['.k-evorg', 0, '所属する主催者ページ（A13）：一人可有多个主催者ページ，活动挂在其中一个下'], ['.k-evprev', 0, '右侧实时预览申込ページ']], 'b6 #13 · 补画 2026-10-16');
+g += WP('W-R17-02 基本情報を編集 · 1440', '', () => ({ nav: 'host', body: evForm(true) }), [['.k-evform', 0, '编辑同一表单；改日时 / 会场保存时出 W-R17-05 通知确认']], 'b6 #13 · 补画 2026-10-16');
+g += WP('W-R17-03 公開確認', '弹层', () => ({ nav: 'host', body: evForm(false), ov: pubDlg }), [['.modal', 0, '公开前确认：日时 / 定员 / 申込締切；フォロワーに通知']], '01-system ② · 补画 2026-10-16');
+g += WP('W-R17-04 中止確認', '弹层', () => ({ nav: 'host', body: overview(), ov: stopDlg }), [['.modal .btn.danger', 0, '中止主按钮 = btn danger（--coral-text，D02 / D08）；通知申込者、不可撤回；可附一言 ≤140']], '01-system ② · 补画 2026-10-16');
+g += WP('W-R17-05 日時・会場変更の通知確認', '弹层', () => ({ nav: 'host', body: evForm(true), ov: chgDlg }), [['.modal', 0, '改前 → 改后对比；默认同时更新参加者日历']], '01-system ② · 补画 2026-10-16');
+g += S8('补画 · 2026-10-16 · 主催 R17 · B5 お知らせの文面 · B12 定型邮件与通知卡', '6 种固定模板（不可改）+「主催者からのひとこと」≤140 字；定型通知确认写人数 + 预览；邮件 / 收件箱卡照 01-system 通知卡');
+g += WP('W-R17-10 申込設定 · お知らせの文面', '', () => ({ nav: 'host', body: noticeW() }), [['.k-ntpl', 0, '申込設定下的折叠区展开：6 种定型；选中一种可加「主催者からのひとこと」≤140 字'], ['.k-nprev', 0, '右侧预览参加者看到的通知']], 'b6 #13 · 补画 2026-10-16');
+g += WP('W-R17-11 定型通知の確認（プロフィール未完了 16名）', '弹层', () => ({ nav: 'host', body: overview(), ov: notifyDlg }), [['.modal', 0, '写人数 + 文面预览；同一人 1 日 1 次']], '01-system ② · 补画 2026-10-16');
+g += WP('W-R17-12 定型メール · 受信箱の通知カード', '', () => ({ nav: 'host', body: mailW() }), [['.k-mail', 0, '定型邮件：件名【活动名】+ 正文 + 主催者より + 页脚（日时·会场·配信停止）'], ['.k-inbox', 0, '收件箱通知卡：emoji + 标题 + 活动 · 时间，未读红点']], '01-system 通知卡 · 补画 2026-10-16');
+g += S8('补画 · 2026-10-16 · 主催 R17 · B6 主催者ページ / 共同運営に参加', '资料编辑照 b7 #34（左表单 + 右预览），一人可有多份资料；共同運営に参加 = 公开顶栏 + 邀请卡（Web）/ App 落地 + 输码');
+g += WP('W-R17-20 主催者ページ · 一覧と編集', '', () => ({ nav: 'host', body: orgEdit() }), [['.k-orglist', 0, '左：自己的主催者ページ列表（可多份，对标 Peatix / connpass グループ）'], ['.k-orgprev', 0, '右：公开页预览（开催回数 / 累计 = 受付人数口径，§2.11）']], 'b7 #34 · 补画 2026-10-16');
+
+g += `<div class="board" style="margin-bottom:34px">${lab('W-R17-21 共同運営に参加 · Web 落地', '', '公开顶栏 + 邀请卡 · 补画 2026-10-16')}<div class="pair col">${joinPub()}${joinPub().replace('class="web no-rail bare"', 'class="web no-rail bare" data-theme="dark"')}</div><ul class="note-list"><li><b>1</b><span>邀请链接落地：未登录先「ログインして参加する」；也可「コードを入力する」</span></li></ul></div>`;
+g += '<div class="boards">' + [
+  PB('A-R17-21 共同運営に参加 · App 落地', '', () => ({ body: joinApp(), tab: -1 }), [['.k-join', 0, 'App 深链落地：邀请卡 + 「参加する」']], '补画 2026-10-16'),
+  PB('A-R17-22 共同運営に参加 · コード入力', '', () => desk(joinCodeSheet), [['.k-jcode', 0, 'b6 #21「共同運営に参加」/「受付だけ担当」→ 输 8 位码（同招待コード格式）']], 'b6 #21 · 补画 2026-10-16'),
+].join('') + '</div>';
+g += S8('补画 · 2026-10-16 · 主催 R17 · B4 / B10 App', 'App 只做看 + 当天操作；编辑类引导去 PC。按钮放行尾');
+g += '<div class="boards">' + [
+  PB('A-R17-30 運営センター · 少量', 'few', () => ({ body: appCenterFew(), tab: -1 }), null, 'b6 #22 · 补画 2026-10-16'),
+  PB('A-R17-31 マッチング · 結果を見る（見るだけ）', '', () => ({ body: appMatchView(), tab: -1 }), [['.k-amtab', 0, '只读：按轮看各桌成员；入れ替え は PC']], 'b6 #4 · 补画 2026-10-16'),
+  PB('A-R17-32 参加者 · 審査', '', () => ({ body: appReview(), tab: -1 }), [['.k-arev', 0, '审核列表：每行回答一句 + 行尾「承認」；批量与理由在 PC']], 'b6 #9 · 补画 2026-10-16'),
+  PB('A-R17-33 テンプレートから作成（b6 #21 の行き先）', '', () => desk(tplSheet), [['.k-atpl', 0, 'b6 #21「テンプレート」→ 底部弹层选模板；细节编辑去 PC']], 'b6 #21 · 补画 2026-10-16'),
+  PB('A-R17-34 受付 · QR 読み取り中', '', () => ({ body: appQR(), tab: -1 }), [['.k-aqr', 0, '右上 QR → 深色取景弹层；读取中；可退回「名前で探す」']], 'b6 #24 · 补画 2026-10-16'),
+  PB('A-R17-35 イベント運営 · レポート（摘要）', '', () => ({ body: appReport(), tab: -1 }), [['.k-arep', 0, '三格：受付率 / 交換率 / 会後フォロー'], ['.k-arpc', 0, '「PC で詳細」']], 'b6 #23 · 补画 2026-10-16'),
+].join('') + '</div>';
+g += S8('补画 · 2026-10-16 · 主催 R17 · B8 kiosk', '相机取景盖右侧；确认框 01-system');
+const KB = (l, html, n) => `<div class="board" style="margin-bottom:34px">${lab(l, '', 'b6 #11 · 补画 2026-10-16')}<div class="pair col">${html}${html.replace('class="web kiosk"', 'class="web kiosk" data-theme="dark"')}</div><ul class="note-list"><li><b>1</b><span>${n}</span></li></ul></div>`;
+g += KB('W-R17-40 受付 kiosk · QR 読み取り中', kioskQR(), '「QR を読み取る」→ 深色取景盖住右侧受付流；读取中；「名前で探す」回到左侧搜索');
+g += KB('W-R17-41 受付 kiosk · 当日枠の定員超え確認', overDlg, '当日枠用完时受付需确认：「定員を超えて受付」/「受付しない」');
+g += KB('W-R17-42 受付 kiosk · 受付の取り消し確認', undoDlg, '撤销签到：说明会取消桌位分配；主按钮 btn danger（--coral-text）');
+g += S8('补画 · 2026-10-16 · 主催 R17 · B11 下書き / 中止 / アーカイブ', '状态 chip 照 b6 #2「開催前 / 開催中 / 終了」画法：下書き = 杏、中止 = 珊瑚、アーカイブ = 灰');
+g += WP('W-R17-50 運営センター · 下書き / 中止 / アーカイブ', '', () => ({ nav: 'host', body: centerStates() }), [['.hc', 0, '运营中心行：状态 chip + 一句状态说明']], 'b6 #2 · 补画 2026-10-16');
+g += WP('W-R17-51 運営台 · 下書き', '', () => ({ nav: 'host', body: consoleState(0) }), [['.k-st', 0, '下書き横幅：基本情報を編集 / 公開する']], 'b6 概要 · 补画 2026-10-16');
+g += WP('W-R17-52 運営台 · 中止', '', () => ({ nav: 'host', body: consoleState(1) }), [['.k-st', 0, '中止横幅（珊瑚浅底）：已通知人数；可アーカイブ']], 'b6 概要 · 补画 2026-10-16');
+g += WP('W-R17-53 運営台 · アーカイブ', '', () => ({ nav: 'host', body: consoleState(2) }), [['.k-st', 0, 'アーカイブ：只读，数字卡淡化；可解除']], 'b6 概要 · 补画 2026-10-16');
+__g8out(group('g8', g));
 })();
 /* ===================== 出力 ===================== */
 document.getElementById('out').innerHTML = `<div class="card" style="margin-bottom:8px"><h3>画板索引（${INDEX.length}）</h3><div class="idx">${INDEX.map(([id, t]) => `<a href="#b-${id}"><b>${id}</b>${t}</a>`).join('')}</div></div>` + h;
