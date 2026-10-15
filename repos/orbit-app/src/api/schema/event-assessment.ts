@@ -56,6 +56,8 @@ export const eventAssessmentObject = z.object({
   failureReason: tolerantEnum(FAILURE_REASONS, "unreadable").optional(),
   pageCandidates: readableItems(z.object({ title: z.string().min(1).max(200), url: z.string().url().optional(), startsAt: z.string().optional(), venue: z.string().max(120).optional(), note: z.string().max(120).optional() })).optional(),
   userFilledFields: knownValues(FACT_KEYS).optional(),
+  // R26 App 像素返工（只加）：原样采用了推测值的项（读不懂按缺省）。
+  adoptedGuessFields: knownValues(FACT_KEYS).optional().catch(undefined),
   userDecision: z.enum(["added", "dismissed"]).optional().catch(undefined),
   eventId: z.string().min(1).optional(),
   assessedAt: z.string().datetime({ offset: true }).optional().catch(undefined),

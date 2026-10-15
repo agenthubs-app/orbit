@@ -167,6 +167,7 @@ function SourceChip({ item }: { item: EventAssessmentContract }) {
 /** `/events/assessments/[id]`: the result (app.html #31 / b2 #3) or the failure state for that assessment. */
 export function AssessmentResultScreen() {
   const { styles, colors } = useStyles();
+  const router = useRouter();
   const { t, language } = useOrbitLocale();
   const toast = useToast();
   const api = useEventsApi();
@@ -236,7 +237,7 @@ export function AssessmentResultScreen() {
               <View style={[styles.emoSm, { backgroundColor: colors.macApricot }]}><UiText style={styles.emoTextSm}>✍️</UiText></View>
               <View style={styles.grow}>
                 <UiText style={styles.title13}>{t("eventsV2.filledByYou", { n: filled.length })}</UiText>
-                <UiText style={styles.lbl}>{[...filled.map(fieldLabel), ...stillUnknown.map((field) => t("eventsV2.stillUnknown", { field: fieldLabel(field) }))].join(" · ")}</UiText>
+                <UiText style={styles.lbl}>{filledLine([...filled.map((field) => (item.adoptedGuessFields ?? []).includes(field) ? `${fieldLabel(field)}${t("eventsV2.guessAdopted")}` : fieldLabel(field)), ...stillUnknown.map((field) => t("eventsV2.stillUnknown", { field: fieldLabel(field) }))])}</UiText>
               </View>
               {ranged ? <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.why")} onPress={() => setWhy((open) => !open)} style={styles.why}><UiText style={styles.whyText}>?</UiText></UiPressable> : null}
             </View>
@@ -278,9 +279,10 @@ export function AssessmentResultScreen() {
         ) : null}
         <View style={styles.grid2}>
           <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.skip")} disabled={busy} onPress={() => void decide("skip")} style={[styles.btn, styles.grow]}><UiText style={styles.btnText}>{t("eventsV2.skip")}</UiText></UiPressable>
-          {filled.length && ranged && !why ? (
-            // b2 #3：补过项、分数是幅时主按钮是「詳細を見る」（展开幅的说明）；展开后换回「参加予定に追加」，不留死路。
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.seeDetails")} onPress={() => setWhy(true)} style={[styles.btnPrimary, styles.grow]}><UiText style={styles.btnPrimaryText}>{t("eventsV2.seeDetails")}</UiText></UiPressable>
+          {filled.length && ranged && (item.eventId || !why) ? (
+            // b2 #3：补过项、分数是幅时主按钮是「詳細を見る」——Orbit 的活动去活动详情（/events/[id]，R27 换页路径不变）；
+            // 外部活动没有详情页，展开幅的说明后换回「参加予定に追加」，不留死路（主会话 2026-10-15）。
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.seeDetails")} onPress={() => (item.eventId ? router.push(`/events/${encodeURIComponent(item.eventId)}` as Href) : setWhy(true))} style={[styles.btnPrimary, styles.grow]}><UiText style={styles.btnPrimaryText}>{t("eventsV2.seeDetails")}</UiText></UiPressable>
           ) : (
             <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.addToPlan")} disabled={busy || item.userDecision === "added"} onPress={() => void decide("add")} style={[styles.btnPrimary, styles.grow]}><UiText style={styles.btnPrimaryText}>{t("eventsV2.addToPlan")}</UiText></UiPressable>
           )}
@@ -289,6 +291,11 @@ export function AssessmentResultScreen() {
       {busy ? null : <View testID="events-result-ready" />}
     </AppScreen>
   );
+}
+
+/** 「日時 · 場所（推測を採用）· 参加費は不明のまま」：全角括号后面的分隔只留「· 」（同画板）。 */
+function filledLine(parts: readonly string[]): string {
+  return parts.reduce((line, part, index) => (index === 0 ? part : `${line}${line.endsWith("）") ? "· " : " · "}${part}`), "");
 }
 
 /** 貼り付けた URL（.input.fill，读不到时 .err 珊瑚色内描边）。 */

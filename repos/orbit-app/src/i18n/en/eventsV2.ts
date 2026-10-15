@@ -183,4 +183,5 @@ export const eventsV2 = {
   "eventsV2.stillUnknown": "{field} still unknown",
   "eventsV2.seeDetails": "See details",
   "eventsV2.monthShort": "M{month}",
+  "eventsV2.guessAdopted": " (guess used)",
 };

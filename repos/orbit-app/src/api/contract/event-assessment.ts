@@ -146,6 +146,11 @@ export interface EventAssessmentContract {
   failureReason?: EventAssessmentFailureReason;
   pageCandidates?: readonly EventAssessmentPageCandidate[];
   userFilledFields?: readonly (keyof EventAssessmentFacts)[];
+  /**
+   * R26 App 像素返工（只加，b2 #3「場所（推測を採用）」）：补项时原样采用了 AI 推测值的项（`userFilledFields` 的子集）。
+   * 缺省 = 没有。服务端补项时值与推测相同就保留 `factBasis` 的 guessed，并据此给出。
+   */
+  adoptedGuessFields?: readonly (keyof EventAssessmentFacts)[];
   userDecision?: "added" | "dismissed";
   /** Set for an Orbit event (`sourceKind` orbit_event). */
   eventId?: string;

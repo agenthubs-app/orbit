@@ -183,4 +183,5 @@ export const eventsV2 = {
   "eventsV2.stillUnknown": "{field}は不明のまま",
   "eventsV2.seeDetails": "詳細を見る",
   "eventsV2.monthShort": "{month}月",
+  "eventsV2.guessAdopted": "（推測を採用）",
 };

@@ -5143,6 +5143,11 @@
           "kind": "text",
           "type": "readonly (keyof EventAssessmentFacts)[]"
         },
+        "adoptedGuessFields": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly (keyof EventAssessmentFacts)[]"
+        },
         "userDecision": {
           "optional": true,
           "kind": "text",

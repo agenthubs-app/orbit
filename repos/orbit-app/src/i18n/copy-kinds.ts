@@ -1345,6 +1345,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["add.inviteConn.merged", "toast"],
   // R26 イベント（eventsV2）。
   ["eventsV2.title", "pageTitle"],
+  ["eventsV2.guessAdopted", "label"],
   ["eventsV2.feeUnknownLabel", "label"],
   ["eventsV2.share", "button"],
   ["eventsV2.stillUnknown", "label"],

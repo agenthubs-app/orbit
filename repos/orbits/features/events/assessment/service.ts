@@ -115,6 +115,11 @@ function digestOf(input: EventAssessmentCreateInput): { digest: string; url: str
   }
 }
 
+/** 补过、且仍是推测来源（原样采用了推测值）的项。 */
+function adoptedGuesses(row: Pick<AssessmentRow, "userFilledFields" | "factBasis" | "facts">): (keyof EventAssessmentFacts)[] {
+  return row.userFilledFields.filter((key) => row.factBasis[key] === "guessed" && Boolean(row.facts[key]));
+}
+
 function basisFor(facts: EventAssessmentFacts, basis: EventAssessmentFactBasis): Partial<Record<keyof EventAssessmentFacts, EventAssessmentFactBasis>> {
   return Object.fromEntries(Object.keys(facts).map((key) => [key, basis])) as Partial<Record<keyof EventAssessmentFacts, EventAssessmentFactBasis>>;
 }
@@ -173,6 +178,7 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
       ...(row.failureReason ? { failureReason: row.failureReason } : {}),
       ...(row.pageCandidates?.length ? { pageCandidates: row.pageCandidates } : {}),
       ...(row.userFilledFields.length ? { userFilledFields: row.userFilledFields } : {}),
+      ...(adoptedGuesses(row).length ? { adoptedGuessFields: adoptedGuesses(row) } : {}),
       ...(row.userDecision ? { userDecision: row.userDecision } : {}),
       ...(row.eventId ? { eventId: row.eventId } : {}),
       ...(row.planItemId ? { planItemId: row.planItemId } : {}),
@@ -389,7 +395,9 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
       if (row.status === "reading") throw new EventAssessmentError("CONFLICT", "This assessment is still being read.");
       const facts = mergeFacts(input.facts, row.facts);
       const filled = [...new Set([...row.userFilledFields, ...(Object.keys(input.facts) as (keyof EventAssessmentFacts)[]), ...((input.unknownFields ?? []) as (keyof EventAssessmentFacts)[])])];
+      // 原样采用推测值（b2 #3「場所（推測を採用）」）：保留 guessed，结果页据此标注；改了值才算用户填的。
       const basis = { ...row.factBasis, ...basisFor(input.facts, "user") };
+      for (const key of Object.keys(input.facts) as (keyof EventAssessmentFacts)[]) if (row.factBasis[key] === "guessed" && input.facts[key] === row.facts[key]) basis[key] = "guessed";
       // 只规则重算，不再调 AI（PLANNER SC-R26-02）。「不明」的项接受缺失（参加費 → 区间）。
       const settled = await settle(row, facts, basis, { pageCandidates: row.pageCandidates, userFilledFields: filled }, input.unknownFields ?? []);
       return viewOf(settled, await deps.plan.context(actorId, language));

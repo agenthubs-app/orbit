@@ -364,9 +364,12 @@ export const redesignMock = {
     if (!found) return null;
     const filled = [...new Set([...(found.userFilledFields ?? []), ...(Object.keys(facts) as (keyof EventAssessmentFacts)[]), ...(unknownFields as (keyof EventAssessmentFacts)[])])];
     const missingFields = found.missingFields.filter((field) => !(field in facts) && !unknownFields.includes(field));
+    // 原样采用推测值的项（同 live）：保留 guessed 并给出 adoptedGuessFields。
+    const adopted = (Object.keys(facts) as (keyof EventAssessmentFacts)[]).filter((key) => found.factBasis?.[key] === "guessed" && facts[key] === found.facts[key]);
+    const extra = adopted.length ? { adoptedGuessFields: adopted } : {};
     const next: EventAssessmentContract = found.id === demoEventAssessmentNeedsInput.id && missingFields.length === 0
-      ? { ...demoEventAssessmentRange, id: found.id, facts: { ...demoEventAssessmentRange.facts, ...facts }, userFilledFields: filled }
-      : { ...found, facts: { ...found.facts, ...facts }, missingFields, userFilledFields: filled };
+      ? { ...demoEventAssessmentRange, id: found.id, facts: { ...demoEventAssessmentRange.facts, ...facts }, userFilledFields: filled, ...extra }
+      : { ...found, facts: { ...found.facts, ...facts }, missingFields, userFilledFields: filled, ...extra };
     assessMap().set(id, next);
     return next;
   },

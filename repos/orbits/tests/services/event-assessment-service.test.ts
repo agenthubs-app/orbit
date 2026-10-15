@@ -147,6 +147,21 @@ test("海报：读到 1 / 3 → needs_input；PATCH 补 3 项（参加費「不�
   assert.ok(patched.userFilledFields?.includes("startsAt"));
 });
 
+test("补项时原样采用推测值：保留 guessed，给出 adoptedGuessFields；改了值则算用户填的（b2 #3「推測を採用」）", async () => {
+  const { service, repository } = setup();
+  const poster = await service.uploadPoster(ALICE, { bytes: Buffer.from("img"), mimeType: "image/jpeg" });
+  const created = await service.create(ALICE, { idempotencyKey: "g1", posterAssetId: poster.posterAssetId, sourceKind: "poster" }, "ja");
+  await flush();
+  const row = (await repository.get(ALICE, created.id))!;
+  await repository.update(ALICE, created.id, { factBasis: { ...row.factBasis, venue: "guessed" }, facts: { ...row.facts, venue: "名古屋駅周辺" } });
+  const adopted = (await service.patch(ALICE, created.id, { facts: { startsAt: "2026-10-29T18:30:00+09:00", venue: "名古屋駅周辺" }, unknownFields: [] }, "ja"))!;
+  assert.equal(adopted.factBasis?.venue, "guessed");
+  assert.deepEqual(adopted.adoptedGuessFields, ["venue"]);
+  const changed = (await service.patch(ALICE, created.id, { facts: { venue: "名古屋駅前ホール" }, unknownFields: [] }, "ja"))!;
+  assert.equal(changed.factBasis?.venue, "user");
+  assert.equal(changed.adoptedGuessFields, undefined);
+});
+
 test("3 项手入力：只规则、同步出结果；参加費不明 → scoreRange、判定仍用 total", async () => {
   const { service, providerCalls } = setup({ available: false });
   const result = await service.create(ALICE, { facts: { startsAt: "2026-10-21T08:00:00+09:00", title: "丸の内スタートアップ朝会 #42", venue: "丸の内" }, idempotencyKey: "m1", sourceKind: "manual" }, "ja");
