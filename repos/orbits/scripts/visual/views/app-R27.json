@@ -123,6 +123,19 @@
     "registration": "none"
    },
    "note": "P12 参加登録 ③ 申込完了 · 仮予定"
+  },
+  {
+   "id": "A-R27-24",
+   "design": "b2-events-flow.html",
+   "board-index": 24,
+   "path": "/events/demo-event-cfo-night-18/prep",
+   "journey": {
+    "registration": "registered"
+   },
+   "storage": {
+    "orbit.events.cardsLeft.demo-event-cfo-night-18": "8"
+   },
+   "note": "P13 会う準備（名刺の残り 8 枚＝本机 AsyncStorage）"
   }
  ]
 }
