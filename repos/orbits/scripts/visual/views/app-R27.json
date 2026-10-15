@@ -59,7 +59,10 @@
    "journey": {
     "discover": "many"
    },
-   "note": "P05 検索中「CFO」"
+   "note": "P05 検索中「CFO」（最近の検索：本机 AsyncStorage 示例）",
+   "storage": {
+    "orbit.events.recentSearches": "[\"VC 交流会\",\"製造業 名古屋\"]"
+   }
   }
  ]
 }

@@ -4,10 +4,11 @@ import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Modal, ScrollView, StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, EventDiscoverQuery, EventDiscoverResponse, EventDiscoverRow, EventDiscoverTheme } from "../../../api/contract/event-discover";
 import type { EventSearchResponse } from "../../../api/contract/event-search";
+import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER } from "../../../components/ShellTopBar";
 import { BottomSheet, FilterOption, Icon, Toggle, UiPressable, UiText } from "../../../components/ui";
 import { createThemedStyles } from "../../../design/theme";
@@ -56,6 +57,8 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const [whyOpen, setWhyOpen] = useState<string | null>(null);
   // 门禁开发开关：聚焦不弹软键盘（画板从不画系统键盘）。
   const noKeyboard = addDesignMock("no-keyboard");
+  // Modal 里没有安全区上下文：用外层的 insets 给搜索页留出状态栏。
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     let live = true;
@@ -104,7 +107,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const toggleIn = <T extends string>(list: readonly T[] | undefined, value: T) => (list?.includes(value) ? list.filter((item) => item !== value) : [...(list ?? []), value]);
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => setPage(Math.max(0, Math.round((event.nativeEvent.contentOffset.x - SHELL_GUTTER) / (CARD + 12))));
 
-  const datebox = (iso: string) => { const p = tokyo(iso); return <View style={styles.datebox}><UiText style={styles.dateDay}>{p?.day ?? ""}</UiText><UiText style={styles.dateMonth}>{p ? t("monthLabel", { m: p.month }) : ""}</UiText></View>; };
+  const datebox = (iso: string, tall = false) => { const p = tokyo(iso); return <View style={styles.datebox}><UiText style={styles.dateDay}>{p?.day ?? ""}</UiText><UiText style={[styles.dateMonth, tall ? { lineHeight: 15.4 } : null]}>{p ? t("monthLabel", { m: p.month }) : ""}</UiText></View>; };
   const chip = (label: string, onPress: () => void, on: boolean, key: string, caret = false) => (
     <UiPressable key={key} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[styles.chip, on ? { backgroundColor: colors.macLav } : null]}>
       <UiText style={[styles.chipText, on ? { color: colors.macLavInk } : null]}>{on ? `${label} ✕` : label}</UiText>
@@ -283,7 +286,8 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         </View>
       </BottomSheet>
       <Modal visible={searching} animationType="none" transparent={false} onRequestClose={() => { setSearching(false); setSearch(""); }}>
-        <SafeAreaView edges={["top"]} style={styles.searchPage} testID="events-discover-search">
+        <View style={[styles.searchPage, { paddingTop: insets.top }]} testID="events-discover-search">
+          <ShellBackground />
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             <View style={[styles.searchRow, { paddingBottom: 12, paddingTop: 6 }]}>
               <View style={[styles.search, styles.searchOn]}>
@@ -299,7 +303,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
                 {results.events.map((hit, index) => (
                   <UiPressable key={hit.eventId} accessibilityRole="button" accessibilityLabel={hit.title} onPress={() => { remember(search); setSearching(false); router.push(hit.href as Href); }} style={styles.li}>
                     {index > 0 ? <View style={styles.liLine} /> : null}
-                    {datebox(hit.startsAt)}
+                    {datebox(hit.startsAt, true)}
                     <View style={styles.meta}><Highlight text={hit.title} q={search} style={styles.metaTitle} mark={styles.mark} /><UiText style={styles.metaSub} numberOfLines={1}>{[hit.venue, hit.myStatus === "registered" ? t("stRegistered") : hit.badges?.includes("early_access") ? t("badgeEarly") : feeText(hit.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
                     {typeof hit.score === "number" ? <ScoreRing size={34} stroke={4} value={hit.score} color={colors[ringColor(hit.score)]} label={String(hit.score)} fontSize={11} /> : null}
                   </UiPressable>
@@ -327,15 +331,15 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
                     {index > 0 ? <View style={styles.liLine} /> : null}
                     <View style={[styles.av, { backgroundColor: colors.macTeal }]}><UiText style={[styles.avText, { color: colors.macTealInk }]}>{person.initial}</UiText></View>
                     <View style={styles.meta}><Highlight text={[person.name, person.org && person.role ? `${person.org} ${person.role}` : person.org ?? person.role].filter(Boolean).join(" · ")} q={search} style={styles.metaTitle} mark={styles.mark} /><UiText style={styles.metaSub} numberOfLines={1}>{t("personEvents", { n: person.eventCount })}</UiText></View>
-                    <Icon name="right" size={16} color={colors.ink3} />
+                    <Icon name="right" size={16} color={colors.ink} />
                   </UiPressable>
                 ))}
               </View>
             ) : null}
             {recent.length ? (
               <>
-                <UiText style={[styles.lbl, { marginBottom: 6, marginTop: 14 }]}>{t("searchRecent")}</UiText>
-                <View style={[styles.chips, { marginTop: 0 }]}>{recent.map((item) => <UiPressable key={item} accessibilityRole="button" accessibilityLabel={item} onPress={() => setSearch(item)} style={styles.chip}><Icon name="clock" size={16} color={colors.ink2} /><UiText style={styles.chipText}>{item}</UiText></UiPressable>)}</View>
+                <UiText style={[styles.lbl, { marginBottom: 6, marginTop: 0 }]}>{t("searchRecent")}</UiText>
+                <View style={[styles.chips, { marginTop: 0 }]}>{recent.map((item) => <UiPressable key={item} accessibilityRole="button" accessibilityLabel={item} onPress={() => setSearch(item)} style={styles.chip}><View style={styles.caret}><View style={{ transform: [{ scale: 0.75 }] }}><Icon name="clock" size={16} color={colors.ink2} /></View></View><UiText style={styles.chipText}>{item}</UiText></UiPressable>)}</View>
               </>
             ) : null}
             <View style={[styles.card, styles.flat, { marginTop: 14 }]}>
@@ -346,18 +350,18 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
               </View>
             </View>
           </ScrollView>
-        </SafeAreaView>
+        </View>
       </Modal>
     </ScrollView>
   );
 }
 
-/** 搜索命中词加底色（kit mark）。 */
+/** 搜索命中词加底色（kit mark：左右各约 2px 内边距，RN 嵌套文字不能 padding，用窄空格撑开）。 */
 function Highlight({ text, q, style, mark }: { text: string; q: string; style: object; mark: object }) {
   const needle = q.trim();
   const index = needle ? text.toLowerCase().indexOf(needle.toLowerCase()) : -1;
   if (index < 0) return <UiText style={style} numberOfLines={1}>{text}</UiText>;
-  return <UiText style={style} numberOfLines={1}>{text.slice(0, index)}<UiText style={[style, mark]}>{text.slice(index, index + needle.length)}</UiText>{text.slice(index + needle.length)}</UiText>;
+  return <UiText style={style} numberOfLines={1}>{text.slice(0, index)}<UiText style={[style, mark]}>{`\u2009${text.slice(index, index + needle.length)}\u2009`}</UiText>{text.slice(index + needle.length)}</UiText>;
 }
 
 // kit（b2 #8）：.search 44 r999 13.5 · .rbtn 40 + .badge 17 · .chip 3/9 11 700 · .card r24 · .li 11 0 + datebox 44 r13 · .ev-card 260 r22 16 · .dots。
@@ -438,8 +442,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   macNote: { backgroundColor: colors.macLav, borderRadius: 16, marginTop: 14, padding: 12 },
   macNoteText: { color: colors.ink, fontSize: 12, lineHeight: 18 },
   searchPage: { backgroundColor: colors.bg, flex: 1 },
-  searchOn: { borderColor: colors.plum300, borderWidth: 2 },
-  resultCard: { marginBottom: 12, paddingHorizontal: 16, paddingVertical: 8 },
+  // kit：聚焦时 0 0 0 2px plum-300 外圈（框本身 44，外圈让可见高度 48）。
+  searchOn: { borderColor: colors.plum300, borderWidth: 2, height: 48, marginLeft: -2, marginVertical: -2, paddingHorizontal: 16 },
+  resultCard: { marginBottom: 14, paddingHorizontal: 16, paddingVertical: 8 },
   resultH: { marginBottom: 0, marginTop: 8 },
   mark: { backgroundColor: colors.macLav },
   av: { alignItems: "center", borderRadius: radius.pill, height: 38, justifyContent: "center", width: 38 },
