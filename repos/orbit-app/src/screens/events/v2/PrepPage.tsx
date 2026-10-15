@@ -86,9 +86,11 @@ export function PrepPage() {
 
   const toggle = async (item: EventPrepChecklistItem) => {
     if (!data) return;
-    setData({ ...data, checklist: data.checklist.map((entry) => (entry.key === item.key ? { ...entry, done: !entry.done } : entry)) });
+    // 只翻这一项（函数式更新，连点不会用到旧的 data）；失败时把这一项翻回去。
+    const flip = (done: boolean) => setData((current) => (current ? { ...current, checklist: current.checklist.map((entry) => (entry.key === item.key ? { ...entry, done } : entry)) } : current));
+    flip(!item.done);
     const saved = await api.checklist(eventId, [{ ...item, done: !item.done }]);
-    if (saved.ok) setData(saved.data); else toast.error(locale.t("eventsV2.genericError"));
+    if (saved.ok) setData(saved.data); else { flip(item.done); toast.error(locale.t("eventsV2.genericError")); }
   };
   const copyOpener = async (text: string) => {
     try { await Clipboard.setStringAsync(text.replace(/^「|」$/g, "")); toast.success(t("copied")); } catch { toast.error(locale.t("eventsV2.genericError")); }
@@ -101,6 +103,8 @@ export function PrepPage() {
   const addFollowup = async () => {
     const slot = data?.followupSuggestion;
     if (!slot) return;
+    // 示例世界只读：不写真实日历。
+    if (data?.sample) { setFollowDone("added"); toast.success(t("followAdded")); return; }
     const response = await client.post<unknown>("/api/schedule-items", { body: { endsAt: slot.endsAt, idempotencyKey: newIdempotencyKey(), startsAt: slot.startsAt, timeZone: "Asia/Tokyo", title: slot.title } }).catch(() => null);
     if (response?.success) { setFollowDone("added"); toast.success(t("followAdded")); } else toast.error(locale.t("eventsV2.genericError"));
   };

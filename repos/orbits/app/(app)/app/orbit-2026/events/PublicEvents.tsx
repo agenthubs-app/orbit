@@ -91,8 +91,6 @@ function DetailInner({ eventId, language, inviteCode }: { eventId: string; langu
   const [data, setData] = useState<EventOverviewResponse | null>(null);
   const [missing, setMissing] = useState(false);
   useEffect(() => { void journeyApi.overview(eventId).then((result) => { if (result.ok) setData({ ...result.data, signedOut: true }); else setMissing(true); }); }, [eventId]);
-  const [allLoaded, setAllLoaded] = useState(false);
-  const seeAll = () => void journeyApi.overview(eventId, true).then((result) => { if (result.ok) { setData({ ...result.data, signedOut: true }); setAllLoaded(true); } });
   return (
     <div className={p.page}>
       <PublicNav t={t} />
@@ -105,7 +103,7 @@ function DetailInner({ eventId, language, inviteCode }: { eventId: string; langu
             <a className={`btn ${styles.btn} ${x.accent}`} href={`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`}>{t("loginRegister")}</a>
           </div>
         </div>
-        {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? <EventDetailBody data={data} language={language} t={t} signedOutAside={inviteCode ? <InviteCodeCard code={inviteCode} data={data} t={t} /> : undefined} {...(allLoaded ? {} : { onSeeAll: seeAll })} /> : null}
+        {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? <EventDetailBody data={data} language={language} t={t} signedOutAside={inviteCode ? <InviteCodeCard code={inviteCode} data={data} t={t} /> : undefined} /> : null}
       </div>
     </div>
   );

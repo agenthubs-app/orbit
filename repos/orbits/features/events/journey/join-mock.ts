@@ -7,7 +7,7 @@ import type { JoinPorts } from "./join";
 const EVENT = { endsAt: "2026-10-07T21:30:00+09:00", registrationClosesAt: JOURNEY_JOIN_REVIEW_UNTIL, review: true, startsAt: "2026-10-07T19:00:00+09:00", title: "CFO Night Tokyo vol.18" };
 
 export function createJoinMockPorts(): JoinPorts {
-  const tentative = new Map<string, { scheduleItemId: string; final: boolean }>();
+  const tentative = new Map<string, { scheduleItemId: string; final: boolean; removed?: boolean }>();
   return {
     async event(eventId) { return eventId === JOURNEY_EVENT_ID ? EVENT : null; },
     // 示例访谈问到「会いたい人」（第 3 问）就认为够了；确认页点「追加」（more）再问下一题（画板 #370：86 % · 提供できること △）。

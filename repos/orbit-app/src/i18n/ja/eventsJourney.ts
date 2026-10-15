@@ -369,6 +369,8 @@ export const eventsJourney = {
   "eventsJourney.liveNotRegistered": "会場モードは参加登録した人だけが使えます",
   "eventsJourney.liveBeforeCheckIn": "受付をすませると使えます · 受付番号 {n}",
   "eventsJourney.liveEnded": "イベントは終了しました",
+  "eventsJourney.regLoadFailed": "質問を読み込めませんでした",
+  "eventsJourney.retryLoad": "もう一度",
   "eventsJourney.savedToAssess": "評価リストに保存しました",
   "eventsJourney.aEmptyTitle": "会った人を思い出して、\n次の一手につなげましょう",
   "eventsJourney.aScanTitle": "名刺をスキャン",

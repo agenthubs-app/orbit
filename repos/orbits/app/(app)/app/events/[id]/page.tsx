@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AppEventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [{ id }, session, language] = await Promise.all([params, auth(), getOrbitServerLanguage()]);
-  const eventId = decodeURIComponent(id);
+  const eventId = (() => { try { return decodeURIComponent(id); } catch { return id; } })();
   if (!session?.user?.id) return <PublicEventDetail eventId={eventId} language={language} />;
   return <EventDetailScreen eventId={eventId} language={language} />;
 }

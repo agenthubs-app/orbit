@@ -65,14 +65,18 @@ export function RegisterPage() {
   const [editingIntro, setEditingIntro] = useState(false);
   const [why, setWhy] = useState(false);
   const freeRef = useRef<TextInput | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
     void api.overview(eventId).then((res) => { if (live && res.ok) setEvent(res.data); });
     const replay = addDesignMock("open-path") && params.replay ? params.replay.split("|").map((group) => group.split(",").filter(Boolean)) : null;
     void (async () => {
+      setLoadFailed(false);
       const first = await api.joinNext(eventId, []);
-      if (!live || !first.ok) return;
+      if (!live) return;
+      if (!first.ok) { setLoadFailed(true); return; }
       let current = first.data;
       let given: EventJoinAnswer[] = [];
       // 开发回放：依次回答，最后一组按 `to` 决定只选中（select）还是也提交。
@@ -99,7 +103,7 @@ export function RegisterPage() {
       }
     })();
     return () => { live = false; };
-  }, [api, eventId, params.replay, params.to]);
+  }, [api, eventId, params.replay, params.to, attempt]);
 
   const question = step?.question ?? null;
   const reviewing = Boolean(step?.done) && !result;
@@ -110,14 +114,16 @@ export function RegisterPage() {
     setSelected((list) => (list.includes(option) ? list.filter((item) => item !== option) : question.max && list.length >= question.max ? list : [...list, option]));
   };
   const submitAnswer = async () => {
-    if (!question) return;
+    if (!question || busy) return;
     const value = [...selected, free.trim()].filter(Boolean).join(" · ");
     if (!value) return;
     const next = [...answers, { answer: value, field: question.field, prompt: question.prompt, questionToken: question.questionToken }];
     setBusy(true);
-    setAnswers(next); setSelected([]); setFree("");
     const [nextStep, nextProfile] = await Promise.all([api.joinNext(eventId, next), api.joinProfile(eventId, next, false)]);
-    if (nextStep.ok) setStep(nextStep.data); else toast.error(t("submitFailed"));
+    // 成功才记下这一答（失败时题目不变、选项保留，重答不会带着同一个 questionToken 重复入列）。
+    if (!nextStep.ok) { toast.error(t("submitFailed")); setBusy(false); return; }
+    setAnswers(next); setSelected([]); setFree("");
+    setStep(nextStep.data);
     if (nextProfile.ok) setProfile(nextProfile.data);
     if (nextStep.ok && nextStep.data.done) {
       const drafted = await api.joinProfile(eventId, next, true);
@@ -140,7 +146,10 @@ export function RegisterPage() {
     if (res.ok) setResult(res.data); else toast.error(t("submitFailed"));
   };
   const addTentative = async () => {
+    if (busy) return;
+    setBusy(true);
     const res = await api.joinTentative(eventId);
+    setBusy(false);
     if (res.ok) { setCalendar("added"); toast.success(t("tentativeAdded")); } else toast.error(t("submitFailed"));
   };
   const close = () => router.replace(detail as Href);
@@ -264,6 +273,12 @@ export function RegisterPage() {
           <UiPressable accessibilityRole="button" accessibilityLabel={nextLabel} disabled={busy || (!selected.length && !free.trim())} onPress={() => void submitAnswer()} style={[styles.btnSm, styles.primary]} testID="events-join-next"><UiText style={[styles.btnSmText, { color: colors.bg }]}>{nextLabel}</UiText></UiPressable>
         </>
       ) : undefined}>
+      {loadFailed && !step ? (
+        <View style={styles.card} testID="events-join-error">
+          <UiText style={styles.h3}>{t("regLoadFailed")}</UiText>
+          <UiPressable accessibilityRole="button" accessibilityLabel={t("retryLoad")} onPress={() => setAttempt((value) => value + 1)} style={[styles.btnSm, { alignSelf: "flex-start", marginTop: 12 }]}><UiText style={styles.btnSmText}>{t("retryLoad")}</UiText></UiPressable>
+        </View>
+      ) : null}
       {step ? (
         <View>
           <View style={[styles.row, styles.between]}>

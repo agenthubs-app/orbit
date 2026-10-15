@@ -117,11 +117,16 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const wide = useWide();
   const phone = usePhone();
 
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    void journeyApi.overview(eventId).then((res) => { if (res.ok) setEvent(res.data); });
-    void joinApi.next(eventId, []).then((res) => { if (res.ok) setStep(res.data); });
-    void joinApi.profile(eventId, [], false).then((res) => { if (res.ok) setProfile(res.data); });
-  }, [eventId]);
+    let live = true;
+    setLoadFailed(false);
+    void journeyApi.overview(eventId).then((res) => { if (live && res.ok) setEvent(res.data); });
+    void joinApi.next(eventId, []).then((res) => { if (!live) return; if (res.ok) setStep(res.data); else setLoadFailed(true); });
+    void joinApi.profile(eventId, [], false).then((res) => { if (live && res.ok) setProfile(res.data); });
+    return () => { live = false; };
+  }, [eventId, attempt]);
 
   const question = step?.question ?? null;
   const reviewing = Boolean(step?.done) && !result;
@@ -132,14 +137,16 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     setSelected((list) => (list.includes(option) ? list.filter((item) => item !== option) : question.max && list.length >= question.max ? list : [...list, option]));
   };
   const submitAnswer = async () => {
-    if (!question) return;
+    if (!question || busy) return;
     const value = [...selected, free.trim()].filter(Boolean).join(" · ");
     if (!value) return;
     const next = [...answers, { answer: value, field: question.field, prompt: question.prompt, questionToken: question.questionToken }];
     setBusy(true);
-    setAnswers(next); setSelected([]); setFree("");
     const [nextStep, nextProfile] = await Promise.all([joinApi.next(eventId, next), joinApi.profile(eventId, next, false)]);
-    if (nextStep.ok) setStep(nextStep.data); else toast.error(at("genericError"));
+    // 成功才记下这一答（失败时题目不变、选项保留，重答不会带着同一个 questionToken 重复入列）。
+    if (!nextStep.ok) { toast.error(at("genericError")); setBusy(false); return; }
+    setAnswers(next); setSelected([]); setFree("");
+    setStep(nextStep.data);
     if (nextProfile.ok) setProfile(nextProfile.data);
     if (nextStep.ok && nextStep.data.done) {
       const drafted = await joinApi.profile(eventId, next, true);
@@ -162,7 +169,10 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     if (res.ok) setResult(res.data); else toast.error(t("submitFailed"));
   };
   const addTentative = async () => {
+    if (busy) return;
+    setBusy(true);
     const res = await joinApi.tentative(eventId);
+    setBusy(false);
     if (res.ok) { setCalendar("added"); toast.success(t("tentativeAdded")); } else toast.error(at("genericError"));
   };
   const dictate = () => {
@@ -200,6 +210,13 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     </div>
   );
 
+  // 第一题都取不到：给提示与重试（不留空白页）。
+  const loadError = loadFailed && !step ? (
+    <div className={`${styles.card} ${x.span7}`} data-join-error="">
+      <b>{t("regLoadFailed")}</b>
+      <div className={r.gap}><button type="button" className={`btn ${styles.btn}`} onClick={() => setAttempt((value) => value + 1)}>{t("retryLoad")}</button></div>
+    </div>
+  ) : null;
   const chat = (
     <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-chat="">
       <div className={r.progress}><div className={x.bar}><i style={{ width: `${Math.round((Math.max(0, step?.index ?? 1) / total) * 100)}%` }} /></div></div>
@@ -343,7 +360,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       {phone && !reviewing && !result ? (
         <>
           <ShellPage title={t("regTitle")} subtitle={event?.title ?? ""} left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={20} /></a>} rightRail={false} phoneBare />
-          {phoneChat}
+          {loadError ?? phoneChat}
         </>
       ) : <>
       <ShellPage
@@ -354,7 +371,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         rightRail={wide ? rail : false}
       />
       <div className={styles.wgrid} data-join={eventId}>
-        {done ?? (reviewing ? review : chat)}
+        {done ?? loadError ?? (reviewing ? review : chat)}
         <ProfileCard profile={profile ? { ...profile, selfIntro: profile.selfIntro && intro ? { ...profile.selfIntro, text: intro } : profile.selfIntro } : null} t={t} mode={result ? "applied" : reviewing ? "review" : "live"} />
       </div>
       </>}

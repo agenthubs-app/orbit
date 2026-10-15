@@ -125,3 +125,32 @@ test("cancel: the registration is cancelled and the tentative calendar entry goe
   const routes = createEventJourneyRoutes({ resolveActor: async () => ({ id: "actor:a" }) as never, resolveMode: () => "mock" });
   assert.equal((await (await routes.joinCancel(post({ idempotencyKey: "k" }), params)).json()).data.status, "cancelled");
 });
+
+test("cancel after a confirmed registration still removes the renamed calendar entry, and a removed entry is not reused", async () => {
+  const calls: string[] = [];
+  let record: { scheduleItemId: string; final: boolean; removed?: boolean } | null = { final: true, scheduleItemId: "sch-final" };
+  let status: "registered" | "cancelled" = "registered";
+  const service = createJoinService({ ports: fakePorts({
+    cancel: async () => { status = "cancelled"; },
+    createSchedule: async () => { calls.push("create"); return "sch-new"; },
+    readTentative: async () => record,
+    registrationStatus: async () => status,
+    removeSchedule: async (_actor, id) => { calls.push(`remove:${id}`); },
+    saveTentative: async (_actor, _event, next) => { record = next; },
+  }) });
+  await service.cancel("actor:a", "ev", "ja");
+  assert.deepEqual(calls, ["remove:sch-final"]);
+  assert.equal(record?.removed, true);
+  await service.syncTentative("actor:a", "ev", "ja");
+  assert.deepEqual(calls, ["remove:sch-final"], "a removed entry is not removed twice");
+  status = "registered";
+  assert.equal((await service.tentative("actor:a", "ev", "k2", "ja"))?.scheduleItemId, "sch-new", "re-registering writes a fresh entry");
+});
+
+test("signed-out overview never lists attendee names (counts only)", async () => {
+  const routes = createEventJourneyRoutes({ resolveActor: async () => null, resolveMode: () => "mock" });
+  const body = await (await routes.overview(new Request(`http://orbit.test/api/events/${JOURNEY_EVENT_ID}/overview`), { params: Promise.resolve({ id: JOURNEY_EVENT_ID }) })).json();
+  assert.equal(body.data.signedOut, true);
+  assert.deepEqual(body.data.attendees, []);
+  assert.deepEqual(body.data.knownAttendees, []);
+});

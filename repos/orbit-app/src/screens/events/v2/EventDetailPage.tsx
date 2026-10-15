@@ -91,7 +91,7 @@ export function EventDetailPage() {
     setMenuOpen(false);
     if (key === "calendar") {
       const result = await api.joinTentative(eventId);
-      if (result.ok) toast.success(t("calendarAdded")); else toast.error(t("cancelFailed"));
+      if (result.ok) toast.success(t("calendarAdded")); else toast.error(locale.t("eventsV2.genericError"));
     } else if (key === "profile") router.push(`${base}/register` as Href);
     else if (key === "cancel") setCancelOpen(true);
   };

@@ -135,7 +135,8 @@ export function VenuePage() {
   const swappedToast = (person: EventVenuePerson, keep = false) => {
     const stats = data?.stats;
     const met = (stats?.wantedMet ?? 0) + (person.wanted ? 1 : 0);
-    toast.success(t("vSwappedToast", { name: person.name }), { keep, sub: t("vSwappedSub", { a: met, b: stats?.wantedTotal ?? 0 }), undo: () => patchPerson(person.attendeeId, { exchange: "incoming", relation: person.relation }) });
+    // 交換在服务端已生效、没有撤回接口：不给「元に戻す」（只改本地会与服务端不一致）。
+    toast.success(t("vSwappedToast", { name: person.name }), { keep, sub: t("vSwappedSub", { a: met, b: stats?.wantedTotal ?? 0 }) });
   };
   const respond = async (person: EventVenuePerson, accept: boolean) => {
     if (!data?.sample) {

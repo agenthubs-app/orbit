@@ -83,7 +83,7 @@ export function createJourneyMockService(): JourneyService {
       const data = { ...base, eventId: JOURNEY_EVENT_ID, registration: { ...base.registration, status: actorId ? state().registration : "none" as const } };
       if (!actorId) {
         const { assessment: _assessment, ...rest } = data;
-        return { ...rest, attendees: data.attendees.map((item) => ({ ...item, known: false, planFit: false, wanted: false })), knownAttendees: [], organizer: { ...data.organizer, following: false, myAttendance: null, organizerId: null }, signedOut: true };
+        return { ...rest, attendees: [], knownAttendees: [], organizer: { ...data.organizer, following: false, myAttendance: null, organizerId: null }, signedOut: true };
       }
       return data;
     },

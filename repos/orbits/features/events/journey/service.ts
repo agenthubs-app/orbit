@@ -17,7 +17,7 @@ import { buildAfter } from "./after-core";
 import type { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService, createVenueMemoService } from "./attendee-records";
 import { buildDiscover, eventArea, eventThemes, type DiscoverCandidate } from "./discover-core";
 import type { JourneyContact, JourneyEvent, JourneyLivePorts } from "./ports";
-import { buildPrep, type JourneyLanguage, type PrepAttendee } from "./prep-core";
+import { buildPrep, meetingSlotsAfter, type JourneyLanguage, type PrepAttendee } from "./prep-core";
 import { searchEvents } from "./search-core";
 import { buildVenue } from "./venue-core";
 
@@ -160,7 +160,8 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         title: event.title,
         venue: event.venue,
       };
-      if (!actorId) return { ...base, attendees: roster.attendees.slice(0, cap).map((item) => ({ attendeeId: item.attendeeId, initial: item.name.trim().charAt(0), known: false, name: item.name, note: item.note, org: item.org, planFit: false, role: item.role, wanted: false })), signedOut: true };
+      // 未登录只给人数：报名资料的「参加者に表示」是给同场参加者看的，不给匿名访客（旧的公开预览也只有聚合桶）。
+      if (!actorId) return { ...base, attendees: [], signedOut: true };
       const [mine, contacts, judged, types, followed] = await Promise.all([
         ports.myEvents(actorId),
         ports.contacts(actorId),
@@ -193,6 +194,8 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
     async prep(actorId, eventId, language) {
       const event = await ports.event(eventId);
       if (!event) return null;
+      // 会う準備只给已报名的人（名单与话しかけ方都来自同场参加者的资料）。
+      if (!(await ports.registered(actorId, eventId).catch(() => false))) return null;
       const at = now();
       const [roster, contacts, checklist, selfIntro, workspace] = await Promise.all([
         ports.publicAttendees(eventId),
@@ -239,7 +242,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       const types = await ports.planTypesFor(actorId, directory.map((item) => ({ attendeeId: item.participantId, name: item.displayName, org: item.company, role: item.role })));
       const wanted = new Set(directory.filter((item) => types[item.participantId]).map((item) => item.participantId));
       const at = now();
-      const slots = [1, 2, 3].map((n) => new Date(Date.parse(event.startsAt) + n * 86_400_000 + 15 * 3_600_000).toISOString());
+      const slots = meetingSlotsAfter(event.startsAt);
       return withVenueMemos(buildVenue({ agenda: event.agenda, event, meetingSlots: slots, myContacts: contacts, now: at, registered: true, wantedParticipantIds: wanted, workspace }), await records.memos.read(actorId, eventId));
     },
 

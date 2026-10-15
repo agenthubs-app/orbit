@@ -81,7 +81,7 @@ export function AfterPage() {
     setBusy(true);
     const res = await api.confirmAfter(eventId, checked.map((step) => ({ attendeeId: step.attendeeId, followupDate: step.followupDate, planTypeKey: unlinked.has(step.attendeeId) ? null : step.planType?.key ?? null })));
     setBusy(false);
-    if (!res.ok) { genericError(); return; }
+    if (!res.ok || res.data.confirmed === 0) { genericError(); return; }
     setData((current) => (current ? { ...current, confirmedAt: res.data.confirmedAt, score: current.score && res.data.scoreAfter != null ? { ...current.score, after: res.data.scoreAfter } : current.score ?? null } : current));
     toast.success(t("confirmedToast"));
   };

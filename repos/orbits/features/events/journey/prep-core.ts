@@ -55,6 +55,19 @@ export function openerFor(attendee: Pick<PrepAttendee, "name" | "org" | "role" |
 }
 
 /** 活动结束后的下一个工作日（东京）9:30–10:00。 */
+/** 面談の候補 3 つ：活动日之后的 3 个工作日，各东京时间 10:00（与开场时刻无关）。 */
+export function meetingSlotsAfter(startsAt: string, count = 3): string[] {
+  const DAY = 86_400_000;
+  let dayIndex = tokyoParts(Date.parse(startsAt)).dayIndex;
+  const slots: string[] = [];
+  while (slots.length < count) {
+    dayIndex += 1;
+    if ([0, 6].includes((((dayIndex + 4) % 7) + 7) % 7)) continue;
+    slots.push(new Date(dayIndex * DAY - 9 * 3_600_000 + 10 * 3_600_000).toISOString());
+  }
+  return slots;
+}
+
 export function followupSlot(endsAt: string, title: string, language: JourneyLanguage = "ja"): { startsAt: string; endsAt: string; title: string } {
   const DAY = 86_400_000;
   const end = Date.parse(endsAt);

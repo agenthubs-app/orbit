@@ -73,8 +73,8 @@ export interface JoinPorts {
   /** 取消报名（现有取消路由）；之后由 syncTentative 删掉仮予定。 */
   cancel(eventId: string): Promise<void>;
   createSchedule(actorId: string, input: { title: string; startsAt: string; endsAt: string; idempotencyKey: string }): Promise<string>;
-  readTentative(actorId: string, eventId: string): Promise<{ scheduleItemId: string; final: boolean } | null>;
-  saveTentative(actorId: string, eventId: string, record: { scheduleItemId: string; final: boolean }): Promise<void>;
+  readTentative(actorId: string, eventId: string): Promise<{ scheduleItemId: string; final: boolean; removed?: boolean } | null>;
+  saveTentative(actorId: string, eventId: string, record: { scheduleItemId: string; final: boolean; removed?: boolean }): Promise<void>;
   renameSchedule(actorId: string, scheduleItemId: string, title: string): Promise<void>;
   removeSchedule(actorId: string, scheduleItemId: string): Promise<void>;
   registrationStatus(actorId: string, eventId: string): Promise<"registered" | "pending_review" | "rejected" | "cancelled" | "none">;
@@ -120,7 +120,7 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const status = await ports.registrationStatus(actorId, eventId);
       const final = status === "registered";
       const title = tentativeTitle(event.title, language, final);
-      if (existing) return { eventId, scheduleItemId: existing.scheduleItemId, title };
+      if (existing && !existing.removed) return { eventId, scheduleItemId: existing.scheduleItemId, title };
       const endsAt = event.endsAt ?? new Date(Date.parse(event.startsAt) + 2 * 3_600_000).toISOString();
       const scheduleItemId = await ports.createSchedule(actorId, { endsAt, idempotencyKey, startsAt: event.startsAt, title });
       await ports.saveTentative(actorId, eventId, { final, scheduleItemId });
@@ -132,19 +132,19 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       await service.syncTentative(actorId, eventId, language).catch(() => undefined);
       return { eventId, status: "cancelled" };
     },
-    /** 审核结果出来后：通过 → 去掉「仮：」；被拒 / 取消 → 删掉这条日程。读详情时顺带调用，失败不影响页面。 */
+    /** 审核结果出来后：通过 → 去掉「仮：」（final = 已改名）；被拒 / 取消 → 删掉这条日程（removed，确定参加后再取消也删）。读详情时顺带调用，失败不影响页面。 */
     async syncTentative(actorId: string, eventId: string, language: JourneyLanguage): Promise<void> {
       const record = await ports.readTentative(actorId, eventId);
-      if (!record || record.final) return;
+      if (!record || record.removed) return;
       const status = await ports.registrationStatus(actorId, eventId);
       const event = await ports.event(eventId);
       if (!event) return;
-      if (status === "registered") {
+      if (status === "registered" && !record.final) {
         await ports.renameSchedule(actorId, record.scheduleItemId, tentativeTitle(event.title, language, true));
         await ports.saveTentative(actorId, eventId, { ...record, final: true });
       } else if (status === "rejected" || status === "cancelled") {
         await ports.removeSchedule(actorId, record.scheduleItemId);
-        await ports.saveTentative(actorId, eventId, { ...record, final: true });
+        await ports.saveTentative(actorId, eventId, { ...record, removed: true });
       }
     },
   };

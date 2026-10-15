@@ -84,16 +84,19 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
 
   const toggle = async (item: EventPrepChecklistItem) => {
     if (!data) return;
-    const next = data.checklist.map((entry) => (entry.key === item.key ? { ...entry, done: !entry.done } : entry));
-    setData({ ...data, checklist: next });
+    // 只翻这一项（函数式更新，连点不会用到旧的 data）；失败时把这一项翻回去。
+    const flip = (done: boolean) => setData((current) => (current ? { ...current, checklist: current.checklist.map((entry) => (entry.key === item.key ? { ...entry, done } : entry)) } : current));
+    flip(!item.done);
     const saved = await journeyApi.checklist(eventId, [{ ...item, done: !item.done }]);
-    if (saved.ok) setData(saved.data); else toast.error(at("genericError"));
+    if (saved.ok) setData(saved.data); else { flip(item.done); toast.error(at("genericError")); }
   };
   const copyOpener = async (text: string) => {
     try { await navigator.clipboard.writeText(text.replace(/^「|」$/g, "")); toast.success(t("copied")); } catch { toast.error(at("genericError")); }
   };
   const addFollowup = async () => {
     if (!data?.followupSuggestion) return;
+    // 示例世界只读：不写真实日历。
+    if (data.sample) { setFollowDone("added"); toast.success(t("followAdded")); return; }
     const response = await fetch("/api/schedule-items", { body: JSON.stringify({ endsAt: data.followupSuggestion.endsAt, idempotencyKey: newIdempotencyKey(), startsAt: data.followupSuggestion.startsAt, timeZone: "Asia/Tokyo", title: data.followupSuggestion.title }), headers: { "content-type": "application/json" }, method: "POST" }).catch(() => null);
     if (response?.ok) { setFollowDone("added"); toast.success(t("followAdded")); } else toast.error(at("genericError"));
   };

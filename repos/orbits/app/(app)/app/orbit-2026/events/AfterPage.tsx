@@ -96,7 +96,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
     setBusy(true);
     const res = await journeyApi.confirmAfter(eventId, checked.map((step) => ({ attendeeId: step.attendeeId, followupDate: dates[step.attendeeId] ?? step.followupDate, planTypeKey: unlinked.has(step.attendeeId) ? null : step.planType?.key ?? null })));
     setBusy(false);
-    if (!res.ok) { toast.error(at("genericError")); return; }
+    if (!res.ok || res.data.confirmed === 0) { toast.error(at("genericError")); return; }
     setData((current) => (current ? { ...current, confirmedAt: res.data.confirmedAt, score: current.score && res.data.scoreAfter != null ? { ...current.score, after: res.data.scoreAfter } : current.score } : current));
     toast.success(t("confirmedToast"));
   };

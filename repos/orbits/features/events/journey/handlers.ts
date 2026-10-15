@@ -197,7 +197,8 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
     }, deps),
     // 参加コード → 活动（App 的 /register/〈コード〉）；找不到不算错，eventId = null。
     byCode: journeyRoute({ auth: "required", schema: eventCodeResolveResponseSchema }, async ({ params, service }) => {
-      const code = decodeURIComponent((params.code ?? "").trim()).toUpperCase();
+      // Next 已解码过路由参数；不再 decodeURIComponent（带 % 的参数会抛 URIError → 500）。
+      const code = (params.code ?? "").trim().toUpperCase();
       if (!code || code.length > 32) return { error: new AppError("VALIDATION_ERROR", "Invalid code.") };
       return { code, eventId: await service.eventIdByCode(code).catch(() => null) };
     }, deps),

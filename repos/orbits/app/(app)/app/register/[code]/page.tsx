@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AppRegisterCodePage({ params }: { params: Promise<{ code: string }> }) {
   const [{ code }, session, language] = await Promise.all([params, auth(), getOrbitServerLanguage()]);
-  const inviteCode = decodeURIComponent(code).trim().toUpperCase();
+  const inviteCode = (() => { try { return decodeURIComponent(code); } catch { return code; } })().trim().toUpperCase();
   // 动态导入：查码走活动服务（示例模式时是 mock 服务），不把它静态带进页面模块图。
   const { resolveEventCode } = await import("../../../../../features/events/journey/handlers");
   const eventId = await resolveEventCode(inviteCode);

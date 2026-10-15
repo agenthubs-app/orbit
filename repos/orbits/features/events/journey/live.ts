@@ -5,6 +5,7 @@
  * - 可选读取（政策、人数、互动、计划、产物…）失败时记 `console.warn` JSON 并降级为空，从不静默吞掉。
  * - 只读别人的公开资料；关系只用我自己的联系人；主办方 actor id 只换成 `organizerKey`，从不外传。
  */
+import { AppError } from "../../../shared/errors/app-error";
 import { myAssessmentIdsByEvent } from "../assessment/ids-by-event";
 import { typeOfPerson } from "../../../shared/compute/event-attendee-typing";
 import type { EventAfterConfirmResult } from "../../../shared/contract/event-after";
@@ -318,6 +319,8 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
         currentPlan(actorId).catch(warned("r27_journey_plan_failed", null)),
         core.getPublishedEvent(eventId).catch(warned("r27_journey_event_read_failed", null, { eventId })),
       ]);
+      // 读不到运营工作区就什么都确认不了：不写整场记录（否则确定按钮永久锁死），让调用方重试。
+      if (!workspace) throw new AppError("SERVICE_UNAVAILABLE", "The event workspace is temporarily unavailable; nothing was confirmed.");
       const linked = plan ? linkedTypeByContactFrom(plan.types, plan.links) : new Map<string, string>();
       const met = workspace ? afterMetFrom(workspace, { linkedTypeByContact: linked, types: [] }).met : [];
       const directory = new Map<string, string>((workspace?.directory ?? []).map((participant) => [participant.participantId, participant.displayName]));
@@ -370,8 +373,11 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       }
       const after = plan ? await plan.service.summary().catch(warned("r27_journey_plan_summary_failed", null)) : null;
       const result: EventAfterConfirmResult = { confirmed: confirmedRows, confirmedAt: at, contactsLinked, eventId, scoreAfter: after?.current?.score.total ?? null, tasksCreated };
-      await store.put<AfterConfirmationEventRecord>("eventAfterConfirmations", actorId, afterConfirmationIds.event(actorId, eventId), { confirmedAt: at, eventId }, at);
-      await store.put<AfterConfirmationKeyRecord>("eventAfterConfirmations", actorId, keyId, { result }, at);
+      // 一行都没确认成（名单里找不到这些人）时不写整场 / 幂等记录：页面不会被锁成「確定済み」，可以改了再提交。
+      if (confirmedRows > 0) {
+        await store.put<AfterConfirmationEventRecord>("eventAfterConfirmations", actorId, afterConfirmationIds.event(actorId, eventId), { confirmedAt: at, eventId }, at);
+        await store.put<AfterConfirmationKeyRecord>("eventAfterConfirmations", actorId, keyId, { result }, at);
+      }
       return result;
     },
 

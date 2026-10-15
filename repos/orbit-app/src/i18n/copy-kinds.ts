@@ -1713,6 +1713,8 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsJourney.liveNotRegistered", "label"],
   ["eventsJourney.liveBeforeCheckIn", "label"],
   ["eventsJourney.liveEnded", "label"],
+  ["eventsJourney.regLoadFailed", "label"],
+  ["eventsJourney.retryLoad", "button"],
   ["eventsJourney.savedToAssess", "toast"],
   ["eventsJourney.aEmptyTitle", "cardTitle"],
   ["eventsJourney.aScanTitle", "cardTitle"],

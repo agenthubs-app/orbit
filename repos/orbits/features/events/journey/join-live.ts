@@ -12,8 +12,8 @@ import type { JourneyLanguage } from "./prep-core";
 
 type Handler = (request: Request, context: { params: Promise<{ id: string }> }) => Promise<Response>;
 
-async function callHandler(handler: Handler, eventId: string, path: string, body: unknown): Promise<{ status: number; data: unknown }> {
-  const request = new Request(`http://orbit.internal/api/events/${encodeURIComponent(eventId)}/${path}`, { body: JSON.stringify(body), headers: { "content-type": "application/json" }, method: "POST" });
+async function callHandler(handler: Handler, eventId: string, path: string, body: unknown, method: "POST" | "GET" | "DELETE" = "POST"): Promise<{ status: number; data: unknown }> {
+  const request = new Request(`http://orbit.internal/api/events/${encodeURIComponent(eventId)}/${path}`, method === "GET" ? { method } : { body: JSON.stringify(body), headers: { "content-type": "application/json" }, method });
   const response = await handler(request, { params: Promise.resolve({ id: eventId }) });
   const json = (await response.json().catch(() => null)) as { data?: unknown } | null;
   return { data: json?.data ?? null, status: response.status };
@@ -57,18 +57,30 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     async submit(eventId, answers) {
       const { POST } = await import("../../../app/api/events/[id]/registration/route");
       const responses = answers.map((answer) => ({ answer: answer.answer, questionToken: answer.questionToken }));
-      const registered = await callHandler(POST as Handler, eventId, "registration", { answers: {}, expectedRegistrationVersion: null, intent: "register", responses });
-      if (registered.status < 300) return { status: "registered", submittedAt: new Date().toISOString() };
-      if (registered.status === 409) {
-        // 审核制活动：普通报名会 409 → 走审核申请（同一组签名回答）。
+      // 审核制按活动设定判断（不靠 409 猜：截止 / 已开始 / 问卷变了也是 409）。
+      if ((await input.journey.event(eventId))?.review) {
         const { createEventAdmissionApplicationPostHandler } = await import("../../../app/api/events/[id]/admission/application/handler");
         const applied = await callHandler(createEventAdmissionApplicationPostHandler(), eventId, "admission/application", { responses });
         if (applied.status < 300) return { status: "pending_review", submittedAt: new Date().toISOString() };
         throw Object.assign(new Error("admission application failed"), { status: applied.status });
       }
+      // 不带 intent / expectedRegistrationVersion：服务端按现状推断 register / reactivate（取消后再报）/ update（改资料）。
+      const registered = await callHandler(POST as Handler, eventId, "registration", { answers: {}, responses });
+      if (registered.status < 300) return { status: "registered", submittedAt: new Date().toISOString() };
       throw Object.assign(new Error("registration failed"), { status: registered.status });
     },
     async cancel(eventId) {
+      // 审核制：撤回审核申请（普通取消接口对审核制活动返回 409）。
+      if ((await input.journey.event(eventId))?.review) {
+        const { createEventAdmissionApplicationDeleteHandler, createEventAdmissionApplicationGetHandler } = await import("../../../app/api/events/[id]/admission/application/handler");
+        const current = await callHandler(createEventAdmissionApplicationGetHandler(), eventId, "admission/application", null, "GET");
+        const version = (current.data as { applicationVersion?: number } | null)?.applicationVersion;
+        if (current.status < 300 && typeof version === "number") {
+          const withdrawn = await callHandler(createEventAdmissionApplicationDeleteHandler(), eventId, "admission/application", { expectedApplicationVersion: version }, "DELETE");
+          if (withdrawn.status < 300) return;
+          throw Object.assign(new Error("admission withdraw failed"), { status: withdrawn.status });
+        }
+      }
       const { POST } = await import("../../../app/api/events/[id]/registration/cancel/route");
       const { status } = await callHandler(POST as Handler, eventId, "registration/cancel", { expectedRegistrationVersion: null, intent: "cancel" });
       if (status >= 300) throw Object.assign(new Error("registration cancel failed"), { status });
@@ -82,7 +94,7 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
       return String((created as { id?: string }).id ?? "");
     },
     async readTentative(actorId, eventId) {
-      const row = await store.get<{ scheduleItemId: string; final: boolean }>("eventTentativeSchedules", actorId, tentativeId(actorId, eventId));
+      const row = await store.get<{ scheduleItemId: string; final: boolean; removed?: boolean }>("eventTentativeSchedules", actorId, tentativeId(actorId, eventId));
       return row && !row.deleted ? row.payload : null;
     },
     async saveTentative(actorId, eventId, record) {
