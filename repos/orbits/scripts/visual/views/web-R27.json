@@ -1,10 +1,10 @@
 {
  "_note": "R27 イベント参加者動線 Web（PLANNER 像素 SC P01–P16）。mock 服务器 orbits-r27（ORBIT_REDESIGN_MOCK=event-assessment,plan-v2-summary,event-recommendation-feedback，distDir .next-r27）。每张先切 journey 变体（views 的 journey 字段；features/events/design-fixtures/switch.mjs --journey）。",
  "defaults": {
-  "app-origin": "http://localhost:3026",
+  "app-origin": "http://localhost:3027",
   "login": "qa@orbit.test",
   "grid": 30,
-  "attribution": "scripts/visual/attribution-redesign-R26.json"
+  "attribution": "scripts/visual/attribution-redesign-R27.json"
  },
  "sources": [
   "repos/orbits/app/(app)/app/orbit-2026/events/**",
@@ -117,6 +117,33 @@
     "overview": "few"
    },
    "note": "P07 未登录詳細（W-R26-41）"
+  },
+  {
+   "id": "W-R27-25",
+   "app": "/app/events/demo-event-cfo-night-18/prep",
+   "design": "b2-events-flow.html",
+   "board-index": 25,
+   "width": 1440,
+   "wait-for": "[data-prep-people]",
+   "journey": {},
+   "steps": [
+    {
+     "click": "[data-prep-cards] button"
+    },
+    {
+     "fill": [
+      "[data-prep-cards-input]",
+      "8"
+     ]
+    },
+    {
+     "keys": "Enter"
+    },
+    {
+     "wait": 300
+    }
+   ],
+   "note": "P11 会う準備（名刺の残り 8 只在本机，步骤里输入）"
   }
  ]
 }

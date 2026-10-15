@@ -1,0 +1,33 @@
+/* R27 会う準備（Web）：照 b2 #25 kit 源码（.big small / 地图 svg / .chk / .quote / .confirm-card / .mac.lav）。 */
+.unit { font-size: var(--fs-emph); font-weight: var(--fw-bold); color: var(--ink-3); margin-left: 3px; letter-spacing: 0; }
+.whenSub { margin-top: 8px; }
+.mapCard.mapCard { padding: 14px; }
+.map { display: block; border-radius: var(--r-md); }
+.mapBg { fill: var(--surface-2); }
+.mapRoad { stroke: var(--surface-3); stroke-width: 7; fill: none; }
+.mapRail { stroke: var(--mac-blue-ink); stroke-width: 2.5; fill: none; opacity: 0.5; }
+.mapHalo { fill: var(--plum-100); }
+.mapPin { fill: var(--plum-700); }
+.mapText { font-size: 8px; fill: var(--ink-3); }
+.mapBtn.mapBtn { margin-top: 10px; align-self: flex-start; }
+.cardsRow.cardsRow { display: flex; align-items: center; gap: 14px; border: 0; background: transparent; padding: 0; height: auto; min-height: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.cardsText b { display: block; }
+.cardsInput { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.cardsInput input { height: 36px; border-radius: var(--r-input-sm); border: 1px solid var(--line); background: var(--surface-2); padding: 0 10px; color: var(--ink); font: inherit; }
+.name { font-size: var(--fs-body-sm); }
+.why { font-size: var(--fs-control); }
+.quote { border-radius: var(--r-md); background: var(--surface-2); padding: 10px 12px; font-size: var(--fs-meta); line-height: var(--lh-prose); position: relative; }
+.history { margin-top: 4px; }
+.chk.chk { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; width: 100%; border: 0; border-radius: var(--r-row); background: transparent; height: auto; min-height: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.chk + .chk { border-top: 1px solid var(--line); }
+.box { width: 22px; height: 22px; border-radius: var(--r-pill); border: 1.8px solid var(--ink-4); flex: 0 0 auto; display: grid; place-items: center; color: var(--surface); margin-top: 1px; }
+.box svg { width: 13px; height: 13px; }
+.done .box { background: var(--plum-500); border-color: var(--plum-500); }
+.done b { color: var(--ink-3); text-decoration: line-through; }
+.chk b { font-size: var(--fs-row); font-weight: var(--fw-bold); display: block; }
+.chk span { font-size: var(--fs-label); color: var(--ink-3); }
+.confirm.confirm { border: 1.5px dashed var(--plum-300); background: transparent; border-radius: var(--r-lg); padding: 14px; margin-top: 12px; }
+.confirmTitle { font-size: var(--fs-control); }
+.flowCard.flowCard { padding: 16px; }
+.lav { background: var(--mac-lav); }
+.hint { font-size: var(--fs-meta); }
