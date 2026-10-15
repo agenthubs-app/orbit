@@ -18,6 +18,9 @@ import {
   getHttpStatusForAppErrorCode,
 } from "../../../../shared/errors/app-error";
 import { eventAccessDirectoryErrorToAppError } from "../access-directory-error";
+import { createHostRoutes } from "../../../../features/events/host/handlers";
+
+const hostCenterSummary = (request: Request) => createHostRoutes().centerSummary(request);
 
 export interface EventCenterRouteDependencies {
   createService?: () => EventAccessDirectoryService | null;
@@ -32,7 +35,9 @@ export interface EventCenterRouteDependencies {
 export function createEventCenterGetHandler(
   dependencies: EventCenterRouteDependencies = {},
 ) {
-  return async function eventCenterGetHandler(): Promise<Response> {
+  return async function eventCenterGetHandler(request?: Request): Promise<Response> {
+    // R17（host/DESIGN.md §2.12）：`?summary=1` 给 R18 マイページ「主催したイベント」行（HostCenterSummary）。
+    if (request && new URL(request.url).searchParams.get("summary") === "1") return hostCenterSummary(request);
     const mode = resolveFeatureMode();
     const actor = await (
       dependencies.resolveActor ?? resolveAuthenticatedApiActor

@@ -3,6 +3,7 @@
  * - `route.dev.ts`：只在非生产当路由，生产构建不收录（fixture 不进生产包）。
  * - 运行时闸：NODE_ENV=production 或契约 8 不是 mock 时一律 404。
  * - `POST { name }` 切换（`name: null` 回到演示世界）；`GET` 列出名字。
+ * - R17：`POST { host: { center?: "empty"|"few"|"many"|"inactive", overview?: "pre_open"|"live", setup?: "few"|"many", kiosk?: "before"|"live", organizer?: "empty"|"few"|"many" } }` 切换主催示例变体，`host: null` 恢复默认（features/events/host/mock.ts）。
  * - R27：`POST { journey: { discover?, overview?, after?: "empty" | "few" | "many", venue?: 会場 state, registration?: "none" | "registered" | "pending_review" } }` 切换参加者整条路的示例变体，
  *   `journey: null` 恢复默认（features/events/journey/mock.ts）。
  */
@@ -11,7 +12,7 @@ import { NextResponse } from "next/server";
 import { DESIGN_FIXTURE_NOW, EVENT_DESIGN_FIXTURES } from "../../../../features/events/design-fixtures";
 import { setDesignFixtureNow } from "../../../../features/events/dev-clock";
 import { overrideMyEventsMock } from "../../../../features/events/mine/configured";
-import { overrideRedesignMockAssessments, setJourneyMockState, type JourneyMockState } from "../../../../features/redesign-contracts/service-factory";
+import { overrideRedesignMockAssessments, setHostMockState, setJourneyMockState, type JourneyMockState } from "../../../../features/redesign-contracts/service-factory";
 import { redesignContractMode } from "../../../../features/redesign-contracts/route";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,17 @@ export async function GET() {
 
 export async function POST(request: Request) {
   if (!available()) return notFound();
-  const body = (await request.json().catch(() => null)) as { name?: unknown; journey?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { name?: unknown; journey?: unknown; host?: unknown } | null;
+  if (body && "host" in body) {
+    if (redesignContractMode("host-operations") !== "mock") return notFound();
+    const raw = body.host as Record<string, unknown> | null;
+    const allowed: Record<string, readonly string[]> = { center: ["empty", "few", "many", "inactive"], kiosk: ["before", "live"], organizer: ["empty", "few", "many"], overview: ["pre_open", "live"], setup: ["few", "many"] };
+    const patch: Record<string, string> = {};
+    for (const [key, values] of Object.entries(allowed)) if (raw && typeof raw[key] === "string" && values.includes(raw[key] as string)) patch[key] = raw[key] as string;
+    const state = setHostMockState(raw === null ? null : patch);
+    setDesignFixtureNow(raw === null ? null : DESIGN_FIXTURE_NOW);
+    return NextResponse.json({ host: state }, { headers: HEADERS });
+  }
   if (body && "journey" in body) {
     if (redesignContractMode("event-recommendation-feedback") !== "mock") return notFound();
     const VARIANTS = ["empty", "few", "many"];

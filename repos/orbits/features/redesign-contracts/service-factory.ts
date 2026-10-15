@@ -15,6 +15,8 @@ export const REDESIGN_CONTRACT_CAPABILITIES = [
   "event-recommendation-feedback",
   "account-lifecycle",
   "plan-v2-summary",
+  // R17: 主催（host/DESIGN.md §4）——運営センター、运营台、受付、共同運営者、主办方资料与公开页。
+  "host-operations",
 ] as const;
 
 export type RedesignContractCapability = (typeof REDESIGN_CONTRACT_CAPABILITIES)[number];
@@ -28,7 +30,8 @@ export type RedesignContractService = RedesignMockService | RedesignLiveService;
 /** Capabilities with a live implementation (the rest answer NOT_IMPLEMENTED in live). */
 // R26: `event-assessment` has a live implementation (features/events/assessment).
 // R27: `event-recommendation-feedback` (興味なし) has a live implementation (features/events/journey).
-export const REDESIGN_CONTRACT_LIVE_CAPABILITIES: readonly RedesignContractCapability[] = ["contact-completion", "event-assessment", "event-recommendation-feedback"];
+export const REDESIGN_CONTRACT_LIVE_CAPABILITIES: readonly RedesignContractCapability[] = ["contact-completion", "event-assessment", "event-recommendation-feedback", "host-operations"];
+// R17: `host-operations` has a live implementation (features/events/host).
 
 export function resolveRedesignContract(capabilityId: RedesignContractCapability, mode?: ModuleMode | string): ServiceResolution<RedesignContractService> {
   return createModuleServiceFactory<RedesignContractService>({
@@ -48,3 +51,6 @@ export async function overrideRedesignMockAssessments(items: Parameters<typeof i
 
 // R27 设计稿门禁：切换 イベント参加者の動線 的示例变体（dev route 经由工厂拿 mock，不直接 import mock 模块）。
 export { setJourneyMockState, type JourneyMockState } from "../events/journey/mock";
+
+// R17 设计稿门禁：切换主催的示例变体。
+export { setHostMockState } from "../events/host/mock";

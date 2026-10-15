@@ -4,6 +4,7 @@
  * 用门禁已保存的 Playwright 登录态（storageState JSON）带 cookie 调开发接口；不读密码、不打印 cookie。
  *
  *   node features/events/design-fixtures/switch.mjs --origin http://localhost:3026 --storage <qa-storage.json> --name <fixture 名|null|list>
+ *   R17：--host '{"center":"few","kiosk":"before"}'（或 --host null）切换主催示例变体。
  *   R27：--journey '{"discover":"few","venue":"before_check_in"}'（或 --journey null）切换参加者整条路的示例变体。
  */
 import { readFileSync } from "node:fs";
@@ -22,7 +23,9 @@ const host = new URL(origin).hostname;
 const state = JSON.parse(readFileSync(args.storage, "utf8"));
 const cookie = (state.cookies ?? []).filter((item) => item.domain.replace(/^\./, "") === host).map((item) => `${item.name}=${item.value}`).join("; ");
 const url = `${origin}/api/dev/event-design-fixture`;
-const response = args.journey !== undefined
+const response = args.host !== undefined
+  ? await fetch(url, { body: JSON.stringify({ host: args.host === "null" ? null : JSON.parse(args.host) }), headers: { "content-type": "application/json", cookie }, method: "POST" })
+  : args.journey !== undefined
   ? await fetch(url, { body: JSON.stringify({ journey: args.journey === "null" ? null : JSON.parse(args.journey) }), headers: { "content-type": "application/json", cookie }, method: "POST" })
   : args.name === "list" || args.name === undefined
   ? await fetch(url, { headers: { cookie } })

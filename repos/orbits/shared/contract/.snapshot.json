@@ -8299,6 +8299,2992 @@
         }
       }
     },
+    "host-cohosts.ts::HostCohostRole": {
+      "kind": "enum",
+      "values": [
+        "'check_in'",
+        "'manager'",
+        "'read_only_analyst'"
+      ]
+    },
+    "host-cohosts.ts::HostCohostMember": {
+      "kind": "object",
+      "members": {
+        "actorId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostCohostRole | 'owner'"
+        },
+        "isMe": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-cohosts.ts::HostCohostInvite": {
+      "kind": "object",
+      "members": {
+        "inviteId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostCohostRole"
+        },
+        "inviteeLabel": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "expiresAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-cohosts.ts::HostCohostHistoryItem": {
+      "kind": "object",
+      "members": {
+        "at": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "subjectName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "action": {
+          "optional": false,
+          "kind": "text",
+          "type": "'granted' | 'changed' | 'revoked' | 'invited'"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostCohostRole | 'owner' | null"
+        },
+        "reason": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "byName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-cohosts.ts::HostCohostsResponse": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventTitle": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "members": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostCohostMember[]"
+        },
+        "invites": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostCohostInvite[]"
+        },
+        "history": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostCohostHistoryItem[]"
+        },
+        "canManage": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-cohosts.ts::HostCohostInviteInput": {
+      "kind": "object",
+      "members": {
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostCohostRole"
+        },
+        "target": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-cohosts.ts::HostCohostInviteResult": {
+      "kind": "object",
+      "members": {
+        "inviteId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "link": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "shortCode": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "expiresAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-cohosts.ts::HostCohostRoleInput": {
+      "kind": "object",
+      "members": {
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostCohostRole"
+        },
+        "reason": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "expectedRevision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-cohosts.ts::HostCohostRemoveInput": {
+      "kind": "object",
+      "members": {
+        "reason": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "expectedRevision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-cohosts.ts::HostCohostInvitePreview": {
+      "kind": "object",
+      "members": {
+        "valid": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "eventTitle": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "organizerName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "inviterName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostCohostRole | null"
+        },
+        "expiresAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-cohosts.ts::HostCohostAcceptResult": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostCohostRole"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-cohosts.ts::HostCheckInEventsResponse": {
+      "kind": "object",
+      "members": {
+        "events": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostCheckInEventItem[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-cohosts.ts::HostCheckInEventItem": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "venue": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "host-console.ts::HostProgressStep": {
+      "kind": "enum",
+      "values": [
+        "'check_in'",
+        "'generation'",
+        "'publish'",
+        "'registration'",
+        "'review_groups'"
+      ]
+    },
+    "host-console.ts::HostOverviewMatchingCard": {
+      "kind": "object",
+      "members": {
+        "state": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostMatchingState"
+        },
+        "roundCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "tableCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "unplaced": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-console.ts::HostOverviewTodo": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'review_pending' | 'profile_incomplete'"
+        },
+        "count": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "walkInSlots": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        }
+      }
+    },
+    "host-console.ts::HostOverviewResponse": {
+      "kind": "object",
+      "members": {
+        "event": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventView"
+        },
+        "applied": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "capacity": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "matchable": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "checkedIn": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "arrivalRate": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "doorsOpenAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "pendingReview": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "recommendationRate": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "recommendationsPerPerson": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "trend": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly number[]"
+        },
+        "currentStep": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostProgressStep"
+        },
+        "completedSteps": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostProgressStep[]"
+        },
+        "todos": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostOverviewTodo[]"
+        },
+        "matching": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostOverviewMatchingCard"
+        },
+        "reportSummary": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostReportSummary | null"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-console.ts::HostReportSummary": {
+      "kind": "object",
+      "members": {
+        "checkInRate": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "exchangeRate": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "followupRate": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "checkedIn": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "exchanges": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "asOf": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-console.ts::HostMatchingState": {
+      "kind": "enum",
+      "values": [
+        "'draft'",
+        "'generating'",
+        "'none'",
+        "'published'"
+      ]
+    },
+    "host-console.ts::HostMatchingConditions": {
+      "kind": "object",
+      "members": {
+        "tableSize": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "roundCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "separateCompanies": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "avoidPreviousTablemates": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "investorPerTable": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "host-console.ts::HostMatchingRound": {
+      "kind": "object",
+      "members": {
+        "index": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-console.ts::HostMatchingMember": {
+      "kind": "object",
+      "members": {
+        "participantId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "standing": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "placedByHost": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "host-console.ts::HostMatchingTable": {
+      "kind": "object",
+      "members": {
+        "round": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "table": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "theme": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "members": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostMatchingMember[]"
+        },
+        "why": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "absent": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-console.ts::HostMatchingResponse": {
+      "kind": "object",
+      "members": {
+        "event": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventView"
+        },
+        "state": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostMatchingState"
+        },
+        "applied": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "profileComplete": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "minimumApplied": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "generationsUsed": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "generationsLimit": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "conditions": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostMatchingConditions"
+        },
+        "rounds": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostMatchingRound[]"
+        },
+        "round": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "tables": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostMatchingTable[]"
+        },
+        "unplaced": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostMatchingMember[]"
+        },
+        "participantCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "tableCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "tableSizeMin": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "tableSizeMax": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "unsatisfiedTables": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "generationId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "overridesVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-console.ts::HostMatchingMove": {
+      "kind": "object",
+      "members": {
+        "participantId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "round": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "toTable": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "host-console.ts::HostMatchingOverridesInput": {
+      "kind": "object",
+      "members": {
+        "generationId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "expectedVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "moves": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostMatchingMove[]"
+        }
+      }
+    },
+    "host-console.ts::HostMatchingGenerateInput": {
+      "kind": "object",
+      "members": {
+        "conditions": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostMatchingConditions"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-console.ts::HostMatchingPublishInput": {
+      "kind": "object",
+      "members": {
+        "generationId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "overridesVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-console.ts::HostPeopleBucket": {
+      "kind": "enum",
+      "values": [
+        "'approved'",
+        "'pending'",
+        "'rejected'",
+        "'waitlisted'"
+      ]
+    },
+    "host-console.ts::HostAdmissionDecision": {
+      "kind": "enum",
+      "values": [
+        "'approve'",
+        "'reject'",
+        "'waitlist'"
+      ]
+    },
+    "host-console.ts::HostPeopleRow": {
+      "kind": "object",
+      "members": {
+        "actorId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "answer": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "profileScore": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "profileIncomplete": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "attendCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostPeopleBucket"
+        },
+        "applicationVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-console.ts::HostPeopleCounts": {
+      "kind": "object",
+      "members": {
+        "pending": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "approved": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "waitlisted": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "rejected": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-console.ts::HostPeopleResponse": {
+      "kind": "object",
+      "members": {
+        "event": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventView"
+        },
+        "bucket": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostPeopleBucket"
+        },
+        "counts": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostPeopleCounts"
+        },
+        "capacity": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "remaining": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "answerLabel": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "rows": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostPeopleRow[]"
+        },
+        "more": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "nextCursor": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "applyPath": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "questionCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-console.ts::HostPeopleDecisionInput": {
+      "kind": "object",
+      "members": {
+        "decision": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostAdmissionDecision"
+        },
+        "expectedVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-console.ts::HostPeopleDecisionResult": {
+      "kind": "object",
+      "members": {
+        "actorId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostPeopleBucket"
+        },
+        "applicationVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "receptionNumber": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "notified": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-console.ts::HostKioskStatus": {
+      "kind": "enum",
+      "values": [
+        "'checked_in'",
+        "'not_arrived'",
+        "'waitlisted'"
+      ]
+    },
+    "host-console.ts::HostKioskRow": {
+      "kind": "object",
+      "members": {
+        "participantId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "actorId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kana": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "org": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostKioskStatus"
+        },
+        "checkedInAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "table": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "receptionNumber": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "undoable": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "host-console.ts::HostKioskRecent": {
+      "kind": "object",
+      "members": {
+        "participantId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "at": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "table": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "receptionNumber": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "host-console.ts::HostKioskResponse": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "venue": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "staffName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "staffRole": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "now": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "doorsOpenAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "checkedIn": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "rate": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "rows": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostKioskRow[]"
+        },
+        "recent": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostKioskRecent[]"
+        },
+        "devices": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "canWalkIn": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "overCapacity": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "cacheUntil": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-console.ts::HostKioskRosterResponse": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "cacheUntil": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "rows": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostKioskRow[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-console.ts::HostCheckInScanInput": {
+      "kind": "object",
+      "members": {
+        "payload": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-console.ts::HostAdmitOnSiteInput": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "confirmOverCapacity": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "host-console.ts::HostCheckInUndoInput": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-console.ts::HostCheckInResult": {
+      "kind": "object",
+      "members": {
+        "participantId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostKioskStatus"
+        },
+        "checkedInAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "receptionNumber": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "table": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "duplicate": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "overCapacity": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "host-console.ts::HostKioskHeartbeatInput": {
+      "kind": "object",
+      "members": {
+        "deviceId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-console.ts::HostKioskHeartbeatResult": {
+      "kind": "object",
+      "members": {
+        "devices": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-console.ts::HostQuestionKind": {
+      "kind": "enum",
+      "values": [
+        "'free'",
+        "'multiple'",
+        "'single'"
+      ]
+    },
+    "host-console.ts::HostSetupQuestion": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "prompt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostQuestionKind"
+        },
+        "required": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "options": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        }
+      }
+    },
+    "host-console.ts::HostNoticeTemplateKind": {
+      "kind": "enum",
+      "values": [
+        "'admission_approved'",
+        "'admission_promoted'",
+        "'admission_rejected'",
+        "'admission_waitlisted'",
+        "'matching_published'",
+        "'profile_incomplete'"
+      ]
+    },
+    "host-console.ts::HostNoticeTemplate": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostNoticeTemplateKind"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-console.ts::HostQuestionSuggestion": {
+      "kind": "object",
+      "members": {
+        "count": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "basisTitle": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "basisCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "questions": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostSetupQuestion[]"
+        }
+      }
+    },
+    "host-console.ts::HostSetupResponse": {
+      "kind": "object",
+      "members": {
+        "event": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventView"
+        },
+        "formPublished": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "description": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "questions": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostSetupQuestion[]"
+        },
+        "capacity": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "registrationClosesAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "admissionMode": {
+          "optional": false,
+          "kind": "text",
+          "type": "'first_come' | 'review'"
+        },
+        "applyPath": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "unpublishedChanges": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "savedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "suggestion": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostQuestionSuggestion | null"
+        },
+        "notices": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostNoticeTemplate[]"
+        },
+        "hostNote": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-console.ts::HostSetupDraftInput": {
+      "kind": "object",
+      "members": {
+        "expectedRevision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "description": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "questions": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostSetupQuestion[]"
+        },
+        "capacity": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "registrationClosesAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "admissionMode": {
+          "optional": false,
+          "kind": "text",
+          "type": "'first_come' | 'review'"
+        }
+      }
+    },
+    "host-console.ts::HostSetupPublishInput": {
+      "kind": "object",
+      "members": {
+        "expectedRevision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-console.ts::HostSetupHostNoteInput": {
+      "kind": "object",
+      "members": {
+        "hostNote": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "host-console.ts::HostReportFunnel": {
+      "kind": "object",
+      "members": {
+        "exchanged": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "drafted": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "followed": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "meetings": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        }
+      }
+    },
+    "host-console.ts::HostReportTableCell": {
+      "kind": "object",
+      "members": {
+        "round": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "table": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "exchanges": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        }
+      }
+    },
+    "host-console.ts::HostReportStandingItem": {
+      "kind": "object",
+      "members": {
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "percent": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        }
+      }
+    },
+    "host-console.ts::HostReportAll": {
+      "kind": "object",
+      "members": {
+        "state": {
+          "optional": false,
+          "kind": "text",
+          "type": "'before' | 'after'"
+        },
+        "applied": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "capacity": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "daysToStart": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "daysSincePublish": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "daysPublishToEvent": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "trend": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly number[]"
+        },
+        "trendLabels": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "checkInRate": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "checkedIn": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "exchanges": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "exchangesPerPerson": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "exchangeRate": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "followups": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "followupRate": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "followupWindowDays": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "funnel": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostReportFunnel"
+        },
+        "tables": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostReportTableCell[]"
+        },
+        "tableNote": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "standingQuestion": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "standing": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostReportStandingItem[]"
+        },
+        "suppressedBelow": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-console.ts::HostReportPerson": {
+      "kind": "object",
+      "members": {
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "table": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "standing": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "host-console.ts::HostReportMine": {
+      "kind": "object",
+      "members": {
+        "met": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "exchanged": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "followed": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "followTotal": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "contributionLabel": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "contributionDelta": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "contributionScore": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "contributionHave": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "contributionTarget": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "contributionGoal": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "contributionDetail": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "unfollowed": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostReportPerson[]"
+        },
+        "daysSinceExchange": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "logSuggestion": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "host-console.ts::HostReportResponse": {
+      "kind": "object",
+      "members": {
+        "event": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventView"
+        },
+        "view": {
+          "optional": false,
+          "kind": "text",
+          "type": "'all' | 'mine'"
+        },
+        "all": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostReportAll | null"
+        },
+        "mine": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostReportMine | null"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-events.ts::HostEventLifecycle": {
+      "kind": "enum",
+      "values": [
+        "'archived'",
+        "'cancelled'",
+        "'draft'",
+        "'published'"
+      ]
+    },
+    "host-events.ts::HostEventStatus": {
+      "kind": "enum",
+      "values": [
+        "'archived'",
+        "'cancelled'",
+        "'draft'",
+        "'ended'",
+        "'live'",
+        "'upcoming'"
+      ]
+    },
+    "host-events.ts::HostRole": {
+      "kind": "enum",
+      "values": [
+        "'check_in'",
+        "'manager'",
+        "'operations'",
+        "'owner'",
+        "'read_only_analyst'",
+        "'reviewer'"
+      ]
+    },
+    "host-events.ts::HostEventFeeKind": {
+      "kind": "enum",
+      "values": [
+        "'amount'",
+        "'external_link'",
+        "'free'",
+        "'pay_at_door'"
+      ]
+    },
+    "host-events.ts::HostAdmissionMode": {
+      "kind": "enum",
+      "values": [
+        "'first_come'",
+        "'review'"
+      ]
+    },
+    "host-events.ts::HostRowNoteKind": {
+      "kind": "enum",
+      "values": [
+        "'archived'",
+        "'cancelled'",
+        "'check_in_open'",
+        "'draft'",
+        "'followup'",
+        "'matching_missing'",
+        "'none'",
+        "'review_pending'"
+      ]
+    },
+    "host-events.ts::HostRowAction": {
+      "kind": "enum",
+      "values": [
+        "'open_check_in'",
+        "'open_console'"
+      ]
+    },
+    "host-events.ts::HostCenterFilter": {
+      "kind": "enum",
+      "values": [
+        "'all'",
+        "'ended'",
+        "'inactive'",
+        "'live'",
+        "'upcoming'"
+      ]
+    },
+    "host-events.ts::HostTodoKind": {
+      "kind": "enum",
+      "values": [
+        "'generate_matching'",
+        "'matching_missing'",
+        "'open_check_in'",
+        "'profile_incomplete'",
+        "'publish_form'",
+        "'publish_matching'",
+        "'review_pending'"
+      ]
+    },
+    "host-events.ts::HostRowNote": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostRowNoteKind"
+        },
+        "count": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "rate": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "at": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "host-events.ts::HostCenterEventRow": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventStatus"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "endsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "venue": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "applied": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "capacity": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "matched": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "checkedIn": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "note": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostRowNote"
+        },
+        "action": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostRowAction"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostRole"
+        }
+      }
+    },
+    "host-events.ts::HostCenterKpi": {
+      "kind": "object",
+      "members": {
+        "upcoming": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "upcomingThisMonth": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "appliedThisMonth": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "appliedDeltaVsLastMonth": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "averageCheckInRate": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "followupRate": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "followupEndedCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-events.ts::HostTodoItem": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostTodoKind"
+        },
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventTitle": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "count": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "daysLeft": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        }
+      }
+    },
+    "host-events.ts::HostNextStep": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'review_pending' | 'open_check_in' | 'publish_form' | 'generate_matching' | 'publish_matching' | 'send_followup'"
+        },
+        "done": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "doneAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "count": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "threshold": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        }
+      }
+    },
+    "host-events.ts::HostNextSteps": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventTitle": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "steps": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostNextStep[]"
+        }
+      }
+    },
+    "host-events.ts::HostCenterFilterCounts": {
+      "kind": "object",
+      "members": {
+        "all": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "upcoming": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "live": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "ended": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "inactive": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-events.ts::HostCenterSummary": {
+      "kind": "object",
+      "members": {
+        "eventCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "appliedThisMonth": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "activeCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-events.ts::HostCenterResponse": {
+      "kind": "object",
+      "members": {
+        "summary": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostCenterSummary"
+        },
+        "kpi": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostCenterKpi | null"
+        },
+        "todo": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostTodoItem[]"
+        },
+        "next": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostNextSteps | null"
+        },
+        "spotlight": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostCenterSpotlight | null"
+        },
+        "filterCounts": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostCenterFilterCounts"
+        },
+        "events": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostCenterEventRow[]"
+        },
+        "page": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "pageCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-events.ts::HostCenterSpotlight": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "applied": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "capacity": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "pendingReview": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "cohosts": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-events.ts::HostCohostAvatar": {
+      "kind": "object",
+      "members": {
+        "actorId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-events.ts::HostEventView": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "lifecycle": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventLifecycle"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventStatus"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "endsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "timezone": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "venueName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "venueArea": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "online": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "feeKind": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventFeeKind"
+        },
+        "feeAmountYen": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "feeUrl": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "capacity": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "description": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "organizerProfileId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "organizerName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "organizerEmoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "organizerSlug": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "publicSlug": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "participationCode": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "admissionMode": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostAdmissionMode"
+        },
+        "registrationClosesAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "followerCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "appliedCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "approvedCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "waitlistedCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "cohostCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "cohosts": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostCohostAvatar[]"
+        },
+        "myRole": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostRole"
+        },
+        "capabilities": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "cancelledAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "archivedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "version": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-events.ts::HostEventInput": {
+      "kind": "object",
+      "members": {
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "timezone": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "venueName": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "venueArea": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "online": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "feeKind": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventFeeKind"
+        },
+        "feeAmountYen": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "feeUrl": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "capacity": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "description": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "organizerProfileId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "templateId": {
+          "optional": true,
+          "kind": "text",
+          "type": "'mixer' | 'study' | 'roundtable' | null"
+        }
+      }
+    },
+    "host-events.ts::HostEventUpdateInput": {
+      "kind": "object",
+      "members": {
+        "expectedVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "title": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "startsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "venueName": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "venueArea": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "online": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "feeKind": {
+          "optional": true,
+          "kind": "text",
+          "type": "HostEventFeeKind"
+        },
+        "feeAmountYen": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "feeUrl": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "capacity": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "description": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "organizerProfileId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "notify": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "host-events.ts::HostEventChangePreview": {
+      "kind": "object",
+      "members": {
+        "timeChanged": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "venueChanged": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "beforeStartsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "afterStartsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "beforeVenue": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "afterVenue": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "approvedCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "waitlistedCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-events.ts::HostEventWriteResult": {
+      "kind": "object",
+      "members": {
+        "event": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventView"
+        },
+        "changePreview": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostEventChangePreview | null"
+        },
+        "notified": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-events.ts::HostEventPublishInput": {
+      "kind": "object",
+      "members": {
+        "expectedVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-events.ts::HostEventCancelInput": {
+      "kind": "object",
+      "members": {
+        "expectedVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "hostNote": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "host-events.ts::HostEventArchiveInput": {
+      "kind": "object",
+      "members": {
+        "expectedVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "archived": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "host-events.ts::HostEventCodeReissueInput": {
+      "kind": "object",
+      "members": {
+        "expectedVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "host-events.ts::HostDesktopLinkResult": {
+      "kind": "object",
+      "members": {
+        "sent": {
+          "optional": false,
+          "kind": "text",
+          "type": "true"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-notices.ts::HostNoticeKind": {
+      "kind": "enum",
+      "values": [
+        "'admission_approved'",
+        "'admission_promoted'",
+        "'admission_rejected'",
+        "'admission_waitlisted'",
+        "'cohost_invite'",
+        "'desktop_link'",
+        "'event_cancelled'",
+        "'event_changed'",
+        "'event_published'",
+        "'matching_published'",
+        "'profile_incomplete'"
+      ]
+    },
+    "host-notices.ts::HostSendableNoticeKind": {
+      "kind": "enum",
+      "values": [
+        "'event_cancelled'",
+        "'event_changed'",
+        "'profile_incomplete'"
+      ]
+    },
+    "host-notices.ts::HostNoticeChannel": {
+      "kind": "enum",
+      "values": [
+        "'email'",
+        "'inbox'"
+      ]
+    },
+    "host-notices.ts::HostNoticePreviewInput": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostSendableNoticeKind"
+        }
+      }
+    },
+    "host-notices.ts::HostNoticePreview": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostSendableNoticeKind"
+        },
+        "recipients": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "channels": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly HostNoticeChannel[]"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "body": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "hostNote": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "remainingSends": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "host-notices.ts::HostNoticeSendInput": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostSendableNoticeKind"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "host-notices.ts::HostNoticeSendResult": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "HostSendableNoticeKind"
+        },
+        "queued": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
     "inbox-notifications.ts::InboxNotificationKind": {
       "kind": "enum",
       "values": [
@@ -8345,6 +11331,7 @@
         "'contact'",
         "'event_contact_request'",
         "'event_deadline'",
+        "'event_host_notice'",
         "'event_pick'",
         "'event_prep'",
         "'goal'",
@@ -8423,7 +11410,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'unavailable' | 'available' | 'changed'"
+          "type": "'unavailable' | 'changed' | 'available'"
         }
       }
     },
@@ -8959,6 +11946,105 @@
         "HomeLayoutUpdateInput",
         "HomeWidgetKey",
         "HomeWidgetSlot",
+        "HostAdmissionDecision",
+        "HostAdmissionMode",
+        "HostAdmitOnSiteInput",
+        "HostCenterEventRow",
+        "HostCenterFilter",
+        "HostCenterFilterCounts",
+        "HostCenterKpi",
+        "HostCenterResponse",
+        "HostCenterSpotlight",
+        "HostCenterSummary",
+        "HostCheckInEventItem",
+        "HostCheckInEventsResponse",
+        "HostCheckInResult",
+        "HostCheckInScanInput",
+        "HostCheckInUndoInput",
+        "HostCohostAcceptResult",
+        "HostCohostAvatar",
+        "HostCohostHistoryItem",
+        "HostCohostInvite",
+        "HostCohostInviteInput",
+        "HostCohostInvitePreview",
+        "HostCohostInviteResult",
+        "HostCohostMember",
+        "HostCohostRemoveInput",
+        "HostCohostRole",
+        "HostCohostRoleInput",
+        "HostCohostsResponse",
+        "HostDesktopLinkResult",
+        "HostEventArchiveInput",
+        "HostEventCancelInput",
+        "HostEventChangePreview",
+        "HostEventCodeReissueInput",
+        "HostEventFeeKind",
+        "HostEventInput",
+        "HostEventLifecycle",
+        "HostEventPublishInput",
+        "HostEventStatus",
+        "HostEventUpdateInput",
+        "HostEventView",
+        "HostEventWriteResult",
+        "HostKioskHeartbeatInput",
+        "HostKioskHeartbeatResult",
+        "HostKioskRecent",
+        "HostKioskResponse",
+        "HostKioskRosterResponse",
+        "HostKioskRow",
+        "HostKioskStatus",
+        "HostMatchingConditions",
+        "HostMatchingGenerateInput",
+        "HostMatchingMember",
+        "HostMatchingMove",
+        "HostMatchingOverridesInput",
+        "HostMatchingPublishInput",
+        "HostMatchingResponse",
+        "HostMatchingRound",
+        "HostMatchingState",
+        "HostMatchingTable",
+        "HostNextStep",
+        "HostNextSteps",
+        "HostNoticeChannel",
+        "HostNoticeKind",
+        "HostNoticePreview",
+        "HostNoticePreviewInput",
+        "HostNoticeSendInput",
+        "HostNoticeSendResult",
+        "HostNoticeTemplate",
+        "HostNoticeTemplateKind",
+        "HostOverviewMatchingCard",
+        "HostOverviewResponse",
+        "HostOverviewTodo",
+        "HostPeopleBucket",
+        "HostPeopleCounts",
+        "HostPeopleDecisionInput",
+        "HostPeopleDecisionResult",
+        "HostPeopleResponse",
+        "HostPeopleRow",
+        "HostProgressStep",
+        "HostQuestionKind",
+        "HostQuestionSuggestion",
+        "HostReportAll",
+        "HostReportFunnel",
+        "HostReportMine",
+        "HostReportPerson",
+        "HostReportResponse",
+        "HostReportStandingItem",
+        "HostReportSummary",
+        "HostReportTableCell",
+        "HostRole",
+        "HostRowAction",
+        "HostRowNote",
+        "HostRowNoteKind",
+        "HostSendableNoticeKind",
+        "HostSetupDraftInput",
+        "HostSetupHostNoteInput",
+        "HostSetupPublishInput",
+        "HostSetupQuestion",
+        "HostSetupResponse",
+        "HostTodoItem",
+        "HostTodoKind",
         "InboxDeliveryOwnerDTO",
         "InboxDeliveryPreferencesDTO",
         "InboxDeliveryPreferencesInput",
@@ -9064,6 +12150,14 @@
         "OrbitLanguage",
         "OrbitLanguagePreferenceContract",
         "OrganizerFollowResult",
+        "OrganizerProfile",
+        "OrganizerProfileInput",
+        "OrganizerProfileListResponse",
+        "OrganizerProfileStats",
+        "OrganizerProfileVisibility",
+        "OrganizerPublicPast",
+        "OrganizerPublicResponse",
+        "OrganizerPublicUpcoming",
         "PasswordResetResponse",
         "PersonalScheduleAssociationKind",
         "PersonalScheduleAssociationOption",
@@ -11448,6 +14542,258 @@
         }
       }
     },
+    "organizer-profile.ts::OrganizerProfileVisibility": {
+      "kind": "enum",
+      "values": [
+        "'link_only'",
+        "'public'"
+      ]
+    },
+    "organizer-profile.ts::OrganizerProfile": {
+      "kind": "object",
+      "members": {
+        "profileId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "slug": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "displayName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "bio": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "visibility": {
+          "optional": false,
+          "kind": "text",
+          "type": "OrganizerProfileVisibility"
+        },
+        "eventCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "organizer-profile.ts::OrganizerProfileListResponse": {
+      "kind": "object",
+      "members": {
+        "profiles": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly OrganizerProfile[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "organizer-profile.ts::OrganizerProfileInput": {
+      "kind": "object",
+      "members": {
+        "displayName": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "bio": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "visibility": {
+          "optional": true,
+          "kind": "text",
+          "type": "OrganizerProfileVisibility"
+        },
+        "slug": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "organizer-profile.ts::OrganizerProfileStats": {
+      "kind": "object",
+      "members": {
+        "eventsHeld": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "attendeesTotal": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "followers": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "organizer-profile.ts::OrganizerPublicUpcoming": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "venue": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "feeKind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'free' | 'amount' | 'pay_at_door' | 'external_link'"
+        },
+        "feeAmountYen": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "remainingSeats": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "registrationOpen": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "organizer-profile.ts::OrganizerPublicPast": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "attended": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "organizer-profile.ts::OrganizerPublicResponse": {
+      "kind": "object",
+      "members": {
+        "profile": {
+          "optional": false,
+          "kind": "text",
+          "type": "OrganizerProfile"
+        },
+        "organizerKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "stats": {
+          "optional": false,
+          "kind": "text",
+          "type": "OrganizerProfileStats"
+        },
+        "following": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean | null"
+        },
+        "upcoming": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly OrganizerPublicUpcoming[]"
+        },
+        "past": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly OrganizerPublicPast[]"
+        },
+        "pastTotal": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
     "password-reset.ts::PasswordResetResponse": {
       "kind": "object",
       "members": {
@@ -13041,7 +16387,7 @@
         "kind": {
           "optional": false,
           "kind": "text",
-          "type": "'initial' | 'review'"
+          "type": "'review' | 'initial'"
         },
         "status": {
           "optional": false,
@@ -15701,7 +19047,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'expired' | 'pending' | 'accepted' | 'revoked'"
+          "type": "'expired' | 'pending' | 'revoked' | 'accepted'"
         },
         "canAccept": {
           "optional": false,

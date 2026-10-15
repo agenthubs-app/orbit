@@ -201,7 +201,8 @@ export const designRadius = {
   dot: 4,
   check: 7,
   tick: 1,
-  cta: 26
+  cta: 26,
+  hostAvatar: 30
 } as const;
 
 export const designSpace = {

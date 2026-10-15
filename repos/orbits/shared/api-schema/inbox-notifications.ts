@@ -9,7 +9,7 @@ export const inboxNotificationActionSchema = z.object({
 export const inboxNotificationReadBatchSchema: z.ZodType<InboxNotificationReadBatchInput> = z.object({
   items:z.array(z.object({id,expectedRevision:z.number().int().positive()}).strict()).min(1).max(50), idempotencyKey:id,
 }).strict();
-const SOURCE_KINDS = ['reminder_plan','task','schedule','appointment','batch','connection','note','message','contact','goal','read_cost_alert','event_contact_request','event_deadline','event_prep','event_pick','mail_summary'] as const;
+const SOURCE_KINDS = ['reminder_plan','task','schedule','appointment','batch','connection','note','message','contact','goal','read_cost_alert','event_contact_request','event_deadline','event_prep','event_pick','mail_summary','event_host_notice'] as const;
 const ACTIONS = ['read','dismiss','handle','snooze','accept'] as const;
 const copyShape = (text: z.ZodString) => z.object({zh:z.object({title:text,reason:text}),en:z.object({title:text,reason:text}),ja:z.object({title:text,reason:text})});
 

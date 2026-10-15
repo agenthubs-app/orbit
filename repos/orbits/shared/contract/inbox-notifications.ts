@@ -4,7 +4,9 @@ export type InboxNotificationDisposition = 'open' | 'dismissed' | 'handled' | 'a
 export type InboxNotificationAction = 'read' | 'dismiss' | 'handle' | 'snooze' | 'accept';
 export type InboxSourceKind = 'reminder_plan' | 'task' | 'schedule' | 'appointment' | 'batch' | 'connection' | 'note' | 'message' | 'contact' | 'goal' | 'read_cost_alert' | 'event_contact_request'
   // R08 (R13 owns, inbox / home secretary use): secretary sources.
-  | 'event_deadline' | 'event_prep' | 'event_pick' | 'mail_summary';
+  | 'event_deadline' | 'event_prep' | 'event_pick' | 'mail_summary'
+  // R17 (host/DESIGN.md §2.10): fixed-template host notices (admission decisions, cancel / change, co-host invite, desktop link).
+  | 'event_host_notice';
 export interface InboxNotificationSource {
   sourceKind: InboxSourceKind;
   sourceId: string;
