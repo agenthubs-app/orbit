@@ -398,3 +398,18 @@ export function journeyEventIds(): string[] {
   for (const hit of journeySearch("").events) ids.add(hit.eventId);
   return [...ids];
 }
+
+// ---------- 参加登録（b2 #20–#23） ----------
+
+/** 示例 5 问（字段与现有 AI 访谈同一套；option 文字照画板）。 */
+export const JOURNEY_JOIN_QUESTIONS = [
+  { field: "desiredOutcome", options: ["資金調達の相談相手を見つけたい", "同じステージの起業家と話したい", "採用の相談をしたい", "業界の最新情報を知りたい"], prompt: "今回の参加目的にいちばん近いものは？" },
+  { field: "experienceHighlight", options: ["シリーズAの資本政策", "CFO 採用", "SaaS の KPI 開示", "IPO 準備"], prompt: "当日話したいテーマを選んでください（2つまで）" },
+  { field: "targetAttendees", options: ["VC・CVC", "上場企業の CFO", "監査法人・会計士", "金融機関（デット）", "同じステージの起業家"], prompt: "どんな方に会いたいですか？" },
+  { field: "valueOffered", options: ["工場 DX の現場事情", "製造業向け SaaS の立ち上げ経験", "エンジニア採用のノウハウ"], prompt: "あなたが提供できることは？" },
+  { field: "followUpPreference", options: ["メール", "Orbit のメッセージ", "後日あらためて面談"], prompt: "当日のあと、どう連絡を取りたいですか？" },
+] as const;
+
+export const JOURNEY_JOIN_SELF_INTRO = "製造業向け IoT SaaS「ミナトリンク」の代表です。来春のシリーズAに向けて、資本政策と CFO 採用について、経験のある方のお話を伺いたいです。工場 DX の現場事情ならお話しできます。";
+export const JOURNEY_JOIN_SUBMITTED_AT = "2026-09-20T14:32:00+09:00";
+export const JOURNEY_JOIN_REVIEW_UNTIL = "2026-10-03T23:59:00+09:00";

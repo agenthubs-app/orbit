@@ -205,7 +205,8 @@ function readModelQuestion(
 export async function nextAdaptiveInterviewQuestion(
   input: AdaptiveInterviewInput,
 ): Promise<AdaptiveInterviewStep> {
-  const language = input.language === "en" ? "en" : "zh";
+  // R27：日文界面的问题用日文写（标签 / 活动名仍是中英两版，由调用方处理）。
+  const language = input.language === "en" ? "en" : input.language === "ja" ? "ja" : "zh";
   const transcript = input.transcript.slice(0, ADAPTIVE_INTERVIEW_MAX_TURNS);
   const remainingFields = remainingFieldsFor(transcript);
 
@@ -223,7 +224,7 @@ export async function nextAdaptiveInterviewQuestion(
     systemInstruction: [
       "You conduct a short adaptive interview that builds an attendee's persona for one specific event.",
       "Generate exactly ONE next question. Return strict JSON only: {\"acknowledgment\", \"field\", \"prompt\", \"options\"}.",
-      `Write everything in ${language === "zh" ? "Chinese" : "English"}.`,
+      `Write everything in ${language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English"}.`,
       "acknowledgment: one short sentence that reacts to the person's LATEST answer (empty string if there is no previous answer). Never repeat the answer verbatim; show you understood it.",
       "field: pick the most valuable unanswered field from remainingFields, informed by what the person just said. The persona feeds attendee matching, so cover diverse dimensions: positioning, industry, who to meet, value offered, desired outcome, social energy style, experience highlight, follow-up preference.",
       "prompt: the next question. Make it follow naturally from the latest answer — reference what they said. Keep it under 90 characters if possible.",

@@ -229,6 +229,12 @@ function verifiedPayload(input: {
   return payload;
 }
 
+/** R27 公開範囲：「主催者のみ」= 参加目的（desiredOutcome）、会いたい人（targetAttendees）；其余「参加者全員」。 */
+export const ORGANIZER_ONLY_REGISTRATION_FIELDS = ["desiredOutcome", "targetAttendees"] as const;
+export function registrationFieldVisibility(field: string): "event_attendees" | "matching_only" {
+  return (ORGANIZER_ONLY_REGISTRATION_FIELDS as readonly string[]).includes(field) ? "matching_only" : "event_attendees";
+}
+
 export function verifyInterviewResponseSubmissions(input: {
   actorId: string;
   eventId: string;
@@ -288,10 +294,9 @@ export function verifyInterviewResponseSubmissions(input: {
       questionId: payload.questionId,
       questionSource: "ai_adaptive" as const,
       responseId: `response:${payload.questionId}`,
-      // New event-profile answers are shared with event attendees by product
-      // policy. The client cannot lower visibility and accidentally hide data
-      // from matching or participant detail.
-      visibility: "event_attendees" as const,
+      // Visibility is a server policy per field (events DESIGN §2.4, R27 公開範囲): 参加目的 / 会いたい人 are for the
+      // organizer and matching only; everything else is shared with attendees. The client cannot change it.
+      visibility: registrationFieldVisibility(payload.field),
     };
   });
 }

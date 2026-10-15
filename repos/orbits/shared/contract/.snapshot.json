@@ -5775,6 +5775,236 @@
         }
       }
     },
+    "event-join.ts::EventJoinProfileItemKey": {
+      "kind": "enum",
+      "values": [
+        "'company'",
+        "'offer'",
+        "'purpose'",
+        "'target'",
+        "'topics'"
+      ]
+    },
+    "event-join.ts::EventJoinQuestion": {
+      "kind": "object",
+      "members": {
+        "field": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "prompt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "help": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "options": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "multi": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "max": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "allowCustom": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "questionToken": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "event-join.ts::EventJoinAnswer": {
+      "kind": "object",
+      "members": {
+        "field": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "prompt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "answer": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "questionToken": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "event-join.ts::EventJoinStep": {
+      "kind": "object",
+      "members": {
+        "index": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "remainingMinutes": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "done": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "question": {
+          "optional": true,
+          "kind": "text",
+          "type": "EventJoinQuestion | null"
+        }
+      }
+    },
+    "event-join.ts::EventJoinProfile": {
+      "kind": "object",
+      "members": {
+        "coverage": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "items": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "key": {
+                "optional": false,
+                "kind": "text",
+                "type": "EventJoinProfileItemKey"
+              },
+              "done": {
+                "optional": false,
+                "kind": "text",
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "topics": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "selfIntro": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ text: string; source: 'ai_draft' | 'profile'; } | null"
+        },
+        "selfIntroBasis": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "editableUntil": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "reviewUntil": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "review": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "event-join.ts::EventJoinResult": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'registered' | 'pending_review'"
+        },
+        "submittedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "reviewUntil": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "tentative": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ startsAt: string; endsAt: string; title: string; } | null"
+        }
+      }
+    },
+    "event-join.ts::EventJoinTentativeResult": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "scheduleItemId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
     "event-overview.ts::EventOverviewRegistrationStatus": {
       "kind": "enum",
       "values": [
@@ -6284,7 +6514,7 @@
         "selfIntro": {
           "optional": true,
           "kind": "text",
-          "type": "{ text: string; source: 'registration_draft' | 'profile'; } | null"
+          "type": "{ text: string; source: 'profile' | 'registration_draft'; } | null"
         },
         "followupSuggestion": {
           "optional": true,
@@ -8616,6 +8846,13 @@
         "EventExperienceQuestionSetContract",
         "EventExperienceSnapshotContract",
         "EventExperienceVersionContract",
+        "EventJoinAnswer",
+        "EventJoinProfile",
+        "EventJoinProfileItemKey",
+        "EventJoinQuestion",
+        "EventJoinResult",
+        "EventJoinStep",
+        "EventJoinTentativeResult",
         "EventOriginContract",
         "EventOverviewAttendee",
         "EventOverviewRegistrationStatus",
@@ -12933,7 +13170,7 @@
         "block": {
           "optional": false,
           "kind": "text",
-          "type": "'team' | 'me' | 'purpose'"
+          "type": "'purpose' | 'team' | 'me'"
         },
         "me": {
           "optional": true,

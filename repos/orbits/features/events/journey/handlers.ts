@@ -29,12 +29,17 @@ import { createEventFeedbackService, createOrganizerFollowService, createPrepChe
 import { createJourneyMockService } from "./mock";
 import type { JourneyLanguage } from "./prep-core";
 import { createJourneyService, type JourneyService } from "./service";
+import { createJoinService, type JoinService } from "./join";
+import { createJoinMockPorts } from "./join-mock";
+import { eventJoinNextInputObject, eventJoinProfileInputObject, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinSubmitInputObject, eventJoinTentativeInputObject, eventJoinTentativeResultSchema } from "../../../shared/api-schema/event-join";
 
 type Params = Record<string, string>;
 type RouteContext = { params?: Promise<Params> };
 type Reply<T> = { data: T; status?: number } | { error: AppError; context?: Record<string, string> };
 
 export interface JourneyRouteDeps {
+  /** Tests: the live 参加登録 facade (null = unconfigured). */
+  liveJoin?: () => Promise<JoinService | null>;
   resolveActor?: ResolveAuthenticatedApiActor;
   resolveMode?: () => FeatureMode;
   /** Tests: the live service (null = unconfigured). */
@@ -53,9 +58,19 @@ async function configuredLiveService(): Promise<JourneyService | null> {
   return createJourneyService({ ports, records: { checklist: createPrepChecklistService({ store }), feedback: createEventFeedbackService({ store }), follows: createOrganizerFollowService({ store }) } });
 }
 
+async function configuredJoinService(): Promise<JoinService | null> {
+  const runtime = createConfiguredTransactionalPostgresRuntime();
+  if (!runtime) return null;
+  const { createJourneyLivePorts } = await import("./live");
+  const journey = createJourneyLivePorts();
+  if (!journey) return null;
+  const { createJoinLivePorts } = await import("./join-live");
+  return createJoinService({ ports: createJoinLivePorts({ journey, query: (sql, values) => runtime.client.query(sql, values as unknown[]) as Promise<{ rows: Array<Record<string, unknown>> }>, workspaceId: runtime.workspaceId }) });
+}
+
 const notFound = <T>(): Reply<T> => ({ context: { reason: "NOT_FOUND" }, error: new AppError("NOT_FOUND", "Not found.") });
 
-function journeyRoute<T>(options: { auth: "required" | "optional"; write?: boolean; schema: ZodType<T> }, handle: (input: { request: Request; params: Params; service: JourneyService; actorId: string | null; language: JourneyLanguage; platform: "web" | "app" }) => Promise<Reply<T> | T | null>, deps: JourneyRouteDeps = {}) {
+function journeyRoute<T>(options: { auth: "required" | "optional"; write?: boolean; schema: ZodType<T> }, handle: (input: { request: Request; params: Params; service: JourneyService; join: () => Promise<JoinService | null>; actorId: string | null; language: JourneyLanguage; platform: "web" | "app" }) => Promise<Reply<T> | T | null>, deps: JourneyRouteDeps = {}) {
   return async function route(request: Request, routeContext?: RouteContext): Promise<Response> {
     const mode = (deps.resolveMode ?? (() => redesignContractMode("event-recommendation-feedback")))();
     const headers = { ...runtimeBoundaryHeaders(mode), "cache-control": "private, no-store" };
@@ -72,7 +87,8 @@ function journeyRoute<T>(options: { auth: "required" | "optional"; write?: boole
       const params = (await routeContext?.params) ?? {};
       const actorId = actor?.id ?? (options.auth === "required" ? DEMO_ACTOR_ID : null);
       const context = requestContext(request);
-      const result = await handle({ actorId, language: context.language, params, platform: context.platform === "app" ? "app" : "web", request, service });
+      const join = async () => (sample ? createJoinService({ ports: createJoinMockPorts() }) : await (deps.liveJoin ?? configuredJoinService)());
+      const result = await handle({ actorId, join, language: context.language, params, platform: context.platform === "app" ? "app" : "web", request, service });
       if (result === null) return fail(new AppError("NOT_FOUND", "Not found."), { reason: "NOT_FOUND" });
       const normalized = (typeof result === "object" && result !== null && ("data" in result || "error" in result) ? result : { data: result }) as Reply<T>;
       if ("error" in normalized) return fail(normalized.error, normalized.context);
@@ -113,7 +129,11 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       if (!parsed.success) return { error: new AppError("VALIDATION_ERROR", "Invalid query.") };
       return service.search(actorId!, parsed.data.q, parsed.data.limit);
     }, deps),
-    overview: journeyRoute({ auth: "optional", schema: eventOverviewResponseSchema }, async ({ actorId, language, params, platform, service }) => service.overview(actorId, eventId(params), language, platform), deps),
+    overview: journeyRoute({ auth: "optional", schema: eventOverviewResponseSchema }, async ({ actorId, join, language, params, platform, service }) => {
+      // 仮予定：审核结果出来后的改名 / 删除（读详情时顺带，失败只记日志，不影响页面）。
+      if (actorId) void join().then((joinService) => joinService?.syncTentative(actorId, eventId(params), language)).catch((error: unknown) => console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_join_tentative_sync_failed" })));
+      return service.overview(actorId, eventId(params), language, platform);
+    }, deps),
     prep: journeyRoute({ auth: "required", schema: eventPrepResponseSchema }, async ({ actorId, language, params, service }) => service.prep(actorId!, eventId(params), language), deps),
     patchChecklist: journeyRoute({ auth: "required", schema: eventPrepResponseSchema, write: true }, async ({ actorId, language, params, request, service }) => {
       const parsed = await body(request, eventPrepChecklistPatchSchema);
@@ -132,6 +152,34 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       const parsed = await body(request, eventRecommendationDismissInputSchema);
       if (parsed.ok === false) return parsed.reply;
       return service.dismiss(actorId!, eventId(params), parsed.value);
+    }, deps),
+    joinNext: journeyRoute({ auth: "required", schema: eventJoinStepSchema }, async ({ join, language, params, request }) => {
+      const parsed = await body(request, eventJoinNextInputObject);
+      if (parsed.ok === false) return parsed.reply;
+      const service = await join();
+      if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
+      return service.next(eventId(params), parsed.value.answers, language);
+    }, deps),
+    joinProfile: journeyRoute({ auth: "required", schema: eventJoinProfileSchema }, async ({ actorId, join, language, params, request }) => {
+      const parsed = await body(request, eventJoinProfileInputObject);
+      if (parsed.ok === false) return parsed.reply;
+      const service = await join();
+      if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
+      return service.profile(actorId!, eventId(params), parsed.value.answers, parsed.value.draft, language);
+    }, deps),
+    joinSubmit: journeyRoute({ auth: "required", schema: eventJoinResultSchema, write: true }, async ({ join, language, params, request }) => {
+      const parsed = await body(request, eventJoinSubmitInputObject);
+      if (parsed.ok === false) return parsed.reply;
+      const service = await join();
+      if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
+      return service.submit(eventId(params), parsed.value.answers, language);
+    }, deps),
+    joinTentative: journeyRoute({ auth: "required", schema: eventJoinTentativeResultSchema, write: true }, async ({ actorId, join, language, params, request }) => {
+      const parsed = await body(request, eventJoinTentativeInputObject);
+      if (parsed.ok === false) return parsed.reply;
+      const service = await join();
+      if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
+      return service.tentative(actorId!, eventId(params), parsed.value.idempotencyKey, language);
     }, deps),
     follow: journeyRoute({ auth: "required", schema: organizerFollowResultSchema, write: true }, async ({ actorId, params, service }) => service.follow(actorId!, (params.id ?? "").trim(), true), deps),
     unfollow: journeyRoute({ auth: "required", schema: organizerFollowResultSchema, write: true }, async ({ actorId, params, service }) => service.follow(actorId!, (params.id ?? "").trim(), false), deps),

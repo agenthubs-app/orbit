@@ -378,6 +378,7 @@ export type { OrganizerFollowResult } from "./organizer-follow";
 export type { EventOverviewAttendee, EventOverviewRegistrationStatus, EventOverviewResponse } from "./event-overview";
 export type { EventVenueExchangeState, EventVenuePerson, EventVenueRelation, EventVenueResponse, EventVenueState } from "./event-venue";
 export type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterHighlight, EventAfterNextStep, EventAfterResponse, EventAfterScoreSlot } from "./event-after";
+export type { EventJoinAnswer, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "./event-join";
 export type { AccountDeletionRequestContract, AccountExportContract, AccountExportScope, AppVersionContract } from "./account";
 export type {
   PlanAwardBasis,

@@ -83,6 +83,8 @@ export function createRegistrationInterviewPostHandler(
       } catch (error) { return portraitErrorResponse(error, mode); }
     }
     const language = body.language === "en" ? ("en" as const) : ("zh" as const);
+    // R27：问题文字可以用日文（模型语言），签名 token / 活动名仍按中英两版。
+    const questionLanguage = body.language === "ja" ? ("ja" as const) : language;
     let portraitService: PortraitService | null = null;
     if (body.mode === "portrait-interview") {
       try {
@@ -99,7 +101,7 @@ export function createRegistrationInterviewPostHandler(
           title: localizedEventTitle(event, language),
           venue: bilingualSegment(event.venue, language),
         },
-        language,
+        language: questionLanguage,
         transcript: readInterviewTranscript(body.transcript),
       });
     } catch (error) {

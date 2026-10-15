@@ -526,12 +526,12 @@ test("registration accepts only a complete set of actor-bound AI interview respo
       acceptedBody.data.participantProfile.interviewResponses.length,
       2,
     );
-    assert.equal(
-      acceptedBody.data.participantProfile.interviewResponses.every(
-        (response: { visibility: string }) =>
-          response.visibility === "event_attendees",
+    // R27 公開範囲（events DESIGN §2.4）：会いたい人（targetAttendees）只给主办方与匹配，其余参加者可见。
+    assert.deepEqual(
+      acceptedBody.data.participantProfile.interviewResponses.map(
+        (response: { field: string; visibility: string }) => [response.field, response.visibility],
       ),
-      true,
+      [["targetAttendees", "matching_only"], ["valueOffered", "event_attendees"]],
     );
     assert.match(
       acceptedBody.data.participantProfile.interviewResponses[0].question.prompt,
