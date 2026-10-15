@@ -1713,6 +1713,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsJourney.liveNotRegistered", "label"],
   ["eventsJourney.liveBeforeCheckIn", "label"],
   ["eventsJourney.liveEnded", "label"],
+  ["eventsJourney.rosterCountsOnly", "label"],
   ["eventsJourney.rosterCounts", "label"],
   ["eventsJourney.rosterGateBody", "cardTitle"],
   ["eventsJourney.rosterGateNote", "label"],

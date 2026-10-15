@@ -369,6 +369,7 @@ export const eventsJourney = {
   "eventsJourney.liveNotRegistered": "只有已报名的人可以使用会场模式",
   "eventsJourney.liveBeforeCheckIn": "签到后就能使用 · 签到号{n}",
   "eventsJourney.liveEnded": "活动已结束",
+  "eventsJourney.rosterCountsOnly": "预计参加 {n}人",
   "eventsJourney.rosterCounts": "预计参加 {n}人 · 熟人 {k}人",
   "eventsJourney.rosterGateBody": "报名后可以看到参加者的名字和一句话介绍",
   "eventsJourney.rosterGateNote": "参加者信息只在报名了同一活动的人之间显示",

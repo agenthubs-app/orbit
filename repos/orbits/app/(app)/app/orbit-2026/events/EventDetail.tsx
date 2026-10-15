@@ -65,12 +65,13 @@ function Person({ person, index, note }: { person: EventOverviewAttendee | { nam
 function RosterGate({ data, t, onRegister, wide }: { data: EventOverviewResponse; t: JourneyT; onRegister?: () => void; wide?: boolean }) {
   return (
     <>
-      <div className={styles.cardH}><h3>{t("tabPeople")}</h3><span className={styles.lbl}>{t("rosterCounts", { k: data.attendeeCounts.known, n: data.attendeeCounts.all })}</span></div>
+      {/* 未登录：只给人数（不提知り合い）、按钮是「ログインして参加登録」（b12 #394）。 */}
+      <div className={styles.cardH}><h3>{t("tabPeople")}</h3><span className={styles.lbl}>{data.signedOut ? t("rosterCountsOnly", { n: data.attendeeCounts.all }) : t("rosterCounts", { k: data.attendeeCounts.known, n: data.attendeeCounts.all })}</span></div>
       <div className={`${x.gate} ${wide ? x.gateWide : ""}`} data-roster-gate="">
         <div className={x.gateEmoji}>👥</div>
         <b className={x.gateTitle}>{t("rosterGateBody")}</b>
         <div className={`${styles.lbl} ${x.gateNote}`}>{t("rosterGateNote")}</div>
-        {onRegister ? <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={onRegister}>{t("rosterGateCta")}</button> : null}
+        {onRegister ? <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={onRegister}>{t(data.signedOut ? "loginRegister" : "rosterGateCta")}</button> : null}
       </div>
     </>
   );
@@ -194,7 +195,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
       {tab === "host" ? (
         <div className={styles.card}><div className={styles.row} style={{ gap: 12 }}><span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span><div><b>{data.organizer.name}</b><div className={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</div></div></div></div>
       ) : null}
-      {tab === "people" && data.rosterLocked && data.attendeeCounts.all > 0 ? <div className={styles.card}><RosterGate data={data} t={t} onRegister={onRegister} /></div> : null}
+      {tab === "people" && data.rosterLocked && data.attendeeCounts.all > 0 ? <div className={`${styles.card} ${x.pGateCard}`}><RosterGate data={data} t={t} onRegister={onRegister} /></div> : null}
       {tab === "people" && !(data.rosterLocked && data.attendeeCounts.all > 0) ? (
         <>
           <div className={`${styles.seg} ${x.pSeg}`} role="tablist">
@@ -311,7 +312,8 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
         <div className={x.mini3}>
           <div><span className={styles.lbl}>{t("avgAttend")}</span><b>{data.organizer.averageAttendance ?? "—"}</b></div>
           {data.organizer.typeShare ? <div><span className={styles.lbl}>{t("typeShare", { label: data.organizer.typeShare.label })}</span><b>{data.organizer.typeShare.percent}<small>{t("percentUnit")}</small></b></div> : null}
-          <div><span className={styles.lbl}>{t("youAttended")}</span><b>{data.organizer.myAttendance ?? 0}<small>{t("timesUnit")}</small></b></div>
+          {/* 「あなた N回」是个人数据：未登录（服务端不给）时不显示（主会话 10-16 / §36）。 */}
+          {!data.signedOut && typeof data.organizer.myAttendance === "number" ? <div><span className={styles.lbl}>{t("youAttended")}</span><b>{data.organizer.myAttendance}<small>{t("timesUnit")}</small></b></div> : null}
         </div>
       </div>
       {data.rosterLocked && data.attendeeCounts.all > 0 ? (

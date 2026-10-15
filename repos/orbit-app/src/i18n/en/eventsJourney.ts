@@ -369,6 +369,7 @@ export const eventsJourney = {
   "eventsJourney.liveNotRegistered": "Venue mode is for registered attendees",
   "eventsJourney.liveBeforeCheckIn": "Available after check-in · No. {n}",
   "eventsJourney.liveEnded": "This event has ended",
+  "eventsJourney.rosterCountsOnly": "{n} going",
   "eventsJourney.rosterCounts": "{n} going · {k} you know",
   "eventsJourney.rosterGateBody": "Register to see who's coming and what they're about",
   "eventsJourney.rosterGateNote": "Attendee details are shown only to people registered for this event",

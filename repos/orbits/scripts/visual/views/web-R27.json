@@ -340,14 +340,14 @@
    "id": "W-R27-P41",
    "app": "/app/events/demo-event-cfo-night-18",
    "design": "b12-missing-states.html",
-   "board-index": 326,
+   "board-index": 394,
    "width": 1440,
    "login": "",
    "wait-for": "[data-detail-people]",
    "journey": {
     "overview": "few"
    },
-   "note": "P07 未登录詳細（W-R26-41）"
+   "note": "P07 未登录詳細（roster-policy A：只给人数；b12 #394 取代 #326；§36 主催卡「あなた」待画板改）"
   },
   {
    "id": "W-R27-25",
@@ -389,16 +389,17 @@
    "note": "P04 探す · テーマ弹层（大量） · 1024"
   },
   {
-   "id": "W-R27-20-1024",
+   "id": "W-R27-20u-1024",
    "app": "/app/events/demo-event-cfo-night-18",
    "design": "b12-missing-states.html",
-   "board-index": 350,
+   "board-index": 390,
    "width": 1024,
    "wait-for": "[data-detail-people]",
    "journey": {
-    "overview": "many"
+    "overview": "many",
+    "registration": "none"
    },
-   "note": "P06 詳細 · 多（深色 = #47） · 1024"
+   "note": "P06 詳細 · 多 · 未登録 · 1024（roster-policy A；b12 #390 取代 #350）"
   },
   {
    "id": "W-R27-30-1024",
@@ -505,16 +506,17 @@
    "note": "P02 探す · 少量 · 390"
   },
   {
-   "id": "W-R27-20-390",
+   "id": "W-R27-20u-390",
    "app": "/app/events/demo-event-cfo-night-18",
    "design": "b12-missing-states.html",
-   "board-index": 352,
+   "board-index": 392,
    "width": 390,
    "wait-for": "[data-detail-phone]",
    "journey": {
-    "overview": "many"
+    "overview": "many",
+    "registration": "none"
    },
-   "note": "P06 詳細 · 多（深色 = #47） · 390",
+   "note": "P06 詳細 · 多 · 未登録 · 390（roster-policy A；b12 #392 取代 #352）",
    "steps": [
     {
      "click": "[data-detail-tab=people]"

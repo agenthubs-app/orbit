@@ -382,6 +382,7 @@ export const eventsJourneyCopy = {
   liveNotRegistered: { ja: "会場モードは参加登録した人だけが使えます", zh: "只有已报名的人可以使用会场模式", en: "Venue mode is for registered attendees", kind: "label" },
   liveBeforeCheckIn: { ja: "受付をすませると使えます · 受付番号 {n}", zh: "签到后就能使用 · 签到号{n}", en: "Available after check-in · No. {n}", kind: "label" },
   liveEnded: { ja: "イベントは終了しました", zh: "活动已结束", en: "This event has ended", kind: "label" },
+  rosterCountsOnly: { ja: "参加予定 {n}人", zh: "预计参加 {n}人", en: "{n} going", kind: "label" },
   rosterCounts: { ja: "参加予定 {n}人 · 知り合い {k}人", zh: "预计参加 {n}人 · 熟人 {k}人", en: "{n} going · {k} you know", kind: "label" },
   rosterGateBody: { ja: "参加登録すると、参加者の名前と一言が見られます", zh: "报名后可以看到参加者的名字和一句话介绍", en: "Register to see who's coming and what they're about", kind: "cardTitle" },
   rosterGateNote: { ja: "参加者の情報は、同じイベントに申し込んだ人どうしにだけ表示されます", zh: "参加者信息只在报名了同一活动的人之间显示", en: "Attendee details are shown only to people registered for this event", kind: "label" },

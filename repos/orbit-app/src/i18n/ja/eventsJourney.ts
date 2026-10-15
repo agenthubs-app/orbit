@@ -369,6 +369,7 @@ export const eventsJourney = {
   "eventsJourney.liveNotRegistered": "会場モードは参加登録した人だけが使えます",
   "eventsJourney.liveBeforeCheckIn": "受付をすませると使えます · 受付番号 {n}",
   "eventsJourney.liveEnded": "イベントは終了しました",
+  "eventsJourney.rosterCountsOnly": "参加予定 {n}人",
   "eventsJourney.rosterCounts": "参加予定 {n}人 · 知り合い {k}人",
   "eventsJourney.rosterGateBody": "参加登録すると、参加者の名前と一言が見られます",
   "eventsJourney.rosterGateNote": "参加者の情報は、同じイベントに申し込んだ人どうしにだけ表示されます",

@@ -135,3 +135,4 @@
 .railGate.railGate { padding: 14px 16px; }
 .railGate b { font-size: var(--fs-row); }
 .railGate .lbl, .railGate > div { margin-top: 4px; }
+.pGateCard.pGateCard { padding: 18px; }
