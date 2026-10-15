@@ -331,7 +331,7 @@ export function journeyVenue(state: EventVenueResponse["state"] = "checked_in", 
 // ---------- 会後 ----------
 
 const THANKS_SHIMIZU = {
-  body: "清水様\n\n昨夜は CFO Night でお話しいただき、ありがとうございました。製造業向け SaaS への見方を伺えたことが大変参考になりました。\n\n11月のオフィス訪問の件、候補日を改めてお送りいたします。\n\n佐藤 健一",
+  body: "清水様\n\n昨夜は CFO Night でお話しいただき、ありがとうございました。製造業向け SaaS への見方を伺えたことが大変参考になりました。\n11月のオフィス訪問の件、候補日を改めてお送りいたします。\n\n佐藤 健一",
   subject: "昨夜の CFO Night のお礼（ミナトリンク 佐藤）",
 };
 

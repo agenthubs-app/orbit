@@ -288,6 +288,42 @@
    "note": "会場モード 390：会場モードは App で（§10 A7）"
   },
   {
+   "app": "/app/events/demo-event-cfo-night-18/after",
+   "design": "b2-events-flow.html",
+   "width": 1440,
+   "id": "W-R27-40",
+   "board-index": 40,
+   "wait-for": "[data-after-empty]",
+   "journey": {
+    "after": "empty"
+   },
+   "note": "P10 会後 · 记录为空"
+  },
+  {
+   "app": "/app/events/demo-event-cfo-night-18/after",
+   "design": "b2-events-flow.html",
+   "width": 1440,
+   "id": "W-R27-41",
+   "board-index": 41,
+   "wait-for": "[data-after-steps]",
+   "journey": {
+    "after": "few"
+   },
+   "note": "P10 会後 · 少"
+  },
+  {
+   "app": "/app/events/demo-event-cfo-night-18/after",
+   "design": "b2-events-flow.html",
+   "width": 1440,
+   "id": "W-R27-42",
+   "board-index": 42,
+   "wait-for": "[data-after-steps]",
+   "journey": {
+    "after": "many"
+   },
+   "note": "P10 会後 · 多"
+  },
+  {
    "id": "W-R27-P40",
    "app": "/app/events",
    "design": "b12-missing-states.html",
