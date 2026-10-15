@@ -7111,6 +7111,20 @@ const regMenu = `<div class="dmenu k-wregmenu" style="right:396px;top:96px;width
 g += S10('补画 · 2026-10-15 · ⑥ 参加済みのイベント詳細 · 取り消し入口（§31）', '已报名：顶栏「会う準備へ」左侧加 ⋯ 菜单（对标 Luma / Peatix 的「Manage registration」）；菜单最后一项「参加を取り消す」珊瑚色 → W-R27-33（#374）确认框');
 g += WP('W-R27-35 イベント詳細 · 参加済み · Web 1440', '', () => ({ nav: 3, body: wDetailReg(), rail: wRailReg() }), [['.k-wprep', 0, '已报名：主按钮由「参加登録」变成「会う準備へ」'], ['.k-wmore', 0, '左侧 ⋯：报名相关的次要操作收在菜单里（见下一块）']], 'b2 #18 · Luma / Peatix · 补画 2026-10-15');
 g += WP('W-R27-35b イベント詳細 · 参加済み · ⋯ メニュー · Web 1440', '', () => ({ nav: 3, body: wDetailReg(), rail: wRailReg(), ov: regMenu }), [['.k-wregmenu', 0, '下拉菜单（b11 .dmenu 样式）：カレンダーに追加 / 参加用プロフィールを編集 / 参加を取り消す（珊瑚，最后一项）；点「参加を取り消す」→ W-R27-33（#374）确认框']], 'b11 .dmenu · 补画 2026-10-15');
+
+/* ===== 补画 · 2026-10-15：未报名时的参加者区（§34，待用户确认；备选：维持原画板）——隐私：「参加者に表示」只对同一活动的报名者 ===== */
+const gateCard = (n, k, cls, web) => `<div class="${web ? 'card span12' : 'card'} ${cls}">${web ? `<div class="card-h"><h3>参加者</h3><span class="lbl">参加予定 ${n}人 · 知り合い ${k}人</span></div>` : `<div class="card-h"><h3>参加者</h3><span class="lbl">参加予定 ${n}人 · 知り合い ${k}人</span></div>`}
+    <div class="guide" style="text-align:center;padding:${web ? '22px 20px' : '18px 14px'};border-radius:18px;background:var(--surface-2)"><div style="font-size:34px;line-height:1">👥</div><b style="display:block;font-size:${web ? 15 : 14}px;margin-top:8px">参加登録すると、参加者の名前と一言が見られます</b><div class="lbl" style="margin:4px 0 12px">参加者の情報は、同じイベントに申し込んだ人どうしにだけ表示されます</div><button class="btn primary">参加登録する</button></div></div>`;
+const detailUnregA = (s) => { const t = detail(s); if (s === 'many') { const i = t.indexOf('<div class="seg full">'); return t.slice(0, i) + gateCard(128, 3, 'k-pgate', false); } const i = t.indexOf('<div class="card p-meet">'); return t.slice(0, i) + gateCard(12, 1, 'k-pgate', false); };
+const railUnreg = (s) => wDetailRail(s).replace(/<div class="card" style="padding:14px 16px"><div class="list">[\s\S]*?(<div style="flex:1"><\/div>)/, (m, tail) => `<div class="card k-wrailgate" style="padding:14px 16px"><b style="font-size:13.5px">プランに合いそうな人 約${s === 'many' ? 18 : 3}人</b><div class="lbl" style="margin-top:4px">参加登録すると、名前と一言が見られます</div></div>\n  ${tail}`);
+const detailUnregW = (s) => { const t = wDetail(s); const i = t.indexOf('<div class="card span12 p-wparts">'); return t.slice(0, i) + gateCard(s === 'many' ? 128 : 12, s === 'many' ? 3 : 1, 'k-wpgate', true) + '</div>'; };
+g += S10('补画 · 2026-10-15 · ⑦ 未登録の参加者エリア（§34，待用户确认）', '已登录但未报名：参加者名单不可见（「参加者に表示」只对同一活动的报名者），只显示人数与知り合い人数 + 占位卡「参加登録すると…」；备选：维持原画板（b2 #15 / #16 / #18 / #19）');
+g += '<div class="boards">' + [
+  PB('A-R27-15u イベント詳細 · 未登録 · 参加者 少', 'few', () => ({ body: detailUnregA('few'), tab: -1, overlay: ctaBar }), [['.k-pgate', 0, '原「会えそうな人」卡 → 只显示「参加予定 12人 · 知り合い 1人」+ 占位卡（参加登録する）']], 'b2 #15 · 补画 2026-10-15'),
+  PB('A-R27-16u イベント詳細 · 未登録 · 参加者 多', 'many', () => ({ body: detailUnregA('many'), tab: -1, overlay: ctaBar }), [['.k-pgate', 0, '参加者页签：去掉「プランに合う / 知り合い / 全員」与名单 → 人数 + 占位卡']], 'b2 #16 · 补画 2026-10-15'),
+].join('') + '</div>';
+g += WP('W-R27-18u イベント詳細 · 未登録 · 参加者 少 · Web 1440', 'few', () => ({ nav: 3, body: detailUnregW('few'), rail: railUnreg('few') }), [['.k-wpgate', 0, '参加者区块：标题旁「参加予定 12人 · 知り合い 1人」，名单换成占位卡（参加登録する）'], ['.k-wrailgate', 0, '右栏「会えそうな人」同样不列名字：只给人数 +「参加登録すると、名前と一言が見られます」']], 'b2 #18 · 补画 2026-10-15');
+g += WP('W-R27-19u イベント詳細 · 未登録 · 参加者 多 · Web 1440', 'many', () => ({ nav: 3, body: detailUnregW('many'), rail: railUnreg('many') }), [['.k-wpgate', 0, '同上（参加予定 128人 · 知り合い 3人）']], 'b2 #19 · 补画 2026-10-15');
 __g7out(group('g7', g));
 })();
 /* ===================== 出力 ===================== */
