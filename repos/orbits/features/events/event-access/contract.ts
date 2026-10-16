@@ -3,6 +3,8 @@ export const EVENT_ACCESS_ROLES = [
   "check_in",
   "reviewer",
   "read_only_analyst",
+  // R17（host/DESIGN.md §2.8）：画板「管理者」= operations ∪ reviewer（一人一角色，所以合成一个角色）。
+  "manager",
 ] as const;
 
 export const EVENT_ACCESS_ASSIGNMENT_STATES = ["active", "revoked"] as const;
@@ -24,6 +26,12 @@ export const EVENT_ACCESS_CAPABILITIES = [
   "generation.run",
   "generation.publish",
   "analytics.read_aggregate",
+  // R17（host/DESIGN.md §2.2、§2.6、§10 A9）：编辑活动（owner + manager）、中止活动（只有 owner）、
+  // 当日枠受付（owner / manager / operations / check_in）、概要读取（含閲覧）。
+  "event.edit",
+  "event.cancel",
+  "check_in.walk_in",
+  "operations.read_summary",
 ] as const;
 
 export type EventAccessRole = (typeof EVENT_ACCESS_ROLES)[number];

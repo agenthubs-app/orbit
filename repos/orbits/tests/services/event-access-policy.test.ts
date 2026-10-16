@@ -17,6 +17,29 @@ const EXPECTED: Readonly<Record<EventAccessRole, readonly string[]>> = {
     "event.center.read",
     "check_in.roster.read_limited",
     "check_in.roster.write",
+    // R17 A9（照 b6 #20 表）。
+    "analytics.read_aggregate",
+    "check_in.walk_in",
+  ],
+  // R17：管理者 = operations ∪ reviewer + event.edit / operations.read_summary / check_in.walk_in；不含 roles.manage / owner.transfer / event.cancel。
+  manager: [
+    "event.center.read",
+    "operations.read_sensitive",
+    "operations.read_summary",
+    "operations.configure",
+    "experience.configure",
+    "experience.publish",
+    "attendees.read_full",
+    "attendees.export",
+    "check_in.roster.read_limited",
+    "check_in.roster.write",
+    "check_in.walk_in",
+    "generation.run",
+    "generation.publish",
+    "analytics.read_aggregate",
+    "admission.read",
+    "admission.decide",
+    "event.edit",
   ],
   operations: [
     "event.center.read",
@@ -31,10 +54,13 @@ const EXPECTED: Readonly<Record<EventAccessRole, readonly string[]>> = {
     "generation.run",
     "generation.publish",
     "analytics.read_aggregate",
+    "operations.read_summary",
+    "check_in.walk_in",
   ],
   read_only_analyst: [
     "event.center.read",
     "analytics.read_aggregate",
+    "operations.read_summary",
   ],
   reviewer: [
     "event.center.read",
@@ -65,6 +91,10 @@ test("event access capability matrix is exact, frozen, and owner-derived", () =>
     }),
     false,
   );
+  for (const capability of ["event.cancel", "roles.manage", "owner.transfer"]) {
+    assert.equal(canAccessEventCapability({ capability, owner: false, role: "manager", state: "active" }), false, `manager must not have ${capability}`);
+  }
+  assert.equal(canAccessEventCapability({ capability: "event.cancel", owner: true, role: null, state: null }), true);
 
   for (const [role, capabilities] of Object.entries(EXPECTED) as Array<
     [EventAccessRole, readonly string[]]
