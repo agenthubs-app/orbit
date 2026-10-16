@@ -1,22 +1,16 @@
+/** R17 運営センター（host DESIGN §2.1）：要登录；数据在客户端读 GET /api/host/center。 */
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
-import { OrbitReferenceStyles } from "../../orbit-reference-styles";
-import { OpsHub } from "../ops-0918/ops-hub";
+import { getOrbitServerLanguage } from "../../orbit-language-server";
+import { HostCenter } from "../../orbit-2026/host/HostCenter";
+
+export const dynamic = "force-dynamic";
 
 export default async function EventCenterPage() {
-  const session = await auth();
+  const [session, language] = await Promise.all([auth(), getOrbitServerLanguage()]);
   if (!session?.user?.id) {
     redirect("/app/account/login?next=%2Fapp%2Fevents%2Fcenter");
   }
-
-  return (
-    <>
-      <OrbitReferenceStyles />
-      {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
-      <div data-orbit-real-page="ops-0918">
-        <OpsHub />
-      </div>
-    </>
-  );
+  return <HostCenter language={language} />;
 }

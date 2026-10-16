@@ -1,0 +1,68 @@
+{
+ "_note": "R17 主催 Web（PLANNER 像素 SC P01–P33；b12 #396–#475 待用户过目 §38，不进本清单）。mock 服务器 orbits-r17（:3017，distDir .next-r17，ORBIT_REDESIGN_MOCK 含 host-operations）。每张先切 host 变体（views 的 host 字段）：node features/events/design-fixtures/switch.mjs --origin http://localhost:3017 --storage ~/orbit-sprint-evidence/redesign/.auth/qa@orbit.test.json --host '<host 字段 JSON>'，再 --only <id>。变体是服务端全局状态，不同变体的画面不要并行跑。",
+ "defaults": {
+  "app-origin": "http://localhost:3017",
+  "login": "qa@orbit.test",
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-redesign-R17.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/host/**",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/host.ts",
+  "repos/orbits/shared/mock/demo-world/host-events.ts"
+ ],
+ "views": [
+  {
+   "id": "W-R17-P01",
+   "app": "/app/events/center",
+   "design": "b6-host-polish.html",
+   "board-index": 0,
+   "width": 1440,
+   "wait-for": "[data-host-center=empty]",
+   "host": { "center": "empty" },
+   "note": "P01 運営センター · 空（b6 #0；§39 A2 入口副标题「CSV から招待リンクと照合表を作る」）"
+  },
+  {
+   "id": "W-R17-P02",
+   "app": "/app/events/center",
+   "design": "b6-host-polish.html",
+   "board-index": 1,
+   "width": 1440,
+   "wait-for": "[data-host-row]",
+   "host": { "center": "few" },
+   "note": "P02 運営センター · 少（b6 #1，ラウンドテーブル一场）"
+  },
+  {
+   "id": "W-R17-P03",
+   "app": "/app/events/center",
+   "design": "b6-host-polish.html",
+   "board-index": 2,
+   "width": 1440,
+   "themes": ["light"],
+   "wait-for": "[data-host-row]",
+   "host": { "center": "many" },
+   "note": "P03 運営センター · 大 浅色（b6 #2，六场）"
+  },
+  {
+   "id": "W-R17-P03d",
+   "app": "/app/events/center",
+   "design": "b6-host-polish.html",
+   "board-index": 44,
+   "width": 1440,
+   "themes": ["dark"],
+   "wait-for": "[data-host-row]",
+   "host": { "center": "many" },
+   "note": "P03 運営センター · 大 深色（b6 #44 深色画板）"
+  },
+  {
+   "id": "W-R17-P06",
+   "app": "/app/events/demo-event-cfo-night-18/operations",
+   "design": "web.html",
+   "board-index": 20,
+   "width": 1440,
+   "wait-for": "[data-host-trend]",
+   "host": { "overview": "pre_open" },
+   "note": "P06 イベント運営 · 概要 開場前（web.html #20）"
+  }
+ ]
+}
