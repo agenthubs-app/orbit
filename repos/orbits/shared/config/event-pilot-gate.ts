@@ -46,11 +46,21 @@ export function eventPilotDecision(input: {
   capability: EventPilotCapability;
   eventId: string;
   env?: EventPilotEnvironment;
+  /**
+   * R17（host/DESIGN.md §10 A12，用户 2026-10-16「全按推荐」）：主办方在 Orbit 里建的活动（`created_by = 'host'`）
+   * 不受总开关缺省关闭与白名单限制；kill switch 与能力开关仍可一键停用。属于生产行为，随合回部署授权生效。
+   */
+  hostCreated?: boolean;
 }): EventPilotDecision {
   const env = input.env ?? process.env;
   const production = env.NODE_ENV === "production";
   if (enabledFlag(env.ORBIT_EVENT_PILOT_KILL_SWITCH, false)) {
     return { enabled: false, reason: "global_kill_switch" };
+  }
+  if (input.hostCreated === true) {
+    return enabledFlag(env[capabilityFlag(input.capability)], true)
+      ? { enabled: true, reason: "enabled" }
+      : { enabled: false, reason: "capability_disabled" };
   }
   if (!enabledFlag(env.ORBIT_EVENT_PILOT_ENABLED, !production)) {
     return { enabled: false, reason: "global_disabled" };

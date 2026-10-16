@@ -1,3 +1,4 @@
+import { createConfiguredEventOperationsPostgresRuntime } from "../../../../../features/events/event-operations/storage/postgres-client";
 import { NextResponse } from "next/server";
 
 import {
@@ -35,13 +36,25 @@ export interface EventExperienceHandlerDependencies
   pilotEnabled?: (eventId: string) => boolean;
 }
 
-function requirePilot(
+/** R17 A12：主办方建的活动不受白名单限制（读 `created_by`；读不到按非 host 处理）。 */
+async function hostCreatedEvent(eventId: string): Promise<boolean> {
+  const runtime = createConfiguredEventOperationsPostgresRuntime();
+  if (!runtime) return false;
+  try {
+    const result = await runtime.client.query<{ created_by: string | null }>("select created_by from event_ops_events where workspace_id = $1 and event_id = $2", [runtime.workspaceId, eventId]);
+    return result.rows[0]?.created_by === "host";
+  } catch {
+    return false;
+  }
+}
+
+async function requirePilot(
   dependencies: EventExperienceHandlerDependencies,
   eventId: string,
-): void {
+): Promise<void> {
   const enabled = dependencies.pilotEnabled
     ? dependencies.pilotEnabled(eventId)
-    : eventPilotDecision({ capability: "experience", eventId }).enabled;
+    : eventPilotDecision({ capability: "experience", eventId, hostCreated: await hostCreatedEvent(eventId) }).enabled;
   if (!enabled) {
     throw new AppError(
       "FORBIDDEN",
@@ -156,7 +169,7 @@ export function createEventExperienceGetHandler(
     "experience.configure",
     async (_request, _context, access) => {
       try {
-        requirePilot(dependencies, access.eventId);
+        await requirePilot(dependencies, access.eventId);
         const snapshot = await serviceFor(dependencies).get(access.eventId);
         return NextResponse.json(success(snapshot), {
           headers: runtimeBoundaryHeaders(access.mode),
@@ -180,7 +193,7 @@ export function createEventExperienceDraftPutHandler(
     "experience.configure",
     async (request, _context, access) => {
       try {
-        requirePilot(dependencies, access.eventId);
+        await requirePilot(dependencies, access.eventId);
         const body = await jsonBody(request);
         const snapshot = await serviceFor(dependencies).saveDraft({
           actorId: access.actor.id,
@@ -210,7 +223,7 @@ export function createEventExperiencePublishPostHandler(
     "experience.publish",
     async (request, _context, access) => {
       try {
-        requirePilot(dependencies, access.eventId);
+        await requirePilot(dependencies, access.eventId);
         const body = await jsonBody(request);
         const expectedRevision = expectedRevisionFromBody(body, {
           allowNull: false,
@@ -245,7 +258,7 @@ export function createEventExperiencePreviewPostHandler(
     "experience.configure",
     async (request, _context, access) => {
       try {
-        requirePilot(dependencies, access.eventId);
+        await requirePilot(dependencies, access.eventId);
         const body = await jsonBody(request);
         const version = previewEventExperienceConfiguration(
           configurationFromBody(body),

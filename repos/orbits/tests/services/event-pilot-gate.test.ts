@@ -54,3 +54,11 @@ test("the global kill switch wins in every environment", () => {
     "global_kill_switch",
   );
 });
+
+test("R17 A12: host-created events skip the production allowlist; the kill switch and capability flag still stop them", () => {
+  const production = { NODE_ENV: "production" };
+  assert.deepEqual(eventPilotDecision({ capability: "experience", env: production, eventId: "evt_host" }), { enabled: false, reason: "global_disabled" });
+  assert.deepEqual(eventPilotDecision({ capability: "experience", env: production, eventId: "evt_host", hostCreated: true }), { enabled: true, reason: "enabled" });
+  assert.deepEqual(eventPilotDecision({ capability: "experience", env: { ...production, ORBIT_EVENT_PILOT_KILL_SWITCH: "true" }, eventId: "evt_host", hostCreated: true }), { enabled: false, reason: "global_kill_switch" });
+  assert.deepEqual(eventPilotDecision({ capability: "experience", env: { ...production, ORBIT_EVENT_PILOT_EXPERIENCE_ENABLED: "false" }, eventId: "evt_host", hostCreated: true }), { enabled: false, reason: "capability_disabled" });
+});
