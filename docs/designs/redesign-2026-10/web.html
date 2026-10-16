@@ -9,6 +9,11 @@
 <script src="kit/kit.js"></script>
 <script src="kit/data.js"></script>
 <style>
+  .htabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: -8px 0 20px; }
+  .htabs button { padding: 10px 16px 12px; font-size: 13px; font-weight: 700; color: var(--ink-3); position: relative; }
+  .htabs button.on { color: var(--ink); }
+  .htabs button.on::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 3px; border-radius: 3px; background: var(--plum-700); }
+  .htabs .cnt-b { font-size: 10.5px; padding: 1px 6px; border-radius: 999px; background: var(--coral-soft); color: var(--coral); margin-left: 4px; }
   .doc { min-width: 1520px; }
   .zoomer { transform-origin: top left; }
   .kpi .lbl { white-space: nowrap; }
@@ -616,11 +621,11 @@ const chatRail = `<h4>${ic('layers', 'sm')}参照しているもの</h4>
 
 /* ---- 主催（運営台） ---- */
 function hostPage() {
-  return mainhead('CFO Night Tokyo vol.18', '主催 · 本日 19:00 · 渋谷ストリーム', `<button class="rbtn">${ic('left')}</button>`, `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div><button class="btn">${ic('users', 'sm')}共同運営者</button>`) + `<div class="seg k-htabs" style="display:inline-flex;margin:-6px 0 18px"><button class="on">概要</button><button>マッチング</button><button>参加者 12</button><button>受付</button><button>申込設定</button><button>レポート</button></div><div class="wgrid">
+  return mainhead('CFO Night Tokyo vol.18', '主催 · 本日 19:00 · 渋谷ストリーム 4F ホール', `<button class="rbtn">${ic('left')}</button>`, `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div><button class="btn">${ic('users', 'sm')}共同運営者</button>`) + `<div class="htabs k-htabs"><button class="on">概要</button><button>マッチング</button><button>参加者<span class="cnt-b">12</span></button><button>受付</button><button>申込設定</button><button>レポート</button></div><div class="wgrid">
     ${[['申込', 128, '定員 150', 'lav'], ['マッチ可能', 112, 'プロフィール完了', 'blue'], ['受付済み', 0, '19:00 開場', 'teal'], ['推薦の生成', 96, '%', 'apricot']].map(([l, v, d, c]) => `<div class="card span3"><span class="chip ${c}">${l}</span><div class="big" style="margin-top:10px">${num(v)}${d === '%' ? '<small>%</small>' : ''}</div><div class="lbl">${d === '%' ? '1人あたり 5名を推薦' : d}</div></div>`).join('')}
     <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">直近14日</span></div><div class="bars">${[4, 6, 5, 9, 7, 12, 8, 6, 10, 14, 9, 11, 16, 11].map((h, k) => `<i class="${k === 12 ? 'hi' : ''}" style="height:${h * 6}px"></i>`).join('')}</div></div>
     <div class="card span4"><div class="card-h"><h3>運営の進捗</h3></div>${[['申込受付', 1], ['マッチング生成', 1], ['グループ確認', 1], ['結果を公開', 0], ['当日受付', 0]].map(([t, d], k) => `<div class="chk ${d ? 'done' : ''}"><span class="box">${d ? ic('check', 'sm') : ''}</span><div style="flex:1"><b>${t}</b></div>${k === 3 ? '<button class="btn sm primary">公開する</button>' : ''}</div>`).join('')}</div>
-    <div class="card span12 flat row" style="gap:12px"><span class="emo apricot" style="color:var(--mac-apricot-ink)"><span class="lic i-alert"></span></span><div style="flex:1"><b>プロフィール未完了 16名</b><div class="lbl">マッチング精度が下がります。Orbit から定型のお知らせを通知できます（通知前に確認画面）</div></div><button class="btn">一覧を見る</button></div></div>`;
+    <div class="card span12 flat row k-hprof" style="gap:12px;flex-direction:row;align-items:center"><span class="emo apricot" style="color:var(--mac-apricot-ink)"><span class="lic i-alert"></span></span><div style="flex:1"><b>プロフィール未完了 16名</b><div class="lbl">マッチング精度が下がります。Orbit から定型のお知らせを通知できます（通知前に確認画面）</div></div><button class="btn">一覧を見る</button></div></div>`;
 }
 
 /* ---- 出力 ---- */
