@@ -32,6 +32,9 @@ function isPublicApiPath(pathname: string): boolean {
     // before sign-in, and the App asks for the minimum version at start-up.
     /^\/api\/invite-codes\/[^/]+\/preview$/u.test(pathname) ||
     pathname === "/api/app/version" ||
+    // R17（host/DESIGN.md §2.8、§2.11）：公开主办方页的资料读取，与共同运营邀请的落地预览（无效码一律同一回答、有限流）。
+    /^\/api\/organizers\/by-slug\/[^/]+$/u.test(pathname) ||
+    /^\/api\/host\/cohost-invites\/[^/]+$/u.test(pathname) ||
     pathname.startsWith("/api/auth/") ||
     /^\/api\/integrations\/[^/]+\/callback$/u.test(pathname)
   );
