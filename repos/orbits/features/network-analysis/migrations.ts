@@ -176,6 +176,27 @@ begin
 end;
 `,
   },
+  {
+    // R17（host DESIGN §10 A6）：编组生成（event-ops worker 的现有付费 AI 调用）接进账本，只记账。同 v4 写法；生产执行等合回授权。
+    name: "ai-usage-event-matching",
+    version: 5,
+    sql: `
+declare
+  purpose_check record;
+begin
+  for purpose_check in
+    select conname from pg_constraint
+    where conrelid = 'ai_usage_ledger'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%purpose%'
+  loop
+    execute format('alter table ai_usage_ledger drop constraint %I', purpose_check.conname);
+  end loop;
+  alter table ai_usage_ledger add constraint ai_usage_ledger_purpose_check
+    check (purpose in ('plan', 'plan_refine', 'snapshot', 'memo_extraction', 'insight', 'enrichment',
+      'plan_intake', 'plan_background', 'plan_draft', 'plan_revise', 'plan_review_mark', 'plan_review', 'event_assessment',
+      'event_registration_interview', 'event_post_summary', 'event_matching'));
+end;
+`,
+  },
 ];
 
 function checksum(sql: string): string {

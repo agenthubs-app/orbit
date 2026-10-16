@@ -22,14 +22,16 @@ export type AiQuotaPurpose =
   | "event_assessment"
   // R27（events DESIGN §3.4 / §10 A5）：报名访谈（含 E4 自己紹介）、会後まとめ（E3）——只记账，不设月上限。
   | "event_registration_interview"
-  | "event_post_summary";
+  | "event_post_summary"
+  // R17（host DESIGN §10 A6，用户 2026-10-16「全按推荐」）：编组生成（现有 event-ops worker 的付费 AI）——只记账，不设上限、不拦调用。
+  | "event_matching";
 export type AiQuotaTrigger = "auto" | "manual" | "plan";
 
 export const AI_QUOTA_POOLS: readonly AiQuotaPool[] = ["user", "background", "system"];
 export const AI_QUOTA_PURPOSES: readonly AiQuotaPurpose[] = [
   "plan", "plan_refine", "snapshot", "memo_extraction", "insight", "enrichment",
   "plan_intake", "plan_background", "plan_draft", "plan_revise", "plan_review_mark", "plan_review", "event_assessment",
-  "event_registration_interview", "event_post_summary",
+  "event_registration_interview", "event_post_summary", "event_matching",
 ];
 export const AI_QUOTA_TRIGGERS: readonly AiQuotaTrigger[] = ["auto", "manual", "plan"];
 
@@ -71,6 +73,8 @@ export const AI_QUOTA_MAX_CALLS: Readonly<Record<AiQuotaPurpose, number>> = {
   // R27：一次报名访谈提问 = 1 次；persona / 自己紹介 = 生成 + 修复；会後まとめ = 生成 + 修复。
   event_registration_interview: 2,
   event_post_summary: 2,
+  // R17：一次编组任务尝试（推荐分片 / 分组 / 卓内容）= 1 次操作 1 次调用（维护任务事后补记）。
+  event_matching: 1,
 };
 
 /**
@@ -117,6 +121,7 @@ export const AI_QUOTA_PURPOSE_POOLS: Readonly<Partial<Record<AiQuotaPurpose, AiQ
   plan_review_mark: "background",
   plan_review: "user",
   event_assessment: "user",
+  event_matching: "system",
 };
 
 export function isPlanFlowOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose }): boolean {

@@ -38,7 +38,7 @@ import { createInviteAttemptsCleanupMaintenanceTask, createInviteProfileSyncMain
 import { getConfiguredEventAssessmentRuntime } from "../../events/assessment/configured";
 import { createEventAssessmentReadingMaintenanceTask } from "../../events/assessment/job";
 import { createEventNotificationMaintenanceTask } from "../../events/journey/notification-job";
-import { createHostArchiveMaintenanceTask, createHostNoticeMaintenanceTask } from "../../events/host/maintenance";
+import { createHostArchiveMaintenanceTask, createHostMatchingUsageMaintenanceTask, createHostNoticeMaintenanceTask } from "../../events/host/maintenance";
 import { createEventAssessmentRecomputeMaintenanceTask, eventPickNotification } from "../../events/assessment/recompute-job";
 import type { MaintenanceTask } from "./pass";
 
@@ -325,6 +325,7 @@ export function createConfiguredMaintenanceTasks({
     // the 30-day auto-archive of host-created events (hourly).
     createHostNoticeMaintenanceTask(),
     createHostArchiveMaintenanceTask(),
+    createHostMatchingUsageMaintenanceTask(),
     // Monitoring O2/O3: daily read-cost rollup, Neon reconciliation, retention
     // and admin alerts. Days already final are skipped, so heartbeat passes are cheap.
     createReadCostMaintenanceTask({ env }),

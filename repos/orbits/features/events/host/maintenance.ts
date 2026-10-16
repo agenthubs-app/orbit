@@ -8,6 +8,7 @@ import { createConfiguredEventOperationsPostgresRuntime } from "../event-operati
 
 export const HOST_NOTICE_TASK = "host-notice-delivery";
 export const HOST_ARCHIVE_TASK = "host-event-auto-archive";
+export const HOST_MATCHING_USAGE_TASK = "host-matching-usage-ledger";
 const ARCHIVE_THROTTLE_MS = 60 * 60_000;
 const throttle = globalThis as typeof globalThis & { __orbitR17ArchiveAt?: number };
 
@@ -46,6 +47,26 @@ export function createHostArchiveMaintenanceTask(): MaintenanceTask {
       throttle.__orbitR17ArchiveAt = at.getTime();
       const { createHostLifecycle } = await import("./storage/lifecycle");
       return { archived: await createHostLifecycle({ client: runtime.client, workspaceId: runtime.workspaceId }).archiveEnded(at) };
+    },
+  };
+}
+
+/** A6：编组 AI 的用量补记进账本（每次心跳 ≤200 条尝试；只记账）。 */
+export function createHostMatchingUsageMaintenanceTask(): MaintenanceTask {
+  return {
+    name: HOST_MATCHING_USAGE_TASK,
+    async run({ now }) {
+      const runtime = createConfiguredEventOperationsPostgresRuntime();
+      if (!runtime) return { skipped: "database_unconfigured" };
+      const { createPostgresAiUsageLedger } = await import("../../ai-quota/ledger");
+      const { ledgerMatchingUsage } = await import("./matching-usage");
+      try {
+        return await ledgerMatchingUsage({ executor: runtime.client, ledger: createPostgresAiUsageLedger({ client: runtime.client as never, workspaceId: runtime.workspaceId }), now: now(), workspaceId: runtime.workspaceId });
+      } catch (error) {
+        // 账本迁移（v5 ai-usage-event-matching）未执行时 CHECK 会拒绝：跳过，不影响编组本身。
+        if ((error as { code?: string }).code === "23514" || (error as { code?: string }).code === "42P01") return { skipped: "ledger_not_ready" };
+        throw error;
+      }
     },
   };
 }

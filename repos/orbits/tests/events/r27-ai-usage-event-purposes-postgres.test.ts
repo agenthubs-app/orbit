@@ -30,11 +30,11 @@ test("ledger v4 accepts the event registration / post-event purposes (record onl
     await runNetworkAnalysisMigrations(pool);
     const applied = (await pool.query("select name from network_analysis_schema_migrations order by version")).rows.map((row) => row.name);
     assert.equal(applied.length, NETWORK_ANALYSIS_MIGRATIONS.length);
-    assert.equal(applied.at(-1), "ai-usage-event-purposes");
+    assert.ok(applied.includes("ai-usage-event-purposes"));
 
     const ledger = createPostgresAiUsageLedger({ client: createTransactionalPostgresClient({ connectionString: databaseUrl, pool: pool as never }), workspaceId: WS });
     const now = new Date("2026-10-15T03:00:00.000Z");
-    for (const purpose of ["event_registration_interview", "event_post_summary"] as const) {
+    for (const purpose of ["event_registration_interview", "event_post_summary", "event_matching"] as const) {
       assert.equal(AI_QUOTA_MONTHLY_LIMITS[purpose], undefined, `${purpose} has no monthly limit`);
       for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
         const reserved = await ledger.reserve({ actorId: "actor:a", idempotencyKey: `${purpose}:${n}`, now, pool: "system", purpose, trigger: "auto" });
