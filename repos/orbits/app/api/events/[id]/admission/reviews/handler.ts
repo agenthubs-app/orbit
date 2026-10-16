@@ -163,7 +163,7 @@ function encodedCursor(cursor: EventAdmissionReviewCursor | null): string | null
 }
 
 async function exactDecisionBody(request: Request): Promise<{
-  decision: "approve" | "reject";
+  decision: "approve" | "reject" | "waitlist";
   expectedApplicationVersion: number;
 }> {
   const contentType = (request.headers.get("content-type") ?? "")
@@ -188,7 +188,8 @@ async function exactDecisionBody(request: Request): Promise<{
     keys.length !== 2 ||
     !keys.includes("decision") ||
     !keys.includes("expectedApplicationVersion") ||
-    (body.decision !== "approve" && body.decision !== "reject") ||
+    // R17：决定枚举只加 `waitlist`。
+    (body.decision !== "approve" && body.decision !== "reject" && body.decision !== "waitlist") ||
     typeof body.expectedApplicationVersion !== "number" ||
     !Number.isSafeInteger(body.expectedApplicationVersion) ||
     body.expectedApplicationVersion < 1

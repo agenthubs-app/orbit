@@ -1,3 +1,4 @@
+import { afterAdmissionTransition } from "../../host/storage/admission-hooks";
 import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import { randomUUID } from "node:crypto";
 
@@ -318,7 +319,7 @@ function reviewListItem(
 function idempotentDecision(
   application: EventAdmissionApplication,
   input: {
-    decision: "approve" | "reject";
+    decision: "approve" | "reject" | "waitlist";
     decisionActorId: string;
     expectedApplicationVersion: number;
   },
@@ -327,6 +328,7 @@ function idempotentDecision(
     application.applicationVersion !== input.expectedApplicationVersion + 1 ||
     application.decisionActorId !== input.decisionActorId
   ) return false;
+  if (input.decision === "waitlist") return application.status === "waitlisted";
   return input.decision === "reject"
     ? application.status === "rejected"
     : application.status === "admitted" || application.status === "waitlisted";
@@ -886,7 +888,8 @@ export function createPostgresEventAdmissionRepository(input: {
         raw.expectedApplicationVersion,
         "expectedApplicationVersion",
       );
-      if (raw.decision !== "approve" && raw.decision !== "reject") {
+      // R17（host/DESIGN.md §2.5）：决定只加 `waitlist`；对 waitlisted 的人可以再 approve（有名额才 admitted）/ reject。
+      if (raw.decision !== "approve" && raw.decision !== "reject" && raw.decision !== "waitlist") {
         invalid("Admission decision is invalid.");
       }
       return runTransaction(client, async (executor) => {
@@ -914,30 +917,36 @@ export function createPostgresEventAdmissionRepository(input: {
             `Admission application ${eventId}/${actorId} changed before the decision could commit.`,
           );
         }
-        if (!current || current.status !== "pending_review") {
+        const fromWaitlist = current?.status === "waitlisted";
+        if (!current || (current.status !== "pending_review" && !fromWaitlist) || (fromWaitlist && raw.decision === "waitlist")) {
           throw new EventAdmissionError("INVALID_TRANSITION", `Admission application ${eventId}/${actorId} cannot be decided.`);
         }
         // The immutable submission policy proves why this application entered
         // review. The current policy still governs capacity and waitlisting,
         // so a later mode change cannot strand an already-pending application.
-        const submissionPolicy = await policyAtVersion(
-          executor,
-          workspaceId,
-          eventId,
-          current.policyVersion,
-        );
-        if (submissionPolicy?.admissionMode !== "approval_required") {
-          throw new EventAdmissionError(
-            "DATA_INVALID",
-            `Admission application ${eventId}/${actorId} has no valid review policy provenance.`,
+        // R17: a waitlisted application may come from a first-come event that filled up; only review entries need the provenance check.
+        if (!fromWaitlist) {
+          const submissionPolicy = await policyAtVersion(
+            executor,
+            workspaceId,
+            eventId,
+            current.policyVersion,
           );
+          if (submissionPolicy?.admissionMode !== "approval_required") {
+            throw new EventAdmissionError(
+              "DATA_INVALID",
+              `Admission application ${eventId}/${actorId} has no valid review policy provenance.`,
+            );
+          }
         }
         const now = await databaseNow(executor);
         let status: EventAdmissionApplicationStatus = "rejected";
+        if (raw.decision === "waitlist") status = "waitlisted";
         if (raw.decision === "approve") {
           const count = await admittedCount(executor, workspaceId, eventId);
           if (policy.capacity === null || count < policy.capacity) status = "admitted";
-          else if (policy.waitlistEnabled) status = "waitlisted";
+          // R17: approving someone already on the waitlist never re-waitlists them silently.
+          else if (policy.waitlistEnabled && !fromWaitlist) status = "waitlisted";
           else throw new EventAdmissionError("CAPACITY_FULL", `Admission event ${eventId} is full.`);
         }
         const next: EventAdmissionApplication = {
@@ -958,6 +967,9 @@ export function createPostgresEventAdmissionRepository(input: {
             status: "rsvped",
             workspaceId,
           });
+        }
+        if (next.status === "admitted" || next.status === "waitlisted" || next.status === "rejected") {
+          await afterAdmissionTransition(executor, { actorId, eventId, status: next.status, via: "decision", workspaceId });
         }
         await audit(executor, {
           action: `admission.application.${status}`,
@@ -1122,6 +1134,7 @@ export function createPostgresEventAdmissionRepository(input: {
             status: "rsvped",
             workspaceId,
           });
+          await afterAdmissionTransition(executor, { actorId, eventId, status: "admitted", via: "instant", workspaceId });
         }
         await audit(executor, {
           action: "admission.application.submitted",
@@ -1227,6 +1240,7 @@ export function createPostgresEventAdmissionRepository(input: {
                 status: "rsvped",
                 workspaceId,
               });
+              await afterAdmissionTransition(executor, { actorId: promoted.actorId, eventId, status: "admitted", via: "promotion", workspaceId });
               await audit(executor, {
                 action: "admission.application.promoted",
                 actorId,

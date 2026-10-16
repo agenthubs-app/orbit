@@ -88,7 +88,8 @@ export interface EventAdmissionProfileSnapshot {
 
 export interface DecideEventAdmissionApplicationInput {
   actorId: string;
-  decision: "approve" | "reject";
+  /** R17：加 `waitlist`（审核待ち → キャンセル待ち）；对 waitlisted 的人可以再 approve / reject。 */
+  decision: "approve" | "reject" | "waitlist";
   decisionActorId: string;
   eventId: string;
   expectedApplicationVersion: number;
