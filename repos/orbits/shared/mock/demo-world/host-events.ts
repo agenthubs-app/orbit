@@ -303,7 +303,8 @@ export function hostCenter(state: HostMockState = DEFAULT_HOST_MOCK_STATE, filte
 
 // ─── 概要 ──────────────────────────────────────────────
 
-const TREND_14 = [3, 5, 4, 6, 8, 7, 9, 10, 8, 11, 12, 14, 13, 18] as const;
+// 照 web.html #20 的柱高（24…96px ÷ 6）。
+const TREND_14 = [4, 6, 5, 9, 7, 12, 8, 6, 10, 14, 9, 11, 16, 11] as const;
 
 export function hostOverview(eventId: string, state: HostMockState = DEFAULT_HOST_MOCK_STATE): HostOverviewResponse | null {
   const event = hostEventView(eventId, state);
