@@ -7,16 +7,16 @@ import { hostDatabaseTest, withHostDatabase } from "../support/host-harness";
 import { lockedFixtureQuery } from "../support/sync-revision-fixture";
 
 test("host-core is v16, appended after v15 without touching earlier checksums", () => {
-  const v16 = EVENT_OPERATIONS_SCHEMA_MIGRATIONS.at(-1);
-  assert.equal(v16?.version, 16);
+  const v16 = EVENT_OPERATIONS_SCHEMA_MIGRATIONS.find((item) => item.version === 16);
   assert.equal(v16?.name, "event-operations-v16-host-core");
+  assert.equal(EVENT_OPERATIONS_SCHEMA_MIGRATIONS.at(-1)?.name, "event-operations-v17-host-question-sets");
 });
 
 test("host-core migrates, replays, and accepts the new values", hostDatabaseTest, async () => {
   await withHostDatabase(async ({ pool, workspaceId }) => {
     await runEventOperationsMigrations(pool);
-    const tables = await pool.query<{ table_name: string }>(`select table_name from information_schema.tables where table_schema = current_schema() and table_name = any($1::text[]) order by 1`, [["organizer_profiles", "event_reception_counters", "event_reception_numbers", "event_ops_checkin_undos", "event_ops_walk_ins", "event_kiosk_requests", "event_kiosk_heartbeats", "event_ops_matching_conditions", "event_ops_generation_overrides", "event_cohost_invites", "event_cohost_invite_attempts", "event_host_notice_outbox", "event_host_notice_sends", "event_host_notice_extras"]]);
-    assert.equal(tables.rows.length, 14);
+    const tables = await pool.query<{ table_name: string }>(`select table_name from information_schema.tables where table_schema = current_schema() and table_name = any($1::text[]) order by 1`, [["organizer_profiles", "event_reception_counters", "event_reception_numbers", "event_ops_checkin_undos", "event_ops_walk_ins", "event_kiosk_requests", "event_kiosk_heartbeats", "event_ops_matching_conditions", "event_ops_generation_overrides", "event_cohost_invites", "event_cohost_invite_attempts", "event_host_notice_outbox", "event_host_notice_sends", "event_host_notice_extras", "event_host_question_sets"]]);
+    assert.equal(tables.rows.length, 15);
     await lockedFixtureQuery(pool, `insert into event_ops_events (workspace_id, event_id, organizer_actor_id, created_at, updated_at, lifecycle_state_v2, created_by) values ($1, 'e1', 'host', now(), now(), 'draft', 'host')`, [workspaceId]);
     await pool.query(`insert into event_aliases (workspace_id, normalized_alias, alias_value, alias_type, event_id) values ($1, 'cfo-night-19', 'cfo-night-19', 'public_slug', 'e1')`, [workspaceId]);
     await assert.rejects(lockedFixtureQuery(pool, `insert into event_ops_events (workspace_id, event_id, organizer_actor_id, created_at, updated_at, created_by) values ($1, 'e2', 'host', now(), now(), 'backfill')`, [workspaceId]), /created_by_check/u);

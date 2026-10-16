@@ -1786,6 +1786,26 @@ create table if not exists event_host_notice_extras (
 );
 `,
   },
+  {
+    // R17 申込設定（host/DESIGN.md §2.7）：主办方自己写的申込質問 2–5、説明文与受付设定的草稿 / 公开版。
+    // 现有 experience 的问题绑定 5 个资料字段（不能新增维度），主办方自由题放这里；只加。
+    name: "event-operations-v17-host-question-sets",
+    version: 17,
+    sql: `
+create table if not exists event_host_question_sets (
+  workspace_id text not null,
+  event_id text not null,
+  draft jsonb not null default '{}'::jsonb check (jsonb_typeof(draft) = 'object'),
+  published jsonb check (published is null or jsonb_typeof(published) = 'object'),
+  revision integer not null default 0 check (revision >= 0),
+  saved_at timestamptz,
+  published_at timestamptz,
+  updated_by text not null,
+  primary key (workspace_id, event_id),
+  foreign key (workspace_id, event_id) references event_ops_events (workspace_id, event_id) on delete cascade
+);
+`,
+  },
 ];
 
 function checksum(sql: string): string {

@@ -1342,7 +1342,7 @@ test("R17: publish composes the host's table moves before the freeze; an oversiz
   });
   assert.ok(base, "the hook saw the generated grouping");
   const tableOf = (id: string) => published.grouping.roundOne.find((table) => table.members.some((member) => member.participantId === id))!;
-  assert.notEqual(tableOf(moved[0]!).tableNumber, (base! as { roundOne: Array<{ tableNumber: number; members: Array<{ participantId: string }> }> }).roundOne.find((table) => table.members.some((member) => member.participantId === moved[0]))!.tableNumber);
+  assert.notEqual(tableOf(moved[0]!).tableNumber, (base! as unknown as { roundOne: Array<{ tableNumber: number; members: Array<{ participantId: string }> }> }).roundOne.find((table) => table.members.some((member) => member.participantId === moved[0]))!.tableNumber);
   assert.equal(tableOf(moved[0]!).memberRationales[moved[0]!], "主催者が配置");
   const { engine: second } = harness();
   const other = await createAndRun(second, { idempotencyKey: "r17-oversize" });
