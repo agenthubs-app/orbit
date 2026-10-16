@@ -75,14 +75,6 @@ const DOMAINS: Domain[] = [
     extraCss: [COMMUNITY_CARD_STYLES],
   },
   {
-    name: "ops",
-    dir: "events/ops-0918",
-    prefix: "op-",
-    stylesFile: "app/(app)/app/events/ops-0918/ops-shell.tsx",
-    stylesExport: "OPS_STYLES",
-    scope: "ops-0918",
-  },
-  {
     name: "auth",
     dir: "account/auth-0918",
     prefix: "au-",

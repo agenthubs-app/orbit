@@ -417,7 +417,9 @@ test("navigation replay credits only its 26 exact route occurrences", () => {
   // 「非 /app/settings 的同源控件一律 inventoried-static-only」——计数只是它的分母。
   // R07：32 → 9。删除 AccountTopNav 后，只有仍挂 PublicTopNav/OrbitTopNav 的公开页
   // （/、/app、account/*、/app/events、/app/events/[id]、/app/o/[slug]）还带这个控件。
-  assert.equal(siblingSignOuts.length, 9);
+  // R27 / R17：9 → 6。/app/events、/app/events/[id] 换成新壳页（R27），/app/o/[slug] 改为跳转到 /o/<slug>（R17），
+  // 只剩 /、/app、account 四页带这个控件。
+  assert.equal(siblingSignOuts.length, 6);
   assert.equal(
     siblingSignOuts.every(
       (interaction) => interaction.conclusion === "inventoried-static-only",
@@ -575,6 +577,8 @@ test("route UI inventory follows imported exports instead of sibling components"
 const SCANNER_CROSS_COMPONENT =
   "scanner false positive: behavior is proven across a component boundary it cannot follow; recovery: the scanner resolves it (then delete the entry)";
 export const KNOWN_MISSING_STATIC_BEHAVIOR: ReadonlyMap<string, string> = new Map<string, string>([
+  // R17：申込設定的申込页预览（b6 #13–#15）里「申し込む」只是画出来给主办方看（aria-hidden、tabIndex=-1），不是可用控件。
+  ["repos/orbits/app/(app)/app/orbit-2026/host/HostSetup.tsx#{t(\"pvApply\")}", "intentional preview-only control: the 申込 page preview draws the attendee's button (aria-hidden, tabIndex -1); it has no behavior by design"],
   ['repos/orbit-app/src/screens/contacts/ContactDetailScreen.tsx#{locale.t("sync.needsNetwork")}', "intentional disabled control: device-copy contact detail is read-only offline; the explicit disabled/accessibilityState prevents writes"],
   ["repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx#{label}", `${SCANNER_CROSS_COMPONENT} (type=submit button rendered inside the parent's <form onSubmit>)`],
   ...["{t(item.cta)}", "填好画像后匹配 / Match after setup", "扫描名片 / Scan business cards", "报名 / Register", "看看可能值得认识的人 → / See people worth meeting →", "继续设置 → / Continue setup →"]
@@ -1397,7 +1401,6 @@ const KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS: ReadonlySet<string> = new Se
   "repos/orbit-app/src/screens/profile/ProfileScreen.tsx:240",
   "web:/app/agent|repos/orbits/app/(app)/app/orbit-public-shell.tsx:127",
   "web:/app/chat|repos/orbits/shared/ui/state-view.tsx:249",
-  "web:/app/o/[slug]|repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx:50",
   "web:/app/o/[slug]|repos/orbits/shared/ui/state-view.tsx:217",
   "web:/app/o/[slug]|repos/orbits/shared/ui/state-view.tsx:249",
   "web:/app/party/checkin|repos/orbits/shared/ui/state-view.tsx:217",

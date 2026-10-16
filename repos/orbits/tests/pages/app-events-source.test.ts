@@ -19,7 +19,6 @@ test("every active event image surface uses the progressive event cover", () => 
     "app/(app)/app/home/orbit-real-home.tsx",
     "app/(app)/app/admin/orbit-real-admin-events.tsx",
     "app/(app)/app/admin/orbit-real-admin-workspace.tsx",
-    "app/(app)/app/o/orbit-real-organizer-public.tsx",
   ].map(source);
 
   for (const eventSurfaceSource of eventSurfaceSources) {

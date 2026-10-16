@@ -50,7 +50,6 @@ test("登录页、公开页、kiosk 和后台不挂", () => {
     "/app/admin/platform",
     "/app/o/some-organizer",
     "/app/events/event_01/operations/check-in",
-    "/app/events/event_01/operations/admission",
     "/",
     "/events",
   ]) {

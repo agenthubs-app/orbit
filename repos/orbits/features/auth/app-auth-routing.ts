@@ -6,6 +6,8 @@ const ORBIT_PRIVATE_APP_PREFIXES = [
   "/app/contacts",
   // R26: assessment results belong to the signed-in person; the イベント list itself stays public.
   "/app/events/assessments",
+  // R17: 運営センター（含 /new、/profiles）只给登录的主办方；共同運営への参加 /app/host/join 有未登录预览，不进前缀。
+  "/app/events/center",
   "/app/home",
   // R07: the inbox became a page (it was a drawer); signed-out visitors go to sign-in.
   "/app/inbox",
@@ -26,7 +28,8 @@ const ORBIT_PRIVATE_APP_PREFIXES = [
 ] as const;
 
 // R27: an event's own pages for the signed-in attendee (参加登録 / 会う準備 / 会場モード / 会後); the detail itself stays public.
-const ORBIT_PRIVATE_EVENT_SUBPAGE = /^\/app\/events\/[^/]+\/(register|prep|live|after)(\/|$)/;
+// R17：运营台（含 kiosk）、编辑、旧分析跳转页也要登录。
+const ORBIT_PRIVATE_EVENT_SUBPAGE = /^\/app\/events\/[^/]+\/(register|prep|live|after|operations|edit|analytics)(\/|$)/;
 
 const ORBIT_AUTH_ENTRY_PREFIX = "/app/account";
 const ORBIT_PUBLIC_ADMIN_ENTRY_PATHS = new Set([

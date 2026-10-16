@@ -357,20 +357,8 @@
       "hardcoded": 1,
       "missingJa": 0
     },
-    "app/(app)/app/events/[id]/analytics/page.tsx": {
-      "hardcoded": 1,
-      "missingJa": 0
-    },
     "app/(app)/app/events/[id]/operations/admission/event-admission-policy-panel.tsx": {
       "hardcoded": 37,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/[id]/operations/admission/page.tsx": {
-      "hardcoded": 7,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/[id]/operations/experience/page.tsx": {
-      "hardcoded": 5,
       "missingJa": 0
     },
     "app/(app)/app/events/[id]/orbit-appointment-negotiation.tsx": {
@@ -405,86 +393,6 @@
       "hardcoded": 28,
       "missingJa": 0
     },
-    "app/(app)/app/events/ops-0918/ops-boundary.tsx": {
-      "hardcoded": 2,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-checkin.tsx": {
-      "hardcoded": 23,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-console.tsx": {
-      "hardcoded": 2,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-form.tsx": {
-      "hardcoded": 40,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-hub.tsx": {
-      "hardcoded": 13,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-match.tsx": {
-      "hardcoded": 33,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-model.ts": {
-      "hardcoded": 126,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-operations-shared.tsx": {
-      "hardcoded": 47,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-overview.tsx": {
-      "hardcoded": 39,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-people.tsx": {
-      "hardcoded": 53,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-report.tsx": {
-      "hardcoded": 34,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-roles-drawer.tsx": {
-      "hardcoded": 28,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/ops-shell.tsx": {
-      "hardcoded": 13,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/use-admission-review.ts": {
-      "hardcoded": 7,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/use-check-in-roster.ts": {
-      "hardcoded": 9,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/use-event-analytics.ts": {
-      "hardcoded": 2,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/use-event-center.ts": {
-      "hardcoded": 2,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/use-event-operations.ts": {
-      "hardcoded": 6,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/use-experience-editor.ts": {
-      "hardcoded": 11,
-      "missingJa": 0
-    },
-    "app/(app)/app/events/ops-0918/use-role-management.ts": {
-      "hardcoded": 28,
-      "missingJa": 0
-    },
     "app/(app)/app/home/home-demo-localization.ts": {
       "hardcoded": 39,
       "missingJa": 0
@@ -504,14 +412,6 @@
     "app/(app)/app/inbox/relationship-inbox-panel.tsx": {
       "hardcoded": 0,
       "missingJa": 52
-    },
-    "app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts": {
-      "hardcoded": 1,
-      "missingJa": 4
-    },
-    "app/(app)/app/o/orbit-real-organizer-public.tsx": {
-      "hardcoded": 0,
-      "missingJa": 12
     },
     "app/(app)/app/orbit-account-auth-route-view-model.ts": {
       "hardcoded": 15,

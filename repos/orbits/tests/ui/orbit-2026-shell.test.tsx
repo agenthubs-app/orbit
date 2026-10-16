@@ -30,12 +30,12 @@ async function shell(t: { after: (fn: () => Promise<void>) => void }, fixture: P
 }
 
 test("route rules: every signed-in product page gets the shell; public, sign-in, admin and onboarding do not", () => {
-  for (const path of ["/app/home", "/app/contacts", "/app/contacts/c1", "/app/agent", "/app/agent/actions", "/app/events", "/app/events/e1", "/app/events/center", "/app/events/e1/operations", "/app/events/e1/operations/experience", "/app/tasks", "/app/tasks/personal", "/app/inbox", "/app/inbox/sources/s1", "/app/settings", "/app/profile", "/app/home/events", "/app/invitations/t"]) {
+  for (const path of ["/app/home", "/app/contacts", "/app/contacts/c1", "/app/agent", "/app/agent/actions", "/app/events", "/app/events/e1", "/app/events/center", "/app/events/e1/operations", "/app/events/e1/operations/experience", "/app/events/e1/operations/admission", "/app/tasks", "/app/tasks/personal", "/app/inbox", "/app/inbox/sources/s1", "/app/settings", "/app/profile", "/app/home/events", "/app/invitations/t"]) {
     assert.equal(shellAppliesTo(path, true), true, path);
     assert.equal(shellAppliesTo(path, false), false, `${path} signed out`);
   }
-  // Check-in and admission are kiosk screens (the old floating ask's exclusions): no rail, no ⌘K.
-  for (const path of ["/", "/app", "/app/account/login", "/app/login-admin", "/app/admin", "/app/admin/events", "/app/o/acme", "/app/start", "/app/register", "/app/profile/onboarding", "/app/platform", "/dev/capabilities", "/showcase/components", "/app/events/e1/operations/check-in", "/app/events/e1/operations/admission"]) {
+  // Check-in is the kiosk screen (the old floating ask's exclusion): no rail, no ⌘K. R17: admission became the console's 参加者 tab (the old URL redirects).
+  for (const path of ["/", "/app", "/app/account/login", "/app/login-admin", "/app/admin", "/app/admin/events", "/app/o/acme", "/app/start", "/app/register", "/app/profile/onboarding", "/app/platform", "/dev/capabilities", "/showcase/components", "/app/events/e1/operations/check-in"]) {
     assert.equal(shellAppliesTo(path, true), false, path);
   }
   assert.equal(shellNavKeyFor("/app/contacts/c1"), "network");

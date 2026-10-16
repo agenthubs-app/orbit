@@ -34,8 +34,8 @@ const EXCLUDED_PREFIXES = [
  */
 const EXCLUDED_EXACT_PATHS = ["/app/start"] as const;
 
-/** 活动运营下的 kiosk 子路由（`/app/events/[id]/operations/...`）。 */
-const EXCLUDED_SEGMENTS = ["/operations/check-in", "/operations/admission"] as const;
+/** 活动运营下的 kiosk 子路由（`/app/events/[id]/operations/check-in`，全屏受付）。R17：旧 admission 页已并入运营台页签。 */
+const EXCLUDED_SEGMENTS = ["/operations/check-in"] as const;
 
 /** 去掉查询串、哈希和结尾斜杠，让前缀比较不受书写差异影响。 */
 function normalizePath(pathname: string): string {
