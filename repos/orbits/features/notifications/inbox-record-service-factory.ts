@@ -51,6 +51,8 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
     // R27：活动通知（申込締切 / 当日の準備 / R26 おすすめ）指向公开活动或本人的评估，没有需要逐条授权的私有源；
     // 过时靠通知自己的 expiresAt 收起（之前落到下面的 collections 查表，一律读成 unavailable）。
     if(source.sourceKind==='event_deadline'||source.sourceKind==='event_prep'||source.sourceKind==='event_pick')return 'available';
+    // R17：主催の定型お知らせ（审核结果 / 中止 / 变更 / 共同运营邀请）只写给本人，指向活动页，没有逐条授权的私有源。
+    if(source.sourceKind==='event_host_notice')return 'available';
     if(source.objectId==='discovery') {
       const adapters=createDiscoverySourceAdapters({client,store:storeFor(tx),workspaceId:input.workspaceId,now,preferences:actor=>createDiscoveryRepository({...input,client:{...input.client,query:client.query}}).preferences(actor)});
       return await adapters.read(actorId,{kind:source.sourceKind,id:source.sourceId,revision:source.sourceRevision,at:source.occurredAt,key:source.sourceKind+':'+source.sourceId},false)?'available':'unavailable';
