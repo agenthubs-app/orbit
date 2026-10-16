@@ -275,7 +275,7 @@ body.no-pins .pin { display: none; }
 .wgrid > .card, .wgrid > .evc { display: flex; flex-direction: column; }
 .wgrid > .card > .push, .evc > .push { margin-top: auto; }
 .span3 { grid-column: span 3; } .span4 { grid-column: span 4; } .span5 { grid-column: span 5; } .span6 { grid-column: span 6; }
-.span7 { grid-column: span 7; } .span8 { grid-column: span 8; } .span12 { grid-column: span 12; }
+.span7 { grid-column: span 7; } .span8 { grid-column: span 8; } .span9 { grid-column: span 9; } .span12 { grid-column: span 12; }
 .rail { border-left: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 55%, transparent); backdrop-filter: blur(10px); padding: 24px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
 .rail h4 { font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
 .web .card { border-radius: 22px; padding: 20px; }

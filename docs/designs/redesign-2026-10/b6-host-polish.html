@@ -1216,9 +1216,9 @@ function matching(s) {
       <span class="chip apricot">下書き · 未公開</span>
       <span class="lbl">${many ? '112名 · 22テーブル · 1卓 5名' : '18名 · 4テーブル · 1卓 4〜5名'}</span>
       <div class="row" style="margin-left:auto;gap:8px"><button class="btn sm">${ic('sliders', 'sm')}条件</button><button class="btn sm">${ic('refresh', 'sm')}再生成<span class="lbl" style="margin-left:2px">残り 2回</span></button><button class="btn sm primary">${ic('share', 'sm')}公開する</button></div></div>
-      <div class="chips" style="margin-top:12px"><span class="chip">同じ会社は別テーブル</span><span class="chip">ラウンド間で同席なし</span><span class="chip">各卓に投資家 1名以上</span>${many ? '<span class="chip coral">未配置 3名</span>' : ''}</div></div>
+      <div class="chips" style="margin-top:12px"><span class="chip">同じ会社は別テーブル</span><span class="chip">前回同席を回避</span><span class="chip">各卓に投資家 1名以上</span>${many ? '<span class="chip coral">未配置 3名</span>' : ''}</div></div>
     ${many ? `${tcard(0, { open: true })}${tcard(1, { warn: true, drag: true })}${tcard(2)}${tcard(3)}${tcard(4)}${tcard(5)}
-      <div class="card span12 flat row" style="gap:12px"><span class="emo apricot">🧩</span><div style="flex:1"><b>未配置の 3名</b><div class="lbl">昨日以降に承認した方です。空きのあるテーブルへ入れるか、当日受付で割り当てます</div></div><button class="btn">空き席に入れる</button><button class="btn ghost">残り 16テーブルを表示</button></div>`
+      <div class="card span12 flat row k-unplaced" style="gap:12px;flex-direction:row;align-items:center"><span class="emo apricot">🧩</span><div style="flex:1"><b>未配置の 3名</b><div class="lbl">昨日以降に承認した方です。空きのあるテーブルへ入れるか、当日受付で割り当てます</div></div><button class="btn">空き席に入れる</button><button class="btn ghost">残り 16テーブルを表示</button></div>`
       : `${tcard(0, { n: 5, span: 'span6' })}${tcard(1, { n: 5, span: 'span6', open: true })}${tcard(2, { n: 4, span: 'span6' })}${tcard(3, { n: 4, span: 'span6' })}`}</div>`;
 }
 const publishModal = `<div class="overlay"></div><div class="modal wmodal w480">
@@ -1233,7 +1233,7 @@ const publishModal = `<div class="overlay"></div><div class="modal wmodal w480">
 const ANS = ['シリーズA前後の資本政策を、投資家側の視点も含めて議論したい', '製造業向け SaaS への投資を検討中。現場の DX 事例を聞きたい', '財務チームの立ち上げ。最初の 2人目をどう採用したか知りたい', '来期の上場準備に向けて、監査法人選びの経験談を伺いたい', 'CVC として協業先を探しています', '地域の金融機関としてスタートアップ支援の接点を増やしたい', '初参加です。CFO の方と幅広くつながりたい', '前回のテーブルが有意義だったので再参加します'];
 function participants(s) {
   const ev = s === 'empty' ? HE[1] : s === 'few' ? HE[2] : HE[0];
-  const head = hostHead(ev.n, `主催 · ${ev.d}`, '参加者');
+  const head = hostHead(ev.n, `主催 · ${ev.d} · ${ev.place}`, '参加者');
   if (s === 'empty') return head + `<div class="wgrid">
     <div class="card span8 guide" style="padding:26px"><div style="font-size:22px;font-weight:800">まだ申込はありません</div><div class="sub" style="margin-top:4px">申込ページを共有すると、ここに審査待ちとして並びます。</div>
       <div class="row" style="gap:10px;margin-top:16px"><div class="input" style="flex:1;height:46px">${ic('link', 'sm')}orbit.app/e/mfg-dx-asakai-3</div><button class="btn primary" style="height:46px">${ic('link', 'sm')}リンクをコピー</button><button class="btn" style="height:46px">QR コード</button></div></div>
@@ -1247,7 +1247,7 @@ function participants(s) {
       <table class="table" style="table-layout:fixed"><thead><tr><th style="width:40px"></th><th style="width:230px">申込者</th><th>申込回答「いちばん話したいこと」</th><th style="width:110px">プロフィール</th><th style="width:70px">参加歴</th><th style="width:230px"></th></tr></thead><tbody>${rows.map((p, k) => { const cp = comp[k % 8]; return `<tr><td style="width:30px"><span class="cbx ${many && k < 2 ? 'on' : ''}">${many && k < 2 ? ic('check', 'sm') : ''}</span></td><td style="max-width:220px"><div class="row" style="gap:10px">${av(p)}<div style="min-width:0"><b class="clamp1" style="display:block">${p[0]}</b><div class="lbl clamp1">${p[3]} · ${p[4]}</div></div></div></td><td style="max-width:300px"><div class="clamp2" style="font-size:12.5px;color:var(--ink-2)">${ANS[k % 8]}</div></td><td><div class="row" style="gap:8px">${ring(34, 4, [{ v: cp, c: cp < 50 ? 'var(--coral)' : 'var(--plum-500)', max: 100 }], `<span class="score" style="font-size:9.5px">${cp}</span>`)}${cp < 50 ? '<span class="lbl" style="color:var(--coral)">未完了</span>' : ''}</div></td><td class="muted">${['初参加', '2回', '初参加', '5回', '1回', '初参加', '初参加', '3回'][k % 8]}</td><td><div class="row" style="gap:6px;justify-content:flex-end"><button class="btn sm ghost">見送り</button><button class="btn sm">待ち</button><button class="btn sm primary">承認</button></div></td></tr>`; }).join('')}</tbody></table>
       ${many ? '<div class="row" style="justify-content:center;margin-top:12px"><button class="btn sm">さらに表示（4名）</button></div>' : ''}</div>
     <div class="span3" style="display:grid;gap:18px;align-content:start">
-      <div class="card" style="text-align:center">${ring(130, 12, [{ v: many ? 104 : 15, c: 'var(--plum-700)', max: many ? 150 : 30 }], `<div class="big" style="font-size:32px">${num(many ? 104 : 15)}</div><div class="lbl">/ ${many ? 150 : 30} 名</div>`)}<div class="lbl" style="margin-top:8px">承認済み · 残り枠 ${many ? 46 : 15}</div></div>
+      <div class="card k-pring" style="text-align:center;display:flex;flex-direction:column;align-items:center">${ring(130, 12, [{ v: many ? 104 : 15, c: 'var(--plum-700)', max: many ? 150 : 30 }], `<div class="big" style="font-size:32px">${num(many ? 104 : 15)}</div><div class="lbl">/ ${many ? 150 : 30} 名</div>`)}<div class="lbl" style="margin-top:8px">承認済み · 残り枠 ${many ? 46 : 15}</div></div>
       <div class="card flat"><b style="font-size:13px">審査について</b><div class="sub" style="margin-top:6px;line-height:1.7">承認・見送りは申込者に Orbit から自動でお知らせします（定型文。申込設定で「主催者からのひとこと」を添えられます）。理由は相手に表示されません。</div></div></div></div>`;
 }
 
