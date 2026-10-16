@@ -5,6 +5,7 @@
 import { createHash } from "node:crypto";
 
 import type { EventJoinAnswer, EventJoinQuestion } from "../../../shared/contract/event-join";
+import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import { createPostgresActorRecordStore } from "../actor-records/store";
 import type { JoinPorts } from "./join";
 import type { JourneyLivePorts } from "./ports";
@@ -53,6 +54,15 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     },
     async profileIntro(actorId) {
       return (await input.journey.selfIntro(actorId, "").catch(() => null))?.text ?? null;
+    },
+    async hostQuestions(eventId) {
+      const result = await input.query(`/* events:r17-join:host-questions */ select published -> 'questions' as questions from event_host_question_sets where workspace_id = $1 and event_id = $2 and published is not null`, [input.workspaceId, eventId]).catch(() => ({ rows: [] as Array<Record<string, unknown>> }));
+      const raw = result.rows[0]?.questions;
+      const list = (typeof raw === "string" ? JSON.parse(raw) : raw) as HostSetupQuestion[] | null | undefined;
+      return Array.isArray(list) ? list.slice(0, 5) : [];
+    },
+    async saveHostAnswers(actorId, eventId, answers) {
+      await store.put("eventHostAnswers", actorId, `eha:${createHash("sha256").update(`${actorId}\u0000${eventId}`).digest("hex").slice(0, 32)}`, { answers: { ...answers }, eventId }, new Date().toISOString());
     },
     async submit(eventId, answers) {
       const { POST } = await import("../../../app/api/events/[id]/registration/route");

@@ -5,6 +5,7 @@
  * - 提交：先走普通报名；活动开了审核（409 admission）就走审核申请。公開範囲按字段由服务端定（registrationFieldVisibility）。
  * - 仮予定：用户确认后才写进日历；审核结果出来后（下次读详情时）改名为正式 / 被拒时删除（syncTentative）。
  */
+import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import type { EventJoinAnswer, EventJoinCancelResult, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
 import type { JourneyLanguage } from "./prep-core";
 
@@ -25,13 +26,14 @@ export function questionShape(field: string, language: JourneyLanguage): Pick<Ev
   return { help: null, max: null, multi: false };
 }
 
-export function joinStep(answered: number, question: Omit<EventJoinQuestion, "multi" | "max" | "help"> | null, language: JourneyLanguage): EventJoinStep {
+export function joinStep(answered: number, question: (Omit<EventJoinQuestion, "multi" | "max" | "help"> & { multi?: boolean }) | null, language: JourneyLanguage): EventJoinStep {
   const done = !question || answered >= JOIN_TOTAL;
   const remaining = Math.max(0, JOIN_TOTAL - answered);
+  const { multi, ...rest } = question ?? ({} as Omit<EventJoinQuestion, "multi" | "max" | "help"> & { multi?: boolean });
   return {
     done,
     index: done ? answered : answered + 1,
-    question: done ? null : { ...question!, ...questionShape(question!.field, language) },
+    question: done ? null : { ...rest, ...questionShape(rest.field, language), ...(multi !== undefined ? { max: null, multi } : {}) },
     remainingMinutes: Math.max(done ? 0 : 1, Math.round((remaining * SECONDS_PER_QUESTION) / 60)),
     total: JOIN_TOTAL,
   };
@@ -78,6 +80,29 @@ export interface JoinPorts {
   renameSchedule(actorId: string, scheduleItemId: string, title: string): Promise<void>;
   removeSchedule(actorId: string, scheduleItemId: string): Promise<void>;
   registrationStatus(actorId: string, eventId: string): Promise<"registered" | "pending_review" | "rejected" | "cancelled" | "none">;
+  /** R17（host/DESIGN.md §2.7）：主办方公开的申込質問（先问，再由访谈补足到 5 问）。没有就不问。 */
+  hostQuestions?(eventId: string): Promise<readonly HostSetupQuestion[]>;
+  /** R17：报名成功后留存对申込質問的回答（问题 id → 回答；多选用「 · 」连接）。 */
+  saveHostAnswers?(actorId: string, eventId: string, answers: Readonly<Record<string, string>>): Promise<void>;
+}
+
+/** 申込質問的字段前缀（与访谈字段区分；令牌由服务端按公开问题集校验，不需要签名）。 */
+export const HOST_QUESTION_FIELD_PREFIX = "host:";
+const isHostAnswer = (answer: EventJoinAnswer) => answer.field.startsWith(HOST_QUESTION_FIELD_PREFIX);
+
+/** 只留下属于公开问题集、选项合法的回答（自由回答 ≤200 字）。 */
+export function validHostAnswers(questions: readonly HostSetupQuestion[], answers: readonly EventJoinAnswer[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const answer of answers.filter(isHostAnswer)) {
+    const question = questions.find((item) => `${HOST_QUESTION_FIELD_PREFIX}${item.id}` === answer.field);
+    const text = answer.answer.trim();
+    if (!question || !text) continue;
+    if (question.kind === "free") { out[question.id] = text.slice(0, 200); continue; }
+    const picked = text.split(/\s*·\s*/u).filter((item) => question.options.includes(item));
+    if (picked.length === 0 || (question.kind === "single" && picked.length > 1)) continue;
+    out[question.id] = picked.join(" · ");
+  }
+  return out;
 }
 
 export function createJoinService(deps: { ports: JoinPorts }) {
@@ -86,12 +111,18 @@ export function createJoinService(deps: { ports: JoinPorts }) {
     async next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more = false): Promise<EventJoinStep | null> {
       if (!(await ports.event(eventId))) return null;
       if (answers.length >= JOIN_TOTAL) return joinStep(answers.length, null, language);
-      return joinStep(answers.length, await ports.next(eventId, answers, language, more), language);
+      // R17：主办方的申込質問先问（按顺序），问完再由访谈补足；访谈只看访谈自己的回答。
+      const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
+      const pending = hostQuestions.find((question) => !answers.some((answer) => answer.field === `${HOST_QUESTION_FIELD_PREFIX}${question.id}`));
+      if (pending) {
+        return joinStep(answers.length, { allowCustom: pending.kind === "free", field: `${HOST_QUESTION_FIELD_PREFIX}${pending.id}`, multi: pending.kind === "multiple", options: [...pending.options], prompt: pending.prompt, questionToken: `${HOST_QUESTION_FIELD_PREFIX}${pending.id}` }, language);
+      }
+      return joinStep(answers.length, await ports.next(eventId, answers.filter((answer) => !isHostAnswer(answer)), language, more), language);
     },
     async profile(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, language: JourneyLanguage): Promise<EventJoinProfile | null> {
       const event = await ports.event(eventId);
       if (!event) return null;
-      const persona = draft ? await ports.persona(eventId, answers, language).catch(() => null) : null;
+      const persona = draft ? await ports.persona(eventId, answers.filter((answer) => !isHostAnswer(answer)), language).catch(() => null) : null;
       const intro = persona?.selfIntroDraft ? { source: "ai_draft" as const, text: persona.selfIntroDraft } : draft ? await ports.profileIntro(actorId).then((text) => (text ? { source: "profile" as const, text } : null)) : null;
       const basis = intro?.source === "ai_draft" ? tri(language, "回答（目的・テーマ・会いたい人）とプロフィールから作成。売上などの数値は入れていません。", "根据回答（目的、话题、想见的人）和个人资料写成，没有放入营收等数字。", "Written from your answers (goal, topics, who to meet) and your profile. No revenue or other figures.") : null;
       const editableUntil = new Date(Date.parse(event.startsAt) - 86_400_000).toISOString();
@@ -100,7 +131,10 @@ export function createJoinService(deps: { ports: JoinPorts }) {
     async submit(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, selfIntro?: string): Promise<EventJoinResult | null> {
       const event = await ports.event(eventId);
       if (!event) return null;
-      const outcome = await ports.submit(eventId, answers);
+      const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
+      const outcome = await ports.submit(eventId, answers.filter((answer) => !isHostAnswer(answer)));
+      const hostAnswers = validHostAnswers(hostQuestions, answers);
+      if (ports.saveHostAnswers && Object.keys(hostAnswers).length > 0) await ports.saveHostAnswers(actorId, eventId, hostAnswers);
       if (selfIntro) await ports.saveIntro(actorId, eventId, selfIntro);
       const endsAt = event.endsAt ?? new Date(Date.parse(event.startsAt) + 2 * 3_600_000).toISOString();
       return {

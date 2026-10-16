@@ -187,11 +187,11 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const share = await query(
         `/* events:r27-journey:organizer-q1 */
          select q.published -> 'questions' -> 0 -> 'options' ->> 0 as label,
-                count(*) filter (where (a.profile_payload -> 'hostAnswers' ->> 'q1') = (q.published -> 'questions' -> 0 -> 'options' ->> 0)
-                                    or (a.profile_payload -> 'hostAnswers' -> 'q1' ->> 0) = (q.published -> 'questions' -> 0 -> 'options' ->> 0))::int as hit,
-                count(*) filter (where a.profile_payload -> 'hostAnswers' -> 'q1' is not null)::int as answered
+                count(*) filter (where split_part(r.payload -> 'answers' ->> (q.published -> 'questions' -> 0 ->> 'id'), ' · ', 1) = (q.published -> 'questions' -> 0 -> 'options' ->> 0))::int as hit,
+                count(*) filter (where r.payload -> 'answers' ->> (q.published -> 'questions' -> 0 ->> 'id') is not null)::int as answered
            from event_host_question_sets q
-           join event_ops_admission_application_heads a on a.workspace_id = q.workspace_id and a.event_id = q.event_id and a.status = 'admitted'
+           join event_ops_membership_heads m on m.workspace_id = q.workspace_id and m.event_id = q.event_id and m.status = 'rsvped'
+           join orbit_records r on r.workspace_id = m.workspace_id and r.collection_name = 'eventHostAnswers' and r.user_id = m.actor_id and r.lifecycle_state <> 'deleted' and r.payload ->> 'eventId' = m.event_id
           where q.workspace_id = $1 and q.event_id = any($2::text[]) and q.published is not null
           group by 1 order by answered desc limit 1`,
         [workspaceId, ids.filter((id) => mine.some((event) => event.eventId === id && Date.parse(event.startsAt) <= now.getTime()))],

@@ -132,9 +132,10 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
     },
 
     /** 申込者（一个 bucket），带资料回答与本主办方参加歴。 */
-    async applicants(eventId: string, organizerActorId: string, statuses: readonly string[]): Promise<Array<{ actorId: string; status: string; version: number; payload: { displayName?: string; answers?: Record<string, string> }; submittedAt: string; attendCount: number }>> {
+    async applicants(eventId: string, organizerActorId: string, statuses: readonly string[]): Promise<Array<{ actorId: string; status: string; version: number; payload: { displayName?: string; answers?: Record<string, string> }; hostAnswers: Record<string, string>; submittedAt: string; attendCount: number }>> {
       const result = await client.query<Row>(
         `select a.actor_id, a.status, a.application_version, a.profile_payload, a.submitted_at,
+                (select r.payload -> 'answers' from orbit_records r where r.workspace_id = a.workspace_id and r.collection_name = 'eventHostAnswers' and r.user_id = a.actor_id and r.lifecycle_state <> 'deleted' and r.payload ->> 'eventId' = a.event_id limit 1) as host_answers,
                 (select count(*) from event_ops_checkins c join event_ops_events oe on oe.workspace_id = c.workspace_id and oe.event_id = c.event_id
                   where c.workspace_id = a.workspace_id and c.actor_id = a.actor_id and oe.organizer_actor_id = $3 and c.event_id <> a.event_id) as attend_count
            from event_ops_admission_application_heads a
@@ -142,7 +143,7 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
           order by a.submitted_at, a.actor_id`,
         [workspaceId, eventId, organizerActorId, statuses],
       );
-      return result.rows.map((row) => ({ actorId: String(row.actor_id), attendCount: num(row.attend_count), payload: (typeof row.profile_payload === "string" ? JSON.parse(row.profile_payload) : row.profile_payload) as { displayName?: string; answers?: Record<string, string> }, status: String(row.status), submittedAt: iso(row.submitted_at)!, version: num(row.application_version) }));
+      return result.rows.map((row) => ({ actorId: String(row.actor_id), attendCount: num(row.attend_count), hostAnswers: ((typeof row.host_answers === "string" ? JSON.parse(row.host_answers) : row.host_answers) ?? {}) as Record<string, string>, payload: (typeof row.profile_payload === "string" ? JSON.parse(row.profile_payload) : row.profile_payload) as { displayName?: string; answers?: Record<string, string> }, status: String(row.status), submittedAt: iso(row.submitted_at)!, version: num(row.application_version) }));
     },
 
     /** 受付名单：已报名（含签到状态、番号）+ キャンセル待ち。 */

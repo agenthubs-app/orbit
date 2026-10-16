@@ -429,8 +429,11 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const statusOfBucket: Record<HostPeopleBucket, string> = { approved: "admitted", pending: "pending_review", rejected: "rejected", waitlisted: "waitlisted" };
       const bucketOf: Record<string, HostPeopleBucket> = { admitted: "approved", pending_review: "pending", rejected: "rejected", waitlisted: "waitlisted" };
       const applicants = await reads.applicants(eventId, facts.organizerActorId, [statusOfBucket[query.bucket]]);
+      // 申込回答一栏：主办方问题里问「話したい…」的那一问（没有就用第 2 问 / 资料里的目的）。
+      const questions = (((await reads.questionSet(eventId))?.published ?? {}) as { questions?: HostSetupQuestion[] }).questions ?? [];
+      const answerQuestion = questions.find((question) => question.prompt.includes("話したい")) ?? questions[1] ?? null;
       const rows: HostPeopleRow[] = applicants.map((item) => {
-        const answers = item.payload.answers ?? {};
+        const answers: Record<string, string> = { ...(item.payload.answers ?? {}), ...(answerQuestion && item.hostAnswers[answerQuestion.id] ? { desiredOutcome: item.hostAnswers[answerQuestion.id]! } : {}) };
         const { org, role } = splitPositioning(answers.positioning);
         const score = profileScore(item.payload as never);
         const name = item.payload.displayName ?? "";
@@ -438,7 +441,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       }).filter((row) => !query.incomplete || row.profileIncomplete).filter((row) => !query.q || [row.name, row.org ?? "", row.answer ?? ""].some((text) => text.includes(query.q)));
       const offset = Math.max(0, Number(query.cursor ?? "0") || 0);
       const page = rows.slice(offset, offset + 50);
-      return { answerLabel: "いちばん話したいこと", applyPath: facts.publicSlug ? `/e/${facts.publicSlug}` : null, bucket: query.bucket, capacity: facts.capacity, counts: { approved: facts.admitted, pending: facts.pending, rejected: facts.rejected, waitlisted: facts.waitlisted }, event: await view(actorId, facts, caps), more: Math.max(0, rows.length - offset - page.length), nextCursor: offset + page.length < rows.length ? String(offset + page.length) : null, questionCount: ((await reads.questionSet(eventId))?.draft?.questions as unknown[] | undefined)?.length ?? 0, remaining: facts.capacity === null ? null : Math.max(0, facts.capacity - facts.admitted), rows: page };
+      return { answerLabel: answerQuestion ? answerQuestion.prompt.replace(/[（(].*$/u, "").replace(/^今回/u, "").slice(0, 20) : "いちばん話したいこと", applyPath: facts.publicSlug ? `/e/${facts.publicSlug}` : null, bucket: query.bucket, capacity: facts.capacity, counts: { approved: facts.admitted, pending: facts.pending, rejected: facts.rejected, waitlisted: facts.waitlisted }, event: await view(actorId, facts, caps), more: Math.max(0, rows.length - offset - page.length), nextCursor: offset + page.length < rows.length ? String(offset + page.length) : null, questionCount: ((await reads.questionSet(eventId))?.draft?.questions as unknown[] | undefined)?.length ?? 0, remaining: facts.capacity === null ? null : Math.max(0, facts.capacity - facts.admitted), rows: page };
     },
     async decide(actorId, eventId, applicantActorId, input) {
       await require(actorId, eventId, "admission.decide");
@@ -565,10 +568,10 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const perTable = (grouping?.roundOne ?? []).map((table) => table.members.reduce((sum, member) => sum + (exchanges.byParticipant.get(member.participantId) ?? 0), 0));
       const tableValues = suppressCells(perTable);
       const applicants = await reads.applicants(eventId, facts.organizerActorId, ["admitted"]);
+      const firstQuestion = ((((await reads.questionSet(eventId))?.published ?? {}) as { questions?: HostSetupQuestion[] }).questions ?? [])[0];
       const q1 = new Map<string, number>();
       for (const item of applicants) {
-        const answer = (item.payload as { hostAnswers?: Record<string, string | string[]> }).hostAnswers?.q1;
-        const label = Array.isArray(answer) ? answer[0] : answer;
+        const label = firstQuestion ? item.hostAnswers[firstQuestion.id]?.split(" · ")[0] : undefined;
         if (label) q1.set(label, (q1.get(label) ?? 0) + 1);
       }
       const standingCounts = [...q1.entries()];
