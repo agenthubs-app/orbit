@@ -110,7 +110,7 @@
     "[data-host-table=\"A\"] button[aria-expanded]",
     "[data-host-table=\"B\"] [data-member=\"participant:hp-fujii\"] button"
    ],
-   "note": "P10 マッチング · 大（b6 #5，CFO18 前 6 卓 + 未配置 3名；画板 A 卓理由展开、B 卓藤井拖起 → 点 A 的 ?、点藤井 ⋮⋮ 拿起）；未过：画板「未配置の 3名」卡 .card.flat.row 被 kit .wgrid>.card 压成竖排（同 §41-2），实现横排，待画板修正"
+   "note": "P10 マッチング · 大（b6 #5，CFO18 前 6 卓 + 未配置 3名；画板 A 卓理由展开、B 卓藤井拖起 → 点 A 的 ?、点藤井 ⋮⋮ 拿起）；§42（ba3ec20a）画板已修（未配置卡横排 / kit .span9 / 页头会場 / chip「前回同席を回避」/ 残り枠圆环居中）"
   },
   {
    "id": "W-R17-P11",
@@ -124,7 +124,7 @@
     "[data-host-table=\"B\"] [data-member=\"participant:hp-fujii\"] button",
     "[data-host-publish]"
    ],
-   "note": "P11 マッチング · 公開確認（b6 #6；底图同 P10：A 卓理由展开、藤井拿起，再点「公開する」）；未过：底图同 P10 未配置卡竖排问题"
+   "note": "P11 マッチング · 公開確認（b6 #6；底图同 P10：A 卓理由展开、藤井拿起，再点「公開する」）；§42（ba3ec20a）画板已修（未配置卡横排 / kit .span9 / 页头会場 / chip「前回同席を回避」/ 残り枠圆环居中）"
   },
   {
    "id": "W-R17-P12",
@@ -142,7 +142,7 @@
    "board-index": 8,
    "width": 1440,
    "wait-for": "[data-host-people=pending]",
-   "note": "P13 参加者 · 少（b6 #8，ラウンドテーブル 審査待ち 3）；未过：画板 .card.span9 而 kit 没有 .span9（表格卡只占 1 列被挤），在补了 .span9 的临时副本上 PASS（浅 0.0017 / 深 0.0013），待画板 / kit 补 .span9"
+   "note": "P13 参加者 · 少（b6 #8，ラウンドテーブル 審査待ち 3）；§42（ba3ec20a）画板已修（未配置卡横排 / kit .span9 / 页头会場 / chip「前回同席を回避」/ 残り枠圆环居中）"
   },
   {
    "id": "W-R17-P14",
@@ -155,7 +155,7 @@
     "[data-host-row=\"actor:hp-morita\"] [role=checkbox]",
     "[data-host-row=\"actor:hp-aoki\"] [role=checkbox]"
    ],
-   "note": "P14 参加者 · 大（b6 #9，CFO18，勾森田 / 青木 → 批量条「2名を選択中 · 2名を承認」）；未过：同 P13 缺 .span9；补 .span9 副本上 PASS（浅 0.0026 / 深 0.0018）",
+   "note": "P14 参加者 · 大（b6 #9，CFO18，勾森田 / 青木 → 批量条「2名を選択中 · 2名を承認」）；§42（ba3ec20a）画板已修（未配置卡横排 / kit .span9 / 页头会場 / chip「前回同席を回避」/ 残り枠圆环居中）",
    "steps": [
     {
      "hover": "[data-host-capacity]"
@@ -177,6 +177,218 @@
     "[role=menu] [role=menuitem]"
    ],
    "note": "P26 共同運営者抽屉（b6 #20，背景 = 概要 進行中；画板小林 受付→管理者 编辑中 → 点小林 ⋮ →「管理者にする」）；未过（待组件库）：画板抽屉 540 宽、内边距 22，组件库 Drawer 只有 380 / 520 / 600、bare 内边距 20（G23）"
+  },
+  {
+   "id": "W-R17-P15",
+   "app": "/app/events/demo-event-cfo-night-18/operations/check-in",
+   "design": "b6-host-polish.html",
+   "board-index": 10,
+   "width": 1180,
+   "wait-for": "[data-host-kiosk=before]",
+   "host": {
+    "kiosk": "before"
+   },
+   "note": "P15 受付 kiosk · 空（b6 #10，CFO18 开场前 18:46，0 / 128；不挂壳）"
+  },
+  {
+   "id": "W-R17-P16",
+   "app": "/app/events/demo-event-cfo-night-18/operations/check-in",
+   "design": "b6-host-polish.html",
+   "board-index": 11,
+   "width": 1180,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-kiosk=live]",
+   "host": {
+    "kiosk": "live"
+   },
+   "steps": [
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "もり"
+     ],
+     "wait": 1200
+    },
+    {
+     "waitFor": "[data-kiosk-results=\"3\"]"
+    }
+   ],
+   "note": "P16 受付 kiosk · 大 浅色（b6 #11，搜索「もり」→ 森田 未到着 / 森 受付済み / 森川 キャンセル待ち）"
+  },
+  {
+   "id": "W-R17-P16d",
+   "app": "/app/events/demo-event-cfo-night-18/operations/check-in",
+   "design": "b6-host-polish.html",
+   "board-index": 45,
+   "width": 1180,
+   "themes": [
+    "dark"
+   ],
+   "wait-for": "[data-host-kiosk=live]",
+   "host": {
+    "kiosk": "live"
+   },
+   "steps": [
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "もり"
+     ],
+     "wait": 1200
+    },
+    {
+     "waitFor": "[data-kiosk-results=\"3\"]"
+    }
+   ],
+   "note": "P16 受付 kiosk · 大 深色（b6 #45 深色画板）"
+  },
+  {
+   "id": "W-R17-P17",
+   "app": "/app/events/demo-event-cfo-night-18/operations/check-in",
+   "design": "b6-host-polish.html",
+   "board-index": 12,
+   "width": 1180,
+   "wait-for": "[data-host-kiosk=live]",
+   "host": {
+    "kiosk": "offline"
+   },
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "eval": "Object.defineProperty(Navigator.prototype,'onLine',{configurable:true,get:()=>false});window.dispatchEvent(new Event('offline'))",
+     "wait": 600
+    },
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "松本"
+     ],
+     "wait": 500
+    },
+    {
+     "click": "[data-kiosk-row=\"participant:hp-matsumoto\"] [data-kiosk-arrive]",
+     "wait": 600
+    },
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "藤井"
+     ],
+     "wait": 500
+    },
+    {
+     "click": "[data-kiosk-row=\"participant:hp-fujii\"] [data-kiosk-arrive]",
+     "wait": 600
+    },
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "木村"
+     ],
+     "wait": 500
+    },
+    {
+     "click": "[data-kiosk-row=\"participant:hp-kimura\"] [data-kiosk-arrive]",
+     "wait": 600
+    },
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "もり"
+     ],
+     "wait": 600
+    },
+    {
+     "waitFor": "[data-kiosk-offline=\"3\"]",
+     "wait": 5600
+    }
+   ],
+   "note": "P17 受付 kiosk · 离线（b6 #12；变体 kiosk=offline：木村・藤井・松本 未到着。浏览器离线后依次受付 松本 → 藤井 → 木村（IndexedDB 队列，未送信 3件），再搜「もり」；末尾等 toast 消失）"
+  },
+  {
+   "id": "W-R17-P19",
+   "app": "/app/events/demo-host-mfg-asakai-3/operations?tab=setup",
+   "design": "b6-host-polish.html",
+   "board-index": 13,
+   "width": 1440,
+   "wait-for": "[data-host-setup=empty]",
+   "note": "P19 申込設定 · 空（b6 #13，朝会 #3 未公開；§40 预览 / 受付の設定 = 朝会 #3）；下方折叠区「お知らせの文面」（b12 #406，待用户过目 §38，不进门禁）截图前移除",
+   "app-remove": [
+    "[data-host-notices-toggle]"
+   ]
+  },
+  {
+   "id": "W-R17-P20",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b6-host-polish.html",
+   "board-index": 14,
+   "width": 1440,
+   "wait-for": "[data-host-setup=draft]",
+   "host": {
+    "setup": "few"
+   },
+   "note": "P20 申込設定 · 少（b6 #14，CFO18 下書き 2問，Q1 编辑中；§40 页头「申込フォーム未公開」）；下方折叠区「お知らせの文面」（b12 #406，待用户过目 §38，不进门禁）截图前移除",
+   "app-remove": [
+    "[data-host-notices-toggle]"
+   ]
+  },
+  {
+   "id": "W-R17-P21",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b6-host-polish.html",
+   "board-index": 15,
+   "width": 1440,
+   "wait-for": "[data-host-setup=published]",
+   "host": {
+    "setup": "many"
+   },
+   "click": [
+    "[data-host-question=\"q2\"]"
+   ],
+   "note": "P21 申込設定 · 大（b6 #15，CFO18 公開中 5問 + 未公開の変更 2；点 Q2 展开编辑）；下方折叠区「お知らせの文面」（b12 #406，待用户过目 §38，不进门禁）截图前移除",
+   "app-remove": [
+    "[data-host-notices-toggle]"
+   ]
+  },
+  {
+   "id": "W-R17-P22",
+   "app": "/app/events/demo-host-mfg-asakai-3/operations?tab=report",
+   "design": "b6-host-polish.html",
+   "board-index": 16,
+   "width": 1440,
+   "wait-for": "[data-host-report=before]",
+   "note": "P22 レポート · 開催前（b6 #16，朝会 #3）"
+  },
+  {
+   "id": "W-R17-P23",
+   "app": "/app/events/demo-host-founders-lunch-11/operations?tab=report",
+   "design": "b6-host-polish.html",
+   "board-index": 17,
+   "width": 1440,
+   "wait-for": "[data-host-report=after]",
+   "note": "P23 レポート · 少（b6 #17，Founders Lunch #11）"
+  },
+  {
+   "id": "W-R17-P24",
+   "app": "/app/events/demo-host-cfo-night-17/operations?tab=report",
+   "design": "b6-host-polish.html",
+   "board-index": 18,
+   "width": 1440,
+   "wait-for": "[data-host-report=after]",
+   "note": "P24 レポート · 全体（b6 #18，vol.17）"
+  },
+  {
+   "id": "W-R17-P25",
+   "app": "/app/events/demo-host-cfo-night-17/operations?tab=report&view=mine",
+   "design": "b6-host-polish.html",
+   "board-index": 19,
+   "width": 1440,
+   "wait-for": "[data-host-report-mine]",
+   "note": "P25 レポート · 自分の視点（b6 #19，vol.17 &view=mine）"
   }
  ]
 }
