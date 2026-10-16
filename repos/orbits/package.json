@@ -70,6 +70,7 @@
     "@napi-rs/canvas": "^1.0.8",
     "@vercel/blob": "2.8.0",
     "@vercel/queue": "0.5.1",
+    "@zxing/browser": "0.2.1",
     "bcryptjs": "^3.0.3",
     "fflate": "0.8.2",
     "heic-convert": "^2.1.0",

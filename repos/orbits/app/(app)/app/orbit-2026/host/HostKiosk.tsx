@@ -2,7 +2,7 @@
 
 // R17 受付 kiosk（/app/events/[id]/operations/check-in；不挂壳、不注册 ⌘K）：b6 #10 空（開場前）/ #11 大（搜索「もり」，深 #45）/ #12 离线（本机保存 · 未送信 N件）。
 // 名前検索 GET /kiosk?q=；到着にする POST …/check-ins/[participantId]；取り消す …/undo（确认 b12 #436）；当日枠で受付 …/admit-on-site（满员确认 b12 #434）；
-// QR を読み取る（BarcodeDetector；不支持时只提示改用名前検索，b12 #432）；5 秒轮询 GET /kiosk；30 秒心跳；本机名单缓存 GET /kiosk/roster（TTL = cacheUntil）。
+// QR を読み取る（BarcodeDetector，不支持时动态加载 @zxing/browser 回退；都不行才提示改用名前検索，b12 #432）；5 秒轮询 GET /kiosk；30 秒心跳；本机名单缓存 GET /kiosk/roster（TTL = cacheUntil）。
 // 离线：「到着にする」先进 IndexedDB 队列（幂等键），联网后按顺序补发；重复只记一次（服务端 duplicate）。
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -210,33 +210,66 @@ export function OverCapacityConfirm({ row, t, busy, onCancel, onConfirm }: { row
 }
 
 type Detector = { detect: (source: CanvasImageSource) => Promise<Array<{ rawValue: string }>> };
-type DetectorCtor = new (options: { formats: string[] }) => Detector;
+type DetectorCtor = (new (options: { formats: string[] }) => Detector) & { getSupportedFormats?: () => Promise<string[]> };
+/** 一帧解一次：读到 QR 文本就返回，否则 null。 */
+export type QrDecoder = { engine: "native" | "zxing"; decode: (video: HTMLVideoElement) => Promise<string | null> };
 
-/** b12 #432 QR 読み取り中。BarcodeDetector がないブラウザは名前検索へ誘導（依存追加は保留）。 */
+/**
+ * QR 解码器：有 BarcodeDetector（且支持 qr_code）就用原生；否则（Safari / Firefox）动态加载 `@zxing/browser`
+ * （对标 Luma / Peatix 网页受付；只在 kiosk 的 QR 画面按需加载，不进其它页面的包）。都不行 → null（引导名前検索）。
+ */
+export async function createQrDecoder(): Promise<QrDecoder | null> {
+  const Ctor = (globalThis as { BarcodeDetector?: DetectorCtor }).BarcodeDetector;
+  if (Ctor) {
+    const formats = await Ctor.getSupportedFormats?.().catch(() => [] as string[]);
+    if (!formats || formats.includes("qr_code")) {
+      const detector = new Ctor({ formats: ["qr_code"] });
+      return { decode: async (video) => (await detector.detect(video).catch(() => []))[0]?.rawValue || null, engine: "native" };
+    }
+  }
+  try {
+    const { BrowserQRCodeReader } = await import("@zxing/browser");
+    const reader = new BrowserQRCodeReader();
+    return {
+      decode: async (video) => {
+        if (!video.videoWidth) return null;
+        try { return reader.decode(video).getText() || null; } catch { return null; }
+      },
+      engine: "zxing",
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** b12 #432 QR 読み取り中。BarcodeDetector → @zxing/browser 回退；都不可用 / 没有摄像头时引导名前検索。 */
 function QrScanner({ t, onResult, onClose }: { t: HostT; onResult: (payload: string) => void; onClose: () => void }) {
   const video = useRef<HTMLVideoElement | null>(null);
   const [problem, setProblem] = useState<"unsupported" | "denied" | null>(null);
   useEffect(() => {
-    const Ctor = (globalThis as { BarcodeDetector?: DetectorCtor }).BarcodeDetector;
-    if (!Ctor || !navigator.mediaDevices?.getUserMedia) { setProblem("unsupported"); return; }
+    if (!navigator.mediaDevices?.getUserMedia) { setProblem("unsupported"); return; }
     let stream: MediaStream | null = null;
     let stop = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const detector = new Ctor({ formats: ["qr_code"] });
+    let decoder: QrDecoder | null = null;
     const tick = async () => {
-      if (stop || !video.current) return;
-      try {
-        const found = await detector.detect(video.current);
-        if (found[0]?.rawValue) { stop = true; onResult(found[0].rawValue); return; }
-      } catch { /* 下一帧再试 */ }
+      if (stop || !video.current || !decoder) return;
+      const text = await decoder.decode(video.current).catch(() => null);
+      if (stop) return;
+      if (text) { stop = true; onResult(text); return; }
       timer = setTimeout(() => void tick(), 250);
     };
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then((media) => {
-      if (stop) { media.getTracks().forEach((track) => track.stop()); return; }
-      stream = media;
-      if (video.current) { video.current.srcObject = media; void video.current.play().catch(() => {}); }
-      void tick();
-    }).catch(() => setProblem("denied"));
+    void createQrDecoder().then((found) => {
+      if (stop) return;
+      if (!found) { setProblem("unsupported"); return; }
+      decoder = found;
+      return navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then((media) => {
+        if (stop) { media.getTracks().forEach((track) => track.stop()); return; }
+        stream = media;
+        if (video.current) { video.current.srcObject = media; void video.current.play().catch(() => {}); }
+        void tick();
+      }).catch(() => setProblem("denied"));
+    });
     return () => { stop = true; if (timer) clearTimeout(timer); stream?.getTracks().forEach((track) => track.stop()); };
   }, [onResult]);
   return (

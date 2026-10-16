@@ -1,99 +1,27 @@
 /**
- * 组织者公开页 route adapter。
- *
- * 从动态 slug 读取组织者活动，交给公开页组件渲染。
+ * R17（host DESIGN §2.11「旧链接」）：旧公开主办页 `/app/o/<slug | eventId | publicCode>` → 302 到所属资料的 `/o/<slug>`。
+ * 先按资料 slug 认，认不出再当活动别名查所属资料（`organizerSlugForEvent`）；`?follow=1`（登录后回来自动关注）原样带过去。
+ * 公开主办方页的登录回跳也走这里：`normalizeOrbitAuthReturnPath` 只放行 /app 下的路径。
  */
-import { StateView } from "../../../../../shared/ui/state-view";
-import type { OrbitLanguage } from "../../orbit-language-core";
-import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
-import { presentOrbitEvents } from "../../orbit-event-presentation";
-import { OrbitRealOrganizerPublic } from "../orbit-real-organizer-public";
-import { OrbitReferenceStyles } from "../../orbit-reference-styles";
-import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
-import {
-  loadAppOrganizerPublicRouteViewModel,
-  presentAppOrganizerPublicRouteState,
-  type AppOrganizerPublicRouteStateViewModel,
-} from "../compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model";
+import { notFound, redirect } from "next/navigation";
 
-async function getOrganizerPageLanguage(): Promise<OrbitLanguage> {
-  try {
-    return await getOrbitServerLanguage();
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("outside a request scope")
-    ) {
-      return "zh";
-    }
+import { resolveAuthenticatedApiActor } from "../../../../api/_shared/authenticated-actor";
+import { resolveHostServiceForPage } from "../../../../../features/events/host/handlers";
 
-    throw error;
-  }
-}
+export const dynamic = "force-dynamic";
 
-function OrganizerPublicRouteStateBoundary({
-  routeState,
-}: {
-  routeState: AppOrganizerPublicRouteStateViewModel;
-}) {
-  return (
-    <div data-orbit-route="app-organizer-public-route-state">
-      <StateView
-        description={routeState.copy.description}
-        emptyState={routeState.copy.emptyState}
-        evidence={Array.from(routeState.evidenceIds)}
-        eyebrow={routeState.copy.eyebrow}
-        guardrail={routeState.copy.guardrail}
-        nextStep={routeState.copy.nextStep}
-        purpose={routeState.copy.purpose}
-        recoveryActions={routeState.recoveryActions.map((action) => ({
-          id: action.id,
-          label: action.label,
-          recoveryCopy: action.recoveryCopy,
-          href: action.href,
-        }))}
-        title={routeState.copy.title}
-      />
-    </div>
-  );
-}
-
-export default async function AppOrganizerPublicPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const routeModel = await loadAppOrganizerPublicRouteViewModel({
-    slug,
-  });
-  const language = await getOrganizerPageLanguage();
-
-  return (
-    <>
-      <OrbitReferenceStyles />
-      {routeModel.state === "success" ? (
-        <div data-orbit-route="app-organizer-public-route">
-          <OrbitRealOrganizerPublic
-            language={language}
-            viewModel={localizeOrbitTree(
-              {
-                ...routeModel.organizer,
-                events: presentOrbitEvents(routeModel.organizer.events, language),
-              },
-              language,
-            )}
-          />
-        </div>
-      ) : (
-        <OrganizerPublicRouteStateBoundary
-          routeState={presentAppOrganizerPublicRouteState(
-            routeModel.routeState,
-            language,
-          )}
-        />
-      )}
-      <OrbitVisualFreezeRuntime />
-    </>
-  );
+export default async function LegacyOrganizerPublicPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ follow?: string | string[] }> }) {
+  const [{ slug: raw }, query] = await Promise.all([params, searchParams]);
+  let value = raw;
+  try { value = decodeURIComponent(raw); } catch { /* keep raw */ }
+  value = value.trim();
+  if (!value || value.length > 120) notFound();
+  const actor = await resolveAuthenticatedApiActor().catch(() => null);
+  const service = await resolveHostServiceForPage(actor?.id ?? null);
+  if (!service) notFound();
+  const lower = value.toLowerCase();
+  const direct = /^[a-z0-9][a-z0-9-]{0,79}$/u.test(lower) ? await service.organizerPublic(null, lower).catch(() => null) : null;
+  const slug = direct ? lower : await service.organizerSlugForEvent(value).catch(() => null);
+  if (!slug) notFound();
+  redirect(`/o/${encodeURIComponent(slug)}${query.follow === "1" ? "?follow=1" : ""}`);
 }

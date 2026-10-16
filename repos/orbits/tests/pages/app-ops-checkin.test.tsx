@@ -280,34 +280,22 @@ test("retry after a 503 read failure re-fetches the roster", async () => {
   });
 });
 
-test("check-in page gates on check_in.roster.read_limited before reading the event and mounts the check-in screen inside the ops-0918 shell", () => {
+// R17（host DESIGN §2.6）：/operations/check-in 换成新 kiosk（HostKiosk，不挂壳）。页面只判登录、不读活动；
+// 名单与权限（requireEventCapability check_in.*）在 GET /api/host/events/[id]/kiosk，无权限时 kiosk 显示说明。
+// QR：BarcodeDetector 优先，不支持时只在 kiosk 里动态加载 @zxing/browser（Safari / Firefox 回退）。
+test("check-in page signs in first, reads no event itself and mounts the R17 kiosk", () => {
   const page = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/operations/check-in/page.tsx"), "utf8");
-  const screen = readFileSync(join(projectRoot, "app/(app)/app/events/ops-0918/ops-checkin.tsx"), "utf8");
-  const boundary = readFileSync(join(projectRoot, "app/(app)/app/events/ops-0918/ops-boundary.tsx"), "utf8");
-  assert.match(page, /await Promise\.all\(\[params, auth\(\)\]\)/u);
-  assert.match(page, /redirect\(`\/app\/account\/login\?next=/u);
-  // 评审修正：getEvent 会泄露未发布活动标题，故与名单 API 同一能力做 per-event 门禁，未过不读活动。
-  assert.match(page, /requireEventCapability\(\{[^}]*capability: "check_in\.roster\.read_limited"/u);
-  assert.match(page, /createConfiguredEventAccessService\(\)/u);
-  // 合并前终审修正 7：能力校验必须被 await，且出现在读活动之前
-  assert.match(page, /await requireEventCapability\(\{[^}]*capability: "check_in\.roster\.read_limited"[\s\S]*await loadEventOperationsPageEvent\(/u, "awaited gate runs before the event read");
-  assert.match(page, /title="没有签到权限"/u);
-  assert.match(page, /只有当前活动主办方或被授予签到角色的成员可以打开签到名单。/u);
-  // 任务 7：三页共用 ops-0918/ops-boundary.tsx（eyebrow / title / description / retryHref / page 标记）
-  assert.doesNotMatch(page, /function Boundary|PublicTopNav/u);
-  assert.match(page, /<OpsBoundary [^>]*eyebrow="EVENT OPERATIONS · CHECK-IN"[^>]*page="event-check-in-boundary"[^>]*retryHref=\{`\/app\/events\/\$\{encodeURIComponent\(eventId\)\}\/operations\/check-in`\}[^>]*title="没有签到权限"/u);
-  assert.match(boundary, /href="\/app\/events\/center">返回运营活动中心/u);
-  assert.match(boundary, /href=\{retryHref\}>重试/u);
-  assert.match(boundary, /data-orbit-real-page=\{page\}/u);
-  assert.match(page, /loadEventOperationsPageEvent/u);
-  assert.match(page, /data-orbit-real-page="ops-0918"/u);
-  // R07: signed-in ops pages mount no nav themselves; Orbit2026Shell provides it.
-  assert.doesNotMatch(page, /AccountTopNav|OrbitTopNav/u);
-  assert.match(page, /view="checkin"/u);
-  // 合并前终审修正 5：导出 CSV 按 attendees.export 解析（fail-closed），无则 more 为空数组
-  assert.match(page, /await requireEventCapability\(\{[^}]*capability: "attendees\.export"/u);
-  assert.match(page, /let canExport = false;/u);
-  assert.match(page, /more=\{canExport \? \[\{ href: exportCsvHref\([^)]+\), label: "导出 CSV" \}\] : \[\]\}/u);
-  assert.match(screen, /useCheckInRoster\(event\.id\)/u);
-  assert.match(screen, /标记到场/u);
+  const kiosk = readFileSync(join(projectRoot, "app/(app)/app/orbit-2026/host/HostKiosk.tsx"), "utf8");
+  assert.match(page, /await Promise\.all\(\[params, auth\(\), getOrbitServerLanguage\(\)\]\)/u);
+  assert.match(page, /redirect\(`\/app\/account\/login\?next=\$\{encodeURIComponent\(`\/app\/events\/\$\{encodeURIComponent\(eventId\)\}\/operations\/check-in`\)\}`\)/u);
+  assert.match(page, /return <HostKiosk eventId=\{eventId\} language=\{language\} \/>;/u);
+  // 页面本身不读活动（未公开活动的标题不给任意登录用户）、不挂旧 ops-0918 壳。
+  assert.doesNotMatch(page, /loadEventOperationsPageEvent|getEvent\(|OpsConsoleShell|ops-0918/u);
+  // kiosk 的读写都走主催接口（权限在接口里判），受付动作走 operations admin check-ins。
+  assert.match(kiosk, /hostApi\.kiosk\(/u);
+  assert.match(kiosk, /hostApi\.checkIn\(/u);
+  // QR：原生优先，zxing 只在这里按需 import（不进别的页面的包）。
+  assert.match(kiosk, /BarcodeDetector/u);
+  assert.match(kiosk, /await import\("@zxing\/browser"\)/u);
+  assert.doesNotMatch(kiosk, /^import .*@zxing/mu);
 });

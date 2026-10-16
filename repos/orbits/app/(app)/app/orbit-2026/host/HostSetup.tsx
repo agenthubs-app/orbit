@@ -340,9 +340,10 @@ export function HostSetupView(props: HostSetupViewProps) {
                   onEdit={() => props.onEdit?.(index)} onChange={(next) => setQuestion(index, next)} onDelete={() => removeQuestion(index)}
                   onMove={(to) => moveQuestion(index, to)} onDropFrom={(from) => moveQuestion(from, index)} />
               ))}
-              <div className={u.addRow}>
+              <div className={u.addRow} data-host-qadd={draft.questions.length >= QUESTION_MAX ? "full" : ""}>
                 <span className={s.lbl}>{t("suAddQ")}</span>
-                {KINDS.map((kind) => <button key={kind} type="button" className={`btn ${s.btn} ${s.sm}`} aria-disabled={draft.questions.length >= QUESTION_MAX || undefined} onClick={() => addQuestion(kind)}><Icon name="plus" size={16} />{t(KIND_LABEL[kind])}</button>)}
+                {KINDS.map((kind) => <button key={kind} type="button" className={`btn ${s.btn} ${s.sm} ${draft.questions.length >= QUESTION_MAX ? u.addFull : ""}`} disabled={draft.questions.length >= QUESTION_MAX} onClick={() => addQuestion(kind)}><Icon name="plus" size={16} />{t(KIND_LABEL[kind])}</button>)}
+                {draft.questions.length >= QUESTION_MAX ? <span className={`${s.lbl} ${u.addMax}`}>{t("suAddMax")}</span> : null}
               </div>
             </div>
             <div className={`${s.card} ${u.saveBar}`} data-host-setup-save={saveState}>
@@ -362,7 +363,7 @@ export function HostSetupView(props: HostSetupViewProps) {
       </div>
       <div className={`${u.col} ${u.span5}`}>
         <Preview data={data} draft={draft} t={t} language={language} mode={preview} onMode={props.onPreview} />
-        {!empty && data.formPublished ? null : <Settings data={data} draft={draft} t={t} language={language} host={host} onChange={change} />}
+        <Settings data={data} draft={draft} t={t} language={language} host={host} onChange={change} />
       </div>
       <NoticesSection data={data} t={t} open={notesOpen} kind={props.noticeKind ?? "admission_approved"} note={noteDraft} busy={busy}
         onOpen={props.onNotesOpen} onKind={props.onNoticeKind} onNote={props.onNoteDraft} onSave={props.onNoteSave} />

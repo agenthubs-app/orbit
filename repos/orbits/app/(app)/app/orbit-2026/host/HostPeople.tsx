@@ -315,7 +315,7 @@ export function HostPeopleTab({ eventId, language, initialIncomplete = false, on
         onMore={() => void more()}
         onCopyLink={() => void copyLink()}
         onQr={() => setDialog("qr")}
-        onImport={() => setDialog("import")} />
+        onImport={() => { window.location.href = `${consoleHref(eventId, "people")}&import=1`; }} />
       {dialog === "qr" && data.applyPath ? (
         <Modal open onClose={() => setDialog(null)} title={t("pQrTitle")} size={420} actions={<button type="button" className={`btn ${s.btn}`} onClick={() => setDialog(null)}>{t("close")}</button>}>
           <div className={s.sub}>{`${origin}${data.applyPath}`}</div>

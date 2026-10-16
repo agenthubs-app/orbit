@@ -1,0 +1,24 @@
+/* R17 共同運営に参加（b12 #414 .k-join）：公开顶栏 84 高 + 520 宽邀请卡（lav→surface 渐层）。 */
+.bare { min-height: 100vh; background: radial-gradient(900px 500px at 10% -10%, var(--fog-a), transparent 70%), radial-gradient(700px 500px at 95% 0%, var(--fog-b), transparent 70%), var(--bg); color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); }
+.top { height: 84px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }
+.top a { text-decoration: none; }
+.brand { display: flex; align-items: center; gap: 10px; color: inherit; }
+.brand b { font-size: var(--fs-title-xs); }
+.logo.logo { background: var(--ink); color: var(--bg); font-weight: var(--fw-black); font-size: var(--fs-body); }
+.wrap { max-width: 520px; margin: 40px auto 0; padding: 0 18px 60px; }
+.card.card { display: block; }
+.invite.invite { background: linear-gradient(160deg, var(--mac-lav), var(--surface) 65%); }
+.loading { min-height: 220px; }
+.title { display: block; font-size: var(--fs-title-xs); margin-top: 6px; }
+.body { margin-top: 8px; line-height: var(--lh-prose-lg); }
+.role { gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.acts { display: grid; gap: 8px; margin-top: 16px; }
+.acts a { text-decoration: none; }
+.valid { margin-top: 8px; }
+.input { display: flex; align-items: center; height: 46px; margin-top: 14px; border-radius: var(--r-md); background: var(--surface-2); padding: 0 14px; }
+.input:focus-within { box-shadow: 0 0 0 2px var(--plum-300); }
+.input input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; padding: 0; background: transparent; font: inherit; font-family: var(--font-num); font-size: var(--fs-emph); letter-spacing: 0.06em; color: var(--ink); }
+@media (max-width: 767px) {
+  .top { height: 64px; padding: 0 18px; }
+  .wrap { margin-top: 12px; }
+}

@@ -48,14 +48,17 @@ test("申込設定 · 少（b6 #14）：下書き 2問、Q1 编辑中（4 选项
   assert.match(html, /data-host-setup-settings/);
 });
 
-test("申込設定 · 大（b6 #15）：公開中 5問、未公開の変更 2件、変更を公開；预览只出前 3 问；公开中不出受付の設定", () => {
+test("申込設定 · 大（b6 #15，§43）：公開中 5問、未公開の変更 2件、変更を公開；公开中也出受付の設定；5 問で「質問を追加」禁用 + 5問まで", () => {
   const data = hostSetup(HOST_EVENT_IDS.cfo18)!;
   const html = renderToStaticMarkup(<HostSetupView data={data} draft={draftOf(data)} t={t} language="ja" editing={1} now={new Date("2026-10-07T03:00:00.000Z")} />);
   assert.match(html, /data-host-setup="published"/);
   assert.match(html, /5問 · ドラッグで並べ替え/);
   assert.match(html, /未公開の変更 2件 · 2分前に自動保存/);
   assert.match(html, />変更を公開</);
-  assert.doesNotMatch(html, /data-host-setup-settings/);
+  assert.match(html, /data-host-setup-settings/);
+  assert.match(html, /data-host-qadd="full"/);
+  assert.equal(count(html, "disabled=\"\"><svg"), 3);
+  assert.match(html, />5問まで</);
   assert.equal(consoleSubtitle(data.event, "ja", t, NOW, "setup", true), "主催 · 申込フォーム公開中");
 });
 

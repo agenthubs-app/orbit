@@ -56,6 +56,9 @@
 .keptNote { margin-top: 8px; }
 .addRow { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .addRow .btn { gap: 6px; }
+/* §43-2 質問 5 問で「質問を追加」を無効化（.k-qadd：不透明度 .4 + 「5問まで」） */
+.addRow .addFull, .addRow .addFull:disabled { opacity: 0.4; pointer-events: none; }
+.addMax { margin-left: 4px; }
 
 /* ラジオ（kit .rad） */
 .rad { width: 18px; height: 18px; border-radius: var(--r-pill); border: 1.8px solid var(--ink-4); flex: 0 0 auto; position: relative; display: inline-block; }

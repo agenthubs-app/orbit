@@ -1,0 +1,109 @@
+/* R17 建活动 / 基本情報を編集（b12 #396 / #398）+ 公開・中止の確認（b12 #400 / #402 / #404）+ 公開と中止カード。
+   画板 kit：.k-evform（.setrow 132 宽标签 + .input 40 高）/ .ta + .counter / .k-evprev 预览 / .wmodal .dic；色・角丸・文字は token。 */
+.col { display: grid; gap: 18px; align-content: start; min-width: 0; }
+.span7 { grid-column: span 7; }
+.span5 { grid-column: span 5; }
+.blk.blk { display: block; }
+
+.fs { border: 0; margin: 0; padding: 0; min-width: 0; }
+.fl { width: 132px; flex: 0 0 auto; }
+.input { flex: 1 1 0%; min-width: 0; height: 40px; border-radius: var(--r-md); background: var(--surface-2); display: flex; align-items: center; padding: 0 14px; gap: 8px; color: var(--ink); font-size: var(--fs-body-sm); }
+.input:focus-within { box-shadow: 0 0 0 2px var(--plum-300); }
+.input input, .input select { flex: 1 1 0%; min-width: 0; height: 100%; border: 0; outline: 0; padding: 0; background: transparent; font: inherit; color: var(--ink); appearance: none; }
+.input input::placeholder { color: var(--ink-3); }
+.input input[type="checkbox"] { flex: 0 0 auto; width: 16px; height: 16px; appearance: auto; }
+.narrow { max-width: 160px; }
+.feeKind { max-width: 180px; }
+.org { justify-content: space-between; }
+.org select { cursor: pointer; }
+.date { max-width: 150px; }
+.time { max-width: 90px; }
+.inline { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: var(--fs-meta); white-space: nowrap; cursor: pointer; }
+.hint { margin: 6px 0 0 132px; }
+.link { color: var(--accent); font-weight: var(--fw-bold); text-decoration: none; margin-left: 4px; }
+
+.ta { display: block; position: relative; border-radius: var(--r-tile); background: var(--surface-2); padding: 14px 16px 30px; font-size: var(--fs-body-sm); line-height: var(--lh-quote); color: var(--ink); }
+.ta:focus-within { box-shadow: 0 0 0 2px var(--plum-300); }
+.ta textarea { display: block; width: 100%; min-height: 82px; margin: 0; padding: 0; border: 0; outline: 0; resize: none; background: transparent; font: inherit; color: inherit; }
+.ta textarea::placeholder { color: var(--ink-4); }
+.taBad { box-shadow: 0 0 0 1.5px var(--coral); }
+.counter { position: absolute; right: 14px; bottom: 10px; font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--ink-3); font-family: var(--font-num); pointer-events: none; }
+.counterBad { color: var(--coral); }
+.bad { color: var(--coral-text); display: block; margin-top: 6px; }
+
+.tpls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tpl.tpl { display: flex; align-items: center; justify-content: flex-start; gap: 10px; height: auto; min-height: 0; padding: 12px; border: 0; border-radius: var(--r-tile); font: inherit; color: inherit; cursor: pointer; }
+.tpl b { font-size: var(--fs-body-sm); }
+.tplEmoji { font-size: var(--fs-number); }
+.tplOn { box-shadow: 0 0 0 2px var(--plum-500); }
+.m_lav { background: var(--mac-lav); }
+.m_blue { background: var(--mac-blue); }
+.m_pink { background: var(--mac-pink); }
+
+/* プレビュー（.k-evprev） */
+.pv { border-radius: var(--r-lg); overflow: hidden; background: var(--surface-2); }
+.pvCover { height: 96px; background: linear-gradient(135deg, var(--mac-lav), var(--mac-pink)); }
+.pvBody { padding: 16px; }
+.pvTitle { display: block; font-size: var(--fs-emoji-sm); margin-top: 4px; }
+.pvMeta { margin-top: 6px; }
+.pvDesc { margin-top: 10px; line-height: var(--lh-prose-lg); white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.pvBtn.pvBtn { width: 100%; margin-top: 14px; pointer-events: none; }
+
+.conflict { flex-direction: row; align-items: center; gap: 12px; padding: 14px 20px; margin-bottom: 18px; }
+
+/* 公開と中止カード */
+.mg.mg { display: block; }
+.mgWrap { grid-column: span 6; min-width: 0; }
+@media (max-width: 1023px) { .mgWrap { grid-column: span 12; } }
+.mgRow { display: flex; align-items: center; gap: 10px; padding: 10px 0; min-width: 0; }
+.mgRow + .mgRow { border-top: 1px solid var(--line); }
+.mgRow a { text-decoration: none; }
+.mgLbl { width: 72px; flex: 0 0 auto; }
+.code { font-family: var(--font-num); font-size: var(--fs-emph); letter-spacing: 0.06em; }
+.danger.danger { background: var(--coral-text); color: var(--on-accent); }
+.dangerSoft.dangerSoft { background: var(--coral-soft); color: var(--coral-text); }
+
+/* 中止確認（.wmodal .dic） */
+.dlgHead { display: flex; gap: 14px; align-items: flex-start; }
+.dic { width: 48px; height: 48px; border-radius: var(--r-tile); background: var(--coral-soft); color: var(--coral-text); display: grid; place-items: center; flex: 0 0 auto; }
+.dlgTitle { font-size: var(--fs-title-xs); font-weight: var(--fw-heavy); }
+.dlgSub { margin-top: 6px; line-height: var(--lh-prose-lg); }
+.conseq { margin-top: 14px; display: grid; gap: 8px; font-size: var(--fs-control); }
+.conseq > div { gap: 8px; }
+.noteBlock { display: block; margin-top: 12px; }
+.noteLbl { font-weight: var(--fw-bold); color: var(--ink-2); display: block; margin-bottom: 6px; }
+.noteBlock .ta textarea { min-height: 40px; }
+.chgLbl { width: 44px; flex: 0 0 auto; }
+.strike { text-decoration: line-through; }
+
+@media (max-width: 1023px) {
+  .span7, .span5 { grid-column: span 12; }
+}
+@media (max-width: 767px) {
+  .fl { width: 96px; }
+  .hint { margin-left: 0; }
+  .tpls { grid-template-columns: 1fr; }
+}
+
+/* 主催者ページ（b12 #412 .k-orglist / .k-orgform / .k-orgprev） */
+.pfList.pfList { padding: 10px; display: block; }
+.pfListLbl { padding: 6px 8px; }
+.pfItem.pfItem { display: flex; align-items: center; gap: 10px; width: 100%; height: auto; min-height: 0; padding: 10px; border: 0; border-radius: var(--r-md); background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.pfItemOn.pfItemOn { background: var(--surface-2); }
+.pfName { display: block; font-size: var(--fs-body-sm); }
+.pfMeta { display: block; }
+.pfAdd.pfAdd { width: 100%; margin-top: 8px; }
+.readonly { color: var(--ink-2); }
+.mt10 { margin-top: 10px; }
+.emojiPick { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px 132px; }
+.emojiOpt.emojiOpt { width: 36px; height: 36px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-emoji-sm); cursor: pointer; }
+.emojiOn.emojiOn { box-shadow: 0 0 0 2px var(--plum-500); }
+.pfPrev { text-align: center; padding: 12px; }
+.pfPrevAv.pfPrevAv { width: 64px; height: 64px; font-size: var(--fs-emoji-hero); border-radius: var(--r-card-web); margin: 0 auto; }
+.pfPrevName { font-size: var(--fs-title-xs); display: block; }
+.pfPrevBio { margin-top: 6px; line-height: var(--lh-prose-lg); }
+.pfStats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.pfStats > div { background: var(--surface-2); border-radius: var(--r-md); padding: 8px; }
+.pfStats b { font-size: var(--fs-body); }
+.taSm { min-height: 90px; padding-bottom: 14px; }
+.taSm textarea { min-height: 40px; }

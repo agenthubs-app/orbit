@@ -595,7 +595,8 @@ export function hostReport(eventId: string, view: "all" | "mine", state: HostMoc
     { label: "事業会社", percent: 17 },
     { label: "士業・支援機関", percent: 9 },
   ];
-  const labels = ["8月20日", "8月27日", "9月3日", "9月9日"];
+  // §43-4：横轴截到开催日（21 本 = 開催日 -20…当日；ラベルは -20 / -13 / -6 / 当日，東京日付）。
+  const labels = trendAxisLabels(event.startsAt, 21);
   // 画板 b6 #17 / #18 的日别申込（告知メール = 第 4 天、登壇者発表 = 第 14 天）；#16 开催前 9 天。
   const trend = [3, 5, 4, 11, 7, 6, 5, 4, 6, 9, 5, 4, 7, 12, 8, 6, 5, 7, 10, 4, 2];
   const trendFew = [1, 2, 1, 3, 0, 1, 2, 1, 0, 2, 1, 1, 0, 1, 2, 1, 0, 1, 2, 1, 1];
@@ -694,4 +695,14 @@ export function organizerPublic(slug: string, state: HostMockState = DEFAULT_HOS
   if (state.organizer === "empty") return { following, organizerKey, past: [], pastTotal: 0, profile, sample: true, stats: { attendeesTotal: 0, eventsHeld: 0, followers: 12 }, upcoming: [] };
   if (state.organizer === "few") return { following, organizerKey, past: past(PAST_MANY.slice(0, 1)), pastTotal: 1, profile, sample: true, stats: { attendeesTotal: 128, eventsHeld: 1, followers: 140 }, upcoming: [vol19] };
   return { following, organizerKey, past: past(PAST_MANY), pastTotal: 18, profile, sample: true, stats: { attendeesTotal: 2140, eventsHeld: 18, followers: 860 }, upcoming: [vol19, special] };
+}
+
+/** 申込推移の横軸ラベル（開催日で終わる days 日分：先頭・+7・+14・開催日）。 */
+export function trendAxisLabels(startsAt: string | null | undefined, days: number): string[] {
+  const start = startsAt ? Date.parse(startsAt) : Number.NaN;
+  if (!Number.isFinite(start)) return [];
+  const DAY = 86_400_000;
+  const tokyo = (ms: number) => { const d = new Date(ms + 9 * 3_600_000); return `${d.getUTCMonth() + 1}月${d.getUTCDate()}日`; };
+  const first = start - (days - 1) * DAY;
+  return [first, first + 7 * DAY, first + 14 * DAY, start].map(tokyo);
 }

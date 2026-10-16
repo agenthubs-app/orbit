@@ -14,6 +14,7 @@ import type { HostNoticePreview } from "../../../../../shared/contract/host-noti
 import { ShellPage } from "../shell/slots";
 import { Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { failureOf, hostApi, type HostApiFailure } from "./host-api";
+import { PublishEventConfirm } from "./HostEventForm";
 import { HOST_CONSOLE_TABS, HostTabContent, HostTabPlaceholder, parseConsoleTab, type HostConsoleTab } from "./HostConsoleTabs";
 import { HostCohostsDrawer } from "./HostCohosts";
 import { checkInHref, consoleHref, hostDateLong, hostDateShort, hostTime, hostTranslator, sameTokyoDay, type HostT } from "./host-model";
@@ -252,6 +253,8 @@ function ConsoleInner({ eventId, language }: { eventId: string; language: OrbitL
   const [failure, setFailure] = useState<HostApiFailure | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<HostNoticePreview | null>(null);
+  // 下書きバナー「公開する」→ 公開確認（b12 #400）。
+  const [publishConfirm, setPublishConfirm] = useState(false);
   const [formPublished, setFormPublished] = useState<boolean | null>(null);
   const reportView = params.get("view") === "mine" ? "mine" : "all";
   const setReportView = (view: "all" | "mine") => {
@@ -313,12 +316,13 @@ function ConsoleInner({ eventId, language }: { eventId: string; language: OrbitL
   return (
     <>
       <HostConsoleView data={data} tab={tab} language={language} busy={busy}
-        onPublish={() => void write(() => hostApi.publish(eventId, data.event.version), t("publishedToast"))}
+        onPublish={() => setPublishConfirm(true)}
         onArchive={(archived) => void write(() => hostApi.archive(eventId, data.event.version, archived), archived ? t("archivedToast") : t("unarchivedToast"))}
         formPublished={formPublished} reportView={reportView} onReportView={setReportView}
-        content={tab === "overview" ? undefined : <HostTabContent tab={tab} eventId={eventId} language={language} incomplete={params.get("incomplete") === "1"} reportView={reportView} onChanged={() => void load()} onSetupHeader={setFormPublished} />}
+        content={tab === "overview" ? undefined : <HostTabContent tab={tab} eventId={eventId} language={language} incomplete={params.get("incomplete") === "1"} importing={params.get("import") === "1"} reportView={reportView} onChanged={() => void load()} onSetupHeader={setFormPublished} />}
         onOpenCohosts={(event) => { event.preventDefault(); setDrawer(true); }} />
       {drawer ? <HostCohostsDrawer eventId={eventId} language={language} onClose={() => setDrawer(false)} onChanged={() => void load()} /> : null}
+      {publishConfirm ? <PublishEventConfirm event={data.event} t={t} language={language} busy={busy} onCancel={() => setPublishConfirm(false)} onPublish={() => { setPublishConfirm(false); void write(() => hostApi.publish(eventId, data.event.version), t("publishedToast")); }} /> : null}
       {notice ? <NoticeConfirm preview={notice} t={t} busy={busy} onCancel={closeNotice} onSend={() => void sendNotice()} /> : null}
     </>
   );

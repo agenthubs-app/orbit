@@ -6,7 +6,12 @@ import type { ZodType } from "zod";
 
 import { hostCheckInResultSchema, hostKioskHeartbeatResultSchema, hostKioskResponseSchema, hostKioskRosterResponseSchema, hostMatchingResponseSchema, hostOverviewResponseSchema, hostPeopleDecisionResultSchema, hostPeopleResponseSchema, hostReportResponseSchema, hostSetupResponseSchema } from "../../../../../shared/api-schema/host-console";
 import { hostCohostInviteResultSchema, hostCohostsResponseSchema } from "../../../../../shared/api-schema/host-cohosts";
-import { hostCenterResponseSchema, hostEventWriteResultSchema } from "../../../../../shared/api-schema/host-events";
+import { hostCenterResponseSchema, hostEventViewSchema, hostEventWriteResultSchema } from "../../../../../shared/api-schema/host-events";
+import { hostCohostAcceptResultSchema, hostCohostInvitePreviewSchema } from "../../../../../shared/api-schema/host-cohosts";
+import { organizerProfileListResponseSchema, organizerProfileSchema, organizerPublicResponseSchema } from "../../../../../shared/api-schema/organizer-profile";
+import type { HostCohostAcceptResult, HostCohostInvitePreview } from "../../../../../shared/contract/host-cohosts";
+import type { HostEventInput, HostEventUpdateInput, HostEventView } from "../../../../../shared/contract/host-events";
+import type { OrganizerProfile, OrganizerProfileInput, OrganizerProfileListResponse, OrganizerPublicResponse } from "../../../../../shared/contract/organizer-profile";
 import { hostNoticePreviewSchema, hostNoticeSendResultSchema } from "../../../../../shared/api-schema/host-notices";
 import type { HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostReportResponse, HostSetupDraftInput, HostSetupResponse } from "../../../../../shared/contract/host-console";
 import type { HostAdmissionDecision, HostMatchingConditions, HostMatchingMove, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse } from "../../../../../shared/contract/host-console";
@@ -14,6 +19,8 @@ import type { HostCohostInviteResult, HostCohostRole, HostCohostsResponse } from
 import type { HostCenterFilter, HostCenterResponse, HostEventWriteResult } from "../../../../../shared/contract/host-events";
 import type { HostNoticePreview, HostNoticeSendResult, HostSendableNoticeKind } from "../../../../../shared/contract/host-notices";
 import { newIdempotencyKey } from "../events/events-api";
+import { organizerFollowResultSchema } from "../../../../../shared/api-schema/organizer-follow";
+import type { OrganizerFollowResult } from "../../../../../shared/contract/organizer-follow";
 
 export type HostApiFailure = "forbidden" | "not_found" | "conflict" | "rate_limited" | "sample" | "invalid" | "unavailable" | "network";
 export type HostApiResult<T> = { ok: true; data: T } | { ok: false; reason: HostApiFailure; code?: string };
@@ -95,4 +102,24 @@ export const hostApi = {
   admitOnSite: (eventId: string, participantId: string, idempotencyKey: string, confirmOverCapacity: boolean) => call(`/api/events/${id(eventId)}/operations/admin/check-ins/${id(participantId)}/admit-on-site`, post({ confirmOverCapacity, idempotencyKey }), hostCheckInResultSchema as ZodType<HostCheckInResult>),
   heartbeat: (eventId: string, deviceId: string) => call(`/api/events/${id(eventId)}/operations/kiosk-heartbeat`, post({ deviceId }), hostKioskHeartbeatResultSchema as ZodType<HostKioskHeartbeatResult>),
   noticeSend: (eventId: string, kind: HostSendableNoticeKind) => call(`/api/host/events/${id(eventId)}/notices/send`, post({ idempotencyKey: newIdempotencyKey(), kind }), hostNoticeSendResultSchema as ZodType<HostNoticeSendResult>),
+};
+
+/** R27 actor 级关注（公開主催者ページ「フォローする」）：POST = 关注、DELETE = 解除，幂等。 */
+export const followOrganizer = (organizerKey: string, following: boolean) => call(`/api/organizers/${id(organizerKey)}/follow`, { method: following ? "POST" : "DELETE" }, organizerFollowResultSchema as ZodType<OrganizerFollowResult>);
+
+/** 第 4 段：建活动 / 编辑 / 中止 / 参加コード再発行、主催者ページ、共同運営に参加。 */
+export const hostEventApi = {
+  event: (eventId: string) => call(`/api/host/events/${id(eventId)}`, undefined, hostEventViewSchema as ZodType<HostEventView>),
+  create: (input: HostEventInput) => call("/api/host/events", post(input), hostEventWriteResultSchema as ZodType<HostEventWriteResult>),
+  update: (eventId: string, input: HostEventUpdateInput) => call(`/api/host/events/${id(eventId)}`, send("PATCH", input), hostEventWriteResultSchema as ZodType<HostEventWriteResult>),
+  publish: (eventId: string, expectedVersion: number) => call(`/api/host/events/${id(eventId)}/publish`, post({ expectedVersion }), hostEventWriteResultSchema as ZodType<HostEventWriteResult>),
+  cancel: (eventId: string, expectedVersion: number, hostNote: string | null) => call(`/api/host/events/${id(eventId)}/cancel`, post(hostNote ? { expectedVersion, hostNote } : { expectedVersion }), hostEventWriteResultSchema as ZodType<HostEventWriteResult>),
+  archive: (eventId: string, expectedVersion: number, archived: boolean) => call(`/api/host/events/${id(eventId)}/archive`, post({ archived, expectedVersion }), hostEventWriteResultSchema as ZodType<HostEventWriteResult>),
+  reissueCode: (eventId: string, expectedVersion: number) => call(`/api/host/events/${id(eventId)}/code/reissue`, post({ expectedVersion }), hostEventWriteResultSchema as ZodType<HostEventWriteResult>),
+  profiles: () => call("/api/host/organizer-profiles", undefined, organizerProfileListResponseSchema as ZodType<OrganizerProfileListResponse>),
+  createProfile: (input: OrganizerProfileInput) => call("/api/host/organizer-profiles", post(input), organizerProfileSchema as ZodType<OrganizerProfile>),
+  updateProfile: (profileId: string, input: OrganizerProfileInput) => call(`/api/host/organizer-profiles/${id(profileId)}`, send("PUT", input), organizerProfileSchema as ZodType<OrganizerProfile>),
+  organizerPublic: (slug: string) => call(`/api/organizers/by-slug/${id(slug)}`, undefined, organizerPublicResponseSchema as ZodType<OrganizerPublicResponse>),
+  invitePreview: (code: string) => call(`/api/host/cohost-invites/${id(code)}`, undefined, hostCohostInvitePreviewSchema as ZodType<HostCohostInvitePreview>),
+  acceptInvite: (code: string) => call(`/api/host/cohost-invites/${id(code)}/accept`, post({}), hostCohostAcceptResultSchema as ZodType<HostCohostAcceptResult>),
 };
