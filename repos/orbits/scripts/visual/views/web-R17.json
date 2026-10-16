@@ -19,7 +19,9 @@
    "board-index": 0,
    "width": 1440,
    "wait-for": "[data-host-center=empty]",
-   "host": { "center": "empty" },
+   "host": {
+    "center": "empty"
+   },
    "note": "P01 運営センター · 空（b6 #0；§39 A2 入口副标题「CSV から招待リンクと照合表を作る」）"
   },
   {
@@ -29,7 +31,9 @@
    "board-index": 1,
    "width": 1440,
    "wait-for": "[data-host-row]",
-   "host": { "center": "few" },
+   "host": {
+    "center": "few"
+   },
    "note": "P02 運営センター · 少（b6 #1，ラウンドテーブル一场）"
   },
   {
@@ -38,9 +42,13 @@
    "design": "b6-host-polish.html",
    "board-index": 2,
    "width": 1440,
-   "themes": ["light"],
+   "themes": [
+    "light"
+   ],
    "wait-for": "[data-host-row]",
-   "host": { "center": "many" },
+   "host": {
+    "center": "many"
+   },
    "note": "P03 運営センター · 大 浅色（b6 #2，六场）"
   },
   {
@@ -49,9 +57,13 @@
    "design": "b6-host-polish.html",
    "board-index": 44,
    "width": 1440,
-   "themes": ["dark"],
+   "themes": [
+    "dark"
+   ],
    "wait-for": "[data-host-row]",
-   "host": { "center": "many" },
+   "host": {
+    "center": "many"
+   },
    "note": "P03 運営センター · 大 深色（b6 #44 深色画板）"
   },
   {
@@ -61,8 +73,110 @@
    "board-index": 20,
    "width": 1440,
    "wait-for": "[data-host-trend]",
-   "host": { "overview": "pre_open" },
+   "host": {
+    "overview": "pre_open"
+   },
    "note": "P06 イベント運営 · 概要 開場前（web.html #20）"
+  },
+  {
+   "id": "W-R17-P08",
+   "app": "/app/events/demo-host-mfg-asakai-3/operations?tab=matching",
+   "design": "b6-host-polish.html",
+   "board-index": 3,
+   "width": 1440,
+   "wait-for": "[data-host-matching=none]",
+   "note": "P08 マッチング · 空（b6 #3，朝会 #3：申込 42 / プロフィール完了 30，投資家条件 off）"
+  },
+  {
+   "id": "W-R17-P09",
+   "app": "/app/events/demo-host-funding-roundtable/operations?tab=matching",
+   "design": "b6-host-polish.html",
+   "board-index": 4,
+   "width": 1440,
+   "wait-for": "[data-host-matching=draft]",
+   "click": [
+    "[data-host-table=\"B\"] button[aria-expanded]"
+   ],
+   "note": "P09 マッチング · 少（b6 #4，ラウンドテーブル 4 卓；画板 B 卓理由展开 → 点 B 的 ?）"
+  },
+  {
+   "id": "W-R17-P10",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=matching",
+   "design": "b6-host-polish.html",
+   "board-index": 5,
+   "width": 1440,
+   "wait-for": "[data-host-matching=draft]",
+   "click": [
+    "[data-host-table=\"A\"] button[aria-expanded]",
+    "[data-host-table=\"B\"] [data-member=\"participant:hp-fujii\"] button"
+   ],
+   "note": "P10 マッチング · 大（b6 #5，CFO18 前 6 卓 + 未配置 3名；画板 A 卓理由展开、B 卓藤井拖起 → 点 A 的 ?、点藤井 ⋮⋮ 拿起）；未过：画板「未配置の 3名」卡 .card.flat.row 被 kit .wgrid>.card 压成竖排（同 §41-2），实现横排，待画板修正"
+  },
+  {
+   "id": "W-R17-P11",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=matching",
+   "design": "b6-host-polish.html",
+   "board-index": 6,
+   "width": 1440,
+   "wait-for": "[data-host-matching=draft]",
+   "click": [
+    "[data-host-table=\"A\"] button[aria-expanded]",
+    "[data-host-table=\"B\"] [data-member=\"participant:hp-fujii\"] button",
+    "[data-host-publish]"
+   ],
+   "note": "P11 マッチング · 公開確認（b6 #6；底图同 P10：A 卓理由展开、藤井拿起，再点「公開する」）；未过：底图同 P10 未配置卡竖排问题"
+  },
+  {
+   "id": "W-R17-P12",
+   "app": "/app/events/demo-host-mfg-asakai-3/operations?tab=people",
+   "design": "b6-host-polish.html",
+   "board-index": 7,
+   "width": 1440,
+   "wait-for": "[data-host-people=empty]",
+   "note": "P12 参加者 · 空（b6 #7，朝会 #3 无申込；A2「招待者リストを取り込む」入口只放说明）"
+  },
+  {
+   "id": "W-R17-P13",
+   "app": "/app/events/demo-host-funding-roundtable/operations?tab=people",
+   "design": "b6-host-polish.html",
+   "board-index": 8,
+   "width": 1440,
+   "wait-for": "[data-host-people=pending]",
+   "note": "P13 参加者 · 少（b6 #8，ラウンドテーブル 審査待ち 3）；未过：画板 .card.span9 而 kit 没有 .span9（表格卡只占 1 列被挤），在补了 .span9 的临时副本上 PASS（浅 0.0017 / 深 0.0013），待画板 / kit 补 .span9"
+  },
+  {
+   "id": "W-R17-P14",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "design": "b6-host-polish.html",
+   "board-index": 9,
+   "width": 1440,
+   "wait-for": "[data-host-people=pending]",
+   "click": [
+    "[data-host-row=\"actor:hp-morita\"] [role=checkbox]",
+    "[data-host-row=\"actor:hp-aoki\"] [role=checkbox]"
+   ],
+   "note": "P14 参加者 · 大（b6 #9，CFO18，勾森田 / 青木 → 批量条「2名を選択中 · 2名を承認」）；未过：同 P13 缺 .span9；补 .span9 副本上 PASS（浅 0.0026 / 深 0.0018）",
+   "steps": [
+    {
+     "hover": "[data-host-capacity]"
+    }
+   ]
+  },
+  {
+   "id": "W-R17-P26",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=overview&drawer=cohosts",
+   "design": "b6-host-polish.html",
+   "board-index": 20,
+   "width": 1440,
+   "wait-for": "[data-host-cohosts]",
+   "host": {
+    "overview": "live"
+   },
+   "click": [
+    "[data-cohost=\"demo-actor-kobayashi\"] [aria-haspopup=menu]",
+    "[role=menu] [role=menuitem]"
+   ],
+   "note": "P26 共同運営者抽屉（b6 #20，背景 = 概要 進行中；画板小林 受付→管理者 编辑中 → 点小林 ⋮ →「管理者にする」）；未过（待组件库）：画板抽屉 540 宽、内边距 22，组件库 Drawer 只有 380 / 520 / 600、bare 内边距 20（G23）"
   }
  ]
 }
