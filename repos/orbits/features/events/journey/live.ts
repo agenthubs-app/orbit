@@ -5,6 +5,8 @@
  * - 可选读取（政策、人数、互动、计划、产物…）失败时记 `console.warn` JSON 并降级为空，从不静默吞掉。
  * - 只读别人的公开资料；关系只用我自己的联系人；主办方 actor id 只换成 `organizerKey`，从不外传。
  */
+import { issueCheckInToken } from "../host/checkin-token-server";
+import { assignReceptionNumber, receptionNumberOf } from "../host/storage/admission-hooks";
 import { AppError } from "../../../shared/errors/app-error";
 import { myAssessmentIdsByEvent } from "../assessment/ids-by-event";
 import { typeOfPerson } from "../../../shared/compute/event-attendee-typing";
@@ -289,6 +291,15 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
         ? await operations.getPublishedResultForAttendee(eventId).catch(warned("r27_journey_published_result_failed", null, { eventId }))
         : null;
       return venueWorkspaceFrom(workspace, published);
+    },
+
+    // R17（host/DESIGN.md §2.6）：受付 QR v2（签名令牌）+ 受付番号。admitted 事务里已分配的直接读；
+    // 先前的报名路径（没有经过 admission）在第一次读时补分配（计数器原子自增、同一人只一个号）。
+    async checkInPass(actorId, eventId, participantId, eventEndsAt) {
+      const executor = { query: (sql: string, values?: readonly unknown[]) => runtime.client.query(sql, values as unknown[]) } as unknown as Parameters<typeof assignReceptionNumber>[0];
+      const receptionNumber = await assignReceptionNumber(executor, { actorId, eventId, workspaceId })
+        .catch(async () => receptionNumberOf(executor, { actorId, eventId, workspaceId }).catch(() => null));
+      return { qrPayload: issueCheckInToken({ eventEndsAt, eventId, participantId }), receptionNumber };
     },
 
     async afterInputs(actorId, eventId) {

@@ -50,6 +50,8 @@ export interface VenueInput {
   wantedParticipantIds: ReadonlySet<string>;
   agenda: readonly { at: string; title: string; detail?: string | null }[];
   meetingSlots?: readonly string[];
+  /** R17（host/DESIGN.md §2.6）：受付 QR v2（服务端签名）与受付番号；没有就不显示（旧明文 QR 已停用）。 */
+  checkInPass?: { qrPayload: string | null; receptionNumber: string | null } | null;
 }
 
 const ROUND_MINUTES = 30;
@@ -78,7 +80,7 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
   const now = input.now.getTime();
   const ended = now >= Date.parse(ws.configuration.eventEndsAt || input.event.endsAt || input.event.startsAt);
   if (!ws.checkIn && !ended) {
-    return { ...base, ...empty, checkIn: { available: ws.checkInAvailable, displayName: ws.me.displayName, qrPayload: `orbit-checkin:${input.event.eventId}:${ws.me.participantId}`, receptionNumber: null }, state: "before_check_in" };
+    return { ...base, ...empty, checkIn: { available: ws.checkInAvailable, displayName: ws.me.displayName, qrPayload: input.checkInPass?.qrPayload ?? null, receptionNumber: input.checkInPass?.receptionNumber ?? null }, state: "before_check_in" };
   }
 
   const meId = ws.me.participantId;
@@ -148,7 +150,7 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
     agenda: input.agenda.map((item) => ({ ...item })),
     attendeeTotal: people.length,
     attendees,
-    checkIn: { available: false, displayName: ws.me.displayName, receptionNumber: null },
+    checkIn: { available: false, displayName: ws.me.displayName, receptionNumber: input.checkInPass?.receptionNumber ?? null },
     groups: currentTable ? { myTheme: currentTable.theme, others: otherTables(currentRound === 2 ? ws.rounds?.two : ws.rounds?.one, currentTable, others), round: Math.max(1, currentRound) } : null,
     meetingSlots: input.meetingSlots ? [...input.meetingSlots] : [],
     // 共通の知り合い：只能用「我的联系人里同时认识两人」的记录（§9 #17）；现有数据里没有这条关系 → 隐藏那一行（G18）。

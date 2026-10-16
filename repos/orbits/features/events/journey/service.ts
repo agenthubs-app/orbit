@@ -249,7 +249,8 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       const wanted = new Set(directory.filter((item) => types[item.participantId]).map((item) => item.participantId));
       const at = now();
       const slots = meetingSlotsAfter(event.startsAt);
-      return withVenueMemos(buildVenue({ agenda: event.agenda, event, meetingSlots: slots, myContacts: contacts, now: at, registered: true, wantedParticipantIds: wanted, workspace }), await records.memos.read(actorId, eventId));
+      const checkInPass = workspace && ports.checkInPass ? await ports.checkInPass(actorId, eventId, workspace.me.participantId, event.endsAt ?? workspace.configuration.eventEndsAt).catch(() => null) : null;
+      return withVenueMemos(buildVenue({ agenda: event.agenda, checkInPass, event, meetingSlots: slots, myContacts: contacts, now: at, registered: true, wantedParticipantIds: wanted, workspace }), await records.memos.read(actorId, eventId));
     },
 
     async saveVenueMemo(actorId, eventId, attendeeId, text) {

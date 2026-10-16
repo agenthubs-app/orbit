@@ -209,3 +209,19 @@ test("review M3: the award key is deterministic, so two writers that skip the se
   await service.undo({ idempotencyKey: "u", logId: first.awardLogId!, planId: plan.planId });
   assert.equal(awardKey(repository.dump(SCOPE).log, base), `${base}:2`);
 });
+
+test("R17: undoing a check-in reverses that event's イベント枠 score (score_reversed, kept in the log) and re-attending scores again", async () => {
+  const repository = createMemoryPlanV2Repository();
+  const service = serviceFor(repository);
+  const { plan } = await service.createPlanFromDraft(draftInput());
+  await service.recordEventAttendanceForPlans({ eventId: "event:1" });
+  await service.recordEventAttendanceForPlans({ eventId: "event:2" });
+  const reverted = await service.revertEventAttendanceForPlans({ eventId: "event:1" });
+  assert.deepEqual(reverted.map((item) => item.planId), [plan.planId]);
+  const log = repository.dump(SCOPE).log;
+  assert.equal(log.filter((entry) => entry.event === "score_reversed").length, 1, "only event:1 is reversed");
+  assert.ok(log.filter((entry) => entry.event === "score_awarded").length >= 2, "nothing is deleted");
+  assert.deepEqual(await service.revertEventAttendanceForPlans({ eventId: "event:1" }), [], "reverting twice is a no-op");
+  const again = await service.recordEventAttendanceForPlans({ eventId: "event:1" });
+  assert.equal(again.length, 1, "checking in again scores again");
+});

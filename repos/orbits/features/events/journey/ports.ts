@@ -80,6 +80,8 @@ export interface JourneyLivePorts {
   registered(actorId: string, eventId: string): Promise<boolean>;
   /** Attendee-side operations projection (published results only). */
   venueWorkspace(actorId: string, eventId: string): Promise<VenueWorkspace | null>;
+  /** R17：受付 QR v2 与受付番号（可选；没有的端口不显示 QR / 番号）。 */
+  checkInPass?(actorId: string, eventId: string, participantId: string, eventEndsAt: string): Promise<{ qrPayload: string | null; receptionNumber: string | null }>;
 
   /** 会後 inputs. */
   afterInputs(actorId: string, eventId: string): Promise<{ met: AfterMetPerson[]; wantedTotal: number; meetings: number; ai: AfterAiDraft | null; legacy: { summary: string | null; messageDraft: string | null } | null; plan: AfterPlan | null; confirmedAt: string | null }>;

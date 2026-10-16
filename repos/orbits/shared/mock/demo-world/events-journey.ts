@@ -6,6 +6,7 @@
  * 本模块只是数据，不读时钟、不写库；变体（空 / 少 / 多）由 `EventJourneyVariant` 选。
  * 本人：佐藤 健一（ミナトリンク CEO），计划「シリーズA 資金調達」。
  */
+import { encodeCheckInToken } from "../../compute/checkin-token";
 import type { EventAfterResponse } from "../../contract/event-after";
 import type { EventDiscoverResponse, EventDiscoverRow } from "../../contract/event-discover";
 import type { EventOverviewAttendee, EventOverviewResponse } from "../../contract/event-overview";
@@ -279,7 +280,7 @@ export function journeyVenue(state: EventVenueResponse["state"] = "checked_in", 
   const empty = { agenda: [], attendeeTotal: 0, attendees: [], nextOrder: [], openers: [], recommendations: [], stats: { exchanged: 0, incoming: 0, wantedMet: 0, wantedTotal: 0 } };
   if (state === "not_registered") return { ...base, ...empty, state };
   if (state === "before_check_in") {
-    return { ...base, ...empty, checkIn: { available: true, displayName: JOURNEY_ME.name, qrPayload: "orbit-checkin:demo-event-cfo-night-18:A-042", receptionNumber: "A-042" }, now: "2026-10-07T18:55:00+09:00", state };
+    return { ...base, ...empty, checkIn: { available: true, displayName: JOURNEY_ME.name, qrPayload: encodeCheckInToken({ eventId: JOURNEY_EVENT_ID, exp: 1_791_421_200, participantId: "demo-participant-sato" }, "sample-signature-not-valid"), receptionNumber: "A-042" }, now: "2026-10-07T18:55:00+09:00", state };
   }
   const shimizu = venuePerson("jp-shimizu", "incoming", { contactId: null, ...(web ? { whyDetail: "申込内容「探している投資先：B2B SaaS」とあなたの「会いたい人：VC」が一致。" } : {}) });
   const attendees = [shimizu, venuePerson("jp-mori", "exchanged"), venuePerson("jp-inoue", "exchanged"), venuePerson("jp-kimura", "requested"), venuePerson("jp-hayashi", "none"), venuePerson("jp-matsumoto", "none"), venuePerson("jp-takahashi", "none"), venuePerson(web ? "jp-ito" : "jp-kato", "none")];

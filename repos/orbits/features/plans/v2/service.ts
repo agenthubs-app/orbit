@@ -199,6 +199,8 @@ export interface PlanV2Service {
   addAssessmentToPlan(input: { planId?: string | null; assessmentId: string; title?: string }): Promise<{ planId: string; itemId: string; created: boolean } | null>;
   /** `skipIfEverScored`（对账任务用）：这份计划为这场活动计过分（含已撤销）就不再记——用户撤销的不自动补回。 */
   recordEventAttendanceForPlans(input: { eventId: string; title?: string; at?: string; skipIfEverScored?: boolean }): Promise<Array<{ planId: string; points: number; part: string }>>;
+  /** R17（host/DESIGN.md §2.6「取り消す」）：受付撤销 → 这场活动的イベント枠加分按 R24 撤销规则对冲（写 score_reversed，不删记录），活动行退回「参加予定」。 */
+  revertEventAttendanceForPlans(input: { eventId: string }): Promise<Array<{ planId: string; points: number }>>;
   planRemainingTargets(): Promise<PlanRemainingTargets[]>;
   activeTypeNeeds(): Promise<ActiveTypeNeeds>;
   /** 本人有没有生效中的 v2 计划（v1 生成前的便宜检查）。 */
@@ -998,6 +1000,34 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           const payload: PlanAwardPayload = { anonymous: false, basis: "event", contactId: null, eventId: event, part: next.part, points: next.points, typeKey: PLAN_EVENT_SEGMENT_KEY };
           await tx.insertLog(logEntry({ author: "system", body: `${title?.trim() || "イベント"}に参加 +${next.points}`, createdAt: when, event: "score_awarded", idempotencyKey: key, itemId, linkedContactIds: [], linkedEventId: event, payload: payload as unknown as Record<string, unknown>, planId: plan.id }));
           results.push({ part: next.part, planId: plan.id, points: next.points });
+        }
+        return results;
+      });
+    },
+
+    async revertEventAttendanceForPlans({ eventId }) {
+      const event = requiredId(eventId, "eventId");
+      return repository.transact(scope, async (tx) => {
+        const results: Array<{ planId: string; points: number }> = [];
+        for (const plan of await tx.activePlans()) {
+          const awards = activeAwards(await tx.log(plan.id)).filter((entry) => entry.award.basis === "event" && entry.award.eventId === event);
+          for (const award of awards) {
+            await tx.insertLog(logEntry({
+              body: `取り消し：-${award.award.points}`,
+              event: "score_reversed",
+              idempotencyKey: `reverse:${award.id}`,
+              itemId: award.itemId,
+              linkedContactIds: [],
+              linkedEventId: award.linkedEventId,
+              payload: { awardLogId: award.id, reason: "check_in_undone" },
+              planId: plan.id,
+            }));
+            results.push({ planId: plan.id, points: award.award.points });
+          }
+          if (awards.length > 0) {
+            const item = (await tx.eventItems(plan.id)).find((candidate) => candidate.eventId === event);
+            if (item && item.status === "attended") await tx.updateEventItem({ ...item, status: "registered", updatedAt: now() });
+          }
         }
         return results;
       });

@@ -79,6 +79,22 @@ export async function markPlanEventAttendedForActor(
 }
 
 /**
+ * R17（host/DESIGN.md §2.6「取り消す」）：受付撤销后，本人 v2 计划里这场活动的イベント枠加分按 R24 撤销规则对冲。
+ * 计划服务未配置时什么都不做；出错时抛出，由调用方记录后吞掉（不影响撤销结果）。v1 计划的「已参加」标记不回退（v1 只读）。
+ */
+export async function revertPlanEventAttendanceForActor(
+  input: { actorId: string; eventId: string },
+  deps: { v2?: () => Promise<{ revertEventAttendanceForPlans(input: { eventId: string }): Promise<unknown> } | null> } = {},
+): Promise<void> {
+  const v2 = await (deps.v2 ?? (async () => {
+    const { resolvePlanV2Service } = await import("./v2/service-factory");
+    const resolution = resolvePlanV2Service({ actorId: input.actorId });
+    return resolution.success === false ? null : resolution.service;
+  }))();
+  if (v2) await v2.revertEventAttendanceForPlans({ eventId: input.eventId });
+}
+
+/**
  * W0012：活动报名／取消报名成功后，把本人生效计划里的这场活动跟着改成「已报名」／「推荐」，并写一条
  * 幂等的进展记录（`PlanService.markEventRegistration`）。报名是主数据：计划服务未配置时什么都不做；
  * 读写出错时抛出，由路由记录后吞掉（不影响报名结果）。

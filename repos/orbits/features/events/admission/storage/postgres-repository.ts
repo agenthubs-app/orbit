@@ -986,6 +986,65 @@ export function createPostgresEventAdmissionRepository(input: {
       });
     },
 
+    async admitOnSite(raw) {
+      const eventId = normalizedText(raw.eventId, "eventId");
+      const actorId = normalizedText(raw.actorId, "actorId");
+      const decisionActorId = normalizedText(raw.decisionActorId, "decisionActorId");
+      return runTransaction(client, async (executor) => {
+        await lockEvent(executor, workspaceId, eventId);
+        const policy = await currentPolicy(executor, workspaceId, eventId);
+        if (!policy) throw new EventAdmissionError("NOT_CONFIGURED", `Admission policy for ${eventId} is not configured.`);
+        const currentResult = await executor.query<SqlRow>(
+          `select * from event_ops_admission_application_heads
+           where workspace_id = $1 and event_id = $2 and actor_id = $3
+           for update`,
+          [workspaceId, eventId, actorId],
+        );
+        const current = currentResult.rows[0] ? applicationFromRow(currentResult.rows[0]) : null;
+        if (current?.status === "admitted") {
+          const existing = await executor.query<{ over_capacity: boolean }>(`select over_capacity from event_ops_walk_ins where workspace_id = $1 and event_id = $2 and actor_id = $3`, [workspaceId, eventId, actorId]);
+          const number = await afterAdmissionTransition(executor, { actorId, eventId, status: "admitted", via: "instant", workspaceId });
+          return { application: current, overCapacity: Boolean(existing.rows[0]?.over_capacity), receptionNumber: number.receptionNumber };
+        }
+        if (!current || current.status !== "waitlisted") {
+          throw new EventAdmissionError("INVALID_TRANSITION", `Admission application ${eventId}/${actorId} is not on the waitlist.`);
+        }
+        const count = await admittedCount(executor, workspaceId, eventId);
+        const overCapacity = policy.capacity !== null && count >= policy.capacity;
+        if (overCapacity && !raw.allowOverCapacity) throw new EventAdmissionError("CAPACITY_FULL", `Admission event ${eventId} is full.`);
+        const now = await databaseNow(executor);
+        const next: EventAdmissionApplication = {
+          ...current,
+          applicationVersion: current.applicationVersion + 1,
+          decidedAt: now,
+          decisionActorId,
+          policyVersion: policy.policyVersion,
+          status: "admitted",
+          updatedAt: now,
+        };
+        await appendApplication(executor, workspaceId, next);
+        await projectCanonicalMembership({ application: next, executor, profileEditDeadlineAt: policy.profileEditDeadlineAt, status: "rsvped", workspaceId });
+        const { receptionNumber } = await afterAdmissionTransition(executor, { actorId, eventId, status: "admitted", via: "instant", workspaceId });
+        await executor.query(
+          `insert into event_ops_walk_ins (workspace_id, event_id, actor_id, over_capacity, admitted_by) values ($1, $2, $3, $4, $5)
+           on conflict (workspace_id, event_id, actor_id) do nothing`,
+          [workspaceId, eventId, actorId, overCapacity, decisionActorId],
+        );
+        await audit(executor, {
+          action: overCapacity ? "admission.application.admitted_on_site_over_capacity" : "admission.application.admitted_on_site",
+          actorId: decisionActorId,
+          after: applicationAuditPayload(next),
+          aggregateId: `${eventId}:${actorId}`,
+          aggregateType: "admission_application",
+          before: applicationAuditPayload(current),
+          eventId,
+          occurredAt: now,
+          workspaceId,
+        });
+        return { application: next, overCapacity, receptionNumber };
+      });
+    },
+
     async getApplication(rawEventId, rawActorId) {
       const eventId = normalizedText(rawEventId, "eventId");
       const actorId = normalizedText(rawActorId, "actorId");
