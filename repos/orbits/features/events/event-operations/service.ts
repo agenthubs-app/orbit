@@ -1,4 +1,5 @@
 import type { EventRegistrationService } from "../registration/service";
+import type { EventOperationsGroupingResult } from "./contract";
 import {
   EventOperationsError,
   type EventContactRequest,
@@ -103,6 +104,8 @@ export interface EventOperationsService {
     actorId: string;
     eventId: string;
     generationId: string;
+    /** R17：发布前的合成（见 engine.publishGeneration）。 */
+    composeGrouping?: (grouping: EventOperationsGroupingResult) => EventOperationsGroupingResult;
   }): Promise<EventOperationsPublishedResult>;
   respondToContactRequest(input: {
     accept: boolean;
@@ -673,14 +676,14 @@ export function createEventOperationsService({
       };
     },
 
-    async publishGeneration({ actorId, eventId, generationId }) {
+    async publishGeneration({ actorId, composeGrouping, eventId, generationId }) {
       await requireGenerationScope({
         actorId,
         capability: "generation.publish",
         eventId,
         generationId,
       });
-      return engine.publishGeneration({ actorId, generationId });
+      return engine.publishGeneration({ actorId, composeGrouping, generationId });
     },
 
     async respondToContactRequest({

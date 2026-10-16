@@ -1317,3 +1317,38 @@ test("N=13 tableSize=6 uses balanced non-singleton tables and bounded round-two 
   }
   assert.ok(repeatedPairs / totalPairs <= 0.34);
 });
+
+test("R17: publish composes the host's table moves before the freeze; an oversize table is refused", async () => {
+  const { composeGrouping, hostTablesFor } = await import("../../features/events/host/storage/matching");
+  const { applyMatchingMoves } = await import("../../shared/compute/table-constraints");
+  const { engine } = harness();
+  const { generation } = await createAndRun(engine, { idempotencyKey: "r17-compose" });
+  const directory = new Map(participants().map((participant) => [participant.participantId, participant]));
+  let base: Parameters<typeof composeGrouping>[0] | null = null;
+  const moved: string[] = [];
+  const published = await engine.publishGeneration({
+    actorId: ORGANIZER_ID,
+    composeGrouping: (grouping) => {
+      base = grouping;
+      const tables = [...hostTablesFor(grouping.roundOne, 1, directory), ...hostTablesFor(grouping.roundTwo, 2, directory)];
+      const [first, second] = tables.filter((table) => table.round === 1);
+      const a = first!.members[0]!.participantId;
+      const b = second!.members[0]!.participantId;
+      moved.push(a, b);
+      const swapped = applyMatchingMoves({ tables, unplaced: [] }, [{ participantId: a, round: 1, toTable: second!.table }, { participantId: b, round: 1, toTable: first!.table }]);
+      return composeGrouping(grouping, swapped.tables, 8);
+    },
+    generationId: generation.generationId,
+  });
+  assert.ok(base, "the hook saw the generated grouping");
+  const tableOf = (id: string) => published.grouping.roundOne.find((table) => table.members.some((member) => member.participantId === id))!;
+  assert.notEqual(tableOf(moved[0]!).tableNumber, (base! as { roundOne: Array<{ tableNumber: number; members: Array<{ participantId: string }> }> }).roundOne.find((table) => table.members.some((member) => member.participantId === moved[0]))!.tableNumber);
+  assert.equal(tableOf(moved[0]!).memberRationales[moved[0]!], "主催者が配置");
+  const { engine: second } = harness();
+  const other = await createAndRun(second, { idempotencyKey: "r17-oversize" });
+  await assert.rejects(second.publishGeneration({
+    actorId: ORGANIZER_ID,
+    composeGrouping: (grouping) => composeGrouping(grouping, hostTablesFor(grouping.roundOne, 1, directory).map((table, index) => (index === 0 ? { ...table, members: hostTablesFor(grouping.roundOne, 1, directory).flatMap((item) => item.members) } : { ...table, members: [] })), 3),
+    generationId: other.generation.generationId,
+  }), /TABLE_TOO_LARGE/u);
+});

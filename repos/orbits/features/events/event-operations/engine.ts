@@ -39,6 +39,11 @@ export interface EventOperationsEngine {
   publishGeneration(input: {
     actorId: string;
     generationId: string;
+    /**
+     * R17（host/DESIGN.md §2.4「人工调整层」）：发布前把产物与规则后处理 + 主催者的拖动合成一份（可选；不传 = 原样）。
+     * 合成结果照样过 `validateGrouping`，之后的冻结、指纹、不可变约束不变。
+     */
+    composeGrouping?: (grouping: EventOperationsGroupingResult) => EventOperationsGroupingResult;
   }): Promise<EventOperationsPublishedResult>;
   retryGeneration(input: {
     actorId: string;
@@ -1446,7 +1451,7 @@ export function createEventOperationsEngine({
       );
     },
 
-    async publishGeneration({ actorId, generationId }) {
+    async publishGeneration({ actorId, composeGrouping, generationId }) {
       const generation = await requireGeneration(generationId);
       if (!actorId.trim()) {
         throw new EventOperationsError(
@@ -1511,19 +1516,20 @@ export function createEventOperationsEngine({
           "The completed generation has no validated AI table content.",
         );
       }
+      const generatedGrouping: EventOperationsGroupingResult = {
+        roundOne: tableOutputs
+          .filter((output) => output.roundNumber === 1)
+          .map((output) => output.table)
+          .sort((left, right) => left.tableNumber - right.tableNumber),
+        roundTwo: tableOutputs
+          .filter((output) => output.roundNumber === 2)
+          .map((output) => output.table)
+          .sort((left, right) => left.tableNumber - right.tableNumber),
+      };
       const grouping = validateGrouping({
         participants: generation.snapshot.participants,
         tableSize: configuration.tableSize,
-        value: {
-          roundOne: tableOutputs
-            .filter((output) => output.roundNumber === 1)
-            .map((output) => output.table)
-            .sort((left, right) => left.tableNumber - right.tableNumber),
-          roundTwo: tableOutputs
-            .filter((output) => output.roundNumber === 2)
-            .map((output) => output.table)
-            .sort((left, right) => left.tableNumber - right.tableNumber),
-        },
+        value: composeGrouping ? composeGrouping(generatedGrouping) : generatedGrouping,
       });
       const publishedAt = now();
       const result: EventOperationsPublishedResult = {
