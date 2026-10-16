@@ -149,7 +149,7 @@ export const eventsJourney = {
   "eventsJourney.hostMonthlySince": "Monthly since {y} · {n} editions",
   "eventsJourney.hostEditions": "{n} editions",
   "eventsJourney.avgAttend": "Avg. attendees",
-  "eventsJourney.typeShare": "{label} share",
+  "eventsJourney.typeShare": "{label}",
   "eventsJourney.youAttended": "You",
   "eventsJourney.timesUnit": "×",
   "eventsJourney.percentUnit": "%",

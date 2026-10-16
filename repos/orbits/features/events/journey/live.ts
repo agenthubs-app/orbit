@@ -178,8 +178,28 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
         .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))
         .slice(0, ORGANIZER_EVENTS_LIMIT);
       if (!mine.length) return null;
-      const counts = await countsFor(mine.map((event) => event.eventId));
-      return organizerHistory(mine.map((event) => ({ registrationCount: counts.get(event.eventId) ?? 0, startsAt: event.startsAt })), now);
+      // R17 A11：平均参加 = 受付人数（签到）均值；第二格 = 申込回答 Q1 第一选项的比率（主办方自定义问题，<5 人不给）。
+      const ids = mine.map((event) => event.eventId);
+      const checkins = await query(`/* events:r27-journey:organizer-checkins */ select event_id, count(*)::int as n from event_ops_checkins where workspace_id = $1 and event_id = any($2::text[]) group by event_id`, [workspaceId, ids]).catch(warned("r27_journey_checkins_failed", { rows: [] as Array<Record<string, unknown>> }));
+      const attended = new Map(checkins.rows.map((row) => [String(row.event_id), Number(row.n)]));
+      const history = organizerHistory(mine.map((event) => ({ registrationCount: attended.get(event.eventId) ?? 0, startsAt: event.startsAt })), now);
+      if (!history) return null;
+      const share = await query(
+        `/* events:r27-journey:organizer-q1 */
+         select q.published -> 'questions' -> 0 -> 'options' ->> 0 as label,
+                count(*) filter (where (a.profile_payload -> 'hostAnswers' ->> 'q1') = (q.published -> 'questions' -> 0 -> 'options' ->> 0)
+                                    or (a.profile_payload -> 'hostAnswers' -> 'q1' ->> 0) = (q.published -> 'questions' -> 0 -> 'options' ->> 0))::int as hit,
+                count(*) filter (where a.profile_payload -> 'hostAnswers' -> 'q1' is not null)::int as answered
+           from event_host_question_sets q
+           join event_ops_admission_application_heads a on a.workspace_id = q.workspace_id and a.event_id = q.event_id and a.status = 'admitted'
+          where q.workspace_id = $1 and q.event_id = any($2::text[]) and q.published is not null
+          group by 1 order by answered desc limit 1`,
+        [workspaceId, ids.filter((id) => mine.some((event) => event.eventId === id && Date.parse(event.startsAt) <= now.getTime()))],
+      ).catch(() => ({ rows: [] as Array<Record<string, unknown>> }));
+      const row = share.rows[0];
+      const answered = Number(row?.answered ?? 0);
+      const typeShare = row?.label && answered >= 5 ? { label: String(row.label), percent: Math.round((Number(row.hit) / answered) * 100) } : null;
+      return { ...history, typeShare };
     },
 
     async eventIdByCode(code) {

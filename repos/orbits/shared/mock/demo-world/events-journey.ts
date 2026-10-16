@@ -163,7 +163,7 @@ function attendee(id: string, wanted: boolean): EventOverviewAttendee {
 export function journeyOverview(variant: EventJourneyVariant, platform: "web" | "app" = "app"): EventOverviewResponse {
   // Web 画板（#17–#19）写「渋谷ストリーム 4F」，App 画板（#14–#16）写「渋谷ストリーム 4F ホール」：各端照自己的画板。
   const venue = platform === "web" ? "渋谷ストリーム 4F" : CFO_NIGHT_BASE.venue;
-  const organizer = { editions: 18, emoji: "🥂", following: true, monthly: true, myAttendance: 2, name: "CFO Night 実行委員会", organizerId: "org-cfo-night", since: "2023-01-01", averageAttendance: 112, typeShare: { label: "CFO", percent: 41 } };
+  const organizer = { editions: 18, emoji: "🥂", following: true, monthly: true, myAttendance: 2, name: "CFO Night 実行委員会", organizerId: "org-cfo-night", since: "2023-01-01", averageAttendance: 112, typeShare: { label: "スタートアップの経営者・CFO", percent: 41 } };
   const base = { ...CFO_NIGHT_BASE, venue, registrationClosesAt: "2026-10-03T23:59:00+09:00", agenda: JOURNEY_AGENDA.slice(0, 5).map((item) => ({ ...item })), capacity: 150, organizer, priceYen: 5000, registration: { href: `/events/${JOURNEY_EVENT_ID}/register`, status: "none" as const }, review: true, sample: true as const };
   if (variant === "empty") {
     return {

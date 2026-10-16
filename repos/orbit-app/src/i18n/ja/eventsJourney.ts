@@ -149,7 +149,7 @@ export const eventsJourney = {
   "eventsJourney.hostMonthlySince": "{y}年から毎月開催 · 累計 {n}回",
   "eventsJourney.hostEditions": "累計 {n}回",
   "eventsJourney.avgAttend": "平均参加",
-  "eventsJourney.typeShare": "{label} 比率",
+  "eventsJourney.typeShare": "{label}",
   "eventsJourney.youAttended": "あなた",
   "eventsJourney.timesUnit": "回",
   "eventsJourney.percentUnit": "%",

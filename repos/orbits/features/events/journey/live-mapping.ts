@@ -162,7 +162,7 @@ const tokyoMonth = (iso: string) => {
   return date.getUTCFullYear() * 12 + date.getUTCMonth();
 };
 
-/** 主办方履历：回数（全部发布）、第一次、平均报名（已开始的）、是否每月（最近 3 个开催月连续）。 */
+/** 主办方履历：回数（全部发布）、第一次、平均参加（已开始的场次；R17 A11 起调用方传受付人数，与公开主办方页同口径）、是否每月（最近 3 个开催月连续）。 */
 export function organizerHistory(items: readonly { startsAt: string; registrationCount: number }[], now: Date): { editions: number; since: string | null; averageAttendance: number | null; monthly: boolean } | null {
   const valid = items.filter((item) => Number.isFinite(Date.parse(item.startsAt)));
   if (!valid.length) return null;

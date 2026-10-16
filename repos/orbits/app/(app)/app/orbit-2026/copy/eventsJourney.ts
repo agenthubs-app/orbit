@@ -159,7 +159,8 @@ export const eventsJourneyCopy = {
   hostMonthlySince: { ja: "{y}年から毎月開催 · 累計 {n}回", zh: "{y}年起每月举办 · 累计{n}次", en: "Monthly since {y} · {n} editions", kind: "label" },
   hostEditions: { ja: "累計 {n}回", zh: "累计{n}次", en: "{n} editions", kind: "label" },
   avgAttend: { ja: "平均参加", zh: "平均参会", en: "Avg. attendees", kind: "label" },
-  typeShare: { ja: "{label} 比率", zh: "{label}占比", en: "{label} share", kind: "label" },
+  // R17 A11（决定表 §39）：标签 = 申込回答 Q1 第一选项的文字本身（「スタートアップの経営者・CFO」）。
+  typeShare: { ja: "{label}", zh: "{label}", en: "{label}", kind: "label" },
   youAttended: { ja: "あなた", zh: "你", en: "You", kind: "label" },
   timesUnit: { ja: "回", zh: "次", en: "×", kind: "label" },
   percentUnit: { ja: "%", zh: "%", en: "%", kind: "label" },
