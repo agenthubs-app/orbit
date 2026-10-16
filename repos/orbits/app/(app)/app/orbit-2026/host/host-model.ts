@@ -17,7 +17,8 @@ export function hostTranslator(language: OrbitLanguage): HostT {
 const WEEK: Record<OrbitLanguage, readonly string[]> = { en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], ja: ["日", "月", "火", "水", "木", "金", "土"], zh: ["日", "一", "二", "三", "四", "五", "六"] };
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** 「10月」/「Oct」（日期文案的 {mon}）。 */
-const monthLabel = (month: number, language: OrbitLanguage) => (language === "en" ? MONTHS[month - 1]! : `${month}月`);
+const MONTH_UNIT = { en: "", ja: "月", zh: "月" } as const;
+const monthLabel = (month: number, language: OrbitLanguage) => (language === "en" ? MONTHS[month - 1]! : `${month}${MONTH_UNIT[language]}`);
 
 /** 東京の日付部品（主催の日時は会場の時間で出す；会場はすべて Asia/Tokyo）。 */
 export function tokyoParts(iso: string | null | undefined) {

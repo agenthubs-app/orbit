@@ -5,7 +5,7 @@
 // 页签：概要 / マッチング / 参加者 N / 受付（跳 kiosk）/ 申込設定 / レポート；本段只做概要，其余是占位（HostConsoleTabs.tsx，后续替换）。
 // 数据：GET /api/host/events/[id]/overview（requireEventCapability 在服务端）；定型通知 /notices/preview → /notices/send。
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 
 import type { HostOverviewResponse, HostProgressStep } from "../../../../../shared/contract/host-console";
 import type { HostEventView } from "../../../../../shared/contract/host-events";
@@ -14,7 +14,8 @@ import type { HostNoticePreview } from "../../../../../shared/contract/host-noti
 import { ShellPage } from "../shell/slots";
 import { Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { failureOf, hostApi, type HostApiFailure } from "./host-api";
-import { HOST_CONSOLE_TABS, HostTabPlaceholder, parseConsoleTab, type HostConsoleTab } from "./HostConsoleTabs";
+import { HOST_CONSOLE_TABS, HostTabContent, HostTabPlaceholder, parseConsoleTab, type HostConsoleTab } from "./HostConsoleTabs";
+import { HostCohostsDrawer } from "./HostCohosts";
 import { checkInHref, consoleHref, hostDateLong, hostDateShort, hostTime, hostTranslator, sameTokyoDay, type HostT } from "./host-model";
 import s from "./host.module.css";
 
@@ -172,44 +173,36 @@ export type HostConsoleViewProps = {
   busy?: boolean;
   onPublish?: () => void;
   onArchive?: (archived: boolean) => void;
+  /** 概要以外の页签内容（容器在 HostConsoleTabs）；不传 = 占位。 */
+  content?: ReactNode;
+  onOpenCohosts?: (event: MouseEvent<HTMLAnchorElement>) => void;
 };
 
 /** 純粋な描画：页头 + 页签 + 当前页签内容。 */
-export function HostConsoleView({ data, tab, language, now = new Date(), busy = false, onPublish, onArchive }: HostConsoleViewProps) {
+export function HostConsoleView({ data, tab, language, now = new Date(), busy = false, onPublish, onArchive, content, onOpenCohosts }: HostConsoleViewProps) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const event = data.event;
-  // 页签画法两套画板不一致：web.html #20（概要 · 進行中）是 .seg 胶囊；b6 其余页签与 b12 #440–#444（下書き / 中止 / アーカイブ）是 .htabs 下划线。
-  // 照各自画板实现，已报 design-decisions 统一（见 R17-web-progress.md）。
-  const underline = tab !== "overview" || INACTIVE.has(event.status);
+  // 页签一律下划线（.htabs；决定表 §41-1 统一了 web.html #20）。参加者角标 = 审核待人数，在参加者页签本身不显示（b6 #7–#9）。
   const back = <a className={`btn ${s.btn} ${s.backBtn}`} href="/app/events/center" aria-label={t("back")}><Icon name="left" size={20} /></a>;
   const right = (
     <div className={s.headRight}>
       <div className={s.avs}>{event.cohosts.slice(0, 3).map((person, index) => <div key={person.actorId} className={`${s.av} ${s[AVATAR_TONES[index % AVATAR_TONES.length]!]}`} title={person.name}>{person.initial}</div>)}</div>
-      <a className={`btn ${s.btn}`} href={`${consoleHref(event.eventId, tab)}&drawer=cohosts`}><Icon name="users" size={16} />{t("cohostsBtn")}</a>
+      <a className={`btn ${s.btn}`} href={`${consoleHref(event.eventId, tab)}&drawer=cohosts`} onClick={onOpenCohosts} data-host-cohosts-open=""><Icon name="users" size={16} />{t("cohostsBtn")}</a>
     </div>
   );
   return (
     <>
       <ShellPage title={event.title} subtitle={consoleSubtitle(event, language, t, now)} left={back} right={right} rightRail={false} />
-      {underline ? (
-        <div className={s.htabs} role="tablist" data-host-tabs="underline">
-          {HOST_CONSOLE_TABS.map((key) => {
-            const href = key === "checkin" ? checkInHref(event.eventId) : consoleHref(event.eventId, key);
-            return <a key={key} role="tab" aria-selected={tab === key} className={`${s.htab} ${tab === key ? s.htabOn : ""}`} href={href}>{t(TAB_LABEL[key])}{key === "people" && data.pendingReview > 0 ? <span className={s.cntB}>{data.pendingReview}</span> : null}</a>;
-          })}
-        </div>
-      ) : (
-        <div className={`${s.seg} ${s.tabs}`} role="tablist" data-host-tabs="seg">
-          {HOST_CONSOLE_TABS.map((key) => {
-            const href = key === "checkin" ? checkInHref(event.eventId) : consoleHref(event.eventId, key);
-            const label = key === "people" ? `${t(TAB_LABEL[key])} ${data.pendingReview}` : t(TAB_LABEL[key]);
-            return <a key={key} role="tab" aria-selected={tab === key} className={`btn ${s.segBtn} ${tab === key ? s.segOn : ""}`} href={href}>{label}</a>;
-          })}
-        </div>
-      )}
+      <div className={s.htabs} role="tablist" data-host-tabs="underline">
+        {HOST_CONSOLE_TABS.map((key) => {
+          const href = key === "checkin" ? checkInHref(event.eventId) : consoleHref(event.eventId, key);
+          const badge = key === "people" && tab !== "people" && data.pendingReview > 0;
+          return <a key={key} role="tab" aria-selected={tab === key} className={`${s.htab} ${tab === key ? s.htabOn : ""}`} href={href}>{t(TAB_LABEL[key])}{badge ? <span className={s.cntB}>{data.pendingReview}</span> : null}</a>;
+        })}
+      </div>
       <div className={s.wgrid} data-host-console={tab}>
         <StatusBanner event={event} t={t} busy={busy} onPublish={() => onPublish?.()} onArchive={(archived) => onArchive?.(archived)} />
-        {tab === "overview" ? <HostOverviewView data={data} t={t} /> : <HostTabPlaceholder tab={tab} t={t} />}
+        {tab === "overview" ? <HostOverviewView data={data} t={t} /> : content ?? <HostTabPlaceholder tab={tab} t={t} />}
       </div>
     </>
   );
@@ -227,6 +220,13 @@ function ConsoleInner({ eventId, language }: { eventId: string; language: OrbitL
   const router = useRouter();
   const params = useSearchParams();
   const tab = parseConsoleTab(params.get("tab"));
+  const drawer = params.get("drawer") === "cohosts";
+  const setDrawer = (open: boolean) => {
+    const search = new URLSearchParams(params.toString());
+    if (open) search.set("drawer", "cohosts"); else search.delete("drawer");
+    if (!search.get("tab")) search.set("tab", tab);
+    router.replace(`?${search.toString()}`, { scroll: false });
+  };
   const [data, setData] = useState<HostOverviewResponse | null>(null);
   const [failure, setFailure] = useState<HostApiFailure | null>(null);
   const [busy, setBusy] = useState(false);
@@ -285,7 +285,10 @@ function ConsoleInner({ eventId, language }: { eventId: string; language: OrbitL
     <>
       <HostConsoleView data={data} tab={tab} language={language} busy={busy}
         onPublish={() => void write(() => hostApi.publish(eventId, data.event.version), t("publishedToast"))}
-        onArchive={(archived) => void write(() => hostApi.archive(eventId, data.event.version, archived), archived ? t("archivedToast") : t("unarchivedToast"))} />
+        onArchive={(archived) => void write(() => hostApi.archive(eventId, data.event.version, archived), archived ? t("archivedToast") : t("unarchivedToast"))}
+        content={tab === "overview" ? undefined : <HostTabContent tab={tab} eventId={eventId} language={language} incomplete={params.get("incomplete") === "1"} onChanged={() => void load()} />}
+        onOpenCohosts={(event) => { event.preventDefault(); setDrawer(true); }} />
+      {drawer ? <HostCohostsDrawer eventId={eventId} language={language} onClose={() => setDrawer(false)} onChanged={() => void load()} /> : null}
       {notice ? <NoticeConfirm preview={notice} t={t} busy={busy} onCancel={closeNotice} onSend={() => void sendNotice()} /> : null}
     </>
   );

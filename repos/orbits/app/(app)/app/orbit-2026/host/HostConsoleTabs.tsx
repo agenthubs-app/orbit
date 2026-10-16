@@ -1,8 +1,11 @@
 "use client";
 
-// R17 イベント運営の页签。概要 在 HostConsole.tsx；マッチング / 参加者 / 申込設定 / レポート 本段先放占位，后续子代理各自替换成真组件
-// （在这里把 HostTabPlaceholder 换成对应组件即可，路由与页头不用动）。受付 是独立的 kiosk 页面（/operations/check-in，不挂壳）。
-import type { HostT } from "./host-model";
+// R17 イベント運営の页签。概要 在 HostConsole.tsx；マッチング（HostMatching）/ 参加者（HostPeople）是真组件；
+// 申込設定 / レポート 仍是占位（后续子代理在 HostTabContent 里换成对应组件即可，路由与页头不用动）。受付 是独立的 kiosk 页面（/operations/check-in，不挂壳）。
+import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { HostMatchingTab } from "./HostMatching";
+import { HostPeopleTab } from "./HostPeople";
+import { hostTranslator, type HostT } from "./host-model";
 import s from "./host.module.css";
 
 export const HOST_CONSOLE_TABS = ["overview", "matching", "people", "checkin", "setup", "report"] as const;
@@ -17,4 +20,11 @@ export function parseConsoleTab(value: string | null | undefined): Exclude<HostC
 
 export function HostTabPlaceholder({ tab, t }: { tab: HostConsoleTab; t: HostT }) {
   return <div className={`${s.card} ${s.span12} ${s.empty}`} data-host-tab-placeholder={tab}>{t("tabSoon")}</div>;
+}
+
+/** 概要以外の页签内容（各自读写；`onChanged` 让壳重读概要，刷新页签角标）。 */
+export function HostTabContent({ tab, eventId, language, incomplete = false, onChanged }: { tab: HostConsoleTab; eventId: string; language: OrbitLanguage; incomplete?: boolean; onChanged?: () => void }) {
+  if (tab === "matching") return <HostMatchingTab eventId={eventId} language={language} onChanged={onChanged} />;
+  if (tab === "people") return <HostPeopleTab eventId={eventId} language={language} initialIncomplete={incomplete} onChanged={onChanged} />;
+  return <HostTabPlaceholder tab={tab} t={hostTranslator(language)} />;
 }

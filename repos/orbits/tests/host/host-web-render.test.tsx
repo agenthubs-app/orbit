@@ -66,7 +66,7 @@ test("筛选 / 页签参数与进度条", () => {
 test("イベント運営 · 概要 開場前（web.html #20）：4 格、推移 14 本、进度当前步「公開する」、プロフィール未完了", () => {
   const data = hostOverview(HOST_EVENT_IDS.cfo18, state({ overview: "pre_open" }))!;
   const html = renderToStaticMarkup(<HostConsoleView data={data} tab="overview" language="ja" />);
-  assert.match(html, /data-host-tabs="seg"/);
+  assert.match(html, /data-host-tabs="underline"/); // §41-1：概要也用下划线页签
   assert.match(html, /data-host-trend/);
   assert.match(html, /data-host-progress="publish"/);
   assert.match(html, /推薦の生成/);
@@ -75,10 +75,10 @@ test("イベント運営 · 概要 開場前（web.html #20）：4 格、推移 
   assert.match(html, /\/operations\/check-in/); // 受付 页签跳 kiosk
 });
 
-test("イベント運営 · 其余页签先是占位，页签改下划线画法", () => {
+test("イベント運営 · 申込設定 / レポート 仍是占位，页签下划线画法", () => {
   const data = hostOverview(HOST_EVENT_IDS.cfo18)!;
-  const html = renderToStaticMarkup(<HostConsoleView data={data} tab="matching" language="ja" />);
-  assert.match(html, /data-host-tab-placeholder="matching"/);
+  const html = renderToStaticMarkup(<HostConsoleView data={data} tab="setup" language="ja" />);
+  assert.match(html, /data-host-tab-placeholder="setup"/);
   assert.match(html, /data-host-tabs="underline"/);
 });
 

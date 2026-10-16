@@ -54,6 +54,7 @@
 .c_blue { background: var(--mac-blue); color: var(--mac-blue-ink); }
 .c_lav { background: var(--mac-lav); color: var(--mac-lav-ink); }
 .c_apricot { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+.c_pink { background: var(--mac-pink); color: var(--mac-pink-ink); }
 .c_coral { background: var(--coral-soft); color: var(--coral); }
 .liveDot { width: 7px; height: 7px; border-radius: var(--r-pill); background: currentcolor; animation: hostBlink 1.4s ease-in-out infinite; }
 @keyframes hostBlink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
@@ -149,12 +150,12 @@
 
 /* 申込の推移（kit .bars） */
 .bars { display: flex; align-items: flex-end; gap: 6px; height: 110px; }
-.bars i { flex: 1 1 0%; border-radius: 8px 8px 4px 4px; background: var(--plum-300); }
+.bars i { flex: 1 1 0%; border-radius: var(--r-chip); border-bottom-left-radius: var(--r-dot); border-bottom-right-radius: var(--r-dot); background: var(--plum-300); }
 .bars i.hi { background: var(--plum-700); }
 
 /* 要対応 */
-/* 画板 web.html #20 的这张卡是 `.card.row`：kit .card 的 column 盖过 .row，渲染成竖排居中、按钮靠左（已报画板问题；照画板实现） */
-.todoCard { align-items: center; gap: 12px; }
+/* web.html #20「プロフィール未完了」卡：横排（决定表 §41-2，.k-hprof） */
+.todoCard { flex-direction: row; align-items: center; gap: 12px; }
 .alertEmo { color: var(--mac-apricot-ink); }
 
 /* 状態バナー（b12 #440 / #442 / #444） */

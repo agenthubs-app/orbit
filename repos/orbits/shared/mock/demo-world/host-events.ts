@@ -379,7 +379,8 @@ export function hostMatching(eventId: string, state: HostMockState = DEFAULT_HOS
       unplaced: ["hp-mori", "hp-morikawa", "hp-hasegawa"].map(member),
     };
   }
-  return { ...base, profileComplete: eventId === HOST_EVENT_IDS.asakai3 ? 30 : seed.matched ?? 0 };
+  // 未生成（b6 #3）：条件卡上「各テーブルに投資家 1名以上」是关的。
+  return { ...base, conditions: { ...conditions, investorPerTable: false }, profileComplete: eventId === HOST_EVENT_IDS.asakai3 ? 30 : seed.matched ?? 0 };
 }
 
 // ─── 参加者 ────────────────────────────────────────────
