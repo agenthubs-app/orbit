@@ -26,10 +26,17 @@ const STEP_LABEL = { check_in: "pCheckIn", generation: "pGeneration", publish: "
 const INACTIVE = new Set(["draft", "cancelled", "archived"]);
 const TAB_LABEL = { checkin: "tCheckIn", matching: "tMatching", overview: "tOverview", people: "tPeople", report: "tReport", setup: "tSetup" } as const;
 
-/** 「主催 · 本日 19:00 · 渋谷ストリーム」；下書き / 中止 / アーカイブ は会場の代わりに状態（b12 #440–#444）。 */
-export function consoleSubtitle(event: HostEventView, language: OrbitLanguage, t: HostT, now: Date): string {
+/** 「主催 · 本日 19:00 · 渋谷ストリーム」；下書き / 中止 / アーカイブ は会場の代わりに状態（b12 #440–#444）。
+ *  申込設定は「主催 · 申込フォーム公開中 / 未公開」（b6 #13–#15），レポートは「主催 · 9月9日（水）19:00 · 終了 / 開催前」（b6 #16–#19）。 */
+export function consoleSubtitle(event: HostEventView, language: OrbitLanguage, t: HostT, now: Date, tab: HostConsoleTab = "overview", formPublished: boolean | null = null): string {
+  if (tab === "setup" && formPublished != null) return [t("roleHost"), t(formPublished ? "subFormPublished" : "subFormDraft")].join(" · ");
+  const inactive = event.status === "draft" ? t("sDraft") : event.status === "cancelled" ? t("sCancelled") : event.status === "archived" ? t("sArchived") : null;
+  if (tab === "report") {
+    const phase = inactive ?? (event.status === "ended" ? t("fEnded") : event.status === "live" ? t("fLive") : t("fUpcoming"));
+    return [t("roleHost"), hostDateLong(event.startsAt, language, t), phase].filter(Boolean).join(" · ");
+  }
   const when = event.startsAt ? (sameTokyoDay(event.startsAt, now) ? `${t("today")} ${hostTime(event.startsAt)}` : hostDateLong(event.startsAt, language, t)) : "";
-  const tail = event.status === "draft" ? t("sDraft") : event.status === "cancelled" ? t("sCancelled") : event.status === "archived" ? t("sArchived") : event.venueName;
+  const tail = inactive ?? event.venueName;
   return [t("roleHost"), when, tail].filter(Boolean).join(" · ");
 }
 
@@ -176,10 +183,15 @@ export type HostConsoleViewProps = {
   /** 概要以外の页签内容（容器在 HostConsoleTabs）；不传 = 占位。 */
   content?: ReactNode;
   onOpenCohosts?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** 申込設定の公開状態（页头副标题；读到 /setup 之前 null）。 */
+  formPublished?: boolean | null;
+  /** レポートの 全体 / 自分の視点（页头右侧的 seg，b6 #16–#19）。 */
+  reportView?: "all" | "mine";
+  onReportView?: (view: "all" | "mine") => void;
 };
 
 /** 純粋な描画：页头 + 页签 + 当前页签内容。 */
-export function HostConsoleView({ data, tab, language, now = new Date(), busy = false, onPublish, onArchive, content, onOpenCohosts }: HostConsoleViewProps) {
+export function HostConsoleView({ data, tab, language, now = new Date(), busy = false, onPublish, onArchive, content, onOpenCohosts, formPublished = null, reportView = "all", onReportView }: HostConsoleViewProps) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const event = data.event;
   // 页签一律下划线（.htabs；决定表 §41-1 统一了 web.html #20）。参加者角标 = 审核待人数，在参加者页签本身不显示（b6 #7–#9）。
@@ -188,11 +200,20 @@ export function HostConsoleView({ data, tab, language, now = new Date(), busy = 
     <div className={s.headRight}>
       <div className={s.avs}>{event.cohosts.slice(0, 3).map((person, index) => <div key={person.actorId} className={`${s.av} ${s[AVATAR_TONES[index % AVATAR_TONES.length]!]}`} title={person.name}>{person.initial}</div>)}</div>
       <a className={`btn ${s.btn}`} href={`${consoleHref(event.eventId, tab)}&drawer=cohosts`} onClick={onOpenCohosts} data-host-cohosts-open=""><Icon name="users" size={16} />{t("cohostsBtn")}</a>
+      {tab === "report" ? (
+        <div className={s.seg} role="tablist" aria-label={t("rpViews")} data-host-report-views="">
+          {(["all", "mine"] as const).map((view) => (
+            <a key={view} role="tab" aria-selected={reportView === view} className={`btn ${s.segBtn} ${reportView === view ? s.segOn : ""}`}
+              href={`${consoleHref(event.eventId, "report")}${view === "mine" ? "&view=mine" : ""}`}
+              onClick={onReportView ? (click) => { click.preventDefault(); onReportView(view); } : undefined}>{t(view === "all" ? "rpAll" : "rpMine")}</a>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
   return (
     <>
-      <ShellPage title={event.title} subtitle={consoleSubtitle(event, language, t, now)} left={back} right={right} rightRail={false} />
+      <ShellPage title={event.title} subtitle={consoleSubtitle(event, language, t, now, tab, formPublished)} left={back} right={right} rightRail={false} />
       <div className={s.htabs} role="tablist" data-host-tabs="underline">
         {HOST_CONSOLE_TABS.map((key) => {
           const href = key === "checkin" ? checkInHref(event.eventId) : consoleHref(event.eventId, key);
@@ -231,6 +252,14 @@ function ConsoleInner({ eventId, language }: { eventId: string; language: OrbitL
   const [failure, setFailure] = useState<HostApiFailure | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<HostNoticePreview | null>(null);
+  const [formPublished, setFormPublished] = useState<boolean | null>(null);
+  const reportView = params.get("view") === "mine" ? "mine" : "all";
+  const setReportView = (view: "all" | "mine") => {
+    const search = new URLSearchParams(params.toString());
+    search.set("tab", "report");
+    if (view === "mine") search.set("view", "mine"); else search.delete("view");
+    router.replace(`?${search.toString()}`, { scroll: false });
+  };
 
   const load = useCallback(async () => {
     const res = await hostApi.overview(eventId);
@@ -286,7 +315,8 @@ function ConsoleInner({ eventId, language }: { eventId: string; language: OrbitL
       <HostConsoleView data={data} tab={tab} language={language} busy={busy}
         onPublish={() => void write(() => hostApi.publish(eventId, data.event.version), t("publishedToast"))}
         onArchive={(archived) => void write(() => hostApi.archive(eventId, data.event.version, archived), archived ? t("archivedToast") : t("unarchivedToast"))}
-        content={tab === "overview" ? undefined : <HostTabContent tab={tab} eventId={eventId} language={language} incomplete={params.get("incomplete") === "1"} onChanged={() => void load()} />}
+        formPublished={formPublished} reportView={reportView} onReportView={setReportView}
+        content={tab === "overview" ? undefined : <HostTabContent tab={tab} eventId={eventId} language={language} incomplete={params.get("incomplete") === "1"} reportView={reportView} onChanged={() => void load()} onSetupHeader={setFormPublished} />}
         onOpenCohosts={(event) => { event.preventDefault(); setDrawer(true); }} />
       {drawer ? <HostCohostsDrawer eventId={eventId} language={language} onClose={() => setDrawer(false)} onChanged={() => void load()} /> : null}
       {notice ? <NoticeConfirm preview={notice} t={t} busy={busy} onCancel={closeNotice} onSend={() => void sendNotice()} /> : null}

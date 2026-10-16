@@ -369,10 +369,6 @@
       "hardcoded": 7,
       "missingJa": 0
     },
-    "app/(app)/app/events/[id]/operations/check-in/page.tsx": {
-      "hardcoded": 5,
-      "missingJa": 0
-    },
     "app/(app)/app/events/[id]/operations/experience/page.tsx": {
       "hardcoded": 5,
       "missingJa": 0

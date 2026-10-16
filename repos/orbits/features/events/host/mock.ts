@@ -7,7 +7,6 @@ import {
   DEFAULT_HOST_MOCK_STATE,
   HOST_EVENT_IDS,
   HOST_INVITE_SAMPLE_CODE,
-  HOST_KIOSK_ROSTER,
   HOST_PROFILES,
   hostCenter,
   hostCheckInEvents,
@@ -15,6 +14,7 @@ import {
   hostCohosts,
   hostEventView,
   hostKiosk,
+  hostKioskRoster,
   hostMatching,
   hostNoticePreview,
   hostOverview,
@@ -210,7 +210,7 @@ export function createHostMockService(): HostService {
     async kioskRoster(_actor, eventId) {
       const view = hostKiosk(eventId, "", m().state, m().kiosk);
       if (!view) return null;
-      return { cacheUntil: view.cacheUntil, eventId, rows: HOST_KIOSK_ROSTER.map((row) => ({ ...row, ...(m().kiosk.get(row.participantId) ?? {}) })), sample: true };
+      return { cacheUntil: view.cacheUntil, eventId, rows: hostKioskRoster(m().state).map((row) => ({ ...row, ...(m().kiosk.get(row.participantId) ?? {}) })), sample: true };
     },
     async scanCheckIn(actor, eventId, input) {
       // mock 不验签（没有密钥）；结构不对（含旧明文）或跨活动一律拒绝，同 live。
@@ -219,7 +219,7 @@ export function createHostMockService(): HostService {
       return this.checkIn(actor, eventId, parts.participantId, input.idempotencyKey);
     },
     async checkIn(_actor, eventId, participantId) {
-      const row = HOST_KIOSK_ROSTER.find((item) => item.participantId === participantId);
+      const row = hostKioskRoster(m().state).find((item) => item.participantId === participantId);
       if (eventId !== HOST_EVENT_IDS.cfo18 || !row) throw new HostError("NOT_FOUND");
       const current = { ...row, ...(m().kiosk.get(participantId) ?? {}) };
       if (current.status === "waitlisted") throw new HostError("INVALID_STATE", "WAITLISTED");
@@ -229,7 +229,7 @@ export function createHostMockService(): HostService {
       return { ...patch, duplicate: false, name: current.name, overCapacity: false, participantId };
     },
     async undoCheckIn(_actor, eventId, participantId) {
-      const row = HOST_KIOSK_ROSTER.find((item) => item.participantId === participantId);
+      const row = hostKioskRoster(m().state).find((item) => item.participantId === participantId);
       if (eventId !== HOST_EVENT_IDS.cfo18 || !row) throw new HostError("NOT_FOUND");
       const current = { ...row, ...(m().kiosk.get(participantId) ?? {}) };
       if (current.status !== "checked_in") throw new HostError("INVALID_STATE");
@@ -237,7 +237,7 @@ export function createHostMockService(): HostService {
       return { checkedInAt: null, duplicate: false, name: current.name, overCapacity: false, participantId, receptionNumber: current.receptionNumber, status: "not_arrived", table: null };
     },
     async admitOnSite(_actor, eventId, participantId, input) {
-      const row = HOST_KIOSK_ROSTER.find((item) => item.participantId === participantId);
+      const row = hostKioskRoster(m().state).find((item) => item.participantId === participantId);
       if (eventId !== HOST_EVENT_IDS.cfo18 || !row) throw new HostError("NOT_FOUND");
       const overCapacity = true;
       if (overCapacity && !input.confirmOverCapacity) throw new HostError("CAPACITY_FULL");

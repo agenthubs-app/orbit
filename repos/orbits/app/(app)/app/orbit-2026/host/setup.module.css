@@ -1,0 +1,125 @@
+/* R17 申込設定（b6 #13 空 / #14 少 / #15 大；b12 #406 お知らせの文面）。数値は画板の kit（.ta / .qcard / .qopt / .rad / .pv / .pq / .grid2 / .mac / .ghost-row）、
+   色・角丸・文字は token。共通の .card / .btn / .chip / .seg は host.module.css、.setrow / .tgl / .handle / .lbtn / .cbx / .input は tabs.module.css。 */
+
+.col { display: grid; gap: 18px; align-content: start; min-width: 0; }
+.span7 { grid-column: span 7; }
+.span5 { grid-column: span 5; }
+/* 画板のカードは .wgrid 直下ではない → kit の .card は block。 */
+.blk { display: block; }
+
+/* 説明文（kit .ta） */
+.ta { display: block; position: relative; border-radius: var(--r-tile); background: var(--surface-2); padding: 14px 16px; min-height: 110px; font-size: var(--fs-body-sm); line-height: var(--lh-quote); }
+.ta textarea { display: block; width: 100%; min-height: 82px; margin: 0; padding: 0; border: 0; outline: 0; resize: none; background: transparent; font: inherit; font-size: var(--fs-body-sm); line-height: var(--lh-quote); color: var(--ink); field-sizing: content; overflow: hidden; }
+.ta textarea::placeholder { color: var(--ink-4); opacity: 1; }
+.ta:focus-within { box-shadow: 0 0 0 2px var(--plum-300); }
+.counter { position: absolute; right: 14px; bottom: 10px; font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--ink-3); font-family: var(--font-num); pointer-events: none; }
+.counterWarn { color: var(--coral); }
+
+/* テンプレート（kit .grid2 / .mac） */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tpl.tpl { display: flex; align-items: center; gap: 10px; border-radius: var(--r-tile); padding: 12px; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; min-height: 0; height: auto; line-height: var(--lh-body); }
+.tpl:active { transform: scale(0.98); }
+.tplEmoji { font-size: var(--fs-number); }
+.tpl b { font-size: var(--fs-body-sm); }
+.m_lav { background: var(--mac-lav); }
+.m_blue { background: var(--mac-blue); }
+.m_pink { background: var(--mac-pink); }
+.m_apricot { background: var(--mac-apricot); }
+
+/* 質問案（破線カード） */
+.suggest { border: 1.5px dashed var(--plum-300); background: transparent; }
+.suggest b { font-size: var(--fs-body); }
+
+/* 質問（kit .qcard / .qopt） */
+.qHint { font-weight: var(--fw-medium); }
+.qcard { background: var(--surface-2); border-radius: var(--r-bubble); padding: 14px 16px; }
+.qcard + .qcard { margin-top: 10px; }
+.qrow { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.qrow:has(> .chip + .chip) { flex-wrap: wrap; }
+.qrow > b { flex: 1 1 0%; font-size: var(--fs-body-sm); }
+.qedit { background: var(--surface); box-shadow: 0 0 0 2px var(--plum-300); }
+.dragOver { box-shadow: 0 0 0 2px var(--plum-500); }
+.qhead { display: flex; align-items: center; gap: 10px; }
+.qprompt { flex: 1 1 0%; min-width: 0; height: 40px; border-radius: var(--r-md); background: var(--surface-2); display: flex; align-items: center; padding: 0 14px; }
+.qprompt input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; padding: 0; background: transparent; font: inherit; font-size: var(--fs-body-sm); font-weight: var(--fw-bold); color: var(--ink); }
+.qprompt input::placeholder { color: var(--ink-3); font-weight: var(--fw-medium); }
+.qkind { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.reqLbl { margin-left: auto; }
+.qopts { margin-top: 12px; }
+.qopt { display: flex; align-items: center; gap: 10px; min-height: 37.5px; padding: 8px 12px; border-radius: var(--r-row); background: var(--surface-2); font-size: var(--fs-body-sm); }
+.qopt + .qopt { margin-top: 6px; }
+.qopt input { flex: 1; min-width: 0; border: 0; outline: 0; padding: 0; background: transparent; font: inherit; font-size: var(--fs-body-sm); color: var(--ink); line-height: var(--lh-body); }
+.qopt input::placeholder { color: var(--ink-4); }
+.optX.optX { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; width: auto; height: auto; min-height: 0; padding: 0; border: 0; background: none; color: var(--ink-3); cursor: pointer; }
+.addOpt.addOpt { width: 100%; height: auto; min-height: 0; justify-content: flex-start; background: transparent; border: 1.5px dashed var(--surface-3); color: var(--ink-3); cursor: pointer; font: inherit; font-size: var(--fs-body-sm); line-height: var(--lh-body); text-align: left; }
+.kept { opacity: 0.5; }
+.keptNote { margin-top: 8px; }
+.addRow { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.addRow .btn { gap: 6px; }
+
+/* ラジオ（kit .rad） */
+.rad { width: 18px; height: 18px; border-radius: var(--r-pill); border: 1.8px solid var(--ink-4); flex: 0 0 auto; position: relative; display: inline-block; }
+.radOn { border-color: var(--plum-700); }
+.radOn::after { content: ""; position: absolute; inset: 3px; border-radius: var(--r-pill); background: var(--plum-700); }
+.box { width: 20px; height: 20px; border-radius: var(--r-check); border: 1.8px solid var(--ink-4); display: inline-grid; place-items: center; flex: 0 0 auto; }
+
+/* 保存バー */
+.saveBar { flex-direction: row; align-items: center; gap: 12px; padding: 14px 20px; }
+.saveFirst.saveFirst { margin-left: auto; }
+.saveWarn { color: var(--coral); }
+
+/* プレビュー（kit .pv / .pq） */
+.pv { background: var(--surface-2); border-radius: var(--r-card-web); padding: 18px; }
+.pvHead b { font-size: var(--fs-body-sm); }
+.pvBody { max-width: 340px; margin: 14px auto 0; }
+.pvPc { max-width: none; }
+.pvTitle { display: block; font-size: var(--fs-dialog-title); margin-top: 8px; }
+.pvDesc { margin-top: 8px; font-size: var(--fs-meta); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pvPc .pvDesc { -webkit-line-clamp: unset; display: block; }
+.pq { background: var(--surface); border-radius: var(--r-tile); padding: 12px 14px; margin-top: 10px; font-size: var(--fs-control); }
+.pqStar { color: var(--coral); }
+.pqO { display: flex; align-items: center; gap: 8px; margin-top: 7px; color: var(--ink-2); }
+.ghostRow { height: 38px; margin-top: 8px; border-radius: var(--r-md); border: 1.5px dashed var(--surface-3); display: flex; align-items: center; padding: 0 14px; gap: 10px; color: var(--ink-4); font-size: var(--fs-meta); }
+.applyBtn.applyBtn { width: 100%; margin-top: 12px; pointer-events: none; }
+
+/* 受付の設定 */
+.setLbl { width: 84px; flex: 0 0 auto; }
+.setVal.setVal { font-size: var(--fs-body-sm); font-weight: var(--fw-bold); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 0; background: none; padding: 0; height: auto; min-height: 0; color: inherit; font-family: inherit; line-height: var(--lh-body); cursor: pointer; text-align: left; }
+button.setVal:hover { text-decoration: underline; text-decoration-color: var(--ink-4); }
+.setInput { height: 34px; border-radius: var(--r-sm); background: var(--surface-2); border: 0; outline: 0; padding: 0 10px; font: inherit; font-size: var(--fs-body-sm); color: var(--ink); min-width: 0; }
+.setInput:focus { box-shadow: 0 0 0 2px var(--plum-300); }
+.setCap { width: 96px; }
+
+/* お知らせの文面（b12 #406；折りたたみ・门禁外） */
+.notesToggle.notesToggle { grid-column: span 12; display: flex; align-items: center; gap: 8px; height: auto; min-height: 0; padding: 4px 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.notesToggle h3 { margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
+.chevOpen { transform: rotate(180deg); }
+.nrow.nrow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 12px; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; height: auto; min-height: 0; border-radius: var(--r-md); line-height: var(--lh-body); }
+.nrow + .nrow, .nnote + .nrow { border-top: 1px solid var(--line); }
+.nrowOn.nrowOn { background: var(--surface-2); padding: 10px 12px; }
+.nrow > b { font-size: var(--fs-body-sm); width: 120px; flex: 0 0 auto; }
+.nrow .lbl { flex: 1 1 0%; }
+.nnote { margin: 4px 0 10px 12px; }
+.nnoteLbl { font-weight: var(--fw-bold); color: var(--ink-2); }
+.nta { min-height: 62px; margin-top: 6px; }
+.nta textarea { min-height: 34px; }
+.nnoteHint { margin-top: 6px; }
+.nnoteActs { margin-top: 8px; gap: 8px; }
+.nprevBox { border-radius: var(--r-bubble); background: var(--surface-2); padding: 14px; }
+.nprevBox b { font-size: var(--fs-body-sm); }
+.nprevText { margin-top: 10px; line-height: var(--lh-prose-lg); }
+.nprevNote { font-size: var(--fs-control); margin-top: 10px; line-height: var(--lh-prose); border-radius: var(--r-tile); padding: 12px; background: var(--mac-lav); }
+
+@media (max-width: 1279px) {
+  .span7, .span5 { grid-column: span 12; }
+}
+@media (max-width: 767px) {
+  .span7, .span5 { grid-column: auto; }
+  .grid2 { grid-template-columns: 1fr; }
+  .saveBar { flex-wrap: wrap; }
+  .addRow { flex-wrap: wrap; }
+  .nrow > b { width: 96px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tpl:active { transform: none; }
+}

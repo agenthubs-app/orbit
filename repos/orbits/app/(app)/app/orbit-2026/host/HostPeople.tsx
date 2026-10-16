@@ -21,7 +21,7 @@ const DONE_LABEL = { approve: "dApproved", reject: "dRejected", waitlist: "dWait
 export type RowIssue = "conflict" | "failed";
 
 /** 小圆环（kit .ring 34 / 4；<50% 用 coral）。 */
-function ScoreRing({ value, size, stroke, color, children, label }: { value: number; size: number; stroke: number; color: string; children?: ReactNode; label: string }) {
+export function ScoreRing({ value, size, stroke, color, children, label }: { value: number; size: number; stroke: number; color: string; children?: ReactNode; label: string }) {
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const dash = Math.max(0, Math.min(1, value)) * circumference;

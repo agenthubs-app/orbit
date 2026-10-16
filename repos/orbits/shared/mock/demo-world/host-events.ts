@@ -43,8 +43,8 @@ export interface HostMockState {
   overview: "pre_open" | "live";
   /** CFO18 申込設定：少 #14（草稿 2 问）/ 大 #15（公开中 5 问 + 未公開の変更 2）。 */
   setup: "few" | "many";
-  /** kiosk：空 #10（18:46，0 / 128）/ 大 #11（19:46，86 / 128）。 */
-  kiosk: "before" | "live";
+  /** kiosk：空 #10（18:46，0 / 128）/ 大 #11（19:46，86 / 128）/ 离线 #12（同 live，但木村・藤井・松本 还没到——门禁里离线后在本机受付这 3 人）。 */
+  kiosk: "before" | "live" | "offline";
   /** 公开主办方页：空 #33 / 少 #34 / 大 #35。 */
   organizer: HostVariant;
 }
@@ -476,24 +476,39 @@ export const HOST_KIOSK_ROSTER: readonly HostKioskRow[] = [
   kioskRow("hp-hasegawa", "checked_in", "2026-10-07T10:40:00.000Z", "C", "A-079"),
 ];
 
+/** 离线变体（b6 #12）里还没到的 3 人：门禁离线后依次受付 松本 → 藤井 → 木村，最新的受付顶上 3 行是「未送信」。 */
+export const HOST_KIOSK_OFFLINE_PENDING = ["participant:hp-kimura", "participant:hp-fujii", "participant:hp-matsumoto"] as const;
+
+/** 变体对应的基础名单（离线变体把那 3 人改回未到着）。 */
+export function hostKioskRoster(state: HostMockState = DEFAULT_HOST_MOCK_STATE): readonly HostKioskRow[] {
+  if (state.kiosk !== "offline") return HOST_KIOSK_ROSTER;
+  const pending = new Set<string>(HOST_KIOSK_OFFLINE_PENDING);
+  return HOST_KIOSK_ROSTER.map((row) => (pending.has(row.participantId) ? { ...row, checkedInAt: null, receptionNumber: null, status: "not_arrived" as const, table: null, undoable: false } : row));
+}
+
 export function hostKiosk(eventId: string, query: string, state: HostMockState = DEFAULT_HOST_MOCK_STATE, overrides: ReadonlyMap<string, Partial<HostKioskRow>> = new Map()): HostKioskResponse | null {
   if (eventId !== HOST_EVENT_IDS.cfo18) return null;
   const before = state.kiosk === "before";
-  const roster = HOST_KIOSK_ROSTER.map((row) => ({ ...row, ...(overrides.get(row.participantId) ?? {}) }));
+  const offline = state.kiosk === "offline";
+  const base = hostKioskRoster(state);
+  const roster = base.map((row) => ({ ...row, ...(overrides.get(row.participantId) ?? {}) }));
   const q = query.trim();
   const rows = q ? roster.filter((row) => [row.name, row.kana ?? "", row.org ?? ""].some((text) => text.includes(q))) : [];
-  const extra = roster.filter((row) => row.status === "checked_in" && !HOST_KIOSK_ROSTER.find((base) => base.participantId === row.participantId && base.status === "checked_in")).length;
+  const fresh = roster.filter((row) => row.status === "checked_in" && !base.find((item) => item.participantId === row.participantId && item.status === "checked_in"));
+  const extra = fresh.length - roster.filter((row) => row.status !== "checked_in" && base.find((item) => item.participantId === row.participantId && item.status === "checked_in")).length;
+  const hidden = new Set<string>(offline ? HOST_KIOSK_OFFLINE_PENDING : []);
   return {
     cacheUntil: "2026-10-08T00:30:00.000Z",
     canWalkIn: true,
-    checkedIn: before ? 0 : 86 + extra,
+    checkedIn: before ? 0 : (offline ? 83 : 86) + extra,
     devices: before ? 1 : 3,
     doorsOpenAt: "2026-10-07T10:00:00.000Z",
     eventId,
     now: before ? "2026-10-07T09:46:00.000Z" : "2026-10-07T10:46:00.000Z",
     overCapacity: false,
-    rate: before ? 0 : Math.round(((86 + extra) / 128) * 100),
+    rate: before ? 0 : Math.round((((offline ? 83 : 86) + extra) / 128) * 100),
     recent: before ? [] : [
+      ...fresh.filter((row) => row.checkedInAt).map((row) => ({ at: row.checkedInAt!, initial: row.initial, name: row.name, org: row.org, participantId: row.participantId, receptionNumber: row.receptionNumber, table: row.table })),
       recent("hp-kimura", "2026-10-07T10:46:00.000Z", "B", "A-086"),
       recent("hp-fujii", "2026-10-07T10:45:00.000Z", "F", "A-085"),
       recent("hp-matsumoto", "2026-10-07T10:45:00.000Z", "C", "A-084"),
@@ -502,7 +517,7 @@ export function hostKiosk(eventId: string, query: string, state: HostMockState =
       recent("hp-harada", "2026-10-07T10:42:00.000Z", "E", "A-081"),
       recent("hp-shimizu", "2026-10-07T10:41:00.000Z", "B", "A-080"),
       recent("hp-hasegawa", "2026-10-07T10:40:00.000Z", "C", "A-079"),
-    ],
+    ].filter((item) => !hidden.has(item.participantId)).slice(0, 8),
     rows: before ? [] : rows,
     sample: true,
     staffName: "伊藤 直子",
@@ -581,7 +596,11 @@ export function hostReport(eventId: string, view: "all" | "mine", state: HostMoc
     { label: "士業・支援機関", percent: 9 },
   ];
   const labels = ["8月20日", "8月27日", "9月3日", "9月9日"];
-  const trend = [2, 3, 5, 4, 6, 8, 9, 7, 10, 12, 11, 13, 15, 14, 16, 18, 17, 20, 22, 24, 26];
+  // 画板 b6 #17 / #18 的日别申込（告知メール = 第 4 天、登壇者発表 = 第 14 天）；#16 开催前 9 天。
+  const trend = [3, 5, 4, 11, 7, 6, 5, 4, 6, 9, 5, 4, 7, 12, 8, 6, 5, 7, 10, 4, 2];
+  const trendFew = [1, 2, 1, 3, 0, 1, 2, 1, 0, 2, 1, 1, 0, 1, 2, 1, 0, 1, 2, 1, 1];
+  const trendBefore = [3, 5, 8, 4, 6, 2, 5, 4, 5];
+  const trendMarks = [{ index: 3, label: "告知メール" }, { index: 13, label: "登壇者発表" }];
   const nothing = { checkInRate: null, checkedIn: null, daysPublishToEvent: null, exchangeRate: null, exchanges: null, exchangesPerPerson: null, followupRate: null, followups: null, funnel: { drafted: null, exchanged: null, followed: null, meetings: null }, standing: [], standingQuestion: null, tableNote: null, tables: [] };
   if (view === "mine") {
     const p = (id: string, tableName: string) => { const x = person(id); return { contactId: null, initial: initial(x.name), name: x.name, org: x.company, role: x.role, standing: x.standing, table: tableName }; };
@@ -597,12 +616,12 @@ export function hostReport(eventId: string, view: "all" | "mine", state: HostMoc
     };
   }
   if (eventId === HOST_EVENT_IDS.asakai3 || event.status === "upcoming" || event.status === "draft") {
-    return { all: { ...nothing, applied: seed.applied, capacity: seed.capacity, daysSincePublish: 9, daysToStart: 14, followupWindowDays: 7, state: "before", suppressedBelow: 5, trend: trend.slice(0, 9), trendLabels: [] }, event, mine: null, sample: true, view };
+    return { all: { ...nothing, applied: seed.applied, capacity: seed.capacity, daysSincePublish: 9, daysToStart: 14, followupWindowDays: 7, state: "before", suppressedBelow: 5, trend: trendBefore, trendLabels: [] }, event, mine: null, sample: true, view };
   }
   if (eventId === HOST_EVENT_IDS.founders11) {
-    return { all: { applied: 24, capacity: 24, checkInRate: 92, checkedIn: 22, daysPublishToEvent: 21, daysSincePublish: null, daysToStart: null, exchangeRate: 95, exchanges: 48, exchangesPerPerson: 2.2, followupRate: 73, followupWindowDays: 7, followups: 16, funnel: { drafted: 18, exchanged: 21, followed: 16, meetings: 6 }, standing, standingQuestion: "申込回答 Q1", state: "after", suppressedBelow: 5, tableNote: null, tables: [["A", 14], ["B", 12], ["C", 11], ["D", 11]].map(([t, n]) => ({ exchanges: n as number, round: 1, table: t as string })), trend, trendLabels: labels }, event, mine: null, sample: true, view };
+    return { all: { applied: 24, capacity: 24, checkInRate: 92, checkedIn: 22, daysPublishToEvent: 21, daysSincePublish: null, daysToStart: null, exchangeRate: 95, exchanges: 48, exchangesPerPerson: 2.2, followupRate: 73, followupWindowDays: 7, followups: 16, funnel: { drafted: 18, exchanged: 21, followed: 16, meetings: 6 }, standing, standingQuestion: "申込回答 Q1", state: "after", suppressedBelow: 5, tableNote: null, tables: [["A", 14], ["B", 12], ["C", 11], ["D", 11]].map(([t, n]) => ({ exchanges: n as number, round: 1, table: t as string })), trend: trendFew, trendLabels: labels, trendMarks }, event, mine: null, sample: true, view };
   }
-  return { all: { applied: seed.applied, capacity: seed.applied, checkInRate: 84, checkedIn: 118, daysPublishToEvent: 21, daysSincePublish: null, daysToStart: null, exchangeRate: 91, exchanges: 312, exchangesPerPerson: 2.6, followupRate: 61, followupWindowDays: 7, followups: 52, funnel: { drafted: 74, exchanged: 107, followed: 52, meetings: 19 }, standing, standingQuestion: "申込回答 Q1", state: "after", suppressedBelow: 5, tableNote: "テーブル E は欠席 2名で 3名卓に。次回は当日の再配置を検討", tables: [["A", 19], ["B", 17], ["C", 16], ["D", 15], ["E", 9], ["F", 14]].map(([t, n]) => ({ exchanges: n as number, round: 1, table: t as string })), trend, trendLabels: labels }, event, mine: null, sample: true, view };
+  return { all: { applied: seed.applied, capacity: seed.applied, checkInRate: 84, checkedIn: 118, daysPublishToEvent: 21, daysSincePublish: null, daysToStart: null, exchangeRate: 91, exchanges: 312, exchangesPerPerson: 2.6, followupRate: 61, followupWindowDays: 7, followups: 52, funnel: { drafted: 74, exchanged: 107, followed: 52, meetings: 19 }, standing, standingQuestion: "申込回答 Q1", state: "after", suppressedBelow: 5, tableNote: "テーブル E は欠席 2名で 3名卓に。次回は当日の再配置を検討", tables: [["A", 19], ["B", 17], ["C", 16], ["D", 15], ["E", 9], ["F", 14]].map(([t, n]) => ({ exchanges: n as number, round: 1, table: t as string })), trend, trendLabels: labels, trendMarks }, event, mine: null, sample: true, view };
 }
 
 // ─── 共同運営者 ─────────────────────────────────────────

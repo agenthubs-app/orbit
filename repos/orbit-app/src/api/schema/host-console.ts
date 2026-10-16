@@ -313,6 +313,7 @@ export const hostReportAllObject = z.object({
   daysPublishToEvent: z.number().int().nullable(),
   trend: z.array(count).max(120),
   trendLabels: z.array(z.string()).max(12),
+  trendMarks: z.array(z.object({ index: count, label: z.string().max(40) })).max(12).optional(),
   checkInRate: percent.nullable(),
   checkedIn: count.nullable(),
   exchanges: count.nullable(),

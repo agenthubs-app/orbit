@@ -408,6 +408,12 @@ export interface HostSetupHostNoteInput {
 
 // ─── レポート ──────────────────────────────────────────────
 
+export interface HostReportTrendMark {
+  /** trend 的下标。 */
+  index: number;
+  label: string;
+}
+
 export interface HostReportFunnel {
   exchanged: number | null;
   drafted: number | null;
@@ -439,6 +445,8 @@ export interface HostReportAll {
   daysPublishToEvent: number | null;
   trend: readonly number[];
   trendLabels: readonly string[];
+  /** 柱上的标注（「告知メール」「登壇者発表」，b6 #17 / #18；主办方的告知记录，可缺省）。 */
+  trendMarks?: readonly HostReportTrendMark[];
   checkInRate: number | null;
   checkedIn: number | null;
   /** 名刺交換 N組（双方都确认的交换）。 */

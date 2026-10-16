@@ -183,8 +183,8 @@ function ConditionRowsToggles({ conditions, t, onChange }: { conditions: HostMat
 }
 
 /** 公開確認（b6 #6）。 */
-export function PublishConfirm({ data, t, busy, onCancel, onPublish }: { data: HostMatchingResponse; t: HostT; busy: boolean; onCancel: () => void; onPublish: () => void }) {
-  // 画板有「共同運営者にも公開を知らせる」；契约 HostMatchingPublishInput 还没有这个字段（已报主会话），先只在界面上保留勾选。
+export function PublishConfirm({ data, t, busy, onCancel, onPublish }: { data: HostMatchingResponse; t: HostT; busy: boolean; onCancel: () => void; onPublish: (notifyCohosts: boolean) => void }) {
+  // 「共同運営者にも公開を知らせる」→ HostMatchingPublishInput.notifyCohosts（bb24efda）；没有共同运营者时不显示、不通知。
   const [notifyCohosts, setNotifyCohosts] = useState(true);
   const placed = Math.max(0, data.participantCount - data.unplaced.length);
   const rounds = data.rounds.length ? data.rounds.map((round) => round.index) : [1];
@@ -208,7 +208,7 @@ export function PublishConfirm({ data, t, busy, onCancel, onPublish }: { data: H
       ) : null}
       <div className={`${s.row} ${m.pubActs}`}>
         <button type="button" className={`btn ${s.btn}`} onClick={onCancel}>{t("cancel")}</button>
-        <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={busy} onClick={onPublish}>{t("aPublish")}</button>
+        <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={busy} onClick={() => onPublish(data.event.cohostCount > 0 && notifyCohosts)}>{t("aPublish")}</button>
       </div>
     </Modal>
   );
@@ -300,7 +300,7 @@ export function HostMatchingView(props: HostMatchingViewProps) {
   const unplacedTarget = Boolean(picked && picked.from !== null);
   const chips: ReactNode[] = [];
   if (data.conditions.separateCompanies) chips.push(<span key="sep" className={s.chip}>{t("cSeparate")}</span>);
-  if (data.conditions.roundCount > 1) chips.push(<span key="rounds" className={s.chip}>{t("chipRounds")}</span>);
+  if (data.conditions.avoidPreviousTablemates) chips.push(<span key="avoid" className={s.chip}>{t("chipAvoid")}</span>);
   if (data.conditions.investorPerTable) chips.push(<span key="inv" className={s.chip}>{t("chipInvestor")}</span>);
   if (data.unsatisfiedTables > 0) chips.push(<span key="uns" className={`${s.chip} ${s.c_coral}`}>{t("chipUnsatisfied", { n: data.unsatisfiedTables })}</span>);
   if (data.unplaced.length > 0) chips.push(<span key="unp" className={`${s.chip} ${s.c_coral}`}>{t("chipUnplaced", { n: data.unplaced.length })}</span>);
@@ -425,10 +425,10 @@ export function HostMatchingTab({ eventId, language, onChanged }: { eventId: str
     onChanged?.();
   };
 
-  const publish = async () => {
+  const publish = async (notifyCohosts: boolean) => {
     if (!data?.generationId) return;
     setBusy(true);
-    const res = await hostApi.publishMatching(eventId, data.generationId, data.overridesVersion);
+    const res = await hostApi.publishMatching(eventId, data.generationId, data.overridesVersion, notifyCohosts);
     setBusy(false);
     setModal(null);
     if (!res.ok) { if (failureOf(res) === "conflict") await conflict(); else toast.error(t("saveError")); return; }
@@ -464,7 +464,7 @@ export function HostMatchingTab({ eventId, language, onChanged }: { eventId: str
       ) : null}
       <ConfirmDialog open={modal === "regen"} title={t("mRegenTitle")} message={t("mRegenBody", { n: remaining })} confirmLabel={t("mRegenConfirm")} cancelLabel={t("cancel")} icon="refresh"
         onCancel={() => setModal(null)} onConfirm={() => void generate(pendingConditions ?? current)} />
-      {modal === "publish" ? <PublishConfirm data={data} t={t} busy={busy} onCancel={() => setModal(null)} onPublish={() => void publish()} /> : null}
+      {modal === "publish" ? <PublishConfirm data={data} t={t} busy={busy} onCancel={() => setModal(null)} onPublish={(notify) => void publish(notify)} /> : null}
     </>
   );
 }

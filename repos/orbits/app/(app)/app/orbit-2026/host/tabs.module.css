@@ -121,7 +121,7 @@
 .ring circle { fill: none; stroke-linecap: round; transition: stroke-dasharray 1.2s var(--ease); }
 .ringC { position: absolute; text-align: center; line-height: var(--lh-tight); }
 .ringBig { font-size: var(--fs-number-lg); margin-top: 0; }
-.ringCard { text-align: center; display: block; }
+.ringCard { text-align: center; display: flex; flex-direction: column; align-items: center; }
 .reviewCard { display: block; }
 .ringLbl { margin-top: 8px; }
 .side { display: grid; gap: 18px; align-content: start; }
