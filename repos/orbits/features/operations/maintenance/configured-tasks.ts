@@ -38,6 +38,7 @@ import { createInviteAttemptsCleanupMaintenanceTask, createInviteProfileSyncMain
 import { getConfiguredEventAssessmentRuntime } from "../../events/assessment/configured";
 import { createEventAssessmentReadingMaintenanceTask } from "../../events/assessment/job";
 import { createEventNotificationMaintenanceTask } from "../../events/journey/notification-job";
+import { createHostArchiveMaintenanceTask, createHostNoticeMaintenanceTask } from "../../events/host/maintenance";
 import { createEventAssessmentRecomputeMaintenanceTask, eventPickNotification } from "../../events/assessment/recompute-job";
 import type { MaintenanceTask } from "./pass";
 
@@ -320,6 +321,10 @@ export function createConfiguredMaintenanceTasks({
         };
       },
     }),
+    // R17 (host/DESIGN.md §2.10, §2.2): fixed-template host notices (outbox → inbox + mail, non-production mail redirected) and
+    // the 30-day auto-archive of host-created events (hourly).
+    createHostNoticeMaintenanceTask(),
+    createHostArchiveMaintenanceTask(),
     // Monitoring O2/O3: daily read-cost rollup, Neon reconciliation, retention
     // and admin alerts. Days already final are skipped, so heartbeat passes are cheap.
     createReadCostMaintenanceTask({ env }),
