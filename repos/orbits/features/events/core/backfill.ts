@@ -342,15 +342,17 @@ async function currentVersion(
   eventId: string,
 ): Promise<{
   contentHash: string | null;
+  createdBy: string | null;
   organizerActorId: string;
   version: number;
 } | null> {
   const result = await executor.query<{
     content_hash: string | null;
+    created_by: string | null;
     event_version: number;
     organizer_actor_id: string;
   }>(
-    `select e.event_version, e.organizer_actor_id, v.content_hash
+    `select e.event_version, e.organizer_actor_id, e.created_by, v.content_hash
      from event_ops_events e
      left join event_event_versions v
        on v.workspace_id = e.workspace_id
@@ -364,6 +366,7 @@ async function currentVersion(
   return row
     ? {
         contentHash: row.content_hash,
+        createdBy: row.created_by ?? null,
         organizerActorId: row.organizer_actor_id,
         version: Number(row.event_version),
       }
@@ -397,8 +400,14 @@ export async function applyEventCoreBackfillPlan(input: {
       "select pg_advisory_xact_lock(hashtextextended($1, 0))",
       [`event-core-backfill:${input.workspaceId}`],
     );
+    // R17（host/DESIGN.md §2.2「回填保护」）：主办方在 Orbit 里建的活动（created_by = 'host'）不被回填覆盖码和生命周期。
+    const hostOwned = new Set<string>();
     for (const event of input.plan.events) {
       const current = await currentVersion(transaction, input.workspaceId, event.eventId);
+      if (current?.createdBy === "host") {
+        hostOwned.add(event.eventId);
+        continue;
+      }
       if (current && current.organizerActorId !== event.organizerActorId) {
         throw new EventCoreDataError(
           "EVENT_CORE_BACKFILL_CONFLICT",
@@ -500,6 +509,7 @@ export async function applyEventCoreBackfillPlan(input: {
       }
     }
     for (const event of input.plan.events) {
+      if (hostOwned.has(event.eventId)) continue;
       const persisted = await transaction.query<Record<string, unknown>>(
         `select
            e.event_id, e.organizer_actor_id, e.public_code, e.title,

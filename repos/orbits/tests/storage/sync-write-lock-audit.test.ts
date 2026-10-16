@@ -64,6 +64,7 @@ export const MESSAGE_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableW
 export const EVENT_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWritePolicy>> = {
   "features/events/admission/storage/postgres-repository.ts": { statements: 1, how: "runTransaction takes the lock first for every admission write" },
   "features/events/core/backfill.ts": { statements: 1, how: "applyEventCoreBackfillPlan takes the lock first" },
+  "features/events/host/storage/lifecycle.ts": { statements: 4, how: "R17: every host lifecycle write runs in hostTransaction, which takes the lock first (create / update / publish / cancel / archive / reissue)" },
   "features/events/event-operations/storage/canonical-membership-writer.ts": { statements: 1, how: "appendCanonicalMembershipVersion takes it again (callers take it first)" },
   "features/events/event-operations/storage/canonical-registration-repository.ts": { statements: 2, how: "activation, register, cancel and seed transactions take the lock first" },
   "features/events/event-operations/storage/postgres-repository.ts": { statements: 3, how: "saveConfiguration and publishGenerationAtomically take the lock first" },
