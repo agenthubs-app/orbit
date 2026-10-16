@@ -1183,7 +1183,7 @@ function center(s) {
 
 /* ============ 単一イベント運営ヘッダ ============ */
 const coAvs = `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div>`;
-const hostHead = (ev, sub, on, extra = '') => mainhead(ev, sub, backBtn, `${coAvs}<button class="btn">${ic('users', 'sm')}共同運営者</button>${extra}`) +
+const hostHead = (ev, sub, on, extra = '') => mainhead(ev, sub, backBtn, `${coAvs}<button class="btn">${ic('users', 'sm')}共同運営者</button>${extra}<button class="rbtn k-hmore">${ic('more')}</button>`) +
   `<div class="htabs">${['概要', 'マッチング', '参加者', '受付', '申込設定', 'レポート'].map(t => `<button class="${t === on ? 'on' : ''}">${t}${t === '参加者' && on !== '参加者' ? '<span class="cnt-b">12</span>' : ''}</button>`).join('')}</div>`;
 function overview() {
   return hostHead(HE[0].n, '主催 · 本日 19:00 · 渋谷ストリーム 4F ホール', '概要') + `<div class="wgrid">

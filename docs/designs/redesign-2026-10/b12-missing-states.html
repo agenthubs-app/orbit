@@ -7578,7 +7578,7 @@ function center(s) {
 
 /* ============ 単一イベント運営ヘッダ ============ */
 const coAvs = `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div>`;
-const hostHead = (ev, sub, on, extra = '') => mainhead(ev, sub, backBtn, `${coAvs}<button class="btn">${ic('users', 'sm')}共同運営者</button>${extra}`) +
+const hostHead = (ev, sub, on, extra = '') => mainhead(ev, sub, backBtn, `${coAvs}<button class="btn">${ic('users', 'sm')}共同運営者</button>${extra}<button class="rbtn k-hmore">${ic('more')}</button>`) +
   `<div class="htabs">${['概要', 'マッチング', '参加者', '受付', '申込設定', 'レポート'].map(t => `<button class="${t === on ? 'on' : ''}">${t}${t === '参加者' && on !== '参加者' ? '<span class="cnt-b">12</span>' : ''}</button>`).join('')}</div>`;
 function overview() {
   return hostHead(HE[0].n, '主催 · 本日 19:00 · 渋谷ストリーム 4F ホール', '概要') + `<div class="wgrid">
@@ -8120,6 +8120,16 @@ let g = '';
 g += S8('补画 · 2026-10-16 · 主催 R17 · §10 A 拍板（§39）', 'A2 取り込み = 照合表 + 招待リンク（不发邮件、不建联系人、90 天删）；A8 390 不开 kiosk');
 g += WP('W-R17-23 参加者 · 名簿の取り込み（照合表と招待リンク）', '', () => ({ nav: 'host', body: importW() }), [['.k-imptab', 0, '照合表：申込済み / Orbit 登録済み · 未申込 / Orbit 未登録 三类计数 + 逐行结果；メール只显示前缀；可书き出す'], ['.k-impinv', 0, '这场活动专用招待リンク + 案内文コピー；由主办方自己用邮件 / Peatix・connpass 发送'], ['.k-imprule', 0, 'Orbit 不发邮件、不进联系人、文件 90 天自动删（A2，对标 connpass 只能给已登记的人发消息、特定電子メール法）']], 'b6 #0 / #7 入口的去处 · 补画 2026-10-16');
 g += WP('W-R17-66-390 受付 · 390（タブレットか App で）', '', () => ({ body: kiosk390(), tab: -1 }), [['.k-k390', 0, 'kiosk 只做 1180；1024 以上同一布局居中；390 只出这张引导：「App で開く」+ 复制链接（A8，对标 Eventbrite / Peatix 受付以平板与 App 为主）']], 'b6 #10–12 · 补画 2026-10-16', 390);
+__g8out(group('g8', g));
+})();
+/* ===================== 补画 · 2026-10-16（续 3）：运营台页头 ⋯ 菜单（§44）===================== */
+(() => {
+const X = B12X.H6;
+const S8 = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+const hmenu = `<div class="dmenu k-hmenu" style="right:40px;top:78px;z-index:30">${[['pen', '基本情報を編集', ''], ['refresh', '参加コードを再発行', ''], ['link', '申込ページを開く', '']].map(([i, t]) => `<div>${ic(i, 'sm')}${t}</div>`).join('')}<div style="height:1px;background:var(--line);margin:4px 6px;padding:0"></div><div style="color:var(--coral-text)">${ic('x', 'sm')}イベントを中止</div></div>`;
+let g = '';
+g += S8('补画 · 2026-10-16 · 主催 R17 · 運営台 ⋯ メニュー（§44）', '已公开活动的 编辑 / 参加コード再発行 / 中止 入口统一放页头「⋯」（对标 Peatix / connpass 管理页头菜单）；下書き的「公開する」在横幅（#440）');
+g += WP('W-R17-24 運営台 · ⋯ メニュー（公開中）', '', () => ({ nav: 'host', body: X.overview().replace('<button class="rbtn k-hmore">', '<button class="rbtn k-hmore" style="background:var(--surface-2)">'), ov: hmenu }), [['.k-hmenu', 0, '页头右端「⋯」：基本情報を編集（→ W-R17-02）/ 参加コードを再発行（确认后旧码失效）/ 申込ページを開く / 分隔线 / イベントを中止（珊瑚色 → W-R17-04 确认框，仅 owner）。所有页签同一位置']], 'b6 概要 · 补画 2026-10-16');
 __g8out(group('g8', g));
 })();
 /* ===================== 出力 ===================== */

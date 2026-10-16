@@ -9,6 +9,13 @@
 <script src="kit/kit.js"></script>
 <script src="kit/data.js"></script>
 <style>
+  /* §44：公开主办方页手机版 = 手机浏览器框（.phone.mweb，同 b8 / b12 W-*-390） */
+  .mweb .scroll { padding-bottom: 200px; }
+  .mweb > .sbar { position: absolute; left: 0; right: 0; bottom: 0; height: 92px; z-index: 34; background: var(--glass); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border-top: 1px solid var(--line); padding: 10px 14px 0; display: flex; gap: 10px; align-items: flex-start; }
+  .mweb > .sbar .url { flex: 1; height: 42px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+  .mweb > .sbar .ub { width: 42px; height: 42px; display: grid; place-items: center; color: var(--ink-2); font-size: 14px; font-weight: 700; }
+  .mweb .sheet-scrim { bottom: 92px; }
+  .mweb .sheet { bottom: 100px; }
   .doc { min-width: 1520px; }
   .score { font-family: var(--font-num); font-weight: 800; }
   .btn.xl { height: 50px; font-size: 14.5px; }
@@ -1371,7 +1378,7 @@ function hostPub(s, web) {
     : `<div class="mtop"><span class="logo-s">O</span><b style="font-size:14px;flex:1">Orbit</b><button class="btn sm ghost">ログイン</button></div><div class="card">${head}</div>${upHead}${up}${past}<div class="lbl center" style="margin-top:18px">このページは主催者が公開しています</div>`;
 }
 const followSheet = `<div class="sheet-scrim"></div><div class="sheet k-fsheet"><div class="grab"></div><b style="font-size:16px">フォローするにはログイン</b><div class="lbl" style="margin:4px 0 14px">${HOST.n} の新しいイベントをお知らせします</div>
-  <button class="btn primary block xl">Apple で続ける</button><button class="btn block xl" style="margin-top:8px">Google で続ける</button><button class="btn ghost block" style="margin-top:4px">メールで続ける</button><div class="lbl center" style="margin-top:8px">登録は1分 · クレジットカード不要</div></div>`;
+  <button class="btn primary block xl">Google で続ける</button><button class="btn block xl" style="margin-top:8px">メールで続ける</button><div class="lbl center" style="margin-top:8px">登録は1分 · クレジットカード不要</div></div>`;
 
 /* =================================================================
    F. 面談の詳細
@@ -1655,8 +1662,10 @@ h += sec('E · 主催者の公開ページ', '任何人可访问的公开页（�
 ['empty', 'few', 'many'].forEach(s => {
   h += BB('公開ページ · Web 1440', s, { body: hostPub(s, 1) }, s === 'empty' ? [['.k-none', 0, '无活动时：说明 + 「フォローしてお知らせを受け取る」+ 虚线幽灵行预告卡片内容'], ['.k-follow', 0, 'フォローする：未登录 → 登录弹窗（Apple/Google/メール）；已登录 → 变「フォロー中」']] : s === 'many' ? [['.k-stat', 0, '三个统计数字（开催回数 / 累计参加者 / 关注者）'], ['.pev', 0, '即将开始的活动卡：残席 chip + 「詳細・申込」进入 b2 活动详情'], ['.past', 0, '过去活动 3 列，最多 6 张 + 「すべて見る」']] : null);
 });
-h += boards(['empty', 'few', 'many'].map(s => AP('公開ページ · 手机浏览器', s, { body: hostPub(s, 0), overlay: urlbar('orbit.example/o/cfo-night') }, s === 'few' ? [['.k-follow', 0, '手机版主按钮在简介下方全宽；底部为 Safari 地址栏']] : null)));
-h += boards([AP('フォロー · 未ログイン', '', { body: hostPub('few', 0), overlay: followSheet }, [['.k-fsheet', 0, '未登录点「フォローする」→ 底部登录弹层，文案「登録は1分 · クレジットカード不要」']])]);
+const pubSbar = `<div class="sbar"><span class="ub">aA</span><div class="url">${ic('link', 'sm')}orbit.example/o/cfo-night</div><span class="ub">${ic('refresh', 'sm')}</span></div>`;
+const MW = a => (a[2] = a[2].replace('class="phone"', 'class="phone mweb"'), a);
+h += boards(['empty', 'few', 'many'].map(s => MW(AP('公開ページ · 手机浏览器', s, { body: hostPub(s, 0), overlay: pubSbar }, s === 'few' ? [['.k-follow', 0, '手机版主按钮在简介下方全宽；底部为 Safari 地址栏']] : null))));
+h += boards([MW(AP('フォロー · 未ログイン', '', { body: hostPub('few', 0), overlay: followSheet + pubSbar }, [['.k-fsheet', 0, '未登录点「フォローする」→ 底部登录弹层（Google / メール，同其他登录画板），文案「登録は1分 · クレジットカード不要」']]))]);
 
 /* ---- F ---- */
 h += sec('F · 面談の詳細', '日时·场所/URL·对方·关联活动·话すこと（带 why）·メモ；时间冲突「動かす」、编辑、取消（通知对方只做草稿）');
