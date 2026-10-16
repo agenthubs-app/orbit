@@ -1574,6 +1574,218 @@ alter table event_ops_contact_requests
   );
 `,
   },
+  {
+    // R17 主催（host/DESIGN.md §3.1，迁移名 host-core）：全部只加。生产执行等合回授权，执行前只读预检
+    // （slug 冲突、已有 public_code 是否合规）。受付番号放独立表（不改不可变的 membership 版本表）。
+    name: "event-operations-v16-host-core",
+    version: 16,
+    sql: `
+create table if not exists organizer_profiles (
+  workspace_id text not null,
+  profile_id text not null,
+  owner_actor_id text not null,
+  slug text not null check (slug ~ '^[a-z0-9](?:[a-z0-9-]{1,46}[a-z0-9])$'),
+  display_name text not null check (char_length(btrim(display_name)) between 1 and 60),
+  emoji text check (emoji is null or char_length(emoji) between 1 and 8),
+  bio text check (bio is null or char_length(bio) <= 400),
+  visibility text not null default 'public' check (visibility in ('public', 'link_only')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (workspace_id, profile_id),
+  unique (workspace_id, slug)
+);
+
+create index if not exists organizer_profiles_owner_idx
+  on organizer_profiles (workspace_id, owner_actor_id, created_at);
+
+alter table event_ops_events
+  add column if not exists organizer_profile_id text,
+  add column if not exists created_by text check (created_by is null or created_by = 'host');
+
+create index if not exists event_ops_events_organizer_profile_idx
+  on event_ops_events (workspace_id, organizer_profile_id, starts_at)
+  where organizer_profile_id is not null;
+
+alter table event_aliases drop constraint if exists event_aliases_alias_type_check;
+alter table event_aliases add constraint event_aliases_alias_type_check
+  check (alias_type in ('event_id', 'public_code', 'legacy_route_id', 'public_slug'));
+
+create table if not exists event_reception_counters (
+  workspace_id text not null,
+  event_id text not null,
+  next_no integer not null default 1 check (next_no > 0),
+  primary key (workspace_id, event_id),
+  foreign key (workspace_id, event_id) references event_ops_events (workspace_id, event_id) on delete cascade
+);
+
+create table if not exists event_reception_numbers (
+  workspace_id text not null,
+  event_id text not null,
+  actor_id text not null,
+  sequence integer not null check (sequence > 0),
+  reception_no text not null,
+  assigned_at timestamptz not null default now(),
+  primary key (workspace_id, event_id, actor_id),
+  unique (workspace_id, event_id, sequence),
+  unique (workspace_id, event_id, reception_no),
+  foreign key (workspace_id, event_id) references event_ops_events (workspace_id, event_id) on delete cascade
+);
+
+alter table event_ops_event_role_assignment_versions drop constraint if exists event_ops_event_role_assignment_versions_role_check;
+alter table event_ops_event_role_assignment_versions add constraint event_ops_event_role_assignment_versions_role_check
+  check (role in ('operations', 'check_in', 'reviewer', 'read_only_analyst', 'manager'));
+alter table event_ops_event_role_assignment_heads drop constraint if exists event_ops_event_role_assignment_heads_role_check;
+alter table event_ops_event_role_assignment_heads add constraint event_ops_event_role_assignment_heads_role_check
+  check (role in ('operations', 'check_in', 'reviewer', 'read_only_analyst', 'manager'));
+
+create table if not exists event_ops_checkin_undos (
+  workspace_id text not null,
+  event_id text not null,
+  undo_id text not null,
+  actor_id text not null,
+  participant_id text not null,
+  checked_in_at timestamptz not null,
+  evidence_id text not null,
+  undone_at timestamptz not null default now(),
+  undone_by text not null,
+  primary key (workspace_id, event_id, undo_id),
+  foreign key (workspace_id, event_id) references event_ops_events (workspace_id, event_id) on delete cascade
+);
+
+create table if not exists event_ops_walk_ins (
+  workspace_id text not null,
+  event_id text not null,
+  actor_id text not null,
+  over_capacity boolean not null default false,
+  admitted_by text not null,
+  admitted_at timestamptz not null default now(),
+  primary key (workspace_id, event_id, actor_id),
+  foreign key (workspace_id, event_id) references event_ops_events (workspace_id, event_id) on delete cascade
+);
+
+create table if not exists event_kiosk_requests (
+  workspace_id text not null,
+  event_id text not null,
+  idempotency_key text not null check (char_length(idempotency_key) between 8 and 200),
+  operation text not null check (operation in ('check_in', 'scan', 'undo', 'admit_on_site')),
+  result jsonb not null check (jsonb_typeof(result) = 'object'),
+  created_at timestamptz not null default now(),
+  primary key (workspace_id, event_id, idempotency_key),
+  foreign key (workspace_id, event_id) references event_ops_events (workspace_id, event_id) on delete cascade
+);
+
+create table if not exists event_kiosk_heartbeats (
+  workspace_id text not null,
+  event_id text not null,
+  device_id text not null check (device_id ~ '^[A-Za-z0-9_-]{8,100}$'),
+  actor_id text not null,
+  seen_at timestamptz not null default now(),
+  primary key (workspace_id, event_id, device_id),
+  foreign key (workspace_id, event_id) references event_ops_events (workspace_id, event_id) on delete cascade
+);
+
+create table if not exists event_ops_matching_conditions (
+  workspace_id text not null,
+  event_id text not null,
+  round_count integer not null default 2 check (round_count between 1 and 3),
+  constraints jsonb not null default '{}'::jsonb check (jsonb_typeof(constraints) = 'object'),
+  updated_by text not null,
+  updated_at timestamptz not null default now(),
+  primary key (workspace_id, event_id),
+  foreign key (workspace_id, event_id) references event_ops_events (workspace_id, event_id) on delete cascade
+);
+
+create table if not exists event_ops_generation_overrides (
+  workspace_id text not null,
+  generation_id text not null,
+  event_id text not null,
+  moves jsonb not null default '[]'::jsonb check (jsonb_typeof(moves) = 'array'),
+  version integer not null default 0 check (version >= 0),
+  updated_by text not null,
+  updated_at timestamptz not null default now(),
+  primary key (workspace_id, generation_id),
+  foreign key (workspace_id, event_id) references event_ops_events (workspace_id, event_id) on delete cascade
+);
+
+create table if not exists event_cohost_invites (
+  workspace_id text not null,
+  invite_id text not null,
+  event_id text not null,
+  token_hash text not null,
+  short_code text not null check (short_code ~ '^H-[2-9A-HJKMNP-TV-Z]{4}-[2-9A-HJKMNP-TV-Z]{4}$'),
+  role text not null check (role in ('manager', 'check_in', 'read_only_analyst')),
+  invited_email_hash text,
+  invited_actor_id text,
+  invitee_label text,
+  invited_by text not null,
+  expires_at timestamptz not null,
+  used_by text,
+  used_at timestamptz,
+  revoked_at timestamptz,
+  created_at timestamptz not null default now(),
+  primary key (workspace_id, invite_id),
+  unique (workspace_id, token_hash),
+  unique (workspace_id, short_code),
+  check ((used_by is null) = (used_at is null)),
+  foreign key (workspace_id, event_id) references event_ops_events (workspace_id, event_id) on delete cascade
+);
+
+create table if not exists event_cohost_invite_attempts (
+  workspace_id text not null,
+  client_key_hash text not null,
+  window_started_at timestamptz not null default now(),
+  failures integer not null default 0 check (failures >= 0),
+  locked_until timestamptz,
+  primary key (workspace_id, client_key_hash)
+);
+
+create table if not exists event_host_notice_outbox (
+  workspace_id text not null,
+  notice_id text not null,
+  event_id text not null,
+  kind text not null check (kind in (
+    'admission_approved', 'admission_waitlisted', 'admission_rejected', 'admission_promoted',
+    'matching_published', 'event_cancelled', 'event_changed', 'event_published',
+    'profile_incomplete', 'cohost_invite', 'desktop_link'
+  )),
+  actor_id text not null,
+  idempotency_key text not null,
+  payload jsonb not null default '{}'::jsonb check (jsonb_typeof(payload) = 'object'),
+  status text not null default 'pending' check (status in ('pending', 'sent', 'skipped', 'failed')),
+  attempts integer not null default 0 check (attempts >= 0),
+  last_error text,
+  created_at timestamptz not null default now(),
+  sent_at timestamptz,
+  primary key (workspace_id, notice_id),
+  unique (workspace_id, idempotency_key)
+);
+
+create index if not exists event_host_notice_outbox_pending_idx
+  on event_host_notice_outbox (workspace_id, status, created_at)
+  where status = 'pending';
+
+create table if not exists event_host_notice_sends (
+  workspace_id text not null,
+  event_id text not null,
+  send_id text not null,
+  kind text not null check (kind in ('event_cancelled', 'event_changed', 'profile_incomplete')),
+  recipients integer not null check (recipients >= 0),
+  sent_by text not null,
+  sent_at timestamptz not null default now(),
+  primary key (workspace_id, event_id, send_id)
+);
+
+create table if not exists event_host_notice_extras (
+  workspace_id text not null,
+  event_id text not null,
+  host_note text check (host_note is null or char_length(host_note) <= 140),
+  updated_by text not null,
+  updated_at timestamptz not null default now(),
+  primary key (workspace_id, event_id),
+  foreign key (workspace_id, event_id) references event_ops_events (workspace_id, event_id) on delete cascade
+);
+`,
+  },
 ];
 
 function checksum(sql: string): string {
