@@ -121,7 +121,7 @@ export const hostMatchingGenerateInputObject = z.object({
 }).strict();
 export const hostMatchingGenerateInputSchema = hostMatchingGenerateInputObject as unknown as z.ZodType<HostMatchingGenerateInput>;
 
-export const hostMatchingPublishInputObject = z.object({ generationId: z.string().trim().min(1).max(200), overridesVersion: z.number().int().min(0) }).strict();
+export const hostMatchingPublishInputObject = z.object({ generationId: z.string().trim().min(1).max(200), overridesVersion: z.number().int().min(0), notifyCohosts: z.boolean().optional() }).strict();
 export const hostMatchingPublishInputSchema = hostMatchingPublishInputObject as z.ZodType<HostMatchingPublishInput>;
 
 // ─── 参加者 ───

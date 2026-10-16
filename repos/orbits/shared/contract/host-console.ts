@@ -161,6 +161,8 @@ export interface HostMatchingGenerateInput {
 export interface HostMatchingPublishInput {
   generationId: string;
   overridesVersion: number;
+  /** 公開確認「共同運営者にも公開を知らせる」（b6 #6）。缺省不通知。 */
+  notifyCohosts?: boolean;
 }
 
 // ─── 参加者（审核）──────────────────────────────────────────

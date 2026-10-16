@@ -419,6 +419,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       // 参加者端的「テーブル編成を公開しました」：给已报名的人写定型通知。
       await client.transaction(async (executor) => {
         for (const row of await reads.kioskRoster(eventId)) if (row.status !== "waitlisted") await enqueueHostNotice(executor, { actorId: row.actorId, eventId, kind: "matching_published", workspaceId });
+        if (input.notifyCohosts) for (const member of await cohosts.members(eventId)) if (member.role !== "owner" && member.actorId !== actorId) await enqueueHostNotice(executor, { actorId: member.actorId, eventId, idempotencyKey: `notice:${eventId}:matching_published:cohost:${member.actorId}`, kind: "matching_published", workspaceId });
       });
       return matchingView(actorId, eventId, 1);
     },
