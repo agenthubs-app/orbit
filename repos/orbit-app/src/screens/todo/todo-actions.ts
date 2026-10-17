@@ -43,6 +43,27 @@ export function todoSuggestionSnoozeReceipt(payload: unknown, suggestionId: stri
     Number.isFinite(Date.parse(row.nextVisibleAt)) && Date.parse(row.nextVisibleAt) === Date.parse(nextVisibleAt);
 }
 
+/** Other actionable decision sources have their own small write and receipt contracts. */
+export function todoNativeDecisionRequest(item: TodoDecisionItem, action: "accept" | "dismiss", idempotencyKey: string): {
+  path: string; body: Record<string, string>;
+} | null {
+  if (item.sample || !item.sourceId || item.key !== `${item.source}:${item.sourceId}` || !item.actions.includes(action)) return null;
+  const encoded = encodeURIComponent(item.sourceId);
+  if (item.source === "plan_pending" && idempotencyKey) return {
+    path: `/api/agent/plans/v2/pending/${encoded}/${action}`, body: { idempotencyKey },
+  };
+  if (item.source === "agent_action") return { path: `/api/agent/actions/${encoded}/${action}`, body: {} };
+  return null;
+}
+
+export function todoNativeDecisionReceipt(payload: unknown, item: TodoDecisionItem, action: "accept" | "dismiss"): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const row = payload as Record<string, unknown>;
+  if (item.source === "plan_pending") return row.id === item.sourceId && row.status === (action === "accept" ? "accepted" : "dismissed") && typeof row.replayed === "boolean";
+  if (item.source === "agent_action") return row.state === "success" && row.actionId === item.sourceId && row.decision === (action === "accept" ? "accepted" : "dismissed");
+  return false;
+}
+
 export function todoFollowupHref(item: TodoFollowupItem): string | null {
   // The legacy relationship detail address takes a connectionId, not this taskId.
   return item.kind === "lifecycle" ? null : `/tasks/${encodeURIComponent(item.taskId)}`;

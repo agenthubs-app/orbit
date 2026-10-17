@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "../src/screens/todo/todo-actions";
+import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "../src/screens/todo/todo-actions";
 
 test("To-do opens only destinations with a stable, owned route", () => {
   const base = { key: "agent_action:a1", sourceId: "a1", titlePreview: "Review", createdAt: "2026-10-18T00:00:00Z", actions: ["open"] as const };
@@ -48,6 +48,24 @@ test("To-do suggestion Later uses the source snooze endpoint at next local 09:00
   assert.equal(todoSuggestionSnoozeReceipt({ suggestion: { id: "s2", status: "snoozed", nextVisibleAt: request?.body.nextVisibleAt } }, "s1", request!.body.nextVisibleAt), false);
   assert.equal(todoSuggestionSnoozeRequest({ ...item, sample: true }, "ios:todo:snooze", "2026-10-18", "Asia/Tokyo", new Date("2026-10-18T12:00:00Z")), null);
   assert.equal(todoSuggestionSnoozeRequest(item, "ios:todo:snooze", "2026-10-18", "Asia/Tokyo", new Date("2026-10-19T01:00:00Z")), null);
+});
+
+test("plan pending and agent action decisions stay on their native endpoints and require matching receipts", () => {
+  const base = { sourceId: "id:/?", titlePreview: "Review", createdAt: "2026-10-18T00:00:00Z", actions: ["accept", "dismiss"] as const };
+  const plan = { ...base, key: "plan_pending:id:/?", source: "plan_pending" as const };
+  const agent = { ...base, key: "agent_action:id:/?", source: "agent_action" as const };
+  assert.deepEqual(todoNativeDecisionRequest(plan, "accept", "ios:key"), {
+    path: "/api/agent/plans/v2/pending/id%3A%2F%3F/accept", body: { idempotencyKey: "ios:key" },
+  });
+  assert.deepEqual(todoNativeDecisionRequest(agent, "dismiss", "ios:key"), {
+    path: "/api/agent/actions/id%3A%2F%3F/dismiss", body: {},
+  });
+  assert.equal(todoNativeDecisionRequest({ ...plan, key: "wrong" }, "accept", "ios:key"), null);
+  assert.equal(todoNativeDecisionRequest({ ...agent, sample: true }, "accept", "ios:key"), null);
+  assert.equal(todoNativeDecisionReceipt({ id: "id:/?", status: "accepted", replayed: false }, plan, "accept"), true);
+  assert.equal(todoNativeDecisionReceipt({ id: "other", status: "accepted", replayed: false }, plan, "accept"), false);
+  assert.equal(todoNativeDecisionReceipt({ state: "success", actionId: "id:/?", decision: "dismissed" }, agent, "dismiss"), true);
+  assert.equal(todoNativeDecisionReceipt({ state: "success", actionId: "id:/?", decision: "accepted" }, agent, "dismiss"), false);
 });
 
 test("To-do completion acknowledges only the owned completed task receipt", () => {

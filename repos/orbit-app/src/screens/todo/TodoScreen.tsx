@@ -25,7 +25,7 @@ import { readTaskListItems } from "../../view-models/task-list-scope";
 import { PersonalScheduleDateTimePicker } from "../schedule/PersonalScheduleDateTimePicker";
 import { TasksScreen } from "../tasks/TasksScreen";
 import { TodoSections } from "./TodoSections";
-import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "./todo-actions";
+import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "./todo-actions";
 import { appendTodoSourcePage } from "./todo-page-model";
 import { useTodoPage } from "./useTodoPage";
 
@@ -149,7 +149,8 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
     const idempotencyKey = scope.keys.get(intent) ?? `ios:todo-${action}:${Crypto.randomUUID()}`;
     const request = action === "snooze"
       ? todoSuggestionSnoozeRequest(item, idempotencyKey, date, timeZone, new Date())
-      : todoSuggestionDecisionRequest(item, action, idempotencyKey);
+      : item.source === "task_suggestion" ? todoSuggestionDecisionRequest(item, action, idempotencyKey)
+      : todoNativeDecisionRequest(item, action, idempotencyKey);
     if (!request) { toast.error(locale.t("todo.unavailable")); return; }
     scope.keys.set(intent, idempotencyKey);
     setBusy(true);
@@ -159,7 +160,8 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
       const acknowledged = result.success && (action === "snooze"
         ? "nextVisibleAt" in request.body && typeof request.body.nextVisibleAt === "string" &&
           todoSuggestionSnoozeReceipt(result.data, item.sourceId, request.body.nextVisibleAt)
-        : todoSuggestionDecisionReceipt(result.data, item.sourceId, action));
+        : item.source === "task_suggestion" ? todoSuggestionDecisionReceipt(result.data, item.sourceId, action)
+        : todoNativeDecisionReceipt(result.data, item, action));
       if (!result.success || result.status < 200 || result.status >= 300 || !acknowledged) {
         toast.error(locale.t("todo.unavailable"));
         if (result.status === 401 || result.status === 403) refresh();
