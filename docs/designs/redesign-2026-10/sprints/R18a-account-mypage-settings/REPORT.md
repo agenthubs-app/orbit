@@ -1,6 +1,12 @@
 # R18a implementation report (in progress)
 
-Approved scope: GOAL / PLANNER rev2. Implementation is not acceptance closure: App full comparison retains two baseline failures plus one open C source-audit dependency; native interaction evidence, Web final verification, component-gated pixels and independent review remain incomplete. No pixel closure before R31a / R31b. No production database, real Google, deploy, TestFlight, push, stash or reset was used.
+Approved scope: GOAL / PLANNER rev2, plus the explicit continuation authority recorded below. Implementation is not acceptance closure: the last App full comparison predates the now-authorized source-audit fix; final full verification, native interaction evidence, Web final verification, component-gated pixels and independent review remain incomplete. No pixel closure before R31a / R31b. No production database, real Google, deploy, TestFlight, push, stash or reset was used.
+
+## Authorized continuation: authenticated client adapter
+
+User continuation explicitly authorized the minimal additive shared-hook seam, regression tests and private settings migration. `src/hooks/useOrbitApiClient.ts` now accepts optional `fetchAdapter?: (fetcher: FetchLike) => FetchLike`; omission preserves the previous global-fetch path, auth cookies, client memoization dependencies and scoped aborted-response/session-expiry suppression. The adapter is composed before that existing scoped response guard. `useAccountSettingsApi` uses the authenticated hook with actor scope and its existing settings-envelope adapter; no source-audit allowance was added.
+
+Actual-hook SSR/API/transport RED (`app-auth-adapter-red.log`): 6 tests / 3 pass / 3 fail (missing adapter behavior twice plus the existing direct-client audit). GREEN (`app-auth-adapter-green.log`): 46/46 including old no-options and scoped callers, authenticated cookies, conditional/API client regressions, real legacy `{data}`/204 normalization and late aborted 401 suppression. The shared hook has 53 callers; only the approved settings consumer was migrated. Final sanitized typecheck/full comparison will run after the remaining private continuation fixes, not be inferred from focused tests. An earlier queued verification was canceled before lock acquisition (exit143, empty `app-full-auth-adapter.log`); no tests ran in that canceled job and A's active lock was unchanged.
 
 ## Baseline and evidence
 
@@ -84,7 +90,7 @@ No personal-schedule Flow-parser failures occurred in this C run, even though D'
 
 Same sanitizer/command and exact upstream base `e081084b0`; tree clean for this run. Raw `/Users/xzhao/orbit-sprint-evidence/redesign/R18a/run-01/app-full-8ca061cec.log`. Result: **3180 tests / 3175 pass / 3 fail / 2 skip**, 224609ms, exit 1. The reduction is explicitly accounted for by retiring 170 obsolete route cases and adding seven actual-editor cases; it is not described as 179 product regressions repaired.
 
-The only failures are (1) open C-owned `authenticated-client-usage` dependency (`useAccountSettingsApi` direct construction), (2) exact pristine English key count `2813 !== 2253`, and (3) the pristine joined-person merge click timeout. Prior plan-overview skip/undo overlay case passed this complete rerun, supporting timing sensitivity rather than a persistent C-specific failure. No other new failure occurred in this rerun. **SC13 zero-new-failure acceptance is not met:** one C-owned source-audit failure remains pending a separately authorized shared-hook adapter seam. No exception, shared-hook edit or failed-test deletion was used to conceal it.
+The only failures were (1) then-open C-owned `authenticated-client-usage` dependency (`useAccountSettingsApi` direct construction), (2) exact pristine English key count `2813 !== 2253`, and (3) the pristine joined-person merge click timeout. Prior plan-overview skip/undo overlay case passed this complete rerun, supporting timing sensitivity rather than a persistent C-specific failure. No other new failure occurred in this rerun. **That run did not meet SC13 zero-new-failure acceptance:** one C-owned source-audit failure was awaiting a separately authorized shared-hook adapter seam. No exception, shared-hook edit or failed-test deletion was used to conceal it at that checkpoint. The later user-authorized fix and pending final rerun are recorded in the continuation section.
 
 ### Production fixture exclusion: initial failure and bounded correction
 
@@ -154,7 +160,7 @@ Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail
 | 10 | Old owned screens deleted, allowlists shrink, routes/inventories/audits checked; mapped old-profile suite retired; generic mixed browser6/6 and replacement offline1/1 | Independent rerun; open authenticated-client source boundary is separately tracked |
 | 11 | App auth/private routes, timestamped offline copy, disabled remote actions, independent summary failures, retry/scoped state and no false-empty read state verified | Functional screenshots/native state evidence and independent rerun |
 | 12 | Waiting R31a / R31b; no gate started or passed | Entire §9.2 matrix plus R05/R07/R17 regressions, raw/bands/attribution/compare evidence |
-| 13 | Clean rebase, App full3180/3fail (2 baseline + 1 open dependency), final App typecheck0, production JS fixture exclusion0, copy103/0 and App scopeledger127/127 | Shared-hook dependency authorization/fix and final full rerun afterward; Web full/lint/final checks, independent review |
+| 13 | Clean rebase; prior App full3180/3fail (2 baseline + then-open dependency); authorized hook/audit fix focused46/46; previous typecheck0/production fixture exclusion0/copy103/0 | Final sanitized typecheck/full after continuation fixes; Web full/lint/final checks, updated scope ledger and independent review |
 
 1. **Native calendar permission unmet.** No expo-calendar dependency or native calendar adapter exists. Coordinator explicitly declined dependency/rebuild expansion. Camera and notification OS state/request/openSettings are implemented; unavailable calendar row is hidden rather than using OAuth records as OS state. Needs a separate native capability decision.
 2. **Japanese AI drafting/candidates unmet live.** Intro and seeking services select `en`, otherwise `zh`; sending `ja` silently produces Chinese. Japanese live actions/candidates are hidden (G18); development/mock fixtures retain approved Japanese states. Backend Japanese support request; no paid model is called by tests.
@@ -182,7 +188,7 @@ Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail
 
 ## Remaining work
 
-Resolve the explicitly unapproved shared-hook source-audit dependency and rerun final full comparison afterward; SC11 functional screenshots/native state evidence; SC12 gated pixels; SC13 Web final suites/typechecks/lint/copy and independent review. App sanitized full comparison, final typecheck, real production fixture exclusion, scope ledger and owned copy evidence are recorded above. No full-suite success or zero-new-failure acceptance is claimed.
+Finish the authorized continuation and rerun final sanitized typecheck/full comparison; SC11 functional screenshots/native state evidence; SC12 gated pixels; SC13 Web final suites/typechecks/lint/copy and independent review. Prior App full comparison, typecheck, real production fixture exclusion, scope ledger and owned copy evidence remain versioned above. No newer full-suite success or zero-new-failure acceptance is claimed.
 
 ## 改稿与补画清单
 
@@ -194,7 +200,7 @@ SC01 `5550d1582` changed only approved b5 amendments (Pro / NFC removal, four-fi
 - D / R20a: native OAuth session/callback contract; existing signed Web return destination is not native round-trip proof. Language preference synchronization belongs in the shared language context, not a second page-specific writer.
 - A: consider private `AccountRow`, field/diff presenters and copied offline notice for later consolidation; EmptyState currently cannot disable its action. R18a uses a page-private disabled-button fallback in the offline empty state, without editing the kit.
 - R15: preview-layer visibility policy described above. R28: adopt optional publicFields/session scope and the preserved confirmed completion gate; no R28 screen/route was edited.
-- Shared App hook owner / coordinator: authorize an optional `FetchLike` adapter seam in `src/hooks/useOrbitApiClient.ts`, preserving existing default behavior, cookie handling and scoped stale-response/session-expiry guard. The private settings client needs the existing `settingsFetch` normalization *before* Orbit client parsing because live integrations/memory endpoints return legacy `{data}` / 204 envelopes. Moving normalization after the authenticated client loses those valid responses; moving direct construction into another file would only evade the audit. Coordinator explicitly withheld authorization for this shared-hook dependency, so `authenticated-client-usage` remains one acknowledged C-owned failure. No shared-hook edit or exception was made.
+- Shared App hook request (subsequently authorized): the private settings client needs existing `settingsFetch` normalization *before* Orbit client parsing because integrations/memory endpoints return legacy `{data}` / 204 envelopes. Authorization was initially withheld and the failed source audit remained explicit in historical full results. User continuation later approved the optional adapter seam and settings migration described above; audit is now focused GREEN without an exception. Final full verification remains required.
 
 ## 待主会话代定
 
@@ -227,9 +233,11 @@ Coordinator: append PLANNER §2 decisions and §9.1 amendments / 17 supplemental
 
 `git diff --stat origin/redesign...HEAD` inspected after SC10 and again on the cleanly rebased branch. New runtime UI stays under private App `screens/me/**` / Web `orbit-2026/account/**`; old screens, approved route entries, additive profile contracts/storage, canonical fixtures, dictionaries and corresponding tests/registries are in scope. Mechanical test-infrastructure changes preserve existing callers. Two bounded dependencies not literally named in PLANNER §1 were surfaced to coordinator and accepted: (1) `src/api/profile-onboarding.ts` adds only optional `signal?: AbortSignal` to `scanOwnBusinessCard` and conditionally passes it to the existing client POST; old request body, path and no-signal calls remain unchanged (new cancellation regression + existing onboarding API suite 9/9); (2) `SectionHeader` deletion is the ratchet-required orphan removal after its last owned consumer was deleted. No blanket “all files named in §1” claim is made. No A kit/token, D shell/OAuth, R14 retained component, R18b/c screen, R28 onboarding screen, other worktree or central coordination document was edited by this owner. D prerequisite commits were made separately by coordinator, not included as C edits. The App ledger below was checked against the post-rebase branch diff; Web/contracts outside the App copy remain coordinator-owned ledger work.
 
+Continuation exception, explicitly user-authorized: `repos/orbit-app/src/hooks/useOrbitApiClient.ts` is outside the original §1 allowlist. Only an optional fetch-adapter parameter was added so legacy settings responses can be normalized before authenticated client parsing; old caller defaults and the existing scoped response guard are retained. Regression coverage is in `tests/orbit-api-client-adapter.test.tsx`; only `screens/me/useAccountSettingsApi.ts` consumes the new option. This is not retroactively described as an originally named §1 file.
+
 ### App file-by-file scope ledger (working checkpoint)
 
-Source: `git diff --name-status e081084b0 -- repos/orbit-app` plus owned new test, checked after the editor/SC10 follow-up: 127 changed paths / 127 ledger rows, missing 0 / extra 0. `A/M/D` describe the branch diff, not acceptance status. Web/contracts outside the App copy remain coordinator-owned ledger work.
+Source: `git diff --name-status e081084b0 -- repos/orbit-app` plus owned new tests; the previous editor/SC10 checkpoint was 127/127. The authorized shared hook and its new regression add two paths below; final ledger count will be rechecked after continuation. `A/M/D` describe the branch diff, not acceptance status. Web/contracts outside the App copy remain coordinator-owned ledger work.
 
 | Change | App-relative path | Scope / reason |
 | --- | --- | --- |
@@ -258,6 +266,7 @@ Source: `git diff --name-status e081084b0 -- repos/orbit-app` plus owned new tes
 | D | `src/components/SectionHeader.tsx` | SC10 orphan deletion required by existing ratchet; coordinator accepted |
 | M | `src/data/offline-read/route-domain-inventory.ts` | SC10 owned endpoint retirement/registration; no unrelated policy rewrite |
 | M | `src/data/profile-edit-session.ts` | §1 additive profile edit-session compatibility |
+| M | `src/hooks/useOrbitApiClient.ts` | Explicit user continuation approval: additive optional fetch adapter, unchanged old callers/scoped guard; settings audit dependency |
 | M | `src/i18n/copy-kinds.ts` | §1 private me copy and additive dictionary/copy-kind registration |
 | M | `src/i18n/en/index.ts` | §1 private me copy and additive dictionary/copy-kind registration |
 | A | `src/i18n/en/me.ts` | §1 private me copy and additive dictionary/copy-kind registration |
@@ -349,6 +358,7 @@ Source: `git diff --name-status e081084b0 -- repos/orbit-app` plus owned new tes
 | A | `tests/me-suggestions-render.test.tsx` | Corresponding regression / retirement / test boundary; no production behavior |
 | M | `tests/mobile-route-access.test.ts` | SC10 exact registry adds only three owned private settings entries, preserving shared wrapper checks |
 | M | `tests/no-hardcoded-copy.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
+| A | `tests/orbit-api-client-adapter.test.tsx` | User-approved shared-hook regressions: actual hook/client/transport, old callers, cookies and revoked responses |
 | M | `tests/notifications/merged-notification-lifecycle.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
 | M | `tests/notifications/notification-registration-races.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
 | D | `tests/notifications/push-notification-settings.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
