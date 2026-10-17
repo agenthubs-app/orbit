@@ -5,6 +5,7 @@ import type { GlobalSearchAlternative, GlobalSearchConversationHit, GlobalSearch
 import { highlightsFor } from "../../../shared/compute/search-highlight";
 import { normalizeSearchText } from "../../../shared/compute/search-normalize";
 import { comparePeople, personRank } from "../../../shared/compute/search-rank";
+import { liteMatch } from "../../../shared/compute/search-synonyms";
 import { INDUSTRY_CATALOG, SECONDARY_INDUSTRY_CATALOG } from "../../../shared/domain/industries";
 
 export type SearchPlatform = "web" | "app";
@@ -47,6 +48,8 @@ export interface GlobalSearchCoreInput {
   conversations: readonly ConversationCandidate[] | null;
   industryCounts: readonly IndustryCount[];
   semanticAvailable: boolean;
+  /** R30 意味検索 lite (§50): this request asked for semantic and lite has a concept for the query. */
+  semantic?: boolean;
   examples: readonly string[];
 }
 
@@ -142,8 +145,18 @@ export function buildGlobalSearch(input: GlobalSearchCoreInput): GlobalSearchRes
   };
   if (!input.terms.length) return base;
 
+  // 意味検索 lite：字面全中的「一致」在前、只靠同义词命中的「関連」在后，各自按最終接点 → 名前；理由行代替状态 chip，不高亮。
+  const lite = input.semantic && wanted.has("people") ? input.people.flatMap((person) => {
+    const match = liteMatch(person, input.terms, input.language);
+    return match ? [{ match, person }] : [];
+  }) : null;
+  const liteSorted = lite ? [...lite].sort((a, b) => (a.match.kind === b.match.kind ? 0 : a.match.kind === "literal" ? -1 : 1) || comparePeople([])(a.person, b.person)) : null;
   // 人：按 rank → 最終接点 → 名前；rank 4（来源命中了我们不显示的字段）排最后但仍保留。
-  const people = wanted.has("people")
+  const people = liteSorted ? liteSorted.map(({ match, person }): GlobalSearchPersonHit => ({
+    contactId: person.id, name: person.name, initial: Array.from(person.name.trim())[0] ?? "?", org: person.org, role: person.role,
+    status: null, reason: match.reason, ...(match.kind === "related" ? { related: true } : {}),
+    highlights: [], href: contactHref(input.platform, person.id),
+  })) : wanted.has("people")
     ? [...input.people].filter((person) => personRank(person, input.terms) <= 4).sort(comparePeople(input.terms)).map((person): GlobalSearchPersonHit => {
       const subtitle = [person.org, person.role].filter(Boolean).join(" · ");
       return {
@@ -161,7 +174,7 @@ export function buildGlobalSearch(input: GlobalSearchCoreInput): GlobalSearchRes
     })
     : [];
   const conversations = wanted.has("conversations") && input.conversations ? input.conversations : null;
-  const peopleTotal = Math.max(input.peopleTotal ?? 0, people.length);
+  const peopleTotal = lite ? people.length : Math.max(input.peopleTotal ?? 0, people.length);
   const eventsTotal = input.events ? Math.max(input.events.eventsTotal, events.length) : 0;
   // 空结果的口径（b5 #59 / #56）：没有「人」（也没有会話）就是「一致する人はいません」，活动命中只作为「イベントで探す」的去处。
   // 单类型（A5）：只选「イベント」/「会話」时，那一组没有命中才算空；不出业界建议（建议是按人筛的）。
@@ -172,7 +185,8 @@ export function buildGlobalSearch(input: GlobalSearchCoreInput): GlobalSearchRes
     alternatives: empty ? alternativesFor(input) : [],
     ...(input.types.includes("conversations") ? { conversations: { items: (conversations ?? []).slice(0, input.limit), total: conversations?.length ?? 0 } } : {}),
     events: empty ? { items: [], total: 0 } : { items: events.slice(0, input.limit), total: wanted.has("events") ? eventsTotal : 0 },
-    people: { items: people.slice(0, input.limit), total: peopleTotal },
+    people: { items: people.slice(0, input.limit), total: peopleTotal, ...(lite ? { order: "relevance" as const } : {}) },
+    ...(lite ? { semantic: { available: input.semanticAvailable, enabled: true, matched: lite.filter((item) => item.match.kind === "literal").length, related: lite.filter((item) => item.match.kind === "related").length } } : {}),
     suggestions: empty && peopleScoped ? suggestionsFor(input) : [],
   };
 }

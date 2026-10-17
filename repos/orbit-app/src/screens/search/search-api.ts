@@ -14,7 +14,7 @@ export type { SearchFilter };
 export type SearchResult = EventsResult<GlobalSearchResponse>;
 
 export interface SearchApi {
-  search(input: { query: string; filter: SearchFilter; semantic: boolean; limit?: number }): Promise<SearchResult>;
+  search(input: { query: string; filter: SearchFilter; semantic?: boolean | undefined; limit?: number }): Promise<SearchResult>;
 }
 
 export function createSearchApi(client: OrbitApiClient): SearchApi {

@@ -87,3 +87,15 @@
 ## 7. 暂缓与交接
 
 交接表 R11-15（人脈 🔍 与 `?industry=`）、R21-09（会話搜索接口）、R21-10（只预填通道）、R30-02（1024 工具）、R30-04（検索中 / 单类型不进门禁）、R30-05（意味検索授权）；DEFERRED-A §2 / §4 同步。另：orbits 全量里「CSS Modules 只用 token」失败来自别的会话未提交的 `plan/TypeDetail.module.css:270`，不是本 Sprint。
+
+## 8. 追加：意味検索 lite 打开（2026-10-17，决定表 §50）
+
+用户授权「打开意味検索」。没有 embedding provider，按 DESIGN §10 A2 选项② 先上 lite（静态同义词表），不调任何 AI、不记账本：
+- `shared/compute/search-synonyms.ts`（App 同步一份）：投資家 / 決裁者 / 製造業 / 弁護士 / エンジニア 五个概念（日中英）；`liteMatch` 判「一致 / 関連」并生成画板式理由（役職「パートナー」· VC / 会社が VC / メモ「…」）。
+- live `semantic.available = true`；`semantic=1` 且查询含概念时，概念词逐个召回（≤12 次）与字面 AND 召回合并；结果按 一致 → 関連、`order: relevance`、`semantic {enabled, matched, related}`；不高亮、不出状态 chip。
+- 示例只给 lite 真能命中的（ja「投資家」「製造業の決裁者」）；App 初期说明行照画板显示。
+- 两端客户端：账号有意味検索时默认送 `1`、底部「意味検索 ON」；本机偏好 `orbit.search.semantic=off` 时送 `0`、底部 OFF、说明行隐藏。设定页的开关界面没有画板，归 R18（交接表 R30-06）。
+- 测试：orbits lite 单测 + live 编排（一致 / 関連 / 计数 / 召回次数上限 / semantic=0 不扩展 / 示例过滤 / 不引入 AI 客户端）、Web 面板偏好、App 偏好；门禁 #58 / #71 / #55 / #494 / #495 在 mock 下复跑见下。
+- 真 embedding：等用户在 Vercel 设好 OpenAI key 后按 DESIGN §5.2 接（lite 留作无 key 时的退路）。
+
+门禁复跑（mock，lite 改动后）：Web P01–P04 浅深 8 张全过（意味検索 P02 #58 / P02d #71 raw 0.0049 / 0.0017）；App P05 / P05d（初期，说明行）、P07 / P07d（#55 / #495 意味検索）全过，raw 与改动前一致。

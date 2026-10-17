@@ -303,7 +303,8 @@
 | R30-02 | Web 1024 面板门禁（A3） | 比对工具两侧只能用同一个 `--region`，画板只有 1440 宽，1024 下面板位置不同，比不了；面板固定 680 宽、无断点规则 | 工具支持设计侧 / 实现侧分别给区域后，在 `views/web-R30.json` 加 P01b–P04b（面板 x 172）重比 | R30 REPORT |
 | R30-03 | b12 #495（App 意味検索深色，补画）横幅缺 `.banner` 底色与内边距 | **已完成（2026-10-17，R30 收口提交）**：照 b5 #55 补进 `.g9`（决定表 §46），A-R30-P07d 通过 | — | R30 REPORT |
 | R30-04 | 検索中（b12 #498 / #499）、单类型「人」さらに表示（b12 #488 / #489） | 実装已有（App 300ms 后骨架；Web 单类型同结构）；PLANNER 定不进门禁（B8 可选、A5） | 需要时加放慢回答的 dev 开关再截 | PLANNER「不进门禁」 |
-| R30-05 | 意味検索（A2） | 默认关：live `semantic.available=false`、不调任何 AI；示例与说明行按关的口径 | 用户授权付费 embedding 后：建 `search-embeddings`（DESIGN §5.2）、打开开关、补 #58 / #55 live 回归 | DESIGN §10 A2；DEFERRED-A §4 |
+| R30-05 | 意味検索 | **lite 已打开（2026-10-17，决定表 §50）**：静态同义词表，live `semantic.available=true`，不调 AI | 用户在 Vercel 设好 OpenAI key 后：按 DESIGN §5.2 接 embedding（provider、`search-embeddings` 迁移、账本用途 `search_semantic`），lite 留作无 key 退路；补 #58 / #55 live 回归 | DESIGN §5.1b / §5.2；决定表 §50 |
+| R30-06 | 设定里的「意味検索」开关界面（R18） | 两端已读本机偏好 `orbit.search.semantic`（"off" → 送 `semantic=0`、底部 OFF、说明行隐藏）；没有设定页画板，开关界面未做 | R18 设定页加开关（写同一个键：Web localStorage / App AsyncStorage），先补画板 | DESIGN §2.1；决定表 §50 |
 
 ## 合回前与真机（不归某个功能 Sprint，列在 README 合回前清单）
 

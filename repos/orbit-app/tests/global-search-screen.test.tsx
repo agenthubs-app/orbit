@@ -194,6 +194,22 @@ test("?q= opens with the query searched (R11 人脈 🔍 hands its text over)", 
   assert.equal(await page.getByTestId("global-search-input").inputValue(), "高橋");
 });
 
+test("意味検索 (lite, §50): available → sends 1 and shows the hint; the device preference OFF sends 0 and hides it", async (t) => {
+  const semanticAnswer = (path: string): Reply => {
+    const q = new URL(`http://x${path}`).searchParams.get("q") ?? "";
+    return ok(q ? base({ query: q, semantic: { available: true, enabled: false } }) : { ...CAPABILITY, semantic: { available: true, enabled: false } });
+  };
+  const on = await open(t, semanticAnswer);
+  await on.getByText("言葉の意味でも探します", { exact: false }).waitFor();
+  await on.getByTestId("global-search-input").fill("投資家");
+  await on.waitForFunction(() => (window as unknown as { requests: string[] }).requests.some((path) => path.includes("semantic=1")));
+  const off = await open(t, semanticAnswer, { "orbit.search.semantic": "off" });
+  await off.getByText("こんな検索もできます").waitFor();
+  assert.equal(await off.getByText("言葉の意味でも探します", { exact: false }).count(), 0);
+  await off.getByTestId("global-search-input").fill("投資家");
+  await off.waitForFunction(() => (window as unknown as { requests: string[] }).requests.some((path) => path.includes("semantic=0")));
+});
+
 test("helpers: filters, empty rule, recent list, request path", () => {
   assert.deepEqual(appSearchFilters(["people", "events"]), ["all", "people", "events"]);
   assert.deepEqual(appSearchFilters(["people", "events", "conversations"]), ["all", "people", "events", "conversations"]);
@@ -210,6 +226,8 @@ test("helpers: filters, empty rule, recent list, request path", () => {
   assert.deepEqual(rememberAppSearch(["a", "b", "c", "d", "e"], " b "), ["b", "a", "c", "d", "e"]);
   assert.deepEqual(rememberAppSearch(["a", "b", "c", "d", "e"], "f"), ["f", "a", "b", "c", "d"]);
   assert.equal(globalSearchPath({ filter: "events", limit: 20, query: " CFO ", semantic: true }), "/api/search/global?q=CFO&types=events&semantic=1&limit=20&platform=app");
+  assert.equal(globalSearchPath({ filter: "all", query: "x", semantic: false }), "/api/search/global?q=x&semantic=0&platform=app", "the user's OFF is sent as 0");
+  assert.equal(globalSearchPath({ filter: "all", query: "x" }), "/api/search/global?q=x&platform=app", "no semantic search on the account → not sent");
 });
 
 test("Task 🔍 opens /search (R20-01); the route is private and online-only; /search falls back to Task", () => {

@@ -22,7 +22,7 @@ test.before(async () => {
       const query = params.get("q") ?? "";
       window.searches.push(params.toString());
       if (query === "busy") return new Response(JSON.stringify({ success: false, error: { code: "FORBIDDEN", message: "Too many" } }), { status: 429 });
-      const base = { query, types: ["people", "events", "conversations"], people: empty, events: empty, conversations: empty, semantic: { available: false, enabled: false }, searchedPeople: 286, examples: [], suggestions: [], alternatives: [] };
+      const base = { query, types: ["people", "events", "conversations"], people: empty, events: empty, conversations: empty, semantic: { available: Boolean(window.semanticAvailable), enabled: false }, searchedPeople: 286, examples: [], suggestions: [], alternatives: [] };
       const data = !query ? { ...base, examples: ["製造業の決裁者", "先月会った人"] }
         : query === "半導体 商社" ? { ...base, suggestions: [{ kind: "industry", emoji: "🏭", label: "製造業 › 電子部品", count: 12, href: "/app/contacts?industry=electronics" }], alternatives: [
             { kind: "ask_iorbit", emoji: "✨", label: "iOrbit に紹介ルートを聞く", detail: "「半導体商社の人に会うには？」", href: "#ask" },
@@ -35,11 +35,12 @@ test.before(async () => {
 });
 test.after(async () => { await browser?.close(); });
 
-async function palette(t: { after: (fn: () => Promise<void>) => void }, recent?: string[]): Promise<Page> {
+async function palette(t: { after: (fn: () => Promise<void>) => void }, recent?: string[], setup?: { semanticAvailable?: boolean; semanticPreference?: "on" | "off" }): Promise<Page> {
   const page = await openShell(browser, code, { path: "/app/home" });
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
   await page.getByText("legacy button").waitFor();
   if (recent) await page.evaluate((items) => window.localStorage.setItem("orbit.search.recent", JSON.stringify(items)), recent);
+  if (setup) await page.evaluate((value) => { (window as unknown as { semanticAvailable: boolean }).semanticAvailable = Boolean(value.semanticAvailable); if (value.semanticPreference) window.localStorage.setItem("orbit.search.semantic", value.semanticPreference); }, setup);
   await page.keyboard.press("Control+k");
   await page.getByRole("dialog", { name: "検索と iOrbit" }).waitFor();
   return page;
@@ -79,4 +80,17 @@ test("結果なし (b5 #71): searched count, suggestion and the two other ways; 
   assert.equal(await page.locator("[aria-live=polite]").textContent(), "「半導体 商社」に一致する人はいません", "the empty title is announced outside the listbox");
   await page.keyboard.press("Enter");
   assert.deepEqual(await page.evaluate(() => (window as unknown as { shellFixture: { calls: object[] } }).shellFixture.calls.filter((call) => "push" in call)), [{ push: "/app/contacts?industry=electronics" }]);
+});
+
+test("意味検索 (lite, §50): ON by default when the account has it (sends 1, shows the hint); the user's OFF sends 0", async (t) => {
+  const on = await palette(t, undefined, { semanticAvailable: true });
+  await on.getByText("意味検索 ON").waitFor();
+  await on.getByText("言葉の意味でも探します", { exact: false }).waitFor();
+  await on.keyboard.type("高橋");
+  await on.waitForFunction(() => (window as unknown as { searches: string[] }).searches.some((entry) => entry.includes("q=%E9%AB%98%E6%A9%8B") && entry.includes("semantic=1")));
+  const off = await palette(t, undefined, { semanticAvailable: true, semanticPreference: "off" });
+  await off.getByText("意味検索 OFF").waitFor();
+  assert.equal(await off.getByText("言葉の意味でも探します", { exact: false }).count(), 0);
+  await off.keyboard.type("高橋");
+  await off.waitForFunction(() => (window as unknown as { searches: string[] }).searches.some((entry) => entry.includes("q=%E9%AB%98%E6%A9%8B") && entry.includes("semantic=0")));
 });

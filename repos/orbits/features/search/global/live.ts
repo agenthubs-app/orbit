@@ -92,6 +92,7 @@ export function createGlobalSearchLivePorts(): GlobalSearchLivePorts | null {
       };
     },
     conversations: null,
-    semanticAvailable: false,
+    // 意味検索 lite（静态同义词表，§50）：不调 AI，所以 live 也可用；真 embedding 等 provider 配好后再换。
+    semanticAvailable: true,
   };
 }

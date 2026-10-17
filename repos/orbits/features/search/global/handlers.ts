@@ -12,12 +12,15 @@ import { demoGlobalSearch } from "../../../shared/mock/demo-world/global-search"
 import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../../app/api/_shared/authenticated-actor";
 import { requestContext } from "../../plans/v2/flow-handlers";
 import { redesignContractRoute, type ContractReply } from "../../redesign-contracts/route";
+import { liteCanExpand, liteRecallWords } from "../../../shared/compute/search-synonyms";
 import { buildGlobalSearch } from "./core";
 import { createGlobalSearchLivePorts, type GlobalSearchLivePorts } from "./live";
 
 export const GLOBAL_SEARCH_KEYWORD_PER_MINUTE = 60;
 export const GLOBAL_SEARCH_SEMANTIC_PER_MINUTE = 20;
 export const GLOBAL_SEARCH_COUNTS_TTL_MS = 5 * 60_000;
+/** Lite expands a query into at most this many extra single-word reads of the contacts reader. */
+export const LITE_MAX_RECALL_WORDS = 12;
 /** 「こんな検索もできます」 (live): the keyword-capable ones while semantic search is unavailable (DESIGN §2.3). */
 export const GLOBAL_SEARCH_EXAMPLES = ["投資家", "製造業の決裁者", "先月会った人", "紹介してくれそうな人", "3か月 連絡していない人"] as const;
 export const GLOBAL_SEARCH_KEYWORD_EXAMPLES = ["投資家", "製造業の決裁者"] as const;
@@ -25,7 +28,7 @@ export const GLOBAL_SEARCH_KEYWORD_EXAMPLES = ["投資家", "製造業の決裁�
 const LIVE_EXAMPLES: Record<"ja" | "zh" | "en", { all: readonly string[]; keyword: readonly string[] }> = {
   ja: { all: GLOBAL_SEARCH_EXAMPLES, keyword: GLOBAL_SEARCH_KEYWORD_EXAMPLES },
   zh: { all: ["投资人", "制造业决策者", "上个月见过的人", "可能帮忙介绍的人", "三个月没联系的人"], keyword: ["投资人", "制造业决策者"] },
-  en: { all: ["investor", "manufacturing decision maker", "met last month", "could introduce me", "no contact in 3 months"], keyword: ["investor", "manufacturing"] },
+  en: { all: ["investor", "manufacturing decision-maker", "met last month", "could introduce me", "no contact in 3 months"], keyword: ["investor", "manufacturing"] },
 };
 
 export interface GlobalSearchDeps {
@@ -99,7 +102,7 @@ export function createGlobalSearchHandlers(deps: GlobalSearchDeps = {}) {
     } else {
       const live = ports();
       if (!live) return { context: { reason: "GLOBAL_SEARCH_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Search requires a configured live database.") };
-      data = await searchLive(cachedCounts(live), { actorId: actor!.id, language: context.language, limit: input.limit, now: now(), platform, query: input.q, types: input.types });
+      data = await searchLive(cachedCounts(live), { semantic: input.semantic, actorId: actor!.id, language: context.language, limit: input.limit, now: now(), platform, query: input.q, types: input.types });
     }
     console.info(JSON.stringify({ event: "r30_global_search", groups: [data.people.items.length, data.events.items.length, data.conversations?.items.length ?? 0], ms: now().getTime() - started, mode: service.mode, queryLength: input.q.length, semantic: input.semantic }));
     return { data };
@@ -108,20 +111,34 @@ export function createGlobalSearchHandlers(deps: GlobalSearchDeps = {}) {
   return { get };
 }
 
-export async function searchLive(live: GlobalSearchLivePorts, input: { actorId: string; query: string; limit: number; types?: readonly ("people" | "events" | "conversations")[]; platform: "web" | "app"; language: "ja" | "zh" | "en"; now: Date }): Promise<GlobalSearchResponse> {
+export async function searchLive(live: GlobalSearchLivePorts, input: { actorId: string; query: string; limit: number; types?: readonly ("people" | "events" | "conversations")[]; platform: "web" | "app"; language: "ja" | "zh" | "en"; now: Date; semantic?: boolean }): Promise<GlobalSearchResponse> {
   const types: ("people" | "events" | "conversations")[] = live.conversations ? ["people", "events", "conversations"] : ["people", "events"];
   const terms = splitSearchTerms(input.query);
-  const examples = [...(live.semanticAvailable ? LIVE_EXAMPLES[input.language].all : LIVE_EXAMPLES[input.language].keyword)];
+  // 意味検索 lite 只认同义词表里的概念：「先月会った人」这类要时间 / 关系推理的示例 lite 搜不到，不给。
+  const examples = live.semanticAvailable
+    ? LIVE_EXAMPLES[input.language].all.filter((example) => liteCanExpand(splitSearchTerms(example)))
+    : [...LIVE_EXAMPLES[input.language].keyword];
   const counts = await live.counts(input.actorId);
   if (!terms.length) {
     return buildGlobalSearch({ conversations: null, events: null, examples, industryCounts: counts.industries, language: input.language, limit: input.limit, now: input.now, people: [], planLinked: null, platform: input.platform, query: input.query, searchedPeople: counts.total, semanticAvailable: live.semanticAvailable, terms, types });
   }
   const wanted = new Set(input.types?.length ? input.types : types);
+  // 意味検索 lite（§50）：只有客户端要了、且查询里有表里的概念时才扩展；扩展词各召回一次（单词查询），与字面 AND 召回合并去重。
+  const semantic = Boolean(input.semantic && live.semanticAvailable && wanted.has("people") && liteCanExpand(terms));
+  const recallPeople = async () => {
+    const literal = await live.people(input.actorId, terms);
+    if (!semantic) return literal;
+    const words = liteRecallWords(terms).filter((word) => !terms.includes(word)).slice(0, LITE_MAX_RECALL_WORDS);
+    const extra = await Promise.all(words.map((word) => live.people(input.actorId, [word])));
+    const byId = new Map(literal.items.map((item) => [item.id, item]));
+    for (const answer of extra) for (const item of answer.items) if (!byId.has(item.id)) byId.set(item.id, item);
+    return { items: [...byId.values()], total: byId.size };
+  };
   const [found, planLinked, events, conversations] = await Promise.all([
-    wanted.has("people") ? live.people(input.actorId, terms) : Promise.resolve({ items: [], total: 0 }),
+    wanted.has("people") ? recallPeople() : Promise.resolve({ items: [], total: 0 }),
     wanted.has("people") ? live.planLinked(input.actorId) : Promise.resolve(null),
     live.events(input.actorId, terms.join(" "), 20),
     wanted.has("conversations") && live.conversations ? live.conversations(input.actorId, input.query, 20) : Promise.resolve(null),
   ]);
-  return buildGlobalSearch({ conversations, events, examples, industryCounts: counts.industries, language: input.language, limit: input.limit, now: input.now, people: found.items, peopleTotal: found.total, planLinked, platform: input.platform, query: input.query, searchedPeople: counts.total, semanticAvailable: live.semanticAvailable, terms, types, wanted: input.types });
+  return buildGlobalSearch({ conversations, events, examples, industryCounts: counts.industries, language: input.language, limit: input.limit, now: input.now, people: found.items, peopleTotal: found.total, planLinked, semantic, platform: input.platform, query: input.query, searchedPeople: counts.total, semanticAvailable: live.semanticAvailable, terms, types, wanted: input.types });
 }

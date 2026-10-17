@@ -23,7 +23,7 @@ import { radius, type OrbitColors } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { addDesignMock } from "../add/add-design-mock";
 import { useSearchApi, type SearchFilter } from "./search-api";
-import { APP_RECENT_SEARCHES_KEY, APP_RECENT_SEARCHES_MAX, APP_SEARCH_DEBOUNCE_MS, APP_SEARCHING_DELAY_MS, alternativePrompt, appSearchFilters, isAppEmptyResult, rememberAppSearch } from "./search-model";
+import { APP_RECENT_SEARCHES_KEY, APP_SEMANTIC_PREFERENCE_KEY, APP_RECENT_SEARCHES_MAX, APP_SEARCH_DEBOUNCE_MS, APP_SEARCHING_DELAY_MS, alternativePrompt, appSearchFilters, isAppEmptyResult, rememberAppSearch } from "./search-model";
 
 type Status = "idle" | "pending" | "ready" | "rate_limited" | "failed";
 
@@ -51,12 +51,14 @@ export function GlobalSearchScreen() {
   const [status, setStatus] = useState<Status>("idle");
   const [slow, setSlow] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
-  const semantic = capability?.semantic.available ?? false;
+  const [preferSemantic, setPreferSemantic] = useState(true);
+  const semantic = capability?.semantic.available ? preferSemantic : undefined;
   const request = useRef(0);
 
   useEffect(() => {
     let live = true;
-    void api.search({ filter: "all", query: "", semantic: false }).then((answer) => { if (live && answer.ok) setCapability(answer.data); });
+    void AsyncStorage.getItem(APP_SEMANTIC_PREFERENCE_KEY).then((value) => { if (live) setPreferSemantic(value !== "off"); }).catch(() => undefined);
+    void api.search({ filter: "all", query: "" }).then((answer) => { if (live && answer.ok) setCapability(answer.data); });
     void AsyncStorage.getItem(APP_RECENT_SEARCHES_KEY).then((value) => {
       if (!live || !value) return;
       try { const parsed = JSON.parse(value) as unknown; if (Array.isArray(parsed)) setRecent(parsed.filter((item): item is string => typeof item === "string").slice(0, APP_RECENT_SEARCHES_MAX)); } catch { /* ignore */ }
@@ -146,7 +148,7 @@ export function GlobalSearchScreen() {
             <View style={styles.chips}>
               {capability.examples.map((item) => <UiPressable key={item} accessibilityRole="button" accessibilityLabel={item} onPress={() => setQuery(item)} style={styles.example}><UiText style={styles.exampleText}>{item}</UiText></UiPressable>)}
             </View>
-            {semantic ? <UiText style={[styles.lbl, styles.hint]}>{t("search.semanticHint")}</UiText> : null}
+            {semantic === true ? <UiText style={[styles.lbl, styles.hint]}>{t("search.semanticHint")}</UiText> : null}
           </>
         ) : null}
       </>

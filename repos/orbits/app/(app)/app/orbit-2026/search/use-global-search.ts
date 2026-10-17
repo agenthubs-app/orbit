@@ -10,6 +10,16 @@ import type { GlobalSearchResponse, GlobalSearchType } from "../../../../../shar
 export const RECENT_SEARCHES_KEY = "orbit.search.recent";
 export const RECENT_SEARCHES_MAX = 5;
 export const SEARCH_DEBOUNCE_MS = 250;
+/** 意味検索的用户偏好（DESIGN §2.1：设置里关掉后客户端送 0）。只存这台设备；设置页的开关界面归 R18（交接表 R30-06）。 */
+export const SEMANTIC_PREFERENCE_KEY = "orbit.search.semantic";
+
+export function readSemanticPreference(): boolean {
+  try { return window.localStorage.getItem(SEMANTIC_PREFERENCE_KEY) !== "off"; } catch { return true; }
+}
+
+export function writeSemanticPreference(on: boolean): void {
+  try { window.localStorage.setItem(SEMANTIC_PREFERENCE_KEY, on ? "on" : "off"); } catch { /* private mode etc. */ }
+}
 
 export type SearchFilter = "all" | GlobalSearchType;
 export type SearchStatus = "idle" | "searching" | "ready" | "rate_limited" | "failed";
@@ -34,11 +44,12 @@ export function rememberSearch(recent: readonly string[], query: string): string
   return [text, ...recent.filter((item) => item !== text)].slice(0, RECENT_SEARCHES_MAX);
 }
 
-export function searchUrl(input: { query: string; filter: SearchFilter; semantic: boolean; limit?: number }): string {
+/** `semantic`: true → 1, false → 0 (the user turned it off), undefined → not sent (the account has no semantic search). */
+export function searchUrl(input: { query: string; filter: SearchFilter; semantic?: boolean; limit?: number }): string {
   const params = new URLSearchParams();
   params.set("q", input.query.trim());
   if (input.filter !== "all") params.set("types", input.filter);
-  if (input.semantic) params.set("semantic", "1");
+  if (input.semantic !== undefined) params.set("semantic", input.semantic ? "1" : "0");
   if (input.limit) params.set("limit", String(input.limit));
   return `/api/search/global?${params.toString()}`;
 }
@@ -57,15 +68,18 @@ export function useGlobalSearch(open: boolean, query: string, filter: SearchFilt
   const [result, setResult] = useState<GlobalSearchResponse | null>(null);
   const [status, setStatus] = useState<SearchStatus>("idle");
   const [recent, setRecent] = useState<string[]>([]);
-  const semantic = capability?.semantic.available ?? false;
+  const [preferSemantic, setPreferSemantic] = useState(true);
+  const available = capability?.semantic.available ?? false;
+  const semantic = available ? preferSemantic : undefined;
   const controller = useRef<AbortController | null>(null);
 
   // Open: the capability answer (types, semantic, examples) and this browser's recent searches.
   useEffect(() => {
     if (!open) { setResult(null); setStatus("idle"); return; }
     setRecent(readRecentSearches());
+    setPreferSemantic(readSemanticPreference());
     const abort = new AbortController();
-    fetchGlobalSearch(searchUrl({ filter: "all", query: "", semantic: false }), abort.signal).then((answer) => { if (answer.ok) setCapability(answer.data); }).catch(() => undefined);
+    fetchGlobalSearch(searchUrl({ filter: "all", query: "" }), abort.signal).then((answer) => { if (answer.ok) setCapability(answer.data); }).catch(() => undefined);
     return () => abort.abort();
   }, [open]);
 
@@ -95,5 +109,5 @@ export function useGlobalSearch(open: boolean, query: string, filter: SearchFilt
     setRecent((current) => { const next = current.filter((item) => item !== text); writeRecentSearches(next); return next; });
   }, []);
 
-  return { capability, clearRecent, recent, removeRecent, remember, result, semanticAvailable: semantic, status };
+  return { capability, clearRecent, recent, removeRecent, remember, result, semanticOn: semantic === true, status };
 }

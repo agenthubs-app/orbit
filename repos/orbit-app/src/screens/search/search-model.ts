@@ -5,6 +5,8 @@ export type SearchFilter = "all" | GlobalSearchType;
 
 export const APP_RECENT_SEARCHES_KEY = "orbit.search.recent";
 export const APP_RECENT_SEARCHES_MAX = 5;
+/** 意味検索的用户偏好（DESIGN §2.1：设置里关掉后送 0）。"off" = 关；只存这台设备。设置页开关界面归 R18（交接表 R30-06）。 */
+export const APP_SEMANTIC_PREFERENCE_KEY = "orbit.search.semantic";
 export const APP_SEARCH_DEBOUNCE_MS = 250;
 /** 「検索中…」只在 300ms 还没回答时出现（b12 #498 注）。 */
 export const APP_SEARCHING_DELAY_MS = 300;
@@ -30,11 +32,12 @@ export function rememberAppSearch(recent: readonly string[], query: string): str
 }
 
 
-export function globalSearchPath(input: { query: string; filter: SearchFilter; semantic: boolean; limit?: number }): string {
+/** `semantic`: true → 1, false → 0 (the user turned it off), undefined → not sent (the account has no semantic search). */
+export function globalSearchPath(input: { query: string; filter: SearchFilter; semantic?: boolean | undefined; limit?: number }): string {
   const params = new URLSearchParams();
   params.set("q", input.query.trim());
   if (input.filter !== "all") params.set("types", input.filter);
-  if (input.semantic) params.set("semantic", "1");
+  if (input.semantic !== undefined) params.set("semantic", input.semantic ? "1" : "0");
   if (input.limit) params.set("limit", String(input.limit));
   params.set("platform", "app");
   return `/api/search/global?${params.toString()}`;

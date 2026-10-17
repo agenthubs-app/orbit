@@ -50,7 +50,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [cursor, setCursor] = useState(0);
   const context = orbitAskPageContext(pathname, language);
   const search = useGlobalSearch(open, query, filter);
-  const state = useMemo(() => ({ capability: search.capability, filter, query, recent: search.recent, result: search.result, status: search.status }), [filter, query, search.capability, search.recent, search.result, search.status]);
+  const state = useMemo(() => ({ capability: search.capability, filter, query, recent: search.recent, result: search.result, semanticOn: search.semanticOn, status: search.status }), [filter, query, search.capability, search.recent, search.result, search.semanticOn, search.status]);
   const rows = useMemo<PanelRow[]>(() => panelRows(state), [state]);
   const filters = filtersFor(search.capability?.types ?? search.result?.types);
 

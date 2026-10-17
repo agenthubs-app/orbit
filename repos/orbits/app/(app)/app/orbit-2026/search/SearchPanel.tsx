@@ -26,6 +26,8 @@ export interface PanelState {
   capability: GlobalSearchResponse | null;
   status: SearchStatus;
   recent: readonly string[];
+  /** Semantic search is on for this person (the account has it and they did not turn it off); omitted = follow the account. */
+  semanticOn?: boolean;
 }
 
 /** The empty state. すべて / 人: no people (and no conversations) — the board's 「一致する人はいません」; a single
@@ -98,7 +100,7 @@ export function SearchPanel({ state, rows, cursor, onHover, onPick, onQueryChang
   const types = capability?.types ?? result?.types;
   const filters = filtersFor(types);
   const filterLabel: Record<SearchFilter, string> = { all: t(searchCopy.typeAll), conversations: t(searchCopy.typeConversations), events: t(searchCopy.typeEvents), people: t(searchCopy.typePeople) };
-  const semanticOn = (result?.semantic.available ?? capability?.semantic.available) ?? false;
+  const semanticOn = state.semanticOn ?? ((result?.semantic.available ?? capability?.semantic.available) ?? false);
   const indexOf = (id: string) => rows.findIndex((row) => row.id === id);
 
   const option = (id: string, children: ReactNode, extraClass = "") => {

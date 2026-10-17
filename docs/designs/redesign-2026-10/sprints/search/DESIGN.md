@@ -202,6 +202,10 @@ export interface GlobalSearchResponse {
 - App 初期画面底部「言葉の意味でも探します…」一行在 `available = false` 时不显示。
 - b5 #58 / #71 / #55「意味検索」三张画板的门禁：mock 模式下用 fixture 把 `semantic.available/enabled = true` 和理由行造出来（G08：只读演示服务器 + 固定示例结果，不调 AI），画面可以做并过门禁；live 下在授权前不会出现。
 
+### 5.1b 现状（2026-10-17，决定表 §50）：lite 已打开
+
+用户授权「打开意味検索」；没有 embedding provider，先上本节末行的「意味検索 lite」作为 ON 的第一阶段：`shared/compute/search-synonyms.ts`（概念 = 查询里的词 + 同义词 + 公司标记），live `semantic.available = true`，编排层对概念词逐个召回（≤12 次单词读取）后与字面 AND 召回合并，`liteMatch` 判「一致 / 関連」并生成理由；用户在设定里关掉后客户端送 `semantic=0`（本机偏好 `orbit.search.semantic`；设定页开关归 R18）。不调 AI、不记账本。下面 5.2 的真 embedding 仍等 key。
+
 ### 5.2 开启后的实现（等用户授权；写在这里不是本期范围）
 
 | 项 | 做法 |

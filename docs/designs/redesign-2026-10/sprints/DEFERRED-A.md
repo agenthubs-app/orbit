@@ -78,5 +78,5 @@
 | R22-02 | 计划 v2 的生产 AI 开关和月上限 | 等用户拍板 |
 | R17-08 / R17-11 生产 | event-ops v19（`event_host_roster_match_requests`）与旧 actor 级主办方关注 → 资料页关注的数据迁移（`scripts/migrate-organizer-follows-to-profiles.ts`，脚本只认回环库） | **done（2026-10-17 执行）**：生产 Neon `orbit-production-20260924` 默认分支执行 event-ops v16 / v17 / v18 / v19 与 network-analysis v4 / v5（先在临时分支试跑与重放，确认全部只新增：约束只加取值、新列可空；执行后版本表 checksum 与代码一致，临时分支已删）；Vercel 生产已加 `ORBIT_CHECKIN_TOKEN_SECRET`（随机生成，未回显）。关注迁移：**生产 0 条，未执行，空操作**。部署未做（等意味検索 lite） |
 | 用语统一 §45（文字） | **done（2026-10-17，`46a9135f1`）**：orbits / orbit-app 示例数据、契约示例、脚本、测试里「製造業DX」「DX推進室」「中部ものづくりDX協議会」「Seedline株式会社」「代表取締役CEO」「青葉VC」等拉丁字母与日文紧贴写法已加半角空格（保留シリーズA、N人、To-do、・并列两侧）；`shared/contract/host-console.ts` 已 `sync:contract`；copy-qa 示例文字检查（demo-world-copy）转绿。遗留 **done（2026-10-17，提交号见 `git log -1 -- 本文件`）**：生产 ja 文案（`orbit-event-content.ts`、`contact-detail-localization.ts`、App `src/i18n/ja/**`、`profile-onboarding.ts`）已按同规则加空格；`copy-qa/check.mjs` 的拉丁字母规则改为不把「・」当日文字符（并列两侧紧贴是规范允许写法）；`copy:qa` 里这条规则的红项 8 → 0（总红项 212 → 204，其余规则未动）；「青葉 VC」恢复带空格 | 已做 |
-| R30-05 意味検索授权 | 付费 embedding（DESIGN §10 A2：默认关、不调 AI） | 用户授权后建索引、打开开关、补 #58 / #55 live 回归 |
+| R30-05 意味検索（真 embedding） | **lite 已打开（2026-10-17，§50）**；真 embedding 等用户在 Vercel 设 OpenAI key | 按 DESIGN §5.2 接 provider / 迁移 / 账本，补 #58 / #55 live 回归 |
 | 真机 | 触感和相机只能在真机上验 | 合回前在真机上走查（README 合回前清单） |

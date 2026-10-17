@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { globalSearchQueryObject, globalSearchResponseSchema } from "../../shared/api-schema/global-search";
 import { highlightRanges, highlightsFor, splitByHighlights } from "../../shared/compute/search-highlight";
 import { matchesAllTerms, normalizeSearchText, splitSearchTerms } from "../../shared/compute/search-normalize";
 import { comparePeople, personRank } from "../../shared/compute/search-rank";
+import { liteCanExpand, liteMatch } from "../../shared/compute/search-synonyms";
 import type { EventSearchResponse } from "../../shared/contract/event-search";
 import { demoGlobalSearch } from "../../shared/mock/demo-world/global-search";
 import { buildGlobalSearch, industriesForTerms, suggestionsFor, type GlobalSearchCoreInput } from "../../features/search/global/core";
@@ -276,4 +278,56 @@ test("the capability counts are cached per actor for 5 minutes", async () => {
     assert.equal(calls, 2);
     assert.equal(again.data.searchedPeople, 7);
   });
+});
+
+test("意味検索 lite: concepts, literal vs 関連, board-style reasons, nothing for queries outside the table", () => {
+  const t = splitSearchTerms("投資家");
+  assert.deepEqual(liteMatch({ name: "高橋 美咲", org: "青葉ベンチャーズ", role: "パートナー" }, t), { kind: "related", reason: "役職「パートナー」· VC" });
+  assert.deepEqual(liteMatch({ name: "山本 彩", org: "東都キャピタル", role: "シニアアソシエイト" }, t), { kind: "related", reason: "会社が VC" });
+  assert.deepEqual(liteMatch({ name: "伊藤 直子", org: "ハルモニア", role: "CFO", other: ["VC 4社と面識"] }, t), { kind: "related", reason: "メモ「VC 4社と面識」" });
+  assert.deepEqual(liteMatch({ name: "渡辺 翔", org: "Nexa Robotics", role: "代表", other: ["投資家を紹介できる"] }, t), { kind: "literal", reason: "「投資家を紹介できる」" });
+  assert.equal(liteMatch({ name: "佐藤", org: "東亜商事", role: "営業" }, t), null);
+  assert.deepEqual(liteMatch({ name: "佐藤", org: "東亜精機", role: "部長" }, splitSearchTerms("製造業の決裁者")), { kind: "related", reason: "役職「部長」· メーカー" });
+  assert.equal(liteMatch({ name: "佐藤", org: "東亜商事", role: "部長" }, splitSearchTerms("製造業の決裁者")), null, "every concept a term names must hit");
+  assert.deepEqual(liteMatch({ name: "Kim", org: "Blue Ventures", role: "Partner" }, splitSearchTerms("investor"), "en"), { kind: "related", reason: "Role “Partner”· VC" });
+  assert.equal(liteCanExpand(splitSearchTerms("先月会った人")), false);
+});
+
+test("live semantic=1 expands through lite (relevance order, 一致 / 関連 counts, reasons, no highlights); semantic=0 does not", async () => {
+  const people = [
+    { id: "p1", name: "高橋 美咲", org: "青葉ベンチャーズ", role: "パートナー" },
+    { id: "p2", name: "渡辺 翔", org: "Nexa", role: "代表", other: ["投資家を紹介できる"] },
+    { id: "p3", name: "佐藤 一郎", org: "東亜商事", role: "営業" },
+  ];
+  const asked: string[][] = [];
+  const ports: GlobalSearchLivePorts = {
+    ...fakePorts({}),
+    async people(_actor, terms) {
+      asked.push([...terms]);
+      const items = people.filter((person) => terms.every((term) => normalizeSearchText([person.name, person.org, person.role, ...(person.other ?? [])].join(" ")).includes(term))).map((person) => ({ ...person, lastInteractionAt: null, other: person.other ?? [] }));
+      return { items, total: items.length };
+    },
+    semanticAvailable: true,
+  };
+  const on = await searchLive(ports, { actorId: "actor:a", language: "ja", limit: 6, now: NOW, platform: "web", query: "投資家", semantic: true });
+  assert.deepEqual(on.people.items.map((hit) => [hit.contactId, hit.reason, hit.related ?? false]), [["p2", "「投資家を紹介できる」", false], ["p1", "役職「パートナー」· VC", true]]);
+  assert.deepEqual(on.semantic, { available: true, enabled: true, matched: 1, related: 1 });
+  assert.equal(on.people.order, "relevance");
+  assert.ok(on.people.items.every((hit) => hit.highlights.length === 0 && hit.status === null));
+  assert.ok(asked.length > 1 && asked.length <= 13, "one literal read plus at most 12 synonym reads");
+  asked.length = 0;
+  const off = await searchLive(ports, { actorId: "actor:a", language: "ja", limit: 6, now: NOW, platform: "web", query: "投資家", semantic: false });
+  assert.deepEqual(off.people.items.map((hit) => hit.contactId), ["p2"]);
+  assert.equal(off.semantic.enabled, false);
+  assert.deepEqual(asked, [["投資家"]]);
+  const capability = await searchLive(ports, { actorId: "actor:a", language: "ja", limit: 6, now: NOW, platform: "web", query: "" });
+  assert.deepEqual(capability.examples, ["投資家", "製造業の決裁者"], "only the examples lite can answer");
+  assert.equal(capability.semantic.available, true);
+});
+
+test("the live ports declare lite semantic search available (no AI, no provider needed)", () => {
+  const source = readFileSync(new URL("../../features/search/global/live.ts", import.meta.url), "utf8");
+  assert.match(source, /semanticAvailable: true,/);
+  const imports = source.split("\n").filter((line) => line.startsWith("import ")).join("\n");
+  assert.doesNotMatch(imports, /ai-quota|embedding|openai|deepseek|orbit-ai/iu, "lite imports no AI client");
 });
