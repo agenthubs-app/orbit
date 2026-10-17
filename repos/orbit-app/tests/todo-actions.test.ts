@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoTaskCompletionReceipt } from "../src/screens/todo/todo-actions";
+import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "../src/screens/todo/todo-actions";
 
 test("To-do opens only destinations with a stable, owned route", () => {
   const base = { key: "agent_action:a1", sourceId: "a1", titlePreview: "Review", createdAt: "2026-10-18T00:00:00Z", actions: ["open"] as const };
@@ -37,6 +37,17 @@ test("To-do suggestion decision requires an authoritative matching receipt", () 
   assert.equal(todoSuggestionDecisionReceipt({ ...accepted, suggestion: { ...accepted.suggestion, id: "s2" } }, "s1", "accept"), false);
   assert.equal(todoSuggestionDecisionReceipt({ suggestion: { id: "s1", status: "dismissed" } }, "s1", "dismiss"), true);
   assert.equal(todoSuggestionDecisionReceipt({ suggestion: { id: "s1", status: "pending" } }, "s1", "dismiss"), false);
+});
+
+test("To-do suggestion Later uses the source snooze endpoint at next local 09:00 and verifies the receipt", () => {
+  const item = { key: "task_suggestion:s1", source: "task_suggestion" as const, sourceId: "s1", titlePreview: "Review", createdAt: "2026-10-18T00:00:00Z", actions: ["snooze"] as const };
+  const request = todoSuggestionSnoozeRequest(item, "ios:todo:snooze", "2026-10-18", "Asia/Tokyo", new Date("2026-10-18T12:00:00Z"));
+  assert.deepEqual(request, { path: "/api/task-suggestions/s1/snooze", body: { idempotencyKey: "ios:todo:snooze", nextVisibleAt: "2026-10-19T00:00:00.000Z" } });
+  assert.equal(todoSuggestionSnoozeReceipt({ suggestion: { id: "s1", status: "snoozed", nextVisibleAt: request?.body.nextVisibleAt } }, "s1", request!.body.nextVisibleAt), true);
+  assert.equal(todoSuggestionSnoozeReceipt({ suggestion: { id: "s1", status: "pending", nextVisibleAt: request?.body.nextVisibleAt } }, "s1", request!.body.nextVisibleAt), false);
+  assert.equal(todoSuggestionSnoozeReceipt({ suggestion: { id: "s2", status: "snoozed", nextVisibleAt: request?.body.nextVisibleAt } }, "s1", request!.body.nextVisibleAt), false);
+  assert.equal(todoSuggestionSnoozeRequest({ ...item, sample: true }, "ios:todo:snooze", "2026-10-18", "Asia/Tokyo", new Date("2026-10-18T12:00:00Z")), null);
+  assert.equal(todoSuggestionSnoozeRequest(item, "ios:todo:snooze", "2026-10-18", "Asia/Tokyo", new Date("2026-10-19T01:00:00Z")), null);
 });
 
 test("To-do completion acknowledges only the owned completed task receipt", () => {

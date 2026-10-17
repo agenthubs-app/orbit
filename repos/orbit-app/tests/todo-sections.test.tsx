@@ -20,16 +20,17 @@ const page: TodoPageContract = {
   sources: { task_suggestion: "ok", task: "ok", relationship_task: "ok", completion_question: "not_implemented" },
 };
 
-function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: boolean; more?: boolean } = {}) {
+function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: boolean; more?: boolean; snooze?: boolean } = {}) {
   const value: OrbitLocaleContextValue = {
     choice: "ja", deviceLanguage: "ja", error: null, language: "ja", preference: { mode: "system", language: null, updatedAt: null },
     retryLanguageSave: async () => undefined, setLanguage: async () => undefined, source: "device", syncState: "idle", t: createTranslator("ja"),
   };
   return createElement(OrbitLocaleContext.Provider, { value }, createElement(TodoSections, {
     page: { ...page, decisions: { ...page.decisions, next: props.more ? { task_suggestion: "cursor" } : {}, items: page.decisions.items.map(item => {
-      if (props.decisionSample !== false) return item;
+      const actions = props.snooze ? [...item.actions, "snooze" as const] : item.actions;
+      if (props.decisionSample !== false) return { ...item, actions };
       const { sample: _sample, ...withoutSample } = item;
-      return withoutSample;
+      return { ...withoutSample, actions };
     }) } },
     offline: props.offline ?? false, staleDay: props.staleDay ?? false, busy: false, mirroredTaskIds: new Set(["t1"]),
     onRefresh() {}, onMore() {}, canOpen: () => true, canOpenFollowup: item => item.kind === "task", canDefer: () => true, onOpen() {}, onOpenFollowup() {}, onComplete() {}, onDefer() {}, onDecide() {},
@@ -76,4 +77,10 @@ test("a source cursor offers See all only while online and current", () => {
   assert.equal(renderedText(tree({ more: true, offline: true })).includes("すべて"), false);
   assert.equal(renderedText(tree({ more: true, staleDay: true })).includes("すべて"), false);
   assert.equal(renderedText(tree()).includes("すべて"), false);
+});
+
+test("a live suggestion exposes Tomorrow only when the source allows snooze", () => {
+  assert.ok(renderedText(tree({ decisionSample: false, snooze: true })).includes("明日"));
+  assert.equal(renderedText(tree({ decisionSample: false })).includes("明日"), false);
+  assert.equal(renderedText(tree({ decisionSample: false, snooze: true, offline: true })).includes("明日"), false);
 });

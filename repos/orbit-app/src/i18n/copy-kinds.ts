@@ -10,6 +10,8 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["todo.open", "button"],
   ["todo.accept", "button"],
   ["todo.dismiss", "button"],
+  ["todo.tomorrow", "button"],
+  ["todo.snoozed", "toast"],
   ["todo.complete", "button"],
   ["todo.defer", "button"],
   ["todo.more", "button"],

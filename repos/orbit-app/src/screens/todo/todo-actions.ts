@@ -1,7 +1,7 @@
 import type { TodoDecisionItem, TodoFollowupItem } from "../../api/contract/todo-page";
-import { taskSuggestionAcceptPath, taskSuggestionDismissPath } from "../../api/endpoints";
+import { taskSuggestionAcceptPath, taskSuggestionDismissPath, taskSuggestionSnoozePath } from "../../api/endpoints";
 import { aiTaskReceipt } from "../../api/ai-history-contract";
-import { calendarDate, localParts, resolveLocalDateTime, validTimeZone } from "../../time/date-time";
+import { calendarDate, localParts, resolveLocalDateTime, shiftCalendarDate, validTimeZone } from "../../time/date-time";
 import { readTaskListItems } from "../../view-models/task-list-scope";
 
 /** Do not treat a provider-local entity-draft conversation ID as a saved chat session. */
@@ -23,6 +23,24 @@ export function todoSuggestionDecisionRequest(item: TodoDecisionItem, action: "a
 
 export function todoSuggestionDecisionReceipt(payload: unknown, suggestionId: string, action: "accept" | "dismiss"): boolean {
   return aiTaskReceipt(payload, suggestionId, action) !== null;
+}
+
+export function todoSuggestionSnoozeRequest(item: TodoDecisionItem, idempotencyKey: string, date: string, timeZone: string, now: Date): {
+  path: string; body: { idempotencyKey: string; nextVisibleAt: string };
+} | null {
+  if (item.sample || item.source !== "task_suggestion" || !item.sourceId || item.key !== `task_suggestion:${item.sourceId}` ||
+    !item.actions.includes("snooze") || !idempotencyKey || !calendarDate(date) || !validTimeZone(timeZone)) return null;
+  const nextVisibleAt = resolveLocalDateTime(shiftCalendarDate(date, 1), "09:00", timeZone);
+  if (!nextVisibleAt || Date.parse(nextVisibleAt) <= now.getTime()) return null;
+  return { path: taskSuggestionSnoozePath(item.sourceId), body: { idempotencyKey, nextVisibleAt } };
+}
+
+export function todoSuggestionSnoozeReceipt(payload: unknown, suggestionId: string, nextVisibleAt: string): boolean {
+  if (!payload || typeof payload !== "object" || !("suggestion" in payload)) return false;
+  const row = payload.suggestion;
+  return !!row && typeof row === "object" && "id" in row && "status" in row && "nextVisibleAt" in row &&
+    row.id === suggestionId && row.status === "snoozed" && typeof row.nextVisibleAt === "string" &&
+    Number.isFinite(Date.parse(row.nextVisibleAt)) && Date.parse(row.nextVisibleAt) === Date.parse(nextVisibleAt);
 }
 
 export function todoFollowupHref(item: TodoFollowupItem): string | null {
