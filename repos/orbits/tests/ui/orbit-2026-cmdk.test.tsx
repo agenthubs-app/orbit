@@ -16,6 +16,9 @@ let code: { js: string; css: string };
 test.before(async () => {
   code = await shellBundle(LEGACY_PAGE + `
     window.searches = [];
+    // about:blank has no origin: an in-memory sessionStorage lets the test read the iOrbit hand-off.
+    const sessionMemory = {};
+    Object.defineProperty(window, "sessionStorage", { configurable: true, value: { getItem: (key) => (key in sessionMemory ? sessionMemory[key] : null), setItem: (key, value) => { sessionMemory[key] = String(value); }, removeItem: (key) => { delete sessionMemory[key]; } } });
     const empty = { total: 0, items: [] };
     window.fetch = async (url) => {
       const query = new URL(String(url), "http://local.test").searchParams.get("q") ?? "";
@@ -71,13 +74,16 @@ test("global search: one GET per query, arrows move, ↵ opens the person", asyn
   assert.equal(await page.getByRole("dialog").count(), 0);
 });
 
-test("⌘↵ hands the text to iOrbit with the page context (Japanese too)", async (t) => {
+test("⌘↵ only prefills iOrbit's input (DESIGN §1: never sends) — no pending ask is written", async (t) => {
   const page = await shell(t, "/app/contacts/c1");
   await page.keyboard.press("Control+k");
   await page.getByRole("dialog", { name: "検索と iOrbit" }).waitFor();
   await page.keyboard.type("来週の会議の準備");
   await page.keyboard.press("Meta+Enter");
   assert.deepEqual(await calls(page), [{ push: "/app/agent" }]);
+  const handOff = await page.evaluate(() => ({ prefill: window.sessionStorage.getItem("orbit.agent.prefill"), pending: window.sessionStorage.getItem("orbit.ask.pending") }));
+  assert.deepEqual(JSON.parse(handOff.prefill!), { origin: null, query: "来週の会議の準備", returnTo: "/app/contacts/c1" });
+  assert.equal(handOff.pending, null, "a pending ask would be sent on arrival");
   assert.equal(orbitAskPageContext("/app/events/e1", "ja"), "このイベント");
   assert.equal(orbitAskPageContext("/app/tasks", "zh"), "我的 Task");
 });

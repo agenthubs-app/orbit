@@ -23,7 +23,7 @@ import { radius, type OrbitColors } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { addDesignMock } from "../add/add-design-mock";
 import { useSearchApi, type SearchFilter } from "./search-api";
-import { APP_RECENT_SEARCHES_KEY, APP_RECENT_SEARCHES_MAX, APP_SEARCH_DEBOUNCE_MS, APP_SEARCHING_DELAY_MS, appSearchFilters, isAppEmptyResult, rememberAppSearch } from "./search-model";
+import { APP_RECENT_SEARCHES_KEY, APP_RECENT_SEARCHES_MAX, APP_SEARCH_DEBOUNCE_MS, APP_SEARCHING_DELAY_MS, alternativePrompt, appSearchFilters, isAppEmptyResult, rememberAppSearch } from "./search-model";
 
 type Status = "idle" | "pending" | "ready" | "rate_limited" | "failed";
 
@@ -89,8 +89,8 @@ export function GlobalSearchScreen() {
   }, []);
   const remember = () => saveRecent(rememberAppSearch(recent, query));
   const open = (href: string) => { remember(); router.push(href as Href); };
-  const askIorbit = () => {
-    const text = query.trim();
+  const askIorbit = (prompt?: string) => {
+    const text = (prompt ?? query).trim();
     if (!text || !auth.actorId || !server.baseUrl) return;
     remember();
     const prefillIntent = registerAiTemplatePrefill({ actorId: auth.actorId, baseUrl: server.baseUrl, entryPointId: "ai.new_chat", message: text, references: [], template: { id: "search.ask_iorbit", version: 1 } });
@@ -100,8 +100,10 @@ export function GlobalSearchScreen() {
 
   const filters = appSearchFilters(capability?.types ?? result?.types);
   const filterLabel: Record<SearchFilter, string> = { all: t("search.typeAll"), conversations: t("search.typeConversations"), events: t("search.typeEvents"), people: t("search.typePeople") };
-  const showResult = status === "ready" && result && query.trim() ? result : null;
-  const empty = isAppEmptyResult(showResult);
+  // Like the Web panel: the previous answer stays until the next one arrives (no blank flash); after 300 ms without an
+  // answer the 検索中 skeleton takes over.
+  const showResult = (status === "ready" || (status === "pending" && !slow)) && result && query.trim() ? result : null;
+  const empty = isAppEmptyResult(showResult, filter);
 
   const marked = (text: string, ranges: readonly SearchHighlight[], field: "title" | "subtitle", style: object) => {
     const own = ranges.filter((range) => range.field === field);
@@ -168,8 +170,8 @@ export function GlobalSearchScreen() {
       <View style={[styles.card, styles.resultCard]} testID="global-search-empty">
         <View style={styles.empty}>
           <UiText style={styles.emptyEmoji}>🔎</UiText>
-          <UiText style={styles.emptyTitle}>{fill(t("search.emptyTitle"), { q: showResult.query })}</UiText>
-          <UiText style={[styles.lbl, styles.emptySub]}>{fill(t("search.emptySearched"), { n: showResult.searchedPeople })}</UiText>
+          <UiText style={styles.emptyTitle}>{fill(t(filter === "events" ? "search.emptyTitleEvents" : filter === "conversations" ? "search.emptyTitleConversations" : "search.emptyTitle"), { q: showResult.query })}</UiText>
+          {filter === "all" || filter === "people" ? <UiText style={[styles.lbl, styles.emptySub]}>{fill(t("search.emptySearched"), { n: showResult.searchedPeople })}</UiText> : null}
         </View>
         {showResult.suggestions.length ? group(t("search.emptyNear")) : null}
         {showResult.suggestions.map((item, index) => (
@@ -181,7 +183,7 @@ export function GlobalSearchScreen() {
         ))}
         {group(t("search.emptyOther"))}
         {showResult.alternatives.map((item) => (
-          <UiPressable key={item.kind} accessibilityRole="button" accessibilityLabel={item.label} onPress={() => (item.kind === "ask_iorbit" ? askIorbit() : open(item.href))} style={styles.row}>
+          <UiPressable key={item.kind} accessibilityRole="button" accessibilityLabel={item.label} onPress={() => (item.kind === "ask_iorbit" ? askIorbit(alternativePrompt(item.detail)) : open(item.href))} style={styles.row}>
             {emo(item.emoji, item.kind === "ask_iorbit" ? colors.macLav : colors.macTeal)}
             <View style={styles.meta}><UiText style={styles.title} numberOfLines={1}>{item.label}</UiText><UiText style={styles.sub} numberOfLines={1}>{item.detail}</UiText></View>
           </UiPressable>

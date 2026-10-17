@@ -44,7 +44,9 @@ test("the global composer collapses after explicit send and suggestion chips onl
 
   // R07: the palette has no suggestion chips, so "chips only fill" has no surface left;
   // the guarantee that typing never sends is kept: only ⌘↵ or the ask row submits.
-  assert.match(palette, /onClose\(\);\s*ask\.submit\(text, context\);/);
+  // R30 (search/DESIGN.md §1): ⌘↵ / the ask row only prefill iOrbit's input; the user sends there.
+  assert.match(palette, /onClose\(\);\s*ask\.prefill\(text, context\);/);
+  assert.doesNotMatch(palette, /ask\.submit\(/);
   assert.match(palette, /event\.key === "Enter" && \(event\.metaKey \|\| event\.ctrlKey\)\) \{ event\.preventDefault\(\); handToIorbit\(\); \}/);
   assert.match(palette, /if \(index === askRow\) \{ handToIorbit\(\); return; \}/);
   assert.doesNotMatch(palette, /onChange=\{[^}]*submit/);

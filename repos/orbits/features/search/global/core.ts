@@ -38,6 +38,8 @@ export interface GlobalSearchCoreInput {
   language: SearchLanguage;
   now: Date;
   people: readonly PersonCandidate[];
+  /** How many of my contacts match in all (the source may return fewer rows than that); defaults to `people.length`. */
+  peopleTotal?: number;
   /** Contacts in the current plan (推進中); null = the account has no plan → no status chip at all. */
   planLinked: ReadonlySet<string> | null;
   searchedPeople: number;
@@ -159,16 +161,18 @@ export function buildGlobalSearch(input: GlobalSearchCoreInput): GlobalSearchRes
     })
     : [];
   const conversations = wanted.has("conversations") && input.conversations ? input.conversations : null;
-  const peopleTotal = people.length;
+  const peopleTotal = Math.max(input.peopleTotal ?? 0, people.length);
   const eventsTotal = input.events ? Math.max(input.events.eventsTotal, events.length) : 0;
   // 空结果的口径（b5 #59 / #56）：没有「人」（也没有会話）就是「一致する人はいません」，活动命中只作为「イベントで探す」的去处。
-  const empty = !people.length && !(conversations?.length);
+  // 单类型（A5）：只选「イベント」/「会話」时，那一组没有命中才算空；不出业界建议（建议是按人筛的）。
+  const peopleScoped = wanted.has("people");
+  const empty = peopleScoped ? !people.length && !(conversations?.length) : !events.length && !(conversations?.length);
   return {
     ...base,
     alternatives: empty ? alternativesFor(input) : [],
     ...(input.types.includes("conversations") ? { conversations: { items: (conversations ?? []).slice(0, input.limit), total: conversations?.length ?? 0 } } : {}),
     events: empty ? { items: [], total: 0 } : { items: events.slice(0, input.limit), total: wanted.has("events") ? eventsTotal : 0 },
     people: { items: people.slice(0, input.limit), total: peopleTotal },
-    suggestions: empty ? suggestionsFor(input) : [],
+    suggestions: empty && peopleScoped ? suggestionsFor(input) : [],
   };
 }

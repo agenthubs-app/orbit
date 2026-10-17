@@ -18,6 +18,7 @@ const PENDING_KEY = "orbit.ask.pending";
 const AGENT_PREFILL_KEY = "orbit.agent.prefill";
 
 export interface OrbitAgentPrefill {
+  /** null = a plain prefill (R30 ⌘K 「iOrbit に聞く」): only fills the input, sends without a structured origin. */
   origin: {
     entryClient: "web";
     entryPointId: "contacts.analysis";
@@ -25,7 +26,7 @@ export interface OrbitAgentPrefill {
     kind: "structured";
     sourceDataVersion: string;
     template: { id: "contacts.analysis"; version: 1 };
-  };
+  } | null;
   query: string;
   returnTo: string;
 }
@@ -122,6 +123,8 @@ export function takeAgentPrefill(): OrbitAgentPrefill | null {
     const origin = value?.origin;
     const query = typeof value?.query === "string" ? value.query.trim() : "";
     const returnTo = typeof value?.returnTo === "string" ? value.returnTo : "";
+    // R30: the ⌘K search hands over a plain prefill (no structured origin) from any /app page.
+    if (origin === null) return query && returnTo.startsWith("/app") ? { origin: null, query, returnTo } : null;
     if (
       !query || returnTo !== "/app/contacts/dashboard" ||
       origin?.entryClient !== "web" || origin.entryPointId !== "contacts.analysis" ||

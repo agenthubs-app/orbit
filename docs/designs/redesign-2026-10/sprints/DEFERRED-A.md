@@ -24,6 +24,7 @@
 | R27（App） | App `FilterOption` 上下内边距、`Toggle` 尺寸（同 W-R27-13） | 重跑 A-R27-09 筛选弹层 |
 | R27（App） | App `Toast`：带关闭 ✕（标题被挤成两行），位置不知道页面自带的会场 5 tab 底栏；kit `.toast.pos` 无 ✕、bottom 100 | 重跑 A-R27-35 交換成功 toast（开发回放 `approve=` 常驻） |
 | R27（App） | `src/components/ui` 缺 UnderlineTabs、可配置 TabBar（会場玻璃底栏）、全屏搜索页容器：App 探す搜索页用 RN `<Modal>`、詳細 `.utabs` 与会場 livebar 手写 tablist（主会话 10-15 定：记入 `tests/fixtures/legacy-ui-deferred.json`，注释「R27 · 待组件库 · DEFERRED-A §1」，不去掉 tablist 角色） | 乙的组件库轮补件后替换这 3 处并删掉 legacy-ui-deferred.json 对应行（测试要求条数与实际一致，替换后不删行会失败） |
+| R30（App） | `src/components/ui` 缺全屏搜索页容器（同上一行） | `src/screens/search/GlobalSearchScreen.tsx` 手写（SafeArea + ShellBackground + 搜索行 + chip 行）；组件库补件后替换，重跑 A-R30-P05–P08 |
 
 ## 2. 待其他 Sprint（乙）
 
@@ -32,7 +33,10 @@
 | R12-12 | R20 Task 的メモ @人 token | 重跑 A-R12-16 |
 | R15 / R16 「待 R11」 | R11 人脈的入口和弹层接线 | 重跑 R15 / R16 REPORT 里标「待 R11」的画面 |
 | R24-07 | Task 1024 标题区多出「目標を追加」（壳 / Task） | 去掉以后重跑 W-R24-01 1024 |
-| R30 | R21 的会话搜索接口 | 做 R30 搜索 |
+| R30 / R21-09 | R21 的会话搜索接口（R30 本体已完成 2026-10-17，live 暂不画「会話」chip） | 接 `searchConversations` 到 `features/search/global/live.ts` 的 `conversations`，补 live 四 chip 回归，重跑 W-R30-P01 / A-R30-P06 |
+| R30 / R11-15 | R11 人脈页读 `?industry=` 并让人脈 🔍 进全局搜索 | 重跑 W-R30-P03 / A-R30-P08，点「近い条件なら」确认落地 |
+| R30-02 | 比对工具两侧同一区域，Web 1024 面板比不了 | 工具支持分侧区域后加 P01b–P04b 重比 |
+| R30-03 | b12 #495 横幅缺样式 | **done（2026-10-17，R30 收口提交）**：本会话照 b5 #55 补上，A-R30-P07d 通过 |
 
 ## 3. 待甲自己后面的 Sprint
 
@@ -73,4 +77,5 @@
 | R27 App A-R27-26 | b2 #26 画板把一段 CSS 审计注释画成了可见文字（topbar 下两行），整屏下移约 40px；已报主会话（10-15） | 画板修正后清缓存重跑 A-R27-26（同时受 seg G23 与 expo-brightness 两条影响） |
 | R22-02 | 计划 v2 的生产 AI 开关和月上限 | 等用户拍板 |
 | 用语统一 §45（文字） | **done（2026-10-17，`46a9135f1`）**：orbits / orbit-app 示例数据、契约示例、脚本、测试里「製造業DX」「DX推進室」「中部ものづくりDX協議会」「Seedline株式会社」「代表取締役CEO」「青葉VC」等拉丁字母与日文紧贴写法已加半角空格（保留シリーズA、N人、To-do、・并列两侧）；`shared/contract/host-console.ts` 已 `sync:contract`；copy-qa 示例文字检查（demo-world-copy）转绿。遗留 **done（2026-10-17，提交号见 `git log -1 -- 本文件`）**：生产 ja 文案（`orbit-event-content.ts`、`contact-detail-localization.ts`、App `src/i18n/ja/**`、`profile-onboarding.ts`）已按同规则加空格；`copy-qa/check.mjs` 的拉丁字母规则改为不把「・」当日文字符（并列两侧紧贴是规范允许写法）；`copy:qa` 里这条规则的红项 8 → 0（总红项 212 → 204，其余规则未动）；「青葉 VC」恢复带空格 | 已做 |
+| R30-05 意味検索授权 | 付费 embedding（DESIGN §10 A2：默认关、不调 AI） | 用户授权后建索引、打开开关、补 #58 / #55 live 回归 |
 | 真机 | 触感和相机只能在真机上验 | 合回前在真机上走查（README 合回前清单） |

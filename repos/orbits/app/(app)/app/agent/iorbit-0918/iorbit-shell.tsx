@@ -331,7 +331,7 @@ function IOrbitLiveShell({
       const origin = agentPrefill.origin;
       setAgentPrefill(null);
       setChatDraft("");
-      void ask(query, undefined, origin);
+      void ask(query, undefined, origin ?? undefined);
       return;
     }
     submitChatDraft();

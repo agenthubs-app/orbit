@@ -17,9 +17,16 @@ import { createGlobalSearchLivePorts, type GlobalSearchLivePorts } from "./live"
 
 export const GLOBAL_SEARCH_KEYWORD_PER_MINUTE = 60;
 export const GLOBAL_SEARCH_SEMANTIC_PER_MINUTE = 20;
+export const GLOBAL_SEARCH_COUNTS_TTL_MS = 5 * 60_000;
 /** 「こんな検索もできます」 (live): the keyword-capable ones while semantic search is unavailable (DESIGN §2.3). */
 export const GLOBAL_SEARCH_EXAMPLES = ["投資家", "製造業の決裁者", "先月会った人", "紹介してくれそうな人", "3か月 連絡していない人"] as const;
 export const GLOBAL_SEARCH_KEYWORD_EXAMPLES = ["投資家", "製造業の決裁者"] as const;
+/** Live examples follow the reader's language (the demo world stays Japanese: its data is). */
+const LIVE_EXAMPLES: Record<"ja" | "zh" | "en", { all: readonly string[]; keyword: readonly string[] }> = {
+  ja: { all: GLOBAL_SEARCH_EXAMPLES, keyword: GLOBAL_SEARCH_KEYWORD_EXAMPLES },
+  zh: { all: ["投资人", "制造业决策者", "上个月见过的人", "可能帮忙介绍的人", "三个月没联系的人"], keyword: ["投资人", "制造业决策者"] },
+  en: { all: ["investor", "manufacturing decision maker", "met last month", "could introduce me", "no contact in 3 months"], keyword: ["investor", "manufacturing"] },
+};
 
 export interface GlobalSearchDeps {
   resolveActor?: ResolveAuthenticatedApiActor;
@@ -51,6 +58,20 @@ export function createGlobalSearchHandlers(deps: GlobalSearchDeps = {}) {
   const now = deps.now ?? (() => new Date());
   const window = deps.now ? createRateWindow(deps.now) : processWindow;
   const ports = deps.livePorts ?? createGlobalSearchLivePorts;
+  // DESIGN §3.1: the capability part (my contact total and per-industry counts) is cached per actor for 5 minutes, so
+  // opening the panel again does not re-run the two count queries.
+  const countsCache = new Map<string, { at: number; value: Awaited<ReturnType<GlobalSearchLivePorts["counts"]>> }>();
+  const cachedCounts = (live: GlobalSearchLivePorts): GlobalSearchLivePorts => ({
+    ...live,
+    async counts(actorId) {
+      const at = now().getTime();
+      const hit = countsCache.get(actorId);
+      if (hit && at - hit.at < GLOBAL_SEARCH_COUNTS_TTL_MS) return hit.value;
+      const value = await live.counts(actorId);
+      countsCache.set(actorId, { at, value });
+      return value;
+    },
+  });
 
   const get = redesignContractRoute("global-search", globalSearchResponseSchema, async (request, _params, { service }): Promise<ContractReply> => {
     const url = new URL(request.url);
@@ -66,7 +87,9 @@ export function createGlobalSearchHandlers(deps: GlobalSearchDeps = {}) {
     if (service.mode === "live" && !actor) return { error: new AppError("UNAUTHORIZED", "Sign in to access this resource.") };
     const sample = service.mode !== "live" || actor?.id === DEMO_ACTOR_ID;
     const actorKey = actor?.id ?? DEMO_ACTOR_ID;
-    if (input.q && !window.take(`${actorKey}:${input.semantic ? "semantic" : "keyword"}`, input.semantic ? GLOBAL_SEARCH_SEMANTIC_PER_MINUTE : GLOBAL_SEARCH_KEYWORD_PER_MINUTE)) {
+    // The demo world is computed in memory (no database, no AI), and every demo visitor shares one actor id — so only
+    // real accounts spend the per-minute budget.
+    if (input.q && !sample && !window.take(`${actorKey}:${input.semantic ? "semantic" : "keyword"}`, input.semantic ? GLOBAL_SEARCH_SEMANTIC_PER_MINUTE : GLOBAL_SEARCH_KEYWORD_PER_MINUTE)) {
       return { context: { reason: "RATE_LIMITED" }, error: new AppError("FORBIDDEN", "Too many searches. Try again in a minute."), status: 429 };
     }
 
@@ -76,7 +99,7 @@ export function createGlobalSearchHandlers(deps: GlobalSearchDeps = {}) {
     } else {
       const live = ports();
       if (!live) return { context: { reason: "GLOBAL_SEARCH_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Search requires a configured live database.") };
-      data = await searchLive(live, { actorId: actor!.id, language: context.language, limit: input.limit, now: now(), platform, query: input.q, types: input.types });
+      data = await searchLive(cachedCounts(live), { actorId: actor!.id, language: context.language, limit: input.limit, now: now(), platform, query: input.q, types: input.types });
     }
     console.info(JSON.stringify({ event: "r30_global_search", groups: [data.people.items.length, data.events.items.length, data.conversations?.items.length ?? 0], ms: now().getTime() - started, mode: service.mode, queryLength: input.q.length, semantic: input.semantic }));
     return { data };
@@ -88,17 +111,17 @@ export function createGlobalSearchHandlers(deps: GlobalSearchDeps = {}) {
 export async function searchLive(live: GlobalSearchLivePorts, input: { actorId: string; query: string; limit: number; types?: readonly ("people" | "events" | "conversations")[]; platform: "web" | "app"; language: "ja" | "zh" | "en"; now: Date }): Promise<GlobalSearchResponse> {
   const types: ("people" | "events" | "conversations")[] = live.conversations ? ["people", "events", "conversations"] : ["people", "events"];
   const terms = splitSearchTerms(input.query);
-  const examples = live.semanticAvailable ? [...GLOBAL_SEARCH_EXAMPLES] : [...GLOBAL_SEARCH_KEYWORD_EXAMPLES];
+  const examples = [...(live.semanticAvailable ? LIVE_EXAMPLES[input.language].all : LIVE_EXAMPLES[input.language].keyword)];
   const counts = await live.counts(input.actorId);
   if (!terms.length) {
     return buildGlobalSearch({ conversations: null, events: null, examples, industryCounts: counts.industries, language: input.language, limit: input.limit, now: input.now, people: [], planLinked: null, platform: input.platform, query: input.query, searchedPeople: counts.total, semanticAvailable: live.semanticAvailable, terms, types });
   }
   const wanted = new Set(input.types?.length ? input.types : types);
-  const [people, planLinked, events, conversations] = await Promise.all([
-    wanted.has("people") ? live.people(input.actorId, input.query, 20) : Promise.resolve([]),
+  const [found, planLinked, events, conversations] = await Promise.all([
+    wanted.has("people") ? live.people(input.actorId, terms) : Promise.resolve({ items: [], total: 0 }),
     wanted.has("people") ? live.planLinked(input.actorId) : Promise.resolve(null),
-    live.events(input.actorId, input.query, 20),
+    live.events(input.actorId, terms.join(" "), 20),
     wanted.has("conversations") && live.conversations ? live.conversations(input.actorId, input.query, 20) : Promise.resolve(null),
   ]);
-  return buildGlobalSearch({ conversations, events, examples, industryCounts: counts.industries, language: input.language, limit: input.limit, now: input.now, people, planLinked, platform: input.platform, query: input.query, searchedPeople: counts.total, semanticAvailable: live.semanticAvailable, terms, types, wanted: input.types });
+  return buildGlobalSearch({ conversations, events, examples, industryCounts: counts.industries, language: input.language, limit: input.limit, now: input.now, people: found.items, peopleTotal: found.total, planLinked, platform: input.platform, query: input.query, searchedPeople: counts.total, semanticAvailable: live.semanticAvailable, terms, types, wanted: input.types });
 }

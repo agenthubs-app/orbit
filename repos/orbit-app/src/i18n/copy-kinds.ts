@@ -2075,6 +2075,8 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["search.semanticBanner", "label"],
   ["search.semanticCount", "label"],
   ["search.emptyTitle", "label"],
+  ["search.emptyTitleEvents", "label"],
+  ["search.emptyTitleConversations", "label"],
   ["search.emptySearched", "label"],
   ["search.emptyNear", "label"],
   ["search.emptyOther", "label"],

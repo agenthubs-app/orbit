@@ -118,21 +118,22 @@ export function demoGlobalSearch(input: DemoGlobalSearchInput): GlobalSearchResp
       semantic: { available: true, enabled: true, matched: 9, related: 14 },
     };
   }
-  if (terms.includes("半導体") && terms.includes("商社")) return { ...base, ...semiconductorTrade(input.platform, query) };
+  // 单类型（A5）：没选「人」时不出业界建议（建议是按人筛的），与 live（features/search/global/core.ts）同一口径。
+  if (terms.includes("半導体") && terms.includes("商社")) return { ...base, ...semiconductorTrade(input.platform, query), ...(wanted.has("people") ? {} : { suggestions: [] }) };
   // Anything else: keyword rules over the demo world.
   const people = demoPeople.filter((person) => matchesAllTerms([person.name, person.org, person.role], terms)).map((person) => personHit(input.platform, person, terms));
   const events = DEMO_EVENTS.filter((event) => matchesAllTerms([event.title, event.venue, event.organizer], terms)).map((event): GlobalSearchEventHit => {
     const note = `${event.startsAt.slice(5, 7).replace(/^0/u, "")}/${event.startsAt.slice(8, 10).replace(/^0/u, "")} · ${event.venue}`;
     return { emoji: "🎪", eventId: event.id, href: eventHref(input.platform, event.id), highlights: highlightsFor(event.title, note, terms), note, startsAt: event.startsAt, title: event.title, via: null };
   });
-  const empty = !people.length && !events.length;
+  const empty = wanted.has("people") ? !people.length : !events.length;
   return {
     ...base,
     alternatives: empty ? [
       { detail: `「${query.replace(/\s+/gu, "")}の人に会うには？」`, emoji: "✨", href: "#ask", kind: "ask_iorbit", label: "iOrbit に紹介ルートを聞く" },
       { detail: "探すで条件を変えて探す", emoji: "🎟️", href: discoverHref(input.platform, query), kind: "events", label: "イベントで探す" },
     ] : [],
-    events: wanted.has("events") ? { items: cap(events), total: events.length } : { items: [], total: 0 },
+    events: wanted.has("events") && !empty ? { items: cap(events), total: events.length } : { items: [], total: 0 },
     people: wanted.has("people") ? { items: cap(people), total: people.length } : { items: [], total: 0 },
   };
 }

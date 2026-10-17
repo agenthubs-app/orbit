@@ -7,7 +7,7 @@ import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
 
 import type { GlobalSearchResponse } from "../src/api/contract/global-search";
-import { appSearchFilters, globalSearchPath, isAppEmptyResult, rememberAppSearch } from "../src/screens/search/search-model";
+import { alternativePrompt, appSearchFilters, globalSearchPath, isAppEmptyResult, rememberAppSearch } from "../src/screens/search/search-model";
 import { parentForPath } from "../src/view-models/app-navigation";
 
 // R30 全局搜索（App /search；b5 #53–#56，b12 #498 検索中）：the real screen rendered with react-native-web in Chromium.
@@ -163,6 +163,7 @@ test("結果なし (b5 #56): searched count, 近い条件なら, ほかの方法
   assert.equal(pushed.href.pathname, "/ai/[id]");
   assert.equal(pushed.href.params.id, "new");
   assert.match(pushed.href.params.prefillIntent, /^ai-prefill-/);
+  // The prefill carries the board's question (「半導体商社の人に会うには？」), not the bare query.
   assert.equal("initialMessage" in pushed.href.params, false, "the text is a prefill, never an automatic send");
 });
 
@@ -199,6 +200,13 @@ test("helpers: filters, empty rule, recent list, request path", () => {
   assert.equal(isAppEmptyResult(EMPTY), true);
   assert.equal(isAppEmptyResult(NAME), false);
   assert.equal(isAppEmptyResult(CAPABILITY), false, "an empty query is the initial screen, not 結果なし");
+  // A5 single type: イベント only is empty when no event matched, whatever the people group says.
+  const eventsOnly = { ...NAME, people: { items: [], total: 0 }, conversations: { items: [], total: 0 } };
+  assert.equal(isAppEmptyResult(eventsOnly, "all"), true);
+  assert.equal(isAppEmptyResult(eventsOnly, "events"), false);
+  assert.equal(isAppEmptyResult({ ...eventsOnly, events: { items: [], total: 0 } }, "events"), true);
+  assert.equal(alternativePrompt("「半導体商社の人に会うには？」"), "半導体商社の人に会うには？");
+  assert.equal(alternativePrompt("“How can I meet people in chips?”"), "How can I meet people in chips?");
   assert.deepEqual(rememberAppSearch(["a", "b", "c", "d", "e"], " b "), ["b", "a", "c", "d", "e"]);
   assert.deepEqual(rememberAppSearch(["a", "b", "c", "d", "e"], "f"), ["f", "a", "b", "c", "d"]);
   assert.equal(globalSearchPath({ filter: "events", limit: 20, query: " CFO ", semantic: true }), "/api/search/global?q=CFO&types=events&semantic=1&limit=20&platform=app");

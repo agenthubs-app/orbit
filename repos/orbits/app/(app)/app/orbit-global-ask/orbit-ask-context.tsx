@@ -14,6 +14,7 @@ import {
 import {
   clearAskDraft,
   readAskDraft,
+  stashAgentPrefill,
   stashPendingAsk,
   writeAskDraft,
 } from "./orbit-ask-draft";
@@ -45,6 +46,8 @@ interface OrbitAskContextValue {
   setOpen: (open: boolean) => void;
   /** 发起提问。context 是用户当时认可的页面上下文标签（划掉 chip 后为 null）。 */
   submit: (query: string, context: string | null) => void;
+  /** R30：只把问题预填进 iOrbit 输入区、不发送（⌘K「iOrbit に聞く」/ ⌘↵）。用户在 iOrbit 页自己点发送。 */
+  prefill: (query: string, context: string | null) => void;
   /** 当前页面是否自己接管了提问（iOrbit 工作台为 true）。 */
   submitsInPlace: boolean;
 }
@@ -112,18 +115,32 @@ export function OrbitAskProvider({ children }: { children: ReactNode }) {
     [pathname, router, target],
   );
 
+  const prefill = useCallback(
+    (query: string, _context: string | null) => {
+      const trimmed = query.trim();
+
+      if (!trimmed) return;
+
+      stashAgentPrefill({ origin: null, query: trimmed, returnTo: pathname || "/app" });
+      setOpen(false);
+      router.push(ORBIT_ASK_HOME);
+    },
+    [pathname, router],
+  );
+
   const value = useMemo<OrbitAskContextValue>(
     () => ({
       busy: target?.busy ?? false,
       chips: target?.chips ?? NO_CHIPS,
       draft,
       open,
+      prefill,
       setDraft,
       setOpen,
       submit,
       submitsInPlace: Boolean(target),
     }),
-    [draft, open, setDraft, submit, target],
+    [draft, open, prefill, setDraft, submit, target],
   );
 
   return (

@@ -90,6 +90,7 @@
 | R11-12 | 删除 `contacts/pipeline`（两端） | 旧页仍在 | 删除 | 归属表 |
 | R11-13 | `/app/contacts` 390 深色开发模式水合警告 | 旧页不稳定复现 | 重写时消除 | README 合回前（R09 走查 W3） |
 | R11-14 | R25 改过乙的文件（`network-opportunities.tsx`、App `ContactsScreen` / `ContactDetailScreen` 等） | 用 REPORT 代替通知 | 开工时读 `R25-plan-review-goals-cleanup/REPORT.md`:132–136 | 同左 |
+| R11-15 | 人脈 🔍 与业界筛选参数（R30 交出） | Task 🔍 已接全局搜索（App `/search`、Web ⌘K）；人脈页 🔍 仍是旧行为；搜索空结果「近い条件なら」跳 App `/contacts?industry=<id>` / Web `/app/contacts?industry=<id>`（主 / 副业界 id），人脈页还不读这个参数 | 人脈页 🔍 → App `/search`（可带 `?q=` 把已输入的词带过去）/ Web 打开 ⌘K（派发 `orbit:open-palette`）；人脈列表读 `industry` 预选业界筛选；重跑 W-R30-P03 / A-R30-P08 并点「近い条件なら」确认落地 | `search/DESIGN.md` §2.2 / §4.4；`R30-global-search/REPORT.md` |
 
 ## R13 / R14 收件箱 · 秘書 · 推送
 
@@ -181,6 +182,8 @@
 | R21-06 | 计划深链与会话列表 | 接口已就绪 | 接 `planReviewHref` / `planDoneHref` / `planNewGoalHref`；`GET /api/agent/plans/intakes` 列进会話リスト；「本周推进」改接 v2 | `R25-plan-review-goals-cleanup/REPORT.md`:63,219–222 |
 | R21-07 | 右栏示例问题 | 点一下直接发给 iOrbit（会产生付费调用） | 保持（对标 ChatGPT / Gemini） | R07-RW REWORK-REPORT:115 |
 | R21-08 | App iOrbit 旧屏标题最大字号换行 | 已知例外 | 重写时修 | `R09-skeleton-acceptance/walkthrough.md`:32 |
+| R21-09 | 会話搜索接口（R30 搜索的「会話」组） | R30 live 不画「会話」chip：`features/search/global/live.ts` 的 `conversations = null`，响应 `types` 不含 `conversations`（DESIGN §10 A1） | 交付 `searchConversations(actorId, q, limit)` → `GlobalSearchConversationHit[]`（`id`、`kind: "iorbit" \| "inbox"`、`title`、`subtitle`「日期 · 来源」、`highlights` 码点区间（可直接用 `shared/compute/search-highlight.ts` 的 `highlightsFor`）、`href`；只读本人数据）；接到 `live.ts` 的 `conversations` 后 `types` 自动出现第四个 chip；补 live 四 chip 回归，重跑 W-R30-P01 / A-R30-P06 | `search/DESIGN.md` §3.2；`shared/contract/global-search.ts` |
+| R21-10 | ⌘K「iOrbit に聞く」/ ⌘↵ / 「紹介ルートを聞く」只预填 | Web：`useOrbitAsk().prefill` → `stashAgentPrefill({ origin: null })` → 工作台 `takeAgentPrefill()` 填进输入区，用户自己发送（`origin: null` 的预填按普通提问发出）；App：`registerAiTemplatePrefill`（entryPointId `ai.new_chat`，template `search.ask_iorbit`）→ `/ai/new?prefillIntent=` | 重写输入区时保持「只预填、不发送」和这两条交接通道 | `search/DESIGN.md` §1 / §4.5；R30 复核 M1 |
 
 ## R26 / R27 活动
 
@@ -296,7 +299,11 @@
 
 | # | 是什么 | 现在的临时做法 | 接手时必须做到 | 依据 |
 | --- | --- | --- | --- | --- |
-| R30-01 | 两端全局搜索：Web ⌘K 面板本体（W-R07-05 / 06：无框搜索行 + 类型 chip すべて / 人 / イベント / 会話、结果分组 + 状态 chip + 命中高亮、无结果「近い条件なら」「ほかの方法」、底部「Tab 種類を切替 / 意味検索 ON」）+ App 全局搜索 | Web 旧面板；App Task 左上 🔍 跳人脉列表 | 依赖活动和会话的搜索接口（活动搜索 `event-search` 在 R27，见 [events/DESIGN.md](events/DESIGN.md) §4.2；会话 R21）；一套搜索服务两端同用；做完后 App Task 左上 🔍 改接全局搜索（R20-01）；过像素门禁 | DEC §9-1；PA L256–274；README R07 行 |
+| R30-01 | 两端全局搜索：Web ⌘K 面板本体（W-R07-05 / 06：无框搜索行 + 类型 chip すべて / 人 / イベント / 会話、结果分组 + 状态 chip + 命中高亮、无结果「近い条件なら」「ほかの方法」、底部「Tab 種類を切替 / 意味検索 ON」）+ App 全局搜索 | **已完成（2026-10-17，`6536ba98c` 实施 + 复核修正提交，见 [REPORT](R30-global-search/REPORT.md)）**：`GET /api/search/global` 一套服务两端同用；Web ⌘K 新面板（旧人脈面板已删）；App `/search`，Task 左上 🔍 已改接（R20-01）；Web 1440 浅深 8 张、App 浅深 8 张过门禁 | 依赖活动和会话的搜索接口（活动搜索 `event-search` 在 R27，见 [events/DESIGN.md](events/DESIGN.md) §4.2；会话 R21）；一套搜索服务两端同用；做完后 App Task 左上 🔍 改接全局搜索（R20-01）；过像素门禁 | DEC §9-1；PA L256–274；README R07 行 |
+| R30-02 | Web 1024 面板门禁（A3） | 比对工具两侧只能用同一个 `--region`，画板只有 1440 宽，1024 下面板位置不同，比不了；面板固定 680 宽、无断点规则 | 工具支持设计侧 / 实现侧分别给区域后，在 `views/web-R30.json` 加 P01b–P04b（面板 x 172）重比 | R30 REPORT |
+| R30-03 | b12 #495（App 意味検索深色，补画）横幅缺 `.banner` 底色与内边距 | **已完成（2026-10-17，R30 收口提交）**：照 b5 #55 补进 `.g9`（决定表 §46），A-R30-P07d 通过 | — | R30 REPORT |
+| R30-04 | 検索中（b12 #498 / #499）、单类型「人」さらに表示（b12 #488 / #489） | 実装已有（App 300ms 后骨架；Web 单类型同结构）；PLANNER 定不进门禁（B8 可选、A5） | 需要时加放慢回答的 dev 开关再截 | PLANNER「不进门禁」 |
+| R30-05 | 意味検索（A2） | 默认关：live `semantic.available=false`、不调任何 AI；示例与说明行按关的口径 | 用户授权付费 embedding 后：建 `search-embeddings`（DESIGN §5.2）、打开开关、补 #58 / #55 live 回归 | DESIGN §10 A2；DEFERRED-A §4 |
 
 ## 合回前与真机（不归某个功能 Sprint，列在 README 合回前清单）
 

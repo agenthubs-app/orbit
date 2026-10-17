@@ -23,6 +23,8 @@ export const searchCopy = {
   semanticBanner: { ja: "意味で検索：「{q}」に関係する {count}（一致 {matched} · 関連 {related}）", zh: "按含义搜索：与「{q}」有关的{count}（匹配{matched} · 相关{related}）", en: "By meaning: {count} related to “{q}” ({matched} matched · {related} related)", kind: "label" },
   semanticCount: { ja: "{n}人", zh: "{n}位联系人", en: "{n} people", kind: "label" },
   emptyTitle: { ja: "「{q}」に一致する人はいません", zh: "没有和「{q}」匹配的人", en: "No one matches “{q}”", kind: "label" },
+  emptyTitleEvents: { ja: "「{q}」に一致するイベントはありません", zh: "没有和「{q}」匹配的活动", en: "No events match “{q}”", kind: "label" },
+  emptyTitleConversations: { ja: "「{q}」に一致する会話はありません", zh: "没有和「{q}」匹配的对话", en: "No conversations match “{q}”", kind: "label" },
   emptySearched: { ja: "{n}人の名前・会社・役職・メモを探しました", zh: "已查找{n}人的姓名、公司、职务和备注", en: "Searched the names, companies, roles and notes of {n} people", kind: "label" },
   emptyNear: { ja: "近い条件なら", zh: "相近的条件", en: "Close to this", kind: "label" },
   emptyOther: { ja: "ほかの方法", zh: "其他办法", en: "Other ways", kind: "label" },

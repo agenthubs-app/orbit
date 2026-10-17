@@ -9,7 +9,7 @@ import type { EventSearchResponse } from "../../shared/contract/event-search";
 import { demoGlobalSearch } from "../../shared/mock/demo-world/global-search";
 import { buildGlobalSearch, industriesForTerms, suggestionsFor, type GlobalSearchCoreInput } from "../../features/search/global/core";
 import { createGlobalSearchHandlers, createRateWindow, GLOBAL_SEARCH_KEYWORD_PER_MINUTE, searchLive } from "../../features/search/global/handlers";
-import type { GlobalSearchLivePorts } from "../../features/search/global/live";
+import { intersectById, type GlobalSearchLivePorts } from "../../features/search/global/live";
 
 // R30 (search/DESIGN.md §3–§6; PLANNER SC-R30-01…07): one service behind the Web ⌘K panel and the App search page.
 
@@ -160,7 +160,10 @@ function fakePorts(byActor: Record<string, { name: string; id: string }[]>): Glo
     conversations: null,
     async counts(actorId) { return { industries: [{ count: 2, id: "trade_logistics" }], total: byActor[actorId]?.length ?? 0 }; },
     async events() { return events([]); },
-    async people(actorId, query) { return (byActor[actorId] ?? []).filter((person) => person.name.includes(query)).map((person) => ({ ...person, lastInteractionAt: null, org: null, other: [], role: null })); },
+    async people(actorId, terms) {
+      const items = (byActor[actorId] ?? []).filter((person) => terms.every((term) => normalizeSearchText(person.name).includes(term))).map((person) => ({ ...person, lastInteractionAt: null, org: null, other: [], role: null }));
+      return { items, total: items.length };
+    },
     async planLinked() { return null; },
     semanticAvailable: false,
   };
@@ -212,4 +215,65 @@ test("searchLive: an actor with no contacts and no events gets the empty-state r
   assert.equal(out.people.total, 0);
   assert.deepEqual(out.suggestions.map((item) => item.label), ["貿易・物流"]);
   assert.equal(out.alternatives.length, 2);
+});
+
+test("live AND: per-term rows intersect by id in the first list's order; terms arrive folded (全角 / case)", async () => {
+  assert.deepEqual(intersectById([[{ id: "a" }, { id: "b" }, { id: "c" }], [{ id: "c" }, { id: "a" }], [{ id: "a" }, { id: "c" }, { id: "z" }]]).map((row) => row.id), ["a", "c"]);
+  assert.deepEqual(intersectById([[{ id: "a" }]]).map((row) => row.id), ["a"]);
+  assert.deepEqual(intersectById([]), []);
+  const asked: string[][] = [];
+  const ports = { ...fakePorts({ "actor:a": [{ id: "a1", name: "高橋太郎 AI" }, { id: "a2", name: "高橋 花子" }] }), async people(_actor: string, terms: readonly string[]) { asked.push([...terms]); return { items: [], total: 0 }; } };
+  await searchLive(ports, { actorId: "actor:a", language: "ja", limit: 6, now: NOW, platform: "web", query: "高橋　ＡＩ" });
+  assert.deepEqual(asked, [["高橋", "ai"]], "full-width space splits, ＡＩ folds to ai before reaching the reader");
+  const both = await searchLive(fakePorts({ "actor:a": [{ id: "a1", name: "高橋太郎 AI" }, { id: "a2", name: "高橋 花子" }] }), { actorId: "actor:a", language: "ja", limit: 6, now: NOW, platform: "web", query: "高橋 ＡＩ" });
+  assert.deepEqual(both.people.items.map((hit) => hit.contactId), ["a1"]);
+});
+
+test("people total comes from the source, not the rows shown (人 · 50 with 6 rows)", () => {
+  const many = Array.from({ length: 8 }, (_, index) => ({ id: `p${index}`, lastInteractionAt: null, name: `高橋 ${index}`, org: null, other: [], role: null }));
+  const result = buildGlobalSearch(core({ people: many, peopleTotal: 50 }));
+  assert.equal(result.people.items.length, 6);
+  assert.equal(result.people.total, 50);
+});
+
+test("single type イベント (A5): events found are shown, not the people-empty state; no events → empty without industry suggestions", () => {
+  const hit = { emoji: "🎤", eventId: "e1", href: "/app/events/e1", myStatus: null, startsAt: "2026-10-16T10:00:00+09:00", title: "高橋 Summit", venue: "東京" } as unknown as EventSearchResponse["events"][number];
+  const found = buildGlobalSearch(core({ events: events([hit]), industryCounts: [{ count: 3, id: "trade_logistics" }], wanted: ["events"] }));
+  assert.equal(found.events.items.length, 1);
+  assert.deepEqual(found.alternatives, []);
+  const none = buildGlobalSearch(core({ events: events([]), industryCounts: [{ count: 3, id: "trade_logistics" }], query: "商社", terms: ["商社"], wanted: ["events"] }));
+  assert.equal(none.alternatives.length, 2);
+  assert.deepEqual(none.suggestions, [], "industry suggestions filter people");
+  const demo = demoGlobalSearch({ limit: 6, platform: "web", query: "高橋", semantic: false, types: ["events"] });
+  assert.equal(demo.events.items.length, 1);
+  assert.deepEqual(demo.alternatives, []);
+});
+
+test("the request log carries the query length, never the query", async () => {
+  const lines: string[] = [];
+  const original = console.info;
+  console.info = (...args: unknown[]) => { lines.push(args.map(String).join(" ")); };
+  try {
+    const handlers = createGlobalSearchHandlers({ livePorts: () => fakePorts({ "actor:a": [{ id: "a1", name: "秘密の高橋" }] }), now: () => NOW, resolveActor: async () => ({ id: "actor:a" }) as never });
+    await withMode("live", async () => { await handlers.get(get(`q=${encodeURIComponent("秘密の高橋")}`)); });
+  } finally { console.info = original; }
+  const log = lines.join("\n");
+  assert.match(log, /"queryLength":5/);
+  assert.doesNotMatch(log, /秘密|高橋/);
+});
+
+test("the capability counts are cached per actor for 5 minutes", async () => {
+  let at = NOW.getTime();
+  let calls = 0;
+  const ports = { ...fakePorts({ "actor:a": [] }), async counts() { calls += 1; return { industries: [], total: 7 }; } };
+  const handlers = createGlobalSearchHandlers({ livePorts: () => ports, now: () => new Date(at), resolveActor: async () => ({ id: "actor:a" }) as never });
+  await withMode("live", async () => {
+    await handlers.get(get("q="));
+    await handlers.get(get("q="));
+    assert.equal(calls, 1);
+    at += 5 * 60_000 + 1;
+    const again = await (await handlers.get(get("q="))).json();
+    assert.equal(calls, 2);
+    assert.equal(again.data.searchedPeople, 7);
+  });
 });

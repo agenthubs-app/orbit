@@ -37,8 +37,8 @@ export function useCommandPaletteShortcut(open: () => void): void {
 // R30 ⌘K panel (b5 #57 / #58 / #59 / #71; search/DESIGN.md §2.1): Modal top 680, kit .cmdk. One global search
 // (/api/search/global) answers people / events / conversations with hit ranges; this file only keeps the
 // keyboard: ↑ ↓ move over every row, ↵ opens, Tab / Shift+Tab switch the type chip, Esc closes, and ⌘↵ (or the
-// 「iOrbit に聞く」 row) hands the text to iOrbit with the current page as context — the same hand-off the
-// floating ask used (stashPendingAsk → /app/agent, or the page's own ask target). Typing never sends.
+// 「iOrbit に聞く」 row) puts the text into iOrbit's input without sending it (DESIGN §1: prefill only — the user
+// sends; ask.prefill → /app/agent). 「紹介ルートを聞く」 prefills its own question. Typing never sends.
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { language } = useOrbitLanguage();
   const pathname = usePathname() ?? "";
@@ -61,26 +61,19 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   useEffect(() => setCursor(0), [rows.length, search.result]);
 
   const askRow = rows.findIndex((row) => row.kind === "ask");
-  const handToIorbit = () => {
-    const text = query.trim();
+  const handToIorbit = (prompt?: string) => {
+    const text = (prompt ?? query).trim();
     if (!text || !ask) return;
     search.remember(text);
     onClose();
-    ask.submit(text, context);
+    ask.prefill(text, context);
   };
   const choose = (index: number) => {
     if (index === askRow) { handToIorbit(); return; }
     const row = rows[index];
     if (!row) return;
     if (row.kind === "recent" || row.kind === "example") { setQuery(row.text); return; }
-    if (row.kind === "alternative" && row.alternative === "ask_iorbit") {
-      const text = query.trim();
-      if (!text || !ask) return;
-      search.remember(text);
-      onClose();
-      ask.submit(text, context);
-      return;
-    }
+    if (row.kind === "alternative" && row.alternative === "ask_iorbit") { handToIorbit(row.prompt); return; }
     if (!("href" in row)) return;
     search.remember(query);
     onClose();
@@ -93,6 +86,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") { event.preventDefault(); setCursor((value) => Math.min(Math.max(rows.length - 1, 0), value + 1)); }
     else if (event.key === "ArrowUp") { event.preventDefault(); setCursor((value) => Math.max(0, value - 1)); }
+    // Like a browser's address bar: Shift+Delete forgets the highlighted recent search (the × does the same by mouse).
+    else if (event.key === "Delete" && event.shiftKey && rows[cursor]?.kind === "recent") { event.preventDefault(); const row = rows[cursor]; if (row && "text" in row) search.removeRecent(row.text); }
     else if (event.key === "Tab") { event.preventDefault(); cycle(event.shiftKey ? -1 : 1); }
     else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); handToIorbit(); }
     else if (event.key === "Enter") { event.preventDefault(); choose(cursor); }

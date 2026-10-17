@@ -75,7 +75,8 @@ test("Tab switches the type chip and the request narrows; 429 shows one line", a
 test("結果なし (b5 #71): searched count, suggestion and the two other ways; ↵ on a suggestion opens it", async (t) => {
   const page = await palette(t);
   await page.keyboard.type("半導体 商社");
-  for (const text of ["「半導体 商社」に一致する人はいません", "286人の名前・会社・役職・メモを探しました", "近い条件なら", "12人 · 業界で絞り込む", "ほかの方法", "iOrbit に紹介ルートを聞く", "イベントで探す"]) await page.getByText(text, { exact: true }).waitFor();
+  for (const text of ["「半導体 商社」に一致する人はいません", "286人の名前・会社・役職・メモを探しました", "近い条件なら", "12人 · 業界で絞り込む", "ほかの方法", "iOrbit に紹介ルートを聞く", "イベントで探す"]) await page.getByText(text, { exact: true }).first().waitFor();
+  assert.equal(await page.locator("[aria-live=polite]").textContent(), "「半導体 商社」に一致する人はいません", "the empty title is announced outside the listbox");
   await page.keyboard.press("Enter");
   assert.deepEqual(await page.evaluate(() => (window as unknown as { shellFixture: { calls: object[] } }).shellFixture.calls.filter((call) => "push" in call)), [{ push: "/app/contacts?industry=electronics" }]);
 });

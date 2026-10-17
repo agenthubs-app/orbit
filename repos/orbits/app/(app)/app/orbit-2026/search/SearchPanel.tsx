@@ -15,7 +15,7 @@ import styles from "./search.module.css";
 
 /** One keyboard-reachable row, in screen order. */
 export type PanelRow =
-  | { id: string; kind: "person" | "event" | "conversation" | "suggestion" | "alternative"; href: string; alternative?: "ask_iorbit" | "events" }
+  | { id: string; kind: "person" | "event" | "conversation" | "suggestion" | "alternative"; href: string; alternative?: "ask_iorbit" | "events"; prompt?: string }
   | { id: string; kind: "recent" | "example"; text: string }
   | { id: string; kind: "ask" };
 
@@ -28,9 +28,13 @@ export interface PanelState {
   recent: readonly string[];
 }
 
-/** The empty state: the query found no people (and no conversations) — the board's 「一致する人はいません」. */
-export function isEmptyResult(result: GlobalSearchResponse | null): boolean {
-  return !!result && result.query.trim().length > 0 && result.people.items.length === 0 && !(result.conversations?.items.length);
+/** The empty state. すべて / 人: no people (and no conversations) — the board's 「一致する人はいません」; a single
+ *  イベント / 会話 type (A5): that group found nothing. */
+export function isEmptyResult(result: GlobalSearchResponse | null, filter: SearchFilter = "all"): boolean {
+  if (!result || !result.query.trim()) return false;
+  if (filter === "events") return result.events.items.length === 0;
+  if (filter === "conversations") return !(result.conversations?.items.length);
+  return result.people.items.length === 0 && !(result.conversations?.items.length);
 }
 
 export function panelRows(state: PanelState): PanelRow[] {
@@ -42,9 +46,9 @@ export function panelRows(state: PanelState): PanelRow[] {
     return rows;
   }
   if (!result) return rows;
-  if (isEmptyResult(result)) {
+  if (isEmptyResult(result, state.filter)) {
     result.suggestions.forEach((item, index) => rows.push({ href: item.href, id: `suggestion:${index}`, kind: "suggestion" }));
-    result.alternatives.forEach((item, index) => rows.push({ alternative: item.kind, href: item.href, id: `alternative:${index}`, kind: "alternative" }));
+    result.alternatives.forEach((item, index) => rows.push({ alternative: item.kind, href: item.href, id: `alternative:${index}`, kind: "alternative", ...(item.kind === "ask_iorbit" ? { prompt: alternativePrompt(item.detail) } : {}) }));
     return rows;
   }
   for (const hit of result.people.items) rows.push({ href: hit.href, id: `person:${hit.contactId}`, kind: "person" });
@@ -52,6 +56,11 @@ export function panelRows(state: PanelState): PanelRow[] {
   for (const hit of result.conversations?.items ?? []) rows.push({ href: hit.href, id: `conversation:${hit.id}`, kind: "conversation" });
   rows.push({ id: "ask", kind: "ask" });
   return rows;
+}
+
+/** 「「半導体商社の人に会うには？」」→ the question itself (the server quotes it for display; DESIGN §4.5 prefills it). */
+export function alternativePrompt(detail: string): string {
+  return detail.trim().replace(/^[「“"]/u, "").replace(/[」”"]$/u, "").trim();
 }
 
 export function filtersFor(types: readonly GlobalSearchType[] | undefined): SearchFilter[] {
@@ -101,7 +110,7 @@ export function SearchPanel({ state, rows, cursor, onHover, onPick, onQueryChang
       </div>
     );
   };
-  const group = (label: string, right?: string) => <div className={styles.group} key={`g:${label}`}><span>{label}</span>{right ? <span>{right}</span> : null}</div>;
+  const group = (label: string, right?: string) => <div className={styles.group} key={`g:${label}`} role="presentation"><span>{label}</span>{right ? <span>{right}</span> : null}</div>;
 
   let body: ReactNode;
   if (!trimmed) {
@@ -109,28 +118,28 @@ export function SearchPanel({ state, rows, cursor, onHover, onPick, onQueryChang
       <>
         {state.recent.length ? (
           <>
-            <div className={styles.group}><span>{t(searchCopy.recent)}</span><button type="button" className={styles.clear} onClick={onClearRecent}>{t(searchCopy.recentClear)}</button></div>
-            {state.recent.map((text) => option(`recent:${text}`, <><Icon name="clock" size={16} /><div className={styles.meta}><b>{text}</b></div><span role="button" aria-label={`${t(searchCopy.recentClear)} ${text}`} className={styles.recentRemove} onMouseDown={(event) => { event.preventDefault(); event.stopPropagation(); onRemoveRecent(text); }}><Icon name="x" size={16} /></span></>, styles.recentRow))}
+            <div className={styles.group} role="presentation"><span>{t(searchCopy.recent)}</span><button type="button" className={styles.clear} onClick={onClearRecent}>{t(searchCopy.recentClear)}</button></div>
+            {state.recent.map((text) => option(`recent:${text}`, <><Icon name="clock" size={16} /><div className={styles.meta}><b>{text}</b></div><span role="button" aria-label={`${t(searchCopy.recentClear)} ${text}`} title="Shift+Delete" className={styles.recentRemove} onMouseDown={(event) => { event.preventDefault(); event.stopPropagation(); onRemoveRecent(text); }}><Icon name="x" size={16} /></span></>, styles.recentRow))}
           </>
         ) : null}
         {capability?.examples.length ? (
           <>
             {group(t(searchCopy.examples))}
-            <div className={styles.examples}>
+            <div className={styles.examples} role="presentation">
               {capability.examples.map((text) => <button type="button" key={text} id={optionId(indexOf(`example:${text}`))} role="option" aria-selected={cursor === indexOf(`example:${text}`)} className={styles.example} onMouseEnter={() => onHover(indexOf(`example:${text}`))} onMouseDown={(event) => { event.preventDefault(); onPick(indexOf(`example:${text}`)); }}>{text}</button>)}
             </div>
-            {semanticOn ? <div className={`${styles.lbl} ${styles.hint}`}>{t(searchCopy.semanticHint)}</div> : null}
+            {semanticOn ? <div className={`${styles.lbl} ${styles.hint}`} role="presentation">{t(searchCopy.semanticHint)}</div> : null}
           </>
         ) : null}
       </>
     );
-  } else if (result && isEmptyResult(result)) {
+  } else if (result && isEmptyResult(result, state.filter)) {
     body = (
       <>
-        <div className={styles.empty}>
+        <div className={styles.empty} role="presentation">
           <div className={styles.emptyEmoji} aria-hidden>🔎</div>
-          <b className={styles.emptyTitle} role="status">{fill(searchCopy.emptyTitle, { q: result.query })}</b>
-          <div className={`${styles.lbl} ${styles.emptySub}`}>{fill(searchCopy.emptySearched, { n: result.searchedPeople })}</div>
+          <b className={styles.emptyTitle}>{fill(state.filter === "events" ? searchCopy.emptyTitleEvents : state.filter === "conversations" ? searchCopy.emptyTitleConversations : searchCopy.emptyTitle, { q: result.query })}</b>
+          {state.filter === "all" || state.filter === "people" ? <div className={`${styles.lbl} ${styles.emptySub}`}>{fill(searchCopy.emptySearched, { n: result.searchedPeople })}</div> : null}
         </div>
         {result.suggestions.length ? group(t(searchCopy.emptyNear)) : null}
         {result.suggestions.map((item, index) => option(`suggestion:${index}`, <><span className={`${styles.emo} ${index === 0 ? styles.av_blue : styles.av_apricot}`} aria-hidden>{item.emoji}</span><div className={styles.meta}><b>{item.label}</b><span>{fill(searchCopy.suggestionNarrow, { n: item.count })}</span></div><span className={styles.chev}><Icon name="right" size={16} /></span></>))}
@@ -142,7 +151,7 @@ export function SearchPanel({ state, rows, cursor, onHover, onPick, onQueryChang
     body = (
       <>
         {result.semantic.enabled ? (
-          <div className={styles.banner}><Icon name="sparkle" size={16} /><span>{fill(searchCopy.semanticBanner, { count: "\u0000", matched: result.semantic.matched ?? 0, q: result.query, related: result.semantic.related ?? 0 }).split("\u0000").map((part, index) => (index ? <Fragment key={index}><b>{fill(searchCopy.semanticCount, { n: result.people.total })}</b>{part}</Fragment> : part))}</span></div>
+          <div className={styles.banner} role="presentation"><Icon name="sparkle" size={16} /><span>{fill(searchCopy.semanticBanner, { count: "\u0000", matched: result.semantic.matched ?? 0, q: result.query, related: result.semantic.related ?? 0 }).split("\u0000").map((part, index) => (index ? <Fragment key={index}><b>{fill(searchCopy.semanticCount, { n: result.people.total })}</b>{part}</Fragment> : part))}</span></div>
         ) : null}
         {result.people.items.length ? group(fill(searchCopy.groupPeople, { n: result.people.total }), result.people.order === "relevance" ? t(searchCopy.orderRelevance) : undefined) : null}
         {result.people.items.map((hit) => option(`person:${hit.contactId}`, (
@@ -194,11 +203,12 @@ export function SearchPanel({ state, rows, cursor, onHover, onPick, onQueryChang
           onKeyDown={onKeyDown}
         />
         <div className={styles.chips} role="tablist" aria-label={t(searchCopy.typesLabel)}>
-          {filters.map((filter) => <button type="button" role="tab" key={filter} aria-selected={state.filter === filter} className={`${styles.cat} ${state.filter === filter ? styles.catOn : ""}`} onMouseDown={(event) => event.preventDefault()} onClick={() => onFilterChange(filter)}>{filterLabel[filter]}</button>)}
+          {filters.map((filter) => <button type="button" role="tab" key={filter} aria-selected={state.filter === filter} aria-controls={listId} className={`${styles.cat} ${state.filter === filter ? styles.catOn : ""}`} onMouseDown={(event) => event.preventDefault()} onClick={() => onFilterChange(filter)}>{filterLabel[filter]}</button>)}
         </div>
         <kbd className={styles.kbd}>Esc</kbd>
       </div>
-      <div id={listId} role="listbox" aria-label={t(searchCopy.resultsLabel)} className={styles.body}>{body}</div>
+      <div className={styles.srOnly} aria-live="polite">{result && trimmed && isEmptyResult(result, state.filter) ? fill(state.filter === "events" ? searchCopy.emptyTitleEvents : state.filter === "conversations" ? searchCopy.emptyTitleConversations : searchCopy.emptyTitle, { q: result.query }) : ""}</div>
+      <div id={listId} role={rows.length ? "listbox" : undefined} aria-label={t(searchCopy.resultsLabel)} className={styles.body}>{body}</div>
       <div className={styles.foot}>
         <span className={styles.lbl}><kbd className={styles.kbd}>↑</kbd><kbd className={styles.kbd}>↓</kbd> {t(searchCopy.hintMove)}</span>
         <span className={styles.lbl}><kbd className={styles.kbd}>↵</kbd> {t(searchCopy.hintOpen)}</span>

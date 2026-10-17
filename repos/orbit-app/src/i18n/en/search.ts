@@ -17,6 +17,8 @@ export const search = {
   "search.semanticBanner": "By meaning: {count} related to “{q}” ({matched} matched · {related} related)",
   "search.semanticCount": "{n} people",
   "search.emptyTitle": "No one matches “{q}”",
+  "search.emptyTitleEvents": "No events match “{q}”",
+  "search.emptyTitleConversations": "No conversations match “{q}”",
   "search.emptySearched": "Searched the names, companies, roles and notes of {n} people",
   "search.emptyNear": "Close to this",
   "search.emptyOther": "Other ways",

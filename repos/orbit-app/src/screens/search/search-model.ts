@@ -15,9 +15,12 @@ export function appSearchFilters(types: readonly GlobalSearchType[] | undefined)
   return types?.includes("conversations") ? [...base, "conversations"] : base;
 }
 
-/** 「一致する人はいません」：有查询、没有人也没有对话（活动命中只喂「イベントで探す」）。 */
-export function isAppEmptyResult(result: GlobalSearchResponse | null): boolean {
-  return !!result && result.query.trim().length > 0 && result.people.items.length === 0 && !(result.conversations?.items.length);
+/** 空结果。すべて / 人：有查询、没有人也没有对话（活动命中只喂「イベントで探す」）；单类型イベント / 会話（A5）：那一组没有命中。 */
+export function isAppEmptyResult(result: GlobalSearchResponse | null, filter: SearchFilter = "all"): boolean {
+  if (!result || !result.query.trim()) return false;
+  if (filter === "events") return result.events.items.length === 0;
+  if (filter === "conversations") return !(result.conversations?.items.length);
+  return result.people.items.length === 0 && !(result.conversations?.items.length);
 }
 
 export function rememberAppSearch(recent: readonly string[], query: string): string[] {
@@ -35,4 +38,9 @@ export function globalSearchPath(input: { query: string; filter: SearchFilter; s
   if (input.limit) params.set("limit", String(input.limit));
   params.set("platform", "app");
   return `/api/search/global?${params.toString()}`;
+}
+
+/** 「「半導体商社の人に会うには？」」→ the question itself (the server quotes it for display; DESIGN §4.5 prefills it). */
+export function alternativePrompt(detail: string): string {
+  return detail.trim().replace(/^[「“"]/u, "").replace(/[」”"]$/u, "").trim();
 }
