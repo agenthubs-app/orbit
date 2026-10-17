@@ -74,6 +74,8 @@ test("calendar container keeps device source and personal editor route instead o
   // Native source and navigation cannot be exercised through react-native-web's static renderer.
   const source = readFileSync(join(process.cwd(), "src/screens/calendar/CalendarScreen.tsx"), "utf8");
   assert.match(source, /useScheduleCalendarSource/u);
+  assert.match(source, /useGlobalSearchParams/u);
+  assert.match(source, /calendarSelectionFromRoute/u);
   assert.match(source, /useCalendarExternalEvents/u);
   assert.match(source, /calendarProjection\(/u);
   assert.match(source, /returnTo=calendar/u);

@@ -1,4 +1,4 @@
-import { type Href, useRouter } from "expo-router";
+import { type Href, useGlobalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Linking, RefreshControl } from "react-native";
 
@@ -16,7 +16,7 @@ import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { localParts } from "../../time/date-time";
 import { useScheduleCalendarSource } from "../schedule/schedule-calendar-source";
 import { CalendarContent } from "./CalendarContent";
-import { calendarProjection, shiftCalendarSelection, type CalendarMode } from "./calendar-projection";
+import { calendarProjection, calendarSelectionFromRoute, shiftCalendarSelection, type CalendarMode } from "./calendar-projection";
 import { useCalendarExternalEvents } from "./useCalendarExternalEvents";
 
 /** Task calendar body. TaskScreen owns its slot and the top-bar add action. */
@@ -28,10 +28,13 @@ export function CalendarScreen() {
   const { colors } = useOrbitTheme();
   const { language, t } = useOrbitLocale();
   const { timeZone } = useOrbitTimeZone();
+  const params = useGlobalSearchParams<{ date?: string | string[] }>();
+  const routeDate = Array.isArray(params.date) ? params.date[0] : params.date;
   const source = useScheduleCalendarSource();
   const [now, setNow] = useState(() => new Date());
-  const [dateKey, setDateKey] = useState(() => localParts(new Date(), timeZone).date);
+  const [dateKey, setDateKey] = useState(() => calendarSelectionFromRoute(routeDate, new Date(), timeZone));
   const [mode, setMode] = useState<CalendarMode>("month");
+  useEffect(() => setDateKey(calendarSelectionFromRoute(routeDate, new Date(), timeZone)), [routeDate, timeZone]);
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(timer);

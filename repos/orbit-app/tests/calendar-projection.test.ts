@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { calendarDateKeys, calendarProjection, shiftCalendarSelection } from "../src/screens/calendar/calendar-projection";
+import { calendarDateKeys, calendarProjection, calendarSelectionFromRoute, shiftCalendarSelection } from "../src/screens/calendar/calendar-projection";
 
 const now = new Date("2026-10-07T01:00:00.000Z");
 const base = { actorId: "actor-1", dateKey: "2026-10-07", events: { events: [] }, language: "ja" as const, now, tasks: { tasks: [] }, timeZone: "Asia/Tokyo" };
@@ -13,6 +13,13 @@ test("month, week, and day keys navigate across month edges without losing the s
   assert.equal(calendarDateKeys("2026-02-12", "month").length, 28, "a complete four-week February needs no blank fifth row");
   assert.equal(shiftCalendarSelection("2026-10-31", "month", 1), "2026-11-30");
   assert.equal(shiftCalendarSelection("2026-10-07", "week", -1), "2026-09-30");
+});
+
+test("legacy calendar date links select a valid date in the user's zone", () => {
+  const instant = new Date("2026-10-17T16:00:00.000Z");
+  assert.equal(calendarSelectionFromRoute("2026-11-09", instant, "Asia/Tokyo"), "2026-11-09");
+  assert.equal(calendarSelectionFromRoute(["2026-11-09", "2026-10-10"], instant, "Asia/Tokyo"), "2026-11-09");
+  assert.equal(calendarSelectionFromRoute("2026-02-30", instant, "Asia/Tokyo"), "2026-10-18");
 });
 
 test("recurring mirror series expands into month and day, honoring cancelled occurrences", () => {

@@ -1,9 +1,14 @@
 import type { OrbitLanguage } from "../../api/contract/language";
-import { localParts } from "../../time/date-time";
+import { calendarDate, localParts } from "../../time/date-time";
 import { personalScheduleSeriesFromMirror, personalScheduleWindow } from "../../view-models/personal-schedule-occurrences";
 import { japanCalendarDateInfo, scheduleToCalendarView, shiftScheduleDateKey, shiftScheduleMonthDateKey, type ScheduleCalendarDay, type ScheduleTimelineItem } from "../../view-models/schedule";
 
 export type CalendarMode = "day" | "week" | "month";
+
+export function calendarSelectionFromRoute(value: string | string[] | undefined, now: Date, timeZone: string): string {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return candidate && calendarDate(candidate) ? candidate : localParts(now, timeZone).date;
+}
 
 function validDateKey(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/u.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
