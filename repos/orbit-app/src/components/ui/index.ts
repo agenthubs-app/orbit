@@ -20,7 +20,7 @@ export { Accordion } from "./Accordion";
 export { GlassSurface } from "./GlassSurface";
 // feedback
 export { UiPortalHost } from "./Portal";
-export { ToastProvider, useToast } from "./Toast";
+export { ToastProvider, usePageBottomBar, useToast } from "./Toast";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { ActionSheet, type ActionSheetOption } from "./ActionSheet";
 export { BottomSheet } from "./BottomSheet";

@@ -10,7 +10,13 @@ type PortalApi = { mount: (key: number, node: ReactNode) => void; unmount: (key:
 const PortalContext = createContext<PortalApi | null>(null);
 let nextKey = 1;
 
-export function UiPortalHost({ children }: { children: ReactNode }) {
+/**
+ * R31a: the route the host is showing (app/_layout passes the pathname). Sheets read it to close themselves when the
+ * page that opened them is left (a push keeps that page mounted under the new one). null = no router (tests, showcase).
+ */
+export const UiRouteContext = createContext<string | null>(null);
+
+export function UiPortalHost({ children, routeKey = null }: { children: ReactNode; routeKey?: string | null }) {
   const [nodes, setNodes] = useState<[number, ReactNode][]>([]);
   const api = useMemo<PortalApi>(() => ({
     mount: (key, node) => setNodes((current) => {
@@ -23,6 +29,7 @@ export function UiPortalHost({ children }: { children: ReactNode }) {
     unmount: (key) => setNodes((current) => current.filter(([existing]) => existing !== key)),
   }), []);
   return (
+    <UiRouteContext.Provider value={routeKey}>
     <PortalContext.Provider value={api}>
       {children}
       {nodes.length ? (
@@ -31,6 +38,7 @@ export function UiPortalHost({ children }: { children: ReactNode }) {
         </View>
       ) : null}
     </PortalContext.Provider>
+    </UiRouteContext.Provider>
   );
 }
 

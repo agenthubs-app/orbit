@@ -55,9 +55,25 @@ for (const dark of [false, true]) {
 test("every control offers a ≥44 touch target (visual size + hit slop)", async () => {
   const page = await openScenario(browser, script, { scenario: "gallery" });
   const small = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('[role="button"], [role="checkbox"], [role="switch"], [role="radio"], [role="tab"]'))
-    .map((el) => { const box = el.getBoundingClientRect(); const slop = Number(el.dataset.hitslop ?? 0); return { label: el.getAttribute("aria-label") ?? el.textContent ?? "", size: Math.min(box.width, box.height) + 2 * slop }; })
+    .map((el) => { const box = el.getBoundingClientRect(); const slop = Number(el.dataset.hitslop ?? 0); const x = el.dataset.hitslopx === undefined ? 2 * slop : Number(el.dataset.hitslopx); const y = el.dataset.hitslopy === undefined ? 2 * slop : Number(el.dataset.hitslopy); return { label: el.getAttribute("aria-label") ?? el.textContent ?? "", size: Math.min(box.width + x, box.height + y) }; })
     .filter((item) => item.size < 43.5).map((item) => `${item.label.slice(0, 20)}: ${item.size}`));
   assert.deepEqual(small, []);
+  await page.close();
+});
+
+// R31a SC-R31a-04: Segmented options are 30 tall (kit .seg) and reach 44 only vertically (7 above and below);
+// sideways they add nothing, so the touch areas of neighbouring options never overlap.
+test("Segmented: 44 tall touch areas, no sideways slop, neighbours do not overlap", async () => {
+  const page = await openScenario(browser, script, { scenario: "gallery" });
+  const tabs = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('[role="tablist"] > [role="tab"]'))
+    .filter((el) => el.parentElement!.querySelectorAll('[role="tab"]').length > 1)
+    .map((el) => { const box = el.getBoundingClientRect(); return { list: el.parentElement!.getAttribute("aria-label"), x: box.left, w: box.width, h: box.height, sx: Number(el.dataset.hitslopx), sy: Number(el.dataset.hitslopy) }; }));
+  const segmented = tabs.filter((tab) => tab.sx === 0);
+  assert.ok(segmented.length >= 2, "the gallery shows a Segmented");
+  for (const tab of segmented) assert.ok(tab.h + tab.sy >= 43.5, `${tab.list}: ${tab.h} + ${tab.sy}`);
+  const lists = new Map<string | null, typeof segmented>();
+  for (const tab of segmented) lists.set(tab.list, [...(lists.get(tab.list) ?? []), tab]);
+  for (const [list, row] of lists) for (let i = 1; i < row.length; i++) assert.ok(row[i]!.x >= row[i - 1]!.x + row[i - 1]!.w, `${list}: options ${i - 1} and ${i} overlap`);
   await page.close();
 });
 

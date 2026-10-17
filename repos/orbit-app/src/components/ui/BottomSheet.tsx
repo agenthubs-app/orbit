@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { AppState, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -7,16 +7,20 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 
 import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
 import { durations, useReducedMotion } from "./motion";
-import { UiPortal } from "./Portal";
+import { UiPortal, UiRouteContext } from "./Portal";
 import { Scrim } from "./Scrim";
-import { sheetDragOffset, sheetMaxHeight, shouldDismissSheet } from "./sheet-logic";
+import { sheetDragOffset, sheetMaxHeight, sheetShouldAutoClose, shouldDismissSheet } from "./sheet-logic";
 import { useBackHandler } from "./useBackHandler";
 
 // kit .sheet: inset 8, radius 34, grab handle 38×5. Drag the handle down to close
 // (gesture-handler + reanimated); content over 80% of the screen scrolls inside a
 // sheet pinned at 20% from the top; the keyboard pushes the sheet up. Reduce Motion:
 // the sheet fades in place instead of sliding.
-export function BottomSheet({ visible, onClose, children, accessibilityLabel }: { visible: boolean; onClose: () => void; children: ReactNode; accessibilityLabel?: string }) {
+//
+// R31a (G23, R15 review m4 / :78): it closes itself when its page loses focus (route change, app to background), except
+// while the keyboard is up. `dismissOnBackdrop={false}`: a backdrop tap does nothing (Android back and the VoiceOver escape
+// gesture still close it). `draggable={false}`: the handle stays drawn but a drag does not close it (confirm sheets).
+export function BottomSheet({ visible, onClose, children, accessibilityLabel, dismissOnBackdrop = true, draggable = true }: { visible: boolean; onClose: () => void; children: ReactNode; accessibilityLabel?: string; dismissOnBackdrop?: boolean; draggable?: boolean }) {
   const { styles } = useStyles();
   const reduced = useReducedMotion();
   const { height } = useWindowDimensions();
@@ -29,6 +33,7 @@ export function BottomSheet({ visible, onClose, children, accessibilityLabel }: 
   const opacity = useSharedValue(reduced ? 0 : 1);
   const close = useCallback(() => onClose(), [onClose]);
   useBackHandler(visible, close);
+  useAutoClose(visible, close, keyboard > 0);
   useEffect(() => {
     if (!visible) {
       // Ready to slide in again next time (review m11).
@@ -40,17 +45,18 @@ export function BottomSheet({ visible, onClose, children, accessibilityLabel }: 
     opacity.value = withTiming(1, { duration: durations.sheet });
   }, [height, offset, opacity, reduced, visible]);
   const drag = useMemo(() => Gesture.Pan()
+    .enabled(draggable)
     .onUpdate((event) => { offset.value = sheetDragOffset(event.translationY); })
     .onEnd((event) => {
       if (shouldDismissSheet(event.translationY, event.velocityY, sheetHeight)) runOnJS(close)();
       else offset.value = reduced ? 0 : withTiming(0, { duration: durations.sheet });
-    }), [close, offset, reduced, sheetHeight]);
+    }), [close, draggable, offset, reduced, sheetHeight]);
   const sheetStyle = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ translateY: offset.value }] }));
   if (!visible) return null;
   return (
     <UiPortal>
       <View accessibilityViewIsModal onAccessibilityEscape={close} style={StyleSheet.absoluteFill}>
-        <Scrim onPress={close} />
+        <Scrim onPress={dismissOnBackdrop ? close : undefined} />
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} pointerEvents="box-none" style={styles.anchor}>
           <Animated.View accessibilityLabel={accessibilityLabel} onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)} style={[styles.sheet, { maxHeight }, sheetStyle]}>
             <GestureDetector gesture={drag}>
@@ -62,6 +68,25 @@ export function BottomSheet({ visible, onClose, children, accessibilityLabel }: 
       </View>
     </UiPortal>
   );
+}
+
+/** Closes the sheet when its page loses focus (see sheetShouldAutoClose). */
+function useAutoClose(visible: boolean, close: () => void, keyboardUp: boolean) {
+  const route = useContext(UiRouteContext);
+  const openedOn = useRef<string | null>(null);
+  const typing = useRef(keyboardUp);
+  typing.current = keyboardUp;
+  useEffect(() => { openedOn.current = visible ? route : null; }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps -- remember the route the sheet opened on
+  useEffect(() => {
+    if (visible && sheetShouldAutoClose({ openedOn: openedOn.current, route, keyboardUp: typing.current })) close();
+  }, [close, route, visible]);
+  useEffect(() => {
+    if (!visible) return;
+    const subscription = AppState.addEventListener("change", (appState) => {
+      if (sheetShouldAutoClose({ openedOn: null, route: null, appState, keyboardUp: typing.current })) close();
+    });
+    return () => subscription.remove();
+  }, [close, visible]);
 }
 
 /** Keyboard height while the sheet is open (iOS reports it before the animation). */

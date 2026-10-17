@@ -29,3 +29,14 @@ export function shouldDismissSheet(dy: number, velocityY: number, sheetHeight: n
   "worklet";
   return velocityY > SHEET_FLICK_VELOCITY || dy > Math.max(80, sheetHeight / 4);
 }
+
+/**
+ * R31a: a sheet closes itself when its page loses focus — the route changed (a push left the page mounted underneath)
+ * or the app went to the background — but never while the keyboard is up (someone is typing in it). No router
+ * (route null) means no route rule.
+ */
+export function sheetShouldAutoClose({ openedOn, route, appState, keyboardUp }: { openedOn: string | null; route: string | null; appState?: string; keyboardUp: boolean }): boolean {
+  if (keyboardUp) return false;
+  if (appState === "background") return true;
+  return openedOn !== null && route !== null && route !== openedOn;
+}

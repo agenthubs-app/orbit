@@ -7,6 +7,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { OrbitLocaleContext } from "../../src/i18n/OrbitLocaleContext";
 import { createTranslator } from "../../src/i18n/messages";
 import { useOrbitTheme } from "../../src/design/theme";
+import { UiRouteContext } from "../../src/components/ui/Portal";
 import {
   Accordion, ActionSheet, Avatar, AvatarStack, BottomSheet, Button, CategoryTabs, CheckCircle, Checkbox, Chip, ConfirmCard, ConfirmDialog,
   CountUp, DegradedCard, EmptyState, FilterOption, IconButton, ListRow, MacTile, OfflineBar, ProgressBar, QuotaChip, Radio, ReducedMotionOverride,
@@ -110,6 +111,16 @@ function Gallery() {
   );
 }
 
+function RoutedSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const [route, setRoute] = useState("/contacts/new/invite");
+  (window as unknown as { setRoute: (next: string) => void }).setRoute = setRoute;
+  return (
+    <UiRouteContext.Provider value={route}>
+      <BottomSheet visible={visible} onClose={onClose} accessibilityLabel="下書き"><Button label="コピー" onPress={() => undefined} /></BottomSheet>
+    </UiRouteContext.Provider>
+  );
+}
+
 // Open overlays (R04 review M1 / M2 / M5 / M6 / M7 / m8): one of sheet, tallSheet,
 // dialog, drawer, actionSheet is open (fixture.overlay); toasts can be fired over it.
 function Overlays() {
@@ -129,6 +140,11 @@ function Overlays() {
       </BottomSheet>
       <ConfirmDialog visible={open && overlay === "dialog"} destructive title="このタスクを削除しますか？" message="元に戻せません。" confirmLabel="削除する" onConfirm={close("confirm")} onCancel={close("cancel")} />
       <FullDrawer visible={open && overlay === "drawer"} title="メニュー" onClose={close("drawer-close")}><Button label="設定" onPress={() => log("settings")} /></FullDrawer>
+      {/* R31a: a confirm-style sheet (backdrop and drag do nothing) and a sheet on a route that can change (window.setRoute). */}
+      <BottomSheet visible={open && overlay === "lockedSheet"} dismissOnBackdrop={false} draggable={false} onClose={close("sheet-close")} accessibilityLabel="確認シート">
+        <Button label="キャンセル" onPress={close("cancel")} />
+      </BottomSheet>
+      <RoutedSheet visible={open && overlay === "routedSheet"} onClose={close("sheet-auto-close")} />
       <ActionSheet visible={open && overlay === "actionSheet"} title="参加を取り消しますか？" effects={[{ icon: "bell", text: "主催者に取り消しが通知されます" }]} options={[{ key: "withdraw", label: "参加を取り消す", destructive: true }, { key: "keep", label: "参加を続ける" }]} onSelect={(key) => { log(key); setOpen(false); }} onClose={close("sheet-dismiss")} />
     </View>
   );

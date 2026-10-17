@@ -8,7 +8,7 @@
 // 別の人 — R15 复核 S1); it also shows by itself when no code stands or such a question waits.
 // Leaving the page (another page pushed on top) closes any open sheet: they render in the root portal (复核 M3).
 import * as Clipboard from "expo-clipboard";
-import { type Href, useFocusEffect, useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
@@ -110,8 +110,6 @@ export function InviteSenderScreen({ api: injected, now = Date.now }: { api?: In
   }, [api, loadHistory]);
 
   useEffect(() => { void load(); }, [load]);
-  // The sheets live in the root portal, and a pushed page keeps this one mounted: close them on blur (复核 M3).
-  useFocusEffect(useCallback(() => () => setSheet(null), []));
 
   const merging = useInviteMerge(api);
   const settleSuggestion = useCallback(async (action: "merge" | "dismiss", contactId: string) => {
@@ -531,7 +529,7 @@ function MessageDraftSheet({ visible, code, name, onClose, onCopy }: { visible: 
           <IconButton icon="x" size={34} accessibilityLabel={copy.action.close} onPress={onClose} />
         </View>
         <View style={local.toneRow}>
-          <Segmented accessibilityLabel={t("add.invite.toneLabel")} segments={TONES.map((key) => ({ key, label: t(TONE_COPY[key]) }))} value={tone} onChange={setTone} />
+          <Segmented inline accessibilityLabel={t("add.invite.toneLabel")} segments={TONES.map((key) => ({ key, label: t(TONE_COPY[key]) }))} value={tone} onChange={setTone} />
         </View>
         <View style={local.draftBox}><DraftText text={text} link={code.link} /></View>
         <View style={local.apps}>

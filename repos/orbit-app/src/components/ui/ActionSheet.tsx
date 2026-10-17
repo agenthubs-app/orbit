@@ -25,6 +25,7 @@ export function ActionSheet({ visible, title, effects = [], options, defaultFocu
 }) {
   const { colors, styles } = useStyles();
   const focusKey = defaultFocusKey ?? options.find((option) => !option.destructive)?.key;
+  const destructive = options.some((option) => option.destructive);
   const focusTarget = useRef<View>(null);
   const focused = useRef(false);
   if (!visible) focused.current = false;
@@ -35,7 +36,8 @@ export function ActionSheet({ visible, title, effects = [], options, defaultFocu
     requestAnimationFrame(() => { const handle = findNodeHandle(focusTarget.current); if (handle) AccessibilityInfo.setAccessibilityFocus(handle); });
   };
   return (
-    <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={title}>
+    // 01-system ③: a destructive action sheet does not close on a backdrop tap or a drag (back / escape still cancel).
+    <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={title} dismissOnBackdrop={!destructive} draggable={!destructive}>
       <UiText accessibilityRole="header" style={styles.title}>{title}</UiText>
       {effects.map((effect) => (
         <View key={effect.text} style={styles.effect}>

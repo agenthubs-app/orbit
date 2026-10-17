@@ -19,11 +19,14 @@ export function Icon({
   name,
   size = designIconSpec.defaultSize,
   color,
+  strokeWidth = designIconSpec.strokeWidth,
   accessibilityLabel
 }: {
   name: IconName;
   size?: IconSize;
   color?: string;
+  /** The kit thickens the small marks inside controls (.ckr / .cbx svg: 13px at 2.4; toast .tk: 15px at 2.2). */
+  strokeWidth?: number;
   accessibilityLabel?: string;
 }) {
   const { colors } = useOrbitTheme();
@@ -37,7 +40,7 @@ export function Icon({
       viewBox={designIconSpec.viewBox}
       fill="none"
       stroke={tint}
-      strokeWidth={designIconSpec.strokeWidth}
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
     >

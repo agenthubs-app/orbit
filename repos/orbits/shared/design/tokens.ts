@@ -302,6 +302,10 @@ export const designShadow = {
     light: "0 1px 2px rgba(0, 0, 0, 0.06)",
     dark: "0 1px 2px rgba(0, 0, 0, 0.06)"
   },
+  knob: {
+    light: "0 1px 3px rgba(30, 26, 36, 0.25)",
+    dark: "0 1px 3px rgba(243, 240, 246, 0.25)"
+  },
   ringSelect: {
     light: "0 0 0 2px #8E82A9",
     dark: "0 0 0 2px #A79BC4"

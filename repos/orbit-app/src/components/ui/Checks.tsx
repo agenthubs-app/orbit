@@ -13,7 +13,7 @@ export function CheckCircle({ checked, onChange, accessibilityLabel }: { checked
   return (
     <UiPressable accessibilityRole="checkbox" accessibilityLabel={accessibilityLabel} accessibilityState={{ checked }} haptic={false} hitSlop={11} onPress={() => { if (checked) tapHaptic(); else successHaptic(); onChange(!checked); }} pressedScale={0.85}
       style={[styles.circle, { borderColor: checked ? colors.ok : colors.ink4, backgroundColor: checked ? colors.ok : "transparent" }]}>
-      {checked ? <Icon name="check" size={16} color={colors.surface} /> : null}
+      {checked ? <Icon name="check" size={13} strokeWidth={2.4} color={colors.surface} /> : null}
     </UiPressable>
   );
 }
@@ -23,7 +23,7 @@ export function Checkbox({ checked, onChange, accessibilityLabel }: { checked: b
   return (
     <UiPressable accessibilityRole="checkbox" accessibilityLabel={accessibilityLabel} accessibilityState={{ checked }} hitSlop={12} onPress={() => onChange(!checked)} pressedScale={0.9}
       style={[styles.box, { borderColor: checked ? colors.plum700 : colors.ink4, backgroundColor: checked ? colors.plum700 : "transparent" }]}>
-      {checked ? <Icon name="check" size={16} color={colors.surface} /> : null}
+      {checked ? <Icon name="check" size={13} strokeWidth={2.4} color={colors.surface} /> : null}
     </UiPressable>
   );
 }
@@ -42,5 +42,6 @@ const styles = StyleSheet.create({
   circle: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.8, alignItems: "center", justifyContent: "center" },
   box: { width: 20, height: 20, borderRadius: 7, borderWidth: 1.8, alignItems: "center", justifyContent: "center" },
   radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.8, alignItems: "center", justifyContent: "center" },
-  dot: { width: 9, height: 9, borderRadius: 5 },
+  // kit .rad.on::after: inset 3 inside the 1.8 border → 18 − 3.6 − 6 = 8.4.
+  dot: { width: 8.4, height: 8.4, borderRadius: 4.2 },
 });

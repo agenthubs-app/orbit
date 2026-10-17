@@ -77,7 +77,7 @@ test("icons.ts carries the kit's stroke spec and every icon name", () => {
   const ts = outputs["shared/design/icons.ts"]!;
   assert.match(ts, /viewBox: "0 0 24 24"/);
   assert.match(ts, /strokeWidth: 1\.7/);
-  assert.match(ts, /sizes: \[16, 20, 21, 24\]/);
+  assert.match(ts, /sizes: \[12, 13, 15, 16, 20, 21, 24\]/);
   assert.match(ts, /defaultSize: 20/);
   // kit/ui.css: stroke-width 1.7, 20 default, .sm 16, .lg 24, tab bar 21
   const css = readFileSync(`${KIT}/ui.css`, "utf8");

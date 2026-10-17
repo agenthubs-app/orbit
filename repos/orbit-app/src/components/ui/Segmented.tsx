@@ -10,19 +10,24 @@ import { UiText } from "./Text";
 
 export type Segment<Key extends string> = { key: Key; label: string };
 
-// kit .seg: a surface-2 pill holding equal options; the selected one sits on surface.
+// kit .seg (ui.css:34-36): a surface-2 pill (padding 3, gap 2); options padding 6 / 13, 12 / 600 at line-height 1.5
+// (30 tall); the selected one sits on surface with a 1px lift and only changes colour (weight stays 600).
+// Default: stretched to the row with equal options (R26 boards). `inline` = the kit's own inline-flex pill sized to its
+// labels (R15 下書き sheet …). Touch target: 30 + 7 above and below = 44, never sideways (neighbours must not overlap).
 // It replaces the hand-written accessibilityRole="tablist" rows in old screens.
-export function Segmented<Key extends string>({ segments, value, onChange, accessibilityLabel, variant = "seg" }: { segments: Segment<Key>[]; value: Key; onChange: (key: Key) => void; accessibilityLabel: string; variant?: "seg" | "tseg" }) {
+export const SEGMENT_HIT_SLOP = { top: 7, bottom: 7 } as const;
+export function Segmented<Key extends string>({ segments, value, onChange, accessibilityLabel, variant = "seg", inline = false }: { segments: Segment<Key>[]; value: Key; onChange: (key: Key) => void; accessibilityLabel: string; variant?: "seg" | "tseg"; inline?: boolean }) {
   const { styles } = useStyles();
   const task = variant === "tseg";
+  const hug = inline && !task;
   return (
-    <View accessibilityRole="tablist" accessibilityLabel={accessibilityLabel} style={styles.track}>
+    <View accessibilityRole="tablist" accessibilityLabel={accessibilityLabel} style={[styles.track, hug && styles.trackInline]}>
       {segments.map((segment) => {
         const selected = segment.key === value;
         return (
-          <UiPressable key={segment.key} accessibilityRole="tab" accessibilityLabel={segment.label} accessibilityState={{ selected }} aria-selected={selected} hitSlop={4} onPress={() => onChange(segment.key)} pressedScale={0.97} style={[styles.option, task && styles.taskOption, selected && styles.selected, selected && task && styles.taskSelected]}>
+          <UiPressable key={segment.key} accessibilityRole="tab" accessibilityLabel={segment.label} accessibilityState={{ selected }} aria-selected={selected} hitSlop={SEGMENT_HIT_SLOP} onPress={() => onChange(segment.key)} pressedScale={0.97} style={[styles.option, hug && styles.optionInline, task && styles.taskOption, selected && styles.selected]}>
             {/* Like UISegmentedControl: equal fixed widths, so text size is capped (1.4×) and shrinks to fit; the full label stays in accessibilityLabel. */}
-            <UiText adjustsFontSizeToFit maxFontSizeMultiplier={1.4} minimumFontScale={0.75} numberOfLines={1} style={[styles.label, task && styles.taskLabel, task && cjkLift(segment.label, -1, -1.5), selected && styles.labelSelected]}>{segment.label}</UiText>
+            <UiText adjustsFontSizeToFit={!hug} maxFontSizeMultiplier={1.4} minimumFontScale={0.75} numberOfLines={1} style={[styles.label, task && styles.taskLabel, task && cjkLift(segment.label, -1, -1.5), selected && styles.labelSelected]}>{segment.label}</UiText>
           </UiPressable>
         );
       })}
@@ -107,14 +112,16 @@ export function SwipeSegments<Key extends string>({ segments, value, onChange, a
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   track: { flexDirection: "row", padding: 3, gap: 2, borderRadius: 999, backgroundColor: colors.surface2, alignSelf: "stretch" },
-  option: { flex: 1, minHeight: 38, borderRadius: 999, alignItems: "center", justifyContent: "center", paddingHorizontal: 10 },
-  selected: { backgroundColor: colors.surface },
-  label: { color: colors.ink2, fontSize: 12.5, fontWeight: "600", textAlign: "center" },
-  labelSelected: { color: colors.ink, fontWeight: "700" },
+  trackInline: { alignSelf: "flex-start" },
+  option: { flex: 1, borderRadius: 999, alignItems: "center", justifyContent: "center", paddingVertical: 6, paddingHorizontal: 13 },
+  optionInline: { flex: 0, flexGrow: 0, flexShrink: 0 },
+  // kit .seg button.on / .tseg button.on: surface + 0 1px 2px.
+  selected: { backgroundColor: colors.surface, ...shadows.segment },
+  label: { color: colors.ink2, fontSize: 12, fontWeight: "600", lineHeight: 18, textAlign: "center" },
+  labelSelected: { color: colors.ink },
   // kit .tseg (ui.css:722): buttons padding 7 0, 12.5/700 at line-height 1.5; the selected one lifts by 0 1px 2px.
-  taskOption: { minHeight: 0, paddingVertical: 7, paddingHorizontal: 0 },
-  taskSelected: shadows.segment,
-  taskLabel: { fontWeight: "700", lineHeight: 18.75 },
+  taskOption: { paddingVertical: 7, paddingHorizontal: 0 },
+  taskLabel: { fontSize: 12.5, fontWeight: "700", lineHeight: 18.75 },
   segmentsInset: { paddingHorizontal: 18 },
   segmentsGap: { marginBottom: 14 },
   // kit .tswipe: margin 8 0 12

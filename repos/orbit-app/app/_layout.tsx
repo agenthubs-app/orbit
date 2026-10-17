@@ -98,7 +98,7 @@ function UiRoot({ children }: { children: ReactNode }) {
   const { keyboardVisible } = useMobileViewport();
   return (
     <ToastProvider hasTabBar={mainTabForPath(pathname) !== null && !keyboardVisible}>
-      <UiPortalHost>
+      <UiPortalHost routeKey={pathname}>
         {children}
         <ShellTabBar />
         <UiFeedbackHost />

@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef } from "react";
 import { AccessibilityInfo, Animated, findNodeHandle, StyleSheet, View } from "react-native";
 
 import { createThemedStyles } from "../../design/theme";
-import { radius } from "../../design/tokens";
+import { floatShadow, radius } from "../../design/tokens";
 import { useStandardCopy } from "../../i18n/standard-copy";
 import { Button } from "./Button";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 import { durations, useReducedMotion } from "./motion";
 import { UiPortal } from "./Portal";
 import { Scrim } from "./Scrim";
@@ -27,6 +27,8 @@ export function ConfirmDialog({
   cancelLabel,
   destructive = false,
   stacked = false,
+  cancelVariant = "secondary",
+  icon,
   onConfirm,
   onCancel,
 }: {
@@ -37,6 +39,13 @@ export function ConfirmDialog({
   cancelLabel?: string;
   destructive?: boolean;
   stacked?: boolean;
+  /** kit .dacts.stack boards draw the second choice as a ghost button (b12 N12, 01-system ⑨ 写操作拦截). */
+  cancelVariant?: "secondary" | "ghost";
+  /**
+   * kit .dic (48, radius 16): defaults to trash on coral-soft (destructive) / info on apricot. `{ emoji }` = kit
+   * `.dic.emo` (apricot square, 24px emoji — e.g. 🧪 the sample-mode block, 01-system ⑨); an icon name swaps the line icon.
+   */
+  icon?: IconName | { emoji: string };
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -68,7 +77,7 @@ export function ConfirmDialog({
   const scale = appear.interpolate({ inputRange: [0, 1], outputRange: [reduced ? 1 : 0.96, 1] });
   const cancelButton = (
     <View ref={destructive ? focusTarget : undefined} collapsable={false} onLayout={destructive ? focusFirst : undefined} style={stacked ? null : styles.half}>
-      <Button block label={cancelLabel ?? copy.action.cancel} onPress={cancel} variant="secondary" />
+      <Button block label={cancelLabel ?? copy.action.cancel} onPress={cancel} variant={cancelVariant} />
     </View>
   );
   const confirmButton = (
@@ -80,9 +89,11 @@ export function ConfirmDialog({
     <UiPortal>
       <View accessibilityViewIsModal onAccessibilityEscape={cancel} style={styles.root}>
         <Scrim onPress={destructive ? undefined : cancel} />
-        <Animated.View accessibilityRole="alert" style={[styles.dialog, { opacity: appear, transform: [{ scale }] }]}>
-          <View style={[styles.iconBlock, destructive ? styles.iconDanger : styles.iconNeutral]}>
-            <Icon name={destructive ? "trash" : "info"} size={24} color={destructive ? colors.coralText : colors.macApricotText} />
+        <Animated.View accessibilityRole="alert" style={[styles.dialog, floatShadow(colors), { opacity: appear, transform: [{ scale }] }]}>
+          <View style={[styles.iconBlock, destructive && !isEmoji(icon) ? styles.iconDanger : styles.iconNeutral]}>
+            {isEmoji(icon)
+              ? <UiText maxFontSizeMultiplier={1} style={styles.emoji}>{icon.emoji}</UiText>
+              : <Icon name={icon ?? (destructive ? "trash" : "info")} size={24} color={destructive ? colors.coralText : colors.macApricotText} />}
           </View>
           <UiText accessibilityRole="header" style={styles.title}>{title}</UiText>
           {message ? <UiText style={styles.message}>{message}</UiText> : null}
@@ -93,13 +104,18 @@ export function ConfirmDialog({
   );
 }
 
+function isEmoji(icon: IconName | { emoji: string } | undefined): icon is { emoji: string } {
+  return typeof icon === "object" && icon !== null;
+}
+
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   root: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", padding: 24 },
   dialog: { width: 296, maxWidth: "100%", borderRadius: radius.dialog, backgroundColor: colors.surface, paddingTop: 22, paddingHorizontal: 18, paddingBottom: 16, alignItems: "center" },
   iconBlock: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", marginBottom: 10 },
   iconDanger: { backgroundColor: colors.coralSoft },
   iconNeutral: { backgroundColor: colors.macApricot },
-  title: { color: colors.ink, fontSize: 16, fontWeight: "800", lineHeight: 22, textAlign: "center" },
+  emoji: { fontSize: 24, lineHeight: 30 },
+  title: { color: colors.ink, fontSize: 16, fontWeight: "800", lineHeight: 22.4, textAlign: "center" },
   message: { color: colors.ink2, fontSize: 12.5, lineHeight: 20, textAlign: "center", marginTop: 6 },
   row: { flexDirection: "row", gap: 8, marginTop: 16, alignSelf: "stretch" },
   stack: { gap: 8, marginTop: 16, alignSelf: "stretch" },

@@ -35,5 +35,6 @@ export function chipColors(colors: OrbitColors): Record<ChipTone, { background: 
 
 const useStyles = createThemedStyles(() => StyleSheet.create({
   chip: { alignSelf: "flex-start", maxWidth: 160, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
-  label: { fontSize: 11, fontWeight: "700" },
+  // kit .chip: 11 / 700 at the body line-height 1.5 → 22.5 tall with padding 3.
+  label: { fontSize: 11, fontWeight: "700", lineHeight: 16.5 },
 }));

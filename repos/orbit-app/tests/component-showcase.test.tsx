@@ -44,7 +44,7 @@ test("the gate manifest lists every section once (or says why not), at the secti
     const x = xs === "c" ? Math.round((390 - w) / 2) : Number(xs);
     const y = ys === "c" ? Math.round((844 - h) / 2) : ys === "b" ? 844 - h : Number(ys);
     assert.ok([x, y, w, h].every((n) => Number.isInteger(n)), `${section.id}: integer rect`);
-    if (section.placement === "overlay") assert.equal(xs, "c", `${section.id}: overlays are centred`);
+    // overlays: c (centred) or the measured 16e point when the design cell does not centre them (RD-33).
     if (section.placement === "inline") {
       assert.deepEqual([x, y], [0, SECTION_TOP], `${section.id}: inline sections draw at (0, SECTION_TOP)`);
       assert.ok(Math.abs(w - section.width) <= 1, `${section.id}: rect width ${w} = cell width ${section.width}`);

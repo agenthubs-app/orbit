@@ -111,7 +111,8 @@ test("radius, type and motion scales are the ones the plan fixed", () => {
   assert.deepEqual(tokens.font["line-height"], { display: 1.05, title: 1.35, body: 1.5, label: 1.4, tight: 1.1, snug: 1.2, "body-relaxed": 1.55, prose: 1.6, "prose-lg": 1.7, quote: 1.75, letter: 1.8 });
   assert.deepEqual(tokens.font.tracking, { tight: -0.02, snug: -0.01, title: 0.01 });
   assert.deepEqual(tokens.space.scale, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 26, 28, 34, 40, 48]);
-  assert.deepEqual(Object.keys(tokens.shadow), ["float", "seg", "ring-select", "ring-dot", "ring-error"]);
+  // R31a: knob = kit .tgl::after (0 1px 3px, ink 25%).
+  assert.deepEqual(Object.keys(tokens.shadow), ["float", "seg", "knob", "ring-select", "ring-dot", "ring-error"]);
   // The kit's --font exactly: no Hiragino Kaku Gothic ProN before Noto (it took ✓ at bold weights from SF).
   assert.equal(tokens.font.family.ja, '-apple-system, "SF Pro Display", "SF Pro Text", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif');
   assert.deepEqual(Object.keys(tokens.font.family), ["ja", "zh", "en", "num"]);

@@ -305,7 +305,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
         </View>
         {problemKey ? <View style={m.gap}><Caption tone="error">{t(problemKey)}</Caption></View> : null}
         {/* b12 N12 サンプル表示中は保存できません: the dialog (サンプルを見続ける / ガイドを続ける); no step count in the App (§17-12). */}
-        <ConfirmDialog visible={problem === "sample"} stacked title={t("add.manual.sampleTitle")} message={`${t("add.manual.sampleBlocked")}${t("add.manual.sampleAsk")}`}
+        <ConfirmDialog visible={problem === "sample"} stacked cancelVariant="ghost" icon={{ emoji: "\u{1F9EA}" }} title={t("add.manual.sampleTitle")} message={`${t("add.manual.sampleBlocked")}${t("add.manual.sampleAsk")}`}
           confirmLabel={t("add.manual.sampleGuide")} cancelLabel={t("add.manual.sampleStay")}
           onConfirm={() => { setProblem(null); router.push("/profile/onboarding" as Href); }} onCancel={() => setProblem(null)} />
       </FadeIn>

@@ -43,7 +43,8 @@ function Root() {
   const [, force] = React.useState(0);
   window.addNav.render = () => force((n) => n + 1);
   const stack = window.addNav.stack;
-  return <ToastProvider><UiPortalHost>{stack.map((path, index) => (
+  // Like app/_layout: the host knows the route on top, so sheets close when their page is left (R31a).
+  return <ToastProvider><UiPortalHost routeKey={stack[stack.length - 1].split("?")[0]}>{stack.map((path, index) => (
     <div key={index + ":" + path} data-testid={index === stack.length - 1 ? "top" : "below"} style={{ display: index === stack.length - 1 ? "flex" : "none", flexDirection: "column", height: "100%" }}><Screen path={path} /></div>
   ))}</UiPortalHost></ToastProvider>;
 }

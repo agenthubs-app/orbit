@@ -60,6 +60,12 @@
   .ds .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
   /* --- Toast --- */
+  /* 2026-10-18 主会话代定（RD-17 优先，RD-33）：深色模式 Toast 仍是深色胶囊——比背景亮一档的面色 --surface-3 + 浅色字 --ink；
+     撤销钮 --surface-2 底。原稿深色 stage 里是 kit 默认的 --ink 底（深色下变成浅色胶囊），与 RD-17 矛盾，按 RD-17 改。 */
+  .ds .stage[data-theme="dark"] .toast { background: var(--surface-3); color: var(--ink); }
+  .ds .stage[data-theme="dark"] .toast .undo { background: var(--surface-2); color: var(--ink); }
+  .ds .stage[data-theme="dark"] .toast .tbar { background: color-mix(in srgb, var(--ink) 40%, transparent); }
+  .ds .stage[data-theme="dark"] .toast.info .tk { background: color-mix(in srgb, var(--ink) 22%, transparent); color: var(--ink); }
 
   /* --- 确认框 --- */
   .ds .focus { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--plum-500); }

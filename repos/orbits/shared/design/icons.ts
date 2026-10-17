@@ -11,7 +11,7 @@ export type DesignIconShape =
 export const designIconSpec = {
   viewBox: "0 0 24 24",
   strokeWidth: 1.7,
-  sizes: [16, 20, 21, 24],
+  sizes: [12, 13, 15, 16, 20, 21, 24],
   defaultSize: 20
 } as const;
 

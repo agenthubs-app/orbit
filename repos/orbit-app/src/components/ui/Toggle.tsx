@@ -4,10 +4,12 @@ import { Animated, StyleSheet } from "react-native";
 import { useOrbitTheme } from "../../design/theme";
 import { useReducedMotion } from "./motion";
 import { UiPressable } from "./Pressable";
+// kit .tgl::after shadow: 0 1px 3px color-mix(in srgb, var(--ink) 25%, transparent) → token shadow.knob (R31a).
+import { designShadow } from "../../api/design/tokens";
 
 // kit .tgl: 44×26, on = plum-700 (green only means done, RD-17), knob 20.
 export function Toggle({ value, onValueChange, accessibilityLabel, disabled = false }: { value: boolean; onValueChange: (next: boolean) => void; accessibilityLabel: string; disabled?: boolean }) {
-  const { colors } = useOrbitTheme();
+  const { colors, scheme } = useOrbitTheme();
   const reduced = useReducedMotion();
   const knob = useRef(new Animated.Value(value ? 1 : 0)).current;
   useEffect(() => {
@@ -25,7 +27,7 @@ export function Toggle({ value, onValueChange, accessibilityLabel, disabled = fa
       pressedScale={1}
       style={[styles.track, { backgroundColor: value ? colors.plum700 : colors.surface3 }, disabled && styles.disabled]}
     >
-      <Animated.View style={[styles.knob, { backgroundColor: colors.surface, transform: [{ translateX: knob.interpolate({ inputRange: [0, 1], outputRange: [0, 18] }) }] }]} />
+      <Animated.View style={[styles.knob, { backgroundColor: colors.surface, boxShadow: designShadow.knob[scheme], transform: [{ translateX: knob.interpolate({ inputRange: [0, 1], outputRange: [0, 18] }) }] }]} />
     </UiPressable>
   );
 }

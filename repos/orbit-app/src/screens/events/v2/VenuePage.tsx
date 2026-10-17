@@ -13,7 +13,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import type { EventVenuePerson, EventVenueResponse } from "../../../api/contract/event-venue";
 import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, useShellTopGap } from "../../../components/ShellTopBar";
-import { BottomSheet, GlassSurface, Icon, IconButton, UiPressable, UiText, useToast, type IconName } from "../../../components/ui";
+import { BottomSheet, GlassSurface, Icon, IconButton, UiPressable, UiText, usePageBottomBar, useToast, type IconName } from "../../../components/ui";
 import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
 import { darkColors, floatShadow } from "../../../design/tokens";
 import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
@@ -83,6 +83,8 @@ export function VenuePage() {
   const locale = useOrbitLocale();
   const router = useRouter();
   const toast = useToast();
+  // R31a (R27-02): the 会場 page draws its own 5-tab glass bar, so toasts sit above it (kit .toast.pos, bottom 100).
+  usePageBottomBar();
   const api = useJourneyApi();
   const client = useOrbitApiClient();
   const topGap = useShellTopGap();

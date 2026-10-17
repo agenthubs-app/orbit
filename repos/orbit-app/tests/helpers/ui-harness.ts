@@ -8,7 +8,7 @@ import { nativeUiStubs } from "./native-ui-stubs";
 // R04 component harness: bundles the real ui components with react-native-web and
 // renders a scenario in Chromium. The "native" shim adds what the browser lacks:
 //   - Text scales with fixture.fontScale (system text size) unless maxFontSizeMultiplier caps it;
-//   - Pressable exposes hitSlop as data-hitslop so touch targets can be measured;
+//   - Pressable exposes hitSlop as data-hitslop (and per axis as data-hitslopx / -y, R31a: Segmented slops only vertically) so touch targets can be measured;
 //   - BackHandler listeners are reachable through window.fireBack();
 //   - AccessibilityInfo.isReduceMotionEnabled follows fixture.systemReducedMotion;
 //   - Text with adjustsFontSizeToFit (iOS-only shrinking) is marked data-shrink;
@@ -26,7 +26,7 @@ export const Text = React.forwardRef(({ allowFontScaling = true, maxFontSizeMult
   const scale = maxFontSizeMultiplier ? Math.min(raw, maxFontSizeMultiplier) : raw;
   return <RNW.Text ref={ref} {...props} dataSet={adjustsFontSizeToFit ? { ...dataSet, shrink: "1" } : dataSet} style={[style, { fontSize: typeof flat.fontSize === "number" ? flat.fontSize * scale : undefined, lineHeight: typeof flat.lineHeight === "number" ? flat.lineHeight * scale : undefined }]} />;
 });
-export const Pressable = React.forwardRef(({ hitSlop, dataSet, ...props }, ref) => <RNW.Pressable ref={ref} {...props} dataSet={{ ...dataSet, hitslop: String(typeof hitSlop === "number" ? hitSlop : hitSlop ? Math.min(hitSlop.top ?? 0, hitSlop.left ?? 0) : 0) }} />);
+export const Pressable = React.forwardRef(({ hitSlop, dataSet, ...props }, ref) => <RNW.Pressable ref={ref} {...props} dataSet={{ ...dataSet, hitslop: String(typeof hitSlop === "number" ? hitSlop : hitSlop ? Math.min(hitSlop.top ?? 0, hitSlop.left ?? 0) : 0), hitslopx: String(typeof hitSlop === "number" ? 2 * hitSlop : (hitSlop?.left ?? 0) + (hitSlop?.right ?? 0)), hitslopy: String(typeof hitSlop === "number" ? 2 * hitSlop : (hitSlop?.top ?? 0) + (hitSlop?.bottom ?? 0)) }} />);
 const backListeners = new Set();
 window.fireBack = () => { for (const listener of [...backListeners].reverse()) if (listener()) return true; return false; };
 export const BackHandler = { addEventListener: (_event, listener) => { backListeners.add(listener); return { remove: () => backListeners.delete(listener) }; } };

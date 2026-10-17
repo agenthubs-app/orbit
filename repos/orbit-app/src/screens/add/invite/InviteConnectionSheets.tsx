@@ -11,7 +11,7 @@
 //     not close it, and screen-reader focus starts on キャンセル. Android back and the VoiceOver escape
 //     gesture are キャンセル (复核 m4) — handled here, before the sheet's own (ignored) dismiss.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, BackHandler, findNodeHandle, View } from "react-native";
+import { AccessibilityInfo, findNodeHandle, View } from "react-native";
 
 import type { InviteConnectionView, InviteSharedFieldKey, InviteSharedFields, InviteUnlinkResult } from "../../../api/contract/invite-codes";
 import { BottomSheet, Button, Checkbox, Icon, RetryCard, Skeleton, UiText, useToast, type IconName } from "../../../components/ui";
@@ -134,8 +134,6 @@ export function InviteShareSheet({ visible, contactId, name, onClose, onSaved, o
   );
 }
 
-const ignoreDismiss = () => undefined;
-
 export function InviteUnlinkSheet({ visible, contactId, name, onClose, onUnlinked, api: injected }: {
   visible: boolean;
   contactId: string;
@@ -166,17 +164,8 @@ export function InviteUnlinkSheet({ visible, contactId, name, onClose, onUnlinke
     setSample(false);
   }, [visible]);
 
-  // Android back = キャンセル (复核 m4). Registered after the sheet's own handler (a parent's effect runs after
-  // its children's), so React Native asks this one first; while 解除 runs, back is swallowed.
-  useEffect(() => {
-    if (!visible) return;
-    const subscription = BackHandler.addEventListener?.("hardwareBackPress", () => {
-      if (!busy) onClose();
-      return true;
-    });
-    return () => subscription?.remove?.();
-  }, [visible, busy, onClose]);
-  const cancelByEscape = () => { if (!busy) onClose(); };
+  // Android back and the VoiceOver escape gesture = キャンセル (复核 m4); while 解除 runs they do nothing.
+  const cancelUnlessBusy = () => { if (!busy) onClose(); };
 
   const focusCancel = () => {
     if (focused.current) return;
@@ -209,10 +198,10 @@ export function InviteUnlinkSheet({ visible, contactId, name, onClose, onUnlinke
     ["note", t("add.inviteConn.unlinkEffect3")],
   ];
   return (
-    // Destructive confirm: a backdrop tap or a drag does not close it (DESIGN §9 #32); キャンセル, Android back
-    // and the VoiceOver escape gesture (caught on the content, before the sheet's own) do.
-    <BottomSheet visible={visible} onClose={ignoreDismiss} accessibilityLabel={t("add.inviteConn.unlinkTitle", { name })}>
-      <View style={styles.stack} testID="invite-unlink-sheet" onAccessibilityEscape={cancelByEscape}>
+    // Destructive confirm: a backdrop tap or a drag does not close it (DESIGN §9 #32; R31a dismissOnBackdrop / draggable);
+    // キャンセル, Android back and the VoiceOver escape gesture do.
+    <BottomSheet visible={visible} onClose={cancelUnlessBusy} dismissOnBackdrop={false} draggable={false} accessibilityLabel={t("add.inviteConn.unlinkTitle", { name })}>
+      <View style={styles.stack} testID="invite-unlink-sheet">
         <View style={styles.centered}>
           <UiText accessibilityRole="header" style={styles.title}>{t("add.inviteConn.unlinkTitle", { name })}</UiText>
           <Caption>{t("add.inviteConn.unlinkSub")}</Caption>

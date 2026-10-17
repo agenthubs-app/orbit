@@ -29,10 +29,10 @@
   },
   "toasts": [
     { "kind": "success", "message": "完了にしました", "undo": true },
-    { "kind": "success", "message": "明日に移動しました", "sub": "10月8日（木）朝 8:00 に通知", "undo": true },
-    { "kind": "info", "message": "タスクに追加しました", "action": "開く" },
-    { "kind": "error", "message": "保存できませんでした", "action": "再試行" },
-    { "kind": "info", "message": "オフラインで保存しました", "sub": "接続後に同期します", "keep": true }
+    { "kind": "success", "message": "明日に移動しました", "sub": "10月8日（木）朝 8:00 に通知", "undo": true, "icon": "clock" },
+    { "kind": "info", "message": "タスクに追加しました", "action": "開く", "icon": "plus" },
+    { "kind": "error", "message": "保存できませんでした", "action": "再試行", "actionIcon": "refresh" },
+    { "kind": "info", "message": "オフラインで保存しました", "sub": "接続後に同期します", "stay": true, "icon": "wifioff" }
   ],
   "confirm0": { "title": "このタスクを削除しますか？", "message": "「山本 彩さんに資料を再送」を削除します。\n元になったメモとやりとりは残ります。", "confirm": "削除する" },
   "confirm1": {

@@ -26,6 +26,7 @@ test("the model: errors and undo bars never time out; an owner's unmount removes
   assert.ok(disarmOwner(mine, 8)?.undo, "another screen's unmount leaves it alone");
   assert.equal(toastBottom(true), 100);
   assert.equal(toastBottom(false), 40);
+  assert.equal(toastBottom(false, 1), 100, "R31a: a page with its own bottom bar (usePageBottomBar) counts as a tab bar");
 });
 
 test("元に戻す runs the undo once and closes the toast; a new toast replaces the old one", async () => {
@@ -49,7 +50,9 @@ test("success leaves after 5 s; errors and undo bars stay until closed", async (
   await page.evaluate(() => (window as any).ui.error());
   await page.clock.runFor(TOAST_DURATION_MS * 3);
   assert.equal(await page.getByText("保存できませんでした").count(), 1);
-  await page.getByRole("button", { name: "閉じる" }).click();
+  // R31a: no ✕ (kit .toast); a toast that stays closes with a tap on it.
+  assert.equal(await page.getByRole("button", { name: "閉じる" }).count(), 0, "no close button");
+  await page.getByRole("button", { name: "保存できませんでした" }).click({ position: { x: 20, y: 20 } });
   assert.equal(await page.getByText("保存できませんでした").count(), 0);
   await page.evaluate(() => (window as any).ui.keep());
   await page.clock.runFor(TOAST_DURATION_MS * 3);

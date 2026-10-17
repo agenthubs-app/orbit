@@ -48,8 +48,9 @@ const TOASTS = samples.toasts.map((toast) => createToast({
   message: toast.message,
   ...("sub" in toast && toast.sub ? { sub: toast.sub } : {}),
   ...("undo" in toast && toast.undo ? { undo: noop } : {}),
-  ...("action" in toast && toast.action ? { action: { label: toast.action, onPress: noop } } : {}),
-  ...("keep" in toast && toast.keep ? { keep: true } : {}),
+  ...("action" in toast && toast.action ? { action: { label: toast.action, onPress: noop, ...("actionIcon" in toast && toast.actionIcon ? { icon: toast.actionIcon } : {}) } } : {}),
+  ...("icon" in toast && toast.icon ? { icon: toast.icon } : {}),
+  ...("stay" in toast && toast.stay ? { stay: true } : {}),
 }, 0));
 const CHIP_ROWS = samples.chips as [ChipTone, string[]][];
 const EFFECT_ICONS = ["bell", "ticket", "users"] as const;
@@ -121,7 +122,7 @@ export const COMPONENT_SECTIONS: readonly ComponentSection[] = [
   section("c-err-2", 290, "inline", () => <DegradedCard title={err2.title} message={err2.message} onRetry={noop} />),
   section("c-err-3", 270, "inline", () => <TextField label={err3.label} value={err3.value} onChangeText={noop} error={err3.error} />),
   section("c-sample-0", 300, "inline", () => <Stack><SampleBar trailing={<Button label={sample0.resume} size="sm" onPress={noop} />} />{sample0.rows.map(([name, sub], index) => <ListRow key={name} title={name!} subtitle={sub!} leading={<Avatar name={name!} />} trailing={index === 0 ? <SampleTag /> : undefined} />)}</Stack>),
-  section("c-sample-1", 280, "overlay", () => <ConfirmDialog visible stacked title={sample1.title} message={sample1.message} confirmLabel={sample1.confirm} cancelLabel={sample1.cancel} onConfirm={noop} onCancel={noop} />),
+  section("c-sample-1", 280, "overlay", () => <ConfirmDialog visible stacked cancelVariant="ghost" icon={{ emoji: "🧪" }} title={sample1.title} message={sample1.message} confirmLabel={sample1.confirm} cancelLabel={sample1.cancel} onConfirm={noop} onCancel={noop} />),
   section("c-chip-0", 359, "inline", () => <Stack gap={8}>{CHIP_ROWS.map(([tone, labels]) => <Row key={tone} gap={6} wrap>{labels.map((label) => <Chip key={label} label={label} tone={tone} />)}</Row>)}</Stack>),
   section("c-pay-0", 300, "inline", () => <Stack><Card><Stack gap={8}><Row><UiText style={{ fontSize: 14, fontWeight: "800", flex: 1 }}>{pay0.title}</UiText><QuotaChip left={2} /></Row><Label>{pay0.sub}</Label><Button label={pay0.use} variant="primary" onPress={noop} /></Stack></Card><Row><QuotaChip left={0} /><Label>{pay0.outNote}</Label></Row></Stack>),
   section("c-pay-1", 320, "inline", () => <Card><Stack><Row gap={12}><MacTile emoji="⏳" tone="apricot" /><Stack gap={2}><UiText style={{ fontSize: 15, fontWeight: "800" }}>{pay1.title}</UiText><Label>{pay1.sub}</Label></Stack></Row><Card variant="flat"><UiText style={{ fontSize: 12.5 }}>{pay1.body}</UiText></Card><Button label={pay1.ok} variant="primary" onPress={noop} /><Button label={pay1.plans} variant="ghost" onPress={noop} /></Stack></Card>),

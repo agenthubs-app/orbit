@@ -39,7 +39,7 @@ test("a toast shows above every open overlay and its button can be pressed", asy
 async function smallTargets(page: Page): Promise<string[]> {
   return page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('[role="button"], [role="checkbox"], [role="switch"], [role="radio"], [role="tab"]'))
     .filter((el) => el.getBoundingClientRect().width > 0)
-    .map((el) => { const box = el.getBoundingClientRect(); const slop = Number(el.dataset.hitslop ?? 0); return { label: el.getAttribute("aria-label") ?? el.textContent ?? "", size: Math.min(box.width, box.height) + 2 * slop }; })
+    .map((el) => { const box = el.getBoundingClientRect(); const slop = Number(el.dataset.hitslop ?? 0); const x = el.dataset.hitslopx === undefined ? 2 * slop : Number(el.dataset.hitslopx); const y = el.dataset.hitslopy === undefined ? 2 * slop : Number(el.dataset.hitslopy); return { label: el.getAttribute("aria-label") ?? el.textContent ?? "", size: Math.min(box.width + x, box.height + y) }; })
     .filter((item) => item.size < 43.5).map((item) => `${item.label.slice(0, 20)}: ${item.size}`));
 }
 
@@ -73,6 +73,29 @@ test("a backdrop tap closes the sheet; Android back closes the action sheet", as
   assert.equal(await actions.evaluate(() => (window as any).fireBack()), true);
   assert.deepEqual(await events(actions), ["sheet-dismiss"]);
   await actions.close();
+});
+
+// R31a (R15 review m4 / :78): a confirm sheet ignores backdrop taps but Android back still closes it; a sheet closes
+// itself when its page is left (route change).
+test("dismissOnBackdrop={false}: a backdrop tap does nothing, Android back still closes", async () => {
+  const page = await openScenario(browser, script, { scenario: "overlays", overlay: "lockedSheet" });
+  await page.mouse.click(10, 10);
+  await page.waitForTimeout(100);
+  assert.deepEqual(await events(page), []);
+  assert.equal(await page.getByText("キャンセル").count(), 1, "still open");
+  assert.equal(await page.evaluate(() => (window as any).fireBack()), true);
+  assert.deepEqual(await events(page), ["sheet-close"]);
+  await page.close();
+});
+
+test("a sheet closes itself when its page loses focus (route change)", async () => {
+  const page = await openScenario(browser, script, { scenario: "overlays", overlay: "routedSheet" });
+  await page.waitForTimeout(50);
+  assert.deepEqual(await events(page), []);
+  await page.evaluate(() => (window as any).setRoute("/contacts/contact-matsui"));
+  await page.waitForTimeout(50);
+  assert.deepEqual(await events(page), ["sheet-auto-close"]);
+  await page.close();
 });
 
 test("with the keyboard up a tall sheet fits above it: handle and first field stay on screen", async () => {

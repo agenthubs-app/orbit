@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { countUpValue } from "../src/components/ui/Progress";
-import { sheetDragOffset, sheetMaxHeight, shouldDismissSheet } from "../src/components/ui/sheet-logic";
+import { sheetDragOffset, sheetMaxHeight, sheetShouldAutoClose, shouldDismissSheet } from "../src/components/ui/sheet-logic";
 import { claimsGesture, dragOffset, openWidth, settleOpen } from "../src/components/ui/swipe-logic";
 
 // R04: the gesture and timing rules behind SwipeRow, BottomSheet and CountUp
@@ -39,4 +39,13 @@ test("count-up: ease-out cubic over 1.15 s, ends exactly on the value", () => {
   assert.equal(countUpValue(100, 0), 0);
   assert.equal(countUpValue(100, 1150), 100);
   assert.ok(countUpValue(100, 575) > 80, "front-loaded");
+});
+
+test("R31a: a sheet closes on leaving its page or going to the background, never while typing", () => {
+  assert.equal(sheetShouldAutoClose({ openedOn: "/a", route: "/b", keyboardUp: false }), true);
+  assert.equal(sheetShouldAutoClose({ openedOn: "/a", route: "/a", keyboardUp: false }), false);
+  assert.equal(sheetShouldAutoClose({ openedOn: "/a", route: "/b", keyboardUp: true }), false, "keyboard up: someone is typing");
+  assert.equal(sheetShouldAutoClose({ openedOn: null, route: null, appState: "background", keyboardUp: false }), true);
+  assert.equal(sheetShouldAutoClose({ openedOn: null, route: null, appState: "background", keyboardUp: true }), false);
+  assert.equal(sheetShouldAutoClose({ openedOn: null, route: "/b", keyboardUp: false }), false, "no router, no route rule");
 });

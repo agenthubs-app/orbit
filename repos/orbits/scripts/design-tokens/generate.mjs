@@ -25,8 +25,9 @@ export const DESIGN_ICON_TS = "shared/design/icons.ts";
 export const DESIGN_ICON_OUTPUTS = [DESIGN_ICON_TS];
 
 // Drawing spec of the design kit's line icons (kit/ui.css: `svg.i` 20px with
-// .sm 16 / .lg 24, the tab bar's 21; stroke 1.7, round caps and joins).
-const ICON_SPEC = { viewBox: "0 0 24 24", strokeWidth: 1.7, sizes: [16, 20, 21, 24], defaultSize: 20 };
+// .sm 16 / .lg 24, the tab bar's 21; stroke 1.7, round caps and joins). R31a: plus the small marks the kit draws
+// inside controls — 12 (.chip svg), 13 (.ckr / .cbx), 15 (.toast .tk / .okmark).
+const ICON_SPEC = { viewBox: "0 0 24 24", strokeWidth: 1.7, sizes: [12, 13, 15, 16, 20, 21, 24], defaultSize: 20 };
 
 // The SVG attributes an icon body may use, by element, and how each is typed.
 const ICON_ATTRIBUTES = {
