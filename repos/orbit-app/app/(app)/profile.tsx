@@ -2,7 +2,7 @@ import { useGlobalSearchParams, useIsFocused } from "expo-router";
 import { useCallback, useMemo, useRef } from "react";
 import { useOrbitAuthSession } from "../../src/api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../src/api/ApiBaseUrlProvider";
-import { ProfileScreen } from "../../src/screens/profile/ProfileScreen";
+import { MyPageScreen } from "../../src/screens/me/MyPageScreen";
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 import { normalizedNext } from "../../src/view-models/account-auth";
 
@@ -24,7 +24,7 @@ function ProfileMainRoute() {
   const latest = useRef(scope);
   latest.current = scope;
   const isScopeCurrent = useCallback(() => latest.current === scope && scope.enabled, [scope]);
-  return enabled ? <ProfileScreen key={scope.key} scopeKey={scope.key} isScopeCurrent={isScopeCurrent} completionNext={completionNext} /> : null;
+  return enabled ? <MyPageScreen key={scope.key} scopeKey={scope.key} isScopeCurrent={isScopeCurrent} completionNext={completionNext} /> : null;
 }
 
 export default withOrbitPrivateRoute(ProfileMainRoute);

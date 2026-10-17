@@ -2435,4 +2435,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["networkAnalysis.previewStructure", "label"],
   ["networkAnalysis.previewOpportunities", "label"],
   ["networkAnalysis.previewInsight", "label"],
+  ["me.offline", "sentence"],
+  ["me.saveError", "sentence"],
+  ["me.*", "label"],
 ];

@@ -45,6 +45,21 @@ const scope = { actorId: "actor:one", apiOrigin: "https://orbit.example/" };
 
 test.beforeEach(() => resetProfileEditSessionsForTests());
 
+test("R18a public visibility survives an edit session and is copied into the save payload", () => {
+  const visibility = { companyRole: false, offeringSeeking: true, intro: false };
+  const opened = openProfileEditSession(scope, { ...profile, publicFields: visibility });
+  assert.deepEqual(opened.draft.publicFields, visibility);
+  updateProfileEditDraft(scope, { publicFields: { ...visibility, intro: true } });
+  assert.deepEqual(prepareProfileEditSave(scope, () => "visibility")?.body.publicFields, { ...visibility, intro: true });
+});
+
+test("R18a development profile variants do not share draft sessions", () => {
+  openProfileEditSession({ ...scope, sessionId: "design=25" }, profile);
+  updateProfileEditDraft({ ...scope, sessionId: "design=25" }, { role: "draft" });
+  assert.equal(getProfileEditSession({ ...scope, sessionId: "design=50" }), null);
+  assert.equal(getProfileEditSession(scope), null);
+});
+
 test("draft survives route remounts and stays isolated by canonical actor and API origin", () => {
   const initial = openProfileEditSession(scope, profile);
   assert.equal(initial.draft.bio, profile.headline);

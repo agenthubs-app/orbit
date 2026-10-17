@@ -8,12 +8,14 @@ import { profileBioWithinLimit, profileVisibleLength } from "../api/schema/profi
 export interface ProfileEditSessionScope {
   actorId: string;
   apiOrigin: string;
+  sessionId?: string;
 }
 
 export type ProfileEditStatus = "editing" | "saving" | "conflict" | "failure";
 export type ProfileSuggestionDecision = "accepted" | "dismissed";
 
 export interface ProfileEditDraft {
+  publicFields?: ManualProfileContract["publicFields"];
   bio: string;
   birthDate?: string | null;
   displayName: string;
@@ -76,7 +78,7 @@ function cleanScope(scope: ProfileEditSessionScope): { actorId: string; apiOrigi
 
 function scopeKey(scope: ProfileEditSessionScope): string {
   const clean = cleanScope(scope);
-  return JSON.stringify([clean.apiOrigin, clean.actorId]);
+  return JSON.stringify([clean.apiOrigin, clean.actorId, ...(scope.sessionId ? [scope.sessionId] : [])]);
 }
 
 function suggestionMutationKey(scope: ProfileEditSessionScope, suggestionId: string, decision: ProfileSuggestionDecision): string {
@@ -131,6 +133,7 @@ function profileToDraft(profile: ManualProfileContract): {
   return {
     bioUsesHeadlineFallback: !hasBio && profile.headline.length > 0,
     draft: {
+      ...(profile.publicFields ? { publicFields: { ...profile.publicFields } } : {}),
       bio: hasBio ? profile.bio ?? "" : profile.headline,
       ...(profile.birthDate === undefined ? {} : { birthDate: profile.birthDate }),
       displayName: profile.displayName,
@@ -166,6 +169,7 @@ function cloneDraft(draft: ProfileEditDraft): ProfileEditDraft {
   return {
     ...draft,
     handles: { ...draft.handles },
+    ...(draft.publicFields ? { publicFields: { ...draft.publicFields } } : {}),
     offering: [...draft.offering],
     preferredIntroChannels: [...draft.preferredIntroChannels],
     seeking: [...draft.seeking],
@@ -251,7 +255,9 @@ export function updateProfileEditDraft(
     const value = patch[field];
     if (value === undefined) continue;
     session.dirtyFields.add(field);
-    if (field === "handles") {
+    if (field === "publicFields") {
+      session.draft.publicFields = { ...(value as NonNullable<ManualProfileContract["publicFields"]>) };
+    } else if (field === "handles") {
       session.draft.handles = { ...(value as ContactHandlesContract) };
     } else if (Array.isArray(value)) {
       (session.draft[field] as string[]) = [...value];

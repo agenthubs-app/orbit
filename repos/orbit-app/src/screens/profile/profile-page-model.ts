@@ -55,6 +55,7 @@ export function profilePreviewFromSession(
   const draft = session.draft;
   return projectPublicProfile({
     ...baseProfile,
+    ...(draft.publicFields ? { publicFields: draft.publicFields } : {}),
     bio: draft.bio,
     displayName: draft.displayName,
     headline: draft.headline,

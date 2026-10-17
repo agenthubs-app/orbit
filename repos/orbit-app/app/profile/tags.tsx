@@ -1,4 +1,4 @@
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
-import { ProfileTagPickerScreen } from "../../src/screens/profile/ProfileTagPickerScreen";
+import { AccountTagsScreen } from "../../src/screens/me/AccountTagsScreen";
 
-export default withOrbitPrivateRoute(ProfileTagPickerScreen);
+export default withOrbitPrivateRoute(AccountTagsScreen);

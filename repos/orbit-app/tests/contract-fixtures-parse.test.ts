@@ -33,7 +33,7 @@ test("R18a synced account schemas parse sparse, regular, complete and legacy res
     if (legacy.profile) delete legacy.profile.publicFields;
     assert.ok(schemas.profileAccountSchema.safeParse(legacy).success);
   }
-  assert.equal(schemas.profileCardCompletenessSchema.parse({ score: 0, items: [{ key: "future", weight: 25, done: false }] }).items[0].key, "future");
+  assert.equal(schemas.profileCardCompletenessSchema.parse({ score: 0, items: [{ key: "future", weight: 25, done: false }] }).items[0]?.key, "future");
 });
 
 // 改版 R08 (SC-R08-03 / 06): after npm run sync:contract the App's own copies of

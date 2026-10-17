@@ -1,4 +1,4 @@
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
-import { ProfilePreviewScreen } from "../../src/screens/profile/ProfilePreviewScreen";
+import { AccountPreviewScreen } from "../../src/screens/me/AccountPreviewScreen";
 
-export default withOrbitPrivateRoute(ProfilePreviewScreen);
+export default withOrbitPrivateRoute(AccountPreviewScreen);

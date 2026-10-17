@@ -59,6 +59,7 @@ import { calendar } from "./calendar";
 import { network } from "./network";
 import { todo } from "./todo";
 import { networkAnalysis } from "./networkAnalysis";
+import { me } from "./me";
 
 export const en = {
   ...inbox,
@@ -121,4 +122,5 @@ export const en = {
   ...network,
   ...todo,
   ...networkAnalysis,
+  ...me,
 } as const satisfies MessageDictionary;

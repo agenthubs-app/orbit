@@ -30,20 +30,20 @@ export interface ProfileEditSessionScreenState {
  * Sprint 0131: `readOffline` (preview, tags) reads the page copy "self-profile" first so the page is
  * readable offline; the edit page keeps its network-only read so an edit never starts from a stale copy.
  */
-export function useProfileEditSessionScreen({ readOffline = false }: { readOffline?: boolean } = {}): ProfileEditSessionScreenState {
+export function useProfileEditSessionScreen({ readOffline = false, path = ORBIT_API_ENDPOINTS.profile }: { readOffline?: boolean; path?: string } = {}): ProfileEditSessionScreenState {
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const scope = useMemo<ProfileEditSessionScope | null>(() => auth.actorId && server.ready
-    ? { actorId: auth.actorId, apiOrigin: server.baseUrl }
-    : null, [auth.actorId, server.baseUrl, server.ready]);
-  const scopeKey = scope ? JSON.stringify([scope.apiOrigin, scope.actorId]) : null;
+    ? { actorId: auth.actorId, apiOrigin: server.baseUrl, ...(path.includes("?design=") ? { sessionId: path } : {}) }
+    : null, [auth.actorId, server.baseUrl, server.ready, path]);
+  const scopeKey = scope ? JSON.stringify([scope.apiOrigin, scope.actorId, auth.cookieHeader, path]) : null;
   const copied = usePageCopyResource<unknown>(
-    ORBIT_API_ENDPOINTS.profile,
+    path,
     () => false,
     { scopeKey, enabled: readOffline && scopeKey !== null, copy: { id: "self-profile" }, accept: (value) => profileDetailSchema.safeParse(value).success },
   );
   const online = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.profile,
+    path,
     () => false,
     { cachePolicy: "network-only", scopeKey, enabled: !readOffline },
   );
