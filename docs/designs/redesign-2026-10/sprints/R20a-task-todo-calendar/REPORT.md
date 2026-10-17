@@ -145,6 +145,20 @@ source 監査で追加の中国語生成元を確認した：`features/tasks/tod
 
 既存 `/api/schedule-items` は `scope=personal` の場合だけ from / to を personal service へ渡し、aggregate の TodayScheduleProvider は選択窓を受け取らない。personal の既定窓を任意の月の完全な予定だとみなしてはならない。SC-10 の接続時に、選択窓による recurrence 展開・範囲外の過去 / 未来の月・外部予定の split 範囲合成を操作テストで証明する必要がある。今は SC-10 完了とはしない。
 
+### SC-10 選択窓の native read（部分里程標）
+
+後続の opt-in `GET /api/schedule-items?scope=calendar&from=<ISO>&to=<ISO>&language=ja|zh|en` を追加した。query は既知・単一キーのみ、正の ISO 区間・最大 43×24 時間（6 週の DST 追加 1 時間を含む）を許し、不正値は source 読取前に 400。actor は既存認証境界だけから取得する。新 scope だけが native personal list に選択窓と `overlap=true` を渡す。古い aggregate / personal list の windowless・start-only・中国語 default の挙動は維持する。frozen response contract は変えず、`data.scheduleItems` のまま。
+
+calendar overlap は single / recurrence の左端 carry-over を含め、終了が from と一致するものと開始が to と一致するものは除く。recurrence は現地日数から前の anchor を含め、native の 366 日 work cap を超えたら削らず失敗する。開始が遠い過去の anchor でも、長い例外が今の窓へ重なれば拾う。新 overlap 用の exception SQL は 1,001 件だけを返し、1,000 件超なら `CALENDAR_EXCEPTION_READ_CAP`、calendar の選択済み表示項目 1,000 件超なら `CALENDAR_ITEMS_READ_CAP` で API 503 にする。いずれも完全な空 / 精確件数へ変換しない。元の native list は内部で本人の series / events / appointment 集合を読むので、全 source の SQL work 自体が定数だとは主張しない。calendar HTTP の表示範囲 / response と例外投影を限定する中間変更である。
+
+TodayScheduleProvider の新 scope だけが、生成する meeting title / video / phone label を requested language にする。本人が書いた event title や in-person location は中国語と同じ文字でも置換しない。Google Meet 名も維持する。
+
+`sc10-selected-window-red.log` は range 無視・不正 query 200・carry-over 欠落、`sc10-calendar-provider-red.log` は未実装 provider、`sc10-calendar-cap-red.log` は表示上限無視の RED。`sc10-selected-window-cap-red.log` では cap guard を外した場合に PG regression が missing rejection で失敗することを確認して guard を戻した。最新 `sc10-selected-window-green.log` は **49/49 pass、0 skip**（native selected-window / old route / recurrence / exceptions / reminder / v3 client）。実 local PG18 の隔離 schema で route → provider → native service → SQL の long moved carry-over と 1,001-row breach → 503 も検証した。production / Google は不使用。Web UI / operation / fresh typecheck / browser / pixel は後続、SC-10 完了ではない。
+
+### App 中間里程標（主会話 / App worker）
+
+主会話からの交接 hash：`7fa754a57` Todo TS fix、`809c150fe` Calendar Task slot、`7933b37e8` suggestion decisions、`7d5ac449e` midnight clock、`8b9db4faa` 4-week grid、`940c461e1` external bounded windows、`dab6cd8b4` read-only chunk/index helpers、`7cc3edb1d` external UI、`4111448b6` scope isolation、`8aedd4a57` SC-10 editor、`39e0bc952` App calendar、`b6eca8940` legacy `?date=` continuation、`203dda828` plain follow-up task detail。App lifecycle detail は identity resolver 待ちで fail-closed。App external 13/13 / calendar content 7/7 / calendar continuation 12/12 / Todo sections 4/4、calendar copy 49/0 / hardcoded-copy 5/5 は主会話の focused 証拠。Google CTA は Web authorize `returnTo=calendar` を開く。App fresh typecheck / browser / pixel は lock 待ちであり pass としない。これらの App paths は Web worker が変更・stage していない。
+
 ### Web 三块 presenter と product host（部分里程標）
 
 host の path-specific 中間コミットは `aa2c67c9f`（14 paths）。SC-06 / SC-07 の閉合ではない。

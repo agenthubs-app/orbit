@@ -11,6 +11,7 @@ import { AppError } from "../../../shared/errors/app-error";
 import { createConfiguredPersonalScheduleService } from "../../../features/personal-schedule/service-factory";
 import type { PersonalScheduleService } from "../../../features/personal-schedule/service";
 import { personalScheduleRepresentation, personalScheduleAggregateRepresentation } from "../../../features/personal-schedule/representation";
+import { calendarScheduleQuery } from "../../../features/tasks/calendar-window";
 import {
   authenticatedApiActorRequiredResponse,
   resolveAuthenticatedApiActor,
@@ -37,12 +38,13 @@ export function createScheduleItemsGetHandler(dependencies?: ScheduleItemsRouteD
     try {
       const personalScope = request && new URL(request.url).searchParams.get("scope") === "personal";
       const params = request ? new URL(request.url).searchParams : undefined;
+      const calendar = params?.get("scope") === "calendar" ? calendarScheduleQuery(params) : undefined;
       const window = personalScope && params && (params.has("from") || params.has("to")) ? { from: params.get("from") ?? "", to: params.get("to") ?? "" } : {};
       const produce = async () => {
         const scheduleItems = await (personalScope
           ? dependencies?.personalService ?? createConfiguredPersonalScheduleService()
           : dependencies?.scheduleProvider ?? createConfiguredTodayScheduleProvider()
-        ).list({ actorId: actor.id, ...window });
+        ).list({ actorId: actor.id, ...(calendar ?? window) });
         const represented = personalScope && request ? scheduleItems.map(item => personalScheduleRepresentation(item as Awaited<ReturnType<PersonalScheduleService["get"]>>, request)) : scheduleItems.map(item => item.kind === "personal" ? personalScheduleAggregateRepresentation(item) : item);
         return NextResponse.json(success({ scheduleItems: represented }), {
           headers: runtimeBoundaryHeaders(mode),

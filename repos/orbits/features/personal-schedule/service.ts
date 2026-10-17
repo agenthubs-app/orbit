@@ -45,7 +45,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     for (const key of ["location", "endsAt", "allDay", "timeZone", "meetingMethod", "meetingUrl", "contactIds", "noteIds", "recurrence", "reminderMinutes"] as const) if (patch[key] === null) delete result[key];
     return result;
   }
-  async function personalScheduleOccurrences(store: typeof input.store, actorId: string, item: PersonalScheduleContract, window: { from: string; to: string }, exact?: { date: string; exceptions: readonly PersonalScheduleOccurrenceException[] }, executor: TransactionalSqlExecutor | undefined = input.executor ?? input.client): Promise<PersonalScheduleContract[]> {
+  async function personalScheduleOccurrences(store: typeof input.store, actorId: string, item: PersonalScheduleContract, window: { from: string; to: string }, exact?: { date: string; exceptions: readonly PersonalScheduleOccurrenceException[] }, executor: TransactionalSqlExecutor | undefined = input.executor ?? input.client, overlapFrom?: string): Promise<PersonalScheduleContract[]> {
     if (!item.recurrence) return [publicItem(item, now())];
     if (!item.timeZone) throw new AppError("VALIDATION_ERROR", "Repeating schedules require a time zone.");
     // The exact reader has already checked the same actor/series/date. Reuse
@@ -54,7 +54,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     const series = { ...item, timeZone: item.timeZone, recurrence: item.recurrence };
     const anchors = new Map(expandPersonalScheduleOccurrences(series, window, date).map(occurrence => [occurrence.occurrenceDate, occurrence]));
     const exceptions = exact?.exceptions ?? await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: item.id, executor,
-      window: { ...window, occurrenceDates: [...anchors.keys()] } });
+      window: { ...window, occurrenceDates: [...anchors.keys()], ...(overlapFrom ? { overlapFrom } : {}) } });
     for (const exception of exceptions) {
       if (exception.cancelled || (date !== undefined && exception.occurrenceDate !== date) || anchors.has(exception.occurrenceDate)) continue;
       // An exception may move an anchor from outside this window into it.
@@ -69,7 +69,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
       const instance = patchPersonalScheduleFields({ ...item, ...anchor, sourceId: item.id }, exception?.patch ?? {});
       personalScheduleSchema.parse(instance);
       const time = Date.parse(instance.startsAt);
-      if (time >= Date.parse(window.from) && time < Date.parse(window.to)) result.push(publicItem(instance, now()));
+      if (time < Date.parse(window.to) && (overlapFrom && instance.endsAt ? Date.parse(instance.endsAt) > Date.parse(overlapFrom) : time >= Date.parse(overlapFrom ?? window.from))) result.push(publicItem(instance, now()));
     }
     return result.sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt));
   }
@@ -211,7 +211,8 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
       });
     },
     async get({ actorId, id }: { actorId: string; id: string }) { return publicItem(await readPersonalScheduleOccurrence(input.store, actorId, id), now()); },
-    async list({ actorId, from, to }: { actorId: string; from?: string; to?: string }) {
+    async list({ actorId, from, to, overlap = false }: { actorId: string; from?: string; to?: string; overlap?: boolean }) {
+      if (overlap && (!from || !to)) throw new AppError("VALIDATION_ERROR", "Calendar overlap requires an explicit window.");
       const records = await input.store.listRecords({ limit: "unbounded", workspaceId: input.workspaceId, collectionName, userId: actorId });
       const ids = new Set<string>();
       const items = records.flatMap(record => {
@@ -229,6 +230,16 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
       const window = { from: from ?? at, to: to ?? new Date(Date.parse(at) + 90 * 86_400_000).toISOString() };
       if (!!from !== !!to || !Number.isFinite(Date.parse(window.from)) || !Number.isFinite(Date.parse(window.to)) || Date.parse(window.to) <= Date.parse(window.from) || Date.parse(window.to) - Date.parse(window.from) > 366 * 86_400_000) throw new AppError("VALIDATION_ERROR", "Schedule window must include valid from/to within 366 days.");
       const instances = (await Promise.all(items.map(async item => {
+        if (overlap && item.recurrence) {
+          const zone = item.timeZone!;
+          const startDay = calendarDate(localParts(item.startsAt, zone).date)!.getTime();
+          const endDay = item.endsAt ? calendarDate(localParts(item.endsAt, zone).date)!.getTime() : startDay;
+          const fromDay = calendarDate(localParts(window.from, zone).date)!.getTime();
+          // Include anchors before the grid that still occupy it. Keep native
+          // recurrence's 366-day work cap; do not clamp and report completeness.
+          const expanded = { from: new Date(fromDay - (endDay - startDay) - 2 * 86_400_000).toISOString(), to: window.to };
+          return personalScheduleOccurrences(input.store, actorId, item, expanded, undefined, undefined, window.from);
+        }
         if (from !== undefined || !item.recurrence) return personalScheduleOccurrences(input.store, actorId, item, window);
         const zone = item.timeZone!;
         const today = localParts(at, zone).date;
@@ -242,7 +253,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
         return occurrences.filter(instance => localParts(instance.startsAt, zone).date >= today || (Date.parse(instance.startsAt) <= Date.parse(at) && instance.endsAt !== undefined && Date.parse(instance.endsAt) > Date.parse(at)));
       }))).flat();
       if (new Set(instances.map(item => item.id)).size !== instances.length) throw new Error("Schedule occurrence identity collision.");
-      return from === undefined ? instances : instances.filter(item => Date.parse(item.startsAt) >= Date.parse(window.from) && Date.parse(item.startsAt) < Date.parse(window.to));
+      return from === undefined ? instances : instances.filter(item => Date.parse(item.startsAt) < Date.parse(window.to) && (overlap && item.endsAt ? Date.parse(item.endsAt) > Date.parse(window.from) : Date.parse(item.startsAt) >= Date.parse(window.from)));
     },
     create: (actorId: string, body: PersonalScheduleCreate) => mutate("create", actorId, `personal:${hash([actorId, body.idempotencyKey]).slice(0, 24)}`, personalScheduleCreateSchema.parse(body)),
     update: (actorId: string, id: string, body: PersonalScheduleUpdate) => mutate("update", actorId, id, personalScheduleUpdateSchema.parse(body)),

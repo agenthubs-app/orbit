@@ -3,9 +3,14 @@ import { personalScheduleAggregateRepresentation } from "../personal-schedule/re
 import { createConfiguredAppointmentService } from "../appointments/runtime";
 import { listConfiguredOrbitScheduleItems } from "../events/orbit-schedule-reader";
 import type { ScheduleItemDTO } from "./today-contract";
+import type { PersonalScheduleService } from "../personal-schedule/service";
+import type { AppointmentAggregate } from "../appointments/contract";
+import type { OrbitScheduleItem } from "../events/orbit-schedule-reader";
+import type { OrbitLanguage } from "../../shared/contract/language";
+import { calendarScheduleOverlaps, calendarScheduleQuery } from "./calendar-window";
 
 export interface TodayScheduleProvider {
-  list: (input: { actorId: string }) => Promise<readonly ScheduleItemDTO[]>;
+  list: (input: { actorId: string; from?: string; to?: string; language?: OrbitLanguage }) => Promise<readonly ScheduleItemDTO[]>;
 }
 
 function appointmentLocation(
@@ -13,24 +18,30 @@ function appointmentLocation(
     kind: "in_person" | "video" | "phone";
     location?: string;
     provider?: string;
-  },
+  }, language: OrbitLanguage = "zh",
 ): string | undefined {
   if (medium.kind === "in_person") return medium.location;
   if (medium.kind === "video") return medium.provider === "google_meet"
     ? "Google Meet"
-    : "线上会面";
-  return "电话";
+    : ({ ja: "オンライン", zh: "线上会面", en: "Online" })[language];
+  return ({ ja: "電話", zh: "电话", en: "Phone" })[language];
 }
 
-export function createConfiguredTodayScheduleProvider(): TodayScheduleProvider {
+export function createTodayScheduleProvider(input: {
+  listEvents: (actorId: string) => Promise<readonly Pick<OrbitScheduleItem, "id" | "kind" | "category" | "title" | "startsAt" | "endsAt" | "location" | "sourceId">[]>;
+  listAppointments: (actorId: string) => Promise<readonly Pick<AppointmentAggregate, "appointmentId" | "confirmed" | "status">[]>;
+  personalList: PersonalScheduleService["list"];
+}): TodayScheduleProvider {
   return {
-    async list({ actorId }) {
+    async list({ actorId, from, to, language }) {
+      const calendar = from !== undefined || to !== undefined ? calendarScheduleQuery(new URLSearchParams({ scope: "calendar", from: from ?? "", to: to ?? "", language: language ?? "ja" })) : undefined;
+      const locale = calendar?.language ?? "zh";
       const [eventItems, appointmentItems, personalItems] = await Promise.all([
-        listConfiguredOrbitScheduleItems(actorId),
-        createConfiguredAppointmentService()?.list({ actorId }) ?? [],
-        createConfiguredPersonalScheduleService().list({ actorId }),
+        input.listEvents(actorId),
+        input.listAppointments(actorId),
+        input.personalList({ actorId, ...(calendar ? { from: calendar.from, to: calendar.to, overlap: true } : {}) }),
       ]);
-      return [
+      const items = [
         ...personalItems.map(personalScheduleAggregateRepresentation),
         ...eventItems.map(
           (item): ScheduleItemDTO => ({
@@ -62,13 +73,14 @@ export function createConfiguredTodayScheduleProvider(): TodayScheduleProvider {
                   : appointment.status === "completed"
                     ? "ended"
                     : "upcoming",
-              title: "人脉会面",
+              title: ({ ja: "面談", zh: "人脉会面", en: "Meeting" })[locale],
               startsAt,
               endsAt,
-              ...(appointmentLocation(appointment.confirmed.medium)
+              ...(appointmentLocation(appointment.confirmed.medium, locale)
                 ? {
                     location: appointmentLocation(
                       appointment.confirmed.medium,
+                      locale,
                     ),
                   }
                 : {}),
@@ -77,6 +89,18 @@ export function createConfiguredTodayScheduleProvider(): TodayScheduleProvider {
           ];
         }),
       ];
+      if (!calendar) return items;
+      const selected = items.filter(item => calendarScheduleOverlaps(item, calendar));
+      if (selected.length > 1000) throw Error("CALENDAR_ITEMS_READ_CAP");
+      return selected;
     },
   };
+}
+
+export function createConfiguredTodayScheduleProvider(): TodayScheduleProvider {
+  return createTodayScheduleProvider({
+    listEvents: listConfiguredOrbitScheduleItems,
+    listAppointments: actorId => createConfiguredAppointmentService()?.list({ actorId }) ?? Promise.resolve([]),
+    personalList: query => createConfiguredPersonalScheduleService().list(query),
+  });
 }
