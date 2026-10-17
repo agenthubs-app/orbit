@@ -103,6 +103,8 @@ const expectedRoutes: readonly ExpectedRoute[] = [
     consumer: "ScheduleEventPreviewScreen",
     kind: "screen"
   },
+  // Historical 2026-09 visual snapshot. The current route is a private Task
+  // redirect, independently checked by retired-today-screen.test.ts.
   { route: "/today", consumer: "TodayScreen", kind: "screen" },
   { route: "/tasks", consumer: "TasksScreen", kind: "screen" },
   { route: "/tasks/[id]", consumer: "TaskDetailScreen", kind: "screen" },
@@ -381,8 +383,8 @@ test("the final README records canonical status and concrete evidence for all 56
     const expected = expectedByRoute.get(row.route);
 
     assert.ok(expected, `unexpected documented route ${row.route}`);
-    assert.equal(row.consumer, expected.consumer, `${row.route} canonical consumer`);
-    assert.equal(row.kind, expected.kind, `${row.route} route kind`);
+    assert.equal(row.consumer, expected.consumer, `${row.route} snapshot consumer`);
+    assert.equal(row.kind, expected.kind, `${row.route} snapshot route kind`);
     assert.match(
       row.nativeEvidence,
       /(?:native-route-observations|native-detail-observation|final-native-route-observations)\.json/u,

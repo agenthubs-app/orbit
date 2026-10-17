@@ -13,7 +13,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/task-suggestions')) return 'task-suggestions';
   if (path.startsWith('/api/tasks')) return 'tasks';
   if (path === '/api/todo/page') return 'todo';
-  if (path === '/api/relationship-tasks' || path === '/api/relationship-tasks/page') return 'tasks';
+  if (path === '/api/relationship-tasks' || path === '/api/relationship-tasks/page' || path === '/api/relationship-tasks/:id/resolve') return 'tasks';
   if (path.startsWith('/api/reminders')) return 'followups';
   if (path.includes('/meeting-details')) return 'meetings';
   if (path.startsWith('/api/appointments')) return 'appointments';
@@ -108,7 +108,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     // Bounded private readers have no proven revoke/version cache protocol yet.
     || (method === 'GET' && ([
       '/api/contacts/page','/api/contacts/summary','/api/contacts/labels','/api/inbox/summary',
-      '/api/relationship-tasks/page','/api/tasks/page','/api/task-suggestions/page','/api/tasks/note-page',
+      '/api/relationship-tasks/page','/api/relationship-tasks/:id/resolve','/api/tasks/page','/api/task-suggestions/page','/api/tasks/note-page',
+      '/api/contacts/pipeline',
       '/api/relationship-communication/conversation-summaries','/api/relationship-communication/conversations/:id/messages',
       // A private reply draft must disappear with the binding; never cache it (Sprint 0104).
       '/api/relationship-communication/conversations/:id/draft',
@@ -788,13 +789,11 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/hooks/useContactLabels.ts","GET","/api/contacts/labels"],
   ["src/screens/tasks/task-list-source.web.ts","GET","/api/tasks/page"],
   ["src/screens/tasks/TasksScreen.tsx","PATCH","/api/tasks/:id"],
-  ["src/screens/today/TodayScreen.tsx","POST","/api/task-suggestions/:id/accept"],
-  ["src/screens/today/TodayScreen.tsx","POST","/api/tasks"],
   ["src/screens/task/TaskQuickAdd.tsx","POST","/api/tasks"],
-  ["src/screens/today/TodayScreen.tsx","PATCH","/api/tasks/:id"],
   ["src/hooks/useTodayTaskPages.ts","GET","/api/today"],
   ["src/screens/todo/useTodoPage.ts","GET","/api/todo/page"],
   ["src/screens/todo/TodoScreen.tsx","GET","/api/tasks/:id"],
+  ["src/screens/todo/TodoScreen.tsx","GET","/api/relationship-tasks/:id/resolve"],
   ["src/screens/todo/TodoScreen.tsx","GET","/api/todo/page"],
   ["src/screens/todo/TodoScreen.tsx","PATCH","/api/tasks/:id"],
   ["src/screens/todo/TodoScreen.tsx","POST","/api/agent/actions/:id/accept"],

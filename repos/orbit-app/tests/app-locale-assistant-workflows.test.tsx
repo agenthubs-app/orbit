@@ -31,7 +31,7 @@ const workflowScreens = [
   "src/screens/tasks/RelationshipTaskTools.tsx",
   "src/screens/tasks/TaskDetailScreen.tsx",
   "src/screens/tasks/TasksScreen.tsx",
-  "src/screens/today/TodayScreen.tsx",
+  "src/screens/todo/TodoScreen.tsx",
   "src/screens/schedule/PersonalScheduleList.tsx",
   "src/screens/schedule/PersonalScheduleScreen.tsx",
   "src/screens/schedule/ScheduleEventPreviewScreen.tsx",

@@ -179,10 +179,6 @@
     "src/screens/tasks/TasksScreen.tsx": {
       "oldComponent": 4,
       "tablist": 2
-    },
-    "src/screens/today/TodayScreen.tsx": {
-      "oldComponent": 4,
-      "controls": 1
     }
   }
 }

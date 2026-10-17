@@ -20,7 +20,6 @@ export const useFocusEffect = effect => useEffect(effect, [effect]);
 import { View } from "react-native";
 import { aiConversationPayload, emptyAiConversationPayload, aiSessionListPayload } from "./tests/helpers/ai-fixtures";
 import { taskPageFixture } from "./tests/helpers/task-page-fixture";
-import { todayTaskWindow } from "./src/view-models/today-task-pages";
 let revision = 0; const listeners = new Set();
 const rerender = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = { kind: "success", empty: false, requests: [], navigation: [], refreshes: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
@@ -75,14 +74,6 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
     if (state.kind === "loading") return new Promise(() => {});
     return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: dataFor(path), error: { code: "READ_FAILED", message: "连接暂时失败" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
   }
-  // Today reads its bounded task page through the API client (taskMode=page).
-  if (method === "get" && path.startsWith("/api/today?")) {
-    if (state.kind === "loading") return new Promise(() => {});
-    const timeZone = new URLSearchParams(path.split("?")[1]).get("timeZone");
-    const taskPage = { ...taskPageFixture(state.empty ? [] : [task], "reader", new URLSearchParams("status=open&scope=all")), dueWindow: todayTaskWindow("2026-09-08", timeZone) };
-    const suggestions = [{ id: "suggestion-one", title: "确认参会伙伴", reason: "安排会面", category: "relationship", status: "pending" }];
-    return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: { taskMode: "page", date: "2026-09-08", timeZone, taskPage, completedCount: 1, summary: { openTaskCount: taskPage.total, completedCount: 1, suggestionCount: suggestions.length, scheduleCount: 0 }, suggestions, schedule: [] }, error: { code: "READ_FAILED", message: "连接暂时失败" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
-  }
   state.requests.push({ method, path, body: options?.body });
   if (method === "get" && path.startsWith("/api/schedule-items?")) {
     state.requests[state.requests.length - 1].headers = options?.headers;
@@ -130,7 +121,7 @@ export const useSyncedCollection = () => ({ status: "local-ready", records: [], 
 test.before(async () => {
   // Legacy redirect behavior is covered by ink-signal-followups. This fixture
   // exercises the retained tools in the unified relationship workspace.
-  const screens = { ai: "ai/AiScreen", conversation: "ai/AiConversationScreen", actions: "ai/AgentActionsScreen", chat: "chat/RelationshipChatScreen", thread: "chat/RelationshipChatDetailScreen", inbox: "inbox/RelationshipInboxScreen", inboxThread: "inbox/RelationshipInboxScreen", today: "today/TodayScreen", tasks: "tasks/TasksScreen", task: "tasks/TaskDetailScreen", schedule: "schedule/ScheduleScreen", preview: "schedule/ScheduleEventPreviewScreen", followups: "tasks/TasksScreen", ledger: "agent/AgentLedgerScreen" };
+  const screens = { ai: "ai/AiScreen", conversation: "ai/AiConversationScreen", actions: "ai/AgentActionsScreen", chat: "chat/RelationshipChatScreen", thread: "chat/RelationshipChatDetailScreen", inbox: "inbox/RelationshipInboxScreen", inboxThread: "inbox/RelationshipInboxScreen", tasks: "tasks/TasksScreen", task: "tasks/TaskDetailScreen", schedule: "schedule/ScheduleScreen", preview: "schedule/ScheduleEventPreviewScreen", followups: "tasks/TasksScreen", ledger: "agent/AgentLedgerScreen" };
   const imports = Object.entries(screens).map(([key, path]) => `import { ${key === "ledger" ? "AllActionsAgentLedgerScreen" : key === "inboxThread" ? "RelationshipInboxThreadScreen" : path.split("/")[1]} as ${key} } from "./src/screens/${path}";`).join("\n");
   const result = await build({ stdin: { contents: `${imports}\nimport React from "react"; import { createRoot } from "react-dom/client"; const screens = { ${Object.keys(screens).join(",")} }; const Screen = screens[new URLSearchParams(location.search).get("screen")]; createRoot(document.getElementById("root")).render(<Screen />);`, loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "workspace-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "workspace-native" }));
@@ -324,9 +315,9 @@ test("AI next actions uses open sections and clear section hierarchy", async t =
   assert.deepEqual(await heading.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["14.5px", "21px", "800"]);
   assert.equal(await heading.locator("..").locator("..").locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
 });
-for (const [screen, label] of [["actions", "确认建议"], ["today", "加入待办：确认参会伙伴"], ["followups", "生成候选"], ["ledger", "确认执行"]]) {
+for (const [screen, label] of [["actions", "确认建议"], ["followups", "生成候选"], ["ledger", "确认执行"]]) {
   test(`${screen}: successful workspace exposes a reachable primary action without implicit writes`, async t => {
-    const page = await open(t, screen!, "dark"); await fits(page.getByRole("button", { name: label!, exact: true }).first(), screen === "today" || screen === "followups" ? 44 : 50); await noWrites(page);
+    const page = await open(t, screen!, "dark"); await fits(page.getByRole("button", { name: label!, exact: true }).first(), screen === "followups" ? 44 : 50); await noWrites(page);
   });
 }
 test("inbox mail composer has a full-size primary preview while cancellation stays local", async t => {
@@ -354,10 +345,10 @@ test("workspace actions grow with doubled text while keeping labels inside the p
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-workspaces-${screen}-large-dark.png`, fullPage: true });
   }
 });
-for (const screen of ["tasks", "task", "chat", "thread", "schedule", "today", "followups", "ledger", "actions", "conversation"]) {
+for (const screen of ["tasks", "task", "chat", "thread", "schedule", "followups", "ledger", "actions", "conversation"]) {
   test(`${screen}: resource failure remains visible without write effects`, async t => {
     // Sprint 0131: offline pages with no device copy yet say so calmly (the read is not an error); the others still show the read failure.
-    const offlineCopyPage = ["task", "today", "ledger", "actions", "conversation"].includes(screen);
+    const offlineCopyPage = ["task", "ledger", "actions", "conversation"].includes(screen);
     const page = await open(t, screen); await page.evaluate(() => (window as any).fixture.update({ kind: "offline" })); await page.getByText(offlineCopyPage ? "这项内容还没保存在这台设备上，联网打开一次后断网也能看。" : "连接暂时失败", { exact: true }).first().waitFor(); await noWrites(page);
   });
 }

@@ -120,6 +120,17 @@ test('To-do decisions have explicit online-only write policies', () => {
   assert.ok(writes.some(row => row.endpointTemplate === '/api/agent/ledger/:id/transition'));
 });
 
+test('exact-task lifecycle resolution stays actor-scoped and never persists locally', () => {
+  const surface = surfaces.find(row => row.consumerFile === 'src/screens/todo/TodoScreen.tsx'
+    && row.method === 'GET' && row.endpointTemplate === '/api/relationship-tasks/:id/resolve');
+  assert.ok(surface);
+  assert.equal(surface.domainId, 'tasks');
+  assert.equal(surface.readPersistence, 'online_only_secret');
+  assert.equal(surface.binaryPolicy, 'never_local');
+  assert.equal(surface.mutationPolicy, 'online_only');
+  assert.equal(resolveReadSurface('GET', '/api/relationship-tasks/task-1/resolve'), surface);
+});
+
 test('path matching rejects malformed paths and never widens literal or segment boundaries', () => {
   for (const path of ['/api/notes/', '/api/notes/a/extra', '/api/notes//', '/api/notes/%2f', '/api/notes/%2e%2e', '/api/notes/%ZZ', 'https://other.test/api/notes/a', '//api/notes/a', '/api/notes/../a']) {
     assert.equal(matchTemplate('/api/notes/:id', path), false, path);

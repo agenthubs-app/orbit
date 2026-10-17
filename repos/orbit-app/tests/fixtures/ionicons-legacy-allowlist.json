@@ -40,7 +40,6 @@
     "src/screens/schedule/ScheduleScreen.tsx",
     "src/screens/settings/SettingsScreen.tsx",
     "src/screens/tasks/TaskDetailScreen.tsx",
-    "src/screens/tasks/TasksScreen.tsx",
-    "src/screens/today/TodayScreen.tsx"
+    "src/screens/tasks/TasksScreen.tsx"
   ]
 }
