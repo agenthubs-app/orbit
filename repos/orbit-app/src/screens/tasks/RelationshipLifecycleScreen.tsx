@@ -31,7 +31,7 @@ export function RelationshipLifecycleScreen() {
 function LifecycleEditor({ scopeKey, ready, actorId, connectionId, targetTaskId, targetContactId }: { scopeKey: string; ready: boolean; actorId: string; connectionId: string; targetTaskId: string | undefined; targetContactId: string | undefined }) {
   const client = useOrbitApiClient({ scopeKey });
   const { timeZone, canSave } = useOrbitTimeZone();
-  const { language } = useOrbitLocale();
+  const { language, t } = useOrbitLocale();
   const { colors } = useTheme();
   const text = (zh: string, en: string, ja: string) => language === "zh" ? zh : language === "ja" ? ja : en;
   const [snapshot, setSnapshot] = useState<RelationshipLifecycleSnapshotDTO | null>(null);
@@ -116,7 +116,7 @@ function LifecycleEditor({ scopeKey, ready, actorId, connectionId, targetTaskId,
     {message ? <Text accessibilityRole="alert" style={{ color: colors.ink }}>{message}</Text> : null}
     {snapshot ? <><DataCard title={text("本次完成的跟进", "Follow-up to complete", "完了するフォローアップ")}>
       {open.length ? open.map(task => <Pressable key={task.taskId} disabled={busy} accessibilityRole="radio" accessibilityState={{ checked: draft.taskId === task.taskId }} onPress={() => setDraft(previous => ({ ...previous, taskId: task.taskId }))}><Text style={{ color: draft.taskId === task.taskId ? colors.accentText : colors.ink, paddingVertical: 10 }}>{draft.taskId === task.taskId ? "● " : "○ "}{task.title}</Text></Pressable>) : targetTaskId !== undefined
-        ? <Text accessibilityRole="alert" style={{ color: colors.ink3Text }}>{text("当前跟进已不可用，请返回任务列表刷新。", "This follow-up is no longer available. Refresh the task list.", "このフォローアップは利用できません。タスク一覧を更新してください。")}</Text>
+        ? <Text accessibilityRole="alert" style={{ color: colors.ink3Text }}>{t("relationshipTasks.lifecycleUnavailable")}</Text>
         : <Text style={{ color: colors.ink3Text }}>{text("没有待处理的跟进", "No open follow-ups", "未完了のフォローアップはありません")}</Text>}
     </DataCard>{open.length ? <DataCard title={text("关系下一步", "Relationship next step", "関係の次のステップ")}>
       {([ ["next_task", text("继续跟进", "Continue following up", "フォローアップを継続")], ["active", text("转为进行中", "Set active goal", "進行中にする")], ["nurture", text("定期维护", "Keep in touch", "定期的に連絡")], ["archived", text("归档关系", "Archive relationship", "関係をアーカイブ")] ] as const).map(([kind, label]) => <Pressable key={kind} disabled={busy || (kind === "next_task" && !["needs_follow_up", "nurture"].includes(snapshot.connection.stage))} accessibilityRole="radio" accessibilityState={{ checked: draft.kind === kind }} onPress={() => setDraft(previous => ({ ...previous, kind }))}><Text style={{ color: draft.kind === kind ? colors.accentText : colors.ink, paddingVertical: 8 }}>{draft.kind === kind ? "● " : "○ "}{label}</Text></Pressable>)}

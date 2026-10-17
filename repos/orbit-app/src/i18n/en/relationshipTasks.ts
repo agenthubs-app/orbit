@@ -24,4 +24,5 @@ export const relationshipTasks = {
   "relationshipTasks.refreshReminders": "Refresh reminders",
   "relationshipTasks.disclaimer": "Suggestions and reminder candidates require review and are not saved tasks.",
   "relationshipTasks.backSchedule": "Back to calendar",
+  "relationshipTasks.lifecycleUnavailable": "This follow-up is no longer available. Refresh the task list.",
 } as const;

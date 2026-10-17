@@ -24,4 +24,5 @@ export const relationshipTasks = {
   "relationshipTasks.refreshReminders": "リマインダーを更新",
   "relationshipTasks.disclaimer": "提案とリマインダー候補は確認が必要で、保存済みタスクには含まれません。",
   "relationshipTasks.backSchedule": "カレンダーに戻る",
+  "relationshipTasks.lifecycleUnavailable": "このフォローアップは利用できません。タスク一覧を更新してください。",
 } as const;

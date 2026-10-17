@@ -24,4 +24,5 @@ export const relationshipTasks = {
   "relationshipTasks.refreshReminders": "刷新提醒",
   "relationshipTasks.disclaimer": "建议与提醒候选需要复核，不计入已保存的待办。",
   "relationshipTasks.backSchedule": "回到日程",
+  "relationshipTasks.lifecycleUnavailable": "当前跟进已不可用，请返回任务列表刷新。",
 } as const;
