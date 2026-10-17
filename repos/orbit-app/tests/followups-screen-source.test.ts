@@ -1,18 +1,18 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
 const repoRoot = new URL("..", import.meta.url).pathname;
 const read = (file: string) => readFileSync(join(repoRoot, file), "utf8");
-const screen = read("src/screens/followups/FollowupsScreen.tsx");
 const tools = read("src/screens/tasks/RelationshipTaskTools.tsx");
 
 test("legacy route keeps its private wrapper and delegates to a normalized relationship list", () => {
-  assert.match(read("app/followups.tsx"), /withOrbitPrivateRoute\(FollowupsScreen\)/);
+  const route = read("app/followups.tsx");
+  assert.match(route, /withOrbitPrivateRoute\(LegacyTaskRedirect\)/);
   // R05: the hop is the shared Task redirect (/followups → /task?seg=todo&scope=relationship).
-  assert.match(screen, /<LegacyTaskRedirect \/>/);
-  assert.doesNotMatch(screen, /useApiResource|useOrbitApiClient|client\.(post|patch)/);
+  assert.equal(existsSync(join(repoRoot, "src/screens/followups/FollowupsScreen.tsx")), false);
+  assert.doesNotMatch(route, /useApiResource|useOrbitApiClient|client\.(post|patch)/);
 });
 
 test("unified tools consume the published opaque templates and canonical history entry", () => {

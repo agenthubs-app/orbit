@@ -44,5 +44,5 @@ test("every way into a tab page goes through openMainTab", () => {
   assert.match(read("src/screens/home/HomeDashboardScreen.tsx"), /if \(isTabPageHref\(href\)\) openMainTab\(router, href\)/u, "home shortcuts");
   assert.match(read("src/components/OrbitNotificationsCoordinator.tsx"), /openMainTab\(router, href\)/u, "notifications");
   assert.match(read("src/components/LegacyTaskRedirect.tsx"), /openMainTab\(router, target\)/u, "old Task addresses pushed by old screens");
-  assert.match(read("src/screens/followups/FollowupsScreen.tsx"), /<LegacyTaskRedirect \/>/u, "/followups");
+  assert.match(read("app/followups.tsx"), /withOrbitPrivateRoute\(LegacyTaskRedirect\)/u, "/followups");
 });

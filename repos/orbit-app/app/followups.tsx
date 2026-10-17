@@ -1,4 +1,4 @@
-import { FollowupsScreen } from "../src/screens/followups/FollowupsScreen";
+import { LegacyTaskRedirect } from "../src/components/LegacyTaskRedirect";
 import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
 
-export default withOrbitPrivateRoute(FollowupsScreen);
+export default withOrbitPrivateRoute(LegacyTaskRedirect);
