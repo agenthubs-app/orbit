@@ -12,7 +12,7 @@ const rows: MyEventSourceRow[] = [
   { endsAt: null, eventId: "e-cfo", startsAt: "2026-10-07T19:00:00+09:00", status: "planned", title: "CFO Night Tokyo vol.18", venue: "渋谷ストリーム" },
   { endsAt: null, eventId: "e-cfo", startsAt: "2026-10-07T19:00:00+09:00", status: "registered", title: "CFO Night Tokyo vol.18", venue: "渋谷ストリーム" },
   { endsAt: "2026-10-16T18:00:00+09:00", eventId: "e-saas", startsAt: "2026-10-16T10:00:00+09:00", status: "pending_review", title: "Japan SaaS Summit 2026 秋", venue: "東京国際フォーラム" },
-  { endsAt: null, eventId: "e-dx", startsAt: "2026-10-23T13:00:00+09:00", status: "cancelled", title: "製造業DXカンファレンス 大阪", venue: "グランフロント大阪" },
+  { endsAt: null, eventId: "e-dx", startsAt: "2026-10-23T13:00:00+09:00", status: "cancelled", title: "製造業 DX カンファレンス 大阪", venue: "グランフロント大阪" },
   { endsAt: null, eventId: "e-past", startsAt: "2026-09-30T19:00:00+09:00", status: "attended", title: "過去の勉強会", venue: null },
   { endsAt: null, eventId: "e-past2", startsAt: "2026-09-20T19:00:00+09:00", status: "registered", title: "未チェックイン", venue: null },
   { assessmentId: "evas_1", endsAt: null, eventId: "assessment:evas_1", external: true, score: 74, startsAt: "2026-10-21T08:00:00+09:00", status: "planned", title: "丸の内スタートアップ朝会 #42", venue: "丸の内" },

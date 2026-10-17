@@ -560,10 +560,10 @@ test("M6: a failed undo never says 「取り消しました」", async (t) => {
 
 test("m4: today's chance with 0 points draws no 「+0」 chip", async (t) => {
   const detail = clone(base.detail);
-  detail.todayChance = { href: detail.todayChance!.href, label: "製造業DXカンファレンス 大阪", points: 0 };
+  detail.todayChance = { href: detail.todayChance!.href, label: "製造業 DX カンファレンス 大阪", points: 0 };
   const page = await screen(t, { handlers: [detailRead(detail)], planId: PLAN, view: "overview" });
   const chance = page.locator("[data-plan-chance]");
-  await chance.getByText("製造業DXカンファレンス 大阪").waitFor();
+  await chance.getByText("製造業 DX カンファレンス 大阪").waitFor();
   assert.equal(await chance.getByText("+0").count(), 0);
 });
 

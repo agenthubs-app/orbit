@@ -51,7 +51,7 @@ export const IMPORT_DESIGN_SAMPLE = {
   event: {
     events: [
       { eventId: "cfo", title: "CFO Night Tokyo", meta: "10月7日（火）· 渋谷", cards: 4 },
-      { eventId: "dx", title: "製造業DX カンファレンス 大阪", meta: "9月26日（金）· グランフロント大阪", cards: 9 },
+      { eventId: "dx", title: "製造業 DX カンファレンス 大阪", meta: "9月26日（金）· グランフロント大阪", cards: 9 },
       { eventId: "saas", title: "SaaS Summit 2026", meta: "9月12日（金）· 東京国際フォーラム", cards: 6 },
     ],
     people: [

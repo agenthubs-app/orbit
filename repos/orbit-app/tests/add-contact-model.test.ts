@@ -241,7 +241,7 @@ test("手入力: a name alone is checked; 統合 lists only differing fields; th
   assert.deepEqual(createBody(form, { kind: "separate" }, "k2").allowDuplicate, true);
   assert.equal(formDensity({ ...EMPTY_MANUAL_FORM, displayName: "A" }), 1);
   assert.equal(formDensity({ ...form, met: { eventId: "e", kind: "event" } }), 2);
-  const chips = eventChips([{ id: "far", startsAt: "2026-12-30T00:00:00Z", title: "Far" }, { id: "near", startsAt: "2026-10-07T10:00:00Z", title: "CFO Night" }, { id: "tomorrow", startsAt: "2026-10-12T01:00:00Z", title: "製造業DX" }, { id: "x" }], new Date("2026-10-11T00:00:00Z"));
+  const chips = eventChips([{ id: "far", startsAt: "2026-12-30T00:00:00Z", title: "Far" }, { id: "near", startsAt: "2026-10-07T10:00:00Z", title: "CFO Night" }, { id: "tomorrow", startsAt: "2026-10-12T01:00:00Z", title: "製造業 DX" }, { id: "x" }], new Date("2026-10-11T00:00:00Z"));
   // R12 review M3: only events that have started (an upcoming one is not 「会った場所」 yet).
   assert.deepEqual(chips.map((chip) => chip.eventId), ["near"]);
 });

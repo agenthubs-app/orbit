@@ -518,7 +518,7 @@ const legacyDetail: PlanLegacyDetail = {
     { kind: "action", phase: "p2", status: "in_progress", title: "展示会の出展を決める" },
     { contactName: "伊藤 直子", detail: "決裁の壁打ち", kind: "network_need", organization: "株式会社ハルモニア", phase: null, status: "linked", title: "工場長クラスの決裁者" },
     { contactName: null, kind: "network_need", phase: null, status: "open", title: "事業会社の CVC 担当者" },
-    { kind: "event", phase: null, status: "recommended", title: "製造業DXカンファレンス" },
+    { kind: "event", phase: null, status: "recommended", title: "製造業 DX カンファレンス" },
   ],
   needs: 1, planId: "v1-1", startsOn: "2026-06-01", status: "active",
 };

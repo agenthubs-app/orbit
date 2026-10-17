@@ -72,5 +72,5 @@
 | R27 Web 未登录详情「あなた N回」 | 已在实现里隐藏（服务端不给），画板 #394 仍画着，等 design-decisions 按 §36 改画板（10-16） | 拿到新序号后把 W-R27-P41 改指重跑 |
 | R27 App A-R27-26 | b2 #26 画板把一段 CSS 审计注释画成了可见文字（topbar 下两行），整屏下移约 40px；已报主会话（10-15） | 画板修正后清缓存重跑 A-R27-26（同时受 seg G23 与 expo-brightness 两条影响） |
 | R22-02 | 计划 v2 的生产 AI 开关和月上限 | 等用户拍板 |
-| 用语统一 §45（文字） | design-decisions 10-17 按用语规范把画板「製造業DX」「DX推進室」等改成带半角空格；代码里的示例数据和测试还是旧写法（`features/events/design-fixtures`、`shared/mock/demo-world/*`、`shared/contract/host-console.ts`、`orbit-2026/host/matching-sample.ts`、`features/plans/v2/design-fixtures/a.ts c.ts`、`features/contacts/import/design-samples.ts`、`scripts/r26/make-blurry-poster.mjs` 及对应测试）；R17 还在改 host 文件，等它收口 | 开一个小会话一次改完并跑受影响测试；画板与实现文字差在此之前按 [data] 归因 |
+| 用语统一 §45（文字） | **done（2026-10-17，提交号见 `git log -1 -- 本文件` 的 fix(copy) §45 提交）**：orbits / orbit-app 示例数据、契约示例、脚本、测试里「製造業DX」「DX推進室」「中部ものづくりDX協議会」「Seedline株式会社」「代表取締役CEO」「青葉VC」等拉丁字母与日文紧贴写法已加半角空格（保留シリーズA、N人、To-do、・并列两侧）；`shared/contract/host-console.ts` 已 `sync:contract`；copy-qa 示例文字检查（demo-world-copy）转绿。遗留：生产代码里的 ja 文案（`orbit-event-content.ts`、`contact-detail-localization.ts`、App i18n 目录等）仍有紧贴写法，属 copy:qa 目录检查范围，未动 | 已做 |
 | 真机 | 触感和相机只能在真机上验 | 合回前在真机上走查（README 合回前清单） |

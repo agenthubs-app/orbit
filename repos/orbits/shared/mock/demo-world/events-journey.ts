@@ -93,7 +93,7 @@ const SUMMIT = row({ area: "tokyo", emoji: "🎤", eventId: "demo-event-saas-sum
 const CVC = row({ area: "tokyo", emoji: "🤝", eventId: "demo-event-cvc-meetup-7", organizerId: "org-cvc", organizerName: "CVC Lab", priceYen: 3000, reason: "CVC 担当者 20名が参加予定", reasonDetail: REASON_DETAIL_APP, score: 77, startsAt: "2026-10-27T19:00:00+09:00", title: "スタートアップ×CVC ミートアップ #7", venue: "大手町", verdict: "recommend" });
 const SERIES_A = row({ area: "online", emoji: "📚", eventId: "demo-event-series-a-study", organizerId: "org-series-a", organizerName: "シリーズA 実務研究会", priceYen: 0, reason: "伊藤さん（ハルモニア CFO）が登壇", reasonDetail: REASON_DETAIL_APP, score: 71, startsAt: "2026-11-12T13:00:00+09:00", title: "シリーズA 実務勉強会", venue: "オンライン", verdict: "recommend" });
 const ASAKAI = row({ area: "tokyo", emoji: "☕", eventId: "demo-event-marunouchi-asakai-42", organizerId: "org-marunouchi-lab", organizerName: "丸の内イノベーションラボ", priceYen: 1000, score: 41, startsAt: "2026-10-21T08:00:00+09:00", title: "丸の内スタートアップ朝会 #42", venue: "丸の内", verdict: "skip" });
-const MFG_DX = row({ area: "osaka", emoji: "🏭", eventId: "demo-event-mfg-dx-osaka", organizerId: "org-mfg-dx", organizerName: "製造業DX推進協議会", priceYen: 0, score: 68, startsAt: "2026-10-23T13:00:00+09:00", title: "製造業DXカンファレンス 大阪", venue: "グランフロント大阪", verdict: "conditional" });
+const MFG_DX = row({ area: "osaka", emoji: "🏭", eventId: "demo-event-mfg-dx-osaka", organizerId: "org-mfg-dx", organizerName: "製造業 DX 推進協議会", priceYen: 0, score: 68, startsAt: "2026-10-23T13:00:00+09:00", title: "製造業 DX カンファレンス 大阪", venue: "グランフロント大阪", verdict: "conditional" });
 const FINTECH = row({ area: "tokyo", emoji: "🎤", eventId: "demo-event-fintech-forum", organizerId: "org-fintech", organizerName: "FinTech Forum", priceYen: 8000, score: 58, startsAt: "2026-11-05T13:00:00+09:00", title: "FinTech Forum Tokyo", venue: "虎ノ門ヒルズ", verdict: "conditional" });
 
 const COMMUNITY: readonly EventDiscoverRow[] = [
@@ -101,7 +101,7 @@ const COMMUNITY: readonly EventDiscoverRow[] = [
   row({ area: "tokyo", badges: ["early_access"], communityReason: "attended", emoji: "🥂", eventId: "demo-event-cfo-night-19", organizerId: "org-cfo-night", organizerName: "CFO Night 実行委員会", priceYen: 5000, startsAt: "2026-11-04T19:00:00+09:00", title: "CFO Night Tokyo vol.19", venue: "渋谷" }),
 ];
 
-/** 探す · 少量（Web #12：今週 · 東京 · 製造業DX 的筛选结果）。 */
+/** 探す · 少量（Web #12：今週 · 東京 · 製造業 DX 的筛选结果）。 */
 const FEW_DETAIL = `プラン「${JOURNEY_GOAL}」で会うべき人と重なるため。根拠：公式の登壇者リスト · 過去回の参加者構成。`;
 const FEW_ROWS: readonly EventDiscoverRow[] = [
   row({ area: "tokyo", emoji: "🤝", eventId: "demo-event-mfg-saas-night", knownAttendees: ["高橋", "加藤"], meetCandidates: [{ emoji: "💼", label: "VC パートナー 3名（登壇）" }, { emoji: "🏭", label: "製造業 DX 責任者（展示 12社）" }, { emoji: "👋", label: "高橋さん・加藤さんも参加予定" }], priceYen: 2000, reason: "製造業の DX 責任者 15名", reasonDetail: FEW_DETAIL, score: 64, startsAt: "2026-10-09T19:00:00+09:00", title: "製造業 × SaaS ナイト", venue: "日本橋", verdict: "conditional" }),

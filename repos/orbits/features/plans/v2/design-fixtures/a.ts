@@ -241,7 +241,7 @@ export const fixturesA: Record<string, PlanDesignFixture> = {
     awards: [{ at: jst("2026-10-09"), contactId: "demo-person-ito", key: "cfo", points: 10 }, ...S46],
     candidates: [
       { contactId: "demo-person-sasaki", key: "vc_partner", reason: "シード中心で、A はフォローで入る方針", strength: "candidate", tier: "ai" },
-      { contactId: "demo-person-suzuki", key: "cvc", reason: "北辰製作所の DX推進室 室長", strength: "candidate", tier: "ai" },
+      { contactId: "demo-person-suzuki", key: "cvc", reason: "北辰製作所の DX 推進室 室長", strength: "candidate", tier: "ai" },
     ],
     linked: OVERVIEW_LINKED,
     extraLog: [dismissStep1, dismissStep4, memoYamamoto],
@@ -270,7 +270,7 @@ function fact(eventId: string, title: string, startsAt: string, venue: string, f
 }
 
 /**
- * web.html EVREC（Japan SaaS Summit 2026 秋 · CFO Night Tokyo vol.18 · 製造業DXカンファレンス 大阪）+ 起業家 / エンジェルが来る 1 场，
+ * web.html EVREC（Japan SaaS Summit 2026 秋 · CFO Night Tokyo vol.18 · 製造業 DX カンファレンス 大阪）+ 起業家 / エンジェルが来る 1 场，
  * 让类型卡的「会える活動」= CFO 1 · 起業家 2 · エンジェル 1 · VC 2 · CVC 1 · 弁護士 0（同 web.html PER.evn）。
  */
 const SERIES_A_EVENTS = (): PlanEventFact[] => [
@@ -278,7 +278,7 @@ const SERIES_A_EVENTS = (): PlanEventFact[] => [
   fact("fx-a-ev-saas-summit", "Japan SaaS Summit 2026 秋", jst("2026-10-16"), "東京国際フォーラム", { exchangeCorner: true, expected: { cvc: 4, funded_founder: 12, vc_partner: 5 }, fee: 15000, firstDegree: 2, matching: true, nameTags: true, networkingMinutes: 45, travelMinutes: 30 }),
   fact("fx-a-ev-cfo-night", "CFO Night Tokyo vol.18", `${today()}T19:00:00+09:00`, "渋谷ストリーム", { expected: { cfo: 10, vc_partner: 2 }, fee: 3000, firstDegree: 1, nameTags: true, networkingMinutes: 60, travelMinutes: 25 }),
   // 大阪：画板上只露出日期 / 会場 / CVC 约 3 名，其余事实（夜场、申込者タグ、人脈 2 名、名札、移動）只为让它排第 3（规则分 50，同稿 68 的「条件付き」档）。
-  fact("fx-a-ev-dx-osaka", "製造業DXカンファレンス 大阪", jst("2026-10-23", "18:30"), "グランフロント大阪", { expected: { cvc: 3 }, fee: 0, firstDegree: 2, nameTags: true, networkingMinutes: 30, travelMinutes: 100 }),
+  fact("fx-a-ev-dx-osaka", "製造業 DX カンファレンス 大阪", jst("2026-10-23", "18:30"), "グランフロント大阪", { expected: { cvc: 3 }, fee: 0, firstDegree: 2, nameTags: true, networkingMinutes: 30, travelMinutes: 100 }),
   fact("fx-a-ev-founders", "SaaS 創業者ミートアップ", jst("2026-10-20", "19:00"), "渋谷", { attendeeSource: "past", expected: { angel: 2, funded_founder: 6 }, fee: 0, firstDegree: 1, networkingMinutes: 60, travelMinutes: 20 }),
 ];
 
@@ -288,10 +288,10 @@ const SERIES_A_EVENTS = (): PlanEventFact[] => [
  */
 const LAW_EVENTS = (): PlanEventFact[] => SERIES_A_EVENTS().map((event) => (event.eventId === "fx-a-ev-saas-summit" || event.eventId === "fx-a-ev-cfo-night" ? { ...event, facts: { ...event.facts, expected: { ...event.facts.expected, lawyer: 1 } } } : event));
 
-/** b4 CVC_EV / b12 CVC_E5（CVC Meetup Tokyo #12 · 製造業DXカンファレンス 大阪 · Japan SaaS Summit 2026 秋）。 */
+/** b4 CVC_EV / b12 CVC_E5（CVC Meetup Tokyo #12 · 製造業 DX カンファレンス 大阪 · Japan SaaS Summit 2026 秋）。 */
 const CVC_EVENTS = (): PlanEventFact[] => [
   fact("fx-a-ev-cvc-meetup", "CVC Meetup Tokyo #12", jst("2026-10-22", "19:00"), "大手町", { attendeeSource: "organizer", expected: { cvc: 14 }, fee: 3000, firstDegree: 1, nameTags: true, networkingMinutes: 60, travelMinutes: 20 }),
-  fact("fx-a-ev-dx-osaka", "製造業DXカンファレンス 大阪", jst("2026-10-23"), "グランフロント大阪", { attendeeSource: "organizer", expected: { cvc: 9 }, fee: 0, networkingMinutes: 30, travelMinutes: 150 }),
+  fact("fx-a-ev-dx-osaka", "製造業 DX カンファレンス 大阪", jst("2026-10-23"), "グランフロント大阪", { attendeeSource: "organizer", expected: { cvc: 9 }, fee: 0, networkingMinutes: 30, travelMinutes: 150 }),
   fact("fx-a-ev-saas-summit", "Japan SaaS Summit 2026 秋", jst("2026-10-16"), "東京国際フォーラム", { attendeeSource: "speakers", exchangeCorner: true, expected: { cvc: 4, funded_founder: 12, vc_partner: 5 }, fee: 15000, firstDegree: 2, networkingMinutes: 45, travelMinutes: 30 }),
 ];
 

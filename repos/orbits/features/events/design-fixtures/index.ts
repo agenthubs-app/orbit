@@ -75,7 +75,7 @@ const simple = (id: string, title: string, startsAt: string, venue: string, pric
 });
 
 export const cfoNight = (now = new Date()) => simple("design-assessment-cfo-night", "CFO Night Tokyo vol.18", "2026-10-07T19:00:00+09:00", "渋谷ストリーム", "¥5,000", 74, "recommend", 6, now, [33, 12, 14, 8, 7]);
-export const dxOsaka = (now = new Date()) => simple("design-assessment-dx-osaka", "製造業DXカンファレンス 大阪", "2026-10-23T13:00:00+09:00", "グランフロント大阪", "無料", 68, "conditional", 9, now, [30, 11, 14, 6, 7]);
+export const dxOsaka = (now = new Date()) => simple("design-assessment-dx-osaka", "製造業 DX カンファレンス 大阪", "2026-10-23T13:00:00+09:00", "グランフロント大阪", "無料", 68, "conditional", 9, now, [30, 11, 14, 6, 7]);
 export const asakai = (now = new Date()) => simple("design-assessment-asakai", "丸の内スタートアップ朝会 #42", "2026-10-21T08:00:00+09:00", "丸の内", "¥1,000", 41, "skip", 2, now, [15, 8, 10, 3, 5]);
 export const extraA = (now = new Date()) => simple("design-assessment-extra-a", "CVC × スタートアップ ミートアップ", "2026-10-29T18:30:00+09:00", "虎ノ門ヒルズ", "¥3,000", 77, "recommend", 8, now, [34, 12, 15, 8, 8]);
 export const extraB = (now = new Date()) => simple("design-assessment-extra-b", "関西ものづくりピッチ 2026", "2026-11-05T13:00:00+09:00", "うめきたホール", "無料", 58, "conditional", 4, now, [24, 10, 13, 5, 6]);
@@ -109,7 +109,7 @@ export const EVENT_DESIGN_FIXTURES: Readonly<Record<string, (now?: Date) => Even
     mine: [
       going("design-event-cfo", "CFO Night Tokyo vol.18", "2026-10-07T19:00:00+09:00", "渋谷ストリーム", 6, "registered", now),
       going("design-event-saas", "Japan SaaS Summit 2026 秋", "2026-10-16T10:00:00+09:00", "東京国際フォーラム", 14, "registered", now),
-      going("design-event-dx", "製造業DXカンファレンス 大阪", "2026-10-23T13:00:00+09:00", "グランフロント大阪", 9, "planned", now),
+      going("design-event-dx", "製造業 DX カンファレンス 大阪", "2026-10-23T13:00:00+09:00", "グランフロント大阪", 9, "planned", now),
     ],
   }),
   /** b8 #0 / #2：1024 大量（評価済み 6件）。 */
@@ -121,7 +121,7 @@ export const EVENT_DESIGN_FIXTURES: Readonly<Record<string, (now?: Date) => Even
       // 右栏「評価の詳細」= 下一场参加予定的评估（b12 #310）：参加予定行带上评估 id（只加数据）。
       ...EVENT_DESIGN_FIXTURES["assess-many"]!(now).mine.map((row) => ({ ...row, assessmentId: GOING_ASSESSMENT[row.eventId] ?? null })),
       going("design-event-past-1", "SaaS Summit 2026", "2026-09-12T10:00:00+09:00", "東京国際フォーラム", 0, "attended", now),
-      going("design-event-past-2", "製造業DX カンファレンス 大阪", "2026-09-26T10:00:00+09:00", "グランフロント大阪", 0, "registered", now),
+      going("design-event-past-2", "製造業 DX カンファレンス 大阪", "2026-09-26T10:00:00+09:00", "グランフロント大阪", 0, "registered", now),
     ],
   }),
   /** b12 W-R26-30e：参加予定 空。 */

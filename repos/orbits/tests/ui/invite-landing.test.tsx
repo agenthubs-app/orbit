@@ -26,7 +26,7 @@ const fail = (status: number, code: string, reason?: string): Reply => ({ body: 
 const PREVIEW = {
   code: "H8MW-4QZT",
   expiresAt: "2026-10-14T09:00:00.000Z",
-  shared: { displayName: "佐藤 健一", organization: "株式会社ミナトリンク", role: "代表取締役CEO", offering: ["製造業 SaaS の導入知見"], seeking: ["投資家の紹介"] },
+  shared: { displayName: "佐藤 健一", organization: "株式会社ミナトリンク", role: "代表取締役 CEO", offering: ["製造業 SaaS の導入知見"], seeking: ["投資家の紹介"] },
   status: "active",
 };
 const OPEN = { kind: "preview", preview: PREVIEW };
@@ -80,7 +80,7 @@ test("signed out: the inviter's card (no e-mail / phone), code and date, 登録 
   const page = await landing(t, {});
   await page.locator("[data-invite-open]").waitFor();
   const card = page.locator("[data-invite-inviter]");
-  for (const text of ["招待が届いています", "佐藤 健一 さん", "株式会社ミナトリンク · 代表取締役CEO", "製造業 SaaS の導入知見", "投資家の紹介", "提供できること", "求めていること"]) assert.equal(await card.getByText(text, { exact: true }).count(), 1, text);
+  for (const text of ["招待が届いています", "佐藤 健一 さん", "株式会社ミナトリンク · 代表取締役 CEO", "製造業 SaaS の導入知見", "投資家の紹介", "提供できること", "求めていること"]) assert.equal(await card.getByText(text, { exact: true }).count(), 1, text);
   assert.equal(await card.getByText("登録すると、お互いの人脈に追加されます。あなたが選んだ項目だけが相手に届きます。").count(), 1);
   assert.equal(await page.locator("[data-invite-code-line]").textContent(), "H8MW-4QZT · 10/14 まで有効");
   assert.equal(await page.locator("[data-invite-signup]").getAttribute("href"), "/app/account/signup?next=%2Fi%2FH8MW-4QZT");

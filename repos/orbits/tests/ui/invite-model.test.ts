@@ -36,7 +36,7 @@ import type { InviteCodePreview } from "../../shared/contract/invite-codes";
 const preview = (patch: Partial<InviteCodePreview> = {}): InviteCodePreview => ({
   code: "H8MW-4QZT",
   expiresAt: "2026-10-14T09:00:00.000Z",
-  shared: { displayName: "松井 遥", organization: "株式会社ソラノテ", role: "取締役COO", offering: ["PoC 先の紹介"], seeking: ["資金調達の相談相手"] },
+  shared: { displayName: "松井 遥", organization: "株式会社ソラノテ", role: "取締役 COO", offering: ["PoC 先の紹介"], seeking: ["資金調達の相談相手"] },
   status: "active",
   ...patch,
 });

@@ -137,7 +137,7 @@ const fail = (status: number, code: string, reason?: string): Reply => ({ body: 
 
 const LINK = (code: string) => `https://orbitailink.com/i/${code}`;
 const MY_PROFILE = { displayName: "佐藤 健一", handles: { email: "sato@example.jp" }, offering: ["製造業 SaaS の導入知見"], organization: "株式会社ミナトリンク", role: "代表取締役", seeking: ["投資家の紹介"], updatedAt: "2026-10-01T00:00:00Z" };
-const INVITER = { displayName: "佐藤 健一", offering: ["製造業 SaaS の導入知見"], organization: "株式会社ミナトリンク", role: "代表取締役CEO", seeking: ["投資家の紹介"] };
+const INVITER = { displayName: "佐藤 健一", offering: ["製造業 SaaS の導入知見"], organization: "株式会社ミナトリンク", role: "代表取締役 CEO", seeking: ["投資家の紹介"] };
 
 function code(value: string, overrides: Record<string, unknown> = {}) {
   return { code: value, createdAt: "2026-10-11T09:00:00+09:00", expiresAt: "2026-10-18T09:00:00+09:00", link: LINK(value), maxUses: 10, shared: { displayName: "佐藤 健一", offering: ["製造業 SaaS の導入知見"], organization: "株式会社ミナトリンク", role: "代表取締役" }, usedCount: 1, ...overrides };
@@ -423,7 +423,7 @@ test("PROFILE_REQUIRED: no name in the profile → a notice with プロフィー
 test("i/<code> signed out: the inviter's card (no e-mail or phone), 登録 / ログイン come back to i/<code>", async (t) => {
   const { page, server } = await open(t, "/i/k7qx2m9p", { signedIn: false, setup: (s) => { s.preview = ok({ code: "K7QX-2M9P", expiresAt: "2026-10-14T09:00:00+09:00", shared: { ...INVITER, email: "leak@example.jp" } }); } });
   await page.getByTestId("invite-open").waitFor();
-  for (const text of ["招待が届いています", "佐藤 健一 さん", "株式会社ミナトリンク · 代表取締役CEO", "製造業 SaaS の導入知見", "投資家の紹介", "K7QX-2M9P · 10/14 まで有効", "登録すると、お互いの人脈に追加されます。あなたが選んだ項目だけが相手に届きます。"]) await page.getByText(text, { exact: true }).waitFor();
+  for (const text of ["招待が届いています", "佐藤 健一 さん", "株式会社ミナトリンク · 代表取締役 CEO", "製造業 SaaS の導入知見", "投資家の紹介", "K7QX-2M9P · 10/14 まで有効", "登録すると、お互いの人脈に追加されます。あなたが選んだ項目だけが相手に届きます。"]) await page.getByText(text, { exact: true }).waitFor();
   assert.equal(await page.getByText("leak@example.jp").count(), 0, "a preview never shows e-mail");
   assert.equal(server.calls[0]!.path, "/api/invite-codes/K7QX-2M9P/preview", "the code is tidied before asking");
   await page.getByTestId("invite-login").click();

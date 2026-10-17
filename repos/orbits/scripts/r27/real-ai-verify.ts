@@ -93,7 +93,7 @@ async function main(): Promise<void> {
     // E4
     const event = { ...mockEventRecords[0]!, title: "CFO Night Tokyo vol.18", description: "上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。", venue: "渋谷ストリーム 4F ホール" };
     const transcript = [
-      { answer: "製造業向け IoT SaaS「ミナトリンク」の代表取締役CEO", field: "positioning" as const, prompt: "あなたの立場は？" },
+      { answer: "製造業向け IoT SaaS「ミナトリンク」の代表取締役 CEO", field: "positioning" as const, prompt: "あなたの立場は？" },
       { answer: "資金調達の相談相手を見つけたい", field: "desiredOutcome" as const, prompt: "今回の参加目的にいちばん近いものは？" },
       { answer: "VC・CVC、上場企業の CFO", field: "targetAttendees" as const, prompt: "どんな方に会いたいですか？" },
       { answer: "工場 DX の現場事情", field: "valueOffered" as const, prompt: "提供できることは？" },

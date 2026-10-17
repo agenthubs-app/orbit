@@ -25,7 +25,7 @@ test("profiles and the public organizer page", hostDatabaseTest, async () => {
     const profiles = createHostProfiles({ client, workspaceId });
     const cfo = await profiles.create(HOST, { displayName: "CFO Night 実行委員会", emoji: "🥂" });
     const twin = await profiles.create(HOST, { displayName: "CFO Night", emoji: "🌙" });
-    const mfg = await profiles.create(HOST, { displayName: "製造業DX 朝会", slug: "mfg-dx-asakai" });
+    const mfg = await profiles.create(HOST, { displayName: "製造業 DX 朝会", slug: "mfg-dx-asakai" });
     assert.deepEqual([cfo.slug, twin.slug, mfg.slug], ["cfo-night", "cfo-night-2", "mfg-dx-asakai"]);
     assert.equal((await profiles.list(HOST)).length, 3, "one person, several organizer pages");
 

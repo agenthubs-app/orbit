@@ -38,7 +38,7 @@ const LEGACY_SERIES_A: PlanLegacyDetail = {
     { kind: "info", phase: null, status: "open", title: "製造業向け SaaS に強い VC" },
     { kind: "event", phase: null, status: "attended", title: "CFO Night Tokyo vol.18" },
     { kind: "event", phase: null, status: "registered", title: "SaaS Summit 2026" },
-    { kind: "event", phase: null, status: "recommended", title: "製造業DXカンファレンス 大阪" },
+    { kind: "event", phase: null, status: "recommended", title: "製造業 DX カンファレンス 大阪" },
   ],
   needs: 4,
   // b12 #286 会いたい人头像 伊 · 高 · 渡 · 鈴（后两位是 v1 里另两条会いたい人对上的人，详情页不列）。

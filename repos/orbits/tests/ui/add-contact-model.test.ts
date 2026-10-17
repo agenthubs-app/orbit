@@ -109,7 +109,7 @@ test("手入力: event chips are the person's events within 30 days, nearest fir
   const chips = eventChips([
     { id: "far", title: "Far", startsAt: "2026-12-01T00:00:00Z" },
     { id: "last-week", title: "CFO Night", startsAt: "2026-10-07T10:00:00Z" },
-    { id: "tomorrow", title: "製造業DX", startsAt: "2026-10-12T01:00:00Z" },
+    { id: "tomorrow", title: "製造業 DX", startsAt: "2026-10-12T01:00:00Z" },
     { id: 3, title: "bad" },
   ], now);
   // R12 review M3: only events that have started (an upcoming one is not 「会った場所」 yet — the plan would count it as attended).

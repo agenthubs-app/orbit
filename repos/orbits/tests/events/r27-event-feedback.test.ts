@@ -132,7 +132,7 @@ test("探す: community = followed or attended organizers; filters combine (peri
   const events = [
     candidate("f", { organizerId: "org-follow", startsAt: "2026-10-21T19:00:00+09:00", title: "定例会" }),
     candidate("g", { organizerId: "org-went", startsAt: "2026-11-04T19:00:00+09:00", title: "CFO Night vol.19" }),
-    candidate("osaka", { priceYen: 0, startsAt: "2026-10-23T13:00:00+09:00", title: "製造業DXカンファレンス", venue: "グランフロント大阪" }),
+    candidate("osaka", { priceYen: 0, startsAt: "2026-10-23T13:00:00+09:00", title: "製造業 DX カンファレンス", venue: "グランフロント大阪" }),
     candidate("online", { priceYen: 0, startsAt: "2026-10-09T19:00:00+09:00", title: "シリーズA 実務勉強会", venue: "オンライン" }),
   ];
   const result = buildDiscover({ ...base, attendedOrganizers: new Set(["org-went"]), candidates: events, followedOrganizers: new Set(["org-follow"]), query: q() });

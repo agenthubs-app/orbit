@@ -356,7 +356,7 @@ export interface HostNoticeTemplate {
 
 export interface HostQuestionSuggestion {
   count: number;
-  /** 「製造業DX 朝会」の過去 2回。 */
+  /** 「製造業 DX 朝会」の過去 2回。 */
   basisTitle: string | null;
   basisCount: number;
   questions: readonly HostSetupQuestion[];

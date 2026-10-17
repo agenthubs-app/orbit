@@ -353,7 +353,7 @@ export const demoEventAssessmentNeedsInput: EventAssessmentContract = {
   sourceKind: "poster",
   status: "needs_input",
   readIssue: "blurry",
-  facts: { title: "製造業DX ナイトセミナー 名古屋", organizer: "中部ものづくりDX協議会", venue: "名古屋駅周辺" },
+  facts: { title: "製造業 DX ナイトセミナー 名古屋", organizer: "中部ものづくり DX 協議会", venue: "名古屋駅周辺" },
   factBasis: { title: "read", organizer: "read", venue: "guessed" },
   scoreBreakdown: [],
   total: 0,
@@ -368,7 +368,7 @@ export const demoEventAssessmentRange: EventAssessmentContract = {
   id: "demo-assessment-range",
   sourceKind: "poster",
   status: "ready",
-  facts: { title: "製造業DX ナイトセミナー 名古屋", startsAt: "2026-10-29T18:30:00+09:00", venue: "名古屋駅周辺", organizer: "中部ものづくりDX協議会" },
+  facts: { title: "製造業 DX ナイトセミナー 名古屋", startsAt: "2026-10-29T18:30:00+09:00", venue: "名古屋駅周辺", organizer: "中部ものづくり DX 協議会" },
   factBasis: { title: "read", organizer: "read", startsAt: "user", venue: "guessed" },
   userFilledFields: ["startsAt", "venue", "price"],
   // b2 #3「場所（推測を採用）」：场所原样采用了推测值。

@@ -71,7 +71,7 @@ test("eventEmoji：主办方优先 · 关键词 · 兜底", () => {
   assert.equal(eventEmoji({ emoji: "🚀", title: "Summit" }), "🚀");
   assert.equal(eventEmoji({ title: "Japan SaaS Summit 2026 秋" }), "🎤");
   assert.equal(eventEmoji({ title: "CFO Night Tokyo vol.18" }), "🥂");
-  assert.equal(eventEmoji({ title: "製造業DXカンファレンス 大阪" }), "🏭");
+  assert.equal(eventEmoji({ title: "製造業 DX カンファレンス 大阪" }), "🏭");
   assert.equal(eventEmoji({ title: "丸の内スタートアップ朝会 #42" }), "☕");
   assert.equal(eventEmoji({ title: "AI 勉強会" }), "📚");
   assert.equal(eventEmoji({ title: "なにか" }), "🎟️");
