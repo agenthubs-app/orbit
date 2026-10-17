@@ -199,3 +199,4 @@ export const getAppVersion = redesignContractRoute("account-lifecycle", appVersi
 
 // 12 plan v2：R22 起由 features/plans/v2/handlers.ts 实现（mock 读演示世界，live 读真实计划）；
 // capability id「plan-v2-summary」仍用于 ORBIT_REDESIGN_MOCK 把这组接口切回 mock。
+export { getTodoPage } from "../todo/handlers";

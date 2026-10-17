@@ -21,6 +21,7 @@ export const CAPABILITY_IDS = [
   "dashboard",
   "agent-actions",
   "notifications",
+  "todo-page",
 ] as const;
 
 export type CapabilityId = (typeof CAPABILITY_IDS)[number];
@@ -108,6 +109,10 @@ interface CapabilityDefinition {
 // "live-ready" only when every advertised route and provider boundary has
 // executable replacement evidence and no known blocker.
 const liveReadinessByCapability: Record<CapabilityId, CapabilityReadiness> = {
+  "todo-page": {
+    evidence: ["tests/api/todo-page.test.ts", "tests/contracts/todo-page.test.ts"],
+    limitations: ["Live source aggregation and device offline integration are not yet complete."],
+  },
   "account-profile": {
     evidence: [
       "tests/capabilities/account-live-store.test.ts",
@@ -526,6 +531,12 @@ const definitions: readonly CapabilityDefinition[] = [
     ],
     debugDescription:
       "Shows whether notification services use mock delivery state or future live providers.",
+  },
+  {
+    id: "todo-page", label: "To-do page", description: "Read-only decisions, next moves and follow-up previews with counts.",
+    sensitiveActionsRequireConfirmation: false,
+    apiRoutes: [{ method: "GET", path: "/api/todo/page", purpose: "Return bounded To-do previews and source availability." }],
+    debugDescription: "Shows the read-only To-do aggregation capability and its current source readiness.",
   },
 ] as const;
 

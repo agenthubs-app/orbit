@@ -48,6 +48,7 @@ const CASES: Case[] = [
   { file: "app/version", method: "GET" },
   // R30：全局搜索（mock 答演示世界；live 已有实现，见 tests/search/global-search.test.ts）。
   { file: "search/global", method: "GET" },
+  { file: "todo/page", method: "GET" },
   // R22：agent/plans/v2/summary 已由计划 v2 实现（tests/api/plan-v2-routes.test.ts），不再是「尚未实现」。
 ];
 

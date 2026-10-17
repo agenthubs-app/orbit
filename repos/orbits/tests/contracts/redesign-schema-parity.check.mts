@@ -37,6 +37,8 @@ import type { myEventsResponseObject } from "../../shared/api-schema/events-mine
 import type { eventDiscoverResponseObject } from "../../shared/api-schema/event-discover";
 import type { eventSearchResponseObject } from "../../shared/api-schema/event-search";
 import type { globalSearchResponseObject } from "../../shared/api-schema/global-search";
+import type { TodoDecisionItem, TodoFollowupItem, TodoNextMoveItem, TodoPageContract } from "../../shared/contract/todo-page";
+import type { todoDecisionItemObject, todoFollowupItemObject, todoNextMoveItemObject, todoPageObject } from "../../shared/api-schema/todo-page";
 import type { eventCodeResolveResponseObject } from "../../shared/api-schema/event-code";
 import type { eventPrepChecklistPatchObject, eventPrepResponseObject } from "../../shared/api-schema/event-prep";
 import type { organizerFollowResultObject } from "../../shared/api-schema/organizer-follow";
@@ -241,7 +243,6 @@ expectParity<Parity<OrganizerProfileListResponse, typeof organizerProfileListRes
 expectParity<Parity<OrganizerPublicResponse, typeof organizerPublicResponseObject>>();
 // R30 全局搜索
 expectParity<Parity<GlobalSearchResponse, typeof globalSearchResponseObject>>();
-
 // R11a：目標に関係（GET /api/contacts/goal-related-ids）。
 import type { ContactGoalRelatedIdsDTO, ContactGoalRelatedLinkDTO } from "../../shared/contract/contact-goal-related";
 import type { contactGoalRelatedIdsObject, contactGoalRelatedLinkObject } from "../../shared/api-schema/contact-goal-related";
@@ -255,3 +256,8 @@ import type { ContactFieldsUpdateInput, ContactFieldsUpdateResult } from "../../
 import type { contactFieldsUpdateInputObject, contactFieldsUpdateResultObject } from "../../shared/api-schema/contact-fields";
 expectParity<Parity<ContactFieldsUpdateInput, typeof contactFieldsUpdateInputObject>>();
 expectParity<Parity<ContactFieldsUpdateResult, typeof contactFieldsUpdateResultObject>>();
+
+expectParity<Parity<TodoDecisionItem, typeof todoDecisionItemObject>>();
+expectParity<Parity<TodoFollowupItem, typeof todoFollowupItemObject>>();
+expectParity<Parity<TodoNextMoveItem, typeof todoNextMoveItemObject>>();
+expectParity<Parity<TodoPageContract, typeof todoPageObject>>();

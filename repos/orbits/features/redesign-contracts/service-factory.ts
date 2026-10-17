@@ -19,6 +19,7 @@ export const REDESIGN_CONTRACT_CAPABILITIES = [
   "host-operations",
   // R30: 全局搜索（search/DESIGN.md §3.1）——只编排已有 live 数据源，第一天就是 live。
   "global-search",
+  "todo-page",
 ] as const;
 
 export type RedesignContractCapability = (typeof REDESIGN_CONTRACT_CAPABILITIES)[number];

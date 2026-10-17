@@ -13065,7 +13065,16 @@
         "TodayTaskCategoryContract",
         "TodayTaskModeContract",
         "TodayTaskPageModeContract",
-        "TodayTaskSummaryModeContract"
+        "TodayTaskSummaryModeContract",
+        "TodoDecisionAction",
+        "TodoDecisionItem",
+        "TodoFollowupItem",
+        "TodoItemBase",
+        "TodoNextMoveItem",
+        "TodoPageContract",
+        "TodoSection",
+        "TodoSectionKey",
+        "TodoSourceKey"
       ]
     },
     "industries.ts::IndustryIdCode": {
@@ -21309,6 +21318,11 @@
           "kind": "text",
           "type": "string | null"
         },
+        "deferralCount": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
         "relatedContact": {
           "optional": false,
           "kind": "text",
@@ -22128,6 +22142,500 @@
               "optional": false,
               "kind": "text",
               "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "todo-page.ts::TodoSourceKey": {
+      "kind": "enum",
+      "values": [
+        "'agent_action'",
+        "'agent_signal'",
+        "'completion_question'",
+        "'contact_draft'",
+        "'entity_draft'",
+        "'plan_pending'",
+        "'plan_today_chance'",
+        "'relationship_task'",
+        "'task'",
+        "'task_suggestion'"
+      ]
+    },
+    "todo-page.ts::TodoSectionKey": {
+      "kind": "enum",
+      "values": [
+        "'decisions'",
+        "'followups'",
+        "'nextMoves'"
+      ]
+    },
+    "todo-page.ts::TodoDecisionAction": {
+      "kind": "enum",
+      "values": [
+        "'accept'",
+        "'dismiss'",
+        "'open'",
+        "'snooze'"
+      ]
+    },
+    "todo-page.ts::TodoItemBase": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "source": {
+          "optional": false,
+          "kind": "text",
+          "type": "TodoSourceKey"
+        },
+        "sourceId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "titlePreview": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactNamePreview": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "todo-page.ts::TodoDecisionItem": {
+      "kind": "object",
+      "members": {
+        "reasonPreview": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "actions": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly TodoDecisionAction[]"
+        },
+        "conversationId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "source": {
+          "optional": false,
+          "kind": "text",
+          "type": "TodoSourceKey"
+        },
+        "sourceId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "titlePreview": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactNamePreview": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "todo-page.ts::TodoNextMoveItem": {
+      "kind": "object",
+      "members": {
+        "reasonPreview": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "draftAvailable": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "taskId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "source": {
+          "optional": false,
+          "kind": "text",
+          "type": "TodoSourceKey"
+        },
+        "sourceId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "titlePreview": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactNamePreview": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "todo-page.ts::TodoFollowupItem": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'task' | 'lifecycle'"
+        },
+        "taskId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'open' | 'scheduled'"
+        },
+        "dueAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "overdue": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "deferralCount": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "source": {
+          "optional": false,
+          "kind": "text",
+          "type": "TodoSourceKey"
+        },
+        "sourceId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "titlePreview": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactNamePreview": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "createdAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "todo-page.ts::TodoSection": {
+      "kind": "object",
+      "members": {
+        "items": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly T[]"
+        },
+        "next": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "agent_action": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "task": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "task_suggestion": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "plan_pending": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "entity_draft": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "contact_draft": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "completion_question": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "agent_signal": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "plan_today_chance": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "relationship_task": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        }
+      },
+      "typeParams": [
+        "T"
+      ]
+    },
+    "todo-page.ts::TodoPageContract": {
+      "kind": "object",
+      "members": {
+        "date": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "timeZone": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "asOf": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "counts": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "decisions": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "nextMoves": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "followups": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "overdue": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "countsCapped": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "decisions": {
+              "optional": false,
+              "kind": "text",
+              "type": "boolean"
+            },
+            "nextMoves": {
+              "optional": false,
+              "kind": "text",
+              "type": "boolean"
+            }
+          }
+        },
+        "decisions": {
+          "optional": false,
+          "kind": "text",
+          "type": "TodoSection<TodoDecisionItem>"
+        },
+        "nextMoves": {
+          "optional": false,
+          "kind": "text",
+          "type": "TodoSection<TodoNextMoveItem>"
+        },
+        "followups": {
+          "optional": false,
+          "kind": "text",
+          "type": "TodoSection<TodoFollowupItem>"
+        },
+        "sources": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "agent_action": {
+              "optional": true,
+              "kind": "text",
+              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+            },
+            "task": {
+              "optional": true,
+              "kind": "text",
+              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+            },
+            "task_suggestion": {
+              "optional": true,
+              "kind": "text",
+              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+            },
+            "plan_pending": {
+              "optional": true,
+              "kind": "text",
+              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+            },
+            "entity_draft": {
+              "optional": true,
+              "kind": "text",
+              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+            },
+            "contact_draft": {
+              "optional": true,
+              "kind": "text",
+              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+            },
+            "completion_question": {
+              "optional": true,
+              "kind": "text",
+              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+            },
+            "agent_signal": {
+              "optional": true,
+              "kind": "text",
+              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+            },
+            "plan_today_chance": {
+              "optional": true,
+              "kind": "text",
+              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
+            },
+            "relationship_task": {
+              "optional": true,
+              "kind": "text",
+              "type": "'unavailable' | 'ok' | 'not_implemented' | undefined"
             }
           }
         }

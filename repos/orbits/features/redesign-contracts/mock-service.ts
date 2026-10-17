@@ -16,6 +16,8 @@ import { formatInviteCode, INVITE_CODE_ALPHABET, INVITE_DEFAULT_SHARED_KEYS, nor
 import { COMPLETION_OPTION_LABELS, resolveCompletionAnswer, type CompletionOption } from "../../shared/compute/completion-question-rules";
 import { contactDensity } from "../../shared/compute/contact-density";
 import { DEMO_EVENTS } from "../../shared/mock/demo-world";
+import { demoTodoPage } from "../../shared/mock/demo-world/todo";
+import type { TodoPageContract } from "../../shared/contract/todo-page";
 import {
   demoAccountExport, demoAppVersion, demoCompletionOrganizationQuestion, demoCompletionQuestion, demoDeletionRequest, demoEventAssessment, demoEventAssessmentLoginRequired, demoEventAssessmentNeedsInput, demoEventAssessmentNotEventPage, demoEventAssessmentRange, demoHomeLayout,
   demoInviteAlreadyConnected, demoInviteCode, demoInviteConnection, demoInviteExpiredPeer, demoInviteFromPeer, demoInviteFullPeer, demoInviteHistory, DEMO_PLAN_NOW, type DemoInvitePeerCode,
@@ -173,6 +175,18 @@ function redeemOnce(code: string, input: InviteCodeRedeemInput): InviteCodeRedee
 }
 
 export const redesignMock = {
+  todoPage(date?: string, timeZone?: string): TodoPageContract {
+    const page: TodoPageContract = structuredClone(demoTodoPage);
+    page.date = date ?? page.date;
+    page.timeZone = timeZone ?? page.timeZone;
+    const formatter = new Intl.DateTimeFormat("en", { timeZone: page.timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+    page.followups.items = page.followups.items.map(item => {
+      const parts = item.dueAt ? Object.fromEntries(formatter.formatToParts(new Date(item.dueAt)).map(part => [part.type, part.value])) : null;
+      return { ...item, overdue: Boolean(parts && `${parts.year}-${parts.month}-${parts.day}` < page.date) };
+    });
+    page.counts.overdue = page.followups.items.filter(item => item.overdue).length;
+    return page;
+  },
   homeLayout: () => state.layout,
   /** 409 when the expected revision is stale; the same mutationId again returns the first result. */
   putHomeLayout(input: HomeLayoutUpdateInput): LayoutResult {
