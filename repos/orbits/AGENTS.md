@@ -177,8 +177,8 @@ workspace root for implementation work.
   | App `OrbitTabBar.tsx`、`app-navigation.ts`、`AppScreen.tsx`、`TaskScreen.tsx` 的插槽结构 | 乙 | App 是乙的主战场，Task 的三段也归乙 |
   | App `src/components/ui/**` | 乙 | 同上；甲需要新组件时提需求 |
   | Web `Orbit2026Shell`（`orbit-2026/shell/**`）、Web Task 容器（`orbit-2026/task/TaskContainer.tsx`）的插槽结构 | 甲 | Web 是甲的主战场 |
-  | Web `orbit-2026/ui/**` | 甲 | 同上 |
-  | `shared/design/tokens.json`、`icons.json` | 甲 | 骨架由甲建立 |
+  | Web `orbit-2026/ui/**` | 甲；**组件 Sprint 起乙也可改**（RD-30） | 同上；乙改动甲名下页面的调用点或手写件前在交接表通知甲 |
+  | `shared/design/tokens.json`、`icons.json` | 甲；`tokens.json` **组件 Sprint 起乙也可改**（RD-30） | 骨架由甲建立 |
   | `shared/copy/**`、术语表、写作规范、`copy-qa` | 甲 | 骨架由甲建立；乙新增文案按规范写，术语变更提给甲 |
   | `shared/contract/.snapshot.json`、`BREAKING.md` | 改动该契约的负责人 | 按 R08 的契约归属 |
 - **每个 Sprint 的收口**：两端全量测试对照基线零新增失败（orbits 用 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`），typecheck、`lint` 通过；改函数前跑 GitNexus `impact`、提交前跑 `detect-changes`（索引落后时先 `node .gitnexus/run.cjs analyze --index-only`，否则新符号查不到、结论不可信）；写 REPORT，由独立 AI 复核写 REVIEW，问题直接在 `redesign` 上修（RD-25）。

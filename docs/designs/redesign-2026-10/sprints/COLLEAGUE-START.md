@@ -14,7 +14,7 @@
 
 | 顺序 | Sprint | 为什么排这里 |
 | --- | --- | --- |
-| 1 | **组件库像素轮**（R04 / R06 补：交接表 G23、R24-05、U02） | 交接表 G23 本来就记「乙负责组件库时处理」。Modal / Drawer / BottomSheet / Toast 等还没逐件对上 kit，甲的计划页概要（A 组）和你之后的页面都卡在这里；先做完，两边都少返工。不依赖任何未完成的功能。 |
+| 1 | **组件库像素轮**（2026-10-18 拆成 [R31a App](R31a-app-components-pixel/GOAL.md) → [R31b Web](R31b-web-components-pixel/GOAL.md)）（R04 / R06 补：交接表 G23、R24-05、U02） | 交接表 G23 本来就记「乙负责组件库时处理」。Modal / Drawer / BottomSheet / Toast 等还没逐件对上 kit，甲的计划页概要（A 组）和你之后的页面都卡在这里；先做完，两边都少返工。不依赖任何未完成的功能。 |
 | 2 | R11 人脈、R18 账户 | 最独立。R11 要接甲 R12 / R15 已做好的加人弹层和招待连接（交接表 R11 节）。 |
 | 3 | R20 Task | 依赖 R07 / R05 壳（已完成）；メモ「＋ メモを追加」等见交接表 R20 节。 |
 | 4 | R21 iOrbit、R13 / R14 收件箱 · 秘書 · 推送 | 甲的 R30 搜索要用 R21 的会话搜索接口，接口先定好告诉甲。 |
@@ -27,7 +27,7 @@
 
 ## 3. 两人协作规矩
 
-- **分支**：照 HOW-TO 第 0 节开个人分支（如 `redesign-R11-network`，全用连字符），做完合回 `redesign`。甲在 `redesign` 上直接提交，你合回前先 `git pull --rebase` 或合并 `redesign`。
+- **分支**：直接在 `redesign` 上按路径提交（RD-25），提交前 `git pull --rebase`；并行的几条线按文件归属切分，互不改对方的文件（RD-30）。
 - **只提交自己的文件**：`git commit -m … -- <文件…>` 按路径提交，提交后 `git show --stat HEAD` 核对。
 - **共用代码**：`repos/orbits/features/plans/`（计划）、`features/contacts/` 加人与邀请相关、两端组件库 `components/`、token 源，改之前先在交接表或决定表里写一句、告诉甲；热点文件归属按 `screen-ownership.md` 与 R09 REPORT。
 - **组件库改动影响全站**：组件库轮每改一个组件，跑一遍 R05 / R07 壳门禁，确认壳没变差。

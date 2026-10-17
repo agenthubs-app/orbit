@@ -10,6 +10,8 @@
 
 ## 1. 待组件库（乙的第一个 Sprint：组件库像素轮，交接表 G23 / G23b / R24-05）
 
+> 2026-10-18 用户定：本节画面由 [R31a](R31a-app-components-pixel/GOAL.md)（App）/ [R31b](R31b-web-components-pixel/GOAL.md)（Web）在组件修好后**一起重比**，通过的在本节改 done；页面自身原因的交还甲。
+
 | 交接表 # | 卡在什么 | 解锁后做什么 |
 | --- | --- | --- |
 | R26-11 | App `Segmented` 高 38，kit `.seg` 是 30 | 重跑 app-R26 的 13 / 14 / 15 / 30 / 30e，浅色和深色共 10 张。用 `R26-app-agate.sh`；临时补丁下这 10 张全部能过 |
@@ -65,7 +67,7 @@
 | R17-14 | 登出清 kiosk 本机名单 | **已做（73c986b05）** |
 | R17-15 | 公开主催页「通報する」无表单 | **跳过**：依赖 R29 运营后台 / 反馈表单 |
 | R17-16 | App `/e/[slug]` 靠跟随网页重定向取 id | **done（2026-10-17，`cb02fda4f`）**：`GET /api/events/by-slug/[slug]`（只认已公开、可未登录、proxy 放行），App `/e/[slug]` 改调它 |
-| R17-17 | P26 Drawer 540/22、App P05 Segmented 30（G23） | **跳过**：依赖组件库 G23 |
+| R17-17 | P26 Drawer 540/22、App P05 Segmented 30（G23） | **跳过**：依赖组件库 G23 → 由 R31a / R31b 重比（2026-10-18；540 改为画板 520，RD-27） |
 | R17-18 | 编组发布后通知另开事务，失败补不上 | **done（2026-10-17，`571c0d6f6`）**：同一 generation 已发布时不再发布、只补写通知（幂等键不重复）；Web 失败后公開按钮仍在，重试即补；回环库测试 |
 
 ## 4. 待外部条件或授权
@@ -74,7 +76,7 @@
 | --- | --- | --- |
 | R27 E3 / E4 真实 AI 验证 | **done（2026-10-15）**：`scripts/r27/real-ai-verify.ts 1 1`（回环库），E3 1 次（668 / 937 token，まとめ 3 条 + 次の一手 3 人 + お礼下書き）、E4 1 次（564 / 294 token，自己紹介日文），账本两行 succeeded；日志 `R27/run-01/ai/verify-1015.log` | G18 可按此打开「AI 下書き」入口（生产开关仍未动，未部署） |
 | R27 Web 未登录详情「あなた N回」 | 已在实现里隐藏（服务端不给），画板 #394 仍画着，等 design-decisions 按 §36 改画板（10-16） | 拿到新序号后把 W-R27-P41 改指重跑 |
-| R27 App A-R27-26 | b2 #26 画板把一段 CSS 审计注释画成了可见文字（topbar 下两行），整屏下移约 40px；已报主会话（10-15） | 画板修正后清缓存重跑 A-R27-26（同时受 seg G23 与 expo-brightness 两条影响） |
+| R27 App A-R27-26 | b2 #26 画板把一段 CSS 审计注释画成了可见文字（topbar 下两行），整屏下移约 40px；已报主会话（10-15） | 画板修正后清缓存重跑 A-R27-26（同时受 seg G23 与 expo-brightness 两条影响）；seg 部分由 R31a 重比，预计「部分 / 交还」 |
 | R22-02 | 计划 v2 的生产 AI 开关和月上限 | 等用户拍板 |
 | R17-08 / R17-11 生产 | event-ops v19（`event_host_roster_match_requests`）与旧 actor 级主办方关注 → 资料页关注的数据迁移（`scripts/migrate-organizer-follows-to-profiles.ts`，脚本只认回环库） | **done（2026-10-17 执行）**：生产 Neon `orbit-production-20260924` 默认分支执行 event-ops v16 / v17 / v18 / v19 与 network-analysis v4 / v5（先在临时分支试跑与重放，确认全部只新增：约束只加取值、新列可空；执行后版本表 checksum 与代码一致，临时分支已删）；Vercel 生产已加 `ORBIT_CHECKIN_TOKEN_SECRET`（随机生成，未回显）。关注迁移：**生产 0 条，未执行，空操作**。部署未做（等意味検索 lite） |
 | 用语统一 §45（文字） | **done（2026-10-17，`46a9135f1`）**：orbits / orbit-app 示例数据、契约示例、脚本、测试里「製造業DX」「DX推進室」「中部ものづくりDX協議会」「Seedline株式会社」「代表取締役CEO」「青葉VC」等拉丁字母与日文紧贴写法已加半角空格（保留シリーズA、N人、To-do、・并列两侧）；`shared/contract/host-console.ts` 已 `sync:contract`；copy-qa 示例文字检查（demo-world-copy）转绿。遗留 **done（2026-10-17，提交号见 `git log -1 -- 本文件`）**：生产 ja 文案（`orbit-event-content.ts`、`contact-detail-localization.ts`、App `src/i18n/ja/**`、`profile-onboarding.ts`）已按同规则加空格；`copy-qa/check.mjs` 的拉丁字母规则改为不把「・」当日文字符（并列两侧紧贴是规范允许写法）；`copy:qa` 里这条规则的红项 8 → 0（总红项 212 → 204，其余规则未动）；「青葉 VC」恢复带空格 | 已做 |

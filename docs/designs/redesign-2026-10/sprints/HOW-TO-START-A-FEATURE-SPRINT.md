@@ -120,7 +120,7 @@ render(body.data);
 - **设计稿里有的不许改、不许省**：做不到或不该做的先上报用户；REPORT「自定决定」只能写和设计稿无关的工程决定。
 - **Web**：本地 dev server 登录 QA 账号（密码在 `repos/orbits/.env.local` 的 `ORBIT_PRIMARY_TEST_ACCOUNT_PASSWORD`，脚本从文件读，不要贴出来），用 `repos/orbits/scripts/visual/compare-redesign.mjs` 在 **1440 / 1024 / 390 × 浅色 / 深色**截**完整页面（含左栏、主标题区、右栏等导航壳）**，与设计稿画板逐像素比对。
 - **App**：内置 iOS 模拟器（`mcp__Claude_Code_iOS_Simulator__control`；开发包用 `repos/orbit-app/.env.development.local` 指向 `http://localhost:3000`，不要改 `.env.local`；起 Metro 不带 `CI=1`）截**真实画面**，**不用 react-native-web**；`xcrun simctl io booted screenshot <文件>`，浅色 / 深色各一张；用 `compare-redesign-app.mjs` 按设备点宽缩放后与设计稿 App 画板逐带比对。
-- **门禁**：整屏 raw ≤0.02；`--grid` 逐带比对，超阈值的带必须在归因文件（`repos/orbits/scripts/visual/attribution-redesign-<Sprint>.json`）里具名，且只能归因为 `[data]`（数据文字不同）；有一条带写不出 `[data]` 理由，就是缺陷，修完再跑。不过门禁的画面不得标 done。
+- **门禁**：整屏 raw ≤0.02；`--grid` 逐带比对，超阈值的带必须在归因文件（`repos/orbits/scripts/visual/attribution-redesign-<Sprint>.json`）里具名，且只能归因为 `[data]`（数据文字不同）、`[raster]`（栅格化级残差）或 `[contrast]`（RD-26，限 `scripts/visual/contrast-substitutions.json` 里的颜色替换）；有一条带写不出这三类理由，就是缺陷，修完再跑。两端判定相同：所有超阈值带都有正当归因即通过，整屏 raw 只作参考（决定表 §20、RD-29）。不过门禁的画面不得标 done。
 - 对照页 `compare.html`：左边设计稿画板，中间实现，右边 diff，浅色 / 深色各一行，附 raw 与超阈值带数；放在证据目录，REPORT 里写路径和总表。
 - 用法细节见 `repos/orbits/scripts/visual/README-redesign.md`。
 - **写代码前先做「画板预检」**（2026-10-14 起必做；依据：R12–R16、R23–R25 返工里差几 px 的原因汇总，见决定表 §13–§25）。PLANNER 里每个画面附一张预检表，五项都过了才开始写界面：
@@ -150,7 +150,7 @@ render(body.data);
 - **PLANNER**：验收契约（SC）必须为**每个画面写一条像素 SC**，写明对应的设计稿文件 + 画板标题（或 `--list` 的画板序号）、宽度（Web 1440 / 1024 / 390；App 模拟器）和主题（浅 / 深），以及到达该状态的 URL / 操作步骤；设计稿没有的宽度或状态写「设计稿无」并注明用户拍板结论。
 - **设计稿示例数据（fixture）**：设计稿的示例人名、分数、条数和真实演示数据不同时，可以在只读 mock 下加「设计稿示例 fixture」让画面数据贴近画板（计划页做法：`features/plans/v2/design-fixtures` + 只在非生产存在的 `route.dev.ts` 切换），但**只能补数据，不能改画面结构**，真实 AI / 有库路径与生产行为不变，并用测试守住（fixture 经同一接口 schema 解析、生产构建不收录）。门禁报「缺块」时先用 fixture 补数据让块出现，补了仍缺就是实现缺陷。
 - **REPORT**：必须附门禁结果——每个画面 × 宽度 × 主题的 raw、超阈值带数、归因文件路径、证据目录；有未通过的画面不得标 done。
-- **独立复核**：REVIEW 必须**自己重跑门禁**（同一套命令、同一归因文件），逐条核对超阈值带的 `[data]` 理由是否属实；不能只看 REPORT 附的截图或对照页。
+- **独立复核**：REVIEW 必须**自己重跑门禁**（同一套命令、同一归因文件），逐条核对超阈值带的 `[data]` / `[raster]` / `[contrast]` 理由是否属实（`[contrast]` 由工具按替换清单自动判定）；不能只看 REPORT 附的截图或对照页。
 
 ## 9. 改契约、改热点文件
 

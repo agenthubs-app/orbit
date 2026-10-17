@@ -21,7 +21,7 @@
 | 阶段 | 甲 · 小雨 | 乙 · 产品负责人 |
 | --- | --- | --- |
 | 骨架 R01–R09 | **全部**（RD-04） | 验收（看截图、试用） |
-| 功能 | 计划 v2.2（R22–R25）、加人与邀请（R12、R15、R16）、活动（R26、R27）、主办（R17）、搜索（R30，2026-10-12 新开） | iOrbit（R21）、首页（R10）、Task（R20）、收件箱 · 秘书 · 推送（R13、R14）、人脈（R11）、账户（R18）、iOS 小组件（R19） |
+| 功能 | 计划 v2.2（R22–R25）、加人与邀请（R12、R15、R16）、活动（R26、R27）、主办（R17）、搜索（R30，2026-10-12 新开） | 组件库像素轮（R31a、R31b，2026-10-18 定）、iOrbit（R21）、首页（R10）、Task（R20）、收件箱 · 秘书 · 推送（R13、R14）、人脈（R11）、账户（R18）、iOS 小组件（R19） |
 
 功能 Sprint 的文档在骨架验收后另写。两端每个现有页面由哪个功能 Sprint 重写（按屏替换、旧屏删除），见 [旧屏归属表](screen-ownership.md)；表里补出两个新功能 Sprint：R28 引导、R29 运营后台换新（负责人待定）。分工流程图：https://claude.ai/artifact/7qGcsrWQj2EeLbkdC5hXas
 
@@ -58,6 +58,8 @@
 | [R27](R27-events-journey/GOAL.md) | 活动：从找到活动到会后（探す、コミュニティ、絞り込み、検索（给 R30）、興味なし契约 9 live；詳細（含未登录列表 / 详情）、参加登録 / 参加コード / 取消；会う準備；会場モード；会後のふりかえり；删两端旧详情 / 报名 / 会场屏） | R26 | H | 甲 | **done**（2026-10-16，规则 11 收口，`fbc09da77`；[REPORT](R27-events-journey/REPORT.md)，含独立复核与处理）：契约 9 live、两端探す / 詳細 / 参加登録 / 会う準備 / 会場 / ふりかえり，删两端旧详情 / 报名 / 会场屏；名单规则 A（§36 / §37）；Web 1440 全过（W-R27-13 待组件库）、1024 六屏过、390 四屏过；App 按 §20 过，余 seg G23 / 原生模块亮度 / Toast 等暂缓项全部登记 [DEFERRED-A](DEFERRED-A.md) |
 | [R17](R17-host-operations/GOAL.md) | 主催：運営センター、建活动 / 发布 / 中止（参加コード、申込页）、申込設定、审核与定型通知、编组（现有 event-ops）、受付 kiosk（QR 签名令牌、受付番号、离线、多台）、レポート（<5 抑制）、共同運営者邀请、公开主办方页 `/o/[slug]`；删两端旧运营界面 | R27 | H | 甲 | **done**（2026-10-17，规则 11 收口，`9b30033d9`；[REPORT](R17-host-operations/REPORT.md)，含独立复核 6 条重要问题已修）：A1–A13 全按推荐落地（决定表 §39–§45）；迁移 event-ops v16–v18 本机验证；Web 33 张浅深全过、App P04 / P07 / P18 过；未过 W-P26（Drawer 540 / 内边距 22）与 A-P05（seg 38 vs 30）待组件库（R17-17）；b12 #396–#481 补画照做、待用户过目后进门禁（R17-05）；暂缓 R17-05～18 登记 [DEFERRED-A](DEFERRED-A.md)；**待用户授权**：生产迁移 v16–v18 + network-analysis v5、A12 生产生效、`ORBIT_CHECKIN_TOKEN_SECRET`、部署 |
 | [R30](R30-global-search/GOAL.md) | 全局搜索（两端）：Web ⌘K 面板本体（交接表 W-R07-05 / 06 = `b5` #57–#59 / #71）+ App 全局搜索（`b5` #53–#56）；做完后 App Task 左上 🔍 改接全局搜索（[交接表 R30](HANDOFF-TO-FEATURE-SPRINTS.md#r30-搜索新甲--小雨2026-10-12-用户定)） | R07；活动搜索接口（R27 已交付）；会话搜索接口（R21，未开工 → 会話 chip 按能力开关暂不显示） | H | 甲 | **done**（2026-10-17，`6536ba98c` + 复核修正提交；[REPORT](R30-global-search/REPORT.md)，含独立复核与处理）：`GET /api/search/global` 一套服务两端同用（live 多词 AND / 全半角折叠、限流、日志只记长度、能力缓存 5 分钟）；Web ⌘K 新面板替换旧人脈面板，⌘↵ /「紹介ルートを聞く」只预填；App `/search` 四态 + 検索中，Task 🔍 改接（R20-01）；A1 会話 chip 待 R21、A2 意味検索默认关；Web 1440 浅深 8 张全过、App 浅深 8 张全过（超阈带全部归因）；暂缓 1024 工具 / 会話接口 / 意味検索授权 → [DEFERRED-A](DEFERRED-A.md) |
+| [R31a](R31a-app-components-pixel/GOAL.md) | 组件库像素轮 · App：逐件对照工具（两端共用）+ `[contrast]` 归因（RD-26）+ App 组件修正与补件（UnderlineTabs、可配置 TabBar、全屏搜索页容器）+ 替换手写件 + App「待组件库」画面重比 + 不退步（交接表 G23 / G23b / U02 / R24-05c / R26-11 / R27-01 / 02 / 04 / R17-17 / R16-01 / R12-12） | R04、R05、R09 | H | 乙 | 文档完成，已复核，问题已修（2026-10-18） |
+| [R31b](R31b-web-components-pixel/GOAL.md) | 组件库像素轮 · Web：逐件对照 + Web 组件修正（Modal 380 / 图标块 / 无 ✕，Drawer 白圆 ✕ / 副标题 / 22，画板改 520）+ 调用点改参数 + 替换 Web 手写件 + 全局 `.btn` 漏入处理 + Web「待组件库」画面重比 + 不退步（交接表 G23 / G23b / R24-05 / 05b / R17-17 / W-R26-31 / W-R27-13 / R16-01） | R31a 工具里程碑（之后与 R31a 并行） | H | 乙 | 文档完成，已复核，问题已修（2026-10-18） |
 
 计划 v2.2 的整体设计、AI 调用清单、需要用户拍板的事项见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md)，复核见 [plan-v2.2/REVIEW.md](plan-v2.2/REVIEW.md)。加人与邀请（R12、R15、R16）见 [add-and-invite/DESIGN.md](add-and-invite/DESIGN.md)，复核见 [add-and-invite/REVIEW.md](add-and-invite/REVIEW.md)。活动（R26、R27）见 [events/DESIGN.md](events/DESIGN.md)，复核见 [events/REVIEW.md](events/REVIEW.md)。
 
@@ -90,6 +92,11 @@
 | RD-23 | 骨架文档放在本目录，统一 `R` 编号 | 全部 |
 | RD-24 | **骨架不改旧屏**（2026-10-09，承接 R01 修订 3）：骨架只做源文件（token、图标、文案、契约）、新组件、导航壳和会保留的基础设施。旧屏原样挂进新壳，它们的写死颜色、Ionicons、写死文字、旧组件都由 [旧屏归属表](screen-ownership.md) 里的功能 Sprint 整屏重写时一起换掉。理由：`redesign` 要所有功能做完才合回（RD-03），旧屏不会以骨架状态到用户手里，在骨架里修它们会在功能 Sprint 里被整屏删掉。三份允许清单（Ionicons、写死文字、旧写法）只减不增；**合回 `chat-agent` 前总验收**：归属表每行已处理、三份清单为空、Ionicons 依赖已移除、旧公用组件已删除 | R02、R03、R04、R09、全部功能 Sprint |
 | RD-25 | R02 起所有 Sprint 直接在 `redesign` 分支提交，不开 Sprint 分支和 PR；每个 Sprint 收口提交后由独立 AI 复核写 `REVIEW.md`，问题在 `redesign` 上直接修 | 全部 |
+| RD-26 | 像素门禁新增归因类别 `[contrast]`：只用于「设计稿用原色、实现按 RD-05 用加深版文字色」的差异，允许的颜色替换写在 `scripts/visual/contrast-substitutions.json`，清单以外不得使用；超阈值带只能归因为 `[data]` / `[raster]` / `[contrast]`（用户 2026-10-18） | R31a、R31b 及以后全部 Sprint |
+| RD-27 | b6 #20（R17 申込設定抽屉）画板改成 **520 宽**，Web `Drawer` **不加 540 档**，宽度仍只有 RD-17 的 520 / 380（用户 2026-10-18） | R31b、R17 |
+| RD-28 | ①组件新增参数后，**调用点改用新参数不算页面结构改动**，在组件 Sprint 内完成（R24 REPORT、R26 REPORT 的自定 7「Modal 保留 420」作废，改用 380 档）；只有要改页面 DOM / 布局的才交还。②像素门禁要比的中途状态（弹层展开、Toast、确认框等）用**只在开发包 / 开发环境生效的状态开关**（`design=`、`open-path` 参数）到达，正式构建里不存在，由测试守住（用户 2026-10-18） | R31a、R31b 及以后全部 Sprint |
+| RD-29 | **Web 像素判定与 App（决定表 §20）统一**：所有超阈值带都归因为 `[data]` / `[raster]` / `[contrast]` 即通过，整屏 raw 只作参考（用户 2026-10-18） | R31b 及以后全部 Sprint |
+| RD-30 | **剩余工作全部由乙做**（用户 2026-10-18）：组件 Sprint 起乙可改 Web `orbit-2026/ui/**` 与 `shared/design/tokens.json`；替换甲名下页面里的手写件、改调用点前在交接表写一句通知甲。以后 Sprint 设计成**几条互不影响的并行线**（按文件归属切分，共用文件只在里程碑后冻结）；R31a 工具里程碑后 R31a 与 R31b 并行 | R31a、R31b 及以后全部 Sprint |
 
 ## 骨架通用规则（每个 Sprint 都适用，PLANNER 不再重复）
 
@@ -107,7 +114,7 @@
     - **请求严出**：请求体 schema 保持 `.strict()`、枚举封闭；服务端写入校验同样严格。
     - **检查器**：响应字段放宽为 `| null`、`| unknown`、`| any`，或给必填字段加 `| undefined`，仍判为破坏（`scripts/contract-snapshot.mjs`）。
     - **`minSupportedAppVersion`（契约 11）在首次正式发布之后才启用**：正式发布前没有需要兼容的已装版本，契约可以直接改（走 `BREAKING.md` 登记），App 重新发布即可；正式发布后，旧版本读不了的变更必须先发一版能读的 App，或同时抬高 `minSupportedAppVersion`。
-11. **逐像素还原设计稿**（RD-16 修订，**用户决定 2026-10-11：适用于以后所有 Sprint，甲乙都一样**，包括 R12–R16 及之后全部功能 Sprint）：每个画面都要过逐像素门禁（Web 1440 / 1024 / 390 × 浅 / 深，App 模拟器浅 / 深；整屏 raw ≤0.02，`--grid` 超阈值带只能归因为 `[data]`），（**用户 2026-10-14：被后续任务卡住的画面（待组件库 / 待 R26 / 待 R11 等）暂缓，登记进交接表重比清单、不再耗轮次；能解决的先对齐，必须项做完即收口标 done 并列出暂缓项，上游完成后回来重比**）（App 画面按[决定表 §20](maintenance/2026-10-12-decisions.md)：所有超阈值带都归因为 `[data]` / `[raster]` 即通过，整屏 raw 只作参考）并提交归因文件 `repos/orbits/scripts/visual/attribution-redesign-<Sprint>.json`；不允许在「自定决定」里改动或省略设计稿，偏离先请用户拍板。做法见 [HOW-TO 第 8 节](HOW-TO-START-A-FEATURE-SPRINT.md#8-截图对照页与像素门禁)。**新页面开工先跑 `board-preflight`，结果贴进 PLANNER**（`repos/orbits/scripts/visual/board-preflight.mjs`，2026-10-14：画板自洽、token 缺口 / 近似值、数据来源清单、宽度与主题；HOW-TO 第 8 节「画板预检」）。 **暂缓项总清单**：甲被依赖卡住的项按卡点汇总在 [DEFERRED-A.md](DEFERRED-A.md)（2026-10-15 用户：「需要依赖的在哪里记录下来，最后记得做」），新暂缓项写交接表的同时在那里加一行。
+11. **逐像素还原设计稿**（RD-16 修订，**用户决定 2026-10-11：适用于以后所有 Sprint，甲乙都一样**，包括 R12–R16 及之后全部功能 Sprint）：每个画面都要过逐像素门禁（Web 1440 / 1024 / 390 × 浅 / 深，App 模拟器浅 / 深；整屏 raw ≤0.02，`--grid` 超阈值带只能归因为 `[data]` / `[raster]` / `[contrast]`，RD-26），（**用户 2026-10-14：被后续任务卡住的画面（待组件库 / 待 R26 / 待 R11 等）暂缓，登记进交接表重比清单、不再耗轮次；能解决的先对齐，必须项做完即收口标 done 并列出暂缓项，上游完成后回来重比**）（两端都按[决定表 §20](maintenance/2026-10-12-decisions.md)：所有超阈值带都归因为 `[data]` / `[raster]` / `[contrast]` 即通过，整屏 raw 只作参考；Web 自 RD-29 起）并提交归因文件 `repos/orbits/scripts/visual/attribution-redesign-<Sprint>.json`；不允许在「自定决定」里改动或省略设计稿，偏离先请用户拍板。做法见 [HOW-TO 第 8 节](HOW-TO-START-A-FEATURE-SPRINT.md#8-截图对照页与像素门禁)。**新页面开工先跑 `board-preflight`，结果贴进 PLANNER**（`repos/orbits/scripts/visual/board-preflight.mjs`，2026-10-14：画板自洽、token 缺口 / 近似值、数据来源清单、宽度与主题；HOW-TO 第 8 节「画板预检」）。 **暂缓项总清单**：甲被依赖卡住的项按卡点汇总在 [DEFERRED-A.md](DEFERRED-A.md)（2026-10-15 用户：「需要依赖的在哪里记录下来，最后记得做」），新暂缓项写交接表的同时在那里加一行。
 12. **UI 对齐的默认流程**（**试行中，2026-10-12**；等 R05 和 Web 计划页两组的用时对比出来后转为定稿；HOW-TO 第 8 节同步）。以后所有 UI 对齐、像素返工和功能 Sprint 的界面部分都按这个流程做：
     - **照源码搬，不对着截图画**：Web 把画板的 DOM 结构和 CSS 数值直接照 `kit/ui.css`、`kit/kit.js` 和画板 HTML 源码搬进 CSS Modules（数值换成 token）；App 把 kit 里的数值一次性翻译成 token 和组件参数。
     - **快慢两档**（`--only` + 设计稿缓存）：迭代时只跑当前画面的门禁（`--suite views/<端>-<Sprint>.json --only <画面>`，或 `--changed` 只跑和改动相关的画面）和相关测试；收口时各跑一次全量门禁（不带 `--only`）和两端全量测试。
@@ -157,7 +164,7 @@
 - [ ] 本地与 staging 都配置 `ORBIT_SYNC_CURSOR_SECRET`（R09 走查 A1：缺了它 App 的待办、人脈同步全部 503）。
 
 **还原设计稿（RD-16 修订，用户决定 2026-10-11）**
-- [ ] 两端每个画面都通过逐像素门禁（Web 三宽度 × 浅 / 深、App 浅 / 深），每个 Sprint 的归因文件 `attribution-redesign-<Sprint>.json` 已提交且超阈值带全部是 `[data]`；[2026-10-11 盘点](maintenance/2026-10-11-pixel-audit.md) 列出的不通过画面、「请用户拍板」条目和「设计稿无」画面全部处理完。
+- [ ] 两端每个画面都通过逐像素门禁（Web 三宽度 × 浅 / 深、App 浅 / 深），每个 Sprint 的归因文件 `attribution-redesign-<Sprint>.json` 已提交且超阈值带全部是 `[data]` / `[raster]` / `[contrast]`（RD-26、RD-29）；[2026-10-11 盘点](maintenance/2026-10-11-pixel-audit.md) 列出的不通过画面、「请用户拍板」条目和「设计稿无」画面全部处理完。
 
 **验收**
 - [ ] 两端全量对照 R09 基线零新增失败（orbits 6940 / 0、App 4172 / 仅 `/start`，之后各 Sprint 只增不减）。
