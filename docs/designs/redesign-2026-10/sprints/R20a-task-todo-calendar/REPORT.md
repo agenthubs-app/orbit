@@ -184,7 +184,11 @@ presenter は month の 3 件 cap と「ほか N 件」→ day、week/day の ti
 
 `1884c57fa` はその後の App SC-08 manual-only editor。非 sample の next move から offline でも開き、手動入力の copy / mailto handoff だけを行う。AI unavailable / no persistence / no send を明示する（focused render/unit 11/11、copy 47/0、hardcoded-copy 5/5）。AI tone / rewrite、保存済み送信確認、encounter は未完で SC-08 partial。主会話はこのコミット後の fresh App `npm run typecheck` exit 0 を確認した。
 
-その後の App 全量は heavy.sh d で **exit 1**。対話出力が切れ durable raw log がないため、正確な総数 / fail 数は不明で、基線との差分も未分類。personal-schedule browser の広い失敗、旧 D harness 二件の R31a UI import 後の React Native Flow parse、D 管轄外 plan-overview の pointer-event timeout が主会話に見えている。主会話が二つの App test harness の nativeUiStubs だけを変更し、targeted / raw log 付き full rerun は C heavy 後に予定する。この full を数値付き成功や基線同等として扱わない。
+その後の App 全量は heavy.sh d で **exit 1**。対話出力が切れ durable raw log がないため、正確な総数 / fail 数は不明で、基線との差分も未分類。personal-schedule browser の広い失敗、旧 D harness 二件の React Native Flow parse、D 管轄外 plan-overview の pointer-event timeout が主会話に見えていた。Flow parse は **D 誘発の harness regression**：SC-10 が既存 PersonalScheduleScreen に kit Button / Card / UiText と overlap mirror を追加したが、旧 test harness が native UI を stub していなかった。同じ R31a base の C full には personal-schedule failure がなかったという主会話の比較もあり、upstream R31a 単独の欠陥とは扱わない。
+
+主会話 `e5fb21c1b` は二つの App test harness の nativeUiStubs だけを修正。heavy.sh d の smoke **2/2**（`app-schedule-harness-targeted.log`）に続き、二つの personal-schedule browser suites 全件 **80/80、0 skip、exit 0**（`app-schedule-harness-full.log`）で当該 regression を確認した。これは初回 App 全量の数値付き成功や基線同等を意味しない。exact sanitizer / durable raw log 付き App full rerun は主会話が後続で行う。
+
+`12a1c240d` は App manual draft を auth / server / date scope に束縛し、stale callback を拒否した security follow-up（新 scope check RED→GREEN、focused 12/12）。その前の App typecheck exit 0 と区別し、当該 follow-up 後の fresh typecheck はまだ pending。
 
 App worker `83b07b166` は面談詳細の Move / Cancel（focused 19/19、route browser 6/6、fresh App typecheck exit 0、copy 47/0、hardcoded-copy 5/5）。contact-only 初回提案は user choice 待ちで fail-closed。provenance 偏差：同時編集した App `copy-kinds.ts` の meetingDetails 九 entry が worker commit ではなく主会話 `a383637ec` に意図せず入った。コード欠落はなく、既報 commit の amend は行っていない。Web worker はこれらの App paths を変更・stage しない。
 
@@ -204,7 +208,21 @@ RED：`sc10-personal-editor-red.log`、`sc10-personal-delete-scope-red.log`、`s
 
 最新 `sc10-calendar-product-focused.log` は **67/67 pass、0 skip**（route / host / device-day clock / personal editor / overlap / hook / read client / projection / presenter / date window / native v3 client / copy・CSS guard）。`sc10-calendar-clock-green.log` は host + device-day clock **6/6 pass**。`sc10-calendar-product-task-copy-qa.json` は task domain **120 entries / 0 issues**。全 Web copy QA の先行 **26 issues** は未解消で、全体 pass としない。
 
-`sc10-web-typecheck.log` は heavy.sh d / session 70199 / **exit 0**。これは先行 `b14ae8912` の read foundation と既存 Web host / manual drawer、未コミット SC-09 compile stub を含むが、今回の personal editor / CalendarWorkspace / Task wiring **より前**の証拠。今回の新 host の fresh typecheck は主会話の App full suite 終了まで待ち、browser / full Web / pixel / simulator / build は未検証。繰り返し sheet を含む画板完全一致、R31a/b 後の pixel、実 UI 操作記録が残るため SC-10 を閉合しない。Google 実接続・外部送信・外部予定書込は未使用。
+host commit：`6769cdd37`（14 paths）。先行 `sc10-web-typecheck.log` は heavy.sh d / session 70199 / exit 0 だが host 追加前。host 後の最初の fresh check `sc10-product-sc11-client-typecheck.log` は **exit 2**、未コミット SC-11 client の Zod nullable medium が joinUrl を optional と推論する一点で失敗した。SC-10 の成功へ読み替えない。medium を明示的な null 値付きに正規化し、focused を再実行。最初の retry session 66542 は主会話 App job が先に slot を取得したため queued のまま PID を特定して停止、**exit 143、tsc 未開始**であり pass ではない。
+
+次の fresh `sc10-product-sc11-boundaries-typecheck.log` は heavy.sh d / session 71885 / **exit 0**。`6769cdd37` の product host / personal editor、SC-11 client / availability と六つの SC-09 compile stub を含む（SC-11 の後述する point-zone 一行修正より前）。browser / full Web / pixel / simulator / build は未検証。繰り返し sheet を含む画板完全一致、R31a/b 後の pixel、実 UI 操作記録が残るため SC-10 を閉合しない。Google 実接続・外部送信・外部予定書込は未使用。
+
+### SC-11 Web native client / availability（UI 接続前の部分里程標）
+
+新 client は既存 `GET /api/appointments/[id]` と `POST /api/appointments/[id]/commands` だけを使い、frozen shared contract や server rules を変更しない。public GET の candidateTimes / confirmed identity を local response schema で追加検証する。contact / appointment identity、participants visibility、version と confirmed status を確認してから `propose` する。3～5 個の重ならない同じ所要時間（15～480 分）・有効な timezone・15 分より先の候補だけを送り、unsafe video URL を拒否する。
+
+`propose` receipt は `reschedule_pending` / 上がった version と proposal revision / 本人の提案 / 選択した全候補・duration・medium・timezone・note を照合し、元 confirmed slot を丸ごと保持していることを確認する。独立 GET がその receipt と一致して初めて成功とする。曖昧な transport failure の retry は同じ body / baseline に同じ既存 idempotency registry key を用い、native outbox の二重提案を作らない。cancel も確認後の native `cancel` 用 client のみで、schedule-item DELETE や personal PATCH は呼ばない。API denial と abort は成功へ変換せず、closed error code だけを UI へ渡す。
+
+availability は明日から **14 local days、native 1 HTTP request + external 1 HTTP request** の bounded read（native 内部 SQL work の留保は SC-10 source 節のとおり）。欠損 / skip / failure / reconnect は incomplete とし、その空から free slots を生成しない。完全に取得できた窓だけで、翌平日から 9～18 時の 30 分刻みに 60 分候補を一日一つずつ最大 3 件選ぶ。floating all-day は本人の zone の一日として避け、unknown-duration point は表示 zone の一日全体を自動選択しない。DST を固定 24 時間でずらさない。これは相手の空きを読む機能や travel time の保証ではない。incomplete の場合は UI 側で明示した手動候補に限る方針を主会話が承認済み。
+
+RED：`sc11-web-proposal-client-red.log`（4 fail）、`sc11-web-cancel-client-red.log`（cancel 未実装）、`sc11-web-availability-red.log`。`sc11-web-point-zone-red.log` は saved timezone が異なる unknown-duration point を誤った日として避け、UTC の 4/2 候補が残る問題を実測。表示 zone の day を使う一行修正後、最新 `sc11-web-boundaries-green.log` は **32/32 pass、0 skip**（client 7 / availability 4 / native appointment lifecycle・idempotency / shared schema / calendar read・range・projection）。real native memory service と public HTTP shape を通し、original confirmed slot の保持、reschedule outbox 一件・rescheduled outbox なし、ambiguous retry、誤った候補 receipt / readback / contact 拒否と scope abort を検証した。実 DB / provider / worker / 外部送信は使わない。
+
+上記 fresh Web typecheck は当該 point-zone 一行修正前の証拠。最後の変更は 32/32 定向で検証済みだが、現最終状態の fresh typecheck / browser は次の coordinated heavy slot で再確認する。Web Modal / calendar meeting detail への UI 接続はまだ行っていない。contact-only 初回 create は引き続き user choice 待ちで、client に create endpoint を加えていない。SC-11 完了や外部への送信成功とはしない。
 
 ### Web 三块 presenter と product host（部分里程標）
 
