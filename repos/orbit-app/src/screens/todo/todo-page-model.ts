@@ -9,6 +9,15 @@ export function todoPageIsStale(page: Pick<TodoPageContract, "date" | "timeZone"
   return page.date !== localDate || page.timeZone !== timeZone;
 }
 
+/** A stale snapshot is read-only; while offline only an owned, mirrored plain task can be queued. */
+export function canWriteTodoFollowup(
+  item: TodoFollowupItem,
+  state: { offline: boolean; staleDay: boolean; locallyMirrored: boolean },
+): boolean {
+  if (state.staleDay) return false;
+  return !state.offline || item.kind === "task" && state.locallyMirrored;
+}
+
 function dueAt(task: TaskItemContract, zone: string): string | undefined {
   if (task.dueAt) return task.dueAt;
   if (!task.plannedDate) return undefined;

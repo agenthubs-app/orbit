@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { TodoPageContract } from "../src/api/contract/todo-page";
 import type { LocalSyncQueuedMutation } from "../src/data/sync/local-sync-repository";
-import { overlayTodoPage, todoPageIsStale } from "../src/screens/todo/todo-page-model";
+import { canWriteTodoFollowup, overlayTodoPage, todoPageIsStale } from "../src/screens/todo/todo-page-model";
 
 const actorId = "actor-a";
 const date = "2026-10-18";
@@ -29,6 +29,16 @@ test("a last-seen To-do copy becomes stale after the device's local day changes"
   assert.equal(todoPageIsStale(page, date), false);
   assert.equal(todoPageIsStale(page, "2026-10-19"), true);
   assert.equal(todoPageIsStale(page, date, "America/Los_Angeles"), true);
+});
+
+test("offline follow-up actions require a mirrored plain task; stale copies are read-only", () => {
+  const [plain, lifecycle] = page.followups.items;
+  assert.ok(plain && lifecycle);
+  assert.equal(canWriteTodoFollowup(plain, { offline: true, staleDay: false, locallyMirrored: true }), true);
+  assert.equal(canWriteTodoFollowup(plain, { offline: true, staleDay: false, locallyMirrored: false }), false);
+  assert.equal(canWriteTodoFollowup(lifecycle, { offline: true, staleDay: false, locallyMirrored: true }), false);
+  assert.equal(canWriteTodoFollowup(lifecycle, { offline: false, staleDay: false, locallyMirrored: false }), true);
+  assert.equal(canWriteTodoFollowup(plain, { offline: false, staleDay: true, locallyMirrored: true }), false);
 });
 
 test("queued plain-task deferral updates local date/count but leaves lifecycle and decisions untouched", () => {
