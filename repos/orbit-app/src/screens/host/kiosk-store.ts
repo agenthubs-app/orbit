@@ -7,3 +7,8 @@ export async function openKioskStore(): Promise<KioskStore> {
   shared ??= memoryKioskStore();
   return shared;
 }
+
+/** 注销：清空本机受付库（名单缓存与离线队列都有参加者姓名）。 */
+export async function clearKioskDevice(): Promise<void> {
+  await (await openKioskStore()).clearAll();
+}

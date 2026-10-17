@@ -40,7 +40,9 @@ test("profiles and the public organizer page", hostDatabaseTest, async () => {
     const upcoming = await make("CFO Night Tokyo vol.19", cfo.profileId);
     await make("下書きのまま", cfo.profileId, false);
     const cancelled = await make("中止した回", cfo.profileId);
-    await lifecycle.cancel(HOST, cancelled.eventId, cancelled.version, null);
+    const cancelledRow = (await lifecycle.cancel(HOST, cancelled.eventId, cancelled.version, null)).event;
+    // R17 复核：中止后再归档（cancelled_at 清空、中止时刻存 payload）也不能出现在公开页。
+    await lifecycle.archive(cancelled.eventId, cancelledRow.version, true);
     await make("別のページの回", mfg.profileId);
 
     const admission = createPostgresEventAdmissionRepository({ client, workspaceId });

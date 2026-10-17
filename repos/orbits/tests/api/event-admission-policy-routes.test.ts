@@ -309,13 +309,12 @@ test("admission policy API is canonical-capability scoped with no legacy fallbac
   const sources = [
     "app/api/events/[id]/admission/policy/handler.ts",
     "app/api/events/[id]/admission/policy/route.ts",
-    "app/(app)/app/events/[id]/operations/admission/page.tsx",
   ].map((file) => readFileSync(join(projectRoot, file), "utf8"));
   const source = sources.join("\n");
 
-  assert.match(source, /"admission\.read"/u);
+  // R17：旧审核页（operations/admission）已改为跳到运营台「参加者」页签，页面层的 admission.read / Event Core 断言随之移除；
+  // 审核读写的权限在 /api/host/events/[id]/people*（tests/host/host-routes、host-live-service-postgres）。
   assert.match(source, /"roles\.manage"/u);
-  assert.match(source, /createConfiguredEventCoreService/u);
   assert.match(source, /expectedPolicyVersion/u);
   assert.doesNotMatch(source, /readPublicEventCatalogue|mockEventRecords|legacyEvent/u);
 });

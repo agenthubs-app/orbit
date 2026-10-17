@@ -58,6 +58,10 @@ test("small cells: <5 shows —, a lone suppressed cell takes the smallest other
   assert.deepEqual(suppressCells([19, 17, 16]), [19, 17, 16]);
   assert.equal(suppressedRate(3, 4), null);
   assert.equal(suppressedRate(118, 140), 84);
+  // 分子 <5 也抑制（否则比率 × 分母可还原被抑制的人数）。
+  assert.equal(suppressedRate(1, 20), null);
+  assert.equal(suppressedRate(0, 20), null);
+  assert.equal(suppressedRate(5, 20), 25);
   assert.deepEqual(suppressedDistribution([2, 1]), [null, null]);
   assert.deepEqual(suppressedDistribution([46, 28, 17, 9]), [46, 28, 17, 9]);
 });

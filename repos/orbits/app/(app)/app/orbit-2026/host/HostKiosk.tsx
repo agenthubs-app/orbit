@@ -13,7 +13,7 @@ import { Avatar, Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "..
 import { failureCode, failureOf, hostApi } from "./host-api";
 import { ScoreRing } from "./HostPeople";
 import { consoleHref, hostTime, hostTranslator, type HostT } from "./host-model";
-import { flushQueue, indexedDbKioskStore, kioskDeviceId, memoryKioskStore, readRoster, searchRoster, type KioskQueueItem, type KioskRosterCache, type KioskStore } from "./kiosk-store";
+import { flushQueue, indexedDbKioskStore, kioskDeviceId, memoryKioskStore, purgeExpiredRosters, readRoster, searchRoster, type KioskQueueItem, type KioskRosterCache, type KioskStore } from "./kiosk-store";
 import s from "./host.module.css";
 import k from "./kiosk.module.css";
 
@@ -326,7 +326,8 @@ function KioskInner({ eventId, language }: { eventId: string; language: OrbitLan
     if (res.ok) { setOnline(true); setFailure(null); accept(res.data); return; }
     const reason = failureOf(res);
     if (reason === "network") { setOnline(false); return; }
-    if (reason === "forbidden" || reason === "not_found") { await store.current?.clearRoster(eventId); roster.current = null; }
+    // 失去权限：这场的名单和离线队列（都有姓名）一起清。
+    if (reason === "forbidden" || reason === "not_found") { await store.current?.clearEvent(eventId); roster.current = null; void refreshQueue(); }
     setFailure(reason);
   }, [eventId, accept]);
 
@@ -340,8 +341,8 @@ function KioskInner({ eventId, language }: { eventId: string; language: OrbitLan
     if (res.ok) {
       const cache = { cacheUntil: res.data.cacheUntil, eventId, rows: res.data.rows, savedAt: new Date().toISOString() };
       if (Date.parse(cache.cacheUntil) > nowKiosk().getTime()) { await store.current.saveRoster(cache); roster.current = cache; } else { await store.current.clearRoster(eventId); roster.current = null; }
-    } else if (failureOf(res) === "forbidden") { await store.current.clearRoster(eventId); roster.current = null; }
-  }, [eventId]);
+    } else if (failureOf(res) === "forbidden") { await store.current.clearEvent(eventId); roster.current = null; void refreshQueue(); }
+  }, [eventId, refreshQueue]);
 
   const flush = useCallback(async (manual: boolean) => {
     if (!store.current || flushing.current) return;
@@ -362,6 +363,8 @@ function KioskInner({ eventId, language }: { eventId: string; language: OrbitLan
     let alive = true;
     void (async () => {
       store.current = (await indexedDbKioskStore()) ?? memoryKioskStore();
+      // 启动时清掉所有场次里过期的名单（不只这一场）。
+      await purgeExpiredRosters(store.current, new Date());
       if (!alive) return;
       setOnline(isOnline());
       await refreshQueue();
@@ -384,11 +387,18 @@ function KioskInner({ eventId, language }: { eventId: string; language: OrbitLan
   // 30 秒心跳（deviceId 存 localStorage）。
   useEffect(() => {
     const deviceId = kioskDeviceId();
-    const beat = async () => { if (!isOnline()) return; const res = await hostApi.heartbeat(eventId, deviceId); if (res.ok) setDevices(res.data.devices); };
+    const beat = async () => {
+      if (!isOnline()) return;
+      const res = await hostApi.heartbeat(eventId, deviceId);
+      if (res.ok) { setDevices(res.data.devices); return; }
+      // 心跳发现权限没了（被移出共同运营等）：清这场的本机名单与队列，并显示说明。
+      const reason = failureOf(res);
+      if (reason === "forbidden" || reason === "not_found") { await store.current?.clearEvent(eventId); roster.current = null; void refreshQueue(); setFailure(reason); }
+    };
     void beat();
     const timer = setInterval(() => void beat(), HEARTBEAT_MS);
     return () => clearInterval(timer);
-  }, [eventId]);
+  }, [eventId, refreshQueue]);
 
   // 联网 / 断网。
   useEffect(() => {

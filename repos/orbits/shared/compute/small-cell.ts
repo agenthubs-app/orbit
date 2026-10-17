@@ -25,10 +25,15 @@ export function suppressCells(values: readonly number[], threshold = SMALL_CELL_
   return out;
 }
 
-/** 比率：分母（人数）<阈值时 null；否则四舍五入成整数百分比。 */
+/**
+ * 比率：分母（人数）<阈值，或分子 <阈值时 null；否则四舍五入成整数百分比。
+ * 分子也要判：分子被抑制时比率 × 公开的分母就能还原出它（R17 复核：受付 20 人、跟进 1 人 → 5%）。
+ */
 export function suppressedRate(numerator: number, denominator: number, threshold = SMALL_CELL_THRESHOLD): number | null {
   if (!Number.isFinite(denominator) || denominator < threshold || denominator <= 0) return null;
-  return Math.round((Math.max(0, Math.min(numerator, denominator)) / denominator) * 100);
+  const value = Math.max(0, Math.min(Number.isFinite(numerator) ? numerator : 0, denominator));
+  if (value < threshold) return null;
+  return Math.round((value / denominator) * 100);
 }
 
 /** 各格人数 → 百分比（整数），先按人数做抑制与差分保护；总数 <阈值整组 null。 */

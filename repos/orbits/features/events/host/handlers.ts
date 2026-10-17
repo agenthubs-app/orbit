@@ -59,10 +59,9 @@ import { organizerProfileInputSchema, organizerProfileListResponseSchema, organi
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
 import { AppError, getHttpStatusForAppErrorCode, SAFE_INTERNAL_ERROR_MESSAGE, type AppErrorCode } from "../../../shared/errors/app-error";
-import { DEMO_ACTOR_ID } from "../../../shared/mock/demo-world/fixtures";
 import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../../app/api/_shared/authenticated-actor";
 import { redesignContractMode } from "../../redesign-contracts/route";
-import { createHostMockService } from "./mock";
+import { createHostMockService, DEMO_ACTOR_ID } from "./mock";
 import { HostError, type HostErrorCode, type HostService } from "./service";
 
 type Params = Record<string, string>;

@@ -41,15 +41,23 @@ export function createHostKiosk(deps: HostKioskDeps) {
   const { client, workspaceId } = deps;
   const now = deps.now ?? (() => new Date());
 
-  async function replay(eventId: string, key: string): Promise<HostCheckInResult | null> {
-    const result = await client.query<{ result: HostCheckInResult | string }>(`select result from event_kiosk_requests where workspace_id = $1 and event_id = $2 and idempotency_key = $3`, [workspaceId, eventId, key]);
-    const raw = result.rows[0]?.result;
-    return raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) as HostCheckInResult : null;
+  /**
+   * 幂等重放：同一个键只认同一种操作（与同一个参加者）；键被拿去做别的事 → 拒绝（R17 复核）。
+   * 调用方先判权限再重放，没有权限的人拿到键也读不到结果。
+   */
+  async function replay(eventId: string, key: string, operation?: Operation, participantId?: string): Promise<HostCheckInResult | null> {
+    const result = await client.query<{ result: HostCheckInResult | string; operation: string }>(`select result, operation from event_kiosk_requests where workspace_id = $1 and event_id = $2 and idempotency_key = $3`, [workspaceId, eventId, key]);
+    const row = result.rows[0];
+    if (!row) return null;
+    const value = (typeof row.result === "string" ? JSON.parse(row.result) : row.result) as HostCheckInResult;
+    if (operation && row.operation !== operation) throw new HostError("VALIDATION", "IDEMPOTENCY_KEY_REUSED");
+    if (participantId && value.participantId !== participantId) throw new HostError("VALIDATION", "IDEMPOTENCY_KEY_REUSED");
+    return value;
   }
 
   async function remember(eventId: string, key: string, operation: Operation, value: HostCheckInResult): Promise<HostCheckInResult> {
     await client.query(`insert into event_kiosk_requests (workspace_id, event_id, idempotency_key, operation, result) values ($1, $2, $3, $4, $5::jsonb) on conflict do nothing`, [workspaceId, eventId, key, operation, JSON.stringify(value)]);
-    return (await replay(eventId, key)) ?? value;
+    return (await replay(eventId, key, operation)) ?? value;
   }
 
   async function participant(eventId: string, participantId: string): Promise<ParticipantRow | null> {
@@ -99,13 +107,15 @@ export function createHostKiosk(deps: HostKioskDeps) {
 
   return {
     async checkIn(actorId: string, eventId: string, participantId: string, idempotencyKey: string): Promise<HostCheckInResult> {
-      const replayed = await replay(eventId, idempotencyKey);
+      await deps.requireCapability(actorId, eventId, "check_in.roster.write");
+      const replayed = await replay(eventId, idempotencyKey, "check_in", participantId);
       if (replayed) return { ...replayed, duplicate: true };
       return remember(eventId, idempotencyKey, "check_in", await checkInOnce(actorId, eventId, participantId, false));
     },
 
     async scan(actorId: string, eventId: string, payload: string, idempotencyKey: string): Promise<HostCheckInResult> {
-      const replayed = await replay(eventId, idempotencyKey);
+      await deps.requireCapability(actorId, eventId, "check_in.roster.write");
+      const replayed = await replay(eventId, idempotencyKey, "scan");
       if (replayed) return { ...replayed, duplicate: true };
       const check = verifyCheckInToken(payload, { eventId, now: now() }, deps.tokenSecret === undefined ? undefined : deps.tokenSecret);
       if (check.ok === false) throw new HostError("TOKEN_INVALID", `QR_${check.reason.toUpperCase()}`);
@@ -113,9 +123,9 @@ export function createHostKiosk(deps: HostKioskDeps) {
     },
 
     async undo(actorId: string, eventId: string, participantId: string, idempotencyKey: string): Promise<HostCheckInResult> {
-      const replayed = await replay(eventId, idempotencyKey);
-      if (replayed) return replayed;
       await deps.requireCapability(actorId, eventId, "check_in.roster.write");
+      const replayed = await replay(eventId, idempotencyKey, "undo", participantId);
+      if (replayed) return replayed;
       const person = await participant(eventId, participantId);
       if (!person) throw new HostError("NOT_FOUND");
       const undone = await client.transaction(async (executor: EventOperationsSqlExecutor) => {
@@ -129,7 +139,16 @@ export function createHostKiosk(deps: HostKioskDeps) {
         await executor.query(`insert into event_ops_checkin_undos (workspace_id, event_id, undo_id, actor_id, participant_id, checked_in_at, evidence_id, undone_by) values ($1, $2, $3, $4, $5, $6, $7, $8)`, [workspaceId, eventId, undoId, checkIn.actor_id, participantId, at.toISOString(), checkIn.evidence_id, actorId]);
         // 签到写的 outbox / audit 行用的是按 (活动, 人) 确定的 id；改名留档，再签时才能写新的一行。
         const suffix = `:undone:${undoId}`;
-        await executor.query(`update event_ops_outbox set outbox_id = outbox_id || $4 where workspace_id = $1 and event_id = $2 and aggregate_type = 'event_checkin' and aggregate_id = $3 and outbox_id not like '%:undone:%'`, [workspaceId, eventId, `${eventId}:${checkIn.actor_id}`, suffix]);
+        // 还没投递（pending）的签到 outbox 直接作废，免得计划加分在撤回之后才到（R17 复核）；正在投递的由 revertPlanAttendance 对冲。
+        await executor.query(
+          `update event_ops_outbox set outbox_id = outbox_id || $4,
+                  status = case when status = 'pending' then 'completed' else status end,
+                  completed_at = case when status = 'pending' then statement_timestamp() else completed_at end,
+                  error_code = case when status = 'pending' then 'CHECK_IN_UNDONE' else error_code end,
+                  updated_at = statement_timestamp()
+            where workspace_id = $1 and event_id = $2 and aggregate_type = 'event_checkin' and aggregate_id = $3 and outbox_id not like '%:undone:%'`,
+          [workspaceId, eventId, `${eventId}:${checkIn.actor_id}`, suffix],
+        );
         await executor.query(`update event_ops_audit_log set audit_id = audit_id || $4 where workspace_id = $1 and event_id = $2 and aggregate_type = 'event_checkin' and aggregate_id = $3 and audit_id like 'audit:event-checkin:%' and audit_id not like '%:undone:%'`, [workspaceId, eventId, `${eventId}:${checkIn.actor_id}`, suffix]);
         await executor.query(`delete from event_ops_checkins where workspace_id = $1 and event_id = $2 and participant_id = $3`, [workspaceId, eventId, participantId]);
         await executor.query(
@@ -147,9 +166,9 @@ export function createHostKiosk(deps: HostKioskDeps) {
 
     /** 当日枠：`subjectActorId` 是キャンセル待ち的申込者（候补没有 participant 行，按 actor 认）。 */
     async admitOnSite(actorId: string, eventId: string, subjectActorId: string, input: { idempotencyKey: string; confirmOverCapacity?: boolean }): Promise<HostCheckInResult> {
-      const replayed = await replay(eventId, input.idempotencyKey);
-      if (replayed) return replayed;
       await deps.requireCapability(actorId, eventId, "check_in.walk_in");
+      const replayed = await replay(eventId, input.idempotencyKey, "admit_on_site");
+      if (replayed) return replayed;
       if (!deps.admission.admitOnSite) throw new HostError("NOT_CONFIGURED");
       let admitted: Awaited<ReturnType<NonNullable<EventAdmissionRepository["admitOnSite"]>>>;
       try {

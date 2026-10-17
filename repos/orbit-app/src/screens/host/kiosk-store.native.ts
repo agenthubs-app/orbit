@@ -22,6 +22,15 @@ async function open(): Promise<KioskStore> {
   const toItem = (row: QueueRow): KioskQueueItem => ({ at: row.at, error: row.error, eventId: row.eventId, idempotencyKey: row.idempotencyKey, initial: row.initial, name: row.name, org: row.org, participantId: row.participantId });
   return {
     async clearRoster(eventId) { await db.runAsync("DELETE FROM kiosk_roster WHERE eventId = ?", eventId); },
+    async clearEvent(eventId) {
+      await db.runAsync("DELETE FROM kiosk_roster WHERE eventId = ?", eventId);
+      await db.runAsync("DELETE FROM kiosk_queue WHERE eventId = ?", eventId);
+    },
+    async clearAll() { await db.execAsync("DELETE FROM kiosk_roster; DELETE FROM kiosk_queue;"); },
+    async rosters() {
+      const rows = await db.getAllAsync<RosterRow>("SELECT * FROM kiosk_roster");
+      return rows.flatMap((row) => { try { return [{ cacheUntil: row.cacheUntil, eventId: row.eventId, rows: JSON.parse(row.rows) as KioskRosterCache["rows"], savedAt: row.savedAt }]; } catch { return []; } });
+    },
     async enqueue(item) {
       // 同一个幂等键只存一次（INSERT OR IGNORE）。
       await db.runAsync("INSERT OR IGNORE INTO kiosk_queue (idempotencyKey, eventId, participantId, name, initial, org, at, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", item.idempotencyKey, item.eventId, item.participantId, item.name, item.initial, item.org, item.at, item.error ?? null);
@@ -41,4 +50,9 @@ async function open(): Promise<KioskStore> {
 export function openKioskStore(): Promise<KioskStore> {
   shared ??= open();
   return shared;
+}
+
+/** 注销：清空本机受付库（名单缓存与离线队列都有参加者姓名；共用设备换人登录）。 */
+export async function clearKioskDevice(): Promise<void> {
+  await (await openKioskStore()).clearAll();
 }

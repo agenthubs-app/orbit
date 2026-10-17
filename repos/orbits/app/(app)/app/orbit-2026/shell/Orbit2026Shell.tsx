@@ -1,12 +1,15 @@
 "use client";
 
 import { signOut, useSession } from "next-auth/react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { readInboxUnreadCounts } from "../../inbox/relationship-inbox-panel";
+// R17：注销时删掉本机受付库（kiosk 的名单缓存与离线队列都有参加者姓名；共用平板换人登录）。
+import { clearKioskDevice } from "../host/kiosk-store";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { getOrbitThemePreference, setOrbitThemePreference, type OrbitThemePreference } from "../../orbit-theme";
 import { pickCopy } from "../copy/types";
@@ -291,7 +294,7 @@ function AccountMenuBody({ name, email, compact, onDone }: { name: string; email
           segments={[{ key: "system", label: t(shellCopy.themeSystem) }, { key: "light", label: t(shellCopy.themeLight) }, { key: "dark", label: t(shellCopy.themeDark) }]} />
       </div>
       <span className={styles.menuSep} aria-hidden />
-      <Button label={t(shellCopy.signOut)} variant="dangerGhost" icon="out" block className={styles.menuOut} onClick={() => void signOut({ callbackUrl: "/app" })} />
+      <Button label={t(shellCopy.signOut)} variant="dangerGhost" icon="out" block className={styles.menuOut} onClick={() => void clearKioskDevice().finally(() => signOut({ callbackUrl: "/app" }))} />
     </div>
   );
 }

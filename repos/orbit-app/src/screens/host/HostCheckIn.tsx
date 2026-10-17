@@ -15,7 +15,7 @@ import { useHostApi } from "./host-api";
 import { QrSheet } from "./HostQrSheet";
 import { clock, consoleHref } from "./host-model";
 import { PcCard } from "./host-ui";
-import { applyRoster, flushQueue, readRoster, searchRoster, type KioskQueueItem, type KioskRosterCache, type KioskStore } from "./kiosk-queue";
+import { applyRoster, flushQueue, purgeExpiredRosters, readRoster, searchRoster, type KioskQueueItem, type KioskRosterCache, type KioskStore } from "./kiosk-queue";
 import { kioskDeviceId } from "./kiosk-device";
 import { openKioskStore } from "./kiosk-store";
 import { useHostT } from "./useHostT";
@@ -41,6 +41,9 @@ export function HostCheckInScreen() {
   const roster = useRef<KioskRosterCache | null>(null);
   const offset = useRef(0);
   const hold = useRef(Boolean(dev && params.failed));
+  // 心跳 / 轮询 effect 只按场次建一次，用 ref 读最新的搜索词、在线状态与回调。
+  const qRef = useRef(q); qRef.current = q;
+  const onlineRef = useRef(online); onlineRef.current = online;
   const nowKiosk = useCallback(() => new Date(Date.now() + offset.current), []);
 
   const refreshQueue = useCallback(async () => { if (store.current) setQueue(await store.current.queue(eventId)); }, [eventId]);
@@ -62,7 +65,8 @@ export function HostCheckInScreen() {
       return true;
     }
     if (res.reason === "network") setOnline(false);
-    else if (res.reason === "forbidden" || res.reason === "not_found") { await store.current?.clearRoster(eventId); roster.current = null; setFailed(true); }
+    // 失去权限：这场的本机名单与离线队列（都有姓名）一起清。
+    else if (res.reason === "forbidden" || res.reason === "not_found") { await store.current?.clearEvent(eventId); roster.current = null; setFailed(true); }
     else setFailed(true);
     return false;
   }, [api, eventId]);
@@ -72,6 +76,8 @@ export function HostCheckInScreen() {
     let live = true;
     void (async () => {
       store.current = await openKioskStore();
+      // 启动时清掉所有场次里过期的名单（不只这一场）。
+      await purgeExpiredRosters(store.current, new Date());
       roster.current = await readRoster(store.current, eventId, nowKiosk());
       const ok = await load(q);
       if (!live) return;
@@ -105,20 +111,32 @@ export function HostCheckInScreen() {
     return () => clearTimeout(timer);
   }, [q, online, load, queue]);
 
+  const flushRef = useRef(flush); flushRef.current = flush;
+  const loadRef = useRef(load); loadRef.current = load;
+  const refreshQueueRef = useRef(refreshQueue); refreshQueueRef.current = refreshQueue;
+
   // 每 30 秒心跳（N台で受付中）；顺手补发队列、刷新名单缓存的 TTL。
   useEffect(() => {
     let deviceId = "";
     const beat = async () => {
       deviceId ||= await kioskDeviceId();
       const res = await api.heartbeat(eventId, deviceId);
-      if (res.ok) { setDevices(res.data.devices); setOnline(true); await flush(); } else if (res.reason === "network") setOnline(false);
+      if (res.ok) { setDevices(res.data.devices); setOnline(true); await flushRef.current(); }
+      else if (res.reason === "network") setOnline(false);
+      else if (res.reason === "forbidden" || res.reason === "not_found") {
+        // 心跳发现权限没了（被移出共同运营等）：清这场的本机名单与队列。
+        await store.current?.clearEvent(eventId); roster.current = null; setFailed(true); await refreshQueueRef.current();
+        return;
+      }
       if (store.current && roster.current && !(Date.parse(roster.current.cacheUntil) > nowKiosk().getTime())) { await store.current.clearRoster(eventId); roster.current = null; }
     };
     void beat();
     const timer = setInterval(() => void beat(), HEARTBEAT_MS);
-    const poll = setInterval(() => { if (online) void load(q); }, POLL_MS);
+    const poll = setInterval(() => { if (onlineRef.current) void loadRef.current(qRef.current); }, POLL_MS);
     return () => { clearInterval(timer); clearInterval(poll); };
-  }, [api, eventId, flush, load, nowKiosk, online, q]);
+    // 只按场次重建：搜索词 / 在线状态从 ref 读，按键不再立刻触发心跳与补发（R17 复核）。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, eventId]);
 
   const arrive = async (row: HostKioskRow) => {
     if (busy || !store.current) return;

@@ -11,7 +11,7 @@ import { HostKioskView, minutesToDoors, notArrived, streamRows } from "../../app
 import { HostReportView, barHeights, funnelPercent, orDash, tableScale } from "../../app/(app)/app/orbit-2026/host/HostReport";
 import { HostSetupView } from "../../app/(app)/app/orbit-2026/host/HostSetup";
 import { hostTranslator } from "../../app/(app)/app/orbit-2026/host/host-model";
-import { flushQueue, memoryKioskStore, readRoster, searchRoster, type KioskQueueItem } from "../../app/(app)/app/orbit-2026/host/kiosk-store";
+import { flushQueue, memoryKioskStore, purgeExpiredRosters, readRoster, searchRoster, type KioskQueueItem } from "../../app/(app)/app/orbit-2026/host/kiosk-store";
 import { addSuggested, agoText, charCount, draftInput, draftOf, draftProblems, hasLink, moveItem, switchKind, templateQuestions } from "../../app/(app)/app/orbit-2026/host/setup-model";
 import { DEFAULT_HOST_MOCK_STATE, HOST_EVENT_IDS, hostKiosk, hostKioskRoster, hostReport, hostSetup } from "../../shared/mock/demo-world/host-events";
 
@@ -220,3 +220,18 @@ test("kiosk 名单缓存：TTL = cacheUntil，过期读时即清", async () => {
   assert.equal(await readRoster(store, "e1", new Date("2026-10-08T00:31:00.000Z")), null);
   assert.equal(store.dump().rosters.length, 0);
 });
+
+test("受付 本机清理（R17 复核）：启动时清所有场次的过期名单；失去权限时这场的名单与队列一起清", async () => {
+  const store = memoryKioskStore();
+  const now = new Date("2026-10-08T12:00:00Z");
+  await store.saveRoster({ cacheUntil: "2026-10-08T11:00:00Z", eventId: "e-old", rows: [], savedAt: "2026-10-07T00:00:00Z" });
+  await store.saveRoster({ cacheUntil: "2026-10-09T00:00:00Z", eventId: "e-now", rows: [], savedAt: "2026-10-08T00:00:00Z" });
+  assert.equal(await purgeExpiredRosters(store, now), 1);
+  assert.deepEqual(store.dump().rosters.map((cache) => cache.eventId), ["e-now"]);
+  await store.enqueue({ at: "2026-10-08T11:59:00Z", eventId: "e-now", idempotencyKey: "k1", name: "森 由香", participantId: "p1", status: "pending" } as unknown as KioskQueueItem);
+  await store.enqueue({ at: "2026-10-08T11:59:30Z", eventId: "e-other", idempotencyKey: "k2", name: "木村", participantId: "p2", status: "pending" } as unknown as KioskQueueItem);
+  await store.clearEvent("e-now");
+  assert.deepEqual(store.dump().rosters, []);
+  assert.deepEqual(store.dump().queue.map((item) => item.idempotencyKey), ["k2"]);
+});
+

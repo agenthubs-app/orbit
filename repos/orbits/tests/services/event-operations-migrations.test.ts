@@ -183,7 +183,7 @@ test(
       const applied = await migrationPool.query<{ count: string }>(`
         select count(*)::text as count from event_ops_schema_migrations
       `);
-      assert.equal(applied.rows[0]?.count, "15");
+      assert.equal(applied.rows[0]?.count, String(EVENT_OPERATIONS_SCHEMA_MIGRATIONS.length));
 
       await migrationPool.query(`
         insert into event_ops_events (

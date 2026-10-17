@@ -34,7 +34,8 @@ function profileFromRow(row: Row): OrganizerProfile {
   };
 }
 
-const PROFILE_SELECT = `select p.*, (select count(*) from event_ops_events e where e.workspace_id = p.workspace_id and e.organizer_profile_id = p.profile_id and e.lifecycle_state_v2 in ('published', 'archived')) as event_count from organizer_profiles p`;
+// 公开页与件数只算公开过且没中止的活动：中止后再归档的活动 cancelled_at 被清空、中止时刻存在 source_payload.host.cancelledAt（DESIGN「中止不列」）。
+const PROFILE_SELECT = `select p.*, (select count(*) from event_ops_events e where e.workspace_id = p.workspace_id and e.organizer_profile_id = p.profile_id and e.lifecycle_state_v2 in ('published', 'archived') and coalesce(e.source_payload #>> '{host,cancelledAt}', '') = '') as event_count from organizer_profiles p`;
 
 export function createHostProfiles(deps: { client: EventOperationsPostgresClient; workspaceId: string; now?: () => Date }) {
   const { client, workspaceId } = deps;
@@ -90,7 +91,7 @@ export function createHostProfiles(deps: { client: EventOperationsPostgresClient
                 (select v.registration_opens_at from event_ops_admission_policy_heads h join event_ops_admission_policy_versions v using (workspace_id, event_id, policy_version) where h.workspace_id = e.workspace_id and h.event_id = e.event_id) as opens_at,
                 (select a.alias_value from event_aliases a where a.workspace_id = e.workspace_id and a.event_id = e.event_id and a.alias_type = 'public_slug' order by a.created_at limit 1) as public_slug
            from event_ops_events e
-          where e.workspace_id = $1 and e.organizer_profile_id = $2 and e.lifecycle_state_v2 in ('published', 'archived')
+          where e.workspace_id = $1 and e.organizer_profile_id = $2 and e.lifecycle_state_v2 in ('published', 'archived') and coalesce(e.source_payload #>> '{host,cancelledAt}', '') = ''
           order by e.starts_at desc`,
         [workspaceId, profile.profileId],
       );

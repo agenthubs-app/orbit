@@ -28,6 +28,12 @@ export interface KioskStore {
   roster(eventId: string): Promise<KioskRosterCache | null>;
   saveRoster(cache: KioskRosterCache): Promise<void>;
   clearRoster(eventId: string): Promise<void>;
+  /** 所有场次的名单缓存（启动时清过期用）。 */
+  rosters(): Promise<KioskRosterCache[]>;
+  /** 这场的名单与离线队列一起清（失去权限时）。 */
+  clearEvent(eventId: string): Promise<void>;
+  /** 全部清空（注销时）。 */
+  clearAll(): Promise<void>;
 }
 
 export function memoryKioskStore(): KioskStore & { dump: () => { queue: KioskQueueItem[]; rosters: KioskRosterCache[] } } {
@@ -35,6 +41,9 @@ export function memoryKioskStore(): KioskStore & { dump: () => { queue: KioskQue
   const rosters = new Map<string, KioskRosterCache>();
   return {
     async clearRoster(eventId) { rosters.delete(eventId); },
+    async clearEvent(eventId) { rosters.delete(eventId); for (const [key, item] of queue) if (item.eventId === eventId) queue.delete(key); },
+    async clearAll() { rosters.clear(); queue.clear(); },
+    async rosters() { return [...rosters.values()]; },
     dump: () => ({ queue: [...queue.values()], rosters: [...rosters.values()] }),
     async enqueue(item) { if (!queue.has(item.idempotencyKey)) queue.set(item.idempotencyKey, item); },
     async queue(eventId) { return [...queue.values()].filter((item) => item.eventId === eventId).sort((a, b) => a.at.localeCompare(b.at)); },
@@ -43,6 +52,15 @@ export function memoryKioskStore(): KioskStore & { dump: () => { queue: KioskQue
     async saveRoster(cache) { rosters.set(cache.eventId, cache); },
     async update(item) { if (queue.has(item.idempotencyKey)) queue.set(item.idempotencyKey, item); },
   };
+}
+
+/** 启动时：清掉所有场次里过期的名单（DESIGN §2.6「启动时检查过期即清」）。 */
+export async function purgeExpiredRosters(store: KioskStore, now: Date): Promise<number> {
+  let purged = 0;
+  for (const cache of await store.rosters().catch(() => [] as KioskRosterCache[])) {
+    if (!rosterFresh(cache, now)) { await store.clearRoster(cache.eventId); purged += 1; }
+  }
+  return purged;
 }
 
 /** 缓存是否还能用（cacheUntil 之前，按 kiosk 的时钟）。 */

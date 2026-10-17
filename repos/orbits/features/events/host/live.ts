@@ -258,10 +258,11 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     };
     if (!latest?.grouping) return base;
     const directory = new Map(latest.participants.map((participant) => [participant.participantId, participant]));
-    const { moves, version } = await matching.overrides(latest.generationId);
+    const { moves, version } = await matching.overrides(eventId, latest.generationId);
     const snapshotActors = new Set(latest.participants.map((participant) => participant.actorId));
     const roster = await reads.kioskRoster(eventId);
-    const extraUnplaced = roster.filter((row) => row.participantId && !snapshotActors.has(row.actorId)).map((row) => memberFor(undefined, row.participantId!)).map((member, index) => ({ ...member, initial: (roster[index]?.name ?? "").charAt(0), name: roster.filter((row) => row.participantId === member.participantId)[0]?.name ?? "" }));
+    // 生成之后才承认的人：首字与名字取自同一行（原来用过滤后的下标取未过滤的 roster，首字会对错人）。
+    const extraUnplaced = roster.filter((row) => row.participantId && !snapshotActors.has(row.actorId)).map((row) => ({ ...memberFor(undefined, row.participantId!), initial: (row.name ?? "").trim().charAt(0), name: row.name ?? "" }));
     const draft = draftTables({ actorOf: (id) => directory.get(id)?.actorId ?? id, conditions, directory, extraUnplaced, grouping: latest.grouping as never, moves, previousPairs: conditions.avoidPreviousTablemates ? await matching.previousPairs(eventId, facts.organizerActorId) : new Set() });
     const selected = Math.min(Math.max(round, 1), conditions.roundCount);
     const tables = draft.tables.filter((table) => table.round === selected);
@@ -395,6 +396,9 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       await require(actorId, eventId, "generation.publish");
       const facts = await factsOrThrow(actorId, eventId);
       if (facts.matched !== null) throw new HostError("INVALID_STATE", "ALREADY_PUBLISHED");
+      // generationId 必须是本活动的最新生成（否则有 A 活动权限的人可以改写 B 活动的下書き）。
+      const latest = deps.operations ? await deps.operations.latestGeneration(eventId) : null;
+      if (!latest || latest.generationId !== input.generationId) throw new HostError("INVALID_STATE", "GENERATION_NOT_READY");
       await matching.saveOverrides(actorId, eventId, input.generationId, input.expectedVersion, input.moves);
       return matchingView(actorId, eventId, input.moves[0]?.round ?? 1);
     },
@@ -407,7 +411,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       if (!latest?.grouping || latest.generationId !== input.generationId) throw new HostError("INVALID_STATE", "GENERATION_NOT_READY");
       const directory = new Map(latest.participants.map((participant) => [participant.participantId, participant]));
       const facts = await factsOrThrow(actorId, eventId);
-      const { moves } = await matching.overrides(latest.generationId);
+      const { moves } = await matching.overrides(eventId, latest.generationId);
       const conditions = await matching.conditions(eventId, latest.tableSize);
       const previousPairs = conditions.avoidPreviousTablemates ? await matching.previousPairs(eventId, facts.organizerActorId) : new Set<string>();
       await deps.operations.publishGeneration({

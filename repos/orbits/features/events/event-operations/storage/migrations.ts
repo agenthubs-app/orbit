@@ -1806,6 +1806,15 @@ create table if not exists event_host_question_sets (
 );
 `,
   },
+  {
+    // R17 复核：定型通知 outbox 领取租约。领取时写 claimed_until，处理完再改状态；
+    // 两个维护任务重叠时不会领到同一行（原来领取事务一提交行锁就放了，状态仍是 pending）。只加。
+    name: "event-operations-v18-host-notice-claim-lease",
+    version: 18,
+    sql: `
+alter table event_host_notice_outbox add column if not exists claimed_until timestamptz;
+`,
+  },
 ];
 
 function checksum(sql: string): string {

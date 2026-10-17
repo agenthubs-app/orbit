@@ -32,6 +32,9 @@ import { applyMatchingMoves } from "../../../shared/compute/table-constraints";
 import { parseCheckInToken } from "../../../shared/compute/checkin-token";
 import { HostError, type HostService } from "./service";
 
+/** 示例账号（DESIGN G18）：路由层用它判「示例只读」；从 mock 边界转出，生产代码不直接 import shared/mock。 */
+export { DEMO_ACTOR_ID } from "../../../shared/mock/demo-world/fixtures";
+
 interface HostMockMemory {
   state: HostMockState;
   decisions: Map<string, Map<string, HostPeopleBucket>>;

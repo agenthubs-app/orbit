@@ -19,7 +19,7 @@ import { MatchingBody, OverviewBody, PeopleBody, ReportBody, SegChips } from "..
 import { JoinCard } from "../src/screens/host/join-view";
 import { OrganizerBody } from "../src/screens/host/organizer-view";
 import { consoleHref, consoleSubtitle, eventIdFromUrl, hostEventsRowSub, parseSeg, rowNote } from "../src/screens/host/host-model";
-import { applyRoster, flushQueue, memoryKioskStore, readRoster, searchRoster, streamRows, type KioskQueueItem } from "../src/screens/host/kiosk-queue";
+import { applyRoster, flushQueue, memoryKioskStore, readRoster, searchRoster, streamRows, type KioskQueueItem, purgeExpiredRosters } from "../src/screens/host/kiosk-queue";
 import { renderedText } from "./helpers/render";
 
 const dict = ja as Record<string, string>;
@@ -169,3 +169,19 @@ test("routes: R17 screens behind the right gates; old operations pages redirect 
   assert.match(read("e/[slug].tsx"), /EventShortLinkScreen/);
   for (const file of ["events/center/new.tsx", "events/center/profiles.tsx", "events/center/profiles/[id].tsx", "events/[id]/edit.tsx"]) assert.match(read(file), /HostPcOnlyScreen/, file);
 });
+
+test("受付 本机清理（R17 复核）：启动清所有过期名单；失去权限清这场的名单与队列；注销 clearAll", async () => {
+  const store = memoryKioskStore();
+  await store.saveRoster({ cacheUntil: "2026-10-08T11:00:00Z", eventId: "e-old", rows: [], savedAt: "2026-10-07T00:00:00Z" });
+  await store.saveRoster({ cacheUntil: "2026-10-09T00:00:00Z", eventId: "e-now", rows: [], savedAt: "2026-10-08T00:00:00Z" });
+  assert.equal(await purgeExpiredRosters(store, new Date("2026-10-08T12:00:00Z")), 1);
+  assert.deepEqual(store.dump().rosters.map((cache) => cache.eventId), ["e-now"]);
+  await store.enqueue({ at: "2026-10-08T11:59:00Z", eventId: "e-now", idempotencyKey: "k1", initial: "森", name: "森 由香", org: null, participantId: "p1" });
+  await store.enqueue({ at: "2026-10-08T11:59:30Z", eventId: "e-other", idempotencyKey: "k2", initial: "木", name: "木村", org: null, participantId: "p2" });
+  await store.clearEvent("e-now");
+  assert.deepEqual(store.dump().rosters, []);
+  assert.deepEqual(store.dump().queue.map((item) => item.idempotencyKey), ["k2"]);
+  await store.clearAll();
+  assert.deepEqual(store.dump().queue, []);
+});
+

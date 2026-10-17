@@ -321,7 +321,8 @@ test("aggregate endpoint allows only analytics principals and allow-lists aggreg
     ["owner", true, null, null, 200],
     ["operations", false, "operations", "active", 200],
     ["read-only analyst", false, "read_only_analyst", "active", 200],
-    ["check-in staff", false, "check_in", "active", 403],
+    // R17 A9（b6 #20 表）：受付也能看报告聚合。
+    ["check-in staff", false, "check_in", "active", 200],
     ["reviewer", false, "reviewer", "active", 403],
     ["revoked analyst", false, "read_only_analyst", "revoked", 403],
   ];

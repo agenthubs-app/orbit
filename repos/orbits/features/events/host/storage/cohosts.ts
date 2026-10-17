@@ -132,7 +132,8 @@ export function createHostCohosts(deps: HostCohostDeps) {
             );
             if ((result.rowCount ?? 0) === 0) return false;
             // 只给已有账号的被邀请人写站内通知（邮箱对不上账号时什么都不写，界面反馈一样）。
-            if (inviteeActor) await enqueueHostNotice(executor, { actorId: inviteeActor, eventId, idempotencyKey: `notice:${eventId}:cohost_invite:${inviteeActor}:${inviteId}`, kind: "cohost_invite", payload: { role: input.role }, workspaceId });
+            // 通知链接用短码（邀请绑定了被邀请人，短码给别人也用不了）；令牌只存哈希，不写进 outbox。
+            if (inviteeActor) await enqueueHostNotice(executor, { actorId: inviteeActor, eventId, idempotencyKey: `notice:${eventId}:cohost_invite:${inviteeActor}:${inviteId}`, kind: "cohost_invite", payload: { href: `/app/host/join/${encodeURIComponent(shortCode)}`, role: input.role }, workspaceId });
             return true;
           });
           if (!inserted) throw new HostError("INVALID_STATE", "INVITE_REPLAYED");
@@ -173,6 +174,9 @@ export function createHostCohosts(deps: HostCohostDeps) {
         }
         const owner = await organizerOf(invite.eventId);
         if (owner === actorId) throw new HostError("INVALID_STATE", "ALREADY_OWNER");
+        // 已中止 / 已归档的活动不再接受共同运营（R17 复核）。
+        const state = await executor.query<{ lifecycle_state_v2: string }>(`select lifecycle_state_v2 from event_ops_events where workspace_id = $1 and event_id = $2`, [workspaceId, invite.eventId]);
+        if (["cancelled", "archived"].includes(state.rows[0]?.lifecycle_state_v2 ?? "")) throw new HostError("INVALID_STATE", "EVENT_CLOSED");
         await executor.query(`update event_cohost_invites set used_by = $3, used_at = $4 where workspace_id = $1 and invite_id = $2`, [workspaceId, invite.inviteId, actorId, now().toISOString()]);
         return { invite, owner };
       });
@@ -180,8 +184,14 @@ export function createHostCohosts(deps: HostCohostDeps) {
         await recordFailure(clientKey);
         throw new HostError("TOKEN_INVALID");
       }
-      const current = await deps.access.get({ eventId: accepted.invite.eventId, subjectActorId: actorId });
-      await deps.access.grant({ actingActorId: accepted.owner, eventId: accepted.invite.eventId, expectedRevision: current.revision, reason: "招待リンクから参加", role: accepted.invite.role, subjectActorId: actorId });
+      // 角色授予在 event-access 自己的事务里；失败时把邀请恢复成未使用（否则邀请作废、角色却没给上）。
+      try {
+        const current = await deps.access.get({ eventId: accepted.invite.eventId, subjectActorId: actorId });
+        await deps.access.grant({ actingActorId: accepted.owner, eventId: accepted.invite.eventId, expectedRevision: current.revision, reason: "招待リンクから参加", role: accepted.invite.role, subjectActorId: actorId });
+      } catch (error) {
+        await client.query(`update event_cohost_invites set used_by = null, used_at = null where workspace_id = $1 and invite_id = $2 and used_by = $3`, [workspaceId, accepted.invite.inviteId, actorId]).catch(() => undefined);
+        throw error;
+      }
       return { eventId: accepted.invite.eventId, role: accepted.invite.role };
     },
 

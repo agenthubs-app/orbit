@@ -169,6 +169,8 @@ test("390: a top bar with the 「O Orbit」 wordmark, 受信箱 (with the unread
   const sheet = (await menu.boundingBox())!;
   assert.ok(sheet.y + sheet.height >= 844 - 8 - 1 && sheet.x <= 8.5, `a bottom sheet 8 from the edges: ${JSON.stringify(sheet)}`);
   await menu.getByRole("button", { name: "ログアウト" }).click();
+  // R17：注销先删本机受付库（IndexedDB，异步），再 signOut。
+  await page.waitForFunction(() => (window as any).shellFixture.calls.some((call: object) => "signOut" in call));
   assert.equal(await page.evaluate(() => (window as any).shellFixture.calls.filter((call: object) => "signOut" in call).length), 1);
   const reads = await page.evaluate(() => (window as any).shellFixture.calls.filter((call: { inboxRead?: string }) => call.inboxRead).length);
   assert.equal(reads, 1, "the rail and the top bar share one unread read");
@@ -245,6 +247,7 @@ test("the avatar menu: language, appearance (自動 / ライト / ダーク) and
   // shared setOrbitThemePreference is covered by orbit-settings-theme.)
   assert.equal(await page.evaluate(() => document.documentElement.getAttribute("data-theme")), "light", "automatic follows the (light) system again");
   await menu.getByRole("button", { name: "ログアウト" }).click();
+  await page.waitForFunction(() => (window as any).shellFixture.calls.some((call: object) => "signOut" in call));
   assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls.filter((call: object) => "language" in call || "signOut" in call)), [{ language: "en" }, { signOut: "/app" }]);
 });
 

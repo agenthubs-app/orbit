@@ -107,8 +107,8 @@ export function createHostMatchingStore(deps: { client: EventOperationsPostgresC
       );
     },
 
-    async overrides(generationId: string): Promise<{ moves: HostMatchingMove[]; version: number }> {
-      const result = await client.query<{ moves: HostMatchingMove[] | string; version: number }>(`select moves, version from event_ops_generation_overrides where workspace_id = $1 and generation_id = $2`, [workspaceId, generationId]);
+    async overrides(eventId: string, generationId: string): Promise<{ moves: HostMatchingMove[]; version: number }> {
+      const result = await client.query<{ moves: HostMatchingMove[] | string; version: number }>(`select moves, version from event_ops_generation_overrides where workspace_id = $1 and generation_id = $2 and event_id = $3`, [workspaceId, generationId, eventId]);
       const row = result.rows[0];
       return { moves: row ? (typeof row.moves === "string" ? JSON.parse(row.moves) : row.moves) : [], version: Number(row?.version ?? 0) };
     },
@@ -116,8 +116,10 @@ export function createHostMatchingStore(deps: { client: EventOperationsPostgresC
     /** 追加拖动（版本不对 → VERSION_CONFLICT）。 */
     async saveOverrides(actorId: string, eventId: string, generationId: string, expectedVersion: number, moves: readonly HostMatchingMove[]): Promise<number> {
       return client.transaction(async (executor) => {
-        const current = await executor.query<{ moves: HostMatchingMove[] | string; version: number }>(`select moves, version from event_ops_generation_overrides where workspace_id = $1 and generation_id = $2 for update`, [workspaceId, generationId]);
-        const row = current.rows[0];
+        const current = await executor.query<{ moves: HostMatchingMove[] | string; version: number }>(`select moves, version, event_id from event_ops_generation_overrides where workspace_id = $1 and generation_id = $2 for update`, [workspaceId, generationId]);
+        const row = current.rows[0] as { moves: HostMatchingMove[] | string; version: number; event_id?: string } | undefined;
+        // 已有的 overrides 行属于别的活动 → 拒绝（调用方已校验 generationId 属于本活动，这里再兜底）。
+        if (row && row.event_id !== undefined && row.event_id !== eventId) throw new HostError("FORBIDDEN");
         const version = Number(row?.version ?? 0);
         if (version !== expectedVersion) throw new HostError("VERSION_CONFLICT");
         const merged = [...(row ? (typeof row.moves === "string" ? JSON.parse(row.moves) : row.moves) : []), ...moves].slice(-500);

@@ -56,6 +56,7 @@ import {
 import { cancelOrbitManagedNotifications } from "../notifications/native-notifications";
 import { revokeRegisteredPushDevice } from "../notifications/push-device-session";
 import { revokePushDeviceRegistrations } from "../notifications/push-registration-queue";
+import { clearKioskDevice } from "../screens/host/kiosk-store";
 
 interface AuthActionResult {
   message?: string;
@@ -653,6 +654,8 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
       await offlineIdentityStorage.clear(baseUrl);
       if (!usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
+      // R17：受付的本机名单与离线队列（有参加者姓名）跟账号走，注销即清。
+      await clearKioskDevice().catch(() => undefined);
     } catch {
       return {
         message: currentTranslator()("session.clearSignInFailed"),

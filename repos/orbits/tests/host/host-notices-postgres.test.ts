@@ -61,3 +61,28 @@ test("worker: inbox for everyone with an account, email only when allowed, idemp
     assert.deepEqual(await deliverHostNotices({ client, mailer, workspaceId }), { failed: 0, sent: 0, skipped: 0 }, "nothing is delivered twice");
   });
 });
+
+test("worker (R17 复核): a failed mail is retried, a claimed row is not taken twice, desktop links need no event", hostDatabaseTest, async () => {
+  await withHostDatabase(async ({ client, pool, workspaceId }) => {
+    await lockedFixtureQuery(pool, `insert into event_ops_events (workspace_id, event_id, organizer_actor_id, created_at, updated_at, lifecycle_state_v2, title, created_by) values ($1, 'evt_r', 'host', now(), now(), 'published', 'CFO Night Tokyo vol.18', 'host')`, [workspaceId]);
+    await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id, collection_name, record_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'auth_users', 'auth_user:a@example.com', 'auth', 'actor:a', $2::jsonb, now(), now())`, [workspaceId, JSON.stringify({ displayName: "A", email: "a@example.com", id: "actor:a" })]);
+    await client.transaction(async (executor) => {
+      await enqueueHostNotice(executor, { actorId: "actor:a", eventId: "evt_r", kind: "admission_approved", workspaceId });
+      await enqueueHostNotice(executor, { actorId: "actor:a", eventId: "host-center", idempotencyKey: "notice:host-center:desktop_link:actor:a:x", kind: "desktop_link", payload: { href: "/app/events/center" }, workspaceId });
+    });
+    let fail = true;
+    const mailer = { send: async () => (fail ? { delivered: false, reason: "failed" as const, redirected: true } : { delivered: true, redirected: true }) };
+    let t = new Date("2026-10-08T10:00:00Z");
+    const first = await deliverHostNotices({ client, mailer, now: () => t, workspaceId });
+    assert.deepEqual(first, { failed: 0, sent: 1, skipped: 0 }, "the desktop link (no event, no mail) is delivered; the failed mail is not marked sent");
+    const pending = await pool.query<{ status: string; claimed_until: unknown }>(`select status, claimed_until from event_host_notice_outbox where workspace_id = $1 and kind = 'admission_approved'`, [workspaceId]);
+    assert.equal(pending.rows[0]?.status, "pending");
+    // 租约里的行（模拟另一个 worker 刚领走）不会被再次领取。
+    await pool.query(`update event_host_notice_outbox set claimed_until = $2 where workspace_id = $1 and kind = 'admission_approved'`, [workspaceId, "2026-10-08T10:10:00Z"]);
+    t = new Date("2026-10-08T10:05:00Z");
+    assert.deepEqual(await deliverHostNotices({ client, mailer, now: () => t, workspaceId }), { failed: 0, sent: 0, skipped: 0 });
+    fail = false;
+    t = new Date("2026-10-08T10:11:00Z");
+    assert.deepEqual(await deliverHostNotices({ client, mailer, now: () => t, workspaceId }), { failed: 0, sent: 1, skipped: 0 }, "retried after the lease and the mail went out");
+  });
+});
