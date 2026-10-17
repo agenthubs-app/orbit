@@ -72,15 +72,14 @@ test.before(async () => {
   const result = await build({
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
-        import { ContactsScreen } from "./src/screens/contacts/ContactsScreen";
-        import { ContactDetailScreen } from "./src/screens/contacts/ContactDetailScreen";
         import { NoteDetailScreen } from "./src/screens/notes/NoteDetailScreen";
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
         const language = "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
         const which = window.initialFixture?.screen;
-        const screen = which === "detail" ? <ContactDetailScreen scopeKey="scope" /> : which === "note" ? <NoteDetailScreen actorId="account:one" noteId="note:1" scopeKey="scope" /> : <ContactsScreen mode="main" scopeKey="scope" />;
+        // R11a: the list and the detail moved to src/screens/network (tests/network-screen.test.tsx); the note still names its contacts from the device copy.
+        const screen = <NoteDetailScreen actorId="account:one" noteId="note:1" scopeKey="scope" />;
         createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}>{screen}</OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
@@ -123,48 +122,6 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
 const requests = (page: Page) => page.evaluate(() => (window as any).fixture.requests as string[]);
 const contactReads = async (page: Page) => (await requests(page)).filter((path) => /\/api\/contacts(\/page|\/summary|\/contact%3A|\/contact:|\/labels)/.test(path));
 
-test("the contacts list and its search read the device copy with the server's rules and send no page, summary or per-contact request", async (t) => {
-  const page = await open(t);
-  await page.getByText("张伟", { exact: true }).waitFor();
-  await page.getByText("佐藤 花子", { exact: true }).waitFor();
-  await page.getByText("Émile Zola", { exact: true }).waitFor();
-  const search = page.getByRole("textbox", { name: "搜索姓名、公司、资源" });
-  // A cited source's text finds its contact (the server's search text), case-insensitively.
-  await search.fill("储能");
-  await page.waitForFunction(() => !document.body.innerText.includes("佐藤 花子"));
-  assert.equal(await page.getByText("张伟", { exact: true }).count(), 1);
-  await search.fill("TOKYO MIXER");
-  await page.getByText("Émile Zola", { exact: true }).waitFor();
-  await page.waitForFunction(() => !document.body.innerText.includes("张伟"));
-  assert.deepEqual(await contactReads(page), [], "no /api/contacts read on native");
-  assert.ok(await page.evaluate(() => (window as any).fixture.syncs) >= 1, "opening the page probes for changes (a conditional manifest read)");
-});
-
-test("offline: the list keeps the device copy with 截至, and the server-only searches say 需要联网 and are off", async (t) => {
-  const page = await open(t, { status: "stale" });
-  await page.getByText("张伟", { exact: true }).waitFor();
-  await page.getByText(/^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/).waitFor();
-  await page.getByRole("button", { name: "搜索选项" }).click();
-  const deep = page.getByRole("button", { name: /深度搜索 · 需要联网/ });
-  const relationship = page.getByRole("button", { name: /关系搜索 · 需要联网/ });
-  assert.equal(await deep.isDisabled(), true);
-  assert.equal(await relationship.isDisabled(), true);
-  await deep.click({ force: true });
-  assert.deepEqual((await requests(page)).filter((path) => path.startsWith("post:")), [], "a disabled search sends nothing");
-});
-
-test("offline detail: the device copy with its source records, 截至, no edit entry, and the AI draft needs the network", async (t) => {
-  const page = await open(t, { screen: "detail", status: "stale", params: { id: "contact:a" } });
-  await page.getByText("张伟", { exact: true }).first().waitFor();
-  await page.getByText(/^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/).waitFor();
-  await page.getByText("星河能源", { exact: false }).first().waitFor();
-  assert.equal(await page.getByRole("button", { name: "编辑资料" }).count(), 0, "editing needs the network");
-  const draft = page.getByRole("button", { name: /起草消息 · 需要联网/ });
-  assert.equal(await draft.isDisabled(), true);
-  await page.getByText("聊天资格 · 需要联网", { exact: true }).waitFor();
-  assert.equal(await page.getByText("暂时连不上服务器", { exact: false }).count(), 0, "no error block over the device copy");
-});
-
 test("a note's linked contacts are named from the device copy, offline, with no /api/contacts/:id request", async (t) => {
   const page = await open(t, { screen: "note", status: "stale" });
   await page.getByText("储能论坛会后笔记", { exact: true }).waitFor();
@@ -182,14 +139,4 @@ test("a linked contact the device does not hold yet is the only one asked of the
   await page.getByText("张伟", { exact: false }).first().waitFor();
   await page.waitForFunction(() => (window as any).fixture.requests.some((path: string) => path.includes("contact%3Ab") || path.includes("contact:b")));
   assert.deepEqual(await contactReads(page), ["get:/api/contacts/contact%3Ab"], "only the contact missing from the device is read");
-});
-
-test("the relationship search suggestions are read only once the user starts searching (0131)", async (t) => {
-  const page = await open(t);
-  await page.getByText("张伟", { exact: false }).first().waitFor();
-  const suggestionReads = async () => (await requests(page)).filter((entry) => entry.includes("/api/search/suggestions"));
-  assert.deepEqual(await suggestionReads(), [], "opening the contacts tab does not read the suggestions");
-  await page.getByPlaceholder(/搜索/).first().focus();
-  await page.waitForFunction(() => (window as any).fixture.requests.some((entry: string) => entry.includes("/api/search/suggestions")));
-  assert.ok((await suggestionReads()).length >= 1);
 });

@@ -55,10 +55,3 @@ test("a contact with no value types shows nothing rather than a floor score", ()
   const [summary] = contactsToSummaries({ contacts: [contact("c1", [])] });
   assert.deepEqual(summary?.valueLabels, []);
 });
-
-test("the contacts list renders the value types in that slot, not the score", () => {
-  const screen = read("src/screens/contacts/ContactsScreen.tsx");
-  assert.match(screen, /contact\.valueLabels\.join\(" · "\)/u);
-  assert.doesNotMatch(screen, /styles\.contactMatchScore\}>\{contact\.valueScore\}/u);
-  assert.doesNotMatch(screen, /searchResultScore/u, "the search row already shows the same types as chips");
-});

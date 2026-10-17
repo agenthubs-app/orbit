@@ -42,15 +42,6 @@
     "src/screens/chat/RelationshipChatScreen.tsx": {
       "oldComponent": 5
     },
-    "src/screens/contacts/ContactDetailScreen.tsx": {
-      "oldComponent": 4,
-      "controls": 1
-    },
-    "src/screens/contacts/ContactPipelineScreen.tsx": {
-      "oldComponent": 4,
-      "controls": 1,
-      "tablist": 1
-    },
     "src/screens/contacts/ContactRelationshipInitializer.tsx": {
       "oldComponent": 1
     },
@@ -61,10 +52,6 @@
       "oldComponent": 5,
       "controls": 1,
       "modal": 1
-    },
-    "src/screens/contacts/ContactsScreen.tsx": {
-      "oldComponent": 5,
-      "controls": 1
     },
     "src/screens/dashboard/DashboardScreen.tsx": {
       "oldComponent": 5,

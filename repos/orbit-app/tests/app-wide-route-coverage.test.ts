@@ -37,7 +37,6 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { route: "/contacts/new", consumer: "AddContactScreen", kind: "screen" },
   { route: "/contacts/dashboard", consumer: "ContactsDashboardScreen", kind: "screen" },
   { route: "/contacts/graph", consumer: "ContactsDashboardScreen", kind: "alias" },
-  { route: "/contacts/pipeline", consumer: "ContactPipelineScreen", kind: "screen" },
   {
     route: "/contacts/analysis/[dimension]/[bucketId]",
     consumer: "ContactStructureDetailScreen",
@@ -321,8 +320,8 @@ function readDocumentedRouteRows(readme: string): DocumentedRoute[] {
     }));
 }
 
-test("the 58-route visual snapshot (57 since R25 removed the intros screen) plus subsequent feature routes matches every real app entry", () => {
-  assert.equal(expectedRoutes.length, 57);
+test("the 58-route visual snapshot (56 since R25 removed the intros screen and R11a the pipeline) plus subsequent feature routes matches every real app entry", () => {
+  assert.equal(expectedRoutes.length, 56);
   assert.deepEqual(
     coverageDelta(
       [...expectedRoutes.map(({ route }) => route), ...integratedFeatureRoutes],
@@ -364,7 +363,7 @@ test("route scanning excludes only Expo's root HTML document", t => {
   assert.deepEqual(scanAppRouteEntries(temporaryApp), ["/future", "/nested/+html"]);
 });
 
-test("the final README records canonical status and concrete evidence for all 57 remaining snapshot routes", () => {
+test("the final README records canonical status and concrete evidence for all 56 remaining snapshot routes", () => {
   const readme = readFileSync(readmePath, "utf8");
   const documented = readDocumentedRouteRows(readme);
   const expectedByRoute = new Map(expectedRoutes.map((entry) => [entry.route, entry]));
@@ -376,7 +375,7 @@ test("the final README records canonical status and concrete evidence for all 57
     ),
     { missing: [], unexpected: [], duplicates: [] }
   );
-  assert.equal(documented.length, 57);
+  assert.equal(documented.length, 56);
 
   for (const row of documented) {
     const expected = expectedByRoute.get(row.route);

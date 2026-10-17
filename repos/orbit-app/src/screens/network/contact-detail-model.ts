@@ -1,12 +1,12 @@
 // R11a 連絡先詳細（App）: pure helpers over the contact detail read (device mirror or GET /api/contacts/:id).
-import type { OrbitLanguage } from "../../api/contract/language";
 import type { PlanContactFit } from "../../api/contract/plan-v2";
-import { regionOptionLabel } from "./network-model";
+import { regionOptionLabel, type NetworkCityKey } from "./network-model";
 
 export interface DetailFieldHistoryEntry { field: string; previous: string | null; next: string | null; source: string; at: string }
 
 export interface DetailContact {
   id: string;
+  connectionId?: string;
   displayName: string;
   organization: string;
   role: string;
@@ -43,6 +43,7 @@ export function detailContactFrom(payload: Record<string, unknown> | null | unde
   const region = typeof raw.region === "object" && raw.region !== null ? raw.region as { countryCode: string; city?: string | null } : undefined;
   return {
     id: raw.id,
+    ...(str(raw.connectionId) ? { connectionId: str(raw.connectionId) } : {}),
     displayName: raw.displayName,
     organization: str(raw.organization),
     role: str(raw.role),
@@ -77,8 +78,8 @@ export function detailContactFrom(payload: Record<string, unknown> | null | unde
 }
 
 /** Header chips: stage, industry, city (only what the contact has). */
-export function detailHeaderChips(contact: DetailContact, language: OrbitLanguage): { status: string; industry: string | null; city: string | null } {
-  const city = contact.region?.city ? regionOptionLabel(contact.region.city, language, "") : null;
+export function detailHeaderChips(contact: DetailContact, cityLabel: (city: NetworkCityKey) => string): { status: string; industry: string | null; city: string | null } {
+  const city = contact.region?.city ? regionOptionLabel(contact.region.city, cityLabel, "") : null;
   return { status: contact.status, industry: contact.primaryIndustryLabel ?? null, city: city || null };
 }
 

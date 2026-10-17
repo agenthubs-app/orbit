@@ -397,7 +397,8 @@ function ContactsDashboardContent({
     setSelectedAction(null);
 
     if (action.kind === "open_pipeline") {
-      router.push("/contacts/pipeline" as Href);
+      // R11a：关系推进看板已删除（R11-12），改去人脈一覧。
+      router.push("/contacts" as Href);
       return;
     }
 
@@ -452,11 +453,8 @@ function ContactsDashboardContent({
   }
 
   function openGoalPath() {
-    if (view.goalConfigured) {
-      router.push("/contacts/pipeline" as Href);
-    } else {
-      router.push("/contacts" as Href);
-    }
+    // R11a：关系推进看板已删除（R11-12），两种情况都去人脈一覧。
+    router.push("/contacts" as Href);
   }
 
   function openStructureItem(

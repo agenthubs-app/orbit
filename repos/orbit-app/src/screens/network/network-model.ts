@@ -132,18 +132,11 @@ export function industryOptionLabel(key: string, language: OrbitLanguage, other:
   return isIndustryIdCode(key) ? industryLabel(key, language) : key;
 }
 
-/** Canonical English city → Japanese / Chinese label for the 地域 chips (W0045 cities); unknown cities stay as stored. */
-const CITY_LABELS: Record<string, { ja: string; zh: string }> = {
-  Tokyo: { ja: "東京", zh: "东京" }, Osaka: { ja: "大阪", zh: "大阪" }, Nagoya: { ja: "名古屋", zh: "名古屋" },
-  Yokohama: { ja: "横浜", zh: "横滨" }, Kyoto: { ja: "京都", zh: "京都" }, Fukuoka: { ja: "福岡", zh: "福冈" },
-  Sapporo: { ja: "札幌", zh: "札幌" }, Kobe: { ja: "神戸", zh: "神户" }, Sendai: { ja: "仙台", zh: "仙台" },
-  Shanghai: { ja: "上海", zh: "上海" }, Beijing: { ja: "北京", zh: "北京" }, Shenzhen: { ja: "深圳", zh: "深圳" },
-  Singapore: { ja: "シンガポール", zh: "新加坡" }, Seoul: { ja: "ソウル", zh: "首尔" },
-};
+/** Canonical English cities (W0045) that have a dictionary label (network.city.<City>); other cities show as stored. */
+export const NETWORK_CITY_KEYS = ["Tokyo", "Osaka", "Nagoya", "Yokohama", "Kyoto", "Fukuoka", "Sapporo", "Kobe", "Sendai", "Shanghai", "Beijing", "Shenzhen", "Singapore", "Seoul"] as const;
+export type NetworkCityKey = (typeof NETWORK_CITY_KEYS)[number];
 
-export function regionOptionLabel(key: string, language: OrbitLanguage, other: string): string {
+export function regionOptionLabel(key: string, cityLabel: (city: NetworkCityKey) => string, other: string): string {
   if (key === OTHER_KEY) return other;
-  const label = CITY_LABELS[key];
-  if (!label || language === "en") return key;
-  return language === "zh" ? label.zh : label.ja;
+  return (NETWORK_CITY_KEYS as readonly string[]).includes(key) ? cityLabel(key as NetworkCityKey) : key;
 }

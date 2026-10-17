@@ -7,8 +7,9 @@ import { contactDetailToSummary, contactSearchFilterSections, contactsSearchToVi
 import { relationshipSearchToView } from "../src/view-models/relationship-search";
 
 const targetScreens = [
-  "src/screens/contacts/ContactsScreen.tsx",
-  "src/screens/contacts/ContactDetailScreen.tsx",
+  // R11a: the 人脈 list and detail (src/screens/network) replaced ContactsScreen / ContactDetailScreen.
+  "src/screens/network/NetworkScreen.tsx",
+  "src/screens/network/NetworkContactScreen.tsx",
   "src/screens/add/ScanBatchScreen.tsx",
 ] as const;
 

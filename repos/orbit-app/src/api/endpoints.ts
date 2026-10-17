@@ -35,7 +35,6 @@ export const ORBIT_API_ENDPOINTS = {
   contacts: "/api/contacts",
   // R11a 人脈：目標に関係 / 要フォロー 的 id（App 缓存，离线用上次值）、软删除与恢复。
   contactGoalRelatedIds: "/api/contacts/goal-related-ids",
-  contactPipeline: "/api/contacts/pipeline",
   contactsSearch: "/api/contacts/search",
   conversations: "/api/ai/conversations",
   aiConversationSessions: "/api/ai/conversations/sessions",

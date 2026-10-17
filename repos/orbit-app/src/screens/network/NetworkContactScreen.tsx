@@ -25,6 +25,7 @@ import { DensityDots } from "../add/add-ui";
 import { InviteShareSheet, InviteUnlinkSheet } from "../add/invite/InviteConnectionSheets";
 import { useInviteApi } from "../add/invite/invite-api";
 import { MeetingProposalSheet } from "../calendar/MeetingProposalSheet";
+import { ContactRelationshipInitializer, useContactInitialization } from "../contacts/ContactRelationshipInitializer";
 import { NETWORK_CHIP_COPY } from "./NetworkScreen";
 import { detailContactFrom, detailHeaderChips, fitCandidate, previousValues, recentSelfUpdates, tokyoMonthDay, type DetailContact, type DetailFieldHistoryEntry } from "./contact-detail-model";
 import { useDeleteContact } from "./useDeleteContact";
@@ -101,6 +102,8 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   }, [candidate, client, contactId, deciding, t, toast]);
 
   const deletion = useDeleteContact(() => local.refresh());
+  // 关系初期化（活动名单带来的待初期化联系人，旧组件原样挂上；R11a 设计稿无，见 REPORT）。
+  const initialization = useContactInitialization(contactId, card?.pendingInitialization ? contact?.connectionId ?? null : undefined, `network:${contactId}`, () => true, () => local.refresh());
 
   if (!contact) {
     const loading = local.available ? local.freshness.loading : remote.kind === "loading";
@@ -115,7 +118,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     );
   }
 
-  const chips = detailHeaderChips(contact, language);
+  const chips = detailHeaderChips(contact, (city) => t(`network.city.${city}`));
   const self = card?.sourceChip === "self" || connection !== null;
   const nextStep = contact.nextAction.trim();
   const selfUpdate = recentSelfUpdates(contact.fieldHistory, now());
@@ -162,6 +165,8 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
             </View>
           ) : null}
         </View>
+
+        {card?.pendingInitialization && !local.freshness.offline ? <View style={styles.gapTop}><ContactRelationshipInitializer binding={initialization} /></View> : null}
 
         {candidate ? (
           <View style={[styles.card, styles.confirm, styles.gapTop]} testID="network-fit-card">

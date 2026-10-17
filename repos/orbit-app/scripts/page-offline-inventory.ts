@@ -30,7 +30,7 @@ export interface PageOfflineEntry {
   title: string;
   classification: PageOfflineClassification;
   /** local-first: the sprint that made it readable offline. */
-  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131' | '0137' | 'R05' | 'R17';
+  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131' | '0137' | 'R05' | 'R17' | 'R11a';
   /** Where the content comes from: device domains (域), page copies (页面副本) and network reads. */
   reads: string;
   /** What the page does when the server cannot be reached. */
@@ -161,7 +161,6 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/contacts/new/import/index.tsx', path: '/contacts/new/import', title: '取り込み（連絡先：説明 → 権限 → 選ぶ → 取り込み中；LinkedIn：3 ステップ → CSV / ZIP を選ぶ；R16）', classification: 'online-only', reasonCategory: 'server-computed', reason: '导入批次在服务器建立与查重；只上传选中的人', reads: '/api/contacts/import', offline: NEEDS_NETWORK },
   { file: 'app/contacts/new/import/[importId].tsx', path: '/contacts/new/import/:importId', title: '取り込み · まとめて確認 → 完成（R16）', classification: 'online-only', reasonCategory: 'server-computed', reason: '合并确认与提交是服务器写入', reads: '/api/contacts/import/:id、/api/contacts/import/:id/rows、/api/contacts/import/:id/commit', offline: NEEDS_NETWORK },
   { file: 'app/contacts/new/invite.tsx', path: '/contacts/new/invite', title: '招待コード · 発出方（説明、QR・コード・リンク、メッセージの下書き、共有する項目、無効にする、これまでのコード；R15）', classification: 'online-only', reasonCategory: 'server-token', reason: '发码、作废与履历都在服务器', reads: '/api/invite-codes、/api/invite-codes/current、/api/invite-codes/:code/revoke、/api/profile', offline: NEEDS_NETWORK },
-  { file: 'app/contacts/pipeline.tsx', path: '/contacts/pipeline', title: '关系推进看板', classification: 'local-first', sprint: '0137', reads: '域 contacts 的本机卡片；阶段分组使用 shared/compute/contact-pipeline；线上待处理事项仍读 /api/contacts/pipeline', offline: '「截至」；联系人阶段和数量由本机副本计算；待处理事项需要联网' },
   { file: 'app/i/[code].tsx', path: '/i/:code', title: '招待コード · 受け取る側（公开：打开、登录回跳、简短资料、共享项目、つながる、各异常态；R15）', classification: 'online-only', reasonCategory: 'server-token', reason: '邀请码由服务器验证，连接是服务器写入', reads: '/api/invite-codes/:code/preview、/api/invite-codes/:code/redeem、/api/profile、/api/contacts/manual/duplicates', offline: NEEDS_NETWORK },
   { file: 'app/i/index.tsx', path: '/i', title: '招待コードを入力（公开，手输 8 位码后打开 /i/:code；R15）', classification: 'online-only', reasonCategory: 'server-token', reason: '输入的码要到服务器验证', reads: '同 /i/:code', offline: NEEDS_NETWORK },
   { file: 'app/register.tsx', path: '/register', title: '参加コード入力へ（R27 跳转）', classification: 'online-only', reasonCategory: 'server-token', reason: '跳到参加コード入力；コード由服务器验证', reads: '—', offline: NEEDS_NETWORK },

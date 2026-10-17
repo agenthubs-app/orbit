@@ -7,16 +7,15 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 40 |
+| 能断网看（本地优先） | 39 |
 | └ 由 Sprint 0108 实现 | 8 |
 | └ 由 Sprint 0117 实现 | 4 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 13 |
-| └ 由 Sprint 0137 实现 | 1 |
 | 只能在线 | 52 |
 | 不读账号数据（布局、跳转、本机设置） | 27 |
-| 合计（路由文件） | 119 |
+| 合计（路由文件） | 118 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -64,7 +63,6 @@
 | `/events` | 活动标签：活动列表和推荐 | 0131 | 页面副本 public-events（公开活动目录）和 event-recommendations | 「截至」；显示最近一次看到的列表；报名需要联网 |
 | `/home/events` | 推荐活动（旧入口） | 0131 | 页面副本 public-events | 「截至」；显示最近一次看到的列表 |
 | `/events/:id/operations/check-in` | 受付（R17：名前検索 · 到着 · 取り消す · 当日枠 · QR） | R17 | /api/host/events/:id/kiosk（在线）；本机名单缓存 kiosk_roster（expo-sqlite，GET /kiosk/roster 成功后才存，TTL = cacheUntil，没有权限即清） | 用本机名单搜索并记到着；到着进本机队列（expo-sqlite），联网后按幂等键补发；撤销与当日枠需要联网 |
-| `/contacts/pipeline` | 关系推进看板 | 0137 | 域 contacts 的本机卡片；阶段分组使用 shared/compute/contact-pipeline；线上待处理事项仍读 /api/contacts/pipeline | 「截至」；联系人阶段和数量由本机副本计算；待处理事项需要联网 |
 
 ## 只能在线
 
@@ -199,7 +197,6 @@
 | `app/contacts/new/manual.tsx` | `/contacts/new/manual` | online-only |
 | `app/contacts/new/scan.tsx` | `/contacts/new/scan` | online-only |
 | `app/contacts/new/scan/[batchId].tsx` | `/contacts/new/scan/:batchId` | online-only |
-| `app/contacts/pipeline.tsx` | `/contacts/pipeline` | local-first (0137) |
 | `app/dashboard.tsx` | `/dashboard` | local-first (0117) |
 | `app/e/[slug].tsx` | `/e/:slug` | online-only |
 | `app/events/[id].tsx` | `/events/:id` | online-only |

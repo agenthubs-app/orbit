@@ -44,8 +44,6 @@ const record = method => async (path, options) => {
   if (method === "POST" && state.postMode === "pending") return new Promise(resolve => { state.pendingPost = resolve; });
   if (method === "PUT" && state.putMode === "pending") return new Promise(resolve => { state.pendingPut = resolve; });
   if (method === "PUT" && state.putMode === "conflict") { state.remoteGoal = "服务器上的并发目标"; state.remoteUpdatedAt = "2026-09-15T00:00:05.000Z"; return { success: false, status: 409, error: { message: "关系目标已在另一端更新" } }; }
-  // The relationship overview reads one bounded pipeline page per stage.
-  if (method === "GET" && path.startsWith("/api/contacts/pipeline?")) { const stage = new URLSearchParams(path.split("?")[1]).get("stage"); return { success: true, status: 200, data: { asOf: "2026-09-15T00:00:00.000Z", stage, stageCounts: { to_contact: 1, in_progress: 0, nurture: 0, archived: 0 }, items: stage === "to_contact" ? [{ id: "contact:1", displayName: "林悦", organization: "Orbit", role: "采购负责人" }] : [], hasMore: false, nextCursor: null, actions: [] }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }; }
   if (method === "GET" && path === "/api/connections/connection%3A1") return { success: true, data: { connection: connections.connections[0], sourceLinks: [{ evidenceId: "source:1", label: "朋友引荐", type: "referral" }], evidenceTimeline: [{ evidenceId: "evidence:1", title: "已有交流记录", excerpt: "上周确认了合作方向。", contribution: "user_note" }] } };
   return { success: false, error: { message: "暂时无法保存，请重试" } };
 };
@@ -70,13 +68,11 @@ export const launchImageLibraryAsync = async () => { state.nativeCalls.push("pho
 test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client";
-import { ContactsScreen } from "./src/screens/contacts/ContactsScreen";
 import { ContactsDashboardScreen } from "./src/screens/contacts/ContactsDashboardScreen";
-import { ContactPipelineScreen } from "./src/screens/contacts/ContactPipelineScreen";
 import { ContactStructureDetailScreen } from "./src/screens/contacts/ContactStructureDetailScreen";
 import { DashboardScreen } from "./src/screens/dashboard/DashboardScreen";
-const screens = { overview: ContactsScreen, analysis: ContactsDashboardScreen, pipeline: ContactPipelineScreen, structure: ContactStructureDetailScreen, dashboard: DashboardScreen };
-const Screen = screens[new URLSearchParams(location.search).get("screen") || "overview"];
+const screens = { analysis: ContactsDashboardScreen, structure: ContactStructureDetailScreen, dashboard: DashboardScreen };
+const Screen = screens[new URLSearchParams(location.search).get("screen") || "analysis"];
 createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" },
@@ -124,29 +120,6 @@ test("touch measurement accepts compositor precision but rejects undersized cont
   await touchFits(measured(43.99993896484375));
   await assert.rejects(touchFits(measured(43.99)), /touch target/);
 });
-
-for (const scheme of ["light", "dark"] as const) {
-  test(`${scheme}: overview keeps all four destinations in compact open navigation rows`, async t => {
-    const page = await openScreen(t, "overview", scheme);
-    const destinations = [["联系人库", "/contacts/list"], ["人脉分析", "/contacts/dashboard"], ["关系进展", "/contacts/pipeline"], ["添加人脉", "/contacts/new"]];
-    let previousBottom = 0;
-    for (const [name, path] of destinations) {
-      const action = page.getByRole("button", { name: new RegExp(name!) });
-      await touchFits(action);
-      const box = (await action.boundingBox())!;
-      assert.ok(box.y >= previousBottom, "library, analysis, progress and acquisition retain their visible order");
-      previousBottom = box.y + box.height;
-      assert.equal(box.width, 288, "all four entries must use the same full-width open row");
-      assert.ok(box.height <= 112, "overview navigation must not become large tiles");
-      assert.equal(await action.evaluate(el => getComputedStyle(el).borderTopWidth), "0px", "rows do not need an outer card border");
-      await action.click();
-      assert.equal(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), path);
-    }
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-    if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-contacts-overview-${scheme}.png`, fullPage: true });
-  });
-
-}
 
 test("analysis uses open 15/22 sections and keeps structure, opportunity and reports operable at 320pt", async t => {
   const page = await openScreen(t, "analysis");
@@ -263,42 +236,6 @@ test("structure detail renders real success content and opens its contact at 320
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   await page.evaluate(() => (window as any).fixture.update({ kind: "offline" }));
   await page.getByText("连接暂时失败", { exact: true }).waitFor();
-});
-
-test("contact navigation controls grow with doubled text without clipping", async t => {
-  // R12: the add-people pages (人脈を追加 / 名刺 / 手入力) are covered by add-contact-screens.test.tsx.
-  for (const screen of ["overview"]) {
-    const page = await openScreen(t, screen, "dark");
-    const actions = [page.getByRole("button", { name: /联系人库/ }), page.getByRole("button", { name: /添加人脉/ })];
-    await actions[0]!.waitFor();
-    // Browser inflation measures reflow; actual native Dynamic Type is checked separately.
-    await page.evaluate(() => document.querySelectorAll("[dir='auto'],input,textarea").forEach(node => {
-      const element = node as HTMLElement, style = getComputedStyle(element);
-      element.style.fontSize = `${parseFloat(style.fontSize) * 2}px`;
-      element.style.lineHeight = `${parseFloat(style.lineHeight) * 2}px`;
-    }));
-    for (const action of actions) {
-      await touchFits(action);
-      const bounds = (await action.boundingBox())!;
-      for (const label of await action.locator("[dir='auto']").all()) {
-        const box = (await label.boundingBox())!;
-        assert.ok(box.x >= bounds.x && box.x + box.width <= bounds.x + bounds.width, "inflated action text stays within its control");
-        assert.ok(box.y >= bounds.y && box.y + box.height <= bounds.y + bounds.height, "inflated action text is not vertically clipped");
-      }
-    }
-    if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-contacts-${screen}-large-dark.png`, fullPage: true });
-  }
-});
-
-test("pipeline mode selection has 44pt targets and does not advance a relationship", async t => {
-  const page = await openScreen(t, "pipeline");
-  for (const name of ["待处理", "按阶段"]) {
-    const mode = page.getByRole("tab", { name, exact: true });
-    await touchFits(mode); await mode.click();
-  }
-  // Bounded pipeline page reads are expected; switching modes must never write.
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
-  assert.ok((await page.evaluate(() => (window as any).fixture.requests)).every((request: any) => request.path.startsWith("/api/contacts/pipeline?")));
 });
 
 test("analysis summary shows complete values and explanations on a narrow phone", async t => {
