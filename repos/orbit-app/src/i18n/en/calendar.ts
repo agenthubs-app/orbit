@@ -1,4 +1,10 @@
 export const calendar = {
+  "calendar.view.more": "{count} more",
+  "calendar.view.emptyTitle": "No plans yet",
+  "calendar.view.emptyBody": "Personal plans you create will appear here.",
+  "calendar.view.overlap": "{first} and {second} overlap.",
+  "calendar.view.changeTime": "Change time",
+  "calendar.view.invalid": "Could not verify your schedule. Reload and try again.",
   "calendar.proposal.title": "Propose meeting times",
   "calendar.proposal.candidates": "Choose times",
   "calendar.proposal.format": "Format and place",

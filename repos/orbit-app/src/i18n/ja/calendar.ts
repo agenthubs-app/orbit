@@ -1,4 +1,10 @@
 export const calendar = {
+  "calendar.view.more": "ほか {count}件",
+  "calendar.view.emptyTitle": "予定はまだありません",
+  "calendar.view.emptyBody": "個人の予定を作ると、ここに表示されます。",
+  "calendar.view.overlap": "{first} と {second} が重なっています。",
+  "calendar.view.changeTime": "時間を変える",
+  "calendar.view.invalid": "予定を確認できません。再読み込みしてください。",
   "calendar.proposal.title": "面談の日程提案",
   "calendar.proposal.candidates": "候補を選ぶ",
   "calendar.proposal.format": "形式と場所",

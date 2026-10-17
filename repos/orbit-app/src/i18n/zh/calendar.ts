@@ -1,4 +1,10 @@
 export const calendar = {
+  "calendar.view.more": "另有{count}项",
+  "calendar.view.emptyTitle": "还没有日程",
+  "calendar.view.emptyBody": "创建个人日程后，会显示在这里。",
+  "calendar.view.overlap": "{first}和{second}的时间重叠。",
+  "calendar.view.changeTime": "调整时间",
+  "calendar.view.invalid": "无法确认日程。请重新加载。",
   "calendar.proposal.title": "提议会面时间",
   "calendar.proposal.candidates": "选择候选时间",
   "calendar.proposal.format": "形式与地点",
