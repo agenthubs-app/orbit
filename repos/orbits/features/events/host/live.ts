@@ -246,6 +246,14 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     } as Parameters<typeof admission.configurePolicy>[0]);
   }
 
+  // 参加者端的「テーブル編成を公開しました」：给已报名的人写定型通知。发布另开事务，失败时同一 generation 重试会走这里补写。
+  async function enqueueMatchingPublished(actorId: string, eventId: string, notifyCohosts: boolean): Promise<void> {
+    await client.transaction(async (executor) => {
+      for (const row of await reads.kioskRoster(eventId)) if (row.status !== "waitlisted") await enqueueHostNotice(executor, { actorId: row.actorId, eventId, kind: "matching_published", workspaceId });
+      if (notifyCohosts) for (const member of await cohosts.members(eventId)) if (member.role !== "owner" && member.actorId !== actorId) await enqueueHostNotice(executor, { actorId: member.actorId, eventId, idempotencyKey: `notice:${eventId}:matching_published:cohost:${member.actorId}`, kind: "matching_published", workspaceId });
+    });
+  }
+
   async function matchingView(actorId: string, eventId: string, round: number): Promise<HostMatchingResponse> {
     const caps = await require(actorId, eventId, "operations.read_sensitive");
     const facts = await factsOrThrow(actorId, eventId);
@@ -409,6 +417,11 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       if (current.overridesVersion !== input.overridesVersion) throw new HostError("VERSION_CONFLICT");
       const latest = await deps.operations.latestGeneration(eventId);
       if (!latest?.grouping || latest.generationId !== input.generationId) throw new HostError("INVALID_STATE", "GENERATION_NOT_READY");
+      // 同一 generation 已发布（上次发布成功、通知那一步失败后重试）：不再发布，只补写通知（幂等键保证不重复）。
+      if (latest.status === "published") {
+        await enqueueMatchingPublished(actorId, eventId, input.notifyCohosts === true);
+        return matchingView(actorId, eventId, 1);
+      }
       const directory = new Map(latest.participants.map((participant) => [participant.participantId, participant]));
       const facts = await factsOrThrow(actorId, eventId);
       const { moves } = await matching.overrides(eventId, latest.generationId);
@@ -420,11 +433,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
         eventId,
         generationId: input.generationId,
       });
-      // 参加者端的「テーブル編成を公開しました」：给已报名的人写定型通知。
-      await client.transaction(async (executor) => {
-        for (const row of await reads.kioskRoster(eventId)) if (row.status !== "waitlisted") await enqueueHostNotice(executor, { actorId: row.actorId, eventId, kind: "matching_published", workspaceId });
-        if (input.notifyCohosts) for (const member of await cohosts.members(eventId)) if (member.role !== "owner" && member.actorId !== actorId) await enqueueHostNotice(executor, { actorId: member.actorId, eventId, idempotencyKey: `notice:${eventId}:matching_published:cohost:${member.actorId}`, kind: "matching_published", workspaceId });
-      });
+      await enqueueMatchingPublished(actorId, eventId, input.notifyCohosts === true);
       return matchingView(actorId, eventId, 1);
     },
 
