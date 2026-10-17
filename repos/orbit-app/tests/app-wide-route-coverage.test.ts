@@ -60,31 +60,31 @@ const expectedRoutes: readonly ExpectedRoute[] = [
     consumer: "EventAttendeesRedirect → /events/[id]/live?tab=people",
     kind: "redirect"
   },
-  { route: "/events/center", consumer: "EventCenterScreen", kind: "screen" },
+  { route: "/events/center", consumer: "HostCenterScreen", kind: "screen" },
   {
     route: "/events/[id]/operations",
-    consumer: "EventOperationsScreen",
+    consumer: "HostConsoleScreen",
     kind: "screen"
   },
   {
     route: "/events/[id]/operations/admission",
-    consumer: "EventAdmissionReviewScreen",
-    kind: "screen"
+    consumer: "LegacyOperationsRedirect → /events/[id]/operations?seg=people",
+    kind: "redirect"
   },
   {
     route: "/events/[id]/operations/check-in",
-    consumer: "EventCheckInScreen",
+    consumer: "HostCheckInScreen",
     kind: "screen"
   },
   {
     route: "/events/[id]/operations/roles",
-    consumer: "EventRolesScreen",
-    kind: "screen"
+    consumer: "LegacyOperationsRedirect → /events/[id]/operations?seg=overview",
+    kind: "redirect"
   },
   {
     route: "/events/[id]/analytics",
-    consumer: "EventAnalyticsScreen",
-    kind: "screen"
+    consumer: "LegacyOperationsRedirect → /events/[id]/operations?seg=report",
+    kind: "redirect"
   },
   { route: "/inbox", consumer: "RelationshipInboxScreen", kind: "screen" },
   {
@@ -137,7 +137,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { route: "/admin/events", consumer: "AdminScreen (events)", kind: "screen" },
   { route: "/login-admin", consumer: "AdminLoginScreen", kind: "screen" },
   { route: "/platform", consumer: "PlatformScreen", kind: "screen" },
-  { route: "/o/[slug]", consumer: "OrganizerPublicScreen", kind: "screen" },
+  { route: "/o/[slug]", consumer: "OrganizerPublicPage", kind: "screen" },
   { route: "/register", consumer: "RegisterRoute → /events/assess?mode=code", kind: "redirect" },
   { route: "/register/[code]", consumer: "RegisterCodePage", kind: "screen" },
   { route: "/party", consumer: "PartyOverviewRedirect → /events/[id]/live", kind: "redirect" },

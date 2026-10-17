@@ -88,7 +88,8 @@ test('canonical event and personal schedule consumers register exact domains wit
     assert.equal(surface.mutationPolicy, 'online_only');
     assert.equal(resolveReadSurface(method, endpointTemplate.replace(':id', 'example')).domainId, domainId);
   }
-  assert.equal(resolveReadSurface('GET', '/api/events/example/operations/admin').domainId, 'event-operations');
+  // R17：旧运营屏（GET /operations/admin）已删，主催读取走 /api/host/*（只在线）。
+  assert.equal(resolveReadSurface('GET', '/api/host/events/example/overview').domainId, 'event-operations');
   assert.throws(() => resolveReadSurface('GET', '/api/events/example/operations/unknown'), /UNREGISTERED_READ/);
   assert.throws(() => resolveReadSurface('POST', '/api/events/example/operations'), /UNREGISTERED_READ/);
 });

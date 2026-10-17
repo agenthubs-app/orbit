@@ -18,7 +18,6 @@ const OLD_TYPE = ["display", "section", "small", "caption"];
 
 // Colours that must stay fixed regardless of theme; each is listed in the R01 REPORT.
 const FIXED_COLOUR_FILES = new Map([
-  ["src/screens/events/EventExperienceContent.tsx", "organiser-chosen event accent colours are stored event data"],
   ["src/api/batch-image-compressor.web.ts", "JPEG canvas needs an opaque white background"],
 ]);
 
@@ -54,7 +53,8 @@ test("colours come from tokens, not literals, outside the listed fixed-colour fi
   const offenders: string[] = [];
   for (const path of sourceFiles()) {
     if (path === "src/design/tokens.ts" || FIXED_COLOUR_FILES.has(path)) continue;
-    const text = readFileSync(join(appRoot, path), "utf8");
+    // 注释里的画板序号（「b12 #420」）不是颜色：只扫代码，去掉 // 与 /* */ 注释。
+    const text = readFileSync(join(appRoot, path), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
     for (const match of text.matchAll(literal)) offenders.push(`${path}: ${match[0]}`);
   }
   assert.deepEqual(offenders, []);

@@ -70,44 +70,6 @@
       "oldComponent": 5,
       "controls": 1
     },
-    "src/screens/events/EventAdmissionReviewContent.tsx": {
-      "oldComponent": 3,
-      "controls": 1,
-      "tablist": 1
-    },
-    "src/screens/events/EventAdmissionReviewScreen.tsx": {
-      "alert": 1
-    },
-    "src/screens/events/EventAnalyticsContent.tsx": {
-      "oldComponent": 2,
-      "controls": 1
-    },
-    "src/screens/events/EventCenterContent.tsx": {
-      "oldComponent": 3,
-      "controls": 1
-    },
-    "src/screens/events/EventCheckInContent.tsx": {
-      "oldComponent": 3,
-      "controls": 1
-    },
-    "src/screens/events/EventExperienceScreen.tsx": {
-      "alert": 1
-    },
-    "src/screens/events/EventOperationsContent.tsx": {
-      "oldComponent": 3,
-      "controls": 1
-    },
-    "src/screens/events/EventOperationsScreen.tsx": {
-      "alert": 2
-    },
-    "src/screens/events/EventRolesContent.tsx": {
-      "oldComponent": 3,
-      "controls": 1
-    },
-    "src/screens/events/EventRolesScreen.tsx": {
-      "controls": 1,
-      "alert": 1
-    },
     "src/screens/home/HomeDashboardScreen.tsx": {
       "oldComponent": 2
     },
@@ -138,10 +100,6 @@
     "src/screens/notes/NotesScreen.tsx": {
       "oldComponent": 4,
       "tablist": 1
-    },
-    "src/screens/organizer/OrganizerPublicScreen.tsx": {
-      "oldComponent": 4,
-      "controls": 1
     },
     "src/screens/platform/PlatformScreen.tsx": {
       "oldComponent": 4

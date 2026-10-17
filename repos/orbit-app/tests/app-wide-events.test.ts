@@ -88,36 +88,9 @@ test.before(async () => {
     stdin: { contents: `import React, { useState } from "react"; import { createRoot } from "react-dom/client";
 import { AppScreen } from "./src/components/AppScreen";
 import { HomeScreen } from "./src/screens/home/HomeScreen";
-import { OrganizerPublicScreen } from "./src/screens/organizer/OrganizerPublicScreen";
-import { EventCenterScreen } from "./src/screens/events/EventCenterScreen";
-import { EventRolesScreen } from "./src/screens/events/EventRolesScreen";
-import { EventAdmissionReviewContent } from "./src/screens/events/EventAdmissionReviewContent";
-import { EventAnalyticsContent } from "./src/screens/events/EventAnalyticsContent";
-import { eventAdmissionApplicationToView, eventAdmissionReviewListToView } from "./src/view-models/event-admission-review";
-import { eventAnalyticsToView } from "./src/view-models/event-analytics";
-import { EventOperationsContent } from "./src/screens/events/EventOperationsContent";
-import { EventRolesContent } from "./src/screens/events/EventRolesContent";
-import { EventCheckInContent } from "./src/screens/events/EventCheckInContent";
-import { eventOperationsToView } from "./src/view-models/event-operations";
-import { eventRoleMembersToView } from "./src/view-models/event-roles";
-import { eventCheckInRosterToView } from "./src/view-models/event-check-in";
 import { state, useFixture } from "event-fixture";
-const configuration = { checkInOpensAt: "2026-08-19T08:00:00Z", eventEndsAt: "2026-08-19T13:00:00Z", eventId: "event:style", eventStartsAt: "2026-08-19T09:00:00Z", maxAttemptsPerTask: 3, organizerActorId: "actor:owner", profileEditDeadlineAt: "2026-08-18T09:00:00Z", recommendationCount: 3, registrationCutoffAt: "2026-08-18T10:00:00Z", resultsAvailableAt: "2026-08-19T08:30:00Z", roundOneStartsAt: "2026-08-19T10:00:00Z", roundTwoStartsAt: "2026-08-19T11:00:00Z", shardSize: 20, tableSize: 6, updatedAt: "2026-08-18T12:00:00Z" };
-const generation = { aiRequestFingerprint: "fingerprint", completedAt: "2026-08-18T13:00:00Z", createdAt: "2026-08-18T12:30:00Z", errorCode: null, errorMessage: null, eventId: "event:style", expectedTaskCount: 5, generationId: "generation:01", idempotencyKey: "key:01", organizerActorId: "actor:owner", publishedAt: null, snapshot: { capturedAt: "2026-08-18T12:30:00Z", hash: "abcdef1234567890", participants: [{ participantId: "p1" }] }, status: "completed", updatedAt: "2026-08-18T13:00:00Z" };
-const view = eventOperationsToView({ configuration, eventId: "event:style", generations: [{ generation, progress: { completedTasks: 5, failedTasks: 0, percent: 100, totalTasks: 5 } }], metrics: { acceptedContactRequests: 1, checkedIn: 3, contactRequests: 2, participantCount: 8, publishedGenerationId: null }, publishedResult: null });
-const roles = eventRoleMembersToView({ event: { eventId: "event:style", title: ${JSON.stringify(title)} }, members: [{ assignedAt: null, assignedByActorId: null, eventId: "event:style", reason: null, revision: 0, role: "owner", state: "active", subjectActorId: "actor:owner" }, { assignedAt: "2026-08-19T09:00:00Z", assignedByActorId: "actor:owner", eventId: "event:style", reason: "负责现场签到与合作伙伴接待", revision: 2, role: "check_in", state: "active", subjectActorId: "actor:staff" }] });
-const roster = eventCheckInRosterToView({ eventId: "event:style", participants: [{ checkedIn: false, checkedInAt: null, displayName: "佐藤 葵", participantId: "participant:sato" }, { checkedIn: true, checkedInAt: "2026-08-19T09:15:00Z", displayName: "李 明", participantId: "participant:li" }] });
-function ContentFixture() { useFixture(); const [query, setQuery] = useState(""); const [segment, setSegment] = useState("all"); const screen = new URLSearchParams(location.search).get("screen"); const contentState = { kind: state.kind, message: "当前账号没有权限" }; return <AppScreen title="活动运营">{screen === "operations" ? <EventOperationsContent busy={state.busy ? "generation:01" : null} onGenerationAction={g => state.requests.push({ action: g.action, generationId: g.generationId })} onOpenAnalytics={() => state.navigation.push("analytics")} onOpenCheckIn={() => state.navigation.push("check-in")} onOpenRoles={() => state.navigation.push("roles")} onStartGeneration={() => state.requests.push({ action: "generate" })} state={contentState} view={view} /> : screen === "roles" ? <EventRolesContent onEdit={member => state.requests.push({ action: "edit", actor: member.subjectActorId, revision: member.revision })} onOpenGrant={() => state.navigation.push("grant")} roles={roles} state={contentState} /> : <EventCheckInContent pendingParticipantId={state.busy ? "participant:sato" : null} onCheckIn={id => state.requests.push({ action: "check-in", id })} onQueryChange={setQuery} onSegmentChange={setSegment} query={query} segment={segment} roster={roster} state={contentState} />}</AppScreen>; }
-const application = { actorId: "actor:aiko", applicationVersion: 1, decidedAt: null, decisionActorId: null, eventId: "event:style", policyVersion: 2, displayName: "森爱子", profilePayload: { displayName: "森爱子", answers: { desiredOutcome: "找到采购伙伴并安排下一次讨论", industry: "工业 AI", positioning: "跨境产品负责人", targetAttendees: "制造业采购负责人", valueOffered: "市场进入经验与产业引荐" }, interviewResponses: [{ responseId: "response:1", prompt: "希望继续讨论什么？", answer: "日本市场合作方案" }] }, status: "pending_review", submittedAt: "2026-08-05T09:05:00Z", updatedAt: "2026-08-05T09:05:00Z" };
-function AdmissionFixture() {
-  useFixture(); const [selected, setSelected] = useState(false); const [queue, setQueue] = useState("pending");
-  const list = eventAdmissionReviewListToView({ items: [application], nextCursor: "page:2", total: 2, view: queue });
-  return <AppScreen title="报名审核"><EventAdmissionReviewContent busy={state.busy} detail={selected ? eventAdmissionApplicationToView({ ...application, status: state.processed ? "admitted" : "pending_review" }) : null} detailLoading={false} list={list} onBackToList={() => setSelected(false)} onChangeView={setQueue} onDecision={decision => state.requests.push({ decision })} onLoadMore={() => state.requests.push({ action: "more" })} onSelectApplicant={actor => { state.navigation.push(actor); setSelected(true); }} state={{ kind: state.kind, message: "当前账号没有权限" }} /></AppScreen>;
-}
-const analytics = eventAnalyticsToView({ appointments: { awaitingResponse: 0, cancelled: 0, completed: 0, confirmed: 0, draft: 0, negotiating: 0, reschedulePending: 0 }, checkIns: { checkedIn: 2 }, contactRequests: { accepted: 1, awaitingTargetConsent: 0, declined: 0, withdrawn: 0 }, encounters: { captured: 1, projected: 0 }, eventId: "event:style", grouping: { published: false, roundOne: { assignedParticipants: 0, tables: 0 }, roundTwo: { assignedParticipants: 0, tables: 0 } }, kind: "organizer_aggregate", registrations: { active: 4, cancelled: 0 } });
-function AnalyticsFixture() { useFixture(); const [kind, setKind] = useState("organizer_aggregate"); return <AppScreen title="活动数据报告"><EventAnalyticsContent activeKind={kind} attendeeAvailable organizerAvailable={state.organizerAvailable !== false} onChangeKind={value => { state.navigation.push(value); setKind(value); }} state={{ kind: state.kind, message: "当前账号没有权限" }} view={analytics} /></AppScreen>; }
-const screens = { home: () => <HomeScreen />, organizer: OrganizerPublicScreen, center: EventCenterScreen, rolesEditor: EventRolesScreen, admission: AdmissionFixture, analytics: AnalyticsFixture };
-const Screen = screens[new URLSearchParams(location.search).get("screen")] || ContentFixture;
+const screens = { home: () => <HomeScreen /> };
+const Screen = screens[new URLSearchParams(location.search).get("screen")] || screens.home;
 createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" },
@@ -144,45 +117,6 @@ async function fits(control: Locator, minHeight = 44) { const box = (await contr
 async function unclipped(text: Locator) { assert.equal(await text.evaluate(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1), false, "important title or value must remain fully readable"); }
 async function capture(page: Page, name: string) { if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-events-${name}.png`, fullPage: true }); }
 
-test("operations uses open sections and a 50pt publication action with unchanged generation identity", async t => {
-  const page = await open(t, "operations"); const publish = page.getByRole("button", { name: /发布/ }); await fits(publish, 50);
-  assert.deepEqual(await page.getByText("AI 匹配与发布", { exact: true }).locator("..").locator("..").locator("..").evaluate(el => {
-    const style = getComputedStyle(el);
-    return [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth, style.borderRadius, style.backgroundColor];
-  }), ["1px", "0px", "0px", "0px", "0px", "rgba(0, 0, 0, 0)"], "open section has only a top separator, not an enclosing card");
-  for (const label of ["签到台", "活动分析", "角色"]) { const action = page.getByRole("button", { name: label, exact: true }); await fits(action); await action.click(); }
-  await page.evaluate(() => (window as any).fixture.update({ busy: true })); assert.equal(await page.getByRole("button", { name: "正在处理", exact: true }).isDisabled(), true);
-  await page.evaluate(() => (window as any).fixture.update({ busy: false })); await publish.click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ action: "publish", generationId: "generation:01" }]); await capture(page, "operations");
-  await page.evaluate(() => (window as any).fixture.update({ kind: "failure" })); await page.getByText("当前账号没有权限", { exact: true }).waitFor(); assert.equal(await page.getByRole("button", { name: /发布/ }).count(), 0);
-});
-
-test("roles keeps a long event title complete and offers management only for delegated members", async t => {
-  const page = await open(t, "roles", "dark"); const name = page.getByText(title, { exact: true }); await name.waitFor(); await unclipped(name);
-  await fits(page.getByRole("button", { name: "授予角色", exact: true }), 50);
-  assert.equal(await page.getByRole("button", { name: "管理 actor:owner 的角色", exact: true }).count(), 0);
-  const manage = page.getByRole("button", { name: "管理 actor:staff 的角色", exact: true }); await fits(manage); await manage.click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ action: "edit", actor: "actor:staff", revision: 2 }]); await capture(page, "roles-dark");
-});
-
-test("check-in keeps filters, search and a bounded primary action without reopening completed arrivals", async t => {
-  const page = await open(t, "check-in"); const action = page.getByRole("button", { name: "将 佐藤 葵 标记为已签到", exact: true }); await fits(action, 50);
-  assert.equal(await page.getByRole("button", { name: "李 明 已签到", exact: true }).isDisabled(), true);
-  const pending = page.getByRole("button", { name: "未签到 1", exact: true }); await fits(pending); await pending.click(); assert.equal(await page.getByText("李 明", { exact: true }).count(), 0);
-  await page.getByRole("textbox", { name: "按姓名搜索参会者" }).fill("佐藤"); await action.click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ action: "check-in", id: "participant:sato" }]); await capture(page, "check-in");
-});
-
-test("event actions and identity reflow under doubled browser text at 320pt", async t => {
-  for (const screen of ["roles", "check-in", "operations"]) {
-    const page = await open(t, screen, "dark"); await page.getByRole("button").first().waitFor();
-    await page.evaluate(() => document.querySelectorAll("[dir='auto'],input,textarea").forEach(node => { const el = node as HTMLElement, s = getComputedStyle(el); el.style.fontSize = `${parseFloat(s.fontSize) * 2}px`; el.style.lineHeight = `${parseFloat(s.lineHeight) * 2}px`; }));
-    for (const action of await page.getByRole("button").all()) { await fits(action); for (const label of await action.locator("[dir='auto']").all()) await unclipped(label); }
-    if (screen === "roles") await unclipped(page.getByText(title, { exact: true }));
-    await capture(page, `${screen}-large-dark`);
-  }
-});
-
 test("personal event collection keeps long cover content and usable search and filters", async t => {
   const page = await open(t, "home", "dark"); await page.getByText(title, { exact: true }).waitFor(); await unclipped(page.getByText(title, { exact: true }));
   assert.ok(await page.locator('img[src*="meeting.jpg"]').count() > 0);
@@ -202,62 +136,3 @@ test("personal event collection renders its page identity once, without a duplic
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.resourcePaths), ["/api/events/public"]);
 });
 
-test("organizer public cover preserves destinations without a registration write", async t => {
-  const organizer = await open(t, "organizer"); await organizer.getByText(title, { exact: true }).waitFor(); await unclipped(organizer.getByText(title, { exact: true }));
-  for (const action of await organizer.getByRole("button").all()) await fits(action);
-  await organizer.getByText(title, { exact: true }).click(); assert.deepEqual(await organizer.evaluate(() => (window as any).fixture.navigation), ["/events/event%3Astyle"]); await capture(organizer, "organizer");
-});
-
-test("event center gives the phase action its own row and keeps all secondary destinations readable", async t => {
-  const page = await open(t, "center"); const primary = page.getByRole("button", { name: `查看活动分析：${title}`, exact: true }); await fits(primary, 50);
-  assert.equal((await primary.boundingBox())!.width, 288, "phase action occupies its own row at 320pt");
-  const destinations = [[`查看活动分析：${title}`, "/events/event%3Astyle/analytics"], [`管理活动角色：${title}`, "/events/event%3Astyle/operations/roles"], [`打开活动运营台：${title}`, "/events/event%3Astyle/operations"], [`查看活动：${title}`, "/events/event%3Astyle"]] as const;
-  for (const [name, path] of destinations) { const action = page.getByRole("button", { name, exact: true }); await fits(action); await action.click(); assert.equal(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), path); }
-  await page.evaluate(() => document.querySelectorAll("[dir='auto']").forEach(node => { const el = node as HTMLElement, s = getComputedStyle(el); el.style.fontSize = `${parseFloat(s.fontSize) * 2}px`; el.style.lineHeight = `${parseFloat(s.lineHeight) * 2}px`; }));
-  for (const action of await page.getByRole("button").all()) { await fits(action); for (const label of await action.locator("[dir='auto']").all()) await unclipped(label); }
-  await capture(page, "center-large"); assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-});
-
-test("role grant and edit screens keep inset inputs, read-only identity and failed-save drafts", async t => {
-  const page = await open(t, "rolesEditor", "dark"); await page.getByRole("button", { name: "授予角色", exact: true }).click();
-  const actor = page.getByRole("textbox", { name: "账号 ID", exact: true }); const reason = page.getByRole("textbox", { name: "授权、变更或撤销原因", exact: true });
-  await fits(actor); await fits(reason); await actor.fill("actor:guest"); await reason.fill("负责合作伙伴接待");
-  const save = page.getByRole("button", { name: "授予角色", exact: true }); await fits(save, 50);
-  assert.equal(await actor.locator("..").locator("..").evaluate(el => getComputedStyle(el).borderRadius), "24px");
-  for (const action of await page.getByRole("button").all()) await fits(action);
-  await save.click(); await page.getByText("暂时无法保存，请重试", { exact: true }).waitFor(); assert.equal(await actor.inputValue(), "actor:guest"); assert.equal(await reason.inputValue(), "负责合作伙伴接待");
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "GET", path: "/api/events/event%3Astyle/access/assignments/actor%3Aguest", body: undefined }]);
-  await capture(page, "role-grant-dark"); await page.getByRole("button", { name: "返回角色列表", exact: true }).click();
-  await page.getByRole("button", { name: "管理 actor:staff 的角色", exact: true }).click(); assert.equal(await actor.inputValue(), "actor:staff"); assert.equal(await actor.isEditable(), false);
-  await fits(page.getByRole("button", { name: "更新角色", exact: true }), 50); await fits(page.getByRole("button", { name: "撤销当前角色", exact: true }));
-  await reason.fill("交接现场签到职责"); await capture(page, "role-edit-dark");
-});
-
-test("admission queue opens the full profile and grows explicit decisions while preserving processed-state guards", async t => {
-  const page = await open(t, "admission", "dark");
-  for (const label of ["待审核", "已处理"]) { const tab = page.getByRole("tab", { name: label, exact: true }); await fits(tab); await tab.click(); }
-  await page.getByRole("tab", { name: "待审核", exact: true }).click();
-  const applicant = page.getByRole("button", { name: "查看 森爱子 的申请", exact: true }); await fits(applicant); await applicant.click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["actor:aiko"]);
-  await page.getByText("市场进入经验与产业引荐", { exact: true }).waitFor();
-  const approve = page.getByRole("button", { name: "批准 森爱子 的报名", exact: true }); const reject = page.getByRole("button", { name: "拒绝 森爱子 的报名", exact: true });
-  await fits(approve, 50); await fits(reject); await reject.click(); await approve.click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ decision: "reject" }, { decision: "approve" }]);
-  await page.evaluate(() => (window as any).fixture.update({ busy: true })); assert.equal(await approve.isDisabled(), true); assert.equal(await reject.isDisabled(), true);
-  await capture(page, "admission-dark"); await page.evaluate(() => (window as any).fixture.update({ processed: true, busy: false }));
-  await page.getByText(/此申请已处理/).waitFor(); assert.equal(await approve.count(), 0); assert.equal(await reject.count(), 0);
-});
-
-test("analytics keeps real fractions readable and exposes view switching only when both reports are available", async t => {
-  const page = await open(t, "analytics"); const personal = page.getByRole("button", { name: "我的报告", exact: true }); await fits(personal); await personal.click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["attendee_report"]);
-  for (const heading of ["活动证据", "可解释比率", "联系证据", "约谈进展"]) {
-    const text = page.getByText(heading, { exact: true }); assert.deepEqual(await text.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["14.5px", "21px", "800"]);
-  }
-  const report = page.getByText("可解释比率", { exact: true }).locator("..");
-  assert.match(await report.innerText(), /2.*4/s);
-  await report.locator("[dir='auto']").evaluateAll(elements => elements.forEach(node => { const el = node as HTMLElement, s = getComputedStyle(el); el.style.fontSize = `${parseFloat(s.fontSize) * 2}px`; el.style.lineHeight = `${parseFloat(s.lineHeight) * 2}px`; }));
-  for (const text of await report.locator("[dir='auto']").all()) await unclipped(text); await capture(page, "analytics-large");
-  await page.evaluate(() => (window as any).fixture.update({ organizerAvailable: false })); assert.equal(await personal.count(), 0);
-  await page.evaluate(() => (window as any).fixture.update({ kind: "failure" })); await page.getByText("当前账号没有权限", { exact: true }).waitFor();
-});
