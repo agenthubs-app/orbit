@@ -552,3 +552,4 @@ export type { GlobalSearchAlternative, GlobalSearchConversationHit, GlobalSearch
 // R11a 人脈（列表卡片新字段、目標に関係）
 export type { ContactCardMetKind, ContactCardSourceChip } from "./contact-card-page";
 export type { ContactGoalRelatedIdsDTO, ContactGoalRelatedLinkDTO } from "./contact-goal-related";
+export type { ContactDeleteResult, ContactRestoreResult } from "./contact-delete";

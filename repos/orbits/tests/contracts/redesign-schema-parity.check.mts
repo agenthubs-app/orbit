@@ -247,3 +247,7 @@ import type { ContactGoalRelatedIdsDTO, ContactGoalRelatedLinkDTO } from "../../
 import type { contactGoalRelatedIdsObject, contactGoalRelatedLinkObject } from "../../shared/api-schema/contact-goal-related";
 expectParity<Parity<ContactGoalRelatedLinkDTO, typeof contactGoalRelatedLinkObject>>();
 expectParity<Parity<ContactGoalRelatedIdsDTO, typeof contactGoalRelatedIdsObject>>();
+import type { ContactDeleteResult, ContactRestoreResult } from "../../shared/contract/contact-delete";
+import type { contactDeleteResultObject, contactRestoreResultObject } from "../../shared/api-schema/contact-delete";
+expectParity<Parity<ContactDeleteResult, typeof contactDeleteResultObject>>();
+expectParity<Parity<ContactRestoreResult, typeof contactRestoreResultObject>>();

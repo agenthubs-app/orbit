@@ -2766,6 +2766,41 @@
         }
       }
     },
+    "contact-delete.ts::ContactDeleteResult": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "deletedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "restorableUntil": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "contact-delete.ts::ContactRestoreResult": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "restoredAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
     "contact-goal-related.ts::ContactGoalRelatedLinkDTO": {
       "kind": "object",
       "members": {
@@ -12505,6 +12540,7 @@
         "ContactCompletionQuestion",
         "ContactCompletionQuestionKind",
         "ContactCompletionResult",
+        "ContactDeleteResult",
         "ContactEvidenceContract",
         "ContactFilterOptionContract",
         "ContactGoalRelatedIdsDTO",
@@ -12553,6 +12589,7 @@
         "ContactPipelineStageCode",
         "ContactPipelineStageCountsContract",
         "ContactRelationshipValueContract",
+        "ContactRestoreResult",
         "ContactSourceFilterCode",
         "ContactSourceReferenceContract",
         "ContactStatusFilterCode",
