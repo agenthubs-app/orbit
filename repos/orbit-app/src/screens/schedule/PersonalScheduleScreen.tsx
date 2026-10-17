@@ -7,6 +7,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { AppScreen } from "../../components/AppScreen";
+import { Button, Card, UiText } from "../../components/ui";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { createThemedStyles } from "../../design/theme";
 import { createControlStyles } from "../../design/controls";
@@ -17,6 +18,9 @@ import { personalSchedulePath, readPersonalSchedule, personalScheduleReceiptMatc
 import type { PersonalScheduleContract } from "../../api/contract/tasks";
 import { buildPersonalScheduleChange, personalScheduleDraft, type PersonalScheduleDraft } from "../../view-models/personal-schedule-editor";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { mirrorFreshness } from "../../data/sync/mirror-freshness";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { personalScheduleDraftOverlap } from "../calendar/personal-schedule-overlap";
 import { PersonalScheduleTimeBlock } from "./PersonalScheduleTimeBlock";
 import { PersonalScheduleAssociations } from "./PersonalScheduleAssociations";
 import { PersonalScheduleRules } from "./PersonalScheduleRules";
@@ -39,6 +43,7 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   // The form starts from the device mirror (sprint 0108); saving still needs the network.
   const source = usePersonalScheduleItem({ actorId, ready, scopeKey, id });
   const writeStatus = usePersonalScheduleWriteStatus({ actorId, ready });
+  const overlapMirror = useSyncedCollection<Record<string, unknown>>({ kind: "personal_schedule" });
   const scope = useMemo(() => ({ active: true, busy: false, controller: new AbortController(), keys: new Map<string, string>() }), [client]);
   const current = useRef(scope); current.current = scope;
   const [baseline, setBaseline] = useState<PersonalScheduleContract | null>(null);
@@ -47,6 +52,7 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   const [loading, setLoading] = useState(!!id); const [saving, setSaving] = useState(false);
   const [error, setError] = useState(""); const [message, setMessage] = useState(""); const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
+  const [timePickerRequest, setTimePickerRequest] = useState(0);
   const [mutationScope, setMutationScope] = useState<"occurrence" | "series" | null>(null);
   const originalDraft = personalScheduleDraft(baseline, editZone);
   const clean = JSON.stringify(draft) === JSON.stringify(originalDraft);
@@ -62,6 +68,9 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   const queueMode = Platform.OS !== "web" && !!outbox && (writeStatus.offline || isLocal || !!source.queued);
   const repeatBlocked = queueMode && !!id && !!baseline && !isOfflineScheduleEditable(baseline, actorId);
   const writeBlocked = (writeStatus.offline && !queueMode) || repeatBlocked;
+  const overlap = mirrorFreshness(overlapMirror, ready).readable
+    ? personalScheduleDraftOverlap({ actorId, baseline, draft, now: Date.now(), records: overlapMirror.records, zone: editZone })
+    : { kind: "unavailable" as const };
   useEffect(() => {
     scope.active = true;
     if (scope.controller.signal.aborted) scope.controller = new AbortController();
@@ -141,7 +150,11 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
     {stale ? <View><Text accessibilityRole="alert" style={styles.error}>{locale.t("schedule.newVersion")}</Text><Pressable accessibilityRole="button" onPress={discard} style={styles.secondary}><Text>{locale.t("schedule.discardDraft")}</Text></Pressable></View> : null}
     {(!id || baseline) && ready ? <View style={styles.form}>
       <View style={styles.titleField}><Text style={styles.titleLabel}>{locale.t("schedule.fieldTitle")}</Text><TextInput accessibilityLabel={locale.t("schedule.fieldTitle")} value={draft.title} placeholder={locale.t("schedule.fieldTitlePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.titleInput} editable={!saving} onChangeText={title => { if (!scope.busy) setDraft(previous => ({ ...previous, title })); }} /></View>
-      <PersonalScheduleTimeBlock draft={draft} zone={editZone} baseline={baseline} disabled={saving} initialExpanded={focusTime} onError={setError} onChange={next => { if (!scope.busy && scope.active) setDraft({ ...next, ...(next.endTime !== draft.endTime ? { endDate: next.endTime ? next.endDate || next.startDate : "" } : {}) }); }} />
+      <PersonalScheduleTimeBlock key={timePickerRequest} draft={draft} zone={editZone} baseline={baseline} disabled={saving} initialExpanded={focusTime || timePickerRequest > 0} onError={setError} onChange={next => { if (!scope.busy && scope.active) setDraft({ ...next, ...(next.endTime !== draft.endTime ? { endDate: next.endTime ? next.endDate || next.startDate : "" } : {}) }); }} />
+      {overlap.kind === "known_overlap" ? <Card variant="flat" style={styles.conflictCard}>
+        <UiText accessibilityRole="alert" style={styles.conflictText}>{locale.t("calendar.view.overlap", { first: draft.title.trim(), second: overlap.title })}</UiText>
+        <Button size="sm" label={locale.t("calendar.view.changeTime")} onPress={() => setTimePickerRequest(value => value + 1)} disabled={saving} />
+      </Card> : null}
       <View style={styles.field}><Text style={styles.label}>{locale.t("schedule.fieldLocation")}</Text><View style={styles.modeRow}>{(["video", "in_person"] as const).map(meetingMethod => <Pressable key={meetingMethod} accessibilityRole="button" aria-selected={draft.meetingMethod === meetingMethod} accessibilityState={{ selected: draft.meetingMethod === meetingMethod }} disabled={saving} onPress={() => setDraft(previous => ({ ...previous, meetingMethod, ...(meetingMethod === "video" ? { location: "" } : { meetingUrl: "" }) }))} style={[styles.mode, draft.meetingMethod === meetingMethod && styles.modeSelected]}><Text style={[styles.modeText, draft.meetingMethod === meetingMethod && styles.modeSelectedText]}>{locale.t(meetingMethod === "video" ? "personal53.online" : "personal53.offline")}</Text></Pressable>)}</View>
       <TextInput accessibilityLabel={locale.t(draft.meetingMethod === "video" ? "personal53.url" : "schedule.fieldLocation")} value={draft.meetingMethod === "video" ? draft.meetingUrl : draft.location} placeholder={locale.t(draft.meetingMethod === "video" ? "personal53.url" : "schedule.fieldLocationPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} editable={!saving} autoCapitalize="none" autoCorrect={false} onChangeText={value => { if (!scope.busy) setDraft(previous => ({ ...previous, ...(previous.meetingMethod === "video" ? { meetingUrl: value } : { location: value }) })); }} /></View>
       <PersonalScheduleAssociations actorId={actorId} scopeKey={scopeKey} noteIds={draft.noteIds ?? []} contactIds={draft.contactIds ?? []} disabled={saving} onNotesChange={noteIds => { if (!scope.busy && scope.active) setDraft(previous => ({ ...previous, noteIds })); }} onContactsChange={contactIds => { if (!scope.busy && scope.active) setDraft(previous => ({ ...previous, contactIds })); }} />
@@ -165,4 +178,5 @@ const useStyles = createThemedStyles(colors => ({
   input: { minHeight: 44, borderBottomWidth: 1, borderColor: colors.line, color: colors.ink, fontSize: 15 },
   primary: { ...createControlStyles(colors).primaryButton, backgroundColor: colors.ink, minHeight: 50, borderRadius: 12 }, primaryText: { color: colors.surface, fontWeight: "700" as const, fontSize: 15 },
   secondary: { minHeight: 44, justifyContent: "center" as const, marginBottom: 8 }, error: { color: colors.coralText, fontSize: 14, lineHeight: 22 },
+  conflictCard: { backgroundColor: colors.coralSoft, gap: 8, marginBottom: 12 }, conflictText: { color: colors.coralText, fontSize: 13, fontWeight: "700" as const, lineHeight: 20 },
 }));

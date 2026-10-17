@@ -9,8 +9,8 @@ import { PersonalScheduleDateTimePicker } from "./PersonalScheduleDateTimePicker
 import type { PersonalScheduleContract } from "../../api/contract/tasks";
 import { applyPersonalSchedulePicker } from "../../view-models/personal-schedule-picker";
 
-export function PersonalScheduleTimeBlock({ draft, zone, baseline = null, disabled, onChange, onError }: { draft: PersonalScheduleDraft; zone: string; baseline?: PersonalScheduleContract | null; disabled: boolean; initialExpanded?: boolean; onChange(draft: PersonalScheduleDraft): void; onError(message: string): void }) {
-  const [picker, setPicker] = useState<"startDate" | "startTime" | "endDate" | "endTime" | null>(null);
+export function PersonalScheduleTimeBlock({ draft, zone, baseline = null, disabled, initialExpanded = false, onChange, onError }: { draft: PersonalScheduleDraft; zone: string; baseline?: PersonalScheduleContract | null; disabled: boolean; initialExpanded?: boolean; onChange(draft: PersonalScheduleDraft): void; onError(message: string): void }) {
+  const [picker, setPicker] = useState<"startDate" | "startTime" | "endDate" | "endTime" | null>(() => initialExpanded ? "startTime" : null);
   const locale = useOrbitLocale(); const { styles } = useStyles();
   const date = new Date(`${draft.startDate}T12:00:00Z`);
   const dateLabel = Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === draft.startDate
