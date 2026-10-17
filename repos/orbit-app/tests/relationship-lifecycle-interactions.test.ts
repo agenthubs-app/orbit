@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 let browser: Browser, script: string, handlersFactory: any, repositoryFactory: any, serviceFactory: any;
 const fixture = `
 import React, { useSyncExternalStore } from 'react';
+import { createTranslator } from './src/i18n/messages';
 let revision = 0, next = 0; const listeners = new Set();
 const state = window.fixture = { actor: 'owner', signedIn: true, routeTaskId: window.__targetTaskId, routeContactId: window.__targetContactId, requests: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
@@ -24,7 +25,7 @@ export const usePathname = () => '/tasks/relationship/connection%3A1';
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push() {}, replace() {} });
 export const Redirect = () => <div>Sign in</div>;
 export const useOrbitTimeZone = () => ({ timeZone: 'Asia/Shanghai', canSave: true });
-export const useOrbitLocale = () => ({ language: 'zh', t: key => key });
+export const useOrbitLocale = () => ({ language: 'zh', t: createTranslator('zh') });
 export const randomUUID = () => 'intent-' + ++next;
 export const AppScreen = ({ children, title }) => <main><h1>{title}</h1>{children}</main>;
 `;
