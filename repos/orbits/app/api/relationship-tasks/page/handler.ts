@@ -1,5 +1,6 @@
 import {NextResponse} from 'next/server';
 import {createConfiguredRelationshipTaskPageReader} from '../../../../features/connections/lifecycle/task-page';
+import {logLifecycleReadFailure} from '../../../../features/followups/storage/lifecycle-read-error';
 import {failure,success} from '../../../../shared/api/envelope';
 import {AppError,getHttpStatusForAppErrorCode} from '../../../../shared/errors/app-error';
 import {authenticatedApiActorRequiredResponse,resolveAuthenticatedApiActor,type ResolveAuthenticatedApiActor} from '../../_shared/authenticated-actor';
@@ -20,6 +21,7 @@ export function createRelationshipTaskPageGetHandler(options:{resolveActor?:Reso
       const data=await reader.read(actor.id,{mode:mode as 'open'|'completed',limit,cursor});
       return NextResponse.json(success(data),{headers});
     }catch(error){
+      logLifecycleReadFailure('relationship_task_page',error);
       const message=error instanceof Error?error.message:'';
       const invalid=['RELATIONSHIP_TASK_PAGE_INPUT_INVALID','RELATIONSHIP_TASK_CURSOR_INVALID'].includes(message);
       const safe=new AppError(invalid?'VALIDATION_ERROR':'SERVICE_UNAVAILABLE',invalid?'Reload the first follow-up page.':'Follow-ups are temporarily unavailable.');

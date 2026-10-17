@@ -6,6 +6,7 @@ import {
   type LifecycleTaskPagesReader,
 } from "../../../../features/followups/storage/lifecycle-task-pages";
 import type { RelationshipLifecycleTaskReadModel, RelationshipLifecycleTaskView } from "./relationship-lifecycle-tasks";
+import { logLifecycleReadFailure } from "../../../../features/followups/storage/lifecycle-read-error";
 
 export type LifecyclePageSearchParams = { view?: string; current?: string; history?: string; orphan?: string };
 
@@ -56,7 +57,8 @@ export async function loadLifecycleTaskPages(input: {
       currentTasks: result.pages.current.items.map(cardView), historyTasks: result.pages.history.items.map(cardView), orphanTasks: result.pages.orphan.items.map(cardView),
       currentCount: result.counts.current, historyCount: result.counts.history, orphanCount: result.counts.orphan, pagination,
     };
-  } catch {
+  } catch (error) {
+    logLifecycleReadFailure("lifecycle_pages", error);
     // A bad cursor/unsupported runtime/failed query must not trigger an unlimited read.
     return { state: "unavailable", sourceLabel, currentTasks: [], historyTasks: [], orphanTasks: [], currentCount: 0, historyCount: 0, orphanCount: 0 };
   }
