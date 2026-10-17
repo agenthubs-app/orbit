@@ -66,7 +66,7 @@ export function CalendarContent({ mode, projection, external, timeZone, onConnec
         return <UiPressable key={dateKey} accessibilityRole="button" accessibilityLabel={`${label} ${Number(dateKey.slice(8))}`} accessibilityState={{ selected: dateKey === selected }} onPress={() => onSelectDate(dateKey)} style={[styles.weekDay, dateKey === selected && styles.weekDaySelected]}>
           <UiText style={styles.weekDayLabel}>{label}</UiText><UiText style={styles.weekDayNumber}>{Number(dateKey.slice(8))}</UiText>
           <View style={styles.weekDots}>{day?.items.slice(0, 3).map(item => <View key={item.id} style={[styles.dot, { backgroundColor: tone(item.kind, colors).ink }]} />)}
-            {(externalByDay.get(dateKey) ?? []).slice(0, 3 - (day?.items.length ?? 0)).map(item => <View key={`external:${item.id}`} style={[styles.dot, { backgroundColor: colors.accentText }]} />)}</View>
+            {(externalByDay.get(dateKey) ?? []).slice(0, Math.max(0, 3 - (day?.items.length ?? 0))).map(item => <View key={`external:${item.id}`} style={[styles.dot, { backgroundColor: colors.accentText }]} />)}</View>
         </UiPressable>;
       })}
     </View>}

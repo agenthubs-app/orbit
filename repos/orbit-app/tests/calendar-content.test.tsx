@@ -92,3 +92,8 @@ test("external calendar reads are network-only and scoped to the active account 
   assert.match(source, /server\.baseUrl/u);
   assert.doesNotMatch(source, /writeSnapshot|useSyncedCollection/u);
 });
+
+test("week dot budget never becomes a negative slice when Orbit already fills the row", () => {
+  const source = readFileSync(join(process.cwd(), "src/screens/calendar/CalendarContent.tsx"), "utf8");
+  assert.match(source, /Math\.max\(0, 3 - \(day\?\.items\.length \?\? 0\)\)/u);
+});
