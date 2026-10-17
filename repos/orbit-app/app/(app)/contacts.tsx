@@ -1,21 +1,19 @@
 import { useIsFocused } from "expo-router";
-import { useCallback, useRef } from "react";
 import { useOrbitAuthSession } from "../../src/api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../src/api/ApiBaseUrlProvider";
-import { ContactsScreen } from "../../src/screens/contacts/ContactsScreen";
+import { NetworkScreen } from "../../src/screens/network/NetworkScreen";
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 
+// R11a: the new 人脈 page (src/screens/network). It unmounts while unfocused (no private reads in the
+// background); NetworkScreen keeps its tab, filters, search and scroll per account (A-R05-10).
 function ContactsMainRoute() {
   const focused = useIsFocused();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const scopeKey = JSON.stringify([auth.actorId, auth.cookieHeader, server.baseUrl]);
   const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(auth.actorId);
-  const latest = useRef("");
-  latest.current = enabled ? scopeKey : "";
-  const isScopeCurrent = useCallback(() => latest.current === scopeKey, [scopeKey]);
   if (!enabled) return null;
-  return <ContactsScreen key={scopeKey} mode="main" scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} />;
+  return <NetworkScreen key={scopeKey} scopeKey={scopeKey} />;
 }
 
 export default withOrbitPrivateRoute(ContactsMainRoute);

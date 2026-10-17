@@ -2,6 +2,8 @@ import type { ContactCardDTO, ContactCardPageDTO, ContactCardSummaryDTO } from "
 import type { ContactSyncPayload, LocalContactDirectoryQuery } from "../api/contract/contact-local-directory";
 import { localContactDirectory, localContactDirectorySummary } from "../api/schema/contact-local-directory";
 import { contactCardSchema } from "../api/schema/contact-card-page";
+import { contactDensity } from "../api/compute/contact-density";
+import { contactMetKind, contactSourceChip, meetingNoteValue } from "../api/compute/contact-source-chip";
 
 /**
  * Sprint 0116 (offline 1b): the account's contacts from the device mirror
@@ -64,4 +66,33 @@ export function localContactDetail(rows: readonly ContactSyncPayload[], contactI
 export function localContactLabel(rows: readonly ContactSyncPayload[], contactId: string): { id: string; name: string; organization: string } | null {
   const row = rows.find((candidate) => candidate.card?.id === contactId) ?? rows.find((candidate) => candidate.id === contactId);
   return row?.card ? { id: row.card.id, name: row.card.displayName, organization: row.card.organization } : null;
+}
+
+/**
+ * R11a（代定 10）：旧镜像兜底。服务端在 R11a 之后才给卡片带 `density` / `sourceChip` / `metKind`；升级前同步下来的行没有，
+ * 不强制重建镜像，按本机已有字段现算（与服务端同一组共享函数；不含计划，计划在读时合并）：
+ * - 浓度：详情里的邮箱 / 电话、名片备注里的「出会い」行、详情笔记（往来）；
+ * - 出どころ：按 `sourceType`（名刺 / イベント / 連絡先 vCard 标签 / 其余 手入力）；
+ * - 出会った場所：活动导入 → イベント、来源 referral / 「出会い：紹介」→ 紹介、商談 / 訪問 → 訪問・商談。
+ */
+export function withLegacyNetworkFields(row: ContactSyncPayload): ContactSyncPayload {
+  const card = row.card;
+  if (!card || (card.density !== undefined && card.sourceChip !== undefined && card.metKind !== undefined)) return row;
+  const detail = row.detail ?? {};
+  const text = (key: string) => (typeof detail[key] === "string" ? (detail[key] as string).trim() : "");
+  const notesText = text("cardNotes");
+  const meetingNote = meetingNoteValue(notesText);
+  const source = typeof detail.source === "object" && detail.source !== null ? detail.source as Record<string, unknown> : {};
+  const sourceLabel = typeof source.label === "string" ? source.label : "";
+  const interacted = Array.isArray(detail.notes) && detail.notes.length > 0;
+  const density = card.density ?? contactDensity({
+    hasIdentity: Boolean(card.displayName.trim()), hasContactPoint: Boolean(text("primaryEmail") || text("primaryPhone")),
+    hasMetContext: meetingNote !== null, hasGoalRelation: false, hasInteraction: interacted, selfReported: false,
+  }).level;
+  return { ...row, card: {
+    ...card,
+    density,
+    sourceChip: card.sourceChip ?? contactSourceChip({ sourceType: card.sourceType, sourceLabel, hasLinkedinNote: /^LinkedIn:/mu.test(notesText) }),
+    metKind: card.metKind ?? contactMetKind({ sourceType: card.sourceType, meetingNote }),
+  } };
 }

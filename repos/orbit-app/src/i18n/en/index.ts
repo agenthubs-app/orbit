@@ -56,6 +56,7 @@ import { eventsJourney } from "./eventsJourney";
 import { search } from "./search";
 import { host } from "./host";
 import { calendar } from "./calendar";
+import { network } from "./network";
 
 export const en = {
   ...inbox,
@@ -115,4 +116,5 @@ export const en = {
   ...search,
   ...host,
   ...calendar,
+  ...network,
 } as const satisfies MessageDictionary;
