@@ -21,7 +21,7 @@ export function calendarDateKeys(dateKey: string, mode: CalendarMode): string[] 
   const offset = new Date(`${first}T00:00:00Z`).getUTCDay();
   const start = shiftScheduleDateKey(first, -offset);
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const count = Math.max(35, Math.ceil((offset + daysInMonth) / 7) * 7);
+  const count = Math.ceil((offset + daysInMonth) / 7) * 7;
   return Array.from({ length: count }, (_, index) => shiftScheduleDateKey(start, index));
 }
 

@@ -10,6 +10,7 @@ test("month, week, and day keys navigate across month edges without losing the s
   assert.deepEqual([calendarDateKeys("2026-10-07", "month")[0], calendarDateKeys("2026-10-07", "month").at(-1)], ["2026-09-27", "2026-10-31"]);
   assert.deepEqual(calendarDateKeys("2026-10-07", "week"), ["2026-10-04", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10"]);
   assert.deepEqual(calendarDateKeys("2026-10-07", "day"), ["2026-10-07"]);
+  assert.equal(calendarDateKeys("2026-02-12", "month").length, 28, "a complete four-week February needs no blank fifth row");
   assert.equal(shiftCalendarSelection("2026-10-31", "month", 1), "2026-11-30");
   assert.equal(shiftCalendarSelection("2026-10-07", "week", -1), "2026-09-30");
 });
