@@ -9,7 +9,7 @@ import type { EventAfterNextStep, EventAfterResponse } from "../../../../../shar
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { previewAfterScore } from "../../../../../features/events/journey/after-core";
 import { ShellPage } from "../shell/slots";
-import { Drawer, Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { CountUp, Drawer, Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { DiscoverHelpRail, journeyTranslator, type JourneyT } from "./DiscoverTab";
 import { WEEK, parts, usePhone, useWide } from "./EventDetail";
@@ -144,7 +144,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
       <div className={`${styles.row} ${styles.between}`} style={{ alignItems: "flex-start" }}>
         <div>
           <div className={styles.lbl}>{t("scoreLbl", { goal: data.score.goal })}</div>
-          <div className={`${styles.row} ${a.scoreRow}`}><span className={`${a.mid} ${styles.muted}`}>{preview.before}</span><span className={styles.muted}><Icon name="right" size={16} /></span><span className={a.big36}>{preview.after}</span></div>
+          <div className={`${styles.row} ${a.scoreRow}`}><span className={`${a.mid} ${styles.muted}`}>{preview.before}</span><span className={styles.muted}><Icon name="right" size={16} /></span><span className={a.big36}><CountUp value={preview.after} from={preview.before} className="" /></span></div>
         </div>
         {preview.after > preview.before ? <span className={a.delta}>+{preview.after - preview.before}</span> : null}
       </div>
@@ -259,7 +259,7 @@ function AfterInner({ eventId, language }: { eventId: string; language: OrbitLan
                   <div className={`${styles.row} ${styles.between}`} style={{ alignItems: "flex-start" }}>
                     <div>
                       <div className={styles.lbl}>{t("scoreLbl", { goal: data.score.goal })}</div>
-                      <div className={`${styles.row} ${a.scoreRow}`}><span className={`${a.mid} ${styles.muted}`}>{preview.before}</span><span className={styles.muted}><Icon name="right" size={16} /></span><span className={a.big36}>{preview.after}</span></div>
+                      <div className={`${styles.row} ${a.scoreRow}`}><span className={`${a.mid} ${styles.muted}`}>{preview.before}</span><span className={styles.muted}><Icon name="right" size={16} /></span><span className={a.big36}><CountUp value={preview.after} from={preview.before} className="" /></span></div>
                     </div>
                     {preview.after > preview.before ? <span className={a.delta}>+{preview.after - preview.before}</span> : null}
                   </div>

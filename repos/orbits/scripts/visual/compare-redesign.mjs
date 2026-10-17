@@ -241,13 +241,16 @@ async function shootApp(v, designHeight) {
   const page = await ctx.newPage();
   try { await page.goto(v.app, { waitUntil: "networkidle", timeout: 30000 }); }
   catch { await page.waitForTimeout(1500); }
-  // Next dev 的悬浮指示器不是产品界面；先隐藏再做点击 / 步骤（它盖在左下角，会挡住左栏头像）。
-  await page.waitForLoadState("load").catch(() => {});
-  await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-dev-tools-button],[data-next-mark]{display:none!important}" }).catch(async () => {
-    // 页面在客户端跳转途中（例：旧路由兼容跳转）：等跳完再注入一次。
-    await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
-    await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-dev-tools-button],[data-next-mark]{display:none!important}" });
-  });
+  // Next dev 的悬浮指示器不是产品界面；先隐藏再做点击 / 步骤（它盖在左下角，会挡住左栏头像）。reload 步骤后要再藏一次。
+  const hideDevIndicator = async () => {
+    await page.waitForLoadState("load").catch(() => {});
+    await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-dev-tools-button],[data-next-mark]{display:none!important}" }).catch(async () => {
+      // 页面在客户端跳转途中（例：旧路由兼容跳转）：等跳完再注入一次。
+      await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
+      await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-dev-tools-button],[data-next-mark]{display:none!important}" });
+    });
+  };
+  await hideDevIndicator();
   if (v["wait-for"]) await page.waitForSelector(v["wait-for"], { timeout: 20000 }).catch(() => console.warn(`warn: [${v.key}] --wait-for ${v["wait-for"]} 超时，按原样截`));
   for (const sel of many(v.click)) { await page.locator(sel).first().click(); await page.waitForTimeout(400); }
   // --steps '<JSON 数组>'：按顺序执行的实现侧操作，适合「先按 ⌘K 再输入」「先填名字再等重复候选」这类多步状态。
@@ -263,7 +266,7 @@ async function shootApp(v, designHeight) {
     if (step.upload) await page.locator(step.upload[0]).first().setInputFiles(step.upload.slice(1).map((f) => resolve(f)));
     if (step.waitFor) await page.waitForSelector(step.waitFor, { timeout: 20000 }).catch(() => console.warn(`warn: [${v.key}] waitFor ${step.waitFor} 超时`));
     if (step.eval) await page.evaluate(step.eval);
-    if (step.reload) { await page.reload(); if (v["wait-for"]) await page.waitForSelector(v["wait-for"], { timeout: 20000 }).catch(() => console.warn(`warn: [${v.key}] reload 后 wait-for 超时`)); }
+    if (step.reload) { await page.reload(); await hideDevIndicator(); if (v["wait-for"]) await page.waitForSelector(v["wait-for"], { timeout: 20000 }).catch(() => console.warn(`warn: [${v.key}] reload 后 wait-for 超时`)); }
     await page.waitForTimeout(step.wait ?? 400);
   }
   for (const sel of many(v["app-remove"])) await page.locator(sel).evaluateAll((els) => els.forEach((e) => e.remove()));

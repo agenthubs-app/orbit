@@ -46,21 +46,21 @@ export function countUpValue(target: number, elapsedMs: number, durationMs = COU
   return target * (1 - (1 - t) ** 3);
 }
 
-// Numbers count up once when shown; with Reduce Motion they show the final value.
-export function CountUp({ value, decimals = 0, className }: { value: number; decimals?: number; className?: string }) {
+// Numbers count up once when shown (from `from`, default 0); with Reduce Motion they show the final value.
+export function CountUp({ value, from = 0, decimals = 0, className }: { value: number; from?: number; decimals?: number; className?: string }) {
   const reduced = useReducedMotion();
-  const [shown, setShown] = useState(reduced ? value : 0);
+  const [shown, setShown] = useState(reduced ? value : from);
   useEffect(() => {
     if (reduced || typeof requestAnimationFrame === "undefined") { setShown(value); return; }
     let frame = 0;
     const start = performance.now();
     const step = (now: number) => {
-      const next = countUpValue(value, now - start);
+      const next = from + countUpValue(value - from, now - start);
       setShown(next);
       if (next !== value) frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [value, reduced]);
+  }, [value, from, reduced]);
   return <span className={className ?? styles.number} aria-label={value.toFixed(decimals)}><span aria-hidden>{shown.toFixed(decimals)}</span></span>;
 }

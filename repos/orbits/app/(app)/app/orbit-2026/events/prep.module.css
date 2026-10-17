@@ -44,7 +44,7 @@
 .pActs.pActs { gap: 8px; margin-top: 12px; }
 .warnbar.warnbar { display: flex; gap: 10px; align-items: center; height: auto; min-height: 0; padding: 11px 14px; border: 0; border-radius: var(--r-tile); background: var(--coral-soft); color: var(--ink); font-size: var(--fs-control); font-weight: var(--fw-regular); text-align: left; margin-top: 14px; width: 100%; }
 .warnbar b { color: var(--coral); }
-.warnEmoji { font-size: var(--fs-emoji-sm); }
+.warnEmoji { font-size: var(--fs-title-xs); } /* 画板 warnbar 📇 = 18px（b2 #24 / b12 #360）；token 里 18 只有 title-xs */
 .pCard.pCard { margin-top: 14px; padding: 18px; }
 .acc + .acc { border-top: 1px solid var(--line); }
 .accH.accH { display: flex; align-items: center; gap: 10px; width: 100%; height: auto; min-height: 0; padding: 10px 0; border: 0; background: transparent; color: inherit; font-weight: inherit; text-align: left; }
@@ -53,7 +53,7 @@
 .chev { color: var(--ink); display: grid; }
 .chevOpen { transform: rotate(180deg); }
 .accIn { padding: 0 0 13px 48px; display: grid; gap: 8px; }
-.kv { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; font-size: var(--fs-control); line-height: 1.45; }
+.kv { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; font-size: var(--fs-control); line-height: 1.5; }
 .kv > span:first-child { color: var(--ink-3); font-size: var(--fs-label); padding-top: 1px; white-space: nowrap; }
 .pQuote { border-radius: var(--r-md); background: var(--surface-2); padding: 10px 12px; font-size: var(--fs-control); line-height: 1.6; }
 .copyBtn.copyBtn { justify-self: start; }

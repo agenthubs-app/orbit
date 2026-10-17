@@ -598,7 +598,21 @@
    "journey": {
     "after": "many"
    },
-   "note": "P10 会後 · 多 · 390"
+   "note": "P10 会後 · 多 · 390",
+   "steps": [
+    {
+     "click": "[data-after-step] >> nth=2 >> button[aria-pressed]:has-text('🎯')"
+    },
+    {
+     "click": "[data-after-step] >> nth=5 >> button[aria-label='✕']"
+    },
+    {
+     "click": "[data-after-step] >> nth=5 >> button[aria-pressed]:has-text('🎯')"
+    },
+    {
+     "wait": 600
+    }
+   ]
   },
   {
    "app": "/app/events/demo-event-cfo-night-18",

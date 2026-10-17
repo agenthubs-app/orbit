@@ -75,7 +75,7 @@
 .nx + .nx { border-top: 1px solid var(--line); }
 .nxOff { opacity: 0.45; }
 .nxName { font-size: var(--fs-row); }
-.nxActs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0 40px; }
+.nxActs { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0 40px; }
 .pFoot.pFoot { gap: 8px; margin-top: 12px; }
 .pNote.pNote { text-align: center; margin-top: 8px; }
 .pNote :global(svg) { vertical-align: -3px; }

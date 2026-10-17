@@ -340,5 +340,5 @@
   .frame[data-phone-bare="true"] .content { padding-bottom: 0; }
   .frame[data-phone-bare="true"] .mainhead { padding-top: 6px; margin-bottom: 14px; }
   .frame[data-phone-bare="true"] .title { font-size: var(--fs-logo); letter-spacing: 0.01em; }
-  .frame[data-phone-bare="true"] .headTitle .subtitle { display: block; font-size: var(--fs-label); margin-top: 1px; }
+  .frame[data-phone-bare="true"] .headTitle .subtitle { display: block; font-size: var(--fs-label); font-weight: var(--fw-medium); margin-top: 1px; }
 }
