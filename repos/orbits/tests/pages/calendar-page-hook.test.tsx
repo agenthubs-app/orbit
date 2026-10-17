@@ -48,6 +48,7 @@ test("a denial from either endpoint clears both private source snapshots and can
   assert.equal(current.internal.state, "ready"); assert.equal(current.external.state, "ready");
   denied = true;
   await act(async () => { await current.refresh(); });
+  assert.equal(current.denied, true);
   assert.equal(current.internal.state, "failed"); assert.equal(current.internal.data, null); assert.equal(current.external.data, null);
 });
 test("disabled, unresolved-session and invalid-date readers make no request", async t => {

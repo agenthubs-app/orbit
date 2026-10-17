@@ -29,3 +29,8 @@
 .hour time { display: inline-block; max-width: 56px; color: var(--ink-3-text); font-size: var(--fs-caption); font-family: var(--font-num); }
 .timeEntry { position: absolute; padding-right: var(--space-2); }
 .entry:focus-visible, .dayNumber:focus-visible, .columnDate:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.formGrid { display: grid; gap: var(--space-12); margin-top: var(--space-12); }
+.formDates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-10); margin-top: var(--space-12); }
+.formLabel { display: grid; gap: var(--space-6); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
+.formSelect { min-height: 40px; padding: var(--space-8); border: 1px solid var(--surface-3); border-radius: var(--r-md); background: var(--surface); color: var(--ink); font: inherit; }
+.conflict { padding: var(--space-12); border-radius: var(--r-md); background: var(--mac-apricot); color: var(--mac-apricot-text); font-size: var(--fs-body-sm); }

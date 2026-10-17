@@ -12,6 +12,7 @@ function loadPage(signedIn = true) {
   let lifecycleReads = 0, planReads = 0;
   const component = () => null;
   const todo = () => null;
+  const calendar = () => null;
   new Function("require", "module", "exports", compiled)((request: string) => {
     if (request === "next/navigation") return { redirect: (destination: string) => { throw Object.assign(Error("redirect"), { destination }); } };
     if (request.endsWith("/auth")) return { auth: async () => signedIn ? { user: { id: "subject" } } : null };
@@ -19,6 +20,7 @@ function loadPage(signedIn = true) {
     if (request === "./plan-slot") return { loadPlanSlot: async () => { planReads++; return "plan"; }, planStartHref: () => "/app/agent" };
     if (request.includes("TaskContainer")) return { TaskContainer: component };
     if (request.includes("TodoTaskSlot")) return { TodoTaskSlot: todo };
+    if (request.includes("CalendarTaskSlot")) return { CalendarTaskSlot: calendar };
     if (request.includes("orbit-reference-styles")) return { OrbitReferenceStyles: component };
     if (request === "./tasks-styles") return { TasksStyles: component };
     if (request === "./personal-schedule-workspace") return { PersonalScheduleWorkspace: component };
@@ -26,7 +28,7 @@ function loadPage(signedIn = true) {
     if (request === "./lifecycle-pages-route-service") return { loadLifecycleTaskPages: async () => { lifecycleReads++; return {}; } };
     return baseRequire(request);
   }, module, module.exports);
-  return { page: module.exports.default, todo, lifecycleReads: () => lifecycleReads, planReads: () => planReads };
+  return { page: module.exports.default, todo, calendar, lifecycleReads: () => lifecycleReads, planReads: () => planReads };
 }
 
 test("Task Todo route mounts the new slot without legacy follow-up reads and preserves plan behavior", async () => {
@@ -39,6 +41,29 @@ test("Task Todo route mounts the new slot without legacy follow-up reads and pre
   const plan = await runtime.page({ searchParams: Promise.resolve({ tab: "plan", plan: "goal", new: "1" }) });
   assert.equal(plan.props.plan, "plan");
   assert.equal(runtime.planReads(), 1);
+});
+
+test("Task calendar mounts the selected-window calendar with canonical actor and validated linked date", async () => {
+  const runtime = loadPage();
+  const element = await runtime.page({ searchParams: Promise.resolve({ tab: "calendar", date: "2030-04-01", new: "1" }) });
+  assert.equal(element.props.calendar.type, runtime.calendar);
+  assert.deepEqual(element.props.calendar.props, { actorId: "actor", initialDate: "2030-04-01", initialAdd: true });
+  const invalid = await runtime.page({ searchParams: Promise.resolve({ tab: "calendar", date: "2030-02-30" }) });
+  assert.equal(invalid.props.calendar.props.initialDate, undefined);
+  assert.equal(runtime.planReads(), 0);
+  assert.equal(runtime.lifecycleReads(), 0);
+});
+
+test("calendar login continuation keeps only a valid calendar date", async () => {
+  const runtime = loadPage(false);
+  for (const [date, expected] of [["2030-04-01", "2030-04-01"], ["2030-02-30", null]]) {
+    await assert.rejects(runtime.page({ searchParams: Promise.resolve({ tab: "calendar", date }) }), error => {
+      const destination = new URL((error as Error & { destination: string }).destination, "https://orbit.test");
+      const next = new URL(destination.searchParams.get("next")!, "https://orbit.test");
+      assert.equal(next.searchParams.get("date"), expected);
+      return true;
+    });
+  }
 });
 
 test("login continuation retains Task tab, plan, new and completed intent without arbitrary redirect targets", async () => {

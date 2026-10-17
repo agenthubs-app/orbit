@@ -7,8 +7,8 @@ import { CalendarReadError, createCalendarReadClient, type CalendarInternalRead,
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 
 export type CalendarPart<T> = { state: "idle" | "loading" | "ready" | "failed"; data: T | null };
-interface Snapshot { scope: string; internal: CalendarPart<CalendarInternalRead>; external: CalendarPart<CalendarExternalRead> }
-const empty = (scope: string, state: "idle" | "loading" | "failed"): Snapshot => ({ scope, internal: { state, data: null }, external: { state, data: null } });
+interface Snapshot { scope: string; denied: boolean; internal: CalendarPart<CalendarInternalRead>; external: CalendarPart<CalendarExternalRead> }
+const empty = (scope: string, state: "idle" | "loading" | "failed"): Snapshot => ({ scope, denied: false, internal: { state, data: null }, external: { state, data: null } });
 
 /** In-memory display only. A denied source invalidates both account snapshots. */
 export function useCalendarPage(zone: string, date: string, mode: CalendarMode, language: OrbitLanguage, enabled = true) {
@@ -34,7 +34,7 @@ export function useCalendarPage(zone: string, date: string, mode: CalendarMode, 
     const active = () => !controller.signal.aborted && generation.current === epoch && activeScope.current === scope;
     const fail = (part: "internal" | "external", error: unknown) => {
       if (!active()) return;
-      if (error instanceof CalendarReadError && error.code === "denied") { cancel(); setSnapshot(empty(scope, "failed")); }
+      if (error instanceof CalendarReadError && error.code === "denied") { cancel(); setSnapshot({ ...empty(scope, "failed"), denied: true }); }
       else setSnapshot(previous => ({ ...previous, [part]: { state: "failed", data: null } }));
     };
     await Promise.all([
@@ -45,5 +45,5 @@ export function useCalendarPage(zone: string, date: string, mode: CalendarMode, 
   }, [cancel, client, enabled, language, ready, scope, window]);
   useEffect(() => { void refresh(); return cancel; }, [cancel, refresh]);
   const visible = snapshot.scope === scope ? snapshot : empty(scope, enabled ? "loading" : "idle");
-  return { internal: visible.internal, external: visible.external, window, refresh };
+  return { internal: visible.internal, external: visible.external, denied: visible.denied, window, refresh };
 }

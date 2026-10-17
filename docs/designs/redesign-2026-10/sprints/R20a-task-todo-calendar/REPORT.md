@@ -1,6 +1,6 @@
 # R20a — 実装記録（進行中）
 
-2026-10-18、run-01。承認済み PLANNER rev2 に沿って実行中。本記録は SC-02 のサーバー修正、SC-03 の派生値、SC-12 の OAuth / 外部日历 API、SC-11a の骨格と SC-04 の live 読取基盤までで、Sprint 完了を示さない。
+2026-10-18、run-01。承認済み PLANNER rev2 に沿って実行中。サーバー基盤に続き両端の To-do / カレンダー / 手動下書きと App 面談詳細の中間里程標を記録する。部分実装と未検証項目を含み、Sprint 完了を示さない。
 
 - 開始 HEAD：`1524d3667`。主会話のナビゲーション修正 `56da437ef` は別作業。
 - PLANNER SHA256：`091e9e2ca8249a8e39aa7e87e0c7be3b1175b9a86c664c7939cb9eae5b6bc159`。
@@ -12,12 +12,15 @@
 | SC | 現在の結果 |
 | --- | --- |
 | SC-02 フォロー | サーバー修正と回帰テスト済み。実 PostgreSQL で App 向け API は 503 → 200、Web loader は unavailable → success。画面操作とスクリーンショットは後続検証に残す。 |
-| SC-12 OAuth / 外部日历 API | 二つの固定 OAuth 戻り先と、只読 Google events API / schema / mock / App 契約同期を実装。替身 provider の cache / 失効 / refresh / budget / 認証を検証。カレンダー UI と Google 実接続は未完了。 |
-| SC-11a 日程提案骨格 | §7.6 の二つの path / export / 同形 props と、三段の空構造を実装。両端の三語 rendering tests、Web 閉じる操作を検証。SC-11 の業務実装と像素は未完了。 |
+| SC-12 OAuth / 外部日历 API | 二つの固定 OAuth 戻り先と、只読 Google events API / schema / mock / App 契約同期、両端の読取 UI を実装。替身 provider の cache / 失効 / refresh / budget / 認証を検証。Google 実接続 / 像素は未検証。 |
+| SC-11a / SC-11 日程提案 | §7.6 の骨格を先行提交。App worker の Move / Cancel と検証は下記。Web 業務接続、contact-only 初回提案、像素は未完了。 |
 | SC-03 延期回数 | 別 worker の `b5bfa026a` で task の各 read / sync / App mirror に派生値を追加。検証の詳細はその worker の証拠を参照。 |
 | SC-01 像素準備 | 主会話の `5bdad3d89` で App 48 / Web 24 view、attribution schema と preflight 記録を追加。像素検証自体は未実施。 |
 | SC-04 統一待辦 | 契約/mock/App 同期に加え、live 集約・単一 source の署名 cursor・SQL follow-up 件数と読取制限を実装・定向検証。未初期化 / `none` の每日一問は生成書込せず `not_implemented`。この非同等性と後続の App/UI/統合確認が残るため、SC-04 完了とはしない。 |
-| その他 SC | この段階では未実装。 |
+| SC-05～08 / SC-13 | To-do 読取 / source 別判断・ページング、App offline slice、両端 manual-only editor の中間実装。AI / sent / encounter と未対応 source の非同等性を隠さず、全体完了とはしない。 |
+| SC-09 詳細 | plain task と lifecycle の identity を区別。精確 resolver は B helper の明示例外承認待ち。既存 connectionId route に taskId を渡さない。 |
+| SC-10 カレンダー | selected-window native recurrence / carry-over / external read と Web Task slot / personal editor を実装し定向検証。新 host の fresh typecheck、ブラウザ操作、繰り返し sheet 等の画板完全一致 / 像素は未検証で partial。 |
+| その他 SC | 全量収口、旧 route 整理、simulator / 像素を含め未完了。 |
 
 ## フォロー 根因
 
@@ -177,6 +180,32 @@ presenter は month の 3 件 cap と「ほか N 件」→ day、week/day の ti
 
 `cca38c0fa` は App task_suggestion の翌 local day 09:00 snooze、source receipt 検証、offline / sample guard と三語 copy（model/action 15、render 6、copy 34/0、hardcoded-copy 5/5）。他の判断 source は未完で、App SC-07 閉合ではない。
 
+追加の主会話交接：`78e1e076e` は plan_pending / agent_action の accept / dismiss を source-native endpoint と一致する receipt で確認（action/model 16、render 7）。`a383637ec` は agent_action の「後で」を ledger defer に接続し、actionId → entryId と receipt を検証（action/model 17、render 8、copy 36/0）。`51f7bab26` は whole-page NOT_IMPLEMENTED の場合に To-do を隠し、旧 offline copy で再表示しない（14/14）。`ae5d2234e` は当時 draft route がなかった next-move を説明付きで非操作にした（render 9/9）。
+
+`1884c57fa` はその後の App SC-08 manual-only editor。非 sample の next move から offline でも開き、手動入力の copy / mailto handoff だけを行う。AI unavailable / no persistence / no send を明示する（focused render/unit 11/11、copy 47/0、hardcoded-copy 5/5）。AI tone / rewrite、保存済み送信確認、encounter は未完で SC-08 partial。主会話はこのコミット後の fresh App `npm run typecheck` exit 0 を確認した。
+
+その後の App 全量は heavy.sh d で **exit 1**。対話出力が切れ durable raw log がないため、正確な総数 / fail 数は不明で、基線との差分も未分類。personal-schedule browser の広い失敗、旧 D harness 二件の R31a UI import 後の React Native Flow parse、D 管轄外 plan-overview の pointer-event timeout が主会話に見えている。主会話が二つの App test harness の nativeUiStubs だけを変更し、targeted / raw log 付き full rerun は C heavy 後に予定する。この full を数値付き成功や基線同等として扱わない。
+
+App worker `83b07b166` は面談詳細の Move / Cancel（focused 19/19、route browser 6/6、fresh App typecheck exit 0、copy 47/0、hardcoded-copy 5/5）。contact-only 初回提案は user choice 待ちで fail-closed。provenance 偏差：同時編集した App `copy-kinds.ts` の meetingDetails 九 entry が worker commit ではなく主会話 `a383637ec` に意図せず入った。コード欠落はなく、既報 commit の amend は行っていない。Web worker はこれらの App paths を変更・stage しない。
+
+主会話の Task container browser は heavy.sh d / session 79416 / exit 0、**10/10 pass**（約 8.36 秒）。frozen segments、quick-add focus、scroll restore、旧 route を対象とする App の証拠であり、Web calendar browser の代用にはしない。以前の queued App typecheck session 51983 も exit 0 で完了したが、その後の更新に対する根拠は上記のより新しい typecheck と区別する。
+
+### SC-10 Web product host / native personal editor（部分里程標）
+
+Task calendar slot は旧 legacy personal workspace から `CalendarTaskSlot` → `CalendarWorkspace` に置き換えた。server の canonical actor を personal client に渡し、端末 timezone と local day を hydration 後に選び、60 秒の clock で midnight を追跡する。valid な `?date=` と calendar `?new=1` を継続し、不正日付は continuation に残さない。plan slot / frozen Task tabs / component library は変更しない。
+
+month / week / day の切替・前後移動は実 selected-window read を発生させる。Google detail は編集・削除を出さない。personal detail は native GET で actor / owner / identity を確認してから editor を開く。private form は account ごとに remount し、401 / 403 では両 source に加え未保存 editor / detail も消す。retry 後に秘密の入力を復活させない。midnight だけでは編集途中の文字列・作成日・保存 timezone を捨てない。
+
+personal editor は native v3 client と既存 draft builder を再利用し、POST / PATCH の matching receipt と独立 GET readback 後だけ成功を表示する。失敗時は入力と native idempotency key を維持する。all-day は exclusive end と DST の 25 時間を守る。recurrence は occurrence / series を明示選択し、シリーズの規則変更前に canonical series を GET する。dirty scope 切替を禁じて入力消失を防ぎ、削除も単発 / whole-series の確認と native DELETE → GET 404 を通す。保存済み associations / metadata は builder が保持するが、新 editor で全ての旧 association 選択 UI を置換したとは主張しない。
+
+重なりは表示済みの実 timed interval で half-open 判定し、編集対象だけを除外する。既知の重なりは保存前に本人の明示確認を要する。point / all-day に偽の duration を作らず、未取得・部分 source・表示窓外では「確認できない」と表示する。全予定の競合がないと断言しない。面談 detail は提案による改期が必要と説明するだけで、personal PATCH や Google write にすり替えない。Web SC-11 の Move / Cancel 業務接続は未完了。
+
+RED：`sc10-personal-editor-red.log`、`sc10-personal-delete-scope-red.log`、`sc10-calendar-overlap-red.log`、`sc10-calendar-auth-denial-red.log`、`sc10-task-calendar-route-red.log`。`sc10-calendar-host-scope-red.log` は denial 後の retry で editor が復活する **6 inputs != 0** を実測し、消去して GREEN にした。初回の当該 check は shared English CTA を誤って `Retry` と探したため assertion 前で失敗しており、実 CTA `Try again` に直してからこの RED を得た。
+
+最新 `sc10-calendar-product-focused.log` は **67/67 pass、0 skip**（route / host / device-day clock / personal editor / overlap / hook / read client / projection / presenter / date window / native v3 client / copy・CSS guard）。`sc10-calendar-clock-green.log` は host + device-day clock **6/6 pass**。`sc10-calendar-product-task-copy-qa.json` は task domain **120 entries / 0 issues**。全 Web copy QA の先行 **26 issues** は未解消で、全体 pass としない。
+
+`sc10-web-typecheck.log` は heavy.sh d / session 70199 / **exit 0**。これは先行 `b14ae8912` の read foundation と既存 Web host / manual drawer、未コミット SC-09 compile stub を含むが、今回の personal editor / CalendarWorkspace / Task wiring **より前**の証拠。今回の新 host の fresh typecheck は主会話の App full suite 終了まで待ち、browser / full Web / pixel / simulator / build は未検証。繰り返し sheet を含む画板完全一致、R31a/b 後の pixel、実 UI 操作記録が残るため SC-10 を閉合しない。Google 実接続・外部送信・外部予定書込は未使用。
+
 ### Web 三块 presenter と product host（部分里程標）
 
 host の path-specific 中間コミットは `aa2c67c9f`（14 paths）。SC-06 / SC-07 の閉合ではない。
@@ -220,7 +249,7 @@ SC-04 の每日一問は主会話が決定済み：aggregate GET は read-only �
 
 ## 待用户授权
 
-本段階では追加なし。Neon / production / deploy / real Google / TestFlight は未使用。
+SC-09 の actor / workspace-scoped taskId resolver に必要な二つの B-owned helper（`relationship-lifecycle-facts-reader.ts` / `lifecycle-task-pages.ts`）の narrow additive 例外を主会話が照会中。既存 authorization predicate を複製して迂回せず、その dependent 実装は承認待ちにする。六つの resolver / client / test path は未コミット・未 stage、SQL stub / 意図した RED を含み、この里程標に混ぜない。Neon / production / deploy / real Google / TestFlight は未使用。
 
 ## 交接表追加（逐行四栏原文）
 
