@@ -82,3 +82,11 @@ test("calendar container keeps device source and personal editor route instead o
   assert.match(source, /schedule\/personal\/\$\{encodeURIComponent\(id\)\}\/edit/u);
   assert.doesNotMatch(source, /api\/schedule-items.*PATCH|client\.patch/u);
 });
+
+test("external calendar reads are network-only and scoped to the active account and server", () => {
+  const source = readFileSync(join(process.cwd(), "src/screens/calendar/useCalendarExternalEvents.ts"), "utf8");
+  assert.match(source, /cachePolicy: "network-only"/u);
+  assert.match(source, /auth\.notificationSessionRevision/u);
+  assert.match(source, /server\.baseUrl/u);
+  assert.doesNotMatch(source, /writeSnapshot|useSyncedCollection/u);
+});

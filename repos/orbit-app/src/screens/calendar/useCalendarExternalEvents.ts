@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useApiResource } from "../../hooks/useApiResource";
 import type { CalendarMode } from "./calendar-projection";
 import { calendarExternalRanges } from "./calendar-external-range";
@@ -17,9 +18,10 @@ export function useCalendarExternalEvents(dateKey: string, mode: CalendarMode, t
   refresh(): void;
 } {
   const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
   const ranges = useMemo(() => calendarExternalRanges(dateKey, mode, timeZone), [dateKey, mode, timeZone]);
   const ready = enabled && auth.ready && auth.signedIn && Boolean(auth.actorId);
-  const scope = JSON.stringify([auth.actorId, auth.cookieHeader, dateKey, mode, timeZone]);
+  const scope = JSON.stringify([auth.actorId, auth.cookieHeader, auth.notificationSessionRevision, server.baseUrl, dateKey, mode, timeZone]);
   const first = useApiResource<unknown>(pathFor(ranges[0]), () => false, {
     cachePolicy: "network-only", enabled: ready && ranges.length > 0, scopeKey: `${scope}:0`,
   });
