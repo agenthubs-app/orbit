@@ -282,6 +282,9 @@ export interface HostKioskResponse {
   canWalkIn: boolean;
   /** 满员时当日枠要先确认。 */
   overCapacity: boolean;
+  /** 定員超え确认框正文的「承認済み N / 定員 M」（R17-13，只加）。定員なし → capacity null。 */
+  approved?: number;
+  capacity?: number | null;
   /** 本机缓存名单的有效期（活动结束 +12 小时，A4）。 */
   cacheUntil: string;
   sample?: true;

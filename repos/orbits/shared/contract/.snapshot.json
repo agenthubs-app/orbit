@@ -9895,6 +9895,16 @@
           "kind": "text",
           "type": "boolean"
         },
+        "approved": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "capacity": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
         "cacheUntil": {
           "optional": false,
           "kind": "text",

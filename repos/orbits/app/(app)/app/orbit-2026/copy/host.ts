@@ -568,6 +568,7 @@ export const hostCopy = {
   kUndoConfirm: { ja: "受付を取り消す", zh: "撤销签到", en: "Undo check-in", kind: "button" },
   kOverTitle: { ja: "定員を超えています。受付しますか？", zh: "已超出名额，仍要签到吗？", en: "Over capacity. Check in anyway?", kind: "title" },
   kOverBody: { ja: "定員に達しています。当日枠で受付するとテーブル外の参加になります。", zh: "名额已满。用当天名额签到的人不会被分到桌。", en: "The event is full. Admitting on the day means no table seat.", kind: "body" },
+  kOverBodyCount: { ja: "定員に達しています（承認済み {a} / 定員 {c}）。当日枠で受付するとテーブル外の参加になります。", zh: "名额已满（已批准 {a} / 名额 {c}）。用当天名额签到的人不会被分到桌。", en: "The event is full ({a} approved / capacity {c}). Admitting on the day means no table seat.", kind: "body" },
   kOverNo: { ja: "受付しない", zh: "不签到", en: "Don't admit", kind: "button" },
   kOverYes: { ja: "定員を超えて受付", zh: "超出名额签到", en: "Admit over capacity", kind: "button" },
   kQrTitle: { ja: "QR をかざしてください", zh: "请出示二维码", en: "Hold up the QR code", kind: "title" },

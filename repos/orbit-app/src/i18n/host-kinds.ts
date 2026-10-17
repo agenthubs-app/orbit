@@ -524,6 +524,7 @@ export const hostCopyKinds: readonly (readonly [pattern: string, kind: string])[
   ["host.kUndoConfirm", "button"],
   ["host.kOverTitle", "title"],
   ["host.kOverBody", "body"],
+  ["host.kOverBodyCount", "body"],
   ["host.kOverNo", "button"],
   ["host.kOverYes", "button"],
   ["host.kQrTitle", "title"],

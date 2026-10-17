@@ -524,6 +524,7 @@ export const host = {
   "host.kUndoConfirm": "撤销签到",
   "host.kOverTitle": "已超出名额，仍要签到吗？",
   "host.kOverBody": "名额已满。用当天名额签到的人不会被分到桌。",
+  "host.kOverBodyCount": "名额已满（已批准 {a} / 名额 {c}）。用当天名额签到的人不会被分到桌。",
   "host.kOverNo": "不签到",
   "host.kOverYes": "超出名额签到",
   "host.kQrTitle": "请出示二维码",

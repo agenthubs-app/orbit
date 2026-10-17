@@ -209,6 +209,8 @@ export const hostKioskResponseObject = z.object({
   devices: count,
   canWalkIn: z.boolean(),
   overCapacity: z.boolean(),
+  approved: count.optional(),
+  capacity: count.nullable().optional(),
   cacheUntil: z.string(),
   sample: z.literal(true).optional(),
 });

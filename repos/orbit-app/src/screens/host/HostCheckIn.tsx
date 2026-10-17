@@ -161,7 +161,7 @@ export function HostCheckInScreen() {
   const walkIn = async (row: HostKioskRow) => {
     if (!online) { toast.error(t("kOfflineAction")); return; }
     if (data?.overCapacity) {
-      const ok = await presentConfirm({ cancelLabel: t("kOverNo"), confirmLabel: t("kOverYes"), message: t("kOverBody"), title: t("kOverTitle") });
+      const ok = await presentConfirm({ cancelLabel: t("kOverNo"), confirmLabel: t("kOverYes"), message: typeof data?.approved === "number" && typeof data?.capacity === "number" ? t("kOverBodyCount", { a: data.approved, c: data.capacity }) : t("kOverBody"), title: t("kOverTitle") });
       if (!ok) return;
     } else {
       const ok = await presentConfirm({ cancelLabel: t("cancel"), confirmLabel: t("kWalkIn"), title: t("appWalkInTitle", { name: row.name }) });

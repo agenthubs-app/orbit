@@ -235,3 +235,9 @@ test("受付 本机清理（R17 复核）：启动时清所有场次的过期名
   assert.deepEqual(store.dump().queue.map((item) => item.idempotencyKey), ["k2"]);
 });
 
+
+test("R17-13 定員超え确认（b12 #434）：kiosk 读模型给承認済み / 定員，正文写「承認済み 150 / 定員 150」", () => {
+  const data = hostKiosk(HOST_EVENT_IDS.cfo18, "")!;
+  assert.deepEqual([data.approved, data.capacity], [150, 150]);
+  assert.equal(t("kOverBodyCount", { a: data.approved!, c: data.capacity! }), "定員に達しています（承認済み 150 / 定員 150）。当日枠で受付するとテーブル外の参加になります。");
+});

@@ -497,6 +497,8 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
         eventId,
         now: t.toISOString(),
         overCapacity: facts.capacity !== null && facts.admitted >= facts.capacity,
+        approved: facts.admitted,
+        capacity: facts.capacity,
         rate: members > 0 ? Math.round((checkedIn / members) * 100) : 0,
         recent: recent.map((row) => ({ at: row.checkedInAt!, initial: row.initial, name: row.name, org: row.org, participantId: row.participantId, receptionNumber: row.receptionNumber, table: row.table })),
         rows: query ? rows.filter((row) => [row.name, row.kana ?? "", row.org ?? ""].some((text) => text.includes(query))).slice(0, 20) : [],

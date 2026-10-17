@@ -194,12 +194,12 @@ export function UndoConfirm({ row, t, busy, onCancel, onConfirm }: { row: HostKi
 }
 
 /** b12 #434 当日枠の定員超え確認。 */
-export function OverCapacityConfirm({ row, t, busy, onCancel, onConfirm }: { row: HostKioskRow; t: HostT; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
+export function OverCapacityConfirm({ row, t, busy, onCancel, onConfirm, approved, capacity }: { row: HostKioskRow; t: HostT; busy: boolean; onCancel: () => void; onConfirm: () => void; approved?: number; capacity?: number | null }) {
   const title = t("kOverTitle");
   return (
     <Modal open onClose={onCancel} title={title} size={480} header={<span className={`${s.emo} ${s.e_apricot}`}>🙋</span>}>
       <div className={k.dlgTitle}>{title}</div>
-      <div className={`${k.sub} ${k.dlgBody}`}>{t("kOverBody")}</div>
+      <div className={`${k.sub} ${k.dlgBody}`}>{typeof approved === "number" && typeof capacity === "number" ? t("kOverBodyCount", { a: approved, c: capacity }) : t("kOverBody")}</div>
       <div className={k.dlgWho}><Avatar name={row.name} size="sm" /><b>{row.name}</b><span className={`${k.lbl} ${k.dlgWhoLbl}`}>{t("kStWait")}</span></div>
       <div className={`${k.row} ${k.dlgActs}`}>
         <button type="button" className={`btn ${s.btn}`} onClick={onCancel}>{t("kOverNo")}</button>
@@ -494,7 +494,7 @@ function KioskInner({ eventId, language }: { eventId: string; language: OrbitLan
         onRetry={() => void flush(true)} onScan={() => setScan(true)} exitHref={consoleHref(eventId)} />
       {scan ? <QrScanner t={t} onResult={(payload) => void scanned(payload)} onClose={() => setScan(false)} /> : null}
       {undo ? <UndoConfirm row={undo} t={t} busy={busy === undo.participantId} onCancel={() => setUndo(null)} onConfirm={() => void doUndo()} /> : null}
-      {over ? <OverCapacityConfirm row={over} t={t} busy={busy === over.participantId} onCancel={() => setOver(null)} onConfirm={() => void walkIn(over, true)} /> : null}
+      {over ? <OverCapacityConfirm row={over} t={t} approved={data?.approved} capacity={data?.capacity} busy={busy === over.participantId} onCancel={() => setOver(null)} onConfirm={() => void walkIn(over, true)} /> : null}
     </>
   );
 }

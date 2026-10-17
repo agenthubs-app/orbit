@@ -524,6 +524,7 @@ export const host = {
   "host.kUndoConfirm": "Undo check-in",
   "host.kOverTitle": "Over capacity. Check in anyway?",
   "host.kOverBody": "The event is full. Admitting on the day means no table seat.",
+  "host.kOverBodyCount": "The event is full ({a} approved / capacity {c}). Admitting on the day means no table seat.",
   "host.kOverNo": "Don't admit",
   "host.kOverYes": "Admit over capacity",
   "host.kQrTitle": "Hold up the QR code",

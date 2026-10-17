@@ -524,6 +524,7 @@ export const host = {
   "host.kUndoConfirm": "受付を取り消す",
   "host.kOverTitle": "定員を超えています。受付しますか？",
   "host.kOverBody": "定員に達しています。当日枠で受付するとテーブル外の参加になります。",
+  "host.kOverBodyCount": "定員に達しています（承認済み {a} / 定員 {c}）。当日枠で受付するとテーブル外の参加になります。",
   "host.kOverNo": "受付しない",
   "host.kOverYes": "定員を超えて受付",
   "host.kQrTitle": "QR をかざしてください",

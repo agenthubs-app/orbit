@@ -506,6 +506,9 @@ export function hostKiosk(eventId: string, query: string, state: HostMockState =
     eventId,
     now: before ? "2026-10-07T09:46:00.000Z" : "2026-10-07T10:46:00.000Z",
     overCapacity: false,
+    // b12 #434 定員超え确认：承認済み 150 / 定員 150。
+    approved: 150,
+    capacity: 150,
     rate: before ? 0 : Math.round((((offline ? 83 : 86) + extra) / 128) * 100),
     recent: before ? [] : [
       ...fresh.filter((row) => row.checkedInAt).map((row) => ({ at: row.checkedInAt!, initial: row.initial, name: row.name, org: row.org, participantId: row.participantId, receptionNumber: row.receptionNumber, table: row.table })),
