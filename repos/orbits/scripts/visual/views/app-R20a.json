@@ -1,0 +1,497 @@
+{
+  "_note": "R20a approved PLANNER §9 board inventory. SC01 preflight uses design refs now; deep links/development-state steps are provisional until SC06–13 implementation. No pixel-pass claim; R31a/b prerequisite.",
+  "defaults": {
+    "grid": 30,
+    "wait": 2500,
+    "attribution": "scripts/visual/attribution-redesign-R20a.json"
+  },
+  "sources": [
+    "repos/orbit-app/src/screens/task/**",
+    "repos/orbit-app/src/screens/todo/**",
+    "repos/orbit-app/src/screens/calendar/**",
+    "repos/orbit-app/src/i18n/*/todo.ts",
+    "repos/orbit-app/src/i18n/*/calendar.ts"
+  ],
+  "views": [
+    {
+      "id": "A-R20-01",
+      "design": "app.html",
+      "board-index": 16,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": ""
+    },
+    {
+      "id": "A-R20-02",
+      "design": "app.html",
+      "board-index": 17,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": ""
+    },
+    {
+      "id": "A-R20-03",
+      "design": "app.html",
+      "board-index": 18,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": ""
+    },
+    {
+      "id": "A-R20-04",
+      "design": "b3-daily-actions.html",
+      "board-index": 0,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "今日の一手／下書き；到達状態は SC08 で接線"
+    },
+    {
+      "id": "A-R20-05",
+      "design": "b3-daily-actions.html",
+      "board-index": 1,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "今日の一手／下書き；到達状態は SC08 で接線"
+    },
+    {
+      "id": "A-R20-06",
+      "design": "b3-daily-actions.html",
+      "board-index": 2,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "今日の一手／下書き；到達状態は SC08 で接線"
+    },
+    {
+      "id": "A-R20-07",
+      "design": "b3-daily-actions.html",
+      "board-index": 3,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "今日の一手／下書き；到達状態は SC08 で接線"
+    },
+    {
+      "id": "A-R20-05d",
+      "design": "b3-daily-actions.html",
+      "board-index": 47,
+      "themes": [
+        "dark"
+      ],
+      "path": "/task?seg=todo",
+      "note": "下書きエディタ深色；到達状態は SC08"
+    },
+    {
+      "id": "A-R20-08",
+      "design": "b3-daily-actions.html",
+      "board-index": 6,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-09",
+      "design": "b3-daily-actions.html",
+      "board-index": 7,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-10",
+      "design": "b3-daily-actions.html",
+      "board-index": 8,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-11",
+      "design": "b3-daily-actions.html",
+      "board-index": 11,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-12",
+      "design": "b3-daily-actions.html",
+      "board-index": 12,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-13",
+      "design": "b3-daily-actions.html",
+      "board-index": 13,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-14",
+      "design": "b3-daily-actions.html",
+      "board-index": 17,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-15",
+      "design": "b3-daily-actions.html",
+      "board-index": 18,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-16",
+      "design": "b3-daily-actions.html",
+      "board-index": 20,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-17",
+      "design": "b3-daily-actions.html",
+      "board-index": 21,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-18",
+      "design": "b3-daily-actions.html",
+      "board-index": 22,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-19",
+      "design": "b3-daily-actions.html",
+      "board-index": 23,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "To-do 二级/操作状態；到達状態は SC07–09"
+    },
+    {
+      "id": "A-R20-13d",
+      "design": "b3-daily-actions.html",
+      "board-index": 48,
+      "themes": [
+        "dark"
+      ],
+      "path": "/task?seg=todo",
+      "note": "タスク大量・深色；SC09"
+    },
+    {
+      "id": "A-R20-20",
+      "design": "b3-daily-actions.html",
+      "board-index": 25,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "日程提案／カレンダー；到達状態は SC10–11"
+    },
+    {
+      "id": "A-R20-21",
+      "design": "b3-daily-actions.html",
+      "board-index": 26,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "日程提案／カレンダー；到達状態は SC10–11"
+    },
+    {
+      "id": "A-R20-22",
+      "design": "b3-daily-actions.html",
+      "board-index": 27,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "日程提案／カレンダー；到達状態は SC10–11"
+    },
+    {
+      "id": "A-R20-23",
+      "design": "b3-daily-actions.html",
+      "board-index": 30,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "日程提案／カレンダー；到達状態は SC10–11"
+    },
+    {
+      "id": "A-R20-24",
+      "design": "b3-daily-actions.html",
+      "board-index": 31,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "日程提案／カレンダー；到達状態は SC10–11"
+    },
+    {
+      "id": "A-R20-25",
+      "design": "b3-daily-actions.html",
+      "board-index": 32,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "日程提案／カレンダー；到達状態は SC10–11"
+    },
+    {
+      "id": "A-R20-26",
+      "design": "b3-daily-actions.html",
+      "board-index": 33,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "日程提案／カレンダー；到達状態は SC10–11"
+    },
+    {
+      "id": "A-R20-27",
+      "design": "b3-daily-actions.html",
+      "board-index": 34,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "日程提案／カレンダー；到達状態は SC10–11"
+    },
+    {
+      "id": "A-R20-28",
+      "design": "b3-daily-actions.html",
+      "board-index": 35,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "日程提案／カレンダー；到達状態は SC10–11"
+    },
+    {
+      "id": "A-R20-29",
+      "design": "b3-daily-actions.html",
+      "board-index": 36,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "日程提案／カレンダー；到達状態は SC10–11"
+    },
+    {
+      "id": "A-R20-25d",
+      "design": "b3-daily-actions.html",
+      "board-index": 49,
+      "themes": [
+        "dark"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "カレンダー月大量・深色；SC10"
+    },
+    {
+      "id": "A-R20-30",
+      "design": "b3-daily-actions.html",
+      "board-index": 43,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "失敗／オフライン／AI 利用不可；到達状態は SC13"
+    },
+    {
+      "id": "A-R20-31",
+      "design": "b3-daily-actions.html",
+      "board-index": 44,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "失敗／オフライン／AI 利用不可；到達状態は SC13"
+    },
+    {
+      "id": "A-R20-32",
+      "design": "b3-daily-actions.html",
+      "board-index": 45,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "失敗／オフライン／AI 利用不可；到達状態は SC13"
+    },
+    {
+      "id": "A-R20-32d",
+      "design": "b3-daily-actions.html",
+      "board-index": 50,
+      "themes": [
+        "dark"
+      ],
+      "path": "/task?seg=todo",
+      "note": "Toast＋オフライン・深色；SC13"
+    },
+    {
+      "id": "A-R20-33",
+      "design": "b7-account-misc.html",
+      "board-index": 40,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "面談二级状態；SC11"
+    },
+    {
+      "id": "A-R20-34",
+      "design": "b7-account-misc.html",
+      "board-index": 41,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "b7 #41 は §D-1 改板後に再預検；SC11"
+    },
+    {
+      "id": "A-R20-35",
+      "design": "b7-account-misc.html",
+      "board-index": 42,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "面談二级状態；SC11"
+    },
+    {
+      "id": "A-R20-36",
+      "design": "b7-account-misc.html",
+      "board-index": 43,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "面談二级状態；SC11"
+    },
+    {
+      "id": "A-R20-37",
+      "design": "b11-nav-v3.html",
+      "board-index": 33,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "ナビ／操作状態；SC06・SC09"
+    },
+    {
+      "id": "A-R20-38",
+      "design": "b11-nav-v3.html",
+      "board-index": 34,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "ナビ／操作状態；SC06・SC09"
+    },
+    {
+      "id": "A-R20-39",
+      "design": "b11-nav-v3.html",
+      "board-index": 35,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "ナビ／操作状態；SC06・SC09"
+    },
+    {
+      "id": "A-R20-40",
+      "design": "b11-nav-v3.html",
+      "board-index": 38,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=todo",
+      "note": "ナビ／操作状態；SC06・SC09"
+    },
+    {
+      "id": "A-R20-41",
+      "design": "b12-missing-states.html",
+      "board-index": 92,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "＋ フォーカス／キーボード；SC06"
+    },
+    {
+      "id": "A-R20-41d",
+      "design": "b12-missing-states.html",
+      "board-index": 93,
+      "themes": [
+        "dark"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "＋ フォーカス／キーボード深色；SC06"
+    },
+    {
+      "id": "A-R20-42",
+      "design": "b12-missing-states.html",
+      "board-index": 94,
+      "themes": [
+        "light"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "オフライン保存 Toast；SC06"
+    },
+    {
+      "id": "A-R20-42d",
+      "design": "b12-missing-states.html",
+      "board-index": 95,
+      "themes": [
+        "dark"
+      ],
+      "path": "/task?seg=calendar",
+      "note": "オフライン保存 Toast 深色；SC06"
+    }
+  ]
+}

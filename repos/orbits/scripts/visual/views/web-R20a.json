@@ -1,0 +1,282 @@
+{
+  "_note": "R20a approved PLANNER §9 board inventory. app routes for modal/detail views need SC06–13 interaction steps; no pixel-pass claim. Only 1440 boards exist; 1024/390 documented without fabricated boards.",
+  "defaults": {
+    "app-origin": "http://localhost:3500",
+    "login": "qa@orbit.test",
+    "grid": 30,
+    "attribution": "scripts/visual/attribution-redesign-R20a.json"
+  },
+  "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/task/**",
+    "repos/orbits/app/(app)/app/orbit-2026/todo/**",
+    "repos/orbits/app/(app)/app/orbit-2026/calendar/**",
+    "repos/orbits/app/(app)/app/tasks/**",
+    "repos/orbits/app/(app)/app/orbit-2026/copy/task.ts"
+  ],
+  "views": [
+    {
+      "id": "W-R20-01",
+      "app": "/app/tasks?tab=calendar",
+      "design": "web.html",
+      "board-index": 13,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "基礎 Task タブ；SC06"
+    },
+    {
+      "id": "W-R20-02",
+      "app": "/app/tasks?tab=todo",
+      "design": "web.html",
+      "board-index": 14,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "基礎 Task タブ；SC06"
+    },
+    {
+      "id": "W-R20-03",
+      "app": "/app/tasks?tab=todo",
+      "design": "b3-daily-actions.html",
+      "board-index": 4,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "操作・二级状態の到達ステップは SC07–11 で接線"
+    },
+    {
+      "id": "W-R20-04",
+      "app": "/app/tasks?tab=todo",
+      "design": "b3-daily-actions.html",
+      "board-index": 5,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "操作・二级状態の到達ステップは SC07–11 で接線"
+    },
+    {
+      "id": "W-R20-05",
+      "app": "/app/tasks?tab=todo",
+      "design": "b3-daily-actions.html",
+      "board-index": 9,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "操作・二级状態の到達ステップは SC07–11 で接線"
+    },
+    {
+      "id": "W-R20-06",
+      "app": "/app/tasks?tab=todo",
+      "design": "b3-daily-actions.html",
+      "board-index": 10,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "操作・二级状態の到達ステップは SC07–11 で接線"
+    },
+    {
+      "id": "W-R20-07",
+      "app": "/app/tasks?tab=todo",
+      "design": "b3-daily-actions.html",
+      "board-index": 14,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "操作・二级状態の到達ステップは SC07–11 で接線"
+    },
+    {
+      "id": "W-R20-08",
+      "app": "/app/tasks?tab=todo",
+      "design": "b3-daily-actions.html",
+      "board-index": 15,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "操作・二级状態の到達ステップは SC07–11 で接線"
+    },
+    {
+      "id": "W-R20-09",
+      "app": "/app/tasks?tab=todo",
+      "design": "b3-daily-actions.html",
+      "board-index": 16,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "操作・二级状態の到達ステップは SC07–11 で接線"
+    },
+    {
+      "id": "W-R20-10",
+      "app": "/app/tasks?tab=todo",
+      "design": "b3-daily-actions.html",
+      "board-index": 19,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "操作・二级状態の到達ステップは SC07–11 で接線"
+    },
+    {
+      "id": "W-R20-11",
+      "app": "/app/tasks?tab=todo",
+      "design": "b3-daily-actions.html",
+      "board-index": 24,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "操作・二级状態の到達ステップは SC07–11 で接線"
+    },
+    {
+      "id": "W-R20-12",
+      "app": "/app/tasks?tab=calendar",
+      "design": "b3-daily-actions.html",
+      "board-index": 28,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "操作・二级状態の到達ステップは SC07–11 で接線"
+    },
+    {
+      "id": "W-R20-13",
+      "app": "/app/tasks?tab=calendar",
+      "design": "b3-daily-actions.html",
+      "board-index": 29,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "操作・二级状態の到達ステップは SC07–11 で接線"
+    },
+    {
+      "id": "W-R20-09d",
+      "app": "/app/tasks?tab=todo",
+      "design": "b3-daily-actions.html",
+      "board-index": 51,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "タスク大量・深色；SC09"
+    },
+    {
+      "id": "W-R20-14",
+      "app": "/app/tasks?tab=calendar",
+      "design": "b3-daily-actions.html",
+      "board-index": 37,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "カレンダー／エラー状態の到達ステップは SC10–13 で接線"
+    },
+    {
+      "id": "W-R20-15",
+      "app": "/app/tasks?tab=calendar",
+      "design": "b3-daily-actions.html",
+      "board-index": 38,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "カレンダー／エラー状態の到達ステップは SC10–13 で接線"
+    },
+    {
+      "id": "W-R20-16",
+      "app": "/app/tasks?tab=calendar",
+      "design": "b3-daily-actions.html",
+      "board-index": 39,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "カレンダー／エラー状態の到達ステップは SC10–13 で接線"
+    },
+    {
+      "id": "W-R20-17",
+      "app": "/app/tasks?tab=calendar",
+      "design": "b3-daily-actions.html",
+      "board-index": 40,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "カレンダー／エラー状態の到達ステップは SC10–13 で接線"
+    },
+    {
+      "id": "W-R20-18",
+      "app": "/app/tasks?tab=calendar",
+      "design": "b3-daily-actions.html",
+      "board-index": 41,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "カレンダー／エラー状態の到達ステップは SC10–13 で接線"
+    },
+    {
+      "id": "W-R20-19",
+      "app": "/app/tasks?tab=calendar",
+      "design": "b3-daily-actions.html",
+      "board-index": 46,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "カレンダー／エラー状態の到達ステップは SC10–13 で接線"
+    },
+    {
+      "id": "W-R20-16d",
+      "app": "/app/tasks?tab=calendar",
+      "design": "b3-daily-actions.html",
+      "board-index": 52,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "カレンダー月大量・深色；SC10"
+    },
+    {
+      "id": "W-R20-20",
+      "app": "/app/tasks?tab=calendar",
+      "design": "b7-account-misc.html",
+      "board-index": 44,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "面談二级状態；SC11、動かすは §D-1 改板後再預検"
+    },
+    {
+      "id": "W-R20-21",
+      "app": "/app/tasks?tab=calendar",
+      "design": "b7-account-misc.html",
+      "board-index": 45,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "面談二级状態；SC11、動かすは §D-1 改板後再預検"
+    },
+    {
+      "id": "W-R20-22",
+      "app": "/app/tasks?tab=todo",
+      "design": "b11-nav-v3.html",
+      "board-index": 39,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "ホバー／キーボード；SC06–07"
+    }
+  ]
+}
