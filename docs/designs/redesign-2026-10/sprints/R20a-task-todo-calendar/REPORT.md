@@ -190,6 +190,8 @@ presenter は month の 3 件 cap と「ほか N 件」→ day、week/day の ti
 
 sanitized App full の後続実測は **3,412 tests / 3,394 pass / 16 fail / 2 skip、exit 1**（`app-full-12a1c240d-e5fb21c1b.log`）。fail 名を raw log で再確認した分類：dictionary pin 1、legacy UI ratchet 1、offline browser 11（`offline-pages-profile-events` 4 + `offline-pages-schedule` 7）、native-consumer inventory 60 秒 timeout 1、plan-overview pointer-event timeout 1、tasks-unification file failure 1。offline を 10 件とは数えない。dictionary / plan / tasks-unification は pristine の同名失敗と対応し、legacy ratchet（CalendarScreen 3 / TodoScreen 2 findings）と offline harness Flow parse は D 誘発の回帰。inventory timeout は D の新 request-policy 登録を含む要追加診断として主会話が担当する。主会話の light ratchet 10/10 / scoped policy 2/2 は後続 focused 証拠で、未完の offline / inventory heavy rerun や全量成功に読み替えない。
 
+主会話の修正 `fc8011649`（App 七 paths）は offline harness の nativeUiStubs、Calendar / Todo old UI pattern、明示した offline-read request policies を修正。後続 heavy の offline browser **11/11**、inventory 最初の **33/34**（二つの generic `:id/:id` builders が未分類）を隠さず、その route builder を explicit accept / dismiss literals に直した再検証 **1/1**、fresh App typecheck **exit 0**。focused Calendar **8/8** / Todo **14/14** / action **10/10** / ratchet **10/10** も主会話が確認済み。初回全量 16 fail がゼロへ変わったという証拠にはしない。CalendarScreen は最後の old OfflineNotice import を除いたが、kit OfflineBar に lastSyncedAt / queue-specific detail がないため timestamp / queued-write copy は inline で保持する。potential A-kit enhancement / design・pixel review の pending 項目で、視覚一致や SC-05 完了としない。
+
 `12a1c240d` は App manual draft を auth / server / date scope に束縛し、stale callback を拒否した security follow-up（新 scope check RED→GREEN、focused 12/12）。その前の App typecheck exit 0 と区別し、当該 follow-up 後の fresh typecheck はまだ pending。
 
 App worker `83b07b166` は面談詳細の Move / Cancel（focused 19/19、route browser 6/6、fresh App typecheck exit 0、copy 47/0、hardcoded-copy 5/5）。contact-only 初回提案は user choice 待ちで fail-closed。provenance 偏差：同時編集した App `copy-kinds.ts` の meetingDetails 九 entry が worker commit ではなく主会話 `a383637ec` に意図せず入った。コード欠落はなく、既報 commit の amend は行っていない。Web worker はこれらの App paths を変更・stage しない。
@@ -238,6 +240,10 @@ RED：`sc11-web-proposal-flow-red.log` は未接続三段、`sc11-web-proposal-c
 
 Calendar meeting detail の Move / Cancel mount は次段階。初回 contact-only 提案、招待文 draft / copy / email handoff、仮押さえ、holiday / travel-time 投影、画板完全一致 / pixel は未完了で、省略を承認済みとは扱わない。App paths、shared contract、B helper、component library、tokens は本里程標で変更しない。外部 provider / 送信 worker はテスト替身も含め今回起動せず、実 Google / paid AI も呼ばない。SC-11 完了とはしない。
 
+Modal commit：`1d369f8df`（8 paths）。その後の fresh `sc10-sc11-web-modal-typecheck.log` / heavy.sh d / session 40526 は **exit 2**。product 側の失敗は Modal `size=1000|760` が現 kit の `420|480|560|680` union に入らないこと。追加した browser fixture の Window.calendar typing 四件も報告され、こちらだけを test 側に明示定義して修正した。**画板の 1000 / 760 要件を保持**し、680 へ黙って縮めたり、cast / private CSS override / library 直接変更で迂回しない。A-owned additive Modal width API / styles の依頼を主会話へ送り、cross-line choice を user に照会中。SC-11 dependent typecheck / browser は未解決のまま停止。R31b の既存 API が足りると仮定してはならない。
+
+独立する SC-10 の `tests/ui/calendar-product.test.tsx` は実 CalendarWorkspace / Modal / scoped CSS を Chromium で操作した。`sc10-calendar-product-browser.log` / heavy.sh d / session 6579 は **2/2 pass、0 skip、exit 0**（約 4.76 秒）。quick add の title focus、個人予定の create / edit / confirmation-before-delete と native client の authoritative readback、Google detail の read-only、week / day の selected-window requests、browser pageerrors 0 を確認。HTTP response と auth context は fixture で、実 provider / Google / 外部送信は使わない。standalone product host component の動作証拠であり、SSR auth navigation / full shell / simulator / pixel の証拠ではない。SC-11 の既存三語 browser test は新 auth-context import を fixture 化したが、この browser batch には含めず未再実行。
+
 ### Web 三块 presenter と product host（部分里程標）
 
 host の path-specific 中間コミットは `aa2c67c9f`（14 paths）。SC-06 / SC-07 の閉合ではない。
@@ -273,6 +279,8 @@ RED：`sc08-manual-draft-red.log` / `sc08-manual-host-red.log` / `sc08-manual-co
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。
 - Agent / chat owner：entity_draft から検証済み persisted session identifier、または actor-scoped な対応 mapping を投影し、「該当する保存済み会話を開く」end-to-end test を追加してほしい。D は ownership 外の Agent chat path を変更しない。
 - draft source owner：日本語と tone の明示的サポート、および対応する生成 contract / tests が必要。en / zh を日本語として扱わない。
+- encounter / next-move source owner：`POST /api/encounters` は authoritative contactId / observedAt / privacy / talked / idempotency key を要求するが、TodoNextMoveItem の contactId / taskId は optional。source の signal kind と対応する contact / canonical task を検証できる projection が必要。「送りましたか」から fake encounter や task mutation を作らず、D-10 は mapping が立つまで fail-closed にする。
+- A の Web kit owner：SC-11 board の Modal 1000 / 760 幅を additive に受けられる API / styles が必要。現 `420|480|560|680` からの変更は D が越境せず主会話が調整する。
 - `contacts/new/drafts` のサーバー側破棄要求は SC-07 の交接で記録する。
 
 ## 待主会话代定
@@ -282,6 +290,8 @@ SC-04 の每日一問は主会話が決定済み：aggregate GET は read-only �
 ## 待用户授权
 
 SC-09 の actor / workspace-scoped taskId resolver に必要な二つの B-owned helper（`relationship-lifecycle-facts-reader.ts` / `lifecycle-task-pages.ts`）の narrow additive 例外を主会話が照会中。既存 authorization predicate を複製して迂回せず、その dependent 実装は承認待ちにする。六つの resolver / client / test path は未コミット・未 stage、SQL stub / 意図した RED を含み、この里程標に混ぜない。Neon / production / deploy / real Google / TestFlight は未使用。
+
+SC-11 の A-owned Modal 1000 / 760 support も主会話の user choice 待ち。現在の fresh Web typecheck は上記の API mismatch で fail であり、未実施 gate や compiler を成功として報告しない。
 
 ## 交接表追加（逐行四栏原文）
 

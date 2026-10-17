@@ -21,7 +21,7 @@ test.before(async () => {
         onSent={id => window.proposal.sent.push(id)} /></Orbit2026Scope>;
     }
     createRoot(document.getElementById("root")).render(<Root />);
-  `);
+  `, { "^next-auth/react$": 'import { createContext } from "react"; export const SessionContext = createContext(undefined);' });
   browser = await launch();
 });
 test.after(async () => { await browser?.close(); });
