@@ -23,7 +23,7 @@ import React, { forwardRef, useImperativeHandle, useRef } from "react";
 import { Text, TextInput } from "react-native";
 import { AppScreen } from "${join(root, "src/components/AppScreen")}";
 ${name === "TaskQuickAdd" ? "" : `export function ${name}() {
-  return <AppScreen title="${name} title" headerActions={<Text>${name} header action</Text>}><Text>${name} page</Text>{Array.from({ length: ${name === "TasksScreen" ? 60 : 0} }, (_, i) => <Text key={i} style={{ height: 40 }}>${name} row {i}</Text>)}</AppScreen>;
+  return <AppScreen title="${name} title" headerActions={<Text>${name} header action</Text>}><Text>${name} page</Text>{Array.from({ length: ${name === "TodoTaskSlot" ? 60 : 0} }, (_, i) => <Text key={i} style={{ height: 40 }}>${name} row {i}</Text>)}</AppScreen>;
 }`}
 export const TaskQuickAdd = forwardRef(function TaskQuickAdd(_props, ref) {
   const input = useRef(null);
@@ -33,7 +33,7 @@ export const TaskQuickAdd = forwardRef(function TaskQuickAdd(_props, ref) {
 `;
 const SLOTS: Record<string, string> = {
   "schedule/ScheduleScreen": "ScheduleScreen",
-  "tasks/TasksScreen": "TasksScreen",
+  "todo/TodoScreen": "TodoTaskSlot",
   "notes/NotesScreen": "NotesScreen",
   // R23: the プラン slot is PlanSegment (its own behaviour: tests/plan-*.test.tsx).
   "plan/PlanSegment": "PlanSegment",
@@ -113,7 +113,7 @@ test("tapping a segment switches the page, keeps the URL in step and keeps visit
   await page.getByRole("tab", { name: "To-do" }).click();
   await page.waitForTimeout(400);
   assert.equal(await selected(page), "To-do");
-  assert.equal(await visible(page, "TasksScreen page"), true);
+  assert.equal(await visible(page, "TodoTaskSlot page"), true);
   assert.equal(await page.getByText("ScheduleScreen page").count(), 1, "calendar stays mounted");
   assert.deepEqual(await navigation(page), [{ method: "setParams", params: { seg: "todo" } }]);
 });
@@ -180,18 +180,18 @@ test("a later link while Task is open moves the segment", async (t) => {
 
 test("a Task segment mounted again comes back at the same scroll position (review m2)", async (t) => {
   const page = await open(t, { seg: "todo" });
-  await page.getByText("TasksScreen row 59").waitFor({ state: "attached" });
+  await page.getByText("TodoTaskSlot row 59").waitFor({ state: "attached" });
   const scrollerOf = () => page.evaluate(() => {
-    const node = [...document.querySelectorAll<HTMLElement>("div")].find((el) => el.scrollHeight > el.clientHeight + 10 && /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.textContent?.includes("TasksScreen row 59"))!;
+    const node = [...document.querySelectorAll<HTMLElement>("div")].find((el) => el.scrollHeight > el.clientHeight + 10 && /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.textContent?.includes("TodoTaskSlot row 59"))!;
     return node.scrollTop;
   });
   await page.evaluate(() => {
-    const node = [...document.querySelectorAll<HTMLElement>("div")].find((el) => el.scrollHeight > el.clientHeight + 10 && /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.textContent?.includes("TasksScreen row 59"))!;
+    const node = [...document.querySelectorAll<HTMLElement>("div")].find((el) => el.scrollHeight > el.clientHeight + 10 && /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.textContent?.includes("TodoTaskSlot row 59"))!;
     node.scrollTop = 800; node.dispatchEvent(new Event("scroll"));
   });
   await page.waitForTimeout(200);
   await page.evaluate(() => (window as any).remount());
-  await page.getByText("TasksScreen row 59").waitFor({ state: "attached" });
+  await page.getByText("TodoTaskSlot row 59").waitFor({ state: "attached" });
   await page.waitForTimeout(300);
   assert.ok(Math.abs((await scrollerOf()) - 800) <= 2, String(await scrollerOf()));
   assert.equal(await selected(page), "To-do");

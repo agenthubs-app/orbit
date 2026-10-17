@@ -6,13 +6,18 @@ import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { canWriteTodoFollowup, todoSectionCount } from "./todo-page-model";
 
-export function TodoSections({ page, offline, staleDay, mirroredTaskIds, onRefresh, onOpen, onComplete, onDefer }: {
+export function TodoSections({ page, offline, staleDay, busy, mirroredTaskIds, onRefresh, canOpen, canOpenFollowup, canDefer, onOpen, onOpenFollowup, onComplete, onDefer }: {
   page: TodoPageContract;
   offline: boolean;
   staleDay: boolean;
+  busy: boolean;
   mirroredTaskIds: ReadonlySet<string>;
   onRefresh: () => void;
+  canOpen: (item: TodoDecisionItem | TodoNextMoveItem) => boolean;
+  canOpenFollowup: (item: TodoFollowupItem) => boolean;
+  canDefer: (item: TodoFollowupItem) => boolean;
   onOpen: (item: TodoDecisionItem | TodoNextMoveItem) => void;
+  onOpenFollowup: (item: TodoFollowupItem) => void;
   onComplete: (item: TodoFollowupItem) => void;
   onDefer: (item: TodoFollowupItem) => void;
 }) {
@@ -33,7 +38,7 @@ export function TodoSections({ page, offline, staleDay, mirroredTaskIds, onRefre
   const partial = (section: TodoSectionKey) => todoSectionCount(page, section).incompleteSources.length ? (
     <View accessibilityRole="alert" style={styles.partial}>
       <UiText style={styles.muted}>{t("todo.partial")}</UiText>
-      {!offline ? <Button label={t("todo.retry")} onPress={onRefresh} size="sm" variant="ghost" /> : null}
+      {!offline ? <Button label={t("todo.retry")} onPress={onRefresh} size="sm" variant="ghost" disabled={busy} /> : null}
     </View>
   ) : null;
   const empty = (section: TodoSectionKey, length: number) => length === 0 && todoSectionCount(page, section).accuracy === "exact"
@@ -54,7 +59,7 @@ export function TodoSections({ page, offline, staleDay, mirroredTaskIds, onRefre
           {item.reasonPreview ? <UiText style={styles.muted}>{item.reasonPreview}</UiText> : null}
           {item.sample ? <UiText style={styles.sample}>{t("todo.sample")}</UiText> : null}
         </View>
-        <Button label={t("todo.open")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={readOnly || Boolean(item.sample)} />
+        <Button label={t("todo.open")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={readOnly || busy || Boolean(item.sample) || !canOpen(item)} />
       </View>)}
     </Card>
 
@@ -66,9 +71,10 @@ export function TodoSections({ page, offline, staleDay, mirroredTaskIds, onRefre
         <View style={styles.rowBody}>
           <UiText style={styles.title}>{item.titlePreview}</UiText>
           {item.reasonPreview ? <UiText style={styles.muted}>{item.reasonPreview}</UiText> : null}
+          {item.draftAvailable && !canOpen(item) ? <UiText style={styles.muted}>{t("todo.draftUnavailable")}</UiText> : null}
           {item.sample ? <UiText style={styles.sample}>{t("todo.sample")}</UiText> : null}
         </View>
-        <Button label={t(item.draftAvailable ? "todo.draft" : "todo.open")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={readOnly || Boolean(item.sample) || !item.draftAvailable} />
+        <Button label={t(item.draftAvailable ? "todo.draft" : "todo.open")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={readOnly || busy || Boolean(item.sample) || !item.draftAvailable || !canOpen(item)} />
       </View>)}
     </Card>
 
@@ -82,11 +88,15 @@ export function TodoSections({ page, offline, staleDay, mirroredTaskIds, onRefre
           <View style={styles.rowBody}>
             <UiText style={styles.title}>{item.titlePreview}</UiText>
             {item.overdue ? <UiText style={styles.overdue}>{t("todo.overdue")}</UiText> : null}
+            {item.kind === "lifecycle" && !canOpenFollowup(item) ? <UiText style={styles.muted}>{t("todo.lifecycleUnavailable")}</UiText> : null}
             {item.sample ? <UiText style={styles.sample}>{t("todo.sample")}</UiText> : null}
           </View>
-          <View style={styles.actions}>
-            <Button label={t("todo.defer")} onPress={() => onDefer(item)} size="sm" variant="ghost" disabled={!enabled} />
-            <Button label={t("todo.complete")} onPress={() => onComplete(item)} size="sm" variant="secondary" disabled={!enabled} />
+          <View style={styles.actions}>{item.kind === "lifecycle"
+            ? <Button label={t("todo.open")} onPress={() => onOpenFollowup(item)} size="sm" variant="secondary" disabled={!enabled || busy || !canOpenFollowup(item)} />
+            : <>
+              <Button label={t("todo.defer")} onPress={() => onDefer(item)} size="sm" variant="ghost" disabled={!enabled || busy || !canDefer(item)} />
+              <Button label={t("todo.complete")} onPress={() => onComplete(item)} size="sm" variant="secondary" disabled={!enabled || busy} />
+            </>}
           </View>
         </View>;
       })}

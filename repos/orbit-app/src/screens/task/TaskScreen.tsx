@@ -23,13 +23,13 @@ import { NotesScreen } from "../notes/NotesScreen";
 import { PlanSegment } from "../plan/PlanSegment";
 import { PlanGoalInputShown } from "../plan/plan-goal-input-shown";
 import { ScheduleScreen } from "../schedule/ScheduleScreen";
-import { TasksScreen } from "../tasks/TasksScreen";
+import { TodoTaskSlot } from "../todo/TodoScreen";
 import { TaskQuickAdd, type TaskQuickAddHandle } from "./TaskQuickAdd";
 
 // R05 Task container (RD-20, frozen). Four slots in a fixed order; each slot is
 // one component and a feature Sprint replaces only its own slot:
 //   calendar → R20 (now the existing ScheduleScreen)
-//   todo     → R20 (now the existing TasksScreen under the add box)
+//   todo     → R20a Todo first page; the existing task list remains a second view until SC09 replacement
 //   plan     → R23 PlanSegment (goal input / confirmed card); R24 adds the overview
 //   memo     → R20 (now the existing NotesScreen)
 // Do not change the container (header, segments, 「＋」 dispatch, URL `?seg=`).
@@ -37,7 +37,7 @@ export const TASK_SLOTS: Readonly<Record<TaskSegment, (props: TaskSlotProps) => 
   calendar: () => <ScheduleScreen />,
   todo: ({ quickAdd, revision, onCreated }) => <>
     <TaskQuickAdd ref={quickAdd} onCreated={onCreated} />
-    <TasksScreen key={revision} />
+    <TodoTaskSlot key={revision} />
   </>,
   plan: () => <PlanSegment />,
   memo: () => <MemoSlot />,

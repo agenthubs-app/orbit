@@ -26,8 +26,8 @@ function tree(props: { offline?: boolean; staleDay?: boolean } = {}) {
     retryLanguageSave: async () => undefined, setLanguage: async () => undefined, source: "device", syncState: "idle", t: createTranslator("ja"),
   };
   return createElement(OrbitLocaleContext.Provider, { value }, createElement(TodoSections, {
-    page, offline: props.offline ?? false, staleDay: props.staleDay ?? false, mirroredTaskIds: new Set(["t1"]),
-    onRefresh() {}, onOpen() {}, onComplete() {}, onDefer() {},
+    page, offline: props.offline ?? false, staleDay: props.staleDay ?? false, busy: false, mirroredTaskIds: new Set(["t1"]),
+    onRefresh() {}, canOpen: () => true, canOpenFollowup: () => false, canDefer: () => true, onOpen() {}, onOpenFollowup() {}, onComplete() {}, onDefer() {},
   }));
 }
 
@@ -45,5 +45,6 @@ test("offline stale page makes follow-up controls read-only and labels the last-
   assert.ok(html.includes("以前の情報"));
   assert.ok(html.includes("オフライン"));
   assert.ok(html.includes("次の段階を決める"));
+  assert.ok(html.includes("このフォローの詳細は今は開けません"));
   assert.equal((html.match(/aria-disabled="true"/gu) ?? []).length >= 2, true);
 });
