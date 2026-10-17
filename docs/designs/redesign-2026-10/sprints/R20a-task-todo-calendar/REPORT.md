@@ -147,6 +147,8 @@ source 監査で追加の中国語生成元を確認した：`features/tasks/tod
 
 ### SC-10 選択窓の native read（部分里程標）
 
+source-only 中間コミット：`d4f989c25`（10 paths）。
+
 後続の opt-in `GET /api/schedule-items?scope=calendar&from=<ISO>&to=<ISO>&language=ja|zh|en` を追加した。query は既知・単一キーのみ、正の ISO 区間・最大 43×24 時間（6 週の DST 追加 1 時間を含む）を許し、不正値は source 読取前に 400。actor は既存認証境界だけから取得する。新 scope だけが native personal list に選択窓と `overlap=true` を渡す。古い aggregate / personal list の windowless・start-only・中国語 default の挙動は維持する。frozen response contract は変えず、`data.scheduleItems` のまま。
 
 calendar overlap は single / recurrence の左端 carry-over を含め、終了が from と一致するものと開始が to と一致するものは除く。recurrence は現地日数から前の anchor を含め、native の 366 日 work cap を超えたら削らず失敗する。開始が遠い過去の anchor でも、長い例外が今の窓へ重なれば拾う。新 overlap 用の exception SQL は 1,001 件だけを返し、1,000 件超なら `CALENDAR_EXCEPTION_READ_CAP`、calendar の選択済み表示項目 1,000 件超なら `CALENDAR_ITEMS_READ_CAP` で API 503 にする。いずれも完全な空 / 精確件数へ変換しない。元の native list は内部で本人の series / events / appointment 集合を読むので、全 source の SQL work 自体が定数だとは主張しない。calendar HTTP の表示範囲 / response と例外投影を限定する中間変更である。
@@ -155,9 +157,25 @@ TodayScheduleProvider の新 scope だけが、生成する meeting title / vide
 
 `sc10-selected-window-red.log` は range 無視・不正 query 200・carry-over 欠落、`sc10-calendar-provider-red.log` は未実装 provider、`sc10-calendar-cap-red.log` は表示上限無視の RED。`sc10-selected-window-cap-red.log` では cap guard を外した場合に PG regression が missing rejection で失敗することを確認して guard を戻した。最新 `sc10-selected-window-green.log` は **49/49 pass、0 skip**（native selected-window / old route / recurrence / exceptions / reminder / v3 client）。実 local PG18 の隔離 schema で route → provider → native service → SQL の long moved carry-over と 1,001-row breach → 503 も検証した。production / Google は不使用。Web UI / operation / fresh typecheck / browser / pixel は後続、SC-10 完了ではない。
 
+### SC-10 Web read hook / projection / presenter（接入前の部分里程標）
+
+`useCalendarPage(timeZone, date, mode, language, enabled=true)` は `{ internal, external, window, refresh }` を返す。各 source は `{ state, data }` で独立に settle し、Google の失敗で Orbit の予定を消さない。account / local date / timezone / mode / language の scope が変われば旧 snapshot を同期的に隠し、abort / 世代比較で旧応答を捨てる。どちらかの endpoint の 401 / 403 は両 source を消す。browser storage は使わない。
+
+read client は selected native calendar scope と最大二つの外部区間だけを no-store で GET する。既知でない / 読み取れない予定は tolerant に skip し、件数を持って明示 partial 表示へ渡す。malformed collection / duplicate native identity / conflicting external split identity / cap breach は source failure。外部の同一 identity・同一内容だけは split の重複としてまとめる。unknown connection は unavailable、未連携 / reconnect / unavailable のとき events を残さない。外部は最大 1,000 件、response text は 1 MiB 上限とし、越過は失敗にする。
+
+projection は自然な 4～6 週 month、Monday-first Web week、day の各窓を扱う。Google の date-only 終日は floating date、personal 終日は保存 timezone の日付を維持する。multi-day は左端 carry-over と exclusive end を守る。DST day の timeline は実際の 23 / 25 時間で、繰返す時刻を別位置・offset 付き hour label にする。重なりは connected interval cluster の列に分け、同時刻の予定を覆い隠さない。
+
+presenter は month の 3 件 cap と「ほか N 件」→ day、week/day の timed / all-day、範囲移動と日・週・月 callback、Google の接続 / 再接続 / 失敗を描画する。OAuth entry は固定の `authorize?returnTo=calendar` だけ。未取得 / 部分取得の空を完全な 0 と表示せず、外部予定は read-only と明記する。component library / token は変更していない。まだ product route / personal editor / meeting detail へは接続していない。
+
+`sc10-calendar-{client,hook,model,presenter}-red.log` → 最新 `sc10-calendar-presenter-green.log`：**32/32 pass、0 skip**（client 3 / hook 4 / date window 5 / model 5 / presenter 3 / copy・CSS・scope guard 12）。`sc10-task-copy-qa.log` は task domain **82 entries / 0 issues**。初回 copy QA の中国語 placeholder 空白 / Google CTA 長さ・sentence-case の 3 件を直して再実行した。fresh typecheck / browser / pixel は heavy lock 待ち、実 Google は不使用であり SC-10 完了ではない。
+
 ### App 中間里程標（主会話 / App worker）
 
 主会話からの交接 hash：`7fa754a57` Todo TS fix、`809c150fe` Calendar Task slot、`7933b37e8` suggestion decisions、`7d5ac449e` midnight clock、`8b9db4faa` 4-week grid、`940c461e1` external bounded windows、`dab6cd8b4` read-only chunk/index helpers、`7cc3edb1d` external UI、`4111448b6` scope isolation、`8aedd4a57` SC-10 editor、`39e0bc952` App calendar、`b6eca8940` legacy `?date=` continuation、`203dda828` plain follow-up task detail。App lifecycle detail は identity resolver 待ちで fail-closed。App external 13/13 / calendar content 7/7 / calendar continuation 12/12 / Todo sections 4/4、calendar copy 49/0 / hardcoded-copy 5/5 は主会話の focused 証拠。Google CTA は Web authorize `returnTo=calendar` を開く。App fresh typecheck / browser / pixel は lock 待ちであり pass としない。これらの App paths は Web worker が変更・stage していない。
+
+追加交接：`3ff06f256` は旧 `/tasks/personal` copy ratchet（5/5）、`6837fee55` は App「すべて」の source 別 signed-cursor paging（model 7/7、render 5/5、slot 4/4、overdue order 含む）、`da2afb65c` は offline / stale page の network-only suggestion / pagination 非表示（render 5/5）。いずれも主会話の focused 証拠で、full / browser / typecheck の代わりではない。
+
+`cca38c0fa` は App task_suggestion の翌 local day 09:00 snooze、source receipt 検証、offline / sample guard と三語 copy（model/action 15、render 6、copy 34/0、hardcoded-copy 5/5）。他の判断 source は未完で、App SC-07 閉合ではない。
 
 ### Web 三块 presenter と product host（部分里程標）
 
