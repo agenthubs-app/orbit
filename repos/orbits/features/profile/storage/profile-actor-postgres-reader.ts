@@ -51,6 +51,7 @@ const PROFILE_PAYLOAD_FIELDS = [
   "targetRelationshipTypes",
   "spokenLanguages",
   "publicProfile",
+  "publicFields",
   "createdAt",
   "updatedAt",
 ] as const;

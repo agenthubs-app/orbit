@@ -98,3 +98,11 @@ export function demoPerson(id: DemoPersonId): DemoPerson {
 export function demoEvent(id: (typeof DEMO_EVENTS)[number]["id"]): DemoEvent {
   return DEMO_EVENTS.find((event) => event.id === id)!;
 }
+
+// R18a: the account owner shown on the b5 boards; the contact list remains ten people.
+export const DEMO_ACCOUNT = { id: "demo-account-sato", name: "佐藤 健一", company: "ミナトリンク", role: "代表取締役", email: "k.sato@minatolink.example", sample: true } as const;
+export const DEMO_ACCOUNT_SUGGESTION_PEERS = {
+  sample: true,
+  kato: { id: "demo-person-kato", name: "加藤 健太", company: "アクシス商事", role: "営業本部長", sample: true },
+  nakamura: { id: "demo-person-nakamura", name: "中村 由紀", company: "光が丘法律事務所", role: "弁護士", sample: true },
+} as const;

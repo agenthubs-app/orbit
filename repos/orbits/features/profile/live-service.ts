@@ -21,6 +21,7 @@ import { mergeIndustrySelection, validateIndustrySelection } from "../../shared/
 import { calculateProfileOnboarding, isValidProfileBirthDate } from "./onboarding";
 import { ProfileMutationError, validateProfileMutation } from "./storage/profile-mutations";
 import { profileBioWithinLimit } from "../../shared/api-schema/profile-bio";
+import { profilePublicFieldsWriteSchema } from "../../shared/api-schema/profile-account";
 
 export interface LiveProfileServiceOptions {
   now?: () => string;
@@ -122,6 +123,7 @@ function manualProfileFor(input: {
 
   return {
     id: input.profile.id,
+    ...(input.profile.publicFields !== undefined ? { publicFields: input.profile.publicFields } : {}),
     displayName:
       input.profile.displayNameConfirmed === false
         ? ""
@@ -266,6 +268,7 @@ function normalizeProfileHandles(
 function profileInkSignalFieldsAreValid(update: ManualProfileUpdateInput): boolean {
   const bio = update.bio?.trim() ?? "";
   return profileBioWithinLimit(bio)
+    && (update.publicFields === undefined || profilePublicFieldsWriteSchema.safeParse(update.publicFields).success)
     && normalizeProfileTags(update.offering, []).length <= 5
     && normalizeProfileTags(update.seeking, []).length <= 5;
 }
@@ -297,6 +300,9 @@ function mergeProfile(input: {
 
   return {
     id: profileId,
+    ...(input.update.publicFields !== undefined
+      ? { publicFields: { ...input.update.publicFields } }
+      : input.base?.publicFields !== undefined ? { publicFields: { ...input.base.publicFields } } : {}),
     accountId,
     displayName,
     displayNameConfirmed:

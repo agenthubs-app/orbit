@@ -1,4 +1,5 @@
 // 跨客户端契约：个人资料。
+// R18a owner: C line; consumers: Web account and App me. Additive fields only.
 // 对应 GET/PUT /api/profile 的 data 字段。
 // 常量与校验留在 features/profile/contract.ts，那边有类型断言保证一致。
 
@@ -58,8 +59,20 @@ export interface ContactHandlesContract {
   xHandle?: string;
 }
 
+export interface ProfilePublicFieldsContract {
+  companyRole: boolean;
+  offeringSeeking: boolean;
+  intro: boolean;
+}
+
+export interface ProfileCardCompletenessContract {
+  score: number;
+  items: readonly { key: string; weight: number; done: boolean }[];
+}
+
 // 用户可直接编辑的核心资料。名片档案扩展字段全部可选，容忍稀疏数据。
 export interface ManualProfileContract extends IndustrySelectionContract {
+  publicFields?: ProfilePublicFieldsContract;
   id: string;
   // 私密日历日期，仅本人资料编辑使用；不属于公开资料或 AI 资料投影。
   birthDate?: string | null;
@@ -107,6 +120,7 @@ export interface PublicProfileProjectionContract extends IndustrySelectionContra
 
 // 驱动客户端的「还缺什么」提示。
 export interface ProfileCompletenessContract {
+  card?: ProfileCardCompletenessContract;
   score: number;
   status: ProfileCompletenessStatusCode;
   completedFields: readonly ProfileCompletenessFieldCode[];

@@ -21,6 +21,21 @@ import { demoCalendarExternalEvents, demoTodoPage } from "../../orbits/shared/mo
 import { todoPageSchema } from "../src/api/schema/todo-page";
 import { calendarExternalEventsResponseSchema } from "../src/api/schema/calendar-external-events";
 
+test("R18a synced account schemas parse sparse, regular, complete and legacy responses", async () => {
+  const schemas = await import("../src/api/schema/profile-account").catch(() => null);
+  assert.ok(schemas, "R18a synced profile schemas are missing");
+  const account = await import("../../orbits/shared/mock/demo-world/account");
+  for (const profile of Object.values(account.demoAccountProfiles)) {
+    const parsed = schemas.profileAccountSchema.parse(profile);
+    assert.equal(parsed.completeness.card?.items.length, 4);
+    const legacy = structuredClone(parsed);
+    delete legacy.completeness.card;
+    if (legacy.profile) delete legacy.profile.publicFields;
+    assert.ok(schemas.profileAccountSchema.safeParse(legacy).success);
+  }
+  assert.equal(schemas.profileCardCompletenessSchema.parse({ score: 0, items: [{ key: "future", weight: 25, done: false }] }).items[0].key, "future");
+});
+
 // 改版 R08 (SC-R08-03 / 06): after npm run sync:contract the App's own copies of
 // the schemas parse every redesign fixture, and the shared 「尚未実装」 helper works.
 test("the App's synced schemas parse every redesign fixture", () => {

@@ -23,6 +23,8 @@ import type { InviteCodeContract, InviteCodeHistoryItem, InviteCodePreview, Invi
 import type { PlanPremiseRow, PlanV2Content, PlanV2Detail, PlanV2SummaryResponse } from "../../contract/plan-v2";
 import { nextAward, PLAN_EVENT_SEGMENT_KEY, skipAwardPoints, summarizePlanScore, type PlanScoreAward } from "../../compute/plan-score";
 import { DEMO_EVENTS, DEMO_NOTES, DEMO_PEOPLE, DEMO_PLAN, DEMO_TIME_ZONE, DEMO_TODAY, DEMO_TODOS, demoEvent, demoPerson } from "./index";
+import { demoAccountProfiles } from "./account";
+export const demoAccountFixture = { profiles: demoAccountProfiles, sample: true } as const;
 
 export const DEMO_ACTOR_ID = "demo-actor";
 const at = (time: string) => `${DEMO_TODAY}T${time}+09:00`;

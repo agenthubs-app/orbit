@@ -550,8 +550,8 @@ export type { ContactCardMetKind, ContactCardSourceChip } from "./contact-card-p
 export type { ContactGoalRelatedIdsDTO, ContactGoalRelatedLinkDTO } from "./contact-goal-related";
 export type { ContactDeleteResult, ContactRestoreResult } from "./contact-delete";
 export type { ContactEditableField, ContactFieldsUpdateInput, ContactFieldsUpdateResult } from "./contact-fields";
-
 export type { TodoDecisionAction, TodoDecisionItem, TodoFollowupItem, TodoItemBase, TodoNextMoveItem, TodoPageContract, TodoSection, TodoSectionKey, TodoSourceKey } from "./todo-page";
 export type { CalendarExternalEventContract, CalendarExternalEventsContract } from "./calendar-external-events";
 // R11b 人脈分析（構造 / 機会 / インサイト、下钻名单；GET /api/network/analysis、…/people）
 export type { NetworkAnalysisBucket, NetworkAnalysisDimension, NetworkAnalysisDistribution, NetworkAnalysisGap, NetworkAnalysisInsight, NetworkAnalysisInsightKind, NetworkAnalysisLock, NetworkAnalysisOpportunity, NetworkAnalysisOpportunityKind, NetworkAnalysisPeopleDTO, NetworkAnalysisPeopleSort, NetworkAnalysisPersonRef, NetworkAnalysisPersonRow, NetworkAnalysisViewDTO } from "./network-analysis-view";
+export type { ProfileCardCompletenessContract, ProfilePublicFieldsContract } from "./profile";

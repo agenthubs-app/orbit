@@ -35,6 +35,12 @@ for (const mode of ["live", "mock"] as const) {
       : createMockProfileService();
 
     assert.deepEqual(service.scoreCompleteness(null), {
+      card: { score: 0, items: [
+        { key: "companyRole", weight: 25, done: false },
+        { key: "offering", weight: 25, done: false },
+        { key: "seeking", weight: 25, done: false },
+        { key: "intro", weight: 25, done: false },
+      ] },
       score: 0,
       status: "not-started",
       completedFields: [],

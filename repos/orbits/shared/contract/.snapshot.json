@@ -13317,10 +13317,12 @@
         "PortraitSaveBody",
         "PortraitSaveResult",
         "PortraitSourceAnswer",
+        "ProfileCardCompletenessContract",
         "ProfileCompletenessContract",
         "ProfileCompletenessFieldCode",
         "ProfileCompletenessStatusCode",
         "ProfileEditorStateContract",
+        "ProfilePublicFieldsContract",
         "ProfileViewStateCode",
         "PushDeviceContract",
         "PushDevicePlatformCode",
@@ -20024,9 +20026,69 @@
         }
       }
     },
+    "profile.ts::ProfilePublicFieldsContract": {
+      "kind": "object",
+      "members": {
+        "companyRole": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "offeringSeeking": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "intro": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "profile.ts::ProfileCardCompletenessContract": {
+      "kind": "object",
+      "members": {
+        "score": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "items": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "key": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "weight": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "done": {
+                "optional": false,
+                "kind": "text",
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
     "profile.ts::ManualProfileContract": {
       "kind": "object",
       "members": {
+        "publicFields": {
+          "optional": true,
+          "kind": "text",
+          "type": "ProfilePublicFieldsContract"
+        },
         "id": {
           "optional": false,
           "kind": "text",
@@ -20242,6 +20304,11 @@
     "profile.ts::ProfileCompletenessContract": {
       "kind": "object",
       "members": {
+        "card": {
+          "optional": true,
+          "kind": "text",
+          "type": "ProfileCardCompletenessContract"
+        },
         "score": {
           "optional": false,
           "kind": "text",

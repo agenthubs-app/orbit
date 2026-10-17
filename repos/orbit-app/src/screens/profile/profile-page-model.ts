@@ -10,12 +10,13 @@ import {
 export function projectPublicProfile(
   profile: ManualProfileContract,
 ): PublicProfileProjectionContract {
+  const visibility = profile.publicFields ?? { companyRole: true, offeringSeeking: true, intro: true };
   return {
     id: profile.id,
     displayName: profile.displayName,
-    headline: profile.headline,
-    organization: profile.organization,
-    role: profile.role,
+    headline: visibility.companyRole ? profile.headline : "",
+    organization: visibility.companyRole ? profile.organization : "",
+    role: visibility.companyRole ? profile.role : "",
     homeMarket: profile.homeMarket,
     relationshipGoal: profile.relationshipGoal,
     targetRelationshipTypes: [...profile.targetRelationshipTypes],
@@ -27,9 +28,9 @@ export function projectPublicProfile(
       ? { secondaryIndustryId: profile.secondaryIndustryId }
       : {}),
     ...(profile.industry !== undefined ? { industry: profile.industry } : {}),
-    ...(profile.bio !== undefined ? { bio: profile.bio } : {}),
-    ...(profile.offering !== undefined ? { offering: [...profile.offering] } : {}),
-    ...(profile.seeking !== undefined ? { seeking: [...profile.seeking] } : {}),
+    ...(visibility.intro && profile.bio !== undefined ? { bio: profile.bio } : {}),
+    ...(visibility.offeringSeeking && profile.offering !== undefined ? { offering: [...profile.offering] } : {}),
+    ...(visibility.offeringSeeking && profile.seeking !== undefined ? { seeking: [...profile.seeking] } : {}),
     ...(profile.topics !== undefined ? { topics: [...profile.topics] } : {}),
     ...(profile.spokenLanguages !== undefined
       ? { spokenLanguages: [...profile.spokenLanguages] }

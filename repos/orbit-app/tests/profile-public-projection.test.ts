@@ -47,6 +47,18 @@ test("the App-owned public projection excludes private profile markers", () => {
   assert.deepEqual(projected.targetRelationshipTypes, ["音乐合作者"]);
 });
 
+test("R18a App public preview filters the three saved public-field groups", () => {
+  const profile = { ...privateProfile, publicFields: { companyRole: false, offeringSeeking: false, intro: false } };
+  const projection = projectPublicProfile(profile);
+  assert.equal(projection.displayName, privateProfile.displayName);
+  assert.equal(projection.organization, "");
+  assert.equal(projection.role, "");
+  assert.equal(projection.headline, "");
+  assert.equal(projection.bio, undefined);
+  assert.equal(projection.offering, undefined);
+  assert.equal(projection.seeking, undefined);
+});
+
 test("profile detail accepts the new optional languages and profile-specific social handles", () => {
   const result = profileDetailSchema.safeParse({
     ...profilePayload,

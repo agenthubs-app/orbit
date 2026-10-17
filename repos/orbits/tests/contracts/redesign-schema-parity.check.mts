@@ -75,6 +75,12 @@ type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 type Parity<Contract, Schema extends z.ZodTypeAny> = Same<DeepMutable<Contract>, z.infer<Schema>>;
 function expectParity<T extends true>(): T | undefined { return undefined; }
 
+// R18a: optional parallel profile fields retain exact contract/schema shape.
+import type { ProfileCardCompletenessContract, ProfilePublicFieldsContract } from "../../shared/contract/profile";
+import type { profileCardCompletenessObject, profilePublicFieldsObject } from "../../shared/api-schema/profile-account";
+expectParity<Parity<ProfileCardCompletenessContract, typeof profileCardCompletenessObject>>();
+expectParity<Parity<ProfilePublicFieldsContract, typeof profilePublicFieldsObject>>();
+
 expectParity<Parity<HomeLayoutContract, typeof homeLayoutObject>>();
 expectParity<Parity<HomeLayoutUpdateInput, typeof homeLayoutUpdateInputObject>>();
 expectParity<Parity<ContactCompletionQuestion, typeof contactCompletionQuestionObject>>();

@@ -7,6 +7,7 @@ import type {
   ManualProfileContract,
   ContactHandlesContract,
   ProfileCompletenessContract,
+  ProfilePublicFieldsContract,
   ProfileCompletenessFieldCode,
   ProfileCompletenessStatusCode,
   ProfileEditorStateContract,
@@ -133,6 +134,7 @@ export interface ProfileProvenance {
 
 // UpdateInput 只包含可编辑字段；缺失字段表示保持不变。
 export interface ManualProfileUpdateInput extends IndustrySelectionContract, ProfileSaveConcurrencyContract {
+  publicFields?: ProfilePublicFieldsContract;
   displayName?: string;
   birthDate?: string | null;
   headline?: string;

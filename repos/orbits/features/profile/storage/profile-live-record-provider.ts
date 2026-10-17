@@ -4,7 +4,8 @@ import { parseOrbitLanguage } from "../../../shared/i18n/orbit-language";
 import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
 import { createConfiguredTransactionalPostgresRuntime, type TransactionalPostgresClient } from "../../../shared/storage/transactional-postgres";
 import type { ManualProfileUpdateInput, ProfileResult } from "../contract";
-import type { ContactHandlesContract } from "../../../shared/contract/profile";
+import type { ContactHandlesContract, ProfilePublicFieldsContract } from "../../../shared/contract/profile";
+import { profilePublicFieldsSchema } from "../../../shared/api-schema/profile-account";
 import { runProfileMutation } from "./profile-mutations";
 import {
   resolveLiveDatabaseConnectionConfig,
@@ -20,6 +21,7 @@ import {
 } from "./profile-actor-postgres-reader";
 
 export interface LiveProfileRecord extends UserProfileDTO {
+  publicFields?: ProfilePublicFieldsContract;
   birthDate?: string | null;
   displayNameConfirmed?: boolean;
   headline?: string;
@@ -147,6 +149,7 @@ function profileFromRecord(
   return {
     id: payload.id,
     accountId: payload.accountId,
+    ...(payload.publicFields !== undefined ? { publicFields: profilePublicFieldsSchema.parse(payload.publicFields) } : {}),
     displayName: payload.displayName,
     displayNameConfirmed:
       typeof payload.displayNameConfirmed === "boolean"
