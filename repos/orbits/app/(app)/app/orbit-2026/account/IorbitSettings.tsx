@@ -107,7 +107,7 @@ export function IorbitSettings() {
         <textarea className={styles.draft} aria-label={t("bioDraft")} value={draft} onChange={(event) => setDraft(event.target.value)} />
         <span className={styles.meta}>{profileVisibleLength(draft)}/{profileBioLimit(draft)}</span>
         {draft && !profileBioWithinLimit(draft) ? <p role="alert" className={styles.error}>{t("bioTooLong")}</p> : null}
-        <div className={styles.smallActions}><Button label={t("generate")} variant="secondary" loading={busy} disabled={language === "ja"} onClick={() => void generateDraft()} /><Button label={t("confirmBio")} variant="primary" disabled={!draft.trim() || !profileBioWithinLimit(draft) || busy} onClick={() => void saveDraft()} /></div>
+        <div className={styles.smallActions}>{language !== "ja" ? <Button label={t("generate")} variant="secondary" loading={busy} onClick={() => void generateDraft()} /> : null}<Button label={t("confirmBio")} variant="primary" disabled={!draft.trim() || !profileBioWithinLimit(draft) || busy} onClick={() => void saveDraft()} /></div>
       </div></Card>
       {semanticAvailable ? <Card title={t("semantic")}><div className={styles.row}><p className={styles.detail}>{t("semanticNote")}</p><Toggle checked={semanticOn} label={t("semantic")} onChange={(next) => { writeSemanticPreference(next); setSemanticOn(next); }} /></div></Card> : null}
     </div>
