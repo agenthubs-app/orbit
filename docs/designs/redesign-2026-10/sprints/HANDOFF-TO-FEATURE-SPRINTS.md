@@ -113,19 +113,19 @@
 | R17-02 | 公开主办方页 `o/[slug]` | 保留旧公开顶栏 | 照 b1 A1 / A2 公开页样式 | PA D14；DEC §3 |
 | R17-04 | **App 主办入口**（R17 设计 2026-10-16） | App 里没有任何进 `events/center` 的入口 | R18 重做マイページ时按 b5 放「主催したイベント · N件 · 運営中」行，用 R17 交付的 `HostEventsRow` 组件与 `GET /api/events/center?summary=1`；同时删旧マイページ页签栏的临时「主催」链接（R18-01） | `host/DESIGN.md` §2.12 |
 | R17-05 | **主办画面缺画板**（R17 设计 2026-10-16） | — | 已补画（决定表 §38，b12 #396–#475，1fd7313fa / cd29d233a），用户过目认可后按 PLANNER P34–P73 进 R17 门禁（b12 末尾），认可后进 R17 门禁；之前对应画面暂缓 | `host/DESIGN.md` §8、§10 |
-| R17-06 | **A11 改了 R27 主催卡**（R17 实施 2026-10-16，776e8534） | 第二格标签改为申込回答 Q1 第一选项的文字（「スタートアップの経営者・CFO 41%」），平均参加改为受付人数均值；决定表 §39 已改 b2 #17 / #18 / #19 / #47 与 b12 #326 / #350 / #374 / #376 / #378 / #380 / #386 / #388 / #390 / #394（+1 深色） | 清设计稿缓存后重跑 R27 门禁里用到这些画板的视图（W-R27-17 / 18 / 19 / 20-1024 / 20-390 / 18u / 19u / P41 / 34 / 35、A-R27-14 / 15 / 15u / 16u 等） | 决定表 §39；R17 REPORT |
+| R17-06 | **done（2026-10-17，`3d612635b`）**：**A11 改了 R27 主催卡**（R17 实施 2026-10-16，776e8534） | 第二格标签改为申込回答 Q1 第一选项的文字（「スタートアップの経営者・CFO 41%」），平均参加改为受付人数均值；决定表 §39 已改 b2 #17 / #18 / #19 / #47 与 b12 #326 / #350 / #374 / #376 / #378 / #380 / #386 / #388 / #390 / #394（+1 深色） | 清设计稿缓存后重跑 R27 门禁里用到这些画板的视图（W-R27-17 / 18 / 19 / 20-1024 / 20-390 / 18u / 19u / P41 / 34 / 35、A-R27-14 / 15 / 15u / 16u 等） | 决定表 §39；R17 REPORT |
 | R17-07 | **编组 3 轮**（R17 实施） | 现有 event-ops 引擎固定两轮；条件「ラウンド数」只开放 1–2，3 由服务端拒绝（ROUND_COUNT_UNSUPPORTED） | 引擎支持第 3 轮（或用规则从第 1 轮轮换生成并能发布）后放开 | `features/events/host/storage/matching.ts` |
 | R17-08 | **按主办方资料关注**（R17 实施，A13） | 关注沿用 R27 的 actor 级 key（`organizerKeyFor`）：同一人几份资料共用关注与フォロワー数 | 产品要「按资料关注」时：关注 key 改为资料 id，R27 探す「あなたのコミュニティ」同步改读法 | `features/events/host/storage/profiles.ts` |
 | R17-09 | **受付名单的よみ（かな）**（R17 实施） | live 下名单没有かな来源（kana = null），平假名搜索只在 mock 生效；姓名 / 公司汉字搜索可用 | 资料或报名加「よみ」字段后接上 | `features/events/host/live.ts` kiosk |
 | R17-10 | **申込推移的节点标注**（R17 实施） | 契约加了可选 `HostReportAll.trendMarks`（告知メール / 登壇者発表），mock 有值；live 没有来源，缺省时不画标注 | 有「告知メール发送」「登壇者発表」等事件记录后在 live 报告里填 | `features/events/host/live.ts` report |
 | R17-11 | **名簿の取り込み照合**（R17 实施，b12 #476） | 导入 CSV 后三类计数（申込済み / 登録済み / 未登録）没有接口，全部显示「照合待ち」；招待链接没有 `?inv=` 参数 | 补照合接口（按邮箱匹配账号与报名）与招待参数 | Web `orbit-2026/host/` 导入组件 |
 | R17-12 | **レポート自分の視点「追加する」**（R17 实施） | 没有进度日志写入接口，现链到 `/app/plan`；「下書きを作成」链到联系人页（无 contactId 时按名字搜） | 计划侧提供「从活动追加进度」接口后接上 | Web report 组件 |
-| R17-13 | **kiosk 定員超え确认的数字**（R17 实施，b12 #434） | `/kiosk` 不返回承認済み / 定員，确认框正文不写「150 / 150」 | kiosk 读模型加这两个数 | `features/events/host/live.ts` kiosk |
+| R17-13 | **done（2026-10-17，`d87755d3e`）**：**kiosk 定員超え确认的数字**（R17 实施，b12 #434） | `/kiosk` 不返回承認済み / 定員，确认框正文不写「150 / 150」 | kiosk 读模型加这两个数 | `features/events/host/live.ts` kiosk |
 | R17-14 | **已做（73c986b05）**：Web 壳ログアウト / App signOut 清整个本机受付库；启动清过期、失权清这场。原记录： **登出时清 kiosk 本机名单**（R17 实施） | 现为 `/kiosk` 返回无权限时清；没接全局登出事件 | 壳提供登出钩子后接上（两端） | kiosk 页 |
 | R17-15 | **公开主催页「通報する」**（R17 实施） | 没有反馈表单，现为弹层 + 复制页面 URL | R29 运营后台 / 反馈表单就绪后接上 | Web `/o/[slug]` |
-| R17-16 | **App `/e/[slug]` 取活动 id**（R17 实施） | 没有 slug → 活动 id 的接口；App 请求 Web `/e/<slug>` 跟随重定向、从最终地址取 id（离线读取扫描用别名绕开，代码有注释） | 补 `GET /api/events/by-slug/[slug]`（只认已公开）后 App 改调它 | `repos/orbit-app/src/screens/host/EventShortLink.tsx` |
+| R17-16 | **done（2026-10-17，`cb02fda4f`）**：**App `/e/[slug]` 取活动 id**（R17 实施） | 没有 slug → 活动 id 的接口；App 请求 Web `/e/<slug>` 跟随重定向、从最终地址取 id（离线读取扫描用别名绕开，代码有注释） | 补 `GET /api/events/by-slug/[slug]`（只认已公开）后 App 改调它 | `repos/orbit-app/src/screens/host/EventShortLink.tsx` |
 | R17-17 | **组件库 G23 两处**（R17 实施） | Web P26 共同運営者抽屉：Drawer 没有 540 宽、内边距 20≠22；App P05：Segmented 高 38≠30。两画面标「待组件库」未过门禁 | 组件库补尺寸后重跑 W-R17-P26、A-R17-P05 | `views/web-R17.json`、`views/app-R17.json` |
-| R17-18 | **编组发布与参加者通知不在同一事务**（R17 独立复核） | 发布成功后另开事务写「テーブル編成を公開しました」outbox；这一步失败时重试会因已发布被拒，通知补不上（幂等键已有，重复写安全） | 发布接口对「已发布且同一 generation」直接补写通知（或 publishGeneration 增加同事务钩子） | `features/events/host/live.ts` publishMatching |
+| R17-18 | **done（2026-10-17，`571c0d6f6`）**：**编组发布与参加者通知不在同一事务**（R17 独立复核） | 发布成功后另开事务写「テーブル編成を公開しました」outbox；这一步失败时重试会因已发布被拒，通知补不上（幂等键已有，重复写安全） | 发布接口对「已发布且同一 generation」直接补写通知（或 publishGeneration 增加同事务钩子） | `features/events/host/live.ts` publishMatching |
 | R17-03 | 主催入口 | Web 临时入口在マイページ页签栏（见 R18-01）；头像菜单不放主催 | 与 R18 协调正式入口 | DEC D18 |
 
 ## R18 账户
@@ -200,7 +200,7 @@
 | R26-09 | `/app/events` 1440 水合警告、`/live` 403 控制台噪音 | 旧页 | 重写时消除 | README 合回前（R09 走查 W3、W5） |
 | R26-10 | 「探す」页签内容（SC-R26-14） | **done（R27，2026-10-15）**：两端「探す」已换新（Web DiscoverTab、App DiscoverPage）；App `EventsScreen` 已删（`b220b6420` 之后一提交），Web `events-list` 随 R27 旧屏清理删除 | — | R26 REPORT SC-14 |
 | R26-11 | App R26 像素（app-R26.json 11 张） | **done（2026-10-15，`de9f32ac5`）**：通过 20 浅深、20d、21 / 22 / 23 / 24 浅深（11 张；24 由 `493b27ca0` 契约只加 `adoptedGuessFields` 解决）；**待组件库** 13 / 14 / 15 / 30 / 30e 浅深（`Segmented` 38 vs kit `.seg` 30，G23；临时补丁下 10 张全部通过） | G23 修 `Segmented` 后重跑 13 / 14 / 15 / 30 / 30e（`R26-app-agate.sh`，mock 端口以实际为准） | R26 REPORT「App 像素返工」 |
-| R26-12 | 「参加予定」卡分数（复核 M4） | 显示评估当时的分 | 按当前计划现算（需把计划类型接进「我的活动」读取） | R26 REPORT |
+| R26-12 | **done（2026-10-17，`bc51f78a2`）**：「参加予定」卡分数（复核 M4） | 显示评估当时的分 | 按当前计划现算（需把计划类型接进「我的活动」读取） | R26 REPORT |
 | R26-13 | Web R26 余项 | 1024 的 10 / 11（b12 #332 / #334 与 b8 #0 截断口径不一）、全部 390、P04 / P06 / P08 未过 | 先统一画板口径再对齐 | R26 REPORT「收尾」 |
 | R27-01 | App `Segmented` 高 38 vs kit `.seg` 30 | A-R27-06 / 07 / 08 / 16 / 26 / 29 / 31 / 33 / 34 待组件库；seg 临时补丁下各带 dy ≤4 | G23 修后重跑这些视图（`scratchpad` 的 appgate 做法见 R27 REPORT；`views/app-R27.json`） | R27 REPORT §3；DEFERRED-A §1 |
 | R27-02 | App `FilterOption` / `Toggle`、`Toast`（带 ✕、不知道会场自带底栏） | A-R27-09 筛选弹层、A-R27-35 交換 toast 待组件库 | 组件库对齐后重跑 09 / 35 | DEFERRED-A §1 |
@@ -271,13 +271,13 @@
 | R24-06b | R26 做完后重比（Web 计划页像素门禁） | 2026-10-15 重比：01 / 02（1440 / 1024 / 390）/ 04a / 04c 通过（`[data]` 归因见 attribution-redesign-R23-25.json）；05–08 未过（候补行接点说明 / 根拠多行 / 推薦度属数据来源，契约无接点来源字段）；C 组整屏背景页不同，暂缓 | 重跑 `web-plan-A.json` 的 W-R24-01、02（1440 / 1024 / 390）、04a、04c、05、06、07、08，以及背景是概要页的 C 组 W-R25-01 / 02 / 07 / 09 / 10 整屏 | REWORK-REPORT-web §10 第 4 轮 |
 | R24-07 | **待壳**：Task 1024 标题区多出「目標を追加」 | TaskContainer 自加的按钮（b8 只有「次の一手」） | 去掉；另一会话在改 `orbit-2026/task/TaskContainer.tsx` | REWORK-REPORT-web |
 | R24-08 | **待画板口径**（2026-10-12 已转用户） | 实现取类型卡口径 / 服务端排序 / 短名 | b8 類型名长短（確認待ち「VC」vs 話すべき人「VC パートナー」）；CVC 页活动顺序（画板 79 / 68 / 82，服务端按分数降序）；#17 Step 3 chip「3 / 3人」vs 类型卡「2 / 3人」。定后 design-decisions 改画板，计划页会话单独重比 W-R24-02 / 04c / 06 | REWORK-REPORT-web |
-| R25-05 | **像素门禁的设计稿示例 fixture** | `features/plans/v2/design-fixtures`（只在非生产、mock 下由 `route.dev.ts` 切换）；B 组门禁前跑 `seed-local-chats.mjs`（只写本机库 qa 账号）；C 组造見直し状态的脚本还在会话 scratchpad | fixture 只能补数据、不能改画面结构；C 组的状态脚本（setup.py / all.sh）收进 `scripts/visual/` 再供复跑 | REWORK-REPORT-web |
+| R25-05 | **done（2026-10-17，`2dcd114dc`：脚本收进 `scripts/visual/plan-rework/`）**：**像素门禁的设计稿示例 fixture** | `features/plans/v2/design-fixtures`（只在非生产、mock 下由 `route.dev.ts` 切换）；B 组门禁前跑 `seed-local-chats.mjs`（只写本机库 qa 账号）；C 组造見直し状态的脚本还在会话 scratchpad | fixture 只能补数据、不能改画面结构；C 组的状态脚本（setup.py / all.sh）收进 `scripts/visual/` 再供复跑 | REWORK-REPORT-web |
 | R24-09 | **App 计划概要画板的弁護士卡已变**（916b9f6b：共享数据里弁護士 会える活動 0 → 2；Web 端已在 2026-10-13 重比） | App 计划页门禁还用旧图 | App 计划页那一轮清缓存、重新截图后再比概要画面 | 916b9f6b；`R25-plan-review-goals-cleanup/REWORK-REPORT-web.md` §10 |
 | R24-05c | 组件库轮做完后重比（App 计划页像素门禁） | 未比，待组件库 | 重跑 `app-plan-A.json` 的 A-R24-05 / 12 / 13 / 16 与 `app-plan-C.json` 的 A-R25-01 / 08 / 11 / 12（Sheet / Dialog / Popover，均需手点到状态后 `shot.py`） | REWORK-REPORT-app §4-10 |
 | R24-06c | R26 做完后重比（App 计划页像素门禁） | App 概要推荐活动行、イベント前缀、Step 5 后半句、新计划无 Step chip 已接（R26 收尾）；重比未跑，随 App R26 像素返工一起跑（模拟器 iPhone 16e (r26)、`open-path` 开关） | 重跑 `app-plan-A.json` 的 A-R24-01 / 04（概要推荐活动行）与 A-R24-06a / 06c（確認待ち，概要页内区块，2026-10-14 第 3 轮收口时一并暂缓）；同时把 R24-09 的弁護士卡新图一起清缓存重比 | REWORK-REPORT-app §2 A 组 |
 | R24-10 | App 排版全局口径 | **已定并落实（2026-10-14）**：§19（折行 / 字形 1–3px 记 `[raster]`、标点挤压 UiText 做一次（2c514420 / 4eff02e49 / 0c4c2f722 补「·」）、输入栏去「＋ / 🎤」）、§20（App 按「全部带已归因」判通过，脚本已改）、§24（≤5 問去底部输入栏） | 剩下的是各画面自身的差，见 REWORK-REPORT-app §8 | REWORK-REPORT-app §8 |
 | R24-11 | **App 计划页像素返工收口后的重比清单**（2026-10-14 第 3 轮，规则 11；2026-10-15 UiText 行距修正后重比） | done（必须项完成）：通过 13 / 38（10-15 新过 A-R23-02b / A-R24-09 / A-R25-16 / A-R23-02c）；未过 5 + 行距已修但仍有别的差 7 | **行距已修**（`repos/orbit-app/modules/orbit-text-leading`：混排行基线统一到 Chrome strut，A/B 无变差）。**仍需重比**：A-R24-07（上方头卡累计下移 3–4、头像色 / 接点 [data] 待逐条归因）、A-R24-12b（toast，需真做一次スキップ）、A-R23-08（手点态未重截；§9.2-2 折行）、N17a（需手点确认两块）、A-R23-11 / 12 / 15 / 16（回答气泡 / 方案名长短 [data] 引起的整块下移，逐条归因）；**未过**：A-R23-01、A-R23-17（§27-2 静止态，需改名）、A-R25-05 需能输入日文（fixture 预填：需从 Task 深链把设计稿状态参数穿过 TaskScreen）；~~A-R25-10 次の目標 要改成独立页；A-R25-15 会いたい人头像要契约给名字~~ **2026-10-15 已做并通过（浅深 4 张，`de9f32ac5`）** | `R25-plan-review-goals-cleanup/REWORK-REPORT-app.md` §9.2–9.3、`maintenance/2026-10-14-uitext-leading.md` §3 |
-| R12-11 | b11 #4 一处文字口径（App 加人像素门禁，待画板） | 04 深 PASS；04 浅只剩 1 条带：画板重複行「今回：高橋 美咲（青葉ベンチャーズ）」与既存同社仍写社名，实现照 b9 #4（「今回：Sho Watanabe」同社不重复写） | b11 #4 该行改为「今回：高橋 美咲」后重跑 `app-add-R12.json` 的 A-R12-04 浅；fixture `design-failed` 已照画板（17件 · 2 / 1 / 13，sheet 自动打开）。N10 / N10d / 18 已通过 | R12 REWORK-REPORT-app §10 |
+| R12-11 | **done（2026-10-17，A-R12-04 浅深重跑通过，见 DEFERRED-A）**：b11 #4 一处文字口径（App 加人像素门禁，待画板） | 04 深 PASS；04 浅只剩 1 条带：画板重複行「今回：高橋 美咲（青葉ベンチャーズ）」与既存同社仍写社名，实现照 b9 #4（「今回：Sho Watanabe」同社不重复写） | b11 #4 该行改为「今回：高橋 美咲」后重跑 `app-add-R12.json` 的 A-R12-04 浅；fixture `design-failed` 已照画板（17件 · 2 / 1 / 13，sheet 自动打开）。N10 / N10d / 18 已通过 | R12 REWORK-REPORT-app §10 |
 | R12-12 | 待 R20 / 待组件库的加人画面 | 未过，暂缓 | A-R12-16（メモ @人 token，R20）；A-R12-N09（ConfirmDialog 无图标位，组件库 G23）；做完后重跑 `app-add-R12.json` 对应 id | R12 REWORK-REPORT-app §10 |
 | R12-13 | 加人手入力 / 草稿的演示数据 fixture | 未做：会社候补、重複候补、活动 chip、草稿、样本账号都读真实库 | 补 add-scan 同类的只读 fixture 后重跑 A-R12-17 / 18（数据部分）/ N08b / N12；A-R12-b9-04 由 A-R16-04 覆盖，不再单独比 | R12 REWORK-REPORT-app §10 |
 
