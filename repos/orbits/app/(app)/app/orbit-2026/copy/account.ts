@@ -60,6 +60,8 @@ export const accountCopy = {
   contactsPrivate: { ja: "連絡先は名刺交換した相手にだけ表示されます。", zh: "联系方式仅对交换名片的联系人可见。", en: "Contact details appear only after a card exchange.", kind: "body" },
   attendingEmpty: { ja: "参加予定のイベントはありません。", zh: "暂无计划参加的活动。", en: "No upcoming events.", kind: "body" },
   hostedOpen: { ja: "運営センターを見る", zh: "查看主办中心", en: "Open organizer center", kind: "button" },
+  eventCount: { ja: "{n}件", zh: "{n}场", en: "{n} events", kind: "label" },
+  activeCount: { ja: "運営中 {n}件", zh: "进行中{n}场", en: "{n} active", kind: "label" },
   retry: { ja: "もう一度試す", zh: "重试", en: "Try again", kind: "button" },
   profileLogin: { ja: "プロフィールを見るにはログインしてください。", zh: "登录后查看个人资料。", en: "Sign in to view your profile.", kind: "body" },
   bioLong: { ja: "自己紹介が長すぎます。", zh: "简介过长。", en: "Introduction is too long.", kind: "body" },

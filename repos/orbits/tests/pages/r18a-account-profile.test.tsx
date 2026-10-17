@@ -27,3 +27,28 @@ test("account profile renders server card states and live-filtered preview", () 
   const html = render(hidden);
   assert.ok(!html.includes(hidden.profile.bio ?? "sample-bio"));
 });
+
+test("only the review state shows unaccepted design candidates", () => {
+  const store = createAccountDesignFixtureStore();
+  const regular = renderToStaticMarkup(createElement(OrbitLanguageProvider, {
+    initialLanguage: "ja",
+    children: createElement(AccountProfilePage, {
+      initialPayload: store.read("actor", "50").data,
+      suggestions: ["シリーズA のリード投資家"],
+    }),
+  }));
+  assert.ok(regular.includes("AI の候補"));
+  assert.ok(regular.includes("シリーズA のリード投資家"));
+  assert.ok(!render(store.read("actor", "25").data).includes("AI の候補"));
+});
+
+test("100% design summary shows hosted and upcoming rows from canonical fixture counts", () => {
+  const payload = createAccountDesignFixtureStore().read("actor", "100").data;
+  const html = renderToStaticMarkup(createElement(OrbitLanguageProvider, {
+    initialLanguage: "ja",
+    children: createElement(AccountProfilePage, { initialPayload: payload, eventSummary: { hosted: 2, active: 1, attending: 2 } }),
+  }));
+  assert.ok(html.includes("主催したイベント"));
+  assert.ok(html.includes("参加するイベント"));
+  assert.ok(html.includes("2件"));
+});

@@ -18,5 +18,10 @@ export default async function AppProfilePage({ searchParams }: { searchParams?: 
   const designValue = process.env.NODE_ENV === "production" ? undefined : first(params?.design);
   const design = designValue === "25" || designValue === "50" || designValue === "100" ? designValue : undefined;
   const edit = first(params?.edit);
-  return <AccountProfilePage {...(design ? { design } : {})} {...(edit ? { edit } : {})} />;
+  const fixture = design ? await import("../../../../shared/mock/demo-world/account") : null;
+  const suggestions = design === "50" ? fixture?.demoAccountSeekCandidates : undefined;
+  const eventSummary = fixture
+    ? design === "100" ? fixture.demoAccountEventSummary : { hosted: 0, active: 0, attending: 0 }
+    : undefined;
+  return <AccountProfilePage {...(design ? { design } : {})} {...(edit ? { edit } : {})} {...(suggestions ? { suggestions } : {})} {...(eventSummary ? { eventSummary } : {})} />;
 }

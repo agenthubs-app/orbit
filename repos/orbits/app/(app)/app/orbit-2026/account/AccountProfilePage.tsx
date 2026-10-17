@@ -16,6 +16,7 @@ import s from "./AccountProfilePage.module.css";
 
 type Envelope = { success: boolean; data?: ProfilePayload };
 type Draft = { organization: string; role: string; offering: string; seeking: string; bio: string; publicFields: ProfilePublicFieldsContract };
+type EventSummary = { hosted: number; active: number; attending: number };
 
 const defaultVisibility: ProfilePublicFieldsContract = { companyRole: true, offeringSeeking: true, intro: true };
 
@@ -60,7 +61,7 @@ function ProfilePreview({ profile, draft, t }: { profile: ManualProfileContract;
   </section>;
 }
 
-function ProfileContent({ initialPayload, design, active = "profile", edit }: { initialPayload?: ProfilePayload; design?: "25" | "50" | "100"; active?: AccountSection; edit?: string }) {
+function ProfileContent({ initialPayload, design, active = "profile", edit, suggestions = [], eventSummary }: { initialPayload?: ProfilePayload; design?: "25" | "50" | "100"; active?: AccountSection; edit?: string; suggestions?: readonly string[]; eventSummary?: EventSummary }) {
   const { language } = useOrbitLanguage();
   const t = (key: keyof typeof accountCopy) => pickCopy(accountCopy[key], language);
   const [payload, setPayload] = useState<ProfilePayload | null>(initialPayload ?? null);
@@ -70,9 +71,11 @@ function ProfileContent({ initialPayload, design, active = "profile", edit }: { 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [dismissed, setDismissed] = useState<readonly string[]>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [attendingCount, setAttendingCount] = useState<number | null | undefined>();
-  const [hostedCount, setHostedCount] = useState<number | null | undefined>();
+  const [attendingCount, setAttendingCount] = useState<number | null | undefined>(eventSummary?.attending);
+  const [hostedCount, setHostedCount] = useState<number | null | undefined>(eventSummary?.hosted);
+  const [activeCount, setActiveCount] = useState<number>(eventSummary?.active ?? 0);
   const openedFromRoute = useRef(false);
   const pendingSave = useRef<{ fingerprint: string; id: string } | null>(null);
 
@@ -92,6 +95,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit }: { 
 
   useEffect(() => { if (!initialPayload) void load(); }, [initialPayload, load]);
   useEffect(() => {
+    if (eventSummary) return;
     let alive = true;
     void eventsApi.mine("upcoming", 1).then(result => {
       if (alive && result.ok) setAttendingCount(result.data.upcomingCount);
@@ -99,10 +103,13 @@ function ProfileContent({ initialPayload, design, active = "profile", edit }: { 
     });
     void fetch("/api/events/center?summary=1").then(response => response.ok ? response.json() : null).then(body => {
       const value = body?.data?.eventCount;
-      if (alive) setHostedCount(typeof value === "number" && Number.isFinite(value) ? value : null);
+      if (alive) {
+        setHostedCount(typeof value === "number" && Number.isFinite(value) ? value : null);
+        setActiveCount(typeof body?.data?.activeCount === "number" ? body.data.activeCount : 0);
+      }
     }).catch(() => { if (alive) setHostedCount(null); });
     return () => { alive = false; };
-  }, []);
+  }, [eventSummary]);
 
   const profile = payload?.profile;
   useEffect(() => {
@@ -115,12 +122,11 @@ function ProfileContent({ initialPayload, design, active = "profile", edit }: { 
   const missingLabels: Record<CardKey, keyof typeof accountCopy> = { companyRole: "companyRole", offering: "whatOffer", seeking: "whatSeek", intro: "intro" };
   const introValid = !draft || profileBioWithinLimit(draft.bio);
 
-  async function save() {
-    if (!profile || !draft || !introValid || saving) return;
+  async function persistEdit(edit: ManualProfileUpdateInput): Promise<boolean> {
+    if (!profile || saving) return false;
     setSaving(true);
     setSaveError(false);
     try {
-      const edit = editOf(draft);
       const fingerprint = JSON.stringify({ updatedAt: profile.updatedAt, edit });
       if (pendingSave.current?.fingerprint !== fingerprint) pendingSave.current = { fingerprint, id: crypto.randomUUID() };
       const response = await fetch(profileUrl, {
@@ -130,11 +136,21 @@ function ProfileContent({ initialPayload, design, active = "profile", edit }: { 
       const envelope = await response.json() as Envelope;
       if (!response.ok || !envelope.success || !envelope.data?.profile) throw new Error("save failed");
       setPayload(envelope.data);
-      setDraft(null);
       pendingSave.current = null;
       setSaved(true);
-    } catch { setSaveError(true); }
+      return true;
+    } catch { setSaveError(true); return false; }
     finally { setSaving(false); }
+  }
+
+  async function save() {
+    if (!draft || !introValid) return;
+    if (await persistEdit(editOf(draft))) setDraft(null);
+  }
+
+  async function acceptSuggestion(value: string) {
+    if (!profile) return;
+    await persistEdit({ seeking: [...(profile.seeking ?? []), value] });
   }
 
   const preview = profile ? <ProfilePreview profile={profile} draft={draft} t={t} /> : null;
@@ -158,11 +174,20 @@ function ProfileContent({ initialPayload, design, active = "profile", edit }: { 
         <div className={s.chips}>{profile.offering?.length ? profile.offering.map(value => <span className={s.chip} key={value}>{value}</span>) : <span className={s.muted}>{t("missing")}</span>}</div>
         <strong>{t("whatSeek")}</strong>
         <div className={s.chips}>{profile.seeking?.length ? profile.seeking.map(value => <span className={s.chip} key={value}>{value}</span>) : <span className={s.muted}>{t("missing")}</span>}</div>
+        {!profile.seeking?.length && suggestions.some(value => !dismissed.includes(value)) ? <div className={s.suggestions}>
+          <span className={s.suggestionHeading}>{t("suggested")}</span>
+          {suggestions.filter(value => !dismissed.includes(value)).map(value => <div className={s.suggestion} key={value}>
+            <span>{value}</span>
+            <button type="button" aria-label={`${t("suggestAccept")}: ${value}`} disabled={saving} onClick={() => void acceptSuggestion(value)}>✓</button>
+            <button type="button" aria-label={`${t("suggestDismiss")}: ${value}`} onClick={() => setDismissed([...dismissed, value])}>×</button>
+          </div>)}
+          {saveError && !draft ? <span role="alert">{t("saveError")}</span> : null}
+        </div> : null}
       </section>
       <div className={s.actions}>
         <section><strong>{t("invite")}</strong><span>{t("inviteSub")}</span><button type="button" onClick={() => setInviteOpen(true)}>{t("inviteCreate")}</button></section>
-        {hostedCount !== null ? <a href="/app/events/center"><strong>{t("hosted")}</strong><span>{hostedCount === undefined || hostedCount === 0 ? t("hostedOpen") : `${hostedCount}`}</span><span aria-hidden="true">→</span></a> : null}
-        {attendingCount !== null && attendingCount !== 0 ? <a href="/app/events?tab=going"><strong>{t("attending")}</strong><span>{attendingCount === undefined ? t("attendingEmpty") : `${attendingCount}`}</span><span aria-hidden="true">→</span></a> : null}
+        {hostedCount !== null ? <a href="/app/events/center"><strong>{t("hosted")}</strong><span>{hostedCount === undefined || hostedCount === 0 ? t("hostedOpen") : `${t("eventCount").replace("{n}", String(hostedCount))}${activeCount ? ` · ${t("activeCount").replace("{n}", String(activeCount))}` : ""}`}</span><span aria-hidden="true">→</span></a> : null}
+        {attendingCount !== null && attendingCount !== 0 ? <a href="/app/events?tab=going"><strong>{t("attending")}</strong><span>{attendingCount === undefined ? t("attendingEmpty") : t("eventCount").replace("{n}", String(attendingCount))}</span><span aria-hidden="true">→</span></a> : null}
       </div>
       <div className={s.mobilePreview}>{preview}</div>
       <InviteCodeModal open={inviteOpen} onClose={() => setInviteOpen(false)} language={language} />
@@ -182,6 +207,6 @@ function ProfileContent({ initialPayload, design, active = "profile", edit }: { 
   </AccountLayout>;
 }
 
-export function AccountProfilePage(props: { initialPayload?: ProfilePayload; design?: "25" | "50" | "100"; active?: AccountSection; edit?: string }) {
+export function AccountProfilePage(props: { initialPayload?: ProfilePayload; design?: "25" | "50" | "100"; active?: AccountSection; edit?: string; suggestions?: readonly string[]; eventSummary?: EventSummary }) {
   return <ProfileContent {...props} />;
 }
