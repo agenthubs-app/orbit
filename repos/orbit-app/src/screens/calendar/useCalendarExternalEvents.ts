@@ -20,7 +20,7 @@ export function useCalendarExternalEvents(dateKey: string, mode: CalendarMode, t
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const ranges = useMemo(() => calendarExternalRanges(dateKey, mode, timeZone), [dateKey, mode, timeZone]);
-  const ready = enabled && auth.ready && auth.signedIn && Boolean(auth.actorId);
+  const ready = enabled && server.ready && auth.ready && auth.signedIn && Boolean(auth.actorId);
   const scope = JSON.stringify([auth.actorId, auth.cookieHeader, auth.notificationSessionRevision, server.baseUrl, dateKey, mode, timeZone]);
   const first = useApiResource<unknown>(pathFor(ranges[0]), () => false, {
     cachePolicy: "network-only", enabled: ready && ranges.length > 0, scopeKey: `${scope}:0`,

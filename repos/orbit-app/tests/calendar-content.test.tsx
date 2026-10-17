@@ -90,6 +90,7 @@ test("external calendar reads are network-only and scoped to the active account 
   assert.match(source, /cachePolicy: "network-only"/u);
   assert.match(source, /auth\.notificationSessionRevision/u);
   assert.match(source, /server\.baseUrl/u);
+  assert.match(source, /server\.ready/u);
   assert.doesNotMatch(source, /writeSnapshot|useSyncedCollection/u);
 });
 
