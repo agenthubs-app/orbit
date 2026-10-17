@@ -67,8 +67,9 @@ export function overlayTodoPage(
     const task = after.get(item.taskId);
     if (!task || !isOpenFollowUpTask(task)) return [];
     const due = dueAt(task, page.timeZone);
-    return [{ ...item, titlePreview: task.title, deferralCount: task.deferralCount ?? item.deferralCount ?? 0,
-      overdue: overdue(task, page), ...(due ? { dueAt: due } : { dueAt: undefined }) }];
+    const { dueAt: _previousDueAt, ...withoutDueAt } = item;
+    return [{ ...withoutDueAt, titlePreview: task.title, deferralCount: task.deferralCount ?? item.deferralCount ?? 0,
+      overdue: overdue(task, page), ...(due ? { dueAt: due } : {}) }];
   }).sort((left, right) => Number(right.overdue) - Number(left.overdue) ||
     (left.dueAt ?? "9999-12-31T23:59:59.999Z").localeCompare(right.dueAt ?? "9999-12-31T23:59:59.999Z") ||
     left.key.localeCompare(right.key));

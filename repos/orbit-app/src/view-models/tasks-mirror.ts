@@ -32,7 +32,7 @@ export function overlayQueuedTasks(
       continue;
     }
     if (!prior || prior.ownerUserId !== actorId ||
-        !isOfflineTaskCategory(prior.category) && !isOfflineRelationshipFollowupMutation(prior, mutation.operation, mutation.patch as Record<string, unknown>)) return null;
+        !isOfflineTaskCategory(prior.category) && !isOfflineRelationshipFollowupMutation(prior as unknown as Record<string, unknown>, mutation.operation, mutation.patch as Record<string, unknown>)) return null;
     if (mutation.operation === "delete") {
       if (mutation.state !== "conflict") tasks.delete(mutation.id);
       else tasks.set(mutation.id, { ...prior, localMutationState: "conflict" });
