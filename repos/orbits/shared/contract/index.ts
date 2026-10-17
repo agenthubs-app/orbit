@@ -548,3 +548,4 @@ export type { ContactDeleteResult, ContactRestoreResult } from "./contact-delete
 export type { ContactEditableField, ContactFieldsUpdateInput, ContactFieldsUpdateResult } from "./contact-fields";
 
 export type { TodoDecisionAction, TodoDecisionItem, TodoFollowupItem, TodoItemBase, TodoNextMoveItem, TodoPageContract, TodoSection, TodoSectionKey, TodoSourceKey } from "./todo-page";
+export type { CalendarExternalEventContract, CalendarExternalEventsContract } from "./calendar-external-events";

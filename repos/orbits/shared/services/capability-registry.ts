@@ -22,6 +22,7 @@ export const CAPABILITY_IDS = [
   "agent-actions",
   "notifications",
   "todo-page",
+  "calendar-external-events",
 ] as const;
 
 export type CapabilityId = (typeof CAPABILITY_IDS)[number];
@@ -109,6 +110,10 @@ interface CapabilityDefinition {
 // "live-ready" only when every advertised route and provider boundary has
 // executable replacement evidence and no known blocker.
 const liveReadinessByCapability: Record<CapabilityId, CapabilityReadiness> = {
+  "calendar-external-events": {
+    evidence: ["tests/services/calendar-external.test.ts", "tests/api/calendar-external-events.test.ts", "tests/contracts/calendar-external-events.test.ts"],
+    limitations: ["Google authorization requires account configuration; UI integration and real-provider verification are not yet complete. External events are never copied to offline storage."],
+  },
   "todo-page": {
     evidence: ["tests/api/todo-page.test.ts", "tests/contracts/todo-page.test.ts", "tests/services/todo-followups-postgres.test.ts", "tests/services/todo-plan-sources-postgres.test.ts", "tests/services/todo-contact-sources-postgres.test.ts"],
     limitations: ["Absent daily completion questions are not initialized by this read-only endpoint; oversized related-source graphs are explicitly unavailable. Device offline integration is not yet complete."],
@@ -537,6 +542,12 @@ const definitions: readonly CapabilityDefinition[] = [
     sensitiveActionsRequireConfirmation: false,
     apiRoutes: [{ method: "GET", path: "/api/todo/page", purpose: "Return bounded To-do previews and source availability." }],
     debugDescription: "Shows the read-only To-do aggregation capability and its current source readiness.",
+  },
+  {
+    id: "calendar-external-events", label: "External calendar events", description: "Read-only connected Google calendar event previews.",
+    sensitiveActionsRequireConfirmation: false,
+    apiRoutes: [{ method: "GET", path: "/api/calendar/external-events", purpose: "Read a bounded interval of external calendar previews without storing events." }],
+    debugDescription: "Shows external-calendar connection availability and the read-only provider boundary.",
   },
 ] as const;
 

@@ -2323,6 +2323,66 @@
       "kind": "alias",
       "type": "IngestConfirmationResponseContract"
     },
+    "calendar-external-events.ts::CalendarExternalEventContract": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "titlePreview": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "endsAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "allDay": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "locationPreview": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "calendar-external-events.ts::CalendarExternalEventsContract": {
+      "kind": "object",
+      "members": {
+        "connection": {
+          "optional": false,
+          "kind": "text",
+          "type": "'unavailable' | 'connected' | 'not_connected' | 'needs_reconnect'"
+        },
+        "provider": {
+          "optional": false,
+          "kind": "text",
+          "type": "'google_calendar'"
+        },
+        "events": {
+          "optional": false,
+          "kind": "text",
+          "type": "CalendarExternalEventContract[]"
+        },
+        "asOf": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
     "contact-card-page.ts::ContactCardSourceChip": {
       "kind": "enum",
       "values": [
@@ -12474,6 +12534,8 @@
         "BusinessCardReviewIssueCode",
         "BusinessCardReviewIssueContract",
         "BusinessCardStructuredExtractionContract",
+        "CalendarExternalEventContract",
+        "CalendarExternalEventsContract",
         "CanonicalResult",
         "ContactCardDTO",
         "ContactCardMetKind",
@@ -13433,7 +13495,7 @@
         "outcome": {
           "optional": false,
           "kind": "text",
-          "type": "'merged' | 'connected' | 'already_connected'"
+          "type": "'connected' | 'merged' | 'already_connected'"
         },
         "contactId": {
           "optional": false,

@@ -11,7 +11,7 @@ import { DEFAULT_HOME_LAYOUT, homeLayoutSchema } from "../../shared/api-schema/h
 // world in mock mode and with a structured NOT_IMPLEMENTED in live mode — never
 // with a fixture.
 type Handler = (request: Request, context?: { params?: Promise<Record<string, string>> }) => Promise<Response>;
-type Case = { file: string; method: string; params?: Record<string, string>; body?: unknown; status?: number };
+type Case = { file: string; method: string; params?: Record<string, string>; body?: unknown; status?: number; query?: string };
 
 const key = { idempotencyKey: "k-1" };
 const CASES: Case[] = [
@@ -49,6 +49,7 @@ const CASES: Case[] = [
   // R30：全局搜索（mock 答演示世界；live 已有实现，见 tests/search/global-search.test.ts）。
   { file: "search/global", method: "GET" },
   { file: "todo/page", method: "GET" },
+  { file: "calendar/external-events", method: "GET", query: "?from=2026-10-07T00:00:00Z&to=2026-10-30T00:00:00Z" },
   // R22：agent/plans/v2/summary 已由计划 v2 实现（tests/api/plan-v2-routes.test.ts），不再是「尚未实现」。
 ];
 
@@ -56,7 +57,7 @@ async function call(item: Case): Promise<Response> {
   const routeModule = (await import(`../../app/api/${item.file}/route.ts`)) as Record<string, Handler>;
   const handler = routeModule[item.method];
   assert.ok(handler, `${item.method} /api/${item.file}`);
-  const request = new Request(`http://localhost/api/${item.file}`, {
+  const request = new Request(`http://localhost/api/${item.file}${item.query ?? ""}`, {
     method: item.method,
     ...(item.body ? { body: JSON.stringify(item.body), headers: { "content-type": "application/json" } } : {}),
   });
@@ -92,7 +93,7 @@ test("live (and so production): every route answers 503 NOT_IMPLEMENTED with no 
     // R26：活动评估已有 live 实现（features/events/assessment，测试见 tests/api/event-assessment-routes.test.ts）。
     // R27：興味なし（契约 9）已有 live 实现（features/events/journey，测试见 tests/events/r27-journey-routes.test.ts）。
     // R20a：todo/page is now actor-authenticated live (tested in todo-page.test.ts).
-    for (const item of CASES.filter((entry) => !entry.file.startsWith("invite-codes") && !entry.file.startsWith("contacts/completion-question") && !entry.file.startsWith("events/assessments") && !entry.file.startsWith("recommendations/events") && !entry.file.startsWith("search/global") && entry.file !== "todo/page")) {
+    for (const item of CASES.filter((entry) => !entry.file.startsWith("invite-codes") && !entry.file.startsWith("contacts/completion-question") && !entry.file.startsWith("events/assessments") && !entry.file.startsWith("recommendations/events") && !entry.file.startsWith("search/global") && entry.file !== "todo/page" && entry.file !== "calendar/external-events")) {
       const response = await call(item);
       const text = await response.text();
       const body = JSON.parse(text);

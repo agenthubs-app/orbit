@@ -37,7 +37,8 @@ export const todoFollowupItemObject = base.extend({
 function sourceMap<S extends z.ZodType>(value: S) {
   return z.record(z.string(), value).transform((values): Partial<Record<TodoSourceKey, z.output<S>>> => {
     const result: Partial<Record<TodoSourceKey, z.output<S>>> = {};
-    for (const key of knownValues(TODO_SOURCE_KEYS).parse(Object.keys(values))) result[key] = values[key];
+    // These keys come from the same parsed record, not external input.
+    for (const key of knownValues(TODO_SOURCE_KEYS).parse(Object.keys(values))) result[key] = values[key]!;
     return result;
   });
 }

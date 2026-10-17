@@ -39,6 +39,8 @@ import type { eventSearchResponseObject } from "../../shared/api-schema/event-se
 import type { globalSearchResponseObject } from "../../shared/api-schema/global-search";
 import type { TodoDecisionItem, TodoFollowupItem, TodoNextMoveItem, TodoPageContract } from "../../shared/contract/todo-page";
 import type { todoDecisionItemObject, todoFollowupItemObject, todoNextMoveItemObject, todoPageObject } from "../../shared/api-schema/todo-page";
+import type { CalendarExternalEventContract, CalendarExternalEventsContract } from "../../shared/contract/calendar-external-events";
+import type { calendarExternalEventObject, calendarExternalEventsResponseObject } from "../../shared/api-schema/calendar-external-events";
 import type { eventCodeResolveResponseObject } from "../../shared/api-schema/event-code";
 import type { eventPrepChecklistPatchObject, eventPrepResponseObject } from "../../shared/api-schema/event-prep";
 import type { organizerFollowResultObject } from "../../shared/api-schema/organizer-follow";
@@ -261,3 +263,5 @@ expectParity<Parity<TodoDecisionItem, typeof todoDecisionItemObject>>();
 expectParity<Parity<TodoFollowupItem, typeof todoFollowupItemObject>>();
 expectParity<Parity<TodoNextMoveItem, typeof todoNextMoveItemObject>>();
 expectParity<Parity<TodoPageContract, typeof todoPageObject>>();
+expectParity<Parity<CalendarExternalEventContract, typeof calendarExternalEventObject>>();
+expectParity<Parity<CalendarExternalEventsContract, typeof calendarExternalEventsResponseObject>>();

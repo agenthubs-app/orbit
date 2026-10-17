@@ -16,12 +16,14 @@ import { planV2DetailSchema, planV2SummaryResponseSchema } from "../src/api/sche
 // The demo-world fixtures live on the server side; a test may read ../orbits (it
 // never ships in the App bundle).
 import * as fixtures from "../../orbits/shared/mock/demo-world/fixtures";
-import { demoTodoPage } from "../../orbits/shared/mock/demo-world/todo";
+import { demoCalendarExternalEvents, demoTodoPage } from "../../orbits/shared/mock/demo-world/todo";
 import { todoPageSchema } from "../src/api/schema/todo-page";
+import { calendarExternalEventsResponseSchema } from "../src/api/schema/calendar-external-events";
 
 // 改版 R08 (SC-R08-03 / 06): after npm run sync:contract the App's own copies of
 // the schemas parse every redesign fixture, and the shared 「尚未実装」 helper works.
 test("the App's synced schemas parse every redesign fixture", () => {
+  assert.equal(calendarExternalEventsResponseSchema.parse(demoCalendarExternalEvents).events.length, 2);
   assert.deepEqual(todoPageSchema.parse(demoTodoPage).counts, { decisions: 4, nextMoves: 3, followups: 3, overdue: 1 });
   homeLayoutSchema.parse(fixtures.demoHomeLayout);
   contactCompletionQuestionSchema.parse(fixtures.demoCompletionQuestion);

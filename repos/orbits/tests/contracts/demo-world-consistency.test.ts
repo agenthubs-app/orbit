@@ -15,13 +15,17 @@ import { PLAN_EVENT_SEGMENT_KEY } from "../../shared/compute/plan-score";
 import * as world from "../../shared/mock/demo-world";
 import { DEMO_EVENTS, DEMO_NOTES, DEMO_PEOPLE, DEMO_PLAN, DEMO_TODOS } from "../../shared/mock/demo-world";
 import * as fixtures from "../../shared/mock/demo-world/fixtures";
-import { demoTodoPage } from "../../shared/mock/demo-world/todo";
+import { demoCalendarExternalEvents, demoTodoPage } from "../../shared/mock/demo-world/todo";
 import { todoPageSchema } from "../../shared/api-schema/todo-page";
+import { calendarExternalEventsResponseSchema } from "../../shared/api-schema/calendar-external-events";
 
 // R08 (SC-R08-01 / 04): one demo world. Every fixture validates against its
 // contract schema, every person a fixture names exists with one name and one
 // company, and every sample record carries the sample mark.
 test("every fixture parses with its contract schema", () => {
+  for (const item of calendarExternalEventsResponseSchema.parse(demoCalendarExternalEvents).events) {
+    assert.equal(DEMO_EVENTS.find(event => `google:${event.id}` === item.id)?.title, item.titlePreview);
+  }
   const todo = todoPageSchema.parse(demoTodoPage);
   for (const item of [...todo.decisions.items, ...todo.nextMoves.items, ...todo.followups.items]) {
     assert.equal(item.sample, true);

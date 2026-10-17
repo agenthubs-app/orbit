@@ -1,6 +1,6 @@
 # R20a — 実装記録（進行中）
 
-2026-10-18、run-01。承認済み PLANNER rev2 に沿って実行中。本記録は SC-02 のサーバー修正、SC-03 の派生値、SC-12 の OAuth 前提、SC-11a の骨格と SC-04 の live 読取基盤までで、Sprint 完了を示さない。
+2026-10-18、run-01。承認済み PLANNER rev2 に沿って実行中。本記録は SC-02 のサーバー修正、SC-03 の派生値、SC-12 の OAuth / 外部日历 API、SC-11a の骨格と SC-04 の live 読取基盤までで、Sprint 完了を示さない。
 
 - 開始 HEAD：`1524d3667`。主会話のナビゲーション修正 `56da437ef` は別作業。
 - PLANNER SHA256：`091e9e2ca8249a8e39aa7e87e0c7be3b1175b9a86c664c7939cb9eae5b6bc159`。
@@ -12,7 +12,7 @@
 | SC | 現在の結果 |
 | --- | --- |
 | SC-02 フォロー | サーバー修正と回帰テスト済み。実 PostgreSQL で App 向け API は 503 → 200、Web loader は unavailable → success。画面操作とスクリーンショットは後続検証に残す。 |
-| SC-12 OAuth 前提 | `returnTo=settings` を含む二つの固定遷移先を実装・検証済み。外部日程 API / UI / Google 実接続は本段階では未実装。 |
+| SC-12 OAuth / 外部日历 API | 二つの固定 OAuth 戻り先と、只読 Google events API / schema / mock / App 契約同期を実装。替身 provider の cache / 失効 / refresh / budget / 認証を検証。カレンダー UI と Google 実接続は未完了。 |
 | SC-11a 日程提案骨格 | §7.6 の二つの path / export / 同形 props と、三段の空構造を実装。両端の三語 rendering tests、Web 閉じる操作を検証。SC-11 の業務実装と像素は未完了。 |
 | SC-03 延期回数 | 別 worker の `b5bfa026a` で task の各 read / sync / App mirror に派生値を追加。検証の詳細はその worker の証拠を参照。 |
 | SC-01 像素準備 | 主会話の `5bdad3d89` で App 48 / Web 24 view、attribution schema と preflight 記録を追加。像素検証自体は未実施。 |
@@ -106,6 +106,18 @@ cursor は workspace / actor / 選択日 / timezone / section / source に HMAC 
 `sc04-typecheck.log` の `npm run typecheck` は exit 0（orbits、既に引き継ぎ済み calendar 新規ファイルも含む）。本 live 段階では契約を変更していない。別 worker から引き継いだ未コミット `calendar-external-events` 契約が同じ作業木にあるため、新規の snapshot check は「追加型の snapshot 未更新」で exit 1（`sc04-pending-calendar-snapshot.log`）。これは pass としない。直後の独立 SC-12 API 登録 / index / snapshot / App sync で整合を回復する。全量、pixel、simulator、build は未実行。
 
 SC-11 画板交接：主会話の `607f4eaa1` で b7 App #41 / Web move pop を直接の単一時刻変更から 3–5 候補の再提案へ修正。合意まで元 appointment は変えない。static RED→GREEN、#41 / #44 preflight 0 internal inconsistencies（`sc11-board-preflight.{json,md}`）。実画面の SC-11 業務 / pixel は後続。
+
+### SC-12 外部日历 API（独立里程碑）
+
+別 worker の八つの新規ファイルを読み取り・引き継ぎ、契約 index / 二つの capability 登録 / demo-world mock / schema parity / App 同期を追加した。`GET /api/calendar/external-events?from&to` は正の ISO 区間・最大 42 日・未知 / 重複 query 拒否。live は認証済み actor の既存 integrations service だけを呼ぶ。未連携は not_connected、認可失効は needs_reconnect、source 障害は unavailable。mock は既存 DEMO_EVENTS の同じ二つの予定を期間で絞る。production では mock factory を使わない。
+
+イベントは DB・App offline 副本へ書かず、actor + 区間で process-local cache に最大 5 分、最大 256 entry。毎回、cache より先に認可を読む。既存 token refresh / vault の挙動は変えない。引き継ぎ時の reader は expired access token を直ちに再接続扱いにしていたため、RED を追加し、refresh 可能な token は既存 `listCalendarEvents` に通すよう修正した。refresh 後に 401 / 403 または既知の認可エラーなら needs_reconnect。integrationTokens に加え、認可が読む integrationHealth も budget gate に通す。handler は共通の response schema 検証・no-store 境界を使う。
+
+`sc12-integration-red.log` は未登録 capability と refresh 経路の RED。`sc12-integration-green.log` は calendar / mock route / demo-world / parity / registry / To-do 回帰 / 既存 integration security の **58/58 pass**。`sc12-app-contracts.log` は **12/12 pass**。`sc12-contract-sync.log`、`sc12-snapshot.log`、`sc12-snapshot-check.log` で **701 types** の同期・snapshot 一致を確認し、SC-04 live 時点の pending-calendar snapshot 失敗はここで解消した。Web `sc12-typecheck.log` は exit 0。
+
+App 全体の最初の typecheck は exit 2（`sc12-app-typecheck.log`）。SC-04 todo schema の sourceMap が同一 record の Object.keys から選んだ key を読む箇所で、App の noUncheckedIndexedAccess が `undefined` の可能性を指摘した。source / App 副本にその own-key 保証を表す型上の assertion を入れ、実行時の読取挙動は変えていない。`sc12-todo-schema-typefix.log` の 3/3 と、再実行 `sc12-app-typecheck-green.log` の **exit 0**、App 同期 12/12 を確認した。この失敗と修正は隠さず、本 SC-12 コミットの二つの todo schema path として含める。
+
+Google 実接続、外部メール、外部予定の書込は未使用。token refresh のテストも替身 service を使う。実 UI / offline 接続状態表示 / screenshots は後続で、SC-12 全体の完了とはしない。SC-05 App offline データ slice は主会話が担当し、本コミットには含めない。
 
 ## 请求
 

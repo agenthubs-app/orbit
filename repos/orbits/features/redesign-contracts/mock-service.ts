@@ -16,7 +16,8 @@ import { formatInviteCode, INVITE_CODE_ALPHABET, INVITE_DEFAULT_SHARED_KEYS, nor
 import { COMPLETION_OPTION_LABELS, resolveCompletionAnswer, type CompletionOption } from "../../shared/compute/completion-question-rules";
 import { contactDensity } from "../../shared/compute/contact-density";
 import { DEMO_EVENTS } from "../../shared/mock/demo-world";
-import { demoTodoPage } from "../../shared/mock/demo-world/todo";
+import { demoCalendarExternalEvents, demoTodoPage } from "../../shared/mock/demo-world/todo";
+import type { CalendarExternalEventsContract } from "../../shared/contract/calendar-external-events";
 import type { TodoPageContract } from "../../shared/contract/todo-page";
 import {
   demoAccountExport, demoAppVersion, demoCompletionOrganizationQuestion, demoCompletionQuestion, demoDeletionRequest, demoEventAssessment, demoEventAssessmentLoginRequired, demoEventAssessmentNeedsInput, demoEventAssessmentNotEventPage, demoEventAssessmentRange, demoHomeLayout,
@@ -175,6 +176,11 @@ function redeemOnce(code: string, input: InviteCodeRedeemInput): InviteCodeRedee
 }
 
 export const redesignMock = {
+  calendarExternalEvents(from: string, to: string): CalendarExternalEventsContract {
+    const page = structuredClone(demoCalendarExternalEvents);
+    page.events = page.events.filter(event => Date.parse(event.startsAt) < Date.parse(to) && Date.parse(event.endsAt ?? event.startsAt) >= Date.parse(from));
+    return page;
+  },
   todoPage(date?: string, timeZone?: string): TodoPageContract {
     const page: TodoPageContract = structuredClone(demoTodoPage);
     page.date = date ?? page.date;

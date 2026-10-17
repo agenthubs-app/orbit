@@ -1,5 +1,6 @@
 import type { TodoPageContract } from "../../contract/todo-page";
-import { DEMO_PEOPLE, DEMO_PLAN, DEMO_TODAY, DEMO_TIME_ZONE, DEMO_TODOS } from "./index";
+import type { CalendarExternalEventsContract } from "../../contract/calendar-external-events";
+import { DEMO_EVENTS, DEMO_PEOPLE, DEMO_PLAN, DEMO_TODAY, DEMO_TIME_ZONE, DEMO_TODOS } from "./index";
 
 const asOf = `${DEMO_TODAY}T00:00:00.000Z`;
 const person = (id: string) => DEMO_PEOPLE.find(item => item.id === id)!;
@@ -31,3 +32,9 @@ export const demoTodoPage = {
   ] },
   sources: { task_suggestion: "ok", agent_action: "ok", plan_pending: "ok", entity_draft: "ok", contact_draft: "ok", completion_question: "ok", agent_signal: "ok", plan_today_chance: "ok", relationship_task: "ok", task: "ok" },
 } as const satisfies TodoPageContract;
+
+export const demoCalendarExternalEvents = {
+  connection: "connected", provider: "google_calendar", asOf,
+  events: DEMO_EVENTS.slice(0, 2).map(event => ({ id: `google:${event.id}`, titlePreview: event.title, startsAt: event.startsAt,
+    endsAt: new Date(Date.parse(event.startsAt) + 3_600_000).toISOString(), allDay: false, locationPreview: event.venue })),
+} satisfies CalendarExternalEventsContract;

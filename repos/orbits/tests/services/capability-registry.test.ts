@@ -228,6 +228,7 @@ test("capability registry defaults every registered capability to mock mode with
       "agent-actions",
       "notifications",
       "todo-page",
+      "calendar-external-events",
     ],
   );
 
@@ -301,7 +302,7 @@ test("capability service lookup returns mock services by default and live invent
 test("capability summaries never treat a registered constructor as complete live readiness", () => {
   const liveSummaries = listCapabilitySummaries({ mode: "live" });
 
-  assert.equal(liveSummaries.length, 12);
+  assert.equal(liveSummaries.length, 13);
   assert.deepEqual(
     liveSummaries.map((summary) => [summary.id, summary.serviceStatus]),
     [
@@ -317,6 +318,7 @@ test("capability summaries never treat a registered constructor as complete live
       ["agent-actions", "live-limited"],
       ["notifications", "live-limited"],
       ["todo-page", "live-limited"],
+      ["calendar-external-events", "live-limited"],
     ],
   );
 
