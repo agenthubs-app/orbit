@@ -1,0 +1,143 @@
+{
+ "_note": "R31b 重比清单（PLANNER §4）：交接条目 → 画面 id → suite；baseline = 开工时 run-01/baseline 的结果（pass / fail + 未归因带数）。组件修好后按本表重跑，通过的在 DEFERRED-A §1 与交接表改 done（写提交号），页面自身原因的写进 REPORT「交还」。",
+ "baseRef": "e081084b0",
+ "items": [
+  {
+   "handoff": "R24-05b",
+   "why": "Modal 380 / 图标块 / 无 ✕；Drawer ✕ 白圆底 + 副标题",
+   "suite": "views/web-plan-A.json",
+   "views": [
+    {
+     "key": "W-R24-03-1440-dark",
+     "baseline": "fail(11u)"
+    },
+    {
+     "key": "W-R24-03-1440-light",
+     "baseline": "fail(12u)"
+    },
+    {
+     "key": "W-R24-09b-1440-dark",
+     "baseline": "fail(9u)"
+    },
+    {
+     "key": "W-R24-09b-1440-light",
+     "baseline": "fail(9u)"
+    },
+    {
+     "key": "W-R24-11-1440-dark",
+     "baseline": "fail(5u)"
+    },
+    {
+     "key": "W-R24-11-1440-light",
+     "baseline": "fail(5u)"
+    },
+    {
+     "key": "W-R24-12-1440-dark",
+     "baseline": "fail(9u)"
+    },
+    {
+     "key": "W-R24-12-1440-light",
+     "baseline": "fail(10u)"
+    }
+   ]
+  },
+  {
+   "handoff": "R24-05b",
+   "why": "弹窗约 3px 位移（Modal 定位）",
+   "suite": "views/web-plan-B.json",
+   "views": [
+    {
+     "key": "W-R23-06-1440-dark",
+     "baseline": "fail(2u)"
+    },
+    {
+     "key": "W-R23-06-1440-light",
+     "baseline": "fail(2u)"
+    }
+   ]
+  },
+  {
+   "handoff": "R17-17",
+   "why": "Drawer 内边距 22；b6 #20 改 520（RD-27）",
+   "suite": "views/web-R17.json",
+   "views": [
+    {
+     "key": "W-R17-P26-1440-dark",
+     "baseline": "fail(19u)"
+    },
+    {
+     "key": "W-R17-P26-1440-light",
+     "baseline": "fail(25u)"
+    }
+   ]
+  },
+  {
+   "handoff": "W-R26-31",
+   "why": "Modal 380 + ✕",
+   "suite": "views/web-R26.json",
+   "views": [
+    {
+     "key": "W-R26-31-1440-dark",
+     "baseline": "fail(7u)"
+    },
+    {
+     "key": "W-R26-31-1440-light",
+     "baseline": "fail(10u)"
+    }
+   ]
+  },
+  {
+   "handoff": "W-R27-13",
+   "why": "FilterOption 上下 7、Toggle 44×26",
+   "suite": "views/web-R27.json",
+   "views": [
+    {
+     "key": "W-R27-13-1440-dark",
+     "baseline": "fail(4u)"
+    },
+    {
+     "key": "W-R27-13-1440-light",
+     "baseline": "fail(4u)"
+    }
+   ]
+  },
+  {
+   "handoff": "R16-01",
+   "why": "Chip 杏色字 → [contrast]",
+   "suite": "views/web-import-R16.json",
+   "views": [
+    {
+     "key": "W-R16-08-1440-dark",
+     "baseline": "pass"
+    },
+    {
+     "key": "W-R16-08-1440-light",
+     "baseline": "fail(1u)"
+    }
+   ]
+  },
+  {
+   "handoff": "R15（REWORK-REPORT §5）",
+   "why": "Avatar lg 19；R15 无标「待组件库」的 Web 画面 id，接收方 12 与发出方弹窗 14m 作重比，其余已通过画面归入「不退步」",
+   "suite": "views/web-invite-R15.json",
+   "views": [
+    {
+     "key": "W-R15-12-390-dark",
+     "baseline": "fail(2u)"
+    },
+    {
+     "key": "W-R15-12-390-light",
+     "baseline": "fail(2u)"
+    },
+    {
+     "key": "W-R15-14m-1440-dark",
+     "baseline": "pass"
+    },
+    {
+     "key": "W-R15-14m-1440-light",
+     "baseline": "pass"
+    }
+   ]
+  }
+ ]
+}
