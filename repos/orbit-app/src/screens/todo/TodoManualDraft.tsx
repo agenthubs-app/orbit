@@ -10,6 +10,11 @@ export function todoManualMailto(value: string): string | null {
   return body ? `mailto:?body=${encodeURIComponent(body)}` : null;
 }
 
+/** A previous actor's in-memory text must disappear on the first new-scope render. */
+export function todoManualDraftForScope<T extends { scopeKey: string }>(draft: T | null, scopeKey: string): T | null {
+  return draft?.scopeKey === scopeKey ? draft : null;
+}
+
 export function TodoManualDraft({ title, value, onChange, onClose, onCopy, onMail }: {
   title: string; value: string; onChange: (value: string) => void; onClose: () => void;
   onCopy: () => void; onMail: () => void;

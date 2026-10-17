@@ -26,7 +26,7 @@ import { readTaskListItems } from "../../view-models/task-list-scope";
 import { PersonalScheduleDateTimePicker } from "../schedule/PersonalScheduleDateTimePicker";
 import { TasksScreen } from "../tasks/TasksScreen";
 import { TodoSections } from "./TodoSections";
-import { TodoManualDraft, todoManualMailto } from "./TodoManualDraft";
+import { TodoManualDraft, todoManualDraftForScope, todoManualMailto } from "./TodoManualDraft";
 import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoNativeSnoozeReceipt, todoNativeSnoozeRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "./todo-actions";
 import { appendTodoSourcePage, todoAggregateHidden } from "./todo-page-model";
 import { useTodoPage } from "./useTodoPage";
@@ -78,7 +78,8 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [deferItem, setDeferItem] = useState<TodoFollowupItem | null>(null);
   const [deferConfirmation, setDeferConfirmation] = useState<{ item: TodoFollowupItem; date: string } | null>(null);
-  const [manualDraft, setManualDraft] = useState<{ item: TodoNextMoveItem; body: string } | null>(null);
+  const [manualDraft, setManualDraft] = useState<{ scopeKey: string; item: TodoNextMoveItem; body: string } | null>(null);
+  const visibleManualDraft = todoManualDraftForScope(manualDraft, scopeKey);
   const scope = useMemo(() => ({ active: true, controller: new AbortController(), keys: new Map<string, string>() }), [scopeKey]);
   const currentScope = useRef(scope);
   currentScope.current = scope;
@@ -143,7 +144,7 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
 
   function open(item: TodoDecisionItem | TodoNextMoveItem) {
     if (!("actions" in item)) {
-      setManualDraft({ item, body: "" });
+      setManualDraft({ scopeKey, item, body: "" });
       return;
     }
     const href = "actions" in item ? todoDecisionHref(item) : null;
@@ -289,11 +290,14 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
       canDefer={item => !offline || deferableTaskIds.has(item.taskId)}
       onOpen={open} onOpenFollowup={item => { const href = todoFollowupHref(item); if (href) router.push(href as Href); }}
       onComplete={item => { void complete(item); }} onDefer={openDefer} onDecide={(item, action) => { void decide(item, action); }} /> : null}
-    {manualDraft ? <TodoManualDraft title={manualDraft.item.titlePreview} value={manualDraft.body}
-      onChange={body => setManualDraft(current => current ? { ...current, body } : null)}
-      onClose={() => setManualDraft(null)}
-      onCopy={() => { void Clipboard.setStringAsync(manualDraft.body.trim()).then(() => toast.success(locale.t("todo.manualCopied"))).catch(() => toast.error(locale.t("todo.manualFailed"))); }}
-      onMail={() => { const href = todoManualMailto(manualDraft.body); if (href) void Linking.openURL(href).catch(() => toast.error(locale.t("todo.manualFailed"))); }} /> : null}
+    {visibleManualDraft ? <TodoManualDraft title={visibleManualDraft.item.titlePreview} value={visibleManualDraft.body}
+      onChange={body => { if (isCurrent()) setManualDraft(current => {
+        const scoped = todoManualDraftForScope(current, scopeKey);
+        return scoped ? { ...scoped, body } : null;
+      }); }}
+      onClose={() => { if (isCurrent()) setManualDraft(null); }}
+      onCopy={() => { if (!isCurrent()) return; void Clipboard.setStringAsync(visibleManualDraft.body.trim()).then(() => { if (isCurrent()) toast.success(locale.t("todo.manualCopied")); }).catch(() => { if (isCurrent()) toast.error(locale.t("todo.manualFailed")); }); }}
+      onMail={() => { if (!isCurrent()) return; const href = todoManualMailto(visibleManualDraft.body); if (href) void Linking.openURL(href).catch(() => { if (isCurrent()) toast.error(locale.t("todo.manualFailed")); }); }} /> : null}
     {onShowTasks ? <View style={slotStyles.allTasks}><Button label={locale.t("todo.allTasks")} onPress={onShowTasks} variant="secondary" /></View> : null}
     {!todo.page && todo.state.kind === "loading" ? <LoadingState /> : null}
     {!todo.page && todo.state.kind !== "loading" ? <ErrorState title={locale.t("tasks.unavailable")} message={locale.t("todo.unavailable")} /> : null}
