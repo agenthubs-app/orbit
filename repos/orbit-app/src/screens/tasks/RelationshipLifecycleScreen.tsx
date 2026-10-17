@@ -28,7 +28,7 @@ export function RelationshipLifecycleScreen() {
   const ready = auth.ready && auth.signedIn && server.ready && !!auth.actorId && !!id;
   return <LifecycleEditor key={scopeKey} scopeKey={scopeKey} ready={ready} actorId={auth.actorId ?? ""} connectionId={id ?? ""} targetTaskId={taskId} targetContactId={contactId} />;
 }
-function LifecycleEditor({ scopeKey, ready, actorId, connectionId, targetTaskId, targetContactId }: { scopeKey: string; ready: boolean; actorId: string; connectionId: string; targetTaskId?: string; targetContactId?: string }) {
+function LifecycleEditor({ scopeKey, ready, actorId, connectionId, targetTaskId, targetContactId }: { scopeKey: string; ready: boolean; actorId: string; connectionId: string; targetTaskId: string | undefined; targetContactId: string | undefined }) {
   const client = useOrbitApiClient({ scopeKey });
   const { timeZone, canSave } = useOrbitTimeZone();
   const { language } = useOrbitLocale();

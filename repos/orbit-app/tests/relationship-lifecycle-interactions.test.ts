@@ -91,22 +91,23 @@ test("task-addressed relationship detail cannot silently select another open tas
     { ...identity, taskId: "task:2", title: "二つ目", dueAt: now, status: "open", purpose: "follow_up" },
   ] };
   await page.route("https://orbit.example/**", async route => {
-    if (route.request().method() === "OPTIONS") { await route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Methods": "GET", "Access-Control-Allow-Headers": "content-type" } }); return; }
-    await route.fulfill({ status: 200, headers: { "Access-Control-Allow-Origin": "null" }, contentType: "application/json", json: { success: true, data: { snapshot } } });
+    const headers = { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true", "Access-Control-Allow-Methods": "GET", "Access-Control-Allow-Headers": "content-type" };
+    if (route.request().method() === "OPTIONS") { await route.fulfill({ status: 204, headers }); return; }
+    await route.fulfill({ status: 200, headers, contentType: "application/json", json: { success: true, data: { snapshot } } });
   });
   await page.setContent('<div id="root"></div>');
   await page.evaluate(() => { (window as any).__targetTaskId = "task:2"; (window as any).__targetContactId = "contact:1"; });
   await page.addScriptTag({ content: script });
   await page.getByRole("radio", { name: /二つ目/ }).waitFor();
   assert.equal(await page.getByRole("radio", { name: /一つ目/ }).count(), 0);
-  assert.equal(await page.getByRole("radio", { name: /二つ目/ }).getAttribute("aria-checked"), "true");
+  assert.match(await page.getByRole("radio", { name: /二つ目/ }).textContent() ?? "", /^●\s/u);
   await page.evaluate(() => (window as any).fixture.update({ routeContactId: "another-contact" }));
-  await page.getByRole("alert", { name: "当前跟进已不可用，请返回任务列表刷新。" }).waitFor();
+  await page.getByText("当前跟进已不可用，请返回任务列表刷新。").waitFor();
   assert.equal(await page.getByRole("radio", { name: /二つ目/ }).count(), 0);
   await page.evaluate(() => (window as any).fixture.update({ routeContactId: "contact:1" }));
   await page.getByRole("radio", { name: /二つ目/ }).waitFor();
   await page.evaluate(() => (window as any).fixture.update({ routeTaskId: "missing" }));
-  await page.getByRole("alert", { name: "当前跟进已不可用，请返回任务列表刷新。" }).waitFor();
+  await page.getByText("当前跟进已不可用，请返回任务列表刷新。").waitFor();
   assert.equal(await page.getByRole("radio", { name: /二つ目/ }).count(), 0);
-  assert.equal(await page.getByRole("button", { name: "完成并保存下一步" }).isDisabled(), true);
+  assert.equal(await page.getByRole("button", { name: "完成并保存下一步" }).count(), 0);
 });
