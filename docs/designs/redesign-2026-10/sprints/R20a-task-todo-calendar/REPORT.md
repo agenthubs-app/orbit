@@ -338,6 +338,14 @@ To-do の `TodoWorkspace` が既存 ShellPage の rightRail slot だけを上書
 
 これは To-do rail の限定子里程標であり、calendar の Task-specific rail、recent conversation の検証済み source、native Later action / ask flow はまだ配線していない。画板の recent history を捏造せず、SC-06 全体の完了や pixel fidelity とはしない。fresh browser / full は coordinated heavy と clean rebase 後に確認する。
 
+### clean rebase 後の hash / doors fresh browser / resolver edge
+
+origin `2569ad835` へ clean rebase（stash / autostash なし、62 patches が range-diff `=`）後、resolver は `a4e7d41f2`、atomic initial-proposal service は `5da4562b7`、accepted-contact reader は `61bd88f44`、doors wait は `54550a28c`、SC-06 bounded rail は `c9bb0c35b` に改写された。上記の旧 hash は実装・検証時点の履歴として残す。App exact-task milestone は `d83e4af74`、fresh App compiler / browser は主会話が担当する。
+
+改写後の committed doors test を同じ sanitized environment / heavy.sh d で実行し、**2/2 pass、0 skip、exit 0**（`doors-animation-committed-recheck.log`）。固定 sleep や許容幅拡大なしに animation の完了後の width を検証した。これは既知の当該 two-case regression が解消した証拠であり、fresh Web full / pixel 全体の green とはしない。
+
+App review で出た dot-segment edge も Web handler / client に反映。`encodeURIComponent('.') / ('..')` は path segment を保護しないため、この二値を明示的に拒否する。RED は handler が private reader に達して 503、client が二回 fetch したことを固定。修正後 `sc09-dot-segments-green.log` は **9/9 pass**、handler は SQL 前 400、client は fetch 0。既存の identity / auth / mapping predicates の広い書換えはしていない。
+
 ## 请求
 
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。

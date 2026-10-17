@@ -25,7 +25,7 @@ export function createRelationshipFollowupClient(options: { fetch?: typeof fetch
   }
   return { async read(taskId: string, signal?: AbortSignal): Promise<RelationshipFollowupRead> {
     try {
-      if (!taskId || taskId.length > 256 || taskId.trim() !== taskId || /[\u0000-\u001f\u007f]/u.test(taskId)) throw Error("INVALID_RESPONSE");
+      if (!taskId || taskId === "." || taskId === ".." || taskId.length > 256 || taskId.trim() !== taskId || /[\u0000-\u001f\u007f]/u.test(taskId)) throw Error("INVALID_RESPONSE");
       const mapping = mappingSchema.parse(await readJson(`/api/relationship-tasks/${encodeURIComponent(taskId)}/resolve`, signal));
       if (mapping.taskId !== taskId) throw Error("INVALID_RESPONSE");
       const { snapshot } = relationshipLifecycleReadSchema.parse(await readJson(`/api/connections/${encodeURIComponent(mapping.connectionId)}/lifecycle`, signal));

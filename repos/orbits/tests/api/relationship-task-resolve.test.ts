@@ -25,7 +25,7 @@ test("resolver fails closed before SQL for missing auth/workspace or malformed i
   assert.equal((await createRelationshipTaskResolveHandler({ resolveActor: async () => null, reader })(request(), context())).status, 401);
   assert.equal((await createRelationshipTaskResolveHandler({ resolveActor: async () => ({ id: "a" }), reader })(request(), context())).status, 503);
   const GET = createRelationshipTaskResolveHandler({ resolveActor: async () => actor, reader });
-  for (const id of ["", " ", " leading", "trailing ", "a\0b", "a\nb", "x".repeat(257)]) assert.equal((await GET(request(), context(id))).status, 400, id);
+  for (const id of ["", ".", "..", " ", " leading", "trailing ", "a\0b", "a\nb", "x".repeat(257)]) assert.equal((await GET(request(), context(id))).status, 400, id);
   for (const query of ["?actorId=b", "?workspaceId=other", "?taskId=other", "?limit=1"]) assert.equal((await GET(request(query), context())).status, 400, query);
 });
 

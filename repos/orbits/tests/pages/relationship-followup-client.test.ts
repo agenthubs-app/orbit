@@ -7,6 +7,13 @@ const mapping = { taskId: "task:1", connectionId: "connection:1", contactId: "co
 const snapshot = { connection: { actorId: "a", connectionId: mapping.connectionId, contactId: mapping.contactId, stage: "needs_follow_up", activeGoal: null, version: 1, createdAt: at, updatedAt: at },
   tasks: [{ actorId: "a", connectionId: mapping.connectionId, contactId: mapping.contactId, taskId: mapping.taskId, title: "Follow up", status: "open", purpose: "follow_up", dueAt: at, version: 1, createdAt: at, updatedAt: at }] };
 
+test("dot-segment task identifiers never become normalized resolver paths", async () => {
+  let calls = 0;
+  const client = createRelationshipFollowupClient({ fetch: async () => { calls++; throw Error("MUST_NOT_FETCH"); } });
+  for (const id of [".", ".."]) await assert.rejects(client.read(id), /INVALID_RESPONSE/);
+  assert.equal(calls, 0);
+});
+
 test("task-addressed detail resolves exact identity before reading existing lifecycle endpoint", async () => {
   const calls: string[] = [];
   const client = createRelationshipFollowupClient({ fetch: async (url, init) => {

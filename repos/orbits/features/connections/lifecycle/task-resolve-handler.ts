@@ -5,7 +5,7 @@ import { relationshipTaskPageItemSchema } from "../../../shared/api-schema/relat
 import type { RelationshipTaskResolver } from "./task-resolve";
 
 const mappingSchema = relationshipTaskPageItemSchema.pick({ taskId: true, connectionId: true, contactId: true });
-const validId = (id: string) => id.length > 0 && id.length <= 256 && id.trim() === id && !/[\u0000-\u001f\u007f]/u.test(id);
+const validId = (id: string) => id !== "." && id !== ".." && id.length > 0 && id.length <= 256 && id.trim() === id && !/[\u0000-\u001f\u007f]/u.test(id);
 
 export function createRelationshipTaskResolveHandler(options: { resolveActor?: ResolveAuthenticatedApiActor; reader: (workspaceId: string) => RelationshipTaskResolver | null }) {
   return async function GET(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
