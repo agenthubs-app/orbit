@@ -1,0 +1,12 @@
+.header { margin-bottom: var(--space-18); }
+.header h3 { font-size: var(--fs-body); margin: 0; }
+.header p, .note { color: var(--ink-3); font-size: var(--fs-caption); line-height: var(--lh-label); margin: var(--space-8) 0; }
+.columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-18); align-items: start; border: 0; padding: 0; margin: 0; min-width: 0; }
+.heading { font-size: var(--fs-card-title); margin: 0 0 var(--space-12); }
+.options { display: flex; flex-wrap: wrap; gap: var(--space-6); margin: var(--space-10) 0; }
+.label, .fields { display: grid; gap: var(--space-10); margin-top: var(--space-12); font-size: var(--fs-body-sm); }
+.noteInput { width: 100%; min-height: 110px; padding: var(--space-12) var(--space-14); border: 1px solid var(--surface-3); border-radius: var(--r-input); background: var(--surface-2); color: var(--ink); font: inherit; line-height: var(--lh-body); resize: vertical; }
+.archive { display: flex; align-items: center; gap: var(--space-8); margin-top: var(--space-14); font-size: var(--fs-body-sm); }
+.footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-8); margin-top: var(--space-18); }
+.footer > span { flex: 1; }
+@media (max-width: 767px) { .columns { grid-template-columns: minmax(0, 1fr); } }

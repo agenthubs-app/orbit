@@ -378,6 +378,14 @@ Web UI 子里程標は `6f236e768`。その後の主会話 App gate は **typech
 
 主会話 SC-14 Followups wrapper retirement `e798abb3a` は private route を同じ LegacyTaskRedirect へ直接接続、static / route / ratchet **22/22**。actual Followups route browser と App full は次の heavy に残す。SC-09 の「今回やったこと」は既存 lifecycle command に field が無く、B storage 拡張の許可は無い。既存 encounters POST による **別の非 atomic save** を UI / tests で明示し、failure 時 note 独立保持 / retry を実装する方針だけ承認済みで、まだ未実装として OPEN。
 
+### SC-09 Web completion Modal / command boundary（provisional 子里程標）
+
+task-addressed reader の検証済み mapping / native versions を使う Web Modal と action client を追加。画面は対象の二件目を選び、四つの既存 outcome（next_task / active / nurture / archived）を native command のまま送る。active は goal の保存だけ、nurture は maintenance 一件だけで、自動反復を捏造しない。archive の他 open tasks 破棄は明示確認を要求し、それ以外では他 task を変えない。「あとで」は閉じるだけで completion / encounter を書かない。
+
+メモは lifecycle command に含まれず、既存 `/api/encounters` への **独立した非 atomic save** と UI に明記。private / talked=uncertain / 選択 medium / authoritative contact + connection を送る。失敗時は入力と同じ idempotency key を保持して retry、保存後に completion が conflict になっても保存済みメモは残る。未保存のメモがある間は completion を無効化する。note receipt を検証するが、encounters の独立 GET readback を行ったとは主張しない。completion は native receipt と別 resolver / lifecycle GET の一致後だけ成功とする。lost acknowledgement は同 key で retry し、wrong actor / mapping / receipt / account scope を成功にしない。
+
+focused Modal / action / reader / CSS-token tests は **21/21 pass、0 skip**、task copy は **190 entries / 0 issues**。mounted React tests で二件目だけの完了、四 outcome、note failure / retry、saved note + failed completion、Later の 0 writes、mismatched resolver / old-account late response を確認した。これは memory native service adapter / mounted component の証拠であり、実 browser / production Next / PG / provider の E2E ではない。**実 To-do 行への mount、actual-browser tests、新 source 後の fresh Web compiler は OPEN**。target Task list / detail / delete / postpone-two-warning / legacy retirement もこの子里程標では閉じない。App source は主会話の frozen gate 用に未変更。
+
 ## 请求
 
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。
