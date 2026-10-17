@@ -42,7 +42,8 @@ export function shellNavKeyFor(pathname: string): ShellNavKey | null {
   if (matches(path, "/app/plans")) return "task";
   if (matches(path, "/app/inbox")) return "inbox";
   if (matches(path, "/app/settings")) return "settings";
-  if (matches(path, "/app/profile")) return "me";
+  if (matches(path, "/app/profile/continue") || matches(path, "/app/profile/onboarding")) return "me";
+  if (matches(path, "/app/profile")) return "settings";
   return null;
 }
 
