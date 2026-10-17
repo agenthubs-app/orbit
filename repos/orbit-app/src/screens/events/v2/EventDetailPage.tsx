@@ -10,7 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { EventOverviewResponse } from "../../../api/contract/event-overview";
 import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
-import { ActionSheet, GlassSurface, Icon, IconButton, Segmented, UiPressable, UiText, useToast, type IconName } from "../../../components/ui";
+import { ActionSheet, GlassSurface, Icon, IconButton, Segmented, UiPressable, UiText, UnderlineTabs, useToast, type IconName } from "../../../components/ui";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { LinearGradient } from "../../plan/plan-svg";
 import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
@@ -198,14 +198,8 @@ export function EventDetailPage() {
             {whyOpen ? <View style={styles.whyBody}><UiText style={styles.whyBodyText}>{assessment.basis}</UiText></View> : null}
           </View>
         ) : null}
-        <View style={styles.utabs} accessibilityRole="tablist">
-          {(["intro", "agenda", "host", "people"] as const).map((key) => (
-            <UiPressable key={key} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={styles.utab} testID={`events-detail-tab-${key}`}>
-              <UiText style={[styles.utabText, tab === key ? styles.utabOn : null]}>{t(key === "intro" ? "tabIntro" : key === "agenda" ? "tabAgenda" : key === "host" ? "tabHost" : "tabPeople")}{key === "people" ? <UiText style={styles.utabCount}>{` ${data.attendeeCounts.all}`}</UiText> : null}</UiText>
-              {tab === key ? <View style={styles.utabLine} /> : null}
-            </UiPressable>
-          ))}
-        </View>
+        <UnderlineTabs value={tab} onChange={setTab} testIDPrefix="events-detail-tab-"
+          tabs={[{ key: "intro", label: t("tabIntro") }, { key: "agenda", label: t("tabAgenda") }, { key: "host", label: t("tabHost") }, { key: "people", label: t("tabPeople"), count: data.attendeeCounts.all }]} />
         {tab === "intro" ? (
           <>
             <View style={styles.card}><UiText style={[styles.sub, styles.desc]}>{data.description}</UiText></View>
@@ -332,12 +326,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   whyText: { color: colors.ink3, fontSize: 10.5, fontWeight: "800", lineHeight: 13 },
   whyBody: { backgroundColor: colors.surface2, borderRadius: 14, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10 },
   whyBodyText: { color: colors.ink2, fontSize: 12, lineHeight: 19.8 },
-  utabs: { borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", gap: 20, marginBottom: 12, marginTop: 14 },
-  utab: { paddingVertical: 9 },
-  utabText: { color: colors.ink3, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
-  utabOn: { color: colors.ink },
-  utabCount: { color: colors.ink3, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 10.8, fontWeight: "700" },
-  utabLine: { backgroundColor: colors.ink, borderRadius: 2, bottom: -1, height: 2.5, left: 0, position: "absolute", right: 0 },
   cardH: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
   h3: { color: colors.ink, fontSize: 14.5, fontWeight: "800", lineHeight: 21.75 },
   li: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 11 },

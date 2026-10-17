@@ -72,7 +72,8 @@ export function legacyCounts(source: string, fileName: string): LegacyCounts {
 
 // The three sanctioned tab lists (and only these files): the library's Segmented /
 // SwipeSegments, its CategoryTabs, and the tab bar (R04 review M4 narrowed this).
-const TABLIST_OWNERS = [/^src\/components\/ui\/Segmented\.tsx$/, /^src\/components\/ui\/Filters\.tsx$/, /^src\/components\/OrbitTabBar\.tsx$/];
+// R31a adds the library's UnderlineTabs (kit .utabs) and configurable TabBar (kit .tabbar, 会場 .livebar).
+const TABLIST_OWNERS = [/^src\/components\/ui\/Segmented\.tsx$/, /^src\/components\/ui\/Filters\.tsx$/, /^src\/components\/ui\/UnderlineTabs\.tsx$/, /^src\/components\/ui\/TabBar\.tsx$/, /^src\/components\/OrbitTabBar\.tsx$/];
 
 export function legacyByFile(appRoot: string): Record<string, LegacyCounts> {
   const result: Record<string, LegacyCounts> = {};

@@ -3,14 +3,12 @@
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Modal, ScrollView, StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScrollView, StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 
 import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, EventDiscoverQuery, EventDiscoverResponse, EventDiscoverRow, EventDiscoverTheme } from "../../../api/contract/event-discover";
 import type { EventSearchResponse } from "../../../api/contract/event-search";
-import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER } from "../../../components/ShellTopBar";
-import { BottomSheet, FilterOption, Icon, Toggle, UiPressable, UiText } from "../../../components/ui";
+import { BottomSheet, FilterOption, FullScreenSearch, Icon, Toggle, UiPressable, UiText } from "../../../components/ui";
 import { createThemedStyles } from "../../../design/theme";
 import { radius } from "../../../design/tokens";
 import { addDesignMock } from "../../add/add-design-mock";
@@ -57,8 +55,6 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const [whyOpen, setWhyOpen] = useState<string | null>(null);
   // 门禁开发开关：聚焦不弹软键盘（画板从不画系统键盘）。
   const noKeyboard = addDesignMock("no-keyboard");
-  // Modal 里没有安全区上下文：用外层的 insets 给搜索页留出状态栏。
-  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     let live = true;
@@ -285,73 +281,63 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
           <UiPressable accessibilityRole="button" accessibilityLabel={t("showN", { n: draftCount ?? data?.total ?? 0 })} onPress={() => { setQuery(draft); setSheet(false); }} style={styles.showBtn}><UiText style={styles.btnPrimaryText}>{t("showN", { n: draftCount ?? data?.total ?? 0 })}</UiText></UiPressable>
         </View>
       </BottomSheet>
-      <Modal visible={searching} animationType="none" transparent={false} onRequestClose={() => { setSearching(false); setSearch(""); }}>
-        <View style={[styles.searchPage, { paddingTop: insets.top }]} testID="events-discover-search">
-          <ShellBackground />
-          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-            <View style={[styles.searchRow, { paddingBottom: 12, paddingTop: 6 }]}>
-              <View style={[styles.search, styles.searchOn]}>
-                <Icon name="search" size={16} color={colors.ink3Text} />
-                <TextInput value={search} onChangeText={setSearch} autoFocus showSoftInputOnFocus={!noKeyboard} onSubmitEditing={() => remember(search)} placeholder={t("searchPlaceholder")} placeholderTextColor={colors.ink3Text} accessibilityLabel={t("searchPlaceholder")} returnKeyType="search" style={styles.searchInput} />
-                {search ? <UiPressable accessibilityRole="button" accessibilityLabel={t("clear")} onPress={() => setSearch("")} hitSlop={8}><Icon name="x" size={16} color={colors.ink3Text} /></UiPressable> : null}
+      {/* R31a (R27-04): the library's full-screen search page (kit b2 探す search) in the root portal, not an RN <Modal>. */}
+      <FullScreenSearch overlay kind="events" visible={searching} testID="events-discover-search"
+        value={search} onChangeText={setSearch} onSubmitEditing={() => remember(search)} showSoftInputOnFocus={!noKeyboard}
+        placeholder={t("searchPlaceholder")} clearLabel={t("clear")} cancelLabel={t("cancel")} onCancel={() => { setSearching(false); setSearch(""); }}>
+        {results?.events.length ? (
+          <View style={[styles.card, styles.resultCard]}>
+            <View style={[styles.cardH, styles.resultH]}><UiText style={styles.h3}>{t("searchEvents")}</UiText><UiText style={styles.more}>{t("countN", { n: results.eventsTotal })}</UiText></View>
+            {results.events.map((hit, index) => (
+              <UiPressable key={hit.eventId} accessibilityRole="button" accessibilityLabel={hit.title} onPress={() => { remember(search); setSearching(false); router.push(hit.href as Href); }} style={styles.li}>
+                {index > 0 ? <View style={styles.liLine} /> : null}
+                {datebox(hit.startsAt, true)}
+                <View style={styles.meta}><Highlight text={hit.title} q={search} style={styles.metaTitle} mark={styles.mark} /><UiText style={styles.metaSub} numberOfLines={1}>{[hit.venue, hit.myStatus === "registered" ? t("stRegistered") : hit.badges?.includes("early_access") ? t("badgeEarly") : feeText(hit.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
+                {typeof hit.score === "number" ? <ScoreRing size={34} stroke={4} value={hit.score} color={colors[ringColor(hit.score)]} label={String(hit.score)} fontSize={11} /> : null}
+              </UiPressable>
+            ))}
+          </View>
+        ) : null}
+        {results?.organizers.length ? (
+          <View style={[styles.card, styles.resultCard]}>
+            <View style={[styles.cardH, styles.resultH]}><UiText style={styles.h3}>{t("searchOrganizers")}</UiText></View>
+            {results.organizers.map((org, index) => (
+              <View key={org.organizerId} style={styles.li}>
+                {index > 0 ? <View style={styles.liLine} /> : null}
+                <View style={[styles.emo, styles.emoSm, { backgroundColor: colors.macLav }]}><UiText style={styles.emoTextSm}>{org.emoji}</UiText></View>
+                <View style={styles.meta}><Highlight text={org.name} q={search} style={styles.metaTitle} mark={styles.mark} /><UiText style={styles.metaSub} numberOfLines={1}>{[t("orgEditions", { n: org.eventCount }), org.following ? t("youFollow") : null].filter(Boolean).join(" · ")}</UiText></View>
+                {org.following ? <View style={[styles.chip, { backgroundColor: colors.macTeal }]}><UiText style={[styles.chipText, { color: colors.macTealInk }]}>{t("following")}</UiText></View> : null}
               </View>
-              <UiPressable accessibilityRole="button" accessibilityLabel={t("cancel")} onPress={() => { setSearching(false); setSearch(""); }} style={styles.ghostBtn}><UiText style={styles.ghostBtnText}>{t("cancel")}</UiText></UiPressable>
-            </View>
-            {results?.events.length ? (
-              <View style={[styles.card, styles.resultCard]}>
-                <View style={[styles.cardH, styles.resultH]}><UiText style={styles.h3}>{t("searchEvents")}</UiText><UiText style={styles.more}>{t("countN", { n: results.eventsTotal })}</UiText></View>
-                {results.events.map((hit, index) => (
-                  <UiPressable key={hit.eventId} accessibilityRole="button" accessibilityLabel={hit.title} onPress={() => { remember(search); setSearching(false); router.push(hit.href as Href); }} style={styles.li}>
-                    {index > 0 ? <View style={styles.liLine} /> : null}
-                    {datebox(hit.startsAt, true)}
-                    <View style={styles.meta}><Highlight text={hit.title} q={search} style={styles.metaTitle} mark={styles.mark} /><UiText style={styles.metaSub} numberOfLines={1}>{[hit.venue, hit.myStatus === "registered" ? t("stRegistered") : hit.badges?.includes("early_access") ? t("badgeEarly") : feeText(hit.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
-                    {typeof hit.score === "number" ? <ScoreRing size={34} stroke={4} value={hit.score} color={colors[ringColor(hit.score)]} label={String(hit.score)} fontSize={11} /> : null}
-                  </UiPressable>
-                ))}
-              </View>
-            ) : null}
-            {results?.organizers.length ? (
-              <View style={[styles.card, styles.resultCard]}>
-                <View style={[styles.cardH, styles.resultH]}><UiText style={styles.h3}>{t("searchOrganizers")}</UiText></View>
-                {results.organizers.map((org, index) => (
-                  <View key={org.organizerId} style={styles.li}>
-                    {index > 0 ? <View style={styles.liLine} /> : null}
-                    <View style={[styles.emo, styles.emoSm, { backgroundColor: colors.macLav }]}><UiText style={styles.emoTextSm}>{org.emoji}</UiText></View>
-                    <View style={styles.meta}><Highlight text={org.name} q={search} style={styles.metaTitle} mark={styles.mark} /><UiText style={styles.metaSub} numberOfLines={1}>{[t("orgEditions", { n: org.eventCount }), org.following ? t("youFollow") : null].filter(Boolean).join(" · ")}</UiText></View>
-                    {org.following ? <View style={[styles.chip, { backgroundColor: colors.macTeal }]}><UiText style={[styles.chipText, { color: colors.macTealInk }]}>{t("following")}</UiText></View> : null}
-                  </View>
-                ))}
-              </View>
-            ) : null}
-            {results?.people.length ? (
-              <View style={[styles.card, styles.resultCard]}>
-                <View style={[styles.cardH, styles.resultH]}><UiText style={styles.h3}>{t("searchPeople")}</UiText></View>
-                {results.people.map((person, index) => (
-                  <UiPressable key={person.contactId} accessibilityRole="button" accessibilityLabel={person.name} onPress={() => { setSearching(false); router.push(`/contacts/${encodeURIComponent(person.contactId)}` as Href); }} style={styles.li}>
-                    {index > 0 ? <View style={styles.liLine} /> : null}
-                    <View style={[styles.av, { backgroundColor: colors.macTeal }]}><UiText style={[styles.avText, { color: colors.macTealInk }]}>{person.initial}</UiText></View>
-                    <View style={styles.meta}><Highlight text={[person.name, person.org && person.role ? `${person.org} ${person.role}` : person.org ?? person.role].filter(Boolean).join(" · ")} q={search} style={styles.metaTitle} mark={styles.mark} /><UiText style={styles.metaSub} numberOfLines={1}>{t("personEvents", { n: person.eventCount })}</UiText></View>
-                    <Icon name="right" size={16} color={colors.ink} />
-                  </UiPressable>
-                ))}
-              </View>
-            ) : null}
-            {recent.length ? (
-              <>
-                <UiText style={[styles.lbl, { marginBottom: 6, marginTop: 0 }]}>{t("searchRecent")}</UiText>
-                <View style={[styles.chips, { marginTop: 0 }]}>{recent.map((item) => <UiPressable key={item} accessibilityRole="button" accessibilityLabel={item} onPress={() => setSearch(item)} style={styles.chip}><View style={styles.caret}><View style={{ transform: [{ scale: 0.75 }] }}><Icon name="clock" size={16} color={colors.ink2} /></View></View><UiText style={styles.chipText}>{item}</UiText></UiPressable>)}</View>
-              </>
-            ) : null}
-            <View style={[styles.card, styles.flat, { marginTop: 14 }]}>
-              <View style={styles.row}>
-                <View style={[styles.emo, styles.emoSm, { backgroundColor: colors.macBlue }]}><UiText style={styles.emoTextSm}>🔗</UiText></View>
-                <View style={styles.meta}><UiText style={styles.widenTitle}>{t("searchNotFound")}</UiText><UiText style={styles.lbl}>{t("searchPasteUrl")}</UiText></View>
-                <UiPressable accessibilityRole="button" accessibilityLabel={t("paste")} onPress={() => { setSearching(false); router.push("/events/assess?mode=url" as Href); }} style={[styles.btnSm, { marginLeft: 0 }]}><UiText style={styles.btnSmText}>{t("paste")}</UiText></UiPressable>
-              </View>
-            </View>
-          </ScrollView>
+            ))}
+          </View>
+        ) : null}
+        {results?.people.length ? (
+          <View style={[styles.card, styles.resultCard]}>
+            <View style={[styles.cardH, styles.resultH]}><UiText style={styles.h3}>{t("searchPeople")}</UiText></View>
+            {results.people.map((person, index) => (
+              <UiPressable key={person.contactId} accessibilityRole="button" accessibilityLabel={person.name} onPress={() => { setSearching(false); router.push(`/contacts/${encodeURIComponent(person.contactId)}` as Href); }} style={styles.li}>
+                {index > 0 ? <View style={styles.liLine} /> : null}
+                <View style={[styles.av, { backgroundColor: colors.macTeal }]}><UiText style={[styles.avText, { color: colors.macTealInk }]}>{person.initial}</UiText></View>
+                <View style={styles.meta}><Highlight text={[person.name, person.org && person.role ? `${person.org} ${person.role}` : person.org ?? person.role].filter(Boolean).join(" · ")} q={search} style={styles.metaTitle} mark={styles.mark} /><UiText style={styles.metaSub} numberOfLines={1}>{t("personEvents", { n: person.eventCount })}</UiText></View>
+                <Icon name="right" size={16} color={colors.ink} />
+              </UiPressable>
+            ))}
+          </View>
+        ) : null}
+        {recent.length ? (
+          <>
+            <UiText style={[styles.lbl, { marginBottom: 6, marginTop: 0 }]}>{t("searchRecent")}</UiText>
+            <View style={[styles.chips, { marginTop: 0 }]}>{recent.map((item) => <UiPressable key={item} accessibilityRole="button" accessibilityLabel={item} onPress={() => setSearch(item)} style={styles.chip}><View style={styles.caret}><View style={{ transform: [{ scale: 0.75 }] }}><Icon name="clock" size={16} color={colors.ink2} /></View></View><UiText style={styles.chipText}>{item}</UiText></UiPressable>)}</View>
+          </>
+        ) : null}
+        <View style={[styles.card, styles.flat, { marginTop: 14 }]}>
+          <View style={styles.row}>
+            <View style={[styles.emo, styles.emoSm, { backgroundColor: colors.macBlue }]}><UiText style={styles.emoTextSm}>🔗</UiText></View>
+            <View style={styles.meta}><UiText style={styles.widenTitle}>{t("searchNotFound")}</UiText><UiText style={styles.lbl}>{t("searchPasteUrl")}</UiText></View>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("paste")} onPress={() => { setSearching(false); router.push("/events/assess?mode=url" as Href); }} style={[styles.btnSm, { marginLeft: 0 }]}><UiText style={styles.btnSmText}>{t("paste")}</UiText></UiPressable>
+          </View>
         </View>
-      </Modal>
+      </FullScreenSearch>
     </ScrollView>
   );
 }
@@ -441,9 +427,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   widenText: { color: colors.ink, fontSize: 12.5, fontWeight: "700", lineHeight: 18.75 },
   macNote: { backgroundColor: colors.macLav, borderRadius: 16, marginTop: 14, padding: 12 },
   macNoteText: { color: colors.ink, fontSize: 12, lineHeight: 18 },
-  searchPage: { backgroundColor: colors.bg, flex: 1 },
   // kit：聚焦时 0 0 0 2px plum-300 外圈（框本身 44，外圈让可见高度 48）。
-  searchOn: { borderColor: colors.plum300, borderWidth: 2, height: 48, marginLeft: -2, marginVertical: -2, paddingHorizontal: 16 },
   resultCard: { marginBottom: 14, paddingHorizontal: 16, paddingVertical: 8 },
   resultH: { marginBottom: 0, marginTop: 8 },
   mark: { backgroundColor: colors.macLav },

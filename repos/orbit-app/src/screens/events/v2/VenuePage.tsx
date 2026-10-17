@@ -13,7 +13,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import type { EventVenuePerson, EventVenueResponse } from "../../../api/contract/event-venue";
 import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, useShellTopGap } from "../../../components/ShellTopBar";
-import { BottomSheet, GlassSurface, Icon, IconButton, UiPressable, UiText, usePageBottomBar, useToast, type IconName } from "../../../components/ui";
+import { BottomSheet, GlassSurface, Icon, IconButton, TabBar, UiPressable, UiText, usePageBottomBar, useToast, type IconName } from "../../../components/ui";
 import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
 import { darkColors, floatShadow } from "../../../design/tokens";
 import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
@@ -51,29 +51,9 @@ function LiveTopBar({ title, line, onClose, onQr, t }: { title: string; line: st
   );
 }
 
-/** kit .tabbar.livebar：left 14 / right 16，5 等分，玻璃胶囊（同 OrbitTabBar 的尺寸与选中态）。 */
+/** kit .tabbar.livebar（b2 #27–#35）：R31a 起用组件库 TabBar variant="live"（left 14 / right 16，5 等分玻璃胶囊）。 */
 function LiveTabBar({ tab, onTab, t }: { tab: Tab; onTab: (tab: Tab) => void; t: JourneyT }) {
-  const { styles, colors } = useStyles();
-  const insets = useSafeAreaInsets();
-  return (
-    <View pointerEvents="box-none" style={[styles.dock, { bottom: Math.max(14, insets.bottom - 8) }]}>
-      <View accessibilityRole="tablist" style={styles.frame}>
-        <GlassSurface radius={999} style={styles.glass}>
-          <View style={styles.tabs}>
-            {TABS.map((item) => {
-              const selected = item.key === tab;
-              return (
-                <UiPressable key={item.key} accessibilityRole="tab" accessibilityLabel={t(item.label)} accessibilityState={{ selected }} onPress={() => onTab(item.key)} style={[styles.tab, selected ? styles.tabOn : null]} testID={`events-venue-tab-${item.key}`}>
-                  <Icon name={item.icon} size={21} color={selected ? colors.ink : colors.ink3} />
-                  <UiText maxFontSizeMultiplier={1} numberOfLines={1} style={[styles.tabLabel, selected ? { color: colors.ink } : null]}>{t(item.label)}</UiText>
-                </UiPressable>
-              );
-            })}
-          </View>
-        </GlassSurface>
-      </View>
-    </View>
-  );
+  return <TabBar variant="live" value={tab} onChange={onTab} testIDPrefix="events-venue-tab-" items={TABS.map((item) => ({ key: item.key, icon: item.icon, label: t(item.label) }))} />;
 }
 
 export function VenuePage() {
@@ -304,13 +284,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   liveDot: { backgroundColor: colors.coral, borderRadius: 3.5, height: 7, marginRight: 4, width: 7 },
   live: { color: colors.coral, fontSize: 11.5, fontWeight: "800", lineHeight: 17.25 },
   subtitle: { color: colors.ink3, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
-  dock: { left: 14, position: "absolute", right: 16 },
-  frame: { borderRadius: 999, height: 62, ...floatShadow(colors) },
-  glass: { flex: 1 },
-  tabs: { flex: 1, flexDirection: "row", gap: 2, padding: 6 },
-  tab: { alignItems: "center", borderRadius: 999, flex: 1, gap: 2, justifyContent: "center" },
-  tabOn: { backgroundColor: colors === darkColors ? colors.surface3 : colors.surface },
-  tabLabel: { color: colors.ink3, fontSize: 10, fontWeight: "700", lineHeight: 15, textAlign: "center" },
   sheetName: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25.5 },
   req: { marginTop: 14, padding: 14 },
   whyChip: { borderRadius: 999, flex: 1, paddingHorizontal: 9, paddingVertical: 3 },

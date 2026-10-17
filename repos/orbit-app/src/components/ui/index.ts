@@ -35,5 +35,9 @@ export { CheckCircle, Checkbox, Radio } from "./Checks";
 export { Segmented, SwipeSegments, type Segment } from "./Segmented";
 export { CategoryTabs, FilterOption } from "./Filters";
 export { CountUp, ProgressBar, RingChart } from "./Progress";
+// R31a: UnderlineTabs (kit .utabs), configurable TabBar (kit .tabbar / 会場 .livebar), the full-screen search page.
+export { UnderlineTabs, type UnderlineTab } from "./UnderlineTabs";
+export { TabBar, type TabBarItem } from "./TabBar";
+export { FullScreenSearch } from "./FullScreenSearch";
 // states
 export { DegradedCard, EmptyState, OfflineBar, QuotaChip, RetryCard, SampleBar, SampleTag, Skeleton } from "./States";

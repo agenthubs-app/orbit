@@ -4,16 +4,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet, View } from "react-native";
 
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { splitByHighlights } from "../../api/compute/search-highlight";
 import type { GlobalSearchResponse, SearchHighlight } from "../../api/contract/global-search";
-import { ShellBackground } from "../../components/ShellBackground";
-import { SHELL_GUTTER, useShellTopGap } from "../../components/ShellTopBar";
+import { useShellTopGap } from "../../components/ShellTopBar";
 import { avatarTone } from "../../components/ui/Avatar";
+import { FullScreenSearch } from "../../components/ui/FullScreenSearch";
 import { Icon } from "../../components/ui/Icon";
 import { UiPressable } from "../../components/ui/Pressable";
 import { UiText } from "../../components/ui/Text";
@@ -239,26 +238,18 @@ export function GlobalSearchScreen() {
   }
 
   return (
-    <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="global-search">
-      <ShellBackground />
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.sbar}>
-          <View style={styles.search}>
-            <Icon name="search" size={16} color={colors.ink3} />
-            <TextInput value={query} onChangeText={setQuery} autoFocus showSoftInputOnFocus={!noKeyboard} onSubmitEditing={remember} placeholder={t("search.placeholder")} placeholderTextColor={colors.ink3Text} accessibilityLabel={t("search.placeholder")} returnKeyType="search" style={styles.input} testID="global-search-input" />
-            {query ? <UiPressable accessibilityRole="button" accessibilityLabel={t("search.clearQuery")} onPress={() => setQuery("")} hitSlop={8}><Icon name="x" size={16} color={colors.ink3} /></UiPressable> : null}
-          </View>
-          <UiPressable accessibilityRole="button" accessibilityLabel={t("search.cancel")} onPress={close} style={styles.cancel}><UiText style={styles.cancelText}>{t("search.cancel")}</UiText></UiPressable>
-        </View>
-        <View style={styles.scope} accessibilityLabel={t("search.typesLabel")}>
-          {filters.map((item) => {
-            const on = item === filter;
-            return <UiPressable key={item} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={filterLabel[item]} onPress={() => setFilter(item)} style={[styles.cat, on && styles.catOn]}><UiText style={[styles.catText, on && styles.catTextOn]}>{filterLabel[item]}</UiText></UiPressable>;
-          })}
-        </View>
-        {body}
-      </ScrollView>
-    </SafeAreaView>
+    // R31a (R30): the library's full-screen search page (kit b5 #53–#56 .sbar) instead of a hand-written container.
+    <FullScreenSearch testID="global-search" inputTestID="global-search-input" topGap={topGap}
+      value={query} onChangeText={setQuery} onSubmitEditing={remember} showSoftInputOnFocus={!noKeyboard}
+      placeholder={t("search.placeholder")} clearLabel={t("search.clearQuery")} cancelLabel={t("search.cancel")} onCancel={close}
+      chips={<View style={styles.scope} accessibilityLabel={t("search.typesLabel")}>
+      {filters.map((item) => {
+        const on = item === filter;
+        return <UiPressable key={item} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={filterLabel[item]} onPress={() => setFilter(item)} style={[styles.cat, on && styles.catOn]}><UiText style={[styles.catText, on && styles.catTextOn]}>{filterLabel[item]}</UiText></UiPressable>;
+      })}
+    </View>}>
+      {body}
+    </FullScreenSearch>
   );
 }
 
@@ -276,13 +267,6 @@ function toneText(colors: OrbitColors, tone: Tone): string {
 // .chip 3/9 11 700 · .mr 2/8 11 700 rose-700 / rose-100 · mark rose-100 · .banner 9/12 r14 surface-2 11.5 ink-2 gap 8 ·
 // 空状态 22 10 8：🔎 40 / b 15 700 mt6 / .lbl mt4 · 例 chip lav 6/11 · 提示 .lbl mt10 · 骨架 .skel 12 / 10 mt7（surface-2）。
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  page: { backgroundColor: colors.bg, flex: 1 },
-  scroll: { paddingBottom: 130, paddingHorizontal: SHELL_GUTTER },
-  sbar: { alignItems: "center", flexDirection: "row", gap: 10, paddingBottom: 12, paddingTop: 6 },
-  search: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, flex: 1, flexDirection: "row", gap: 8, height: 44, paddingHorizontal: 16 },
-  input: { color: colors.ink, flex: 1, fontSize: 13.5, padding: 0 },
-  cancel: { alignItems: "center", borderRadius: radius.pill, height: 40, justifyContent: "center", paddingHorizontal: 4 },
-  cancelText: { color: colors.ink2, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
   scope: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   cat: { backgroundColor: colors.surface2, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 7 },
   catOn: { backgroundColor: colors.ink },
