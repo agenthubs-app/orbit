@@ -101,7 +101,8 @@ test("radius, type and motion scales are the ones the plan fixed", () => {
   // the R07 pixel rework added row 12 (b12 account-menu rows); the plan-page rework found the kit's
   // hair 2 / bar 3 / seg 5 / chip 8 / input-sm 9 / emo 13 / dot 4 / check 7 / tick 1 and the type sizes below without tokens;
   // R17 added host-avatar 30 (b7 #33–#38 主催者 avatar, host/DESIGN §10 C4).
-  assert.deepEqual(tokens.radius, { xl: 24, lg: 20, md: 14, sm: 10, sheet: 34, dialog: 28, "card-web": 22, bubble: 18, pill: 999, menu: 18, tile: 16, row: 12, "logo-sm": 11, tag: 6, hair: 2, bar: 3, seg: 5, chip: 8, "input-sm": 9, emo: 13, dot: 4, check: 7, tick: 1, cta: 26, "host-avatar": 30 });
+  // R18a adds none 0 for account mobile menu corners that must stay square.
+  assert.deepEqual(tokens.radius, { none: 0, xl: 24, lg: 20, md: 14, sm: 10, sheet: 34, dialog: 28, "card-web": 22, bubble: 18, pill: 999, menu: 18, tile: 16, row: 12, "logo-sm": 11, tag: 6, hair: 2, bar: 3, seg: 5, chip: 8, "input-sm": 9, emo: 13, dot: 4, check: 7, tick: 1, cta: 26, "host-avatar": 30 });
   assert.deepEqual(
     { micro: 9.5, tiny: 10.5, emph: 15, "title-xs": 18, section: 19, "display-md": 44, "display-xl": 64, "emoji-md": 21, "emoji-lg": 28, "number-lg": 32, "display-lg": 56, "display-sm": 48 },
     Object.fromEntries(["micro", "tiny", "emph", "title-xs", "section", "display-md", "display-xl", "emoji-md", "emoji-lg", "number-lg", "display-lg", "display-sm"].map((key) => [key, tokens.font.size[key]]))
@@ -154,6 +155,7 @@ test("the CSS output follows the system theme until the user picks one", () => {
   assert.match(css, /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{[^}]*--ink-3-text: #9A959F;/);
   assert.match(css, /:root\[data-theme="dark"\] \{[^}]*--bg: #19181C;/);
   assert.match(css, /--r-card-web: 22px;/);
+  assert.match(css, /--r-none: 0px;/);
   assert.match(css, /--font: var\(--font-ja\);/);
   assert.match(css, /:root:lang\(zh\) \{\s*--font: var\(--font-zh\);/);
   assert.match(css, /:root:lang\(en\) \{\s*--font: var\(--font-en\);/);

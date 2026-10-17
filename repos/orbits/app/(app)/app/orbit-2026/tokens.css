@@ -71,6 +71,7 @@
   --shadow-ring-select: 0 0 0 2px #8E82A9;
   --shadow-ring-dot: 0 0 0 4px rgba(185, 137, 149, 0.25);
   --shadow-ring-error: inset 0 0 0 1.5px #E58A76;
+  --r-none: 0px;
   --r-xl: 24px;
   --r-lg: 20px;
   --r-md: 14px;

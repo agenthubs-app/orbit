@@ -117,7 +117,7 @@ test("uses strict JSON identity predicates and two narrow ordered queries", asyn
     "headline", "handles", "homeMarket", "organization",
     "preferredFollowUpWindow", "preferredIntroChannels", "preferredLanguage",
     "relationshipGoal", "targetRelationshipTypes", "spokenLanguages",
-    "publicProfile", "createdAt", "updatedAt",
+    "publicProfile", "publicFields", "createdAt", "updatedAt",
   ]);
 
   assert.equal(graph.accounts[0]?.recordId, "legacy-account-record");

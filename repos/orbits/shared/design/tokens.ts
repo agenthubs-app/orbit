@@ -178,6 +178,7 @@ export const designContrast = [
 ] as const;
 
 export const designRadius = {
+  none: 0,
   xl: 24,
   lg: 20,
   md: 14,
