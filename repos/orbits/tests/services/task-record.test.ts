@@ -75,7 +75,17 @@ test("round-trips one actor-owned task and its append-only activity history", ()
   assert.equal(record.userId, actorId);
   assert.equal(record.targetType, "event");
   assert.equal(record.targetId, "event:kansai-business");
-  assert.deepEqual(taskRecordFromLiveRecord(record, actorId), source);
+  assert.deepEqual(taskRecordFromLiveRecord(record, actorId), { ...source, task: { ...source.task, deferralCount: 0 } });
+});
+
+test("historical and system activities do not count as user deferrals", () => {
+  const history = [activity(),
+    activity({ id: "old-reschedule", type: "rescheduled", occurredAt: "2026-08-29T02:00:00.000Z", changes: { plannedDate: "2026-08-30" } }),
+    activity({ id: "system-reschedule", type: "rescheduled", actorType: "system", occurredAt: "2026-08-29T03:00:00.000Z",
+      changes: { plannedDate: "2026-08-31", previousPlannedDate: "2026-08-30" } })];
+  const record = taskLiveRecordFromPayload({ workspaceId, payload: payload({ activities: history }) });
+  assert.equal((record.payload.task as Record<string, unknown>).deferralCount, undefined);
+  assert.equal(taskRecordFromLiveRecord(record, actorId)?.task.deferralCount, 0);
 });
 
 test("rejects records owned by another actor", () => {

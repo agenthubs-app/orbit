@@ -51,6 +51,8 @@ export interface TaskItemDTO {
   completionSource?: TaskCompletionSource;
   createdAt: string;
   updatedAt: string;
+  /** Derived from user date edits in activities; absent from stored task payloads. */
+  deferralCount?: number;
 }
 
 export type TaskActivityType =

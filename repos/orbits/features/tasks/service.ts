@@ -13,6 +13,7 @@ import type {
   TaskStatus,
 } from "./contract";
 import type { StoredTaskRecord, TaskRepository } from "./repository";
+import { countTaskDeferrals } from "./task-record";
 
 export type TaskServiceErrorCode =
   | "TASK_NOT_FOUND"
@@ -344,6 +345,7 @@ export function createTaskService(input: {
           : {}),
         createdAt: createInput.now,
         updatedAt: createInput.now,
+        deferralCount: 0,
       };
       const activity = taskActivity({
         task,
@@ -390,10 +392,18 @@ export function createTaskService(input: {
         );
       }
 
+      const oldTask = stored.payload.task;
+      const previousDates = {
+        ...(typeof updateInput.patch.plannedDate === "string" && typeof oldTask.plannedDate === "string" && updateInput.patch.plannedDate > oldTask.plannedDate
+          ? { previousPlannedDate: oldTask.plannedDate } : {}),
+        ...(typeof updateInput.patch.dueAt === "string" && typeof oldTask.dueAt === "string" && Date.parse(updateInput.patch.dueAt) > Date.parse(oldTask.dueAt)
+          ? { previousDueAt: oldTask.dueAt } : {}),
+      };
       const task: TaskItemDTO = {
         ...stored.payload.task,
         ...Object.fromEntries(Object.entries(updateInput.patch).filter(([, value]) => value !== null)),
         updatedAt: new Date(Math.max(Date.parse(updateInput.now), Date.parse(stored.payload.task.updatedAt) + 1)).toISOString(),
+        deferralCount: countTaskDeferrals(stored.payload.activities) + (Object.keys(previousDates).length > 0 ? 1 : 0),
       };
       for (const field of ["plannedDate", "dueAt", "location"] as const) {
         if (updateInput.patch[field] === null) delete task[field];
@@ -405,7 +415,7 @@ export function createTaskService(input: {
         actorId: updateInput.actorId,
         idempotencyKey: updateInput.idempotencyKey,
         now: updateInput.now,
-        changes: { ...updateInput.patch },
+        changes: { ...updateInput.patch, ...previousDates },
       });
       await input.repository.save(payloadWithActivity(stored, task, activity));
       return { task, activity };

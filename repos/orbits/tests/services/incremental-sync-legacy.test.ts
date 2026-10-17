@@ -3,13 +3,30 @@ import test from "node:test";
 
 import {
   createIncrementalSyncReadService,
+  changeFromRow,
   SyncReadError,
   type SyncReadRow,
   type SyncSqlClient,
 } from "../../features/sync/read-service";
+import { taskLiveRecordFromPayload } from "../../features/tasks/task-record";
 
 const actorId = "account:legacy-owner";
 const workspaceId = "workspace:legacy-sync";
+
+test("canonical sync task payload carries the history-derived deferral count", () => {
+  const at = "2026-09-16T00:00:00.000Z";
+  const task = { id: "task:canonical", accountId: actorId, ownerUserId: actorId, title: "Follow up", status: "open" as const,
+    category: "relationship" as const, priority: "normal" as const, source: "manual" as const, plannedDate: "2026-09-18", createdAt: at, updatedAt: "2026-09-16T00:01:00.000Z" };
+  const snapshot = { title: task.title, category: task.category };
+  const live = taskLiveRecordFromPayload({ workspaceId, payload: { version: 1, task, activities: [
+    { id: "created", accountId: actorId, ownerUserId: actorId, taskId: task.id, type: "created", actorType: "user", occurredAt: at, taskSnapshot: snapshot },
+    { id: "later", accountId: actorId, ownerUserId: actorId, taskId: task.id, type: "updated", actorType: "user", occurredAt: task.updatedAt,
+      taskSnapshot: snapshot, changes: { plannedDate: "2026-09-18", previousPlannedDate: "2026-09-17" } },
+  ] } });
+  const change = changeFromRow({ workspace_id: workspaceId, user_id: actorId, collection_name: "tasks", record_id: task.id,
+    lifecycle_state: "active", deleted_at: null, sync_revision: "2", updated_at: task.updatedAt, payload: live.payload }, actorId);
+  assert.equal((change.payload as Record<string, unknown>).deferralCount, 1);
+});
 
 function legacyRow(fraction = "123456"): SyncReadRow {
   const time = `2026-09-16T08:00:00.${fraction}+09:00`;

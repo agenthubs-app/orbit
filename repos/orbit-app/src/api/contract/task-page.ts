@@ -10,6 +10,7 @@ export interface TaskCardContract {
   updatedAt: string;
   /** Older page deployments may omit this; never infer it from updatedAt. */
   completedAt?: string | null;
+  deferralCount?: number;
   relatedContact: { id: string; namePreview: string; organizationPreview: string } | null;
 }
 

@@ -294,6 +294,7 @@ function mapTaskPayload(row: SyncReadRow, actorId: string) {
     "completionSource",
   ] as const) put(result, field, task[field]);
   put(result, "sourceNoteVersion", task.sourceNoteVersion);
+  put(result, "deferralCount", task.deferralCount);
   return result;
 }
 

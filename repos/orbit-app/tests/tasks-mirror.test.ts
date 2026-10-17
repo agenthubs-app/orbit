@@ -48,3 +48,11 @@ test("task mirror refuses another actor, relationship records, and malformed que
   assert.equal(overlayQueuedTasks([{ ...serverTask, category: "relationship" }], [mutation({})], actorId), null);
   assert.equal(overlayQueuedTasks([serverTask], [mutation({ requestJson: null })], actorId), null);
 });
+
+test("offline date deferrals increment locally and canonical reconciliation replaces the overlay", () => {
+  const task = { ...serverTask, plannedDate: "2026-09-20", deferralCount: 1 };
+  const pending = mutation({ patch: { plannedDate: "2026-09-21" } });
+  assert.equal(overlayQueuedTasks([task], [pending], actorId)?.[0]?.deferralCount, 2);
+  assert.equal(overlayQueuedTasks([{ ...task, plannedDate: "2026-09-21", deferralCount: 2 }], [], actorId)?.[0]?.deferralCount, 2);
+  assert.equal(overlayQueuedTasks([task], [mutation({ patch: { plannedDate: "2026-09-19" } })], actorId)?.[0]?.deferralCount, 1);
+});

@@ -93,6 +93,22 @@ test("updates with optimistic concurrency and rejects a stale version", async ()
   );
 });
 
+test("counts only user edits that move a task date later and preserves the prior dates in history", async () => {
+  const { service } = serviceWithStore();
+  const created = await createTask(service, { dueAt: "2026-08-29T09:00:00.000Z" });
+  const first = await service.update({ actorId, taskId: created.task.id, expectedUpdatedAt: created.task.updatedAt,
+    patch: { plannedDate: "2026-08-30", dueAt: "2026-08-30T09:00:00.000Z" }, idempotencyKey: "later-1", now: "2026-08-29T02:10:00.000Z" });
+  const earlier = await service.update({ actorId, taskId: created.task.id, expectedUpdatedAt: first.task.updatedAt,
+    patch: { plannedDate: "2026-08-29" }, idempotencyKey: "earlier", now: "2026-08-29T02:20:00.000Z" });
+  const second = await service.update({ actorId, taskId: created.task.id, expectedUpdatedAt: earlier.task.updatedAt,
+    patch: { plannedDate: "2026-08-31" }, idempotencyKey: "later-2", now: "2026-08-29T02:30:00.000Z" });
+  assert.equal(first.task.deferralCount, 1);
+  assert.equal(earlier.task.deferralCount, 1);
+  assert.equal(second.task.deferralCount, 2);
+  assert.deepEqual(first.activity.changes, { plannedDate: "2026-08-30", dueAt: "2026-08-30T09:00:00.000Z", previousPlannedDate: "2026-08-29", previousDueAt: "2026-08-29T09:00:00.000Z" });
+  assert.equal((await service.get({ actorId, taskId: created.task.id }))?.deferralCount, 2);
+});
+
 test("completes idempotently and records one completion fact", async () => {
   const { service } = serviceWithStore();
   const created = await createTask(service);

@@ -10,6 +10,21 @@ import { createTaskService } from "../../features/tasks/service";
 import { createTaskPageGetHandler } from "../../app/api/tasks/page/handler";
 
 const at = "2026-09-25T00:00:00.000Z";
+test("task page derives deferral counts from user history in PostgreSQL", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => {
+  const url = new URL(process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL!);
+  assert.ok(["localhost", "127.0.0.1"].includes(url.hostname));
+  const schema = "task_deferral_" + randomUUID().replaceAll("-", "");
+  const pool = new Pool({ connectionString: url.toString(), max: 1, options: `-c search_path=${schema} -c statement_timeout=15000` });
+  try {
+    await pool.query(`create schema ${schema}`);
+    await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const service = createTaskService({ repository: createTaskRepository({ store: createPostgresLiveRecordStore({ client: pool }), workspaceId: "w" }) });
+    const created = await service.create({ actorId: "a", title: "Follow up", category: "relationship", plannedDate: "2026-09-25", idempotencyKey: "create", now: at });
+    await service.update({ actorId: "a", taskId: created.task.id, expectedUpdatedAt: created.task.updatedAt, patch: { plannedDate: "2026-09-26" }, idempotencyKey: "later", now: "2026-09-25T00:01:00.000Z" });
+    const page = await createTaskPageReader({ client: pool, workspaceId: "w", secret: "local-secret-".repeat(4) }).read("a", { status: "open" });
+    assert.equal(page.items[0]?.deferralCount, 1);
+  } finally { await pool.query(`drop schema if exists ${schema} cascade`); await pool.end(); }
+});
 test("canonical task pages are owned, globally filtered, signed, compact and do not download histories", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => {
   const url = new URL(process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL!);
   assert.ok(["localhost", "127.0.0.1"].includes(url.hostname)); assert.equal(url.search, "");

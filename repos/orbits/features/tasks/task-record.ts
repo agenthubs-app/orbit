@@ -189,7 +189,17 @@ function readPayload(value: unknown, actorId: string): TaskRecordPayload | null 
     previousOccurredAt = parsed.occurredAt;
   }
 
-  return { version: 1, task, activities };
+  return { version: 1, task: { ...task, deferralCount: countTaskDeferrals(activities) }, activities };
+}
+
+export function countTaskDeferrals(activities: readonly TaskActivityDTO[]): number {
+  return activities.filter(activity => {
+    if (activity.actorType !== "user" || !["updated", "rescheduled"].includes(activity.type)) return false;
+    const changes = activity.changes;
+    if (!changes) return false;
+    return (typeof changes.previousPlannedDate === "string" && typeof changes.plannedDate === "string" && changes.plannedDate > changes.previousPlannedDate)
+      || (typeof changes.previousDueAt === "string" && typeof changes.dueAt === "string" && Date.parse(changes.dueAt) > Date.parse(changes.previousDueAt));
+  }).length;
 }
 
 function relationTarget(task: TaskItemDTO): {
@@ -234,9 +244,10 @@ function invalidPayloadReason(payload: TaskRecordPayload): string {
 }
 
 function livePayload(payload: TaskRecordPayload): Record<string, unknown> {
+  const { deferralCount: _deferralCount, ...storedTask } = payload.task;
   return {
     version: payload.version,
-    task: { ...payload.task },
+    task: storedTask,
     activities: payload.activities.map((item) => ({ ...item })),
   };
 }

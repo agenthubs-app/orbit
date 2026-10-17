@@ -55,10 +55,13 @@ export function overlayQueuedTasks(
 
 function applyTaskPatch(task: MirroredTask, patch: Record<string, unknown>, updatedAt: string): MirroredTask {
   const next: Record<string, unknown> = { ...task, updatedAt };
+  const deferred = (typeof patch.plannedDate === "string" && typeof task.plannedDate === "string" && patch.plannedDate > task.plannedDate)
+    || (typeof patch.dueAt === "string" && typeof task.dueAt === "string" && Date.parse(patch.dueAt) > Date.parse(task.dueAt));
   for (const [key, value] of Object.entries(patch)) {
     if (value === null) delete next[key];
     else next[key] = value;
   }
+  if (deferred) next.deferralCount = (task.deferralCount ?? 0) + 1;
   return next as unknown as MirroredTask;
 }
 
