@@ -8,7 +8,7 @@ import { OrbitLocaleContext, type OrbitLocaleContextValue } from "../src/i18n/Or
 import { createTranslator } from "../src/i18n/messages";
 import type { OrbitLanguage } from "../src/api/contract/language";
 import { renderToHtml, renderedText } from "./helpers/render";
-import { createOrbitApiClient } from "../src/api/client";
+import { createOrbitApiClient, type OrbitApiClient } from "../src/api/client";
 import {
   loadRescheduleTarget,
   postRescheduleProposal,
@@ -103,6 +103,16 @@ test("reschedule reads an actor-scoped confirmed appointment and rejects a diffe
   assert.equal((await loadRescheduleTarget(client, "appointment:one", "contact:one"))?.version, 4);
   assert.equal(await loadRescheduleTarget(client, "appointment:one", "contact:other"), null);
   assert.deepEqual(requests, ["https://orbit.example/api/appointments/appointment%3Aone", "https://orbit.example/api/appointments/appointment%3Aone"]);
+});
+
+test("optional abort signal is omitted when absent and forwarded when provided", async () => {
+  const options: unknown[] = [];
+  const client = { get: async (_path: string, option: unknown) => { options.push(option); return { success: false }; } } as unknown as Pick<OrbitApiClient, "get">;
+  const signal = new AbortController().signal;
+  await loadRescheduleTarget(client, "appointment:one", "contact:one");
+  await loadRescheduleTarget(client, "appointment:one", "contact:one", signal);
+  assert.deepEqual(options[0], {});
+  assert.deepEqual(options[1], { signal });
 });
 
 test("reschedule posts propose with CAS and an idempotency key, then verifies the pending receipt", async () => {

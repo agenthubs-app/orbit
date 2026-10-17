@@ -33,7 +33,7 @@ export function MeetingProposalSheet({ open, contactId, onClose, onSent, appoint
         <UiText style={styles.step}>{t("calendar.proposal.format")}</UiText>
         <UiText style={styles.step}>{t("calendar.proposal.review")}</UiText>
       </View>
-      {appointmentId ? <RescheduleProposal key={`${contactId}:${appointmentId}`} contactId={contactId} appointmentId={appointmentId} initialCandidates={initialCandidates} onClose={onClose} onSent={onSent} />
+      {appointmentId ? <RescheduleProposal key={`${contactId}:${appointmentId}`} contactId={contactId} appointmentId={appointmentId} onClose={onClose} {...(initialCandidates ? { initialCandidates } : {})} {...(onSent ? { onSent } : {})} />
         : <UiText accessibilityRole="alert" style={styles.notice}>{t("calendar.proposal.contactOnlyUnavailable")}</UiText>}
     </View>
   </BottomSheet>;

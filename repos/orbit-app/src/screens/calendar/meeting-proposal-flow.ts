@@ -46,7 +46,7 @@ export function validateMeetingCandidates(candidates: readonly MeetingCandidate[
 }
 
 export async function loadRescheduleTarget(client: Pick<OrbitApiClient, "get">, appointmentId: string, contactId: string, signal?: AbortSignal): Promise<MeetingDetailsContract | null> {
-  const result = await client.get<unknown>(appointmentPath(appointmentId), { signal });
+  const result = await client.get<unknown>(appointmentPath(appointmentId), signal ? { signal } : {});
   if (!result.success) return null;
   const meeting = readMeetingDetails(result.data);
   return meeting?.appointmentId === appointmentId && meeting.contactId === contactId && meeting.status === "confirmed" && meeting.confirmed ? meeting : null;
