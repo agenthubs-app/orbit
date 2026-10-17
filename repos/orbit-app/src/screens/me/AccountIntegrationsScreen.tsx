@@ -1,6 +1,6 @@
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { Button, Skeleton, UiText, presentConfirm } from "../../components/ui";
@@ -24,7 +24,7 @@ export function AccountIntegrationsScreen() {
   async function connect(provider: "gmail" | "google_calendar") {
     if (designMode) { setRecords(values => values?.map(value => value.provider === provider ? { ...value, status: "active", healthStatus: "healthy" } : value) ?? null); return; }
     if (busy) return; setBusy(true);
-    try { await WebBrowser.openBrowserAsync(`${baseUrl.replace(/\/$/, "")}${integrationAuthorizePath(provider)}`); if (current.current === api) await load(); }
+    try { await WebBrowser.openBrowserAsync(`${baseUrl.replace(/\/$/, "")}${integrationAuthorizePath(provider, Platform.OS !== "web")}`); if (current.current === api) await load(); }
     catch { if (current.current === api) setFailed(true); }
     finally { if (current.current === api) setBusy(false); }
   }

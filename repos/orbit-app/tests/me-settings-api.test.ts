@@ -47,3 +47,9 @@ test("R18a integration disconnect requires the exact provider's revoked receipt"
   assert.deepEqual(calls, Array(3).fill("DELETE /api/integrations/gmail"));
   assert.equal(module.integrationAuthorizePath("google_calendar"), "/api/integrations/google_calendar/authorize?returnTo=settings");
 });
+
+for (const provider of ["gmail", "google_calendar"] as const) test(`R18a native ${provider} connection uses the approved Web-settings fallback`, async () => {
+  const module = await import("../src/screens/me/settings-api");
+  assert.equal(module.integrationAuthorizePath(provider, true), "/app/settings/integrations");
+  assert.equal(module.integrationAuthorizePath(provider), `/api/integrations/${provider}/authorize?returnTo=settings`);
+});

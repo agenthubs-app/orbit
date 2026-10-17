@@ -13,7 +13,7 @@ export function integrationState(record?: Pick<AccountIntegration, "status" | "h
   if (["pending", "revoked"].includes(record.status)) return "disconnected";
   return "action_required";
 }
-export function integrationAuthorizePath(provider: "gmail" | "google_calendar"): string { return `/api/integrations/${provider}/authorize?returnTo=settings`; }
+export function integrationAuthorizePath(provider: "gmail" | "google_calendar", native = false): string { return native ? "/app/settings/integrations" : `/api/integrations/${provider}/authorize?returnTo=settings`; }
 export function createAccountSettingsApi(client: OrbitApiClient) {
   return {
     async goal(signal?: AbortSignal): Promise<{ planId: string; goal: string } | null | undefined> {
