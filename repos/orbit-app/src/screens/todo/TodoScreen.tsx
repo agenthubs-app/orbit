@@ -24,7 +24,7 @@ import { readTaskListItems } from "../../view-models/task-list-scope";
 import { PersonalScheduleDateTimePicker } from "../schedule/PersonalScheduleDateTimePicker";
 import { TasksScreen } from "../tasks/TasksScreen";
 import { TodoSections } from "./TodoSections";
-import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoTaskCompletionReceipt } from "./todo-actions";
+import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoTaskCompletionReceipt } from "./todo-actions";
 import { useTodoPage } from "./useTodoPage";
 
 /** Until SC09 replaces the general task list, retain it as an explicit second view. */
@@ -85,6 +85,32 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
     const href = "actions" in item ? todoDecisionHref(item) : null;
     if (href) router.push(href as Href);
     else toast.info(locale.t("todo.unavailable"));
+  }
+
+  async function decide(item: TodoDecisionItem, action: "accept" | "dismiss") {
+    if (busy || offline || staleDay || !auth.actorId) return;
+    const intent = `suggestion:${item.sourceId}:${action}`;
+    const idempotencyKey = scope.keys.get(intent) ?? `ios:todo-${action}:${Crypto.randomUUID()}`;
+    const request = todoSuggestionDecisionRequest(item, action, idempotencyKey);
+    if (!request) { toast.error(locale.t("todo.unavailable")); return; }
+    scope.keys.set(intent, idempotencyKey);
+    setBusy(true);
+    try {
+      const result = await client.post<unknown>(request.path, { body: request.body, signal: scope.controller.signal });
+      if (!isCurrent()) return;
+      if (!result.success || result.status < 200 || result.status >= 300 || !todoSuggestionDecisionReceipt(result.data, item.sourceId, action)) {
+        toast.error(locale.t("todo.unavailable"));
+        if (result.status === 401 || result.status === 403) refresh();
+        return;
+      }
+      scope.keys.delete(intent);
+      toast.success(locale.t(action === "accept" ? "todo.accepted" : "todo.dismissed"));
+      refresh();
+    } catch {
+      if (isCurrent()) toast.error(locale.t("todo.unavailable"));
+    } finally {
+      if (isCurrent()) setBusy(false);
+    }
   }
 
   async function complete(item: TodoFollowupItem) {
@@ -183,7 +209,7 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
       canOpenFollowup={item => todoFollowupHref(item) !== null}
       canDefer={item => !offline || deferableTaskIds.has(item.taskId)}
       onOpen={open} onOpenFollowup={item => { const href = todoFollowupHref(item); if (href) router.push(href as Href); }}
-      onComplete={item => { void complete(item); }} onDefer={openDefer} /> : null}
+      onComplete={item => { void complete(item); }} onDefer={openDefer} onDecide={(item, action) => { void decide(item, action); }} /> : null}
     {onShowTasks ? <View style={slotStyles.allTasks}><Button label={locale.t("todo.allTasks")} onPress={onShowTasks} variant="secondary" /></View> : null}
     {!todo.page && todo.state.kind === "loading" ? <LoadingState /> : null}
     {!todo.page && todo.state.kind !== "loading" ? <ErrorState title={locale.t("tasks.unavailable")} message={locale.t("todo.unavailable")} /> : null}

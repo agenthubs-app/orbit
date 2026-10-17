@@ -6,7 +6,7 @@ import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { canWriteTodoFollowup, todoSectionCount } from "./todo-page-model";
 
-export function TodoSections({ page, offline, staleDay, busy, mirroredTaskIds, onRefresh, canOpen, canOpenFollowup, canDefer, onOpen, onOpenFollowup, onComplete, onDefer }: {
+export function TodoSections({ page, offline, staleDay, busy, mirroredTaskIds, onRefresh, canOpen, canOpenFollowup, canDefer, onOpen, onOpenFollowup, onComplete, onDefer, onDecide }: {
   page: TodoPageContract;
   offline: boolean;
   staleDay: boolean;
@@ -20,6 +20,7 @@ export function TodoSections({ page, offline, staleDay, busy, mirroredTaskIds, o
   onOpenFollowup: (item: TodoFollowupItem) => void;
   onComplete: (item: TodoFollowupItem) => void;
   onDefer: (item: TodoFollowupItem) => void;
+  onDecide: (item: TodoDecisionItem, action: "accept" | "dismiss") => void;
 }) {
   const { t } = useOrbitLocale();
   const { styles } = useStyles();
@@ -59,7 +60,13 @@ export function TodoSections({ page, offline, staleDay, busy, mirroredTaskIds, o
           {item.reasonPreview ? <UiText style={styles.muted}>{item.reasonPreview}</UiText> : null}
           {item.sample ? <UiText style={styles.sample}>{t("todo.sample")}</UiText> : null}
         </View>
-        <Button label={t("todo.open")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={readOnly || busy || Boolean(item.sample) || !canOpen(item)} />
+        <View style={styles.actions}>
+          {item.source === "task_suggestion" ? <>
+            {item.actions.includes("accept") ? <Button label={t("todo.accept")} onPress={() => onDecide(item, "accept")} size="sm" variant="secondary" disabled={readOnly || busy || Boolean(item.sample)} /> : null}
+            {item.actions.includes("dismiss") ? <Button label={t("todo.dismiss")} onPress={() => onDecide(item, "dismiss")} size="sm" variant="ghost" disabled={readOnly || busy || Boolean(item.sample)} /> : null}
+          </> : null}
+          {canOpen(item) ? <Button label={t("todo.open")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={readOnly || busy || Boolean(item.sample)} /> : null}
+        </View>
       </View>)}
     </Card>
 

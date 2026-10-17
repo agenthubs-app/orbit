@@ -1,4 +1,6 @@
 import type { TodoDecisionItem, TodoFollowupItem } from "../../api/contract/todo-page";
+import { taskSuggestionAcceptPath, taskSuggestionDismissPath } from "../../api/endpoints";
+import { aiTaskReceipt } from "../../api/ai-history-contract";
 import { calendarDate, localParts, resolveLocalDateTime, validTimeZone } from "../../time/date-time";
 import { readTaskListItems } from "../../view-models/task-list-scope";
 
@@ -8,6 +10,19 @@ export function todoDecisionHref(item: TodoDecisionItem): string | null {
   if (item.source === "contact_draft") return "/contacts/new/drafts";
   if (item.source === "plan_pending") return "/task?seg=plan";
   return null;
+}
+
+export function todoSuggestionDecisionRequest(item: TodoDecisionItem, action: "accept" | "dismiss", idempotencyKey: string): {
+  path: string; body: { idempotencyKey: string };
+} | null {
+  if (item.sample || item.source !== "task_suggestion" || !item.sourceId ||
+      item.key !== `task_suggestion:${item.sourceId}` || !item.actions.includes(action) || !idempotencyKey) return null;
+  return { path: action === "accept" ? taskSuggestionAcceptPath(item.sourceId) : taskSuggestionDismissPath(item.sourceId),
+    body: { idempotencyKey } };
+}
+
+export function todoSuggestionDecisionReceipt(payload: unknown, suggestionId: string, action: "accept" | "dismiss"): boolean {
+  return aiTaskReceipt(payload, suggestionId, action) !== null;
 }
 
 export function todoFollowupHref(item: TodoFollowupItem): string | null {

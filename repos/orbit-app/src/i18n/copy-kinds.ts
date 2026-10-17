@@ -8,6 +8,8 @@ import { hostCopyKinds } from "./host-kinds";
 export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[] = [
   ["todo.retry", "button"],
   ["todo.open", "button"],
+  ["todo.accept", "button"],
+  ["todo.dismiss", "button"],
   ["todo.complete", "button"],
   ["todo.defer", "button"],
   ["todo.more", "button"],

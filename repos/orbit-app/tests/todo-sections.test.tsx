@@ -20,14 +20,19 @@ const page: TodoPageContract = {
   sources: { task_suggestion: "ok", task: "ok", relationship_task: "ok", completion_question: "not_implemented" },
 };
 
-function tree(props: { offline?: boolean; staleDay?: boolean } = {}) {
+function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: boolean } = {}) {
   const value: OrbitLocaleContextValue = {
     choice: "ja", deviceLanguage: "ja", error: null, language: "ja", preference: { mode: "system", language: null, updatedAt: null },
     retryLanguageSave: async () => undefined, setLanguage: async () => undefined, source: "device", syncState: "idle", t: createTranslator("ja"),
   };
   return createElement(OrbitLocaleContext.Provider, { value }, createElement(TodoSections, {
-    page, offline: props.offline ?? false, staleDay: props.staleDay ?? false, busy: false, mirroredTaskIds: new Set(["t1"]),
-    onRefresh() {}, canOpen: () => true, canOpenFollowup: () => false, canDefer: () => true, onOpen() {}, onOpenFollowup() {}, onComplete() {}, onDefer() {},
+    page: { ...page, decisions: { ...page.decisions, items: page.decisions.items.map(item => {
+      if (props.decisionSample !== false) return item;
+      const { sample: _sample, ...withoutSample } = item;
+      return withoutSample;
+    }) } },
+    offline: props.offline ?? false, staleDay: props.staleDay ?? false, busy: false, mirroredTaskIds: new Set(["t1"]),
+    onRefresh() {}, canOpen: () => true, canOpenFollowup: () => false, canDefer: () => true, onOpen() {}, onOpenFollowup() {}, onComplete() {}, onDefer() {}, onDecide() {},
   }));
 }
 
@@ -47,4 +52,14 @@ test("offline stale page makes follow-up controls read-only and labels the last-
   assert.ok(html.includes("次の段階を決める"));
   assert.ok(html.includes("このフォローの詳細は今は開けません"));
   assert.equal((html.match(/aria-disabled="true"/gu) ?? []).length >= 2, true);
+});
+
+test("only a live non-sample suggestion offers source-native decision controls", () => {
+  const live = renderToHtml(tree({ decisionSample: false }));
+  assert.ok(live.includes("採用"));
+  assert.ok(live.includes("見送る"));
+  const sample = renderToHtml(tree());
+  assert.ok((sample.match(/aria-disabled="true"/gu) ?? []).length >= 4);
+  const offline = renderToHtml(tree({ decisionSample: false, offline: true }));
+  assert.ok((offline.match(/aria-disabled="true"/gu) ?? []).length >= 4);
 });
