@@ -29,6 +29,12 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/tasks/TaskDetailScreen.tsx:90': ['/api/tasks/:id'],
   'src/screens/tasks/TaskDetailScreen.tsx:91': ['/api/tasks/:id/activities'],
   'src/screens/tasks/TaskDetailScreen.tsx:92': ['/api/reminders'],
+  // R20 To-do decision builders validate source and action before this single transport call.
+  'src/screens/todo/TodoScreen.tsx:167': [
+    '/api/agent/actions/:id/accept', '/api/agent/actions/:id/dismiss', '/api/agent/ledger/:id/transition',
+    '/api/agent/plans/v2/pending/:id/accept', '/api/agent/plans/v2/pending/:id/dismiss',
+    '/api/task-suggestions/:id/accept', '/api/task-suggestions/:id/dismiss', '/api/task-suggestions/:id/snooze',
+  ],
 };
 
 // 这些 transport 调用点在运行时从不指向 Orbit API，因而没有可登记的读取面。

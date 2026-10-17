@@ -11,10 +11,9 @@ import type { TodoDecisionItem, TodoFollowupItem, TodoNextMoveItem, TodoPageCont
 import type { TaskItemContract } from "../../api/contract/tasks";
 import { TODO_SECTION_SOURCES, todoPageSchema } from "../../api/schema/todo-page";
 import { AppScreen } from "../../components/AppScreen";
-import { ErrorState } from "../../components/ErrorState";
-import { LoadingState } from "../../components/LoadingState";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { RetryCard, Skeleton } from "../../components/ui/States";
 import { useToast } from "../../components/ui/Toast";
 import { buildOfflineTaskMutation, isOfflineRelationshipFollowupMutation, isOfflineTaskCategory } from "../../data/sync/task-outbox-mutation";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -299,8 +298,8 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
       onCopy={() => { if (!isCurrent()) return; void Clipboard.setStringAsync(visibleManualDraft.body.trim()).then(() => { if (isCurrent()) toast.success(locale.t("todo.manualCopied")); }).catch(() => { if (isCurrent()) toast.error(locale.t("todo.manualFailed")); }); }}
       onMail={() => { if (!isCurrent()) return; const href = todoManualMailto(visibleManualDraft.body); if (href) void Linking.openURL(href).catch(() => { if (isCurrent()) toast.error(locale.t("todo.manualFailed")); }); }} /> : null}
     {onShowTasks ? <View style={slotStyles.allTasks}><Button label={locale.t("todo.allTasks")} onPress={onShowTasks} variant="secondary" /></View> : null}
-    {!todo.page && todo.state.kind === "loading" ? <LoadingState /> : null}
-    {!todo.page && todo.state.kind !== "loading" ? <ErrorState title={locale.t("tasks.unavailable")} message={locale.t("todo.unavailable")} /> : null}
+    {!todo.page && todo.state.kind === "loading" ? <Skeleton /> : null}
+    {!todo.page && todo.state.kind !== "loading" ? <RetryCard title={locale.t("tasks.unavailable")} message={locale.t("todo.unavailable")} onRetry={refresh} /> : null}
     {busy ? <View accessibilityState={{ busy: true }} /> : null}
     {deferItem ? <PersonalScheduleDateTimePicker key={`${deferItem.key}:${deferStart}`} kind="date" value={deferStart}
       zone={timeZone} disabled={busy} onCancel={() => { if (!busy) setDeferItem(null); }}

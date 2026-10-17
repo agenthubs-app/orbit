@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { resolve } from "node:path";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
+import { nativeUiStubs } from "./native-ui-stubs";
 
 /**
  * Sprint 0131: one harness for the offline page tests. The screens run for real
@@ -187,7 +188,7 @@ export async function startOfflinePageHarness(screens: readonly HarnessScreen[],
     resolveExtensions: options.web ? [".web.tsx", ".web.ts", ".tsx", ".ts", ".jsx", ".js", ".json"] : [".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     logLevel: "silent",
-    plugins: [{
+    plugins: [nativeUiStubs, {
       name: "offline-page-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "offline-page" }));

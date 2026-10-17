@@ -50,9 +50,9 @@ export function todoNativeDecisionRequest(item: TodoDecisionItem, action: "accep
   if (item.sample || !item.sourceId || item.key !== `${item.source}:${item.sourceId}` || !item.actions.includes(action)) return null;
   const encoded = encodeURIComponent(item.sourceId);
   if (item.source === "plan_pending" && idempotencyKey) return {
-    path: `/api/agent/plans/v2/pending/${encoded}/${action}`, body: { idempotencyKey },
+    path: action === "accept" ? `/api/agent/plans/v2/pending/${encoded}/accept` : `/api/agent/plans/v2/pending/${encoded}/dismiss`, body: { idempotencyKey },
   };
-  if (item.source === "agent_action") return { path: `/api/agent/actions/${encoded}/${action}`, body: {} };
+  if (item.source === "agent_action") return { path: action === "accept" ? `/api/agent/actions/${encoded}/accept` : `/api/agent/actions/${encoded}/dismiss`, body: {} };
   return null;
 }
 

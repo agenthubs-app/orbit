@@ -17,6 +17,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/reminders')) return 'followups';
   if (path.includes('/meeting-details')) return 'meetings';
   if (path.startsWith('/api/appointments')) return 'appointments';
+  if (path.startsWith('/api/calendar/external-events')) return 'external-calendar';
   if (path === '/api/schedule-items/association-options/notes') return 'notes';
   if (path === '/api/schedule-items/association-options/contacts') return 'contacts';
   if (path.startsWith('/api/schedule-items')) return 'personal-schedule';
@@ -96,6 +97,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     || consumerFile === 'src/screens/host/host-api.ts'
     // R30: global search is online-only; a query and its answer are never kept on the device.
     || consumerFile === 'src/screens/search/search-api.ts'
+    // Provider calendar rows are live/private; never persist them via the read inventory.
+    || endpointTemplate.startsWith('/api/calendar/external-events')
     // R23: the plan flow is online-only (paid AI drafts, versioned intakes); nothing is kept on the device.
     || consumerFile.startsWith('src/screens/plan/')
     // R15: invite codes, previews and connections are online-only; a code or a preview is never kept on the device.
@@ -600,6 +603,11 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/admin/AdminScreen.tsx","GET","/api/profile"],
   ["src/screens/agent/AgentLedgerScreen.tsx","GET","/api/agent/ledger"],
   ["src/screens/agent/AgentLedgerScreen.tsx","POST","/api/agent/ledger/:id/transition"],
+  // R20: meeting negotiation uses live participant visibility and has no device snapshot.
+  ["src/screens/calendar/meeting-detail-actions.ts","POST","/api/appointments/:id/commands"],
+  ["src/screens/calendar/meeting-proposal-flow.ts","GET","/api/appointments/:id"],
+  ["src/screens/calendar/meeting-proposal-flow.ts","POST","/api/appointments/:id/commands"],
+  ["src/screens/calendar/useCalendarExternalEvents.ts","GET","/api/calendar/external-events"],
   ["src/screens/ai/AgentActionsScreen.tsx","GET","/api/agent/actions"],
   ["src/screens/ai/AgentActionsScreen.tsx","POST","/api/agent/actions/:id/accept"],
   ["src/screens/ai/AgentActionsScreen.tsx","POST","/api/agent/actions/:id/dismiss"],
@@ -786,6 +794,17 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/today/TodayScreen.tsx","PATCH","/api/tasks/:id"],
   ["src/hooks/useTodayTaskPages.ts","GET","/api/today"],
   ["src/screens/todo/useTodoPage.ts","GET","/api/todo/page"],
+  ["src/screens/todo/TodoScreen.tsx","GET","/api/tasks/:id"],
+  ["src/screens/todo/TodoScreen.tsx","GET","/api/todo/page"],
+  ["src/screens/todo/TodoScreen.tsx","PATCH","/api/tasks/:id"],
+  ["src/screens/todo/TodoScreen.tsx","POST","/api/agent/actions/:id/accept"],
+  ["src/screens/todo/TodoScreen.tsx","POST","/api/agent/actions/:id/dismiss"],
+  ["src/screens/todo/TodoScreen.tsx","POST","/api/agent/ledger/:id/transition"],
+  ["src/screens/todo/TodoScreen.tsx","POST","/api/agent/plans/v2/pending/:id/accept"],
+  ["src/screens/todo/TodoScreen.tsx","POST","/api/agent/plans/v2/pending/:id/dismiss"],
+  ["src/screens/todo/TodoScreen.tsx","POST","/api/task-suggestions/:id/accept"],
+  ["src/screens/todo/TodoScreen.tsx","POST","/api/task-suggestions/:id/dismiss"],
+  ["src/screens/todo/TodoScreen.tsx","POST","/api/task-suggestions/:id/snooze"],
   ["src/hooks/useTodayTaskPages.ts","GET","/api/tasks/page"],
   ["src/view-models/business-card-ingest.ts","PUT","/api/contact-drafts/business-card/batches/v2/:id/items/:id/content"],
 ] as const;

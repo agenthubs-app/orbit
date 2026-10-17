@@ -94,6 +94,32 @@ test('canonical event and personal schedule consumers register exact domains wit
   assert.throws(() => resolveReadSurface('POST', '/api/events/example/operations'), /UNREGISTERED_READ/);
 });
 
+test('task-calendar provider events stay private and meeting proposals stay online-only', () => {
+  for (const [method, path] of [
+    ['GET', '/api/calendar/external-events'],
+    ['GET', '/api/appointments/appointment-1'],
+    ['POST', '/api/appointments/appointment-1/commands'],
+  ] as const) {
+    const surface = resolveReadSurface(method, path);
+    if (path.startsWith('/api/calendar/')) assert.equal(surface.domainId, 'external-calendar');
+    assert.equal(surface.mutationPolicy, 'online_only');
+  }
+  const provider = surfaces.find(row => row.consumerFile === 'src/screens/calendar/useCalendarExternalEvents.ts');
+  assert.equal(provider?.readPersistence, 'online_only_secret');
+  assert.equal(provider?.binaryPolicy, 'never_local');
+  for (const consumerFile of ['src/screens/calendar/meeting-detail-actions.ts', 'src/screens/calendar/meeting-proposal-flow.ts'])
+    for (const surface of surfaces.filter(row => row.consumerFile === consumerFile))
+      assert.equal(surface.mutationPolicy, 'online_only');
+});
+
+test('To-do decisions have explicit online-only write policies', () => {
+  const writes = surfaces.filter(row => row.consumerFile === 'src/screens/todo/TodoScreen.tsx' && row.method !== 'GET');
+  assert.equal(writes.length, 9);
+  for (const surface of writes) assert.equal(surface.mutationPolicy, 'online_only');
+  assert.ok(writes.some(row => row.endpointTemplate === '/api/task-suggestions/:id/snooze'));
+  assert.ok(writes.some(row => row.endpointTemplate === '/api/agent/ledger/:id/transition'));
+});
+
 test('path matching rejects malformed paths and never widens literal or segment boundaries', () => {
   for (const path of ['/api/notes/', '/api/notes/a/extra', '/api/notes//', '/api/notes/%2f', '/api/notes/%2e%2e', '/api/notes/%ZZ', 'https://other.test/api/notes/a', '//api/notes/a', '/api/notes/../a']) {
     assert.equal(matchTemplate('/api/notes/:id', path), false, path);
