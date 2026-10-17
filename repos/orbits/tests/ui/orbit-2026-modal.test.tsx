@@ -141,3 +141,22 @@ test("a dialog can start on a chosen control instead of its first one", async (t
   await page.keyboard.press("Escape");
   assert.equal(await active(page), "open", "focus still returns to the opener");
 });
+
+// R31b (D 线 R20a 依赖)：b3 表单型大模态 760 / 860 / 1000（日程を提案 1000 · 送る前の確認 760 · フォロー完了 860）只加不改，已有档位宽度不变。
+test("form modal widths 760 / 860 / 1000 are added and the existing 420 stays 420", async (t) => {
+  const sizesCode = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { Modal, Orbit2026Scope } from "./app/(app)/app/orbit-2026/ui";
+    const root = createRoot(document.getElementById("root"));
+    (window as unknown as { show: (size: number) => void }).show = (size) => root.render(<Orbit2026Scope language="ja"><Modal key={size} open onClose={() => undefined} title={"size " + size} size={size as 420}><p>本文</p></Modal></Orbit2026Scope>);
+  `);
+  const page = await open(browser, sizesCode);
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  for (const size of [420, 560, 760, 860, 1000]) {
+    await page.evaluate((value) => (window as unknown as { show: (size: number) => void }).show(value), size);
+    await page.waitForTimeout(400);
+    const box = await page.getByRole("dialog", { name: `size ${size}` }).boundingBox();
+    assert.equal(Math.round(box?.width ?? 0), size, `Modal size ${size}`);
+  }
+});

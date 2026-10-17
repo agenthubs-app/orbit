@@ -29,6 +29,10 @@
 .w480 { width: min(480px, calc(100vw - 32px)); }
 .w560 { width: min(560px, calc(100vw - 32px)); }
 .w680 { width: min(680px, calc(100vw - 32px)); }
+/* b3 form modals (.wmodal.form with inline widths): 送る前の確認 760, フォロー完了 860, 日程を提案 1000. */
+.w760 { width: min(760px, calc(100vw - 32px)); }
+.w860 { width: min(860px, calc(100vw - 32px)); }
+.w1000 { width: min(1000px, calc(100vw - 32px)); }
 .top { top: 96px; max-height: calc(100vh - 120px); transform: translateX(-50%); animation-name: topIn; }
 .form { background: var(--bg); }
 /* R30：⌘K 面板（kit .cmdk）内边距 10，面板本体自己画分隔线与行。 */

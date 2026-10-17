@@ -50,7 +50,7 @@ function DialogFrame({ onClose, closeOnScrim = true, labelledBy, describedBy, cl
   );
 }
 
-// kit .wmodal: centred dialog 420 / 480 / 560 (680 for the ⌘K panel), radius 28, padding 24; `top` sits 96
+// kit .wmodal: centred dialog 420 / 480 / 560 (680 for the ⌘K panel; form modals 760 / 860 / 1000, b3 日程を提案 1000 · 送る前の確認 760 · フォロー完了 860), radius 28, padding 24; `top` sits 96
 // from the top (⌘K); `form` uses --bg so cards inside keep their layer.
 export function Modal({ open, onClose, title, header, description, size = 420, top = false, form = false, bare = false, actions, hint, initialFocus, children }: {
   open: boolean;
@@ -59,7 +59,7 @@ export function Modal({ open, onClose, title, header, description, size = 420, t
   /** Replaces the default title row when a board composes its own head (e.g. b12 W-R12-01: 18px title + subtitle + 40 round ✕); `title` still names the dialog. */
   header?: ReactNode;
   description?: string;
-  size?: 420 | 480 | 560 | 680;
+  size?: 420 | 480 | 560 | 680 | 760 | 860 | 1000;
   top?: boolean;
   form?: boolean;
   /** R30 (only added): the ⌘K panel body draws its own rows edge to edge — kit `.cmdk` padding 10 instead of 24. */
