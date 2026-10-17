@@ -98,12 +98,13 @@
 | RD-29 | **Web 像素判定与 App（决定表 §20）统一**：所有超阈值带都归因为 `[data]` / `[raster]` / `[contrast]` 即通过，整屏 raw 只作参考（用户 2026-10-18） | R31b 及以后全部 Sprint |
 | RD-30 | **剩余工作全部由乙做**（用户 2026-10-18）：组件 Sprint 起乙可改 Web `orbit-2026/ui/**` 与 `shared/design/tokens.json`；替换甲名下页面里的手写件、改调用点前在交接表写一句通知甲。以后 Sprint 设计成**几条互不影响的并行线**（按文件归属切分，共用文件只在里程碑后冻结）；R31a 工具里程碑后 R31a 与 R31b 并行 | R31a、R31b 及以后全部 Sprint |
 | RD-31 | **剩余工作分 5 条并行线**（用户 2026-10-18，[并行线提案](https://claude.ai/artifact/NQDE2nDbz4NRgRLH5EQRm6)）：A 组件 → 后台（R31a ∥ R31b → R29）、B 人脈 → 收件箱（R11 → R13 / R14）、C 账户 → 引导（R18 → R28）、D Task → 首页 → 小组件（R20 → R10 → R19）、E iOrbit（R21）。**同时跑 4 条**（A–D），E 线在 R31a 完成后开。功能线**现在就开**，先做结构、数据、逻辑，像素收口排在 R31a / R31b 之后。线间互不改对方文件：组件库与 token 只有 A 线改，导航壳只有 D 线改；契约 / 文案 / 演示数据各改自己功能的文件，汇总文件只追加，`.snapshot.json` 冲突时重新生成；迁移按库分、同库先划版本号段；决定表新条目用线前缀编号（`§B-1`）。**每条线一个 worktree**（`/Volumes/ORICO/Dev/worktrees/orbit/redesign-<线>`，本地分支 `line-<线>`），提交前 `git pull --rebase origin redesign`，`git push origin HEAD:redesign`，仍按路径提交；各线用自己的 dev 端口、`distDir`、测试库、Metro 端口和 iOS 模拟器（按 UDID）。跨线依赖走「先交契约 + 演示数据，后接真数据」：R13 / R14 秘書来源契约 → R10；R21 会话搜索 → 打开 R30 会話 chip（E 线自己改）。每份 PLANNER 开头写「本线归属的文件 / 不许碰的文件」，复核检查越线 | R31a 起全部 Sprint |
+| RD-32 | **执行方式**（用户 2026-10-18）：4 条并行线由 **Claude 跑 2 条（A 组件 → 后台、B 人脈 → 收件箱）、Codex 跑 2 条（C 账户 → 引导、D Task → 首页 → 小组件）**；E 线（iOrbit）交给先空出来的一方（Codex 用 `codex exec`，在该线的 ORICO worktree 里以最高权限 `--dangerously-bypass-approvals-and-sandbox` 自动运行，不弹批准；只在自己的 worktree 提交、**不推送**）。主会话（Claude）负责启动、监控、独立复核（自己重跑测试与门禁、检查越线），复核通过后由主会话推到 `redesign`；需要产品拍板的事由主会话汇总问用户。**不再跑 GitNexus**（`impact` / `detect-changes` 不要求，通用规则 3 修订） | R31a 起全部 Sprint |
 
 ## 骨架通用规则（每个 Sprint 都适用，PLANNER 不再重复）
 
 1. **基线**：`redesign` 起点 `9d404c1c8`。App `npm test` 4062 条，1 条已知失败（`tests/route-parity.test.ts` 的 `/start`，用户已决定 App 以后做引导页）；orbits `npm test` 必须带 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`（W0034 排序运行时只认 en-US），6811 条、0 失败。两端 `tsc` 通过。每个 Sprint 开工时重跑并记录基线，收口时逐条对照，**零新增失败**。
 2. **档位 H**：每个 Sprint 都动共享代码。TDD（先 RED），真实渲染测试，收口跑两端全量和 typecheck；orbits 另跑 `typecheck:app`、`lint`。
-3. **GitNexus**：改函数 / 组件前跑 `impact`（upstream），HIGH / CRITICAL 先在 REPORT 写明对策；`UNKNOWN` 必须用文本搜索确认；提交前跑 `detect-changes`。
+3. ~~**GitNexus**：改函数 / 组件前跑 `impact`（upstream），HIGH / CRITICAL 先在 REPORT 写明对策；`UNKNOWN` 必须用文本搜索确认；提交前跑 `detect-changes`。~~ → **修订（用户 2026-10-18，RD-32）：不再跑 GitNexus**；影响面靠读代码和文本搜索判断，全站使用的组件 / 函数改动写进 REPORT 并以全量测试和「不退步」门禁兜底。
 4. **同步**：改了 `repos/orbits/shared/**` 的同步目录，必须在 App 跑 `npm run sync:contract`，并在同一提交里带上副本；**不得直接改 App 里的副本**。
 5. **证据**：截图、日志放 `~/orbit-sprint-evidence/redesign/R0x/run-01/`；每个 Sprint 的 REPORT 附一个截图对照页（设计稿画板 ↔ 实现，浅色 / 深色）。**RD-16 修订（用户决定 2026-10-11）后另附像素门禁结果：每个画面 × 宽度 × 主题的 raw、超阈值带数、归因文件路径；不过门禁的画面不得标 done。**
 6. **不碰生产**：不连 Neon、不部署；数据库只用本地 `orbit_test` 等测试库；骨架阶段**没有产品内的付费 AI 调用**（R03 的翻译和审校由开发用 AI 会话完成，不走产品的 AI 接口）。

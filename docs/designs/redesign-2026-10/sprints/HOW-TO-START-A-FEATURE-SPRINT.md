@@ -13,7 +13,7 @@
    - App：`cd repos/orbit-app && npm test`、`npx tsc --noEmit`。
    - 只跑几个文件：orbits `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node scripts/run-node-tests.mjs <文件…>`；App `node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs <文件…>`（App 的 `npm test -- 文件` 仍会跑全部）。
    - 已知失败以 README「骨架登记表」最后一行为准，收口时逐条对照，零新增。
-4. 先刷新 GitNexus 索引（落后时新符号查不到，`impact` / `detect-changes` 的结论也不可信）：`node .gitnexus/run.cjs analyze --index-only`（几分钟，可放后台）。改函数或组件之前跑 `node .gitnexus/run.cjs impact <符号> -f <文件> --direction upstream --repo . --summary-only`。
+4. ~~刷新 GitNexus 索引、跑 `impact`~~（RD-32 起不再跑 GitNexus；影响面靠读代码和文本搜索判断）。
    - HIGH / CRITICAL 先在 REPORT 写对策；只是往一张表里加一项（例如登录前缀表）也可能报 CRITICAL，对策写「只追加，不改已有项」即可。
    - UNKNOWN（类型、常量数组、新文件里的符号常见）和「Target not found」（文件内部没导出的常量，例如登录前缀表）都用文本搜索确认调用方。
    - `detect-changes` 有时把改动算到相邻的无关函数上并报 critical（行号映射偏差）；核对它列出的符号确实是你改的，不是就在 REPORT 写明，不当结论。
@@ -161,5 +161,5 @@ render(body.data);
 
 1. 两端全量、typecheck、lint，对照基线零新增失败（失败的单独重跑确认是否不稳定）。`npm run lint` 只检查一份固定清单；新文件靠 `npm run typecheck` / `typecheck:app` 和各门禁测试把关。
 2. 先 `node .gitnexus/run.cjs analyze --index-only`，再 `node .gitnexus/run.cjs detect-changes --scope all --repo .`，结果写进 REPORT（索引落后时它只看得到少数文件，结论不可信）。
-3. 写 `REPORT.md`（做了什么、SC 对照、**像素门禁总表**、自定决定（只限工程决定，偏离设计稿的必须先请用户拍板，RD-16）、基线 → 收口、GitNexus、交接、已知例外），登记表改「done，待复核」，提交并 push。
+3. 写 `REPORT.md`（做了什么、SC 对照、**像素门禁总表**、自定决定（只限工程决定，偏离设计稿的必须先请用户拍板，RD-16）、基线 → 收口、影响面、交接、已知例外），登记表改「done，待复核」，提交并 push。
 4. 独立 AI 复核写 `REVIEW.md`（**必须重跑像素门禁**，见第 8 节）；修完 M 级和能修的 m 级，追加「处理记录」，登记表改「done，已复核，问题已修」。

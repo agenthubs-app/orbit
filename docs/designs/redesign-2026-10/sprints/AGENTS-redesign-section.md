@@ -27,4 +27,4 @@
   | `shared/design/tokens.json`、`icons.json` | 甲；`tokens.json` **组件 Sprint 起乙也可改**（RD-30） | 骨架由甲建立 |
   | `shared/copy/**`、术语表、写作规范、`copy-qa` | 甲 | 骨架由甲建立；乙新增文案按规范写，术语变更提给甲 |
   | `shared/contract/.snapshot.json`、`BREAKING.md` | 改动该契约的负责人 | 按 R08 的契约归属 |
-- **每个 Sprint 的收口**：两端全量测试对照基线零新增失败（orbits 用 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`），typecheck、`lint` 通过；改函数前跑 GitNexus `impact`、提交前跑 `detect-changes`（索引落后时先 `node .gitnexus/run.cjs analyze --index-only`，否则新符号查不到、结论不可信）；写 REPORT，由独立 AI 复核写 REVIEW，问题直接在 `redesign` 上修（RD-25）。
+- **每个 Sprint 的收口**：两端全量测试对照基线零新增失败（orbits 用 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`），typecheck、`lint` 通过；改动影响面靠读代码和文本搜索判断，**不再跑 GitNexus**（`impact` / `detect-changes` 不要求，用户 2026-10-18，RD-32；本文件其他地方的 GitNexus 必做规则在 redesign 开发中不适用）；写 REPORT，由独立 AI 复核写 REVIEW，问题直接在 `redesign` 上修（RD-25）。
