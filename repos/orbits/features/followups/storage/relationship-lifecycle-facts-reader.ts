@@ -14,7 +14,10 @@ import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-
 
 // A matching account alias is consistency metadata, never an independent grant.
 // Followup tasks/connections require the persisted row owner to match the actor.
-export const RELATIONSHIP_LIFECYCLE_FACTS_CTES = `
+/** Optional exact-task scope reuses every existing ownership predicate. No caller-provided SQL. */
+export function relationshipLifecycleFactsCtes(scope: "all" | "exact-task" = "all"): string {
+  const exact = scope === "exact-task";
+  return `
 with actor_tasks as materialized (
   select r.*
   from orbit_records r
@@ -23,6 +26,7 @@ with actor_tasks as materialized (
     and r.lifecycle_state <> 'deleted'
     and r.user_id = $2
     and (r.payload -> 'accountId' is null or r.payload -> 'accountId' = 'null'::jsonb or r.payload -> 'accountId' = to_jsonb($2::text))
+    ${exact ? "and r.payload ->> 'id' = $3 and r.deleted_at is null limit 2" : ""}
 ),
 actor_connections as materialized (
   select r.*
@@ -32,6 +36,7 @@ actor_connections as materialized (
     and r.lifecycle_state <> 'deleted'
     and r.user_id = $2
     and (r.payload -> 'accountId' is null or r.payload -> 'accountId' = 'null'::jsonb or r.payload -> 'accountId' = to_jsonb($2::text))
+    ${exact ? "and r.deleted_at is null and r.payload -> 'id' in (select t.payload -> 'connectionId' from actor_tasks t) limit 3" : ""}
 ),
 referenced_connection_ids as materialized (
   select distinct r.payload -> 'connectionId' as connection_id
@@ -86,6 +91,7 @@ selected_contacts as materialized (
     )), false)
     and c.user_id = $2
     and (c.payload->'accountId' is null or c.payload->'accountId'='null'::jsonb or c.payload->'accountId'=to_jsonb($2::text))
+    ${exact ? "and c.deleted_at is null limit 3" : ""}
 ),
 task_projection as (
   select
@@ -205,6 +211,9 @@ contact_projection as (
   from selected_contacts r
 )
 `;
+}
+
+export const RELATIONSHIP_LIFECYCLE_FACTS_CTES = relationshipLifecycleFactsCtes();
 
 export const RELATIONSHIP_LIFECYCLE_FACTS_SQL = `${RELATIONSHIP_LIFECYCLE_FACTS_CTES}
 select jsonb_build_object(

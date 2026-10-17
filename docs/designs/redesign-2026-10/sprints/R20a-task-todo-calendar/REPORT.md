@@ -294,6 +294,20 @@ SC-08 parity commit は `794ed2987`（12 paths）。その時点の fresh full �
 
 audit 修正の exact three-path commit は `378c84af8`。この committed tree で同じ pristine sanitizer / heavy.sh d を使った再全量 `web-full-378c84af8.log` / session 38906 は **7,641 tests / 6,583 pass / 33 fail / 1,025 skip、exit 1、225.0 秒**。`web-full-378c84af8-comparison.json` の exact name 比較で、pristine の **31 件すべて再現**、追加は上述 doors animation assertion と Modal typecheck の **2 件**。D-owned `visible controls do not rely on missing static behavior evidence` は full 内でも **pass** に変わり、局所 scanner のみの成功ではない。typecheck の production error は依然 Modal width 一件のみ。doors は元の変更していない test で再失敗しており、diagnostic 2/2 を全量成功に置換しない。六つの gated SC-09 paths は同じ untracked 状態で discovery に入り、SQL regression は再び SKIP、failure はなし。新規 failure 0 / suite-green / SC-16 完了とはしない。tracked tree を変更せず走行し、終了後の index は空、heavy lock は解放済み。
 
+### SC-09 exact task resolver（承認後の API 子里程標）
+
+2026-10-18 user は B-owned `relationship-lifecycle-facts-reader.ts` / `lifecycle-task-pages.ts` の narrow additive 例外を承認。共通 ownership / validity predicate をコピーせず、既存 CTE builder に exact-task scope を追加し、既存の全件 caller は同じ default を維持。`sc09-default-sql-equivalence.log` は変更前 HEAD の両 SQL constant と whitespace-normalized の一致を実行検証した。exact scope は task 最大 2 / referenced connection 最大 3 / needed contact 最大 3 の事実だけを分類し、duplicate domain identity / 不整合は conflict。deletedAt も exact scope では拒否する。既存 `shared/compute/follow-up-task.ts`、frozen todo/page contract は未変更。
+
+`GET /api/relationship-tasks/[taskId]/resolve` は authenticated server actor / workspace だけを受け、no-store envelope の `data={taskId,connectionId,contactId}` を返す。missing / unowned は 404、ambiguous は 409、invalid query / id は 400、storage unavailable は 503、未認証は 401。三集合の read-budget gate を SQL 前に通す。proxy public allowlist へ加えず、route handler も auth を検証。Web client は resolver の identity を照合してから既存 lifecycle GET を読み、matching connection / contact / unique task / actor を再検証する。actor / signal は追加 optional 引数、no-store / same-origin credentials、1 MiB body cap、abort 後に connection GET を始めない。これだけで completion UI 完了とはしない。
+
+`sc09-resolver-authorized-red.log` は SQL stub が null を返す RED。`sc09-resolver-client-scope-red.log` は actor mismatch / oversized body の RED。最新 isolated `sc09-resolver-final-focused-green.log` は **9/9 pass、0 skip**。実 PG18 / isolated schema で三集合それぞれの owner / conflicting account alias / deletedAt / deleted lifecycle state、foreign workspace、mismatch、duplicate、budget-before-read を検証。10,000 unrelated task の後も resolver は **1 query / 120 response bytes**（約 5 秒）。SQL 内部の scanned bytes / constant-work をこの response metric から主張しない。payload identity filter は現 owner index に依存し、追加 identity index は後続検討。
+
+広い同時 PG batch `sc09-resolver-authorized-differential-green.log` は名前に green とあるが実測 **25 tests / 13 pass / 9 fail / 1 cancelled / 2 skip、exit 1**。八件は W5 test の固定 DB 名 `orbit_w5_f_test` に `orbit_line_d` が合わず接続前拒否。guard を変更せず、その八件を parity pass としない。旧 relationship page growth は metric 8,738 → 8,741 response bytes / total 10,068 / 1 query 後、120 秒 test timeout で cancelled。並行時の resolver は 15 秒 SQL timeout で fail。後続 isolated resolver 9/9 は上記のとおりで、この混雑 batch 全体を成功に置換しない。四つの bounded lifecycle differentials（分類 / order / counts / permission / duplicate / normalization / home facts parity）は当該 batch 内で pass、追加二つの opt-in stress は skip。後続 solo 結果は別記する。
+
+solo `sc09-bounded-lifecycle-differential-final.log` は **6 tests / 4 pass / 0 fail / 2 opt-in stress skip、8.96 秒、exit 0**。新 resolver 9/9 と合わせて default SQL の差分確認を行った。主会話判断で identity index / migration は追加しない：isolated 10k は pass しており並行 timeout だけでは schema 拡張の根拠にしない。現在 index と EXPLAIN による内部 scan cost の精査は follow-up とし、bounded response を constant DB work と言い換えない。
+
+App 消費側は主会話が担当し、taskId を旧 connectionId route に直接流さず resolver を先に読む。Web lifecycle detail / completion flow と UI の安全な mount は次段階。SC-09 全体はまだ閉合しない。主会話の App SC-14 navigation 子里程標 `54de0665f` は `/agent*` の parent を To-do、`/ai` は iOrbit に維持、focused 12/12 + Task container browser 10/10。旧 screen の破壊的削除は replacement flow 完成後に主会話が担当する。
+
 ## 请求
 
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。
@@ -309,9 +323,9 @@ SC-04 の每日一問は主会話が決定済み：aggregate GET は read-only �
 
 ## 待用户授权
 
-SC-09 の actor / workspace-scoped taskId resolver に必要な二つの B-owned helper（`relationship-lifecycle-facts-reader.ts` / `lifecycle-task-pages.ts`）の narrow additive 例外を主会話が照会中。既存 authorization predicate を複製して迂回せず、その dependent 実装は承認待ちにする。六つの resolver / client / test path は未コミット・未 stage、SQL stub / 意図した RED を含み、この里程標に混ぜない。Neon / production / deploy / real Google / TestFlight は未使用。
+SC-09 の二つの B-owned helper 例外は上記のとおり user 承認済み。従来の六つの untracked paths / SQL stub という状態は前回 full 時点の履歴であり、承認後の API 子里程標で stub を実装し関連 route と合わせて path-specific に提出する。Neon / production / deploy / real Google / TestFlight は未使用。
 
-SC-11 の A-owned Modal 1000 / 760 support も主会話の user choice 待ち。現在の fresh Web typecheck は上記の API mismatch で fail であり、未実施 gate や compiler を成功として報告しない。
+SC-11 は user が first-proposal の additive contract / endpoint と、R31b 待ちの間は既存 max Modal size による構造・挙動検証を承認。画板 1000 / 760 は依然「等组件库」、private Modal は作らない。A の upstream `2569ad835` が support を追加したとの主会話通知があり、双方の owned paths を commit して clean rebase 後に実 API を確認する。直近 full の compiler failure は引き続き上記の履歴として保持し、merge / fresh check 前に pass としない。
 
 ## 交接表追加（逐行四栏原文）
 

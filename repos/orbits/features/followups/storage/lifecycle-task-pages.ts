@@ -24,7 +24,8 @@ const required = (keys: string[]) => keys.map(key => nonblank(`v -> '${key}'`)).
 /** Full actor validity/classification stays inside PG; only bounded display cards leave it.
  * Keep the legacy facts decoder as the differential oracle, never limit its shared graph.
  */
-export const LIFECYCLE_TASK_CLASSIFIED_CTES = `${RELATIONSHIP_LIFECYCLE_FACTS_CTES},
+export function lifecycleTaskClassifiedCtes(factsCtes: string = RELATIONSHIP_LIFECYCLE_FACTS_CTES): string {
+  return `${factsCtes},
 projected as materialized (
   select value as v from task_projection union all
   select value from connection_projection union all select value from contact_projection
@@ -111,6 +112,9 @@ classified as materialized (
     task ->> 'id' as id, task -> 'metadata' ->> 'recordId' as record_id
   from resolved
 )`;
+}
+
+export const LIFECYCLE_TASK_CLASSIFIED_CTES = lifecycleTaskClassifiedCtes();
 
 export const LIFECYCLE_CARD_JSON_SQL = `jsonb_build_object(
   'id', id, 'recordId', record_id, 'dueKey', due,
