@@ -26,7 +26,7 @@ import { PersonalScheduleDateTimePicker } from "../schedule/PersonalScheduleDate
 import { TasksScreen } from "../tasks/TasksScreen";
 import { TodoSections } from "./TodoSections";
 import { TodoManualDraft, todoManualDraftForScope, todoManualMailto } from "./TodoManualDraft";
-import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoNativeSnoozeReceipt, todoNativeSnoozeRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "./todo-actions";
+import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoLifecycleResolvePath, todoLifecycleResolvedHref, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoNativeSnoozeReceipt, todoNativeSnoozeRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "./todo-actions";
 import { appendTodoSourcePage, todoAggregateHidden } from "./todo-page-model";
 import { useTodoPage } from "./useTodoPage";
 
@@ -79,7 +79,7 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
   const [deferConfirmation, setDeferConfirmation] = useState<{ item: TodoFollowupItem; date: string } | null>(null);
   const [manualDraft, setManualDraft] = useState<{ scopeKey: string; item: TodoNextMoveItem; body: string } | null>(null);
   const visibleManualDraft = todoManualDraftForScope(manualDraft, scopeKey);
-  const scope = useMemo(() => ({ active: true, controller: new AbortController(), keys: new Map<string, string>() }), [scopeKey]);
+  const scope = useMemo(() => ({ active: true, controller: new AbortController(), keys: new Map<string, string>(), resolving: false }), [scopeKey]);
   const currentScope = useRef(scope);
   currentScope.current = scope;
   useEffect(() => {
@@ -149,6 +149,30 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
     const href = "actions" in item ? todoDecisionHref(item) : null;
     if (href) router.push(href as Href);
     else toast.info(locale.t("todo.unavailable"));
+  }
+
+  async function openFollowup(item: TodoFollowupItem) {
+    if (item.kind === "task") {
+      const href = todoFollowupHref(item);
+      if (href) router.push(href as Href);
+      return;
+    }
+    const path = todoLifecycleResolvePath(item);
+    if (!path || busy || scope.resolving || offline || staleDay || !auth.ready || !auth.signedIn || !auth.actorId || !server.ready) return;
+    scope.resolving = true;
+    setBusy(true);
+    try {
+      const result = await client.get<unknown>(path, { signal: scope.controller.signal });
+      if (!isCurrent()) return;
+      const href = result.success && result.status >= 200 && result.status < 300
+        ? todoLifecycleResolvedHref(result.data, item.taskId) : null;
+      if (!href) { toast.error(locale.t("todo.unavailable")); return; }
+      router.push(href as Href);
+    } catch {
+      if (isCurrent()) toast.error(locale.t("todo.unavailable"));
+    } finally {
+      if (isCurrent()) { scope.resolving = false; setBusy(false); }
+    }
   }
 
   async function decide(item: TodoDecisionItem, action: "accept" | "dismiss" | "snooze") {
@@ -285,9 +309,11 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
     {page ? <TodoSections page={page} offline={offline} staleDay={staleDay} busy={busy} pagingSection={pagingSection} pagingFailedSection={pagingFailedSection} mirroredTaskIds={mirroredTaskIds}
       onRefresh={refresh} canOpen={item => "actions" in item ? todoDecisionHref(item) !== null : true}
       onMore={section => { void loadMore(section); }}
-      canOpenFollowup={item => todoFollowupHref(item) !== null}
+      canOpenFollowup={item => item.kind === "lifecycle"
+        ? !offline && !staleDay && auth.ready && auth.signedIn && !!auth.actorId && server.ready && todoLifecycleResolvePath(item) !== null
+        : todoFollowupHref(item) !== null}
       canDefer={item => !offline || deferableTaskIds.has(item.taskId)}
-      onOpen={open} onOpenFollowup={item => { const href = todoFollowupHref(item); if (href) router.push(href as Href); }}
+      onOpen={open} onOpenFollowup={item => { void openFollowup(item); }}
       onComplete={item => { void complete(item); }} onDefer={openDefer} onDecide={(item, action) => { void decide(item, action); }} /> : null}
     {visibleManualDraft ? <TodoManualDraft title={visibleManualDraft.item.titlePreview} value={visibleManualDraft.body}
       onChange={body => { if (isCurrent()) setManualDraft(current => {

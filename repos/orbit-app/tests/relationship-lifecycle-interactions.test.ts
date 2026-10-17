@@ -11,14 +11,14 @@ let browser: Browser, script: string, handlersFactory: any, repositoryFactory: a
 const fixture = `
 import React, { useSyncExternalStore } from 'react';
 let revision = 0, next = 0; const listeners = new Set();
-const state = window.fixture = { actor: 'owner', signedIn: true, requests: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
+const state = window.fixture = { actor: 'owner', signedIn: true, routeTaskId: window.__targetTaskId, routeContactId: window.__targetContactId, requests: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
 export const useOrbitAuthSession = () => { useFixture(); return { ready: true, signedIn: state.signedIn, actorId: state.actor, cookieHeader: '' }; };
 // Sprint 0131: the screen reads the device mirror / page copies; this harness tests the network path (no mirror).
 export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
 export const useSyncCoordinatorSession = () => null;
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: 'https://orbit.example' });
-export const useLocalSearchParams = () => ({ id: 'connection:1' });
+export const useLocalSearchParams = () => { const state = useFixture(); return { id: 'connection:1', taskId: state.routeTaskId, contactId: state.routeContactId }; };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => '/tasks/relationship/connection%3A1';
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push() {}, replace() {} });
@@ -80,4 +80,33 @@ test("App real editor preserves retry intent, persists outcome via HTTP, refresh
   await page.evaluate(() => (window as any).fixture.update({ actor: "other" }));
   await page.getByRole("alert").waitFor();
   assert.equal(await page.getByText(/待确认合作/).count(), 0);
+});
+
+test("task-addressed relationship detail cannot silently select another open task", async t => {
+  const page = await browser.newPage(); page.setDefaultTimeout(3000); t.after(() => page.close());
+  const now = "2026-09-16T00:00:00.000Z";
+  const identity = { actorId: "owner", connectionId: "connection:1", contactId: "contact:1", version: 1, createdAt: now, updatedAt: now };
+  const snapshot = { connection: { ...identity, stage: "needs_follow_up", activeGoal: null }, tasks: [
+    { ...identity, taskId: "task:1", title: "一つ目", dueAt: now, status: "open", purpose: "follow_up" },
+    { ...identity, taskId: "task:2", title: "二つ目", dueAt: now, status: "open", purpose: "follow_up" },
+  ] };
+  await page.route("https://orbit.example/**", async route => {
+    if (route.request().method() === "OPTIONS") { await route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Methods": "GET", "Access-Control-Allow-Headers": "content-type" } }); return; }
+    await route.fulfill({ status: 200, headers: { "Access-Control-Allow-Origin": "null" }, contentType: "application/json", json: { success: true, data: { snapshot } } });
+  });
+  await page.setContent('<div id="root"></div>');
+  await page.evaluate(() => { (window as any).__targetTaskId = "task:2"; (window as any).__targetContactId = "contact:1"; });
+  await page.addScriptTag({ content: script });
+  await page.getByRole("radio", { name: /二つ目/ }).waitFor();
+  assert.equal(await page.getByRole("radio", { name: /一つ目/ }).count(), 0);
+  assert.equal(await page.getByRole("radio", { name: /二つ目/ }).getAttribute("aria-checked"), "true");
+  await page.evaluate(() => (window as any).fixture.update({ routeContactId: "another-contact" }));
+  await page.getByRole("alert", { name: "当前跟进已不可用，请返回任务列表刷新。" }).waitFor();
+  assert.equal(await page.getByRole("radio", { name: /二つ目/ }).count(), 0);
+  await page.evaluate(() => (window as any).fixture.update({ routeContactId: "contact:1" }));
+  await page.getByRole("radio", { name: /二つ目/ }).waitFor();
+  await page.evaluate(() => (window as any).fixture.update({ routeTaskId: "missing" }));
+  await page.getByRole("alert", { name: "当前跟进已不可用，请返回任务列表刷新。" }).waitFor();
+  assert.equal(await page.getByRole("radio", { name: /二つ目/ }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "完成并保存下一步" }).isDisabled(), true);
 });

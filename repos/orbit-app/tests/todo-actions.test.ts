@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoNativeSnoozeReceipt, todoNativeSnoozeRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "../src/screens/todo/todo-actions";
+import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoLifecycleResolvePath, todoLifecycleResolvedHref, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoNativeSnoozeReceipt, todoNativeSnoozeRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "../src/screens/todo/todo-actions";
 
 test("To-do opens only destinations with a stable, owned route", () => {
   const base = { key: "agent_action:a1", sourceId: "a1", titlePreview: "Review", createdAt: "2026-10-18T00:00:00Z", actions: ["open"] as const };
@@ -16,6 +16,19 @@ test("To-do follow-ups retain task versus lifecycle detail identity", () => {
   const base = { key: "task:t1", source: "task" as const, sourceId: "t1", taskId: "t1", titlePreview: "Follow up", createdAt: "2026-10-18T00:00:00Z", status: "open" as const, overdue: false };
   assert.equal(todoFollowupHref({ ...base, kind: "task" }), "/tasks/t1");
   assert.equal(todoFollowupHref({ ...base, kind: "lifecycle" }), null);
+});
+
+test("lifecycle follow-up resolves its exact task before opening the relationship detail", () => {
+  const item = { key: "relationship_task:task:/?", source: "relationship_task" as const, sourceId: "task:/?", taskId: "task:/?", titlePreview: "Follow up", createdAt: "2026-10-18T00:00:00Z", kind: "lifecycle" as const, status: "open" as const, overdue: false };
+  assert.equal(todoLifecycleResolvePath(item), "/api/relationship-tasks/task%3A%2F%3F/resolve");
+  assert.equal(todoLifecycleResolvePath({ ...item, sample: true }), null);
+  assert.equal(todoLifecycleResolvePath({ ...item, key: "other" }), null);
+  assert.equal(todoLifecycleResolvePath({ ...item, key: "relationship_task:..", sourceId: "..", taskId: ".." }), null);
+  assert.equal(todoLifecycleResolvedHref({ taskId: item.taskId, connectionId: "connection:/?", contactId: "contact:1" }, item.taskId), "/tasks/relationship/connection%3A%2F%3F?taskId=task%3A%2F%3F&contactId=contact%3A1");
+  assert.equal(todoLifecycleResolvedHref({ taskId: "another", connectionId: "connection:1", contactId: "contact:1" }, item.taskId), null);
+  assert.equal(todoLifecycleResolvedHref({ taskId: item.taskId, connectionId: "", contactId: "contact:1" }, item.taskId), null);
+  assert.equal(todoLifecycleResolvedHref({ taskId: item.taskId, connectionId: "..", contactId: "contact:1" }, item.taskId), null);
+  assert.equal(todoLifecycleResolvedHref({ data: { taskId: item.taskId, connectionId: "connection:1", contactId: "contact:1" } }, item.taskId), null);
 });
 
 test("To-do suggestion decisions are source-owned and reject sample or mismatched actions", () => {

@@ -4,6 +4,10 @@ import { resolveLocalDateTime } from "../time/date-time";
 
 export interface RelationshipCompletionDraft { taskId: string; kind: RelationshipCompletionInput["outcome"]["kind"]; title: string; date: string; time: string; goal: string; archiveConfirmed: boolean }
 export const relationshipLifecyclePath = (id: string) => `/api/connections/${encodeURIComponent(id)}/lifecycle`;
+export function relationshipOpenTasks(snapshot: RelationshipLifecycleSnapshotDTO, taskId?: string, contactId?: string) {
+  if (contactId !== undefined && snapshot.connection.contactId !== contactId) return [];
+  return snapshot.tasks.filter(task => ["open", "scheduled"].includes(task.status) && (taskId === undefined || task.taskId === taskId));
+}
 export function readRelationshipSnapshot(value: unknown, actorId: string, connectionId: string): RelationshipLifecycleSnapshotDTO | null {
   const parsed = relationshipLifecycleReadSchema.safeParse(value);
   if (!parsed.success) return null;

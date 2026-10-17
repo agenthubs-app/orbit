@@ -20,7 +20,7 @@ const page: TodoPageContract = {
   sources: { task_suggestion: "ok", task: "ok", relationship_task: "ok", completion_question: "not_implemented" },
 };
 
-function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: boolean; more?: boolean; snooze?: boolean; nextMove?: boolean; decisionSource?: "task_suggestion" | "plan_pending" | "agent_action" } = {}) {
+function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: boolean; more?: boolean; snooze?: boolean; nextMove?: boolean; lifecycleOpen?: boolean; decisionSource?: "task_suggestion" | "plan_pending" | "agent_action" } = {}) {
   const value: OrbitLocaleContextValue = {
     choice: "ja", deviceLanguage: "ja", error: null, language: "ja", preference: { mode: "system", language: null, updatedAt: null },
     retryLanguageSave: async () => undefined, setLanguage: async () => undefined, source: "device", syncState: "idle", t: createTranslator("ja"),
@@ -36,7 +36,7 @@ function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: b
       return { ...withoutSample, key: changed.key, source, actions };
     }) } },
     offline: props.offline ?? false, staleDay: props.staleDay ?? false, busy: false, mirroredTaskIds: new Set(["t1"]),
-    onRefresh() {}, onMore() {}, canOpen: () => true, canOpenFollowup: item => item.kind === "task", canDefer: () => true, onOpen() {}, onOpenFollowup() {}, onComplete() {}, onDefer() {}, onDecide() {},
+    onRefresh() {}, onMore() {}, canOpen: () => true, canOpenFollowup: item => item.kind === "task" || Boolean(props.lifecycleOpen), canDefer: () => true, onOpen() {}, onOpenFollowup() {}, onComplete() {}, onDefer() {}, onDecide() {},
   }));
 }
 
@@ -73,6 +73,15 @@ test("an owned plain follow-up opens its canonical task detail, while lifecycle 
   const html = renderToHtml(tree());
   assert.match(html, /aria-label="山本さんへ返信"/u);
   assert.doesNotMatch(html, /aria-label="次の段階を決める"/u);
+});
+
+test("a resolvable lifecycle row exposes its detail control only on a current online page", () => {
+  const live = renderToHtml(tree({ lifecycleOpen: true }));
+  assert.match(live, /aria-label="次の段階を決める"/u);
+  assert.doesNotMatch(live, /このフォローの詳細は今は開けません/u);
+  for (const html of [renderToHtml(tree({ lifecycleOpen: true, offline: true })), renderToHtml(tree({ lifecycleOpen: true, staleDay: true }))]) {
+    assert.doesNotMatch(html, /aria-label="次の段階を決める"/u);
+  }
 });
 
 test("a source cursor offers See all only while online and current", () => {

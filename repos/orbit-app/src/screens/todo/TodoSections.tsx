@@ -103,17 +103,18 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
       {empty("followups", page.followups.items.length)}
       {page.followups.items.map(item => {
         const enabled = !item.sample && canWriteTodoFollowup(item, { offline, staleDay, locallyMirrored: mirroredTaskIds.has(item.taskId) });
+        const canOpenDetail = canOpenFollowup(item) && (item.kind !== "lifecycle" || !readOnly);
         return <View key={item.key} style={styles.row}>
           <View style={styles.rowBody}>
-            {canOpenFollowup(item) ? <UiPressable accessibilityRole="button" accessibilityLabel={item.titlePreview} hitSlop={12} disabled={busy || Boolean(item.sample)} onPress={() => onOpenFollowup(item)}>
+            {canOpenDetail ? <UiPressable accessibilityRole="button" accessibilityLabel={item.titlePreview} hitSlop={12} disabled={busy || Boolean(item.sample)} onPress={() => onOpenFollowup(item)}>
               <UiText style={styles.title}>{item.titlePreview}</UiText>
             </UiPressable> : <UiText style={styles.title}>{item.titlePreview}</UiText>}
             {item.overdue ? <UiText style={styles.overdue}>{t("todo.overdue")}</UiText> : null}
-            {item.kind === "lifecycle" && !canOpenFollowup(item) ? <UiText style={styles.muted}>{t("todo.lifecycleUnavailable")}</UiText> : null}
+            {item.kind === "lifecycle" && !canOpenDetail ? <UiText style={styles.muted}>{t("todo.lifecycleUnavailable")}</UiText> : null}
             {item.sample ? <UiText style={styles.sample}>{t("todo.sample")}</UiText> : null}
           </View>
           <View style={styles.actions}>{item.kind === "lifecycle"
-            ? <Button label={t("todo.open")} onPress={() => onOpenFollowup(item)} size="sm" variant="secondary" disabled={!enabled || busy || !canOpenFollowup(item)} />
+            ? <Button label={t("todo.open")} onPress={() => onOpenFollowup(item)} size="sm" variant="secondary" disabled={!enabled || busy || !canOpenDetail} />
             : <>
               <Button label={t("todo.defer")} onPress={() => onDefer(item)} size="sm" variant="ghost" disabled={!enabled || busy || !canDefer(item)} />
               <Button label={t("todo.complete")} onPress={() => onComplete(item)} size="sm" variant="secondary" disabled={!enabled || busy} />

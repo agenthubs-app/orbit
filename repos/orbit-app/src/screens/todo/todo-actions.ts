@@ -83,6 +83,21 @@ export function todoFollowupHref(item: TodoFollowupItem): string | null {
   return item.kind === "lifecycle" ? null : `/tasks/${encodeURIComponent(item.taskId)}`;
 }
 
+const validLifecycleId = (id: unknown): id is string => typeof id === "string" && id.length > 0 && id.length <= 256 && id !== "." && id !== ".." && id.trim() === id && !/[\u0000-\u001f\u007f]/u.test(id);
+
+export function todoLifecycleResolvePath(item: TodoFollowupItem): string | null {
+  if (item.kind !== "lifecycle" || item.source !== "relationship_task" || item.sample || !validLifecycleId(item.taskId) ||
+      item.key !== `relationship_task:${item.taskId}` || item.sourceId !== item.taskId) return null;
+  return `/api/relationship-tasks/${encodeURIComponent(item.taskId)}/resolve`;
+}
+
+export function todoLifecycleResolvedHref(payload: unknown, taskId: string): string | null {
+  if (!payload || typeof payload !== "object" || !validLifecycleId(taskId)) return null;
+  const row = payload as Record<string, unknown>;
+  if (row.taskId !== taskId || !validLifecycleId(row.connectionId) || !validLifecycleId(row.contactId)) return null;
+  return `/tasks/relationship/${encodeURIComponent(row.connectionId)}?taskId=${encodeURIComponent(taskId)}&contactId=${encodeURIComponent(row.contactId)}`;
+}
+
 /** A 2xx alone is not enough to remove the row; require the owned, completed task in the reply. */
 export function todoTaskCompletionReceipt(payload: unknown, actorId: string, taskId: string): boolean {
   const task = readTaskListItems({ tasks: [typeof payload === "object" && payload !== null && "task" in payload ? payload.task : null] }, actorId)?.[0];

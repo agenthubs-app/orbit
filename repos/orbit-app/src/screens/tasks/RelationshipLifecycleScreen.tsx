@@ -5,7 +5,7 @@ import { Pressable, RefreshControl, Text, TextInput, View } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import type { RelationshipCompletionInput, RelationshipLifecycleSnapshotDTO } from "../../api/contract/relationship-lifecycle";
-import { buildRelationshipCompletion, readRelationshipSnapshot, relationshipLifecyclePath, relationshipReceiptMatches, type RelationshipCompletionDraft } from "../../api/relationship-lifecycle";
+import { buildRelationshipCompletion, readRelationshipSnapshot, relationshipLifecyclePath, relationshipOpenTasks, relationshipReceiptMatches, type RelationshipCompletionDraft } from "../../api/relationship-lifecycle";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -19,14 +19,16 @@ import { useOrbitTheme as useTheme } from "../../design/theme";
 
 const emptyDraft: RelationshipCompletionDraft = { taskId: "", kind: "next_task", title: "", date: "", time: "", goal: "", archiveConfirmed: false };
 export function RelationshipLifecycleScreen() {
-  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const params = useLocalSearchParams<{ id: string | string[]; taskId?: string | string[]; contactId?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const taskId = Array.isArray(params.taskId) ? params.taskId.length === 1 ? params.taskId[0] : "" : params.taskId;
+  const contactId = Array.isArray(params.contactId) ? params.contactId.length === 1 ? params.contactId[0] : "" : params.contactId;
   const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
-  const scopeKey = JSON.stringify([auth.actorId, auth.cookieHeader, server.baseUrl, id]);
+  const scopeKey = JSON.stringify([auth.actorId, auth.cookieHeader, server.baseUrl, id, taskId, contactId]);
   const ready = auth.ready && auth.signedIn && server.ready && !!auth.actorId && !!id;
-  return <LifecycleEditor key={scopeKey} scopeKey={scopeKey} ready={ready} actorId={auth.actorId ?? ""} connectionId={id ?? ""} />;
+  return <LifecycleEditor key={scopeKey} scopeKey={scopeKey} ready={ready} actorId={auth.actorId ?? ""} connectionId={id ?? ""} targetTaskId={taskId} targetContactId={contactId} />;
 }
-function LifecycleEditor({ scopeKey, ready, actorId, connectionId }: { scopeKey: string; ready: boolean; actorId: string; connectionId: string }) {
+function LifecycleEditor({ scopeKey, ready, actorId, connectionId, targetTaskId, targetContactId }: { scopeKey: string; ready: boolean; actorId: string; connectionId: string; targetTaskId?: string; targetContactId?: string }) {
   const client = useOrbitApiClient({ scopeKey });
   const { timeZone, canSave } = useOrbitTimeZone();
   const { language } = useOrbitLocale();
@@ -79,11 +81,11 @@ function LifecycleEditor({ scopeKey, ready, actorId, connectionId }: { scopeKey:
       setCopy(null);
       if (result.success) void whenReady().then((ready) => ready?.savePageCopy("relationship-lifecycle", connectionId, result.data)).catch(() => undefined);
       setSnapshot(value); intent.current = null;
-      setDraft(previous => ({ ...previous, taskId: value.tasks.find(task => ["open", "scheduled"].includes(task.status))?.taskId ?? "" }));
+      setDraft(previous => ({ ...previous, taskId: relationshipOpenTasks(value, targetTaskId, targetContactId)[0]?.taskId ?? "" }));
       setMessage("");
     } catch { if (current.active) { setSnapshot(null); setCopy(null); setMessage("读取失败，请重试。"); } }
     finally { current.busy = false; if (current.active) setBusy(false); }
-  }, [ready, client, actorId, connectionId, whenReady]);
+  }, [ready, client, actorId, connectionId, targetTaskId, targetContactId, whenReady]);
   useEffect(() => { void load(); }, [load]);
   async function save() {
     const current = scope.current;
@@ -103,7 +105,7 @@ function LifecycleEditor({ scopeKey, ready, actorId, connectionId }: { scopeKey:
     } catch (error) { if (current.active) setMessage(error instanceof Error ? error.message : "保存失败，输入已保留。"); }
     finally { current.busy = false; if (current.active) setBusy(false); }
   }
-  const open = snapshot?.tasks.filter(task => ["open", "scheduled"].includes(task.status)) ?? [];
+  const open = snapshot ? relationshipOpenTasks(snapshot, targetTaskId, targetContactId) : [];
   const fields: ["title" | "date" | "time" | "goal", string, string][] = draft.kind === "next_task" || draft.kind === "nurture"
     ? [["title", text("下一次跟进内容", "Next follow-up", "次の内容"), ""], ["date", text("下次日期", "Next date", "次の日付"), "YYYY-MM-DD"], ["time", text("下次时间", "Next time", "次の時刻"), "HH:mm"]]
     : draft.kind === "active" ? [["goal", text("关系目标", "Relationship goal", "関係の目標"), ""]] : [];
@@ -113,7 +115,9 @@ function LifecycleEditor({ scopeKey, ready, actorId, connectionId }: { scopeKey:
     {offline ? <OfflineNotice lastSyncedAt={copy?.lastSyncedAt ?? null} reason={copy?.reason ?? null} /> : null}
     {message ? <Text accessibilityRole="alert" style={{ color: colors.ink }}>{message}</Text> : null}
     {snapshot ? <><DataCard title={text("本次完成的跟进", "Follow-up to complete", "完了するフォローアップ")}>
-      {open.length ? open.map(task => <Pressable key={task.taskId} disabled={busy} accessibilityRole="radio" accessibilityState={{ checked: draft.taskId === task.taskId }} onPress={() => setDraft(previous => ({ ...previous, taskId: task.taskId }))}><Text style={{ color: draft.taskId === task.taskId ? colors.accentText : colors.ink, paddingVertical: 10 }}>{draft.taskId === task.taskId ? "● " : "○ "}{task.title}</Text></Pressable>) : <Text style={{ color: colors.ink3Text }}>{text("没有待处理的跟进", "No open follow-ups", "未完了のフォローアップはありません")}</Text>}
+      {open.length ? open.map(task => <Pressable key={task.taskId} disabled={busy} accessibilityRole="radio" accessibilityState={{ checked: draft.taskId === task.taskId }} onPress={() => setDraft(previous => ({ ...previous, taskId: task.taskId }))}><Text style={{ color: draft.taskId === task.taskId ? colors.accentText : colors.ink, paddingVertical: 10 }}>{draft.taskId === task.taskId ? "● " : "○ "}{task.title}</Text></Pressable>) : targetTaskId !== undefined
+        ? <Text accessibilityRole="alert" style={{ color: colors.ink3Text }}>{text("当前跟进已不可用，请返回任务列表刷新。", "This follow-up is no longer available. Refresh the task list.", "このフォローアップは利用できません。タスク一覧を更新してください。")}</Text>
+        : <Text style={{ color: colors.ink3Text }}>{text("没有待处理的跟进", "No open follow-ups", "未完了のフォローアップはありません")}</Text>}
     </DataCard>{open.length ? <DataCard title={text("关系下一步", "Relationship next step", "関係の次のステップ")}>
       {([ ["next_task", text("继续跟进", "Continue following up", "フォローアップを継続")], ["active", text("转为进行中", "Set active goal", "進行中にする")], ["nurture", text("定期维护", "Keep in touch", "定期的に連絡")], ["archived", text("归档关系", "Archive relationship", "関係をアーカイブ")] ] as const).map(([kind, label]) => <Pressable key={kind} disabled={busy || (kind === "next_task" && !["needs_follow_up", "nurture"].includes(snapshot.connection.stage))} accessibilityRole="radio" accessibilityState={{ checked: draft.kind === kind }} onPress={() => setDraft(previous => ({ ...previous, kind }))}><Text style={{ color: draft.kind === kind ? colors.accentText : colors.ink, paddingVertical: 8 }}>{draft.kind === kind ? "● " : "○ "}{label}</Text></Pressable>)}
       {fields.map(([field, label, placeholder]) => <View key={field}><Text style={{ color: colors.ink }}>{label}</Text><TextInput accessibilityLabel={label} placeholder={placeholder} placeholderTextColor={colors.ink3Text} editable={!busy && !offline} value={draft[field]} onChangeText={value => setDraft(previous => ({ ...previous, [field]: value }))} style={{ color: colors.ink, borderColor: colors.line, borderWidth: 1, borderRadius: 8, padding: 12 }} /></View>)}
