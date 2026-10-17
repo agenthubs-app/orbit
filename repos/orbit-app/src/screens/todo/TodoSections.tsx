@@ -88,11 +88,11 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
         <View style={styles.rowBody}>
           <UiText style={styles.title}>{item.titlePreview}</UiText>
           {item.reasonPreview ? <UiText style={styles.muted}>{item.reasonPreview}</UiText> : null}
-          {(!item.draftAvailable || !canOpen(item)) ? <UiText style={styles.muted}>{t("todo.draftUnavailable")}</UiText> : null}
+          {!item.draftAvailable ? <UiText style={styles.muted}>{t("todo.draftUnavailable")}</UiText> : null}
           {item.sample ? <UiText style={styles.sample}>{t("todo.sample")}</UiText> : null}
         </View>
-        {item.draftAvailable && canOpen(item) && !readOnly && !item.sample
-          ? <Button label={t("todo.draft")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={busy} /> : null}
+        {!item.sample && canOpen(item)
+          ? <Button label={t("todo.manualWrite")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={busy} /> : null}
       </View>)}
       {more("nextMoves")}
     </Card>

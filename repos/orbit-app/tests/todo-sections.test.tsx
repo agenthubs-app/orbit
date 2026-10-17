@@ -98,8 +98,9 @@ test("agent action Later is shown only for its own snooze capability", () => {
   assert.equal(renderedText(tree({ decisionSample: false, decisionSource: "plan_pending", snooze: true })).includes("あとで"), false);
 });
 
-test("a next move without a working draft route explains its state instead of showing a dead button", () => {
+test("a next move with unavailable AI still offers a manual-only draft, including offline", () => {
   const html = renderToHtml(tree({ nextMove: true }));
   assert.ok(html.includes("下書きは今は利用できません"));
-  assert.equal((html.match(/aria-disabled="true"/gu) ?? []).length, (renderToHtml(tree()).match(/aria-disabled="true"/gu) ?? []).length);
+  assert.ok(html.includes("手書きする"));
+  assert.ok(renderToHtml(tree({ nextMove: true, offline: true })).includes("手書きする"));
 });
