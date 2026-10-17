@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { useState } from "react";
 import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 import { TodoDraftDrawer, draftMailto, type ManualTodoDraft } from "../../app/(app)/app/orbit-2026/todo/TodoDraftDrawer";
 import { Orbit2026Scope } from "../../app/(app)/app/orbit-2026/ui";
+import { collectInteractions } from "../../scripts/generate-full-product-functional-audit.mjs";
 
 const text = (node: ReactTestInstance): string => node.children.map(child => typeof child === "string" ? child : text(child)).join("");
 const button = (root: ReactTestRenderer, label: string) => root.root.findAllByType("button").find(node => text(node) === label)!;
@@ -17,6 +19,11 @@ function documentStub() {
   return () => descriptor ? Object.defineProperty(globalThis, "document", descriptor) : Reflect.deleteProperty(globalThis, "document");
 }
 
+test("manual-only drawer exposes no inert controls to the product interaction audit", () => {
+  const file = fileURLToPath(new URL("../../app/(app)/app/orbit-2026/todo/TodoDraftDrawer.tsx", import.meta.url));
+  assert.deepEqual(collectInteractions(file, "web", new Map()).filter(control => control.conclusion === "candidate-missing-handler"), []);
+});
+
 test("manual draft exposes AI/save unavailability and never calls a generator or sends mail", async t => {
   const restore = documentStub();
   t.mock.method(globalThis, "fetch", async () => { throw Error("MUST_NOT_CALL_AI_OR_SEND"); });
@@ -26,8 +33,11 @@ test("manual draft exposes AI/save unavailability and never calls a generator or
   const rendered = JSON.stringify(root!.toJSON());
   assert.ok(rendered.includes("日本語の AI 下書きはまだ使えません。手動で編集できます。"));
   assert.ok(rendered.includes("入力はこのページだけに残ります。再読み込みやアカウント切替で消えます。サーバーには保存しません。"));
-  assert.equal(button(root!, "書き直す").props.disabled, true);
-  assert.equal(button(root!, "下書きを保存").props.disabled, true);
+  for (const label of ["丁寧", "親しみ", "書き直す"]) {
+    assert.equal(Boolean(button(root!, label)), false, "unavailable AI options are explanations, not inert controls");
+    assert.ok(rendered.includes(label));
+  }
+  assert.equal(Boolean(button(root!, "下書きを保存")), false, "manual-only draft has no persistence action");
   assert.equal(button(root!, "コピー").props.disabled, true);
   assert.equal(root!.root.findAllByType("a").length, 0);
 });

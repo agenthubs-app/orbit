@@ -38,7 +38,7 @@ export function TodoDraftDrawer({ open, title, reason, value, canHandoff = true,
     finally { if (pending.current === token) pending.current = null; }
   }
   return <Drawer open={open} onClose={onClose} title={t(taskCopy.draftTitle)} size="lg" footer={<>
-    <div className={styles.moveFoot}><Button label={t(taskCopy.draftSave)} variant="ghost" disabled /><Button label={t(taskCopy.draftCopy)} disabled={!canHandoff || !value.body.trim() || copied === "copying"} onClick={() => { void copy(); }} />
+    <div className={styles.moveFoot}><Button label={t(taskCopy.draftCopy)} disabled={!canHandoff || !value.body.trim() || copied === "copying"} onClick={() => { void copy(); }} />
       {mailto ? <a className={styles.draftLink} href={mailto}>{t(taskCopy.draftOpenMail)}</a> : null}</div>
     {!mailto ? <p className={styles.note}>{t(taskCopy.draftHandoffHint)}</p> : null}
     <p className={styles.note}>{t(taskCopy.draftNeverSends)}</p>
@@ -47,7 +47,7 @@ export function TodoDraftDrawer({ open, title, reason, value, canHandoff = true,
   </>}>
     <p className={styles.reason}>{title}</p>
     <p role="status" className={styles.note}>{t(taskCopy.draftAiUnavailable)}</p>
-    <div className={styles.row} aria-label={t(taskCopy.draftTone)}><Button size="sm" label={t(taskCopy.draftPolite)} disabled /><Button size="sm" label={t(taskCopy.draftCasual)} disabled /><Button size="sm" label={t(taskCopy.draftRewrite)} disabled /></div>
+    <div className={styles.row} role="group" aria-label={t(taskCopy.draftTone)}>{[taskCopy.draftPolite, taskCopy.draftCasual, taskCopy.draftRewrite].map(option => <span key={option.en} className={styles.note}>{t(option)}</span>)}</div>
     <Card className={styles.editorFields}><TextField label={t(taskCopy.draftTo)} type="email" maxLength={254} value={value.to} onChange={event => edit({ to: event.target.value })} /><TextField label={t(taskCopy.draftSubject)} maxLength={998} value={value.subject} onChange={event => edit({ subject: event.target.value })} /></Card>
     <label className={styles.editorLabel}>{t(taskCopy.draftBody)}<textarea className={styles.draftBody} value={value.body} maxLength={50000} onChange={event => edit({ body: event.target.value })} /></label>
     {reason ? <div className={styles.moveFoot}><span className={styles.reason}>{reason}</span><WhyDisclosure reason={reason} /></div> : null}
