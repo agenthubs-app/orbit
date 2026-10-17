@@ -37,4 +37,13 @@ export const meetingDetails = {
   "meetingDetails.useLatest": "放弃草稿并载入最新说明",
   "meetingDetails.openContact": "查看联系人",
   "meetingDetails.openEvent": "查看相关活动",
+  "meetingDetails.move": "调整会面时间",
+  "meetingDetails.cancelMeeting": "取消会面",
+  "meetingDetails.cancelTitle": "取消这次会面？",
+  "meetingDetails.cancelBody": "对方会收到通知，取消后无法恢复。",
+  "meetingDetails.keepMeeting": "保留会面",
+  "meetingDetails.cancelled": "会面已取消",
+  "meetingDetails.cancelFailed": "取消失败，请重试。",
+  "meetingDetails.cancelConflict": "会面状态已变化，请重新读取后再取消。",
+  "meetingDetails.cancelUnconfirmed": "无法确认取消结果，请重新读取会议。",
 } as const;

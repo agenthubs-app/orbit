@@ -27,17 +27,19 @@ const initialItem = {
 const fixture = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
+import { registerFeedbackPresenter } from "./src/components/ui/feedback-requests";
 const listeners = new Set(); let revision = 0, keyIndex = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = {
   actor: "actor:one", rawUserId: "raw:user", item: window.initialFixture.item, appointmentId: "appointment:one", source: "appointment", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true,
-  requests: [], pending: [], navigations: [], ...window.initialFixture,
+  requests: [], pending: [], navigations: [], confirms: [], confirmNext: false, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   reply(index, status = 200, data) {
     const payload = status >= 200 && status < 300 ? { success: true, data: data ?? state.item } : { success: false, error: { code: status === 409 ? "CONFLICT" : "SERVICE_UNAVAILABLE", message: "Request failed" } };
     state.pending[index]?.(new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } }));
   }
 };
+registerFeedbackPresenter(request => { if (request.kind === "confirm") { state.confirms.push(request.title); request.resolve(state.confirmNext); } });
 window.fetch = async (input, init = {}) => { const index = state.requests.length; const url = new URL(String(input)); const headers = Object.fromEntries(new Headers(init.headers).entries());
   state.requests.push({ method: init.method ?? "GET", path: url.pathname, body: init.body ? JSON.parse(init.body) : null, headers });
   const response = new Promise(resolve => state.pending[index] = resolve);
@@ -72,6 +74,8 @@ test.before(async () => {
     plugins: [{ name: "meeting-details-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "meeting-details" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
+      plugin.onResolve({ filter: /^react-native-gesture-handler$/ }, () => ({ path: require.resolve("./helpers/stubs/react-native-gesture-handler.js") }));
+      plugin.onResolve({ filter: /^react-native-reanimated$/ }, () => ({ path: require.resolve("./helpers/stubs/react-native-reanimated.js") }));
       plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "meeting-details" }));
       plugin.onLoad({ filter: /.*/, namespace: "meeting-details" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl, Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions } from "react-native-web"; export * from "react-native-web";
@@ -97,13 +101,16 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, timezoneId: "Asia/Tokyo", locale: "zh-CN" });
   page.setDefaultTimeout(2_000);
   const errors: string[] = [];
-  page.on("pageerror", error => errors.push(error.message));
+  page.on("pageerror", error => errors.push(error.stack ?? error.message));
   t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
   await page.route("**/*", route => route.abort());
   await page.setContent('<div id="root"></div>');
   await page.evaluate(({ item, patch }) => { (window as any).initialFixture = { item, ...patch }; }, { item: initialItem, patch });
   await page.addScriptTag({ content: script });
-  await page.getByText("准备报价单", { exact: true }).waitFor();
+  await page.getByText("准备报价单", { exact: true }).waitFor().catch(async error => {
+    const diagnostics = await page.evaluate(() => ({ body: document.body.innerText.slice(0, 500), requests: (window as any).fixture?.requests ?? [] }));
+    throw new Error(`${error.message}\npage errors: ${JSON.stringify(errors)}\ninitial state: ${JSON.stringify(diagnostics)}`);
+  });
   await settle(page);
   return page;
 }
@@ -195,4 +202,37 @@ test("legacy schedule meetings use the private meeting-details endpoint", async 
   const write = await latestWrite(page);
   assert.equal(write.path, "/api/schedule-items/schedule-item%3Alegacy-meeting/meeting-details");
   assert.deepEqual(write.body, { details: "补充旧日程会议说明", expectedVersion: 4 });
+});
+
+test("confirmed appointment opens reschedule but legacy schedule detail has no appointment actions", async t => {
+  const page = await open(t);
+  await page.getByRole("button", { name: "调整会面时间", exact: true }).click();
+  await page.getByText("选择候选时间", { exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method === "POST").length), 0);
+  const legacy = await open(t, { appointmentId: "schedule-item:legacy-meeting", source: "schedule", item: { ...initialItem, appointmentId: "schedule-item:legacy-meeting", contactId: null, visibility: "private" } });
+  assert.equal(await legacy.getByRole("button", { name: "调整会面时间" }).count(), 0);
+  assert.equal(await legacy.getByRole("button", { name: "取消会面" }).count(), 0);
+});
+
+test("cancel asks first, sends a versioned command once confirmed, and changes status only after a matching receipt", async t => {
+  const page = await open(t);
+  await page.getByRole("button", { name: "取消会面", exact: true }).click();
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method === "POST").length), 0);
+  await page.evaluate(() => { (window as any).fixture.confirmNext = true; });
+  await page.getByRole("button", { name: "取消会面", exact: true }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.method === "POST"));
+  const write = await page.evaluate(() => (window as any).fixture.requests.find((request: any) => request.method === "POST"));
+  assert.equal(write.path, "/api/appointments/appointment%3Aone/commands");
+  assert.deepEqual(write.body, { command: "cancel", expectedVersion: 4 });
+  assert.match(write.headers["idempotency-key"], /^ios:meeting-cancel:/u);
+  await page.evaluate(() => { const state = (window as any).fixture; const index = state.requests.findIndex((request: any) => request.method === "POST"); state.reply(index, 200, { ...state.item, status: "confirmed", version: 5, replayed: false }); });
+  await page.getByText("无法确认取消结果，请重新读取会议。", { exact: true }).waitFor();
+  assert.equal(await page.getByText("已取消", { exact: true }).count(), 0);
+  await page.getByRole("button", { name: "取消会面", exact: true }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.filter((request: any) => request.method === "POST").length === 2);
+  const retry = await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method === "POST").at(-1));
+  assert.equal(retry.headers["idempotency-key"], write.headers["idempotency-key"]);
+  await page.evaluate(() => { const state = (window as any).fixture; const index = state.requests.findLastIndex((request: any) => request.method === "POST"); state.reply(index, 200, { ...state.item, status: "cancelled", version: 5, replayed: false }); });
+  await page.getByText("已取消", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "取消会面" }).count(), 0);
 });

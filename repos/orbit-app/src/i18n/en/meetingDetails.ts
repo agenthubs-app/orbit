@@ -37,4 +37,13 @@ export const meetingDetails = {
   "meetingDetails.useLatest": "Discard draft and load latest notes",
   "meetingDetails.openContact": "View contact",
   "meetingDetails.openEvent": "View related event",
+  "meetingDetails.move": "Move meeting",
+  "meetingDetails.cancelMeeting": "Cancel meeting",
+  "meetingDetails.cancelTitle": "Cancel this meeting?",
+  "meetingDetails.cancelBody": "The other attendee will be notified. You can't undo this.",
+  "meetingDetails.keepMeeting": "Keep meeting",
+  "meetingDetails.cancelled": "Meeting cancelled",
+  "meetingDetails.cancelFailed": "Could not cancel this meeting. Try again.",
+  "meetingDetails.cancelConflict": "This meeting changed. Reload it before cancelling.",
+  "meetingDetails.cancelUnconfirmed": "Couldn't verify the cancellation. Reload the meeting.",
 } as const;

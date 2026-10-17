@@ -21,6 +21,10 @@ import { OfflineNotice } from "../../components/OfflineNotice";
 import type { PageCopyStatus } from "../../data/sync/page-copies";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { meetingDetailsToView } from "../../view-models/meeting-details";
+import { presentConfirm } from "../../components/ui";
+import { MeetingDetailActions } from "../calendar/MeetingDetailActions";
+import { MeetingProposalSheet } from "../calendar/MeetingProposalSheet";
+import { cancelConfirmedAppointment } from "../calendar/meeting-detail-actions";
 
 function firstParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -35,10 +39,10 @@ export function MeetingDetailScreen() {
   const actorId = auth.actorId ?? "";
   const ready = auth.ready && auth.signedIn && server.ready && !!actorId && !!appointmentId;
   const scopeKey = JSON.stringify([actorId, appointmentId, ready, server.baseUrl, source]);
-  return <MeetingDetailEditor appointmentId={appointmentId} ready={ready} scopeKey={scopeKey} source={source} />;
+  return <MeetingDetailEditor appointmentId={appointmentId} online={!auth.offline} ready={ready} scopeKey={scopeKey} source={source} />;
 }
 
-function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appointmentId: string; ready: boolean; scopeKey: string; source: "appointment" | "schedule" }) {
+function MeetingDetailEditor({ appointmentId, online, ready, scopeKey, source }: { appointmentId: string; online: boolean; ready: boolean; scopeKey: string; source: "appointment" | "schedule" }) {
   const locale = useOrbitLocale();
   const router = useRouter();
   const { colors, styles } = useStyles();
@@ -52,6 +56,9 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelConflict, setCancelConflict] = useState(false);
+  const [proposalOpen, setProposalOpen] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [revision, setRevision] = useState(0);
@@ -64,6 +71,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
   const dirty = !!baseline && draft !== baseline.details;
   const stale = !!baseline && !!latest && baseline.version !== latest.version;
   const stateRef = useRef({ baseline, dirty });
+  const confirmingCancel = useRef(false);
   stateRef.current = { baseline, dirty };
 
   useEffect(() => {
@@ -99,6 +107,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
       setCopy(null);
       if (result.success) void whenReady().then((session) => session?.savePageCopy("meeting-details", copyVariant, result.data)).catch(() => undefined);
       setLatest(value);
+      setCancelConflict(false);
       setError("");
       if (!stateRef.current.baseline || !stateRef.current.dirty) {
         setBaseline(value);
@@ -168,6 +177,48 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
     }
   }
 
+  async function cancelMeeting() {
+    if (source !== "appointment" || !ready || !online || !baseline || baseline.status !== "confirmed" || !baseline.confirmed || !baseline.contactId || offline || stale || editing || requestScope.busy || confirmingCancel.current || cancelConflict || !requestScope.active || currentScope.current !== requestScope) return;
+    confirmingCancel.current = true;
+    let confirmed = false;
+    try {
+      confirmed = await presentConfirm({
+        title: locale.t("meetingDetails.cancelTitle"),
+        message: locale.t("meetingDetails.cancelBody"),
+        cancelLabel: locale.t("meetingDetails.keepMeeting"),
+        confirmLabel: locale.t("meetingDetails.cancelMeeting"),
+        destructive: true,
+      });
+    } finally { confirmingCancel.current = false; }
+    if (!confirmed || !requestScope.active || currentScope.current !== requestScope || requestScope.busy) return;
+    const fingerprint = JSON.stringify([appointmentId, "cancel", baseline.version]);
+    const key = requestScope.keys.get(fingerprint) ?? `ios:meeting-cancel:${Crypto.randomUUID()}`;
+    requestScope.keys.set(fingerprint, key);
+    requestScope.busy = true;
+    setCancelling(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await cancelConfirmedAppointment(client, baseline, key, requestScope.controller.signal);
+      if (!requestScope.active || currentScope.current !== requestScope) return;
+      if (result.status === "cancelled") {
+        requestScope.keys.delete(fingerprint);
+        setBaseline(result.meeting);
+        setLatest(result.meeting);
+        setMessage(locale.t("meetingDetails.cancelled"));
+        void whenReady().then((session) => session?.savePageCopy("meeting-details", copyVariant, result.meeting)).catch(() => undefined);
+      } else {
+        if (result.status === "conflict") setCancelConflict(true);
+        setError(locale.t(result.status === "conflict" ? "meetingDetails.cancelConflict" : result.status === "unconfirmed" ? "meetingDetails.cancelUnconfirmed" : "meetingDetails.cancelFailed"));
+      }
+    } catch {
+      if (requestScope.active && currentScope.current === requestScope) setError(locale.t("meetingDetails.cancelFailed"));
+    } finally {
+      requestScope.busy = false;
+      if (requestScope.active && currentScope.current === requestScope) setCancelling(false);
+    }
+  }
+
   const view = baseline ? meetingDetailsToView(baseline, locale.language) : null;
   return (
     <AppScreen
@@ -184,6 +235,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
           <DataCard detail={view.statusLabel} title={view.title}>
             <View style={styles.infoRow}><Ionicons color={colors.accentText} name="time-outline" size={19} /><Text style={styles.body}>{view.timeLabel}</Text></View>
             <View style={styles.infoRow}><Ionicons color={colors.ink3Text} name="location-outline" size={19} /><Text style={styles.body}>{view.mediumLabel}</Text></View>
+            {source === "appointment" ? <MeetingDetailActions meeting={baseline} blocked={!ready || !online || offline || stale || editing || saving || cancelConflict} busy={cancelling} labels={{ move: locale.t("meetingDetails.move"), cancel: locale.t("meetingDetails.cancelMeeting") }} onMove={() => setProposalOpen(true)} onCancel={() => void cancelMeeting()} /> : null}
           </DataCard>
 
           {view.proposalNote ? <DataCard title={locale.t("meetingDetails.proposal")}><Text style={styles.body}>{view.proposalNote}</Text></DataCard> : null}
@@ -236,6 +288,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
       {!stale && error && !editing ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       {error ? <Pressable accessibilityRole="button" onPress={() => setRevision(value => value + 1)} style={styles.secondaryButton}><Text style={styles.secondaryText}>{locale.t("meetingDetails.reload")}</Text></Pressable> : null}
       {message ? <Text accessibilityLiveRegion="polite" style={styles.success}>{message}</Text> : null}
+      {source === "appointment" && baseline?.contactId ? <MeetingProposalSheet open={proposalOpen} contactId={baseline.contactId} appointmentId={appointmentId} onClose={() => setProposalOpen(false)} onSent={() => { setProposalOpen(false); setRevision(value => value + 1); }} /> : null}
     </AppScreen>
   );
 }

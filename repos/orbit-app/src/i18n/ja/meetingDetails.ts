@@ -37,4 +37,13 @@ export const meetingDetails = {
   "meetingDetails.useLatest": "下書きを破棄して最新のメモを表示",
   "meetingDetails.openContact": "連絡先を見る",
   "meetingDetails.openEvent": "関連イベントを見る",
+  "meetingDetails.move": "日時を動かす",
+  "meetingDetails.cancelMeeting": "面談をキャンセル",
+  "meetingDetails.cancelTitle": "この面談をキャンセルしますか？",
+  "meetingDetails.cancelBody": "相手に通知されます。キャンセルは取り消せません。",
+  "meetingDetails.keepMeeting": "面談を残す",
+  "meetingDetails.cancelled": "面談をキャンセルしました",
+  "meetingDetails.cancelFailed": "キャンセルできませんでした。もう一度お試しください。",
+  "meetingDetails.cancelConflict": "面談が更新されています。再読み込みしてからキャンセルしてください。",
+  "meetingDetails.cancelUnconfirmed": "キャンセル結果を確認できませんでした。面談を再読み込みしてください。",
 } as const;
