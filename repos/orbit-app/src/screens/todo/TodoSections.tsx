@@ -47,7 +47,7 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
   ) : null;
   const empty = (section: TodoSectionKey, length: number) => length === 0 && todoSectionCount(page, section).accuracy === "exact"
     ? <UiText style={styles.muted}>{t("todo.empty")}</UiText> : null;
-  const more = (section: TodoSectionKey) => onMore && Object.keys(page[section].next).length ? <View style={styles.more}>
+  const more = (section: TodoSectionKey) => !readOnly && onMore && Object.keys(page[section].next).length ? <View style={styles.more}>
     <Button label={t("todo.more")} onPress={() => onMore(section)} size="sm" variant="ghost" disabled={readOnly || busy || Boolean(pagingSection)} />
     {pagingFailedSection === section ? <UiText accessibilityRole="alert" style={styles.muted}>{t("todo.partial")}</UiText> : null}
   </View> : null;
@@ -68,7 +68,7 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
           {item.sample ? <UiText style={styles.sample}>{t("todo.sample")}</UiText> : null}
         </View>
         <View style={styles.actions}>
-          {item.source === "task_suggestion" ? <>
+          {item.source === "task_suggestion" && !readOnly ? <>
             {item.actions.includes("accept") ? <Button label={t("todo.accept")} onPress={() => onDecide(item, "accept")} size="sm" variant="secondary" disabled={readOnly || busy || Boolean(item.sample)} /> : null}
             {item.actions.includes("dismiss") ? <Button label={t("todo.dismiss")} onPress={() => onDecide(item, "dismiss")} size="sm" variant="ghost" disabled={readOnly || busy || Boolean(item.sample)} /> : null}
           </> : null}

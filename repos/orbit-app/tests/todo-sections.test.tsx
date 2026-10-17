@@ -61,7 +61,8 @@ test("only a live non-sample suggestion offers source-native decision controls",
   const sample = renderToHtml(tree());
   assert.ok((sample.match(/aria-disabled="true"/gu) ?? []).length >= 4);
   const offline = renderToHtml(tree({ decisionSample: false, offline: true }));
-  assert.ok((offline.match(/aria-disabled="true"/gu) ?? []).length >= 4);
+  assert.equal(offline.includes("採用"), false);
+  assert.equal(offline.includes("見送る"), false);
 });
 
 test("an owned plain follow-up opens its canonical task detail, while lifecycle identity stays closed", () => {
@@ -72,7 +73,7 @@ test("an owned plain follow-up opens its canonical task detail, while lifecycle 
 
 test("a source cursor offers See all only while online and current", () => {
   assert.ok(renderedText(tree({ more: true })).includes("すべて"));
-  assert.ok(renderToHtml(tree({ more: true, offline: true })).includes("aria-disabled=\"true\""));
-  assert.ok(renderToHtml(tree({ more: true, staleDay: true })).includes("aria-disabled=\"true\""));
+  assert.equal(renderedText(tree({ more: true, offline: true })).includes("すべて"), false);
+  assert.equal(renderedText(tree({ more: true, staleDay: true })).includes("すべて"), false);
   assert.equal(renderedText(tree()).includes("すべて"), false);
 });
