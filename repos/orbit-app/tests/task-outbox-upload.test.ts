@@ -116,3 +116,45 @@ test("an uploaded task delete is acknowledged whether or not the pull still carr
     assert.deepEqual(visible, [], "the deleted task is not readable on the device");
   }
 });
+
+test("an existing relationship follow-up completion uploads and reconciles the canonical task", async t => {
+  const actorId = "actor-a", workspaceId = "workspace-a", baseUrl = "https://tasks.example", authorizationEpoch = "tasks-e1";
+  const taskId = "task:followup", now = Date.parse("2026-10-18T00:00:00Z"), updatedAt = new Date(now).toISOString();
+  const database = new NodeTestDatabase();
+  t.after(() => database.close());
+  await initializeLocalSyncDatabase(database);
+  const scope = { baseUrl, actorId, workspaceId, domainId: "tasks", authorizationEpoch };
+  const repository = createLocalSyncRepository({ actorId, database, baseUrl,
+    hashPayload: async serialized => createHash("sha256").update(serialized).digest("hex"), registeredDomainIds: ["tasks"], activeReadScopes: () => [scope] });
+  await repository.setLease({ version: 2, baseUrl, actorId, subject: "fixture", sessionExpiresAt: now + 86400000,
+    offlineReadExpiresAt: now + 86400000, lastVerifiedAt: now, grants: [{ workspaceId, domainId: "tasks", authorizationEpoch }], databaseKeyRef: "fixture" });
+  const original = { id: taskId, accountId: actorId, ownerUserId: actorId, title: "Check in", category: "relationship", status: "open",
+    priority: "normal", source: "manual", plannedDate: "2026-10-19", createdAt: updatedAt, updatedAt };
+  await repository.applyDomainPage(scope, { domainId: "tasks", schemaVersion: 1, registryVersion: 1, authorizationEpoch,
+    changes: [{ id: taskId, revision: "r1", operation: "upsert", payload: original }], nextCursor: "tasks:e1:1", highWatermark: "1", hasMore: false,
+    generation: "g1", serverTime: updatedAt });
+  const queued = buildOfflineTaskMutation({ mutationId: "followup-complete", entityId: taskId, operation: "complete", baseRevision: "r1",
+    requestBody: { action: "complete", idempotencyKey: "followup-complete" }, createdAt: updatedAt });
+  await repository.enqueueOutboxMutation({ ...queued, actorId, workspaceId });
+  const completed = { ...original, status: "completed", updatedAt: new Date(now + 1000).toISOString() };
+  const syncClient: SyncClient = {
+    async getLease() { throw new Error("unused"); }, async getManifest() { throw new Error("unused"); }, async getPage() { throw new Error("unused"); },
+    async getDomainPage() { return { domainId: "tasks", schemaVersion: 1, registryVersion: 1, authorizationEpoch,
+      changes: [{ id: taskId, revision: "r2", operation: "upsert" as const, payload: completed }], nextCursor: "tasks:e1:2", highWatermark: "2",
+      hasMore: false, generation: "g1", serverTime: completed.updatedAt }; },
+  };
+  let patches = 0;
+  const writeClient = { async post() { throw new Error("unused"); }, async delete() { throw new Error("unused"); },
+    async patch(path: string, options: { body: unknown }) {
+      patches += 1;
+      assert.equal(path.endsWith(encodeURIComponent(taskId)), true);
+      assert.deepEqual(options.body, { action: "complete", idempotencyKey: "followup-complete" });
+      return { success: true as const, status: 200, data: { task: completed }, meta: {} };
+    } } as unknown as Pick<OrbitApiClient, "post" | "patch" | "delete">;
+  const result = await createTaskOutboxUploader({ actorId, baseUrl, repository, syncClient, writeClient, workspaceId, now: () => now + 10_000 }).run();
+  assert.equal(result.acknowledged, 1);
+  assert.equal(patches, 1);
+  assert.equal((await repository.listQueuedMutations({ workspaceId, domainId: "tasks" })).length, 0);
+  const mirrored = await repository.listRecordsByIds({ workspaceId, kind: "task", ids: [taskId] });
+  assert.equal((mirrored[0]?.payload as Record<string, unknown>).status, "completed");
+});

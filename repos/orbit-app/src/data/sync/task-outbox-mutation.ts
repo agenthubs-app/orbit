@@ -5,11 +5,30 @@ const taskOperations = new Set(["create", "update", "complete", "reopen", "cance
 
 /**
  * A personal task for offline writes is the actor's own task in one of the shared offline contract's task categories
- * (personal / work / other). Relationship follow-ups, meeting and event tasks stay online (design D6).
+ * (personal / work / other). Relationship, meeting and event task creation stays online (design D6);
+ * R20a permits only existing open relationship task completion or moving a date later.
  */
 export const OFFLINE_TASK_CATEGORIES = ["personal", "work", "other"] as const;
 export function isOfflineTaskCategory(category: unknown): boolean {
   return typeof category === "string" && (OFFLINE_TASK_CATEGORIES as readonly string[]).includes(category);
+}
+
+/** R20a: only an existing open relationship follow-up may be completed or moved later offline. */
+export function isOfflineRelationshipFollowupMutation(
+  task: Record<string, unknown>, operation: string, patch: Record<string, unknown>,
+): boolean {
+  if (task.kind === "lifecycle" || task.category !== "relationship" || task.status !== "open" || task.deleted === true || task.lifecycleState === "deleted" ||
+      typeof task.deletedAt === "string" && task.deletedAt.trim() !== "") return false;
+  if (operation === "complete") return Object.keys(patch).length === 0;
+  if (operation !== "update") return false;
+  const keys = Object.keys(patch);
+  if (keys.length === 0 || keys.some(key => key !== "plannedDate" && key !== "dueAt")) return false;
+  return keys.every(key => {
+    const before = task[key], after = patch[key];
+    if (typeof before !== "string" || typeof after !== "string") return false;
+    if (key === "plannedDate") return /^\d{4}-\d{2}-\d{2}$/u.test(after) && after > before;
+    return Number.isFinite(Date.parse(after)) && Number.isFinite(Date.parse(before)) && Date.parse(after) > Date.parse(before);
+  });
 }
 
 export function buildOfflineTaskMutation(input: {

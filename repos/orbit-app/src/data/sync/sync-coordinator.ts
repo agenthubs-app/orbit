@@ -19,7 +19,7 @@ import {
 import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, type PageCopy } from "./page-copies";
 import { isOfflineEligible } from "./mutation-adapters";
 import { parseOfflineNoteRequest } from "./note-outbox-mutation";
-import { isOfflineTaskCategory, parseOfflineTaskRequest } from "./task-outbox-mutation";
+import { isOfflineRelationshipFollowupMutation, isOfflineTaskCategory, parseOfflineTaskRequest } from "./task-outbox-mutation";
 import { isOfflineScheduleEditable, localNoteIdsOfSchedule, parseOfflineScheduleRequest } from "./schedule-outbox-mutation";
 import type { PersonalScheduleContract } from "../../api/contract/tasks";
 import { MESSAGE_OUTBOX_DOMAIN, parseOfflineMessageRequest, type OfflineMessageMutationInput } from "./message-outbox-mutation";
@@ -903,8 +903,12 @@ export function createSyncCoordinator(input: {
             } else {
               const record = await repository.getRecord({ workspaceId: bound.workspaceId!, kind: "task", id: mutation.id });
               const task = record?.payload && typeof record.payload === "object" ? record.payload as Record<string, unknown> : null;
-              if (!record || record.deletedAt !== null || record.actorId !== bound.actorId || task?.ownerUserId !== bound.actorId || !isOfflineTaskCategory(task.category)) {
-                throw new TypeError("offline task mutation requires a mirrored personal task");
+              const followup = task && isOfflineRelationshipFollowupMutation(task, mutation.operation, request.patch) &&
+                request.baseRevision === record?.revision &&
+                (mutation.operation !== "update" || parsed.requestBody.expectedUpdatedAt === task.updatedAt);
+              if (!record || record.deletedAt !== null || record.actorId !== bound.actorId || task?.ownerUserId !== bound.actorId ||
+                  !isOfflineTaskCategory(task.category) && !followup) {
+                throw new TypeError("offline task mutation requires a mirrored personal task or permitted follow-up action");
               }
             }
           }

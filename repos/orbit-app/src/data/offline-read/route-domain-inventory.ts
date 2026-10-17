@@ -12,6 +12,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/notes')) return 'notes';
   if (path.startsWith('/api/task-suggestions')) return 'task-suggestions';
   if (path.startsWith('/api/tasks')) return 'tasks';
+  if (path === '/api/todo/page') return 'todo';
   if (path === '/api/relationship-tasks' || path === '/api/relationship-tasks/page') return 'tasks';
   if (path.startsWith('/api/reminders')) return 'followups';
   if (path.includes('/meeting-details')) return 'meetings';
@@ -784,6 +785,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/task/TaskQuickAdd.tsx","POST","/api/tasks"],
   ["src/screens/today/TodayScreen.tsx","PATCH","/api/tasks/:id"],
   ["src/hooks/useTodayTaskPages.ts","GET","/api/today"],
+  ["src/screens/todo/useTodoPage.ts","GET","/api/todo/page"],
   ["src/hooks/useTodayTaskPages.ts","GET","/api/tasks/page"],
   ["src/view-models/business-card-ingest.ts","PUT","/api/contact-drafts/business-card/batches/v2/:id/items/:id/content"],
 ] as const;

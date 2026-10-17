@@ -78,6 +78,7 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "GET", pathname: "/api/relationship-tasks/page", action: "read", policy: policy("relationship_tasks", "encrypted_ttl_snapshot", "online_only") },
   { method: "GET", pathname: "/api/task-suggestions/page", action: "read", policy: policy("task_suggestions", "encrypted_ttl_snapshot", "online_only") },
   { method: "GET", pathname: "/api/today", action: "read", policy: policy("today", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/todo/page", action: "read", policy: policy("todo", "encrypted_ttl_snapshot", "online_only") },
   { method: "GET", pathname: "/api/connections/:id/lifecycle", action: "read", policy: policy("relationship_lifecycle", "encrypted_ttl_snapshot", "online_only") },
   { method: "GET", pathname: "/api/schedule-items/:id/meeting-details", action: "read", policy: policy("meeting_details", "encrypted_ttl_snapshot", "online_only") },
   { method: "GET", pathname: "/api/appointments/:id", action: "read", policy: policy("meeting_details", "encrypted_ttl_snapshot", "online_only") },

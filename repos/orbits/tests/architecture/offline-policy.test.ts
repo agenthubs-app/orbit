@@ -65,6 +65,8 @@ const APPROVED_POLICY_MATRIX = [
   ["GET", "/api/relationship-tasks/page", "read", "relationship_tasks", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
   ["GET", "/api/task-suggestions/page", "read", "task_suggestions", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
   ["GET", "/api/today", "read", "today", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  // R20a: To-do's bounded first page is a leased encrypted snapshot; writes remain separately gated.
+  ["GET", "/api/todo/page", "read", "todo", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
   ["GET", "/api/connections/:id/lifecycle", "read", "relationship_lifecycle", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
   ["GET", "/api/schedule-items/:id/meeting-details", "read", "meeting_details", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
   ["GET", "/api/appointments/:id", "read", "meeting_details", "encrypted_ttl_snapshot", "online_only", "metadata_only"],

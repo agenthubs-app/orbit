@@ -56,3 +56,13 @@ test("offline date deferrals increment locally and canonical reconciliation repl
   assert.equal(overlayQueuedTasks([{ ...task, plannedDate: "2026-09-21", deferralCount: 2 }], [], actorId)?.[0]?.deferralCount, 2);
   assert.equal(overlayQueuedTasks([task], [mutation({ patch: { plannedDate: "2026-09-19" } })], actorId)?.[0]?.deferralCount, 1);
 });
+
+test("relationship follow-up mirror permits only completion and later-date deferral", () => {
+  const followup = { ...serverTask, category: "relationship" as const, plannedDate: "2026-09-20", deferralCount: 1 };
+  const later = overlayQueuedTasks([followup], [mutation({ patch: { plannedDate: "2026-09-21" } })], actorId);
+  assert.equal(later?.[0]?.plannedDate, "2026-09-21");
+  assert.equal(later?.[0]?.deferralCount, 2);
+  assert.equal(overlayQueuedTasks([followup], [mutation({ operation: "complete", patch: {} })], actorId)?.[0]?.status, "completed");
+  assert.equal(overlayQueuedTasks([followup], [mutation({ patch: { plannedDate: "2026-09-19" } })], actorId), null);
+  assert.equal(overlayQueuedTasks([followup], [mutation({ operation: "delete", patch: {} })], actorId), null);
+});

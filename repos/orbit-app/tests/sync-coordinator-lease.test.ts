@@ -131,10 +131,10 @@ test("lease → bound scopes → domain pages → readable mirror, without the l
   session.deactivate();
 });
 
-test("offline task writes require the accepted tasks lease and only enqueue frozen personal requests", async (t) => {
+test("offline task writes require the accepted tasks lease and allow only existing relationship follow-up completion or deferral", async (t) => {
   const state: HostState = { epoch: "e1", grantedDomains: ["tasks"], calls: [], now: T0, rows: { tasks: [
     { id: "task:1", revision: "r1", payload: { id: "task:1" } },
-    { id: "task:followup", revision: "r2", payload: { id: "task:followup", accountId: A, ownerUserId: A, title: "Follow up", status: "open", category: "relationship", priority: "normal", source: "manual", createdAt: new Date(T0).toISOString(), updatedAt: new Date(T0).toISOString() } },
+    { id: "task:followup", revision: "r2", payload: { id: "task:followup", accountId: A, ownerUserId: A, title: "Follow up", status: "open", category: "relationship", plannedDate: "2026-10-03", priority: "normal", source: "manual", createdAt: new Date(T0).toISOString(), updatedAt: new Date(T0).toISOString() } },
     { id: "task:work", revision: "r3", payload: { id: "task:work", accountId: A, ownerUserId: A, title: "Send deck", status: "open", category: "work", priority: "normal", source: "manual", createdAt: new Date(T0).toISOString(), updatedAt: new Date(T0).toISOString() } },
   ] } };
   const { database, lifecycle } = device(t);
@@ -160,7 +160,22 @@ test("offline task writes require the accepted tasks lease and only enqueue froz
     mutationId: "123e4567-e89b-42d3-a456-426614174004", entityId: "task:followup", operation: "complete", baseRevision: "r2",
     requestBody: { action: "complete", idempotencyKey: "123e4567-e89b-42d3-a456-426614174004" }, createdAt: new Date(T0 + 2).toISOString(),
   });
-  await assert.rejects(session.enqueueOfflineTaskMutation(followupComplete), /mirrored personal task/u);
+  const followupDefer = buildOfflineTaskMutation({
+    mutationId: "123e4567-e89b-42d3-a456-426614174007", entityId: "task:followup", operation: "update", baseRevision: "r2",
+    requestBody: { action: "update", expectedUpdatedAt: new Date(T0).toISOString(), idempotencyKey: "123e4567-e89b-42d3-a456-426614174007", patch: { plannedDate: "2026-10-04" } },
+    createdAt: new Date(T0 + 3).toISOString(),
+  });
+  await session.enqueueOfflineTaskMutation(followupDefer);
+  await session.enqueueOfflineTaskMutation(followupComplete);
+  const followupRename = buildOfflineTaskMutation({
+    mutationId: "123e4567-e89b-42d3-a456-426614174008", entityId: "task:followup", operation: "update", baseRevision: "r2",
+    requestBody: { action: "update", expectedUpdatedAt: new Date(T0).toISOString(), idempotencyKey: "123e4567-e89b-42d3-a456-426614174008", patch: { title: "Changed offline" } },
+    createdAt: new Date(T0 + 4).toISOString(),
+  });
+  await assert.rejects(session.enqueueOfflineTaskMutation(followupRename), /mirrored personal task or permitted follow-up action/u);
+  await assert.rejects(session.enqueueOfflineTaskMutation({ ...followupComplete, mutationId: "stale-followup", baseRevision: "r0",
+    requestJson: JSON.stringify({ action: "complete", idempotencyKey: "stale-followup" }) }), /mirrored personal task or permitted follow-up action/u,
+  "the narrow exception still requires the mirrored revision");
   const workComplete = buildOfflineTaskMutation({
     mutationId: "123e4567-e89b-42d3-a456-426614174006", entityId: "task:work", operation: "complete", baseRevision: "r3",
     requestBody: { action: "complete", idempotencyKey: "123e4567-e89b-42d3-a456-426614174006" }, createdAt: new Date(T0 + 2).toISOString(),

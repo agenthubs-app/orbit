@@ -12,7 +12,7 @@ type LocalSyncRepository = ReturnType<typeof createLocalSyncRepository>;
 const TASK_DOMAIN = "tasks";
 const MAX_CANONICAL_PAGES = 100;
 
-/** Uploads only frozen personal-task requests and acknowledges the leased canonical task row. */
+/** Uploads frozen task requests admitted by the coordinator (including R20a's narrow follow-up exception) and acknowledges the leased canonical row. */
 export function createTaskOutboxUploader(input: {
   actorId: string;
   baseUrl: string;

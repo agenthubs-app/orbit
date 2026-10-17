@@ -31,7 +31,7 @@
 | `inbox-notifications`（0118） | 是 | 本人的类型化收件箱通知（提醒、建议、动态），含历史：标题、原因、三种语言的文案、来源摘要、对象名、处置和已读状态。可能含第三方的名字（名片交换、约谈）和笔记摘要，和联系人域同级。来源已失效的通知以「来源已不可用」的形态下发，不带正文。见下方「收件箱与 AI 会话：决定与接受的风险」 |
 | `ai-sessions`、`ai-session-messages`（0118） | 是 | 本人的 AI 会话列表（标题、第一个问题和最近一条的摘要、置顶／分组／自定义标题），以及本设备打开过的会话（最多 20 个）的消息原文：本人写下的问题和 AI 基于本人数据给出的回答，和笔记同级。卡片不同步，只缓存最后一次联网打开时的卡片。见下方「收件箱与 AI 会话：决定与接受的风险」 |
 | `relationship-conversations`、`relationship-messages`（0119） | 是 | 本人仍是有效成员的对话（对方的名字、最后一条消息的 320 字预览、未读数、本人读到的序号），以及这些对话的**全部历史消息**：对方写给本人的原文和本人发出的原文。对方的原文是第三方私密内容（对方不知道这份副本在浏览器里），风险和笔记里关于第三方的内容同级。撤销关系后两人的设备都删除这个对话和它的全部消息。见下方「用户之间的消息：决定与接受的风险」 |
-| 页面副本（0131）：`self-profile`、`agent-actions`、`agent-ledger`、`relationship-tasks`、`task-suggestions`、`today-page`、`today-summary`、`relationship-lifecycle`、`meeting-details`、`home-schedule`、`provenance-audit`、`public-events`、`event-recommendations` | 是 | 服务器实时算出的页面，设备只保存上次联网读到的那一份，绑定租约的授权纪元。逐项论证见下方「页面副本：决定与接受的风险」 |
+| 页面副本（0131、R20a）：`self-profile`、`agent-actions`、`agent-ledger`、`relationship-tasks`、`task-suggestions`、`today-page`、`today-summary`、`todo-page`、`relationship-lifecycle`、`meeting-details`、`home-schedule`、`provenance-audit`、`public-events`、`event-recommendations` | 是 | 服务器实时算出的页面，设备只保存上次联网读到的那一份，绑定租约的授权纪元。逐项论证见下方「页面副本：决定与接受的风险」 |
 | 工作人员能看到的参会者名单、主办方运营数据 | 否 | 设计案 C 类，永不落地 |
 
 白名单在 `web-mirror-storage.ts` 的 `WEB_MIRROR_DOMAIN_IDS`（同步域）和 `WEB_MIRROR_PAGE_COPY_IDS`（页面副本，0131）硬编码，协调器只为白名单域绑定读取作用域与拉页；租约里其它域的授权在浏览器**既不存储也不拉取**。
@@ -128,7 +128,7 @@
 
 ### 页面副本：决定与接受的风险（Sprint 0131）
 
-- **决定**：用户 2026-09-28 要求「我需要这些离线也能看」，协调者按授权批准：首页、个人资料、Agent 动作中心和 All Actions 账本、关系待办、待办建议、今日、关系下一步、约谈详情、活动列表和推荐，断网时都显示上次同步的内容和「截至」，phoneweb 同样覆盖。这些页面由服务器每次实时计算（资料服务、Agent 队列、跟进分类 SQL、今日服务、推荐排序、公开目录），没有可以增量下发的行，所以不新增同步域，而是保存「页面副本」：该页面最近一次成功的联网读取结果（`src/data/sync/page-copies.ts` 的 `PAGE_COPY_DEFINITIONS`，共 13 种）。
+- **决定**：用户 2026-09-28 要求「我需要这些离线也能看」，协调者按授权批准：首页、个人资料、Agent 动作中心和 All Actions 账本、关系待办、待办建议、今日、关系下一步、约谈详情、活动列表和推荐，断网时都显示上次同步的内容和「截至」，phoneweb 同样覆盖。R20a 将同一口径用于 To-do 首屏。页面由服务器每次实时计算（资料服务、Agent 队列、跟进分类 SQL、今日服务、推荐排序、公开目录），没有可以增量下发的行，所以不新增同步域，而是保存「页面副本」：该页面最近一次成功的联网读取结果（`src/data/sync/page-copies.ts` 的 `PAGE_COPY_DEFINITIONS`，共 14 种）。
 - **存在哪、怎么绑定**：存在当前身份自己的本地库 `sync_meta` 里（原生：SQLCipher 整库加密；浏览器：每个值经 `payloadCodec` 单独 AES-GCM 加密，和同步行相同）。键里带「工作区 + 授权纪元」，这两个值取自当前被接受的离线读取租约：
   - 每次同步接受新租约时，删除所有不属于该纪元的副本（纪元轮换，例如权限变化、演示重置）；租约不再授予任何域时，全部删除（撤权）。
   - 只有在已接受的租约有效期内（≤ 7 天、同一账号、同一服务器）才能读；租约过期后副本和同步域一样锁定。
@@ -142,6 +142,7 @@
   | `agent-actions` | `/api/agent/actions` | Agent 建议的动作（联系人名字、理由、建议做法）。和收件箱同级 |
   | `agent-ledger` | `/api/agent/ledger`（最多 3 页） | Agent 操作记录（标题、原因、状态、来源标签）。和收件箱同级；3 页是首屏加一周的正常活动量 |
   | `relationship-tasks`、`task-suggestions`、`today-page`、`today-summary` | 跟进、建议、今日接口的第一页 | 待办标题、联系人名字、截止时间。和待办域同级 |
+  | `todo-page` | `/api/todo/page` 的首屏三块 | 判断、今日の一手、跟进的标题与联系人预览；和既有待办域同级。固定一份、≤256KB；跨本地零点整块标「以前の情報」，不把旧日计数当作今天实时数据。 |
   | `relationship-lifecycle` | `/api/connections/:id/lifecycle`（最近 20 个） | 一段关系的阶段和下一步。和联系人域同级 |
   | `meeting-details` | `/api/schedule-items/:id/meeting-details`（最近 20 个） | 约谈的时间、地点、对方、议程。和联系人域同级 |
   | `home-schedule` | `/api/schedule-items` | 首页日程卡的上次回应；断网时只用其中已确认的约谈（个人日程和已报名活动读同步域）。和个人日程同级 |
