@@ -11,4 +11,8 @@
 .moveTitle h4 { margin: 0; font-size: var(--fs-body); font-weight: var(--fw-heavy); line-height: var(--lh-body); }
 .reason { color: var(--ink-2); font-size: var(--fs-body-sm); line-height: var(--lh-body); margin: var(--space-10) 0; }
 .moveFoot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); margin-top: var(--space-14); }
+.editorFields { display: grid; gap: var(--space-12); margin-top: var(--space-16); }
+.editorLabel { display: grid; gap: var(--space-8); margin-top: var(--space-12); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
+.draftBody { width: 100%; min-height: 280px; resize: vertical; padding: var(--space-16); border: 1px solid var(--surface-3); border-radius: var(--r-bubble); background: var(--surface); color: var(--ink); font: inherit; font-weight: var(--fw-regular); line-height: var(--lh-body); }
+.draftLink { display: inline-flex; align-items: center; min-height: 40px; padding: var(--space-8) var(--space-16); border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-decoration: none; }
 @media (max-width: 1023px) { .decisions, .nextMoves { grid-column: span 12; } }

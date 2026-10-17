@@ -14,6 +14,7 @@ import { TodoPresenter, todoSourceCopy } from "./TodoPresenter";
 import { todoPageView, type DecisionAction } from "./todo-view-model";
 import { useTodoPage } from "./useTodoPage";
 import styles from "./todo.module.css";
+import { TodoDraftDrawer, type ManualTodoDraft } from "./TodoDraftDrawer";
 
 export function TodoWorkspace({ language, timeZone, date, initialAdd = false }: { language: OrbitLanguage; timeZone: string; date: string; initialAdd?: boolean }) {
   const { account } = useSharedReadAccount();
@@ -32,6 +33,8 @@ function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLa
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [all, setAll] = useState<TodoSectionKey | null>(null);
+  const [draftKey, setDraftKey] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, { title: string; reason?: string; value: ManualTodoDraft }>>({});
   const scope = JSON.stringify([account, date, timeZone]);
   const activeScope = useRef(scope);
   activeScope.current = scope;
@@ -74,9 +77,17 @@ function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLa
   }
 
   const sectionTitle = (section: TodoSectionKey) => t(section === "decisions" ? taskCopy.todoDecisions : section === "nextMoves" ? taskCopy.todoNextMoves : taskCopy.todoFollowups);
+  function openDraft(key: string) {
+    const row = resource.page?.nextMoves.items.find(item => item.key === key);
+    if (!row?.draftAvailable) return;
+    setDrafts(current => current[key] ? current : { ...current, [key]: { title: row.titlePreview, reason: row.reasonPreview, value: { to: "", subject: row.titlePreview, body: "" } } });
+    setDraftKey(key);
+  }
+  const draft = draftKey ? drafts[draftKey] : null;
   return <>
     <button type="button" hidden data-task-add="" onClick={() => { setAdding(true); setError(false); }}>{t(taskCopy.todoAdd)}</button>
-    <TodoPresenter state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDecision={decide} onMore={setAll} />
+    <TodoPresenter state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDecision={decide} onMore={setAll} onDraft={openDraft} />
+    {draft ? <TodoDraftDrawer key={draftKey} open title={draft.title} reason={draft.reason} value={draft.value} onChange={value => setDrafts(current => ({ ...current, [draftKey!]: { ...current[draftKey!]!, value } }))} onClose={() => setDraftKey(null)} /> : null}
     {error && !adding ? <p role="alert" className={styles.note}>{t(taskCopy.todoWriteFailed)}</p> : null}
     <Modal open={adding} title={t(taskCopy.todoAdd)} onClose={() => { if (!busy) setAdding(false); }}>
       <form onSubmit={event => { event.preventDefault(); if (!title.trim()) return; void mutate(() => clients.tasks.create(title, date), t(taskCopy.todoSaved), () => { setTitle(""); setAdding(false); }); }}>

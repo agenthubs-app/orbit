@@ -147,6 +147,8 @@ source 監査で追加の中国語生成元を確認した：`features/tasks/tod
 
 ### Web 三块 presenter と product host（部分里程標）
 
+host の path-specific 中間コミットは `aa2c67c9f`（14 paths）。SC-06 / SC-07 の閉合ではない。
+
 `TodoPresenter` と route view model は読み込み / 空 / 失敗 / 部分取得 / NOT_IMPLEMENTED を区別し、source が unavailable / not_implemented / capped のとき 0 件を精確件数として出さない。正の部分件数は下限、未知の overdue は unknown。sample / 不可用 source の mutation 操作は渡さない。初回 rendering 実行はテスト helper が ReactTestInstance を JSON 化して循環参照エラーになったため、その結果は成功とせず、host child の文字列 traversal へ直して再実行した。
 
 既定 `/app/tasks` は `TodoTaskSlot` → `TodoWorkspace` を mount する。device timezone / local date を明示し、日付変更を追跡する。既存 plan 分岐は維持し、完了済み legacy view も一時的に残す。未認証時は `tab` / `plan` / `new=1` / `view=completed` の許可値だけを continuation に保持する。new task は既存 canonical client の互換な第二引数で選択日を渡し、receipt の日付不一致は成功にしない。曖昧な失敗時は入力と idempotency key を保持する。日付変更だけでは未保存入力を捨てず、account 変更では入力を消す。
@@ -163,7 +165,15 @@ entity_draft の対応会話に別の未解決点がある。source の creation
 
 SC-09 cross-endpoint 監査：Web / App の `/tasks/relationship/[id]` は connectionId を要求するが、todo/page lifecycle row は taskId しか返さない。Web は検証済み contact がある場合の generic contact link のみ、それ以外は非 navigation と説明を表示する。App の lifecycle detail は説明付きで無効のまま。既存 `/api/relationship-tasks/page` は actor / workspace 検証済みの taskId・connectionId mapping を返すが、任意 taskId の精確 lookup ではなく最大 50 件の page である。legacy `/api/relationship-tasks` の全 graph 読取や page 全走査で穴を埋めない。canonical `/api/tasks/[id]` に connectionId はなく、lifecycle repository も connectionId が必要。frozen todo/page contract を変更せずに済む、bounded / actor-owned / ambiguous identity 拒否の taskId resolver または新 detail route が必要で、SC-09 は partial。
 
-SC-08 監査：既存 message-drafts は英語、email / reconnect draft は en 以外を zh と扱うため、日本語生成として呼ばない。主会話の判断で manual editor と明示的な AI unavailable を実装する方針とし、現里程標では入口を無効にする。signal の taskId は legacy followup の場合もあり canonical task と同一とは限らないため、D-10 は実 kind / contact の確認前に task endpoint を呼ばない。paid AI / 外部送信 / source-owned API の変更はしていない。
+SC-08 監査：既存 message-drafts は英語、email / reconnect draft は en 以外を zh と扱うため、日本語生成として呼ばない。主会話の判断で manual editor と明示的な AI unavailable を実装する。signal の taskId は legacy followup の場合もあり canonical task と同一とは限らないため、D-10 は実 kind / contact の確認前に task endpoint を呼ばない。paid AI / 外部送信 / source-owned API の変更はしていない。
+
+### SC-08 Web manual-only drawer（部分里程標）
+
+上記 host 後、「下書きを開く」から既存 600px Drawer の manual editor へ接続した。件名の初期値は source の title preview、本文は空、宛先は本人が入力する。aggregate の contact preview から email や draft body を捏造しない。日本語 AI 生成 / tone / rewrite が未対応であることを明示し、操作を無効にする。server save も無効。入力はこの page の account-scoped memory だけに置き、drawer の close / reopen と midnight で残すが、account switch / page reload で消えると説明する。browser storage / server / Agent signal / task へ書かない。
+
+本人の click による clipboard と mailto handoff のみ。メール送信を実行・記録したとは扱わず、sent confirmation / encounter / task completion も追加しない。mail recipient は単一入力だけ、header / control characters / 不正 UTF-16 は拒否し、subject 998 / body 50,000 characters、encoded mailto 8,000 characters を上限とする。長い本文は copy のまま使える。clipboard の拒否は入力を残して明示失敗とし、成功 Toast を出さない。
+
+RED：`sc08-manual-draft-red.log` / `sc08-manual-host-red.log` / `sc08-manual-copy-safety-red.log`。初回 CSS gate は誤った radius token 名で失敗したため、既存 `--r-bubble` / `--r-pill` と `--fw-regular` へ修正（`sc08-draft-css-red.log`）。英語の否定文中の `sent` が forbidden-copy gate に該当したため `Draft only. You send it.` へ直した。最新 `sc08-manual-draft-green.log` は drawer 3 / host 6 / CSS・hardcoded-copy・scope 12 の **21/21 pass、0 skip**。`sc08-task-copy-qa.log` は task domain **59 entries / 0 issues**。fresh typecheck / real clipboard / email-app launch / browser / pixel は pending。AI generation / persistence / sent-confirmation / D-10 未完のため SC-08 完了とはしない。
 
 ## 请求
 

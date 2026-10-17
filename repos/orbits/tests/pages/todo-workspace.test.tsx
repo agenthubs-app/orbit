@@ -111,3 +111,30 @@ test("a denied mutation clears loaded account data instead of leaving a stale ac
   assert.ok(!JSON.stringify(root!.toJSON()).includes("山本 彩さんに資料を再送"));
   assert.ok(JSON.stringify(root!.toJSON()).includes("To-do を読み込めませんでした"));
 });
+
+test("manual draft opens from next move, survives close/reopen and midnight, and is cleared on account switch", async t => {
+  const restoreDocument = setupDocument();
+  const writes: unknown[] = [];
+  t.mock.method(globalThis, "fetch", async (url: string, init?: RequestInit) => {
+    if (init?.method && init.method !== "GET") writes.push(url);
+    return Response.json({ success: true, data: { ...demoTodoPage, date: new URL(url, "https://orbit.test").searchParams.get("date") } });
+  });
+  const render = (account: string, date: string) => <SessionContext.Provider value={{ status: "authenticated", data: { user: { id: account }, expires: "2099-01-01" }, update: async () => null }}><TodoWorkspace language="ja" timeZone="Asia/Tokyo" date={date} /></SessionContext.Provider>;
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(render("a", "2026-10-18")); });
+  t.after(() => { act(() => root.unmount()); restoreDocument(); });
+  const open = () => button(root, "下書きを開く");
+  assert.equal(open().props.disabled, false);
+  await act(async () => open().props.onClick());
+  await act(async () => root!.root.findByType("textarea").props.onChange({ target: { value: "手動で書いた本文" } }));
+  await act(async () => root!.root.findAllByType("button").find(node => node.props["aria-label"] === "閉じる")!.props.onClick());
+  await act(async () => open().props.onClick());
+  assert.equal(root!.root.findByType("textarea").props.value, "手動で書いた本文");
+  await act(async () => root.update(render("a", "2026-10-19")));
+  assert.equal(root!.root.findByType("textarea").props.value, "手動で書いた本文");
+  await act(async () => root.update(render("b", "2026-10-19")));
+  assert.equal(root!.root.findAllByType("textarea").length, 0);
+  await act(async () => open().props.onClick());
+  assert.equal(root!.root.findByType("textarea").props.value, "");
+  assert.deepEqual(writes, []);
+});
