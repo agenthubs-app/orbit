@@ -32,7 +32,7 @@ export const TaskQuickAdd = forwardRef(function TaskQuickAdd(_props, ref) {
 });
 `;
 const SLOTS: Record<string, string> = {
-  "schedule/ScheduleScreen": "ScheduleScreen",
+  "calendar/CalendarScreen": "CalendarScreen",
   "todo/TodoScreen": "TodoTaskSlot",
   "notes/NotesScreen": "NotesScreen",
   // R23: the プラン slot is PlanSegment (its own behaviour: tests/plan-*.test.tsx).
@@ -101,7 +101,7 @@ test("four frozen segments in order; ?seg= opens one directly and only the shown
   assert.deepEqual(await page.getByRole("tab").allTextContents(), ["カレンダー", "To-do", "プラン", "メモ"]);
   assert.equal(await selected(page), "メモ");
   assert.equal(await visible(page, "NotesScreen page"), true);
-  assert.equal(await page.getByText("ScheduleScreen page").count(), 0, "unvisited segments are not mounted yet");
+  assert.equal(await page.getByText("CalendarScreen page").count(), 0, "unvisited segments are not mounted yet");
   // Embedded pages draw only their content: no own title, header actions or tab bar.
   assert.equal(await page.getByText("NotesScreen title").count(), 0);
   assert.equal(await page.getByText("NotesScreen header action").count(), 0);
@@ -114,7 +114,7 @@ test("tapping a segment switches the page, keeps the URL in step and keeps visit
   await page.waitForTimeout(400);
   assert.equal(await selected(page), "To-do");
   assert.equal(await visible(page, "TodoTaskSlot page"), true);
-  assert.equal(await page.getByText("ScheduleScreen page").count(), 1, "calendar stays mounted");
+  assert.equal(await page.getByText("CalendarScreen page").count(), 1, "calendar stays mounted");
   assert.deepEqual(await navigation(page), [{ method: "setParams", params: { seg: "todo" } }]);
 });
 

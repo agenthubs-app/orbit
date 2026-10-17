@@ -19,22 +19,22 @@ import { useStandardCopy } from "../../i18n/standard-copy";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { TASK_SEGMENTS, type TaskSegment } from "../../view-models/app-navigation";
 import { initialTaskSegment, rememberTaskSegment } from "../../view-models/shell-state";
+import { CalendarScreen } from "../calendar/CalendarScreen";
 import { NotesScreen } from "../notes/NotesScreen";
 import { PlanSegment } from "../plan/PlanSegment";
 import { PlanGoalInputShown } from "../plan/plan-goal-input-shown";
-import { ScheduleScreen } from "../schedule/ScheduleScreen";
 import { TodoTaskSlot } from "../todo/TodoScreen";
 import { TaskQuickAdd, type TaskQuickAddHandle } from "./TaskQuickAdd";
 
 // R05 Task container (RD-20, frozen). Four slots in a fixed order; each slot is
 // one component and a feature Sprint replaces only its own slot:
-//   calendar → R20 (now the existing ScheduleScreen)
+//   calendar → R20a unified CalendarScreen
 //   todo     → R20a Todo first page; the existing task list remains a second view until SC09 replacement
 //   plan     → R23 PlanSegment (goal input / confirmed card); R24 adds the overview
 //   memo     → R20 (now the existing NotesScreen)
 // Do not change the container (header, segments, 「＋」 dispatch, URL `?seg=`).
 export const TASK_SLOTS: Readonly<Record<TaskSegment, (props: TaskSlotProps) => ReactNode>> = {
-  calendar: () => <ScheduleScreen />,
+  calendar: () => <CalendarScreen />,
   todo: ({ quickAdd, revision, onCreated }) => <>
     <TaskQuickAdd ref={quickAdd} onCreated={onCreated} />
     <TodoTaskSlot key={revision} />
