@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
+import { nativeUiStubs } from "./helpers/native-ui-stubs";
 
 // Sprint 0108: the NATIVE personal-schedule list, detail and editor (resolved
 // without .web) read the device mirror. useSyncedCollection is the replaced
@@ -61,7 +62,7 @@ test.before(async () => {
     bundle: true, write: false, format: "iife", jsx: "automatic",
     resolveExtensions: [".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
-    plugins: [{
+    plugins: [nativeUiStubs, {
       name: "schedule-native-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "schedule-native" }));
