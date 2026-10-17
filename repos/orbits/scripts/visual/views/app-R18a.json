@@ -1,5 +1,5 @@
 {
-  "_note": "R18a rev2 §9.2 画面登记；像素收口等待 R31a / R31b。design= 状态开关待实现并验证仅开发环境可用。补画按标题定位；深色为同块第2框。所有 full/pixel/simulator/build 通过 heavy.sh c。",
+  "_note": "R18a rev2 §9.2 画面登记；像素收口等待 R31a / R31b。开发状态使用已实现的 design=25|50|100；生产忽略设计参数且真实生产 JS 已验证不包含 fixture。补画按标题定位；深色为同块第2框。原生截图和像素门禁仍未完成；所有 full/pixel/simulator/build 通过 heavy.sh c。",
   "defaults": {
     "design-base": "http://localhost:3420/redesign-2026-10/",
     "app-origin": "http://localhost:3400",
@@ -19,7 +19,7 @@
         "light"
       ],
       "path": "/profile?design=25",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {
       "id": "A-R18a-02",
@@ -29,7 +29,7 @@
         "light"
       ],
       "path": "/profile?design=50",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {
       "id": "A-R18a-03",
@@ -40,7 +40,7 @@
         "dark"
       ],
       "path": "/profile?design=100",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {
       "id": "A-R18a-04",
@@ -50,7 +50,7 @@
         "light"
       ],
       "path": "/profile/preview",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {
       "id": "A-R18a-05",
@@ -60,7 +60,7 @@
         "light"
       ],
       "path": "/settings?design=25",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {
       "id": "A-R18a-06",
@@ -70,7 +70,7 @@
         "light"
       ],
       "path": "/settings?design=50",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {
       "id": "A-R18a-07",
@@ -81,7 +81,7 @@
         "dark"
       ],
       "path": "/settings?design=100",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {
       "id": "A-R18a-08",
@@ -90,8 +90,8 @@
       "themes": [
         "light"
       ],
-      "path": "/settings/integrations?design=few",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "path": "/settings/integrations?design=50",
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {
       "id": "A-R18a-09",
@@ -101,8 +101,8 @@
         "light",
         "dark"
       ],
-      "path": "/settings/iorbit?design=semantic",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "path": "/settings/iorbit?design=100",
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {
       "id": "A-R18a-10",
@@ -111,8 +111,8 @@
       "themes": [
         "light"
       ],
-      "path": "/profile/suggestions?design=empty",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "path": "/profile/suggestions?design=25",
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {
       "id": "A-R18a-11",
@@ -121,8 +121,8 @@
       "themes": [
         "light"
       ],
-      "path": "/profile/suggestions?design=few",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "path": "/profile/suggestions?design=50",
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {
       "id": "A-R18a-12",
@@ -131,8 +131,8 @@
       "themes": [
         "light"
       ],
-      "path": "/profile/suggestions?design=many",
-      "note": "开发状态到达方式待 SC-02–09 接线；未执行模拟器或像素门禁。"
+      "path": "/profile/suggestions?design=100",
+      "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     }
   ]
 }

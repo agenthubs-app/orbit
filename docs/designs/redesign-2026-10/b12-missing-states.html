@@ -8545,12 +8545,14 @@ function settingsApp(s) {
     <!-- 2026-10-18 主会话代定 §C-1（RD-33）· R18a：本期不显示付费方案。 -->
     ${glbl('サポート')}<div class="sgroup">${srow('share', 'データの書き出し', '人脈・メモ・プランを CSV / JSON で')}${srow('book', 'ヘルプ', '使い方・料金・データについて')}</div>
     ${glbl('iOrbit が使う情報')}<div class="sgroup">${srow('target', '現在の目標', g.goal, g.goal === '未設定' ? '<span class="chip coral">未設定</span>' : '')}${srow('pen', '自己紹介', g.intro, g.intro === '未設定' ? '<span class="chip">未設定</span>' : '')}</div>
-    ${glbl('連携')}<div class="sgroup conn">${srow('mail', 'Gmail', g.gm === 'ok' ? '最終同期 9:40' : '人脈に関係するメールを受信箱へ', conn(g.gm))}${srow('calendar', 'Google カレンダー', g.cal === 'ok' ? '面談の30分前に通知' : '予定から面談を見つけます', conn(g.cal))}${srow('users', 'Google 連絡先', '取り込みは近日対応', conn('soon'))}</div>
+    <!-- 2026-10-18 主会话代定 §C-1 · R18a：同期時刻の取得元がないため Gmail は実在する読取範囲のみ表示。 -->
+    ${glbl('連携')}<div class="sgroup conn">${srow('mail', 'Gmail', '件名・相手・日時のみ', conn(g.gm))}${srow('calendar', 'Google カレンダー', g.cal === 'ok' ? '面談の30分前に通知' : '予定から面談を見つけます', conn(g.cal))}${srow('users', 'Google 連絡先', '取り込みは近日対応', conn('soon'))}</div>
     ${glbl('通知')}<div class="sgroup">${srow('bell', '通知', '1日 3件まで · 静かな時間帯 22:00–7:30')}</div>
     <!-- 2026-10-18 主会话代定 §C-1（RD-33）· R18a：名刺交換（NFC）整组留下一期。 -->
     ${glbl('言語')}<div class="sgroup" style="padding:12px 14px"><div class="seg lang" style="width:100%;display:grid;grid-template-columns:repeat(3,1fr)"><button class="on">日本語</button><button>English</button><button>中文</button></div></div>
     ${glbl('外観')}<div class="sgroup" style="padding:12px 14px"><div class="seg" style="width:100%;display:grid;grid-template-columns:repeat(3,1fr)"><button>ライト</button><button>ダーク</button><button class="on">自動</button></div></div>
-    ${glbl('権限')}<div class="sgroup">${srow('scan', 'カメラ', '名刺の撮影', s === 'empty' ? '<span class="lbl">未確認</span>' : '<span class="lbl">許可</span>')}${srow('calendar', 'カレンダー', '面談の検出', s === 'many' ? '<span class="lbl">許可</span>' : '<span class="chip coral">許可されていません</span>')}${srow('bell', '通知', '', s === 'empty' ? '<span class="lbl">未確認</span>' : '<span class="lbl">許可</span>')}</div>
+    <!-- 2026-10-18 主会话代定 §C-1 · R18a：原生カレンダー権限は依存追加せず次期へ。OAuth 連携とは別のため行を削除。 -->
+    ${glbl('権限')}<div class="sgroup">${srow('scan', 'カメラ', '名刺の撮影', s === 'empty' ? '<span class="lbl">未確認</span>' : '<span class="lbl">許可</span>')}${srow('bell', '通知', '', s === 'empty' ? '<span class="lbl">未確認</span>' : '<span class="lbl">許可</span>')}</div>
     <div class="sgroup" style="margin-top:18px">${srow('out', 'ログアウト', '', '', false, 'danger')}</div>
     <div class="lbl" style="text-align:center;margin-top:12px">Orbit 3.2.0 · 利用規約 · プライバシー</div>`;
 }
@@ -8559,7 +8561,8 @@ function connApp() {
     <div class="card rise"><div class="row" style="gap:12px"><span class="emo blue">📧</span><div style="flex:1"><b>Gmail</b><div class="lbl">k.sato@minatolink.example</div></div>${conn('ok')}</div>
       <!-- 2026-10-18 主会话代定 §C-1（RD-33）· R18a：Gmail 只读元数据，不读本文、不保存下書き。 -->
       <div class="grid2" style="margin-top:12px;gap:8px"><div class="mac teal" style="font-size:11.5px"><b style="display:block;margin-bottom:4px">読むもの</b>登録した相手とのスレッド<br>件名・相手・日時</div><div class="mac" style="background:var(--surface-2);font-size:11.5px"><b style="display:block;margin-bottom:4px">読まないもの</b>メールの本文<br>添付ファイル</div></div>
-      <div class="row between" style="margin-top:6px"><span class="lbl">最終同期 9:40 · 取り込み 128スレッド</span><button class="btn sm danger-ghost">接続を解除</button></div></div>
+      <!-- 2026-10-18 主会话代定 §C-1 · R18a：同期時刻・スレッド件数に API がないため数値を削除。解除は既存 DELETE。 -->
+      <div class="row between" style="margin-top:6px"><button class="btn sm danger-ghost">接続を解除</button></div></div>
     <div class="card"><div class="row" style="gap:12px"><span class="emo apricot">📅</span><div style="flex:1"><b>Google カレンダー</b><div class="lbl">面談の30分前に、相手と話すことをお知らせ</div></div>${conn('no')}</div>
       <button class="btn primary block" style="margin-top:12px">${ic('link', 'sm')}接続する</button><div class="lbl" style="text-align:center;margin-top:6px">読むのは予定のタイトル・時間・参加者のみ · 予定の作成は確認後</div></div>
     <!-- 2026-10-18 主会话代定 §C-1（RD-33）· R18a：通知登録の保存先がないため準備中のみ。 -->
@@ -8568,8 +8571,8 @@ function connApp() {
 function aiInfoApp() {
   return topbar('iOrbit が使う情報', 'ここを直すと提案が変わります', back, '<span></span>') + `
     <div class="card rise"><div class="row between"><span class="lbl">現在の目標</span><button class="btn sm">${ic('pen', 'sm')}変更</button></div>
-      <div class="row" style="gap:10px;margin-top:6px"><span class="emo pink">💰</span><div><b style="font-size:15px">シリーズA 資金調達</b><div class="lbl">3億円 · 2027年3月まで · 第6週</div></div></div>
-      <div class="lbl" style="margin-top:10px">サブ目標：製造業の新規顧客開拓（商談 12件）</div></div>
+      <!-- 2026-10-18 主会话代定 §C-1 · R18a：summary の goal のみ使用。予算・期限・週数・サブ目標件数の取得元がないため削除。 -->
+      <div class="row" style="gap:10px;margin-top:6px"><span class="emo pink">💰</span><div><b style="font-size:15px">シリーズA 資金調達</b></div></div></div>
     <div class="card"><div class="row between"><span class="lbl">自己紹介</span><button class="btn sm">${ic('sparkle', 'sm')}AI で整える</button></div>
       <div class="input" style="height:auto;padding:12px 14px;margin-top:8px;color:var(--ink);line-height:1.7;align-items:flex-start">工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。</div><div class="lbl" style="margin-top:6px;text-align:right">62 / 200</div></div>
     <div class="card" data-why-box><div class="row" style="gap:8px"><b style="font-size:13.5px">iOrbit が覚えていること</b><span class="why" style="margin-left:auto">?</span></div>
@@ -8585,12 +8588,13 @@ const smenu = on => `<div class="smenu">${SMENU.map(([i, l, k]) => `<a class="${
 const setPage = (on, title, sub, content) => mainhead('設定', '', '', '') + `<div class="setgrid">${smenu(on)}<div><div style="margin:0 0 16px"><b style="font-size:19px">${title}</b><div class="lbl">${sub}</div></div>${content}</div></div>`;
 function connWeb(s) {
   const g = ST[s];
-  const card = (emo, c, name, st, desc, on) => `<div class="card span4"><div class="row between"><span class="emo ${c}">${emo}</span>${conn(st)}</div><b style="font-size:15px;margin-top:12px;display:block">${name}</b><div class="lbl" style="margin-top:2px">${desc}</div>
-    <div class="push" style="padding-top:14px">${st === 'ok' ? `<div class="row between"><span class="lbl">${on}</span><button class="btn sm danger-ghost">解除</button></div>` : st === 'no' ? `<button class="btn sm primary">${ic('link', 'sm')}接続する</button>` : ''}</div></div>`;
+  /* 2026-10-18 主会话代定 §C-1 · R18a：同期時刻・メール / 面談件数の API がないため接続カードから削除。 */
+  const card = (emo, c, name, st, desc) => `<div class="card span4"><div class="row between"><span class="emo ${c}">${emo}</span>${conn(st)}</div><b style="font-size:15px;margin-top:12px;display:block">${name}</b><div class="lbl" style="margin-top:2px">${desc}</div>
+    <div class="push" style="padding-top:14px">${st === 'ok' ? `<div class="row between"><button class="btn sm danger-ghost">解除</button></div>` : st === 'no' ? `<button class="btn sm primary">${ic('link', 'sm')}接続する</button>` : ''}</div></div>`;
   return setPage('conn', '連携', 'Orbit が読むのは必要な範囲だけです。Orbit からは送信しません。予定の作成は、あなたが確認したときだけです。', `<div class="wgrid">
     <!-- 2026-10-18 主会话代定 §C-1（RD-33）· R18a：Gmail 元数据权限口径；Google 連絡先不提供上线通知开关。 -->
-    ${card('📧', 'blue', 'Gmail', g.gm, '件名・相手・日時のみ。本文は読まず、下書きも保存しません', '最終同期 9:40 · 128スレッド')}
-    ${card('📅', 'apricot', 'Google カレンダー', g.cal, '面談の30分前に「話すこと」をお知らせ', '最終同期 9:41 · 今週の面談 4件')}
+    ${card('📧', 'blue', 'Gmail', g.gm, '件名・相手・日時のみ。本文は読まず、下書きも保存しません')}
+    ${card('📅', 'apricot', 'Google カレンダー', g.cal, '面談の30分前に「話すこと」をお知らせ')}
     ${card('👥', 'teal', 'Google 連絡先', 'soon', '連絡先からの一括取り込み（近日対応）')}
     <div class="card span7"><div class="card-h"><h3>Orbit が読むもの・読まないもの</h3></div><div class="grid2"><div class="mac teal" style="font-size:12.5px;line-height:1.8"><b>読むもの</b><br>✓ メールの件名・相手・日時<br>✓ 予定のタイトル・時間・参加者</div><div class="mac" style="background:var(--surface-2);font-size:12.5px;line-height:1.8"><b>読まないもの</b><br>✕ メールの本文<br>✕ 添付ファイル · 予定の本文</div></div></div>
     <!-- 2026-10-18 主会话代定 §C-1（RD-33）· R18a：同期履历无读取接口，整块删除。 -->
@@ -8598,7 +8602,8 @@ function connWeb(s) {
 }
 function aiInfoWeb() {
   return setPage('ai', 'iOrbit が使う情報', 'ここを直すと、提案・プラン・イベント評価が変わります。ほかのユーザーには公開されません。', `<div class="wgrid">
-    <div class="card span6"><div class="row between"><span class="lbl">現在の目標</span><button class="btn sm">${ic('pen', 'sm')}変更</button></div><div class="row" style="gap:12px;margin-top:8px"><span class="emo pink">💰</span><div><b style="font-size:17px">シリーズA 資金調達</b><div class="lbl">3億円 · 2027年3月まで · 第6週 / 24週</div></div></div>${bar(46, 'rose')}<div class="lbl">サブ目標：製造業の新規顧客開拓（商談 12件）</div></div>
+    <!-- 2026-10-18 主会话代定 §C-1 · R18a：summary の goal のみ。無 API の予算・期限・週数 / 進捗・サブ目標件数を削除。 -->
+    <div class="card span6"><div class="row between"><span class="lbl">現在の目標</span><button class="btn sm">${ic('pen', 'sm')}変更</button></div><div class="row" style="gap:12px;margin-top:8px"><span class="emo pink">💰</span><div><b style="font-size:17px">シリーズA 資金調達</b></div></div></div>
     <div class="card span6"><div class="row between"><span class="lbl">自己紹介</span><button class="btn sm">${ic('sparkle', 'sm')}AI で整える</button></div><div class="input" style="height:auto;padding:12px 14px;margin-top:8px;color:var(--ink);line-height:1.7">工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。</div></div>
     <div class="card span12" data-why-box><div class="row" style="gap:8px"><h3 style="font-size:14.5px">iOrbit が覚えていること</h3><span class="why">?</span><span class="lbl" style="margin-left:auto">✕ で削除すると、以後の提案に使いません</span></div><div class="why-body" hidden>メモ・面談記録・プランから抽出しています（最終更新 10/6）</div>
       <!-- 2026-10-18 主会话代定 §C-1（RD-33）· R18a：source 仅 manual / conversation；面談メモ改为会話，日期是示例数据。 -->
@@ -8627,7 +8632,8 @@ const pubRail = (p) => { const d = PR[p]; return `<h4>${ic('user', 'sm')}公開�
 
 const SG = [
   { who: '鈴木 大輔', sub: '北辰製作所', av: ['鈴', 'c3'], src: '新しい名刺', se: '📇', sc: 'apricot', when: '10月7日 スキャン', why: '10/7 にスキャンした名刺の役職欄・携帯番号欄', rows: [['役職', 'DX 推進室 課長', 'DX 推進室 室長'], ['携帯', '（なし）', '090-5555-0263']] },
-  { who: 'あなたのプロフィール', sub: ME.name, av: ['佐', 'c1'], src: '職務経歴書', se: '📄', sc: 'blue', when: '10月5日 アップロード', why: 'アップロードした職務経歴書（PDF · 2ページ）の「職歴」「得意分野」', rows: [['経歴', '（なし）', '2019–2022 テクノフォージ 事業開発部長'], ['得意分野', '製造業 SaaS', '製造業 SaaS · 工場 DX の導入支援']] },
+  /* 2026-10-18 主会话代定 §C-1 · R18a：対応済みのテキスト入力のみ。PDF / DOCX パーサーは追加しない。 */
+  { who: 'あなたのプロフィール', sub: ME.name, av: ['佐', 'c1'], src: '職務経歴書', se: '📄', sc: 'blue', when: '10月5日 アップロード', why: 'アップロードした職務経歴書（テキスト）の「職歴」「得意分野」', rows: [['経歴', '（なし）', '2019–2022 テクノフォージ 事業開発部長'], ['得意分野', '製造業 SaaS', '製造業 SaaS · 工場 DX の導入支援']] },
   { who: '渡辺 翔', sub: 'Nexa Robotics', av: ['渡', 'c5'], src: 'iOrbit との会話', se: '✨', sc: 'lav', when: '10月2日の会話', why: '10/2 の会話であなたが「渡辺さんの会社、9月にシリーズA を終えて55人になった」と話した内容', rows: [['従業員数', '約30名', '約55名'], ['メモに追加', '—', '2026年9月にシリーズA 調達済み']] },
   { who: '伊藤 直子', sub: '株式会社ハルモニア', av: ['伊', 'c4'], src: '新しい名刺', se: '📇', sc: 'apricot', when: '10月6日 スキャン', why: '10/6 の名刺の会社名・メールアドレス', rows: [['会社', '株式会社ハルモニア', 'ハルモニア・ホールディングス株式会社'], ['メール', 'n.ito@harmonia.example', 'n.ito@harmonia-hd.example']] },
   { who: '加藤 健太', sub: 'アクシス商事', av: ['加', 'c3'], src: 'iOrbit との会話', se: '✨', sc: 'lav', when: '9月30日の会話', why: '9/30 の会話「加藤さん、執行役員になったらしい」', rows: [['役職', '営業本部長', '執行役員 営業本部長']] },

@@ -1446,7 +1446,8 @@ const cancelMeetModal = `<div class="overlay"></div><div class="wmodal w560 k-wc
    ================================================================= */
 const SG = [
   { who: '鈴木 大輔', sub: '北辰製作所', av: ['鈴', 'c3'], src: '新しい名刺', se: '📇', sc: 'apricot', when: '10月7日 スキャン', why: '10/7 にスキャンした名刺の役職欄・携帯番号欄', rows: [['役職', 'DX 推進室 課長', 'DX 推進室 室長'], ['携帯', '（なし）', '090-5555-0263']] },
-  { who: 'あなたのプロフィール', sub: ME.name, av: ['佐', 'c1'], src: '職務経歴書', se: '📄', sc: 'blue', when: '10月5日 アップロード', why: 'アップロードした職務経歴書（PDF · 2ページ）の「職歴」「得意分野」', rows: [['経歴', '（なし）', '2019–2022 テクノフォージ 事業開発部長'], ['得意分野', '製造業 SaaS', '製造業 SaaS · 工場 DX の導入支援']] },
+  /* 2026-10-18 主会话代定 §C-1 · R18a：対応済みのテキスト入力のみ。PDF / DOCX パーサーは追加しない。 */
+  { who: 'あなたのプロフィール', sub: ME.name, av: ['佐', 'c1'], src: '職務経歴書', se: '📄', sc: 'blue', when: '10月5日 アップロード', why: 'アップロードした職務経歴書（テキスト）の「職歴」「得意分野」', rows: [['経歴', '（なし）', '2019–2022 テクノフォージ 事業開発部長'], ['得意分野', '製造業 SaaS', '製造業 SaaS · 工場 DX の導入支援']] },
   { who: '渡辺 翔', sub: 'Nexa Robotics', av: ['渡', 'c5'], src: 'iOrbit との会話', se: '✨', sc: 'lav', when: '10月2日の会話', why: '10/2 の会話であなたが「渡辺さんの会社、9月にシリーズA を終えて55人になった」と話した内容', rows: [['従業員数', '約30名', '約55名'], ['メモに追加', '—', '2026年9月にシリーズA 調達済み']] },
   { who: '伊藤 直子', sub: '株式会社ハルモニア', av: ['伊', 'c4'], src: '新しい名刺', se: '📇', sc: 'apricot', when: '10月6日 スキャン', why: '10/6 の名刺の会社名・メールアドレス', rows: [['会社', '株式会社ハルモニア', 'ハルモニア・ホールディングス株式会社'], ['メール', 'n.ito@harmonia.example', 'n.ito@harmonia-hd.example']] },
   { who: '加藤 健太', sub: 'アクシス商事', av: ['加', 'c3'], src: 'iOrbit との会話', se: '✨', sc: 'lav', when: '9月30日の会話', why: '9/30 の会話「加藤さん、執行役員になったらしい」', rows: [['役職', '営業本部長', '執行役員 営業本部長']] },
@@ -1465,7 +1466,8 @@ function sugApp(s) {
     <div class="card" style="margin-top:14px"><div class="card-h"><h3>届くとこう見えます ${SAMPLE}</h3></div><div class="faded">${sgCard(SG[0]).replace('class="sgcard', 'class="sgcard" style="padding:0" data-x="')}</div></div>`;
   const list = s === 'few' ? SG.slice(0, 2) : SG.slice(0, 4);
   return head + `${s === 'many' ? `<div class="seg k-src" style="width:100%;display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:12px"><button class="on">すべて 6</button><button>名刺 3</button><button>経歴書 1</button><button>会話 2</button></div>` : ''}
-    <div class="lbl" style="margin:0 4px 10px">✓ した項目だけが反映されます · 反映はあとで元に戻せます</div>
+    <!-- 2026-10-18 主会话代定 §C-1 · R18a：撤销 API がないため元に戻せるという約束を削除。 -->
+    <div class="lbl" style="margin:0 4px 10px">✓ した項目だけが反映されます</div>
     ${list.map((g, k) => sgCard(g, s === 'many' && k === 0 ? ['yes', 'no'] : [])).join('')}
     ${s === 'many' ? `<button class="btn ghost block" style="margin-top:8px">ほか 2件を見る</button>` : ''}` +
     foot(`<button class="btn primary block xl k-apply">${s === 'many' ? '選んだ 1項目を反映' : '✓ した項目を反映'}</button>`);
@@ -1480,7 +1482,8 @@ function sugWeb(s) {
     ${list.map((g, k) => sgCard(g, s === 'many' ? (k === 0 ? ['yes', 'no'] : k === 1 ? ['yes', 'yes'] : []) : [], 1)).join('')}</div>`;
 }
 const sugRail = (s) => `<h4><span class="emo sm teal">🔄</span>反映のルール</h4>
-  <div class="card k-rule" style="padding:16px;font-size:12.5px;line-height:1.8;color:var(--ink-2)">・✓ した項目だけ書き換えます<br>・元の値は「変更履歴」に残り、あとで戻せます<br>・相手に通知されることはありません</div>
+  <!-- 2026-10-18 主会话代定 §C-1 · R18a：変更履歴 / 復元 API がないため当該ルールを削除。 -->
+  <div class="card k-rule" style="padding:16px;font-size:12.5px;line-height:1.8;color:var(--ink-2)">・✓ した項目だけ書き換えます<br>・相手に通知されることはありません</div>
   <div class="lbl">提案の出どころ</div>${[['📇', 'apricot', '新しい名刺', s === 'many' ? 3 : s === 'few' ? 1 : 0], ['📄', 'blue', '職務経歴書', s === 'empty' ? 0 : 1], ['✨', 'lav', 'iOrbit との会話', s === 'many' ? 2 : 0]].map(([e, c, t, n]) => `<div class="row" style="gap:10px"><span class="emo sm ${c}">${e}</span><b style="font-size:13px;flex:1">${t}</b><span class="score">${n}</span></div>`).join('')}
   <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2)">「iOrbit との会話」からの提案は、あなたが話した内容だけを使います。外部の情報で人物を書き換えることはありません。</div>`;
 
@@ -1685,9 +1688,10 @@ h += WB('Web · キャンセル', '', { nav: 3, head: '', body: meetWeb(), rail:
 
 /* ---- G ---- */
 h += sec('G · 登録内容の更新提案', '来源：新しい名刺 / 職務経歴書 / iOrbit との会話 → 字段级「現在 → 提案」逐条 ✓/✕，可全部采纳。入口：受信箱「更新」类通知、联系人详情顶部、マイページ');
-h += boards(['empty', 'few', 'many'].map(s => AP('更新の提案', s, { body: sugApp(s) }, s === 'empty' ? [['.k-eg', 0, '空状态：解释三种来源 + 主动作「名刺をスキャン」'], ['.k-esub', 0, '马卡龙次入口：职务经历书 / 对 iOrbit 说近况'], ['.faded', 0, '淡化示例带「サンプル」角标']] : s === 'few' ? [['.sgcard .why', 0, '每组标来源 chip，「?」展开具体出处'], ['.sgcard .yn', 0, '逐条 ✓/✕；「すべて採用」= 该组全部 ✓'], ['.k-apply', 0, '只反映 ✓ 的项，可在变更履历「元に戻す」']] : [['.k-src', 0, '按来源筛选（すべて/名刺/経歴書/会話）'], ['.sgr.yes', 0, '✓ 后行变淡、✕ 后提案值划线；反映前可改']])));
+/* 2026-10-18 主会话代定 §C-1 · R18a：操作注釈も撤销 / 履歴の約束を除外。画板 ID は不変。 */
+h += boards(['empty', 'few', 'many'].map(s => AP('更新の提案', s, { body: sugApp(s) }, s === 'empty' ? [['.k-eg', 0, '空状态：解释三种来源 + 主动作「名刺をスキャン」'], ['.k-esub', 0, '马卡龙次入口：职务经历书 / 对 iOrbit 说近况'], ['.faded', 0, '淡化示例带「サンプル」角标']] : s === 'few' ? [['.sgcard .why', 0, '每组标来源 chip，「?」展开具体出处'], ['.sgcard .yn', 0, '逐条 ✓/✕；「すべて採用」= 该组全部 ✓'], ['.k-apply', 0, '只反映 ✓ 的项，无撤销 / 履历接口']] : [['.k-src', 0, '按来源筛选（すべて/名刺/経歴書/会話）'], ['.sgr.yes', 0, '✓ 后行变淡、✕ 后提案值划线；反映前可改']])));
 ['empty', 'few', 'many'].forEach(s => {
-  h += WB('更新の提案 · Web', s, { nav: 1, head: '', body: sugWeb(s), rail: sugRail(s) }, '', s === 'many' ? [['.k-wsrc', 0, '来源筛选 + 已选计数'], ['.sgw .yn', 0, '一行一个字段：項目 · 現在（划去）→ 提案 · ✓/✕'], ['.k-wapply', 0, '顶部「選んだ 3項目を反映」= 唯一写入动作'], ['.k-rule', 0, '右栏写明规则：只改 ✓ 项、保留履历、不通知对方']] : s === 'empty' ? [['.k-weg', 0, '空状态主动作 + 两个次入口 + 淡化示例']] : null);
+  h += WB('更新の提案 · Web', s, { nav: 1, head: '', body: sugWeb(s), rail: sugRail(s) }, '', s === 'many' ? [['.k-wsrc', 0, '来源筛选 + 已选计数'], ['.sgw .yn', 0, '一行一个字段：項目 · 現在（划去）→ 提案 · ✓/✕'], ['.k-wapply', 0, '顶部「選んだ 3項目を反映」= 唯一写入动作'], ['.k-rule', 0, '右栏写明规则：只改 ✓ 项、不通知对方']] : s === 'empty' ? [['.k-weg', 0, '空状态主动作 + 两个次入口 + 淡化示例']] : null);
 });
 
 /* ---- H ---- */

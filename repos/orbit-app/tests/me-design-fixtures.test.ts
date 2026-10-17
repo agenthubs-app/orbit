@@ -6,6 +6,22 @@ import { transpileModule, ScriptTarget, ModuleKind } from "typescript";
 import { accountDesignFixtures } from "../fixtures/account-design";
 import { demoAccountIntegrations, demoAccountMemories, demoAccountSuggestions } from "../../orbits/shared/mock/demo-world/account";
 import { integrationState } from "../src/screens/me/settings-api";
+import { accountProfilePath } from "../src/screens/me/account-api";
+test("R18a App board registrations reach canonical development-only fixture states", () => {
+  const suite = JSON.parse(readFileSync("../orbits/scripts/visual/views/app-R18a.json", "utf8"));
+  for (const view of suite.views) {
+    const design = new URL(view.path, "http://fixture").searchParams.get("design");
+    if (!design) continue;
+    assert.notEqual(accountProfilePath(design, true), "/api/profile", view.id);
+    assert.equal(accountProfilePath(design, false), "/api/profile", view.id);
+  }
+  const paths = new Map(suite.views.map((view: { id: string; path: string }) => [view.id, view.path]));
+  assert.equal(paths.get("A-R18a-08"), "/settings/integrations?design=50");
+  assert.equal(paths.get("A-R18a-09"), "/settings/iorbit?design=100");
+  assert.equal(paths.get("A-R18a-10"), "/profile/suggestions?design=25");
+  assert.equal(paths.get("A-R18a-11"), "/profile/suggestions?design=50");
+  assert.equal(paths.get("A-R18a-12"), "/profile/suggestions?design=100");
+});
 test("R18a private App fixture snapshot matches the canonical demo world and has three provider states", () => {
   assert.deepEqual(accountDesignFixtures.integrations, demoAccountIntegrations);
   assert.deepEqual(accountDesignFixtures.memories, demoAccountMemories);

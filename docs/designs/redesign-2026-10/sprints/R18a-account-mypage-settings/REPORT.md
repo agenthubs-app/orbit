@@ -14,6 +14,12 @@ The same continuation adopted native OAuth fallback to Web settings, not a new n
 
 Read-only native availability inspection found the sanctioned `Orbit Line C` simulator (`D48F24AC-DBD5-49F8-910A-2E7F0BACCAF3`) available but shutdown. Its data path has no `Containers` or `Library/MobileInstallation` directories, so an installed usable development client was not established. No boot, install, build or simulator creation was performed. Native-operation evidence remains **OPEN** by coordinator instruction; RNW functional screenshots are not native or pixel evidence.
 
+### Adopted §C-1 board and registration amendments
+
+Continuation explicitly authorized original-board in-place amendments, superseding the earlier b7 ownership hold. b7 removes unsupported undo/history promises from both visible rules and pin annotations; its résumé example now says supported text, not PDF. b5 and the matching C-owned b12 `.g11` helpers remove unbacked integration sync times/counts and goal budget/deadline/week/progress/subgoal metrics; the actual goal/edit and provider state/disconnect controls remain. Native-calendar permission rows are removed under the adopted no-dependency decision, separately from Google Calendar OAuth. Each amendment is annotated「主会话代定 §C-1」. Board IDs, layout families and the b12 pre-R18a prefix are preserved; no kit/token is changed.
+
+A pure registration regression found five unsupported App suite query aliases. RED3/4 (`app-board-registration-red.log`) at A-R18a-08; correcting only registration URLs to the implemented development-only `25 / 50 / 100` gives GREEN4/4 (`app-board-registration-green.log`). All12 view IDs, board references and theme matrices are unchanged. Combined hook/audit/settings/fixture checks16/16 (`app-continuation-light.log`); all inline scripts parse and `git diff --check` is clean. The rendered amendment preflight is still pending the A2-held heavy lock, as is RNW controller coverage. Coordinator explicitly approved separate path commits with those gates pending; syntax/structural checks are not rendered/pixel/native acceptance.
+
 ## Baseline and evidence
 
 - C Web pristine: 7475 tests, 6428 pass, 32 fail, 1015 skip. 25 failures explicitly require a missing DB URL; six other failure categories match D. The extra `tests/ui/add-contact-screens.test.tsx` doors assertion (`kit .wmodal.w560`) subsequently passed the correct targeted rerun (2/2, 3.26s). This supports timing sensitivity, not a full-suite pass.
@@ -172,9 +178,9 @@ Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail
 2. **Japanese AI drafting/candidates unmet live.** Intro and seeking services select `en`, otherwise `zh`; sending `ja` silently produces Chinese. Japanese live actions/candidates are hidden (G18); development/mock fixtures retain approved Japanese states. Backend Japanese support request; no paid model is called by tests.
 3. **Native OAuth uses the approved Web fallback.** Native opens Web `/app/settings/integrations`, then refreshes on foreground/browser return; Web retains the existing provider authorize URL with signed `returnTo=settings`. A native callback/auth-cookie/session handoff is not claimed. Pure routing is verified; real native browser/OS operation remains OPEN. Test provider/development state transitions only; never real Google.
 4. **Résumé scope is supported text only.** User continuation adopted the existing extraction capability: text files/pasted text and existing own-card scan → extraction → review. PDF/DOCX bytes are not parsed or offered by the App picker. Binary parsing is not claimed or an in-Sprint dependency request.
-5. **Original b7 undo contradiction.** b7 #46–51 promises undo/history without an API. Original b7 is outside ownership and untouched by coordinator decision. C supplemental copies omit unsupported undo. Request original-board amendment; no undo UI/contract is added.
-6. **Integration board data gaps.** Authorization exposes health/lastCheckedAt, not actual sync timestamps, Gmail thread counts or meeting counts. Unsupported metrics are not fabricated; original b5 residual sync-count text needs coordinator amendment. lastCheckedAt is not relabeled as sync time.
-7. **Goal board data gaps.** Plan goal/startsOn exist, but no dedicated total-week or subgoal count fields matching b5. Live goal uses v2 summary and existing plan destination; unbacked elements are omitted pending amendment.
+5. **Original b7 contradiction amended under continuation authority.** Unsupported undo/history promises are removed in place from #46–51 and operation annotations; no undo UI/contract is added. Rendered amendment preflight is pending, not passed.
+6. **Integration board data gaps amended.** Authorization exposes health/lastCheckedAt, not actual sync timestamps, Gmail thread counts or meeting counts. The adopted b5/b12 amendment removes those claims; lastCheckedAt is not relabeled as sync time.
+7. **Goal board data gaps amended.** Live goal uses v2 summary and existing plan destination. The adopted b5/b12 amendment removes unbacked budget/deadline/week/progress/subgoal details rather than inventing live fields.
 8. **Seek rationale absent.** seek-suggestions returns strings only; rationale row is omitted. No invented explanation.
 9. **Memory settings toggle absent from source board.** Existing memory/settings API remains, but no unapproved toggle is added. Sources are only manual / conversation (メモ / iOrbit との会話).
 10. **Pixel / component gate pending.** R31a/b must land before SC12 closure. App edit/tag and unsupported-dark boards require evidence/style-diff, not invented design gates. Existing RingChart normalizes segment totals; private presenter uses remaining segment without editing A-owned component. Component API/ring fidelity remains a handoff.
@@ -188,7 +194,7 @@ Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail
 - R13: App inbox row is in private `MyPageContent`, removable once home bell handoff R13-02 is ready.
 - D: shell mapping/OAuth prerequisite hashes above; request language preference synchronization in shared language context (page calls existing setter only). No D file edits.
 - A: private AccountRow and field/diff presenters may be component candidates; no token/component edits. R31 blocked/missing-design inventory still to be finalized.
-- R20a: authorize uses signed `returnTo=settings`; disconnect uses confirmed DELETE and exact receipt validation. Native callback dependency above.
+- R20a: Web authorize uses signed `returnTo=settings`; native uses the approved Web settings fallback. Disconnect uses confirmed DELETE and exact receipt validation. No new native callback contract is introduced.
 - R15 public preview: coordinator decision is to honor R18a `publicFields` in the pre-redemption `/i/<code>` preview projection (`features/invite-codes/service.ts:433–450`, `includeContact:false`), in addition to invite `sharedKeys`. R15 must design/test that preview-layer projection. Do not filter `inviteProfileFromPayload` globally: `service.ts:477/495/535` / `placePeer` reuse it for explicit redeemed-contact sharing, whose separate shared-key consent remains pending R15 review. No R15 file was edited. `features/events/journey/live.ts:302` reads self bio and is not evidence of public exposure; other public event-card consumers still require owner review.
 - Coordinator docs: request decide-table §C-1 approved amendments + 17 supplemental boards; HANDOFF §R18/R17-03/04/R13-02/R30-06 status; screen-ownership account row and profile/suggestions→R18; README Sprint registry R18a. Central coordination documents are not edited by C.
 
@@ -200,6 +206,8 @@ Finish the authorized continuation and rerun final sanitized typecheck/full comp
 
 SC01 `5550d1582` changed only approved b5 amendments (Pro / NFC removal, four-field completion, unsupported metrics and integration copy) and appended b12 S01–S04, S10–S14, S20–S25, S30–S31: 17 light/dark pairs, 34 frames. Original board IDs and the original b12 prefix were preserved. Exact frame titles/source mappings and five preflight conclusions are in `preflight-checklist.md` and `scripts/visual/views/{web,app}-R18a.json`. Coordinator review of amended/supplemental boards remains required; no pixel approval is implied by preflight.
 
+Subsequent user-adopted §C-1 in-place b5/b7 amendments and matching b12 helper updates are listed above and appended to the preflight checklist. They supersede the original-board hold, without retroactively claiming the original SC01 checkpoint had changed b7. App suite state URLs now match canonical runtime fixture inputs; rendered preflight and native/pixel gates are still explicit pending checks.
+
 ## 请求
 
 - Backend owners: genuine Japanese intro/candidate support is still absent (G18 hides live Japanese actions). Binary résumé parsing is outside the adopted supported-text scope, not required by this continuation.
@@ -210,7 +218,7 @@ SC01 `5550d1582` changed only approved b5 amendments (Pro / NFC removal, four-fi
 
 ## 待主会话代定
 
-Original b7 undo/history contradiction; b5 residual integration sync metrics and goal week/subgoal fields; supported résumé file types; calendar native capability; original board sections with no corresponding API. Recommended treatment: amend only unsupported board claims, keep native/parser capability work in separately authorized dependency tasks. These gaps remain incomplete rather than passed.
+The earlier questions are now decided by explicit user continuation: amend unsupported b7 undo/history and b5 no-API metrics in place, use only supported résumé text files, defer native-calendar dependency, and fall back from native OAuth to Web settings. These are adopted scope decisions, not newly implemented native/parser capabilities. Rendered amendment review remains pending; no unresolved copy/data ambiguity is silently converted into a feature.
 
 ## 待用户授权
 
