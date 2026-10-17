@@ -1,0 +1,162 @@
+import { NextResponse } from "next/server";
+import { auth } from "../../../../../auth";
+import { ORBIT_INTEGRATION_PROVIDERS, type OrbitIntegrationProvider } from "../../../../../features/integrations/contract";
+import { readIntegrationOAuthState } from "../../../../../features/integrations/oauth-state";
+import { createConfiguredOrbitIntegrationService } from "../../../../../features/integrations/service-factory";
+import { integrationSessionBinding } from "../../../../../features/integrations/session-binding";
+import { createConfiguredInboxRuntime } from "../../../../../features/notifications/inbox-record-service-factory";
+import { integrationExpiryNotification } from "../../../../../features/notifications/inbox-business-projections";
+import { resolveAuthenticatedApiActorFromSession } from "../../../_shared/authenticated-actor";
+import type { OrbitIntegrationService } from "../../../../../features/integrations/service";
+
+interface Context {
+  params: Promise<{ provider: string }>;
+}
+
+function provider(value: string): OrbitIntegrationProvider | null {
+  return (ORBIT_INTEGRATION_PROVIDERS as readonly string[]).includes(value)
+    ? (value as OrbitIntegrationProvider)
+    : null;
+}
+
+export function createIntegrationCallbackGetHandler(options: {
+  resolveSession?: () => Promise<{ user?: { id?: string; email?: string | null; name?: string | null } } | null>;
+  resolveActor?: typeof resolveAuthenticatedApiActorFromSession;
+  service?: (input: { actorId: string }) => Pick<OrbitIntegrationService, "consumeOAuthState" | "exchangeCode" | "listAuthorizations"> | null;
+  inbox?: typeof createConfiguredInboxRuntime;
+  secret?: () => string | undefined;
+} = {}) {
+  return async function GET(
+    request: Request,
+    context: Context,
+  ): Promise<Response> {
+    const session = await (options.resolveSession ?? auth)();
+    const sessionBinding = integrationSessionBinding(request);
+    if (!session?.user?.id || !sessionBinding) {
+      return NextResponse.json(
+        { error: { code: "UNAUTHORIZED", message: "Sign in is required." } },
+        { status: 401 },
+      );
+    }
+    const params = await context.params;
+    const selected = provider(params.provider);
+    const search = new URL(request.url).searchParams;
+    const code = search.get("code");
+    const state = search.get("state");
+    const stateCookie = request.headers
+      .get("cookie")
+      ?.split(";")
+      .map((value) => value.trim())
+      .find((value) =>
+        value.startsWith(`orbit-integration-state-${selected ?? ""}=`),
+      )
+      ?.split("=")
+      .slice(1)
+      .join("=");
+    const secret = (options.secret?.() ?? process.env.ORBIT_INTEGRATION_STATE_SECRET)?.trim();
+    const actor = await (options.resolveActor ?? resolveAuthenticatedApiActorFromSession)({
+      email: session.user.email,
+      name: session.user.name,
+      userId: session.user.id,
+    });
+    const service = (options.service ?? createConfiguredOrbitIntegrationService)({
+      actorId: session.user.id,
+    });
+    const verifiedState = selected && state && secret ? readIntegrationOAuthState({
+      state, provider: selected, actorId: session.user.id, sessionBinding, secret,
+    }) : null;
+    if (
+      !selected ||
+      !code ||
+      !state ||
+      !stateCookie ||
+      stateCookie !== state ||
+      !secret ||
+      !actor ||
+      !service ||
+      !verifiedState
+    ) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "INTEGRATION_OAUTH_INVALID",
+            message: "OAuth callback is invalid or expired.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+    const now = new Date().toISOString();
+    if (
+      !(await service.consumeOAuthState({
+        provider: selected,
+        actorId: session.user.id,
+        sessionBinding,
+        state,
+        now,
+      }))
+    ) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "INTEGRATION_OAUTH_REPLAYED",
+            message: "OAuth callback state was already used or is no longer valid.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+    try {
+      await service.exchangeCode({
+        provider: selected,
+        code,
+        now,
+      });
+      const authorization = (await service.listAuthorizations(now)).find(
+        (item) => item.provider === selected,
+      );
+      if (authorization?.expiresAt) {
+        const afterExpiry = new Date(Date.parse(authorization.expiresAt) + 1).toISOString();
+        const requiresReconnect = (await service.listAuthorizations(afterExpiry)).find(
+          (item) => item.provider === selected,
+        )?.status === "expired";
+        const notification = integrationExpiryNotification({
+          actorId: actor.id,
+          principalId: actor.userId,
+          provider: selected,
+          expiresAt: authorization.expiresAt,
+          requiresReconnect,
+        });
+        if (notification) {
+          const inbox = (options.inbox ?? createConfiguredInboxRuntime)();
+          if (!inbox) throw new Error("Notification storage is unavailable.");
+          await inbox.service.upsert(notification);
+        }
+      }
+      const response = NextResponse.redirect(
+        new URL(verifiedState.returnTo === "settings" ? "/app/settings" : "/app/tasks?tab=calendar", request.url),
+      );
+      response.cookies.set(`orbit-integration-state-${selected}`, "", {
+        httpOnly: true,
+        maxAge: 0,
+        path: `/api/integrations/${selected}/callback`,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+      return response;
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "INTEGRATION_OAUTH_FAILED",
+            message:
+              error instanceof Error ? error.message : "OAuth exchange failed.",
+          },
+        },
+        { status: 502 },
+      );
+    }
+  };
+}
+
+export const GET = createIntegrationCallbackGetHandler();

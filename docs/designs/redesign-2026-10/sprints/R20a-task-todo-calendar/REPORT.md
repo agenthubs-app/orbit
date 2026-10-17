@@ -1,6 +1,6 @@
 # R20a — 実装記録（進行中）
 
-2026-10-18、run-01。承認済み PLANNER rev2 に沿って実行中。本記録は SC-02 のサーバー修正までで、Sprint 完了を示さない。
+2026-10-18、run-01。承認済み PLANNER rev2 に沿って実行中。本記録は SC-02 のサーバー修正と SC-12 の OAuth 前提までで、Sprint 完了を示さない。
 
 - 開始 HEAD：`1524d3667`。主会話のナビゲーション修正 `56da437ef` は別作業。
 - PLANNER SHA256：`091e9e2ca8249a8e39aa7e87e0c7be3b1175b9a86c664c7939cb9eae5b6bc159`。
@@ -11,6 +11,7 @@
 | SC | 現在の結果 |
 | --- | --- |
 | SC-02 フォロー | サーバー修正と回帰テスト済み。実 PostgreSQL で App 向け API は 503 → 200、Web loader は unavailable → success。画面操作とスクリーンショットは後続検証に残す。 |
+| SC-12 OAuth 前提 | `returnTo=settings` を含む二つの固定遷移先を実装・検証済み。外部日程 API / UI / Google 実接続は本段階では未実装。 |
 | その他 SC | この段階では未実装。SC-11a は別コミットで実施する。 |
 
 ## フォロー 根因
@@ -40,6 +41,16 @@ SQL 自体は正しい行を返す。その直後の共通チェックが `LIFEC
 
 B 線（R11 / R13）：`VERIFIED_LIFECYCLE_SORT_RUNTIMES` に実測済み PG18 / ICU78.2 の組を追加した。`createLifecycleTaskPagesReader` / `createRelationshipTaskPageReader` / home summary の共通 runtime admission が、このローカル組で通る。読取・権限・ソート規則の変更はない。
 
+### SC-12 OAuth `returnTo` 前提（独立コミット）
+
+C 線（R18a）：`GET /api/integrations/google_calendar/authorize?returnTo=settings` を利用できる。認証成功後は **`/app/settings`** に戻る。`returnTo=calendar`、未指定、未知値は **`/app/tasks?tab=calendar`** に戻る。App も同じキーを使う。App の Web へのフォールバック表示は C 線の担当で、本変更は App を触らない。
+
+遷移キーは authorize 時に既存 HMAC 署名 state に入れ、callback は検証済み state だけから読む。callback に `returnTo` を追記しても無視する。任意 URL、`//host`、`constructor` / `toString` などは固定の calendar 行きになる。従来の state（キーなし）も受理して calendar 行きとする。既存の actor / provider / session / 有効期限 / cookie / 一回限り消費の条件は維持した。
+
+二つの route の処理を隣接 `handler.ts` に移し、route は GET を再 export する。これは外部 Google・実 DB・環境変数なしで実際の authorize→callback 経路を検証するためで、既定依存は従来どおり。token 交換、失効通知、state cookie 削除の処理は維持した。
+
+証拠（同じ R20a/run-01 ディレクトリ）：`oauth-red.log` は署名 state に戻り先がない RED。`oauth-route-red.log` は旧 callback 遷移先と authorize の未接線による RED（4 tests / 1 pass / 3 fail）。`oauth-green.log` は新規 state/route 試験と既存 `agent-integrations-security.test.ts`、**14 tests / 14 pass / 0 fail / 0 skip**。本機の注入した service double のみを使い、Google・実 DB・付費 AI 呼出しはない。
+
 ## 请求
 
 本段階では追加なし。`contacts/new/drafts` のサーバー側破棄要求は SC-07 の交接で記録する。
@@ -58,7 +69,7 @@ B 線（R11 / R13）：`VERIFIED_LIFECYCLE_SORT_RUNTIMES` に実測済み PG18 /
 
 ## 越线自查
 
-SC-02 の Web/API catch、最小の共通 follow-up runtime 修正、診断 helper、回帰テスト、およびこの REPORT だけを変更。B 線許可領域の修正は上記で交接済み。App、`shell-routes.ts`、`shared/compute/follow-up-task.ts`、plan、memo、component、token、他線文書は未変更。
+SC-02 の Web/API catch、最小の共通 follow-up runtime 修正、診断 helper と、SC-12 の integrations OAuth state / authorize / callback、対応テスト、およびこの REPORT だけを変更。B 線許可領域の修正は上記で交接済み。App、`shell-routes.ts`、`shared/compute/follow-up-task.ts`、plan、memo、component、token、他線文書は未変更。
 
 ## 文档更新请求
 
