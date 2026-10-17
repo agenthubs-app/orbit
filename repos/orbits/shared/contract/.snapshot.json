@@ -2844,6 +2844,11 @@
           "kind": "text",
           "type": "ContactGoalRelatedLinkDTO[]"
         },
+        "followUpContactIds": {
+          "optional": true,
+          "kind": "text",
+          "type": "string[]"
+        },
         "sample": {
           "optional": true,
           "kind": "text",

@@ -14,6 +14,7 @@ import { resolveSharedReadBudgetGate } from "../../../../features/sync/read-budg
 export function createContactGoalRelatedGetHandler(options: {
   resolveActor?: ResolveAuthenticatedApiActor;
   read?: (actorId: string) => Promise<ContactGoalRelatedIdsDTO>;
+  readFollowUps?: (actorId: string) => Promise<string[]>;
   mode?: () => string;
 } = {}) {
   return async function GET(): Promise<Response> {
@@ -26,8 +27,11 @@ export function createContactGoalRelatedGetHandler(options: {
         return NextResponse.json(success(contactGoalRelatedIdsSchema.parse({ ...DEMO_GOAL_RELATED, asOf: new Date().toISOString() })), { headers });
       }
       resolveSharedReadBudgetGate()?.assertAllowed({ collectionName: "plans" });
+      resolveSharedReadBudgetGate()?.assertAllowed({ collectionName: "tasks" });
       const read = options.read ?? (async (actorId: string) => (await import("../../../../features/contacts/goal-related")).readContactGoalRelated(actorId));
-      return NextResponse.json(success(contactGoalRelatedIdsSchema.parse(await read(actor.id))), { headers });
+      const readFollowUps = options.readFollowUps ?? (options.read ? async () => [] : async (actorId: string) => (await import("../../../../features/contacts/goal-related")).readConfiguredOpenFollowUpIds(actorId));
+      const [goal, followUpContactIds] = await Promise.all([read(actor.id), readFollowUps(actor.id)]);
+      return NextResponse.json(success(contactGoalRelatedIdsSchema.parse({ ...goal, followUpContactIds })), { headers });
     } catch (error) {
       const safe = error instanceof AppError ? error : new AppError("SERVICE_UNAVAILABLE", "目標に関係する人を読み込めませんでした。");
       return NextResponse.json(failure(safe), { status: getHttpStatusForAppErrorCode(safe.code), headers });

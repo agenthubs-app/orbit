@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { Pool } from "pg";
 
-import { createPostgresContactCardReader, readContactSyncListRows, tokyoMonthStart } from "../../features/contacts/storage/contact-list-postgres-reader";
+import { createPostgresContactCardReader, readContactSyncListRows, readOpenFollowUpContactIds, tokyoMonthStart } from "../../features/contacts/storage/contact-list-postgres-reader";
 import { boundedGoalRelatedIds, wrapContactCardReader } from "../../features/contacts/card-service";
 import { contactMetKind, contactSourceChip, meetingNoteValue } from "../../shared/compute/contact-source-chip";
 import { contactDensity, mergeContactDensity } from "../../shared/compute/contact-density";
@@ -166,6 +166,8 @@ test("R11a: list cards, tabs, filters and the summary are computed in SQL with t
     assert.deepEqual(await ids({ statusFilters: ["nurture"] }), ["c-goal", "c-self"]);
     assert.deepEqual(await ids({ goalRelated: true, statusFilters: ["active"] }), ["c-meishi"], "tabs and filters combine");
     assert.deepEqual(await ids({ metFilters: ["event", "visit"], industryFilters: ["finance"] }), ["c-meishi", "c-visit"]);
+
+    assert.deepEqual(await readOpenFollowUpContactIds(client, { workspaceId: "w", actorId: "a" }), { ids: ["c-follow", "c-follow-lc"], truncated: false }, "the ids the App caches for 要フォロー");
 
     // Cursor paging under a filter is stable and complete.
     const walked: string[] = [];

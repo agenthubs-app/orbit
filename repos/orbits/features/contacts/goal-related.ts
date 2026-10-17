@@ -48,6 +48,15 @@ export function goalRelatedLinks(snapshot: Pick<PlanSnapshot, "items"> | null): 
   return [...byContact.values()];
 }
 
+/** R11a：goal-related 响应里附带的「要フォロー」id（同一请求，一条只读语句）。 */
+export async function readConfiguredOpenFollowUpIds(actorId: string): Promise<string[]> {
+  const { createConfiguredPostgresLiveRecordStore } = await import("../../shared/storage/configured-live-record-store");
+  const { readOpenFollowUpContactIds } = await import("./storage/contact-list-postgres-reader");
+  const runtime = createConfiguredPostgresLiveRecordStore();
+  if (!runtime) return [];
+  return (await readOpenFollowUpContactIds(runtime.client, { workspaceId: runtime.workspaceId, actorId })).ids;
+}
+
 export async function readContactGoalRelated(actorId: string, now: () => Date = () => new Date(), sources: GoalRelatedSources = defaultGoalRelatedSources): Promise<ContactGoalRelatedIdsDTO> {
   const { mergeActivePlanNeeds } = await import("../plans/v2/active-needs");
   const [v1, v2] = await Promise.all([sources.readV1(actorId), sources.readV2(actorId)]);

@@ -19,6 +19,12 @@ export interface ContactGoalRelatedIdsDTO {
   asOf: string;
   /** One entry per id in `ids` (same order); older deployments may omit it. */
   links?: ContactGoalRelatedLinkDTO[] | undefined;
+  /**
+   * R11a: contacts with an open follow-up (plain tasks on a contact and relationship lifecycle tasks;
+   * shared/compute/follow-up-task.ts). The App caches it with the ids above for the 要フォロー tab offline,
+   * because its task mirror does not carry lifecycle tasks. Sorted, at most OPEN_FOLLOW_UP_IDS_LIMIT.
+   */
+  followUpContactIds?: string[] | undefined;
   /** R08: demo-world data (mock mode only). */
   sample?: true | undefined;
 }

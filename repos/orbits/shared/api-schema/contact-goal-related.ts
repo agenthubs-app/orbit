@@ -12,6 +12,7 @@ export const contactGoalRelatedIdsObject = z.object({
   truncated: z.boolean(),
   asOf: z.string().datetime({ offset: true }),
   links: readableItems(contactGoalRelatedLinkObject).optional(),
+  followUpContactIds: z.array(z.string().min(1).max(512)).max(2000).optional(),
   sample: z.literal(true).optional(),
 });
 export const contactGoalRelatedIdsSchema = contactGoalRelatedIdsObject;

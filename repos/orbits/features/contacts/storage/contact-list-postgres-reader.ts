@@ -231,6 +231,38 @@ const NETWORK_SUMMARY_SQL = `(select jsonb_build_object(
   coalesce((select jsonb_object_agg(k, n) from (select coalesce(region_city, 'none') as k, count(*)::integer as n from contact_dto group by 1) x), '{}'::jsonb) as regions,
   coalesce((select jsonb_object_agg(k, n) from (select met_kind as k, count(*)::integer as n from contact_dto group by 1) x), '{}'::jsonb) as met_kinds`;
 
+/**
+ * R11a 要フォロー（shared/compute/follow-up-task.ts 同口径）：未删除的普通任务（挂联系人、status = open）
+ * 或关系跟进任务（contactId、status ∈ open / scheduled）里挂着的联系人，按人去重。
+ */
+function openFollowUpContactIdsSql(workspace: string, actor: string): string {
+  return `    select distinct case when jsonb_typeof(t.payload->'task') = 'object'
+        then ${trimmedTextSql("t.payload->'task'->>'relatedContactId'")}
+        else ${trimmedTextSql("t.payload->>'contactId'")} end as contact_id
+    from orbit_records t
+    where t.workspace_id = ${workspace}
+      and t.collection_name = 'tasks'
+      and t.user_id = ${actor}
+      and t.lifecycle_state <> 'deleted'
+      and t.deleted_at is null
+      and (
+        (jsonb_typeof(t.payload->'task') = 'object' and t.payload->'task'->>'status' = 'open'
+          and (t.payload->'task'->>'deletedAt') is null)
+        or (jsonb_typeof(t.payload->'task') is distinct from 'object' and t.payload->>'status' in ('open', 'scheduled'))
+      )
+`;
+}
+
+export const OPEN_FOLLOW_UP_IDS_LIMIT = 2000;
+const OPEN_FOLLOW_UP_IDS_SQL = `select f.contact_id from (
+${openFollowUpContactIdsSql("$1", "$2")}) f where f.contact_id is not null order by f.contact_id limit $3`;
+
+/** R11a：本人有还开着的跟进的联系人 id（App 缓存：任务镜像里没有关系跟进任务）。 */
+export async function readOpenFollowUpContactIds(client: LiveRecordSqlClient, input: { workspaceId: string; actorId: string }): Promise<{ ids: string[]; truncated: boolean }> {
+  const rows = (await client.query<{ contact_id: string }>(OPEN_FOLLOW_UP_IDS_SQL, [input.workspaceId, input.actorId, OPEN_FOLLOW_UP_IDS_LIMIT + 1])).rows;
+  return { ids: rows.slice(0, OPEN_FOLLOW_UP_IDS_LIMIT).map((row) => row.contact_id), truncated: rows.length > OPEN_FOLLOW_UP_IDS_LIMIT };
+}
+
 function contactCardErrorSql(p: string): string {
   return `coalesce(${p}.contact_error_code, ${p}.connection_error_code,
       case when length(${p}.record_id) > 512 or length(${p}.contact_id) > 512 or length(${p}.effective_updated_at) > 64 then 'CONTACT_CARD_FIELD_INVALID' end)`;
@@ -691,21 +723,7 @@ with base_contacts as materialized (
   -- 或关系跟进任务（contactId、status ∈ open / scheduled）。按人去重。
   select coalesce(jsonb_object_agg(f.contact_id, true), '{}'::jsonb) as ids
   from (
-    select distinct case when jsonb_typeof(t.payload->'task') = 'object'
-        then ${trimmedTextSql("t.payload->'task'->>'relatedContactId'")}
-        else ${trimmedTextSql("t.payload->>'contactId'")} end as contact_id
-    from orbit_records t
-    where t.workspace_id = $1
-      and t.collection_name = 'tasks'
-      and t.user_id = $4
-      and t.lifecycle_state <> 'deleted'
-      and t.deleted_at is null
-      and (
-        (jsonb_typeof(t.payload->'task') = 'object' and t.payload->'task'->>'status' = 'open'
-          and (t.payload->'task'->>'deletedAt') is null)
-        or (jsonb_typeof(t.payload->'task') is distinct from 'object' and t.payload->>'status' in ('open', 'scheduled'))
-      )
-  ) f
+${openFollowUpContactIdsSql("$1", "$4")}  ) f
   where f.contact_id is not null
 )` : ""}, evidence_rows as materialized (
   select

@@ -1,6 +1,6 @@
 // R11a 人脈（演示世界）：人只从 index.ts 取（RD-22）。「目標に関係」= 示例计划里已关联的人（DEMO_PLAN.personTypes.personIds）。
 import type { ContactGoalRelatedIdsDTO } from "../../contract/contact-goal-related";
-import { DEMO_PLAN } from "./index";
+import { DEMO_PLAN, DEMO_TODOS } from "./index";
 
 const links = DEMO_PLAN.personTypes
   .filter((type) => !type.skipped)
@@ -12,5 +12,7 @@ export const DEMO_GOAL_RELATED: Omit<ContactGoalRelatedIdsDTO, "asOf"> & { sampl
   ids: unique.map((link) => link.contactId),
   truncated: false,
   links: unique,
+  // 要フォロー：示例 To-do 里挂着人的那几条。
+  followUpContactIds: [...new Set(DEMO_TODOS.flatMap((todo) => (todo.personId ? [todo.personId] : [])))].sort(),
   sample: true,
 };
