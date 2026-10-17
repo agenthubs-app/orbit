@@ -119,6 +119,30 @@ App 全体の最初の typecheck は exit 2（`sc12-app-typecheck.log`）。SC-0
 
 Google 実接続、外部メール、外部予定の書込は未使用。token refresh のテストも替身 service を使う。実 UI / offline 接続状態表示 / screenshots は後続で、SC-12 全体の完了とはしない。SC-05 App offline データ slice は主会話が担当し、本コミットには含めない。
 
+### SC-05 App データ slice（主会話の中間コミット）
+
+主会話の `a96fba644` が todo-page の副本 / mirror 優先 / outbox overlay と narrow relationship-task 完了・延期例外、および offline-policy・inventory・threat model を追加した。hook は `useTodoPage(timeZone, date)` → `{ state, page, copy, staleDay, refresh, mirror, outbox }`。staleDay は日付だけでなく timezone 不一致でも true とし、offline=false の読取中でも stale copy は読取専用にする。UI は fresh な同日・同 timezone のオンライン結果でのみネットワーク動作を許す。focused tests は主会話が確認済みだが、App の fresh typecheck は共通 heavy lock 待ちで、SC-05 全体の完了ではない。
+
+### SC-06 / SC-07 Web 読取・判断境界（UI 前提の部分里程標）
+
+Web の `orbit-2026/todo/useTodoPage.ts` は `useTodoPage(timeZone, date, enabled = true)` を export し、`{ state, page, paging, refresh, loadMore(section, source) }` を返す。R10 / R19 も同じ API 読取境界を利用できる。ブラウザへ関係データを永続保存せず、no-store / schema 検証 / 選択日・timezone 検証を通す。NOT_IMPLEMENTED は空の成功へ変換せず非表示用 state と page=null。日付・account・refresh の世代変更で旧応答を捨て、権限拒否時には既存表示データも消す。
+
+「すべて」の source 別 cursor を URL エンコードし、同時の重複要求を抑止する。取得済み stable key を重ねず、他の section の行と cursor を保持する。source のページ読取失敗は読取済み行・cursor を消費せず、その source の retry state を返す。失敗時の 0 件を完全な件数として取り込まない。
+
+`todo-decision-client.ts` は source の既存書込 API だけを使用する。task_suggestion の accept / dismiss / snooze、plan_pending の accept / dismiss、Agent queue の accept / dismiss と ledger の既存 defer を利用し、aggregate 自体へ書込を追加しない。readonly / sample / source が許可していない action は送信前に拒否する。source id と authoritative status の receipt が一致した場合だけ成功とし、曖昧な suggestion / plan retry には同じ idempotency key を再利用する。既存 Agent defer は nextVisibleAt を持たないため、「明日」と約束せず「後で」と扱う。Agent / plan のサービス本体、外部送信 worker は変更していない。
+
+証拠：`sc06-web-hook-red.log` → `sc06-web-hook-green.log` の **7/7 pass**、`sc07-decision-client-red.log` → `sc07-decision-client-green.log` の client + hook **12/12 pass**。hook だけの段階の `sc06-web-hook-typecheck.log` は exit 0。client 追加後の `sc07-decision-client-typecheck.log` は機器の memory pressure を主会話から受けて当該 tsc PID だけを停止したため、**中止・未検証**であり pass ではない。fresh typecheck は重い作業の枠が空いてから補う。product route への設置、判断完了時のひとこと / Toast、右欄、App UI、pixel はまだ実装・検証していない。SC-06 / SC-07 の完了ではない。
+
+### SC-10 日付窓の前提と未解決の source リスク（前提の部分里程標）
+
+`calendar/calendar-range.ts` は選択した local calendar date から読取窓を求める。b3 の monthGrid と同じ日曜始まり・自然な 4～6 週、Task の週は月曜始まり。月末移動を翌月の末日に収め、DST の日を固定 24 時間にせず既存 `personalScheduleDayStart` を再利用する（既存 helper の export だけ追加し、挙動は変更しない）。消失した現地日・不正な日付 / timezone は明示エラーとする。
+
+42 local days の月が秋の DST をまたぐと 42×24 時間を 1 時間超えるため、外部予定の読取範囲だけ最大二つの連続区間に分ける。末尾 1 時間を削らず、両方が §7.4 の 42 日上限を満たす。`sc10-calendar-range-red.log` → `sc10-calendar-range-green.log` は日付窓 **5/5**、hook / client と合わせ **17/17 pass**。`sc06-10-boundaries-adjacent.log` はこれらと既存 suggestion / Agent ledger / plan pending API の **35/35 pass**（scrubbed env、paid-AI boundary 使用、local DB / real provider 不使用）。これは UI や実 provider の操作証拠ではない。
+
+source 監査で追加の中国語生成元を確認した：`features/tasks/today-schedule-provider.ts` の meeting title `人脉会面`、video location `线上会面`、phone location `电话`。旧 personal 画面の見出しだけを直しても日本語画面の条件は満たさない。これらは未修正で、実データの本人入力文字列と source が生成する label を区別して後続で扱う。
+
+既存 `/api/schedule-items` は `scope=personal` の場合だけ from / to を personal service へ渡し、aggregate の TodayScheduleProvider は選択窓を受け取らない。personal の既定窓を任意の月の完全な予定だとみなしてはならない。SC-10 の接続時に、選択窓による recurrence 展開・範囲外の過去 / 未来の月・外部予定の split 範囲合成を操作テストで証明する必要がある。今は SC-10 完了とはしない。
+
 ## 请求
 
 本段階では追加なし。`contacts/new/drafts` のサーバー側破棄要求は SC-07 の交接で記録する。

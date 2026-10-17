@@ -2,7 +2,7 @@ import type { PersonalScheduleContract } from "../../../../shared/contract/tasks
 import { calendarDate, localDateTimeCandidates, localParts, resolveLocalDateTime, validTimeZone } from "../../../../features/tasks/local-date-time";
 export interface PersonalScheduleDraft { title: string; startDate: string; startTime: string; endDate: string; endTime: string; location: string; allDay?: boolean | undefined; meetingMethod?: PersonalScheduleContract["meetingMethod"]; meetingUrl?: string; contactIds?: string[]; noteIds?: string[]; reminderMinutes?: PersonalScheduleContract["reminderMinutes"] | null; recurrence?: PersonalScheduleContract["recurrence"] | null; pickerEndInstant?: string; }
 export type PersonalScheduleFields = Record<string, string | boolean | string[] | number | NonNullable<PersonalScheduleContract["recurrence"]> | null>;
-function personalScheduleDayStart(date: string, zone: string): string | null {
+export function personalScheduleDayStart(date: string, zone: string): string | null {
   if (!calendarDate(date) || !validTimeZone(zone)) return null;
   const midnight = localDateTimeCandidates(date, "00:00", zone);
   if (midnight.length) return new Date(midnight[0]!).toISOString();
