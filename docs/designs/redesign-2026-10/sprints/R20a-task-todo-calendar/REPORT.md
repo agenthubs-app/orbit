@@ -314,9 +314,17 @@ user 承認の first-proposal は **server が検証できる accepted bilateral
 
 既存 `AppointmentService.createDraft` に optional `initialProposal` を追加。旧 caller は draft version 1 / 旧 request hash のまま。新 flow は従来 command の同じ `proposeAppointment` 内部処理を使い、3～5 候補・future / duration / timezone / medium、owner、history / revision / recipient を保持する。新規時は draft を外へ露出せず **awaiting_response version 2 + pending revision 1 + created/propose history** と native `appointment.proposed` outbox 一件を作る。
 
+`d46ae0474` では既存 propose / counter branch を内部 helper へ移したため、source 上は branch 本文の置換がある。「只加不改」を既存外部 contract / consent / transition rule を変えない意味で守り、同じ 3～5 / transition / outbox policy を新 atomic create から再利用するための **behavior-preserving extraction** に限定した。旧 lifecycle / counter / reschedule tests が同時に green であり、別の新規ルール実装に分岐していない。広い refactor を追加する許可とは扱わない。
+
 repository.create の optional prepare は receipt lookup **後**、Postgres の同じ transaction 内でだけ呼ぶ。invalid proposal は aggregate / receipt / outbox を残さず、曖昧な retry は同じ receipt を返す。過去になった候補を含む replay でも既存 receipt の前に future validation を再実行しない。旧 draft / command caller へ新規 required parameter を増やさない。
 
 `sc11-atomic-initial-proposal-red.log` の RED → `sc11-atomic-initial-proposal-green.log` **10/10**、さらに `sc11-atomic-initial-proposal-pg-green.log` は **11/11 pass、0 skip**。real local PG18 isolated schema の outbox insert を constraint で意図的に失敗させ、aggregate / receipt / outbox **全て 0** を独立 SQL で確認。constraint を戻して同じ key を retry すると **各一件**、相手 actor の独立 GET と receipt が一致し、再 retry で二重 outbox はない。既存 bilateral / counter / reschedule / confirmed-slot preservation / idempotency の tests も pass。provider / worker / real Google / 実送信は起動しない。HTTP の accepted-context lookup、新 shared contract / snapshot / App sync、contact-only UI / Task mount は後続であり、本 service-only 子里程標に含めない。fresh typecheck / browser / full は後続 clean rebase と coordinated heavy で確認する。
+
+### SC-11 accepted-contact context reader（HTTP 前の子里程標）
+
+`features/appointments/contact-authority.ts` は exact workspace / actor-owned canonical relationship side / contactId から accepted request を最大 2 件だけ探索し、複数なら conflict、未検出なら null。選んだ一件を既存 `resolveAcceptedEventContactContext` でもう一度検証し、request identity・本人の contactId・相手 actor とその contact・ちょうど二つの canonical sides が揃った場合だけ event / authority reference を内部へ渡す。owned/imported contact、accepted flag だけ、片側欠損、第三者の追加 side、別 workspace / actor を consent とみなさない。既存 verifier への変更は optional injected runtime のみで、default SQL / caller は変えない。schema / index / provider は変更しない。
+
+`sc11-contact-authority-red.log` は null stub、`sc11-contact-authority-extra-side-red.log` は余分な第三 side の誤受理を固定。最新 `sc11-contact-authority-pg-green.log` は **15/15 pass、0 skip**（context 4 unit + actual PG、atomic 3 unit + actual PG、旧 lifecycle 6）。local PG fixture は既存 native verifier が読む relational columns と canonical owner/contact unique を作る scoped SQL test で、全 Event Operations migration / membership journey を再現した証拠ではない。最初の PG fixture は招待された側を拒否すると誤って期待して fail したが、既存 bilateral 仕様を確認して両側の distinct contact から同一 accepted context を解決する期待に直した。production policy を requester-only に変更していない。10,000 foreign workspace sides の後も **2 queries、discovery response 53 bytes**（verifier response bytes はこの値に含めない）。HTTP / shared contract / snapshot / App sync / UI はまだ次段階。一般 contact-only authority の欠落は依然 partial として残す。
 
 ## 请求
 

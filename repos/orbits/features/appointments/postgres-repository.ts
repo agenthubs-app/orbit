@@ -142,13 +142,13 @@ export async function resolveAcceptedEventContactContext(input: {
   actorId: string;
   eventId: string;
   requestId: string;
-}): Promise<{
+}, configuredRuntime?: EventOperationsPostgresRuntime): Promise<{
   authorityRequestId: string;
   contactIdsByActor: Readonly<Record<string, string>>;
   counterpartyActorId: string;
   relationshipPairId: string;
 } | null> {
-  const runtime = createConfiguredEventOperationsPostgresRuntime();
+  const runtime = configuredRuntime ?? createConfiguredEventOperationsPostgresRuntime();
   if (!runtime) return null;
   const result = await runtime.client.query<Row>(`
     select
