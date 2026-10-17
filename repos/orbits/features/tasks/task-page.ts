@@ -62,7 +62,7 @@ const dueInstant = `(case when t ? 'dueAt' then ${taskTimestampSql("t->>'dueAt'"
  * deleted history is opt-in. */
 export function taskRecordsValidityCte(includeDeleted = false, noteSourceFilter = false): string {
   return `owned as materialized (
-  select record_id,payload->'task' as t,payload->'activities' as activities from orbit_records
+  select record_id,deleted_at,payload->'task' as t,payload->'activities' as activities from orbit_records
   where workspace_id=$1 and collection_name='tasks' and user_id=$2 ${includeDeleted ? "" : "and lifecycle_state<>'deleted'"}
     ${noteSourceFilter ? "and payload->'task'->>'sourceNoteId'=$3" : ""}
     and payload->'version'='1'::jsonb and jsonb_typeof(payload->'task')='object' and jsonb_typeof(payload->'activities')='array'

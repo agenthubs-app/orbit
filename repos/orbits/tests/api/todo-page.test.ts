@@ -4,6 +4,8 @@ import { GET } from "../../app/api/todo/page/route";
 import { todoPageSchema } from "../../shared/api-schema/todo-page";
 import { getCapabilityRegistration } from "../../shared/services/capability-registry";
 import { DEMO_PEOPLE } from "../../shared/mock/demo-world";
+import { createTodoPageHandlers } from "../../features/todo/handlers";
+import { createTodoPageService } from "../../features/todo/service";
 
 test("mock todo route serves one read-only, board-sized page with stable demo-world identities", async () => {
   const previous = process.env.ORBIT_MODULE_MODE;
@@ -52,4 +54,31 @@ test("todo registry advertises its read-only API without claiming unfinished liv
   assert.deepEqual(registration.api.routes.map(route => [route.method, route.path]), [["GET", "/api/todo/page"]]);
   const live = registration.factory.create("live");
   assert.equal(live.success && live.service.status, "live-limited");
+});
+
+test("live To-do authenticates, uses the account timezone, isolates source errors and rejects tampered cursors", async () => {
+  const previous = process.env.ORBIT_MODULE_MODE;
+  process.env.ORBIT_MODULE_MODE = "live";
+  try {
+    const live = createTodoPageService({ workspaceId: "w", secret: "local-secret-".repeat(4), readers: {
+      task: async () => ({ total: 1, overdue: 1, hasMore: false, entries: [{ cursor: "one", item: {
+        key: "task:t", source: "task", sourceId: "t", taskId: "t", titlePreview: "Follow-up", kind: "task", status: "open", overdue: true, createdAt: "2026-10-18T00:00:00Z",
+      } }] }),
+      agent_action: async () => { throw Error("PRIVATE_TITLE"); },
+    }, onError() {} });
+    let factories = 0;
+    const handlers = createTodoPageHandlers({ resolveActor: async () => ({ id: "a", workspaceId: "w" }), now: () => "2026-10-17T23:30:00Z",
+      live: () => { factories++; return { service: live, accountTimeZone: async () => "Pacific/Auckland" }; } });
+    const response = await handlers.get(new Request("http://localhost/api/todo/page"));
+    assert.equal(response.status, 200);
+    const page = todoPageSchema.parse((await response.json()).data);
+    assert.equal(page.date, "2026-10-18"); assert.equal(page.timeZone, "Pacific/Auckland");
+    assert.equal(page.counts.followups, 1); assert.equal(page.sources.agent_action, "unavailable");
+    assert.equal(JSON.stringify(page).includes("PRIVATE"), false);
+    const bad = await handlers.get(new Request("http://localhost/api/todo/page?section=followups&source=task&cursor=invalid"));
+    assert.equal(bad.status, 400);
+    const noActor = createTodoPageHandlers({ resolveActor: async () => null, live: () => { throw Error("must not run"); } });
+    assert.equal((await noActor.get(new Request("http://localhost/api/todo/page"))).status, 401);
+    assert.equal(factories, 2);
+  } finally { if (previous === undefined) delete process.env.ORBIT_MODULE_MODE; else process.env.ORBIT_MODULE_MODE = previous; }
 });

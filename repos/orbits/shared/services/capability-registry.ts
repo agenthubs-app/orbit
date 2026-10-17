@@ -110,8 +110,8 @@ interface CapabilityDefinition {
 // executable replacement evidence and no known blocker.
 const liveReadinessByCapability: Record<CapabilityId, CapabilityReadiness> = {
   "todo-page": {
-    evidence: ["tests/api/todo-page.test.ts", "tests/contracts/todo-page.test.ts"],
-    limitations: ["Live source aggregation and device offline integration are not yet complete."],
+    evidence: ["tests/api/todo-page.test.ts", "tests/contracts/todo-page.test.ts", "tests/services/todo-followups-postgres.test.ts", "tests/services/todo-plan-sources-postgres.test.ts", "tests/services/todo-contact-sources-postgres.test.ts"],
+    limitations: ["Absent daily completion questions are not initialized by this read-only endpoint; oversized related-source graphs are explicitly unavailable. Device offline integration is not yet complete."],
   },
   "account-profile": {
     evidence: [
