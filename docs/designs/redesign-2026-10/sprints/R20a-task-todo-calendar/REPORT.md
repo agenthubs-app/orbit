@@ -386,6 +386,30 @@ task-addressed reader の検証済み mapping / native versions を使う Web Mo
 
 focused Modal / action / reader / CSS-token tests は **21/21 pass、0 skip**、task copy は **190 entries / 0 issues**。mounted React tests で二件目だけの完了、四 outcome、note failure / retry、saved note + failed completion、Later の 0 writes、mismatched resolver / old-account late response を確認した。これは memory native service adapter / mounted component の証拠であり、実 browser / production Next / PG / provider の E2E ではない。**実 To-do 行への mount、actual-browser tests、新 source 後の fresh Web compiler は OPEN**。target Task list / detail / delete / postpone-two-warning / legacy retirement もこの子里程標では閉じない。App source は主会話の frozen gate 用に未変更。
 
+### SC-09 To-do host / fresh Web gate（進行中、browser RED）
+
+前段 Modal / action は `5ff2b01b9`。実 To-do lifecycle 行と「すべて」から taskId を指定して同 Modal を開く配線を追加中。sample は操作不可、plain task の既存リンクは維持し、完了後は aggregate を再読して件数を確認する（推測で一件減算しない）。実 host で二件目だけを完了し一件目が open のままという regression を追加した。保存後 medium は変更できない plain text とし、active に見える no-op control を残さない。
+
+最初の fresh Web gate は **tsc exit 2 / browser 未実行**：D Modal が kit ConfirmDialog に存在しない `description` を渡し、test fixture の sample literal も boolean へ拡大していた。実 dirty-close の説明文が欠ける RED 二件を追加し、正規 `message` prop / literal を修正。最新 focused は **51/51 pass、0 skip**（`sc09-todo-host-focused-retry.log`）。これらは D-owned regression であり、baseline / kit の問題とはしない。
+
+fresh retry `sc09-sc11-web-mounted-gate-retry.log` は **Web typecheck exit 0、browser 6 件中 2 pass / 4 fail、wrapper exit 1**。SC-09 mismatched resolver と delayed old-account resolver は pass。正常 detail / note flow は controls 前の timeout、SC-11 initial-proposal 二件も POST **0 回**で未確認。共通 fixture が about:blank / setContent を使うため secure-context UUID availability を次に実測するが、現時点では原因未確定。crypto fallback / fake success / receipt 検証の緩和はしない。host / browser paths はまだ未コミットで、SC-09 / SC-11 の actual behavior gate は **OPEN**。
+
+主会話 App copy ratchet correction は `7ad0fd292`（既存文言を relationshipTasks dictionary に移動、同文言維持）、focused copy / lifecycle **10/10** と dictionary parity **2/2**。前 App full の overlay 二件は isolated **2/2** だが、full 再実行の pass ではない。App tsc / Followups browser **5/5** 後の full は主会話が正確な件数 / failure 分類を担当し、新 recheck は A heavy の後に queued。D Web worker は App source を変えていない。
+
+後続の主会話 App recheck は **tsc 0 / lifecycle browser 2/2 / full 3416 total・3405 pass・9 fail・2 skip、exit 1**。既知の dictionary / joined-person 二件のほか七件の browser timeout / overlay intercept があり、全ての七件を対象とする六 suites の bounded isolation は **17/17 pass、exit 0**。full の九失敗を消したり suite-green と呼んだりせず、isolated 再現結果を区別する。fixture-only `72e15a972` は実 translator を使う修正一件だけを `git commit --only` で提交し、D Web の四 staged files は吸収していない。新 SC-08 / SC-11 の後に fresh App full が必要。
+
+Web の次 gate `sc09-sc11-secure-origin-gate.log` は **tsc 0** の後、診断側が `addScriptTag(content: '')` という invalid fixture を渡して止まった。暗号機能の実測も六 interaction もまだ実行していない。診断だけを `void 0;` に修正し、旧 opaque origin と HTTPS の `isSecureContext` / UUID availability の実測が先に通った時だけ interaction 六件へ進む wrapper を一件 queued。外部 main-verify の heavy lock 待ちであり、空の retry log を pass とみなさない。HTTPS fixture は自身の navigation 文書だけをローカル fulfill し外部 / API network を abort、default setContent は保持する（transport unit RED 2 → GREEN 2）。product crypto / receipt checks に変更はない。
+
+### evidence directory gap / App pure proposal helper 子里程標
+
+2026-10-18 朝に旧 `/Users/xzhao/orbit-sprint-evidence/redesign/R20a/run-01` と R20a parent directory が無いことを確認。D worker / 主会話は削除・移転しておらず、原因 / 移転先は未確認。**上記の旧ログ名は当時の実測履歴だが、現在もファイルを保持しているという証拠にはできない**。失われた artifact を再作成して過去の RED / PG / full log と呼ばない。新しい durable evidence root は主会話指定の `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-d/R20a/run-01`。既に出力先を開いて待機していた Web wrapper は未取得 PID 17439 / session 39257 だけを検証して主会話承認で停止（exit 143、browser 未実行）。main-verify の PID 17148 / lock と他 wrapper は変更していない。旧 sink は unlinked の可能性があるため、その未実行 wrapper から新しい diagnostic result を主張しない。main lock 解放後に新 root へ一件だけ再 queue する。
+
+待機長期化を受けた主会話の明示承認は **App pure meeting-proposal-flow helper だけ**。新 targeted 六件は実測 RED 6/6（旧 log は上記 gap）→ GREEN、既存十一件を含め最新 **17/17 pass、0 skip**。新 root の `sc11-app-flow-focused-green.log` / `sc11-app-flow-readback-green.log` を保持。旧成功 fixture は candidateTimes / pending revision が無く unconfirmed になったため、native wide receipt と独立 GET の期待へ修正した（`sc11-app-flow-legacy-receipt-red.log`）。旧任意フィールド欠落を含む GET reader / 三言語 skeleton tests は引き続き pass。
+
+helper は contact identity を検証した availability GET、新 initial-proposal POST、reschedule の両送信経路で厳密な latest candidates / medium / duration / note / timezone / pending revision を確認する。native の時刻順に候補を canonicalize し、改期では元 confirmed core と既知の native candidate identity を保持、両方とも **別 GET の一致後だけ** sent result を返す。GET に渡す AbortSignal は API client の in-flight coalescing も避け、古い画面 load の promise を readback と取り違えない。abort 後の遅い receipt / readback は成功にしない。caller actor / event authority は POST しない。paid AI / worker / Google / 外部送信は使わない。
+
+これは helper-only / mocked transport の子里程標。**App Sheet は未変更で、旧 caller に scope cancellation を接続した証拠ではない**。actor / server scope の Sheet wiring、initial proposal UI、private online-only inventory 登録と audit、fresh App compiler / browser / full は全て OPEN。主会話 App To-do / handoff / harness files は変更せず、Web product source もこの段階で変更していない。Web crypto の actual diagnostic は依然未実行で、再 queue を待つ。
+
 ## 请求
 
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。

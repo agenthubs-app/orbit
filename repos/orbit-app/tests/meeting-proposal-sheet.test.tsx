@@ -90,8 +90,8 @@ const confirmed = {
   proposals: [{ createdAt: "2026-10-15T00:00:00.000Z", durationMinutes: 30, medium: { kind: "in_person", location: "Tokyo" }, note: "", proposedBy: "you", revision: 1, timezone: "Asia/Tokyo" }],
   status: "confirmed", updatedAt: "2026-10-15T00:00:00.000Z", version: 4, visibility: "participants",
 } as const;
-const receipt = { ...confirmed, status: "reschedule_pending", version: 5, replayed: false,
-  proposals: [...confirmed.proposals, { ...confirmed.proposals[0], revision: 2 }],
+const receipt = { ...confirmed, status: "reschedule_pending", version: 5, pendingProposalRevision: 2, replayed: false,
+  proposals: [...confirmed.proposals, { ...confirmed.proposals[0], revision: 2, candidateTimes: candidates.map((candidate, index) => ({ candidateId: `candidate:${index}`, startsAtUtc: candidate.startsAt })) }],
 };
 
 test("reschedule reads an actor-scoped confirmed appointment and rejects a different contact", async () => {
@@ -115,7 +115,7 @@ test("optional abort signal is omitted when absent and forwarded when provided",
   assert.deepEqual(options[1], { signal });
 });
 
-test("reschedule posts propose with CAS and an idempotency key, then verifies the pending receipt", async () => {
+test("reschedule posts propose with CAS and an idempotency key, then independently reads the pending receipt", async () => {
   const requests: { url: string; method: string; body: unknown; key: string | null }[] = [];
   const client = createOrbitApiClient({ baseUrl: "https://orbit.example", fetchImpl: async (input, init) => {
     requests.push({ url: String(input), method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : null, key: new Headers(init?.headers).get("idempotency-key") });
@@ -129,7 +129,7 @@ test("reschedule posts propose with CAS and an idempotency key, then verifies th
       candidateTimes: [{ startsAtUtc: monday }, { startsAtUtc: tuesday }, { startsAtUtc: wednesday }], durationMinutes: 30,
       medium: { kind: "in_person", location: "Tokyo" }, note: "", timezone: "Asia/Tokyo",
     } },
-  }]);
+  }, { url: "https://orbit.example/api/appointments/appointment%3Aone", method: "GET", body: null, key: null }]);
 });
 
 test("reschedule keeps conflict and unverified success distinct from a confirmed send", async () => {
