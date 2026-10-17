@@ -12,7 +12,7 @@ Actual-hook SSR/API/transport RED (`app-auth-adapter-red.log`): 6 tests / 3 pass
 
 The same continuation adopted native OAuth fallback to Web settings, not a new native callback/session mechanism. The private integration controller now chooses `/app/settings/integrations` outside Web; Web retains the existing signed-provider authorize path with `returnTo=settings`. Pure API-path regression RED (`app-native-oauth-fallback-red.log`): 6 tests / 4 pass / 2 fail for the two providers; GREEN (`app-native-oauth-fallback-green.log`): 6/6. Actual controller browser-return/confirmed-disconnect/confirmed-memory-delete coverage subsequently passed in the heavy-locked RNW10/10 batch (`app-secondary-operations-0bab5674d.log`), and those cases also pass in the frozen full run. Actual native OS/browser operation is not implied by mocked native boundaries in RNW.
 
-Read-only native availability inspection found the sanctioned `Orbit Line C` simulator (`D48F24AC-DBD5-49F8-910A-2E7F0BACCAF3`) available but shutdown. Its data path has no `Containers` or `Library/MobileInstallation` directories, so an installed usable development client was not established. No boot, install, build or simulator creation was performed. Native-operation evidence remains **OPEN** by coordinator instruction; RNW functional screenshots are not native or pixel evidence.
+Initial read-only native availability inspection found the sanctioned `Orbit Line C` simulator (`D48F24AC-DBD5-49F8-910A-2E7F0BACCAF3`) available but shutdown. Its data path had no `Containers` or `Library/MobileInstallation` directories, so an installed usable development client was not established. No boot, install, build or simulator creation had been performed at that checkpoint; the subsequently authorized local binary build is recorded below. Native-operation evidence remains **OPEN**; RNW functional screenshots are not native or pixel evidence.
 
 ### Adopted §C-1 board and registration amendments
 
@@ -56,11 +56,27 @@ After the capture-only three-path checkpoint `bbf4381eb`, clean rebase onto `c40
 | Adopted §C-1 boards / registrations | `0bab5674d` | `c5ccc1585` |
 | Capture-only correction / final verification ledger | `bbf4381eb` | `428255da7` |
 
-Read-only native assessment: Xcode26.6 (17F113), iOS26.4 runtime and CocoaPods1.17.0 are available. A cached Expo Go57.0.5 app (`host.exp.Exponent`) exists, but is not installed on the shutdown C device; its SQLCipher capability has not been demonstrated, so it is not adequate evidence for the configured Orbit runtime. Existing `app.config.ts` requires `expo-sqlite useSQLCipher:true`; the local build plugin builds React Native from source, and sync checks `PRAGMA cipher_version`. Current C checkout has no `ios/` project/Pods and no `expo-dev-client` dependency; none was added. Existing idb/companion are available; Python-backed idb is invoked through uv and its existing uv tool environment.
+Read-only native assessment: Xcode26.6 (17F113), iOS26.4 runtime and CocoaPods1.17.0 are available. A cached Expo Go57.0.5 app (`host.exp.Exponent`) exists, but is not installed on the shutdown C device; its SQLCipher capability has not been demonstrated, so it is not adequate evidence for the configured Orbit runtime. Existing `app.config.ts` requires `expo-sqlite useSQLCipher:true`; the local build plugin builds React Native from source, and sync checks `PRAGMA cipher_version`. At that initial checkpoint the C checkout had no `ios/` project/Pods and no `expo-dev-client` dependency; no dependency was added. Existing idb/companion are available; Python-backed idb is invoked through uv and its existing uv tool environment.
 
 Coordinator confirmed a C-only generated-artifact prebuild/Pods/simulator build is within SC03–06 verification, using existing dependencies only. Planned exact targets: ignored C `repos/orbit-app/ios/` (absent before execution), dedicated `/Users/xzhao/Library/Developer/Xcode/DerivedData/Orbit-Line-C-R18a` (absent), and evidence `run-01/native-build/` (absent). Existing `.gitignore` already ignores native/build artifacts. The bundled local Expo template requires no download; installed Expo's pure package modifier on cloned current/template manifests reports `scriptsChanged:false`, `changedDependencies:[]`, `manifestIdentical:true`. Its template has platform-local gitignore, so it does not merge the root gitignore.
 
 Bounded verification plan, after coordinated D gates: (1) prebuild with local template, iOS only, no dependency install, 120s cap and before/after manifest/config/lock/tracked-file guards; (2) native Pods only for existing dependencies, 300s cap; release and inspect; (3) separate dedicated-derivedData simulator build, max2 jobs, 900s cap, only after coordination. Stop on package/lock/config changes, new dependencies, existing-file overwrite, real-account/provider need or unsupported native prerequisite. No native boot/install/prebuild/build has happened at this checkpoint. Native SC03–06 operation records remain **OPEN**, separate from SC12 pixels.
+
+### Bounded local native binary evidence
+
+The three separately coordinated `heavy.sh c` phases subsequently completed at clean source `ba6beb18c7851f40c2c431acea683ff924c03d8e`, using sanitized environments and existing dependencies only:
+
+| Phase / unchanged cap | Outcome | Evidence |
+| --- | --- | --- |
+| Bundled-template iOS prebuild / 120s | exit0; `--no-install`; only new ignored C `ios/` generated | `native-prebuild-ba6beb18c.log` |
+| `pod install --project-directory=ios` / 300s | exit0; 22s; 124 Podfile dependencies / 127 Pods installed into the generated project | `native-pods-ba6beb18c.log` |
+| Debug arm64 simulator `xcodebuild`, max2 jobs / 900s | exit0; 893547ms; `timedOut:false`; app and executable exist | `native-xcodebuild-ba6beb18c.log` |
+
+The build uses dedicated `/Users/xzhao/Library/Developer/Xcode/DerivedData/Orbit-Line-C-R18a`, `CODE_SIGNING_ALLOWED=NO`, `RCT_METRO_PORT=8084`, no simulator destination boot and no real account/provider. `Orbit.app/Orbit` is an arm64 Mach-O executable, SHA-256 `a0e5ed6fa48a5d514d2f021bb88cc4a840ac0251e49a2e13528832a0e969312a`; bundle identifier `app.agenthubs.orbit`, minimum iOS16.4. Generated ExpoSQLite build settings include `SQLITE_HAS_CODEC=1` / `SQLCIPHER_CRYPTO_CC`, but this is not a runtime cipher or native-interaction pass.
+
+All phases preserved `package.json`, `package-lock.json`, `app.config.ts` and `.gitignore` hashes; the build result reports `changedProtectedFiles:[]`, empty tracked status. Post-exit checks found neither owned xcodebuild PID76808 nor its owned SwiftBuild service PID76889 remaining. C heavy lock released normally before D's queued gate. The exact C device remains shutdown on iOS26.4; no install, boot, launch or native credentials operation has yet occurred. SC03–06 native operation records and SC12 pixels therefore remain **OPEN**.
+
+Coordinator subsequently approved a bounded C-only local fixture/launch path, held until D gates release: existing localhost127.0.0.1:5432 database `orbit_line_c_test`, absent schema `r18a_native_20261018_26f7f50d8edc`, workspace `workspace:r18a-native:26f7f50d8edc`, fake `.test` actor, C API3400 / Metro8084 and exact C device. Read-only identity/schema-absence and resolver no-cloud-fallback checks passed (`native-fixture-resolver-preflight.json`); all eight C Web env-file variants are absent. No schema or actor is provisioned at this checkpoint. Approved guards require a pre-write nonce ownership manifest, atomic failure-on-existing schema creation, repeated DB/host/schema identity checks, removal of exactly the existing public-extension DO block from verification-only DDL with an asserted single match, private schema/strict sync DDL only, existing auth registration and actual credential UI without session injection. Cleanup is limited to proved nonce-owned processes/view and the exact newly created schema after ownership/foreign-object checks; uncertainty preserves the resources. The broad primary seed and Map-only fixture helper remain excluded.
 
 ## Baseline and evidence
 
@@ -202,7 +218,7 @@ Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail
 
 | SC | Evidence-backed status | Still required |
 | --- | --- | --- |
-| 01 | Pristine baselines, isolated local PG, standalone approved board amendments; adopted §C-1 in-place changes and 8 before/after rendered preflights completed | Native development-client environment for later native gates; no pixel acceptance |
+| 01 | Pristine baselines, isolated local PG, standalone approved board amendments; adopted §C-1 in-place changes and 8 before/after rendered preflights completed; bounded local binary build0 with clean guards | Native install/auth/operation evidence still OPEN; no pixel acceptance |
 | 02 | Additive contracts, canonical fixtures, sync/snapshot and isolated PG regressions verified | Independent rerun |
 | 03 | App my page and summary/candidate API/render checks green; Chromium candidate accept→completion→dismiss and nested share verified | Simulator interaction evidence |
 | 04 | App editor/public preview/tags and CAS/visibility regressions green; real presenter controls update the filtered preview; actual editor-hook save/receipt/race7/7 | Simulator and b1 style-diff |
@@ -264,7 +280,7 @@ The earlier questions are now decided by explicit user continuation: amend unsup
 
 ## 待用户授权
 
-No production/Neon, real Google, deploy, TestFlight, paid AI, push or native dependency/rebuild action was performed at the latest documented checkpoint. Native calendar dependency/rebuild remains explicitly deferred; do not add it. Coordinator has now confirmed a C-only native build/install verification path using existing dependencies and generated artifacts only, with the guards/caps above. Package/dependency changes, real accounts or provider calls still require a separate decision; none is inferred from that build authority.
+No production/Neon, real Google, deploy, TestFlight, paid AI, push or new native dependency action was performed. The subsequently authorized existing-dependency local binary build completed as recorded above; native calendar dependency/rebuild remains explicitly deferred and was not added. Coordinator also approved the guarded isolated local fixture/install path, not yet executed at this checkpoint. Package/dependency changes, real accounts or provider calls still require a separate decision; none is inferred from that verification authority.
 
 ## 交接表追加（逐行四栏原文）
 
