@@ -132,10 +132,3 @@ export function hostEventsRowSub(summary: HostCenterSummary | null, t: HostT): s
   return summary.activeCount > 0 ? t("appRowCountActive", { a: summary.activeCount, n: summary.eventCount }) : t("appRowCount", { n: summary.eventCount });
 }
 
-/** 最终地址（或登录页的 next 参数）里的 `/app/events/<id>`。 */
-export function eventIdFromUrl(url: string): string | null {
-  let text = url;
-  try { text = decodeURIComponent(url); } catch { /* keep raw */ }
-  const match = /\/app\/events\/([^/?#&]+)/u.exec(text);
-  return match ? match[1]! : null;
-}

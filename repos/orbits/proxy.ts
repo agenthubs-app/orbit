@@ -35,6 +35,8 @@ function isPublicApiPath(pathname: string): boolean {
     // R17（host/DESIGN.md §2.8、§2.11）：公开主办方页的资料读取，与共同运营邀请的落地预览（无效码一律同一回答、有限流）。
     /^\/api\/organizers\/by-slug\/[^/]+$/u.test(pathname) ||
     /^\/api\/host\/cohost-invites\/[^/]+$/u.test(pathname) ||
+    // R17-16：申込页短链 slug → 活动 id（只认已公开活动；与网页 `/e/<slug>` 的跳转同等公开）。
+    /^\/api\/events\/by-slug\/[^/]+$/u.test(pathname) ||
     pathname.startsWith("/api/auth/") ||
     /^\/api\/integrations\/[^/]+\/callback$/u.test(pathname)
   );

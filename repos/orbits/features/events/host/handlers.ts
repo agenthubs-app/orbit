@@ -19,6 +19,7 @@ import {
   hostEventPublishInputSchema,
   hostEventUpdateInputSchema,
   hostEventViewSchema,
+  hostEventSlugResolveResultSchema,
   hostEventWriteResultSchema,
 } from "../../../shared/api-schema/host-events";
 import {
@@ -217,6 +218,13 @@ export function createHostRoutes(deps: HostRouteDeps = {}) {
     createProfile: r({ ...writes, schema: organizerProfileSchema }, async ({ actorId, request, service }) => ({ data: await service.createProfile(actorId!, await body(request, organizerProfileInputSchema)), status: 201 })),
     updateProfile: r({ ...writes, schema: organizerProfileSchema }, async ({ actorId, params, request, service }) => service.updateProfile(actorId!, id(params), await body(request, organizerProfileInputSchema))),
     organizerPublic: r({ auth: "optional", schema: organizerPublicResponseSchema }, async ({ actorId, params, service }) => service.organizerPublic(actorId, id(params, "slug"))),
+    // R17-16：申込页短链 slug → 活动 id（App `/e/[slug]`；只认已公开，未知 / 中止 → 404）。
+    eventBySlug: r({ auth: "optional", schema: hostEventSlugResolveResultSchema }, async ({ params, service }) => {
+      const slug = id(params, "slug").toLowerCase();
+      if (!/^[a-z0-9][a-z0-9-]{0,79}$/u.test(slug)) return null;
+      const eventId = await service.eventIdForSlug(slug);
+      return eventId ? { eventId, slug } : null;
+    }),
   };
 }
 

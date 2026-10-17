@@ -11530,6 +11530,21 @@
         }
       }
     },
+    "host-events.ts::HostEventSlugResolveResult": {
+      "kind": "object",
+      "members": {
+        "slug": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
     "host-events.ts::HostDesktopLinkResult": {
       "kind": "object",
       "members": {

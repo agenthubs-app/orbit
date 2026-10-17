@@ -129,6 +129,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
 const surfaceKeys: readonly SurfaceKey[] = [
   // R17 主催（App）：src/screens/host 的接口都经 host-api.ts。
   ["src/screens/host/host-api.ts","DELETE","/api/organizers/:id/follow"],
+  ["src/screens/host/host-api.ts","GET","/api/events/by-slug/:id"],
   ["src/screens/host/host-api.ts","GET","/api/events/center"],
   ["src/screens/host/host-api.ts","GET","/api/host/center"],
   ["src/screens/host/host-api.ts","GET","/api/host/check-in-events"],

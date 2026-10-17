@@ -4,6 +4,7 @@ import type {
   HostCenterResponse,
   HostCenterSummary,
   HostDesktopLinkResult,
+  HostEventSlugResolveResult,
   HostEventCancelInput,
   HostEventArchiveInput,
   HostEventCodeReissueInput,
@@ -167,6 +168,9 @@ export const hostEventWriteResultSchema = hostEventWriteResultObject as unknown 
 
 export const hostDesktopLinkResultObject = z.object({ sent: z.literal(true), href: z.string() });
 export const hostDesktopLinkResultSchema = hostDesktopLinkResultObject as z.ZodType<HostDesktopLinkResult>;
+
+export const hostEventSlugResolveResultObject = z.object({ eventId: z.string().min(1), slug: z.string().min(1) });
+export const hostEventSlugResolveResultSchema = hostEventSlugResolveResultObject as z.ZodType<HostEventSlugResolveResult>;
 
 // ─── requests (strict) ───
 const title = z.string().trim().min(1).max(80);

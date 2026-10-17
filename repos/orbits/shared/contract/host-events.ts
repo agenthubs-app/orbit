@@ -270,6 +270,15 @@ export interface HostEventCodeReissueInput {
   expectedVersion: number;
 }
 
+/**
+ * `GET /api/events/by-slug/[slug]`：申込页短链 `/e/<slug>` → 活动 id（R17-16，App 用；可未登录）。
+ * 只认已公开活动的 slug；未知 / 已中止 → 404。
+ */
+export interface HostEventSlugResolveResult {
+  slug: string;
+  eventId: string;
+}
+
 /** `POST /api/host/desktop-link`：「PC で開くリンクを自分に送る」= 给自己的收件箱写一条（不发邮件）。 */
 export interface HostDesktopLinkResult {
   sent: true;

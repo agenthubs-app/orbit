@@ -18,7 +18,7 @@ import { CheckInBody } from "../src/screens/host/check-in-view";
 import { MatchingBody, OverviewBody, PeopleBody, ReportBody, SegChips } from "../src/screens/host/console-view";
 import { JoinCard } from "../src/screens/host/join-view";
 import { OrganizerBody } from "../src/screens/host/organizer-view";
-import { consoleHref, consoleSubtitle, eventIdFromUrl, hostEventsRowSub, parseSeg, rowNote } from "../src/screens/host/host-model";
+import { consoleHref, consoleSubtitle, hostEventsRowSub, parseSeg, rowNote } from "../src/screens/host/host-model";
 import { applyRoster, flushQueue, memoryKioskStore, readRoster, searchRoster, streamRows, type KioskQueueItem, purgeExpiredRosters } from "../src/screens/host/kiosk-queue";
 import { renderedText } from "./helpers/render";
 
@@ -146,12 +146,9 @@ test("公開主催者ページ (b7 #36–#38): empty, few and many (3 past, then
   assert.match(renderedText(<OrganizerBody {...props} data={many} expanded following />), /vol\.4[\s\S]*|フォロー中/);
 });
 
-test("model helpers: seg parsing, links, short-link id, マイページ row text", () => {
+test("model helpers: seg parsing, links, マイページ row text", () => {
   assert.equal(parseSeg("people"), "people"); assert.equal(parseSeg("bogus"), "overview");
   assert.equal(consoleHref("a b", "report"), "/events/a%20b/operations?seg=report");
-  assert.equal(eventIdFromUrl("http://localhost:3017/app/events/demo-event-cfo-night-18"), "demo-event-cfo-night-18");
-  assert.equal(eventIdFromUrl("http://x/login?next=%2Fapp%2Fevents%2Fe-1"), "e-1");
-  assert.equal(eventIdFromUrl("http://x/404"), null);
   assert.equal(hostEventsRowSub({ activeCount: 1, appliedThisMonth: 0, eventCount: 2 }, t), "2件 · 運営中 1");
   assert.equal(hostEventsRowSub({ activeCount: 0, appliedThisMonth: 0, eventCount: 0 }, t), "イベントを主催する");
 });

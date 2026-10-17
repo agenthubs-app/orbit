@@ -9,12 +9,12 @@ import type { ApiResult } from "../../api/types";
 import type { HostCheckInEventsResponse, HostCohostAcceptResult, HostCohostInvitePreview } from "../../api/contract/host-cohosts";
 import type { HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse, HostReportResponse } from "../../api/contract/host-console";
 import type { HostNoticePreview, HostNoticeSendResult } from "../../api/contract/host-notices";
-import type { HostCenterFilter, HostCenterResponse, HostCenterSummary, HostDesktopLinkResult, HostEventView } from "../../api/contract/host-events";
+import type { HostCenterFilter, HostCenterResponse, HostCenterSummary, HostDesktopLinkResult, HostEventSlugResolveResult, HostEventView } from "../../api/contract/host-events";
 import type { OrganizerFollowResult } from "../../api/contract/organizer-follow";
 import type { OrganizerPublicResponse } from "../../api/contract/organizer-profile";
 import { hostCheckInEventsResponseSchema, hostCohostAcceptResultSchema, hostCohostInvitePreviewSchema } from "../../api/schema/host-cohosts";
 import { hostCheckInResultSchema, hostKioskHeartbeatResultSchema, hostKioskResponseSchema, hostKioskRosterResponseSchema, hostMatchingResponseSchema, hostOverviewResponseSchema, hostPeopleDecisionResultSchema, hostPeopleResponseSchema, hostReportResponseSchema } from "../../api/schema/host-console";
-import { hostCenterResponseSchema, hostCenterSummarySchema, hostDesktopLinkResultSchema, hostEventViewSchema } from "../../api/schema/host-events";
+import { hostCenterResponseSchema, hostCenterSummarySchema, hostDesktopLinkResultSchema, hostEventSlugResolveResultSchema, hostEventViewSchema } from "../../api/schema/host-events";
 import { hostNoticePreviewSchema, hostNoticeSendResultSchema } from "../../api/schema/host-notices";
 import { organizerFollowResultSchema } from "../../api/schema/organizer-follow";
 import { organizerPublicResponseSchema } from "../../api/schema/organizer-profile";
@@ -79,6 +79,8 @@ export function createHostApi(client: OrbitApiClient) {
     acceptInvite: (code: string) => hostRead(client.post<unknown>(`/api/host/cohost-invites/${id(code)}/accept`, { body: {} }), hostCohostAcceptResultSchema as ZodType<HostCohostAcceptResult>),
     checkInEvents: () => hostRead(client.get<unknown>("/api/host/check-in-events"), hostCheckInEventsResponseSchema as ZodType<HostCheckInEventsResponse>),
     organizer: (slug: string) => hostRead(client.get<unknown>(`/api/organizers/by-slug/${id(slug)}`), organizerPublicResponseSchema as ZodType<OrganizerPublicResponse>),
+    /** R17-16：申込页短链 slug → 活动 id（只认已公开；未知 / 中止 → not_found）。 */
+    eventBySlug: (slug: string) => hostRead(client.get<unknown>(`/api/events/by-slug/${id(slug)}`), hostEventSlugResolveResultSchema as ZodType<HostEventSlugResolveResult>),
     follow: (organizerKey: string, following: boolean) => hostRead(following ? client.post<unknown>(`/api/organizers/${id(organizerKey)}/follow`, { body: {} }) : client.delete<unknown>(`/api/organizers/${id(organizerKey)}/follow`), organizerFollowResultSchema as ZodType<OrganizerFollowResult>),
   };
 }

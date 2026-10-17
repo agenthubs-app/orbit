@@ -116,3 +116,15 @@ test("live: unconfigured → 503, signed out → 401, the demo account is read-o
   const write = await demo.publishEvent(send("/x", { expectedVersion: 1 }), params({ id: HOST_EVENT_IDS.cfo18 }));
   assert.equal(write.status, 403);
 });
+
+test("R17-16 GET /api/events/by-slug/[slug]: published slug → event id (signed out ok); unknown / malformed → 404", async () => {
+  const anonymous = createHostRoutes({ resolveActor: actor(null), resolveMode: () => "mock" });
+  const { hostEventSlugResolveResultSchema } = await import("../../shared/api-schema/host-events");
+  const { hostEventView } = await import("../../shared/mock/demo-world/host-events");
+  const known = Object.values(HOST_EVENT_IDS).map((id) => hostEventView(id)).find((view) => view?.publicSlug);
+  assert.ok(known?.publicSlug, "the sample world has a published slug");
+  const found = hostEventSlugResolveResultSchema.parse(await data(await anonymous.eventBySlug(get("/x"), params({ slug: known.publicSlug.toUpperCase() }))));
+  assert.deepEqual(found, { eventId: known.eventId, slug: known.publicSlug });
+  assert.equal((await anonymous.eventBySlug(get("/x"), params({ slug: "no-such-event" }))).status, 404);
+  assert.equal((await anonymous.eventBySlug(get("/x"), params({ slug: "../etc" }))).status, 404);
+});
