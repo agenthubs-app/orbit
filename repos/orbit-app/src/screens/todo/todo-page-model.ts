@@ -1,6 +1,7 @@
-import type { TodoPageContract, TodoFollowupItem } from "../../api/contract/todo-page";
+import type { TodoPageContract, TodoFollowupItem, TodoSectionKey, TodoSourceKey } from "../../api/contract/todo-page";
 import type { TaskItemContract } from "../../api/contract/tasks";
 import { isOpenFollowUpTask } from "../../api/compute/follow-up-task";
+import { TODO_SECTION_SOURCES } from "../../api/schema/todo-page";
 import type { LocalSyncQueuedMutation } from "../../data/sync/local-sync-repository";
 import { localDayStart, localParts, shiftCalendarDate } from "../../time/date-time";
 import { overlayQueuedTasks } from "../../view-models/tasks-mirror";
@@ -16,6 +17,16 @@ export function canWriteTodoFollowup(
 ): boolean {
   if (state.staleDay) return false;
   return !state.offline || item.kind === "task" && state.locallyMirrored;
+}
+
+/** An unavailable or unimplemented source makes the reported total a lower bound, not an empty state. */
+export function todoSectionCount(page: TodoPageContract, section: TodoSectionKey): {
+  value: number; accuracy: "exact" | "at-least" | "unknown"; incompleteSources: TodoSourceKey[];
+} {
+  const incompleteSources = TODO_SECTION_SOURCES[section].filter(source => page.sources[source] !== "ok");
+  const value = page.counts[section];
+  const capped = section !== "followups" && page.countsCapped[section];
+  return { value, accuracy: incompleteSources.length || capped ? value ? "at-least" : "unknown" : "exact", incompleteSources };
 }
 
 function dueAt(task: TaskItemContract, zone: string): string | undefined {

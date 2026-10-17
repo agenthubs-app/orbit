@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { TodoPageContract } from "../src/api/contract/todo-page";
 import type { LocalSyncQueuedMutation } from "../src/data/sync/local-sync-repository";
-import { canWriteTodoFollowup, overlayTodoPage, todoPageIsStale } from "../src/screens/todo/todo-page-model";
+import { TODO_SECTION_SOURCES } from "../src/api/schema/todo-page";
+import { canWriteTodoFollowup, overlayTodoPage, todoPageIsStale, todoSectionCount } from "../src/screens/todo/todo-page-model";
 
 const actorId = "actor-a";
 const date = "2026-10-18";
@@ -39,6 +40,22 @@ test("offline follow-up actions require a mirrored plain task; stale copies are 
   assert.equal(canWriteTodoFollowup(lifecycle, { offline: true, staleDay: false, locallyMirrored: true }), false);
   assert.equal(canWriteTodoFollowup(lifecycle, { offline: false, staleDay: false, locallyMirrored: false }), true);
   assert.equal(canWriteTodoFollowup(plain, { offline: false, staleDay: true, locallyMirrored: true }), false);
+});
+
+test("partial or capped source counts are never presented as an exact zero", () => {
+  const partial = todoSectionCount(page, "nextMoves");
+  assert.equal(partial.value, 0);
+  assert.equal(partial.accuracy, "unknown");
+  assert.deepEqual(partial.incompleteSources, TODO_SECTION_SOURCES.nextMoves);
+
+  const allSources = Object.fromEntries(Object.values(TODO_SECTION_SOURCES).flat().map(source => [source, "ok"])) as TodoPageContract["sources"];
+  const exact = todoSectionCount({ ...page, sources: allSources }, "nextMoves");
+  assert.equal(exact.accuracy, "exact");
+  const capped = todoSectionCount({ ...page, sources: allSources, countsCapped: { ...page.countsCapped, nextMoves: true } }, "nextMoves");
+  assert.equal(capped.accuracy, "unknown");
+  const lowerBound = todoSectionCount(page, "decisions");
+  assert.equal(lowerBound.value, 1);
+  assert.equal(lowerBound.accuracy, "at-least");
 });
 
 test("queued plain-task deferral updates local date/count but leaves lifecycle and decisions untouched", () => {
