@@ -4,6 +4,7 @@ import type { TaskItemContract } from "../src/api/contract/tasks";
 import { isRelationshipTask, parseTaskListSelection, readTaskListItems, selectTaskListItems, taskListReceiptMatches } from "../src/view-models/task-list-scope";
 import { resolveSupportedInitialRouteHref } from "../src/view-models/initial-route";
 import { isPrivateMobileRoute, mobileAuthReturnHref, mobileLoginHref } from "../src/view-models/mobile-route-access";
+import { parentForPath } from "../src/view-models/app-navigation";
 
 const task = (index: number): TaskItemContract => ({
   id: `task:${index}`, accountId: "owner", ownerUserId: "owner", title: `Task ${index}`,
@@ -28,6 +29,12 @@ test("tasks login returns retain only validated list selection and preserve cano
   assert.equal(resolveSupportedInitialRouteHref("/tasks/personal"), "/tasks/personal");
   assert.equal(resolveSupportedInitialRouteHref("/schedule/personal/personal%3Aone"), "/schedule/personal/personal%3Aone");
   for (const unsafe of ["/tasks/..", "/tasks/%2e%2e", "/tasks/%", "/tasks/%20", "https://outside.example/tasks"]) assert.equal(resolveSupportedInitialRouteHref(unsafe), null);
+});
+
+test("legacy agent action pages return to To-do while iOrbit pages return to iOrbit", () => {
+  assert.equal(parentForPath("/agent").href, "/task?seg=todo");
+  assert.equal(parentForPath("/agent/actions").href, "/task?seg=todo");
+  assert.equal(parentForPath("/ai").href, "/ai");
 });
 
 test("list decoding keeps canonical tasks and rejects malformed or foreign-owner records visibly", () => {
