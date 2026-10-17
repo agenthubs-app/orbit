@@ -38,7 +38,8 @@ export function AccountIntegrationsScreen() {
   }
   return <AppScreen title={t("me.integrations")}>
     {!records && !failed ? <Skeleton onRetry={() => void load()} /> : null}
-    {failed ? <><UiText accessibilityRole="alert">{t("me.failed")}</UiText><Button label={t("me.retry")} onPress={() => void load()} /></> : null}
+    {failed ? <><UiText accessibilityRole="alert">{t("me.failed")}</UiText>
+      <Button label={t("me.retry")} onPress={() => void load()} /></> : null}
     {records ? <AccountIntegrationsContent records={records} t={t} busy={busy} onConnect={provider => void connect(provider)} onDisconnect={provider => void disconnect(provider)} /> : null}
   </AppScreen>;
 }

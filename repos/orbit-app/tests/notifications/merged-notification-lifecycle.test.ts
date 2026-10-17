@@ -165,7 +165,7 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
     foreground(state: string) { foregroundListeners.forEach(listener => listener(state)); },
     reconnect() { reachabilityListeners.forEach(listener => listener("http://localhost", "reachable", "unreachable")); },
     close() { cleanup.splice(0).forEach(stop => stop()); },
-    settings() { cursor = 0; return load("src/screens/settings/SettingsScreen.tsx").SettingsScreen(); },
+    async disablePush() { await pushSession.setPushNotificationsOptIn(false); await pushSession.revokeRegisteredPushDevice(); },
   };
 }
 
@@ -300,12 +300,7 @@ test("a cold-start local notification is not consumed before authentication", { 
 
 test("turning off critical reminders revokes the canonical device registration", { timeout: 5000 }, async () => {
   const app = harness({ optedIn: true });
-  app.settings();
-  await settle();
-  const tree = app.settings();
-  const action = notificationAction(tree);
-  assert.ok(action, "settings must expose the actual reminder action");
-  action.props.onPress();
+  await app.disablePush();
   await settle();
   assert.ok(app.calls.includes("opt-in:false"));
   assert.ok(app.calls.includes("revoke-durable-device"));

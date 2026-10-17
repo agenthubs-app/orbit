@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { OrbitApiClient } from "../../api/client";
-import { profileAccountSchema } from "../../api/schema/profile-account";
+import { accountScreenResponseSchema } from "./account-response";
 import { hostCenterSummarySchema } from "../../api/schema/host-events";
 import type { HostCenterSummary } from "../../api/contract/host-events";
 import type { AccountProfileData } from "./MyPageContent";
@@ -43,7 +43,7 @@ export function createAccountApi(client: OrbitApiClient, profilePath = "/api/pro
       const seeking = candidateSeeking(profile.seeking, candidate, true);
       if (!seeking) return null;
       const result = await client.put<unknown>(profilePath, { body: { seeking, expectedUpdatedAt: profile.updatedAt, mutationId }, ...(signal ? { signal } : {}) });
-      const parsed = result.success ? profileAccountSchema.safeParse(result.data) : null;
+      const parsed = result.success ? accountScreenResponseSchema.safeParse(result.data) : null;
       if (!parsed?.success || parsed.data.state !== "success" || parsed.data.profile?.id !== profile.id || parsed.data.mutationId !== mutationId ||
         Date.parse(parsed.data.profile.updatedAt) <= Date.parse(profile.updatedAt) || parsed.data.editor.lastSavedAt !== parsed.data.profile.updatedAt ||
         JSON.stringify(parsed.data.profile.seeking) !== JSON.stringify(seeking)) return null;

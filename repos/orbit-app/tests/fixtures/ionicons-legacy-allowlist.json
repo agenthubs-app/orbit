@@ -25,18 +25,13 @@
     "src/screens/notes/NotesScreen.tsx",
     "src/screens/platform/PlatformScreen.tsx",
     "src/screens/profile/AccountAuthScreen.tsx",
-    "src/screens/profile/AccountPermissionsScreen.tsx",
     "src/screens/profile/AccountScreen.tsx",
-    "src/screens/profile/EditProfileScreen.tsx",
     "src/screens/profile/PasswordResetScreen.tsx",
-    "src/screens/profile/ProfilePagePrimitives.tsx",
-    "src/screens/profile/ProfileScreen.tsx",
     "src/screens/profile/onboarding/OnboardingParts.tsx",
     "src/screens/profile/onboarding/ProfileOnboardingScreen.tsx",
     "src/screens/schedule/MeetingDetailScreen.tsx",
     "src/screens/schedule/ScheduleEventPreviewScreen.tsx",
     "src/screens/schedule/ScheduleScreen.tsx",
-    "src/screens/settings/SettingsScreen.tsx",
     "src/screens/tasks/TaskDetailScreen.tsx",
     "src/screens/tasks/TasksScreen.tsx"
   ]

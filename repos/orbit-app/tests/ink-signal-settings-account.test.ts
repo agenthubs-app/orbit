@@ -41,7 +41,7 @@ export const revokeRegisteredPushDevice = async input => { state.calls.push("rev
 `;
 
 test.before(async () => {
-  const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { SettingsScreen } from "./src/screens/settings/SettingsScreen"; import { AccountScreen } from "./src/screens/profile/AccountScreen"; function App() { const s = useFixture(); return s.screen === "account" ? <AccountScreen /> : <SettingsScreen />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "settings-account-boundaries", setup(plugin) {
+  const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { NotificationDiscoverySettings } from "./src/screens/settings/NotificationDiscoverySettings"; import { AccountScreen } from "./src/screens/profile/AccountScreen"; function App() { const s = useFixture(); return s.screen === "account" ? <AccountScreen /> : <NotificationDiscoverySettings />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "settings-account-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-settings" }));
     plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|useOrbitApiClient|ApiBaseUrlProvider|useApiResource|native-notifications|push-device-session)$/ }, () => ({ path: "fixture", namespace: "ink-settings" }));
     plugin.onLoad({ filter: /.*/, namespace: "ink-settings" }, args => ({ contents: args.path === "native" ? `
@@ -67,73 +67,9 @@ async function calls(page: Page) { return page.evaluate(() => (window as any).fi
 async function navigation(page: Page) { return page.evaluate(() => (window as any).fixture.navigation); }
 async function shot(page: Page, name: string) { if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-ink-signal-settings-account-${name}.png`, fullPage: true }); }
 
-test("settings uses source section hierarchy, open rows and real notification status", async t => {
-  const page = await open(t);
-  await page.getByRole("heading", { name: "通用", exact: true }).waitFor();
-  assert.equal(await page.getByText(/本地调试|真机测试/u).count(), 0);
-  // Sprint 0084: a group heading is now the lightest thing in the column and an
-  // openable row the heaviest, so the two stop reading as the same kind of line.
-  for (const name of ["通用", "账号", "服务器"]) {
-    const heading = page.getByRole("heading", { name, exact: true });
-    assert.equal(await heading.evaluate(el => getComputedStyle(el).fontWeight), "600", name);
-    assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "12px", name);
-  }
-  const serverRow = page.getByText("当前服务器", { exact: true });
-  assert.equal(await serverRow.evaluate(el => getComputedStyle(el).fontSize), "16px");
-  assert.equal(await serverRow.evaluate(el => getComputedStyle(el).fontWeight), "500");
-  assert.equal(await page.getByRole("heading", { name: "当前服务器", exact: true }).count(), 0, "the row is not a second heading");
-  const account = page.getByRole("button", { name: "打开账号", exact: true });
-  assert.equal((await account.boundingBox())!.height, 50); assert.equal((await account.boundingBox())!.x, 16);
-  const toggle = page.getByRole("button", { name: "关闭系统推送", exact: true });
-  assert.equal((await toggle.boundingBox())!.height, 50);
-  assert.equal(await toggle.evaluate(el => getComputedStyle(el).borderRadius), "0px");
-  assert.equal(await page.getByText("开启", { exact: true }).count(), 1, "show actual opt-in without claiming OS delivery");
-  assert.deepEqual(await calls(page), []); await shot(page, "settings");
-});
 
-test("settings navigation and guest filtering preserve the existing routes", async t => {
-  const page = await open(t);
-  for (const name of ["账号", "权限中心", "服务器"]) await page.getByRole("button", { name: `打开${name}`, exact: true }).click();
-  assert.deepEqual(await navigation(page), ["/account", "/account/permissions", "/settings/api"]);
-  await page.evaluate(() => (window as any).fixture.update({ signedIn: false }));
-  assert.equal(await page.getByRole("button", { name: /系统推送|权限中心/ }).count(), 0);
-  for (const name of ["账号", "服务器"]) assert.equal(await page.getByRole("button", { name: `打开${name}`, exact: true }).count(), 1);
-  assert.equal(await page.getByRole("button", { name: /数据导出|导出我的数据|外观|语言|文字大小/ }).count(), 0);
-  assert.deepEqual(await calls(page), []); await shot(page, "settings-guest");
-});
 
-test("notification status stays unknown until the stored preference is read", async t => {
-  const page = await open(t, { holdRead: true });
-  await page.getByText("读取中…", { exact: true }).waitFor();
-  assert.equal(await page.getByText("关闭", { exact: true }).count(), 0);
-  const reading = page.getByRole("button", { name: "正在读取系统推送状态", exact: true });
-  assert.equal(await reading.isDisabled(), true);
-  await reading.dispatchEvent("click");
-  assert.deepEqual(await calls(page), []);
-  await page.evaluate(() => { (window as any).fixture.releaseRead(); });
-  const ready = page.getByRole("button", { name: "关闭系统推送", exact: true });
-  await ready.waitFor();
-  assert.equal(await ready.isEnabled(), true);
-});
 
-test("notification opt-in requires a click and opt-out keeps canonical revocation and retry", async t => {
-  const page = await open(t, { optedIn: false });
-  assert.deepEqual(await calls(page), []);
-  await page.getByRole("button", { name: "开启系统推送", exact: true }).click();
-  assert.deepEqual(await calls(page), ["opt-in:true"]);
-  await page.evaluate(() => (window as any).fixture.update({ hold: true, revokeFailure: true }));
-  await page.getByRole("button", { name: "关闭系统推送", exact: true }).click();
-  assert.equal(await page.getByRole("button", { name: "正在准备…", exact: true }).isDisabled(), true);
-  assert.deepEqual(await calls(page), ["opt-in:true", "opt-in:false", "revoke-device"]);
-  assert.equal(await page.evaluate(() => (window as any).fixture.revocationUsesClient), true);
-  await page.evaluate(() => { (window as any).fixture.update({ hold: false }); (window as any).fixture.release(); });
-  await page.getByRole("alert").waitFor(); await shot(page, "settings-error");
-  await page.evaluate(() => (window as any).fixture.update({ revokeFailure: false }));
-  await page.getByRole("button", { name: "重试关闭系统推送", exact: true }).click();
-  await page.getByRole("button", { name: "开启系统推送", exact: true }).waitFor();
-  assert.equal(await page.getByRole("alert").count(), 0);
-  assert.deepEqual(await calls(page), ["opt-in:true", "opt-in:false", "revoke-device", "opt-in:false", "revoke-device"]);
-});
 
 test("account shows open verified identity and only the actual workspace", async t => {
   const page = await open(t, { screen: "account" });
@@ -213,7 +149,7 @@ test("double-size account header does not orphan the last workspace character", 
 
 for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { name: "narrow-double", width: 320, fontScale: 2 }, { name: "wide-dark", width: 820, dark: true }]) {
   test(`${variant.name}: settings and account text is complete and controls reachable`, async t => {
-    for (const screen of ["settings", "account"]) {
+    for (const screen of ["account"]) {
       const page = await open(t, { ...variant, screen });
       assert.deepEqual(await page.locator('[dir="auto"]').evaluateAll(nodes => nodes.filter(n => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1).map(n => n.textContent)), []);
       assert.deepEqual(await page.locator('[dir="auto"]').evaluateAll(nodes => nodes.filter(n => { const b = n.getBoundingClientRect(); return b.left < -0.1 || b.right > window.innerWidth + 0.1; }).map(n => n.textContent)), [], "text must fit the screen, not merely its overflowing parent");

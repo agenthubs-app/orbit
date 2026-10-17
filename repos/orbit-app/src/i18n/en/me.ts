@@ -1,4 +1,5 @@
 export const me = {
+  "me.googleCalendar": "Google Calendar",
   "me.suggestions": "Profile updates",
   "me.suggestionsEmpty": "Changes to your profile will appear here",
   "me.suggestionsHint": "From new cards, résumés, and conversations with iOrbit. Nothing changes until you review it.",

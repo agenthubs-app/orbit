@@ -20,6 +20,7 @@ const OPENING_SHA256 = "a18fa02efb093b7ccd9c318182256de077fc5441d8d1b77a3838962e
 // Skeleton files that must stay at zero (R03 D): navigation shell, kept
 // infrastructure and everything new. Feature Sprints add their new screens here.
 const ZERO = [
+  /^src\/screens\/me\//,
   /^src\/components\/ui\//,
   /^src\/screens\/showcase\//,
   /^app\/showcase\//,

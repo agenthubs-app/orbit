@@ -23,13 +23,15 @@ export function AccountEditorContent({ draft, t, patch, onTags }: { draft: Profi
       <UiText style={styles.secondary}>{t("me.introLimit", { count: profileVisibleLength(draft.bio), limit: profileBioLimit(draft.bio) })}</UiText>
     </Card>
     <Card>{(["offering", "seeking"] as const).map(field => <View key={field} style={styles.tags}>
-      <ListRow title={t(field === "offering" ? "me.offering" : "me.seeking")} trailing={<Button label={t("me.edit")} variant="ghost" size="sm" onPress={() => onTags(field)} />} />
+      <ListRow title={t(field === "offering" ? "me.offering" : "me.seeking")} trailing={
+      <Button label={t("me.edit")} variant="ghost" size="sm" onPress={() => onTags(field)} />} />
       <View style={styles.wrap}>{draft[field].map(value => <Chip key={value} label={value} tone={field === "offering" ? "lav" : "pink"} />)}</View>
     </View>)}</Card>
     <Card><UiText style={styles.heading}>{t("me.publicFields")}</UiText>
       {(["companyRole", "offeringSeeking", "intro"] as const).map((field, index) => {
         const title = t((["me.publicCompany", "me.publicTags", "me.publicIntro"] as const)[index]!);
-        return <ListRow key={field} title={title} trailing={<Toggle accessibilityLabel={title} value={visibility[field]} onValueChange={value => patch({ publicFields: { ...visibility, [field]: value } })} />} />;
+        return <ListRow key={field} title={title} trailing={
+      <Toggle accessibilityLabel={title} value={visibility[field]} onValueChange={value => patch({ publicFields: { ...visibility, [field]: value } })} />} />;
       })}
       <ListRow title={t("me.contact")} subtitle={t("me.exchangeOnly")} />
     </Card>

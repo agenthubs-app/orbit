@@ -71,15 +71,3 @@ test("profileBusinessCard retains unstructured industry text for a legacy profil
   const card = profileBusinessCard(legacy);
   assert.equal(card.metaLine, "Orbit · 创始人 · AI 企业应用");
 });
-
-test("profile screen keeps the Orbit identity without decorative motion", () => {
-  const source = readFileSync(
-    new URL("../src/screens/profile/ProfileScreen.tsx", import.meta.url),
-    "utf8"
-  );
-
-  assert.match(source, /function OrbitBusinessCard/u);
-  // Light/dark identity surfaces and complete names are rendered in
-  // app-wide-account.test.ts; the former hard-coded green is no longer a contract.
-  assert.doesNotMatch(source, /LinearGradient|completionMeter|Animated/u);
-});

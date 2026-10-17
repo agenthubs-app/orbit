@@ -1,4 +1,5 @@
 export const me = {
+  "me.googleCalendar": "Google 日历",
   "me.suggestions": "资料更新建议",
   "me.suggestionsEmpty": "发现资料变化后，会显示在这里",
   "me.suggestionsHint": "来自新名片、简历和与 iOrbit 的对话。确认之前，不会修改资料。",

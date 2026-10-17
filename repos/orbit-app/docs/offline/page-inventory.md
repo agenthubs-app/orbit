@@ -7,15 +7,15 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 38 |
+| 能断网看（本地优先） | 40 |
 | └ 由 Sprint 0108 实现 | 8 |
 | └ 由 Sprint 0117 实现 | 1 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
-| └ 由 Sprint 0131 实现 | 13 |
-| 只能在线 | 52 |
-| 不读账号数据（布局、跳转、本机设置） | 28 |
-| 合计（路由文件） | 118 |
+| └ 由 Sprint 0131 实现 | 15 |
+| 只能在线 | 51 |
+| 不读账号数据（布局、跳转、本机设置） | 30 |
+| 合计（路由文件） | 121 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -24,6 +24,8 @@
 
 | 路由 | 页面 | Sprint | 读取 | 断网时 |
 | --- | --- | --- | --- | --- |
+| `/settings` | 设置（语言、主题、系统权限、账户入口；R18a） | 0131 | 本机语言、外观、可用系统权限；账户行可读页面副本 self-profile | 本机设置照常可用；登出沿用未同步修改动作表 |
+| `/settings/iorbit` | iOrbit 使用的信息（R18a） | 0131 | 页面副本 self-profile；目标、记忆、搜索能力在线读取；语义搜索偏好仅本机 | 自我介绍副本可读；保存、AI 草稿和删除记忆需要联网 |
 | `/ai` | AI 标签：会话列表、今日摘要 | 0118 | 域 ai-sessions（0118）；今日摘要读页面副本 today-summary（0131）；按需「搜索更多」读 /api/ai/conversations/sessions | 「截至」提示条；会话列表和今日摘要是本机副本；本机只搜标题、第一个问题和最近一条（页面写明）；提新问题需要联网 |
 | `/ai/:id` | AI 会话 | 0118 | 域 ai-session-messages（本设备打开过的 20 个会话） | 「截至」；打开过的会话显示本机消息和缓存卡片；发送需要联网；从没打开过的会话需要联网 |
 | `/inbox` | 收件箱（通知和对话） | 0119 | 域 inbox-notifications（0118）、relationship-conversations / relationship-messages（0119） | 「截至」；标已读、处理、发送、存草稿需要联网；网络恢复时立即同步（0131） |
@@ -51,7 +53,7 @@
 | `/task` | Task：カレンダー / To-do / プラン / メモ 四段（R05）；日历段 = 原日程页，To-do 段 = 添加框 + 原待办页，プラン段 = 目標入力、プラン概要或以前のプラン卡（R23 / R24 / R25），メモ段 = 原笔记页 | R05 | 日历段读域 registered-events、tasks、personal-schedule（0115）；To-do 段读域 tasks、页面副本 todo-page（R20a 首屏）以及旧 relationship-tasks、task-suggestions（0131，旧屏退役前）；メモ段读域 notes（0108）；プラン段读 /api/agent/plans/v2/summary、/api/agent/plans/intakes、/api/agent/plans/v2/:planId（R23 / R24）与 /api/agent/plans/legacy、/api/agent/plans/v2/quota（R25），不存本机 | 日历、To-do、メモ三段照常可读；To-do 显示上次副本和「截至」，跨本地零点整块标「以前の情報」；普通跟进任务可离线完成/延期入队，lifecycle 禁止；プラン段显示「オフラインでは見られません」 |
 | `/tasks/:id` | 待办详情 | 0131 | 域 tasks 的这一行；活动记录和提醒读网络 | 「截至」；待办内容来自本机；活动记录、提醒和所有修改需要联网 |
 | `/tasks/relationship/:id` | 关系待办详情（关系下一步） | 0131 | 页面副本 relationship-lifecycle（/api/connections/:id/lifecycle，按关系保存最近打开的 20 个） | 「截至」；打开过的关系显示本机副本；确认下一步需要联网；没打开过的显示「需要联网」 |
-| `/profile` | 我的资料 | 0131 | 页面副本 self-profile（/api/profile）；统计读域 contacts、tasks、personal-schedule；资料更新建议读网络 | 「截至」；编辑、上传名片或简历、建议需要联网 |
+| `/profile` | マイページ（R18a） | 0131 | 页面副本 self-profile（/api/profile）；主办、参加、收件箱独立读真实摘要接口，失败隐藏该行 | 「截至」；编辑、上传名片或简历、建议需要联网 |
 | `/profile/preview` | 资料预览 | 0131 | 页面副本 self-profile | 「截至」 |
 | `/profile/tags` | 资料标签 | 0131 | 页面副本 self-profile | 「截至」；保存标签需要联网 |
 | `/agent` | Agent 动作中心 | 0131 | 页面副本 agent-actions（/api/agent/actions） | 「截至」；确认、忽略需要联网 |
@@ -67,6 +69,7 @@
 
 | 路由 | 页面 | 原因 | 读取 | 断网时 |
 | --- | --- | --- | --- | --- |
+| `/settings/integrations` | 关联服务（R18a） | 涉及凭据或会话：读取真实授权状态；连接和解除均需服务器 | /api/integrations、/api/integrations/:provider | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id` | イベント詳細（R27） | 需要服务器实时计算：评估分数与「会えそうな人」按当前计划在服务器计算 | /api/events/:id/overview | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/live` | 会場モード（R27） | 需要服务器实时计算：席・ラウンド・推荐由主办方发布的结果在服务器组合；名刺交換是写入 | /api/events/:id/venue | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account` | 账号与会话 | 涉及凭据或会话：账号、登录会话和退出都在服务器上确认 | /api/account/me | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -74,7 +77,6 @@
 | `/account/signup` | 注册 | 涉及凭据或会话：建账号需要服务器 | /api/auth/register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/forgot-password` | 忘记密码 | 涉及凭据或会话：发送重置邮件需要服务器 | /api/auth/password-reset/request | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/reset-password` | 重置密码 | 涉及凭据或会话：重置令牌由服务器验证 | /api/auth/password-reset/confirm | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/account/permissions` | 数据授权（邮箱、日历） | 涉及凭据或会话：第三方授权状态和授权流程在服务器上 | /api/permissions | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/login-admin` | 管理员登录 | 管理员工具：管理员凭据由服务器验证 | /api/auth/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/admin` | 管理后台 | 管理员工具：管理员工具，读全平台数据，不放进个人设备 | /api/dashboard、/api/events、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/admin/access` | 管理后台：权限 | 管理员工具：管理员工具 | 同 /admin | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -116,7 +118,6 @@
 | `/platform` | 平台工作台（公开活动审核队列） | 管理员工具：平台运营工具：审核导入的公开活动 | /api/events/public | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/o/:slug` | 公開主催者ページ（R17） | 公开访客页面（不属于账号）：公开主办方页面，不属于账号数据 | /api/organizers/by-slug/:slug | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/profile/edit` | 编辑资料 | 涉及凭据或会话：编辑会话从服务器取最新版本并保存，离线编辑属于 0120 断网写 | /api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/profile/more` | 补充资料（上传名片、简历） | 付费 AI：名片和简历由付费 AI 抽取 | /api/profile/extractions/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/profile/onboarding` | 新用户引导 | 付费 AI：引导里的名片扫描和自我介绍草稿用付费 AI；每一步都保存到服务器（0106 已支持断网继续填写、联网后保存） | /api/profile、/api/profile/intro-draft | 已填内容保留，显示「现在没有网络」提示，联网后继续（0106 行为） |
 | `/profile/suggestions` | 资料更新建议 | 付费 AI：建议由 AI 按最新活动生成，接受或忽略要实时写入 | /api/profile/update-suggestions | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 
@@ -142,16 +143,18 @@
 | `/party/graph` | 旧派对关系图跳转 | 无 | 跳到现场页 |
 | `/profile/continue` | 补资料后继续跳转 | 无 | 跳到目标页 |
 | `/followups` | 旧跟进入口，跳到 Task 的 To-do 段「关系」分组 | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo&scope=relationship（可离线） |
-| `/settings` | 设置（语言、主题、本地镜像状态、通知权限） | 本机设置；通知投递和发现偏好读 /api/inbox/delivery/preferences、/api/inbox/discovery/preferences | 本机设置照常可用；两块通知偏好显示「需要联网」 |
+| `/settings/:section` | 设置准备中（通知、帮助、导出、条款；R18a） | 无 | 照常显示；后续静态路由优先 |
 | `/settings/api` | 服务器地址设置 | 本机保存的服务器地址；「检查连接」按需读 /api/health | 可以改地址；检查连接会显示连不上 |
 | `/contacts/graph` | 旧关系图链接，跳到人脈分析「構造」（R11b） | 无（目标页见 app/contacts/dashboard.tsx） | 跳到 /contacts/dashboard?tab=structure |
 | `/schedule` | 旧日历入口，跳到 Task 的カレンダー段（R05） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=calendar（可离线） |
 | `/today` | 旧今日待办入口，跳到 Task 的 To-do 段（R05，添加框在段顶部） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo（可离线） |
 | `/tasks` | 旧待办入口，跳到 Task 的 To-do 段（R05，保留 scope / view） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo（可离线） |
+| `/account/permissions` | 旧权限页 → 设置（R18a） | 无 | 跳到 /settings 内联系统权限 |
 | `/events/:id/operations/admission` | 旧报名审核链接跳转到イベント運営「参加者」段（R17） | 无 | 跳到运营台（运营台需要联网） |
 | `/events/:id/operations/experience` | 旧活动体验配置链接跳转到イベント運営「概要」段（R17） | 无 | 跳到运营台（运营台需要联网） |
 | `/events/:id/operations/roles` | 旧角色与权限链接跳转到イベント運営「概要」段（R17） | 无 | 跳到运营台（运营台需要联网） |
 | `/events/:id/analytics` | 旧活动数据分析链接跳转到イベント運営「レポート」段（R17） | 无 | 跳到运营台（运营台需要联网） |
+| `/profile/more` | 旧补充资料 → 编辑（R18a） | 无 | 跳到 /profile/edit；编辑页需要联网 |
 
 ## 路由文件对照
 
@@ -171,7 +174,7 @@
 | `app/account/forgot-password.tsx` | `/account/forgot-password` | online-only |
 | `app/account/login.tsx` | `/account/login` | online-only |
 | `app/account/mobile-google.tsx` | `/account/mobile-google` | device-only |
-| `app/account/permissions.tsx` | `/account/permissions` | online-only |
+| `app/account/permissions.tsx` | `/account/permissions` | device-only |
 | `app/account/reset-password.tsx` | `/account/reset-password` | online-only |
 | `app/account/signup.tsx` | `/account/signup` | online-only |
 | `app/admin.tsx` | `/admin` | online-only |
@@ -249,7 +252,7 @@
 | `app/platform.tsx` | `/platform` | online-only |
 | `app/profile/continue.tsx` | `/profile/continue` | device-only |
 | `app/profile/edit.tsx` | `/profile/edit` | online-only |
-| `app/profile/more.tsx` | `/profile/more` | online-only |
+| `app/profile/more.tsx` | `/profile/more` | device-only |
 | `app/profile/onboarding.tsx` | `/profile/onboarding` | online-only |
 | `app/profile/preview.tsx` | `/profile/preview` | local-first (0131) |
 | `app/profile/suggestions.tsx` | `/profile/suggestions` | online-only |
@@ -262,8 +265,11 @@
 | `app/schedule/personal/[id]/edit.tsx` | `/schedule/personal/:id/edit` | local-first (0108) |
 | `app/schedule/personal/new.tsx` | `/schedule/personal/new` | local-first (0108) |
 | `app/search.tsx` | `/search` | online-only |
-| `app/settings.tsx` | `/settings` | device-only |
+| `app/settings.tsx` | `/settings` | local-first (0131) |
+| `app/settings/[section].tsx` | `/settings/:section` | device-only |
 | `app/settings/api.tsx` | `/settings/api` | device-only |
+| `app/settings/integrations.tsx` | `/settings/integrations` | online-only |
+| `app/settings/iorbit.tsx` | `/settings/iorbit` | local-first (0131) |
 | `app/showcase/components/[section].tsx` | `/showcase/components/[section]` | device-only |
 | `app/showcase/components/index.tsx` | `/showcase/components` | device-only |
 | `app/showcase/copy.tsx` | `/showcase/copy` | device-only |

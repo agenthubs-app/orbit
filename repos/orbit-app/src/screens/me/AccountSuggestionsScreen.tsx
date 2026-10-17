@@ -100,8 +100,13 @@ export function AccountSuggestionsScreen() {
   return <AppScreen title={t("me.suggestions")}>
     <OfflineBar offline={state.offline} pending={0} />
     {loading ? <Skeleton onRetry={() => void reload()} /> : null}
-    {error ? <Card><UiText accessibilityRole="alert">{error}</UiText><Button label={t("me.retry")} onPress={() => void reload()} /></Card> : null}
-    {inputKind ? <Card><TextField multiline label={t("me.sourceText")} value={text} onChangeText={setText} /><Button label={t("me.extract")} disabled={busy || state.offline || !text.trim()} onPress={() => void extract(inputKind, text)} /><Button label={t("common.cancel")} variant="ghost" onPress={() => setInputKind(null)} /></Card> : null}
-    {!loading ? <AccountSuggestionsContent cards={cards} t={t} selected={selected} filter={filter} busy={busy || state.offline} onFilter={setFilter} onSelect={select} onDismiss={id => void dismiss(id)} onAll={cardId => setSelected(values => new Set([...values, ...cards.filter(card => card.id === cardId).flatMap(card => card.fields.map(field => field.id))]))} onApply={() => void apply()} onEntry={kind => void entry(kind)} /> : null}
+    {error ? <Card><UiText accessibilityRole="alert">{error}</UiText>
+      <Button label={t("me.retry")} onPress={() => void reload()} /></Card> : null}
+    {inputKind ? <Card>
+      <TextField multiline label={t("me.sourceText")} value={text} onChangeText={setText} />
+      <Button label={t("me.extract")} disabled={busy || state.offline || !text.trim()} onPress={() => void extract(inputKind, text)} />
+      <Button label={t("common.cancel")} variant="ghost" onPress={() => setInputKind(null)} /></Card> : null}
+    {!loading ?
+      <AccountSuggestionsContent cards={cards} t={t} selected={selected} filter={filter} busy={busy || state.offline} onFilter={setFilter} onSelect={select} onDismiss={id => void dismiss(id)} onAll={cardId => setSelected(values => new Set([...values, ...cards.filter(card => card.id === cardId).flatMap(card => card.fields.map(field => field.id))]))} onApply={() => void apply()} onEntry={kind => void entry(kind)} /> : null}
   </AppScreen>;
 }

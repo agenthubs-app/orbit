@@ -86,23 +86,9 @@
     "src/screens/profile/AccountAuthScreen.tsx": {
       "controls": 1
     },
-    "src/screens/profile/AccountPermissionsScreen.tsx": {
-      "oldComponent": 4,
-      "controls": 1
-    },
     "src/screens/profile/AccountScreen.tsx": {
       "oldComponent": 3,
       "controls": 1
-    },
-    "src/screens/profile/ProfilePreviewScreen.tsx": {
-      "oldComponent": 1
-    },
-    "src/screens/profile/ProfileScreen.tsx": {
-      "oldComponent": 6,
-      "controls": 1
-    },
-    "src/screens/profile/ProfileTagPickerScreen.tsx": {
-      "oldComponent": 1
     },
     "src/screens/profile/onboarding/OnboardingParts.tsx": {
       "controls": 1

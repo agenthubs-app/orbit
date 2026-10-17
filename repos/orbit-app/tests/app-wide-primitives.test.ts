@@ -61,7 +61,6 @@ import { EmptyState } from "./src/components/EmptyState";
 import { ErrorState } from "./src/components/ErrorState";
 import { LoadingState } from "./src/components/LoadingState";
 import { AppErrorScreen } from "./src/components/AppErrorBoundary";
-import { SettingsScreen } from "./src/screens/settings/SettingsScreen";
 import { useOrbitTheme } from "./src/design/theme";
 ${controlsImport}
 function Fixture() {
@@ -69,7 +68,6 @@ function Fixture() {
   const [draft, setDraft] = useState(""); const [selected, setSelected] = useState(false);
   const record = action => window.fixture.requests.push({ action, draft });
   if (location.search.includes("recovery")) return <AppErrorScreen error={new Error("连接中断，请检查后重试")} onRetry={() => record("retry")} />;
-  if (location.search.includes("settings")) return <SettingsScreen />;
   return <AppScreen title=${JSON.stringify(title)} eyebrow={location.search.includes("context") ? "活动运营" : "Orbit"} headerVariant={location.search.includes("compact") ? "compact" : "large"}>
     <DataCard title="打开活动详情" detail="保留完整活动资料与报名安排" onPress={() => record("open")}><Text style={{ color: colors.ink }}>现有内容仍可阅读</Text></DataCard>
     <DataCard title="报名信息" variant="inset"><TextInput accessibilityLabel="报名备注" value={draft} onChangeText={setDraft} style={controls.input} />
@@ -223,15 +221,6 @@ test("shared controls grow around long labels, keep drafts on appearance change 
   if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-primitives-large-dark.png", fullPage: true });
 });
 
-test("real settings consumer retains all destinations on an open page with bounded wide layout", async t => {
-  const page = await openScreen(t, "settings", "light", 900);
-  for (const [label, href] of [["打开账号", "/account"], ["打开权限中心", "/account/permissions"], ["打开服务器", "/settings/api"]]) {
-    const button = page.getByRole("button", { name: new RegExp(label!) });
-    await button.click();
-    assert.ok((await button.boundingBox())!.width <= 508);
-  }
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/account", "/account/permissions", "/settings/api"]);
-});
 
 for (const appearance of ["light", "dark"] as const) {
   test(`${appearance}: recovery screen keeps a full-size retry and readable error details at 320pt`, async t => {

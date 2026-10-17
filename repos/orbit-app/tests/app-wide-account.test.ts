@@ -56,18 +56,15 @@ export const revokeRegisteredPushDevice = async () => { await record("revokeRegi
 test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client";
-import { SettingsScreen } from "./src/screens/settings/SettingsScreen";
 import { ApiSettingsScreen as NativeApiSettingsScreen } from "./src/screens/settings/ApiSettingsScreen.tsx";
 import { ApiSettingsScreen as WebApiSettingsScreen } from "./src/screens/settings/ApiSettingsScreen.web.tsx";
 import { AccountScreen } from "./src/screens/profile/AccountScreen";
 import { AccountAuthScreen } from "./src/screens/profile/AccountAuthScreen";
-import { AccountPermissionsScreen } from "./src/screens/profile/AccountPermissionsScreen";
-import { ProfileScreen } from "./src/screens/profile/ProfileScreen";
 import { AdminScreen } from "./src/screens/admin/AdminScreen";
 import { AdminLoginScreen } from "./src/screens/admin/AdminLoginScreen";
 import { PlatformScreen } from "./src/screens/platform/PlatformScreen";
 const params = new URLSearchParams(location.search);
-const screens = { settings: SettingsScreen, api: NativeApiSettingsScreen, apiWeb: WebApiSettingsScreen, account: AccountScreen, auth: AccountAuthScreen, permissions: AccountPermissionsScreen, profile: ProfileScreen, admin: AdminScreen, adminLogin: AdminLoginScreen, platform: PlatformScreen };
+const screens = { api: NativeApiSettingsScreen, apiWeb: WebApiSettingsScreen, account: AccountScreen, auth: AccountAuthScreen, admin: AdminScreen, adminLogin: AdminLoginScreen, platform: PlatformScreen };
 const Screen = screens[params.get("screen")];
 createRoot(document.getElementById("root")).render(<Screen mode={params.get("mode") || "login"} surface={params.get("surface") || "dashboard"} />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -129,75 +126,10 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await note.evaluate(el => getComputedStyle(el).borderRadius), "24px", "accessNote");
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   });
-  test(`${scheme}: final inset accepted profile feedback preserves the pending edit`, async t => {
-    const page = await open(t, "profile", scheme);
-    await page.getByRole("button", { name: "编辑资料", exact: true }).click();
-    await page.evaluate(() => (window as any).fixture.update({ patchSuccess: true }));
-    await page.getByRole("button", { name: /^确认.*建议$/ }).click();
-    const notice = page.getByText("待保存改动", { exact: true }).locator("..").locator("..");
-    await notice.waitFor();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ action: "POST", payload: { path: "/api/profile/update-suggestions/suggestion%3A1/accept", body: undefined } }]);
-    assert.equal(await page.getByRole("textbox", { name: "标题", exact: true }).inputValue(), "关注长期零售伙伴合作的市场负责人");
-    assert.equal(await notice.evaluate(el => getComputedStyle(el).borderRadius), "24px", "acceptedPatchNotice");
-  });
 }
 
 for (const theme of ["light", "dark"] as const) {
-  test(`${theme}: settings has one compact row per permitted destination`, async t => {
-    const page = await open(t, "settings", theme);
-    for (const [name, path] of [["账号", "/account"], ["权限中心", "/account/permissions"], ["服务器", "/settings/api"]]) {
-      const row = page.getByRole("button", { name: new RegExp(`打开${name}`) });
-      await fits(row);
-      assert.equal(await page.getByText(`打开${name}`, { exact: true }).count(), 0, "destination must not repeat a separate Open line");
-      assert.ok((await row.boundingBox())!.height <= 112, "settings rows stay compact");
-      await row.hover(); await page.mouse.down();
-      // RN Web's press responder starts feedback after its default 50ms delay.
-      await page.waitForFunction(label => {
-        const row = document.querySelector(`[aria-label="${label}"]`);
-        return row && Number(getComputedStyle(row).opacity) < 1;
-      }, `打开${name}`, { timeout: 500 });
-      assert.ok(Number(await row.evaluate(el => getComputedStyle(el).opacity)) < 1, "navigation responds immediately to a press");
-      await page.mouse.move(0, 0); await page.mouse.up();
-      await row.click(); assert.equal(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), path);
-    }
-    await page.evaluate(() => (window as any).fixture.update({ signedIn: false }));
-    assert.equal(await page.getByRole("button", { name: "打开权限中心", exact: true }).count(), 0);
-    await fits(page.getByRole("button", { name: "打开账号", exact: true }));
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-  });
 
-  test(`${theme}: profile identity is open and complete; editing stays local`, async t => {
-    const page = await open(t, "profile", theme);
-    const name = page.getByText(person, { exact: true }).first(); await name.waitFor();
-    const identityBackground = await name.evaluate(el => {
-      for (let parent = el.parentElement; parent; parent = parent.parentElement) {
-        const color = getComputedStyle(parent).backgroundColor;
-        if (color !== "rgba(0, 0, 0, 0)") return color;
-      }
-      return "transparent";
-    });
-    // R05 rework: マイページ sits on the kit page background (--bg under the fog), not on --surface.
-    assert.equal(identityBackground, theme === "light" ? "rgb(247, 245, 247)" : "rgb(25, 24, 28)");
-    assert.equal(await name.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1), true, "long identity remains readable");
-    await page.getByRole("button", { name: "编辑资料", exact: true }).click();
-    const input = page.getByRole("textbox", { name: "名字", exact: true }); await fits(input); await input.fill("保留未保存名字");
-    const form = page.getByText("编辑个人资料", { exact: true }).locator("..").locator("..");
-    assert.equal(await form.evaluate(el => getComputedStyle(el).borderRadius), "24px");
-    await fits(page.getByRole("button", { name: "保存资料", exact: true }), 50);
-    for (const label of ["提取名片", "提取简历", "选择名片图片", "选择简历图片", "选择简历文件"]) await fits(page.getByRole("button", { name: label, exact: true }));
-    await page.getByText("资料更新建议", { exact: true }).waitFor();
-    const suggestion = page.getByRole("button", { name: /^确认.*建议$/ });
-    assert.equal(await suggestion.count(), 1, "resolved suggestions must not offer another confirmation");
-    await fits(suggestion, 50);
-    await inflate(page); await fits(page.getByRole("button", { name: "选择名片图片", exact: true }));
-    await fits(suggestion, 50);
-    assert.equal(await input.inputValue(), "保留未保存名字");
-    await page.emulateMedia({ colorScheme: theme === "light" ? "dark" : "light" });
-    assert.equal(await input.inputValue(), "保留未保存名字", "appearance changes preserve the local profile draft");
-    await page.emulateMedia({ colorScheme: theme });
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-    if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-profile-${theme}.png`, fullPage: true });
-  });
 
   for (const mode of ["login", "signup"] as const) {
     test(`${theme}: ${mode} keeps editable credentials after a failed attempt`, async t => {
@@ -231,20 +163,6 @@ for (const theme of ["light", "dark"] as const) {
     });
   }
 
-  test(`${theme}: permissions show a bounded request and distinct pending control`, async t => {
-    const page = await open(t, "permissions", theme);
-    const action = page.getByRole("button", { name: "申请日历复核", exact: true }); await fits(action, 50);
-    await page.evaluate(() => (window as any).fixture.update({ pending: true }));
-    const enabledOpacity = await action.evaluate(el => getComputedStyle(el).opacity);
-    await action.click(); assert.equal(await action.isDisabled(), true);
-    assert.notEqual(await action.evaluate(el => getComputedStyle(el).opacity), enabledOpacity);
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ action: "POST", payload: { path: "/api/permissions/calendar/request", body: { intent: "connect-event-calendar" } } }]);
-    await page.evaluate(() => (window as any).fixture.resolve());
-    await page.getByText("暂时无法完成，请重试", { exact: true }).waitFor();
-    assert.equal(await action.isEnabled(), true);
-    await inflate(page); await fits(action, 50);
-    if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-permissions-${theme}.png`, fullPage: true });
-  });
 }
 
 test("forgot mode and signed-out profile/permission/account preserve public boundaries", async t => {
@@ -255,7 +173,7 @@ test("forgot mode and signed-out profile/permission/account preserve public boun
   await fits(forgot.getByRole("button", { name: "发送重置链接", exact: true }), 50);
   const returnAction = forgot.getByRole("button", { name: /返回登录/ }); await fits(returnAction, 44); await returnAction.click();
   assert.deepEqual(await forgot.evaluate(() => (window as any).fixture.requests), []);
-  for (const screen of ["profile", "permissions", "account"]) {
+  for (const screen of ["account"]) {
     const page = await open(t, `${screen}&guest`); await page.getByText(/登录后查看/).first().waitFor();
     assert.equal(await page.getByText(person, { exact: true }).count(), 0);
     assert.equal(await page.getByRole("button", { name: "退出登录", exact: true }).count(), 0);
@@ -313,7 +231,7 @@ test("platform public activity and statistics remain complete with large text", 
 });
 
 for (const theme of ["light", "dark"] as const) {
-  for (const kind of ["account feedback", "auth error", "auth notice", "permission error", "permission safety"] as const) {
+  for (const kind of ["account feedback", "auth error", "auth notice"] as const) {
     test(`${theme}: ${kind} uses the 12pt feedback inset on the real screen`, async t => {
       const screen = kind === "account feedback" ? "account" : kind === "auth notice" ? "auth&created=1" : kind === "auth error" ? "auth" : "permissions";
       const page = await open(t, screen, theme);

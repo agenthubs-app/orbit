@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { AppScreen } from "../../components/AppScreen";
-import { OfflineBar, Skeleton, UiText, presentConfirm } from "../../components/ui";
+import { Button, Card, Skeleton, UiText, presentConfirm } from "../../components/ui";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { AccountIorbitContent } from "./AccountIorbitContent";
 import { readAccountSemantic, writeAccountSemantic } from "./semantic-preference";
@@ -10,11 +10,12 @@ import type { AccountMemory } from "./settings-api";
 import { useAccountEditor } from "./useAccountEditor";
 import { useAccountSettingsApi } from "./useAccountSettingsApi";
 import { useAccountDesign } from "./useAccountDesign";
+import { AccountCopyNotice } from "./AccountCopyNotice";
 
 export function AccountIorbitScreen() {
   const state = useAccountEditor(true); const api = useAccountSettingsApi(); const { t, language } = useOrbitLocale(); const router = useRouter();
   const design = useAccountDesign(); const designMode = state.path.includes("?design=");
-  const [memories, setMemories] = useState<AccountMemory[]>([]); const [goal, setGoal] = useState<Awaited<ReturnType<typeof api.goal>>>();
+  const [memories, setMemories] = useState<AccountMemory[] | null>(null); const [goal, setGoal] = useState<Awaited<ReturnType<typeof api.goal>>>();
   const [semanticAvailable, setSemanticAvailable] = useState(false); const [semanticOn, setSemanticOn] = useState(true);
   const [busy, setBusy] = useState(false); const [error, setError] = useState(false);
   const controller = useRef<AbortController | null>(null); const current = useRef(api); current.current = api;
@@ -40,15 +41,18 @@ export function AccountIorbitScreen() {
   async function remove(id: string) {
     if (busy || state.offline || !await presentConfirm({ title: t("me.deleteMemory"), confirmLabel: t("me.delete"), cancelLabel: t("common.cancel"), destructive: true })) return;
     if (current.current !== api || controller.current?.signal.aborted) return; setBusy(true);
-    if (designMode) { setMemories(values => values.filter(value => value.memoryId !== id)); setBusy(false); return; }
+    if (designMode) { setMemories(values => values?.filter(value => value.memoryId !== id) ?? null); setBusy(false); return; }
     const success = await api.removeMemory(id, controller.current?.signal);
-    if (current.current === api && !controller.current?.signal.aborted) { if (success) setMemories(values => values.filter(value => value.memoryId !== id)); else setError(true); setBusy(false); }
+    if (current.current === api && !controller.current?.signal.aborted) { if (success) setMemories(values => values?.filter(value => value.memoryId !== id) ?? null); else setError(true); setBusy(false); }
   }
   async function semantic(value: boolean) { try { await writeAccountSemantic(AsyncStorage, value); setSemanticOn(value); } catch { setError(true); } }
-  return <AppScreen title={t("me.iorbit")}><OfflineBar offline={state.offline} pending={0} />
+  return <AppScreen title={t("me.iorbit")}><AccountCopyNotice copy={state.copy} language={language} t={t} />
     {state.resource.kind === "loading" ? <Skeleton onRetry={state.refresh} /> : null}
+    {!state.session && state.resource.kind !== "loading" ? <Card><UiText>{t(state.resource.kind === "offline" ? "sync.notOnDevice" : "me.loadError")}</UiText>
+      <Button label={t("me.retry")} onPress={state.refresh} /></Card> : null}
     {error || state.feedback ? <UiText accessibilityRole="alert">{state.feedback ?? t("me.failed")}</UiText> : null}
-    {state.session ? <AccountIorbitContent t={t} goal={goal?.goal ?? (goal === null ? null : undefined)} bio={state.session.draft.bio} memories={memories} semanticAvailable={semanticAvailable} semanticOn={semanticOn} busy={busy || state.saving} canSave={state.canSave} aiAvailable={(designMode || language !== "ja") && !state.offline}
+    {state.session ?
+      <AccountIorbitContent t={t} goal={goal?.goal ?? (goal === null ? null : undefined)} bio={state.session.draft.bio} memories={memories} semanticAvailable={semanticAvailable} semanticOn={semanticOn} busy={busy || state.saving} canSave={state.canSave} aiAvailable={(designMode || language !== "ja") && !state.offline}
       onGoal={() => router.push((goal ? `/task?seg=plan&plan=${encodeURIComponent(goal.planId)}` : "/task?seg=plan") as Href)} onBio={bio => state.patch({ bio })} onGenerate={() => void generate()} onSave={() => void state.save()} onDelete={id => void remove(id)} onSemantic={value => void semantic(value)} /> : null}
   </AppScreen>;
 }

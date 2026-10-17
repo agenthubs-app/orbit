@@ -72,7 +72,10 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/party/graph.tsx', path: '/party/graph', title: '旧派对关系图跳转', classification: 'device-only', reads: '无', offline: '跳到现场页' },
   { file: 'app/profile/continue.tsx', path: '/profile/continue', title: '补资料后继续跳转', classification: 'device-only', reads: '无', offline: '跳到目标页' },
   { file: 'app/followups.tsx', path: '/followups', title: '旧跟进入口，跳到 Task 的 To-do 段「关系」分组', classification: 'device-only', reads: '无（目标页见 app/task.tsx）', offline: '跳到 /task?seg=todo&scope=relationship（可离线）' },
-  { file: 'app/settings.tsx', path: '/settings', title: '设置（语言、主题、本地镜像状态、通知权限）', classification: 'device-only', reads: '本机设置；通知投递和发现偏好读 /api/inbox/delivery/preferences、/api/inbox/discovery/preferences', offline: '本机设置照常可用；两块通知偏好显示「需要联网」' },
+  { file: 'app/settings.tsx', path: '/settings', title: '设置（语言、主题、系统权限、账户入口；R18a）', classification: 'local-first', sprint: '0131', reads: '本机语言、外观、可用系统权限；账户行可读页面副本 self-profile', offline: '本机设置照常可用；登出沿用未同步修改动作表' },
+  { file: 'app/settings/[section].tsx', path: '/settings/:section', title: '设置准备中（通知、帮助、导出、条款；R18a）', classification: 'device-only', reads: '无', offline: '照常显示；后续静态路由优先' },
+  { file: 'app/settings/integrations.tsx', path: '/settings/integrations', title: '关联服务（R18a）', classification: 'online-only', reasonCategory: 'credentials', reason: '读取真实授权状态；连接和解除均需服务器', reads: '/api/integrations、/api/integrations/:provider', offline: NEEDS_NETWORK },
+  { file: 'app/settings/iorbit.tsx', path: '/settings/iorbit', title: 'iOrbit 使用的信息（R18a）', classification: 'local-first', sprint: '0131', reads: '页面副本 self-profile；目标、记忆、搜索能力在线读取；语义搜索偏好仅本机', offline: '自我介绍副本可读；保存、AI 草稿和删除记忆需要联网' },
   { file: 'app/settings/api.tsx', path: '/settings/api', title: '服务器地址设置', classification: 'device-only', reads: '本机保存的服务器地址；「检查连接」按需读 /api/health', offline: '可以改地址；检查连接会显示连不上' },
 
   // ── earlier sprints: local-first ──
@@ -111,7 +114,7 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/task.tsx', path: '/task', title: 'Task：カレンダー / To-do / プラン / メモ 四段（R05）；日历段 = 原日程页，To-do 段 = 添加框 + 原待办页，プラン段 = 目標入力、プラン概要或以前のプラン卡（R23 / R24 / R25），メモ段 = 原笔记页', classification: 'local-first', sprint: 'R05', reads: '日历段读域 registered-events、tasks、personal-schedule（0115）；To-do 段读域 tasks、页面副本 todo-page（R20a 首屏）以及旧 relationship-tasks、task-suggestions（0131，旧屏退役前）；メモ段读域 notes（0108）；プラン段读 /api/agent/plans/v2/summary、/api/agent/plans/intakes、/api/agent/plans/v2/:planId（R23 / R24）与 /api/agent/plans/legacy、/api/agent/plans/v2/quota（R25），不存本机', offline: '日历、To-do、メモ三段照常可读；To-do 显示上次副本和「截至」，跨本地零点整块标「以前の情報」；普通跟进任务可离线完成/延期入队，lifecycle 禁止；プラン段显示「オフラインでは見られません」' },
   { file: 'app/tasks/[id].tsx', path: '/tasks/:id', title: '待办详情', classification: 'local-first', sprint: '0131', reads: '域 tasks 的这一行；活动记录和提醒读网络', offline: '「截至」；待办内容来自本机；活动记录、提醒和所有修改需要联网' },
   { file: 'app/tasks/relationship/[id].tsx', path: '/tasks/relationship/:id', title: '关系待办详情（关系下一步）', classification: 'local-first', sprint: '0131', reads: '页面副本 relationship-lifecycle（/api/connections/:id/lifecycle，按关系保存最近打开的 20 个）', offline: '「截至」；打开过的关系显示本机副本；确认下一步需要联网；没打开过的显示「需要联网」' },
-  { file: 'app/(app)/profile.tsx', path: '/profile', title: '我的资料', classification: 'local-first', sprint: '0131', reads: '页面副本 self-profile（/api/profile）；统计读域 contacts、tasks、personal-schedule；资料更新建议读网络', offline: '「截至」；编辑、上传名片或简历、建议需要联网' },
+  { file: 'app/(app)/profile.tsx', path: '/profile', title: 'マイページ（R18a）', classification: 'local-first', sprint: '0131', reads: '页面副本 self-profile（/api/profile）；主办、参加、收件箱独立读真实摘要接口，失败隐藏该行', offline: '「截至」；编辑、上传名片或简历、建议需要联网' },
   { file: 'app/profile/preview.tsx', path: '/profile/preview', title: '资料预览', classification: 'local-first', sprint: '0131', reads: '页面副本 self-profile', offline: '「截至」' },
   { file: 'app/profile/tags.tsx', path: '/profile/tags', title: '资料标签', classification: 'local-first', sprint: '0131', reads: '页面副本 self-profile', offline: '「截至」；保存标签需要联网' },
   { file: 'app/agent.tsx', path: '/agent', title: 'Agent 动作中心', classification: 'local-first', sprint: '0131', reads: '页面副本 agent-actions（/api/agent/actions）', offline: '「截至」；确认、忽略需要联网' },
@@ -128,7 +131,7 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/account/signup.tsx', path: '/account/signup', title: '注册', classification: 'online-only', reasonCategory: 'credentials', reason: '建账号需要服务器', reads: '/api/auth/register', offline: NEEDS_NETWORK },
   { file: 'app/account/forgot-password.tsx', path: '/account/forgot-password', title: '忘记密码', classification: 'online-only', reasonCategory: 'credentials', reason: '发送重置邮件需要服务器', reads: '/api/auth/password-reset/request', offline: NEEDS_NETWORK },
   { file: 'app/account/reset-password.tsx', path: '/account/reset-password', title: '重置密码', classification: 'online-only', reasonCategory: 'credentials', reason: '重置令牌由服务器验证', reads: '/api/auth/password-reset/confirm', offline: NEEDS_NETWORK },
-  { file: 'app/account/permissions.tsx', path: '/account/permissions', title: '数据授权（邮箱、日历）', classification: 'online-only', reasonCategory: 'credentials', reason: '第三方授权状态和授权流程在服务器上', reads: '/api/permissions', offline: NEEDS_NETWORK },
+  { file: 'app/account/permissions.tsx', path: '/account/permissions', title: '旧权限页 → 设置（R18a）', classification: 'device-only', reads: '无', offline: '跳到 /settings 内联系统权限' },
   { file: 'app/login-admin.tsx', path: '/login-admin', title: '管理员登录', classification: 'online-only', reasonCategory: 'admin', reason: '管理员凭据由服务器验证', reads: '/api/auth/*', offline: NEEDS_NETWORK },
   { file: 'app/admin.tsx', path: '/admin', title: '管理后台', classification: 'online-only', reasonCategory: 'admin', reason: '管理员工具，读全平台数据，不放进个人设备', reads: '/api/dashboard、/api/events、/api/profile', offline: NEEDS_NETWORK },
   { file: 'app/admin/access.tsx', path: '/admin/access', title: '管理后台：权限', classification: 'online-only', reasonCategory: 'admin', reason: '管理员工具', reads: '同 /admin', offline: NEEDS_NETWORK },
@@ -175,7 +178,7 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/platform.tsx', path: '/platform', title: '平台工作台（公开活动审核队列）', classification: 'online-only', reasonCategory: 'admin', reason: '平台运营工具：审核导入的公开活动', reads: '/api/events/public', offline: NEEDS_NETWORK },
   { file: 'app/o/[slug].tsx', path: '/o/:slug', title: '公開主催者ページ（R17）', classification: 'online-only', reasonCategory: 'public-visitor', reason: '公开主办方页面，不属于账号数据', reads: '/api/organizers/by-slug/:slug', offline: NEEDS_NETWORK },
   { file: 'app/profile/edit.tsx', path: '/profile/edit', title: '编辑资料', classification: 'online-only', reasonCategory: 'credentials', reason: '编辑会话从服务器取最新版本并保存，离线编辑属于 0120 断网写', reads: '/api/profile', offline: NEEDS_NETWORK },
-  { file: 'app/profile/more.tsx', path: '/profile/more', title: '补充资料（上传名片、简历）', classification: 'online-only', reasonCategory: 'paid-ai', reason: '名片和简历由付费 AI 抽取', reads: '/api/profile/extractions/*', offline: NEEDS_NETWORK },
+  { file: 'app/profile/more.tsx', path: '/profile/more', title: '旧补充资料 → 编辑（R18a）', classification: 'device-only', reads: '无', offline: '跳到 /profile/edit；编辑页需要联网' },
   { file: 'app/profile/onboarding.tsx', path: '/profile/onboarding', title: '新用户引导', classification: 'online-only', reasonCategory: 'paid-ai', reason: '引导里的名片扫描和自我介绍草稿用付费 AI；每一步都保存到服务器（0106 已支持断网继续填写、联网后保存）', reads: '/api/profile、/api/profile/intro-draft', offline: '已填内容保留，显示「现在没有网络」提示，联网后继续（0106 行为）' },
   { file: 'app/profile/suggestions.tsx', path: '/profile/suggestions', title: '资料更新建议', classification: 'online-only', reasonCategory: 'paid-ai', reason: '建议由 AI 按最新活动生成，接受或忽略要实时写入', reads: '/api/profile/update-suggestions', offline: NEEDS_NETWORK },
 ];

@@ -7,6 +7,21 @@ import { OFFLINE_BANNER, UNAVAILABLE_BANNER, fixtureValue, requestsOf, startOffl
 // calendar preview (the R27 event detail is online-only; its old offline states went with it).
 const A = "account:one";
 const copy = (data: unknown) => ({ data, syncedAt: "2026-09-28T01:10:00.000Z" });
+
+test("R18a my page and public preview retain the timestamped offline copy without writes", { timeout: 15000 }, async t => {
+  const { profilePayload } = await import("./helpers/profile-detail-fixtures");
+  const profiles = await startOfflinePageHarness([
+    { name: "profile", importPath: "./tests/helpers/me-offline-consumers", exportName: "MeOfflineConsumer" },
+    { name: "preview", importPath: "./src/screens/me/AccountPreviewScreen", exportName: "AccountPreviewScreen" },
+  ]);
+  t.after(() => profiles.close());
+  for (const screen of ["profile", "preview"]) {
+    const page = await profiles.open(t, { screen, online: false, copies: { "self-profile|main": copy(profilePayload) } });
+    await page.getByText("程川").first().waitFor({ timeout: 3000 });
+    await page.getByText(OFFLINE_BANNER).waitFor({ timeout: 3000 });
+    assert.deepEqual((await requestsOf(page)).filter(value => value.startsWith("put:") || value.startsWith("post:")), []);
+  }
+});
 const meeting = { appointmentId: "m1", confirmed: { durationMinutes: 30, medium: { kind: "in_person", location: "丸之内咖啡" }, startsAtUtc: "2026-10-02T02:00:00.000Z", timezone: "Asia/Tokyo" },
   contactId: "contact:1", details: "聊储能试点的报价", detailsUpdatedAt: "2026-09-27T01:00:00.000Z", detailsUpdatedBy: "you", eventId: null, proposals: [],
   status: "confirmed", title: "和张伟约谈", updatedAt: "2026-09-27T01:00:00.000Z", version: 3, visibility: "participants" };
@@ -50,22 +65,4 @@ test("the calendar preview of a registered event opens its detail page", async (
   assert.deepEqual(await fixtureValue<string[]>(page, "navigation"), ["redirect:/events/ev1"]);
   const other = await harness.open(t, { screen: "preview", online: false, params: { id: "ev9" } });
   await other.getByText("这个页面要连上 Orbit 服务器才能使用。联网后点「重试」。").waitFor();
-});
-
-test("the own profile offline shows its copy with 截至, device counts, and editing needs the network; the preview reads the same copy", async (t) => {
-  const { profilePayload } = await import("./helpers/profile-detail-fixtures");
-  const profiles = await startOfflinePageHarness([
-    { name: "profile", importPath: "./src/screens/profile/ProfileScreen", exportName: "ProfileScreen" },
-    { name: "preview", importPath: "./src/screens/profile/ProfilePreviewScreen", exportName: "ProfilePreviewScreen" },
-  ]);
-  t.after(() => profiles.close());
-  const card = (id: string, name: string) => ({ id, card: { id, displayName: name, organization: "星河", role: "顾问", sourceType: "manual", status: "active", pendingInitialization: false, nextActionPreview: "", valueTypes: [], updatedAt: "2026-09-27T00:00:00.000Z" }, tags: [], search: { text: name, occurredAt: "2026-09-27T00:00:00.000000Z", updatedAt: "2026-09-27T00:00:00.000000Z", error: null }, detail: null });
-  const page = await profiles.open(t, { screen: "profile", online: false, syncStatus: "stale", copies: { "self-profile|main": copy(profilePayload) }, records: { contact: [card("c1", "张伟"), card("c2", "佐藤")] } });
-  await page.getByText(OFFLINE_BANNER).waitFor();
-  await page.getByText("程川").first().waitFor();
-  await page.getByRole("button", { name: "人脉 2", exact: true }).waitFor();
-  assert.deepEqual((await requestsOf(page)).filter((entry) => entry.startsWith("put:") || entry.startsWith("post:")), []);
-  const preview = await profiles.open(t, { screen: "preview", online: false, copies: { "self-profile|main": copy(profilePayload) } });
-  await preview.getByText(OFFLINE_BANNER).waitFor();
-  await preview.getByText("程川").first().waitFor();
 });

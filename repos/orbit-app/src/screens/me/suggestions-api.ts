@@ -5,7 +5,8 @@ import { selectedAccountPatch, type AccountSuggestionCard } from "./suggestions-
 
 export function createAccountSuggestionsApi(client: OrbitApiClient, profilePath = "/api/profile") {
   async function decision(item: ProfileSuggestion, action: "accept" | "dismiss", mutationId: string, language: string, signal?: AbortSignal): Promise<boolean> {
-    const result = await client.post<unknown>(`/api/profile/update-suggestions/${encodeURIComponent(item.id)}/${action}?language=${encodeURIComponent(language)}`, { body: { mutationId }, ...(signal ? { signal } : {}) });
+    const path = action === "accept" ? `/api/profile/update-suggestions/${encodeURIComponent(item.id)}/accept` : `/api/profile/update-suggestions/${encodeURIComponent(item.id)}/dismiss`;
+    const result = await client.post<unknown>(`${path}?language=${encodeURIComponent(language)}`, { body: { mutationId }, ...(signal ? { signal } : {}) });
     return result.success && (action === "accept" ? profileSuggestionReceiptSchema(item, mutationId) : profileSuggestionDismissReceiptSchema(item, mutationId)).safeParse(result.data).success;
   }
   return {
@@ -17,7 +18,8 @@ export function createAccountSuggestionsApi(client: OrbitApiClient, profilePath 
       return parsed?.success ? parsed.data.suggestions : null;
     },
     async extract(kind: "business-card" | "resume", text: string, signal?: AbortSignal) {
-      const result = await client.post<unknown>(`/api/profile/extractions/${kind}`, { body: { text }, ...(signal ? { signal } : {}) });
+      const path = kind === "business-card" ? "/api/profile/extractions/business-card" : "/api/profile/extractions/resume";
+      const result = await client.post<unknown>(path, { body: { text }, ...(signal ? { signal } : {}) });
       const parsed = result.success ? profileExtractionReceiptSchema(kind).safeParse(result.data) : null;
       return parsed?.success ? parsed.data : null;
     },

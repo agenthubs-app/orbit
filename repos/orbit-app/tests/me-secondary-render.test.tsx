@@ -16,3 +16,8 @@ test("R18a iOrbit has only actual memory sources and capability-gated semantic p
     assert.equal(html.includes("意味検索"), available); assert.ok(html.includes("iOrbit との会話")); assert.ok(html.includes("メモ")); assert.ok(!html.includes("面談メモ"));
   }
 });
+test("R18a failed memory reads are not presented as a successful empty list", async () => {
+  const module = await import("../src/screens/me/AccountIorbitContent");
+  const html = renderToHtml(createElement(module.AccountIorbitContent, { t: createTranslator("ja"), goal: undefined, bio: "紹介", memories: null, semanticAvailable: false, semanticOn: true, busy: false, onGoal: () => {}, onBio: () => {}, onGenerate: () => {}, onSave: () => {}, onDelete: () => {}, onSemantic: () => {} }));
+  assert.ok(!html.includes("覚えていることはまだありません"));
+});

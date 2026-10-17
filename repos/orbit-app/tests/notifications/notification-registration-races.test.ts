@@ -290,11 +290,9 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
   const Provider = load("src/api/AuthSessionProvider.tsx").OrbitAuthSessionProvider;
   const Lifecycle = load("src/notifications/NotificationLifecycle.tsx").OrbitNotificationLifecycle;
   const Coordinator = load("src/components/OrbitNotificationsCoordinator.tsx").OrbitNotificationsCoordinator;
-  const Settings = load("src/screens/settings/SettingsScreen.tsx").SettingsScreen;
-  const settingsIdle = () => waitFor(
-    () => notificationAction(render("settings", Settings))?.props.disabled === false,
-    "settings notification action did not finish",
-  );
+  // R18a removed the settings opt-in UI; retain lifecycle/race coverage on the real service functions.
+  const pushSession = load("src/notifications/push-device-session.ts");
+  const registrationQueue = load("src/notifications/push-registration-queue.ts");
   return {
     calls, warnings, registry, notifications, storage, tokenListeners, foregroundListeners, linkingListeners, postEntered, releasePost, api, scheduled, clientScopes,
     async mount() {
@@ -305,13 +303,8 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       render("lifecycle", Lifecycle);
     },
     async toggleOptIn() {
-      render("settings", Settings);
-      await settle();
-      const tree = render("settings", Settings);
-      const action = notificationAction(tree);
-      assert.ok(action, "settings must expose the actual reminder action");
-      action.props.onPress();
-      await settingsIdle();
+      await pushSession.setPushNotificationsOptIn(false);
+      await registrationQueue.revokePushDeviceRegistrations([() => pushSession.revokeRegisteredPushDevice({ client: api })]);
     },
     logout: () => auth.signOut(),
     authState: () => ({ signedIn: auth.signedIn, cookieHeader: auth.cookieHeader, userId: auth.user?.id }),
@@ -322,8 +315,6 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       render("coordinator", Coordinator);
       render("lifecycle", Lifecycle);
     },
-    settingsTree: () => render("settings", Settings),
-    settingsIdle,
     foreground: () => foregroundListeners.forEach((listener) => listener("active")),
     closeLifecycle: () => unmount("lifecycle"),
     close: () => [...frames.keys()].forEach(unmount),
@@ -496,25 +487,6 @@ for (const failedDelete of [localPath, durablePath]) {
   });
 }
 
-test("failed opt-out remains locally disabled but exposes an error and retry action", { timeout: 5000 }, async () => {
-  const app = harness({ failedDelete: durablePath });
-  try {
-    await app.mount();
-    await settle();
-    await app.toggleOptIn();
-    await settle();
-    assert.equal(app.storage.has("orbit.pushNotificationsEnabled"), false);
-    const tree = app.settingsTree();
-    assert.match(JSON.stringify(tree), /解绑.*未|未.*解绑/);
-    const before = app.calls.filter((call) => call.startsWith("DELETE:")).length;
-    const action = notificationAction(tree);
-    assert.ok(action, "failed opt-out must retain a retry action");
-    action.props.onPress();
-    await app.settingsIdle();
-    assert.equal(app.calls.filter((call) => call.startsWith("DELETE:")).length, before + 1);
-    assert.equal(app.storage.has("orbit.pushNotificationsEnabled"), false);
-  } finally { app.close(); }
-});
 
 test("account switch warns on unlink failure but still clears old reminders and accepts the new session", { timeout: 5000 }, async () => {
   const app = harness({ failedDelete: durablePath });

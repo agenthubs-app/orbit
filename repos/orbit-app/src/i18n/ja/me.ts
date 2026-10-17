@@ -1,4 +1,5 @@
 export const me = {
+  "me.googleCalendar": "Google カレンダー",
   "me.suggestions": "更新の提案",
   "me.suggestionsEmpty": "登録内容のちがいを見つけたら、ここに届きます",
   "me.suggestionsHint": "新しい名刺・職務経歴書・iOrbit との会話から。確認するまで、登録内容は変わりません。",

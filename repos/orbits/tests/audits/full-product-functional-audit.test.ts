@@ -286,12 +286,16 @@ test("prop-gated DataCard pressables are counted only on routes that pass onPres
   assert.deepEqual(dataCardPressableSurfaces, []);
   const settings = inventory.surfaces.find((surface) => surface.surfaceId === "mobile:/settings");
   assert.ok(settings);
+  for (const destination of ["/account", "/settings/integrations", "/settings/iorbit"]) {
+    assert.ok(settings.interactions.some((interaction) =>
+      interaction.sourceFile === "repos/orbit-app/src/screens/me/AccountSettingsContent.tsx" &&
+      interaction.handlers.some((handler) => handler.expression.includes(`onOpen("${destination}")`)),
+    ), `R18a settings retains the direct ${destination} control`);
+  }
   assert.ok(settings.interactions.some((interaction) =>
-    interaction.sourceFile === "repos/orbit-app/src/screens/settings/SettingsScreen.tsx" &&
-    interaction.tag === "Pressable" && interaction.handlers.some((handler) =>
-      handler.expression.includes("router.push(destination.href"),
-    ),
-  ), "settings destinations remain counted as direct controls after the card-to-row migration");
+    interaction.sourceFile === "repos/orbit-app/src/screens/me/AccountSettingsScreen.tsx" &&
+    interaction.handlers.some((handler) => handler.expression.includes("router.push(accountDestination")),
+  ), "R18a destination controls stay wired through the scoped settings screen");
   // R11a：关系推进看板（/contacts/pipeline）已删除（R11-12）。
   assert.equal(inventory.surfaces.some((surface) => surface.surfaceId === "mobile:/contacts/pipeline"), false);
   // R11a REVIEW M3：运行证据表也不再登记已删的两个 pipeline surface。

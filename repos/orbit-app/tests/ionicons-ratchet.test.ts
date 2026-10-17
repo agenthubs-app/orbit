@@ -87,6 +87,7 @@ const OPENING_COUNT = OPENING.size;
 // Places that are new by definition: no Ionicons here, ever, allow list or not.
 // Feature Sprints add their new screen directories here as they create them.
 const NEW_CODE = [
+  /^src\/screens\/me\//,
   /^src\/components\/ui\//,
   /^src\/components\/OrbitNavigationIcon\.tsx$/,
   /^src\/components\/OrbitTabBar\.tsx$/,

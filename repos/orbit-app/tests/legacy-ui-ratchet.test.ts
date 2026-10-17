@@ -21,6 +21,9 @@ const OPENING_SHA256 = "94f51f3ff67920bd4bf0e4417f4cbb14b382cff7bc471952e3a0cd7c
 
 // Places that must never use the old ways. Feature Sprints add their new screens here.
 const ZERO = [
+  /^src\/screens\/me\//,
+  /^app\/profile\/(?:edit|preview|tags|more|suggestions)\.tsx$/,
+  /^app\/settings(?:\.tsx|\/\[section\]\.tsx|\/integrations\.tsx|\/iorbit\.tsx)$/,
   /^src\/components\/ui\//,
   /^src\/screens\/showcase\//,
   /^app\/showcase\//,

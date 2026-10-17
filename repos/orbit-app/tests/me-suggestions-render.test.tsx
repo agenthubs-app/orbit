@@ -3,7 +3,7 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToHtml } from "./helpers/render";
 import { createTranslator } from "../src/i18n/messages";
-import { accountDesignFixtures } from "../src/screens/me/design-fixtures";
+import { accountDesignFixtures } from "../fixtures/account-design";
 test("R18a suggestions render six object cards/ten fields and only present sources without undo promises", async () => {
   const module = await import("../src/screens/me/AccountSuggestionsContent").catch(() => null); assert.ok(module);
   const cards = accountDesignFixtures.suggestions.map(card => ({ ...card, fields: card.fields.map((field, index) => ({ ...field, id: `${card.id}:${index}`, value: field.proposed })) }));

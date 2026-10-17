@@ -1267,16 +1267,6 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "mobile:/settings|repos/orbit-app/src/screens/settings/SettingsScreen.tsx#onpress:() => router.push(destination.href as Href)#destination.title",
-    {
-      actualResult:
-        "The 服务器 destination opened /settings/api while the account and permission destinations remained separately named.",
-      testData: "Authenticated Expo Web settings root",
-      idempotency: "Navigation only; no settings value was changed.",
-      verificationCase: "expo-api-settings-health-runtime-2026-07-29",
-    },
-  ],
-  [
     "mobile:/settings/api|repos/orbit-app/src/screens/settings/ApiSettingsScreen.tsx#onpress:saveBaseUrl#保存",
     {
       actualResult:

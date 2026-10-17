@@ -24,8 +24,10 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   // Sprint 0140: the hub's source form is QR only; card scan and manual add moved to their own pages.
   'src/screens/inbox/RelationshipInboxScreen.tsx:1309': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:1500': ['/api/chat/relationship-inbox'],
-  'src/screens/profile/ProfileMoreScreen.tsx:78': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
-  'src/screens/profile/ProfileScreen.tsx:352': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
+  // R18a profile path optionally carries only the development design query; all mutations still target profile.
+  'src/screens/me/account-api.ts:45': ['/api/profile'],
+  'src/screens/me/suggestions-api.ts:31': ['/api/profile'],
+  'src/screens/profile/useProfileEditSessionScreen.ts:45': ['/api/profile'],
   'src/screens/tasks/TaskDetailScreen.tsx:91': ['/api/tasks/:id'],
   'src/screens/tasks/TaskDetailScreen.tsx:92': ['/api/tasks/:id/activities'],
   'src/screens/tasks/TaskDetailScreen.tsx:93': ['/api/reminders'],
@@ -68,6 +70,8 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
   const calls: Call[] = [];
   const invalid: string[] = [];
   const transportFiles = new Set([
+    // Envelope-only private adapter: its caller's settings-api endpoint operations remain fully audited.
+    'src/screens/me/settings-transport.ts',
     'src/api/client.ts',
     'src/api/batch-images.ts',
     'src/hooks/useApiResource.ts',

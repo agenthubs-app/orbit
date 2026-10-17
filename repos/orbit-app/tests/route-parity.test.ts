@@ -81,6 +81,14 @@ interface RouteParityResult {
   exceptionProblems: string[];
 }
 
+// R18a approved preparing family only: do not let [id] routes or global catch-alls conceal a missing feature.
+const accountSettingsSections = new Set(["appearance", "integrations", "iorbit", "notifications", "account", "permissions", "export", "help", "terms", "privacy"]);
+function nativeParityRoute(route: string, nativeRoutes: ReadonlySet<string>): string | null {
+  if (nativeRoutes.has(route)) return route;
+  const section = /^\/settings\/([^/]+)$/u.exec(route)?.[1];
+  return section && accountSettingsSections.has(section) && nativeRoutes.has("/settings/[section]") ? "/settings/[section]" : null;
+}
+
 function checkRouteParity(
   webRoot: string,
   nativeRoot: string,
@@ -128,11 +136,20 @@ function checkRouteParity(
   });
 
   const missingRoutes = [...webRoutes]
-    .filter((route) => !nativeRoutes.has(route) && !excusedRoutes.has(route))
+    .filter((route) => nativeParityRoute(route, nativeRoutes) === null && !excusedRoutes.has(route))
     .sort();
 
   return { missingRoutes, exceptionProblems };
 }
+
+test("R18a approved one-segment settings fallback is narrow and exact static routes take priority", () => {
+  const routes = new Set(["/settings/[section]", "/settings/integrations"]);
+  assert.equal(nativeParityRoute("/settings/appearance", routes), "/settings/[section]");
+  assert.equal(nativeParityRoute("/settings/iorbit", routes), "/settings/[section]");
+  assert.equal(nativeParityRoute("/settings/integrations", routes), "/settings/integrations");
+  for (const path of ["/settings/unknown", "/settings/help/article", "/unimplemented", "/events/new"]) assert.equal(nativeParityRoute(path, routes), null, path);
+  assert.equal(nativeParityRoute("/settings/appearance", new Set(["/[...legacy]"])), null);
+});
 
 test("native app has a route for every web app surface", () => {
   const { missingRoutes, exceptionProblems } = checkRouteParity(

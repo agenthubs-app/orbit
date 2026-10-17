@@ -9,6 +9,8 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/account/language-preference') || path.startsWith('/api/notification-preferences')) return 'preferences';
   if (path.startsWith('/api/profile/update-suggestions')) return 'profile';
   if (path.startsWith('/api/profile')) return 'profile';
+  if (path.startsWith('/api/integrations')) return 'integrations';
+  if (path.startsWith('/api/agent/memory')) return 'agent-memory';
   if (path.startsWith('/api/notes')) return 'notes';
   if (path.startsWith('/api/task-suggestions')) return 'task-suggestions';
   if (path.startsWith('/api/tasks')) return 'tasks';
@@ -93,6 +95,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   const messageOutboxWrite = consumerFile === 'src/data/sync/message-outbox-upload.ts' && domainId === 'messages' && method === 'POST';
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
   const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
+    || endpointTemplate.startsWith('/api/integrations') || endpointTemplate.startsWith('/api/agent/memory')
+    || (consumerFile.startsWith('src/screens/me/') && ['/api/events/center', '/api/search/global', '/api/agent/plans/v2/summary'].includes(endpointTemplate))
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
     // Private portraits remain network-only until trusted grant/epoch invalidation is available.
     || endpointTemplate === '/api/events/:id/registration/portrait'
@@ -137,6 +141,31 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
 }
 
 const surfaceKeys: readonly SurfaceKey[] = [
+  ["src/screens/me/AccountSettingsScreen.tsx","GET","/api/profile"],
+  ["src/screens/me/MyPageScreen.tsx","GET","/api/events/center"],
+  ["src/screens/me/MyPageScreen.tsx","GET","/api/events/mine"],
+  ["src/screens/me/MyPageScreen.tsx","GET","/api/inbox/notifications"],
+  ["src/screens/me/MyPageScreen.tsx","GET","/api/profile"],
+  ["src/screens/me/account-api.ts","GET","/api/events/center"],
+  ["src/screens/me/account-api.ts","GET","/api/events/mine"],
+  ["src/screens/me/account-api.ts","GET","/api/inbox/notifications"],
+  ["src/screens/me/account-api.ts","POST","/api/profile/seek-suggestions"],
+  ["src/screens/me/account-api.ts","PUT","/api/profile"],
+  ["src/screens/me/settings-api.ts","DELETE","/api/agent/memory/:id"],
+  ["src/screens/me/settings-api.ts","DELETE","/api/integrations/:id"],
+  ["src/screens/me/settings-api.ts","GET","/api/agent/memory"],
+  ["src/screens/me/settings-api.ts","GET","/api/agent/plans/v2/summary"],
+  ["src/screens/me/settings-api.ts","GET","/api/integrations"],
+  ["src/screens/me/settings-api.ts","GET","/api/search/global"],
+  ["src/screens/me/settings-api.ts","POST","/api/profile/intro-draft"],
+  ["src/screens/me/suggestions-api.ts","GET","/api/profile/update-suggestions"],
+  ["src/screens/me/suggestions-api.ts","POST","/api/profile/extractions/business-card"],
+  ["src/screens/me/suggestions-api.ts","POST","/api/profile/extractions/resume"],
+  ["src/screens/me/suggestions-api.ts","POST","/api/profile/update-suggestions/:id/accept"],
+  ["src/screens/me/suggestions-api.ts","POST","/api/profile/update-suggestions/:id/dismiss"],
+  ["src/screens/me/suggestions-api.ts","PUT","/api/profile"],
+  ["src/screens/me/useAccountEditor.ts","PUT","/api/profile"],
+  ["src/screens/me/useAccountProfile.ts","GET","/api/profile"],
   // R17 主催（App）：src/screens/host 的接口都经 host-api.ts。
   ["src/screens/host/host-api.ts","DELETE","/api/organizers/:id/follow"],
   ["src/screens/host/host-api.ts","GET","/api/events/by-slug/:id"],
@@ -549,11 +578,6 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/components/OnlineOnlyBoundary.tsx","GET","/api/health"],
   ["src/hooks/useSyncedCollection.ts","GET","/api/health"],
   // Sprint 0131: the profile edit session (preview, tags, edit, more, suggestions) reads the profile through its hook.
-  ["src/screens/profile/EditProfileScreen.tsx","GET","/api/profile"],
-  ["src/screens/profile/ProfileMoreScreen.tsx","GET","/api/profile"],
-  ["src/screens/profile/ProfilePreviewScreen.tsx","GET","/api/profile"],
-  ["src/screens/profile/ProfileSuggestionsScreen.tsx","GET","/api/profile"],
-  ["src/screens/profile/ProfileTagPickerScreen.tsx","GET","/api/profile"],
   ["src/hooks/useContactCardPages.ts","GET","/api/contacts/page"],
   ["src/hooks/useContactCardPages.ts","GET","/api/contacts/summary"],
   ["src/i18n/OrbitLocaleProvider.tsx","GET","/api/account/language-preference"],
@@ -737,25 +761,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/notes/useNoteContactSummaries.ts","GET","/api/contacts/:id"],
   ["src/screens/platform/PlatformScreen.tsx","GET","/api/events/public"],
   ["src/screens/profile/AccountAuthScreen.tsx","POST","/api/auth/password-reset/request"],
-  ["src/screens/profile/AccountPermissionsScreen.tsx","GET","/api/permissions"],
-  ["src/screens/profile/AccountPermissionsScreen.tsx","POST","/api/permissions/calendar/request"],
   ["src/screens/profile/AccountScreen.tsx","GET","/api/account/me"],
-  ["src/screens/profile/EditProfileScreen.tsx","PUT","/api/profile"],
   ["src/screens/profile/PasswordResetScreen.tsx","POST","/api/auth/password-reset/confirm"],
-  ["src/screens/profile/ProfileMoreScreen.tsx","POST","/api/profile/extractions/business-card"],
-  ["src/screens/profile/ProfileMoreScreen.tsx","POST","/api/profile/extractions/resume"],
-  ["src/screens/profile/ProfileScreen.tsx","GET","/api/contacts/summary"],
-  ["src/screens/profile/ProfileScreen.tsx","GET","/api/profile"],
-  ["src/screens/profile/ProfileScreen.tsx","PUT","/api/profile"],
-  ["src/screens/profile/ProfileScreen.tsx","POST","/api/profile/extractions/business-card"],
-  ["src/screens/profile/ProfileScreen.tsx","POST","/api/profile/extractions/resume"],
-  ["src/screens/profile/ProfileScreen.tsx","GET","/api/profile/update-suggestions"],
-  ["src/screens/profile/ProfileScreen.tsx","POST","/api/profile/update-suggestions/:id/accept"],
-  ["src/screens/profile/ProfileScreen.tsx","GET","/api/schedule-items"],
-  ["src/screens/profile/ProfileScreen.tsx","GET","/api/tasks/page"],
-  ["src/screens/profile/ProfileSuggestionsScreen.tsx","GET","/api/profile/update-suggestions"],
-  ["src/screens/profile/ProfileSuggestionsScreen.tsx","POST","/api/profile/update-suggestions/:id/accept"],
-  ["src/screens/profile/ProfileSuggestionsScreen.tsx","POST","/api/profile/update-suggestions/:id/dismiss"],
   ["src/screens/profile/useProfileEditSessionScreen.ts","GET","/api/profile"],
   ["src/screens/schedule/MeetingDetailScreen.tsx","GET","/api/appointments/:id"],
   ["src/screens/schedule/MeetingDetailScreen.tsx","PATCH","/api/appointments/:id"],

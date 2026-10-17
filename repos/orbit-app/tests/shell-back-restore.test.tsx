@@ -106,10 +106,11 @@ test("the shell remembers the Task segment and each scroll position for the sess
 });
 
 test("マイページ and イベント no longer draw their own tab bar; the root layout draws the one bar", () => {
-  for (const file of ["src/screens/profile/ProfileScreen.tsx", "src/screens/events/v2/EventsHome.tsx", "src/components/AppScreen.tsx"]) {
+  for (const file of ["src/screens/me/MyPageScreen.tsx", "src/screens/events/v2/EventsHome.tsx", "src/components/AppScreen.tsx"]) {
     assert.doesNotMatch(readFileSync(join(root, file), "utf8"), /OrbitTabBar/u, file);
   }
   const layout = readFileSync(join(root, "app/_layout.tsx"), "utf8");
   assert.match(layout, /<ShellTabBar \/>/u);
-  assert.match(readFileSync(join(root, "src/screens/profile/ProfileScreen.tsx"), "utf8"), /<ShellBackBar[\s\S]*<ShellInboxRow \/>/u, "マイページ has a back bar and keeps the 受信箱 row");
+  assert.match(readFileSync(join(root, "src/screens/me/MyPageScreen.tsx"), "utf8"), /<AppScreen/u, "マイページ uses the shared shell");
+  assert.match(readFileSync(join(root, "src/screens/me/MyPageContent.tsx"), "utf8"), /me\.inbox/u, "マイページ retains its sourced inbox row");
 });

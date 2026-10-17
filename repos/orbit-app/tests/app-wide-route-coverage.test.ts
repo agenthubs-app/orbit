@@ -110,7 +110,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { route: "/tasks", consumer: "TasksScreen", kind: "screen" },
   { route: "/tasks/[id]", consumer: "TaskDetailScreen", kind: "screen" },
   { route: "/followups", consumer: "FollowupsScreen", kind: "screen" },
-  { route: "/profile", consumer: "ProfileScreen", kind: "screen" },
+  { route: "/profile", consumer: "MyPageScreen", kind: "screen" },
   { route: "/account", consumer: "AccountScreen", kind: "screen" },
   {
     route: "/account/login",
@@ -129,10 +129,10 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   },
   {
     route: "/account/permissions",
-    consumer: "AccountPermissionsScreen",
-    kind: "screen"
+    consumer: "PermissionsRoute → /settings",
+    kind: "redirect"
   },
-  { route: "/settings", consumer: "SettingsScreen", kind: "screen" },
+  { route: "/settings", consumer: "AccountSettingsScreen", kind: "screen" },
   { route: "/settings/api", consumer: "ApiSettingsScreen", kind: "screen" },
   { route: "/admin", consumer: "AdminScreen (dashboard)", kind: "screen" },
   { route: "/admin/access", consumer: "AdminScreen (access)", kind: "screen" },
@@ -170,6 +170,9 @@ const expectedRoutes: readonly ExpectedRoute[] = [
 const integratedFeatureRoutes = [
   // R11a 連絡先の編集（b5 #42–#44）。
   "/contacts/edit/[id]",
+  "/settings/[section]",
+  "/settings/integrations",
+  "/settings/iorbit",
   "/plans/flow/[intakeId]",
   "/plans/drafts/[draftId]/edit",
   "/plans/[planId]/types/[itemId]",

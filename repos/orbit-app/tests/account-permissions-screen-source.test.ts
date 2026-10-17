@@ -27,21 +27,11 @@ test("account screen links to the native permissions center", () => {
 // Server-settings availability, order before login and its actual destination
 // are exercised on the rendered guest screen in ink-signal-settings-account.
 
-test("account permissions route renders a native staged permission center", () => {
-  assert.equal(existsSync(screenPath), true);
+test("R18a account permissions route redirects to inline settings permissions", () => {
+  assert.equal(existsSync(screenPath), false);
   assert.equal(existsSync(routePath), true);
 
-  const screenSource = readFileSync(screenPath, "utf8");
   const routeSource = readFileSync(routePath, "utf8");
-
-  assert.match(routeSource, /AccountPermissionsScreen/u);
-  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.permissions/u);
-  assert.match(screenSource, /calendarPermissionRequestPath/u);
-  assert.match(screenSource, /permissionStatesToView/u);
-  assert.match(screenSource, /calendarPermissionRequestToView/u);
-  assert.match(screenSource, /locale\.t\("permissions\.title"\)/u);
-  assert.equal(zh["permissions.title"], "权限中心");
-  assert.match(screenSource, /\.post<unknown>\(/u);
-  assert.match(screenSource, /permissions\.requestCalendar/u);
-  assert.equal(zh["permissions.requestCalendar"], "申请日历复核");
+  assert.match(routeSource, /Redirect/u);
+  assert.match(routeSource, /href="\/settings"/u);
 });

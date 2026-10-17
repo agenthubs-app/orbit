@@ -10,7 +10,8 @@ import {
   resetAppearanceForTests,
   setAppearanceChoice,
 } from "../src/design/appearance";
-import { AppearanceOptions } from "../src/screens/settings/AppearanceOptions";
+import { AccountSettingsContent } from "../src/screens/me/AccountSettingsContent";
+import { createTranslator } from "../src/i18n/messages";
 import { renderToHtml, renderedText } from "./helpers/render";
 
 // R01 / SC-R01-06: the App follows the system until the person picks light or
@@ -70,11 +71,11 @@ test("Settings shows automatic, light and dark as one choice with the current on
   resetAppearanceForTests();
   t.mock.method(Appearance, "setColorScheme", () => undefined);
   await loadAppearancePreference(memoryStorage({ [APPEARANCE_STORAGE_KEY]: "dark" }));
-  const view = <AppearanceOptions />;
+  const view = <AccountSettingsContent t={createTranslator("zh")} name="Test" email="" language="zh" appearance={getAppearanceChoice()} development={false} permissions={[]} onOpen={() => {}} onLanguage={() => {}} onAppearance={choice => void setAppearanceChoice(choice)} onSignOut={() => {}} />;
   const html = renderToHtml(view);
-  assert.match(html, /role="radiogroup"/u);
-  assert.equal((html.match(/role="radio"/gu) ?? []).length, 3);
-  assert.equal((html.match(/aria-checked="true"/gu) ?? []).length, 1);
+  assert.equal((html.match(/role="tablist"/gu) ?? []).length, 2);
+  assert.equal((html.match(/role="tab"/gu) ?? []).length, 6);
+  assert.equal((html.match(/aria-selected="true"/gu) ?? []).length, 2);
   // Fallback locale is Chinese in the render harness.
   const text = renderedText(view);
   for (const label of ["跟随系统", "浅色", "深色"]) assert.ok(text.includes(label), `missing ${label}: ${text}`);

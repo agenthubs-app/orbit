@@ -2,7 +2,7 @@ import * as Crypto from "expo-crypto";
 import { useRouter, type Href } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppScreen } from "../../components/AppScreen";
-import { Button, Card, IconButton, OfflineBar, Skeleton, UiText } from "../../components/ui";
+import { Button, Card, IconButton, Skeleton, UiText } from "../../components/ui";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { HostEventsRow } from "../host/HostEventsRow";
@@ -10,6 +10,8 @@ import { accountDestination, createAccountApi } from "./account-api";
 import { MyPageContent, type AccountProfileData } from "./MyPageContent";
 import { useAccountProfile } from "./useAccountProfile";
 import { useAccountDesign } from "./useAccountDesign";
+import { AccountCopyNotice } from "./AccountCopyNotice";
+import { accountCompletionDestination } from "./account-response";
 
 export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { scopeKey: string; isScopeCurrent: () => boolean; completionNext?: string | null }) {
   const router = useRouter();
@@ -25,7 +27,12 @@ export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { sco
   const [error, setError] = useState(false);
   const saving = useRef(false);
   const controller = useRef<AbortController | null>(null);
+  const completionHandled = useRef(false);
   const data = saved ?? state.data;
+  useEffect(() => {
+    const destination = accountCompletionDestination(data, completionNext, state.offline);
+    if (!completionHandled.current && destination && isScopeCurrent()) { completionHandled.current = true; router.replace(destination as Href); }
+  }, [completionNext, data, state.offline, isScopeCurrent, router]);
   useEffect(() => {
     const abort = new AbortController(); controller.current = abort;
     if (designMode) {
@@ -36,7 +43,9 @@ export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { sco
     void api.summaries(abort.signal).then(value => { if (!abort.signal.aborted && isScopeCurrent()) setSummaries(value); });
     return () => abort.abort();
   }, [api, isScopeCurrent, designMode, design?.fixtures, design?.variant]);
-  useEffect(() => { setSaved(null); }, [state.data]);
+  useEffect(() => {
+    if (saved?.profile && state.data?.profile && Date.parse(state.data.profile.updatedAt) >= Date.parse(saved.profile.updatedAt)) setSaved(null);
+  }, [state.data, saved]);
   const profileId = data?.profile?.id;
   const needsCandidates = Boolean(data?.profile?.offering?.length && !data.profile.seeking?.length);
   useEffect(() => {
@@ -60,13 +69,18 @@ export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { sco
       else setError(true);
     } finally { saving.current = false; }
   }
-  return <AppScreen title={t("me.title")} headerActions={<IconButton icon="settings" accessibilityLabel={t("me.settings")} onPress={() => open("/settings")} />}>
-    <OfflineBar offline={state.offline} pending={0} />
+  return <AppScreen title={t("me.title")} headerActions={
+      <IconButton icon="settings" accessibilityLabel={t("me.settings")} onPress={() => open("/settings")} />}>
+    <AccountCopyNotice copy={state.copy} language={language} t={t} />
     {state.resource.kind === "loading" ? <Skeleton onRetry={state.resource.refresh} /> : null}
-    {!data && state.resource.kind !== "loading" ? <Card><UiText>{t("me.loadError")}</UiText><Button label={t("me.retry")} onPress={state.resource.refresh} /></Card> : null}
+    {!data && state.resource.kind !== "loading" ? <Card><UiText>{t(state.resource.kind === "offline" ? "sync.notOnDevice" : "me.loadError")}</UiText>
+      <Button label={t("me.retry")} onPress={state.resource.refresh} /></Card> : null}
     {error ? <UiText accessibilityRole="alert">{t("me.saveError")}</UiText> : null}
-    {data ? <MyPageContent data={data} t={t} candidates={state.offline ? [] : candidates} unread={summaries.unread} going={summaries.going}
+    {completionNext && data && !data.onboarding ? <UiText accessibilityRole="alert">{t("profile.completionUnconfirmed")}</UiText> : null}
+    {completionNext && data?.onboarding?.status === "incomplete" ?
+      <Button label={t("profile.editPageTitle")} onPress={() => router.push(`/profile/onboarding?next=${encodeURIComponent(completionNext)}` as Href)} /> : null}
+    {data ?
+      <MyPageContent data={data} t={t} candidates={state.offline ? [] : candidates} unread={summaries.unread} going={summaries.going}
       hostEntry={summaries.host ? <HostEventsRow summary={summaries.host} /> : null} onOpen={open} onCandidate={(value, accept) => void candidate(value, accept)} /> : null}
-    {completionNext && data?.completeness.status === "ready" ? <Button label={t("profile.done")} onPress={() => router.replace(completionNext as Href)} /> : null}
   </AppScreen>;
 }
