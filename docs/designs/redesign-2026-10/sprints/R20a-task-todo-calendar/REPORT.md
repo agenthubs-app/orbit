@@ -292,6 +292,8 @@ SC-08 parity commit は `794ed2987`（12 paths）。その時点の fresh full �
 
 この full は committed HEAD に加え、承認待ちの六つの SC-09 untracked paths を default discovery で含む。handler / client injected checks は走るが accepted Sprint result ではない。SQL regression `exact resolver matches valid lifecycle page but never downloads whole graphs or foreign payloads` は local DB URL なしで **SKIP**。六 paths に failure はなかったが、その skip / compile は resolver の実装完了を意味しない。files は未 stage・未 commit のまま保持し、全量に入った gated worktree additions として限定する。
 
+audit 修正の exact three-path commit は `378c84af8`。この committed tree で同じ pristine sanitizer / heavy.sh d を使った再全量 `web-full-378c84af8.log` / session 38906 は **7,641 tests / 6,583 pass / 33 fail / 1,025 skip、exit 1、225.0 秒**。`web-full-378c84af8-comparison.json` の exact name 比較で、pristine の **31 件すべて再現**、追加は上述 doors animation assertion と Modal typecheck の **2 件**。D-owned `visible controls do not rely on missing static behavior evidence` は full 内でも **pass** に変わり、局所 scanner のみの成功ではない。typecheck の production error は依然 Modal width 一件のみ。doors は元の変更していない test で再失敗しており、diagnostic 2/2 を全量成功に置換しない。六つの gated SC-09 paths は同じ untracked 状態で discovery に入り、SQL regression は再び SKIP、failure はなし。新規 failure 0 / suite-green / SC-16 完了とはしない。tracked tree を変更せず走行し、終了後の index は空、heavy lock は解放済み。
+
 ## 请求
 
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。
