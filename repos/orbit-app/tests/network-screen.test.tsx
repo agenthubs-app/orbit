@@ -16,11 +16,19 @@ import React from "react";
 import { View } from "react-native";
 const card = (id, name, org, role, extra) => ({ id, displayName: name, organization: org, role, sourceType: "manual", status: "active", pendingInitialization: false, nextActionPreview: "", valueTypes: [], updatedAt: "2026-10-01T00:00:00.000Z", ...extra });
 const row = (c, minute, extraDetail) => ({ id: c.id, card: c, tags: [], search: { text: [c.displayName, c.role, c.organization].join(" "), occurredAt: "2026-10-01T00:0" + minute + ":00.000000Z", updatedAt: "2026-10-01T00:0" + minute + ":00.000000Z", error: null },
-  detail: { id: c.id, displayName: c.displayName, ...extraDetail } });
+  detail: extraDetail?.state ? extraDetail : { id: c.id, displayName: c.displayName, ...extraDetail } });
 const defaults = () => [
-  row(card("c-ito", "伊藤 直子", "株式会社ハルモニア", "CFO", { density: 3, sourceChip: "meishi", metKind: "event", addedAt: "2026-10-05T00:00:00.000Z", primaryIndustryId: "finance_investment", region: { countryCode: "JP", city: "Tokyo" } }), 5),
+  row(card("c-ito", "伊藤 直子", "株式会社ハルモニア", "CFO", { density: 3, sourceChip: "meishi", metKind: "event", addedAt: "2026-10-05T00:00:00.000Z", primaryIndustryId: "finance_investment", region: { countryCode: "JP", city: "Tokyo" } }), 5,
+    { state: "success", contact: { id: "c-ito", displayName: "伊藤 直子", organization: "株式会社ハルモニア", role: "CFO", status: "nurture", primaryIndustryId: "finance_investment", primaryIndustryLabel: "金融・投資", region: { countryCode: "JP", city: "Tokyo" },
+      primaryEmail: "ito@example.test", primaryPhone: "", nextAction: "決算資料のお礼を送る", tags: ["CFO"], publicProfile: { offering: ["資本政策の助言"], seeking: ["製造業 SaaS"] },
+      notes: [{ noteId: "n1", body: "DD の資料リストを受領", kind: "memo", createdAt: "2026-10-06T01:00:00.000Z" }],
+      lastInteraction: { occurredAt: "2026-10-06T01:00:00.000Z", summary: "DD の資料リストを受領" },
+      fieldHistory: [{ field: "role", previous: "経理部長", next: "CFO", source: "manual", at: "2026-10-02T00:00:00.000Z" }] } }),
   row(card("c-takahashi", "高橋 美咲", "青葉ベンチャーズ", "パートナー", { density: 2, sourceChip: "meishi", metKind: "event", addedAt: "2026-10-04T00:00:00.000Z", primaryIndustryId: "finance_investment" }), 4),
-  row(card("c-suzuki", "鈴木 大輔", "北辰製作所", "DX 推進室 室長", { density: 2, sourceChip: "self", metKind: "referral", addedAt: "2026-09-04T00:00:00.000Z", primaryIndustryId: "manufacturing_supply_chain" }), 3),
+  row(card("c-suzuki", "鈴木 大輔", "北辰製作所", "DX 推進室 室長", { density: 2, sourceChip: "self", metKind: "referral", addedAt: "2026-09-04T00:00:00.000Z", primaryIndustryId: "manufacturing_supply_chain" }), 3,
+    { state: "success", contact: { id: "c-suzuki", displayName: "鈴木 大輔", organization: "北辰製作所", role: "DX 推進室 室長", status: "active", primaryEmail: "s@example.test", primaryPhone: "", nextAction: "", tags: [],
+      publicProfile: { offering: ["製造業の現場ネットワーク"], seeking: ["SaaS の販路"] }, notes: [], lastInteraction: null,
+      fieldHistory: [{ field: "role", previous: "室長代理", next: "DX 推進室 室長", source: "invite_sync", at: "2026-10-12T00:00:00.000Z" }] } }),
   row(card("c-ishikawa", "石川 陽介", "石川デザイン事務所", "代表", { density: 1, sourceChip: "manual", metKind: "other", addedAt: "2026-10-03T00:00:00.000Z" }), 2),
   // An older mirror row: no R11a fields; the device fills density / chip / met from the detail it holds.
   row(card("c-legacy", "前田 隼人", "", "", { sourceType: "event_import" }), 1, { primaryPhone: "090", cardNotes: "出会い：紹介（田中さん）" }),
@@ -31,7 +39,7 @@ export const state = window.fixture = { requests: [], navigation: [], syncs: 0, 
 export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const useGlobalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => "/contacts";
-export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, replace(href) { state.navigation.push("replace:" + href); } });
+export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, navigate(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, replace(href) { state.navigation.push("replace:" + href); } });
 export const useFocusEffect = () => undefined;
 export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection = ({ kind }) => ({
@@ -46,11 +54,18 @@ export const useApiResource = (path, _isEmpty, options) => {
   return options?.enabled === false ? { kind: "loading", refreshing: false, refresh() {} } : offline;
 };
 const goal = { ids: ["c-takahashi"], truncated: false, asOf: "2026-10-18T00:00:00.000Z", links: [{ contactId: "c-takahashi", label: "VC パートナー", talked: true }], followUpContactIds: ["c-suzuki"] };
+const offlineResult = { success: false, status: 0, error: { message: "offline" } };
+const answers = {
+  "/api/contacts/goal-related-ids": goal,
+  "/api/contacts/value-lines?ids=c-ito&lang=en": { lines: [{ contactId: "c-ito", state: "ready", relation: "Led two Series A raises as CFO.", evidence: ["card", "memo:面談メモ"] }] },
+  "/api/agent/plans/v2/contacts/c-ito/fit": { contactId: "c-ito", fits: [{ planId: "p1", goal: "シリーズA", itemId: "cfo", shortLabel: "CFO 経験者", emoji: "📊", status: "candidate", reason: "役職が CFO" }] },
+  "/api/invite-codes/connections/c-suzuki": { contactId: "c-suzuki", connectedAt: "2026-10-08T03:00:00.000Z", via: { code: "7Q2K-8M4P" }, sharedByMe: ["organization"], sharedByPeer: ["organization", "email", "offering", "seeking"], pausedFields: ["email"] },
+};
 const client = {
-  async get(path) { state.requests.push("get:" + path); return state.online ? { success: true, status: 200, data: goal } : { success: false, status: 0, error: { message: "offline" } }; },
-  async post(path) { state.requests.push("post:" + path); return { success: false, status: 0, error: { message: "offline" } }; },
-  async patch(path) { state.requests.push("patch:" + path); return { success: false, status: 0, error: { message: "offline" } }; },
-  async delete(path) { state.requests.push("delete:" + path); return { success: false, status: 0, error: { message: "offline" } }; },
+  async get(path) { state.requests.push("get:" + path); if (!state.online) return offlineResult; return Object.hasOwn(answers, path) ? { success: true, status: 200, data: answers[path] } : { success: false, status: 404, error: { code: "NOT_FOUND", message: "nope" } }; },
+  async post(path, options) { state.requests.push("post:" + path + (options?.body ? " " + JSON.stringify(options.body) : "")); return state.online ? { success: true, status: 200, data: {} } : offlineResult; },
+  async patch(path, options) { state.requests.push("patch:" + path + " " + JSON.stringify(options?.body ?? null)); return state.online ? { success: true, status: 200, data: {} } : offlineResult; },
+  async delete(path) { state.requests.push("delete:" + path); return state.online ? { success: true, status: 200, data: {} } : offlineResult; },
 };
 export const useOrbitApiClient = () => client;
 const authSession = { ready: true, signedIn: true, accountId: "account:one", actorId: "account:one", cookieHeader: "", user: { id: "account:one" } };
@@ -67,11 +82,21 @@ test.before(async () => {
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
         import { NetworkScreen } from "./src/screens/network/NetworkScreen";
+        import { NetworkContactScreen } from "./src/screens/network/NetworkContactScreen";
+        import { ContactEditScreen } from "./src/screens/network/ContactEditScreen";
+        import { ToastProvider, UiPortalHost } from "./src/components/ui";
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
         const language = "ja";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
-        createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}><NetworkScreen scopeKey="scope" now={() => Date.parse("2026-10-18T03:00:00.000Z")} /></OrbitLocaleContext.Provider>);`,
+        const now = () => Date.parse("2026-10-18T03:00:00.000Z");
+        function Root() {
+          const [screen, setScreen] = React.useState(window.initialFixture?.screen ?? "list");
+          window.showScreen = setScreen;
+          const id = window.initialFixture?.params?.id ?? "c-ito";
+          return screen === "detail" ? <NetworkContactScreen contactId={id} now={now} /> : screen === "edit" ? <ContactEditScreen contactId={id} now={now} /> : <NetworkScreen scopeKey="scope" now={now} />;
+        }
+        createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}><UiPortalHost><ToastProvider><Root /></ToastProvider></UiPortalHost></OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
     bundle: true, write: false, format: "iife", jsx: "automatic",
@@ -83,10 +108,10 @@ test.before(async () => {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "network-native" }));
         plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient|useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "network-native" }));
         plugin.onResolve({ filter: /^react-native-reanimated$|^react-native-gesture-handler$|^expo-haptics$|^expo-blur$|^react-native-svg$/ }, (args) => ({ path: `${process.cwd()}/tests/helpers/stubs/${args.path}.js` }));
-        plugin.onResolve({ filter: /^@expo\/vector-icons$|^expo-crypto$|^expo-camera$|^expo-image-picker$/ }, () => ({ path: "icons", namespace: "network-native" }));
+        plugin.onResolve({ filter: /^@expo\/vector-icons$|^expo-crypto$|^expo-camera$|^expo-image-picker$|^expo-clipboard$|^expo-sharing$|^expo-linking$|^expo-web-browser$/ }, () => ({ path: "icons", namespace: "network-native" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "network-native" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
-        plugin.onLoad({ filter: /^native$/, namespace: "network-native" }, () => ({ contents: `export * from "react-native-web";`, loader: "js", resolveDir: process.cwd() }));
-        plugin.onLoad({ filter: /^icons$/, namespace: "network-native" }, () => ({ contents: "const Stub=()=>null; export const Ionicons=Stub; export default Stub; export const Svg=Stub, Path=Stub, Circle=Stub, G=Stub, Rect=Stub, Line=Stub, Defs=Stub, LinearGradient=Stub, RadialGradient=Stub, Stop=Stub, Text=Stub, Ellipse=Stub, Polygon=Stub, Polyline=Stub, ClipPath=Stub, Use=Stub, Symbol=Stub; export const BlurView=Stub; export const impactAsync=async()=>{}; export const selectionAsync=async()=>{}; export const notificationAsync=async()=>{}; export const ImpactFeedbackStyle={}; export const NotificationFeedbackType={}; export const randomUUID=()=>'00000000-0000-4000-8000-000000000001'; export const CameraView=Stub; export const useCameraPermissions=()=>[null,async()=>null]; export const launchImageLibraryAsync=async()=>({canceled:true}); export const requestMediaLibraryPermissionsAsync=async()=>({granted:false});", loader: "js" }));
+        plugin.onLoad({ filter: /^native$/, namespace: "network-native" }, () => ({ contents: `export * from "react-native-web"; export const findNodeHandle = () => null;`, loader: "js", resolveDir: process.cwd() }));
+        plugin.onLoad({ filter: /^icons$/, namespace: "network-native" }, () => ({ contents: "const Stub=()=>null; export const Ionicons=Stub; export default Stub; export const Svg=Stub, Path=Stub, Circle=Stub, G=Stub, Rect=Stub, Line=Stub, Defs=Stub, LinearGradient=Stub, RadialGradient=Stub, Stop=Stub, Text=Stub, Ellipse=Stub, Polygon=Stub, Polyline=Stub, ClipPath=Stub, Use=Stub, Symbol=Stub; export const BlurView=Stub; export const impactAsync=async()=>{}; export const selectionAsync=async()=>{}; export const notificationAsync=async()=>{}; export const ImpactFeedbackStyle={}; export const NotificationFeedbackType={}; export const setStringAsync=async()=>true; export const getStringAsync=async()=>''; export const shareAsync=async()=>{}; export const isAvailableAsync=async()=>false; export const createURL=(p)=>p; export const openURL=async()=>{}; export const openBrowserAsync=async()=>({}); export const randomUUID=()=>'00000000-0000-4000-8000-000000000001'; export const CameraView=Stub; export const useCameraPermissions=()=>[null,async()=>null]; export const launchImageLibraryAsync=async()=>({canceled:true}); export const requestMediaLibraryPermissionsAsync=async()=>({granted:false});", loader: "js" }));
       },
     }],
   });
@@ -107,7 +132,7 @@ test.after(async () => {
 async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown> = {}): Promise<Page> {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("pageerror", (error) => { errors.push(error.message); console.log("PAGEERROR", error.message); });
   await page.addInitScript((initialFixture) => { (window as any).initialFixture = initialFixture; }, patch);
   t.after(async () => { await page.close(); assert.deepEqual(errors, [], "no page errors"); });
   await page.goto(url);
@@ -219,4 +244,100 @@ test("ten or more people: the density card with 身元だけ / 名刺レベル /
   for (const label of ["身元だけ", "名刺レベル", "関係まで"]) await page.getByText(label, { exact: true }).waitFor();
   await page.getByText("12人 · 今月 +0", { exact: true }).waitFor();
   assert.equal(await page.getByTestId("network-invite-card").count(), 0);
+});
+
+test("detail (app.html #29): head card, the type confirm card, why (value line), next step, offering / seeking, interactions, 以前の値", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-ito" } });
+  await page.getByTestId("network-contact-head").getByText("伊藤 直子", { exact: true }).waitFor();
+  await page.getByText("関係構築", { exact: true }).waitFor();
+  await page.getByText("金融・投資", { exact: true }).waitFor();
+  await page.getByText("東京", { exact: true }).waitFor();
+  await page.getByTestId("network-fit-card").getByText("プランの「CFO 経験者」に当てはまりそうです", { exact: true }).waitFor();
+  await page.getByText("Led two Series A raises as CFO.", { exact: true }).waitFor();
+  await page.getByText("決算資料のお礼を送る", { exact: true }).waitFor();
+  await page.getByText("力になれること", { exact: true }).waitFor();
+  await page.getByText("資本政策の助言", { exact: true }).waitFor();
+  await page.getByTestId("network-interactions").getByText("DD の資料リストを受領", { exact: true }).waitFor();
+  await page.getByTestId("network-previous-values").getByRole("button", { name: "以前の値" }).click();
+  await page.getByText("経理部長", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "当てはまる" }).click();
+  await page.waitForFunction(() => !document.querySelector("[data-testid='network-fit-card']"));
+  assert.ok((await requests(page)).some((path) => path.startsWith("post:/api/agent/plans/v2/p1/types/cfo/candidates/c-ito/decision") && path.includes("\"decision\":\"accept\"")));
+  await page.getByRole("button", { name: "下書きを作成" }).click();
+  assert.ok((await navigation(page)).some((href) => href.includes("prefillIntent")));
+  await page.getByRole("button", { name: "面談の日程提案" }).click();
+  await page.getByRole("dialog").first().waitFor({ timeout: 5000 }).catch(() => undefined);
+});
+
+test("detail of an invite-linked person: 本人入力, their fields with 本人 / 同期停止, connected via, their latest update (b9 #20 / #21)", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-suzuki" } });
+  await page.getByText("本人が入力 · 相手の更新は自動で反映されます", { exact: true }).waitFor();
+  await page.getByTestId("network-invite-fields").getByText("同期停止", { exact: true }).waitFor();
+  await page.getByText("招待コード 7Q2K-8M4P · 10/8", { exact: true }).waitFor();
+  await page.getByText("鈴木 大輔さんがプロフィールを更新しました", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "その他の操作" }).click();
+  await page.getByRole("button", { name: "共有する項目" }).waitFor();
+  await page.getByRole("button", { name: "つながりを解除" }).waitFor();
+});
+
+test("detail offline: the device copy still shows; network-only blocks are hidden, nothing errors", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-ito" }, status: "stale", online: false });
+  await page.getByTestId("network-contact-head").getByText("伊藤 直子", { exact: true }).waitFor();
+  assert.equal(await page.getByTestId("network-fit-card").count(), 0);
+  assert.equal(await page.getByText("Led two Series A raises as CFO.", { exact: true }).count(), 0);
+  await page.getByText("決算資料のお礼を送る", { exact: true }).waitFor();
+});
+
+test("delete online: confirm → DELETE → back to the list, gone, with 元に戻す (restore)", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-ito" } });
+  await page.getByTestId("network-contact-head").waitFor();
+  await page.getByRole("button", { name: "その他の操作" }).click();
+  await page.getByRole("button", { name: "削除" }).click();
+  await page.getByText("伊藤 直子さんを削除しますか？", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "削除する" }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.includes("delete:/api/contacts/c-ito"));
+  assert.ok((await navigation(page)).includes("/contacts"));
+  await page.evaluate(() => (window as any).showScreen("list"));
+  await page.getByText("高橋 美咲", { exact: true }).waitFor();
+  assert.equal(await page.getByTestId("network-row-c-ito").count(), 0, "gone from the list");
+  await page.getByText("削除しました", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "元に戻す" }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.includes("post:/api/contacts/c-ito/restore"));
+  await page.getByTestId("network-row-c-ito").waitFor();
+});
+
+test("delete offline goes to the write queue: hidden now, sent when the list opens online", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-ishikawa" }, online: false });
+  await page.getByTestId("network-contact-head").waitFor();
+  await page.getByRole("button", { name: "その他の操作" }).click();
+  await page.getByRole("button", { name: "削除" }).click();
+  await page.getByRole("button", { name: "削除する" }).click();
+  await page.waitForFunction(() => (window as any).fixture.navigation.includes("/contacts"));
+  await page.evaluate(() => (window as any).showScreen("list"));
+  await page.getByText("オンラインになったら削除します", { exact: true }).waitFor();
+  assert.equal(await page.getByTestId("network-row-c-ishikawa").count(), 0);
+  await page.evaluate(() => { (window as any).fixture.online = true; (window as any).showScreen("detail"); });
+  await page.evaluate(() => (window as any).showScreen("list"));
+  await page.waitForFunction(() => (window as any).fixture.requests.filter((path: string) => path === "delete:/api/contacts/c-ishikawa").length >= 2);
+});
+
+test("edit (b5 #42 / #43): fields → PATCH …/fields, industry / level / stage / tags → PATCH …/:id; offline cannot save", async (t) => {
+  const page = await open(t, { screen: "edit", params: { id: "c-ito" } });
+  await page.getByTestId("network-edit").waitFor();
+  await page.getByRole("textbox", { name: "役職" }).fill("CFO・取締役");
+  await page.getByTestId("network-edit-industry").click();
+  await page.getByTestId("network-industry-picker").waitFor();
+  await page.getByRole("radio", { name: "ベンチャー投資" }).click();
+  await page.getByRole("tab", { name: "役職層" }).click();
+  await page.getByRole("radio", { name: "経営層" }).click();
+  await page.getByRole("button", { name: "決定" }).click();
+  await page.getByRole("tab", { name: "知り合い" }).click();
+  await page.getByRole("button", { name: "保存" }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.some((path: string) => path.startsWith("patch:/api/contacts/c-ito/fields")));
+  const patches = (await requests(page)).filter((path) => path.startsWith("patch:"));
+  assert.ok(patches.some((path) => path.includes("/fields") && path.includes("CFO・取締役")));
+  assert.ok(patches.some((path) => path.startsWith("patch:/api/contacts/c-ito {") && path.includes("finance_investment.venture_capital") && path.includes("c_level") && path.includes("\"status\":\"active\"")));
+  const offline = await open(t, { screen: "edit", params: { id: "c-ito" }, status: "stale", online: false });
+  await offline.getByText("編集にはインターネット接続が必要です", { exact: true }).waitFor();
+  assert.equal(await offline.getByRole("button", { name: "保存" }).isDisabled(), true);
 });

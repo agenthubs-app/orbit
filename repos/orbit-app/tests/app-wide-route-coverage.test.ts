@@ -31,9 +31,9 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { route: "/ai", consumer: "AiScreen", kind: "screen" },
   { route: "/ai/[id]", consumer: "AiConversationScreen", kind: "screen" },
   { route: "/agent", consumer: "AgentActionsScreen", kind: "screen" },
-  { route: "/contacts", consumer: "ContactsScreen (overview)", kind: "screen" },
-  { route: "/contacts/list", consumer: "ContactsScreen (list)", kind: "screen" },
-  { route: "/contacts/[id]", consumer: "ContactDetailScreen", kind: "screen" },
+  { route: "/contacts", consumer: "NetworkScreen", kind: "screen" },
+  { route: "/contacts/list", consumer: "Redirect", kind: "alias" },
+  { route: "/contacts/[id]", consumer: "NetworkContactScreen", kind: "screen" },
   { route: "/contacts/new", consumer: "AddContactScreen", kind: "screen" },
   { route: "/contacts/dashboard", consumer: "ContactsDashboardScreen", kind: "screen" },
   { route: "/contacts/graph", consumer: "ContactsDashboardScreen", kind: "alias" },
@@ -166,6 +166,8 @@ const expectedRoutes: readonly ExpectedRoute[] = [
 // These functional routes were integrated after the 58-route visual snapshot.
 // Inclusion here does not extend that snapshot's native acceptance evidence.
 const integratedFeatureRoutes = [
+  // R11a 連絡先の編集（b5 #42–#44）。
+  "/contacts/edit/[id]",
   "/plans/flow/[intakeId]",
   "/plans/drafts/[draftId]/edit",
   "/plans/[planId]/types/[itemId]",

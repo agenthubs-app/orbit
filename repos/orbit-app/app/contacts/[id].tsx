@@ -1,10 +1,10 @@
 import { useIsFocused, useLocalSearchParams } from "expo-router";
-import { useCallback, useMemo, useRef } from "react";
 import { useOrbitAuthSession } from "../../src/api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../src/api/ApiBaseUrlProvider";
-import { ContactDetailScreen } from "../../src/screens/contacts/ContactDetailScreen";
+import { NetworkContactScreen } from "../../src/screens/network/NetworkContactScreen";
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 
+// R11a: the new 連絡先詳細 (src/screens/network/NetworkContactScreen).
 function ContactDetailRoute() {
   const focused = useIsFocused();
   const auth = useOrbitAuthSession();
@@ -12,12 +12,7 @@ function ContactDetailRoute() {
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const contactId = Array.isArray(id) ? id[0] : id;
   const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(auth.actorId && contactId);
-  const sequence = useRef(0);
-  const scope = useMemo(() => ({ key: String(++sequence.current), enabled }), [enabled, auth.actorId, auth.cookieHeader, server.baseUrl, contactId]);
-  const latest = useRef(scope);
-  latest.current = scope;
-  const isScopeCurrent = useCallback(() => latest.current === scope && scope.enabled, [scope]);
-  return enabled ? <ContactDetailScreen key={scope.key} scopeKey={scope.key} isScopeCurrent={isScopeCurrent} /> : null;
+  return enabled && contactId ? <NetworkContactScreen key={`${auth.actorId}:${contactId}`} contactId={contactId} /> : null;
 }
 
 export default withOrbitPrivateRoute(ContactDetailRoute);

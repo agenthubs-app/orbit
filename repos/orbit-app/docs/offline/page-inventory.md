@@ -7,9 +7,8 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 39 |
+| 能断网看（本地优先） | 40 |
 | └ 由 Sprint 0108 实现 | 8 |
-| └ 由 Sprint 0116 实现 | 3 |
 | └ 由 Sprint 0117 实现 | 4 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
@@ -17,7 +16,7 @@
 | └ 由 Sprint 0137 实现 | 1 |
 | 只能在线 | 52 |
 | 不读账号数据（布局、跳转、本机设置） | 27 |
-| 合计（路由文件） | 118 |
+| 合计（路由文件） | 119 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -34,9 +33,10 @@
 | `/inbox/sources/:id` | 通知来源（同通知详情） | 0118 | 域 inbox-notifications | 同通知详情 |
 | `/chat` | 对话列表 | 0119 | 域 relationship-conversations | 「截至」 |
 | `/chat/:id` | 对话 | 0119 | 域 relationship-messages，按对话按页从本机读（0131） | 「截至」；发送需要联网 |
-| `/contacts` | 联系人标签 | 0116 | 域 contacts；关系搜索建议 /api/search/suggestions 改为点开搜索时才读（0131） | 「截至」；本机搜索；关系搜索、深度搜索需要联网 |
-| `/contacts/list` | 联系人列表 | 0116 | 域 contacts | 「截至」；本机搜索 |
-| `/contacts/:id` | 联系人详情 | 0116 | 域 contacts；关系价值 /api/analysis/relationship-value/:id、聊天资格在线读 | 「截至」；编辑、起草消息、聊天资格需要联网 |
+| `/contacts` | 人脈（一覧：页签、絞り込み、搜索；R11a） | R11a | 域 contacts、域 tasks（要フォロー）；目標に関係 / 跟进 id 读 /api/contacts/goal-related-ids 并缓存 | 「截至」；页签、絞り込み、本机搜索照常（计划 id 用上次缓存） |
+| `/contacts/list` | 旧联系人列表（R11a 起跳到 /contacts） | R11a | 无（跳转） | 跳到 /contacts |
+| `/contacts/:id` | 連絡先詳細（R11a） | R11a | 域 contacts；联网增强：/api/contacts/value-lines、/api/agent/plans/v2/contacts/:id/fit、/api/invite-codes/connections/:id | 「截至」；联网增强整块隐藏；删除进本机队列 |
+| `/contacts/edit/:id` | 連絡先の編集（R11a） | R11a | 域 contacts | 「截至」；保存需要联网；删除进本机队列 |
 | `/dashboard` | 看板 | 0117 | 域 dashboard-graph，本机计算；来源审计改为点「运行来源审计」才读 /api/audit/provenance，上次结果是页面副本 provenance-audit（0131） | 「截至」；重新计算、运行审计需要联网 |
 | `/contacts/dashboard` | 联系人分析 | 0117 | 域 dashboard-graph；AI 报告读 /api/mobile/contacts-dashboard?view=analysis | 「截至」；去 AI 分析需要联网 |
 | `/contacts/graph` | 联系人分析（结构分段） | 0117 | 域 dashboard-graph | 「截至」 |
@@ -162,7 +162,7 @@
 | `app/_layout.tsx` | `(根布局)` | device-only |
 | `app/(app)/_layout.tsx` | `(主页面分组)` | device-only |
 | `app/(app)/ai.tsx` | `/ai` | local-first (0118) |
-| `app/(app)/contacts.tsx` | `/contacts` | local-first (0116) |
+| `app/(app)/contacts.tsx` | `/contacts` | local-first (R11a) |
 | `app/(app)/events.tsx` | `/events` | local-first (0131) |
 | `app/(app)/inbox.tsx` | `/inbox` | local-first (0119) |
 | `app/(app)/profile.tsx` | `/profile` | local-first (0131) |
@@ -184,12 +184,13 @@
 | `app/ai/[id].tsx` | `/ai/:id` | local-first (0118) |
 | `app/chat.tsx` | `/chat` | local-first (0119) |
 | `app/chat/[id].tsx` | `/chat/:id` | local-first (0119) |
-| `app/contacts/[id].tsx` | `/contacts/:id` | local-first (0116) |
+| `app/contacts/[id].tsx` | `/contacts/:id` | local-first (R11a) |
 | `app/contacts/all-actions.tsx` | `/contacts/all-actions` | local-first (0131) |
 | `app/contacts/analysis/[dimension]/[bucketId].tsx` | `/contacts/analysis/:dimension/:bucketId` | local-first (0117) |
 | `app/contacts/dashboard.tsx` | `/contacts/dashboard` | local-first (0117) |
+| `app/contacts/edit/[id].tsx` | `/contacts/edit/:id` | local-first (R11a) |
 | `app/contacts/graph.tsx` | `/contacts/graph` | local-first (0117) |
-| `app/contacts/list.tsx` | `/contacts/list` | local-first (0116) |
+| `app/contacts/list.tsx` | `/contacts/list` | local-first (R11a) |
 | `app/contacts/new.tsx` | `/contacts/new` | online-only |
 | `app/contacts/new/drafts.tsx` | `/contacts/new/drafts` | online-only |
 | `app/contacts/new/import/[importId].tsx` | `/contacts/new/import/:importId` | online-only |

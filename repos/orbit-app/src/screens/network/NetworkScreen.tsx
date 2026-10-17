@@ -11,7 +11,7 @@ import type { ContactCardSummaryDTO } from "../../api/contract/contact-card-page
 import { ShellBackground } from "../../components/ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../components/ShellTopBar";
 import { TabPageBar } from "../../components/TabPageBar";
-import { Avatar, BottomSheet, Button, CategoryTabs, Chip, EmptyState, FilterOption, Icon, IconButton, OfflineBar, RetryCard, SampleTag, SearchField, Skeleton, UiPressable, UiText } from "../../components/ui";
+import { Avatar, BottomSheet, Button, CategoryTabs, Chip, EmptyState, FilterOption, Icon, IconButton, OfflineBar, RetryCard, SampleTag, SearchField, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { AddContactSheet } from "../add/AddContactSheet";
@@ -22,6 +22,9 @@ import {
   regionOptionLabel, toggleValue, tokyoMonthStart, topFacetOptions, type NetworkFilters, type NetworkRow, type NetworkTab,
 } from "./network-model";
 import { useNetworkList } from "./useNetworkList";
+import { cancelQueuedContactDelete, flushContactDeleteQueue, hiddenDeletedContactIds, readContactDeleteQueue, subscribeContactDeleteQueue, takeAnnouncedContactDelete, unhideDeletedContact } from "./contact-delete-queue";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useNetworkMerge } from "./useNetworkMerge";
 
 /** Below this many people the page shows the invite card and the locked analysis card (app.html #7), not the density card (#8). */
@@ -49,6 +52,7 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(remembered?.scrollY ?? 0);
   const merge = useNetworkMerge();
+  const deleted = useDeletedContacts();
   const monthStart = tokyoMonthStart(now());
 
   // その他 expands against the facets of the last summary (facets cover everyone, so they do not depend on the filters).
@@ -63,8 +67,8 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const empty = list.status === "ready" && total === 0;
   const rows = useMemo(() => {
     const goalIds = new Set(merge.goalIds);
-    return list.items.map((card) => networkRow(card, merge.links, goalIds));
-  }, [list.items, merge.goalIds, merge.links]);
+    return list.items.filter((card) => !deleted.has(card.id)).map((card) => networkRow(card, merge.links, goalIds));
+  }, [list.items, merge.goalIds, merge.links, deleted]);
 
   useEffect(() => { memory.set(scopeKey, { tab, filters, query, scrollY: scrollY.current }); }, [scopeKey, tab, filters, query]);
   useEffect(() => {
@@ -127,6 +131,45 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
 
 export const NETWORK_CHIP_COPY = { meishi: "network.chipMeishi", linkedin: "network.chipLinkedin", phone: "network.chipPhone", manual: "network.chipManual", self: "network.chipSelf", event: "network.chipEvent" } as const;
 const MET_COPY = { event: "network.metEvent", referral: "network.metReferral", visit: "network.metVisit", other: "network.metOther" } as const;
+
+/** SC-10：本机删除队列 + 「削除しました · 元に戻す」（Toast 挂在列表上，详情返回后已卸载）。 */
+function useDeletedContacts(): ReadonlySet<string> {
+  const auth = useOrbitAuthSession();
+  const client = useOrbitApiClient();
+  const toast = useToast();
+  const { t } = useOrbitLocale();
+  const [version, setVersion] = useState(0);
+  const [queued, setQueued] = useState<string[]>([]);
+  useEffect(() => subscribeContactDeleteQueue(() => setVersion((value) => value + 1)), []);
+  useEffect(() => {
+    if (!auth.actorId) return;
+    let live = true;
+    const actorId = auth.actorId;
+    void (async () => {
+      setQueued((await readContactDeleteQueue(actorId)).map((item) => item.contactId));
+      // 联网后补发离线时的删除（失败的留在队里）。
+      const flushed = await flushContactDeleteQueue(actorId, client);
+      if (live && (flushed.sent.length || flushed.dropped.length)) setQueued((await readContactDeleteQueue(actorId)).map((item) => item.contactId));
+    })();
+    return () => { live = false; };
+  }, [auth.actorId, client, version]);
+  useEffect(() => {
+    const announced = takeAnnouncedContactDelete();
+    if (!announced || !auth.actorId) return;
+    const actorId = auth.actorId;
+    toast.success(announced.queued ? t("network.delete.queued") : t("network.delete.done"), {
+      undo: () => {
+        void (async () => {
+          const stillQueued = await cancelQueuedContactDelete(actorId, announced.contactId);
+          const restored = stillQueued || (await client.post(`/api/contacts/${encodeURIComponent(announced.contactId)}/restore`)).success;
+          if (restored) { unhideDeletedContact(announced.contactId); toast.success(t("network.delete.restored")); }
+          else toast.error(t("network.delete.failed"));
+        })();
+      },
+    });
+  }, [version]); // eslint-disable-line react-hooks/exhaustive-deps
+  return useMemo(() => new Set([...queued, ...hiddenDeletedContactIds()]), [queued, version]); // eslint-disable-line react-hooks/exhaustive-deps
+}
 
 export function NetworkListRow({ row, first, onPress }: { row: NetworkRow; first: boolean; onPress: () => void }) {
   const { styles } = useStyles();
