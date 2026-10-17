@@ -2220,7 +2220,7 @@ const actSheet = `<div class="sheet actsheet"><div class="grab"></div><div class
   <div style="margin:12px 0 14px"><div class="eff">${ic('bell', 'sm')}主催者に取り消しが通知されます</div><div class="eff">${ic('ticket', 'sm')}参加費 ¥5,000 の返金は主催者の規定によります</div><div class="eff">${ic('users', 'sm')}会いたい人リスト（6名）と準備メモは残ります</div></div>
   <button class="btn danger block">参加を取り消す</button><button class="btn block focus">参加を続ける</button></div>`;
 const fsheet = `<div class="sheet"><div class="grab"></div><div class="row between" style="margin-bottom:10px"><b style="font-size:15px">絞り込み</b><button class="btn sm ghost">クリア</button></div>
-  ${[['時期', ['今週', '今月*', '来月']], ['場所', ['オンライン', '東京*', '大阪']], ['テーマ', ['資金調達*', 'SaaS*', '製造業DX']]].map(([g, os]) => `<div style="margin-top:10px"><div class="lbl" style="font-weight:700;margin-bottom:6px">${g}</div><div class="chips">${os.map(o => `<span class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</span>`).join('')}</div></div>`).join('')}
+  ${[['時期', ['今週', '今月*', '来月']], ['場所', ['オンライン', '東京*', '大阪']], ['テーマ', ['資金調達*', 'SaaS*', '製造業 DX']]].map(([g, os]) => `<div style="margin-top:10px"><div class="lbl" style="font-weight:700;margin-bottom:6px">${g}</div><div class="chips">${os.map(o => `<span class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</span>`).join('')}</div></div>`).join('')}
   <div class="row between" style="margin-top:12px;font-size:12.5px;font-weight:700">プランに合うものを優先<span class="tgl on"></span></div>
   <button class="btn primary block" style="height:44px;margin-top:12px">28件を表示</button></div>`;
 const ioDrawer = `<div class="sheet-scrim"></div><div class="io-drawer"><div class="row between"><b style="font-size:18px">会話</b><button class="lbtn">${ic('x', 'sm')}</button></div>
@@ -2247,7 +2247,7 @@ const drawerWeb = `<div class="overlay"></div><div class="drawer" style="display
   <div class="card" style="padding:14px 16px"><div class="lbl">次の一手</div><b style="font-size:13.5px">面談のお礼メールを下書き</b></div>
   <div class="card" style="padding:14px 16px"><div class="lbl">最近のやりとり</div><b style="font-size:13.5px">10/6 面談 · DD 資料リスト受領</b></div></div>`;
 const popover = `<div class="pop"><div class="row between"><b>テーマ</b><button class="btn sm ghost">クリア</button></div>
-  <div class="chips" style="margin-top:10px;gap:7px">${['資金調達*', 'SaaS*', '製造業DX', '採用', '経営管理', 'IPO 準備'].map(o => `<span class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</span>`).join('')}</div>
+  <div class="chips" style="margin-top:10px;gap:7px">${['資金調達*', 'SaaS*', '製造業 DX', '採用', '経営管理', 'IPO 準備'].map(o => `<span class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</span>`).join('')}</div>
   <div class="row" style="margin-top:14px;gap:8px"><span class="lbl">${kbd('Esc')} で閉じる</span><button class="btn primary sm" style="margin-left:auto">12件を表示</button></div></div>`;
 const ctxMenu = `<div class="ctxm"><button>${ic('right', 'sm')}開く</button><button>${ix('copy', 'sm')}コピー</button><hr><button class="del">${ix('trash', 'sm')}削除</button></div>`;
 const cConfirm = `<div class="confirm-card" style="padding:14px"><div class="row" style="gap:8px"><span class="emo sm lav">📝</span><b style="font-size:13px">プランに追加しますか？</b></div><div class="sub" style="margin:6px 0 10px">「小林さんに CVC 担当者の紹介を依頼」を今週のタスクに</div><div class="row" style="gap:8px"><button class="btn sm primary">追加する</button><button class="btn sm">やめる</button></div></div>`;
@@ -2662,7 +2662,7 @@ const V2 = (() => {
       <div class="v22m3">${m3}</div>
       <div class="v22tf"><span class="lbl">${r.skip ? '習熟済み · スキップ（満額）' : `${r.n} / ${p.tgt}人 · 1人 ${p.unit}点`}</span>${mbar(k, s)}</div></div>`; };
   /* イベント：人物タイプと分けて 1ブロック（おすすめ = 固定 5項目スコア順） */
-  const EVREC = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 'VC 約5名 · 起業家 約12名'], ['CFO Night Tokyo vol.18', '今夜 19:00 · 渋谷ストリーム', 74, 'VC 2名 · CFO 約10名'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 'CVC 約3名']];
+  const EVREC = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 'VC 約5名 · 起業家 約12名'], ['CFO Night Tokyo vol.18', '今夜 19:00 · 渋谷ストリーム', 74, 'VC 2名 · CFO 約10名'], ['製造業 DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 'CVC 約3名']];
   const evRing = sc => ring(42, 5, [{ v: sc, c: sc >= 70 ? 'var(--plum-700)' : sc >= 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:12px">${sc}</span>`);
   const evRow = ([n, d, sc, m]) => `<div class="v22ev">${evRing(sc)}<div class="meta"><b>${n}</b><div class="lbl">${d}</div><span class="chip lav" style="margin-top:4px">${m}</span></div></div>`;
   const evCard22 = (s, o = {}) => { const p = PER.ev, r = pts('ev', ST[s].ev);
@@ -2762,7 +2762,7 @@ const HW_TODO = {
 };
 const HW_PPL = { many: [NP[0], NP[2], NP[1], NP[3]], few: [NP[2], NP[0], NP[3]] };
 const HW_SEC = {
-  many: [['📨', 'blue', 'メール要約', '高橋さんから返信：「DD 資料は 10/20 までに」', 'Gmail のスレッドを要約 · あなただけに表示'], ['⏰', 'apricot', '期限', 'SaaS Summit の早割は明後日まで', '参加予定に入っていますが、まだ申し込んでいません'], ['🎯', 'lav', 'おすすめ', '製造業DXカンファレンス 大阪', 'CVC 担当者 約3名 · プランの Step 3 に合います']],
+  many: [['📨', 'blue', 'メール要約', '高橋さんから返信：「DD 資料は 10/20 までに」', 'Gmail のスレッドを要約 · あなただけに表示'], ['⏰', 'apricot', '期限', 'SaaS Summit の早割は明後日まで', '参加予定に入っていますが、まだ申し込んでいません'], ['🎯', 'lav', 'おすすめ', '製造業 DXカンファレンス 大阪', 'CVC 担当者 約3名 · プランの Step 3 に合います']],
   few: [['🎯', 'lav', 'おすすめ', 'CFO Night Tokyo vol.18（今夜）', 'CFO 経験者 約10名 · プランの Step 1 に合います']],
 };
 const HWX = {
@@ -3008,7 +3008,7 @@ function chat() {
       <div class="card" style="margin:0;padding:14px"><div class="lbl">紹介を頼める人</div>
         ${crow(C[5], `<button class="btn sm">依頼文</button>`)}<div class="lbl" style="margin-left:50px">大企業の新規事業担当 300名のコミュニティを主宰</div></div>
       <div class="card" style="margin:0;padding:14px"><div class="lbl">行くと会えるイベント</div>
-        <div class="li" style="display:flex;gap:10px;align-items:center;margin-top:6px">${ring(40, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:11px">68</span>')}<div style="flex:1"><b style="font-size:13px">製造業DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定</div></div></div></div>
+        <div class="li" style="display:flex;gap:10px;align-items:center;margin-top:6px">${ring(40, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:11px">68</span>')}<div style="flex:1"><b style="font-size:13px">製造業 DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定</div></div></div></div>
       <div class="card" style="margin:0;padding:14px;border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:8px"><span class="emo sm lav">📝</span><b style="font-size:13px">プランに追加しますか？</b></div>
         <div class="sub" style="margin:6px 0 10px">「小林さんに CVC 担当者の紹介を依頼」を「CVC 担当者」のやることに</div><div class="row" style="gap:8px"><button class="btn sm primary">追加する</button><button class="btn sm">やめる</button></div></div>
       <div class="chips k-iochip"><span class="chip">依頼文を作って</span><span class="chip">大阪の日程を押さえて</span></div>
@@ -3049,7 +3049,7 @@ const MEMOS = [
   ['k-memo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
   ['k-memo2', '🎙️', 'teal', '音声メモ · CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '音声 → 文字']]],
   ['k-memo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
-  ['k-memo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業DXカンファレンス 大阪'], ['tag', '面談']]],
+  ['k-memo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DXカンファレンス 大阪'], ['tag', '面談']]],
 ];
 const memoCard = ([k, e, c, t, d, p, tags]) => `<div class="memo ${k}"><div class="mh"><span class="emo sm ${c}">${e}</span><b>${t}</b><time>${d}</time></div><p>${p}</p><div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">${tags.map(([y, v]) => y === 'p' ? `<span class="at"><span class="av ${v.c}">${v.i}</span>${v.n}</span>` : y === 'e' ? `<span class="at ev">@${v}</span>` : `<span class="chip">${v}</span>`).join('')}</div></div>`;
 function taskMemo() {
@@ -3254,7 +3254,7 @@ const MEMOS = [
   ['k-wmemo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
   ['k-wmemo2', '🎙️', 'teal', '音声メモ · CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '音声 → 文字']]],
   ['k-wmemo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
-  ['k-wmemo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業DXカンファレンス 大阪'], ['tag', '面談']]],
+  ['k-wmemo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DXカンファレンス 大阪'], ['tag', '面談']]],
 ];
 const memoCard = ([k, e, c, t, d, p, tags], on) => `<div class="memo ${k}" ${on ? 'style="box-shadow:0 0 0 2px var(--plum-500)"' : ''}><div class="mh"><span class="emo sm ${c}">${e}</span><b>${t}</b><time>${d}</time></div><p>${p}</p><div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">${tags.map(([y, v]) => y === 'p' ? `<span class="at"><span class="av ${v.c}">${v.i}</span>${v.n}</span>` : y === 'e' ? `<span class="at ev">@${v}</span>` : `<span class="chip">${v}</span>`).join('')}</div></div>`;
 function wTaskMemo() {
@@ -3279,7 +3279,7 @@ function wIorbit(open) {
     <div class="bubble me">CVC の担当者に会うには、どうすればいい？</div>
     <div class="bubble ai">今のつながりに CVC 担当者はいません（プランの目標は 3人）。近道は2つあります。<div class="row k-wioref" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="chip">${ic('layers', 'sm')}参照：プラン（スコア 46）</span><span class="chip">人脈 3名</span><span class="chip">イベント 1件</span></div></div>
     <div class="grid2"><div class="card"><div class="lbl">紹介を頼める人</div><div class="row" style="gap:10px;margin-top:8px"><div class="av ${C[5].c}">${C[5].i}</div><div style="flex:1"><b>${C[5].n}</b><div class="lbl">${C[5].co} · 大企業の新規事業担当 300名</div></div></div><button class="btn sm" style="margin-top:12px">${ic('mail', 'sm')}依頼文を下書き</button></div>
-      <div class="card"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${ring(48, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:12px">68</span>')}<div><b>製造業DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定 · 10/23</div></div></div><button class="btn sm" style="margin-top:12px">${ic('calendar', 'sm')}予定を押さえる</button></div></div>
+      <div class="card"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${ring(48, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:12px">68</span>')}<div><b>製造業 DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定 · 10/23</div></div></div><button class="btn sm" style="margin-top:12px">${ic('calendar', 'sm')}予定を押さえる</button></div></div>
     <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b>プランに追加しますか？</b><div class="lbl">「小林さんに CVC 担当者の紹介を依頼」を「CVC 担当者」のやることに</div></div><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div>
     <div class="chips"><span class="prompt">依頼文を作って</span><span class="prompt">大阪の日程を押さえて</span><span class="prompt">他に CVC に近い人は？</span></div>${wInput}</div>`;
   return head + `<div class="wio ${open ? 'open' : ''}">${WHIST}<div class="wchat">${open ? thread : start}</div></div>`;
@@ -3289,12 +3289,12 @@ const chatPage = () => wIorbit(true);   /* 旧名保留 */
 const chatRail = `<h4>${ic('layers', 'sm')}参照しているもの</h4>
   <div class="card" style="padding:14px"><div class="lbl">プラン</div><b style="font-size:13px">シリーズA 資金調達 · スコア 46</b>${V2.sbar('s46', { thin: true })}</div>
   <div class="card" style="padding:14px"><div class="lbl">人脈 3名</div><div class="avs" style="margin-top:8px">${[C[5], C[0], C[2]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div></div>
-  <div class="card" style="padding:14px"><div class="lbl">イベント 1件</div><b style="font-size:13px">製造業DXカンファレンス 大阪</b></div>
+  <div class="card" style="padding:14px"><div class="lbl">イベント 1件</div><b style="font-size:13px">製造業 DXカンファレンス 大阪</b></div>
   <div class="mac lav" style="font-size:12px">メール・メッセージは下書きまで。送信はあなたが行います。</div>`;
 
 /* ---- 主催（運営台） ---- */
 function hostPage() {
-  return mainhead('CFO Night Tokyo vol.18', '主催 · 本日 19:00 · 渋谷ストリーム 4F ホール', `<button class="rbtn">${ic('left')}</button>`, `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div><button class="btn">${ic('users', 'sm')}共同運営者</button>`) + `<div class="htabs k-htabs"><button class="on">概要</button><button>マッチング</button><button>参加者<span class="cnt-b">12</span></button><button>受付</button><button>申込設定</button><button>レポート</button></div><div class="wgrid">
+  return mainhead('CFO Night Tokyo vol.18', '主催 · 本日 19:00 · 渋谷ストリーム 4F ホール', `<button class="rbtn">${ic('left')}</button>`, `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div><button class="btn">${ic('users', 'sm')}共同運営者</button><button class="rbtn k-hmore">${ic('more')}</button>`) + `<div class="htabs k-htabs"><button class="on">概要</button><button>マッチング</button><button>参加者<span class="cnt-b">12</span></button><button>受付</button><button>申込設定</button><button>レポート</button></div><div class="wgrid">
     ${[['申込', 128, '定員 150', 'lav'], ['マッチ可能', 112, 'プロフィール完了', 'blue'], ['受付済み', 0, '19:00 開場', 'teal'], ['推薦の生成', 96, '%', 'apricot']].map(([l, v, d, c]) => `<div class="card span3"><span class="chip ${c}">${l}</span><div class="big" style="margin-top:10px">${num(v)}${d === '%' ? '<small>%</small>' : ''}</div><div class="lbl">${d === '%' ? '1人あたり 5名を推薦' : d}</div></div>`).join('')}
     <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">直近14日</span></div><div class="bars">${[4, 6, 5, 9, 7, 12, 8, 6, 10, 14, 9, 11, 16, 11].map((h, k) => `<i class="${k === 12 ? 'hi' : ''}" style="height:${h * 6}px"></i>`).join('')}</div></div>
     <div class="card span4"><div class="card-h"><h3>運営の進捗</h3></div>${[['申込受付', 1], ['マッチング生成', 1], ['グループ確認', 1], ['結果を公開', 0], ['当日受付', 0]].map(([t, d], k) => `<div class="chk ${d ? 'done' : ''}"><span class="box">${d ? ic('check', 'sm') : ''}</span><div style="flex:1"><b>${t}</b></div>${k === 3 ? '<button class="btn sm primary">公開する</button>' : ''}</div>`).join('')}</div>
@@ -3516,7 +3516,7 @@ const interceptApp = `<div class="sheet-scrim"></div><div class="dialog k-sdlg">
 const handDrawerS = `<div class="overlay"></div><div class="drawer k-whdrawer" style="width:520px"><div class="row between"><div><b style="font-size:18px">手入力で追加</b><div class="lbl">名前だけで保存できます</div></div><button class="rbtn">${ic('x')}</button></div>
   <div class="fld"><label>名前 <span class="req">必須</span></label><div class="in" style="background:var(--surface)"><span>石川 陽介</span></div></div>
   <div class="fld"><label>会社</label><div class="in" style="background:var(--surface)"><span>ミライ精機株式会社</span></div></div>
-  <div class="fld"><label>出会った場所</label><div class="row" style="gap:6px;flex-wrap:wrap"><span class="fopt on">🥂 CFO Night Tokyo（10/7）</span><span class="fopt">🏯 製造業DX 大阪</span><span class="fopt">紹介</span></div></div>
+  <div class="fld"><label>出会った場所</label><div class="row" style="gap:6px;flex-wrap:wrap"><span class="fopt on">🥂 CFO Night Tokyo（10/7）</span><span class="fopt">🏯 製造業 DX 大阪</span><span class="fopt">紹介</span></div></div>
   <div class="fld"><label>メモ</label><div class="in" style="background:var(--surface);min-height:70px;align-items:flex-start;padding-top:12px"><span style="white-space:normal;line-height:1.6;font-size:13px">工場の自動化に関心。</span></div></div>
   <div class="row" style="gap:8px;margin-top:18px;justify-content:flex-end"><span class="lbl" style="margin-right:auto">保存すると ${dn(2)} · 出どころ「手入力」</span><button class="btn">キャンセル</button><button class="btn primary press">保存 <span class="kbd" style="margin-left:4px">⌘↵</span></button></div></div>
   <div class="overlay" style="z-index:22"></div><div class="wmodal w480 k-wsdlg" style="z-index:23"><div class="center"><span class="emo apricot" style="width:64px;height:64px;font-size:30px;border-radius:20px;margin:0 auto">🧪</span><div style="font-size:18px;font-weight:800;margin-top:14px">これはサンプルです</div><div class="sub" style="margin-top:8px;line-height:1.75">サンプル表示中は保存できません。<br>ガイドを続けて、あなたの名刺を取り込みますか？</div></div>
@@ -4481,7 +4481,7 @@ const V2 = (() => {
       <div class="v22m3">${m3}</div>
       <div class="v22tf"><span class="lbl">${r.skip ? '習熟済み · スキップ（満額）' : `${r.n} / ${p.tgt}人 · 1人 ${p.unit}点`}</span>${mbar(k, s)}</div></div>`; };
   /* イベント：人物タイプと分けて 1ブロック（おすすめ = 固定 5項目スコア順） */
-  const EVREC = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 'VC 約5名 · 起業家 約12名'], ['CFO Night Tokyo vol.18', '今夜 19:00 · 渋谷ストリーム', 74, 'VC 2名 · CFO 約10名'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 'CVC 約3名']];
+  const EVREC = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 'VC 約5名 · 起業家 約12名'], ['CFO Night Tokyo vol.18', '今夜 19:00 · 渋谷ストリーム', 74, 'VC 2名 · CFO 約10名'], ['製造業 DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 'CVC 約3名']];
   const evRing = sc => ring(42, 5, [{ v: sc, c: sc >= 70 ? 'var(--plum-700)' : sc >= 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:12px">${sc}</span>`);
   const evRow = ([n, d, sc, m]) => `<div class="v22ev">${evRing(sc)}<div class="meta"><b>${n}</b><div class="lbl">${d}</div><span class="chip lav" style="margin-top:4px">${m}</span></div></div>`;
   const evCard22 = (s, o = {}) => { const p = PER.ev, r = pts('ev', ST[s].ev);
@@ -4636,7 +4636,7 @@ const TD22 = {
     q: ['優先清算・希薄化防止で、シリーズA の相場から外れた条項はどれですか？', '種類株式の設計で、次のラウンドに響くところは？', 'タームシートの段階で、こちらから入れておくべき条項は？'] },
 };
 const CVC_PER = [['いまの立場', '製造業・商社・通信の大手で、CVC の投資担当か新規事業室の室長'], ['関心ごと', '本業とのシナジー · PoC から始められるか · 事業提携つきの出資'], ['判断の流れ', '現場の PoC → 事業部の評価 → 投資委員会（3〜6か月）']];
-const CVC_EV = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 4, '¥15,000'], ['CVC Meetup Tokyo #12', '10月22日（木）· 大手町', 79, 14, '¥3,000'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 9, '無料']];
+const CVC_EV = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 4, '¥15,000'], ['CVC Meetup Tokyo #12', '10月22日（木）· 大手町', 79, 14, '¥3,000'], ['製造業 DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 9, '無料']];
 const evRing22 = (sc, sz = 44) => ring(sz, 5, [{ v: sc, c: sc >= 70 ? 'var(--plum-700)' : sc >= 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:12px">${sc}</span>`);
 /* 活动 5 项（照抄 b10 ev5；固定基准 45 / 15 / 20 / 10 / 10）· est = 带「推定」的项 */
 const E5 = ['会える人の適合', '推定の確度', '時間とコスト', '既存のつながり', '交流の形式'];
@@ -5003,7 +5003,7 @@ const V2 = (() => {
       <div class="v22m3">${m3}</div>
       <div class="v22tf"><span class="lbl">${r.skip ? '習熟済み · スキップ（満額）' : `${r.n} / ${p.tgt}人 · 1人 ${p.unit}点`}</span>${mbar(k, s)}</div></div>`; };
   /* イベント：人物タイプと分けて 1ブロック（おすすめ = 固定 5項目スコア順） */
-  const EVREC = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 'VC 約5名 · 起業家 約12名'], ['CFO Night Tokyo vol.18', '今夜 19:00 · 渋谷ストリーム', 74, 'VC 2名 · CFO 約10名'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 'CVC 約3名']];
+  const EVREC = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 'VC 約5名 · 起業家 約12名'], ['CFO Night Tokyo vol.18', '今夜 19:00 · 渋谷ストリーム', 74, 'VC 2名 · CFO 約10名'], ['製造業 DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 'CVC 約3名']];
   const evRing = sc => ring(42, 5, [{ v: sc, c: sc >= 70 ? 'var(--plum-700)' : sc >= 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:12px">${sc}</span>`);
   const evRow = ([n, d, sc, m]) => `<div class="v22ev">${evRing(sc)}<div class="meta"><b>${n}</b><div class="lbl">${d}</div><span class="chip lav" style="margin-top:4px">${m}</span></div></div>`;
   const evCard22 = (s, o = {}) => { const p = PER.ev, r = pts('ev', ST[s].ev);
@@ -5102,7 +5102,7 @@ const HW_TODO = {
 };
 const HW_PPL = { many: [NP[0], NP[2], NP[1], NP[3]], few: [NP[2], NP[0], NP[3]] };
 const HW_SEC = {
-  many: [['📨', 'blue', 'メール要約', '高橋さんから返信：「DD 資料は 10/20 までに」', 'Gmail のスレッドを要約 · あなただけに表示'], ['⏰', 'apricot', '期限', 'SaaS Summit の早割は明後日まで', '参加予定に入っていますが、まだ申し込んでいません'], ['🎯', 'lav', 'おすすめ', '製造業DXカンファレンス 大阪', 'CVC 担当者 約3名 · プランの Step 3 に合います']],
+  many: [['📨', 'blue', 'メール要約', '高橋さんから返信：「DD 資料は 10/20 までに」', 'Gmail のスレッドを要約 · あなただけに表示'], ['⏰', 'apricot', '期限', 'SaaS Summit の早割は明後日まで', '参加予定に入っていますが、まだ申し込んでいません'], ['🎯', 'lav', 'おすすめ', '製造業 DXカンファレンス 大阪', 'CVC 担当者 約3名 · プランの Step 3 に合います']],
   few: [['🎯', 'lav', 'おすすめ', 'CFO Night Tokyo vol.18（今夜）', 'CFO 経験者 約10名 · プランの Step 1 に合います']],
 };
 const HWX = {
@@ -5348,7 +5348,7 @@ function chat() {
       <div class="card" style="margin:0;padding:14px"><div class="lbl">紹介を頼める人</div>
         ${crow(C[5], `<button class="btn sm">依頼文</button>`)}<div class="lbl" style="margin-left:50px">大企業の新規事業担当 300名のコミュニティを主宰</div></div>
       <div class="card" style="margin:0;padding:14px"><div class="lbl">行くと会えるイベント</div>
-        <div class="li" style="display:flex;gap:10px;align-items:center;margin-top:6px">${ring(40, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:11px">68</span>')}<div style="flex:1"><b style="font-size:13px">製造業DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定</div></div></div></div>
+        <div class="li" style="display:flex;gap:10px;align-items:center;margin-top:6px">${ring(40, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:11px">68</span>')}<div style="flex:1"><b style="font-size:13px">製造業 DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定</div></div></div></div>
       <div class="card" style="margin:0;padding:14px;border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:8px"><span class="emo sm lav">📝</span><b style="font-size:13px">プランに追加しますか？</b></div>
         <div class="sub" style="margin:6px 0 10px">「小林さんに CVC 担当者の紹介を依頼」を「CVC 担当者」のやることに</div><div class="row" style="gap:8px"><button class="btn sm primary">追加する</button><button class="btn sm">やめる</button></div></div>
       <div class="chips k-iochip"><span class="chip">依頼文を作って</span><span class="chip">大阪の日程を押さえて</span></div>
@@ -5389,7 +5389,7 @@ const MEMOS = [
   ['k-memo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
   ['k-memo2', '🎙️', 'teal', '音声メモ · CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '音声 → 文字']]],
   ['k-memo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
-  ['k-memo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業DXカンファレンス 大阪'], ['tag', '面談']]],
+  ['k-memo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DXカンファレンス 大阪'], ['tag', '面談']]],
 ];
 const memoCard = ([k, e, c, t, d, p, tags]) => `<div class="memo ${k}"><div class="mh"><span class="emo sm ${c}">${e}</span><b>${t}</b><time>${d}</time></div><p>${p}</p><div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">${tags.map(([y, v]) => y === 'p' ? `<span class="at"><span class="av ${v.c}">${v.i}</span>${v.n}</span>` : y === 'e' ? `<span class="at ev">@${v}</span>` : `<span class="chip">${v}</span>`).join('')}</div></div>`;
 function taskMemo() {
@@ -5594,7 +5594,7 @@ const MEMOS = [
   ['k-wmemo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
   ['k-wmemo2', '🎙️', 'teal', '音声メモ · CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '音声 → 文字']]],
   ['k-wmemo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
-  ['k-wmemo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業DXカンファレンス 大阪'], ['tag', '面談']]],
+  ['k-wmemo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DXカンファレンス 大阪'], ['tag', '面談']]],
 ];
 const memoCard = ([k, e, c, t, d, p, tags], on) => `<div class="memo ${k}" ${on ? 'style="box-shadow:0 0 0 2px var(--plum-500)"' : ''}><div class="mh"><span class="emo sm ${c}">${e}</span><b>${t}</b><time>${d}</time></div><p>${p}</p><div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">${tags.map(([y, v]) => y === 'p' ? `<span class="at"><span class="av ${v.c}">${v.i}</span>${v.n}</span>` : y === 'e' ? `<span class="at ev">@${v}</span>` : `<span class="chip">${v}</span>`).join('')}</div></div>`;
 function wTaskMemo() {
@@ -5619,7 +5619,7 @@ function wIorbit(open) {
     <div class="bubble me">CVC の担当者に会うには、どうすればいい？</div>
     <div class="bubble ai">今のつながりに CVC 担当者はいません（プランの目標は 3人）。近道は2つあります。<div class="row k-wioref" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="chip">${ic('layers', 'sm')}参照：プラン（スコア 46）</span><span class="chip">人脈 3名</span><span class="chip">イベント 1件</span></div></div>
     <div class="grid2"><div class="card"><div class="lbl">紹介を頼める人</div><div class="row" style="gap:10px;margin-top:8px"><div class="av ${C[5].c}">${C[5].i}</div><div style="flex:1"><b>${C[5].n}</b><div class="lbl">${C[5].co} · 大企業の新規事業担当 300名</div></div></div><button class="btn sm" style="margin-top:12px">${ic('mail', 'sm')}依頼文を下書き</button></div>
-      <div class="card"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${ring(48, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:12px">68</span>')}<div><b>製造業DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定 · 10/23</div></div></div><button class="btn sm" style="margin-top:12px">${ic('calendar', 'sm')}予定を押さえる</button></div></div>
+      <div class="card"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${ring(48, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:12px">68</span>')}<div><b>製造業 DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定 · 10/23</div></div></div><button class="btn sm" style="margin-top:12px">${ic('calendar', 'sm')}予定を押さえる</button></div></div>
     <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b>プランに追加しますか？</b><div class="lbl">「小林さんに CVC 担当者の紹介を依頼」を「CVC 担当者」のやることに</div></div><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div>
     <div class="chips"><span class="prompt">依頼文を作って</span><span class="prompt">大阪の日程を押さえて</span><span class="prompt">他に CVC に近い人は？</span></div>${wInput}</div>`;
   return head + `<div class="wio ${open ? 'open' : ''}">${WHIST}<div class="wchat">${open ? thread : start}</div></div>`;
@@ -5629,12 +5629,12 @@ const chatPage = () => wIorbit(true);   /* 旧名保留 */
 const chatRail = `<h4>${ic('layers', 'sm')}参照しているもの</h4>
   <div class="card" style="padding:14px"><div class="lbl">プラン</div><b style="font-size:13px">シリーズA 資金調達 · スコア 46</b>${V2.sbar('s46', { thin: true })}</div>
   <div class="card" style="padding:14px"><div class="lbl">人脈 3名</div><div class="avs" style="margin-top:8px">${[C[5], C[0], C[2]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div></div>
-  <div class="card" style="padding:14px"><div class="lbl">イベント 1件</div><b style="font-size:13px">製造業DXカンファレンス 大阪</b></div>
+  <div class="card" style="padding:14px"><div class="lbl">イベント 1件</div><b style="font-size:13px">製造業 DXカンファレンス 大阪</b></div>
   <div class="mac lav" style="font-size:12px">メール・メッセージは下書きまで。送信はあなたが行います。</div>`;
 
 /* ---- 主催（運営台） ---- */
 function hostPage() {
-  return mainhead('CFO Night Tokyo vol.18', '主催 · 本日 19:00 · 渋谷ストリーム 4F ホール', `<button class="rbtn">${ic('left')}</button>`, `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div><button class="btn">${ic('users', 'sm')}共同運営者</button>`) + `<div class="htabs k-htabs"><button class="on">概要</button><button>マッチング</button><button>参加者<span class="cnt-b">12</span></button><button>受付</button><button>申込設定</button><button>レポート</button></div><div class="wgrid">
+  return mainhead('CFO Night Tokyo vol.18', '主催 · 本日 19:00 · 渋谷ストリーム 4F ホール', `<button class="rbtn">${ic('left')}</button>`, `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div><button class="btn">${ic('users', 'sm')}共同運営者</button><button class="rbtn k-hmore">${ic('more')}</button>`) + `<div class="htabs k-htabs"><button class="on">概要</button><button>マッチング</button><button>参加者<span class="cnt-b">12</span></button><button>受付</button><button>申込設定</button><button>レポート</button></div><div class="wgrid">
     ${[['申込', 128, '定員 150', 'lav'], ['マッチ可能', 112, 'プロフィール完了', 'blue'], ['受付済み', 0, '19:00 開場', 'teal'], ['推薦の生成', 96, '%', 'apricot']].map(([l, v, d, c]) => `<div class="card span3"><span class="chip ${c}">${l}</span><div class="big" style="margin-top:10px">${num(v)}${d === '%' ? '<small>%</small>' : ''}</div><div class="lbl">${d === '%' ? '1人あたり 5名を推薦' : d}</div></div>`).join('')}
     <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">直近14日</span></div><div class="bars">${[4, 6, 5, 9, 7, 12, 8, 6, 10, 14, 9, 11, 16, 11].map((h, k) => `<i class="${k === 12 ? 'hi' : ''}" style="height:${h * 6}px"></i>`).join('')}</div></div>
     <div class="card span4"><div class="card-h"><h3>運営の進捗</h3></div>${[['申込受付', 1], ['マッチング生成', 1], ['グループ確認', 1], ['結果を公開', 0], ['当日受付', 0]].map(([t, d], k) => `<div class="chk ${d ? 'done' : ''}"><span class="box">${d ? ic('check', 'sm') : ''}</span><div style="flex:1"><b>${t}</b></div>${k === 3 ? '<button class="btn sm primary">公開する</button>' : ''}</div>`).join('')}</div>
@@ -5781,7 +5781,7 @@ const scoreRing = (v, sz = 40) => ring(sz, 5, [{ v, c: v > 70 ? 'var(--plum-700)
 const HIST = {
   pin: [['シリーズA 投資家リストの整理', '9/30'], ['ピッチ資料の市場規模', '9/24']],
   today: [['CVC 担当者に会う方法', '10:12'], ['今夜の CFO Night の準備', '8:40']],
-  week: [['山本さんへの再送メール', '月'], ['製造業DXカンファレンスの評価', '日'], ['伊藤さんへの相談事項', '土']],
+  week: [['山本さんへの再送メール', '月'], ['製造業 DXカンファレンスの評価', '日'], ['伊藤さんへの相談事項', '土']],
   older: [['9月の振り返り', '10/1'], ['名刺 17枚の一括登録', '9/22'], ['最初のプランについて', '9/1']],
 };
 const STARTERS = {
@@ -5893,7 +5893,7 @@ function planWeb(s, o = {}) {
       <div class="lbl" style="margin-top:12px">最近の加点</div>${few ? '<div class="ghost-row" style="margin-top:6px">まだありません</div>' : [['VC パートナー', '+5（半分）', '長谷川 亮さん · 10/6'], ['イベント', '+2.5', 'SaaS Summit · 10/3'], ['起業家', '+1.5', '渡辺 翔さん · 9/29']].map(([a, b, c]) => `<div class="row between" style="font-size:12px;padding:6px 0;border-top:1px solid var(--line)"><span><b>${a}</b> <span class="lbl">${c}</span></span><b style="font-family:var(--font-num);color:var(--rose-700)">${b}</b></div>`).join('')}</div></div>`;
 }
 const planRail = s => `<h4>${ic('sparkle', 'sm')}iOrbit</h4><div class="assist-in">${ic('sparkle', 'sm')}このプランについて質問</div>
-  <h4>次の一手</h4><div class="card" style="padding:16px"><b style="font-size:13px">${s === 'many' ? 'CVC 担当者が 1 / 3人。製造業DXカンファレンス 大阪に約 9人来ます' : 'VC パートナーの候補が人脈に 4人います'}</b><button class="btn sm" style="margin-top:10px">${s === 'many' ? 'イベントを見る' : '候補を見る'}</button></div>
+  <h4>次の一手</h4><div class="card" style="padding:16px"><b style="font-size:13px">${s === 'many' ? 'CVC 担当者が 1 / 3人。製造業 DXカンファレンス 大阪に約 9人来ます' : 'VC パートナーの候補が人脈に 4人います'}</b><button class="btn sm" style="margin-top:10px">${s === 'many' ? 'イベントを見る' : '候補を見る'}</button></div>
   <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">Orbit は目標の達成を保証しません。このタイプの目標が一般にどう進むかと、各ステップで話すとよい人を示します。</div>`;
 
 /* ---- 人物タイプ詳細（v2.2：画法与字段同 ⑩ b10 ⑧ / App「人物タイプ詳細 · VC」—— 役割×状況 一文 · なぜ · 聞くこと 3問 · 話せたの判定 · 見分け方 · 候補 · 紹介ルート · 会える活動） ---- */
@@ -5947,7 +5947,7 @@ const proposeSheet = `<div class="sheet-scrim"></div><div class="sheet k-psheet"
   ${draftNote}</div>`;
 /* ② 人脈にいない · CVC（人物像 · 開口一番 · 会える活動 · 紹介ルート） */
 const CVC_PER = [['いまの立場', '製造業・商社・通信の大手で、CVC の投資担当か新規事業室の室長'], ['関心ごと', '本業とのシナジー · PoC から始められるか · 事業提携つきの出資'], ['判断の流れ', '現場の PoC → 事業部の評価 → 投資委員会（3〜6か月）']];
-const CVC_EV = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 4, '¥15,000'], ['CVC Meetup Tokyo #12', '10月22日（木）· 大手町', 79, 14, '¥3,000'], ['製造業DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 9, '無料']];
+const CVC_EV = [['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 82, 4, '¥15,000'], ['CVC Meetup Tokyo #12', '10月22日（木）· 大手町', 79, 14, '¥3,000'], ['製造業 DXカンファレンス 大阪', '10月23日（金）· グランフロント大阪', 68, 9, '無料']];
 const evRing22 = (sc, sz = 44) => ring(sz, 5, [{ v: sc, c: sc >= 70 ? 'var(--plum-700)' : sc >= 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:12px">${sc}</span>`);
 const KOB = C.find(c => c.n === '小林 誠') || C[5];
 function typeNone(o = {}) {
@@ -6214,7 +6214,7 @@ const aDrawer = (mode) => `<div class="sheet-scrim"></div><div class="adrawer"><
   ${mode === 'press' ? `<div class="ctxm" style="left:120px;top:330px"><button>${ic('pin', 'sm')}ピン留め</button><button>${ic('edit', 'sm')}名前を変更</button><button>${ic('share', 'sm')}共有用にコピー</button><hr><button class="del">${ic('x', 'sm')}削除</button></div>` : ''}`;
 const aChatBg = () => topbar('iOrbit', 'CVC 担当者に会う方法', histBtn, newBtn) + `<div style="display:grid;gap:10px">
   <div class="bubble me">CVC の担当者に会うには、どうすればいい？</div>
-  <div class="bubble ai">今のつながりで話せた CVC 担当者は 1人です（目標は 3人）。近道は 2つあります。小林さんのコミュニティ経由の紹介と、10/23 の製造業DXカンファレンスです。</div></div>`;
+  <div class="bubble ai">今のつながりで話せた CVC 担当者は 1人です（目標は 3人）。近道は 2つあります。小林さんのコミュニティ経由の紹介と、10/23 の製造業 DXカンファレンスです。</div></div>`;
 const delDlg = (web) => web ? `<div class="overlay"></div><div class="wdlg wmodal"><div class="row" style="gap:14px;align-items:flex-start"><div class="dic"><span class="lic lg i-trash"></span></div><div style="min-width:0"><b style="font-size:17px">この会話を削除しますか？</b><div class="sub" style="margin-top:6px;line-height:1.65">「CVC 担当者に会う方法」を削除します。会話から追加したタスクや予定は、そのまま残ります。</div></div></div>
   <div class="macts"><span class="lbl hint"><span class="kbd">Esc</span> キャンセル</span><button class="btn">キャンセル</button><button class="btn danger">削除する</button></div></div>`
   : `<div class="sheet-scrim" style="z-index:55"></div><div class="dialog" style="z-index:56"><div class="dic"><span class="lic lg i-trash"></span></div><b class="dt">この会話を削除しますか？</b><div class="dd">「CVC 担当者に会う方法」を削除します。会話から追加したタスクや予定は、そのまま残ります。</div>
@@ -6251,7 +6251,7 @@ const aSources = () => topbar('iOrbit', '新しい会話', histBtn, newBtn) + `<
   <div class="bubble me">今週の動きをまとめて、来週やることを3つに絞って</div>
   <div class="card" style="margin:0;padding:14px" data-why-box><div style="font-size:13px;line-height:1.7">今週は VC との初回面談が 2件進み、ピッチ資料 v3 も完成しました。来週は ①山本さんへの資料再送 ②小林さんに CVC 担当者の紹介を依頼 ③DD 資料の準備、の 3つに絞りましょう。</div>
     <div class="row" style="gap:8px;margin-top:10px"><span class="why">?</span><span class="lbl">根拠 4件</span><span style="flex:1"></span><button class="lbtn" style="width:30px;height:30px">${ic('refresh', 'sm')}</button><button class="lbtn" style="width:30px;height:30px">${ic('share', 'sm')}</button></div>
-    <div class="why-body" style="padding:6px 12px">${[['📇', 'apricot', '名刺', '山本 彩 · 東都キャピタル', '最終接触 9/13'], ['📝', 'blue', 'メモ', '高橋さんと2回目の面談', '10/6 · 面談の記録'], ['🎟️', 'teal', 'イベント', '製造業DXカンファレンス 大阪', '10/23 · CVC 3名参加予定'], ['✅', 'lav', 'タスク', '山本さんに資料を再送', '期限を 2回延期']].map(([e, c, t, n, d]) => `<div class="src"><span class="emo sm ${c}">${e}</span><div><b>${n}</b><span class="lbl">${t} · ${d}</span></div><span class="muted">${ic('right', 'sm')}</span></div>`).join('')}</div></div>
+    <div class="why-body" style="padding:6px 12px">${[['📇', 'apricot', '名刺', '山本 彩 · 東都キャピタル', '最終接触 9/13'], ['📝', 'blue', 'メモ', '高橋さんと2回目の面談', '10/6 · 面談の記録'], ['🎟️', 'teal', 'イベント', '製造業 DXカンファレンス 大阪', '10/23 · CVC 3名参加予定'], ['✅', 'lav', 'タスク', '山本さんに資料を再送', '期限を 2回延期']].map(([e, c, t, n, d]) => `<div class="src"><span class="emo sm ${c}">${e}</span><div><b>${n}</b><span class="lbl">${t} · ${d}</span></div><span class="muted">${ic('right', 'sm')}</span></div>`).join('')}</div></div>
   <div class="card confirm-card" style="margin:0;padding:14px"><div class="row" style="gap:8px"><span class="emo sm lav">📝</span><b style="font-size:13px;flex:1">3件を来週のタスクに追加しますか？</b></div><div class="row" style="gap:8px;margin-top:10px"><button class="btn sm primary">追加する</button><button class="btn sm">選んで追加</button></div></div></div>`;
 
 /* =================================================================
@@ -6279,7 +6279,7 @@ const wChatMsgs = `<div class="bubble me">CVC の担当者に会うには、ど�
   <div class="bubble ai">今のつながりで話せた CVC 担当者は 1人です（目標は 3人）。近道は 2つあります。</div>
   <div class="wref k-wref2"><span class="lbl" style="font-weight:700">参照</span><span class="chip">${ic('layers', 'sm')}プラン · スコア 46</span><span class="chip">👥 人脈 3名</span><span class="chip">📝 面談の記録 4件 · タスク 5件</span></div>
   <div class="grid2"><div class="card" style="padding:16px"><div class="lbl">紹介を頼める人</div><div class="row" style="gap:10px;margin-top:8px"><div class="av ${C[5].c}">${C[5].i}</div><div style="flex:1;min-width:0"><b>${C[5].n}</b><div class="lbl">${C[5].co}</div></div></div></div>
-    <div class="card" style="padding:16px"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${scoreRing(68, 44)}<div><b style="font-size:13px">製造業DXカンファレンス 大阪</b><div class="lbl">CVC 3名 · 10/23</div></div></div></div></div>`;
+    <div class="card" style="padding:16px"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${scoreRing(68, 44)}<div><b style="font-size:13px">製造業 DXカンファレンス 大阪</b><div class="lbl">CVC 3名 · 10/23</div></div></div></div></div>`;
 const wHistOps = () => {
   const panel = histList('hov').replace('<div class="hi hov">', '<div class="hi hov" style="position:relative">');
   return wHead('CVC 担当者に会う方法') + wChat(panel + `<div class="ctxm" style="left:150px;top:350px"><button>${ic('pin', 'sm')}ピン留め</button><button>${ic('edit', 'sm')}名前を変更</button><button>${ic('share', 'sm')}共有用にコピー</button><hr><button class="del">${ic('x', 'sm')}削除</button></div>`, wChatMsgs);
@@ -6306,7 +6306,7 @@ const wResultRail = `<h4>${ic('layers', 'sm')}この会話で行ったこと</h4
 const wStream = () => wHead('今週のまとめ') + wChat(histList('many'), `<div class="bubble me">今週の動きをまとめて、来週やることを3つに絞って</div>
   <div class="card" style="padding:18px" data-why-box><div style="font-size:13.5px;line-height:1.8">今週は VC との初回面談が 2件進み、ピッチ資料 v3 も完成しました。来週は ①山本さんへの資料再送 ②小林さんに CVC 担当者の紹介を依頼 ③DD 資料の準備、の 3つに絞りましょう。</div>
     <div class="row" style="gap:8px;margin-top:10px"><span class="why">?</span><span class="lbl">根拠 4件</span></div>
-    <div class="why-body" style="padding:6px 14px">${[['📇', 'apricot', '名刺', '山本 彩 · 東都キャピタル', '最終接触 9/13'], ['📝', 'blue', 'メモ', '高橋さんと2回目の面談', '10/6 · 面談の記録'], ['🎟️', 'teal', 'イベント', '製造業DXカンファレンス 大阪', '10/23 · CVC 3名参加予定'], ['✅', 'lav', 'タスク', '山本さんに資料を再送', '期限を 2回延期']].map(([e, c, t, n, d]) => `<div class="src"><span class="emo sm ${c}">${e}</span><div><b>${n}</b><span class="lbl">${t} · ${d}</span></div><span class="lnk">開く${ic('right', 'sm')}</span></div>`).join('')}</div></div>
+    <div class="why-body" style="padding:6px 14px">${[['📇', 'apricot', '名刺', '山本 彩 · 東都キャピタル', '最終接触 9/13'], ['📝', 'blue', 'メモ', '高橋さんと2回目の面談', '10/6 · 面談の記録'], ['🎟️', 'teal', 'イベント', '製造業 DXカンファレンス 大阪', '10/23 · CVC 3名参加予定'], ['✅', 'lav', 'タスク', '山本さんに資料を再送', '期限を 2回延期']].map(([e, c, t, n, d]) => `<div class="src"><span class="emo sm ${c}">${e}</span><div><b>${n}</b><span class="lbl">${t} · ${d}</span></div><span class="lnk">開く${ic('right', 'sm')}</span></div>`).join('')}</div></div>
   <div class="bubble me">山本さんへの再送メールも下書きして</div>
   <div class="thinking"><i></i>山本さんとの過去のやりとり 3件を参照中</div>
   <div class="bubble ai">承知しました。前回お送りした資料に、9月時点の KPI を加えた形でご案内します。<br><br>山本様<br>いつもお世話になっております。ミナトリンクの佐藤です。先日ご依頼いただいた資料を<span class="caret"></span></div>`, 'stop');
@@ -6317,7 +6317,7 @@ const wCtxPage = () => mainhead('人脈', '286人 · 絞り込み中 12人', `<b
 const wCtxRail = `<div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px;flex:1">iOrbit</b><button class="lbtn" style="width:30px;height:30px">${ic('out', 'sm')}</button><button class="lbtn" style="width:30px;height:30px">${ic('x', 'sm')}</button></div>
   <div class="card" style="padding:12px 14px"><div class="row" style="gap:10px"><div style="flex:1"><b style="font-size:12.5px">このページを文脈に含める</b><div class="lbl" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">人脈 · 業界：製造業 · 12人</div></div>${tgl(true)}</div></div>
   <div class="bubble me" style="max-width:92%">この中で、来月の大阪で会える人は？</div>
-  <div class="card" style="padding:14px" data-why-box><div style="font-size:12.5px;line-height:1.7">絞り込み中の 12人のうち、10/23 の製造業DXカンファレンス 大阪で会える可能性が高いのは 3人です。</div>
+  <div class="card" style="padding:14px" data-why-box><div style="font-size:12.5px;line-height:1.7">絞り込み中の 12人のうち、10/23 の製造業 DXカンファレンス 大阪で会える可能性が高いのは 3人です。</div>
     <div class="list" style="margin-top:6px">${[['高', 'c5', '高山 亮', '大阪本社 · 登壇予定'], ['伊', 'c3', '伊達 修平', '北辰製作所が出展'], ['松', 'c2', '松本 千尋', 'CVC 枠で参加登録']].map(([i, c, n, d]) => `<div class="li" style="padding:7px 0"><div class="av sm ${c}">${i}</div><div class="meta"><b style="font-size:12.5px">${n}</b><span>${d}</span></div></div>`).join('')}</div>
     <div class="row" style="gap:8px;margin-top:6px"><span class="why">?</span><span class="lbl">根拠 3件</span></div><div class="why-body" hidden>イベント公式の登壇者・出展社一覧 · 名刺メモ</div></div>
   <div class="card confirm-card" style="padding:12px"><b style="font-size:12.5px">3人に「会う準備」を作りますか？</b><div class="row" style="gap:8px;margin-top:8px"><button class="btn sm primary">作成する</button><button class="btn sm">やめる</button></div></div>
@@ -6331,7 +6331,7 @@ const wChatRail = (on = true) => `<h4>${ic('layers', 'sm')}参照しているも
 /* NAV-V3：从人脈页 ⌘K 进入 iOrbit 全屏（原「右栏召出 iOrbit」取消）：顶部文脈开关 + 左上「← 人脈に戻る」 */
 const wCtxIo = () => mainhead('iOrbit', '人脈から開きました', `<button class="btn k-wback">${ic('left', 'sm')}人脈に戻る</button>`, `<span class="lbl"><span class="kbd">⌘</span> <span class="kbd">K</span> どこからでも</span><button class="btn">${ic('plus', 'sm')}新しい会話</button>`) + wChat('', `<div class="card k-wctx" style="padding:12px 16px"><div class="row" style="gap:12px"><span class="emo sm blue">👥</span><div style="flex:1;min-width:0"><b style="font-size:13px">このページを文脈に含める</b><div class="lbl">人脈 · 業界：製造業 · 12人（開いていたページ · 絞り込みごと）</div></div>${tgl(true)}</div></div>
   <div class="bubble me">この中で、来月の大阪で会える人は？</div>
-  <div class="card k-wans" style="padding:16px" data-why-box><div style="font-size:13px;line-height:1.7">絞り込み中の 12人のうち、10/23 の製造業DXカンファレンス 大阪で会える可能性が高いのは 3人です。</div>
+  <div class="card k-wans" style="padding:16px" data-why-box><div style="font-size:13px;line-height:1.7">絞り込み中の 12人のうち、10/23 の製造業 DXカンファレンス 大阪で会える可能性が高いのは 3人です。</div>
     <div class="list" style="margin-top:6px">${[['高', 'c5', '高山 亮', 'ミライ精機 · 大阪本社 · 登壇予定'], ['伊', 'c3', '伊達 修平', '北辰製作所 · 出展'], ['松', 'c2', '松本 千尋', '関西テクノ電機 · CVC 枠で参加登録']].map(([i, c, n, d]) => `<div class="li" style="padding:8px 0"><div class="av sm ${c}">${i}</div><div class="meta"><b style="font-size:13px">${n}</b><span>${d}</span></div><span class="lnk">開く${ic('right', 'sm')}</span></div>`).join('')}</div>
     <div class="row" style="gap:8px;margin-top:6px"><span class="why">?</span><span class="lbl">根拠 3件</span></div><div class="why-body" hidden>イベント公式の登壇者・出展社一覧 · 名刺メモ</div></div>
   <div class="card confirm-card" style="padding:14px"><b style="font-size:13px">3人に「会う準備」を作りますか？</b><div class="row" style="gap:8px;margin-top:10px"><button class="btn sm primary">作成する</button><button class="btn sm">やめる</button></div></div>`, '', true);
@@ -6414,7 +6414,7 @@ const LG_ITEMS = {
   act: [['フェーズ 1', [['事業計画を 3年分に作り直す', '完了', 'teal'], ['ピッチ資料に導入事例を 2件入れる', '完了', 'teal'], ['資本政策表を CFO 経験者に見てもらう', '進行中', 'lav']]], ['フェーズ 2', [['リード候補の VC を 3社に絞る', '未着手', ''], ['投資契約のひな形を確認する', '未着手', '']]]],
   need: [[C[2], '資本政策の壁打ち', 'つながった', 'teal'], [C[0], 'リード投資家の候補', '候補あり', 'lav'], [null, '事業会社の CVC 担当者', 'まだ', '']],
   info: [['シリーズA の相場（ARR と評価額）', '回答あり', 'teal'], ['製造業向け SaaS に強い VC', 'まだ', '']],
-  ev: [['CFO Night Tokyo vol.18', '参加済み', 'teal'], ['SaaS Summit 2026', '申込済み', 'lav'], ['製造業DXカンファレンス 大阪', 'おすすめ', '']],
+  ev: [['CFO Night Tokyo vol.18', '参加済み', 'teal'], ['SaaS Summit 2026', '申込済み', 'lav'], ['製造業 DXカンファレンス 大阪', 'おすすめ', '']],
 };
 /* App 状态词 = plan.legacy.status*（完了 / スキップ / 見送り / 未完了）；Web = planReviewCopy.status*（细分）。两端字典不一致，画板按各自字典 */
 const aSt = s => ({ '進行中': '未完了', '未着手': '未完了', 'つながった': '完了', '候補あり': '未完了', 'まだ': '未完了', '回答あり': '完了', '参加済み': '完了', '申込済み': '未完了', 'おすすめ': '未完了' }[s] || s);
@@ -6662,7 +6662,7 @@ const csvWeb = () => mainhead('列の対応を確認', 'CSV · eight_export.csv 
     <div class="mac lav push" style="margin-top:12px;font-size:12px;line-height:1.6"><b>全員 ●○○ で入ります。</b>どこで知り合ったか・目標との関係は、あとから 1日1問で補えます。</div></div>
   <div class="span12 row" style="justify-content:flex-end;gap:10px"><button class="btn">戻る</button><button class="btn primary xl k-ctonext" style="height:46px">まとめて確認へ（例外 6件）</button></div></div>`;
 /* ④ イベントから：选活动（左）→ 交换过名片的人（右，勾选）→ 同一「まとめて確認」 */
-const EVS = [['CFO Night Tokyo', '10月7日（火）· 渋谷', 4, 1], ['製造業DX カンファレンス 大阪', '9月26日（金）· グランフロント大阪', 9, 0], ['SaaS Summit 2026', '9月12日（金）· 東京国際フォーラム', 6, 0]];
+const EVS = [['CFO Night Tokyo', '10月7日（火）· 渋谷', 4, 1], ['製造業 DX カンファレンス 大阪', '9月26日（金）· グランフロント大阪', 9, 0], ['SaaS Summit 2026', '9月12日（金）· 東京国際フォーラム', 6, 0]];
 const EVPPL = [['高山 亮', '高', 'c4', 'ミライ精機', '経営企画部 部長', 1], ['伊達 修平', '伊', 'c5', '北辰製作所', '経営企画', 1], ['松本 千尋', '松', 'c2', '関西テクノ電機', '営業部', 1], ['高橋 美咲', '高', 'c1', '青葉ベンチャーズ', 'パートナー', 0]];
 const evWeb = () => mainhead('イベントから取り込む', '人脈を追加 › イベントから', back, '') + `<div class="wgrid">
   <div class="card span5 k-evlist"><div class="card-h"><h3>イベントを選ぶ</h3><span class="lbl">参加したイベント</span></div>
@@ -6723,7 +6723,7 @@ const REC = [
   { n: 'シリーズA 実務勉強会', md: [11, 12], d: '11/12（木）', place: 'オンライン', score: 71, why: '伊藤さん（ハルモニア CFO）が登壇', emo: '📚', vc: 'blue', v: '参加をおすすめ', fee: '無料' },
 ];
 const MORE = [
-  { n: '製造業DXカンファレンス 大阪', md: [10, 23], place: 'グランフロント大阪', score: 68, fee: '無料', v: '条件付き', vc: 'apricot' },
+  { n: '製造業 DXカンファレンス 大阪', md: [10, 23], place: 'グランフロント大阪', score: 68, fee: '無料', v: '条件付き', vc: 'apricot' },
   { n: 'FinTech Forum Tokyo', md: [11, 5], place: '虎ノ門ヒルズ', score: 58, fee: '¥8,000', v: '条件付き', vc: 'apricot' },
   { n: '丸の内スタートアップ朝会 #42', md: [10, 21], place: '丸の内', score: 41, fee: '¥1,000', v: '見送り推奨', vc: 'pink' },
 ];
@@ -6757,9 +6757,9 @@ function errNotEvent() {
     <div class="list p-found">${[[[10, 7], 'CFO Night Tokyo vol.18', '渋谷 · 19:00 · 記事末尾のリンク'], [[11, 12], 'シリーズA 実務勉強会', 'オンライン · 本文中で紹介']].map(([md, t, p]) => `<div class="li">${datebox(md)}<div class="meta"><b>${t}</b><span>${p}</span></div><button class="btn sm">評価</button></div>`).join('')}</div></div>
   <div class="card flat"><div class="row"><span class="emo sm teal">✍️</span><div style="flex:1"><b style="font-size:13px">どれでもない場合</b><div class="lbl">名称・日時・場所を入力して判定</div></div><button class="btn sm p-manual">手入力</button></div></div>`;
 }
-const poster = (h = 150, big = false) => `<div class="poster" style="height:${h}px"><span class="chip coral tagb">ブレを検出</span><div class="pz" ${big ? 'style="width:56%;padding:20px 24px"' : ''}><small>NAGOYA · 2026</small><b ${big ? 'style="font-size:24px"' : ''}>製造業DX<br>ナイトセミナー</b><i></i><i style="width:60%"></i><i style="width:80%"></i></div></div>`;
+const poster = (h = 150, big = false) => `<div class="poster" style="height:${h}px"><span class="chip coral tagb">ブレを検出</span><div class="pz" ${big ? 'style="width:56%;padding:20px 24px"' : ''}><small>NAGOYA · 2026</small><b ${big ? 'style="font-size:24px"' : ''}>製造業 DX<br>ナイトセミナー</b><i></i><i style="width:60%"></i><i style="width:80%"></i></div></div>`;
 const frow = (k, v, st, cls = '') => `<div class="frow ${cls}"><span class="lbl">${k}</span><i class="cf ${st}"></i><b class="${st === 'ng' ? 'muted' : ''}">${v}</b>${st === 'ng' ? '<span class="chip coral">読み取れず</span>' : st === 'guess' ? '<span class="chip apricot">推測</span>' : ''}</div>`;
-const posterFields = () => frow('名称', '製造業DX ナイトセミナー 名古屋', 'ok') + frow('主催', '中部ものづくりDX協議会', 'ok') + frow('日時', '—', 'ng', 'p-ng') + frow('場所', '名古屋駅周辺？', 'guess') + frow('参加費', '—', 'ng');
+const posterFields = () => frow('名称', '製造業 DX ナイトセミナー 名古屋', 'ok') + frow('主催', '中部ものづくり DX 協議会', 'ok') + frow('日時', '—', 'ng', 'p-ng') + frow('場所', '名古屋駅周辺？', 'guess') + frow('参加費', '—', 'ng');
 function errPoster() {
   return topbar('イベント評価', 'ポスターの一部だけ読み取れました', back) + `
   <div class="card rise" style="padding:10px">${poster(130)}</div>
@@ -6779,7 +6779,7 @@ function rejudge() {
   return topbar('イベント評価', 'ポスター + 手入力で判定', back, shareB) + `
   <div class="card rise" style="text-align:center;padding:20px 18px">
     <span class="chip lav">${ic('image', 'sm')} ポスター画像</span>
-    <div style="font-size:16px;font-weight:800;margin:10px 0 2px">製造業DX ナイトセミナー 名古屋</div><div class="lbl">10月29日（木）18:30 · 名古屋駅周辺 · 参加費 不明</div>
+    <div style="font-size:16px;font-weight:800;margin:10px 0 2px">製造業 DX ナイトセミナー 名古屋</div><div class="lbl">10月29日（木）18:30 · 名古屋駅周辺 · 参加費 不明</div>
     <div style="margin:16px auto 6px;width:130px">${ring(130, 12, [{ v: 63, c: 'var(--plum-500)', max: 100 }], `<div class="big" style="font-size:40px">${num(63)}</div><div class="lbl">/ 100</div>`)}</div>
     <span class="chip apricot" style="font-size:12.5px;padding:5px 12px">条件付きでおすすめ</span></div>
   <div class="card p-supplied" data-why-box><div class="row" style="gap:8px"><span class="emo sm apricot">✍️</span><div style="flex:1"><b style="font-size:13px">あなたが補った項目 2つ</b><div class="lbl">日時 · 場所（推測を採用）· 参加費は不明のまま</div></div><span class="why p-why">?</span></div>
@@ -6842,7 +6842,7 @@ function discover(s) {
       <div class="faded">${recCard(REC[0], 300).replace('class="ev-card"', 'class="ev-card" style="padding:0;width:auto"')}</div>
       <div class="ghost-row" style="margin-top:12px"><i></i>あなたのコミュニティの先行案内</div><div class="ghost-row"><i></i>知り合いが参加するイベント</div></div>`;
   if (s === 'few') return head + searchRow(3) + `
-    <div class="chips" style="margin:10px 0 0"><span class="chip lav">今週 ✕</span><span class="chip lav">東京 ✕</span><span class="chip lav">製造業DX ✕</span></div>
+    <div class="chips" style="margin:10px 0 0"><span class="chip lav">今週 ✕</span><span class="chip lav">東京 ✕</span><span class="chip lav">製造業 DX ✕</span></div>
     <div class="card" style="margin-top:14px;padding:6px 16px"><div class="list">${[{ ...REC[1], n: '製造業 × SaaS ナイト', md: [10, 9], place: '日本橋', fee: '¥2,000', score: 64 }, { n: 'スマートファクトリー EXPO 内覧', md: [10, 8], place: '有明', fee: '無料', score: 55 }, { n: 'IoT 実装もくもく会', md: [10, 10], place: '五反田', fee: '¥500', score: 38 }].map(allRow).join('')}</div></div>
     <div class="card flat p-widen"><div class="row" style="gap:8px"><span class="emo sm apricot">💡</span><b style="font-size:13px">条件を広げると、もっと見つかります</b></div>
       <div style="display:grid;gap:8px;margin-top:10px">${[['期間を「今月」に', '+9件'], ['場所に「大阪」を追加', '+2件'], ['テーマに「資金調達」を追加', '+6件']].map(([t, n]) => `<button class="row between" style="padding:10px 12px;border-radius:14px;background:var(--surface);font-size:12.5px;font-weight:700">${t}<span class="chip teal">${n}</span></button>`).join('')}</div></div>
@@ -6856,7 +6856,7 @@ function discover(s) {
       <div class="list">${[...REC, ...MORE].sort((a, b) => a.md[0] * 40 + a.md[1] - b.md[0] * 40 - b.md[1]).slice(0, 6).map(allRow).join('')}</div></div>`;
 }
 const filterSheet = `<div class="sheet-scrim"></div><div class="sheet p-fsheet"><div class="grab"></div><div class="row between" style="margin-bottom:12px"><b style="font-size:16px">絞り込み</b><button class="btn sm ghost">クリア</button></div>
-  ${[['時期', ['今週', '今月*', '来月', '📅 日付を指定']], ['場所', ['オンライン', '東京*', '大阪', '名古屋']], ['テーマ', ['資金調達*', 'SaaS*', '製造業DX', '採用', '経営管理']], ['形式', ['登壇あり', '交流会*', '少人数（〜30名）']]].map(([g, os]) => `<div class="fgrp"><span class="lbl">${g}</span><div class="chips">${os.map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div></div>`).join('')}
+  ${[['時期', ['今週', '今月*', '来月', '📅 日付を指定']], ['場所', ['オンライン', '東京*', '大阪', '名古屋']], ['テーマ', ['資金調達*', 'SaaS*', '製造業 DX', '採用', '経営管理']], ['形式', ['登壇あり', '交流会*', '少人数（〜30名）']]].map(([g, os]) => `<div class="fgrp"><span class="lbl">${g}</span><div class="chips">${os.map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div></div>`).join('')}
   <div class="row between" style="margin-top:14px;font-size:13px;font-weight:700">無料のみ<span class="tgl"></span></div>
   <div class="row between" style="margin-top:10px;font-size:13px;font-weight:700">プランに合うものを優先<span class="tgl on"></span></div>
   <button class="btn primary block p-fshow" style="height:48px;margin-top:16px">28件を表示</button></div>`;
@@ -6879,7 +6879,7 @@ const wEvc = (e, k) => `<div class="evc span4 ${k === 0 ? 'sel' : ''}"><div clas
 const wFilters = (n) => `<div class="span12 row" style="gap:10px"><div class="search" style="flex:1">${ic('search', 'sm')}イベント名・主催・キーワード<span style="margin-left:auto" class="lbl">⌘K</span></div>
   <button class="wfilter ${n ? 'on' : ''}">${ic('calendar')}時期：今月 ${ic('down')}</button><button class="wfilter ${n ? 'on' : ''}">${ic('pin')}場所：東京 ${ic('down')}</button><button class="wfilter p-wtheme ${n > 2 ? 'on' : ''}">${ic('layers')}テーマ${n > 2 ? '：2' : ''} ${ic('down')}</button><button class="wfilter">${ic('sliders')}並び：おすすめ順</button></div>`;
 const wPopover = `<div class="popover p-wpop" style="top:136px;right:200px"><div class="row between"><b>テーマ</b><button class="btn sm ghost">クリア</button></div>
-  <div class="chips" style="margin-top:12px;gap:8px">${['資金調達*', 'SaaS*', '製造業DX', '採用', '経営管理', 'ネットワーキング', 'IPO 準備', '海外展開'].map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div>
+  <div class="chips" style="margin-top:12px;gap:8px">${['資金調達*', 'SaaS*', '製造業 DX', '採用', '経営管理', 'ネットワーキング', 'IPO 準備', '海外展開'].map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div>
   <div class="row between" style="margin-top:14px;font-size:12.5px;font-weight:700">プランに合うものを優先<span class="tgl on"></span></div>
   <div class="row" style="margin-top:14px;gap:8px"><span class="lbl"><span class="kbd">Esc</span> で閉じる</span><button class="btn primary sm" style="margin-left:auto">12件を表示</button></div></div>`;
 function wDiscover(s) {
@@ -6890,7 +6890,7 @@ function wDiscover(s) {
     <div class="span12 card-h" style="margin:8px 0 -6px"><h3>プランができると ${sample}</h3></div>
     ${REC.map((e, k) => `<div class="span4 faded" style="display:flex">${wEvc(e, 1).replace('evc span4', 'evc').replace('class="evc', 'style="flex:1" class="evc')}</div>`).join('')}</div>`;
   if (s === 'few') return head + `<div class="wgrid">${wFilters(3)}
-    <div class="span12 chips"><span class="chip lav">今週 ✕</span><span class="chip lav">東京 ✕</span><span class="chip lav">製造業DX ✕</span></div>
+    <div class="span12 chips"><span class="chip lav">今週 ✕</span><span class="chip lav">東京 ✕</span><span class="chip lav">製造業 DX ✕</span></div>
     ${[{ ...REC[1], n: '製造業 × SaaS ナイト', d: '10/9（金）19:00', place: '日本橋', fee: '¥2,000', score: 64, v: '条件付き', vc: 'apricot', why: '製造業の DX 責任者 15名' }, { ...REC[2], n: 'スマートファクトリー EXPO 内覧', d: '10/8（木）', place: '有明', score: 55, v: '条件付き', vc: 'apricot', why: '出展 40社 · 決裁者は少なめ', emo: '🏭' }, { ...REC[0], n: 'IoT 実装もくもく会', d: '10/10（土）', place: '五反田', score: 38, fee: '¥500', v: '見送り推奨', vc: 'pink', why: 'エンジニア中心 · 決裁者なし', emo: '🛠️' }].map(wEvc).join('')}
     <div class="card span12 flat p-wwiden"><div class="row" style="gap:12px"><span class="emo apricot">💡</span><div style="flex:1"><b>条件を広げると、もっと見つかります</b><div class="lbl">ワンクリックで条件を変更します</div></div>${[['期間を「今月」に', '+9'], ['「大阪」を追加', '+2'], ['「資金調達」を追加', '+6']].map(([t, n]) => `<button class="btn sm">${t}<span class="chip teal">${n}件</span></button>`).join('')}</div></div></div>`;
   return head + `<div class="wgrid">${wFilters(3)}
@@ -7270,7 +7270,7 @@ const HA = B12X.HV3.A, HW = B12X.HV3.W, EE = D.events;
 const S10 = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
 const evSegA = k => `<div class="seg k-evseg" style="display:flex;margin-bottom:14px">${['評価', '参加予定 3', '探す'].map((t, i) => `<button class="${i === k ? 'on' : ''}" style="flex:1">${t}</button>`).join('')}</div>`;
 const UP = [EE[1], EE[0], EE[2]];
-const PAST = [{ n: '製造業DX カンファレンス 大阪', d: '9月26日（金）', place: 'グランフロント大阪', st: '未チェックイン', c: '' }, { n: 'SaaS Summit 2026', d: '9月12日（金）', place: '東京国際フォーラム', st: '参加した', c: 'teal' }]; /* 新的在前（§29-2，对标 Eventbrite / Google カレンダー） */
+const PAST = [{ n: '製造業 DX カンファレンス 大阪', d: '9月26日（金）', place: 'グランフロント大阪', st: '未チェックイン', c: '' }, { n: 'SaaS Summit 2026', d: '9月12日（金）', place: '東京国際フォーラム', st: '参加した', c: 'teal' }]; /* 新的在前（§29-2，对标 Eventbrite / Google カレンダー） */
 const upCardA = (e, w) => `<div class="ev-card" style="width:${w}px;background:linear-gradient(160deg,var(--mac-lav),var(--surface) 60%);margin-bottom:12px">
       <div class="row between"><span class="chip">${e.d}</span>${e === EE[1] ? '<span class="chip apricot">今夜</span>' : ''}</div>
       <b style="display:block;font-size:16px;margin-top:10px">${e.n}</b><div class="lbl">${e.place}</div>
@@ -7509,11 +7509,11 @@ const C = D.contacts, E = D.events, G = D.goals;
 /* ============ 示例数据（虚构） ============ */
 const HE = [
   { n: 'CFO Night Tokyo vol.18', d: '10月7日（水）19:00', place: '渋谷ストリーム', st: '開催中', emo: '🥂', c: 'lav', app: 128, cap: 150, match: 112, chk: 86, note: '受付中 · 残り 42名' },
-  { n: '製造業DX 朝会 #3', d: '10月21日（水）8:00', place: 'ミナトリンク 品川オフィス', st: '開催前', emo: '🏭', c: 'blue', app: 42, cap: 60, match: 0, chk: 0, note: 'マッチング未生成' },
+  { n: '製造業 DX 朝会 #3', d: '10月21日（水）8:00', place: 'ミナトリンク 品川オフィス', st: '開催前', emo: '🏭', c: 'blue', app: 42, cap: 60, match: 0, chk: 0, note: 'マッチング未生成' },
   { n: '資金調達 実践ラウンドテーブル', d: '11月5日（木）18:30', place: '大手町 Inspired.Lab', st: '開催前', emo: '💰', c: 'pink', app: 18, cap: 30, match: 0, chk: 0, note: '審査待ち 3名' },
   { n: 'CFO Night Tokyo vol.17', d: '9月9日（水）19:00', place: '渋谷ストリーム', st: '終了', emo: '🥂', c: 'lav', app: 140, cap: 150, match: 131, chk: 118, note: '会後フォロー 61%' },
   { n: 'Founders Lunch 渋谷 #11', d: '8月27日（木）12:00', place: '渋谷サクラステージ', st: '終了', emo: '🍱', c: 'apricot', app: 24, cap: 24, match: 24, chk: 22, note: '会後フォロー 73%' },
-  { n: '製造業DX 朝会 #2', d: '7月15日（水）8:00', place: 'ミナトリンク 品川オフィス', st: '終了', emo: '🏭', c: 'blue', app: 38, cap: 60, match: 34, chk: 31, note: '会後フォロー 48%' },
+  { n: '製造業 DX 朝会 #2', d: '7月15日（水）8:00', place: 'ミナトリンク 品川オフィス', st: '終了', emo: '🏭', c: 'blue', app: 38, cap: 60, match: 34, chk: 31, note: '会後フォロー 48%' },
 ];
 const PP = [
   ['森田 拓也', '森', 'c3', '東邦テクノロジーズ', '事業開発部 部長', '事業会社'],
@@ -7569,7 +7569,7 @@ function center(s) {
   const kpis = many ? [['開催予定', 3, '今月 2件', ''], ['今月の申込', 188, '+42 先月比', 'd'], ['平均受付率', 84, '%', ''], ['会後フォロー率', 61, '%', 'w']] : [['開催予定', 1, '11月5日', ''], ['申込', 18, '定員 30', ''], ['審査待ち', 3, '名', 'c'], ['共同運営者', 1, '名', '']];
   return head + `<div class="wgrid">
     ${kpis.map(([l, v, d, f]) => `<div class="card span3 ${f === 'w' ? '' : ''}" ${f === 'w' ? 'data-why-box' : ''}><div class="row between"><span class="lbl">${l}</span>${f === 'w' ? '<span class="why">?</span>' : ''}</div><div class="big" style="margin-top:8px;${f === 'c' ? 'color:var(--coral)' : ''}">${num(v)}${d === '%' || d === '名' ? `<small>${d}</small>` : ''}</div>${f === 'd' ? `<span class="delta">${d}</span>` : d === '%' || d === '名' ? '' : `<div class="lbl">${d}</div>`}${f === 'w' ? '<div class="why-body" hidden>参加者が Orbit で「フォロー済み」を記録した割合（終了 3件の平均）。送信内容は集計しません。</div>' : ''}</div>`).join('')}
-    ${many ? `<div class="card span12 flat"><div class="row" style="gap:14px;flex-wrap:wrap"><b style="font-size:13.5px">対応が必要なこと</b>${[['🧾', 'apricot', '審査待ち 12名', 'CFO Night vol.18'], ['🪑', 'blue', 'マッチング未生成', '製造業DX 朝会 #3 · あと 14日'], ['🙋', 'pink', 'プロフィール未完了 16名', '定型のお知らせを確認後に通知']].map(([e, c, t, d]) => `<div class="row" style="gap:10px;background:var(--surface);border-radius:16px;padding:10px 14px;flex:1;min-width:240px"><span class="emo sm ${c}">${e}</span><div style="min-width:0"><b style="font-size:13px">${t}</b><div class="lbl clamp1">${d}</div></div><span class="muted" style="margin-left:auto">${ic('right', 'sm')}</span></div>`).join('')}</div></div>` : ''}
+    ${many ? `<div class="card span12 flat"><div class="row" style="gap:14px;flex-wrap:wrap"><b style="font-size:13.5px">対応が必要なこと</b>${[['🧾', 'apricot', '審査待ち 12名', 'CFO Night vol.18'], ['🪑', 'blue', 'マッチング未生成', '製造業 DX 朝会 #3 · あと 14日'], ['🙋', 'pink', 'プロフィール未完了 16名', '定型のお知らせを確認後に通知']].map(([e, c, t, d]) => `<div class="row" style="gap:10px;background:var(--surface);border-radius:16px;padding:10px 14px;flex:1;min-width:240px"><span class="emo sm ${c}">${e}</span><div style="min-width:0"><b style="font-size:13px">${t}</b><div class="lbl clamp1">${d}</div></div><span class="muted" style="margin-left:auto">${ic('right', 'sm')}</span></div>`).join('')}</div></div>` : ''}
     <div class="span12 row between" style="margin-top:4px"><div class="seg"><button class="on">すべて ${list.length}</button><button>開催前 ${many ? 2 : 1}</button><button>開催中 ${many ? 1 : 0}</button><button>終了 ${many ? 3 : 0}</button></div><div class="row" style="gap:8px"><div class="input" style="width:260px;height:38px">${ic('search', 'sm')}イベント名・会場</div><button class="btn sm">開催日順 ${ic('down', 'sm')}</button></div></div>
     ${list.map(e => hcard(e)).join('')}
     ${many ? '' : `<div class="card span8 flat"><div class="card-h"><h3>次にやること</h3><span class="lbl">資金調達 実践ラウンドテーブル</span></div>${[['申込フォームを公開', '10月1日 公開済み', 1], ['審査待ちの 3名を確認', '承認・キャンセル待ち・見送り', 0], ['申込 20名を超えたらマッチングを生成', '現在 18名', 0]].map(([t, d, done]) => `<div class="chk ${done ? 'done' : ''}"><span class="box">${done ? ic('check', 'sm') : ''}</span><div style="flex:1"><b>${t}</b><span>${d}</span></div></div>`).join('')}</div>`}
@@ -7588,7 +7588,7 @@ function overview() {
 }
 
 /* ============ A2 マッチング ============ */
-const TH = ['資本政策 × 投資家', '製造業DX × 資金調達', '財務チームづくり', '上場準備の実務', 'CVC との協業', '地域金融 × スタートアップ'];
+const TH = ['資本政策 × 投資家', '製造業 DX × 資金調達', '財務チームづくり', '上場準備の実務', 'CVC との協業', '地域金融 × スタートアップ'];
 const members = (k, n = 5) => Array.from({ length: n }, (_, j) => PP[(k * 3 + j * 4) % 20]);
 const tcard = (k, { open = false, warn = false, drag = false, n = 5, span = 'span4' } = {}) => `<div class="card ${span} tcard" data-why-box><div class="row between"><div class="row" style="gap:10px;min-width:0"><span class="tno">${'ABCDEF'[k]}</span><div style="min-width:0"><b class="clamp1" style="display:block">${TH[k]}</b><div class="lbl">テーブル ${'ABCDEF'[k]} · ${n}名</div></div></div><div class="row" style="gap:6px">${warn ? '<span class="chip coral">欠席連絡 1名</span>' : ''}<button class="lbtn">${ic('more', 'sm')}</button></div></div>
   <div style="margin-top:8px">${members(k, n).map((p, j) => `<div class="mrow ${drag && j === 2 ? 'drag' : ''}"><span class="handle">⋮⋮</span>${av(p)}<div class="meta"><b>${p[0]}</b><span>${p[3]} · ${p[4]}</span></div><span class="chip ${TC[p[5]]}">${p[5]}</span></div>`).join('')}</div>
@@ -7693,7 +7693,7 @@ function regForm(s) {
     <div class="span7" style="display:grid;gap:18px;align-content:start">
       <div class="card"><div class="card-h"><h3>説明文</h3><span class="lbl">200字まで</span></div><div class="ta ph">どんな人が集まり、何が得られる会かを書きましょう。例：製造業の DX 担当者とスタートアップが、現場の課題を持ち寄る朝会です。<span class="counter">0 / 200</span></div></div>
       <div class="card"><div class="card-h"><h3>テンプレートから始める</h3></div><div class="grid2">${[['🥂', 'lav', '交流会', '立場・話したいテーマ・会いたい人'], ['📚', 'blue', '勉強会', '経験レベル・関心トピック'], ['🪑', 'pink', 'ラウンドテーブル', '課題・事前に共有したいこと'], ['📄', 'apricot', '白紙から', '質問を自分で作る']].map(([e, c, t, d]) => `<div class="mac ${c} row" style="gap:10px;cursor:pointer"><span style="font-size:22px">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div></div>
-      <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b>質問案を 3つ追加しますか？</b><div class="lbl">「製造業DX 朝会」の過去 2回の回答傾向から作成しました</div></div><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div></div>
+      <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b>質問案を 3つ追加しますか？</b><div class="lbl">「製造業 DX 朝会」の過去 2回の回答傾向から作成しました</div></div><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div></div>
     <div class="span5" style="display:grid;gap:18px;align-content:start">${preview([], '', HE[1])}${settings.replace('span5', '')}</div></div>`;
   const many = s === 'many', qs = many ? QS : QS.slice(0, 2);
   return head + `<div class="wgrid">
@@ -7901,14 +7901,14 @@ const wChat = () => mainhead('iOrbit', '人脈・イベント・予定を知っ�
     <div class="bubble me">CVC の担当者に会うには、どうすればいい？</div>
     <div class="bubble ai">今のつながりに CVC 担当者はいません（プランの目標は 3人）。近道は2つあります。</div>
     <div class="grid2"><div class="card"><div class="lbl">紹介を頼める人</div><div class="row" style="gap:10px;margin-top:8px"><div class="av ${C[5].c}">${C[5].i}</div><div style="flex:1"><b>${C[5].n}</b><div class="lbl">${C[5].co} · 大企業の新規事業担当 300名</div></div></div><button class="btn sm" style="margin-top:12px">${ic('mail', 'sm')}依頼文を下書き</button></div>
-      <div class="card"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${ring(48, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:12px">68</span>')}<div><b>製造業DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定 · 10/23</div></div></div><button class="btn sm" style="margin-top:12px">${ic('calendar', 'sm')}予定を押さえる</button></div></div>
+      <div class="card"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${ring(48, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:12px">68</span>')}<div><b>製造業 DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定 · 10/23</div></div></div><button class="btn sm" style="margin-top:12px">${ic('calendar', 'sm')}予定を押さえる</button></div></div>
     <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b>プランに追加しますか？</b><div class="lbl">「小林さんに CVC 担当者の紹介を依頼」を「CVC 担当者」のやることに</div></div><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div>
     <div class="chips"><span class="prompt">依頼文を作って</span><span class="prompt">大阪の日程を押さえて</span><span class="prompt">他に CVC に近い人は？</span></div>
     <div class="assist-in" style="margin-top:20px;height:56px;box-shadow:var(--shadow-float)">${ic('plus', 'sm')}質問・依頼を入力　@で人やイベントを指定<button class="lbtn" style="margin-left:auto;background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div></div>`;
 const wChatRail = `<h4>${ic('layers', 'sm')}参照しているもの</h4>
   <div class="card" style="padding:14px"><div class="lbl">プラン</div><b style="font-size:13px">シリーズA 資金調達 · スコア 46</b>${V2.sbar('s46', { thin: true })}</div>
   <div class="card" style="padding:14px"><div class="lbl">人脈 3名</div><div class="avs" style="margin-top:8px">${[C[5], C[0], C[2]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div></div>
-  <div class="card" style="padding:14px"><div class="lbl">イベント 1件</div><b style="font-size:13px">製造業DXカンファレンス 大阪</b></div>
+  <div class="card" style="padding:14px"><div class="lbl">イベント 1件</div><b style="font-size:13px">製造業 DXカンファレンス 大阪</b></div>
   <div class="mac lav" style="font-size:12px">メール・メッセージは下書きまで。送信はあなたが行います。</div>`;
 
 /* ============ 出力 ============ */
@@ -7958,7 +7958,7 @@ const notifyDlg = dlg(`<span class="emo pink">🙋</span><div style="font-size:1
   ${btnRow('<button class="btn">キャンセル</button>', '<button class="btn primary">16名に送る</button>')}`);
 /* ---------- B6 主办方资料 列表 + 编辑（照 b7 #34 左表单 + 右预览）/ 共同運営に参加 ---------- */
 const orgEdit = () => mainhead('主催者ページ', '運営センター › 主催者ページ', backBtn, `<button class="btn">${ic('out', 'sm')}公開ページを見る</button><button class="btn accent">保存</button>`) + `<div class="wgrid">
-  <div class="card span3 k-orglist" style="padding:10px"><div class="lbl" style="padding:6px 8px">あなたの主催者ページ</div>${[['🥂', 'lav', 'CFO Night 実行委員会', 'イベント 18件', 1], ['🏭', 'blue', '製造業DX 朝会', 'イベント 3件', 0]].map(([e, c, n, d, on]) => `<div class="row" style="gap:10px;padding:10px;border-radius:14px;${on ? 'background:var(--surface-2)' : ''}"><span class="emo sm ${c}">${e}</span><div style="min-width:0"><b style="font-size:13px" class="clamp1">${n}</b><div class="lbl">${d}</div></div></div>`).join('')}<button class="btn ghost block" style="margin-top:8px">${ic('plus', 'sm')}主催者ページを追加</button></div>
+  <div class="card span3 k-orglist" style="padding:10px"><div class="lbl" style="padding:6px 8px">あなたの主催者ページ</div>${[['🥂', 'lav', 'CFO Night 実行委員会', 'イベント 18件', 1], ['🏭', 'blue', '製造業 DX 朝会', 'イベント 3件', 0]].map(([e, c, n, d, on]) => `<div class="row" style="gap:10px;padding:10px;border-radius:14px;${on ? 'background:var(--surface-2)' : ''}"><span class="emo sm ${c}">${e}</span><div style="min-width:0"><b style="font-size:13px" class="clamp1">${n}</b><div class="lbl">${d}</div></div></div>`).join('')}<button class="btn ghost block" style="margin-top:8px">${ic('plus', 'sm')}主催者ページを追加</button></div>
   <div class="card span5 k-orgform"><div class="card-h"><h3>プロフィール</h3></div>${setr('名前 *', inp('CFO Night 実行委員会'))}${setr('URL', inp('orbit.example/o/cfo-night'))}${setr('アイコン', '<span class="emo lav">🥂</span><button class="btn sm">変更</button>')}
     <div class="lbl" style="margin-top:10px;font-weight:700;color:var(--ink-2)">紹介文</div><div class="ta" style="min-height:90px;margin-top:6px">スタートアップの CFO と投資家が、毎月渋谷で本音を話す会です。<span class="counter">30 / 200</span></div>
     ${setr('公開範囲', '<div class="seg"><button class="on">公開</button><button>リンクを知っている人</button></div>')}</div>
@@ -8009,7 +8009,7 @@ const mailW = () => mainhead('お知らせの見え方', '定型メール · 受
       <div class="sub" style="margin-top:14px;line-height:1.8">佐藤 健一 様<br><br>CFO Night Tokyo vol.18 への参加が承認されました。当日は受付で QR を表示してください。<br><br><b>主催者より：</b>当日は 18:45 から受付を開始します。</div>
       <button class="btn primary" style="margin-top:14px">イベントを見る</button><div class="lbl" style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">10月7日（水）19:00 · 渋谷ストリーム 4F · 配信停止はアプリの設定から</div></div></div>
   <div class="card span5 k-inbox"><div class="card-h"><h3>受信箱 · 通知</h3><span class="lbl">アプリ / Web 共通</span></div>
-    ${[['🥂', 'lav', '参加が承認されました', 'CFO Night Tokyo vol.18 · いま', 1], ['🪑', 'blue', 'テーブル編成が公開されました', '第1ラウンド テーブル B-4 · 2時間前', 0], ['⛔', '', '製造業DX 朝会 #3 は中止になりました', '主催者より · 昨日', 0]].map(([e, c, t, d, n]) => `<div class="row" style="gap:10px;padding:12px;border-radius:14px;${n ? 'background:var(--surface-2)' : ''}"><span class="emo sm ${c}" ${c ? '' : 'style="background:var(--surface-2)"'}>${e}</span><div style="flex:1;min-width:0"><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div>${n ? '<span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--coral)"></span>' : ''}</div>`).join('')}</div></div>`;
+    ${[['🥂', 'lav', '参加が承認されました', 'CFO Night Tokyo vol.18 · いま', 1], ['🪑', 'blue', 'テーブル編成が公開されました', '第1ラウンド テーブル B-4 · 2時間前', 0], ['⛔', '', '製造業 DX 朝会 #3 は中止になりました', '主催者より · 昨日', 0]].map(([e, c, t, d, n]) => `<div class="row" style="gap:10px;padding:12px;border-radius:14px;${n ? 'background:var(--surface-2)' : ''}"><span class="emo sm ${c}" ${c ? '' : 'style="background:var(--surface-2)"'}>${e}</span><div style="flex:1;min-width:0"><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div>${n ? '<span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--coral)"></span>' : ''}</div>`).join('')}</div></div>`;
 let g = '';
 const N = (arr) => arr.map(([s, n, t]) => [s, n, t]);
 g += S8('补画 · 2026-10-16 · 主催 R17 · B1 / B2 建活动与确认', 'DESIGN §10 B1 / B2：左表单 + 右预览（照 b6 #13）、含「所属する主催者ページ」；确认框 01-system 480，中止主按钮 --coral-text');
@@ -8126,7 +8126,7 @@ __g8out(group('g8', g));
 (() => {
 const X = B12X.H6;
 const S8 = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
-const hmenu = `<div class="dmenu k-hmenu" style="right:40px;top:78px;z-index:30">${[['pen', '基本情報を編集', ''], ['refresh', '参加コードを再発行', ''], ['link', '申込ページを開く', '']].map(([i, t]) => `<div>${ic(i, 'sm')}${t}</div>`).join('')}<div style="height:1px;background:var(--line);margin:4px 6px;padding:0"></div><div style="color:var(--coral-text)">${ic('x', 'sm')}イベントを中止</div></div>`;
+const hmenu = `<div class="dmenu k-hmenu" style="right:40px;top:78px;z-index:30">${[['pen', '基本情報を編集', ''], ['refresh', '参加コードを再発行', ''], ['link', '申込ページを開く', '']].map(([i, t]) => `<div style="justify-content:flex-start;gap:8px">${ic(i, 'sm')}<span>${t}</span></div>`).join('')}<div style="height:1px;background:var(--line);margin:4px 6px;padding:0"></div><div style="color:var(--coral-text);justify-content:flex-start;gap:8px">${ic('x', 'sm')}<span>イベントを中止</span></div></div>`;
 let g = '';
 g += S8('补画 · 2026-10-16 · 主催 R17 · 運営台 ⋯ メニュー（§44）', '已公开活动的 编辑 / 参加コード再発行 / 中止 入口统一放页头「⋯」（对标 Peatix / connpass 管理页头菜单）；下書き的「公開する」在横幅（#440）');
 g += WP('W-R17-24 運営台 · ⋯ メニュー（公開中）', '', () => ({ nav: 'host', body: X.overview().replace('<button class="rbtn k-hmore">', '<button class="rbtn k-hmore" style="background:var(--surface-2)">'), ov: hmenu }), [['.k-hmenu', 0, '页头右端「⋯」：基本情報を編集（→ W-R17-02）/ 参加コードを再発行（确认后旧码失效）/ 申込ページを開く / 分隔线 / イベントを中止（珊瑚色 → W-R17-04 确认框，仅 owner）。所有页签同一位置']], 'b6 概要 · 补画 2026-10-16');

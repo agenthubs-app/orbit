@@ -174,7 +174,7 @@ const REC = [
   { n: 'シリーズA 実務勉強会', md: [11, 12], d: '11/12（木）', place: 'オンライン', score: 71, why: '伊藤さん（ハルモニア CFO）が登壇', emo: '📚', vc: 'blue', v: '参加をおすすめ', fee: '無料' },
 ];
 const MORE = [
-  { n: '製造業DXカンファレンス 大阪', md: [10, 23], place: 'グランフロント大阪', score: 68, fee: '無料', v: '条件付き', vc: 'apricot' },
+  { n: '製造業 DXカンファレンス 大阪', md: [10, 23], place: 'グランフロント大阪', score: 68, fee: '無料', v: '条件付き', vc: 'apricot' },
   { n: 'FinTech Forum Tokyo', md: [11, 5], place: '虎ノ門ヒルズ', score: 58, fee: '¥8,000', v: '条件付き', vc: 'apricot' },
   { n: '丸の内スタートアップ朝会 #42', md: [10, 21], place: '丸の内', score: 41, fee: '¥1,000', v: '見送り推奨', vc: 'pink' },
 ];
@@ -208,9 +208,9 @@ function errNotEvent() {
     <div class="list p-found">${[[[10, 7], 'CFO Night Tokyo vol.18', '渋谷 · 19:00 · 記事末尾のリンク'], [[11, 12], 'シリーズA 実務勉強会', 'オンライン · 本文中で紹介']].map(([md, t, p]) => `<div class="li">${datebox(md)}<div class="meta"><b>${t}</b><span>${p}</span></div><button class="btn sm">評価</button></div>`).join('')}</div></div>
   <div class="card flat"><div class="row"><span class="emo sm teal">✍️</span><div style="flex:1"><b style="font-size:13px">どれでもない場合</b><div class="lbl">名称・日時・場所を入力して判定</div></div><button class="btn sm p-manual">手入力</button></div></div>`;
 }
-const poster = (h = 150, big = false) => `<div class="poster" style="height:${h}px"><span class="chip coral tagb">ブレを検出</span><div class="pz" ${big ? 'style="width:56%;padding:20px 24px"' : ''}><small>NAGOYA · 2026</small><b ${big ? 'style="font-size:24px"' : ''}>製造業DX<br>ナイトセミナー</b><i></i><i style="width:60%"></i><i style="width:80%"></i></div></div>`;
+const poster = (h = 150, big = false) => `<div class="poster" style="height:${h}px"><span class="chip coral tagb">ブレを検出</span><div class="pz" ${big ? 'style="width:56%;padding:20px 24px"' : ''}><small>NAGOYA · 2026</small><b ${big ? 'style="font-size:24px"' : ''}>製造業 DX<br>ナイトセミナー</b><i></i><i style="width:60%"></i><i style="width:80%"></i></div></div>`;
 const frow = (k, v, st, cls = '') => `<div class="frow ${cls}"><span class="lbl">${k}</span><i class="cf ${st}"></i><b class="${st === 'ng' ? 'muted' : ''}">${v}</b>${st === 'ng' ? '<span class="chip coral">読み取れず</span>' : st === 'guess' ? '<span class="chip apricot">推測</span>' : ''}</div>`;
-const posterFields = () => frow('名称', '製造業DX ナイトセミナー 名古屋', 'ok') + frow('主催', '中部ものづくりDX協議会', 'ok') + frow('日時', '—', 'ng', 'p-ng') + frow('場所', '名古屋駅周辺？', 'guess') + frow('参加費', '—', 'ng');
+const posterFields = () => frow('名称', '製造業 DX ナイトセミナー 名古屋', 'ok') + frow('主催', '中部ものづくり DX 協議会', 'ok') + frow('日時', '—', 'ng', 'p-ng') + frow('場所', '名古屋駅周辺？', 'guess') + frow('参加費', '—', 'ng');
 function errPoster() {
   return topbar('イベント評価', 'ポスターの一部だけ読み取れました', back) + `
   <div class="card rise" style="padding:10px">${poster(130)}</div>
@@ -230,7 +230,7 @@ function rejudge() {
   return topbar('イベント評価', 'ポスター + 手入力で判定', back, shareB) + `
   <div class="card rise" style="text-align:center;padding:20px 18px">
     <span class="chip lav">${ic('image', 'sm')} ポスター画像</span>
-    <div style="font-size:16px;font-weight:800;margin:10px 0 2px">製造業DX ナイトセミナー 名古屋</div><div class="lbl">10月29日（木）18:30 · 名古屋駅周辺 · 参加費 不明</div>
+    <div style="font-size:16px;font-weight:800;margin:10px 0 2px">製造業 DX ナイトセミナー 名古屋</div><div class="lbl">10月29日（木）18:30 · 名古屋駅周辺 · 参加費 不明</div>
     <div style="margin:16px auto 6px;width:130px">${ring(130, 12, [{ v: 63, c: 'var(--plum-500)', max: 100 }], `<div class="big" style="font-size:40px">${num(63)}</div><div class="lbl">/ 100</div>`)}</div>
     <span class="chip apricot" style="font-size:12.5px;padding:5px 12px">条件付きでおすすめ</span></div>
   <div class="card p-supplied" data-why-box><div class="row" style="gap:8px"><span class="emo sm apricot">✍️</span><div style="flex:1"><b style="font-size:13px">あなたが補った項目 2つ</b><div class="lbl">日時 · 場所（推測を採用）· 参加費は不明のまま</div></div><span class="why p-why">?</span></div>
@@ -293,7 +293,7 @@ function discover(s) {
       <div class="faded">${recCard(REC[0], 300).replace('class="ev-card"', 'class="ev-card" style="padding:0;width:auto"')}</div>
       <div class="ghost-row" style="margin-top:12px"><i></i>あなたのコミュニティの先行案内</div><div class="ghost-row"><i></i>知り合いが参加するイベント</div></div>`;
   if (s === 'few') return head + searchRow(3) + `
-    <div class="chips" style="margin:10px 0 0"><span class="chip lav">今週 ✕</span><span class="chip lav">東京 ✕</span><span class="chip lav">製造業DX ✕</span></div>
+    <div class="chips" style="margin:10px 0 0"><span class="chip lav">今週 ✕</span><span class="chip lav">東京 ✕</span><span class="chip lav">製造業 DX ✕</span></div>
     <div class="card" style="margin-top:14px;padding:6px 16px"><div class="list">${[{ ...REC[1], n: '製造業 × SaaS ナイト', md: [10, 9], place: '日本橋', fee: '¥2,000', score: 64 }, { n: 'スマートファクトリー EXPO 内覧', md: [10, 8], place: '有明', fee: '無料', score: 55 }, { n: 'IoT 実装もくもく会', md: [10, 10], place: '五反田', fee: '¥500', score: 38 }].map(allRow).join('')}</div></div>
     <div class="card flat p-widen"><div class="row" style="gap:8px"><span class="emo sm apricot">💡</span><b style="font-size:13px">条件を広げると、もっと見つかります</b></div>
       <div style="display:grid;gap:8px;margin-top:10px">${[['期間を「今月」に', '+9件'], ['場所に「大阪」を追加', '+2件'], ['テーマに「資金調達」を追加', '+6件']].map(([t, n]) => `<button class="row between" style="padding:10px 12px;border-radius:14px;background:var(--surface);font-size:12.5px;font-weight:700">${t}<span class="chip teal">${n}</span></button>`).join('')}</div></div>
@@ -307,7 +307,7 @@ function discover(s) {
       <div class="list">${[...REC, ...MORE].sort((a, b) => a.md[0] * 40 + a.md[1] - b.md[0] * 40 - b.md[1]).slice(0, 6).map(allRow).join('')}</div></div>`;
 }
 const filterSheet = `<div class="sheet-scrim"></div><div class="sheet p-fsheet"><div class="grab"></div><div class="row between" style="margin-bottom:12px"><b style="font-size:16px">絞り込み</b><button class="btn sm ghost">クリア</button></div>
-  ${[['時期', ['今週', '今月*', '来月', '📅 日付を指定']], ['場所', ['オンライン', '東京*', '大阪', '名古屋']], ['テーマ', ['資金調達*', 'SaaS*', '製造業DX', '採用', '経営管理']], ['形式', ['登壇あり', '交流会*', '少人数（〜30名）']]].map(([g, os]) => `<div class="fgrp"><span class="lbl">${g}</span><div class="chips">${os.map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div></div>`).join('')}
+  ${[['時期', ['今週', '今月*', '来月', '📅 日付を指定']], ['場所', ['オンライン', '東京*', '大阪', '名古屋']], ['テーマ', ['資金調達*', 'SaaS*', '製造業 DX', '採用', '経営管理']], ['形式', ['登壇あり', '交流会*', '少人数（〜30名）']]].map(([g, os]) => `<div class="fgrp"><span class="lbl">${g}</span><div class="chips">${os.map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div></div>`).join('')}
   <div class="row between" style="margin-top:14px;font-size:13px;font-weight:700">無料のみ<span class="tgl"></span></div>
   <div class="row between" style="margin-top:10px;font-size:13px;font-weight:700">プランに合うものを優先<span class="tgl on"></span></div>
   <button class="btn primary block p-fshow" style="height:48px;margin-top:16px">28件を表示</button></div>`;
@@ -330,7 +330,7 @@ const wEvc = (e, k) => `<div class="evc span4 ${k === 0 ? 'sel' : ''}"><div clas
 const wFilters = (n) => `<div class="span12 row" style="gap:10px"><div class="search" style="flex:1">${ic('search', 'sm')}イベント名・主催・キーワード<span style="margin-left:auto" class="lbl">⌘K</span></div>
   <button class="wfilter ${n ? 'on' : ''}">${ic('calendar')}時期：今月 ${ic('down')}</button><button class="wfilter ${n ? 'on' : ''}">${ic('pin')}場所：東京 ${ic('down')}</button><button class="wfilter p-wtheme ${n > 2 ? 'on' : ''}">${ic('layers')}テーマ${n > 2 ? '：2' : ''} ${ic('down')}</button><button class="wfilter">${ic('sliders')}並び：おすすめ順</button></div>`;
 const wPopover = `<div class="popover p-wpop" style="top:136px;right:200px"><div class="row between"><b>テーマ</b><button class="btn sm ghost">クリア</button></div>
-  <div class="chips" style="margin-top:12px;gap:8px">${['資金調達*', 'SaaS*', '製造業DX', '採用', '経営管理', 'ネットワーキング', 'IPO 準備', '海外展開'].map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div>
+  <div class="chips" style="margin-top:12px;gap:8px">${['資金調達*', 'SaaS*', '製造業 DX', '採用', '経営管理', 'ネットワーキング', 'IPO 準備', '海外展開'].map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div>
   <div class="row between" style="margin-top:14px;font-size:12.5px;font-weight:700">プランに合うものを優先<span class="tgl on"></span></div>
   <div class="row" style="margin-top:14px;gap:8px"><span class="lbl"><span class="kbd">Esc</span> で閉じる</span><button class="btn primary sm" style="margin-left:auto">12件を表示</button></div></div>`;
 function wDiscover(s) {
@@ -341,7 +341,7 @@ function wDiscover(s) {
     <div class="span12 card-h" style="margin:8px 0 -6px"><h3>プランができると ${sample}</h3></div>
     ${REC.map((e, k) => `<div class="span4 faded" style="display:flex">${wEvc(e, 1).replace('evc span4', 'evc').replace('class="evc', 'style="flex:1" class="evc')}</div>`).join('')}</div>`;
   if (s === 'few') return head + `<div class="wgrid">${wFilters(3)}
-    <div class="span12 chips"><span class="chip lav">今週 ✕</span><span class="chip lav">東京 ✕</span><span class="chip lav">製造業DX ✕</span></div>
+    <div class="span12 chips"><span class="chip lav">今週 ✕</span><span class="chip lav">東京 ✕</span><span class="chip lav">製造業 DX ✕</span></div>
     ${[{ ...REC[1], n: '製造業 × SaaS ナイト', d: '10/9（金）19:00', place: '日本橋', fee: '¥2,000', score: 64, v: '条件付き', vc: 'apricot', why: '製造業の DX 責任者 15名' }, { ...REC[2], n: 'スマートファクトリー EXPO 内覧', d: '10/8（木）', place: '有明', score: 55, v: '条件付き', vc: 'apricot', why: '出展 40社 · 決裁者は少なめ', emo: '🏭' }, { ...REC[0], n: 'IoT 実装もくもく会', d: '10/10（土）', place: '五反田', score: 38, fee: '¥500', v: '見送り推奨', vc: 'pink', why: 'エンジニア中心 · 決裁者なし', emo: '🛠️' }].map(wEvc).join('')}
     <div class="card span12 flat p-wwiden"><div class="row" style="gap:12px"><span class="emo apricot">💡</span><div style="flex:1"><b>条件を広げると、もっと見つかります</b><div class="lbl">ワンクリックで条件を変更します</div></div>${[['期間を「今月」に', '+9'], ['「大阪」を追加', '+2'], ['「資金調達」を追加', '+6']].map(([t, n]) => `<button class="btn sm">${t}<span class="chip teal">${n}件</span></button>`).join('')}</div></div></div>`;
   return head + `<div class="wgrid">${wFilters(3)}

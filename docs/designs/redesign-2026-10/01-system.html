@@ -336,7 +336,7 @@ P += comp(duo(`<div class="srow" style="gap:12px">
 /* ③ 弹层 */
 const frame = (w, hh, inner) => `<div class="frame" style="width:${w}px;height:${hh}px"><div class="ghostui">${'<i></i>'.repeat(8)}</div>${inner}</div>`;
 const fsheet = `<div class="scrim"></div><div class="sheet"><div class="grab"></div><div class="row between" style="margin-bottom:10px"><b style="font-size:15px">絞り込み</b><button class="btn sm ghost">クリア</button></div>
-  ${[['時期', ['今週', '今月*', '来月']], ['場所', ['オンライン', '東京*', '大阪']], ['テーマ', ['資金調達*', 'SaaS*', '製造業DX']]].map(([g, os]) => `<div style="margin-top:10px"><div class="lbl" style="font-weight:700;margin-bottom:6px">${g}</div><div class="chips">${os.map(o => `<span class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</span>`).join('')}</div></div>`).join('')}
+  ${[['時期', ['今週', '今月*', '来月']], ['場所', ['オンライン', '東京*', '大阪']], ['テーマ', ['資金調達*', 'SaaS*', '製造業 DX']]].map(([g, os]) => `<div style="margin-top:10px"><div class="lbl" style="font-weight:700;margin-bottom:6px">${g}</div><div class="chips">${os.map(o => `<span class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</span>`).join('')}</div></div>`).join('')}
   <div class="row between" style="margin-top:12px;font-size:12.5px;font-weight:700">プランに合うものを優先<span class="tgl on"></span></div>
   <button class="btn primary block" style="height:44px;margin-top:12px">28件を表示</button></div>`;
 const psheet = `<div class="scrim"></div><div class="sheet"><div class="grab"></div><div class="row" style="gap:10px"><div class="av lg c1">清</div><div style="flex:1;min-width:0"><b style="font-size:16px;display:block">清水 玲奈</b><div class="lbl ell">Sorae Capital · プリンシパル · C-2</div></div><button class="lbtn">${ic('x', 'sm')}</button></div>
@@ -345,7 +345,7 @@ const psheet = `<div class="scrim"></div><div class="sheet"><div class="grab"></
   <button class="btn block" style="margin-top:10px;height:42px">${ic('calendar', 'sm')}面談を提案する${ic('right', 'sm')}</button></div>`;
 const popover = `<div style="position:relative;width:340px"><button class="btn" style="background:var(--accent-soft)">${ic('filter', 'sm')}テーマ · 2</button>
   <div class="pop" style="margin-top:8px"><div class="row between"><b>テーマ</b><button class="btn sm ghost">クリア</button></div>
-  <div class="chips" style="margin-top:10px;gap:7px">${['資金調達*', 'SaaS*', '製造業DX', '採用', '経営管理', 'IPO 準備'].map(o => `<span class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</span>`).join('')}</div>
+  <div class="chips" style="margin-top:10px;gap:7px">${['資金調達*', 'SaaS*', '製造業 DX', '採用', '経営管理', 'IPO 準備'].map(o => `<span class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</span>`).join('')}</div>
   <div class="row" style="margin-top:14px;gap:8px"><span class="lbl">${kbd('Esc')} で閉じる</span><button class="btn primary sm" style="margin-left:auto">12件を表示</button></div></div></div>`;
 const drawerFrame = `<div class="frame" style="width:640px;height:330px"><div class="ghostui" style="grid-template-columns:repeat(3,1fr)">${'<i></i>'.repeat(15)}</div><div class="overlay"></div>
   <div class="drawer"><div class="row between"><button class="lbtn">${ic('x', 'sm')}</button><div class="row" style="gap:6px"><button class="lbtn">${ic('out', 'sm')}</button><button class="lbtn">${ic('pen', 'sm')}</button></div></div>
