@@ -93,10 +93,11 @@ export interface OwnCardImage {
 /** The scan only returns a draft for review; it does not create a contact. */
 export async function scanOwnBusinessCard(
   client: OrbitApiClient,
-  image: OwnCardImage
+  image: OwnCardImage,
+  signal?: AbortSignal,
 ): Promise<{ ok: true; name: string; company: string; title: string } | OnboardingFailure> {
   const body = { imageBase64: image.base64, imageName: image.fileName, ...(image.size && image.size > 0 ? { imageSizeBytes: image.size } : {}), mimeType: image.mimeType };
-  const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.contactDraftBusinessCardScan, { body });
+  const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.contactDraftBusinessCardScan, { body, ...(signal ? { signal } : {}) });
   if (!succeeded(result) || !result.success) return failure(result);
   const draft = (result.data as { draft?: { displayName?: unknown; organization?: unknown; role?: unknown } | null } | null)?.draft;
   if (!draft) return { ok: false, kind: "failed" };
