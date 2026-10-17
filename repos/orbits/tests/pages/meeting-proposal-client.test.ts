@@ -4,6 +4,7 @@ import { createMeetingProposalClient, MeetingProposalError, prepareMeetingPropos
 import { createMemoryAppointmentRepository } from "../../features/appointments/memory-repository";
 import { createAppointmentService } from "../../features/appointments/service";
 import { publicAppointment } from "../../app/api/appointments/handlers";
+import { createAppointmentInitialProposalHandlers } from "../../app/api/appointments/initial-proposal-handlers";
 
 const now = Date.parse("2030-04-01T00:00:00Z");
 const candidates = [2, 3, 4].map(day => ({ startsAt: `2030-04-0${day}T09:00:00Z`, endsAt: `2030-04-0${day}T09:30:00Z` }));
@@ -16,6 +17,72 @@ async function fixture() {
   await service.command({ actorId: "b", appointmentId: created.appointment.appointmentId, command: "accept", expectedVersion: 2, idempotencyKey: "accept", candidateId: proposed.appointment.proposals[0]!.candidateTimes[0]!.candidateId });
   return { service, repository };
 }
+
+test("first-proposal client verifies scoped availability, native receipt and a separate appointment GET", async () => {
+  const repository = createMemoryAppointmentRepository();
+  const service = createAppointmentService({ repository, now: () => new Date(now).toISOString(), authorityVerifier: { resolveAcceptedBilateralContact: async () => ({ authorityRequestId: "accepted", contactIdsByActor: { a: "contact-b", b: "contact-a" }, counterpartyActorId: "b", relationshipPairId: "pair" }) } });
+  const handlers = createAppointmentInitialProposalHandlers({ resolveActor: async () => ({ id: "a", workspaceId: "w" }), boundary: () => ({ service, contactAuthority: { read: async (_actor, contact) => contact === "contact-b" ? { eventId: "event", authorityReference: "accepted" } : null } }) });
+  const calls: string[] = [];
+  const client = createMeetingProposalClient({ now: () => now, fetch: async (url, init) => {
+    calls.push(`${init?.method ?? "GET"} ${url}`);
+    if (String(url).startsWith("/api/appointments/initial-proposal")) {
+      const request = new Request(`https://orbit.local${url}`, init);
+      return init?.method === "POST" ? handlers.POST(request) : handlers.GET(request);
+    }
+    const appointmentId = decodeURIComponent(String(url).split("/").at(-1)!);
+    return Response.json({ success: true, data: publicAppointment(await service.get({ actorId: "a", appointmentId }), "a") });
+  } });
+  assert.equal(await client.available("contact-b"), true);
+  assert.equal(await client.available("imported-only"), false);
+  const created = await client.create("contact-b", candidates, medium, "UTC");
+  assert.equal(created.status, "awaiting_response"); assert.equal(created.pendingProposalRevision, 1);
+  assert.equal(calls.length, 4); assert.equal(calls[2], "POST /api/appointments/initial-proposal");
+  assert.equal(calls[3], `GET /api/appointments/${encodeURIComponent(created.appointmentId)}`);
+  assert.equal(repository.outbox().length, 1);
+});
+
+test("first-proposal client refuses wrong availability identity, forged candidates, mismatched readback and expired scope", async () => {
+  const availability = createMeetingProposalClient({ fetch: async () => Response.json({ success: true, data: { contactId: "other", available: true } }) });
+  await assert.rejects(availability.available("contact-b"), error => error instanceof MeetingProposalError && error.code === "unconfirmed");
+  for (const tamper of ["contact", "candidates", "readback", "abort"] as const) {
+    const repository = createMemoryAppointmentRepository(), controller = new AbortController();
+    const service = createAppointmentService({ repository, now: () => new Date(now).toISOString(), authorityVerifier: { resolveAcceptedBilateralContact: async () => ({ authorityRequestId: "accepted", contactIdsByActor: { a: "contact-b", b: "contact-a" }, counterpartyActorId: "b", relationshipPairId: "pair" }) } });
+    let readback = false;
+    const client = createMeetingProposalClient({ now: () => now, fetch: async (_url, init) => {
+      if (init?.method === "POST") {
+        const body = JSON.parse(String(init.body));
+        const result = await service.createDraft({ actorId: "a", eventId: "event", authorityReference: "accepted", idempotencyKey: "first", initialProposal: body.proposal });
+        const raw = publicAppointment(result.appointment, "a");
+        if (tamper === "contact") raw.contactId = "other";
+        if (tamper === "candidates") raw.proposals[0]!.candidateTimes = raw.proposals[0]!.candidateTimes.map((candidate, index) => index ? candidate : { ...candidate, startsAtUtc: "2030-04-09T09:00:00Z" });
+        if (tamper === "abort") controller.abort();
+        return Response.json({ success: true, data: { ...raw, replayed: false } });
+      }
+      readback = true;
+      const raw = publicAppointment((await service.list({ actorId: "a" }))[0]!, "a");
+      return Response.json({ success: true, data: { ...raw, version: 99 } });
+    } });
+    await assert.rejects(client.create("contact-b", candidates, medium, "UTC", controller.signal));
+    assert.equal(readback, tamper === "readback");
+  }
+});
+
+test("first-proposal retry after lost response keeps one idempotency key and one native outbox", async () => {
+  const repository = createMemoryAppointmentRepository(), keys: string[] = []; let lost = true;
+  const service = createAppointmentService({ repository, now: () => new Date(now).toISOString(), authorityVerifier: { resolveAcceptedBilateralContact: async () => ({ authorityRequestId: "accepted", contactIdsByActor: { a: "contact-b", b: "contact-a" }, counterpartyActorId: "b", relationshipPairId: "pair" }) } });
+  const client = createMeetingProposalClient({ now: () => now, fetch: async (url, init) => {
+    if (init?.method === "POST") {
+      const key = new Headers(init.headers).get("idempotency-key")!; keys.push(key);
+      const result = await service.createDraft({ actorId: "a", eventId: "event", authorityReference: "accepted", idempotencyKey: key, initialProposal: JSON.parse(String(init.body)).proposal });
+      if (lost) { lost = false; throw Error("LOST_AFTER_COMMIT"); }
+      return Response.json({ success: true, data: { ...publicAppointment(result.appointment, "a"), replayed: result.replayed } });
+    }
+    return Response.json({ success: true, data: publicAppointment(await service.get({ actorId: "a", appointmentId: decodeURIComponent(String(url).split("/").at(-1)!) }), "a") });
+  } });
+  await assert.rejects(client.create("contact-b", candidates, medium, "UTC"));
+  assert.equal((await client.create("contact-b", candidates, medium, "UTC")).status, "awaiting_response");
+  assert.equal(keys.length, 2); assert.equal(keys[0], keys[1]); assert.equal(repository.outbox().length, 1);
+});
 
 test("meeting proposal rejects malformed, too-near, overlapping, mismatched-duration and unsafe-medium candidates before any POST", () => {
   assert.equal(prepareMeetingProposal(candidates, medium, "UTC", now)?.durationMinutes, 30);

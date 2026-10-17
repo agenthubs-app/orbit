@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { MeetingDetailsMedium } from "../../../../../shared/contract/appointments";
 import { meetingDetailsSchema } from "../../../../../shared/api-schema/appointment-details";
+import { meetingInitialProposalAvailabilitySchema } from "../../../../../shared/api-schema/appointment-initial-proposal";
 import { createAppointmentActionIdempotencyRegistry } from "../../../../../features/appointments/client-idempotency";
 import { calendarDate, validTimeZone } from "../../../../../features/tasks/local-date-time";
 
@@ -64,6 +65,24 @@ export function createMeetingProposalClient(options: { fetch?: typeof fetch; now
   };
   return {
     get,
+    async available(contactId: string, signal?: AbortSignal): Promise<boolean> {
+      id(contactId);
+      const parsed = meetingInitialProposalAvailabilitySchema.safeParse(await request(`/api/appointments/initial-proposal?${new URLSearchParams({ contactId })}`, signal));
+      if (!parsed.success || parsed.data.contactId !== contactId) throw new MeetingProposalError("unconfirmed");
+      return parsed.data.available;
+    },
+    async create(contactId: string, candidates: readonly MeetingCandidate[], medium: MeetingDetailsMedium, zone: string, signal?: AbortSignal): Promise<MeetingProposalTarget> {
+      id(contactId);
+      const proposal = prepareMeetingProposal(candidates, medium, zone, clock());
+      if (!proposal) throw new MeetingProposalError("invalid");
+      const raw = await request("/api/appointments/initial-proposal", signal, { contactId, proposal });
+      if (typeof raw?.appointmentId !== "string") throw new MeetingProposalError("unconfirmed");
+      const receipt = decode(raw, raw.appointmentId, contactId), latest = receipt.proposals[0];
+      if (typeof raw?.replayed !== "boolean" || receipt.visibility !== "participants" || receipt.status !== "awaiting_response" || receipt.version !== 2 || receipt.confirmed !== null || receipt.pendingProposalRevision !== 1 || receipt.proposals.length !== 1 || !latest || latest.revision !== 1 || latest.proposedBy !== "you" || latest.durationMinutes !== proposal.durationMinutes || latest.timezone !== proposal.timezone || latest.note !== proposal.note || !same(latest.medium, proposal.medium) || !same(latest.candidateTimes.map(candidate => ({ startsAtUtc: new Date(candidate.startsAtUtc).toISOString() })), proposal.candidateTimes)) throw new MeetingProposalError("unconfirmed");
+      const verified = await get(receipt.appointmentId, contactId, signal);
+      if (!same(verified, receipt)) throw new MeetingProposalError("unconfirmed");
+      return verified;
+    },
     async cancel(meeting: MeetingProposalTarget, signal?: AbortSignal): Promise<MeetingProposalTarget> {
       if (!targetSchema.safeParse(meeting).success || meeting.visibility !== "participants" || !["confirmed", "reschedule_pending"].includes(meeting.status) || !meeting.confirmed || !meeting.contactId) throw new MeetingProposalError("invalid");
       const raw = await request(`/api/appointments/${id(meeting.appointmentId)}/commands`, signal, { command: "cancel", expectedVersion: meeting.version });

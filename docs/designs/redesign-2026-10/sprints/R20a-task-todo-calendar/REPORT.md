@@ -360,6 +360,16 @@ A `2569ad835` の Modal 1000 / 760 API を実 source と fresh compiler で確�
 
 主会話の App exact-task follow-up は `d83e4af74` + verification follow-up `79bf97b6e`：focused **26/26**、fresh App tsc **0**、actual relationship editor browser **2/2**。fixture に credentials CORS と actual RNW markup の test-only 補正が必要だったが、別 task への fallback はさせていない。SC-14 Web personal route の主会話コミット `7e596f06f` は `/app/tasks/personal` を authenticated Calendar route に redirect、focused route / Task page **5/5**。いずれも D 全 SC / full suite の pass とはしない。
 
+### SC-11 Web initial-proposal client / Modal（bounded UI 子里程標、heavy 未確認）
+
+`appointmentId` を省略した §7.6 component は、今度は新 GET で contact の accepted authority を先に確認する。false なら既存 unavailable 文言だけを出し、appointment create / calendar read を行わない。true の場合だけ既存 bounded 14-day native / external availability と同じ候補選択・形式・review の三段階を使う。改期は従来 propose と元 confirmed slot の保持のまま、新規は initial-proposal POST に限定し、caller event / actor authority を送らない。新規 review は既存予定の保持という誤った文言を出さず、合意後に確定する説明と「提案を保存」を表示する。
+
+client は contact identity / native awaiting_response version 2 / revision 1 / 三～五候補・medium・timezone・note の一致を検証し、**別 GET `/api/appointments/:id` の一致後だけ** onSent / close を許可する。transport lost-after-commit retry は同一 idempotency key を使い、native service adapter で outbox 一件を確認。wrong availability identity / contact / candidates / changed readback / aborted account scope は成功にしない。account switch で旧 post の late response が来ても旧 place / callback を新 account に戻さない。これは provider delivery の成功表示ではない。
+
+client / component の RED 二件ずつから GREEN、最新 `sc11-initial-proposal-web-flow-focused.log` は **26/26 pass、0 skip**（flow / client / availability / CSS tokens）、task copy **152 entries / 0 issues**。native memory service / HTTP handler を通る client adapter と separate GET request の regression を含むが、本番 Next server / provider の E2E ではない。実 browser の二件（正常な readback / changed readback 拒否）は専用 test を追加しただけで **まだ未実行**、新 UI 後の fresh typecheck も pending。直前 `816eb5663` の compiler pass をこの新 UI に流用しない。App initial-proposal wiring、general contact-only authority、Task mount / final behavior review、pixel は引き続き OPEN。
+
+主会話 SC-14 App Today retirement は `486cfd8c4`：inventory **24/24**、route / ratchet **22/22**、Todo offline browser **60/60** が targeted GREEN。private `/today` redirect は維持し、orphan TodayScreen を退役した。現在の App tsc / full は主会話が後続 heavy で確認するため、この targeted 結果から App full green を宣言しない。
+
 ## 请求
 
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。

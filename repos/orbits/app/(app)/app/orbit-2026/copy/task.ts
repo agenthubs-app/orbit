@@ -150,4 +150,7 @@ export const taskCopy = {
   calendarMeetingReschedule: { ja: "面談の変更は候補時間を再提案します。元の予定は合意まで変わりません。", zh: "更改会面须重新提议候选时间，双方同意前保留原日程。", en: "Meeting changes require new time proposals. The original time stays until agreement.", kind: "body" },
   todoRailTitle: { ja: "次の一手", zh: "下一步", en: "Next moves", kind: "label" },
   todoRailFromTask: { ja: "Task から", zh: "来自 Task", en: "From Task", kind: "label" },
+  proposalInitialSave: { ja: "提案を保存", zh: "保存提议", en: "Save proposal", kind: "button" },
+  proposalInitialSaved: { ja: "提案を保存しました", zh: "已保存提议", en: "Proposal saved", kind: "toast" },
+  proposalInitialReview: { ja: "候補を提案します。日時は相手の合意後に確定します。", zh: "将提议这些候选时间，双方同意后才会确定会面时间。", en: "Propose these times. The meeting is confirmed only after agreement.", kind: "body" },
 } as const satisfies OrbitCopyTable;
