@@ -57,7 +57,7 @@ test("--region takes integers; a separate design region crops each side on its o
   assert.throws(() => parseRegion("0,b,322,390".replace("0", "b")), /x,y,w,h/);
   const design = canvas(60, 60, [255, 255, 255], (x, y) => (x >= 10 && y >= 10 && x < 20 && y < 20 ? [0, 0, 0] : null));
   const app = canvas(60, 60, [255, 255, 255], (x, y) => (x >= 30 && y >= 40 && x < 40 && y < 50 ? [0, 0, 0] : null));
-  const same = cropPair({ design, app, region: [10, 10, 10, 10] });
+  const same = cropPair({ design, app, region: [10, 10, 10, 10], designRegion: undefined });
   assert.equal(same.design.width, 10);
   assert.equal(same.app.data[0], 255, "one region crops both sides at the same place");
   const split = cropPair({ design, app, region: [30, 40, 10, 10], designRegion: [10, 10, 10, 10] });
@@ -92,7 +92,8 @@ test("the gate accepts a [contrast] band only when the substitution check passes
   const app = canvas(240, 60, bg, (x, y) => (y < 30 ? glyph(light("ink-3-text"), bg)(x, y) : glyph(light("coral"), bg)(x, y - 30)));
   const attribution = join(out, "attribution.json");
   writeFileSync(attribution, JSON.stringify({ v: { 0: "[contrast] ink-3 → ink-3-text（RD-05）", 1: "[contrast] 冒充：coral 不在清单里" } }));
-  const r = compareImages({ design, app, out, grid: 30, gridDy: 0, attributionPath: attribution, viewKey: "v", rawThreshold: Infinity, contrast: { subs: resolveContrastSubstitutions(substitutions, tokens, "light") }, meta: {} });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the lib is untyped JS; the result grows with --grid
+  const r: any = compareImages({ design, app, out, grid: 30, gridDy: 0, attributionPath: attribution, viewKey: "v", rawThreshold: Infinity, contrast: { subs: resolveContrastSubstitutions(substitutions, tokens, "light") }, meta: {} });
   assert.equal(r.overBands, 2);
   assert.equal(r.unattributed, 1);
   assert.equal(r.bandsReport.find((b: { band: number }) => b.band === 0).status, "[contrast]");
