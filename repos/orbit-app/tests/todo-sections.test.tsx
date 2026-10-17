@@ -20,13 +20,14 @@ const page: TodoPageContract = {
   sources: { task_suggestion: "ok", task: "ok", relationship_task: "ok", completion_question: "not_implemented" },
 };
 
-function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: boolean; more?: boolean; snooze?: boolean; decisionSource?: "task_suggestion" | "plan_pending" | "agent_action" } = {}) {
+function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: boolean; more?: boolean; snooze?: boolean; nextMove?: boolean; decisionSource?: "task_suggestion" | "plan_pending" | "agent_action" } = {}) {
   const value: OrbitLocaleContextValue = {
     choice: "ja", deviceLanguage: "ja", error: null, language: "ja", preference: { mode: "system", language: null, updatedAt: null },
     retryLanguageSave: async () => undefined, setLanguage: async () => undefined, source: "device", syncState: "idle", t: createTranslator("ja"),
   };
   return createElement(OrbitLocaleContext.Provider, { value }, createElement(TodoSections, {
-    page: { ...page, decisions: { ...page.decisions, next: props.more ? { task_suggestion: "cursor" } : {}, items: page.decisions.items.map(item => {
+    page: { ...page, nextMoves: props.nextMove ? { items: [{ key: "agent_signal:signal-1", source: "agent_signal", sourceId: "signal-1", titlePreview: "連絡の案", createdAt: "2026-10-18T00:00:00Z", draftAvailable: false }], next: {} } : page.nextMoves,
+      decisions: { ...page.decisions, next: props.more ? { task_suggestion: "cursor" } : {}, items: page.decisions.items.map(item => {
       const actions = props.snooze ? [...item.actions, "snooze" as const] : item.actions;
       const source = props.decisionSource ?? item.source;
       const changed = { ...item, key: `${source}:${item.sourceId}`, source, actions };
@@ -95,4 +96,10 @@ test("plan and agent decisions expose their source-native accept/dismiss control
 test("agent action Later is shown only for its own snooze capability", () => {
   assert.ok(renderedText(tree({ decisionSample: false, decisionSource: "agent_action", snooze: true })).includes("あとで"));
   assert.equal(renderedText(tree({ decisionSample: false, decisionSource: "plan_pending", snooze: true })).includes("あとで"), false);
+});
+
+test("a next move without a working draft route explains its state instead of showing a dead button", () => {
+  const html = renderToHtml(tree({ nextMove: true }));
+  assert.ok(html.includes("下書きは今は利用できません"));
+  assert.equal((html.match(/aria-disabled="true"/gu) ?? []).length, (renderToHtml(tree()).match(/aria-disabled="true"/gu) ?? []).length);
 });
