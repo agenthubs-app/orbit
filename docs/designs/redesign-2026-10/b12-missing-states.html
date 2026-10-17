@@ -2139,6 +2139,22 @@
     .pev .push { margin-top: auto; }
     .pcguide { text-align: center; padding: 26px 20px; }
   }
+  /* g9 · R30 搜索补画：b5-me-inbox.html「搜索 / ⌘K」样式原样副本 */
+  .g9 {
+    .caret { display: inline-block; width: 2px; height: 18px; background: var(--plum-700); animation: blink 1s steps(1) infinite; vertical-align: middle; margin-left: 1px; }
+    .sgrp { font-size: 11.5px; font-weight: 700; color: var(--ink-3); margin: 16px 4px 6px; display: flex; justify-content: space-between; }
+    .cmdrow { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 14px; }
+    .cmdrow.sel { background: var(--surface-2); }
+    .cmdrow .meta { flex: 1; min-width: 0; }
+    .cmdrow .meta b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cmdrow .meta span { display: block; font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mr { font-size: 11px; color: var(--rose-700); background: var(--rose-100); padding: 2px 8px; border-radius: 999px; font-weight: 700; white-space: nowrap; }
+    mark { background: var(--rose-100); color: inherit; border-radius: 4px; padding: 0 2px; }
+    .phone .sbar { display: flex; align-items: center; gap: 10px; padding: 6px 0 12px; }
+    .phone .sbar .search { flex: 1; color: var(--ink); }
+    .cmdk { padding: 10px; }
+    .skel { height: 12px; border-radius: 6px; background: var(--surface-2); }
+  }
 </style>
 </head>
 <body>
@@ -8131,6 +8147,99 @@ let g = '';
 g += S8('补画 · 2026-10-16 · 主催 R17 · 運営台 ⋯ メニュー（§44）', '已公开活动的 编辑 / 参加コード再発行 / 中止 入口统一放页头「⋯」（对标 Peatix / connpass 管理页头菜单）；下書き的「公開する」在横幅（#440）');
 g += WP('W-R17-24 運営台 · ⋯ メニュー（公開中）', '', () => ({ nav: 'host', body: X.overview().replace('<button class="rbtn k-hmore">', '<button class="rbtn k-hmore" style="background:var(--surface-2)">'), ov: hmenu }), [['.k-hmenu', 0, '页头右端「⋯」：基本情報を編集（→ W-R17-02）/ 参加コードを再発行（确认后旧码失效）/ 申込ページを開く / 分隔线 / イベントを中止（珊瑚色 → W-R17-04 确认框，仅 owner）。所有页签同一位置']], 'b6 概要 · 补画 2026-10-16');
 __g8out(group('g8', g));
+})();
+/* ===================== 补画 · 2026-10-17：R30 全局搜索 B1–B9（§46）。E4 検索 代码 = b5-me-inbox.html 原样副本 ===================== */
+(() => {
+const C = D.contacts, HV3 = B12X.HV3;
+const avc = (c, cls = '') => `<div class="av ${cls} ${c.c}">${c.i}</div>`;
+const X = [
+  { n: '森 隆之', i: '森', c: 'c1', co: 'みらい創業キャピタル', role: '代表パートナー', stage: '知り合い', st: 'apricot', val: 'シード〜シリーズA の製造業テックに出資', last: '4か月前', emo: '💼' },
+  { n: '石井 恵', i: '石', c: 'c5', co: '日東銀行 成長企業支援部', role: '調査役', stage: '関係構築', st: 'blue', val: 'ベンチャーデットの相談窓口', last: '3週間前', emo: '🏦' },
+  { n: '藤田 亮介', i: '藤', c: 'c3', co: 'セントラル重工 CVC', role: '投資担当', stage: '知り合い', st: 'apricot', val: '事業会社の投資担当。製造業 SaaS に関心', last: '5か月前', emo: '🏭' },
+  { n: '高橋 亮', i: '高', c: 'c4', co: '東亜精機', role: '生産技術部 課長', stage: '知り合い', st: 'apricot', val: '工場の稼働データ可視化に課題', last: '2か月前', emo: '🏭' },
+];
+
+const back = `<button class="rbtn">${ic('left')}</button>`;
+const closeB = `<button class="rbtn">${ic('x')}</button>`;
+const gearB = `<button class="rbtn">${ic('settings')}</button>`;
+const moreB = `<button class="rbtn">${ic('more')}</button>`;
+const okB = `<button class="rbtn" style="background:var(--ink);color:var(--bg)">${ic('check')}</button>`;
+const SAMPLE = '<span class="sample-tag">サンプル</span>';
+const tg = on => `<span class="tgl ${on ? 'on' : ''}"></span>`;
+const srow = (icon, t, s, end = '', chev = true, cls = '') => `<div class="srow ${cls}"><span class="lbtn">${ic(icon, 'sm')}</span><div class="meta"><b>${t}</b>${s ? `<span>${s}</span>` : ''}</div><div class="end">${end}${chev ? ic('right', 'sm') : ''}</div></div>`;
+const glbl = t => `<div class="glbl">${t}</div>`;
+const conn = st => ({ ok: '<span class="chip teal">接続済み</span>', no: '<span class="chip">未接続</span>', soon: '<span class="chip apricot">準備中</span>' })[st];
+const recent = ['高橋', '製造業の決裁者', 'CFO Night', '先月会った人'];
+const pRow = (c, end = '', hl = '') => `<div class="cmdrow">${avc(c, 'sm')}<div class="meta"><b>${hl || c.n}</b><span>${c.co} · ${c.role}</span></div>${end}</div>`;
+const sRes = (k) => {
+  if (k === 'name') return `<div class="sgrp"><span>人 · 2</span></div>${pRow(C[0], '<span class="chip lav">推進中</span>', '<mark>高橋</mark> 美咲')}${pRow(X[3], '<span class="chip apricot">知り合い</span>', '<mark>高橋</mark> 亮')}
+    <div class="sgrp"><span>イベント · 1</span></div><div class="cmdrow"><span class="emo sm teal">🎤</span><div class="meta"><b>Japan SaaS Summit 2026 秋</b><span><mark>高橋</mark>さんも参加予定 · 10/16</span></div></div>
+    <div class="sgrp"><span>会話 · 2</span></div><div class="cmdrow"><span class="emo sm lav">✨</span><div class="meta"><b>iOrbit：<mark>高橋</mark>さんへのお礼の下書き</b><span>10/7 · iOrbit との会話</span></div></div><div class="cmdrow"><span class="emo sm blue">📧</span><div class="meta"><b>Re: 事業計画書 v3 のご送付</b><span><mark>高橋</mark> 美咲 · 受信箱 · 今日</span></div></div>`;
+  if (k === 'sem') return `<div class="banner" style="margin-top:4px">${ic('sparkle', 'sm')}<span>意味で検索：「投資家」に関係する <b>23人</b>（一致 9 · 関連 14）</span></div>
+    <div class="sgrp"><span>人 · 23</span><span>関連度順</span></div>
+    ${[[C[0], '役職「パートナー」· VC'], [C[7], '会社が VC'], [X[0], '役職「代表パートナー」'], [C[2], 'メモ「VC 4社と面識」'], [C[3], '「投資家を紹介できる」'], [C[4], '投資契約に強い（関連）']].map(([c, r], k) => `<div class="cmdrow ${k === 0 ? 'sel' : ''}">${avc(c, 'sm')}<div class="meta"><b>${c.n}</b><span>${c.co} · ${c.role}</span></div><span class="mr">${r}</span></div>`).join('')}
+    <div class="sgrp"><span>イベント · 2</span></div><div class="cmdrow"><span class="emo sm lav">🥂</span><div class="meta"><b>CFO Night Tokyo vol.18</b><span>VC 3名が参加予定 · 今夜</span></div><span class="mr">参加者から</span></div>`;
+  return `<div style="text-align:center;padding:22px 10px 8px"><div style="font-size:40px">🔎</div><b style="display:block;font-size:15px;margin-top:6px">「半導体 商社」に一致する人はいません</b><div class="lbl" style="margin-top:4px">286人の名前・会社・役職・メモを探しました</div></div>
+    <div class="sgrp"><span>近い条件なら</span></div>
+    <div class="cmdrow sel"><span class="emo sm blue">🏭</span><div class="meta"><b>製造業 › 電子部品</b><span>12人 · 業界で絞り込む</span></div>${ic('right', 'sm')}</div>
+    <div class="cmdrow"><span class="emo sm apricot">📦</span><div class="meta"><b>商社・流通</b><span>35人 · 業界で絞り込む</span></div>${ic('right', 'sm')}</div>
+    <div class="sgrp"><span>ほかの方法</span></div>
+    <div class="cmdrow"><span class="emo sm lav">✨</span><div class="meta"><b>iOrbit に紹介ルートを聞く</b><span>「半導体商社の人に会うには？」</span></div></div>
+    <div class="cmdrow"><span class="emo sm teal">🎟️</span><div class="meta"><b>イベントで探す</b><span>製造業 DX カンファレンス 大阪 · 出展 12社</span></div></div>`;
+};
+function searchApp(k) {
+  const q = { init: '', name: '高橋', sem: '投資家', none: '半導体 商社' }[k];
+  return `<div class="sbar"><div class="search">${ic('search', 'sm')}${q}<span class="caret"></span>${q ? `<span style="margin-left:auto" class="muted">${ic('x', 'sm')}</span>` : '<span class="muted">人・イベント・会話を検索</span>'}</div><button class="btn ghost" style="padding:0 4px">キャンセル</button></div>
+    <div class="chips scope">${['すべて', '人', 'イベント', '会話'].map((t, j) => `<span class="cat ${j === 0 ? 'on' : ''}">${t}</span>`).join('')}</div>
+    ${k === 'init' ? `<div class="sgrp"><span>最近の検索</span><span>消去</span></div><div class="card" style="padding:4px 6px">${recent.map(r => `<div class="cmdrow">${ic('clock', 'sm')}<div class="meta"><b style="font-weight:600">${r}</b></div>${ic('x', 'sm')}</div>`).join('')}</div>
+      <div class="sgrp"><span>こんな検索もできます</span></div><div class="chips">${['投資家', '製造業の決裁者', '先月会った人', '紹介してくれそうな人', '3か月 連絡していない人'].map(t => `<span class="chip lav" style="padding:6px 11px">${t}</span>`).join('')}</div>
+      <div class="lbl" style="margin-top:10px">言葉の意味でも探します。「投資家」で VC・CVC・エンジェルもヒットします</div>`
+    : `<div class="card" style="margin-top:12px;padding:6px">${sRes(k)}</div>`}`;
+}
+const cmdk = (k) => { const q = { name: '高橋', sem: '投資家', none: '半導体 商社' }[k];
+  return `<div class="overlay"></div><div class="modal wmodal top cmdk" style="width:680px"><div class="row" style="gap:10px;padding:10px 12px 12px;border-bottom:1px solid var(--line)">${ic('search')}<span style="font-size:17px;font-weight:600">${q}</span><span class="caret"></span><div class="chips" style="margin-left:auto">${['すべて', '人', 'イベント', '会話'].map((t, j) => `<span class="chip ${j === 0 ? 'lav' : ''}">${t}</span>`).join('')}</div><span class="kbd">Esc</span></div>
+    <div style="padding:4px 4px 6px;max-height:640px;overflow:hidden">${sRes(k).replace(/class="cmdrow"/, k === 'name' ? 'class="cmdrow sel"' : 'class="cmdrow"')}
+      ${k !== 'none' ? `<div class="sgrp"><span>コマンド</span></div><div class="cmdrow"><span class="lbtn">${ic('sparkle', 'sm')}</span><div class="meta"><b>iOrbit に聞く：「${q}」</b></div><span class="kbd">⌘</span><span class="kbd">↵</span></div>` : ''}</div>
+    <div class="row" style="gap:14px;padding:10px 12px 4px;border-top:1px solid var(--line)" ><span class="lbl"><span class="kbd">↑</span><span class="kbd">↓</span> 移動</span><span class="lbl"><span class="kbd">↵</span> 開く</span><span class="lbl"><span class="kbd">Tab</span> 種類を切替</span><span class="lbl" style="margin-left:auto">意味検索 ON</span></div></div>`; };
+/* 审计：人脈背景与 web.html 人脈 同源（HV3：顶栏 検索 / 人脈を追加，濃さ・出どころ 列，分类页签 すべて / 情報が少ない人 / 目標に関係 / 要フォロー）；opt.chips = 已应用筛选 */
+function netWeb(opt = {}) {
+  let h = HV3.W.network('many').replace(`<button class="lbtn">${ic('sliders', 'sm')}</button>`, `<button class="lbtn fbtn" style="${opt.chips ? 'background:var(--ink);color:var(--bg)' : ''}">${ic('sliders', 'sm')}</button>`);
+  if (opt.chips) h = h.replace(/<div class="row k-wcats"[^>]*>[\s\S]*?<\/span><\/div>/, '<div class="row k-wcats" style="gap:6px"><span class="chip lav">推進中 · 関係構築</span><span class="chip lav">投資・金融</span><span class="chip lav">東京</span><span class="chip lav">●○○ 情報が少ない人</span></div>');
+  return h;
+}
+
+const S9 = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+const wf9 = (body, ov) => ({ nav: 1, body, ov });
+const kbdFoot = `<div class="row" style="gap:14px;padding:10px 12px 4px;border-top:1px solid var(--line)"><span class="lbl"><span class="kbd">↑</span><span class="kbd">↓</span> 移動</span><span class="lbl"><span class="kbd">↵</span> 開く</span><span class="lbl"><span class="kbd">Tab</span> 種類を切替</span><span class="lbl" style="margin-left:auto">意味検索 ON</span></div>`;
+const chipsRow = (on = 0) => `<div class="chips" style="margin-left:auto">${['すべて', '人', 'イベント', '会話'].map((t, j) => `<span class="chip ${j === on ? 'lav' : ''}">${t}</span>`).join('')}</div><span class="kbd">Esc</span>`;
+const panel = (q, inner, on = 0) => `<div class="overlay"></div><div class="modal wmodal top cmdk" style="width:680px"><div class="row" style="gap:10px;padding:10px 12px 12px;border-bottom:1px solid var(--line)">${ic('search')}${q ? `<span style="font-size:17px;font-weight:600">${q}</span><span class="caret"></span>` : '<span class="caret"></span><span class="muted" style="font-size:17px;font-weight:500">人・イベント・会話を検索</span>'}${chipsRow(on)}</div>
+  <div style="padding:4px 4px 6px;max-height:640px;overflow:hidden">${inner}</div>${kbdFoot}</div>`;
+/* B1 初期：照 App #53（最近の検索 + こんな検索もできます + 意味検索说明） */
+const initInner = `<div class="sgrp"><span>最近の検索</span><span>消去</span></div>${recent.map((r, k) => `<div class="cmdrow ${k === 0 ? 'sel' : ''}">${ic('clock', 'sm')}<div class="meta"><b style="font-weight:600">${r}</b></div>${ic('x', 'sm')}</div>`).join('')}
+  <div class="sgrp"><span>こんな検索もできます</span></div><div class="chips" style="padding:0 8px">${['投資家', '製造業の決裁者', '先月会った人', '紹介してくれそうな人', '3か月 連絡していない人'].map(t => `<span class="chip lav" style="padding:6px 11px">${t}</span>`).join('')}</div>
+  <div class="lbl" style="margin:12px 8px 4px">言葉の意味でも探します。「投資家」で VC・CVC・エンジェルもヒットします</div>`;
+/* B8 検索中 */
+const skRows = n => Array(n).fill(0).map(() => `<div class="cmdrow"><div class="av sm" style="background:var(--surface-2)"></div><div class="meta"><div class="skel" style="width:40%"></div><div class="skel" style="width:65%;margin-top:7px;height:10px"></div></div></div>`).join('');
+const loadingApp = () => searchApp('sem').replace(/<div class="card" style="margin-top:12px;padding:6px">[\s\S]*$/, `<div class="card k-sload" style="margin-top:12px;padding:6px"><div class="sgrp"><span>検索中…</span></div>${skRows(5)}</div>`);
+/* B9 单类型 chip「人」：最多 20 条 + 组尾「さらに表示（N）」；画的是列表滚到底的样子 */
+const PEOPLE = [...C, ...X];
+const why = ['役職「パートナー」· VC', '会社が VC', '役職「代表パートナー」', 'メモ「VC 4社と面識」', '「投資家を紹介できる」', '投資契約に強い（関連）', '会社が CVC', '役職「投資担当」'];
+const oneInner = `<div class="banner" style="margin-top:4px">${ic('sparkle', 'sm')}<span>意味で検索：「投資家」に関係する <b>23人</b>（一致 9 · 関連 14）</span></div>
+  <div class="sgrp"><span>人 · 23 · 15–20 件目</span><span>関連度順</span></div>
+  ${[14, 15, 16, 17, 18, 19].map((n, k) => { const c = PEOPLE[n % PEOPLE.length]; return `<div class="cmdrow ${k === 5 ? 'sel' : ''}">${avc(c, 'sm')}<div class="meta"><b>${c.n}</b><span>${c.co} · ${c.role}</span></div><span class="mr">${why[n % why.length]}</span></div>`; }).join('')}
+  <div class="cmdrow k-more" style="justify-content:center"><span class="lbl" style="font-weight:700;color:var(--ink-2)">さらに表示（3）</span></div>`;
+let g = '';
+g += S9('补画 · 2026-10-17 · R30 全局搜索（§46）', 'Web ⌘K 初期 / 深色 / 单类型结果，App 四态深色 + 検索中；手机画框的状态栏 / Home 条只是装饰（规则 13）');
+g += WP('W-R30-01 ⌘K · 初期（空入力）', '', () => wf9(netWeb(), panel('', initInner)), [['.cmdk .sgrp', 0, '空输入：最近の検索（单条 ✕ / 消去）+「こんな検索もできます」示例 chip + 意味検索说明，与 App #53 同文案'], ['.cmdk .kbd', 0, '底部键位与 #57 相同']], 'b5 #53 / #57 · 补画 2026-10-17');
+g += WP('W-R30-02 ⌘K · 名前（#57 深色）', '', () => wf9(netWeb(), cmdk('name')), null, 'b5 #57 · 补画 2026-10-17');
+g += WP('W-R30-03 ⌘K · 結果なし（#59 深色）', '', () => wf9(netWeb(), cmdk('none')), null, 'b5 #59 · 补画 2026-10-17');
+g += WP('W-R30-09 ⌘K · 種類「人」だけ（さらに表示）', '', () => wf9(netWeb(), panel('投資家', oneInner, 1)), [['.cmdk .chips .chip.lav', 0, 'chip「人」选中：只列人，最多 20 条'], ['.k-more', 0, '组尾「さらに表示（{total−20}）」——画的是列表滚到底；点后再加载']], 'R30 DESIGN §4.1 · 补画 2026-10-17');
+g += PB('A-R30-04 検索 · 初期（#53 深色）', '', () => ({ body: searchApp('init') }), null, 'b5 #53 · 补画 2026-10-17');
+g += PB('A-R30-05 検索 · 結果 · 名前（#54 深色）', '', () => ({ body: searchApp('name') }), null, 'b5 #54 · 补画 2026-10-17');
+g += PB('A-R30-06 検索 · 意味検索（#55 深色）', '', () => ({ body: searchApp('sem') }), null, 'b5 #55 · 补画 2026-10-17');
+g += PB('A-R30-07 検索 · 結果なし（#56 深色）', '', () => ({ body: searchApp('none') }), null, 'b5 #56 · 补画 2026-10-17');
+g += PB('A-R30-08 検索 · 検索中', '', () => ({ body: loadingApp() }), [['.k-sload', 0, '输入后结果未到：组标题「検索中…」+ 5 行骨架（不转圈）；超过 300ms 才显示']], 'b5 #55 · 补画 2026-10-17');
+h += group('g9', g);
 })();
 /* ===================== 出力 ===================== */
 document.getElementById('out').innerHTML = `<div class="card" style="margin-bottom:8px"><h3>画板索引（${INDEX.length}）</h3><div class="idx">${INDEX.map(([id, t]) => `<a href="#b-${id}"><b>${id}</b>${t}</a>`).join('')}</div></div>` + h;
