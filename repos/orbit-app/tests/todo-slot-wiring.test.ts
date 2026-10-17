@@ -22,3 +22,10 @@ test("To-do reevaluates the local date while the page remains open", () => {
   assert.match(source, /setInterval\(\(\) => setNow\(new Date\(\)\), 60_000\)/u);
   assert.match(source, /localParts\(now, timeZone\)\.date/u);
 });
+
+test("To-do page copy network response is scoped to account session and server origin", () => {
+  const source = readFileSync(join(import.meta.dirname, "../src/screens/todo/useTodoPage.ts"), "utf8");
+  assert.match(source, /auth\.notificationSessionRevision/u);
+  assert.match(source, /server\.baseUrl/u);
+  assert.match(source, /auth\.cookieHeader/u);
+});
