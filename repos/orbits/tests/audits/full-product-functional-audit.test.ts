@@ -864,28 +864,15 @@ test("mobile auth retains exact handler-bound runtime evidence through line shif
   );
 });
 
-test("memory settings retain their eleven exercised interactions", () => {
+test("retired memory-settings handlers no longer claim runtime credit", () => {
   const memorySettingsInteractions = runtimeVerifiedInteractions.filter(
     (interaction) =>
       interaction.surfaceId === "web:/app/settings" &&
       interaction.sourceFile ===
         "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx",
   );
-  assert.equal(memorySettingsInteractions.length, 11);
-  assert.match(
-    memorySettingsInteractions.find((interaction) =>
-      interaction.visibleName?.includes("Use memory in Agent replies"),
-    )?.actualResult ?? "",
-    /^Use memory changed/u,
-  );
-  assert.match(
-    memorySettingsInteractions.find((interaction) =>
-      interaction.visibleName?.includes(
-        "Allow approved learning from conversations",
-      ),
-    )?.actualResult ?? "",
-    /^Approved conversation learning changed/u,
-  );
+  assert.equal(memorySettingsInteractions.length, 0);
+  assert.ok(inventory.surfaces.some((surface) => surface.surfaceId === "web:/app/settings/iorbit"));
 });
 
 // iOrbit 任务 6a 删除了 /app/today 及 `today/orbit-today-time-spine.tsx`，本条断言的主语
@@ -1238,13 +1225,10 @@ for (const [surfaceId, evidenceCount] of [
   });
 }
 
-// 2026-09-22 (034b799c5) deleted the legacy profile page; seven of the eighteen 2026-07-29
-// observations had no equivalent control on the profile-0918 screens and were dropped from
-// LIVE_PROFILE_INTERACTION_EVIDENCE (see the comment above that map). 2026-09-26 (17478f5e6)
-// rewrote the persona tag handlers, so their two observations were dropped as well (0123).
-// Nine remain, each anchored to the unchanged control it credits; this count guards
-// against further silent drops.
-test("profile retains actor isolation and its nine exercised interactions", () => {
+// R18a retired profile-0918; its nine historical handler observations cannot be
+// credited to the new account page without a fresh browser run. Actor-isolation
+// evidence remains on the route, but current interaction credit must be zero.
+test("new profile retains actor-isolation evidence without inheriting retired handler credit", () => {
   assert.equal(
     inventory.surfaces
       .find((surface) => surface.surfaceId === "web:/app/profile")
@@ -1257,7 +1241,7 @@ test("profile retains actor isolation and its nine exercised interactions", () =
       ?.interactions.filter(
         (interaction) => interaction.actualResult !== "not-runtime-verified",
       ).length,
-    9,
+    0,
   );
 });
 
