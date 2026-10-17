@@ -125,7 +125,7 @@ test("opportunity actions keep only user data and internal routes; backend sente
   assert.equal("evidence" in action, false);
   assert.equal("steps" in action, false);
   assert.deepEqual(action.primary, { label: "查看联系人", href: "/app/contacts/contact%3Aone%2Ftwo" });
-  assert.deepEqual(action.secondary, { label: "查看关系管线", href: "/app/contacts/pipeline" });
+  assert.deepEqual(action.secondary, { label: "查看关系管线", href: "/app/contacts" });
 });
 
 test("legacy opportunity payloads get an explicit bilingual contact action", async () => {

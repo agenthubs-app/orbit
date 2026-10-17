@@ -223,7 +223,6 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
       <div className="nw-cockpit" data-network-section="health">
         <div className="nw-ov-head">
           <h2 className="nw-h2">{t({ en: "Relationship health", zh: "关系健康" })}</h2>
-          <a className="btn nw-textlink" href={preserveHref("/app/contacts/pipeline")}>{t({ en: "View pipeline →", zh: "查看关系管线 →" })}</a>
         </div>
         {structure && tiles.some((tile) => tile.count > 0) ? (
           <div className="nw-health-grid">

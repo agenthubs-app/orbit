@@ -75,7 +75,7 @@ export function contactsAnalysisToView(input: unknown, language: OrbitLanguage):
     !value ? { state: "unavailable" } : value.state === "pending" ? { state: "pending" } : { state: value.state === "empty" ? "empty" : "ready", data: map(value) };
   const link = (action: { kind: string; contactId?: string }, fallbackId: string): AnalysisLink => ({
     label: actionLinkLabel(action.kind, language),
-    href: action.kind === "open_pipeline" ? "/app/contacts/pipeline" : action.kind === "open_contacts" ? "/app/contacts" : `/app/contacts/${encodeURIComponent(action.contactId?.trim() || fallbackId)}`,
+    href: action.kind === "open_pipeline" ? "/app/contacts" : action.kind === "open_contacts" ? "/app/contacts" : `/app/contacts/${encodeURIComponent(action.contactId?.trim() || fallbackId)}`,
   });
   return {
     state: "ready",

@@ -141,13 +141,6 @@ export type {
 } from "./tasks";
 export type { TaskCardContract, TaskPageContract } from "./task-page";
 export type {
-  ContactPipelineActionContract,
-  ContactPipelineItemContract,
-  ContactPipelinePageContract,
-  ContactPipelineStageCode,
-  ContactPipelineStageCountsContract
-} from "./contact-pipeline-page";
-export type {
   TodayActionSummaryContract,
   TodayScheduleActionSummaryContract,
   TodayTaskActionSummaryContract,

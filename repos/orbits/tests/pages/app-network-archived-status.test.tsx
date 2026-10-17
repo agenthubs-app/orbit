@@ -11,7 +11,6 @@ import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/
 import type { ContactsAnalysisView } from "../../app/(app)/app/contacts/analysis/contacts-analysis-view-model";
 import { NetworkAll } from "../../app/(app)/app/contacts/network-0918/network-all";
 import { NetworkDetailModal } from "../../app/(app)/app/contacts/network-0918/network-detail-modal";
-import { NetworkPipeline } from "../../app/(app)/app/contacts/network-0918/network-pipeline";
 import { stageCounts, stageOf, toPerson } from "../../app/(app)/app/contacts/network-0918/network-model";
 
 // Behaviour carried over from the retired orbit-real-contacts / pipeline-view /
@@ -71,7 +70,7 @@ test("archive maps to its own network stage and never to the advancing stage", (
   assert.deepEqual(stageCounts(people), { explore: 0, keep: 0, advance: 1, archived: 1 });
 });
 
-test("all and pipeline screens render the archive group without dropping its contact or count", () => {
+test("the all-contacts screen renders the archive group without dropping its contact or count (R11a: the pipeline screen is gone)", () => {
   const model = subrouteView(payload([contact("archived", "Archived"), contact("active", "Active")]));
   const all = renderToStaticMarkup(createElement(NetworkAll, { viewModel: model }));
   // W0055：所有人脉列表的「关系档位」列也只显示自动档位（这里没有档位缓存 → 未评估），归档联系人照样在列表里。
@@ -81,14 +80,6 @@ test("all and pipeline screens render the archive group without dropping its con
   assert.match(all, /href="\/app\/contacts\/active"/);
   assert.doesNotMatch(all, /undefined/);
 
-  // W0047：管线列是自动档位（读模型），不再按手动阶段分列；归档联系人照样按它的档位出现，不丢人、不丢数。
-  const board = { counts: { new: 0, active: 1, core: 0, dormant: 1 }, columns: { new: [], active: ["active"], core: [], dormant: ["archived"] } };
-  const pipeline = renderToStaticMarkup(createElement(NetworkPipeline, { viewModel: model, analysis: pendingAnalysis, board }));
-  assert.match(pipeline, /href="\/app\/contacts\/archived"/);
-  assert.match(pipeline, /href="\/app\/contacts\/active"/);
-  assert.doesNotMatch(pipeline, /undefined|已归档|正在推进/);
-  assert.match(pipeline, /nw-pstat-n">1<\/strong><span class="nw-pstat-label">待唤醒/);
-  assert.match(pipeline, /nw-pstat-n">1<\/strong><span class="nw-pstat-label">有往来/);
 });
 
 test("detail never displays the retired manual stage for an archived contact", async () => {

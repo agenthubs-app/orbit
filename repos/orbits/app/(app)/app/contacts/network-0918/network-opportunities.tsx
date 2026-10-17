@@ -267,7 +267,6 @@ function DormantSection({ rows }: { rows: OpportunitiesTabView["dormant"] }) {
     <div className="nw-cockpit" data-network-section="dormant">
       <div className="nw-act-head">
         <span className="nw-act-title nw-op-title"><h2 className="nw-h2">{t({ en: "Worth reconnecting", zh: "待唤醒" })}</h2><span className="nw-ai-desc">{t({ en: "Once-active contacts, quiet for 60 days, that relate to your goal.", zh: "曾经有往来、60 天没联系、且与目标相关的人。" })}</span></span>
-        {rows && rows.length > 0 ? <a className="nw-link" href={preserveHref("/app/contacts/pipeline")}>{t({ en: "View all →", zh: "查看全部 →" })}</a> : null}
       </div>
       {rows === null ? <Empty>{t(UNAVAILABLE)}</Empty>
         : rows.length === 0 ? <Empty>{t({ en: "No dormant relationships", zh: "暂无待唤醒关系" })}</Empty>

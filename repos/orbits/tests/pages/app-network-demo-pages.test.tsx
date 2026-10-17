@@ -22,14 +22,13 @@ import type { ReactElement } from "react";
 const root = join(fileURLToPath(import.meta.url), "../../..");
 const require = createRequire(import.meta.url);
 
-type PageName = "contacts" | "dashboard" | "pipeline" | "detail" | "drilldown";
+type PageName = "contacts" | "dashboard" | "detail" | "drilldown";
 
 const PAGE_PATHS: Record<PageName, string> = {
   contacts: "app/(app)/app/contacts/page.tsx",
   dashboard: "app/(app)/app/contacts/dashboard/page.tsx",
   detail: "app/(app)/app/contacts/[id]/page.tsx",
   drilldown: "app/(app)/app/contacts/analysis/[dimension]/[bucketId]/page.tsx",
-  pipeline: "app/(app)/app/contacts/pipeline/page.tsx",
 };
 
 const REAL_READS = ["cards", "contacts", "analysis", "detail", "structure", "structureTab", "opportunitiesTab", "overviewCockpit", "threshold", "insightsTab", "insightDetail"];
@@ -449,15 +448,6 @@ test("W0054 SC-04: demo insight tab sorts and filters by URL like the real tab (
   assert.deepEqual(industry.rows.map((row) => row.contactId), ["demo:chen-siyuan"]);
 });
 
-test("demo: the pipeline renders demo data without a real loader", async (t) => {
-  const { calls, page } = loadPage(t, "pipeline", { flag: "on" });
-  const tree = await page({ searchParams: Promise.resolve({}) });
-  assert.deepEqual(operations(calls, REAL_READS), []);
-  assert.equal(find(tree, "NetworkDemoFrame")?.route, "app-contacts-pipeline-route");
-  const pipeline = find(tree, "NetworkPipeline");
-  assert.equal((pipeline?.viewModel as DemoVm).connections.length, 30);
-  assert.equal((pipeline?.analysis as { state: string }).state, "ready");
-});
 
 test("demo: /app/contacts/demo:wang-yan opens the full demo detail over the demo list, no real read", async (t) => {
   const { calls, page } = loadPage(t, "detail", { flag: "on" });

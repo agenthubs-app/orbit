@@ -17,7 +17,6 @@ export type NetworkScreen = "overview" | "pipeline" | "all" | "import" | "analys
 
 const TABS: { key: NetworkScreen; href: string; zh: string; en: string }[] = [
   { key: "overview", href: "/app/contacts/dashboard", zh: "概览", en: "Overview" },
-  { key: "pipeline", href: "/app/contacts/pipeline", zh: "关系管线", en: "Pipeline" },
   { key: "all", href: "/app/contacts", zh: "所有人脉", en: "All contacts" },
   { key: "import", href: "/app/contacts/new", zh: "导入人脉", en: "Import" },
 ];

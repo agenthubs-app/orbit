@@ -292,21 +292,8 @@ test("prop-gated DataCard pressables are counted only on routes that pass onPres
       handler.expression.includes("router.push(destination.href"),
     ),
   ), "settings destinations remain counted as direct controls after the card-to-row migration");
-  const pipeline = inventory.surfaces.find(
-    (surface) => surface.surfaceId === "mobile:/contacts/pipeline",
-  );
-  assert.ok(pipeline);
-  const rows = pipeline.interactions.filter(
-    (interaction) =>
-      interaction.sourceFile ===
-        "repos/orbit-app/src/screens/contacts/ContactPipelineScreen.tsx" &&
-      interaction.tag === "Pressable",
-  );
-  assert.equal(rows.length, 7);
-  assert.ok(rows.some((row) => row.handlers.some(
-    (handler) => handler.expression === "() => onSelect(stage.id)",
-  )));
-  assert.ok(rows.some((row) => row.visibleName === "`${task.contactName}，${task.title}，${task.dueLabel}`"));
+  // R11a：关系推进看板（/contacts/pipeline）已删除（R11-12）。
+  assert.equal(inventory.surfaces.some((surface) => surface.surfaceId === "mobile:/contacts/pipeline"), false);
 });
 
 test("literal route props exclude unreachable component branches", () => {
@@ -350,31 +337,10 @@ test("literal route props exclude unreachable component branches", () => {
   );
   assert.ok(contactsOverview);
   assert.ok(contactsList);
-  // Since the Ink & Signal rewrite (1efc95508) `app/(app)/contacts.tsx` renders
-  // <ContactsScreen mode="main">, i.e. the list branch; the overview branch is now
-  // the unreachable one on both routes.
-  assert.equal(
-    contactsOverview.interactions.some(
-      (interaction) => interaction.tag === "ContactsOverviewContent",
-    ),
-    false,
-  );
-  assert.equal(
-    contactsOverview.interactions.some(
-      (interaction) => interaction.tag === "ContactsListContent",
-    ),
-    true,
-  );
-  assert.equal(
-    contactsList.interactions.some(
-      (interaction) => interaction.tag === "ContactsOverviewContent",
-    ),
-    false,
-  );
-  assert.equal(
-    contactsList.routeParameters.queryParameters.includes("refreshToken"),
-    true,
-  );
+  // R11a：`/contacts` 渲染新人脈页 NetworkScreen（旧 ContactsScreen 的 overview / list 两个分支随旧屏删除），
+  // `/contacts/list` 只是跳到 `/contacts`，没有自己的查询参数。
+  assert.equal(contactsOverview.interactions.some((interaction) => interaction.sourceFile.endsWith("src/screens/network/NetworkScreen.tsx")), true);
+  assert.deepEqual(contactsList.routeParameters.queryParameters, []);
 });
 
 // R07: 27 → 26. The Settings account-menu sign-out lived in the deleted AccountTopNav
@@ -477,15 +443,8 @@ test("route query parameters come from route-local URL consumers, not transitive
   };
 
   assert.deepEqual(routeParameters("mobile:/account"), []);
-  assert.deepEqual(routeParameters("mobile:/contacts/list"), [
-    "q",
-    "query",
-    "refreshToken",
-    "source",
-    "status",
-    "tag",
-    "value",
-  ]);
+  // R11a：/contacts/list 只是跳到 /contacts（新人脈页），不再读查询参数。
+  assert.deepEqual(routeParameters("mobile:/contacts/list"), []);
   // Every key below is declared in the route's own useLocalSearchParams in
   // repos/orbit-app/app/ai/[id].tsx (send/prefill intents, session origin, note source).
   assert.deepEqual(routeParameters("mobile:/ai/[id]"), [
@@ -579,7 +538,6 @@ const SCANNER_CROSS_COMPONENT =
 export const KNOWN_MISSING_STATIC_BEHAVIOR: ReadonlyMap<string, string> = new Map<string, string>([
   // R17：申込設定的申込页预览（b6 #13–#15）里「申し込む」只是画出来给主办方看（aria-hidden、tabIndex=-1），不是可用控件。
   ["repos/orbits/app/(app)/app/orbit-2026/host/HostSetup.tsx#{t(\"pvApply\")}", "intentional preview-only control: the 申込 page preview draws the attendee's button (aria-hidden, tabIndex -1); it has no behavior by design"],
-  ['repos/orbit-app/src/screens/contacts/ContactDetailScreen.tsx#{locale.t("sync.needsNetwork")}', "intentional disabled control: device-copy contact detail is read-only offline; the explicit disabled/accessibilityState prevents writes"],
   ["repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx#{label}", `${SCANNER_CROSS_COMPONENT} (type=submit button rendered inside the parent's <form onSubmit>)`],
   ...["{t(item.cta)}", "填好画像后匹配 / Match after setup", "扫描名片 / Scan business cards", "报名 / Register", "看看可能值得认识的人 → / See people worth meeting →", "继续设置 → / Continue setup →"]
     .map((name) => [`repos/orbits/app/(app)/app/profile/onboarding-0918/onboarding-previews.tsx#${name}`, `${SCANNER_CROSS_COMPONENT} (click delegated to PreviewFrame onClick via data-ob-goto)`] as const),
@@ -1264,7 +1222,6 @@ test("chat is retired and no longer claims a live surface", () => {
 
 for (const [surfaceId, evidenceCount] of [
     ["web:/app/contacts/dashboard", 3],
-    ["web:/app/contacts/pipeline", 3],
   ] as const) {
   test(`relationship runtime observations remain retained: ${surfaceId}`, () => {
     assert.equal(

@@ -25,7 +25,6 @@ import { NetworkDemoFrame } from "../../app/(app)/app/contacts/network-0918/netw
 import { ShellSlotsProvider, useShellSlots } from "../../app/(app)/app/orbit-2026/shell/slots";
 import { NetworkFollowModal } from "../../app/(app)/app/contacts/network-0918/network-follow-modal";
 import { NetworkOverview } from "../../app/(app)/app/contacts/network-0918/network-overview";
-import { NetworkPipeline } from "../../app/(app)/app/contacts/network-0918/network-pipeline";
 import { NetworkAnalysis } from "../../app/(app)/app/contacts/network-0918/network-analysis";
 import {
   buildDemoAnalysisForTabs,
@@ -84,10 +83,6 @@ test("without the demo provider the same list has no banner and no demo tags", (
   const html = renderToStaticMarkup(<NetworkAll viewModel={VM} />);
   assert.doesNotMatch(html, /data-orbit-guide-demo-banner/);
   assert.doesNotMatch(html, /data-orbit-guide-demo-tag/);
-  // 真实页的分析文案与建议标题照旧（不前置联系人名）。
-  const pipeline = renderToStaticMarkup(<NetworkPipeline viewModel={VM} analysis={ANALYSIS} board={BOARD} />);
-  assert.match(pipeline, /基于你的关系管线、互动记录和行业动态/);
-  assert.match(pipeline, /class="nw-suggest-title">14:00 见面，请他引荐 IT 决策人</);
   const overview = renderToStaticMarkup(<NetworkOverview analysis={ANALYSIS} overview={OVERVIEW} />);
   assert.match(overview, /基于你的人脉数据/);
   assert.doesNotMatch(overview, /data-orbit-guide-demo-tag/);
@@ -130,26 +125,6 @@ test("overview in the demo (en): demo tiers and activity are English", () => {
     ["Nakamura Megumi", "Met at an event"],
   ]);
   assert.deepEqual(overview.highlights?.map((row) => row.name), ["Wang Yan", "Sato Misaki"]);
-});
-
-test("pipeline in the demo: four columns from the demo stages, AI suggestions point at demo contacts", () => {
-  const html = renderToStaticMarkup(inDemo(<NetworkPipeline viewModel={VM} analysis={ANALYSIS} board={BOARD} />));
-  assert.match(html, /完成引导后，这里换成你自己的人脉。/);
-  assert.match(html, /总联系人<\/span>/);
-  assert.equal(count(html, /class="nw-kanban-card"/g), 30);
-  // W0047：四列是示例的静态档位（新认识／有往来／核心／待唤醒），列头人数合计 30。
-  const columns = html.split('class="nw-kanban-col"').slice(1);
-  assert.deepEqual(columns.map((col) => /data-network-tier="(\w+)"/.exec(col)?.[1]), ["new", "active", "core", "dormant"]);
-  assert.equal(columns.map((col) => Number(/nw-kanban-n"[^>]*>(\d+)</.exec(col)?.[1])).reduce((a, b) => a + b, 0), 30);
-  assert.ok(columns.every((col) => Number(/nw-kanban-n"[^>]*>(\d+)</.exec(col)?.[1]) > 0));
-  // 30 张看板卡片 + 当前页 3 条 AI 建议里的联系人名。
-  assert.equal(count(html, /data-orbit-guide-demo-tag/g), 33);
-  // AI 建议里的人名带「示例」角标；文案说明是示例人物的分析。
-  assert.match(html, /class="nw-suggest-title">王砚<span class="ir-demo-tag"[^>]*>示例<\/span> · 14:00 见面，请他引荐 IT 决策人/);
-  assert.match(html, /class="nw-suggest-title">佐藤美咲<span class="ir-demo-tag"/);
-  assert.match(html, /示例人物的人脉分析：/);
-  assert.doesNotMatch(html, /基于你的关系管线/);
-  assert.match(html, /href="\/app\/contacts\/demo%3Awang-yan"/);
 });
 
 const demoAnalysisTab = (tab: "struct" | "opp" | "insight", lang: "zh" | "en" = "zh") => (
@@ -400,27 +375,6 @@ test("a demo contact without full detail opens the short version", async (t) => 
   assert.match(mounted.text(), /上次互动（示例简版详情）/);
   assert.match(mounted.text(), /待了解/);
   assert.deepEqual(mounted.fetches, []);
-});
-
-test("pipeline and overview open demo details in place too (cards and suggestions)", async (t) => {
-  const pipeline = await mount(t, inDemo(<NetworkPipeline viewModel={VM} analysis={ANALYSIS} board={BOARD} />));
-  const kanban = clickEvent();
-  await act(async () => {
-    anchor(pipeline.root, "btn nw-kanban-who", "/app/contacts/demo%3Ayamada-taro").props.onClick(kanban);
-  });
-  assert.equal(kanban.defaultPrevented, true);
-  assert.ok(detailOpen(pipeline.root));
-  assert.match(pipeline.text(), /说明会后交换名片/);
-  await act(async () => {
-    anchor(pipeline.root, "btn nw-modal-close", "/app/contacts/pipeline").props.onClick(clickEvent());
-  });
-  assert.equal(detailOpen(pipeline.root), false);
-  await act(async () => {
-    anchor(pipeline.root, "btn nw-suggest", "/app/contacts/demo%3Asato-misaki").props.onClick(clickEvent());
-  });
-  assert.match(pipeline.text(), /她说现在用 Word 手记/);
-  assert.deepEqual(pipeline.fetches, []);
-  assert.deepEqual(pipeline.assigned, []);
 });
 
 test("overview highlights open the demo detail in place", async (t) => {

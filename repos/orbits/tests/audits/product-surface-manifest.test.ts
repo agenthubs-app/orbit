@@ -29,7 +29,7 @@ test("surface scanner covers every production page and excludes API/dev routes",
     "/app/contacts/[id]",
     "/app/contacts/dashboard",
     "/app/contacts/new",
-    "/app/contacts/pipeline",
+    // R11a：/app/contacts/pipeline 已删除（R11-12）。
     "/app/events",
     "/app/events/[id]",
     "/app/events/[id]/live",

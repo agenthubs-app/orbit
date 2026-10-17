@@ -142,7 +142,6 @@ export function NetworkOverview({ analysis, overview }: { analysis: ContactsAnal
         <div className="nw-ov-card" data-network-section="tiers">
           <div className="nw-ov-head">
             <h2 className="nw-h2">{t({ en: "Relationship tiers", zh: "关系档位" })}</h2>
-            <a className="nw-link" href="/app/contacts/pipeline">{t({ en: "View full pipeline →", zh: "查看完整管线 →" })}</a>
           </div>
           <div className="nw-stage-bar">
             {overview.tiers.map((segment, i) => (
