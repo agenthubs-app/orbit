@@ -60,6 +60,8 @@
 | R17-13 | kiosk 定員超え确认缺承認済み / 定員 | kiosk 读模型加字段 |
 | R17-14 | 登出不清 kiosk 本机名单（只在无权限时清） | 壳登出钩子就绪后接 |
 | R17-15 | 公开主催页「通報する」无表单 | R29 就绪后接 |
+| R17-16 | App `/e/[slug]` 靠跟随网页重定向取 id | 补 by-slug 接口后改调 |
+| R17-17 | P26 Drawer 540/22、App P05 Segmented 30（G23） | 组件库补尺寸后重跑门禁 |
 
 ## 4. 待外部条件或授权
 
@@ -69,4 +71,5 @@
 | R27 Web 未登录详情「あなた N回」 | 已在实现里隐藏（服务端不给），画板 #394 仍画着，等 design-decisions 按 §36 改画板（10-16） | 拿到新序号后把 W-R27-P41 改指重跑 |
 | R27 App A-R27-26 | b2 #26 画板把一段 CSS 审计注释画成了可见文字（topbar 下两行），整屏下移约 40px；已报主会话（10-15） | 画板修正后清缓存重跑 A-R27-26（同时受 seg G23 与 expo-brightness 两条影响） |
 | R22-02 | 计划 v2 的生产 AI 开关和月上限 | 等用户拍板 |
+| 用语统一 §45（文字） | design-decisions 10-17 按用语规范把画板「製造業DX」「DX推進室」等改成带半角空格；代码里的示例数据和测试还是旧写法（`features/events/design-fixtures`、`shared/mock/demo-world/*`、`shared/contract/host-console.ts`、`orbit-2026/host/matching-sample.ts`、`features/plans/v2/design-fixtures/a.ts c.ts`、`features/contacts/import/design-samples.ts`、`scripts/r26/make-blurry-poster.mjs` 及对应测试）；R17 还在改 host 文件，等它收口 | 开一个小会话一次改完并跑受影响测试；画板与实现文字差在此之前按 [data] 归因 |
 | 真机 | 触感和相机只能在真机上验 | 合回前在真机上走查（README 合回前清单） |
