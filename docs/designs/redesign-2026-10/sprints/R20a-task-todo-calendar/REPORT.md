@@ -326,6 +326,10 @@ repository.create の optional prepare は receipt lookup **後**、Postgres の
 
 `sc11-contact-authority-red.log` は null stub、`sc11-contact-authority-extra-side-red.log` は余分な第三 side の誤受理を固定。最新 `sc11-contact-authority-pg-green.log` は **15/15 pass、0 skip**（context 4 unit + actual PG、atomic 3 unit + actual PG、旧 lifecycle 6）。local PG fixture は既存 native verifier が読む relational columns と canonical owner/contact unique を作る scoped SQL test で、全 Event Operations migration / membership journey を再現した証拠ではない。最初の PG fixture は招待された側を拒否すると誤って期待して fail したが、既存 bilateral 仕様を確認して両側の distinct contact から同一 accepted context を解決する期待に直した。production policy を requester-only に変更していない。10,000 foreign workspace sides の後も **2 queries、discovery response 53 bytes**（verifier response bytes はこの値に含めない）。HTTP / shared contract / snapshot / App sync / UI はまだ次段階。一般 contact-only authority の欠落は依然 partial として残す。
 
+### doors browser assertion timing（承認後の test-only 修正）
+
+上述の full / bounded rerun の RED と actual animation.finished diagnostic の **2/2 GREEN** に基づき、user 承認後に `tests/ui/add-contact-screens.test.tsx` の最初の doors test を修正。dialog visible の直後ではなく、その dialog の `getAnimations()` が返す実 animation の `finished` を全て待って既存 560px assertion を行う。固定 sleep、許容誤差の拡大、縮小 width の採用、UI / kit 変更はしない。主会話の指示で test-only path commit を先に行い、fresh 二件 browser を queued App tsc / browser 後の heavy.sh d へ並べる。現コミット時点ではこの fresh browser は pending で、過去 diagnostic の green を現 full の green と呼ばない。
+
 ## 请求
 
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。
