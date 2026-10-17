@@ -3,7 +3,7 @@ import test from "node:test";
 import type { TodoPageContract } from "../src/api/contract/todo-page";
 import type { LocalSyncQueuedMutation } from "../src/data/sync/local-sync-repository";
 import { TODO_SECTION_SOURCES } from "../src/api/schema/todo-page";
-import { canWriteTodoFollowup, overlayTodoPage, todoPageIsStale, todoSectionCount } from "../src/screens/todo/todo-page-model";
+import { appendTodoSourcePage, canWriteTodoFollowup, overlayTodoPage, todoPageIsStale, todoSectionCount } from "../src/screens/todo/todo-page-model";
 
 const actorId = "actor-a";
 const date = "2026-10-18";
@@ -77,4 +77,29 @@ test("queued completion removes only its task row and locally reconciles counts"
   assert.equal(result?.counts.followups, 1);
   assert.equal(result?.counts.overdue, 0);
   assert.equal(page.followups.items.length, 2);
+});
+
+test("a source page appends only that source without replacing other sections or cursors", () => {
+  const first = { ...page, decisions: { ...page.decisions, next: { task_suggestion: "cursor-one", agent_action: "another" } } };
+  const incoming: TodoPageContract = { ...page, asOf: "2026-10-18T01:00:00Z", counts: { ...page.counts, decisions: 3 },
+    decisions: { items: [
+      page.decisions.items[0]!,
+      { key: "task_suggestion:s2", source: "task_suggestion", sourceId: "s2", titlePreview: "Second", createdAt: "2026-10-17T01:00:00Z", actions: ["accept"] },
+    ], next: { task_suggestion: "cursor-two" } }, nextMoves: { items: [], next: {} }, followups: { items: [], next: {} } };
+  const merged = appendTodoSourcePage(first, incoming, "decisions", "task_suggestion");
+  assert.deepEqual(merged?.decisions.items.map(item => item.key), ["task_suggestion:s1", "task_suggestion:s2"]);
+  assert.deepEqual(merged?.decisions.next, { task_suggestion: "cursor-two", agent_action: "another" });
+  assert.equal(merged?.counts.decisions, 3);
+  assert.deepEqual(merged?.followups, first.followups);
+  assert.equal(appendTodoSourcePage(first, { ...incoming, date: "2026-10-19" }, "decisions", "task_suggestion"), null);
+  assert.equal(appendTodoSourcePage(first, { ...incoming, sources: { task_suggestion: "unavailable" } }, "decisions", "task_suggestion"), null);
+  assert.equal(appendTodoSourcePage(first, { ...incoming, decisions: { items: [{ ...incoming.decisions.items[1]!, source: "agent_action" }], next: {} } }, "decisions", "task_suggestion"), null);
+});
+
+test("a paged overdue follow-up stays ahead of later rows", () => {
+  const first = { ...page, followups: { ...page.followups, next: { task: "cursor-one" } } };
+  const extra = { ...page.followups.items[0]!, key: "task:task-2", sourceId: "task-2", taskId: "task-2", dueAt: "2026-10-16T14:59:59.999Z" };
+  const incoming: TodoPageContract = { ...page, followups: { items: [extra], next: {} } };
+  assert.deepEqual(appendTodoSourcePage(first, incoming, "followups", "task")?.followups.items.map(item => item.key),
+    ["task:task-2", "task:task-1", "relationship_task:lc1"]);
 });

@@ -6,13 +6,16 @@ import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { canWriteTodoFollowup, todoSectionCount } from "./todo-page-model";
 
-export function TodoSections({ page, offline, staleDay, busy, mirroredTaskIds, onRefresh, canOpen, canOpenFollowup, canDefer, onOpen, onOpenFollowup, onComplete, onDefer, onDecide }: {
+export function TodoSections({ page, offline, staleDay, busy, pagingSection, pagingFailedSection, mirroredTaskIds, onRefresh, onMore, canOpen, canOpenFollowup, canDefer, onOpen, onOpenFollowup, onComplete, onDefer, onDecide }: {
   page: TodoPageContract;
   offline: boolean;
   staleDay: boolean;
   busy: boolean;
+  pagingSection?: TodoSectionKey | null;
+  pagingFailedSection?: TodoSectionKey | null;
   mirroredTaskIds: ReadonlySet<string>;
   onRefresh: () => void;
+  onMore?: (section: TodoSectionKey) => void;
   canOpen: (item: TodoDecisionItem | TodoNextMoveItem) => boolean;
   canOpenFollowup: (item: TodoFollowupItem) => boolean;
   canDefer: (item: TodoFollowupItem) => boolean;
@@ -44,6 +47,10 @@ export function TodoSections({ page, offline, staleDay, busy, mirroredTaskIds, o
   ) : null;
   const empty = (section: TodoSectionKey, length: number) => length === 0 && todoSectionCount(page, section).accuracy === "exact"
     ? <UiText style={styles.muted}>{t("todo.empty")}</UiText> : null;
+  const more = (section: TodoSectionKey) => onMore && Object.keys(page[section].next).length ? <View style={styles.more}>
+    <Button label={t("todo.more")} onPress={() => onMore(section)} size="sm" variant="ghost" disabled={readOnly || busy || Boolean(pagingSection)} />
+    {pagingFailedSection === section ? <UiText accessibilityRole="alert" style={styles.muted}>{t("todo.partial")}</UiText> : null}
+  </View> : null;
 
   return <View style={styles.sections}>
     {readOnly ? <View accessibilityRole="alert" style={styles.notice}>
@@ -68,6 +75,7 @@ export function TodoSections({ page, offline, staleDay, busy, mirroredTaskIds, o
           {canOpen(item) ? <Button label={t("todo.open")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={readOnly || busy || Boolean(item.sample)} /> : null}
         </View>
       </View>)}
+      {more("decisions")}
     </Card>
 
     <Card style={styles.section}>
@@ -83,6 +91,7 @@ export function TodoSections({ page, offline, staleDay, busy, mirroredTaskIds, o
         </View>
         <Button label={t(item.draftAvailable ? "todo.draft" : "todo.open")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={readOnly || busy || Boolean(item.sample) || !item.draftAvailable || !canOpen(item)} />
       </View>)}
+      {more("nextMoves")}
     </Card>
 
     <Card style={styles.section}>
@@ -109,6 +118,7 @@ export function TodoSections({ page, offline, staleDay, busy, mirroredTaskIds, o
           </View>
         </View>;
       })}
+      {more("followups")}
     </Card>
   </View>;
 }
@@ -126,6 +136,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   sample: { color: colors.accentText, fontSize: 11 },
   overdue: { color: colors.coralText, fontSize: 12, fontWeight: "700" },
   actions: { alignItems: "center", flexDirection: "row", gap: 4 },
+  more: { alignItems: "flex-start", gap: 6 },
   partial: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   notice: { backgroundColor: colors.macApricot, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
   noticeText: { color: colors.macApricotInk, fontSize: 12 },

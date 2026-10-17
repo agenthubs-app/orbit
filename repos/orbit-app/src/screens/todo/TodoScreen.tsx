@@ -6,8 +6,9 @@ import { Platform, RefreshControl, StyleSheet, View } from "react-native";
 import { taskPath } from "../../api/endpoints";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import type { TodoDecisionItem, TodoFollowupItem, TodoNextMoveItem } from "../../api/contract/todo-page";
+import type { TodoDecisionItem, TodoFollowupItem, TodoNextMoveItem, TodoPageContract, TodoSectionKey } from "../../api/contract/todo-page";
 import type { TaskItemContract } from "../../api/contract/tasks";
+import { TODO_SECTION_SOURCES, todoPageSchema } from "../../api/schema/todo-page";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -25,6 +26,7 @@ import { PersonalScheduleDateTimePicker } from "../schedule/PersonalScheduleDate
 import { TasksScreen } from "../tasks/TasksScreen";
 import { TodoSections } from "./TodoSections";
 import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoTaskCompletionReceipt } from "./todo-actions";
+import { appendTodoSourcePage } from "./todo-page-model";
 import { useTodoPage } from "./useTodoPage";
 
 /** Until SC09 replaces the general task list, retain it as an explicit second view. */
@@ -55,6 +57,22 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
   const scopeKey = JSON.stringify([auth.actorId, auth.cookieHeader, auth.notificationSessionRevision, server.baseUrl, timeZone, date]);
   const client = useOrbitApiClient({ scopeKey });
   const todo = useTodoPage(timeZone, date);
+  const pageKey = JSON.stringify([scopeKey, todo.page]);
+  const [pagination, setPagination] = useState<{ key: string; page: TodoPageContract } | null>(null);
+  const [pagingSection, setPagingSection] = useState<TodoSectionKey | null>(null);
+  const [pagingFailedSection, setPagingFailedSection] = useState<TodoSectionKey | null>(null);
+  const page = pagination?.key === pageKey ? pagination.page : todo.page;
+  const visiblePage = useRef({ key: pageKey, page });
+  visiblePage.current = { key: pageKey, page };
+  const pagingEpoch = useRef(0);
+  const pagingRequest = useRef(false);
+  useEffect(() => {
+    pagingEpoch.current++;
+    pagingRequest.current = false;
+    setPagination(null);
+    setPagingSection(null);
+    setPagingFailedSection(null);
+  }, [pageKey]);
   const [busy, setBusy] = useState(false);
   const [deferItem, setDeferItem] = useState<TodoFollowupItem | null>(null);
   const [deferConfirmation, setDeferConfirmation] = useState<{ item: TodoFollowupItem; date: string } | null>(null);
@@ -81,7 +99,43 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
     const task = record.payload as unknown as TaskItemContract | null;
     return record.deletedAt === null && task && (Boolean(task.plannedDate) || Boolean(task.dueAt));
   }).map(record => record.id)), [todo.mirror.records]);
-  const refresh = () => { todo.refresh(); void todo.mirror.refresh(); };
+  const refresh = () => {
+    pagingEpoch.current++;
+    pagingRequest.current = false;
+    setPagination(null);
+    setPagingSection(null);
+    setPagingFailedSection(null);
+    todo.refresh(); void todo.mirror.refresh();
+  };
+
+  async function loadMore(section: TodoSectionKey) {
+    const current = visiblePage.current;
+    if (pagingRequest.current || offline || staleDay || !current.page || !auth.actorId) return;
+    const source = TODO_SECTION_SOURCES[section].find(candidate => current.page?.[section].next[candidate]);
+    if (!source) return;
+    const cursor = current.page[section].next[source];
+    if (!cursor) return;
+    const epoch = pagingEpoch.current;
+    pagingRequest.current = true;
+    setPagingSection(section);
+    setPagingFailedSection(null);
+    const query = new URLSearchParams({ date, timeZone, section, source, cursor, limit: "50" });
+    try {
+      const result = await client.get<unknown>(`/api/todo/page?${query.toString()}`, { signal: scope.controller.signal });
+      if (!isCurrent() || epoch !== pagingEpoch.current || visiblePage.current.key !== current.key) return;
+      const parsed = result.success && result.status >= 200 && result.status < 300 ? todoPageSchema.safeParse(result.data) : null;
+      const latest = visiblePage.current.page;
+      const next = parsed?.success && latest?.[section].next[source] === cursor
+        ? appendTodoSourcePage(latest, parsed.data, section, source) : null;
+      if (!next) { setPagingFailedSection(section); if (result.status === 401 || result.status === 403) refresh(); return; }
+      visiblePage.current = { key: current.key, page: next };
+      setPagination({ key: current.key, page: next });
+    } catch {
+      if (isCurrent() && epoch === pagingEpoch.current) setPagingFailedSection(section);
+    } finally {
+      if (isCurrent() && epoch === pagingEpoch.current) { pagingRequest.current = false; setPagingSection(null); }
+    }
+  }
 
   function open(item: TodoDecisionItem | TodoNextMoveItem) {
     const href = "actions" in item ? todoDecisionHref(item) : null;
@@ -206,8 +260,9 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
   ) : date;
 
   return <AppScreen title={locale.t("tasks.title")} refreshControl={<RefreshControl refreshing={todo.state.refreshing} onRefresh={refresh} />}>
-    {todo.page ? <TodoSections page={todo.page} offline={offline} staleDay={staleDay} busy={busy} mirroredTaskIds={mirroredTaskIds}
+    {page ? <TodoSections page={page} offline={offline} staleDay={staleDay} busy={busy} pagingSection={pagingSection} pagingFailedSection={pagingFailedSection} mirroredTaskIds={mirroredTaskIds}
       onRefresh={refresh} canOpen={item => "actions" in item && todoDecisionHref(item) !== null}
+      onMore={section => { void loadMore(section); }}
       canOpenFollowup={item => todoFollowupHref(item) !== null}
       canDefer={item => !offline || deferableTaskIds.has(item.taskId)}
       onOpen={open} onOpenFollowup={item => { const href = todoFollowupHref(item); if (href) router.push(href as Href); }}

@@ -1,4 +1,4 @@
-import type { TodoPageContract, TodoFollowupItem, TodoSectionKey, TodoSourceKey } from "../../api/contract/todo-page";
+import type { TodoPageContract, TodoFollowupItem, TodoSection, TodoSectionKey, TodoSourceKey } from "../../api/contract/todo-page";
 import type { TaskItemContract } from "../../api/contract/tasks";
 import { isOpenFollowUpTask } from "../../api/compute/follow-up-task";
 import { TODO_SECTION_SOURCES } from "../../api/schema/todo-page";
@@ -27,6 +27,40 @@ export function todoSectionCount(page: TodoPageContract, section: TodoSectionKey
   const value = page.counts[section];
   const capped = section !== "followups" && page.countsCapped[section];
   return { value, accuracy: incompleteSources.length || capped ? value ? "at-least" : "unknown" : "exact", incompleteSources };
+}
+
+function appendSourceItems<T extends { key: string; source: TodoSourceKey }>(
+  current: TodoSection<T>, incoming: TodoSection<T>, source: TodoSourceKey,
+): TodoSection<T> | null {
+  if (incoming.items.some(item => item.source !== source)) return null;
+  const items = new Map(current.items.map(item => [item.key, item]));
+  for (const item of incoming.items) items.set(item.key, item);
+  const next = { ...current.next };
+  delete next[source];
+  if (incoming.next[source]) next[source] = incoming.next[source];
+  return { items: [...items.values()], next };
+}
+
+/** A paginated response contains only one section's rows; its other empty sections are not deletions. */
+export function appendTodoSourcePage(
+  current: TodoPageContract, incoming: TodoPageContract, section: TodoSectionKey, source: TodoSourceKey,
+): TodoPageContract | null {
+  if (current.date !== incoming.date || current.timeZone !== incoming.timeZone || incoming.sources[source] !== "ok" ||
+    !(TODO_SECTION_SOURCES[section] as readonly string[]).includes(source)) return null;
+  const base = { ...current, asOf: incoming.asOf, counts: incoming.counts, countsCapped: incoming.countsCapped, sources: incoming.sources };
+  if (section === "decisions") {
+    const decisions = appendSourceItems(current.decisions, incoming.decisions, source);
+    return decisions ? { ...base, decisions } : null;
+  }
+  if (section === "nextMoves") {
+    const nextMoves = appendSourceItems(current.nextMoves, incoming.nextMoves, source);
+    return nextMoves ? { ...base, nextMoves } : null;
+  }
+  const followups = appendSourceItems(current.followups, incoming.followups, source);
+  return followups ? { ...base, followups: { ...followups, items: [...followups.items].sort((left, right) =>
+    Number(right.overdue) - Number(left.overdue) ||
+    (left.dueAt ? Date.parse(left.dueAt) : Infinity) - (right.dueAt ? Date.parse(right.dueAt) : Infinity) ||
+    left.key.localeCompare(right.key)) } } : null;
 }
 
 function dueAt(task: TaskItemContract, zone: string): string | undefined {
