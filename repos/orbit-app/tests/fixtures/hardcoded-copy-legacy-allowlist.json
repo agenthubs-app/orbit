@@ -1,7 +1,6 @@
 {
   "_comment": "R03 / RD-24：旧屏写死的界面文字（文件 → 条数）。只减不增：重写旧屏时把文字移进字典或 shared/copy，条数减少就改小，归零就删掉这一行；不得新增文件或调大。规则见 tests/no-hardcoded-copy.test.ts。",
   "files": {
-    "app/tasks/personal.tsx": 1,
     "src/api/ApiBaseUrlProvider.tsx": 1,
     "src/api/ApiBaseUrlProvider.web.tsx": 1,
     "src/api/ai-history-contract.ts": 5,
