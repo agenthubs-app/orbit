@@ -18,21 +18,6 @@ export function orbitNavigate(prototypeHref: string) {
   window.location.href = accountHref(prototypeHref);
 }
 
-export function StatusBar({ dark = false }: { dark?: boolean }) {
-  const color = dark ? "#fff" : "var(--ink)";
-
-  return (
-    <div className="statusbar" style={{ color }}>
-      <span className="mono" style={{ fontSize: 14, fontWeight: 600 }}>9:41</span>
-      <div style={{ alignItems: "center", display: "flex", gap: 6 }}>
-        <span style={{ border: `2px solid ${color}`, borderRadius: 3, display: "inline-block", height: 12, width: 17 }} />
-        <span style={{ border: `2px solid ${color}`, borderRadius: 999, display: "inline-block", height: 12, width: 17 }} />
-        <span style={{ border: `1px solid ${color}`, borderRadius: 4, display: "inline-block", height: 12, width: 25 }} />
-      </div>
-    </div>
-  );
-}
-
 export function MobileBar({
   backLabel,
   dark = false,
