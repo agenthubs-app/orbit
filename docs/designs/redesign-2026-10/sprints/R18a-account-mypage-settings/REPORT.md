@@ -1,6 +1,6 @@
 # R18a implementation report (in progress)
 
-Approved scope: GOAL / PLANNER rev2. Implementation is not acceptance closure: App SC10 verification, interaction evidence, full verification and independent review remain in progress. No pixel closure before R31a / R31b. No production database, real Google, deploy, TestFlight, push, stash or reset was used.
+Approved scope: GOAL / PLANNER rev2. Implementation is not acceptance closure: App full comparison retains two baseline failures plus one open C source-audit dependency; native interaction evidence, Web final verification, component-gated pixels and independent review remain incomplete. No pixel closure before R31a / R31b. No production database, real Google, deploy, TestFlight, push, stash or reset was used.
 
 ## Baseline and evidence
 
@@ -27,6 +27,7 @@ Approved scope: GOAL / PLANNER rev2. Implementation is not acceptance closure: A
 | `3a3db82d6` | App direct `/settings/api` route development guard, preserving private auth boundary | Actual route tested with undefined/false/true development flags; combined route boundary/coverage/wiring 8/8 |
 | `ebc54587c` | App SC11 offline remote-button disabled states; exact integration disconnect receipt regression | New offline cases RED→GREEN; focused secondary/suggestions/settings API 11/11 |
 | `58dc2b45e` | App actual private-boundary SSR and optional scan cancellation compatibility regressions | Combined auth/route/scan/existing onboarding API 15/15; all 12 R18a entry files retain private wrapper; no auth/shell runtime edits |
+| `8ca061cec` (post-rebase) | App real-editor save invariants, owned source audits and mapped legacy-suite retirement | Browser13/13, retained invariant subset45/45, owned source audits13/13, App typecheck0; full rerun below has one open C dependency failure |
 
 Path-specific commits only. The table above records pre-rebase milestone hashes. Dirty shared worker trees prevented an immediate pull/rebase; coordinator explicitly approved committing owned paths before rebasing a clean tree, with no stash/autostash. The clean rebase completed from `6357efa28e8509279410511e28b7a9c9608c9bf5` to `df06f6be4bbae3ef30332d24a3eed63c9841954a`, on exact upstream base `e081084b0c024a50f2c0d13c1abe130c576bc440`. D prerequisites shell `56da437ef` and OAuth signed `returnTo=settings` `d2aaa6201` are now ancestors, not C-owned edits.
 
@@ -79,6 +80,20 @@ Result: **3343 tests / 3159 pass / 182 fail / 2 skip**, 211998ms, exit 1. This i
 
 No personal-schedule Flow-parser failures occurred in this C run, even though D's separate run encountered them. Do not transfer D observations to C. Post-rebase sanitized App `npx tsc --noEmit` subsequently exited 0; raw `/Users/xzhao/orbit-sprint-evidence/redesign/R18a/run-01/app-tsc-df06f6be4.log`.
 
+### Sanitized App rerun after owned repairs: `8ca061cec`
+
+Same sanitizer/command and exact upstream base `e081084b0`; tree clean for this run. Raw `/Users/xzhao/orbit-sprint-evidence/redesign/R18a/run-01/app-full-8ca061cec.log`. Result: **3180 tests / 3175 pass / 3 fail / 2 skip**, 224609ms, exit 1. The reduction is explicitly accounted for by retiring 170 obsolete route cases and adding seven actual-editor cases; it is not described as 179 product regressions repaired.
+
+The only failures are (1) open C-owned `authenticated-client-usage` dependency (`useAccountSettingsApi` direct construction), (2) exact pristine English key count `2813 !== 2253`, and (3) the pristine joined-person merge click timeout. Prior plan-overview skip/undo overlay case passed this complete rerun, supporting timing sensitivity rather than a persistent C-specific failure. No other new failure occurred in this rerun. **SC13 zero-new-failure acceptance is not met:** one C-owned source-audit failure remains pending a separately authorized shared-hook adapter seam. No exception, shared-hook edit or failed-test deletion was used to conceal it.
+
+### Production fixture exclusion: initial failure and bounded correction
+
+Sanitized local production iOS JavaScript export (no native rebuild/install), with `EXPO_NO_DOTENV=1`, `EXPO_NO_TELEMETRY=1`, `EXPO_OFFLINE=1`, `CI=1`, `NODE_ENV=production`, `--no-bytecode --max-workers 1`, exited 0: 2898 modules, 31.66s. Raw `app-production-js-export.log`; output `/tmp/orbit-r18a-prod.xixjHW`. However the 8,253,308-byte emitted JS **contained all three** fixture-only sentinels `account-design-suzuki`, `demo-memory-1`, `demo-google_calendar` (SHA-256 `13c2ed8165ea97dd7763a583727fdcf9098c3a9328cd80ee885acc35819787a1`), so fixture exclusion failed despite successful compilation. Results: `app-production-fixture-exclusion.json`. The shell command's final status was masked by a following status read; classification uses the explicit sentinel booleans, not that wrapper exit code.
+
+Root cause: installed Metro's inline/constant-folding plugins remove the constant early-return condition but leave the following unreachable dynamic import for dependency collection. New pure regression using those actual plugins was RED (2 pass / 1 fail), then GREEN (3/3) after enclosing the import itself in positive `if (__DEV__)`. Development transformation retains the import. Changes stay in private `useAccountDesign.ts` and its existing test; no Metro/Babel configuration or dependencies changed.
+
+Fresh heavy-locked sanitized `npx tsc --noEmit && … expo export --platform ios --no-bytecode --max-workers 1` exited 0 (`app-production-js-export-after.log`). Output `/tmp/orbit-r18a-prod-after.kvChc2/_expo/static/js/ios/entry-cbe984950652ce4694c7cd0e72bb4cec.js`: 8,247,356 bytes, SHA-256 `d5a83044ae960e7be0e880242fd02a9df10150befa463496a723f184514f565a`. Strict sentinel checker separately exited 0: **all three absent** (`app-production-fixture-exclusion-after.json`). The before/after real bundles, not just source inspection, support fixture exclusion. Both temporary exports and raw logs are retained outside git; no native binary/rebuild/install or provider contact occurred. The most recent complete App suite remains the explicitly versioned `8ca061cec` run before this two-file loader/regression correction; the new regression3/3, final typecheck0 and real export/sentinel0 verify this bounded follow-up. No newer full-suite result is invented.
+
 ### Legacy profile coverage mapping (before retirement)
 
 The old 170-case suite mixed old overview/inline-editor UI with useful behavior invariants. It was retired only after the coverage mapping below, a fresh retained behavioral subset (45/45), and the new actual editor-hook regressions completed. Historical observations stay historical; removed assertions are not transferred as runtime evidence. Retirement count: one old-only file / 170 old-route cases removed; seven actual-editor cases added; all six generic primitive cases preserved (only dead SectionHeader fixture/import/one component-specific assertion removed). Earlier SC10's three retired old-only files and twelve mixed-suite cases remain separate from this follow-up count.
@@ -104,7 +119,7 @@ Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail
 - JSONB storage needed no migration. Narrow PG actor projector includes the new field; isolated DB regression caught the initial projection omission.
 - App edit-session APIs retain defaults for R28. Additive draft `publicFields` is copied on save; optional scope `sessionId` isolates development variants, while production actor/origin keys retain previous behavior. Optional hook `path` defaults to `/api/profile`.
 - Canonical `demoAccountEventSummary` is `{ hosted:2, active:1, attending:2 }`, sourced from b5 #16/#20 and b12 S30; unread states are 0 / 5 / 5. These are development display fixtures, never live aggregations. Disconnected integration fixture records use `pending`, not unsupported/unavailable.
-- App snapshot is generated by `node --import tsx scripts/sync-account-design-fixtures.mts` from canonical account/index data. Runtime import is behind `__DEV__` plus valid profile design variant. Production-bundle exclusion still needs build verification.
+- App snapshot is generated by `node --import tsx scripts/sync-account-design-fixtures.mts` from canonical account/index data. Runtime import is behind `__DEV__` plus valid profile design variant. Initial production export exposed bundled fixture data despite the runtime early return; positive-branch correction, real production export and strict sentinel exclusion verification are recorded above.
 - Live summaries use existing inbox unread total, host center summary and events/mine upcomingCount. Independent failures hide their rows, and attending count zero hides its row.
 - App completion mode still requires the existing confirmed `onboarding.status === "complete"` metadata. Neither the legacy score nor the new card score grants completion; offline data cannot trigger the completion redirect. Incomplete onboarding links to the existing R28 route without changing it.
 
@@ -130,16 +145,16 @@ Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail
 | 01 | Pristine baselines, isolated local PG, standalone approved board/preflight amendment commit | Coordinator board acceptance; native simulator/port environment for later gates |
 | 02 | Additive contracts, canonical fixtures, sync/snapshot and isolated PG regressions verified | Independent rerun |
 | 03 | App my page and summary/candidate API/render checks green; Chromium candidate accept→completion→dismiss and nested share verified | Simulator interaction evidence |
-| 04 | App editor/public preview/tags and CAS/visibility regressions green; real presenter controls update the filtered preview in Chromium | Full editor/controller save operation, simulator and b1 style-diff |
+| 04 | App editor/public preview/tags and CAS/visibility regressions green; real presenter controls update the filtered preview; actual editor-hook save/receipt/race7/7 | Simulator and b1 style-diff |
 | 05 | Three effective language/appearance options, available OS actions, private auth and dev-route guard verified in focused checks | Native calendar capability unmet; native OS/logout/language interaction evidence |
 | 06 | Private integrations/memory/semantic adapters, retry/scope, pending-OAuth reset and device preference restoration green in focused/controller tests | Native OAuth return; Japanese live drafting; confirmed disconnect/memory-delete UI operation and native evidence |
 | 07 | Web owner route/UI checkpoint and targeted tests recorded above | Width-specific browser operation and later pixel evidence |
 | 08 | Web owner secondary settings implementation; unsupported agent UI removed | Owner final behavior/full verification matrix; native-independent provider tests, language/appearance two-entry proof |
 | 09 | Both implementations committed; App reviewed selected-field save-before-ack regressions green | Binary résumé capability unmet; browser input/selection and state-boundary evidence |
-| 10 | Old owned screens deleted, allowlists shrink, routes/inventories/audits checked; replacement offline Chromium case passes 1/1 | Latest full suite catches remaining stale assertions; retained mixed browser suites |
+| 10 | Old owned screens deleted, allowlists shrink, routes/inventories/audits checked; mapped old-profile suite retired; generic mixed browser6/6 and replacement offline1/1 | Independent rerun; open authenticated-client source boundary is separately tracked |
 | 11 | App auth/private routes, timestamped offline copy, disabled remote actions, independent summary failures, retry/scoped state and no false-empty read state verified | Functional screenshots/native state evidence and independent rerun |
 | 12 | Waiting R31a / R31b; no gate started or passed | Entire §9.2 matrix plus R05/R07/R17 regressions, raw/bands/attribution/compare evidence |
-| 13 | Baselines, focused milestones and clean rebase recorded | Sanitized full comparisons, final typechecks/lint/copy, final scope ledger and independent review |
+| 13 | Clean rebase, App full3180/3fail (2 baseline + 1 open dependency), final App typecheck0, production JS fixture exclusion0, copy103/0 and App scopeledger127/127 | Shared-hook dependency authorization/fix and final full rerun afterward; Web full/lint/final checks, independent review |
 
 1. **Native calendar permission unmet.** No expo-calendar dependency or native calendar adapter exists. Coordinator explicitly declined dependency/rebuild expansion. Camera and notification OS state/request/openSettings are implemented; unavailable calendar row is hidden rather than using OAuth records as OS state. Needs a separate native capability decision.
 2. **Japanese AI drafting/candidates unmet live.** Intro and seeking services select `en`, otherwise `zh`; sending `ja` silently produces Chinese. Japanese live actions/candidates are hidden (G18); development/mock fixtures retain approved Japanese states. Backend Japanese support request; no paid model is called by tests.
@@ -167,7 +182,7 @@ Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail
 
 ## Remaining work
 
-Finish SC10 retained mixed-browser verification, SC11 functional screenshots/native state evidence; SC12 gated pixels; SC13 sanitized full suites/typechecks/lint/copy and independent review. File-by-file ownership self-audit and final command/evidence matrix will be refreshed after full comparison on the cleanly rebased branch. No full-suite success is claimed.
+Resolve the explicitly unapproved shared-hook source-audit dependency and rerun final full comparison afterward; SC11 functional screenshots/native state evidence; SC12 gated pixels; SC13 Web final suites/typechecks/lint/copy and independent review. App sanitized full comparison, final typecheck, real production fixture exclusion, scope ledger and owned copy evidence are recorded above. No full-suite success or zero-new-failure acceptance is claimed.
 
 ## 改稿与补画清单
 

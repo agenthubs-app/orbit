@@ -8,9 +8,10 @@ export function useAccountDesign() {
   const [fixtures, setFixtures] = useState<Fixtures | null>(null);
   useEffect(() => {
     let live = true;
-    // Metro removes this import with the false __DEV__ branch in production bundles.
     if (typeof __DEV__ === "undefined" || !__DEV__ || !path.includes("?design=")) { setFixtures(null); return; }
-    void import("../../../fixtures/account-design").then(value => { if (live) setFixtures(value.accountDesignFixtures); });
+    // Metro folds this positive branch before collecting dependencies; an early
+    // return alone still leaves the otherwise unreachable import in its graph.
+    if (__DEV__) void import("../../../fixtures/account-design").then(value => { if (live) setFixtures(value.accountDesignFixtures); });
     return () => { live = false; };
   }, [path]);
   const variant: "empty" | "few" | "many" = path.endsWith("25") ? "empty" : path.endsWith("50") ? "few" : "many";
