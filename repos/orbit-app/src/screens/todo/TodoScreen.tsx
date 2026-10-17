@@ -25,7 +25,7 @@ import { readTaskListItems } from "../../view-models/task-list-scope";
 import { PersonalScheduleDateTimePicker } from "../schedule/PersonalScheduleDateTimePicker";
 import { TasksScreen } from "../tasks/TasksScreen";
 import { TodoSections } from "./TodoSections";
-import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "./todo-actions";
+import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoNativeSnoozeReceipt, todoNativeSnoozeRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "./todo-actions";
 import { appendTodoSourcePage } from "./todo-page-model";
 import { useTodoPage } from "./useTodoPage";
 
@@ -148,7 +148,8 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
     const intent = `suggestion:${item.sourceId}:${action}`;
     const idempotencyKey = scope.keys.get(intent) ?? `ios:todo-${action}:${Crypto.randomUUID()}`;
     const request = action === "snooze"
-      ? todoSuggestionSnoozeRequest(item, idempotencyKey, date, timeZone, new Date())
+      ? item.source === "task_suggestion" ? todoSuggestionSnoozeRequest(item, idempotencyKey, date, timeZone, new Date())
+        : todoNativeSnoozeRequest(item)
       : item.source === "task_suggestion" ? todoSuggestionDecisionRequest(item, action, idempotencyKey)
       : todoNativeDecisionRequest(item, action, idempotencyKey);
     if (!request) { toast.error(locale.t("todo.unavailable")); return; }
@@ -158,8 +159,10 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
       const result = await client.post<unknown>(request.path, { body: request.body, signal: scope.controller.signal });
       if (!isCurrent()) return;
       const acknowledged = result.success && (action === "snooze"
-        ? "nextVisibleAt" in request.body && typeof request.body.nextVisibleAt === "string" &&
-          todoSuggestionSnoozeReceipt(result.data, item.sourceId, request.body.nextVisibleAt)
+        ? item.source === "task_suggestion"
+          ? "nextVisibleAt" in request.body && typeof request.body.nextVisibleAt === "string" &&
+            todoSuggestionSnoozeReceipt(result.data, item.sourceId, request.body.nextVisibleAt)
+          : todoNativeSnoozeReceipt(result.data, item)
         : item.source === "task_suggestion" ? todoSuggestionDecisionReceipt(result.data, item.sourceId, action)
         : todoNativeDecisionReceipt(result.data, item, action));
       if (!result.success || result.status < 200 || result.status >= 300 || !acknowledged) {
@@ -168,7 +171,8 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
         return;
       }
       scope.keys.delete(intent);
-      toast.success(locale.t(action === "accept" ? "todo.accepted" : action === "dismiss" ? "todo.dismissed" : "todo.snoozed"));
+      toast.success(locale.t(action === "accept" ? "todo.accepted" : action === "dismiss" ? "todo.dismissed"
+        : item.source === "task_suggestion" ? "todo.snoozed" : "todo.laterSaved"));
       refresh();
     } catch {
       if (isCurrent()) toast.error(locale.t("todo.unavailable"));

@@ -91,3 +91,8 @@ test("plan and agent decisions expose their source-native accept/dismiss control
   assert.ok(renderedText(tree({ decisionSample: false, decisionSource: "plan_pending" })).includes("採用"));
   assert.ok(renderedText(tree({ decisionSample: false, decisionSource: "agent_action" })).includes("見送る"));
 });
+
+test("agent action Later is shown only for its own snooze capability", () => {
+  assert.ok(renderedText(tree({ decisionSample: false, decisionSource: "agent_action", snooze: true })).includes("あとで"));
+  assert.equal(renderedText(tree({ decisionSample: false, decisionSource: "plan_pending", snooze: true })).includes("あとで"), false);
+});

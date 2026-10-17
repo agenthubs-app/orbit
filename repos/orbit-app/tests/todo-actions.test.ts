@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "../src/screens/todo/todo-actions";
+import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoNativeSnoozeReceipt, todoNativeSnoozeRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "../src/screens/todo/todo-actions";
 
 test("To-do opens only destinations with a stable, owned route", () => {
   const base = { key: "agent_action:a1", sourceId: "a1", titlePreview: "Review", createdAt: "2026-10-18T00:00:00Z", actions: ["open"] as const };
@@ -66,6 +66,15 @@ test("plan pending and agent action decisions stay on their native endpoints and
   assert.equal(todoNativeDecisionReceipt({ id: "other", status: "accepted", replayed: false }, plan, "accept"), false);
   assert.equal(todoNativeDecisionReceipt({ state: "success", actionId: "id:/?", decision: "dismissed" }, agent, "dismiss"), true);
   assert.equal(todoNativeDecisionReceipt({ state: "success", actionId: "id:/?", decision: "accepted" }, agent, "dismiss"), false);
+});
+
+test("agent action Later maps action ID to its ledger defer transition, never to a fabricated plan snooze", () => {
+  const item = { key: "agent_action:action-1", source: "agent_action" as const, sourceId: "action-1", titlePreview: "Review", createdAt: "2026-10-18T00:00:00Z", actions: ["snooze"] as const };
+  assert.deepEqual(todoNativeSnoozeRequest(item), { path: "/api/agent/ledger/action-1/transition", body: { transition: "defer" } });
+  assert.equal(todoNativeSnoozeRequest({ ...item, source: "plan_pending", key: "plan_pending:action-1" }), null);
+  assert.equal(todoNativeSnoozeRequest({ ...item, sample: true }), null);
+  assert.equal(todoNativeSnoozeReceipt({ state: "success", transition: "defer", entry: { entryId: "action-1", status: "deferred" } }, item), true);
+  assert.equal(todoNativeSnoozeReceipt({ state: "success", transition: "defer", entry: { entryId: "other", status: "deferred" } }, item), false);
 });
 
 test("To-do completion acknowledges only the owned completed task receipt", () => {

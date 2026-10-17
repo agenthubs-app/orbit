@@ -64,6 +64,20 @@ export function todoNativeDecisionReceipt(payload: unknown, item: TodoDecisionIt
   return false;
 }
 
+export function todoNativeSnoozeRequest(item: TodoDecisionItem): { path: string; body: { transition: "defer" } } | null {
+  if (item.sample || item.source !== "agent_action" || !item.sourceId || item.key !== `agent_action:${item.sourceId}` || !item.actions.includes("snooze")) return null;
+  // The runtime ledger adapter uses the action ID as its entry ID for these queued actions.
+  return { path: `/api/agent/ledger/${encodeURIComponent(item.sourceId)}/transition`, body: { transition: "defer" } };
+}
+
+export function todoNativeSnoozeReceipt(payload: unknown, item: TodoDecisionItem): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const row = payload as Record<string, unknown>;
+  if (!row.entry || typeof row.entry !== "object") return false;
+  const entry = row.entry as Record<string, unknown>;
+  return row.state === "success" && row.transition === "defer" && entry.entryId === item.sourceId && entry.status === "deferred";
+}
+
 export function todoFollowupHref(item: TodoFollowupItem): string | null {
   // The legacy relationship detail address takes a connectionId, not this taskId.
   return item.kind === "lifecycle" ? null : `/tasks/${encodeURIComponent(item.taskId)}`;

@@ -72,6 +72,7 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
             {item.actions.includes("accept") ? <Button label={t("todo.accept")} onPress={() => onDecide(item, "accept")} size="sm" variant="secondary" disabled={readOnly || busy || Boolean(item.sample)} /> : null}
             {item.actions.includes("dismiss") ? <Button label={t("todo.dismiss")} onPress={() => onDecide(item, "dismiss")} size="sm" variant="ghost" disabled={readOnly || busy || Boolean(item.sample)} /> : null}
             {item.source === "task_suggestion" && item.actions.includes("snooze") ? <Button label={t("todo.tomorrow")} onPress={() => onDecide(item, "snooze")} size="sm" variant="ghost" disabled={busy || Boolean(item.sample)} /> : null}
+            {item.source === "agent_action" && item.actions.includes("snooze") ? <Button label={t("todo.later")} onPress={() => onDecide(item, "snooze")} size="sm" variant="ghost" disabled={busy || Boolean(item.sample)} /> : null}
           </> : null}
           {canOpen(item) ? <Button label={t("todo.open")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={readOnly || busy || Boolean(item.sample)} /> : null}
         </View>
