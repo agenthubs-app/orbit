@@ -1,0 +1,254 @@
+{
+  "_note": "R18a rev2 §9.2 画面登记；像素收口等待 R31a / R31b。design= 状态开关待实现并验证仅开发环境可用。补画按标题定位；深色为同块第2框。所有 full/pixel/simulator/build 通过 heavy.sh c。",
+  "defaults": {
+    "design-base": "http://localhost:3420/redesign-2026-10/",
+    "app-origin": "http://localhost:3400",
+    "grid": 100,
+    "attribution": "scripts/visual/attribution-redesign-R18a.json"
+  },
+  "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/account/**",
+    "repos/orbits/app/(app)/app/orbit-2026/copy/account.ts"
+  ],
+  "views": [
+    {
+      "width": 1440,
+      "id": "W-R18a-P01",
+      "app": "/app/profile?design=25",
+      "design": "b5-me-inbox.html",
+      "board-index": 18,
+      "themes": [
+        "light"
+      ]
+    },
+    {
+      "width": 1440,
+      "id": "W-R18a-P02",
+      "app": "/app/profile?design=50",
+      "design": "b5-me-inbox.html",
+      "board-index": 19,
+      "themes": [
+        "light"
+      ]
+    },
+    {
+      "width": 1440,
+      "id": "W-R18a-P03",
+      "app": "/app/profile?design=100",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-01",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 1440,
+      "id": "W-R18a-P04",
+      "app": "/app/settings/integrations?design=empty",
+      "design": "b5-me-inbox.html",
+      "board-index": 26,
+      "themes": [
+        "light"
+      ]
+    },
+    {
+      "width": 1440,
+      "id": "W-R18a-P05",
+      "app": "/app/settings/integrations?design=few",
+      "design": "b5-me-inbox.html",
+      "board-index": 27,
+      "themes": [
+        "light"
+      ]
+    },
+    {
+      "width": 1440,
+      "id": "W-R18a-P06",
+      "app": "/app/settings/integrations?design=many",
+      "design": "b5-me-inbox.html",
+      "board-index": 28,
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 1440,
+      "id": "W-R18a-P07",
+      "app": "/app/settings/iorbit?design=semantic",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-02",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 1440,
+      "id": "W-R18a-P08",
+      "app": "/app/settings/appearance",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-03",
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "note": "区域门禁：排除アカウント卡；精确 region 在实现后量取，不得按整板伪报通过。"
+    },
+    {
+      "width": 1440,
+      "id": "W-R18a-P09",
+      "app": "/app/profile/suggestions?design=empty",
+      "design": "b7-account-misc.html",
+      "board-index": 49,
+      "themes": [
+        "light"
+      ]
+    },
+    {
+      "width": 1440,
+      "id": "W-R18a-P10",
+      "app": "/app/profile/suggestions?design=few",
+      "design": "b7-account-misc.html",
+      "board-index": 50,
+      "themes": [
+        "light"
+      ]
+    },
+    {
+      "width": 1440,
+      "id": "W-R18a-P11",
+      "app": "/app/profile/suggestions?design=many",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-04",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 1024,
+      "id": "W-R18a-P12",
+      "app": "/app/profile?design=100",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-10",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 1024,
+      "id": "W-R18a-P13",
+      "app": "/app/settings/integrations?design=many",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-11",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 1024,
+      "id": "W-R18a-P14",
+      "app": "/app/settings/iorbit?design=semantic",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-12",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 1024,
+      "id": "W-R18a-P15",
+      "app": "/app/settings/appearance",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-13",
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "note": "区域门禁：排除アカウント卡；精确 region 在实现后量取，不得按整板伪报通过。"
+    },
+    {
+      "width": 1024,
+      "id": "W-R18a-P16",
+      "app": "/app/profile/suggestions?design=many",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-14",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 390,
+      "id": "W-R18a-P17",
+      "app": "/app/settings",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-20",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 390,
+      "id": "W-R18a-P18",
+      "app": "/app/profile?design=100",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-21",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 390,
+      "id": "W-R18a-P19",
+      "app": "/app/settings/integrations?design=many",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-22",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 390,
+      "id": "W-R18a-P20",
+      "app": "/app/settings/iorbit?design=semantic",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-23",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "width": 390,
+      "id": "W-R18a-P21",
+      "app": "/app/settings/appearance",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-24",
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "note": "区域门禁：排除アカウント卡；精确 region 在实现后量取，不得按整板伪报通过。"
+    },
+    {
+      "width": 390,
+      "id": "W-R18a-P22",
+      "app": "/app/profile/suggestions?design=many",
+      "design": "b12-missing-states.html",
+      "board": "W-R18a-25",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    }
+  ]
+}
