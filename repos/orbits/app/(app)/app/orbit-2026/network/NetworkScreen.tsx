@@ -192,6 +192,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
         <FilterPanel t={t} language={language} summary={summary} filters={filters} onChange={setFilters} matched={matched} total={header?.total ?? 0} onDone={() => setFilterOpen(false)} />
       </Popover>
       {openContact ? <ContactDrawer contactId={openContact} onClose={() => open(null)} goalLabel={links.get(openContact)?.label ?? null}
+        inviteLinked={(() => { const card = items?.find((item) => item.id === openContact); return card ? card.sourceChip === "self" : undefined; })()}
         onChanged={(event) => {
           if (event.kind === "deleted") {
             toast.success(t("deleteDone"), { undo: () => { void networkApi.restore(event.contactId).then((result) => { if (result.ok) { toast.success(t("deleteRestored")); refresh(); } else toast.error(t("deleteFailed")); }); } });

@@ -88,9 +88,11 @@ export interface ContactDrawerProps {
   onChanged?: (event: { kind: "saved" | "deleted" | "unlinked"; contactId: string; name: string }) => void;
   /** Plan link for the why card chip (from goal-related-ids). */
   goalLabel?: string | null;
+  /** List card says whether this is an invite-linked contact; false skips the connection read (it answers 404 for plain contacts). Unknown (direct URL) reads it. */
+  inviteLinked?: boolean;
 }
 
-export function ContactDrawer({ contactId, onClose, initial = null, onChanged, goalLabel = null }: ContactDrawerProps) {
+export function ContactDrawer({ contactId, onClose, initial = null, onChanged, goalLabel = null, inviteLinked }: ContactDrawerProps) {
   const t = useNetworkT();
   const { language } = useOrbitLanguage();
   const toast = useToast();
@@ -120,8 +122,8 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
     const lang = language === "zh" ? "zh" : "en";
     void networkApi.valueLine(contactId, lang).then((result) => { if (result.ok) setValueLine(result.data.lines.find((line) => line.contactId === contactId) ?? null); });
     void networkApi.fit(contactId).then((result) => { if (result.ok && Array.isArray(result.data?.fits)) setFit(result.data); });
-    void networkApi.connection(contactId).then((result) => { if (result.ok) setConnection(result.data); });
-  }, [contactId, initial, language, load]);
+    if (inviteLinked !== false) void networkApi.connection(contactId).then((result) => { if (result.ok) setConnection(result.data); });
+  }, [contactId, initial, language, load, inviteLinked]);
 
   const contact = useMemo(() => drawerContactFrom(payload), [payload]);
   const candidate = fit?.fits.find((item) => item.status === "candidate") ?? null;
