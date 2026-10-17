@@ -507,3 +507,22 @@ export interface HostReportResponse {
   mine: HostReportMine | null;
   sample?: true;
 }
+
+/**
+ * R17-11（用户 2026-10-17「做，知道也没关系」）：`POST /api/host/events/[id]/roster/match` 名簿照合。
+ * 浏览器只发 CSV 每行邮箱（trim + 小写）的 SHA-256（hex），文件本身不上传、不保存；服务端只回每个哈希的状态与三类计数。
+ * 需要 `admission.read`；每人每场每小时 10 次、每次 ≤5000 行。
+ */
+export interface HostRosterMatchInput {
+  emailHashes: readonly string[];
+}
+
+/** 申込済み / Orbit 登録済み · 未申込 / Orbit 未登録。 */
+export type HostRosterMatchStatus = "applied" | "registered" | "unregistered";
+
+export interface HostRosterMatchResponse {
+  eventId: string;
+  results: readonly { emailHash: string; status: HostRosterMatchStatus }[];
+  counts: { applied: number; registered: number; unregistered: number };
+  sample?: true;
+}

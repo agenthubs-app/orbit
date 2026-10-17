@@ -1815,6 +1815,21 @@ create table if not exists event_host_question_sets (
 alter table event_host_notice_outbox add column if not exists claimed_until timestamptz;
 `,
   },
+  {
+    // R17-11：名簿照合的限流记录（每人每场每小时 10 次）。只存次数与行数，不存 CSV 内容或邮箱哈希。只加。
+    name: "event-operations-v19-host-roster-match-requests",
+    version: 19,
+    sql: `
+create table if not exists event_host_roster_match_requests (
+  workspace_id text not null,
+  event_id text not null,
+  actor_id text not null,
+  requested_at timestamptz not null default now(),
+  row_count integer not null check (row_count >= 0)
+);
+create index if not exists event_host_roster_match_requests_recent on event_host_roster_match_requests (workspace_id, event_id, actor_id, requested_at desc);
+`,
+  },
 ];
 
 function checksum(sql: string): string {

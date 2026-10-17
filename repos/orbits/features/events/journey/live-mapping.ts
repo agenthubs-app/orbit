@@ -39,6 +39,19 @@ export function organizerKeyFor(organizerActorId: string | null | undefined): st
   return id ? `org_${sha("orbit-organizer", id).slice(0, 16)}` : null;
 }
 
+/**
+ * R17-08（用户 2026-10-17「按主办方资料页」）：主办方资料页的公开键（`orgp_` + 16 位 hex）。关注、探す「あなたのコミュニティ」都按它。
+ */
+export function organizerKeyForProfile(profileId: string | null | undefined): string | null {
+  const id = profileId?.trim();
+  return id ? `orgp_${sha("orbit-organizer-profile", id).slice(0, 16)}` : null;
+}
+
+/** 活动的主办方键：有资料页按资料页，没有资料页的旧活动仍按 actor。 */
+export function eventOrganizerKey(organizerActorId: string | null | undefined, organizerProfileId: string | null | undefined): string | null {
+  return organizerKeyForProfile(organizerProfileId) ?? organizerKeyFor(organizerActorId);
+}
+
 export interface AdmissionFacts {
   capacity: number | null;
   admissionMode: string | null;
@@ -71,7 +84,7 @@ export function payloadSpeakerNames(payload: Readonly<Record<string, unknown>>):
   }).slice(0, 50);
 }
 
-export function journeyEventFromCanonical(event: CanonicalEventLike, extra: { registrationCount: number; policy: AdmissionFacts | null }): JourneyEvent {
+export function journeyEventFromCanonical(event: CanonicalEventLike, extra: { registrationCount: number; policy: AdmissionFacts | null; organizerProfileId?: string | null }): JourneyEvent {
   const payload = event.sourcePayload ?? {};
   const facts = payloadFacts(payload);
   const payloadCapacity = typeof payload.capacity === "number" && Number.isSafeInteger(payload.capacity) && payload.capacity > 0 ? payload.capacity : null;
@@ -83,7 +96,7 @@ export function journeyEventFromCanonical(event: CanonicalEventLike, extra: { re
     emoji: eventEmoji({ emoji: facts.emoji, title: event.title }),
     endsAt: event.endsAt,
     eventId: event.eventId,
-    organizerKey: organizerKeyFor(event.organizerActorId),
+    organizerKey: eventOrganizerKey(event.organizerActorId, extra.organizerProfileId),
     organizerName: organizerNameFrom(payload, event.organizerActorId),
     priceYen: facts.feeYen,
     publicCode: event.publicCode?.trim() || null,

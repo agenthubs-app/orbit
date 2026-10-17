@@ -68,7 +68,7 @@ export interface OrganizerPublicPast {
 /** 公开 `GET /api/organizers/by-slug/[slug]`（未登录可读；`following` 未登录为 null）。 */
 export interface OrganizerPublicResponse {
   profile: OrganizerProfile;
-  /** 关注用的主办方 key（R27 `organizerKeyFor`），给 `POST /api/organizers/[id]/follow`。 */
+  /** 关注用的主办方 key（R17-08 起按资料页：`organizerKeyForProfile`），给 `POST /api/organizers/[id]/follow`。 */
   organizerKey: string;
   stats: OrganizerProfileStats;
   following: boolean | null;

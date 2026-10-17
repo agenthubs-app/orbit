@@ -78,6 +78,17 @@ export function createOrganizerFollowService(deps: { store: ActorRecordStore; no
       if (existing && !existing.deleted) await deps.store.remove("organizerFollows", actorId, recordId(actorId, organizerId), now().toISOString());
       return { followedAt: null, following: false, organizerId };
     },
+    /** R17-08 迁移：以原关注时间建立一条关注（已有就不动）。 */
+    async adopt(actorId: string, organizerId: string, followedAt: string): Promise<boolean> {
+      const existing = await deps.store.get<FollowPayload>("organizerFollows", actorId, recordId(actorId, organizerId));
+      if (existing && !existing.deleted) return false;
+      await deps.store.put("organizerFollows", actorId, recordId(actorId, organizerId), { followedAt, organizerId }, now().toISOString());
+      return true;
+    },
+    /** 删掉某条关注记录本身（迁移旧的 actor 级关注用）。 */
+    async drop(actorId: string, organizerId: string): Promise<void> {
+      await deps.store.remove("organizerFollows", actorId, recordId(actorId, organizerId), now().toISOString());
+    },
     async followed(actorId: string): Promise<Set<string>> {
       const rows = await deps.store.list<FollowPayload>("organizerFollows", actorId, 500);
       return new Set(rows.map((row) => row.payload.organizerId));

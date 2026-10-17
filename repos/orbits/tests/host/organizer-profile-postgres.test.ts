@@ -7,7 +7,7 @@ import test from "node:test";
 
 import { createPostgresEventAdmissionRepository } from "../../features/events/admission/storage/postgres-repository";
 import { createPostgresEventOperationsRepository } from "../../features/events/event-operations/storage/postgres-repository";
-import { organizerKeyFor } from "../../features/events/journey/live-mapping";
+import { organizerKeyForProfile } from "../../features/events/journey/live-mapping";
 import { createHostLifecycle } from "../../features/events/host/storage/lifecycle";
 import { createHostProfiles, profileSlugBase } from "../../features/events/host/storage/profiles";
 import { hostDatabaseTest, withHostDatabase } from "../support/host-harness";
@@ -55,7 +55,7 @@ test("profiles and the public organizer page", hostDatabaseTest, async () => {
     for (const row of people.rows.slice(0, 2)) await operations.checkInAtomically({ actorId: HOST, capability: "check_in.roster.write", eventId: ended.eventId, kind: "staff", participantId: row.participant_id });
     // 把 vol.18 挪到过去（受付 2 人、申込 3 人）。
     await lockedFixtureQuery(pool, `update event_ops_events set starts_at = now() - interval '2 days', ends_at = now() - interval '2 days' + interval '2 hours' where workspace_id = $1 and event_id = $2`, [workspaceId, ended.eventId]);
-    await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'organizerFollows', 'ofl:1', 'actor:fan', 'events', 'x', $2::jsonb, now(), now())`, [workspaceId, JSON.stringify({ followedAt: new Date().toISOString(), organizerId: organizerKeyFor(HOST) })]);
+    await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'organizerFollows', 'ofl:1', 'actor:fan', 'events', 'x', $2::jsonb, now(), now())`, [workspaceId, JSON.stringify({ followedAt: new Date().toISOString(), organizerId: organizerKeyForProfile(cfo.profileId) })]);
 
     const page = (await profiles.publicPage("cfo-night", "actor:fan"))!;
     assert.deepEqual(page.upcoming.map((item) => item.title), ["CFO Night Tokyo vol.19"], "drafts, cancelled events and other pages are not listed");

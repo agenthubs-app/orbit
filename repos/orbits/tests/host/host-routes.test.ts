@@ -128,3 +128,14 @@ test("R17-16 GET /api/events/by-slug/[slug]: published slug → event id (signed
   assert.equal((await anonymous.eventBySlug(get("/x"), params({ slug: "no-such-event" }))).status, 404);
   assert.equal((await anonymous.eventBySlug(get("/x"), params({ slug: "../etc" }))).status, 404);
 });
+
+test("R17-11 POST roster/match: hashes only (64-hex, ≤5000), statuses + counts back", async () => {
+  const routes = createHostRoutes({ resolveActor: actor("actor:host"), resolveMode: () => "mock" });
+  const { hostRosterMatchResponseSchema } = await import("../../shared/api-schema/host-console");
+  const hashes = ["0".repeat(64), "3".repeat(64), "f".repeat(64)];
+  const result = hostRosterMatchResponseSchema.parse(await data(await routes.rosterMatch(send("/x", { emailHashes: hashes }), params({ id: HOST_EVENT_IDS.cfo18 }))));
+  assert.deepEqual(result.results.map((row) => row.status), ["applied", "registered", "unregistered"]);
+  assert.deepEqual(result.counts, { applied: 1, registered: 1, unregistered: 1 });
+  assert.equal((await routes.rosterMatch(send("/x", { emailHashes: ["t.tanaka@example.com"] }), params({ id: HOST_EVENT_IDS.cfo18 }))).status, 400, "raw emails are refused");
+  assert.equal((await routes.rosterMatch(send("/x", { emailHashes: hashes, names: ["x"] }), params({ id: HOST_EVENT_IDS.cfo18 }))).status, 400, "nothing but hashes");
+});

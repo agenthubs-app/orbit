@@ -3,13 +3,13 @@
  * - slug：新建时由名称转写（取 ASCII 部分，不够就 `o-<随机>`），冲突加序号；之后不改。
  * - 公开页只列这份资料下 published 的活动：未结束的进「これからのイベント」，已结束的进「過去のイベント」；草稿与中止不列。
  * - 開催回数 = 已结束场次；累計参加者 = 这些场次的受付人数合计；过去行「参加 N名」= 受付人数；フォロワー = 关注数。
- * - 关注沿用 R27 的主办方 key（`organizerKeyFor(owner)`）：同一个人的几份资料共用关注（按资料关注列为后续）。
+ * - 关注按资料页（R17-08，用户 2026-10-17「按主办方资料页」）：key = `organizerKeyForProfile(profileId)`，同一个人的几份资料各自有关注与フォロワー数。
  */
 import { randomBytes, randomUUID } from "node:crypto";
 
 import type { OrganizerProfile, OrganizerProfileInput, OrganizerPublicPast, OrganizerPublicResponse, OrganizerPublicUpcoming } from "../../../../shared/contract/organizer-profile";
 import type { EventOperationsPostgresClient } from "../../event-operations/storage/postgres-client";
-import { organizerKeyFor } from "../../journey/live-mapping";
+import { organizerKeyForProfile } from "../../journey/live-mapping";
 import { HostError } from "../service";
 import type { HostEventPayload } from "./lifecycle";
 
@@ -82,7 +82,6 @@ export function createHostProfiles(deps: { client: EventOperationsPostgresClient
       const row = found.rows[0];
       if (!row) return null;
       const profile = profileFromRow(row);
-      const owner = String(row.owner_actor_id);
       const at = now();
       const events = await client.query<Row>(
         `select e.event_id, e.title, e.starts_at, e.ends_at, e.venue, coalesce(e.source_payload, '{}'::jsonb) as source_payload,
@@ -119,7 +118,7 @@ export function createHostProfiles(deps: { client: EventOperationsPostgresClient
         }
       }
       upcoming.sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
-      const organizerKey = organizerKeyFor(owner);
+      const organizerKey = organizerKeyForProfile(profile.profileId)!;
       const followers = await client.query<{ n: number }>(`select count(*)::int as n from orbit_records where workspace_id = $1 and collection_name = 'organizerFollows' and lifecycle_state <> 'deleted' and payload ->> 'organizerId' = $2`, [workspaceId, organizerKey]);
       const following = viewerActorId
         ? (await client.query(`select 1 from orbit_records where workspace_id = $1 and collection_name = 'organizerFollows' and user_id = $2 and lifecycle_state <> 'deleted' and payload ->> 'organizerId' = $3 limit 1`, [workspaceId, viewerActorId, organizerKey])).rows.length > 0

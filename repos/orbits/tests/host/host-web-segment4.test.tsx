@@ -4,6 +4,7 @@
  * 名簿の取り込み（b12 #476）与 CSV 解析、§43 申込推移横轴截到开催日。数据来自 mock 示例世界（与像素门禁同一份）。
  */
 import assert from "node:assert/strict";
+import { HOST_INVITE_CODE_PATTERN, hostInviteCode, normalizeRosterEmail } from "../../shared/compute/host-invite";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -167,13 +168,28 @@ test("名簿の取り込み（b12 #476）：CSV 解析（引用符・BOM・列�
   assert.match(empty, /data-host-import-pick/);
   assert.match(empty, /Orbit からはメールを送りません/);
   const rows = [{ email: "t.tanaka@example.com", name: "田中 健一" }, { email: "y.matsumoto@example.com", name: "松本 由紀" }];
-  const html = renderToStaticMarkup(<HostImportView event={event} language="ja" file={{ at: "2026-10-16T01:00:00.000Z", name: "peatix_vol2.csv", rows }} origin="https://orbit.app" />);
+  const html = renderToStaticMarkup(<HostImportView event={event} language="ja" file={{ at: "2026-10-16T01:00:00.000Z", match: "pending", name: "peatix_vol2.csv", rows }} origin="https://orbit.app" />);
   assert.match(html, /照合表 · peatix_vol2\.csv/);
   assert.match(html, /2行 · 読み込み 10月16日/);
   assert.match(html, /t\.tanaka@…/);
   assert.doesNotMatch(html, /example\.com/);
   assert.match(html, event.publicSlug ? /orbit\.app\/e\// : /公開すると招待リンクが使えます/);
   assert.match(html, /未申込 2名へは/);
+  if (event.publicSlug) assert.match(html, new RegExp(`/e/${event.publicSlug}\\?inv=${hostInviteCode(event.eventId)}`), "R17-11: the invite link carries ?inv=");
+  // R17-11：照合済み → 三类计数与行状态（申込済み / 登録済み · 未申込 / Orbit 未登録），未申込人数只数没申込的。
+  const matched = renderToStaticMarkup(<HostImportView event={event} language="ja" file={{ at: "2026-10-16T01:00:00.000Z", match: "done", name: "peatix_vol2.csv", rows: [{ ...rows[0]!, status: "applied" }, { ...rows[1]!, status: "registered" }, { email: "x@y.jp", name: "佐々木 恵", status: "unregistered" }] }} origin="https://orbit.app" />);
+  assert.match(matched, /data-host-import-count="applied"[^>]*>[\s\S]*?<b>1/u);
+  assert.deepEqual([...matched.matchAll(/data-host-import-status="(\w*)"[^>]*>([^<]+)</gu)].map((m) => [m[1], m[2]]), [["applied", "申込済み"], ["registered", "登録済み · 未申込"], ["unregistered", "Orbit 未登録"]]);
+  assert.match(matched, /未申込 2名へは/);
+  const limited = renderToStaticMarkup(<HostImportView event={event} language="ja" file={{ at: "2026-10-16T01:00:00.000Z", match: "limited", name: "peatix_vol2.csv", rows }} origin="https://orbit.app" />);
+  assert.match(limited, /1時間に 10回まで/);
+});
+
+test("R17-11 招待码：每场固定 4 位、不混淆字符；邮箱规范化同账号（trim + 小写）", () => {
+  assert.match(hostInviteCode(HOST_EVENT_IDS.asakai3), HOST_INVITE_CODE_PATTERN);
+  assert.equal(hostInviteCode("e-1"), hostInviteCode("e-1"));
+  assert.notEqual(hostInviteCode("e-1"), hostInviteCode("e-2"));
+  assert.equal(normalizeRosterEmail("  T.Tanaka@Example.COM "), "t.tanaka@example.com");
 });
 
 test("§43 レポート申込推移横轴截到开催日：Founders Lunch #11 = 8月7日…8月27日，vol.17 = 8月20日…9月9日", () => {

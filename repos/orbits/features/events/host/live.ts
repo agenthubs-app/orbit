@@ -18,7 +18,7 @@ import { EVENT_ACCESS_CAPABILITIES, type EventAccessCapability } from "../event-
 import { createPostgresEventAccessRepository } from "../event-access/storage/postgres-repository";
 import type { EventOperationsParticipant } from "../event-operations/contract";
 import { createConfiguredEventOperationsPostgresRuntime, type EventOperationsPostgresClient } from "../event-operations/storage/postgres-client";
-import { organizerKeyFor } from "../journey/live-mapping";
+import { eventOrganizerKey } from "../journey/live-mapping";
 import { createHostLiveReads, type HostEventFacts } from "./live-reads";
 import { HostError, type HostService } from "./service";
 import { enqueueHostNotice } from "./storage/admission-hooks";
@@ -47,6 +47,9 @@ export interface HostLiveDeps {
 
 const ROLE_LABEL: Record<string, HostRole> = { check_in: "check_in", manager: "manager", operations: "operations", read_only_analyst: "read_only_analyst", reviewer: "reviewer" };
 const ANSWER_KEYS = ["positioning", "industry", "targetAttendees", "valueOffered", "desiredOutcome", "energyStyle", "experienceHighlight", "followUpPreference"] as const;
+
+/** R17-11：名簿照合每人每场每小时的上限。 */
+const ROSTER_MATCH_PER_HOUR = 10;
 
 function statusOf(facts: HostEventFacts, now: Date): HostEventStatus {
   if (facts.lifecycle !== "published") return facts.lifecycle;
@@ -133,7 +136,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       feeAmountYen: facts.payload.feeAmountYen ?? null,
       feeKind: facts.payload.feeKind ?? "free",
       feeUrl: facts.payload.feeUrl ?? null,
-      followerCount: await reads.followerCount(organizerKeyFor(facts.organizerActorId)),
+      followerCount: await reads.followerCount(eventOrganizerKey(facts.organizerActorId, facts.organizerProfileId)!),
       lifecycle: facts.lifecycle,
       myRole: facts.organizerActorId === actorId ? "owner" : ROLE_LABEL[facts.role ?? ""] ?? "read_only_analyst",
       online: facts.payload.online ?? false,
@@ -336,7 +339,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const set = await reads.questionSet(eventId);
       const draft = (set?.draft ?? {}) as { capacity?: number | null; registrationClosesAt?: string | null; admissionMode?: "first_come" | "review" };
       const facts = await factsOrThrow(actorId, eventId);
-      const followers = await client.query<{ user_id: string }>(`select user_id from orbit_records where workspace_id = $1 and collection_name = 'organizerFollows' and lifecycle_state <> 'deleted' and payload ->> 'organizerId' = $2 limit 2000`, [workspaceId, organizerKeyFor(facts.organizerActorId)]);
+      const followers = await client.query<{ user_id: string }>(`select user_id from orbit_records where workspace_id = $1 and collection_name = 'organizerFollows' and lifecycle_state <> 'deleted' and payload ->> 'organizerId' = $2 limit 2000`, [workspaceId, eventOrganizerKey(facts.organizerActorId, facts.organizerProfileId)]);
       const published = await lifecycle.publish(actorId, eventId, input.expectedVersion, { followerActorIds: followers.rows.map((row) => row.user_id), registrationClosesAt: draft.registrationClosesAt ?? null });
       await applyPolicy(actorId, eventId, { admissionMode: draft.admissionMode ?? "review", capacity: draft.capacity !== undefined ? draft.capacity : facts.payload.capacity ?? null, registrationClosesAt: draft.registrationClosesAt ?? null });
       return writeResult(actorId, eventId, published.notified);
@@ -470,6 +473,36 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
         if (code === "CAPACITY_FULL") throw new HostError("CAPACITY_FULL");
         throw error;
       }
+    },
+
+    // R17-11（用户 2026-10-17「做，知道也没关系」）：名簿照合。只收邮箱哈希；只回状态与计数；每人每场每小时 10 次。
+    async rosterMatch(actorId, eventId, input) {
+      await require(actorId, eventId, "admission.read");
+      const hashes = [...new Set(input.emailHashes)];
+      const at = now().toISOString();
+      const recent = await client.query<{ n: number }>(`select count(*)::int as n from event_host_roster_match_requests where workspace_id = $1 and event_id = $2 and actor_id = $3 and requested_at > $4::timestamptz - interval '1 hour'`, [workspaceId, eventId, actorId, at]);
+      if (Number(recent.rows[0]?.n ?? 0) >= ROSTER_MATCH_PER_HOUR) throw new HostError("RATE_LIMITED");
+      await client.query(`insert into event_host_roster_match_requests (workspace_id, event_id, actor_id, requested_at, row_count) values ($1, $2, $3, $4, $5)`, [workspaceId, eventId, actorId, at, hashes.length]);
+      // auth_users 的 record_id = `auth_user:<trim + 小写的邮箱>`（normalizeAuthEmail），与浏览器端的规范化一致。
+      const accounts = await client.query<{ hash: string; actor_id: string }>(
+        `select hash, actor_id from (
+           select encode(sha256(convert_to(substr(record_id, 11), 'UTF8')), 'hex') as hash, payload ->> 'id' as actor_id
+             from orbit_records where workspace_id = $1 and collection_name = 'auth_users' and record_id like 'auth\_user:%' and lifecycle_state <> 'deleted'
+         ) accounts where hash = any($2::text[])`,
+        [workspaceId, hashes],
+      );
+      const actorIds = [...new Set(accounts.rows.map((row) => row.actor_id).filter(Boolean))];
+      const applied = actorIds.length ? await client.query<{ actor_id: string }>(
+        `select actor_id from event_ops_admission_application_heads where workspace_id = $1 and event_id = $2 and actor_id = any($3::text[]) and status in ('pending_review', 'admitted', 'waitlisted')
+         union select actor_id from event_ops_membership_heads where workspace_id = $1 and event_id = $2 and actor_id = any($3::text[]) and status = 'rsvped'`,
+        [workspaceId, eventId, actorIds],
+      ) : { rows: [] as Array<{ actor_id: string }> };
+      const appliedActors = new Set(applied.rows.map((row) => row.actor_id));
+      const statusOf = new Map(accounts.rows.map((row) => [row.hash, appliedActors.has(row.actor_id) ? "applied" as const : "registered" as const]));
+      const results = input.emailHashes.map((emailHash) => ({ emailHash, status: statusOf.get(emailHash) ?? "unregistered" as const }));
+      const counts = { applied: 0, registered: 0, unregistered: 0 };
+      for (const row of results) counts[row.status] += 1;
+      return { counts, eventId, results };
     },
 
     async kiosk(actorId, eventId, q) {

@@ -10611,6 +10611,80 @@
         }
       }
     },
+    "host-console.ts::HostRosterMatchInput": {
+      "kind": "object",
+      "members": {
+        "emailHashes": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        }
+      }
+    },
+    "host-console.ts::HostRosterMatchStatus": {
+      "kind": "enum",
+      "values": [
+        "'applied'",
+        "'registered'",
+        "'unregistered'"
+      ]
+    },
+    "host-console.ts::HostRosterMatchResponse": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "results": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "emailHash": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "status": {
+                "optional": false,
+                "kind": "text",
+                "type": "HostRosterMatchStatus"
+              }
+            }
+          }
+        },
+        "counts": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "applied": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "registered": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "unregistered": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
     "host-events.ts::HostEventLifecycle": {
       "kind": "enum",
       "values": [

@@ -207,6 +207,13 @@ export function createHostMockService(): HostService {
       m().decisions.set(eventId, decided);
       return { actorId: applicantActorId, applicationVersion: input.expectedVersion + 1, notified: 1, receptionNumber: status === "approved" ? "A-105" : null, status };
     },
+    // R17-11 示例世界：按哈希首位给示例状态（约 14% 申込済み / 33% 登録済み / 53% 未登録，同 b12 #476 的 18 / 42 / 68）。
+    async rosterMatch(_actor, eventId, input) {
+      const results = input.emailHashes.map((emailHash) => ({ emailHash, status: "01".includes(emailHash[0]!) ? "applied" as const : "23456".includes(emailHash[0]!) ? "registered" as const : "unregistered" as const }));
+      const counts = { applied: 0, registered: 0, unregistered: 0 };
+      for (const row of results) counts[row.status] += 1;
+      return { counts, eventId, results };
+    },
     async kiosk(_actor, eventId, q) {
       return hostKiosk(eventId, q, m().state, m().kiosk);
     },

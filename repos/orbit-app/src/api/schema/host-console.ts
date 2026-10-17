@@ -2,6 +2,8 @@ import { z } from "zod";
 import { readableItems, tolerantEnum } from "./tolerant";
 import { hostEventViewObject, hostNoteText } from "./host-events";
 import type {
+  HostRosterMatchInput,
+  HostRosterMatchResponse,
   HostAdmitOnSiteInput,
   HostCheckInResult,
   HostCheckInScanInput,
@@ -355,3 +357,14 @@ export const hostReportResponseObject = z.object({
   sample: z.literal(true).optional(),
 });
 export const hostReportResponseSchema = hostReportResponseObject as unknown as z.ZodType<HostReportResponse>;
+
+// R17-11 名簿照合
+export const hostRosterMatchInputObject = z.object({ emailHashes: z.array(z.string().regex(/^[0-9a-f]{64}$/u)).min(1).max(5000) }).strict();
+export const hostRosterMatchInputSchema = hostRosterMatchInputObject as unknown as z.ZodType<HostRosterMatchInput>;
+export const hostRosterMatchResponseObject = z.object({
+  eventId: z.string().min(1),
+  results: readableItems(z.object({ emailHash: z.string(), status: tolerantEnum(["applied", "registered", "unregistered"] as const, "unregistered") })),
+  counts: z.object({ applied: count, registered: count, unregistered: count }),
+  sample: z.literal(true).optional(),
+});
+export const hostRosterMatchResponseSchema = hostRosterMatchResponseObject as unknown as z.ZodType<HostRosterMatchResponse>;

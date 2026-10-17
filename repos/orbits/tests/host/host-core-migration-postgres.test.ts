@@ -10,7 +10,8 @@ test("host-core is v16, appended after v15 without touching earlier checksums", 
   const v16 = EVENT_OPERATIONS_SCHEMA_MIGRATIONS.find((item) => item.version === 16);
   assert.equal(v16?.name, "event-operations-v16-host-core");
   assert.equal(EVENT_OPERATIONS_SCHEMA_MIGRATIONS.find((item) => item.version === 17)?.name, "event-operations-v17-host-question-sets");
-  assert.equal(EVENT_OPERATIONS_SCHEMA_MIGRATIONS.at(-1)?.name, "event-operations-v18-host-notice-claim-lease");
+  assert.equal(EVENT_OPERATIONS_SCHEMA_MIGRATIONS.find((item) => item.version === 18)?.name, "event-operations-v18-host-notice-claim-lease");
+  assert.equal(EVENT_OPERATIONS_SCHEMA_MIGRATIONS.at(-1)?.name, "event-operations-v19-host-roster-match-requests");
 });
 
 test("host-core migrates, replays, and accepts the new values", hostDatabaseTest, async () => {

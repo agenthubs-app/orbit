@@ -4,7 +4,7 @@
 // 失敗分類は R26 events-api と同じ形に、主催側で要る forbidden（権限なし）と conflict（版の衝突・状態）を足す。
 import type { ZodType } from "zod";
 
-import { hostCheckInResultSchema, hostKioskHeartbeatResultSchema, hostKioskResponseSchema, hostKioskRosterResponseSchema, hostMatchingResponseSchema, hostOverviewResponseSchema, hostPeopleDecisionResultSchema, hostPeopleResponseSchema, hostReportResponseSchema, hostSetupResponseSchema } from "../../../../../shared/api-schema/host-console";
+import { hostCheckInResultSchema, hostKioskHeartbeatResultSchema, hostKioskResponseSchema, hostKioskRosterResponseSchema, hostMatchingResponseSchema, hostOverviewResponseSchema, hostPeopleDecisionResultSchema, hostPeopleResponseSchema, hostReportResponseSchema, hostRosterMatchResponseSchema, hostSetupResponseSchema } from "../../../../../shared/api-schema/host-console";
 import { hostCohostInviteResultSchema, hostCohostsResponseSchema } from "../../../../../shared/api-schema/host-cohosts";
 import { hostCenterResponseSchema, hostEventViewSchema, hostEventWriteResultSchema } from "../../../../../shared/api-schema/host-events";
 import { hostCohostAcceptResultSchema, hostCohostInvitePreviewSchema } from "../../../../../shared/api-schema/host-cohosts";
@@ -13,7 +13,7 @@ import type { HostCohostAcceptResult, HostCohostInvitePreview } from "../../../.
 import type { HostEventInput, HostEventUpdateInput, HostEventView } from "../../../../../shared/contract/host-events";
 import type { OrganizerProfile, OrganizerProfileInput, OrganizerProfileListResponse, OrganizerPublicResponse } from "../../../../../shared/contract/organizer-profile";
 import { hostNoticePreviewSchema, hostNoticeSendResultSchema } from "../../../../../shared/api-schema/host-notices";
-import type { HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostReportResponse, HostSetupDraftInput, HostSetupResponse } from "../../../../../shared/contract/host-console";
+import type { HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostReportResponse, HostRosterMatchResponse, HostSetupDraftInput, HostSetupResponse } from "../../../../../shared/contract/host-console";
 import type { HostAdmissionDecision, HostMatchingConditions, HostMatchingMove, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse } from "../../../../../shared/contract/host-console";
 import type { HostCohostInviteResult, HostCohostRole, HostCohostsResponse } from "../../../../../shared/contract/host-cohosts";
 import type { HostCenterFilter, HostCenterResponse, HostEventWriteResult } from "../../../../../shared/contract/host-events";
@@ -94,6 +94,7 @@ export const hostApi = {
   publishSetup: (eventId: string, expectedRevision: number) => call(`/api/host/events/${id(eventId)}/setup/publish`, post({ expectedRevision }), hostSetupResponseSchema as ZodType<HostSetupResponse>),
   saveHostNote: (eventId: string, hostNote: string | null) => call(`/api/host/events/${id(eventId)}/setup/host-note`, send("PUT", { hostNote }), hostSetupResponseSchema as ZodType<HostSetupResponse>),
   report: (eventId: string, view: "all" | "mine") => call(`/api/host/events/${id(eventId)}/report?view=${view}`, undefined, hostReportResponseSchema as ZodType<HostReportResponse>),
+  rosterMatch: (eventId: string, emailHashes: readonly string[]) => call(`/api/host/events/${id(eventId)}/roster/match`, post({ emailHashes }), hostRosterMatchResponseSchema as ZodType<HostRosterMatchResponse>),
   kiosk: (eventId: string, q: string) => call(`/api/host/events/${id(eventId)}/kiosk${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`, undefined, hostKioskResponseSchema as ZodType<HostKioskResponse>),
   kioskRoster: (eventId: string) => call(`/api/host/events/${id(eventId)}/kiosk/roster`, undefined, hostKioskRosterResponseSchema as ZodType<HostKioskRosterResponse>),
   checkIn: (eventId: string, participantId: string, idempotencyKey: string) => call(`/api/events/${id(eventId)}/operations/admin/check-ins/${id(participantId)}`, post({ idempotencyKey }), hostCheckInResultSchema as ZodType<HostCheckInResult>),

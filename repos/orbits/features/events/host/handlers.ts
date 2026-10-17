@@ -40,6 +40,8 @@ import {
   hostPeopleDecisionResultSchema,
   hostPeopleResponseSchema,
   hostReportResponseSchema,
+  hostRosterMatchInputSchema,
+  hostRosterMatchResponseSchema,
   hostSetupDraftInputSchema,
   hostSetupHostNoteInputSchema,
   hostSetupPublishInputSchema,
@@ -182,6 +184,7 @@ export function createHostRoutes(deps: HostRouteDeps = {}) {
     }),
     decide: r({ ...writes, schema: hostPeopleDecisionResultSchema }, async ({ actorId, params, request, service }) => service.decide(actorId!, id(params), id(params, "actorId"), await body(request, hostPeopleDecisionInputSchema))),
 
+    rosterMatch: r({ ...required, schema: hostRosterMatchResponseSchema }, async ({ actorId, params, request, service }) => service.rosterMatch(actorId!, id(params), await body(request, hostRosterMatchInputSchema))),
     kiosk: r({ ...required, schema: hostKioskResponseSchema }, async ({ actorId, params, request, service }) => service.kiosk(actorId!, id(params), (new URL(request.url).searchParams.get("q") ?? "").trim().slice(0, 40))),
     kioskRoster: r({ ...required, schema: hostKioskRosterResponseSchema }, async ({ actorId, params, service }) => service.kioskRoster(actorId!, id(params))),
     scanCheckIn: r({ ...writes, schema: hostCheckInResultSchema }, async ({ actorId, params, request, service }) => service.scanCheckIn(actorId!, id(params), await body(request, hostCheckInScanInputSchema))),

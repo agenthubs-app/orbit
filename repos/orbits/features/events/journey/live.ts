@@ -42,7 +42,7 @@ import {
   judgeEntryFrom,
   linkedTypeByContactFrom,
   organizerHistory,
-  organizerKeyFor,
+  eventOrganizerKey,
   payloadSpeakerNames,
   publicAttendeesFromRegistrations,
   type AdmissionFacts,
@@ -123,8 +123,16 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
 
   async function toJourneyEvents(events: readonly PublishedCanonicalEvent[]): Promise<JourneyEvent[]> {
     const ids = events.map((event) => event.eventId);
-    const [counts, policies] = await Promise.all([countsFor(ids), policiesFor(ids)]);
-    return events.map((event) => journeyEventFromCanonical(event, { policy: policies.get(event.eventId) ?? null, registrationCount: counts.get(event.eventId) ?? 0 }));
+    const [counts, policies, profiles] = await Promise.all([countsFor(ids), policiesFor(ids), profilesFor(ids)]);
+    return events.map((event) => journeyEventFromCanonical(event, { organizerProfileId: profiles.get(event.eventId) ?? null, policy: policies.get(event.eventId) ?? null, registrationCount: counts.get(event.eventId) ?? 0 }));
+  }
+
+  /** R17-08：活动 → 主办方资料页 id（主办方键按资料页算）。 */
+  async function profilesFor(ids: readonly string[]): Promise<Map<string, string>> {
+    if (!ids.length) return new Map();
+    const result = await query(`/* events:r27-journey:organizer-profiles */ select event_id, organizer_profile_id from event_ops_events where workspace_id = $1 and event_id = any($2::text[]) and organizer_profile_id is not null`, [workspaceId, [...ids]])
+      .catch(warned("r27_journey_profiles_failed", { rows: [] as Array<Record<string, unknown>> }));
+    return new Map(result.rows.map((row) => [String(row.event_id), String(row.organizer_profile_id)]));
   }
 
   async function publishedEvent(eventId: string): Promise<PublishedCanonicalEvent | null> {
@@ -173,8 +181,10 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
 
     async organizerStats(organizerKey) {
       const now = new Date();
-      const mine = (await core.listPublishedEvents(now))
-        .filter((event) => organizerKeyFor(event.organizerActorId) === organizerKey)
+      const published = await core.listPublishedEvents(now);
+      const profiles = await profilesFor(published.map((event) => event.eventId));
+      const mine = published
+        .filter((event) => eventOrganizerKey(event.organizerActorId, profiles.get(event.eventId)) === organizerKey)
         .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))
         .slice(0, ORGANIZER_EVENTS_LIMIT);
       if (!mine.length) return null;
@@ -225,10 +235,10 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const rows = mergeMyEvents((await reader.rows(actorId, { from: new Date(now - 180 * DAY).toISOString(), limit: 200, until: new Date(now + 365 * DAY).toISOString() })).filter((row) => !row.external));
       const ids = rows.map((row) => row.eventId);
       const organizers = ids.length
-        ? await query(`/* events:r27-journey:organizers */ select event_id, organizer_actor_id from event_ops_events where workspace_id = $1 and event_id = any($2::text[]) limit $3`, [workspaceId, ids, ids.length])
+        ? await query(`/* events:r27-journey:organizers */ select event_id, organizer_actor_id, organizer_profile_id from event_ops_events where workspace_id = $1 and event_id = any($2::text[]) limit $3`, [workspaceId, ids, ids.length])
           .catch(warned("r27_journey_organizers_failed", { rows: [] as Array<Record<string, unknown>> }))
         : { rows: [] };
-      const byEvent = new Map(organizers.rows.map((row) => [String(row.event_id), organizerKeyFor(str(row.organizer_actor_id))]));
+      const byEvent = new Map(organizers.rows.map((row) => [String(row.event_id), eventOrganizerKey(str(row.organizer_actor_id), str(row.organizer_profile_id))]));
       return rows.map((row) => ({ eventId: row.eventId, organizerKey: byEvent.get(row.eventId) ?? null, status: row.status as MyEventStatus }));
     },
 

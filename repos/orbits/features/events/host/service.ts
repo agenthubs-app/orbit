@@ -26,6 +26,8 @@ import type {
   HostKioskHeartbeatInput,
   HostKioskHeartbeatResult,
   HostKioskResponse,
+  HostRosterMatchInput,
+  HostRosterMatchResponse,
   HostKioskRosterResponse,
   HostMatchingGenerateInput,
   HostMatchingOverridesInput,
@@ -109,6 +111,8 @@ export interface HostService {
   decide(actorId: string, eventId: string, applicantActorId: string, input: HostPeopleDecisionInput): Promise<HostPeopleDecisionResult>;
 
   kiosk(actorId: string, eventId: string, q: string): Promise<HostKioskResponse | null>;
+  /** R17-11 名簿照合（邮箱哈希 → 申込済み / 登録済み / 未登録）。 */
+  rosterMatch(actorId: string, eventId: string, input: HostRosterMatchInput): Promise<HostRosterMatchResponse>;
   kioskRoster(actorId: string, eventId: string): Promise<HostKioskRosterResponse | null>;
   scanCheckIn(actorId: string, eventId: string, input: HostCheckInScanInput): Promise<HostCheckInResult>;
   checkIn(actorId: string, eventId: string, participantId: string, idempotencyKey: string): Promise<HostCheckInResult>;
