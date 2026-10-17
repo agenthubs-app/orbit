@@ -239,5 +239,41 @@
   "23": "[raster] y 690-720：dx 0 dy 0，底色 / 字色同（#24242c/#24242c ΔE0），字形 / 图标栅格化残差",
   "24": "[raster] y 720-750：dx 0 dy 1，底色 / 字色同（#f4f4f4/#f4f4f4 ΔE0），字形 / 图标栅格化残差",
   "13": "[raster] y 390-420：UiText 混排基线统一（OrbitTextLeading，2026-10-14）后字形纵向 dx 0 dy 0，底色 / 字色同（ΔE≤0.0），裁剪核对同字"
+ },
+ "A-R12-N08b-app-light": {
+  "2": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "3": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "4": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "7": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "13": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "18": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "23": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "15": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "20": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "6": "[raster] 取り込む卡：🥂 是 Chrome 与 iOS 两套 emoji 字形；标题 / 说明（含活动名「CFO Night Tokyo vol.18 · 」）位置一致，只差栅格化",
+  "11": "[data] 草稿行头像底色按名字取色（画板松 = 粉、早 = 蓝、杉 = 青，实现按 hash）；名字 / 会社 · 役職 / 密度点位置一致",
+  "16": "[data] 草稿行头像底色按名字取色（画板松 = 粉、早 = 蓝、杉 = 青，实现按 hash）；名字 / 会社 · 役職 / 密度点位置一致",
+  "21": "[data] 草稿行头像底色按名字取色（画板松 = 粉、早 = 蓝、杉 = 青，实现按 hash）；名字 / 会社 · 役職 / 密度点位置一致",
+  "12": "[data] 来源 chip：画板写「🥂 CFO Night Tokyo vol.18 から」，草稿的来源标签只有活动名（不带活动 emoji）；chip 位置与高度一致",
+  "17": "[data] 来源 chip：画板写「🥂 CFO Night Tokyo vol.18 から」，草稿的来源标签只有活动名（不带活动 emoji）；chip 位置与高度一致",
+  "22": "[data] 来源 chip：画板写「🥂 CFO Night Tokyo vol.18 から」，草稿的来源标签只有活动名（不带活动 emoji）；chip 位置与高度一致"
+ },
+ "A-R12-N08b-app-dark": {
+  "2": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "3": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "4": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "7": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "13": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "18": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "23": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "15": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "20": "[raster] 位置一致（dy ≤1），字形 / 按钮圆角栅格化残差（Chrome 画板 vs iOS 渲染）",
+  "6": "[raster] 取り込む卡：🥂 是 Chrome 与 iOS 两套 emoji 字形；标题 / 说明（含活动名「CFO Night Tokyo vol.18 · 」）位置一致，只差栅格化",
+  "11": "[data] 草稿行头像底色按名字取色（画板松 = 粉、早 = 蓝、杉 = 青，实现按 hash）；名字 / 会社 · 役職 / 密度点位置一致",
+  "16": "[data] 草稿行头像底色按名字取色（画板松 = 粉、早 = 蓝、杉 = 青，实现按 hash）；名字 / 会社 · 役職 / 密度点位置一致",
+  "21": "[data] 草稿行头像底色按名字取色（画板松 = 粉、早 = 蓝、杉 = 青，实现按 hash）；名字 / 会社 · 役職 / 密度点位置一致",
+  "12": "[data] 来源 chip：画板写「🥂 CFO Night Tokyo vol.18 から」，草稿的来源标签只有活动名（不带活动 emoji）；chip 位置与高度一致",
+  "17": "[data] 来源 chip：画板写「🥂 CFO Night Tokyo vol.18 から」，草稿的来源标签只有活动名（不带活动 emoji）；chip 位置与高度一致",
+  "22": "[data] 来源 chip：画板写「🥂 CFO Night Tokyo vol.18 から」，草稿的来源标签只有活动名（不带活动 emoji）；chip 位置与高度一致"
  }
 }

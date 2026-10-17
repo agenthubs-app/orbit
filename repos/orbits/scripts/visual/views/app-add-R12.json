@@ -145,10 +145,11 @@
    "design": "b12-missing-states.html",
    "board-index": 112,
    "themes": [
-    "light"
+    "light",
+    "dark"
    ],
-   "url": "orbit://contacts/new/drafts?eventId=event-cfo",
-   "note": "N08b 確認待ちの下書き（本机草稿数据不同）"
+   "url": "orbit://contacts/new/drafts?eventId=event-cfo&design=n08b",
+   "note": "N08b 確認待ちの下書き（R12-13：开发包 add-scan + design=n08b 用画板示例草稿）"
   },
   {
    "id": "A-R12-N09",

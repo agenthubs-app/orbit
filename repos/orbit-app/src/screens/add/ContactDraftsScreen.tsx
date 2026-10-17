@@ -3,7 +3,7 @@
 // this device — the draft service has no discard, as before); `?eventId=` adds
 // 参加者から取り込む (the existing attendee import). Reached from 人脈を追加 (when there are
 // drafts) and from an event's 「去复核联系人」 (reviewQueueHref).
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
@@ -15,12 +15,18 @@ import { useAddApi, type ContactDraftRow } from "./add-api";
 import { discardDraft, readDiscardedDrafts } from "./add-storage";
 import { DensityDots, FadeIn, KIT_PAGE_INSET } from "./add-ui";
 import { KitChip, KitEmo, KitGradient } from "../plan/plan-kit";
+import { useJourneyApi } from "../events/v2/journey-api";
+import { draftsDesignFor } from "./scan-design-fixtures";
 import { SmallButton } from "./UnifiedReviewApp";
 
 type State = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; drafts: ContactDraftRow[] };
 
-export function ContactDraftsScreen({ eventId }: { eventId: string | null }) {
+export function ContactDraftsScreen({ eventId, design = null }: { eventId: string | null; design?: string | null }) {
   const api = useAddApi();
+  const journey = useJourneyApi();
+  const fixture = useMemo(() => draftsDesignFor(design), [design]);
+  // b12 #112：取り込む卡写「<活动名> · このイベントの参加者を…」；活动名读概要（读不到就只写说明）。
+  const [eventTitle, setEventTitle] = useState<string | null>(fixture?.eventTitle ?? null);
   const toast = useToast();
   const { t } = useOrbitLocale();
   const { colors, styles: d } = useDraftStyles();
@@ -31,13 +37,21 @@ export function ContactDraftsScreen({ eventId }: { eventId: string | null }) {
   const mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; }, []);
 
+  useEffect(() => {
+    if (!eventId || fixture) return;
+    let live = true;
+    void journey.overview(eventId).then((result) => { if (live && result.ok) setEventTitle(result.data.title); });
+    return () => { live = false; };
+  }, [eventId, journey, fixture]);
+
   const load = useCallback(async () => {
+    if (fixture) { setState({ drafts: fixture.drafts, kind: "ready" }); return; }
     const [drafts, discarded] = await Promise.all([api.listDrafts(), readDiscardedDrafts(accountId)]);
     if (!mounted.current) return;
     if (!drafts.ok) { setState({ kind: "failed" }); return; }
     const hidden = new Set(discarded);
     setState({ drafts: drafts.data.filter((draft) => !hidden.has(draft.id)), kind: "ready" });
-  }, [accountId, api]);
+  }, [accountId, api, fixture]);
   useEffect(() => { void load(); }, [load]);
 
   async function confirm(draft: ContactDraftRow) {
@@ -84,7 +98,7 @@ export function ContactDraftsScreen({ eventId }: { eventId: string | null }) {
               <KitEmo emoji="🥂" tone="lav" sm />
               <View style={d.grow}>
                 <UiText style={d.importTitle}>{t("add.drafts.importTitle")}</UiText>
-                <UiText style={d.lbl}>{t("add.drafts.importBody")}</UiText>
+                <UiText style={d.lbl}>{eventTitle ? `${eventTitle} · ${t("add.drafts.importBody")}` : t("add.drafts.importBody")}</UiText>
               </View>
             </View>
             <View style={d.importAct}><SmallButton primary label={t("add.drafts.importButton")} busy={busy === "import"} disabled={Boolean(busy)} onPress={() => void importAttendees()} testID="add-drafts-import-go" /></View>

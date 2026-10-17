@@ -3,11 +3,12 @@
 // 示例人名渲染批次页（b11 A1 ③ 読み取り中、④ 完成），不读写服务器、不调 OCR；正式包永远关闭。
 import type { IngestItemContract } from "../../api/contract/business-card-batch";
 import type { IngestCard } from "../../view-models/business-card-ingest";
+import type { ContactDraftRow } from "./add-read";
 import { addDesignMock } from "./add-design-mock";
 import samples from "./scan-design-samples.json";
 
 // The board names (data, not copy) live in scan-design-samples.json.
-const S = samples as unknown as Record<"takayama" | "date" | "matsumoto" | "takahashi" | "morita" | "suzuki" | "suzukiExisting" | "watanabe" | "watanabeExisting" | "aoki" | "shinonome" | "partial", [string, string, string]> & { doneDate: string };
+const S = samples as unknown as { drafts: [string, string, string][]; draftsEvent: string } & Record<"takayama" | "date" | "matsumoto" | "takahashi" | "morita" | "suzuki" | "suzukiExisting" | "watanabe" | "watanabeExisting" | "aoki" | "shinonome" | "partial", [string, string, string]> & { doneDate: string };
 import type { IngestContactCandidateContract } from "../../api/contract/business-card-batch";
 import type { ScanBatchView, ScanCardKind, ScanCardView, ScanIssueGroup, ScanSection } from "./scan-batch-model";
 
@@ -107,4 +108,13 @@ function reviewDesign(kind: "bridge" | "review" | "failed"): ScanDesign {
 function stoppedDesign(): ScanDesign {
   const cards = Array.from({ length: 12 }, (_, index) => card(index + 1, "uploading"));
   return { dateLabel: "", eventTitle: null, total: 12, view: { cards, completed: false, counts: COUNTS, createdAt: null, density: null, events: [], phase: "uploading", photos: 12, settled: 0, uploaded: 3 } };
+}
+
+/** R12-13 · b12 #112 N08b 確認待ちの下書き：`contacts/new/drafts?eventId=…&design=n08b` 时用画板的 3 条草稿与活动名（不读服务器）。 */
+export function draftsDesignFor(design: string | null, enabled: boolean = addDesignMock("add-scan")): { eventTitle: string; drafts: ContactDraftRow[] } | null {
+  if (!enabled || design !== "n08b") return null;
+  return {
+    drafts: S.drafts.map(([displayName, organization, role], index) => ({ createdAt: "2026-10-07T12:00:00.000Z", displayName, id: `design-draft-${index + 1}`, organization, role, sourceLabel: S.draftsEvent })),
+    eventTitle: S.draftsEvent,
+  };
 }

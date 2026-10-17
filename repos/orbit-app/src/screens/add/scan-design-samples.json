@@ -1,16 +1,82 @@
 {
   "_note": "R12 像素门禁演示用的画板示例人名（b11 A1 / b9 ④，只在开发包 + EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=add-scan 时用；数据，不是界面文案）。",
-  "takayama": ["高山 亮", "ミライ精機", "経営企画部 部長"],
-  "date": ["伊達 修平", "北辰製作所", "経営企画"],
-  "matsumoto": ["松本 千尋", "関西テクノ電機", "役職を推測"],
-  "takahashi": ["高橋 美咲", "青葉ベンチャーズ", ""],
-  "morita": ["森田 拓也", "東邦テクノロジーズ", "事業開発部"],
-  "suzuki": ["鈴木 大輔", "", ""],
-  "suzukiExisting": ["鈴木 大輔", "北辰製作所", ""],
-  "watanabe": ["Sho Watanabe", "Nexa Robotics", ""],
-  "watanabeExisting": ["渡辺 翔", "Nexa Robotics", ""],
-  "aoki": ["青木 里奈", "Kanade AI", ""],
-  "shinonome": ["", "東雲キャピタル", ""],
-  "partial": ["", "東邦テクノ…", ""],
-  "doneDate": "10月7日"
+  "takayama": [
+    "高山 亮",
+    "ミライ精機",
+    "経営企画部 部長"
+  ],
+  "date": [
+    "伊達 修平",
+    "北辰製作所",
+    "経営企画"
+  ],
+  "matsumoto": [
+    "松本 千尋",
+    "関西テクノ電機",
+    "役職を推測"
+  ],
+  "takahashi": [
+    "高橋 美咲",
+    "青葉ベンチャーズ",
+    ""
+  ],
+  "morita": [
+    "森田 拓也",
+    "東邦テクノロジーズ",
+    "事業開発部"
+  ],
+  "suzuki": [
+    "鈴木 大輔",
+    "",
+    ""
+  ],
+  "suzukiExisting": [
+    "鈴木 大輔",
+    "北辰製作所",
+    ""
+  ],
+  "watanabe": [
+    "Sho Watanabe",
+    "Nexa Robotics",
+    ""
+  ],
+  "watanabeExisting": [
+    "渡辺 翔",
+    "Nexa Robotics",
+    ""
+  ],
+  "aoki": [
+    "青木 里奈",
+    "Kanade AI",
+    ""
+  ],
+  "shinonome": [
+    "",
+    "東雲キャピタル",
+    ""
+  ],
+  "partial": [
+    "",
+    "東邦テクノ…",
+    ""
+  ],
+  "doneDate": "10月7日",
+  "drafts": [
+    [
+      "松田 悠",
+      "ノースブリッジ",
+      "事業開発"
+    ],
+    [
+      "早川 誠一",
+      "関西テクノ電機",
+      "営業部長"
+    ],
+    [
+      "杉本 葵",
+      "Sakura Growth Partners",
+      "アナリスト"
+    ]
+  ],
+  "draftsEvent": "CFO Night Tokyo vol.18"
 }
