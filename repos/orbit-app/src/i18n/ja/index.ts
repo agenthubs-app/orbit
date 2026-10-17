@@ -57,6 +57,7 @@ import { search } from "./search";
 import { host } from "./host";
 import { calendar } from "./calendar";
 import { network } from "./network";
+import { todo } from "./todo";
 
 export const ja = {
   ...inbox,
@@ -117,4 +118,5 @@ export const ja = {
   ...host,
   ...calendar,
   ...network,
+  ...todo,
 } as const satisfies MessageDictionary;
