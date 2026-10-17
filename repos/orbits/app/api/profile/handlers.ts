@@ -20,6 +20,7 @@ import {
   resolveAuthenticatedApiActor,
   type ResolveAuthenticatedApiActor,
 } from "../_shared/authenticated-actor";
+import type { AccountDesignVariant, createAccountDesignFixtureStore } from "../../../features/profile/design-fixtures/service";
 
 // profile route 是当前用户资料的读写入口。
 // route 只处理 scenario 和 JSON body；资料完整性、默认值和失败语义由 profile service 负责。
@@ -32,6 +33,11 @@ function getScenario(request: Request): ProfileScenario | undefined {
   }
 
   return undefined;
+}
+
+function accountDesignVariant(request: Request): AccountDesignVariant | null {
+  const value = new URL(request.url).searchParams.get("design");
+  return value === "25" || value === "50" || value === "100" ? value : null;
 }
 
 async function readProfileUpdateInput(
@@ -56,6 +62,9 @@ export interface ProfileRouteDependencies {
   onRelationshipGoalSet?: (actorId: string) => Promise<void>;
   /** 测试注入：资料服务（缺省 `createProfileService()`）。 */
   profileService?: () => ReturnType<typeof createProfileService>;
+  /** Focused tests may inject an isolated development fixture store. */
+  designFixtureStore?: ReturnType<typeof createAccountDesignFixtureStore>;
+  designFixturesEnabled?: boolean;
 }
 
 async function liveOnRelationshipGoalSet(actorId: string): Promise<void> {
@@ -74,12 +83,29 @@ export function createProfileRouteHandlers(
 ) {
   const resolveActor =
     dependencies.resolveActor ?? resolveAuthenticatedApiActor;
+  const designFixturesEnabled = dependencies.designFixturesEnabled ?? process.env.NODE_ENV !== "production";
+
+  async function designStore() {
+    if (dependencies.designFixtureStore) return dependencies.designFixtureStore;
+    // The fixture module is never imported at runtime by the production route.
+    const fixtures = await import("../../../features/profile/design-fixtures/service");
+    return fixtures.accountDesignFixtureStore;
+  }
 
   return {
     async GET(request: Request): Promise<Response> {
       const mode = resolveFeatureMode();
       const actor = await resolveActor();
       if (!actor) return authenticatedApiActorRequiredResponse(mode);
+
+      const design = designFixturesEnabled ? accountDesignVariant(request) : null;
+      if (design) {
+        const result = (await designStore()).read(actor.id, design);
+        return NextResponse.json(success(result.data), {
+          headers: { ...runtimeBoundaryHeaders(mode), "Cache-Control": "no-store" },
+          status: 200,
+        });
+      }
 
       const profileService = createProfileService();
       const result = await profileService.getProfile({
@@ -108,6 +134,23 @@ export function createProfileRouteHandlers(
       const mode = resolveFeatureMode();
       const actor = await resolveActor();
       if (!actor) return authenticatedApiActorRequiredResponse(mode);
+
+      const design = designFixturesEnabled ? accountDesignVariant(request) : null;
+      if (design) {
+        const input = await readProfileUpdateInput(request);
+        const result = (await designStore()).update(actor.id, design, input);
+        if (result.success === false) {
+          const appError = profileFailureToAppError(result);
+          return NextResponse.json(failure(appError, profileFailureContext(result, mode)), {
+            headers: { ...runtimeBoundaryHeaders(mode), "Cache-Control": "no-store" },
+            status: getHttpStatusForAppErrorCode(appError.code),
+          });
+        }
+        return NextResponse.json(success(result.data), {
+          headers: { ...runtimeBoundaryHeaders(mode), "Cache-Control": "no-store" },
+          status: 200,
+        });
+      }
 
       const profileService = (dependencies.profileService ?? createProfileService)();
       const input = await readProfileUpdateInput(request);
