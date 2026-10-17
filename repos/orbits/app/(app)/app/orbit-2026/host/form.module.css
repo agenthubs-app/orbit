@@ -51,17 +51,7 @@
 
 .conflict { flex-direction: row; align-items: center; gap: 12px; padding: 14px 20px; margin-bottom: 18px; }
 
-/* 公開と中止カード */
-.mg.mg { display: block; }
-.mgWrap { grid-column: span 6; min-width: 0; }
-@media (max-width: 1023px) { .mgWrap { grid-column: span 12; } }
-.mgRow { display: flex; align-items: center; gap: 10px; padding: 10px 0; min-width: 0; }
-.mgRow + .mgRow { border-top: 1px solid var(--line); }
-.mgRow a { text-decoration: none; }
-.mgLbl { width: 72px; flex: 0 0 auto; }
-.code { font-family: var(--font-num); font-size: var(--fs-emph); letter-spacing: 0.06em; }
 .danger.danger { background: var(--coral-text); color: var(--on-accent); }
-.dangerSoft.dangerSoft { background: var(--coral-soft); color: var(--coral-text); }
 
 /* 中止確認（.wmodal .dic） */
 .dlgHead { display: flex; gap: 14px; align-items: flex-start; }

@@ -57,7 +57,7 @@
 .sheetSub { margin: 4px 0 14px; }
 .sheet a { text-decoration: none; }
 .gap8.gap8 { margin-top: 8px; }
-.gap4.gap4 { margin-top: 4px; }
+.flush.flush { margin-top: 0; }
 
 @media (max-width: 1023px) {
   .main { padding: 26px 26px 60px; }

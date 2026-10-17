@@ -2,7 +2,7 @@
 
 // R17 公開主催者ページ `/o/[slug]`（host DESIGN §2.11；b7 #33 空 / #34 少 / #35 大 · 1440，#36–#38 手机，#39 未ログインでフォロー）。
 // 未登录可读：数据由页面（server component）读好传进来；关注 = R27 actor 级关注（POST / DELETE /api/organizers/[organizerKey]/follow）。
-// 未登录点「フォローする」→ 登录引导（宽屏弹层 / 手机底部 sheet，b7 #39）；登录后回到 /app/o/<slug>（302 回本页）。
+// 未登录点「フォローする」→ 登录引导（宽屏弹层 / 手机底部 sheet，b7 #39：「Google で続ける」（主）+「メールで続ける」，§44-4 删了 Apple 与「新しく登録する」）；登录后回到 /app/o/<slug>（302 回本页）。
 // 数字口径（organizer-profile 契约）：開催回数 = 已结束场次；累計参加者 = 受付人数合计；「参加 N名」= 受付人数。
 import { signIn } from "next-auth/react";
 import { useEffect, useMemo, useState } from "react";
@@ -156,9 +156,8 @@ function LoginPrompt({ name, slug, t, google, narrow, onClose }: { name: string;
     <div className={p.sheet} data-organizer-login="">
       <b className={p.sheetTitle}>{t("pubLoginTitle")}</b>
       <div className={`${s.lbl} ${p.sheetSub}`}>{t("pubLoginSub", { name })}</div>
-      {google ? <button type="button" className={`btn ${s.btn} ${s.primary} ${p.xl} ${p.block}`} onClick={() => void signIn("google", { callbackUrl: organizerReturnPath(slug, true) })}>{t("pubGoogle")}</button> : null}
-      <a className={`btn ${s.btn} ${google ? "" : s.primary} ${p.xl} ${p.block} ${google ? p.gap8 : ""}`} href={organizerAuthHref("login", slug)}>{t("pubEmail")}</a>
-      <a className={`btn ${s.btn} ${s.ghost} ${p.block} ${p.gap4}`} href={organizerAuthHref("signup", slug)}>{t("pubSignup")}</a>
+      {google ? <button type="button" className={`btn ${s.btn} ${s.primary} ${p.xl} ${p.block} ${p.flush}`} onClick={() => void signIn("google", { callbackUrl: organizerReturnPath(slug, true) })}>{t("pubGoogle")}</button> : null}
+      <a className={`btn ${s.btn} ${google ? "" : s.primary} ${p.xl} ${p.block} ${google ? "" : p.flush}`} href={organizerAuthHref("login", slug)}>{t("pubEmail")}</a>
       <div className={`${s.lbl} ${p.center} ${p.gap8}`}>{t("pubLoginNote")}</div>
     </div>
   );

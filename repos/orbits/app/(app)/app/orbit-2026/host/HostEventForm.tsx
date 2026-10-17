@@ -3,7 +3,8 @@
 // R17 建活动 `/app/events/center/new`（b12 #396）· 基本情報を編集 `/app/events/[id]/edit`（b12 #398）；host DESIGN §2.2。
 // 写：POST /api/host/events（下書き）→ 申込設定；「公開へ進む」= 存下書き后弹公開確認（b12 #400）→ POST …/publish。
 // 编辑：PATCH …/[id]（expectedVersion）；已公开且改了日時 / 会場 → 服务端回 changePreview，弹 b12 #404 后带 notify 再提交；
-// 409 → 提示重读。右栏下方「公開と中止」卡（EventManageCard）：公開する / 参加コード再発行 / 中止する（owner，b12 #402）/ アーカイブ。
+// 409 → 提示重读。编辑页只有「下書き保存 / 変更を保存」（决定表 §44-3）：中止 / 参加コード再発行 / アーカイブ 走运营台页头「⋯」菜单（HostConsole），
+// 下書きの「公開する」在运营台横幅（b12 #440）。
 // b12 #396–#475 待用户过目（§38），照画板实现但不进门禁。
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -13,12 +14,11 @@ import type { HostEventChangePreview, HostEventFeeKind, HostEventInput, HostEven
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { OrganizerProfile } from "../../../../../shared/contract/organizer-profile";
 import { ShellPage } from "../shell/slots";
-import { ConfirmDialog, Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
-import { failureOf, hostEventApi, type HostApiResult } from "./host-api";
-import { consoleHref, hostDateLong, hostDateShort, hostTranslator, tokyoParts, type HostT } from "./host-model";
+import { Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { failureOf, hostEventApi } from "./host-api";
+import { consoleHref, hostDateLong, hostTranslator, tokyoParts, type HostT } from "./host-model";
 import f from "./form.module.css";
 import s from "./host.module.css";
-import u from "./setup.module.css";
 import m from "./tabs.module.css";
 
 export const DESC_MAX = 200;
@@ -202,57 +202,6 @@ export function ChangeNotifyConfirm({ preview, t, language, busy, onSilent, onNo
   );
 }
 
-// ─── 公開と中止カード ──────────────────────────────────
-
-type ManageDialog = "publish" | "cancel" | "reissue" | "archive" | null;
-
-/** 公開 / 参加コード再発行 / 中止 / アーカイブ（编辑页右栏、申込設定页签下方共用）。写完回调 onChanged(新 event)。 */
-export function EventManageCard({ event, language, showEdit = false, onChanged }: { event: HostEventView; language: OrbitLanguage; showEdit?: boolean; onChanged: (next: HostEventView) => void }) {
-  const t = useMemo(() => hostTranslator(language), [language]);
-  const toast = useToast();
-  const [dialog, setDialog] = useState<ManageDialog>(null);
-  const [busy, setBusy] = useState(false);
-  const canCancel = event.myRole === "owner" || event.capabilities.includes("event.cancel");
-  const run = async (task: () => Promise<HostApiResult<{ event: HostEventView; notified: number }>>, done: (next: HostEventView, notified: number) => string) => {
-    setBusy(true);
-    const res = await task();
-    setBusy(false);
-    setDialog(null);
-    if (!res.ok) { const reason = failureOf(res); toast.error(reason === "conflict" ? t("conflictError") : reason === "sample" ? t("evSample") : t("saveError")); return; }
-    toast.success(done(res.data.event, res.data.notified));
-    onChanged(res.data.event);
-  };
-  const editLink = showEdit ? <a className={`btn ${s.btn} ${s.sm}`} href={`/app/events/${encodeURIComponent(event.eventId)}/edit`}>{t("editBasics")}</a> : null;
-  let body;
-  if (event.status === "draft") {
-    body = (<div className={f.mgRow}><span className={`${s.chip} ${s.c_apricot}`}>{t("sDraft")}</span><span className={`${s.lbl} ${s.grow}`}>{t("mgDraft")}</span>{editLink}<button type="button" className={`btn ${s.btn} ${s.sm} ${s.primary}`} disabled={busy} onClick={() => setDialog("publish")}>{t("aPublish")}</button></div>);
-  } else if (event.status === "upcoming" || event.status === "live") {
-    body = (
-      <>
-        <div className={f.mgRow}><span className={`${s.chip} ${s.c_teal}`}>{t(event.status === "live" ? "fLive" : "fUpcoming")}</span><span className={`${s.lbl} ${s.grow} ${s.clamp1}`}>{t("mgLive", { url: event.publicSlug ? `${publicHost()}/e/${event.publicSlug}` : "—" })}</span>{editLink}</div>
-        <div className={f.mgRow} data-host-code={event.participationCode ?? ""}><span className={`${s.lbl} ${f.mgLbl}`}>{t("mgCode")}</span><b className={`${f.code} ${s.grow}`}>{event.participationCode ?? "—"}</b><button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={busy || !event.participationCode} onClick={() => setDialog("reissue")}>{t("mgReissue")}</button></div>
-        <div className={f.mgRow}>{canCancel ? <button type="button" className={`btn ${s.btn} ${s.sm} ${f.dangerSoft}`} disabled={busy} onClick={() => setDialog("cancel")} data-host-cancel-open="">{t("cfDoCancel")}</button> : <span className={s.lbl}>{t("mgCancelOwner")}</span>}</div>
-      </>
-    );
-  } else if (event.status === "ended" || event.status === "cancelled") {
-    body = (<div className={f.mgRow}><span className={`${s.lbl} ${s.grow}`}>{event.status === "ended" ? t("mgEnded") : t("mgCancelledLine", { d: hostDateShort(event.cancelledAt, t) })}</span><button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={busy} onClick={() => setDialog("archive")}>{t("archive")}</button></div>);
-  } else {
-    body = (<div className={f.mgRow}><span className={`${s.lbl} ${s.grow}`}>{t("mgArchivedLine")}</span><button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={busy} onClick={() => void run(() => hostEventApi.archive(event.eventId, event.version, false), () => t("unarchivedToast"))}>{t("unarchive")}</button></div>);
-  }
-  return (
-    <div className={`${s.card} ${f.mg}`} data-host-manage={event.status}>
-      <div className={s.cardH}><h3>{t("mgTitle")}</h3></div>
-      {body}
-      {dialog === "publish" ? <PublishEventConfirm event={event} t={t} language={language} busy={busy} onCancel={() => setDialog(null)} onPublish={() => void run(() => hostEventApi.publish(event.eventId, event.version), () => t("publishedToast"))} /> : null}
-      {dialog === "cancel" ? <CancelEventConfirm event={event} t={t} busy={busy} onKeep={() => setDialog(null)} onCancelEvent={(note) => void run(() => hostEventApi.cancel(event.eventId, event.version, note), (_next, n) => t("cfCancelled", { n }))} /> : null}
-      <ConfirmDialog open={dialog === "reissue"} title={t("cfReissueTitle")} message={t("cfReissueSub", { code: event.participationCode ?? "" })} confirmLabel={t("cfReissue")} cancelLabel={t("cancel")} icon="ticket"
-        onCancel={() => setDialog(null)} onConfirm={() => void run(() => hostEventApi.reissueCode(event.eventId, event.version), (next) => t("cfReissued", { code: next.participationCode ?? "" }))} />
-      <ConfirmDialog open={dialog === "archive"} title={t("cfArchiveTitle")} message={t("cfArchiveSub")} confirmLabel={t("archive")} cancelLabel={t("cancel")}
-        onCancel={() => setDialog(null)} onConfirm={() => void run(() => hostEventApi.archive(event.eventId, event.version, true), () => t("archivedToast"))} />
-    </div>
-  );
-}
-
 // ─── フォーム（純粋な描画） ─────────────────────────────
 
 export type HostEventFormViewProps = {
@@ -267,10 +216,9 @@ export type HostEventFormViewProps = {
   onChange?: (next: EventDraft) => void;
   onSaveDraft?: () => void;
   onPrimary?: () => void;
-  manage?: React.ReactNode;
 };
 
-export function HostEventFormView({ mode, draft, profiles, language, event = null, busy = false, readOnly = false, showTemplates = false, onChange, onSaveDraft, onPrimary, manage }: HostEventFormViewProps) {
+export function HostEventFormView({ mode, draft, profiles, language, event = null, busy = false, readOnly = false, showTemplates = false, onChange, onSaveDraft, onPrimary }: HostEventFormViewProps) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => onChange?.({ ...draft, [key]: value });
   const profile = profiles.find((item) => item.profileId === draft.organizerProfileId) ?? null;
@@ -367,7 +315,6 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
               </div>
             </div>
           </div>
-          {manage}
         </div>
       </div>
     </>
@@ -490,8 +437,7 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
       {readOnly ? <div className={`${s.card} ${s.flat} ${f.conflict}`} data-host-form-readonly="">{t("evReadOnly")}</div> : null}
       <HostEventFormView mode={mode} draft={draft} profiles={profiles} language={language} event={event} busy={busy} readOnly={readOnly}
         showTemplates={mode === "create" && params.get("from") === "template"} onChange={setDraft}
-        onSaveDraft={() => (mode === "create" ? void create(false) : save())} onPrimary={() => (mode === "create" ? void create(true) : save())}
-        manage={event && mode === "edit" ? <EventManageCard event={event} language={language} onChanged={(next) => { setEvent(next); setDraft(draftFromEvent(next, profiles)); }} /> : null} />
+        onSaveDraft={() => (mode === "create" ? void create(false) : save())} onPrimary={() => (mode === "create" ? void create(true) : save())} />
       {preview ? <ChangeNotifyConfirm preview={preview.change} t={t} language={language} busy={busy} onClose={() => setPreview(null)} onSilent={() => void patch(preview.patch, false)} onNotify={() => void patch(preview.patch, true)} /> : null}
       {publishFor ? <PublishEventConfirm event={publishFor} t={t} language={language} busy={busy} onCancel={() => { setPublishFor(null); router.push(`/app/events/${encodeURIComponent(publishFor.eventId)}/edit`); }} onPublish={() => void publish()} /> : null}
     </>
@@ -505,30 +451,5 @@ export function HostEventForm({ mode, eventId = null, language }: { mode: "creat
         <FormInner mode={mode} eventId={eventId} language={language} />
       </ToastProvider>
     </Orbit2026Scope>
-  );
-}
-
-
-/** 申込設定页签下方「イベントの管理」折叠区：基本情報の編集 · 参加コード · 中止 的入口（对标 Luma「Manage → 设置页底部取消活动」）。
- *  画板 b6 #13–#15 没有这一块（入口问题已报 design-decisions），门禁截图前移除 `[data-host-manage-toggle]`。 */
-export function HostManageSection({ eventId, language, onChanged }: { eventId: string; language: OrbitLanguage; onChanged?: () => void }) {
-  const t = useMemo(() => hostTranslator(language), [language]);
-  const [open, setOpen] = useState(false);
-  const [event, setEvent] = useState<HostEventView | null>(null);
-  useEffect(() => {
-    if (!open || event) return;
-    void hostEventApi.event(eventId).then((res) => { if (res.ok) setEvent(res.data); });
-  }, [open, event, eventId]);
-  return (
-    <>
-      <button type="button" className={`btn ${u.notesToggle}`} aria-expanded={open} onClick={() => setOpen(!open)} data-host-manage-toggle="">
-        <h3>{t("mgOpen")}</h3><span className={s.lbl}>{t("mgOpenSub")}</span><Icon name="down" size={16} className={open ? u.chevOpen : undefined} />
-      </button>
-      {open ? (
-        <div className={f.mgWrap}>
-          {event ? <EventManageCard event={event} language={language} showEdit onChanged={(next) => { setEvent(next); onChanged?.(); }} /> : <div className={`${s.card} ${s.empty}`} aria-busy="true" />}
-        </div>
-      ) : null}
-    </>
   );
 }

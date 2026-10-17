@@ -1,7 +1,8 @@
 "use client";
 
 // R17 イベント運営（Web 1440：web.html #20 概要 · 開場前；b12 #408 定型のお知らせ確認、#440 / #442 / #444 下書き · 中止 · アーカイブ 横幅）。
-// 页头：活动名 +「主催 · 本日 19:00 · 渋谷ストリーム」+ 共同运营者头像 +「共同運営者」（&drawer=cohosts，下一段做抽屉）。
+// 页头：活动名 +「主催 · 本日 19:00 · 渋谷ストリーム」+ 共同运营者头像 +「共同運営者」（&drawer=cohosts）+「⋯」菜单（决定表 §44，b12 #480 / #481：
+// 基本情報を編集 / 参加コードを再発行 / 申込ページを開く / ― / イベントを中止（珊瑚色，仅 event.cancel = owner）；所有页签同一位置）。
 // 页签：概要 / マッチング / 参加者 N / 受付（跳 kiosk）/ 申込設定 / レポート；本段只做概要，其余是占位（HostConsoleTabs.tsx，后续替换）。
 // 数据：GET /api/host/events/[id]/overview（requireEventCapability 在服务端）；定型通知 /notices/preview → /notices/send。
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,9 +13,9 @@ import type { HostEventView } from "../../../../../shared/contract/host-events";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { HostNoticePreview } from "../../../../../shared/contract/host-notices";
 import { ShellPage } from "../shell/slots";
-import { Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
-import { failureOf, hostApi, type HostApiFailure } from "./host-api";
-import { PublishEventConfirm } from "./HostEventForm";
+import { ConfirmDialog, Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { failureOf, hostApi, hostEventApi, type HostApiFailure, type HostApiResult } from "./host-api";
+import { CancelEventConfirm, PublishEventConfirm } from "./HostEventForm";
 import { HOST_CONSOLE_TABS, HostTabContent, HostTabPlaceholder, parseConsoleTab, type HostConsoleTab } from "./HostConsoleTabs";
 import { HostCohostsDrawer } from "./HostCohosts";
 import { checkInHref, consoleHref, hostDateLong, hostDateShort, hostTime, hostTranslator, sameTokyoDay, type HostT } from "./host-model";
@@ -173,6 +174,59 @@ export function NoticeConfirm({ preview, t, busy, onCancel, onSend }: { preview:
   );
 }
 
+export type HostMenuAction = "reissue" | "cancel" | "archive";
+export type HostMenuItems = { edit: boolean; reissue: boolean; openPage: boolean; cancel: boolean; archive: boolean };
+
+/** 页头「⋯」菜单里出现哪些项（b12 #480）。中止只给有 `event.cancel` 的人（= owner）；
+ *  已结束的活动多一项「アーカイブする」（原来在申込設定折叠区，§44 后统一进菜单）。 */
+export function hostMenuItems(event: HostEventView): HostMenuItems {
+  const open = event.status === "upcoming" || event.status === "live";
+  const canEdit = event.myRole === "owner" || event.myRole === "manager" || event.capabilities.includes("event.edit");
+  return {
+    edit: canEdit && event.status !== "cancelled" && event.status !== "archived",
+    reissue: canEdit && open && Boolean(event.participationCode),
+    openPage: Boolean(event.publicSlug) && (open || event.status === "ended"),
+    cancel: open && event.capabilities.includes("event.cancel"),
+    archive: canEdit && event.status === "ended",
+  };
+}
+
+/** 页头右端「⋯」（.rbtn.k-hmore）+ 下拉（.dmenu.k-hmenu）。点外面 / Esc 关。 */
+export function HostMoreMenu({ event, t, defaultOpen = false, onAction }: { event: HostEventView; t: HostT; defaultOpen?: boolean; onAction?: (action: HostMenuAction) => void }) {
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => {
+    if (!open) return;
+    const close = (ev: globalThis.MouseEvent | KeyboardEvent) => {
+      if (ev instanceof KeyboardEvent ? ev.key === "Escape" : !(ev.target as HTMLElement | null)?.closest("[data-host-menu],[data-host-more]")) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", close); };
+  }, [open]);
+  const items = hostMenuItems(event);
+  if (!items.edit && !items.reissue && !items.openPage && !items.cancel && !items.archive) return null;
+  const pick = (action: HostMenuAction) => { setOpen(false); onAction?.(action); };
+  return (
+    <span className={s.moreWrap} data-host-more-wrap="">
+      <button type="button" className={`btn ${s.moreBtn} ${open ? s.moreOn : ""}`} aria-label={t("hmMore")} aria-haspopup="menu" aria-expanded={open} data-host-more="" onClick={() => setOpen((value) => !value)}><Icon name="more" size={20} /></button>
+      {open ? (
+        <div className={s.dmenu} role="menu" data-host-menu="">
+          {items.edit ? <a role="menuitem" className={`btn ${s.mi}`} href={`/app/events/${id(event.eventId)}/edit`} data-host-menu-item="edit"><Icon name="pen" size={16} /><span>{t("hmEdit")}</span></a> : null}
+          {items.reissue ? <button type="button" role="menuitem" className={`btn ${s.mi}`} onClick={() => pick("reissue")} data-host-menu-item="reissue"><Icon name="refresh" size={16} /><span>{t("hmReissue")}</span></button> : null}
+          {items.openPage ? <a role="menuitem" className={`btn ${s.mi}`} href={`/e/${id(event.publicSlug!)}`} target="_blank" rel="noopener" onClick={() => setOpen(false)} data-host-menu-item="open"><Icon name="link" size={16} /><span>{t("hmOpenPage")}</span></a> : null}
+          {items.archive ? <button type="button" role="menuitem" className={`btn ${s.mi}`} onClick={() => pick("archive")} data-host-menu-item="archive"><Icon name="archive" size={16} /><span>{t("hmArchive")}</span></button> : null}
+          {items.cancel ? (
+            <>
+              <div className={s.miSep} role="separator" />
+              <button type="button" role="menuitem" className={`btn ${s.mi} ${s.miDanger}`} onClick={() => pick("cancel")} data-host-menu-item="cancel" data-tone="coral"><Icon name="x" size={16} /><span>{t("hmCancel")}</span></button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </span>
+  );
+}
+
 export type HostConsoleViewProps = {
   data: HostOverviewResponse;
   tab: HostConsoleTab;
@@ -189,10 +243,14 @@ export type HostConsoleViewProps = {
   /** レポートの 全体 / 自分の視点（页头右侧的 seg，b6 #16–#19）。 */
   reportView?: "all" | "mine";
   onReportView?: (view: "all" | "mine") => void;
+  /** 页头「⋯」菜单的写操作（再発行 / 中止 / アーカイブ）。 */
+  onMenu?: (action: HostMenuAction) => void;
+  /** 渲染测试用：菜单初始展开。 */
+  menuOpen?: boolean;
 };
 
 /** 純粋な描画：页头 + 页签 + 当前页签内容。 */
-export function HostConsoleView({ data, tab, language, now = new Date(), busy = false, onPublish, onArchive, content, onOpenCohosts, formPublished = null, reportView = "all", onReportView }: HostConsoleViewProps) {
+export function HostConsoleView({ data, tab, language, now = new Date(), busy = false, onPublish, onArchive, content, onOpenCohosts, formPublished = null, reportView = "all", onReportView, onMenu, menuOpen = false }: HostConsoleViewProps) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const event = data.event;
   // 页签一律下划线（.htabs；决定表 §41-1 统一了 web.html #20）。参加者角标 = 审核待人数，在参加者页签本身不显示（b6 #7–#9）。
@@ -210,6 +268,7 @@ export function HostConsoleView({ data, tab, language, now = new Date(), busy = 
           ))}
         </div>
       ) : null}
+      <HostMoreMenu event={event} t={t} defaultOpen={menuOpen} onAction={onMenu} />
     </div>
   );
   return (
@@ -256,6 +315,8 @@ function ConsoleInner({ eventId, language }: { eventId: string; language: OrbitL
   // 下書きバナー「公開する」→ 公開確認（b12 #400）。
   const [publishConfirm, setPublishConfirm] = useState(false);
   const [formPublished, setFormPublished] = useState<boolean | null>(null);
+  // 页头「⋯」：参加コード再発行 / 中止（b12 #402 确认框）/ アーカイブ。
+  const [manage, setManage] = useState<HostMenuAction | null>(null);
   const reportView = params.get("view") === "mine" ? "mine" : "all";
   const setReportView = (view: "all" | "mine") => {
     const search = new URLSearchParams(params.toString());
@@ -303,6 +364,16 @@ function ConsoleInner({ eventId, language }: { eventId: string; language: OrbitL
     await load();
   };
 
+  const runManage = async (task: () => Promise<HostApiResult<{ event: HostEventView; notified: number }>>, done: (next: HostEventView, notified: number) => string) => {
+    setBusy(true);
+    const res = await task();
+    setBusy(false);
+    setManage(null);
+    if (!res.ok) { const reason = failureOf(res); toast.error(reason === "conflict" ? t("conflictError") : reason === "sample" ? t("evSample") : t("saveError")); return; }
+    toast.success(done(res.data.event, res.data.notified));
+    await load();
+  };
+
   const back = <a className={`btn ${s.btn} ${s.backBtn}`} href="/app/events/center" aria-label={t("back")}><Icon name="left" size={20} /></a>;
   if (failure && !data) {
     return (
@@ -320,7 +391,12 @@ function ConsoleInner({ eventId, language }: { eventId: string; language: OrbitL
         onArchive={(archived) => void write(() => hostApi.archive(eventId, data.event.version, archived), archived ? t("archivedToast") : t("unarchivedToast"))}
         formPublished={formPublished} reportView={reportView} onReportView={setReportView}
         content={tab === "overview" ? undefined : <HostTabContent tab={tab} eventId={eventId} language={language} incomplete={params.get("incomplete") === "1"} importing={params.get("import") === "1"} reportView={reportView} onChanged={() => void load()} onSetupHeader={setFormPublished} />}
-        onOpenCohosts={(event) => { event.preventDefault(); setDrawer(true); }} />
+        onOpenCohosts={(event) => { event.preventDefault(); setDrawer(true); }} onMenu={setManage} />
+      {manage === "cancel" ? <CancelEventConfirm event={data.event} t={t} busy={busy} onKeep={() => setManage(null)} onCancelEvent={(note) => void runManage(() => hostEventApi.cancel(eventId, data.event.version, note), (_next, n) => t("cfCancelled", { n }))} /> : null}
+      <ConfirmDialog open={manage === "reissue"} title={t("cfReissueTitle")} message={t("cfReissueSub", { code: data.event.participationCode ?? "" })} confirmLabel={t("cfReissue")} cancelLabel={t("cancel")} icon="ticket"
+        onCancel={() => setManage(null)} onConfirm={() => void runManage(() => hostEventApi.reissueCode(eventId, data.event.version), (next) => t("cfReissued", { code: next.participationCode ?? "" }))} />
+      <ConfirmDialog open={manage === "archive"} title={t("cfArchiveTitle")} message={t("cfArchiveSub")} confirmLabel={t("archive")} cancelLabel={t("cancel")}
+        onCancel={() => setManage(null)} onConfirm={() => void runManage(() => hostEventApi.archive(eventId, data.event.version, true), () => t("archivedToast"))} />
       {drawer ? <HostCohostsDrawer eventId={eventId} language={language} onClose={() => setDrawer(false)} onChanged={() => void load()} /> : null}
       {publishConfirm ? <PublishEventConfirm event={data.event} t={t} language={language} busy={busy} onCancel={() => setPublishConfirm(false)} onPublish={() => { setPublishConfirm(false); void write(() => hostApi.publish(eventId, data.event.version), t("publishedToast")); }} /> : null}
       {notice ? <NoticeConfirm preview={notice} t={t} busy={busy} onCancel={closeNotice} onSend={() => void sendNotice()} /> : null}

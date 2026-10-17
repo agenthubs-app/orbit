@@ -193,3 +193,13 @@
 }
 :global([data-orbit-2026][data-reduced-motion="true"]) .hc { transition: opacity .2s; }
 :global([data-orbit-2026][data-reduced-motion="true"]) .liveDot { animation: none; }
+
+/* 運営台 页头「⋯」（决定表 §44，b12 #480 / #481：.rbtn.k-hmore + .dmenu.k-hmenu；按下态 surface-2） */
+.moreWrap { position: relative; display: inline-flex; }
+.moreBtn.moreBtn { width: 40px; height: 40px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink-2); cursor: pointer; }
+.moreBtn.moreOn { background: var(--surface-2); }
+.dmenu { position: absolute; right: 6px; top: calc(100% + 6.5px); z-index: var(--z-dropdown); width: 220px; border-radius: var(--r-tile); background: var(--surface); box-shadow: var(--shadow-float); padding: 6px; border: 1px solid var(--line); display: grid; }
+.mi.mi { display: flex; align-items: center; gap: 8px; justify-content: flex-start; width: 100%; height: auto; min-height: 0; padding: 8px 10px; border: 0; border-radius: var(--r-sm); background: transparent; font-size: var(--fs-body-sm); font-weight: 600; line-height: var(--lh-body); color: var(--ink); text-align: left; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.mi.mi:hover, .mi.mi:focus-visible { background: var(--surface-2); }
+.mi.miDanger { color: var(--coral-text); }
+.miSep { height: 1px; background: var(--line); margin: 4px 6px; }

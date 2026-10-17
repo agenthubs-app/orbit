@@ -37,6 +37,9 @@ test("each rule fires on its bad sample", () => {
   assert.deepEqual(rulesHit({ id: "l", kind: "chip", ja: "今日中に必ず確認が必要です", zh: "需要今天确认", en: "Today" }), ["length", "tone"].filter((r) => r === "length"));
   assert.deepEqual(rulesHit({ ...ok, ja: "设置しました" }), ["simplified-in-ja"]);
   assert.deepEqual(rulesHit({ id: "u", kind: "label", ja: "受信箱", zh: "受信箱", en: "Inbox" }), ["untranslated"]);
+  // R17：日付だけの型（占位符 + 年月日）は日中同形でよい；「貢献」の 献 は日本語の字形。
+  assert.deepEqual(rulesHit({ id: "d", kind: "label", ja: "{mon}{d}日", zh: "{mon}{d}日", en: "{mon} {d}" }), []);
+  assert.deepEqual(rulesHit({ ...ok, ja: "プランへの貢献" }), []);
   assert.deepEqual(rulesHit({ id: "t", kind: "button", ja: "保存します", zh: "保存", en: "Save" }), ["tone"]);
   assert.deepEqual(rulesHit({ id: "t2", kind: "button", ja: "下書き", zh: "草稿", en: "Create Draft" }), ["tone"]);
   assert.deepEqual(rulesHit({ ...ok, ja: "１件追加しました" }), ["width"]);

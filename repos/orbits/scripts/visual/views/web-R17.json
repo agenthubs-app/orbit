@@ -76,7 +76,10 @@
    "host": {
     "overview": "pre_open"
    },
-   "note": "P06 イベント運営 · 概要 開場前（web.html #20）"
+   "note": "P06 イベント運営 · 概要 開場前（web.html #20）；§44 页头「⋯」（[data-host-more-wrap]）web.html #20 未同步（b6 / b12 已加），截图前移除（已报 design-decisions）",
+   "app-remove": [
+    "[data-host-more-wrap]"
+   ]
   },
   {
    "id": "W-R17-P08",
@@ -316,10 +319,9 @@
    "board-index": 13,
    "width": 1440,
    "wait-for": "[data-host-setup=empty]",
-   "note": "P19 申込設定 · 空（b6 #13，朝会 #3 未公開；§40 预览 / 受付の設定 = 朝会 #3）；下方折叠区「お知らせの文面」（b12 #406，待用户过目 §38，不进门禁）截图前移除；第 4 段加的「イベントの管理」折叠区（画板无，入口问题已报）同样截图前移除",
+   "note": "P19 申込設定 · 空（b6 #13，朝会 #3 未公開；§40 预览 / 受付の設定 = 朝会 #3）；下方折叠区「お知らせの文面」（b12 #406，待用户过目 §38，不进门禁）截图前移除",
    "app-remove": [
-    "[data-host-notices-toggle]",
-    "[data-host-manage-toggle]"
+    "[data-host-notices-toggle]"
    ]
   },
   {
@@ -332,10 +334,9 @@
    "host": {
     "setup": "few"
    },
-   "note": "P20 申込設定 · 少（b6 #14，CFO18 下書き 2問，Q1 编辑中；§40 页头「申込フォーム未公開」）；下方折叠区「お知らせの文面」（b12 #406，待用户过目 §38，不进门禁）截图前移除；第 4 段加的「イベントの管理」折叠区（画板无，入口问题已报）同样截图前移除",
+   "note": "P20 申込設定 · 少（b6 #14，CFO18 下書き 2問，Q1 编辑中；§40 页头「申込フォーム未公開」）；下方折叠区「お知らせの文面」（b12 #406，待用户过目 §38，不进门禁）截图前移除",
    "app-remove": [
-    "[data-host-notices-toggle]",
-    "[data-host-manage-toggle]"
+    "[data-host-notices-toggle]"
    ]
   },
   {
@@ -351,10 +352,9 @@
    "click": [
     "[data-host-question=\"q2\"]"
    ],
-   "note": "P21 申込設定 · 大（b6 #15，CFO18 公開中 5問 + 未公開の変更 2；点 Q2 展开编辑）；下方折叠区「お知らせの文面」（b12 #406，待用户过目 §38，不进门禁）截图前移除；第 4 段加的「イベントの管理」折叠区（画板无，入口问题已报）同样截图前移除",
+   "note": "P21 申込設定 · 大（b6 #15，CFO18 公開中 5問 + 未公開の変更 2；点 Q2 展开编辑）；下方折叠区「お知らせの文面」（b12 #406，待用户过目 §38，不进门禁）截图前移除",
    "app-remove": [
-    "[data-host-notices-toggle]",
-    "[data-host-manage-toggle]"
+    "[data-host-notices-toggle]"
    ]
   },
   {
@@ -431,6 +431,66 @@
     "organizer": "many"
    },
    "note": "P29 公開主催者ページ · 大（vol.19 + 特別編；過去 18件，先列 6 件 + すべて見る）（b7 #35；未登录，不挂壳）"
+  },
+  {
+   "id": "W-R17-P30",
+   "app": "/o/cfo-night",
+   "design": "b7-account-misc.html",
+   "board-index": 36,
+   "width": 390,
+   "login": "",
+   "wait-for": "[data-organizer-public=empty]",
+   "host": {
+    "organizer": "empty"
+   },
+   "note": "P30 公開主催者ページ · 手机浏览器 空（b7 #36，§44 改 .phone.mweb；规则 13：实现不画状态栏 / 地址栏）"
+  },
+  {
+   "id": "W-R17-P31",
+   "app": "/o/cfo-night",
+   "design": "b7-account-misc.html",
+   "board-index": 37,
+   "width": 390,
+   "login": "",
+   "wait-for": "[data-organizer-public=few]",
+   "host": {
+    "organizer": "few"
+   },
+   "note": "P31 公開主催者ページ · 手机浏览器 少（b7 #37）"
+  },
+  {
+   "id": "W-R17-P32",
+   "app": "/o/cfo-night",
+   "design": "b7-account-misc.html",
+   "board-index": 38,
+   "width": 390,
+   "login": "",
+   "wait-for": "[data-organizer-public=many]",
+   "host": {
+    "organizer": "many"
+   },
+   "note": "P32 公開主催者ページ · 手机浏览器 大（b7 #38）"
+  },
+  {
+   "id": "W-R17-P33",
+   "app": "/o/cfo-night",
+   "design": "b7-account-misc.html",
+   "board-index": 39,
+   "width": 390,
+   "login": "",
+   "wait-for": "[data-organizer-public=few]",
+   "host": {
+    "organizer": "few"
+   },
+   "click": [
+    "[data-organizer-follow]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-organizer-login]"
+    }
+   ],
+   "note": "P33 フォロー · 未ログイン（b7 #39，底图 = 少；点「フォローする」→ 底部 sheet：Google で続ける（主）/ メールで続ける，§44-4 删 Apple）"
   }
  ]
 }

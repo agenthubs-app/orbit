@@ -3,7 +3,6 @@
 // R17 イベント運営の页签。概要 在 HostConsole.tsx；マッチング（HostMatching）/ 参加者（HostPeople）是真组件；
 // 申込設定（HostSetup）/ レポート（HostReport，`&view=mine` = 自分の視点）。受付 是独立的 kiosk 页面（/operations/check-in，不挂壳）。
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import { HostManageSection } from "./HostEventForm";
 import { HostImportTab } from "./HostImport";
 import { HostMatchingTab } from "./HostMatching";
 import { HostPeopleTab } from "./HostPeople";
@@ -32,7 +31,7 @@ export function HostTabContent({ tab, eventId, language, incomplete = false, imp
   if (tab === "people" && importing) return <HostImportTab eventId={eventId} language={language} />;
   if (tab === "matching") return <HostMatchingTab eventId={eventId} language={language} onChanged={onChanged} />;
   if (tab === "people") return <HostPeopleTab eventId={eventId} language={language} initialIncomplete={incomplete} onChanged={onChanged} />;
-  if (tab === "setup") return <><HostSetupTab eventId={eventId} language={language} onChanged={onChanged} onHeader={onSetupHeader} /><HostManageSection eventId={eventId} language={language} onChanged={onChanged} /></>;
+  if (tab === "setup") return <HostSetupTab eventId={eventId} language={language} onChanged={onChanged} onHeader={onSetupHeader} />;
   if (tab === "report") return <HostReportTab eventId={eventId} language={language} view={reportView} />;
   return <HostTabPlaceholder tab={tab} t={hostTranslator(language)} />;
 }
