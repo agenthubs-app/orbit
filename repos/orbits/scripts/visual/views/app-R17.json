@@ -1,0 +1,55 @@
+{
+ "_note": "R17 主催 App（PLANNER 像素 SC P04 / P05 / P07 / P18）。模拟器 iPhone 16e (r17) 连 mock 服务器 :3017（orbits-r17，ORBIT_REDESIGN_MOCK 含 host-operations），Metro :8117（EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=no-keyboard,open-path）。每张先用 switch.mjs --host 切示例变体，再把 path 写进 AsyncStorage orbit.dev.openPath 并重启 App（代替深链，避免系统确认框）后截图（scratchpad app17/appgate17.sh）。键 = <id>-app-<theme>。b12 #416–#430（P46–P53）待用户过目（§38），不进本清单。",
+ "defaults": {
+  "grid": 30,
+  "wait": 20000,
+  "attribution": "scripts/visual/attribution-redesign-R17-app.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/host/**",
+  "repos/orbit-app/app/events/**",
+  "repos/orbit-app/src/i18n/*/host.ts"
+ ],
+ "views": [
+  {
+   "id": "A-R17-P04",
+   "design": "b6-host-polish.html",
+   "board-index": 21,
+   "path": "/events/center",
+   "host": {
+    "center": "empty"
+   },
+   "note": "P04 運営センター · 空（mock 下用变体 center=empty）"
+  },
+  {
+   "id": "A-R17-P05",
+   "design": "b6-host-polish.html",
+   "board-index": 22,
+   "path": "/events/center",
+   "host": {
+    "center": "many"
+   },
+   "note": "P05 運営センター · 大（六场）。待组件库（G23）：Segmented 高 38 vs kit .seg 30，其下各带整体下移 8；临时把 option minHeight 改 30（不提交）后各带 dy 0、全是字形栅格化（run-01/app/r3seg）"
+  },
+  {
+   "id": "A-R17-P07",
+   "design": "b6-host-polish.html",
+   "board-index": 23,
+   "path": "/events/demo-event-cfo-night-18/operations",
+   "host": {
+    "overview": "live"
+   },
+   "note": "P07 イベント運営 · 概要（CFO18）"
+  },
+  {
+   "id": "A-R17-P18",
+   "design": "b6-host-polish.html",
+   "board-index": 24,
+   "path": "/events/demo-event-cfo-night-18/operations/check-in?q=もり&failed=participant:hp-kimura",
+   "host": {
+    "kiosk": "live"
+   },
+   "note": "P18 受付 · 含一行送信失败（开发开关 open-path：q=もり 搜索、failed= 把木村放进本机队列且不自动补发，代替模拟器断网）"
+  }
+ ]
+}
