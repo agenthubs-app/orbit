@@ -1,7 +1,7 @@
 import { StyleSheet, View } from "react-native";
 
 import type { TodoDecisionItem, TodoFollowupItem, TodoNextMoveItem, TodoPageContract, TodoSectionKey } from "../../api/contract/todo-page";
-import { Button, Card, UiText } from "../../components/ui";
+import { Button, Card, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { canWriteTodoFollowup, todoSectionCount } from "./todo-page-model";
@@ -93,7 +93,9 @@ export function TodoSections({ page, offline, staleDay, busy, mirroredTaskIds, o
         const enabled = !item.sample && canWriteTodoFollowup(item, { offline, staleDay, locallyMirrored: mirroredTaskIds.has(item.taskId) });
         return <View key={item.key} style={styles.row}>
           <View style={styles.rowBody}>
-            <UiText style={styles.title}>{item.titlePreview}</UiText>
+            {canOpenFollowup(item) ? <UiPressable accessibilityRole="button" accessibilityLabel={item.titlePreview} hitSlop={12} disabled={busy || Boolean(item.sample)} onPress={() => onOpenFollowup(item)}>
+              <UiText style={styles.title}>{item.titlePreview}</UiText>
+            </UiPressable> : <UiText style={styles.title}>{item.titlePreview}</UiText>}
             {item.overdue ? <UiText style={styles.overdue}>{t("todo.overdue")}</UiText> : null}
             {item.kind === "lifecycle" && !canOpenFollowup(item) ? <UiText style={styles.muted}>{t("todo.lifecycleUnavailable")}</UiText> : null}
             {item.sample ? <UiText style={styles.sample}>{t("todo.sample")}</UiText> : null}

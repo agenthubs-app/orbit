@@ -32,7 +32,7 @@ function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: b
       return withoutSample;
     }) } },
     offline: props.offline ?? false, staleDay: props.staleDay ?? false, busy: false, mirroredTaskIds: new Set(["t1"]),
-    onRefresh() {}, canOpen: () => true, canOpenFollowup: () => false, canDefer: () => true, onOpen() {}, onOpenFollowup() {}, onComplete() {}, onDefer() {}, onDecide() {},
+    onRefresh() {}, canOpen: () => true, canOpenFollowup: item => item.kind === "task", canDefer: () => true, onOpen() {}, onOpenFollowup() {}, onComplete() {}, onDefer() {}, onDecide() {},
   }));
 }
 
@@ -62,4 +62,10 @@ test("only a live non-sample suggestion offers source-native decision controls",
   assert.ok((sample.match(/aria-disabled="true"/gu) ?? []).length >= 4);
   const offline = renderToHtml(tree({ decisionSample: false, offline: true }));
   assert.ok((offline.match(/aria-disabled="true"/gu) ?? []).length >= 4);
+});
+
+test("an owned plain follow-up opens its canonical task detail, while lifecycle identity stays closed", () => {
+  const html = renderToHtml(tree());
+  assert.match(html, /aria-label="山本さんへ返信"/u);
+  assert.doesNotMatch(html, /aria-label="次の段階を決める"/u);
 });
