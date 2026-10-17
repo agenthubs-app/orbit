@@ -3,6 +3,8 @@
 // `*` for one key segment; the first match wins. A key in a checked domain without a
 // kind is reported by copy-qa. Kinds: chip, toast, button, fullButton, swipe, nav, tab,
 // dialogTitle, confirmTitle, banner, label, sentence, menu (scripts/copy-qa/README.md).
+import { hostCopyKinds } from "./host-kinds";
+
 export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[] = [
   ["shell.parent.*", "label"],
   ["shell.home.*", "label"],
@@ -2055,4 +2057,6 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsV2.calendar", "label"],
   ["eventsV2.searchEvents", "label"],
   ["eventsV2.sample", "chip"],
+  // R17 主催（host，与 Web 同 kind；scripts/gen-host-copy.mts 生成）。
+  ...hostCopyKinds,
 ];

@@ -5,6 +5,7 @@ export const shell = {
   "shell.parent.networkAnalysis": "人脉分析",
   "shell.parent.network": "人脉",
   "shell.parent.eventOperations": "活动运营",
+  "shell.parent.eventCenter": "运营中心",
   "shell.parent.eventDetail": "活动详情",
   "shell.parent.events": "活动",
   "shell.parent.tasks": "待办",

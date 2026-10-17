@@ -16,6 +16,7 @@ import { COMPLETION_OPTION_LABELS } from "../../api/compute/completion-question-
 import type { ContactCompletionQuestion } from "../../api/contract/contact-completion";
 import type { InviteApi } from "../add/invite/invite-api";
 import { InviteShareSheet, InviteUnlinkSheet } from "../add/invite/InviteConnectionSheets";
+import { HostEventsRow } from "../host/HostEventsRow";
 
 // R04 / RD-15 / RD-16: every component and state of src/components/ui, for side-by-
 // side checks with the design kit. Switches: light / dark (restored on leaving),
@@ -129,6 +130,12 @@ export function ComponentShowcaseScreen() {
           <Section name="invite unlink sheet">
             <Button label="invite unlink sheet" onPress={() => setInviteSheet("unlink")} />
             <InviteUnlinkSheet visible={inviteSheet === "unlink"} contactId="showcase-contact" name="Aya Yamamoto" api={SHOWCASE_INVITE_API} onClose={() => setInviteSheet(null)} />
+          </Section>
+
+          {/* R17 → R18: マイページ「主催したイベント」行（HostEventsRow，读 GET /api/events/center?summary=1）；这里传示例摘要，不请求接口。 */}
+          <Section name="host events row">
+            <HostEventsRow summary={{ activeCount: 1, appliedThisMonth: 24, eventCount: 2 }} onPress={() => undefined} />
+            <HostEventsRow summary={null} onPress={() => undefined} />
           </Section>
 
           <Section name="ai">

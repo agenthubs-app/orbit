@@ -1,6 +1,9 @@
 import { withOrbitPrivateRoute } from "../../../../src/components/OrbitRouteAccessBoundary";
-import { EventRolesScreen } from "../../../../src/screens/events/EventRolesScreen";
-import { withOnlineOnlyRoute } from "../../../../src/components/OnlineOnlyBoundary";
+import { LegacyOperationsRedirect } from "../../../../src/screens/host/HostConsole";
 
-// Sprint 0131: online-only page (docs/offline/page-inventory.md); offline it shows 「需要联网」, not an error page.
-export default withOrbitPrivateRoute(withOnlineOnlyRoute(EventRolesScreen));
+// R17：旧「roles」页 → イベント運営 的「overview」段（旧 Screen 由主会话统一删除）。
+function LegacyRolesRedirect() {
+  return <LegacyOperationsRedirect to="overview" />;
+}
+
+export default withOrbitPrivateRoute(LegacyRolesRedirect);

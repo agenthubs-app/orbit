@@ -1,6 +1,7 @@
-import { withOrbitPrivateRoute } from "../../../src/components/OrbitRouteAccessBoundary";
-import { EventOperationsScreen } from "../../../src/screens/events/EventOperationsScreen";
 import { withOnlineOnlyRoute } from "../../../src/components/OnlineOnlyBoundary";
+import { withOrbitPrivateRoute } from "../../../src/components/OrbitRouteAccessBoundary";
+import { HostConsoleScreen } from "../../../src/screens/host/HostConsole";
 
-// Sprint 0131: online-only page (docs/offline/page-inventory.md); offline it shows 「需要联网」, not an error page.
-export default withOrbitPrivateRoute(withOnlineOnlyRoute(EventOperationsScreen));
+// R17 イベント運営（?seg=overview|matching|people|check-in|report；b6 #23，b12 #422 / #424 / #430）。
+// Online-only: host operations are live (design class C, never cached).
+export default withOrbitPrivateRoute(withOnlineOnlyRoute(HostConsoleScreen));

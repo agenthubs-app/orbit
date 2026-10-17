@@ -191,6 +191,15 @@ const integratedFeatureRoutes = [
   "/contacts/new/scan/[batchId]",
   // Web /app/start opens the App guide (redirect to /profile/onboarding).
   "/start",
+  // R17 主催: create / edit / host pages open the 「PC が便利です」 card (App does not create or edit events);
+  // 共同運営に参加 (code entry and the invite landing); the public sign-up short link /e/<slug> → R27 event detail.
+  "/events/center/new",
+  "/events/center/profiles",
+  "/events/center/profiles/[id]",
+  "/events/[id]/edit",
+  "/host/join",
+  "/host/join/[code]",
+  "/e/[slug]",
   // R26 イベント評価: input (URL / poster / 3 items / 参加コード) and the result / failure screens.
   "/events/assess",
   "/events/assessments/[id]",

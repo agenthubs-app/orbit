@@ -5,6 +5,7 @@ export const shell = {
   "shell.parent.networkAnalysis": "Network analysis",
   "shell.parent.network": "Network",
   "shell.parent.eventOperations": "Event operations",
+  "shell.parent.eventCenter": "Host center",
   "shell.parent.eventDetail": "Event details",
   "shell.parent.events": "Events",
   "shell.parent.tasks": "To-do",

@@ -1,6 +1,9 @@
 import { withOrbitPrivateRoute } from "../../../src/components/OrbitRouteAccessBoundary";
-import { EventAnalyticsScreen } from "../../../src/screens/events/EventAnalyticsScreen";
-import { withOnlineOnlyRoute } from "../../../src/components/OnlineOnlyBoundary";
+import { LegacyOperationsRedirect } from "../../../src/screens/host/HostConsole";
 
-// Sprint 0131: online-only page (docs/offline/page-inventory.md); offline it shows 「需要联网」, not an error page.
-export default withOrbitPrivateRoute(withOnlineOnlyRoute(EventAnalyticsScreen));
+// R17：旧「活动数据分析」→ イベント運営 的「レポート」段（App 只出摘要，详细在 PC）。
+function LegacyAnalyticsRedirect() {
+  return <LegacyOperationsRedirect to="report" />;
+}
+
+export default withOrbitPrivateRoute(LegacyAnalyticsRedirect);

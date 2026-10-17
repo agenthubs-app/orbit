@@ -1,6 +1,9 @@
 import { withOrbitPrivateRoute } from "../../../../src/components/OrbitRouteAccessBoundary";
-import { EventAdmissionReviewScreen } from "../../../../src/screens/events/EventAdmissionReviewScreen";
-import { withOnlineOnlyRoute } from "../../../../src/components/OnlineOnlyBoundary";
+import { LegacyOperationsRedirect } from "../../../../src/screens/host/HostConsole";
 
-// Sprint 0131: online-only page (docs/offline/page-inventory.md); offline it shows 「需要联网」, not an error page.
-export default withOrbitPrivateRoute(withOnlineOnlyRoute(EventAdmissionReviewScreen));
+// R17：旧「admission」页 → イベント運営 的「people」段（旧 Screen 由主会话统一删除）。
+function LegacyAdmissionRedirect() {
+  return <LegacyOperationsRedirect to="people" />;
+}
+
+export default withOrbitPrivateRoute(LegacyAdmissionRedirect);

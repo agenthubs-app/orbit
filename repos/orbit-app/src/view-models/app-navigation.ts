@@ -68,8 +68,16 @@ export function parentForPath(pathname: string, t: OrbitTranslator = currentTran
     case "events":
       // R26: 評価結果 / 評価の入力 go back to the イベント page (not to an event detail).
       if (parts[1] === "assessments" || parts[1] === "assess") return { href: "/events", label: t("shell.parent.events") };
+      // R17: 運営センター 的二级页（作成 / 主催者ページ）回運営センター；イベント運営 与編集 回運営センター（主办侧不回活动详情）。
+      if (parts[1] === "center") return parts.length > 2 ? { href: "/events/center", label: t("shell.parent.eventCenter") } : { href: "/profile", label: t("shell.parent.me") };
       if (parts[2] === "operations" && parts.length > 3) return { href: "/events/" + parts[1] + "/operations", label: t("shell.parent.eventOperations") };
+      if (parts[2] === "operations" || parts[2] === "edit") return { href: "/events/center", label: t("shell.parent.eventCenter") };
       if (parts.length > 2) return { href: "/events/" + parts[1], label: t("shell.parent.eventDetail") };
+      return { href: "/events", label: t("shell.parent.events") };
+    case "host":
+      // R17: 共同運営に参加 → 運営センター。
+      return { href: "/events/center", label: t("shell.parent.eventCenter") };
+    case "e":
       return { href: "/events", label: t("shell.parent.events") };
     case "tasks":
     case "today":

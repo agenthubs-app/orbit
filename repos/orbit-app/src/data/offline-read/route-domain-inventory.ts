@@ -52,6 +52,8 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/agent/ledger')) return 'agent-ledger';
   // R23: the plan v2.2 generation flow (intakes, drafts, goal type, summary).
   if (path.startsWith('/api/agent/plans')) return 'plans';
+  // R17 主催（運営センター / イベント運営 / 受付 / 共同運営）：主办实时运营。
+  if (path.startsWith('/api/host/')) return 'event-operations';
   if (path.startsWith('/api/recommendations/')) return 'event-recommendations';
   if (path.includes('/registration') || path.includes('/admission/application')) return 'registrations';
   if (path.includes('/access/') || path.includes('/admission/reviews')) return 'event-roles';
@@ -89,6 +91,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
     // Private portraits remain network-only until trusted grant/epoch invalidation is available.
     || endpointTemplate === '/api/events/:id/registration/portrait'
+    // R17: host reads (center, console, kiosk, invites, organizer page) are online-only; the check-in roster has its own TTL cache (kiosk-store).
+    || consumerFile === 'src/screens/host/host-api.ts'
     // R23: the plan flow is online-only (paid AI drafts, versioned intakes); nothing is kept on the device.
     || consumerFile.startsWith('src/screens/plan/')
     // R15: invite codes, previews and connections are online-only; a code or a preview is never kept on the device.
@@ -121,6 +125,32 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
 }
 
 const surfaceKeys: readonly SurfaceKey[] = [
+  // R17 主催（App）：src/screens/host 的接口都经 host-api.ts。
+  ["src/screens/host/host-api.ts","DELETE","/api/organizers/:id/follow"],
+  ["src/screens/host/host-api.ts","GET","/api/events/center"],
+  ["src/screens/host/host-api.ts","GET","/api/host/center"],
+  ["src/screens/host/host-api.ts","GET","/api/host/check-in-events"],
+  ["src/screens/host/host-api.ts","GET","/api/host/cohost-invites/:id"],
+  ["src/screens/host/host-api.ts","GET","/api/host/events/:id"],
+  ["src/screens/host/host-api.ts","GET","/api/host/events/:id/kiosk"],
+  ["src/screens/host/host-api.ts","GET","/api/host/events/:id/kiosk/roster"],
+  ["src/screens/host/host-api.ts","GET","/api/host/events/:id/matching"],
+  ["src/screens/host/host-api.ts","GET","/api/host/events/:id/overview"],
+  ["src/screens/host/host-api.ts","GET","/api/host/events/:id/people"],
+  ["src/screens/host/host-api.ts","GET","/api/host/events/:id/report"],
+  ["src/screens/host/host-api.ts","GET","/api/organizers/by-slug/:id"],
+  ["src/screens/host/host-api.ts","POST","/api/events/:id/operations/admin/check-ins/:id"],
+  ["src/screens/host/host-api.ts","POST","/api/events/:id/operations/admin/check-ins/:id/admit-on-site"],
+  ["src/screens/host/host-api.ts","POST","/api/events/:id/operations/admin/check-ins/:id/undo"],
+  ["src/screens/host/host-api.ts","POST","/api/events/:id/operations/admin/check-ins/scan"],
+  ["src/screens/host/host-api.ts","POST","/api/events/:id/operations/kiosk-heartbeat"],
+  ["src/screens/host/host-api.ts","POST","/api/host/cohost-invites/:id/accept"],
+  ["src/screens/host/host-api.ts","POST","/api/host/desktop-link"],
+  ["src/screens/host/host-api.ts","POST","/api/host/events/:id/matching/publish"],
+  ["src/screens/host/host-api.ts","POST","/api/host/events/:id/notices/preview"],
+  ["src/screens/host/host-api.ts","POST","/api/host/events/:id/notices/send"],
+  ["src/screens/host/host-api.ts","POST","/api/host/events/:id/people/:id/decision"],
+  ["src/screens/host/host-api.ts","POST","/api/organizers/:id/follow"],
   // R23: the plan v2.2 generation flow (src/screens/plan, all through plan-api.ts); online-only, never cached.
   ["src/screens/plan/plan-api.ts","GET","/api/agent/plans/v2/summary"],
   ["src/screens/plan/PlanAddMemberSheet.tsx","DELETE","/api/agent/plans/v2/:id"],

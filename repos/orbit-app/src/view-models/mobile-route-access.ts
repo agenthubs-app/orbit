@@ -9,6 +9,7 @@ const PRIVATE_ROUTE_PREFIXES = [
   "/dashboard",
   "/followups",
   "/home",
+  "/host",
   "/inbox",
   "/notes",
   "/party",
@@ -97,7 +98,7 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
     !STATIC_EVENT_ROUTES.has(detail) &&
     (segments.length === 2 ||
       (segments.length === 3 &&
-        (leaf === "analytics" || leaf === "attendees" || leaf === "live" || leaf === "register" || leaf === "operations")) ||
+        (leaf === "analytics" || leaf === "attendees" || leaf === "edit" || leaf === "live" || leaf === "register" || leaf === "operations")) ||
       (segments.length === 4 &&
         segments[2] === "operations" &&
         (segments[3] === "admission" ||
@@ -117,11 +118,15 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
     return ID_PATH_PARAM_KEYS;
   }
 
+  // R17: 主催者ページ編集 keeps the profile id in the path; 共同運営に参加 keeps the invite code.
+  if (root === "events" && detail === "center" && leaf === "profiles" && segments.length === 4) return ID_PATH_PARAM_KEYS;
+  if (root === "host" && detail === "join" && segments.length === 3) return CODE_PATH_PARAM_KEYS;
+
   if (root === "register" && detail !== undefined && segments.length === 2) {
     return CODE_PATH_PARAM_KEYS;
   }
 
-  if (root === "o" && detail !== undefined && segments.length === 2) {
+  if ((root === "o" || root === "e") && detail !== undefined && segments.length === 2) {
     return SLUG_PATH_PARAM_KEYS;
   }
 

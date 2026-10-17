@@ -1,5 +1,5 @@
-import { OrganizerPublicScreen } from "../../src/screens/organizer/OrganizerPublicScreen";
 import { withOnlineOnlyRoute } from "../../src/components/OnlineOnlyBoundary";
+import { OrganizerPublicPage } from "../../src/screens/host/OrganizerPublic";
 
-// Sprint 0131: online-only page (docs/offline/page-inventory.md); offline it shows 「需要联网」, not an error page.
-export default withOnlineOnlyRoute(OrganizerPublicScreen);
+// R17 公開主催者ページ（b7 #36–#38）。Online-only public page: it is not account data.
+export default withOnlineOnlyRoute(OrganizerPublicPage);
