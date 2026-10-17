@@ -56,7 +56,8 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   // ── structure ──
   { file: 'app/_layout.tsx', path: '(根布局)', title: '根布局：会话恢复、错误边界、通知协调、底部标签栏（R05）', classification: 'device-only', reads: '无（会话恢复见威胁模型第 6 节）', offline: '按 0127 的离线冷启动身份进入' },
   { file: 'app/(app)/_layout.tsx', path: '(主页面分组)', title: '主页面分组的导航栈（底栏由根布局统一绘制，R05）', classification: 'device-only', reads: '无', offline: '照常显示' },
-  { file: 'app/showcase/components.tsx', path: '/showcase/components', title: '组件库展示页（开发包和 TestFlight，R04）', classification: 'device-only', reads: '无（示例数据打包在 App 里）', offline: '照常显示' },
+  { file: 'app/showcase/components/index.tsx', path: '/showcase/components', title: '组件库展示页（开发包和 TestFlight，R04；R31a 按 01-system 规格格重排）', classification: 'device-only', reads: '无（示例数据打包在 App 里）', offline: '照常显示' },
+  { file: 'app/showcase/components/[section].tsx', path: '/showcase/components/[section]', title: '组件库展示页 · 单个规格格小节（开发包和 TestFlight，R31a 逐件对照）', classification: 'device-only', reads: '无（示例数据打包在 App 里）', offline: '照常显示' },
   { file: 'app/showcase/copy.tsx', path: '/showcase/copy', title: '标准用词展示页（开发包和 TestFlight，R03）', classification: 'device-only', reads: '无（标准用词打包在 App 里）', offline: '照常显示' },
   { file: 'app/showcase/icons.tsx', path: '/showcase/icons', title: '图标展示页（开发包和 TestFlight，R02）', classification: 'device-only', reads: '无（图标源打包在 App 里）', offline: '照常显示' },
   { file: 'app/+html.tsx', path: '(浏览器外壳)', title: '浏览器版 HTML 外壳', classification: 'device-only', reads: '无', offline: '照常加载' },

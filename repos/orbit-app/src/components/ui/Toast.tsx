@@ -49,8 +49,6 @@ export function useToast() {
 }
 
 function ToastView({ toast, bottom, onClose }: { toast: ToastState; bottom: number; onClose: () => void }) {
-  const { colors, scheme } = useOrbitTheme();
-  const copy = useStandardCopy();
   const reduced = useReducedMotion();
   const enter = useRef(new Animated.Value(0)).current;
   const countdown = useRef(new Animated.Value(1)).current;
@@ -61,10 +59,6 @@ function ToastView({ toast, bottom, onClose }: { toast: ToastState; bottom: numb
     const timer = setTimeout(onClose, toast.autoDismissMs);
     return () => clearTimeout(timer);
   }, [countdown, enter, onClose, reduced, toast.autoDismissMs]);
-  // RD-17: a dark capsule in both themes — ink in light, one step above the dark page in dark.
-  const background = scheme === "dark" ? colors.surface3 : colors.ink;
-  const text = scheme === "dark" ? colors.ink : colors.onAccent;
-  const markColor = toast.kind === "error" ? colors.coral : toast.kind === "success" ? colors.ok : colors.ink3;
   const translateY = enter.interpolate({ inputRange: [0, 1], outputRange: [reduced ? 0 : 16, 0] });
   return (
     <Animated.View
@@ -73,35 +67,53 @@ function ToastView({ toast, bottom, onClose }: { toast: ToastState; bottom: numb
       pointerEvents="box-none"
       style={[styles.position, { bottom, opacity: enter, transform: [{ translateY }] }]}
     >
-      <View style={[styles.toast, toast.keep && styles.keep, { backgroundColor: background }]}>
-        <View style={[styles.mark, { backgroundColor: markColor }]}>
-          <Icon name={toast.kind === "error" ? "alert" : toast.kind === "success" ? "check" : "info"} size={16} color={colors.onAccent} />
-        </View>
-        <View style={styles.message}>
-          <UiText numberOfLines={2} style={[styles.title, { color: text }]}>{toast.message}</UiText>
-          {toast.sub ? <UiText numberOfLines={toast.keep ? 3 : 1} style={[styles.sub, { color: text }]}>{toast.sub}</UiText> : null}
-        </View>
-        {toast.undo || toast.action ? (
-          // 32 tall like the kit's capsule; hitSlop 6 makes the touch target 44.
-          <UiPressable
-            accessibilityRole="button"
-            accessibilityLabel={toast.undo ? copy.action.undo : toast.action?.label}
-            hitSlop={6}
-            onPress={() => { (toast.undo ?? toast.action?.onPress)?.(); onClose(); }}
-            style={[styles.undo, { backgroundColor: scheme === "dark" ? colors.surface2 : colors.ink2 }]}
-          >
-            {toast.undo ? <Icon name="undo" size={16} color={text} /> : null}
-            <UiText numberOfLines={1} style={[styles.undoLabel, { color: text }]}>{toast.undo ? copy.action.undo : toast.action?.label}</UiText>
-          </UiPressable>
-        ) : null}
-        {toast.autoDismissMs === null ? (
-          <UiPressable accessibilityRole="button" accessibilityLabel={copy.action.close} hitSlop={10} onPress={onClose} style={styles.close}>
-            <Icon name="x" size={16} color={text} />
-          </UiPressable>
-        ) : null}
-        {toast.autoDismissMs !== null && !reduced ? <Animated.View style={[styles.countdown, { backgroundColor: text, transform: [{ scaleX: countdown }] }]} /> : null}
-      </View>
+      <ToastCapsule toast={toast} onClose={onClose} countdown={!reduced ? countdown : null} />
     </Animated.View>
+  );
+}
+
+/**
+ * The capsule itself, without position or entry animation. ToastView draws it; the component
+ * showcase (R31a) draws several side by side to match 01-system ① (`countdown` null = a still
+ * full-width countdown line).
+ */
+export function ToastCapsule({ toast, onClose, countdown = null }: { toast: ToastState; onClose: () => void; countdown?: Animated.Value | null }) {
+  const { colors, scheme } = useOrbitTheme();
+  const copy = useStandardCopy();
+  const reduced = useReducedMotion();
+  // RD-17: a dark capsule in both themes — ink in light, one step above the dark page in dark.
+  const background = scheme === "dark" ? colors.surface3 : colors.ink;
+  const text = scheme === "dark" ? colors.ink : colors.onAccent;
+  const markColor = toast.kind === "error" ? colors.coral : toast.kind === "success" ? colors.ok : colors.ink3;
+  return (
+    <View style={[styles.toast, toast.keep && styles.keep, { backgroundColor: background }]}>
+      <View style={[styles.mark, { backgroundColor: markColor }]}>
+        <Icon name={toast.kind === "error" ? "alert" : toast.kind === "success" ? "check" : "info"} size={16} color={colors.onAccent} />
+      </View>
+      <View style={styles.message}>
+        <UiText numberOfLines={2} style={[styles.title, { color: text }]}>{toast.message}</UiText>
+        {toast.sub ? <UiText numberOfLines={toast.keep ? 3 : 1} style={[styles.sub, { color: text }]}>{toast.sub}</UiText> : null}
+      </View>
+      {toast.undo || toast.action ? (
+        // 32 tall like the kit's capsule; hitSlop 6 makes the touch target 44.
+        <UiPressable
+          accessibilityRole="button"
+          accessibilityLabel={toast.undo ? copy.action.undo : toast.action?.label}
+          hitSlop={6}
+          onPress={() => { (toast.undo ?? toast.action?.onPress)?.(); onClose(); }}
+          style={[styles.undo, { backgroundColor: scheme === "dark" ? colors.surface2 : colors.ink2 }]}
+        >
+          {toast.undo ? <Icon name="undo" size={16} color={text} /> : null}
+          <UiText numberOfLines={1} style={[styles.undoLabel, { color: text }]}>{toast.undo ? copy.action.undo : toast.action?.label}</UiText>
+        </UiPressable>
+      ) : null}
+      {toast.autoDismissMs === null ? (
+        <UiPressable accessibilityRole="button" accessibilityLabel={copy.action.close} hitSlop={10} onPress={onClose} style={styles.close}>
+          <Icon name="x" size={16} color={text} />
+        </UiPressable>
+      ) : null}
+      {toast.autoDismissMs !== null && !reduced ? <Animated.View style={[styles.countdown, { backgroundColor: text, transform: [{ scaleX: countdown ?? 1 }] }]} /> : null}
+    </View>
   );
 }
 

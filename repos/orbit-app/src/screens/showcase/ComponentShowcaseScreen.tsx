@@ -5,8 +5,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Accordion, ActionSheet, Avatar, AvatarStack, BottomSheet, Button, Card, CategoryTabs, CheckCircle, Checkbox, Chip, ConfirmCard, ConfirmDialog,
   CountUp, DegradedCard, EmptyState, FilterOption, GlassSurface, IconButton, ListRow, MacTile, OfflineBar, ProgressBar, QuotaChip, Radio,
-  ReducedMotionOverride, RetryCard, RingChart, SampleBar, SampleTag, SearchField, Segmented, Skeleton, SwipeRow, TextField, Toggle, UiText, WhyDisclosure, useToast,
+  ReducedMotionOverride, RetryCard, RingChart, SampleBar, SampleTag, SearchField, Segmented, Skeleton, SwipeRow, TextField, Toggle, UiPressable, UiText, WhyDisclosure, useToast,
 } from "../../components/ui";
+import { COMPONENT_SECTIONS } from "./component-sections";
 import { getAppearanceChoice, setAppearanceChoice } from "../../design/appearance";
 import { createThemedStyles } from "../../design/theme";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
@@ -19,11 +20,14 @@ import { InviteShareSheet, InviteUnlinkSheet } from "../add/invite/InviteConnect
 import { HostEventsRow } from "../host/HostEventsRow";
 
 // R04 / RD-15 / RD-16: every component and state of src/components/ui, for side-by-
-// side checks with the design kit. Switches: light / dark (restored on leaving),
+// side checks with the design kit. R31a: first the 01-system spec cells in 01-system order
+// (one section per cell, each also its own route /showcase/components/<id> for the pixel
+// gate, views/app-R31a-components.json), then the interactive demos and business sheets
+// that have no spec cell. Switches: light / dark (restored on leaving),
 // Reduce Motion. Text size follows the system setting, like every iOS screen —
 // check 2× with Settings › Accessibility › Larger Text or `simctl ui content_size`. Developer surface:
 // section names are identifiers; sample text is standard copy.
-export function ComponentShowcaseScreen() {
+export function ComponentShowcaseScreen({ onOpenSection }: { onOpenSection?: (id: string) => void } = {}) {
   const { colors, styles } = useStyles();
   const copy = useStandardCopy();
   const toast = useToast();
@@ -56,6 +60,17 @@ export function ComponentShowcaseScreen() {
             <Toggle value={reduced} onValueChange={setReduced} accessibilityLabel="reduce motion" />
           </View>
 
+          <UiText style={styles.group}>01-system spec cells (R31a)</UiText>
+          {COMPONENT_SECTIONS.map((section) => (
+            <View key={section.id} style={styles.section}>
+              <UiPressable accessibilityRole="link" accessibilityLabel={section.id} onPress={() => onOpenSection?.(section.id)}>
+                <UiText style={styles.sectionName}>{`${section.id} · ${section.title} ›`}</UiText>
+              </UiPressable>
+              {section.placement === "inline" ? <View style={{ width: section.width }}>{section.render()}</View> : null}
+            </View>
+          ))}
+
+          <UiText style={styles.group}>no spec cell · interactive demos · business sheets</UiText>
           <Section name="button">
             <View style={styles.row}>
               {(["primary", "accent", "secondary", "ghost", "danger", "dangerGhost", "dangerSoft"] as const).map((variant) => <Button key={variant} label={variant === "danger" || variant.startsWith("danger") ? copy.action.delete : copy.action.save} variant={variant} onPress={() => undefined} />)}
@@ -207,6 +222,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 18, paddingBottom: 80 },
   title: { color: colors.ink, fontSize: 20, fontWeight: "800" },
+  group: { color: colors.ink, fontSize: 15, fontWeight: "800", marginTop: 8 },
   row: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   section: { gap: 10 },
   sectionName: { color: colors.ink2, fontSize: 11.5, fontWeight: "700" },

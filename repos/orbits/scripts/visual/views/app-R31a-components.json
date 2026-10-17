@@ -1,0 +1,253 @@
+{
+ "_note": "R31a 逐件对照（App）：01-system 规格格 ↔ 展示页小节 /showcase/components/<id>。设计侧 = 第 cell 格（compare-redesign.mjs --list-cells；整数对齐、.stage 雾面底换成纯 --bg、3x 渲染缩到 1x）；实现侧 = 模拟器截图缩到设备点（不按 390 缩）后按 region 裁剪。inline 小节画在 (0, 120)、宽 = 格宽（src/screens/showcase/component-sections.tsx SECTION_TOP）；overlay 的 region 用 c（居中）/ b（贴底），按设备点换算（16e 390×844、17 Pro 402×874 都对），首次逐件对照时核对。跳转走开发开关 open-path（Metro 带 EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=open-path）。键 = <id>-app-<theme>。新组件（UnderlineTabs / 可配置 TabBar / 全屏搜索页）以 b2 画板区域为准，补件时追加（--design-region）。",
+ "defaults": {
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-redesign-R31a-app.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/components/ui/**",
+  "repos/orbit-app/src/screens/showcase/**",
+  "repos/orbit-app/src/design/**"
+ ],
+ "views": [
+  {
+   "id": "A-R31a-c-toast-0",
+   "design": "01-system.html",
+   "section": "c-toast",
+   "cell": 0,
+   "path": "/showcase/components/c-toast-0?theme={theme}",
+   "region": "0,120,359,289",
+   "placement": "inline",
+   "note": "Toast 五种（ToastCapsule 静态排列）"
+  },
+  {
+   "id": "A-R31a-c-confirm-0",
+   "design": "01-system.html",
+   "section": "c-confirm",
+   "cell": 0,
+   "path": "/showcase/components/c-confirm-0?theme={theme}",
+   "region": "c,c,322,390",
+   "placement": "overlay",
+   "note": "ConfirmDialog（居中，宽 296）"
+  },
+  {
+   "id": "A-R31a-c-confirm-1",
+   "design": "01-system.html",
+   "section": "c-confirm",
+   "cell": 1,
+   "path": "/showcase/components/c-confirm-1?theme={theme}",
+   "region": "c,b,380,390",
+   "placement": "overlay",
+   "note": "ActionSheet（贴底）"
+  },
+  {
+   "id": "A-R31a-c-ai-0",
+   "design": "01-system.html",
+   "section": "c-ai",
+   "cell": 0,
+   "path": "/showcase/components/c-ai-0?theme={theme}",
+   "region": "0,120,280,120",
+   "placement": "inline",
+   "note": "ConfirmCard pending"
+  },
+  {
+   "id": "A-R31a-c-ai-1",
+   "design": "01-system.html",
+   "section": "c-ai",
+   "cell": 1,
+   "path": "/showcase/components/c-ai-1?theme={theme}",
+   "region": "0,120,280,135",
+   "placement": "inline",
+   "note": "ConfirmCard success"
+  },
+  {
+   "id": "A-R31a-c-ai-2",
+   "design": "01-system.html",
+   "section": "c-ai",
+   "cell": 2,
+   "path": "/showcase/components/c-ai-2?theme={theme}",
+   "region": "0,120,300,172",
+   "placement": "inline",
+   "note": "ConfirmCard failure"
+  },
+  {
+   "id": "A-R31a-c-ai-3",
+   "design": "01-system.html",
+   "section": "c-ai",
+   "cell": 3,
+   "path": "/showcase/components/c-ai-3?theme={theme}",
+   "region": "0,120,280,128",
+   "placement": "inline",
+   "note": "匹配 ✓/✕ + AI 建议 chip"
+  },
+  {
+   "id": "A-R31a-c-why-0",
+   "design": "01-system.html",
+   "section": "c-why",
+   "cell": 0,
+   "path": "/showcase/components/c-why-0?theme={theme}",
+   "region": "0,120,359,345",
+   "placement": "inline",
+   "note": "WhyDisclosure"
+  },
+  {
+   "id": "A-R31a-c-load-0",
+   "design": "01-system.html",
+   "section": "c-load",
+   "cell": 0,
+   "path": "/showcase/components/c-load-0?theme={theme}",
+   "region": "0,120,280,235",
+   "placement": "inline",
+   "note": "Skeleton"
+  },
+  {
+   "id": "A-R31a-c-load-1",
+   "design": "01-system.html",
+   "section": "c-load",
+   "cell": 1,
+   "path": "/showcase/components/c-load-1?theme={theme}",
+   "region": "0,120,320,344",
+   "placement": "inline",
+   "note": "分步清单（AI 生成）"
+  },
+  {
+   "id": "A-R31a-c-err-0",
+   "design": "01-system.html",
+   "section": "c-err",
+   "cell": 0,
+   "path": "/showcase/components/c-err-0?theme={theme}",
+   "region": "0,120,300,183",
+   "placement": "inline",
+   "note": "OfflineBar → 同期しました"
+  },
+  {
+   "id": "A-R31a-c-err-1",
+   "design": "01-system.html",
+   "section": "c-err",
+   "cell": 1,
+   "path": "/showcase/components/c-err-1?theme={theme}",
+   "region": "0,120,290,249",
+   "placement": "inline",
+   "note": "RetryCard"
+  },
+  {
+   "id": "A-R31a-c-err-2",
+   "design": "01-system.html",
+   "section": "c-err",
+   "cell": 2,
+   "path": "/showcase/components/c-err-2?theme={theme}",
+   "region": "0,120,290,216",
+   "placement": "inline",
+   "note": "DegradedCard"
+  },
+  {
+   "id": "A-R31a-c-err-3",
+   "design": "01-system.html",
+   "section": "c-err",
+   "cell": 3,
+   "path": "/showcase/components/c-err-3?theme={theme}",
+   "region": "0,120,270,175",
+   "placement": "inline",
+   "note": "TextField 字段错误"
+  },
+  {
+   "id": "A-R31a-c-sample-0",
+   "design": "01-system.html",
+   "section": "c-sample",
+   "cell": 0,
+   "path": "/showcase/components/c-sample-0?theme={theme}",
+   "region": "0,120,300,203",
+   "placement": "inline",
+   "note": "SampleBar + SampleTag"
+  },
+  {
+   "id": "A-R31a-c-sample-1",
+   "design": "01-system.html",
+   "section": "c-sample",
+   "cell": 1,
+   "path": "/showcase/components/c-sample-1?theme={theme}",
+   "region": "c,c,280,302",
+   "placement": "overlay",
+   "note": "写操作拦截（ConfirmDialog .dic.emo）"
+  },
+  {
+   "id": "A-R31a-c-chip-0",
+   "design": "01-system.html",
+   "section": "c-chip",
+   "cell": 0,
+   "path": "/showcase/components/c-chip-0?theme={theme}",
+   "region": "0,120,359,275",
+   "placement": "inline",
+   "note": "Chip 语义表"
+  },
+  {
+   "id": "A-R31a-c-pay-0",
+   "design": "01-system.html",
+   "section": "c-pay",
+   "cell": 0,
+   "path": "/showcase/components/c-pay-0?theme={theme}",
+   "region": "0,120,300,204",
+   "placement": "inline",
+   "note": "QuotaChip + 消耗确认"
+  },
+  {
+   "id": "A-R31a-c-pay-1",
+   "design": "01-system.html",
+   "section": "c-pay",
+   "cell": 1,
+   "path": "/showcase/components/c-pay-1?theme={theme}",
+   "region": "0,120,320,286",
+   "placement": "inline",
+   "note": "用尽卡"
+  },
+  {
+   "id": "A-R31a-c-text-0",
+   "design": "01-system.html",
+   "section": "c-text",
+   "cell": 0,
+   "path": "/showcase/components/c-text-0?theme={theme}",
+   "region": "0,120,330,73",
+   "placement": "inline",
+   "note": "ListRow 长文案"
+  },
+  {
+   "id": "A-R31a-c-text-1",
+   "design": "01-system.html",
+   "section": "c-text",
+   "cell": 1,
+   "path": "/showcase/components/c-text-1?theme={theme}",
+   "region": "0,120,280,91",
+   "placement": "inline",
+   "note": "卡片标题 2 行"
+  },
+  {
+   "id": "A-R31a-c-text-2",
+   "design": "01-system.html",
+   "section": "c-text",
+   "cell": 2,
+   "path": "/showcase/components/c-text-2?theme={theme}",
+   "region": "0,120,300,70",
+   "placement": "inline",
+   "note": "Chip 最大 160 + 全文气泡"
+  },
+  {
+   "id": "A-R31a-c-ctl-0",
+   "design": "01-system.html",
+   "section": "c-ctl",
+   "cell": 0,
+   "path": "/showcase/components/c-ctl-0?theme={theme}",
+   "region": "0,120,359,177",
+   "placement": "inline",
+   "note": "Toggle / CheckCircle / Checkbox / Radio / FilterOption / CategoryTabs"
+  }
+ ],
+ "_excluded": {
+  "c-toast-1, c-toast-2, c-toast-3, c-perm-0, c-perm-1, c-perm-2": "mini()（transform: scale 缩放示意）——缩放格不比（PLANNER §1）；Toast 位置（bottom 100 / 40）由组件测试与 A-R27-35 画面覆盖",
+  "c-confirm-2, c-layer-2, c-layer-3, c-sample-2, c-kbd-0, c-kbd-1": "Web 格（R31b）",
+  "c-layer-0, c-layer-1": "frame(290, 470) 示意比例小画框（非 390 宽 1:1），BottomSheet / FilterOption 1:1 对照改用 b2 絞り込み画板（A-R27-09）；展示页仍有这两个小节供目测",
+  "c-load-2": "流式回答气泡属 iOrbit（R21）业务界面；按钮内 loading 由 Button 覆盖",
+  "c-pay-2": "套餐对比表：App 无此组件（账户 R18 业务界面）",
+  "c-push-0, c-push-1, c-push-2": "锁屏推送卡 / 长按菜单是 iOS 系统界面；深链落地高亮属各业务页",
+  "n-nav-0, n-home-0, n-home-1, n-task-0, n-io-0, n-add-0": "导航壳（R05 / D 线）、首页（R10）、Task（R20）、iOrbit（R21）、加人 sheet（R12）——业务 / 壳，不属组件库"
+ }
+}

@@ -228,6 +228,8 @@ const integratedFeatureRoutes = [
   "/profile/preview",
   "/profile/suggestions",
   "/showcase/components",
+  // R31a 逐件对照：一个 01-system 规格格一个小节（开发包和 TestFlight）。
+  "/showcase/components/[section]",
   "/showcase/copy",
   "/showcase/icons",
   "/profile/tags",
