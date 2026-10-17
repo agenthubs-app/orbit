@@ -102,7 +102,7 @@ export function judgeEvent(input: { facts: EventAssessmentFacts; orbit?: OrbitEv
   });
   const result = scoreEvent({ facts: scoreFacts, preferences: context.preferences, types: context.types });
   const range = scoreEventRange(result, scoreFacts);
-  const view = eventScoreView(result, { eventId: input.eventId ?? "assessment", facts: scoreFacts, startsAt: facts.startsAt ?? "", title: facts.title ?? "", venue: facts.venue ?? null }, language);
+  const view = eventScoreView(result, { eventId: input.eventId ?? "assessment", facts: scoreFacts, startsAt: facts.startsAt ?? "", title: facts.title ?? "", venue: facts.venue ?? null }, language, Object.fromEntries(context.types.map((type) => [type.key, type.shortLabel])));
   const display = eventDisplayFromItems(result.items, range);
 
   // 3 维的一句话说明（规则）。

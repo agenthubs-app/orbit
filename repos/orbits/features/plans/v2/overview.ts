@@ -136,7 +136,7 @@ const CRITERION_REASON: Record<EventAssessmentScoreItem["criterion"], Record<Pla
   timeCost: { en: "Time and cost", ja: "時間とコスト", zh: "时间与成本" },
 };
 
-function factLines(criterion: EventAssessmentScoreItem["criterion"], fact: PlanEventFact, language: PlanCopyLanguage): string[] {
+function factLines(criterion: EventAssessmentScoreItem["criterion"], fact: PlanEventFact, language: PlanCopyLanguage, labels: Readonly<Record<string, string>>): string[] {
   const facts = fact.facts;
   const estimated = tri(language, { en: "estimated", ja: "推定", zh: "推测" });
   if (criterion === "timeCost") {
@@ -163,14 +163,20 @@ function factLines(criterion: EventAssessmentScoreItem["criterion"], fact: PlanE
     };
     return [tri(language, source[facts.attendeeSource])];
   }
-  const counts = Object.entries(facts.expected).filter(([, count]) => count > 0);
-  return counts.length ? counts.map(([key, count]) => `${key} · ${count}`) : [estimated];
+  // ① 会える人の適合：计划人物类型的短名 + 预计人数（同适配 chip 写法，报名者标签公开时不写「約」）；内部类型键不给用户看。
+  const exact = facts.attendeeSource === "registrants";
+  const counts = Object.entries(facts.expected).filter(([key, count]) => count > 0 && labels[key]);
+  const line = counts.map(([key, count]) => tri(language, exact
+    ? { en: `${labels[key]} ${count}`, ja: `${labels[key]} ${count}名`, zh: `${labels[key]} ${count} 位` }
+    : { en: `${labels[key]} ~${count}`, ja: `${labels[key]} 約${count}名`, zh: `${labels[key]} 约 ${count} 位` })).join(" · ");
+  return line ? [line] : [estimated];
 }
 
-export function eventScoreView(result: EventScoreResult, fact: PlanEventFact, language: PlanCopyLanguage): PlanEventOption["score"] {
+/** `labels`：人物类型 key → 短名（「CVC」「起業家」），用于「会える人の適合」的副行；没有短名的类型不写。 */
+export function eventScoreView(result: EventScoreResult, fact: PlanEventFact, language: PlanCopyLanguage, labels: Readonly<Record<string, string>> = {}): PlanEventOption["score"] {
   return {
     rubricVersion: result.rubricVersion,
-    scoreBreakdown: result.items.map((item) => ({ criterion: item.criterion, estimated: item.estimated, facts: factLines(item.criterion, fact, language), max: item.max, reason: tri(language, CRITERION_REASON[item.criterion]), score: item.score })),
+    scoreBreakdown: result.items.map((item) => ({ criterion: item.criterion, estimated: item.estimated, facts: factLines(item.criterion, fact, language, labels), max: item.max, reason: tri(language, CRITERION_REASON[item.criterion]), score: item.score })),
     total: result.total,
     verdict: result.verdict,
   };
@@ -206,7 +212,7 @@ export function eventsFor(input: OverviewInput, type: PlanV2TypeItem | null): Pl
         expectedCount: type ? event.facts.expected[type.personType.key] ?? null : null,
         fee: event.facts.fee ?? null,
         fitLabel: fitLabel(input, event),
-        score: eventScoreView(result, event, input.language),
+        score: eventScoreView(result, event, input.language, Object.fromEntries(input.types.map((item) => [item.personType.key, item.shortLabel]))),
         startsAt: event.startsAt,
         title: event.title,
         venue: event.venue,

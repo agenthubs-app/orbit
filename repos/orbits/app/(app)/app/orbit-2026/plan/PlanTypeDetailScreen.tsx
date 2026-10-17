@@ -522,7 +522,7 @@ function EventTable({ events, language, t }: { events: readonly PlanEventOption[
                           <span className={styles.e5l}>{t(CRITERIA[item.criterion])}</span>
                           <div className={styles.e5b}><i style={{ width: `${item.max ? (item.score / item.max) * 100 : 0}%` }} /></div>
                           <b>{item.score}<small> / {item.max}</small></b>
-                          {item.facts.length ? <div className={styles.e5f}>{item.facts.join(" · ")}</div> : null}
+                          {item.facts.length ? <div className={styles.e5f}>{item.facts.join(" · ")}{item.estimated ? <span className={`${k.chip} ${k.chip_apricot} ${styles.e5est}`}>{t(c.criterionEstimated)}</span> : null}</div> : null}
                         </div>
                       ))}
                     </div>

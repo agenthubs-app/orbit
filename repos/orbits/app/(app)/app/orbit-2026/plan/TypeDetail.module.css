@@ -266,6 +266,8 @@
 .e5r > b { font-family: var(--font-num); font-weight: var(--fw-heavy); text-align: right; white-space: nowrap; }
 .e5r > b small { font-size: var(--fs-tab); color: var(--ink-3); font-weight: var(--fw-bold); }
 .e5f { grid-column: 1 / -1; font-size: var(--fs-caption); color: var(--ink-3); line-height: 1.5; }
+/* 画板 ESTI：推定值后的小 chip（10px · 1/6 内边距 · 左 4 · 上移 1）。 */
+.e5f .e5est { font-size: 10px; padding: 1px 6px; margin-left: 4px; vertical-align: 1px; }
 .ringNum { font-family: var(--font-num); font-weight: var(--fw-heavy); font-size: var(--fs-meta); }
 .railEvents { padding: 6px 14px; }
 .railEvents .evRow + .evRow { border-top: 1px solid var(--line); }

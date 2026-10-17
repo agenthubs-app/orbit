@@ -527,6 +527,7 @@ export const planOverviewCopy = {
   criterionFit: { ja: "会える人の適合", zh: "能见到的人是否合适", en: "People fit", kind: "label" },
   criterionConfidence: { ja: "推定の確度", zh: "推测的可信度", en: "Confidence", kind: "label" },
   criterionTimeCost: { ja: "時間とコスト", zh: "时间与花费", en: "Time and cost", kind: "label" },
+  criterionEstimated: { ja: "推定", zh: "推测", en: "Estimated", kind: "chip" },
   criterionConnections: { ja: "既存のつながり", zh: "已有的联系", en: "Connections", kind: "label" },
   criterionFormat: { ja: "交流の形式", zh: "交流形式", en: "Format", kind: "label" },
   verdictRecommend: { ja: "おすすめ", zh: "推荐", en: "Recommended", kind: "chip" },
