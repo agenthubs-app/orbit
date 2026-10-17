@@ -141,7 +141,7 @@ test("direct workflow view models localize generated labels without changing rec
   assert.equal(
     proactiveTurnPayloadToChatView({ suggestedActions: [{}] }, "ja")
       .proposedToolIntents[0]?.reason,
-    "Orbit AIはこの操作を先に確認することを提案しています。",
+    "Orbit AI はこの操作を先に確認することを提案しています。",
   );
   assert.equal(
     conversationAiRunReferencesFor({ runId: "run:literal" }, "en")[0]?.actionLabel,

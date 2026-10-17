@@ -76,7 +76,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "• 经营者分享入境客占比翻倍后的定价与排班调整\n• 现场演示多语言菜单、二维码点单与海外支付接入\n• 圆桌讨论如何在 Google 与小红书上做好口碑\n• 自由交流时段，按品类与选址配对同行",
           en: "• Operators share pricing and staffing shifts after inbound share doubled\n• Live demos of multilingual menus, QR ordering and overseas payment\n• A roundtable on building reputation across Google and Xiaohongshu\n• Open networking, matched by cuisine category and location",
-          ja: "• 訪日客比率が倍増した後の価格・シフト調整を経営者が共有\n• 多言語メニュー、QRオーダー、海外決済導入のライブデモ\n• GoogleやRED（小紅書）での評判づくりを語るラウンドテーブル\n• 業態と立地でマッチングする自由交流の時間",
+          ja: "• 訪日客比率が倍増した後の価格・シフト調整を経営者が共有\n• 多言語メニュー、QR オーダー、海外決済導入のライブデモ\n• Google やRED（小紅書）での評判づくりを語るラウンドテーブル\n• 業態と立地でマッチングする自由交流の時間",
         },
       },
       {
@@ -103,12 +103,12 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
     title: {
       zh: "日中 AI 业务自动化 PoC 圆桌",
       en: "Japan-China AI Workflow PoC Roundtable",
-      ja: "日中AI業務自動化PoCラウンドテーブル",
+      ja: "日中 AI 業務自動化 PoC ラウンドテーブル",
     },
     summary: {
       zh: "面向日中两地团队的闭门圆桌，围绕如何把业务自动化 PoC 从演示推进到可上线的生产系统。",
       en: "A closed-door roundtable for Japan and China teams on moving workflow-automation PoCs from demo to production-ready systems.",
-      ja: "業務自動化のPoCをデモから本番運用へと進める方法を語る、日中チーム向けの少人数ラウンドテーブルです。",
+      ja: "業務自動化の PoC をデモから本番運用へと進める方法を語る、日中チーム向けの少人数ラウンドテーブルです。",
     },
     cover: "/orbit-covers/events/ai-workflow-poc-roundtable.jpg",
     theme: "ai",
@@ -121,7 +121,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "很多 AI 业务自动化项目止步于漂亮的演示。本圆桌汇集日中两地的技术与业务负责人，直面 PoC 落地的真实障碍：数据合规、模型评测、跨境交付与投资回报，交流那些真正跑通到生产的经验。",
           en: "Many AI workflow-automation projects stall at a polished demo. This roundtable convenes technical and business leads across Japan and China to face the real barriers to shipping a PoC: data compliance, model evaluation, cross-border delivery and return on investment.",
-          ja: "AI業務自動化の多くは、見栄えの良いデモで止まってしまいます。本ラウンドテーブルでは日中双方の技術・事業責任者が集まり、データコンプライアンス、モデル評価、越境デリバリー、投資対効果といったPoC実装の壁に正面から向き合います。",
+          ja: "AI 業務自動化の多くは、見栄えの良いデモで止まってしまいます。本ラウンドテーブルでは日中双方の技術・事業責任者が集まり、データコンプライアンス、モデル評価、越境デリバリー、投資対効果といった PoC 実装の壁に正面から向き合います。",
         },
       },
       {
@@ -130,7 +130,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "• 案例复盘：一个 PoC 从提案到生产的完整时间线\n• 讨论跨境数据处理与合规边界\n• 分享模型评测与效果度量的实用框架\n• 小组配对，探讨可共同推进的试点",
           en: "• Case review: one PoC's full timeline from proposal to production\n• Discussion of cross-border data handling and compliance limits\n• A practical framework for model evaluation and impact metrics\n• Small-group matching to explore pilots worth advancing together",
-          ja: "• ケース振り返り：提案から本番までPoCの全タイムライン\n• 越境データ処理とコンプライアンスの境界を議論\n• モデル評価と効果測定の実用フレームワークを共有\n• 共同で進められる試験導入を探る少人数マッチング",
+          ja: "• ケース振り返り：提案から本番まで PoC の全タイムライン\n• 越境データ処理とコンプライアンスの境界を議論\n• モデル評価と効果測定の実用フレームワークを共有\n• 共同で進められる試験導入を探る少人数マッチング",
         },
       },
       {
@@ -139,7 +139,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "• 推动 AI 自动化的产品与工程负责人\n• 评估或采购 AI 方案的业务决策者\n• 提供跨境交付能力的 AI 服务商与集成商",
           en: "• Product and engineering leads driving AI automation\n• Business decision-makers evaluating or buying AI solutions\n• AI vendors and integrators offering cross-border delivery",
-          ja: "• AI自動化を推進するプロダクト・エンジニア責任者\n• AIソリューションを評価・導入する事業側の意思決定者\n• 越境デリバリーを担うAIベンダー・インテグレーター",
+          ja: "• AI 自動化を推進するプロダクト・エンジニア責任者\n• AI ソリューションを評価・導入する事業側の意思決定者\n• 越境デリバリーを担う AI ベンダー・インテグレーター",
         },
       },
       {
@@ -157,12 +157,12 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
     title: {
       zh: "跨境电商渠道拓展交流会",
       en: "Cross-Border Ecommerce Channel Meetup",
-      ja: "越境ECチャネル開拓ミートアップ",
+      ja: "越境 EC チャネル開拓ミートアップ",
     },
     summary: {
       zh: "为跨境电商团队搭建的渠道对接会，帮助品牌在日本与亚洲市场找到合适的平台、物流与代运营伙伴。",
       en: "A channel-building meetup for cross-border ecommerce teams, helping brands find the right platforms, logistics and operations partners across Japan and Asia.",
-      ja: "越境ECチームのためのチャネル交流会。日本とアジア市場で最適なプラットフォーム、物流、運用代行のパートナーを見つけます。",
+      ja: "越境 EC チームのためのチャネル交流会。日本とアジア市場で最適なプラットフォーム、物流、運用代行のパートナーを見つけます。",
     },
     cover: "/orbit-covers/events/cross-border-ecommerce-meetup.jpg",
     theme: "ecommerce",
@@ -193,7 +193,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "• 计划或已在做跨境销售的品牌与卖家\n• 电商平台、物流与支付服务提供方\n• 代运营、选品与本地化营销团队",
           en: "• Brands and sellers planning or already running cross-border sales\n• Ecommerce platform, logistics and payment providers\n• Operations, sourcing and localization marketing teams",
-          ja: "• 越境販売を計画中または実施中のブランド・出店者\n• ECプラットフォーム、物流、決済の提供事業者\n• 運用代行、商品仕入れ、ローカライズ集客のチーム",
+          ja: "• 越境販売を計画中または実施中のブランド・出店者\n• EC プラットフォーム、物流、決済の提供事業者\n• 運用代行、商品仕入れ、ローカライズ集客のチーム",
         },
       },
       {
@@ -378,7 +378,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
     summary: {
       zh: "面向东京金融科技从业者的轻松社交酒会，连接创业团队、金融机构与投资人，激发新的合作火花。",
       en: "A relaxed social mixer for Tokyo's fintech community, connecting startups, financial institutions and investors to spark new collaborations.",
-      ja: "東京のFinTech関係者が集うカジュアルな交流ミキサー。スタートアップ、金融機関、投資家をつなぎ、新たな協業のきっかけを生みます。",
+      ja: "東京の FinTech 関係者が集うカジュアルな交流ミキサー。スタートアップ、金融機関、投資家をつなぎ、新たな協業のきっかけを生みます。",
     },
     cover: "/orbit-covers/finance.jpg",
     theme: "finance",
@@ -391,7 +391,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "东京的金融科技生态正在快速成型，但真正推动合作的往往是一次轻松的当面交流。本次 Mixer 抛开繁复议程，让创业者、金融机构与投资人在轻松氛围中相遇，找到下一个合作伙伴。",
           en: "Tokyo's fintech ecosystem is taking shape fast, but real collaboration often starts with one relaxed face-to-face conversation. This mixer drops the heavy agenda and lets founders, institutions and investors meet in an easy atmosphere and find their next partner.",
-          ja: "東京のFinTechエコシステムは急速に形になりつつありますが、協業を動かすのはたいてい一度の気軽な対面です。本ミキサーでは重厚なアジェンダを外し、創業者・金融機関・投資家がリラックスした雰囲気で出会い、次のパートナーを見つけます。",
+          ja: "東京の FinTech エコシステムは急速に形になりつつありますが、協業を動かすのはたいてい一度の気軽な対面です。本ミキサーでは重厚なアジェンダを外し、創業者・金融機関・投資家がリラックスした雰囲気で出会い、次のパートナーを見つけます。",
         },
       },
       {
@@ -409,7 +409,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "• 金融科技创业者与产品、业务负责人\n• 银行、保险与证券机构的创新与合作团队\n• 关注金融科技赛道的投资人",
           en: "• Fintech founders and product or business leads\n• Innovation and partnership teams at banks, insurers and brokerages\n• Investors focused on the fintech space",
-          ja: "• FinTech創業者およびプロダクト・事業責任者\n• 銀行・保険・証券のイノベーション/提携チーム\n• FinTech領域に注目する投資家",
+          ja: "• FinTech 創業者およびプロダクト・事業責任者\n• 銀行・保険・証券のイノベーション/提携チーム\n• FinTech 領域に注目する投資家",
         },
       },
       {
@@ -427,12 +427,12 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
     title: {
       zh: "AI Founders Night",
       en: "AI Founders Night",
-      ja: "AI創業者ナイト",
+      ja: "AI 創業者ナイト",
     },
     summary: {
       zh: "专属 AI 创业者的夜晚聚会，在坦诚氛围中交流产品、增长与融资的真实挑战，彼此扶持前行。",
       en: "An evening gathering for AI founders to trade the real challenges of product, growth and fundraising in a candid, supportive atmosphere.",
-      ja: "AI創業者だけの夜の集い。プロダクト、成長、資金調達の本音の課題を率直に語り合い、互いを支え合います。",
+      ja: "AI 創業者だけの夜の集い。プロダクト、成長、資金調達の本音の課題を率直に語り合い、互いを支え合います。",
     },
     cover: "/orbit-covers/ai.jpg",
     theme: "ai",
@@ -445,7 +445,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "创业本就孤独，AI 赛道又变化得格外快。这个夜晚只留给正在一线打拼的 AI 创业者，摘下路演的面具，坦诚聊聊真正难的那些事，也在同路人身上找到支持与灵感。",
           en: "Building a company is lonely, and the AI space moves especially fast. This night is reserved for founders in the trenches to take off the pitch mask, talk honestly about what is truly hard, and find support and inspiration among peers walking the same road.",
-          ja: "起業はもともと孤独で、AI領域は変化が特に速いものです。この夜は最前線で戦う創業者だけのために。ピッチの仮面を外し、本当に難しいことを率直に語り、同じ道を歩む仲間から支えと刺激を得ます。",
+          ja: "起業はもともと孤独で、AI 領域は変化が特に速いものです。この夜は最前線で戦う創業者だけのために。ピッチの仮面を外し、本当に難しいことを率直に語り、同じ道を歩む仲間から支えと刺激を得ます。",
         },
       },
       {
@@ -463,7 +463,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "• 正在全职投入的 AI 产品创业者\n• 早期 AI 公司的联合创始人与核心成员\n• 曾创办 AI 公司、愿意分享经验的前辈",
           en: "• Founders working full time on AI products\n• Co-founders and core members of early AI companies\n• Veterans who have built AI companies and want to share",
-          ja: "• AIプロダクトにフルタイムで取り組む創業者\n• アーリーAI企業の共同創業者・コアメンバー\n• AI企業を築き、経験を共有したい先輩起業家",
+          ja: "• AI プロダクトにフルタイムで取り組む創業者\n• アーリー AI 企業の共同創業者・コアメンバー\n• AI 企業を築き、経験を共有したい先輩起業家",
         },
       },
       {
@@ -481,12 +481,12 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
     title: {
       zh: "D2C 品牌出海沙龙",
       en: "D2C Brand Global Expansion Salon",
-      ja: "D2Cブランド海外展開サロン",
+      ja: "D2C ブランド海外展開サロン",
     },
     summary: {
       zh: "面向 D2C 品牌的出海实战沙龙，聚焦如何把国内验证过的品牌力复制到海外市场并持续增长。",
       en: "A hands-on salon for D2C brands on expanding abroad, focused on replicating domestically proven brand strength into overseas markets and sustaining growth.",
-      ja: "D2Cブランドの海外展開実践サロン。国内で検証したブランド力を海外市場に移植し、成長を持続させる方法に焦点を当てます。",
+      ja: "D2C ブランドの海外展開実践サロン。国内で検証したブランド力を海外市場に移植し、成長を持続させる方法に焦点を当てます。",
     },
     cover: "/orbit-covers/fashion.jpg",
     theme: "fashion",
@@ -499,7 +499,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "在本土跑通的 D2C 打法，换个市场未必奏效。本沙龙聚焦品牌出海的真实课题：文化落地、渠道选择、达人合作与复购运营，让已经在路上的品牌人彼此取经，少走弯路。",
           en: "A D2C playbook that works at home does not always transfer to a new market. This salon focuses on the real questions of going global: cultural fit, channel choice, creator partnerships and repeat-purchase operations, so brands already on the road can learn from each other.",
-          ja: "国内で通用したD2Cの手法が、別の市場でも効くとは限りません。本サロンでは海外展開の実課題、すなわち文化適合、チャネル選定、クリエイター連携、再購入運用に焦点を当て、すでに挑戦中のブランドが互いに学び合います。",
+          ja: "国内で通用した D2C の手法が、別の市場でも効くとは限りません。本サロンでは海外展開の実課題、すなわち文化適合、チャネル選定、クリエイター連携、再購入運用に焦点を当て、すでに挑戦中のブランドが互いに学び合います。",
         },
       },
       {
@@ -517,7 +517,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "• 正在出海或计划出海的 D2C 品牌创始人\n• 负责海外市场的品牌与增长负责人\n• 提供本地化、达人与履约支持的服务方",
           en: "• D2C brand founders expanding abroad or planning to\n• Brand and growth leads responsible for overseas markets\n• Providers of localization, creator and fulfilment support",
-          ja: "• 海外展開中または計画中のD2Cブランド創業者\n• 海外市場を担うブランド・成長責任者\n• ローカライズ、クリエイター、物流支援を提供する事業者",
+          ja: "• 海外展開中または計画中の D2C ブランド創業者\n• 海外市場を担うブランド・成長責任者\n• ローカライズ、クリエイター、物流支援を提供する事業者",
         },
       },
       {
@@ -643,12 +643,12 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
     title: {
       zh: "东京 AI 落地伙伴对接会",
       en: "Tokyo AI Implementation Partner Meetup",
-      ja: "東京AI実装パートナー交流会",
+      ja: "東京 AI 実装パートナー交流会",
     },
     summary: {
       zh: "为需要 AI 落地的企业与能交付的技术伙伴牵线的对接会，把需求方与实施方直接放到一张桌上。",
       en: "A meetup pairing companies that need AI implementation with technical partners who can deliver, putting demand and delivery at the same table.",
-      ja: "AI実装を必要とする企業と、実行できる技術パートナーをつなぐ交流会。ニーズ側と実装側を同じテーブルに置きます。",
+      ja: "AI 実装を必要とする企業と、実行できる技術パートナーをつなぐ交流会。ニーズ側と実装側を同じテーブルに置きます。",
     },
     cover: "/orbit-covers/events/tokyo-ai-partner-meetup.jpg",
     theme: "ai",
@@ -661,7 +661,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "想用 AI 的企业很多，能真正交付的伙伴不好找。本次对接会专门解决这个错配：让有明确落地需求的企业，与具备工程与行业经验的实施伙伴直接对话，把想法推进到可执行的项目。",
           en: "Many companies want to use AI, but partners who can truly deliver are hard to find. This meetup exists to fix that mismatch: it lets companies with concrete implementation needs talk directly with partners who have the engineering and domain experience to turn ideas into executable projects.",
-          ja: "AIを使いたい企業は多いものの、本当に実装できるパートナーは見つけにくいものです。本交流会はこのミスマッチの解消を目的とし、明確な実装ニーズを持つ企業と、工学・業界経験を備えたパートナーが直接対話し、アイデアを実行可能な案件へと進めます。",
+          ja: "AI を使いたい企業は多いものの、本当に実装できるパートナーは見つけにくいものです。本交流会はこのミスマッチの解消を目的とし、明確な実装ニーズを持つ企業と、工学・業界経験を備えたパートナーが直接対話し、アイデアを実行可能な案件へと進めます。",
         },
       },
       {
@@ -670,7 +670,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "• 需求方简述业务场景与期望的 AI 成果\n• 技术伙伴介绍能力范围与过往交付案例\n• 讨论落地路径、周期与协作方式\n• 定向配对，锁定可立即启动的合作",
           en: "• Demand-side firms outline business scenarios and desired AI outcomes\n• Technical partners present their scope and past delivery cases\n• Discussion of implementation paths, timelines and ways of working\n• Targeted matching to lock in partnerships ready to start",
-          ja: "• ニーズ側が業務シナリオと期待するAI成果を説明\n• 技術パートナーが対応範囲と過去の実装事例を紹介\n• 実装の道筋、期間、協業の進め方を議論\n• すぐ始められる連携を固める狙い撃ちマッチング",
+          ja: "• ニーズ側が業務シナリオと期待する AI 成果を説明\n• 技術パートナーが対応範囲と過去の実装事例を紹介\n• 実装の道筋、期間、協業の進め方を議論\n• すぐ始められる連携を固める狙い撃ちマッチング",
         },
       },
       {
@@ -679,7 +679,7 @@ export const EVENT_CONTENT: Record<string, OrbitEventContent> = {
         body: {
           zh: "• 有明确 AI 落地需求的企业业务与技术负责人\n• 具备交付能力的 AI 开发商与集成商\n• 提供数据、云与咨询支持的合作方",
           en: "• Business and technical leads with concrete AI implementation needs\n• AI developers and integrators with real delivery capability\n• Partners offering data, cloud and advisory support",
-          ja: "• 明確なAI実装ニーズを持つ事業・技術責任者\n• 実装力を備えたAI開発会社・インテグレーター\n• データ、クラウド、コンサル支援を提供するパートナー",
+          ja: "• 明確な AI 実装ニーズを持つ事業・技術責任者\n• 実装力を備えた AI 開発会社・インテグレーター\n• データ、クラウド、コンサル支援を提供するパートナー",
         },
       },
       {

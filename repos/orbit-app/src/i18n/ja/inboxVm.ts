@@ -53,7 +53,7 @@ export const inboxVm = {
   "inboxVm.proactiveTitle": "準備が必要な関係通知があります",
   "inboxVm.tomorrowContact": "明日 {clock} に{name}と会う",
   "inboxVm.prepare": "準備が必要",
-  "inboxVm.alertsSafety": "これらは通知のみです。プッシュ通知、メール、SMSは送信しません。",
+  "inboxVm.alertsSafety": "これらは通知のみです。プッシュ通知、メール、SMS は送信しません。",
   "inboxVm.alertsOne": "通知 1件",
   "inboxVm.createdSummary": "{name}宛て · 下書きプレビュー",
   "inboxVm.recipientRequired": "宛先を入力してください。",

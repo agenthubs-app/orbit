@@ -33,7 +33,7 @@ const sourceLabels: Record<
     event_import: "イベントから追加",
     external_contacts: "連絡先から追加",
     manual: "手動メモ",
-    qr_scan: "QRコード交換",
+    qr_scan: "QR コード交換",
     referral: "紹介",
   },
 };
@@ -98,7 +98,7 @@ const relationshipTokens: Record<OrbitLanguage, Record<string, string>> = {
   ja: {
     commercial_opportunity: "商談機会",
     community_context: "コミュニティでの関係",
-    cross_border_ecommerce: "越境EC",
+    cross_border_ecommerce: "越境 EC",
     education_training: "教育・研修",
     knowledge_exchange: "知識交流",
     legal_accounting: "法務・会計",
@@ -151,7 +151,7 @@ export function localizeContactSourceLabel(input: {
   }
 
   if (input.language === "ja") {
-    return `${counterpart}とのQRコード交換`;
+    return `${counterpart}との QR コード交換`;
   }
 
   return `QR scan with ${counterpart}`;

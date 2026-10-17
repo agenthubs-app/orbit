@@ -272,7 +272,7 @@ function batchView(stage: "review" | "done", completed = false, serverMerged = f
     attributionDecisions: {}, autoCount: serverMerged ? 0 : 1, autoPending: false, autoRunning: false, batchId: "b1", cards,
     detail: { batch: { createdAt: "2026-10-07T10:00:00Z" }, items: finalItems } as never,
     drafts, duplicates: new Set(done ? [] : ["c-dup"]), finished: done, loadFailed: false,
-    matches: done ? {} : { "c-dup": { address: "", contactId: "p9", displayName: "高橋 美咲", email: "misaki@aoba.example", identical: false, matchedOn: ["email"], organization: "青葉VC", phone: "", role: "パートナー" } },
+    matches: done ? {} : { "c-dup": { address: "", contactId: "p9", displayName: "高橋 美咲", email: "misaki@aoba.example", identical: false, matchedOn: ["email"], organization: "青葉 VC", phone: "", role: "パートナー" } },
     mergedCount: done && !serverMerged ? 1 : 0, missing: 0, pending, queue: pending, reviewing: true, settledCount: 5, stage: "review", status: completed ? "completed" : "ready_for_review", uploadFailed: false, userCount: done && !serverMerged ? 1 : 0,
   });
 }
@@ -283,7 +283,7 @@ test("まとめて確認 (b9 ④ Web 统一): three tiles, 重複 as checked row
   await settles(page, '[data-review-tile="duplicate"] b', 1);
   await settles(page, '[data-review-tile="review"] b', 1);
   await settles(page, '[data-review-tile="asIs"] b', 2); // 1 already added + 1 held for 会った場所
-  assert.match(await page.locator('[data-review-duplicate="c-dup"]').innerText(), /高橋 美咲 · 青葉VC[\s\S]*高橋 美咲 · 青葉ベンチャーズ/);
+  assert.match(await page.locator('[data-review-duplicate="c-dup"]').innerText(), /高橋 美咲 · 青葉 VC[\s\S]*高橋 美咲 · 青葉ベンチャーズ/);
   assert.equal(await page.locator('[data-review-duplicate="c-dup"] [role="checkbox"]').getAttribute("aria-checked"), "true");
   await page.locator('[data-review-group="orgSuffix"]').waitFor();
   await page.locator("[data-scan-met]").getByRole("button", { name: "付けない" }).click();

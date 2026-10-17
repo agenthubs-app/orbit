@@ -131,7 +131,7 @@ function widthIssues(lang, text) {
     if (/[,.](?=\s|$)/.test(text.replace(/[A-Za-z0-9.]+\.[A-Za-z0-9]+/g, ""))) issues.push("句读点用「、」「。」");
     if (/\d\s+(月|日|年)/.test(text)) issues.push("日期数字与「月日年」之间不加空格");
     if (/[～~]/.test(text)) issues.push("范围用「〜」（U+301C）");
-    if (/[A-Za-z][\u3040-\u30ff\u4e00-\u9fff]|[\u3040-\u30ff\u4e00-\u9fff][A-Za-z]/.test(text.replace(/To-do/g, "").replace(/\{[A-Za-z0-9_]+\}/g, "").replace(/([\u30a0-\u30ff])[A-Z](?![A-Za-z])/g, "$1"))) issues.push("拉丁字母单词与日文之间加半角空格");
+    if (/[A-Za-z][\u3040-\u30fa\u30fc-\u30ff\u4e00-\u9fff]|[\u3040-\u30fa\u30fc-\u30ff\u4e00-\u9fff][A-Za-z]/.test(text.replace(/To-do/g, "").replace(/\{[A-Za-z0-9_]+\}/g, "").replace(/([\u30a0-\u30ff])[A-Z](?![A-Za-z])/g, "$1"))) issues.push("拉丁字母单词与日文之间加半角空格");
   }
   if (lang === "zh") {
     if (/[一-鿿][,?!:;]|[,?!:;][一-鿿]/.test(text)) issues.push("中文标点用全角");

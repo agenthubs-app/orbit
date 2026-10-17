@@ -10,7 +10,7 @@ export const todayVm = {
   "todayVm.cancelled": "キャンセル済み",
   "todayVm.unplanned": "日付未設定",
   "todayVm.sourceManual": "手動作成",
-  "todayVm.sourceAi": "IORBITで確認",
+  "todayVm.sourceAi": "IORBIT で確認",
   "todayVm.sourceContact": "つながり",
   "todayVm.sourceEvent": "イベント",
   "todayVm.sourceInbox": "受信トレイ",

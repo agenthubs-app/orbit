@@ -22,7 +22,7 @@ test("contact source labels use exactly the selected system language", () => {
 
   assert.equal(localizeContactSourceLabel({ ...base, language: "zh" }), "二维码交换记录：佐藤健一");
   assert.equal(localizeContactSourceLabel({ ...base, language: "en" }), "QR scan with 佐藤健一");
-  assert.equal(localizeContactSourceLabel({ ...base, language: "ja" }), "佐藤健一とのQRコード交換");
+  assert.equal(localizeContactSourceLabel({ ...base, language: "ja" }), "佐藤健一との QR コード交換");
 });
 
 test("legacy multilingual summaries select one segment instead of concatenating", () => {

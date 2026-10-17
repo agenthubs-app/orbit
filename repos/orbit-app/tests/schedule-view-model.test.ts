@@ -285,7 +285,7 @@ test("scheduleToTimelineView keeps stale today followups from hiding upcoming ev
           id: "event_signup_02",
           sourceMetadata: {
             label:
-              "東京AI実装パートナー申込会 / 东京 AI 落地伙伴报名会 / Tokyo AI Implementation Partner Registration Meetup"
+              "東京 AI 実装パートナー申込会 / 东京 AI 落地伙伴报名会 / Tokyo AI Implementation Partner Registration Meetup"
           },
           startsAt: "2026-08-04T14:00:00+09:00",
           status: "confirmed",

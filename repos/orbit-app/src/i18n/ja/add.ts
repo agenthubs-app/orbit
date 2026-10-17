@@ -576,7 +576,7 @@ export const add = {
   "add.import.permTitle": "連絡先から\n人脈を取り込みます",
   "add.import.permSub": "このあと iPhone の確認が表示されます",
   "add.import.perm1": "読み取るのは 氏名・会社・役職・電話・メール だけ",
-  "add.import.perm2": "取り込む人は次の画面で選べます（全員でなくてOK）",
+  "add.import.perm2": "取り込む人は次の画面で選べます（全員でなくて OK）",
   "add.import.perm3": "Orbit から相手に連絡することはありません",
   "add.import.perm4": "iPhone の設定からいつでもオフにできます",
   "add.import.googleTitle": "Google 連絡先を使っている",

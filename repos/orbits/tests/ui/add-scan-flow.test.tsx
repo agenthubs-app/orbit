@@ -22,7 +22,7 @@ const FAKE_SERVER = `
   const server = window.fakeServer = {
     contacts: [
       { id: "p-same", displayName: "高山 亮", organization: "ミライ精機株式会社", role: "部長", email: "ryo@mirai.example", phone: "", address: "" },
-      { id: "p-sim", displayName: "高橋 美咲", organization: "青葉VC", role: "パートナー", email: "misaki@aoba.example", phone: "", address: "" },
+      { id: "p-sim", displayName: "高橋 美咲", organization: "青葉 VC", role: "パートナー", email: "misaki@aoba.example", phone: "", address: "" },
     ],
     batch: null, items: [], polls: 0, log: [],
   };

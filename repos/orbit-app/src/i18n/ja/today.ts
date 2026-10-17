@@ -8,7 +8,7 @@ export const today = {
   "today.emptySchedule": "今日の予定はありません",
   "today.all": "すべて",
   "today.tasks": "タスク",
-  "today.suggestions": "Orbitの提案",
+  "today.suggestions": "Orbit の提案",
   "today.addNamed": "タスクに追加：{title}",
   "today.adding": "追加中",
   "today.add": "追加",

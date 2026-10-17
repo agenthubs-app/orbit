@@ -98,7 +98,7 @@ export const OFFER_OPTIONS: readonly Copy[] = [
   { zh: "媒体与品牌曝光", en: "Media & brand exposure", ja: "メディア・ブランド露出" },
   { zh: "活动与社群资源", en: "Events & community access", ja: "イベント・コミュニティ" },
   { zh: "法务财税咨询", en: "Legal, tax & finance advice", ja: "法務・税務・財務の相談" },
-  { zh: "AI 落地经验", en: "Hands-on AI adoption", ja: "AI導入の実務経験" },
+  { zh: "AI 落地经验", en: "Hands-on AI adoption", ja: "AI 導入の実務経験" },
   { zh: "技术开发能力", en: "Engineering capacity", ja: "技術開発力" },
   { zh: "设计与创意", en: "Design & creative", ja: "デザイン・クリエイティブ" },
   { zh: "销售与商务拓展", en: "Sales & business development", ja: "営業・事業開発" },
@@ -132,7 +132,7 @@ export const SEEK_OPTIONS: readonly Copy[] = [
 ];
 
 export const TOPIC_OPTIONS: readonly Copy[] = [
-  { zh: "生成式 AI", en: "Generative AI", ja: "生成AI" },
+  { zh: "生成式 AI", en: "Generative AI", ja: "生成 AI" },
   { zh: "创业与融资", en: "Startups & fundraising", ja: "起業・資金調達" },
   { zh: "出海与跨境", en: "Going global", ja: "海外進出・越境" },
   { zh: "日本市场", en: "Japan market", ja: "日本市場" },
@@ -146,7 +146,7 @@ export const TOPIC_OPTIONS: readonly Copy[] = [
   { zh: "医疗健康", en: "Healthcare", ja: "医療・ヘルスケア" },
   { zh: "Web3", en: "Web3", ja: "Web3" },
   { zh: "团队与管理", en: "Leadership & teams", ja: "チーム・マネジメント" },
-  { zh: "跨境电商", en: "Cross-border e-commerce", ja: "越境EC" },
+  { zh: "跨境电商", en: "Cross-border e-commerce", ja: "越境 EC" },
   { zh: "机器人与硬件", en: "Robotics & hardware", ja: "ロボット・ハードウェア" },
   { zh: "新能源", en: "New energy", ja: "新エネルギー" },
   { zh: "内容与媒体", en: "Content & media", ja: "コンテンツ・メディア" },

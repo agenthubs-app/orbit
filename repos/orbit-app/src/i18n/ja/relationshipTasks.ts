@@ -1,5 +1,5 @@
 export const relationshipTasks = {
-  "relationshipTasks.signIn": "IORBITを開くにはログインしてください。",
+  "relationshipTasks.signIn": "IORBIT を開くにはログインしてください。",
   "relationshipTasks.selectFirst": "閲覧可能な連絡先または関連タスクを選択してください。",
   "relationshipTasks.confirmNext": "次のアクションを確認",
   "relationshipTasks.choose": "連絡先またはタスクを選択",
@@ -11,8 +11,8 @@ export const relationshipTasks = {
   "relationshipTasks.selected": "選択済み：{label}",
   "relationshipTasks.emptyOptions": "選択できる連絡先がありません。先に連絡先を追加してください。",
   "relationshipTasks.cancelSelection": "選択をキャンセル",
-  "relationshipTasks.modifyBeforeSend": "IORBITで内容を編集できます。送信するまで生成されません。",
-  "relationshipTasks.aiDraft": "AIで下書き",
+  "relationshipTasks.modifyBeforeSend": "IORBIT で内容を編集できます。送信するまで生成されません。",
+  "relationshipTasks.aiDraft": "AI で下書き",
   "relationshipTasks.draftMessage": "連絡メッセージを下書き",
   "relationshipTasks.generateCandidates": "候補を生成",
   "relationshipTasks.generateReminderCandidate": "リマインダー候補を生成",

@@ -30,7 +30,7 @@ export const ai = {
   "ai.sendFailed": "送信できませんでした。質問は保持されています。もう一度お試しください。",
   "ai.deleteUnconfirmed": "削除を確認できませんでした。もう一度お試しください。",
   "ai.message": "メッセージ",
-  "ai.askPlaceholder": "IORBITに質問",
+  "ai.askPlaceholder": "IORBIT に質問",
   "ai.moreActions": "その他の操作",
   "ai.closeMenu": "メニューを閉じる",
   "ai.closeHistory": "履歴を閉じる",

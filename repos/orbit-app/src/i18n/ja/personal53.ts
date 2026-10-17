@@ -5,7 +5,7 @@ export const personal53 = {
   "personal53.minutes30": "30分",
   "personal53.minutes60": "1時間",
   "personal53.minutes120": "2時間",
-  "personal53.orbitOnly": "Orbitのみに保存され、外部カレンダーには書き込まれません",
+  "personal53.orbitOnly": "Orbit のみに保存され、外部カレンダーには書き込まれません",
   "personal53.save": "保存",
   "personal53.cancel": "キャンセル",
   "personal53.online": "オンライン",

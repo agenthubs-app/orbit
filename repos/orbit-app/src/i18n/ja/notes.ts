@@ -100,7 +100,7 @@ export const notes = {
   "notes.sourceTasksStale": "関連タスクは端末に保存された古い内容です。オンラインで更新してください。",
   "notes.sourceTasksUnavailable": "関連タスクを同期できません",
   "notes.openSourceTask": "元のタスク「{title}」を開く",
-  "notes.aiSummary": "IORBITで整理",
+  "notes.aiSummary": "IORBIT で整理",
   "notes.signIn": "関連メモを読むにはログインしてください。",
   "notes.linkedReadFailed": "関連メモを読み込めません。もう一度お試しください。",
   "notes.linkedInvalid": "関連メモの内容を確認できません。もう一度お試しください。",

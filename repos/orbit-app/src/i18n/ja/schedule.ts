@@ -52,7 +52,7 @@ export const schedule = {
   "schedule.conflictUnavailable": "今は競合を解決できません。同期してからもう一度お試しください。",
   "schedule.confirmDelete": "個人予定の削除を確認",
   "schedule.keep": "予定を残す",
-  "schedule.editorHint": "時刻には {timeZone} を使用します。この予定はOrbit内にのみ保存され、外部カレンダーには追加されません。",
+  "schedule.editorHint": "時刻には {timeZone} を使用します。この予定は Orbit 内にのみ保存され、外部カレンダーには追加されません。",
   "schedule.draftZone": "未保存の下書きは引き続き {timeZone} として解釈されます。",
   "schedule.deletePersonal": "個人予定を削除",
   "schedule.previewEyebrow": "スケジュール",

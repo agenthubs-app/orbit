@@ -19,6 +19,6 @@ export const personal60 = {
   "personal60.scopeRequired": "今回のみ、または繰り返し予定全体を選んでください。",
   "personal60.seriesRules": "通知と繰り返しの設定は予定全体に適用されます。",
   "personal60.monthlySkip": "開始日と同じ日に繰り返します。その日がない月はスキップします。",
-  "personal60.localOnly": "Orbitにのみ保存され、システムのカレンダーには追加されません。",
+  "personal60.localOnly": "Orbit にのみ保存され、システムのカレンダーには追加されません。",
   "personal60.chooseBeforeEditing": "下書きを保持または破棄してから予定全体を開いてください。",
 } as const;

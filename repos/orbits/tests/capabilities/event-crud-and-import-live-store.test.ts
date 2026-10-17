@@ -667,7 +667,7 @@ test("live event list hides legacy fixture and diagnostic records by default", a
     {
       ...liveRecord,
       id: "event:generated:tokyo-ai",
-      title: "東京AI実装パートナー申込会",
+      title: "東京 AI 実装パートナー申込会",
       source: {
         ...liveRecord.source,
         provider: "generated-relationship-fixtures",
