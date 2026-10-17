@@ -693,7 +693,7 @@ document.addEventListener('click', e => { const b = e.target.closest('.nst-next'
 
 /* 人脈（⑨ A6 同款）：信息浓度三点 + 来源 chip */
 const dn = (d, cls = '') => `<span class="dn d${d} ${cls}" title="情報の濃さ"><i></i><i></i><i></i></span>`;
-const SRC = { meishi: ['scan', '名刺', ''], li: ['link', 'LinkedIn', ''], tel: ['phone', '連絡先', ''], hand: ['pen', '手入力', ''], self: ['check', '本人入力', 'teal'] };
+const SRC = { meishi: ['scan', '名刺', ''], li: ['link', 'LinkedIn', ''], tel: ['phone', '連絡先', ''], ev: ['calendar', 'イベント', ''], hand: ['pen', '手入力', ''], self: ['check', '本人入力', 'teal'] };
 const src = k => `<span class="chip src ${SRC[k][2]}">${ic(SRC[k][0])}${SRC[k][1]}</span>`;
 const NP = [
   { n: '高橋 美咲', i: '高', c: 'c2', co: '青葉ベンチャーズ', role: 'パートナー', d: 3, s: 'meishi', rel: 'VC パートナー · 話した', last: '2日前' },
@@ -707,7 +707,7 @@ const NP = [
   { n: '石川 陽介', i: '石', c: 'c5', co: '石川デザイン事務所', role: '代表', d: 1, s: 'hand', rel: '', last: '10/3 登録' },
   { n: '大野 真司', i: '大', c: 'c4', co: '大野商店', role: '店主', d: 2, s: 'meishi', rel: '', last: '10/5 名刺交換' },
 ];
-/* 口径：286 = 身元だけ 74 + 名刺レベル 171 + 関係まで 41；出どころ 名刺 212 · 連絡先 41 · LinkedIn 22 · 手入力 8 · 本人入力 3；few 5 = 伊藤・高橋・鈴木・大野・石川 */
+/* 口径：286 = 身元だけ 74 + 名刺レベル 171 + 関係まで 41；出どころ 名刺 204 · 連絡先 41 · LinkedIn 22 · イベント 8 · 手入力 8 · 本人入力 3；few 5 = 伊藤・高橋・鈴木・大野・石川（2026-10-18 用户定 §B-1：删「情報が少ない人」页签，分类页签 = すべて / 目標に関係 / 要フォロー（有未完成 To-do 关联此人）；出どころ 加「イベント」，汎用 CSV 算手入力） */
 const NET_MANY = [NP[0], NP[2], NP[1], NP[4], NP[3], NP[7], NP[5], NP[6], NP[8]];
 const NET_FEW = [NP[2], NP[0], NP[3], NP[9], NP[8]];
 const DOORS = [
@@ -824,7 +824,7 @@ function network(s) {
       <div class="faded list">${nrow(NP[0])}${nrow(NP[4])}</div>
       <div class="lbl" style="margin-top:8px;line-height:1.6">右の 3 つの点は<b style="color:var(--ink-2)">情報の濃さ</b>。少ない人は、毎日ひとつの質問で少しずつ補えます。</div></div>`;
   if (s === 'few') return head + `<div class="search">${ic('search', 'sm')}名前・会社・「投資家」などで検索<span style="margin-left:auto;display:inline-flex">${ic('sliders', 'sm')}</span></div>
-    <div class="row k-cats" style="gap:6px;margin-top:12px;overflow:hidden"><span class="cat on">すべて <small>5</small></span><span class="cat">情報が少ない人 <small>1</small></span><span class="cat">目標に関係 <small>2</small></span></div>
+    <div class="row k-cats" style="gap:6px;margin-top:12px;overflow:hidden"><span class="cat on">すべて <small>5</small></span><span class="cat">目標に関係 <small>2</small></span><span class="cat">要フォロー <small>0</small></span></div>
     <div class="card k-addmore" style="margin-top:12px;background:linear-gradient(135deg,var(--mac-pink),var(--surface) 70%)"><div class="row" style="gap:10px"><span class="emo sm pink">🤝</span><div style="flex:1;min-width:0"><b style="font-size:13px">仲間を招待すると、相手の情報が満タンで届きます</b><div class="lbl">相手が自分で入力 · 更新も自動</div></div><button class="btn sm">招待</button></div></div>
     <div class="card" style="padding:6px 16px"><div class="list">${NET_FEW.map(p => nrow(p)).join('')}</div></div>
     <div class="card flat row k-anal" style="gap:10px;padding:12px 14px"><span class="emo sm lav">📊</span><div style="flex:1;min-width:0"><b style="font-size:13px">人脈分析</b><div class="lbl">10人から使えます · あと 5人</div></div><span class="muted">${ic('right', 'sm')}</span></div>`;
@@ -834,7 +834,7 @@ function network(s) {
       <div class="stack3"><i style="flex:74;background:var(--plum-300)"></i><i style="flex:171;background:var(--plum-500)"></i><i style="flex:41;background:var(--plum-700)"></i></div>
       <div class="grid3" style="margin-top:10px;gap:6px;font-size:11px">${[[1, '身元だけ', 74], [2, '名刺レベル', 171], [3, '関係まで', 41]].map(([d, l, v]) => `<div>${dn(d)}<div class="muted" style="margin-top:3px">${l}</div><b style="font-family:var(--font-num);font-size:15px">${v}</b></div>`).join('')}</div>
       <div class="mac lav row" style="gap:8px;margin-top:12px;padding:10px 12px;font-size:12px"><span>💬</span><span style="flex:1"><b>1日1問</b>で少しずつ補えます · ホームの「判断待ち」に出ます</span></div></div>
-    <div class="row k-cats" style="gap:6px;margin-top:14px;overflow:hidden"><span class="cat on">すべて <small>286</small></span><span class="cat">情報が少ない人 <small>74</small></span><span class="cat">目標に関係 <small>9</small></span><span class="cat">要フォロー</span></div>
+    <div class="row k-cats" style="gap:6px;margin-top:14px;overflow:hidden"><span class="cat on">すべて <small>286</small></span><span class="cat">目標に関係 <small>9</small></span><span class="cat">要フォロー <small>12</small></span></div>
     <div class="card" style="margin-top:12px;padding:6px 16px"><div class="list">${NET_MANY.slice(0, 8).map(p => nrow(p)).join('')}</div></div>`;
 }
 
@@ -1110,8 +1110,8 @@ function network(s, opts = {}) {
     <div class="card span5 k-wdens" data-why-box><div class="card-h"><h3>情報の濃さ</h3><span class="why">?</span></div><div class="why-body" hidden style="margin:0 0 8px">●○○ 氏名・会社などの身元だけ / ●●○ 名刺レベル（連絡先と、いつ・どこで会ったか）/ ●●● 関係まで（あなたの目標との関係・やりとり）。本人入力は最初から ●●●。</div>
       <div class="stack3">${many ? '<i style="flex:74;background:var(--plum-300)"></i><i style="flex:171;background:var(--plum-500)"></i><i style="flex:41;background:var(--plum-700)"></i>' : '<i style="flex:1;background:var(--plum-300)"></i><i style="flex:2;background:var(--plum-500)"></i><i style="flex:2;background:var(--plum-700)"></i>'}</div>
       <div class="grid3" style="margin-top:12px;font-size:12px">${[[1, '身元だけ', many ? 74 : 1], [2, '名刺レベル', many ? 171 : 2], [3, '関係まで', many ? 41 : 2]].map(([d, l, v]) => `<div style="min-width:0"><div class="row" style="gap:6px">${dn(d)}<span class="muted" style="white-space:nowrap">${l}</span></div><b style="font-family:var(--font-num);font-size:16px;display:block;margin-top:2px">${v}</b></div>`).join('')}</div></div>
-    <div class="card span3"><div class="lbl">出どころ</div><div style="margin-top:6px;display:grid;gap:5px;font-size:12px">${(many ? [['meishi', 212], ['tel', 41], ['li', 22], ['hand', 8], ['self', 3]] : [['meishi', 4], ['hand', 1]]).map(([k, v]) => `<div class="row between">${src(k)}<b style="font-family:var(--font-num)">${v}</b></div>`).join('')}</div></div>
-    <div class="card span12"><div class="row between" style="margin-bottom:12px"><div class="row k-wcats" style="gap:6px"><span class="cat on">すべて <small>${many ? 286 : 5}</small></span><span class="cat">情報が少ない人 <small>${many ? 74 : 1}</small></span><span class="cat">目標に関係 <small>${many ? 9 : 2}</small></span><span class="cat">要フォロー <small>${many ? 12 : 0}</small></span></div><div class="row" style="gap:8px"><div class="input" style="width:240px;height:38px">${ic('search', 'sm')}名前・会社・「投資家」</div><button class="lbtn">${ic('sliders', 'sm')}</button></div></div>
+    <div class="card span3"><div class="lbl">出どころ</div><div style="margin-top:6px;display:grid;gap:5px;font-size:12px">${(many ? [['meishi', 204], ['tel', 41], ['li', 22], ['ev', 8], ['hand', 8], ['self', 3]] : [['meishi', 4], ['hand', 1]]).map(([k, v]) => `<div class="row between">${src(k)}<b style="font-family:var(--font-num)">${v}</b></div>`).join('')}</div></div>
+    <div class="card span12"><div class="row between" style="margin-bottom:12px"><div class="row k-wcats" style="gap:6px"><span class="cat on">すべて <small>${many ? 286 : 5}</small></span><span class="cat">目標に関係 <small>${many ? 9 : 2}</small></span><span class="cat">要フォロー <small>${many ? 12 : 0}</small></span></div><div class="row" style="gap:8px"><div class="input" style="width:240px;height:38px">${ic('search', 'sm')}名前・会社・「投資家」</div><button class="lbtn">${ic('sliders', 'sm')}</button></div></div>
       <table class="table k-wtable"><thead><tr><th>名前</th><th>会社・役職</th><th>濃さ</th><th>出どころ</th><th>目標との関係</th><th>最終接点</th></tr></thead><tbody>${L.map((p, k) => wrow(p, opts.sel === k)).join('')}</tbody></table>
       ${many ? `<div class="row" style="justify-content:center;margin-top:12px"><button class="btn sm">さらに表示（${286 - L.length}人）</button></div>` : ''}</div></div>`;
 }
@@ -1425,7 +1425,7 @@ const CAPS = [['home', 'ホーム', '今日やること・判断待ちを整理�
 /* ===================== プラン v2 共通（原 ⑨ B3–B5 并入；数据与计分与 App / Web 相同） ===================== */
 const foot = h => `<div class="foot">${h}</div>`;
 const dn = (d, cls = '') => `<span class="dn d${d} ${cls}" title="情報の濃さ"><i></i><i></i><i></i></span>`;
-const SRC = { meishi: ['scan', '名刺', ''], li: ['link', 'LinkedIn', ''], tel: ['phone', '連絡先', ''], hand: ['pen', '手入力', ''], self: ['check', '本人入力', 'teal'] };
+const SRC = { meishi: ['scan', '名刺', ''], li: ['link', 'LinkedIn', ''], tel: ['phone', '連絡先', ''], ev: ['calendar', 'イベント', ''], hand: ['pen', '手入力', ''], self: ['check', '本人入力', 'teal'] };
 const src = k => `<span class="chip ${SRC[k][2]}">${ic(SRC[k][0])}${SRC[k][1]}</span>`;
 const draftNote = `<div class="lbl center" style="margin-top:2px">${ic('mail', 'sm').replace('class="i sm"', 'class="i sm" style="width:13px;height:13px;vertical-align:-2px"')} 送信はしません · 送信はあなたが行います</div>`;
 const toast = (msg, sub, o = {}) => `<div class="toast pos ${o.notab === false ? '' : 'notab'} ${o.cls || ''}" ${o.style ? `style="${o.style}"` : ''}><span class="tk">${o.icon ? ic(o.icon) : ic('check')}</span><span class="tmsg">${msg}${sub ? `<small>${sub}</small>` : ''}</span>${o.act === false ? '' : `<button class="undo">${o.act || '<span class="lic undo sm"></span>元に戻す'}</button>`}${o.bar === false ? '' : '<i class="tbar"></i>'}</div>`;
@@ -1952,8 +1952,8 @@ const wStream = () => wHead('今週のまとめ') + wChat(histList('many'), `<di
   <div class="bubble me">山本さんへの再送メールも下書きして</div>
   <div class="thinking"><i></i>山本さんとの過去のやりとり 3件を参照中</div>
   <div class="bubble ai">承知しました。前回お送りした資料に、9月時点の KPI を加えた形でご案内します。<br><br>山本様<br>いつもお世話になっております。ミナトリンクの佐藤です。先日ご依頼いただいた資料を<span class="caret"></span></div>`, 'stop');
-/* 审计：人脈背景与 web.html 人脈 同构（顶栏 検索 / 人脈を追加；表格 濃さ・出どころ 列；筛选条件显示在页签行） */
-const wCtxPage = () => mainhead('人脈', '286人 · 絞り込み中 12人', `<button class="rbtn">${ic('search')}</button>`, `<button class="btn accent">${ic('plus', 'sm')}人脈を追加</button>`) + `<div class="wgrid"><div class="card span12"><div class="row between" style="margin-bottom:12px"><div class="row" style="gap:6px"><span class="cat on">すべて <small>286</small></span><span class="cat">情報が少ない人 <small>74</small></span><span class="cat">目標に関係 <small>9</small></span><span class="cat">要フォロー <small>12</small></span><span class="chip lav" style="padding:6px 12px">${ic('filter', 'sm')}業界：製造業 · 12人 ✕</span></div><button class="lbtn">${ic('sliders', 'sm')}</button></div><table class="table"><thead><tr><th>名前</th><th>会社・役職</th><th>濃さ</th><th>出どころ</th><th>目標との関係</th><th>最終接点</th></tr></thead><tbody>
+/* 审计：人脈背景与 web.html 人脈 同构（顶栏 検索 / 人脈を追加；表格 濃さ・出どころ 列；筛选条件显示在页签行；2026-10-18 用户定 §B-1：删「情報が少ない人」页签） */
+const wCtxPage = () => mainhead('人脈', '286人 · 絞り込み中 12人', `<button class="rbtn">${ic('search')}</button>`, `<button class="btn accent">${ic('plus', 'sm')}人脈を追加</button>`) + `<div class="wgrid"><div class="card span12"><div class="row between" style="margin-bottom:12px"><div class="row" style="gap:6px"><span class="cat on">すべて <small>286</small></span><span class="cat">目標に関係 <small>9</small></span><span class="cat">要フォロー <small>12</small></span><span class="chip lav" style="padding:6px 12px">${ic('filter', 'sm')}業界：製造業 · 12人 ✕</span></div><button class="lbtn">${ic('sliders', 'sm')}</button></div><table class="table"><thead><tr><th>名前</th><th>会社・役職</th><th>濃さ</th><th>出どころ</th><th>目標との関係</th><th>最終接点</th></tr></thead><tbody>
   ${[[{ n: '加藤 健太', i: '加', c: 'c3', co: 'アクシス商事', role: '事業開発部 部長', d: 3, s: 'meishi', rel: '紹介を頼める人', last: '10/2' }, ''], [{ n: '鈴木 大輔', i: '鈴', c: 'c3', co: '北辰製作所', role: 'DX 推進室 室長', d: 2, s: 'meishi', rel: '', last: '昨日' }, ''], [{ n: '高山 亮', i: '高', c: 'c5', co: 'ミライ精機', role: '経営企画部長', d: 2, s: 'meishi', rel: 'CVC（候補）', last: '2週間前' }, 'hi'], [{ n: '伊達 修平', i: '伊', c: 'c3', co: '北辰製作所', role: '経営企画', d: 2, s: 'li', rel: '', last: '1か月前' }, 'hi'], [{ n: '松本 千尋', i: '松', c: 'c2', co: '関西テクノ電機', role: 'CVC 担当', d: 1, s: 'li', rel: 'CVC 担当者', last: '2025年8月につながる' }, 'hi'], [{ n: '森 拓也', i: '森', c: 'c4', co: '東海メカトロ', role: '技術本部長', d: 3, s: 'self', rel: '', last: '5日前' }, '']].map(([c, hi]) => `<tr style="${hi ? 'background:color-mix(in srgb,var(--accent-soft) 60%,transparent)' : ''}"><td><div class="row" style="gap:10px"><div class="av sm ${c.c}">${c.i}</div><b>${c.n}</b></div></td><td>${c.co}<div class="lbl">${c.role}</div></td><td>${HV3.dn(c.d)}</td><td>${HV3.src(c.s)}</td><td>${c.rel ? `🎯 ${c.rel}` : '<span class="lbl">—</span>'}</td><td class="lbl">${c.last}</td></tr>`).join('')}
   </tbody></table><div class="lbl" style="margin-top:10px">12人中 6人を表示 · 紫の行 = iOrbit の回答で参照している人</div></div></div>`;
 const wCtxRail = `<div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px;flex:1">iOrbit</b><button class="lbtn" style="width:30px;height:30px">${ic('out', 'sm')}</button><button class="lbtn" style="width:30px;height:30px">${ic('x', 'sm')}</button></div>

@@ -338,7 +338,7 @@ document.addEventListener('click', e => { const b = e.target.closest('.nst-next'
 
 /* 人脈（⑨ A6 同款）：信息浓度三点 + 来源 chip */
 const dn = (d, cls = '') => `<span class="dn d${d} ${cls}" title="情報の濃さ"><i></i><i></i><i></i></span>`;
-const SRC = { meishi: ['scan', '名刺', ''], li: ['link', 'LinkedIn', ''], tel: ['phone', '連絡先', ''], hand: ['pen', '手入力', ''], self: ['check', '本人入力', 'teal'] };
+const SRC = { meishi: ['scan', '名刺', ''], li: ['link', 'LinkedIn', ''], tel: ['phone', '連絡先', ''], ev: ['calendar', 'イベント', ''], hand: ['pen', '手入力', ''], self: ['check', '本人入力', 'teal'] };
 const src = k => `<span class="chip ${SRC[k][2]}">${ic(SRC[k][0])}${SRC[k][1]}</span>`;
 const NP = [
   { n: '高橋 美咲', i: '高', c: 'c2', co: '青葉ベンチャーズ', role: 'パートナー', d: 3, s: 'meishi', rel: 'VC パートナー · 話した', last: '2日前' },
@@ -352,7 +352,7 @@ const NP = [
   { n: '石川 陽介', i: '石', c: 'c5', co: '石川デザイン事務所', role: '代表', d: 1, s: 'hand', rel: '', last: '10/3 登録' },
   { n: '大野 真司', i: '大', c: 'c4', co: '大野商店', role: '店主', d: 2, s: 'meishi', rel: '', last: '10/5 名刺交換' },
 ];
-/* 口径：286 = 身元だけ 74 + 名刺レベル 171 + 関係まで 41；出どころ 名刺 212 · 連絡先 41 · LinkedIn 22 · 手入力 8 · 本人入力 3；few 5 = 伊藤・高橋・鈴木・大野・石川 */
+/* 口径：286 = 身元だけ 74 + 名刺レベル 171 + 関係まで 41；出どころ 名刺 204 · 連絡先 41 · LinkedIn 22 · イベント 8 · 手入力 8 · 本人入力 3；few 5 = 伊藤・高橋・鈴木・大野・石川（2026-10-18 用户定 §B-1：删「情報が少ない人」页签，分类页签 = すべて / 目標に関係 / 要フォロー（有未完成 To-do 关联此人）；出どころ 加「イベント」，汎用 CSV 算手入力） */
 const NET_MANY = [NP[0], NP[2], NP[1], NP[4], NP[3], NP[7], NP[5], NP[6], NP[8]];
 const NET_FEW = [NP[2], NP[0], NP[3], NP[9], NP[8]];
 const DOORS = [
@@ -464,8 +464,8 @@ function network(s, opts = {}) {
     <div class="card span5 k-wdens" data-why-box><div class="card-h"><h3>情報の濃さ</h3><span class="why">?</span></div><div class="why-body" hidden style="margin:0 0 8px">●○○ 氏名・会社などの身元だけ / ●●○ 名刺レベル（連絡先と、いつ・どこで会ったか）/ ●●● 関係まで（あなたの目標との関係・やりとり）。本人入力は最初から ●●●。</div>
       <div class="stack3">${many ? '<i style="flex:74;background:var(--plum-300)"></i><i style="flex:171;background:var(--plum-500)"></i><i style="flex:41;background:var(--plum-700)"></i>' : '<i style="flex:1;background:var(--plum-300)"></i><i style="flex:2;background:var(--plum-500)"></i><i style="flex:2;background:var(--plum-700)"></i>'}</div>
       <div class="grid3" style="margin-top:12px;font-size:12px">${[[1, '身元だけ', many ? 74 : 1], [2, '名刺レベル', many ? 171 : 2], [3, '関係まで', many ? 41 : 2]].map(([d, l, v]) => `<div style="min-width:0"><div class="row" style="gap:6px">${dn(d)}<span class="muted" style="white-space:nowrap">${l}</span></div><b style="font-family:var(--font-num);font-size:16px;display:block;margin-top:2px">${v}</b></div>`).join('')}</div></div>
-    <div class="card span3"><div class="lbl">出どころ</div><div style="margin-top:6px;display:grid;gap:5px;font-size:12px">${(many ? [['meishi', 212], ['tel', 41], ['li', 22], ['hand', 8], ['self', 3]] : [['meishi', 4], ['hand', 1]]).map(([k, v]) => `<div class="row between">${src(k)}<b style="font-family:var(--font-num)">${v}</b></div>`).join('')}</div></div>
-    <div class="card span12"><div class="row between" style="margin-bottom:12px"><div class="row k-wcats" style="gap:6px"><span class="cat on">すべて <small>${many ? 286 : 5}</small></span><span class="cat">情報が少ない人 <small>${many ? 74 : 1}</small></span><span class="cat">目標に関係 <small>${many ? 9 : 2}</small></span><span class="cat">要フォロー <small>${many ? 12 : 0}</small></span></div><div class="row" style="gap:8px"><div class="input" style="width:240px;height:38px">${ic('search', 'sm')}名前・会社・「投資家」</div><button class="lbtn">${ic('sliders', 'sm')}</button></div></div>
+    <div class="card span3"><div class="lbl">出どころ</div><div style="margin-top:6px;display:grid;gap:5px;font-size:12px">${(many ? [['meishi', 204], ['tel', 41], ['li', 22], ['ev', 8], ['hand', 8], ['self', 3]] : [['meishi', 4], ['hand', 1]]).map(([k, v]) => `<div class="row between">${src(k)}<b style="font-family:var(--font-num)">${v}</b></div>`).join('')}</div></div>
+    <div class="card span12"><div class="row between" style="margin-bottom:12px"><div class="row k-wcats" style="gap:6px"><span class="cat on">すべて <small>${many ? 286 : 5}</small></span><span class="cat">目標に関係 <small>${many ? 9 : 2}</small></span><span class="cat">要フォロー <small>${many ? 12 : 0}</small></span></div><div class="row" style="gap:8px"><div class="input" style="width:240px;height:38px">${ic('search', 'sm')}名前・会社・「投資家」</div><button class="lbtn">${ic('sliders', 'sm')}</button></div></div>
       <table class="table k-wtable"><thead><tr><th>名前</th><th>会社・役職</th><th>濃さ</th><th>出どころ</th><th>目標との関係</th><th>最終接点</th></tr></thead><tbody>${L.map((p, k) => wrow(p, opts.sel === k)).join('')}</tbody></table>
       ${many ? `<div class="row" style="justify-content:center;margin-top:12px"><button class="btn sm">さらに表示（${286 - L.length}人）</button></div>` : ''}</div></div>`;
 }
@@ -664,10 +664,10 @@ h += WB('ホーム · 編集モード', 'many', { nav: 0, body: home('many', { e
   ['.k-wlibnew', 0, '编辑时右栏换成组件库：判断待ち / 今週 / イベント推薦 / メモ，点击或拖进左侧'],
   ['.k-whwadd', 0, '网格末尾「ウィジェットを追加」与右栏同一库'],
 ]);
-h += sec('人脈', '⑨ A6 人脈一覧 Web：浓度卡 + 出どころ + 表格新增「濃さ」「出どころ」两列 + 分类页签「情報が少ない人」；口径 286 人（few 5 / empty）；详情仍为右侧抽屉；左栏第 2 项');
+h += sec('人脈', '⑨ A6 人脈一覧 Web：浓度卡 + 出どころ + 表格新增「濃さ」「出どころ」两列 + 分类页签 すべて / 目標に関係 / 要フォロー（2026-10-18 用户定 §B-1：删「情報が少ない人」页签；出どころ 加「イベント」）；口径 286 人（few 5 / empty）；详情仍为右侧抽屉；左栏第 2 项');
 h += board('人脈', 'empty', webFrame({ nav: 1, head: '', body: network('empty'), rail: netRail('empty'), pins: pin(1, '.k-wnetguide') + pin(2, '.k-wdoor') }), ['一个主动作「人脈を追加」打开加人弹窗（主推 名刺 · 招待コード · 手入力 + その他）', '下排四张卡 = 其余四个门的直达入口，各带浓度预告']);
 h += board('人脈', 'few', webFrame({ nav: 1, head: '', body: network('few'), rail: netRail('few'), pins: pin(3, '.k-wanal') + pin(1, '.k-wdens') + pin(2, '.k-wtable') }), ['浓度卡：三段构成条 + 三格计数（1 / 2 / 2）', '表格新增「濃さ」「出どころ」两列；「目標との関係」列放计划里的类型（候補为 AI 推测）', '「人脈分析 ›」→ 人脈分析（⑤ E1 Web；10 人以下为锁定态）']);
-h += board('人脈', 'many', webFrame({ nav: 1, head: '', body: network('many'), rail: netRail('many'), pins: pin(4, '.k-wanal') + pin(1, '.k-wcats') + pin(2, '.k-wask') + pin(3, '.k-wtable tr', 4) }), ['「情報が少ない人 74」页签；点后表格只剩 ●○○ 并在右栏批量补全', '右栏「今日の 1問」与 App To-do 的判断待ち 同一题，任一端答了另一端消失', 'LinkedIn 导入的人显示「2024年3月につながる」代替最终接点；排序 = 目标相关 > 最近接点', '「人脈分析 ›」→ 人脈分析（⑤ E1：構造 / 機会 / インサイト）；搜索框 ⌘K → 命令面板（⑤ E4）；筛选钮 → 弹出层（⑤ E5）']);
+h += board('人脈', 'many', webFrame({ nav: 1, head: '', body: network('many'), rail: netRail('many'), pins: pin(4, '.k-wanal') + pin(1, '.k-wcats') + pin(2, '.k-wask') + pin(3, '.k-wtable tr', 4) }), ['2026-10-18 用户定 §B-1：分类页签 = すべて 286 / 目標に関係 9 / 要フォロー 12（要フォロー = 有未完成 To-do 关联此人）；原「情報が少ない人」页签与右栏批量补全删除，薄的人靠「濃さ」列与浓度卡区分；出どころ卡加「イベント 8」（活动名单导入；汎用 CSV 算手入力）', '右栏「今日の 1問」与 App To-do 的判断待ち 同一题，任一端答了另一端消失', 'LinkedIn 导入的人显示「2024年3月につながる」代替最终接点；排序 = 目标相关 > 最近接点', '「人脈分析 ›」→ 人脈分析（⑤ E1：構造 / 機会 / インサイト）；搜索框 ⌘K → 命令面板（⑤ E4）；筛选钮 → 弹出层（⑤ E5）']);
 h += board('連絡先詳細（抽屉）', '', webFrame({ nav: 1, head: '', body: network('many', { sel: 0 }), rail: netRail('many'), pins: pin(1, '.drawer') + pin(2, '.drawer [data-why-box]') }).replace('</section>', '</section>' + contactDrawer()), ['从右侧滑入 600px 抽屉，关闭回到原列表位置（W0056 决定）；首页人脈组件点人也打开这个抽屉', '「なぜ高橋さんか」默认展开依据；主按钮只到草稿']);
 h += sec('iOrbit', 'NAV-V3：全屏对话（无右栏）；左上 ≡ 点击开合左侧会话历史；右上「新しい会話」；初始 = 新对话起始屏；写入类动作是虚线确认卡');
 h += WB('iOrbit · 新しい会話', '', { nav: 2, body: wIorbit(false) }, [
