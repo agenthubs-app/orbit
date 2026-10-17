@@ -78,18 +78,21 @@ export function createPostgresAppointmentRepository(runtime: EventOperationsPost
       return client.transaction(async (tx) => {
         const prior = await receipt(tx, workspaceId, input.appointment.ownerActorId, input.idempotencyKey, input.command, input.requestHash);
         if (prior) return { appointment: prior, replayed: true };
+        const prepared = input.prepare?.();
+        const appointment = prepared?.appointment ?? input.appointment;
         try {
           await tx.query(`insert into appointment_aggregates (
             workspace_id, appointment_id, owner_actor_id, invitee_actor_id,
             relationship_pair_id, authority_request_id, contact_ids_by_actor,
             event_id, status, version, payload, created_at, updated_at
-          ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, [workspaceId, input.appointment.appointmentId, input.appointment.ownerActorId, input.appointment.inviteeActorId, input.appointment.relationshipPairId, input.appointment.authorityRequestId, input.appointment.contactIdsByActor, input.appointment.eventId, input.appointment.status, input.appointment.version, input.appointment, input.appointment.createdAt, input.appointment.updatedAt]);
+          ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, [workspaceId, appointment.appointmentId, appointment.ownerActorId, appointment.inviteeActorId, appointment.relationshipPairId, appointment.authorityRequestId, appointment.contactIdsByActor, appointment.eventId, appointment.status, appointment.version, appointment, appointment.createdAt, appointment.updatedAt]);
         } catch (error) {
           if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") throw new AppointmentError("APPOINTMENT_CONFLICT", "The appointment already exists.");
           throw error;
         }
-        await insertReceipt(tx, workspaceId, input.appointment.ownerActorId, input.idempotencyKey, input.command, input.requestHash, input.appointment);
-        return { appointment: input.appointment, replayed: false };
+        await insertOutbox(tx, workspaceId, prepared?.outbox ?? []);
+        await insertReceipt(tx, workspaceId, appointment.ownerActorId, input.idempotencyKey, input.command, input.requestHash, appointment);
+        return { appointment, replayed: false };
       });
     },
     async getForActor(appointmentId, actorId) {

@@ -308,6 +308,16 @@ solo `sc09-bounded-lifecycle-differential-final.log` は **6 tests / 4 pass / 0 
 
 App 消費側は主会話が担当し、taskId を旧 connectionId route に直接流さず resolver を先に読む。Web lifecycle detail / completion flow と UI の安全な mount は次段階。SC-09 全体はまだ閉合しない。主会話の App SC-14 navigation 子里程標 `54de0665f` は `/agent*` の parent を To-do、`/ai` は iOrbit に維持、focused 12/12 + Task container browser 10/10。旧 screen の破壊的削除は replacement flow 完成後に主会話が担当する。
 
+### SC-11 atomic initial-proposal service（HTTP / UI 前の子里程標）
+
+user 承認の first-proposal は **server が検証できる accepted bilateral event authority だけ**に限定。owned / imported contactId だけから consent を推定しない。accepted context がない一般 contact の広い authority contract は未定で、first-proposal 全体の availability / SC-11 完了を主張しない。
+
+既存 `AppointmentService.createDraft` に optional `initialProposal` を追加。旧 caller は draft version 1 / 旧 request hash のまま。新 flow は従来 command の同じ `proposeAppointment` 内部処理を使い、3～5 候補・future / duration / timezone / medium、owner、history / revision / recipient を保持する。新規時は draft を外へ露出せず **awaiting_response version 2 + pending revision 1 + created/propose history** と native `appointment.proposed` outbox 一件を作る。
+
+repository.create の optional prepare は receipt lookup **後**、Postgres の同じ transaction 内でだけ呼ぶ。invalid proposal は aggregate / receipt / outbox を残さず、曖昧な retry は同じ receipt を返す。過去になった候補を含む replay でも既存 receipt の前に future validation を再実行しない。旧 draft / command caller へ新規 required parameter を増やさない。
+
+`sc11-atomic-initial-proposal-red.log` の RED → `sc11-atomic-initial-proposal-green.log` **10/10**、さらに `sc11-atomic-initial-proposal-pg-green.log` は **11/11 pass、0 skip**。real local PG18 isolated schema の outbox insert を constraint で意図的に失敗させ、aggregate / receipt / outbox **全て 0** を独立 SQL で確認。constraint を戻して同じ key を retry すると **各一件**、相手 actor の独立 GET と receipt が一致し、再 retry で二重 outbox はない。既存 bilateral / counter / reschedule / confirmed-slot preservation / idempotency の tests も pass。provider / worker / real Google / 実送信は起動しない。HTTP の accepted-context lookup、新 shared contract / snapshot / App sync、contact-only UI / Task mount は後続であり、本 service-only 子里程標に含めない。fresh typecheck / browser / full は後続 clean rebase と coordinated heavy で確認する。
+
 ## 请求
 
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。

@@ -20,6 +20,8 @@ export interface AppointmentRepository {
     command: "create";
     idempotencyKey: string;
     requestHash: string;
+    /** Run only after receipt lookup, inside the same transaction as aggregate/outbox creation. */
+    prepare?: () => { appointment: AppointmentAggregate; outbox: readonly AppointmentOutboxEvent[] };
   }): Promise<AppointmentMutationResult>;
   getForActor(appointmentId: string, actorId: string): Promise<AppointmentAggregate | null>;
   listForActor(actorId: string): Promise<readonly AppointmentAggregate[]>;

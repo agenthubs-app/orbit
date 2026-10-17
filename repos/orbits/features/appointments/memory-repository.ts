@@ -28,9 +28,12 @@ export function createMemoryAppointmentRepository(): MemoryAppointmentRepository
   }
 
   return {
-    async create({ appointment, command, idempotencyKey, requestHash }) {
+    async create({ appointment: draft, command, idempotencyKey, requestHash, prepare }) {
+      let appointment = draft;
       const replayed = replay(appointment.ownerActorId, idempotencyKey, command, requestHash);
       if (replayed) return replayed;
+      const prepared = prepare?.();
+      if (prepared) appointment = prepared.appointment;
       if (aggregates.has(appointment.appointmentId)) {
         throw new AppointmentError("APPOINTMENT_CONFLICT", "The appointment already exists.");
       }
@@ -43,6 +46,7 @@ export function createMemoryAppointmentRepository(): MemoryAppointmentRepository
       }
       aggregates.set(appointment.appointmentId, clone(appointment));
       receipts.set(`${appointment.ownerActorId}\u0000${idempotencyKey}`, { appointmentId: appointment.appointmentId, command, requestHash, response: clone(appointment) });
+      for (const event of prepared?.outbox ?? []) events.set(event.dedupeKey, clone(event));
       return { appointment: clone(appointment), replayed: false };
     },
     async getForActor(appointmentId, actorId) {

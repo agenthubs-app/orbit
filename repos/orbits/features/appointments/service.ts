@@ -18,6 +18,7 @@ export interface AppointmentService {
     eventId?: string | null;
     idempotencyKey: string;
     authorityReference: string;
+    initialProposal?: AppointmentProposalInput;
   }): Promise<AppointmentMutationResult>;
   get(input: { actorId: string; appointmentId: string }): Promise<AppointmentAggregate>;
   list(input: { actorId: string }): Promise<readonly AppointmentAggregate[]>;
@@ -186,6 +187,23 @@ function confirmationEvents(appointment: AppointmentAggregate, previousRevision:
   return events;
 }
 
+function proposeAppointment(current: AppointmentAggregate, actorId: string, command: "propose" | "counter", input: AppointmentProposalInput, timestamp: string) {
+  const pending = current.pendingProposalRevision === null ? null : current.proposals.find(proposal => proposal.revision === current.pendingProposalRevision) ?? null;
+  if (command === "propose" && current.status === "draft" && current.ownerActorId !== actorId) throw new AppointmentError("APPOINTMENT_FORBIDDEN", "Only the draft owner can submit the first proposal.");
+  if (command === "counter" && (!pending || pending.proposedByActorId === actorId)) throw new AppointmentError("APPOINTMENT_INVALID_TRANSITION", "Only the proposal recipient can counter.");
+  if (command === "propose" && current.status !== "draft" && current.status !== "confirmed") throw new AppointmentError("APPOINTMENT_INVALID_TRANSITION", "A new proposal starts a draft or confirmed reschedule.");
+  const revision = (current.proposals.at(-1)?.revision ?? 0) + 1;
+  if (current.proposals.length >= APPOINTMENT_HISTORY_MAX) throw new AppointmentError("APPOINTMENT_INVALID_TRANSITION", "This appointment has reached its proposal limit; create a new appointment.");
+  const proposal = proposalFor(input, actorId, revision, timestamp);
+  const status = current.confirmed ? "reschedule_pending" as const : command === "counter" ? "negotiating" as const : "awaiting_response" as const;
+  const appointment: AppointmentAggregate = { ...current,
+    history: history(current, actorId, command, timestamp, command === "counter" ? "Candidate times countered." : current.confirmed ? "Reschedule proposed; previous confirmation retained." : "Candidate times proposed.", revision),
+    pendingProposalRevision: revision, proposals: [...current.proposals, proposal], status, updatedAt: timestamp, version: current.version + 1 };
+  const eventType = command === "counter" ? "appointment.countered" as const : current.confirmed ? "appointment.reschedule.proposed" as const : "appointment.proposed" as const;
+  return { appointment, outbox: [outboxEvent({ appointment, eventType, initiatedByActorId: actorId,
+    notificationRecipientActorIds: [current.ownerActorId, current.inviteeActorId].filter(id => id !== actorId), revision, timestamp })] };
+}
+
 export function createAppointmentService(input: { authorityVerifier: AppointmentAuthorityVerifier; now?: () => string; repository: AppointmentRepository }): AppointmentService {
   const now = input.now ?? (() => new Date().toISOString());
   function idempotencyKey(value: string): string {
@@ -236,7 +254,9 @@ export function createAppointmentService(input: { authorityVerifier: Appointment
         appointment,
         command: "create",
         idempotencyKey: idempotencyKey(value.idempotencyKey),
-        requestHash: requestHash({ actorId, authorityReference, eventId, requestedAppointmentId: value.appointmentId?.trim() || null }),
+        requestHash: requestHash({ actorId, authorityReference, eventId, requestedAppointmentId: value.appointmentId?.trim() || null,
+          ...(value.initialProposal ? { initialProposal: value.initialProposal } : {}) }),
+        ...(value.initialProposal ? { prepare: () => proposeAppointment(appointment, actorId, "propose", value.initialProposal!, timestamp) } : {}),
       });
     },
     async get(value) {
@@ -286,39 +306,7 @@ export function createAppointmentService(input: { authorityVerifier: Appointment
 
         if (value.command === "propose" || value.command === "counter") {
           if (!value.proposal) throw new AppointmentError("APPOINTMENT_INVALID_PROPOSAL", "A proposal is required.");
-          const pending = current.pendingProposalRevision === null ? null : current.proposals.find((proposal) => proposal.revision === current.pendingProposalRevision) ?? null;
-          if (value.command === "propose" && current.status === "draft" && current.ownerActorId !== value.actorId) throw new AppointmentError("APPOINTMENT_FORBIDDEN", "Only the draft owner can submit the first proposal.");
-          if (value.command === "counter" && (!pending || pending.proposedByActorId === value.actorId)) throw new AppointmentError("APPOINTMENT_INVALID_TRANSITION", "Only the proposal recipient can counter.");
-          if (value.command === "propose" && current.status !== "draft" && current.status !== "confirmed") throw new AppointmentError("APPOINTMENT_INVALID_TRANSITION", "A new proposal starts a draft or confirmed reschedule.");
-          const revision = (current.proposals.at(-1)?.revision ?? 0) + 1;
-          if (current.proposals.length >= APPOINTMENT_HISTORY_MAX) throw new AppointmentError("APPOINTMENT_INVALID_TRANSITION", "This appointment has reached its proposal limit; create a new appointment.");
-          const proposal = proposalFor(value.proposal, value.actorId, revision, timestamp);
-          const status = current.confirmed ? "reschedule_pending" as const : value.command === "counter" ? "negotiating" as const : "awaiting_response" as const;
-          const appointment: AppointmentAggregate = {
-            ...current,
-            history: history(current, value.actorId, value.command, timestamp, value.command === "counter" ? "Candidate times countered." : current.confirmed ? "Reschedule proposed; previous confirmation retained." : "Candidate times proposed.", revision),
-            pendingProposalRevision: revision,
-            proposals: [...current.proposals, proposal],
-            status,
-            updatedAt: timestamp,
-            version: nextVersion,
-          };
-          const eventType = value.command === "counter"
-            ? "appointment.countered" as const
-            : current.confirmed
-              ? "appointment.reschedule.proposed" as const
-              : "appointment.proposed" as const;
-          return {
-            appointment,
-            outbox: [outboxEvent({
-              appointment,
-              eventType,
-              initiatedByActorId: value.actorId,
-              notificationRecipientActorIds: [current.ownerActorId, current.inviteeActorId].filter((actorId) => actorId !== value.actorId),
-              revision,
-              timestamp,
-            })],
-          };
+          return proposeAppointment(current, value.actorId, value.command, value.proposal, timestamp);
         }
 
         if (value.command === "accept") {
