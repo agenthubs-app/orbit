@@ -45,6 +45,23 @@ Preflight rendered sources confirm unsupported b5 sync/week/subgoal claims13→0
 
 RNW functional images `app-functional-native-fallback-after.png` and `app-functional-memory-confirm.png` were inspected. The first disconnect capture raced the dialog's enter animation despite passing operation assertions, so that image was not counted as confirmation visual evidence. A subsequent **test-only** bounded condition wait for actual alert opacity1 passed both controller cases2/2, exit0, 1.98s (`app-confirm-capture-after-wait.log`); corrected `app-functional-disconnect-confirm.png` and memory-confirm were inspected and visibly show their respective confirmation dialogs. No product/kit animation or arbitrary sleep is changed. The full3191 result remains tied to frozen0bab before these two capture waits; this later bounded run verifies the test-only difference. Native simulator and pixel evidence remain OPEN.
 
+### Latest clean integration and native prerequisites
+
+After the capture-only three-path checkpoint `bbf4381eb`, clean rebase onto `c4039b166990b56e6beba544cd3301aadc147d31` produced `428255da70106cfb94045dd00a1d3c052809e4d1`, no conflicts, all26 range-diff patches `=` (`app-rebase-to-c4039b166.log`). Upstream added only five Web visual/doc paths in `5cd607085` / `c4039b166`. `git diff 0bab5674d HEAD -- repos/orbit-app/src repos/orbit-app/app repos/orbits/shared` is empty: the verified App runtime/contracts are unchanged. The only App difference since frozen full is the two capture-only test waits, separately2/2 GREEN. Post-rebase hook/audit/settings/fixture checks16/16 (`app-continuation-light-428255da7.log`). No new App full run is claimed at this rebased hash.
+
+| Milestone | Before latest rebase | After latest rebase |
+| --- | --- | --- |
+| Shared authenticated hook | `f17084950` | `1636d257d` |
+| Native→Web fallback | `eb4cf4dd0` | `077272bb9` |
+| Adopted §C-1 boards / registrations | `0bab5674d` | `c5ccc1585` |
+| Capture-only correction / final verification ledger | `bbf4381eb` | `428255da7` |
+
+Read-only native assessment: Xcode26.6 (17F113), iOS26.4 runtime and CocoaPods1.17.0 are available. A cached Expo Go57.0.5 app (`host.exp.Exponent`) exists, but is not installed on the shutdown C device; its SQLCipher capability has not been demonstrated, so it is not adequate evidence for the configured Orbit runtime. Existing `app.config.ts` requires `expo-sqlite useSQLCipher:true`; the local build plugin builds React Native from source, and sync checks `PRAGMA cipher_version`. Current C checkout has no `ios/` project/Pods and no `expo-dev-client` dependency; none was added. Existing idb/companion are available; Python-backed idb is invoked through uv and its existing uv tool environment.
+
+Coordinator confirmed a C-only generated-artifact prebuild/Pods/simulator build is within SC03–06 verification, using existing dependencies only. Planned exact targets: ignored C `repos/orbit-app/ios/` (absent before execution), dedicated `/Users/xzhao/Library/Developer/Xcode/DerivedData/Orbit-Line-C-R18a` (absent), and evidence `run-01/native-build/` (absent). Existing `.gitignore` already ignores native/build artifacts. The bundled local Expo template requires no download; installed Expo's pure package modifier on cloned current/template manifests reports `scriptsChanged:false`, `changedDependencies:[]`, `manifestIdentical:true`. Its template has platform-local gitignore, so it does not merge the root gitignore.
+
+Bounded verification plan, after coordinated D gates: (1) prebuild with local template, iOS only, no dependency install, 120s cap and before/after manifest/config/lock/tracked-file guards; (2) native Pods only for existing dependencies, 300s cap; release and inspect; (3) separate dedicated-derivedData simulator build, max2 jobs, 900s cap, only after coordination. Stop on package/lock/config changes, new dependencies, existing-file overwrite, real-account/provider need or unsupported native prerequisite. No native boot/install/prebuild/build has happened at this checkpoint. Native SC03–06 operation records remain **OPEN**, separate from SC12 pixels.
+
 ## Baseline and evidence
 
 - C Web pristine: 7475 tests, 6428 pass, 32 fail, 1015 skip. 25 failures explicitly require a missing DB URL; six other failure categories match D. The extra `tests/ui/add-contact-screens.test.tsx` doors assertion (`kit .wmodal.w560`) subsequently passed the correct targeted rerun (2/2, 3.26s). This supports timing sensitivity, not a full-suite pass.
@@ -225,7 +242,7 @@ Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail
 
 ## Remaining work
 
-Cleanly integrate the newer upstream Web-only tooling after the completed heavy verification and bounded recapture. Assess sanctioned local native build/client prerequisites read-only; SC03–06 native operation records are distinct from SC12 pixels and remain OPEN until actually collected. SC11 native state evidence, SC12 gated pixels, SC13 Web final suites/typechecks/lint/copy and remaining independent review also remain OPEN. App final typecheck/full comparison and scope ledger are explicitly versioned above; the full suite has its exact2 pristine failures, not a passing exit.
+Latest upstream Web-only tooling is cleanly integrated and native prerequisites assessed above. Execute the bounded, generated-artifact-only native verification after coordinated heavy gates; SC03–06 simulator operation records are distinct from SC12 pixels and remain OPEN until actually collected. SC11 native state evidence, SC12 gated pixels, SC13 Web final suites/typechecks/lint/copy and remaining independent review also remain OPEN. App final typecheck/full comparison and scope ledger are explicitly versioned above; the full suite has its exact2 pristine failures, not a passing exit.
 
 ## 改稿与补画清单
 
@@ -247,7 +264,7 @@ The earlier questions are now decided by explicit user continuation: amend unsup
 
 ## 待用户授权
 
-No production/Neon, real Google, deploy, TestFlight, paid AI, push or native dependency/rebuild action was performed. Native calendar dependency/rebuild is explicitly deferred by the adopted user decision; do not install it. Native-operation acceptance needs a sanctioned installed development client/test setup, not a live provider call or unapproved boot/install/build during this Sprint.
+No production/Neon, real Google, deploy, TestFlight, paid AI, push or native dependency/rebuild action was performed at the latest documented checkpoint. Native calendar dependency/rebuild remains explicitly deferred; do not add it. Coordinator has now confirmed a C-only native build/install verification path using existing dependencies and generated artifacts only, with the guards/caps above. Package/dependency changes, real accounts or provider calls still require a separate decision; none is inferred from that build authority.
 
 ## 交接表追加（逐行四栏原文）
 
