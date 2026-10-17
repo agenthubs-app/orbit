@@ -948,6 +948,11 @@
           "kind": "text",
           "type": "string | null"
         },
+        "pendingProposalRevision": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
         "proposals": {
           "optional": false,
           "kind": "array",
@@ -955,6 +960,26 @@
           "element": {
             "kind": "object",
             "members": {
+              "candidateTimes": {
+                "optional": true,
+                "kind": "array",
+                "readonly": true,
+                "element": {
+                  "kind": "object",
+                  "members": {
+                    "candidateId": {
+                      "optional": false,
+                      "kind": "text",
+                      "type": "string"
+                    },
+                    "startsAtUtc": {
+                      "optional": false,
+                      "kind": "text",
+                      "type": "string"
+                    }
+                  }
+                }
+              },
               "createdAt": {
                 "optional": false,
                 "kind": "text",
@@ -1063,6 +1088,11 @@
           "kind": "text",
           "type": "string | null"
         },
+        "pendingProposalRevision": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
         "proposals": {
           "optional": false,
           "kind": "array",
@@ -1070,6 +1100,26 @@
           "element": {
             "kind": "object",
             "members": {
+              "candidateTimes": {
+                "optional": true,
+                "kind": "array",
+                "readonly": true,
+                "element": {
+                  "kind": "object",
+                  "members": {
+                    "candidateId": {
+                      "optional": false,
+                      "kind": "text",
+                      "type": "string"
+                    },
+                    "startsAtUtc": {
+                      "optional": false,
+                      "kind": "text",
+                      "type": "string"
+                    }
+                  }
+                }
+              },
               "createdAt": {
                 "optional": false,
                 "kind": "text",
@@ -1132,6 +1182,207 @@
           "optional": false,
           "kind": "text",
           "type": "'participants' | 'private'"
+        }
+      }
+    },
+    "appointments.ts::MeetingProposalDetailsContract": {
+      "kind": "object",
+      "members": {
+        "confirmed": {
+          "optional": false,
+          "kind": "text",
+          "type": "({ durationMinutes: number; medium: MeetingDetailsMedium; startsAtUtc: string; timezone: string; } & { candidateId?: string | undefined; proposalRevision?: number | undefined; }) | null"
+        },
+        "appointmentId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "details": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "detailsUpdatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "detailsUpdatedBy": {
+          "optional": false,
+          "kind": "text",
+          "type": "MeetingDetailsActorRole | null"
+        },
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "pendingProposalRevision": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "proposals": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "candidateTimes": {
+                "optional": true,
+                "kind": "array",
+                "readonly": true,
+                "element": {
+                  "kind": "object",
+                  "members": {
+                    "candidateId": {
+                      "optional": false,
+                      "kind": "text",
+                      "type": "string"
+                    },
+                    "startsAtUtc": {
+                      "optional": false,
+                      "kind": "text",
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "createdAt": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "durationMinutes": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "medium": {
+                "optional": false,
+                "kind": "text",
+                "type": "MeetingDetailsMedium"
+              },
+              "note": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "proposedBy": {
+                "optional": false,
+                "kind": "text",
+                "type": "MeetingDetailsActorRole"
+              },
+              "revision": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "timezone": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'completed' | 'draft' | 'awaiting_response' | 'negotiating' | 'confirmed' | 'reschedule_pending' | 'cancelled'"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "version": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "visibility": {
+          "optional": false,
+          "kind": "text",
+          "type": "'participants' | 'private'"
+        }
+      }
+    },
+    "appointments.ts::MeetingInitialProposalRequestContract": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "proposal": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "candidateTimes": {
+              "optional": false,
+              "kind": "array",
+              "readonly": true,
+              "element": {
+                "kind": "object",
+                "members": {
+                  "startsAtUtc": {
+                    "optional": false,
+                    "kind": "text",
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "durationMinutes": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "medium": {
+              "optional": false,
+              "kind": "text",
+              "type": "MeetingDetailsMedium"
+            },
+            "note": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "timezone": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "appointments.ts::MeetingInitialProposalAvailabilityContract": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "available": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -12881,6 +13132,9 @@
         "MeetingDetailsContract",
         "MeetingDetailsMedium",
         "MeetingDetailsMutationContract",
+        "MeetingInitialProposalAvailabilityContract",
+        "MeetingInitialProposalRequestContract",
+        "MeetingProposalDetailsContract",
         "MemoEventType",
         "Mutation",
         "MutationKind",

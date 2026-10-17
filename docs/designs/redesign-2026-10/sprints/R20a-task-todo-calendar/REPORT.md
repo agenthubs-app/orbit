@@ -346,13 +346,27 @@ origin `2569ad835` へ clean rebase（stash / autostash なし、62 patches が 
 
 App review で出た dot-segment edge も Web handler / client に反映。`encodeURIComponent('.') / ('..')` は path segment を保護しないため、この二値を明示的に拒否する。RED は handler が private reader に達して 503、client が二回 fetch したことを固定。修正後 `sc09-dot-segments-green.log` は **9/9 pass**、handler は SQL 前 400、client は fetch 0。既存の identity / auth / mapping predicates の広い書換えはしていない。
 
+### SC-11 first-proposal HTTP / shared wide read（UI 前の子里程標）
+
+新規 `/api/appointments/initial-proposal` は server actor / workspace から accepted bilateral event context を検証する。GET は query を `contactId` 一つに限定し `{ contactId, available }` を返す。これは accepted authority の有無だけであり、空き時間・既存 active appointment との無競合・必ず作成できることの保証ではない。POST は `{ contactId, proposal: { candidateTimes: [{ startsAtUtc }], durationMinutes, medium, note, timezone } }` と printable ASCII 96 字以内の Idempotency-Key を要求する。candidateTimes は 3～5、64 KiB 超の body / caller actor / workspace / event authority / unknown proposal fields を受理しない。既存 service が future / timezone / consent / transition を再検証し、requested contact と canonical side が write 前に変わった場合も拒否する。GET / POST / error は private no-store、SQL や内部 backend error を response に出さない。unverified contact は 403、ambiguous authority / active appointment conflict は 409。旧 appointments POST / command contract は変えない。
+
+成功は既存 atomic create(initialProposal) の native detail + `replayed`、201 / replay 200。outbox worker / provider は実行しない。`sc11-initial-proposal-http-final-focused.log` は **33/33 pass、0 skip**。local PG18 isolated schema の native verifier + repository を HTTP handler から実行し、foreign workspace / outsider / unilateral contact 拒否、outbox insert 強制失敗後 aggregate / receipt / outbox 各 **0**、同 key retry 後各 **1**、相手 participant の独立 repository readback、replay による outbox 一件維持、canonical side 変更時の拒否を確認した。native relational fixture は必要 columns に限定しており、全 Event Operations onboarding journey の証拠ではない。旧 service lifecycle / reschedule / idempotency regression と、前段の transaction rollback 証拠も保持する。
+
+shared `appointment-details` schema は candidateTimes / pendingProposalRevision と confirmed candidate identity を optional に保持し、旧 response（これらが無いもの）も通す。凍結された nullable `MeetingDetailsContract.confirmed` は原文のまま、wide reader 用の `MeetingProposalDetailsContract` を新規追加した。理由は snapshot checker が nullable union 内の optional field 追加を全体 changed-type と判定したためであり、BREAKING exemption / checker 変更で通していない。新 request / availability contract と uncast schema の strict 双方向 parity を追加、snapshot **704 types** を正規 regenerate。App generated contract / schema も同時 sync、byte parity / self-contained checks **4/4**。App UI はこの子里程標では変更しない。
+
+最初の heavy Web typecheck は readonly PG rows と non-strict Zod nullable-medium inference で exit 2、strict parity は未実行だった。reader input を readonly に狭め、validated medium を cast なしで明示的に組み立て直し、missing nullable field は runtime 400 のままという regression を追加した。fresh heavy retry は **Web typecheck exit 0、strict schema parity 2/2 pass**（`sc11-initial-proposal-web-tsc-parity-retry.log`）。同 wrapper は最後の broad Web copy QA が **3185 entries / 26 issues** のため exit 1。`sc11-web-copy-qa.json` の 26 件は eventsJourney / host / plan、Task issues は **0**。compiler / parity の pass と global copy gate の fail を混同しない。
+
+A `2569ad835` の Modal 1000 / 760 API を実 source と fresh compiler で確認し、既知の SC-11 width type error は解消した。private Modal / 縮小置換はない。pixel / final visual fidelity は依然未閉合。first-proposal client / Modal / App sheet wiring と独立 HTTP GET receipt verification は次段階、accepted event context 外の一般 contact-only authority は依然不足しており、SC-11 全体はまだ完了としない。
+
+主会話の App exact-task follow-up は `d83e4af74` + verification follow-up `79bf97b6e`：focused **26/26**、fresh App tsc **0**、actual relationship editor browser **2/2**。fixture に credentials CORS と actual RNW markup の test-only 補正が必要だったが、別 task への fallback はさせていない。SC-14 Web personal route の主会話コミット `7e596f06f` は `/app/tasks/personal` を authenticated Calendar route に redirect、focused route / Task page **5/5**。いずれも D 全 SC / full suite の pass とはしない。
+
 ## 请求
 
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。
 - Agent / chat owner：entity_draft から検証済み persisted session identifier、または actor-scoped な対応 mapping を投影し、「該当する保存済み会話を開く」end-to-end test を追加してほしい。D は ownership 外の Agent chat path を変更しない。
 - draft source owner：日本語と tone の明示的サポート、および対応する生成 contract / tests が必要。en / zh を日本語として扱わない。
 - encounter / next-move source owner：`POST /api/encounters` は authoritative contactId / observedAt / privacy / talked / idempotency key を要求するが、TodoNextMoveItem の contactId / taskId は optional。source の signal kind と対応する contact / canonical task を検証できる projection が必要。「送りましたか」から fake encounter や task mutation を作らず、D-10 は mapping が立つまで fail-closed にする。
-- A の Web kit owner：SC-11 board の Modal 1000 / 760 幅を additive に受けられる API / styles が必要。現 `420|480|560|680` からの変更は D が越境せず主会話が調整する。
+- A の Web kit owner：SC-11 Modal 1000 / 760 の additive API は `2569ad835` で提供され、D の clean rebase + fresh compiler で確認済み。D は library を変更していない。pixel review / final fidelity は別 gate として残す。
 - `contacts/new/drafts` のサーバー側破棄要求は SC-07 の交接で記録する。
 
 ## 待主会话代定

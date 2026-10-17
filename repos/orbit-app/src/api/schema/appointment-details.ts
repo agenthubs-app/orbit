@@ -13,6 +13,8 @@ const role = z.enum(["you", "other"]);
 export const meetingDetailsSchema = z.object({
   appointmentId: text.max(256),
   confirmed: z.object({
+    candidateId: text.max(128).optional(),
+    proposalRevision: z.number().int().positive().optional(),
     durationMinutes: z.number().int().min(15).max(480),
     medium,
     startsAtUtc: instant,
@@ -23,7 +25,9 @@ export const meetingDetailsSchema = z.object({
   detailsUpdatedAt: instant.nullable(),
   detailsUpdatedBy: role.nullable(),
   eventId: text.max(256).nullable(),
+  pendingProposalRevision: z.number().int().positive().nullable().optional(),
   proposals: z.array(z.object({
+    candidateTimes: z.array(z.object({ candidateId: text.max(128), startsAtUtc: instant })).min(3).max(5).optional(),
     createdAt: instant,
     durationMinutes: z.number().int().min(15).max(480),
     medium,

@@ -30,3 +30,12 @@ test("meeting detail schemas accept the shared receipt and reject unsafe shapes"
     { ...detail, confirmed: { ...detail.confirmed, medium: { kind: "video", provider: "google_meet", joinUrl: "http://unsafe.test" } } },
   ]) assert.equal(meetingDetailsSchema.safeParse(value).success, false);
 });
+
+test("meeting details retain optional proposal identity while old detail responses remain valid", () => {
+  const candidateTimes = [20, 21, 22].map(day => ({ candidateId: `slot:${day}`, startsAtUtc: `2026-10-${day}T01:00:00.000Z` }));
+  const wide = { ...detail, pendingProposalRevision: 1, confirmed: { ...detail.confirmed, candidateId: "slot:20", proposalRevision: 1 }, proposals: [{ ...detail.proposals[0], candidateTimes }] };
+  const parsed = meetingDetailsSchema.parse(wide);
+  assert.deepEqual(parsed, wide);
+  assert.equal(meetingDetailsSchema.safeParse(detail).success, true);
+  for (const change of [{ ...wide, pendingProposalRevision: 0 }, { ...wide, confirmed: { ...wide.confirmed, candidateId: "" } }, { ...wide, proposals: [{ ...wide.proposals[0], candidateTimes: [{ ...candidateTimes[0], candidateId: "" }] }] }]) assert.equal(meetingDetailsSchema.safeParse(change).success, false);
+});

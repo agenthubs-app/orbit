@@ -7,6 +7,9 @@
 // they drift (a field required in one and optional in the other, a missing or
 // extra field, a different enum).
 import type { z } from "zod";
+import type { MeetingInitialProposalAvailabilityContract, MeetingInitialProposalRequestContract, MeetingProposalDetailsContract } from "../../shared/contract/appointments";
+import type { meetingDetailsSchema } from "../../shared/api-schema/appointment-details";
+import type { meetingInitialProposalAvailabilitySchema, meetingInitialProposalRequestSchema } from "../../shared/api-schema/appointment-initial-proposal";
 
 import type { AccountDeletionRequestContract, AccountExportContract, AccountExportCreateInput, AppVersionContract } from "../../shared/contract/account";
 import type { ContactCompletionAnswerInput, ContactCompletionQuestion, ContactCompletionResult } from "../../shared/contract/contact-completion";
@@ -265,3 +268,6 @@ expectParity<Parity<TodoNextMoveItem, typeof todoNextMoveItemObject>>();
 expectParity<Parity<TodoPageContract, typeof todoPageObject>>();
 expectParity<Parity<CalendarExternalEventContract, typeof calendarExternalEventObject>>();
 expectParity<Parity<CalendarExternalEventsContract, typeof calendarExternalEventsResponseObject>>();
+expectParity<Parity<MeetingProposalDetailsContract, typeof meetingDetailsSchema>>();
+expectParity<Parity<MeetingInitialProposalRequestContract, typeof meetingInitialProposalRequestSchema>>();
+expectParity<Parity<MeetingInitialProposalAvailabilityContract, typeof meetingInitialProposalAvailabilitySchema>>();

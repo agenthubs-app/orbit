@@ -154,7 +154,10 @@ export type {
   MeetingDetailsActorRole,
   MeetingDetailsContract,
   MeetingDetailsMedium,
-  MeetingDetailsMutationContract
+  MeetingDetailsMutationContract,
+  MeetingProposalDetailsContract,
+  MeetingInitialProposalRequestContract,
+  MeetingInitialProposalAvailabilityContract
 } from "./appointments";
 
 export type {

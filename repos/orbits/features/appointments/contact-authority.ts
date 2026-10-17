@@ -7,7 +7,7 @@ import { createConfiguredEventOperationsPostgresRuntime } from "../events/event-
 interface ContactAuthorityContext { eventId: string; authorityReference: string }
 interface ReaderInput {
   workspaceId: string;
-  client: { query(sql: string, values: readonly unknown[]): Promise<{ rows: unknown[] }> };
+  client: { query(sql: string, values: readonly unknown[]): Promise<{ rows: readonly unknown[] }> };
   verify: (input: { actorId: string; eventId: string; requestId: string }) => ReturnType<AppointmentAuthorityVerifier["resolveAcceptedBilateralContact"]>;
 }
 const key = z.string().min(1).max(256).refine(value => value.trim() === value && !/[\u0000-\u001f\u007f]/u.test(value));
