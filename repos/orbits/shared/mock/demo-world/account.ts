@@ -34,6 +34,9 @@ function account(score: 25 | 50 | 100) {
 
 export const demoAccountProfiles = { new: account(25), regular: account(50), complete: account(100) };
 export const demoAccountSeekCandidates = seeking;
+// b5 #16 / #20 and supplemental A/W-R18a-30/01: source-authored display counts, never live aggregation.
+export const demoAccountEventSummary = { hosted: 2, active: 1, attending: 2 } as const;
+export const demoAccountUnread = { new: 0, regular: 5, complete: 5 } as const;
 
 export type AccountDesignSuggestion = {
   id: string; target: "self" | "contact"; name: string; company: string;
@@ -50,7 +53,7 @@ export const demoAccountSuggestions: AccountDesignSuggestion[] = [
   { id: "account-design-nakamura", target: "contact", name: nakamura.name, company: nakamura.company, source: "business-card", sourceLabel: "新しい名刺", createdAt: "2026-09-28", fields: [{ key: "organization", label: "会社", current: nakamura.company, proposed: "光が丘・みなと法律事務所" }], sample: true },
 ];
 
-const integration = (provider: "gmail" | "google_calendar", connected: boolean) => ({ authorizationId: "demo-" + provider, provider, scopes: [], capabilities: [], status: connected ? "active" as const : "unavailable" as const, healthStatus: connected ? "healthy" as const : "not_checked" as const, healthMessage: "", createdAt: at, updatedAt: at, sample: true as const });
+const integration = (provider: "gmail" | "google_calendar", connected: boolean) => ({ authorizationId: "demo-" + provider, provider, scopes: [], capabilities: [], status: connected ? "active" as const : "pending" as const, healthStatus: connected ? "healthy" as const : "not_checked" as const, healthMessage: "", createdAt: at, updatedAt: at, sample: true as const });
 export const demoAccountIntegrations = {
   empty: [integration("gmail", false), integration("google_calendar", false)],
   few: [integration("gmail", true), integration("google_calendar", false)],

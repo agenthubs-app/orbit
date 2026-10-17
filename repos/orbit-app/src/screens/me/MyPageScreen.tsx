@@ -9,11 +9,14 @@ import { HostEventsRow } from "../host/HostEventsRow";
 import { accountDestination, createAccountApi } from "./account-api";
 import { MyPageContent, type AccountProfileData } from "./MyPageContent";
 import { useAccountProfile } from "./useAccountProfile";
+import { useAccountDesign } from "./useAccountDesign";
 
 export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { scopeKey: string; isScopeCurrent: () => boolean; completionNext?: string | null }) {
   const router = useRouter();
   const { t, language } = useOrbitLocale();
   const state = useAccountProfile(scopeKey);
+  const design = useAccountDesign();
+  const designMode = state.path.includes("?design=");
   const client = useOrbitApiClient({ scopeKey: state.scopeKey });
   const api = useMemo(() => createAccountApi(client, state.path), [client, state.path]);
   const [summaries, setSummaries] = useState<Awaited<ReturnType<typeof api.summaries>>>({ unread: null, going: null, host: null });
@@ -25,18 +28,26 @@ export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { sco
   const data = saved ?? state.data;
   useEffect(() => {
     const abort = new AbortController(); controller.current = abort;
+    if (designMode) {
+      if (design) { const many = design.variant === "many"; const counts = design.fixtures.eventSummary;
+        setSummaries({ unread: design.variant === "empty" ? design.fixtures.unread.new : design.fixtures.unread.regular, going: many ? counts.attending : 0, host: { eventCount: many ? counts.hosted : 0, activeCount: many ? counts.active : 0, appliedThisMonth: 0 } }); }
+      return () => abort.abort();
+    }
     void api.summaries(abort.signal).then(value => { if (!abort.signal.aborted && isScopeCurrent()) setSummaries(value); });
     return () => abort.abort();
-  }, [api, isScopeCurrent]);
+  }, [api, isScopeCurrent, designMode, design?.fixtures, design?.variant]);
   useEffect(() => { setSaved(null); }, [state.data]);
   const profileId = data?.profile?.id;
   const needsCandidates = Boolean(data?.profile?.offering?.length && !data.profile.seeking?.length);
   useEffect(() => {
     if (!profileId || !needsCandidates || state.offline) { setCandidates([]); return; }
+    if (designMode) { setCandidates(design ? [...design.fixtures.seekCandidates] : []); return; }
+    // The live service currently supports en/zh only; do not show Chinese candidates in Japanese UI.
+    if (language === "ja") { setCandidates([]); return; }
     const abort = new AbortController();
     void api.seekCandidates(language, abort.signal).then(values => { if (!abort.signal.aborted && isScopeCurrent()) setCandidates(values); });
     return () => abort.abort();
-  }, [api, profileId, needsCandidates, language, state.offline, isScopeCurrent]);
+  }, [api, profileId, needsCandidates, language, state.offline, isScopeCurrent, designMode, design?.fixtures]);
   function open(path: string) { router.push(accountDestination(path, state.path) as Href); }
   async function candidate(value: string, accept: boolean) {
     if (!accept) { setCandidates(values => values.filter(item => item !== value)); return; }

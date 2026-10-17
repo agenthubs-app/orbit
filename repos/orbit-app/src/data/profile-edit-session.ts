@@ -15,7 +15,7 @@ export type ProfileEditStatus = "editing" | "saving" | "conflict" | "failure";
 export type ProfileSuggestionDecision = "accepted" | "dismissed";
 
 export interface ProfileEditDraft {
-  publicFields?: ManualProfileContract["publicFields"];
+  publicFields?: NonNullable<ManualProfileContract["publicFields"]>;
   bio: string;
   birthDate?: string | null;
   displayName: string;

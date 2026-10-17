@@ -1,14 +1,14 @@
 import { StyleSheet, View } from "react-native";
-import type { ManualProfileContract } from "../../api/contract/profile";
+import type { ManualProfileContract, PublicProfileProjectionContract } from "../../api/contract/profile";
 import { Avatar, Card, Chip, Icon, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { spacing, typography } from "../../design/tokens";
 import type { OrbitTranslator } from "../../i18n/messages";
 import { projectPublicProfile } from "../profile/profile-page-model";
 
-export function AccountPreviewContent({ profile, t }: { profile: ManualProfileContract; t: OrbitTranslator }) {
+export function AccountPreviewContent({ profile, preview, t }: { profile: ManualProfileContract; preview?: PublicProfileProjectionContract; t: OrbitTranslator }) {
   const { styles } = useStyles();
-  const view = projectPublicProfile(profile);
+  const view = preview ?? projectPublicProfile(profile);
   return <View style={styles.stack}><Card style={styles.stack}>
     <Avatar name={view.displayName} size="lg" /><UiText style={styles.name}>{view.displayName}</UiText>
     {view.organization || view.role ? <UiText style={styles.body}>{[view.organization, view.role].filter(Boolean).join(" · ")}</UiText> : null}
