@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { taskPageSchema } from "../../../../shared/api-schema/task-page";
+import { calendarDate } from "../../../../features/tasks/local-date-time";
 import {
   activitiesToView, remindersToView, suggestionsToView, taskToView,
   type TaskView, type TaskRowView,
@@ -88,12 +89,17 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
     loadSuggestions: () => request("/api/task-suggestions", suggestionsToView),
     loadActivities: (id: string) => request(`${pathFor(id)}/activities`, activitiesToView),
     loadReminders: (id: string) => request(`/api/reminders?${new URLSearchParams({ targetType: "task", targetId: id })}`, remindersToView),
-    async create(title: string) {
+    async create(title: string, plannedDate?: string) {
       const normalized = titleValue(title);
+      if (plannedDate !== undefined && !calendarDate(plannedDate)) throw new TasksClientError("INVALID_DATE", "Invalid calendar date");
       const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Tokyo" }).formatToParts(new Date());
       const field = (type: string) => parts.find((part) => part.type === type)!.value;
-      return request("/api/tasks", single, "POST", {
-        title: normalized, category: "other", plannedDate: `${field("year")}-${field("month")}-${field("day")}`, idempotencyKey: key(),
+      return request("/api/tasks", value => {
+        const task = single(value);
+        if (plannedDate !== undefined && task.plannedDate !== plannedDate) throw new Error("Task create receipt date mismatch");
+        return task;
+      }, "POST", {
+        title: normalized, category: "other", plannedDate: plannedDate ?? `${field("year")}-${field("month")}-${field("day")}`, idempotencyKey: key(),
       });
     },
     async update(task: TaskView, title: string, notes: string) {

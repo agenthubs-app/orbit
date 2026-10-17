@@ -121,17 +121,19 @@ Google 実接続、外部メール、外部予定の書込は未使用。token r
 
 ### SC-05 App データ slice（主会話の中間コミット）
 
-主会話の `a96fba644` が todo-page の副本 / mirror 優先 / outbox overlay と narrow relationship-task 完了・延期例外、および offline-policy・inventory・threat model を追加した。hook は `useTodoPage(timeZone, date)` → `{ state, page, copy, staleDay, refresh, mirror, outbox }`。staleDay は日付だけでなく timezone 不一致でも true とし、offline=false の読取中でも stale copy は読取専用にする。UI は fresh な同日・同 timezone のオンライン結果でのみネットワーク動作を許す。focused tests は主会話が確認済みだが、App の fresh typecheck は共通 heavy lock 待ちで、SC-05 全体の完了ではない。
+主会話の `25e8b1805` が todo-page の副本 / mirror 優先 / outbox overlay と narrow relationship-task 完了・延期例外、および offline-policy・inventory・threat model を追加した。hook は `useTodoPage(timeZone, date)` → `{ state, page, copy, staleDay, refresh, mirror, outbox }`。staleDay は日付だけでなく timezone 不一致でも true とし、offline=false の読取中でも stale copy は読取専用にする。UI は fresh な同日・同 timezone のオンライン結果でのみネットワーク動作を許す。既存 D6 の category=relationship 一律除外は R20a の kind=task フォローを offline 完了・延期できる要件と衝突するため、既存の plain task の complete / update-defer だけを許し、create / lifecycle / meeting / event と owner / revision / lease 検証は緩めない。追加の `152b5e9ef` は stale copy・offline lifecycle・mirrored task の mutation 可否を純粋 model / RED→GREEN 4/4 で固定した。focused tests は主会話が確認済みだが、App の fresh typecheck は共通 heavy lock 待ち（前の queued command は開始前に exit 143 で中止）。calendar offline と simulator の実操作も未検証で、SC-05 全体の完了ではない。
 
 ### SC-06 / SC-07 Web 読取・判断境界（UI 前提の部分里程標）
 
 Web の `orbit-2026/todo/useTodoPage.ts` は `useTodoPage(timeZone, date, enabled = true)` を export し、`{ state, page, paging, refresh, loadMore(section, source) }` を返す。R10 / R19 も同じ API 読取境界を利用できる。ブラウザへ関係データを永続保存せず、no-store / schema 検証 / 選択日・timezone 検証を通す。NOT_IMPLEMENTED は空の成功へ変換せず非表示用 state と page=null。日付・account・refresh の世代変更で旧応答を捨て、権限拒否時には既存表示データも消す。
 
+これらの前提は rebase 後の `0f570791a` に含まれる。古い `2e66bcfc6` / `a96fba644` は clean no-stash rebase 前の参照で、現在の前提コミットは `0f570791a` / `25e8b1805`。同時期の SC-03 / SC-01 / SC-04 mock / board / SC-04 live / SC-12 API はそれぞれ `3af98f5db` / `c4d8d1ae1` / `3d89ec517` / `d0707cb50` / `0a775b4b1` / `917037ded` が現在の hash。
+
 「すべて」の source 別 cursor を URL エンコードし、同時の重複要求を抑止する。取得済み stable key を重ねず、他の section の行と cursor を保持する。source のページ読取失敗は読取済み行・cursor を消費せず、その source の retry state を返す。失敗時の 0 件を完全な件数として取り込まない。
 
 `todo-decision-client.ts` は source の既存書込 API だけを使用する。task_suggestion の accept / dismiss / snooze、plan_pending の accept / dismiss、Agent queue の accept / dismiss と ledger の既存 defer を利用し、aggregate 自体へ書込を追加しない。readonly / sample / source が許可していない action は送信前に拒否する。source id と authoritative status の receipt が一致した場合だけ成功とし、曖昧な suggestion / plan retry には同じ idempotency key を再利用する。既存 Agent defer は nextVisibleAt を持たないため、「明日」と約束せず「後で」と扱う。Agent / plan のサービス本体、外部送信 worker は変更していない。
 
-証拠：`sc06-web-hook-red.log` → `sc06-web-hook-green.log` の **7/7 pass**、`sc07-decision-client-red.log` → `sc07-decision-client-green.log` の client + hook **12/12 pass**。hook だけの段階の `sc06-web-hook-typecheck.log` は exit 0。client 追加後の `sc07-decision-client-typecheck.log` は機器の memory pressure を主会話から受けて当該 tsc PID だけを停止したため、**中止・未検証**であり pass ではない。fresh typecheck は重い作業の枠が空いてから補う。product route への設置、判断完了時のひとこと / Toast、右欄、App UI、pixel はまだ実装・検証していない。SC-06 / SC-07 の完了ではない。
+証拠：`sc06-web-hook-red.log` → `sc06-web-hook-green.log` の **7/7 pass**、`sc07-decision-client-red.log` → `sc07-decision-client-green.log` の client + hook **12/12 pass**。hook だけの段階の `sc06-web-hook-typecheck.log` は exit 0。client 追加後の `sc07-decision-client-typecheck.log` は機器の memory pressure を主会話から受けて当該 tsc PID だけを停止したため、**中止・未検証**であり pass ではない。fresh typecheck は重い作業の枠が空いてから補う。後続の product route / Toast 接続は下記。ひとこと / encounter、SC-08 右欄操作、pixel は未完了で、SC-06 / SC-07 の完了ではない。
 
 ### SC-10 日付窓の前提と未解決の source リスク（前提の部分里程標）
 
@@ -143,13 +145,36 @@ source 監査で追加の中国語生成元を確認した：`features/tasks/tod
 
 既存 `/api/schedule-items` は `scope=personal` の場合だけ from / to を personal service へ渡し、aggregate の TodayScheduleProvider は選択窓を受け取らない。personal の既定窓を任意の月の完全な予定だとみなしてはならない。SC-10 の接続時に、選択窓による recurrence 展開・範囲外の過去 / 未来の月・外部予定の split 範囲合成を操作テストで証明する必要がある。今は SC-10 完了とはしない。
 
+### Web 三块 presenter と product host（部分里程標）
+
+`TodoPresenter` と route view model は読み込み / 空 / 失敗 / 部分取得 / NOT_IMPLEMENTED を区別し、source が unavailable / not_implemented / capped のとき 0 件を精確件数として出さない。正の部分件数は下限、未知の overdue は unknown。sample / 不可用 source の mutation 操作は渡さない。初回 rendering 実行はテスト helper が ReactTestInstance を JSON 化して循環参照エラーになったため、その結果は成功とせず、host child の文字列 traversal へ直して再実行した。
+
+既定 `/app/tasks` は `TodoTaskSlot` → `TodoWorkspace` を mount する。device timezone / local date を明示し、日付変更を追跡する。既存 plan 分岐は維持し、完了済み legacy view も一時的に残す。未認証時は `tab` / `plan` / `new=1` / `view=completed` の許可値だけを continuation に保持する。new task は既存 canonical client の互換な第二引数で選択日を渡し、receipt の日付不一致は成功にしない。曖昧な失敗時は入力と idempotency key を保持する。日付変更だけでは未保存入力を捨てず、account 変更では入力を消す。
+
+source-native 判断成功は receipt 検証後の Toast と aggregate refresh へつなぐ。401 / 403 後は stale な actionable rows を残さない。「すべて」は source ごとの cursor / loading / retry を扱う。右欄の下書き入口は未接続の間は無効とし、成功したように見せない。SC-07 のひとこと / encounter は未実装。plus による実ブラウザの入力 focus、実操作履歴、SC-14 整理、pixel は未検証。
+
+RED は missing module のほか、sample/source action、capped-zero、誤った lifecycle route、選択日が Tokyo へ戻る問題、wrong-date receipt、midnight draft loss、401 後の旧 row、product route と continuation の回帰を固定した。最新 `sc06-07-product-green.log` は route 2 / workspace 5 / presenter 3 / model 8 / selected-date client 2 / legacy client 5 / hook 7 / decision client 5 の **37/37 pass、0 skip**（scrubbed env、paid-AI boundary、mock HTTP、local DB / real provider 不使用）。fresh typecheck / browser / build / full suite は未実施で、これらの成功を主張しない。
+
+copy QA：`sc07-task-copy-qa.log` は task domain **42 entries / 0 issues**。全 Web の `sc07-web-copy-qa.log` は **26 issues で失敗**（length 11 / untranslated 1 / tone 2 / width 12）。対象外の既存 eventsJourney / host / plan copy で、本変更からは直さない。pristine copy QA を採っていないので、全体 pass や新旧差分が確定したとは主張しない。追加途中の英語 `Add a To-do` は sentence-case 指摘を受け `Add a task` に直して domain QA を再実行した。
+
+Web の G24 / G17 解釈は主会話が現コードと R31a / b PLANNER で確認：UiText は App の API で、Web には UiText export も Segmented variant=tseg の予定もない。Web では既存 Segmented / Task shell pattern と semantic text / scoped CSS Modules を用い、App の API を推測して Web library に追加しない。component library は未変更。
+
+entity_draft の対応会話に別の未解決点がある。source の creation は `app/api/ai/conversations/route.ts` の activeConversationId を保存し、live runtime は `live-orbit-agent-conversation` という provider-local 定数を使う一方、Web chat の保存 sessionId は別の reliable protocol の値である。両者の一致は確認できず、`?session=<conversationId>` というリンクを捏造しない。主会話の判断で当面は generic `/app/agent` と対応未確認の表示だけにし、SC-07 は partial。対応会話を開けたと主張しない。contact_draft は従来の `/app/contacts/new/drafts` へ readonly で渡し、client-side 破棄を追加しない。
+
+SC-09 cross-endpoint 監査：Web / App の `/tasks/relationship/[id]` は connectionId を要求するが、todo/page lifecycle row は taskId しか返さない。Web は検証済み contact がある場合の generic contact link のみ、それ以外は非 navigation と説明を表示する。App の lifecycle detail は説明付きで無効のまま。既存 `/api/relationship-tasks/page` は actor / workspace 検証済みの taskId・connectionId mapping を返すが、任意 taskId の精確 lookup ではなく最大 50 件の page である。legacy `/api/relationship-tasks` の全 graph 読取や page 全走査で穴を埋めない。canonical `/api/tasks/[id]` に connectionId はなく、lifecycle repository も connectionId が必要。frozen todo/page contract を変更せずに済む、bounded / actor-owned / ambiguous identity 拒否の taskId resolver または新 detail route が必要で、SC-09 は partial。
+
+SC-08 監査：既存 message-drafts は英語、email / reconnect draft は en 以外を zh と扱うため、日本語生成として呼ばない。主会話の判断で manual editor と明示的な AI unavailable を実装する方針とし、現里程標では入口を無効にする。signal の taskId は legacy followup の場合もあり canonical task と同一とは限らないため、D-10 は実 kind / contact の確認前に task endpoint を呼ばない。paid AI / 外部送信 / source-owned API の変更はしていない。
+
 ## 请求
 
-本段階では追加なし。`contacts/new/drafts` のサーバー側破棄要求は SC-07 の交接で記録する。
+- A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。
+- Agent / chat owner：entity_draft から検証済み persisted session identifier、または actor-scoped な対応 mapping を投影し、「該当する保存済み会話を開く」end-to-end test を追加してほしい。D は ownership 外の Agent chat path を変更しない。
+- draft source owner：日本語と tone の明示的サポート、および対応する生成 contract / tests が必要。en / zh を日本語として扱わない。
+- `contacts/new/drafts` のサーバー側破棄要求は SC-07 の交接で記録する。
 
 ## 待主会话代定
 
-SC-04 の每日一問：既存 source は問題未作成 / none 再評価で書込を必要とする。To-do GET は初期化しない。既存 R16 component の source 初期化後の再取得でよいか、source owner が純粋な preview を追加するか、主会話で扱う。未決定のまま同等 / 完了とはしない。
+SC-04 の每日一問は主会話が決定済み：aggregate GET は read-only を維持し、未初期化を exact zero としない。A-owned read-only projection 要求を上に記録した。entity_draft も対応未検証の深いリンクは出さず、SC-07 partial を維持する。いずれも解決前に同等 / 完了とはしない。
 
 ## 待用户授权
 

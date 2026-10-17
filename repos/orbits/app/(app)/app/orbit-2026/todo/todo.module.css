@@ -1,0 +1,14 @@
+/* web.html wTaskTodo: 7/5 top row and full-width follow-ups. */
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-18); align-items: stretch; }
+.decisions { grid-column: span 7; }
+.nextMoves { grid-column: span 5; min-width: 0; }
+.followups { grid-column: span 12; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); margin-bottom: var(--space-12); }
+.heading { display: flex; align-items: center; gap: var(--space-8); margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
+.row { display: flex; align-items: center; gap: var(--space-8); }
+.note { color: var(--ink-3); font-size: var(--fs-caption); line-height: var(--lh-label); margin: var(--space-8) 0; }
+.moveTitle { display: flex; align-items: center; gap: var(--space-10); }
+.moveTitle h4 { margin: 0; font-size: var(--fs-body); font-weight: var(--fw-heavy); line-height: var(--lh-body); }
+.reason { color: var(--ink-2); font-size: var(--fs-body-sm); line-height: var(--lh-body); margin: var(--space-10) 0; }
+.moveFoot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); margin-top: var(--space-14); }
+@media (max-width: 1023px) { .decisions, .nextMoves { grid-column: span 12; } }
