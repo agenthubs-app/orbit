@@ -168,7 +168,7 @@ test("spec cells: an off-origin --region crops only the implementation, the desi
   const cell = canvas(44, 39, [255, 255, 255], (x, y) => (x < 4 && y < 4 ? [0, 0, 0] : null));
   const viewport = canvas(144, 90, [255, 255, 255], (x, y) => (x >= 50 && x < 54 && y >= 25 && y < 29 ? [0, 0, 0] : null));
   const region: [number, number, number, number] = [50, 25, 44, 39];
-  assert.throws(() => cropPair({ design: cell, app: viewport, region }), /在图外/, "the old call: the design cell is cropped with the viewport rect");
+  assert.throws(() => cropPair({ design: cell, app: viewport, region, designRegion: undefined }), /在图外/, "the old call: the design cell is cropped with the viewport rect");
   const fixed = cropPair({ design: cell, app: viewport, region, designRegion: [0, 0, cell.width, cell.height] });
   assert.deepEqual([fixed.app.width, fixed.app.height], [44, 39]);
   assert.equal(fixed.app.data[0], 0, "the implementation crop starts at the dialog");
