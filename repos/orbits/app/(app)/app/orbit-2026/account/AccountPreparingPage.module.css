@@ -1,0 +1,4 @@
+.card { display:grid; justify-items:start; gap:12px; max-width:520px; border:1px solid var(--line); border-radius:var(--r-xl); padding:24px; background:var(--surface); }
+.badge { border-radius:999px; padding:5px 9px; background:var(--surface-2); color:var(--ink-2); font-size:11px; }
+.card p { margin:0; color:var(--ink-2); font-size:13px; line-height:1.6; }
+.card a { color:var(--plum-700); font-size:12px; font-weight:700; text-decoration:none; }
