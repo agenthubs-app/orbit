@@ -10,16 +10,17 @@
 4. [maintenance/2026-10-12-decisions.md](maintenance/2026-10-12-decisions.md)：用户已拍板的设计口径（§1–§15），不要重新讨论。
 5. [screen-ownership.md](screen-ownership.md)：哪些旧屏归你重写。
 
-## 2. 顺序（推荐，已按依赖排好）
+## 2. 顺序（2026-10-18 改为 5 条并行线，RD-31，[并行线提案](https://claude.ai/artifact/NQDE2nDbz4NRgRLH5EQRm6)）
 
-| 顺序 | Sprint | 为什么排这里 |
+| 线 | 顺序 | 说明 |
 | --- | --- | --- |
-| 1 | **组件库像素轮**（2026-10-18 拆成 [R31a App](R31a-app-components-pixel/GOAL.md) → [R31b Web](R31b-web-components-pixel/GOAL.md)）（R04 / R06 补：交接表 G23、R24-05、U02） | 交接表 G23 本来就记「乙负责组件库时处理」。Modal / Drawer / BottomSheet / Toast 等还没逐件对上 kit，甲的计划页概要（A 组）和你之后的页面都卡在这里；先做完，两边都少返工。不依赖任何未完成的功能。 |
-| 2 | R11 人脈、R18 账户 | 最独立。R11 要接甲 R12 / R15 已做好的加人弹层和招待连接（交接表 R11 节）。 |
-| 3 | R20 Task | 依赖 R07 / R05 壳（已完成）；メモ「＋ メモを追加」等见交接表 R20 节。 |
-| 4 | R21 iOrbit、R13 / R14 收件箱 · 秘書 · 推送 | 甲的 R30 搜索要用 R21 的会话搜索接口，接口先定好告诉甲。 |
-| 5 | R10 首页 | 要汇总计划和活动，等甲的计划页定型、R26 活动服务端出来再做，返工最少。 |
-| 6 | R19 iOS 小组件 | 依赖首页 / Task 的数据口径。 |
+| A 组件 → 后台 | [R31a](R31a-app-components-pixel/GOAL.md) ∥ [R31b](R31b-web-components-pixel/GOAL.md)（R31b 在 R31a 工具里程碑后开）→ R29 | 组件库与 token 只有 A 线改；R29 要等两端组件库做完 |
+| B 人脈 → 收件箱 | R11 → R13 / R14 | R13 / R14 开工第一步先交秘書来源契约（D-15）给 R10 |
+| C 账户 → 引导 | R18 → R28 | 两者都改 profile，放同一条线 |
+| D Task → 首页 → 小组件 | R20 → R10 → R19 | 导航壳只有 D 线改；R10 秘書组件先接演示数据 |
+| E iOrbit | R21 | R31a 完成后开；会话搜索做好后自己打开 R30 会話 chip |
+
+同时跑 4 条（A–D）。功能线现在就开，像素收口排在 R31a / R31b 之后。
 
 每个 Sprint 照 HOW-TO 先写 `GOAL.md` / `PLANNER.md`（目录 `sprints/Rxx-<名字>/`），独立复核后再实施。
 
@@ -32,7 +33,7 @@
 - **共用代码**：`repos/orbits/features/plans/`（计划）、`features/contacts/` 加人与邀请相关、两端组件库 `components/`、token 源，改之前先在交接表或决定表里写一句、告诉甲；热点文件归属按 `screen-ownership.md` 与 R09 REPORT。
 - **组件库改动影响全站**：组件库轮每改一个组件，跑一遍 R05 / R07 壳门禁，确认壳没变差。
 - **设计口径**：画板冲突、示例数据不自洽时，按「数据自洽 / 已定规则一致 / 较新画板优先」定，统一记进 `2026-10-12-decisions.md` 新一节；不要各自改画板。补画只加在画板文件末尾。
-- **门禁**：Web `repos/orbits/scripts/visual/compare-redesign.mjs`（`--suite`、`--only`、`--style-diff`、`--crop`、`--extract-board`），App 用内置 iOS 模拟器真实画面；整屏 raw ≤0.02，超阈值带只能归因 `[data]` / `[raster]`。
+- **门禁**：Web `repos/orbits/scripts/visual/compare-redesign.mjs`（`--suite`、`--only`、`--style-diff`、`--crop`、`--extract-board`），App 用内置 iOS 模拟器真实画面；整屏 raw ≤0.02，超阈值带只能归因 `[data]` / `[raster]` / `[contrast]`（RD-26、RD-29）。
 - **不要做**：连 Neon、部署、改生产环境变量、付费 AI 真调用（都要用户授权）；改 `repos/orbit-app/.env.local`（用 `.env.development.local`）。
 
 ## 4. 甲这边的排期（供对齐）
