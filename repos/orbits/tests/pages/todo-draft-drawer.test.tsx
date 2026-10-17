@@ -7,9 +7,9 @@ import { Orbit2026Scope } from "../../app/(app)/app/orbit-2026/ui";
 
 const text = (node: ReactTestInstance): string => node.children.map(child => typeof child === "string" ? child : text(child)).join("");
 const button = (root: ReactTestRenderer, label: string) => root.root.findAllByType("button").find(node => text(node) === label)!;
-function Harness() {
+function Harness({ canHandoff = true, scopeKey = "a/day1" }: { canHandoff?: boolean; scopeKey?: string }) {
   const [draft, setDraft] = useState<ManualTodoDraft>({ to: "", subject: "お礼", body: "" });
-  return <Orbit2026Scope language="ja"><TodoDraftDrawer open title="面談のお礼" reason="昨日の面談" value={draft} onChange={setDraft} onClose={() => {}} /></Orbit2026Scope>;
+  return <Orbit2026Scope language="ja"><TodoDraftDrawer open title="面談のお礼" reason="昨日の面談" value={draft} canHandoff={canHandoff} scopeKey={scopeKey} onChange={setDraft} onClose={() => {}} /></Orbit2026Scope>;
 }
 function documentStub() {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "document");
@@ -64,4 +64,28 @@ test("mailto rejects recipient/header injection and oversized text before any ha
   assert.equal(draftMailto({ ...draft, body: "x".repeat(50001) }), null);
   assert.equal(draftMailto({ ...draft, body: " " }), null);
   assert.equal(draftMailto({ ...draft, body: "文".repeat(1000) }), null, "oversized encoded mailto stays copy-only");
+});
+
+test("revoked item binding keeps manual text but hides handoff and ignores a late prior-scope clipboard result", async t => {
+  const restore = documentStub(), previous = Object.getOwnPropertyDescriptor(globalThis, "navigator"); let resolve!: () => void; let calls = 0;
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { clipboard: { writeText: async () => { calls++; if (calls === 1) await new Promise<void>(done => { resolve = done; }); } } } });
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<Harness />); });
+  t.after(() => { act(() => root.unmount()); restore(); if (previous) Object.defineProperty(globalThis, "navigator", previous); else Reflect.deleteProperty(globalThis, "navigator"); });
+  await act(async () => root!.root.findAllByType("input")[0]!.props.onChange({ target: { value: "person@example.test" } }));
+  await act(async () => root!.root.findByType("textarea").props.onChange({ target: { value: "Preserved manual text" } }));
+  const oldCopy = button(root!, "コピー").props.onClick;
+  await act(async () => oldCopy());
+  await act(async () => root.update(<Harness canHandoff={false} scopeKey="a/day2" />));
+  await act(async () => resolve());
+  assert.equal(root!.root.findByType("textarea").props.value, "Preserved manual text");
+  assert.equal(button(root!, "コピー").props.disabled, true);
+  assert.equal(root!.root.findAllByType("a").length, 0);
+  assert.ok(!JSON.stringify(root!.toJSON()).includes("コピーしました"));
+  await act(async () => oldCopy());
+  assert.equal(calls, 1);
+  await act(async () => root.update(<Harness scopeKey="a/day2" />));
+  await act(async () => button(root!, "コピー").props.onClick());
+  assert.equal(calls, 2);
+  assert.ok(JSON.stringify(root!.toJSON()).includes("コピーしました"));
 });

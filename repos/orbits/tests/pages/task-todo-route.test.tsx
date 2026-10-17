@@ -36,6 +36,7 @@ test("Task Todo route mounts the new slot without legacy follow-up reads and pre
   const element = await runtime.page({ searchParams: Promise.resolve({ tab: "todo", new: "1" }) });
   assert.equal(element.props.todo.type, runtime.todo);
   assert.equal(element.props.todo.props.initialAdd, true);
+  assert.equal(element.props.todo.props.actorId, "actor");
   assert.equal(runtime.lifecycleReads(), 0);
   assert.equal(runtime.planReads(), 0);
   const plan = await runtime.page({ searchParams: Promise.resolve({ tab: "plan", plan: "goal", new: "1" }) });

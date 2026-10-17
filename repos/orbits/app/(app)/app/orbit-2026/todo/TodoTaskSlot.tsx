@@ -9,7 +9,7 @@ import { Orbit2026Scope, RetryCard, Skeleton } from "../ui";
 import { TodoWorkspace } from "./TodoWorkspace";
 
 /** Device-zone selection is explicit; no SSR assumption about the browser's day. */
-export function TodoTaskSlot({ initialAdd = false }: { initialAdd?: boolean }) {
+export function TodoTaskSlot({ actorId, initialAdd = false }: { actorId?: string; initialAdd?: boolean }) {
   const { language } = useOrbitLanguage();
   const [context, setContext] = useState<{ date: string; timeZone: string } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -28,5 +28,5 @@ export function TodoTaskSlot({ initialAdd = false }: { initialAdd?: boolean }) {
     return () => window.clearInterval(timer);
   }, [retry]);
   if (failed || !context) return <Orbit2026Scope language={language}>{failed ? <RetryCard title={pickCopy(taskCopy.todoReadFailed, language)} onRetry={() => setRetry(value => value + 1)} /> : <Skeleton lines={5} />}</Orbit2026Scope>;
-  return <TodoWorkspace language={language} timeZone={context.timeZone} date={context.date} initialAdd={initialAdd} />;
+  return <TodoWorkspace actorId={actorId} language={language} timeZone={context.timeZone} date={context.date} initialAdd={initialAdd} />;
 }

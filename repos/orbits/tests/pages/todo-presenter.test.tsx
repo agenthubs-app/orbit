@@ -13,7 +13,8 @@ const contents = (node: ReactTestInstance): string => node.children.map(child =>
 test("To-do presenter renders its three independent blocks and browsing callbacks without fetching", async t => {
   const selected: string[] = [];
   let root: ReactTestRenderer;
-  await act(async () => { root = create(<TodoPresenter {...props} state="ready" view={todoPageView(demoTodoPage)} onDraft={key => selected.push(key)} onMore={section => selected.push(section)} />); });
+  const page = { ...demoTodoPage, nextMoves: { ...demoTodoPage.nextMoves, items: demoTodoPage.nextMoves.items.map(item => ({ ...item, sample: undefined })) } };
+  await act(async () => { root = create(<TodoPresenter {...props} state="ready" view={todoPageView(page)} onDraft={key => selected.push(key)} onMore={section => selected.push(section)} />); });
   t.after(() => act(() => root.unmount()));
   for (const title of ["あなたの判断待ち", "今日の一手", "フォロー"]) assert.ok(text(root!).includes(title));
   assert.ok(text(root!).includes("山本 彩さんに資料を再送"));
@@ -22,6 +23,17 @@ test("To-do presenter renders its three independent blocks and browsing callback
   await act(async () => button("下書きを開く").props.onClick());
   await act(async () => button("すべて").props.onClick());
   assert.deepEqual(selected, ["agent_signal:demo-signal-thanks", "decisions"]);
+});
+
+test("manual drafts do not depend on an AI draft route, while sample rows cannot open a private editor", async t => {
+  const page = { ...demoTodoPage, nextMoves: { next: {}, items: [{ ...demoTodoPage.nextMoves.items[0], sample: undefined, draftAvailable: false }] } };
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TodoPresenter {...props} state="ready" view={todoPageView(page)} />); });
+  t.after(() => act(() => root.unmount()));
+  const open = () => root!.root.findAllByType("button").find(node => contents(node) === "下書きを開く")!;
+  assert.equal(open().props.disabled, false);
+  await act(async () => root.update(<TodoPresenter {...props} state="ready" view={todoPageView({ ...page, nextMoves: { next: {}, items: [{ ...page.nextMoves.items[0]!, sample: true, draftAvailable: true }] } })} />));
+  assert.equal(open().props.disabled, true);
 });
 
 test("healthy blocks remain visible when one source fails, while missing-source zero is never displayed as empty success", async t => {

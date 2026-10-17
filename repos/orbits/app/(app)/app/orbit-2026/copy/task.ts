@@ -72,6 +72,7 @@ export const taskCopy = {
   draftTitle: { ja: "メールの下書き", zh: "邮件草稿", en: "Email draft", kind: "dialogTitle" },
   draftAiUnavailable: { ja: "日本語の AI 下書きはまだ使えません。手動で編集できます。", zh: "暂不支持 AI 日语草稿，可以手动编辑。", en: "AI drafts in Japanese are not available yet. You can edit manually.", kind: "body" },
   draftMemoryOnly: { ja: "入力はこのページだけに残ります。再読み込みやアカウント切替で消えます。サーバーには保存しません。", zh: "输入仅保留在当前页面，刷新页面或切换账号后会清除。不保存到服务器。", en: "Input stays on this page only. Reloading or switching accounts clears it. It is not saved to the server.", kind: "body" },
+  draftBindingPending: { ja: "元の一手を確認中です。入力は残ります。確認できるまでコピーやメールは使えません。", zh: "正在确认原来的下一步。输入已保留，确认前无法复制或打开邮件。", en: "Checking the original next move. Your input is kept. Copy and email are paused until it is verified.", kind: "body" },
   draftTo: { ja: "宛先", zh: "收件人", en: "To", kind: "label" },
   draftSubject: { ja: "件名", zh: "主题", en: "Subject", kind: "label" },
   draftBody: { ja: "本文", zh: "正文", en: "Message", kind: "label" },

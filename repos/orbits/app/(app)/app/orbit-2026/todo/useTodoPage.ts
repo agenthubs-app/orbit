@@ -8,7 +8,7 @@ import { useSharedReadAccount } from "../../orbit-shared-read-account";
 type ReadState = "idle" | "loading" | "ready" | "failed" | "not_implemented";
 type PagingState = Partial<Record<TodoSourceKey, "loading" | "failed">>;
 type ReadResult = { kind: "ok"; page: TodoPageContract } | { kind: "failed" | "not_implemented" | "denied" };
-interface Snapshot { scope: string; state: ReadState; page: TodoPageContract | null; paging: PagingState }
+interface Snapshot { scope: string; state: ReadState; page: TodoPageContract | null; paging: PagingState; denied?: boolean }
 
 async function read(url: string, date: string, timeZone: string, signal: AbortSignal): Promise<ReadResult> {
   const response = await fetch(url, { signal, cache: "no-store", headers: { accept: "application/json" } });
@@ -66,7 +66,7 @@ export function useTodoPage(timeZone: string, date: string, enabled = true) {
     const answer = await read(url(), date, timeZone, controller.signal).catch((): ReadResult => ({ kind: "failed" }));
     if (controller.signal.aborted || generation.current !== epoch || activeScope.current !== scope) return;
     requests.current.delete("first");
-    publish({ scope, state: answer.kind === "ok" ? "ready" : answer.kind === "not_implemented" ? "not_implemented" : "failed", page: answer.kind === "ok" ? answer.page : null, paging: {} });
+    publish({ scope, state: answer.kind === "ok" ? "ready" : answer.kind === "not_implemented" ? "not_implemented" : "failed", page: answer.kind === "ok" ? answer.page : null, paging: {}, denied: answer.kind === "denied" });
   }, [cancel, date, enabled, publish, ready, scope, timeZone, url]);
 
   useEffect(() => { void refresh(); return cancel; }, [cancel, refresh]);
@@ -87,7 +87,7 @@ export function useTodoPage(timeZone: string, date: string, enabled = true) {
     const latest = value.current;
     if (answer.kind === "denied" || answer.kind === "not_implemented") {
       cancel();
-      publish({ scope, state: answer.kind === "denied" ? "failed" : "not_implemented", page: null, paging: {} });
+      publish({ scope, state: answer.kind === "denied" ? "failed" : "not_implemented", page: null, paging: {}, denied: answer.kind === "denied" });
       return;
     }
     if (answer.kind !== "ok" || answer.page.sources[source] !== "ok" || !latest.page) {
@@ -104,6 +104,7 @@ export function useTodoPage(timeZone: string, date: string, enabled = true) {
     state: snapshot.scope === scope ? snapshot.state : enabled ? "loading" as const : "idle" as const,
     page: snapshot.scope === scope ? snapshot.page : null,
     paging: snapshot.scope === scope ? snapshot.paging : {},
+    denied: snapshot.scope === scope && snapshot.denied === true,
     refresh, loadMore,
   };
 }

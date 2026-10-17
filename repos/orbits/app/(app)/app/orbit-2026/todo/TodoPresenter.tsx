@@ -60,7 +60,7 @@ export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onMor
         {view.nextMoves.state === "empty" ? <EmptyState title={t(taskCopy.todoNextMovesEmpty)} /> : item ? <>
           <div className={styles.moveTitle}><MacTile emoji="💌" tone="pink" /><h4>{item.title}</h4>{item.sample ? <SampleTag /> : null}</div>
           {item.subtitle ? <p className={styles.reason}>{item.subtitle}</p> : null}
-          <div className={styles.moveFoot}><Button label={t(taskCopy.todoOpenDraft)} variant="primary" size="sm" disabled={!item.draftAvailable || !onDraft} onClick={() => onDraft?.(item.key)} />{item.subtitle ? <WhyDisclosure reason={item.subtitle} /> : null}</div>
+          <div className={styles.moveFoot}><Button label={t(taskCopy.todoOpenDraft)} variant="primary" size="sm" disabled={item.sample || !onDraft} onClick={() => { if (!item.sample) onDraft?.(item.key); }} />{item.subtitle ? <WhyDisclosure reason={item.subtitle} /> : null}</div>
           <p className={styles.note}>{t(taskCopy.todoDraftOnly)}</p>
         </> : null}
       </Card>

@@ -16,14 +16,15 @@ import { useTodoPage } from "./useTodoPage";
 import styles from "./todo.module.css";
 import { TodoDraftDrawer, type ManualTodoDraft } from "./TodoDraftDrawer";
 
-export function TodoWorkspace({ language, timeZone, date, initialAdd = false }: { language: OrbitLanguage; timeZone: string; date: string; initialAdd?: boolean }) {
-  const { account } = useSharedReadAccount();
-  return <Orbit2026Scope language={language}><ToastProvider><Workspace key={account ?? "signed-out"} timeZone={timeZone} date={date} language={language} initialAdd={initialAdd} /></ToastProvider></Orbit2026Scope>;
+export function TodoWorkspace({ actorId, language, timeZone, date, initialAdd = false }: { actorId?: string; language: OrbitLanguage; timeZone: string; date: string; initialAdd?: boolean }) {
+  const { account, ready } = useSharedReadAccount();
+  const origin = typeof window === "undefined" ? "same-origin" : window.location?.origin ?? "same-origin";
+  return <Orbit2026Scope language={language}><ToastProvider><Workspace key={JSON.stringify([actorId ?? account, account, ready, origin])} timeZone={timeZone} date={date} language={language} initialAdd={initialAdd} /></ToastProvider></Orbit2026Scope>;
 }
 
 function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLanguage; timeZone: string; date: string; initialAdd: boolean }) {
   const resource = useTodoPage(timeZone, date);
-  const { account } = useSharedReadAccount();
+  const { account, ready } = useSharedReadAccount();
   const view = resource.page ? todoPageView(resource.page) : null;
   const toast = useToast();
   const t = (entry: typeof taskCopy[keyof typeof taskCopy]) => pickCopy(entry, language);
@@ -38,10 +39,16 @@ function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLa
   const scope = JSON.stringify([account, date, timeZone]);
   const activeScope = useRef(scope);
   activeScope.current = scope;
+  const draftScope = JSON.stringify([scope, ready, resource.denied, resource.state === "not_implemented"]);
+  const previousDraftScope = useRef(draftScope), draftEpoch = useRef(0), currentPage = useRef(resource.page);
+  if (previousDraftScope.current !== draftScope) { previousDraftScope.current = draftScope; draftEpoch.current++; }
+  currentPage.current = resource.page;
+  const epoch = draftEpoch.current;
   const operation = useRef<symbol | null>(null);
   useEffect(() => { operation.current = null; setBusy(false); setError(false); setAll(null); }, [scope]);
   useEffect(() => { if (initialAdd) setAdding(true); }, [initialAdd]);
-  useEffect(() => () => { activeScope.current = "unmounted"; operation.current = null; }, []);
+  useEffect(() => () => { activeScope.current = "unmounted"; operation.current = null; draftEpoch.current++; }, []);
+  useEffect(() => { if (!ready || resource.denied || resource.state === "not_implemented") { draftEpoch.current++; setDraftKey(null); setDrafts({}); setAdding(false); setTitle(""); } }, [ready, resource.denied, resource.state]);
 
   async function mutate(write: () => Promise<unknown>, message: string, settled?: () => void) {
     if (operation.current) return;
@@ -78,16 +85,20 @@ function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLa
 
   const sectionTitle = (section: TodoSectionKey) => t(section === "decisions" ? taskCopy.todoDecisions : section === "nextMoves" ? taskCopy.todoNextMoves : taskCopy.todoFollowups);
   function openDraft(key: string) {
-    const row = resource.page?.nextMoves.items.find(item => item.key === key);
-    if (!row?.draftAvailable) return;
+    const row = currentPage.current?.nextMoves.items.find(item => item.key === key);
+    if (!row || row.sample || !ready || resource.denied || draftEpoch.current !== epoch || activeScope.current !== scope || draftKey === key) return;
+    draftEpoch.current++;
     setDrafts(current => current[key] ? current : { ...current, [key]: { title: row.titlePreview, reason: row.reasonPreview, value: { to: "", subject: row.titlePreview, body: "" } } });
     setDraftKey(key);
   }
-  const draft = draftKey ? drafts[draftKey] : null;
+  const draft = ready && !resource.denied && resource.state !== "not_implemented" && draftKey ? drafts[draftKey] : null;
+  const binding = resource.page?.nextMoves.items.find(item => item.key === draftKey);
+  const canHandoff = Boolean(resource.state === "ready" && binding && !binding.sample && resource.page?.sources[binding.source] === "ok");
+  if (resource.state === "not_implemented") return null;
   return <>
     <button type="button" hidden data-task-add="" onClick={() => { setAdding(true); setError(false); }}>{t(taskCopy.todoAdd)}</button>
     <TodoPresenter state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDecision={decide} onMore={setAll} onDraft={openDraft} />
-    {draft ? <TodoDraftDrawer key={draftKey} open title={draft.title} reason={draft.reason} value={draft.value} onChange={value => setDrafts(current => ({ ...current, [draftKey!]: { ...current[draftKey!]!, value } }))} onClose={() => setDraftKey(null)} /> : null}
+    {draft ? <TodoDraftDrawer key={`${epoch}:${draftKey}`} open title={draft.title} reason={draft.reason} value={draft.value} canHandoff={canHandoff} scopeKey={`${draftScope}:${epoch}`} onChange={value => { if (draftEpoch.current !== epoch) return; setDrafts(current => current[draftKey!] ? { ...current, [draftKey!]: { ...current[draftKey!]!, value } } : current); }} onClose={() => { if (draftEpoch.current !== epoch) return; draftEpoch.current++; setDraftKey(null); }} /> : null}
     {error && !adding ? <p role="alert" className={styles.note}>{t(taskCopy.todoWriteFailed)}</p> : null}
     <Modal open={adding} title={t(taskCopy.todoAdd)} onClose={() => { if (!busy) setAdding(false); }}>
       <form onSubmit={event => { event.preventDefault(); if (!title.trim()) return; void mutate(() => clients.tasks.create(title, date), t(taskCopy.todoSaved), () => { setTitle(""); setAdding(false); }); }}>

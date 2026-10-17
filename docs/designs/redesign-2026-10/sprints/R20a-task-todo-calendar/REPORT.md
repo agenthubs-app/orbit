@@ -192,6 +192,8 @@ sanitized App full の後続実測は **3,412 tests / 3,394 pass / 16 fail / 2 s
 
 主会話の修正 `fc8011649`（App 七 paths）は offline harness の nativeUiStubs、Calendar / Todo old UI pattern、明示した offline-read request policies を修正。後続 heavy の offline browser **11/11**、inventory 最初の **33/34**（二つの generic `:id/:id` builders が未分類）を隠さず、その route builder を explicit accept / dismiss literals に直した再検証 **1/1**、fresh App typecheck **exit 0**。focused Calendar **8/8** / Todo **14/14** / action **10/10** / ratchet **10/10** も主会話が確認済み。初回全量 16 fail がゼロへ変わったという証拠にはしない。CalendarScreen は最後の old OfflineNotice import を除いたが、kit OfflineBar に lastSyncedAt / queue-specific detail がないため timestamp / queued-write copy は inline で保持する。potential A-kit enhancement / design・pixel review の pending 項目で、視覚一致や SC-05 完了としない。
 
+主会話の最新 sanitized App full（`fc8011649`、`app-full-fc8011649.log`）は **3,413 tests / 3,409 pass / 2 fail / 2 skip、exit 1**。残る二件は pristine と同名の dictionary exact-count と joined-person click interception。pristine の plan-overlay と tasks-unification は今回は pass。D 誘発の offline 11 / ratchet / inventory failure は消え、pristine に対して **新規 failure 0** だが、suite-green ではない。これは App の証拠であり Web 全量・typecheck の成功へ転用しない。
+
 `12a1c240d` は App manual draft を auth / server / date scope に束縛し、stale callback を拒否した security follow-up（新 scope check RED→GREEN、focused 12/12）。その前の App typecheck exit 0 と区別し、当該 follow-up 後の fresh typecheck はまだ pending。
 
 App worker `83b07b166` は面談詳細の Move / Cancel（focused 19/19、route browser 6/6、fresh App typecheck exit 0、copy 47/0、hardcoded-copy 5/5）。contact-only 初回提案は user choice 待ちで fail-closed。provenance 偏差：同時編集した App `copy-kinds.ts` の meetingDetails 九 entry が worker commit ではなく主会話 `a383637ec` に意図せず入った。コード欠落はなく、既報 commit の amend は行っていない。Web worker はこれらの App paths を変更・stage しない。
@@ -273,6 +275,12 @@ SC-08 監査：既存 message-drafts は英語、email / reconnect draft は en 
 本人の click による clipboard と mailto handoff のみ。メール送信を実行・記録したとは扱わず、sent confirmation / encounter / task completion も追加しない。mail recipient は単一入力だけ、header / control characters / 不正 UTF-16 は拒否し、subject 998 / body 50,000 characters、encoded mailto 8,000 characters を上限とする。長い本文は copy のまま使える。clipboard の拒否は入力を残して明示失敗とし、成功 Toast を出さない。
 
 RED：`sc08-manual-draft-red.log` / `sc08-manual-host-red.log` / `sc08-manual-copy-safety-red.log`。初回 CSS gate は誤った radius token 名で失敗したため、既存 `--r-bubble` / `--r-pill` と `--fw-regular` へ修正（`sc08-draft-css-red.log`）。英語の否定文中の `sent` が forbidden-copy gate に該当したため `Draft only. You send it.` へ直した。最新 `sc08-manual-draft-green.log` は drawer 3 / host 6 / CSS・hardcoded-copy・scope 12 の **21/21 pass、0 skip**。`sc08-task-copy-qa.log` は task domain **59 entries / 0 issues**。fresh typecheck / real clipboard / email-app launch / browser / pixel は pending。AI generation / persistence / sent-confirmation / D-10 未完のため SC-08 完了とはしない。
+
+後続の App / Web 方針合わせでは、`draftAvailable=false` でも non-sample next move から手動 editor を開けるようにした。これは AI が使えるという意味ではなく、AI / 保存 / 送信は引き続き無効。canonical actor と session account / ready / same-origin server を private host の scope にし、account / server / 未解決 session / 401 / 403 / whole-page NOT_IMPLEMENTED で private draft と保持 callback を破棄する。hook は denied と一時的な network failure を区別する。
+
+日付だけの変更では本人の未保存文字列を保持する。ただし旧 row の action / copy 状態と callback は即時 revoke し、同じ account の当日 source から同一 real item を再取得するまで clipboard / mailto を出さない。再 binding 後も旧 callback は使えない。clipboard の非同期完了が scope 変更後に到着しても成功表示を復活させず、編集・閉じる・再表示後の旧 callback で新しい本文を書き換えない。
+
+RED：`sc08-web-manual-policy-red.log` は `draftAvailable=false` の誤った無効化と canonical actor 未伝達、`sc08-web-manual-scope-red.log` は midnight の handoff、denial / NOT_IMPLEMENTED 後の private drawer 残留、旧 clipboard completion の状態復活を実測した。`sc08-web-manual-scope-green.log` **30/30** に続く最新 `sc08-web-manual-parity-focused.log` は host / drawer / presenter / hook / route / selected-date create / source-native decisions / view model / CSS・copy・scope guards の **57/57 pass、0 skip**。`sc08-web-manual-parity-copy-qa.json` は task **147 entries / 0 issues**。scrubbed targeted mock-HTTP 証拠で、real clipboard / email-app / paid AI / server persistence / encounter は検証・実行していない。SC-08 は依然 partial。SC-11 の Modal 幅不一致による fresh Web typecheck failure も未解消。
 
 ## 请求
 

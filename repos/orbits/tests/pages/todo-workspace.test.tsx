@@ -4,6 +4,7 @@ import { act, create, type ReactTestInstance, type ReactTestRenderer } from "rea
 import { TodoWorkspace } from "../../app/(app)/app/orbit-2026/todo/TodoWorkspace";
 import { demoTodoPage } from "../../shared/mock/demo-world/todo";
 import { SessionContext } from "next-auth/react";
+import { TodoDraftDrawer } from "../../app/(app)/app/orbit-2026/todo/TodoDraftDrawer";
 
 const contents = (node: ReactTestInstance): string => node.children.map(child => typeof child === "string" ? child : contents(child)).join("");
 const button = (root: ReactTestRenderer, label: string) => root.root.findAllByType("button").find(node => node.props["aria-label"] === label || contents(node) === label)!;
@@ -117,7 +118,7 @@ test("manual draft opens from next move, survives close/reopen and midnight, and
   const writes: unknown[] = [];
   t.mock.method(globalThis, "fetch", async (url: string, init?: RequestInit) => {
     if (init?.method && init.method !== "GET") writes.push(url);
-    return Response.json({ success: true, data: { ...demoTodoPage, date: new URL(url, "https://orbit.test").searchParams.get("date") } });
+    return Response.json({ success: true, data: { ...demoTodoPage, date: new URL(url, "https://orbit.test").searchParams.get("date"), nextMoves: { ...demoTodoPage.nextMoves, items: demoTodoPage.nextMoves.items.map(item => ({ ...item, sample: undefined, draftAvailable: false })) } } });
   });
   const render = (account: string, date: string) => <SessionContext.Provider value={{ status: "authenticated", data: { user: { id: account }, expires: "2099-01-01" }, update: async () => null }}><TodoWorkspace language="ja" timeZone="Asia/Tokyo" date={date} /></SessionContext.Provider>;
   let root: ReactTestRenderer;
@@ -137,4 +138,44 @@ test("manual draft opens from next move, survives close/reopen and midnight, and
   await act(async () => open().props.onClick());
   assert.equal(root!.root.findByType("textarea").props.value, "");
   assert.deepEqual(writes, []);
+});
+
+test("midnight retains typed text but revokes old callbacks and handoff until the same real item is freshly bound", async t => {
+  const restore = setupDocument(); let settle!: (response: Response) => void;
+  const page = (date: string) => ({ ...demoTodoPage, date, nextMoves: { ...demoTodoPage.nextMoves, items: demoTodoPage.nextMoves.items.map(item => ({ ...item, sample: undefined, draftAvailable: false })) } });
+  t.mock.method(globalThis, "fetch", async (url: string) => new URL(url, "https://orbit.test").searchParams.get("date") === "2026-10-19" ? new Promise<Response>(resolve => { settle = resolve; }) : Response.json({ success: true, data: page("2026-10-18") }));
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TodoWorkspace actorId="a" language="ja" timeZone="Asia/Tokyo" date="2026-10-18" />); });
+  t.after(() => { act(() => root.unmount()); restore(); });
+  await act(async () => button(root!, "下書きを開く").props.onClick());
+  await act(async () => root!.root.findByType("textarea").props.onChange({ target: { value: "Keep this text" } }));
+  const old = root!.root.findByType(TodoDraftDrawer).props;
+  await act(async () => root.update(<TodoWorkspace actorId="a" language="ja" timeZone="Asia/Tokyo" date="2026-10-19" />));
+  assert.equal(root!.root.findByType("textarea").props.value, "Keep this text");
+  assert.equal(button(root!, "コピー").props.disabled, true);
+  await act(async () => old.onChange({ to: "", subject: "old", body: "OLD CALLBACK" }));
+  assert.equal(root!.root.findByType("textarea").props.value, "Keep this text");
+  await act(async () => settle(Response.json({ success: true, data: page("2026-10-19") })));
+  assert.equal(button(root!, "コピー").props.disabled, false);
+  await act(async () => old.onClose());
+  assert.equal(root!.root.findByType("textarea").props.value, "Keep this text");
+});
+
+test("denial or whole-page NOT_IMPLEMENTED erases a private draft instead of reviving it on a later day", async t => {
+  for (const response of [() => Response.json({ success: false }, { status: 401 }), () => Response.json({ success: false }, { status: 403 }), () => Response.json({ success: false, error: { code: "NOT_IMPLEMENTED" } }, { status: 503 })]) await t.test("closed source", async sub => {
+    const restore = setupDocument(); let closed = false;
+    sub.mock.method(globalThis, "fetch", async (url: string) => closed ? response() : Response.json({ success: true, data: { ...demoTodoPage, date: new URL(url, "https://orbit.test").searchParams.get("date"), nextMoves: { ...demoTodoPage.nextMoves, items: demoTodoPage.nextMoves.items.map(item => ({ ...item, sample: undefined, draftAvailable: false })) } } }));
+    let root: ReactTestRenderer;
+    await act(async () => { root = create(<TodoWorkspace actorId="a" language="ja" timeZone="Asia/Tokyo" date="2026-10-18" />); });
+    sub.after(() => { act(() => root.unmount()); restore(); });
+    await act(async () => button(root!, "下書きを開く").props.onClick());
+    await act(async () => root!.root.findByType("textarea").props.onChange({ target: { value: "Erase on denial" } }));
+    closed = true;
+    await act(async () => root.update(<TodoWorkspace actorId="a" language="ja" timeZone="Asia/Tokyo" date="2026-10-19" />));
+    assert.equal(root!.root.findAllByType("textarea").length, 0);
+    closed = false;
+    await act(async () => root.update(<TodoWorkspace actorId="a" language="ja" timeZone="Asia/Tokyo" date="2026-10-20" />));
+    await act(async () => button(root!, "下書きを開く").props.onClick());
+    assert.equal(root!.root.findByType("textarea").props.value, "");
+  });
 });

@@ -44,7 +44,7 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
   return <TaskContainer
     initialTab={tab}
     calendar={actor ? <CalendarTaskSlot actorId={actor.id} initialDate={date} initialAdd={tab === "calendar" && params?.new === "1"} /> : null}
-    todo={params?.view === "completed" ? <TasksPageContent initialStatus="completed" /> : actor ? <TodoTaskSlot initialAdd={tab === "todo" && params?.new === "1"} /> : null}
+    todo={params?.view === "completed" ? <TasksPageContent initialStatus="completed" /> : actor ? <TodoTaskSlot actorId={actor.id} initialAdd={tab === "todo" && params?.new === "1"} /> : null}
     plan={plan}
     planStartHref={planStartHref()}
   />;

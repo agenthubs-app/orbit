@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Card, Drawer, TextField, WhyDisclosure, useScopeLanguage } from "../ui";
 import { pickCopy } from "../copy/types";
 import { taskCopy } from "../copy/task";
@@ -18,22 +18,31 @@ export function draftMailto(draft: ManualTodoDraft): string | null {
   } catch { return null; }
 }
 
-export function TodoDraftDrawer({ open, title, reason, value, onChange, onClose }: { open: boolean; title: string; reason?: string; value: ManualTodoDraft; onChange: (draft: ManualTodoDraft) => void; onClose: () => void }) {
+export function TodoDraftDrawer({ open, title, reason, value, canHandoff = true, scopeKey = "", onChange, onClose }: { open: boolean; title: string; reason?: string; value: ManualTodoDraft; canHandoff?: boolean; scopeKey?: string; onChange: (draft: ManualTodoDraft) => void; onClose: () => void }) {
   const language = useScopeLanguage();
   const t = (entry: typeof taskCopy[keyof typeof taskCopy]) => pickCopy(entry, language);
-  const [copied, setCopied] = useState<"ready" | "copying" | "done" | "failed">("ready");
-  const mailto = draftMailto(value);
-  const edit = (patch: Partial<ManualTodoDraft>) => { setCopied("ready"); onChange({ ...value, ...patch }); };
+  const proof = JSON.stringify([open, canHandoff, scopeKey, value]), activeProof = useRef(proof), generation = useRef(0), pending = useRef<number | null>(null), alive = useRef(true);
+  if (activeProof.current !== proof) { activeProof.current = proof; generation.current++; }
+  const [copyState, setCopyState] = useState<{ proof: string; generation: number; state: "ready" | "copying" | "done" | "failed" }>({ proof, generation: 0, state: "ready" });
+  useEffect(() => { alive.current = true; return () => { alive.current = false; generation.current++; }; }, []);
+  const copied = copyState.proof === proof && copyState.generation === generation.current ? copyState.state : "ready";
+  const mailto = canHandoff ? draftMailto(value) : null;
+  const edit = (patch: Partial<ManualTodoDraft>) => { if (!alive.current || !open || activeProof.current !== proof) return; generation.current++; onChange({ ...value, ...patch }); };
   async function copy() {
-    setCopied("copying");
-    try { await navigator.clipboard.writeText(value.body); setCopied("done"); }
-    catch { setCopied("failed"); }
+    if (!alive.current || !open || !canHandoff || activeProof.current !== proof || !value.body.trim() || pending.current === generation.current) return;
+    const token = ++generation.current; pending.current = token;
+    setCopyState({ proof, generation: token, state: "copying" });
+    const active = () => alive.current && activeProof.current === proof && generation.current === token;
+    try { await navigator.clipboard.writeText(value.body); if (active()) setCopyState({ proof, generation: token, state: "done" }); }
+    catch { if (active()) setCopyState({ proof, generation: token, state: "failed" }); }
+    finally { if (pending.current === token) pending.current = null; }
   }
   return <Drawer open={open} onClose={onClose} title={t(taskCopy.draftTitle)} size="lg" footer={<>
-    <div className={styles.moveFoot}><Button label={t(taskCopy.draftSave)} variant="ghost" disabled /><Button label={t(taskCopy.draftCopy)} disabled={!value.body.trim() || copied === "copying"} onClick={() => { void copy(); }} />
+    <div className={styles.moveFoot}><Button label={t(taskCopy.draftSave)} variant="ghost" disabled /><Button label={t(taskCopy.draftCopy)} disabled={!canHandoff || !value.body.trim() || copied === "copying"} onClick={() => { void copy(); }} />
       {mailto ? <a className={styles.draftLink} href={mailto}>{t(taskCopy.draftOpenMail)}</a> : null}</div>
     {!mailto ? <p className={styles.note}>{t(taskCopy.draftHandoffHint)}</p> : null}
     <p className={styles.note}>{t(taskCopy.draftNeverSends)}</p>
+    {!canHandoff ? <p role="status" className={styles.note}>{t(taskCopy.draftBindingPending)}</p> : null}
     {copied === "done" ? <p role="status" className={styles.note}>{t(taskCopy.draftCopied)}</p> : copied === "failed" ? <p role="alert" className={styles.note}>{t(taskCopy.draftCopyFailed)}</p> : null}
   </>}>
     <p className={styles.reason}>{title}</p>
