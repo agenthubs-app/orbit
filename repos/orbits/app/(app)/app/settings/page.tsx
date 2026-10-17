@@ -1,31 +1,8 @@
-import { OrbitReferenceStyles } from "../orbit-reference-styles";
-import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
-import { loadProfileEditorPage } from "../profile/profile-0918/load-profile-editor-page";
-import { ProfileScreens } from "../profile/profile-0918/profile-screens";
+import { AccountProfilePage } from "../orbit-2026/account/AccountProfilePage";
 
 export const dynamic = "force-dynamic";
 
-// iOrbit 设置与个人资料同壳同页签（Orbit_0918 个人中心）；既有五个设置模块经 ProfileLegacySettings 挂载。
-export default async function AppSettingsPage() {
-  const page = await loadProfileEditorPage("/app/settings");
-
-  if (page.ok === false) {
-    return (
-      <>
-        <OrbitReferenceStyles />
-        <OrbitVisualFreezeRuntime />
-        {page.boundary}
-      </>
-    );
-  }
-
-  return (
-    <>
-      <OrbitReferenceStyles />
-      <OrbitVisualFreezeRuntime />
-      <div data-orbit-real-page="profile-0918" data-orbit-route="app-settings-route">
-        <ProfileScreens view="settings" viewModel={page.viewModel} />
-      </div>
-    </>
-  );
+// On desktop settings opens the profile; on a phone the shared layout shows the section list.
+export default function AppSettingsPage() {
+  return <AccountProfilePage active="home" />;
 }

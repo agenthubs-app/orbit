@@ -52,7 +52,10 @@ function initial(actorId: string, variant: AccountDesignVariant): ProfilePayload
   return {
     ...clone(source),
     state: source.state ?? "success",
+    completeness: scoreProfileCompleteness(profile),
     profile,
+    editor: { canSave: true, lastSavedAt: profile.updatedAt, dirtyFields: [], validationMessages: [] },
+    nextAction: source.nextAction ?? "",
     onboarding: calculateProfileOnboarding(profile),
     provenance: {
       source: "r18a-design-fixture",
