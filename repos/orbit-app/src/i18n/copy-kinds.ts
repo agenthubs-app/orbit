@@ -6,6 +6,8 @@
 import { hostCopyKinds } from "./host-kinds";
 
 export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[] = [
+  ["calendar.proposal.title", "dialogTitle"],
+  ["calendar.proposal.*", "label"],
   ["shell.parent.*", "label"],
   ["shell.home.*", "label"],
   ["shell.task.headerDate", "label"],

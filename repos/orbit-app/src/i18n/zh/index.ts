@@ -56,6 +56,7 @@ import { eventsV2 } from "./eventsV2";
 import { eventsJourney } from "./eventsJourney";
 import { search } from "./search";
 import { host } from "./host";
+import { calendar } from "./calendar";
 
 export const zh = {
   ...inbox,
@@ -114,4 +115,5 @@ export const zh = {
   ...eventsJourney,
   ...search,
   ...host,
+  ...calendar,
 } as const;
