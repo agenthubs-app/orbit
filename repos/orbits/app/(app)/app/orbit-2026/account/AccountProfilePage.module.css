@@ -2,7 +2,7 @@
 .businessCard,.progressCard,.detailsCard,.actions>* { border:1px solid var(--line); border-radius:var(--r-xl); background:var(--surface); box-shadow:0 3px 14px color-mix(in srgb,var(--ink) 4%,transparent); }
 .businessCard { display:flex; flex-direction:column; min-height:226px; padding:21px; background:linear-gradient(145deg,var(--surface),var(--surface-2)); }
 .cardTop { display:flex; align-items:center; gap:8px; font-size:12px; }
-.cardTop button,.detailsTop button { margin-left:auto; border:1px solid var(--line); border-radius:9px; padding:7px 10px; background:var(--surface); color:var(--ink-2); font:inherit; font-size:12px; cursor:pointer; }
+.cardTop button:global(.btn),.detailsTop button:global(.btn) { margin-left:auto; height:auto; border:1px solid var(--line); border-radius:9px; padding:7px 10px; background:var(--surface); color:var(--ink-2); font:inherit; font-size:12px; white-space:normal; cursor:pointer; }
 .orbitMark { display:grid; place-items:center; width:24px; height:24px; border-radius:7px; background:var(--plum-700); color:white; font-weight:800; }
 .identity { display:flex; gap:13px; align-items:center; margin-top:auto; padding-top:23px; }
 .identity>div:last-child { display:grid; gap:4px; min-width:0; }
@@ -39,7 +39,8 @@
 .actions strong { font-size:13px; }
 .actions span { grid-column:1; color:var(--ink-3); font-size:11px; }
 .actions a>span:last-child { grid-column:2; grid-row:1/3; }
-.actions button { grid-column:2; grid-row:1/3; border:1px solid var(--line); border-radius:9px; padding:7px 10px; background:var(--surface-2); color:var(--ink); font:inherit; font-size:11px; cursor:pointer; }
+.actions button:global(.btn) { grid-column:2; grid-row:1/3; height:auto; border:1px solid var(--line); border-radius:9px; padding:7px 10px; background:var(--surface-2); color:var(--ink); font:inherit; font-size:11px; white-space:normal; cursor:pointer; }
+.actions button:global(.btn) span { grid-column:auto; color:inherit; font-size:inherit; }
 .preview { display:grid; gap:12px; padding:2px; }
 .previewHeading { display:flex; align-items:center; gap:8px; font-size:13px; }
 .previewHeading span { margin-left:auto; color:var(--ink-3); font-size:11px; }
@@ -52,11 +53,11 @@
 .privateNotice { margin:0; color:var(--ink-3); font-size:11px; line-height:1.5; }
 .mobilePreview { display:none; margin-top:20px; }
 .status { border:1px solid var(--line); border-radius:var(--r-xl); padding:22px; background:var(--surface); }
-.status button { border:1px solid var(--line); border-radius:8px; padding:7px 10px; background:var(--surface-2); color:var(--ink); cursor:pointer; }
+.status button:global(.btn) { height:auto; border:1px solid var(--line); border-radius:8px; padding:7px 10px; background:var(--surface-2); color:var(--ink); cursor:pointer; }
 .drawerBackdrop { position:fixed; z-index:130; inset:0; display:flex; justify-content:flex-end; background:#17131b80; }
 .drawer { display:flex; flex-direction:column; gap:14px; width:min(480px,100%); height:100%; overflow:auto; padding:23px; background:var(--surface); box-shadow:-9px 0 35px #0002; }
 .drawerHead { display:flex; justify-content:space-between; align-items:center; font-size:18px; }
-.drawerHead button,.drawerActions button { border:1px solid var(--line); border-radius:9px; padding:9px 13px; background:var(--surface-2); color:var(--ink); font:inherit; cursor:pointer; }
+.drawerHead button:global(.btn),.drawerActions button:global(.btn) { height:auto; border:1px solid var(--line); border-radius:9px; padding:9px 13px; background:var(--surface-2); color:var(--ink); font:inherit; white-space:normal; cursor:pointer; }
 .drawer label { display:grid; gap:7px; font-size:12px; font-weight:700; }
 .drawer input:not([type=checkbox]),.drawer textarea { width:100%; min-height:38px; border:1px solid var(--line); border-radius:9px; padding:9px; background:var(--surface); color:var(--ink); font:inherit; font-size:13px; }
 .drawer textarea { min-height:72px; resize:vertical; }
@@ -64,7 +65,7 @@
 .drawer fieldset label { display:flex; align-items:center; gap:8px; }
 .drawer fieldset p { margin:0; color:var(--ink-3); font-size:11px; }
 .drawerActions { display:flex; justify-content:flex-end; gap:8px; margin-top:auto; }
-.drawerActions button:last-child { border-color:var(--plum-700); background:var(--plum-700); color:white; }
+.drawerActions button:global(.btn):last-child { border-color:var(--plum-700); background:var(--plum-700); color:white; }
 .drawerActions button:disabled { opacity:.5; cursor:default; }
 .toast { position:fixed; z-index:140; right:24px; bottom:24px; border-radius:10px; padding:10px 15px; background:var(--ink); color:var(--surface); font-size:12px; }
 @media (max-width:1279px) { .mobilePreview { display:block; } }

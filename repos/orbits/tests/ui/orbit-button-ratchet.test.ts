@@ -154,7 +154,6 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
 const CORE_FILES = [
   "app/(app)/app/agent/actions/orbit-today-decision-form.tsx",
   "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
-  "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
   "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
 ];
 

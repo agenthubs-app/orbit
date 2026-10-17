@@ -30,16 +30,10 @@ test("P2-2: Icon registry defines sun and moon stroke paths", () => {
   assert.match(primitivesSource, /\bmoon:\s*</);
 });
 
-test("P2-2: theme toggle renders icons, not emoji glyphs", () => {
-  const appearanceSource = source(
-    "app/(app)/app/settings/orbit-appearance-settings.tsx",
-  );
-
+test("P2-2: new appearance choice uses text labels without emoji glyphs", () => {
+  const appearanceSource = source("app/(app)/app/orbit-2026/account/AppearanceSettings.tsx");
   assert.doesNotMatch(appearanceSource, /[☀\u{1F31C}☾\u{1F319}]/u);
-  assert.match(appearanceSource, /<Icon name="sun" size=\{16\} \/>/);
-  assert.match(appearanceSource, /<Icon name="moon" size=\{16\} \/>/);
-  assert.match(appearanceSource, /aria-pressed=\{preference === "light"\}/);
-  assert.match(appearanceSource, /aria-pressed=\{preference === "dark"\}/);
+  assert.match(appearanceSource, /<Segmented<OrbitThemePreference>/);
 });
 
 test("P2-3 (superseded by R01 / RD-09): no serif token; the sans stack follows the language", () => {

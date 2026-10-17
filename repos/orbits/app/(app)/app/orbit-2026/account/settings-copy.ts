@@ -47,6 +47,9 @@ const copy = {
   light: { zh: "浅色", en: "Light", ja: "ライト" },
   dark: { zh: "深色", en: "Dark", ja: "ダーク" },
   language: { zh: "语言", en: "Language", ja: "言語" },
+  languageChinese: { zh: "简体中文", en: "简体中文", ja: "简体中文" },
+  languageEnglish: { zh: "English", en: "English", ja: "英語" },
+  languageJapanese: { zh: "日本語", en: "日本語", ja: "日本語" },
 } as const;
 
 export function settingsCopy(language: OrbitLanguage) {

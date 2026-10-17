@@ -174,7 +174,6 @@ test("gap literals outside the scale in app/(app)/app do not increase", () => {
 // 它们本来就是零内联几何（皮肤全在 `iorbit-styles.ts` 的模板字符串里），
 // 加进这张零容忍清单是为了防止后续改动把内联几何写回去。
 const SNAPPED_FILES = [
-  "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
   "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
   "app/(app)/app/agent/actions/orbit-today-decision-form.tsx",
   "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",

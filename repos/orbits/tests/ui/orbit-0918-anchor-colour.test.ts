@@ -58,14 +58,6 @@ const DOMAINS: Domain[] = [
     scope: "network",
   },
   {
-    name: "profile",
-    dir: "profile/profile-0918",
-    prefix: "pc-",
-    stylesFile: "app/(app)/app/profile/profile-0918/profile-shell.tsx",
-    stylesExport: "PROFILE_STYLES",
-    scope: "profile-0918",
-  },
-  {
     name: "events",
     dir: "events/events-0918",
     prefix: "ev-",

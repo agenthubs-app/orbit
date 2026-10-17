@@ -366,9 +366,8 @@ test("SC-03 skip only blanks the three suggestion fields; everything else matche
   }
 });
 
-test("SC-03 the profile editor page and the admin console do not opt out of suggestions", () => {
+test("SC-03 the admin console keeps suggestions while home skips them", () => {
   const callers = [
-    "app/(app)/app/profile/profile-0918/load-profile-editor-page.tsx",
     "app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts",
   ];
   for (const path of callers) {

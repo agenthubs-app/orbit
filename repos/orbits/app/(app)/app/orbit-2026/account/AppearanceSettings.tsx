@@ -20,7 +20,7 @@ export function AppearanceSettings() {
         <Segmented<OrbitThemePreference> label={t("theme")} segments={[{ key: "system", label: t("system") }, { key: "light", label: t("light") }, { key: "dark", label: t("dark") }]} value={theme} onChange={chooseTheme} wide />
       </div></Card>
       <Card title={t("language")}><div className={styles.controlGroup}>
-        <Segmented<OrbitLanguage> label={t("language")} segments={[{ key: "zh", label: "简体中文" }, { key: "en", label: "English" }, { key: "ja", label: "日本語" }]} value={language} onChange={setLanguage} wide />
+        <Segmented<OrbitLanguage> label={t("language")} segments={[{ key: "zh", label: t("languageChinese") }, { key: "en", label: t("languageEnglish") }, { key: "ja", label: t("languageJapanese") }]} value={language} onChange={setLanguage} wide />
       </div></Card>
     </div>;
 }

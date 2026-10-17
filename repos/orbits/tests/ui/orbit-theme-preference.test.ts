@@ -79,12 +79,12 @@ test("choosing automatic, light or dark applies it and remembers it", async (t) 
 });
 
 test("Settings offers automatic, light and dark", () => {
-  const appearance = readFileSync("app/(app)/app/settings/orbit-appearance-settings.tsx", "utf8");
+  const appearance = readFileSync("app/(app)/app/orbit-2026/account/AppearanceSettings.tsx", "utf8");
   for (const choice of ["system", "light", "dark"]) {
-    assert.match(appearance, new RegExp(`choosePreference\\("${choice}"\\)`));
-    assert.match(appearance, new RegExp(`aria-pressed=\\{preference === "${choice}"\\}`));
+    assert.match(appearance, new RegExp(`key: "${choice}"`));
   }
   assert.match(appearance, /setOrbitThemePreference/);
+  assert.match(appearance, /<Segmented<OrbitThemePreference>/);
 });
 
 test("the root layout runs the shared init script before paint", () => {

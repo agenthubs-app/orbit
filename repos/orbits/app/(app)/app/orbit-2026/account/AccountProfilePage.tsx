@@ -10,6 +10,7 @@ import { eventsApi } from "../events/events-api";
 import { accountCopy } from "../copy/account";
 import { pickCopy } from "../copy/types";
 import { InviteCodeModal } from "../add/invite/InviteCodeModal";
+import { Button } from "../ui";
 import { AccountLayout, type AccountSection } from "./AccountLayout";
 import { cardProgress, previewForProfile, profileSaveInput, type CardKey } from "./profile-model";
 import s from "./AccountProfilePage.module.css";
@@ -156,11 +157,11 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
   const preview = profile ? <ProfilePreview profile={profile} draft={draft} t={t} /> : null;
   return <AccountLayout active={active} title={t("profile")} subtitle={t("profileIntro")} rightRail={preview}>
     {loading && !payload ? <div className={s.status} aria-busy="true">{t("profile")}</div> : null}
-    {readError ? <div className={s.status} role="alert"><p>{readError === "unauthorized" ? t("profileLogin") : t("readError")}</p><button onClick={() => void load()}>{t("retry")}</button></div> : null}
+    {readError ? <div className={s.status} role="alert"><p>{readError === "unauthorized" ? t("profileLogin") : t("readError")}</p><Button label={t("retry")} size="sm" onClick={() => void load()} /></div> : null}
     {profile && progress ? <>
       <div className={s.cards}>
         <section className={s.businessCard}>
-          <div className={s.cardTop}><span className={s.orbitMark}>O</span><strong>{t("card")}</strong><button type="button" data-profile-edit onClick={() => setDraft(draftOf(profile))}>{t("editProfile")}</button></div>
+          <div className={s.cardTop}><span className={s.orbitMark}>O</span><strong>{t("card")}</strong><Button label={t("editProfile")} size="sm" data-profile-edit onClick={() => setDraft(draftOf(profile))} /></div>
           <div className={s.identity}><div className={s.avatar}>{profile.displayName.slice(0, 1)}</div><div><strong>{profile.displayName}</strong><span>{profile.organization && profile.role ? `${profile.organization} · ${profile.role}` : t("missingCompany")}</span></div></div>
           {profile.handles.email ? <span className={s.email}>{profile.handles.email}</span> : null}
         </section>
@@ -170,7 +171,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
         </section>
       </div>
       <section className={s.detailsCard}>
-        <div className={s.detailsTop}><strong>{t("whatOffer")}</strong><button type="button" onClick={() => setDraft(draftOf(profile))}>{t("editDetails")}</button></div>
+        <div className={s.detailsTop}><strong>{t("whatOffer")}</strong><Button label={t("editDetails")} size="sm" onClick={() => setDraft(draftOf(profile))} /></div>
         <div className={s.chips}>{profile.offering?.length ? profile.offering.map(value => <span className={s.chip} key={value}>{value}</span>) : <span className={s.muted}>{t("missing")}</span>}</div>
         <strong>{t("whatSeek")}</strong>
         <div className={s.chips}>{profile.seeking?.length ? profile.seeking.map(value => <span className={s.chip} key={value}>{value}</span>) : <span className={s.muted}>{t("missing")}</span>}</div>
@@ -185,7 +186,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
         </div> : null}
       </section>
       <div className={s.actions}>
-        <section><strong>{t("invite")}</strong><span>{t("inviteSub")}</span><button type="button" onClick={() => setInviteOpen(true)}>{t("inviteCreate")}</button></section>
+        <section><strong>{t("invite")}</strong><span>{t("inviteSub")}</span><Button label={t("inviteCreate")} size="sm" onClick={() => setInviteOpen(true)} /></section>
         {hostedCount !== null ? <a href="/app/events/center"><strong>{t("hosted")}</strong><span>{hostedCount === undefined || hostedCount === 0 ? t("hostedOpen") : `${t("eventCount").replace("{n}", String(hostedCount))}${activeCount ? ` · ${t("activeCount").replace("{n}", String(activeCount))}` : ""}`}</span><span aria-hidden="true">→</span></a> : null}
         {attendingCount !== null && attendingCount !== 0 ? <a href="/app/events?tab=going"><strong>{t("attending")}</strong><span>{attendingCount === undefined ? t("attendingEmpty") : t("eventCount").replace("{n}", String(attendingCount))}</span><span aria-hidden="true">→</span></a> : null}
       </div>
@@ -193,7 +194,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
       <InviteCodeModal open={inviteOpen} onClose={() => setInviteOpen(false)} language={language} />
     </> : null}
     {draft && profile ? <div className={s.drawerBackdrop} role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setDraft(null); }}><section className={s.drawer} role="dialog" aria-modal="true" aria-label={t("editDetails")}>
-      <div className={s.drawerHead}><strong>{t("editDetails")}</strong><button type="button" onClick={() => setDraft(null)}>{t("close")}</button></div>
+      <div className={s.drawerHead}><strong>{t("editDetails")}</strong><Button label={t("close")} size="sm" onClick={() => setDraft(null)} /></div>
       <label>{t("companyRole")}<input value={draft.organization} onChange={event => setDraft({ ...draft, organization: event.target.value })} placeholder={t("companyRole")} /><input value={draft.role} onChange={event => setDraft({ ...draft, role: event.target.value })} placeholder={t("companyRole")} /></label>
       <label>{t("whatOffer")}<textarea value={draft.offering} onChange={event => setDraft({ ...draft, offering: event.target.value })} placeholder={t("eachOnLine")} /></label>
       <label>{t("whatSeek")}<textarea value={draft.seeking} onChange={event => setDraft({ ...draft, seeking: event.target.value })} placeholder={t("eachOnLine")} /></label>
@@ -201,7 +202,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
       {!introValid ? <p role="alert">{t("bioLong")}</p> : null}
       <fieldset><legend>{t("visibility")}</legend>{(["companyRole", "offeringSeeking", "intro"] as const).map(key => <label key={key}><input type="checkbox" data-public-field={key} checked={draft.publicFields[key]} onChange={event => setDraft({ ...draft, publicFields: { ...draft.publicFields, [key]: event.target.checked } })} />{t(key === "offeringSeeking" ? "offeringSeeking" : key === "intro" ? "intro" : "companyRole")}</label>)}<p>{t("contactsAfterExchange")}</p></fieldset>
       {saveError ? <p role="alert">{t("saveError")}</p> : null}
-      <div className={s.drawerActions}><button type="button" onClick={() => setDraft(null)}>{t("cancel")}</button><button type="button" data-profile-save disabled={saving || !introValid} onClick={() => void save()}>{t("save")}</button></div>
+      <div className={s.drawerActions}><Button label={t("cancel")} size="sm" onClick={() => setDraft(null)} /><Button label={t("save")} size="sm" data-profile-save disabled={saving || !introValid} onClick={() => void save()} /></div>
     </section></div> : null}
     {saved ? <div className={s.toast} role="status">{t("saved")}</div> : null}
   </AccountLayout>;

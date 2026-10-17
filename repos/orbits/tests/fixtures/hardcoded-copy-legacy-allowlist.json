@@ -477,77 +477,9 @@
       "hardcoded": 1,
       "missingJa": 0
     },
-    "app/(app)/app/profile/profile-0918/business-card-preview.tsx": {
-      "hardcoded": 0,
-      "missingJa": 5
-    },
-    "app/(app)/app/profile/profile-0918/load-profile-editor-page.tsx": {
-      "hardcoded": 9,
-      "missingJa": 0
-    },
-    "app/(app)/app/profile/profile-0918/profile-basic.tsx": {
-      "hardcoded": 0,
-      "missingJa": 31
-    },
-    "app/(app)/app/profile/profile-0918/profile-connect.tsx": {
-      "hardcoded": 0,
-      "missingJa": 19
-    },
-    "app/(app)/app/profile/profile-0918/profile-legacy-settings.tsx": {
-      "hardcoded": 1,
-      "missingJa": 0
-    },
-    "app/(app)/app/profile/profile-0918/profile-model.ts": {
-      "hardcoded": 0,
-      "missingJa": 78
-    },
-    "app/(app)/app/profile/profile-0918/profile-overview.tsx": {
-      "hardcoded": 0,
-      "missingJa": 29
-    },
-    "app/(app)/app/profile/profile-0918/profile-persona.tsx": {
-      "hardcoded": 0,
-      "missingJa": 16
-    },
-    "app/(app)/app/profile/profile-0918/profile-screens.tsx": {
-      "hardcoded": 0,
-      "missingJa": 2
-    },
-    "app/(app)/app/profile/profile-0918/profile-settings.tsx": {
-      "hardcoded": 0,
-      "missingJa": 7
-    },
-    "app/(app)/app/profile/profile-0918/profile-shell.tsx": {
-      "hardcoded": 1,
-      "missingJa": 28
-    },
-    "app/(app)/app/profile/profile-0918/use-profile-editor-session.ts": {
-      "hardcoded": 0,
-      "missingJa": 18
-    },
     "app/(app)/app/profile/profile-save-model.ts": {
       "hardcoded": 0,
       "missingJa": 4
-    },
-    "app/(app)/app/settings/orbit-agent-automation-settings.tsx": {
-      "hardcoded": 19,
-      "missingJa": 70
-    },
-    "app/(app)/app/settings/orbit-agent-execution-settings.tsx": {
-      "hardcoded": 58,
-      "missingJa": 0
-    },
-    "app/(app)/app/settings/orbit-agent-feedback-settings.tsx": {
-      "hardcoded": 0,
-      "missingJa": 17
-    },
-    "app/(app)/app/settings/orbit-agent-memory-settings.tsx": {
-      "hardcoded": 4,
-      "missingJa": 42
-    },
-    "app/(app)/app/settings/orbit-appearance-settings.tsx": {
-      "hardcoded": 0,
-      "missingJa": 6
     },
     "app/(app)/app/start/start-guide-styles.ts": {
       "hardcoded": 1,
