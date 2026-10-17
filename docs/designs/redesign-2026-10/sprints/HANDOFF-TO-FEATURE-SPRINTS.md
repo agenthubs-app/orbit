@@ -41,7 +41,7 @@
 | G11 | **`phoneFold`** | 只有首页和 Task 声明了（<768 时收起标题行） | 其他页面在 390 下保留标题行和左右插槽（返回钮、主按钮、次の一手）；新屏把标题并进页面正文时才显式传 `phoneFold` | R07-RW REWORK-REPORT:25,163；REWORK-REVIEW:81 |
 | G12 | **390 没有 🔍 / ⌘K** | 照稿去掉 | 手机 Web 搜人走人脈页搜索框，提问走底栏 iOrbit；不要在页面里另加搜索钮 | R07-RW REWORK-REPORT:100（拍板 2026-10-12） |
 | G13 | **旧页面全局样式会漏进壳** | 旧全局 `.btn` 会改壳里按钮；壳用双类选择器写回 kit 值 | 新的壳级或弹层控件要在旧页面（如 Task 页）上复查；窄屏新写的底部固定控件 `bottom` 加 `var(--orbit-shell-bottom-inset, 0px)`；旧页面开对话框时壳降到 `--z-raised`，不逐个改旧页 `z-index` | R07-RW REWORK-REPORT:32,166；`R07-web-shell/REPORT.md`:100；`R09-skeleton-acceptance/REPORT.md`:90 |
-| G14 | **kiosk / 公开页** | kiosk（签到、入场审核）不挂壳、不注册 ⌘K；公开页保留 `OrbitTopNav` / `PublicTopNav` | 新路由沿用 `shellAppliesTo` + `allowsOrbitAsk` 排除规则；已登录页一律不挂旧导航 | `R07-web-shell/REVIEW.md`:202；`R07-web-shell/REPORT.md`:56,102 |
+| G14 | **kiosk / 公开页** | kiosk（签到）不挂壳、不注册 ⌘K（R17 起入场审核并入运营台「参加者」页签，旧 `operations/admission` 跳转，已出排除名单）；公开页保留 `OrbitTopNav` / `PublicTopNav` | 新路由沿用 `shellAppliesTo` + `allowsOrbitAsk` 排除规则；已登录页一律不挂旧导航 | `R07-web-shell/REVIEW.md`:202；`R07-web-shell/REPORT.md`:56,102 |
 | G15 | **App 壳规则** | 一级页固定 `/home` `/contacts` `/events` `/task`，用 `AppScreen`，不自画底栏；Task 四段在 `TASK_SLOTS` | 打开一级页走 `openMainTab()`；新二级页在 `parentForPath` 写返回目标；只改自己那一段 `TASK_SLOTS` 和 `add()` 自己那一支；旧路由跳转表保留，重写旧屏时改成新地址 | `R05-app-shell/REPORT.md`:58–93；`R05-app-shell/REVIEW.md`:182 |
 | G16 | **App 底栏转场** | 已做（R05 返工）：被盖住的一级页自己画底栏（`TabPageBar`），随原生转场被二级页盖住、返回转场结束后交回根部底栏 | 新一级页用 `AppScreen`（自动带）或在页面根视图最后放 `<TabPageBar tab=…/>`；二级页按此验收；页面代码不要直接 import `OrbitTabBar` | DEC D07；`R05-app-shell/REWORK-REPORT.md` §9 |
 | G17 | **App 页面背景与顶栏** | 壳已提供：`ShellBackground`（雾面）、`ShellTopBar`（三段顶栏）、`AppScreen` 二级页顶栏、Task `.tseg`；旧一级页正文仍是旧屏 | 新屏一律用这些组件（不自画背景 / 顶栏）；分段控件用 `Segmented variant="tseg"`（高 32.75，kit 值）；壳内文字的 iOS 基线微调用 `cjkLift` | PA X06 X12 X13；R05 返工 |
@@ -120,8 +120,11 @@
 | R17-11 | **名簿の取り込み照合**（R17 实施，b12 #476） | 导入 CSV 后三类计数（申込済み / 登録済み / 未登録）没有接口，全部显示「照合待ち」；招待链接没有 `?inv=` 参数 | 补照合接口（按邮箱匹配账号与报名）与招待参数 | Web `orbit-2026/host/` 导入组件 |
 | R17-12 | **レポート自分の視点「追加する」**（R17 实施） | 没有进度日志写入接口，现链到 `/app/plan`；「下書きを作成」链到联系人页（无 contactId 时按名字搜） | 计划侧提供「从活动追加进度」接口后接上 | Web report 组件 |
 | R17-13 | **kiosk 定員超え确认的数字**（R17 实施，b12 #434） | `/kiosk` 不返回承認済み / 定員，确认框正文不写「150 / 150」 | kiosk 读模型加这两个数 | `features/events/host/live.ts` kiosk |
-| R17-14 | **登出时清 kiosk 本机名单**（R17 实施） | 现为 `/kiosk` 返回无权限时清；没接全局登出事件 | 壳提供登出钩子后接上（两端） | kiosk 页 |
+| R17-14 | **已做（73c986b05）**：Web 壳ログアウト / App signOut 清整个本机受付库；启动清过期、失权清这场。原记录： **登出时清 kiosk 本机名单**（R17 实施） | 现为 `/kiosk` 返回无权限时清；没接全局登出事件 | 壳提供登出钩子后接上（两端） | kiosk 页 |
 | R17-15 | **公开主催页「通報する」**（R17 实施） | 没有反馈表单，现为弹层 + 复制页面 URL | R29 运营后台 / 反馈表单就绪后接上 | Web `/o/[slug]` |
+| R17-16 | **App `/e/[slug]` 取活动 id**（R17 实施） | 没有 slug → 活动 id 的接口；App 请求 Web `/e/<slug>` 跟随重定向、从最终地址取 id（离线读取扫描用别名绕开，代码有注释） | 补 `GET /api/events/by-slug/[slug]`（只认已公开）后 App 改调它 | `repos/orbit-app/src/screens/host/EventShortLink.tsx` |
+| R17-17 | **组件库 G23 两处**（R17 实施） | Web P26 共同運営者抽屉：Drawer 没有 540 宽、内边距 20≠22；App P05：Segmented 高 38≠30。两画面标「待组件库」未过门禁 | 组件库补尺寸后重跑 W-R17-P26、A-R17-P05 | `views/web-R17.json`、`views/app-R17.json` |
+| R17-18 | **编组发布与参加者通知不在同一事务**（R17 独立复核） | 发布成功后另开事务写「テーブル編成を公開しました」outbox；这一步失败时重试会因已发布被拒，通知补不上（幂等键已有，重复写安全） | 发布接口对「已发布且同一 generation」直接补写通知（或 publishGeneration 增加同事务钩子） | `features/events/host/live.ts` publishMatching |
 | R17-03 | 主催入口 | Web 临时入口在マイページ页签栏（见 R18-01）；头像菜单不放主催 | 与 R18 协调正式入口 | DEC D18 |
 
 ## R18 账户

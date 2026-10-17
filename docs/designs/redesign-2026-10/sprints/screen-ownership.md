@@ -39,9 +39,9 @@
 | 活动 | `events/[id]`、`events/[id]/prep`、`events/[id]/after` | `EventDetailPage`、`PrepPage`、`AfterPage`（v2） | イベント詳細 + 会う準備 + 会後 | R26 / R27 | 已处理（R27：新屏 b2 #14–#16 / #24 / #37–#39；旧 `EventDetailScreen` 已删） |
 | 活动 | `events/[id]/register`、`register`、`register/[code]` | `RegisterPage`、`RegisterCodePage`（v2；`/register` 跳 R26 コード入力） | 参加登録（AI 访谈式） | R26 / R27 | 已处理（R27：b2 #20–#22、取り消し b3 #42；旧 `EventRegistrationScreen` / `RegisterInviteScreen` / `Registration7a*` 已删） |
 | 活动 | `events/[id]/live`、`events/[id]/attendees`、`events/[id]/participants/[participantId]`、`party`、`party/checkin`、`party/graph` | `VenuePage`（v2；其余跳 `live?tab=people` / `view=map`） | 会場モード | R26 / R27 | 已处理（R27：b2 #26–#35；旧 `EventLiveScreen` 已删，跳转改新参数） |
-| 主催 | `events/center` | `EventCenterScreen` | 運営センター（b6） | R17 | 重写 |
-| 主催 | `events/[id]/operations`、`…/admission`、`…/check-in`、`…/experience`、`…/roles`、`events/[id]/analytics` | 运营 5 屏 + `EventAnalyticsScreen` | イベント運営 6 页签 / 受付 / レポート / 共同運営者 | R17 | 重写 |
-| 主催 | `o/[slug]` | `OrganizerPublicScreen` | 主催者の公開ページ | R17 | 重写 |
+| 主催 | `events/center` | `HostCenterScreen`（R17） | 運営センター（b6） | R17 | 已处理（R17：新屏 b6 #21 / #22；旧 `EventCenterScreen` 已删，8751dcf26） |
+| 主催 | `events/[id]/operations`、`…/admission`、`…/check-in`、`…/experience`、`…/roles`、`events/[id]/analytics` | `HostConsoleScreen`（`?seg=`）、`HostCheckInScreen`（R17） | イベント運営 五段 / 受付 / レポート摘要 | R17 | 已处理（R17：新屏 b6 #23 / #24；admission / experience / roles / analytics 跳到 `operations?seg=`；旧运营 5 屏 + `EventAnalyticsScreen` 已删，8751dcf26） |
+| 主催 | `o/[slug]` | `OrganizerPublicPage`（R17） | 主催者の公開ページ | R17 | 已处理（R17：新屏 b7 #36–#38；旧 `OrganizerPublicScreen` 已删，8751dcf26） |
 | Task | `(app)/schedule`、`schedule/events/[id]`、`schedule/meetings/[id]`、`schedule/personal/[id]`、`schedule/personal/[id]/edit`、`schedule/personal/new`、`tasks/personal` | 日程 7 屏 | Task › カレンダー、面談の日程提案 | R20 | 重写 |
 | Task | `today`、`tasks`、`tasks/[id]`、`tasks/relationship/[id]`、`followups` | `TodayScreen`、`TasksScreen`、`TaskDetailScreen`、`RelationshipLifecycleScreen`、`FollowupsScreen` | Task › To-do（判断待ち / 今日の一手 / フォロー）、下書きエディタ | R20 | 重写（合并） |
 | Task | `agent`、`agent/actions`、`contacts/all-actions` | `AgentActionsScreen`、`AgentLedgerScreen` | To-do「判断待ち」 | R20 | 并入 |
@@ -71,8 +71,8 @@
 | iOrbit | `/app/agent` | `iorbit-0918`（含星空首页、历史抽屉） | iOrbit 起始屏 / 会話中 / 会話リスト（b4） | R21 | 重写 |
 | 活动 | `/app/events`、`/app/events/[id]`、`/app/events/[id]/register`、`/app/register`、`/app/register/[code]`、`/app/events/[id]/prep`、`/app/events/[id]/after` | `orbit-2026/events/*`（EventDetail · RegisterFlow · PrepPage · AfterPage · PublicEvents） | イベント 主页 / 詳細 / 参加登録 / 会う準備 / 会後（b2 / b12） | R26 / R27 | 已处理（R27；`events-0918` 详情 / 现场 / 列表与旧报名工作台已删，仍被运营用的 modal-frame 等保留） |
 | 活动 | `/app/events/[id]/live` | `orbit-2026/events/VenuePage` | 会場モード（390 = App で） | R26 / R27 | 已处理（R27） |
-| 主催 | `/app/events/center`、`/app/events/[id]/operations`、`…/admission`、`…/check-in`、`…/experience`、`/app/events/[id]/analytics` | `ops-0918` | 運営センター / イベント運営 / 受付 kiosk / レポート（b6） | R17 | 重写 |
-| 主催 | `/app/o/[slug]` | `orbit-real-organizer-public` | 主催者の公開ページ | R17 | 重写 |
+| 主催 | `/app/events/center`、`/app/events/[id]/operations`、`…/admission`、`…/check-in`、`…/experience`、`/app/events/[id]/analytics` | `orbit-2026/host/*`（R17） | 運営センター / イベント運営 / 受付 kiosk / レポート（b6） | R17 | 已处理（R17：新屏 b6 #0–#20 / #45、web #20；admission / experience / analytics 跳到 `operations?tab=`；`ops-0918` 已删，23d2d7f58） |
+| 主催 | `/app/o/[slug]` → `/o/[slug]` | `orbit-2026/host/OrganizerPublic`（R17） | 主催者の公開ページ | R17 | 已处理（R17：新页 `/o/[slug]` b7 #33–#39，旧路径 302；`orbit-real-organizer-public` 已删，23d2d7f58） |
 | Task | `/app/tasks`、`/app/tasks/[id]`、`/app/tasks/relationship/[id]`、`/app/agent/actions` | 任务页、Agent 决策 | Task › To-do | R20 | 重写 |
 | Task | `/app/tasks/personal` | 个人日程 | Task › カレンダー | R20 | 重写 |
 | Task | 新增 Web メモ | 无 | Task › メモ | R20 | 新建 |
