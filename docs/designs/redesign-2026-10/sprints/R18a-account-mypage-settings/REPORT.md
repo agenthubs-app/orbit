@@ -1,16 +1,16 @@
 # R18a implementation report (in progress)
 
-Approved scope: GOAL / PLANNER rev2, plus the explicit continuation authority recorded below. Implementation is not acceptance closure: the last App full comparison predates the now-authorized source-audit fix; final full verification, native interaction evidence, Web final verification, component-gated pixels and independent review remain incomplete. No pixel closure before R31a / R31b. No production database, real Google, deploy, TestFlight, push, stash or reset was used.
+Approved scope: GOAL / PLANNER rev2, plus the explicit continuation authority recorded below. Latest frozen App verification at `0bab5674d`: typecheck0, full3191 / 3187 pass / 2 exact pristine failures / 2 skip; the authorized authenticated-client audit fix introduces no new full-suite failure names. Implementation is not acceptance closure: native interaction evidence, Web final verification, component-gated pixels and remaining independent review are OPEN. No pixel closure before R31a / R31b. No production database, real Google, deploy, TestFlight, push, stash or reset was used.
 
 ## Authorized continuation: authenticated client adapter
 
 User continuation explicitly authorized the minimal additive shared-hook seam, regression tests and private settings migration. `src/hooks/useOrbitApiClient.ts` now accepts optional `fetchAdapter?: (fetcher: FetchLike) => FetchLike`; omission preserves the previous global-fetch path, auth cookies, client memoization dependencies and scoped aborted-response/session-expiry suppression. The adapter is composed before that existing scoped response guard. `useAccountSettingsApi` uses the authenticated hook with actor scope and its existing settings-envelope adapter; no source-audit allowance was added.
 
-Actual-hook SSR/API/transport RED (`app-auth-adapter-red.log`): 6 tests / 3 pass / 3 fail (missing adapter behavior twice plus the existing direct-client audit). GREEN (`app-auth-adapter-green.log`): 46/46 including old no-options and scoped callers, authenticated cookies, conditional/API client regressions, real legacy `{data}`/204 normalization and late aborted 401 suppression. The shared hook has 53 callers; only the approved settings consumer was migrated. Final sanitized typecheck/full comparison will run after the remaining private continuation fixes, not be inferred from focused tests. An earlier queued verification was canceled before lock acquisition (exit143, empty `app-full-auth-adapter.log`); no tests ran in that canceled job and A's active lock was unchanged.
+Actual-hook SSR/API/transport RED (`app-auth-adapter-red.log`): 6 tests / 3 pass / 3 fail (missing adapter behavior twice plus the existing direct-client audit). GREEN (`app-auth-adapter-green.log`): 46/46 including old no-options and scoped callers, authenticated cookies, conditional/API client regressions, real legacy `{data}`/204 normalization and late aborted 401 suppression. The shared hook has 53 callers; only the approved settings consumer was migrated. Final sanitized typecheck/full comparison subsequently completed at `0bab5674d`, detailed below, rather than being inferred from focused tests. An earlier queued verification was canceled before lock acquisition (exit143, empty `app-full-auth-adapter.log`); no tests ran in that canceled job and A's active lock was unchanged.
 
 ### Approved native OAuth fallback
 
-The same continuation adopted native OAuth fallback to Web settings, not a new native callback/session mechanism. The private integration controller now chooses `/app/settings/integrations` outside Web; Web retains the existing signed-provider authorize path with `returnTo=settings`. Pure API-path regression RED (`app-native-oauth-fallback-red.log`): 6 tests / 4 pass / 2 fail for the two providers; GREEN (`app-native-oauth-fallback-green.log`): 6/6. Actual controller browser-return/confirmed-disconnect/confirmed-memory-delete coverage is queued under the heavy runner; no outcome is inferred yet.
+The same continuation adopted native OAuth fallback to Web settings, not a new native callback/session mechanism. The private integration controller now chooses `/app/settings/integrations` outside Web; Web retains the existing signed-provider authorize path with `returnTo=settings`. Pure API-path regression RED (`app-native-oauth-fallback-red.log`): 6 tests / 4 pass / 2 fail for the two providers; GREEN (`app-native-oauth-fallback-green.log`): 6/6. Actual controller browser-return/confirmed-disconnect/confirmed-memory-delete coverage subsequently passed in the heavy-locked RNW10/10 batch (`app-secondary-operations-0bab5674d.log`), and those cases also pass in the frozen full run. Actual native OS/browser operation is not implied by mocked native boundaries in RNW.
 
 Read-only native availability inspection found the sanctioned `Orbit Line C` simulator (`D48F24AC-DBD5-49F8-910A-2E7F0BACCAF3`) available but shutdown. Its data path has no `Containers` or `Library/MobileInstallation` directories, so an installed usable development client was not established. No boot, install, build or simulator creation was performed. Native-operation evidence remains **OPEN** by coordinator instruction; RNW functional screenshots are not native or pixel evidence.
 
@@ -18,7 +18,32 @@ Read-only native availability inspection found the sanctioned `Orbit Line C` sim
 
 Continuation explicitly authorized original-board in-place amendments, superseding the earlier b7 ownership hold. b7 removes unsupported undo/history promises from both visible rules and pin annotations; its résumé example now says supported text, not PDF. b5 and the matching C-owned b12 `.g11` helpers remove unbacked integration sync times/counts and goal budget/deadline/week/progress/subgoal metrics; the actual goal/edit and provider state/disconnect controls remain. Native-calendar permission rows are removed under the adopted no-dependency decision, separately from Google Calendar OAuth. Each amendment is annotated「主会话代定 §C-1」. Board IDs, layout families and the b12 pre-R18a prefix are preserved; no kit/token is changed.
 
-A pure registration regression found five unsupported App suite query aliases. RED3/4 (`app-board-registration-red.log`) at A-R18a-08; correcting only registration URLs to the implemented development-only `25 / 50 / 100` gives GREEN4/4 (`app-board-registration-green.log`). All12 view IDs, board references and theme matrices are unchanged. Combined hook/audit/settings/fixture checks16/16 (`app-continuation-light.log`); all inline scripts parse and `git diff --check` is clean. The rendered amendment preflight is still pending the A2-held heavy lock, as is RNW controller coverage. Coordinator explicitly approved separate path commits with those gates pending; syntax/structural checks are not rendered/pixel/native acceptance.
+A pure registration regression found five unsupported App suite query aliases. RED3/4 (`app-board-registration-red.log`) at A-R18a-08; correcting only registration URLs to the implemented development-only `25 / 50 / 100` gives GREEN4/4 (`app-board-registration-green.log`). All12 view IDs, board references and theme matrices are unchanged. Combined hook/audit/settings/fixture checks16/16 (`app-continuation-light.log`); all inline scripts parse and `git diff --check` is clean. Coordinator explicitly approved separate path commits while rendered preflight/RNW checks were then queued; both subsequently completed below. Syntax/structural checks are not pixel/native acceptance.
+
+### Frozen final continuation verification
+
+Clean rebase from `fbf92a311187d8039686cb66305c170603524b0d` to `0bab5674de8c278b0c94f44900d87eb91f8725d2`, onto exact upstream `2569ad835a4470180ec9c81d121e15e1080d469c`, completed without conflict. All25 patches are range-diff `=`. Current-at-this-checkpoint continuation milestones: hook `f17084950`, native fallback `eb4cf4dd0`, §C-1 design `0bab5674d`. Earlier tables preserve historical hashes, not an assertion that their old “Current” column remains the newest rebase.
+
+One `heavy.sh c` sequence used the exact pristine sanitizer (`env -i`, PATH/HOME/TMPDIR, USER=xzhao, LANG/LC_ALL=en_US.UTF-8; no DB/provider env):
+
+| Phase | Exact outcome | Raw evidence |
+| --- | --- | --- |
+| Actual RNW controller operations | 10/10, 7.90s | `app-secondary-operations-0bab5674d.log` |
+| Before/after amendment preflight | 8 invocations exit0; Web22 / App12 / original b5 19 / b7 6 identities and dimensions unchanged | `preflight-c1-{before,after}-{web,app,b5,b7}.{json,log}` |
+| App `tsc --noEmit` | exit0 | `app-tsc-0bab5674d.log` |
+| App full `npm test` | 3191 / 3187 pass / 2 fail / 2 skip, 296447ms, exit1 | `app-full-0bab5674d.log` |
+| Owned App copy | 103 entries / 0 issues | `app-copy-0bab5674d.log` |
+
+The two full failures exactly match pristine C by full test name (`app-full-baseline-comparison-0bab5674d.json`, `newFailureNames: []`):
+
+1. `tests/i18n-domain-split.test.ts` — `the split dictionaries carry exactly the pre-split keys and values`: historical English key count2813≠2253.
+2. `tests/invite-code-screens.test.tsx` — `S1 これまでのコード: 「同じ人かも」 under a joined person — 統合する merges (the name then opens the existing contact), 別の人 dismisses`: existing 松井 遥 link click times out behind the aria-live overlay.
+
+The authenticated-client source audit passes in this full run. This is zero-new-failure evidence relative to the pristine baseline, **not a fully passing suite**. Heavy lock released normally before D's queued Web verification. No App source mutation occurred during the frozen sequence.
+
+Preflight rendered sources confirm unsupported b5 sync/week/subgoal claims13→0 and b7 undo/history promises5→0. After hints (near/missing/consistency/flags): Web8/65/0/23; App3/84/0/11; original b5 8/94/0/13; b7 0/21/0/11. These are automatic hints, not token/component or pixel passes. The coordinator's read-only reviews found no blocker in the optional-hook diff or the scoped §C-1 board diff; broader independent review remains OPEN. App scope ledger matches all129 changed paths after rebase.
+
+RNW functional images `app-functional-native-fallback-after.png` and `app-functional-memory-confirm.png` were inspected. The first disconnect capture raced the dialog's enter animation despite passing operation assertions, so that image was not counted as confirmation visual evidence. A subsequent **test-only** bounded condition wait for actual alert opacity1 passed both controller cases2/2, exit0, 1.98s (`app-confirm-capture-after-wait.log`); corrected `app-functional-disconnect-confirm.png` and memory-confirm were inspected and visibly show their respective confirmation dialogs. No product/kit animation or arbitrary sleep is changed. The full3191 result remains tied to frozen0bab before these two capture waits; this later bounded run verifies the test-only difference. Native simulator and pixel evidence remain OPEN.
 
 ## Baseline and evidence
 
@@ -26,7 +51,7 @@ A pure registration regression found five unsupported App suite query aliases. R
 - C App pristine: 3323 tests, 3319 pass, 2 fail, 2 skip. English dictionary historical key count and old joined-person click timeout; same failure count as R30 App (3322 / 2). R30 Web was 7443 / 7. Other Sprint failures are not repaired here.
 - Baseline logs: `/var/folders/3q/sc3_n8917jn8w_j_jltbz_xr0000gn/T/orbit-cd-baseline.fk6V4SASy3/{c-orbits,c-app}.log`.
 - R18a evidence directory: `/Users/xzhao/orbit-sprint-evidence/redesign/R18a/run-01/`. SC01 preflight and SC02 RED/GREEN logs are there. Focused command outputs are recorded in the execution transcript. Full logs were pending at that initial checkpoint; subsequent App full/typecheck/export logs are listed below. Outstanding acceptance gates remain explicitly identified.
-- All full tests, typechecks, builds, browser/simulator pixel work use `_runs/heavy.sh c -- …`. Targeted tests use no heavy lock. Local PG route test explicitly pins `orbit_line_c_test`; no remote fallback is allowed.
+- All full tests, typechecks, builds and browser/simulator work use `_runs/heavy.sh c -- …`. Only pure/SSR targeted checks run without the heavy lock. Local PG route test explicitly pins `orbit_line_c_test`; no remote fallback is allowed.
 
 ## Commits / checkpoints
 
@@ -45,13 +70,13 @@ A pure registration regression found five unsupported App suite query aliases. R
 | `3a3db82d6` | App direct `/settings/api` route development guard, preserving private auth boundary | Actual route tested with undefined/false/true development flags; combined route boundary/coverage/wiring 8/8 |
 | `ebc54587c` | App SC11 offline remote-button disabled states; exact integration disconnect receipt regression | New offline cases RED→GREEN; focused secondary/suggestions/settings API 11/11 |
 | `58dc2b45e` | App actual private-boundary SSR and optional scan cancellation compatibility regressions | Combined auth/route/scan/existing onboarding API 15/15; all 12 R18a entry files retain private wrapper; no auth/shell runtime edits |
-| `8ca061cec` (post-rebase) | App real-editor save invariants, owned source audits and mapped legacy-suite retirement | Browser13/13, retained invariant subset45/45, owned source audits13/13, App typecheck0; full rerun below has one open C dependency failure |
+| `8ca061cec` (post-rebase) | App real-editor save invariants, owned source audits and mapped legacy-suite retirement | Browser13/13, retained invariant subset45/45, owned source audits13/13, App typecheck0; that full rerun had one then-open C dependency failure |
 
 Path-specific commits only. The table above records pre-rebase milestone hashes. Dirty shared worker trees prevented an immediate pull/rebase; coordinator explicitly approved committing owned paths before rebasing a clean tree, with no stash/autostash. The clean rebase completed from `6357efa28e8509279410511e28b7a9c9608c9bf5` to `df06f6be4bbae3ef30332d24a3eed63c9841954a`, on exact upstream base `e081084b0c024a50f2c0d13c1abe130c576bc440`. D prerequisites shell `56da437ef` and OAuth signed `returnTo=settings` `d2aaa6201` are now ancestors, not C-owned edits.
 
 ### Clean rebase mapping
 
-| Pre-rebase | Current | Scope |
+| Pre-rebase | After first clean rebase | Scope |
 | --- | --- | --- |
 | `5550d1582` | `81c786e8c` | SC01 boards/preflight |
 | `002eb7ce1` | `a28a8bff2` | SC02 contracts/fixtures |
@@ -102,7 +127,7 @@ No personal-schedule Flow-parser failures occurred in this C run, even though D'
 
 Same sanitizer/command and exact upstream base `e081084b0`; tree clean for this run. Raw `/Users/xzhao/orbit-sprint-evidence/redesign/R18a/run-01/app-full-8ca061cec.log`. Result: **3180 tests / 3175 pass / 3 fail / 2 skip**, 224609ms, exit 1. The reduction is explicitly accounted for by retiring 170 obsolete route cases and adding seven actual-editor cases; it is not described as 179 product regressions repaired.
 
-The only failures were (1) then-open C-owned `authenticated-client-usage` dependency (`useAccountSettingsApi` direct construction), (2) exact pristine English key count `2813 !== 2253`, and (3) the pristine joined-person merge click timeout. Prior plan-overview skip/undo overlay case passed this complete rerun, supporting timing sensitivity rather than a persistent C-specific failure. No other new failure occurred in this rerun. **That run did not meet SC13 zero-new-failure acceptance:** one C-owned source-audit failure was awaiting a separately authorized shared-hook adapter seam. No exception, shared-hook edit or failed-test deletion was used to conceal it at that checkpoint. The later user-authorized fix and pending final rerun are recorded in the continuation section.
+The only failures were (1) then-open C-owned `authenticated-client-usage` dependency (`useAccountSettingsApi` direct construction), (2) exact pristine English key count `2813 !== 2253`, and (3) the pristine joined-person merge click timeout. Prior plan-overview skip/undo overlay case passed this complete rerun, supporting timing sensitivity rather than a persistent C-specific failure. No other new failure occurred in this rerun. **That run did not meet SC13 zero-new-failure acceptance:** one C-owned source-audit failure was awaiting a separately authorized shared-hook adapter seam. No exception, shared-hook edit or failed-test deletion was used to conceal it at that checkpoint. The later user-authorized fix and completed frozen final rerun are recorded in the continuation section.
 
 ### Production fixture exclusion: initial failure and bounded correction
 
@@ -160,25 +185,25 @@ Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail
 
 | SC | Evidence-backed status | Still required |
 | --- | --- | --- |
-| 01 | Pristine baselines, isolated local PG, standalone approved board/preflight amendment commit | Coordinator board acceptance; native simulator/port environment for later gates |
+| 01 | Pristine baselines, isolated local PG, standalone approved board amendments; adopted §C-1 in-place changes and 8 before/after rendered preflights completed | Native development-client environment for later native gates; no pixel acceptance |
 | 02 | Additive contracts, canonical fixtures, sync/snapshot and isolated PG regressions verified | Independent rerun |
 | 03 | App my page and summary/candidate API/render checks green; Chromium candidate accept→completion→dismiss and nested share verified | Simulator interaction evidence |
 | 04 | App editor/public preview/tags and CAS/visibility regressions green; real presenter controls update the filtered preview; actual editor-hook save/receipt/race7/7 | Simulator and b1 style-diff |
 | 05 | Three effective language/appearance options, available OS actions, private auth and dev-route guard verified in focused checks; native calendar dependency explicitly deferred by continuation | Native OS/logout/language interaction evidence |
-| 06 | Private integrations/memory/semantic adapters, retry/scope, pending-OAuth reset and device preference restoration green; approved native→Web settings path regression6/6 | Queued confirmed disconnect/memory-delete/browser-return operations; native evidence; Japanese live drafting remains G18-hidden |
+| 06 | Private integrations/memory/semantic adapters, retry/scope, pending-OAuth reset and device preference restoration green; native→Web path6/6 and actual RNW confirmed disconnect/memory-delete/browser-return operations10/10 | Native evidence OPEN; Japanese live drafting remains G18-hidden |
 | 07 | Web owner route/UI checkpoint and targeted tests recorded above | Width-specific browser operation and later pixel evidence |
 | 08 | Web owner secondary settings implementation; unsupported agent UI removed | Owner final behavior/full verification matrix; native-independent provider tests, language/appearance two-entry proof |
 | 09 | Both implementations committed; App reviewed selected-field save-before-ack regressions green; continuation restricts résumé to supported text input/files, not PDF/DOCX | Browser input/selection and state-boundary evidence |
-| 10 | Old owned screens deleted, allowlists shrink, routes/inventories/audits checked; mapped old-profile suite retired; generic mixed browser6/6 and replacement offline1/1; authorized authenticated-client audit focused GREEN | Independent rerun and final full comparison |
-| 11 | App auth/private routes, timestamped offline copy, disabled remote actions, independent summary failures, retry/scoped state and no false-empty read state verified | Functional screenshots/native state evidence and independent rerun |
+| 10 | Old owned screens deleted, allowlists shrink, routes/inventories/audits checked; mapped old-profile suite retired; generic mixed browser6/6 and replacement offline1/1; authenticated-client audit passes frozen final full | Remaining independent review |
+| 11 | App auth/private routes, offline disabled states, retry/scoped state, no false-empty reads and actual RNW operations verified; capture race corrected by condition wait2/2 and both dialogs visually inspected | Native state evidence and remaining independent review OPEN |
 | 12 | Waiting R31a / R31b; no gate started or passed | Entire §9.2 matrix plus R05/R07/R17 regressions, raw/bands/attribution/compare evidence |
-| 13 | Clean rebase; prior App full3180/3fail (2 baseline + then-open dependency); authorized hook/audit fix focused46/46; previous typecheck0/production fixture exclusion0/copy103/0 | Final sanitized typecheck/full after continuation fixes; Web full/lint/final checks, updated scope ledger and independent review |
+| 13 | Frozen0bab App typecheck0 / full3191 with exact2 pristine failures only / copy103/0; hook focused46/46; prior actual production fixture exclusion0; scope ledger129 exact; narrow coordinator reviews found no blocker | Web full/lint/final checks, post-run integration rebase assessment and remaining independent review; native/pixels OPEN |
 
 1. **Native calendar capability explicitly deferred.** User continuation adopted no dependency/rebuild; it is not an implemented capability or a remaining approval question in this Sprint. Camera and notification OS state/request/openSettings are implemented; unavailable calendar row is hidden rather than using OAuth records as OS state. Native operation of the available permissions remains unverified.
 2. **Japanese AI drafting/candidates unmet live.** Intro and seeking services select `en`, otherwise `zh`; sending `ja` silently produces Chinese. Japanese live actions/candidates are hidden (G18); development/mock fixtures retain approved Japanese states. Backend Japanese support request; no paid model is called by tests.
 3. **Native OAuth uses the approved Web fallback.** Native opens Web `/app/settings/integrations`, then refreshes on foreground/browser return; Web retains the existing provider authorize URL with signed `returnTo=settings`. A native callback/auth-cookie/session handoff is not claimed. Pure routing is verified; real native browser/OS operation remains OPEN. Test provider/development state transitions only; never real Google.
 4. **Résumé scope is supported text only.** User continuation adopted the existing extraction capability: text files/pasted text and existing own-card scan → extraction → review. PDF/DOCX bytes are not parsed or offered by the App picker. Binary parsing is not claimed or an in-Sprint dependency request.
-5. **Original b7 contradiction amended under continuation authority.** Unsupported undo/history promises are removed in place from #46–51 and operation annotations; no undo UI/contract is added. Rendered amendment preflight is pending, not passed.
+5. **Original b7 contradiction amended under continuation authority.** Unsupported undo/history promises are removed in place from #46–51 and operation annotations; no undo UI/contract is added. Before/after rendered preflight found identities/dimensions unchanged and unsupported visible rules5→0; this is not pixel acceptance.
 6. **Integration board data gaps amended.** Authorization exposes health/lastCheckedAt, not actual sync timestamps, Gmail thread counts or meeting counts. The adopted b5/b12 amendment removes those claims; lastCheckedAt is not relabeled as sync time.
 7. **Goal board data gaps amended.** Live goal uses v2 summary and existing plan destination. The adopted b5/b12 amendment removes unbacked budget/deadline/week/progress/subgoal details rather than inventing live fields.
 8. **Seek rationale absent.** seek-suggestions returns strings only; rationale row is omitted. No invented explanation.
@@ -200,13 +225,13 @@ Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail
 
 ## Remaining work
 
-Finish the authorized continuation and rerun final sanitized typecheck/full comparison; SC11 functional screenshots/native state evidence; SC12 gated pixels; SC13 Web final suites/typechecks/lint/copy and independent review. Prior App full comparison, typecheck, real production fixture exclusion, scope ledger and owned copy evidence remain versioned above. No newer full-suite success or zero-new-failure acceptance is claimed.
+Cleanly integrate the newer upstream Web-only tooling after the completed heavy verification and bounded recapture. Assess sanctioned local native build/client prerequisites read-only; SC03–06 native operation records are distinct from SC12 pixels and remain OPEN until actually collected. SC11 native state evidence, SC12 gated pixels, SC13 Web final suites/typechecks/lint/copy and remaining independent review also remain OPEN. App final typecheck/full comparison and scope ledger are explicitly versioned above; the full suite has its exact2 pristine failures, not a passing exit.
 
 ## 改稿与补画清单
 
 SC01 `5550d1582` changed only approved b5 amendments (Pro / NFC removal, four-field completion, unsupported metrics and integration copy) and appended b12 S01–S04, S10–S14, S20–S25, S30–S31: 17 light/dark pairs, 34 frames. Original board IDs and the original b12 prefix were preserved. Exact frame titles/source mappings and five preflight conclusions are in `preflight-checklist.md` and `scripts/visual/views/{web,app}-R18a.json`. Coordinator review of amended/supplemental boards remains required; no pixel approval is implied by preflight.
 
-Subsequent user-adopted §C-1 in-place b5/b7 amendments and matching b12 helper updates are listed above and appended to the preflight checklist. They supersede the original-board hold, without retroactively claiming the original SC01 checkpoint had changed b7. App suite state URLs now match canonical runtime fixture inputs; rendered preflight and native/pixel gates are still explicit pending checks.
+Subsequent user-adopted §C-1 in-place b5/b7 amendments and matching b12 helper updates are listed above and appended to the preflight checklist. They supersede the original-board hold, without retroactively claiming the original SC01 checkpoint had changed b7. App suite state URLs now match canonical runtime fixture inputs; rendered preflight completed, while native/pixel gates remain OPEN.
 
 ## 请求
 
@@ -214,11 +239,11 @@ Subsequent user-adopted §C-1 in-place b5/b7 amendments and matching b12 helper 
 - D / R20a: native uses the approved Web settings fallback; a later native OAuth session/callback contract would require separate review. Existing signed Web return destination is not native round-trip proof. Language preference synchronization belongs in the shared language context, not a second page-specific writer.
 - A: consider private `AccountRow`, field/diff presenters and copied offline notice for later consolidation; EmptyState currently cannot disable its action. R18a uses a page-private disabled-button fallback in the offline empty state, without editing the kit.
 - R15: preview-layer visibility policy described above. R28: adopt optional publicFields/session scope and the preserved confirmed completion gate; no R28 screen/route was edited.
-- Shared App hook request (subsequently authorized): the private settings client needs existing `settingsFetch` normalization *before* Orbit client parsing because integrations/memory endpoints return legacy `{data}` / 204 envelopes. Authorization was initially withheld and the failed source audit remained explicit in historical full results. User continuation later approved the optional adapter seam and settings migration described above; audit is now focused GREEN without an exception. Final full verification remains required.
+- Shared App hook request (subsequently authorized): the private settings client needs existing `settingsFetch` normalization *before* Orbit client parsing because integrations/memory endpoints return legacy `{data}` / 204 envelopes. Authorization was initially withheld and the failed source audit remained explicit in historical full results. User continuation later approved the optional adapter seam and settings migration described above; audit now passes focused regressions and the frozen final full without an exception.
 
 ## 待主会话代定
 
-The earlier questions are now decided by explicit user continuation: amend unsupported b7 undo/history and b5 no-API metrics in place, use only supported résumé text files, defer native-calendar dependency, and fall back from native OAuth to Web settings. These are adopted scope decisions, not newly implemented native/parser capabilities. Rendered amendment review remains pending; no unresolved copy/data ambiguity is silently converted into a feature.
+The earlier questions are now decided by explicit user continuation: amend unsupported b7 undo/history and b5 no-API metrics in place, use only supported résumé text files, defer native-calendar dependency, and fall back from native OAuth to Web settings. These are adopted scope decisions, not newly implemented native/parser capabilities. Rendered amendment preflight completed and coordinator diff review found no blocker; native/pixel acceptance remains OPEN. No unresolved copy/data ambiguity is silently converted into a feature.
 
 ## 待用户授权
 

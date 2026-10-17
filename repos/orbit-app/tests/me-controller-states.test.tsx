@@ -132,6 +132,7 @@ test("R18a actual integration controller requires confirmation before disconnect
   await page.getByRole("button", { name: "解除", exact: true }).click();
   await page.getByRole("alert").getByText("連携を解除しますか？", { exact: true }).waitFor();
   assert.deepEqual(await page.evaluate("window.disconnectCalls??[]"), []);
+  await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[role="alert"]')!).opacity) === 1);
   await page.screenshot({ path: "/Users/xzhao/orbit-sprint-evidence/redesign/R18a/run-01/app-functional-disconnect-confirm.png", fullPage: true });
   await page.getByRole("alert").getByRole("button", { name: "キャンセル", exact: true }).click();
   assert.deepEqual(await page.evaluate("window.disconnectCalls??[]"), []);
@@ -149,6 +150,7 @@ test("R18a actual memory controller confirms deletion and removes only the ackno
   await page.getByRole("button", { name: "削除", exact: true }).first().click();
   await page.getByRole("alert").getByText("この記憶を削除しますか？", { exact: true }).waitFor();
   assert.deepEqual(await page.evaluate("window.memoryDeleteCalls??[]"), []);
+  await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[role="alert"]')!).opacity) === 1);
   await page.screenshot({ path: "/Users/xzhao/orbit-sprint-evidence/redesign/R18a/run-01/app-functional-memory-confirm.png", fullPage: true });
   await page.getByRole("alert").getByRole("button", { name: "削除", exact: true }).click();
   await page.waitForFunction(() => [...document.querySelectorAll("button")].filter(button => button.textContent === "削除").length === 2);
