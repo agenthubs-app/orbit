@@ -14,7 +14,7 @@ import { DEMO_EVENTS } from "../../../shared/mock/demo-world";
 import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
 import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../../app/api/_shared/authenticated-actor";
 import { redesignContractMode } from "../../redesign-contracts/route";
-import { getConfiguredEventAssessmentRuntime } from "../assessment/configured";
+import { getConfiguredEventAssessmentRuntime, type ConfiguredEventAssessmentRuntime } from "../assessment/configured";
 import { designFixtureNow } from "../dev-clock";
 import { createMyEventsService, createPostgresMyEventsReader, type MyEventSourceRow, type MyEventsReader } from "./service";
 
@@ -38,13 +38,36 @@ export function mockMyEventsReader(): MyEventsReader {
   };
 }
 
+/**
+ * 复核 M4（R26-12）：带评估的行按当前计划现算分（与评估页同一 `view`），不用写库当时的分。
+ * 读不到评估（已删 / 别人的）时保留原分。
+ */
+export async function withCurrentScores(
+  rows: MyEventSourceRow[],
+  actorId: string,
+  assessment: Pick<ConfiguredEventAssessmentRuntime, "plan" | "repository" | "service">,
+): Promise<MyEventSourceRow[]> {
+  const ids = [...new Set(rows.flatMap((row) => (row.assessmentId ? [row.assessmentId] : [])))];
+  if (ids.length === 0) return rows;
+  const context = await assessment.plan.context(actorId, "ja");
+  const current = new Map((await Promise.all(ids.map(async (id) => {
+    const stored = await assessment.repository.get(actorId, id);
+    return stored ? ([id, (await assessment.service.view(stored, context)).total] as const) : null;
+  }))).filter((entry): entry is readonly [string, number] => entry !== null));
+  return rows.map((row) => (row.assessmentId && current.has(row.assessmentId) ? { ...row, score: current.get(row.assessmentId)! } : row));
+}
+
 function liveReader(): MyEventsReader | null {
   const runtime = createConfiguredTransactionalPostgresRuntime();
   if (!runtime) return null;
   const query = (sql: string, values?: readonly unknown[]) => runtime.client.query(sql, values as unknown[]) as Promise<{ rows: Array<Record<string, unknown>> }>;
   const base = createPostgresMyEventsReader({ query, workspaceId: runtime.workspaceId });
   return {
-    rows: base.rows,
+    async rows(actorId, window) {
+      const assessment = getConfiguredEventAssessmentRuntime();
+      const rows = await base.rows(actorId, window);
+      return assessment ? withCurrentScores(rows, actorId, assessment) : rows;
+    },
     async meet(actorId, eventIds) {
       const assessment = getConfiguredEventAssessmentRuntime();
       if (!assessment || eventIds.length === 0) return {};

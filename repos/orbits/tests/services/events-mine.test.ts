@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { myEventsResponseSchema } from "../../shared/api-schema/events-mine";
 import { createMyEventsService, mergeMyEvents, type MyEventSourceRow } from "../../features/events/mine/service";
-import { createMyEventsRoute } from "../../features/events/mine/configured";
+import { createMyEventsRoute, withCurrentScores } from "../../features/events/mine/configured";
 
 // R26 events-mine.test：五种状态、合并取最强、upcoming 升序 / past 降序、取消不计入参加予定、外部活动链接、他人隔离（reader 只按 actor 读）。
 
@@ -52,4 +52,18 @@ test("路由：未登录 401（live）；mock 返回演示世界并带 sample；
   assert.equal(ok.status, 200);
   assert.equal(body.data.items.length, 2);
   if (previous === undefined) delete process.env.ORBIT_FEATURE_MODE; else process.env.ORBIT_FEATURE_MODE = previous;
+});
+
+test("R26-12：参加予定的分按当前计划现算（view），读不到评估时保留原分", async () => {
+  const contexts: string[] = [];
+  const scored = await withCurrentScores(rows, "actor:a", {
+    plan: { context: async (actorId: string) => { contexts.push(actorId); return { plan: "current" }; } },
+    repository: { get: async (_actorId: string, id: string) => (id === "evas_1" ? { id } : null) },
+    service: { view: async (row: { id: string }, context: { plan: string }) => ({ total: context.plan === "current" && row.id === "evas_1" ? 81 : 0 }) },
+  } as never);
+  assert.equal(scored.find((row) => row.assessmentId === "evas_1")?.score, 81, "stored 74 is replaced by the current-plan score");
+  assert.deepEqual(contexts, ["actor:a"], "one plan context per request");
+  const missing = await withCurrentScores(rows, "actor:a", { plan: { context: async () => ({}) }, repository: { get: async () => null }, service: { view: async () => ({ total: 0 }) } } as never);
+  assert.equal(missing.find((row) => row.assessmentId === "evas_1")?.score, 74);
+  assert.equal(await withCurrentScores(rows.filter((row) => !row.assessmentId), "actor:a", {} as never).then((out) => out.length), 6, "no assessments → no plan read");
 });
