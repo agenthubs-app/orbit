@@ -26,6 +26,9 @@ import { PersonalScheduleDateTimePicker } from "../schedule/PersonalScheduleDate
 import { TasksScreen } from "../tasks/TasksScreen";
 import { TodoSections } from "./TodoSections";
 import { TodoManualDraft, todoManualDraftForScope, todoManualMailto } from "./TodoManualDraft";
+import { TODO_SENT_ENCOUNTER_NOTE, todoHandoffTarget, todoHandoffRetryTarget, todoHandoffTaskReceipt, todoEncounterReceipt } from "./todo-handoff-request";
+import { todoHandoffStorage } from "./todo-handoff-storage";
+import { beginTodoHandoffConfirmation, clearTodoHandoff, markTodoHandoff, markTodoHandoffTaskCompleted, orphanedTodoHandoffs, pendingTodoHandoff, todoHandoffStorageKey, type TodoHandoffRecord } from "./todo-handoff-state";
 import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoLifecycleResolvePath, todoLifecycleResolvedHref, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoNativeSnoozeReceipt, todoNativeSnoozeRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "./todo-actions";
 import { appendTodoSourcePage, todoAggregateHidden } from "./todo-page-model";
 import { useTodoPage } from "./useTodoPage";
@@ -55,7 +58,8 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
   const locale = useOrbitLocale();
   const router = useRouter();
   const toast = useToast();
-  const scopeKey = JSON.stringify([auth.actorId, auth.cookieHeader, auth.notificationSessionRevision, server.baseUrl, timeZone, date]);
+  const scopeKey = JSON.stringify([auth.actorId, auth.cookieHeader, auth.notificationSessionRevision,
+    auth.ready, auth.signedIn, server.baseUrl, server.ready, timeZone, date]);
   const client = useOrbitApiClient({ scopeKey });
   const todo = useTodoPage(timeZone, date);
   const pageKey = JSON.stringify([scopeKey, todo.page]);
@@ -79,7 +83,29 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
   const [deferConfirmation, setDeferConfirmation] = useState<{ item: TodoFollowupItem; date: string } | null>(null);
   const [manualDraft, setManualDraft] = useState<{ scopeKey: string; item: TodoNextMoveItem; body: string } | null>(null);
   const visibleManualDraft = todoManualDraftForScope(manualDraft, scopeKey);
-  const scope = useMemo(() => ({ active: true, controller: new AbortController(), keys: new Map<string, string>(), resolving: false }), [scopeKey]);
+  const handoffKey = todoHandoffStorageKey(auth.actorId ?? "", server.baseUrl);
+  const [handoffState, setHandoffState] = useState<{ key: string; records: TodoHandoffRecord[] } | null>(null);
+  const handoffStateRef = useRef(handoffState);
+  handoffStateRef.current = handoffState;
+  const currentHandoffKey = useRef(handoffKey);
+  currentHandoffKey.current = handoffKey;
+  const handoffWrites = useRef<Promise<unknown>>(Promise.resolve());
+  const handoffRecords = handoffState?.key === handoffKey ? handoffState.records : null;
+  useEffect(() => {
+    let active = true;
+    setHandoffState(null);
+    if (auth.ready && auth.signedIn && server.ready && handoffKey && auth.actorId) {
+      void todoHandoffStorage.load({ actorId: auth.actorId, serverUrl: server.baseUrl }).then(records => {
+        if (active && currentHandoffKey.current === handoffKey) {
+          const next = { key: handoffKey, records };
+          handoffStateRef.current = next;
+          setHandoffState(next);
+        }
+      }).catch(() => { if (active) toast.error(locale.t("todo.sentFailed")); });
+    }
+    return () => { active = false; };
+  }, [auth.actorId, auth.ready, auth.signedIn, server.baseUrl, server.ready, handoffKey]);
+  const scope = useMemo(() => ({ active: true, controller: new AbortController(), keys: new Map<string, string>(), resolving: false, confirming: false }), [scopeKey]);
   const currentScope = useRef(scope);
   currentScope.current = scope;
   useEffect(() => {
@@ -90,6 +116,108 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
     return () => { scope.active = false; scope.controller.abort(); scope.keys.clear(); };
   }, [scope]);
   const isCurrent = () => scope.active && currentScope.current === scope;
+  async function updateHandoff(transform: (records: readonly TodoHandoffRecord[]) => TodoHandoffRecord[] | null): Promise<boolean> {
+    if (!handoffKey || !auth.actorId || !auth.ready || !auth.signedIn || !server.ready ||
+      currentHandoffKey.current !== handoffKey) return false;
+    const actorId = auth.actorId, serverUrl = server.baseUrl, key = handoffKey;
+    const operation = handoffWrites.current.catch(() => {}).then(async () => {
+      const previous = handoffStateRef.current;
+      if (currentHandoffKey.current !== key || previous?.key !== key) return false;
+      const records = transform(previous.records);
+      if (!records) return false;
+      await todoHandoffStorage.save({ actorId, serverUrl }, records);
+      if (currentHandoffKey.current !== key) return false;
+      const next = { key, records };
+      handoffStateRef.current = next;
+      setHandoffState(next);
+      return true;
+    });
+    handoffWrites.current = operation.then(() => {}, () => {});
+    return operation;
+  }
+
+  async function rememberHandoff(item: TodoNextMoveItem) {
+    try {
+      const saved = await updateHandoff(records => markTodoHandoff(records, item, new Date().toISOString()));
+      if (isCurrent() && (!saved || item.source === "agent_signal" && Boolean(item.contactId || item.taskId) &&
+        !pendingTodoHandoff(handoffStateRef.current?.records ?? [], item, new Date().toISOString()))) {
+        toast.error(locale.t("todo.sentFailed"));
+      }
+    } catch { if (isCurrent()) toast.error(locale.t("todo.sentFailed")); }
+  }
+
+  async function dismissHandoff(item: TodoNextMoveItem) {
+    try {
+      const saved = await updateHandoff(records => {
+        const pending = pendingTodoHandoff(records, item, new Date().toISOString());
+        return pending && !pending.confirmation ? clearTodoHandoff(records, item.sourceId) : null;
+      });
+      if (!saved && isCurrent()) toast.error(locale.t("todo.sentFailed"));
+    } catch { if (isCurrent()) toast.error(locale.t("todo.sentFailed")); }
+  }
+
+  async function confirmHandoff(item: TodoNextMoveItem) {
+    if (busy || scope.confirming || offline || staleDay || !auth.ready || !auth.signedIn || !auth.actorId ||
+      !server.ready || !handoffRecords || !pendingTodoHandoff(handoffRecords, item, new Date().toISOString())) return;
+    scope.confirming = true;
+    setBusy(true);
+    try {
+      const existing = pendingTodoHandoff(handoffStateRef.current?.records ?? [], item, new Date().toISOString());
+      let taskPayload: unknown = null;
+      if (item.taskId && !existing?.confirmation) {
+        const result = await client.get<unknown>(taskPath(item.taskId), { signal: scope.controller.signal });
+        if (!isCurrent() || !result.success || result.status < 200 || result.status >= 300) throw new Error("Task target unavailable");
+        taskPayload = result.data;
+      }
+      const currentItem = visiblePage.current.page?.nextMoves.items.find(candidate => candidate.key === item.key);
+      if (!isCurrent() || (currentItem
+        ? currentItem.sourceId !== item.sourceId || currentItem.contactId !== item.contactId || currentItem.taskId !== item.taskId
+        : !existing?.confirmation)) throw new Error("Signal target changed");
+      const target = existing?.confirmation ? todoHandoffRetryTarget(existing, item)
+        : todoHandoffTarget(item, taskPayload, auth.actorId);
+      if (!target) throw new Error("Contact target unavailable");
+      const nowIso = new Date().toISOString();
+      const begun = await updateHandoff(records => beginTodoHandoffConfirmation(records, item, {
+        ...target, idempotencyKey: `ios:todo-sent:${Crypto.randomUUID()}`, observedAt: nowIso,
+      }, nowIso));
+      if (!begun || !isCurrent()) throw new Error("Confirmation could not be saved");
+      let confirmation = pendingTodoHandoff(handoffStateRef.current?.records ?? [], item, nowIso)?.confirmation;
+      if (!confirmation || confirmation.contactId !== target.contactId || confirmation.taskId !== target.taskId) throw new Error("Confirmation target changed");
+      if (confirmation.taskId && !confirmation.taskCompleted) {
+        const idempotencyKey = `${confirmation.idempotencyKey}:task`;
+        const result = await client.patch<unknown>(taskPath(confirmation.taskId), {
+          body: { action: "complete", idempotencyKey }, signal: scope.controller.signal,
+        });
+        if (!isCurrent() || !result.success || result.status < 200 || result.status >= 300 ||
+          !todoHandoffTaskReceipt(result.data, auth.actorId, confirmation.taskId, confirmation.contactId)) throw new Error("Task completion failed");
+        if (!await updateHandoff(records => markTodoHandoffTaskCompleted(records, item.sourceId)) || !isCurrent()) {
+          throw new Error("Task checkpoint could not be saved");
+        }
+        confirmation = pendingTodoHandoff(handoffStateRef.current?.records ?? [], item, nowIso)?.confirmation;
+        if (!confirmation?.taskCompleted) throw new Error("Task checkpoint missing");
+      }
+      const result = await client.post<unknown>("/api/encounters", {
+        headers: { "Idempotency-Key": confirmation.idempotencyKey },
+        body: { contactId: confirmation.contactId, observedAt: confirmation.observedAt,
+          privacy: "private", talked: "uncertain", noteText: TODO_SENT_ENCOUNTER_NOTE },
+        signal: scope.controller.signal,
+      });
+      if (!isCurrent() || !result.success || result.status < 200 || result.status >= 300 ||
+        !todoEncounterReceipt(result.data, confirmation.contactId, confirmation.observedAt)) throw new Error("Encounter capture failed");
+      if (!await updateHandoff(records => clearTodoHandoff(records, item.sourceId)) || !isCurrent()) {
+        throw new Error("Encounter checkpoint could not be cleared");
+      }
+      toast.success(locale.t("todo.sentSaved"));
+      refresh();
+    } catch {
+      if (isCurrent()) {
+        const pending = pendingTodoHandoff(handoffStateRef.current?.records ?? [], item, new Date().toISOString());
+        toast.error(locale.t(pending?.confirmation?.taskCompleted ? "todo.sentPartialFailed" : "todo.sentFailed"));
+      }
+    } finally {
+      if (isCurrent()) { scope.confirming = false; setBusy(false); }
+    }
+  }
   const offline = Boolean(todo.copy?.offline || todo.state.kind === "offline");
   // A last-seen copy shown while the network is still loading is not current enough to write against.
   const staleDay = todo.staleDay || Boolean(todo.copy && !todo.copy.offline);
@@ -314,15 +442,24 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
         : todoFollowupHref(item) !== null}
       canDefer={item => !offline || deferableTaskIds.has(item.taskId)}
       onOpen={open} onOpenFollowup={item => { void openFollowup(item); }}
+      handoffFor={item => handoffRecords && !visibleManualDraft && auth.ready && auth.signedIn && server.ready
+        ? pendingTodoHandoff(handoffRecords, item, now.toISOString()) : null}
+      orphanedHandoffs={handoffRecords && !visibleManualDraft && auth.ready && auth.signedIn && server.ready
+        ? orphanedTodoHandoffs(handoffRecords, page.nextMoves.items) : []}
+      onSentYes={item => { void confirmHandoff(item); }} onSentNotYet={item => { void dismissHandoff(item); }}
       onComplete={item => { void complete(item); }} onDefer={openDefer} onDecide={(item, action) => { void decide(item, action); }} /> : null}
     {visibleManualDraft ? <TodoManualDraft title={visibleManualDraft.item.titlePreview} value={visibleManualDraft.body}
       onChange={body => { if (isCurrent()) setManualDraft(current => {
         const scoped = todoManualDraftForScope(current, scopeKey);
         return scoped ? { ...scoped, body } : null;
       }); }}
-      onClose={() => { if (isCurrent()) setManualDraft(null); }}
-      onCopy={() => { if (!isCurrent()) return; void Clipboard.setStringAsync(visibleManualDraft.body.trim()).then(() => { if (isCurrent()) toast.success(locale.t("todo.manualCopied")); }).catch(() => { if (isCurrent()) toast.error(locale.t("todo.manualFailed")); }); }}
-      onMail={() => { if (!isCurrent()) return; const href = todoManualMailto(visibleManualDraft.body); if (href) void Linking.openURL(href).catch(() => { if (isCurrent()) toast.error(locale.t("todo.manualFailed")); }); }} /> : null}
+      onClose={() => { if (!isCurrent()) return; if (visibleManualDraft.body.trim()) void rememberHandoff(visibleManualDraft.item); setManualDraft(null); }}
+      onCopy={() => { if (!isCurrent()) return; void Clipboard.setStringAsync(visibleManualDraft.body.trim()).then(() => {
+        if (isCurrent()) { toast.success(locale.t("todo.manualCopied")); void rememberHandoff(visibleManualDraft.item); }
+      }).catch(() => { if (isCurrent()) toast.error(locale.t("todo.manualFailed")); }); }}
+      onMail={() => { if (!isCurrent()) return; const href = todoManualMailto(visibleManualDraft.body); if (href) void Linking.openURL(href).then(() => {
+        if (isCurrent()) void rememberHandoff(visibleManualDraft.item);
+      }).catch(() => { if (isCurrent()) toast.error(locale.t("todo.manualFailed")); }); }} /> : null}
     {onShowTasks ? <View style={slotStyles.allTasks}><Button label={locale.t("todo.allTasks")} onPress={onShowTasks} variant="secondary" /></View> : null}
     {!todo.page && todo.state.kind === "loading" ? <Skeleton /> : null}
     {!todo.page && todo.state.kind !== "loading" ? <RetryCard title={locale.t("tasks.unavailable")} message={locale.t("todo.unavailable")} onRetry={refresh} /> : null}

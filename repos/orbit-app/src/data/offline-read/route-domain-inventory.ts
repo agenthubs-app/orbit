@@ -27,6 +27,7 @@ function domainFor(path: string): string {
   // R15: 招待コード (codes, the public preview, redeem, connections) — its own domain, never cached.
   if (path.startsWith('/api/invite-codes')) return 'invite-codes';
   if (path.startsWith('/api/contacts')) return 'contacts';
+  if (path === '/api/encounters') return 'contacts';
   if (path.startsWith('/api/connections')) return path.includes('/evidence') ? 'relationship-evidence' : 'connections';
   if (path.startsWith('/api/analysis/relationship-value')) return 'relationship-evidence';
   if (path.startsWith('/api/search/')) return 'contacts';
@@ -99,6 +100,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     || consumerFile === 'src/screens/search/search-api.ts'
     // Provider calendar rows are live/private; never persist them via the read inventory.
     || endpointTemplate.startsWith('/api/calendar/external-events')
+    || endpointTemplate === '/api/encounters'
     // R23: the plan flow is online-only (paid AI drafts, versioned intakes); nothing is kept on the device.
     || consumerFile.startsWith('src/screens/plan/')
     // R15: invite codes, previews and connections are online-only; a code or a preview is never kept on the device.
@@ -796,6 +798,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/todo/TodoScreen.tsx","GET","/api/relationship-tasks/:id/resolve"],
   ["src/screens/todo/TodoScreen.tsx","GET","/api/todo/page"],
   ["src/screens/todo/TodoScreen.tsx","PATCH","/api/tasks/:id"],
+  ["src/screens/todo/TodoScreen.tsx","POST","/api/encounters"],
   ["src/screens/todo/TodoScreen.tsx","POST","/api/agent/actions/:id/accept"],
   ["src/screens/todo/TodoScreen.tsx","POST","/api/agent/actions/:id/dismiss"],
   ["src/screens/todo/TodoScreen.tsx","POST","/api/agent/ledger/:id/transition"],

@@ -30,6 +30,12 @@ test("To-do page copy network response is scoped to account session and server o
   assert.match(source, /auth\.cookieHeader/u);
 });
 
+test("manual handoff scope is revoked when account or server readiness changes", () => {
+  const source = readFileSync(join(import.meta.dirname, "../src/screens/todo/TodoScreen.tsx"), "utf8");
+  assert.match(source, /auth\.ready, auth\.signedIn, server\.baseUrl, server\.ready/u);
+  assert.match(source, /!auth\.ready \|\| !auth\.signedIn \|\| !server\.ready/u);
+});
+
 test("a not-implemented aggregate suppresses the page and its old offline copy", () => {
   const hook = readFileSync(join(import.meta.dirname, "../src/screens/todo/useTodoPage.ts"), "utf8");
   const screen = readFileSync(join(import.meta.dirname, "../src/screens/todo/TodoScreen.tsx"), "utf8");

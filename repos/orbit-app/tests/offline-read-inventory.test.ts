@@ -114,10 +114,14 @@ test('task-calendar provider events stay private and meeting proposals stay onli
 
 test('To-do decisions have explicit online-only write policies', () => {
   const writes = surfaces.filter(row => row.consumerFile === 'src/screens/todo/TodoScreen.tsx' && row.method !== 'GET');
-  assert.equal(writes.length, 9);
+  assert.equal(writes.length, 10);
   for (const surface of writes) assert.equal(surface.mutationPolicy, 'online_only');
   assert.ok(writes.some(row => row.endpointTemplate === '/api/task-suggestions/:id/snooze'));
   assert.ok(writes.some(row => row.endpointTemplate === '/api/agent/ledger/:id/transition'));
+  const encounter = writes.find(row => row.endpointTemplate === '/api/encounters');
+  assert.equal(encounter?.domainId, 'contacts');
+  assert.equal(encounter?.readPersistence, 'online_only_secret');
+  assert.equal(encounter?.binaryPolicy, 'never_local');
 });
 
 test('exact-task lifecycle resolution stays actor-scoped and never persists locally', () => {

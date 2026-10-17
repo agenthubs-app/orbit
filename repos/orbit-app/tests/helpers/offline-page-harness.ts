@@ -68,8 +68,29 @@ const client = {
     if (path === "/api/health") state.healthResolved = true;
     return result;
   },
-  async post(path) { return answer("post", path); },
-  async patch(path) { return answer("patch", path); },
+  async post(path, options) {
+    const result = answer("post", path);
+    if (state.online && path === "/api/encounters" && state.echoEncounter) {
+      state.encounterRequests = [...(state.encounterRequests ?? []), options];
+      if (state.failEncounterOnce && state.encounterRequests.length === 1) return { success: false, status: 503, error: { code: "SERVICE_UNAVAILABLE", message: "test outage" }, meta: {} };
+      return { success: true, status: 201, data: { encounterId: "encounter:fixture", contactId: options.body.contactId,
+        observedAt: options.body.observedAt, privacy: "private", talked: "uncertain" }, meta: {} };
+    }
+    return result;
+  },
+  async patch(path, options) {
+    const result = answer("patch", path);
+    if (state.online && state.echoTaskCompletion && path === "/api/tasks/task-1") {
+      state.taskRequests = [...(state.taskRequests ?? []), options];
+      const task = state.responses[path].task;
+      return { success: true, status: 200, data: {
+        task: { ...task, status: "completed", completedBy: task.ownerUserId },
+        activity: { type: "completed", taskId: task.id, accountId: task.accountId, ownerUserId: task.ownerUserId,
+          taskSnapshot: { relatedContactId: task.relatedContactId } },
+      }, meta: {} };
+    }
+    return result;
+  },
   async put(path) { return answer("put", path); },
   async delete(path) { return answer("delete", path); },
 };
@@ -151,8 +172,8 @@ export const useSyncCoordinatorSession = () => { const [value, setValue] = React
 const authSession = { ready: true, signedIn: true, accountId: "account:one", actorId: "account:one", cookieHeader: "", user: { id: "account:one", name: "QA One", email: "qa1@example.test" }, notificationSessionRevision: 0 };
 export const useOrbitAuthSession = () => authSession;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: base, ready: state.apiBaseReady ?? true });
-const memory = new Map();
-export default { getItem: async key => memory.get(key) ?? null, setItem: async (key, value) => { memory.set(key, value); }, removeItem: async key => { memory.delete(key); } };
+// Browser-local storage survives a page reload like the device adapter, while each test page has its own context.
+export default { getItem: async key => localStorage.getItem(key), setItem: async (key, value) => { localStorage.setItem(key, value); }, removeItem: async key => { localStorage.removeItem(key); } };
 export const SafeAreaView = ({ children, edges, style, ...props }) => {
   const includesTop = Array.isArray(edges)
     ? edges.includes("top")

@@ -4,9 +4,11 @@ import type { TodoDecisionItem, TodoFollowupItem, TodoNextMoveItem, TodoPageCont
 import { Button, Card, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { TodoSentPrompt } from "./TodoSentPrompt";
+import { retryTodoHandoffItem, type TodoHandoffRecord } from "./todo-handoff-state";
 import { canWriteTodoFollowup, todoSectionCount } from "./todo-page-model";
 
-export function TodoSections({ page, offline, staleDay, busy, pagingSection, pagingFailedSection, mirroredTaskIds, onRefresh, onMore, canOpen, canOpenFollowup, canDefer, onOpen, onOpenFollowup, onComplete, onDefer, onDecide }: {
+export function TodoSections({ page, offline, staleDay, busy, pagingSection, pagingFailedSection, mirroredTaskIds, onRefresh, onMore, canOpen, canOpenFollowup, canDefer, onOpen, onOpenFollowup, onComplete, onDefer, onDecide, handoffFor, orphanedHandoffs, onSentYes, onSentNotYet }: {
   page: TodoPageContract;
   offline: boolean;
   staleDay: boolean;
@@ -24,6 +26,10 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
   onComplete: (item: TodoFollowupItem) => void;
   onDefer: (item: TodoFollowupItem) => void;
   onDecide: (item: TodoDecisionItem, action: "accept" | "dismiss" | "snooze") => void;
+  handoffFor?: (item: TodoNextMoveItem) => TodoHandoffRecord | null;
+  orphanedHandoffs?: readonly TodoHandoffRecord[];
+  onSentYes?: (item: TodoNextMoveItem) => void;
+  onSentNotYet?: (item: TodoNextMoveItem) => void;
 }) {
   const { t } = useOrbitLocale();
   const { styles } = useStyles();
@@ -83,17 +89,29 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
     <Card style={styles.section}>
       {sectionHead("nextMoves")}
       {partial("nextMoves")}
-      {empty("nextMoves", page.nextMoves.items.length)}
+      {empty("nextMoves", page.nextMoves.items.length + (orphanedHandoffs?.length ?? 0))}
       {page.nextMoves.items.map(item => <View key={item.key} style={styles.row}>
         <View style={styles.rowBody}>
           <UiText style={styles.title}>{item.titlePreview}</UiText>
           {item.reasonPreview ? <UiText style={styles.muted}>{item.reasonPreview}</UiText> : null}
           {!item.draftAvailable ? <UiText style={styles.muted}>{t("todo.draftUnavailable")}</UiText> : null}
           {item.sample ? <UiText style={styles.sample}>{t("todo.sample")}</UiText> : null}
+          {handoffFor?.(item) && onSentYes && onSentNotYet ?
+            <TodoSentPrompt busy={busy || readOnly} confirmationStarted={Boolean(handoffFor(item)?.confirmation)}
+              onYes={() => onSentYes(item)} onNotYet={() => onSentNotYet(item)} /> : null}
         </View>
         {!item.sample && canOpen(item)
           ? <Button label={t("todo.manualWrite")} onPress={() => onOpen(item)} size="sm" variant="secondary" disabled={busy} /> : null}
       </View>)}
+      {orphanedHandoffs?.map(record => {
+        const item = retryTodoHandoffItem(record);
+        return item && onSentYes ? <View key={`orphan:${record.sourceId}`} style={styles.row}>
+          <View style={styles.rowBody}>
+            <UiText style={styles.title}>{t("todo.sentPending")}</UiText>
+            <TodoSentPrompt busy={busy || readOnly} confirmationStarted onYes={() => onSentYes(item)} />
+          </View>
+        </View> : null;
+      })}
       {more("nextMoves")}
     </Card>
 
