@@ -24,10 +24,12 @@ import {
 } from "../../shared/domain/industries";
 import { resolveOrbitLanguage } from "../../shared/i18n/orbit-language";
 import {
+  CONTACT_DETAIL_FIELD_HISTORY_LIMIT,
   CONTACT_DETAIL_STATUS_OPTIONS,
   CONTACT_DETAIL_TAG_OPTIONS,
   CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS,
   type ContactDetail,
+  type ContactDetailFieldHistoryEntry,
   type ContactDetailLastInteractionChannel,
   type ContactDetailLastInteractionInput,
   type ContactDetailLastInteractionMetadata,
@@ -646,6 +648,7 @@ function detailFor(input: {
     lineId: input.contact.handles?.lineId ?? "",
     website: input.contact.handles?.website ?? "",
     ...(input.contact.notes?.trim() ? { cardNotes: input.contact.notes.trim() } : {}),
+    ...contactDetailFieldHistory(input.contact),
     relationshipContext,
     publicProfile: publicProfileFor({
       contact: input.contact,
@@ -717,6 +720,20 @@ function detailFor(input: {
     emailProviderRequested: false,
     notificationDelivered: false,
   };
+}
+
+/** R11a（以前の値）：联系人 payload 里的 fieldHistory → 详情（只取格式正确的条目，最近的 N 条）。 */
+export function contactDetailFieldHistory(contact: ContactDTO): { fieldHistory?: ContactDetailFieldHistoryEntry[] } {
+  const raw = (contact as unknown as { fieldHistory?: unknown }).fieldHistory;
+  if (!Array.isArray(raw)) return {};
+  const value = (item: unknown) => (typeof item === "string" ? item.slice(0, 400) : null);
+  const entries = raw.flatMap((item): ContactDetailFieldHistoryEntry[] => {
+    if (typeof item !== "object" || item === null) return [];
+    const entry = item as Record<string, unknown>;
+    if (typeof entry.field !== "string" || typeof entry.at !== "string" || typeof entry.source !== "string") return [];
+    return [{ field: entry.field, previous: value(entry.previous), next: value(entry.next), source: entry.source, at: entry.at }];
+  }).slice(-CONTACT_DETAIL_FIELD_HISTORY_LIMIT);
+  return entries.length ? { fieldHistory: entries } : {};
 }
 
 function payloadFor(input: {

@@ -553,3 +553,4 @@ export type { GlobalSearchAlternative, GlobalSearchConversationHit, GlobalSearch
 export type { ContactCardMetKind, ContactCardSourceChip } from "./contact-card-page";
 export type { ContactGoalRelatedIdsDTO, ContactGoalRelatedLinkDTO } from "./contact-goal-related";
 export type { ContactDeleteResult, ContactRestoreResult } from "./contact-delete";
+export type { ContactEditableField, ContactFieldsUpdateInput, ContactFieldsUpdateResult } from "./contact-fields";

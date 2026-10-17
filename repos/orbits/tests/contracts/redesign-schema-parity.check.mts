@@ -251,3 +251,7 @@ import type { ContactDeleteResult, ContactRestoreResult } from "../../shared/con
 import type { contactDeleteResultObject, contactRestoreResultObject } from "../../shared/api-schema/contact-delete";
 expectParity<Parity<ContactDeleteResult, typeof contactDeleteResultObject>>();
 expectParity<Parity<ContactRestoreResult, typeof contactRestoreResultObject>>();
+import type { ContactFieldsUpdateInput, ContactFieldsUpdateResult } from "../../shared/contract/contact-fields";
+import type { contactFieldsUpdateInputObject, contactFieldsUpdateResultObject } from "../../shared/api-schema/contact-fields";
+expectParity<Parity<ContactFieldsUpdateInput, typeof contactFieldsUpdateInputObject>>();
+expectParity<Parity<ContactFieldsUpdateResult, typeof contactFieldsUpdateResultObject>>();

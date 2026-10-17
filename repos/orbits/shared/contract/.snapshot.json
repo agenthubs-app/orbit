@@ -2801,6 +2801,72 @@
         }
       }
     },
+    "contact-fields.ts::ContactEditableField": {
+      "kind": "enum",
+      "values": [
+        "'displayName'",
+        "'email'",
+        "'organization'",
+        "'phone'",
+        "'role'"
+      ]
+    },
+    "contact-fields.ts::ContactFieldsUpdateInput": {
+      "kind": "object",
+      "members": {
+        "values": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "phone": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null | undefined"
+            },
+            "email": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null | undefined"
+            },
+            "organization": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null | undefined"
+            },
+            "displayName": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null | undefined"
+            },
+            "role": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null | undefined"
+            }
+          }
+        }
+      }
+    },
+    "contact-fields.ts::ContactFieldsUpdateResult": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "changed": {
+          "optional": false,
+          "kind": "text",
+          "type": "ContactEditableField[]"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
     "contact-goal-related.ts::ContactGoalRelatedLinkDTO": {
       "kind": "object",
       "members": {
@@ -2968,17 +3034,17 @@
           "kind": "text",
           "type": "number | null"
         },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
         "firstName": {
           "optional": false,
           "kind": "text",
           "type": "number | null"
         },
         "lastName": {
-          "optional": false,
-          "kind": "text",
-          "type": "number | null"
-        },
-        "role": {
           "optional": false,
           "kind": "text",
           "type": "number | null"
@@ -3492,17 +3558,17 @@
               "kind": "text",
               "type": "number | null | undefined"
             },
+            "role": {
+              "optional": true,
+              "kind": "text",
+              "type": "number | null | undefined"
+            },
             "firstName": {
               "optional": true,
               "kind": "text",
               "type": "number | null | undefined"
             },
             "lastName": {
-              "optional": true,
-              "kind": "text",
-              "type": "number | null | undefined"
-            },
-            "role": {
               "optional": true,
               "kind": "text",
               "type": "number | null | undefined"
@@ -12546,7 +12612,10 @@
         "ContactCompletionQuestionKind",
         "ContactCompletionResult",
         "ContactDeleteResult",
+        "ContactEditableField",
         "ContactEvidenceContract",
+        "ContactFieldsUpdateInput",
+        "ContactFieldsUpdateResult",
         "ContactFilterOptionContract",
         "ContactGoalRelatedIdsDTO",
         "ContactGoalRelatedLinkDTO",
@@ -13901,12 +13970,12 @@
               "kind": "text",
               "type": "ManualContactFieldChoice | undefined"
             },
-            "role": {
+            "displayName": {
               "optional": true,
               "kind": "text",
               "type": "ManualContactFieldChoice | undefined"
             },
-            "displayName": {
+            "role": {
               "optional": true,
               "kind": "text",
               "type": "ManualContactFieldChoice | undefined"

@@ -272,6 +272,16 @@ export interface ContactDetailPublicProfile {
   fallbackFields?: readonly ("offering" | "seeking" | "topics")[];
 }
 
+/** R11a：详情「以前の値」一条（field = displayName / organization / role / email / phone / offering / seeking）。 */
+export interface ContactDetailFieldHistoryEntry {
+  field: string;
+  previous: string | null;
+  next: string | null;
+  source: string;
+  at: string;
+}
+export const CONTACT_DETAIL_FIELD_HISTORY_LIMIT = 20;
+
 // ContactDetail 是详情页完整读取模型。
 // 末尾的 executed/requested 布尔字段是安全审计，不是 UI 装饰字段。
 export interface ContactDetail {
@@ -302,6 +312,11 @@ export interface ContactDetail {
   /** 名片上没进固定字段的信息（传真、微信、罗马字姓名、其他地址…）以及合并时的「名片补充」。 */
   cardNotes?: string;
   relationshipContext: string;
+  /**
+   * R11a（以前の値，R11-08）：字段被覆盖 / 清空前的旧值（R12 `contact-field-write`、R15 招待同步、每天一问写入），
+   * 新的在后，最多 CONTACT_DETAIL_FIELD_HISTORY_LIMIT 条。没有时不出现。
+   */
+  fieldHistory?: readonly ContactDetailFieldHistoryEntry[];
   publicProfile: ContactDetailPublicProfile;
   source: ContactDetailSourceReference;
   evidence: readonly ContactDetailEvidence[];
