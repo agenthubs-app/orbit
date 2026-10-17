@@ -354,7 +354,8 @@ async function runSpecView(v) {
     await a.ctx.close();
   } else {
     app = await finishApp({ ...v, fullPage: false, styleDiff: false }, a, Number(v.height ?? 900));
-    appPng = region ? cropPair({ design: designPng, app: app.png, region }).app : app.png;
+    // --region 只裁实现侧（视口坐标）；设计侧就是整个规格格（R31b 修：原先设计侧也按同一框裁，框不在 0,0 时报「在图外」）。
+    appPng = region ? cropPair({ design: designPng, app: app.png, region, designRegion: [0, 0, designPng.width, designPng.height] }).app : app.png;
   }
   writePng(join(v.out, "app.png"), appPng);
   if (appPng.width !== designPng.width || appPng.height !== designPng.height) console.warn(`warn: [${v.key}] 实现 ${appPng.width}x${appPng.height} ≠ 规格格 ${designPng.width}x${designPng.height}；多出 / 缺的部分按不一致计`);

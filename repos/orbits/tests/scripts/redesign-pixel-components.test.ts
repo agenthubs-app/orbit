@@ -161,3 +161,18 @@ test("spec cells: the nth cell of a section per theme, caption and doc card left
     await browser.close();
   }
 });
+
+// R31b：Web 浮层规格格（Modal 在 1440×900 视口居中）的 --region 不在 0,0、且比规格格本身大的视口坐标——
+// runSpecView 只裁实现侧，设计侧保持整个规格格（原先设计侧也按同一框裁，报「裁剪框…在图外」）。
+test("spec cells: an off-origin --region crops only the implementation, the design cell stays whole", () => {
+  const cell = canvas(44, 39, [255, 255, 255], (x, y) => (x < 4 && y < 4 ? [0, 0, 0] : null));
+  const viewport = canvas(144, 90, [255, 255, 255], (x, y) => (x >= 50 && x < 54 && y >= 25 && y < 29 ? [0, 0, 0] : null));
+  const region: [number, number, number, number] = [50, 25, 44, 39];
+  assert.throws(() => cropPair({ design: cell, app: viewport, region }), /在图外/, "the old call: the design cell is cropped with the viewport rect");
+  const fixed = cropPair({ design: cell, app: viewport, region, designRegion: [0, 0, cell.width, cell.height] });
+  assert.deepEqual([fixed.app.width, fixed.app.height], [44, 39]);
+  assert.equal(fixed.app.data[0], 0, "the implementation crop starts at the dialog");
+  assert.deepEqual([fixed.design.width, fixed.design.height, fixed.design.data[0]], [44, 39, 0], "the design cell is untouched");
+  const source = readFileSync(join(root, "scripts/visual/compare-redesign.mjs"), "utf8");
+  assert.match(source, /appPng = region \? cropPair\(\{ design: designPng, app: app\.png, region, designRegion: \[0, 0, designPng\.width, designPng\.height\] \}\)\.app/, "runSpecView keeps the design cell whole");
+});
