@@ -10,6 +10,11 @@ export function todoPageIsStale(page: Pick<TodoPageContract, "date" | "timeZone"
   return page.date !== localDate || page.timeZone !== timeZone;
 }
 
+/** G18: an unimplemented aggregate is absent, not a broken To-do page. */
+export function todoAggregateHidden(state: { kind: string; error?: { code: string } }): boolean {
+  return state.kind === "failure" && state.error?.code === "NOT_IMPLEMENTED";
+}
+
 /** A stale snapshot is read-only; while offline only an owned, mirrored plain task can be queued. */
 export function canWriteTodoFollowup(
   item: TodoFollowupItem,

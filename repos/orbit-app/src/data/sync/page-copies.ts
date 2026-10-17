@@ -100,3 +100,8 @@ export function keepsPageCopy(result: { success: true } | { success: false; stat
   if (result.status === 0 || result.error.code === "ORBIT_APP_NETWORK_ERROR") return "unreachable";
   return result.status >= 500 ? "unavailable" : null;
 }
+
+/** A feature-level not-implemented answer is authoritative even when a prior copy exists. */
+export function shouldRetainPageCopy(state: { kind: string; error?: { code: string } }, dropOnCodes: readonly string[] = []): boolean {
+  return state.kind !== "failure" || !state.error || !dropOnCodes.includes(state.error.code);
+}

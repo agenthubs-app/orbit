@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { serverReachability } from "../api/server-reachability";
-import type { PageCopy, PageCopyId, PageCopyStatus } from "../data/sync/page-copies";
+import { shouldRetainPageCopy, type PageCopy, type PageCopyId, type PageCopyStatus } from "../data/sync/page-copies";
 import { resultToRouteState, type RouteState } from "../view-models/route-state";
 import { useApiResource, type ApiResourceState } from "./useApiResource";
 import { usePageCopySession } from "./usePageCopySession";
@@ -44,6 +44,8 @@ export function usePageCopyResource<TData>(
     enabled?: boolean;
     /** A copy that fails this check is not shown, and a server answer that fails it is shown (the page judges it) but not saved. */
     accept?: (data: unknown) => boolean;
+    /** An authoritative feature-level error replaces, rather than revives, the last-seen copy. */
+    dropCopyOnErrorCodes?: readonly string[];
   },
 ): PageCopyResourceState<TData> {
   const auth = useOrbitAuthSession();
@@ -95,6 +97,7 @@ export function usePageCopyResource<TData>(
   }), [baseUrl, refresh]);
 
   if (network.kind === "success" || network.kind === "empty") return { ...network, copy: null };
+  if (!shouldRetainPageCopy(network, options.dropCopyOnErrorCodes)) return { ...network, copy: null };
   const fromCopy = current.copy
     ? resultToRouteState({ success: true, data: current.copy.data as TData, meta: META, status: 200 }, isEmpty)
     : null;

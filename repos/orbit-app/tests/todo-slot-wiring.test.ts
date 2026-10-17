@@ -29,3 +29,10 @@ test("To-do page copy network response is scoped to account session and server o
   assert.match(source, /server\.baseUrl/u);
   assert.match(source, /auth\.cookieHeader/u);
 });
+
+test("a not-implemented aggregate suppresses the page and its old offline copy", () => {
+  const hook = readFileSync(join(import.meta.dirname, "../src/screens/todo/useTodoPage.ts"), "utf8");
+  const screen = readFileSync(join(import.meta.dirname, "../src/screens/todo/TodoScreen.tsx"), "utf8");
+  assert.match(hook, /dropCopyOnErrorCodes: \["NOT_IMPLEMENTED"\]/u);
+  assert.match(screen, /if \(!page && todoAggregateHidden\(todo\.state\)\) return null/u);
+});

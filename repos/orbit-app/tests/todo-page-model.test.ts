@@ -3,7 +3,7 @@ import test from "node:test";
 import type { TodoPageContract } from "../src/api/contract/todo-page";
 import type { LocalSyncQueuedMutation } from "../src/data/sync/local-sync-repository";
 import { TODO_SECTION_SOURCES } from "../src/api/schema/todo-page";
-import { appendTodoSourcePage, canWriteTodoFollowup, overlayTodoPage, todoPageIsStale, todoSectionCount } from "../src/screens/todo/todo-page-model";
+import { appendTodoSourcePage, canWriteTodoFollowup, overlayTodoPage, todoAggregateHidden, todoPageIsStale, todoSectionCount } from "../src/screens/todo/todo-page-model";
 
 const actorId = "actor-a";
 const date = "2026-10-18";
@@ -102,4 +102,11 @@ test("a paged overdue follow-up stays ahead of later rows", () => {
   const incoming: TodoPageContract = { ...page, followups: { items: [extra], next: {} } };
   assert.deepEqual(appendTodoSourcePage(first, incoming, "followups", "task")?.followups.items.map(item => item.key),
     ["task:task-2", "task:task-1", "relationship_task:lc1"]);
+});
+
+test("a whole-page NOT_IMPLEMENTED response hides To-do instead of showing a failure", () => {
+  assert.equal(todoAggregateHidden({ kind: "failure", error: { code: "NOT_IMPLEMENTED" } }), true);
+  assert.equal(todoAggregateHidden({ kind: "failure", error: { code: "SERVICE_UNAVAILABLE" } }), false);
+  assert.equal(todoAggregateHidden({ kind: "offline", error: { code: "NOT_IMPLEMENTED" } }), false);
+  assert.equal(todoAggregateHidden({ kind: "loading" }), false);
 });

@@ -21,6 +21,7 @@ export function useTodoPage(timeZone: string, date: string) {
     const result = todoPageSchema.safeParse(value);
     return result.success && result.data.counts.decisions === 0 && result.data.counts.nextMoves === 0 && result.data.counts.followups === 0;
   }, { copy: { id: "todo-page", variant: "main" }, enabled: auth.ready && auth.signedIn && Boolean(auth.actorId),
+    dropCopyOnErrorCodes: ["NOT_IMPLEMENTED"],
     scopeKey: JSON.stringify([auth.actorId, auth.cookieHeader, auth.notificationSessionRevision, server.baseUrl, date, timeZone]),
     accept: value => todoPageSchema.safeParse(value).success });
   const parsed = state.kind === "success" || state.kind === "empty" ? todoPageSchema.safeParse(state.data) : null;

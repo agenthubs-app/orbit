@@ -26,7 +26,7 @@ import { PersonalScheduleDateTimePicker } from "../schedule/PersonalScheduleDate
 import { TasksScreen } from "../tasks/TasksScreen";
 import { TodoSections } from "./TodoSections";
 import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoNativeSnoozeReceipt, todoNativeSnoozeRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "./todo-actions";
-import { appendTodoSourcePage } from "./todo-page-model";
+import { appendTodoSourcePage, todoAggregateHidden } from "./todo-page-model";
 import { useTodoPage } from "./useTodoPage";
 
 /** Until SC09 replaces the general task list, retain it as an explicit second view. */
@@ -270,6 +270,8 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
   const deferStart = deferItem ? shiftCalendarDate(
     [date, deferItem.dueAt ? localParts(deferItem.dueAt, timeZone).date : date].sort().at(-1)!, 1,
   ) : date;
+
+  if (!page && todoAggregateHidden(todo.state)) return null;
 
   return <AppScreen title={locale.t("tasks.title")} refreshControl={<RefreshControl refreshing={todo.state.refreshing} onRefresh={refresh} />}>
     {page ? <TodoSections page={page} offline={offline} staleDay={staleDay} busy={busy} pagingSection={pagingSection} pagingFailedSection={pagingFailedSection} mirroredTaskIds={mirroredTaskIds}
