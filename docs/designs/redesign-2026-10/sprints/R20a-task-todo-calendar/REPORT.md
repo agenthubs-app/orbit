@@ -188,6 +188,8 @@ presenter は month の 3 件 cap と「ほか N 件」→ day、week/day の ti
 
 主会話 `e5fb21c1b` は二つの App test harness の nativeUiStubs だけを修正。heavy.sh d の smoke **2/2**（`app-schedule-harness-targeted.log`）に続き、二つの personal-schedule browser suites 全件 **80/80、0 skip、exit 0**（`app-schedule-harness-full.log`）で当該 regression を確認した。これは初回 App 全量の数値付き成功や基線同等を意味しない。exact sanitizer / durable raw log 付き App full rerun は主会話が後続で行う。
 
+sanitized App full の後続実測は **3,412 tests / 3,394 pass / 16 fail / 2 skip、exit 1**（`app-full-12a1c240d-e5fb21c1b.log`）。fail 名を raw log で再確認した分類：dictionary pin 1、legacy UI ratchet 1、offline browser 11（`offline-pages-profile-events` 4 + `offline-pages-schedule` 7）、native-consumer inventory 60 秒 timeout 1、plan-overview pointer-event timeout 1、tasks-unification file failure 1。offline を 10 件とは数えない。dictionary / plan / tasks-unification は pristine の同名失敗と対応し、legacy ratchet（CalendarScreen 3 / TodoScreen 2 findings）と offline harness Flow parse は D 誘発の回帰。inventory timeout は D の新 request-policy 登録を含む要追加診断として主会話が担当する。主会話の light ratchet 10/10 / scoped policy 2/2 は後続 focused 証拠で、未完の offline / inventory heavy rerun や全量成功に読み替えない。
+
 `12a1c240d` は App manual draft を auth / server / date scope に束縛し、stale callback を拒否した security follow-up（新 scope check RED→GREEN、focused 12/12）。その前の App typecheck exit 0 と区別し、当該 follow-up 後の fresh typecheck はまだ pending。
 
 App worker `83b07b166` は面談詳細の Move / Cancel（focused 19/19、route browser 6/6、fresh App typecheck exit 0、copy 47/0、hardcoded-copy 5/5）。contact-only 初回提案は user choice 待ちで fail-closed。provenance 偏差：同時編集した App `copy-kinds.ts` の meetingDetails 九 entry が worker commit ではなく主会話 `a383637ec` に意図せず入った。コード欠落はなく、既報 commit の amend は行っていない。Web worker はこれらの App paths を変更・stage しない。
@@ -214,6 +216,8 @@ host commit：`6769cdd37`（14 paths）。先行 `sc10-web-typecheck.log` は he
 
 ### SC-11 Web native client / availability（UI 接続前の部分里程標）
 
+boundary-only commit：`a5d3f328f`（5 paths）。
+
 新 client は既存 `GET /api/appointments/[id]` と `POST /api/appointments/[id]/commands` だけを使い、frozen shared contract や server rules を変更しない。public GET の candidateTimes / confirmed identity を local response schema で追加検証する。contact / appointment identity、participants visibility、version と confirmed status を確認してから `propose` する。3～5 個の重ならない同じ所要時間（15～480 分）・有効な timezone・15 分より先の候補だけを送り、unsafe video URL を拒否する。
 
 `propose` receipt は `reschedule_pending` / 上がった version と proposal revision / 本人の提案 / 選択した全候補・duration・medium・timezone・note を照合し、元 confirmed slot を丸ごと保持していることを確認する。独立 GET がその receipt と一致して初めて成功とする。曖昧な transport failure の retry は同じ body / baseline に同じ既存 idempotency registry key を用い、native outbox の二重提案を作らない。cancel も確認後の native `cancel` 用 client のみで、schedule-item DELETE や personal PATCH は呼ばない。API denial と abort は成功へ変換せず、closed error code だけを UI へ渡す。
@@ -223,6 +227,16 @@ availability は明日から **14 local days、native 1 HTTP request + external 
 RED：`sc11-web-proposal-client-red.log`（4 fail）、`sc11-web-cancel-client-red.log`（cancel 未実装）、`sc11-web-availability-red.log`。`sc11-web-point-zone-red.log` は saved timezone が異なる unknown-duration point を誤った日として避け、UTC の 4/2 候補が残る問題を実測。表示 zone の day を使う一行修正後、最新 `sc11-web-boundaries-green.log` は **32/32 pass、0 skip**（client 7 / availability 4 / native appointment lifecycle・idempotency / shared schema / calendar read・range・projection）。real native memory service と public HTTP shape を通し、original confirmed slot の保持、reschedule outbox 一件・rescheduled outbox なし、ambiguous retry、誤った候補 receipt / readback / contact 拒否と scope abort を検証した。実 DB / provider / worker / 外部送信は使わない。
 
 上記 fresh Web typecheck は当該 point-zone 一行修正前の証拠。最後の変更は 32/32 定向で検証済みだが、現最終状態の fresh typecheck / browser は次の coordinated heavy slot で再確認する。Web Modal / calendar meeting detail への UI 接続はまだ行っていない。contact-only 初回 create は引き続き user choice 待ちで、client に create endpoint を加えていない。SC-11 完了や外部への送信成功とはしない。
+
+### SC-11 Web reschedule Modal（部分里程標）
+
+§7.6 の export / props を変えず、候補 → 形式と場所 → 確認の三段に上記 native client を接続した。contact-only は明示説明だけで、appointment の作成・検索も行わない。既存 confirmed appointment と一致する contact を GET で確認してから編集する。完全な 14 日窓からだけ初期 3 候補を選び、incomplete なら自動で「空き」を作らず手動選択を要求する。week grid は既知の busy を選択させず、3～5 個・同 duration・future / work-window を制約する。30 / 60 / 90 分を選び、元の明示候補の有効な duration は保持する。calendar 事実は最大 2,000 行を一度だけ interval 投影し、各 grid cell ごとに再読取しない。
+
+形式・場所を確認して最後に `propose` し、選択候補と native receipt / 独立 readback が一致するまで `onSent` / `onClose` を呼ばない。通常は元 confirmed slot の保持を表示し、external meeting link を自動発行しない。conflict は入力保持と明示 reload、閉じるときは dirty draft の破棄確認。account / unresolved session / close は scope を切り、abort 後に届いた旧 account の応答で新しい modal を閉じたり通知したりしない。不正な initialCandidates も grid の NaN exception にせず非 submit 状態にする。
+
+RED：`sc11-web-proposal-flow-red.log` は未接続三段、`sc11-web-proposal-conflict-red.log` は未登録 reload copy の例外と 17:30 + 60 分が work-window を越える問題、`sc11-web-proposal-invalid-red.log` は不正初期候補の renderer unmount、`sc11-web-slot-read-budget-red.log` は 8 cell で source field 64 読取（上限 32）を実測した。既存 source を一回投影する check を memo 化して修正。最新 `sc11-web-modal-focused.log` は **55/55 pass、0 skip**（flow 6 / availability 6 / client 7 と calendar host / native client / source / copy・CSS guards）。`sc11-web-proposal-task-copy-qa.json` は task domain **146 entries / 0 issues**。旧三語 browser test は複数 button を前提とした exact close selector に更新したが、fresh browser はまだ未実行。新 Modal 後の fresh typecheck も heavy slot 待ち。
+
+Calendar meeting detail の Move / Cancel mount は次段階。初回 contact-only 提案、招待文 draft / copy / email handoff、仮押さえ、holiday / travel-time 投影、画板完全一致 / pixel は未完了で、省略を承認済みとは扱わない。App paths、shared contract、B helper、component library、tokens は本里程標で変更しない。外部 provider / 送信 worker はテスト替身も含め今回起動せず、実 Google / paid AI も呼ばない。SC-11 完了とはしない。
 
 ### Web 三块 presenter と product host（部分里程標）
 

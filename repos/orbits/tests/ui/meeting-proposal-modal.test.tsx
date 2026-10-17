@@ -26,12 +26,12 @@ test.before(async () => {
 });
 test.after(async () => { await browser?.close(); });
 
-for (const [language, expected] of [
-  ["ja", ["面談の日程提案", "候補を選ぶ", "形式と場所", "送る前の確認"]],
-  ["zh", ["提议会面时间", "选择候选时间", "形式与地点", "发送前确认"]],
-  ["en", ["Propose meeting times", "Choose times", "Format and place", "Review before sending"]],
+for (const [language, expected, closeLabel] of [
+  ["ja", ["面談の日程提案", "候補を選ぶ", "形式と場所", "送る前の確認"], "閉じる"],
+  ["zh", ["提议会面时间", "选择候选时间", "形式与地点", "发送前确认"], "关闭"],
+  ["en", ["Propose meeting times", "Choose times", "Format and place", "Review before sending"], "Close"],
 ] as const) {
-  test(`${language}: proposal skeleton renders the three steps and closes without sending`, async t => {
+  test(`${language}: proposal renders the three steps and closes without sending`, async t => {
     const page = await open(browser, code);
     t.after(async () => { assert.deepEqual(errorsOf(page), []); await page.close(); });
     await page.evaluate((language) => { const state = (window as any).proposal; state.language = language; state.render(); }, language);
@@ -39,7 +39,7 @@ for (const [language, expected] of [
     for (const label of expected) await page.getByRole("heading", { name: label, exact: true }).waitFor();
     const text = await page.getByRole("dialog").innerText();
     assert.ok(text.indexOf(expected[1]) < text.indexOf(expected[2]) && text.indexOf(expected[2]) < text.indexOf(expected[3]));
-    await page.getByRole("dialog").getByRole("button").click();
+    await page.getByRole("dialog").getByRole("button", { name: closeLabel, exact: true }).click();
     await page.getByRole("dialog").waitFor({ state: "detached" });
     assert.deepEqual(await page.evaluate(() => ({ closes: (window as any).proposal.closes, sent: (window as any).proposal.sent })), { closes: 1, sent: [] });
   });

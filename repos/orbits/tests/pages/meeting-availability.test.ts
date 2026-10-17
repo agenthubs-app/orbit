@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createMeetingAvailabilityClient, seedAvailableMeetingCandidates, type MeetingAvailability } from "../../app/(app)/app/orbit-2026/calendar/meeting-availability";
+import { createMeetingAvailabilityCheck, createMeetingAvailabilityClient, meetingCandidateAvailability, seedAvailableMeetingCandidates, type MeetingAvailability } from "../../app/(app)/app/orbit-2026/calendar/meeting-availability";
 
 const now = Date.parse("2030-04-01T00:00:00Z");
 const coverage: MeetingAvailability = { from: "2030-04-02T00:00:00Z", to: "2030-04-16T00:00:00Z", complete: true, items: [] };
@@ -43,4 +43,21 @@ test("source failure never becomes an apparently empty free calendar, and denial
   assert.equal(result.complete, false); assert.deepEqual(seedAvailableMeetingCandidates(now, "UTC", result), []);
   const denied = createMeetingAvailabilityClient({ fetch: async () => Response.json({ success: false }, { status: 401 }) });
   await assert.rejects(denied.load("UTC", now));
+});
+
+test("manual selections distinguish known conflicts from unverified and fully read slots", () => {
+  const candidate = { startsAt: "2030-04-02T09:00:00Z", endsAt: "2030-04-02T10:00:00Z" };
+  assert.equal(meetingCandidateAvailability(candidate, "UTC", coverage), "free");
+  assert.equal(meetingCandidateAvailability(candidate, "UTC", { ...coverage, complete: false }), "unknown");
+  assert.equal(meetingCandidateAvailability(candidate, "UTC", { ...coverage, items: [{ startsAt: "2030-04-02", allDay: true }] }), "busy");
+  assert.equal(meetingCandidateAvailability(candidate, "UTC", { ...coverage, complete: false, items: [{ startsAt: "2030-04-02T09:30:00Z", endsAt: "2030-04-02T10:30:00Z" }] }), "busy");
+  assert.equal(meetingCandidateAvailability(candidate, "UTC", { ...coverage, to: "2030-04-02T09:30:00Z" }), "unknown");
+});
+
+test("a rendered slot grid projects busy facts once rather than rescanning source records for every cell", () => {
+  let reads = 0;
+  const items = Array.from({ length: 8 }, () => ({ get startsAt() { reads++; return "2030-04-02T18:00:00Z"; } }));
+  const check = createMeetingAvailabilityCheck("UTC", { ...coverage, items });
+  for (let index = 0; index < 8; index++) assert.equal(check({ startsAt: "2030-04-03T09:00:00Z", endsAt: "2030-04-03T10:00:00Z" }), "free");
+  assert.ok(reads <= 32, `Source field reads exceeded one bounded projection: ${reads}`);
 });

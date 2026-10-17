@@ -4,6 +4,21 @@ import { CalendarReadError, createCalendarReadClient } from "./calendar-read-cli
 import { MeetingProposalError } from "./meeting-proposal-client";
 
 export interface MeetingAvailability { from: string; to: string; complete: boolean; items: { startsAt: string; endsAt?: string; allDay?: boolean; timeZone?: string }[] }
+export function createMeetingAvailabilityCheck(zone: string, availability: MeetingAvailability): (candidate: { startsAt: string; endsAt: string }) => "free" | "busy" | "unknown" {
+  const unknown = () => "unknown" as const;
+  if (!validTimeZone(zone) || availability.items.length > 2000) return unknown;
+  try {
+    const busy = intervals(availability, zone), from = Date.parse(availability.from), to = Date.parse(availability.to);
+    if (busy.some(range => !Number.isFinite(range.start) || !Number.isFinite(range.end) || range.end <= range.start)) return unknown;
+    return candidate => {
+      const start = Date.parse(candidate.startsAt), end = Date.parse(candidate.endsAt);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return "unknown";
+      if (busy.some(range => range.start < end && range.end > start)) return "busy";
+      return availability.complete && start >= from && end <= to ? "free" : "unknown";
+    };
+  } catch { return unknown; }
+}
+export function meetingCandidateAvailability(candidate: { startsAt: string; endsAt: string }, zone: string, availability: MeetingAvailability) { return createMeetingAvailabilityCheck(zone, availability)(candidate); }
 function nextDay(date: string, offset = 1) { const value = calendarDate(date); if (!value) throw new MeetingProposalError("invalid"); value.setUTCDate(value.getUTCDate() + offset); return value.toISOString().slice(0, 10); }
 function intervals(availability: MeetingAvailability, zone: string) {
   return availability.items.map(item => {
