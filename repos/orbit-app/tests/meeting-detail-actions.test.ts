@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createOrbitApiClient } from "../src/api/client";
-import type { MeetingDetailsContract } from "../src/api/contract/appointments";
+import type { MeetingDetailsContract, MeetingProposalDetailsContract } from "../src/api/contract/appointments";
 import { cancelConfirmedAppointment } from "../src/screens/calendar/meeting-detail-actions";
 
 const meeting: MeetingDetailsContract = {
@@ -46,4 +46,23 @@ test("cancel forwards the active screen abort signal to the appointment command"
   } });
   await cancelConfirmedAppointment(client, meeting, "ios:cancel:key-3", controller.signal);
   assert.equal(received, controller.signal);
+});
+
+test("cancel accepts legacy omissions and additive optional proposal fields under exact optional typing", async () => {
+  const explicitUndefined: MeetingProposalDetailsContract = {
+    ...meeting, pendingProposalRevision: undefined,
+    confirmed: { ...meeting.confirmed!, candidateId: undefined, proposalRevision: undefined },
+    proposals: meeting.proposals.map(proposal => ({ ...proposal, candidateTimes: undefined })),
+  };
+  const candidates = [20, 21, 22].map(day => ({ candidateId: `candidate:${day}`, startsAtUtc: `2026-10-${day}T01:00:00.000Z` }));
+  const wide: MeetingProposalDetailsContract = { ...meeting, pendingProposalRevision: null,
+    confirmed: { ...meeting.confirmed!, candidateId: "candidate:20", proposalRevision: 1 },
+    proposals: meeting.proposals.map(proposal => ({ ...proposal, candidateTimes: candidates })),
+  };
+  for (const record of [meeting, explicitUndefined, wide]) {
+    const client = createOrbitApiClient({ baseUrl: "https://orbit.example", fetchImpl: async () => Response.json({ success: true, data: { ...record, status: "cancelled", version: 5, replayed: false } }) });
+    const result = await cancelConfirmedAppointment(client, record, "ios:cancel:compatible");
+    assert.equal(result.status, "cancelled");
+    if (result.status === "cancelled") assert.deepEqual(result.meeting.proposals[0]?.candidateTimes, record.proposals[0]?.candidateTimes);
+  }
 });

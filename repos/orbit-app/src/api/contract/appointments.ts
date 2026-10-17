@@ -18,9 +18,9 @@ export interface MeetingDetailsContract {
   detailsUpdatedAt: string | null;
   detailsUpdatedBy: MeetingDetailsActorRole | null;
   eventId: string | null;
-  pendingProposalRevision?: number | null;
+  pendingProposalRevision?: number | null | undefined;
   proposals: readonly {
-    candidateTimes?: readonly { candidateId: string; startsAtUtc: string }[];
+    candidateTimes?: readonly { candidateId: string; startsAtUtc: string }[] | undefined;
     createdAt: string;
     durationMinutes: number;
     medium: MeetingDetailsMedium;
@@ -43,8 +43,8 @@ export interface MeetingDetailsMutationContract extends MeetingDetailsContract {
 /** Wide proposal read, preserving the frozen nullable confirmed shape for old detail consumers. */
 export interface MeetingProposalDetailsContract extends MeetingDetailsContract {
   confirmed: (NonNullable<MeetingDetailsContract["confirmed"]> & {
-    candidateId?: string;
-    proposalRevision?: number;
+    candidateId?: string | undefined;
+    proposalRevision?: number | undefined;
   }) | null;
 }
 

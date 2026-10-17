@@ -370,6 +370,14 @@ client / component の RED 二件ずつから GREEN、最新 `sc11-initial-propo
 
 主会話 SC-14 App Today retirement は `486cfd8c4`：inventory **24/24**、route / ratchet **22/22**、Todo offline browser **60/60** が targeted GREEN。private `/today` redirect は維持し、orphan TodayScreen を退役した。現在の App tsc / full は主会話が後続 heavy で確認するため、この targeted 結果から App full green を宣言しない。
 
+### App exactOptionalPropertyTypes 互換性の追補
+
+Web UI 子里程標は `6f236e768`。その後の主会話 App gate は **typecheck exit 2 で停止し、full は実行していない**。新 shared optional fields の Zod output が explicit undefined を含むのに TS contract が exactOptionalPropertyTypes 下でそれを認めず、既存 `meeting-detail-actions.ts` の receipt return が型不一致になった。これは D の contract 追加で誘発した互換性 regression であり、baseline / upstream のせいにしない。
+
+主会話承認どおり **今回追加した四つの optional TS fields だけ**（pendingProposalRevision、candidateTimes、wide confirmed candidateId / proposalRevision）に `| undefined` を明記した。既存 nullable confirmed contract / cancel helper / native rule / runtime schema は変更せず、cast / parser bypass で通していない。snapshot を再 regenerate（704 types）、App copy を sync。`sc11-exact-optional-contract-tests.log` は **9/9**、App cancellation old omissions / explicit undefined / native wide receipt と contract/schema byte parity は **8/8**。fresh App tsc / full は C native build 後の主会話 gate に残り、これらの unit 結果だけで compiler 修復済みとは主張しない。App source はここで freeze して gate に渡す。
+
+主会話 SC-14 Followups wrapper retirement `e798abb3a` は private route を同じ LegacyTaskRedirect へ直接接続、static / route / ratchet **22/22**。actual Followups route browser と App full は次の heavy に残す。SC-09 の「今回やったこと」は既存 lifecycle command に field が無く、B storage 拡張の許可は無い。既存 encounters POST による **別の非 atomic save** を UI / tests で明示し、failure 時 note 独立保持 / retry を実装する方針だけ承認済みで、まだ未実装として OPEN。
+
 ## 请求
 
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。

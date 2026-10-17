@@ -951,7 +951,7 @@
         "pendingProposalRevision": {
           "optional": true,
           "kind": "text",
-          "type": "number | null"
+          "type": "number | null | undefined"
         },
         "proposals": {
           "optional": false,
@@ -1091,7 +1091,7 @@
         "pendingProposalRevision": {
           "optional": true,
           "kind": "text",
-          "type": "number | null"
+          "type": "number | null | undefined"
         },
         "proposals": {
           "optional": false,
@@ -1226,7 +1226,7 @@
         "pendingProposalRevision": {
           "optional": true,
           "kind": "text",
-          "type": "number | null"
+          "type": "number | null | undefined"
         },
         "proposals": {
           "optional": false,
