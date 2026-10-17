@@ -21,11 +21,13 @@ export function AccountSuggestionsScreen() {
   const api = useMemo(() => createAccountSuggestionsApi(client, state.path), [client, state.path]);
   const [cards, setCards] = useState<AccountSuggestionCard[]>([]); const [selected, setSelected] = useState<Set<string>>(new Set()); const [filter, setFilter] = useState<AccountSuggestionSource | "all">("all");
   const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
+  const [readFailed, setReadFailed] = useState(false);
   const [inputKind, setInputKind] = useState<"business-card" | "resume" | null>(null); const [text, setText] = useState("");
   const abort = useRef<AbortController | null>(null); const current = useRef(api); current.current = api;
   const ids = useRef(new Map<string, string>());
   const mutation = (key: string) => { let id = ids.current.get(key); if (!id) { id = Crypto.randomUUID(); ids.current.set(key, id); } return id; };
   const reload = useCallback(async () => {
+    setLoading(true); setReadFailed(false); setError(null);
     if (designMode) {
       if (!design) return;
       const values = design.variant === "empty" ? [] : design.variant === "few" ? design.fixtures.suggestions.slice(0, 2) : design.fixtures.suggestions;
@@ -33,9 +35,9 @@ export function AccountSuggestionsScreen() {
     }
     const signal = abort.current?.signal; const values = await api.list(language, signal);
     if (current.current !== api || signal?.aborted) return;
-    if (values) setCards(accountLiveSuggestions(values, state.baseProfile?.displayName ?? t("settings.account"))); else setError(t("me.failed")); setLoading(false);
+    if (values) setCards(accountLiveSuggestions(values, state.baseProfile?.displayName ?? t("settings.account"))); else { setReadFailed(true); setError(t("me.failed")); } setLoading(false);
   }, [api, language, designMode, design?.fixtures, design?.variant, state.baseProfile?.displayName, t]);
-  useEffect(() => { const controller = new AbortController(); abort.current = controller; setLoading(true); setSelected(new Set()); void reload(); return () => controller.abort(); }, [reload]);
+  useEffect(() => { const controller = new AbortController(); abort.current = controller; setCards([]); setSelected(new Set()); setFilter("all"); setBusy(false); setInputKind(null); setText(""); ids.current.clear(); void reload(); return () => controller.abort(); }, [reload]);
   const active = () => current.current === api && !abort.current?.signal.aborted;
   function select(id: string) { setSelected(values => { const next = new Set(values); if (next.has(id)) next.delete(id); else next.add(id); return next; }); }
   function removeFields(idsToRemove: ReadonlySet<string>) { setCards(values => values.map(card => ({ ...card, fields: card.fields.filter(field => !idsToRemove.has(field.id)) })).filter(card => card.fields.length)); setSelected(values => new Set([...values].filter(id => !idsToRemove.has(id)))); }
@@ -106,7 +108,7 @@ export function AccountSuggestionsScreen() {
       <TextField multiline label={t("me.sourceText")} value={text} onChangeText={setText} />
       <Button label={t("me.extract")} disabled={busy || state.offline || !text.trim()} onPress={() => void extract(inputKind, text)} />
       <Button label={t("common.cancel")} variant="ghost" onPress={() => setInputKind(null)} /></Card> : null}
-    {!loading ?
+    {!loading && !readFailed ?
       <AccountSuggestionsContent cards={cards} t={t} selected={selected} filter={filter} busy={busy || state.offline} onFilter={setFilter} onSelect={select} onDismiss={id => void dismiss(id)} onAll={cardId => setSelected(values => new Set([...values, ...cards.filter(card => card.id === cardId).flatMap(card => card.fields.map(field => field.id))]))} onApply={() => void apply()} onEntry={kind => void entry(kind)} /> : null}
   </AppScreen>;
 }

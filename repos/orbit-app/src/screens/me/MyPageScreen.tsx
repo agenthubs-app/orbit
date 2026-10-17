@@ -29,6 +29,7 @@ export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { sco
   const controller = useRef<AbortController | null>(null);
   const completionHandled = useRef(false);
   const data = saved ?? state.data;
+  useEffect(() => { setSaved(null); setCandidates([]); setSummaries({ unread: null, going: null, host: null }); setError(false); saving.current = false; }, [api]);
   useEffect(() => {
     const destination = accountCompletionDestination(data, completionNext, state.offline);
     if (!completionHandled.current && destination && isScopeCurrent()) { completionHandled.current = true; router.replace(destination as Href); }
@@ -49,7 +50,8 @@ export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { sco
   const profileId = data?.profile?.id;
   const needsCandidates = Boolean(data?.profile?.offering?.length && !data.profile.seeking?.length);
   useEffect(() => {
-    if (!profileId || !needsCandidates || state.offline) { setCandidates([]); return; }
+    if (!profileId || state.offline) { setCandidates([]); return; }
+    if (!needsCandidates) return;
     if (designMode) { setCandidates(design ? [...design.fixtures.seekCandidates] : []); return; }
     // The live service currently supports en/zh only; do not show Chinese candidates in Japanese UI.
     if (language === "ja") { setCandidates([]); return; }
@@ -61,13 +63,14 @@ export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { sco
   async function candidate(value: string, accept: boolean) {
     if (!accept) { setCandidates(values => values.filter(item => item !== value)); return; }
     if (state.offline || !data?.profile || saving.current || !isScopeCurrent()) return;
+    const owner = controller.current;
     saving.current = true; setError(false);
     try {
-      const receipt = await api.acceptCandidate(data.profile, value, Crypto.randomUUID(), controller.current?.signal);
-      if (!isScopeCurrent()) return;
+      const receipt = await api.acceptCandidate(data.profile, value, Crypto.randomUUID(), owner?.signal);
+      if (owner !== controller.current || owner?.signal.aborted || !isScopeCurrent()) return;
       if (receipt) { setSaved(receipt); setCandidates(values => values.filter(item => item !== value)); state.resource.refresh(); }
       else setError(true);
-    } finally { saving.current = false; }
+    } finally { if (owner === controller.current) saving.current = false; }
   }
   return <AppScreen title={t("me.title")} headerActions={
       <IconButton icon="settings" accessibilityLabel={t("me.settings")} onPress={() => open("/settings")} />}>

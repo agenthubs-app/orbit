@@ -20,7 +20,7 @@ export function AccountIntegrationsScreen() {
     if (designMode) { if (design) setRecords(design.fixtures.integrations[design.variant].map(value => ({ ...value }))); return; }
     const signal = controller.current?.signal; const values = await api.integrations(signal); if (!signal?.aborted && current.current === api) { setRecords(values); setFailed(values === null); }
   }, [api, designMode, design?.fixtures, design?.variant]);
-  useEffect(() => { const abort = new AbortController(); controller.current = abort; setRecords(null); void load(); const listener = AppState.addEventListener("change", state => { if (state === "active") void load(); }); return () => { abort.abort(); listener.remove(); }; }, [load]);
+  useEffect(() => { const abort = new AbortController(); controller.current = abort; setRecords(null); setFailed(false); setBusy(false); void load(); const listener = AppState.addEventListener("change", state => { if (state === "active") void load(); }); return () => { abort.abort(); listener.remove(); }; }, [load]);
   async function connect(provider: "gmail" | "google_calendar") {
     if (designMode) { setRecords(values => values?.map(value => value.provider === provider ? { ...value, status: "active", healthStatus: "healthy" } : value) ?? null); return; }
     if (busy) return; setBusy(true);

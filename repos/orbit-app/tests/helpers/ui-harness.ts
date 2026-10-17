@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { build } from "esbuild";
+import { build, type Plugin } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
 
 import { nativeUiStubs } from "./native-ui-stubs";
@@ -37,14 +37,14 @@ export const AccessibilityInfo = { ...RNW.AccessibilityInfo, isReduceMotionEnabl
 export const findNodeHandle = (instance) => { if (instance && instance.setAttribute) instance.setAttribute("data-focus-target", "1"); return instance; };
 `;
 
-export async function bundleScenarios(entry: string): Promise<string> {
+export async function bundleScenarios(entry: string, boundaryPlugins: Plugin[] = []): Promise<string> {
   const result = await build({
     stdin: { contents: entry, loader: "tsx", resolveDir: process.cwd() },
     bundle: true,
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"ja"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     format: "iife",
     jsx: "automatic",
-    plugins: [nativeUiStubs, {
+    plugins: [...boundaryPlugins, nativeUiStubs, {
       name: "ui-harness",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ui-harness" }));

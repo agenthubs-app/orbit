@@ -101,6 +101,7 @@ function checkRouteParity(
   );
   const nativeRoutes = new Set(
     routeFiles(nativeRoot).map((filePath) => nativeRoute(nativeRoot, filePath))
+      .filter((route): route is string => route !== null)
   );
   const exceptionProblems: string[] = [];
   const excusedRoutes = new Set<string>();
