@@ -43,6 +43,7 @@ export function taskHref(segment: TaskSegment, params: Readonly<Record<string, s
 export function legacyTaskRedirect(pathname: string, params: Readonly<Record<string, string | undefined>> = {}): string | null {
   switch (pathname) {
     case "/schedule": return taskHref("calendar", { date: params.date });
+    case "/tasks/personal": return taskHref("calendar");
     case "/today": return taskHref("todo");
     // The list selection is normalised the same way as everywhere else (taskListHref).
     case "/tasks": return taskListHref({ scope: params.scope, view: params.view });
