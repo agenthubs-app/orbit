@@ -28,7 +28,74 @@ Approved scope: GOAL / PLANNER rev2. Implementation is not acceptance closure: A
 | `ebc54587c` | App SC11 offline remote-button disabled states; exact integration disconnect receipt regression | New offline cases RED→GREEN; focused secondary/suggestions/settings API 11/11 |
 | `58dc2b45e` | App actual private-boundary SSR and optional scan cancellation compatibility regressions | Combined auth/route/scan/existing onboarding API 15/15; all 12 R18a entry files retain private wrapper; no auth/shell runtime edits |
 
-Path-specific commits only. Dirty shared worker trees prevented an immediate pull/rebase; coordinator explicitly approved committing owned paths before rebasing a clean tree, with no stash/autostash. Final clean-tree rebase is still pending. D prerequisites are separate: shell `56da437ef`, OAuth signed `returnTo=settings` `d2aaa6201`; their integration into C must be confirmed by coordinator.
+Path-specific commits only. The table above records pre-rebase milestone hashes. Dirty shared worker trees prevented an immediate pull/rebase; coordinator explicitly approved committing owned paths before rebasing a clean tree, with no stash/autostash. The clean rebase completed from `6357efa28e8509279410511e28b7a9c9608c9bf5` to `df06f6be4bbae3ef30332d24a3eed63c9841954a`, on exact upstream base `e081084b0c024a50f2c0d13c1abe130c576bc440`. D prerequisites shell `56da437ef` and OAuth signed `returnTo=settings` `d2aaa6201` are now ancestors, not C-owned edits.
+
+### Clean rebase mapping
+
+| Pre-rebase | Current | Scope |
+| --- | --- | --- |
+| `5550d1582` | `81c786e8c` | SC01 boards/preflight |
+| `002eb7ce1` | `a28a8bff2` | SC02 contracts/fixtures |
+| `a2fc481f5` | `51726f83d` | Web development profile overlay |
+| `987fe4bd0` | `4fbd9c909` | App SC03/04 |
+| `05d40535b` | `9a4b02d4b` | Web secondary settings |
+| `780801510` | `71638126a` | Japanese live draft guard |
+| `ff91397b6` | `c948f7762` | Web SC07 |
+| `5f5ef38dd` | `d7bfeb8bc` | Web preparing routes |
+| `75969776a` | `043e47a83` | App SC05/06 |
+| `bba8a2511` | `6bb7bf0be` | Web development review/event summary |
+| `8351ec0be` | `411219cc6` | Web suggestions |
+| `52b22482e` | `8aa1c9cc5` | App SC09 |
+| `6720e8ebc` | `c9ed5a0ee` | Web SC10 |
+| `5058b417b` | `d5a54e88e` | App SC10 |
+| `bcbbcfaf5` | `9e2d7bcf8` | Web audit assertions |
+| `3a3db82d6` | `16353b38d` | App development API route boundary |
+| `ebc54587c` | `afcfe9899` | Offline disabled actions |
+| `58dc2b45e` | `e57c412ec` | Auth/scan compatibility regressions |
+| `6357efa28` | `df06f6be4` | SC11 controller/presenter regressions and evidence |
+
+Rebase resolutions preserved both upstream calendar and C `me` dictionary/import/registration changes in the three locale indexes, domain-split test and copy-QA registry. The offline page inventory was regenerated from the merged registry, preserving the upstream R31a showcase split and C routes: 121 routes. Range-diff found only these expected context/generated-inventory differences; the other seventeen commits were patch-identical. No stash/reset, other-worktree mutation or push occurred.
+
+Post-rebase lightweight registry/route/allowlist/i18n run: 43 tests / 42 pass / 1 fail. The sole failure is the pristine baseline's exact `en key count` assertion, `2813 !== 2253`; calendar and `me` domains, equal language key sets, route parity and 121-route inventory checks pass. Official copy-QA invocation (`node --import tsx scripts/copy-qa/cli.mjs --app me`): 103 entries / 0 issues. Full App comparison and post-rebase typecheck remain pending; no full-suite pass is inferred from these checks.
+
+Coordinator-supplied Web evidence, obtained before rebase: SC09 `8351ec0be` (now `411219cc6`) focused 11/11 and Web typecheck exit 0; SC10 `6720e8ebc` (now `c9ed5a0ee`) focused 62/62 plus account 13/13 and Web typecheck exit 0; audit-only `bcbbcfaf5` (now `9e2d7bcf8`) filtered 2/2. No later Web full-suite, lint or pixel result is available; those gates remain unverified.
+
+### Sanitized App full comparison on `df06f6be4`
+
+Exact invocation: `env -i PATH="$PATH" HOME="$HOME" TMPDIR="${TMPDIR:-/tmp}" USER=xzhao LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 /Volumes/ORICO/Dev/worktrees/orbit/_runs/heavy.sh c -- npm test` from `repos/orbit-app`. No DB URLs or provider secrets. Raw log: `/Users/xzhao/orbit-sprint-evidence/redesign/R18a/run-01/app-full-df06f6be4.pFkkMy`.
+
+Result: **3343 tests / 3159 pass / 182 fail / 2 skip**, 211998ms, exit 1. This is not zero-new-failure acceptance and not 182 independent product regressions. Exact buckets:
+
+| File / count | Cause / ownership | Treatment |
+| --- | --- | --- |
+| `ink-signal-profile.test.ts` / 170 | Obsolete inline-profile fixture before-hook lacks the new route's `useLocalSearchParams` and kit `useSafeAreaInsets`; fanout before assertions | C SC10 missed retirement. Map behavioral invariants before retiring old UI expectations; add missing real-editor-controller coverage |
+| `app-wide-primitives.test.ts` / 6 | Shared before-hook still imports removed orphan `SectionHeader` | Keep all six generic cases; remove only dead component fixture/assertion, then rerun |
+| `authenticated-client-usage.test.ts` / 1 | Private settings hook constructs its cookie-aware client directly so it can normalize legacy integrations/memory `{data}` / 204 envelopes before client parsing | **Open scoped dependency request** below; no source-audit bypass or shared-hook edit authorized |
+| `design-legacy-names.test.ts` / 1 | New hint used deprecated `typography.caption` | Owned token correction; targeted RED→GREEN |
+| `mobile-route-access.test.ts` / 1 | Exact private-entry registry omitted three new settings routes | Owned registry update preserving wrapper checks; targeted RED→GREEN |
+| `i18n-domain-split.test.ts` / 1 | Historical `en key count`, `2813 !== 2253` | Exact pristine C failure; unchanged |
+| `invite-code-screens.test.tsx` / 1 | Old joined-person merge click timeout | Same pristine C case; no R15 edits |
+| `plan-overview-screens.test.tsx` / 1 | Skip/undo confirmation button intercepted by an overlay | Upstream R17/A component consumer; report to coordinator, no C edit |
+
+No personal-schedule Flow-parser failures occurred in this C run, even though D's separate run encountered them. Do not transfer D observations to C. Post-rebase sanitized App `npx tsc --noEmit` subsequently exited 0; raw `/Users/xzhao/orbit-sprint-evidence/redesign/R18a/run-01/app-tsc-df06f6be4.log`.
+
+### Legacy profile coverage mapping (before retirement)
+
+The old 170-case suite mixed old overview/inline-editor UI with useful behavior invariants. It was retired only after the coverage mapping below, a fresh retained behavioral subset (45/45), and the new actual editor-hook regressions completed. Historical observations stay historical; removed assertions are not transferred as runtime evidence. Retirement count: one old-only file / 170 old-route cases removed; seven actual-editor cases added; all six generic primitive cases preserved (only dead SectionHeader fixture/import/one component-specific assertion removed). Earlier SC10's three retired old-only files and twelve mixed-suite cases remain separate from this follow-up count.
+
+Harness correction, not product evidence: the first `me-editor-controller` run observed one genuine unchanged-draft write, then stalled because Playwright awaited the value of an assignment to a deliberately pending save Promise. Only that owned runner was terminated after about 40 seconds; no C descendants remained. The helper now ends evaluation with `undefined`, and every case has a 15-second timeout. The interrupted raw `app-editor-controller-red.log` is not a completed seven-case RED result. Bounded rerun is recorded separately. Per the self-improvement workflow this local lesson is kept in the authorized Sprint report rather than creating out-of-scope repository/global learning files.
+
+Bounded RED (`app-editor-controller-red-bounded.log`): 7 tests / 3 pass / 4 fail, 4.71s. Four genuine private-editor defects were then fixed only in `useAccountEditor.ts`: unchanged drafts wrote; a matching late receipt cleared a newer local edit; an old pending scope blocked the next scope; random-source failure escaped instead of visible feedback. The hook now validates the latest stored draft, permits only dirty saves, retains a changed draft on late receipt, resets/owns per-scope busy/finalizer state, rejects stale callbacks before writing, and reports mutation-ID creation failure. GREEN (`app-editor-controller-green.log`): seven editor cases plus all six generic primitive cases, **13/13**, 4.92s. Generic primitive build still emits an existing safe-area optional-export warning; no assertion failed. Owned token/private-route audits separately went RED (2 failures) → GREEN **13/13**. Latest heavy-locked typecheck after these corrections exited 0 (`app-tsc-editor-followup.log`). Full-suite rerun remains pending.
+
+| Old behavior family | Replacement / retained evidence | Boundary |
+| --- | --- | --- |
+| Private auth, inactive route, actor isolation | `me-auth-boundary`, `mobile-route-access`, `me-controller-states`; real shared private wrapper and scoped reads | Old inline login card/navigation strings retired; no auth boundary weakened |
+| CAS version/mutation identity, retry, dirty draft, profile identity | `profile-edit-session`, `profile-completion-interactions`, `me-suggestions-api`; `me-editor-controller` actual hook cases | Verified no-op/offline, single-flight/retry identity, invalid receipts, late edits, old callbacks/pending scope and random-source failure before retirement |
+| Confirmed onboarding metadata and safe completion destination | `me-completion-compatibility`, retained `profile-completion-interactions`, `profile-onboarding-api`, `profile-continuation-route` | No score-based inference; R28 birth-date flow unchanged |
+| Extraction review, selected fields, save before accept, malformed/HTTP failures | `me-suggestions-model`, `me-suggestions-api`, retained profile/onboarding schemas and APIs, `me-scan-cancellation` | Binary parser not claimed; old filename-only picker/inline editor controls retired |
+| Current overview, independent summary failure, public preview and navigation | `me-account-api`, `me-profile-render`, `me-account-interactions`, `me-controller-states`, `profile-public-projection` | Old contact/task/schedule three-column counters no longer exist in approved layout |
+| Current error/offline/copy/disabled states | `me-secondary-render`, `me-suggestions-render`, `me-offline-notice`, `offline-pages-profile-events`, `me-controller-states` | New retry/state behavior checked; native and pixel evidence still pending |
+| Old service rationale/old copy and inline source-label presentation | Retained `profile-suggestions-view-model`, `mobile-profile-view-model`, `profile-view-model`, schema tests | Historical strings are not imposed on the new approved UI |
 
 ## Data / compatibility
 
@@ -46,7 +113,7 @@ Path-specific commits only. Dirty shared worker trees prevented an immediate pul
 - Removed the eleven replaced profile/settings screen and primitive files listed in PLANNER §8, plus the orphaned old `SectionHeader` after the existing ratchet proved it had no remaining consumer. Retained R28 models/hooks and the R14 notification delivery/discovery components.
 - Retired three old-screen-only test files and twelve obsolete UI cases in mixed suites; preserved and adapted the real push-registration, logout and notification race/service cases. Historical runtime observations are not transferred to new handlers.
 - Three old-pattern allowlists only shrink; the new `src/screens/me/` directory has zero allowances. Route parity gains only the approved known one-segment settings fallback, with exact static routes taking precedence and unknown/deeper/global patterns rejected.
-- Updated offline route/endpoint registries and generated the 120-route page inventory. The settings envelope adapter lives separately from endpoint calls, so all actual endpoints remain audited. Latest transport audit: 0 unregistered / 0 invalid.
+- Updated offline route/endpoint registries and generated the then-120-route page inventory (121 after the upstream showcase split was preserved during rebase). The settings envelope adapter lives separately from endpoint calls, so all actual endpoints remain audited. Latest transport audit: 0 unregistered / 0 invalid.
 - Private canonical fixture snapshot moved from screen source to `fixtures/account-design.ts`; runtime remains guarded by development mode and a valid design variant. No hardcoded-copy allowance was added.
 - Focused App account, suggestions, route, inventory and ratchet run: 70 tests / 70 pass / 0 fail. Retained service/appearance regression run: 37/37. The later editor render check caught a JSX return/newline regression introduced while splitting audit controls onto separate source lines; fixed at source and the combined render/compatibility tests pass. `git diff --check` is clean.
 - Filtered full-product mobile-settings audit: 1/1 pass (74.3s inventory build). It requires direct account/integrations/iOrbit controls and scoped router wiring; actor-isolation assertions are unchanged. Only the App hunk is staged by this owner; worker Web hunks remain separate.
@@ -72,7 +139,7 @@ Path-specific commits only. Dirty shared worker trees prevented an immediate pul
 | 10 | Old owned screens deleted, allowlists shrink, routes/inventories/audits checked; replacement offline Chromium case passes 1/1 | Latest full suite catches remaining stale assertions; retained mixed browser suites |
 | 11 | App auth/private routes, timestamped offline copy, disabled remote actions, independent summary failures, retry/scoped state and no false-empty read state verified | Functional screenshots/native state evidence and independent rerun |
 | 12 | Waiting R31a / R31b; no gate started or passed | Entire §9.2 matrix plus R05/R07/R17 regressions, raw/bands/attribution/compare evidence |
-| 13 | Baselines and focused milestones recorded | Sanitized full comparisons, final typechecks/lint/copy, clean rebase, final scope ledger and independent review |
+| 13 | Baselines, focused milestones and clean rebase recorded | Sanitized full comparisons, final typechecks/lint/copy, final scope ledger and independent review |
 
 1. **Native calendar permission unmet.** No expo-calendar dependency or native calendar adapter exists. Coordinator explicitly declined dependency/rebuild expansion. Camera and notification OS state/request/openSettings are implemented; unavailable calendar row is hidden rather than using OAuth records as OS state. Needs a separate native capability decision.
 2. **Japanese AI drafting/candidates unmet live.** Intro and seeking services select `en`, otherwise `zh`; sending `ja` silently produces Chinese. Japanese live actions/candidates are hidden (G18); development/mock fixtures retain approved Japanese states. Backend Japanese support request; no paid model is called by tests.
@@ -100,7 +167,7 @@ Path-specific commits only. Dirty shared worker trees prevented an immediate pul
 
 ## Remaining work
 
-Finish SC10 retained mixed-browser verification, SC11 functional screenshots/native state evidence; SC12 gated pixels; SC13 sanitized full suites/typechecks/lint/copy and independent review. File-by-file ownership self-audit and final command/evidence matrix will be refreshed after the clean rebase. No full-suite success is claimed.
+Finish SC10 retained mixed-browser verification, SC11 functional screenshots/native state evidence; SC12 gated pixels; SC13 sanitized full suites/typechecks/lint/copy and independent review. File-by-file ownership self-audit and final command/evidence matrix will be refreshed after full comparison on the cleanly rebased branch. No full-suite success is claimed.
 
 ## 改稿与补画清单
 
@@ -112,6 +179,7 @@ SC01 `5550d1582` changed only approved b5 amendments (Pro / NFC removal, four-fi
 - D / R20a: native OAuth session/callback contract; existing signed Web return destination is not native round-trip proof. Language preference synchronization belongs in the shared language context, not a second page-specific writer.
 - A: consider private `AccountRow`, field/diff presenters and copied offline notice for later consolidation; EmptyState currently cannot disable its action. R18a uses a page-private disabled-button fallback in the offline empty state, without editing the kit.
 - R15: preview-layer visibility policy described above. R28: adopt optional publicFields/session scope and the preserved confirmed completion gate; no R28 screen/route was edited.
+- Shared App hook owner / coordinator: authorize an optional `FetchLike` adapter seam in `src/hooks/useOrbitApiClient.ts`, preserving existing default behavior, cookie handling and scoped stale-response/session-expiry guard. The private settings client needs the existing `settingsFetch` normalization *before* Orbit client parsing because live integrations/memory endpoints return legacy `{data}` / 204 envelopes. Moving normalization after the authenticated client loses those valid responses; moving direct construction into another file would only evade the audit. Coordinator explicitly withheld authorization for this shared-hook dependency, so `authenticated-client-usage` remains one acknowledged C-owned failure. No shared-hook edit or exception was made.
 
 ## 待主会话代定
 
@@ -142,11 +210,11 @@ Coordinator: append PLANNER §2 decisions and §9.1 amendments / 17 supplemental
 
 ## 越线自查（进行中）
 
-`git diff --stat origin/redesign...HEAD` inspected after SC10. New runtime UI stays under private App `screens/me/**` / Web `orbit-2026/account/**`; old screens, approved route entries, additive profile contracts/storage, canonical fixtures, dictionaries and corresponding tests/registries are in scope. Mechanical test-infrastructure changes preserve existing callers. Two bounded dependencies not literally named in PLANNER §1 were surfaced to coordinator and accepted: (1) `src/api/profile-onboarding.ts` adds only optional `signal?: AbortSignal` to `scanOwnBusinessCard` and conditionally passes it to the existing client POST; old request body, path and no-signal calls remain unchanged (new cancellation regression + existing onboarding API suite 9/9); (2) `SectionHeader` deletion is the ratchet-required orphan removal after its last owned consumer was deleted. No blanket “all files named in §1” claim is made. No A kit/token, D shell/OAuth, R14 retained component, R18b/c screen, R28 onboarding screen, other worktree or central coordination document was edited by this owner. D prerequisite commits were made separately by coordinator, not included as C edits. Final clean-tree rebase and file-by-file scope ledger are pending.
+`git diff --stat origin/redesign...HEAD` inspected after SC10 and again on the cleanly rebased branch. New runtime UI stays under private App `screens/me/**` / Web `orbit-2026/account/**`; old screens, approved route entries, additive profile contracts/storage, canonical fixtures, dictionaries and corresponding tests/registries are in scope. Mechanical test-infrastructure changes preserve existing callers. Two bounded dependencies not literally named in PLANNER §1 were surfaced to coordinator and accepted: (1) `src/api/profile-onboarding.ts` adds only optional `signal?: AbortSignal` to `scanOwnBusinessCard` and conditionally passes it to the existing client POST; old request body, path and no-signal calls remain unchanged (new cancellation regression + existing onboarding API suite 9/9); (2) `SectionHeader` deletion is the ratchet-required orphan removal after its last owned consumer was deleted. No blanket “all files named in §1” claim is made. No A kit/token, D shell/OAuth, R14 retained component, R18b/c screen, R28 onboarding screen, other worktree or central coordination document was edited by this owner. D prerequisite commits were made separately by coordinator, not included as C edits. The App ledger below was checked against the post-rebase branch diff; Web/contracts outside the App copy remain coordinator-owned ledger work.
 
 ### App file-by-file scope ledger (working checkpoint)
 
-Source: `git diff --name-status origin/redesign...HEAD`, plus current owned App changes; regenerate after final rebase. `A/M/D` describe the branch diff, not acceptance status. Web/contracts outside the App copy remain coordinator-owned ledger work.
+Source: `git diff --name-status e081084b0 -- repos/orbit-app` plus owned new test, checked after the editor/SC10 follow-up: 127 changed paths / 127 ledger rows, missing 0 / extra 0. `A/M/D` describe the branch diff, not acceptance status. Web/contracts outside the App copy remain coordinator-owned ledger work.
 
 | Change | App-relative path | Scope / reason |
 | --- | --- | --- |
@@ -240,6 +308,7 @@ Source: `git diff --name-status origin/redesign...HEAD`, plus current owned App 
 | M | `tests/helpers/offline-page-harness.ts` | Reuse existing kit nativeUiStubs plugin; native Flow boundary fixed, offline Chromium 1/1 |
 | M | `tests/helpers/ui-harness.ts` | Corresponding regression / retirement / test boundary; no production behavior |
 | M | `tests/i18n-domain-split.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
+| D | `tests/ink-signal-profile.test.ts` | SC10 old inline-route UI suite retired after explicit invariant mapping, retained45/45 and new real-editor7/7 |
 | M | `tests/ink-signal-settings-account.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
 | M | `tests/ionicons-ratchet.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
 | M | `tests/legacy-ui-ratchet.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
@@ -252,6 +321,7 @@ Source: `git diff --name-status origin/redesign...HEAD`, plus current owned App 
 | A | `tests/me-controller-states.test.tsx` | Corresponding regression / retirement / test boundary; no production behavior |
 | A | `tests/me-design-fixtures.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
 | A | `tests/me-editor-render.test.tsx` | Corresponding regression / retirement / test boundary; no production behavior |
+| A | `tests/me-editor-controller.test.tsx` | Actual private editor-hook/store/receipt regressions; bounded four-case RED then seven-case GREEN |
 | A | `tests/me-offline-notice.test.tsx` | Corresponding regression / retirement / test boundary; no production behavior |
 | A | `tests/me-profile-render.test.tsx` | Corresponding regression / retirement / test boundary; no production behavior |
 | A | `tests/me-route-wiring.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
@@ -262,6 +332,7 @@ Source: `git diff --name-status origin/redesign...HEAD`, plus current owned App 
 | A | `tests/me-suggestions-api.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
 | A | `tests/me-suggestions-model.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
 | A | `tests/me-suggestions-render.test.tsx` | Corresponding regression / retirement / test boundary; no production behavior |
+| M | `tests/mobile-route-access.test.ts` | SC10 exact registry adds only three owned private settings entries, preserving shared wrapper checks |
 | M | `tests/no-hardcoded-copy.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
 | M | `tests/notifications/merged-notification-lifecycle.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |
 | M | `tests/notifications/notification-registration-races.test.ts` | Corresponding regression / retirement / test boundary; no production behavior |

@@ -56,7 +56,6 @@ import { createRoot } from "react-dom/client";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { AppScreen } from "./src/components/AppScreen";
 import { DataCard } from "./src/components/DataCard";
-import { SectionHeader } from "./src/components/SectionHeader";
 import { EmptyState } from "./src/components/EmptyState";
 import { ErrorState } from "./src/components/ErrorState";
 import { LoadingState } from "./src/components/LoadingState";
@@ -76,7 +75,6 @@ function Fixture() {
       <Pressable accessibilityRole="button" accessibilityState={{ disabled: !draft }} disabled={!draft} onPress={() => record("submit")} style={[controls.primaryButton, !draft && { opacity: 0.45 }]}><Text style={controls.primaryButtonText}>提交</Text></Pressable>
       <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setSelected(!selected)} style={[controls.chip, selected && controls.selectedChip]}><Text style={[controls.chipText, selected && controls.selectedChipText]}>只看我报名的活动</Text></Pressable>
     </DataCard>
-    <SectionHeader title="接下来要处理的事项" detail="完整保留辅助说明" />
     <EmptyState title="暂时没有更多活动" message="新活动会显示在这里" />
     <ErrorState message="活动资料暂时未能读取" />
     <LoadingState />
@@ -174,7 +172,6 @@ for (const appearance of ["light", "dark"] as const) {
       assert.ok(contrast(await page.getByText(label, { exact: true }).evaluate(node => getComputedStyle(node).color), await container.evaluate(node => getComputedStyle(node).backgroundColor)) >= 4.5);
     }
     // R04: MetricPill had no users and was deleted (legacy-ui ratchet).
-    await fits(page.getByText("接下来要处理的事项", { exact: true }));
     await page.getByRole("progressbar", { name: "正在加载" }).waitFor();
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-primitives-${appearance}.png`, fullPage: true });
   });

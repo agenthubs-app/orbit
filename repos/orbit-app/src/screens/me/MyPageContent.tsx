@@ -77,7 +77,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   sub: { color: colors.ink2, fontSize: typography.bodySm, marginTop: spacing.xxs }, small: { color: colors.ink3, fontSize: typography.label },
   label: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "700" }, section: { marginTop: spacing.md + spacing.xxs },
   tags: { flexDirection: "row", gap: spacing.xs + spacing.xxs, flexWrap: "wrap", marginTop: spacing.xs + spacing.xxs },
-  hint: { borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.surface3, borderRadius: radius.sm, padding: spacing.sm, color: colors.ink3, fontSize: typography.caption },
+  hint: { borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.surface3, borderRadius: radius.sm, padding: spacing.sm, color: colors.ink3, fontSize: typography.label },
   missing: { flexDirection: "row", alignItems: "center", gap: spacing.sm + spacing.xxs, paddingVertical: spacing.sm + 1, borderTopWidth: 1, borderTopColor: colors.line, marginTop: spacing.xs },
   candidate: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.plum300, borderRadius: radius.chip, paddingLeft: spacing.sm },
   group: { paddingVertical: spacing.xxs, paddingHorizontal: spacing.lg },
