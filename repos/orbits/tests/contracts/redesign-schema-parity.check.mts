@@ -14,6 +14,7 @@ import type { EventAssessmentAddToPlanResult, EventAssessmentAvailability, Event
 import type { MyEventsResponse } from "../../shared/contract/events-mine";
 import type { EventDiscoverResponse } from "../../shared/contract/event-discover";
 import type { EventSearchResponse } from "../../shared/contract/event-search";
+import type { GlobalSearchResponse } from "../../shared/contract/global-search";
 import type { EventCodeResolveResponse } from "../../shared/contract/event-code";
 import type { EventPrepChecklistPatch, EventPrepResponse } from "../../shared/contract/event-prep";
 import type { OrganizerFollowResult } from "../../shared/contract/organizer-follow";
@@ -35,6 +36,7 @@ import type { eventAssessmentAddToPlanResultObject, eventAssessmentAvailabilityO
 import type { myEventsResponseObject } from "../../shared/api-schema/events-mine";
 import type { eventDiscoverResponseObject } from "../../shared/api-schema/event-discover";
 import type { eventSearchResponseObject } from "../../shared/api-schema/event-search";
+import type { globalSearchResponseObject } from "../../shared/api-schema/global-search";
 import type { eventCodeResolveResponseObject } from "../../shared/api-schema/event-code";
 import type { eventPrepChecklistPatchObject, eventPrepResponseObject } from "../../shared/api-schema/event-prep";
 import type { organizerFollowResultObject } from "../../shared/api-schema/organizer-follow";
@@ -237,3 +239,5 @@ expectParity<Parity<OrganizerProfile, typeof organizerProfileObject>>();
 expectParity<Parity<OrganizerProfileInput, typeof organizerProfileInputObject>>();
 expectParity<Parity<OrganizerProfileListResponse, typeof organizerProfileListResponseObject>>();
 expectParity<Parity<OrganizerPublicResponse, typeof organizerPublicResponseObject>>();
+// R30 全局搜索
+expectParity<Parity<GlobalSearchResponse, typeof globalSearchResponseObject>>();

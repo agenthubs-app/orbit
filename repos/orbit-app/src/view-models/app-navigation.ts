@@ -93,6 +93,9 @@ export function parentForPath(pathname: string, t: OrbitTranslator = currentTran
       break;
     case "schedule":
       return { href: taskHref("calendar"), label: t("shell.parent.schedule") };
+    case "search":
+      // R30: the global search opens from Task's 🔍 and falls back to Task.
+      return { href: taskHref("todo"), label: t("shell.parent.tasks") };
     case "ai":
     case "agent":
       return { href: "/ai", label: t("shell.parent.iorbit") };

@@ -52,7 +52,7 @@ function DialogFrame({ onClose, closeOnScrim = true, labelledBy, describedBy, cl
 
 // kit .wmodal: centred dialog 420 / 480 / 560 (680 for the ⌘K panel), radius 28, padding 24; `top` sits 96
 // from the top (⌘K); `form` uses --bg so cards inside keep their layer.
-export function Modal({ open, onClose, title, header, description, size = 420, top = false, form = false, actions, hint, initialFocus, children }: {
+export function Modal({ open, onClose, title, header, description, size = 420, top = false, form = false, bare = false, actions, hint, initialFocus, children }: {
   open: boolean;
   onClose: () => void;
   title: string;
@@ -62,6 +62,8 @@ export function Modal({ open, onClose, title, header, description, size = 420, t
   size?: 420 | 480 | 560 | 680;
   top?: boolean;
   form?: boolean;
+  /** R30 (only added): the ⌘K panel body draws its own rows edge to edge — kit `.cmdk` padding 10 instead of 24. */
+  bare?: boolean;
   actions?: ReactNode;
   hint?: ReactNode;
   initialFocus?: RefObject<HTMLElement | null>;
@@ -72,7 +74,7 @@ export function Modal({ open, onClose, title, header, description, size = 420, t
   if (!open) return null;
   return (
     <DialogFrame onClose={onClose} initialFocus={initialFocus} labelledBy={`${id}-title`} describedBy={description ? `${id}-desc` : undefined} scrimClassName={styles.scrim}
-      className={[styles.modal, styles[`w${size}`], top ? styles.top : "", form ? styles.form : ""].filter(Boolean).join(" ")}>
+      className={[styles.modal, styles[`w${size}`], top ? styles.top : "", form ? styles.form : "", bare ? styles.bare : ""].filter(Boolean).join(" ")}>
       {header ? (
         <><span id={`${id}-title`} hidden>{title}</span>{header}</>
       ) : (

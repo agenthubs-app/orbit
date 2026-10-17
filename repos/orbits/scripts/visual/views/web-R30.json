@@ -1,0 +1,220 @@
+{
+ "_note": "R30 全局搜索 Web（PLANNER 像素 P01–P04；1024 --region 待面板位置实测后加）。mock 服务器 orbits-r30 :3030（ORBIT_REDESIGN_MOCK=global-search，distDir .next-r30）。b12 #482–#489 为 2026-10-17 补画，用户过目后才算门禁。 背景 /app/contacts 是 R11 的页面（本服务上仍是旧页、不跟深色），本期只比面板本体（--region：x 380 宽 680、top 96，高度取设计稿面板高）。",
+ "defaults": {
+  "app-origin": "http://localhost:3030",
+  "login": "qa@orbit.test",
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-redesign-R30.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/search/**",
+  "repos/orbits/app/(app)/app/orbit-2026/shell/CommandPalette.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/search.ts",
+  "repos/orbits/shared/mock/demo-world/global-search.ts",
+  "repos/orbits/features/search/global/**"
+ ],
+ "views": [
+  {
+   "id": "W-R30-P01",
+   "app": "/app/contacts",
+   "design": "b5-me-inbox.html",
+   "board-index": 57,
+   "width": 1440,
+   "steps": [
+    {
+     "keys": "Meta+k"
+    },
+    {
+     "waitFor": "[role=dialog] [role=combobox]"
+    },
+    {
+     "type": "高橋"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "note": "P01 ⌘K · 名前（b5 #57）",
+   "themes": [
+    "light"
+   ],
+   "region": "380,96,680,603"
+  },
+  {
+   "id": "W-R30-P01d",
+   "app": "/app/contacts",
+   "design": "b12-missing-states.html",
+   "board-index": 485,
+   "width": 1440,
+   "steps": [
+    {
+     "keys": "Meta+k"
+    },
+    {
+     "waitFor": "[role=dialog] [role=combobox]"
+    },
+    {
+     "type": "高橋"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "note": "P01 深色（b12 #485，B2）",
+   "themes": [
+    "dark"
+   ],
+   "region": "380,96,680,603"
+  },
+  {
+   "id": "W-R30-P02",
+   "app": "/app/contacts",
+   "design": "b5-me-inbox.html",
+   "board-index": 58,
+   "width": 1440,
+   "steps": [
+    {
+     "keys": "Meta+k"
+    },
+    {
+     "waitFor": "[role=dialog] [role=combobox]"
+    },
+    {
+     "type": "投資家"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "note": "P02 ⌘K · 意味検索（b5 #58）",
+   "themes": [
+    "light"
+   ],
+   "region": "380,96,680,671"
+  },
+  {
+   "id": "W-R30-P02d",
+   "app": "/app/contacts",
+   "design": "b5-me-inbox.html",
+   "board-index": 71,
+   "width": 1440,
+   "steps": [
+    {
+     "keys": "Meta+k"
+    },
+    {
+     "waitFor": "[role=dialog] [role=combobox]"
+    },
+    {
+     "type": "投資家"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "note": "P02 深色（b5 #71）",
+   "themes": [
+    "dark"
+   ],
+   "region": "380,96,680,671"
+  },
+  {
+   "id": "W-R30-P03",
+   "app": "/app/contacts",
+   "design": "b5-me-inbox.html",
+   "board-index": 59,
+   "width": 1440,
+   "steps": [
+    {
+     "keys": "Meta+k"
+    },
+    {
+     "waitFor": "[role=dialog] [role=combobox]"
+    },
+    {
+     "type": "半導体 商社"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "note": "P03 ⌘K · 結果なし（b5 #59）",
+   "themes": [
+    "light"
+   ],
+   "region": "380,96,680,556"
+  },
+  {
+   "id": "W-R30-P03d",
+   "app": "/app/contacts",
+   "design": "b12-missing-states.html",
+   "board-index": 487,
+   "width": 1440,
+   "steps": [
+    {
+     "keys": "Meta+k"
+    },
+    {
+     "waitFor": "[role=dialog] [role=combobox]"
+    },
+    {
+     "type": "半導体 商社"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "note": "P03 深色（b12 #487，B3）",
+   "themes": [
+    "dark"
+   ],
+   "region": "380,96,680,556"
+  },
+  {
+   "id": "W-R30-P04",
+   "app": "/app/contacts",
+   "design": "b12-missing-states.html",
+   "board-index": 482,
+   "width": 1440,
+   "steps": [
+    {
+     "eval": "window.localStorage.setItem('orbit.search.recent', JSON.stringify(['高橋','製造業の決裁者','CFO Night','先月会った人']))"
+    },
+    {
+     "keys": "Meta+k"
+    },
+    {
+     "waitFor": "[role=dialog] [role=combobox]"
+    }
+   ],
+   "note": "P04 ⌘K · 初期（b12 #482，B1）",
+   "themes": [
+    "light"
+   ],
+   "region": "380,96,680,406"
+  },
+  {
+   "id": "W-R30-P04d",
+   "app": "/app/contacts",
+   "design": "b12-missing-states.html",
+   "board-index": 483,
+   "width": 1440,
+   "steps": [
+    {
+     "eval": "window.localStorage.setItem('orbit.search.recent', JSON.stringify(['高橋','製造業の決裁者','CFO Night','先月会った人']))"
+    },
+    {
+     "keys": "Meta+k"
+    },
+    {
+     "waitFor": "[role=dialog] [role=combobox]"
+    }
+   ],
+   "note": "P04 深色（b12 #483，B1）",
+   "themes": [
+    "dark"
+   ],
+   "region": "380,96,680,406"
+  }
+ ]
+}

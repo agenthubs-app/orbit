@@ -15,9 +15,9 @@
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 13 |
 | └ 由 Sprint 0137 实现 | 1 |
-| 只能在线 | 51 |
+| 只能在线 | 52 |
 | 不读账号数据（布局、跳转、本机设置） | 26 |
-| 合计（路由文件） | 116 |
+| 合计（路由文件） | 117 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -91,6 +91,7 @@
 | `/host/join` | 共同運営に参加 · コード入力（R17） | 需要服务器验证链接或邀请码：招待コード由服务器验证 | — | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/host/join/:code` | 共同運営に参加 · 招待の着地（R17） | 需要服务器验证链接或邀请码：招待由服务器验证并授予 | /api/host/cohost-invites/:code | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/e/:slug` | 申込ページ短链 → R27 活动详情（R17） | 需要服务器验证链接或邀请码：短链由服务器解析 | /e/:slug（跟随重定向） | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/search` | 検索（人・イベント・会話；R30） | 需要服务器实时计算：搜索、排序与命中范围在服务器计算；查询与结果不存本机，最近搜索只存这台设备 | /api/search/global | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/prep` | 会う準備（R27） | 需要服务器实时计算：会いたい人与话しかけ方由规则在服务器计算；名刺の残り只存本机 | /api/events/:id/prep | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/after` | 会後のふりかえり（R27） | 需要服务器实时计算：まとめ与次の一手由服务器生成；确定是写入 | /api/events/:id/after | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/register` | 参加登録（R27） | 付费 AI：报名是写入；问题来自 AI 访谈（≤5 问），自己紹介草稿由 AI 生成 | /api/events/:id/join/*、/api/events/:id/overview | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -261,6 +262,7 @@
 | `app/schedule/personal/[id].tsx` | `/schedule/personal/:id` | local-first (0108) |
 | `app/schedule/personal/[id]/edit.tsx` | `/schedule/personal/:id/edit` | local-first (0108) |
 | `app/schedule/personal/new.tsx` | `/schedule/personal/new` | local-first (0108) |
+| `app/search.tsx` | `/search` | online-only |
 | `app/settings.tsx` | `/settings` | device-only |
 | `app/settings/api.tsx` | `/settings/api` | device-only |
 | `app/showcase/components.tsx` | `/showcase/components` | device-only |

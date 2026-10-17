@@ -93,6 +93,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     || endpointTemplate === '/api/events/:id/registration/portrait'
     // R17: host reads (center, console, kiosk, invites, organizer page) are online-only; the check-in roster has its own TTL cache (kiosk-store).
     || consumerFile === 'src/screens/host/host-api.ts'
+    // R30: global search is online-only; a query and its answer are never kept on the device.
+    || consumerFile === 'src/screens/search/search-api.ts'
     // R23: the plan flow is online-only (paid AI drafts, versioned intakes); nothing is kept on the device.
     || consumerFile.startsWith('src/screens/plan/')
     // R15: invite codes, previews and connections are online-only; a code or a preview is never kept on the device.
@@ -645,6 +647,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/contacts/ContactsScreen.tsx","POST","/api/contacts/search"],
   ["src/screens/contacts/ContactsScreen.tsx","POST","/api/search/relationships"],
   ["src/screens/contacts/ContactsScreen.tsx","GET","/api/search/suggestions"],
+  ["src/screens/search/search-api.ts","GET","/api/search/global"],
   ["src/screens/contacts/ContactStructureDetailScreen.tsx","GET","/api/dashboard/structure/:id/:id"],
   ["src/screens/dashboard/DashboardScreen.tsx","GET","/api/audit/provenance"],
   ["src/screens/dashboard/DashboardScreen.tsx","POST","/api/audit/provenance/run"],

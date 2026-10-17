@@ -1,17 +1,16 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { useOrbitAsk } from "../../orbit-global-ask/orbit-ask-context";
 import { orbitAskPageContext } from "../../orbit-global-ask/orbit-ask-routes";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { pickCopy } from "../copy/types";
-import { shellCopy } from "../copy/shell";
-import { Avatar, Chip, Icon, Kbd, Modal, fillCopy } from "../ui";
-import styles from "./palette.module.css";
-
-type Person = { id: string; contactId: string; displayName: string; organization?: string | null; role?: string | null };
+import { searchCopy } from "../copy/search";
+import { filtersFor, panelRows, SearchPanel, type PanelRow } from "../search/SearchPanel";
+import { useGlobalSearch, type SearchFilter } from "../search/use-global-search";
+import { Modal } from "../ui";
 
 /**
  * ⌘K / Ctrl+K anywhere in the shell opens the palette — also while typing in a
@@ -35,18 +34,11 @@ export function useCommandPaletteShortcut(open: () => void): void {
   }, []);
 }
 
-/** People search over the existing natural search endpoint; at most 6 rows. */
-export async function searchPeople(query: string, signal?: AbortSignal): Promise<Person[]> {
-  const response = await fetch("/api/search/relationships", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ query }), signal });
-  if (!response.ok) return [];
-  const body = (await response.json()) as { success?: boolean; data?: { results?: Person[] } };
-  return (body.success && Array.isArray(body.data?.results) ? body.data!.results! : []).slice(0, 6);
-}
-
-// R07 ⌘K panel (01-system.html:375 / 570): Modal top 680. Type to search people;
-// ↑ ↓ move, ↵ opens the person; ⌘↵ (or the last row) hands the text to iOrbit with
-// the current page as context — the same hand-off the floating ask used
-// (stashPendingAsk → /app/agent, or the page's own ask target).
+// R30 ⌘K panel (b5 #57 / #58 / #59 / #71; search/DESIGN.md §2.1): Modal top 680, kit .cmdk. One global search
+// (/api/search/global) answers people / events / conversations with hit ranges; this file only keeps the
+// keyboard: ↑ ↓ move over every row, ↵ opens, Tab / Shift+Tab switch the type chip, Esc closes, and ⌘↵ (or the
+// 「iOrbit に聞く」 row) hands the text to iOrbit with the current page as context — the same hand-off the
+// floating ask used (stashPendingAsk → /app/agent, or the page's own ask target). Typing never sends.
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { language } = useOrbitLanguage();
   const pathname = usePathname() ?? "";
@@ -54,87 +46,64 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const ask = useOrbitAsk();
   const listId = useId();
   const [query, setQuery] = useState("");
-  const [people, setPeople] = useState<Person[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [filter, setFilter] = useState<SearchFilter>("all");
   const [cursor, setCursor] = useState(0);
   const context = orbitAskPageContext(pathname, language);
-  const t = (entry: (typeof shellCopy)[keyof typeof shellCopy]) => pickCopy(entry, language);
+  const search = useGlobalSearch(open, query, filter);
+  const state = useMemo(() => ({ capability: search.capability, filter, query, recent: search.recent, result: search.result, status: search.status }), [filter, query, search.capability, search.recent, search.result, search.status]);
+  const rows = useMemo<PanelRow[]>(() => panelRows(state), [state]);
+  const filters = filtersFor(search.capability?.types ?? search.result?.types);
 
   const input = useRef<HTMLInputElement>(null);
-  // The dialog focuses its first control (閉じる) by default; the palette starts in
-  // the field (Modal initialFocus). Closing resets the panel.
-  useEffect(() => { if (!open) { setQuery(""); setPeople([]); setCursor(0); } }, [open]);
-  useEffect(() => {
-    const trimmed = query.trim();
-    if (!open || !trimmed) { setPeople([]); setSearching(false); return; }
-    const controller = new AbortController();
-    setSearching(true);
-    const timer = setTimeout(() => {
-      searchPeople(trimmed, controller.signal).then(setPeople).catch(() => setPeople([])).finally(() => { if (!controller.signal.aborted) setSearching(false); });
-    }, 250);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [open, query]);
-  useEffect(() => setCursor(0), [people]);
+  // The dialog focuses its first control by default; the palette starts in the field (Modal initialFocus).
+  // Closing resets the panel; a new answer puts the cursor back on the first row.
+  useEffect(() => { if (!open) { setQuery(""); setFilter("all"); setCursor(0); } }, [open]);
+  useEffect(() => setCursor(0), [rows.length, search.result]);
 
-  const askRow = people.length;
+  const askRow = rows.findIndex((row) => row.kind === "ask");
   const handToIorbit = () => {
     const text = query.trim();
     if (!text || !ask) return;
+    search.remember(text);
     onClose();
     ask.submit(text, context);
   };
   const choose = (index: number) => {
     if (index === askRow) { handToIorbit(); return; }
-    const person = people[index];
-    if (!person) return;
+    const row = rows[index];
+    if (!row) return;
+    if (row.kind === "recent" || row.kind === "example") { setQuery(row.text); return; }
+    if (row.kind === "alternative" && row.alternative === "ask_iorbit") {
+      const text = query.trim();
+      if (!text || !ask) return;
+      search.remember(text);
+      onClose();
+      ask.submit(text, context);
+      return;
+    }
+    if (!("href" in row)) return;
+    search.remember(query);
     onClose();
-    router.push(`/app/contacts/${encodeURIComponent(person.contactId || person.id)}`);
+    router.push(row.href);
+  };
+  const cycle = (step: 1 | -1) => {
+    const at = filters.indexOf(filter);
+    setFilter(filters[(at + step + filters.length) % filters.length] ?? "all");
   };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "ArrowDown") { event.preventDefault(); setCursor((value) => Math.min(askRow, value + 1)); }
+    if (event.key === "ArrowDown") { event.preventDefault(); setCursor((value) => Math.min(Math.max(rows.length - 1, 0), value + 1)); }
     else if (event.key === "ArrowUp") { event.preventDefault(); setCursor((value) => Math.max(0, value - 1)); }
+    else if (event.key === "Tab") { event.preventDefault(); cycle(event.shiftKey ? -1 : 1); }
     else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); handToIorbit(); }
     else if (event.key === "Enter") { event.preventDefault(); choose(cursor); }
   };
   const optionId = (index: number) => `${listId}-${index}`;
 
   return (
-    <Modal open={open} onClose={onClose} title={t(shellCopy.paletteLabel)} size={680} top initialFocus={input}
-      hint={<span className={styles.keys}><Kbd>↑↓</Kbd><Kbd>↵</Kbd>{t(shellCopy.paletteHintOpen)}<Kbd>⌘↵</Kbd>{t(shellCopy.paletteHintAsk)}</span>}>
-      <div className={styles.field}>
-        <Icon name="search" size={20} />
-        <input
-          ref={input}
-          className={styles.input}
-          role="combobox"
-          aria-expanded={query.trim().length > 0}
-          aria-controls={listId}
-          aria-activedescendant={query.trim() ? optionId(cursor) : undefined}
-          aria-label={t(shellCopy.palettePlaceholder)}
-          placeholder={t(shellCopy.palettePlaceholder)}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={onKeyDown}
-        />
-        {context ? <Chip tone="lav" label={fillCopy(pickCopy(shellCopy.paletteContext, language), { page: context })} /> : null}
-      </div>
-      {query.trim() ? (
-        <div id={listId} role="listbox" aria-label={t(shellCopy.paletteLabel)} className={styles.list}>
-          <div className={styles.group}>{t(shellCopy.palettePeople)}</div>
-          {people.map((person, index) => (
-            <div key={person.id} id={optionId(index)} role="option" aria-selected={cursor === index} className={`${styles.row} ${cursor === index ? styles.rowOn : ""}`} onMouseEnter={() => setCursor(index)} onMouseDown={(event) => { event.preventDefault(); choose(index); }}>
-              <Avatar name={person.displayName} size="sm" />
-              <span className={styles.rowText}><b>{person.displayName}</b><small>{[person.role, person.organization].filter(Boolean).join(" · ")}</small></span>
-            </div>
-          ))}
-          {!people.length ? <div className={styles.empty} role="status">{searching ? t(shellCopy.paletteSearching) : t(shellCopy.paletteNoResults)}</div> : null}
-          <div id={optionId(askRow)} role="option" aria-selected={cursor === askRow} className={`${styles.row} ${styles.askRow} ${cursor === askRow ? styles.rowOn : ""}`} onMouseEnter={() => setCursor(askRow)} onMouseDown={(event) => { event.preventDefault(); choose(askRow); }}>
-            <Icon name="sparkle" size={20} />
-            <span className={styles.rowText}><b>{t(shellCopy.paletteAsk)}</b><small>{query.trim()}</small></span>
-            <Kbd>⌘↵</Kbd>
-          </div>
-        </div>
-      ) : null}
+    <Modal open={open} onClose={onClose} title={pickCopy(searchCopy.dialogTitle, language)} size={680} top bare initialFocus={input}
+      header={<span hidden />}>
+      <SearchPanel state={state} rows={rows} cursor={cursor} onHover={setCursor} onPick={choose} onQueryChange={setQuery} onFilterChange={setFilter}
+        onClearRecent={search.clearRecent} onRemoveRecent={search.removeRecent} onKeyDown={onKeyDown} inputRef={input} language={language} listId={listId} optionId={optionId} />
     </Modal>
   );
 }

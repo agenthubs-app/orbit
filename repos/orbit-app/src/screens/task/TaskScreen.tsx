@@ -109,11 +109,11 @@ export function TaskScreen() {
   return (
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]}>
       <ShellBackground />
-      {/* kit taskHead (app.html:633): 🔍 · Task + date · ＋. The App has no global
-          search yet, so 🔍 opens people search (the Web 🔍 opens ⌘K, people first). */}
+      {/* kit taskHead (app.html:633): 🔍 · Task + date · ＋. R30 (R20-01): 🔍 opens the
+          global search page /search (people / events / conversations), like the Web ⌘K. */}
       <View style={styles.header}>
         <ShellTopBar title={copy.nav.task} subtitle={goalInput ? locale.t("plan.goal.headerHint") : today}
-          left={<IconButton icon="search" accessibilityLabel={locale.t("home.searchPeople")} onPress={() => router.push("/contacts/list" as Href)} />}
+          left={<IconButton icon="search" accessibilityLabel={locale.t("search.open")} onPress={() => router.push("/search" as Href)} />}
           right={addLabel ? <IconButton icon="plus" accessibilityLabel={addLabel} onPress={add} disabled={addDisabled} /> : null} />
       </View>
       <SwipeSegments

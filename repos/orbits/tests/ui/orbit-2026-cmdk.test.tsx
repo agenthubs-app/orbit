@@ -7,20 +7,23 @@ import { orbitAskPageContext } from "../../app/(app)/app/orbit-global-ask/orbit-
 import { launch } from "./support/orbit-2026-harness";
 import { errorsOf, LEGACY_PAGE, openShell, shellBundle } from "./support/orbit-2026-shell-harness";
 
-// R07 (SC-R07-03): ⌘K / Ctrl+K opens the panel anywhere in the shell (also from a
-// text field, never on a plain key); people search; ↵ opens a person; ⌘↵ hands the
-// text to iOrbit with the page as context (the floating ask's hand-off).
+// R07 (SC-R07-03) / R30: ⌘K / Ctrl+K opens the panel anywhere in the shell (also from a
+// text field, never on a plain key); one global search (GET /api/search/global); ↵ opens a
+// person; ⌘↵ hands the text to iOrbit with the page as context (the floating ask's hand-off).
 let browser: Browser;
 let code: { js: string; css: string };
 
 test.before(async () => {
   code = await shellBundle(LEGACY_PAGE + `
     window.searches = [];
-    window.fetch = async (url, init) => {
-      const body = JSON.parse(init.body);
-      window.searches.push(body.query);
-      const results = body.query.includes("Hana") ? [{ id: "r1", contactId: "c1", displayName: "Hana Yamada", organization: "Orbit", role: "Designer" }, { id: "r2", contactId: "c2", displayName: "Hanako Sato", organization: null, role: null }] : [];
-      return new Response(JSON.stringify({ success: true, data: { results } }), { status: 200 });
+    const empty = { total: 0, items: [] };
+    window.fetch = async (url) => {
+      const query = new URL(String(url), "http://local.test").searchParams.get("q") ?? "";
+      window.searches.push(query);
+      const hit = (contactId, name, org, role) => ({ contactId, name, initial: name[0], org, role, status: null, highlights: [{ field: "title", start: 0, end: 4 }], href: "/app/contacts/" + contactId });
+      const people = query.includes("Hana") ? { total: 2, items: [hit("c1", "Hana Yamada", "Orbit", "Designer"), hit("c2", "Hanako Sato", null, null)] } : empty;
+      const data = { query, types: ["people", "events"], people, events: empty, semantic: { available: false, enabled: false }, searchedPeople: 2, examples: [], suggestions: [], alternatives: [] };
+      return new Response(JSON.stringify({ success: true, data }), { status: 200 });
     };
   `);
   browser = await launch();
@@ -54,12 +57,13 @@ test("Ctrl+K opens it — also from a text field — and a plain k does not", as
   await dialog.waitFor();
 });
 
-test("people search: arrows move, ↵ opens the person", async (t) => {
+test("global search: one GET per query, arrows move, ↵ opens the person", async (t) => {
   const page = await shell(t, "/app/home");
   await page.keyboard.press("Control+k");
   await page.keyboard.type("Hana");
   await page.getByRole("option", { name: /Hanako Sato/ }).waitFor();
   assert.equal(await page.getByRole("option").count(), 3, "two people and 「iOrbit に聞く」");
+  assert.equal(await page.getByRole("tab", { name: "会話" }).count(), 0, "no 会話 chip while the account cannot search conversations (A1)");
   await page.keyboard.press("ArrowDown");
   assert.equal(await page.getByRole("option", { selected: true }).getAttribute("id"), await page.getByRole("option", { name: /Hanako Sato/ }).getAttribute("id"));
   await page.keyboard.press("Enter");
@@ -67,10 +71,10 @@ test("people search: arrows move, ↵ opens the person", async (t) => {
   assert.equal(await page.getByRole("dialog").count(), 0);
 });
 
-test("⌘↵ hands the text to iOrbit with the page context chip (Japanese too)", async (t) => {
+test("⌘↵ hands the text to iOrbit with the page context (Japanese too)", async (t) => {
   const page = await shell(t, "/app/contacts/c1");
   await page.keyboard.press("Control+k");
-  await page.getByText("表示中：この人").waitFor();
+  await page.getByRole("dialog", { name: "検索と iOrbit" }).waitFor();
   await page.keyboard.type("来週の会議の準備");
   await page.keyboard.press("Meta+Enter");
   assert.deepEqual(await calls(page), [{ push: "/app/agent" }]);

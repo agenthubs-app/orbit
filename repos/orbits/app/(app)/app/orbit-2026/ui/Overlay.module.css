@@ -31,6 +31,8 @@
 .w680 { width: min(680px, calc(100vw - 32px)); }
 .top { top: 96px; max-height: calc(100vh - 120px); transform: translateX(-50%); animation-name: topIn; }
 .form { background: var(--bg); }
+/* R30：⌘K 面板（kit .cmdk）内边距 10，面板本体自己画分隔线与行。 */
+.bare { padding: var(--space-10); }
 .modalHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .modalTitle { font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: var(--lh-title); }
 .modalText { font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.6; margin-top: 6px; }

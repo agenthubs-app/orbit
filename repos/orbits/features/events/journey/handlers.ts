@@ -49,7 +49,8 @@ export interface JourneyRouteDeps {
 
 export const JOURNEY_SAMPLE_HEADER = "x-orbit-sample";
 
-async function configuredLiveService(): Promise<JourneyService | null> {
+/** The configured live journey service (null = no database). Exported for R30 global search, which reuses `search`. */
+export async function configuredJourneyLiveService(): Promise<JourneyService | null> {
   const runtime = createConfiguredTransactionalPostgresRuntime();
   if (!runtime) return null;
   const { createJourneyLivePorts } = await import("./live");
@@ -83,7 +84,7 @@ function journeyRoute<T>(options: { auth: "required" | "optional"; write?: boole
       if (!actor && options.auth === "required" && mode === "live") return fail(new AppError("UNAUTHORIZED", "Sign in to access this resource."));
       const sample = mode !== "live" || actor?.id === DEMO_ACTOR_ID || request.headers.get(JOURNEY_SAMPLE_HEADER)?.trim() === "1";
       if (mode === "live" && sample && options.write) return fail(new AppError("FORBIDDEN", "SAMPLE_READ_ONLY: sample data cannot be saved."), { reason: "SAMPLE_READ_ONLY" });
-      const service = sample ? createJourneyMockService() : await (deps.liveService ?? configuredLiveService)();
+      const service = sample ? createJourneyMockService() : await (deps.liveService ?? configuredJourneyLiveService)();
       if (!service) return fail(new AppError("SERVICE_UNAVAILABLE", "Events require a configured live database."), { reason: "EVENT_JOURNEY_UNCONFIGURED" });
       const params = (await routeContext?.params) ?? {};
       const actorId = actor?.id ?? (options.auth === "required" ? DEMO_ACTOR_ID : null);
@@ -210,7 +211,7 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
 /** 参加コード → 活动 id（页面层 `/register/[code]` 用；找不到返回 null）。 */
 export async function resolveEventCode(code: string, deps: JourneyRouteDeps = {}): Promise<string | null> {
   const mode = (deps.resolveMode ?? (() => redesignContractMode("event-recommendation-feedback")))();
-  const service = mode !== "live" ? createJourneyMockService() : await (deps.liveService ?? configuredLiveService)();
+  const service = mode !== "live" ? createJourneyMockService() : await (deps.liveService ?? configuredJourneyLiveService)();
   return service ? service.eventIdByCode(code).catch(() => null) : null;
 }
 

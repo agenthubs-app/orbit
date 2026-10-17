@@ -1,0 +1,59 @@
+/* R30 ⌘K 面板本体（b5 #57 / #58 / #59 / #71）。照画板源码搬：.cmdk 10（Modal bare）· 搜索行 gap 10 / 10 12 12 · 输入 17 600 · 类型 .chip 3/9 11 700（选中 .chip.lav）·
+   .sgrp 11.5 700 ink-3 16 4 6 · .cmdrow gap 12 / 9 12 r14 · .meta b 13.5 / span 12 ink-3 · .av.sm 30 11.5 800 · .emo.sm 32 r10 17 ·
+   .chip 3/9 11 700 r999 · .mr 11 700 rose · .kbd 20 r6 11 700 num · .lbl 11.5 500 ink-3 · mark rose-100 r4 0 2。数值全部换成 token。 */
+.panel { padding: 0; }  /* Modal bare 已给 .cmdk 的 10 */
+
+.field { display: flex; align-items: center; gap: var(--space-10); padding: var(--space-10) var(--space-12) var(--space-12); border-bottom: 1px solid var(--line); color: var(--ink); }
+.input { flex: 1 1 auto; min-width: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-logo); font-weight: 600; line-height: var(--lh-body); outline: none; padding: 0; }
+.input::placeholder { color: var(--ink-3); font-weight: var(--fw-medium); }
+.chips { display: flex; gap: var(--space-6); flex: 0 0 auto; margin-left: auto; }
+.cat { display: inline-flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-9); border-radius: var(--r-pill); background: var(--surface-2); font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--ink-2); white-space: nowrap; border: 0; cursor: pointer; font-family: inherit; line-height: var(--lh-body); }
+.catOn { background: var(--mac-lav); color: var(--mac-lav-ink); }
+.cat:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.body { padding: var(--space-4) var(--space-4) var(--space-6); max-height: 640px; overflow: hidden; }
+.group { font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-3); margin: var(--space-16) var(--space-4) var(--space-6); display: flex; justify-content: space-between; }
+.group:first-child { margin-top: var(--space-16); }
+.row { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-9) var(--space-12); border-radius: var(--r-md); cursor: pointer; color: var(--ink); }
+.rowOn { background: var(--surface-2); }
+.meta { flex: 1 1 0%; min-width: 0; }
+.meta b { display: block; font-size: var(--fs-row); font-weight: var(--fw-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: var(--lh-body); }
+.meta span { display: block; font-size: var(--fs-meta); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: var(--lh-body); }
+.meta mark, .banner mark { background: var(--rose-100); color: inherit; border-radius: var(--r-dot); padding: 0 var(--space-2); }
+
+.av { width: 30px; height: 30px; border-radius: var(--r-pill); display: grid; place-items: center; font-weight: var(--fw-heavy); font-size: var(--fs-label); flex: 0 0 auto; }
+.av_lav { background: var(--mac-lav); color: var(--mac-lav-ink); }
+.av_pink { background: var(--mac-pink); color: var(--mac-pink-ink); }
+.av_blue { background: var(--mac-blue); color: var(--mac-blue-ink); }
+.av_teal { background: var(--mac-teal); color: var(--mac-teal-ink); }
+.av_apricot { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+.emo { width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; font-size: var(--fs-emoji-sm); flex: 0 0 auto; line-height: 1; }
+
+.chip { display: inline-flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-9); border-radius: var(--r-pill); font-size: var(--fs-caption); font-weight: var(--fw-bold); background: var(--surface-2); color: var(--ink-2); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; line-height: var(--lh-body); }
+.chip_lav { background: var(--mac-lav); color: var(--mac-lav-ink); }
+.chip_apricot { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+.reason { font-size: var(--fs-caption); color: var(--rose-700); background: var(--rose-100); padding: var(--space-2) var(--space-8); border-radius: var(--r-pill); font-weight: var(--fw-bold); white-space: nowrap; line-height: var(--lh-body); }
+.lbtn { width: 34px; height: 34px; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); flex: 0 0 auto; }
+.chev { color: var(--ink); flex: 0 0 auto; }
+
+.banner { display: flex; gap: var(--space-8); align-items: center; padding: var(--space-9) var(--space-12); border-radius: var(--r-md); background: var(--surface-2); font-size: var(--fs-label); color: var(--ink-2); margin-top: var(--space-4); line-height: var(--lh-body); }
+.banner b { font-weight: var(--fw-bold); }
+
+.empty { text-align: center; padding: var(--space-22) var(--space-10) var(--space-8); }
+.emptyEmoji { font-size: var(--fs-emoji-xl); line-height: var(--lh-body); }
+.emptyTitle { display: block; font-size: var(--fs-emph); font-weight: var(--fw-bold); margin-top: var(--space-6); line-height: var(--lh-body); }
+.lbl { font-size: var(--fs-label); color: var(--ink-3); font-weight: var(--fw-medium); line-height: var(--lh-body); }
+.emptySub { margin-top: var(--space-4); }
+
+.recentRow { composes: row; }
+.recentRow b { font-weight: 600; }
+.clear { border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; color: inherit; }
+.recentRemove { display: grid; place-items: center; flex: 0 0 auto; cursor: pointer; color: inherit; }
+.examples { display: flex; gap: var(--space-6); flex-wrap: wrap; padding: 0 var(--space-8); }
+.example { composes: chip; composes: chip_lav; padding: var(--space-6) var(--space-11); border: 0; cursor: pointer; font-family: inherit; }
+.hint { margin: var(--space-12) var(--space-8) var(--space-4); }
+
+.foot { display: flex; align-items: center; gap: var(--space-14); padding: var(--space-10) var(--space-12) var(--space-4); border-top: 1px solid var(--line); }
+.footRight { margin-left: auto; }
+.kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 var(--space-6); border-radius: var(--r-tag); background: var(--surface-2); color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-bold); font-family: var(--font-num); line-height: 1; white-space: nowrap; vertical-align: middle; }
+.status { padding: var(--space-9) var(--space-12); font-size: var(--fs-meta); color: var(--ink-3); }

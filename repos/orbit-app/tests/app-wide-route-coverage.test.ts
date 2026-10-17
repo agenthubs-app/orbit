@@ -207,6 +207,8 @@ const integratedFeatureRoutes = [
   // R27 会う準備 / 会後のふりかえり.
   "/events/[id]/prep",
   "/events/[id]/after",
+  // R30 全局搜索（Task 🔍）.
+  "/search",
   "/events/[id]/operations/experience",
   "/events/[id]/participants/[participantId]",
   "/schedule/meetings/[id]",

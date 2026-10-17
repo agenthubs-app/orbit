@@ -103,6 +103,24 @@
         "ORBIT_NEXT_DIST_DIR": ".next-r17",
         "ORBIT_REDESIGN_MOCK": "event-assessment,plan-v2-summary,event-recommendation-feedback,host-operations"
       }
+    },
+    {
+      "name": "orbits-r30",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "repos/orbits",
+        "--",
+        "--port",
+        "3030"
+      ],
+      "port": 3030,
+      "env": {
+        "ORBIT_NEXT_DIST_DIR": ".next-r30",
+        "ORBIT_REDESIGN_MOCK": "global-search"
+      }
     }
   ]
 }

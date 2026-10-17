@@ -188,7 +188,8 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   const [selected, setSelected] = useState<string | null>(null);
   const [pop, setPop] = useState<"period" | "area" | "theme" | "sort" | null>(null);
   const [draftThemes, setDraftThemes] = useState<EventDiscoverTheme[]>([]);
-  const [search, setSearch] = useState("");
+  // R30：全局搜索「イベントで探す」带 ?q= 进来时直接开始搜（App 的 DiscoverPage 同一参数）。
+  const [search, setSearch] = useState(() => params.get("q") ?? "");
   const [results, setResults] = useState<EventSearchResponse | null>(null);
 
   const load = useCallback(async (next: EventDiscoverQuery) => {

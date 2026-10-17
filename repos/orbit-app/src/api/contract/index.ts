@@ -545,3 +545,6 @@ export type { HostAdmissionDecision, HostAdmitOnSiteInput, HostCheckInResult, Ho
 export type { HostCheckInEventItem, HostCheckInEventsResponse, HostCohostAcceptResult, HostCohostHistoryItem, HostCohostInvite, HostCohostInviteInput, HostCohostInvitePreview, HostCohostInviteResult, HostCohostMember, HostCohostRemoveInput, HostCohostRole, HostCohostRoleInput, HostCohostsResponse } from "./host-cohosts";
 export type { HostNoticeChannel, HostNoticeKind, HostNoticePreview, HostNoticePreviewInput, HostNoticeSendInput, HostNoticeSendResult, HostSendableNoticeKind } from "./host-notices";
 export type { OrganizerProfile, OrganizerProfileInput, OrganizerProfileListResponse, OrganizerProfileStats, OrganizerProfileVisibility, OrganizerPublicPast, OrganizerPublicResponse, OrganizerPublicUpcoming } from "./organizer-profile";
+
+// R30 全局搜索（search/DESIGN.md §3.1）
+export type { GlobalSearchAlternative, GlobalSearchConversationHit, GlobalSearchEventHit, GlobalSearchGroup, GlobalSearchPersonHit, GlobalSearchQuery, GlobalSearchResponse, GlobalSearchSemantic, GlobalSearchSuggestion, GlobalSearchType, SearchHighlight } from "./global-search";

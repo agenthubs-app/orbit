@@ -8214,6 +8214,362 @@
         }
       }
     },
+    "global-search.ts::GlobalSearchType": {
+      "kind": "enum",
+      "values": [
+        "'conversations'",
+        "'events'",
+        "'people'"
+      ]
+    },
+    "global-search.ts::SearchHighlight": {
+      "kind": "object",
+      "members": {
+        "field": {
+          "optional": false,
+          "kind": "text",
+          "type": "'title' | 'subtitle'"
+        },
+        "start": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "end": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "global-search.ts::GlobalSearchPersonHit": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "initial": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "org": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "role": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "status": {
+          "optional": true,
+          "kind": "text",
+          "type": "'in_progress' | 'acquaintance' | null"
+        },
+        "reason": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "related": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "highlights": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly SearchHighlight[]"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "global-search.ts::GlobalSearchEventHit": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "startsAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "note": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "via": {
+          "optional": true,
+          "kind": "text",
+          "type": "'attendees' | null"
+        },
+        "highlights": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly SearchHighlight[]"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "global-search.ts::GlobalSearchConversationHit": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'iorbit' | 'inbox'"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "subtitle": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "highlights": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly SearchHighlight[]"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "global-search.ts::GlobalSearchGroup": {
+      "kind": "object",
+      "members": {
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "items": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly T[]"
+        },
+        "order": {
+          "optional": true,
+          "kind": "text",
+          "type": "'relevance'"
+        }
+      },
+      "typeParams": [
+        "T"
+      ]
+    },
+    "global-search.ts::GlobalSearchSuggestion": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'industry'"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "count": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "global-search.ts::GlobalSearchAlternative": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'events' | 'ask_iorbit'"
+        },
+        "emoji": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "detail": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "href": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "global-search.ts::GlobalSearchSemantic": {
+      "kind": "object",
+      "members": {
+        "available": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "enabled": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "matched": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "related": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "global-search.ts::GlobalSearchResponse": {
+      "kind": "object",
+      "members": {
+        "query": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "types": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly GlobalSearchType[]"
+        },
+        "people": {
+          "optional": false,
+          "kind": "text",
+          "type": "GlobalSearchGroup<GlobalSearchPersonHit>"
+        },
+        "events": {
+          "optional": false,
+          "kind": "text",
+          "type": "GlobalSearchGroup<GlobalSearchEventHit>"
+        },
+        "conversations": {
+          "optional": true,
+          "kind": "text",
+          "type": "GlobalSearchGroup<GlobalSearchConversationHit>"
+        },
+        "semantic": {
+          "optional": false,
+          "kind": "text",
+          "type": "GlobalSearchSemantic"
+        },
+        "searchedPeople": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "examples": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "suggestions": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly GlobalSearchSuggestion[]"
+        },
+        "alternatives": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly GlobalSearchAlternative[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
+    "global-search.ts::GlobalSearchQuery": {
+      "kind": "object",
+      "members": {
+        "q": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "types": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly GlobalSearchType[]"
+        },
+        "limit": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "semantic": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
     "home-layout.ts::HomeWidgetKey": {
       "kind": "enum",
       "values": [
@@ -11967,6 +12323,16 @@
         "FollowupTaskContract",
         "FollowupTriggerContract",
         "FollowupTriggerKindCode",
+        "GlobalSearchAlternative",
+        "GlobalSearchConversationHit",
+        "GlobalSearchEventHit",
+        "GlobalSearchGroup",
+        "GlobalSearchPersonHit",
+        "GlobalSearchQuery",
+        "GlobalSearchResponse",
+        "GlobalSearchSemantic",
+        "GlobalSearchSuggestion",
+        "GlobalSearchType",
         "HomeLayoutContract",
         "HomeLayoutUpdateInput",
         "HomeWidgetKey",
@@ -12364,6 +12730,7 @@
         "ReminderTargetType",
         "SavedPortrait",
         "ScheduleItemContract",
+        "SearchHighlight",
         "SeniorityLevelCode",
         "SourceReferenceContract",
         "SourceTypeCode",

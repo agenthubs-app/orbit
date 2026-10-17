@@ -1,0 +1,113 @@
+{
+ "_note": "R30 全局搜索 App（PLANNER 像素 P05–P08）。模拟器 iPhone 16e (r17) 连 mock 服务器 orbits-r30 :3030（ORBIT_REDESIGN_MOCK=global-search），Metro :8117（no-keyboard,open-path）。每张把 path 写进 AsyncStorage orbit.dev.openPath、recent 写进 orbit.search.recent，重启 App 后截图（scratchpad appgate30.sh）。検索中（b12 #498 / #499，B8）需要人为放慢回答，不进门禁（PLANNER）。键 = <id>-app-<theme>。",
+ "defaults": {
+  "grid": 30,
+  "wait": 20000,
+  "attribution": "scripts/visual/attribution-redesign-R30-app.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/search/**",
+  "repos/orbit-app/app/search.tsx",
+  "repos/orbit-app/src/i18n/*/search.ts"
+ ],
+ "views": [
+  {
+   "id": "A-R30-P05",
+   "design": "b5-me-inbox.html",
+   "board-index": 53,
+   "themes": [
+    "light"
+   ],
+   "path": "/search",
+   "recent": [
+    "高橋",
+    "製造業の決裁者",
+    "CFO Night",
+    "先月会った人"
+   ],
+   "note": "P05 ① 検索 · 初期（b5 #53）"
+  },
+  {
+   "id": "A-R30-P05d",
+   "design": "b12-missing-states.html",
+   "board-index": 491,
+   "themes": [
+    "dark"
+   ],
+   "path": "/search",
+   "recent": [
+    "高橋",
+    "製造業の決裁者",
+    "CFO Night",
+    "先月会った人"
+   ],
+   "note": "P05 深色（b12 #491）"
+  },
+  {
+   "id": "A-R30-P06",
+   "design": "b5-me-inbox.html",
+   "board-index": 54,
+   "themes": [
+    "light"
+   ],
+   "path": "/search?q=%E9%AB%98%E6%A9%8B",
+   "recent": [],
+   "note": "P06 ② 結果 · 名前（b5 #54）"
+  },
+  {
+   "id": "A-R30-P06d",
+   "design": "b12-missing-states.html",
+   "board-index": 493,
+   "themes": [
+    "dark"
+   ],
+   "path": "/search?q=%E9%AB%98%E6%A9%8B",
+   "recent": [],
+   "note": "P06 深色（b12 #493）"
+  },
+  {
+   "id": "A-R30-P07",
+   "design": "b5-me-inbox.html",
+   "board-index": 55,
+   "themes": [
+    "light"
+   ],
+   "path": "/search?q=%E6%8A%95%E8%B3%87%E5%AE%B6",
+   "recent": [],
+   "note": "P07 ③ 結果 · 意味検索（b5 #55）"
+  },
+  {
+   "id": "A-R30-P07d",
+   "design": "b12-missing-states.html",
+   "board-index": 495,
+   "themes": [
+    "dark"
+   ],
+   "path": "/search?q=%E6%8A%95%E8%B3%87%E5%AE%B6",
+   "recent": [],
+   "note": "P07 深色（b12 #495）"
+  },
+  {
+   "id": "A-R30-P08",
+   "design": "b5-me-inbox.html",
+   "board-index": 56,
+   "themes": [
+    "light"
+   ],
+   "path": "/search?q=%E5%8D%8A%E5%B0%8E%E4%BD%93%20%E5%95%86%E7%A4%BE",
+   "recent": [],
+   "note": "P08 ④ 結果なし（b5 #56）"
+  },
+  {
+   "id": "A-R30-P08d",
+   "design": "b12-missing-states.html",
+   "board-index": 497,
+   "themes": [
+    "dark"
+   ],
+   "path": "/search?q=%E5%8D%8A%E5%B0%8E%E4%BD%93%20%E5%95%86%E7%A4%BE",
+   "recent": [],
+   "note": "P08 深色（b12 #497）"
+  }
+ ]
+}
