@@ -1,0 +1,1176 @@
+{
+ "_note": "R31a 第 1 步：App 已通过画面清单（PLANNER §5 / §6「不退步」的对照基线）。来源：各 Sprint REPORT / REWORK-REPORT / DEFERRED-A（2026-10-17 重比）与 attribution-redesign-*-app.json，按日期取最新结论；**没有跑全量模拟器门禁**（原门禁在 iPhone 16e 390pt 上跑；A 线模拟器 Orbit Redesign Shots 是 iPhone 17 Pro 402pt，整屏画板在它上面按 390 缩放后不可比，见 R31a 工具里程碑报告）。pass = 按决定表 §20 通过；passRegion = R05 壳门禁按区域通过（views/app-R05.json _note 的 region，--grid 30），整屏正文是各功能 Sprint 的旧屏；notPassing = 未过画面与卡点（deferred-components 就是本 Sprint 的重比清单，见 sprints/R31a-app-components-pixel/rerun-list.json）。键 = <id>-app-<theme>，evidence 路径相对 docs/designs/redesign-2026-10/。",
+ "baseRef": "768941864",
+ "generated": "2026-10-18",
+ "counts": {
+  "pass": 124,
+  "passRegion": 14,
+  "notPassing": 91
+ },
+ "pass": {
+  "A-R17-P04-app-light": {
+   "suite": "views/app-R17.json",
+   "evidence": "sprints/R17-host-operations/REPORT.md:86 A-P04 PASS 0.0415/0.0409 全归因; attribution key present"
+  },
+  "A-R17-P04-app-dark": {
+   "suite": "views/app-R17.json",
+   "evidence": "sprints/R17-host-operations/REPORT.md:86 A-P04 PASS 0.0415/0.0409 全归因; attribution key present"
+  },
+  "A-R17-P07-app-light": {
+   "suite": "views/app-R17.json",
+   "evidence": "sprints/R17-host-operations/REPORT.md:88 A-P07 PASS 0.0296/0.0294 全归因; attribution key present"
+  },
+  "A-R17-P07-app-dark": {
+   "suite": "views/app-R17.json",
+   "evidence": "sprints/R17-host-operations/REPORT.md:88 A-P07 PASS 0.0296/0.0294 全归因; attribution key present"
+  },
+  "A-R17-P18-app-light": {
+   "suite": "views/app-R17.json",
+   "evidence": "sprints/R17-host-operations/REPORT.md:89 A-P18 PASS 0.0336/0.0287 全归因; attribution key present"
+  },
+  "A-R17-P18-app-dark": {
+   "suite": "views/app-R17.json",
+   "evidence": "sprints/R17-host-operations/REPORT.md:89 A-P18 PASS 0.0336/0.0287 全归因; attribution key present"
+  },
+  "A-R26-20-app-light": {
+   "suite": "views/app-R26.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:194 A-R26-20 ✅ (#31) 0.043/0.042; attribution key present"
+  },
+  "A-R26-20-app-dark": {
+   "suite": "views/app-R26.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:194 A-R26-20 ✅ (#31) 0.043/0.042; attribution key present"
+  },
+  "A-R26-20d-app-dark": {
+   "suite": "views/app-R26.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:194 20d 深色（#37） 0.042 ✅; attribution key present"
+  },
+  "A-R26-21-app-light": {
+   "suite": "views/app-R26.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:195 A-R26-21 ✅ 浅/深; attribution key present"
+  },
+  "A-R26-21-app-dark": {
+   "suite": "views/app-R26.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:195 A-R26-21 ✅ 浅/深; attribution key present"
+  },
+  "A-R26-22-app-light": {
+   "suite": "views/app-R26.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:196 A-R26-22 ✅ 浅/深; attribution key present"
+  },
+  "A-R26-22-app-dark": {
+   "suite": "views/app-R26.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:196 A-R26-22 ✅ 浅/深; attribution key present"
+  },
+  "A-R26-23-app-light": {
+   "suite": "views/app-R26.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:197 A-R26-23 ✅ 浅/深; attribution key present"
+  },
+  "A-R26-23-app-dark": {
+   "suite": "views/app-R26.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:197 A-R26-23 ✅ 浅/深; attribution key present"
+  },
+  "A-R26-24-app-light": {
+   "suite": "views/app-R26.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:198 A-R26-24 ✅ 浅/深; attribution key present"
+  },
+  "A-R26-24-app-dark": {
+   "suite": "views/app-R26.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:198 A-R26-24 ✅ 浅/深; attribution key present"
+  },
+  "A-R27-10-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-10-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-14-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); sprints/DEFERRED-A.md:59 2026-10-17 A-R27-14/15u/16u 浅深重跑通过; attribution key present"
+  },
+  "A-R27-14-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); sprints/DEFERRED-A.md:59 2026-10-17 A-R27-14/15u/16u 浅深重跑通过; attribution key present"
+  },
+  "A-R27-15u-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:61 A-R27-15u / 16u 浅深 PASS; sprints/DEFERRED-A.md:59 2026-10-17 A-R27-14/15u/16u 浅深 6 张重跑通过; attribution key present"
+  },
+  "A-R27-15u-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:61 A-R27-15u / 16u 浅深 PASS; sprints/DEFERRED-A.md:59 2026-10-17 A-R27-14/15u/16u 浅深 6 张重跑通过; attribution key present"
+  },
+  "A-R27-16u-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:61 A-R27-15u / 16u 浅深 PASS; sprints/DEFERRED-A.md:59 2026-10-17 A-R27-14/15u/16u 浅深 6 张重跑通过; attribution key present"
+  },
+  "A-R27-16u-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:61 A-R27-15u / 16u 浅深 PASS; sprints/DEFERRED-A.md:59 2026-10-17 A-R27-14/15u/16u 浅深 6 张重跑通过; attribution key present"
+  },
+  "A-R27-20-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-20-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-21-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-21-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-22-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-22-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-24-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-24-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-27-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-27-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-28-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-28-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-30-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-30-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-32-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-32-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-37-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-37-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-38-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-38-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-39-app-light": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R27-39-app-dark": {
+   "suite": "views/app-R27.json",
+   "evidence": "sprints/R27-events-journey/REPORT.md:29 ✅ PASS (超阈带全部归因); attribution key present"
+  },
+  "A-R30-P05-app-light": {
+   "suite": "views/app-R30.json",
+   "evidence": "sprints/R30-global-search/REPORT.md:52 ✅ PASS (mock); sprints/R30-global-search/REPORT.md:101 复跑仍过. Note sprints/DEFERRED-A.md:29/38/39 ask re-runs after container swap / live R21/R11 wiring (regression, not a failure); attribution key present"
+  },
+  "A-R30-P05d-app-dark": {
+   "suite": "views/app-R30.json",
+   "evidence": "sprints/R30-global-search/REPORT.md:52 ✅ PASS (mock); sprints/R30-global-search/REPORT.md:101 复跑仍过. Note sprints/DEFERRED-A.md:29/38/39 ask re-runs after container swap / live R21/R11 wiring (regression, not a failure); attribution key present"
+  },
+  "A-R30-P06-app-light": {
+   "suite": "views/app-R30.json",
+   "evidence": "sprints/R30-global-search/REPORT.md:53 ✅ PASS (mock); sprints/R30-global-search/REPORT.md:101 复跑仍过. Note sprints/DEFERRED-A.md:29/38/39 ask re-runs after container swap / live R21/R11 wiring (regression, not a failure); attribution key present"
+  },
+  "A-R30-P06d-app-dark": {
+   "suite": "views/app-R30.json",
+   "evidence": "sprints/R30-global-search/REPORT.md:53 ✅ PASS (mock); sprints/R30-global-search/REPORT.md:101 复跑仍过. Note sprints/DEFERRED-A.md:29/38/39 ask re-runs after container swap / live R21/R11 wiring (regression, not a failure); attribution key present"
+  },
+  "A-R30-P07-app-light": {
+   "suite": "views/app-R30.json",
+   "evidence": "sprints/R30-global-search/REPORT.md:54 ✅ PASS (mock); sprints/R30-global-search/REPORT.md:101 复跑仍过. Note sprints/DEFERRED-A.md:29/38/39 ask re-runs after container swap / live R21/R11 wiring (regression, not a failure); attribution key present"
+  },
+  "A-R30-P07d-app-dark": {
+   "suite": "views/app-R30.json",
+   "evidence": "sprints/R30-global-search/REPORT.md:54 ✅ PASS (mock); sprints/R30-global-search/REPORT.md:101 复跑仍过. Note sprints/DEFERRED-A.md:29/38/39 ask re-runs after container swap / live R21/R11 wiring (regression, not a failure); attribution key present"
+  },
+  "A-R30-P08-app-light": {
+   "suite": "views/app-R30.json",
+   "evidence": "sprints/R30-global-search/REPORT.md:55 ✅ PASS (mock); sprints/R30-global-search/REPORT.md:101 复跑仍过. Note sprints/DEFERRED-A.md:29/38/39 ask re-runs after container swap / live R21/R11 wiring (regression, not a failure); attribution key present"
+  },
+  "A-R30-P08d-app-dark": {
+   "suite": "views/app-R30.json",
+   "evidence": "sprints/R30-global-search/REPORT.md:55 ✅ PASS (mock); sprints/R30-global-search/REPORT.md:101 复跑仍过. Note sprints/DEFERRED-A.md:29/38/39 ask re-runs after container swap / live R21/R11 wiring (regression, not a failure); attribution key present"
+  },
+  "A-R12-15-app-light": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:117 PASS 浅/深 0.029/0.030 all bands attributed; attribution key present"
+  },
+  "A-R12-15-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:117 PASS 浅/深 0.029/0.030 all bands attributed; attribution key present"
+  },
+  "A-R12-18-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:134 A-R12-18 深 PASS (0.063, toast per RD-17); attribution key present"
+  },
+  "A-R12-02-app-light": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:113 PASS 浅/深 0.036/0.036; sprints/maintenance/2026-10-14-uitext-leading.md:58 still PASS after leading fix; attribution key present"
+  },
+  "A-R12-02-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:113 PASS 浅/深 0.036/0.036; sprints/maintenance/2026-10-14-uitext-leading.md:58 still PASS after leading fix; attribution key present"
+  },
+  "A-R12-03-app-light": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:114 A-R12-03 浅 PASS 0.030; sprints/maintenance/2026-10-14-uitext-leading.md:58; attribution key present"
+  },
+  "A-R12-46-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:114 46 深 PASS 0.030; sprints/maintenance/2026-10-14-uitext-leading.md:58; attribution key present"
+  },
+  "A-R12-b9-00-app-light": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:115 PASS 浅/深 0.029/0.027; attribution key present"
+  },
+  "A-R12-b9-00-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:115 PASS 浅/深 0.029/0.027; attribution key present"
+  },
+  "A-R12-04-app-light": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/DEFERRED-A.md:53 R12-11 done 2026-10-17: A-R12-04 浅深清缓存重跑都通过 (raw 0.045/0.052); earlier sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:135 深 PASS; attribution key present"
+  },
+  "A-R12-04-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/DEFERRED-A.md:53 R12-11 done 2026-10-17: A-R12-04 浅深清缓存重跑都通过 (raw 0.045/0.052); earlier sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:135 深 PASS; attribution key present"
+  },
+  "A-R12-00-app-light": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:116 PASS 浅/深 0.039/0.039; attribution key present"
+  },
+  "A-R12-00-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:116 PASS 浅/深 0.039/0.039; attribution key present"
+  },
+  "A-R12-N10-app-light": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:134 A-R12-N10 浅 PASS (raw 0.044); attribution key present"
+  },
+  "A-R12-N10d-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:134 N10d 深 PASS (0.042); attribution key present"
+  },
+  "A-R12-N11-app-light": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:118 N11 浅 PASS 0.017; attribution key present"
+  },
+  "A-R12-N11d-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:118 N11 深 PASS 0.017 (N11d = dark view); attribution key present"
+  },
+  "A-R12-N08b-app-light": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/DEFERRED-A.md:52 R12-13 部分 done 2026-10-17 (26eb0bf32): A-R12-N08b 浅深通过; attribution key present"
+  },
+  "A-R12-N08b-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "evidence": "sprints/DEFERRED-A.md:52 R12-13 部分 done 2026-10-17 (26eb0bf32): A-R12-N08b 浅深通过; attribution key present"
+  },
+  "A-R16-01-app-light": {
+   "suite": "views/app-import-R16.json",
+   "evidence": "sprints/R16-import-and-completion/REPORT.md:62 App 8/10 PASS (all bands [raster]/[data]); only A-R16-02 未过; attribution key present"
+  },
+  "A-R16-01-app-dark": {
+   "suite": "views/app-import-R16.json",
+   "evidence": "sprints/R16-import-and-completion/REPORT.md:62 App 8/10 PASS (all bands [raster]/[data]); only A-R16-02 未过; attribution key present"
+  },
+  "A-R16-03-app-light": {
+   "suite": "views/app-import-R16.json",
+   "evidence": "sprints/R16-import-and-completion/REPORT.md:62 App 8/10 PASS (all bands [raster]/[data]); only A-R16-02 未过; attribution key present"
+  },
+  "A-R16-03-app-dark": {
+   "suite": "views/app-import-R16.json",
+   "evidence": "sprints/R16-import-and-completion/REPORT.md:62 App 8/10 PASS (all bands [raster]/[data]); only A-R16-02 未过; attribution key present"
+  },
+  "A-R16-04-app-light": {
+   "suite": "views/app-import-R16.json",
+   "evidence": "sprints/R16-import-and-completion/REPORT.md:62 App 8/10 PASS (all bands [raster]/[data]); only A-R16-02 未过; attribution key present"
+  },
+  "A-R16-04-app-dark": {
+   "suite": "views/app-import-R16.json",
+   "evidence": "sprints/R16-import-and-completion/REPORT.md:62 App 8/10 PASS (all bands [raster]/[data]); only A-R16-02 未过; attribution key present"
+  },
+  "A-R16-05-app-light": {
+   "suite": "views/app-import-R16.json",
+   "evidence": "sprints/R16-import-and-completion/REPORT.md:62 App 8/10 PASS (all bands [raster]/[data]); only A-R16-02 未过; attribution key present"
+  },
+  "A-R16-05-app-dark": {
+   "suite": "views/app-import-R16.json",
+   "evidence": "sprints/R16-import-and-completion/REPORT.md:62 App 8/10 PASS (all bands [raster]/[data]); only A-R16-02 未过; attribution key present"
+  },
+  "A-R15-06-app-light": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:34 PASS 浅/深 (sprints/R15-invite-codes/REWORK-REPORT.md:10 App 13 张全部 PASS); attribution key present"
+  },
+  "A-R15-06-app-dark": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:34 PASS 浅/深 (sprints/R15-invite-codes/REWORK-REPORT.md:10 App 13 张全部 PASS); attribution key present"
+  },
+  "A-R15-07-app-light": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:35 A-R15-07 共有（浅） PASS 0.090; attribution key present"
+  },
+  "A-R15-47-app-dark": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:36 A-R15-47 共有（深） PASS 0.092; attribution key present"
+  },
+  "A-R15-08-app-light": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:37 PASS 浅/深 (sprints/R15-invite-codes/REWORK-REPORT.md:10 App 13 张全部 PASS); attribution key present"
+  },
+  "A-R15-08-app-dark": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:37 PASS 浅/深 (sprints/R15-invite-codes/REWORK-REPORT.md:10 App 13 张全部 PASS); attribution key present"
+  },
+  "A-R15-12-app-light": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:38 PASS 浅/深 (sprints/R15-invite-codes/REWORK-REPORT.md:10 App 13 张全部 PASS); attribution key present"
+  },
+  "A-R15-12-app-dark": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:38 PASS 浅/深 (sprints/R15-invite-codes/REWORK-REPORT.md:10 App 13 张全部 PASS); attribution key present"
+  },
+  "A-R15-10-app-light": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:39 PASS 浅/深 (sprints/R15-invite-codes/REWORK-REPORT.md:10 App 13 张全部 PASS); attribution key present"
+  },
+  "A-R15-10-app-dark": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:39 PASS 浅/深 (sprints/R15-invite-codes/REWORK-REPORT.md:10 App 13 张全部 PASS); attribution key present"
+  },
+  "A-R15-13-app-light": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:40 PASS 浅/深 (sprints/R15-invite-codes/REWORK-REPORT.md:10 App 13 张全部 PASS); attribution key present"
+  },
+  "A-R15-13-app-dark": {
+   "suite": "views/app-invite-R15.json",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:40 PASS 浅/深 (sprints/R15-invite-codes/REWORK-REPORT.md:10 App 13 张全部 PASS); attribution key present"
+  },
+  "A-R24-09-app-light": {
+   "suite": "views/app-plan-A.json",
+   "evidence": "sprints/maintenance/2026-10-14-uitext-leading.md:71 A-R24-09 0.067/0.052 通过 (after orbit-text-leading fix); attribution key present"
+  },
+  "A-R24-09-app-dark": {
+   "suite": "views/app-plan-A.json",
+   "evidence": "sprints/maintenance/2026-10-14-uitext-leading.md:71 A-R24-09 0.067/0.052 通过 (after orbit-text-leading fix); attribution key present"
+  },
+  "A-R23-02a-app-light": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:201 A-R23-02a PASS 0.061/0.060; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R23-02a-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:201 A-R23-02a PASS 0.061/0.060; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R23-02b-app-light": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/maintenance/2026-10-14-uitext-leading.md:70 A-R23-02b 0.063/0.060 通过; attribution key present"
+  },
+  "A-R23-02b-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/maintenance/2026-10-14-uitext-leading.md:70 A-R23-02b 0.063/0.060 通过; attribution key present"
+  },
+  "A-R23-02c-app-light": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/maintenance/2026-10-14-uitext-leading.md:82 A-R23-02c 0.071/0.070 通过; attribution key present"
+  },
+  "A-R23-02c-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/maintenance/2026-10-14-uitext-leading.md:82 A-R23-02c 0.071/0.070 通过; attribution key present"
+  },
+  "A-R23-03-app-light": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:195 PASS 0.030/0.030; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R23-03-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:195 PASS 0.030/0.030; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R23-04-app-light": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:196 PASS 0.046/0.050; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R23-04-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:196 PASS 0.046/0.050; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R23-05-app-light": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:197 PASS 0.053/0.051 (not re-shot after leading fix, sprints/maintenance/2026-10-14-uitext-leading.md:89); attribution key present"
+  },
+  "A-R23-05-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:197 PASS 0.053/0.051 (not re-shot after leading fix, sprints/maintenance/2026-10-14-uitext-leading.md:89); attribution key present"
+  },
+  "A-R23-09a-app-light": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:198 PASS 0.037/0.040; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R23-09a-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:198 PASS 0.037/0.040; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R23-10-app-light": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:199 PASS 0.079/0.078; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R23-10-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:199 PASS 0.079/0.078; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R23-20a-app-light": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:200 PASS 0.027/0.027; attribution key present"
+  },
+  "A-R23-20a-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:200 PASS 0.027/0.027; attribution key present"
+  },
+  "A-R25-03-app-light": {
+   "suite": "views/app-plan-C.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:202 A-R25-03 PASS 0.081/0.078 (not re-shot after leading fix, sprints/maintenance/2026-10-14-uitext-leading.md:89); attribution key present"
+  },
+  "A-R25-03-app-dark": {
+   "suite": "views/app-plan-C.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:202 A-R25-03 PASS 0.081/0.078 (not re-shot after leading fix, sprints/maintenance/2026-10-14-uitext-leading.md:89); attribution key present"
+  },
+  "A-R25-09-app-light": {
+   "suite": "views/app-plan-C.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:203 PASS 0.036/0.036; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R25-09-app-dark": {
+   "suite": "views/app-plan-C.json",
+   "evidence": "sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:203 PASS 0.036/0.036; sprints/maintenance/2026-10-14-uitext-leading.md:57 still PASS; attribution key present"
+  },
+  "A-R25-10-app-light": {
+   "suite": "views/app-plan-C.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:201 A-R25-10 次の目標（独立页） 0.044/0.044 ✅; attribution key present"
+  },
+  "A-R25-10-app-dark": {
+   "suite": "views/app-plan-C.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:201 A-R25-10 次の目標（独立页） 0.044/0.044 ✅; attribution key present"
+  },
+  "A-R25-15-app-light": {
+   "suite": "views/app-plan-C.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:202 A-R25-15 0.041/0.039 ✅; attribution key present"
+  },
+  "A-R25-15-app-dark": {
+   "suite": "views/app-plan-C.json",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:202 A-R25-15 0.041/0.039 ✅; attribution key present"
+  },
+  "A-R25-16-app-light": {
+   "suite": "views/app-plan-C.json",
+   "evidence": "sprints/maintenance/2026-10-14-uitext-leading.md:72 A-R25-16 0.070/0.066 通过; attribution key present"
+  },
+  "A-R25-16-app-dark": {
+   "suite": "views/app-plan-C.json",
+   "evidence": "sprints/maintenance/2026-10-14-uitext-leading.md:72 A-R25-16 0.070/0.066 通过; attribution key present"
+  }
+ },
+ "passRegion": {
+  "A-R05-01-app-light": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "0,50,390,58 (.hhead)",
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:142,154-167; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R10 (home body; .hhead bands 0.078/0.079 are data) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-01-app-dark": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "0,50,390,58 (.hhead)",
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:142,154-167; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R10 (home body; .hhead bands 0.078/0.079 are data) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-02-app-light": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:42,140; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R11 (人脈 topbar + body) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-02-app-dark": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:42,140; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R11 (人脈 topbar + body) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-03-app-light": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:43,140; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R26 (イベント topbar + body) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-03-app-dark": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:43,140; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R26 (イベント topbar + body) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-04-app-light": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "0,50,390,128 (Task 顶栏)",
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:44,138; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R20 (Task calendar body) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-04-app-dark": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "0,50,390,128 (Task 顶栏)",
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:44,138; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R20 (Task calendar body) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-05-app-light": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "0,50,390,128 (Task 顶栏)",
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:45,138; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R20 (Task To-do body) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-05-app-dark": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "0,50,390,128 (Task 顶栏)",
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:45,138; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R20 (Task To-do body) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-07-app-light": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "0,50,390,128 (Task 顶栏)",
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:46,138; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R20 (Task メモ body) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-07-app-dark": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "0,50,390,128 (Task 顶栏)",
+    "14,756,362,62 (底栏胶囊)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:46,138; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R20 (Task メモ body) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-11-app-light": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "0,50,390,64 (マイページ顶栏)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:47,139; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R18 (マイページ body) (region shell gate passed)）；不退步按区域比"
+  },
+  "A-R05-11-app-dark": {
+   "suite": "views/app-R05.json",
+   "regions": [
+    "0,50,390,64 (マイページ顶栏)"
+   ],
+   "evidence": "sprints/R05-app-shell/REWORK-REPORT.md:47,139; R05 is a shell sprint: gate was region-cut (topbar/tabbar) and passed with [raster] (README.md:36 done; decisions §… 2026-10-12-decisions.md:142). Whole-screen body is the old screen; attribution-redesign-R05.json has only region keys, no <id>-app-<theme> keys.; no attribution key",
+   "note": "整屏正文是旧屏（whole-screen body/topbar owned by R18 (マイページ body) (region shell gate passed)）；不退步按区域比"
+  }
+ },
+ "notPassing": {
+  "A-R17-P05-app-light": {
+   "suite": "views/app-R17.json",
+   "status": "deferred-components",
+   "blocker": "Segmented 38 vs 30 (G23 / R17-17)",
+   "evidence": "sprints/R17-host-operations/REPORT.md:87 未过：待组件库 G23 (Segmented 38≠30); sprints/DEFERRED-A.md:70 R17-17 → R31a 重比; no attribution key"
+  },
+  "A-R17-P05-app-dark": {
+   "suite": "views/app-R17.json",
+   "status": "deferred-components",
+   "blocker": "Segmented 38 vs 30 (G23 / R17-17)",
+   "evidence": "sprints/R17-host-operations/REPORT.md:87 未过：待组件库 G23 (Segmented 38≠30); sprints/DEFERRED-A.md:70 R17-17 → R31a 重比; no attribution key"
+  },
+  "A-R26-13-app-light": {
+   "suite": "views/app-R26.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R26-11 / G23)",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:199 待组件库 Segmented 38 vs .seg 30 (G23); sprints/DEFERRED-A.md:17 R26-11; attribution key present"
+  },
+  "A-R26-13-app-dark": {
+   "suite": "views/app-R26.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R26-11 / G23)",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:199 待组件库 Segmented 38 vs .seg 30 (G23); sprints/DEFERRED-A.md:17 R26-11; attribution key present"
+  },
+  "A-R26-14-app-light": {
+   "suite": "views/app-R26.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R26-11 / G23)",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:199 待组件库 Segmented 38 vs .seg 30 (G23); sprints/DEFERRED-A.md:17 R26-11; attribution key present"
+  },
+  "A-R26-14-app-dark": {
+   "suite": "views/app-R26.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R26-11 / G23)",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:199 待组件库 Segmented 38 vs .seg 30 (G23); sprints/DEFERRED-A.md:17 R26-11; attribution key present"
+  },
+  "A-R26-15-app-light": {
+   "suite": "views/app-R26.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R26-11 / G23)",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:199 待组件库 Segmented 38 vs .seg 30 (G23); sprints/DEFERRED-A.md:17 R26-11; attribution key present"
+  },
+  "A-R26-15-app-dark": {
+   "suite": "views/app-R26.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R26-11 / G23)",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:199 待组件库 Segmented 38 vs .seg 30 (G23); sprints/DEFERRED-A.md:17 R26-11; attribution key present"
+  },
+  "A-R26-30-app-light": {
+   "suite": "views/app-R26.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R26-11 / G23)",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:199 待组件库 Segmented 38 vs .seg 30 (G23); sprints/DEFERRED-A.md:17 R26-11; attribution key present"
+  },
+  "A-R26-30-app-dark": {
+   "suite": "views/app-R26.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R26-11 / G23)",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:199 待组件库 Segmented 38 vs .seg 30 (G23); sprints/DEFERRED-A.md:17 R26-11; attribution key present"
+  },
+  "A-R26-30e-app-light": {
+   "suite": "views/app-R26.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R26-11 / G23)",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:200 待组件库（seg）; sprints/DEFERRED-A.md:17 R26-11; attribution key present"
+  },
+  "A-R26-30e-app-dark": {
+   "suite": "views/app-R26.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R26-11 / G23)",
+   "evidence": "sprints/R26-events-assessment-and-plan/REPORT.md:200 待组件库（seg）; sprints/DEFERRED-A.md:17 R26-11; attribution key present"
+  },
+  "A-R27-06-app-light": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-06-app-dark": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-07-app-light": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-07-app-dark": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-08-app-light": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-08-app-dark": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-09-app-light": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "FilterOption padding / Toggle size (G23b)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:31 待组件库 FilterOption / Toggle (G23b); sprints/DEFERRED-A.md:26; no attribution key"
+  },
+  "A-R27-09-app-dark": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "FilterOption padding / Toggle size (G23b)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:31 待组件库 FilterOption / Toggle (G23b); sprints/DEFERRED-A.md:26; no attribution key"
+  },
+  "A-R27-26-app-light": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-other",
+   "blocker": "expo-brightness native module (skipped) + QR payload data; also Segmented G23",
+   "evidence": "sprints/R27-events-journey/REPORT.md:33 剩 seg G23、QR 内容（真实 payload）、「画面を明るくしました」需 expo-brightness; sprints/DEFERRED-A.md:56 跳过 expo-brightness; sprints/DEFERRED-A.md:79 画板修正后重跑（同时受 seg G23 与 expo-brightness 两条影响）, R31a 预计「部分 / 交还」; no attribution key"
+  },
+  "A-R27-26-app-dark": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-other",
+   "blocker": "expo-brightness native module (skipped) + QR payload data; also Segmented G23",
+   "evidence": "sprints/R27-events-journey/REPORT.md:33 剩 seg G23、QR 内容（真实 payload）、「画面を明るくしました」需 expo-brightness; sprints/DEFERRED-A.md:56 跳过 expo-brightness; sprints/DEFERRED-A.md:79 画板修正后重跑（同时受 seg G23 与 expo-brightness 两条影响）, R31a 预计「部分 / 交还」; no attribution key"
+  },
+  "A-R27-29-app-light": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-29-app-dark": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-31-app-light": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-31-app-dark": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-33-app-light": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-33-app-dark": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-34-app-light": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-34-app-dark": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (R27 / G23)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:30 待组件库 Segmented 38 vs 30 (G23); sprints/DEFERRED-A.md:25; no attribution key"
+  },
+  "A-R27-35-app-light": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Toast (✕, position vs venue tab bar)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:32 待组件库 Toast 带 ✕、位置; sprints/DEFERRED-A.md:27; no attribution key"
+  },
+  "A-R27-35-app-dark": {
+   "suite": "views/app-R27.json",
+   "status": "deferred-components",
+   "blocker": "Toast (✕, position vs venue tab bar)",
+   "evidence": "sprints/R27-events-journey/REPORT.md:32 待组件库 Toast 带 ✕、位置; sprints/DEFERRED-A.md:27; no attribution key"
+  },
+  "A-R12-16-app-light": {
+   "suite": "views/app-add-R12.json",
+   "status": "deferred-other",
+   "blocker": "R20 メモ @人 token (D27) + local data",
+   "evidence": "sprints/DEFERRED-A.md:35 R12-12 卡在 R20 Task メモ @人 token → 重跑 A-R12-16; sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:126 待 R20 (light never captured, sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:21); no attribution key"
+  },
+  "A-R12-16-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "status": "deferred-other",
+   "blocker": "R20 メモ @人 token (D27) + local data",
+   "evidence": "sprints/DEFERRED-A.md:35 R12-12 卡在 R20 Task メモ @人 token → 重跑 A-R12-16; sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:126 待 R20 (light never captured, sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:21); no attribution key"
+  },
+  "A-R12-17-app-light": {
+   "suite": "views/app-add-R12.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization + demo-data fixture (重複候补, contract lacks source)",
+   "evidence": "sprints/DEFERRED-A.md:52 A-R12-17/18/N12 要在模拟器里输入名字…模拟器手势工具未获授权; sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:127 待演示数据 (only dark ever captured); no attribution key"
+  },
+  "A-R12-17-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization + demo-data fixture (重複候补, contract lacks source)",
+   "evidence": "sprints/DEFERRED-A.md:52 A-R12-17/18/N12 要在模拟器里输入名字…模拟器手势工具未获授权; sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:127 待演示数据 (only dark ever captured); no attribution key"
+  },
+  "A-R12-18-app-light": {
+   "suite": "views/app-add-R12.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization (light never shot)",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:21-23 light never captured ('—'); sprints/DEFERRED-A.md:52 A-R12-17/18/N12 need simulator input, gesture tool not authorized; no attribution key"
+  },
+  "A-R12-b9-04-app-light": {
+   "suite": "views/app-add-R12.json",
+   "status": "deferred-other",
+   "blocker": "not compared standalone — superseded by A-R16-04 (board is 連絡先 data)",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:128 由 A-R16-04 覆盖…名刺数据版不再单独比整屏; HANDOFF-TO-FEATURE-SPRINTS.md:282; no attribution key"
+  },
+  "A-R12-b9-04-app-dark": {
+   "suite": "views/app-add-R12.json",
+   "status": "deferred-other",
+   "blocker": "not compared standalone — superseded by A-R16-04 (board is 連絡先 data)",
+   "evidence": "sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:128 由 A-R16-04 覆盖…名刺数据版不再单独比整屏; HANDOFF-TO-FEATURE-SPRINTS.md:282; no attribution key"
+  },
+  "A-R12-N09-app-light": {
+   "suite": "views/app-add-R12.json",
+   "status": "deferred-components",
+   "blocker": "ConfirmDialog icon slot (R12-12 / G23)",
+   "evidence": "sprints/DEFERRED-A.md:21 R12-12 ConfirmDialog 没有图标位 → 重跑 A-R12-N09; sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:129; no attribution key"
+  },
+  "A-R12-N12-app-light": {
+   "suite": "views/app-add-R12.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization + sample account (never captured)",
+   "evidence": "sprints/DEFERRED-A.md:52 N12 要在模拟器里输入…手势工具未获授权; sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:34 未截, sprints/R12-add-cards-and-manual/REWORK-REPORT-app.md:129 需样本账号; no attribution key"
+  },
+  "A-R16-02-app-light": {
+   "suite": "views/app-import-R16.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (G23 / R16-01)",
+   "evidence": "sprints/R16-import-and-completion/REPORT.md:62 未过 A-R16-02 浅/深 — Segmented 高 38 (kit .seg 30), 归组件库 G23; sprints/DEFERRED-A.md:20; no attribution key"
+  },
+  "A-R16-02-app-dark": {
+   "suite": "views/app-import-R16.json",
+   "status": "deferred-components",
+   "blocker": "Segmented height 38 vs 30 (G23 / R16-01)",
+   "evidence": "sprints/R16-import-and-completion/REPORT.md:62 未过 A-R16-02 浅/深 — Segmented 高 38 (kit .seg 30), 归组件库 G23; sprints/DEFERRED-A.md:20; no attribution key"
+  },
+  "A-R15-07-app-dark": {
+   "suite": "views/app-invite-R15.json",
+   "status": "unknown",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:35-36 07 is the light board (b11 #7), dark counterpart is A-R15-47; 07 dark never run, no attribution key — view lacks themes:[\"light\"]; no attribution key"
+  },
+  "A-R15-47-app-light": {
+   "suite": "views/app-invite-R15.json",
+   "status": "unknown",
+   "evidence": "sprints/R15-invite-codes/REWORK-REPORT.md:35-36 47 is the dark board (b11 #47); 47 light never run, no attribution key — view lacks themes:[\"dark\"]; no attribution key"
+  },
+  "A-R24-01-app-light": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework: arrow 13 vs ICON_SPEC 16, todayChance lacks type field (contract), 1–2pt offset",
+   "evidence": "sprints/DEFERRED-A.md:50 2026-10-17 清缓存重比 A-R24-01 0.067/0.066 仍未过（目标行「（3億円）」与箭头 13 vs 16、todayChance 无种类字段、整体 1–2pt 偏移）; no attribution key"
+  },
+  "A-R24-01-app-dark": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework: arrow 13 vs ICON_SPEC 16, todayChance lacks type field (contract), 1–2pt offset",
+   "evidence": "sprints/DEFERRED-A.md:50 2026-10-17 清缓存重比 A-R24-01 0.067/0.066 仍未过（目标行「（3億円）」与箭头 13 vs 16、todayChance 无种类字段、整体 1–2pt 偏移）; no attribution key"
+  },
+  "A-R24-04-app-light": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework: same as A-R24-01",
+   "evidence": "sprints/DEFERRED-A.md:50 A-R24-04 0.069/0.068 仍未过（同上）; no attribution key"
+  },
+  "A-R24-04-app-dark": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework: same as A-R24-01",
+   "evidence": "sprints/DEFERRED-A.md:50 A-R24-04 0.069/0.068 仍未过（同上）; no attribution key"
+  },
+  "A-R24-06a-app-light": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization",
+   "evidence": "sprints/DEFERRED-A.md:50 A-R24-06a/06c 要滚到「確認待ち」：模拟器手势工具未获授权; no attribution key"
+  },
+  "A-R24-06a-app-dark": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization",
+   "evidence": "sprints/DEFERRED-A.md:50 A-R24-06a/06c 要滚到「確認待ち」：模拟器手势工具未获授权; no attribution key"
+  },
+  "A-R24-06c-app-light": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization",
+   "evidence": "sprints/DEFERRED-A.md:50 A-R24-06a/06c 要滚到「確認待ち」：模拟器手势工具未获授权; no attribution key"
+  },
+  "A-R24-06c-app-dark": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization",
+   "evidence": "sprints/DEFERRED-A.md:50 A-R24-06a/06c 要滚到「確認待ち」：模拟器手势工具未获授权; no attribution key"
+  },
+  "A-R24-05-app-light": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 A-R24-05; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R24-05-app-dark": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 A-R24-05; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R24-07-app-light": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework (header card cumulative 3–4pt shift; unattributed bands)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R24-07 0.113/0.109 … 同屏还有非数据差 … 需 App 像素返工轮逐带处理; sprints/maintenance/2026-10-14-uitext-leading.md:73; no attribution key"
+  },
+  "A-R24-07-app-dark": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework (header card cumulative 3–4pt shift; unattributed bands)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R24-07 0.113/0.109 … 同屏还有非数据差 … 需 App 像素返工轮逐带处理; sprints/maintenance/2026-10-14-uitext-leading.md:73; no attribution key"
+  },
+  "A-R24-12b-app-light": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization (board has post-skip toast)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R24-12b（真做一次スキップ）需模拟器手势授权; sprints/maintenance/2026-10-14-uitext-leading.md:74; no attribution key"
+  },
+  "A-R24-12b-app-dark": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization (board has post-skip toast)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R24-12b（真做一次スキップ）需模拟器手势授权; sprints/maintenance/2026-10-14-uitext-leading.md:74; no attribution key"
+  },
+  "A-R24-12-app-light": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 A-R24-12; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R24-12-app-dark": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 A-R24-12; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R24-13-app-light": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 A-R24-13; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R24-13-app-dark": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 A-R24-13; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R24-16-app-light": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 A-R24-16; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R24-16-app-dark": {
+   "suite": "views/app-plan-A.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 A-R24-16; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R23-01-app-light": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization / Japanese input (fixture prefill)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-01 … 需模拟器手势授权; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:228 画板是已输入+聚焦态，模拟器输不进日文; no attribution key"
+  },
+  "A-R23-01-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization / Japanese input (fixture prefill)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-01 … 需模拟器手势授权; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:228 画板是已输入+聚焦态，模拟器输不进日文; no attribution key"
+  },
+  "A-R23-08-app-light": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization (+ §9.2-2 line-wrap)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-08 / N17a（手点）需模拟器手势授权; sprints/maintenance/2026-10-14-uitext-leading.md:75; no attribution key"
+  },
+  "A-R23-08-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization (+ §9.2-2 line-wrap)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-08 / N17a（手点）需模拟器手势授权; sprints/maintenance/2026-10-14-uitext-leading.md:75; no attribution key"
+  },
+  "N17a-app-light": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization + needs-rework",
+   "evidence": "sprints/DEFERRED-A.md:51 N17a 0.103/0.083 非数据差 + N17a（手点）需模拟器手势授权; sprints/maintenance/2026-10-14-uitext-leading.md:76; no attribution key"
+  },
+  "N17a-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization + needs-rework",
+   "evidence": "sprints/DEFERRED-A.md:51 N17a 0.103/0.083 非数据差 + N17a（手点）需模拟器手势授权; sprints/maintenance/2026-10-14-uitext-leading.md:76; no attribution key"
+  },
+  "A-R23-11-app-light": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework (answer-bubble/plan-name length shifts, per-band attribution)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-11 0.131/0.128 … 有非数据差，不能整页记 [data]，需 App 像素返工轮逐带处理; no attribution key"
+  },
+  "A-R23-11-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework (answer-bubble/plan-name length shifts, per-band attribution)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-11 0.131/0.128 … 有非数据差，不能整页记 [data]，需 App 像素返工轮逐带处理; no attribution key"
+  },
+  "A-R23-12-app-light": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework (answer-bubble/plan-name length shifts, per-band attribution)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-12 0.163/0.143 … 有非数据差，不能整页记 [data]，需 App 像素返工轮逐带处理; no attribution key"
+  },
+  "A-R23-12-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework (answer-bubble/plan-name length shifts, per-band attribution)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-12 0.163/0.143 … 有非数据差，不能整页记 [data]，需 App 像素返工轮逐带处理; no attribution key"
+  },
+  "A-R23-15-app-light": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework (answer-bubble/plan-name length shifts, per-band attribution)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-15 0.177/0.130 … 有非数据差，不能整页记 [data]，需 App 像素返工轮逐带处理; no attribution key"
+  },
+  "A-R23-15-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework (answer-bubble/plan-name length shifts, per-band attribution)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-15 0.177/0.130 … 有非数据差，不能整页记 [data]，需 App 像素返工轮逐带处理; no attribution key"
+  },
+  "A-R23-16-app-light": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework (answer-bubble/plan-name length shifts, per-band attribution)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-16 0.183/0.137 … 有非数据差，不能整页记 [data]，需 App 像素返工轮逐带处理; no attribution key"
+  },
+  "A-R23-16-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "needs-rework (answer-bubble/plan-name length shifts, per-band attribution)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-16 0.183/0.137 … 有非数据差，不能整页记 [data]，需 App 像素返工轮逐带处理; no attribution key"
+  },
+  "A-R23-17-app-light": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization / Japanese input",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-01/17 需模拟器手势授权; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:231 需改名（输日文）; no attribution key"
+  },
+  "A-R23-17-app-dark": {
+   "suite": "views/app-plan-B.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization / Japanese input",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R23-01/17 需模拟器手势授权; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:231 需改名（输日文）; no attribution key"
+  },
+  "A-R25-01-app-light": {
+   "suite": "views/app-plan-C.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 app-plan-C A-R25-01; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R25-01-app-dark": {
+   "suite": "views/app-plan-C.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 app-plan-C A-R25-01; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R25-05-app-light": {
+   "suite": "views/app-plan-C.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization / Japanese input (never compared)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R25-05（输日文）需模拟器手势授权; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:232 未比; no attribution key"
+  },
+  "A-R25-05-app-dark": {
+   "suite": "views/app-plan-C.json",
+   "status": "deferred-other",
+   "blocker": "simulator gesture authorization / Japanese input (never compared)",
+   "evidence": "sprints/DEFERRED-A.md:51 A-R25-05（输日文）需模拟器手势授权; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:232 未比; no attribution key"
+  },
+  "A-R25-08-app-light": {
+   "suite": "views/app-plan-C.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 app-plan-C A-R25-08; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R25-08-app-dark": {
+   "suite": "views/app-plan-C.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 app-plan-C A-R25-08; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R25-11-app-light": {
+   "suite": "views/app-plan-C.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 app-plan-C A-R25-11; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R25-11-app-dark": {
+   "suite": "views/app-plan-C.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 app-plan-C A-R25-11; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R25-12-app-light": {
+   "suite": "views/app-plan-C.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 app-plan-C A-R25-12; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  },
+  "A-R25-12-app-dark": {
+   "suite": "views/app-plan-C.json",
+   "status": "deferred-components",
+   "blocker": "Sheet / Dialog / Popover (R24-05c)",
+   "evidence": "sprints/DEFERRED-A.md:19 R24-05c App Sheet/Dialog/Popover → 重跑 app-plan-C A-R25-12; sprints/R25-plan-review-goals-cleanup/REWORK-REPORT-app.md:206; no attribution key"
+  }
+ }
+}
