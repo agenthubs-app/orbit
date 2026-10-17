@@ -17,11 +17,19 @@
 //               node scripts/visual/compare-redesign.mjs --suite scripts/visual/views/web-R07.json --only W-R07-01L,W-R07-01H \
 //                 --out ~/orbit-sprint-evidence/redesign/R07/run-03 [--changed [ref]] [--workers 3] [--no-cache]
 //
-// 退出码：0 通过；2 用法错误；3 画板 / 元素找不到；5 有超阈值带未以 [data] / [raster] 归因；6 整屏 raw > 0.02（批量取各张最大值）。
+//   逐件对照（R31a，R31b 直接用）：
+//     列出规格格：node scripts/visual/compare-redesign.mjs --list-cells --design 01-system.html [--section c-confirm] [--theme dark]
+//     比一格：    ... --design 01-system.html --section c-ctl --cell 0 --theme light --app http://localhost:3200/showcase/components/c-ctl-0 \
+//                 --region "0,0,399,180" --width 1440 --out <dir> --grid 30 [--design-stage keep]
+//                 设计侧裁成该格（整数对齐）；实现侧按 --region 裁（整数 CSS px，视口坐标），或 --app-clip "<选择器>" 按元素外接矩形裁；
+//                 --design-region 用于画板区域对比时分侧裁。
+//   [contrast]：归因理由以 [contrast] 开头的带按 contrast-substitutions.json 逐像素判定（RD-26）。
+//
+// 退出码：0 通过；2 用法错误；3 画板 / 元素找不到；5 有超阈值带未以 [data] / [raster] / [contrast] 归因；6 整屏 raw > --raw-threshold（RD-29 起默认不卡 raw；批量取各张最大值）。
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { chromium } from "playwright";
-import { STYLE_PROPS, changedFiles, collectStyles, compareImages, crop, designCache, diffStyles, extractBoardSource, formatBandReport, formatStyleDiff, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, pool, printSummary, readPng, readSecret, selectChanged, selectOnly, writePng } from "./redesign-pixel-lib.mjs";
+import { STYLE_PROPS, changedFiles, collectStyles, compareImages, cropPair, parseRegion, specCellsInPage, designCache, diffStyles, extractBoardSource, formatBandReport, formatStyleDiff, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, pool, printSummary, readPng, readSecret, selectChanged, selectOnly, writePng } from "./redesign-pixel-lib.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const designBase = args["design-base"] ?? "http://localhost:3320/redesign-2026-10/";
@@ -66,6 +74,20 @@ if (xb !== -1) {
   await d.ctx.close();
   if (args.to) { writeFileSync(home(args.to), html); console.log(`#${d.board.index} ${d.board.label}（${d.board.kind}）→ ${home(args.to)}（${html.length} 字符）`); }
   else process.stdout.write(html);
+  await exit(0);
+}
+
+if (args["list-cells"]) {
+  const { page } = await openDesign(args, 1700);
+  const titles = args.section ? [args.section] : await page.evaluate(() => [...document.querySelectorAll(".section-title")].map((t) => t.id || (t.querySelector("h2")?.textContent ?? "").trim()));
+  const all = [];
+  for (const section of titles) {
+    const r = await page.evaluate(specCellsInPage, { section, theme: args.theme === "dark" ? "dark" : "light" });
+    if (!r) { console.error(`section not found: ${section}`); continue; }
+    all.push(r);
+    if (!args.json) for (const u of r.units) console.log(`${r.section}\t#${u.index}\t${u.kind}\t${u.rect.slice(2).map((n) => Math.round(n)).join("x")}\t${u.mini ? "mini（不比）" : u.themed ? "duo" : "-"}\t${u.cap}`);
+  }
+  if (args.json) console.log(JSON.stringify(all, null, 2));
   await exit(0);
 }
 
@@ -293,9 +315,70 @@ async function finishApp(v, a, height) {
 
 const VIEWPORT_H = { web: 960, web1024: 880, phone: 844, mweb390: 844 };
 
+// 逐件对照（R31a）：设计侧 = 01-system 第 n 格（1x，整数对齐后裁剪，带缓存）；实现侧 = 视口截图按 --region 裁。
+async function runSpecView(v) {
+  const t0 = Date.now();
+  mkdirSync(v.out, { recursive: true });
+  const stage = v["design-stage"] === "keep" ? "keep" : "flat";
+  const hash = !/^https?:/.test(v.design) && v.cache !== false ? designInputsHash(DESIGN_DIR, v.design) : null;
+  const cache = hash ? designCache({ v: 1, spec: true, hash, design: v.design, section: v.section, cell: Number(v.cell ?? 0), stage, theme: v.theme }) : null;
+  let board = cache?.meta()?.board ?? null;
+  let designPng = board ? cache.png("cell") : null;
+  const cached = Boolean(designPng);
+  if (!designPng) {
+    const { ctx, page } = await openDesign(v, 1700);
+    try {
+      const cell = await page.evaluate(specCellsInPage, { section: String(v.section), theme: v.theme, cell: Number(v.cell ?? 0), stage }).catch((error) => { throw new Stop(3, error.message.split("\n")[0].replace(/^page\.evaluate: (Error: )?/, "")); });
+      if (!cell) throw new Stop(3, `spec section not found: ${v.section}（先用 --list-cells 看清单）`);
+      await page.waitForTimeout(300);
+      const [x, y, w, h] = cell.rect;
+      await page.screenshot({ path: join(v.out, "design.png"), clip: { x, y, width: w, height: h }, fullPage: true, animations: "disabled" });
+      board = { spec: true, design: v.design, section: cell.section, cell: cell.index, kind: cell.kind, cap: cell.cap, rect: cell.rect, theme: v.theme };
+      designPng = readPng(join(v.out, "design.png"));
+      if (cache) { cache.saveMeta({ board }); cache.savePng("cell", join(v.out, "design.png")); }
+    } finally {
+      await ctx.close();
+    }
+  } else writePng(join(v.out, "design.png"), designPng);
+  const region = v.region ? parseRegion(v.region) : null;
+  const a = await shootApp(v, Number(v.height ?? 900));
+  // --app-clip "<选择器>"：实现侧直接截该元素（Playwright 先滚到可见处），代替手写 --region（展示页小节位置不固定时用）。
+  let app, appPng;
+  if (v["app-clip"]) {
+    const el = a.page.locator(v["app-clip"]).first();
+    if (!(await el.count().catch(() => 0))) { await a.ctx.close(); throw new Stop(3, `--app-clip 找不到元素：${v["app-clip"]}`); }
+    await a.page.waitForTimeout(Number(v["app-wait"] ?? 800));
+    await el.screenshot({ path: join(v.out, "app.png"), animations: "disabled" });
+    app = { finalUrl: a.page.url() };
+    appPng = readPng(join(v.out, "app.png"));
+    await a.ctx.close();
+  } else {
+    app = await finishApp({ ...v, fullPage: false, styleDiff: false }, a, Number(v.height ?? 900));
+    appPng = region ? cropPair({ design: designPng, app: app.png, region }).app : app.png;
+  }
+  writePng(join(v.out, "app.png"), appPng);
+  if (appPng.width !== designPng.width || appPng.height !== designPng.height) console.warn(`warn: [${v.key}] 实现 ${appPng.width}x${appPng.height} ≠ 规格格 ${designPng.width}x${designPng.height}；多出 / 缺的部分按不一致计`);
+  const result = compareImages({
+    design: designPng,
+    app: appPng,
+    out: v.out,
+    grid: v.grid && v.grid !== "false" ? (v.grid === "true" || v.grid === true ? 30 : Number(v.grid)) : 0,
+    gridDy: Number(v["grid-dy"] ?? 12),
+    threshold: Number(v["grid-threshold"] ?? 0.02),
+    // RD-29：Web 与 App（决定表 §20）同一判定，所有超阈值带都归因即通过，raw 只作参考。
+    rawThreshold: v["raw-threshold"] === undefined ? Infinity : Number(v["raw-threshold"]),
+    attributionPath: v.attribution,
+    viewKey: v.key,
+    meta: { crop: v.crop === true || v.crop === "true", view: v.key, design: v.design, board, app: v.app, finalUrl: app.finalUrl, width: v.width, theme: v.theme, region: region ? region.join(",") : null, appClip: v["app-clip"] ?? null, designCached: cached },
+  });
+  writeFileSync(join(v.out, "board.json"), `${JSON.stringify(board, null, 2)}\n`);
+  return { ...result, styleDiff: null, key: v.key, triptych: join(v.out, "triptych.png"), out: v.out, ms: Date.now() - t0 };
+}
+
 // 一张图：设计稿走缓存（键 = 画板 + 设计文件与 kit 的内容哈希 + 宽度 + 主题 + 截图参数，渲染高度另作后缀）。
 // 命中元数据时先截实现、算出渲染高度，再找同高度的设计截图；都命中就完全不开设计稿页面。
 async function runView(v) {
+  if (v.section !== undefined) return runSpecView(v);
   const t0 = Date.now();
   mkdirSync(v.out, { recursive: true });
   const local = !/^https?:/.test(v.design) && v.cache !== false;
@@ -322,10 +405,9 @@ async function runView(v) {
   if (designPng.width !== v.width) console.warn(`warn: [${v.key}] 画板宽 ${designPng.width} ≠ --width ${v.width}（${board.kind}）；比对只取两者较窄的宽度`);
   const app = await finishApp(v, a, tall === "vp" ? viewportH : tall);
   // --region "x,y,w,h"：只比画面里的一块（导航壳的左栏 / 主标题区 / 右栏单独验收时用）；全屏数字仍以不带本项为准。
-  if (v.region) {
-    const [rx, ry, rw, rh] = String(v.region).split(",").map(Number);
-    designPng = crop(designPng, rx, ry, rw, rh);
-    app.png = crop(app.png, rx, ry, rw, rh);
+  // --design-region（R31a）：另给时设计侧按它裁、实现侧按 --region 裁（两侧不在同一位置时用，DEFERRED-A R30-02）。
+  if (v.region || v["design-region"]) {
+    ({ design: designPng, app: app.png } = cropPair({ design: designPng, app: app.png, region: v.region ? parseRegion(v.region) : null, designRegion: v["design-region"] ? parseRegion(v["design-region"]) : null }));
     writePng(join(v.out, "design.png"), designPng);
     writePng(join(v.out, "app.png"), app.png);
   }
@@ -336,6 +418,8 @@ async function runView(v) {
     grid: v.grid && v.grid !== "false" ? (v.grid === "true" || v.grid === true ? 100 : Number(v.grid)) : 0,
     gridDy: Number(v["grid-dy"] ?? 12),
     threshold: Number(v["grid-threshold"] ?? 0.02),
+    // RD-29（2026-10-18）：Web 与 App（决定表 §20）同一判定——所有超阈值带都归因即通过，整屏 raw 只作参考；--raw-threshold 0.02 恢复旧卡法。
+    rawThreshold: v["raw-threshold"] === undefined ? Infinity : Number(v["raw-threshold"]),
     attributionPath: v.attribution,
     viewKey: v.key,
     meta: { crop: v.crop === true || v.crop === "true", view: v.key, design: v.design, board, app: v.app, finalUrl: app.finalUrl, width: v.width, theme: v.theme, fullPage: v.fullPage, region: v.region ?? null, naturalHeight: { design: designNatural, app: a.naturalHeight }, renderHeight: tall, designCached: cached },
@@ -367,7 +451,8 @@ try {
     for (const key of ["app", "out"]) if (!args[key]) { console.error(`usage error: --${key} 必填`); await exit(2); }
     const v = viewFrom(args);
     v.out = home(args.out);
-    v.key = args["grid-view"] ?? `${args.board ?? args["board-index"]}-${v.width}-${v.theme}`;
+    v.key = args["grid-view"] ?? `${args.section !== undefined ? `${args.section}-${args.cell ?? 0}` : args.board ?? args["board-index"]}-${v.width}-${v.theme}`;
+    if (typeof v.app === "string") v.app = v.app.replaceAll("{theme}", v.theme);
     const r = await runView(v);
     console.log(`raw=${r.raw} design=${r.designSize.join("x")} app=${r.appSize.join("x")}` + (r.band ? ` bands=${r.cells} over=${r.overBands} unattributed=${r.unattributed}` : "") + (r.missing.length ? ` missing=${r.missing.length}` : "") + ` ${r.pass ? "PASS" : "FAIL"}${r.designCached ? " (design cached)" : ""} out=${v.out}`);
     for (const m of r.missing.slice(0, 5)) console.warn(`warn: ⚠ 缺块 x=${m.x} y=${m.y} ${m.w}x${m.h}：设计稿这块有内容、实现是空的（raw 低也要看 triptych）`);

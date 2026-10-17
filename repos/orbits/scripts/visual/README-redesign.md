@@ -6,7 +6,9 @@
 | --- | --- |
 | `compare-redesign.mjs` | Web：按画板定位设计稿 `.web` / `.phone.mweb` 画框截图，同宽同主题截实现的完整页面（含导航壳），整屏 raw + `--grid` 逐带比对 + 归因门禁 |
 | `compare-redesign-app.mjs` | App：iOS 模拟器真实截图（不用 react-native-web）↔ 设计稿 App 画板（`.phone` 390×844pt），按点宽缩放对齐后同样比对 |
-| `redesign-pixel-lib.mjs` | 两者共用：参数解析、读密码、PNG 缩放 / 裁剪、比对与门禁、三联图、缺块检测、设计稿缓存、画面清单与筛选、终端摘要 |
+| `redesign-pixel-lib.mjs` | 两者共用：参数解析、读密码、PNG 缩放 / 裁剪（含分侧 `--region`）、比对与门禁、`[contrast]` 判定、规格格定位、三联图、缺块检测、设计稿缓存、画面清单与筛选、终端摘要 |
+| `contrast-substitutions.json` | RD-26 `[contrast]` 允许的颜色替换（设计原色 → 实现加深文字色，同一底色），每条对应 `tokens.json` `color.contrast` 的一对 |
+| `pass-baseline-app.json` | R31a：App 已通过画面清单（「不退步」对照基线） |
 | `board-preflight.mjs` + `board-preflight-lib.mjs` | 画板预检：写界面前读画板，列 token 缺口 / 近似值、画板数字不自洽、数据来源清单、宽度与主题、中途状态（见「画板预检工具」） |
 | `views/<端>-<Sprint>.json` | 画面清单（批量门禁）：每个画面的参数 + 它依赖的源文件（`--changed` 用）；键 `<id>-<width>-<theme>` 与归因文件一致 |
 
@@ -121,6 +123,27 @@ node scripts/visual/compare-redesign.mjs --extract-board web.html "ホーム新�
 
 **App**：文字表与 `--crop` 同 Web；不做样式比对（模拟器里没有 DOM）。
 
+## 逐件对照：01-system 规格格（R31a，2026-10-18；R31b 与以后改组件都用）
+
+组件按 `01-system.html` 的**规格格**逐像素比，不再只靠整屏画面。
+
+- **规格格**：`#<sec2 id>`（c-toast … n-add；第一部分没有 id 的小节写标题子串）之后、下一个小节标题之前的每个 `.comp` 演示区（不截 `.doccard`）；演示区里有 `.duo` 就按主题取 `.stage[data-theme]`，其中每个 `.cell` 一格，没有 `.cell` 时整块 stage 内容一格。裁剪框 = 格里除标题（`.cap` / `.stage-t`）外的内容。含 `mini()`（`transform: scale`）的格**不比**（工具拒绝）。设计侧准备时把 `.stage` 的文档雾面底换成纯 `--bg`（`--design-stage keep` 保留），并把文档按小数部分挪到整数坐标。逻辑在 lib `specCellsInPage`。
+- **列格**：`node scripts/visual/compare-redesign.mjs --list-cells --design 01-system.html [--section c-confirm] [--theme dark] [--json]`（每行：小节、格序号、类型、宽×高、duo / mini、格标题）。
+- **App**：清单项写 `{ id, design: "01-system.html", section, cell, path, region }`，样例 `views/app-R31a-components.json`。实现侧 = 展示页小节 `/showcase/components/<section>-<cell>?theme={theme}`（`{theme}` 按主题展开），截图**缩到设备点、不按 390 缩**（组件按真实点数比），按 `region`（设备点、整数）裁。弹层随屏幕定位时 `region` 的 x 写 `c`（居中）、y 写 `c` / `b`（居中 / 贴底），按设备尺寸换算（16e 390×844、17 Pro 402×874 都对）。
+  - **跳转 `path`** = 开发开关 open-path：脚本先结束 App，把路径写进 App 数据容器里 AsyncStorage 的 `orbit.dev.openPath`，再启动 App；不走 `simctl openurl`（系统确认框）。Metro 要带 `EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=open-path`（不带 `CI=1`）；开发包连别的 Metro 端口用 `xcrun simctl spawn <udid> defaults write app.agenthubs.orbit RCT_jsLocation -string "localhost:<端口>"`。带 `path` 时默认等 8 秒（`--wait` 改；冷启动首次打包要更久）。`--bundle-id` 默认 `app.agenthubs.orbit`。
+  - ```bash
+    node scripts/visual/compare-redesign-app.mjs --suite scripts/visual/views/app-R31a-components.json --simulator <udid> --out <dir> [--only A-R31a-c-confirm-0] [--wait 10000]
+    ```
+  - 整屏画板也能用 `--region` / `--design-region`：只给 `--region` 两侧同一块（老用法）；另给 `--design-region` 时设计侧按它、实现侧按 `--region` 各自裁（两侧不在同一位置；DEFERRED-A R30-02）。
+- **Web**：`compare-redesign.mjs` 同样认 `--section` / `--cell`（1x，带缓存）；实现侧取视口截图后按 `--region`（CSS px、整数、视口坐标）裁，或 `--app-clip "<选择器>"` 直接截该元素（Playwright 先滚到可见处）。判定按 RD-29（与 App 同：所有超阈值带都归因即通过，raw 只作参考；`--raw-threshold 0.02` 可恢复旧卡法）。规格格默认 `--grid 30`。
+  - ```bash
+    node scripts/visual/compare-redesign.mjs --design 01-system.html --section c-ai --cell 0 --theme light \
+      --app "http://localhost:<端口>/showcase/components/c-ai-0" --region "0,0,280,120" --width 1440 --grid 30 --out <dir>
+    # 清单：{ "id": "W-R31b-c-ai-0", "design": "01-system.html", "section": "c-ai", "cell": 0, "app": "/showcase/components/c-ai-0?theme={theme}", "region": "0,0,280,120", "width": 1440 }
+    ```
+  - 实现侧要和设计侧一样落在**整数坐标**：2026-10-18 用同一份 01-system 自比，实现侧不对齐时 c-ai-0 仍有 0.02–0.03 的带（小数坐标栅格化），对齐后 raw = 0。展示页小节请画在整数坐标、固定宽度。
+- **`[contrast]`（RD-26）**：归因理由以 `[contrast]` 开头的带，工具逐像素判定，不是写了就算。允许的替换只在 `contrast-substitutions.json`（`{ design, impl, bg, contrast: [impl, bg] }`；新增替换对必须先进 `tokens.json` 的 `color.contrast`，`tests/scripts/redesign-pixel-components.test.ts` 检查两份一致）。算法（lib `checkContrastBand`）：该带里每个不一致像素（门禁同口径，单通道差 ≥24，按该带最佳 dy 对齐），找一条替换和一个 α，使「设计像素 ≈ 原色与底色按 α 混合」且「实现像素 ≈ 加深色与同一底色按同一 α 混合」（两侧 ΔE76 ≤ `CONTRAST_DELTA_E` = 4，α 步长 1/`CONTRAST_ALPHA_STEPS` = 1/64）；解释不了的像素超过带内不一致像素的 `CONTRAST_MAX_UNEXPLAINED` = 5% 判该带不通过。文字表的归因列显示 `[contrast]` 或 `[contrast]✗ 解释不了 x%（n/m px）`；`cells.json` 每带带 `contrast` 明细（各替换解释的像素数）。深色主题里加深版与原值相同的替换自动跳过。
+
 ## 画板预检工具：`board-preflight.mjs`（2026-10-14）
 
 新页面**写界面之前**先跑（HOW-TO §8「画板预检」）：读设计稿画板的 DOM 与计算样式，把以后会变成返工的问题先列出来。直接 `file://` 渲染设计稿，不需要设计稿服务和 dev server；只读，不改任何文件。纯函数在 `board-preflight-lib.mjs`，单测 `tests/scripts/board-preflight.test.ts`。
@@ -184,8 +207,8 @@ node scripts/visual/compare-redesign-app.mjs --simulator <16e-udid> \
 
 ## 门禁与归因
 
-- **整屏 raw ≤ 0.02**。两侧高度不同时，多出来的那一截按全部不一致计入（0918 只比较短的一侧，会让「实现少了一整段」的屏数字反而好看）；带同样按设计稿高度切，设计稿有而实现没有的那一截判 1。
-- **`--grid [带高，默认 100]`**：整宽带逐带比对，写 `<out>/cells.json`；超 `--grid-threshold`（默认 0.02）的带必须在 `--attribution` 文件的 `--grid-view` 键下具名，**且理由必须以 `[data]`（数据文字不同）或 `[raster]` 开头**（iOS 3x / Chrome 的字形、图标栅格化残差与 1–3px 折行偏移——位置、字号、字重一致，只是像素不同；用户 2026-10-12 定，2026-10-14 进脚本）。0918 的 `[recorded]` / `[shared]` 放行理由在改版里一律不认。
+- **整屏 raw ≤ 0.02**（~~硬卡~~ → 两端自决定表 §20 / RD-29 起只作参考，通过 = 所有超阈值带都有正当归因）。两侧高度不同时，多出来的那一截按全部不一致计入（0918 只比较短的一侧，会让「实现少了一整段」的屏数字反而好看）；带同样按设计稿高度切，设计稿有而实现没有的那一截判 1。
+- **`--grid [带高，默认 100]`**：整宽带逐带比对，写 `<out>/cells.json`；超 `--grid-threshold`（默认 0.02）的带必须在 `--attribution` 文件的 `--grid-view` 键下具名，**且理由必须以 `[data]`（数据文字不同）、`[raster]` 或 `[contrast]`（RD-26，按替换清单逐像素判定，见「逐件对照」）开头**（iOS 3x / Chrome 的字形、图标栅格化残差与 1–3px 折行偏移——位置、字号、字重一致，只是像素不同；用户 2026-10-12 定，2026-10-14 进脚本）。0918 的 `[recorded]` / `[shared]` 放行理由在改版里一律不认。
 - 归因文件放 `scripts/visual/attribution-redesign-<Sprint>.json`，格式：
 
   ```json
@@ -196,7 +219,7 @@ node scripts/visual/compare-redesign-app.mjs --simulator <16e-udid> \
   ```
 
   理由必须是看过该带 design / app 对照之后写下的；排版、颜色、间距、字号、字重、圆角、阴影、图标、元素有无和顺序有任何不同，都不是 `[data]`，是缺陷，修完再跑。
-- 退出码：0 通过；2 用法 / 登录错误；3 画板找不到；5 有超阈值带未以 `[data]` 归因；6 整屏 raw > 0.02。
+- 退出码：0 通过；2 用法 / 登录错误；3 画板 / 规格格找不到；5 有超阈值带未以 `[data]` / `[raster]` / `[contrast]`（判定通过）归因；6 整屏 raw > `--raw-threshold`（两端自 RD-29 / 决定表 §20 起默认不卡 raw，raw 只作参考；`--raw-threshold 0.02` 恢复旧卡法）。
 
 ## 输出
 

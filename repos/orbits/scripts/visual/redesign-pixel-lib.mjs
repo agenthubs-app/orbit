@@ -2,8 +2,9 @@
 // 2026-10 改版像素门禁（RD-16 修订，用户决定 2026-10-11）的共用部分：
 // 参数解析、从 .env.local 读密码、PNG 缩放、整屏 raw + --grid 逐带比对 + 归因门禁。
 // 比对口径与 compare-0918.mjs 完全一致（单通道差 ≥24 记一个不一致像素；逐带 ±dy 搜索取最小值），
-// 区别只在归因：改版只认 `[data]`（数据文字不同）与 `[raster]`（iOS 3x / Chrome 的字形、图标栅格化残差与 1–3px 折行偏移，
-// 用户 2026-10-12 定、2026-10-14 进脚本）两类理由，其余前缀一律视为未归因。
+// 区别只在归因：改版只认 `[data]`（数据文字不同）、`[raster]`（iOS 3x / Chrome 的字形、图标栅格化残差与 1–3px 折行偏移，
+// 用户 2026-10-12 定、2026-10-14 进脚本）与 `[contrast]`（RD-26，2026-10-18：设计稿原色 → 实现按 RD-05 用加深文字色，
+// 只限 contrast-substitutions.json 里的替换，由 checkContrastBand 逐像素判定，不是写了就算）三类理由，其余前缀一律视为未归因。
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -93,6 +94,7 @@ export function resize(src, width, height) {
 
 // 裁成 width × height（超出的部分丢掉，不足的部分不补）。
 export function crop(src, x, y, width, height) {
+  if (x < 0 || y < 0 || x >= src.width || y >= src.height) throw Object.assign(new Error(`裁剪框 ${x},${y},${width},${height} 在图外（图 ${src.width}x${src.height}）`), { code: 2 });
   const w = Math.min(width, src.width - x);
   const h = Math.min(height, src.height - y);
   const dst = new PNG({ width: w, height: h });
@@ -102,6 +104,33 @@ export function crop(src, x, y, width, height) {
   return dst;
 }
 
+// --region "x,y,w,h"（R31a）：整数坐标，单位与比对图一致（Web = CSS px；App 整屏画板 = 设计点（截图缩到 390 宽）；
+// App 规格格 = 设备点，不缩放）。弹层随屏幕尺寸定位时 x 可写 c（水平居中）、y 可写 c（垂直居中）或 b（贴底），
+// 按 screen = { width, height } 换算（App 用设备点，iPhone 16e 390×844、17 Pro 402×874 都对）。
+export function parseRegion(value, screen) {
+  const parts = String(value).split(",").map((s) => s.trim());
+  if (parts.length !== 4 || parts.some((p, i) => p === "" || (Number.isNaN(Number(p)) && !((i === 0 && p === "c") || (i === 1 && (p === "c" || p === "b")))))) throw Object.assign(new Error(`--region 要写成 x,y,w,h（x 可为 c，y 可为 c / b）：${value}`), { code: 2 });
+  if ((parts[0] === "c" || parts[1] === "c" || parts[1] === "b") && !screen) throw Object.assign(new Error(`--region 用了 c / b，需要屏幕尺寸：${value}`), { code: 2 });
+  const [w, h] = [Number(parts[2]), Number(parts[3])];
+  if (parts[0] === "c") parts[0] = String(Math.round((screen.width - w) / 2));
+  if (parts[1] === "c") parts[1] = String(Math.round((screen.height - h) / 2));
+  if (parts[1] === "b") parts[1] = String(screen.height - h);
+  const nums = parts.map(Number);
+  if (nums.some((n) => !Number.isInteger(n))) throw Object.assign(new Error(`--region 只收整数坐标（小节画在整数坐标上）：${value}`), { code: 2 });
+  if (nums[2] <= 0 || nums[3] <= 0) throw Object.assign(new Error(`--region 宽高要大于 0：${value}`), { code: 2 });
+  return nums;
+}
+
+// 分侧裁剪：只给 region 时两侧同一块（Web 导航壳分件验收的老用法）；另给 designRegion 时设计侧按它裁、实现侧按 region 裁
+// （App 展示页小节的 rect 与设计稿规格格 / 画板区域不在同一位置；DEFERRED-A R30-02「两侧同一区域」也是这个缺口）。
+export function cropPair({ design, app, region, designRegion }) {
+  const d = designRegion ?? region;
+  return {
+    design: d ? crop(design, ...d) : design,
+    app: region ? crop(app, ...region) : app,
+  };
+}
+
 const differs = (a, ai, b, bi) =>
   Math.abs(a.data[ai] - b.data[bi]) >= 24 ||
   Math.abs(a.data[ai + 1] - b.data[bi + 1]) >= 24 ||
@@ -109,14 +138,108 @@ const differs = (a, ai, b, bi) =>
 
 // 整屏 raw + 可选 --grid 逐带比对 + 归因门禁。
 // 返回 { raw, height, overBands, unattributed, cells, exitCode }；diff.png / cells.json / result.json 写进 out。
-/** The accepted attribution prefix of a band reason (`[data]` / `[raster]`), or null. */
-export function acceptedReason(reason) {
+/** The attribution prefix of a band reason (`[data]` / `[raster]` / `[contrast]`), or null for anything else. */
+export function reasonPrefix(reason) {
   if (typeof reason !== "string") return null;
   const text = reason.trim();
-  return text.startsWith("[data]") ? "[data]" : text.startsWith("[raster]") ? "[raster]" : null;
+  return ["[data]", "[raster]", "[contrast]"].find((p) => text.startsWith(p)) ?? null;
+}
+/** The prefixes accepted as written (`[data]` / `[raster]`); `[contrast]` is accepted only after checkContrastBand. */
+export function acceptedReason(reason) {
+  const p = reasonPrefix(reason);
+  return p === "[data]" || p === "[raster]" ? p : null;
 }
 
-export function compareImages({ design, app, out, grid, gridDy = 12, threshold = 0.02, rawThreshold = 0.02, attributionPath, viewKey, meta = {} }) {
+// ---------- [contrast] 归因（RD-26，R31a）----------
+// 允许的替换在 contrast-substitutions.json（设计原色 → 实现加深文字色，同一底色）；颜色值按主题从 tokens.json 取。
+// 判定：标 [contrast] 的带里每个不一致像素（与门禁同口径：单通道差 ≥24，按该带的最佳 dy 对齐），找一条替换与一个 α，
+// 使「设计像素 ≈ 原色与底色按 α 混合」且「实现像素 ≈ 加深色与同一底色按同一 α 混合」（两侧 ΔE76 都 ≤ 容差）；
+// 解释不了的像素超过带内不一致像素的 5% 就判该带不通过。三个常量改动要写进 REPORT。
+export const CONTRAST_DELTA_E = 4; // ΔE76 容差（两侧各自）
+export const CONTRAST_ALPHA_STEPS = 64; // α 取 0, 1/64, …, 1
+export const CONTRAST_MAX_UNEXPLAINED = 0.05; // 带内不一致像素里解释不了的比例上限
+const LIB_DIR = new URL(".", import.meta.url).pathname;
+export const CONTRAST_SUBSTITUTIONS_FILE = join(LIB_DIR, "contrast-substitutions.json");
+export const TOKENS_FILE = join(LIB_DIR, "../../shared/design/tokens.json");
+
+/** "#RRGGBB" / "rgb(…)" / "rgba(…)"（不透明部分）→ [r, g, b]；解析不了返回 null。 */
+export function parseColor(value) {
+  const v = String(value ?? "").trim();
+  let m = v.match(/^#([0-9a-f]{6})$/i);
+  if (m) return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
+  m = v.match(/^#([0-9a-f]{3})$/i);
+  if (m) return [...m[1]].map((c) => parseInt(c + c, 16));
+  m = v.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
+  return m ? [m[1], m[2], m[3]].map((n) => Math.round(Number(n))) : null;
+}
+
+/** 替换清单 × 主题 → 颜色三元组；两侧同色（深色主题里常见：加深版就是原值）的条目解释不了任何差异，丢掉。 */
+export function resolveContrastSubstitutions(list, tokens, theme) {
+  const palette = tokens.color[theme === "dark" ? "dark" : "light"];
+  const out = [];
+  for (const s of list.substitutions ?? []) {
+    const [design, impl, bg] = [s.design, s.impl, s.bg].map((name) => parseColor(palette[name]));
+    if (!design || !impl || !bg) continue;
+    if (design.every((v, i) => v === impl[i])) continue;
+    out.push({ label: `${s.design}→${s.impl} on ${s.bg}`, design, impl, bg });
+  }
+  return out;
+}
+
+export function loadContrastContext(theme, { substitutionsFile = CONTRAST_SUBSTITUTIONS_FILE, tokensFile = TOKENS_FILE } = {}) {
+  const list = JSON.parse(readFileSync(substitutionsFile, "utf8"));
+  const tokens = JSON.parse(readFileSync(tokensFile, "utf8"));
+  return { theme, subs: resolveContrastSubstitutions(list, tokens, theme) };
+}
+
+const srgbToLab = ([r, g, b]) => {
+  const f = (c) => { c /= 255; return c > 0.04045 ? ((c + 0.055) / 1.055) ** 2.4 : c / 12.92; };
+  const [R, G, B] = [f(r), f(g), f(b)];
+  const xyz = [(R * 0.4124 + G * 0.3576 + B * 0.1805) / 0.95047, R * 0.2126 + G * 0.7152 + B * 0.0722, (R * 0.0193 + G * 0.1192 + B * 0.9505) / 1.08883];
+  const t = xyz.map((v) => (v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116));
+  return [116 * t[1] - 16, 500 * (t[0] - t[1]), 200 * (t[1] - t[2])];
+};
+const labDist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+const contrastLadders = new WeakMap();
+function ladderOf(sub, steps) {
+  let cached = contrastLadders.get(sub);
+  if (cached?.steps === steps) return cached.rungs;
+  const rungs = [];
+  for (let k = 0; k <= steps; k++) {
+    const a = k / steps;
+    const mixOf = (fg) => fg.map((v, i) => Math.round(v * a + sub.bg[i] * (1 - a)));
+    rungs.push([srgbToLab(mixOf(sub.design)), srgbToLab(mixOf(sub.impl))]);
+  }
+  contrastLadders.set(sub, { steps, rungs });
+  return rungs;
+}
+
+/** 判一条带能否归因为 [contrast]。返回 { diff, explained, unexplained, ratio, pass, bySub }。 */
+export function checkContrastBand({ design, app, y0, y1, dy = 0, subs, deltaE = CONTRAST_DELTA_E, steps = CONTRAST_ALPHA_STEPS, maxUnexplained = CONTRAST_MAX_UNEXPLAINED }) {
+  const width = Math.min(design.width, app.width);
+  const ladders = subs.map((s) => ladderOf(s, steps));
+  const bySub = new Map();
+  let diff = 0, explained = 0;
+  for (let y = y0; y < Math.min(y1, design.height); y++) {
+    const ay = y + dy;
+    if (ay < 0 || ay >= app.height) continue;
+    for (let x = 0; x < width; x++) {
+      const di = (y * design.width + x) * 4, ai = (ay * app.width + x) * 4;
+      if (!differs(design, di, app, ai)) continue;
+      diff++;
+      const dl = srgbToLab([design.data[di], design.data[di + 1], design.data[di + 2]]);
+      const al = srgbToLab([app.data[ai], app.data[ai + 1], app.data[ai + 2]]);
+      let hit = -1;
+      for (let s = 0; s < ladders.length && hit < 0; s++) for (const [dRung, aRung] of ladders[s]) if (labDist(dl, dRung) <= deltaE && labDist(al, aRung) <= deltaE) { hit = s; break; }
+      if (hit >= 0) { explained++; bySub.set(subs[hit].label, (bySub.get(subs[hit].label) ?? 0) + 1); }
+    }
+  }
+  const unexplained = diff - explained;
+  const ratio = diff === 0 ? 0 : unexplained / diff;
+  return { diff, explained, unexplained, ratio: Number(ratio.toFixed(4)), pass: ratio <= maxUnexplained, bySub: Object.fromEntries(bySub) };
+}
+
+export function compareImages({ design, app, out, grid, gridDy = 12, threshold = 0.02, rawThreshold = 0.02, attributionPath, viewKey, contrast, meta = {} }) {
   const width = Math.min(design.width, app.width);
   const h = Math.min(design.height, app.height);
   const diff = new PNG({ width, height: h });
@@ -175,13 +298,24 @@ export function compareImages({ design, app, out, grid, gridDy = 12, threshold =
       attribution = all[viewKey] ?? {};
     }
     // RD-16 修订：只有 `[data]` / `[raster]` 开头的理由算数；`[recorded]` / `[shared]` 这类 0918 时代的放行理由一律不认。
-    const isData = (reason) => acceptedReason(reason) !== null;
+    // RD-26：`[contrast]` 另经 checkContrastBand 逐像素判定（没有主题 / 替换清单时一律不认）。
     const over = cells.filter((c) => c.mismatch > threshold);
-    const unattributed = over.filter((c) => !isData(attribution[String(c.band)]));
+    const verdicts = {};
+    for (const c of over) {
+      const reason = attribution[String(c.band)];
+      const prefix = reasonPrefix(reason);
+      if (prefix === "[contrast]") {
+        const ctx = contrast ?? (meta.theme ? loadContrastContext(meta.theme) : null);
+        const check = ctx ? checkContrastBand({ design, app, y0: c.y0, y1: c.y1, dy: c.dy, subs: ctx.subs }) : null;
+        c.contrast = check;
+        verdicts[c.band] = check?.pass ? { ok: true, status: "[contrast]" } : { ok: false, status: check ? `[contrast]✗ 解释不了 ${(check.ratio * 100).toFixed(1)}%（${check.unexplained}/${check.diff}px）` : "[contrast]✗ 没有主题，无法判定" };
+      } else verdicts[c.band] = reason === undefined ? { ok: false, status: "未归因" } : prefix ? { ok: true, status: prefix } : { ok: false, status: "理由无效" };
+    }
+    const unattributed = over.filter((c) => !verdicts[c.band].ok);
     const sorted = [...cells].sort((a, b) => b.mismatch - a.mismatch);
     writeFileSync(join(out, "cells.json"), `${JSON.stringify({ band, maxDy: gridDy, threshold, view: viewKey, width, designHeight: design.height, appHeight: app.height, cells: sorted }, null, 2)}\n`);
     Object.assign(result, { band, cells: cells.length, overBands: over.length, unattributed: unattributed.length, overList: over.map((c) => `#${c.band}@${c.y0}-${c.y1}:${c.mismatch}`) });
-    result.bandsReport = bandReport({ design, app, cells, threshold, attribution, out, crop: meta.crop === true });
+    result.bandsReport = bandReport({ design, app, cells, threshold, attribution, verdicts, out, crop: meta.crop === true });
     if (unattributed.length > 0 && exitCode === 0) exitCode = 5;
     if (unattributed.length > 0) result.gate = "fail";
   }
@@ -290,7 +424,9 @@ export function loadSuite(file) {
   for (const v of suite.views) {
     const merged = { ...(suite.defaults ?? {}), ...v };
     for (const theme of merged.themes ?? ["light", "dark"]) {
-      runs.push({ ...merged, theme, key: `${v.id}-${merged.width ?? "app"}-${theme}`, sources: [...(suite.sources ?? []), ...(v.sources ?? [])] });
+      // R31a：实现路由里的 {theme}（展示页小节 `?theme={theme}`）按主题展开。
+      const filled = Object.fromEntries(["path", "url", "app"].filter((k) => typeof merged[k] === "string").map((k) => [k, merged[k].replaceAll("{theme}", theme)]));
+      runs.push({ ...merged, ...filled, theme, key: `${v.id}-${merged.width ?? "app"}-${theme}`, sources: [...(suite.sources ?? []), ...(v.sources ?? [])] });
     }
   }
   return runs;
@@ -387,6 +523,67 @@ export const moveFrameToTop = (f) => {
   window.scrollTo(0, 0);
 };
 
+// ---------- 逐件对照：01-system 规格格（R31a 契约 §1）----------
+// 在设计稿页面里执行（page.evaluate），自包含。arg = { section, theme, cell?, stage? }：
+//   section：sec2 的 id（c-toast … n-add），或小节标题（h2）子串（第一部分的小节没有 id）；
+//   不带 cell → 列出该小节全部「格」；带 cell → 准备第 cell 格（套主题、整数对齐）并返回裁剪框。
+// 「格」的顺序：小节标题之后、下一个小节标题之前的每个 .comp 演示区（.comp > div:first-child，不含 .doccard），
+//   演示区有 .duo → 取 .stage[data-theme=<theme>]，里面每个 .cell 一格，没有 .cell 时整块 stage 内容算一格（kind stage）；
+//   演示区没有 .duo → 每个 .cell 一格（kind cell），没有 .cell 时整个演示区一格（kind demo）。
+// 裁剪框 = 格里除标题（.cap / .stage-t）外的内容的外接矩形（页面坐标）。含 mini()（transform: scale）的格标 mini，准备时拒绝（缩放格不比）。
+// stage = "flat"（默认）：把 .stage 的雾面渐变换成纯 --bg —— 那是文档页的展示底，不是组件；"keep" 保留原样。
+export const specCellsInPage = (arg) => {
+  const { section, theme = "light", cell, stage = "flat" } = arg;
+  const norm = (s) => (s ?? "").replace(/\s+/g, " ").trim();
+  const titles = [...document.querySelectorAll(".section-title")];
+  const head = titles.find((t) => t.id === section) ?? titles.find((t) => norm(t.querySelector("h2")?.textContent).includes(section));
+  if (!head) return null;
+  const units = [];
+  const topCells = (root) => [...root.querySelectorAll(".cell")].filter((c) => !c.parentElement.closest(".cell") || !root.contains(c.parentElement.closest(".cell")));
+  // 小节范围按文档顺序取（第二部分整体包在 .ds 里，不是第一部分标题的兄弟）：标题之后、下一个小节标题之前的最外层 .comp。
+  const next = titles[titles.indexOf(head) + 1];
+  const inRange = (el) => (head.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) && (!next || (el.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING));
+  const comps = [...document.querySelectorAll(".comp")].filter((c) => inRange(c) && !c.parentElement.closest(".comp"));
+  {
+    for (const comp of comps) {
+      const demo = comp.querySelector(":scope > div:first-child");
+      if (!demo) continue;
+      const stageEl = demo.querySelector(`.duo > .stage[data-theme="${theme}"]`);
+      const host = stageEl ?? demo;
+      const cells = topCells(host);
+      if (cells.length) for (const c of cells) units.push({ el: c, stageEl, kind: "cell", cap: norm(c.querySelector(":scope > .cap")?.textContent), skip: ".cap" });
+      else units.push({ el: host, stageEl, kind: stageEl ? "stage" : "demo", cap: "", skip: ".stage-t" });
+    }
+  }
+  const rectOf = (u) => {
+    const parts = [...u.el.children].filter((c) => !c.matches(u.skip));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of parts) { const r = p.getBoundingClientRect(); if (!r.width && !r.height) continue; x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom); }
+    return x0 === Infinity ? [0, 0, 0, 0] : [x0 + window.scrollX, y0 + window.scrollY, x1 - x0, y1 - y0];
+  };
+  const listed = units.map((u, index) => ({ index, kind: u.kind, cap: u.cap, mini: !!u.el.querySelector(".mini"), themed: !!u.stageEl, rect: rectOf(u) }));
+  if (cell === undefined) return { section: head.id || norm(head.querySelector("h2")?.textContent), units: listed };
+  const u = units[Number(cell)];
+  if (!u) throw new Error(`格序号 ${cell} 超出：小节 ${section} 只有 ${units.length} 格（--list-cells 看清单）`);
+  if (listed[Number(cell)].mini) throw new Error(`第 ${cell} 格含 mini()（transform: scale 缩放示意），缩放格不比`);
+  if (u.stageEl) { if (stage !== "keep") u.stageEl.style.background = "var(--bg)"; }
+  else { u.el.setAttribute("data-theme", theme); u.el.style.background = "var(--bg)"; }
+  // 整数对齐：画框原位常在小数坐标（1x 缩放后边缘一律半像素灰边），把文档容器按小数部分挪过去（只挪位置，不改宽度与排版）。
+  const doc = u.el.closest(".doc") ?? document.body;
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = rectOf(u);
+    const fx = x - Math.floor(x), fy = y - Math.floor(y);
+    if (fx < 0.005 && fy < 0.005) break;
+    const cs = getComputedStyle(doc);
+    if (fx >= 0.005) { doc.style.marginLeft = `${parseFloat(cs.marginLeft) + (1 - fx)}px`; doc.style.marginRight = "0"; }
+    if (fy >= 0.005) doc.style.marginTop = `${parseFloat(cs.marginTop) + (1 - fy)}px`;
+  }
+  const [x, y, w, h] = rectOf(u);
+  return { section: head.id, index: Number(cell), kind: u.kind, cap: u.cap, rect: [Math.round(x), Math.round(y), Math.round(w), Math.round(h)], subpixel: [x, y, w, h] };
+};
+export const listSpecCellsInPage = specCellsInPage;
+export const prepareSpecCellInPage = specCellsInPage;
+
 // ---------- 省额度：超阈带的文字结论（用户 2026-10-12 决定）----------
 // 每条超阈带：带号、y 范围、mismatch、偏移估计（墨迹的行 / 列投影互相关，±12px 内取最小误差）、两边主色（hex）与 ΔE、归因状态。
 // 先读这张表，按需才看图；--crop 时把每条超阈带裁成「设计 / 实现 / diff」竖排小图存进 <out>/bands/。
@@ -433,9 +630,8 @@ function bestShift(a, b, max = 12) {
   return best.d;
 }
 
-export function bandReport({ design, app, cells, threshold, attribution = {}, out, crop = false }) {
+export function bandReport({ design, app, cells, threshold, attribution = {}, verdicts = {}, out, crop = false }) {
   const width = Math.min(design.width, app.width);
-  const isData = (reason) => acceptedReason(reason) !== null;
   const rows = [];
   for (const c of [...cells].filter((c) => c.mismatch > threshold).sort((a, b) => a.band - b.band)) {
     const d = dominant(design, c.y0, c.y1, width), a = dominant(app, c.y0, c.y1, width);
@@ -445,7 +641,7 @@ export function bandReport({ design, app, cells, threshold, attribution = {}, ou
     // 一侧几乎没墨迹（内容缺失 / 多出）时投影对齐没有意义：偏移标「缺内容」，没墨迹那侧的字色标「无」。
     const lopsided = Math.min(inkD, inkA) * 5 < Math.max(inkD, inkA);
     const inkHex = (dom, n) => (n ? hex(dom.ink) : "无");
-    const row = { band: c.band, y: `${c.y0}-${c.y1}`, mismatch: c.mismatch, dx: lopsided ? "缺内容" : bestShift(pd.cols, pa.cols), dy: lopsided ? "" : bestShift(pd.rows, pa.rows), bg: `${hex(d.bg)}/${hex(a.bg)} ΔE${deltaE(d.bg, a.bg)}`, ink: `${inkHex(d, inkD)}/${inkHex(a, inkA)}${inkD && inkA ? ` ΔE${deltaE(d.ink, a.ink)}` : ""}`, inkPx: `${inkD}/${inkA}`, status: reason === undefined ? "未归因" : acceptedReason(reason) ?? "理由无效" };
+    const row = { band: c.band, y: `${c.y0}-${c.y1}`, mismatch: c.mismatch, dx: lopsided ? "缺内容" : bestShift(pd.cols, pa.cols), dy: lopsided ? "" : bestShift(pd.rows, pa.rows), bg: `${hex(d.bg)}/${hex(a.bg)} ΔE${deltaE(d.bg, a.bg)}`, ink: `${inkHex(d, inkD)}/${inkHex(a, inkA)}${inkD && inkA ? ` ΔE${deltaE(d.ink, a.ink)}` : ""}`, inkPx: `${inkD}/${inkA}`, status: verdicts[c.band]?.status ?? (reason === undefined ? "未归因" : acceptedReason(reason) ?? (reasonPrefix(reason) === "[contrast]" ? "[contrast]✗ 未判定" : "理由无效")) };
     if (crop && out) {
       const h = c.y1 - c.y0, png = new PNG({ width, height: h * 3 + 4 });
       png.data.fill(0x88);
