@@ -1397,11 +1397,14 @@ function meetApp() {
     <div class="card"><div class="card-h"><h3>メモ</h3><span class="more">${ic('mic', 'sm')}</span></div><div class="sub" style="line-height:1.7">評価額の話は先方から出るまで待つ。DD で追加の顧客ヒアリングがあり得る。</div></div>
     <button class="btn danger-ghost block k-cx" style="margin-top:14px">面談をキャンセル</button>`;
 }
-const moveSheet = `<div class="sheet-scrim"></div><div class="sheet k-move" data-why-box><div class="grab"></div><div class="row between"><div><b style="font-size:16px">面談を動かす</b><div class="lbl">取締役会と重ならない時間 · 45分</div></div><span class="why">?</span></div>
-  <div class="why-body" hidden>あなたと高橋さんの過去の面談はすべて午前 · Google カレンダーの空き時間から 3つ選びました。高橋さんの予定は見ていません。</div>
-  <div style="margin-top:12px">${[['10月9日（金）', '9:00 – 9:45', '同じ日・前倒し', 1], ['10月9日（金）', '13:00 – 13:45', '同じ日・午後', 0], ['10月12日（月）', '10:00 – 10:45', '同じ時間帯', 0]].map(([d, t, s, on]) => `<div class="slot ${on ? 'on' : ''}"><span class="rad ${on ? 'on' : ''}"></span><div style="flex:1"><b>${d} ${t}</b><div class="lbl">${s}</div></div></div>`).join('')}</div>
-  <div class="card confirm-card" style="margin-top:12px;padding:12px 14px"><div class="row" style="gap:8px">${ckb(1)}<span style="font-size:12.5px;font-weight:700;flex:1">カレンダーの予定も 9:00 に変更する</span></div><div class="row" style="gap:8px;margin-top:8px">${ckb(1)}<span style="font-size:12.5px;font-weight:700;flex:1">高橋さんへの日程変更のお願いの下書きを作成</span></div><div class="lbl" style="margin-top:8px">先方の了承後に確定してください</div></div>
-  <button class="btn primary block xl" style="margin-top:14px">確認して変更</button>${DRAFT_NOTE}</div>`;
+/* 主会話代定 §D-1（2026-10-18）：面談の変更は 3–5 候補の propose。元の予定を直接変更しない。 */
+const moveSheet = `<div class="sheet-scrim"></div><div class="sheet k-move" data-why-box><div class="grab"></div><div class="row between"><div><b style="font-size:16px">面談を動かす</b><div class="lbl">候補を選ぶ · 高橋 美咲さん · 45分</div></div><span class="why">?</span></div>
+  <div class="why-body" hidden>Google カレンダーの空き時間から候補を選びました。高橋さんの予定は見ていません。</div>
+  <div class="lbl" style="margin-top:12px">3〜5 枠を選んで日程変更を提案します</div>
+  <div style="margin-top:6px">${[['10月9日（金）', '9:00 – 9:45', '同じ日・前倒し'], ['10月9日（金）', '13:00 – 13:45', '同じ日・午後'], ['10月12日（月）', '10:00 – 10:45', '同じ時間帯']].map(([d, t, s], i) => `<div class="slot on"><span class="no">${i + 1}</span><div style="flex:1"><b>${d} ${t}</b><div class="lbl">${s}</div></div>${ckb(1)}</div>`).join('')}</div>
+  <div class="row between" style="margin-top:8px"><span class="lbl">3 / 5 枠を選択</span><button class="btn sm ghost">候補を追加</button></div>
+  <div class="card confirm-card" style="margin-top:10px;padding:12px 14px"><b style="font-size:12.5px">送る前の確認</b><div class="lbl" style="margin-top:4px">3 枠の変更提案と高橋さんへの連絡文を下書きします。面談は先方の了承まで変更しません。</div></div>
+  <button class="btn primary block xl" style="margin-top:12px">日程変更を提案</button>${DRAFT_NOTE}</div>`;
 /* 3 个选项 + 需列后果 → App 底部动作表（01-system ②）；破坏在上、「面談を続ける」在下 */
 const cancelAlert = `<div class="sheet-scrim"></div><div class="sheet actsheet k-calert"><div class="grab"></div><div class="shead"><span class="emo">${ic('calendar')}</span><div style="font-size:18px;font-weight:800;margin-top:10px">面談をキャンセルしますか？</div><div class="lbl" style="margin-top:2px">${MT.w}さん · ${MT.d} ${MT.t}</div></div>
   <div style="margin:12px 0 6px"><div class="eff">${ic('x', 'sm')}Orbit の予定とカレンダーの予定を削除します</div><div class="eff">${ic('mail', 'sm')}お詫びとご連絡は下書きを作ります</div><div class="eff">${ic('check', 'sm')}メモと話すことは残ります</div></div>
@@ -1426,10 +1429,12 @@ function meetWeb() {
 }
 const meetRail = `<h4>${ic('user', 'sm')}相手</h4><div class="card k-wwho" style="padding:16px"><div class="row" style="gap:12px"><div class="av c2">高</div><div style="flex:1"><b>${MT.w}</b><div class="lbl">${MT.co}</div></div>${ic('right', 'sm')}</div><div class="chips" style="margin-top:10px"><span class="chip lav">推進中</span><span class="chip pink">リード投資家候補</span></div></div>
   <div class="lbl">これまでのやりとり</div>${[['10/7', 'メール受信 · IC は 11月第3週'], ['10/6', '2回目の面談 · DD 資料リスト受領'], ['9/18', 'Japan Startup Night で出会う']].map(([d, t]) => `<div class="row" style="gap:10px;font-size:12.5px"><b style="font-family:var(--font-num);width:34px">${d}</b><span class="sub">${t}</span></div>`).join('')}`;
-const movePop = `<div class="pop k-wmove" style="left:560px;top:150px;width:420px" data-why-box><div class="row between"><b style="font-size:15px">面談を動かす</b><span class="why">?</span></div><div class="why-body" hidden>Google カレンダーの空き時間から。高橋さんの予定は見ていません。</div>
-  <div style="margin-top:10px">${[['10月9日（金）', '9:00 – 9:45', 1], ['10月9日（金）', '13:00 – 13:45', 0], ['10月12日（月）', '10:00 – 10:45', 0]].map(([d, t, on]) => `<div class="slot ${on ? 'on' : ''}"><span class="rad ${on ? 'on' : ''}"></span><b>${d} ${t}</b></div>`).join('')}</div>
-  <div class="card confirm-card in-row" style="margin-top:10px;font-size:12.5px"><div class="row" style="gap:8px">${ckb(1)}<b style="flex:1">カレンダーの予定も変更</b></div><div class="row" style="gap:8px;margin-top:6px">${ckb(1)}<b style="flex:1">高橋さんへのお願いの下書きを作成</b></div></div>
-  <div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn sm ghost">閉じる</button><button class="btn sm primary">確認して変更</button></div>${DRAFT_NOTE.replace('draft-note', 'draft-note r')}</div>`;
+const movePop = `<div class="pop k-wmove" style="left:560px;top:150px;width:420px" data-why-box><div class="row between"><b style="font-size:15px">面談を動かす · 候補を選ぶ</b><span class="why">?</span></div><div class="why-body" hidden>Google カレンダーの空き時間から。高橋さんの予定は見ていません。</div>
+  <div class="lbl" style="margin-top:8px">3〜5 枠を選んで日程変更を提案します</div>
+  <div style="margin-top:6px">${[['10月9日（金）', '9:00 – 9:45'], ['10月9日（金）', '13:00 – 13:45'], ['10月12日（月）', '10:00 – 10:45']].map(([d, t], i) => `<div class="slot on"><span class="no">${i + 1}</span><b style="flex:1">${d} ${t}</b>${ckb(1)}</div>`).join('')}</div>
+  <div class="row between" style="margin-top:6px"><span class="lbl">3 / 5 枠を選択</span><button class="btn sm ghost">候補を追加</button></div>
+  <div class="card confirm-card in-row" style="margin-top:10px;font-size:12.5px"><b>送る前の確認</b><div class="lbl" style="margin-top:4px">3 枠の変更提案と連絡文を下書きします。面談は先方の了承まで変更しません。</div></div>
+  <div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn sm ghost">閉じる</button><button class="btn sm primary">日程変更を提案</button></div>${DRAFT_NOTE.replace('draft-note', 'draft-note r')}</div>`;
 const cancelMeetModal = `<div class="overlay"></div><div class="wmodal w560 k-wcm"><b style="font-size:20px">面談をキャンセルしますか？</b><div class="sub" style="margin-top:6px">${MT.w}さん · ${MT.d} ${MT.t}</div>
   <div class="card flat" style="margin-top:14px;padding:14px 16px;font-size:13px;line-height:1.8">・Orbit の予定と Google カレンダーの予定を削除します（Meet の招待は先方にも残ります）<br>・お詫びとご連絡は下書きを作ります。</div>
   <div class="draftbox k-wdraft">高橋様<br>いつもお世話になっております。ミナトリンクの佐藤です。大変恐縮ながら、10月9日（金）10:00 からの面談について、日程を改めてご相談させていただけますでしょうか。…</div>
@@ -1671,11 +1676,11 @@ h += boards([MW(AP('フォロー · 未ログイン', '', { body: hostPub('few',
 h += sec('F · 面談の詳細', '日时·场所/URL·对方·关联活动·话すこと（带 why）·メモ；时间冲突「動かす」、编辑、取消（通知对方只做草稿）');
 h += boards([
   AP('① 面談の詳細', '', { body: meetApp() }, [['.k-cf', 0, '与 Google カレンダー冲突：珊瑚条（线性警示图标）+ 「動かす」→ ②'], ['.k-url', 0, '在线 URL 一键「参加」（打开 Meet）'], ['.k-who', 0, '对方行 → 联系人详情；下一行关联活动 → 活动详情'], ['.k-talk .talk', 0, '话すこと 3 点由 iOrbit 准备，每点「?」展开依据（默认收起，此处演示第 1 点展开）']]),
-  AP('② 動かす', '', { body: meetApp(), overlay: moveSheet }, [['.slot.on', 0, '3 个候选时段（只看自己的日历空闲，不看对方）'], ['.k-move .confirm-card', 0, '虚线确认卡：同步改日历 + 作成变更请求的下書き；按钮下常驻「送信はしません · 送信はあなたが行います」，先方同意后再确定']]),
+  AP('② 動かす', '', { body: meetApp(), overlay: moveSheet }, [['.slot.on', 0, '主会話代定 §D-1（2026-10-18）：3〜5 个候选时段，默认选 3 个；只看自己的日历空闲，不看对方'], ['.k-move .confirm-card', 0, 'propose 改期请求 + 联系文下書き；原面談时间在先方同意前保持不变；不代发']]),
   AP('③ キャンセル', '', { body: meetApp(), overlay: cancelAlert }, [['.k-calert .draftbox', 0, '底部动作表（3 个选项 + 后果行）：通知对方的文本仅为草稿预览；「キャンセルして下書きを作成」不会发送'], ['.k-calert .btn.danger', 0, '破坏在上（实心珊瑚）→ キャンセルのみ → 「面談を続ける」在下；点遮罩不关闭']]),
   AP('④ 面談を編集', '', { body: meetEditApp() }, [['.k-dt', 0, '日期时间选择（iOS 滚轮）'], ['.k-calsync', 0, '「カレンダーにも反映」开：保存时先展示变更内容确认，再写入（日历写入口径）']]),
 ]);
-h += WB('Web · 面談の詳細 + 動かす', '', { nav: 3, head: '', body: meetWeb(), rail: meetRail }, movePop, [['.k-wcf', 0, '冲突横条：「動かす」打开锚定弹层 /「このままにする」关闭提示'], ['.k-wmove', 0, '弹层内选时段 + 虚线确认（改日历、起草请求），「確認して変更」才执行'], ['.k-wtalk .why', 0, '话すこと的依据默认收起'], ['.k-wwho', 0, '右栏：对方卡片 + 往来记录']]);
+h += WB('Web · 面談の詳細 + 動かす', '', { nav: 3, head: '', body: meetWeb(), rail: meetRail }, movePop, [['.k-wcf', 0, '冲突横条：「動かす」打开锚定弹层 /「このままにする」关闭提示'], ['.k-wmove', 0, '主会話代定 §D-1：选 3〜5 个候选，提交 propose 改期请求与联系文下書き，不直接改变原面談'], ['.k-wtalk .why', 0, '话すこと的依据默认收起'], ['.k-wwho', 0, '右栏：对方卡片 + 往来记录']]);
 h += WB('Web · キャンセル', '', { nav: 3, head: '', body: meetWeb(), rail: meetRail }, cancelMeetModal, [['.k-wdraft', 0, '致歉文为草稿：只有「コピー」「メールアプリで開く」，下一行常驻「送信はしません · 送信はあなたが行います」；模态按钮右对齐，左下 Esc']]);
 
 /* ---- G ---- */
