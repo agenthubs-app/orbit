@@ -13,3 +13,6 @@ tsconfig.tsbuildinfo
 tsconfig.build.tsbuildinfo
 .next-rework-*
 .next-r[0-9]*/
+
+# redesign 并行线各自的 Next distDir（RD-31）
+.next-line-*/
