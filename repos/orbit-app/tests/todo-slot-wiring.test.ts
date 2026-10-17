@@ -16,3 +16,9 @@ test("Task mounts the unified calendar in its frozen calendar slot", () => {
   assert.match(source, /calendar: \(\) => <CalendarScreen \/>/u);
   assert.doesNotMatch(source, /calendar: \(\) => <ScheduleScreen \/>/u);
 });
+
+test("To-do reevaluates the local date while the page remains open", () => {
+  const source = readFileSync(join(import.meta.dirname, "../src/screens/todo/TodoScreen.tsx"), "utf8");
+  assert.match(source, /setInterval\(\(\) => setNow\(new Date\(\)\), 60_000\)/u);
+  assert.match(source, /localParts\(now, timeZone\)\.date/u);
+});

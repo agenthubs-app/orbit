@@ -44,7 +44,9 @@ export function TodoTaskSlot() {
 /** The first To-do page is a read-only aggregate; actions still use their owning source. */
 export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
   const { timeZone } = useOrbitTimeZone();
-  const date = localParts(new Date(), timeZone).date;
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const timer = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(timer); }, []);
+  const date = localParts(now, timeZone).date;
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const locale = useOrbitLocale();
