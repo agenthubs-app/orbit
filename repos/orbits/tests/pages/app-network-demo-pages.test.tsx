@@ -190,6 +190,8 @@ function loadPage(t: TestContext, name: PageName, scenario: Scenario = {}) {
     require.cache[resolved] = replacement;
   }
   delete require.cache[require.resolve(pagePath)];
+  // R11a：详情页把旧详情拆到 legacy-detail-page.tsx，它也要按本次的替身重新加载。
+  delete require.cache[require.resolve(join(root, "app/(app)/app/contacts/[id]/legacy-detail-page.tsx"))];
   delete require.cache[require.resolve(guideViewPath)];
   return {
     calls,
@@ -221,10 +223,10 @@ type DemoVm = { connections: Array<{ id: string; displayName: string }> };
 
 /* ── SC-01：开关关闭 ───────────────────────────────────────────────── */
 
+// R11a：/app/contacts 是新人脈页（NetworkScreen），服务端不读联系人（客户端走有界接口）；pipeline 已删除。
 for (const [name, reads] of [
-  ["contacts", ["cards", "contacts"]],
+  ["contacts", []],
   ["dashboard", ["analysis", "contacts", "overviewCockpit", "threshold"]],
-  ["pipeline", ["contacts", "analysis"]],
 ] as const) {
   test(`flag off: /${name} reads real contacts as before and reads no guide state`, async (t) => {
     const { calls, page } = loadPage(t, name);
@@ -235,25 +237,20 @@ for (const [name, reads] of [
   });
 }
 
-test("flag off: a real contact detail id goes through the real detail read, no guide read", async (t) => {
+test("flag off: a real contact detail id opens the new 人脈 page with the drawer (R11a), no server contact read, no guide read", async (t) => {
   const { calls, page } = loadPage(t, "detail");
   const tree = await page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({}) });
-  // W0054：门槛整页读一次（列表与详情共用），达到 3 位才读洞察。
-  assert.deepEqual(operations(calls, REAL_READS), ["detail", "threshold", "cards", "contacts", "insightDetail"]);
+  assert.deepEqual(operations(calls, REAL_READS), []);
   assert.deepEqual(operations(calls, GUIDE_READS), []);
   assert.equal(find(tree, "NetworkDemoFrame"), null);
-  assert.ok(find(tree, "NetworkAll"));
+  assert.equal(find(tree, "NetworkScreen")?.initialContactId, "contact-1");
 });
 
-test("W0054 review P3-2: the real detail page reads the threshold count once and hands the same result to the list loader (+1 statement, not +2)", async (t) => {
+test("R11a: the meeting-memo / appointment deep links still use the old detail (events line)", async (t) => {
   const { calls, page } = loadPage(t, "detail");
-  await page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({}) });
-  assert.equal(calls.filter((call) => call.operation === "threshold").length, 1);
-  const cardsCall = calls.find((call) => call.operation === "cards")!;
-  const options = (cardsCall.input as unknown[])[2] as { readThreshold?: (actorId: string) => Promise<unknown> };
-  assert.equal(typeof options?.readThreshold, "function", "the list loader gets the page's threshold");
-  assert.deepEqual(await options.readThreshold!("account:canonical"), { confirmed: 5, met: true, missing: 0 });
-  assert.equal(calls.filter((call) => call.operation === "threshold").length, 1, "reusing it reads nothing more");
+  await page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({ capture: "meeting-memo", appointmentId: "a1", eventId: "e1" }) });
+  assert.ok(operations(calls, REAL_READS).includes("detail"));
+  assert.equal(calls.filter((call) => call.operation === "threshold").length, 1, "the old detail reads the threshold once");
 });
 
 test("demo: a real contact id redirects to the demo list before any real read", async (t) => {
@@ -266,9 +263,10 @@ test("demo: a real contact id redirects to the demo list before any real read", 
 test("flag on but out of the guide: a real contact id takes the real path (one guide read is allowed)", async (t) => {
   const { calls, page } = loadPage(t, "detail", { flag: "on", guide: "out" });
   const tree = await page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({}) });
-  assert.deepEqual(operations(calls, REAL_READS), ["detail", "threshold", "cards", "contacts", "insightDetail"]);
+  assert.deepEqual(operations(calls, REAL_READS), []);
   assert.deepEqual(operations(calls, GUIDE_READS), ["profile", "guide"]);
   assert.equal(find(tree, "NetworkDemoFrame"), null);
+  assert.ok(find(tree, "NetworkScreen"));
 });
 
 test("flag off: the analysis drill-down reads the real bucket and no guide state", async (t) => {
@@ -292,11 +290,13 @@ test("flag on but out of the guide: the drill-down is the real page", async (t) 
 });
 
 test("flag on but the user is out of the guide (done or grandfathered): real pages", async (t) => {
-  for (const name of ["contacts", "dashboard", "pipeline"] as const) {
+  for (const name of ["contacts", "dashboard"] as const) {
     const { calls, page } = loadPage(t, name, { flag: "on", guide: "out" });
     const tree = await page({ searchParams: Promise.resolve({}) });
     assert.equal(find(tree, "NetworkDemoFrame"), null, name);
-    assert.ok(operations(calls, REAL_READS).length > 0, name);
+    // R11a：人脈页的列表由客户端读（NetworkScreen），分析页仍在服务端读。
+    if (name === "contacts") assert.ok(find(tree, "NetworkScreen"), name);
+    else assert.ok(operations(calls, REAL_READS).length > 0, name);
   }
 });
 
@@ -305,7 +305,8 @@ test("flag on but the profile goal cannot be read: fail closed to the real page"
   const tree = await page({ searchParams: Promise.resolve({}) });
   assert.equal(find(tree, "NetworkDemoFrame"), null);
   assert.deepEqual(operations(calls, GUIDE_READS), ["profile"]);
-  assert.deepEqual(operations(calls, REAL_READS), ["cards", "contacts"]);
+  assert.deepEqual(operations(calls, REAL_READS), []);
+  assert.ok(find(tree, "NetworkScreen"));
 });
 
 /* ── SC-02／SC-03：开关开 + 在引导期 ───────────────────────────────── */

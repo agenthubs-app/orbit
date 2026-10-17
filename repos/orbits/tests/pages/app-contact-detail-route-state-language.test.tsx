@@ -12,7 +12,7 @@ import {
 import { StateView } from "../../shared/ui/state-view";
 
 const pageSource = readFileSync(
-  new URL("../../app/(app)/app/contacts/[id]/page.tsx", import.meta.url),
+  new URL("../../app/(app)/app/contacts/[id]/legacy-detail-page.tsx", import.meta.url),
   "utf8",
 );
 

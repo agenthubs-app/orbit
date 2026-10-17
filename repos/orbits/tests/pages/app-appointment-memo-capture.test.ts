@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const pageSource = readFileSync(new URL("../../app/(app)/app/contacts/[id]/page.tsx", import.meta.url), "utf8");
+const pageSource = readFileSync(new URL("../../app/(app)/app/contacts/[id]/legacy-detail-page.tsx", import.meta.url), "utf8");
 const formSource = readFileSync(new URL("../../app/(app)/app/contacts/[id]/appointment-memo-capture.tsx", import.meta.url), "utf8");
 const appointmentSource = readFileSync(new URL("../../app/(app)/app/events/[id]/orbit-appointment-negotiation.tsx", import.meta.url), "utf8");
 

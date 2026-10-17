@@ -592,7 +592,7 @@ test("app contact detail live route returns a controlled boundary when the focus
 });
 
 test("/app/contacts/[id] page uses the live route service instead of the legacy contacts view model", async () => {
-  const pageSource = source("app/(app)/app/contacts/[id]/page.tsx");
+  const pageSource = source("app/(app)/app/contacts/[id]/legacy-detail-page.tsx");
 
   assert.match(pageSource, /loadAppContactDetailRoute/);
   assert.doesNotMatch(pageSource, /getOrbitContactsViewModel/);
@@ -616,7 +616,7 @@ test("/app/contacts/[id] page uses the live route service instead of the legacy 
 test("contact detail UI exposes only source-backed relationship data and real navigation", () => {
   // Actor-key wiring is server-owned; local state reset is rendered in
   // app-contact-notes.test.tsx rather than emulating authenticated RSC here.
-  assert.match(source("app/(app)/app/contacts/[id]/page.tsx"), /key=\{`\$\{actor\.id\}:\$\{contactId\}`\}/);
+  assert.match(source("app/(app)/app/contacts/[id]/legacy-detail-page.tsx"), /key=\{`\$\{actor\.id\}:\$\{contactId\}`\}/);
   const detailSource = source(
     "app/(app)/app/contacts/network-0918/network-detail-modal.tsx",
   );

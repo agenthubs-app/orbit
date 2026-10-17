@@ -1,95 +1,34 @@
 /**
- * 联系人列表页 route adapter。
+ * R11a 人脈（Web 一级页）：新 `NetworkScreen`（orbit-2026/network）——ShellPage + 右栏今日の 1問、
+ * つながり / 情報の濃さ / 出どころ、页签（すべて / 目標に関係 / 要フォロー）、絞り込み、表格、联系人抽屉（?contact=）。
+ * 数据都由客户端经 /api/contacts/page|summary、goal-related-ids 读（服务端 SQL 计数与筛选，读预算闸门照旧）。
  *
- * route 只负责挂载样式/runtime，并把 live-capable route payload 转成真实联系人 UI。
- *
- * W0005 示例模式：开关打开且本人在引导期示例里时（`readDemoModeViewForActor`），直接用示例人物的
- * 30 位联系人渲染「所有人脉」，不调用 `loadContactCardRoute`／`loadAppContactsRouteViewModel`；
- * 开关关闭时那次判定不做任何读取，下面的真实路径与改动前一致。
+ * W0005 示例模式：开关打开且本人在引导期示例里时（`readDemoModeViewForActor`），仍用示例人物渲染旧「所有人脈」
+ * （引导期示例归 R28，本 Sprint 不改）；开关关闭时那次判定不做任何读取。
  */
-import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { redirect } from "next/navigation";
+
 import { auth } from "../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
-import { OrbitReferenceStyles } from "../orbit-reference-styles";
-import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
-import { StateView } from "../../../../shared/ui/state-view";
-import {
-  loadAppContactsRouteViewModel,
-  type AppContactsRouteStateViewModel,
-  type AppContactsSearchParams,
-} from "./compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
-import { contactsRouteToOrbitContactsViewModel } from "./compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
-import { applyOrbitContactsPresentation } from "../orbit-contacts-presentation";
-import { NetworkAll } from "./network-0918/network-all";
-import { NetworkCards } from "./network-0918/network-cards";
-import { loadContactCardRoute } from "./contact-card-route-service";
 import { readDemoModeViewForActor } from "../_demo/demo-guide-view";
 import { buildDemoNetworkViewModel } from "../_demo/demo-network";
-import { ensureRelationshipStrengthsForPage, readRelationshipTierLookup } from "../../../../features/relationship-strength/read-model";
+import { getOrbitServerLanguage } from "../orbit-language-server";
+import { NetworkScreen } from "../orbit-2026/network/NetworkScreen";
+import { OrbitReferenceStyles } from "../orbit-reference-styles";
+import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
+import { NetworkAll } from "./network-0918/network-all";
 import { NetworkDemoFrame } from "./network-0918/network-demo-frame";
 import { NETWORK_SOURCES, type NetworkSource } from "./network-0918/network-model";
 
-type ContactsRouteState =
-  | AppContactsRouteStateViewModel
-  | {
-      copy: AppContactsRouteStateViewModel["copy"];
-      evidenceIds: readonly string[];
-      recoveryActions?: readonly { href: string; label: string }[];
-    };
+export const dynamic = "force-dynamic";
 
-function ContactsRouteStateBoundary({
-  routeState,
-}: {
-  routeState: ContactsRouteState;
-}) {
-  return (
-    <div data-orbit-route="app-contacts-route-state">
-      <StateView
-        description={routeState.copy.description}
-        emptyState={routeState.copy.emptyState}
-        evidence={Array.from(routeState.evidenceIds)}
-        eyebrow={routeState.copy.eyebrow}
-        guardrail={routeState.copy.guardrail}
-        nextStep={routeState.copy.nextStep}
-        purpose={routeState.copy.purpose}
-        recoveryActions={(routeState.recoveryActions ?? []).map(
-          (action, index) => ({
-            id: `contacts-recovery-${index}`,
-            label: action.label,
-            recoveryCopy: routeState.copy.nextStep,
-            href: action.href,
-          }),
-        )}
-        title={routeState.copy.title}
-      />
-    </div>
-  );
-}
-
-export default async function AppContactsPage({
-  searchParams,
-}: {
-  searchParams?: Promise<AppContactsSearchParams>;
-} = {}) {
+export default async function AppContactsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> } = {}) {
   const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/app/account/login?next=%2Fapp%2Fcontacts");
-  }
-  const actor = await resolveAuthenticatedApiActorFromSession({
-    email: session.user.email,
-    name: session.user.name,
-    userId: session.user.id,
-  });
-  if (!actor) {
-    throw new Error("Authenticated Orbit account membership is unavailable.");
-  }
-
-  const params = await searchParams;
-  const guide = await readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id });
+  if (!session?.user?.id) redirect("/app/account/login?next=%2Fapp%2Fcontacts");
+  const actor = await resolveAuthenticatedApiActorFromSession({ email: session.user.email, name: session.user.name, userId: session.user.id });
+  if (!actor) throw new Error("Authenticated Orbit account membership is unavailable.");
+  const [params, language, guide] = await Promise.all([searchParams, getOrbitServerLanguage(), readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id })]);
   if (guide) {
-    const language = await getOrbitServerLanguage();
-    // 示例里来源筛选在前端做；`?sourceGroup=` 只决定首帧选中的来源格子。
     const sourceGroup = typeof params?.sourceGroup === "string" ? params.sourceGroup : "all";
     const initialSource = (NETWORK_SOURCES as readonly string[]).includes(sourceGroup) ? sourceGroup as NetworkSource | "all" : "all";
     return <>
@@ -99,55 +38,5 @@ export default async function AppContactsPage({
       </NetworkDemoFrame>
     </>;
   }
-  // W0047：所有人脉列表的服务端加载先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面）。
-  await ensureRelationshipStrengthsForPage(actor.id, new Date());
-  const cards = await loadContactCardRoute(params ?? {}, actor);
-  if (cards) return <>
-    <OrbitReferenceStyles /><OrbitVisualFreezeRuntime />
-    <div data-orbit-real-page="network" data-orbit-route="app-contacts-route">
-      {cards.state === "ready" ? <NetworkCards key={`${actor.id}:${cards.view.params}`} view={cards.view} />
-        : <section role="alert"><p>{cards.message}</p><a href="/app/contacts">清除筛选并返回第一页 / First page</a></section>}
-    </div>
-  </>;
-  const routeModel = await loadAppContactsRouteViewModel(
-    params,
-    actor.id,
-  );
-  const language =
-    routeModel.state === "success" ? await getOrbitServerLanguage() : null;
-  const tiers = routeModel.state === "success"
-    ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: routeModel.payload.contacts.map((contact) => contact.id) })
-    : undefined;
-
-  return (
-    <>
-      <OrbitReferenceStyles />
-      <OrbitVisualFreezeRuntime />
-      {routeModel.state === "success" ? (
-        // 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
-        <div data-orbit-real-page="network" data-orbit-route="app-contacts-route">
-          <NetworkAll
-            viewModel={localizeOrbitTree(
-              applyOrbitContactsPresentation(
-                contactsRouteToOrbitContactsViewModel(routeModel, tiers),
-                language ?? "zh",
-              ),
-              language ?? "zh",
-            )}
-          />
-        </div>
-      ) : (
-        <ContactsRouteStateBoundary
-          routeState={
-            routeModel.state === "route-state"
-              ? routeModel.routeState
-              : {
-                  copy: routeModel.failure,
-                  evidenceIds: routeModel.failure.evidenceIds,
-                }
-          }
-        />
-      )}
-    </>
-  );
+  return <NetworkScreen language={language} nowIso={new Date().toISOString()} />;
 }

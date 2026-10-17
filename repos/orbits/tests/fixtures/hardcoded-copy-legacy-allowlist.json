@@ -193,10 +193,6 @@
       "hardcoded": 14,
       "missingJa": 0
     },
-    "app/(app)/app/contacts/[id]/page.tsx": {
-      "hardcoded": 1,
-      "missingJa": 0
-    },
     "app/(app)/app/contacts/analysis/insights-tab.ts": {
       "hardcoded": 0,
       "missingJa": 3
@@ -352,10 +348,6 @@
     "app/(app)/app/contacts/network-0918/network-shell.tsx": {
       "hardcoded": 5,
       "missingJa": 6
-    },
-    "app/(app)/app/contacts/page.tsx": {
-      "hardcoded": 1,
-      "missingJa": 0
     },
     "app/(app)/app/events/[id]/operations/admission/event-admission-policy-panel.tsx": {
       "hardcoded": 37,
