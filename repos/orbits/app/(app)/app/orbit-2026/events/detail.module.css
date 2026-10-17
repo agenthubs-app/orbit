@@ -137,3 +137,6 @@
 .railGate .lbl, .railGate > div { margin-top: 4px; }
 .pGateCard.pGateCard { padding: 18px; }
 .mini3.mini2 { grid-template-columns: repeat(2, 1fr); }
+/* 主催卡（决定表 §39 A11，b2 #17 .k-hostq1）：每格标签在上、数值贴底；两行的类型占比标签行高 1.35。 */
+.mini3.hostq > div { display: flex; flex-direction: column; justify-content: space-between; }
+.hostq .lh135 { line-height: 1.35; }
