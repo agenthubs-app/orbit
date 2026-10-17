@@ -76,10 +76,7 @@
    "host": {
     "overview": "pre_open"
    },
-   "note": "P06 イベント運営 · 概要 開場前（web.html #20）；§44 页头「⋯」（[data-host-more-wrap]）web.html #20 未同步（b6 / b12 已加），截图前移除（已报 design-decisions）",
-   "app-remove": [
-    "[data-host-more-wrap]"
-   ]
+   "note": "P06 イベント運営 · 概要 開場前（web.html #20；§45 补了页头「⋯」）"
   },
   {
    "id": "W-R17-P08",

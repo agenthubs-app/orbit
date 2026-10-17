@@ -80,21 +80,21 @@ export interface HostPerson {
 export const HOST_PEOPLE: readonly HostPerson[] = [
   { company: "東邦テクノロジーズ", id: "hp-morita", kana: "もりた たくや", name: "森田 拓也", role: "事業開発部 部長", standing: "事業会社" },
   { company: "みずほ台ベンチャーズ", id: "hp-kimura", kana: "きむら ようへい", name: "木村 洋平", role: "パートナー", standing: "投資家" },
-  { company: "Fintory株式会社", id: "hp-saito", kana: "さいとう りょう", name: "斎藤 亮", role: "取締役CFO", standing: "CFO" },
+  { company: "Fintory 株式会社", id: "hp-saito", kana: "さいとう りょう", name: "斎藤 亮", role: "取締役 CFO", standing: "CFO" },
   { company: "後藤・水野法律事務所", id: "hp-goto", kana: "ごとう くみ", name: "後藤 久美", role: "弁護士", standing: "士業" },
   { company: "オリオン・グロース・パートナーズ", id: "hp-murakami", kana: "むらかみ ゆうすけ", name: "村上 祐介", role: "アソシエイト", standing: "投資家" },
   { company: "クラウドレジ株式会社", id: "hp-inoue", kana: "いのうえ さやか", name: "井上 さやか", role: "CFO", standing: "CFO" },
   { company: "山口会計事務所", id: "hp-yamaguchi", kana: "やまぐち めぐみ", name: "山口 恵", role: "公認会計士", standing: "士業" },
   { company: "中京電装株式会社", id: "hp-fujii", kana: "ふじい せいいち", name: "藤井 誠一", role: "経営企画室 室長", standing: "事業会社" },
   { company: "Kanata Health", id: "hp-kondo", kana: "こんどう だいち", name: "近藤 大地", role: "COO", standing: "経営者" },
-  { company: "ミライ証券", id: "hp-harada", kana: "はらだ ひとみ", name: "原田 ひとみ", role: "IPO支援部", standing: "金融" },
-  { company: "東海プレス工業", id: "hp-shimizu", kana: "しみず けん", name: "清水 健", role: "DX推進課 課長", standing: "事業会社" },
-  { company: "ロジレス・テック", id: "hp-maeda", kana: "まえだ ゆう", name: "前田 悠", role: "代表取締役CEO", standing: "経営者" },
+  { company: "ミライ証券", id: "hp-harada", kana: "はらだ ひとみ", name: "原田 ひとみ", role: "IPO 支援部", standing: "金融" },
+  { company: "東海プレス工業", id: "hp-shimizu", kana: "しみず けん", name: "清水 健", role: "DX 推進課 課長", standing: "事業会社" },
+  { company: "ロジレス・テック", id: "hp-maeda", kana: "まえだ ゆう", name: "前田 悠", role: "代表取締役 CEO", standing: "経営者" },
   { company: "あおば信用金庫", id: "hp-ishikawa", kana: "いしかわ ようこ", name: "石川 洋子", role: "法人営業部 次長", standing: "金融" },
   { company: "遠藤化成工業", id: "hp-endo", kana: "えんどう おさむ", name: "遠藤 修", role: "専務取締役", standing: "事業会社" },
   { company: "松本精機株式会社", id: "hp-matsumoto", kana: "まつもと たかし", name: "松本 隆", role: "代表取締役", standing: "経営者" },
   { company: "白金キャピタル", id: "hp-okada", kana: "おかだ まりこ", name: "岡田 真理子", role: "ベンチャーパートナー", standing: "投資家" },
-  { company: "Seedline株式会社", id: "hp-hasegawa", kana: "はせがわ つばさ", name: "長谷川 翼", role: "CFO", standing: "CFO" },
+  { company: "Seedline 株式会社", id: "hp-hasegawa", kana: "はせがわ つばさ", name: "長谷川 翼", role: "CFO", standing: "CFO" },
   { company: "リーフラボ株式会社", id: "hp-sakamoto", kana: "さかもと あおい", name: "坂本 葵", role: "管理部長", standing: "CFO" },
   { company: "グロースリンク・キャピタル", id: "hp-aoki", kana: "あおき りな", name: "青木 里奈", role: "プリンシパル", standing: "投資家" },
   { company: "ナレッジフロー株式会社", id: "hp-hayashi", kana: "はやし みほ", name: "林 美穂", role: "経営企画部長", standing: "CFO" },
@@ -120,7 +120,7 @@ const initial = (name: string) => name.trim().charAt(0);
 
 export const HOST_PROFILES: readonly OrganizerProfile[] = [
   { bio: "上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜を、毎月渋谷で開いています。キーノートのあと、テーブルトークを 3ラウンド。", displayName: "CFO Night 実行委員会", emoji: "🥂", eventCount: 18, profileId: HOST_PROFILE_IDS.cfoNight, sample: true, slug: "cfo-night", updatedAt: "2026-10-01T00:00:00.000Z", visibility: "public" },
-  { bio: "製造業の DX 担当者とスタートアップが、現場の課題を持ち寄る朝会です。", displayName: "製造業DX 朝会", emoji: "🏭", eventCount: 3, profileId: HOST_PROFILE_IDS.mfgDx, sample: true, slug: "mfg-dx-asakai", updatedAt: "2026-09-20T00:00:00.000Z", visibility: "public" },
+  { bio: "製造業の DX 担当者とスタートアップが、現場の課題を持ち寄る朝会です。", displayName: "製造業 DX 朝会", emoji: "🏭", eventCount: 3, profileId: HOST_PROFILE_IDS.mfgDx, sample: true, slug: "mfg-dx-asakai", updatedAt: "2026-09-20T00:00:00.000Z", visibility: "public" },
 ];
 
 interface HostEventSeed {
@@ -156,11 +156,11 @@ const CFO18_DESCRIPTION = "上場を目指すスタートアップの CFO・経�
 
 export const HOST_EVENTS: readonly HostEventSeed[] = [
   { admission: "review", applied: 128, approved: 104, capacity: 150, checkedIn: 86, closesAt: "2026-10-06T14:59:00.000Z", code: "CFO18NGT", description: CFO18_DESCRIPTION, emoji: "🥂", endsAt: "2026-10-07T12:30:00.000Z", feeYen: 5000, followupRate: null, id: HOST_EVENT_IDS.cfo18, matched: 112, pendingReview: 12, profileId: HOST_PROFILE_IDS.cfoNight, rejected: 4, slug: "cfo-night-18", startsAt: "2026-10-07T10:00:00.000Z", status: "live", title: "CFO Night Tokyo vol.18", venueArea: "渋谷", venueName: "渋谷ストリーム 4F ホール", venueShort: "渋谷ストリーム", waitlisted: 8 },
-  { admission: "review", applied: 42, approved: 42, capacity: 60, checkedIn: null, closesAt: "2026-10-20T14:59:00.000Z", code: "MFG3-ASKI", description: "製造業の DX 担当者とスタートアップが、現場の課題を持ち寄る朝会です。", emoji: "🏭", endsAt: "2026-10-21T00:30:00.000Z", feeYen: null, followupRate: null, id: HOST_EVENT_IDS.asakai3, matched: null, pendingReview: 0, profileId: HOST_PROFILE_IDS.mfgDx, rejected: 0, slug: "mfg-dx-asakai-3", startsAt: "2026-10-20T23:00:00.000Z", status: "upcoming", title: "製造業DX 朝会 #3", venueArea: "品川", venueName: "ミナトリンク 品川オフィス", venueShort: "ミナトリンク 品川オフィス", waitlisted: 0 },
+  { admission: "review", applied: 42, approved: 42, capacity: 60, checkedIn: null, closesAt: "2026-10-20T14:59:00.000Z", code: "MFG3-ASKI", description: "製造業の DX 担当者とスタートアップが、現場の課題を持ち寄る朝会です。", emoji: "🏭", endsAt: "2026-10-21T00:30:00.000Z", feeYen: null, followupRate: null, id: HOST_EVENT_IDS.asakai3, matched: null, pendingReview: 0, profileId: HOST_PROFILE_IDS.mfgDx, rejected: 0, slug: "mfg-dx-asakai-3", startsAt: "2026-10-20T23:00:00.000Z", status: "upcoming", title: "製造業 DX 朝会 #3", venueArea: "品川", venueName: "ミナトリンク 品川オフィス", venueShort: "ミナトリンク 品川オフィス", waitlisted: 0 },
   { admission: "review", applied: 18, approved: 15, capacity: 30, checkedIn: null, closesAt: "2026-11-04T14:59:00.000Z", code: "FUND-RT05", description: "資金調達の実務を、経験者と少人数で話すラウンドテーブルです。", emoji: "💰", endsAt: "2026-11-05T11:30:00.000Z", feeYen: 3000, followupRate: null, id: HOST_EVENT_IDS.roundtable, matched: null, pendingReview: 3, profileId: HOST_PROFILE_IDS.cfoNight, rejected: 0, slug: "funding-roundtable", startsAt: "2026-11-05T09:30:00.000Z", status: "upcoming", title: "資金調達 実践ラウンドテーブル", venueArea: "大手町", venueName: "大手町 Inspired.Lab", venueShort: "大手町 Inspired.Lab", waitlisted: 0 },
   { admission: "review", applied: 140, approved: 140, capacity: 150, checkedIn: 118, closesAt: "2026-09-08T14:59:00.000Z", code: "CFO17NGT", description: CFO18_DESCRIPTION, emoji: "🥂", endsAt: "2026-09-09T12:30:00.000Z", feeYen: 5000, followupRate: 61, id: HOST_EVENT_IDS.cfo17, matched: 131, pendingReview: 0, profileId: HOST_PROFILE_IDS.cfoNight, rejected: 0, slug: "cfo-night-17", startsAt: "2026-09-09T10:00:00.000Z", status: "ended", title: "CFO Night Tokyo vol.17", venueArea: "渋谷", venueName: "渋谷ストリーム 4F ホール", venueShort: "渋谷ストリーム", waitlisted: 0 },
   { admission: "first_come", applied: 24, approved: 24, capacity: 24, checkedIn: 22, closesAt: "2026-08-26T14:59:00.000Z", code: "FLUN-CH11", description: "創業者どうしで、ランチを食べながら近況を話す会です。", emoji: "🍱", endsAt: "2026-08-27T04:30:00.000Z", feeYen: 2000, followupRate: 73, id: HOST_EVENT_IDS.founders11, matched: 24, pendingReview: 0, profileId: HOST_PROFILE_IDS.cfoNight, rejected: 0, slug: "founders-lunch-11", startsAt: "2026-08-27T03:00:00.000Z", status: "ended", title: "Founders Lunch 渋谷 #11", venueArea: "渋谷", venueName: "渋谷サクラステージ", venueShort: "渋谷サクラステージ", waitlisted: 0 },
-  { admission: "review", applied: 38, approved: 38, capacity: 60, checkedIn: 31, closesAt: "2026-07-14T14:59:00.000Z", code: "MFG2-ASKI", description: "製造業の DX 担当者とスタートアップが、現場の課題を持ち寄る朝会です。", emoji: "🏭", endsAt: "2026-07-15T00:30:00.000Z", feeYen: null, followupRate: 48, id: HOST_EVENT_IDS.asakai2, matched: 34, pendingReview: 0, profileId: HOST_PROFILE_IDS.mfgDx, rejected: 0, slug: "mfg-dx-asakai-2", startsAt: "2026-07-14T23:00:00.000Z", status: "ended", title: "製造業DX 朝会 #2", venueArea: "品川", venueName: "ミナトリンク 品川オフィス", venueShort: "ミナトリンク 品川オフィス", waitlisted: 0 },
+  { admission: "review", applied: 38, approved: 38, capacity: 60, checkedIn: 31, closesAt: "2026-07-14T14:59:00.000Z", code: "MFG2-ASKI", description: "製造業の DX 担当者とスタートアップが、現場の課題を持ち寄る朝会です。", emoji: "🏭", endsAt: "2026-07-15T00:30:00.000Z", feeYen: null, followupRate: 48, id: HOST_EVENT_IDS.asakai2, matched: 34, pendingReview: 0, profileId: HOST_PROFILE_IDS.mfgDx, rejected: 0, slug: "mfg-dx-asakai-2", startsAt: "2026-07-14T23:00:00.000Z", status: "ended", title: "製造業 DX 朝会 #2", venueArea: "品川", venueName: "ミナトリンク 品川オフィス", venueShort: "ミナトリンク 品川オフィス", waitlisted: 0 },
 ];
 
 export function hostEventIds(): readonly string[] {
@@ -295,7 +295,7 @@ export function hostCenter(state: HostMockState = DEFAULT_HOST_MOCK_STATE, filte
     summary: { activeCount: 3, appliedThisMonth: 188, eventCount: 6 },
     todo: [
       { count: 12, eventId: HOST_EVENT_IDS.cfo18, eventTitle: "CFO Night vol.18", kind: "review_pending" },
-      { daysLeft: 14, eventId: HOST_EVENT_IDS.asakai3, eventTitle: "製造業DX 朝会 #3", kind: "matching_missing" },
+      { daysLeft: 14, eventId: HOST_EVENT_IDS.asakai3, eventTitle: "製造業 DX 朝会 #3", kind: "matching_missing" },
       { count: 16, eventId: HOST_EVENT_IDS.cfo18, eventTitle: "CFO Night vol.18", kind: "profile_incomplete" },
     ],
   };
@@ -351,7 +351,7 @@ const TABLE_D4 = ["hp-okada", "hp-hasegawa", "hp-sakamoto", "hp-aoki"];
 /** 空态的「生成されるとこう見えます」样例（同 b6 #3）。 */
 export const HOST_MATCHING_SAMPLE: readonly HostMatchingTable[] = [
   table("A", "資本政策 × 投資家", TABLE_A, "資本政策"),
-  table("B", "製造業DX × 資金調達", TABLE_B, "製造業DX"),
+  table("B", "製造業 DX × 資金調達", TABLE_B, "製造業 DX"),
   table("C", "財務チームづくり", [...TABLE_C4, "hp-matsumoto"]),
 ];
 
@@ -363,14 +363,14 @@ export function hostMatching(eventId: string, state: HostMockState = DEFAULT_HOS
   const conditions = { avoidPreviousTablemates: true, investorPerTable: true, roundCount: 2, separateCompanies: true, tableSize: 5 };
   const base: HostMatchingResponse = { applied: seed.applied, conditions, event, generationId: null, generationsLimit: 3, generationsUsed: 0, minimumApplied: 20, overridesVersion: 0, participantCount: 0, profileComplete: 30, round: 1, rounds, sample: true, state: "none", tableCount: 0, tableSizeMax: 5, tableSizeMin: 5, tables: [], unplaced: [], unsatisfiedTables: 0 };
   if (eventId === HOST_EVENT_IDS.roundtable) {
-    return { ...base, generationId: "demo-generation-roundtable-1", generationsUsed: 1, participantCount: 18, profileComplete: 18, state: "draft", tableCount: 4, tableSizeMax: 5, tableSizeMin: 4, tables: [table("A", "資本政策 × 投資家", TABLE_A, "資本政策"), table("B", "製造業DX × 資金調達", TABLE_B, "製造業DX"), table("C", "財務チームづくり", TABLE_C4), table("D", "上場準備の実務", TABLE_D4)] };
+    return { ...base, generationId: "demo-generation-roundtable-1", generationsUsed: 1, participantCount: 18, profileComplete: 18, state: "draft", tableCount: 4, tableSizeMax: 5, tableSizeMin: 4, tables: [table("A", "資本政策 × 投資家", TABLE_A, "資本政策"), table("B", "製造業 DX × 資金調達", TABLE_B, "製造業 DX"), table("C", "財務チームづくり", TABLE_C4), table("D", "上場準備の実務", TABLE_D4)] };
   }
   if (eventId === HOST_EVENT_IDS.cfo18) {
     return {
       ...base, generationId: "demo-generation-cfo18-1", generationsUsed: 1, participantCount: 112, profileComplete: 112, state: "draft", tableCount: 22,
       tables: [
         table("A", "資本政策 × 投資家", TABLE_A, "資本政策"),
-        table("B", "製造業DX × 資金調達", TABLE_B, "製造業DX", 1),
+        table("B", "製造業 DX × 資金調達", TABLE_B, "製造業 DX", 1),
         table("C", "財務チームづくり", [...TABLE_C4, "hp-matsumoto"]),
         table("D", "上場準備の実務", [...TABLE_D4, "hp-hayashi"]),
         table("E", "CVC との協業", ["hp-goto", "hp-murakami", "hp-morita", "hp-kimura", "hp-saito"]),
@@ -575,7 +575,7 @@ export function hostSetup(eventId: string, state: HostMockState = DEFAULT_HOST_M
     unpublishedChanges: 0,
   };
   if (eventId === HOST_EVENT_IDS.asakai3) {
-    return { ...base, suggestion: { basisCount: 2, basisTitle: "製造業DX 朝会", count: 3, questions: [Q1, { ...Q2_FEW, options: ["生産管理", "品質管理", "資金調達"] }, Q3] } };
+    return { ...base, suggestion: { basisCount: 2, basisTitle: "製造業 DX 朝会", count: 3, questions: [Q1, { ...Q2_FEW, options: ["生産管理", "品質管理", "資金調達"] }, Q3] } };
   }
   if (eventId === HOST_EVENT_IDS.cfo18 && state.setup === "few") {
     return { ...base, description: DESCRIPTION_FEW, questions: [Q1, Q2_FEW], savedAt: "2026-10-07T02:58:00.000Z" };

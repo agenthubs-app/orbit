@@ -25,7 +25,7 @@ test("申込設定 · 空（b6 #13）：テンプレート 4 种、質問案 3�
   assert.match(html, /data-host-setup="empty"/);
   assert.equal(count(html, "data-host-template="), 4);
   assert.match(html, /質問案を 3つ追加しますか？/);
-  assert.match(html, /「製造業DX 朝会」の過去 2回の回答傾向から作成しました/);
+  assert.match(html, /「製造業 DX 朝会」の過去 2回の回答傾向から作成しました/);
   assert.match(html, /0 \/ 200/);
   assert.match(html, /60名/);
   assert.match(html, /10月20日（火）23:59/);
