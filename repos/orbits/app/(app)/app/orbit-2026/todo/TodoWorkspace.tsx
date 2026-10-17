@@ -15,6 +15,8 @@ import { todoPageView, type DecisionAction } from "./todo-view-model";
 import { useTodoPage } from "./useTodoPage";
 import styles from "./todo.module.css";
 import { TodoDraftDrawer, type ManualTodoDraft } from "./TodoDraftDrawer";
+import { ShellPage } from "../shell/slots";
+import { TodoNextMovesRail } from "./TodoNextMovesRail";
 
 export function TodoWorkspace({ actorId, language, timeZone, date, initialAdd = false }: { actorId?: string; language: OrbitLanguage; timeZone: string; date: string; initialAdd?: boolean }) {
   const { account, ready } = useSharedReadAccount();
@@ -94,8 +96,9 @@ function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLa
   const draft = ready && !resource.denied && resource.state !== "not_implemented" && draftKey ? drafts[draftKey] : null;
   const binding = resource.page?.nextMoves.items.find(item => item.key === draftKey);
   const canHandoff = Boolean(resource.state === "ready" && binding && !binding.sample && resource.page?.sources[binding.source] === "ok");
-  if (resource.state === "not_implemented") return null;
+  if (resource.state === "not_implemented") return <ShellPage rightRail={false} />;
   return <>
+    <ShellPage rightRail={<TodoNextMovesRail account={account} language={language} state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDraft={openDraft} />} />
     <button type="button" hidden data-task-add="" onClick={() => { setAdding(true); setError(false); }}>{t(taskCopy.todoAdd)}</button>
     <TodoPresenter state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDecision={decide} onMore={setAll} onDraft={openDraft} />
     {draft ? <TodoDraftDrawer key={`${epoch}:${draftKey}`} open title={draft.title} reason={draft.reason} value={draft.value} canHandoff={canHandoff} scopeKey={`${draftScope}:${epoch}`} onChange={value => { if (draftEpoch.current !== epoch) return; setDrafts(current => current[draftKey!] ? { ...current, [draftKey!]: { ...current[draftKey!]!, value } } : current); }} onClose={() => { if (draftEpoch.current !== epoch) return; draftEpoch.current++; setDraftKey(null); }} /> : null}

@@ -5,6 +5,9 @@ import { TodoWorkspace } from "../../app/(app)/app/orbit-2026/todo/TodoWorkspace
 import { demoTodoPage } from "../../shared/mock/demo-world/todo";
 import { SessionContext } from "next-auth/react";
 import { TodoDraftDrawer } from "../../app/(app)/app/orbit-2026/todo/TodoDraftDrawer";
+import { ShellPage, ShellSlotsProvider, useShellSlots } from "../../app/(app)/app/orbit-2026/shell/slots";
+
+function RailProbe() { return <aside data-rail-probe="">{useShellSlots().rightRail}</aside>; }
 
 const contents = (node: ReactTestInstance): string => node.children.map(child => typeof child === "string" ? child : contents(child)).join("");
 const button = (root: ReactTestRenderer, label: string) => root.root.findAllByType("button").find(node => node.props["aria-label"] === label || contents(node) === label)!;
@@ -13,6 +16,59 @@ const setupDocument = () => {
   Object.defineProperty(globalThis, "document", { configurable: true, value: { activeElement: null, addEventListener() {}, removeEventListener() {} } });
   return () => { if (descriptor) Object.defineProperty(globalThis, "document", descriptor); else Reflect.deleteProperty(globalThis, "document"); };
 };
+
+test("Task next-move rail reuses the page read and guarded draft, then restores the generic rail", async t => {
+  const restore = setupDocument(); let reads = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    reads++;
+    return Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18", nextMoves: { ...demoTodoPage.nextMoves, items: demoTodoPage.nextMoves.items.map(item => ({ ...item, sample: undefined, draftAvailable: false })) } } });
+  });
+  const render = (mounted: boolean) => <ShellSlotsProvider><ShellPage rightRail={<p>Generic rail</p>} />{mounted ? <TodoWorkspace language="ja" timeZone="Asia/Tokyo" date="2026-10-18" /> : null}<RailProbe /></ShellSlotsProvider>;
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(render(true)); });
+  t.after(() => { act(() => root.unmount()); restore(); });
+  const rail = () => root!.root.findByProps({ "data-rail-probe": "" });
+  assert.ok(contents(rail()).includes("Task から"));
+  assert.ok(contents(rail()).includes(demoTodoPage.nextMoves.items[0].titlePreview));
+  assert.equal(reads, 1, "the rail must not issue a second aggregate request");
+  const draft = rail().findAllByType("button").find(node => contents(node) === "下書きを開く")!;
+  await act(async () => draft.props.onClick());
+  assert.equal(root!.root.findAllByType("textarea").length, 1);
+  await act(async () => root.update(render(false)));
+  assert.equal(contents(rail()), "Generic rail");
+});
+
+test("Task rail drops account data while the next account loads and hides whole-page NOT_IMPLEMENTED", async t => {
+  let settle!: (response: Response) => void; let first = true;
+  t.mock.method(globalThis, "fetch", async () => first ? Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18" } }) : new Promise<Response>(resolve => { settle = resolve; }));
+  const render = (account: string) => <SessionContext.Provider value={{ status: "authenticated", data: { user: { id: account }, expires: "2099-01-01" }, update: async () => null }}><ShellSlotsProvider><ShellPage rightRail={<p>Generic rail</p>} /><TodoWorkspace language="ja" timeZone="Asia/Tokyo" date="2026-10-18" /><RailProbe /></ShellSlotsProvider></SessionContext.Provider>;
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(render("a")); });
+  t.after(() => act(() => root.unmount()));
+  const rail = () => root!.root.findByProps({ "data-rail-probe": "" });
+  assert.ok(contents(rail()).includes(demoTodoPage.nextMoves.items[0].titlePreview));
+  assert.ok(rail().findAllByType("button").filter(node => contents(node) === "下書きを開く").every(node => node.props.disabled));
+  first = false;
+  await act(async () => root.update(render("b")));
+  assert.ok(!contents(rail()).includes(demoTodoPage.nextMoves.items[0].titlePreview));
+  await act(async () => settle(Response.json({ success: false, error: { code: "NOT_IMPLEMENTED" } }, { status: 503 })));
+  assert.equal(contents(rail()), "");
+});
+
+test("Task rail retries failed reads and bounds real source cards to three", async t => {
+  let failed = true;
+  t.mock.method(globalThis, "fetch", async () => failed ? Response.json({ success: false }, { status: 503 }) : Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18", counts: { ...demoTodoPage.counts, nextMoves: 5 }, nextMoves: { items: Array.from({ length: 5 }, (_, index) => ({ ...demoTodoPage.nextMoves.items[0], key: `agent_signal:rail-${index}`, sourceId: `rail-${index}`, titlePreview: `Rail move ${index}`, sample: undefined })), next: {} } } }));
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<ShellSlotsProvider><TodoWorkspace language="ja" timeZone="Asia/Tokyo" date="2026-10-18" /><RailProbe /></ShellSlotsProvider>); });
+  t.after(() => act(() => root.unmount()));
+  const rail = () => root!.root.findByProps({ "data-rail-probe": "" });
+  assert.ok(contents(rail()).includes("To-do を読み込めませんでした"));
+  failed = false;
+  await act(async () => rail().findByType("button").props.onClick());
+  assert.equal(rail().findAllByType("button").length, 3);
+  assert.ok(contents(rail()).includes("Rail move 2"));
+  assert.ok(!contents(rail()).includes("Rail move 3"));
+});
 
 test("product To-do decisions call the native source, then refresh authoritative rows and counts", async t => {
   let accepted = false;

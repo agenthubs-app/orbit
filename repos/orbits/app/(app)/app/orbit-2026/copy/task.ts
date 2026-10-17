@@ -148,4 +148,6 @@ export const taskCopy = {
   calendarDetail: { ja: "予定の詳細", zh: "日程详情", en: "Schedule details", kind: "dialogTitle" },
   calendarReadOnly: { ja: "この予定は、この画面では変更できません。", zh: "此日程无法在本页修改。", en: "This schedule cannot be changed from this page.", kind: "body" },
   calendarMeetingReschedule: { ja: "面談の変更は候補時間を再提案します。元の予定は合意まで変わりません。", zh: "更改会面须重新提议候选时间，双方同意前保留原日程。", en: "Meeting changes require new time proposals. The original time stays until agreement.", kind: "body" },
+  todoRailTitle: { ja: "次の一手", zh: "下一步", en: "Next moves", kind: "label" },
+  todoRailFromTask: { ja: "Task から", zh: "来自 Task", en: "From Task", kind: "label" },
 } as const satisfies OrbitCopyTable;

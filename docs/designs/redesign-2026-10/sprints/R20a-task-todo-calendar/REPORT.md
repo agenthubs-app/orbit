@@ -330,6 +330,14 @@ repository.create の optional prepare は receipt lookup **後**、Postgres の
 
 上述の full / bounded rerun の RED と actual animation.finished diagnostic の **2/2 GREEN** に基づき、user 承認後に `tests/ui/add-contact-screens.test.tsx` の最初の doors test を修正。dialog visible の直後ではなく、その dialog の `getAnimations()` が返す実 animation の `finished` を全て待って既存 560px assertion を行う。固定 sleep、許容誤差の拡大、縮小 width の採用、UI / kit 変更はしない。主会話の指示で test-only path commit を先に行い、fresh 二件 browser を queued App tsc / browser 後の heavy.sh d へ並べる。現コミット時点ではこの fresh browser は pending で、過去 diagnostic の green を現 full の green と呼ばない。
 
+### SC-06 To-do next-move rail（bounded Web 子里程標）
+
+To-do の `TodoWorkspace` が既存 ShellPage の rightRail slot だけを上書きし、同じ `useTodoPage` response の nextMoves を最大三件表示する。rail 専用 fetch / cache は追加しない。source title / reason と sample 状態を保ち、非 sample は既存の scope-guarded manual drawer を開く。AI / persistence / send が利用できるとは表示しない。failed read は retry、partial source は partial notice、loading / account change は旧 rows を消し、whole-page NOT_IMPLEMENTED は rail 自体を隠す。slot 外へ描画される rail は live account を再確認し、古い account の node を表示しない。
+
+新 shell-slot regression 二件は RED **0/2** → GREEN。追加の failed-read retry / three-card bound を含む focused Workspace / Presenter / Drawer / CSS-token suite は **25/25 pass**、task copy QA は **149 entries / 0 issues**。rail の draft action が実 drawer を開き、aggregate fetch が一回だけで、To-do unmount 後は元の generic rail が復元されることを確認。plan / memo / generic rail / component library は変更していない。full copy QA / full tests / fresh typecheck / browser / pixel 全体の pass をこの focused 結果から主張しない。
+
+これは To-do rail の限定子里程標であり、calendar の Task-specific rail、recent conversation の検証済み source、native Later action / ask flow はまだ配線していない。画板の recent history を捏造せず、SC-06 全体の完了や pixel fidelity とはしない。fresh browser / full は coordinated heavy と clean rebase 後に確認する。
+
 ## 请求
 
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。
