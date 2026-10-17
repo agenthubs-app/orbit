@@ -174,7 +174,7 @@ const REC = [
   { n: 'シリーズA 実務勉強会', md: [11, 12], d: '11/12（木）', place: 'オンライン', score: 71, why: '伊藤さん（ハルモニア CFO）が登壇', emo: '📚', vc: 'blue', v: '参加をおすすめ', fee: '無料' },
 ];
 const MORE = [
-  { n: '製造業 DXカンファレンス 大阪', md: [10, 23], place: 'グランフロント大阪', score: 68, fee: '無料', v: '条件付き', vc: 'apricot' },
+  { n: '製造業 DX カンファレンス 大阪', md: [10, 23], place: 'グランフロント大阪', score: 68, fee: '無料', v: '条件付き', vc: 'apricot' },
   { n: 'FinTech Forum Tokyo', md: [11, 5], place: '虎ノ門ヒルズ', score: 58, fee: '¥8,000', v: '条件付き', vc: 'apricot' },
   { n: '丸の内スタートアップ朝会 #42', md: [10, 21], place: '丸の内', score: 41, fee: '¥1,000', v: '見送り推奨', vc: 'pink' },
 ];
@@ -192,16 +192,16 @@ const segTop = (k, cls = 'full') => `<div class="seg ${cls}">${['評価', '参�
    ============================================================ */
 function errUrl() {
   return topbar('イベント評価', '読み取れませんでした', close) + `
-  <div class="card rise"><div class="lbl">貼り付けたURL</div>
+  <div class="card rise"><div class="lbl">貼り付けた URL</div>
     <div class="input fill err" style="margin-top:6px">${ic('link', 'sm')}<span class="ell">https://members.cfo-night.jp/events/18</span></div>
     <div class="row" style="margin-top:10px;gap:6px;flex-wrap:wrap"><span class="chip coral p-errchip">ログインが必要なページ</span><span class="lbl">会員限定のため本文を取得できません</span></div></div>
   <div class="card"><div class="row" style="gap:10px;align-items:flex-start"><span class="emo apricot">🔒</span><div><b style="font-size:14.5px">別の方法で続けられます</b><div class="lbl" style="margin-top:2px">Orbit があなたの代わりにログインすることはありません</div></div></div>
     <div class="p-opts">${[['📋', 'pink', 'ページの本文を貼り付ける', 'ログイン後に全文コピー → ここに貼るだけ'], ['🖼️', 'blue', 'スクリーンショットを選ぶ', '告知画面を撮って読み取ります'], ['✍️', 'teal', '日時・場所・参加費だけ入力', '3項目で簡易判定（精度は下がります）']].map(([e, c, t, d]) => `<button class="opt-row"><span class="emo sm ${c}">${e}</span><div style="flex:1;text-align:left;min-width:0"><b>${t}</b>${d}</div>${ic('right', 'sm')}</button>`).join('')}</div></div>
-  <button class="btn ghost block">${ic('refresh', 'sm')}別のURLを試す</button>`;
+  <button class="btn ghost block">${ic('refresh', 'sm')}別の URL を試す</button>`;
 }
 function errNotEvent() {
   return topbar('イベント評価', 'イベントページではないようです', close) + `
-  <div class="card rise"><div class="lbl">貼り付けたURL</div>
+  <div class="card rise"><div class="lbl">貼り付けた URL</div>
     <div class="input fill" style="margin-top:6px">${ic('link', 'sm')}<span class="ell">https://note.example/cfo-yamada/n/series-a</span></div>
     <div class="row" style="margin-top:10px;gap:6px"><span class="chip apricot">記事ページ</span><span class="lbl">日時・申込方法が見つかりません</span></div></div>
   <div class="card"><div class="card-h"><h3><span class="emo sm lav">🔎</span>ページ内のイベント</h3><span class="lbl">2件</span></div>
@@ -288,7 +288,7 @@ function discover(s) {
       <div style="font-size:19px;font-weight:800;line-height:1.4;margin:4px 0">目標を決めると、<br>会うべき人が来るイベントが上に並びます</div>
       <div class="sub" style="margin-bottom:14px">今は「人気順」で表示しています。約1分で設定できます。</div>
       <button class="btn primary block tap-demo" style="height:46px">${ic('target', 'sm')}目標を設定する</button></div>
-    <div class="grid3" style="margin-top:14px">${[['🔗', 'blue', 'URLで評価'], ['🎟️', 'teal', '参加コード'], ['👥', 'pink', 'コミュニティ']].map(([e, c, t]) => `<button class="card" style="margin:0;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11.5px;font-weight:700"><span class="emo ${c}">${e}</span>${t}</button>`).join('')}</div>
+    <div class="grid3" style="margin-top:14px">${[['🔗', 'blue', 'URL で評価'], ['🎟️', 'teal', '参加コード'], ['👥', 'pink', 'コミュニティ']].map(([e, c, t]) => `<button class="card" style="margin:0;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11.5px;font-weight:700"><span class="emo ${c}">${e}</span>${t}</button>`).join('')}</div>
     <div class="card" style="margin-top:14px"><div class="card-h"><h3>プランができると ${sample}</h3></div>
       <div class="faded">${recCard(REC[0], 300).replace('class="ev-card"', 'class="ev-card" style="padding:0;width:auto"')}</div>
       <div class="ghost-row" style="margin-top:12px"><i></i>あなたのコミュニティの先行案内</div><div class="ghost-row"><i></i>知り合いが参加するイベント</div></div>`;
@@ -444,7 +444,7 @@ function regPersona() {
   <div class="card"><div class="card-h"><h3>話題</h3><span class="more">編集</span></div><div class="chips"><span class="chip lav">シリーズAの資本政策</span><span class="chip lav">CFO 採用</span><span class="chip lav">SaaS の KPI 開示</span><span class="chip">＋ 追加</span></div></div>
   <div class="card p-intro" data-why-box><div class="card-h"><h3>自己紹介 <span class="lbl" style="font-weight:500">参加者に表示</span></h3><div class="row" style="gap:6px"><span class="why">?</span><button class="lbtn">${ic('pen', 'sm')}</button></div></div>
     <div style="font-size:13.5px;line-height:1.75">製造業向け IoT SaaS「ミナトリンク」の代表です。来春のシリーズAに向けて、資本政策と CFO 採用について、経験のある方のお話を伺いたいです。工場 DX の現場事情ならお話しできます。</div>
-    <div class="why-body" hidden>回答（目的・テーマ・会いたい人）とプロフィール（ミナトリンク 代表取締役CEO）から作成。売上などの数値は入れていません。</div></div>
+    <div class="why-body" hidden>回答（目的・テーマ・会いたい人）とプロフィール（ミナトリンク 代表取締役 CEO）から作成。売上などの数値は入れていません。</div></div>
   <div class="card flat p-scope"><div class="lbl" style="margin-bottom:8px">公開範囲</div>
     <div class="row" style="gap:8px;font-size:12.5px"><span class="chip teal">参加者全員</span><span class="sub">名前 · 会社 · 自己紹介 · 話題</span></div>
     <div class="row" style="gap:8px;font-size:12.5px;margin-top:6px"><span class="chip">主催者のみ</span><span class="sub">参加目的 · 会いたい人</span></div></div>
