@@ -17,3 +17,10 @@ test("R18a empty suggestions offer all three existing input paths and a labeled 
   const html = renderToHtml(createElement(module.AccountSuggestionsContent, { cards: [], t: createTranslator("ja"), selected: new Set(), filter: "all", busy: false, onFilter: () => {}, onSelect: () => {}, onDismiss: () => {}, onAll: () => {}, onApply: () => {}, onEntry: () => {} }));
   for (const text of ["名刺をスキャン", "職務経歴書を読み込む", "iOrbit に近況を話す", "サンプル"]) assert.ok(html.includes(text), text);
 });
+test("R18a offline suggestions disable every network input action", async () => {
+  const module = await import("../src/screens/me/AccountSuggestionsContent");
+  const html = renderToHtml(createElement(module.AccountSuggestionsContent, { cards: [], t: createTranslator("ja"), selected: new Set(), filter: "all", busy: true, onFilter: () => {}, onSelect: () => {}, onDismiss: () => {}, onAll: () => {}, onApply: () => {}, onEntry: () => {} }));
+  const buttons = [...html.matchAll(/<[^>]+role="button"[^>]*>/g)].map(match => match[0]);
+  assert.equal(buttons.length, 3);
+  assert.ok(buttons.every(button => button.includes('aria-disabled="true"')), buttons.join("\n"));
+});

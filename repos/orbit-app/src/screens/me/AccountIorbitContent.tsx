@@ -5,8 +5,8 @@ import { createThemedStyles } from "../../design/theme";
 import { spacing, typography } from "../../design/tokens";
 import type { OrbitTranslator } from "../../i18n/messages";
 import type { AccountMemory } from "./settings-api";
-export function AccountIorbitContent({ t, goal, bio, memories, semanticAvailable, semanticOn, busy, aiAvailable = true, canSave = true, onGoal, onBio, onGenerate, onSave, onDelete, onSemantic }: {
-  t: OrbitTranslator; goal: string | null | undefined; bio: string; memories: AccountMemory[] | null; semanticAvailable: boolean; semanticOn: boolean; busy: boolean; aiAvailable?: boolean; canSave?: boolean;
+export function AccountIorbitContent({ t, goal, bio, memories, semanticAvailable, semanticOn, busy, offline = false, aiAvailable = true, canSave = true, onGoal, onBio, onGenerate, onSave, onDelete, onSemantic }: {
+  t: OrbitTranslator; goal: string | null | undefined; bio: string; memories: AccountMemory[] | null; semanticAvailable: boolean; semanticOn: boolean; busy: boolean; offline?: boolean; aiAvailable?: boolean; canSave?: boolean;
   onGoal: () => void; onBio: (value: string) => void; onGenerate: () => void; onSave: () => void; onDelete: (id: string) => void; onSemantic: (value: boolean) => void;
 }) {
   const { styles } = useStyles();
@@ -19,7 +19,7 @@ export function AccountIorbitContent({ t, goal, bio, memories, semanticAvailable
       <Button label={t("me.aiIntro")} variant="secondary" disabled={busy} onPress={onGenerate} /><UiText style={styles.detail}>{t("me.aiReview")}</UiText></> : null}
       <Button label={t("me.save")} disabled={busy || !canSave || !profileBioWithinLimit(bio)} onPress={onSave} /></Card>
     {memories !== null ? <Card style={styles.stack}><UiText style={styles.heading}>{t("me.memory")}</UiText>{memories.length ? memories.map(memory => <View key={memory.memoryId} style={styles.memory}><UiText style={styles.body}>{memory.content}</UiText><View style={styles.row}><Chip label={t(memory.source === "manual" ? "me.sourceManual" : "me.sourceConversation")} />
-      <Button label={t("me.delete")} variant="danger" size="sm" disabled={busy} onPress={() => onDelete(memory.memoryId)} /></View></View>) : <UiText style={styles.detail}>{t("me.noMemories")}</UiText>}</Card> : null}
+      <Button label={t("me.delete")} variant="danger" size="sm" disabled={busy || offline} onPress={() => onDelete(memory.memoryId)} /></View></View>) : <UiText style={styles.detail}>{t("me.noMemories")}</UiText>}</Card> : null}
     {semanticAvailable ? <Card>
       <ListRow title={t("me.semantic")} subtitle={t("me.semanticNote")} trailing={
       <Toggle value={semanticOn} onValueChange={onSemantic} accessibilityLabel={t("me.semantic")} disabled={busy} />} /></Card> : null}

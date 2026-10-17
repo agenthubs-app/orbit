@@ -31,3 +31,19 @@ test("R18a semantic preference uses exactly the search key and on/off values", a
   assert.ok(globalSearchPath({ query: "x", filter: "all", semantic: await module.readAccountSemantic(storage) }).includes("semantic=0"));
   await module.writeAccountSemantic(storage, true); assert.equal(values.get("orbit.search.semantic"), "on");
 });
+
+test("R18a integration disconnect requires the exact provider's revoked receipt", async () => {
+  const module = await import("../src/screens/me/settings-api");
+  const calls: string[] = []; let receipt: unknown = { provider: "google_calendar", status: "revoked" };
+  const api = module.createAccountSettingsApi(createOrbitApiClient({ baseUrl: "http://localhost:3400", fetchImpl: module.settingsFetch(async (url, init) => {
+    calls.push(`${init?.method} ${new URL(String(url)).pathname}`);
+    return Response.json({ data: receipt });
+  }) }));
+  assert.equal(await api.disconnect("gmail"), false);
+  receipt = { provider: "gmail", status: "active" };
+  assert.equal(await api.disconnect("gmail"), false);
+  receipt = { provider: "gmail", status: "revoked" };
+  assert.equal(await api.disconnect("gmail"), true);
+  assert.deepEqual(calls, Array(3).fill("DELETE /api/integrations/gmail"));
+  assert.equal(module.integrationAuthorizePath("google_calendar"), "/api/integrations/google_calendar/authorize?returnTo=settings");
+});

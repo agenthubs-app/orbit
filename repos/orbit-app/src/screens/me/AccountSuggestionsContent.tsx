@@ -11,10 +11,11 @@ export function AccountSuggestionsContent({ cards, t, selected, filter, busy, on
   onFilter: (source: AccountSuggestionSource | "all") => void; onSelect: (id: string) => void; onDismiss: (id: string) => void; onAll: (cardId: string) => void; onApply: () => void; onEntry: (kind: "business-card" | "resume" | "chat") => void;
 }) {
   const { styles } = useStyles(); const counts = suggestionSourceCounts(cards);
-  if (!cards.length) return <View style={styles.stack}><EmptyState title={t("me.suggestionsEmpty")} message={t("me.suggestionsHint")} action={{ label: t("me.scanCard"), onPress: () => onEntry("business-card") }} />
+  if (!cards.length) return <View style={styles.stack}><EmptyState title={t("me.suggestionsEmpty")} message={t("me.suggestionsHint")} {...(!busy ? { action: { label: t("me.scanCard"), onPress: () => onEntry("business-card") } } : {})} />
     <Card>
-      <Button label={t("me.readResume")} variant="secondary" onPress={() => onEntry("resume")} />
-      <Button label={t("me.talkUpdate")} variant="ghost" onPress={() => onEntry("chat")} /></Card>
+      {busy ? <Button label={t("me.scanCard")} disabled onPress={() => onEntry("business-card")} /> : null}
+      <Button label={t("me.readResume")} variant="secondary" disabled={busy} onPress={() => onEntry("resume")} />
+      <Button label={t("me.talkUpdate")} variant="ghost" disabled={busy} onPress={() => onEntry("chat")} /></Card>
     <Card style={styles.sample}><Chip label={t("me.sample")} /><UiText style={styles.secondary}>{t("me.companyRole")}</UiText><UiText style={styles.secondary}>— → —</UiText></Card>
   </View>;
   return <View style={styles.stack}>
@@ -35,8 +36,8 @@ export function AccountSuggestionsContent({ cards, t, selected, filter, busy, on
       </View>; })}
     </Card></View>)}
     <Button label={t("me.applySelected")} disabled={busy || !selected.size} onPress={onApply} />
-    <Button label={t("me.scanCard")} variant="ghost" onPress={() => onEntry("business-card")} />
-      <Button label={t("me.readResume")} variant="ghost" onPress={() => onEntry("resume")} />
+    <Button label={t("me.scanCard")} variant="ghost" disabled={busy} onPress={() => onEntry("business-card")} />
+      <Button label={t("me.readResume")} variant="ghost" disabled={busy} onPress={() => onEntry("resume")} />
   </View>;
 }
 const useStyles = createThemedStyles(colors => StyleSheet.create({ stack: { gap: spacing.md }, wrap: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.sm }, sample: { opacity: 0.45, gap: spacing.md }, secondary: { color: colors.ink3, fontSize: typography.label }, heading: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "700" }, field: { borderTopWidth: 1, borderTopColor: colors.line, paddingTop: spacing.md, gap: spacing.sm }, selected: { opacity: 0.65 }, diff: { flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.surface2, borderRadius: radius.sm, padding: spacing.sm }, before: { color: colors.ink3, textDecorationLine: "line-through", flex: 1, fontSize: typography.bodySm }, after: { color: colors.ink, flex: 1, fontWeight: "700", fontSize: typography.bodySm }, choice: { backgroundColor: colors.surface2, borderRadius: radius.sm, minHeight: 44, minWidth: 44, alignItems: "center", justifyContent: "center" } }));

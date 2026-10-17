@@ -52,7 +52,7 @@ export function AccountIorbitScreen() {
       <Button label={t("me.retry")} onPress={state.refresh} /></Card> : null}
     {error || state.feedback ? <UiText accessibilityRole="alert">{state.feedback ?? t("me.failed")}</UiText> : null}
     {state.session ?
-      <AccountIorbitContent t={t} goal={goal?.goal ?? (goal === null ? null : undefined)} bio={state.session.draft.bio} memories={memories} semanticAvailable={semanticAvailable} semanticOn={semanticOn} busy={busy || state.saving} canSave={state.canSave} aiAvailable={(designMode || language !== "ja") && !state.offline}
+      <AccountIorbitContent t={t} goal={goal?.goal ?? (goal === null ? null : undefined)} bio={state.session.draft.bio} memories={memories} semanticAvailable={semanticAvailable} semanticOn={semanticOn} busy={busy || state.saving} offline={state.offline} canSave={state.canSave} aiAvailable={(designMode || language !== "ja") && !state.offline}
       onGoal={() => router.push((goal ? `/task?seg=plan&plan=${encodeURIComponent(goal.planId)}` : "/task?seg=plan") as Href)} onBio={bio => state.patch({ bio })} onGenerate={() => void generate()} onSave={() => void state.save()} onDelete={id => void remove(id)} onSemantic={value => void semantic(value)} /> : null}
   </AppScreen>;
 }

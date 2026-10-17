@@ -21,3 +21,11 @@ test("R18a failed memory reads are not presented as a successful empty list", as
   const html = renderToHtml(createElement(module.AccountIorbitContent, { t: createTranslator("ja"), goal: undefined, bio: "紹介", memories: null, semanticAvailable: false, semanticOn: true, busy: false, onGoal: () => {}, onBio: () => {}, onGenerate: () => {}, onSave: () => {}, onDelete: () => {}, onSemantic: () => {} }));
   assert.ok(!html.includes("覚えていることはまだありません"));
 });
+test("R18a offline iOrbit disables remote memory deletion but keeps the device search preference usable", async () => {
+  const module = await import("../src/screens/me/AccountIorbitContent");
+  const html = renderToHtml(createElement(module.AccountIorbitContent, { t: createTranslator("ja"), goal: undefined, bio: "紹介", memories: [{ memoryId: "m1", source: "manual", content: "memo", createdAt: "2026-10-01" }], semanticAvailable: true, semanticOn: true, busy: false, offline: true, canSave: false, aiAvailable: false, onGoal: () => {}, onBio: () => {}, onGenerate: () => {}, onSave: () => {}, onDelete: () => {}, onSemantic: () => {} }));
+  const button = html.match(/<button[^>]+aria-label="削除"[^>]*>/)?.[0];
+  assert.ok(button?.includes('aria-disabled="true"'), button);
+  const toggle = html.match(/<[^>]+role="switch"[^>]*>/)?.[0];
+  assert.ok(toggle && !toggle.includes('aria-disabled="true"'), toggle);
+});
