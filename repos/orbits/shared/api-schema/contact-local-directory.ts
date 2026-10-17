@@ -53,7 +53,37 @@ function compareListOrder(left: ContactSyncPayload, right: ContactSyncPayload): 
     || compareText(left.id, right.id);
 }
 
-function matches(row: Listed, input: LocalContactDirectoryQuery, query: string): boolean {
+/**
+ * R11a: the plan-merged density of a listed row (plan-related people read 3). Rows from an older mirror without
+ * `density` read 1 here; the App fills them from its own fields first (src/view-models/contacts-local.ts).
+ */
+export function localEffectiveDensity(card: ContactCardDTO, goalRelated: ReadonlySet<string>): 1 | 2 | 3 {
+  if (goalRelated.has(card.id)) return 3;
+  return card.density === 2 || card.density === 3 ? card.density : 1;
+}
+
+interface NetworkSets { goal: ReadonlySet<string>; followUp: ReadonlySet<string> }
+
+function networkSets(input: LocalContactDirectoryQuery): NetworkSets {
+  return { goal: new Set(input.goalRelatedIds ?? []), followUp: new Set(input.followUpContactIds ?? []) };
+}
+
+function matchesNetwork(row: Listed, input: LocalContactDirectoryQuery, sets: NetworkSets): boolean {
+  const industries = selected(input.industryFilters);
+  const regions = selected(input.regionFilters);
+  const mets = selected(input.metFilters);
+  const densities = selected(input.densityFilters);
+  const card = row.card;
+  return (input.goalRelated !== true || sets.goal.has(card.id))
+    && (input.needsFollowUp !== true || sets.followUp.has(card.id))
+    && (industries.length === 0 || industries.includes(card.primaryIndustryId ?? "none")
+      || (card.secondaryIndustryId !== undefined && industries.includes(card.secondaryIndustryId)))
+    && (regions.length === 0 || regions.includes(card.region?.city ?? "none"))
+    && (mets.length === 0 || mets.includes(card.metKind ?? "other"))
+    && (densities.length === 0 || densities.includes(String(localEffectiveDensity(card, sets.goal))));
+}
+
+function matches(row: Listed, input: LocalContactDirectoryQuery, query: string, sets: NetworkSets = networkSets(input)): boolean {
   const sources = selected(input.sourceFilters);
   const statuses = selected(input.statusFilters);
   const tags = selected(input.tagFilters);
@@ -63,29 +93,50 @@ function matches(row: Listed, input: LocalContactDirectoryQuery, query: string):
     && (sources.length === 0 || sources.includes(row.card.sourceType))
     && (statuses.length === 0 || (!row.card.pendingInitialization && statuses.includes(row.card.status)))
     && tags.every((tag) => row.tags.includes(tag))
-    && values.every((value) => valueTypes.includes(value));
+    && values.every((value) => valueTypes.includes(value))
+    && matchesNetwork(row, input, sets);
 }
 
 /** The contacts the list shows for this query and filters, in list order (refused contacts are never listed). */
 export function localContactDirectory(rows: readonly ContactSyncPayload[], input: LocalContactDirectoryQuery): ContactSyncPayload[] {
   const query = normalizedQuery(input);
+  const sets = networkSets(input);
   const rank = (row: Listed) => (query === "" || row.card.displayName.toLowerCase().startsWith(query) ? 0 : 1);
   return listed(rows)
-    .filter((row) => row.search.error === null && matches(row, input, query))
+    .filter((row) => row.search.error === null && matches(row, input, query, sets))
     .sort((left, right) => rank(left) - rank(right) || compareListOrder(left, right));
 }
 
 /** The list summary for this query and filters (the server's /api/contacts/summary without asOf). */
 export function localContactDirectorySummary(rows: readonly ContactSyncPayload[], input: LocalContactDirectoryQuery): Omit<ContactCardSummaryDTO, "asOf"> {
   const query = normalizedQuery(input);
+  const sets = networkSets(input);
   const all = listed(rows).sort(compareListOrder);
+  // R11a facets over every contact (the same counts as NETWORK_SUMMARY_SQL on the server).
+  const densityCounts = { 1: 0, 2: 0, 3: 0 };
+  const sourceChips: Record<string, number> = {};
+  const industries: Record<string, number> = {};
+  const regions: Record<string, number> = {};
+  const metKinds: Record<string, number> = {};
+  const bump = (map: Record<string, number>, key: string) => { map[key] = (map[key] ?? 0) + 1; };
+  let addedThisMonth = 0;
+  let goalRelated = 0;
+  let needsFollowUp = 0;
   const sources: Record<string, number> = {};
   const statuses: Record<string, number> = {};
   const values: Record<string, number> = {};
   const tags = new Map<string, { count: number; firstOrder: number; firstTagOrder: number }>();
   let total = 0;
   all.forEach((row, order) => {
-    if (matches(row, input, query)) total += 1;
+    if (matches(row, input, query, sets)) total += 1;
+    densityCounts[localEffectiveDensity(row.card, sets.goal)] += 1;
+    bump(sourceChips, row.card.sourceChip ?? "manual");
+    bump(industries, row.card.primaryIndustryId ?? "none");
+    bump(regions, row.card.region?.city ?? "none");
+    bump(metKinds, row.card.metKind ?? "other");
+    if (input.monthStart && row.card.addedAt && row.card.addedAt >= input.monthStart) addedThisMonth += 1;
+    if (sets.goal.has(row.card.id)) goalRelated += 1;
+    if (sets.followUp.has(row.card.id)) needsFollowUp += 1;
     sources[row.card.sourceType] = (sources[row.card.sourceType] ?? 0) + 1;
     if (!row.card.pendingInitialization) statuses[row.card.status] = (statuses[row.card.status] ?? 0) + 1;
     for (const value of new Set(row.card.valueTypes ?? [])) values[value] = (values[value] ?? 0) + 1;
@@ -101,5 +152,6 @@ export function localContactDirectorySummary(rows: readonly ContactSyncPayload[]
   const orderedTags = [...tags.entries()]
     .sort(([leftValue, left], [rightValue, right]) => left.firstOrder - right.firstOrder || left.firstTagOrder - right.firstTagOrder || compareText(leftValue, rightValue))
     .map(([value, entry]) => ({ value, count: entry.count }));
-  return { total, sources, statuses, values, tags: orderedTags.slice(0, 50), hasMoreTags: orderedTags.length > 50 };
+  return { total, sources, statuses, values, tags: orderedTags.slice(0, 50), hasMoreTags: orderedTags.length > 50,
+    densityCounts, ...(input.monthStart ? { addedThisMonth } : {}), tabCounts: { goalRelated, needsFollowUp }, sourceChips, industries, regions, metKinds };
 }

@@ -61,7 +61,7 @@ export interface CompletionQuestionRecord extends Record<string, unknown> {
   skipCount?: number;
   contactName?: string;
   contactSubtitle?: string;
-  sourceChip?: "meishi" | "linkedin" | "phone" | "manual" | "self";
+  sourceChip?: "meishi" | "linkedin" | "phone" | "manual" | "self" | "event";
   /** D-10 density once answered (computed when the question is made). */
   densityIfAnswered?: 1 | 2 | 3;
   answer?: string;
@@ -163,6 +163,8 @@ export interface CompletionContactRow {
   metEventTitle: string;
   sourceType: string;
   sourceLabel: string;
+  /** R11a：导入格式（新导入才有；出どころ按它判断，见 shared/compute/contact-source-chip.ts）。 */
+  importFormat: string;
   /** 录入时间（payload.createdAt，缺了用记录时间）。 */
   createdAt: string;
   /** 加入人脈的时间（R16 #2）：LinkedIn 连接日期与 `createdAt` 里较早的；每天一问的 30 天窗口与 ±14 天活动窗口用它。 */
@@ -214,6 +216,7 @@ function toContactRow(record: LiveRecord<Record<string, unknown>>): CompletionCo
     role: text(payload.role),
     sourceLabel,
     sourceType,
+    importFormat: text(payload.importFormat),
   };
 }
 
@@ -317,6 +320,7 @@ export const COMPLETION_RECENT_CONTACTS_SQL = `select c.record_id,
        c.payload->>'metEventId' as met_event_id,
        c.payload->>'metEventTitle' as met_event_title,
        c.payload->>'linkedinConnectedAt' as linkedin_connected_at,
+       c.payload->>'importFormat' as import_format,
        case when strpos(coalesce(c.payload->>'notes', ''), 'LinkedIn 连接日期:') > 0 then c.payload->>'notes' end as linkedin_legacy_notes,
        case when jsonb_typeof(c.payload->'source') = 'object' then c.payload->'source'->>'type' end as payload_source_type,
        case when jsonb_typeof(c.payload->'source') = 'object' then c.payload->'source'->>'label' end as payload_source_label,
@@ -374,6 +378,7 @@ interface RecentRow {
   met_event_id: string | null;
   met_event_title: string | null;
   linkedin_connected_at: string | null;
+  import_format?: string | null;
   linkedin_legacy_notes: string | null;
   payload_source_type: string | null;
   payload_source_label: string | null;
@@ -426,6 +431,7 @@ export function createPostgresCompletionContactSource(client: CompletionSqlClien
           role: text(row.role),
           sourceLabel,
           sourceType,
+          importFormat: text(row.import_format),
         };
       });
     },

@@ -241,3 +241,9 @@ expectParity<Parity<OrganizerProfileListResponse, typeof organizerProfileListRes
 expectParity<Parity<OrganizerPublicResponse, typeof organizerPublicResponseObject>>();
 // R30 全局搜索
 expectParity<Parity<GlobalSearchResponse, typeof globalSearchResponseObject>>();
+
+// R11a：目標に関係（GET /api/contacts/goal-related-ids）。
+import type { ContactGoalRelatedIdsDTO, ContactGoalRelatedLinkDTO } from "../../shared/contract/contact-goal-related";
+import type { contactGoalRelatedIdsObject, contactGoalRelatedLinkObject } from "../../shared/api-schema/contact-goal-related";
+expectParity<Parity<ContactGoalRelatedLinkDTO, typeof contactGoalRelatedLinkObject>>();
+expectParity<Parity<ContactGoalRelatedIdsDTO, typeof contactGoalRelatedIdsObject>>();

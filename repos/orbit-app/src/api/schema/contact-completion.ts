@@ -14,7 +14,7 @@ export const contactCompletionQuestionObject = z.object({
   // R16 (append-only, all optional): unknown chip → manual, unknown kind → met_where.
   contactName: z.string().min(1).max(120).optional(),
   contactSubtitle: z.string().max(300).optional(),
-  sourceChip: tolerantEnum(["meishi", "linkedin", "phone", "manual", "self"], "manual").optional(),
+  sourceChip: tolerantEnum(["meishi", "linkedin", "phone", "manual", "self", "event"], "manual").optional(),
   kind: tolerantEnum(["met_where", "organization"], "met_where").optional(),
   densityIfAnswered: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
 });

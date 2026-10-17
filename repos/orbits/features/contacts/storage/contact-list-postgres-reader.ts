@@ -88,7 +88,25 @@ const CONTACT_SEARCH_MATCHER_POLICY_VERSION = "ecmascript-lower-substring-v1";
  * cards output and the sync output (sprint 0116), so the device's card is the
  * server's card.
  */
-function contactCardJsonSql(p: string): string {
+function contactCardJsonSql(p: string, output: "cards" | "sync" = "cards"): string {
+  // R11a：新字段只在有值时出现（响应 schema 里都是可选字段，null 会被拒）。`goalRelated` 只在列表页（同步镜像不带计划）。
+  return `(${contactCardBaseJsonSql(p)}
+    || jsonb_strip_nulls(jsonb_build_object(
+      'density', ${p}.density_base,
+      'sourceChip', ${p}.source_chip,
+      'primaryIndustryId', left(${p}.primary_industry_id, 64),
+      'secondaryIndustryId', left(${p}.secondary_industry_id, 64),
+      'metKind', ${p}.met_kind,
+      'addedAt', ${p}.added_at_text,
+      'lastInteractionAt', ${p}.last_interaction_at_text${output === "cards" ? `,
+      'goalRelated', ${p}.goal_related` : ""}
+    ))
+    || case when ${p}.region_country is not null
+      then jsonb_build_object('region', jsonb_build_object('countryCode', left(${p}.region_country, 8), 'city', left(${p}.region_city, 64)))
+      else '{}'::jsonb end)`;
+}
+
+function contactCardBaseJsonSql(p: string): string {
   return `jsonb_build_object(
       'id', left(${p}.contact_id, 512),
       'displayName', left(${p}.display_name, 128),
@@ -121,6 +139,97 @@ function contactTierFilterSql(c: string): string {
         and (case when (strength.payload->>'dormant')::boolean then 'dormant' else strength.payload->>'tier' end) = any($17::text[])
     ))`;
 }
+
+/** R11a: an ISO timestamp text → timestamptz, or null when it does not parse (never fails the query). */
+function safeTimestampSql(text: string): string {
+  return `(case when pg_input_is_valid(${text}, 'timestamp with time zone') then (${text})::timestamptz end)`;
+}
+
+/** R11a: millisecond UTC ISO text (the card schema's datetime). */
+function isoTextSql(value: string): string {
+  return `to_char(${value} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
+}
+
+const trimmedTextSql = (value: string) => `nullif(btrim(${value}, ${ECMASCRIPT_TRIM_CHARS_SQL}), '')`;
+
+/**
+ * R11a（代定 1 / 11 / 12）：卡片生成处的人脈事实（alias `c` = base_contacts，cards / summary / sync 输出）。
+ * 浓度、出どころ、出会った場所的规则与 shared/compute/{contact-density,contact-source-chip}.ts 相同：
+ * 往来 = 联系人详情状态里有笔记或最近互动（同 completion/repository.ts 的 listInteractedContactIds）；
+ * 本人入力 = 生效的招待连接（$18，读时传入，不落库）；加入时间 = min(录入时间, LinkedIn 连接日期)（R16 #2）。
+ */
+function contactNetworkFactsSql(c: string): string {
+  const notes = `(case when jsonb_typeof(${c}.payload->'notes') = 'string' then ${c}.payload->>'notes' else '' end)`;
+  const str = (key: string) => `(case when jsonb_typeof(${c}.payload->'${key}') = 'string' then ${c}.payload->>'${key}' end)`;
+  return `${c}.payload->'source'->>'type' as raw_source_type,
+    coalesce(case when jsonb_typeof(${c}.payload->'source'->'label') = 'string' then ${c}.payload->'source'->>'label' end, '') as source_label,
+    ${str("importFormat")} as import_format,
+    ${notes} ~ '(^|\\n)LinkedIn:' as has_linkedin_note,
+    ${trimmedTextSql(`substring(${notes} from '(?:^|\\n)[[:space:]　]*出会い[[:space:]　]*[：:]([^\\n]*)')`)} as meeting_note,
+    ${notes} ~ '(^|\\n)[[:space:]　]*出会い[[:space:]　]*[：:]' as has_meeting_note,
+    ${trimmedTextSql(str("primaryIndustryId"))} as primary_industry_id,
+    ${trimmedTextSql(str("secondaryIndustryId"))} as secondary_industry_id,
+    case when jsonb_typeof(${c}.payload->'region') = 'object' and jsonb_typeof(${c}.payload->'region'->'countryCode') = 'string'
+      then ${trimmedTextSql(`${c}.payload->'region'->>'countryCode'`)} end as region_country,
+    case when jsonb_typeof(${c}.payload->'region') = 'object' and jsonb_typeof(${c}.payload->'region'->'city') = 'string'
+      then ${trimmedTextSql(`${c}.payload->'region'->>'city'`)} end as region_city,
+    (${trimmedTextSql(str("primaryEmail"))} is not null or ${trimmedTextSql(str("primaryPhone"))} is not null) as has_contact_point,
+    ${trimmedTextSql(str("metEventId"))} is not null as has_met_event,
+    coalesce(${c}.payload->>'id' = any($18::text[]), false) as self_linked,
+    coalesce((interaction_lookup.facts -> (${c}.payload->>'id') ->> 'interacted')::boolean, false) as has_interaction,
+    interaction_lookup.facts -> (${c}.payload->>'id') ->> 'last_at' as last_interaction_at_text,
+    ${isoTextSql(`least(coalesce(${safeTimestampSql(`${c}.payload->>'createdAt'`)}, ${c}.created_at), ${safeTimestampSql(str("linkedinConnectedAt"))})`)} as added_at_text`;
+}
+
+/** R11a: the derived card facts on top of contactNetworkFactsSql (alias `v` = contact_view_base). */
+function contactNetworkDerivedSql(v: string, withPlan: boolean): string {
+  return `case when ${v}.has_interaction or ${v}.self_linked then 3
+      when ${v}.has_contact_point and (${v}.has_met_event or ${v}.has_meeting_note) then 2 else 1 end as density_base,
+    case when ${v}.self_linked then 'self'
+      when ${v}.raw_source_type in ('business_card_ocr', 'qr_scan') then 'meishi'
+      when ${v}.import_format = 'linkedin' then 'linkedin'
+      when ${v}.import_format = 'vcard' then 'phone'
+      when ${v}.import_format = 'event' then 'event'
+      when ${v}.import_format = 'generic' then 'manual'
+      when ${v}.raw_source_type = 'event_import' then 'event'
+      when ${v}.raw_source_type = 'external_contacts' and ${v}.source_label ~* 'vcard' then 'phone'
+      when ${v}.raw_source_type = 'external_contacts' and ${v}.has_linkedin_note then 'linkedin'
+      else 'manual' end as source_chip,
+    case when ${v}.raw_source_type = 'event_import' or ${v}.has_met_event then 'event'
+      when ${v}.self_linked or ${v}.raw_source_type = 'referral' or coalesce(${v}.meeting_note ~ '^[[:space:]　]*紹介', false) then 'referral'
+      when coalesce(lower(${v}.meeting_note) ~ '(商談|訪問|打ち合わせ|打合せ|面談|商谈|拜访|visit|meeting)', false) then 'visit'
+      else 'other' end as met_kind${withPlan ? `,
+    coalesce(${v}.contact_id = any($19::text[]), false) as goal_related,
+    ${v}.added_at_text::timestamptz >= $26::timestamptz as added_this_month` : ""}`;
+}
+
+/**
+ * R11a 页签与絞り込み（cards / summary 输出）：$19 计划相关 id、$20 要フォロー、$21 业界（主或副，`none` = 未设）、
+ * $22 城市（`none` = 未设）、$23 出会った場所、$24 浓度（含计划合并）、$25 目標に関係。null / false = 不筛。
+ */
+function contactNetworkFilterSql(c: string): string {
+  return `($25::boolean is not true or ${c}.goal_related)
+    and ($20::boolean is not true or ${c}.has_open_follow_up)
+    and ($21::text[] is null or coalesce(${c}.primary_industry_id, 'none') = any($21::text[]) or ${c}.secondary_industry_id = any($21::text[]))
+    and ($22::text[] is null or coalesce(${c}.region_city, 'none') = any($22::text[]))
+    and ($23::text[] is null or ${c}.met_kind = any($23::text[]))
+    and ($24::text[] is null or (case when ${c}.goal_related then 3 else ${c}.density_base end)::text = any($24::text[]))`;
+}
+
+/**
+ * R11a 汇总（summary 输出）：与其他 facet 一样按全部联系人计数（不随搜索、筛选、页签变）。
+ * 浓度含计划合并；本月新增按加入时间 ≥ $26（东京月初，调用方传入）。
+ */
+const NETWORK_SUMMARY_SQL = `(select jsonb_build_object(
+    '1', count(*) filter (where n.eff = 1), '2', count(*) filter (where n.eff = 2), '3', count(*) filter (where n.eff = 3))
+    from (select case when goal_related then 3 else density_base end as eff from contact_dto) n) as density_counts,
+  (select count(*)::integer from contact_dto where added_this_month) as added_this_month,
+  (select count(*)::integer from contact_dto where goal_related) as tab_goal_related,
+  (select count(*)::integer from contact_dto where has_open_follow_up) as tab_needs_follow_up,
+  coalesce((select jsonb_object_agg(k, n) from (select source_chip as k, count(*)::integer as n from contact_dto group by 1) x), '{}'::jsonb) as source_chips,
+  coalesce((select jsonb_object_agg(k, n) from (select coalesce(primary_industry_id, 'none') as k, count(*)::integer as n from contact_dto group by 1) x), '{}'::jsonb) as industries,
+  coalesce((select jsonb_object_agg(k, n) from (select coalesce(region_city, 'none') as k, count(*)::integer as n from contact_dto group by 1) x), '{}'::jsonb) as regions,
+  coalesce((select jsonb_object_agg(k, n) from (select met_kind as k, count(*)::integer as n from contact_dto group by 1) x), '{}'::jsonb) as met_kinds`;
 
 function contactCardErrorSql(p: string): string {
   return `coalesce(${p}.contact_error_code, ${p}.connection_error_code,
@@ -155,10 +264,55 @@ function sortTimestampSql(value: string): string {
 // lowers it with the same ECMAScript rule, ecmascript-lower-substring-v1), the
 // detail state's tags and the list order keys. Only sources the owner holds
 // ($4) are read, so an owner-less or foreign source never reaches a device.
+/** R11a：一次请求最多带这么多「计划相关」id（GET /api/contacts/goal-related-ids 同一上限）。 */
+export const GOAL_RELATED_IDS_LIMIT = 500;
+/** R11a：招待连接的人一次最多带这么多（远大于一个人的生效连接数）。 */
+export const INVITE_LINKED_IDS_LIMIT = 2000;
+export const CONTACT_MET_FILTERS = ["event", "referral", "visit", "other"] as const;
+export const CONTACT_DENSITY_FILTERS = ["1", "2", "3"] as const;
+const NETWORK_FACET_VALUE_MAX = 64;
+const NETWORK_FACET_VALUES_MAX = 50;
+
+function hasNetworkFilters(input: ContactsListSearchFilterInput): boolean {
+  return input.goalRelated === true || input.needsFollowUp === true || selectedValues(input.industryFilters).length > 0
+    || selectedValues(input.regionFilters).length > 0 || selectedValues(input.metFilters).length > 0 || selectedValues(input.densityFilters).length > 0;
+}
+
+function networkScope(input: ContactsListSearchFilterInput) {
+  return { goalRelated: input.goalRelated === true, needsFollowUp: input.needsFollowUp === true,
+    industries: selectedValues(input.industryFilters), regions: selectedValues(input.regionFilters),
+    mets: selectedValues(input.metFilters), densities: selectedValues(input.densityFilters) };
+}
+
+function validNetworkFilters(input: ContactsListSearchFilterInput): boolean {
+  const bounded = (values: readonly string[]) => values.length <= NETWORK_FACET_VALUES_MAX && values.every((value) => Array.from(value).length <= NETWORK_FACET_VALUE_MAX);
+  return bounded(selectedValues(input.industryFilters)) && bounded(selectedValues(input.regionFilters))
+    && selectedValues(input.metFilters).every((value) => (CONTACT_MET_FILTERS as readonly string[]).includes(value))
+    && selectedValues(input.densityFilters).every((value) => (CONTACT_DENSITY_FILTERS as readonly string[]).includes(value))
+    && (input.goalRelatedContactIds?.length ?? 0) <= GOAL_RELATED_IDS_LIMIT
+    && (input.inviteLinkedContactIds?.length ?? 0) <= INVITE_LINKED_IDS_LIMIT;
+}
+
+/** The first instant of the current Tokyo calendar month (JST has no daylight saving). */
+export function tokyoMonthStart(nowMs: number): string {
+  const tokyo = new Date(nowMs + 9 * 3_600_000);
+  return new Date(Date.UTC(tokyo.getUTCFullYear(), tokyo.getUTCMonth(), 1) - 9 * 3_600_000).toISOString();
+}
+
+/** $18–$26 of the cards / summary SQL (contactNetworkFilterSql, NETWORK_SUMMARY_SQL). */
+function contactNetworkParams(query: ContactsListSearchFilterInput, nowMs: number): unknown[] {
+  const list = (values?: readonly string[] | null) => (selectedValues(values).length ? [...selectedValues(values)] : null);
+  return [[...(query.inviteLinkedContactIds ?? [])], [...(query.goalRelatedContactIds ?? [])], query.needsFollowUp === true,
+    list(query.industryFilters), list(query.regionFilters), list(query.metFilters), list(query.densityFilters),
+    query.goalRelated === true, tokyoMonthStart(nowMs)];
+}
+
 function createContactListSql(useVerifiedSearchCollation: boolean, output: "records" | "cards" | "summary" | "sync" = "records", boundedCandidates = false): string {
   const needsSearchText = output === "records" || output === "sync" || useVerifiedSearchCollation;
   // W0051：档位筛选只在 cards／summary 输出（$17）；records／sync 输出的参数不变。来源计数随档位筛选（总数 = 各来源之和）。
   const tierFilter = output === "cards" || output === "summary";
+  // R11a：人脈事实、页签与絞り込み只在 cards／summary／sync 输出（$18 起的新参数）；records 输出（旧读取路径）的 SQL 与参数不变。
+  const r11a = output !== "records";
   const searchCollation = useVerifiedSearchCollation
     ? ' collate pg_catalog."und-x-icu"'
     : "";
@@ -520,7 +674,40 @@ with base_contacts as materialized (
     '{}'::jsonb
   ) as tags_by_contact
   from display_detail_states
-), evidence_rows as materialized (
+)${r11a ? `, interaction_lookup as materialized (
+  select coalesce(jsonb_object_agg(i.contact_id, jsonb_build_object('interacted', i.interacted, 'last_at', i.last_at)), '{}'::jsonb) as facts
+  from (
+    select
+      d.payload->>'contactId' as contact_id,
+      bool_or((jsonb_typeof(d.payload->'notes') = 'array' and jsonb_array_length(d.payload->'notes') > 0)
+        or jsonb_typeof(d.payload->'lastInteraction') = 'object') as interacted,
+      ${isoTextSql(`max(case when jsonb_typeof(d.payload->'lastInteraction'->'occurredAt') = 'string'
+        then ${safeTimestampSql("d.payload->'lastInteraction'->>'occurredAt'")} end)`)} as last_at
+    from actor_detail_states d
+    group by d.payload->>'contactId'
+  ) i
+)` : ""}${r11a && output !== "sync" ? `, follow_up_lookup as materialized (
+  -- R11a 要フォロー（shared/compute/follow-up-task.ts 同口径）：未删除的普通任务（挂联系人、status = open）
+  -- 或关系跟进任务（contactId、status ∈ open / scheduled）。按人去重。
+  select coalesce(jsonb_object_agg(f.contact_id, true), '{}'::jsonb) as ids
+  from (
+    select distinct case when jsonb_typeof(t.payload->'task') = 'object'
+        then ${trimmedTextSql("t.payload->'task'->>'relatedContactId'")}
+        else ${trimmedTextSql("t.payload->>'contactId'")} end as contact_id
+    from orbit_records t
+    where t.workspace_id = $1
+      and t.collection_name = 'tasks'
+      and t.user_id = $4
+      and t.lifecycle_state <> 'deleted'
+      and t.deleted_at is null
+      and (
+        (jsonb_typeof(t.payload->'task') = 'object' and t.payload->'task'->>'status' = 'open'
+          and (t.payload->'task'->>'deletedAt') is null)
+        or (jsonb_typeof(t.payload->'task') is distinct from 'object' and t.payload->>'status' in ('open', 'scheduled'))
+      )
+  ) f
+  where f.contact_id is not null
+)` : ""}, evidence_rows as materialized (
   select
     e.record_id,
     e.user_id,
@@ -743,13 +930,16 @@ with base_contacts as materialized (
     ${needsSearchText ? "coalesce(et_lookup.texts ->> c.record_id, '')" : "''::text"} as evidence_text,
     c.contact_error_code,
     cv_lookup.error_codes ->> (c.payload->>'id') as connection_error_code,
-    ${needsSearchText ? "coalesce(search_lookup.texts ->> (c.payload->>'id'), '')" : "''::text"} as connection_search_text
+    ${needsSearchText ? "coalesce(search_lookup.texts ->> (c.payload->>'id'), '')" : "''::text"} as connection_search_text${r11a ? `,
+    ${contactNetworkFactsSql("c")}${output !== "sync" ? `,
+    coalesce(follow_up_lookup.ids ? (c.payload->>'id'), false) as has_open_follow_up` : ""}` : ""}
   from base_contacts c
   cross join connection_validation_lookup cv_lookup
   cross join display_connections_lookup display_lookup
   cross join canonical_connections_lookup canonical_lookup
   cross join display_detail_states_lookup detail_lookup
-  ${needsSearchText ? "cross join contact_evidence_text_lookup et_lookup\n  cross join connection_search_lookup search_lookup" : ""}
+  ${needsSearchText ? "cross join contact_evidence_text_lookup et_lookup\n  cross join connection_search_lookup search_lookup" : ""}${r11a ? `
+  cross join interaction_lookup interaction_lookup${output !== "sync" ? "\n  cross join follow_up_lookup follow_up_lookup" : ""}` : ""}
 ), contact_dto as materialized (
   select
     v.*,
@@ -782,7 +972,8 @@ with base_contacts as materialized (
     ) as graph_order,
     row_number() over (
       order by v.sort_occurred_at desc, v.sort_updated_at desc, v.record_id asc
-    ) as storage_order
+    ) as storage_order${r11a ? `,
+    ${contactNetworkDerivedSql("v", output !== "sync")}` : ""}
   from contact_view_base v
 ), contact_search_view as (
   select
@@ -802,7 +993,8 @@ with base_contacts as materialized (
     and ($16::boolean or $7::text[] is null or (c.contact_lifecycle_initialization is distinct from 'pending' and c.status = any($7::text[])))
     and ($16::boolean or cardinality($8::text[]) = 0 or c.tags @> $8::text[])
     and ($16::boolean or cardinality($9::text[]) = 0 or c.value_types @> $9::text[])${tierFilter ? `
-    and ${contactTierFilterSql("c")}` : ""}
+    and ${contactTierFilterSql("c")}
+    and ${contactNetworkFilterSql("c")}` : ""}
 ), page_rows as (
   select
     c.*,
@@ -1101,7 +1293,7 @@ from runtime_fingerprint r` : output === "sync" ? `select
     'record_id', d.record_id,
     'contact_id', d.contact_id,
     'error_code', ${contactCardErrorSql("d")},
-    'card', ${contactCardJsonSql("d")},
+    'card', ${contactCardJsonSql("d", "sync")},
     'tags', to_jsonb(d.tags),
     'search_text', array_to_string(${contactSearchFieldsSql("d")}, ' '),
     'sort_occurred_at', ${sortTimestampSql("d.sort_occurred_at")},
@@ -1115,6 +1307,7 @@ from runtime_fingerprint r` : output === "summary" ? `select
   coalesce((select jsonb_agg(jsonb_build_object('value', value, 'count', count) order by first_order, first_tag_order, value)
     from (select * from facet_tags order by first_order, first_tag_order, value limit 50) tags), '[]'::jsonb) as tags,
   exists(select 1 from facet_tags offset 50 limit 1) as has_more_tags,
+  ${NETWORK_SUMMARY_SQL},
   r.fingerprint as runtime_fingerprint
 from matched_count m cross join runtime_fingerprint r` : `select
   'fast' as result_mode,
@@ -1217,11 +1410,13 @@ export function createPostgresContactCardReader(input: {
       sources.length ? [...sources] : null, statuses.length ? [...statuses] : null,
       [...selectedValues(query.tagFilters)], [...selectedValues(query.valueFilters)],
       cursor?.prefixRank ?? null, cursor?.occurredAt ?? null, cursor?.updatedAt ?? null, cursor?.recordId ?? null,
-      query.limit, search ? `${search}%` : "%", false, tiers.length ? [...tiers] : null];
+      query.limit, search ? `${search}%` : "%", false, tiers.length ? [...tiers] : null,
+      ...contactNetworkParams(query, now())];
     // No derived filters: select the authorized contact page before expanding
     // relationships. Applying this shortcut to status/tag/value search would
     // incorrectly filter only a partial candidate set.
-    const head = !summary && !verified && !statuses.length && !tiers.length && !selectedValues(query.tagFilters).length && !selectedValues(query.valueFilters).length;
+    const head = !summary && !verified && !statuses.length && !tiers.length && !selectedValues(query.tagFilters).length && !selectedValues(query.valueFilters).length
+      && !hasNetworkFilters(query);
     const result = await input.client.query<Record<string, unknown>>(
       head ? CONTACT_CARD_HEAD_SQL : (summary ? CONTACT_SUMMARY_SQL : CONTACT_CARD_SQL)[verified ? 1 : 0]!, values,
     );
@@ -1256,7 +1451,10 @@ export function createPostgresContactCardReader(input: {
       const { row } = await execute({ ...query, cursor: undefined }, actorId, true);
       return contactCardSummarySchema.parse({ total: Number(row.total), sources: row.sources,
         statuses: row.statuses, values: row.values, tags: row.tags, hasMoreTags: row.has_more_tags,
-        asOf: new Date(now()).toISOString() });
+        asOf: new Date(now()).toISOString(),
+        densityCounts: row.density_counts, addedThisMonth: Number(row.added_this_month),
+        tabCounts: { goalRelated: Number(row.tab_goal_related), needsFollowUp: Number(row.tab_needs_follow_up) },
+        sourceChips: row.source_chips, industries: row.industries, regions: row.regions, metKinds: row.met_kinds });
     },
   };
 }
@@ -1285,11 +1483,14 @@ export async function readContactSyncListRows(client: LiveRecordSqlClient, input
   workspaceId: string;
   actorId: string;
   contactRecordIds: readonly string[];
+  /** R11a: invite-linked contact ids (self-reported; read time only, never stored). */
+  inviteLinkedContactIds?: readonly string[];
 }): Promise<ContactSyncListRow[]> {
   if (!input.actorId.trim() || input.contactRecordIds.length === 0) return [];
   const result = await client.query<{ rows: unknown }>(CONTACT_SYNC_SQL, [
     input.workspaceId, CONTACT_COLLECTION, "", input.actorId, CONNECTION_COLLECTION,
     null, null, [], [], null, null, null, null, input.contactRecordIds.length, "%", false, [...input.contactRecordIds],
+    [...(input.inviteLinkedContactIds ?? [])],
   ]);
   const rows = parseJson(result.rows[0]?.rows);
   if (!Array.isArray(rows)) throw new Error("CONTACT_SYNC_RESULT_INVALID");
@@ -1611,6 +1812,8 @@ function queryScope(
       valueFilters: selectedValues(input.valueFilters),
       // W0051：只有选了档位才进作用域（旧游标的作用域不变）。
       ...(selectedValues(input.tierFilters).length ? { tierFilters: selectedValues(input.tierFilters) } : {}),
+      // R11a：页签与絞り込み同样只在选了时进作用域。
+      ...(hasNetworkFilters(input) ? { network: networkScope(input) } : {}),
       contextEventId: input.contextEventId?.trim() ?? "",
       sortVersion: "contact-list-keyset-v1",
       ...(matchPath === null ? {} : { matchPath }),
@@ -1889,6 +2092,7 @@ function supportsBoundedContactPage(input: ContactsListSearchFilterInput): boole
     selectedValues(input.statusFilters).every((value) => CONTACT_STATUS_FILTERS.some((item) => item === value)) &&
     selectedValues(input.valueFilters).every((value) => CONTACT_VALUE_FILTERS.some((item) => item === value)) &&
     selectedValues(input.tierFilters).every((value) => CONTACT_TIER_FILTERS.some((item) => item === value)) &&
+    validNetworkFilters(input) &&
     selectedValues(input.tagFilters).length <= 20 &&
     selectedValues(input.tagFilters).every((value) => Array.from(value).length <= 32);
 }

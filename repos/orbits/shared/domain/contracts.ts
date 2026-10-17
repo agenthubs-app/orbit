@@ -166,6 +166,11 @@ export interface ContactDTO {
    * 合并进已有联系人不写（不改已有人的加入时间）。服务端内部字段，不进跨端契约。
    */
   linkedinConnectedAt?: IsoDateTimeString;
+  /**
+   * R11a（2026-10-18）：导入新建这个人时的文件格式（`linkedin` / `generic` / `vcard` / `event`），人脈「出どころ」按它判断
+   * （shared/compute/contact-source-chip.ts）。只在导入新建时写；合并进已有联系人不写。服务端内部字段，不进跨端契约。
+   */
+  importFormat?: "linkedin" | "generic" | "vcard" | "event";
   /** W0045：补全值的来源（值本身在各自字段：行业、`publicProfile.seniorityLevel`、`region`…）。 */
   enrichment?: ContactEnrichmentDTO;
   customTags?: readonly string[];

@@ -122,11 +122,29 @@ export async function readContactDomainHighWatermark(client: LiveRecordSqlClient
   return value;
 }
 
+/**
+ * R11a（代定 11）：本人入力（生效招待连接）不落库；同步卡片读时合并（出どころ = 本人入力、浓度 ●●●、出会った場所 = 紹介）。
+ * 招待库没配置或读失败时按「没有」处理并留日志（不阻断同步）。测试可替换。
+ */
+export let syncInviteLinkedContactIds: (actorId: string) => Promise<readonly string[]> = async (actorId) => {
+  try {
+    const { inviteLinkedContactIds } = await import("../invite-codes/configured");
+    return await inviteLinkedContactIds(actorId);
+  } catch (error) {
+    console.warn(JSON.stringify({ event: "contact_sync_invite_linked_unavailable", error: error instanceof Error ? error.name : "unknown" }));
+    return [];
+  }
+};
+export function setSyncInviteLinkedContactIdsForTests(reader: typeof syncInviteLinkedContactIds): void {
+  syncInviteLinkedContactIds = reader;
+}
+
 async function payloads(client: LiveRecordSqlClient, input: { workspaceId: string; actorId: string; recordIds: readonly string[]; issuedAt: string }): Promise<Map<string, ContactSyncPayload>> {
   const built = new Map<string, ContactSyncPayload>();
   if (input.recordIds.length === 0) return built;
   const [listRows, detailInputs] = await Promise.all([
-    readContactSyncListRows(client, { workspaceId: input.workspaceId, actorId: input.actorId, contactRecordIds: input.recordIds }),
+    syncInviteLinkedContactIds(input.actorId).then((inviteLinkedContactIds) =>
+      readContactSyncListRows(client, { workspaceId: input.workspaceId, actorId: input.actorId, contactRecordIds: input.recordIds, inviteLinkedContactIds })),
     readOwnedContactDetailInputs({
       actorId: input.actorId,
       contactRecordIds: input.recordIds,

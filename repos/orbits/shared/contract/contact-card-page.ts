@@ -1,3 +1,10 @@
+/**
+ * Owner: 乙 (R11a 人脈; list cards since sprint 0116). Used by: Web 人脈 (/app/contacts), App 人脈 (sync mirror), R10 home.
+ * The R11a fields are optional and read tolerantly (contract rule 10); older deployments omit them.
+ */
+export type ContactCardSourceChip = "meishi" | "linkedin" | "phone" | "manual" | "self" | "event";
+export type ContactCardMetKind = "event" | "referral" | "visit" | "other";
+
 /** Bounded list previews, not contact details or an offline contact replica. */
 export interface ContactCardDTO {
   id: string;
@@ -16,6 +23,26 @@ export interface ContactCardDTO {
    * App 与离线同步不带，旧部署可省略。`nextActionPreview` 语义不变。
    */
   insightPreview?: { zh: string; en: string } | undefined;
+  /**
+   * R11a: information density (D-10) without the plan link. The plan link is merged on read
+   * (`goalRelated` on the page; the cached goal-related ids on the App): plan-related people read 3.
+   * Self-reported (invite-linked) people already read 3 here.
+   */
+  density?: 1 | 2 | 3 | undefined;
+  /** R11a: where the person came from (shared/compute/contact-source-chip.ts); unknown values read as `manual`. */
+  sourceChip?: ContactCardSourceChip | undefined;
+  primaryIndustryId?: string | undefined;
+  secondaryIndustryId?: string | undefined;
+  /** R11a: the normalized region (W0045): ISO country code + canonical English city. */
+  region?: { countryCode: string; city?: string | null | undefined } | undefined;
+  /** R11a: where we met (出会った場所); unknown values read as `other`. */
+  metKind?: ContactCardMetKind | undefined;
+  /** R11a: when the person joined the network (R16 #2: the earlier of the LinkedIn connection date and the entry time). */
+  addedAt?: string | undefined;
+  /** R11a: the latest recorded interaction (contact detail state), for 最終接点. */
+  lastInteractionAt?: string | undefined;
+  /** R11a: linked to an active plan goal. Only on GET /api/contacts/page (not in the sync mirror). */
+  goalRelated?: boolean | undefined;
 }
 
 export interface ContactCardPageDTO {
@@ -38,4 +65,14 @@ export interface ContactCardSummaryDTO {
   densityCounts?: { 1: number; 2: number; 3: number } | undefined;
   /** R08 (R11): people added this calendar month. */
   addedThisMonth?: number | undefined;
+  /**
+   * R11a: the 人脈 tabs. Like the other facets, counted over every contact (not narrowed by the query,
+   * filters or tab): goal-related people, and people with an open follow-up (shared/compute/follow-up-task.ts).
+   */
+  tabCounts?: { goalRelated: number; needsFollowUp: number } | undefined;
+  /** R11a facets over every contact: by source chip, primary industry id (`none` = unset), city (`none` = unset), where we met. */
+  sourceChips?: Record<string, number> | undefined;
+  industries?: Record<string, number> | undefined;
+  regions?: Record<string, number> | undefined;
+  metKinds?: Record<string, number> | undefined;
 }

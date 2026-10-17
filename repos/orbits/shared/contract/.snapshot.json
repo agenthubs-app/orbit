@@ -2323,6 +2323,26 @@
       "kind": "alias",
       "type": "IngestConfirmationResponseContract"
     },
+    "contact-card-page.ts::ContactCardSourceChip": {
+      "kind": "enum",
+      "values": [
+        "'event'",
+        "'linkedin'",
+        "'manual'",
+        "'meishi'",
+        "'phone'",
+        "'self'"
+      ]
+    },
+    "contact-card-page.ts::ContactCardMetKind": {
+      "kind": "enum",
+      "values": [
+        "'event'",
+        "'other'",
+        "'referral'",
+        "'visit'"
+      ]
+    },
     "contact-card-page.ts::ContactCardDTO": {
       "kind": "object",
       "members": {
@@ -2391,6 +2411,62 @@
               "type": "string"
             }
           }
+        },
+        "density": {
+          "optional": true,
+          "kind": "text",
+          "type": "1 | 2 | 3 | undefined"
+        },
+        "sourceChip": {
+          "optional": true,
+          "kind": "text",
+          "type": "ContactCardSourceChip | undefined"
+        },
+        "primaryIndustryId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "secondaryIndustryId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "region": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "countryCode": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "city": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null | undefined"
+            }
+          }
+        },
+        "metKind": {
+          "optional": true,
+          "kind": "text",
+          "type": "ContactCardMetKind | undefined"
+        },
+        "addedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "lastInteractionAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "goalRelated": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean | undefined"
         }
       }
     },
@@ -2515,6 +2591,66 @@
           "optional": true,
           "kind": "text",
           "type": "number"
+        },
+        "tabCounts": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "goalRelated": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "needsFollowUp": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "sourceChips": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "[string]": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "industries": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "[string]": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "regions": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "[string]": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "metKinds": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "[string]": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
         }
       }
     },
@@ -2576,7 +2712,7 @@
         "sourceChip": {
           "optional": true,
           "kind": "text",
-          "type": "'manual' | 'phone' | 'meishi' | 'linkedin' | 'self'"
+          "type": "'manual' | 'event' | 'phone' | 'meishi' | 'linkedin' | 'self'"
         },
         "kind": {
           "optional": true,
@@ -2627,6 +2763,56 @@
           "optional": true,
           "kind": "text",
           "type": "1 | 2 | 3"
+        }
+      }
+    },
+    "contact-goal-related.ts::ContactGoalRelatedLinkDTO": {
+      "kind": "object",
+      "members": {
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "talked": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "contact-goal-related.ts::ContactGoalRelatedIdsDTO": {
+      "kind": "object",
+      "members": {
+        "ids": {
+          "optional": false,
+          "kind": "text",
+          "type": "string[]"
+        },
+        "truncated": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "asOf": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "links": {
+          "optional": true,
+          "kind": "text",
+          "type": "ContactGoalRelatedLinkDTO[]"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "true"
         }
       }
     },
@@ -3594,6 +3780,51 @@
           "optional": true,
           "kind": "text",
           "type": "readonly string[] | null"
+        },
+        "goalRelated": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean | null"
+        },
+        "needsFollowUp": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean | null"
+        },
+        "industryFilters": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[] | null"
+        },
+        "regionFilters": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[] | null"
+        },
+        "metFilters": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[] | null"
+        },
+        "densityFilters": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[] | null"
+        },
+        "goalRelatedIds": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[] | null"
+        },
+        "followUpContactIds": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[] | null"
+        },
+        "monthStart": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -3966,7 +4197,7 @@
         "sourceChip": {
           "optional": true,
           "kind": "text",
-          "type": "'manual' | 'phone' | 'meishi' | 'linkedin' | 'self'"
+          "type": "'manual' | 'event' | 'phone' | 'meishi' | 'linkedin' | 'self'"
         },
         "databaseQueryExecuted": {
           "optional": false,
@@ -12266,7 +12497,9 @@
         "BusinessCardStructuredExtractionContract",
         "CanonicalResult",
         "ContactCardDTO",
+        "ContactCardMetKind",
         "ContactCardPageDTO",
+        "ContactCardSourceChip",
         "ContactCardSummaryDTO",
         "ContactCompletionAnswerInput",
         "ContactCompletionQuestion",
@@ -12274,6 +12507,8 @@
         "ContactCompletionResult",
         "ContactEvidenceContract",
         "ContactFilterOptionContract",
+        "ContactGoalRelatedIdsDTO",
+        "ContactGoalRelatedLinkDTO",
         "ContactHandlesContract",
         "ContactImportBatchListResponse",
         "ContactImportBatchResponse",

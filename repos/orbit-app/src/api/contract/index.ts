@@ -548,3 +548,7 @@ export type { OrganizerProfile, OrganizerProfileInput, OrganizerProfileListRespo
 
 // R30 全局搜索（search/DESIGN.md §3.1）
 export type { GlobalSearchAlternative, GlobalSearchConversationHit, GlobalSearchEventHit, GlobalSearchGroup, GlobalSearchPersonHit, GlobalSearchQuery, GlobalSearchResponse, GlobalSearchSemantic, GlobalSearchSuggestion, GlobalSearchType, SearchHighlight } from "./global-search";
+
+// R11a 人脈（列表卡片新字段、目標に関係）
+export type { ContactCardMetKind, ContactCardSourceChip } from "./contact-card-page";
+export type { ContactGoalRelatedIdsDTO, ContactGoalRelatedLinkDTO } from "./contact-goal-related";

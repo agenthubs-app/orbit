@@ -114,6 +114,21 @@ export interface ContactsListSearchFilterInput {
   valueFilters?: readonly (ContactValueFilter | string)[] | null;
   /** W0051：关系档位筛选（new／active／core／dormant）；只有有界卡片页与汇总支持。 */
   tierFilters?: readonly string[] | null;
+  /**
+   * R11a（有界卡片页与汇总支持）：页签与絞り込み。`goalRelated` = 只看和生效目标有关的人（id 由
+   * card-service 读计划后传入 `goalRelatedContactIds`）；`needsFollowUp` = 有还开着的跟进（tasks 与关系跟进任务，
+   * SQL 半连接）；业界 = 主或副业界 id（`none` = 未设）；地区 = 城市（`none` = 未设）；出会った場所 = metKind；
+   * 浓度 = 1 / 2 / 3（含计划合并）。
+   */
+  goalRelated?: boolean | null;
+  needsFollowUp?: boolean | null;
+  industryFilters?: readonly string[] | null;
+  regionFilters?: readonly string[] | null;
+  metFilters?: readonly string[] | null;
+  densityFilters?: readonly string[] | null;
+  /** R11a: server-side merge inputs (not query parameters): plan goal-related ids and invite-linked ids. */
+  goalRelatedContactIds?: readonly string[] | null;
+  inviteLinkedContactIds?: readonly string[] | null;
   cursor?: string | null;
   limit?: number | null;
   contextEventId?: string | null;

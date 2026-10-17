@@ -34,4 +34,16 @@ export interface LocalContactDirectoryQuery {
   statusFilters?: readonly string[] | null;
   tagFilters?: readonly string[] | null;
   valueFilters?: readonly string[] | null;
+  /** R11a tabs and 絞り込み (same meaning as GET /api/contacts/page). */
+  goalRelated?: boolean | null;
+  needsFollowUp?: boolean | null;
+  industryFilters?: readonly string[] | null;
+  regionFilters?: readonly string[] | null;
+  metFilters?: readonly string[] | null;
+  densityFilters?: readonly string[] | null;
+  /** R11a merge inputs the device holds: the cached goal-related ids and the contacts with an open follow-up (task mirror). */
+  goalRelatedIds?: readonly string[] | null;
+  followUpContactIds?: readonly string[] | null;
+  /** R11a: the first instant of the current Tokyo month (addedThisMonth); omitted → addedThisMonth is not counted. */
+  monthStart?: string | null;
 }

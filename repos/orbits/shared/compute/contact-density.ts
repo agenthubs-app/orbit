@@ -49,3 +49,13 @@ export function contactDensity(facts: ContactDensityFacts): ContactDensity {
     : facts.hasContactPoint && facts.hasMetContext ? 2 : 1;
   return { level, reasons };
 }
+
+/**
+ * R11a（代定 1 / 10）：列表卡片带的 `density` 不含计划与本人入力（服务端按卡片同一处算、同步到 App）；
+ * 显示前在读时合并——计划已关联或招待で本人入力的人一律 ●●●（D-10）。缺 `density` 的旧卡片传 `null`，
+ * 由调用方先用 `contactDensity` 按本机已有字段现算再合并。
+ */
+export function mergeContactDensity(base: ContactDensityLevel | null | undefined, merge: { goalRelated?: boolean; selfReported?: boolean }): ContactDensityLevel {
+  if (merge.goalRelated || merge.selfReported) return 3;
+  return base === 2 || base === 3 ? base : 1;
+}

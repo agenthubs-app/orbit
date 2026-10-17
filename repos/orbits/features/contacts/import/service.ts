@@ -161,6 +161,8 @@ function contactFromRow(input: { actorId: string; batch: ContactImportBatchRecor
   const linkedinConnectedAt = linkedinConnectedAtFor(fields.connectedOn, input.at);
   const contact: ContactDTO = {
     createdAt: input.at,
+    // R11a（代定 1 / 11）：导入格式记在联系人上（出どころ：LinkedIn / 連絡先 / イベント / 汎用 CSV = 手入力），只在新建时写。
+    importFormat: input.batch.format,
     ...(linkedinConnectedAt ? { linkedinConnectedAt } : {}),
     displayName: fields.displayName.trim(),
     evidenceIds: [`evidence:contact-import:${input.batch.id}:${input.row.seq}`],

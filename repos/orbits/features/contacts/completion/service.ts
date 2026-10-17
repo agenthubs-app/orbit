@@ -21,6 +21,7 @@
  * - 幂等：回答 / 跳过带 `idempotencyKey`，同一个键重放返回第一次的结果；已经答过 / 跳过的题换键再来 → CONFLICT。
  * - 写操作在 `storage.write(actorId, …)` 里执行（live：一个 PostgreSQL 事务 + 按人的 advisory 锁）。
  */
+import { contactSourceChip } from "../../../shared/compute/contact-source-chip";
 import type { ContactCompletionQuestion, ContactCompletionResult } from "../../../shared/contract/contact-completion";
 import {
   buildCompletionOptions,
@@ -97,15 +98,12 @@ function clip(value: string, max: number): string {
   return [...value].slice(0, max).join("");
 }
 
-/** 人脈列表的来源 chip（与 `ContactListItemContract.sourceChip` 同一组值）。 */
-export function completionSourceChip(row: Pick<CompletionContactRow, "sourceType" | "sourceLabel" | "hasLinkedinNote">, selfReported: boolean): NonNullable<ContactCompletionQuestion["sourceChip"]> {
-  if (selfReported) return "self";
-  if (row.sourceType === "business_card_ocr" || row.sourceType === "qr_scan") return "meishi";
-  if (row.sourceType === "external_contacts") {
-    if (/vcard/iu.test(row.sourceLabel)) return "phone";
-    if (row.hasLinkedinNote) return "linkedin";
-  }
-  return "manual";
+/**
+ * 人脈列表的来源 chip。R11a（R11-07）：与人脈列表同一个共享函数（shared/compute/contact-source-chip.ts），
+ * 同一个人在每天一问和列表上标签一致（导入格式优先，旧导入保留 vCard 标签 / LinkedIn 备注的推断）。
+ */
+export function completionSourceChip(row: Pick<CompletionContactRow, "sourceType" | "sourceLabel" | "hasLinkedinNote"> & { importFormat?: string }, selfReported: boolean): NonNullable<ContactCompletionQuestion["sourceChip"]> {
+  return contactSourceChip({ format: row.importFormat || null, hasLinkedinNote: row.hasLinkedinNote, inviteLinked: selfReported, sourceLabel: row.sourceLabel, sourceType: row.sourceType });
 }
 
 function contactFacts(row: CompletionContactRow, strong: boolean): CompletionContactFacts {

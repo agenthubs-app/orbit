@@ -31,7 +31,8 @@ export interface ContactCompletionQuestion {
   /** R16: company · role (what is known), for the card's second line. */
   contactSubtitle?: string;
   /** R16: where this person came from (same values as the 人脈 list chip). */
-  sourceChip?: "meishi" | "linkedin" | "phone" | "manual" | "self";
+  /** R11a: `event` (イベント, event roster import) added 2026-10-18; readers fall back to `manual`. */
+  sourceChip?: "meishi" | "linkedin" | "phone" | "manual" | "self" | "event";
   /** R16: 「どこで？」 or 「会社は？」 (unknown values read as `met_where`). */
   kind?: ContactCompletionQuestionKind;
   /**
