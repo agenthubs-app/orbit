@@ -5,6 +5,8 @@ import { createPostgresPlanV2Repository } from "../../features/plans/v2/reposito
 import { createPlanV2Service } from "../../features/plans/v2/service";
 import { isActivePlanTypeLink } from "../../features/tasks/plan-link";
 import { createTaskCollectionHandlers } from "../../app/api/tasks/collection-handler";
+import { RECORD_SYNC_DOMAINS } from "../../features/sync/domain-registry";
+import { createDomainReadService } from "../../features/sync/domain-read-service";
 import { createTaskRepository } from "../../features/tasks/repository";
 import { createTaskService, TaskServiceError } from "../../features/tasks/service";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
@@ -126,5 +128,37 @@ test("archiving either of two active goals invalidates its linked task in the ge
     assert.deepEqual(rows.map((task) => task.id).sort(), taskIds.sort(), "both tasks remain after one plan is archived");
     assert.equal(rows.find((task) => task.planLink?.planId === archived.planId), undefined);
     assert.equal(rows.filter((task) => task.planLink).length, 1);
+  }, { syncRevision: true });
+});
+
+// Pending cross-line sync design: plans do not advance the task record's sync revision or task-domain generation.
+test.skip("archiving a linked plan invalidates the task device mirror without removing the task", databaseTest, async () => {
+  await withNetworkDatabase(async ({ pool, client, insertRecord }) => {
+    await insertRecord({ collection: "accounts", id: A, userId: A, payload: { id: A } });
+    const plans = createPostgresPlanV2Repository({ pool });
+    let next = 0;
+    const planService = createPlanV2Service({ repository: plans, scope: { actorId: A, workspaceId: WORKSPACE },
+      references: ANY_REFERENCES, now: steppingClock(), newId: () => `mirror-plan-${++next}` });
+    const plan = (await planService.createPlanFromDraft(draftInput())).plan;
+    const planLink = { planId: plan.planId, typeItemId: plan.content.personTypes[0]!.itemId };
+    const tasks = createTaskService({
+      repository: createTaskRepository({ store: createPostgresLiveRecordStore({ client }), workspaceId: WORKSPACE, transactionClient: client }),
+      planLinkReader: { isActiveTypeLink: ({ actorId, ...link }) => isActivePlanTypeLink(plans, { actorId, workspaceId: WORKSPACE }, link) },
+    });
+    const saved = await tasks.create({ actorId: A, title: "Mirror linked", category: "relationship", planLink,
+      idempotencyKey: "task:mirror-linked", now: "2026-10-18T08:00:00.000Z" });
+    const sync = createDomainReadService({ client, cursorSecret: "r20b-mirror-plan-secret-0123456789abcdef", domains: RECORD_SYNC_DOMAINS });
+    const scope = { actorId: A, workspaceId: WORKSPACE };
+    const before = (await sync.manifest(scope)).domains.find((entry) => entry.domainId === "tasks")!;
+    const first = await sync.readDomainPage({ ...scope, domainId: "tasks", limit: 10 });
+    assert.deepEqual(first.changes.find((change) => change.id === saved.task.id)?.payload?.planLink, planLink);
+    await pool.query("update plans set status = 'archived', archived_at = $3 where workspace_id = $1 and id = $2",
+      [WORKSPACE, planLink.planId, "2026-10-18T08:01:00.000Z"]);
+    const after = (await sync.manifest(scope)).domains.find((entry) => entry.domainId === "tasks")!;
+    assert.ok(after.watermark !== before.watermark || after.generation !== before.generation,
+      "a plan-only change must invalidate the device's completed task cursor");
+    const refreshed = await sync.readDomainPage({ ...scope, domainId: "tasks", limit: 10 });
+    assert.equal(refreshed.changes.find((change) => change.id === saved.task.id)?.payload?.planLink, undefined);
+    assert.ok(refreshed.changes.some((change) => change.id === saved.task.id), "the task remains available to the device");
   }, { syncRevision: true });
 });
