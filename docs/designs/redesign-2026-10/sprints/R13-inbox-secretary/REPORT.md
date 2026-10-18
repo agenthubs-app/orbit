@@ -4,7 +4,7 @@
 
 ## 执行与 SC 对照（2026-10-19）
 
-本线只改 `redesign-b`；启动及实现提交后均已 `git pull --rebase origin redesign`，最终基于 `origin/redesign@d8e6dafb7`。未 push、未接 Neon/生产、未部署、未调用付费 AI。沿用本机 `orbit_line_b`，未新增迁移（`network-analysis v6` 未占用）。M0 的合同与 App 副本已独立提交；本线 rebase 后的服务、Web、App 主提交依次为 `fc306dd69`、`e47d153ef`、`2e2f272e1`，后续本域修复/测试/预检提交见末尾清单。
+本线只改 `redesign-b`；启动及实现提交后均已 `git pull --rebase origin redesign`，本轮 R21 集成复核已 rebase 到 `origin/redesign@d33a9f270`。未 push、未接 Neon/生产、未部署、未调用付费 AI。沿用本机 `orbit_line_b`，未新增迁移（`network-analysis v6` 未占用）。M0 的合同与 App 副本已独立提交；本线当前服务、Web、App 主提交依次为 `19f2c79f0`、`bc6febb1f`、`45ba4868b`，后续本域修复/测试/预检提交见末尾清单。下述 run-01/run-02 全量证据保留各自当时的基线与提交号，不表示在本轮新基线上重跑全量。
 
 | SC | 当前结果 / 证据 | 未完成项或限制 |
 | --- | --- | --- |
@@ -63,6 +63,12 @@ App 干净基线把旧全量的相机、设置、受信箱生命周期三个失�
 
 当前 B 的 Web 收口全量也只跑一次：**7,661 tests、6,640 pass、16 fail、1,005 skip，退出 1**（`web-full-closeout.log`）。与干净基线按失败名称集合比较，15 项相同、只多 `the allow list only shrinks`（`web-failure-name-compare.json`）：本线日语补全后，消息页已达 0/0，旧 allowlist 仍给 0/20；受信箱页缺日语计数从 52 降到 46。收紧这两项额度后，文案门禁目标测试 **7/7 通过**（`web-copy-ratchet-green.log`），提交 `8e6423ed5`。遵守主会话“一次全量”限制，未再次跑 Web 全量；修复后无已知未交接的 B 新增失败，但不能把目标测试写成全量通过。App 集合对照只多 A 组件选中语义一项（`app-failure-name-compare.json`）。
 
+### R21 集成与 R29 秘書计算审计（run-03）
+
+按主会话请求，`git pull --rebase origin redesign` 已把 B 线叠到 `d33a9f270`，E 线 `f1fef38fe` 是当前 HEAD 的祖先。冲突有三处 App 测试：`inbox-ai-local-first.test.tsx` 同时保留 E 的 `usePendingWriteCounts` 解析和 B 的手势/动画替身；`offline-read-inventory.test.ts` 同时保留 E 的两项 AI 离线写入调用和 B 的完整缺项列表断言；`app-wide-workspaces.test.ts` 同时保留 E 的 `window.global` 初始化和 B 的 `nativeUiStubs`。无越线运行时代码改动。
+
+R29 所见的 `secretary-source.ts` 直接 `Date.parse` 来自其当时的 `origin/redesign`：B 线先前的来源提交已改用共享 `compute-text.parseTimestamp`，并同步到 App 副本。本轮重跑 Web 共享计算/preview 架构 **6/6**、秘書来源/日次/路由 **15/15**、App 计算副本与离线读清单 **30/30**、App 收件箱目标/合同 **5/5**，均退出 0。冲突页面的浏览器回归也通过：`inbox-ai-local-first` **10/10**（含 E 线 R21 搜索断言）、`app-wide-workspaces` **45/45**。Web `typecheck`、`typecheck:app` 与 App `typecheck` 均退出 0；日志在 `_evidence-b/R13/run-03/`。旧 run-02 全量结果针对 `d8e6dafb7`，本轮没有把它当成新基线的全量通过证据。
+
 ## 按路径提交与清理
 
-M0 `306f32224` 已在 `origin/redesign`。本线 rebase 后提交依次为：`fc306dd69` 来源/预览，`e47d153ef` Web，`2e2f272e1` App，`aefae0939` Web 文案/邮件直读，`09d8c4e92` App 来源/标题，`47af391cd` 视觉配置，`3a3f43a80` App 浏览器测试束，`1584681b5` 画板预检；本次回归复核另有 `1947571e1` App 设置测试替身、`8e6423ed5` Web 文案 allowlist。各提交均含规定的 Co-Authored-By footer，并逐个检查过 `git show --stat` 的路径。未 push。B 线自己的 Web `:3300`、Metro `:8083`、静态设计服务 `:3351` 均已停止；B 模拟器已关机。原始日志和截图保留于 `_evidence-b/R13/run-01/`；基线对照与收口日志保留于 `_evidence-b/R13/run-02/`。
+M0 `306f32224` 已在 `origin/redesign`。本轮 rebase 后提交依次为：`19f2c79f0` 来源/预览，`bc6febb1f` Web，`45ba4868b` App，`c37bae5ec` Web 文案/邮件直读，`c1d152b55` App 来源/标题，`ed9093c70` 视觉配置，`e059156cf` App 浏览器测试束，`df2a4ba67` 画板预检，`b00083480` Sprint 报告，`fc8af823d` App 设置测试替身，`127fb7add` Web 文案 allowlist，`4694aa971` 回归报告。原始提交号在 run-01/run-02 记录中保留供核对；rebase 后以本行新号为准。各提交均含规定的 Co-Authored-By footer，并逐个检查过 `git show --stat` 的路径。未 push。B 线自己的 Web `:3300`、Metro `:8083`、静态设计服务 `:3351` 均已停止；B 模拟器已关机。原始日志和截图保留于 `_evidence-b/R13/run-01/`；基线对照与收口日志保留于 `_evidence-b/R13/run-02/`；本轮集成复核日志见 `_evidence-b/R13/run-03/`。
