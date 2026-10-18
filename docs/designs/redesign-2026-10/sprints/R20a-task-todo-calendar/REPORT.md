@@ -67,6 +67,8 @@ SC-13 Web タスク一覧の失敗境界を追加検証した。`useTasksResourc
 
 続く Web `npm run typecheck:app` は `_evidence-d/R20a/run-01/d-web-typecheck-app-stale-read-fix.log` で **exit 0**。同じ clean source の Web `npm test` は `_evidence-d/R20a/run-01/d-web-full-stale-read-fix.log` で **7744 tests / 6675 pass / 40 fail / 1029 skip、exit 1**。新 SC-13 失敗再読の三つの component tests はこの full 内で全て pass。15:19 の D Web full と失敗名を比較すると旧 32 件は全て継続し、新 8 件は `tests/ui/network-screen.test.tsx` の bundle が `orbit-shared-read-account.ts` から import する `SessionContext` を `SHELL_STUBS` の `next-auth/react` stand-in が export しない同一の build error。Task List / To-do の失敗名は増えていない。ratchet は旧失敗名が継続したうえ現時点 **86 > 79** で、旧い「コメントだけで +1」という説明を今回の件数へ延長しない。全量 pass / Web SC-13 完了とはしない。
 
+D 帰属の `TaskListWorkspace` と `TodoWorkspace` にあった hidden `data-task-add` の生 `<button>` 二件を kit `Button` に替えた（`dad08ba2d`）。両方とも hidden と `display:none` を維持し、共通 add の click は同じ form を開く。実 component test は RED 2 → GREEN 2、近接の Task List / To-do / group / page は **31/31 pass**。ratchet の非 kit 件数は **86 → 84** に減ったが ceiling 79 には届かず、同 gate は **1 fail / 2 pass**。R20b の契約ファイルが並行変更中だったため、修正後の全量・型検査の待機票は実行前に撤回した（両ログ 0 bytes）。その二件は未検証として、R20b の source が固定された後に再実行する。
+
 ## 2026-10-18 主会話の最新検証（部分）
 
 App の SC-08 / SC-11 追加分について、fixture の型を製品契約に合わせて修正した後、`npm run typecheck` は exit 0。実ブラウザでは Sheet 8/8、sent 2/2 が通った。sent の実ブラウザ RED は保存直後の時刻より前に画面が保持した `now` を使うため pending 表示が最大 60 秒遅れる不具合で、`TodoScreen` の handoff 判定時刻だけを現在時刻に変更して GREEN 2/2 を確認した。修正後の App full と fresh typecheck exit0 は下記。Web の secure-origin fixture / SC-09 / SC-11 ブラウザは 9/9、修正後の Web typecheck と lint は exit0。実 Google、simulator、pixel はこの検証に含めない。
