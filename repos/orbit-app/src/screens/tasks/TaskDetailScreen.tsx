@@ -220,7 +220,7 @@ export function TaskDetailScreen() {
         onSuccess(result.data);
         return true;
       }
-      setMutationError(result.error.message);
+      setMutationError(locale.t("taskDetail.operationFailed"));
       return false;
     } catch {
       if (isCurrent()) setMutationError(locale.t("taskDetail.operationFailed"));

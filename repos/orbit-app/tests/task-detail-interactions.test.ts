@@ -81,7 +81,7 @@ export const randomUUID = () => window.crypto.randomUUID();
 test.before(async () => {
   const result = await build({
     stdin: {
-      contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { TaskDetailScreen } from "./src/screens/tasks/TaskDetailScreen"; const root = createRoot(document.getElementById("root")); window.unmountScreen = () => root.unmount(); root.render(<TaskDetailScreen />);`,
+      contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { TaskDetailScreen } from "./src/screens/tasks/TaskDetailScreen"; import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext"; import { createTranslator } from "./src/i18n/messages"; const root = createRoot(document.getElementById("root")); window.unmountScreen = () => root.unmount(); root.render(new URLSearchParams(location.search).get("lang") === "ja" ? <OrbitLocaleContext.Provider value={{ language: "ja", t: createTranslator("ja") }}><TaskDetailScreen /></OrbitLocaleContext.Provider> : <TaskDetailScreen />);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
     bundle: true, write: false, format: "iife", jsx: "automatic",
@@ -125,13 +125,13 @@ test.after(async () => {
   if (server) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 });
 
-async function openScreen(t: { after: (fn: () => Promise<void>) => void }): Promise<Page> {
+async function openScreen(t: { after: (fn: () => Promise<void>) => void }, language: "ja" | "zh" = "zh"): Promise<Page> {
   const page = await browser.newPage();
   page.setDefaultTimeout(3000);
   t.after(() => page.close());
   await page.route("**/*", route => route.request().url().startsWith(url) ? route.continue() : route.abort());
-  await page.goto(url);
-  await page.waitForFunction(() => document.querySelector<HTMLTextAreaElement>('[aria-label="待办标题"]')?.value === "Original title");
+  await page.goto(language === "ja" ? `${url}?lang=ja` : url);
+  await page.waitForFunction((label) => document.querySelector<HTMLTextAreaElement>(`[aria-label="${label}"]`)?.value === "Original title", language === "ja" ? "タスク名" : "待办标题");
   return page;
 }
 
@@ -319,8 +319,21 @@ test("pending saves lock the editor and a failed save restores the editable draf
   await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
   assert.equal(await title.isEditable(), false);
   await page.evaluate(() => (window as any).fixture.release());
-  await page.getByText("连接暂时失败", { exact: true }).waitFor();
+  await page.getByText("操作未完成，请重试。", { exact: true }).waitFor();
   assert.equal(await title.isEditable(), true);
+  assert.equal(await title.inputValue(), "Retry this draft");
+});
+
+test("Japanese task detail keeps server error text out of a failed save", async (t) => {
+  const page = await openScreen(t, "ja");
+  await page.evaluate(() => { (window as any).fixture.failure = true; });
+  const title = page.getByRole("textbox", { name: "タスク名", exact: true });
+  await title.fill("Retry this draft");
+  await title.blur();
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
+  await page.getByRole("alert").first().waitFor();
+  assert.equal(await page.getByText("连接暂时失败", { exact: true }).count(), 0);
+  await page.getByRole("alert").filter({ hasText: "操作を完了できませんでした。もう一度お試しください。" }).first().waitFor();
   assert.equal(await title.inputValue(), "Retry this draft");
 });
 
@@ -361,7 +374,7 @@ test("failed edits reuse their request key, but a changed draft gets a new key",
   for (const value of ["Retry draft", "Retry draft", "Changed draft"]) {
     await title.fill(value);
     await title.blur();
-    await page.getByText("连接暂时失败", { exact: true }).waitFor();
+    await page.getByText("操作未完成，请重试。", { exact: true }).waitFor();
   }
   const requests = await page.evaluate(() => (window as any).fixture.requests);
   assert.equal(requests.length, 3);
@@ -447,7 +460,7 @@ for (const operation of ["complete", "reopen", "delete", "reminder", "cancel"]) 
       : page.getByText(operation === "reminder" ? "1 小时后" : "取消", { exact: true });
     await action.click();
     if (operation === "delete") await page.getByRole("button", { name: "确认删除", exact: true }).click();
-    await page.getByRole("alert").filter({ hasText: "连接暂时失败" }).first().waitFor();
+    await page.getByRole("alert").filter({ hasText: "操作未完成，请重试。" }).first().waitFor();
     await page.evaluate(() => { (window as any).fixture.failure = false; });
     if (operation === "delete") await page.getByRole("button", { name: "更多待办操作", exact: true }).click();
     await action.click();
@@ -494,7 +507,7 @@ test("a failed save on leaving keeps the user on the task with the draft and a v
   const notes = page.getByRole("textbox", { name: "备注", exact: true });
   await notes.fill("Keep this draft");
   await page.evaluate(() => (window as any).fixture.leave());
-  await page.getByText("连接暂时失败", { exact: true }).waitFor();
+  await page.getByText("操作未完成，请重试。", { exact: true }).waitFor();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.dispatched), []);
   assert.equal(await notes.inputValue(), "Keep this draft");
   await page.evaluate(() => { (window as any).fixture.failure = false; (window as any).fixture.leave(); });
@@ -507,7 +520,7 @@ test("after a failed save on leaving, leaving again with the same draft is not b
   await page.evaluate(() => { (window as any).fixture.failure = true; });
   await page.getByRole("textbox", { name: "备注", exact: true }).fill("Offline draft");
   await page.evaluate(() => (window as any).fixture.leave());
-  await page.getByText("连接暂时失败", { exact: true }).waitFor();
+  await page.getByText("操作未完成，请重试。", { exact: true }).waitFor();
   assert.equal(await page.evaluate(() => (window as any).fixture.leave()), false, "the user already saw the failure and can leave");
   assert.equal(await page.evaluate(() => (window as any).fixture.requests.length), 1);
   assert.equal(await page.evaluate(() => (window as any).fixture.dispatched.length), 1);
