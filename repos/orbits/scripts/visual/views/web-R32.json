@@ -43,7 +43,7 @@
       "width": 1440,
       "click": "[data-plan-action=premise]",
       "note": "R32 来源 web-plan-A.json: 前提を見る（D49 只读）",
-      "wait-for": "[data-plan-overview]",
+      "wait-for": "[data-plan-action=premise]",
       "fixture": "b12-206-premise",
       "board": "W-R24-03 前提を見る",
       "board-kind": "web",
@@ -80,7 +80,7 @@
           "wait": 600
         }
       ],
-      "wait-for": "[data-plan-type]",
+      "wait-for": "[data-plan-record-offline]",
       "note": "R32 来源 web-plan-A.json: ",
       "fixture": "b4-11-type-vc",
       "board": "W-R24-09b 記録",
@@ -106,7 +106,7 @@
           "wait": 600
         }
       ],
-      "wait-for": "[data-plan-type]",
+      "wait-for": "[data-plan-skip]",
       "note": "R32 来源 web-plan-A.json: ",
       "fixture": "b12-244-law",
       "board": "W-R24-11 スキップ確認",
