@@ -13,6 +13,10 @@ test('durable cross-device quota, sound, consent revisions and unknown provider 
   const first=await Promise.all([reserve('n1:d1','n1','d1',true),reserve('n1:d2','n1','d2',true)]);assert.ok(first.every(x=>x.allowed));
   assert.equal((await reserve('n2:d1','n2','d1',true)).allowed,true);assert.equal((await reserve('n3:d1','n3')).allowed,true);assert.equal((await reserve('n4:d1','n4', 'd1', false, 'conversation')).allowed,false);
   repo=make();assert.equal((await reserve('n1:d1','n1')).allowed,false);
+  await repo.settle(actor,'n1:d1','rejected');
+  assert.ok(await repo.get(client,'notificationDeliveryReservations',deliveryPolicyId(actor,'n1')),'another device still owns the shared reservation');
+  await repo.settle(actor,'n1:d2','sent','ticket-n1');
+  await assert.rejects(repo.settle(actor,'n1:d2','rejected'),/cannot be released/);
   at='2026-09-17T01:00:00.000Z';
   const sound=await Promise.all([reserve('m1:d1','m1','d1',false,'c'),reserve('m1:d2','m1','d2',false,'c')]);assert.equal(sound.filter(x=>x.allowed&&x.sound).length,1);assert.ok(sound.every(x=>x.allowed));
   at='2026-09-17T01:01:00.000Z';assert.equal((await reserve('m2:d1','m2','d1',false,'c') as {sound:boolean}).sound,true);
@@ -30,6 +34,8 @@ test('durable cross-device quota, sound, consent revisions and unknown provider 
   const capped=(deliveryId:string,eventKey:string,automatic:boolean)=>repo.reserve(actor,{deliveryId,eventKey,deviceId:'d1',automatic,suggestion:false,conversationId:automatic?undefined:'c',expectedPreferenceRevision:2});
   assert.equal((await capped('u1:d1','u1',false)).allowed,true);
   assert.equal((await capped('a1:d1','a1',true)).allowed,false);
+  await repo.settle(actor,'u1:d1','rejected');
+  assert.equal((await capped('a1:d1','a1',true)).allowed,true,'a candidate rejected before provider send releases its quota');
   at='2026-09-19T01:00:00.000Z';
   const digest=(deliveryId:string,deviceId:string)=>repo.reserve(actor,{deliveryId,eventKey:'digest:2026-09-19',digestKey:'digest:2026-09-19',deviceId,automatic:true,suggestion:false,expectedPreferenceRevision:2});
   const competing=await Promise.all([digest('dig-one:d1','d1'),digest('dig-two:d1','d1')]);

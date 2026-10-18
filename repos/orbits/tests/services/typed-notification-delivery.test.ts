@@ -32,6 +32,16 @@ test('quiet and 07:30–07:50 candidates become one private digest per device',a
  const worker=createTypedDeliveryWorker({actorId:'a',ledger,repository:repo as never,now:()=>at,devices:{listActive:async()=>[{deviceId:'actor-device',token:'token'}]} as never,push:{send:async message=>{sends++;sentBodies.push(message.body);assert.equal(message.title,'Orbit');assert.equal(message.body.includes('PRIVATE'),false);assert.deepEqual(Object.keys(message.data),['deliveryId']);return {receiptId:'ticket',verified:true};}},sources:{resolve:async d=>({subject:{channel:'reminder',origin:'automation',active:true,read:false,explicitNight:false,scheduledFor:d.scheduledFor},title:'PRIVATE',body:'PRIVATE BODY',href:'/inbox/notifications/'+d.signalId,language:'en'})}});
  await worker.run({workerId:'digest'});assert.equal(sends,1);assert.match(sentBodies[0]!,/2/);assert.deepEqual(keys,['digest:2026-09-17','digest:2026-09-17']);assert.equal((await ledger.list({status:'suppressed'})).length,1);
 });
+test('a preference revision changed after reservation defers an eligible candidate for a fresh decision',async()=>{
+ let at='2026-09-16T01:00:00.000Z',revision=0,reads=0,sends=0;
+ const ledger=createStorageNotificationDeliveryService({actorId:'a',workspaceId:'w',store:createMemoryLiveRecordStore() as never,now:()=>at});
+ const delivery=(await ledger.materialize({signalId:'n',signalRevision:'1',phase:'commitment',title:'Private',body:'Private',scheduledFor:at,policySource:{kind:'notification',id:'n',eventKey:'n'}})).delivery;
+ const preferences=async()=>{reads++;return {...defaultDeliveryPreferences('a'),revision:reads===2?1:revision};};
+ const worker=createTypedDeliveryWorker({actorId:'a',ledger,now:()=>at,repository:{preferences,reserve:async()=>({allowed:true,sound:true,preferences:{...defaultDeliveryPreferences('a'),revision}}),settle:async()=>{}} as never,devices:{listActive:async()=>[{deviceId:'actor-device',token:'token'}]} as never,push:{send:async()=>{sends++;return {receiptId:'ticket',verified:true};}},sources:{resolve:async d=>({subject:{channel:'reminder',origin:'automation',active:true,read:false,explicitNight:false,scheduledFor:d.scheduledFor},title:'Private',body:'Private',href:'/inbox',language:'en'})}});
+ const first=await worker.run({workerId:'first'});assert.equal(first.deferred,1);assert.equal(sends,0);assert.equal((await ledger.get(delivery.deliveryId))?.status,'retry_scheduled');
+ revision=1;at='2026-09-16T01:01:00.000Z';
+ const second=await worker.run({workerId:'second'});assert.equal(second.sent,1);assert.equal(sends,1);
+});
 test('source cancellation and provider timeout cannot leak body or retry an uncertain send',async()=>{
  const at='2026-09-16T01:00:00.000Z',ledger=createStorageNotificationDeliveryService({actorId:'a',workspaceId:'w',store:createMemoryLiveRecordStore() as never,now:()=>at});
  const ids=[];for(const id of ['cancelled','revoked','timeout'])ids.push((await ledger.materialize({signalId:id,signalRevision:'1',phase:'commitment',title:'PRIVATE',body:'PRIVATE BODY',scheduledFor:at,policySource:{kind:'notification',id,eventKey:id}})).delivery.deliveryId);

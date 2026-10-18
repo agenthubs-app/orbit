@@ -43,7 +43,14 @@ export function createTypedDeliveryWorker(input:{actorId:string;ledger:Notificat
    if(!reserved.allowed){if(reserved.reason==='local_owner'||reserved.reason==='preferences_changed'){await defer(new Date(Date.parse(now())+60000).toISOString());}else if(reserved.reason==='dispatch_already_started'){if(reserved.receiptId){if(reserved.receiptVerified){await input.ledger.markSent({...owned,providerReceiptId:reserved.receiptId});result.sent++;}else{await input.ledger.markReceiptPending({...owned,providerReceiptId:reserved.receiptId});result.receiptPending++;}}else{await input.ledger.markUnknown!({...owned,error:'dispatch_recovery_requires_reconciliation'});result.receiptUnknown++;}}else await suppress(reserved.reason);continue;}
    // Recheck the authority and token after durable ownership/quota reservation.
    const fresh=await input.sources.resolve(d),current=await input.repository.preferences(input.actorId);device=(await input.devices.listActive()).find(x=>x.deviceId===d.deviceId);
-   if(!fresh||!device||current.revision!==reserved.preferences.revision||evaluateDeliveryPolicy(fresh.subject,current,now()).action!=='send'||digestKey&&deliveryDigestAt(fresh.subject,current)!==digestAt){await input.repository.settle(input.actorId,d.deliveryId,'rejected');await suppress('pre_send_state_changed');continue;}
+   if(!fresh||!device){await input.repository.settle(input.actorId,d.deliveryId,'rejected');await suppress('pre_send_state_changed');continue;}
+   const freshDecision=evaluateDeliveryPolicy(fresh.subject,current,now());
+   if(current.revision!==reserved.preferences.revision||freshDecision.action==='defer'||digestKey&&deliveryDigestAt(fresh.subject,current)!==digestAt){
+    await input.repository.settle(input.actorId,d.deliveryId,'rejected');
+    await defer(freshDecision.action==='defer'?freshDecision.availableAt:new Date(Date.parse(now())+60000).toISOString());
+    continue;
+   }
+   if(freshDecision.action==='suppress'){await input.repository.settle(input.actorId,d.deliveryId,'rejected');await suppress(freshDecision.reason);continue;}
    const full=current.lockScreenContent==='full';
    const digestCount=digestKey&&digestAt?await digestNotificationCount(input,d,digestAt,current,now()).catch(()=>null):null;
    let receipt:Awaited<ReturnType<OrbitPushAdapter['send']>>;

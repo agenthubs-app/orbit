@@ -114,7 +114,12 @@ export function createDeliveryPolicyRepository(input:{client:TransactionalPostgr
     return {allowed:true as const,sound,preferences:p};
    });
   },
-  async settle(actorId:string,deliveryId:string,state:'receipt_pending'|'sent'|'unknown'|'rejected',receiptId?:string){return tx(actorId,async db=>{const id=deliveryPolicyId(actorId,deliveryId),old=await get<Record<string,unknown>>(db,'notificationDeliveryAttempts',id);if(!old)throw new DeliveryPolicyConflict('No dispatch reservation');if(old.state==='unknown'&&state==='rejected')throw new DeliveryPolicyConflict('Unknown dispatch cannot be released');if(['sent','receipt_pending'].includes(state)&&!receiptId?.trim())throw new DeliveryPolicyConflict('Provider receipt required');await save(db,'notificationDeliveryAttempts',id,actorId,{...old,state,receiptId:receiptId??old.receiptId??null,settledAt:now()});});},
+  async settle(actorId:string,deliveryId:string,state:'receipt_pending'|'sent'|'unknown'|'rejected',receiptId?:string){return tx(actorId,async db=>{const id=deliveryPolicyId(actorId,deliveryId),old=await get<Record<string,unknown>>(db,'notificationDeliveryAttempts',id);if(!old)throw new DeliveryPolicyConflict('No dispatch reservation');if(['unknown','sent','receipt_pending'].includes(String(old.state))&&state==='rejected')throw new DeliveryPolicyConflict('Accepted or unknown dispatch cannot be released');if(['sent','receipt_pending'].includes(state)&&!receiptId?.trim())throw new DeliveryPolicyConflict('Provider receipt required');await save(db,'notificationDeliveryAttempts',id,actorId,{...old,state,receiptId:receiptId??old.receiptId??null,settledAt:now()});
+   if(state==='rejected'&&typeof old.eventKey==='string'){
+    const remaining=await db.query(`select 1 from orbit_records where workspace_id=$1 and user_id=$2 and collection_name='notificationDeliveryAttempts' and lifecycle_state='active' and payload->>'eventKey'=$3 and payload->>'state'<>'rejected' limit 1`,[input.workspaceId,actorId,old.eventKey]);
+    if(!remaining.rows.length)await db.query(`delete from orbit_records where workspace_id=$1 and user_id=$2 and collection_name='notificationDeliveryReservations' and record_id=$3`,[input.workspaceId,actorId,deliveryPolicyId(actorId,old.eventKey)]);
+   }
+  });},
  };
  return repository;
 }
