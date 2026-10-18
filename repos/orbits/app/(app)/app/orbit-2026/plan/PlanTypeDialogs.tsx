@@ -100,7 +100,7 @@ export function RecordModal({ open, detail, initialMode, initialContactId, match
       actions={<><Button label={copy.action.cancel} variant="secondary" onClick={onClose} />{showMatches && createFailed
         ? <Button label={t(c.recordAnonymous)} variant="primary" disabled={busy} onClick={() => saveRecord(withAt({ kind: "anonymous" as const }))} data-plan-record-anonymous="" />
         : <Button label={t(c.recordSubmit)} variant="primary" disabled={!canSubmit} loading={busy} onClick={submit} />}</>}>
-      <div className={styles.stack} data-plan-record={mode}>
+      <div className={`${styles.stack} ${styles.recordStack}`} data-plan-record={mode}>
         <div className={styles.modes}>
           <Segmented<RecordMode> label={t(c.recordModeLabel)} value={mode} onChange={setMode} wide
             segments={[{ key: "talked", label: t(c.modeTalked) }, { key: "offline", label: t(c.modeOffline) }, { key: "anonymous", label: t(c.modeAnonymous) }]} />
