@@ -37,6 +37,8 @@
 
 新しい notes API の後処理は既存の memo-extraction job を呼ぶが、既存 W0048a 補掃 SQL は旧 `contact_detail_states` の memo のみを走査する。新 notes の enqueue 失敗／disabled 後の自動補掃は未配線であり、SC-10 の閉項条件に数えない。C11 の手動提議／確定／計分も未確認。
 
+新 `onPersisted` の enqueue 例外ログはエラー名のみだが、委譲先の既存 `features/contacts/memo-extraction/{store,job}.ts` は `error.message` を最大 200 字出す経路がある。provider 等の任意エラー文に本文が含まれないことは証明できず、SC-10 の「ログに本文なし」全経路合格とも言わない。この両ファイルは R20b §1 の notes allowlist 外なので、所有者への修正依頼として残す。
+
 ## 未完と次の検証
 
 両端の fresh typecheck と画板 preflight を待ち、型エラーがあれば R20b 自身のものを修正する。R20a の未完 container / native / pixel に依存しない notes service・outbox の RED→GREEN を先行する。変更したファイル以外の D 線進行中の Task source／tests は他作業として保持し、この REPORT の成果に数えない。全量 suite・旧四画面・Web 新頁・cross-client readback・C11・SC-11 の失効 mirror と E 線相互検証は未検証／未実装。
