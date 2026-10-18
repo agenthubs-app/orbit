@@ -10,6 +10,11 @@ test("Task keeps quick add and mounts the new To-do first page with the preserve
   assert.doesNotMatch(source, /<TasksScreen key=\{revision\} \/>/u);
 });
 
+test("opening the task list keeps an explicit list URL for return navigation", () => {
+  const source = readFileSync(join(import.meta.dirname, "../src/screens/todo/TodoScreen.tsx"), "utf8");
+  assert.match(source, /onShowTasks=\{\(\) => \{ setView\("tasks"\); router\.setParams\(\{ view: "all" \}\); \}\}/u);
+});
+
 test("Task mounts the unified calendar in its frozen calendar slot", () => {
   const source = readFileSync(join(import.meta.dirname, "../src/screens/task/TaskScreen.tsx"), "utf8");
   assert.match(source, /import \{ CalendarScreen \} from "\.\.\/calendar\/CalendarScreen";/u);

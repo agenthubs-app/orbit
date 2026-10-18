@@ -106,9 +106,10 @@ test("To-do deferral changes only a real existing task date to a later local dat
   assert.deepEqual(laterTaskDatePatch({ dueAt: "2026-10-18T09:30:00.000Z" }, "2026-10-20", "Asia/Tokyo"), { dueAt: "2026-10-20T09:30:00.000Z" });
 });
 
-test("legacy completed-view links preserve the task list instead of hiding it behind the aggregate", () => {
+test("explicit task-list links open the list while ordinary To-do links open the aggregate", () => {
   assert.equal(todoInitialView("completed"), "tasks");
   assert.equal(todoInitialView(["completed", "open"]), "tasks");
+  assert.equal(todoInitialView("all"), "tasks");
   assert.equal(todoInitialView("open"), "home");
   assert.equal(todoInitialView(undefined), "home");
 });

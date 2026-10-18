@@ -389,7 +389,7 @@ export function TaskDetailScreen() {
     await mutate("delete", taskPath(taskId), { ...(baseline ? { expectedUpdatedAt: baseline.updatedAt } : {}) }, () => {
       notifyReminderPlansChanged();
       setMoreOpen(false);
-      router.replace("/tasks" as Href);
+      router.replace(taskListReturnHref);
     });
   }
 
@@ -427,7 +427,7 @@ export function TaskDetailScreen() {
         if (taskConflict.operation === "delete") {
           // Like the online delete: the confirmed delete is queued, so leave the deleted task's page.
           notifyReminderPlansChanged();
-          router.replace("/tasks" as Href);
+          router.replace(taskListReturnHref);
           return;
         }
       }
@@ -719,6 +719,8 @@ function taskDateLabel(value: string | undefined, timeZone: string, language: Or
 function createdDateLabel(value: string, timeZone: string, language: OrbitLanguage): string {
   return new Intl.DateTimeFormat(localeTag(language), { timeZone, month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
 }
+
+const taskListReturnHref = "/task?seg=todo&view=all" as Href;
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionContent: { alignSelf: "center", gap: 8, maxWidth: layout.contentMax - 2 * layout.pageInset, width: "100%" },

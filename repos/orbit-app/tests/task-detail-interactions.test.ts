@@ -187,7 +187,7 @@ test("a task delete conflict requires a second confirmation for the server versi
   assert.equal(resolution.replacement.operation, "delete");
   assert.equal(JSON.parse(resolution.replacement.requestJson).expectedUpdatedAt, "2026-09-07T05:00:00.000Z");
   assert.notEqual(JSON.parse(resolution.replacement.requestJson).idempotencyKey, "delete-original");
-  await page.waitForFunction(() => (window as any).fixture.navigation.includes("/tasks"));
+  await page.waitForFunction(() => (window as any).fixture.navigation.includes("/task?seg=todo&view=all"));
 });
 
 async function seedRefusedEdit(page: Page): Promise<void> {
@@ -469,7 +469,7 @@ for (const operation of ["complete", "reopen", "delete", "reminder", "cancel"]) 
       assert.equal(request.body.deepLink, "/tasks/task%3Aedit");
       assert.equal(request.body.body, "Original title");
     }
-    assert.deepEqual(snapshot.navigation, operation === "delete" ? ["/tasks"] : []);
+    assert.deepEqual(snapshot.navigation, operation === "delete" ? ["/task?seg=todo&view=all"] : []);
     assert.equal(snapshot.refreshes, operation === "delete" ? 0 : ["reminder", "cancel"].includes(operation) ? 1 : 3);
   });
 }

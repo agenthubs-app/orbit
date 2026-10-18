@@ -44,7 +44,7 @@ export function TodoTaskSlot() {
     <View style={slotStyles.back}><Button label={t("todo.backToTodo")} onPress={() => { setView("home"); router.setParams({ view: "open" }); }} variant="ghost" /></View>
     <TasksScreen />
   </View>;
-  return <TodoScreen onShowTasks={() => setView("tasks")} />;
+  return <TodoScreen onShowTasks={() => { setView("tasks"); router.setParams({ view: "all" }); }} />;
 }
 
 /** The first To-do page is a read-only aggregate; actions still use their owning source. */

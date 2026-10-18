@@ -127,5 +127,6 @@ export function laterTaskDatePatch(
 }
 
 export function todoInitialView(view: string | string[] | undefined): "home" | "tasks" {
-  return (Array.isArray(view) ? view[0] : view) === "completed" ? "tasks" : "home";
+  const requested = Array.isArray(view) ? view[0] : view;
+  return requested === "completed" || requested === "all" ? "tasks" : "home";
 }
