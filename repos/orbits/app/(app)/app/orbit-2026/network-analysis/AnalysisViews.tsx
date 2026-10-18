@@ -9,7 +9,7 @@ import { useId, useState, type ReactNode } from "react";
 import type { NetworkAnalysisDistribution, NetworkAnalysisGap, NetworkAnalysisInsight, NetworkAnalysisOpportunity, NetworkAnalysisViewDTO } from "../../../../../shared/contract/network-analysis-view";
 import type { NetworkSnapshotView, NetworkSnapshotViewBlock } from "../../../../../features/network-analysis/contract";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { Avatar, Button, Icon, SampleTag } from "../ui";
+import { Avatar, Button, Icon, useStandardCopy } from "../ui";
 import { bucketLabel, industryName, monthLabel, tokyoMonthDay, useAnalysisT, type AnalysisT } from "./analysis-labels";
 import type { DrillSelection } from "./DrillList";
 import styles from "./network-analysis.module.css";
@@ -52,11 +52,12 @@ function WhyToggle({ why, label }: { why: ReturnType<typeof useWhy>; label: stri
 
 /* ---------- 锁定 (b5 #38) ---------- */
 
-const SAMPLE_ROWS = [["finance_investment", 105], ["manufacturing_supply_chain", 83], ["technology_internet", 63], ["trade_logistics", 35]] as const;
+/** 「分析の例」: a fixed SAMPLE preview (G09), the board's own example rows. */
+const SAMPLE_ROWS = [["sampleIndustry1", 105], ["sampleIndustry2", 83], ["sampleIndustry3", 63], ["sampleIndustry4", 35]] as const;
 
 export function LockedView({ total, required, missing }: { total: number; required: number; missing: number }) {
   const t = useAnalysisT();
-  const { language } = useOrbitLanguage();
+  const copy = useStandardCopy();
   return (
     <div className={styles.wgrid} data-analysis-locked>
       <div className={`${styles.guide} ${styles.span12}`}>
@@ -81,10 +82,10 @@ export function LockedView({ total, required, missing }: { total: number; requir
         </div>
       ))}
       <div className={`${styles.card} ${styles.span12}`}>
-        <div className={styles.cardH}><h3>{t("sampleTitle")} <SampleTag /></h3></div>
+        <div className={styles.cardH}><h3>{t("sampleTitle")} <span className={styles.sampleTag}>{copy.sample.tag}</span></h3></div>
         <div className={`${styles.faded} ${styles.grid2}`} aria-hidden>
           {SAMPLE_ROWS.map(([id, count]) => (
-            <div key={id} className={`${styles.dim} ${styles.dimStatic}`}><span>{industryName(id, language)}</span><div className={styles.bar}><i style={{ width: `${(count / 105) * 100}%` }} /></div><b className={styles.score}>{count}</b><span /></div>
+            <div key={id} className={`${styles.dim} ${styles.dimStatic}`}><span>{t(id)}</span><div className={styles.bar}><i style={{ width: `${(count / 105) * 100}%` }} /></div><b className={styles.score}>{count}</b><span /></div>
           ))}
         </div>
       </div>
@@ -274,7 +275,7 @@ export function SnapshotCard({ snapshot, failed, names, onOpenPerson, onRecomput
         </div>
       ))}
       {snapshot?.freshness.stale && blocks.length ? <p className={styles.lbl} style={{ marginTop: 8 }}>{t("aiStale")}</p> : null}
-      {!failed && snapshot && snapshot.state !== "unavailable" ? <Button size="sm" className={styles.btnOnSurface} label={t("recompute")} loading={recomputing} onClick={onRecompute} /> : null}
+      {!failed && snapshot && snapshot.state !== "unavailable" ? <Button size="sm" className={styles.btnStart} label={t("recompute")} loading={recomputing} onClick={onRecompute} /> : null}
     </div>
   );
 }

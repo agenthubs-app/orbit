@@ -124,3 +124,4 @@
 .stageActive { background: var(--plum-300); }
 .stageNurture { background: var(--plum-500); }
 .stageLegend { display: flex; justify-content: space-between; margin-top: 6px; }
+.btnStart.btnStart { align-self: flex-start; margin-top: 10px; }

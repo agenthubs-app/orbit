@@ -21,6 +21,10 @@ export const networkAnalysisCopy = {
   previewStructureBody: { ja: "業界・役職層・地域・出会った場所", zh: "行业、职位层级、地区、认识途径", en: "Industry, level, region, where you met", kind: "label" },
   previewOpportunitiesBody: { ja: "再会すべき人・紹介を頼める人", zh: "值得再联系的人、能帮忙引荐的人", en: "Who to reconnect with, who can introduce you", kind: "label" },
   previewInsightBody: { ja: "人脈の傾向と、その理由", zh: "人脉的趋势和原因", en: "Trends in your network and why", kind: "label" },
+  sampleIndustry1: { ja: "投資・金融", zh: "投资与金融", en: "Investment", kind: "label" },
+  sampleIndustry2: { ja: "製造業", zh: "制造业", en: "Manufacturing", kind: "label" },
+  sampleIndustry3: { ja: "SaaS・IT", zh: "SaaS 与 IT", en: "SaaS & IT", kind: "label" },
+  sampleIndustry4: { ja: "商社・流通", zh: "贸易与流通", en: "Trading", kind: "label" },
   sampleTitle: { ja: "分析の例", zh: "分析示例", en: "Example", kind: "label" },
   // 参考値（b5 #33 / #39）
   referenceBanner: { ja: "{n}人のため参考値です。30人から「機会」「インサイト」が安定します", zh: "目前只有{n}位，数据仅供参考。30位起「机会」「洞察」会更稳定", en: "With {n} people these numbers are indicative. From 30 people Opportunities and Insights settle.", kind: "label" },

@@ -1,5 +1,5 @@
 {
- "_note": "R11b 人脈分析（Web）。dev :3300（distDir .next-line-b，库 orbit_line_b），ORBIT_REDESIGN_MOCK=network-analysis；每组先切设计稿 fixture 变体（POST /api/dev/network-design-fixture {variant}，views 的 variant 字段）。b12 g11（1024 / 390 / 深色 / 独立インサイト 1440）尚未补画 → 设计稿无，不在此清单。",
+ "_note": "R11b 人脈分析（Web）。dev :3300（distDir .next-line-b，库 orbit_line_b），ORBIT_REDESIGN_MOCK=network-analysis；每组先切设计稿 fixture 变体（POST /api/dev/network-design-fixture {variant}，views 的 variant 字段）。b12 g11 只补画 Web インサイト 1440 浅 / 深（#514 / #515，主会话代定）；1024 / 390 / 其余深色 = 设计稿无（结构照 1440、颜色只用 token、附截图、不进门禁，登记 DEFERRED）。",
  "defaults": {
   "app-origin": "http://localhost:3300",
   "login": "qa@orbit.test",
@@ -65,6 +65,32 @@
    ],
    "wait-for": "[data-analysis-list] [data-analysis-person]",
    "note": "機会 大量 + 右栏 再会すべき人（b5 #41；インサイトから 按 §B-3 移到独立インサイト页）"
+  },
+  {
+   "id": "W-R11b-05",
+   "variant": "many286",
+   "app": "/app/contacts/dashboard?tab=insight",
+   "design": "b12-missing-states.html",
+   "board-index": 514,
+   "width": 1440,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-analysis-list] [data-analysis-person]",
+   "note": "インサイト 大量 + 右栏（b12 #514 补画）"
+  },
+  {
+   "id": "W-R11b-05d",
+   "variant": "many286",
+   "app": "/app/contacts/dashboard?tab=insight",
+   "design": "b12-missing-states.html",
+   "board-index": 515,
+   "width": 1440,
+   "themes": [
+    "dark"
+   ],
+   "wait-for": "[data-analysis-list] [data-analysis-person]",
+   "note": "インサイト 大量 深（b12 #515 补画）"
   }
  ]
 }
