@@ -43,24 +43,26 @@
     },
     {
       "id": "W-R21-R03",
-      "app": "/app/agent?history=1",
+      "app": "/app/agent?session=r21-visual-pinned&history=1",
       "design": "b8-responsive.html",
       "board-index": 11,
       "width": 1024,
       "height": 880,
       "themes": ["light"],
       "viewport-only": true,
+      "wait-for": "[data-orbit-iorbit-thread]",
       "note": "1024 actor-scoped history drawer; QA account content differs from the board."
     },
     {
       "id": "W-R21-R04",
-      "app": "/app/agent?history=1",
+      "app": "/app/agent?session=r21-visual-pinned&history=1",
       "design": "b8-responsive.html",
       "board-index": 12,
       "width": 390,
       "height": 844,
       "themes": ["light"],
       "viewport-only": true,
+      "wait-for": "[data-orbit-iorbit-thread]",
       "note": "390 actor-scoped history drawer; QA account content differs from the board."
     },
     {
