@@ -170,6 +170,8 @@ const integratedFeatureRoutes = [
   // R11a 連絡先の編集（b5 #42–#44）。
   "/contacts/edit/[id]",
   "/settings/[section]",
+  "/settings/notifications",
+  "/settings/notifications/secretary",
   "/settings/integrations",
   "/settings/iorbit",
   "/plans/flow/[intakeId]",

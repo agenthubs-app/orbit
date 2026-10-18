@@ -323,6 +323,8 @@ test("every root-level private entry uses the shared render gate", () => {
     "settings/api.tsx",
     "settings/integrations.tsx",
     "settings/iorbit.tsx",
+    "settings/notifications.tsx",
+    "settings/notifications/secretary.tsx",
     "task.tsx",
     "today.tsx",
     "notes/[id].tsx",

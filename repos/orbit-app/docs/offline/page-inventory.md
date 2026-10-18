@@ -13,9 +13,9 @@
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 15 |
-| 只能在线 | 51 |
+| 只能在线 | 53 |
 | 不读账号数据（布局、跳转、本机设置） | 30 |
-| 合计（路由文件） | 121 |
+| 合计（路由文件） | 123 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -69,6 +69,8 @@
 
 | 路由 | 页面 | 原因 | 读取 | 断网时 |
 | --- | --- | --- | --- | --- |
+| `/settings/notifications` | 通知设置（R14） | 涉及凭据或会话：读取本账号实时推送偏好与设备状态；版本写入和撤销设备须联网 | /api/inbox/delivery/preferences、/api/inbox/discovery/preferences、/api/devices/push | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/settings/notifications/secretary` | 秘書通知设置（R14） | 涉及凭据或会话：读取本账号实时来源开关和推送上限；版本写入须联网 | /api/inbox/delivery/preferences | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/settings/integrations` | 关联服务（R18a） | 涉及凭据或会话：读取真实授权状态；连接和解除均需服务器 | /api/integrations、/api/integrations/:provider | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id` | イベント詳細（R27） | 需要服务器实时计算：评估分数与「会えそうな人」按当前计划在服务器计算 | /api/events/:id/overview | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/live` | 会場モード（R27） | 需要服务器实时计算：席・ラウンド・推荐由主办方发布的结果在服务器组合；名刺交換是写入 | /api/events/:id/venue | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -270,6 +272,8 @@
 | `app/settings/api.tsx` | `/settings/api` | device-only |
 | `app/settings/integrations.tsx` | `/settings/integrations` | online-only |
 | `app/settings/iorbit.tsx` | `/settings/iorbit` | local-first (0131) |
+| `app/settings/notifications.tsx` | `/settings/notifications` | online-only |
+| `app/settings/notifications/secretary.tsx` | `/settings/notifications/secretary` | online-only |
 | `app/showcase/components/[section].tsx` | `/showcase/components/[section]` | device-only |
 | `app/showcase/components/index.tsx` | `/showcase/components` | device-only |
 | `app/showcase/copy.tsx` | `/showcase/copy` | device-only |
