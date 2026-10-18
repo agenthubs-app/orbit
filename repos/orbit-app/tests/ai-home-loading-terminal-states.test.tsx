@@ -65,3 +65,8 @@ test("R21 an offline organization edit is visibly waiting to sync", () => {
   assert.equal(start({ offline: true, hasPendingWrites: false }).includes("更改待同步"), false);
   assert.equal(start({ onDiscardFailedWrite: noop }).includes("放弃本次更改"), true);
 });
+
+test("R21 header describes known context only when the device has contacts", () => {
+  assert.equal(start({ contactCount: 1 }).includes("了解你的人脉、活动和日程"), true);
+  assert.equal(start({ contactCount: 0 }).includes("了解你的人脉、活动和日程"), false);
+});

@@ -1,6 +1,7 @@
 export const iorbitR21Ja = {
   pinned: "ピン留め", today: "今日", week: "今週", older: "それ以前",
   actionsFor: "の操作", conversations: "会話リスト", close: "閉じる",
+  headerSubtitle: "人脈・イベント・予定を知っています",
   greeting: "何をお手伝いしましょう？", subtitle: "人脈やイベント、プランのこと。iOrbit に聞いてください。",
   addCard: "名刺を追加すると、もっと具体的に答えられます", scan: "スキャン",
   recent: "最近の会話", all: "すべて", offline: "オフライン", historyAt: "時点の履歴",

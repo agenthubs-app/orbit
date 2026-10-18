@@ -1,6 +1,7 @@
 export const iorbitR21Zh = {
   pinned: "已置顶", today: "今天", week: "本周", older: "更早",
   actionsFor: "的操作", conversations: "会话列表", close: "关闭",
+  headerSubtitle: "了解你的人脉、活动和日程",
   greeting: "有什么可以帮你？", subtitle: "人脉、活动和计划，都可以问 iOrbit。",
   addCard: "添加名片后，可以获得更具体的回答", scan: "扫描",
   recent: "最近的会话", all: "全部", offline: "离线", historyAt: "时的历史记录",

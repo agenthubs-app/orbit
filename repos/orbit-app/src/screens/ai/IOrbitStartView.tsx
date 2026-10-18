@@ -129,7 +129,9 @@ export function IOrbitStartView({
   return <View {...edgeExit.panHandlers} style={styles.root}>
     <AppScreen inset="kit" title="iOrbit" showBack={false} header={<View style={styles.header}>
       <IconButton icon="menu" accessibilityLabel={copy.conversations} onPress={onHistoryOpen} />
-      <UiText accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.headerTitle}>iOrbit</UiText>
+      <View style={styles.headerCopy}><UiText accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.headerTitle}>iOrbit</UiText>
+        {contactCount > 0 ? <UiText numberOfLines={1} style={styles.headerSubtitle}>{copy.headerSubtitle}</UiText> : null}
+      </View>
       <IconButton icon="x" accessibilityLabel={copy.close} onPress={onClose} />
     </View>}>
       <View style={styles.body}>
@@ -215,7 +217,9 @@ export function IOrbitStartView({
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.sm, paddingBottom: spacing.md },
+  headerCopy: { flex: 1, alignItems: "center", gap: spacing.xxs },
   headerTitle: { color: colors.ink, fontSize: typography.titleSm, fontWeight: "800", flexShrink: 1 },
+  headerSubtitle: { color: colors.ink3Text, fontSize: typography.label },
   body: { gap: spacing.lg, paddingBottom: spacing.xl },
   greeting: { alignItems: "flex-start", gap: spacing.sm },
   title: { color: colors.ink, fontSize: typography.title, fontWeight: "800", flexShrink: 1, lineHeight: 30 },

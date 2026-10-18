@@ -1,6 +1,7 @@
 export const iorbitR21En = {
   pinned: "Pinned", today: "Today", week: "This week", older: "Earlier",
   actionsFor: " actions", conversations: "Conversations", close: "Close",
+  headerSubtitle: "Knows your people, events and plans",
   greeting: "How can I help?", subtitle: "Ask iOrbit about your contacts, events, or plans.",
   addCard: "Add a business card for more specific answers", scan: "Scan",
   recent: "Recent conversations", all: "All", offline: "Offline", historyAt: "history",
