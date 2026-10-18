@@ -93,6 +93,8 @@
 - **§D-11 旧参数映射**：App `/tasks?view=completed` → To-do タスク一覧的「完了」筛选；`scope=relationship`（含旧 `/followups`）→ To-do 并滚到フォロー块；其他 `scope` 落 To-do 顶部。Web `/app/tasks?view=completed` 同样映射。`parentForPath` 里 `agent` 从「iOrbit（`/ai`）」改指 To-do（`ai` 不变，两个 case 拆开）。
 - **§D-12 「三份清单」的说法**：指 App 的三份旧屏允许清单（Ionicons、写死文字、旧写法）加 Web 的写死文字清单；本文件统一叫「旧屏允许清单」。
 
+**2026-10-19 用户裁定（覆盖 b3 已完成行的当日打消线）**：To-do 的フォロー行完成后立即从当前列表消失，维持现有 open-only `/api/todo/page` 契约；不为视觉 receipt 新增已完成行来源。SC-07／09／15 记录这一处有意画板差异，其余验收要求不变。
+
 ## 3. 交接条目（逐条写进 SC，REPORT 逐条写处理结果）
 
 | 交接表 # | 去向 |

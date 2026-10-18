@@ -65,6 +65,8 @@ const setupDocument = () => {
   Object.defineProperty(globalThis, "document", { configurable: true, value: { activeElement: null, addEventListener() {}, removeEventListener() {} } });
   return () => { if (descriptor) Object.defineProperty(globalThis, "document", descriptor); else Reflect.deleteProperty(globalThis, "document"); };
 };
+const restoreDocument = setupDocument();
+test.after(restoreDocument);
 const setupLocation = (path = "/app/tasks?tab=todo&view=all&foo=keep") => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
   let href = new URL(path, "https://orbit.test").href;

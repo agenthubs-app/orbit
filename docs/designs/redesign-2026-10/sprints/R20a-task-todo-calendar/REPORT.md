@@ -756,3 +756,21 @@ source/copy/inventory **40/40 pass**、sign-out lifecycle（既存 React Native 
 ## 2026-10-19　Web タスク一覧の画面門禁入口（SC-15 準備）
 
 R20a visual suite の W-R20-07／08／09／09d は b3 のタスク一覧（空・少・多・深色）を指定していたが、実装 URL は四件とも `/app/tasks?tab=todo` で To-do 概要に着地した。現 `AppTasksPage` は `view=all` でのみ `TaskListWorkspace` を表示する。suite 読込を通した入口回帰を先に **RED 6/7**（07 の `view=null`）とし、四件だけを `?tab=todo&view=all` に揃えた後 **GREEN 7/7**。W-R20-02 の概要入口は変更していない。これは画板と実画面の種類を一致させる前提修正であり、空／少／多の同一データ fixture、操作状態、実スクリーンショット、style/pixel 帯の合格証拠ではない。SC-15 と Web 全量 gate は OPEN。
+
+## 2026-10-19　主会話の行動決定・D native 境界
+
+ユーザーは、To-do のフォロー行を完了後に打消線で当日中残す b3 画板の表現より、**完了後すぐ消える現行動作**を選んだ。open-only の `/api/todo/page` を receipt 用に拡張しない。この一点を意図的な画板差として SC-07／09／15 の比較に記録する。他の未実装操作や pixel を合格とする決定ではない。
+
+同じくユーザーは D 専用の本機隔離 DB に合成 test account / workspace を作り、本機 API・Metro・D simulator だけで native 操作を検証することを許可した。今回作った test data / session だけを清掃し、既存 QA actor、C 線、production、実 Google には触れない。これは操作範囲の許可であり、native 結果や SC 合格の証拠はまだない。
+
+## 2026-10-19　Web 全量とタスク一覧の回帰補正
+
+clean D `27d913d5a` の可比な loopback `orbit_line_d_test` Web full `_evidence-d/R20a/run-01/d-web-full-task-list-route-27d913d5a.log` は **7,673 tests / 7,092 pass / 36 fail / 1 cancelled / 544 skip、exit1**。前の可比 run の 21 failure names は残り、16 names が増えた。うち12件は `task-list-workspace.test.tsx` の Drawer 用例が `orbit-modal-a11y.ts:36` で `document is not defined` に落ちた同一 test harness 欠落で、単独再現も **7 pass / 12 fail**。test file が既に持つ DOM stub を全用例に設置し、同 file **19/19 pass**。製品側の modal hook や UI kit は変更していない。
+
+残る新規名は、R20a S2 で承認済み `calendar.read` policy を独立 expected matrix が未登録だった一件（literal を追加し `offline-policy` **4/4 pass**）、R20b の手動 PostgreSQL e2e が今回の `/orbit_line_d_test` を拒否した一件、`Postgres snapshot reader` 30秒 timeout 一件、`saved cloud facts drain` の count mismatch 一件。後三者を解消済みとはしない。全量の旧失敗、1 cancellation、pixel / native も残る。
+
+別に未ログインの `/app/tasks?tab=todo&view=all` は login continuation が `view=all` を落とし、再入場時に概要へ戻った。選択 task ID が無い場合を route test で **RED 6/7** とし、既存 allowlist に `all` だけを足して **GREEN 7/7**。Task route と一覧の併走は **26/26 pass**、Web `typecheck:app` / lint、diff check は exit0。現行変更後の Web full はまだ再実行しておらず、全量 green とはしない。
+
+現行6ファイル差分に対する再実行 `_evidence-d/R20a/run-01/d-web-full-task-login-harness-policy-postfix.log` は **7,674 tests / 7,108 pass / 22 fail / 0 cancelled / 544 skip、exit1**。前回の failure/cancellation 名37件から、TaskListWorkspace の DOM harness 12件、policy matrix 1件、Postgres snapshot cancellation 1件、cloud facts mismatch 1件の計15件が消え、新規名は0。残る22件は直前の可比 run にも存在するが、古い D pristine baseline と同一集合ではない。うち R20b 手動 PostgreSQL e2e の1件はこの run の `/orbit_line_d_test` を拒否する。したがって今回の一覧・login 補正の focused は緑、Web 全量 gate は赤のまま。App 全量・pixel/native の既存未完も変わらない。
+
+D native QA は許可された nonce `a846d46ce908` の新規 local DB `orbit_line_d_native_20261019_a846d46ce908` と workspace だけで開始した。migration exit0、合成 actor `user_mvee7nei_k05z1y` の accounts / auth_users / profiles 各1行、onboarding complete readback、短い合成 login `d@r20a.test` の credential verification を確認。既存 D simulator `3E4102CA-9714-4F37-AB7B-570D1E97E3EB` の事前インストール済み D binary は SHA `a0e5ed6fa48a5d514d2f021bb88cc4a840ac0251e49a2e13528832a0e969312a` で旧 D unsigned build と一致し、上書き／消去していない。local API 3500 は live health 200、Metro 8085 は D source を配信し、実 simulator の合成 login は API 200 を返したが、その後 app が pending-write device check 不能として安全に sign-out した。Expo の `ERR_NOTIFICATIONS_KEYCHAIN_ACCESS`、installed bundle の app entitlements 不在を確認。これは native 操作合格ではない。D-only signed build を共有 heavy queue に登録し、待機中は本 run の API / Metro を停止、simulator app を terminate、既存 data は残した。詳細は `_evidence-d/R20a/native-a846d46ce908/OWNERSHIP.md`。signing 後も guard が通るまで SC-05/06/09 native は OPEN。

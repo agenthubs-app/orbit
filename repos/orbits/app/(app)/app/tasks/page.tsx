@@ -28,7 +28,7 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
     if (params?.tab) continuation.set("tab", tab);
     if (typeof params?.plan === "string") continuation.set("plan", params.plan);
     if (params?.new === "1") continuation.set("new", "1");
-    if (params?.view === "completed") continuation.set("view", "completed");
+    if (params?.view === "completed" || params?.view === "all") continuation.set("view", params.view);
     if (taskId && tab === "todo") continuation.set("task", taskId);
     if (date && tab === "calendar") continuation.set("date", date);
     const next = `/app/tasks${continuation.size ? `?${continuation}` : ""}`;

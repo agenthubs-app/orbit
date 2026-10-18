@@ -27,6 +27,7 @@ const APPROVED_POLICY_MATRIX = [
   ["PATCH", "/api/tasks/:id", "relationship_followup.cancel", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
   ["DELETE", "/api/tasks/:id", "relationship_followup.delete", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
   ["GET", "/api/schedule-items", "read", "personal_schedule", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/schedule-items", "calendar.read", "calendar_meetings", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
   ["GET", "/api/schedule-items/:id", "read", "personal_schedule", "durable_normalized", "online_only", "metadata_only"],
   ["POST", "/api/schedule-items", "create", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
   ["PATCH", "/api/schedule-items/:id", "update", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
