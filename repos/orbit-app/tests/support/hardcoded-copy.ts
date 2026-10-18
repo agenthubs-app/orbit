@@ -6,11 +6,11 @@ import ts from "typescript";
 // dictionaries or the standard copy. Counted per file by walking the TypeScript AST:
 // string / template literals and JSX text containing kana or CJK ideographs.
 // Comments are not nodes, so they never count. Exempt:
-//   - dictionaries and synced copies (src/i18n/<locale>/**, src/api/{contract,schema,domain,compute,design,copy}/**);
+//   - dictionaries and synced copies (src/i18n/<locale>/**, src/i18n/iorbit-r21/**, src/api/{contract,schema,domain,compute,design,copy}/**);
 //   - testID / nativeID / key props and console.* arguments (not shown to users).
 // Kana, CJK ideographs and half-width katakana (R03 review m4).
 const CJK = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uff66-\uff9f]/;
-const EXEMPT_FILES = [/^src\/i18n\/(?:ja|zh|en)\//, /^src\/api\/(?:contract|schema|domain|compute|design|copy)\//];
+const EXEMPT_FILES = [/^src\/i18n\/(?:ja|zh|en|iorbit-r21)\//, /^src\/api\/(?:contract|schema|domain|compute|design|copy)\//];
 const EXEMPT_PROPS = new Set(["testID", "nativeID", "key"]);
 
 export function hardcodedCopyCount(source: string, fileName = "file.tsx"): number {
