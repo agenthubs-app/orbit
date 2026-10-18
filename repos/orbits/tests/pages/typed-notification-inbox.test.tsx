@@ -14,3 +14,9 @@ test('D-16 mail summaries stay hidden in the list and direct detail reader',()=>
  assert.deepEqual(notificationInboxView({enabled:true,items:[row,mail],unreadCount:2,nextCursor:null,asOf:at},'a').items.map(item=>item.id),['n']);
  assert.throws(()=>notificationDetailView(mail,'a','mail'));
 });
+test('a foreign actor in an unreadable raw row rejects the whole page before tolerant parsing',()=>{
+ const future={...row,id:'future',actorId:'other',sources:[{...row.sources[0],sourceKind:'future_source'}]};
+ assert.throws(()=>notificationInboxView({enabled:true,items:[row,future],unreadCount:2,nextCursor:null,asOf:at},'a'),/owner mismatch/i);
+ const ownFuture={...future,actorId:'a'};
+ assert.deepEqual(notificationInboxView({enabled:true,items:[row,ownFuture],unreadCount:2,nextCursor:null,asOf:at},'a').items.map(item=>item.id),['n']);
+});
