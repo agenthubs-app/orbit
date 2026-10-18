@@ -224,8 +224,13 @@
         ".urlbar"
       ],
       "wait-for": "[data-invite-confirm]",
+      "steps": [
+        {
+          "eval": "(() => { const root = document.querySelector('[data-invite-confirm]'); if (!root) throw new Error('invite confirm missing'); const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let count = 0; while (walker.nextNode()) { const node = walker.currentNode; if (node.textContent?.includes('qa@orbit.test')) { node.textContent = node.textContent.replaceAll('qa@orbit.test', 'misaki.takahashi@aoba-vc.example'); count += 1; } } if (count !== 1) throw new Error(`expected one QA email, got ${count}`); })()"
+        }
+      ],
       "viewport": true,
-      "note": "R32 来源 web-invite-R15.json: 接收方 · 已登录确认",
+      "note": "R32 W08：接收方已登录确认；截图时只把 QA 邮箱文本换成画板同长度只读样本，不改会话、账号 API、邀请结果或正式包。其他姓名差异仍按 data 归因。",
       "design-as-mweb": true,
       "grid": 30
     }
