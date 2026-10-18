@@ -22,6 +22,8 @@
 - App note source の鏡像選択側には三分類が既にあったが、query key と network `notesSearchPath` にはなかった。カテゴリを引数／cursor page／鏡像 pagination reset に通し、path test **0/1 RED → 1/1 GREEN**、mirror/source 隣接 **10/10 pass**。`3e6eb571b` の配線は旧画面未使用であり、画面分類の動作証拠ではない。
 - 旧新規／編集画面の保存確認は全 `@mention.contactId` を集め、event mention の `undefined` を混入させる一方で `eventId` を確認対象に含めなかった。`noteAssociationsForReceipt` は明示 chip と contact/event token を別々に正規化し、両画面の `confirmedNote` に kind/flag も渡す。**6/7 RED → 7/7 GREEN**、草稿/outbox 近接込み **14/14 pass**。`7f7e7555e`。ブラウザ操作鎖は未検証。
 - demo world は実際には 2 notes のみで、コメントの 5 と不一致だった。event token、`noteKind` / `usedForPlan` なしの旧行、voice、自由メモを追加し、全件 `sample:true`。`80985a8c6`、新 test **0/1 RED → 1/1 GREEN**、fixture 契約／日文 copy-qa 込み **7/7 pass**。実ユーザー行には触れていない。
+- App の新しい「不正な server 行だけ skip」decoder を queued mutation にも使うと、不正な `usedForPlan` の本機行が skip されて `{localMutationState}` だけの ghost row が表示された。新 test **7/8 RED → 8/8 GREEN**、view/outbox 隣接 **19/19 pass**；`eb52b8f1f` は queue projection が一行正しく得られなければ mirror 全体を error にする。サービスからの不正行を skip する規則は変えない。
+- これらの後続を合わせた serial focused run は Web **66/66 pass** (`_evidence-d/R20b/run-01/web-focused-after-demo-and-app-fixes.log`)、App **33/33 pass** (`app-focused-after-memo-fixes.log`)；両方 exit0 / skip0。これは full suite、型検査、ブラウザ操作、pixel の代用ではない。
 
 ## SC-11 データ鎖（部分実装）
 
