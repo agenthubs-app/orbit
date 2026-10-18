@@ -89,6 +89,8 @@ test("doors (b12 W-R12-01): a 560 dialog 人脈を追加 with 名刺 / 招待コ
   await page.locator("[data-add-doors]").waitFor();
   const dialog = page.getByRole("dialog", { name: "人脈を追加" });
   await dialog.waitFor();
+  // Measure after the entrance animation (dialogIn scales from 0.96): mid-animation the box is up to 4% narrower.
+  await dialog.evaluate((node) => Promise.all(node.getAnimations().map((animation) => animation.finished)));
   assert.ok(Math.abs((await dialog.boundingBox())!.width - 560) <= 20, "kit .wmodal.w560");
   const doors = await page.locator("[data-add-door]").evaluateAll((nodes) => nodes.map((node) => [node.getAttribute("data-add-door"), node.getAttribute("href")]));
   assert.deepEqual(doors, [
@@ -128,11 +130,14 @@ test("Reduce Motion: the cards only fade (no rise)", async (t) => {
 
 /* ---------- 手入力 ---------- */
 
-const EVENTS: Handler = { method: "GET", url: "^/api/events$", replies: [ok({ events: [{ id: "ev-near", title: "CFO Night Tokyo", startsAt: new Date(Date.now() - 4 * 86_400_000).toISOString() }] })] };
+// R26-06 moved the 出会った場所 chips to the person's own events (GET /api/events/mine?range=past|upcoming, `items`); the stub
+// follows that contract (R11b run: this stub still answered the retired GET /api/events, so the chip never appeared).
+const EVENTS: Handler = { method: "GET", url: "^/api/events/mine\\?range=past", replies: [ok({ items: [{ eventId: "ev-near", title: "CFO Night Tokyo", startsAt: new Date(Date.now() - 4 * 86_400_000).toISOString(), status: "attended" }] })] };
+const UPCOMING: Handler = { method: "GET", url: "^/api/events/mine\\?range=upcoming", replies: [ok({ items: [] })] };
 const CANDIDATE = { address: "", contactId: "c-9", displayName: "石川 洋介", email: "", identical: false, matchedOn: ["name"], organization: "ミライ精機", phone: "", role: "部長" };
 
 test("手入力: only a name is enough for the instant check (400 ms); 統合 lists only differing fields; ⌘↵ saves and opens the person with a shell toast", async (t) => {
-  const page = await screen(t, { view: "manual", handlers: [EVENTS,
+  const page = await screen(t, { view: "manual", handlers: [EVENTS, UPCOMING,
     { method: "POST", url: "^/api/contacts/manual/duplicates$", replies: [ok({ candidates: [CANDIDATE] })] },
     { method: "GET", url: "^/api/contacts/manual/organizations", replies: [ok({ organizations: [] })] },
     { method: "POST", url: "^/api/contacts/manual$", replies: [ok({ outcome: "merged", contactId: "c-9" })] }] });
@@ -158,7 +163,7 @@ test("手入力: only a name is enough for the instant check (400 ms); 統合 li
 });
 
 test("手入力: saved → 「人脈に追加しました · 手入力」 with 元に戻す from the shell; 元に戻す calls undo", async (t) => {
-  const page = await screen(t, { view: "manual", handlers: [EVENTS,
+  const page = await screen(t, { view: "manual", handlers: [EVENTS, UPCOMING,
     { method: "POST", url: "^/api/contacts/manual/duplicates$", replies: [ok({ candidates: [] })] },
     { method: "POST", url: "^/api/contacts/manual$", replies: [ok({ outcome: "created", contactId: "c-new", undoUntil: "2026-10-11T03:10:00.000Z" }, 201)] },
     { method: "POST", url: "^/api/contacts/manual/c-new/undo$", replies: [ok({ outcome: "undone" })] }] });
@@ -177,7 +182,7 @@ test("手入力: saved → 「人脈に追加しました · 手入力」 with �
 });
 
 test("手入力: an empty name cannot be saved; a duplicate_review answer shows the candidates", async (t) => {
-  const page = await screen(t, { view: "manual", handlers: [EVENTS,
+  const page = await screen(t, { view: "manual", handlers: [EVENTS, UPCOMING,
     { method: "POST", url: "^/api/contacts/manual/duplicates$", replies: [ok({ candidates: [] })] },
     { method: "POST", url: "^/api/contacts/manual$", replies: [ok({ outcome: "duplicate_review", candidates: [CANDIDATE] })] }] });
   await page.locator("[data-manual-save]").click();
@@ -191,7 +196,7 @@ test("手入力: an empty name cannot be saved; a duplicate_review answer shows 
 });
 
 test("手入力 (b9 A4 Web): a pasted signature is coloured where it was split, listed by item, and becomes the form", async (t) => {
-  const page = await screen(t, { view: "manual", handlers: [EVENTS, { method: "POST", url: "^/api/contacts/manual/duplicates$", replies: [ok({ candidates: [] })] }] });
+  const page = await screen(t, { view: "manual", handlers: [EVENTS, UPCOMING, { method: "POST", url: "^/api/contacts/manual/duplicates$", replies: [ok({ candidates: [] })] }] });
   await page.locator("[data-manual-paste-open]").click();
   await page.locator("[data-manual-signature]").fill("石川 陽介\n石川デザイン事務所　代表\n〒150-0001 東京都渋谷区神宮前 2-x-x\nTEL 03-1234-5678\nyosuke@ishikawa-design.example");
   await page.locator("[data-manual-form] b").first().click();
@@ -357,7 +362,7 @@ test("完成 (R12 review m4 / m11): merged comes from the server, not this devic
 
 test("手入力 (b11 A3 Web): a 520 drawer, the save row follows the fields (保存 ⌘↵); 390 is full screen without the shortcut", async (t) => {
   for (const width of [1440, 1024]) {
-    const page = await screen(t, { view: "manual", handlers: [EVENTS] }, { width });
+    const page = await screen(t, { view: "manual", handlers: [EVENTS, UPCOMING] }, { width });
     await page.locator("[data-manual-form]").waitFor();
     const box = await page.locator('[role="dialog"]').boundingBox();
     assert.equal(Math.round(box!.width), 520, `${width}: 520 wide`);
@@ -369,7 +374,7 @@ test("手入力 (b11 A3 Web): a 520 drawer, the save row follows the fields (保
     assert.equal(layout.linked, true, `${width}: the save button submits the form`);
     assert.equal(layout.kbdInSave, true, `${width}: ⌘↵ sits inside 保存`);
   }
-  const narrow = await screen(t, { view: "manual", handlers: [EVENTS] }, { width: 390 });
+  const narrow = await screen(t, { view: "manual", handlers: [EVENTS, UPCOMING] }, { width: 390 });
   await narrow.locator("[data-manual-form]").waitFor();
   await narrow.locator('[role="dialog"]').evaluate((node) => Promise.all(node.getAnimations().map((animation) => animation.finished)));
   const box = await narrow.locator('[role="dialog"]').boundingBox();
@@ -383,6 +388,6 @@ test("手入力 (b11 A3 Web): a 520 drawer, the save row follows the fields (保
 test("dark mode and 390 render without errors", async (t) => {
   const dark = await screen(t, { view: "batch", batch: batchView("review") }, { dark: true });
   await dark.locator("[data-unified-review]").waitFor();
-  const narrow = await screen(t, { view: "manual", handlers: [EVENTS] }, { width: 390 });
+  const narrow = await screen(t, { view: "manual", handlers: [EVENTS, UPCOMING] }, { width: 390 });
   await narrow.locator("[data-manual-form]").waitFor();
 });
