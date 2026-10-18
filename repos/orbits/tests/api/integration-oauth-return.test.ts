@@ -11,7 +11,7 @@ const context = { params: Promise.resolve({ provider: "google_calendar" }) };
 const cookie = "authjs.session-token=local-session";
 const session = async () => ({ user: { id: "a", email: "a@example.test" } });
 
-function fixture() {
+function fixture(options: { exchangeError?: Error } = {}) {
   let registered: string | undefined;
   let consumed = false;
   const exchanges: string[] = [];
@@ -27,7 +27,10 @@ function fixture() {
     resolveActor: async () => ({ id: "a", accountId: "a", userId: "a", workspaceId: "w" }),
     service: () => ({
       async consumeOAuthState(input) { if (consumed || input.state !== registered) return false; consumed = true; return true; },
-      async exchangeCode({ code }) { exchanges.push(code); },
+      async exchangeCode({ code }) {
+        if (options.exchangeError) throw options.exchangeError;
+        exchanges.push(code);
+      },
       async listAuthorizations() { return []; },
     }),
     inbox: () => { throw Error("no expiry notification expected"); },
@@ -83,4 +86,17 @@ test("tampered return state and a different authenticated session fail before ex
   assert.equal((await f.callback(f.callbackRequest(tampered), context)).status, 400);
   assert.equal((await f.callback(f.callbackRequest(state, "", "authjs.session-token=other"), context)).status, 400);
   assert.deepEqual(f.exchanges, []);
+});
+
+test("OAuth exchange failures never return provider exception text to the browser", async () => {
+  const privateDetail = "private-token-and-account-details";
+  const f = fixture({ exchangeError: new Error(privateDetail) });
+  const authorization = await f.authorize(new Request("http://localhost/api/integrations/google_calendar/authorize?returnTo=settings", { headers: { cookie } }), context);
+  const state = new URL(authorization.headers.get("location")!).searchParams.get("state")!;
+
+  const response = await f.callback(f.callbackRequest(state), context);
+  assert.equal(response.status, 502);
+  const body = await response.text();
+  assert.deepEqual(JSON.parse(body), { error: { code: "INTEGRATION_OAUTH_FAILED", message: "OAuth exchange failed." } });
+  assert.ok(!body.includes(privateDetail));
 });

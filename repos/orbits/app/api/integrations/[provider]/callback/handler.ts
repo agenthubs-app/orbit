@@ -144,13 +144,12 @@ export function createIntegrationCallbackGetHandler(options: {
         secure: process.env.NODE_ENV === "production",
       });
       return response;
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         {
           error: {
             code: "INTEGRATION_OAUTH_FAILED",
-            message:
-              error instanceof Error ? error.message : "OAuth exchange failed.",
+            message: "OAuth exchange failed.",
           },
         },
         { status: 502 },
