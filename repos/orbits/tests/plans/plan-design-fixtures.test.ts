@@ -75,3 +75,14 @@ test("every design fixture is plain data: read through the same service, it fits
     assert.ok(name.length > 0);
   }
 });
+
+test("c-goals keeps the 128-point achievement example consistent with the goal sheet", async () => {
+  const repository = createMemoryPlanV2Repository();
+  const scope = { actorId: "actor:goal-example", workspaceId: "workspace:goal-example" };
+  const state = PLAN_DESIGN_FIXTURES["c-goals"]!();
+  repository.seed(scope, state);
+  const service = createPlanV2Service({ now: () => new Date("2026-10-07T00:00:00Z"), references: { findMissingContactIds: async () => [], findMissingEventIds: async () => [] }, repository, sample: true, scope });
+  const overview = await service.overview(state.plans![0]!.id);
+  assert.equal(overview?.score.total, 128);
+  assert.equal(overview?.score.overflow, 38);
+});

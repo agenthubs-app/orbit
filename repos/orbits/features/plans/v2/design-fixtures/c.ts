@@ -6,6 +6,7 @@ import { nextTokyoMidnight, tokyoUsageMonth } from "../../../ai-quota/constants"
 import type { MemoryPlanV2State } from "../repository";
 import type { PlanDesignEventFacts, PlanDesignFixture } from "./base";
 import { fromDemo } from "./base";
+import { fixturesA } from "./a";
 
 /** b4「見直し · Web」/ b12 W-R25-05 / 06a 的「確定した前提」7 行（目的 … 進み具合）。 */
 const REVIEW_PREMISE: PlanPremiseRow[] = [
@@ -110,15 +111,18 @@ export const fixturesC: Record<string, PlanDesignFixture> = {
     state.legacy = [structuredClone(LEGACY_SERIES_A)];
   }),
   /** 目標切替（b12 #274）：生效 2 个（シリーズA / 製造業の新規顧客開拓）、完了 1 个（シード調達）、以前のプラン 1 个。 */
-  "c-goals": fromDemo((state) => {
+  "c-goals": () => {
+    // Reuse the computed 128-point example; the sheet and the overview must describe the same plan.
+    const state = fixturesA["b12-270-achieve"]!();
     const base = state.plans?.[0];
-    if (!base) return;
-    base.goalText = "シリーズA 資金調達";
+    if (!base) return state;
+    base.goalText = "シリーズA 資金調達（3億円）";
     const sales = { ...structuredClone(base), creationKey: "design-plan-sales", goalId: "design-goal-sales", goalKind: "sales" as const, goalText: "製造業の新規顧客開拓", id: "design-plan-sales", lastOpenedAt: "2026-10-01T08:30:00+09:00" };
     const seed = { ...structuredClone(base), achievedAt: "2026-06-30T03:00:00.000Z", creationKey: "design-plan-seed", goalId: "design-goal-seed", goalText: "シード調達（8,000万円）", id: "design-plan-seed", lastOpenedAt: "2026-06-30T08:30:00+09:00" };
     state.plans = [base, sales, seed];
     state.legacy = [{ ...structuredClone(LEGACY_SERIES_A), goal: "展示会で代理店を見つける", planId: "design-legacy-fair", status: "archived", archivedAt: "2026-06-01T00:00:00.000Z" }];
-  }),
+    return state;
+  },
 };
 
 /** 同名 fixture 的会える活動事实（可选；键与上面的 fixture 名一致）。 */
