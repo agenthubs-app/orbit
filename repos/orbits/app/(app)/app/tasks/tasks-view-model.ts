@@ -12,6 +12,7 @@ export interface TaskView {
   category: TaskCategory;
   plannedDate?: string;
   dueAt?: string;
+  deferralCount?: number;
   priority: "normal" | "high";
   updatedAt: string;
   href: string;
@@ -49,13 +50,14 @@ const taskSchema = z.object({
   accountId: nonempty.optional(), ownerUserId: nonempty.optional(), location: nonempty.optional(),
   status: z.enum(["open", "completed", "cancelled"]), category,
   plannedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), dueAt: instant.optional(),
+  deferralCount: z.number().int().nonnegative().safe().optional(),
   priority: z.enum(["normal", "high"]), updatedAt: instant,
 });
 const suggestionSchema = z.object({ id: nonempty, title: nonempty, reason: nonempty });
 
 export function taskToView(value: unknown): TaskView {
   const task = taskSchema.parse(value) as Pick<TaskItemContract,
-    "id" | "title" | "notes" | "location" | "accountId" | "ownerUserId" | "status" | "category" | "plannedDate" | "dueAt" | "priority" | "updatedAt">;
+    "id" | "title" | "notes" | "location" | "accountId" | "ownerUserId" | "status" | "category" | "plannedDate" | "dueAt" | "deferralCount" | "priority" | "updatedAt">;
   return { ...task, notes: task.notes ?? "", href: `/app/tasks/${encodeURIComponent(task.id)}` };
 }
 
