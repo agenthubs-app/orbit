@@ -7,20 +7,36 @@
 - pristine 基線（主会話実行）：Web **7,475 tests / 31 fail / 1,015 skip**、App **3,324 tests / 4 fail / 2 skip**。ログは `/var/folders/3q/sc3_n8917jn8w_j_jltbz_xr0000gn/T/orbit-cd-baseline.fk6V4SASy3/{d-orbits.log,d-app.log}`。SC-02 / OAuth 実装中は App 基線待ちのため App を変更せず、完了通知後に SC-11a の App 実装を開始した。
 - Web 失敗の 25 件は scrubbed 環境でローカル DB URL がない明示的な環境失敗。残る 6 件は manifest/new P0、business-card merge text、dev fixture route import、card-scan browser 3 件で、旧 R30 記録との差分か実際の未解決不具合かは未確定。App 4 件は dictionary key-count、joined-person click timeout、plan overview undo click timeout、tasks-unification ファイル失敗（assertion なし）。R30 の Web 7,443 / 7 fail、App 3,322 / 2 fail とは区別し、pass として扱わない。DB 設定付き追加診断は主会話が担当する。
 
+## 2026-10-18 主会話の最新検証（部分）
+
+App の SC-08 / SC-11 追加分について、fixture の型を製品契約に合わせて修正した後、`npm run typecheck` は exit 0。実ブラウザでは Sheet 8/8、sent 2/2 が通った。sent の実ブラウザ RED は保存直後の時刻より前に画面が保持した `now` を使うため pending 表示が最大 60 秒遅れる不具合で、`TodoScreen` の handoff 判定時刻だけを現在時刻に変更して GREEN 2/2 を確認した。修正後の App full と fresh typecheck exit0 は下記。Web の secure-origin fixture / SC-09 / SC-11 ブラウザは 9/9、修正後の Web typecheck と lint は exit0。実 Google、simulator、pixel はこの検証に含めない。
+
+最新 App full `d-app-full-current.log` は **3,453 tests / 3,449 pass / 2 fail / 2 skip、exit 1**。失敗名は変更前 D pristine にも存在する英語辞書 key count と招待コード overlay click の二件だけで、新規失敗名はない。以前の 3,416 件 / 9 fail の追加七 browser failure は本実行で再発しなかったが、全量 suite は成功ではない。
+
+Web full `d-web-full-current.log` は **7,693 tests / 6,630 pass / 35 fail / 1,028 skip、exit 1**。D pristine の31失敗名に加え、4件が増えた：退役済み `/app/tasks/personal` の旧読取前提3件と、同ページの縮小していない hardcoded-copy allowlist 1件。承認済み Task calendar redirect に合わせ、3状態の bookmark redirect と旧 read ゼロを検証し、allowlist を減らした。該当2ファイル focused **16/16 pass**、fresh Web typecheck0 / lint0。その後の full `d-web-full-after-retirement-tests.log` は **7,693 tests / 6,634 pass / 31 fail / 1,028 skip、exit 1**。31失敗名は D pristine と完全一致し、新規失敗名はゼロ。これは全量成功ではない。global copy QA は6,200 entries / 218 issues、Web 単体26 issues（`web.task.*` は0）、App calendar 51 entries / 0 issues。global copy は成功ではなく、残余を既存／新規に分類する必要がある。現行ログは `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-d/R20a/run-01/`。旧 route 検証補正は `240cf5003`、sent 時刻補正は `7478ce1ff` に局所コミットした。
+
+同日後続の局所収口：App SC-11 Sheet は fresh typecheck0、契約・inventory・Sheet **44/44**、実ブラウザ **8/8** を確認して `2f972dd86` に局所コミット。Web SC-09 To-do 行から exact-task 完了まで mounted **30/30**、実ブラウザ **7/7**（secure fixture 3 と follow-up 操作4）、fresh typecheck0 を確認して `f6bd5b21a` に局所コミット。Web SC-11 secure-origin browser **2/2** の fixture 修正は `cd7f50044`、App handoff fixture 型修正 **11/11** は `69d3014f6` に局所コミットした。これらの局所検証は前段 full-suite 後の変更なので、後段の全量 suite 成績に流用しない。独立 review、native/pixel、残り SC は OPEN。
+
 ## SC 対照
 
 | SC | 現在の結果 |
 | --- | --- |
 | SC-02 フォロー | サーバー修正と回帰テスト済み。実 PostgreSQL で App 向け API は 503 → 200、Web loader は unavailable → success。画面操作とスクリーンショットは後続検証に残す。 |
 | SC-12 OAuth / 外部日历 API | 二つの固定 OAuth 戻り先と、只読 Google events API / schema / mock / App 契約同期、両端の読取 UI を実装。替身 provider の cache / 失効 / refresh / budget / 認証を検証。Google 実接続 / 像素は未検証。 |
-| SC-11a / SC-11 日程提案 | §7.6 の骨格を先行提交。App worker の Move / Cancel と検証は下記。Web 業務接続、contact-only 初回提案、像素は未完了。 |
+| SC-11a / SC-11 日程提案 | accepted bilateral context 限定の atomic service / HTTP / wide contract / Web Modal と App Sheet を提出。App Sheet / scope の fresh focused44/44・実ブラウザ8/8、Web first-proposal secure-origin browser2/2。一般 contact authority、native/pixel と独立 review は OPEN。 |
 | SC-03 延期回数 | 別 worker の `b5bfa026a` で task の各 read / sync / App mirror に派生値を追加。検証の詳細はその worker の証拠を参照。 |
 | SC-01 像素準備 | 主会話の `5bdad3d89` で App 48 / Web 24 view、attribution schema と preflight 記録を追加。像素検証自体は未実施。 |
-| SC-04 統一待辦 | 契約/mock/App 同期に加え、live 集約・単一 source の署名 cursor・SQL follow-up 件数と読取制限を実装・定向検証。未初期化 / `none` の每日一問は生成書込せず `not_implemented`。この非同等性と後続の App/UI/統合確認が残るため、SC-04 完了とはしない。 |
-| SC-05～08 / SC-13 | To-do 読取 / source 別判断・ページング、App offline slice、両端 manual-only editor の中間実装。AI / sent / encounter と未対応 source の非同等性を隠さず、全体完了とはしない。 |
-| SC-09 詳細 | plain task と lifecycle の identity を区別。精確 resolver は B helper の明示例外承認待ち。既存 connectionId route に taskId を渡さない。 |
-| SC-10 カレンダー | selected-window native recurrence / carry-over / external read と Web Task slot / personal editor を実装し定向検証。新 host の fresh typecheck、ブラウザ操作、繰り返し sheet 等の画板完全一致 / 像素は未検証で partial。 |
-| その他 SC | 全量収口、旧 route 整理、simulator / 像素を含め未完了。 |
+| SC-04 統一待辦 | live readonly 集約・署名 cursor・SQL 件数 / budgets は実装済み。未初期化 question を生成せず not_implemented、source 不可用時の件数は partial。既知の非同等性は主会話承認の partial として残す。 |
+| SC-05 App offline | To-do copy / stale read-only / task mirror・outbox upload の focused 証拠あり。calendar offline と飛行モード→再起動→復帰の simulator 操作記録は OPEN。 |
+| SC-06 Task container | navigation / quick add / scroll と To-do max-three rail は定向検証。Calendar rail、recent-history verified source、Later / ask の未配線部分は OPEN。plan / memo は変更しない。 |
+| SC-07 判断待ち | 支持する source-native actions / per-source paging は接続。未検証の persisted conversation deep link を出さない accepted partial を維持。ひとこと保存と全 source flow の収口は OPEN。 |
+| SC-08 draft / sent | 両端 manual-only editor、AI unavailable は実装。App sent/encounter の実ブラウザ2/2、fresh typecheck0、full は上記の既存2失敗のみ。Web はまだ manual-only。日本語 AI / tone / rewrite と native handoff 完全性は OPEN。 |
+| SC-09 詳細 | 承認済み B helper を再利用した exact resolver / App exact-task entry は提出済み。Web Modal `5ff2b01b9` と To-do host `f6bd5b21a` は後続 fresh mounted30/30・実ブラウザ follow-up4/4、secure fixture3/3。target list / detail / delete / defer-two warning は OPEN。 |
+| SC-10 カレンダー | selected-window recurrence / carry-over / external read と CRUD を実装。Web calendar browser 2/2、source 定向・compiler 証拠あり。最終双方操作 / 繰り返し sheet / simulator / pixel の収口は OPEN。 |
+| SC-13 failure / NI | source 別 retry、unknown partial count、whole-page NOT_IMPLEMENTED hide、App stale/offline guard を実装・定向検証。最新追加を含む両端統合確認は OPEN。 |
+| SC-14 old routes | App Today / Followups の orphan 退役と Web personal redirect は提出済み。App agent entry / target focus は主会話担当、Web task / lifecycle / agent retirement と E 消費先交接は OPEN。 |
+| SC-15 pixel | user 指示により R31b 待ち。library width API の利用確認を pixel 完了とは扱わない。 |
+| SC-16 full / review | App full3453 / 3449 pass / 2 pristine fail / 2 skip、exit1。Web full再実行7693 / 6634 pass / 31 pristine fail / 1028 skip、exit1、新規失敗名0。両端 typecheck0、Web lint0。copy global218 issues / Web26 / App calendar0、独立 review・native/pixel は OPEN。 |
 
 ## フォロー 根因
 
@@ -36,7 +52,7 @@ SQL 自体は正しい行を返す。その直後の共通チェックが `LIFEC
 
 ## 検証
 
-証拠：`/Users/xzhao/orbit-sprint-evidence/redesign/R20a/run-01/`。
+現行の durable evidence：`/Volumes/ORICO/Dev/worktrees/orbit/_evidence-d/R20a/run-01/`。旧 `/Users/xzhao/orbit-sprint-evidence/redesign/R20a/run-01/` は消失しており、以下の旧 log names は当時の履歴で、現在も現存するという主張ではない。後述の evidence gap と新 root の再実行記録を区別する。
 
 - `sc02-red.log`：5 tests / 2 pass / 3 fail / 0 skip。差分照合は pass、App API 503、Web unavailable、診断ログ欠落で期待どおり RED。
 - `sc02-private-code-red.log`：任意の五文字コードをログに出さない保護の RED。
@@ -409,6 +425,18 @@ Web の次 gate `sc09-sc11-secure-origin-gate.log` は **tsc 0** の後、診断
 helper は contact identity を検証した availability GET、新 initial-proposal POST、reschedule の両送信経路で厳密な latest candidates / medium / duration / note / timezone / pending revision を確認する。native の時刻順に候補を canonicalize し、改期では元 confirmed core と既知の native candidate identity を保持、両方とも **別 GET の一致後だけ** sent result を返す。GET に渡す AbortSignal は API client の in-flight coalescing も避け、古い画面 load の promise を readback と取り違えない。abort 後の遅い receipt / readback は成功にしない。caller actor / event authority は POST しない。paid AI / worker / Google / 外部送信は使わない。
 
 これは helper-only / mocked transport の子里程標。**App Sheet は未変更で、旧 caller に scope cancellation を接続した証拠ではない**。actor / server scope の Sheet wiring、initial proposal UI、private online-only inventory 登録と audit、fresh App compiler / browser / full は全て OPEN。主会話 App To-do / handoff / harness files は変更せず、Web product source もこの段階で変更していない。Web crypto の actual diagnostic は依然未実行で、再 queue を待つ。
+
+### App Sheet wiring（未提交・provisional）
+
+外部 main-verify が heavy lock を長時間保持している間、主会話が独立した App Sheet の light TDD slice を追加承認した。public props は §7.6 のまま、initial entry は server の accepted-bilateral availability GET を待ち、false は利用不可、未確認 / offline / actor 欠落は候補・送信を出さない。候補は空き時間確認済みとは呼ばず tentative のまま。initial / reschedule とも上記 helper の厳密な receipt と独立 GET を使う配線を追加中。
+
+actor / account / server / contact / appointment が変われば private session を破棄し request を abort。旧 callback は current-scope guard を通らず成功通知・close を行わない。同じ actor / server と同じ提案の lost-ack retry は fingerprint と idempotency key を保持し、offline reconnect だけでは元の CAS baseline を捨てない。identity が戻っても前の private drawer / key は復活させず、native state を読み直す。主会話 review で close / reopen の key 消失リスクが見つかったため、Sheet の非表示と keyed session の破棄を分離した。同 identity の close は request を revoke / abort するが未確定 intent は session 内に保持し、reopen 時は未確認と表示して同 key を再利用する。transport abort は server transaction の rollback ではない。server receipt は actor + key + request hash の replay であり、新 key を同じ replay と扱わない（initial の active-relationship uniqueness だけに頼らない）。confirmed independent readback のない旧 response から `onSent` は発火させない。永続化・global cache は追加しておらず、screen 自体の破棄 / app restart を跨ぐ persistence はこの slice の証拠ではない。
+
+SSR entry 三件は **RED 3 → GREEN**（stdout 証拠）、helper / rendering / hard-coded-copy guards は最新 **24/24 pass、0 skip**。新 evidence root の `sc11-app-sheet-entry-green.log` / `sc11-app-sheet-focused.log`、calendar copy `sc11-app-sheet-copy.log` は **51 entries / 0 issues**。ただし SSR は effects / send / retry の実行証拠ではない。新 `meeting-proposal-browser.test.tsx` の八件（authority false、initial / reschedule reconnect retry と close/reopen、mismatched GET、actor / server change）は **未実行**。fresh App typecheck / browser / full、initial-proposal GET / POST の private online-only inventory 登録と audit は **OPEN**。inventory は主会話 SC-08 slice の handback 待ちで変更していない。Web crypto diagnostic の成功も依然未確認であり、この独立 App slice から推定しない。
+
+後続 handback：主会話 SC-08 App checkpoint は `b0b59198d`（exact 20 App paths、Web / Sheet / REPORT は非包含）。focused は新 root の `sc08-app-focused-green.log` **38/38 pass**、i18n 込み `sc08-app-focused-with-known-pin.log` は **40 pass / 1 fail**（既知 exact English pre-split pin、**2878 != 2253**）。actual browser / fresh typecheck は heavy lock 待ちで **OPEN**、SC-08 全体 pass とはしない。
+
+inventory handback 後、initial-proposal の exact GET / POST を `meeting-proposal-flow.ts` consumer として追加し、両方とも `online_only_secret` / `never_local` / `online_only` とした。新 regression は登録欠落で **RED 1 → GREEN**、既存 provider policy を含む scoped policy **2/2 pass**（`sc11-app-inventory-{red,green}.log`）。literal route が旧 `/appointments/:id` より優先されることも確認。実 source の AST extraction / full inventory audit は TypeScript program を使う heavy gate のため未実行で、private registration の unit pass と区別する。audit script の computed path / To-do lines は変更していない。
 
 ## 请求
 
