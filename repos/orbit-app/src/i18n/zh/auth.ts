@@ -6,6 +6,8 @@ export const auth = {
   "auth.loginFailure": "登录失败，请稍后再试。",
   "auth.googleIncomplete": "Google 登录没有完成，请重新登录。",
   "auth.pendingUnconfirmed": "尚未确认受理，请稍后重试。",
+  "auth.devicePendingWritesUnknown": "暂时无法确认这台设备是否有待恢复的修改；登录前会再次检查。",
+  "auth.devicePendingWriteCount": "这台设备有{count}项加密保存的未同步修改，使用原账号及原服务器登录后可恢复。",
   "auth.networkFailure": "暂时无法连接服务，请稍后重试。",
   "auth.boundary": "使用网页端同一组邮箱和密码。",
   "auth.email": "邮箱",

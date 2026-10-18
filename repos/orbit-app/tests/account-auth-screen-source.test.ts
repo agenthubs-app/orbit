@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { createTranslator } from "../src/i18n/messages";
 
 const repoRoot = new URL("..", import.meta.url).pathname;
 const screenSource = readFileSync(
@@ -39,8 +40,19 @@ test("native login shows only an anonymous device-wide pending-write count for t
   assert.match(screenSource, /mode === "login"/u);
   assert.match(screenSource, /Platform\.OS !== "web"/u);
   assert.match(screenSource, /devicePendingWrites\?\.baseUrl === server\.baseUrl/u);
-  assert.match(screenSource, /原账号及原服务器登录后可恢复/u);
+  assert.match(screenSource, /locale\.t\("auth\.devicePendingWriteCount", \{ count: devicePendingWrites\.count \}\)/u);
+  assert.match(screenSource, /locale\.t\("auth\.devicePendingWritesUnknown"\)/u);
   assert.doesNotMatch(screenSource, /`[^`]*\$\{[^}]*email/u);
+});
+
+test("device pending-write notices use the selected language and interpolate an anonymous count", () => {
+  assert.equal(createTranslator("zh")("auth.devicePendingWriteCount", { count: 2 }), "这台设备有2项加密保存的未同步修改，使用原账号及原服务器登录后可恢复。");
+  assert.equal(createTranslator("en")("auth.devicePendingWriteCount", { count: 1 }), "Encrypted changes waiting to sync on this device: 1. Sign in with the original account and server to recover them.");
+  assert.equal(createTranslator("en")("auth.devicePendingWriteCount", { count: 2 }), "Encrypted changes waiting to sync on this device: 2. Sign in with the original account and server to recover them.");
+  assert.equal(createTranslator("ja")("auth.devicePendingWriteCount", { count: 2 }), "この端末には暗号化して保存された未同期の変更が 2 件あります。元のアカウントと元のサーバーでログインすると復元できます。");
+  assert.equal(createTranslator("zh")("auth.devicePendingWritesUnknown"), "暂时无法确认这台设备是否有待恢复的修改；登录前会再次检查。");
+  assert.equal(createTranslator("en")("auth.devicePendingWritesUnknown"), "Couldn't check this device for changes to recover. The check will run again before sign-in.");
+  assert.equal(createTranslator("ja")("auth.devicePendingWritesUnknown"), "この端末に復元待ちの変更があるか、現在確認できません。ログイン前に再確認します。");
 });
 
 test("the Debug outbox fixture is hidden outside signed-in development builds", () => {

@@ -116,6 +116,13 @@ test("Google login enters profile completion while preserving the safe return ta
   assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fevents%2Fevent-1%3Ftab%3Ddetails"]);
 });
 
+test("Google signup enters profile completion instead of returning an authenticated user to login", async t => {
+  const page = await open(t, { mode: "signup", next: "/events/event-1?tab=details" });
+  await page.getByRole("button", { name: "使用 Google 登录", exact: true }).click();
+  assert.deepEqual(await requests(page), [{ name: "google", payload: { redirectTo: "/events/event-1?tab=details" } }]);
+  assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fevents%2Fevent-1%3Ftab%3Ddetails"]);
+});
+
 for (const action of ["password", "google"] as const) test(`obsolete ${action} login cannot navigate a replacement auth scope`, async t => {
   const page = await open(t, { hold: true });
   if (action === "password") {

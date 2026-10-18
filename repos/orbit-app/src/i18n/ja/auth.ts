@@ -6,6 +6,8 @@ export const auth = {
   "auth.loginFailure": "ログインできませんでした。しばらくしてから再試行してください。",
   "auth.googleIncomplete": "Google ログインが完了しませんでした。もう一度お試しください。",
   "auth.pendingUnconfirmed": "受付を確認できませんでした。しばらくしてから再試行してください。",
+  "auth.devicePendingWritesUnknown": "この端末に復元待ちの変更があるか、現在確認できません。ログイン前に再確認します。",
+  "auth.devicePendingWriteCount": "この端末には暗号化して保存された未同期の変更が {count} 件あります。元のアカウントと元のサーバーでログインすると復元できます。",
   "auth.networkFailure": "現在サービスに接続できません。しばらくしてから再試行してください。",
   "auth.boundary": "Web 版と同じメールアドレスとパスワードを使用します。",
   "auth.email": "メールアドレス",

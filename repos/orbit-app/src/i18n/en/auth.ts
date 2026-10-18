@@ -6,6 +6,8 @@ export const auth = {
   "auth.loginFailure": "Could not sign in. Try again later.",
   "auth.googleIncomplete": "Google sign-in did not finish. Try signing in again.",
   "auth.pendingUnconfirmed": "The request has not been confirmed. Try again later.",
+  "auth.devicePendingWritesUnknown": "Couldn't check this device for changes to recover. The check will run again before sign-in.",
+  "auth.devicePendingWriteCount": "Encrypted changes waiting to sync on this device: {count}. Sign in with the original account and server to recover them.",
   "auth.networkFailure": "The service is temporarily unreachable. Try again later.",
   "auth.boundary": "Use the same email and password as the web app.",
   "auth.email": "Email",

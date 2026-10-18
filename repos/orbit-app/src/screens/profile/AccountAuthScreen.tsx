@@ -243,10 +243,11 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         return;
       }
 
+      // Google completes a session even when launched from the signup screen.
       router.replace(
         nextHrefForAccountAuthSubmit({
           email: values.email,
-          mode,
+          mode: "login",
           next
         }) as Href
       );
@@ -288,8 +289,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         {mode === "login" && Platform.OS !== "web" && devicePendingWrites?.baseUrl === server.baseUrl && devicePendingWrites.count !== 0 ? (
           <Text accessibilityRole={devicePendingWrites.count === null ? "alert" : "text"} style={styles.description}>
             {devicePendingWrites.count === null
-              ? "暂时无法确认这台设备是否有待恢复的修改；登录前会再次检查。"
-              : `这台设备有 ${devicePendingWrites.count} 项加密保存的未同步修改，使用原账号及原服务器登录后可恢复。`}
+              ? locale.t("auth.devicePendingWritesUnknown")
+              : locale.t("auth.devicePendingWriteCount", { count: devicePendingWrites.count })}
           </Text>
         ) : null}
         {view.restrictionMessage ? (
