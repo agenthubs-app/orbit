@@ -89,6 +89,23 @@ test("a same-page route update changes the selected Task tab without another nav
   assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls), []);
 });
 
+test("leaving after a tab URL change saves scroll under the current Task address", async (t) => {
+  const page = await open(browser, code, {
+    origin: "https://task-scroll.test/app/tasks?tab=calendar",
+    html: `<div id="root"></div><div style="height:1500px"></div><script>window.shellFixture=${JSON.stringify({ path: "/app/tasks", lang: "ja", calls: [], tab: "calendar", plan: "none" })}</script>`,
+  });
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  await page.getByRole("tablist", { name: "Task" }).waitFor();
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+  const saved = await page.evaluate(() => {
+    history.replaceState(null, "", "/app/tasks?tab=todo");
+    window.scrollTo(0, 300);
+    window.dispatchEvent(new PageTransitionEvent("pagehide"));
+    return sessionStorage.getItem("orbit-task-scroll:/app/tasks?tab=todo");
+  });
+  assert.equal(saved, "300");
+});
+
 // Product decision (a), R07 review M5: プラン shows the existing plan screen; the
 // empty state is only for people without a plan, and its button starts one.
 test("プラン shows the plan screen; without a plan the 「目標を決める」 empty state starts one; unread shows a skeleton", async (t) => {

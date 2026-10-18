@@ -35,6 +35,7 @@ export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref 
   const router = useRouter();
   const pathname = usePathname() ?? "/app/tasks";
   const searchParams = useSearchParams();
+  useTaskHistoryScroll(`${pathname}?${searchParams?.toString() ?? ""}`);
   const [tab, setTab] = useState<TaskTab>(initialTab);
   useEffect(() => { setTab(initialTab); }, [initialTab]);
   const choose = (next: TaskTab) => {
@@ -87,6 +88,54 @@ export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref 
       </div>
     </>
   );
+}
+
+// A full-page Task link can return before streamed content is tall enough for
+// the browser's automatic history scroll restoration. Remember only the numeric
+// position for this history URL, then restore it when the page can reach it.
+function useTaskHistoryScroll(routeKey: string) {
+  const stopPending = useRef<() => void>(() => {});
+  const previousRoute = useRef(routeKey);
+  useEffect(() => {
+    if (previousRoute.current !== routeKey) {
+      previousRoute.current = routeKey;
+      stopPending.current();
+    }
+  }, [routeKey]);
+  useEffect(() => {
+    const currentKey = () => `orbit-task-scroll:${window.location.pathname}${window.location.search}`;
+    const save = () => {
+      try { window.sessionStorage.setItem(currentKey(), String(window.scrollY)); } catch { /* storage may be unavailable */ }
+    };
+    window.addEventListener("pagehide", save);
+
+    const navigation = window.performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    let target = 0;
+    if (navigation?.type === "back_forward") {
+      try { target = Number(window.sessionStorage.getItem(currentKey())); } catch { /* storage may be unavailable */ }
+    }
+    if (!Number.isFinite(target) || target <= 0) return () => window.removeEventListener("pagehide", save);
+
+    let active = true;
+    const observer = new ResizeObserver(() => restore());
+    const stop = () => {
+      active = false;
+      observer.disconnect();
+      window.removeEventListener("resize", restore);
+      window.clearTimeout(timeout);
+    };
+    stopPending.current = stop;
+    const restore = () => {
+      if (!active || document.documentElement.scrollHeight - window.innerHeight < target) return;
+      window.scrollTo(0, target);
+      if (Math.abs(window.scrollY - target) <= 2) stop();
+    };
+    const timeout = window.setTimeout(stop, 10000);
+    observer.observe(document.body);
+    window.addEventListener("resize", restore);
+    restore();
+    return () => { stop(); window.removeEventListener("pagehide", save); };
+  }, []);
 }
 
 // kit .btn.accent with ＋ (web.html k-wtadd).
