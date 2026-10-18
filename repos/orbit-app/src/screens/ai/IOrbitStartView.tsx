@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { PanResponder, StyleSheet, TextInput, View } from "react-native";
 
 import { AppScreen } from "../../components/AppScreen";
@@ -32,6 +32,33 @@ function tokyoGroup(item: IOrbitHistoryItem, now = new Date()): "ピン留め" |
   const todayDate = new Date(`${today}T00:00:00Z`);
   const monday = new Date(todayDate.getTime() - ((todayDate.getUTCDay() + 6) % 7) * 86_400_000);
   return new Date(`${day}T00:00:00Z`) >= monday ? "今週" : "それ以前";
+}
+
+function HistoryItemRow({ item, onOpen, onSelect, styles, colors }: {
+  item: IOrbitHistoryItem;
+  onOpen: (item: IOrbitHistoryItem) => void;
+  onSelect: (item: IOrbitHistoryItem) => void;
+  styles: ReturnType<typeof useStyles>["styles"];
+  colors: ReturnType<typeof useStyles>["colors"];
+}) {
+  const swipeDistance = useRef(0);
+  const swipeStartX = useRef<number | null>(null);
+  const swipeActions = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_event, gesture) => item.source === "session" && gesture.dx < -10 && Math.abs(gesture.dy) < 20,
+    onPanResponderGrant: () => { swipeDistance.current = 0; swipeStartX.current = null; },
+    onPanResponderMove: (_event, gesture) => {
+      if (swipeStartX.current === null) swipeStartX.current = gesture.moveX - gesture.dx;
+      swipeDistance.current = Math.min(swipeDistance.current, gesture.dx, gesture.moveX - swipeStartX.current);
+    },
+    onPanResponderRelease: () => { if (item.source === "session" && swipeDistance.current < -60) onSelect(item); swipeDistance.current = 0; swipeStartX.current = null; },
+    onPanResponderTerminate: () => { swipeDistance.current = 0; swipeStartX.current = null; },
+  }), [item, onSelect]);
+  return <View style={styles.historyRow} {...swipeActions.panHandlers}>
+    <UiPressable accessibilityRole="button" accessibilityLabel={item.title} onPress={() => onOpen(item)} onLongPress={() => onSelect(item)} style={styles.historyMain}>
+      <Icon name={item.pinned ? "pin" : "chat"} size={16} color={colors.ink2} /><View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{item.title}</UiText><UiText style={styles.recentMeta}>{item.when}</UiText></View>
+    </UiPressable>
+    {item.source === "session" ? <IconButton icon="more" accessibilityLabel={`${item.title} の操作`} size={34} onPress={() => onSelect(item)} /> : null}
+  </View>;
 }
 
 export function IOrbitStartView({
@@ -137,12 +164,7 @@ export function IOrbitStartView({
       {undoAvailable ? <Button label="削除を元に戻す" variant="ghost" icon="undo" onPress={onUndo} /> : null}
       {!history.length && !historyLoading && !historyNotice ? <UiText style={styles.muted}>{historyQuery ? "一致する会話はありません" : "まだ会話はありません"}</UiText> : null}
       {groups.map(([label, items]) => <View key={label} style={styles.group}><UiText style={styles.groupTitle}>{label}</UiText>
-        {items.map((item) => <View key={`${item.source}:${item.id}`} style={styles.historyRow}>
-          <UiPressable accessibilityRole="button" accessibilityLabel={item.title} onPress={() => onOpen(item)} onLongPress={() => setSelected(item)} style={styles.historyMain}>
-            <Icon name={item.pinned ? "pin" : "chat"} size={16} color={colors.ink2} /><View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{item.title}</UiText><UiText style={styles.recentMeta}>{item.when}</UiText></View>
-          </UiPressable>
-          {item.source === "session" ? <IconButton icon="more" accessibilityLabel={`${item.title} の操作`} size={34} onPress={() => setSelected(item)} /> : null}
-        </View>)}
+        {items.map((item) => <HistoryItemRow key={`${item.source}:${item.id}`} item={item} onOpen={onOpen} onSelect={setSelected} styles={styles} colors={colors} />)}
       </View>)}
       <View style={styles.group}><UiText style={styles.groupTitle}>プランを作る</UiText>
         {planIntakes.map((intake) => <UiPressable key={intake.intakeId} accessibilityRole="button" accessibilityLabel={intake.goal} onPress={() => onOpenIntake(intake)} style={styles.historyMain}>

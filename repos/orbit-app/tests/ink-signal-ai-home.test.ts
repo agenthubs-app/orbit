@@ -202,6 +202,21 @@ test("R21 history deletion requires confirmation and starts one server write", a
   assert.deepEqual(await writes(p), [{ method: "DELETE", path: "/api/ai/conversations/sessions/session%3A1", body: null }]);
 });
 
+test("R21 swiping a stored history row left opens its actions without writing", async t => {
+  const p = await open(t);
+  await press(p, "会話リスト");
+  const row = p.getByRole("button", { name: "产品试点讨论", exact: true }).last();
+  const box = await row.boundingBox();
+  assert.ok(box);
+  const x = box.x + box.width - 20, y = box.y + box.height / 2;
+  await p.mouse.move(x, y);
+  await p.mouse.down();
+  await p.mouse.move(x - 90, y, { steps: 6 });
+  await p.mouse.up();
+  await p.getByRole("heading", { name: "会話の操作" }).waitFor();
+  assert.deepEqual(await writes(p), []);
+});
+
 test("R21 sixth pin shows the distinct server PIN_LIMIT message", async t => {
   const p = await open(t, { holdWrites: true });
   await press(p, "会話リスト");
