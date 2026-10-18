@@ -8,6 +8,8 @@ import { createOrbitAgentChatGroupHandlers } from "../../app/api/ai/conversation
 import { createMemoryOrbitAgentChatOrganizationStore } from "../../features/orbit-ai/storage/orbit-agent-chat-session-transactions";
 import { createStorageOrbitAgentChatSessionProvider } from "../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import { buildOfflineAiSessionDelete, buildOfflineAiSessionMutation } from "../../../orbit-app/src/data/sync/ai-session-outbox-mutation";
+import { createAiSessionOutboxUploader } from "../../../orbit-app/src/data/sync/ai-session-outbox-upload";
 
 function request(path: string, method = "GET", body?: unknown) {
   return new Request(`https://orbit.local${path}`, {
@@ -207,4 +209,74 @@ test("organization APIs hide another actor's groups and sessions", async () => {
     { params: Promise.resolve({ id: "session:private" }) },
   );
   assert.equal(patchResponse.status, 404);
+});
+
+test("App offline pin, rename, and delete round-trip through the Web actor's session list", async () => {
+  const actorId = "actor:offline-owner";
+  const workspaceId = "workspace:offline-roundtrip";
+  const sessionId = "session:offline-pin";
+  const timestamp = "2026-10-19T00:00:00.000Z";
+  const provider = createStorageOrbitAgentChatSessionProvider({ actorId, store: createMemoryLiveRecordStore<Record<string, unknown>>(), workspaceId });
+  const organizationStore = createMemoryOrbitAgentChatOrganizationStore({ actorId, workspaceId });
+  await provider.upsertSession({ id: sessionId, title: "Offline title", createdAt: timestamp, updatedAt: timestamp,
+    messages: [{ id: "message:offline-pin", role: "user", text: "Keep this session" }] });
+  const dependencies = { organizationStoreForActor: () => organizationStore, providerForActor: () => provider,
+    resolveActor: async () => ({ id: actorId }) };
+  const sessionItems = createOrbitAgentChatSessionHandlers(dependencies);
+  const sessions = createOrbitAgentChatSessionsHandlers(dependencies);
+  let mirror: unknown = { actorId, workspaceId, kind: "ai_session", id: sessionId, revision: "r1", updatedAt: timestamp,
+    deletedAt: null, syncState: "synced", aiVisibility: "excluded",
+    payload: { id: sessionId, title: "Offline title", firstUserText: "Keep this session", lastMessagePreview: "",
+      createdAt: timestamp, updatedAt: timestamp, messageCount: 1, messageRevision: 1,
+      organization: { customTitle: null, groupId: null, pinned: false, revision: 0 } } };
+  const mutation = buildOfflineAiSessionMutation({ mutationId: "mutation:offline-pin", sessionId, expectedRevision: 0,
+    patch: { pinned: true }, createdAt: timestamp });
+  let queued: unknown = { ...mutation, actorId, workspaceId, state: "queued", attemptCount: 0,
+    firstAttemptAt: null, serverSnapshot: null, dependsOn: null };
+  let acknowledged: unknown = null;
+  const uploader = createAiSessionOutboxUploader({ actorId, workspaceId, baseUrl: "https://orbit.local",
+    repository: {
+      async listQueuedMutations() { return queued ? [queued] : []; },
+      async beginOutboxMutationAttempt() { return queued; },
+      async acknowledgeOutboxMutation(input: { record: unknown }) { acknowledged = input.record; mirror = input.record; queued = null; },
+      async markOutboxMutationFailure() { throw new Error("offline pin should reach the server"); },
+      async getRecord() { return mirror; },
+    } as never,
+    writeClient: {
+      async patch(path: string, options: { body: unknown }) {
+        const response = await sessionItems.PATCH(request(path, "PATCH", options.body), { params: Promise.resolve({ id: sessionId }) });
+        const body = await response.json();
+        return response.ok ? { success: true, status: response.status, data: body.data }
+          : { success: false, status: response.status, error: body.error };
+      },
+      async delete(path: string) {
+        const response = await sessionItems.DELETE(request(path, "DELETE"), { params: Promise.resolve({ id: sessionId }) });
+        const body = await response.json();
+        return response.ok ? { success: true, status: response.status, data: body.data }
+          : { success: false, status: response.status, error: body.error };
+      },
+    } as never,
+    now: () => Date.parse(timestamp) + 6000,
+  });
+  assert.equal((await uploader.run()).acknowledged, 1);
+  assert.equal(((acknowledged as { payload: { organization: { pinned: boolean } } }).payload.organization.pinned), true);
+  let webList = (await (await sessions.GET(request("/api/ai/conversations/sessions"))).json()).data.items;
+  assert.deepEqual(webList.map((item: { id: string; organization: { pinned: boolean } }) => [item.id, item.organization.pinned]), [[sessionId, true]]);
+
+  const rename = buildOfflineAiSessionMutation({ mutationId: "mutation:offline-rename", sessionId, expectedRevision: 1,
+    patch: { customTitle: "Renamed after reconnect" }, createdAt: timestamp });
+  queued = { ...rename, actorId, workspaceId, state: "queued", attemptCount: 0,
+    firstAttemptAt: null, serverSnapshot: null, dependsOn: null };
+  assert.equal((await uploader.run()).acknowledged, 1);
+  webList = (await (await sessions.GET(request("/api/ai/conversations/sessions"))).json()).data.items;
+  assert.equal(webList[0].organization.customTitle, "Renamed after reconnect");
+
+  const deletion = buildOfflineAiSessionDelete({ mutationId: "mutation:offline-delete", sessionId,
+    expectedRevision: 2, createdAt: timestamp });
+  queued = { ...deletion, actorId, workspaceId, state: "queued", attemptCount: 0,
+    firstAttemptAt: null, serverSnapshot: null, dependsOn: null };
+  assert.equal((await uploader.run()).acknowledged, 1);
+  assert.ok((acknowledged as { deletedAt: string | null }).deletedAt);
+  webList = (await (await sessions.GET(request("/api/ai/conversations/sessions"))).json()).data.items;
+  assert.deepEqual(webList, []);
 });
