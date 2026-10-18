@@ -119,7 +119,10 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     }}>
       <strong>{item.title}</strong><small>{item.relatedContact?.namePreview ?? t(item.relationship ? taskCopy.taskListRelationship : taskCopy.taskListPersonal)}</small>
     </button>
-    <span className={styles.rowDate}>{formatDate(item.dueAt ?? item.plannedDate, language, timeZone)}</span>
+    <span className={styles.rowSide}>
+      <span className={styles.rowDate}>{formatDate(item.dueAt ?? item.plannedDate, language, timeZone)}</span>
+      {item.status === "open" ? <Button label={t(taskCopy.taskListCompleted)} aria-label={t(taskCopy.taskListComplete).replace("{title}", item.title)} size="sm" variant="primary" className={styles.quickComplete} disabled={mutation.busy} onClick={() => toggle(item)} /> : null}
+    </span>
   </div>);
   const renderGroup = (group: ReturnType<typeof groupTaskRows>[number]) => <section key={group.key} className={styles.group}>
     <h2 className={group.key === "overdue" ? styles.overdue : ""}>{t(taskCopy[groups[group.key]])} <span>{group.items.length}</span></h2>

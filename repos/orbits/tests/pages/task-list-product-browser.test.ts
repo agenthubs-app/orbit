@@ -122,6 +122,30 @@ test("overdue task rows use the warning color while today's rows do not", async 
   assert.notEqual(colors.today, colors.heading);
 });
 
+test("hover and keyboard focus expose a quick complete action that moves the task out of open rows", async t => {
+  const current = await page(t);
+  const row = current.getByRole("button", { name: "今日の資料の詳細" });
+  await row.hover();
+  const complete = current.getByRole("button", { name: "今日の資料を完了" });
+  await complete.waitFor();
+  await current.waitForFunction(() => {
+    const action = document.querySelector('[aria-label="今日の資料を完了"]');
+    return action && getComputedStyle(action).opacity === "1";
+  });
+  await current.mouse.move(0, 0);
+  await row.focus();
+  await current.waitForFunction(() => {
+    const action = document.querySelector('[aria-label="今日の資料を完了"]');
+    return action && getComputedStyle(action).opacity === "1";
+  });
+  await complete.click();
+  await row.waitFor({ state: "detached" });
+  const writes = await current.evaluate(() => (window as any).taskCalls.filter((call: { method: string }) => call.method !== "GET"));
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].method, "PATCH");
+  assert.equal(writes[0].body.action, "complete");
+});
+
 test("deleting the only row on a later page returns to remaining tasks rather than showing the global empty state", async t => {
   const current = await page(t);
   await current.evaluate(() => { (window as any).taskRows = Array.from({ length: 31 }, (_, index) => ({ id: `many-${index}`, title: `タスク ${index}`, status: "open", category: "work" })); });

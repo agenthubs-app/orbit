@@ -18,6 +18,10 @@
 .rowMain strong { font-size: var(--fs-body-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rowMain small, .rowDate { color: var(--ink-3); font-size: var(--fs-caption); }
 .rowDate { white-space: nowrap; }
+.rowSide { align-items: center; display: flex; gap: var(--space-8); justify-content: flex-end; min-width: 0; }
+.quickComplete { opacity: 0; pointer-events: none; transition: opacity var(--dur-press); }
+.taskRow:hover .quickComplete, .taskRow:focus-within .quickComplete { opacity: 1; pointer-events: auto; }
+@media (hover: none) { .quickComplete { opacity: 1; pointer-events: auto; } }
 .taskRowOverdue .rowMain strong, .taskRowOverdue .rowDate { color: var(--coral-text); }
 .pager { display: flex; gap: var(--space-8); justify-content: flex-end; margin-top: var(--space-12); }
 .rail h2 { font-size: var(--fs-card-title); margin: 0 0 var(--space-16); }
@@ -32,4 +36,4 @@
 .inlineRail { margin-top: var(--space-24); }
 .error { color: var(--coral-text); }
 .addForm { display: grid; gap: var(--space-14); }
-@media (max-width: 767px) { .top { flex-wrap: wrap; } .top h1 { order: -1; width: 100%; } .toolbar > :last-child { width: 100%; } .taskRow { grid-template-columns: 28px minmax(0, 1fr); } .rowDate { grid-column: 2; margin-top: -10px; } }
+@media (max-width: 767px) { .top { flex-wrap: wrap; } .top h1 { order: -1; width: 100%; } .toolbar > :last-child { width: 100%; } .taskRow { grid-template-columns: 28px minmax(0, 1fr); } .rowSide { grid-column: 2; margin-top: -10px; } }
