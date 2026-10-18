@@ -53,6 +53,12 @@ test("delivery preferences read tolerantly; their input stays strict", () => {
   assert.equal(inboxDeliveryPreferencesInputSchema.safeParse({ expectedRevision: 1, digestMode: "weekly" }).success, false);
 });
 
+test('R14 demo notification settings use the same supported defaults as live delivery',()=>{
+  const read=inboxDeliveryPreferencesSchema.parse(demoDeliveryPreferences);
+  assert.deepEqual([read.quietStart,read.quietEnd,read.dailyCap,read.secretaryMail,read.secretaryDeadline,read.secretaryPick],['22:00','07:30',3,false,true,true]);
+  assert.equal(demoSecretaryNotifications.every(item=>item.sample===true&&item.sources.every(source=>source.sourceKind!=='mail_summary')),true);
+});
+
 test("the redesign responses read tolerantly; their request bodies stay strict", () => {
   const layout = homeLayoutSchema.parse({ ...demoHomeLayout, app: [...demoHomeLayout.app, { key: "weather", size: "xl" }], web: [{ key: "today", size: "xl" }], theme: "x" }) as unknown as Record<string, unknown> & typeof demoHomeLayout;
   assert.equal(layout.app.length, demoHomeLayout.app.length, "an unknown widget is skipped");

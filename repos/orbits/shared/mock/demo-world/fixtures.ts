@@ -290,11 +290,11 @@ export const demoDeliveryPreferences: InboxDeliveryPreferencesDTO = {
   timeZone: DEMO_TIME_ZONE,
   mutedConversationIds: [],
   quietStart: "22:00",
-  quietEnd: "08:00",
-  dailyCap: 2,
-  secretaryMail: true,
+  quietEnd: "07:30",
+  dailyCap: 3,
+  secretaryMail: false,
   secretaryDeadline: true,
-  secretaryPick: false,
+  secretaryPick: true,
   meetingException: true,
 };
 
