@@ -1,5 +1,5 @@
 {
-  "_note": "R21 iOrbit live start and responsive smoke views. The other R21 states require actor-owned session and draft fixtures before their pixel gate can run.",
+  "_note": "R21 iOrbit live start and responsive history smoke views. Local QA account has actor-owned R21 history fixtures; draft and generation states need separate controlled fixtures.",
   "defaults": {
     "app-origin": "http://localhost:3700",
     "login": "qa@orbit.test",
@@ -40,6 +40,28 @@
       "height": 844,
       "themes": ["light"],
       "note": "390 start; design browser chrome excluded by comparator."
+    },
+    {
+      "id": "W-R21-R03",
+      "app": "/app/agent?history=1",
+      "design": "b8-responsive.html",
+      "board-index": 11,
+      "width": 1024,
+      "height": 880,
+      "themes": ["light"],
+      "viewport-only": true,
+      "note": "1024 actor-scoped history drawer; QA account content differs from the board."
+    },
+    {
+      "id": "W-R21-R04",
+      "app": "/app/agent?history=1",
+      "design": "b8-responsive.html",
+      "board-index": 12,
+      "width": 390,
+      "height": 844,
+      "themes": ["light"],
+      "viewport-only": true,
+      "note": "390 actor-scoped history drawer; QA account content differs from the board."
     },
     {
       "id": "W-R21-R05",
