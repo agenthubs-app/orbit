@@ -318,6 +318,14 @@
 - ConfirmDialog 全站改 Web 版式（01-system ②：图标块在标题左、无 ✕、Esc 提示）：主办 HostMatching / HostSetup / HostConsole、加人 InviteCodeModal 的确认框随之变化。
 - 未换（交还）：`HostConsole` レポート「すべて / 自分の視点」是链接分段（Segmented 没有 href）；`SearchPanel` 类型 chip 是带 `aria-controls` 的 tablist（CategoryTabs 是 radiogroup，换了语义会变）。
 
+**交接条目处理结果（Web 部分，2026-10-18，详见 R31b REPORT）**
+- G23（Web）：Modal 380 档 / 图标块 / 无 ✕ ✅；Kbd 字色保留 `ink-3-text` 走 `[contrast]` ✅；MacTile 小号 emoji ✅；非壳抽屉深色细边保留（PLANNER 契约 §2）。UnderlineTabs ✅（Web）。
+- G23b（Web）：MacTile 21 / 17、圆角 13 ✅；Chip 杏色字保留 `-text` 走 `[contrast]` ✅；FilterOption 上下 7 ✅；Modal `header` / Button `trailing` 保留；**其余组件的全局 `.btn` 漏入已统一处理**（双类写回 + `tests/ui/orbit-2026-legacy-btn.test.ts` + 每格 `?env=legacy` 像素对照）✅。
+- R24-05：组件参数全部就位 ✅；R24-05b 重比见 DEFERRED-A §1（组件部分 done，页面剩余交还）。
+- R17-17（Web）：Drawer 520 / 22 / 白圆 ✕ / 副标题 ✅、b6 #20 改 520（RD-27）✅；W-R17-P26 仍未过（见 DEFERRED-A §3）。
+- R16-01（Web）：W-R16-08 浅深通过 ✅。
+- U02（Web）：逐件对照清单 `views/web-R31b-components.json`（30 条 × 浅深，新页面与 `?env=legacy` 各一）✅；Web 不适用 / 没有组件的规格格见 R31b `preflight-checklist.md`。
+
 ## 合回前与真机（不归某个功能 Sprint，列在 README 合回前清单）
 
 staging `VERCEL_ENV` / 展示页开关；真机触感、真推送、Dynamic Type、相机权限被拒态、BottomSheet 叠 ActionSheet；本地与 staging 配 `ORBIT_SYNC_CURSOR_SECRET`；R15 生产迁移与 `ORBIT_INVITE_RATE_SECRET` / `ORBIT_PUBLIC_ORIGIN` / 通用链接；R16 `expo-contacts` 与通讯录权限文案的 TestFlight；`OrbitTopNav` 登录后分支清理；App 底栏转场（D07 已定照 iOS 惯例）。详见 [README「合回前总验收」](README.md#合回-chat-agent-前总验收r09-写入全部打勾才合回rd-03--rd-24) 和各 REPORT。

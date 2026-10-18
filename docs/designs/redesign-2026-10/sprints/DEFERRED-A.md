@@ -15,13 +15,13 @@
 | 交接表 # | 卡在什么 | 解锁后做什么 |
 | --- | --- | --- |
 | R26-11 | App `Segmented` 高 38，kit `.seg` 是 30 | 重跑 app-R26 的 13 / 14 / 15 / 30 / 30e，浅色和深色共 10 张。用 `R26-app-agate.sh`；临时补丁下这 10 张全部能过  **R31a 2026-10-18：done：A-R26-13 / 14 / 15 / 30 / 30e 浅深 10 张在 iPhone 16e（Orbit Line A 16e）重比全部通过（Segmented `7457b4cc0`）** |
-| R24-05b | Web Modal 缺 380 宽一档和标题图标块；Drawer 的 ✕ 和副标题 | 重跑 web-plan-A 的 W-R24-03 / 09b / 11 / 12、web-plan-B 的 W-R23-06 |
+| R24-05b | Web Modal 缺 380 宽一档和标题图标块；Drawer 的 ✕ 和副标题 | **组件部分 done（2026-10-18，R31b `e3048764c` 组件 / `d5f27962c` 调用点）**：Modal 380 / icon / subtitle / closable、Drawer 白圆 ✕ / 副标题 / titleSize 已用上，弹层框体与头部对齐；五个画面仍未过，剩余全是页面自身原因 → 交还甲（R31b REPORT「交还」1–5：概要背景数据与页高、記録弹窗正文、スキップ文案与焦点、面談を提案 抽屉的下書き状态、メンバーを追加 的手写 FlowDialog 约 3px 位移） |
 | R24-05c | App Sheet / Dialog / Popover | 重跑 app-plan-A 的 A-R24-05 / 12 / 13 / 16、app-plan-C 的 A-R25-01 / 08 / 11 / 12  **R31a 2026-10-18：Popover 已新建（`a37d0f551`）；A-R25-11 目標切替是 .gmenu 弹出菜单、行结构不同 → 改页面结构，交还计划页（RD-33）；其余 A-R24-05 / 12 / 13 / 16、A-R25-01 / 08 / 12 需中途状态开关，R31a 未重比（见 REPORT）** |
-| R16-01 | Web `Chip` 用 apricot 字色（G23b）；App `Segmented` 高度 | 补跑 W-R16-08 浅色、A-R16-02  **R31a 2026-10-18：App：见交接表 R16-01（R31a）** |
+| R16-01 | Web `Chip` 用 apricot 字色（G23b）；App `Segmented` 高度 | **Web 部分 done（2026-10-18，R31b `e3048764c` / `3193238b5`）**：W-R16-08 浅深重跑都通过（raw 0.0003，杏色字按 RD-26 保留加深版）；App A-R16-02 归 R31a  **R31a 2026-10-18：App：见交接表 R16-01（R31a）** |
 | R12-12 | ConfirmDialog 没有图标位 | 重跑 A-R12-N09  **R31a 2026-10-18：R31a：ConfirmDialog 图标位 / .dic.emo 已加（`7457b4cc0`），N12 调用点已用 🧪 + ghost；A-R12-N09 需点「破棄」到状态，未重比（见 REPORT）** |
-| R15（REWORK-REPORT） | 两端「待组件库」剩下的画面 | 重跑 R15 的门禁清单 |
-| W-R26-31 | Web Modal 380 宽和关闭钮 | 重跑 W-R26-31 |
-| W-R27-13 | FilterOption 上下差 7、Toggle 44×26 | 重跑 W-R27-13 |
+| R15（REWORK-REPORT） | 两端「待组件库」剩下的画面 | **Web 部分 done（2026-10-18，R31b）**：Web 没有标「待组件库」的画面 id；§5 的 Avatar lg 19 已改（`e3048764c`）；重跑 W-R15-14m 浅深通过、W-R15-12 浅深与开工时相同（2 带：QA 邮箱长度少折一行，页面数据，非组件）；R15 其余已通过画面在「不退步」里全部仍通过 |
+| W-R26-31 | Web Modal 380 宽和关闭钮 | **组件部分 done（2026-10-18，R31b `d5f27962c`）**：参加コード弹窗改 380 档、✕ 改 kit .lbtn、副标题按 #320 放在标题行下 4px；带数 10 / 7 → 7 / 4，剩余 → 交还甲（R31b REPORT「交还」6：画板是已输入 7 位码的状态而清单步骤只点开弹窗；背景イベント页本身的差异） |
+| W-R27-13 | FilterOption 上下差 7、Toggle 44×26 | **done（2026-10-18，R31b `e3048764c`）**：FilterOption 7 / 12 + ✓ 字形、Toggle 旧样式下仍 44×26；W-R27-13 浅深重跑通过 |
 | R27（App） | App `Segmented` 高 38 vs kit `.seg` 30（同 R26-11） | 重跑 app-R27 的 A-R27-06 / 07 / 08 / 16 / 29 / 31 / 33 / 34（浅深）；seg 临时补丁下各带 dy ≤4、只差字形（证据 R27/run-01/app/a6、p1、d3、v2seg）  **R31a 2026-10-18：Segmented 已对齐（`7457b4cc0`）；A-R27-16u 深通过；06 / 07 / 08 / 29 / 31 / 33 / 34 分段区不再超阈，剩余为页面自身差异（chip 位置、轮播卡高度、搜索框 placeholder 色 [contrast] 等）→ 交还 R27（见 R31a REPORT 交还清单）；A-R27-26 另卡 expo-brightness** |
 | R27（App） | App `FilterOption` 上下内边距、`Toggle` 尺寸（同 W-R27-13） | 重跑 A-R27-09 筛选弹层  **R31a 2026-10-18：已对齐（`7457b4cc0`），A-R27-09 余页面差异 → 交还** |
 | R27（App） | App `Toast`：带关闭 ✕（标题被挤成两行），位置不知道页面自带的会场 5 tab 底栏；kit `.toast.pos` 无 ✕、bottom 100 | 重跑 A-R27-35 交換成功 toast（开发回放 `approve=` 常驻）  **R31a 2026-10-18：Toast 去 ✕、会場 usePageBottomBar（`7457b4cc0`）；A-R27-35 余页面差异 → 交还** |
@@ -68,7 +68,7 @@
 | R17-14 | 登出清 kiosk 本机名单 | **已做（73c986b05）** |
 | R17-15 | 公开主催页「通報する」无表单 | **跳过**：依赖 R29 运营后台 / 反馈表单 |
 | R17-16 | App `/e/[slug]` 靠跟随网页重定向取 id | **done（2026-10-17，`cb02fda4f`）**：`GET /api/events/by-slug/[slug]`（只认已公开、可未登录、proxy 放行），App `/e/[slug]` 改调它 |
-| R17-17 | P26 Drawer 540/22、App P05 Segmented 30（G23） | **跳过**：依赖组件库 G23 → 由 R31a / R31b 重比（2026-10-18；540 改为画板 520，RD-27）  **R31a 2026-10-18：App P05 done（R31a 重比，归因见 attribution-redesign-R17-app.json）** |
+| R17-17 | P26 Drawer 540/22、App P05 Segmented 30（G23） | **Web 部分组件 done（2026-10-18，R31b `d5f27962c`）**：b6 #20 画板改 520（RD-27）、共同運営者改用组件 Drawer 头部（标题 + 副标题 + 白圆 ✕、内边距 22）；W-R17-P26 带数 25 / 19 → 7 / 12，剩余为背景「申込の推移」柱高（数据）与抽屉正文 dy 0 的文字栅格同带，未过 → 交还 / 待主会话定归因（R31b REPORT「交还」7）；App P05 归 R31a  **R31a 2026-10-18：App P05 done（R31a 重比，归因见 attribution-redesign-R17-app.json）** |
 | R17-18 | 编组发布后通知另开事务，失败补不上 | **done（2026-10-17，`571c0d6f6`）**：同一 generation 已发布时不再发布、只补写通知（幂等键不重复）；Web 失败后公開按钮仍在，重试即补；回环库测试 |
 | R11-17 | 「最近削除した項目」页与到期清除：设计稿无 / 下一期（R11a 代定 9） | 补画板后做列表页与到期清除；现在只有软删 + 30 天内恢复 |
 | R11a 设计稿无 | Web 1024 / 390 除列表、详情外的画面（目標に関係 / 要フォロー / 絞り込み / 編集 / 招待连接 / 确认卡 / 以前の値）、App 全部深色画面没有画板（R11a 代定 2） | 结构照浅色 / 1440 画板、颜色只用 token；有画板后再进门禁 |
