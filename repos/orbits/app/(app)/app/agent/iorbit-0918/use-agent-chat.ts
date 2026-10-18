@@ -3,9 +3,8 @@
 // iOrbit（对话域）对话状态 hook：从 `../orbit-real-agent.tsx` 逐字搬入的
 // messages/panel/thinking/chatDraft/activeSessionId 状态、`ask`、
 // `persistCurrentSession`、`restoreSession`、hydration、`?q=` / `?session=` /
-// localStorage、navigate/pushState 与全局提问接线。行为零改动：
-// `window.setTimeout` 与 60s `AGENT_REQUEST_TIMEOUT_MS` abort 保持原样
-// （后者留在 `iorbit-model.ts` 的 `fetchAgentConversation` 里）。
+// localStorage、navigate/pushState 与全局提问接线。R21 为进行中的回复增加
+// 停止等待与同一可靠请求的再开，并在切换会话后忽略迟到结果。
 import {
   useCallback,
   useEffect,
@@ -110,6 +109,9 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
   const [panel, setPanel] = useState<AgentPanel | null>(null);
   const [thinking, setThinking] = useState(false);
   const requestInFlightRef = useRef(false);
+  const requestRunRef = useRef(0);
+  const activeRequestRef = useRef<AbortController | null>(null);
+  const pendingReliableRequestRef = useRef<AgentReliableRequest | null>(null);
   const [chatDraft, setChatDraft] = useState("");
   const [histOpen, setHistOpen] = useState(false);
   const [activeQ, setActiveQ] = useState("");
@@ -148,6 +150,31 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
   messagesRef.current = messages;
   activeSessionIdRef.current = activeSessionId;
 
+  const invalidateActiveRequest = useCallback((showRetry: boolean) => {
+    if (!requestInFlightRef.current) return;
+    requestRunRef.current += 1;
+    activeRequestRef.current?.abort();
+    activeRequestRef.current = null;
+    requestInFlightRef.current = false;
+    setThinking(false);
+    const request = pendingReliableRequestRef.current;
+    pendingReliableRequestRef.current = null;
+    if (showRetry && request) {
+      setMessages((current) => [...current, {
+        items: [], kind: "people", panelTitle: "", reliableRequest: request,
+        retryRequest: request.message, role: "assistant", stopped: true,
+        text: "応答の確認を停止しました。再開すると同じリクエストを確認します。",
+      }]);
+    }
+  }, []);
+  const stopResponse = useCallback(() => invalidateActiveRequest(true), [invalidateActiveRequest]);
+  useEffect(() => () => {
+    requestRunRef.current += 1;
+    activeRequestRef.current?.abort();
+    activeRequestRef.current = null;
+    requestInFlightRef.current = false;
+  }, []);
+
   const navigate = useCallback((prototypeHref: string) => {
     const href = preserveHref(productHref(prototypeHref));
     if (typeof window === "undefined") return;
@@ -162,6 +189,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
   }, [preserveHref]);
 
   const restoreSession = useCallback((session: AgentStoredChatSession) => {
+    invalidateActiveRequest(false);
     activeSessionDetailRef.current = session;
     skipRestoredSessionPersistenceRef.current = true;
     forgetPersisted();
@@ -186,7 +214,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         session.id,
       );
     }
-  }, [forgetPersisted, rememberPersisted, setEarlierState]);
+  }, [forgetPersisted, invalidateActiveRequest, rememberPersisted, setEarlierState]);
 
   const persistCurrentSession = useCallback((
     nextMessages: readonly AgentMessage[],
@@ -306,6 +334,9 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     // reliable request and its billable execution single-flight per screen.
     if (requestInFlightRef.current) return;
     requestInFlightRef.current = true;
+    const requestRun = ++requestRunRef.current;
+    const requestController = new AbortController();
+    activeRequestRef.current = requestController;
     const locale = languageRef.current === "zh" ? "zh" : "en";
     const failureText =
       locale === "zh"
@@ -367,6 +398,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         requestId: stableId("request"),
         sessionId,
       };
+    pendingReliableRequestRef.current = reliableRequest;
     const historySource = retry?.historyMessages ?? messagesRef.current;
     const history = historySource
       .map((turn) => ({ content: historyContentFor(turn), role: turn.role }))
@@ -390,7 +422,9 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     try {
       const response = await fetchAgentConversation(
         JSON.stringify({ history, ...reliableRequest }),
+        requestController.signal,
       );
+      if (requestRun !== requestRunRef.current) return;
       const payload = (await response.json().catch(() => null)) as {
         data?: {
           actionIds?: unknown;
@@ -404,6 +438,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         error?: { code?: string; message?: string };
         success?: boolean;
       } | null;
+      if (requestRun !== requestRunRef.current) return;
       const reliableReceipt = reliableAiSendReceiptSchema.safeParse(
         payload?.data?.reliableSend,
       );
@@ -554,6 +589,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
           mutationId: stableId("request"),
           patch: { groupId: initialGroupIdRef.current },
         });
+        if (requestRun !== requestRunRef.current) return;
         if (organization) {
           initialOrganizationRef.current = { organization, sessionId };
         } else {
@@ -587,6 +623,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
 
       setPanel(items.length > 0 ? { items, kind, panelTitle } : null);
     } catch (error) {
+      if (requestRun !== requestRunRef.current) return;
       const requestFailureText =
         error instanceof AgentRequestTimeoutError
           ? locale === "zh"
@@ -606,8 +643,12 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         },
       ]);
     } finally {
-      requestInFlightRef.current = false;
-      setThinking(false);
+      if (requestRun === requestRunRef.current) {
+        activeRequestRef.current = null;
+        pendingReliableRequestRef.current = null;
+        requestInFlightRef.current = false;
+        setThinking(false);
+      }
     }
   }, []);
 
@@ -699,6 +740,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
   }, [messages, panel, persistCurrentSession]);
 
   const pickHistory = (item: OrbitAgentHistoryView) => {
+    invalidateActiveRequest(false);
     if (item.sessionId) {
       void loadStoredAgentChatSession(item.sessionId).then((storedSession) => {
         if (!storedSession) {
@@ -732,6 +774,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
   };
 
   const clearConversation = (openChat: boolean, initialGroupId: string | null = null) => {
+    invalidateActiveRequest(false);
     setHistOpen(false);
     setMessages([]);
     setPanel(null);
@@ -822,6 +865,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     setMessages,
     setPanel,
     setThinking,
+    stopResponse,
     submitChatDraft,
     taskSuggestions,
     thinking,

@@ -67,12 +67,13 @@ const { AiConversationScreen } = require("../src/screens/ai/AiConversationScreen
 moduleLoader._load = originalLoad;
 test.beforeEach(resetConversation);
 
-test("reading canvas keeps a single compact navigation and the real conversation", () => {
+test("reading canvas uses the iOrbit full-screen header and shows the real conversation", () => {
   const html = renderToHtml(<AiConversationScreen />);
   assert.match(html, /聊聊合作/u);
   assert.match(html, /可以先说说正在做的产品/u);
-  assert.match(html, /aria-label="对话导航"/u);
-  assert.equal((html.match(/>IORBIT</gu) ?? []).length, 2);
+  assert.match(html, /aria-label="会話リスト"/u);
+  assert.match(html, /aria-label="閉じる"/u);
+  assert.equal((html.match(/>iOrbit</gu) ?? []).length, 1);
   assert.doesNotMatch(html, />对话<|2026-09-06|>我</u);
 });
 
@@ -96,7 +97,8 @@ test("user messages have a distinct readable surface without shrinking reply tex
   scheme = "dark";
   const dark = renderToHtml(<AiConversationScreen />);
   assert.notEqual(dark, light);
-  assert.equal(dark.replace(/ (?:class|style)="[^"]*"/gu, ""), light.replace(/ (?:class|style)="[^"]*"/gu, ""));
+  const structure = (html: string) => html.replace(/ (?:class|style)="[^"]*"/gu, "").replace(/ (?:fill|stroke)="#[0-9A-Fa-f]{6}"/gu, "");
+  assert.equal(structure(dark), structure(light));
 });
 
 test("assistant record references render actionable detail entries", () => {

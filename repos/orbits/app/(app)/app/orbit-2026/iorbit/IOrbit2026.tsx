@@ -230,10 +230,10 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
                 {message.items.length ? <PanelCards language={panelLanguage} navigate={chat.navigate} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} t={t} /> : null}
                 {message.runId && message.actionIds?.length ? <AgentActionStatusCard actionIds={message.actionIds} language={panelLanguage} navigate={chat.navigate} runId={message.runId} showRunDetails={false} /> : null}
                 {message.evidenceRefs?.length ? <p className={styles.sources}>参照: {message.evidenceRefs.map((ref) => ref.label).join(" · ")}</p> : null}
-                {message.retryRequest ? <Button label="もう一度" variant="secondary" disabled={chat.thinking} onClick={() => void chat.ask(message.retryRequest!, index)} /> : null}
+                {message.retryRequest ? <Button label={message.stopped ? "再開" : "もう一度"} variant="secondary" disabled={chat.thinking} onClick={() => void chat.ask(message.retryRequest!, index)} /> : null}
                 <AgentMessageCopyButton text={message.text} />
               </div></div>)}
-            {chat.thinking ? <div role="status" className={styles.assistantRow}><span className={styles.assistantIcon}><Icon name="sparkle" size={16} /></span><ThinkingIndicator t={t} /></div> : null}
+            {chat.thinking ? <div role="status" className={styles.assistantRow}><span className={styles.assistantIcon}><Icon name="sparkle" size={16} /></span><div><ThinkingIndicator t={t} /><Button label="停止" variant="ghost" size="sm" onClick={chat.stopResponse} /></div></div> : null}
             <div className={styles.followups}><Button label="プランを見る" variant="ghost" onClick={() => { window.location.href = planTaskSegmentHref("web"); }} /></div>
           </section>}
           {source ? <div className={styles.contextCard}><div><b>このページを文脈に含める</b><p>{contextEnabled && pageContext ? `${pageContext.route} · ${source.length ? `業界 ${source.join("、")} · ` : ""}${pageContext.count}人` : "オフ · 人脈ページの情報は送信しません"}</p></div><Toggle checked={contextEnabled} onChange={(next) => void enableContext(next)} label="このページを文脈に含める" /></div> : null}

@@ -562,6 +562,20 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     await submitRequest(requestForSend({ path: sendPath, message, revision: draftRevision.current, history: history?.length ? history : undefined, ...(sourceNote ? { sourceNote } : {}) }));
   }
 
+  function stopResponse() {
+    const controller = sendOperation.current;
+    const request = journal.interruptedRequest;
+    if (!owns() || !controller || !request) return;
+    controller.abort();
+    requests.current.delete(controller);
+    sendOperation.current = null;
+    delete journal.interruptedRequest;
+    setFailedRequest(request);
+    setSendError(locale.t("aiConversation.outcomeUnknown"));
+    setSendCode("OUTCOME_UNKNOWN");
+    setSending(false);
+  }
+
   function addMention(contact: MentionContact) {
     if (!owns() || selectedReferences.some(reference => reference.type === "contact" && reference.id === contact.id)) return;
     setSelectedReferences([...selectedReferences, { id: contact.id, type: "contact" }]);
@@ -682,7 +696,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   if (!thread) return <AppScreen inset="kit" title="iOrbit" backIcon="x" onBack={() => { if (router.canGoBack()) router.back(); else router.replace("/ai" as Href); }}>
     {!isDraftConversation && state.kind === "loading" && !localSession ? <Skeleton onRetry={refresh} /> : null}
     {!isDraftConversation && !conversationOffline && (state.kind === "offline" || missingLocalSessionOffline) ? <RetryCard title="会話を開けませんでした" message={locale.t("sync.notOnDevice")} onRetry={refresh} /> : null}
-    {!isDraftConversation && !conversationOffline && state.kind === "failure" ? <RetryCard title="会話を開けませんでした" message={state.error.message} onRetry={refresh} /> : null}
+    {!isDraftConversation && !conversationOffline && !missingLocalSessionOffline && state.kind === "failure" ? <RetryCard title="会話を開けませんでした" message={state.error.message} onRetry={refresh} /> : null}
     {readInvalid ? <RetryCard title={locale.t("aiConversation.readUnreadable")} message={locale.t("aiConversation.readInvalid")} onRetry={refresh} /> : null}
     {state.kind === "empty" ? <UiEmptyState message={locale.t("aiConversation.emptyBody")} title={locale.t("aiConversation.emptyTitle")} /> : null}
   </AppScreen>;
@@ -703,6 +717,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       earlier={earlier}
       onRetryCards={recoveryIncomplete(combinedRecovery) ? () => { void retryCards(); } : undefined}
       onSend={sendMessage}
+      onStopResponse={stopResponse}
       sendError={sendError}
       sendCode={sendCode}
       actionError={actionError}
@@ -747,6 +762,7 @@ function ConversationThread({
   earlier,
   onRetryCards,
   onSend,
+  onStopResponse,
   sendError,
   sendCode,
   actionError,
@@ -787,6 +803,7 @@ function ConversationThread({
   earlier?: EarlierMessagesView;
   onRetryCards?: (() => void) | undefined;
   onSend: () => void;
+  onStopResponse: () => void;
   sendError: string | null;
   sendCode: string | null;
   actionError: string | null;
@@ -928,7 +945,7 @@ function ConversationThread({
         {sendError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{locale.t("aiConversation.answerFailed")}</UiText><UiText style={styles.r21Muted}>{sendError}</UiText><View style={styles.r21Actions}><UiButton label={retrySendLabel} variant="primary" disabled={sending || writingBlocked} onPress={onRetrySend} /><UiButton label={locale.t("aiConversation.editQuestion")} variant="secondary" disabled={sending} onPress={onEditQuestion} /></View>{sendCode ? <UiText selectable style={styles.r21Muted}>{sendCode}</UiText> : null}</View></UiCard> : null}
         {actionError ? <UiText accessibilityRole="alert" style={styles.r21Error}>{actionError}</UiText> : null}
         {saveError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{saveError}</UiText><UiButton label={locale.t("aiConversation.retrySave")} onPress={onRetrySave} disabled={saving} /></View></UiCard> : null}
-        {sending || saving ? <UiText accessibilityLiveRegion="polite" style={styles.r21Muted}>{locale.t(saving ? "aiConversation.saving" : "aiConversation.replying")}</UiText> : null}
+        {sending || saving ? <View style={styles.r21Actions}><UiText accessibilityLiveRegion="polite" style={styles.r21Muted}>{locale.t(saving ? "aiConversation.saving" : "aiConversation.replying")}</UiText>{sending ? <UiButton label="停止" variant="ghost" size="sm" onPress={onStopResponse} /> : null}</View> : null}
         {saveNotice ? <UiText accessibilityRole="alert" style={styles.r21Error}>{saveNotice}</UiText> : null}
       </ScrollView>
       <View testID="conversation-composer" style={styles.r21Composer}>

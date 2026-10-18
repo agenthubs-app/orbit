@@ -32,12 +32,20 @@ function retryButtons(root: Parameters<typeof renderedText>[0]) {
   return root.root.findAllByProps({ "data-agent-message-retry-request": true });
 }
 
-test("a question in ?q= is asked once through the reliable v2 contract and its reply is rendered", async (t) => {
+async function submitPrefilled(harness: Awaited<ReturnType<typeof mountAgent>>) {
+  const composer = harness.root.root.findByProps({ "data-orbit-agent-chat-composer": true });
+  await act(async () => { composer.props.onSubmit({ preventDefault() {} }); });
+  await harness.settle();
+}
+
+test("a question in ?q= waits for confirmation, then uses the reliable v2 contract", async (t) => {
   const harness = await mountAgent(t, {
     conversation: (body) => SUCCESS(body),
     search: "?q=%E6%89%BE%E4%BA%BA%E8%84%89",
   });
 
+  assert.equal(harness.conversationRequests.length, 0);
+  await submitPrefilled(harness);
   assert.equal(harness.conversationRequests.length, 1);
   const request = harness.conversationRequests[0];
   assert.deepEqual(request.history, []);
@@ -70,6 +78,8 @@ test("the next turn carries the previous turns as the trimmed history window", a
     conversation: (body) => SUCCESS(body),
     search: "?q=%E6%89%BE%E4%BA%BA%E8%84%89",
   });
+
+  await submitPrefilled(harness);
 
   const composers = harness.root.root.findAllByProps({ "data-orbit-agent-chat-composer": true });
   const inputs = harness.root.root.findAllByProps({ "data-orbit-agent-chat-input": true });
@@ -110,6 +120,8 @@ test("a reliable receipt that is not completed shows the unconfirmed copy with a
     search: "?q=%E6%89%BE%E4%BA%BA%E8%84%89",
   });
 
+  await submitPrefilled(harness);
+
   assert.ok(
     assistantTexts(harness.root).some((text) =>
       text.includes("请求结果尚未确认。再次检查会复用同一请求，不会重复生成。"),
@@ -144,6 +156,8 @@ test("a provider timeout gets its own resubmit copy, by error code and by messag
         search: "?q=%E6%89%BE%E4%BA%BA%E8%84%89",
       });
 
+      await submitPrefilled(harness);
+
       assert.ok(
         assistantTexts(harness.root).some((text) =>
           text.includes("iOrbit 的模型没有按时返回，这通常是临时的，请重新提交一次。未执行任何外部动作。"),
@@ -162,6 +176,8 @@ test("any other failed reply falls back to the generic copy and keeps the same r
     conversation: () => Response.json({ success: false, error: { code: "FORBIDDEN", message: "nope" } }, { status: 403 }),
     search: "?q=%E6%89%BE%E4%BA%BA%E8%84%89",
   });
+
+  await submitPrefilled(harness);
 
   assert.ok(assistantTexts(harness.root).some((text) => text.includes("iOrbit 暂时无法完成这次回复，请稍后再试。")));
   // iOrbit 任务 6a：旧壳的桌面树与移动树各渲染一次同样的回合（基线 2）；在售的
@@ -185,6 +201,8 @@ test("the browser gives the request a 60s abort budget and reports the unconfirm
     conversation: () => null,
     search: "?q=%E6%89%BE%E4%BA%BA%E8%84%89",
   });
+
+  await submitPrefilled(harness);
 
   const budget = harness.timers.find((timer) => timer.delay === 60_000);
   assert.ok(budget, "the conversation request arms a 60s deadline");
@@ -330,6 +348,7 @@ test("leaving the thread clears it, drops the active-session key and returns to 
     conversation: (body) => SUCCESS(body),
     search: "?q=%E6%89%BE%E4%BA%BA%E8%84%89",
   });
+  await submitPrefilled(harness);
   assert.equal(harness.localValues.has("orbit-agent-chat-active-session-v1"), true);
 
   // iOrbit 任务 6a：设计的「← 返回概览」是**非破坏性**返回（「审阅修订」17），旧壳
@@ -355,6 +374,8 @@ test("a finished turn is persisted to the sessions API with its messages and rev
     conversation: (body) => SUCCESS(body),
     search: "?q=%E6%89%BE%E4%BA%BA%E8%84%89",
   });
+
+  await submitPrefilled(harness);
 
   assert.equal(harness.persistedSessions.length, 1);
   const session = harness.persistedSessions[0] as Record<string, unknown>;
@@ -401,7 +422,7 @@ test("the page takes over the global ask box, publishes its chips and busy state
   assert.equal(harness.sessionValues.has("orbit.ask.pending"), false);
 });
 
-test("a question handed over from another page is asked once, with its context, and consumed", async (t) => {
+test("a confirmed question handed over from another page sends only the user's words", async (t) => {
   const harness = await mountAgent(t, {
     conversation: (body) => SUCCESS(body),
     sessionStorageSeed: {
@@ -416,7 +437,7 @@ test("a question handed over from another page is asked once, with its context, 
   assert.equal(harness.conversationRequests.length, 1);
   assert.equal(
     harness.conversationRequests[0].message,
-    "他最近有什么动向\n\n（我正在看佐藤 健一 的联系人页）",
+    "他最近有什么动向",
   );
   assert.equal(harness.sessionValues.has("orbit.ask.pending"), false);
 });

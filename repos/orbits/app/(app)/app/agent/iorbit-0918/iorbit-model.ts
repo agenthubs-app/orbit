@@ -42,6 +42,7 @@ type AgentMessage =
       panelTitle: string;
       retryRequest?: string;
       reliableRequest?: AgentReliableRequest;
+      stopped?: boolean;
       role: "assistant";
       runId?: string;
       taskInteraction?: AgentTaskInteractionView;
@@ -1168,8 +1169,11 @@ class AgentRequestTimeoutError extends Error {
   }
 }
 
-async function fetchAgentConversation(body: string): Promise<Response> {
+async function fetchAgentConversation(body: string, externalSignal?: AbortSignal): Promise<Response> {
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (externalSignal?.aborted) controller.abort();
+  else externalSignal?.addEventListener("abort", abort, { once: true });
   const timer = window.setTimeout(
     () => controller.abort(),
     AGENT_REQUEST_TIMEOUT_MS,
@@ -1183,12 +1187,13 @@ async function fetchAgentConversation(body: string): Promise<Response> {
       signal: controller.signal,
     });
   } catch (error) {
-    if (controller.signal.aborted) {
+    if (controller.signal.aborted && !externalSignal?.aborted) {
       throw new AgentRequestTimeoutError();
     }
     throw error;
   } finally {
     window.clearTimeout(timer);
+    externalSignal?.removeEventListener("abort", abort);
   }
 }
 
