@@ -13,13 +13,14 @@ const page = {
 test("todo responses keep readable rows, skip unknown sources/actions, and tolerate future display statuses", () => {
   const actual = todoPageSchema.parse({ ...page, futureField: true,
     decisions: { items: [{ ...page.decisions.items[0], actions: ["open", "future"] }, { ...page.decisions.items[0], source: "future" }], next: { entity_draft: "signed", future: "ignored" } },
-    followups: { items: [{ ...item, kind: "future", status: "future", newField: true }, { ...item, source: "future" }, { broken: true }], next: {} },
+    followups: { items: [{ ...item, kind: "future", status: "future", newField: true }, { ...item, status: "future", newField: true }, { ...item, source: "future" }, { broken: true }], next: {} },
     sources: { ...page.sources, task: "future", future: "ok" },
   });
   assert.equal(actual.decisions.items.length, 1);
   assert.deepEqual(actual.decisions.items[0].actions, ["open"]);
   assert.deepEqual(actual.decisions.next, { entity_draft: "signed" });
   assert.equal(actual.followups.items.length, 1);
+  assert.equal(actual.followups.items[0].key, item.key, "an unknown action kind never becomes an ordinary task");
   assert.equal(actual.followups.items[0].kind, "task");
   assert.equal(actual.followups.items[0].status, "open");
   assert.deepEqual(actual.sources, { entity_draft: "ok", task: "unavailable" });

@@ -29,8 +29,8 @@ export const todoDecisionItemObject = base.extend({
 });
 export const todoNextMoveItemObject = base.extend({ reasonPreview: z.string().max(640).optional(), draftAvailable: z.boolean(), taskId: z.string().min(1).optional() });
 export const todoFollowupItemObject = base.extend({
-  // Display-only enums fall back; source identity above never guesses a source.
-  kind: tolerantEnum(["task", "lifecycle"], "task"), taskId: z.string().min(1), status: tolerantEnum(["open", "scheduled"], "open"),
+  // Kind selects the available actions: an unknown kind makes this row unreadable.
+  kind: z.enum(["task", "lifecycle"]), taskId: z.string().min(1), status: tolerantEnum(["open", "scheduled"], "open"),
   dueAt: timestamp.optional(), overdue: z.boolean(), deferralCount: count.optional(),
 });
 

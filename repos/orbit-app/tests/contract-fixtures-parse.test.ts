@@ -70,6 +70,18 @@ test("the App's synced schemas parse every redesign fixture", () => {
   for (const row of fixtures.demoContactRows) assert.equal(contactListItemSchema.parse(row).sample, true);
 });
 
+test("the App skips an unknown follow-up action kind instead of turning it into a task", () => {
+  const task = demoTodoPage.followups.items.find((item) => item.kind === "task")!;
+  const parsed = todoPageSchema.parse({
+    ...demoTodoPage,
+    followups: { ...demoTodoPage.followups, items: [{ ...task, kind: "future-action" }, { ...task, status: "future-status" }] },
+  });
+  assert.equal(parsed.followups.items.length, 1);
+  assert.equal(parsed.followups.items[0]?.key, task.key);
+  assert.equal(parsed.followups.items[0]?.kind, "task");
+  assert.equal(parsed.followups.items[0]?.status, "open", "display-only status still has a safe fallback");
+});
+
 test("「尚未実装」 from the server picks a default or hides the entry", () => {
   const envelope = { success: false, error: { code: "SERVICE_UNAVAILABLE", message: "x", context: { capabilityId: "home-layout", reason: "NOT_IMPLEMENTED", requestedMode: "live" } } };
   assert.equal(isNotImplemented(envelope), true);
