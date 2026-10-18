@@ -28,6 +28,17 @@
 | R27（App） | `src/components/ui` 缺 UnderlineTabs、可配置 TabBar（会場玻璃底栏）、全屏搜索页容器：App 探す搜索页用 RN `<Modal>`、詳細 `.utabs` 与会場 livebar 手写 tablist（主会话 10-15 定：记入 `tests/fixtures/legacy-ui-deferred.json`，注释「R27 · 待组件库 · DEFERRED-A §1」，不去掉 tablist 角色） | 乙的组件库轮补件后替换这 3 处并删掉 legacy-ui-deferred.json 对应行（测试要求条数与实际一致，替换后不删行会失败）  **done（R31a `ef8ecc9d1`）** |
 | R30（App） | `src/components/ui` 缺全屏搜索页容器（同上一行） | `src/screens/search/GlobalSearchScreen.tsx` 手写（SafeArea + ShellBackground + 搜索行 + chip 行）；组件库补件后替换，重跑 A-R30-P05–P08  **done（R31a `ef8ecc9d1`）：GlobalSearchScreen 换 FullScreenSearch，A-R30-P05–P08 浅深 8 张 16e 重比通过** |
 | R11-16 | R11a 像素收口：组件库已合入（2026-10-18），差人脈设计 fixture 与门禁本身 | 跑 `web-R11a.json` / `app-R11a.json`（预检已在 `R11a-network-list-detail/preflight-*.md`）、`app-R05.json` A-R05-02 / A-R05-10，再重跑本表 §2 两行「待 R11」；交 `attribution-redesign-R11a.json` |
+| R32-X01a | Web `Modal` 没有 520 宽档，W-R23-06 仍用手写 `FlowDialog` | **待 A 线组件维护**：只加 520 档，不改旧档；交付后乙在页面调用点替换并重比 W-R23-06。请求见 HANDOFF G23；不得因请求已登记记 done |
+| R32-X01b | `HostConsole` 报表链接分段需要 `href`、焦点与当前页语义，现有 `Segmented` 不支持 | **待 A 线组件维护**：保留链接语义的参数；乙在交付后替换调用点并测键盘、href。请求见 HANDOFF G23 |
+| R32-X01c | `SearchPanel` 类型 chip 是 tablist + `aria-controls`，现有 `CategoryTabs` 为 radiogroup | **待 A 线组件维护**：提供同语义参数，或确认保留页面控件；乙不改变现有语义。请求见 HANDOFF G23 |
+| R32-X02 c-ai-3 | Web ✓/✕ 与建议 chip 规格格缺组件 | **待 A 线组件维护**：按 01-system c-ai-3 补件并单格重比；R32 页面数不含本项 |
+| R32-X02 c-load-1 | Web 分步清单规格格缺组件 | **待 A 线组件维护**：按 01-system c-load-1 补件并单格重比 |
+| R32-X02 c-err-0 | Web 同步恢复横条及标准文案键缺组件 | **待 A 线组件维护**：按 01-system c-err-0 补件；标准文案键实施时同步 App，不由 R32 页面私加 |
+| R32-X02 c-err-3 | Web 字段错误块规格格缺组件 | **待 A 线组件维护**：按 01-system c-err-3 补件并单格重比 |
+| R32-X02 c-sample-2 | Web 示例横条与药丸规格格缺组件 | **待 A 线组件维护**：按 01-system c-sample-2 补件并单格重比 |
+| R32-X02 c-kbd-1 | Web tooltip 规格格缺组件 | **待 A 线组件维护**：按 01-system c-kbd-1 补件并单格重比 |
+| R32-X02 c-text-1 | Web 文字规格格 c-text-1 缺件 | **待 A 线组件维护**：按 01-system c-text-1 补件并单格重比 |
+| R32-X02 c-text-2 | Web 文字规格格 c-text-2 缺件 | **待 A 线组件维护**：按 01-system c-text-2 补件并单格重比 |
 
 ## 2. 待其他 Sprint（乙）
 
@@ -42,6 +53,8 @@
 | R30-03 | b12 #495 横幅缺样式 | **done（2026-10-17，R30 收口提交）**：本会话照 b5 #55 补上，A-R30-P07d 通过 |
 
 ## 3. 待甲自己后面的 Sprint
+
+**R32 区域门禁登记（G15 / G17）：** R05 旧整屏清单保留历史；乙已准备 `app-R05-regions.json` 的 11 个裁区视图，待 16e 浅深 22 张重跑及逐带归因。R31a 的 1/22 自动通过仅作基线，未完成前不写 done。若为真实壳回归，按 HANDOFF G15 / G17 给 D 线壳责任人具体证据；乙不改壳实现。
 
 | 交接表 # | 卡在什么 | 解锁后做什么 |
 | --- | --- | --- |

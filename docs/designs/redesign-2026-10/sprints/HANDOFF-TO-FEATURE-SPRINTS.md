@@ -56,6 +56,12 @@
 | G25 | **省额度做法（用户 2026-10-12 决定）** | — | 门禁先看文字结论（Web 先跑 `--style-diff` 逐元素样式 / 位置比对，像素门禁只做最后确认；App 看数字结论），图片只在数字说不清时看裁剪块；设计稿用 `--extract-board` 只抽单个画板；HANDOFF / 决定表只读相关段落；测试只看摘要；同一画面最多改 3 轮，不过就列「未过」报主会话；每个会话只做几个画面，上下文变长就写交接、推送、开新对话；只用 `git commit -- <自己的文件>` 按路径提交，不把文件长时间留在暂存区。**细节以 HOW-TO 第 8 节为准** | README 通用规则 12 |
 | G26 | **字号 / 圆角 token 补齐**（计划页返工发现，R05 补） | 已做：`--fs-micro` 9.5、`--fs-tiny` 10.5（非导航处的 10.5）、`--fs-emph` 15、`--fs-title-xs` 18、`--fs-section` 19、`--fs-display-md` 44、`--fs-display-xl` 64、`--fs-emoji-md` 21、`--fs-emoji-lg` 28、`--fs-number-lg` 32、`--fs-display-lg` 56、`--fs-display-sm` 48；`--r-hair` 2、`--r-bar` 3、`--r-seg` 5、`--r-chip` 8、`--r-input-sm` 9、`--r-emo` 13、`--r-dot` 4、`--r-check` 7、`--r-tick` 1（App 同名在 `designFont.size` / `designRadius` 副本里） | 设计稿出现这些值时直接用 token，不再写死或开局部变量；计划页 `FlowKit.module.css` 的 `--fs-flow-*` / `--r-flow-*` 换成正式 token（R22–R25 返工会话） | 共享笔记 R23-25-web-plan-missing-tokens.md；`R05-app-shell/REWORK-REPORT.md` §11 |
 
+**R32 / G15、G17 壳区域通知：** 乙只为 R05 建 11 个顶栏／底栏裁区视图并重跑 22 张门禁，不编辑 `AppScreen`、`OrbitTabBar` 或其他 D 线壳实现。若裁区显示真实壳回归，按 R32 SC-S01～S11 给 D 线壳责任人具体带与截图，状态保持未完成。来源：R05 返工报告、R31a REPORT §8、R32 PLANNER §6。
+
+**R32 / G23、G23b 组件维护请求（仍待交付）：** X01a 为 Web `Modal` 只加 520 宽档，供 W-R23-06 替换手写 `FlowDialog`，旧档尺寸保持；X01b 给 `Segmented` 增加 `HostConsole` 报表分段所需的 `href`、焦点及当前页语义；X01c 给 `CategoryTabs` 增加 `SearchPanel` 所需的 tablist 与 `aria-controls` 语义，或由组件维护确认保留页面实现。页面乙不改组件，不以请求发出记完成。来源：R31b REPORT §6-5/9、R32 SC-X01。
+
+**R32 / G23、G23b 规格格逐组请求（SC-X02，均待组件维护）：** `c-ai-3` ✓/✕ 与建议 chip；`c-load-1` 分步清单；`c-err-0` 同步恢复横条及标准文案键（实施时同步 App）；`c-err-3` 字段错误块；`c-sample-2` Web 示例横条与药丸；`c-kbd-1` tooltip；`c-text-1`、`c-text-2` 各自的文字规格。责任人为 A 线组件维护；八组各自保留未完成，不纳入 R32 页面门禁通过数。来源：R31b REPORT §6-10 / preflight-checklist、R32 PLANNER SC-X02。
+
 ---
 
 ## R10 首页
