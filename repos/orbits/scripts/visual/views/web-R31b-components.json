@@ -1,0 +1,212 @@
+{
+ "_note": "R31b 逐件对照（Web，U02 / SC-R31b-01 / 03）：01-system 规格格 ↔ 展示页小节 /showcase/components/<小节>-<格>（app/showcase/components/cells.tsx，画在 (0,0)、整数坐标、固定宽度）。每格两条：新页面环境与 ?env=legacy（旧页面全局样式，id 末尾 L）。浮层格（Modal）按组件自己的定位画，region 按 1440×900 视口居中换算。判定 RD-29。键 = <id>-1440-<theme>。",
+ "defaults": {
+  "app-origin": "http://localhost:3600",
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-redesign-R31b.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/ui/**",
+  "repos/orbits/app/showcase/components/**"
+ ],
+ "views": [
+  {
+   "id": "W-R31b-c-toast-0",
+   "design": "01-system.html",
+   "section": "c-toast",
+   "cell": 0,
+   "app": "/showcase/components/c-toast-0?theme={theme}",
+   "region": "0,0,359,289",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-toast-0L",
+   "design": "01-system.html",
+   "section": "c-toast",
+   "cell": 0,
+   "app": "/showcase/components/c-toast-0?theme={theme}&env=legacy",
+   "region": "0,0,359,289",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-confirm-2",
+   "design": "01-system.html",
+   "section": "c-confirm",
+   "cell": 2,
+   "app": "/showcase/components/c-confirm-2?theme={theme}",
+   "region": "492,255,446,390",
+   "width": 1440,
+   "design-region": "0,0,446,390",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "keys": "Tab"
+    }
+   ]
+  },
+  {
+   "id": "W-R31b-c-confirm-2L",
+   "design": "01-system.html",
+   "section": "c-confirm",
+   "cell": 2,
+   "app": "/showcase/components/c-confirm-2?theme={theme}&env=legacy",
+   "region": "492,255,446,390",
+   "width": 1440,
+   "design-region": "0,0,446,390",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "keys": "Tab"
+    }
+   ]
+  },
+  {
+   "id": "W-R31b-c-layer-2",
+   "design": "01-system.html",
+   "section": "c-layer",
+   "cell": 2,
+   "app": "/showcase/components/c-layer-2?theme={theme}",
+   "region": "0,0,340,247",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-layer-2L",
+   "design": "01-system.html",
+   "section": "c-layer",
+   "cell": 2,
+   "app": "/showcase/components/c-layer-2?theme={theme}&env=legacy",
+   "region": "0,0,340,247",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-ai-0",
+   "design": "01-system.html",
+   "section": "c-ai",
+   "cell": 0,
+   "app": "/showcase/components/c-ai-0?theme={theme}",
+   "region": "0,0,280,120",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-ai-0L",
+   "design": "01-system.html",
+   "section": "c-ai",
+   "cell": 0,
+   "app": "/showcase/components/c-ai-0?theme={theme}&env=legacy",
+   "region": "0,0,280,120",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-ai-1",
+   "design": "01-system.html",
+   "section": "c-ai",
+   "cell": 1,
+   "app": "/showcase/components/c-ai-1?theme={theme}",
+   "region": "0,0,280,135",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-ai-1L",
+   "design": "01-system.html",
+   "section": "c-ai",
+   "cell": 1,
+   "app": "/showcase/components/c-ai-1?theme={theme}&env=legacy",
+   "region": "0,0,280,135",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-ai-2",
+   "design": "01-system.html",
+   "section": "c-ai",
+   "cell": 2,
+   "app": "/showcase/components/c-ai-2?theme={theme}",
+   "region": "0,0,300,171",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-ai-2L",
+   "design": "01-system.html",
+   "section": "c-ai",
+   "cell": 2,
+   "app": "/showcase/components/c-ai-2?theme={theme}&env=legacy",
+   "region": "0,0,300,171",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-chip-0",
+   "design": "01-system.html",
+   "section": "c-chip",
+   "cell": 0,
+   "app": "/showcase/components/c-chip-0?theme={theme}",
+   "region": "0,0,359,275",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-chip-0L",
+   "design": "01-system.html",
+   "section": "c-chip",
+   "cell": 0,
+   "app": "/showcase/components/c-chip-0?theme={theme}&env=legacy",
+   "region": "0,0,359,275",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-kbd-0",
+   "design": "01-system.html",
+   "section": "c-kbd",
+   "cell": 0,
+   "app": "/showcase/components/c-kbd-0?theme={theme}",
+   "region": "0,0,420,250",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-kbd-0L",
+   "design": "01-system.html",
+   "section": "c-kbd",
+   "cell": 0,
+   "app": "/showcase/components/c-kbd-0?theme={theme}&env=legacy",
+   "region": "0,0,420,250",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-text-0",
+   "design": "01-system.html",
+   "section": "c-text",
+   "cell": 0,
+   "app": "/showcase/components/c-text-0?theme={theme}",
+   "region": "0,0,330,73",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-text-0L",
+   "design": "01-system.html",
+   "section": "c-text",
+   "cell": 0,
+   "app": "/showcase/components/c-text-0?theme={theme}&env=legacy",
+   "region": "0,0,330,73",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-ctl-0",
+   "design": "01-system.html",
+   "section": "c-ctl",
+   "cell": 0,
+   "app": "/showcase/components/c-ctl-0?theme={theme}",
+   "region": "0,0,359,200",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-ctl-0L",
+   "design": "01-system.html",
+   "section": "c-ctl",
+   "cell": 0,
+   "app": "/showcase/components/c-ctl-0?theme={theme}&env=legacy",
+   "region": "0,0,359,200",
+   "width": 1440
+  }
+ ]
+}

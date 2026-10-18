@@ -30,7 +30,7 @@ export function Chip({ label, tone = "neutral" }: { label: string; tone?: ChipTo
   return <span className={`${styles.chip} ${styles[`chip_${tone}`]}`} title={label}>{label}</span>;
 }
 
-type AvatarTone = "lav" | "pink" | "blue" | "teal" | "apricot";
+export type AvatarTone = "lav" | "pink" | "blue" | "teal" | "apricot";
 const AVATAR_TONES: AvatarTone[] = ["lav", "pink", "blue", "teal", "apricot"];
 
 /** Same hash as the App (src/components/ui/Avatar.tsx): one person, one colour everywhere. */
@@ -48,9 +48,9 @@ export function initials(name: string): string {
 }
 
 // kit .av: 38 / 30 / 56 macaron circle with initials; the name is the label.
-export function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) {
+export function Avatar({ name, size = "md", tone }: { name: string; size?: "sm" | "md" | "lg"; /** R31b (only added): a fixed colour instead of the name hash (a board's .av.c1–c5). */ tone?: AvatarTone }) {
   return (
-    <span role="img" aria-label={name} className={`${styles.avatar} ${styles[`av_${size}`]} ${styles[`tone_${avatarTone(name)}`]}`}>
+    <span role="img" aria-label={name} className={`${styles.avatar} ${styles[`av_${size}`]} ${styles[`tone_${tone ?? avatarTone(name)}`]}`}>
       <span aria-hidden>{initials(name)}</span>
     </span>
   );

@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 import { useOverlayHost, useStandardCopy } from "./Scope";
 import { createToast, disarmOwner, pushToast, removeToast, type ToastInput, type ToastState } from "./toast-model";
 import styles from "./Toast.module.css";
@@ -68,18 +68,57 @@ function ToastView({ toast, onClose }: { toast: ToastState; onClose: () => void 
     const timer = setTimeout(() => close.current(), left.current);
     return () => { clearTimeout(timer); left.current = Math.max(0, left.current - (Date.now() - started)); };
   }, [toast.id, toast.autoDismissMs, paused]);
+  // R31b (kit .toast, 01-system ①): an error toast with an action has no ✕ — its action (再試行) closes it; a toast
+  // without a timer and without an action (the undo bar, an error with nothing to do) keeps its ✕.
+  const actionCloses = toast.autoDismissMs === null && Boolean(toast.action) && !toast.keep;
   return (
     <div role={toast.kind === "error" ? "alert" : "status"} className={`${styles.toast} ${styles[toast.kind]} ${toast.keep ? styles.keep : ""}`} data-kind={toast.kind} data-paused={paused || undefined}
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
-      <span className={styles.mark} aria-hidden><Icon name={toast.kind === "error" ? "alert" : toast.kind === "success" ? "check" : "info"} size={16} /></span>
+      <ToastBody kind={toast.kind} message={toast.message} sub={toast.sub}
+        undo={toast.undo ? { label: copy.action.undo, onSelect: () => { toast.undo?.(); onClose(); } } : undefined}
+        action={toast.action ? { label: toast.action.label, onSelect: () => { toast.action?.onSelect(); onClose(); } } : undefined}
+        actionIcon={toast.kind === "error" ? "refresh" : undefined}
+        close={toast.autoDismissMs === null && !actionCloses ? { label: copy.action.close, onSelect: onClose } : undefined}
+        countdown={toast.autoDismissMs !== null} />
+    </div>
+  );
+}
+
+type ToastBodyProps = {
+  kind: ToastState["kind"];
+  icon?: IconName;
+  message: string;
+  sub?: string;
+  undo?: { label: string; onSelect: () => void };
+  action?: { label: string; onSelect: () => void };
+  actionIcon?: IconName;
+  close?: { label: string; onSelect: () => void };
+  countdown: boolean;
+};
+
+function ToastBody({ kind, icon, message, sub, undo, action, actionIcon, close, countdown }: ToastBodyProps) {
+  return (
+    <>
+      <span className={styles.mark} aria-hidden><Icon name={icon ?? (kind === "error" ? "alert" : kind === "success" ? "check" : "info")} size={16} /></span>
       <span className={styles.message}>
-        {toast.message}
-        {toast.sub ? <small className={styles.sub}>{toast.sub}</small> : null}
+        {message}
+        {sub ? <small className={styles.sub}>{sub}</small> : null}
       </span>
-      {toast.undo ? <button type="button" className={`btn ${styles.button}`} onClick={() => { toast.undo?.(); onClose(); }}><Icon name="undo" size={16} />{copy.action.undo}</button> : null}
-      {toast.action ? <button type="button" className={`btn ${styles.button}`} onClick={() => { toast.action?.onSelect(); onClose(); }}>{toast.action.label}</button> : null}
-      {toast.autoDismissMs === null ? <button type="button" className={`btn ${styles.closeButton}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={16} /></button> : null}
-      {toast.autoDismissMs !== null ? <i className={styles.countdown} aria-hidden /> : null}
+      {undo ? <button type="button" className={`btn ${styles.button}`} onClick={undo.onSelect}><Icon name="undo" size={16} />{undo.label}</button> : null}
+      {action ? <button type="button" className={`btn ${styles.button}`} onClick={action.onSelect}>{actionIcon ? <Icon name={actionIcon} size={16} /> : null}{action.label}</button> : null}
+      {close ? <button type="button" className={`btn ${styles.closeButton}`} aria-label={close.label} onClick={close.onSelect}><Icon name="x" size={16} /></button> : null}
+      {countdown ? <i className={styles.countdown} aria-hidden /> : null}
+    </>
+  );
+}
+
+/** R31b: a still toast for the showcase spec cell (01-system ① c-toast #0) — same markup, no timer, the countdown line drawn full. */
+export function ToastPreview({ kind, icon, message, sub, undoLabel, actionLabel, actionIcon, countdown = true }: { kind: ToastState["kind"]; icon?: IconName; message: string; sub?: string; undoLabel?: string; actionLabel?: string; actionIcon?: IconName; countdown?: boolean }) {
+  return (
+    <div className={`${styles.toast} ${styles[kind]} ${styles.still}`} data-kind={kind}>
+      <ToastBody kind={kind} icon={icon} message={message} sub={sub} countdown={countdown}
+        undo={undoLabel ? { label: undoLabel, onSelect: () => undefined } : undefined}
+        action={actionLabel ? { label: actionLabel, onSelect: () => undefined } : undefined} actionIcon={actionIcon} />
     </div>
   );
 }

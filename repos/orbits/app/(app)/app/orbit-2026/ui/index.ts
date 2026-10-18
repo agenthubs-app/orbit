@@ -13,11 +13,11 @@ export { Accordion } from "./Disclosure";
 export { Table, type TableColumn } from "./Table";
 // feedback
 export { ToastProvider, useToast } from "./Toast";
-export { BottomSheet, ConfirmDialog, ContextMenu, Drawer, Modal, Popover, type MenuItem } from "./Overlay";
+export { BottomSheet, ConfirmDialog, ContextMenu, Drawer, Modal, ModalIcon, Popover, type MenuItem } from "./Overlay";
 // AI
 export { ConfirmCard, WhyDisclosure, type ConfirmCardAction } from "./Disclosure";
 // controls
-export { CategoryTabs, CheckCircle, Checkbox, FilterOption, Radio, Segmented, Toggle, type Segment } from "./Controls";
+export { CategoryTabs, CheckCircle, Checkbox, FilterOption, Radio, Segmented, Toggle, UnderlineTabs, type Segment, type UnderlineTab } from "./Controls";
 export { CountUp, ProgressBar, RingChart, countUpValue } from "./Progress";
 // states
 export { DegradedCard, EmptyState, OfflineBar, QuotaChip, RetryCard, SampleBar, SampleTag, Skeleton } from "./States";

@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
 import { Button } from "./Button";
 import { Icon, type IconName } from "./Icon";
+import { Kbd } from "./Basics";
 import { useLayer } from "./layer-stack";
 import { useOverlayHost, useStandardCopy } from "./Scope";
 import styles from "./Overlay.module.css";
@@ -50,16 +51,28 @@ function DialogFrame({ onClose, closeOnScrim = true, labelledBy, describedBy, cl
   );
 }
 
-// kit .wmodal: centred dialog 420 / 480 / 560 (680 for the ⌘K panel; form modals 760 / 860 / 1000, b3 日程を提案 1000 · 送る前の確認 760 · フォロー完了 860), radius 28, padding 24; `top` sits 96
-// from the top (⌘K); `form` uses --bg so cards inside keep their layer.
-export function Modal({ open, onClose, title, header, description, size = 420, top = false, form = false, bare = false, actions, hint, initialFocus, children }: {
+// kit .wmodal: centred dialog 380 / 420 / 480 / 560 (680 for the ⌘K panel; form modals 760 / 860 / 1000, b3 日程を提案 1000 · 送る前の確認 760 · フォロー完了 860), radius 28, padding 24;
+// `top` sits 96 from the top (⌘K); `form` uses --bg so cards inside keep their layer.
+// Head (R31b, boards b12 W-R24-03 / 09b / 11, #320, 01-system ②): title 17 (`titleSize` 18) bold, the ✕ is kit .lbtn
+// (34, surface-2). `icon` puts a tile left of the title (kit .emo / .dic; decoration, never focusable); with
+// `description` as well the head is the confirm layout (gap 14, top-aligned, the description under the title).
+// `subtitle` is the grey line right under the title. `closable={false}` drops the ✕: the dialog then needs a
+// cancel action — Esc still closes it and focus still returns to the opener.
+export function Modal({ open, onClose, title, header, description, subtitle, icon, titleSize = 17, closable = true, size = 420, top = false, form = false, bare = false, actions, hint, initialFocus, closeOnScrim, role, children }: {
   open: boolean;
   onClose: () => void;
   title: string;
   /** Replaces the default title row when a board composes its own head (e.g. b12 W-R12-01: 18px title + subtitle + 40 round ✕); `title` still names the dialog. */
   header?: ReactNode;
   description?: string;
-  size?: 420 | 480 | 560 | 680 | 760 | 860 | 1000;
+  /** R31b: grey line under the title (kit .lbl), inside the head. */
+  subtitle?: string;
+  /** R31b: tile left of the title (MacTile / ModalIcon). */
+  icon?: ReactNode;
+  titleSize?: 17 | 18;
+  /** R31b: false = no ✕ (keep a cancel action; Esc still closes). */
+  closable?: boolean;
+  size?: 380 | 420 | 480 | 560 | 680 | 760 | 860 | 1000;
   top?: boolean;
   form?: boolean;
   /** R30 (only added): the ⌘K panel body draws its own rows edge to edge — kit `.cmdk` padding 10 instead of 24. */
@@ -67,32 +80,51 @@ export function Modal({ open, onClose, title, header, description, size = 420, t
   actions?: ReactNode;
   hint?: ReactNode;
   initialFocus?: RefObject<HTMLElement | null>;
+  /** Default true; destructive confirmations turn it off. */
+  closeOnScrim?: boolean;
+  role?: "dialog" | "alertdialog";
   children?: ReactNode;
 }) {
   const id = useId();
   const copy = useStandardCopy();
   if (!open) return null;
+  const confirmLayout = Boolean(icon && description);
+  const titleEl = <h2 id={`${id}-title`} className={`${styles.modalTitle} ${titleSize === 18 ? styles.modalTitleLg : ""}`}>{title}</h2>;
+  const descEl = description ? <p id={`${id}-desc`} className={confirmLayout ? styles.modalSub : styles.modalText}>{description}</p> : null;
   return (
-    <DialogFrame onClose={onClose} initialFocus={initialFocus} labelledBy={`${id}-title`} describedBy={description ? `${id}-desc` : undefined} scrimClassName={styles.scrim}
+    <DialogFrame onClose={onClose} closeOnScrim={closeOnScrim} role={role} initialFocus={initialFocus} labelledBy={`${id}-title`} describedBy={description ? `${id}-desc` : undefined} scrimClassName={styles.scrim}
       className={[styles.modal, styles[`w${size}`], top ? styles.top : "", form ? styles.form : "", bare ? styles.bare : ""].filter(Boolean).join(" ")}>
       {header ? (
         <><span id={`${id}-title`} hidden>{title}</span>{header}</>
       ) : (
-        <div className={styles.modalHead}>
-          <h2 id={`${id}-title`} className={styles.modalTitle}>{title}</h2>
-          <button type="button" className={`btn ${styles.close}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={20} /></button>
+        <div className={`${styles.modalHead} ${confirmLayout ? styles.modalHeadConfirm : ""}`}>
+          <div className={`${styles.modalHeadMain} ${confirmLayout ? styles.modalHeadMainConfirm : ""}`}>
+            {icon ? <span className={styles.modalIcon} aria-hidden>{icon}</span> : null}
+            <div className={styles.modalTitleBlock}>
+              {titleEl}
+              {subtitle ? <p className={styles.modalSubtitle}>{subtitle}</p> : null}
+              {confirmLayout ? descEl : null}
+            </div>
+          </div>
+          {closable ? <button type="button" className={`btn ${styles.close}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={16} /></button> : null}
         </div>
       )}
-      {description ? <p id={`${id}-desc`} className={styles.modalText}>{description}</p> : null}
+      {confirmLayout && !header ? null : descEl}
       {children}
       {actions || hint ? <div className={styles.actions}>{hint ? <span className={styles.hint}>{hint}</span> : null}{actions}</div> : null}
     </DialogFrame>
   );
 }
 
-// 01-system ②: confirm before something that cannot be undone. Cancel on the left and
-// focused first; a destructive confirm is solid coral and the scrim does not close it.
-export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel, destructive = false, icon, onConfirm, onCancel }: {
+/** kit .dic (48, radius 16): the Web confirm's icon block — coral-soft with a line icon, or an apricot emoji tile (.dic.emo). */
+export function ModalIcon({ icon, emoji, tone = "danger" }: { icon?: IconName; emoji?: string; tone?: "danger" | "apricot" }) {
+  return <span className={`${styles.dialogIcon} ${tone === "danger" && !emoji ? styles.dialogIconDanger : styles.dialogIconEmo}`}>{emoji ?? <Icon name={icon ?? "trash"} size={24} />}</span>;
+}
+
+// 01-system ② Web (.wmodal 420): icon block left of a question title, the consequence under it, Esc hint at the
+// left, [キャンセル][主動作] on the right; no ✕. Destructive: solid coral, focus starts on キャンセル and the scrim
+// does not close it; otherwise focus starts on the main action.
+export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel, destructive = false, icon, emoji, onConfirm, onCancel }: {
   open: boolean;
   title: string;
   message?: string;
@@ -100,34 +132,35 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
   cancelLabel?: string;
   destructive?: boolean;
   icon?: IconName;
+  /** R31b: an emoji tile instead of a line icon (kit .dic.emo). */
+  emoji?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const id = useId();
   const copy = useStandardCopy();
-  if (!open) return null;
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const cancel = cancelLabel ?? copy.action.cancel;
+  const tile = destructive || icon || emoji ? <ModalIcon icon={icon} emoji={emoji} tone={destructive ? "danger" : "apricot"} /> : undefined;
   return (
-    <DialogFrame onClose={onCancel} closeOnScrim={!destructive} role="alertdialog" labelledBy={`${id}-title`} describedBy={message ? `${id}-desc` : undefined}
-      scrimClassName={styles.scrim} className={`${styles.modal} ${styles.w420}`}>
-      {destructive || icon ? <span className={`${styles.dialogIcon} ${destructive ? styles.dialogIconDanger : ""}`}><Icon name={icon ?? "trash"} size={24} /></span> : null}
-      <h2 id={`${id}-title`} className={styles.modalTitle}>{title}</h2>
-      {message ? <p id={`${id}-desc`} className={styles.modalText}>{message}</p> : null}
-      <div className={styles.actions}>
-        <Button label={cancelLabel ?? copy.action.cancel} variant="secondary" onClick={onCancel} />
-        <Button label={confirmLabel} variant={destructive ? "danger" : "primary"} onClick={onConfirm} />
-      </div>
-    </DialogFrame>
+    <Modal open={open} onClose={onCancel} title={title} description={message} icon={tile} closable={false} closeOnScrim={!destructive} role="alertdialog"
+      initialFocus={destructive ? undefined : confirmRef} hint={<><Kbd>Esc</Kbd> {cancel}</>}
+      actions={<><Button label={cancel} variant="secondary" onClick={onCancel} /><Button ref={confirmRef} label={confirmLabel} variant={destructive ? "danger" : "primary"} onClick={onConfirm} /></>} />
   );
 }
 
-// kit .drawer: from the right, 14 from each edge, radius 28, --bg. lg 600 (520 under
+// kit .drawer: from the right, 14 from each edge, radius 28, --bg, padding 22. lg 600 (520 under
 // 1280 wide), md 520, sm 380 (RD-17: rich content 520 / light 380 at 1024); never
 // wider than the window minus the margins. `fullOnPhone`: under 768 the drawer fills the
 // screen (no margins, no radius) — for a form that is the whole task on a phone (R12 手入力, b8).
-export function Drawer({ open, onClose, title, size = "lg", children, footer, fullOnPhone = false, bare = false }: {
+// Head (R31b, b4 #12 / b6 #20): title (20 / 800, `titleSize` 18 = b4's 18 bold) with an optional grey `subtitle`
+// under it (long titles wrap, the ✕ keeps its size), the ✕ is kit .rbtn (40, white round on --bg).
+export function Drawer({ open, onClose, title, subtitle, titleSize = 20, size = "lg", children, footer, fullOnPhone = false, bare = false }: {
   open: boolean;
   onClose: () => void;
   title: string;
+  /** R31b: grey line under the title (kit .lbl). */
+  subtitle?: string;
+  titleSize?: 18 | 20;
   size?: "lg" | "md" | "sm";
   children: ReactNode;
   footer?: ReactNode;
@@ -142,8 +175,11 @@ export function Drawer({ open, onClose, title, size = "lg", children, footer, fu
     <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.drawerScrim}`} className={`${styles.drawer} ${styles[`drawer_${size}`]}${fullOnPhone ? ` ${styles.drawerFullPhone}` : ""}${bare ? ` ${styles.drawerBareFrame}` : ""}`}>
       {bare ? <h2 id={`${id}-title`} className={styles.srOnly}>{title}</h2> : (
         <div className={styles.drawerHead}>
-          <h2 id={`${id}-title`} className={styles.drawerTitle}>{title}</h2>
-          <button type="button" className={`btn ${styles.close}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={20} /></button>
+          <div className={styles.drawerTitleBlock}>
+            <h2 id={`${id}-title`} className={`${styles.drawerTitle} ${titleSize === 18 ? styles.drawerTitleSm : ""}`}>{title}</h2>
+            {subtitle ? <p className={styles.modalSubtitle}>{subtitle}</p> : null}
+          </div>
+          <button type="button" className={`btn ${styles.drawerClose}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={20} /></button>
         </div>
       )}
       <div className={bare ? styles.drawerBare : styles.drawerBody}>{children}</div>

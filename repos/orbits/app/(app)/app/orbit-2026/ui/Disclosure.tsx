@@ -2,6 +2,8 @@
 
 import { useId, useState, type ReactNode } from "react";
 
+import { MacTile } from "./Basics";
+import { Button } from "./Button";
 import { Icon } from "./Icon";
 import { fillCopy, useStandardCopy } from "./Scope";
 import styles from "./Disclosure.module.css";
@@ -37,30 +39,56 @@ export function WhyDisclosure({ reason }: { reason: string }) {
   );
 }
 
-export type ConfirmCardAction = { label: string; onSelect: () => void; primary?: boolean };
+export type ConfirmCardAction = { label: string; onSelect: () => void; primary?: boolean; /** R31b: transparent (kit .btn.ghost, 「あとで」). */ ghost?: boolean };
 
 // 01-system ④ / kit .confirm-card → .ok-card → .ng-card: an AI write waits in place
 // (dashed plum), then turns into success (ok green, RD-17) or failure (coral-soft).
-export function ConfirmCard({ state, title, detail, actions = [], children }: {
+// R31b (c-ai #0–#2): pending = emoji tile + question + what / where + 追加する / やめる; success = ✓ mark + title +
+// 元に戻す in the head row, the detail and a link indented under the title; failure = alert mark + what failed +
+// why (grey), then 何も書き込まれていません… and the repair actions (primary · on-surface · ghost).
+export function ConfirmCard({ state, title, detail, reason, emoji, emojiTone = "lav", actions = [], undo, link, children }: {
   state: "pending" | "success" | "failure";
   title: string;
   detail?: string;
+  /** failure: the cause under the title (kit .lbl). */
+  reason?: string;
+  /** pending: a small macaron tile before the question (kit .emo.sm). */
+  emoji?: string;
+  emojiTone?: "lav" | "pink" | "blue" | "teal" | "apricot";
   actions?: ConfirmCardAction[];
+  /** success: 元に戻す at the end of the head row. */
+  undo?: { label: string; onSelect: () => void };
+  /** success: 「プランで見る →」. */
+  link?: { label: string; href: string };
   children?: ReactNode;
 }) {
+  const head = state === "failure" ? (
+    <div className={`${styles.confirmHead} ${styles.confirmHeadTop}`}>
+      <span className={styles.ngMark}><Icon name="alert" size={20} /></span>
+      <div className={styles.confirmHeadText}>
+        <b className={styles.confirmTitle}>{title}</b>
+        {reason ? <span className={styles.confirmReason}>{reason}</span> : null}
+      </div>
+    </div>
+  ) : (
+    <div className={styles.confirmHead}>
+      {state === "success" ? <span className={styles.okMark}><Icon name="check" size={16} /></span> : null}
+      {state === "pending" && emoji ? <MacTile emoji={emoji} tone={emojiTone} size="sm" /> : null}
+      <b className={styles.confirmTitle}>{title}</b>
+      {state === "success" && undo ? <Button label={undo.label} size="sm" variant="ghost" onClick={undo.onSelect} /> : null}
+    </div>
+  );
   return (
     <div className={`${styles.confirm} ${styles[state]}`} aria-live="polite">
-      <div className={styles.confirmHead}>
-        {state === "success" ? <span className={styles.okMark}><Icon name="check" size={16} /></span> : null}
-        {state === "failure" ? <span className={styles.ngMark}><Icon name="alert" size={16} /></span> : null}
-        <b className={styles.confirmTitle}>{title}</b>
-      </div>
+      {head}
       {detail ? <p className={styles.confirmDetail}>{detail}</p> : null}
+      {state === "success" && link ? <div className={styles.confirmLinkRow}><a className={styles.confirmLink} href={link.href}>{link.label}<Icon name="right" size={16} /></a></div> : null}
       {children}
       {actions.length ? (
         <div className={styles.confirmActions}>
           {actions.map((action) => (
-            <button key={action.label} type="button" className={`btn ${styles.cardButton} ${action.primary ? styles.cardPrimary : state === "failure" ? styles.cardSecondary : styles.cardGhost}`} onClick={action.onSelect}>{action.label}</button>
+            <Button key={action.label} label={action.label} size="sm" variant={action.primary ? "primary" : action.ghost ? "ghost" : "secondary"}
+              className={!action.primary && !action.ghost && state === "failure" ? styles.onSurface : undefined} onClick={action.onSelect} />
           ))}
         </div>
       ) : null}

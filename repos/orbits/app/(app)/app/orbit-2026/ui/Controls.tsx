@@ -44,7 +44,10 @@ export type Segment<Key extends string> = { key: Key; label: string };
 
 // kit .seg / .tseg: equal options on a surface-2 pill; the chosen one on surface.
 // Arrow keys move between options (WAI-ARIA tabs pattern, automatic activation).
-export function Segmented<Key extends string>({ segments, value, onChange, label, wide = false }: { segments: Segment<Key>[]; value: Key; onChange: (key: Key) => void; label: string; wide?: boolean }) {
+// R31b: `variant="seg"` is kit .seg itself (ui.css:34-36: 6 / 13 padding, 12 / 600, 30 high) for the page segments
+// that were hand-written (主催 · 計画 · イベント); the default stays the Task-style segment it has always been.
+// `className` carries the caller's margins; data-* attributes go on the tablist.
+export function Segmented<Key extends string>({ segments, value, onChange, label, wide = false, variant = "default", className, ...rest }: { segments: Segment<Key>[]; value: Key; onChange: (key: Key) => void; label: string; wide?: boolean; variant?: "default" | "seg"; className?: string } & { [data: `data-${string}`]: string | undefined }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const move = (event: KeyboardEvent, index: number) => {
     const delta = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
@@ -55,7 +58,7 @@ export function Segmented<Key extends string>({ segments, value, onChange, label
     refs.current[target]?.focus();
   };
   return (
-    <div role="tablist" aria-label={label} className={`${styles.seg} ${wide ? styles.segWide : ""}`}>
+    <div {...rest} role="tablist" aria-label={label} className={[styles.seg, wide ? (variant === "seg" ? styles.segFull : styles.segWide) : "", variant === "seg" ? styles.segKit : "", className ?? ""].filter(Boolean).join(" ")}>
       {segments.map((segment, index) => {
         const selected = segment.key === value;
         return (
@@ -73,7 +76,7 @@ export function Segmented<Key extends string>({ segments, value, onChange, label
 export function FilterOption({ label, selected, count, onToggle }: { label: string; selected: boolean; count?: number; onToggle: () => void }) {
   return (
     <button type="button" aria-pressed={selected} className={`btn ${styles.fopt} ${selected ? styles.foptOn : ""}`} onClick={onToggle}>
-      {selected ? <Icon name="check" size={16} /> : null}
+      {selected ? <span className={styles.foptCheck} aria-hidden>✓</span> : null}
       {label}
       {count !== undefined ? <small className={styles.count}>{count}</small> : null}
     </button>
@@ -100,6 +103,51 @@ export function CategoryTabs<Key extends string>({ options, value, onChange, lab
           {option.count !== undefined ? <small className={styles.count}>{option.count}</small> : null}
         </button>
       ))}
+    </div>
+  );
+}
+
+export type UnderlineTab<Key extends string> = { key: Key; label: string; /** Grey number after the label (kit .utabs small). */ count?: number; /** Coral pill after the label (b6 .htabs .cntB). */ badge?: number; /** A link tab (page sections with their own URL). */ href?: string };
+
+// R31b: underline tabs. `line` = b2 .utabs (詳細 · gap 20, ink 2.5 bar under the whole label); `host` = b6 / b12
+// .htabs (運営台 · 16 side padding, plum-700 3 bar inset 12, coral count badge). Tabs pattern: arrows move and
+// choose (buttons) or move the focus (links, Enter follows); the chosen tab is the one in the Tab order.
+export function UnderlineTabs<Key extends string>({ tabs, value, onChange, label, variant = "line", className, ...rest }: {
+  tabs: UnderlineTab<Key>[];
+  value: Key;
+  onChange?: (key: Key) => void;
+  label?: string;
+  variant?: "line" | "host";
+  className?: string;
+} & { [data: `data-${string}`]: string | undefined }) {
+  const refs = useRef<(HTMLElement | null)[]>([]);
+  const move = (event: KeyboardEvent, index: number) => {
+    const delta = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    const target = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : delta ? (index + delta + tabs.length) % tabs.length : -1;
+    if (target < 0) return;
+    event.preventDefault();
+    if (!tabs[target]!.href) onChange?.(tabs[target]!.key);
+    refs.current[target]?.focus();
+  };
+  return (
+    <div {...rest} role="tablist" aria-label={label} className={[styles.utabs, variant === "host" ? styles.utabsHost : "", className ?? ""].filter(Boolean).join(" ")}>
+      {tabs.map((tab, index) => {
+        const selected = tab.key === value;
+        const body = (
+          <>
+            {tab.label}
+            {tab.count !== undefined ? <small className={styles.utabCount}>{tab.count}</small> : null}
+            {tab.badge ? <span className={styles.utabBadge}>{tab.badge}</span> : null}
+          </>
+        );
+        const common = { role: "tab", "aria-selected": selected, tabIndex: selected ? 0 : -1, onKeyDown: (event: KeyboardEvent) => move(event, index) } as const;
+        return tab.href ? (
+          <a key={tab.key} ref={(node) => { refs.current[index] = node; }} {...common} href={tab.href} className={`${styles.utab} ${selected ? styles.utabOn : ""}`}
+            onClick={onChange ? (event) => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey) { event.preventDefault(); onChange(tab.key); } } : undefined}>{body}</a>
+        ) : (
+          <button key={tab.key} ref={(node) => { refs.current[index] = node; }} {...common} type="button" className={`btn ${styles.utab} ${selected ? styles.utabOn : ""}`} onClick={() => onChange?.(tab.key)}>{body}</button>
+        );
+      })}
     </div>
   );
 }

@@ -1,0 +1,14 @@
+/* R31b 逐件对照小节：画在 (0, 0)、整数坐标、固定宽度；底色同设计侧规格格（.stage 雾面换成纯 --bg）。 */
+.page { display: block; position: relative; min-height: 100vh; margin: 0; background: var(--bg); }
+.cell { position: absolute; left: 0; top: 0; }
+/* 规格格里 kit 的排版类（只在展示页，组件本身不用）。 */
+.grid { display: grid; }
+.row { display: flex; align-items: center; gap: 10px; }
+.between { justify-content: space-between; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.lbl { font-size: var(--fs-label); color: var(--ink-3-text); font-weight: var(--fw-medium); }
+.sub { color: var(--ink-2); font-size: var(--fs-control); }
+.keys { display: flex; gap: 16px; align-items: center; font-size: var(--fs-meta); color: var(--ink-3-text); flex-wrap: wrap; }
+.keys > span { display: inline-flex; align-items: center; gap: 5px; }
+/* c-layer #2：弹出层的触发钮（选中底色） */
+.trigger { background: var(--accent-soft); }

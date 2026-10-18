@@ -12,8 +12,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 48px;
-  padding: 8px 8px 8px 12px;
+  padding: 9px 9px 9px 12px;
+  text-align: left;
   border-radius: var(--r-pill);
   background: var(--ink);
   color: var(--bg);
@@ -29,6 +29,7 @@
   :global(:root:not([data-theme="light"])) .toast { background: var(--surface-3); color: var(--ink); }
 }
 .keep { border-radius: var(--r-card-web); padding: 10px 10px 10px 12px; }
+/* kit .tk: 26 round, the icon 15 at stroke 2.2. */
 .mark {
   width: 26px;
   height: 26px;
@@ -39,10 +40,11 @@
   background: var(--ok);
   color: var(--on-ok);
 }
+.mark > svg { width: 15px; height: 15px; stroke-width: 2.2; }
 .error .mark { background: var(--coral); color: var(--on-ok); }
 .info .mark { background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; }
 .message { flex: 1; min-width: 0; line-height: 1.3; }
-.sub { display: block; font-size: var(--fs-caption); font-weight: var(--fw-bold); opacity: 0.75; }
+.sub { display: block; font-size: var(--fs-caption); font-weight: 600; opacity: 0.68; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .keep .sub { white-space: normal; }
 .button {
   display: inline-flex;
@@ -57,6 +59,9 @@
   white-space: nowrap;
   flex: none;
 }
+/* Over an old page's unscoped legacy .btn (HANDOFF G13): two classes restate the kit values. */
+.button:global(.btn) { gap: 4px; height: 32px; padding: 0 13px; border: 0; border-radius: var(--r-pill); font-size: var(--fs-meta); font-weight: var(--fw-heavy); letter-spacing: normal; }
+.closeButton:global(.btn) { gap: 0; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--r-pill); letter-spacing: normal; }
 .closeButton {
   width: 32px;
   height: 32px;
@@ -78,6 +83,8 @@
   animation: countdown 5s linear both;
 }
 .toast[data-paused] .countdown { animation-play-state: paused; }
+/* ToastPreview: no entrance, the countdown line full (kit .tbar at its first frame). */
+.still, .still .countdown { animation: none; }
 @keyframes countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes toastUp { from { opacity: 0; transform: translateY(16px) scale(0.97); } }
 @keyframes fadeIn { from { opacity: 0; } }

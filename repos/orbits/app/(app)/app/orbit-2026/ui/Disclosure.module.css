@@ -41,24 +41,36 @@
   line-height: 1.65;
 }
 
-.confirm { border-radius: var(--r-lg); padding: 14px; display: grid; gap: 8px; }
+/* kit .confirm-card (no padding, as drawn in 01-system ④) / .ok-card / .ng-card (padding 14), radius 20. */
+.confirm { border-radius: var(--r-lg); }
 .pending { border: 1.5px dashed var(--plum-300); background: transparent; }
-.success { background: var(--surface); border: 1.5px solid color-mix(in srgb, var(--ok) 45%, transparent); }
-.failure { background: var(--coral-soft); }
+.success { padding: 14px; background: var(--surface); border: 1.5px solid color-mix(in srgb, var(--ok) 45%, transparent); }
+.failure { padding: 14px; background: var(--coral-soft); }
 .confirmHead { display: flex; align-items: center; gap: 8px; }
-.confirmTitle { font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); }
-.failure .confirmTitle { color: var(--coral-text); }
+.success .confirmHead, .failure .confirmHead { gap: 10px; }
+.confirmHeadTop { align-items: flex-start; }
+.confirmHeadText { flex: 1; min-width: 0; }
+.confirmTitle { font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
+.success .confirmTitle { flex: 1; }
+.confirmReason { display: block; font-size: var(--fs-label); color: var(--ink-3-text); font-weight: var(--fw-medium); }
 .okMark, .ngMark { width: 24px; height: 24px; border-radius: var(--r-pill); display: grid; place-items: center; flex: none; }
 .okMark { background: var(--ok); color: var(--surface); }
+.okMark > svg { width: 15px; height: 15px; stroke-width: 2.4; }
 .ngMark { background: var(--surface); color: var(--coral-text); }
-.confirmDetail { font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.6; }
+/* kit .sub: 12.5 ink-2; pending margin 6 0 10, success 6 0 0 34, failure 8 0 0. */
+.confirmDetail { font-size: var(--fs-control); color: var(--ink-2); margin: 6px 0 10px; }
+.success .confirmDetail { margin: 6px 0 0 34px; }
+.failure .confirmDetail { margin: 8px 0 0; }
+.confirmLinkRow { margin: 8px 0 0 34px; line-height: var(--lh-body); }
+/* kit .lnk */
+.confirmLink { font-size: var(--fs-control); font-weight: var(--fw-bold); color: var(--accent-text); display: inline-flex; align-items: center; gap: 2px; }
 .confirmActions { display: flex; gap: 8px; flex-wrap: wrap; }
-.cardButton { height: 32px; padding: 0 12px; border-radius: var(--r-pill); font-size: var(--fs-meta); font-weight: var(--fw-bold); }
-.cardPrimary { background: var(--ink); color: var(--bg); }
-.cardSecondary { background: var(--surface); color: var(--ink); }
-.cardGhost { background: transparent; color: var(--ink-2); }
-.cardGhost:hover { background: var(--surface-2); }
+.failure .confirmActions { gap: 6px; margin-top: 10px; }
+.failure .onSurface { background: var(--surface); }
 
 @keyframes fadeIn { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
 :global([data-motion="reduce"]) .chev { transition: none; }
+/* Over an old page's unscoped legacy .btn (HANDOFF G13 / R31b): two classes restate the kit values. */
+.head:global(.btn) { gap: 8px; height: auto; min-height: 44px; padding: 8px 4px; border: 0; border-radius: var(--r-md); font-size: var(--fs-body); font-weight: var(--fw-bold); letter-spacing: normal; justify-content: space-between; }
+.whyButton:global(.btn) { gap: 0; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--r-pill); font-size: var(--fs-label); font-weight: var(--fw-heavy); letter-spacing: normal; }

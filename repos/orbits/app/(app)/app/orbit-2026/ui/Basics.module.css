@@ -31,7 +31,7 @@
   border-radius: var(--r-pill);
   font-size: var(--fs-caption);
   font-weight: var(--fw-bold);
-  line-height: var(--lh-label);
+  /* kit .chip sets no line-height: it inherits the surrounding one (22.5 high in 1.5 text), like the boards. */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -54,8 +54,8 @@
   line-height: 1;
 }
 .av_sm { width: 30px; height: 30px; font-size: var(--fs-label); }
-.av_md { width: 38px; height: 38px; font-size: var(--fs-body-sm); }
-.av_lg { width: 56px; height: 56px; font-size: var(--fs-title-sm); }
+.av_md { width: 38px; height: 38px; font-size: var(--fs-row); } /* kit .av 13.5 */
+.av_lg { width: 56px; height: 56px; font-size: var(--fs-section); } /* kit .av.lg 19 (R15 §5) */
 .tone_lav { background: var(--mac-lav); color: var(--mac-lav-text); }
 .tone_pink { background: var(--mac-pink); color: var(--mac-pink-text); }
 .tone_blue { background: var(--mac-blue); color: var(--mac-blue-text); }
@@ -66,16 +66,17 @@
 .stack > * { border: 2px solid var(--surface); margin-left: -8px; }
 .stack > *:first-child { margin-left: 0; }
 
+/* kit .emo: 40, radius 13, emoji 21; .emo.sm 32, radius 10, emoji 17 (G23b). */
 .mac {
   width: 40px;
   height: 40px;
-  border-radius: var(--r-md);
+  border-radius: var(--r-emo);
   display: inline-grid;
   place-items: center;
-  font-size: var(--fs-title-sm);
+  font-size: var(--fs-emoji-md);
   flex: none;
 }
-.macSm { width: 32px; height: 32px; border-radius: var(--r-sm); font-size: var(--fs-dialog-title); }
+.macSm { width: 32px; height: 32px; border-radius: var(--r-sm); font-size: var(--fs-emoji-sm); }
 .tile_lav { background: var(--mac-lav); }
 .tile_pink { background: var(--mac-pink); }
 .tile_blue { background: var(--mac-blue); }

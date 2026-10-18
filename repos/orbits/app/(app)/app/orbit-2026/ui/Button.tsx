@@ -1,6 +1,6 @@
 "use client";
 
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 import { Icon, type IconName } from "./Icon";
 import styles from "./Button.module.css";
@@ -11,7 +11,17 @@ export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost" | "dang
 // Motion). Destructive: the final action in a dialog is solid coral, the entry is
 // coral text (ghost), the coral-soft fill is for menu items. The rendered <button>
 // carries `btn` so the legacy button ratchet counts it as a designed button.
-export function Button({
+// R31b: forwards its ref to the <button> (ConfirmDialog starts on the main action, a Popover anchors to a Button).
+export const Button = forwardRef<HTMLButtonElement, Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
+  label: string;
+  variant?: ButtonVariant;
+  size?: "md" | "sm";
+  block?: boolean;
+  icon?: IconName;
+  loading?: boolean;
+  /** After the label, e.g. a key cap inside the button (b11 A3 Web「保存 ⌘↵」). */
+  trailing?: ReactNode;
+}>(function Button({
   label,
   variant = "secondary",
   size = "md",
@@ -22,25 +32,16 @@ export function Button({
   className,
   type = "button",
   ...rest
-}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
-  label: string;
-  variant?: ButtonVariant;
-  size?: "md" | "sm";
-  block?: boolean;
-  icon?: IconName;
-  loading?: boolean;
-  /** After the label, e.g. a key cap inside the button (b11 A3 Web「保存 ⌘↵」). */
-  trailing?: ReactNode;
-}) {
+}, ref) {
   const classes = [styles.button, styles[variant], size === "sm" ? styles.sm : "", block ? styles.block : "", className ?? ""].filter(Boolean).join(" ");
   return (
-    <button {...rest} type={type} className={`btn ${classes}`} aria-busy={loading || undefined} disabled={rest.disabled || loading}>
+    <button {...rest} ref={ref} type={type} className={`btn ${classes}`} aria-busy={loading || undefined} disabled={rest.disabled || loading}>
       {loading ? <span className={styles.spinner} aria-hidden /> : icon ? <Icon name={icon} size={16} /> : null}
       <span className={styles.label}>{label}</span>
       {trailing}
     </button>
   );
-}
+});
 
 // kit .rbtn (40, surface) / .lbtn (34, surface-2): round icon buttons. The label is
 // required — the icon carries the meaning. `dot` is the unread mark (coral, no number).

@@ -35,8 +35,9 @@
   padding: 0;
 }
 
+/* 01-system ② .focus: a 2px plum-500 ring 2px off the control (the only focus ring the kit draws). */
 :where(.scope) :where(:focus-visible) {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--plum-500);
   outline-offset: 2px;
 }
 

@@ -53,3 +53,5 @@
   color: var(--coral-text);
 }
 .hint { font-size: var(--fs-meta); color: var(--ink-3-text); }
+/* Over an old page's unscoped legacy .btn (HANDOFF G13 / R31b): two classes restate the kit values. */
+.clear:global(.btn) { gap: 0; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--r-pill); }

@@ -19,7 +19,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-12);
-  padding: 11px 4px;
+  padding: 11px 0; /* kit .li */
   min-height: 44px;
   text-align: left;
   border-radius: var(--r-md);
@@ -69,4 +69,10 @@ a.main:hover, button.main:hover { background: var(--surface-2); }
 @media (hover: none), (max-width: 390px) {
   .actions { opacity: 1; pointer-events: auto; }
   .action { width: 44px; height: 44px; }
+}
+/* Over an old page's unscoped legacy .btn (HANDOFF G13 / R31b): two classes restate the kit values. */
+.main:global(.btn) { gap: var(--space-12); height: auto; min-height: 44px; padding: 11px 0; border: 0; border-radius: var(--r-md); font-size: var(--fs-body); font-weight: inherit; letter-spacing: normal; justify-content: flex-start; white-space: normal; }
+.action:global(.btn) { gap: 0; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--r-pill); }
+@media (hover: none), (max-width: 390px) {
+  .action:global(.btn) { width: 44px; height: 44px; }
 }
