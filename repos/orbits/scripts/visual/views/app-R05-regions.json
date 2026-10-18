@@ -1,0 +1,108 @@
+{
+  "_note": "R32 R05 壳区域重验。坐标是 R05 返工报告的起点；单屏探针后复核，必要时分别设置 design-region。旧 app-R05.json 保留历史整屏结果。",
+  "defaults": {
+    "grid": 30,
+    "wait": 7000,
+    "attribution": "scripts/visual/attribution-redesign-R32-R05-regions.json"
+  },
+  "sources": [
+    "repos/orbit-app/src/components/AppScreen.tsx",
+    "repos/orbit-app/src/components/OrbitTabBar.tsx",
+    "repos/orbit-app/src/components/Shell*.tsx",
+    "repos/orbit-app/src/components/shell-*.ts",
+    "repos/orbit-app/src/components/ui/**",
+    "repos/orbit-app/src/screens/task/**",
+    "repos/orbit-app/src/design/**",
+    "repos/orbit-app/src/api/design/**"
+  ],
+  "views": [
+    {
+      "id": "A-R05-S01",
+      "design": "app.html",
+      "board-index": 2,
+      "url": "orbit://home",
+      "region": "0,50,390,58",
+      "note": "R32 首页顶栏 .hhead；来自 A-R05-01，仅比裁区。"
+    },
+    {
+      "id": "A-R05-S02",
+      "design": "app.html",
+      "board-index": 2,
+      "url": "orbit://home",
+      "region": "14,756,362,62",
+      "note": "R32 首页底栏胶囊；来自 A-R05-01，仅比裁区。"
+    },
+    {
+      "id": "A-R05-S03",
+      "design": "app.html",
+      "board-index": 8,
+      "url": "orbit://contacts",
+      "region": "14,756,362,62",
+      "note": "R32 人脈底栏胶囊；来自 A-R05-02，仅比裁区。"
+    },
+    {
+      "id": "A-R05-S04",
+      "design": "app.html",
+      "board-index": 15,
+      "url": "orbit://events",
+      "region": "14,756,362,62",
+      "note": "R32 活动底栏胶囊；来自 A-R05-03，仅比裁区。"
+    },
+    {
+      "id": "A-R05-S05",
+      "design": "app.html",
+      "board-index": 16,
+      "url": "orbit://task?seg=calendar",
+      "region": "0,50,390,128",
+      "note": "R32 Task 日历顶栏与分段；来自 A-R05-04，仅比裁区。"
+    },
+    {
+      "id": "A-R05-S06",
+      "design": "app.html",
+      "board-index": 16,
+      "url": "orbit://task?seg=calendar",
+      "region": "14,756,362,62",
+      "note": "R32 Task 日历底栏胶囊；来自 A-R05-04，仅比裁区。"
+    },
+    {
+      "id": "A-R05-S07",
+      "design": "app.html",
+      "board-index": 17,
+      "url": "orbit://task?seg=todo",
+      "region": "0,50,390,128",
+      "note": "R32 Task To-do 顶栏与分段；来自 A-R05-05，仅比裁区。"
+    },
+    {
+      "id": "A-R05-S08",
+      "design": "app.html",
+      "board-index": 17,
+      "url": "orbit://task?seg=todo",
+      "region": "14,756,362,62",
+      "note": "R32 Task To-do 底栏胶囊；来自 A-R05-05，仅比裁区。"
+    },
+    {
+      "id": "A-R05-S09",
+      "design": "app.html",
+      "board-index": 26,
+      "url": "orbit://task?seg=memo",
+      "region": "0,50,390,128",
+      "note": "R32 Task メモ顶栏与分段；来自 A-R05-07，仅比裁区。"
+    },
+    {
+      "id": "A-R05-S10",
+      "design": "app.html",
+      "board-index": 26,
+      "url": "orbit://task?seg=memo",
+      "region": "14,756,362,62",
+      "note": "R32 Task メモ底栏胶囊；来自 A-R05-07，仅比裁区。"
+    },
+    {
+      "id": "A-R05-S11",
+      "design": "b5-me-inbox.html",
+      "board-index": 16,
+      "url": "orbit://profile",
+      "region": "0,50,390,64",
+      "note": "R32 个人页顶栏；来自 A-R05-11，仅比裁区。"
+    }
+  ]
+}

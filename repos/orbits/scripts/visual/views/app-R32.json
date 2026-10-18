@@ -1,0 +1,268 @@
+{
+  "_note": "R32 目标画板汇总供预检与逐项门禁使用；保留来源清单的状态步骤，实际调整另记 R32 REPORT。",
+  "defaults": {
+    "grid": 30,
+    "attribution": "scripts/visual/attribution-redesign-R32-app.json"
+  },
+  "sources": [
+    "repos/orbit-app/src/screens/events/v2/**",
+    "repos/orbit-app/app/events/**",
+    "repos/orbit-app/src/i18n/*/eventsJourney.ts",
+    "repos/orbit-app/src/screens/add/**",
+    "repos/orbit-app/src/i18n/ja/add.ts",
+    "repos/orbit-app/src/components/ui/**",
+    "repos/orbit-app/src/components/AppScreen.tsx",
+    "repos/orbit-app/src/components/ShellTopBar.tsx",
+    "repos/orbit-app/app/contacts/new/import/**",
+    "repos/orbit-app/src/i18n/*/add.ts",
+    "repos/orbit-app/src/screens/plan/plan-ui.tsx",
+    "repos/orbit-app/src/screens/plan/plan-model.ts",
+    "repos/orbit-app/src/i18n/ja/plan.ts",
+    "repos/orbit-app/src/components/Shell*.tsx",
+    "repos/orbit-app/src/screens/plan/PlanOverview.tsx",
+    "repos/orbit-app/src/screens/plan/plan-overview-*.ts*",
+    "repos/orbit-app/src/screens/plan/PlanSegment.tsx",
+    "repos/orbit-app/src/screens/plan/PlanTypeScreen.tsx",
+    "repos/orbit-app/src/screens/plan/PlanRecordSheet.tsx",
+    "repos/orbit-app/src/screens/plan/PlanProposalSheet.tsx",
+    "repos/orbit-app/src/screens/plan/PlanReview*.tsx",
+    "repos/orbit-app/src/screens/plan/plan-review-*.ts*",
+    "repos/orbit-app/src/screens/plan/PlanDoneScreen.tsx",
+    "repos/orbit-app/src/screens/plan/PlanGoalSwitcher.tsx",
+    "repos/orbit-app/src/screens/plan/PlanLegacy.tsx"
+  ],
+  "views": [
+    {
+      "id": "A-R27-06",
+      "design": "b2-events-flow.html",
+      "board-index": 6,
+      "path": "/events?tab=discover",
+      "journey": {
+        "discover": "empty"
+      },
+      "note": "R32 来源 app-R27.json: P01 探す · 空（无计划）",
+      "grid": 30,
+      "wait": 20000
+    },
+    {
+      "id": "A-R27-07",
+      "design": "b2-events-flow.html",
+      "board-index": 7,
+      "path": "/events?tab=discover&period=this_week&areas=tokyo&themes=manufacturing_dx",
+      "journey": {
+        "discover": "few"
+      },
+      "note": "R32 来源 app-R27.json: P02 探す · 少量",
+      "grid": 30,
+      "wait": 20000
+    },
+    {
+      "id": "A-R27-08",
+      "design": "b2-events-flow.html",
+      "board-index": 8,
+      "path": "/events?tab=discover",
+      "journey": {
+        "discover": "many"
+      },
+      "note": "R32 来源 app-R27.json: P03 探す · 大量",
+      "grid": 30,
+      "wait": 20000
+    },
+    {
+      "id": "A-R27-09",
+      "design": "b2-events-flow.html",
+      "board-index": 9,
+      "path": "/events?tab=discover&filters=1",
+      "journey": {
+        "discover": "many"
+      },
+      "note": "R32 来源 app-R27.json: P04 絞り込み弹层",
+      "grid": 30,
+      "wait": 20000
+    },
+    {
+      "id": "A-R27-29",
+      "design": "b2-events-flow.html",
+      "board-index": 29,
+      "path": "/events/demo-event-cfo-night-18/live?tab=people",
+      "journey": {
+        "venue": "checked_in",
+        "registration": "registered"
+      },
+      "note": "R32 来源 app-R27.json: P17 会場 ④ 参加者 一覧",
+      "grid": 30,
+      "wait": 20000
+    },
+    {
+      "id": "A-R27-31",
+      "design": "b2-events-flow.html",
+      "board-index": 31,
+      "path": "/events/demo-event-cfo-night-18/live?tab=people&view=map",
+      "journey": {
+        "venue": "checked_in",
+        "registration": "registered"
+      },
+      "note": "R32 来源 app-R27.json: P19 会場 ⑥ 関係マップ",
+      "grid": 30,
+      "wait": 20000
+    },
+    {
+      "id": "A-R27-33",
+      "design": "b2-events-flow.html",
+      "board-index": 33,
+      "path": "/events/demo-event-cfo-night-18/live?tab=people&person=jp-shimizu",
+      "journey": {
+        "venue": "checked_in",
+        "registration": "registered"
+      },
+      "note": "R32 来源 app-R27.json: P21 会場 ⑧ 参加者シート（清水さん・申請が届いています）",
+      "grid": 30,
+      "wait": 20000
+    },
+    {
+      "id": "A-R27-34",
+      "design": "b2-events-flow.html",
+      "board-index": 34,
+      "path": "/events/demo-event-cfo-night-18/live?tab=people&person=jp-shimizu&meet=1",
+      "journey": {
+        "venue": "checked_in",
+        "registration": "registered"
+      },
+      "note": "R32 来源 app-R27.json: P22 会場 ⑨ 面談を提案（下書きのみ，D46 重画后）",
+      "grid": 30,
+      "wait": 20000
+    },
+    {
+      "id": "A-R27-35",
+      "design": "b2-events-flow.html",
+      "board-index": 35,
+      "path": "/events/demo-event-cfo-night-18/live?tab=now&approve=jp-shimizu",
+      "journey": {
+        "venue": "checked_in",
+        "registration": "registered"
+      },
+      "note": "R32 来源 app-R27.json: P23 会場 ⑩ 交換成功 toast（开发回放常驻）",
+      "grid": 30,
+      "wait": 20000
+    },
+    {
+      "id": "A-R12-N09",
+      "design": "b12-missing-states.html",
+      "board-index": 114,
+      "themes": [
+        "light"
+      ],
+      "url": "orbit://contacts/new/drafts?eventId=event-cfo",
+      "taps": "点第 2 张的「破棄」",
+      "note": "R32 来源 app-add-R12.json: N09 下書きを破棄",
+      "grid": 30,
+      "wait": 9000
+    },
+    {
+      "id": "A-R16-02",
+      "design": "b9-import-plan-v2.html",
+      "board-index": 2,
+      "url": "orbit://contacts/new/import/design-pick",
+      "note": "R32 来源 app-import-R16.json: 連絡先 ② 選ぶ（画板 1,284 件）",
+      "grid": 30,
+      "wait": 9000
+    },
+    {
+      "id": "A-R16-04",
+      "design": "b9-import-plan-v2.html",
+      "board-index": 4,
+      "url": "orbit://contacts/new/import/design-review",
+      "note": "R32 来源 app-import-R16.json: 連絡先 ④ まとめて確認",
+      "grid": 30,
+      "wait": 9000
+    },
+    {
+      "id": "A-R24-05",
+      "design": "b12-missing-states.html",
+      "board-index": 198,
+      "url": "orbit://task?seg=plan",
+      "fixture": "b12-206-premise",
+      "note": "R32 来源 app-plan-A.json: 前提を見る sheet（D49）",
+      "taps": "前提を見る",
+      "grid": 30,
+      "wait": 12000
+    },
+    {
+      "id": "A-R24-12",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 9,
+      "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-lawyer",
+      "fixture": "b12-244-law",
+      "note": "R32 来源 app-plan-A.json: スキップ ① 確認",
+      "taps": "この分野はもう詳しい",
+      "grid": 30,
+      "wait": 12000
+    },
+    {
+      "id": "A-R24-13",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 0,
+      "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-vc_partner",
+      "fixture": "b4-11-type-vc",
+      "note": "R32 来源 app-plan-A.json: 加点 ① 面談を記録 sheet",
+      "taps": "すでに話した / 話したを記録",
+      "grid": 30,
+      "wait": 12000
+    },
+    {
+      "id": "A-R24-16",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 6,
+      "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-vc_partner",
+      "fixture": "b4-11-type-vc",
+      "note": "R32 来源 app-plan-A.json: 面談を提案 sheet",
+      "taps": "候補を選ぶ → 面談を提案",
+      "grid": 30,
+      "wait": 12000
+    },
+    {
+      "id": "A-R25-01",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 19,
+      "url": "orbit://task?seg=plan",
+      "fixture": "c-review",
+      "note": "R32 来源 app-plan-C.json: 作り直しの確認（見直し入口 sheet）",
+      "taps": "方案を見直す",
+      "grid": 30,
+      "wait": 12000
+    },
+    {
+      "id": "A-R25-08",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 24,
+      "url": "orbit://task?seg=plan",
+      "fixture": "c-goals",
+      "note": "R32 来源 app-plan-C.json: 達成 ① 確認",
+      "taps": "目標を達成した",
+      "grid": 30,
+      "wait": 12000
+    },
+    {
+      "id": "A-R25-11",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 28,
+      "url": "orbit://task?seg=plan",
+      "fixture": "c-goals",
+      "note": "R32 来源 app-plan-C.json: タイトルから目標を切替（popover）",
+      "taps": "目標名 ▾",
+      "grid": 30,
+      "wait": 12000
+    },
+    {
+      "id": "A-R25-12",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 29,
+      "url": "orbit://task?seg=plan",
+      "fixture": "c-edit",
+      "note": "R32 来源 app-plan-C.json: 目標を編集",
+      "taps": "▾ → この目標を編集",
+      "grid": 30,
+      "wait": 12000
+    }
+  ]
+}
