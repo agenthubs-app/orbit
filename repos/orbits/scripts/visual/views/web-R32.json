@@ -94,6 +94,12 @@
           "click": "[data-plan-skip]"
         },
         {
+          "keys": "Shift+Tab"
+        },
+        {
+          "keys": "Tab"
+        },
+        {
           "wait": 600
         }
       ],
