@@ -21,6 +21,18 @@ test("notification deep links are restricted to owned in-app destinations", () =
   assert.equal(notificationHrefFromDeepLink("/tasks/../../admin"), null);
 });
 
+test('R14 local notification links accept only concrete contact and Task destinations',()=>{
+ assert.equal(notificationHrefFromDeepLink('/contacts/contact%3Aone'),'/contacts/contact%3Aone');
+ assert.equal(notificationHrefFromDeepLink('orbit://contacts/new/scan/batch%3Aone'),'/contacts/new/scan/batch%3Aone');
+ assert.equal(notificationHrefFromDeepLink('/task?seg=todo'),'/task?seg=todo');
+ for(const value of ['/contacts/new','/contacts/list','/contacts/new/scan','/contacts/a%2Fb','/contacts/new/scan/a%2Fb',
+  '/contacts/%252e%252e','/contacts/a/../new','/contacts/%2e%2e','/contacts/a?actorId=other',
+  '//contacts/contact','https://example.test/contacts/contact','/task?seg=unknown&next=https://example.test']){
+  const href=notificationHrefFromDeepLink(value);
+  assert.ok(href===null||href==='/task',`${value} unexpectedly opened ${href}`);
+ }
+});
+
 test("notification responses are handled once per notification and action", () => {
   const guard = createNotificationResponseGuard(2);
   assert.equal(guard.shouldHandle("notification:one", "default"), true);

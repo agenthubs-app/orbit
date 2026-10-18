@@ -26,11 +26,39 @@ export interface LocalNotificationRequest {
   triggerAt: string;
 }
 
-const allowedPaths = [
-  /^\/tasks\/[^/?#]+$/u,
-  /^\/schedule\/events\/[^/?#]+$/u,
-  /^\/inbox(?:\/[^/?#]+)?$/u,
-];
+const reservedContactPaths = new Set(['all-actions','analysis','dashboard','edit','graph','list','new','pipeline']);
+
+function safeId(value:string):string|null {
+ try {
+  const decoded=decodeURIComponent(value);
+  if(!decoded||decoded==='.'||decoded==='..'||/[\\/?#%\s\u0000-\u001f\u007f]/u.test(decoded))return null;
+  return encodeURIComponent(decoded);
+ } catch {return null;}
+}
+
+function safeRecordHref(path:string):string|null {
+ if(path==='/inbox')return path;
+ const parts=path.split('/');
+ if(parts[1]==='contacts'){
+  if(parts.length===5&&parts[2]==='new'&&parts[3]==='scan'){
+   const id=safeId(parts[4]!);return id?`/contacts/new/scan/${id}`:null;
+  }
+  if(parts.length===3&&!reservedContactPaths.has(parts[2]!)){
+   const id=safeId(parts[2]!);return id?`/contacts/${id}`:null;
+  }
+  return null;
+ }
+ if(parts.length===3&&parts[1]==='tasks'){
+  const id=safeId(parts[2]!);return id?`/tasks/${id}`:null;
+ }
+ if(parts.length===4&&parts[1]==='schedule'&&parts[2]==='events'){
+  const id=safeId(parts[3]!);return id?`/schedule/events/${id}`:null;
+ }
+ if(parts.length===3&&parts[1]==='inbox'){
+  const id=safeId(parts[2]!);return id?`/inbox/${id}`:null;
+ }
+ return null;
+}
 
 // R05: reminders scheduled before the Task page (and servers still sending the old
 // addresses) open the matching Task segment instead of the redirect route; the new
@@ -54,6 +82,7 @@ export function notificationHrefFromDeepLink(value: unknown): string | null {
   const participant = eventParticipantHref(value);
   if (participant) return participant;
   if (typeof value !== "string" || !value.trim()) return null;
+  try{if(/[\\\s\u0000-\u001f\u007f]/u.test(value)||decodeURIComponent(value).includes('..'))return null;}catch{return null;}
   let path = value.trim();
 
   let query: { get(name: string): string | null } = { get: () => null };
@@ -82,7 +111,7 @@ export function notificationHrefFromDeepLink(value: unknown): string | null {
   }
   const task = taskSegmentHref(path, query);
   if (task) return task;
-  return allowedPaths.some((pattern) => pattern.test(path)) ? path : null;
+  return safeRecordHref(path);
 }
 
 export function createNotificationResponseGuard(limit = 100) {

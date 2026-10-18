@@ -46,9 +46,13 @@ function openNotification(
   const deliveryId = typeof data?.deliveryId === "string" ? data.deliveryId.trim() : "";
   const href = notificationHrefFromDeepLink(data?.deepLink);
   if (!deliveryId && !href) return;
+  // A local reminder waits for the signed-in sync session. An opaque server
+  // delivery can enter the protected inbox, whose route guard preserves the
+  // deliveryId through login before the server verifies its owner.
+  if (!session && !deliveryId) return;
   const notificationId = response.notification.request.identifier;
   if (!responseGuard.shouldHandle(notificationId, response.actionIdentifier)) return;
-  if (!session) return;
+  if (!session) { router.push({ pathname: "/inbox", params: { deliveryId } } as Href); return; }
   void syncThenNavigate(session, () => {
     if (deliveryId) router.push({ pathname: "/inbox", params: { deliveryId } } as Href);
     // R05 review M1: a tab page (Task) goes to the bottom of the stack, not on top.
@@ -80,7 +84,7 @@ export function OrbitNotificationsCoordinator() {
   }, [client, ready, signedIn]);
 
   useEffect(() => {
-    if (!ready || !signedIn || !syncSession || Platform.OS === "web") return;
+    if (!ready || Platform.OS === "web") return;
     let active = true;
     const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
       if (active) openNotification(response, syncSession);

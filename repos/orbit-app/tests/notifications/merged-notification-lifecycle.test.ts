@@ -104,7 +104,7 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
       if (id === "expo-linking") return { addEventListener() { return { remove() {} }; }, async getInitialURL() { return null; } };
       if (id === "@expo/vector-icons") return { Ionicons: "Icon" };
       if (id.endsWith("/AuthSessionProvider")) return { useOrbitAuthSession: () => auth };
-      if (id.endsWith("/useSyncedCollection")) return { useSyncCoordinatorSession: () => coordinatorSession };
+      if (id.endsWith("/useSyncedCollection")) return { useSyncCoordinatorSession: () => auth.signedIn ? coordinatorSession : null };
       if (id.endsWith("/ApiBaseUrlProvider")) return { useOrbitApiBaseUrl: () => ({ baseUrl: "http://localhost", ready: true }) };
       if (id.endsWith("/server-reachability")) return { serverReachability: {
         subscribe(listener: (url: string, state: string, previous: string) => void) { reachabilityListeners.add(listener); return () => reachabilityListeners.delete(listener); },
@@ -295,6 +295,15 @@ test("a cold-start local notification is not consumed before authentication", { 
   app.mount();
   await settle();
   assert.deepEqual(app.navigations, ["/tasks/task%3A1"]);
+  app.close();
+});
+
+test('a cold-start durable push opens the protected inbox so login preserves its delivery ID', { timeout: 5000 }, async () => {
+  const app=harness({signedIn:false,lastResponse:response('cold-delivery',{deliveryId:'delivery:pending'})});
+  app.mount();await settle();
+  assert.equal(app.navigations.length,1);
+  assert.equal(app.navigations[0].pathname,'/inbox');
+  assert.equal(app.navigations[0].params.deliveryId,'delivery:pending');
   app.close();
 });
 
