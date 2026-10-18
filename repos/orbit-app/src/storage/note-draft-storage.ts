@@ -8,6 +8,8 @@ export interface NoteDraft {
   manualContactIds: readonly string[];
   mentions: readonly NoteMentionContract[];
   eventIds: readonly string[];
+  noteKind?: "free" | "meeting" | "voice";
+  usedForPlan?: boolean;
   savedAt: string;
 }
 
@@ -29,7 +31,12 @@ function isDraft(value: unknown): value is NoteDraft {
     && Array.isArray(item.mentions) && item.mentions.every((mention) => {
       if (typeof mention !== "object" || mention === null || Array.isArray(mention)) return false;
       const part = mention as Record<string, unknown>;
-      return typeof part.contactId === "string" && part.contactId.length > 0
+      const branch = part.entityType === undefined || part.entityType === "contact"
+        ? typeof part.contactId === "string" && part.contactId.length > 0 && part.eventId === undefined
+        : part.entityType === "event"
+          ? typeof part.eventId === "string" && part.eventId.length > 0 && part.contactId === undefined
+          : typeof part.entityType === "string" && part.entityType.length > 0;
+      return branch
         && Number.isSafeInteger(part.start) && Number(part.start) >= 0
         && Number.isSafeInteger(part.end) && Number(part.end) > Number(part.start)
         && typeof part.displayText === "string" && part.displayText.length > 0
@@ -37,6 +44,8 @@ function isDraft(value: unknown): value is NoteDraft {
         && String(item.body).slice(Number(part.start), Number(part.end)) === part.displayText;
     }) && Array.isArray(item.eventIds)
     && item.eventIds.every((id) => typeof id === "string" && id.length > 0)
+    && (item.noteKind === undefined || item.noteKind === "free" || item.noteKind === "meeting" || item.noteKind === "voice")
+    && (item.usedForPlan === undefined || typeof item.usedForPlan === "boolean")
     && typeof item.savedAt === "string" && Number.isFinite(Date.parse(item.savedAt));
 }
 

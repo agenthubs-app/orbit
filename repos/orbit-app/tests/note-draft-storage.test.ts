@@ -35,3 +35,21 @@ test("a delayed autosave finishes before clearing the same draft and cannot resu
   release(); await Promise.all([save, clear]);
   assert.equal(await storage.load(scope), null);
 });
+
+test("R20b event mention and plan-use metadata survive an offline draft round trip", async () => {
+  const values = new Map<string, string>();
+  const storage = createNoteDraftStorage({
+    async getItem(key) { return values.get(key) ?? null; },
+    async removeItem(key) { values.delete(key); },
+    async setItem(key, value) { values.set(key, value); },
+  });
+  const scope = { accountId: "account:one", server: "local" };
+  const draft = {
+    title: "面談", body: "@Launch の記録", manualContactIds: ["contact:a"],
+    mentions: [{ entityType: "event" as const, eventId: "event:launch", start: 0, end: 7, displayText: "@Launch" }],
+    eventIds: ["event:launch"], noteKind: "meeting" as const, usedForPlan: true,
+    savedAt: "2026-10-18T08:00:00.000Z",
+  };
+  await storage.save(scope, draft);
+  assert.deepEqual(await storage.load(scope), draft);
+});
