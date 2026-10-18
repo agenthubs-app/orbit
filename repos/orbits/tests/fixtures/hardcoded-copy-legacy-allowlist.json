@@ -291,7 +291,7 @@
     },
     "app/(app)/app/contacts/network-0918/network-analysis-structure.tsx": {
       "hardcoded": 0,
-      "missingJa": 37
+      "missingJa": 36
     },
     "app/(app)/app/contacts/network-0918/network-analysis.tsx": {
       "hardcoded": 0,
@@ -327,7 +327,7 @@
     },
     "app/(app)/app/contacts/network-0918/network-opportunities.tsx": {
       "hardcoded": 0,
-      "missingJa": 49
+      "missingJa": 48
     },
     "app/(app)/app/contacts/network-0918/network-overview-cockpit-model.ts": {
       "hardcoded": 3,
@@ -339,14 +339,10 @@
     },
     "app/(app)/app/contacts/network-0918/network-overview.tsx": {
       "hardcoded": 3,
-      "missingJa": 30
-    },
-    "app/(app)/app/contacts/network-0918/network-pipeline.tsx": {
-      "hardcoded": 0,
-      "missingJa": 16
+      "missingJa": 29
     },
     "app/(app)/app/contacts/network-0918/network-shell.tsx": {
-      "hardcoded": 5,
+      "hardcoded": 4,
       "missingJa": 6
     },
     "app/(app)/app/events/[id]/operations/admission/event-admission-policy-panel.tsx": {

@@ -62,10 +62,14 @@ test('the pages the user named in 0131 are local-first, and online-only pages na
   }
 });
 
-test('the contact pipeline route is local-first and is not hidden by an online-only boundary', async () => {
-  const entry = PAGE_OFFLINE_INVENTORY.find(candidate => candidate.file === 'app/contacts/pipeline.tsx');
-  assert.equal(entry?.classification, 'local-first');
-  assert.equal(entry?.sprint, '0137');
-  const route = await readFile(resolve(root, 'app/contacts/pipeline.tsx'), 'utf8');
-  assert.doesNotMatch(route, /withOnlineOnlyRoute/);
+// R11a removed the pipeline route; the 人脈 list, 連絡先詳細 and 連絡先の編集 that replace it are local-first.
+test('the R11a contact routes are local-first and are not hidden by an online-only boundary', async () => {
+  for (const file of ['app/(app)/contacts.tsx', 'app/contacts/[id].tsx', 'app/contacts/edit/[id].tsx']) {
+    const entry = PAGE_OFFLINE_INVENTORY.find(candidate => candidate.file === file);
+    assert.equal(entry?.classification, 'local-first', file);
+    assert.equal(entry?.sprint, 'R11a', file);
+    const route = await readFile(resolve(root, file), 'utf8');
+    assert.doesNotMatch(route, /withOnlineOnlyRoute/, file);
+  }
+  assert.equal(PAGE_OFFLINE_INVENTORY.find(candidate => candidate.file === 'app/contacts/pipeline.tsx'), undefined);
 });

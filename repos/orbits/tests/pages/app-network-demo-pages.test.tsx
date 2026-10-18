@@ -129,7 +129,6 @@ function loadPage(t: TestContext, name: PageName, scenario: Scenario = {}) {
     [join(root, "app/(app)/app/contacts/network-0918/network-cards.tsx")]: { NetworkCards: component("NetworkCards") },
     [join(root, "app/(app)/app/contacts/network-0918/network-overview.tsx")]: { NetworkOverview: component("NetworkOverview") },
     [join(root, "app/(app)/app/contacts/network-0918/network-analysis.tsx")]: { NetworkAnalysis: component("NetworkAnalysis") },
-    [join(root, "app/(app)/app/contacts/network-0918/network-pipeline.tsx")]: { NetworkPipeline: component("NetworkPipeline") },
     [join(root, "app/(app)/app/contacts/network-0918/network-demo-frame.tsx")]: { NetworkDemoFrame: component("NetworkDemoFrame") },
     [join(root, "app/(app)/app/contacts/network-0918/network-shell.tsx")]: {
       NetworkShell: component("NetworkShell"),
